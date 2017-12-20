@@ -87,7 +87,7 @@ func (b *BoltDB) Delete(url string, id int64) error {
 		}
 		key := []byte(fmt.Sprintf("%12d", id))
 		if err := bucket.Delete(key); err != nil {
-			errors.Wrapf(err, "can't delete key %s from bucket %s", key, url)
+			return errors.Wrapf(err, "can't delete key %s from bucket %s", key, url)
 		}
 		return nil
 	})
@@ -127,9 +127,9 @@ func (b *BoltDB) Last(locator Locator, max int) (result []Comment, err error) {
 
 		c := lastBk.Cursor()
 		for k, v := c.Last(); k != nil; k, v = c.Prev() {
-			url, id, err := refFromValue(v).parse()
-			if err != nil {
-				return err
+			url, id, e := refFromValue(v).parse()
+			if e != nil {
+				return e
 			}
 			urlBk := tx.Bucket([]byte(url))
 			if urlBk == nil {
@@ -163,7 +163,7 @@ func (b *BoltDB) keyFromValue(id int64) []byte {
 // buckets returns list of buckets, which is list of all commented posts
 func (b BoltDB) buckets() (result []string) {
 
-	b.View(func(tx *bolt.Tx) error {
+	_ = b.View(func(tx *bolt.Tx) error {
 		return tx.ForEach(func(name []byte, _ *bolt.Bucket) error {
 			result = append(result, string(name))
 			return nil
