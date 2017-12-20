@@ -1,0 +1,19 @@
+workspace:
+  base: /go
+  path: src/github.com/umputun/remark
+
+pipeline:
+  
+  build:
+    image: golang:1.9-alpine
+    commands:
+      - apk add --no-cache --update tzdata && cp /usr/share/zoneinfo/America/Chicago /etc/localtime 
+      - cd app
+      - go get -v ./...
+      - go test -v ./...
+      
+  docker:
+    image: plugins/docker
+    repo: umputun/remark
+    secrets: [ docker_username, docker_password ]
+    tags: ${DRONE_REPO_BRANCH}

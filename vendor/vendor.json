@@ -1,0 +1,85 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "J+kVue/HTH4sELlqMO4z0tx9DiA=",
+			"path": "github.com/boltdb/bolt",
+			"revision": "e9cf4fae01b5a8ff89d0ec6b32f0d9c9f79aefdd",
+			"revisionTime": "2017-01-31T19:20:18Z"
+		},
+		{
+			"checksumSHA1": "pRfFXHs1mQ8AkYPUNkyVqAxcJuc=",
+			"path": "github.com/didip/tollbooth",
+			"revision": "9adc32f5171e833befc340a64b63602529fc0373",
+			"revisionTime": "2016-05-15T16:26:28Z"
+		},
+		{
+			"checksumSHA1": "lqNUHWBQY3BQl/V61OUvdi1/XOM=",
+			"path": "github.com/didip/tollbooth/config",
+			"revision": "9adc32f5171e833befc340a64b63602529fc0373",
+			"revisionTime": "2016-05-15T16:26:28Z"
+		},
+		{
+			"checksumSHA1": "TH1jNcNejXHDDjQge0Bpq4lrzFY=",
+			"path": "github.com/didip/tollbooth/errors",
+			"revision": "9adc32f5171e833befc340a64b63602529fc0373",
+			"revisionTime": "2016-05-15T16:26:28Z"
+		},
+		{
+			"checksumSHA1": "3/1hZpAAz5Yu474XKsn/5ad8i5Y=",
+			"path": "github.com/didip/tollbooth/libstring",
+			"revision": "9adc32f5171e833befc340a64b63602529fc0373",
+			"revisionTime": "2016-05-15T16:26:28Z"
+		},
+		{
+			"checksumSHA1": "Eg449rulPIiIoW2+Aoum/Af/wiM=",
+			"path": "github.com/go-chi/chi",
+			"revision": "25354a53cca531cb2efd3f1d3c565d90ff04d802",
+			"revisionTime": "2017-08-02T21:27:05Z"
+		},
+		{
+			"checksumSHA1": "OpRUup8sYz/4ywe48bp0vPs+tHU=",
+			"path": "github.com/go-chi/chi/middleware",
+			"revision": "25354a53cca531cb2efd3f1d3c565d90ff04d802",
+			"revisionTime": "2017-08-02T21:27:05Z"
+		},
+		{
+			"checksumSHA1": "KlhjFlnkWjrgYdOiUCgD+uuiCRU=",
+			"path": "github.com/go-chi/render",
+			"revision": "9f855fadd4b8cde7773f9ef51f6b2705af239519",
+			"revisionTime": "2017-07-06T22:11:03Z"
+		},
+		{
+			"checksumSHA1": "vt+P9D2yWDO3gdvdgCzwqunlhxU=",
+			"path": "github.com/hashicorp/logutils",
+			"revision": "0dc08b1671f34c4250ce212759ebd880f743d883",
+			"revisionTime": "2015-06-09T07:04:31Z"
+		},
+		{
+			"checksumSHA1": "NabWaGs51UHZDLuBPs9MwhgTSGo=",
+			"path": "github.com/jessevdk/go-flags",
+			"revision": "f2785f5820ec967043de79c8be97edfc464ca745",
+			"revisionTime": "2016-06-26T16:29:48Z"
+		},
+		{
+			"checksumSHA1": "sKheT5xw89Tbu2Q071FQO27CVmE=",
+			"path": "github.com/juju/ratelimit",
+			"revision": "77ed1c8a01217656d2080ad51981f6e99adaa177",
+			"revisionTime": "2015-11-25T20:19:25Z"
+		},
+		{
+			"checksumSHA1": "rJab1YdNhQooDiBWNnt7TLWPyBU=",
+			"path": "github.com/pkg/errors",
+			"revision": "c605e284fe17294bda444b34710735b29d1a9d90",
+			"revisionTime": "2017-05-05T04:36:39Z"
+		},
+		{
+			"checksumSHA1": "8SH0adTcQlA+W5dzqiQ3Hft2VXg=",
+			"path": "golang.org/x/sys/unix",
+			"revision": "478fcf54317e52ab69f40bb4c7a1520288d7f7ea",
+			"revisionTime": "2016-12-05T15:46:50Z"
+		}
+	],
+	"rootPath": "github.com/umputun/remark"
+}

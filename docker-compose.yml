@@ -1,0 +1,19 @@
+version: '2'
+
+services:
+
+    remark:
+        image: umputun/remark:develop
+        container_name: "remark"
+        hostname: "remark"
+        restart: always
+
+        logging:
+          driver: json-file
+          options:
+              max-size: "10m"
+              max-file: "5"
+
+        environment:
+            - MHOST=${MHOST}
+
