@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"html/template"
 	"log"
 	"net/http"
 	"strconv"
@@ -29,7 +30,7 @@ func (s *Server) Run() {
 
 	router.Post("/comment", s.createCommentCtrl)
 	router.Delete("/comment/{id}", s.deleteCommentCtrl)
-	router.Get("/find", s.getUrlComments)
+	router.Get("/find", s.getURLComments)
 	router.Get("/last/{max}", s.getLastComments)
 	router.Get("/id/{id}", s.getByID)
 	log.Fatal(http.ListenAndServe(":8080", router))
@@ -44,7 +45,10 @@ func (s *Server) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		httpError(w, r, http.StatusBadRequest, err, "can't bind comment")
 		return
 	}
+
 	comment.User.IP = strings.Split(r.RemoteAddr, ":")[0]
+	comment.User.Name = template.HTMLEscapeString(comment.User.Name)
+	comment.Text = template.HTMLEscapeString(comment.Text)
 
 	log.Printf("[INFO] create comment %+v", comment)
 
@@ -83,7 +87,7 @@ func (s *Server) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET /find?url=post-url
-func (s *Server) getUrlComments(w http.ResponseWriter, r *http.Request) {
+func (s *Server) getURLComments(w http.ResponseWriter, r *http.Request) {
 	url := r.URL.Query().Get("url")
 	log.Printf("[INFO] get comments for %s", url)
 
