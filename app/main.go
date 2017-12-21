@@ -7,16 +7,14 @@ import (
 
 	"github.com/hashicorp/logutils"
 	"github.com/jessevdk/go-flags"
+	"github.com/umputun/remark/app/store"
 
 	"github.com/umputun/remark/app/rest"
 )
 
 var opts struct {
-	Mongo       []string `short:"m" long:"mongo" env:"MONGO" default:"mongo" description:"mongo host:port" env-delim:","`
-	MongoPasswd string   `short:"p" long:"mongo-password" env:"MONGO_PASSWD" default:"" description:"mongo password"`
-	MongoDelay  int      `long:"mongo-delay" env:"MONGO_DELAY" default:"0" description:"mongo initial delay"`
-
-	Dbg bool `long:"dbg" env:"DEBUG" description:"debug mode"`
+	DBFile string `long:"db" env:"BOLTDB_FILE" default:"/tmp/remark.db" description:"bolt file name"`
+	Dbg    bool   `long:"dbg" env:"DEBUG" description:"debug mode"`
 }
 
 var revision = "unknown"
@@ -29,8 +27,14 @@ func main() {
 	setupLog(opts.Dbg)
 	log.Print("[INFO] started remark")
 
+	dataStore, err := store.NewBoltDB(opts.DBFile)
+	if err != nil {
+		log.Fatalf("[ERROR] can't initialize data store, %+v", err)
+	}
+
 	srv := rest.Server{
 		Version: revision,
+		Store:   dataStore,
 	}
 	srv.Run()
 }

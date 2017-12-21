@@ -35,11 +35,12 @@ func NewBoltDB(dbFile string) (*BoltDB, error) {
 }
 
 // Create saves new comment to store
-func (b *BoltDB) Create(comment Comment) error {
+func (b *BoltDB) Create(comment Comment) (int64, error) {
 
 	comment.ID = time.Now().UnixNano()
+	comment.Timestamp = time.Now()
 
-	return b.Update(func(tx *bolt.Tx) error {
+	err := b.Update(func(tx *bolt.Tx) error {
 		bucket, e := tx.CreateBucketIfNotExists([]byte(comment.Locator.URL))
 		if e != nil {
 			return errors.Wrapf(e, "can't make bucket", comment.Locator.URL)
@@ -75,6 +76,8 @@ func (b *BoltDB) Create(comment Comment) error {
 
 		return nil
 	})
+
+	return comment.ID, err
 }
 
 // Delete removed comment by url and id from the store
@@ -85,7 +88,7 @@ func (b *BoltDB) Delete(url string, id int64) error {
 		if bucket == nil {
 			return errors.Errorf("no bucket %s in store", url)
 		}
-		key := []byte(fmt.Sprintf("%12d", id))
+		key := b.keyFromValue(id)
 		if err := bucket.Delete(key); err != nil {
 			return errors.Wrapf(err, "can't delete key %s from bucket %s", key, url)
 		}
@@ -116,26 +119,64 @@ func (b *BoltDB) Find(request Request) ([]Comment, error) {
 	return res, err
 }
 
+// Get comment by id
+func (b *BoltDB) Get(locator Locator, id int64) (comment Comment, err error) {
+	err = b.View(func(tx *bolt.Tx) error {
+
+		lastBucket := tx.Bucket([]byte(lastBucketName))
+		if lastBucket == nil {
+			return errors.Errorf("no bucket %s in store", lastBucketName)
+		}
+
+		c := lastBucket.Cursor()
+		for k, v := c.Last(); k != nil; k, v = c.Prev() {
+			url, foundID, e := refFromValue(v).parse()
+			if e != nil {
+				return e
+			}
+
+			if foundID == id && url == locator.URL {
+				urlBucket := tx.Bucket([]byte(url))
+				if urlBucket == nil {
+					return errors.Errorf("no bucket %s in store", url)
+				}
+				commentVal := urlBucket.Get(b.keyFromValue(id))
+				if commentVal == nil {
+					return errors.Errorf("no comment for %d in store %s", id, url)
+				}
+
+				if e := json.Unmarshal(commentVal, &comment); e != nil {
+					return errors.Wrap(e, "failed to unmarshal")
+				}
+				return nil
+			}
+		}
+		return errors.Errorf("no id %d in store %s", id, locator.URL)
+	})
+
+	return comment, err
+}
+
 // Last returns up to max last comments for given locator
 func (b *BoltDB) Last(locator Locator, max int) (result []Comment, err error) {
 
 	err = b.View(func(tx *bolt.Tx) error {
-		lastBk := tx.Bucket([]byte(lastBucketName))
-		if lastBk == nil {
+		lastBucket := tx.Bucket([]byte(lastBucketName))
+		if lastBucket == nil {
 			return errors.Errorf("no bucket %s in store", lastBucketName)
 		}
 
-		c := lastBk.Cursor()
+		c := lastBucket.Cursor()
 		for k, v := c.Last(); k != nil; k, v = c.Prev() {
 			url, id, e := refFromValue(v).parse()
 			if e != nil {
 				return e
 			}
-			urlBk := tx.Bucket([]byte(url))
-			if urlBk == nil {
+			urlBucket := tx.Bucket([]byte(url))
+			if urlBucket == nil {
 				return errors.Errorf("no bucket %s in store", url)
 			}
-			commentVal := urlBk.Get(b.keyFromValue(id))
+			commentVal := urlBucket.Get(b.keyFromValue(id))
 			if commentVal == nil {
 				return errors.Errorf("no comment for %d in store %s", id, url)
 			}
@@ -145,6 +186,9 @@ func (b *BoltDB) Last(locator Locator, max int) (result []Comment, err error) {
 				return errors.Wrap(e, "failed to unmarshal")
 			}
 			result = append(result, comment)
+			if max > 0 && len(result) >= max {
+				return nil
+			}
 		}
 		return nil
 	})
@@ -153,11 +197,11 @@ func (b *BoltDB) Last(locator Locator, max int) (result []Comment, err error) {
 }
 
 func (b *BoltDB) keyFromComment(comment Comment) []byte {
-	return []byte(fmt.Sprintf("%12d", comment.ID))
+	return []byte(fmt.Sprintf("%22d", comment.ID))
 }
 
 func (b *BoltDB) keyFromValue(id int64) []byte {
-	return []byte(fmt.Sprintf("%12d", id))
+	return []byte(fmt.Sprintf("%22d", id))
 }
 
 // buckets returns list of buckets, which is list of all commented posts

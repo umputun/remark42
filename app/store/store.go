@@ -39,8 +39,9 @@ type Request struct {
 
 // Interface defines basic CRUD for comments
 type Interface interface {
-	Create(comment Comment) error
-	Delete(id string) error
+	Create(comment Comment) (int64, error)
+	Delete(url string, id int64) error
 	Find(request Request) ([]Comment, error)
-	Last(locator Locator, max int) []Comment
+	Last(locator Locator, max int) ([]Comment, error)
+	Get(locator Locator, id int64) (Comment, error)
 }
