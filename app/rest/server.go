@@ -93,8 +93,19 @@ func (s *Server) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	user, err := GetUserInfo(r)
+	if err != nil {
+		httpError(w, r, http.StatusUnauthorized, err, "can't get user info")
+		return
+	}
+
 	comment.User.IP = strings.Split(r.RemoteAddr, ":")[0]
-	comment.User.Name = template.HTMLEscapeString(comment.User.Name)
+	comment.User.ID = template.HTMLEscapeString(user.ID)
+	comment.User.Name = template.HTMLEscapeString(user.Name)
+	comment.User.Picture = template.HTMLEscapeString(user.Picture)
+	comment.User.Profile = template.HTMLEscapeString(user.Profile)
+	comment.User.Admin = user.Admin
+
 	comment.Text = template.HTMLEscapeString(comment.Text)
 
 	log.Printf("[INFO] create comment %+v", comment)
@@ -155,13 +166,6 @@ func (s *Server) getLastComments(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		max = 0
 	}
-
-	uinfoData, err := GetUserInfo(r)
-	if err != nil {
-		http.Error(w, "login required", http.StatusUnauthorized)
-		return
-	}
-	log.Printf("[DEBUG] user: %+v", uinfoData)
 
 	comments, err := s.Store.Last(store.Locator{}, max)
 	if err != nil {
