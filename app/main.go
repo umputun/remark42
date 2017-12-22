@@ -25,6 +25,7 @@ var opts struct {
 	GithubCID  string `long:"github-cid" env:"REMARK_GITHUB_CID" description:"Github OAuth client ID"`
 	GithubCSEC string `long:"github-csec" env:"REMARK_GITHUB_CSEC" description:"Github OAuth client secret"`
 
+	SiteURL string   `long:"site-url" env:"REMARK_URL" default:"http://remark.umputun.com:8080" description:"url to remark site"`
 	Admins  []string `long:"admin" env:"ADMIN" default:"umputun@gmail.com" description:"admin(s) names" env-delim:","`
 	DevMode bool     `long:"dev" env:"DEV" description:"development mode, no auth enforced"`
 	Dbg     bool     `long:"dbg" env:"DEBUG" description:"debug mode"`
@@ -60,11 +61,13 @@ func main() {
 			Cid:          opts.GoogleCID,
 			Csecret:      opts.GoogleCSEC,
 			SessionStore: sessionStore,
+			SiteURL:      opts.SiteURL,
 		}),
 		AuthGithub: auth.NewGithub(auth.Params{
 			Cid:          opts.GithubCID,
 			Csecret:      opts.GithubCSEC,
 			SessionStore: sessionStore,
+			SiteURL:      opts.SiteURL,
 		}),
 	}
 

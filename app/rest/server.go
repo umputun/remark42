@@ -49,11 +49,11 @@ func (s *Server) Run() {
 		rapi.Get("/last/{max}", s.getLastComments)
 		rapi.Get("/count", s.getCountCtrl)
 
-		rapi.With(Auth(s.SessionStore, s.Admins, s.DevMode)).Group(func(r chi.Router) {
-			r.Post("/comment", s.createCommentCtrl)
-			r.Get("/user", s.getUserInfo)
-			r.Put("/vote/{id}", s.voteCtrl)
-			r.With(AdminOnly).Delete("/comment/{id}", s.deleteCommentCtrl)
+		rapi.With(Auth(s.SessionStore, s.Admins, s.DevMode)).Group(func(rauth chi.Router) {
+			rauth.Post("/comment", s.createCommentCtrl)
+			rauth.Get("/user", s.getUserInfo)
+			rauth.Put("/vote/{id}", s.voteCtrl)
+			rauth.With(AdminOnly).Delete("/comment/{id}", s.deleteCommentCtrl)
 		})
 	})
 

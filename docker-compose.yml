@@ -15,18 +15,16 @@ services:
               max-size: "10m"
               max-file: "5"
 
-        environment:
-            - MHOST=${MHOST}
-
         ports:
             - "8080:8080"
 
         environment:
+            - REMARK_URL=http://remark.umputun.com:8080
             - BOLTDB_FILE=/srv/var/remark.db
             - SESSION_STORE=/srv/var
-            - DEV=true
+            - DEV=true # development mode flag. It turns authentication off, be careful!
             - DEBUG=true
 
         volumes:
             - ./var:/srv/var
-
+            - ./web:/srv/web # maps web directory directly and propagate local changes to container without redeploy

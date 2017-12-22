@@ -2,6 +2,18 @@
 
 Comment engine
 
+## Install 
+
+### Backend
+
+- copy provided docker-compose.yml and customize for your needs
+- make sure you **don't keep** `DEV=true` for any non-development deployments
+- pull and start `docker compose pull && docker compose up` 
+
+### Frontend
+
+TBD
+
 ## API
 
 ### Authorization

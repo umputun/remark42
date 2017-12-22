@@ -14,7 +14,7 @@ func NewGoogle(p Params) *Provider {
 	return initProvider(p, Provider{
 		Name:            "google",
 		Endpoint:        google.Endpoint,
-		RedirectURL:     "http://remark.umputun.com:8080/auth/google",
+		RedirectURL:     p.SiteURL + "/auth/google",
 		Scopes:          []string{"https://www.googleapis.com/auth/userinfo.email"},
 		InfoURL:         "https://www.googleapis.com/oauth2/v3/userinfo",
 		FilesystemStore: p.SessionStore,
@@ -39,7 +39,7 @@ func NewGithub(p Params) *Provider {
 	return initProvider(p, Provider{
 		Name:            "github",
 		Endpoint:        github.Endpoint,
-		RedirectURL:     "http://remark.umputun.com:8080/auth/github",
+		RedirectURL:     p.SiteURL + "/auth/github",
 		Scopes:          []string{"user:email"},
 		InfoURL:         "https://api.github.com/user",
 		FilesystemStore: p.SessionStore,
