@@ -31,7 +31,7 @@ func TestBoltDB_Delete(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(res))
 
-	err = b.Delete("https://radio-t.com", res[0].ID)
+	err = b.Delete(Locator{URL: "https://radio-t.com"}, res[0].ID)
 	assert.Nil(t, err)
 
 	res, err = b.Find(Request{Locator: Locator{URL: "https://radio-t.com"}})
@@ -93,6 +93,15 @@ func TestBoltDB_Vote(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(res))
 	assert.Equal(t, 1, res[0].Score)
+}
+
+func TestBoltDB_Count(t *testing.T) {
+	defer os.Remove(testDb)
+	b := prep(t)
+
+	c, err := b.Count(Locator{URL: "https://radio-t.com"})
+	assert.Nil(t, err)
+	assert.Equal(t, 2, c)
 }
 
 // makes new boltdb, put two records

@@ -46,4 +46,5 @@ type Interface interface {
 	Last(locator Locator, max int) ([]Comment, error)
 	Get(locator Locator, id int64) (Comment, error)
 	Vote(locator Locator, commentID int64, userID string, val bool) (Comment, error)
+	Count(locator Locator) (int, error)
 }

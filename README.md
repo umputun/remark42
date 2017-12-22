@@ -8,7 +8,7 @@ Comment engine
 
 - `GET /login/{provider}?from=http://url` - perform "social" login with one of supported providers and redirect to `url`
 - `GET /logout` - logout 
-- `GET /user` - get user info, _auth required_
+- `GET /api/v1/user` - get user info, _auth required_
 
 ```
 type User struct {
@@ -24,7 +24,7 @@ _currently supported providers are `google` and `github`_
 
 ### Commenting
 
-- `POST /comment` - add a comment. _auth required_
+- `POST /api/v1/comment` - add a comment. _auth required_
 
 ```
 type Comment struct {
@@ -44,8 +44,9 @@ type Locator struct {
 }
 ```
 
-- `GET /find?url=post-url` - find all comments for given post returns list of `Comment`
-- `GET /last/{max}` - get last `{max}` comments
-- `GET /id/{id}` - get comment by `id`
-- `PUT /vote/{id}?url=post-url&vote=1` - vote for comment. `vote`=1 will increase score, -1 decreases. _auth required_
-- `DELETE /comment/{id}` - delete comment by `id`. _auth and admin required_
+- `GET /api/v1/find?url=post-url` - find all comments for given post returns list of `Comment`
+- `GET /api/v1/last/{max}` - get last `{max}` comments
+- `GET /api/v1/id/{id}` - get comment by `id`
+- `GET /api/v1/count?url=post-url` - get comment's count for `{url}`
+- `PUT /api/v1/vote/{id}?url=post-url&vote=1` - vote for comment. `vote`=1 will increase score, -1 decreases. _auth required_
+- `DELETE /api/v1/comment/{id}?url=post-url` - delete comment by `id`. _auth and admin required_

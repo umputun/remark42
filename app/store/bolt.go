@@ -243,6 +243,20 @@ func (b *BoltDB) Vote(locator Locator, commentID int64, userID string, val bool)
 	return comment, err
 }
 
+func (b *BoltDB) Count(locator Locator) (count int, err error) {
+	err = b.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(locator.URL))
+		if bucket == nil {
+			return errors.Errorf("no bucket %s in store", locator.URL)
+		}
+
+		count = bucket.Stats().KeyN
+		return nil
+	})
+
+	return count, err
+}
+
 func (b *BoltDB) keyFromComment(comment Comment) []byte {
 	return []byte(fmt.Sprintf("%22d", comment.ID))
 }

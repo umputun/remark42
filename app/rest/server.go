@@ -41,15 +41,18 @@ func (s *Server) Run() {
 	router.Get("/login/github", s.AuthGithub.LoginHandler)
 	router.Get("/auth/github", s.AuthGithub.AuthHandler)
 
-	router.Get("/find", s.getURLComments)
-	router.Get("/id/{id}", s.getByID)
-	router.Get("/last/{max}", s.getLastComments)
+	router.Route("/api/v1", func(rapi chi.Router) {
+		rapi.Get("/find", s.getURLComments)
+		rapi.Get("/id/{id}", s.getByID)
+		rapi.Get("/last/{max}", s.getLastComments)
+		rapi.Get("/count", s.getCountCtrl)
 
-	router.With(Auth(s.SessionStore, s.Admins)).Group(func(r chi.Router) {
-		r.Post("/comment", s.createCommentCtrl)
-		r.Get("/user", s.getUserInfo)
-		r.Put("/vote/{id}", s.voteCtrl)
-		r.With(AdminOnly).Delete("/comment/{id}", s.deleteCommentCtrl)
+		rapi.With(Auth(s.SessionStore, s.Admins)).Group(func(r chi.Router) {
+			r.Post("/comment", s.createCommentCtrl)
+			r.Get("/user", s.getUserInfo)
+			r.Put("/vote/{id}", s.voteCtrl)
+			r.With(AdminOnly).Delete("/comment/{id}", s.deleteCommentCtrl)
+		})
 	})
 
 	log.Fatal(http.ListenAndServe(":8080", router))
@@ -177,6 +180,17 @@ func (s *Server) getUserInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	render.JSON(w, r, user)
+}
+
+// GET /count?url=post-url
+func (s *Server) getCountCtrl(w http.ResponseWriter, r *http.Request) {
+	url := r.URL.Query().Get("url")
+	count, err := s.Store.Count(store.Locator{URL: url})
+	if err != nil {
+		httpError(w, r, http.StatusBadRequest, err, "can't get count")
+		return
+	}
+	render.JSON(w, r, JSON{"count": count, "url": url})
 }
 
 // PUT /vote/{id}?url=post-url&vote=1
