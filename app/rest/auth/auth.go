@@ -18,6 +18,7 @@ import (
 	"github.com/umputun/remark/app/store"
 )
 
+// Provider represents oauth2 provider
 type Provider struct {
 	Name        string
 	RedirectURL string
@@ -30,6 +31,7 @@ type Provider struct {
 	conf *oauth2.Config
 }
 
+// Params to make initialized and ready to use provider
 type Params struct {
 	Cid          string
 	Csecret      string
@@ -64,7 +66,10 @@ func (p Provider) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[WARN] %s", err)
 	}
 	session.Values["state-"+p.Name] = state
-	session.Save(r, w)
+	if err := session.Save(r, w); err != nil {
+		http.Error(w, fmt.Sprintf("failed to save start, %s", err), http.StatusInternalServerError)
+		return
+	}
 
 	// return login url
 	log.Printf("[DEBUG] login url %s", p.conf.AuthCodeURL(state))
@@ -75,7 +80,7 @@ func (p Provider) LoginHandler(w http.ResponseWriter, r *http.Request) {
 func (p Provider) AuthHandler(w http.ResponseWriter, r *http.Request) {
 	session, err := p.Get(r, "remark")
 	if err != nil {
-		http.Error(w, fmt.Sprintf("failed to get session, %s", err.Error()), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("failed to get session, %s", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -99,7 +104,12 @@ func (p Provider) AuthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	defer uinfo.Body.Close()
+	defer func() {
+		if e := uinfo.Body.Close(); e != nil {
+			log.Printf("[WARN] failed to close response body, %s", e)
+		}
+	}()
+
 	data, err := ioutil.ReadAll(uinfo.Body)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("failed to read user info, %s", err), http.StatusInternalServerError)
@@ -125,9 +135,11 @@ func (p Provider) AuthHandler(w http.ResponseWriter, r *http.Request) {
 
 func randToken() string {
 	b := make([]byte, 32)
-	rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		log.Fatalf("[ERROR] can't get randoms, %s", err)
+	}
 	s := sha1.New()
-	s.Write(b)
+	_, _ = s.Write(b)
 	return fmt.Sprintf("%x", s.Sum(nil))
 }
 

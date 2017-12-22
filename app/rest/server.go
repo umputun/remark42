@@ -54,7 +54,7 @@ func (s *Server) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 	comment := store.Comment{}
 	if err := render.DecodeJSON(r.Body, &comment); err != nil {
-		log.Printf("[WARN] can't bind request %s", comment)
+		log.Printf("[WARN] can't bind request %s", err)
 		httpError(w, r, http.StatusBadRequest, err, "can't bind comment")
 		return
 	}
