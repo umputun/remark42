@@ -3,6 +3,7 @@ version: '2'
 services:
 
     remark:
+        build: .
         image: umputun/remark:develop
         container_name: "remark"
         hostname: "remark"

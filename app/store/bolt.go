@@ -26,9 +26,9 @@ var lastBucketName = "last"
 func NewBoltDB(dbFile string) (*BoltDB, error) {
 	log.Printf("[INFO] bolt store, %s", dbFile)
 	result := BoltDB{}
-	db, err := bolt.Open(dbFile, 0600, &bolt.Options{Timeout: 1 * time.Second})
+	db, err := bolt.Open(dbFile, 0600, &bolt.Options{Timeout: 5 * time.Second})
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to make boltdb for %s", dbFile)
 	}
 	result.DB = db
 	return &result, err

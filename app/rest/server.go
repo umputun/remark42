@@ -11,13 +11,16 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/render"
+	"github.com/umputun/remark/app/rest/auth"
 	"github.com/umputun/remark/app/store"
 )
 
 // Server is a rest access server
 type Server struct {
-	Version string
-	Store   store.Interface
+	Version    string
+	Store      store.Interface
+	AuthGoogle *auth.Google
+	AuthGithub *auth.Github
 }
 
 // Run the lister and request's router, activate rest server
@@ -28,11 +31,18 @@ func (s *Server) Run() {
 	router.Use(middleware.Throttle(100), middleware.Timeout(60*time.Second))
 	router.Use(Limiter(10), AppInfo("remark", s.Version), Ping)
 
+	router.Get("/login/google", s.AuthGoogle.LoginHandler)
+	router.Get("/auth/google", s.AuthGoogle.AuthHandler)
+
+	router.Get("/login/github", s.AuthGithub.LoginHandler)
+	router.Get("/auth/github", s.AuthGithub.AuthHandler)
+
 	router.Post("/comment", s.createCommentCtrl)
 	router.Delete("/comment/{id}", s.deleteCommentCtrl)
 	router.Get("/find", s.getURLComments)
 	router.Get("/last/{max}", s.getLastComments)
 	router.Get("/id/{id}", s.getByID)
+
 	log.Fatal(http.ListenAndServe(":8080", router))
 }
 
@@ -101,7 +111,7 @@ func (s *Server) getURLComments(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, comments)
 }
 
-// GET /last/{max}
+// GET /last/{max}?url=abc
 func (s *Server) getLastComments(w http.ResponseWriter, r *http.Request) {
 
 	max, err := strconv.Atoi(chi.URLParam(r, "max"))
@@ -109,8 +119,18 @@ func (s *Server) getLastComments(w http.ResponseWriter, r *http.Request) {
 		max = 0
 	}
 
-	url := r.URL.Query().Get("url")
-	log.Printf("[INFO] get comments for %s", url)
+	session, err := s.AuthGoogle.Get(r, "remark")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	uinfoData, ok := session.Values["uinfo"]
+	if !ok {
+		http.Error(w, "login required", http.StatusUnauthorized)
+		return
+	}
+	log.Printf("[DEBUG] user: %+v", uinfoData.(store.User))
 
 	comments, err := s.Store.Last(store.Locator{}, max)
 	if err != nil {

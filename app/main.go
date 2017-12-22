@@ -5,8 +5,10 @@ import (
 	"log"
 	"os"
 
+	"github.com/gorilla/sessions"
 	"github.com/hashicorp/logutils"
 	"github.com/jessevdk/go-flags"
+	"github.com/umputun/remark/app/rest/auth"
 	"github.com/umputun/remark/app/store"
 
 	"github.com/umputun/remark/app/rest"
@@ -14,7 +16,17 @@ import (
 
 var opts struct {
 	DBFile string `long:"db" env:"BOLTDB_FILE" default:"/tmp/remark.db" description:"bolt file name"`
-	Dbg    bool   `long:"dbg" env:"DEBUG" description:"debug mode"`
+
+	SessionStore string `long:"session" env:"SESSION_STORE" default:"/tmp" description:"path to session store directory"`
+	StoreKey     string `long:"store-key" env:"STORE_KEY" default:"secure-store-key" description:"store key"`
+
+	GoogleCID  string `long:"google-cid" env:"REMARK_GOOGLE_CID" description:"Google OAuth client ID"`
+	GoogleCSEC string `long:"google-csec" env:"REMARK_GOOGLE_CSEC" description:"Google OAuth client secret"`
+	GithubCID  string `long:"github-cid" env:"REMARK_GITHUB_CID" description:"Github OAuth client ID"`
+	GithubCSEC string `long:"github-csec" env:"REMARK_GITHUB_CSEC" description:"Github OAuth client secret"`
+
+	Admins []string `long:"admin" env:"ADMIN" default:"umputun@gmail.com" description:"admin(s) names" env-delim:","`
+	Dbg    bool     `long:"dbg" env:"DEBUG" description:"debug mode"`
 }
 
 var revision = "unknown"
@@ -32,10 +44,24 @@ func main() {
 		log.Fatalf("[ERROR] can't initialize data store, %+v", err)
 	}
 
+	sessionStore := sessions.NewFilesystemStore(opts.SessionStore, []byte(opts.StoreKey))
 	srv := rest.Server{
 		Version: revision,
 		Store:   dataStore,
+		AuthGoogle: auth.NewGoogle(auth.Params{
+			Cid:          opts.GoogleCID,
+			Csecret:      opts.GoogleCSEC,
+			SessionStore: sessionStore,
+			Admins:       opts.Admins,
+		}),
+		AuthGithub: auth.NewGithub(auth.Params{
+			Cid:          opts.GithubCID,
+			Csecret:      opts.GithubCSEC,
+			SessionStore: sessionStore,
+			Admins:       opts.Admins,
+		}),
 	}
+
 	srv.Run()
 }
 

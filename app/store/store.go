@@ -4,13 +4,10 @@ import "time"
 
 // Comment represents a single comment with reference to its parent
 type Comment struct {
-	ID       int64 `json:"id"`
-	ParentID int64 `json:"pid"`
-
-	Text string `json:"text"`
-
-	User User `json:"user"`
-
+	ID        int64     `json:"id"`
+	ParentID  int64     `json:"pid"`
+	Text      string    `json:"text"`
+	User      User      `json:"user"`
 	Locator   Locator   `json:"locator"`
 	Score     int       `json:"score"`
 	Timestamp time.Time `json:"time"`
@@ -24,9 +21,11 @@ type Locator struct {
 
 // User holds user-related info
 type User struct {
-	Name string `json:"name"`
-	ID   string `json:"id"`
-	IP   string `json:"-"`
+	Name    string `json:"name"`
+	ID      string `json:"id"`
+	Picture string `json:"picture"`
+	Profile string `json:"profile"`
+	IP      string `json:"-"`
 }
 
 // Request is a container for all finds
