@@ -39,7 +39,7 @@ func (b *BoltDB) Create(comment Comment) (int64, error) {
 
 	comment.ID = time.Now().UnixNano()
 	comment.Timestamp = time.Now()
-	comment.Votes = map[string]bool{}
+	comment.Votes = make(map[string]bool)
 
 	err := b.Update(func(tx *bolt.Tx) error {
 		bucket, e := tx.CreateBucketIfNotExists([]byte(comment.Locator.URL))
@@ -197,7 +197,7 @@ func (b *BoltDB) Last(locator Locator, max int) (result []Comment, err error) {
 	return result, err
 }
 
-// Get comment by id
+// Vote for comment by id and locator
 func (b *BoltDB) Vote(locator Locator, commentID int64, userID string, val bool) (comment Comment, err error) {
 
 	err = b.Update(func(tx *bolt.Tx) error {
@@ -230,12 +230,12 @@ func (b *BoltDB) Vote(locator Locator, commentID int64, userID string, val bool)
 		} else {
 			comment.Score--
 		}
-		data, err := json.Marshal(&comment)
-		if err != nil {
-			return errors.Wrap(err, "can't marshal comment with updated votes")
+		data, e := json.Marshal(&comment)
+		if e != nil {
+			return errors.Wrap(e, "can't marshal comment with updated votes")
 		}
-		if err = bucket.Put(b.keyFromValue(commentID), data); err != nil {
-			return errors.Wrap(err, "failed to save comment with updated votes")
+		if e = bucket.Put(b.keyFromValue(commentID), data); e != nil {
+			return errors.Wrap(e, "failed to save comment with updated votes")
 		}
 		return nil
 	})
@@ -243,6 +243,7 @@ func (b *BoltDB) Vote(locator Locator, commentID int64, userID string, val bool)
 	return comment, err
 }
 
+// Count returns number of comments for locator
 func (b *BoltDB) Count(locator Locator) (count int, err error) {
 	err = b.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(locator.URL))

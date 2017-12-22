@@ -76,6 +76,7 @@ func TestBoltDB_Vote(t *testing.T) {
 	b := prep(t)
 
 	res, err := b.Last(Locator{URL: "https://radio-t.com"}, 0)
+	t.Logf("%+v", res[0])
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(res))
 	assert.Equal(t, 0, res[0].Score)
@@ -106,6 +107,8 @@ func TestBoltDB_Count(t *testing.T) {
 
 // makes new boltdb, put two records
 func prep(t *testing.T) *BoltDB {
+	os.Remove(testDb)
+
 	b, err := NewBoltDB(testDb)
 	assert.Nil(t, err)
 

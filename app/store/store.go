@@ -10,8 +10,8 @@ type Comment struct {
 	User      User            `json:"user"`
 	Locator   Locator         `json:"locator"`
 	Score     int             `json:"score"`
-	Votes     map[string]bool `json:"votes,omitempty"`
-	Timestamp time.Time       `json:"time,omitempty"`
+	Votes     map[string]bool `json:"votes"`
+	Timestamp time.Time       `json:"time"`
 }
 
 // Locator keeps site and url of the post
@@ -26,7 +26,7 @@ type User struct {
 	ID      string `json:"id"`
 	Picture string `json:"picture"`
 	Profile string `json:"profile"`
-	Admin   bool   `json:"admin,omitempty"`
+	Admin   bool   `json:"admin"`
 	IP      string `json:"-"`
 }
 

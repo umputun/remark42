@@ -140,8 +140,8 @@ func (p Provider) AuthHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[DEBUG] %+v", jData)
 
 	// redirect to back url if presented
-	if fromUrl, ok := session.Values["from"]; ok {
-		http.Redirect(w, r, fromUrl.(string), http.StatusTemporaryRedirect)
+	if fromURL, ok := session.Values["from"]; ok {
+		http.Redirect(w, r, fromURL.(string), http.StatusTemporaryRedirect)
 		return
 	}
 

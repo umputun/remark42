@@ -18,3 +18,15 @@ services:
         environment:
             - MHOST=${MHOST}
 
+        ports:
+            - "8080:8080"
+
+        environment:
+            - BOLTDB_FILE=/srv/var/remark.db
+            - SESSION_STORE=/srv/var
+            - DEV=true
+            - DEBUG=true
+
+        volumes:
+            - ./var:/srv/var
+
