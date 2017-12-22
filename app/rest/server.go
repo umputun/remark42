@@ -53,7 +53,12 @@ func (s *Server) Run() {
 			rauth.Post("/comment", s.createCommentCtrl)
 			rauth.Get("/user", s.getUserInfo)
 			rauth.Put("/vote/{id}", s.voteCtrl)
-			rauth.With(AdminOnly).Delete("/comment/{id}", s.deleteCommentCtrl)
+			//rauth.With(AdminOnly).Delete("/comment/{id}", s.deleteCommentCtrl)
+		})
+
+		rapi.With(Auth(s.SessionStore, s.Admins, s.DevMode)).Group(func(rmoder chi.Router) {
+			mod := moderator{dataStore: s.Store}
+			rmoder.Mount("/moderate", mod.routes())
 		})
 	})
 
@@ -244,7 +249,7 @@ func (s *Server) voteCtrl(w http.ResponseWriter, r *http.Request) {
 	comment, err := s.Store.Vote(store.Locator{URL: url}, id, user.ID, vote)
 	if err != nil {
 		log.Printf("[WARN] vote rejected for %s - %d, %s", user.ID, id, err)
-		httpError(w, r, http.StatusInternalServerError, err, "can't delete comment")
+		httpError(w, r, http.StatusBadRequest, err, "can't vote for comment")
 		return
 	}
 

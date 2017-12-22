@@ -70,7 +70,7 @@ func (b *BoltDB) Create(comment Comment) (int64, error) {
 		}
 
 		rv := refFromComment(comment)
-		e = bucket.Put([]byte(fmt.Sprintf("%d", time.Now().UnixNano())), []byte(rv.value()))
+		e = bucket.Put(b.keyFromValue(comment.ID), []byte(rv.value()))
 		if e != nil {
 			return errors.Wrapf(e, "can't put reference %s to %s", rv.value(), lastBucketName)
 		}
@@ -93,6 +93,17 @@ func (b *BoltDB) Delete(locator Locator, id int64) error {
 		if err := bucket.Delete(key); err != nil {
 			return errors.Wrapf(err, "can't delete key %s from bucket %s", key, locator.URL)
 		}
+
+		// delete from "last" bucket
+		bucket = tx.Bucket([]byte(lastBucketName))
+		if bucket == nil {
+			return errors.Errorf("no bucket %s in store", lastBucketName)
+		}
+
+		if err := bucket.Delete(key); err != nil {
+			return errors.Wrapf(err, "can't delete key %s from bucket %s", key, lastBucketName)
+		}
+
 		return nil
 	})
 }
@@ -179,7 +190,8 @@ func (b *BoltDB) Last(locator Locator, max int) (result []Comment, err error) {
 			}
 			commentVal := urlBucket.Get(b.keyFromValue(id))
 			if commentVal == nil {
-				return errors.Errorf("no comment for %d in store %s", id, url)
+				log.Printf("[WARN] no comment for %d in store %s", id, url)
+				continue
 			}
 
 			comment := Comment{}
