@@ -20,6 +20,8 @@ import (
 
 // Provider represents oauth2 provider
 type Provider struct {
+	*sessions.FilesystemStore
+
 	Name        string
 	RedirectURL string
 	InfoURL     string
@@ -27,7 +29,6 @@ type Provider struct {
 	Scopes      []string
 	MapUser     func(map[string]interface{}) store.User
 
-	*sessions.FilesystemStore
 	conf *oauth2.Config
 }
 
@@ -36,7 +37,6 @@ type Params struct {
 	Cid          string
 	Csecret      string
 	SessionStore *sessions.FilesystemStore
-	Admins       []string
 }
 
 // newProvider makes auth for given provider
@@ -56,7 +56,7 @@ func initProvider(p Params, provider Provider) *Provider {
 	return &provider
 }
 
-// LoginHandler - GET /login/github
+// LoginHandler - GET /login/github?from=http://radio-t.com
 func (p Provider) LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	// make state (random) and store in session
@@ -65,7 +65,14 @@ func (p Provider) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("[WARN] %s", err)
 	}
-	session.Values["state-"+p.Name] = state
+
+	session.Values["state"] = state
+
+	if from := r.URL.Query().Get("from"); from != "" {
+		session.Values["from"] = from
+	}
+
+	log.Printf("[DEBUG] login, %+v", session.Values)
 	if err := session.Save(r, w); err != nil {
 		http.Error(w, fmt.Sprintf("failed to save start, %s", err), http.StatusInternalServerError)
 		return
@@ -85,12 +92,13 @@ func (p Provider) AuthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// compare saved state to the one from redirect url
-	retrievedState, ok := session.Values["state-"+p.Name]
+	retrievedState, ok := session.Values["state"]
 	if !ok || retrievedState != r.URL.Query().Get("state") {
 		http.Error(w, fmt.Sprintf("unexpected state %s", retrievedState.(string)), http.StatusUnauthorized)
 		return
 	}
 
+	log.Printf("[DEBUG] auth, %+v", session.Values)
 	tok, err := p.conf.Exchange(context.Background(), r.URL.Query().Get("code"))
 	if err != nil {
 		http.Error(w, fmt.Sprintf("exchange failed, %s", err), http.StatusInternalServerError)
@@ -130,7 +138,34 @@ func (p Provider) AuthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Printf("[DEBUG] %+v", jData)
+
+	// redirect to back url if presented
+	if fromUrl, ok := session.Values["from"]; ok {
+		http.Redirect(w, r, fromUrl.(string), http.StatusTemporaryRedirect)
+		return
+	}
+
 	render.JSON(w, r, jData)
+}
+
+// LogoutHandler - GET /logout
+func (p Provider) LogoutHandler(w http.ResponseWriter, r *http.Request) {
+	session, err := p.Get(r, "remark")
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed to get session, %s", err), http.StatusInternalServerError)
+		return
+	}
+
+	session.Values["from"] = ""
+	delete(session.Values, "uinfo")
+	delete(session.Values, "from")
+	delete(session.Values, "state")
+
+	if err = session.Save(r, w); err != nil {
+		http.Error(w, fmt.Sprintf("failed to reset user info, %s", err), http.StatusInternalServerError)
+		return
+	}
+	log.Printf("[DEBUG] logout, %+v", session.Values)
 }
 
 func randToken() string {

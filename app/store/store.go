@@ -25,6 +25,7 @@ type User struct {
 	ID      string `json:"id"`
 	Picture string `json:"picture"`
 	Profile string `json:"profile"`
+	Admin   bool   `json:"admin"`
 	IP      string `json:"-"`
 }
 

@@ -20,6 +20,7 @@ import (
 type Server struct {
 	Version      string
 	Store        store.Interface
+	Admins       []string
 	AuthGoogle   *auth.Provider
 	AuthGithub   *auth.Provider
 	SessionStore *sessions.FilesystemStore
@@ -36,15 +37,20 @@ func (s *Server) Run() {
 
 	router.Get("/login/google", s.AuthGoogle.LoginHandler)
 	router.Get("/auth/google", s.AuthGoogle.AuthHandler)
+	router.Get("/logout", s.AuthGithub.LogoutHandler) // can hit any provider
 
 	router.Get("/login/github", s.AuthGithub.LoginHandler)
 	router.Get("/auth/github", s.AuthGithub.AuthHandler)
 
 	router.Post("/comment", s.createCommentCtrl)
-	router.Delete("/comment/{id}", s.deleteCommentCtrl)
 	router.Get("/find", s.getURLComments)
-	router.With(Auth(s.SessionStore)).Get("/last/{max}", s.getLastComments)
 	router.Get("/id/{id}", s.getByID)
+
+	router.With(Auth(s.SessionStore, s.Admins)).Group(func(r chi.Router) {
+		r.Get("/last/{max}", s.getLastComments)
+		r.Get("/user", s.getUserInfo)
+		r.With(AdminOnly).Delete("/comment/{id}", s.deleteCommentCtrl)
+	})
 
 	log.Fatal(http.ListenAndServe(":8080", router))
 }
@@ -161,6 +167,16 @@ func (s *Server) getByID(w http.ResponseWriter, r *http.Request) {
 
 	render.Status(r, http.StatusOK)
 	render.JSON(w, r, comment)
+}
+
+// GET /user
+func (s *Server) getUserInfo(w http.ResponseWriter, r *http.Request) {
+	user, err := GetUserInfo(r)
+	if err != nil {
+		httpError(w, r, http.StatusUnauthorized, err, "can't get user info")
+		return
+	}
+	render.JSON(w, r, user)
 }
 
 func httpError(w http.ResponseWriter, r *http.Request, code int, err error, details string) {

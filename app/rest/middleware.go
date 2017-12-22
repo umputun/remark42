@@ -110,7 +110,7 @@ func Recoverer(next http.Handler) http.Handler {
 type contextKey string
 
 // Auth adds auth from session and populate user info
-func Auth(sessionStore *sessions.FilesystemStore) func(http.Handler) http.Handler {
+func Auth(sessionStore *sessions.FilesystemStore, admins []string) func(http.Handler) http.Handler {
 	f := func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 
@@ -122,12 +122,19 @@ func Auth(sessionStore *sessions.FilesystemStore) func(http.Handler) http.Handle
 
 			uinfoData, ok := session.Values["uinfo"]
 			if !ok {
-				http.Error(w, "login required", http.StatusUnauthorized)
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				return
+			}
+			user := uinfoData.(store.User)
+			for _, admin := range admins {
+				if admin == user.ID {
+					user.Admin = true
+					break
+				}
 			}
 
 			ctx := r.Context()
-			ctx = context.WithValue(ctx, contextKey("user"), uinfoData.(store.User))
+			ctx = context.WithValue(ctx, contextKey("user"), user)
 			r = r.WithContext(ctx)
 
 			h.ServeHTTP(w, r)
@@ -135,6 +142,26 @@ func Auth(sessionStore *sessions.FilesystemStore) func(http.Handler) http.Handle
 		return http.HandlerFunc(fn)
 	}
 	return f
+}
+
+// AdminOnly allows access to admins
+func AdminOnly(next http.Handler) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+
+		user, err := GetUserInfo(r)
+		if err != nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		if !user.Admin {
+			http.Error(w, "Access denied", http.StatusForbidden)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	}
+	return http.HandlerFunc(fn)
 }
 
 // GetUserInfo extracts user, or and token from request's context

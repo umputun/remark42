@@ -51,17 +51,16 @@ func main() {
 		Version:      revision,
 		Store:        dataStore,
 		SessionStore: sessionStore,
+		Admins:       opts.Admins,
 		AuthGoogle: auth.NewGoogle(auth.Params{
 			Cid:          opts.GoogleCID,
 			Csecret:      opts.GoogleCSEC,
 			SessionStore: sessionStore,
-			Admins:       opts.Admins,
 		}),
 		AuthGithub: auth.NewGithub(auth.Params{
 			Cid:          opts.GithubCID,
 			Csecret:      opts.GithubCSEC,
 			SessionStore: sessionStore,
-			Admins:       opts.Admins,
 		}),
 	}
 
