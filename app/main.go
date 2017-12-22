@@ -46,8 +46,9 @@ func main() {
 
 	sessionStore := sessions.NewFilesystemStore(opts.SessionStore, []byte(opts.StoreKey))
 	srv := rest.Server{
-		Version: revision,
-		Store:   dataStore,
+		Version:      revision,
+		Store:        dataStore,
+		SessionStore: sessionStore,
 		AuthGoogle: auth.NewGoogle(auth.Params{
 			Cid:          opts.GoogleCID,
 			Csecret:      opts.GoogleCSEC,

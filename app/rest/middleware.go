@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
@@ -9,6 +10,9 @@ import (
 
 	"github.com/didip/tollbooth"
 	"github.com/go-chi/render"
+	"github.com/go-errors/errors"
+	"github.com/gorilla/sessions"
+	"github.com/umputun/remark/app/store"
 )
 
 var org = "Umputun"
@@ -101,4 +105,49 @@ func Recoverer(next http.Handler) http.Handler {
 	}
 
 	return http.HandlerFunc(fn)
+}
+
+type contextKey string
+
+// Auth adds auth from session and populate user info
+func Auth(sessionStore *sessions.FilesystemStore) func(http.Handler) http.Handler {
+	f := func(h http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+
+			session, err := sessionStore.Get(r, "remark")
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			uinfoData, ok := session.Values["uinfo"]
+			if !ok {
+				http.Error(w, "login required", http.StatusUnauthorized)
+				return
+			}
+
+			ctx := r.Context()
+			ctx = context.WithValue(ctx, contextKey("user"), uinfoData.(store.User))
+			r = r.WithContext(ctx)
+
+			h.ServeHTTP(w, r)
+		}
+		return http.HandlerFunc(fn)
+	}
+	return f
+}
+
+// GetUserInfo extracts user, or and token from request's context
+func GetUserInfo(r *http.Request) (user store.User, err error) {
+
+	ctx := r.Context()
+	if ctx == nil {
+		return store.User{}, errors.New("user not defined")
+	}
+
+	if u, ok := ctx.Value(contextKey("user")).(store.User); ok {
+		return u, nil
+	}
+
+	return store.User{}, errors.New("user can't be parsed")
 }

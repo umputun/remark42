@@ -11,16 +11,18 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/render"
+	"github.com/gorilla/sessions"
 	"github.com/umputun/remark/app/rest/auth"
 	"github.com/umputun/remark/app/store"
 )
 
 // Server is a rest access server
 type Server struct {
-	Version    string
-	Store      store.Interface
-	AuthGoogle *auth.Google
-	AuthGithub *auth.Github
+	Version      string
+	Store        store.Interface
+	AuthGoogle   *auth.Google
+	AuthGithub   *auth.Github
+	SessionStore *sessions.FilesystemStore
 }
 
 // Run the lister and request's router, activate rest server
@@ -40,7 +42,7 @@ func (s *Server) Run() {
 	router.Post("/comment", s.createCommentCtrl)
 	router.Delete("/comment/{id}", s.deleteCommentCtrl)
 	router.Get("/find", s.getURLComments)
-	router.Get("/last/{max}", s.getLastComments)
+	router.With(Auth(s.SessionStore)).Get("/last/{max}", s.getLastComments)
 	router.Get("/id/{id}", s.getByID)
 
 	log.Fatal(http.ListenAndServe(":8080", router))
@@ -119,18 +121,12 @@ func (s *Server) getLastComments(w http.ResponseWriter, r *http.Request) {
 		max = 0
 	}
 
-	session, err := s.AuthGoogle.Get(r, "remark")
+	uinfoData, err := GetUserInfo(r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	uinfoData, ok := session.Values["uinfo"]
-	if !ok {
 		http.Error(w, "login required", http.StatusUnauthorized)
 		return
 	}
-	log.Printf("[DEBUG] user: %+v", uinfoData.(store.User))
+	log.Printf("[DEBUG] user: %+v", uinfoData)
 
 	comments, err := s.Store.Last(store.Locator{}, max)
 	if err != nil {

@@ -5,9 +5,9 @@ import (
 	"crypto/sha1"
 	"encoding/gob"
 	"fmt"
-	"sync"
 
 	"github.com/gorilla/sessions"
+
 	"github.com/umputun/remark/app/store"
 )
 
@@ -16,18 +16,6 @@ type Params struct {
 	Csecret      string
 	SessionStore *sessions.FilesystemStore
 	Admins       []string
-}
-
-type SessionStore struct {
-	StorePath string
-	StoreKey  string
-
-	store *sessions.FilesystemStore
-	once  sync.Once
-}
-
-func (s *SessionStore) GetSession(name string) {
-
 }
 
 func randToken() string {
