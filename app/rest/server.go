@@ -13,6 +13,7 @@ import (
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/render"
 	"github.com/gorilla/sessions"
+
 	"github.com/umputun/remark/app/rest/auth"
 	"github.com/umputun/remark/app/store"
 )

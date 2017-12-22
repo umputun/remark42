@@ -8,10 +8,10 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/hashicorp/logutils"
 	"github.com/jessevdk/go-flags"
-	"github.com/umputun/remark/app/rest/auth"
-	"github.com/umputun/remark/app/store"
 
 	"github.com/umputun/remark/app/rest"
+	"github.com/umputun/remark/app/rest/auth"
+	"github.com/umputun/remark/app/store"
 )
 
 var opts struct {
