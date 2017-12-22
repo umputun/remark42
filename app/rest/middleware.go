@@ -110,9 +110,25 @@ func Recoverer(next http.Handler) http.Handler {
 type contextKey string
 
 // Auth adds auth from session and populate user info
-func Auth(sessionStore *sessions.FilesystemStore, admins []string) func(http.Handler) http.Handler {
+func Auth(sessionStore *sessions.FilesystemStore, admins []string, devMode bool) func(http.Handler) http.Handler {
 	f := func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
+
+			// for dev mode skip all real auth, make dev admin user
+			if devMode {
+				user := store.User{
+					ID:      "dev",
+					Name:    "developer one",
+					Picture: "https://friends.radio-t.com/resources/images/rt_logo_64.png",
+					Profile: "https://radio-t.com/info/",
+					Admin:   true,
+				}
+				ctx := r.Context()
+				ctx = context.WithValue(ctx, contextKey("user"), user)
+				r = r.WithContext(ctx)
+				h.ServeHTTP(w, r)
+				return
+			}
 
 			session, err := sessionStore.Get(r, "remark")
 			if err != nil {

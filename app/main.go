@@ -24,11 +24,10 @@ var opts struct {
 	GoogleCSEC string `long:"google-csec" env:"REMARK_GOOGLE_CSEC" description:"Google OAuth client secret"`
 	GithubCID  string `long:"github-cid" env:"REMARK_GITHUB_CID" description:"Github OAuth client ID"`
 	GithubCSEC string `long:"github-csec" env:"REMARK_GITHUB_CSEC" description:"Github OAuth client secret"`
-	YandexCID  string `long:"yandex-cid" env:"REMARK_YANDEX_CID" description:"Yandex OAuth client ID"`
-	YandexCSEC string `long:"yandex-csec" env:"REMARK_YANDEX_CSEC" description:"Yandex OAuth client secret"`
 
-	Admins []string `long:"admin" env:"ADMIN" default:"umputun@gmail.com" description:"admin(s) names" env-delim:","`
-	Dbg    bool     `long:"dbg" env:"DEBUG" description:"debug mode"`
+	Admins  []string `long:"admin" env:"ADMIN" default:"umputun@gmail.com" description:"admin(s) names" env-delim:","`
+	DevMode bool     `long:"dev" env:"DEV" description:"dev mode mode"`
+	Dbg     bool     `long:"dbg" env:"DEBUG" description:"debug mode"`
 }
 
 var revision = "unknown"
@@ -41,6 +40,10 @@ func main() {
 	setupLog(opts.Dbg)
 	log.Print("[INFO] started remark")
 
+	if opts.DevMode {
+		log.Printf("[WARN] running in dev mode, no auth!")
+	}
+
 	dataStore, err := store.NewBoltDB(opts.DBFile)
 	if err != nil {
 		log.Fatalf("[ERROR] can't initialize data store, %+v", err)
@@ -52,6 +55,7 @@ func main() {
 		Store:        dataStore,
 		SessionStore: sessionStore,
 		Admins:       opts.Admins,
+		DevMode:      opts.DevMode,
 		AuthGoogle: auth.NewGoogle(auth.Params{
 			Cid:          opts.GoogleCID,
 			Csecret:      opts.GoogleCSEC,

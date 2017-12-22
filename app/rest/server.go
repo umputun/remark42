@@ -26,6 +26,7 @@ type Server struct {
 	AuthGoogle   *auth.Provider
 	AuthGithub   *auth.Provider
 	SessionStore *sessions.FilesystemStore
+	DevMode      bool
 }
 
 // Run the lister and request's router, activate rest server
@@ -49,7 +50,7 @@ func (s *Server) Run() {
 		rapi.Get("/last/{max}", s.getLastComments)
 		rapi.Get("/count", s.getCountCtrl)
 
-		rapi.With(Auth(s.SessionStore, s.Admins)).Group(func(r chi.Router) {
+		rapi.With(Auth(s.SessionStore, s.Admins, s.DevMode)).Group(func(r chi.Router) {
 			r.Post("/comment", s.createCommentCtrl)
 			r.Get("/user", s.getUserInfo)
 			r.Put("/vote/{id}", s.voteCtrl)
@@ -72,7 +73,6 @@ func (s *Server) addFileServer(r chi.Router, path string, root http.FileSystem) 
 	path += "*"
 
 	r.Get(path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Print(r.URL.Path)
 		// don't show dirs, just serve files
 		if strings.HasSuffix(r.URL.Path, "/") {
 			http.NotFound(w, r)
