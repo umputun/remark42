@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"path/filepath"
+
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/render"
@@ -55,7 +57,30 @@ func (s *Server) Run() {
 		})
 	})
 
+	s.addFileServer(router, "/web", http.Dir(filepath.Join(".", "web")))
+
 	log.Fatal(http.ListenAndServe(":8080", router))
+}
+
+func (s *Server) addFileServer(r chi.Router, path string, root http.FileSystem) {
+	fs := http.StripPrefix(path, http.FileServer(root))
+
+	if path != "/" && path[len(path)-1] != '/' {
+		r.Get(path, http.RedirectHandler(path+"/", 301).ServeHTTP)
+		path += "/"
+	}
+	path += "*"
+
+	r.Get(path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Print(r.URL.Path)
+		// don't show dirs, just serve files
+		if strings.HasSuffix(r.URL.Path, "/") {
+			http.NotFound(w, r)
+			return
+		}
+
+		fs.ServeHTTP(w, r)
+	}))
 }
 
 // POST /comment
