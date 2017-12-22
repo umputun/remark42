@@ -24,6 +24,8 @@ var opts struct {
 	GoogleCSEC string `long:"google-csec" env:"REMARK_GOOGLE_CSEC" description:"Google OAuth client secret"`
 	GithubCID  string `long:"github-cid" env:"REMARK_GITHUB_CID" description:"Github OAuth client ID"`
 	GithubCSEC string `long:"github-csec" env:"REMARK_GITHUB_CSEC" description:"Github OAuth client secret"`
+	YandexCID  string `long:"yandex-cid" env:"REMARK_YANDEX_CID" description:"Yandex OAuth client ID"`
+	YandexCSEC string `long:"yandex-csec" env:"REMARK_YANDEX_CSEC" description:"Yandex OAuth client secret"`
 
 	Admins []string `long:"admin" env:"ADMIN" default:"umputun@gmail.com" description:"admin(s) names" env-delim:","`
 	Dbg    bool     `long:"dbg" env:"DEBUG" description:"debug mode"`

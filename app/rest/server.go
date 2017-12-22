@@ -20,8 +20,8 @@ import (
 type Server struct {
 	Version      string
 	Store        store.Interface
-	AuthGoogle   *auth.Google
-	AuthGithub   *auth.Github
+	AuthGoogle   *auth.Provider
+	AuthGithub   *auth.Provider
 	SessionStore *sessions.FilesystemStore
 }
 
@@ -29,7 +29,8 @@ type Server struct {
 func (s *Server) Run() {
 	log.Print("[INFO] activate rest server")
 	router := chi.NewRouter()
-	router.Use(middleware.RealIP, Recoverer)
+	//router.Use(middleware.RealIP, Recoverer)
+	router.Use(middleware.RealIP)
 	router.Use(middleware.Throttle(100), middleware.Timeout(60*time.Second))
 	router.Use(Limiter(10), AppInfo("remark", s.Version), Ping)
 
