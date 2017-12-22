@@ -4,13 +4,14 @@ import "time"
 
 // Comment represents a single comment with reference to its parent
 type Comment struct {
-	ID        int64     `json:"id"`
-	ParentID  int64     `json:"pid"`
-	Text      string    `json:"text"`
-	User      User      `json:"user"`
-	Locator   Locator   `json:"locator"`
-	Score     int       `json:"score"`
-	Timestamp time.Time `json:"time"`
+	ID        int64           `json:"id"`
+	ParentID  int64           `json:"pid"`
+	Text      string          `json:"text"`
+	User      User            `json:"user"`
+	Locator   Locator         `json:"locator"`
+	Score     int             `json:"score"`
+	Votes     map[string]bool `json:"votes"`
+	Timestamp time.Time       `json:"time"`
 }
 
 // Locator keeps site and url of the post
@@ -40,8 +41,9 @@ type Request struct {
 // Interface defines basic CRUD for comments
 type Interface interface {
 	Create(comment Comment) (int64, error)
-	Delete(url string, id int64) error
+	Delete(locator Locator, id int64) error
 	Find(request Request) ([]Comment, error)
 	Last(locator Locator, max int) ([]Comment, error)
 	Get(locator Locator, id int64) (Comment, error)
+	Vote(locator Locator, commentID int64, userID string, val bool) (Comment, error)
 }

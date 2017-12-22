@@ -39,6 +39,7 @@ func (b *BoltDB) Create(comment Comment) (int64, error) {
 
 	comment.ID = time.Now().UnixNano()
 	comment.Timestamp = time.Now()
+	comment.Votes = map[string]bool{}
 
 	err := b.Update(func(tx *bolt.Tx) error {
 		bucket, e := tx.CreateBucketIfNotExists([]byte(comment.Locator.URL))
@@ -81,16 +82,16 @@ func (b *BoltDB) Create(comment Comment) (int64, error) {
 }
 
 // Delete removed comment by url and id from the store
-func (b *BoltDB) Delete(url string, id int64) error {
+func (b *BoltDB) Delete(locator Locator, id int64) error {
 
 	return b.Update(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte(url))
+		bucket := tx.Bucket([]byte(locator.URL))
 		if bucket == nil {
-			return errors.Errorf("no bucket %s in store", url)
+			return errors.Errorf("no bucket %s in store", locator.URL)
 		}
 		key := b.keyFromValue(id)
 		if err := bucket.Delete(key); err != nil {
-			return errors.Wrapf(err, "can't delete key %s from bucket %s", key, url)
+			return errors.Wrapf(err, "can't delete key %s from bucket %s", key, locator.URL)
 		}
 		return nil
 	})
@@ -194,6 +195,52 @@ func (b *BoltDB) Last(locator Locator, max int) (result []Comment, err error) {
 	})
 
 	return result, err
+}
+
+// Get comment by id
+func (b *BoltDB) Vote(locator Locator, commentID int64, userID string, val bool) (comment Comment, err error) {
+
+	err = b.Update(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(locator.URL))
+		if bucket == nil {
+			return errors.Errorf("no bucket %s in store", locator.URL)
+		}
+
+		// get and unmarshal comment for the store
+		commentVal := bucket.Get(b.keyFromValue(commentID))
+		if commentVal == nil {
+			return errors.Errorf("no comment for %d in store %s", commentID, locator.URL)
+		}
+
+		if e := json.Unmarshal(commentVal, &comment); e != nil {
+			return errors.Wrap(e, "failed to unmarshal")
+		}
+
+		// check if user voted already
+		for k := range comment.Votes {
+			if k == userID {
+				return errors.Errorf("user %s already voted for comment %d", userID, commentID)
+			}
+		}
+
+		// update votes and score
+		comment.Votes[userID] = val
+		if val {
+			comment.Score++
+		} else {
+			comment.Score--
+		}
+		data, err := json.Marshal(&comment)
+		if err != nil {
+			return errors.Wrap(err, "can't marshal comment with updated votes")
+		}
+		if err = bucket.Put(b.keyFromValue(commentID), data); err != nil {
+			return errors.Wrap(err, "failed to save comment with updated votes")
+		}
+		return nil
+	})
+
+	return comment, err
 }
 
 func (b *BoltDB) keyFromComment(comment Comment) []byte {

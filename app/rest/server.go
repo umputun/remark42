@@ -38,17 +38,17 @@ func (s *Server) Run() {
 	router.Get("/login/google", s.AuthGoogle.LoginHandler)
 	router.Get("/auth/google", s.AuthGoogle.AuthHandler)
 	router.Get("/logout", s.AuthGithub.LogoutHandler) // can hit any provider
-
 	router.Get("/login/github", s.AuthGithub.LoginHandler)
 	router.Get("/auth/github", s.AuthGithub.AuthHandler)
 
-	router.Post("/comment", s.createCommentCtrl)
 	router.Get("/find", s.getURLComments)
 	router.Get("/id/{id}", s.getByID)
+	router.Get("/last/{max}", s.getLastComments)
 
 	router.With(Auth(s.SessionStore, s.Admins)).Group(func(r chi.Router) {
-		r.Get("/last/{max}", s.getLastComments)
+		r.Post("/comment", s.createCommentCtrl)
 		r.Get("/user", s.getUserInfo)
+		r.Put("/vote/{id}", s.voteCtrl)
 		r.With(AdminOnly).Delete("/comment/{id}", s.deleteCommentCtrl)
 	})
 
@@ -94,7 +94,7 @@ func (s *Server) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[INFO] delete comment %d", id)
 
 	url := r.URL.Query().Get("url")
-	err = s.Store.Delete(url, id)
+	err = s.Store.Delete(store.Locator{URL: url}, id)
 	if err != nil {
 		log.Printf("[WARN] can't delete comment, %s", err)
 		httpError(w, r, http.StatusInternalServerError, err, "can't delete comment")
@@ -177,6 +177,36 @@ func (s *Server) getUserInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	render.JSON(w, r, user)
+}
+
+// PUT /vote/{id}?url=post-url&vote=1
+func (s *Server) voteCtrl(w http.ResponseWriter, r *http.Request) {
+
+	user, err := GetUserInfo(r)
+	if err != nil {
+		httpError(w, r, http.StatusUnauthorized, err, "can't get user info")
+		return
+	}
+
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		log.Printf("[WARN] bad id %s", chi.URLParam(r, "id"))
+		httpError(w, r, http.StatusBadRequest, err, "can't parse id")
+	}
+
+	log.Printf("[INFO] vote for comment %d", id)
+
+	url := r.URL.Query().Get("url")
+	vote := r.URL.Query().Get("vote") == "1"
+
+	comment, err := s.Store.Vote(store.Locator{URL: url}, id, user.ID, vote)
+	if err != nil {
+		log.Printf("[WARN] vote rejected for %s - %d, %s", user.ID, id, err)
+		httpError(w, r, http.StatusInternalServerError, err, "can't delete comment")
+		return
+	}
+
+	render.JSON(w, r, comment)
 }
 
 func httpError(w http.ResponseWriter, r *http.Request, code int, err error, details string) {

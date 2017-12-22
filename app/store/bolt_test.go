@@ -71,6 +71,30 @@ func TestBoltDB_Last(t *testing.T) {
 	assert.Equal(t, "some text2", res[0].Text)
 }
 
+func TestBoltDB_Vote(t *testing.T) {
+	defer os.Remove(testDb)
+	b := prep(t)
+
+	res, err := b.Last(Locator{URL: "https://radio-t.com"}, 0)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(res))
+	assert.Equal(t, 0, res[0].Score)
+	assert.Equal(t, map[string]bool{}, res[0].Votes)
+
+	c, err := b.Vote(Locator{URL: "https://radio-t.com"}, res[0].ID, "user1", true)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, c.Score)
+	assert.Equal(t, map[string]bool{"user1": true}, c.Votes)
+
+	_, err = b.Vote(Locator{URL: "https://radio-t.com"}, res[0].ID, "user1", true)
+	assert.NotNil(t, err, "double-voting rejected")
+
+	res, err = b.Last(Locator{URL: "https://radio-t.com"}, 0)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(res))
+	assert.Equal(t, 1, res[0].Score)
+}
+
 // makes new boltdb, put two records
 func prep(t *testing.T) *BoltDB {
 	b, err := NewBoltDB(testDb)
