@@ -20,14 +20,15 @@ func NewGoogle(p Params) *Provider {
 		FilesystemStore: p.SessionStore,
 		MapUser: func(data map[string]interface{}) store.User {
 			userInfo := store.User{
-				Name:    data["name"].(string),
 				ID:      data["email"].(string),
+				Name:    data["name"].(string),
 				Picture: data["picture"].(string),
 				Profile: data["profile"].(string),
 			}
 			if userInfo.Name == "" {
 				userInfo.Name = strings.Split(userInfo.ID, "@")[0]
 			}
+			userInfo.ID = "google_" + userInfo.ID
 			return userInfo
 		},
 	})
@@ -52,6 +53,7 @@ func NewGithub(p Params) *Provider {
 			if userInfo.Name == "" {
 				userInfo.Name = userInfo.ID
 			}
+			userInfo.ID = "github_" + userInfo.ID
 			return userInfo
 		},
 	})

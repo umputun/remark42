@@ -56,7 +56,7 @@ func initProvider(p Params, provider Provider) *Provider {
 	return &provider
 }
 
-// LoginHandler - GET /login/github?from=http://radio-t.com
+// LoginHandler - GET /login/{provider}?from=redirect-back-url
 func (p Provider) LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	// make state (random) and store in session
@@ -83,7 +83,7 @@ func (p Provider) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, p.conf.AuthCodeURL(state), http.StatusTemporaryRedirect)
 }
 
-// AuthHandler is redirect url. Should check state to prevent CSRF.
+// AuthHandler fills user info and redirects to "from" url
 func (p Provider) AuthHandler(w http.ResponseWriter, r *http.Request) {
 	session, err := p.Get(r, "remark")
 	if err != nil {

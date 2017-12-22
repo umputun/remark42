@@ -26,7 +26,7 @@ var opts struct {
 	GithubCSEC string `long:"github-csec" env:"REMARK_GITHUB_CSEC" description:"Github OAuth client secret"`
 
 	Admins  []string `long:"admin" env:"ADMIN" default:"umputun@gmail.com" description:"admin(s) names" env-delim:","`
-	DevMode bool     `long:"dev" env:"DEV" description:"dev mode mode"`
+	DevMode bool     `long:"dev" env:"DEV" description:"development mode, no auth enforced"`
 	Dbg     bool     `long:"dbg" env:"DEBUG" description:"debug mode"`
 }
 
