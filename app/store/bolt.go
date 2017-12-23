@@ -14,16 +14,17 @@ import (
 )
 
 // BoltDB implements store.Interface. Each instance represents one site.
-// Keys built as pid-id. Each url (post) makes it's own bucket
+// Keys are commendID. Each url (post) makes it's own bucket.
 // In addition there is a bucket "last" with reference to other buckets+keys to all cross-posts last comment extraction.
 // Thread safe.
 type BoltDB struct {
 	*bolt.DB
 }
 
-var (
+const (
 	lastBucketName     = "last"
 	blocksBucketPrefix = "block-"
+	lastLimit          = 1000
 )
 
 // NewBoltDB makes persistent boltdb-based store
@@ -175,6 +176,10 @@ func (b *BoltDB) Get(locator Locator, commentID string) (comment Comment, err er
 // Last returns up to max last comments for given locator
 func (b *BoltDB) Last(locator Locator, max int) (result []Comment, err error) {
 
+	if max > lastLimit || max == 0 {
+		max = lastLimit
+	}
+
 	err = b.View(func(tx *bolt.Tx) error {
 		lastBucket := tx.Bucket([]byte(lastBucketName))
 		if lastBucket == nil {
@@ -202,7 +207,7 @@ func (b *BoltDB) Last(locator Locator, max int) (result []Comment, err error) {
 				return errors.Wrap(e, "failed to unmarshal")
 			}
 			result = append(result, comment)
-			if max > 0 && len(result) >= max {
+			if len(result) >= max {
 				return nil
 			}
 		}
