@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"errors"
 	"html/template"
 	"log"
 	"net/http"
@@ -98,7 +99,7 @@ func (s *Server) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user, err := GetUserInfo(r)
-	if err != nil {
+	if err != nil { // this not suppose to happen (handled by Auth), just dbl-check
 		httpError(w, r, http.StatusUnauthorized, err, "can't get user info")
 		return
 	}
@@ -113,6 +114,13 @@ func (s *Server) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	comment.Text = template.HTMLEscapeString(comment.Text)
 
 	log.Printf("[INFO] create comment %+v", comment)
+
+	// check if user blocked
+	if s.Store.IsBlocked(store.Locator{}, comment.User.ID) {
+		log.Printf("[WARN] user %s rejected (blocked)", err)
+		httpError(w, r, http.StatusForbidden, errors.New("rejected"), "user blocked")
+		return
+	}
 
 	id, err := s.Store.Create(comment)
 	if err != nil {

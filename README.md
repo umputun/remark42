@@ -62,3 +62,4 @@ type Locator struct {
 - `GET /api/v1/count?url=post-url` - get comment's count for `{url}`
 - `PUT /api/v1/vote/{id}?url=post-url&vote=1` - vote for comment. `vote`=1 will increase score, -1 decreases. _auth required_
 - `DELETE /api/v1/comment/{id}?url=post-url` - delete comment by `id`. _auth and admin required_
+- `PUT /user/{userid}?site=side-id&block=1` - block or unblock user. _auth and admin required_

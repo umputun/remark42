@@ -27,17 +27,22 @@ func TestBoltDB_Delete(t *testing.T) {
 	defer os.Remove(testDb)
 	b := prep(t)
 
-	res, err := b.Find(Request{Locator: Locator{URL: "https://radio-t.com"}})
+	loc := Locator{URL: "https://radio-t.com"}
+	res, err := b.Find(Request{Locator: loc})
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(res))
 
-	err = b.Delete(Locator{URL: "https://radio-t.com"}, res[0].ID)
+	err = b.Delete(loc, res[0].ID)
 	assert.Nil(t, err)
 
-	res, err = b.Find(Request{Locator: Locator{URL: "https://radio-t.com"}})
+	res, err = b.Find(Request{Locator: loc})
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(res))
 	assert.Equal(t, "some text2", res[0].Text)
+
+	comments, err := b.Last(loc, 10)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(comments), "only 1 left in last")
 }
 
 func TestBoltDB_Get(t *testing.T) {
@@ -103,6 +108,22 @@ func TestBoltDB_Count(t *testing.T) {
 	c, err := b.Count(Locator{URL: "https://radio-t.com"})
 	assert.Nil(t, err)
 	assert.Equal(t, 2, c)
+}
+
+func TestBoltDB_BlockUser(t *testing.T) {
+	defer os.Remove(testDb)
+	b := prep(t)
+
+	assert.False(t, b.IsBlocked(Locator{SiteID: "site1"}, "user1"), "nothing blocked")
+
+	assert.NoError(t, b.SetBlock(Locator{SiteID: "site1"}, "user1", true))
+	assert.True(t, b.IsBlocked(Locator{SiteID: "site1"}, "user1"), "user1 blocked")
+
+	assert.False(t, b.IsBlocked(Locator{SiteID: "site1"}, "user2"), "user2 still unblocked")
+
+	assert.NoError(t, b.SetBlock(Locator{SiteID: "site1"}, "user1", false))
+	assert.False(t, b.IsBlocked(Locator{SiteID: "site1"}, "user1"), "user1 unblocked")
+
 }
 
 // makes new boltdb, put two records

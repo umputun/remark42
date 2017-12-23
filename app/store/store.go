@@ -47,4 +47,7 @@ type Interface interface {
 	Get(locator Locator, id int64) (Comment, error)
 	Vote(locator Locator, commentID int64, userID string, val bool) (Comment, error)
 	Count(locator Locator) (int, error)
+
+	SetBlock(locator Locator, userID string, status bool) error
+	IsBlocked(locator Locator, userID string) bool
 }

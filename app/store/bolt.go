@@ -20,7 +20,10 @@ type BoltDB struct {
 	*bolt.DB
 }
 
-var lastBucketName = "last"
+var (
+	lastBucketName     = "last"
+	blocksBucketPrefix = "block-"
+)
 
 // NewBoltDB makes persistent boltdb-based store
 func NewBoltDB(dbFile string) (*BoltDB, error) {
@@ -268,6 +271,48 @@ func (b *BoltDB) Count(locator Locator) (count int, err error) {
 	})
 
 	return count, err
+}
+
+// SetBlock blocks/unblocks user for given site
+func (b *BoltDB) SetBlock(locator Locator, userID string, status bool) error {
+	blockBucketName := b.bucketForBlock(locator, userID)
+	return b.Update(func(tx *bolt.Tx) error {
+
+		bucket, e := tx.CreateBucketIfNotExists([]byte(blockBucketName))
+		if e != nil {
+			return errors.Errorf("no bucket %s in store", string(blockBucketName))
+		}
+
+		switch status {
+		case true:
+			if e := bucket.Put([]byte(userID), []byte(time.Now().Format(time.RFC3339))); e != nil {
+				return errors.Wrapf(e, "failed to put %s to %s", userID, string(blockBucketName))
+			}
+		case false:
+			if e := bucket.Delete([]byte(userID)); e != nil {
+				return errors.Wrapf(e, "failed to clean %s from %s", userID, string(blockBucketName))
+			}
+		}
+		return nil
+	})
+}
+
+// IsBlocked checks if user blocked
+func (b *BoltDB) IsBlocked(locator Locator, userID string) (result bool) {
+	blockBucketName := b.bucketForBlock(locator, userID)
+	_ = b.View(func(tx *bolt.Tx) error {
+		result = false
+		bucket := tx.Bucket(blockBucketName)
+		if bucket != nil && bucket.Get([]byte(userID)) != nil {
+			result = true
+		}
+		return nil
+	})
+	return result
+}
+
+func (b *BoltDB) bucketForBlock(locator Locator, userID string) []byte {
+	return []byte(fmt.Sprintf("%s%s", blocksBucketPrefix, locator.SiteID))
 }
 
 func (b *BoltDB) keyFromComment(comment Comment) []byte {
