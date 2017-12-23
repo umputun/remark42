@@ -60,7 +60,7 @@ func (b *BoltDB) Create(comment Comment) (string, error) {
 			return errors.Errorf("key %s already in store", comment.ID)
 		}
 
-		// serialise comment to json's []byte for bolt and save
+		// serialize comment to json []byte for bolt and save
 		jdata, jerr := json.Marshal(&comment)
 		if jerr != nil {
 			return errors.Wrap(jerr, "can't marshal comment")
