@@ -39,11 +39,11 @@ func Limiter(recSec int, excludeIps ...string) func(http.Handler) http.Handler {
 			}
 
 			keys := []string{
-				r.Header.Get("Authorization"),
+				r.Header.Get("RemoteAddr"),
 				r.Header.Get("X-Forwarded-For"),
 				r.Header.Get("X-Real-IP"),
-				r.Header.Get("RemoteAddr"),
 				r.Header.Get("User-Agent"),
+				r.Header.Get("Authorization"),
 			}
 
 			if httpError := tollbooth.LimitByKeys(l, keys); httpError != nil {
