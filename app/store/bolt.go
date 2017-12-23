@@ -73,9 +73,9 @@ func (b *BoltDB) Create(comment Comment) (string, error) {
 		}
 
 		rv := refFromComment(comment)
-		e = bucket.Put([]byte(comment.ID), []byte(rv.value()))
+		e = bucket.Put([]byte(rv.key), []byte(rv.value))
 		if e != nil {
-			return errors.Wrapf(e, "can't put reference %s to %s", rv.value(), lastBucketName)
+			return errors.Wrapf(e, "can't put reference %s to %s", rv.value, lastBucketName)
 		}
 
 		return nil
@@ -145,7 +145,7 @@ func (b *BoltDB) Get(locator Locator, commentID string) (comment Comment, err er
 
 		c := lastBucket.Cursor()
 		for k, v := c.Last(); k != nil; k, v = c.Prev() {
-			url, foundID, e := refFromValue(v).parse()
+			url, foundID, e := refFromValue(v).parseValue()
 			if e != nil {
 				return e
 			}
@@ -157,7 +157,7 @@ func (b *BoltDB) Get(locator Locator, commentID string) (comment Comment, err er
 				}
 				commentVal := urlBucket.Get([]byte(commentID))
 				if commentVal == nil {
-					return errors.Errorf("no comment for %d in store %s", commentID, url)
+					return errors.Errorf("no comment for %s in store %s", commentID, url)
 				}
 
 				if e := json.Unmarshal(commentVal, &comment); e != nil {
@@ -166,7 +166,7 @@ func (b *BoltDB) Get(locator Locator, commentID string) (comment Comment, err er
 				return nil
 			}
 		}
-		return errors.Errorf("no id %d in store %s", commentID, locator.URL)
+		return errors.Errorf("no id %s in store %s", commentID, locator.URL)
 	})
 
 	return comment, err
@@ -183,7 +183,7 @@ func (b *BoltDB) Last(locator Locator, max int) (result []Comment, err error) {
 
 		c := lastBucket.Cursor()
 		for k, v := c.Last(); k != nil; k, v = c.Prev() {
-			url, commentID, e := refFromValue(v).parse()
+			url, commentID, e := refFromValue(v).parseValue()
 			if e != nil {
 				return e
 			}
@@ -193,7 +193,7 @@ func (b *BoltDB) Last(locator Locator, max int) (result []Comment, err error) {
 			}
 			commentVal := urlBucket.Get([]byte(commentID))
 			if commentVal == nil {
-				log.Printf("[WARN] no comment for %d in store %s", commentID, url)
+				log.Printf("[WARN] no comment for %s in store %s", commentID, url)
 				continue
 			}
 
@@ -224,7 +224,7 @@ func (b *BoltDB) Vote(locator Locator, commentID string, userID string, val bool
 		// get and unmarshal comment for the store
 		commentVal := bucket.Get([]byte(commentID))
 		if commentVal == nil {
-			return errors.Errorf("no comment for %d in store %s", commentID, locator.URL)
+			return errors.Errorf("no comment for %s in store %s", commentID, locator.URL)
 		}
 
 		if e := json.Unmarshal(commentVal, &comment); e != nil {
@@ -234,7 +234,7 @@ func (b *BoltDB) Vote(locator Locator, commentID string, userID string, val bool
 		// check if user voted already
 		for k := range comment.Votes {
 			if k == userID {
-				return errors.Errorf("user %s already voted for comment %d", userID, commentID)
+				return errors.Errorf("user %s already voted for comment %s", userID, commentID)
 			}
 		}
 
@@ -327,22 +327,26 @@ func (b BoltDB) buckets() (result []string) {
 	return result
 }
 
-type ref string
+type ref struct {
+	key   string
+	value string
+}
 
 func refFromComment(comment Comment) *ref {
-	result := ref(fmt.Sprintf("%s!!%s", comment.Locator.URL, comment.ID))
+	result := ref{
+		key:   fmt.Sprintf("%s!!%s", comment.Timestamp.Format(time.RFC3339Nano), comment.ID),
+		value: fmt.Sprintf("%s!!%s", comment.Locator.URL, comment.ID),
+	}
 	return &result
 }
 
 func refFromValue(val []byte) *ref {
-	result := ref(string(val))
+	result := ref{value: string(val)}
 	return &result
 }
 
-func (r ref) value() string { return string(r) }
-
-func (r ref) parse() (url string, commentID string, err error) {
-	elems := strings.Split(string(r), "!!")
+func (r ref) parseValue() (url string, commentID string, err error) {
+	elems := strings.Split(r.value, "!!")
 	if len(elems) < 2 {
 		return "", "", errors.Errorf("can't parse ref %s", r)
 	}

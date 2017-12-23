@@ -40,8 +40,8 @@ _currently supported providers are `google` and `github`_
 
 ```
 type Comment struct {
-	ID        int64           `json:"id"`      // read only
-	ParentID  int64           `json:"pid"`    
+	ID        string          `json:"id"`      // read only
+	ParentID  string          `json:"pid"`    
 	Text      string          `json:"text"`
 	User      User            `json:"user"`    // read only
 	Locator   Locator         `json:"locator"`
