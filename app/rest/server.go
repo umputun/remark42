@@ -28,6 +28,8 @@ type Server struct {
 	AuthGithub   *auth.Provider
 	SessionStore *sessions.FilesystemStore
 	DevMode      bool
+
+	mod moderator
 }
 
 // Run the lister and request's router, activate rest server
@@ -45,20 +47,20 @@ func (s *Server) Run() {
 	router.Get("/auth/github", s.AuthGithub.AuthHandler)
 
 	router.Route("/api/v1", func(rapi chi.Router) {
-		rapi.Get("/find", s.getURLComments)
-		rapi.Get("/id/{id}", s.getByID)
-		rapi.Get("/last/{max}", s.getLastComments)
-		rapi.Get("/count", s.getCountCtrl)
+		rapi.Get("/find", s.findCommentsCtrl)
+		rapi.Get("/id/{id}", s.commentByIDCtrl)
+		rapi.Get("/last/{max}", s.lastCommentsCtrl)
+		rapi.Get("/count", s.countCtrl)
 
 		rapi.With(Auth(s.SessionStore, s.Admins, s.DevMode)).Group(func(rauth chi.Router) {
 			rauth.Post("/comment", s.createCommentCtrl)
-			rauth.Get("/user", s.getUserInfo)
+			rauth.Get("/user", s.userInfoCtrl)
 			rauth.Put("/vote/{id}", s.voteCtrl)
 		})
 
 		rapi.With(Auth(s.SessionStore, s.Admins, s.DevMode)).Group(func(rmoder chi.Router) {
-			mod := moderator{dataStore: s.Store}
-			rmoder.Mount("/moderate", mod.routes())
+			s.mod = moderator{dataStore: s.Store}
+			rmoder.Mount("/moderate", s.mod.routes())
 		})
 	})
 
@@ -115,7 +117,7 @@ func (s *Server) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[INFO] create comment %+v", comment)
 
 	// check if user blocked
-	if s.Store.IsBlocked(store.Locator{}, comment.User.ID) {
+	if s.mod.checkBlocked(store.Locator{}, comment.User) {
 		log.Printf("[WARN] user %s rejected (blocked)", err)
 		httpError(w, r, http.StatusForbidden, errors.New("rejected"), "user blocked")
 		return
@@ -151,7 +153,7 @@ func (s *Server) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET /find?url=post-url
-func (s *Server) getURLComments(w http.ResponseWriter, r *http.Request) {
+func (s *Server) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	url := r.URL.Query().Get("url")
 	log.Printf("[INFO] get comments for %s", url)
 
@@ -166,7 +168,7 @@ func (s *Server) getURLComments(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET /last/{max}?url=abc
-func (s *Server) getLastComments(w http.ResponseWriter, r *http.Request) {
+func (s *Server) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	max, err := strconv.Atoi(chi.URLParam(r, "max"))
 	if err != nil {
@@ -185,7 +187,7 @@ func (s *Server) getLastComments(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET /id/{id}?url=post-url
-func (s *Server) getByID(w http.ResponseWriter, r *http.Request) {
+func (s *Server) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	url := r.URL.Query().Get("url")
@@ -204,7 +206,7 @@ func (s *Server) getByID(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET /user
-func (s *Server) getUserInfo(w http.ResponseWriter, r *http.Request) {
+func (s *Server) userInfoCtrl(w http.ResponseWriter, r *http.Request) {
 	user, err := GetUserInfo(r)
 	if err != nil {
 		httpError(w, r, http.StatusUnauthorized, err, "can't get user info")
@@ -214,7 +216,7 @@ func (s *Server) getUserInfo(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET /count?url=post-url
-func (s *Server) getCountCtrl(w http.ResponseWriter, r *http.Request) {
+func (s *Server) countCtrl(w http.ResponseWriter, r *http.Request) {
 	url := r.URL.Query().Get("url")
 	count, err := s.Store.Count(store.Locator{URL: url})
 	if err != nil {

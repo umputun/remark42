@@ -52,3 +52,7 @@ func (m *moderator) setBlockCtrl(w http.ResponseWriter, r *http.Request) {
 
 	render.JSON(w, r, JSON{"user_id": userID, "site_id": siteID, "block": blockStatus})
 }
+
+func (m *moderator) checkBlocked(locator store.Locator, user store.User) bool {
+	return m.dataStore.IsBlocked(store.Locator{}, user.ID)
+}
