@@ -105,14 +105,15 @@ func (s *Server) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	comment.ID = "" // don't allow user to define ID, force auto-gen
+	comment.Text = template.HTMLEscapeString(comment.Text)
+
 	comment.User.IP = strings.Split(r.RemoteAddr, ":")[0]
 	comment.User.ID = template.HTMLEscapeString(user.ID)
 	comment.User.Name = template.HTMLEscapeString(user.Name)
 	comment.User.Picture = template.HTMLEscapeString(user.Picture)
 	comment.User.Profile = template.HTMLEscapeString(user.Profile)
 	comment.User.Admin = user.Admin
-
-	comment.Text = template.HTMLEscapeString(comment.Text)
 
 	log.Printf("[INFO] create comment %+v", comment)
 

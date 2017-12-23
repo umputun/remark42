@@ -42,7 +42,10 @@ func NewBoltDB(dbFile string) (*BoltDB, error) {
 // Create saves new comment to store
 func (b *BoltDB) Create(comment Comment) (string, error) {
 
-	comment.ID = makeCommentID()
+	if comment.ID == "" {
+		comment.ID = makeCommentID()
+	}
+
 	comment.Timestamp = time.Now()
 	comment.Votes = make(map[string]bool)
 
