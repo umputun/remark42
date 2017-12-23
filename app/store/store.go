@@ -1,11 +1,17 @@
 package store
 
-import "time"
+import (
+	"crypto/rand"
+	"crypto/sha1"
+	"fmt"
+	"log"
+	"time"
+)
 
-// Comment represents a single comment with reference to its parent
+// Comment represents a single comment with optinal reference to its parent
 type Comment struct {
-	ID        int64           `json:"id"`
-	ParentID  int64           `json:"pid"`
+	ID        string          `json:"id"`
+	ParentID  string          `json:"pid"`
 	Text      string          `json:"text"`
 	User      User            `json:"user"`
 	Locator   Locator         `json:"locator"`
@@ -40,14 +46,26 @@ type Request struct {
 
 // Interface defines basic CRUD for comments
 type Interface interface {
-	Create(comment Comment) (int64, error)
-	Delete(locator Locator, id int64) error
+	Create(comment Comment) (commentID string, err error)
+	Delete(locator Locator, commentID string) error
 	Find(request Request) ([]Comment, error)
 	Last(locator Locator, max int) ([]Comment, error)
-	Get(locator Locator, id int64) (Comment, error)
-	Vote(locator Locator, commentID int64, userID string, val bool) (Comment, error)
+	Get(locator Locator, commentID string) (Comment, error)
+	Vote(locator Locator, commentID string, userID string, val bool) (Comment, error)
 	Count(locator Locator) (int, error)
 
 	SetBlock(locator Locator, userID string, status bool) error
 	IsBlocked(locator Locator, userID string) bool
+}
+
+func makeCommentID() string {
+	b := make([]byte, 64)
+	if _, err := rand.Read(b); err != nil {
+		log.Fatalf("[ERROR] can't get randoms, %s", err)
+	}
+	s := sha1.New()
+	if _, err := s.Write(b); err != nil {
+		log.Fatalf("[ERROR] can't make sha1 for random, %s", err)
+	}
+	return fmt.Sprintf("%x", s.Sum(nil))
 }

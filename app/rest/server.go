@@ -54,7 +54,6 @@ func (s *Server) Run() {
 			rauth.Post("/comment", s.createCommentCtrl)
 			rauth.Get("/user", s.getUserInfo)
 			rauth.Put("/vote/{id}", s.voteCtrl)
-			//rauth.With(AdminOnly).Delete("/comment/{id}", s.deleteCommentCtrl)
 		})
 
 		rapi.With(Auth(s.SessionStore, s.Admins, s.DevMode)).Group(func(rmoder chi.Router) {
@@ -136,16 +135,11 @@ func (s *Server) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 // DELETE /comment/{id}?url=post-url
 func (s *Server) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		log.Printf("[WARN] bad id %s", chi.URLParam(r, "id"))
-		httpError(w, r, http.StatusBadRequest, err, "can't parse id")
-	}
-
-	log.Printf("[INFO] delete comment %d", id)
+	id := chi.URLParam(r, "id")
+	log.Printf("[INFO] delete comment %s", id)
 
 	url := r.URL.Query().Get("url")
-	err = s.Store.Delete(store.Locator{URL: url}, id)
+	err := s.Store.Delete(store.Locator{URL: url}, id)
 	if err != nil {
 		log.Printf("[WARN] can't delete comment, %s", err)
 		httpError(w, r, http.StatusInternalServerError, err, "can't delete comment")
@@ -193,14 +187,10 @@ func (s *Server) getLastComments(w http.ResponseWriter, r *http.Request) {
 // GET /id/{id}?url=post-url
 func (s *Server) getByID(w http.ResponseWriter, r *http.Request) {
 
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		log.Printf("[WARN] bad id %s", chi.URLParam(r, "id"))
-		httpError(w, r, http.StatusBadRequest, err, "can't parse id")
-	}
+	id := chi.URLParam(r, "id")
 	url := r.URL.Query().Get("url")
 
-	log.Printf("[INFO] get comments by id %d, %s", id, url)
+	log.Printf("[INFO] get comments by id %s, %s", id, url)
 
 	comment, err := s.Store.Get(store.Locator{URL: url}, id)
 	if err != nil {
@@ -243,12 +233,7 @@ func (s *Server) voteCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		log.Printf("[WARN] bad id %s", chi.URLParam(r, "id"))
-		httpError(w, r, http.StatusBadRequest, err, "can't parse id")
-	}
-
+	id := chi.URLParam(r, "id")
 	log.Printf("[INFO] vote for comment %d", id)
 
 	url := r.URL.Query().Get("url")

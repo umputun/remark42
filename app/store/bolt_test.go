@@ -57,7 +57,7 @@ func TestBoltDB_Get(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "some text2", comment.Text)
 
-	comment, err = b.Get(Locator{URL: "https://radio-t.com"}, 1234567)
+	comment, err = b.Get(Locator{URL: "https://radio-t.com"}, "1234567")
 	assert.NotNil(t, err)
 }
 
