@@ -278,7 +278,7 @@ func (b *BoltDB) SetBlock(locator Locator, userID string, status bool) error {
 	blockBucketName := b.bucketForBlock(locator, userID)
 	return b.Update(func(tx *bolt.Tx) error {
 
-		bucket, e := tx.CreateBucketIfNotExists([]byte(blockBucketName))
+		bucket, e := tx.CreateBucketIfNotExists(blockBucketName)
 		if e != nil {
 			return errors.Errorf("no bucket %s in store", string(blockBucketName))
 		}
