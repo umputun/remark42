@@ -105,12 +105,15 @@ func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 			case xml.StartElement:
 				if se.Name.Local == "thread" {
 					thread := disqusThread{}
-					decoder.DecodeElement(&thread, &se)
-					postsMap[thread.UID] = thread.Link
+					if err := decoder.DecodeElement(&thread, &se); err == nil {
+						postsMap[thread.UID] = thread.Link
+					}
 				}
 				if se.Name.Local == "post" {
 					comment := disqusComment{}
-					decoder.DecodeElement(&comment, &se)
+					if err := decoder.DecodeElement(&comment, &se); err != nil {
+						continue
+					}
 					c := store.Comment{
 						ID:        comment.ID,
 						Locator:   store.Locator{URL: postsMap[comment.Tid.Val], SiteID: siteID},
