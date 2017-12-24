@@ -7,8 +7,6 @@ import (
 	"log"
 	"time"
 
-	"sync"
-
 	"strings"
 
 	"github.com/pkg/errors"
@@ -18,9 +16,6 @@ import (
 // Disqus implements Importer from disqus xml
 type Disqus struct {
 	DataStore store.Interface
-
-	ch   chan store.Comment
-	once sync.Once
 }
 
 type disqusXML struct {
@@ -48,6 +43,7 @@ type disqusComment struct {
 	ID             string    `xml:"id"`
 	Message        string    `xml:"message"`
 	CreatedAt      time.Time `xml:"createdAt"`
+	IsSpam         bool      `xml:"isSpam"`
 	AuthorEmail    string    `xml:"author>email"`
 	AuthorName     string    `xml:"author>name"`
 	AuthorUserName string    `xml:"author>username"`
@@ -112,6 +108,9 @@ func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 				if se.Name.Local == "post" {
 					comment := disqusComment{}
 					if err := decoder.DecodeElement(&comment, &se); err != nil {
+						continue
+					}
+					if comment.IsSpam {
 						continue
 					}
 					c := store.Comment{

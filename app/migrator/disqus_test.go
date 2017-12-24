@@ -19,7 +19,7 @@ func TestDisqus_Convert(t *testing.T) {
 		res = append(res, comment)
 		t.Logf("%+v", comment)
 	}
-	assert.Equal(t, 3, len(res), "3 comments total")
+	assert.Equal(t, 3, len(res), "3 comments total, 1 spam excluded")
 
 	exp0 := store.Comment{
 		ID: "3565798471341011339",
@@ -29,9 +29,9 @@ func TestDisqus_Convert(t *testing.T) {
 		},
 		Text: "<p>The quick brown fox jumps over the lazy dog.</p>",
 		User: store.User{
-			Name: "Alexander Puzatykh",
+			Name: "Alexander Blah",
 			ID:   "facebook-1787732238",
-			IP:   "178.234.205.125",
+			IP:   "178.178.178.178",
 		},
 	}
 	exp0.Timestamp, _ = time.Parse("2006-01-02T15:04:05Z", "2011-08-31T15:16:29Z")
@@ -89,11 +89,11 @@ var xmlTest = `
 		<isSpam>false</isSpam>
 		<author>
 			<email/>
-			<name>Alexander Puzatykh</name>
+			<name>Alexander Blah</name>
 			<isAnonymous>false</isAnonymous>
 			<username>facebook-1787732238</username>
 		</author>
-		<ipAddress>178.234.205.125</ipAddress>
+		<ipAddress>178.178.178.178</ipAddress>
 		<thread dsq:id="247937687"/>
 	</post>
 
@@ -106,12 +106,12 @@ var xmlTest = `
 		<isDeleted>false</isDeleted>
 		<isSpam>false</isSpam>
 		<author>
-			<email>mihail.merkulov@gmail.com</email>
-			<name>mikhailmerkulov</name>
+			<email>mihail.noname@gmail.com</email>
+			<name>mikhail</name>
 			<isAnonymous>false</isAnonymous>
-			<username>mikhailmerkulov</username>
+			<username>mikhail-noname</username>
 		</author>
-		<ipAddress>195.234.75.139</ipAddress>
+		<ipAddress>195.195.195.139</ipAddress>
 		<thread dsq:id="247937687"/>
 	</post>
 
@@ -124,12 +124,30 @@ var xmlTest = `
 		<isDeleted>false</isDeleted>
 		<isSpam>false</isSpam>
 		<author>
-			<email>unikier@gmail.com</email>
-			<name>Dmitry Shapoval</name>
+			<email>dmitri.noname@gmail.com</email>
+			<name>Dmitry Noname</name>
 			<isAnonymous>false</isAnonymous>
-			<username>google-74b9e7568ef6860e93862c5d7752b657</username>
+			<username>google-74b9e7568ef6860e93862c5d77590123</username>
 		</author>
-		<ipAddress>89.113.25.139</ipAddress>
+		<ipAddress>89.89.89.139</ipAddress>
+		<thread dsq:id="247937687"/>
+	</post>
+
+	<post dsq:id="299986073">
+		<id>6580890074280459219</id>
+		<message>
+			some ugly spam
+		</message>
+		<createdAt>2011-09-31T22:48:43Z</createdAt>
+		<isDeleted>false</isDeleted>
+		<isSpam>true</isSpam>
+		<author>
+			<email>spam.noname@gmail.com</email>
+			<name>Spam Noname</name>
+			<isAnonymous>false</isAnonymous>
+			<username>google-2c5d77590123</username>
+		</author>
+		<ipAddress>189.89.89.139</ipAddress>
 		<thread dsq:id="247937687"/>
 	</post>
 </disqus>
