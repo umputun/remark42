@@ -1,5 +1,7 @@
 package store
 
+//go:generate sh -c "mockery -inpkg -name Interface -print > file.tmp && mv file.tmp store_mock.go"
+
 import (
 	"crypto/rand"
 	"crypto/sha1"

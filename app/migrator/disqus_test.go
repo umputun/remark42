@@ -4,13 +4,38 @@ import (
 	"strings"
 	"testing"
 
+	"time"
+
 	"github.com/stretchr/testify/assert"
+	"github.com/umputun/remark/app/store"
 )
 
-func TestA(t *testing.T) {
+func TestDisqus_Convert(t *testing.T) {
 	d := Disqus{}
-	err := d.Import(strings.NewReader(xmlTest))
-	assert.Nil(t, err)
+	ch := d.convert(strings.NewReader(xmlTest), "test")
+
+	res := []store.Comment{}
+	for comment := range ch {
+		res = append(res, comment)
+		t.Logf("%+v", comment)
+	}
+	assert.Equal(t, 3, len(res), "3 comments total")
+
+	exp0 := store.Comment{
+		ID: "3565798471341011339",
+		Locator: store.Locator{
+			SiteID: "test",
+			URL:    "https://radio-t.com/p/2011/03/05/podcast-229/",
+		},
+		Text: "<p>The quick brown fox jumps over the lazy dog.</p>",
+		User: store.User{
+			Name: "Alexander Puzatykh",
+			ID:   "facebook-1787732238",
+			IP:   "178.234.205.125",
+		},
+	}
+	exp0.Timestamp, _ = time.Parse("2006-01-02T15:04:05Z", "2011-08-31T15:16:29Z")
+	assert.Equal(t, exp0, res[0])
 }
 
 var xmlTest = `
@@ -57,7 +82,7 @@ var xmlTest = `
 	<post dsq:id="299619020">
 		<id>3565798471341011339</id>
 		<message>
-			<![CDATA[<p>Недавно посмотрел фильм про Джобса и Aple. Тот он еще был перец. <a href="http://alex-bestbusiness.com/" rel="nofollow noopener" title="http://alex-bestbusiness.com/">http://alex-bestbusiness.com/</a></p>]]>
+			<![CDATA[<p>The quick brown fox jumps over the lazy dog.</p>]]>
 		</message>
 		<createdAt>2011-08-31T15:16:29Z</createdAt>
 		<isDeleted>false</isDeleted>

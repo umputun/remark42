@@ -7,6 +7,10 @@ import (
 	"log"
 	"time"
 
+	"sync"
+
+	"strings"
+
 	"github.com/pkg/errors"
 	"github.com/umputun/remark/app/store"
 )
@@ -14,6 +18,9 @@ import (
 // Disqus implements Importer from disqus xml
 type Disqus struct {
 	DataStore store.Interface
+
+	ch   chan store.Comment
+	once sync.Once
 }
 
 type disqusXML struct {
@@ -28,7 +35,7 @@ type disqusThread struct {
 	Title       string    `xml:"title"`
 	Message     string    `xml:"message"`
 	CreateAt    time.Time `xml:"createdAt"`
-	AuthorNmae  string    `xml:"author>name"`
+	AuthorName  string    `xml:"author>name"`
 	AuthorEmail string    `xml:"author>email"`
 	Anonymous   bool      `xml:"author>isAnonymous"`
 	IP          string    `xml:"ipAddress"`
@@ -54,7 +61,8 @@ type uid struct {
 }
 
 // Import from disqus and save to store
-func (d Disqus) Import(r io.Reader) (err error) {
+func (d *Disqus) Import(r io.Reader, siteID string) (err error) {
+
 	data, err := ioutil.ReadAll(r)
 	if err != nil {
 		return errors.Wrap(err, "failed to read data")
@@ -64,8 +72,9 @@ func (d Disqus) Import(r io.Reader) (err error) {
 		return errors.Wrap(err, "can't unmarshal disqus xml")
 	}
 
+	commentsCh := d.convert(r, siteID)
 	failed := 0
-	for _, c := range d.convert(dxml) {
+	for c := range commentsCh {
 		if _, err = d.DataStore.Create(c); err != nil {
 			failed++
 		}
@@ -74,25 +83,56 @@ func (d Disqus) Import(r io.Reader) (err error) {
 	if failed > 0 {
 		return errors.Errorf("failed to save %d comments", failed)
 	}
+
 	return nil
 }
 
-func (d Disqus) convert(dxml disqusXML) (comments []store.Comment) {
+func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
+
 	postsMap := map[string]string{} // tid:url
-	log.Printf("[DEBUG] convert %d posts, %d comments", len(dxml.Threads), len(dxml.Comments))
-	for _, thread := range dxml.Threads {
-		postsMap[thread.UID] = thread.Link
-	}
-	for _, comment := range dxml.Comments {
-		c := store.Comment{
-			ID:        comment.ID,
-			Locator:   store.Locator{URL: postsMap[comment.Tid.Val]},
-			User:      store.User{ID: comment.AuthorUserName, Name: comment.AuthorName, IP: comment.IP},
-			Text:      comment.Message,
-			Timestamp: comment.CreatedAt,
-			ParentID:  comment.Pid.Val,
+	decoder := xml.NewDecoder(r)
+	commentsCh := make(chan store.Comment)
+
+	go func() {
+		commentsCount := 0
+		for {
+			t, err := decoder.Token()
+			if t == nil || err != nil {
+				break
+			}
+
+			switch se := t.(type) {
+			case xml.StartElement:
+				if se.Name.Local == "thread" {
+					thread := disqusThread{}
+					decoder.DecodeElement(&thread, &se)
+					postsMap[thread.UID] = thread.Link
+				}
+				if se.Name.Local == "post" {
+					comment := disqusComment{}
+					decoder.DecodeElement(&comment, &se)
+					c := store.Comment{
+						ID:        comment.ID,
+						Locator:   store.Locator{URL: postsMap[comment.Tid.Val], SiteID: siteID},
+						User:      store.User{ID: comment.AuthorUserName, Name: comment.AuthorName, IP: comment.IP},
+						Text:      d.cleanText(comment.Message),
+						Timestamp: comment.CreatedAt,
+						ParentID:  comment.Pid.Val,
+					}
+					commentsCh <- c
+					commentsCount++
+				}
+			}
 		}
-		comments = append(comments, c)
-	}
-	return comments
+		close(commentsCh)
+		log.Printf("[DEBUG] converted %d posts, %d comments", len(postsMap), commentsCount)
+	}()
+
+	return commentsCh
+}
+
+func (d *Disqus) cleanText(text string) string {
+	text = strings.Replace(text, "\n", "", -1)
+	text = strings.Replace(text, "\t", "", -1)
+	return text
 }
