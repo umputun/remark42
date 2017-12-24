@@ -4,10 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"sort"
 	"strings"
 	"time"
-
-	"sort"
 
 	"github.com/boltdb/bolt"
 	"github.com/pkg/errors"

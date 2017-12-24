@@ -4,3 +4,5 @@ target
 /logs/
 /target/
 /var/
+debug
+debug.test

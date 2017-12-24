@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// Comment represents a single comment with optinal reference to its parent
+// Comment represents a single comment with optional reference to its parent
 type Comment struct {
 	ID        string          `json:"id"`
 	ParentID  string          `json:"pid"`
