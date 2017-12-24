@@ -17,11 +17,6 @@ type Disqus struct {
 	DataStore store.Interface
 }
 
-type disqusXML struct {
-	Threads  []disqusThread  `xml:"thread"`
-	Comments []disqusComment `xml:"post"`
-}
-
 type disqusThread struct {
 	UID         string    `xml:"id,attr"`
 	Forum       string    `xml:"forum"`

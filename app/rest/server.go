@@ -105,7 +105,8 @@ func (s *Server) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	comment.ID = "" // don't allow user to define ID, force auto-gen
+	comment.ID = ""                 // don't allow user to define ID, force auto-gen
+	comment.Timestamp = time.Time{} // reset time, force auto-gen
 	comment.Text = template.HTMLEscapeString(comment.Text)
 
 	comment.User.IP = strings.Split(r.RemoteAddr, ":")[0]

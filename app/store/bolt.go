@@ -44,8 +44,10 @@ func (b *BoltDB) Create(comment Comment) (string, error) {
 	if comment.ID == "" {
 		comment.ID = makeCommentID()
 	}
+	if comment.Timestamp.IsZero() {
+		comment.Timestamp = time.Now()
+	}
 
-	comment.Timestamp = time.Now()
 	comment.Votes = make(map[string]bool)
 
 	err := b.Update(func(tx *bolt.Tx) error {

@@ -101,7 +101,13 @@ func importComments(dataStore store.Interface) error {
 	if err != nil {
 		return errors.Wrapf(err, "can't open import file %s", opts.ImportCommand.InputFile)
 	}
-	defer fh.Close()
+
+	defer func() {
+		if err = fh.Close(); err != nil {
+			log.Printf("[WARN] can't close %s, %s", opts.ImportCommand.InputFile, err)
+		}
+	}()
+
 	return importer.Import(fh, opts.ImportCommand.SiteID)
 }
 
