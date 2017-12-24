@@ -83,8 +83,10 @@ func sanitizeComment(comment Comment) Comment {
 	comment.User.ID = template.HTMLEscapeString(comment.User.ID)
 	comment.User.Name = template.HTMLEscapeString(comment.User.Name)
 	comment.User.Picture = p.Sanitize(comment.User.Picture)
-	comment.User.Profile = template.HTMLEscapeString(comment.User.Profile)
+	comment.User.Profile = p.Sanitize(comment.User.Profile)
+
 	comment.Text = strings.Replace(comment.Text, "\n", "", -1)
 	comment.Text = strings.Replace(comment.Text, "\t", "", -1)
+
 	return comment
 }
