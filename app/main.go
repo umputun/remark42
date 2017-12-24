@@ -9,6 +9,8 @@ import (
 	"github.com/hashicorp/logutils"
 	"github.com/jessevdk/go-flags"
 
+	"github.com/pkg/errors"
+	"github.com/umputun/remark/app/migrator"
 	"github.com/umputun/remark/app/rest"
 	"github.com/umputun/remark/app/rest/auth"
 	"github.com/umputun/remark/app/store"
@@ -29,28 +31,40 @@ var opts struct {
 	Admins  []string `long:"admin" env:"ADMIN" default:"umputun@gmail.com" description:"admin(s) names" env-delim:","`
 	DevMode bool     `long:"dev" env:"DEV" description:"development mode, no auth enforced"`
 	Dbg     bool     `long:"dbg" env:"DEBUG" description:"debug mode"`
+
+	ImportCommand struct {
+		Provider  string `long:"provider" default:"disqus" description:"provider type"`
+		SiteID    string `long:"site" default:"site" description:"site ID"`
+		InputFile string `long:"file" default:"disqus.xml" description:"input file"`
+	} `command:"import" description:"import comments from external sources"`
 }
 
 var revision = "unknown"
 
 func main() {
 	fmt.Printf("remark %s\n", revision)
-	if _, err := flags.Parse(&opts); err != nil {
-		log.Fatal(err)
+	p := flags.NewParser(&opts, flags.Default)
+	if _, e := p.ParseArgs(os.Args[1:]); e != nil {
+		os.Exit(1)
 	}
+
 	setupLog(opts.Dbg)
 	log.Print("[INFO] started remark")
-
-	if opts.DevMode {
-		log.Printf("[WARN] running in dev mode, no auth!")
-	}
 
 	dataStore, err := store.NewBoltDB(opts.DBFile)
 	if err != nil {
 		log.Fatalf("[ERROR] can't initialize data store, %+v", err)
 	}
 
+	if p.Active != nil && p.Command.Find("import") == p.Active {
+		if err := importComments(dataStore); err != nil {
+			log.Fatalf("[ERROR] failed to import, %+v", err)
+		}
+		return
+	}
+
 	sessionStore := sessions.NewFilesystemStore(opts.SessionStore, []byte(opts.StoreKey))
+
 	srv := rest.Server{
 		Version:      revision,
 		Store:        dataStore,
@@ -71,7 +85,24 @@ func main() {
 		}),
 	}
 
+	if opts.DevMode {
+		log.Printf("[WARN] running in dev mode, no auth!")
+	}
+
 	srv.Run()
+}
+
+func importComments(dataStore store.Interface) error {
+	log.Printf("[INFO] import from %s (%s) to %s",
+		opts.ImportCommand.InputFile, opts.ImportCommand.Provider, opts.ImportCommand.SiteID)
+	importer := migrator.Disqus{DataStore: dataStore}
+
+	fh, err := os.Open(opts.ImportCommand.InputFile)
+	if err != nil {
+		return errors.Wrapf(err, "can't open import file %s", opts.ImportCommand.InputFile)
+	}
+	defer fh.Close()
+	return importer.Import(fh, opts.ImportCommand.SiteID)
 }
 
 func setupLog(dbg bool) {

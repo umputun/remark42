@@ -3,7 +3,6 @@ package migrator
 import (
 	"encoding/xml"
 	"io"
-	"io/ioutil"
 	"log"
 	"time"
 
@@ -59,15 +58,6 @@ type uid struct {
 // Import from disqus and save to store
 func (d *Disqus) Import(r io.Reader, siteID string) (err error) {
 
-	data, err := ioutil.ReadAll(r)
-	if err != nil {
-		return errors.Wrap(err, "failed to read data")
-	}
-	dxml := disqusXML{}
-	if err = xml.Unmarshal(data, &dxml); err != nil {
-		return errors.Wrap(err, "can't unmarshal disqus xml")
-	}
-
 	commentsCh := d.convert(r, siteID)
 	failed := 0
 	for c := range commentsCh {
@@ -89,6 +79,7 @@ func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 	decoder := xml.NewDecoder(r)
 	commentsCh := make(chan store.Comment)
 
+	inpThreads, inpComments := 0, 0
 	go func() {
 		commentsCount := 0
 		for {
@@ -100,12 +91,15 @@ func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 			switch se := t.(type) {
 			case xml.StartElement:
 				if se.Name.Local == "thread" {
+					inpThreads++
 					thread := disqusThread{}
 					if err := decoder.DecodeElement(&thread, &se); err == nil {
 						postsMap[thread.UID] = thread.Link
 					}
+					continue
 				}
 				if se.Name.Local == "post" {
+					inpComments++
 					comment := disqusComment{}
 					if err := decoder.DecodeElement(&comment, &se); err != nil {
 						continue
@@ -123,11 +117,15 @@ func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 					}
 					commentsCh <- c
 					commentsCount++
+					if commentsCount%1000 == 0 {
+						log.Printf("[DEBUG] imported %d comments", commentsCount)
+					}
 				}
+
 			}
 		}
 		close(commentsCh)
-		log.Printf("[DEBUG] converted %d posts, %d comments", len(postsMap), commentsCount)
+		log.Printf("[INFO] converted %d posts with %d comments from disqus %d/%d", len(postsMap), commentsCount, inpThreads, inpComments)
 	}()
 
 	return commentsCh

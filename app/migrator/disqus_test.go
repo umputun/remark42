@@ -38,9 +38,14 @@ func TestDisqus_Convert(t *testing.T) {
 	assert.Equal(t, exp0, res[0])
 }
 
-var xmlTest = `
-<?xml version="1.0" encoding="utf-8"?>
+var xmlTest = `<?xml version="1.0" encoding="utf-8"?>
 <disqus xmlns="http://disqus.com" xmlns:dsq="http://disqus.com/disqus-internals" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://disqus.com/api/schemas/1.0/disqus.xsd http://disqus.com/api/schemas/1.0/disqus-internals.xsd">
+
+	<category dsq:id="707279">
+		<forum>radiot</forum>
+		<title>General</title>
+		<isDefault>true</isDefault>
+	</category>
 
 	<thread dsq:id="247918464">
 		<id/>
