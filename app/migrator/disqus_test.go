@@ -22,12 +22,12 @@ func TestDisqus_Convert(t *testing.T) {
 	assert.Equal(t, 3, len(res), "3 comments total, 1 spam excluded")
 
 	exp0 := store.Comment{
-		ID: "3565798471341011339",
+		ID: "299619020",
 		Locator: store.Locator{
 			SiteID: "test",
 			URL:    "https://radio-t.com/p/2011/03/05/podcast-229/",
 		},
-		Text: "<p>The quick brown fox jumps over the lazy dog.</p>",
+		Text: `<p>The quick brown fox jumps over the lazy dog.</p><p><a href="https://https://radio-t.com" rel="nofollow noopener" title="radio-t">some link</a></p>`,
 		User: store.User{
 			Name: "Alexander Blah",
 			ID:   "facebook-1787732238",
@@ -87,7 +87,7 @@ var xmlTest = `<?xml version="1.0" encoding="utf-8"?>
 	<post dsq:id="299619020">
 		<id>3565798471341011339</id>
 		<message>
-			<![CDATA[<p>The quick brown fox jumps over the lazy dog.</p>]]>
+			<![CDATA[<p>The quick brown fox jumps over the lazy dog.</p><p><a href="https://https://radio-t.com" rel="nofollow noopener" title="radio-t">some link</a></p>]]>
 		</message>
 		<createdAt>2011-08-31T15:16:29Z</createdAt>
 		<isDeleted>false</isDeleted>

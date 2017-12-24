@@ -18,7 +18,7 @@ func TestBoltDB_CreateAndFind(t *testing.T) {
 	res, err := b.Find(Request{Locator: Locator{URL: "https://radio-t.com"}})
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(res))
-	assert.Equal(t, "some text", res[0].Text)
+	assert.Equal(t, "some text, <a href=\"http://radio-t.com\" rel=\"nofollow\">link</a>", res[0].Text)
 	assert.Equal(t, "user1", res[0].User.ID)
 	t.Log(res[0].ID)
 }
@@ -133,7 +133,7 @@ func prep(t *testing.T) *BoltDB {
 	b, err := NewBoltDB(testDb)
 	assert.Nil(t, err)
 
-	comment := Comment{Text: "some text", Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
+	comment := Comment{Text: `some text, <a href="http://radio-t.com">link</a>`, Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
 		Locator: Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, User: User{ID: "user1", Name: "user name"}}
 	_, err = b.Create(comment)
 	assert.Nil(t, err)

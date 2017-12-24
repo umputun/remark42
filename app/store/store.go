@@ -8,6 +8,10 @@ import (
 	"fmt"
 	"log"
 	"time"
+
+	"html/template"
+
+	"github.com/microcosm-cc/bluemonday"
 )
 
 // Comment represents a single comment with optional reference to its parent
@@ -70,4 +74,14 @@ func makeCommentID() string {
 		log.Fatalf("[ERROR] can't make sha1 for random, %s", err)
 	}
 	return fmt.Sprintf("%x", s.Sum(nil))
+}
+
+func sanitizeComment(comment Comment) Comment {
+	p := bluemonday.UGCPolicy()
+	comment.Text = p.Sanitize(comment.Text)
+	comment.User.ID = template.HTMLEscapeString(comment.User.ID)
+	comment.User.Name = template.HTMLEscapeString(comment.User.Name)
+	comment.User.Picture = p.Sanitize(comment.User.Picture)
+	comment.User.Profile = template.HTMLEscapeString(comment.User.Profile)
+	return comment
 }

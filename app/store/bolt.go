@@ -49,6 +49,7 @@ func (b *BoltDB) Create(comment Comment) (string, error) {
 	}
 
 	comment.Votes = make(map[string]bool)
+	comment = sanitizeComment(comment)
 
 	err := b.Update(func(tx *bolt.Tx) error {
 		bucket, e := tx.CreateBucketIfNotExists([]byte(comment.Locator.URL))

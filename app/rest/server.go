@@ -2,7 +2,6 @@ package rest
 
 import (
 	"errors"
-	"html/template"
 	"log"
 	"net/http"
 	"path/filepath"
@@ -14,6 +13,9 @@ import (
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/render"
 	"github.com/gorilla/sessions"
+
+	"bytes"
+	"encoding/json"
 
 	"github.com/umputun/remark/app/rest/auth"
 	"github.com/umputun/remark/app/store"
@@ -107,14 +109,8 @@ func (s *Server) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 	comment.ID = ""                 // don't allow user to define ID, force auto-gen
 	comment.Timestamp = time.Time{} // reset time, force auto-gen
-	comment.Text = template.HTMLEscapeString(comment.Text)
-
+	comment.User = user
 	comment.User.IP = strings.Split(r.RemoteAddr, ":")[0]
-	comment.User.ID = template.HTMLEscapeString(user.ID)
-	comment.User.Name = template.HTMLEscapeString(user.Name)
-	comment.User.Picture = template.HTMLEscapeString(user.Picture)
-	comment.User.Profile = template.HTMLEscapeString(user.Profile)
-	comment.User.Admin = user.Admin
 
 	log.Printf("[INFO] create comment %+v", comment)
 
@@ -166,7 +162,7 @@ func (s *Server) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	render.Status(r, http.StatusOK)
-	render.JSON(w, r, comments)
+	renderJSONWithHTML(w, r, comments)
 }
 
 // GET /last/{max}?url=abc
@@ -185,7 +181,7 @@ func (s *Server) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	render.Status(r, http.StatusOK)
-	render.JSON(w, r, comments)
+	renderJSONWithHTML(w, r, comments)
 }
 
 // GET /id/{id}?url=post-url
@@ -204,7 +200,7 @@ func (s *Server) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	render.Status(r, http.StatusOK)
-	render.JSON(w, r, comment)
+	renderJSONWithHTML(w, r, comment)
 }
 
 // GET /user
@@ -256,4 +252,20 @@ func (s *Server) voteCtrl(w http.ResponseWriter, r *http.Request) {
 func httpError(w http.ResponseWriter, r *http.Request, code int, err error, details string) {
 	render.Status(r, code)
 	render.JSON(w, r, JSON{"error": err.Error(), "details": details})
+}
+
+// renderJSONWithHTML
+//allows html tags
+func renderJSONWithHTML(w http.ResponseWriter, r *http.Request, v interface{}) {
+	buf := &bytes.Buffer{}
+	enc := json.NewEncoder(buf)
+	if err := enc.Encode(v); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if status, ok := r.Context().Value(render.StatusCtxKey).(int); ok {
+		w.WriteHeader(status)
+	}
+	_, _ = w.Write(buf.Bytes())
 }

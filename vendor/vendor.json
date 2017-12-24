@@ -106,6 +106,12 @@
 			"revisionTime": "2015-11-25T20:19:25Z"
 		},
 		{
+			"checksumSHA1": "+C5xtTR8XG1rwSVunPPRANfYolY=",
+			"path": "github.com/microcosm-cc/bluemonday",
+			"revision": "542fd4642604d0d0c26112396ce5b1a9d01eee0b",
+			"revisionTime": "2017-12-22T15:26:07Z"
+		},
+		{
 			"checksumSHA1": "rJab1YdNhQooDiBWNnt7TLWPyBU=",
 			"path": "github.com/pkg/errors",
 			"revision": "c605e284fe17294bda444b34710735b29d1a9d90",
@@ -135,6 +141,18 @@
 			"path": "golang.org/x/net/context/ctxhttp",
 			"revision": "d1e1b351919c6738fdeb9893d5c998b161464f0c",
 			"revisionTime": "2016-12-29T22:47:41Z"
+		},
+		{
+			"checksumSHA1": "2t6c6F2y4b/PEV04TOHpQxh/xLc=",
+			"path": "golang.org/x/net/html",
+			"revision": "d866cfc389cec985d6fda2859936a575a55a3ab6",
+			"revisionTime": "2017-12-11T20:45:21Z"
+		},
+		{
+			"checksumSHA1": "iWvOOLdDxvI4AVX6px6/HYBPeaQ=",
+			"path": "golang.org/x/net/html/atom",
+			"revision": "d866cfc389cec985d6fda2859936a575a55a3ab6",
+			"revisionTime": "2017-12-11T20:45:21Z"
 		},
 		{
 			"checksumSHA1": "J+KmMiCOHG4E4vbd4C1BtRp813s=",
