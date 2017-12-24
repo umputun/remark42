@@ -103,12 +103,18 @@ func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 						continue
 					}
 					c := store.Comment{
-						ID:        comment.ID,
+						ID:        comment.UID,
 						Locator:   store.Locator{URL: postsMap[comment.Tid.Val], SiteID: siteID},
 						User:      store.User{ID: comment.AuthorUserName, Name: comment.AuthorName, IP: comment.IP},
 						Text:      d.cleanText(comment.Message),
 						Timestamp: comment.CreatedAt,
 						ParentID:  comment.Pid.Val,
+					}
+					if c.User.ID == "" {
+						c.User.ID = "import_" + c.User.Name
+					}
+					if c.ID == "" {
+						c.ID = comment.ID
 					}
 					commentsCh <- c
 					commentsCount++
