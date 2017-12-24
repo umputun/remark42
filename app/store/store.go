@@ -7,6 +7,7 @@ import (
 	"crypto/sha1"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"html/template"
@@ -83,5 +84,7 @@ func sanitizeComment(comment Comment) Comment {
 	comment.User.Name = template.HTMLEscapeString(comment.User.Name)
 	comment.User.Picture = p.Sanitize(comment.User.Picture)
 	comment.User.Profile = template.HTMLEscapeString(comment.User.Profile)
+	comment.Text = strings.Replace(comment.Text, "\n", "", -1)
+	comment.Text = strings.Replace(comment.Text, "\t", "", -1)
 	return comment
 }

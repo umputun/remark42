@@ -234,14 +234,14 @@ func (s *Server) voteCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	log.Printf("[INFO] vote for comment %d", id)
+	log.Printf("[INFO] vote for comment %s", id)
 
 	url := r.URL.Query().Get("url")
 	vote := r.URL.Query().Get("vote") == "1"
 
 	comment, err := s.Store.Vote(store.Locator{URL: url}, id, user.ID, vote)
 	if err != nil {
-		log.Printf("[WARN] vote rejected for %s - %d, %s", user.ID, id, err)
+		log.Printf("[WARN] vote rejected for %s - %s, %s", user.ID, id, err)
 		httpError(w, r, http.StatusBadRequest, err, "can't vote for comment")
 		return
 	}
@@ -254,11 +254,11 @@ func httpError(w http.ResponseWriter, r *http.Request, code int, err error, deta
 	render.JSON(w, r, JSON{"error": err.Error(), "details": details})
 }
 
-// renderJSONWithHTML
-//allows html tags
+// renderJSONWithHTML allows html tags
 func renderJSONWithHTML(w http.ResponseWriter, r *http.Request, v interface{}) {
 	buf := &bytes.Buffer{}
 	enc := json.NewEncoder(buf)
+	enc.SetEscapeHTML(false)
 	if err := enc.Encode(v); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
