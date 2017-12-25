@@ -8,8 +8,8 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/hashicorp/logutils"
 	"github.com/jessevdk/go-flags"
-
 	"github.com/pkg/errors"
+
 	"github.com/umputun/remark/app/migrator"
 	"github.com/umputun/remark/app/rest"
 	"github.com/umputun/remark/app/rest/auth"
