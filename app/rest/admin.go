@@ -4,32 +4,36 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/umputun/remark/app/migrator"
+
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
 
 	"github.com/umputun/remark/app/store"
 )
 
-type moderator struct {
+type admin struct {
 	dataStore store.Interface
+	exporter  migrator.Exporter
 }
 
-func (m *moderator) routes() chi.Router {
+func (a *admin) routes() chi.Router {
 	router := chi.NewRouter()
 	router.Use(AdminOnly)
-	router.Delete("/comment/{id}", m.deleteCommentCtrl)
-	router.Put("/user/{userid}", m.setBlockCtrl)
+	router.Delete("/comment/{id}", a.deleteCommentCtrl)
+	router.Put("/user/{userid}", a.setBlockCtrl)
+	router.Get("/export", a.exportCtrl)
 	return router
 }
 
 // DELETE /comment/{id}?url=post-url
-func (m *moderator) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
+func (a *admin) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	log.Printf("[INFO] delete comment %s", id)
 
 	url := r.URL.Query().Get("url")
-	err := m.dataStore.Delete(store.Locator{URL: url}, id)
+	err := a.dataStore.Delete(store.Locator{URL: url}, id)
 	if err != nil {
 		log.Printf("[WARN] can't delete comment, %s", err)
 		httpError(w, r, http.StatusInternalServerError, err, "can't delete comment")
@@ -41,12 +45,12 @@ func (m *moderator) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 }
 
 // PUT /user/{userid}?site=side-id&block=1
-func (m *moderator) setBlockCtrl(w http.ResponseWriter, r *http.Request) {
+func (a *admin) setBlockCtrl(w http.ResponseWriter, r *http.Request) {
 	userID := chi.URLParam(r, "userid")
 	siteID := r.URL.Query().Get("site")
 	blockStatus := r.URL.Query().Get("block") == "1"
 
-	if err := m.dataStore.SetBlock(store.Locator{SiteID: siteID}, userID, blockStatus); err != nil {
+	if err := a.dataStore.SetBlock(store.Locator{SiteID: siteID}, userID, blockStatus); err != nil {
 		httpError(w, r, http.StatusBadRequest, err, "can't set blocking status")
 		return
 	}
@@ -54,6 +58,13 @@ func (m *moderator) setBlockCtrl(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, JSON{"user_id": userID, "site_id": siteID, "block": blockStatus})
 }
 
-func (m *moderator) checkBlocked(locator store.Locator, user store.User) bool {
-	return m.dataStore.IsBlocked(store.Locator{}, user.ID)
+// GET /export?site=site-id
+func (a *admin) exportCtrl(w http.ResponseWriter, r *http.Request) {
+	siteID := r.URL.Query().Get("site")
+	if err := a.exporter.Export(w, siteID); err != nil {
+		httpError(w, r, http.StatusInternalServerError, err, "export failed")
+	}
+}
+func (a *admin) checkBlocked(locator store.Locator, user store.User) bool {
+	return a.dataStore.IsBlocked(store.Locator{}, user.ID)
 }

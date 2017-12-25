@@ -32,7 +32,7 @@ type Server struct {
 	Exporter     migrator.Exporter
 	DevMode      bool
 
-	mod moderator
+	mod admin
 }
 
 // Run the lister and request's router, activate rest server
@@ -62,9 +62,8 @@ func (s *Server) Run() {
 		})
 
 		rapi.With(Auth(s.SessionStore, s.Admins, s.DevMode)).Group(func(radmin chi.Router) {
-			s.mod = moderator{dataStore: s.Store}
-			radmin.Get("/export", s.exportCtrl)
-			radmin.Mount("/moderate", s.mod.routes())
+			s.mod = admin{dataStore: s.Store, exporter: s.Exporter}
+			radmin.Mount("/admin", s.mod.routes())
 
 		})
 	})
@@ -250,14 +249,6 @@ func (s *Server) voteCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	render.JSON(w, r, comment)
-}
-
-// GET /export?site=site-id
-func (s *Server) exportCtrl(w http.ResponseWriter, r *http.Request) {
-	siteID := r.URL.Query().Get("site")
-	if err := s.Exporter.Export(w, siteID); err != nil {
-		httpError(w, r, http.StatusInternalServerError, err, "export failed")
-	}
 }
 
 func httpError(w http.ResponseWriter, r *http.Request, code int, err error, details string) {
