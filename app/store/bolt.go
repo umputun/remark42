@@ -13,9 +13,8 @@ import (
 )
 
 // BoltDB implements store.Interface. Each instance represents one site.
-// Keys are commendID. Each url (post) makes it's own bucket.
-// In addition there is a bucket "last" with reference to other buckets+keys to all cross-posts last comment extraction.
-// Thread safe.
+// Keys are commentID. Each url (post) makes it's own bucket.  In addition there is a bucket "last" with
+// reference to other buckets+keys to all cross-posts last comment extraction. Thread safe.
 type BoltDB struct {
 	*bolt.DB
 }
@@ -54,7 +53,7 @@ func (b *BoltDB) Create(comment Comment) (string, error) {
 	err := b.Update(func(tx *bolt.Tx) error {
 		bucket, e := tx.CreateBucketIfNotExists([]byte(comment.Locator.URL))
 		if e != nil {
-			return errors.Wrapf(e, "can't make bucket", comment.Locator.URL)
+			return errors.Wrapf(e, "can't make or open bucket", comment.Locator.URL)
 		}
 
 		// check if key already in store, reject doubles
@@ -250,6 +249,7 @@ func (b *BoltDB) Vote(locator Locator, commentID string, userID string, val bool
 
 		// update votes and score
 		comment.Votes[userID] = val
+
 		if val {
 			comment.Score++
 		} else {
@@ -321,10 +321,6 @@ func (b *BoltDB) IsBlocked(locator Locator, userID string) (result bool) {
 	return result
 }
 
-func (b *BoltDB) bucketForBlock(locator Locator, userID string) []byte {
-	return []byte(fmt.Sprintf("%s%s", blocksBucketPrefix, locator.SiteID))
-}
-
 // List returns list of buckets, which is list of all commented posts
 func (b BoltDB) List(locator Locator) (result []string, err error) {
 
@@ -339,11 +335,17 @@ func (b BoltDB) List(locator Locator) (result []string, err error) {
 	return result, err
 }
 
+func (b *BoltDB) bucketForBlock(locator Locator, userID string) []byte {
+	return []byte(fmt.Sprintf("%s%s", blocksBucketPrefix, locator.SiteID))
+}
+
+// ref represents key:value pair for extra, index-only buckets
 type ref struct {
 	key   string
 	value string
 }
 
+// refFromComment makes reference record used for related buckets referencing prim data set
 func refFromComment(comment Comment) *ref {
 	result := ref{
 		key:   fmt.Sprintf("%s!!%s", comment.Timestamp.Format(time.RFC3339Nano), comment.ID),

@@ -39,10 +39,19 @@ type Server struct {
 func (s *Server) Run() {
 	log.Print("[INFO] activate rest server")
 
+	applyDevMode := func(mode int) (modes []int) {
+		modes = append(modes, mode)
+		if s.DevMode {
+			modes = append(modes, developer)
+		}
+		return modes
+	}
+
 	router := chi.NewRouter()
 	router.Use(middleware.RealIP, Recoverer)
 	router.Use(middleware.Throttle(1000), middleware.Timeout(60*time.Second))
-	router.Use(Limiter(10), AppInfo("remark", s.Version), Ping)
+	router.Use(Auth(s.SessionStore, s.Admins, applyDevMode(anonymous)...))
+	router.Use(Limiter(10), AppInfo("remark", s.Version), Ping, Logger(LogAll))
 
 	router.Get("/login/google", s.AuthGoogle.LoginHandler)
 	router.Get("/auth/google", s.AuthGoogle.AuthHandler)
@@ -56,7 +65,7 @@ func (s *Server) Run() {
 		rapi.Get("/last/{max}", s.lastCommentsCtrl)
 		rapi.Get("/count", s.countCtrl)
 
-		rapi.With(Auth(s.SessionStore, s.DevMode, s.Admins)).Group(func(rauth chi.Router) {
+		rapi.With(Auth(s.SessionStore, s.Admins, applyDevMode(full)...)).Group(func(rauth chi.Router) {
 			rauth.Post("/comment", s.createCommentCtrl)
 			rauth.Get("/user", s.userInfoCtrl)
 			rauth.Put("/vote/{id}", s.voteCtrl)
@@ -112,7 +121,7 @@ func (s *Server) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	comment.User = user
 	comment.User.IP = strings.Split(r.RemoteAddr, ":")[0]
 
-	log.Printf("[INFO] create comment %+v", comment)
+	log.Printf("[DEBUG] create comment %+v", comment)
 
 	// check if user blocked
 	if s.mod.checkBlocked(store.Locator{}, comment.User) {
@@ -136,7 +145,7 @@ func (s *Server) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 func (s *Server) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
-	log.Printf("[INFO] delete comment %s", id)
+	log.Printf("[DEBUG] delete comment %s", id)
 
 	url := r.URL.Query().Get("url")
 	err := s.Store.Delete(store.Locator{URL: url}, id)
@@ -153,7 +162,7 @@ func (s *Server) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 // GET /find?url=post-url
 func (s *Server) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	url := r.URL.Query().Get("url")
-	log.Printf("[INFO] get comments for %s", url)
+	log.Printf("[DEBUG] get comments for %s", url)
 
 	comments, err := s.Store.Find(store.Request{Locator: store.Locator{URL: url}})
 	if err != nil {
@@ -190,7 +199,7 @@ func (s *Server) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	url := r.URL.Query().Get("url")
 
-	log.Printf("[INFO] get comments by id %s, %s", id, url)
+	log.Printf("[DEBUG] get comments by id %s, %s", id, url)
 
 	comment, err := s.Store.Get(store.Locator{URL: url}, id)
 	if err != nil {
@@ -233,7 +242,7 @@ func (s *Server) voteCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	log.Printf("[INFO] vote for comment %s", id)
+	log.Printf("[DEBUG] vote for comment %s", id)
 
 	url := r.URL.Query().Get("url")
 	vote := r.URL.Query().Get("vote") == "1"

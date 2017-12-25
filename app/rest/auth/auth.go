@@ -64,7 +64,7 @@ func (p Provider) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	state := randToken()
 	session, err := p.Get(r, "remark")
 	if err != nil {
-		log.Printf("[WARN] %s", err)
+		log.Printf("[DEBUG] can't get session, %s", err)
 	}
 
 	session.Values["state"] = state
@@ -80,12 +80,14 @@ func (p Provider) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// return login url
-	log.Printf("[DEBUG] login url %s", p.conf.AuthCodeURL(state))
-	http.Redirect(w, r, p.conf.AuthCodeURL(state), http.StatusTemporaryRedirect)
+	loginURL := p.conf.AuthCodeURL(state)
+	log.Printf("[DEBUG] login url %s", loginURL)
+	http.Redirect(w, r, loginURL, http.StatusTemporaryRedirect)
 }
 
-// AuthHandler fills user info and redirects to "from" url
+// AuthHandler fills user info and redirects to "from" url. This is callback url redirected locally by browser
 func (p Provider) AuthHandler(w http.ResponseWriter, r *http.Request) {
+
 	session, err := p.Get(r, "remark")
 	if err != nil {
 		http.Error(w, fmt.Sprintf("failed to get session, %s", err), http.StatusInternalServerError)
@@ -140,7 +142,7 @@ func (p Provider) AuthHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[DEBUG] %+v", jData)
 
-	// redirect to back url if presented
+	// redirect to back url if presented in login query params
 	if fromURL, ok := session.Values["from"]; ok {
 		http.Redirect(w, r, fromURL.(string), http.StatusTemporaryRedirect)
 		return
@@ -157,7 +159,10 @@ func (p Provider) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	session.Values["uinfo"] = ""
 	session.Values["from"] = ""
+	session.Values["state"] = ""
+
 	delete(session.Values, "uinfo")
 	delete(session.Values, "from")
 	delete(session.Values, "state")

@@ -1,15 +1,21 @@
 package rest
 
 import (
+	"bytes"
 	"context"
+	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
+	"regexp"
 	"runtime/debug"
 	"strings"
 	"time"
 
 	"github.com/didip/tollbooth"
+	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/render"
 	"github.com/go-errors/errors"
 	"github.com/gorilla/sessions"
@@ -110,13 +116,29 @@ func Recoverer(next http.Handler) http.Handler {
 
 type contextKey string
 
+const (
+	anonymous = iota
+	developer
+	full
+)
+
 // Auth adds auth from session and populate user info
-func Auth(sessionStore *sessions.FilesystemStore, devMode bool, admins []string) func(http.Handler) http.Handler {
+func Auth(sessionStore *sessions.FilesystemStore, admins []string, modes ...int) func(http.Handler) http.Handler {
+
+	inModes := func(mode int) bool {
+		for _, m := range modes {
+			if m == mode {
+				return true
+			}
+		}
+		return false
+	}
+
 	f := func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 
 			// for dev mode skip all real auth, make dev admin user
-			if devMode {
+			if inModes(developer) {
 				user := store.User{
 					ID:      "dev",
 					Name:    "developer one",
@@ -138,22 +160,24 @@ func Auth(sessionStore *sessions.FilesystemStore, devMode bool, admins []string)
 			}
 
 			uinfoData, ok := session.Values["uinfo"]
-			if !ok {
+			if !ok && inModes(full) {
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				return
 			}
-			user := uinfoData.(store.User)
-			for _, admin := range admins {
-				if admin == user.ID {
-					user.Admin = true
-					break
+
+			if ok {
+				user := uinfoData.(store.User)
+				for _, admin := range admins {
+					if admin == user.ID {
+						user.Admin = true
+						break
+					}
 				}
+
+				ctx := r.Context()
+				ctx = context.WithValue(ctx, contextKey("user"), user)
+				r = r.WithContext(ctx)
 			}
-
-			ctx := r.Context()
-			ctx = context.WithValue(ctx, contextKey("user"), user)
-			r = r.WithContext(ctx)
-
 			h.ServeHTTP(w, r)
 		}
 		return http.HandlerFunc(fn)
@@ -194,4 +218,89 @@ func GetUserInfo(r *http.Request) (user store.User, err error) {
 	}
 
 	return store.User{}, errors.New("user can't be parsed")
+}
+
+// LoggerFlag type
+type LoggerFlag int
+
+// logger flags enum
+const (
+	LogAll LoggerFlag = iota
+	LogUser
+	LogBody
+)
+const maxBody = 1024
+
+var reMultWhtsp = regexp.MustCompile(`[\s\p{Zs}]{2,}`)
+
+// Logger middleware prints http log. Customized by set of LoggerFlag
+func Logger(flags ...LoggerFlag) func(http.Handler) http.Handler {
+
+	inFlags := func(f LoggerFlag) bool {
+		for _, flg := range flags {
+			if flg == LogAll || flg == f {
+				return true
+			}
+		}
+		return false
+	}
+
+	f := func(h http.Handler) http.Handler {
+
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			ww := middleware.NewWrapResponseWriter(w, 1)
+
+			body, user := func() (body string, user string) {
+				ctx := r.Context()
+				if ctx == nil {
+					return "", ""
+				}
+
+				if inFlags(LogBody) {
+					if content, err := ioutil.ReadAll(r.Body); err == nil {
+						body = string(content)
+						r.Body = ioutil.NopCloser(bytes.NewReader(content))
+
+						if len(body) > 0 {
+							body = strings.Replace(body, "\n", " ", -1)
+							body = reMultWhtsp.ReplaceAllString(body, " ")
+						}
+
+						if len(body) > maxBody {
+							body = body[:maxBody] + "..."
+						}
+					}
+				}
+
+				if inFlags(LogUser) {
+					u, err := GetUserInfo(r)
+					if err == nil && u.Name != "" {
+						user = fmt.Sprintf(" - %s %q", u.ID, u.Name)
+					}
+				}
+
+				return body, user
+			}()
+
+			t1 := time.Now()
+			defer func() {
+				t2 := time.Now()
+
+				q := r.URL.String()
+				if qun, err := url.QueryUnescape(q); err == nil {
+					q = qun
+				}
+
+				log.Printf("[INFO] REST %s%s - %s - %s - %d (%d) - %v %s",
+					r.Method, user, q, strings.Split(r.RemoteAddr, ":")[0],
+					ww.Status(), ww.BytesWritten(), t2.Sub(t1), body)
+			}()
+
+			h.ServeHTTP(ww, r)
+		}
+		return http.HandlerFunc(fn)
+	}
+
+	return f
+
 }

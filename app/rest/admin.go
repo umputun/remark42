@@ -11,6 +11,7 @@ import (
 	"github.com/umputun/remark/app/store"
 )
 
+// admin provides router for all requests available for admin only
 type admin struct {
 	dataStore store.Interface
 	exporter  migrator.Exporter
