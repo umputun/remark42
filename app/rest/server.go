@@ -39,10 +39,10 @@ type Server struct {
 func (s *Server) Run() {
 	log.Print("[INFO] activate rest server")
 
-	applyDevMode := func(mode int) (modes []int) {
+	applyDevMode := func(mode auth.Mode) (modes []auth.Mode) {
 		modes = append(modes, mode)
 		if s.DevMode {
-			modes = append(modes, developer)
+			modes = append(modes, auth.Developer)
 		}
 		return modes
 	}
@@ -50,7 +50,7 @@ func (s *Server) Run() {
 	router := chi.NewRouter()
 	router.Use(middleware.RealIP, Recoverer)
 	router.Use(middleware.Throttle(1000), middleware.Timeout(60*time.Second))
-	router.Use(Auth(s.SessionStore, s.Admins, applyDevMode(anonymous)...))
+	router.Use(auth.Auth(s.SessionStore, s.Admins, applyDevMode(auth.Anonymous)...))
 	router.Use(Limiter(10), AppInfo("remark", s.Version), Ping, Logger(LogAll))
 
 	router.Get("/login/google", s.AuthGoogle.LoginHandler)
@@ -65,7 +65,7 @@ func (s *Server) Run() {
 		rapi.Get("/last/{max}", s.lastCommentsCtrl)
 		rapi.Get("/count", s.countCtrl)
 
-		rapi.With(Auth(s.SessionStore, s.Admins, applyDevMode(full)...)).Group(func(rauth chi.Router) {
+		rapi.With(auth.Auth(s.SessionStore, s.Admins, applyDevMode(auth.Full)...)).Group(func(rauth chi.Router) {
 			rauth.Post("/comment", s.createCommentCtrl)
 			rauth.Get("/user", s.userInfoCtrl)
 			rauth.Put("/vote/{id}", s.voteCtrl)
@@ -110,7 +110,7 @@ func (s *Server) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := GetUserInfo(r)
+	user, err := auth.GetUserInfo(r)
 	if err != nil { // this not suppose to happen (handled by Auth), just dbl-check
 		httpError(w, r, http.StatusUnauthorized, err, "can't get user info")
 		return
@@ -213,7 +213,7 @@ func (s *Server) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 
 // GET /user
 func (s *Server) userInfoCtrl(w http.ResponseWriter, r *http.Request) {
-	user, err := GetUserInfo(r)
+	user, err := auth.GetUserInfo(r)
 	if err != nil {
 		httpError(w, r, http.StatusUnauthorized, err, "can't get user info")
 		return
@@ -235,7 +235,7 @@ func (s *Server) countCtrl(w http.ResponseWriter, r *http.Request) {
 // PUT /vote/{id}?url=post-url&vote=1
 func (s *Server) voteCtrl(w http.ResponseWriter, r *http.Request) {
 
-	user, err := GetUserInfo(r)
+	user, err := auth.GetUserInfo(r)
 	if err != nil {
 		httpError(w, r, http.StatusUnauthorized, err, "can't get user info")
 		return

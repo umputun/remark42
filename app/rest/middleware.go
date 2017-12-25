@@ -2,7 +2,6 @@ package rest
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -17,10 +16,8 @@ import (
 	"github.com/didip/tollbooth"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/render"
-	"github.com/go-errors/errors"
-	"github.com/gorilla/sessions"
 
-	"github.com/umputun/remark/app/store"
+	"github.com/umputun/remark/app/rest/auth"
 )
 
 var org = "Umputun"
@@ -102,7 +99,7 @@ func Recoverer(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if rvr := recover(); rvr != nil {
-				log.Printf("[ERROR] request panic, %v", rvr)
+				log.Printf("[WARN] request panic, %v", rvr)
 				debug.PrintStack()
 				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			}
@@ -112,112 +109,6 @@ func Recoverer(next http.Handler) http.Handler {
 	}
 
 	return http.HandlerFunc(fn)
-}
-
-type contextKey string
-
-const (
-	anonymous = iota
-	developer
-	full
-)
-
-// Auth adds auth from session and populate user info
-func Auth(sessionStore *sessions.FilesystemStore, admins []string, modes ...int) func(http.Handler) http.Handler {
-
-	inModes := func(mode int) bool {
-		for _, m := range modes {
-			if m == mode {
-				return true
-			}
-		}
-		return false
-	}
-
-	f := func(h http.Handler) http.Handler {
-		fn := func(w http.ResponseWriter, r *http.Request) {
-
-			// for dev mode skip all real auth, make dev admin user
-			if inModes(developer) {
-				user := store.User{
-					ID:      "dev",
-					Name:    "developer one",
-					Picture: "https://friends.radio-t.com/resources/images/rt_logo_64.png",
-					Profile: "https://radio-t.com/info/",
-					Admin:   true,
-				}
-				ctx := r.Context()
-				ctx = context.WithValue(ctx, contextKey("user"), user)
-				r = r.WithContext(ctx)
-				h.ServeHTTP(w, r)
-				return
-			}
-
-			session, err := sessionStore.Get(r, "remark")
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-
-			uinfoData, ok := session.Values["uinfo"]
-			if !ok && inModes(full) {
-				http.Error(w, "Unauthorized", http.StatusUnauthorized)
-				return
-			}
-
-			if ok {
-				user := uinfoData.(store.User)
-				for _, admin := range admins {
-					if admin == user.ID {
-						user.Admin = true
-						break
-					}
-				}
-
-				ctx := r.Context()
-				ctx = context.WithValue(ctx, contextKey("user"), user)
-				r = r.WithContext(ctx)
-			}
-			h.ServeHTTP(w, r)
-		}
-		return http.HandlerFunc(fn)
-	}
-	return f
-}
-
-// AdminOnly allows access to admins
-func AdminOnly(next http.Handler) http.Handler {
-	fn := func(w http.ResponseWriter, r *http.Request) {
-
-		user, err := GetUserInfo(r)
-		if err != nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-
-		if !user.Admin {
-			http.Error(w, "Access denied", http.StatusForbidden)
-			return
-		}
-
-		next.ServeHTTP(w, r)
-	}
-	return http.HandlerFunc(fn)
-}
-
-// GetUserInfo extracts user, or and token from request's context
-func GetUserInfo(r *http.Request) (user store.User, err error) {
-
-	ctx := r.Context()
-	if ctx == nil {
-		return store.User{}, errors.New("user not defined")
-	}
-
-	if u, ok := ctx.Value(contextKey("user")).(store.User); ok {
-		return u, nil
-	}
-
-	return store.User{}, errors.New("user can't be parsed")
 }
 
 // LoggerFlag type
@@ -273,7 +164,7 @@ func Logger(flags ...LoggerFlag) func(http.Handler) http.Handler {
 				}
 
 				if inFlags(LogUser) {
-					u, err := GetUserInfo(r)
+					u, err := auth.GetUserInfo(r)
 					if err == nil && u.Name != "" {
 						user = fmt.Sprintf(" - %s %q", u.ID, u.Name)
 					}
