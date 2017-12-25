@@ -38,6 +38,7 @@ type Server struct {
 // Run the lister and request's router, activate rest server
 func (s *Server) Run() {
 	log.Print("[INFO] activate rest server")
+
 	router := chi.NewRouter()
 	router.Use(middleware.RealIP, Recoverer)
 	router.Use(middleware.Throttle(1000), middleware.Timeout(60*time.Second))
@@ -55,16 +56,15 @@ func (s *Server) Run() {
 		rapi.Get("/last/{max}", s.lastCommentsCtrl)
 		rapi.Get("/count", s.countCtrl)
 
-		rapi.With(Auth(s.SessionStore, s.Admins, s.DevMode)).Group(func(rauth chi.Router) {
+		rapi.With(Auth(s.SessionStore, s.DevMode, s.Admins)).Group(func(rauth chi.Router) {
 			rauth.Post("/comment", s.createCommentCtrl)
 			rauth.Get("/user", s.userInfoCtrl)
 			rauth.Put("/vote/{id}", s.voteCtrl)
+
+			s.mod = admin{dataStore: s.Store, exporter: s.Exporter}
+			rauth.Mount("/admin", s.mod.routes())
 		})
 
-		rapi.With(Auth(s.SessionStore, s.Admins, s.DevMode)).Group(func(radmin chi.Router) {
-			s.mod = admin{dataStore: s.Store, exporter: s.Exporter}
-			radmin.Mount("/admin", s.mod.routes())
-		})
 	})
 
 	s.addFileServer(router, "/web", http.Dir(filepath.Join(".", "web")))
@@ -87,7 +87,6 @@ func (s *Server) addFileServer(r chi.Router, path string, root http.FileSystem) 
 			http.NotFound(w, r)
 			return
 		}
-
 		fs.ServeHTTP(w, r)
 	}))
 }
@@ -199,7 +198,6 @@ func (s *Server) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 		httpError(w, r, http.StatusInternalServerError, err, "can't get comment by id")
 		return
 	}
-
 	render.Status(r, http.StatusOK)
 	renderJSONWithHTML(w, r, comment)
 }
@@ -247,7 +245,7 @@ func (s *Server) voteCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	render.JSON(w, r, comment)
+	render.JSON(w, r, JSON{"id": comment.ID, "score": comment.Score})
 }
 
 func httpError(w http.ResponseWriter, r *http.Request, code int, err error, details string) {

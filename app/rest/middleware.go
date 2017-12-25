@@ -111,7 +111,7 @@ func Recoverer(next http.Handler) http.Handler {
 type contextKey string
 
 // Auth adds auth from session and populate user info
-func Auth(sessionStore *sessions.FilesystemStore, admins []string, devMode bool) func(http.Handler) http.Handler {
+func Auth(sessionStore *sessions.FilesystemStore, devMode bool, admins []string) func(http.Handler) http.Handler {
 	f := func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 
