@@ -102,7 +102,16 @@ func main() {
 func importComments(dataStore store.Interface) error {
 	log.Printf("[INFO] import from %s (%s) to %s",
 		opts.ImportCommand.InputFile, opts.ImportCommand.Provider, opts.ImportCommand.SiteID)
-	importer := migrator.Disqus{DataStore: dataStore}
+
+	var importer migrator.Importer
+	switch opts.ImportCommand.Provider {
+	case "disqus":
+		importer = &migrator.Disqus{DataStore: dataStore}
+	case "native":
+		importer = &migrator.Remark{DataStore: dataStore}
+	default:
+		return errors.Errorf("unsupported import provider %s", opts.ImportCommand.Provider)
+	}
 
 	fh, err := os.Open(opts.ImportCommand.InputFile)
 	if err != nil {

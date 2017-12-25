@@ -1,6 +1,7 @@
 package migrator
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"io"
@@ -16,7 +17,7 @@ type Remark struct {
 	DataStore store.Interface
 }
 
-// Export all comments to writer as json
+// Export all comments to writer as json strings. Each comment is one string, separated by "\n"
 func (r *Remark) Export(w io.Writer, siteID string) error {
 	topics, err := r.DataStore.List(store.Locator{SiteID: siteID})
 	if err != nil {
@@ -49,5 +50,42 @@ func (r *Remark) Export(w io.Writer, siteID string) error {
 		}
 	}
 	log.Printf("[DEBUG] exported %d comments", commentsCount)
+	return nil
+}
+
+// Import comments from json strings produced by Remark.Export
+func (r *Remark) Import(reader io.Reader, siteID string) error {
+	failed := 0
+	total, comments := 0, 0
+	scanner := bufio.NewScanner(reader)
+	for scanner.Scan() {
+		rec := scanner.Bytes()
+		if len(rec) < 2 {
+			continue
+		}
+		total++
+		comment := store.Comment{}
+		if err := json.Unmarshal(rec, &comment); err != nil {
+			failed++
+			log.Printf("[WARN] unmarshal failed for %s, %s", string(rec), err)
+			continue
+		}
+		if _, err := r.DataStore.Create(comment); err != nil {
+			failed++
+			log.Printf("[WARN] can't write %+v to store, %s", comment, err)
+			continue
+		}
+		comments++
+		if comments%1000 == 0 {
+			log.Printf("[DEBUG] imported %d comments", comments)
+		}
+	}
+	if scanner.Err() != nil {
+		return errors.Wrap(scanner.Err(), "error diring scan")
+	}
+	if failed > 0 {
+		return errors.Errorf("failed to save %d comments", failed)
+	}
+	log.Printf("[INFO] imported %d comments from %d records", comments, total)
 	return nil
 }
