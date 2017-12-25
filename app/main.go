@@ -72,7 +72,6 @@ func main() {
 		SessionStore: sessionStore,
 		Admins:       opts.Admins,
 		DevMode:      opts.DevMode,
-		Exporter:     &migrator.Remark{DataStore: dataStore},
 		AuthGoogle: auth.NewGoogle(auth.Params{
 			Cid:          opts.ServerCommand.GoogleCID,
 			Csecret:      opts.ServerCommand.GoogleCSEC,

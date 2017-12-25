@@ -4,11 +4,10 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/umputun/remark/app/migrator"
-
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
 
+	"github.com/umputun/remark/app/migrator"
 	"github.com/umputun/remark/app/store"
 )
 
