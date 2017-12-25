@@ -29,6 +29,7 @@ type Server struct {
 	AuthGoogle   *auth.Provider
 	AuthGithub   *auth.Provider
 	SessionStore *sessions.FilesystemStore
+	Exporter     migrator.Exporter
 	DevMode      bool
 
 	mod admin
@@ -61,7 +62,7 @@ func (s *Server) Run() {
 		})
 
 		rapi.With(Auth(s.SessionStore, s.Admins, s.DevMode)).Group(func(radmin chi.Router) {
-			s.mod = admin{dataStore: s.Store, exporter: &migrator.Remark{DataStore: s.Store}}
+			s.mod = admin{dataStore: s.Store, exporter: s.Exporter}
 			radmin.Mount("/admin", s.mod.routes())
 		})
 	})

@@ -1,9 +1,11 @@
 package main
 
 import (
+	"compress/gzip"
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/gorilla/sessions"
 	"github.com/hashicorp/logutils"
@@ -17,11 +19,12 @@ import (
 )
 
 var opts struct {
-	DBFile  string   `long:"db" env:"BOLTDB_FILE" default:"/tmp/remark.db" description:"bolt file name"`
-	SiteURL string   `long:"site-url" env:"REMARK_URL" default:"http://remark.umputun.com:8080" description:"url to remark site"`
-	Admins  []string `long:"admin" env:"ADMIN" default:"umputun@gmail.com" description:"admin(s) names" env-delim:","`
-	DevMode bool     `long:"dev" env:"DEV" description:"development mode, no auth enforced"`
-	Dbg     bool     `long:"dbg" env:"DEBUG" description:"debug mode"`
+	DBFile         string   `long:"db" env:"BOLTDB_FILE" default:"/tmp/remark.db" description:"bolt file name"`
+	SiteURL        string   `long:"site-url" env:"REMARK_URL" default:"http://remark.umputun.com:8080" description:"url to remark site"`
+	Admins         []string `long:"admin" env:"ADMIN" default:"umputun@gmail.com" description:"admin(s) names" env-delim:","`
+	DevMode        bool     `long:"dev" env:"DEV" description:"development mode, no auth enforced"`
+	Dbg            bool     `long:"dbg" env:"DEBUG" description:"debug mode"`
+	BackupLocation string   `long:"backup" env:"BACKUP_PATH" default:"/tmp" description:"backups location"`
 
 	ServerCommand struct {
 		SessionStore string `long:"session" env:"SESSION_STORE" default:"/tmp" description:"path to session store directory"`
@@ -65,6 +68,7 @@ func main() {
 	}
 
 	sessionStore := sessions.NewFilesystemStore(opts.ServerCommand.SessionStore, []byte(opts.ServerCommand.StoreKey))
+	exporter := migrator.Remark{DataStore: dataStore}
 
 	srv := rest.Server{
 		Version:      revision,
@@ -72,6 +76,7 @@ func main() {
 		SessionStore: sessionStore,
 		Admins:       opts.Admins,
 		DevMode:      opts.DevMode,
+		Exporter:     &exporter,
 		AuthGoogle: auth.NewGoogle(auth.Params{
 			Cid:          opts.ServerCommand.GoogleCID,
 			Csecret:      opts.ServerCommand.GoogleCSEC,
@@ -90,6 +95,7 @@ func main() {
 		log.Printf("[WARN] running in dev mode, no auth!")
 	}
 
+	go autoBackup(&exporter)
 	srv.Run()
 }
 
@@ -110,6 +116,26 @@ func importComments(dataStore store.Interface) error {
 	}()
 
 	return importer.Import(fh, opts.ImportCommand.SiteID)
+}
+
+func autoBackup(exporter migrator.Exporter) {
+	log.Print("[INFO] activate auto-backup")
+	tick := time.NewTicker(24 * time.Hour)
+	for _ = range tick.C {
+		log.Print("[DEBUG] make backup")
+		fh, err := os.Create(fmt.Sprintf("%s/backup-%s.gz", opts.BackupLocation, time.Now().Format("20060102")))
+		if err != nil {
+			log.Printf("[WARN] can't create backup file, %s", err)
+			continue
+		}
+		gz := gzip.NewWriter(fh)
+
+		if err = exporter.Export(gz, ""); err != nil {
+			log.Printf("[WARN] export failed, %+v", err)
+		}
+		_ = gz.Close()
+		_ = fh.Close()
+	}
 }
 
 func setupLog(dbg bool) {
