@@ -63,3 +63,4 @@ type Locator struct {
 - `PUT /api/v1/vote/{id}?url=post-url&vote=1` - vote for comment. `vote`=1 will increase score, -1 decreases. _auth required_
 - `DELETE /api/v1/moderate/comment/{id}?url=post-url` - delete comment by `id`. _auth and admin required_
 - `PUT /api/v1/moderate/user/{userid}?site=side-id&block=1` - block or unblock user. _auth and admin required_
+- `GET /api/v1/export?site=side-id&block=1` - export all comments. _auth and admin required_

@@ -18,7 +18,7 @@ func TestBoltDB_CreateAndFind(t *testing.T) {
 	res, err := b.Find(Request{Locator: Locator{URL: "https://radio-t.com"}})
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(res))
-	assert.Equal(t, "some text, <a href=\"http://radio-t.com\" rel=\"nofollow\">link</a>", res[0].Text)
+	assert.Equal(t, `some text, <a href="http://radio-t.com" rel="nofollow">link</a>`, res[0].Text)
 	assert.Equal(t, "user1", res[0].User.ID)
 	t.Log(res[0].ID)
 }
@@ -124,6 +124,21 @@ func TestBoltDB_BlockUser(t *testing.T) {
 	assert.NoError(t, b.SetBlock(Locator{SiteID: "site1"}, "user1", false))
 	assert.False(t, b.IsBlocked(Locator{SiteID: "site1"}, "user1"), "user1 unblocked")
 
+}
+
+func TestBoltDB_List(t *testing.T) {
+	defer os.Remove(testDb)
+	b := prep(t) // two comments for https://radio-t.com
+
+	// add one more for https://radio-t.com/2
+	comment := Comment{Text: `some text, <a href="http://radio-t.com">link</a>`, Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
+		Locator: Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"}, User: User{ID: "user1", Name: "user name"}}
+	_, err := b.Create(comment)
+	assert.Nil(t, err)
+
+	res, err := b.List(Locator{SiteID: "site1"})
+	assert.Nil(t, err)
+	assert.Equal(t, []string{"https://radio-t.com", "https://radio-t.com/2"}, res)
 }
 
 // makes new boltdb, put two records

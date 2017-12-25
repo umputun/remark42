@@ -17,6 +17,7 @@ import (
 	"bytes"
 	"encoding/json"
 
+	"github.com/umputun/remark/app/migrator"
 	"github.com/umputun/remark/app/rest/auth"
 	"github.com/umputun/remark/app/store"
 )
@@ -29,6 +30,7 @@ type Server struct {
 	AuthGoogle   *auth.Provider
 	AuthGithub   *auth.Provider
 	SessionStore *sessions.FilesystemStore
+	Exporter     migrator.Exporter
 	DevMode      bool
 
 	mod moderator
@@ -60,9 +62,11 @@ func (s *Server) Run() {
 			rauth.Put("/vote/{id}", s.voteCtrl)
 		})
 
-		rapi.With(Auth(s.SessionStore, s.Admins, s.DevMode)).Group(func(rmoder chi.Router) {
+		rapi.With(Auth(s.SessionStore, s.Admins, s.DevMode)).Group(func(radmin chi.Router) {
 			s.mod = moderator{dataStore: s.Store}
-			rmoder.Mount("/moderate", s.mod.routes())
+			radmin.Get("/export", s.exportCtrl)
+			radmin.Mount("/moderate", s.mod.routes())
+
 		})
 	})
 
@@ -247,6 +251,12 @@ func (s *Server) voteCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	render.JSON(w, r, comment)
+}
+
+// GET /export?site=site-id
+func (s *Server) exportCtrl(w http.ResponseWriter, r *http.Request) {
+	siteID := r.URL.Query().Get("site")
+	s.Exporter.Export(w, siteID)
 }
 
 func httpError(w http.ResponseWriter, r *http.Request, code int, err error, details string) {

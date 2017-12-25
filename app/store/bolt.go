@@ -325,16 +325,18 @@ func (b *BoltDB) bucketForBlock(locator Locator, userID string) []byte {
 	return []byte(fmt.Sprintf("%s%s", blocksBucketPrefix, locator.SiteID))
 }
 
-// buckets returns list of buckets, which is list of all commented posts
-func (b BoltDB) buckets() (result []string) {
+// List returns list of buckets, which is list of all commented posts
+func (b BoltDB) List(locator Locator) (result []string, err error) {
 
-	_ = b.View(func(tx *bolt.Tx) error {
+	err = b.View(func(tx *bolt.Tx) error {
 		return tx.ForEach(func(name []byte, _ *bolt.Bucket) error {
-			result = append(result, string(name))
+			if string(name) != lastBucketName {
+				result = append(result, string(name))
+			}
 			return nil
 		})
 	})
-	return result
+	return result, err
 }
 
 type ref struct {
