@@ -256,7 +256,9 @@ func (s *Server) voteCtrl(w http.ResponseWriter, r *http.Request) {
 // GET /export?site=site-id
 func (s *Server) exportCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
-	s.Exporter.Export(w, siteID)
+	if err := s.Exporter.Export(w, siteID); err != nil {
+		httpError(w, r, http.StatusInternalServerError, err, "export failed")
+	}
 }
 
 func httpError(w http.ResponseWriter, r *http.Request, code int, err error, details string) {
