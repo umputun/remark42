@@ -159,12 +159,12 @@ func (s *Server) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, JSON{"id": id, "url": url})
 }
 
-// GET /find?url=post-url
+// GET /find?url=post-url&sort=-time
 func (s *Server) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	url := r.URL.Query().Get("url")
 	log.Printf("[DEBUG] get comments for %s", url)
 
-	comments, err := s.Store.Find(store.Request{Locator: store.Locator{URL: url}})
+	comments, err := s.Store.Find(store.Request{Locator: store.Locator{URL: url}, Sort: r.URL.Query().Get("sort")})
 	if err != nil {
 		log.Printf("[WARN] can't get comments for %s, %s", url, err)
 		httpError(w, r, http.StatusInternalServerError, err, "can't load comments comment")

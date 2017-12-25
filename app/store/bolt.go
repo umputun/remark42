@@ -135,7 +135,26 @@ func (b *BoltDB) Find(request Request) ([]Comment, error) {
 		})
 	})
 
-	sort.Slice(res, func(i, j int) bool { return res[i].Timestamp.Before(res[j].Timestamp) })
+	// sort result according to request.Sort
+	sort.Slice(res, func(i, j int) bool {
+		switch request.Sort {
+		case "+time", "-time", "time":
+			if strings.HasPrefix(request.Sort, "-") {
+				return res[i].Timestamp.After(res[j].Timestamp)
+			}
+			return res[i].Timestamp.Before(res[j].Timestamp)
+
+		case "+score", "-score", "score":
+			if strings.HasPrefix(request.Sort, "-") {
+				return res[i].Score > res[j].Score
+			}
+			return res[i].Score < res[j].Score
+
+		default:
+			return res[i].Timestamp.Before(res[j].Timestamp)
+		}
+	})
+
 	return res, err
 }
 
