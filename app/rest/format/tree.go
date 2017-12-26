@@ -38,13 +38,12 @@ func (t *Tree) proc(comments []store.Comment, node *Node, parentID string) *Node
 	for _, rc := range repComments {
 		rnode := &Node{Comment: rc, Replies: []*Node{}}
 		node.Replies = append(node.Replies, rnode)
-
-		// replies always sorted by time
-		sort.Slice(node.Replies, func(i, j int) bool {
-			return node.Replies[i].Comment.Timestamp.Before(node.Replies[j].Comment.Timestamp)
-		})
 		t.proc(comments, rnode, rc.ID)
 	}
+	// replies always sorted by time
+	sort.Slice(node.Replies, func(i, j int) bool {
+		return node.Replies[i].Comment.Timestamp.Before(node.Replies[j].Comment.Timestamp)
+	})
 	return node
 }
 
