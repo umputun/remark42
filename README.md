@@ -65,7 +65,24 @@ type Locator struct {
 }
 ```
 
-- `GET /api/v1/find?url=post-url` - find all comments for given post, returns flat list of `Comment`
+- `GET /api/v1/find?url=post-url&sort=fld&format=tree` - find all comments for given post
+
+This is the primary call used by UI to show comments for given post. It can return two formats - `plain` and `tree`. In plain 
+format result will be sorted list of `Comment`. In tree format this is going to be tree-like structure with this structure:
+
+```go
+type Tree struct {
+    Nodes []Node `json:"comments"`
+}
+
+type Node struct {
+    Comment store.Comment `json:"comment"`
+    Replies []Node        `json:"replies,omitempty"`
+}
+```
+
+Sort can be `time` or `score`. Supported sort order with prefix -/+, i.e. `-time`. For `tree` mode sort will be applied to top-level comments only and all replies always sorted by time.
+
 - `GET /api/v1/last/{max}` - get up to `{max}` last comments
 - `GET /api/v1/id/{id}` - get comment by `id`
 - `GET /api/v1/count?url=post-url` - get comment's count for `{url}`

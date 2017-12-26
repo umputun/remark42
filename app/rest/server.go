@@ -18,6 +18,7 @@ import (
 
 	"github.com/umputun/remark/app/migrator"
 	"github.com/umputun/remark/app/rest/auth"
+	"github.com/umputun/remark/app/rest/format"
 	"github.com/umputun/remark/app/store"
 )
 
@@ -159,7 +160,7 @@ func (s *Server) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, JSON{"id": id, "url": url})
 }
 
-// GET /find?url=post-url&sort=-time
+// GET /find?url=post-url&format=tree&sort=-time
 func (s *Server) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	url := r.URL.Query().Get("url")
 	log.Printf("[DEBUG] get comments for %s", url)
@@ -170,7 +171,10 @@ func (s *Server) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		httpError(w, r, http.StatusInternalServerError, err, "can't load comments comment")
 		return
 	}
-	render.Status(r, http.StatusOK)
+	if r.URL.Query().Get("format") == "tree" {
+		renderJSONWithHTML(w, r, format.MakeTree(comments, r.URL.Query().Get("sort")))
+		return
+	}
 	renderJSONWithHTML(w, r, comments)
 }
 
