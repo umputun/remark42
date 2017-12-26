@@ -1,16 +1,13 @@
 package main
 
 import (
-	"compress/gzip"
 	"fmt"
 	"log"
 	"os"
-	"time"
 
 	"github.com/gorilla/sessions"
 	"github.com/hashicorp/logutils"
 	"github.com/jessevdk/go-flags"
-	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/app/migrator"
 	"github.com/umputun/remark/app/rest"
@@ -61,7 +58,13 @@ func main() {
 	}
 
 	if p.Active != nil && p.Command.Find("import") == p.Active {
-		if err := importComments(dataStore); err != nil {
+		params := migrator.ImportParams{
+			DataStore: dataStore,
+			InputFile: opts.ImportCommand.InputFile,
+			Provider:  opts.ImportCommand.Provider,
+			SiteID:    opts.ImportCommand.SiteID,
+		}
+		if err := migrator.ImportComments(params); err != nil {
 			log.Fatalf("[ERROR] failed to import, %+v", err)
 		}
 		return
@@ -95,56 +98,8 @@ func main() {
 		log.Printf("[WARN] running in dev mode, no auth!")
 	}
 
-	go autoBackup(&exporter)
+	go migrator.AutoBackup(&exporter, opts.BackupLocation)
 	srv.Run()
-}
-
-func importComments(dataStore store.Interface) error {
-	log.Printf("[INFO] import from %s (%s) to %s",
-		opts.ImportCommand.InputFile, opts.ImportCommand.Provider, opts.ImportCommand.SiteID)
-
-	var importer migrator.Importer
-	switch opts.ImportCommand.Provider {
-	case "disqus":
-		importer = &migrator.Disqus{DataStore: dataStore}
-	case "native":
-		importer = &migrator.Remark{DataStore: dataStore}
-	default:
-		return errors.Errorf("unsupported import provider %s", opts.ImportCommand.Provider)
-	}
-
-	fh, err := os.Open(opts.ImportCommand.InputFile)
-	if err != nil {
-		return errors.Wrapf(err, "can't open import file %s", opts.ImportCommand.InputFile)
-	}
-
-	defer func() {
-		if err = fh.Close(); err != nil {
-			log.Printf("[WARN] can't close %s, %s", opts.ImportCommand.InputFile, err)
-		}
-	}()
-
-	return importer.Import(fh, opts.ImportCommand.SiteID)
-}
-
-func autoBackup(exporter migrator.Exporter) {
-	log.Print("[INFO] activate auto-backup")
-	tick := time.NewTicker(24 * time.Hour)
-	for _ = range tick.C {
-		log.Print("[DEBUG] make backup")
-		fh, err := os.Create(fmt.Sprintf("%s/backup-%s.gz", opts.BackupLocation, time.Now().Format("20060102")))
-		if err != nil {
-			log.Printf("[WARN] can't create backup file, %s", err)
-			continue
-		}
-		gz := gzip.NewWriter(fh)
-
-		if err = exporter.Export(gz, ""); err != nil {
-			log.Printf("[WARN] export failed, %+v", err)
-		}
-		_ = gz.Close()
-		_ = fh.Close()
-	}
 }
 
 func setupLog(dbg bool) {
