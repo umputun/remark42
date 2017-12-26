@@ -354,6 +354,35 @@ func (b BoltDB) List(locator Locator) (result []string, err error) {
 	return result, err
 }
 
+// SetPin pin/un-pin comment as special
+func (b *BoltDB) SetPin(locator Locator, commentID string, status bool) error {
+
+	comment, err := b.Get(locator, commentID)
+	if err != nil {
+		return err
+	}
+
+	return b.Update(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(locator.URL))
+		if bucket == nil {
+			return errors.Errorf("no bucket %s in store", locator.URL)
+		}
+
+		comment.Pin = status
+
+		// serialize comment to json []byte for bolt and save
+		jdata, jerr := json.Marshal(&comment)
+		if jerr != nil {
+			return errors.Wrap(jerr, "can't marshal comment")
+		}
+		if err := bucket.Put([]byte(comment.ID), jdata); err != nil {
+			return errors.Wrapf(err, "failed to put key %s", comment.ID)
+		}
+
+		return nil
+	})
+}
+
 func (b *BoltDB) bucketForBlock(locator Locator, userID string) []byte {
 	return []byte(fmt.Sprintf("%s%s", blocksBucketPrefix, locator.SiteID))
 }

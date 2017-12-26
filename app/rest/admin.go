@@ -24,6 +24,7 @@ func (a *admin) routes() chi.Router {
 	router.Delete("/comment/{id}", a.deleteCommentCtrl)
 	router.Put("/user/{userid}", a.setBlockCtrl)
 	router.Get("/export", a.exportCtrl)
+	router.Put("/pin/{id}", a.setPinCtrl)
 	return router
 }
 
@@ -57,6 +58,20 @@ func (a *admin) setBlockCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	render.JSON(w, r, JSON{"user_id": userID, "site_id": siteID, "block": blockStatus})
+}
+
+// PUT /pin/{id}?site=side-id&pin=1
+func (a *admin) setPinCtrl(w http.ResponseWriter, r *http.Request) {
+	commentID := chi.URLParam(r, "id")
+	siteID := r.URL.Query().Get("site")
+	pinStatus := r.URL.Query().Get("pin") == "1"
+
+	if err := a.dataStore.SetPin(store.Locator{SiteID: siteID}, commentID, pinStatus); err != nil {
+		httpError(w, r, http.StatusBadRequest, err, "can't set pin status")
+		return
+	}
+
+	render.JSON(w, r, JSON{"comment_id": commentID, "site_id": siteID, "pin": pinStatus})
 }
 
 // GET /export?site=site-id

@@ -28,7 +28,7 @@ TBD
 ### Authorization
 
 - `GET /login/{provider}?from=http://url` - perform "social" login with one of supported providers and redirect to `url`
-- `GET /logout` - logout 
+- `GET /logout` - logout
 - `GET /api/v1/user` - get user info, _auth required_
 
 ```go
@@ -49,14 +49,15 @@ _currently supported providers are `google` and `github`_
 
 ```go
 type Comment struct {
-    ID        string          `json:"id"`      // read only
-    ParentID  string          `json:"pid"`
-    Text      string          `json:"text"`
-    User      User            `json:"user"`    // read only
-    Locator   Locator         `json:"locator"`
-    Score     int             `json:"score"`   // read only
-    Votes     map[string]bool `json:"votes"`   // read only
-    Timestamp time.Time       `json:"time"`    // read only
+    ID        string          `json:"id"`      // comment ID, read only
+    ParentID  string          `json:"pid"`     // parent ID
+    Text      string          `json:"text"`    // comment text
+    User      User            `json:"user"`    // user info, read only
+    Locator   Locator         `json:"locator"` // post locator
+    Score     int             `json:"score"`   // comment score, read only
+    Votes     map[string]bool `json:"votes"`   // comment votes, read only
+    Timestamp time.Time       `json:"time"`    // time stamp, read only
+    Pin       bool            `json:"pin"`     // pinned status, read only
 }
 
 type Locator struct {
@@ -90,3 +91,4 @@ Sort can be `time` or `score`. Supported sort order with prefix -/+, i.e. `-time
 - `DELETE /api/v1/admin/comment/{id}?url=post-url` - delete comment by `id`. _auth and admin required_
 - `PUT /api/v1/admin/user/{userid}?site=side-id&block=1` - block or unblock user. _auth and admin required_
 - `GET /api/v1/admin/export?site=side-id&block=1` - export all comments. _auth and admin required_
+- `PUT /api/v1/admin/pin/{id}?site=side-id&pin=1` - pin or unpin comment. _auth and admin required_

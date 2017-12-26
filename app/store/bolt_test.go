@@ -141,6 +141,30 @@ func TestBoltDB_List(t *testing.T) {
 	assert.Equal(t, []string{"https://radio-t.com", "https://radio-t.com/2"}, res)
 }
 
+func TestBoltDB_Pin(t *testing.T) {
+	defer os.Remove(testDb)
+	b := prep(t)
+
+	res, err := b.Last(Locator{URL: "https://radio-t.com"}, 0)
+	t.Logf("%+v", res[0])
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(res))
+	assert.Equal(t, false, res[0].Pin)
+
+	err = b.SetPin(Locator{URL: "https://radio-t.com"}, res[0].ID, true)
+	assert.Nil(t, err)
+
+	c, err := b.Get(Locator{URL: "https://radio-t.com"}, res[0].ID)
+	assert.Nil(t, err)
+	assert.Equal(t, true, c.Pin)
+
+	err = b.SetPin(Locator{URL: "https://radio-t.com"}, res[0].ID, false)
+	assert.Nil(t, err)
+	c, err = b.Get(Locator{URL: "https://radio-t.com"}, res[0].ID)
+	assert.Nil(t, err)
+	assert.Equal(t, false, c.Pin)
+}
+
 // makes new boltdb, put two records
 func prep(t *testing.T) *BoltDB {
 	os.Remove(testDb)

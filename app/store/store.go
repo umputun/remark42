@@ -24,6 +24,7 @@ type Comment struct {
 	Score     int             `json:"score"`
 	Votes     map[string]bool `json:"votes"`
 	Timestamp time.Time       `json:"time"`
+	Pin       bool            `json:"pin"`
 }
 
 // Locator keeps site and url of the post
@@ -63,6 +64,8 @@ type Interface interface {
 
 	SetBlock(locator Locator, userID string, status bool) error
 	IsBlocked(locator Locator, userID string) bool
+
+	SetPin(locator Locator, commentID string, status bool) error
 }
 
 func makeCommentID() string {
