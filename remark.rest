@@ -1,15 +1,15 @@
 
 ### find request with tree
-GET http://remark.umputun.com/api/v1/find?url=https://radio-t.com/p/2017/12/16/podcast-576/&sort=time&format=tree"
+GET https://demo.remark42.com/api/v1/find?url=https://radio-t.com/p/2017/12/16/podcast-576/&sort=time&format=tree"
 
 ### find request with plain
-GET http://remark.umputun.com/api/v1/find?url=https://radio-t.com/p/2017/12/16/podcast-576/&sort=time&format=plain"
+GET https://demo.remark42.com/api/v1/find?url=https://radio-t.com/p/2017/12/16/podcast-576/&sort=time&format=plain"
 
 ### last 10 comments
-GET http://remark.umputun.com/api/v1/last/10
+GET https://demo.remark42.com/api/v1/last/10
 
 ### create commnet
-POST http://remark.umputun.com/api/v1/comment
+POST https://demo.remark42.com/api/v1/comment
 Content-Type: application/json
 
 {
@@ -25,19 +25,19 @@ Content-Type: application/json
 }
 
 ### pin comment
-PUT http://remark.umputun.com/api/v1/admin/pin/3665976683?url=https://radio-t.com/p/2017/12/16/podcast-576/&pin=1
+PUT https://demo.remark42.com/api/v1/admin/pin/3665976683?url=https://radio-t.com/p/2017/12/16/podcast-576/&pin=1
 
 ### vote for comment
-PUT http://remark.umputun.com/api/v1/vote/3665976683?url=https://radio-t.com/p/2017/12/16/podcast-576/&vote=1
+PUT https://demo.remark42.com/api/v1/vote/3665976683?url=https://radio-t.com/p/2017/12/16/podcast-576/&vote=1
 
 ### get user info
-GET http://remark.umputun.com/api/v1/user
+GET https://demo.remark42.com/api/v1/user
 
 ### get comment by id
-GET http://remark.umputun.com/api/v1/id/3665976683?url=https://radio-t.com/p/2017/12/16/podcast-576/
+GET https://demo.remark42.com/api/v1/id/3665976683?url=https://radio-t.com/p/2017/12/16/podcast-576/
 
 ### get comment by user id
-GET http://remark.umputun.com/api/v1/api/v1/comments?user=umputun
+GET https://demo.remark42.com/api/v1/comments?user=grigorybakunov
 
 ### get counts
-GET http://remark.umputun.com/api/v1/count?url=https://radio-t.com/p/2017/12/16/podcast-576/
+GET https://demo.remark42.com/api/v1/count?url=https://radio-t.com/p/2017/12/16/podcast-576/

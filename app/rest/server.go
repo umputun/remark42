@@ -223,7 +223,7 @@ func (s *Server) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 // GET /comments?user=id
 func (s *Server) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
-	userID := chi.URLParam(r, "user")
+	userID := r.URL.Query().Get("user")
 
 	log.Printf("[DEBUG] get comments by userID %s", userID)
 
