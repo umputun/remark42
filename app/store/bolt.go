@@ -24,6 +24,7 @@ const (
 	userBucketName     = "users"
 	blocksBucketPrefix = "block-"
 	lastLimit          = 1000
+	userLimit          = 100
 )
 
 // NewBoltDB makes persistent boltdb-based store
@@ -440,6 +441,13 @@ func (b *BoltDB) GetForUser(locator Locator, userID string) (comments []Comment,
 			comments = append(comments, c)
 		}
 	}
+
+	// limit comment to recent up to userLimit. TODO: optimize to fetch in sorted order
+	sort.Slice(comments, func(i int, j int) bool { return comments[i].Timestamp.After(comments[j].Timestamp) })
+	if len(comments) > userLimit {
+		comments = comments[:userLimit]
+	}
+
 	return comments, err
 }
 

@@ -37,7 +37,7 @@ GET https://demo.remark42.com/api/v1/user
 GET https://demo.remark42.com/api/v1/id/3665976683?url=https://radio-t.com/p/2017/12/16/podcast-576/
 
 ### get comment by user id
-GET https://demo.remark42.com/api/v1/comments?user=grigorybakunov
+GET https://demo.remark42.com/api/v1/comments?user=umputun
 
 ### get counts
 GET https://demo.remark42.com/api/v1/count?url=https://radio-t.com/p/2017/12/16/podcast-576/
