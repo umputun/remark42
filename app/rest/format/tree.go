@@ -7,7 +7,7 @@ import (
 	"github.com/umputun/remark/app/store"
 )
 
-// Tree is formatter as comment tree list of comments
+// Tree is formatter making tree from list of comments
 type Tree struct {
 	Nodes []*Node `json:"comments"`
 }
@@ -19,40 +19,22 @@ type Node struct {
 }
 
 // MakeTree gets unsorted list of comments and produces Tree
-func MakeTree(comments []store.Comment, sortType string) (res Tree) {
-	res = Tree{}
+func MakeTree(comments []store.Comment, sortType string) *Tree {
+	res := Tree{}
 
-	repComments := res.filter(comments, func(c store.Comment) bool { return c.ParentID == "" })
+	repComments := res.filter(comments, "")
 	for _, rc := range repComments {
 		node := Node{Comment: rc}
 		res.Nodes = append(res.Nodes, res.proc(comments, &node, rc.ID))
 	}
 
-	// sort result according to sortType
-	sort.Slice(res.Nodes, func(i, j int) bool {
-		switch sortType {
-		case "+time", "-time", "time":
-			if strings.HasPrefix(sortType, "-") {
-				return res.Nodes[i].Comment.Timestamp.After(res.Nodes[j].Comment.Timestamp)
-			}
-			return res.Nodes[i].Comment.Timestamp.Before(res.Nodes[j].Comment.Timestamp)
-
-		case "+score", "-score", "score":
-			if strings.HasPrefix(sortType, "-") {
-				return res.Nodes[i].Comment.Score > res.Nodes[j].Comment.Score
-			}
-			return res.Nodes[i].Comment.Score < res.Nodes[j].Comment.Score
-
-		default:
-			return res.Nodes[i].Comment.Timestamp.Before(res.Nodes[j].Comment.Timestamp)
-		}
-	})
-
-	return res
+	res.sortNodes(sortType)
+	return &res
 }
 
+// proc makes tree for one top-level comment recursively
 func (t *Tree) proc(comments []store.Comment, node *Node, parentID string) *Node {
-	repComments := t.filter(comments, func(c store.Comment) bool { return c.ParentID == parentID })
+	repComments := t.filter(comments, parentID)
 	for _, rc := range repComments {
 		rnode := &Node{Comment: rc, Replies: []*Node{}}
 		node.Replies = append(node.Replies, rnode)
@@ -66,11 +48,34 @@ func (t *Tree) proc(comments []store.Comment, node *Node, parentID string) *Node
 	return node
 }
 
-func (t *Tree) filter(comments []store.Comment, fn func(c store.Comment) bool) (f []store.Comment) {
+// filter returns comments for parentID
+func (t *Tree) filter(comments []store.Comment, parentID string) (f []store.Comment) {
 	for _, c := range comments {
-		if fn(c) {
+		if c.ParentID == parentID {
 			f = append(f, c)
 		}
 	}
 	return f
+}
+
+func (t *Tree) sortNodes(sortType string) {
+
+	sort.Slice(t.Nodes, func(i, j int) bool {
+		switch sortType {
+		case "+time", "-time", "time":
+			if strings.HasPrefix(sortType, "-") {
+				return t.Nodes[i].Comment.Timestamp.After(t.Nodes[j].Comment.Timestamp)
+			}
+			return t.Nodes[i].Comment.Timestamp.Before(t.Nodes[j].Comment.Timestamp)
+
+		case "+score", "-score", "score":
+			if strings.HasPrefix(sortType, "-") {
+				return t.Nodes[i].Comment.Score > t.Nodes[j].Comment.Score
+			}
+			return t.Nodes[i].Comment.Score < t.Nodes[j].Comment.Score
+
+		default:
+			return t.Nodes[i].Comment.Timestamp.Before(t.Nodes[j].Comment.Timestamp)
+		}
+	})
 }

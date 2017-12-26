@@ -61,7 +61,7 @@ func initProvider(p Params, provider Provider) *Provider {
 func (p Provider) LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	// make state (random) and store in session
-	state := randToken()
+	state := p.randToken()
 	session, err := p.Get(r, "remark")
 	if err != nil {
 		log.Printf("[DEBUG] can't get session, %s", err)
@@ -174,7 +174,7 @@ func (p Provider) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[DEBUG] logout, %+v", session.Values)
 }
 
-func randToken() string {
+func (p Provider) randToken() string {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
 		log.Fatalf("[ERROR] can't get randoms, %s", err)

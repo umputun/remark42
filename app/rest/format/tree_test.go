@@ -36,7 +36,7 @@ func TestStore_MakeTree(t *testing.T) {
 	err := enc.Encode(res)
 	assert.Nil(t, err)
 	assert.Equal(t, expJSON, string(buf.Bytes()))
-	t.Log(string(buf.Bytes()))
+	// t.Log(string(buf.Bytes()))
 }
 
 const expJSON = `{

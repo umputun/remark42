@@ -22,8 +22,16 @@ const (
 	Full                  // real auth
 )
 
+var devUser = store.User{
+	ID:      "dev",
+	Name:    "developer one",
+	Picture: "https://friends.radio-t.com/resources/images/rt_logo_64.png",
+	Profile: "https://radio-t.com/info/",
+	Admin:   true,
+}
+
 // Auth middleware adds auth from session and populates user info
-func Auth(sessionStore *sessions.FilesystemStore, admins []string, modes ...Mode) func(http.Handler) http.Handler {
+func Auth(sessionStore *sessions.FilesystemStore, admins []string, modes []Mode) func(http.Handler) http.Handler {
 
 	inModes := func(mode Mode) bool {
 		for _, m := range modes {
@@ -39,13 +47,7 @@ func Auth(sessionStore *sessions.FilesystemStore, admins []string, modes ...Mode
 
 			// for dev mode skip all real auth, make dev admin user
 			if inModes(Developer) {
-				user := store.User{
-					ID:      "dev",
-					Name:    "developer one",
-					Picture: "https://friends.radio-t.com/resources/images/rt_logo_64.png",
-					Profile: "https://radio-t.com/info/",
-					Admin:   true,
-				}
+				user := devUser
 				ctx := r.Context()
 				ctx = context.WithValue(ctx, contextKey("user"), user)
 				r = r.WithContext(ctx)

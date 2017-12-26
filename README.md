@@ -1,6 +1,6 @@
 # remark [![Build Status](http://drone.umputun.com:9080/api/badges/umputun/remark/status.svg)](http://drone.umputun.com:9080/umputun/remark)
 
-Remark ia a comment engine, self-hosted. Lightweight, simple (but functional) and doesn't spy on users.
+Remark ia a comment engine, self-hosted, lightweight, simple (but functional) and doesn't spy on users.
 
 - Supports social login via google and github
 - Moderation allowing admins to remove comments and block users

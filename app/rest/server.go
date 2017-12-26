@@ -14,6 +14,7 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/render"
+	"github.com/gorilla/context"
 	"github.com/gorilla/sessions"
 
 	"github.com/umputun/remark/app/migrator"
@@ -51,8 +52,11 @@ func (s *Server) Run() {
 	router := chi.NewRouter()
 	router.Use(middleware.RealIP, Recoverer)
 	router.Use(middleware.Throttle(1000), middleware.Timeout(60*time.Second))
-	router.Use(auth.Auth(s.SessionStore, s.Admins, applyDevMode(auth.Anonymous)...))
+	router.Use(auth.Auth(s.SessionStore, s.Admins, applyDevMode(auth.Anonymous)))
 	router.Use(Limiter(10), AppInfo("remark", s.Version), Ping, Logger(LogAll))
+
+	// If you aren't using gorilla/mux, you need to wrap your handlers with context.ClearHandler
+	router.Use(context.ClearHandler)
 
 	router.Get("/login/google", s.AuthGoogle.LoginHandler)
 	router.Get("/auth/google", s.AuthGoogle.AuthHandler)
@@ -66,7 +70,7 @@ func (s *Server) Run() {
 		rapi.Get("/last/{max}", s.lastCommentsCtrl)
 		rapi.Get("/count", s.countCtrl)
 
-		rapi.With(auth.Auth(s.SessionStore, s.Admins, applyDevMode(auth.Full)...)).Group(func(rauth chi.Router) {
+		rapi.With(auth.Auth(s.SessionStore, s.Admins, applyDevMode(auth.Full))).Group(func(rauth chi.Router) {
 			rauth.Post("/comment", s.createCommentCtrl)
 			rauth.Get("/user", s.userInfoCtrl)
 			rauth.Put("/vote/{id}", s.voteCtrl)
