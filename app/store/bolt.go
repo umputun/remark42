@@ -192,7 +192,7 @@ func (b *BoltDB) Get(locator Locator, commentID string) (comment Comment, err er
 
 		c := lastBucket.Cursor()
 		for k, v := c.Last(); k != nil; k, v = c.Prev() {
-			url, foundID, e := refFromValue(v).parseValue()
+			url, foundID, _, e := refFromValue(v).parseValue()
 			if e != nil {
 				return e
 			}
@@ -234,7 +234,7 @@ func (b *BoltDB) Last(locator Locator, max int) (result []Comment, err error) {
 
 		c := lastBucket.Cursor()
 		for k, v := c.Last(); k != nil; k, v = c.Prev() {
-			url, commentID, e := refFromValue(v).parseValue()
+			url, commentID, _, e := refFromValue(v).parseValue()
 			if e != nil {
 				return e
 			}
@@ -432,20 +432,24 @@ func (b *BoltDB) GetForUser(locator Locator, userID string) (comments []Comment,
 		return comments, err
 	}
 
+	// get refs to userLimit recent
+	sort.Slice(commentRefs, func(i int, j int) bool {
+		_, _, ts1, _ := refFromValue([]byte(commentRefs[i])).parseValue()
+		_, _, ts2, _ := refFromValue([]byte(commentRefs[j])).parseValue()
+		return ts1 > ts2
+	})
+	if len(commentRefs) > userLimit {
+		commentRefs = commentRefs[:userLimit]
+	}
+	// retrive comments for refs
 	for _, v := range commentRefs {
-		url, commentID, e := ref{value: v}.parseValue()
+		url, commentID, _, e := ref{value: v}.parseValue()
 		if e != nil {
 			return comments, errors.Wrapf(e, "can't parse reference %s", v)
 		}
 		if c, e := b.Get(Locator{URL: url, SiteID: locator.SiteID}, commentID); e == nil {
 			comments = append(comments, c)
 		}
-	}
-
-	// limit comment to recent up to userLimit. TODO: optimize to fetch in sorted order
-	sort.Slice(comments, func(i int, j int) bool { return comments[i].Timestamp.After(comments[j].Timestamp) })
-	if len(comments) > userLimit {
-		comments = comments[:userLimit]
 	}
 
 	return comments, err
@@ -465,7 +469,7 @@ type ref struct {
 func refFromComment(comment Comment) *ref {
 	result := ref{
 		key:   fmt.Sprintf("%s!!%s", comment.Timestamp.Format(time.RFC3339Nano), comment.ID),
-		value: fmt.Sprintf("%s!!%s", comment.Locator.URL, comment.ID),
+		value: fmt.Sprintf("%s!!%s!!%s", comment.Locator.URL, comment.ID, comment.Timestamp.Format(time.RFC3339Nano)),
 	}
 	return &result
 }
@@ -475,10 +479,10 @@ func refFromValue(val []byte) *ref {
 	return &result
 }
 
-func (r ref) parseValue() (url string, commentID string, err error) {
+func (r ref) parseValue() (url string, commentID string, ts string, err error) {
 	elems := strings.Split(r.value, "!!")
-	if len(elems) < 2 {
-		return "", "", errors.Errorf("can't parse ref %s", r)
+	if len(elems) < 3 {
+		return "", "", "", errors.Errorf("can't parse ref %s", r)
 	}
-	return elems[0], elems[1], nil
+	return elems[0], elems[1], elems[2], nil
 }
