@@ -36,5 +36,8 @@ GET http://remark.umputun.com/api/v1/user
 ### get comment by id
 GET http://remark.umputun.com/api/v1/id/3665976683?url=https://radio-t.com/p/2017/12/16/podcast-576/
 
+### get comment by user id
+GET http://remark.umputun.com/api/v1/api/v1/comments?user=umputun
+
 ### get counts
 GET http://remark.umputun.com/api/v1/count?url=https://radio-t.com/p/2017/12/16/podcast-576/

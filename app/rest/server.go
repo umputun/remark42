@@ -67,6 +67,7 @@ func (s *Server) Run() {
 	router.Route("/api/v1", func(rapi chi.Router) {
 		rapi.Get("/find", s.findCommentsCtrl)
 		rapi.Get("/id/{id}", s.commentByIDCtrl)
+		rapi.Get("/comments", s.findUserCommentsCtrl)
 		rapi.Get("/last/{max}", s.lastCommentsCtrl)
 		rapi.Get("/count", s.countCtrl)
 
@@ -213,6 +214,23 @@ func (s *Server) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("[WARN] can't get comment, %s", err)
 		httpError(w, r, http.StatusInternalServerError, err, "can't get comment by id")
+		return
+	}
+	render.Status(r, http.StatusOK)
+	renderJSONWithHTML(w, r, comment)
+}
+
+// GET /comments?user=id
+func (s *Server) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
+
+	userID := chi.URLParam(r, "user")
+
+	log.Printf("[DEBUG] get comments by userID %s", userID)
+
+	comment, err := s.Store.GetForUser(store.Locator{}, userID)
+	if err != nil {
+		log.Printf("[WARN] can't get comment, %s", err)
+		httpError(w, r, http.StatusBadRequest, err, "can't get comment by user id")
 		return
 	}
 	render.Status(r, http.StatusOK)

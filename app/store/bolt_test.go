@@ -165,6 +165,15 @@ func TestBoltDB_Pin(t *testing.T) {
 	assert.Equal(t, false, c.Pin)
 }
 
+func TestBoltDB_GetForUser(t *testing.T) {
+	defer os.Remove(testDb)
+	b := prep(t)
+
+	res, err := b.GetForUser(Locator{SiteID: "radio-t"}, "user1")
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(res))
+}
+
 // makes new boltdb, put two records
 func prep(t *testing.T) *BoltDB {
 	os.Remove(testDb)
@@ -172,13 +181,23 @@ func prep(t *testing.T) *BoltDB {
 	b, err := NewBoltDB(testDb)
 	assert.Nil(t, err)
 
-	comment := Comment{Text: `some text, <a href="http://radio-t.com">link</a>`, Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
-		Locator: Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, User: User{ID: "user1", Name: "user name"}}
+	comment := Comment{
+		ID:        "id-1",
+		Text:      `some text, <a href="http://radio-t.com">link</a>`,
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
+		Locator:   Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+		User:      User{ID: "user1", Name: "user name"},
+	}
 	_, err = b.Create(comment)
 	assert.Nil(t, err)
 
-	comment = Comment{Text: "some text2", Timestamp: time.Date(2017, 12, 20, 15, 18, 23, 0, time.Local),
-		Locator: Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, User: User{ID: "user1", Name: "user name"}}
+	comment = Comment{
+		ID:        "id-2",
+		Text:      "some text2",
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 23, 0, time.Local),
+		Locator:   Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+		User:      User{ID: "user1", Name: "user name"},
+	}
 	_, err = b.Create(comment)
 	assert.Nil(t, err)
 

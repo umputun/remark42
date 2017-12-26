@@ -21,6 +21,7 @@ type BoltDB struct {
 
 const (
 	lastBucketName     = "last"
+	userBucketName     = "users"
 	blocksBucketPrefix = "block-"
 	lastLimit          = 1000
 )
@@ -76,13 +77,34 @@ func (b *BoltDB) Create(comment Comment) (string, error) {
 		if e != nil {
 			return errors.Wrapf(e, "can't make bucket %s", lastBucketName)
 		}
-
 		rv := refFromComment(comment)
 		e = bucket.Put([]byte(rv.key), []byte(rv.value))
 		if e != nil {
 			return errors.Wrapf(e, "can't put reference %s to %s", rv.value, lastBucketName)
 		}
 
+		// add reference to commentID to "users" bucket
+		bucket, e = tx.CreateBucketIfNotExists([]byte(userBucketName))
+		if e != nil {
+			return errors.Wrapf(e, "can't make bucket %s", userBucketName)
+		}
+
+		userRefs := []string{} // holds current comment refs for the user
+		if data := bucket.Get([]byte(comment.User.ID)); data != nil {
+			if err := json.Unmarshal(data, &userRefs); err != nil {
+				return errors.Wrapf(e, "can't unmarshal comments for %s", comment.User.ID)
+			}
+		}
+		userRefs = append(userRefs, rv.value)
+		// serialize to json []byte for bolt and save
+		jdata, jerr = json.Marshal(&userRefs)
+		if jerr != nil {
+			return errors.Wrapf(jerr, "can't marshal comment ids for user %s, comment %s", comment.User.ID, comment.ID)
+		}
+
+		if err := bucket.Put([]byte(comment.User.ID), jdata); err != nil {
+			return errors.Wrapf(err, "failed to put user comment %s", comment.ID)
+		}
 		return nil
 	})
 
@@ -345,7 +367,7 @@ func (b BoltDB) List(locator Locator) (result []string, err error) {
 
 	err = b.View(func(tx *bolt.Tx) error {
 		return tx.ForEach(func(name []byte, _ *bolt.Bucket) error {
-			if string(name) != lastBucketName {
+			if string(name) != lastBucketName && string(name) != userBucketName {
 				result = append(result, string(name))
 			}
 			return nil
@@ -381,6 +403,44 @@ func (b *BoltDB) SetPin(locator Locator, commentID string, status bool) error {
 
 		return nil
 	})
+}
+
+// GetForUser extracts all comments for given site and given userID
+// "users" bucket has pairs userID:[]commentID
+func (b *BoltDB) GetForUser(locator Locator, userID string) (comments []Comment, err error) {
+
+	comments = []Comment{}
+	commentRefs := []string{}
+	err = b.View(func(tx *bolt.Tx) error {
+		userBucket := tx.Bucket([]byte(userBucketName))
+		if userBucket == nil {
+			return errors.Errorf("no bucket %s in store", userBucketName)
+		}
+
+		uData := userBucket.Get([]byte(userID))
+		if uData == nil {
+			return errors.Errorf("no comments for user %s in store", userID)
+		}
+		if e := json.Unmarshal(uData, &commentRefs); e != nil {
+			return errors.Wrap(e, "failed to unmarshal list of user's comments")
+		}
+		return nil
+	})
+
+	if err != nil {
+		return comments, err
+	}
+
+	for _, v := range commentRefs {
+		url, commentID, e := ref{value: v}.parseValue()
+		if e != nil {
+			return comments, errors.Wrapf(e, "can't parse reference %s", v)
+		}
+		if c, e := b.Get(Locator{URL: url, SiteID: locator.SiteID}, commentID); e == nil {
+			comments = append(comments, c)
+		}
+	}
+	return comments, err
 }
 
 func (b *BoltDB) bucketForBlock(locator Locator, userID string) []byte {

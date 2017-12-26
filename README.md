@@ -98,6 +98,7 @@ Sort can be `time` or `score`. Supported sort order with prefix -/+, i.e. `-time
 
 - `GET /api/v1/last/{max}` - get up to `{max}` last comments
 - `GET /api/v1/id/{id}` - get comment by `id`
+- `GET /api/v1/comments?user=id` - get comment by `user id`
 - `GET /api/v1/count?url=post-url` - get comment's count for `{url}`
 - `PUT /api/v1/vote/{id}?url=post-url&vote=1` - vote for comment. `vote`=1 will increase score, -1 decreases. _auth required_
 - `DELETE /api/v1/admin/comment/{id}?url=post-url` - delete comment by `id`. _auth and admin required_

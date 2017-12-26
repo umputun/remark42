@@ -35,7 +35,7 @@ func TestStore_MakeTree(t *testing.T) {
 	enc.SetIndent("", "  ")
 	err := enc.Encode(res)
 	assert.Nil(t, err)
-	assert.Equal(t, expJSON, string(buf.Bytes()))
+	assert.Equal(t, expJSON, buf.String())
 	// t.Log(string(buf.Bytes()))
 }
 
