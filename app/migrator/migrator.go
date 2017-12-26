@@ -22,7 +22,7 @@ type Exporter interface {
 	Export(w io.Writer, siteID string) error
 }
 
-// ImportParams defines everyting needed to run import
+// ImportParams defines everything needed to run import
 type ImportParams struct {
 	DataStore store.Interface
 	InputFile string
@@ -62,7 +62,7 @@ func ImportComments(p ImportParams) error {
 func AutoBackup(exporter Exporter, backupLocation string) {
 	log.Print("[INFO] activate auto-backup")
 	tick := time.NewTicker(24 * time.Hour)
-	for _ = range tick.C {
+	for range tick.C {
 		log.Print("[DEBUG] make backup")
 		fh, err := os.Create(fmt.Sprintf("%s/backup-%s.gz", backupLocation, time.Now().Format("20060102")))
 		if err != nil {

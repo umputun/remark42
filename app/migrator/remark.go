@@ -81,7 +81,7 @@ func (r *Remark) Import(reader io.Reader, siteID string) error {
 		}
 	}
 	if scanner.Err() != nil {
-		return errors.Wrap(scanner.Err(), "error diring scan")
+		return errors.Wrap(scanner.Err(), "error in scan")
 	}
 	if failed > 0 {
 		return errors.Errorf("failed to save %d comments", failed)
