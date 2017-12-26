@@ -6,7 +6,7 @@ GET https://demo.remark42.com/api/v1/find?url=https://radio-t.com/p/2017/12/16/p
 GET https://demo.remark42.com/api/v1/find?url=https://radio-t.com/p/2017/12/16/podcast-576/&sort=time&format=plain"
 
 ### last 10 comments
-GET https://demo.remark42.com/api/v1/last/10
+GET https://demo.remark42.com/api/v1/last/50
 
 ### create commnet
 POST https://demo.remark42.com/api/v1/comment

@@ -6,6 +6,8 @@ Remark42 ia a comment engine, self-hosted, lightweight, simple (but functional) 
 - Moderation allowing admins to remove comments and block users
 - Voting and pinning system
 - Ability to sort comments
+- Comment retrieval per post, user and comment's id
+- Extractor for recent comments, cross-post
 - Multi-level nested comments with both tree and plain presentations
 - Export all data to json and automatic backups
 - Import from disqus
@@ -13,6 +15,7 @@ Remark42 ia a comment engine, self-hosted, lightweight, simple (but functional) 
 - Fully dockerized and can be deployed in a single command
 - Nice, lightweight and fully customizable UI
 - Multi-site mode to serve comments for multiple sites from a single remark instance
+- Integration with automatic ssl (Let’s Encrypt) via [nginx-le](https://github.com/umputun/nginx-le)
 
 ## Install
 
