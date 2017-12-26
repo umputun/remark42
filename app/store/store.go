@@ -24,7 +24,7 @@ type Comment struct {
 	Score     int             `json:"score"`
 	Votes     map[string]bool `json:"votes"`
 	Timestamp time.Time       `json:"time"`
-	Pin       bool            `json:"pin"`
+	Pin       bool            `json:"pin,omitempty"`
 }
 
 // Locator keeps site and url of the post
