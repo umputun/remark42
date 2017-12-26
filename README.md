@@ -1,6 +1,18 @@
 # remark [![Build Status](http://drone.umputun.com:9080/api/badges/umputun/remark/status.svg)](http://drone.umputun.com:9080/umputun/remark)
 
-Comment engine
+Remark ia a comment engine, self-hosted. Lightweight, simple (but functional) and doesn't spy on users.
+
+- Supports social login via google and github
+- Moderation allowing admins to remove comments and block users
+- Voting and pinning system
+- Ability to sort comments
+- Multi-level nested comments with both tree and plain presentations
+- Export all data to json and automatic backups
+- Import from disqus
+- No need of external databases, everything embedded in a single data file
+- Fully dockerized and can be deployed in a single command
+- Nice, lightweight and fully customizable UI
+- Multi-site mode to serve comments for multiple sites from a single remark instance
 
 ## Install
 
@@ -68,8 +80,8 @@ type Locator struct {
 
 - `GET /api/v1/find?url=post-url&sort=fld&format=tree` - find all comments for given post
 
-This is the primary call used by UI to show comments for given post. It can return two formats - `plain` and `tree`. In plain 
-format result will be sorted list of `Comment`. In tree format this is going to be tree-like structure with this structure:
+This is the primary call used by UI to show comments for given post. It can return comments in two formats - `plain` and `tree`.
+In plain format result will be sorted list of `Comment`. In tree format this is going to be tree-like structure with this structure:
 
 ```go
 type Tree struct {
@@ -89,6 +101,6 @@ Sort can be `time` or `score`. Supported sort order with prefix -/+, i.e. `-time
 - `GET /api/v1/count?url=post-url` - get comment's count for `{url}`
 - `PUT /api/v1/vote/{id}?url=post-url&vote=1` - vote for comment. `vote`=1 will increase score, -1 decreases. _auth required_
 - `DELETE /api/v1/admin/comment/{id}?url=post-url` - delete comment by `id`. _auth and admin required_
-- `PUT /api/v1/admin/user/{userid}?site=side-id&block=1` - block or unblock user. _auth and admin required_
+- `PUT /api/v1/admin/user/{userid}?site=site-id&block=1` - block or unblock user. _auth and admin required_
 - `GET /api/v1/admin/export?site=side-id&block=1` - export all comments. _auth and admin required_
 - `PUT /api/v1/admin/pin/{id}?url=post-url&pin=1` - pin or unpin comment. _auth and admin required_
