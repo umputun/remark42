@@ -1,0 +1,40 @@
+
+### find request with tree
+GET http://remark.umputun.com/api/v1/find?url=https://radio-t.com/p/2017/12/16/podcast-576/&sort=time&format=tree"
+
+### find request with plain
+GET http://remark.umputun.com/api/v1/find?url=https://radio-t.com/p/2017/12/16/podcast-576/&sort=time&format=plain"
+
+### last 10 comments
+GET http://remark.umputun.com/api/v1/last/10
+
+### create commnet
+POST http://remark.umputun.com/api/v1/comment
+Content-Type: application/json
+
+{
+	"text": "comment blah http://radio-t.com",
+	"user" : {
+		"name": "umputun",
+		"id": "@umputun",
+		"ip": "127.0.0.1"
+	},
+	"locator": {
+		"url": "https://radio-t.com/blah1"
+	}
+}
+
+### pin comment
+PUT http://remark.umputun.com/api/v1/admin/pin/3665976683?url=https://radio-t.com/p/2017/12/16/podcast-576/&pin=1
+
+### vote for comment
+PUT http://remark.umputun.com/api/v1/vote/3665976683?url=https://radio-t.com/p/2017/12/16/podcast-576/&vote=1
+
+### get user info
+GET http://remark.umputun.com/api/v1/user
+
+### get comment by id
+GET http://remark.umputun.com/api/v1/id/3665976683?url=https://radio-t.com/p/2017/12/16/podcast-576/
+
+### get counts
+GET http://remark.umputun.com/api/v1/count?url=https://radio-t.com/p/2017/12/16/podcast-576/

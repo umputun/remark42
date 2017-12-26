@@ -16,12 +16,14 @@ import (
 )
 
 var opts struct {
-	DBFile         string   `long:"db" env:"BOLTDB_FILE" default:"/tmp/remark.db" description:"bolt file name"`
-	SiteURL        string   `long:"site-url" env:"REMARK_URL" default:"http://remark.umputun.com:8080" description:"url to remark site"`
-	Admins         []string `long:"admin" env:"ADMIN" default:"umputun@gmail.com" description:"admin(s) names" env-delim:","`
-	DevMode        bool     `long:"dev" env:"DEV" description:"development mode, no auth enforced"`
-	Dbg            bool     `long:"dbg" env:"DEBUG" description:"debug mode"`
-	BackupLocation string   `long:"backup" env:"BACKUP_PATH" default:"/tmp" description:"backups location"`
+	DBFile  string   `long:"db" env:"BOLTDB_FILE" default:"/tmp/remark.db" description:"bolt file name"`
+	SiteURL string   `long:"site-url" env:"REMARK_URL" default:"http://remark.umputun.com:8080" description:"url to remark"`
+	Admins  []string `long:"admin" env:"ADMIN" default:"umputun@gmail.com" description:"admin(s) names" env-delim:","`
+
+	DevMode bool `long:"dev" env:"DEV" description:"development mode, no auth enforced"`
+	Dbg     bool `long:"dbg" env:"DEBUG" description:"debug mode"`
+
+	BackupLocation string `long:"backup" env:"BACKUP_PATH" default:"/tmp" description:"backups location"`
 
 	ServerCommand struct {
 		SessionStore string `long:"session" env:"SESSION_STORE" default:"/tmp" description:"path to session store directory"`
