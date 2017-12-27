@@ -178,8 +178,8 @@ func (b *BoltDB) Find(request Request) ([]Comment, error) {
 	return res, err
 }
 
-// Get comment by id across posts
-func (b *BoltDB) Get(locator Locator, commentID string) (comment Comment, err error) {
+// GetByID returns comment by id across posts
+func (b *BoltDB) GetByID(locator Locator, commentID string) (comment Comment, err error) {
 
 	err = b.View(func(tx *bolt.Tx) error {
 
@@ -262,29 +262,6 @@ func (b *BoltDB) Last(locator Locator, max int) (result []Comment, err error) {
 	return result, err
 }
 
-// Vote for comment by id and locator
-func (b *BoltDB) Vote(locator Locator, commentID string, userID string, val bool) (comment Comment, err error) {
-
-	comment, err = b.getComment(locator.URL, commentID)
-	if err != nil {
-		return comment, err
-	}
-
-	if _, voted := comment.Votes[userID]; voted {
-		return comment, errors.Errorf("user %s already voted for %s", userID, commentID)
-	}
-	// update votes and score
-	comment.Votes[userID] = val
-
-	if val {
-		comment.Score++
-	} else {
-		comment.Score--
-	}
-
-	return comment, b.putComment(locator.URL, comment)
-}
-
 // Count returns number of comments for locator
 func (b *BoltDB) Count(locator Locator) (count int, err error) {
 	err = b.View(func(tx *bolt.Tx) error {
@@ -348,19 +325,9 @@ func (b BoltDB) List(locator Locator) (result []string, err error) {
 	return result, err
 }
 
-// SetPin pin/un-pin comment as special
-func (b *BoltDB) SetPin(locator Locator, commentID string, status bool) error {
-	comment, err := b.getComment(locator.URL, commentID)
-	if err != nil {
-		return err
-	}
-	comment.Pin = status
-	return b.putComment(locator.URL, comment)
-}
-
-// GetForUser extracts all comments for given site and given userID
+// GetByUser extracts all comments for given site and given userID
 // "users" bucket has sub-bucket for each userID, and keeps it as ts:ref
-func (b *BoltDB) GetForUser(locator Locator, userID string) (comments []Comment, err error) {
+func (b *BoltDB) GetByUser(locator Locator, userID string) (comments []Comment, err error) {
 
 	comments = []Comment{}
 	commentRefs := []string{}
@@ -397,7 +364,7 @@ func (b *BoltDB) GetForUser(locator Locator, userID string) (comments []Comment,
 		if e != nil {
 			return comments, errors.Wrapf(e, "can't parse reference %s", v)
 		}
-		if c, e := b.Get(Locator{URL: url, SiteID: locator.SiteID}, commentID); e == nil {
+		if c, e := b.GetByID(Locator{URL: url, SiteID: locator.SiteID}, commentID); e == nil {
 			comments = append(comments, c)
 		}
 	}
@@ -405,18 +372,19 @@ func (b *BoltDB) GetForUser(locator Locator, userID string) (comments []Comment,
 	return comments, err
 }
 
-func (b *BoltDB) getComment(url string, commentID string) (comment Comment, err error) {
+// GetComment for locator.URL and commentID string
+func (b *BoltDB) GetComment(locator Locator, commentID string) (comment Comment, err error) {
 
 	err = b.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte(url))
+		bucket := tx.Bucket([]byte(locator.URL))
 		if bucket == nil {
-			return errors.Errorf("no bucket %s in store", url)
+			return errors.Errorf("no bucket %s in store", locator.URL)
 		}
 
 		// get and unmarshal comment
 		commentVal := bucket.Get([]byte(commentID))
 		if commentVal == nil {
-			return errors.Errorf("no comment for %s in store %s", commentID, url)
+			return errors.Errorf("no comment for %s in store %s", commentID, locator.URL)
 		}
 
 		if e := json.Unmarshal(commentVal, &comment); e != nil {
@@ -427,9 +395,10 @@ func (b *BoltDB) getComment(url string, commentID string) (comment Comment, err 
 	return comment, err
 }
 
-func (b *BoltDB) putComment(url string, comment Comment) error {
+// PutComment updates comment for locator.URL with mutable part of comment
+func (b *BoltDB) PutComment(locator Locator, comment Comment) error {
 
-	if curComment, err := b.getComment(url, comment.ID); err == nil {
+	if curComment, err := b.GetComment(locator, comment.ID); err == nil {
 		// preserve immutable fields
 		comment.ParentID = curComment.ParentID
 		comment.Locator = curComment.Locator
@@ -438,9 +407,9 @@ func (b *BoltDB) putComment(url string, comment Comment) error {
 	}
 
 	return b.Update(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte(url))
+		bucket := tx.Bucket([]byte(locator.URL))
 		if bucket == nil {
-			return errors.Errorf("no bucket %s in store", url)
+			return errors.Errorf("no bucket %s in store", locator.URL)
 		}
 
 		// serialize comment to json []byte for bolt and save
@@ -449,7 +418,7 @@ func (b *BoltDB) putComment(url string, comment Comment) error {
 			return errors.Wrap(jerr, "can't marshal comment")
 		}
 		if err := bucket.Put([]byte(comment.ID), jdata); err != nil {
-			return errors.Wrapf(err, "failed to put key %s to bucket %s", comment.ID, url)
+			return errors.Wrapf(err, "failed to put key %s to bucket %s", comment.ID, locator.URL)
 		}
 		return nil
 	})

@@ -45,7 +45,7 @@ func TestBoltDB_Delete(t *testing.T) {
 	assert.Equal(t, 1, len(comments), "only 1 left in last")
 }
 
-func TestBoltDB_Get(t *testing.T) {
+func TestBoltDB_GetByID(t *testing.T) {
 	defer os.Remove(testDb)
 	b := prep(t)
 
@@ -53,11 +53,11 @@ func TestBoltDB_Get(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(res))
 
-	comment, err := b.Get(Locator{URL: "https://radio-t.com"}, res[1].ID)
+	comment, err := b.GetByID(Locator{URL: "https://radio-t.com"}, res[1].ID)
 	assert.Nil(t, err)
 	assert.Equal(t, "some text2", comment.Text)
 
-	comment, err = b.Get(Locator{URL: "https://radio-t.com"}, "1234567")
+	comment, err = b.GetByID(Locator{URL: "https://radio-t.com"}, "1234567")
 	assert.NotNil(t, err)
 }
 
@@ -74,31 +74,6 @@ func TestBoltDB_Last(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(res))
 	assert.Equal(t, "some text2", res[0].Text)
-}
-
-func TestBoltDB_Vote(t *testing.T) {
-	defer os.Remove(testDb)
-	b := prep(t)
-
-	res, err := b.Last(Locator{URL: "https://radio-t.com"}, 0)
-	t.Logf("%+v", res[0])
-	assert.Nil(t, err)
-	assert.Equal(t, 2, len(res))
-	assert.Equal(t, 0, res[0].Score)
-	assert.Equal(t, map[string]bool{}, res[0].Votes)
-
-	c, err := b.Vote(Locator{URL: "https://radio-t.com"}, res[0].ID, "user1", true)
-	assert.Nil(t, err)
-	assert.Equal(t, 1, c.Score)
-	assert.Equal(t, map[string]bool{"user1": true}, c.Votes)
-
-	_, err = b.Vote(Locator{URL: "https://radio-t.com"}, res[0].ID, "user1", true)
-	assert.NotNil(t, err, "double-voting rejected")
-
-	res, err = b.Last(Locator{URL: "https://radio-t.com"}, 0)
-	assert.Nil(t, err)
-	assert.Equal(t, 2, len(res))
-	assert.Equal(t, 1, res[0].Score)
 }
 
 func TestBoltDB_Count(t *testing.T) {
@@ -141,35 +116,11 @@ func TestBoltDB_List(t *testing.T) {
 	assert.Equal(t, []string{"https://radio-t.com", "https://radio-t.com/2"}, res)
 }
 
-func TestBoltDB_Pin(t *testing.T) {
-	defer os.Remove(testDb)
-	b := prep(t)
-
-	res, err := b.Last(Locator{URL: "https://radio-t.com"}, 0)
-	t.Logf("%+v", res[0])
-	assert.Nil(t, err)
-	assert.Equal(t, 2, len(res))
-	assert.Equal(t, false, res[0].Pin)
-
-	err = b.SetPin(Locator{URL: "https://radio-t.com"}, res[0].ID, true)
-	assert.Nil(t, err)
-
-	c, err := b.Get(Locator{URL: "https://radio-t.com"}, res[0].ID)
-	assert.Nil(t, err)
-	assert.Equal(t, true, c.Pin)
-
-	err = b.SetPin(Locator{URL: "https://radio-t.com"}, res[0].ID, false)
-	assert.Nil(t, err)
-	c, err = b.Get(Locator{URL: "https://radio-t.com"}, res[0].ID)
-	assert.Nil(t, err)
-	assert.Equal(t, false, c.Pin)
-}
-
 func TestBoltDB_GetForUser(t *testing.T) {
 	defer os.Remove(testDb)
 	b := prep(t)
 
-	res, err := b.GetForUser(Locator{SiteID: "radio-t"}, "user1")
+	res, err := b.GetByUser(Locator{SiteID: "radio-t"}, "user1")
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(res))
 	assert.Equal(t, "some text2", res[0].Text, "sorted by -time")

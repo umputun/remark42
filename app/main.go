@@ -72,12 +72,13 @@ func main() {
 		return
 	}
 
+	dataService := store.Service{Interface: dataStore}
 	sessionStore := sessions.NewFilesystemStore(opts.ServerCommand.SessionStore, []byte(opts.ServerCommand.StoreKey))
 	exporter := migrator.Remark{DataStore: dataStore}
 
 	srv := rest.Server{
 		Version:      revision,
-		Store:        dataStore,
+		DataService:  dataService,
 		SessionStore: sessionStore,
 		Admins:       opts.Admins,
 		DevMode:      opts.DevMode,

@@ -54,18 +54,18 @@ type Request struct {
 // Interface defines basic CRUD for comments
 type Interface interface {
 	Create(comment Comment) (commentID string, err error)
+	GetComment(locator Locator, commentID string) (comment Comment, err error)
+	PutComment(locator Locator, comment Comment) error
 	Delete(locator Locator, commentID string) error
 	Find(request Request) ([]Comment, error)
 	Last(locator Locator, max int) ([]Comment, error)
-	Get(locator Locator, commentID string) (Comment, error)
-	Vote(locator Locator, commentID string, userID string, val bool) (Comment, error)
+	GetByID(locator Locator, commentID string) (Comment, error)
+	GetByUser(locator Locator, userID string) ([]Comment, error)
 	Count(locator Locator) (int, error)
 	List(locator Locator) ([]string, error)
-	GetForUser(locator Locator, userID string) ([]Comment, error)
 
 	SetBlock(locator Locator, userID string, status bool) error
 	IsBlocked(locator Locator, userID string) bool
-	SetPin(locator Locator, commentID string, status bool) error
 }
 
 func makeCommentID() string {

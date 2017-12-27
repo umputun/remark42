@@ -15,9 +15,9 @@ import (
 
 // admin provides router for all requests available for admin only
 type admin struct {
-	dataStore store.Interface
-	exporter  migrator.Exporter
-	respCache *cache.Cache
+	dataService store.Service
+	exporter    migrator.Exporter
+	respCache   *cache.Cache
 }
 
 func (a *admin) routes() chi.Router {
@@ -37,7 +37,7 @@ func (a *admin) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[INFO] delete comment %s", id)
 
 	url := r.URL.Query().Get("url")
-	err := a.dataStore.Delete(store.Locator{URL: url}, id)
+	err := a.dataService.Delete(store.Locator{URL: url}, id)
 	if err != nil {
 		log.Printf("[WARN] can't delete comment, %s", err)
 		httpError(w, r, http.StatusInternalServerError, err, "can't delete comment")
@@ -54,7 +54,7 @@ func (a *admin) setBlockCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	blockStatus := r.URL.Query().Get("block") == "1"
 
-	if err := a.dataStore.SetBlock(store.Locator{SiteID: siteID}, userID, blockStatus); err != nil {
+	if err := a.dataService.SetBlock(store.Locator{SiteID: siteID}, userID, blockStatus); err != nil {
 		httpError(w, r, http.StatusBadRequest, err, "can't set blocking status")
 		return
 	}
@@ -68,7 +68,7 @@ func (a *admin) setPinCtrl(w http.ResponseWriter, r *http.Request) {
 	url := r.URL.Query().Get("url")
 	pinStatus := r.URL.Query().Get("pin") == "1"
 
-	if err := a.dataStore.SetPin(store.Locator{URL: url}, commentID, pinStatus); err != nil {
+	if err := a.dataService.SetPin(store.Locator{URL: url}, commentID, pinStatus); err != nil {
 		httpError(w, r, http.StatusBadRequest, err, "can't set pin status")
 		return
 	}
@@ -84,5 +84,5 @@ func (a *admin) exportCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 }
 func (a *admin) checkBlocked(locator store.Locator, user store.User) bool {
-	return a.dataStore.IsBlocked(store.Locator{}, user.ID)
+	return a.dataService.IsBlocked(store.Locator{}, user.ID)
 }

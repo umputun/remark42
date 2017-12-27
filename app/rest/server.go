@@ -27,7 +27,7 @@ import (
 // Server is a rest access server
 type Server struct {
 	Version      string
-	Store        store.Interface
+	DataService  store.Service
 	Admins       []string
 	AuthGoogle   *auth.Provider
 	AuthGithub   *auth.Provider
@@ -80,7 +80,7 @@ func (s *Server) Run() {
 			rauth.Get("/user", s.userInfoCtrl)
 			rauth.Put("/vote/{id}", s.voteCtrl)
 
-			s.mod = admin{dataStore: s.Store, exporter: s.Exporter, respCache: s.respCache}
+			s.mod = admin{dataService: s.DataService, exporter: s.Exporter, respCache: s.respCache}
 			rauth.Mount("/admin", s.mod.routes())
 		})
 
@@ -140,7 +140,7 @@ func (s *Server) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, err := s.Store.Create(comment)
+	id, err := s.DataService.Create(comment)
 	if err != nil {
 		log.Printf("[WARN] can't save comment, %s", err)
 		httpError(w, r, http.StatusInternalServerError, err, "can't save comment")
@@ -160,7 +160,7 @@ func (s *Server) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[DEBUG] delete comment %s", id)
 
 	url := r.URL.Query().Get("url")
-	err := s.Store.Delete(store.Locator{URL: url}, id)
+	err := s.DataService.Delete(store.Locator{URL: url}, id)
 	if err != nil {
 		log.Printf("[WARN] can't delete comment, %s", err)
 		httpError(w, r, http.StatusInternalServerError, err, "can't delete comment")
@@ -185,7 +185,7 @@ func (s *Server) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	comments, err := s.Store.Find(store.Request{Locator: store.Locator{URL: url}, Sort: r.URL.Query().Get("sort")})
+	comments, err := s.DataService.Find(store.Request{Locator: store.Locator{URL: url}, Sort: r.URL.Query().Get("sort")})
 	if err != nil {
 		log.Printf("[WARN] can't get comments for %s, %s", url, err)
 		httpError(w, r, http.StatusInternalServerError, err, "can't load comments comment")
@@ -216,7 +216,7 @@ func (s *Server) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	comments, err := s.Store.Last(store.Locator{}, max)
+	comments, err := s.DataService.Last(store.Locator{}, max)
 	if err != nil {
 		log.Printf("[WARN] can't get last comments, %s", err)
 		httpError(w, r, http.StatusInternalServerError, err, "can't get last comments")
@@ -236,7 +236,7 @@ func (s *Server) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[DEBUG] get comments by id %s, %s", id, url)
 
-	comment, err := s.Store.Get(store.Locator{URL: url}, id)
+	comment, err := s.DataService.GetByID(store.Locator{URL: url}, id)
 	if err != nil {
 		log.Printf("[WARN] can't get comment, %s", err)
 		httpError(w, r, http.StatusInternalServerError, err, "can't get comment by id")
@@ -260,7 +260,7 @@ func (s *Server) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	comments, err := s.Store.GetForUser(store.Locator{}, userID)
+	comments, err := s.DataService.GetByUser(store.Locator{}, userID)
 	if err != nil {
 		log.Printf("[WARN] can't get comment, %s", err)
 		httpError(w, r, http.StatusBadRequest, err, "can't get comment by user id")
@@ -285,7 +285,7 @@ func (s *Server) userInfoCtrl(w http.ResponseWriter, r *http.Request) {
 // GET /count?url=post-url
 func (s *Server) countCtrl(w http.ResponseWriter, r *http.Request) {
 	url := r.URL.Query().Get("url")
-	count, err := s.Store.Count(store.Locator{URL: url})
+	count, err := s.DataService.Count(store.Locator{URL: url})
 	if err != nil {
 		httpError(w, r, http.StatusBadRequest, err, "can't get count")
 		return
@@ -308,7 +308,7 @@ func (s *Server) voteCtrl(w http.ResponseWriter, r *http.Request) {
 	url := r.URL.Query().Get("url")
 	vote := r.URL.Query().Get("vote") == "1"
 
-	comment, err := s.Store.Vote(store.Locator{URL: url}, id, user.ID, vote)
+	comment, err := s.DataService.Vote(store.Locator{URL: url}, id, user.ID, vote)
 	if err != nil {
 		log.Printf("[WARN] vote rejected for %s - %s, %s", user.ID, id, err)
 		httpError(w, r, http.StatusBadRequest, err, "can't vote for comment")
