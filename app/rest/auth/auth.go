@@ -180,7 +180,9 @@ func (p Provider) randToken() string {
 		log.Fatalf("[ERROR] can't get randoms, %s", err)
 	}
 	s := sha1.New()
-	_, _ = s.Write(b)
+	if _, err := s.Write(b); err != nil {
+		log.Printf("[WARN] can't write randoms, %s", err)
+	}
 	return fmt.Sprintf("%x", s.Sum(nil))
 }
 

@@ -1,0 +1,15 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "metalinter",
+            "type": "shell",
+            "command": "gometalinter --disable-all --deadline=60s --vendor --enable=vet --enable=vetshadow --enable=golint  --enable=staticcheck --enable=ineffassign --enable=goconst --enable=errcheck --enable=unconvert --enable=deadcode  --enable=gosimple --enable=gas --exclude=test --exclude=vendor ${workspaceFolder}/app/...",
+            "problemMatcher": [
+                "$go"
+            ]
+        }
+    ]
+}
