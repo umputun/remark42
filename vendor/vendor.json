@@ -64,12 +64,6 @@
 			"revisionTime": "2017-07-06T22:11:03Z"
 		},
 		{
-			"checksumSHA1": "izyjPiujV6Bi1yvzYi3q2I8mC8A=",
-			"path": "github.com/go-errors/errors",
-			"revision": "a41850380601eeb43f4350f7d17c6bbd8944aaf8",
-			"revisionTime": "2015-09-06T02:33:21Z"
-		},
-		{
 			"checksumSHA1": "g/V4qrXjUGG9B+e3hB+4NAYJ5Gs=",
 			"path": "github.com/gorilla/context",
 			"revision": "08b5f424b9271eedf6f9f0ce86cb9396ed337a42",
