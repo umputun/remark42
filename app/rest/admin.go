@@ -30,14 +30,14 @@ func (a *admin) routes() chi.Router {
 	return router
 }
 
-// DELETE /comment/{id}?url=post-url
+// DELETE /comment/{id}?site=siteID&url=post-url
 func (a *admin) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
+	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	log.Printf("[INFO] delete comment %s", id)
 
-	url := r.URL.Query().Get("url")
-	err := a.dataService.Delete(store.Locator{URL: url}, id)
+	err := a.dataService.Delete(locator, id)
 	if err != nil {
 		log.Printf("[WARN] can't delete comment, %s", err)
 		httpError(w, r, http.StatusInternalServerError, err, "can't delete comment")
@@ -45,7 +45,7 @@ func (a *admin) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	a.respCache.Flush()
 	render.Status(r, http.StatusOK)
-	render.JSON(w, r, JSON{"id": id, "url": url})
+	render.JSON(w, r, JSON{"id": id, "loc": locator})
 }
 
 // PUT /user/{userid}?site=side-id&block=1
@@ -62,18 +62,18 @@ func (a *admin) setBlockCtrl(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, JSON{"user_id": userID, "site_id": siteID, "block": blockStatus})
 }
 
-// PUT /pin/{id}?url=post-url&pin=1
+// PUT /pin/{id}?site=siteID&url=post-url&pin=1
 func (a *admin) setPinCtrl(w http.ResponseWriter, r *http.Request) {
 	commentID := chi.URLParam(r, "id")
-	url := r.URL.Query().Get("url")
+	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	pinStatus := r.URL.Query().Get("pin") == "1"
 
-	if err := a.dataService.SetPin(store.Locator{URL: url}, commentID, pinStatus); err != nil {
+	if err := a.dataService.SetPin(locator, commentID, pinStatus); err != nil {
 		httpError(w, r, http.StatusBadRequest, err, "can't set pin status")
 		return
 	}
 	a.respCache.Flush()
-	render.JSON(w, r, JSON{"id": commentID, "url": url, "pin": pinStatus})
+	render.JSON(w, r, JSON{"id": commentID, "loc": locator, "pin": pinStatus})
 }
 
 // GET /export?site=site-id
@@ -84,5 +84,5 @@ func (a *admin) exportCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 }
 func (a *admin) checkBlocked(locator store.Locator, user store.User) bool {
-	return a.dataService.IsBlocked(store.Locator{}, user.ID)
+	return a.dataService.IsBlocked(locator, user.ID)
 }

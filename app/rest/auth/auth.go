@@ -37,7 +37,7 @@ type Params struct {
 	Cid          string
 	Csecret      string
 	SessionStore *sessions.FilesystemStore
-	SiteURL      string
+	RemarkURL    string
 }
 
 // newProvider makes auth for given provider

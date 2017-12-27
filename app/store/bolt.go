@@ -21,7 +21,7 @@ import (
 //    is a bucket with ts:reference
 //  - blocking info sits in "block" bucket. Key is userID, value - ts
 type BoltDB struct {
-	*bolt.DB
+	dbs map[string]*bolt.DB
 }
 
 const (
@@ -32,16 +32,24 @@ const (
 	userLimit        = 100
 )
 
+// BoltSite defines single site param
+type BoltSite struct {
+	FileName string
+	SiteID   string
+}
+
 // NewBoltDB makes persistent boltdb-based store
-func NewBoltDB(dbFile string) (*BoltDB, error) {
-	log.Printf("[INFO] bolt store, %s", dbFile)
-	result := BoltDB{}
-	db, err := bolt.Open(dbFile, 0600, &bolt.Options{Timeout: 5 * time.Second})
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to make boltdb for %s", dbFile)
+func NewBoltDB(sites ...BoltSite) (*BoltDB, error) {
+	log.Printf("[INFO] bolt store for sites %+v", sites)
+	result := BoltDB{dbs: make(map[string]*bolt.DB)}
+	for _, site := range sites {
+		db, err := bolt.Open(site.FileName, 0600, &bolt.Options{Timeout: 5 * time.Second})
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to make boltdb for %s", site.FileName)
+		}
+		result.dbs[site.SiteID] = db
 	}
-	result.DB = db
-	return &result, err
+	return &result, nil
 }
 
 // Create saves new comment to store
@@ -57,7 +65,11 @@ func (b *BoltDB) Create(comment Comment) (string, error) {
 	comment.Votes = make(map[string]bool)
 	comment = sanitizeComment(comment) // clear potentially dangerous js from all parts of comment
 
-	err := b.Update(func(tx *bolt.Tx) error {
+	bdb, err := b.db(comment.Locator.SiteID)
+	if err != nil {
+		return "", err
+	}
+	err = bdb.Update(func(tx *bolt.Tx) error {
 		bucket, e := tx.CreateBucketIfNotExists([]byte(comment.Locator.URL)) // bucket per post url
 		if e != nil {
 			return errors.Wrapf(e, "can't make or open bucket", comment.Locator.URL)
@@ -112,7 +124,12 @@ func (b *BoltDB) Create(comment Comment) (string, error) {
 // Delete removes comment locator from the store
 func (b *BoltDB) Delete(locator Locator, commentID string) error {
 
-	return b.Update(func(tx *bolt.Tx) error {
+	bdb, err := b.db(locator.SiteID)
+	if err != nil {
+		return err
+	}
+
+	return bdb.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(locator.URL))
 		if bucket == nil {
 			return errors.Errorf("no bucket %s in store", locator.URL)
@@ -139,7 +156,12 @@ func (b *BoltDB) Delete(locator Locator, commentID string) error {
 func (b *BoltDB) Find(request Request) ([]Comment, error) {
 	res := []Comment{}
 
-	err := b.View(func(tx *bolt.Tx) error {
+	bdb, err := b.db(request.Locator.SiteID)
+	if err != nil {
+		return nil, err
+	}
+
+	err = bdb.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(request.Locator.URL))
 		if bucket == nil {
 			return errors.Errorf("no bucket %s in store", request.Locator.URL)
@@ -181,7 +203,12 @@ func (b *BoltDB) Find(request Request) ([]Comment, error) {
 // GetByID returns comment by id across posts
 func (b *BoltDB) GetByID(locator Locator, commentID string) (comment Comment, err error) {
 
-	err = b.View(func(tx *bolt.Tx) error {
+	bdb, err := b.db(locator.SiteID)
+	if err != nil {
+		return comment, err
+	}
+
+	err = bdb.View(func(tx *bolt.Tx) error {
 
 		lastBucket := tx.Bucket([]byte(lastBucketName))
 		if lastBucket == nil {
@@ -224,7 +251,12 @@ func (b *BoltDB) Last(locator Locator, max int) (result []Comment, err error) {
 		max = lastLimit
 	}
 
-	err = b.View(func(tx *bolt.Tx) error {
+	bdb, err := b.db(locator.SiteID)
+	if err != nil {
+		return nil, err
+	}
+
+	err = bdb.View(func(tx *bolt.Tx) error {
 		lastBucket := tx.Bucket([]byte(lastBucketName))
 		if lastBucket == nil {
 			return errors.Errorf("no bucket %s in store", lastBucketName)
@@ -264,7 +296,13 @@ func (b *BoltDB) Last(locator Locator, max int) (result []Comment, err error) {
 
 // Count returns number of comments for locator
 func (b *BoltDB) Count(locator Locator) (count int, err error) {
-	err = b.View(func(tx *bolt.Tx) error {
+
+	bdb, err := b.db(locator.SiteID)
+	if err != nil {
+		return 0, err
+	}
+
+	err = bdb.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(locator.URL))
 		if bucket == nil {
 			return errors.Errorf("no bucket %s in store", locator.URL)
@@ -278,7 +316,13 @@ func (b *BoltDB) Count(locator Locator) (count int, err error) {
 
 // SetBlock blocks/unblocks user for given site
 func (b *BoltDB) SetBlock(locator Locator, userID string, status bool) error {
-	return b.Update(func(tx *bolt.Tx) error {
+
+	bdb, err := b.db(locator.SiteID)
+	if err != nil {
+		return err
+	}
+
+	return bdb.Update(func(tx *bolt.Tx) error {
 
 		bucket, e := tx.CreateBucketIfNotExists([]byte(blocksBucketName))
 		if e != nil {
@@ -301,7 +345,13 @@ func (b *BoltDB) SetBlock(locator Locator, userID string, status bool) error {
 
 // IsBlocked checks if user blocked
 func (b *BoltDB) IsBlocked(locator Locator, userID string) (result bool) {
-	_ = b.View(func(tx *bolt.Tx) error {
+
+	bdb, err := b.db(locator.SiteID)
+	if err != nil {
+		return false
+	}
+
+	_ = bdb.View(func(tx *bolt.Tx) error {
 		result = false
 		bucket := tx.Bucket([]byte(blocksBucketName))
 		if bucket != nil && bucket.Get([]byte(userID)) != nil {
@@ -314,7 +364,13 @@ func (b *BoltDB) IsBlocked(locator Locator, userID string) (result bool) {
 
 // List returns list of buckets, which is list of all commented posts
 func (b BoltDB) List(locator Locator) (result []string, err error) {
-	err = b.View(func(tx *bolt.Tx) error {
+
+	bdb, err := b.db(locator.SiteID)
+	if err != nil {
+		return nil, err
+	}
+
+	err = bdb.View(func(tx *bolt.Tx) error {
 		return tx.ForEach(func(name []byte, _ *bolt.Bucket) error {
 			if string(name) != lastBucketName && string(name) != userBucketName {
 				result = append(result, string(name))
@@ -332,8 +388,12 @@ func (b *BoltDB) GetByUser(locator Locator, userID string) (comments []Comment, 
 	comments = []Comment{}
 	commentRefs := []string{}
 
+	bdb, err := b.db(locator.SiteID)
+	if err != nil {
+		return nil, err
+	}
 	// get list of references to comments
-	err = b.View(func(tx *bolt.Tx) error {
+	err = bdb.View(func(tx *bolt.Tx) error {
 		userBucket := tx.Bucket([]byte(userBucketName))
 		if userBucket == nil {
 			return errors.Errorf("no bucket %s in store", userBucketName)
@@ -375,7 +435,12 @@ func (b *BoltDB) GetByUser(locator Locator, userID string) (comments []Comment, 
 // Get for locator.URL and commentID string
 func (b *BoltDB) Get(locator Locator, commentID string) (comment Comment, err error) {
 
-	err = b.View(func(tx *bolt.Tx) error {
+	bdb, err := b.db(locator.SiteID)
+	if err != nil {
+		return comment, err
+	}
+
+	err = bdb.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(locator.URL))
 		if bucket == nil {
 			return errors.Errorf("no bucket %s in store", locator.URL)
@@ -406,7 +471,12 @@ func (b *BoltDB) Put(locator Locator, comment Comment) error {
 		comment.User = curComment.User
 	}
 
-	return b.Update(func(tx *bolt.Tx) error {
+	bdb, err := b.db(locator.SiteID)
+	if err != nil {
+		return err
+	}
+
+	return bdb.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(locator.URL))
 		if bucket == nil {
 			return errors.Errorf("no bucket %s in store", locator.URL)
@@ -422,6 +492,13 @@ func (b *BoltDB) Put(locator Locator, comment Comment) error {
 		}
 		return nil
 	})
+}
+
+func (b *BoltDB) db(siteID string) (*bolt.DB, error) {
+	if res, ok := b.dbs[siteID]; ok {
+		return res, nil
+	}
+	return nil, errors.Errorf("site %s not found", siteID)
 }
 
 // ref represents key:value pair for extra, index-only buckets

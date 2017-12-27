@@ -33,7 +33,7 @@ func TestRemark_Export(t *testing.T) {
 func prep(t *testing.T) *store.BoltDB {
 	os.Remove(testDb)
 
-	b, err := store.NewBoltDB(testDb)
+	b, err := store.NewBoltDB(store.BoltSite{SiteID: "radio-t", FileName: testDb})
 	assert.Nil(t, err)
 
 	comment := store.Comment{

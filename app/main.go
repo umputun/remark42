@@ -16,9 +16,10 @@ import (
 )
 
 var opts struct {
-	DBFile  string   `long:"db" env:"BOLTDB_FILE" default:"/tmp/remark.db" description:"bolt file name"`
-	SiteURL string   `long:"site-url" env:"REMARK_URL" default:"http://remark.umputun.com:8080" description:"url to remark"`
-	Admins  []string `long:"admin" env:"ADMIN" default:"umputun@gmail.com" description:"admin(s) names" env-delim:","`
+	BoltPath  string   `long:"bolt" env:"BOLTDB_PATH" default:"/tmp" description:"parent dir for bolt files"`
+	Sites     []string `long:"site" env:"SITE" default:"demo" description:"site names" env-delim:","`
+	RemarkURL string   `long:"url" env:"REMARK_URL" default:"http://remark.umputun.com:8080" description:"url to remark"`
+	Admins    []string `long:"admin" env:"ADMIN" default:"umputun@gmail.com" description:"admin(s) names" env-delim:","`
 
 	DevMode bool `long:"dev" env:"DEV" description:"development mode, no auth enforced"`
 	Dbg     bool `long:"dbg" env:"DEBUG" description:"debug mode"`
@@ -37,7 +38,7 @@ var opts struct {
 
 	ImportCommand struct {
 		Provider  string `long:"provider" default:"disqus" description:"provider type"`
-		SiteID    string `long:"site" default:"site" description:"site ID"`
+		SiteID    string `long:"site" default:"demo" description:"site ID"`
 		InputFile string `long:"file" default:"disqus.xml" description:"input file"`
 	} `command:"import" description:"import comments from external sources"`
 }
@@ -54,7 +55,11 @@ func main() {
 	setupLog(opts.Dbg)
 	log.Print("[INFO] started remark")
 
-	dataStore, err := store.NewBoltDB(opts.DBFile)
+	boltSites := []store.BoltSite{}
+	for _, site := range opts.Sites {
+		boltSites = append(boltSites, store.BoltSite{SiteID: site, FileName: fmt.Sprintf("%s/%s.db", opts.BoltPath, site)})
+	}
+	dataStore, err := store.NewBoltDB(boltSites...)
 	if err != nil {
 		log.Fatalf("[ERROR] can't initialize data store, %+v", err)
 	}
@@ -87,13 +92,13 @@ func main() {
 			Cid:          opts.ServerCommand.GoogleCID,
 			Csecret:      opts.ServerCommand.GoogleCSEC,
 			SessionStore: sessionStore,
-			SiteURL:      opts.SiteURL,
+			RemarkURL:    opts.RemarkURL,
 		}),
 		AuthGithub: auth.NewGithub(auth.Params{
 			Cid:          opts.ServerCommand.GithubCID,
 			Csecret:      opts.ServerCommand.GithubCSEC,
 			SessionStore: sessionStore,
-			SiteURL:      opts.SiteURL,
+			RemarkURL:    opts.RemarkURL,
 		}),
 	}
 

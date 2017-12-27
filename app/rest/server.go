@@ -150,19 +150,19 @@ func (s *Server) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	s.respCache.Flush()
 
 	render.Status(r, http.StatusAccepted)
-	render.JSON(w, r, JSON{"id": id, "url": comment.Locator.URL})
+	render.JSON(w, r, JSON{"id": id, "loc": comment.Locator})
 }
 
-// DELETE /comment/{id}?url=post-url
+// DELETE /comment/{id}?site=siteID&url=post-url
 func (s *Server) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	log.Printf("[DEBUG] delete comment %s", id)
 
-	url := r.URL.Query().Get("url")
-	err := s.DataService.Delete(store.Locator{URL: url}, id)
+	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
+	err := s.DataService.Delete(locator, id)
 	if err != nil {
-		log.Printf("[WARN] can't delete comment, %s", err)
+		log.Printf("[WARN] can't delete comment %s %+v, %s", id, locator, err)
 		httpError(w, r, http.StatusInternalServerError, err, "can't delete comment")
 		return
 	}
@@ -170,13 +170,13 @@ func (s *Server) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	s.respCache.Flush()
 
 	render.Status(r, http.StatusOK)
-	render.JSON(w, r, JSON{"id": id, "url": url})
+	render.JSON(w, r, JSON{"id": id, "loc": locator})
 }
 
-// GET /find?url=post-url&format=tree&sort=-time
+// GET /find?site=siteID&url=post-url&format=tree&sort=-time
 func (s *Server) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
-	url := r.URL.Query().Get("url")
-	log.Printf("[DEBUG] get comments for %s", url)
+	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
+	log.Printf("[DEBUG] get comments for %+v", locator)
 
 	cacheKey := r.URL.String()
 	if comments, ok := s.respCache.Get(cacheKey); ok {
@@ -185,9 +185,9 @@ func (s *Server) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	comments, err := s.DataService.Find(store.Request{Locator: store.Locator{URL: url}, Sort: r.URL.Query().Get("sort")})
+	comments, err := s.DataService.Find(store.Request{Locator: locator, Sort: r.URL.Query().Get("sort")})
 	if err != nil {
-		log.Printf("[WARN] can't get comments for %s, %s", url, err)
+		log.Printf("[WARN] can't get comments for %+v, %s", locator, err)
 		httpError(w, r, http.StatusInternalServerError, err, "can't load comments comment")
 		return
 	}
@@ -201,7 +201,7 @@ func (s *Server) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	renderJSONWithHTML(w, r, comments)
 }
 
-// GET /last/{max}?url=abc
+// GET /last/{max}?site=siteID
 func (s *Server) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	max, err := strconv.Atoi(chi.URLParam(r, "max"))
@@ -216,7 +216,7 @@ func (s *Server) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	comments, err := s.DataService.Last(store.Locator{}, max)
+	comments, err := s.DataService.Last(store.Locator{SiteID: r.URL.Query().Get("site")}, max)
 	if err != nil {
 		log.Printf("[WARN] can't get last comments, %s", err)
 		httpError(w, r, http.StatusInternalServerError, err, "can't get last comments")
@@ -228,15 +228,15 @@ func (s *Server) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	renderJSONWithHTML(w, r, comments)
 }
 
-// GET /id/{id}?url=post-url
+// GET /id/{id}?site=siteID&url=post-url
 func (s *Server) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
-	url := r.URL.Query().Get("url")
+	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 
-	log.Printf("[DEBUG] get comments by id %s, %s", id, url)
+	log.Printf("[DEBUG] get comments by id %s, %+v", id, locator)
 
-	comment, err := s.DataService.GetByID(store.Locator{URL: url}, id)
+	comment, err := s.DataService.GetByID(locator, id)
 	if err != nil {
 		log.Printf("[WARN] can't get comment, %s", err)
 		httpError(w, r, http.StatusInternalServerError, err, "can't get comment by id")
@@ -246,7 +246,7 @@ func (s *Server) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 	renderJSONWithHTML(w, r, comment)
 }
 
-// GET /comments?user=id
+// GET /comments?site=siteID&user=id
 func (s *Server) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	userID := r.URL.Query().Get("user")
@@ -260,7 +260,7 @@ func (s *Server) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	comments, err := s.DataService.GetByUser(store.Locator{}, userID)
+	comments, err := s.DataService.GetByUser(store.Locator{SiteID: r.URL.Query().Get("site")}, userID)
 	if err != nil {
 		log.Printf("[WARN] can't get comment, %s", err)
 		httpError(w, r, http.StatusBadRequest, err, "can't get comment by user id")
@@ -282,18 +282,18 @@ func (s *Server) userInfoCtrl(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, user)
 }
 
-// GET /count?url=post-url
+// GET /count?site=siteID&url=post-url
 func (s *Server) countCtrl(w http.ResponseWriter, r *http.Request) {
-	url := r.URL.Query().Get("url")
-	count, err := s.DataService.Count(store.Locator{URL: url})
+	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
+	count, err := s.DataService.Count(locator)
 	if err != nil {
 		httpError(w, r, http.StatusBadRequest, err, "can't get count")
 		return
 	}
-	render.JSON(w, r, JSON{"count": count, "url": url})
+	render.JSON(w, r, JSON{"count": count, "loc": locator})
 }
 
-// PUT /vote/{id}?url=post-url&vote=1
+// PUT /vote/{id}?site=siteID&url=post-url&vote=1
 func (s *Server) voteCtrl(w http.ResponseWriter, r *http.Request) {
 
 	user, err := auth.GetUserInfo(r)
@@ -301,14 +301,13 @@ func (s *Server) voteCtrl(w http.ResponseWriter, r *http.Request) {
 		httpError(w, r, http.StatusUnauthorized, err, "can't get user info")
 		return
 	}
-
+	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	id := chi.URLParam(r, "id")
 	log.Printf("[DEBUG] vote for comment %s", id)
 
-	url := r.URL.Query().Get("url")
 	vote := r.URL.Query().Get("vote") == "1"
 
-	comment, err := s.DataService.Vote(store.Locator{URL: url}, id, user.ID, vote)
+	comment, err := s.DataService.Vote(locator, id, user.ID, vote)
 	if err != nil {
 		log.Printf("[WARN] vote rejected for %s - %s, %s", user.ID, id, err)
 		httpError(w, r, http.StatusBadRequest, err, "can't vote for comment")
