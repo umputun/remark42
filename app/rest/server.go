@@ -253,14 +253,23 @@ func (s *Server) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[DEBUG] get comments by userID %s", userID)
 
-	comment, err := s.Store.GetForUser(store.Locator{}, userID)
+	cacheKey := r.URL.String()
+	if comments, ok := s.respCache.Get(cacheKey); ok {
+		log.Printf("[DEBUG] cash hit for %s", cacheKey)
+		renderJSONWithHTML(w, r, comments)
+		return
+	}
+
+	comments, err := s.Store.GetForUser(store.Locator{}, userID)
 	if err != nil {
 		log.Printf("[WARN] can't get comment, %s", err)
 		httpError(w, r, http.StatusBadRequest, err, "can't get comment by user id")
 		return
 	}
+
+	s.respCache.Set(cacheKey, comments, time.Hour)
 	render.Status(r, http.StatusOK)
-	renderJSONWithHTML(w, r, comment)
+	renderJSONWithHTML(w, r, comments)
 }
 
 // GET /user
