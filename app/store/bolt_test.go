@@ -172,6 +172,7 @@ func TestBoltDB_GetForUser(t *testing.T) {
 	res, err := b.GetForUser(Locator{SiteID: "radio-t"}, "user1")
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(res))
+	assert.Equal(t, "some text2", res[0].Text, "sorted by -time")
 }
 
 // makes new boltdb, put two records
