@@ -9,18 +9,18 @@ type Service struct {
 
 // SetPin pin/un-pin comment as special
 func (s *Service) SetPin(locator Locator, commentID string, status bool) error {
-	comment, err := s.GetComment(locator, commentID)
+	comment, err := s.Get(locator, commentID)
 	if err != nil {
 		return err
 	}
 	comment.Pin = status
-	return s.PutComment(locator, comment)
+	return s.Put(locator, comment)
 }
 
 // Vote for comment by id and locator
 func (s *Service) Vote(locator Locator, commentID string, userID string, val bool) (comment Comment, err error) {
 
-	comment, err = s.GetComment(locator, commentID)
+	comment, err = s.Get(locator, commentID)
 	if err != nil {
 		return comment, err
 	}
@@ -37,5 +37,5 @@ func (s *Service) Vote(locator Locator, commentID string, userID string, val boo
 		comment.Score--
 	}
 
-	return comment, s.PutComment(locator, comment)
+	return comment, s.Put(locator, comment)
 }

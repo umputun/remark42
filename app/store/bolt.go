@@ -372,8 +372,8 @@ func (b *BoltDB) GetByUser(locator Locator, userID string) (comments []Comment, 
 	return comments, err
 }
 
-// GetComment for locator.URL and commentID string
-func (b *BoltDB) GetComment(locator Locator, commentID string) (comment Comment, err error) {
+// Get for locator.URL and commentID string
+func (b *BoltDB) Get(locator Locator, commentID string) (comment Comment, err error) {
 
 	err = b.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(locator.URL))
@@ -395,10 +395,10 @@ func (b *BoltDB) GetComment(locator Locator, commentID string) (comment Comment,
 	return comment, err
 }
 
-// PutComment updates comment for locator.URL with mutable part of comment
-func (b *BoltDB) PutComment(locator Locator, comment Comment) error {
+// Put updates comment for locator.URL with mutable part of comment
+func (b *BoltDB) Put(locator Locator, comment Comment) error {
 
-	if curComment, err := b.GetComment(locator, comment.ID); err == nil {
+	if curComment, err := b.Get(locator, comment.ID); err == nil {
 		// preserve immutable fields
 		comment.ParentID = curComment.ParentID
 		comment.Locator = curComment.Locator
