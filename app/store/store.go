@@ -51,19 +51,28 @@ type Request struct {
 	Limit   int     `json:"limit"`
 }
 
-// Interface defines basic CRUD for comments
+// Interface combines all store interfaces
 type Interface interface {
+	Accessor
+	Admin
+}
+
+// Accessor defines all usual access ops avail for regular user
+type Accessor interface {
 	Create(comment Comment) (commentID string, err error)
 	Get(locator Locator, commentID string) (comment Comment, err error)
 	Put(locator Locator, comment Comment) error
-	Delete(locator Locator, commentID string) error
 	Find(request Request) ([]Comment, error)
 	Last(locator Locator, max int) ([]Comment, error)
 	GetByID(locator Locator, commentID string) (Comment, error)
 	GetByUser(locator Locator, userID string) ([]Comment, error)
 	Count(locator Locator) (int, error)
 	List(locator Locator) ([]string, error)
+}
 
+// Admin defines all store ops avail for admin only
+type Admin interface {
+	Delete(locator Locator, commentID string) error
 	SetBlock(locator Locator, userID string, status bool) error
 	IsBlocked(locator Locator, userID string) bool
 }
