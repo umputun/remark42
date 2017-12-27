@@ -16,6 +16,7 @@ import (
 	"github.com/go-chi/render"
 	"github.com/gorilla/context"
 	"github.com/gorilla/sessions"
+	"github.com/patrickmn/go-cache"
 
 	"github.com/umputun/remark/app/migrator"
 	"github.com/umputun/remark/app/rest/auth"
@@ -34,7 +35,8 @@ type Server struct {
 	Exporter     migrator.Exporter
 	DevMode      bool
 
-	mod admin
+	mod       admin
+	respCache *cache.Cache
 }
 
 // Run the lister and request's router, activate rest server
@@ -48,6 +50,8 @@ func (s *Server) Run() {
 		}
 		return modes
 	}
+
+	s.respCache = cache.New(time.Hour, 5*time.Minute)
 
 	router := chi.NewRouter()
 	router.Use(middleware.RealIP, Recoverer)
@@ -76,7 +80,7 @@ func (s *Server) Run() {
 			rauth.Get("/user", s.userInfoCtrl)
 			rauth.Put("/vote/{id}", s.voteCtrl)
 
-			s.mod = admin{dataStore: s.Store, exporter: s.Exporter}
+			s.mod = admin{dataStore: s.Store, exporter: s.Exporter, respCache: s.respCache}
 			rauth.Mount("/admin", s.mod.routes())
 		})
 
@@ -143,6 +147,8 @@ func (s *Server) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	s.respCache.Flush()
+
 	render.Status(r, http.StatusAccepted)
 	render.JSON(w, r, JSON{"id": id, "url": comment.Locator.URL})
 }
@@ -161,6 +167,8 @@ func (s *Server) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	s.respCache.Flush()
+
 	render.Status(r, http.StatusOK)
 	render.JSON(w, r, JSON{"id": id, "url": url})
 }
@@ -170,6 +178,13 @@ func (s *Server) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	url := r.URL.Query().Get("url")
 	log.Printf("[DEBUG] get comments for %s", url)
 
+	cacheKey := r.URL.String()
+	if comments, ok := s.respCache.Get(cacheKey); ok {
+		log.Printf("[DEBUG] cash hit for %s", cacheKey)
+		renderJSONWithHTML(w, r, comments)
+		return
+	}
+
 	comments, err := s.Store.Find(store.Request{Locator: store.Locator{URL: url}, Sort: r.URL.Query().Get("sort")})
 	if err != nil {
 		log.Printf("[WARN] can't get comments for %s, %s", url, err)
@@ -177,9 +192,12 @@ func (s *Server) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.URL.Query().Get("format") == "tree" {
+		s.respCache.Set(cacheKey, comments, time.Hour)
 		renderJSONWithHTML(w, r, format.MakeTree(comments, r.URL.Query().Get("sort")))
 		return
 	}
+
+	s.respCache.Set(cacheKey, comments, time.Hour)
 	renderJSONWithHTML(w, r, comments)
 }
 
@@ -191,12 +209,20 @@ func (s *Server) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		max = 0
 	}
 
+	cacheKey := r.URL.String()
+	if comments, ok := s.respCache.Get(cacheKey); ok {
+		log.Printf("[DEBUG] cash hit for %s", cacheKey)
+		renderJSONWithHTML(w, r, comments)
+		return
+	}
+
 	comments, err := s.Store.Last(store.Locator{}, max)
 	if err != nil {
 		log.Printf("[WARN] can't get last comments, %s", err)
 		httpError(w, r, http.StatusInternalServerError, err, "can't get last comments")
 		return
 	}
+	s.respCache.Set(cacheKey, comments, time.Hour)
 
 	render.Status(r, http.StatusOK)
 	renderJSONWithHTML(w, r, comments)
@@ -279,7 +305,7 @@ func (s *Server) voteCtrl(w http.ResponseWriter, r *http.Request) {
 		httpError(w, r, http.StatusBadRequest, err, "can't vote for comment")
 		return
 	}
-
+	s.respCache.Flush()
 	render.JSON(w, r, JSON{"id": comment.ID, "score": comment.Score})
 }
 
