@@ -17,8 +17,8 @@ import (
 
 var opts struct {
 	BoltPath  string   `long:"bolt" env:"BOLTDB_PATH" default:"/tmp" description:"parent dir for bolt files"`
-	Sites     []string `long:"site" env:"SITE" default:"demo" description:"site names" env-delim:","`
-	RemarkURL string   `long:"url" env:"REMARK_URL" default:"http://remark.umputun.com:8080" description:"url to remark"`
+	Sites     []string `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
+	RemarkURL string   `long:"url" env:"REMARK_URL" default:"https://remark42.com" description:"url to remark"`
 	Admins    []string `long:"admin" env:"ADMIN" default:"umputun@gmail.com" description:"admin(s) names" env-delim:","`
 
 	DevMode bool `long:"dev" env:"DEV" description:"development mode, no auth enforced"`
@@ -38,7 +38,7 @@ var opts struct {
 
 	ImportCommand struct {
 		Provider  string `long:"provider" default:"disqus" description:"provider type"`
-		SiteID    string `long:"site" default:"demo" description:"site ID"`
+		SiteID    string `long:"site" default:"remark" description:"site ID"`
 		InputFile string `long:"file" default:"disqus.xml" description:"input file"`
 	} `command:"import" description:"import comments from external sources"`
 }
