@@ -31,6 +31,7 @@ type Server struct {
 	Admins       []string
 	AuthGoogle   *auth.Provider
 	AuthGithub   *auth.Provider
+	AuthFacebook *auth.Provider
 	SessionStore *sessions.FilesystemStore
 	Exporter     migrator.Exporter
 	DevMode      bool
@@ -64,6 +65,7 @@ func (s *Server) Run() {
 
 	router.Mount("/auth/google", s.AuthGoogle.Routes())
 	router.Mount("/auth/github", s.AuthGithub.Routes())
+	router.Mount("/auth/facebook", s.AuthFacebook.Routes())
 
 	router.Route("/api/v1", func(rapi chi.Router) {
 		rapi.Get("/find", s.findCommentsCtrl)

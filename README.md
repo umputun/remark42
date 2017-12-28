@@ -2,7 +2,7 @@
 
 Remark42 ia a comment engine, self-hosted, lightweight, simple (but functional) what doesn't spy on users.
 
-- Supports social login via google and github
+- Supports social login via google, facebook and github
 - Moderation allowing admins to remove comments and block users
 - Voting and pinning system
 - Ability to sort comments
@@ -55,7 +55,7 @@ type User struct {
 }
 ```
 
-_currently supported providers are `google` and `github`_
+_currently supported providers are `google`, `facebook` and `github`_
 
 ### Commenting
 
@@ -102,10 +102,12 @@ Sort can be `time` or `score`. Supported sort order with prefix -/+, i.e. `-time
 - `GET /api/v1/id/{id}?site=site-id` - get comment by `id`
 - `GET /api/v1/comments?site=site-id&user=id` - get comment by `user id`
 - `GET /api/v1/count?site=site-id&url=post-url` - get comment's count for `{url}`
+- `GET /api/v1/user` - get user info, _auth required_
 - `PUT /api/v1/vote/{id}?site=site-id&url=post-url&vote=1` - vote for comment. `vote`=1 will increase score, -1 decreases. _auth required_
+
+### Admin
+
 - `DELETE /api/v1/admin/comment/{id}?site=site-id&url=post-url` - delete comment by `id`. _auth and admin required_
 - `PUT /api/v1/admin/user/{userid}?site=site-id&block=1` - block or unblock user. _auth and admin required_
 - `GET /api/v1/admin/export?site=side-id&block=1` - export all comments. _auth and admin required_
 - `PUT /api/v1/admin/pin/{id}?site=site-id&url=post-url&pin=1` - pin or unpin comment. _auth and admin required_
-- `GET /api/v1/user` - get user info, _auth required_
-

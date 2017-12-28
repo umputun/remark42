@@ -18,7 +18,7 @@ import (
 var opts struct {
 	BoltPath  string   `long:"bolt" env:"BOLTDB_PATH" default:"/tmp" description:"parent dir for bolt files"`
 	Sites     []string `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
-	RemarkURL string   `long:"url" env:"REMARK_URL" default:"https://remark42.com" description:"url to remark"`
+	RemarkURL string   `long:"url" env:"REMARK_URL" default:"http://remark42.com" description:"url to remark"`
 	Admins    []string `long:"admin" env:"ADMIN" default:"umputun@gmail.com" description:"admin(s) names" env-delim:","`
 
 	DevMode bool `long:"dev" env:"DEV" description:"development mode, no auth enforced"`
@@ -30,10 +30,12 @@ var opts struct {
 		SessionStore string `long:"session" env:"SESSION_STORE" default:"/tmp" description:"path to session store directory"`
 		StoreKey     string `long:"store-key" env:"STORE_KEY" default:"secure-store-key" description:"store key"`
 
-		GoogleCID  string `long:"google-cid" env:"REMARK_GOOGLE_CID" description:"Google OAuth client ID"`
-		GoogleCSEC string `long:"google-csec" env:"REMARK_GOOGLE_CSEC" description:"Google OAuth client secret"`
-		GithubCID  string `long:"github-cid" env:"REMARK_GITHUB_CID" description:"Github OAuth client ID"`
-		GithubCSEC string `long:"github-csec" env:"REMARK_GITHUB_CSEC" description:"Github OAuth client secret"`
+		GoogleCID    string `long:"google-cid" env:"REMARK_GOOGLE_CID" description:"Google OAuth client ID"`
+		GoogleCSEC   string `long:"google-csec" env:"REMARK_GOOGLE_CSEC" description:"Google OAuth client secret"`
+		GithubCID    string `long:"github-cid" env:"REMARK_GITHUB_CID" description:"Github OAuth client ID"`
+		GithubCSEC   string `long:"github-csec" env:"REMARK_GITHUB_CSEC" description:"Github OAuth client secret"`
+		FacebookCID  string `long:"facebook-cid" env:"REMARK_FACEBOOK_CID" description:"Facebook OAuth client ID"`
+		FacebookCSEC string `long:"facebook-csec" env:"REMARK_FACEBOOK_CSEC" description:"Facebook OAuth client secret"`
 	} `command:"server" description:"run server"`
 
 	ImportCommand struct {
@@ -97,6 +99,12 @@ func main() {
 		AuthGithub: auth.NewGithub(auth.Params{
 			Cid:          opts.ServerCommand.GithubCID,
 			Csecret:      opts.ServerCommand.GithubCSEC,
+			SessionStore: sessionStore,
+			RemarkURL:    opts.RemarkURL,
+		}),
+		AuthFacebook: auth.NewFacebook(auth.Params{
+			Cid:          opts.ServerCommand.FacebookCID,
+			Csecret:      opts.ServerCommand.FacebookCSEC,
 			SessionStore: sessionStore,
 			RemarkURL:    opts.RemarkURL,
 		}),
