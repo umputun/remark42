@@ -62,11 +62,8 @@ func (s *Server) Run() {
 	// If you aren't using gorilla/mux, you need to wrap your handlers with context.ClearHandler
 	router.Use(context.ClearHandler)
 
-	router.Get("/login/google", s.AuthGoogle.LoginHandler)
-	router.Get("/auth/google", s.AuthGoogle.AuthHandler)
-	router.Get("/logout", s.AuthGithub.LogoutHandler) // can hit any provider
-	router.Get("/login/github", s.AuthGithub.LoginHandler)
-	router.Get("/auth/github", s.AuthGithub.AuthHandler)
+	router.Mount("/auth/google", s.AuthGoogle.Routes())
+	router.Mount("/auth/github", s.AuthGithub.Routes())
 
 	router.Route("/api/v1", func(rapi chi.Router) {
 		rapi.Get("/find", s.findCommentsCtrl)
@@ -75,11 +72,13 @@ func (s *Server) Run() {
 		rapi.Get("/last/{max}", s.lastCommentsCtrl)
 		rapi.Get("/count", s.countCtrl)
 
+		// require auth
 		rapi.With(auth.Auth(s.SessionStore, s.Admins, applyDevMode(auth.Full))).Group(func(rauth chi.Router) {
 			rauth.Post("/comment", s.createCommentCtrl)
 			rauth.Get("/user", s.userInfoCtrl)
 			rauth.Put("/vote/{id}", s.voteCtrl)
 
+			// require admin
 			s.mod = admin{dataService: s.DataService, exporter: s.Exporter, respCache: s.respCache}
 			rauth.Mount("/admin", s.mod.routes())
 		})

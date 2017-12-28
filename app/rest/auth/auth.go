@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
 	"github.com/gorilla/sessions"
 	"golang.org/x/oauth2"
@@ -55,6 +56,15 @@ func initProvider(p Params, provider Provider) *Provider {
 	provider.conf = &conf
 	provider.FilesystemStore = p.SessionStore
 	return &provider
+}
+
+// Routes returns auth routes for given provider
+func (p Provider) Routes() chi.Router {
+	router := chi.NewRouter()
+	router.Get("/login", p.LoginHandler)
+	router.Get("/callback", p.AuthHandler)
+	router.Get("/logout", p.LogoutHandler)
+	return router
 }
 
 // LoginHandler - GET /login/{provider}?from=redirect-back-url

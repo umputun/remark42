@@ -42,9 +42,8 @@ TBD
 
 ### Authorization
 
-- `GET /login/{provider}?from=http://url` - perform "social" login with one of supported providers and redirect to `url`
-- `GET /logout` - logout
-- `GET /api/v1/user` - get user info, _auth required_
+- `GET /auth/{provider}/login?from=http://url` - perform "social" login with one of supported providers and redirect to `url`
+- `GET /auth/{provider}/logout` - logout
 
 ```go
 type User struct {
@@ -108,3 +107,5 @@ Sort can be `time` or `score`. Supported sort order with prefix -/+, i.e. `-time
 - `PUT /api/v1/admin/user/{userid}?site=site-id&block=1` - block or unblock user. _auth and admin required_
 - `GET /api/v1/admin/export?site=side-id&block=1` - export all comments. _auth and admin required_
 - `PUT /api/v1/admin/pin/{id}?site=site-id&url=post-url&pin=1` - pin or unpin comment. _auth and admin required_
+- `GET /api/v1/user` - get user info, _auth required_
+
