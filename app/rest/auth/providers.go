@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"fmt"
 	"strings"
 
 	"golang.org/x/oauth2/facebook"
@@ -21,10 +22,10 @@ func NewGoogle(p Params) *Provider {
 		FilesystemStore: p.SessionStore,
 		MapUser: func(data map[string]interface{}) store.User {
 			userInfo := store.User{
-				ID:      data["email"].(string),
-				Name:    data["name"].(string),
-				Picture: data["picture"].(string),
-				Profile: data["profile"].(string),
+				ID:      value(data, "email"),
+				Name:    value(data, "name"),
+				Picture: value(data, "picture"),
+				Profile: value(data, "profile"),
 			}
 			if userInfo.Name == "" {
 				userInfo.Name = strings.Split(userInfo.ID, "@")[0]
@@ -46,10 +47,10 @@ func NewGithub(p Params) *Provider {
 		FilesystemStore: p.SessionStore,
 		MapUser: func(data map[string]interface{}) store.User {
 			userInfo := store.User{
-				ID:      data["login"].(string),
-				Name:    data["name"].(string),
-				Picture: data["avatar_url"].(string),
-				Profile: data["html_url"].(string),
+				ID:      value(data, "login"),
+				Name:    value(data, "name"),
+				Picture: value(data, "avatar_url"),
+				Profile: value(data, "html_url"),
 			}
 			if userInfo.Name == "" {
 				userInfo.Name = userInfo.ID
@@ -71,8 +72,8 @@ func NewFacebook(p Params) *Provider {
 		FilesystemStore: p.SessionStore,
 		MapUser: func(data map[string]interface{}) store.User {
 			userInfo := store.User{
-				ID:   data["id"].(string),
-				Name: data["name"].(string),
+				ID:   value(data, "id"),
+				Name: value(data, "name"),
 				// Picture: data["avatar_url"].(string),
 				// Profile: data["html_url"].(string),
 			}
@@ -83,4 +84,11 @@ func NewFacebook(p Params) *Provider {
 			return userInfo
 		},
 	})
+}
+
+func value(data map[string]interface{}, key string) string {
+	if val, ok := data[key]; ok {
+		return fmt.Sprintf("%v", val)
+	}
+	return ""
 }
