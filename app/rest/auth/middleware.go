@@ -56,8 +56,13 @@ func Auth(sessionStore *sessions.FilesystemStore, admins []string, modes []Mode)
 			}
 
 			session, err := sessionStore.Get(r, "remark")
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+			if err != nil && inModes(Full) { // in full auth lack of session causes Unauthorized
+				http.Error(w, err.Error(), http.StatusUnauthorized)
+				return
+			}
+
+			if err != nil { // in any other mode just pass it to next handler
+				h.ServeHTTP(w, r)
 				return
 			}
 

@@ -184,7 +184,6 @@ func (s *Server) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	cacheKey := r.URL.String()
 	if comments, ok := s.respCache.Get(cacheKey); ok {
-		log.Printf("[DEBUG] cash hit for %s", cacheKey)
 		renderJSONWithHTML(w, r, comments)
 		return
 	}
@@ -215,7 +214,6 @@ func (s *Server) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	cacheKey := r.URL.String()
 	if comments, ok := s.respCache.Get(cacheKey); ok {
-		log.Printf("[DEBUG] cash hit for %s", cacheKey)
 		renderJSONWithHTML(w, r, comments)
 		return
 	}
@@ -259,7 +257,6 @@ func (s *Server) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	cacheKey := r.URL.String()
 	if comments, ok := s.respCache.Get(cacheKey); ok {
-		log.Printf("[DEBUG] cash hit for %s", cacheKey)
 		renderJSONWithHTML(w, r, comments)
 		return
 	}
