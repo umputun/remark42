@@ -1,8 +1,12 @@
 package rest
 
 import (
+	"compress/gzip"
+	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
@@ -76,10 +80,19 @@ func (a *admin) setPinCtrl(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, JSON{"id": commentID, "loc": locator, "pin": pinStatus})
 }
 
-// GET /export?site=site-id
+// GET /export?site=site-id?mode=file|stream
 func (a *admin) exportCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
-	if err := a.exporter.Export(w, siteID); err != nil {
+	var writer io.Writer = w
+	if r.URL.Query().Get("mode") == "file" {
+		exportFile := fmt.Sprintf("%s-%s.json.gz", siteID, time.Now().Format("20060102"))
+		w.Header().Set("Content-Type", "application/gzip")
+		w.Header().Set("Content-Disposition", "attachment;filename="+exportFile)
+		w.WriteHeader(http.StatusOK)
+		writer = gzip.NewWriter(w)
+	}
+
+	if err := a.exporter.Export(writer, siteID); err != nil {
 		httpError(w, r, http.StatusInternalServerError, err, "export failed")
 	}
 }
