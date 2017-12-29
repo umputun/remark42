@@ -127,8 +127,8 @@ func makeBoltStore() store.Interface {
 }
 
 func makeDirs() {
-	_ = os.MkdirAll(opts.BoltPath, 700)
-	_ = os.MkdirAll(opts.BackupLocation, 700)
+	_ = os.MkdirAll(opts.BoltPath, 0700)
+	_ = os.MkdirAll(opts.BackupLocation, 0700)
 }
 
 func setupLog(dbg bool) {
