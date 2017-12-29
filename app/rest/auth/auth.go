@@ -43,7 +43,7 @@ type Params struct {
 
 // newProvider makes auth for given provider
 func initProvider(p Params, provider Provider) *Provider {
-	log.Printf("[INFO] create %s auth, id=%s", provider.Name, p.Cid)
+	log.Printf("[INFO] create %s auth, id=%s, redir: %s", provider.Name, p.Cid, provider.RedirectURL)
 
 	conf := oauth2.Config{
 		ClientID:     p.Cid,

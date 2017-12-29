@@ -18,7 +18,7 @@ import (
 var opts struct {
 	BoltPath  string   `long:"bolt" env:"BOLTDB_PATH" default:"/tmp" description:"parent dir for bolt files"`
 	Sites     []string `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
-	RemarkURL string   `long:"url" env:"REMARK_URL" default:"http://remark42.com" description:"url to remark"`
+	RemarkURL string   `long:"url" env:"REMARK_URL" default:"https://remark42.com" description:"url to remark"`
 	Admins    []string `long:"admin" env:"ADMIN" default:"umputun@gmail.com" description:"admin(s) names" env-delim:","`
 
 	DevMode bool `long:"dev" env:"DEV" description:"development mode, no auth enforced"`
