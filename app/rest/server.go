@@ -63,9 +63,12 @@ func (s *Server) Run() {
 	// If you aren't using gorilla/mux, you need to wrap your handlers with context.ClearHandler
 	router.Use(context.ClearHandler)
 
-	router.Mount("/auth/google", s.AuthGoogle.Routes())
-	router.Mount("/auth/github", s.AuthGithub.Routes())
-	router.Mount("/auth/facebook", s.AuthFacebook.Routes())
+	router.Route("/auth", func(r chi.Router) {
+		r.Mount("/google", s.AuthGoogle.Routes())
+		r.Mount("/github", s.AuthGithub.Routes())
+		r.Mount("/facebook", s.AuthFacebook.Routes())
+		r.Get("/logout", s.AuthGoogle.LogoutHandler) // shortcut, can be any of providers, does the same
+	})
 
 	router.Route("/api/v1", func(rapi chi.Router) {
 		rapi.Get("/find", s.findCommentsCtrl)
