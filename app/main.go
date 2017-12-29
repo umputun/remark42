@@ -8,6 +8,7 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/hashicorp/logutils"
 	"github.com/jessevdk/go-flags"
+	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/app/migrator"
 	"github.com/umputun/remark/app/rest"
@@ -57,7 +58,9 @@ func main() {
 	setupLog(opts.Dbg)
 	log.Print("[INFO] started remark")
 
-	makeDirs()
+	if err := makeDirs(opts.BoltPath, opts.ServerCommand.SessionStore, opts.BackupLocation); err != nil {
+		log.Fatalf("[ERROR] can't create directories, %+v", err)
+	}
 
 	dataStore := makeBoltStore()
 
@@ -126,9 +129,32 @@ func makeBoltStore() store.Interface {
 	return result
 }
 
-func makeDirs() {
-	_ = os.MkdirAll(opts.BoltPath, 0700)
-	_ = os.MkdirAll(opts.BackupLocation, 0700)
+func makeDirs(dirs ...string) error {
+
+	// exists returns whether the given file or directory exists or not
+	exists := func(path string) (bool, error) {
+		_, err := os.Stat(path)
+		if err == nil {
+			return true, nil
+		}
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return true, err
+	}
+
+	for _, dir := range dirs {
+		ex, err := exists(dir)
+		if err != nil {
+			return errors.Wrapf(err, "can't check directory status for %s", dir)
+		}
+		if !ex {
+			if e := os.MkdirAll(dir, 0700); e != nil {
+				return errors.Wrapf(err, "can't make directory %s", dir)
+			}
+		}
+	}
+	return nil
 }
 
 func setupLog(dbg bool) {
