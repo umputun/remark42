@@ -21,6 +21,7 @@ import (
 type admin struct {
 	dataService store.Service
 	exporter    migrator.Exporter
+	importer    migrator.Importer
 	respCache   *cache.Cache
 }
 
@@ -30,6 +31,7 @@ func (a *admin) routes() chi.Router {
 	router.Delete("/comment/{id}", a.deleteCommentCtrl)
 	router.Put("/user/{userid}", a.setBlockCtrl)
 	router.Get("/export", a.exportCtrl)
+	router.Post("/import", a.importCtrl)
 	router.Put("/pin/{id}", a.setPinCtrl)
 	return router
 }
@@ -96,6 +98,15 @@ func (a *admin) exportCtrl(w http.ResponseWriter, r *http.Request) {
 		httpError(w, r, http.StatusInternalServerError, err, "export failed")
 	}
 }
+
+// POST /import?site=site-id
+func (a *admin) importCtrl(w http.ResponseWriter, r *http.Request) {
+	siteID := r.URL.Query().Get("site")
+	if err := a.importer.Import(r.Body, siteID); err != nil {
+		httpError(w, r, http.StatusBadRequest, err, "import failed")
+	}
+}
+
 func (a *admin) checkBlocked(locator store.Locator, user store.User) bool {
 	return a.dataService.IsBlocked(locator, user.ID)
 }
