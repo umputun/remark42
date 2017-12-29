@@ -57,14 +57,9 @@ func main() {
 	setupLog(opts.Dbg)
 	log.Print("[INFO] started remark")
 
-	boltSites := []store.BoltSite{}
-	for _, site := range opts.Sites {
-		boltSites = append(boltSites, store.BoltSite{SiteID: site, FileName: fmt.Sprintf("%s/%s.db", opts.BoltPath, site)})
-	}
-	dataStore, err := store.NewBoltDB(boltSites...)
-	if err != nil {
-		log.Fatalf("[ERROR] can't initialize data store, %+v", err)
-	}
+	makeDirs()
+
+	dataStore := makeBoltStore()
 
 	if p.Active != nil && p.Command.Find("import") == p.Active {
 		params := migrator.ImportParams{
@@ -116,6 +111,24 @@ func main() {
 
 	go migrator.AutoBackup(&exporter, opts.BackupLocation)
 	srv.Run()
+}
+
+// makeBoltStore creates store for all sites
+func makeBoltStore() store.Interface {
+	sites := []store.BoltSite{}
+	for _, site := range opts.Sites {
+		sites = append(sites, store.BoltSite{SiteID: site, FileName: fmt.Sprintf("%s/%s.db", opts.BoltPath, site)})
+	}
+	result, err := store.NewBoltDB(sites...)
+	if err != nil {
+		log.Fatalf("[ERROR] can't initialize data store, %+v", err)
+	}
+	return result
+}
+
+func makeDirs() {
+	_ = os.MkdirAll(opts.BoltPath, 700)
+	_ = os.MkdirAll(opts.BackupLocation, 700)
 }
 
 func setupLog(dbg bool) {
