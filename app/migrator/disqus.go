@@ -76,7 +76,7 @@ func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 
 	inpThreads, inpComments := 0, 0
 	go func() {
-		commentsCount := 0
+		commentsCount, spamComments := 0, 0
 		for {
 			t, err := decoder.Token()
 			if t == nil || err != nil {
@@ -100,6 +100,7 @@ func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 						continue
 					}
 					if comment.IsSpam {
+						spamComments++
 						continue
 					}
 					c := store.Comment{
@@ -126,7 +127,8 @@ func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 			}
 		}
 		close(commentsCh)
-		log.Printf("[INFO] converted %d posts with %d comments from disqus %d/%d", len(postsMap), commentsCount, inpThreads, inpComments)
+		log.Printf("[INFO] converted %d posts with %d comments from disqus %d/%d, spam %d",
+			len(postsMap), commentsCount, inpThreads, inpComments, spamComments)
 	}()
 
 	return commentsCh
