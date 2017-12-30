@@ -91,6 +91,10 @@ func (s *Server) Run() {
 
 	})
 
+	router.Get("/robots.txt", func(w http.ResponseWriter, r *http.Request) {
+		render.PlainText(w, r, "User-agent: *\nDisallow: /auth/\nDisallow: /api/\n")
+
+	})
 	s.addFileServer(router, "/web", http.Dir(filepath.Join(".", "web")))
 
 	log.Fatal(http.ListenAndServe(":8080", router))
