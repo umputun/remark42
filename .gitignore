@@ -6,3 +6,4 @@ target
 /var/
 debug
 debug.test
+.vscode
