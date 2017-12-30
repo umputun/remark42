@@ -83,7 +83,7 @@ type Locator struct {
 - `GET /api/v1/find?site=site-id&url=post-url&sort=fld&format=tree` - find all comments for given post
 
 This is the primary call used by UI to show comments for given post. It can return comments in two formats - `plain` and `tree`.
-In plain format result will be sorted list of `Comment`. In tree format this is going to be tree-like structure with this structure:
+In plain format result will be sorted list of `Comment`. In tree format this is going to be tree-like object with this structure:
 
 ```go
 type Tree struct {
@@ -103,7 +103,7 @@ Sort can be `time` or `score`. Supported sort order with prefix -/+, i.e. `-time
 - `GET /api/v1/comments?site=site-id&user=id` - get comment by `user id`
 - `GET /api/v1/count?site=site-id&url=post-url` - get comment's count for `{url}`
 - `GET /api/v1/user` - get user info, _auth required_
-- `PUT /api/v1/vote/{id}?site=site-id&url=post-url&vote=1` - vote for comment. `vote`=1 will increase score, -1 decreases. _auth required_
+- `PUT /api/v1/vote/{id}?site=site-id&url=post-url&vote=1` - vote for comment. `vote`=1 will increase score, -1 decrease. _auth required_
 
 ### Admin
 
