@@ -1,21 +1,21 @@
 # remark42 [![Build Status](http://drone.umputun.com:9080/api/badges/umputun/remark/status.svg)](http://drone.umputun.com:9080/umputun/remark)
 
-Remark42 ia a comment engine, self-hosted, lightweight, simple (but functional) what doesn't spy on users.
+Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engine, which doesn't spy on users. It can be embedded into blogs, articles or any other place where readers add comments.
 
-- Supports social login via google, facebook and github
-- Moderation allowing admins to remove comments and block users
-- Voting and pinning system
-- Ability to sort comments
-- Comment retrieval per post, user and comment's id
-- Extractor for recent comments, cross-post
+- Social login via Google, Facebook and Github
 - Multi-level nested comments with both tree and plain presentations
-- Export all data to json and automatic backups
 - Import from disqus
-- No need of external databases, everything embedded in a single data file
+- Moderator can remove comments and block users
+- Voting and pinning system
+- Sortable comments
+- Extractor for recent comments, cross-post
+- Export data to json with automatic backups
+- No external databases, everything embedded in a single data file
 - Fully dockerized and can be deployed in a single command
 - Nice, lightweight and fully customizable UI
-- Multi-site mode to serve comments for multiple sites from a single remark instance
-- Integration with automatic ssl (Let’s Encrypt) via [nginx-le](https://github.com/umputun/nginx-le)
+- Multi-site mode from a single instance
+- Integration with automatic ssl via [nginx-le](https://github.com/umputun/nginx-le)
+
 
 ## Install
 
