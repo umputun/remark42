@@ -61,27 +61,40 @@ func ImportComments(p ImportParams) error {
 	return importer.Import(fh, p.SiteID)
 }
 
-// AutoBackup runs daily export to local files
+// AutoBackup runs daily export to local files, keeps up to keepMax backups for given siteID
 func AutoBackup(exporter Exporter, backupLocation string, siteID string, keepMax int) {
 	log.Print("[INFO] activate auto-backup")
 	tick := time.NewTicker(24 * time.Hour)
 	for range tick.C {
-		log.Print("[DEBUG] make backup")
-		fh, err := os.Create(fmt.Sprintf("%s/backup-%s-%s.gz", backupLocation, siteID, time.Now().Format("20060102")))
+		_, err := makeBackup(exporter, backupLocation, siteID)
 		if err != nil {
-			log.Printf("[WARN] can't create backup file, %s", err)
+			log.Printf("[WARN] auto-backup for %s failed, %s", siteID, err)
 			continue
 		}
-		gz := gzip.NewWriter(fh)
-
-		if err = exporter.Export(gz, siteID); err != nil {
-			log.Printf("[WARN] export failed, %+v", err)
-		}
-		_ = gz.Close()
-		_ = fh.Close()
-
 		removeOldBackupFiles(backupLocation, siteID, keepMax)
 	}
+}
+
+func makeBackup(exporter Exporter, backupLocation string, siteID string) (string, error) {
+	log.Printf("[DEBUG] make backup for %s", siteID)
+	backupFile := fmt.Sprintf("%s/backup-%s-%s.gz", backupLocation, siteID, time.Now().Format("20060102"))
+	fh, err := os.Create(backupFile)
+	if err != nil {
+		return "", errors.Wrapf(err, "can't create backup file %s", backupFile)
+	}
+	gz := gzip.NewWriter(fh)
+
+	if err = exporter.Export(gz, siteID); err != nil {
+		return "", errors.Wrapf(err, "export failed for %s", siteID)
+	}
+	if err = gz.Close(); err != nil {
+		return "", errors.Wrapf(err, "can't close gz for %s", backupFile)
+	}
+	if err = fh.Close(); err != nil {
+		return "", errors.Wrapf(err, "can't close file handler for %s", backupFile)
+	}
+	log.Printf("[DEBUG] created backup file %s", backupFile)
+	return backupFile, nil
 }
 
 func removeOldBackupFiles(backupLocation string, siteID string, keepMax int) {
