@@ -114,7 +114,12 @@ func main() {
 	}
 
 	for _, siteID := range opts.Sites {
-		go migrator.AutoBackup(&exporter, opts.BackupLocation, siteID, opts.MaxBackupFiles)
+		go migrator.AutoBackup{
+			Exporter:       &exporter,
+			BackupLocation: opts.BackupLocation,
+			SiteID:         siteID,
+			KeepMax:        opts.MaxBackupFiles,
+		}.Do()
 	}
 
 	srv.Run()

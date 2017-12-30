@@ -21,8 +21,8 @@ func TestMigrator_RemoveOldBackupFiles(t *testing.T) {
 		err := ioutil.WriteFile(fname, []byte("blah"), 0600)
 		assert.Nil(t, err)
 	}
-
-	removeOldBackupFiles(loc, "site1", 3)
+	bk := AutoBackup{BackupLocation: loc, SiteID: "site1", KeepMax: 3}
+	bk.removeOldBackupFiles()
 	ff, err := ioutil.ReadDir(loc)
 	assert.Nil(t, err)
 	assert.Equal(t, 3, len(ff), "should keep 3 files only")
@@ -36,7 +36,8 @@ func TestMigrator_MakeBackup(t *testing.T) {
 	defer os.RemoveAll(loc)
 	os.MkdirAll(loc, 0700)
 
-	fname, err := makeBackup(&mockExporter{}, loc, "site1")
+	bk := AutoBackup{BackupLocation: loc, SiteID: "site1", KeepMax: 3, Exporter: &mockExporter{}}
+	fname, err := bk.makeBackup()
 	assert.NoError(t, err)
 	expFile := fmt.Sprintf("/tmp/remark-backups.test/backup-site1-%s.gz", time.Now().Format("20060102"))
 	assert.Equal(t, expFile, fname)
