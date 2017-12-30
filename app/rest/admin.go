@@ -36,7 +36,7 @@ func (a *admin) routes() chi.Router {
 	return router
 }
 
-// DELETE /comment/{id}?site=siteID&url=post-url
+// DELETE /comment/{id}?site=siteID&url=post-url - removes comment
 func (a *admin) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
@@ -54,7 +54,7 @@ func (a *admin) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, JSON{"id": id, "loc": locator})
 }
 
-// PUT /user/{userid}?site=side-id&block=1
+// PUT /user/{userid}?site=side-id&block=1 - block or unblock user
 func (a *admin) setBlockCtrl(w http.ResponseWriter, r *http.Request) {
 	userID := chi.URLParam(r, "userid")
 	siteID := r.URL.Query().Get("site")
@@ -68,7 +68,7 @@ func (a *admin) setBlockCtrl(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, JSON{"user_id": userID, "site_id": siteID, "block": blockStatus})
 }
 
-// PUT /pin/{id}?site=siteID&url=post-url&pin=1
+// PUT /pin/{id}?site=siteID&url=post-url&pin=1 - mark/unmark comment as a special
 func (a *admin) setPinCtrl(w http.ResponseWriter, r *http.Request) {
 	commentID := chi.URLParam(r, "id")
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
@@ -82,7 +82,7 @@ func (a *admin) setPinCtrl(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, JSON{"id": commentID, "loc": locator, "pin": pinStatus})
 }
 
-// GET /export?site=site-id?mode=file|stream
+// GET /export?site=site-id?mode=file|stream - exports all comments for siteID as json stream or file
 func (a *admin) exportCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	var writer io.Writer = w
@@ -105,6 +105,7 @@ func (a *admin) importCtrl(w http.ResponseWriter, r *http.Request) {
 	if err := a.importer.Import(r.Body, siteID); err != nil {
 		httpError(w, r, http.StatusBadRequest, err, "import failed")
 	}
+	a.respCache.Flush()
 }
 
 func (a *admin) checkBlocked(locator store.Locator, user store.User) bool {

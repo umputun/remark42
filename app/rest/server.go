@@ -44,7 +44,8 @@ type Server struct {
 func (s *Server) Run() {
 	log.Print("[INFO] activate rest server")
 
-	applyDevMode := func(mode auth.Mode) (modes []auth.Mode) {
+	// add auth.Developer flag if dev mode is active
+	maybeDevMode := func(mode auth.Mode) (modes []auth.Mode) {
 		modes = append(modes, mode)
 		if s.DevMode {
 			modes = append(modes, auth.Developer)
@@ -57,7 +58,7 @@ func (s *Server) Run() {
 	router := chi.NewRouter()
 	router.Use(middleware.RealIP, Recoverer)
 	router.Use(middleware.Throttle(1000), middleware.Timeout(60*time.Second))
-	router.Use(auth.Auth(s.SessionStore, s.Admins, applyDevMode(auth.Anonymous)))
+	router.Use(auth.Auth(s.SessionStore, s.Admins, maybeDevMode(auth.Anonymous)))
 	router.Use(Limiter(10), AppInfo("remark", s.Version), Ping, Logger(LogAll))
 
 	// If you aren't using gorilla/mux, you need to wrap your handlers with context.ClearHandler
@@ -78,7 +79,7 @@ func (s *Server) Run() {
 		rapi.Get("/count", s.countCtrl)
 
 		// require auth
-		rapi.With(auth.Auth(s.SessionStore, s.Admins, applyDevMode(auth.Full))).Group(func(rauth chi.Router) {
+		rapi.With(auth.Auth(s.SessionStore, s.Admins, maybeDevMode(auth.Full))).Group(func(rauth chi.Router) {
 			rauth.Post("/comment", s.createCommentCtrl)
 			rauth.Get("/user", s.userInfoCtrl)
 			rauth.Put("/vote/{id}", s.voteCtrl)
@@ -95,26 +96,7 @@ func (s *Server) Run() {
 	log.Fatal(http.ListenAndServe(":8080", router))
 }
 
-func (s *Server) addFileServer(r chi.Router, path string, root http.FileSystem) {
-	fs := http.StripPrefix(path, http.FileServer(root))
-
-	if path != "/" && path[len(path)-1] != '/' {
-		r.Get(path, http.RedirectHandler(path+"/", 301).ServeHTTP)
-		path += "/"
-	}
-	path += "*"
-
-	r.Get(path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// don't show dirs, just serve files
-		if strings.HasSuffix(r.URL.Path, "/") {
-			http.NotFound(w, r)
-			return
-		}
-		fs.ServeHTTP(w, r)
-	}))
-}
-
-// POST /comment
+// POST /comment - adds comment, resets all immutable fields
 func (s *Server) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 	comment := store.Comment{}
@@ -151,7 +133,7 @@ func (s *Server) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.respCache.Flush()
+	s.respCache.Flush() // reset all caches
 
 	render.Status(r, http.StatusAccepted)
 	render.JSON(w, r, JSON{"id": id, "loc": comment.Locator})
@@ -177,7 +159,8 @@ func (s *Server) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, JSON{"id": id, "loc": locator})
 }
 
-// GET /find?site=siteID&url=post-url&format=tree&sort=-time
+// GET /find?site=siteID&url=post-url&format=[tree|plain]&sort=[+/-time|+/-score]
+// find comments for given post. Retruns in tree or plain formats, sorted
 func (s *Server) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	log.Printf("[DEBUG] get comments for %+v", locator)
@@ -204,7 +187,7 @@ func (s *Server) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	renderJSONWithHTML(w, r, comments)
 }
 
-// GET /last/{max}?site=siteID
+// GET /last/{max}?site=siteID - last comments for the siteID, across all posts, sorted by time
 func (s *Server) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	max, err := strconv.Atoi(chi.URLParam(r, "max"))
@@ -230,7 +213,7 @@ func (s *Server) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	renderJSONWithHTML(w, r, comments)
 }
 
-// GET /id/{id}?site=siteID&url=post-url
+// GET /id/{id}?site=siteID&url=post-url - gets a comment by id
 func (s *Server) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
@@ -248,7 +231,7 @@ func (s *Server) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 	renderJSONWithHTML(w, r, comment)
 }
 
-// GET /comments?site=siteID&user=id
+// GET /comments?site=siteID&user=id - returns commens for given userID
 func (s *Server) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	userID := r.URL.Query().Get("user")
@@ -273,7 +256,7 @@ func (s *Server) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	renderJSONWithHTML(w, r, comments)
 }
 
-// GET /user
+// GET /user - returns user info
 func (s *Server) userInfoCtrl(w http.ResponseWriter, r *http.Request) {
 	user, err := auth.GetUserInfo(r)
 	if err != nil {
@@ -283,7 +266,7 @@ func (s *Server) userInfoCtrl(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, user)
 }
 
-// GET /count?site=siteID&url=post-url
+// GET /count?site=siteID&url=post-url - get number of comments for given post
 func (s *Server) countCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	count, err := s.DataService.Count(locator)
@@ -294,7 +277,7 @@ func (s *Server) countCtrl(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, JSON{"count": count, "loc": locator})
 }
 
-// PUT /vote/{id}?site=siteID&url=post-url&vote=1
+// PUT /vote/{id}?site=siteID&url=post-url&vote=1 - vote for/against comment
 func (s *Server) voteCtrl(w http.ResponseWriter, r *http.Request) {
 
 	user, err := auth.GetUserInfo(r)
@@ -337,4 +320,23 @@ func renderJSONWithHTML(w http.ResponseWriter, r *http.Request, v interface{}) {
 		w.WriteHeader(status)
 	}
 	_, _ = w.Write(buf.Bytes())
+}
+
+func (s *Server) addFileServer(r chi.Router, path string, root http.FileSystem) {
+	fs := http.StripPrefix(path, http.FileServer(root))
+
+	if path != "/" && path[len(path)-1] != '/' {
+		r.Get(path, http.RedirectHandler(path+"/", 301).ServeHTTP)
+		path += "/"
+	}
+	path += "*"
+
+	r.Get(path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// don't show dirs, just serve files
+		if strings.HasSuffix(r.URL.Path, "/") {
+			http.NotFound(w, r)
+			return
+		}
+		fs.ServeHTTP(w, r)
+	}))
 }

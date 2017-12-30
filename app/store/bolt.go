@@ -86,8 +86,8 @@ func (b *BoltDB) Create(comment Comment) (string, error) {
 			return errors.Wrap(jerr, "can't marshal comment")
 		}
 
-		if err := bucket.Put([]byte(comment.ID), jdata); err != nil {
-			return errors.Wrapf(err, "failed to put key %s", comment.ID)
+		if e = bucket.Put([]byte(comment.ID), jdata); err != nil {
+			return errors.Wrapf(e, "failed to put key %s", comment.ID)
 		}
 
 		// add reference to comment to "last" bucket

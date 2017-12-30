@@ -26,6 +26,7 @@ var opts struct {
 	Dbg     bool `long:"dbg" env:"DEBUG" description:"debug mode"`
 
 	BackupLocation string `long:"backup" env:"BACKUP_PATH" default:"/tmp" description:"backups location"`
+	MaxBackupFiles int    `long:"max-back" env:"MAX_BACKUP_FILES" default:"10" description:"max backups to keep"`
 
 	ServerCommand struct {
 		SessionStore string `long:"session" env:"SESSION_STORE" default:"/tmp" description:"path to session store directory"`
@@ -112,7 +113,10 @@ func main() {
 		log.Printf("[WARN] running in dev mode, no auth!")
 	}
 
-	go migrator.AutoBackup(&exporter, opts.BackupLocation)
+	for _, siteID := range opts.Sites {
+		go migrator.AutoBackup(&exporter, opts.BackupLocation, siteID, opts.MaxBackupFiles)
+	}
+
 	srv.Run()
 }
 

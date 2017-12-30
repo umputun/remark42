@@ -4,8 +4,11 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -59,22 +62,50 @@ func ImportComments(p ImportParams) error {
 }
 
 // AutoBackup runs daily export to local files
-func AutoBackup(exporter Exporter, backupLocation string) {
+func AutoBackup(exporter Exporter, backupLocation string, siteID string, keepMax int) {
 	log.Print("[INFO] activate auto-backup")
 	tick := time.NewTicker(24 * time.Hour)
 	for range tick.C {
 		log.Print("[DEBUG] make backup")
-		fh, err := os.Create(fmt.Sprintf("%s/backup-%s.gz", backupLocation, time.Now().Format("20060102")))
+		fh, err := os.Create(fmt.Sprintf("%s/backup-%s-%s.gz", backupLocation, siteID, time.Now().Format("20060102")))
 		if err != nil {
 			log.Printf("[WARN] can't create backup file, %s", err)
 			continue
 		}
 		gz := gzip.NewWriter(fh)
 
-		if err = exporter.Export(gz, ""); err != nil {
+		if err = exporter.Export(gz, siteID); err != nil {
 			log.Printf("[WARN] export failed, %+v", err)
 		}
 		_ = gz.Close()
 		_ = fh.Close()
+
+		removeOldBackupFiles(backupLocation, siteID, keepMax)
+	}
+}
+
+func removeOldBackupFiles(backupLocation string, siteID string, keepMax int) {
+	files, err := ioutil.ReadDir(backupLocation)
+	if err != nil {
+		log.Printf("[WARN] can't read files in backup directory %s, %s", backupLocation, err)
+		return
+	}
+	backFiles := []os.FileInfo{}
+	for _, file := range files {
+		if strings.HasPrefix(file.Name(), "backup-"+siteID) {
+			backFiles = append(backFiles, file)
+		}
+	}
+	sort.Slice(backFiles, func(i int, j int) bool { return backFiles[i].Name() < backFiles[j].Name() })
+
+	if len(backFiles) > keepMax {
+		for i := 0; i < len(backFiles)-keepMax; i++ {
+			fpath := backupLocation + "/" + backFiles[i].Name()
+			if e := os.Remove(fpath); e != nil {
+				log.Printf("[WARN] can't delete %s, %s", fpath, err)
+				continue
+			}
+			log.Printf("[DEBUG] removed %s", fpath)
+		}
 	}
 }
