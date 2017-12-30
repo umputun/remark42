@@ -12,7 +12,7 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 - Export data to json with automatic backups
 - No external databases, everything embedded in a single data file
 - Fully dockerized and can be deployed in a single command
-- Nice, lightweight and fully customizable UI
+- Clean, lightweight and fully customizable UI
 - Multi-site mode from a single instance
 - Integration with automatic ssl via [nginx-le](https://github.com/umputun/nginx-le)
 

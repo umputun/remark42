@@ -55,7 +55,7 @@ func NewBoltDB(sites ...BoltSite) (*BoltDB, error) {
 // Create saves new comment to store
 func (b *BoltDB) Create(comment Comment) (string, error) {
 
-	// fille ID and time if empty
+	// fill ID and time if empty
 	if comment.ID == "" {
 		comment.ID = makeCommentID()
 	}
@@ -121,7 +121,7 @@ func (b *BoltDB) Create(comment Comment) (string, error) {
 	return comment.ID, err
 }
 
-// Delete removes comment locator from the store
+// Delete removes comment, by locator from the store
 func (b *BoltDB) Delete(locator Locator, commentID string) error {
 
 	bdb, err := b.db(locator.SiteID)
@@ -152,7 +152,7 @@ func (b *BoltDB) Delete(locator Locator, commentID string) error {
 	})
 }
 
-// Find comments for post
+// Find retruns all comments for post and sorts results
 func (b *BoltDB) Find(request Request) ([]Comment, error) {
 	res := []Comment{}
 
