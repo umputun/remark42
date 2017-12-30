@@ -111,3 +111,16 @@ func (a *admin) importCtrl(w http.ResponseWriter, r *http.Request) {
 func (a *admin) checkBlocked(locator store.Locator, user store.User) bool {
 	return a.dataService.IsBlocked(locator, user.ID)
 }
+
+func (a *admin) maskBlockedUsers(comments []store.Comment) (res []store.Comment) {
+	for _, c := range comments {
+		if a.dataService.IsBlocked(c.Locator, c.User.ID) {
+			c.User.Blocked = true
+			c.Text = "this comment was deleted"
+			c.Score = 0
+			c.Votes = map[string]bool{}
+		}
+		res = append(res, c)
+	}
+	return res
+}

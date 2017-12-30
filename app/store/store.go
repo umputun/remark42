@@ -40,6 +40,7 @@ type User struct {
 	Picture string `json:"picture"`
 	Profile string `json:"profile"`
 	Admin   bool   `json:"admin"`
+	Blocked bool   `json:"block,omitempty"`
 	IP      string `json:"-"`
 }
 

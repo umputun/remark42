@@ -160,7 +160,7 @@ func (s *Server) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET /find?site=siteID&url=post-url&format=[tree|plain]&sort=[+/-time|+/-score]
-// find comments for given post. Retruns in tree or plain formats, sorted
+// find comments for given post. Returns in tree or plain formats, sorted
 func (s *Server) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	log.Printf("[DEBUG] get comments for %+v", locator)
@@ -177,6 +177,8 @@ func (s *Server) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		httpError(w, r, http.StatusInternalServerError, err, "can't load comments comment")
 		return
 	}
+	comments = s.mod.maskBlockedUsers(comments)
+
 	if r.URL.Query().Get("format") == "tree" {
 		s.respCache.Set(cacheKey, comments, time.Hour)
 		renderJSONWithHTML(w, r, format.MakeTree(comments, r.URL.Query().Get("sort")))
@@ -207,6 +209,7 @@ func (s *Server) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		httpError(w, r, http.StatusInternalServerError, err, "can't get last comments")
 		return
 	}
+	comments = s.mod.maskBlockedUsers(comments)
 	s.respCache.Set(cacheKey, comments, time.Hour)
 
 	render.Status(r, http.StatusOK)
@@ -231,7 +234,7 @@ func (s *Server) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 	renderJSONWithHTML(w, r, comment)
 }
 
-// GET /comments?site=siteID&user=id - returns commens for given userID
+// GET /comments?site=siteID&user=id - returns comments for given userID
 func (s *Server) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	userID := r.URL.Query().Get("user")
