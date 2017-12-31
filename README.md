@@ -1,4 +1,4 @@
-# remark42 [![Build Status](http://drone.umputun.com:9080/api/badges/umputun/remark/status.svg)](http://drone.umputun.com:9080/umputun/remark)
+# remark42 [![Build Status](https://drone.umputun.com/api/badges/umputun/remark/status.svg)](https://drone.umputun.com/umputun/remark)
 
 Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engine, which doesn't spy on users. It can be embedded into blogs, articles or any other place where readers add comments.
 
