@@ -1,7 +1,6 @@
 version: '2'
 
 services:
-
     remark:
         build: .
         image: umputun/remark
