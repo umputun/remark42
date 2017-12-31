@@ -19,6 +19,8 @@ pipeline:
   notify:
     image: drillster/drone-email
     host: homei.umputun.com
+    port: 25
+    skip_verify: true
     from: drone@umputun.com
     recipients: [ umputun@gmail.com ]
     when:
