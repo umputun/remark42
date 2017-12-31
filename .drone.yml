@@ -18,8 +18,8 @@ pipeline:
 
   notify:
     image: drillster/drone-email
-    host: homemail.umputun.com
-    from: drone@homemail.umputun.com
+    host: mail.umputun.home
+    from: drone@mail.umputun.home
     recipients: [ umputun@gmail.com ]
     when:
       status: [ changed, failure ]
