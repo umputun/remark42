@@ -31,7 +31,7 @@ pipeline:
 
   notify:
     image: drillster/drone-email
-    host: mail-server
+    host: 172.17.0.1
     port: 25
     username: umputun
     password: umputun
