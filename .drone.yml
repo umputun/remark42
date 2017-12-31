@@ -29,14 +29,14 @@ pipeline:
     when:
       branch: master
 
-  notify:
-    image: drillster/drone-email
-    host: 172.17.0.1
-    port: 25
-    username: umputun
-    password: umputun
-    skip_verify: true
-    from: drone@umputun.com
-    recipients: [ umputun@gmail.com ]
-    when:
-      status: [ changed, failure ]
+  # notify:
+  #   image: drillster/drone-email
+  #   host: 172.17.0.1
+  #   port: 25
+  #   username: umputun
+  #   password: umputun
+  #   skip_verify: true
+  #   from: drone@umputun.com
+  #   recipients: [ umputun@gmail.com ]
+  #   when:
+  #     status: [ changed, failure ]
