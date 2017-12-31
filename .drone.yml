@@ -16,6 +16,19 @@ pipeline:
     secrets: [ docker_username, docker_password ]
     tags: ${DRONE_REPO_BRANCH}
 
+  deploy:
+    image: appleboy/drone-ssh
+    host: remark42.com
+    username: umputun
+    port: 22
+    secrets: [ ssh_key ]
+    script:
+      - cd /srv/remark
+      - docker-compose pull
+      - docker-compose up -d
+    when:
+      branch: master
+
   notify:
     image: drillster/drone-email
     host: homei.umputun.com
