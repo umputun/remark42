@@ -163,7 +163,7 @@ func makeDirs(dirs ...string) error {
 			}
 		}
 	}
-	return nil
+	return xnil
 }
 
 func setupLog(dbg bool) {
