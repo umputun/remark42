@@ -17,8 +17,6 @@ RUN go build -o remark -ldflags "-X main.revision=$(git rev-parse --abbrev-ref H
 
 FROM umputun/baseimage:micro-latest
 
-RUN apk add --update ca-certificates && update-ca-certificates
-
 COPY --from=build /go/src/github.com/umputun/remark/remark /srv/
 COPY --from=build /go/src/github.com/umputun/remark/web /srv/web
 RUN chown -R umputun:umputun /srv
