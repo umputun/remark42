@@ -16,7 +16,6 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 - Multi-site mode from a single instance
 - Integration with automatic ssl via [nginx-le](https://github.com/umputun/nginx-le)
 
-
 ## Install
 
 ### Backend
