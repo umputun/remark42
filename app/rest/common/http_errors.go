@@ -1,9 +1,11 @@
 package common
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"net/url"
+	"runtime"
 	"strings"
 
 	"github.com/go-chi/render"
@@ -33,5 +35,12 @@ func logDetails(r *http.Request, code int, err error, details string) {
 		q = qun
 	}
 
-	log.Printf("[DEBUG] %s - %v - %d - %s%s - %s", details, err, code, uinfoStr, strings.Split(r.RemoteAddr, ":")[0], q)
+	srcFileInfo := ""
+	if _, file, line, ok := runtime.Caller(2); ok {
+		fnameElems := strings.Split(file, "/")
+		srcFileInfo = fmt.Sprintf(" [caused by %s:%d]", strings.Join(fnameElems[len(fnameElems)-3:], "/"), line)
+	}
+
+	log.Printf("[DEBUG] %s - %v - %d - %s%s - %s%s",
+		details, err, code, uinfoStr, strings.Split(r.RemoteAddr, ":")[0], q, srcFileInfo)
 }
