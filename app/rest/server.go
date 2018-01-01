@@ -53,23 +53,27 @@ func (s *Server) Run() {
 		return modes
 	}
 
-	s.respCache = cache.New(time.Hour, 5*time.Minute)
+	if len(s.Admins) > 0 {
+		log.Printf("[DEBUG] admins %+v", s.Admins)
+	}
+
+	// cache for responses. Flushes completely on any modification
+	s.respCache = cache.New(4*time.Hour, 15*time.Minute)
 
 	router := chi.NewRouter()
 	router.Use(middleware.RealIP, Recoverer)
 	router.Use(middleware.Throttle(1000), middleware.Timeout(60*time.Second))
-	router.Use(auth.Auth(s.SessionStore, s.Admins, maybeDevMode(auth.Anonymous)))
-	router.Use(Limiter(10), AppInfo("remark", s.Version), Ping, Logger(LogAll))
+	router.Use(Limiter(10), AppInfo("remark42", s.Version), Ping, Logger(LogAll))
+	router.Use(auth.Auth(s.SessionStore, s.Admins, maybeDevMode(auth.Anonymous))) // all request by default allow anonymous access
 
-	// If you aren't using gorilla/mux, you need to wrap your handlers with context.ClearHandler
-	router.Use(context.ClearHandler)
+	router.Use(context.ClearHandler) // if you aren't using gorilla/mux, you need to wrap your handlers with context.ClearHandler
 
 	// auth routes for all providers
 	router.Route("/auth", func(r chi.Router) {
 		r.Mount("/google", s.AuthGoogle.Routes())
 		r.Mount("/github", s.AuthGithub.Routes())
 		r.Mount("/facebook", s.AuthFacebook.Routes())
-		r.Get("/logout", s.AuthGoogle.LogoutHandler) // shortcut, can be any of providers, does the same
+		r.Get("/logout", s.AuthGoogle.LogoutHandler) // shortcut, can be any of providers, all logouts do the same
 	})
 
 	// api routes
@@ -94,6 +98,7 @@ func (s *Server) Run() {
 
 	})
 
+	// add robots and file server for static content from /web
 	router.Get("/robots.txt", func(w http.ResponseWriter, r *http.Request) {
 		render.PlainText(w, r, "User-agent: *\nDisallow: /auth/\nDisallow: /api/\n")
 	})
@@ -326,7 +331,7 @@ func httpError(w http.ResponseWriter, r *http.Request, code int, err error, deta
 	render.JSON(w, r, JSON{"error": err.Error(), "details": details})
 }
 
-// renderJSONWithHTML allows html tags
+// renderJSONWithHTML allows html tags and forces charset=utf-8
 func renderJSONWithHTML(w http.ResponseWriter, r *http.Request, v interface{}) {
 	buf := &bytes.Buffer{}
 	enc := json.NewEncoder(buf)
@@ -342,6 +347,7 @@ func renderJSONWithHTML(w http.ResponseWriter, r *http.Request, v interface{}) {
 	_, _ = w.Write(buf.Bytes())
 }
 
+// serves static files from /web
 func (s *Server) addFileServer(r chi.Router, path string, root http.FileSystem) {
 	fs := http.StripPrefix(path, http.FileServer(root))
 
