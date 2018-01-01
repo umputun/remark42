@@ -2,15 +2,13 @@ package auth
 
 import (
 	"context"
-	"errors"
 	"net/http"
 
 	"github.com/gorilla/sessions"
 
+	"github.com/umputun/remark/app/rest/common"
 	"github.com/umputun/remark/app/store"
 )
-
-type contextKey string
 
 // Mode defines behavior of Auth middleware
 type Mode int
@@ -49,7 +47,7 @@ func Auth(sessionStore *sessions.FilesystemStore, admins []string, modes []Mode)
 			if inModes(Developer) {
 				user := devUser
 				ctx := r.Context()
-				ctx = context.WithValue(ctx, contextKey("user"), user)
+				ctx = context.WithValue(ctx, common.ContextKey("user"), user)
 				r = r.WithContext(ctx)
 				h.ServeHTTP(w, r)
 				return
@@ -82,7 +80,7 @@ func Auth(sessionStore *sessions.FilesystemStore, admins []string, modes []Mode)
 				}
 
 				ctx := r.Context()
-				ctx = context.WithValue(ctx, contextKey("user"), user)
+				ctx = context.WithValue(ctx, common.ContextKey("user"), user)
 				r = r.WithContext(ctx)
 			}
 			h.ServeHTTP(w, r)
@@ -96,7 +94,7 @@ func Auth(sessionStore *sessions.FilesystemStore, admins []string, modes []Mode)
 func AdminOnly(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 
-		user, err := GetUserInfo(r)
+		user, err := common.GetUserInfo(r)
 		if err != nil {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
@@ -110,19 +108,4 @@ func AdminOnly(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	}
 	return http.HandlerFunc(fn)
-}
-
-// GetUserInfo extracts user, or and token from request's context
-func GetUserInfo(r *http.Request) (user store.User, err error) {
-
-	ctx := r.Context()
-	if ctx == nil {
-		return store.User{}, errors.New("no info about user")
-	}
-
-	if u, ok := ctx.Value(contextKey("user")).(store.User); ok {
-		return u, nil
-	}
-
-	return store.User{}, errors.New("user can't be parsed")
 }

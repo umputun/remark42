@@ -14,6 +14,7 @@ import (
 
 	"github.com/umputun/remark/app/migrator"
 	"github.com/umputun/remark/app/rest/auth"
+	"github.com/umputun/remark/app/rest/common"
 	"github.com/umputun/remark/app/store"
 )
 
@@ -46,7 +47,7 @@ func (a *admin) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	err := a.dataService.Delete(locator, id)
 	if err != nil {
 		log.Printf("[WARN] can't delete comment, %s", err)
-		httpError(w, r, http.StatusInternalServerError, err, "can't delete comment")
+		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete comment")
 		return
 	}
 	a.respCache.Flush()
@@ -61,7 +62,7 @@ func (a *admin) setBlockCtrl(w http.ResponseWriter, r *http.Request) {
 	blockStatus := r.URL.Query().Get("block") == "1"
 
 	if err := a.dataService.SetBlock(store.Locator{SiteID: siteID}, userID, blockStatus); err != nil {
-		httpError(w, r, http.StatusBadRequest, err, "can't set blocking status")
+		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set blocking status")
 		return
 	}
 	a.respCache.Flush()
@@ -76,7 +77,7 @@ func (a *admin) setPinCtrl(w http.ResponseWriter, r *http.Request) {
 	pinStatus := r.URL.Query().Get("pin") == "1"
 
 	if err := a.dataService.SetPin(locator, commentID, pinStatus); err != nil {
-		httpError(w, r, http.StatusBadRequest, err, "can't set pin status")
+		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set pin status")
 		return
 	}
 	a.respCache.Flush()
@@ -97,7 +98,7 @@ func (a *admin) exportCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := a.exporter.Export(writer, siteID); err != nil {
-		httpError(w, r, http.StatusInternalServerError, err, "export failed")
+		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "export failed")
 	}
 }
 
@@ -106,7 +107,7 @@ func (a *admin) exportCtrl(w http.ResponseWriter, r *http.Request) {
 func (a *admin) importCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	if err := a.importer.Import(r.Body, siteID); err != nil {
-		httpError(w, r, http.StatusBadRequest, err, "import failed")
+		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "import failed")
 	}
 	a.respCache.Flush()
 }

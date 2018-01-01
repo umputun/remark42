@@ -16,6 +16,7 @@ import (
 	"github.com/gorilla/sessions"
 	"golang.org/x/oauth2"
 
+	"github.com/umputun/remark/app/rest/common"
 	"github.com/umputun/remark/app/store"
 )
 
@@ -85,7 +86,7 @@ func (p Provider) LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[DEBUG] login, %+v", session.Values)
 	if err := session.Save(r, w); err != nil {
-		http.Error(w, fmt.Sprintf("failed to save start, %s", err), http.StatusInternalServerError)
+		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to save state")
 		return
 	}
 
@@ -100,7 +101,7 @@ func (p Provider) AuthHandler(w http.ResponseWriter, r *http.Request) {
 
 	session, err := p.Get(r, "remark")
 	if err != nil {
-		http.Error(w, fmt.Sprintf("failed to get session, %s", err), http.StatusInternalServerError)
+		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to get session")
 		return
 	}
 
@@ -114,14 +115,14 @@ func (p Provider) AuthHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[DEBUG] auth, %+v", session.Values)
 	tok, err := p.conf.Exchange(context.Background(), r.URL.Query().Get("code"))
 	if err != nil {
-		http.Error(w, fmt.Sprintf("exchange failed, %s", err), http.StatusInternalServerError)
+		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "exchange failed")
 		return
 	}
 
 	client := p.conf.Client(context.Background(), tok)
 	uinfo, err := client.Get(p.InfoURL)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("failed to get client info via %s, %s", p.InfoURL, err), http.StatusBadRequest)
+		common.SendErrorJSON(w, r, http.StatusBadRequest, err, fmt.Sprintf("failed to get client info via %s", p.InfoURL))
 		return
 	}
 
@@ -133,20 +134,20 @@ func (p Provider) AuthHandler(w http.ResponseWriter, r *http.Request) {
 
 	data, err := ioutil.ReadAll(uinfo.Body)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("failed to read user info, %s", err), http.StatusInternalServerError)
+		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to read user info")
 		return
 	}
 
 	jData := map[string]interface{}{}
 	if e := json.Unmarshal(data, &jData); e != nil {
-		http.Error(w, fmt.Sprintf("failed to unmarshal user info, %s", err), http.StatusInternalServerError)
+		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to unmarshal user info")
 		return
 	}
 	log.Printf("[DEBUG] got raw user info %+v", jData)
 
 	session.Values["uinfo"] = p.MapUser(jData)
 	if err = session.Save(r, w); err != nil {
-		http.Error(w, fmt.Sprintf("failed to save user info, %s", err), http.StatusInternalServerError)
+		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to save user info")
 		return
 	}
 
@@ -165,7 +166,7 @@ func (p Provider) AuthHandler(w http.ResponseWriter, r *http.Request) {
 func (p Provider) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	session, err := p.Get(r, "remark")
 	if err != nil {
-		http.Error(w, fmt.Sprintf("failed to get session, %s", err), http.StatusInternalServerError)
+		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "failed to get session")
 		return
 	}
 
@@ -178,7 +179,7 @@ func (p Provider) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	delete(session.Values, "state")
 
 	if err = session.Save(r, w); err != nil {
-		http.Error(w, fmt.Sprintf("failed to reset user info, %s", err), http.StatusInternalServerError)
+		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to reset user info")
 		return
 	}
 	log.Printf("[DEBUG] logout, %+v", session.Values)

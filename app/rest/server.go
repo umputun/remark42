@@ -20,6 +20,7 @@ import (
 
 	"github.com/umputun/remark/app/migrator"
 	"github.com/umputun/remark/app/rest/auth"
+	"github.com/umputun/remark/app/rest/common"
 	"github.com/umputun/remark/app/rest/format"
 	"github.com/umputun/remark/app/store"
 )
@@ -113,13 +114,13 @@ func (s *Server) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	comment := store.Comment{}
 	if err := render.DecodeJSON(r.Body, &comment); err != nil {
 		log.Printf("[WARN] can't bind request %s", err)
-		httpError(w, r, http.StatusBadRequest, err, "can't bind comment")
+		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't bind comment")
 		return
 	}
 
-	user, err := auth.GetUserInfo(r)
+	user, err := common.GetUserInfo(r)
 	if err != nil { // this not suppose to happen (handled by Auth), just dbl-check
-		httpError(w, r, http.StatusUnauthorized, err, "can't get user info")
+		common.SendErrorJSON(w, r, http.StatusUnauthorized, err, "can't get user info")
 		return
 	}
 
@@ -133,14 +134,14 @@ func (s *Server) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	// check if user blocked
 	if s.mod.checkBlocked(store.Locator{}, comment.User) {
 		log.Printf("[WARN] user %s rejected (blocked)", err)
-		httpError(w, r, http.StatusForbidden, errors.New("rejected"), "user blocked")
+		common.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"), "user blocked")
 		return
 	}
 
 	id, err := s.DataService.Create(comment)
 	if err != nil {
 		log.Printf("[WARN] can't save comment, %s", err)
-		httpError(w, r, http.StatusInternalServerError, err, "can't save comment")
+		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't save comment")
 		return
 	}
 
@@ -160,7 +161,7 @@ func (s *Server) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	err := s.DataService.Delete(locator, id)
 	if err != nil {
 		log.Printf("[WARN] can't delete comment %s %+v, %s", id, locator, err)
-		httpError(w, r, http.StatusInternalServerError, err, "can't delete comment")
+		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete comment")
 		return
 	}
 
@@ -185,7 +186,7 @@ func (s *Server) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	comments, err := s.DataService.Find(store.Request{Locator: locator, Sort: r.URL.Query().Get("sort")})
 	if err != nil {
 		log.Printf("[WARN] can't get comments for %+v, %s", locator, err)
-		httpError(w, r, http.StatusInternalServerError, err, "can't load comments comment")
+		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't load comments comment")
 		return
 	}
 	comments = s.mod.maskBlockedUsers(comments)
@@ -217,7 +218,7 @@ func (s *Server) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	comments, err := s.DataService.Last(store.Locator{SiteID: r.URL.Query().Get("site")}, max)
 	if err != nil {
 		log.Printf("[WARN] can't get last comments, %s", err)
-		httpError(w, r, http.StatusInternalServerError, err, "can't get last comments")
+		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't get last comments")
 		return
 	}
 	comments = s.mod.maskBlockedUsers(comments)
@@ -238,7 +239,7 @@ func (s *Server) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 	comment, err := s.DataService.GetByID(locator, id)
 	if err != nil {
 		log.Printf("[WARN] can't get comment, %s", err)
-		httpError(w, r, http.StatusInternalServerError, err, "can't get comment by id")
+		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't get comment by id")
 		return
 	}
 	render.Status(r, http.StatusOK)
@@ -261,7 +262,7 @@ func (s *Server) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	comments, err := s.DataService.GetByUser(store.Locator{SiteID: r.URL.Query().Get("site")}, userID)
 	if err != nil {
 		log.Printf("[WARN] can't get comment, %s", err)
-		httpError(w, r, http.StatusBadRequest, err, "can't get comment by user id")
+		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get comment by user id")
 		return
 	}
 
@@ -272,9 +273,9 @@ func (s *Server) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 // GET /user - returns user info
 func (s *Server) userInfoCtrl(w http.ResponseWriter, r *http.Request) {
-	user, err := auth.GetUserInfo(r)
+	user, err := common.GetUserInfo(r)
 	if err != nil {
-		httpError(w, r, http.StatusUnauthorized, err, "can't get user info")
+		common.SendErrorJSON(w, r, http.StatusUnauthorized, err, "can't get user info")
 		return
 	}
 	render.JSON(w, r, user)
@@ -285,7 +286,7 @@ func (s *Server) countCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	count, err := s.DataService.Count(locator)
 	if err != nil {
-		httpError(w, r, http.StatusBadRequest, err, "can't get count")
+		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get count")
 		return
 	}
 	render.JSON(w, r, JSON{"count": count, "loc": locator})
@@ -296,7 +297,7 @@ func (s *Server) listCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site")}
 	posts, err := s.DataService.List(locator)
 	if err != nil {
-		httpError(w, r, http.StatusBadRequest, err, "can't get count")
+		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get count")
 		return
 	}
 	render.JSON(w, r, JSON{"posts": posts, "loc": locator})
@@ -305,9 +306,9 @@ func (s *Server) listCtrl(w http.ResponseWriter, r *http.Request) {
 // PUT /vote/{id}?site=siteID&url=post-url&vote=1 - vote for/against comment
 func (s *Server) voteCtrl(w http.ResponseWriter, r *http.Request) {
 
-	user, err := auth.GetUserInfo(r)
+	user, err := common.GetUserInfo(r)
 	if err != nil {
-		httpError(w, r, http.StatusUnauthorized, err, "can't get user info")
+		common.SendErrorJSON(w, r, http.StatusUnauthorized, err, "can't get user info")
 		return
 	}
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
@@ -319,16 +320,11 @@ func (s *Server) voteCtrl(w http.ResponseWriter, r *http.Request) {
 	comment, err := s.DataService.Vote(locator, id, user.ID, vote)
 	if err != nil {
 		log.Printf("[WARN] vote rejected for %s - %s, %s", user.ID, id, err)
-		httpError(w, r, http.StatusBadRequest, err, "can't vote for comment")
+		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't vote for comment")
 		return
 	}
 	s.respCache.Flush()
 	render.JSON(w, r, JSON{"id": comment.ID, "score": comment.Score})
-}
-
-func httpError(w http.ResponseWriter, r *http.Request, code int, err error, details string) {
-	render.Status(r, code)
-	render.JSON(w, r, JSON{"error": err.Error(), "details": details})
 }
 
 // renderJSONWithHTML allows html tags and forces charset=utf-8

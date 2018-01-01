@@ -16,8 +16,7 @@ import (
 	"github.com/didip/tollbooth"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/render"
-
-	"github.com/umputun/remark/app/rest/auth"
+	"github.com/umputun/remark/app/rest/common"
 )
 
 var org = "Umputun"
@@ -162,7 +161,7 @@ func Logger(flags ...LoggerFlag) func(http.Handler) http.Handler {
 				}
 
 				if inFlags(LogUser) {
-					u, err := auth.GetUserInfo(r)
+					u, err := common.GetUserInfo(r)
 					if err == nil && u.Name != "" {
 						user = fmt.Sprintf(" - %s %q", u.ID, u.Name)
 					}
