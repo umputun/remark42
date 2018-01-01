@@ -24,7 +24,7 @@ func SendErrorText(w http.ResponseWriter, r *http.Request, code int, text string
 
 func logDetails(r *http.Request, code int, err error, details string) {
 	uinfoStr := ""
-	if user, err := GetUserInfo(r); err == nil {
+	if user, е := GetUserInfo(r); е == nil {
 		uinfoStr = user.Name + "/" + user.ID + " - "
 	}
 
