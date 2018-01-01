@@ -126,6 +126,7 @@ Sort can be `time` or `score`. Supported sort order with prefix -/+, i.e. `-time
 - `GET /api/v1/id/{id}?site=site-id` - get comment by `id`
 - `GET /api/v1/comments?site=site-id&user=id` - get comment by `user id`
 - `GET /api/v1/count?site=site-id&url=post-url` - get comment's count for `{url}`
+- `GET /api/v1/list?site=site-id` - list commented posts
 - `GET /api/v1/user` - get user info, _auth required_
 - `PUT /api/v1/vote/{id}?site=site-id&url=post-url&vote=1` - vote for comment. `vote`=1 will increase score, -1 decrease. _auth required_
 

@@ -79,6 +79,7 @@ func (s *Server) Run() {
 		rapi.Get("/comments", s.findUserCommentsCtrl)
 		rapi.Get("/last/{max}", s.lastCommentsCtrl)
 		rapi.Get("/count", s.countCtrl)
+		rapi.Get("/list", s.listCtrl)
 
 		// protected routes, require auth
 		rapi.With(auth.Auth(s.SessionStore, s.Admins, maybeDevMode(auth.Full))).Group(func(rauth chi.Router) {
@@ -283,6 +284,17 @@ func (s *Server) countCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	render.JSON(w, r, JSON{"count": count, "loc": locator})
+}
+
+// GET /list?site=siteID - list posts with comments
+func (s *Server) listCtrl(w http.ResponseWriter, r *http.Request) {
+	locator := store.Locator{SiteID: r.URL.Query().Get("site")}
+	posts, err := s.DataService.List(locator)
+	if err != nil {
+		httpError(w, r, http.StatusBadRequest, err, "can't get count")
+		return
+	}
+	render.JSON(w, r, JSON{"posts": posts, "loc": locator})
 }
 
 // PUT /vote/{id}?site=siteID&url=post-url&vote=1 - vote for/against comment
