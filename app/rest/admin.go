@@ -17,7 +17,7 @@ import (
 	"github.com/umputun/remark/app/store"
 )
 
-// admin provides router for all requests available for admin only
+// admin provides router for all requests available for admin users only
 type admin struct {
 	dataService store.Service
 	exporter    migrator.Exporter
@@ -68,7 +68,8 @@ func (a *admin) setBlockCtrl(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, JSON{"user_id": userID, "site_id": siteID, "block": blockStatus})
 }
 
-// PUT /pin/{id}?site=siteID&url=post-url&pin=1 - mark/unmark comment as a special
+// PUT /pin/{id}?site=siteID&url=post-url&pin=1
+// mark/unmark comment as a special
 func (a *admin) setPinCtrl(w http.ResponseWriter, r *http.Request) {
 	commentID := chi.URLParam(r, "id")
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
@@ -82,7 +83,8 @@ func (a *admin) setPinCtrl(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, JSON{"id": commentID, "loc": locator, "pin": pinStatus})
 }
 
-// GET /export?site=site-id?mode=file|stream - exports all comments for siteID as json stream or file
+// GET /export?site=site-id?mode=file|stream
+// exports all comments for siteID as json stream or gz file
 func (a *admin) exportCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	var writer io.Writer = w
@@ -100,6 +102,7 @@ func (a *admin) exportCtrl(w http.ResponseWriter, r *http.Request) {
 }
 
 // POST /import?site=site-id
+// imports comments from post body.
 func (a *admin) importCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	if err := a.importer.Import(r.Body, siteID); err != nil {
@@ -112,6 +115,8 @@ func (a *admin) checkBlocked(locator store.Locator, user store.User) bool {
 	return a.dataService.IsBlocked(locator, user.ID)
 }
 
+// processes comments and hides text of all comments for blocked users.
+// resets score and votes too
 func (a *admin) maskBlockedUsers(comments []store.Comment) (res []store.Comment) {
 	for _, c := range comments {
 		if a.dataService.IsBlocked(c.Locator, c.User.ID) {

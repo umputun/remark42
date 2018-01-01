@@ -64,6 +64,7 @@ func (s *Server) Run() {
 	// If you aren't using gorilla/mux, you need to wrap your handlers with context.ClearHandler
 	router.Use(context.ClearHandler)
 
+	// auth routes for all providers
 	router.Route("/auth", func(r chi.Router) {
 		r.Mount("/google", s.AuthGoogle.Routes())
 		r.Mount("/github", s.AuthGithub.Routes())
@@ -71,6 +72,7 @@ func (s *Server) Run() {
 		r.Get("/logout", s.AuthGoogle.LogoutHandler) // shortcut, can be any of providers, does the same
 	})
 
+	// api routes
 	router.Route("/api/v1", func(rapi chi.Router) {
 		rapi.Get("/find", s.findCommentsCtrl)
 		rapi.Get("/id/{id}", s.commentByIDCtrl)
@@ -78,13 +80,13 @@ func (s *Server) Run() {
 		rapi.Get("/last/{max}", s.lastCommentsCtrl)
 		rapi.Get("/count", s.countCtrl)
 
-		// require auth
+		// protected routes, require auth
 		rapi.With(auth.Auth(s.SessionStore, s.Admins, maybeDevMode(auth.Full))).Group(func(rauth chi.Router) {
 			rauth.Post("/comment", s.createCommentCtrl)
 			rauth.Get("/user", s.userInfoCtrl)
 			rauth.Put("/vote/{id}", s.voteCtrl)
 
-			// require admin
+			// admin routes, admin users only
 			s.mod = admin{dataService: s.DataService, exporter: s.Exporter, respCache: s.respCache}
 			rauth.Mount("/admin", s.mod.routes())
 		})
@@ -93,7 +95,6 @@ func (s *Server) Run() {
 
 	router.Get("/robots.txt", func(w http.ResponseWriter, r *http.Request) {
 		render.PlainText(w, r, "User-agent: *\nDisallow: /auth/\nDisallow: /api/\n")
-
 	})
 	s.addFileServer(router, "/web", http.Dir(filepath.Join(".", "web")))
 

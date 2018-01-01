@@ -57,6 +57,7 @@ func (t *Tree) filter(comments []store.Comment, parentID string) (f []store.Comm
 	return f
 }
 
+// sort list of nodes, i.e. top-level comments
 func (t *Tree) sortNodes(sortType string) {
 
 	sort.Slice(t.Nodes, func(i, j int) bool {

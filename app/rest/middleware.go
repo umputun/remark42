@@ -60,7 +60,7 @@ func Limiter(recSec int, excludeIps ...string) func(http.Handler) http.Handler {
 	}
 }
 
-// AppInfo adds custom app-info to header
+// AppInfo adds custom app-info to the response header
 func AppInfo(app string, version string) func(http.Handler) http.Handler {
 	f := func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
@@ -77,7 +77,7 @@ func AppInfo(app string, version string) func(http.Handler) http.Handler {
 	return f
 }
 
-// Ping middleware response with pong. Stops chain if ping request detected
+// Ping middleware response with pong to /ping. Stops chain if ping request detected
 func Ping(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 
@@ -104,10 +104,8 @@ func Recoverer(next http.Handler) http.Handler {
 				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			}
 		}()
-
 		next.ServeHTTP(w, r)
 	}
-
 	return http.HandlerFunc(fn)
 }
 

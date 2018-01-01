@@ -60,24 +60,25 @@ type Interface interface {
 
 // Accessor defines all usual access ops avail for regular user
 type Accessor interface {
-	Create(comment Comment) (commentID string, err error)
-	Get(locator Locator, commentID string) (comment Comment, err error)
-	Put(locator Locator, comment Comment) error
-	Find(request Request) ([]Comment, error)
-	Last(locator Locator, max int) ([]Comment, error)
-	GetByID(locator Locator, commentID string) (Comment, error)
-	GetByUser(locator Locator, userID string) ([]Comment, error)
-	Count(locator Locator) (int, error)
-	List(locator Locator) ([]string, error)
+	Create(comment Comment) (commentID string, err error)               // create new comment, avoid dups by ID
+	Get(locator Locator, commentID string) (comment Comment, err error) // get comment by ID
+	Put(locator Locator, comment Comment) error                         // update comment, mutable parts only
+	Find(request Request) ([]Comment, error)                            // find comments for request
+	Last(locator Locator, max int) ([]Comment, error)                   // last comments for given site
+	GetByID(locator Locator, commentID string) (Comment, error)         // comment by id
+	GetByUser(locator Locator, userID string) ([]Comment, error)        // comment by user
+	Count(locator Locator) (int, error)                                 // number of comments for the post
+	List(locator Locator) ([]string, error)                             // list of commented posts
 }
 
 // Admin defines all store ops avail for admin only
 type Admin interface {
-	Delete(locator Locator, commentID string) error
-	SetBlock(locator Locator, userID string, status bool) error
-	IsBlocked(locator Locator, userID string) bool
+	Delete(locator Locator, commentID string) error             // delete comment by id
+	SetBlock(locator Locator, userID string, status bool) error // block or unblock  user
+	IsBlocked(locator Locator, userID string) bool              // check if user blocked
 }
 
+// makeCommentID generates sha1(random) string
 func makeCommentID() string {
 	b := make([]byte, 64)
 	if _, err := rand.Read(b); err != nil {
@@ -90,6 +91,7 @@ func makeCommentID() string {
 	return fmt.Sprintf("%x", s.Sum(nil))
 }
 
+// clean dangerous html/js from the comment
 func sanitizeComment(comment Comment) Comment {
 	p := bluemonday.UGCPolicy()
 	comment.Text = p.Sanitize(comment.Text)

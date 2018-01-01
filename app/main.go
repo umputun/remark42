@@ -66,6 +66,7 @@ func main() {
 	dataStore := makeBoltStore()
 
 	if p.Active != nil && p.Command.Find("import") == p.Active {
+		// import mode
 		params := migrator.ImportParams{
 			DataStore: dataStore,
 			InputFile: opts.ImportCommand.InputFile,
@@ -138,6 +139,7 @@ func makeBoltStore() store.Interface {
 	return result
 }
 
+// mkdir -p for all dirs
 func makeDirs(dirs ...string) error {
 
 	// exists returns whether the given file or directory exists or not
