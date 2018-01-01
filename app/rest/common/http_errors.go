@@ -3,6 +3,7 @@ package common
 import (
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/go-chi/render"
@@ -26,5 +27,11 @@ func logDetails(r *http.Request, code int, err error, details string) {
 	if user, err := GetUserInfo(r); err == nil {
 		uinfoStr = user.Name + "/" + user.ID + " - "
 	}
-	log.Printf("[DEBUG] %s - %v - %d - %s%s - %s", details, err, code, uinfoStr, strings.Split(r.RemoteAddr, ":")[0], r.URL)
+
+	q := r.URL.String()
+	if qun, err := url.QueryUnescape(q); err == nil {
+		q = qun
+	}
+
+	log.Printf("[DEBUG] %s - %v - %d - %s%s - %s", details, err, code, uinfoStr, strings.Split(r.RemoteAddr, ":")[0], q)
 }
