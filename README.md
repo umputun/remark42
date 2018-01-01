@@ -20,9 +20,34 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 
 ### Backend
 
-- copy provided docker-compose.yml and customize for your needs
+- copy provided `docker-compose.yml` and customize for your needs
 - make sure you **don't keep** `DEV=true` for any non-development deployments
-- pull and start `docker compose pull && docker compose up`
+- pull and start `docker-compose pull && docker compose up`
+
+#### Parameters
+
+| Command line    | Environment          | Default                | Multi | Scope  | Description                     |
+| --------------- | -------------------- | ---------------------- | ----- | ------ | ------------------------------- |
+| --bolt          | BOLTDB_PATH          | `/tmp`                 | no    | all    | path to data directory          |
+| --site          | SITE                 | `remark`               | yes   | server | site name(s)                    |
+| --url           | REMARK_URL           | `https://remark42.com` | no    | all    | url to remark server            |
+| --admin         | ADMIN                |                        | yes   | server | admin(s) names (user id)        |
+| --backup        | BACKUP_PATH          | `/tmp`                 | no    | server | backups location                |
+| --max-back      | MAX_BACKUP_FILES     | `10`                   | no    | server | max backup files to keep        |
+| --session       | SESSION_STORE        | `/tmp`                 | no    | server | path to session store directory |
+| --store-key     | STORE_KEY            | `secure-store-key`     | no    | server | session store encryption key    |
+| --dbg           | DEBUG                | `false`                | no    | all    | debug mode                      |
+| --dev           | DEV                  | `false`                | no    | all    | development mode, no auth!      |
+| --google-cid    | REMARK_GOOGLE_CID    |                        | no    | server | Google OAuth client ID          |
+| --google-csec   | REMARK_GOOGLE_CSEC   |                        | no    | server | Google OAuth client secret      |
+| --facebook-cid  | REMARK_FACEBOOK_CID  |                        | no    | server | Facebook OAuth client ID        |
+| --facebook-csec | REMARK_FACEBOOK_CSEC |                        | no    | server | Facebook OAuth client secret    |
+| --github-cid    | REMARK_GITHUB_CID    |                        | no    | server | Github OAuth client ID          |
+| --github-csec   | REMARK_GITHUB_CSEC   |                        | no    | server | Github OAuth client secret      |
+| --provider      |                      | `disqus`               | no    | import | provider type for import        |
+| --site          |                      | `remark`               | no    | import | site ID                         |
+| --file          |                      | `disqus.xml`           | no    | import | import file                     |
+
 
 #### Run modes
 
