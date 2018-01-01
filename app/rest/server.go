@@ -335,7 +335,7 @@ func renderJSONWithHTML(w http.ResponseWriter, r *http.Request, v interface{}) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	if status, ok := r.Context().Value(render.StatusCtxKey).(int); ok {
 		w.WriteHeader(status)
 	}
