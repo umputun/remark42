@@ -29,7 +29,7 @@ func logDetails(r *http.Request, code int, err error, details string) {
 	}
 
 	q := r.URL.String()
-	if qun, err := url.QueryUnescape(q); err == nil {
+	if qun, е := url.QueryUnescape(q); е == nil {
 		q = qun
 	}
 
