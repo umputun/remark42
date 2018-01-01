@@ -54,11 +54,3 @@ func ImportComments(p ImportParams) error {
 
 	return importer.Import(fh, p.SiteID)
 }
-
-// AutoBackup struct handles daily backups params for siteID
-type AutoBackup struct {
-	Exporter       Exporter
-	BackupLocation string
-	SiteID         string
-	KeepMax        int
-}

@@ -13,17 +13,26 @@ import (
 	"github.com/pkg/errors"
 )
 
+// AutoBackup struct handles daily backups params for siteID
+type AutoBackup struct {
+	Exporter       Exporter
+	BackupLocation string
+	SiteID         string
+	KeepMax        int
+	Duration       time.Duration
+}
+
 // Do runs daily export to local files, keeps up to keepMax backups for given siteID
 func (ab AutoBackup) Do() {
-	log.Print("[INFO] activate auto-backup")
-	tick := time.NewTicker(24 * time.Hour)
+	log.Printf("[INFO] activate auto-backup for %s", ab.BackupLocation)
+	tick := time.NewTicker(24 * ab.Duration)
 	for range tick.C {
-		_, err := ab.makeBackup()
-		if err != nil {
+		if _, err := ab.makeBackup(); err != nil {
 			log.Printf("[WARN] auto-backup for %s failed, %s", ab.SiteID, err)
 			continue
 		}
 		ab.removeOldBackupFiles()
+		log.Printf("[DEBUG] next backup at %s", time.Now().Add(ab.Duration))
 	}
 }
 

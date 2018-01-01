@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/gorilla/sessions"
 	"github.com/hashicorp/logutils"
@@ -120,6 +121,7 @@ func main() {
 			BackupLocation: opts.BackupLocation,
 			SiteID:         siteID,
 			KeepMax:        opts.MaxBackupFiles,
+			Duration:       24 * time.Hour,
 		}.Do()
 	}
 
