@@ -111,4 +111,3 @@ Sort can be `time` or `score`. Supported sort order with prefix -/+, i.e. `-time
 - `GET /api/v1/admin/export?site=side-id&mode=[stream|file]` - export all comments to json stream or gz file. _auth and admin required_
 - `POST /api/v1/admin/import?site=side-id` - import comments from the backup. _auth and admin required_
 - `PUT /api/v1/admin/pin/{id}?site=site-id&url=post-url&pin=1` - pin or unpin comment. _auth and admin required_
-
