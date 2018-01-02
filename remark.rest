@@ -1,9 +1,9 @@
 
 ### find request with tree
-GET https://demo.remark42.com/api/v1/find?site=remark&url=https://radio-t.com/p/2017/12/16/podcast-576/&sort=time&format=tree"
+GET https://demo.remark42.com/api/v1/find?site=remark&sort=time&format=tree&url=https://radio-t.com/p/2017/12/16/podcast-576/
 
 ### find request with plain
-GET https://demo.remark42.com/api/v1/find?site=remark&url=https://radio-t.com/p/2017/12/16/podcast-576/&sort=time&format=plain"
+GET https://demo.remark42.com/api/v1/find?site=remark&sort=time&format=plain&url=https://radio-t.com/p/2017/12/16/podcast-576/
 
 ### last 10 comments
 GET https://demo.remark42.com/api/v1/last/50?site=remark
