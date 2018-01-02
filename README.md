@@ -79,14 +79,19 @@ _instructions for google oauth2 setup borrowed from [oauth2_proxy](https://githu
 
 ##### GitHub Auth Provider
 
-1. Create a new "OAuth App": https://github.com/settings/developers 
-1. Fill "Application Name" and "Homepage URL" for your site
-1. Under `Authorization callback URL` enter the correct url constructed as domain + `/auth/github/callback`. ie `https://remark42.mysite.com/auth/github/callback`
+1. Create a new **"OAuth App"**: https://github.com/settings/developers 
+1. Fill **"Application Name"** and **"Homepage URL"** for your site
+1. Under **"Authorization callback URL"** enter the correct url constructed as domain + `/auth/github/callback`. ie `https://remark42.mysite.com/auth/github/callback`
 1. Take note of the **Client ID** and **Client Secret**
 
 ##### Facebook Auth Provider
 
-TBD
+1. From https://developers.facebook.com select **"My Apps"** / **"Add a new App"**
+1. Set **"Display Name"** and **"Contact email"**
+1. Choose **"Facebook Login"** and then **"Web"**
+1. Set "Site URL" to your domain, ex: `https://remark42.mysite.com`
+1. Under **"Facebook"/"Settings"** fill "Valid OAuth redirect URIs" with your callback url constructed as domain + `/auth/facebook/callback`
+1. Select **"App Review"** and turn public flag on. This step may ask you to provide a link to your privacy policy.
 
 ### Frontend
 
