@@ -113,7 +113,6 @@ func (s *Server) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 	comment := store.Comment{}
 	if err := render.DecodeJSON(r.Body, &comment); err != nil {
-		log.Printf("[WARN] can't bind request %s", err)
 		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't bind comment")
 		return
 	}
@@ -133,14 +132,12 @@ func (s *Server) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 	// check if user blocked
 	if s.mod.checkBlocked(store.Locator{}, comment.User) {
-		log.Printf("[WARN] user %s rejected (blocked)", err)
 		common.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"), "user blocked")
 		return
 	}
 
 	id, err := s.DataService.Create(comment)
 	if err != nil {
-		log.Printf("[WARN] can't save comment, %s", err)
 		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't save comment")
 		return
 	}
@@ -160,7 +157,6 @@ func (s *Server) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	err := s.DataService.Delete(locator, id)
 	if err != nil {
-		log.Printf("[WARN] can't delete comment %s %+v, %s", id, locator, err)
 		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete comment")
 		return
 	}
@@ -185,7 +181,6 @@ func (s *Server) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	comments, err := s.DataService.Find(store.Request{Locator: locator, Sort: r.URL.Query().Get("sort")})
 	if err != nil {
-		log.Printf("[WARN] can't get comments for %+v, %s", locator, err)
 		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't load comments comment")
 		return
 	}
@@ -217,7 +212,6 @@ func (s *Server) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	comments, err := s.DataService.Last(store.Locator{SiteID: r.URL.Query().Get("site")}, max)
 	if err != nil {
-		log.Printf("[WARN] can't get last comments, %s", err)
 		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't get last comments")
 		return
 	}
@@ -238,7 +232,6 @@ func (s *Server) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 
 	comment, err := s.DataService.GetByID(locator, id)
 	if err != nil {
-		log.Printf("[WARN] can't get comment, %s", err)
 		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't get comment by id")
 		return
 	}
@@ -261,7 +254,6 @@ func (s *Server) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	comments, err := s.DataService.GetByUser(store.Locator{SiteID: r.URL.Query().Get("site")}, userID)
 	if err != nil {
-		log.Printf("[WARN] can't get comment, %s", err)
 		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get comment by user id")
 		return
 	}
@@ -319,7 +311,6 @@ func (s *Server) voteCtrl(w http.ResponseWriter, r *http.Request) {
 
 	comment, err := s.DataService.Vote(locator, id, user.ID, vote)
 	if err != nil {
-		log.Printf("[WARN] vote rejected for %s - %s, %s", user.ID, id, err)
 		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't vote for comment")
 		return
 	}

@@ -46,7 +46,6 @@ func (a *admin) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 	err := a.dataService.Delete(locator, id)
 	if err != nil {
-		log.Printf("[WARN] can't delete comment, %s", err)
 		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete comment")
 		return
 	}
