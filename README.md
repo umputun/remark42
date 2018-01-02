@@ -56,6 +56,36 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 
 #### Register oauth2 providers
 
+Authentication handled by external providers. You should setup oauth2 for all (or some) of them in order to allow users to access comments. It is not mandatory to have all of them, but at least one should be property configured.
+
+##### Google Auth Provider
+
+1. Create a new project: https://console.developers.google.com/project
+1. Choose the new project from the top right project dropdown (only if another project is selected)
+1. In the project Dashboard center pane, choose **"API Manager"**
+1. In the left Nav pane, choose **"Credentials"**
+1. In the center pane, choose **"OAuth consent screen"** tab. Fill in **"Product name shown to users"** and hit save.
+1. In the center pane, choose **"Credentials"** tab.
+   - Open the **"New credentials"** drop down
+   - Choose **"OAuth client ID"**
+   - Choose **"Web application"**
+   - Application name is freeform, choose something appropriate
+   - Authorized origins is your domain ex: `https://remark42.mysite.com`
+   - Authorized redirect URIs is the location of oauth2/callback constructed as domain + `/auth/google/callback`, ex: `https://remark42.mysite.com/auth/google/callback`
+   - Choose **"Create"**
+1. Take note of the **Client ID** and **Client Secret**
+
+_instructions for google oauth2 setup borrowed from [oauth2_proxy](https://github.com/bitly/oauth2_proxy)_
+
+##### GitHub Auth Provider
+
+1. Create a new "OAuth App": https://github.com/settings/developers 
+1. Fill "Application Name" and "Homepage URL" for your site
+1. Under `Authorization callback URL` enter the correct url constructed as domain + `/auth/github/callback`. ie `https://remark42.mysite.com/auth/github/callback`
+1. Take note of the **Client ID** and **Client Secret**
+
+##### Facebook Auth Provider
+
 TBD
 
 ### Frontend
