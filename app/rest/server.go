@@ -187,8 +187,9 @@ func (s *Server) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	comments = s.mod.maskBlockedUsers(comments)
 
 	if r.URL.Query().Get("format") == "tree" {
-		s.respCache.Set(cacheKey, comments, time.Hour)
-		renderJSONWithHTML(w, r, format.MakeTree(comments, r.URL.Query().Get("sort")))
+		treeComments := format.MakeTree(comments, r.URL.Query().Get("sort"))
+		s.respCache.Set(cacheKey, treeComments, time.Hour)
+		renderJSONWithHTML(w, r, treeComments)
 		return
 	}
 

@@ -90,7 +90,7 @@ _instructions for google oauth2 setup borrowed from [oauth2_proxy](https://githu
 1. Set **"Display Name"** and **"Contact email"**
 1. Choose **"Facebook Login"** and then **"Web"**
 1. Set "Site URL" to your domain, ex: `https://remark42.mysite.com`
-1. Under **"Facebook"/"Settings"** fill "Valid OAuth redirect URIs" with your callback url constructed as domain + `/auth/facebook/callback`
+1. Under **"Facebook login"** / **"Settings"** fill "Valid OAuth redirect URIs" with your callback url constructed as domain + `/auth/facebook/callback`
 1. Select **"App Review"** and turn public flag on. This step may ask you to provide a link to your privacy policy.
 
 ### Frontend
