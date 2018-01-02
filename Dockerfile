@@ -7,7 +7,7 @@ RUN cd app && go test -v $(go list -e ./... | grep -v vendor)
 
 RUN gometalinter --disable-all --deadline=300s --vendor --enable=vet --enable=vetshadow --enable=golint \
     --enable=staticcheck --enable=ineffassign --enable=goconst --enable=errcheck --enable=unconvert \
-    --enable=deadcode  --enable=gosimple --enable=gas --exclude=test --exclude=mock ./...
+    --enable=deadcode  --enable=gosimple --enable=gas --exclude=test --exclude=mock --exclude=vendor ./...
 
 #RUN /script/checkvendor.sh
 RUN mkdir -p target && /script/coverage.sh
