@@ -6,6 +6,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+var editDuration = 5 * time.Minute
+
 // Service wraps store.Interface with additional methods
 type Service struct {
 	Interface
@@ -53,6 +55,11 @@ func (s *Service) EditComment(locator Locator, commentID string, text string, ed
 	// edit allowed only once
 	if comment.Edit != nil {
 		return comment, errors.Errorf("comment %s already edited at %s", commentID, comment.Edit.Timestamp)
+	}
+
+	// edit allowed in editDuration window only
+	if comment.Timestamp.Add(editDuration).After(time.Now()) {
+		return comment, errors.Errorf("too late to edit %s", commentID)
 	}
 
 	comment.Text = text
