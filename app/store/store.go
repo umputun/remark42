@@ -25,6 +25,7 @@ type Comment struct {
 	Votes     map[string]bool `json:"votes"`
 	Timestamp time.Time       `json:"time"`
 	Pin       bool            `json:"pin,omitempty"`
+	Edit      Edit            `json:"edit,omitempty"`
 }
 
 // Locator keeps site and url of the post
@@ -42,6 +43,12 @@ type User struct {
 	Admin   bool   `json:"admin"`
 	Blocked bool   `json:"block,omitempty"`
 	IP      string `json:"-"`
+}
+
+// Edit indication
+type Edit struct {
+	Timestamp time.Time `json:"time"`
+	Summary   string    `json:"summary"`
 }
 
 // Request is a container for all finds

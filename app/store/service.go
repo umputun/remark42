@@ -1,6 +1,10 @@
 package store
 
-import "github.com/pkg/errors"
+import (
+	"time"
+
+	"github.com/pkg/errors"
+)
 
 // Service wraps store.Interface with additional methods
 type Service struct {
@@ -38,4 +42,23 @@ func (s *Service) Vote(locator Locator, commentID string, userID string, val boo
 	}
 
 	return comment, s.Put(locator, comment)
+}
+
+// EditComment to edit text and update Edit info
+func (s *Service) EditComment(locator Locator, commentID string, text string, edit Edit) (comment Comment, err error) {
+	comment, err = s.Get(locator, commentID)
+	if err != nil {
+		return comment, err
+	}
+	// edit allowed only once
+	if !comment.Edit.Timestamp.IsZero() {
+		return comment, errors.Errorf("comment %s already edited at %s", commentID, comment.Edit.Timestamp)
+	}
+
+	comment.Text = text
+	comment.Edit = edit
+	comment.Edit.Timestamp = time.Now()
+	comment = sanitizeComment(comment)
+	err = s.Put(locator, comment)
+	return comment, err
 }

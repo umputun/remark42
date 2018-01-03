@@ -11,9 +11,8 @@ import (
 var testDb = "/tmp/test-remark.db"
 
 func TestBoltDB_CreateAndFind(t *testing.T) {
-	var b Interface
+	var b Interface = prep(t)
 	defer os.Remove(testDb)
-	b = prep(t)
 
 	res, err := b.Find(Request{Locator: Locator{URL: "https://radio-t.com", SiteID: "radio-t"}})
 	assert.Nil(t, err)

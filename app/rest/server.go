@@ -89,6 +89,7 @@ func (s *Server) Run() {
 		// protected routes, require auth
 		rapi.With(auth.Auth(s.SessionStore, s.Admins, maybeDevMode(auth.Full))).Group(func(rauth chi.Router) {
 			rauth.Post("/comment", s.createCommentCtrl)
+			rauth.Put("/comment/{id}", s.updateCommentCtrl)
 			rauth.Get("/user", s.userInfoCtrl)
 			rauth.Put("/vote/{id}", s.voteCtrl)
 
@@ -146,6 +147,50 @@ func (s *Server) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 	render.Status(r, http.StatusAccepted)
 	render.JSON(w, r, JSON{"id": id, "loc": comment.Locator})
+}
+
+// PUT /comment/{id}?site=siteID&url=post-url - update comment
+func (s *Server) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
+
+	edit := struct {
+		Text    string
+		Summary string
+	}{}
+
+	if err := render.DecodeJSON(r.Body, &edit); err != nil {
+		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't bind comment")
+		return
+	}
+
+	user, err := common.GetUserInfo(r)
+	if err != nil { // this not suppose to happen (handled by Auth), just dbl-check
+		common.SendErrorJSON(w, r, http.StatusUnauthorized, err, "can't get user info")
+		return
+	}
+	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
+	id := chi.URLParam(r, "id")
+	log.Printf("[DEBUG] update comment %s, %+v", id, edit)
+
+	var currComment store.Comment
+	if currComment, err = s.DataService.Get(locator, id); err != nil {
+		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't find comment")
+		return
+	}
+
+	if currComment.User.ID != user.ID {
+		common.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"), "can not edit comments for other users")
+		return
+	}
+
+	res, err := s.DataService.EditComment(locator, id, edit.Text, store.Edit{Summary: edit.Summary})
+	if err != nil {
+		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't update comment")
+		return
+	}
+
+	s.respCache.Flush() // reset all caches
+
+	render.JSON(w, r, JSON{"id": id, "loc": locator, "comment": res})
 }
 
 // DELETE /comment/{id}?site=siteID&url=post-url
