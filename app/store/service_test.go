@@ -64,7 +64,7 @@ func TestBoltDB_EditComment(t *testing.T) {
 	t.Logf("%+v", res[0])
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(res))
-	assert.Equal(t, Edit{}, res[0].Edit)
+	assert.Nil(t, res[0].Edit)
 
 	comment, err := b.EditComment(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "xxx", Edit{Summary: "my edit"})
 	assert.Nil(t, err)

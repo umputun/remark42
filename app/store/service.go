@@ -51,7 +51,7 @@ func (s *Service) EditComment(locator Locator, commentID string, text string, ed
 		return comment, err
 	}
 	// edit allowed only once
-	if !comment.Edit.Timestamp.IsZero() {
+	if comment.Edit != nil {
 		return comment, errors.Errorf("comment %s already edited at %s", commentID, comment.Edit.Timestamp)
 	}
 
