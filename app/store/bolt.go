@@ -12,9 +12,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-// BoltDB implements store.Interface, represents multiple site with multiplexing to different bolt dbs. Thread safe.
+// BoltDB implements store.Interface, represents multiple sites with multiplexing to different bolt dbs. Thread safe.
 // there are 4 types of buckets:
-//  - comments for post. Each url (post) makes it's own bucket and each k:v pair is commentID:comment
+//  - comments for post. Each url (post) makes its own bucket and each k:v pair is commentID:comment
 //  - history of all comments. They all in a single "last" bucket (per site) and key is defined by ref struct as ts+commentID
 //    value is not full comment but a reference combined from post-url+commentID
 //  - user to comment references in "users" bucket. It used to get comments for user. Key is userID and value
