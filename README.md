@@ -157,6 +157,16 @@ type Node struct {
 
 Sort can be `time` or `score`. Supported sort order with prefix -/+, i.e. `-time`. For `tree` mode sort will be applied to top-level comments only and all replies always sorted by time.
 
+- `POST api/v1/comment/{id}?site=site-id&url=post-url` - edit comment, allowed once in 5min since creation
+  ```
+  Content-Type: application/json
+  
+  {
+  	"text": "edit comment blah http://radio-t.com 12345",
+    "summary": "fix blah"
+  }
+  ```
+
 - `GET /api/v1/last/{max}?site=site-id` - get up to `{max}` last comments
 - `GET /api/v1/id/{id}?site=site-id` - get comment by `id`
 - `GET /api/v1/comments?site=site-id&user=id` - get comment by `user id`
