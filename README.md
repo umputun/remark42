@@ -162,7 +162,7 @@ Sort can be `time` or `score`. Supported sort order with prefix -/+, i.e. `-time
   Content-Type: application/json
   
   {
-  	"text": "edit comment blah http://radio-t.com 12345",
+    "text": "edit comment blah http://radio-t.com 12345",
     "summary": "fix blah"
   }
   ```
