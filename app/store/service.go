@@ -6,11 +6,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-var editDuration = 5 * time.Minute
-
 // Service wraps store.Interface with additional methods
 type Service struct {
 	Interface
+	EditDuration time.Duration
 }
 
 // SetPin pin/un-pin comment as special
@@ -58,7 +57,7 @@ func (s *Service) EditComment(locator Locator, commentID string, text string, ed
 	}
 
 	// edit allowed in editDuration window only
-	if comment.Timestamp.Add(editDuration).Before(time.Now()) {
+	if s.EditDuration > 0 && time.Now().After(comment.Timestamp.Add(s.EditDuration)) {
 		return comment, errors.Errorf("too late to edit %s", commentID)
 	}
 

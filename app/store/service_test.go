@@ -3,6 +3,7 @@ package store
 import (
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -75,4 +76,34 @@ func TestBoltDB_EditComment(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "my edit", c.Edit.Summary)
 	assert.Equal(t, "xxx", c.Text)
+}
+
+func TestBoltDB_EditCommentDurationFailed(t *testing.T) {
+	defer os.Remove(testDb)
+
+	blt, err := NewBoltDB(BoltSite{FileName: "/tmp/test-remark.db", SiteID: "radio-t"})
+	assert.Nil(t, err)
+
+	comment := Comment{
+		ID:      "id-1",
+		Text:    `some text, <a href="http://radio-t.com">link</a>`,
+		Locator: Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+		User:    User{ID: "user1", Name: "user name"},
+	}
+	_, err = blt.Create(comment)
+	assert.Nil(t, err)
+
+	b := Service{Interface: blt, EditDuration: 100 * time.Millisecond}
+
+	res, err := b.Last(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, 0)
+	t.Logf("%+v", res[0])
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(res))
+	assert.Nil(t, res[0].Edit)
+
+	time.Sleep(time.Second)
+
+	comment, err = b.EditComment(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "xxx",
+		Edit{Summary: "my edit"})
+	assert.NotNil(t, err)
 }

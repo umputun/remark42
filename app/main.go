@@ -80,7 +80,7 @@ func main() {
 		return
 	}
 
-	dataService := store.Service{Interface: dataStore}
+	dataService := store.Service{Interface: dataStore, EditDuration: 5 * time.Minute}
 	sessionStore := sessions.NewFilesystemStore(opts.ServerCommand.SessionStore, []byte(opts.ServerCommand.StoreKey))
 	exporter := migrator.Remark{DataStore: dataStore}
 
