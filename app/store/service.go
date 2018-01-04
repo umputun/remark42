@@ -58,7 +58,7 @@ func (s *Service) EditComment(locator Locator, commentID string, text string, ed
 	}
 
 	// edit allowed in editDuration window only
-	if comment.Timestamp.Add(editDuration).After(time.Now()) {
+	if comment.Timestamp.Add(editDuration).Before(time.Now()) {
 		return comment, errors.Errorf("too late to edit %s", commentID)
 	}
 
