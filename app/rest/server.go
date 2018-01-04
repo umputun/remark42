@@ -189,8 +189,7 @@ func (s *Server) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.respCache.Flush() // reset all caches
-
-	render.JSON(w, r, JSON{"id": id, "loc": locator, "comment": res})
+	render.JSON(w, r, res)
 }
 
 // DELETE /comment/{id}?site=siteID&url=post-url

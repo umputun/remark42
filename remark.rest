@@ -26,7 +26,7 @@ Content-Type: application/json
 }
 
 ### update comment
-PUT https://demo.remark42.com/api/v1/comment/fb04757c0dbbe3e77b0e85e532e259d816cbaacc?site=remark&url=https://radio-t.com/blah1
+PUT https://demo.remark42.com/api/v1/comment/7b88d7a91353ab206cb63cdca18fb26bcb30205b?site=remark&url=https://radio-t.com/blah1
 Content-Type: application/json
 
 {
