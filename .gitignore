@@ -7,3 +7,6 @@ target
 debug
 debug.test
 .vscode
+.idea/
+/web/node_modules/
+/web/public/
