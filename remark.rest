@@ -35,7 +35,7 @@ Content-Type: application/json
 }
 
 ### pin comment
-PUT https://demo.remark42.com/api/v1/admin/pin/3665976683?site=remark&url=https://radio-t.com/p/2017/12/16/podcast-576/&pin=1
+PUT https://demo.remark42.com/api/v1/admin/pin/3665976683?site=remark&url=https://radio-t.com/p/2017/12/16/podcast-576/&pin=0
 
 ### vote for comment
 PUT https://demo.remark42.com/api/v1/vote/3665976683?site=remark&url=https://radio-t.com/p/2017/12/16/podcast-576/&vote=1

@@ -31,6 +31,15 @@ func TestService_Vote(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(res))
 	assert.Equal(t, 1, res[0].Score)
+
+	_, err = b.Vote(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "user1", false)
+	assert.Nil(t, err, "vote reset")
+	res, err = b.Last(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, 0)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(res))
+	assert.Equal(t, 0, res[0].Score)
+	assert.Equal(t, map[string]bool{}, res[0].Votes)
+
 }
 
 func TestBoltDB_Pin(t *testing.T) {

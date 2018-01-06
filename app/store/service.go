@@ -30,12 +30,23 @@ func (s *Service) Vote(locator Locator, commentID string, userID string, val boo
 		return comment, err
 	}
 
-	if _, voted := comment.Votes[userID]; voted {
+	v, voted := comment.Votes[userID]
+
+	if voted && v == val {
 		return comment, errors.Errorf("user %s already voted for %s", userID, commentID)
 	}
-	// update votes and score
-	comment.Votes[userID] = val
 
+	// reset vote if user changed to opposite
+	if voted && v != val {
+		delete(comment.Votes, userID)
+	}
+
+	// add to voted map if first vote
+	if !voted {
+		comment.Votes[userID] = val
+	}
+
+	// update score
 	if val {
 		comment.Score++
 	} else {
