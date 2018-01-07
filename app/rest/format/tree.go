@@ -22,10 +22,11 @@ type Node struct {
 func MakeTree(comments []store.Comment, sortType string) *Tree {
 	res := Tree{}
 
-	repComments := res.filter(comments, "")
-	for _, rc := range repComments {
+	topComments := res.filter(comments, "")
+	res.Nodes = make([]*Node, len(topComments))
+	for i, rc := range topComments {
 		node := Node{Comment: rc}
-		res.Nodes = append(res.Nodes, res.proc(comments, &node, rc.ID))
+		res.Nodes[i] = res.proc(comments, &node, rc.ID)
 	}
 
 	res.sortNodes(sortType)
@@ -49,6 +50,7 @@ func (t *Tree) proc(comments []store.Comment, node *Node, parentID string) *Node
 
 // filter returns comments for parentID
 func (t *Tree) filter(comments []store.Comment, parentID string) (f []store.Comment) {
+
 	for _, c := range comments {
 		if c.ParentID == parentID {
 			f = append(f, c)

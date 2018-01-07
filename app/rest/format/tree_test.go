@@ -3,6 +3,7 @@ package format
 import (
 	"bytes"
 	"encoding/json"
+	"io/ioutil"
 	"testing"
 	"time"
 
@@ -37,6 +38,19 @@ func TestStore_MakeTree(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, expJSON, buf.String())
 	// t.Log(string(buf.Bytes()))
+}
+
+func BenchmarkTree(b *testing.B) {
+	comments := []store.Comment{}
+	data, err := ioutil.ReadFile("testfile.json")
+	assert.Nil(b, err)
+	err = json.Unmarshal(data, &comments)
+	assert.Nil(b, err)
+
+	for i := 0; i < b.N; i++ {
+		res := MakeTree(comments, "time")
+		assert.NotNil(b, res)
+	}
 }
 
 const expJSON = `{

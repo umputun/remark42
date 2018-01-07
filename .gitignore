@@ -10,3 +10,5 @@ debug.test
 .idea/
 /web/node_modules/
 /web/public/
+*.prof
+*.test
