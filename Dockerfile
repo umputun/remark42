@@ -1,4 +1,4 @@
-FROM umputun/baseimage:buildgo-latest as build
+FROM umputun/baseimage:buildgo-latest as build-backend
 
 ADD . /go/src/github.com/umputun/remark
 WORKDIR /go/src/github.com/umputun/remark
@@ -17,8 +17,8 @@ RUN go build -o remark -ldflags "-X main.revision=$(git rev-parse --abbrev-ref H
 
 FROM umputun/baseimage:micro-latest
 
-COPY --from=build /go/src/github.com/umputun/remark/remark /srv/
-COPY --from=build /go/src/github.com/umputun/remark/web /srv/web
+COPY --from=build-backend /go/src/github.com/umputun/remark/remark /srv/
+COPY --from=build-backend /go/src/github.com/umputun/remark/web /srv/web
 RUN chown -R umputun:umputun /srv
 
 USER umputun
