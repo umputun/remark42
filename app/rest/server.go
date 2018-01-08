@@ -240,8 +240,14 @@ func (s *Server) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	if r.URL.Query().Get("format") == "tree" {
 		treeComments := format.MakeTree(comments, r.URL.Query().Get("sort"))
-		s.respCache.Set(cacheKey, treeComments, time.Hour)
-		renderJSONWithHTML(w, r, treeComments)
+
+		b, err := encodeJSONWithHTML(treeComments)
+		if err != nil {
+			common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't encode comments")
+			return
+		}
+		s.respCache.Set(cacheKey, b, time.Hour)
+		renderJSONFromBytes(w, r, b)
 		return
 	}
 
