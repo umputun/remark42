@@ -238,26 +238,19 @@ func (s *Server) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	comments = s.mod.maskBlockedUsers(comments)
 
-	if r.URL.Query().Get("format") == "tree" {
-		treeComments := format.MakeTree(comments, r.URL.Query().Get("sort"))
-
-		b, err := encodeJSONWithHTML(treeComments)
-		if err != nil {
-			common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't encode comments")
-			return
-		}
-		s.respCache.Set(cacheKey, b, time.Hour)
-		renderJSONFromBytes(w, r, b)
-		return
+	var bdata []byte
+	switch r.URL.Query().Get("format") {
+	case "tree":
+		bdata, err = encodeJSONWithHTML(format.MakeTree(comments, r.URL.Query().Get("sort")))
+	default:
+		bdata, err = encodeJSONWithHTML(comments)
 	}
-
-	b, err := encodeJSONWithHTML(comments)
 	if err != nil {
 		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't encode comments")
 		return
 	}
-	s.respCache.Set(cacheKey, b, time.Hour)
-	renderJSONFromBytes(w, r, b)
+	s.respCache.Set(cacheKey, bdata, time.Hour)
+	renderJSONFromBytes(w, r, bdata)
 }
 
 // GET /last/{max}?site=siteID - last comments for the siteID, across all posts, sorted by time
