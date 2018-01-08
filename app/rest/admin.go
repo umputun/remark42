@@ -117,14 +117,16 @@ func (a *admin) checkBlocked(locator store.Locator, user store.User) bool {
 // processes comments and hides text of all comments for blocked users.
 // resets score and votes too
 func (a *admin) maskBlockedUsers(comments []store.Comment) (res []store.Comment) {
-	for _, c := range comments {
+	res = make([]store.Comment, len(comments))
+	for i, c := range comments {
 		if a.dataService.IsBlocked(c.Locator, c.User.ID) {
 			c.User.Blocked = true
 			c.Text = "this comment was deleted"
 			c.Score = 0
 			c.Votes = map[string]bool{}
+			c.Edit = nil
 		}
-		res = append(res, c)
+		res[i] = c
 	}
 	return res
 }

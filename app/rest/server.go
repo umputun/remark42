@@ -241,7 +241,7 @@ func (s *Server) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't find comments")
+		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't find comments")
 		return
 	}
 	renderJSONFromBytes(w, r, data)
