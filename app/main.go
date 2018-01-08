@@ -18,7 +18,7 @@ import (
 )
 
 var opts struct {
-	BoltPath  string   `long:"bolt" env:"BOLTDB_PATH" default:"/tmp" description:"parent dir for bolt files"`
+	BoltPath  string   `long:"bolt" env:"BOLTDB_PATH" default:"./var" description:"parent dir for bolt files"`
 	Sites     []string `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
 	RemarkURL string   `long:"url" env:"REMARK_URL" default:"https://remark42.com" description:"url to remark"`
 	Admins    []string `long:"admin" env:"ADMIN" description:"admin(s) names" env-delim:","`
@@ -26,11 +26,11 @@ var opts struct {
 	DevMode bool `long:"dev" env:"DEV" description:"development mode, no auth enforced"`
 	Dbg     bool `long:"dbg" env:"DEBUG" description:"debug mode"`
 
-	BackupLocation string `long:"backup" env:"BACKUP_PATH" default:"/tmp" description:"backups location"`
+	BackupLocation string `long:"backup" env:"BACKUP_PATH" default:"./var" description:"backups location"`
 	MaxBackupFiles int    `long:"max-back" env:"MAX_BACKUP_FILES" default:"10" description:"max backups to keep"`
 
 	ServerCommand struct {
-		SessionStore string `long:"session" env:"SESSION_STORE" default:"/tmp" description:"path to session store directory"`
+		SessionStore string `long:"session" env:"SESSION_STORE" default:"./var" description:"path to session store directory"`
 		StoreKey     string `long:"store-key" env:"STORE_KEY" default:"secure-store-key" description:"store key"`
 
 		GoogleCID    string `long:"google-cid" env:"REMARK_GOOGLE_CID" description:"Google OAuth client ID"`
