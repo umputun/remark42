@@ -124,8 +124,16 @@ func (s *Server) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	comment.ID = ""                 // don't allow user to define ID, force auto-gen
-	comment.Timestamp = time.Time{} // reset time, force auto-gen
+	// reset comment to initial state
+	func() {
+		comment.ID = ""                 // don't allow user to define ID, force auto-gen
+		comment.Timestamp = time.Time{} // reset time, force auto-gen
+		comment.Votes = make(map[string]bool)
+		comment.Score = 0
+		comment.Edit = nil
+		comment.Pin = false
+	}()
+
 	comment.User = user
 	comment.User.IP = strings.Split(r.RemoteAddr, ":")[0]
 
