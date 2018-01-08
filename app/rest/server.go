@@ -15,7 +15,6 @@ import (
 	"github.com/go-chi/render"
 	"github.com/gorilla/context"
 	"github.com/gorilla/sessions"
-	"github.com/patrickmn/go-cache"
 	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/app/migrator"
@@ -38,7 +37,7 @@ type Server struct {
 	DevMode      bool
 
 	mod       admin
-	respCache *cache.Cache
+	respCache *loadingCache
 }
 
 // Run the lister and request's router, activate rest server
@@ -59,7 +58,7 @@ func (s *Server) Run() {
 	}
 
 	// cache for responses. Flushes completely on any modification
-	s.respCache = cache.New(4*time.Hour, 15*time.Minute)
+	s.respCache = newLoadingCache(4*time.Hour, 15*time.Minute)
 
 	router := chi.NewRouter()
 	router.Use(middleware.RealIP, Recoverer)
@@ -151,7 +150,7 @@ func (s *Server) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.respCache.Flush() // reset all caches
+	s.respCache.flush() // reset all caches
 
 	render.Status(r, http.StatusAccepted)
 	render.JSON(w, r, JSON{"id": id, "loc": comment.Locator})
@@ -196,7 +195,7 @@ func (s *Server) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.respCache.Flush() // reset all caches
+	s.respCache.flush() // reset all caches
 	render.JSON(w, r, res)
 }
 
@@ -213,7 +212,7 @@ func (s *Server) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.respCache.Flush()
+	s.respCache.flush()
 
 	render.Status(r, http.StatusOK)
 	render.JSON(w, r, JSON{"id": id, "loc": locator})
@@ -225,62 +224,54 @@ func (s *Server) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	log.Printf("[DEBUG] get comments for %+v", locator)
 
-	cacheKey := r.URL.String()
-	if b, ok := s.respCache.Get(cacheKey); ok {
-		renderJSONFromBytes(w, r, b.([]byte))
-		return
-	}
+	data, err := s.respCache.get(r.URL.String(), time.Hour, func() ([]byte, error) {
+		comments, err := s.DataService.Find(store.Request{Locator: locator, Sort: r.URL.Query().Get("sort")})
+		if err != nil {
+			return nil, err
+		}
+		comments = s.mod.maskBlockedUsers(comments)
+		var b []byte
+		switch r.URL.Query().Get("format") {
+		case "tree":
+			b, err = encodeJSONWithHTML(format.MakeTree(comments, r.URL.Query().Get("sort")))
+		default:
+			b, err = encodeJSONWithHTML(comments)
+		}
+		return b, err
+	})
 
-	comments, err := s.DataService.Find(store.Request{Locator: locator, Sort: r.URL.Query().Get("sort")})
 	if err != nil {
-		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't load comments comment")
+		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't find comments")
 		return
 	}
-	comments = s.mod.maskBlockedUsers(comments)
-
-	var bdata []byte
-	switch r.URL.Query().Get("format") {
-	case "tree":
-		bdata, err = encodeJSONWithHTML(format.MakeTree(comments, r.URL.Query().Get("sort")))
-	default:
-		bdata, err = encodeJSONWithHTML(comments)
-	}
-	if err != nil {
-		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't encode comments")
-		return
-	}
-	s.respCache.Set(cacheKey, bdata, time.Hour)
-	renderJSONFromBytes(w, r, bdata)
+	renderJSONFromBytes(w, r, data)
 }
 
 // GET /last/{max}?site=siteID - last comments for the siteID, across all posts, sorted by time
 func (s *Server) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
+
+	log.Printf("[DEBUG] get last comments for %s", r.URL.Query().Get("site"))
 
 	max, err := strconv.Atoi(chi.URLParam(r, "max"))
 	if err != nil {
 		max = 0
 	}
 
-	cacheKey := r.URL.String()
-	if b, ok := s.respCache.Get(cacheKey); ok {
-		renderJSONFromBytes(w, r, b.([]byte))
-		return
-	}
+	data, err := s.respCache.get(r.URL.String(), time.Hour, func() ([]byte, error) {
+		comments, err := s.DataService.Last(store.Locator{SiteID: r.URL.Query().Get("site")}, max)
+		if err != nil {
+			return nil, err
+		}
+		comments = s.mod.maskBlockedUsers(comments)
+		return encodeJSONWithHTML(comments)
+	})
 
-	comments, err := s.DataService.Last(store.Locator{SiteID: r.URL.Query().Get("site")}, max)
 	if err != nil {
 		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't get last comments")
 		return
 	}
-	comments = s.mod.maskBlockedUsers(comments)
-
-	b, err := encodeJSONWithHTML(comments)
-	if err != nil {
-		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't encode comments")
-		return
-	}
-	s.respCache.Set(cacheKey, b, time.Hour)
-	renderJSONFromBytes(w, r, b)
+	renderJSONFromBytes(w, r, data)
+	return
 }
 
 // GET /id/{id}?site=siteID&url=post-url - gets a comment by id
@@ -307,25 +298,19 @@ func (s *Server) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[DEBUG] get comments by userID %s", userID)
 
-	cacheKey := r.URL.String()
-	if b, ok := s.respCache.Get(cacheKey); ok {
-		renderJSONFromBytes(w, r, b.([]byte))
-		return
-	}
+	data, err := s.respCache.get(r.URL.String(), time.Hour, func() ([]byte, error) {
+		comments, err := s.DataService.GetByUser(store.Locator{SiteID: r.URL.Query().Get("site")}, userID)
+		if err != nil {
+			return nil, err
+		}
+		return encodeJSONWithHTML(comments)
+	})
 
-	comments, err := s.DataService.GetByUser(store.Locator{SiteID: r.URL.Query().Get("site")}, userID)
 	if err != nil {
 		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get comment by user id")
 		return
 	}
-
-	b, err := encodeJSONWithHTML(comments)
-	if err != nil {
-		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't encode comments")
-		return
-	}
-	s.respCache.Set(cacheKey, b, time.Hour)
-	renderJSONFromBytes(w, r, b)
+	renderJSONFromBytes(w, r, data)
 }
 
 // GET /user - returns user info
@@ -379,7 +364,7 @@ func (s *Server) voteCtrl(w http.ResponseWriter, r *http.Request) {
 		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't vote for comment")
 		return
 	}
-	s.respCache.Flush()
+	s.respCache.flush()
 	render.JSON(w, r, JSON{"id": comment.ID, "score": comment.Score})
 }
 

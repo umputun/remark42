@@ -10,7 +10,6 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
-	cache "github.com/patrickmn/go-cache"
 
 	"github.com/umputun/remark/app/migrator"
 	"github.com/umputun/remark/app/rest/auth"
@@ -23,7 +22,7 @@ type admin struct {
 	dataService store.Service
 	exporter    migrator.Exporter
 	importer    migrator.Importer
-	respCache   *cache.Cache
+	respCache   *loadingCache
 }
 
 func (a *admin) routes() chi.Router {
@@ -49,7 +48,7 @@ func (a *admin) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete comment")
 		return
 	}
-	a.respCache.Flush()
+	a.respCache.flush()
 	render.Status(r, http.StatusOK)
 	render.JSON(w, r, JSON{"id": id, "loc": locator})
 }
@@ -64,7 +63,7 @@ func (a *admin) setBlockCtrl(w http.ResponseWriter, r *http.Request) {
 		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set blocking status")
 		return
 	}
-	a.respCache.Flush()
+	a.respCache.flush()
 	render.JSON(w, r, JSON{"user_id": userID, "site_id": siteID, "block": blockStatus})
 }
 
@@ -79,7 +78,7 @@ func (a *admin) setPinCtrl(w http.ResponseWriter, r *http.Request) {
 		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set pin status")
 		return
 	}
-	a.respCache.Flush()
+	a.respCache.flush()
 	render.JSON(w, r, JSON{"id": commentID, "loc": locator, "pin": pinStatus})
 }
 
@@ -108,7 +107,7 @@ func (a *admin) importCtrl(w http.ResponseWriter, r *http.Request) {
 	if err := a.importer.Import(r.Body, siteID); err != nil {
 		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "import failed")
 	}
-	a.respCache.Flush()
+	a.respCache.flush()
 }
 
 func (a *admin) checkBlocked(locator store.Locator, user store.User) bool {
