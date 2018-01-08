@@ -225,19 +225,19 @@ func (s *Server) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[DEBUG] get comments for %+v", locator)
 
 	data, err := s.respCache.get(r.URL.String(), time.Hour, func() ([]byte, error) {
-		comments, err := s.DataService.Find(store.Request{Locator: locator, Sort: r.URL.Query().Get("sort")})
-		if err != nil {
-			return nil, err
+		comments, e := s.DataService.Find(store.Request{Locator: locator, Sort: r.URL.Query().Get("sort")})
+		if e != nil {
+			return nil, e
 		}
 		comments = s.mod.maskBlockedUsers(comments)
 		var b []byte
 		switch r.URL.Query().Get("format") {
 		case "tree":
-			b, err = encodeJSONWithHTML(format.MakeTree(comments, r.URL.Query().Get("sort")))
+			b, e = encodeJSONWithHTML(format.MakeTree(comments, r.URL.Query().Get("sort")))
 		default:
-			b, err = encodeJSONWithHTML(comments)
+			b, e = encodeJSONWithHTML(comments)
 		}
-		return b, err
+		return b, e
 	})
 
 	if err != nil {
@@ -258,9 +258,9 @@ func (s *Server) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data, err := s.respCache.get(r.URL.String(), time.Hour, func() ([]byte, error) {
-		comments, err := s.DataService.Last(store.Locator{SiteID: r.URL.Query().Get("site")}, max)
-		if err != nil {
-			return nil, err
+		comments, e := s.DataService.Last(store.Locator{SiteID: r.URL.Query().Get("site")}, max)
+		if e != nil {
+			return nil, e
 		}
 		comments = s.mod.maskBlockedUsers(comments)
 		return encodeJSONWithHTML(comments)
@@ -271,7 +271,6 @@ func (s *Server) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	renderJSONFromBytes(w, r, data)
-	return
 }
 
 // GET /id/{id}?site=siteID&url=post-url - gets a comment by id
@@ -299,9 +298,9 @@ func (s *Server) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[DEBUG] get comments by userID %s", userID)
 
 	data, err := s.respCache.get(r.URL.String(), time.Hour, func() ([]byte, error) {
-		comments, err := s.DataService.GetByUser(store.Locator{SiteID: r.URL.Query().Get("site")}, userID)
-		if err != nil {
-			return nil, err
+		comments, e := s.DataService.GetByUser(store.Locator{SiteID: r.URL.Query().Get("site")}, userID)
+		if e != nil {
+			return nil, e
 		}
 		return encodeJSONWithHTML(comments)
 	})
