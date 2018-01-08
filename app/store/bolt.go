@@ -84,13 +84,8 @@ func (b *BoltDB) Create(comment Comment) (commentID string, err error) {
 		}
 
 		// serialize comment to json []byte for bolt and save
-		jdata, jerr := json.Marshal(&comment)
-		if jerr != nil {
-			return errors.Wrap(jerr, "can't marshal comment")
-		}
-
-		if e = bucket.Put([]byte(comment.ID), jdata); err != nil {
-			return errors.Wrapf(e, "failed to put key %s", comment.ID)
+		if e = b.save(bucket, []byte(comment.ID), comment); e != nil {
+			return errors.Wrapf(e, "failed to put key %s to bucket %s", comment.ID, comment.Locator.URL)
 		}
 
 		// add reference to comment to "last" bucket
@@ -133,6 +128,7 @@ func (b *BoltDB) Delete(locator Locator, commentID string) error {
 	}
 
 	return bdb.Update(func(tx *bolt.Tx) error {
+		// delete from post bucket
 		bucket := tx.Bucket([]byte(locator.URL))
 		if bucket == nil {
 			return errors.Errorf("no bucket %s in store", locator.URL)
@@ -146,7 +142,6 @@ func (b *BoltDB) Delete(locator Locator, commentID string) error {
 		if bucket == nil {
 			return errors.Errorf("no bucket %s in store", lastBucketName)
 		}
-
 		if err := bucket.Delete([]byte(commentID)); err != nil {
 			return errors.Wrapf(err, "can't delete key %s from bucket %s", commentID, lastBucketName)
 		}
@@ -230,15 +225,8 @@ func (b *BoltDB) GetByID(locator Locator, commentID string) (comment Comment, er
 				if urlBucket == nil {
 					return errors.Errorf("no bucket %s in store", url)
 				}
-				commentVal := urlBucket.Get([]byte(commentID))
-				if commentVal == nil {
-					return errors.Errorf("no comment for %s in store %s", commentID, url)
-				}
-
-				if e := json.Unmarshal(commentVal, &comment); e != nil {
-					return errors.Wrap(e, "failed to unmarshal")
-				}
-				return nil
+				comment, e = b.load(urlBucket, []byte(commentID))
+				return e
 			}
 		}
 		return errors.Errorf("no comment id %s", commentID)
@@ -275,15 +263,11 @@ func (b *BoltDB) Last(locator Locator, max int) (comments []Comment, err error) 
 			if urlBucket == nil {
 				return errors.Errorf("no bucket %s in store", url)
 			}
-			commentVal := urlBucket.Get([]byte(commentID))
-			if commentVal == nil {
-				log.Printf("[WARN] no comment for %s in store %s", commentID, url)
-				continue
-			}
 
-			comment := Comment{}
-			if e := json.Unmarshal(commentVal, &comment); e != nil {
-				return errors.Wrap(e, "failed to unmarshal")
+			comment, e := b.load(urlBucket, []byte(commentID))
+			if e != nil {
+				log.Printf("[WARN] can't load comment for %s from store %s", commentID, url)
+				continue
 			}
 
 			comments = append(comments, comment)
@@ -448,17 +432,9 @@ func (b *BoltDB) Get(locator Locator, commentID string) (comment Comment, err er
 		if bucket == nil {
 			return errors.Errorf("no bucket %s in store", locator.URL)
 		}
-
-		// get and unmarshal comment
-		commentVal := bucket.Get([]byte(commentID))
-		if commentVal == nil {
-			return errors.Errorf("no comment for %s in store %s", commentID, locator.URL)
-		}
-
-		if e := json.Unmarshal(commentVal, &comment); e != nil {
-			return errors.Wrap(e, "failed to unmarshal")
-		}
-		return nil
+		var e error
+		comment, e = b.load(bucket, []byte(commentID))
+		return e
 	})
 	return comment, err
 }
@@ -484,17 +460,35 @@ func (b *BoltDB) Put(locator Locator, comment Comment) error {
 		if bucket == nil {
 			return errors.Errorf("no bucket %s in store", locator.URL)
 		}
-
-		// serialize comment to json []byte for bolt and save
-		jdata, jerr := json.Marshal(&comment)
-		if jerr != nil {
-			return errors.Wrap(jerr, "can't marshal comment")
-		}
-		if err := bucket.Put([]byte(comment.ID), jdata); err != nil {
-			return errors.Wrapf(err, "failed to put key %s to bucket %s", comment.ID, locator.URL)
-		}
-		return nil
+		return b.save(bucket, []byte(comment.ID), comment)
 	})
+}
+
+// save comment to key for bucket. Should run in update tx
+func (b *BoltDB) save(bkt *bolt.Bucket, key []byte, comment Comment) (err error) {
+	// serialize comment to json []byte for bolt and save
+	jdata, jerr := json.Marshal(&comment)
+	if jerr != nil {
+		return errors.Wrap(jerr, "can't marshal comment")
+	}
+	if err = bkt.Put([]byte(comment.ID), jdata); err != nil {
+		return errors.Wrapf(err, "failed to save key %s", key)
+	}
+	return nil
+}
+
+// load comment by key from bucket. Should run in view tx
+func (b *BoltDB) load(bkt *bolt.Bucket, key []byte) (comment Comment, err error) {
+	// get and unmarshal comment
+	commentVal := bkt.Get(key)
+	if commentVal == nil {
+		return comment, errors.Errorf("no comment for %s", key)
+	}
+
+	if err = json.Unmarshal(commentVal, &comment); err != nil {
+		return comment, errors.Wrap(err, "failed to unmarshal")
+	}
+	return comment, nil
 }
 
 func (b *BoltDB) db(siteID string) (*bolt.DB, error) {
