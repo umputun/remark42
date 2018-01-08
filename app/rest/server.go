@@ -3,7 +3,6 @@ package rest
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"log"
 	"net/http"
 	"path/filepath"
@@ -17,6 +16,7 @@ import (
 	"github.com/gorilla/context"
 	"github.com/gorilla/sessions"
 	"github.com/patrickmn/go-cache"
+	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/app/migrator"
 	"github.com/umputun/remark/app/rest/auth"
@@ -226,8 +226,8 @@ func (s *Server) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[DEBUG] get comments for %+v", locator)
 
 	cacheKey := r.URL.String()
-	if comments, ok := s.respCache.Get(cacheKey); ok {
-		renderJSONWithHTML(w, r, comments)
+	if b, ok := s.respCache.Get(cacheKey); ok {
+		renderJSONFromBytes(w, r, b.([]byte))
 		return
 	}
 
@@ -245,8 +245,13 @@ func (s *Server) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.respCache.Set(cacheKey, comments, time.Hour)
-	renderJSONWithHTML(w, r, comments)
+	b, err := encodeJSONWithHTML(comments)
+	if err != nil {
+		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't encode comments")
+		return
+	}
+	s.respCache.Set(cacheKey, b, time.Hour)
+	renderJSONFromBytes(w, r, b)
 }
 
 // GET /last/{max}?site=siteID - last comments for the siteID, across all posts, sorted by time
@@ -258,8 +263,8 @@ func (s *Server) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cacheKey := r.URL.String()
-	if comments, ok := s.respCache.Get(cacheKey); ok {
-		renderJSONWithHTML(w, r, comments)
+	if b, ok := s.respCache.Get(cacheKey); ok {
+		renderJSONFromBytes(w, r, b.([]byte))
 		return
 	}
 
@@ -269,10 +274,14 @@ func (s *Server) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	comments = s.mod.maskBlockedUsers(comments)
-	s.respCache.Set(cacheKey, comments, time.Hour)
 
-	render.Status(r, http.StatusOK)
-	renderJSONWithHTML(w, r, comments)
+	b, err := encodeJSONWithHTML(comments)
+	if err != nil {
+		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't encode comments")
+		return
+	}
+	s.respCache.Set(cacheKey, b, time.Hour)
+	renderJSONFromBytes(w, r, b)
 }
 
 // GET /id/{id}?site=siteID&url=post-url - gets a comment by id
@@ -300,8 +309,8 @@ func (s *Server) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[DEBUG] get comments by userID %s", userID)
 
 	cacheKey := r.URL.String()
-	if comments, ok := s.respCache.Get(cacheKey); ok {
-		renderJSONWithHTML(w, r, comments)
+	if b, ok := s.respCache.Get(cacheKey); ok {
+		renderJSONFromBytes(w, r, b.([]byte))
 		return
 	}
 
@@ -311,9 +320,13 @@ func (s *Server) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.respCache.Set(cacheKey, comments, time.Hour)
-	render.Status(r, http.StatusOK)
-	renderJSONWithHTML(w, r, comments)
+	b, err := encodeJSONWithHTML(comments)
+	if err != nil {
+		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't encode comments")
+		return
+	}
+	s.respCache.Set(cacheKey, b, time.Hour)
+	renderJSONFromBytes(w, r, b)
 }
 
 // GET /user - returns user info
@@ -385,6 +398,25 @@ func renderJSONWithHTML(w http.ResponseWriter, r *http.Request, v interface{}) {
 		w.WriteHeader(status)
 	}
 	_, _ = w.Write(buf.Bytes())
+}
+
+func encodeJSONWithHTML(v interface{}) ([]byte, error) {
+	buf := &bytes.Buffer{}
+	enc := json.NewEncoder(buf)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(v); err != nil {
+		return nil, errors.Wrap(err, "can't encode to json")
+	}
+	return buf.Bytes(), nil
+}
+
+// renderJSONWithHTML allows html tags and forces charset=utf-8
+func renderJSONFromBytes(w http.ResponseWriter, r *http.Request, data []byte) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	if status, ok := r.Context().Value(render.StatusCtxKey).(int); ok {
+		w.WriteHeader(status)
+	}
+	_, _ = w.Write(data)
 }
 
 // serves static files from /web
