@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"log"
 	"time"
 
 	cache "github.com/patrickmn/go-cache"
@@ -16,9 +17,11 @@ func newLoadingCache(defaultExpiration, cleanupInterval time.Duration) *loadingC
 
 func (lc *loadingCache) get(key string, ttl time.Duration, fn func() ([]byte, error)) (data []byte, err error) {
 	if b, ok := lc.bytesCache.Get(key); ok {
+		log.Printf("[DEBUG] cache hit %s", key)
 		return b.([]byte), nil
 	}
 
+	log.Printf("[DEBUG] cache miss %s", key)
 	if data, err = fn(); err != nil {
 		return data, err
 	}
