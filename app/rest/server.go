@@ -334,12 +334,21 @@ func (s *Server) countCtrl(w http.ResponseWriter, r *http.Request) {
 
 // GET /list?site=siteID - list posts with comments
 func (s *Server) listCtrl(w http.ResponseWriter, r *http.Request) {
-	posts, err := s.DataService.List(r.URL.Query().Get("site"))
+
+	siteID := r.URL.Query().Get("site")
+	data, err := s.respCache.get(r.URL.String(), time.Hour, func() ([]byte, error) {
+		posts, e := s.DataService.List(siteID)
+		if e != nil {
+			return nil, e
+		}
+		return encodeJSONWithHTML(posts)
+	})
+
 	if err != nil {
-		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get count")
+		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get list of comments for "+siteID)
 		return
 	}
-	render.JSON(w, r, JSON{"posts": posts, "site": r.URL.Query().Get("site")})
+	renderJSONFromBytes(w, r, data)
 }
 
 // PUT /vote/{id}?site=siteID&url=post-url&vote=1 - vote for/against comment
