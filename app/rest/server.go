@@ -139,7 +139,7 @@ func (s *Server) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[DEBUG] create comment %+v", comment)
 
 	// check if user blocked
-	if s.mod.checkBlocked(store.Locator{}, comment.User) {
+	if s.mod.checkBlocked(comment.Locator.SiteID, comment.User) {
 		common.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"), "user blocked")
 		return
 	}
@@ -225,7 +225,7 @@ func (s *Server) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[DEBUG] get comments for %+v", locator)
 
 	data, err := s.respCache.get(r.URL.String(), time.Hour, func() ([]byte, error) {
-		comments, e := s.DataService.Find(store.Request{Locator: locator, Sort: r.URL.Query().Get("sort")})
+		comments, e := s.DataService.Find(locator, r.URL.Query().Get("sort"))
 		if e != nil {
 			return nil, e
 		}
@@ -258,7 +258,7 @@ func (s *Server) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data, err := s.respCache.get(r.URL.String(), time.Hour, func() ([]byte, error) {
-		comments, e := s.DataService.Last(store.Locator{SiteID: r.URL.Query().Get("site")}, max)
+		comments, e := s.DataService.Last(r.URL.Query().Get("site"), max)
 		if e != nil {
 			return nil, e
 		}
@@ -277,11 +277,11 @@ func (s *Server) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 func (s *Server) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
-	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
+	siteID := r.URL.Query().Get("site")
 
-	log.Printf("[DEBUG] get comments by id %s, %+v", id, locator)
+	log.Printf("[DEBUG] get comments by id %s, %s", id, siteID)
 
-	comment, err := s.DataService.GetByID(locator, id)
+	comment, err := s.DataService.GetByID(siteID, id)
 	if err != nil {
 		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't get comment by id")
 		return
@@ -298,7 +298,7 @@ func (s *Server) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[DEBUG] get comments by userID %s", userID)
 
 	data, err := s.respCache.get(r.URL.String(), time.Hour, func() ([]byte, error) {
-		comments, e := s.DataService.GetByUser(store.Locator{SiteID: r.URL.Query().Get("site")}, userID)
+		comments, e := s.DataService.GetByUser(r.URL.Query().Get("site"), userID)
 		if e != nil {
 			return nil, e
 		}
@@ -335,13 +335,12 @@ func (s *Server) countCtrl(w http.ResponseWriter, r *http.Request) {
 
 // GET /list?site=siteID - list posts with comments
 func (s *Server) listCtrl(w http.ResponseWriter, r *http.Request) {
-	locator := store.Locator{SiteID: r.URL.Query().Get("site")}
-	posts, err := s.DataService.List(locator)
+	posts, err := s.DataService.List(r.URL.Query().Get("site"))
 	if err != nil {
 		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get count")
 		return
 	}
-	render.JSON(w, r, JSON{"posts": posts, "loc": locator})
+	render.JSON(w, r, JSON{"posts": posts, "site": r.URL.Query().Get("site")})
 }
 
 // PUT /vote/{id}?site=siteID&url=post-url&vote=1 - vote for/against comment

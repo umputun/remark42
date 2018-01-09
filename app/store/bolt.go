@@ -151,18 +151,18 @@ func (b *BoltDB) Delete(locator Locator, commentID string) error {
 }
 
 // Find returns all comments for post and sorts results
-func (b *BoltDB) Find(request Request) (comments []Comment, err error) {
+func (b *BoltDB) Find(locator Locator, sortFld string) (comments []Comment, err error) {
 	comments = []Comment{}
 
-	bdb, err := b.db(request.Locator.SiteID)
+	bdb, err := b.db(locator.SiteID)
 	if err != nil {
 		return nil, err
 	}
 
 	err = bdb.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte(request.Locator.URL))
+		bucket := tx.Bucket([]byte(locator.URL))
 		if bucket == nil {
-			return errors.Errorf("no bucket %s in store", request.Locator.URL)
+			return errors.Errorf("no bucket %s in store", locator.URL)
 		}
 
 		return bucket.ForEach(func(k, v []byte) error {
@@ -175,17 +175,17 @@ func (b *BoltDB) Find(request Request) (comments []Comment, err error) {
 		})
 	})
 
-	// sort result according to request.Sort
+	// sort result according to sortFld
 	sort.Slice(comments, func(i, j int) bool {
-		switch request.Sort {
+		switch sortFld {
 		case "+time", "-time", "time":
-			if strings.HasPrefix(request.Sort, "-") {
+			if strings.HasPrefix(sortFld, "-") {
 				return comments[i].Timestamp.After(comments[j].Timestamp)
 			}
 			return comments[i].Timestamp.Before(comments[j].Timestamp)
 
 		case "+score", "-score", "score":
-			if strings.HasPrefix(request.Sort, "-") {
+			if strings.HasPrefix(sortFld, "-") {
 				return comments[i].Score > comments[j].Score
 			}
 			return comments[i].Score < comments[j].Score
@@ -199,9 +199,9 @@ func (b *BoltDB) Find(request Request) (comments []Comment, err error) {
 }
 
 // GetByID returns comment by id across posts
-func (b *BoltDB) GetByID(locator Locator, commentID string) (comment Comment, err error) {
+func (b *BoltDB) GetByID(siteID string, commentID string) (comment Comment, err error) {
 
-	bdb, err := b.db(locator.SiteID)
+	bdb, err := b.db(siteID)
 	if err != nil {
 		return comment, err
 	}
@@ -220,7 +220,7 @@ func (b *BoltDB) GetByID(locator Locator, commentID string) (comment Comment, er
 				return e
 			}
 
-			if foundID == commentID && url == locator.URL {
+			if foundID == commentID {
 				urlBucket := tx.Bucket([]byte(url))
 				if urlBucket == nil {
 					return errors.Errorf("no bucket %s in store", url)
@@ -235,14 +235,14 @@ func (b *BoltDB) GetByID(locator Locator, commentID string) (comment Comment, er
 	return comment, err
 }
 
-// Last returns up to max last comments for given locator
-func (b *BoltDB) Last(locator Locator, max int) (comments []Comment, err error) {
+// Last returns up to max last comments for given siteID
+func (b *BoltDB) Last(siteID string, max int) (comments []Comment, err error) {
 
 	if max > lastLimit || max == 0 {
 		max = lastLimit
 	}
 
-	bdb, err := b.db(locator.SiteID)
+	bdb, err := b.db(siteID)
 	if err != nil {
 		return nil, err
 	}
@@ -302,9 +302,9 @@ func (b *BoltDB) Count(locator Locator) (count int, err error) {
 }
 
 // SetBlock blocks/unblocks user for given site
-func (b *BoltDB) SetBlock(locator Locator, userID string, status bool) error {
+func (b *BoltDB) SetBlock(siteID string, userID string, status bool) error {
 
-	bdb, err := b.db(locator.SiteID)
+	bdb, err := b.db(siteID)
 	if err != nil {
 		return err
 	}
@@ -331,9 +331,9 @@ func (b *BoltDB) SetBlock(locator Locator, userID string, status bool) error {
 }
 
 // IsBlocked checks if user blocked
-func (b *BoltDB) IsBlocked(locator Locator, userID string) (blocked bool) {
+func (b *BoltDB) IsBlocked(siteID string, userID string) (blocked bool) {
 
-	bdb, err := b.db(locator.SiteID)
+	bdb, err := b.db(siteID)
 	if err != nil {
 		return false
 	}
@@ -350,9 +350,9 @@ func (b *BoltDB) IsBlocked(locator Locator, userID string) (blocked bool) {
 }
 
 // List returns list of buckets, which is list of all commented posts
-func (b BoltDB) List(locator Locator) (list []string, err error) {
+func (b BoltDB) List(siteID string) (list []string, err error) {
 
-	bdb, err := b.db(locator.SiteID)
+	bdb, err := b.db(siteID)
 	if err != nil {
 		return nil, err
 	}
@@ -370,12 +370,12 @@ func (b BoltDB) List(locator Locator) (list []string, err error) {
 
 // GetByUser extracts all comments for given site and given userID
 // "users" bucket has sub-bucket for each userID, and keeps it as ts:ref
-func (b *BoltDB) GetByUser(locator Locator, userID string) (comments []Comment, err error) {
+func (b *BoltDB) GetByUser(siteID string, userID string) (comments []Comment, err error) {
 
 	comments = []Comment{}
 	commentRefs := []string{}
 
-	bdb, err := b.db(locator.SiteID)
+	bdb, err := b.db(siteID)
 	if err != nil {
 		return nil, err
 	}
@@ -411,7 +411,7 @@ func (b *BoltDB) GetByUser(locator Locator, userID string) (comments []Comment, 
 		if e != nil {
 			return comments, errors.Wrapf(e, "can't parse reference %s", v)
 		}
-		if c, e := b.GetByID(Locator{URL: url, SiteID: locator.SiteID}, commentID); e == nil {
+		if c, e := b.Get(Locator{SiteID: siteID, URL: url}, commentID); e == nil {
 			comments = append(comments, c)
 		}
 	}

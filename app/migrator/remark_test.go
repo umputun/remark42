@@ -45,7 +45,7 @@ func TestRemark_Import(t *testing.T) {
 	err = r.Import(buf, "radio-t")
 	assert.Nil(t, err)
 
-	comments, err := b.Find(store.Request{Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com"}})
+	comments, err := b.Find(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com"}, "time")
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(comments))
 	assert.Equal(t, "efbc17f177ee1a1c0ee6e1e025749966ec071adc", comments[0].ID)

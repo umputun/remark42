@@ -59,7 +59,7 @@ func (a *admin) setBlockCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	blockStatus := r.URL.Query().Get("block") == "1"
 
-	if err := a.dataService.SetBlock(store.Locator{SiteID: siteID}, userID, blockStatus); err != nil {
+	if err := a.dataService.SetBlock(siteID, userID, blockStatus); err != nil {
 		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set blocking status")
 		return
 	}
@@ -110,8 +110,8 @@ func (a *admin) importCtrl(w http.ResponseWriter, r *http.Request) {
 	a.respCache.flush()
 }
 
-func (a *admin) checkBlocked(locator store.Locator, user store.User) bool {
-	return a.dataService.IsBlocked(locator, user.ID)
+func (a *admin) checkBlocked(siteID string, user store.User) bool {
+	return a.dataService.IsBlocked(siteID, user.ID)
 }
 
 // processes comments and hides text of all comments for blocked users.
@@ -119,7 +119,7 @@ func (a *admin) checkBlocked(locator store.Locator, user store.User) bool {
 func (a *admin) maskBlockedUsers(comments []store.Comment) (res []store.Comment) {
 	res = make([]store.Comment, len(comments))
 	for i, c := range comments {
-		if a.dataService.IsBlocked(c.Locator, c.User.ID) {
+		if a.dataService.IsBlocked(c.Locator.SiteID, c.User.ID) {
 			c.User.Blocked = true
 			c.Text = "this comment was deleted"
 			c.Score = 0

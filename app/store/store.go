@@ -51,14 +51,6 @@ type Edit struct {
 	Summary   string    `json:"summary"`
 }
 
-// Request is a container for all finds
-type Request struct {
-	Locator Locator `json:"locator"`
-	Sort    string  `json:"sort"`
-	Offset  int     `json:"offset"`
-	Limit   int     `json:"limit"`
-}
-
 // Interface combines all store interfaces
 type Interface interface {
 	Accessor
@@ -70,19 +62,19 @@ type Accessor interface {
 	Create(comment Comment) (commentID string, err error)               // create new comment, avoid dups by ID
 	Get(locator Locator, commentID string) (comment Comment, err error) // get comment by ID
 	Put(locator Locator, comment Comment) error                         // update comment, mutable parts only
-	Find(request Request) ([]Comment, error)                            // find comments for request
-	Last(locator Locator, max int) ([]Comment, error)                   // last comments for given site
-	GetByID(locator Locator, commentID string) (Comment, error)         // comment by id
-	GetByUser(locator Locator, userID string) ([]Comment, error)        // comment by user
+	Find(locator Locator, sort string) ([]Comment, error)               // find comments for request
+	Last(siteID string, max int) ([]Comment, error)                     // last comments for given site
+	GetByID(siteID string, commentID string) (Comment, error)           // comment by id
+	GetByUser(siteID string, userID string) ([]Comment, error)          // comment by user
 	Count(locator Locator) (int, error)                                 // number of comments for the post
-	List(locator Locator) ([]string, error)                             // list of commented posts
+	List(siteID string) ([]string, error)                               // list of commented posts
 }
 
 // Admin defines all store ops avail for admin only
 type Admin interface {
-	Delete(locator Locator, commentID string) error             // delete comment by id
-	SetBlock(locator Locator, userID string, status bool) error // block or unblock  user
-	IsBlocked(locator Locator, userID string) bool              // check if user blocked
+	Delete(locator Locator, commentID string) error           // delete comment by id
+	SetBlock(siteID string, userID string, status bool) error // block or unblock  user
+	IsBlocked(siteID string, userID string) bool              // check if user blocked
 }
 
 // makeCommentID generates sha1(random) string

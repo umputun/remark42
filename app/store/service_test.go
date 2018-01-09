@@ -12,7 +12,7 @@ func TestService_Vote(t *testing.T) {
 	defer os.Remove(testDb)
 	b := Service{Interface: prep(t)}
 
-	res, err := b.Last(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, 0)
+	res, err := b.Last("radio-t", 0)
 	t.Logf("%+v", res[0])
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(res))
@@ -27,14 +27,14 @@ func TestService_Vote(t *testing.T) {
 	_, err = b.Vote(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "user1", true)
 	assert.NotNil(t, err, "double-voting rejected")
 
-	res, err = b.Last(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, 0)
+	res, err = b.Last("radio-t", 0)
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(res))
 	assert.Equal(t, 1, res[0].Score)
 
 	_, err = b.Vote(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "user1", false)
 	assert.Nil(t, err, "vote reset")
-	res, err = b.Last(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, 0)
+	res, err = b.Last("radio-t", 0)
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(res))
 	assert.Equal(t, 0, res[0].Score)
@@ -46,7 +46,7 @@ func TestBoltDB_Pin(t *testing.T) {
 	defer os.Remove(testDb)
 	b := Service{Interface: prep(t)}
 
-	res, err := b.Last(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, 0)
+	res, err := b.Last("radio-t", 0)
 	t.Logf("%+v", res[0])
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(res))
@@ -55,13 +55,13 @@ func TestBoltDB_Pin(t *testing.T) {
 	err = b.SetPin(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, true)
 	assert.Nil(t, err)
 
-	c, err := b.GetByID(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID)
+	c, err := b.GetByID("radio-t", res[0].ID)
 	assert.Nil(t, err)
 	assert.Equal(t, true, c.Pin)
 
 	err = b.SetPin(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, false)
 	assert.Nil(t, err)
-	c, err = b.GetByID(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID)
+	c, err = b.GetByID("radio-t", res[0].ID)
 	assert.Nil(t, err)
 	assert.Equal(t, false, c.Pin)
 }
@@ -70,7 +70,7 @@ func TestBoltDB_EditComment(t *testing.T) {
 	defer os.Remove(testDb)
 	b := Service{Interface: prep(t)}
 
-	res, err := b.Last(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, 0)
+	res, err := b.Last("radio-t", 0)
 	t.Logf("%+v", res[0])
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(res))
@@ -81,7 +81,7 @@ func TestBoltDB_EditComment(t *testing.T) {
 	assert.Equal(t, "my edit", comment.Edit.Summary)
 	assert.Equal(t, "xxx", comment.Text)
 
-	c, err := b.GetByID(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID)
+	c, err := b.GetByID("radio-t", res[0].ID)
 	assert.Nil(t, err)
 	assert.Equal(t, "my edit", c.Edit.Summary)
 	assert.Equal(t, "xxx", c.Text)
@@ -104,7 +104,7 @@ func TestBoltDB_EditCommentDurationFailed(t *testing.T) {
 
 	b := Service{Interface: blt, EditDuration: 100 * time.Millisecond}
 
-	res, err := b.Last(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, 0)
+	res, err := b.Last("radio-t", 0)
 	t.Logf("%+v", res[0])
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(res))

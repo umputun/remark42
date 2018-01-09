@@ -1,7 +1,10 @@
 package store
 
-import "testing"
-import "github.com/stretchr/testify/assert"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
 
 func TestStore_MakeCommentID(t *testing.T) {
 	cid1 := makeCommentID()
