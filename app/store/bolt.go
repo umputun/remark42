@@ -357,26 +357,16 @@ func (b BoltDB) List(siteID string) (list []PostInfo, err error) {
 		return nil, err
 	}
 
-	posts := []string{}
 	err = bdb.View(func(tx *bolt.Tx) error {
-		return tx.ForEach(func(name []byte, _ *bolt.Bucket) error {
-			if string(name) != lastBucketName && string(name) != userBucketName {
-				posts = append(posts, string(name))
+		return tx.ForEach(func(name []byte, bkt *bolt.Bucket) error {
+			postURL := string(name)
+			if postURL != lastBucketName && postURL != userBucketName {
+				list = append(list, PostInfo{URL: string(postURL), Count: bkt.Stats().KeyN})
 			}
 			return nil
 		})
 	})
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get list of posts for %s", siteID)
-	}
 
-	for _, post := range posts {
-		count, e := b.Count(Locator{SiteID: siteID, URL: post})
-		if e != nil {
-			return nil, errors.Wrapf(e, "failed to get count of comments for posts for %s", post)
-		}
-		list = append(list, PostInfo{URL: post, Count: count})
-	}
 	return list, err
 }
 
