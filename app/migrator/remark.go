@@ -27,7 +27,7 @@ func (r *Remark) Export(w io.Writer, siteID string) error {
 
 	commentsCount := 0
 	for _, topic := range topics {
-		comments, err := r.DataStore.Find(store.Locator{SiteID: siteID, URL: topic}, "time")
+		comments, err := r.DataStore.Find(store.Locator{SiteID: siteID, URL: topic.URL}, "time")
 		if err != nil {
 			return err
 		}
