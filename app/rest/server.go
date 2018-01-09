@@ -336,7 +336,7 @@ func (s *Server) countCtrl(w http.ResponseWriter, r *http.Request) {
 func (s *Server) listCtrl(w http.ResponseWriter, r *http.Request) {
 
 	siteID := r.URL.Query().Get("site")
-	data, err := s.respCache.get(r.URL.String(), time.Hour, func() ([]byte, error) {
+	data, err := s.respCache.get(r.URL.String(), 8*time.Hour, func() ([]byte, error) {
 		posts, e := s.DataService.List(siteID)
 		if e != nil {
 			return nil, e
