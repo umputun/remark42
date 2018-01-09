@@ -361,7 +361,7 @@ func (b BoltDB) List(siteID string) (list []PostInfo, err error) {
 		return tx.ForEach(func(name []byte, bkt *bolt.Bucket) error {
 			postURL := string(name)
 			if postURL != lastBucketName && postURL != userBucketName {
-				list = append(list, PostInfo{URL: string(postURL), Count: bkt.Stats().KeyN})
+				list = append(list, PostInfo{URL: postURL, Count: bkt.Stats().KeyN})
 			}
 			return nil
 		})
