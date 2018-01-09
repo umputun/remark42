@@ -277,10 +277,11 @@ func (s *Server) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	siteID := r.URL.Query().Get("site")
+	url := r.URL.Query().Get("url")
 
-	log.Printf("[DEBUG] get comments by id %s, %s", id, siteID)
+	log.Printf("[DEBUG] get comments by id %s, %s %s", id, siteID, url)
 
-	comment, err := s.DataService.GetByID(siteID, id)
+	comment, err := s.DataService.Get(store.Locator{SiteID: siteID, URL: url}, id)
 	if err != nil {
 		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't get comment by id")
 		return
@@ -293,11 +294,12 @@ func (s *Server) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 func (s *Server) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	userID := r.URL.Query().Get("user")
+	siteID := r.URL.Query().Get("site")
 
-	log.Printf("[DEBUG] get comments by userID %s", userID)
+	log.Printf("[DEBUG] get comments for userID %s, %s", userID, siteID)
 
 	data, err := s.respCache.get(r.URL.String(), time.Hour, func() ([]byte, error) {
-		comments, e := s.DataService.GetByUser(r.URL.Query().Get("site"), userID)
+		comments, e := s.DataService.User(siteID, userID)
 		if e != nil {
 			return nil, e
 		}

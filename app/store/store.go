@@ -65,13 +65,12 @@ type Interface interface {
 
 // Accessor defines all usual access ops avail for regular user
 type Accessor interface {
-	Create(comment Comment) (commentID string, err error)               // create new comment, avoid dups by ID
-	Get(locator Locator, commentID string) (comment Comment, err error) // get comment by ID
+	Create(comment Comment) (commentID string, err error)               // create new comment, avoid dups by id
+	Get(locator Locator, commentID string) (comment Comment, err error) // get comment by id
 	Put(locator Locator, comment Comment) error                         // update comment, mutable parts only
-	Find(locator Locator, sort string) ([]Comment, error)               // find comments for request
-	Last(siteID string, max int) ([]Comment, error)                     // last comments for given site
-	GetByID(siteID string, commentID string) (Comment, error)           // comment by id
-	GetByUser(siteID string, userID string) ([]Comment, error)          // comment by user
+	Find(locator Locator, sort string) ([]Comment, error)               // find comments for locator
+	Last(siteID string, max int) ([]Comment, error)                     // last comments for given site, sorted by time
+	User(siteID string, userID string) ([]Comment, error)               // comments by user, sorted by time
 	Count(locator Locator) (int, error)                                 // number of comments for the post
 	List(siteID string) ([]PostInfo, error)                             // list of commented posts
 }

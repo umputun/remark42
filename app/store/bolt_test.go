@@ -52,11 +52,11 @@ func TestBoltDB_GetByID(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(res))
 
-	comment, err := b.GetByID("radio-t", res[1].ID)
+	comment, err := b.Get(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[1].ID)
 	assert.Nil(t, err)
 	assert.Equal(t, "some text2", comment.Text)
 
-	comment, err = b.GetByID("radio-t", "1234567")
+	comment, err = b.Get(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "1234567")
 	assert.NotNil(t, err)
 }
 

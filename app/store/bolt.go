@@ -25,11 +25,14 @@ type BoltDB struct {
 }
 
 const (
+	// top level buckets
 	lastBucketName   = "last"
 	userBucketName   = "users"
 	blocksBucketName = "block"
-	lastLimit        = 1000
-	userLimit        = 100
+
+	// limits
+	lastLimit = 1000
+	userLimit = 100
 )
 
 // BoltSite defines single site param
@@ -198,43 +201,6 @@ func (b *BoltDB) Find(locator Locator, sortFld string) (comments []Comment, err 
 	return comments, err
 }
 
-// GetByID returns comment by id across posts
-func (b *BoltDB) GetByID(siteID string, commentID string) (comment Comment, err error) {
-
-	bdb, err := b.db(siteID)
-	if err != nil {
-		return comment, err
-	}
-
-	err = bdb.View(func(tx *bolt.Tx) error {
-
-		lastBucket := tx.Bucket([]byte(lastBucketName))
-		if lastBucket == nil {
-			return errors.Errorf("no bucket %s in store", lastBucketName)
-		}
-
-		c := lastBucket.Cursor()
-		for k, v := c.Last(); k != nil; k, v = c.Prev() {
-			url, foundID, e := refFromValue(v).parseValue()
-			if e != nil {
-				return e
-			}
-
-			if foundID == commentID {
-				urlBucket := tx.Bucket([]byte(url))
-				if urlBucket == nil {
-					return errors.Errorf("no bucket %s in store", url)
-				}
-				comment, e = b.load(urlBucket, []byte(commentID))
-				return e
-			}
-		}
-		return errors.Errorf("no comment id %s", commentID)
-	})
-
-	return comment, err
-}
-
 // Last returns up to max last comments for given siteID
 func (b *BoltDB) Last(siteID string, max int) (comments []Comment, err error) {
 
@@ -370,9 +336,9 @@ func (b BoltDB) List(siteID string) (list []PostInfo, err error) {
 	return list, err
 }
 
-// GetByUser extracts all comments for given site and given userID
+// User extracts all comments for given site and given userID
 // "users" bucket has sub-bucket for each userID, and keeps it as ts:ref
-func (b *BoltDB) GetByUser(siteID string, userID string) (comments []Comment, err error) {
+func (b *BoltDB) User(siteID string, userID string) (comments []Comment, err error) {
 
 	comments = []Comment{}
 	commentRefs := []string{}
