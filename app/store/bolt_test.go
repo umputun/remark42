@@ -116,7 +116,7 @@ func TestBoltDB_List(t *testing.T) {
 
 	res, err := b.List("radio-t")
 	assert.Nil(t, err)
-	assert.Equal(t, []string{"https://radio-t.com", "https://radio-t.com/2"}, res)
+	assert.Equal(t, []PostInfo{{URL: "https://radio-t.com", Count: 2}, {URL: "https://radio-t.com/2", Count: 1}}, res)
 }
 
 func TestBoltDB_GetForUser(t *testing.T) {

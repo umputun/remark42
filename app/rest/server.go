@@ -96,7 +96,6 @@ func (s *Server) Run() {
 			s.mod = admin{dataService: s.DataService, exporter: s.Exporter, respCache: s.respCache}
 			rauth.Mount("/admin", s.mod.routes())
 		})
-
 	})
 
 	// add robots and file server for static content from /web

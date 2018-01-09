@@ -350,21 +350,33 @@ func (b *BoltDB) IsBlocked(siteID string, userID string) (blocked bool) {
 }
 
 // List returns list of buckets, which is list of all commented posts
-func (b BoltDB) List(siteID string) (list []string, err error) {
+func (b BoltDB) List(siteID string) (list []PostInfo, err error) {
 
 	bdb, err := b.db(siteID)
 	if err != nil {
 		return nil, err
 	}
 
+	posts := []string{}
 	err = bdb.View(func(tx *bolt.Tx) error {
 		return tx.ForEach(func(name []byte, _ *bolt.Bucket) error {
 			if string(name) != lastBucketName && string(name) != userBucketName {
-				list = append(list, string(name))
+				posts = append(posts, string(name))
 			}
 			return nil
 		})
 	})
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get list of posts for %s", siteID)
+	}
+
+	for _, post := range posts {
+		count, err := b.Count(Locator{SiteID: siteID, URL: post})
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to get count of comments for posts for %s", post)
+		}
+		list = append(list, PostInfo{URL: post, Count: count})
+	}
 	return list, err
 }
 

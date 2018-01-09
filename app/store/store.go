@@ -51,6 +51,12 @@ type Edit struct {
 	Summary   string    `json:"summary"`
 }
 
+// PostInfo holds summary for given post url
+type PostInfo struct {
+	URL   string `json:"url"`
+	Count int    `json:"count"`
+}
+
 // Interface combines all store interfaces
 type Interface interface {
 	Accessor
@@ -67,7 +73,7 @@ type Accessor interface {
 	GetByID(siteID string, commentID string) (Comment, error)           // comment by id
 	GetByUser(siteID string, userID string) ([]Comment, error)          // comment by user
 	Count(locator Locator) (int, error)                                 // number of comments for the post
-	List(siteID string) ([]string, error)                               // list of commented posts
+	List(siteID string) ([]PostInfo, error)                             // list of commented posts
 }
 
 // Admin defines all store ops avail for admin only
