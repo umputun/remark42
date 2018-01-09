@@ -18,7 +18,7 @@ import (
 //  - history of all comments. They all in a single "last" bucket (per site) and key is defined by ref struct as ts+commentID
 //    value is not full comment but a reference combined from post-url+commentID
 //  - user to comment references in "users" bucket. It used to get comments for user. Key is userID and value
-//    is a bucket with ts:reference
+//    is a nested bucket named userID with kv as ts:reference
 //  - blocking info sits in "block" bucket. Key is userID, value - ts
 type BoltDB struct {
 	dbs map[string]*bolt.DB
@@ -434,7 +434,6 @@ func (b *BoltDB) Put(locator Locator, comment Comment) error {
 
 // save comment to key for bucket. Should run in update tx
 func (b *BoltDB) save(bkt *bolt.Bucket, key []byte, comment Comment) (err error) {
-	// serialize comment to json []byte for bolt and save
 	jdata, jerr := json.Marshal(&comment)
 	if jerr != nil {
 		return errors.Wrap(jerr, "can't marshal comment")
@@ -447,7 +446,6 @@ func (b *BoltDB) save(bkt *bolt.Bucket, key []byte, comment Comment) (err error)
 
 // load comment by key from bucket. Should run in view tx
 func (b *BoltDB) load(bkt *bolt.Bucket, key []byte) (comment Comment, err error) {
-	// get and unmarshal comment
 	commentVal := bkt.Get(key)
 	if commentVal == nil {
 		return comment, errors.Errorf("no comment for %s", key)
