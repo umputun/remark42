@@ -371,9 +371,9 @@ func (b BoltDB) List(siteID string) (list []PostInfo, err error) {
 	}
 
 	for _, post := range posts {
-		count, err := b.Count(Locator{SiteID: siteID, URL: post})
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to get count of comments for posts for %s", post)
+		count, e := b.Count(Locator{SiteID: siteID, URL: post})
+		if e != nil {
+			return nil, errors.Wrapf(e, "failed to get count of comments for posts for %s", post)
 		}
 		list = append(list, PostInfo{URL: post, Count: count})
 	}
