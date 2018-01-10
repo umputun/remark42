@@ -95,6 +95,7 @@ func TestServer_Find(t *testing.T) {
 	srv := prep(t)
 	assert.NotNil(t, srv)
 	defer func() {
+		srv.httpServer.Close()
 		srv.httpServer.Shutdown(context.Background())
 		os.Remove(testDb)
 	}()
@@ -143,7 +144,7 @@ func prep(t *testing.T) *Server {
 	go func() {
 		srv.Run()
 	}()
-	time.Sleep(200 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 	return &srv
 }
 
