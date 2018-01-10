@@ -31,7 +31,7 @@ pipeline:
 
   notify:
     image: drillster/drone-email
-    host: 184.173.153.194
+    host: smtp.mailgun.org
     port: 25
     username: email_username
     password: email_password
