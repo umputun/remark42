@@ -14,12 +14,12 @@ import (
 // NewGoogle makes google oauth2 provider
 func NewGoogle(p Params) *Provider {
 	return initProvider(p, Provider{
-		Name:            "google",
-		Endpoint:        google.Endpoint,
-		RedirectURL:     p.RemarkURL + "/auth/google/callback",
-		Scopes:          []string{"https://www.googleapis.com/auth/userinfo.email"},
-		InfoURL:         "https://www.googleapis.com/oauth2/v3/userinfo",
-		FilesystemStore: p.SessionStore,
+		Name:        "google",
+		Endpoint:    google.Endpoint,
+		RedirectURL: p.RemarkURL + "/auth/google/callback",
+		Scopes:      []string{"https://www.googleapis.com/auth/userinfo.email"},
+		InfoURL:     "https://www.googleapis.com/oauth2/v3/userinfo",
+		Store:       p.SessionStore,
 		MapUser: func(data map[string]interface{}) store.User {
 			userInfo := store.User{
 				ID:      value(data, "email"),
@@ -39,12 +39,12 @@ func NewGoogle(p Params) *Provider {
 // NewGithub makes github oauth2 provider
 func NewGithub(p Params) *Provider {
 	return initProvider(p, Provider{
-		Name:            "github",
-		Endpoint:        github.Endpoint,
-		RedirectURL:     p.RemarkURL + "/auth/github/callback",
-		Scopes:          []string{"user:email"},
-		InfoURL:         "https://api.github.com/user",
-		FilesystemStore: p.SessionStore,
+		Name:        "github",
+		Endpoint:    github.Endpoint,
+		RedirectURL: p.RemarkURL + "/auth/github/callback",
+		Scopes:      []string{"user:email"},
+		InfoURL:     "https://api.github.com/user",
+		Store:       p.SessionStore,
 		MapUser: func(data map[string]interface{}) store.User {
 			userInfo := store.User{
 				ID:      value(data, "login"),
@@ -64,12 +64,12 @@ func NewGithub(p Params) *Provider {
 // NewFacebook makes facebook oauth2 provider
 func NewFacebook(p Params) *Provider {
 	return initProvider(p, Provider{
-		Name:            "facebook",
-		Endpoint:        facebook.Endpoint,
-		RedirectURL:     p.RemarkURL + "/auth/facebook/callback",
-		Scopes:          []string{"public_profile"},
-		InfoURL:         "https://graph.facebook.com/me",
-		FilesystemStore: p.SessionStore,
+		Name:        "facebook",
+		Endpoint:    facebook.Endpoint,
+		RedirectURL: p.RemarkURL + "/auth/facebook/callback",
+		Scopes:      []string{"public_profile"},
+		InfoURL:     "https://graph.facebook.com/me",
+		Store:       p.SessionStore,
 		MapUser: func(data map[string]interface{}) store.User {
 			userInfo := store.User{
 				ID:   value(data, "id"),

@@ -22,7 +22,7 @@ import (
 
 // Provider represents oauth2 provider
 type Provider struct {
-	*sessions.FilesystemStore
+	sessions.Store
 
 	Name        string
 	RedirectURL string
@@ -38,7 +38,7 @@ type Provider struct {
 type Params struct {
 	Cid          string
 	Csecret      string
-	SessionStore *sessions.FilesystemStore
+	SessionStore sessions.Store
 	RemarkURL    string
 }
 
@@ -55,7 +55,7 @@ func initProvider(p Params, provider Provider) *Provider {
 	}
 
 	provider.conf = &conf
-	provider.FilesystemStore = p.SessionStore
+	provider.Store = p.SessionStore
 	return &provider
 }
 
