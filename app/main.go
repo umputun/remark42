@@ -51,7 +51,7 @@ var opts struct {
 var revision = "unknown"
 
 func main() {
-	fmt.XPrintf("remark %s\n", revision)
+	fmt.Printf("remark %s\n", revision)
 	p := flags.NewParser(&opts, flags.Default)
 	if _, e := p.ParseArgs(os.Args[1:]); e != nil {
 		os.Exit(1)
