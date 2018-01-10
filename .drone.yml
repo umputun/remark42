@@ -31,12 +31,12 @@ pipeline:
 
   notify:
     image: drillster/drone-email
-    host: 172.17.0.1
+    host: 184.173.153.194
     port: 25
-    username: umputun
-    password: umputun
-    skip_verify: true
-    from: drone@umputun.com
+    username: email_username
+    password: email_password
+    from: drone@mg.umputun.com
     recipients: [ umputun@gmail.com ]
+    secrets: [ email_username, email_password ]
     when:
       status: [ changed, failure ]
