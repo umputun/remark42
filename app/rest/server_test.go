@@ -231,13 +231,14 @@ func TestServer_Delete(t *testing.T) {
 
 	client := http.Client{}
 	req, err := http.NewRequest(http.MethodDelete,
-		fmt.Sprintf("http://127.0.0.1:%d/api/v1/comment/%s?site=radio-t&url=https://radio-t.com/blah1", port, id1),
+		fmt.Sprintf("http://127.0.0.1:%d/api/v1/comment/%s?site=radio-t&url=https://radio-t.com/blah", port, id1),
 		nil)
 	assert.Nil(t, err)
-	_, err = client.Do(req)
+	resp, err := client.Do(req)
 	assert.Nil(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
 
-	_, code := get(t, fmt.Sprintf("http://127.0.0.1:%d/api/v1/id/%s?site=radio-t&url=https://radio-t.com/blah1", port, id1))
+	_, code := get(t, fmt.Sprintf("http://127.0.0.1:%d/api/v1/id/%s?site=radio-t&url=https://radio-t.com/blah", port, id1))
 	assert.Equal(t, 400, code)
 }
 
