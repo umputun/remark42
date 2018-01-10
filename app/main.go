@@ -126,7 +126,7 @@ func main() {
 		}.Do()
 	}
 
-	srv.Run()
+	srv.Run(8080)
 }
 
 // makeBoltStore creates store for all sites

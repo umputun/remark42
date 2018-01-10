@@ -3,6 +3,7 @@ package rest
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"path/filepath"
@@ -42,7 +43,7 @@ type Server struct {
 }
 
 // Run the lister and request's router, activate rest server
-func (s *Server) Run() {
+func (s *Server) Run(port int) {
 	log.Print("[INFO] activate rest server")
 
 	// add auth.Developer flag if dev mode is active
@@ -105,7 +106,7 @@ func (s *Server) Run() {
 	})
 	s.addFileServer(router, "/web", http.Dir(filepath.Join(".", "web")))
 
-	s.httpServer = &http.Server{Addr: ":8080", Handler: router}
+	s.httpServer = &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: router}
 	err := s.httpServer.ListenAndServe()
 	log.Printf("[WARN] http server terminated, %s", err)
 }
