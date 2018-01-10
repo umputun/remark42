@@ -36,8 +36,9 @@ type Server struct {
 	Exporter     migrator.Exporter
 	DevMode      bool
 
-	mod       admin
-	respCache *loadingCache
+	httpServer *http.Server
+	mod        admin
+	respCache  *loadingCache
 }
 
 // Run the lister and request's router, activate rest server
@@ -104,7 +105,9 @@ func (s *Server) Run() {
 	})
 	s.addFileServer(router, "/web", http.Dir(filepath.Join(".", "web")))
 
-	log.Fatal(http.ListenAndServe(":8080", router))
+	s.httpServer = &http.Server{Addr: ":8080", Handler: router}
+	err := s.httpServer.ListenAndServe()
+	log.Printf("[WARN] http server terminated, %s", err)
 }
 
 // POST /comment - adds comment, resets all immutable fields
@@ -151,7 +154,7 @@ func (s *Server) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 	s.respCache.flush() // reset all caches
 
-	render.Status(r, http.StatusAccepted)
+	render.Status(r, http.StatusCreated)
 	render.JSON(w, r, JSON{"id": id, "loc": comment.Locator})
 }
 

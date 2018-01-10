@@ -44,7 +44,7 @@ func TestBoltDB_Delete(t *testing.T) {
 	assert.Equal(t, 1, len(comments), "only 1 left in last")
 }
 
-func TestBoltDB_GetByID(t *testing.T) {
+func TestBoltDB_Get(t *testing.T) {
 	defer os.Remove(testDb)
 	b := prep(t)
 
@@ -58,6 +58,27 @@ func TestBoltDB_GetByID(t *testing.T) {
 
 	comment, err = b.Get(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "1234567")
 	assert.NotNil(t, err)
+}
+
+func TestBoltDB_Put(t *testing.T) {
+	defer os.Remove(testDb)
+	b := prep(t)
+	loc := Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
+	res, err := b.Find(loc, "time")
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(res))
+
+	comment := res[0]
+	comment.Text = "abc 123"
+	comment.Score = 100
+	err = b.Put(loc, comment)
+	assert.Nil(t, err)
+
+	comment, err = b.Get(loc, res[0].ID)
+	assert.Nil(t, err)
+	assert.Equal(t, "abc 123", comment.Text)
+	assert.Equal(t, res[0].ID, comment.ID)
+	assert.Equal(t, 100, comment.Score)
 }
 
 func TestBoltDB_Last(t *testing.T) {
