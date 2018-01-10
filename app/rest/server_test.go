@@ -23,10 +23,7 @@ var testDb = "/tmp/test-remark.db"
 func TestServer_Ping(t *testing.T) {
 	srv := prep(t)
 	assert.NotNil(t, srv)
-	defer func() {
-		srv.httpServer.Shutdown(context.Background())
-		os.Remove(testDb)
-	}()
+	defer cleanup(srv)
 
 	res, code := get(t, "http://127.0.0.1:8080/api/v1/ping")
 	assert.Equal(t, "pong", res)
@@ -36,10 +33,7 @@ func TestServer_Ping(t *testing.T) {
 func TestServer_Create(t *testing.T) {
 	srv := prep(t)
 	assert.NotNil(t, srv)
-	defer func() {
-		srv.httpServer.Shutdown(context.Background())
-		os.Remove(testDb)
-	}()
+	defer cleanup(srv)
 
 	r := strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
 	resp, err := http.Post("http://127.0.0.1:8080/api/v1/comment", "application/json", r)
@@ -60,10 +54,7 @@ func TestServer_Create(t *testing.T) {
 func TestServer_CreateAndGet(t *testing.T) {
 	srv := prep(t)
 	assert.NotNil(t, srv)
-	defer func() {
-		srv.httpServer.Shutdown(context.Background())
-		os.Remove(testDb)
-	}()
+	defer cleanup(srv)
 
 	// create comment
 	r := strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
@@ -94,11 +85,8 @@ func TestServer_CreateAndGet(t *testing.T) {
 func TestServer_Find(t *testing.T) {
 	srv := prep(t)
 	assert.NotNil(t, srv)
-	defer func() {
-		srv.httpServer.Close()
-		srv.httpServer.Shutdown(context.Background())
-		os.Remove(testDb)
-	}()
+	defer cleanup(srv)
+
 	_, code := get(t, "http://127.0.0.1:8080/api/v1/find?site=radio-t&url=https://radio-t.com/blah1")
 	assert.Equal(t, 400, code, "nothing in")
 
@@ -172,4 +160,10 @@ func addComment(t *testing.T, c store.Comment) string {
 	assert.Nil(t, err)
 
 	return crResp["id"].(string)
+}
+
+func cleanup(srv *Server) {
+	srv.httpServer.Close()
+	srv.httpServer.Shutdown(context.Background())
+	os.Remove(testDb)
 }
