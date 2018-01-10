@@ -113,7 +113,7 @@ func (b *BoltDB) Create(comment Comment) (commentID string, err error) {
 			return errors.Wrapf(e, "can't get bucket %s", comment.User.ID)
 		}
 		// put into individual user's bucket with ts as a key
-		if e = userBkt.Put([]byte(comment.Timestamp.Format(time.RFC3339)), []byte(rv.value)); e != nil {
+		if e = userBkt.Put([]byte(comment.Timestamp.Format(time.RFC3339Nano)), []byte(rv.value)); e != nil {
 			return errors.Wrapf(e, "failed to put user comment %s for %s", comment.ID, comment.User.ID)
 		}
 		return nil

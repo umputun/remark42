@@ -119,6 +119,101 @@ func TestServer_Find(t *testing.T) {
 	assert.Equal(t, id2, comments[0].ID)
 }
 
+func TestServer_Update(t *testing.T) {
+	srv := prep(t)
+	assert.NotNil(t, srv)
+	defer cleanup(srv)
+
+	c1 := store.Comment{Text: "test test #1", ParentID: "p1",
+		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}}
+	id := addComment(t, c1)
+
+	client := http.Client{}
+	req, err := http.NewRequest(http.MethodPut,
+		"http://127.0.0.1:8080/api/v1/comment/"+id+"?site=radio-t&url=https://radio-t.com/blah1",
+		strings.NewReader(`{"text":"updated text", "summary":"my edit"}`))
+	assert.Nil(t, err)
+	b, err := client.Do(req)
+	assert.Nil(t, err)
+	body, err := ioutil.ReadAll(b.Body)
+	assert.Nil(t, err)
+	assert.Equal(t, 200, b.StatusCode, string(body))
+
+	// comments returned by update
+	c2 := store.Comment{}
+	err = json.Unmarshal(body, &c2)
+	assert.Nil(t, err)
+	assert.Equal(t, id, c2.ID)
+	assert.Equal(t, "updated text", c2.Text)
+	assert.Equal(t, "my edit", c2.Edit.Summary)
+	assert.True(t, time.Since(c2.Edit.Timestamp) < 1*time.Second)
+
+	// read updated comment
+	res, code := get(t, fmt.Sprintf("http://127.0.0.1:8080/api/v1/id/%s?site=radio-t&url=https://radio-t.com/blah1", id))
+	assert.Equal(t, 200, code)
+	c3 := store.Comment{}
+	err = json.Unmarshal([]byte(res), &c3)
+	assert.Nil(t, err)
+	assert.Equal(t, c2, c3, "same as response from update")
+}
+
+func TestServer_Last(t *testing.T) {
+	srv := prep(t)
+	assert.NotNil(t, srv)
+	defer cleanup(srv)
+
+	c1 := store.Comment{Text: "test test #1", ParentID: "p1",
+		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}}
+	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
+		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah2"}}
+
+	// add 3 comments
+	addComment(t, c1)
+	id1 := addComment(t, c1)
+	id2 := addComment(t, c2)
+
+	res, code := get(t, "http://127.0.0.1:8080/api/v1/last/2?site=radio-t")
+	assert.Equal(t, 200, code)
+	comments := []store.Comment{}
+	err := json.Unmarshal([]byte(res), &comments)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(comments), "should have 2 comments")
+	assert.Equal(t, id1, comments[1].ID)
+	assert.Equal(t, id2, comments[0].ID)
+
+	res, code = get(t, "http://127.0.0.1:8080/api/v1/last/5?site=radio-t")
+	assert.Equal(t, 200, code)
+	err = json.Unmarshal([]byte(res), &comments)
+	assert.Nil(t, err)
+	assert.Equal(t, 3, len(comments), "should have 3 comments")
+}
+
+func TestServer_FindUserComments(t *testing.T) {
+	srv := prep(t)
+	assert.NotNil(t, srv)
+	defer cleanup(srv)
+
+	c1 := store.Comment{Text: "test test #1",
+		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}}
+	c2 := store.Comment{Text: "test test #3", ParentID: "p1",
+		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah2"}}
+
+	// add 3 comments
+	addComment(t, c1)
+	addComment(t, c2)
+	addComment(t, c2)
+
+	_, code := get(t, "http://127.0.0.1:8080/api/v1/comments?site=radio-t&user=blah")
+	assert.Equal(t, 400, code, "noting for user blah")
+
+	res, code := get(t, "http://127.0.0.1:8080/api/v1/comments?site=radio-t&user=dev")
+	assert.Equal(t, 200, code)
+	comments := []store.Comment{}
+	err := json.Unmarshal([]byte(res), &comments)
+	assert.Nil(t, err)
+	assert.Equal(t, 3, len(comments), "should have 3 comments")
+}
+
 func prep(t *testing.T) *Server {
 	dataStore, err := store.NewBoltDB(store.BoltSite{FileName: testDb, SiteID: "radio-t"})
 	assert.Nil(t, err)
@@ -158,7 +253,7 @@ func addComment(t *testing.T, c store.Comment) string {
 	crResp := JSON{}
 	err = json.Unmarshal(b, &crResp)
 	assert.Nil(t, err)
-
+	time.Sleep(time.Nanosecond * 10)
 	return crResp["id"].(string)
 }
 
