@@ -15,6 +15,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/stretchr/testify/require"
 	"github.com/umputun/remark/app/rest/auth"
 	"github.com/umputun/remark/app/store"
 )
@@ -33,7 +34,7 @@ func TestServer_Ping(t *testing.T) {
 
 func TestServer_Create(t *testing.T) {
 	srv, port := prep(t)
-	assert.NotNil(t, srv)
+	require.NotNil(t, srv)
 	defer cleanup(srv)
 
 	r := strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
@@ -302,7 +303,7 @@ func TestServer_Vote(t *testing.T) {
 
 func prep(t *testing.T) (srv *Server, port int) {
 	dataStore, err := store.NewBoltDB(store.BoltSite{FileName: testDb, SiteID: "radio-t"})
-	assert.Nil(t, err)
+	require.Nil(t, err)
 	srv = &Server{
 		DataService:  store.Service{Interface: dataStore, EditDuration: 5 * time.Minute},
 		DevMode:      true,
