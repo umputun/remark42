@@ -143,7 +143,7 @@ func prep(t *testing.T) *Server {
 	go func() {
 		srv.Run()
 	}()
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 	return &srv
 }
 
