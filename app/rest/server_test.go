@@ -240,6 +240,19 @@ func TestServer_Delete(t *testing.T) {
 	assert.Equal(t, 400, code)
 }
 
+func TestServer_UserInfo(t *testing.T) {
+	srv, port := prep(t)
+	assert.NotNil(t, srv)
+	body, code := get(t, fmt.Sprintf("http://127.0.0.1:%d/api/v1/user?site=radio-t", port))
+	assert.Equal(t, 200, code)
+	user := store.User{}
+	err := json.Unmarshal([]byte(body), &user)
+	assert.Nil(t, err)
+	assert.Equal(t, store.User{Name: "developer one", ID: "dev",
+		Picture: "https://friends.radio-t.com/resources/images/rt_logo_64.png", Profile: "https://radio-t.com/info/",
+		Admin: true, Blocked: false, IP: ""}, user)
+}
+
 func prep(t *testing.T) (srv *Server, port int) {
 	dataStore, err := store.NewBoltDB(store.BoltSite{FileName: testDb, SiteID: "radio-t"})
 	assert.Nil(t, err)
