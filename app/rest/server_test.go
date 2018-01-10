@@ -243,6 +243,8 @@ func TestServer_Delete(t *testing.T) {
 func TestServer_UserInfo(t *testing.T) {
 	srv, port := prep(t)
 	assert.NotNil(t, srv)
+	defer cleanup(srv)
+
 	body, code := get(t, fmt.Sprintf("http://127.0.0.1:%d/api/v1/user?site=radio-t", port))
 	assert.Equal(t, 200, code)
 	user := store.User{}
@@ -253,7 +255,6 @@ func TestServer_UserInfo(t *testing.T) {
 		Admin: true, Blocked: false, IP: ""}, user)
 }
 
-// PUT /vote/{id}?site=siteID&url=post-url&vote=1 - vote for/against comment
 func TestServer_Vote(t *testing.T) {
 	srv, port := prep(t)
 	assert.NotNil(t, srv)
