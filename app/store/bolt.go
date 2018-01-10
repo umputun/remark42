@@ -284,7 +284,7 @@ func (b *BoltDB) SetBlock(siteID string, userID string, status bool) error {
 
 		switch status {
 		case true:
-			if e := bucket.Put([]byte(userID), []byte(time.Now().Format(time.RFC3339))); e != nil {
+			if e := bucket.Put([]byte(userID), []byte(time.Now().Format(time.RFC3339Nano))); e != nil {
 				return errors.Wrapf(e, "failed to put %s to %s", userID, blocksBucketName)
 			}
 		case false:

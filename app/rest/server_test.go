@@ -215,6 +215,31 @@ func TestServer_FindUserComments(t *testing.T) {
 	assert.Equal(t, 3, len(comments), "should have 3 comments")
 }
 
+func TestServer_Delete(t *testing.T) {
+	srv, port := prep(t)
+	assert.NotNil(t, srv)
+	defer cleanup(srv)
+
+	c1 := store.Comment{Text: "test test #1",
+		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}}
+	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
+		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}}
+
+	id1 := addComment(t, c1, port)
+	addComment(t, c2, port)
+
+	client := http.Client{}
+	req, err := http.NewRequest(http.MethodDelete,
+		fmt.Sprintf("http://127.0.0.1:%d/api/v1/comment/%s?site=radio-t&url=https://radio-t.com/blah1", port, id1),
+		nil)
+	assert.Nil(t, err)
+	_, err = client.Do(req)
+	assert.Nil(t, err)
+
+	_, code := get(t, fmt.Sprintf("http://127.0.0.1:%d/api/v1/id/%s?site=radio-t&url=https://radio-t.com/blah1", port, id1))
+	assert.Equal(t, 400, code)
+}
+
 func prep(t *testing.T) (srv *Server, port int) {
 	dataStore, err := store.NewBoltDB(store.BoltSite{FileName: testDb, SiteID: "radio-t"})
 	assert.Nil(t, err)

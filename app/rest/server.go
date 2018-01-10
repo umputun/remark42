@@ -211,7 +211,7 @@ func (s *Server) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	err := s.DataService.Delete(locator, id)
 	if err != nil {
-		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete comment")
+		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete comment")
 		return
 	}
 
@@ -287,7 +287,7 @@ func (s *Server) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 
 	comment, err := s.DataService.Get(store.Locator{SiteID: siteID, URL: url}, id)
 	if err != nil {
-		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't get comment by id")
+		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get comment by id")
 		return
 	}
 	render.Status(r, http.StatusOK)
