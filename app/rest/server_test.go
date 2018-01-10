@@ -253,6 +253,52 @@ func TestServer_UserInfo(t *testing.T) {
 		Admin: true, Blocked: false, IP: ""}, user)
 }
 
+// PUT /vote/{id}?site=siteID&url=post-url&vote=1 - vote for/against comment
+func TestServer_Vote(t *testing.T) {
+	srv, port := prep(t)
+	assert.NotNil(t, srv)
+	defer cleanup(srv)
+
+	c1 := store.Comment{Text: "test test #1",
+		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}}
+	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
+		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}}
+
+	id1 := addComment(t, c1, port)
+	addComment(t, c2, port)
+
+	vote := func(val int) int {
+		client := http.Client{}
+		req, err := http.NewRequest(http.MethodPut,
+			fmt.Sprintf("http://127.0.0.1:%d/api/v1/vote/%s?site=radio-t&url=https://radio-t.com/blah&vote=%d", port, id1, val),
+			nil)
+		assert.Nil(t, err)
+		resp, err := client.Do(req)
+		assert.Nil(t, err)
+		return resp.StatusCode
+	}
+
+	assert.Equal(t, 200, vote(1), "first vote allowed")
+	assert.Equal(t, 400, vote(1), "second vote rejected")
+	body, code := get(t, fmt.Sprintf("http://127.0.0.1:%d/api/v1/id/%s?site=radio-t&url=https://radio-t.com/blah", port, id1))
+	assert.Equal(t, 200, code)
+	cr := store.Comment{}
+	err := json.Unmarshal([]byte(body), &cr)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, cr.Score)
+	assert.Equal(t, map[string]bool{"dev": true}, cr.Votes)
+
+	assert.Equal(t, 200, vote(-1), "opposite vote allowed")
+	body, code = get(t, fmt.Sprintf("http://127.0.0.1:%d/api/v1/id/%s?site=radio-t&url=https://radio-t.com/blah", port, id1))
+	assert.Equal(t, 200, code)
+	cr = store.Comment{}
+	err = json.Unmarshal([]byte(body), &cr)
+	assert.Nil(t, err)
+	assert.Equal(t, 0, cr.Score)
+	assert.Equal(t, map[string]bool{}, cr.Votes)
+
+}
+
 func prep(t *testing.T) (srv *Server, port int) {
 	dataStore, err := store.NewBoltDB(store.BoltSite{FileName: testDb, SiteID: "radio-t"})
 	assert.Nil(t, err)
