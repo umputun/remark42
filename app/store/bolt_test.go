@@ -20,6 +20,10 @@ func TestBoltDB_CreateAndFind(t *testing.T) {
 	assert.Equal(t, `some text, <a href="http://radio-t.com" rel="nofollow">link</a>`, res[0].Text)
 	assert.Equal(t, "user1", res[0].User.ID)
 	t.Log(res[0].ID)
+
+	_, err = b.Create(Comment{ID: res[0].ID, Locator: Locator{URL: "https://radio-t.com", SiteID: "radio-t"}})
+	assert.NotNil(t, err)
+	assert.Equal(t, "key id-1 already in store", err.Error())
 }
 
 func TestBoltDB_Delete(t *testing.T) {
