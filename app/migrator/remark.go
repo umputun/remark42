@@ -42,7 +42,6 @@ func (r *Remark) Export(w io.Writer, siteID string) error {
 				return errors.Wrapf(err, "can't marshal %v", comments)
 			}
 			data := buf.Bytes()
-			data = append(data, '\n')
 			if _, err := w.Write(data); err != nil {
 				return errors.Wrap(err, "can't write comment data")
 			}

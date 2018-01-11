@@ -91,7 +91,6 @@ func (s *Server) Run(port int) {
 		rapi.With(auth.Auth(s.SessionStore, s.Admins, maybeDevMode(auth.Full))).Group(func(rauth chi.Router) {
 			rauth.Post("/comment", s.createCommentCtrl)
 			rauth.Put("/comment/{id}", s.updateCommentCtrl)
-			rauth.Delete("/comment/{id}", s.deleteCommentCtrl)
 			rauth.Get("/user", s.userInfoCtrl)
 			rauth.Put("/vote/{id}", s.voteCtrl)
 
@@ -201,25 +200,6 @@ func (s *Server) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 	s.respCache.flush() // reset all caches
 	render.JSON(w, r, res)
-}
-
-// DELETE /comment/{id}?site=siteID&url=post-url
-func (s *Server) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
-
-	id := chi.URLParam(r, "id")
-	log.Printf("[DEBUG] delete comment %s", id)
-
-	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
-	err := s.DataService.Delete(locator, id)
-	if err != nil {
-		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete comment")
-		return
-	}
-
-	s.respCache.flush()
-
-	render.Status(r, http.StatusOK)
-	render.JSON(w, r, JSON{"id": id, "loc": locator})
 }
 
 // GET /find?site=siteID&url=post-url&format=[tree|plain]&sort=[+/-time|+/-score]

@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/umputun/remark/app/migrator"
 	"github.com/umputun/remark/app/rest/auth"
 	"github.com/umputun/remark/app/store"
 )
@@ -216,31 +217,6 @@ func TestServer_FindUserComments(t *testing.T) {
 	assert.Equal(t, 3, len(comments), "should have 3 comments")
 }
 
-func TestServer_Delete(t *testing.T) {
-	srv, port := prep(t)
-	assert.NotNil(t, srv)
-	defer cleanup(srv)
-
-	c1 := store.Comment{Text: "test test #1",
-		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}}
-	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
-		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}}
-
-	id1 := addComment(t, c1, port)
-	addComment(t, c2, port)
-
-	client := http.Client{}
-	req, err := http.NewRequest(http.MethodDelete,
-		fmt.Sprintf("http://127.0.0.1:%d/api/v1/comment/%s?site=radio-t&url=https://radio-t.com/blah", port, id1), nil)
-	assert.Nil(t, err)
-	resp, err := client.Do(req)
-	assert.Nil(t, err)
-	assert.Equal(t, 200, resp.StatusCode)
-
-	_, code := get(t, fmt.Sprintf("http://127.0.0.1:%d/api/v1/id/%s?site=radio-t&url=https://radio-t.com/blah", port, id1))
-	assert.Equal(t, 400, code)
-}
-
 func TestServer_UserInfo(t *testing.T) {
 	srv, port := prep(t)
 	assert.NotNil(t, srv)
@@ -355,50 +331,6 @@ func TestServer_List(t *testing.T) {
 	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/blah1", Count: 3}, {URL: "https://radio-t.com/blah2", Count: 2}}, pi)
 }
 
-func TestServer_Pin(t *testing.T) {
-	srv, port := prep(t)
-	assert.NotNil(t, srv)
-	defer cleanup(srv)
-
-	c1 := store.Comment{Text: "test test #1",
-		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}}
-	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
-		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}}
-
-	id1 := addComment(t, c1, port)
-	addComment(t, c2, port)
-
-	pin := func(val int) int {
-		client := http.Client{}
-		req, err := http.NewRequest(http.MethodPut,
-			fmt.Sprintf("http://127.0.0.1:%d/api/v1/admin/pin/%s?site=radio-t&url=https://radio-t.com/blah&pin=%d", port, id1, val),
-			nil)
-		assert.Nil(t, err)
-		resp, err := client.Do(req)
-		assert.Nil(t, err)
-		return resp.StatusCode
-	}
-
-	code := pin(1)
-	assert.Equal(t, 200, code)
-
-	body, code := get(t, fmt.Sprintf("http://127.0.0.1:%d/api/v1/id/%s?site=radio-t&url=https://radio-t.com/blah", port, id1))
-	assert.Equal(t, 200, code)
-	cr := store.Comment{}
-	err := json.Unmarshal([]byte(body), &cr)
-	assert.Nil(t, err)
-	assert.True(t, cr.Pin)
-
-	code = pin(-1)
-	assert.Equal(t, 200, code)
-	body, code = get(t, fmt.Sprintf("http://127.0.0.1:%d/api/v1/id/%s?site=radio-t&url=https://radio-t.com/blah", port, id1))
-	assert.Equal(t, 200, code)
-	cr = store.Comment{}
-	err = json.Unmarshal([]byte(body), &cr)
-	assert.Nil(t, err)
-	assert.False(t, cr.Pin)
-}
-
 func prep(t *testing.T) (srv *Server, port int) {
 	dataStore, err := store.NewBoltDB(store.BoltSite{FileName: testDb, SiteID: "radio-t"})
 	require.Nil(t, err)
@@ -408,6 +340,7 @@ func prep(t *testing.T) (srv *Server, port int) {
 		AuthFacebook: &auth.Provider{},
 		AuthGithub:   &auth.Provider{},
 		AuthGoogle:   &auth.Provider{},
+		Exporter:     &migrator.Remark{DataStore: dataStore},
 	}
 	go func() {
 		port = rand.Intn(50000) + 1025
