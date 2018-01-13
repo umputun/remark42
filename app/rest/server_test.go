@@ -83,6 +83,7 @@ func TestServer_CreateAndGet(t *testing.T) {
 		Picture: "https://friends.radio-t.com/resources/images/rt_logo_64.png",
 		Profile: "https://radio-t.com/info/", Admin: true, Blocked: false, IP: ""},
 		comment.User)
+	t.Logf("%+v", comment)
 }
 
 func TestServer_Find(t *testing.T) {
