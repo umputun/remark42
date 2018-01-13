@@ -25,7 +25,7 @@ type AutoBackup struct {
 // Do runs daily export to local files, keeps up to keepMax backups for given siteID
 func (ab AutoBackup) Do() {
 	log.Printf("[INFO] activate auto-backup for %s", ab.BackupLocation)
-	tick := time.NewTicker(24 * ab.Duration)
+	tick := time.NewTicker(ab.Duration)
 	log.Printf("[DEBUG] first backup at %s", time.Now().Add(ab.Duration))
 	for range tick.C {
 		if _, err := ab.makeBackup(); err != nil {
