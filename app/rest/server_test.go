@@ -60,7 +60,7 @@ func TestServer_CreateAndGet(t *testing.T) {
 	defer cleanup(srv)
 
 	// create comment
-	r := strings.NewReader(`{"text": "test *123*", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
+	r := strings.NewReader(`{"text": "**test** *123* http://radio-t.com", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
 	resp, err := http.Post(fmt.Sprintf("http://127.0.0.1:%d/api/v1/comment", port), "application/json", r)
 	assert.Nil(t, err)
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
@@ -78,7 +78,7 @@ func TestServer_CreateAndGet(t *testing.T) {
 	comment := store.Comment{}
 	err = json.Unmarshal([]byte(res), &comment)
 	assert.Nil(t, err)
-	assert.Equal(t, "<p>test <em>123</em></p>", comment.Text)
+	assert.Equal(t, "<p><strong>test</strong> <em>123</em> <a href=\"http://radio-t.com\" rel=\"nofollow\">http://radio-t.com</a></p>", comment.Text)
 	assert.Equal(t, store.User{Name: "developer one", ID: "dev",
 		Picture: "https://friends.radio-t.com/resources/images/rt_logo_64.png",
 		Profile: "https://radio-t.com/info/", Admin: true, Blocked: false, IP: ""},
