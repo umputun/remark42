@@ -13,7 +13,7 @@ POST https://demo.remark42.com/api/v1/comment
 Content-Type: application/json
 
 {
-	"text": "comment blah http://radio-t.com",
+	"text": "comment *blah* http://radio-t.com",
 	"user" : {
 		"name": "umputun",
 		"id": "@umputun",

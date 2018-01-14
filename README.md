@@ -5,6 +5,7 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 - Social login via Google, Facebook and Github
 - Multi-level nested comments with both tree and plain presentations
 - Import from disqus
+- Markdown support
 - Moderator can remove comments and block users
 - Voting and pinning system
 - Sortable comments

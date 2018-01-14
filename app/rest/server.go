@@ -23,6 +23,7 @@ import (
 	"github.com/umputun/remark/app/rest/common"
 	"github.com/umputun/remark/app/rest/format"
 	"github.com/umputun/remark/app/store"
+	"gopkg.in/russross/blackfriday.v2"
 )
 
 // Server is a rest access server
@@ -139,6 +140,9 @@ func (s *Server) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	comment.User = user
 	comment.User.IP = strings.Split(r.RemoteAddr, ":")[0]
 
+	// render markdown
+	comment.Text = string(blackfriday.Run([]byte(comment.Text)))
+
 	log.Printf("[DEBUG] create comment %+v", comment)
 
 	// check if user blocked
@@ -179,6 +183,10 @@ func (s *Server) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	id := chi.URLParam(r, "id")
+
+	// render markdown
+	edit.Text = string(blackfriday.Run([]byte(edit.Text)))
+
 	log.Printf("[DEBUG] update comment %s, %+v", id, edit)
 
 	var currComment store.Comment
