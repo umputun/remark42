@@ -57,7 +57,7 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 
 #### Register oauth2 providers
 
-Authentication handled by external providers. You should setup oauth2 for all (or some) of them in order to allow users to access comments. It is not mandatory to have all of them, but at least one should be property configured.
+Authentication handled by external providers. You should setup oauth2 for all (or some) of them in order to allow users to make comments. It is not mandatory to have all of them, but at least one should be property configured.
 
 ##### Google Auth Provider
 

@@ -67,7 +67,7 @@ func main() {
 		log.Fatalf("[ERROR] can't create directories, %+v", err)
 	}
 
-	dataStore := makeBoltStore()
+	dataStore := makeBoltStore(opts.Sites)
 
 	if p.Active != nil && p.Command.Find("import") == p.Active {
 		// import mode
@@ -85,20 +85,23 @@ func main() {
 
 	srvOpts := opts.ServerCommand
 	dataService := store.Service{Interface: dataStore, EditDuration: 5 * time.Minute}
-	sessionStore := sessions.NewFilesystemStore(srvOpts.SessionStore, []byte(srvOpts.StoreKey))
-	sessionStore.Options.HttpOnly = true
+	sessionStore := func() sessions.Store {
+		sess := sessions.NewFilesystemStore(srvOpts.SessionStore, []byte(srvOpts.StoreKey))
+		sess.Options.HttpOnly = true
+		sess.Options.MaxAge = 15 * 24 * 3600 // 15 days in seconds
+		sess.Options.Secure = true
+		return sess
+	}()
+
 	exporter := migrator.Remark{DataStore: dataStore}
 
 	authProviders := []auth.Provider{
 		auth.NewGoogle(auth.Params{
-			Cid: srvOpts.GoogleCID, Csecret: srvOpts.GoogleCSEC, SessionStore: sessionStore, RemarkURL: opts.RemarkURL,
-		}),
+			Cid: srvOpts.GoogleCID, Csecret: srvOpts.GoogleCSEC, SessionStore: sessionStore, RemarkURL: opts.RemarkURL}),
 		auth.NewGithub(auth.Params{
-			Cid: srvOpts.GithubCID, Csecret: srvOpts.GithubCSEC, SessionStore: sessionStore, RemarkURL: opts.RemarkURL,
-		}),
+			Cid: srvOpts.GithubCID, Csecret: srvOpts.GithubCSEC, SessionStore: sessionStore, RemarkURL: opts.RemarkURL}),
 		auth.NewFacebook(auth.Params{
-			Cid: srvOpts.FacebookCID, Csecret: srvOpts.FacebookCSEC, SessionStore: sessionStore, RemarkURL: opts.RemarkURL,
-		}),
+			Cid: srvOpts.FacebookCID, Csecret: srvOpts.FacebookCSEC, SessionStore: sessionStore, RemarkURL: opts.RemarkURL}),
 	}
 
 	srv := rest.Server{
@@ -130,9 +133,9 @@ func main() {
 }
 
 // makeBoltStore creates store for all sites
-func makeBoltStore() store.Interface {
+func makeBoltStore(siteNames []string) store.Interface {
 	sites := []store.BoltSite{}
-	for _, site := range opts.Sites {
+	for _, site := range siteNames {
 		sites = append(sites, store.BoltSite{SiteID: site, FileName: fmt.Sprintf("%s/%s.db", opts.BoltPath, site)})
 	}
 	result, err := store.NewBoltDB(sites...)
