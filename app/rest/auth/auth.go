@@ -43,7 +43,7 @@ type Params struct {
 }
 
 // newProvider makes auth for given provider
-func initProvider(p Params, provider Provider) *Provider {
+func initProvider(p Params, provider Provider) Provider {
 	log.Printf("[INFO] create %s auth, id=%s, redir: %s", provider.Name, p.Cid, provider.RedirectURL)
 
 	conf := oauth2.Config{
@@ -56,7 +56,7 @@ func initProvider(p Params, provider Provider) *Provider {
 
 	provider.conf = &conf
 	provider.Store = p.SessionStore
-	return &provider
+	return provider
 }
 
 // Routes returns auth routes for given provider

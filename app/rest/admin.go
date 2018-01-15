@@ -22,7 +22,7 @@ type admin struct {
 	dataService store.Service
 	exporter    migrator.Exporter
 	importer    migrator.Importer
-	respCache   *loadingCache
+	cache       common.LoadingCache
 }
 
 func (a *admin) routes() chi.Router {
@@ -48,7 +48,7 @@ func (a *admin) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete comment")
 		return
 	}
-	a.respCache.flush()
+	a.cache.Flush()
 	render.Status(r, http.StatusOK)
 	render.JSON(w, r, JSON{"id": id, "loc": locator})
 }
@@ -63,7 +63,7 @@ func (a *admin) setBlockCtrl(w http.ResponseWriter, r *http.Request) {
 		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set blocking status")
 		return
 	}
-	a.respCache.flush()
+	a.cache.Flush()
 	render.JSON(w, r, JSON{"user_id": userID, "site_id": siteID, "block": blockStatus})
 }
 
@@ -78,7 +78,7 @@ func (a *admin) setPinCtrl(w http.ResponseWriter, r *http.Request) {
 		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set pin status")
 		return
 	}
-	a.respCache.flush()
+	a.cache.Flush()
 	render.JSON(w, r, JSON{"id": commentID, "loc": locator, "pin": pinStatus})
 }
 
@@ -107,7 +107,7 @@ func (a *admin) importCtrl(w http.ResponseWriter, r *http.Request) {
 	if err := a.importer.Import(r.Body, siteID); err != nil {
 		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "import failed")
 	}
-	a.respCache.flush()
+	a.cache.Flush()
 }
 
 func (a *admin) checkBlocked(siteID string, user store.User) bool {

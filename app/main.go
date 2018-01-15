@@ -14,6 +14,7 @@ import (
 	"github.com/umputun/remark/app/migrator"
 	"github.com/umputun/remark/app/rest"
 	"github.com/umputun/remark/app/rest/auth"
+	"github.com/umputun/remark/app/rest/common"
 	"github.com/umputun/remark/app/store"
 )
 
@@ -39,6 +40,8 @@ var opts struct {
 		GithubCSEC   string `long:"github-csec" env:"REMARK_GITHUB_CSEC" description:"Github OAuth client secret"`
 		FacebookCID  string `long:"facebook-cid" env:"REMARK_FACEBOOK_CID" description:"Facebook OAuth client ID"`
 		FacebookCSEC string `long:"facebook-csec" env:"REMARK_FACEBOOK_CSEC" description:"Facebook OAuth client secret"`
+
+		Port int `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
 	} `command:"server" description:"run server"`
 
 	ImportCommand struct {
@@ -80,36 +83,33 @@ func main() {
 		return
 	}
 
+	srvOpts := opts.ServerCommand
 	dataService := store.Service{Interface: dataStore, EditDuration: 5 * time.Minute}
-	sessionStore := sessions.NewFilesystemStore(opts.ServerCommand.SessionStore, []byte(opts.ServerCommand.StoreKey))
+	sessionStore := sessions.NewFilesystemStore(srvOpts.SessionStore, []byte(srvOpts.StoreKey))
 	sessionStore.Options.HttpOnly = true
 	exporter := migrator.Remark{DataStore: dataStore}
 
+	authProviders := []auth.Provider{
+		auth.NewGoogle(auth.Params{
+			Cid: srvOpts.GoogleCID, Csecret: srvOpts.GoogleCSEC, SessionStore: sessionStore, RemarkURL: opts.RemarkURL,
+		}),
+		auth.NewGithub(auth.Params{
+			Cid: srvOpts.GithubCID, Csecret: srvOpts.GithubCSEC, SessionStore: sessionStore, RemarkURL: opts.RemarkURL,
+		}),
+		auth.NewFacebook(auth.Params{
+			Cid: srvOpts.FacebookCID, Csecret: srvOpts.FacebookCSEC, SessionStore: sessionStore, RemarkURL: opts.RemarkURL,
+		}),
+	}
+
 	srv := rest.Server{
-		Version:      revision,
-		DataService:  dataService,
-		SessionStore: sessionStore,
-		Admins:       opts.Admins,
-		DevMode:      opts.DevMode,
-		Exporter:     &exporter,
-		AuthGoogle: auth.NewGoogle(auth.Params{
-			Cid:          opts.ServerCommand.GoogleCID,
-			Csecret:      opts.ServerCommand.GoogleCSEC,
-			SessionStore: sessionStore,
-			RemarkURL:    opts.RemarkURL,
-		}),
-		AuthGithub: auth.NewGithub(auth.Params{
-			Cid:          opts.ServerCommand.GithubCID,
-			Csecret:      opts.ServerCommand.GithubCSEC,
-			SessionStore: sessionStore,
-			RemarkURL:    opts.RemarkURL,
-		}),
-		AuthFacebook: auth.NewFacebook(auth.Params{
-			Cid:          opts.ServerCommand.FacebookCID,
-			Csecret:      opts.ServerCommand.FacebookCSEC,
-			SessionStore: sessionStore,
-			RemarkURL:    opts.RemarkURL,
-		}),
+		Version:       revision,
+		DataService:   dataService,
+		SessionStore:  sessionStore,
+		Admins:        opts.Admins,
+		DevMode:       opts.DevMode,
+		Exporter:      &exporter,
+		Cache:         common.NewLoadingCache(4*time.Hour, 15*time.Minute),
+		AuthProviders: authProviders,
 	}
 
 	if opts.DevMode {
@@ -126,7 +126,7 @@ func main() {
 		}.Do()
 	}
 
-	srv.Run(8080)
+	srv.Run(srvOpts.Port)
 }
 
 // makeBoltStore creates store for all sites

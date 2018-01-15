@@ -12,7 +12,7 @@ import (
 )
 
 // NewGoogle makes google oauth2 provider
-func NewGoogle(p Params) *Provider {
+func NewGoogle(p Params) Provider {
 	return initProvider(p, Provider{
 		Name:        "google",
 		Endpoint:    google.Endpoint,
@@ -37,7 +37,7 @@ func NewGoogle(p Params) *Provider {
 }
 
 // NewGithub makes github oauth2 provider
-func NewGithub(p Params) *Provider {
+func NewGithub(p Params) Provider {
 	return initProvider(p, Provider{
 		Name:        "github",
 		Endpoint:    github.Endpoint,
@@ -62,7 +62,7 @@ func NewGithub(p Params) *Provider {
 }
 
 // NewFacebook makes facebook oauth2 provider
-func NewFacebook(p Params) *Provider {
+func NewFacebook(p Params) Provider {
 	return initProvider(p, Provider{
 		Name:        "facebook",
 		Endpoint:    facebook.Endpoint,

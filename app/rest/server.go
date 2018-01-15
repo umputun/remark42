@@ -17,30 +17,28 @@ import (
 	"github.com/gorilla/context"
 	"github.com/gorilla/sessions"
 	"github.com/pkg/errors"
+	"gopkg.in/russross/blackfriday.v2"
 
 	"github.com/umputun/remark/app/migrator"
 	"github.com/umputun/remark/app/rest/auth"
 	"github.com/umputun/remark/app/rest/common"
 	"github.com/umputun/remark/app/rest/format"
 	"github.com/umputun/remark/app/store"
-	"gopkg.in/russross/blackfriday.v2"
 )
 
 // Server is a rest access server
 type Server struct {
-	Version      string
-	DataService  store.Service
-	Admins       []string
-	AuthGoogle   *auth.Provider
-	AuthGithub   *auth.Provider
-	AuthFacebook *auth.Provider
-	SessionStore *sessions.FilesystemStore
-	Exporter     migrator.Exporter
-	DevMode      bool
+	Version       string
+	DataService   store.Service
+	Admins        []string
+	AuthProviders []auth.Provider
+	SessionStore  *sessions.FilesystemStore
+	Exporter      migrator.Exporter
+	Cache         common.LoadingCache
+	DevMode       bool
 
 	httpServer *http.Server
 	mod        admin
-	respCache  *loadingCache
 }
 
 // Run the lister and request's router, activate rest server
@@ -60,9 +58,6 @@ func (s *Server) Run(port int) {
 		log.Printf("[DEBUG] admins %+v", s.Admins)
 	}
 
-	// cache for responses. Flushes completely on any modification
-	s.respCache = newLoadingCache(4*time.Hour, 15*time.Minute)
-
 	router := chi.NewRouter()
 	router.Use(middleware.RealIP, Recoverer)
 	router.Use(middleware.Throttle(1000), middleware.Timeout(60*time.Second))
@@ -73,10 +68,10 @@ func (s *Server) Run(port int) {
 
 	// auth routes for all providers
 	router.Route("/auth", func(r chi.Router) {
-		r.Mount("/google", s.AuthGoogle.Routes())
-		r.Mount("/github", s.AuthGithub.Routes())
-		r.Mount("/facebook", s.AuthFacebook.Routes())
-		r.Get("/logout", s.AuthGoogle.LogoutHandler) // shortcut, can be any of providers, all logouts do the same
+		for _, provider := range s.AuthProviders {
+			r.Mount("/"+provider.Name, provider.Routes())
+		}
+		r.Get("/logout", s.AuthProviders[0].LogoutHandler) // shortcut, can be any of providers, all logouts do the same
 	})
 
 	// api routes
@@ -96,7 +91,7 @@ func (s *Server) Run(port int) {
 			rauth.Put("/vote/{id}", s.voteCtrl)
 
 			// admin routes, admin users only
-			s.mod = admin{dataService: s.DataService, exporter: s.Exporter, respCache: s.respCache}
+			s.mod = admin{dataService: s.DataService, exporter: s.Exporter, cache: s.Cache}
 			rauth.Mount("/admin", s.mod.routes())
 		})
 	})
@@ -157,7 +152,7 @@ func (s *Server) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.respCache.flush() // reset all caches
+	s.Cache.Flush() // reset all caches
 
 	render.Status(r, http.StatusCreated)
 	render.JSON(w, r, JSON{"id": id, "loc": comment.Locator})
@@ -206,7 +201,7 @@ func (s *Server) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.respCache.flush() // reset all caches
+	s.Cache.Flush() // reset all caches
 	render.JSON(w, r, res)
 }
 
@@ -216,7 +211,7 @@ func (s *Server) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	log.Printf("[DEBUG] get comments for %+v", locator)
 
-	data, err := s.respCache.get(r.URL.String(), time.Hour, func() ([]byte, error) {
+	data, err := s.Cache.Get(r.URL.String(), time.Hour, func() ([]byte, error) {
 		comments, e := s.DataService.Find(locator, r.URL.Query().Get("sort"))
 		if e != nil {
 			return nil, e
@@ -249,7 +244,7 @@ func (s *Server) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		max = 0
 	}
 
-	data, err := s.respCache.get(r.URL.String(), time.Hour, func() ([]byte, error) {
+	data, err := s.Cache.Get(r.URL.String(), time.Hour, func() ([]byte, error) {
 		comments, e := s.DataService.Last(r.URL.Query().Get("site"), max)
 		if e != nil {
 			return nil, e
@@ -291,7 +286,7 @@ func (s *Server) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[DEBUG] get comments for userID %s, %s", userID, siteID)
 
-	data, err := s.respCache.get(r.URL.String(), time.Hour, func() ([]byte, error) {
+	data, err := s.Cache.Get(r.URL.String(), time.Hour, func() ([]byte, error) {
 		comments, e := s.DataService.User(siteID, userID)
 		if e != nil {
 			return nil, e
@@ -331,7 +326,7 @@ func (s *Server) countCtrl(w http.ResponseWriter, r *http.Request) {
 func (s *Server) listCtrl(w http.ResponseWriter, r *http.Request) {
 
 	siteID := r.URL.Query().Get("site")
-	data, err := s.respCache.get(r.URL.String(), 8*time.Hour, func() ([]byte, error) {
+	data, err := s.Cache.Get(r.URL.String(), 8*time.Hour, func() ([]byte, error) {
 		posts, e := s.DataService.List(siteID)
 		if e != nil {
 			return nil, e
@@ -365,7 +360,7 @@ func (s *Server) voteCtrl(w http.ResponseWriter, r *http.Request) {
 		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't vote for comment")
 		return
 	}
-	s.respCache.flush()
+	s.Cache.Flush()
 	render.JSON(w, r, JSON{"id": comment.ID, "score": comment.Score})
 }
 
