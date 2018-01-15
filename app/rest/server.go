@@ -288,10 +288,10 @@ func (s *Server) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	userID := r.URL.Query().Get("user")
 	siteID := r.URL.Query().Get("site")
 
-	type resp struct {
+	resp := struct {
 		Comments []store.Comment
 		Count    int
-	}
+	}{}
 
 	log.Printf("[DEBUG] get comments for userID %s, %s", userID, siteID)
 
@@ -300,11 +300,9 @@ func (s *Server) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		if e != nil {
 			return nil, e
 		}
-		rc := resp{
-			Comments: comments,
-			Count:    count,
-		}
-		return encodeJSONWithHTML(rc)
+
+		resp.Comments, resp.Count = comments, count
+		return encodeJSONWithHTML(resp)
 	})
 
 	if err != nil {

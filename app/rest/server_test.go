@@ -211,10 +211,16 @@ func TestServer_FindUserComments(t *testing.T) {
 
 	res, code := get(t, fmt.Sprintf("http://127.0.0.1:%d/api/v1/comments?site=radio-t&user=dev", port))
 	assert.Equal(t, 200, code)
-	comments := []store.Comment{}
-	err := json.Unmarshal([]byte(res), &comments)
+
+	resp := struct {
+		Comments []store.Comment
+		Count    int
+	}{}
+
+	err := json.Unmarshal([]byte(res), &resp)
 	assert.Nil(t, err)
-	assert.Equal(t, 3, len(comments), "should have 3 comments")
+	assert.Equal(t, 3, len(resp.Comments), "should have 3 comments")
+	assert.Equal(t, 3, resp.Count, "should have 3 count")
 }
 
 func TestServer_UserInfo(t *testing.T) {
