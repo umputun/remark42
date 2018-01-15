@@ -78,6 +78,8 @@ func (s *Server) Run(port int) {
 
 	// api routes
 	router.Route("/api/v1", func(rapi chi.Router) {
+
+		// open routes
 		rapi.Get("/find", s.findCommentsCtrl)
 		rapi.Get("/id/{id}", s.commentByIDCtrl)
 		rapi.Get("/comments", s.findUserCommentsCtrl)
@@ -286,14 +288,23 @@ func (s *Server) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	userID := r.URL.Query().Get("user")
 	siteID := r.URL.Query().Get("site")
 
+	type resp struct {
+		Comments []store.Comment
+		Count    int
+	}
+
 	log.Printf("[DEBUG] get comments for userID %s, %s", userID, siteID)
 
 	data, err := s.Cache.Get(r.URL.String(), time.Hour, func() ([]byte, error) {
-		comments, e := s.DataService.User(siteID, userID)
+		comments, count, e := s.DataService.User(siteID, userID)
 		if e != nil {
 			return nil, e
 		}
-		return encodeJSONWithHTML(comments)
+		rc := resp{
+			Comments: comments,
+			Count:    count,
+		}
+		return encodeJSONWithHTML(rc)
 	})
 
 	if err != nil {

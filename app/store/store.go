@@ -70,7 +70,7 @@ type Accessor interface {
 	Put(locator Locator, comment Comment) error                         // update comment, mutable parts only
 	Find(locator Locator, sort string) ([]Comment, error)               // find comments for locator
 	Last(siteID string, max int) ([]Comment, error)                     // last comments for given site, sorted by time
-	User(siteID string, userID string) ([]Comment, error)               // comments by user, sorted by time
+	User(siteID string, userID string) ([]Comment, int, error)          // comments by user, sorted by time
 	Count(locator Locator) (int, error)                                 // number of comments for the post
 	List(siteID string) ([]PostInfo, error)                             // list of commented posts
 }

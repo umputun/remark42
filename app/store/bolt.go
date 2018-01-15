@@ -32,7 +32,7 @@ const (
 
 	// limits
 	lastLimit = 1000
-	userLimit = 100
+	userLimit = 50
 )
 
 // BoltSite defines single site param
@@ -338,14 +338,14 @@ func (b BoltDB) List(siteID string) (list []PostInfo, err error) {
 
 // User extracts all comments for given site and given userID
 // "users" bucket has sub-bucket for each userID, and keeps it as ts:ref
-func (b *BoltDB) User(siteID string, userID string) (comments []Comment, err error) {
+func (b *BoltDB) User(siteID string, userID string) (comments []Comment, totalComments int, err error) {
 
 	comments = []Comment{}
 	commentRefs := []string{}
 
 	bdb, err := b.db(siteID)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	// get list of references to comments
 	err = bdb.View(func(tx *bolt.Tx) error {
@@ -360,6 +360,7 @@ func (b *BoltDB) User(siteID string, userID string) (comments []Comment, err err
 		}
 
 		c := userBkt.Cursor()
+		totalComments = userBkt.Stats().KeyN
 		for k, v := c.Last(); k != nil; k, v = c.Prev() {
 			commentRefs = append(commentRefs, string(v))
 			if len(commentRefs) > userLimit {
@@ -370,21 +371,21 @@ func (b *BoltDB) User(siteID string, userID string) (comments []Comment, err err
 	})
 
 	if err != nil {
-		return comments, err
+		return comments, totalComments, err
 	}
 
 	// retrieve comments for refs
 	for _, v := range commentRefs {
 		url, commentID, e := ref{value: v}.parseValue()
 		if e != nil {
-			return comments, errors.Wrapf(e, "can't parse reference %s", v)
+			return comments, totalComments, errors.Wrapf(e, "can't parse reference %s", v)
 		}
 		if c, e := b.Get(Locator{SiteID: siteID, URL: url}, commentID); e == nil {
 			comments = append(comments, c)
 		}
 	}
 
-	return comments, err
+	return comments, totalComments, err
 }
 
 // Get for locator.URL and commentID string
