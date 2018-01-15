@@ -69,9 +69,11 @@ func (s *Server) Run(port int) {
 	// auth routes for all providers
 	router.Route("/auth", func(r chi.Router) {
 		for _, provider := range s.AuthProviders {
-			r.Mount("/"+provider.Name, provider.Routes())
+			r.Mount("/"+provider.Name, provider.Routes()) // mount auth providers as /auth/{name}
 		}
-		r.Get("/logout", s.AuthProviders[0].LogoutHandler) // shortcut, can be any of providers, all logouts do the same
+		if len(s.AuthProviders) > 0 {
+			r.Get("/logout", s.AuthProviders[0].LogoutHandler) // shortcut, can be any of providers, all logouts do the same
+		}
 	})
 
 	// api routes
