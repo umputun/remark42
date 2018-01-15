@@ -258,7 +258,7 @@ func (b *BoltDB) Count(locator Locator) (count int, err error) {
 	err = bdb.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(locator.URL))
 		if bucket == nil {
-			return errors.Errorf("no bucket %s in store", locator.URL)
+			return errors.Errorf("no bucket %s in store %s", locator.URL, locator.SiteID)
 		}
 		count = bucket.Stats().KeyN
 		return nil

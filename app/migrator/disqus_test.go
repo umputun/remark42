@@ -1,13 +1,37 @@
 package migrator
 
 import (
+	"os"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/umputun/remark/app/store"
 )
+
+func TestDisqus_Import(t *testing.T) {
+	defer os.Remove("/tmp/remark-test.db")
+	dataStore, err := store.NewBoltDB(store.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "test"})
+	require.Nil(t, err, "create store")
+	d := Disqus{DataStore: dataStore}
+	err = d.Import(strings.NewReader(xmlTest), "test")
+	assert.Nil(t, err)
+
+	last, err := dataStore.Last("test", 10)
+	assert.Nil(t, err)
+	assert.Equal(t, 3, len(last), "3 comments imported")
+
+	posts, err := dataStore.List("test")
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(posts), "2 posts")
+
+	count, err := dataStore.Count(store.Locator{SiteID: "test", URL: "https://radio-t.com/p/2011/03/05/podcast-229/"})
+	assert.Nil(t, err)
+	assert.Equal(t, 2, count)
+}
 
 func TestDisqus_Convert(t *testing.T) {
 	d := Disqus{}
@@ -16,7 +40,6 @@ func TestDisqus_Convert(t *testing.T) {
 	res := []store.Comment{}
 	for comment := range ch {
 		res = append(res, comment)
-		t.Logf("%+v", comment)
 	}
 	assert.Equal(t, 3, len(res), "3 comments total, 1 spam excluded")
 
@@ -134,15 +157,13 @@ var xmlTest = `<?xml version="1.0" encoding="utf-8"?>
 			<username>google-74b9e7568ef6860e93862c5d77590123</username>
 		</author>
 		<ipAddress>89.89.89.139</ipAddress>
-		<thread dsq:id="247937687"/>
+		<thread dsq:id="247918464"/>
 	</post>
 
 	<post dsq:id="299986073">
 		<id>6580890074280459219</id>
-		<message>
-			some ugly spam
-		</message>
-		<createdAt>2011-09-31T22:48:43Z</createdAt>
+		<message>some ugly spam</message>
+		<createdAt>2011-09-30T22:48:43Z</createdAt>
 		<isDeleted>false</isDeleted>
 		<isSpam>true</isSpam>
 		<author>

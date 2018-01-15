@@ -54,17 +54,20 @@ type uid struct {
 func (d *Disqus) Import(r io.Reader, siteID string) (err error) {
 
 	commentsCh := d.convert(r, siteID)
-	failed := 0
+	failed, passed := 0, 0
 	for c := range commentsCh {
 		if _, err = d.DataStore.Create(c); err != nil {
 			failed++
+			continue
 		}
+		passed++
 	}
 
 	if failed > 0 {
 		return errors.Errorf("failed to save %d comments", failed)
 	}
 
+	log.Printf("[DEBUG] imported %d comments to site %s", passed, siteID)
 	return nil
 }
 
@@ -74,8 +77,8 @@ func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 	decoder := xml.NewDecoder(r)
 	commentsCh := make(chan store.Comment)
 
-	inpThreads, inpComments := 0, 0
 	go func() {
+		inpThreads, inpComments := 0, 0
 		commentsCount, spamComments := 0, 0
 		for {
 			t, err := decoder.Token()
@@ -97,6 +100,7 @@ func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 					inpComments++
 					comment := disqusComment{}
 					if err := decoder.DecodeElement(&comment, &se); err != nil {
+						log.Printf("[WARN] can't decode disqus comment, %s", err)
 						continue
 					}
 					if comment.IsSpam {
@@ -127,7 +131,7 @@ func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 			}
 		}
 		close(commentsCh)
-		log.Printf("[INFO] converted %d posts with %d comments from disqus %d/%d, spam %d",
+		log.Printf("[INFO] converted %d posts with %d comments from disqus (threads:%d, comments:%d, spam:%d)",
 			len(postsMap), commentsCount, inpThreads, inpComments, spamComments)
 	}()
 
