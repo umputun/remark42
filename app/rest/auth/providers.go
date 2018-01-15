@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"fmt"
 	"strings"
 
 	"golang.org/x/oauth2/facebook"
@@ -20,12 +19,12 @@ func NewGoogle(p Params) Provider {
 		Scopes:      []string{"https://www.googleapis.com/auth/userinfo.email"},
 		InfoURL:     "https://www.googleapis.com/oauth2/v3/userinfo",
 		Store:       p.SessionStore,
-		MapUser: func(data map[string]interface{}) store.User {
+		MapUser: func(data userData) store.User {
 			userInfo := store.User{
-				ID:      value(data, "email"),
-				Name:    value(data, "name"),
-				Picture: value(data, "picture"),
-				Profile: value(data, "profile"),
+				ID:      data.value("email"),
+				Name:    data.value("name"),
+				Picture: data.value("picture"),
+				Profile: data.value("profile"),
 			}
 			if userInfo.Name == "" {
 				userInfo.Name = strings.Split(userInfo.ID, "@")[0]
@@ -45,12 +44,12 @@ func NewGithub(p Params) Provider {
 		Scopes:      []string{"user:email"},
 		InfoURL:     "https://api.github.com/user",
 		Store:       p.SessionStore,
-		MapUser: func(data map[string]interface{}) store.User {
+		MapUser: func(data userData) store.User {
 			userInfo := store.User{
-				ID:      value(data, "login"),
-				Name:    value(data, "name"),
-				Picture: value(data, "avatar_url"),
-				Profile: value(data, "html_url"),
+				ID:      data.value("login"),
+				Name:    data.value("name"),
+				Picture: data.value("avatar_url"),
+				Profile: data.value("html_url"),
 			}
 			if userInfo.Name == "" {
 				userInfo.Name = userInfo.ID
@@ -70,12 +69,10 @@ func NewFacebook(p Params) Provider {
 		Scopes:      []string{"public_profile"},
 		InfoURL:     "https://graph.facebook.com/me",
 		Store:       p.SessionStore,
-		MapUser: func(data map[string]interface{}) store.User {
+		MapUser: func(data userData) store.User {
 			userInfo := store.User{
-				ID:   value(data, "id"),
-				Name: value(data, "name"),
-				// Picture: data["avatar_url"].(string),
-				// Profile: data["html_url"].(string),
+				ID:   data.value("id"),
+				Name: data.value("name"),
 			}
 			if userInfo.Name == "" {
 				userInfo.Name = userInfo.ID
@@ -84,11 +81,4 @@ func NewFacebook(p Params) Provider {
 			return userInfo
 		},
 	})
-}
-
-func value(data map[string]interface{}, key string) string {
-	if val, ok := data[key]; ok {
-		return fmt.Sprintf("%v", val)
-	}
-	return ""
 }

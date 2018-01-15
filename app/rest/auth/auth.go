@@ -29,7 +29,7 @@ type Provider struct {
 	InfoURL     string
 	Endpoint    oauth2.Endpoint
 	Scopes      []string
-	MapUser     func(map[string]interface{}) store.User
+	MapUser     func(userData) store.User
 
 	conf *oauth2.Config
 }
@@ -40,6 +40,15 @@ type Params struct {
 	Csecret      string
 	SessionStore sessions.Store
 	RemarkURL    string
+}
+
+type userData map[string]interface{}
+
+func (u userData) value(key string) string {
+	if val, ok := u[key]; ok {
+		return fmt.Sprintf("%v", val)
+	}
+	return ""
 }
 
 // newProvider makes auth for given provider
