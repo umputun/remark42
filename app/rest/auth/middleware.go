@@ -29,7 +29,7 @@ var devUser = store.User{
 }
 
 // Auth middleware adds auth from session and populates user info
-func Auth(sessionStore *sessions.FilesystemStore, admins []string, modes []Mode) func(http.Handler) http.Handler {
+func Auth(sessionStore sessions.Store, admins []string, modes []Mode) func(http.Handler) http.Handler {
 
 	inModes := func(mode Mode) bool {
 		for _, m := range modes {

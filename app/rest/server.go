@@ -32,7 +32,7 @@ type Server struct {
 	DataService   store.Service
 	Admins        []string
 	AuthProviders []auth.Provider
-	SessionStore  *sessions.FilesystemStore
+	SessionStore  sessions.Store
 	Exporter      migrator.Exporter
 	Cache         common.LoadingCache
 	DevMode       bool
