@@ -77,7 +77,7 @@ func (p Provider) Routes() chi.Router {
 	return router
 }
 
-// LoginHandler - GET /login/{provider}?from=redirect-back-url
+// LoginHandler - GET /login?from=redirect-back-url
 func (p Provider) LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	// make state (random) and store in session
@@ -106,6 +106,7 @@ func (p Provider) LoginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // AuthHandler fills user info and redirects to "from" url. This is callback url redirected locally by browser
+// GET /callback
 func (p Provider) AuthHandler(w http.ResponseWriter, r *http.Request) {
 
 	session, err := p.Get(r, "remark")
@@ -116,8 +117,13 @@ func (p Provider) AuthHandler(w http.ResponseWriter, r *http.Request) {
 
 	// compare saved state to the one from redirect url
 	retrievedState, ok := session.Values["state"]
-	if !ok || retrievedState != r.URL.Query().Get("state") {
-		http.Error(w, fmt.Sprintf("unexpected state %s", retrievedState.(string)), http.StatusUnauthorized)
+	if !ok {
+		http.Error(w, "missing state in store", http.StatusUnauthorized)
+		return
+	}
+
+	if retrievedState == "" || retrievedState != r.URL.Query().Get("state") {
+		http.Error(w, fmt.Sprintf("unexpected state %v", retrievedState), http.StatusUnauthorized)
 		return
 	}
 
