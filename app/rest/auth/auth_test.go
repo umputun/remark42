@@ -32,8 +32,8 @@ func TestAuth(t *testing.T) {
 	u := store.User{}
 	err = json.Unmarshal(body, &u)
 	assert.Nil(t, err)
-	assert.Equal(t, store.User{Name: "blah", ID: "myuser", Picture: "", Profile: "", Admin: false, Blocked: false, IP: ""}, u)
-
+	assert.Equal(t, store.User{Name: "blah", ID: "myuser", Picture: "", Profile: "http://blah.com/p.html",
+		Admin: false, Blocked: false, IP: ""}, u)
 }
 
 func TestLogout(t *testing.T) {
@@ -108,13 +108,14 @@ func mockProvider(t *testing.T, sessStore sessions.Store) (provder Provider, ts 
 			case strings.HasPrefix(r.URL.Path, "/user"):
 				res := `{
 					"id":"myuser",
-					"name":"blah"
+					"name":"blah",
+					"profile": "http://blah.com/p.html"
 					}`
 				w.Header().Set("Content-Type", "application/json; charset=utf-8")
 				w.WriteHeader(200)
 				w.Write([]byte(res))
 			default:
-				t.Logf("unexpected oauth request %s %s", r.Method, r.URL)
+				t.Fatalf("unexpected oauth request %s %s", r.Method, r.URL)
 			}
 		}),
 	}

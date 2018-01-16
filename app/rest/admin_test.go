@@ -3,14 +3,12 @@ package rest
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	"io/ioutil"
-
-	"strings"
 
 	"github.com/stretchr/testify/require"
 	"github.com/umputun/remark/app/store"
