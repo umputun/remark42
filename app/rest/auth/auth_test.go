@@ -36,6 +36,28 @@ func TestAuth(t *testing.T) {
 
 }
 
+func TestLogout(t *testing.T) {
+	sessionStore := &mockStore{values: make(map[interface{}]interface{})}
+
+	_, ts, ots := mockProvider(t, sessionStore)
+	defer func() {
+		ts.Close()
+		ots.Close()
+	}()
+
+	resp, err := http.Get("http://localhost:8081/login")
+	assert.Nil(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+
+	_, err = http.Get("http://localhost:8081/logout")
+	assert.Nil(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+
+	s, err := sessionStore.Get(nil, "remark")
+	assert.Nil(t, err)
+	assert.Equal(t, 0, len(s.Values))
+}
+
 func mockProvider(t *testing.T, sessStore sessions.Store) (provder Provider, ts *http.Server, oauth *http.Server) {
 
 	provider := Provider{
