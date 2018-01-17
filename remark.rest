@@ -1,15 +1,15 @@
 
 ### find request with tree
-GET https://demo.remark42.com/api/v1/find?site=remark&sort=time&format=tree&url=https://radio-t.com/p/2017/12/16/podcast-576/
+GET {{host}}/api/v1/find?site=remark&sort=time&format=tree&url=https://radio-t.com/p/2017/12/16/podcast-576/
 
 ### find request with plain
-GET https://demo.remark42.com/api/v1/find?site=remark&sort=time&format=plain&url=https://radio-t.com/p/2017/12/16/podcast-576/
+GET {{host}}/api/v1/find?site=remark&sort=time&format=plain&url=https://radio-t.com/p/2017/12/16/podcast-576/
 
 ### last 10 comments
-GET https://demo.remark42.com/api/v1/last/50?site=remark
+GET {{host}}/api/v1/last/50?site=remark
 
 ### create comment
-POST https://demo.remark42.com/api/v1/comment
+POST {{host}}/api/v1/comment
 Content-Type: application/json
 
 {
@@ -26,7 +26,7 @@ Content-Type: application/json
 }
 
 ### update comment
-PUT https://demo.remark42.com/api/v1/comment/7b88d7a91353ab206cb63cdca18fb26bcb30205b?site=remark&url=https://radio-t.com/blah1
+PUT {{host}}/api/v1/comment/7b88d7a91353ab206cb63cdca18fb26bcb30205b?site=remark&url=https://radio-t.com/blah1
 Content-Type: application/json
 
 {
@@ -35,25 +35,25 @@ Content-Type: application/json
 }
 
 ### pin comment
-PUT https://demo.remark42.com/api/v1/admin/pin/3665976683?site=remark&url=https://radio-t.com/p/2017/12/16/podcast-576/&pin=0
+PUT {{host}}/api/v1/admin/pin/3665976683?site=remark&url=https://radio-t.com/p/2017/12/16/podcast-576/&pin=0
 
 ### vote for comment
-PUT https://demo.remark42.com/api/v1/vote/3665976683?site=remark&url=https://radio-t.com/p/2017/12/16/podcast-576/&vote=1
+PUT {{host}}/api/v1/vote/3665976683?site=remark&url=https://radio-t.com/p/2017/12/16/podcast-576/&vote=1
 
 ### get user info
-GET https://demo.remark42.com/api/v1/user
+GET {{host}}/api/v1/user
 
 ### get comment by id
-GET https://demo.remark42.com/api/v1/id/3665976683?site=remark&url=https://radio-t.com/p/2017/12/16/podcast-576/
+GET {{host}}/api/v1/id/3665976683?site=remark&url=https://radio-t.com/p/2017/12/16/podcast-576/
 
 ### get comment by id 2
-GET https://demo.remark42.com/api/v1/id/a2ddb8d2f65008ee1a1e3af8df0f26beb042309c?site=remark&url=https://radio-t.com/blah1
+GET {{host}}/api/v1/id/a2ddb8d2f65008ee1a1e3af8df0f26beb042309c?site=remark&url=https://radio-t.com/blah1
 
 ### get comment by user id
-GET https://demo.remark42.com/api/v1/comments?site=remark&user=umputun
+GET {{host}}/api/v1/comments?site=remark&user=umputun
 
 ### get counts
-GET https://demo.remark42.com/api/v1/count?site=remark&url=https://radio-t.com/p/2017/12/16/podcast-576/
+GET {{host}}/api/v1/count?site=remark&url=https://radio-t.com/p/2017/12/16/podcast-576/
 
 ### list commented posts
-GET https://demo.remark42.com/api/v1/list?site=remark
+GET {{host}}/api/v1/list?site=remark
