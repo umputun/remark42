@@ -18,6 +18,7 @@ services:
             - "8080:8080"
 
         environment:
+            - MHOST
             - REMARK_URL=https://demo.remark42.com
             - BOLTDB_PATH=/srv/var/db
             - BACKUP_PATH=/srv/var/backup
