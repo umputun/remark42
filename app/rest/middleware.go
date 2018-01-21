@@ -16,10 +16,9 @@ import (
 	"github.com/didip/tollbooth"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/render"
+
 	"github.com/umputun/remark/app/rest/common"
 )
-
-var org = "Umputun"
 
 // JSON is a map alias, just for convenience
 type JSON map[string]interface{}
@@ -63,7 +62,7 @@ func Limiter(recSec int, excludeIps ...string) func(http.Handler) http.Handler {
 func AppInfo(app string, version string) func(http.Handler) http.Handler {
 	f := func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Org", org)
+			w.Header().Set("Org", "Umputun")
 			w.Header().Set("App-Name", app)
 			w.Header().Set("App-Version", version)
 			if mhost := os.Getenv("MHOST"); mhost != "" {

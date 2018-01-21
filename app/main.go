@@ -88,8 +88,8 @@ func main() {
 	sessionStore := func() sessions.Store {
 		sess := sessions.NewFilesystemStore(srvOpts.SessionStore, []byte(srvOpts.StoreKey))
 		sess.Options.HttpOnly = true
-		sess.Options.MaxAge = 15 * 24 * 3600 // 15 days in seconds
 		sess.Options.Secure = true
+		sess.Options.MaxAge = int(time.Duration(time.Hour * 24 * 365).Seconds())
 		return sess
 	}()
 
