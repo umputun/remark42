@@ -1,8 +1,6 @@
-import tmpl from 'blueimp-tmpl';
+import { nodeId } from './common/settings';
 
-import { nodeId } from './settings';
-
-import fetcher from './fetcher';
+import fetcher from './common/fetcher';
 
 let node = null;
 let afterInit = null;

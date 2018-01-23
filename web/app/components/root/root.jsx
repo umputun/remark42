@@ -1,5 +1,5 @@
 import { Component } from 'preact';
-import fetcher from 'fetcher';
+import fetcher from 'common/fetcher';
 
 export default class Root extends Component {
   componentDidMount() {

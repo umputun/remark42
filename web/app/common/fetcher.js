@@ -1,4 +1,4 @@
-import './promises';
+import 'common/promises';
 
 // TODO: i think we need to use unfetch here instead of heavy axios
 import axios from 'axios';
