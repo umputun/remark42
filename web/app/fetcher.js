@@ -1,5 +1,6 @@
 import './promises';
 
+// TODO: i think we need to use unfetch here instead of heavy axios
 import axios from 'axios';
 
 import { baseUrl, apiBase, siteId } from './settings';
