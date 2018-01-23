@@ -47,11 +47,16 @@
 
   &__score {
     margin-left: 8px;
-    font-size: 14px;
+    font-size: 0;
     color: #666;
   }
 
+  &__score-value {
+    font-size: 14px;
+  }
+
   &__score-sign {
+    font-size: 14px;
     vertical-align: 1px;
   }
 
