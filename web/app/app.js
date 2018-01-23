@@ -17,7 +17,10 @@ if (document.readyState !== 'complete') {
 function initApp() {
   const node = document.getElementById(id);
 
-  if (!node) return;
+  if (!node) {
+    console.error('Remark42: Can\'t find root node.');
+    return;
+  }
 
   render(<Root/>, node.parentElement, node);
 }
