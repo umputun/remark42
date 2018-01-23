@@ -375,41 +375,6 @@ func (s *Server) voteCtrl(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, JSON{"id": comment.ID, "score": comment.Score})
 }
 
-// renderJSONWithHTML allows html tags and forces charset=utf-8
-func renderJSONWithHTML(w http.ResponseWriter, r *http.Request, v interface{}) {
-	buf := &bytes.Buffer{}
-	enc := json.NewEncoder(buf)
-	enc.SetEscapeHTML(false)
-	if err := enc.Encode(v); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	if status, ok := r.Context().Value(render.StatusCtxKey).(int); ok {
-		w.WriteHeader(status)
-	}
-	_, _ = w.Write(buf.Bytes())
-}
-
-func encodeJSONWithHTML(v interface{}) ([]byte, error) {
-	buf := &bytes.Buffer{}
-	enc := json.NewEncoder(buf)
-	enc.SetEscapeHTML(false)
-	if err := enc.Encode(v); err != nil {
-		return nil, errors.Wrap(err, "can't encode to json")
-	}
-	return buf.Bytes(), nil
-}
-
-// renderJSONWithHTML allows html tags and forces charset=utf-8
-func renderJSONFromBytes(w http.ResponseWriter, r *http.Request, data []byte) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	if status, ok := r.Context().Value(render.StatusCtxKey).(int); ok {
-		w.WriteHeader(status)
-	}
-	_, _ = w.Write(data)
-}
-
 // serves static files from /web
 func (s *Server) addFileServer(r chi.Router, path string, root http.FileSystem) {
 	fs := http.StripPrefix(path, http.FileServer(root))
@@ -428,4 +393,35 @@ func (s *Server) addFileServer(r chi.Router, path string, root http.FileSystem) 
 		}
 		fs.ServeHTTP(w, r)
 	}))
+}
+
+// renderJSONWithHTML allows html tags and forces charset=utf-8
+func renderJSONWithHTML(w http.ResponseWriter, r *http.Request, v interface{}) {
+	data, err := encodeJSONWithHTML(v)
+	if err != nil {
+		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't render json response")
+		return
+	}
+	renderJSONFromBytes(w, r, data)
+}
+
+func encodeJSONWithHTML(v interface{}) ([]byte, error) {
+	buf := &bytes.Buffer{}
+	enc := json.NewEncoder(buf)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(v); err != nil {
+		return nil, errors.Wrap(err, "can't encode to json")
+	}
+	return buf.Bytes(), nil
+}
+
+// renderJSONWithHTML allows html tags and forces charset=utf-8
+func renderJSONFromBytes(w http.ResponseWriter, r *http.Request, data []byte) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	if status, ok := r.Context().Value(render.StatusCtxKey).(int); ok {
+		w.WriteHeader(status)
+	}
+	if _, err := w.Write(data); err != nil {
+		log.Printf("[WARN] can't send response to %s, %s", r.RemoteAddr, err)
+	}
 }
