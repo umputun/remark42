@@ -1,11 +1,23 @@
-import { h, render } from 'preact';
 import 'babel-polyfill'; // TODO: remove it
 import 'mimic'; // TODO: it's for dev only
 
 import 'common/polyfills'; // TODO: check it
 
+import { h, render } from 'preact';
 import Root from './components/root';
 
-require('./main.scss');
+import { id } from './common/settings';
 
-render(<Root />, document.getElementById('remark42'));
+if (document.readyState !== 'complete') {
+  window.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
+
+function initApp() {
+  const node = document.getElementById(id);
+
+  if (!node) return;
+
+  render(<Root/>, node.parentElement, node);
+}

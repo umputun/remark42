@@ -1,0 +1,9 @@
+.comment__text {
+  p {
+    margin: 0;
+
+    + p {
+      margin-top: 5px;
+    }
+  }
+}

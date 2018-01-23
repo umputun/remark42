@@ -1,0 +1,10 @@
+@import 'common/variables';
+
+.comment {
+  display: flex;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: $offset;
+  font-size: 16px;
+  line-height: 20px;
+}

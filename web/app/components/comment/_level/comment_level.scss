@@ -1,0 +1,9 @@
+@import 'common/variables';
+
+.comment_level {
+  @for $i from 1 through 5 {
+    &_#{$i} {
+      margin-left: $i * $offset;
+    }
+  }
+}

@@ -1,11 +1,15 @@
 const baseUrl = 'https://demo.remark42.com';
 const apiBase = '/api/v1'
 const siteId = 'remark';
-const nodeId = 'remark42';
+const id = 'remark42';
+const url = 'https://radio-t.com/p/2017/12/16/podcast-576/';
+const userId = 'dev'; // for develop only
 
-export {
+module.exports = {
   baseUrl,
   siteId,
   apiBase,
-  nodeId,
+  id,
+  url,
+  userId,
 };

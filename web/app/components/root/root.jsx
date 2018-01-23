@@ -1,22 +1,23 @@
-import { Component } from 'preact';
-import fetcher from 'common/fetcher';
+import { h, Component } from 'preact';
+import api from 'common/api';
+
+import { url, id } from 'common/settings';
+
+import Thread from 'components/thread';
 
 export default class Root extends Component {
   componentDidMount() {
     // TODO: add preloader
-    // TODO: all of these settings must be optional params
-    fetcher
-      .get('/find?url=https://radio-t.com/p/2017/12/16/podcast-576/&sort=time&format=tree')
-      .then(this.loadData.bind(this));
+    api.find({ url }).then(({ comments } = {}) => this.setState({ comments }));
   }
 
-  loadData(data) {
-    this.setState({ data: JSON.stringify(data) })
-  }
-
-  render() {
-    const { data } = this.state;
-
-    return data;
+  render({}, { comments = [] }) {
+    return (
+      <div className="root" id={id}>
+        {
+          comments.map(thread => <Thread data={thread} mods={{ level: 0 }}/>)
+        }
+      </div>
+    );
   }
 }

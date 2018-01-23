@@ -8,6 +8,7 @@ const Html = require('html-webpack-plugin');
 const Provide = webpack.ProvidePlugin;
 const Define = webpack.DefinePlugin;
 
+const { id } = require('./app/common/settings');
 const publicFolder = path.resolve(__dirname, 'public');
 const env = process.env.NODE_ENV || 'dev';
 const hash = env === 'production' ? '.[chunkhash]' : '.[hash]';
@@ -54,15 +55,17 @@ module.exports = {
             loader: 'postcss-loader',
             options: {
               plugins: [
-                require('autoprefixer')({browsers: ['> 1%']}),
-                require('postcss-url')({url: 'inline', maxSize: 5}),
-                require('postcss-csso')
+                require('autoprefixer')({ browsers: ['> 1%'] }),
+                require('postcss-url')({ url: 'inline', maxSize: 5 }),
+                require('postcss-wrap')({ selector: `#${id}` }),
+                require('postcss-csso'),
               ]
             }
           },
           {
             loader: 'sass-loader',
             options: {
+              includePaths: [path.resolve(__dirname, 'app')],
               // data: fs.readFileSync(path.resolve(__dirname, 'common/vars/vars.scss'), 'utf-8')
             }
           }
