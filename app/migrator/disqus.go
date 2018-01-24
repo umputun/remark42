@@ -77,9 +77,13 @@ func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 	decoder := xml.NewDecoder(r)
 	commentsCh := make(chan store.Comment)
 
+	stats := struct {
+		inpThreads, inpComments     int
+		commentsCount, spamComments int
+		failedThreads, failedPosts  int
+	}{}
+
 	go func() {
-		inpThreads, inpComments := 0, 0
-		commentsCount, spamComments := 0, 0
 		for {
 			t, err := decoder.Token()
 			if t == nil || err != nil {
@@ -89,22 +93,26 @@ func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 			switch se := t.(type) {
 			case xml.StartElement:
 				if se.Name.Local == "thread" {
-					inpThreads++
+					stats.inpThreads++
 					thread := disqusThread{}
-					if err := decoder.DecodeElement(&thread, &se); err == nil {
-						postsMap[thread.UID] = thread.Link
+					if err := decoder.DecodeElement(&thread, &se); err != nil {
+						log.Printf("[WARN] can't decode disqus thread, %s", err)
+						stats.failedThreads++
+						continue
 					}
+					postsMap[thread.UID] = thread.Link
 					continue
 				}
 				if se.Name.Local == "post" {
-					inpComments++
+					stats.inpComments++
 					comment := disqusComment{}
 					if err := decoder.DecodeElement(&comment, &se); err != nil {
 						log.Printf("[WARN] can't decode disqus comment, %s", err)
+						stats.failedPosts++
 						continue
 					}
 					if comment.IsSpam {
-						spamComments++
+						stats.spamComments++
 						continue
 					}
 					c := store.Comment{
@@ -122,17 +130,16 @@ func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 						c.ID = comment.ID
 					}
 					commentsCh <- c
-					commentsCount++
-					if commentsCount%1000 == 0 {
-						log.Printf("[DEBUG] imported %d comments", commentsCount)
+					stats.commentsCount++
+					if stats.commentsCount%1000 == 0 {
+						log.Printf("[DEBUG] processed %d comments", stats.commentsCount)
 					}
 				}
 
 			}
 		}
 		close(commentsCh)
-		log.Printf("[INFO] converted %d posts with %d comments from disqus (threads:%d, comments:%d, spam:%d)",
-			len(postsMap), commentsCount, inpThreads, inpComments, spamComments)
+		log.Printf("[INFO] converted %d posts, %+v", len(postsMap), stats)
 	}()
 
 	return commentsCh
