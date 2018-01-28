@@ -53,9 +53,10 @@ export default class Comment extends Component {
 
     const time = new Date(data.time);
     // TODO: which format for datetime should we choose?
-    // TODO: add smth that will count 'hours ago'
-    // TODO: check out stash's impl
-    const timeStr = `${time.toLocaleDateString()} ${time.toLocaleTimeString()}`;
+    // TODO: add smth that will count 'hours ago' (mb this: https://github.com/catamphetamine/javascript-time-ago)
+    // TODO: check out stash's impl;
+    // TODO: don't forget about optional locales, m?
+    const timeStr = `${time.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
     const o = {
       ...data,
       time: timeStr,
