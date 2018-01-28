@@ -58,9 +58,9 @@ func TestLogout(t *testing.T) {
 	assert.Equal(t, 0, len(s.Values))
 }
 
-func mockProvider(t *testing.T, sessStore sessions.Store) (provder Provider, ts *http.Server, oauth *http.Server) {
+func mockProvider(t *testing.T, sessStore sessions.Store) (provider Provider, ts *http.Server, oauth *http.Server) {
 
-	provider := Provider{
+	provider = Provider{
 		Name: "mock",
 		Endpoint: oauth2.Endpoint{
 			AuthURL:  "http://localhost:8082/login/oauth/authorize",
@@ -73,16 +73,16 @@ func mockProvider(t *testing.T, sessStore sessions.Store) (provder Provider, ts 
 			userInfo := store.User{
 				ID:      data.value("id"),
 				Name:    data.value("name"),
-				Picture: data.value("pictrue"),
+				Picture: data.value("picture"),
 				Profile: data.value("profile"),
 			}
 			return userInfo
 		},
 	}
 
-	provder = initProvider(Params{SessionStore: sessStore, Cid: "cid", Csecret: "csecret"}, provider)
+	provider = initProvider(Params{SessionStore: sessStore, Cid: "cid", Csecret: "csecret"}, provider)
 
-	ts = &http.Server{Addr: ":8081", Handler: provder.Routes()}
+	ts = &http.Server{Addr: ":8081", Handler: provider.Routes()}
 
 	oauth = &http.Server{
 		Addr: ":8082",
