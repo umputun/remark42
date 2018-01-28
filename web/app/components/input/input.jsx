@@ -1,10 +1,13 @@
 import { h, Component } from 'preact';
 
+import api from 'common/api';
+
 export default class Input extends Component {
   constructor(props) {
     super(props);
 
     this.autoResize = this.autoResize.bind(this);
+    this.send = this.send.bind(this);
   }
 
   autoResize() {
@@ -12,9 +15,25 @@ export default class Input extends Component {
     this.setState({ height: this.fieldNode.scrollHeight });
   }
 
+  send(e) {
+    const text = this.fieldNode.value;
+
+    e.preventDefault();
+    api.send({ text })
+      .then(({ id }) => {
+        // TODO: maybe we should run onsubmit before send; like in optimistic ui
+        if (this.props.onSubmit) {
+          this.props.onSubmit({ text, id });
+        }
+      })
+      .catch(() => {
+        // TODO: do smth?
+      });
+  }
+
   render(props, { height }) {
     return (
-      <div className={b('input', props)}>
+      <form className={b('input', props)} onSubmit={this.send}>
         <textarea
           className="input__field"
           onInput={this.autoResize}
@@ -25,8 +44,8 @@ export default class Input extends Component {
         {props.children}
         </textarea>
 
-        <button className="input__button" type="button">Send</button>
-      </div>
+        <button className="input__button" type="submit">Send</button>
+      </form>
     );
   }
 }
