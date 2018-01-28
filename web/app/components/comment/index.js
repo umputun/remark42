@@ -13,6 +13,7 @@ require('./__username/comment__username.scss');
 
 require('./__vote/comment__vote.scss');
 require('./__vote/_selected/comment__vote_selected.scss');
+require('./__vote/_type/_down/comment__vote_type_down.scss');
 require('./__vote/_type/_up/comment__vote_type_up.scss');
 
 require('./_level/comment_level.scss');
