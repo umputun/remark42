@@ -1,3 +1,4 @@
 export { default } from './root';
 
-require('./root.scss');
+require('./__input/root__input.scss');
+require('./__thread/root__thread.scss');

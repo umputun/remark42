@@ -3,6 +3,7 @@ import api from 'common/api';
 
 import { url, id } from 'common/settings';
 
+import Input from 'components/input';
 import Thread from 'components/thread';
 
 export default class Root extends Component {
@@ -13,10 +14,14 @@ export default class Root extends Component {
 
   render({}, { comments = [] }) {
     return (
-      <div className="root" id={id}>
-        {
-          comments.map(thread => <Thread data={thread} mods={{ level: 0 }}/>)
-        }
+      <div>
+        <div className="root" id={id}>
+          <Input mix="root__input"/>
+
+          {
+            comments.map(thread => <Thread data={thread} mods={{ level: 0 }} mix="root__thread"/>)
+          }
+        </div>
       </div>
     );
   }
