@@ -47,7 +47,7 @@ func TestServer_Create(t *testing.T) {
 	c := JSON{}
 	err = json.Unmarshal(b, &c)
 	assert.Nil(t, err)
-	loc := c["loc"].(map[string]interface{})
+	loc := c["locator"].(map[string]interface{})
 	assert.Equal(t, "radio-t", loc["site"])
 	assert.Equal(t, "https://radio-t.com/blah1", loc["url"])
 	assert.True(t, len(c["id"].(string)) > 8)
