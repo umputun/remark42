@@ -1,0 +1,32 @@
+@import '../input.vars';
+
+.input__field {
+  $lineHeight: 1.4;
+  $fontSize: 16px;
+  $paddingVrt: 10px;
+  $height: $fontSize * $lineHeight + $paddingVrt * 2;
+
+  box-sizing: border-box;
+  width: 100%;
+  height: $height;
+  min-height: $height;
+  padding: $paddingVrt ($buttonWidth + 8px) $paddingVrt 15px;
+  font-family: 'PT Sans', Helvetica, Arial, sans-serif;
+  font-size: $fontSize;
+  line-height: $lineHeight;
+  box-shadow: 0 0 0 1px #eee;
+  border: 0;
+  border-radius: $borderRadius;
+  resize: none;
+
+  &:focus {
+    box-shadow: 0 0 0 1px #aaa;
+    outline: none;
+  }
+
+  &:valid {
+    + .input__button {
+      display: block;
+    }
+  }
+}

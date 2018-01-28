@@ -1,0 +1,23 @@
+@import '../input.vars';
+
+.input__button {
+  display: none;
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  box-sizing: border-box;
+  width: $buttonWidth;
+  height: 100%;
+  padding: 0 10px;
+  font-size: 16px;
+  border: 0;
+  background: #00aaaa;
+  border-radius: 0 $borderRadius $borderRadius 0;
+  color: #fff;
+  cursor: pointer;
+
+  &:hover {
+    background: #00ffff;
+  }
+}

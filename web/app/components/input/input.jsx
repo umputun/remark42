@@ -8,18 +8,25 @@ export default class Input extends Component {
   }
 
   autoResize() {
-    this.rootNode.style.height = '';
-    this.setState({ height: this.rootNode.scrollHeight });
+    this.fieldNode.style.height = '';
+    this.setState({ height: this.fieldNode.scrollHeight });
   }
 
   render(props, { height }) {
     return (
-      <textarea
-        className={b('input', props)}
-        onInput={this.autoResize}
-        style={{ height }}
-        ref={r => (this.rootNode = r)}
-      >{props.children}</textarea>
+      <div className={b('input', props)}>
+        <textarea
+          className="input__field"
+          onInput={this.autoResize}
+          style={{ height }}
+          ref={r => (this.fieldNode = r)}
+          required
+        >
+        {props.children}
+        </textarea>
+
+        <button className="input__button" type="button">Send</button>
+      </div>
     );
   }
 }
