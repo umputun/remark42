@@ -159,7 +159,7 @@ func (s *Server) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	s.Cache.Flush() // reset all caches
 
 	render.Status(r, http.StatusCreated)
-	render.JSON(w, r, JSON{"id": id, "loc": comment.Locator})
+	render.JSON(w, r, JSON{"id": id, "locator": comment.Locator})
 }
 
 // PUT /comment/{id}?site=siteID&url=post-url - update comment
@@ -330,7 +330,7 @@ func (s *Server) countCtrl(w http.ResponseWriter, r *http.Request) {
 		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get count")
 		return
 	}
-	render.JSON(w, r, JSON{"count": count, "loc": locator})
+	render.JSON(w, r, JSON{"count": count, "locator": locator})
 }
 
 // GET /list?site=siteID - list posts with comments

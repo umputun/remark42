@@ -79,7 +79,7 @@ func (a *admin) setPinCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.cache.Flush()
-	render.JSON(w, r, JSON{"id": commentID, "loc": locator, "pin": pinStatus})
+	render.JSON(w, r, JSON{"id": commentID, "locator": locator, "pin": pinStatus})
 }
 
 // GET /export?site=site-id?mode=file|stream
