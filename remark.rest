@@ -14,11 +14,6 @@ Content-Type: application/json
 
 {
 	"text": "comment *blah* http://radio-t.com",
-	"user" : {
-		"name": "umputun",
-		"id": "@umputun",
-		"ip": "127.0.0.1"
-	},
 	"locator": {
 		"url": "https://radio-t.com/blah1",
 		"site": "remark"
