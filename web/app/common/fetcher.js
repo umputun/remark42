@@ -32,14 +32,12 @@ methods.forEach(method => {
       headers,
     };
 
-    // тут передаются данные не только в виде обычного js объекта но и в виде
-    // объекта formData у которого Object.keys(formData).length === 0
-    // if (Object.keys(body).length || body.toString().includes('FormData')) {
-    //   parameters.data = body;
-    // }
+    if (Object.keys(body).length) {
+      parameters.data = body;
+    }
 
     parameters.url = `${basename}${url}`;
-    parameters.url += (parameters.url.includes('?') ? '&' : '?') + `site=${siteId}`;
+    if (method !== 'post') parameters.url += (parameters.url.includes('?') ? '&' : '?') + `site=${siteId}`;
     parameters.cancelToken = new CancelToken(executor => {
       cancelHandler.push({
         executor,
