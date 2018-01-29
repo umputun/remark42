@@ -3,7 +3,7 @@ version: '2'
 services:
     remark:
         build: .
-        image: umputun/remark
+        image: umputun/remark:master
         container_name: "remark"
         hostname: "remark"
         restart: always
