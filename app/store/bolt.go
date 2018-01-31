@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"sort"
 	"strings"
 	"time"
 
@@ -178,26 +177,7 @@ func (b *BoltDB) Find(locator Locator, sortFld string) (comments []Comment, err 
 		})
 	})
 
-	// sort result according to sortFld
-	sort.Slice(comments, func(i, j int) bool {
-		switch sortFld {
-		case "+time", "-time", "time":
-			if strings.HasPrefix(sortFld, "-") {
-				return comments[i].Timestamp.After(comments[j].Timestamp)
-			}
-			return comments[i].Timestamp.Before(comments[j].Timestamp)
-
-		case "+score", "-score", "score":
-			if strings.HasPrefix(sortFld, "-") {
-				return comments[i].Score > comments[j].Score
-			}
-			return comments[i].Score < comments[j].Score
-
-		default:
-			return comments[i].Timestamp.Before(comments[j].Timestamp)
-		}
-	})
-
+	comments = sortComments(comments, sortFld)
 	return comments, err
 }
 

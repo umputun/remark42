@@ -1,3 +1,6 @@
+// Package migrator provides import/export functionality. It defines Importer and Exporter interfaces
+// amd implements for disqus (importer only) and "native" remark (both importer and exporter).
+// Also implements AutoBackup scheduler running exports as backups and saving them locally.
 package migrator
 
 import (

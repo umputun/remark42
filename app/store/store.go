@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"html/template"
 	"log"
+	"sort"
 	"strings"
 	"time"
 
@@ -108,4 +109,26 @@ func sanitizeComment(comment Comment) Comment {
 	comment.Text = strings.Replace(comment.Text, "\t", "", -1)
 
 	return comment
+}
+
+func sortComments(comments []Comment, sortFld string) []Comment {
+	sort.Slice(comments, func(i, j int) bool {
+		switch sortFld {
+		case "+time", "-time", "time":
+			if strings.HasPrefix(sortFld, "-") {
+				return comments[i].Timestamp.After(comments[j].Timestamp)
+			}
+			return comments[i].Timestamp.Before(comments[j].Timestamp)
+
+		case "+score", "-score", "score":
+			if strings.HasPrefix(sortFld, "-") {
+				return comments[i].Score > comments[j].Score
+			}
+			return comments[i].Score < comments[j].Score
+
+		default:
+			return comments[i].Timestamp.Before(comments[j].Timestamp)
+		}
+	})
+	return comments
 }

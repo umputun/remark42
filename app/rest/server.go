@@ -46,7 +46,7 @@ func (s *Server) Run(port int) {
 	log.Print("[INFO] activate rest server")
 
 	// add auth.Developer flag if dev mode is active
-	maybeDevMode := func(mode auth.Mode) (modes []auth.Mode) {
+	maybeWithDevMode := func(mode auth.Mode) (modes []auth.Mode) {
 		modes = append(modes, mode)
 		if s.DevMode {
 			modes = append(modes, auth.Developer)
@@ -62,8 +62,8 @@ func (s *Server) Run(port int) {
 	router.Use(middleware.RealIP, Recoverer)
 	router.Use(middleware.Throttle(1000), middleware.Timeout(60*time.Second))
 	router.Use(Limiter(10), AppInfo("remark42", s.Version), Ping, Logger(LogAll))
-	router.Use(auth.Auth(s.SessionStore, s.Admins, maybeDevMode(auth.Anonymous))) // all request by default allow anonymous access
-
+	// all request by default allow anonymous access
+	router.Use(auth.Auth(s.SessionStore, s.Admins, maybeWithDevMode(auth.Anonymous)))
 	router.Use(context.ClearHandler) // if you aren't using gorilla/mux, you need to wrap your handlers with context.ClearHandler
 
 	// auth routes for all providers
@@ -72,7 +72,8 @@ func (s *Server) Run(port int) {
 			r.Mount("/"+provider.Name, provider.Routes()) // mount auth providers as /auth/{name}
 		}
 		if len(s.AuthProviders) > 0 {
-			r.Get("/logout", s.AuthProviders[0].LogoutHandler) // shortcut, can be any of providers, all logouts do the same
+			// shortcut, can be any of providers, all logouts do the same - removes cookie
+			r.Get("/logout", s.AuthProviders[0].LogoutHandler)
 		}
 	})
 
@@ -88,7 +89,7 @@ func (s *Server) Run(port int) {
 		rapi.Get("/list", s.listCtrl)
 
 		// protected routes, require auth
-		rapi.With(auth.Auth(s.SessionStore, s.Admins, maybeDevMode(auth.Full))).Group(func(rauth chi.Router) {
+		rapi.With(auth.Auth(s.SessionStore, s.Admins, maybeWithDevMode(auth.Full))).Group(func(rauth chi.Router) {
 			rauth.Post("/comment", s.createCommentCtrl)
 			rauth.Put("/comment/{id}", s.updateCommentCtrl)
 			rauth.Get("/user", s.userInfoCtrl)
