@@ -15,7 +15,7 @@ export default class Root extends Component {
   }
 
   componentDidMount() {
-    api.user()
+    api.getUser()
       .then(data => store.set({ user: data }))
       .catch(() => store.set({ user: {} }))
       .finally(() => {
