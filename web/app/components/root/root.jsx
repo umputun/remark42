@@ -20,37 +20,25 @@ export default class Root extends Component {
 
   componentDidMount() {
     api.getUser()
-      .then(data => store.set({ user: data }))
-      .catch(() => store.set({ user: {} }))
+      .then(data => store.set('user', data))
+      .catch(() => store.set('user', {}))
       .finally(() => {
         api.find({ url })
-          .then(({ comments } = {}) => this.setState({ comments }))
+          .then(({ comments } = {}) => {
+            store.set('comments', comments);
+            this.setState({ comments });
+          })
           .finally(() => this.setState({ loaded: true }));
       });
   }
 
-  addComment({ text, id, pid }) {
-    const { comments } = this.state;
-    const newComment = {
-      comment: {
-        id,
-        text,
-        user: store.get('user'),
-        time: new Date(),
-        ...(pid ? { pid } : {}),
-      },
-    };
+  addComment(data) {
+    store.addComment(data);
+    this.setState({ comments: store.get('comments') });
 
-    const newComments = pid
-      ? Root.pasteReply({ comments, newComment })
-      : [newComment].concat(comments);
-
-    this.setState({ comments: newComments });
-
-    api.getComment({ id }).then(comment => {
-      this.setState({
-        comments: Root.replaceComment({ comments: newComments, newComment: comment }),
-      });
+    api.getComment({ id: data.id }).then(comment => {
+      store.replaceComment(comment);
+      this.setState({ comments: store.get('comments') });
     });
   }
 
@@ -81,60 +69,5 @@ export default class Root extends Component {
         </div>
       </div>
     );
-  }
-
-  static pasteReply({ comments, newComment }) {
-    let again = true;
-
-    const concatReply = (root, reply) => {
-      root.replies = root.replies || [];
-      root.replies = [reply].concat(root.replies);
-
-      again = false;
-
-      return root;
-    }
-
-    const paste = (root, commentObj) => {
-      if (!again) return root;
-
-      if (root.comment.id === commentObj.comment.pid) {
-        return concatReply(root, commentObj);
-      }
-
-      if (root.replies) {
-        root.replies = root.replies.map(reply => {
-          if (reply.comment.id === commentObj.comment.pid) {
-            return concatReply(reply, commentObj);
-          } else {
-            return paste(reply, commentObj);
-          }
-        })
-      }
-
-      return root;
-    };
-
-    return comments.map(thread => paste(thread, newComment));
-  }
-
-  static replaceComment({ comments, newComment }) {
-    let again = true;
-
-    const replace = (thread, comment) => {
-      if (!again) return thread;
-
-      if (thread.comment.id === comment.id) {
-        thread.comment = comment;
-        again = false;
-        return thread;
-      }
-
-      thread.replies = thread.replies.map(reply => replace(reply, comment));
-
-      return thread;
-    };
-
-    return comments.map(thread => replace(thread, newComment));
   }
 }
