@@ -1,6 +1,6 @@
 import { h, Component } from 'preact';
 
-import { vote } from 'common/api';
+import api from 'common/api';
 import { url } from 'common/settings';
 import store from 'common/store';
 
@@ -10,20 +10,31 @@ export default class Comment extends Component {
   constructor(props) {
     super(props);
 
-    const { score = 0, votes = [] } = props.data;
-    const userId = store.get('user').id;
-
     this.state = {
-      score: score,
-      scoreIncreased: userId in votes && votes[userId],
-      scoreDecreased: userId in votes && !votes[userId],
       isInputVisible: false,
     };
+
+    this.updateScoreState(props);
 
     this.decreaseScore = this.decreaseScore.bind(this);
     this.increaseScore = this.increaseScore.bind(this);
     this.onReplyClick = this.onReplyClick.bind(this);
     this.onReply = this.onReply.bind(this);
+  }
+
+  componentWillReceiveProps(nextProps) {
+    this.updateScoreState(nextProps);
+  }
+
+  updateScoreState(props) {
+    const { score = 0, votes = [] } = props.data;
+    const userId = store.get('user').id;
+
+    this.setState({
+      score: score,
+      scoreIncreased: userId in votes && votes[userId],
+      scoreDecreased: userId in votes && !votes[userId],
+    });
   }
 
   onReplyClick() {
@@ -34,6 +45,7 @@ export default class Comment extends Component {
 
   increaseScore() {
     const { score, scoreIncreased, scoreDecreased } = this.state;
+    const { id } = this.props.data;
 
     if (scoreIncreased) return;
 
@@ -43,11 +55,14 @@ export default class Comment extends Component {
       score: score + 1,
     });
 
-    vote({ id: this.props.data.id, url, value: 1 });
+    api.vote({ id, url, value: 1 }).then(() => {
+      api.getComment({ id }).then(comment => store.replaceComment(comment));
+    });
   }
 
   decreaseScore() {
     const { score, scoreIncreased, scoreDecreased } = this.state;
+    const { id } = this.props.data;
 
     if (scoreDecreased) return;
 
@@ -57,7 +72,9 @@ export default class Comment extends Component {
       score: score - 1,
     });
 
-    vote({ id: this.props.data.id, url, value: -1 });
+    api.vote({ id, url, value: -1 }).then(() => {
+      api.getComment({ id }).then(comment => store.replaceComment(comment));
+    });
   }
 
   onReply(...rest) {
