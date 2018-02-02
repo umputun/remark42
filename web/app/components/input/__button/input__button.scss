@@ -3,12 +3,11 @@
 .input__button {
   display: none;
   position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
+  top: -1px;
+  right: -1px;
+  bottom: -1px;
   box-sizing: border-box;
   width: $buttonWidth;
-  height: 100%;
   padding: 0 10px;
   font-size: 16px;
   border: 0;
@@ -18,6 +17,6 @@
   cursor: pointer;
 
   &:hover {
-    background: #00ffff;
+    background: #06c5c5;
   }
 }

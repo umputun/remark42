@@ -41,7 +41,7 @@ export default class Input extends Component {
           ref={r => (this.fieldNode = r)}
           required
         >
-        {props.children}
+          {props.children}
         </textarea>
 
         <button className="input__button" type="submit">Send</button>
