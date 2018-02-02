@@ -26,7 +26,7 @@ Content-Type: application/json
 
 {
 	"text": "edit comment blah http://radio-t.com 12345",
-    "summary": "fix blah"
+  "summary": "fix blah"
 }
 
 ### pin comment
