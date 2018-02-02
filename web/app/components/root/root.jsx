@@ -2,6 +2,7 @@ import { h, Component } from 'preact';
 import api from 'common/api';
 
 import { url, id } from 'common/settings';
+import store from 'common/store';
 
 import Input from 'components/input';
 import Thread from 'components/thread';
@@ -14,19 +15,43 @@ export default class Root extends Component {
   }
 
   componentDidMount() {
-    // TODO: add preloader
-    // there must be request for checking auth
-    api.find({ url }).then(({ comments } = {}) => this.setState({ comments }));
+    api.user()
+      .then(data => store.set({ user: data }))
+      .catch(() => store.set({ user: {} }))
+      .finally(() => {
+        api.find({ url })
+          .then(({ comments } = {}) => this.setState({ comments }))
+          .finally(() => this.setState({ loaded: true }));
+      });
   }
 
-  addThread() {
-    // nothing here yet
+  addThread({ text, id }) {
+    const { comments } = this.state;
+
+    const newComments = [{
+      comment: {
+        id,
+        text,
+        user: store.get('user'),
+        time: new Date(),
+      },
+    }].concat(comments);
+
+    this.setState({ comments: newComments });
   }
 
-  render({}, { comments = [], user = {} }) {
+  render({}, { comments = [], user = {}, loaded = false }) {
+    if (!loaded) {
+      return (
+        <div id={id}>
+          <div className="root root_loading"/>
+        </div>
+      );
+    }
+
     return (
-      <div>
-        <div className="root" id={id}>
+      <div id={id}>
+        <div className="root root__loading" id={id}>
           <Input mix="root__input" onSubmit={this.addThread}/>
 
           {

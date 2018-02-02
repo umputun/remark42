@@ -1,13 +1,15 @@
 import { h, Component } from 'preact';
 
 import { vote } from 'common/api';
-import { url, userId } from 'common/settings';
+import { url } from 'common/settings';
+import store from 'common/store';
 
 export default class Comment extends Component {
   constructor(props) {
     super(props);
 
-    const { score, votes } = props.data;
+    const { score = 0, votes = [] } = props.data;
+    const userId = store.get('user').id;
 
     this.state = {
       score: score,
