@@ -8,11 +8,18 @@ export default class Input extends Component {
 
     this.autoResize = this.autoResize.bind(this);
     this.send = this.send.bind(this);
+    this.onKeyDown = this.onKeyDown.bind(this);
   }
 
   componentDidMount() {
     if (this.props.autoFocus) {
       this.fieldNode.focus();
+    }
+  }
+
+  onKeyDown(e) {
+    if (e.keyCode === 13 && (e.metaKey || e.ctrlKey)) {
+      this.send();
     }
   }
 
@@ -25,7 +32,12 @@ export default class Input extends Component {
     const text = this.fieldNode.value;
     const pid = this.props.pid;
 
-    e.preventDefault();
+    if (e) e.preventDefault();
+
+    if (!text || !text.trim()) return;
+
+    this.setState({ isFieldDisabled: true });
+
     api.send({ text, ...(pid ? { pid } : {}) })
       .then(({ id }) => {
         // TODO: maybe we should run onsubmit before send; like in optimistic ui
@@ -37,18 +49,21 @@ export default class Input extends Component {
       })
       .catch(() => {
         // TODO: do smth?
-      });
+      })
+      .finally(() => this.setState({ isFieldDisabled: false }));
   }
 
-  render(props, { height }) {
+  render(props, { height, isFieldDisabled }) {
     return (
       <form className={b('input', props)} onSubmit={this.send}>
         <textarea
           className="input__field"
           onInput={this.autoResize}
+          onKeyDown={this.onKeyDown}
           style={{ height }}
           ref={r => (this.fieldNode = r)}
           required
+          disabled={isFieldDisabled}
         >
           {props.children}
         </textarea>

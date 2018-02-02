@@ -29,4 +29,8 @@
       display: block;
     }
   }
+
+  &:disabled {
+    color: #777;
+  }
 }
