@@ -3,7 +3,11 @@ export { default } from './comment';
 require('./comment.scss');
 
 require('./__avatar/comment__avatar.scss');
+require('./__body/comment__body.scss');
+require('./__controls/comment__controls.scss');
 require('./__info/comment__info.scss');
+require('./__input/comment__input.scss');
+require('./__reply/comment__reply.scss');
 require('./__score/comment__score.scss');
 require('./__score-sign/comment__score-sign.scss');
 require('./__score-value/comment__score-value.scss');

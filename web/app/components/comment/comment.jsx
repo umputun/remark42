@@ -4,6 +4,8 @@ import { vote } from 'common/api';
 import { url } from 'common/settings';
 import store from 'common/store';
 
+import Input from 'components/input';
+
 export default class Comment extends Component {
   constructor(props) {
     super(props);
@@ -15,10 +17,19 @@ export default class Comment extends Component {
       score: score,
       scoreIncreased: userId in votes && votes[userId],
       scoreDecreased: userId in votes && !votes[userId],
+      isInputVisible: false,
     };
 
     this.decreaseScore = this.decreaseScore.bind(this);
     this.increaseScore = this.increaseScore.bind(this);
+    this.onReplyClick = this.onReplyClick.bind(this);
+    this.onReply = this.onReply.bind(this);
+  }
+
+  onReplyClick() {
+    const { isInputVisible } = this.state;
+
+    this.setState({ isInputVisible: !isInputVisible });
   }
 
   increaseScore() {
@@ -49,9 +60,13 @@ export default class Comment extends Component {
     vote({ id: this.props.data.id, url, value: -1 });
   }
 
-  render(props, { score, scoreIncreased, scoreDecreased }) {
+  onReply(...rest) {
+    this.props.onReply(...rest);
+    this.setState({ isInputVisible: false });
+  }
+
+  render(props, { score, scoreIncreased, scoreDecreased, isInputVisible }) {
     const { data, mix, mods = {} } = props;
-    console.log('rerender', data.id)
 
     const time = new Date(data.time);
     // TODO: which format for datetime should we choose?
@@ -70,14 +85,15 @@ export default class Comment extends Component {
 
     return (
       // TODO: add default view mod or don't?
-      <div className={b('comment', props, { view: data.user.admin ? 'admin' : null })} data-id={o.id}>
-        <img src={o.user.picture} alt="" className="comment__avatar"/>
+      <div className={b('comment', props, { view: data.user.admin ? 'admin' : null })}>
+        <div className="comment__body">
+          <img src={o.user.picture} alt="" className="comment__avatar"/>
 
-        <div className="comment__content">
-          <div className="comment__info">
-            <a href="#" className="comment__username">{o.user.name}</a>
+          <div className="comment__content">
+            <div className="comment__info">
+              <a href="#" className="comment__username">{o.user.name}</a>
 
-            <span className="comment__score">
+              <span className="comment__score">
               <span
                 className={b('comment__vote', {}, { type: 'up', selected: scoreIncreased })}
                 onClick={this.increaseScore}
@@ -90,11 +106,22 @@ export default class Comment extends Component {
               >vote down</span>
             </span>
 
-            <span className="comment__time">{o.time}</span>
-          </div>
+              <span className="comment__time">{o.time}</span>
 
-          <div className="comment__text" dangerouslySetInnerHTML={{ __html: o.text }}/>
+              <span className="comment__controls">
+              <span className="comment__reply" onClick={this.onReplyClick}>reply</span>
+            </span>
+            </div>
+
+            <div className="comment__text" dangerouslySetInnerHTML={{ __html: o.text }}/>
+          </div>
         </div>
+
+        {
+          isInputVisible && (
+            <Input mix="comment__input" onSubmit={this.onReply} pid={o.id} autoFocus/>
+          )
+        }
       </div>
     );
   }

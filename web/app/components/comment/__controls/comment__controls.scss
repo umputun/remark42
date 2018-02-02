@@ -1,0 +1,12 @@
+.comment__controls {
+  display: inline-block;
+  margin-left: 8px;
+  color: #06c5c5;
+
+  @media (hover: hover) {
+    margin-left: 0;
+    transition: transform .2s .1s ease-out, opacity .2s .1s ease-out;
+    font-weight: 700;
+    opacity: 0;
+  }
+}
