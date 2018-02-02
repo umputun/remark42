@@ -10,6 +10,12 @@ export default class Input extends Component {
     this.send = this.send.bind(this);
   }
 
+  componentDidMount() {
+    if (this.props.autoFocus) {
+      this.fieldNode.focus();
+    }
+  }
+
   autoResize() {
     this.fieldNode.style.height = '';
     this.setState({ height: this.fieldNode.scrollHeight });
@@ -17,14 +23,17 @@ export default class Input extends Component {
 
   send(e) {
     const text = this.fieldNode.value;
+    const pid = this.props.pid;
 
     e.preventDefault();
-    api.send({ text })
+    api.send({ text, ...(pid ? { pid } : {}) })
       .then(({ id }) => {
         // TODO: maybe we should run onsubmit before send; like in optimistic ui
         if (this.props.onSubmit) {
-          this.props.onSubmit({ text, id });
+          this.props.onSubmit({ text, id, pid });
         }
+
+        this.fieldNode.value = '';
       })
       .catch(() => {
         // TODO: do smth?

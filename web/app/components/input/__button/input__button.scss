@@ -3,9 +3,9 @@
 .input__button {
   display: none;
   position: absolute;
-  top: -1px;
-  right: -1px;
-  bottom: -1px;
+  top: 0;
+  right: 0;
+  bottom: 0;
   box-sizing: border-box;
   width: $buttonWidth;
   padding: 0 10px;
@@ -18,5 +18,9 @@
 
   &:hover {
     background: #06c5c5;
+  }
+
+  &:focus {
+    outline: none;
   }
 }
