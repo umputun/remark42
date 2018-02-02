@@ -108,7 +108,7 @@ export default class Comment extends Component {
 
           <div className="comment__content">
             <div className="comment__info">
-              <a href="#" className="comment__username">{o.user.name}</a>
+              <span className="comment__username">{o.user.name}</span>
 
               <span className="comment__score">
               <span
