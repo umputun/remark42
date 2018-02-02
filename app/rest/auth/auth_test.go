@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"fmt"
+
 	"github.com/gorilla/sessions"
 	"github.com/stretchr/testify/assert"
 	"github.com/umputun/remark/app/store"
@@ -18,13 +20,13 @@ func TestAuth(t *testing.T) {
 
 	sessionStore := &mockStore{values: make(map[interface{}]interface{})}
 
-	_, ts, ots := mockProvider(t, sessionStore)
+	_, ts, ots := mockProvider(t, sessionStore, 8981, 8982)
 	defer func() {
 		ts.Close()
 		ots.Close()
 	}()
 
-	resp, err := http.Get("http://localhost:8081/login")
+	resp, err := http.Get("http://localhost:8981/login")
 	assert.Nil(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 	body, err := ioutil.ReadAll(resp.Body)
@@ -39,17 +41,17 @@ func TestAuth(t *testing.T) {
 func TestLogout(t *testing.T) {
 	sessionStore := &mockStore{values: make(map[interface{}]interface{})}
 
-	_, ts, ots := mockProvider(t, sessionStore)
+	_, ts, ots := mockProvider(t, sessionStore, 8991, 8992)
 	defer func() {
 		ts.Close()
 		ots.Close()
 	}()
 
-	resp, err := http.Get("http://localhost:8081/login")
+	resp, err := http.Get("http://localhost:8991/login")
 	assert.Nil(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 
-	_, err = http.Get("http://localhost:8081/logout")
+	_, err = http.Get("http://localhost:8991/logout")
 	assert.Nil(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 
@@ -58,17 +60,17 @@ func TestLogout(t *testing.T) {
 	assert.Equal(t, 0, len(s.Values))
 }
 
-func mockProvider(t *testing.T, sessStore sessions.Store) (provider Provider, ts *http.Server, oauth *http.Server) {
+func mockProvider(t *testing.T, sessStore sessions.Store, loginPort, authPort int) (provider Provider, ts *http.Server, oauth *http.Server) {
 
 	provider = Provider{
 		Name: "mock",
 		Endpoint: oauth2.Endpoint{
-			AuthURL:  "http://localhost:8082/login/oauth/authorize",
-			TokenURL: "http://localhost:8082/login/oauth/access_token",
+			AuthURL:  fmt.Sprintf("http://localhost:%d/login/oauth/authorize", authPort),
+			TokenURL: fmt.Sprintf("http://localhost:%d/login/oauth/access_token", authPort),
 		},
-		RedirectURL: "http://localhost:8081/callback",
+		RedirectURL: fmt.Sprintf("http://localhost:%d/callback", loginPort),
 		Scopes:      []string{"user:email"},
-		InfoURL:     "http://localhost:8082/user",
+		InfoURL:     fmt.Sprintf("http://localhost:%d/user", authPort),
 		MapUser: func(data userData) store.User {
 			userInfo := store.User{
 				ID:      data.value("id"),
@@ -82,16 +84,16 @@ func mockProvider(t *testing.T, sessStore sessions.Store) (provider Provider, ts
 
 	provider = initProvider(Params{SessionStore: sessStore, Cid: "cid", Csecret: "csecret"}, provider)
 
-	ts = &http.Server{Addr: ":8081", Handler: provider.Routes()}
+	ts = &http.Server{Addr: fmt.Sprintf(":%d", loginPort), Handler: provider.Routes()}
 
 	oauth = &http.Server{
-		Addr: ":8082",
+		Addr: fmt.Sprintf(":%d", authPort),
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			log.Printf("[MOCK OAUTH] request %s %s %+v", r.Method, r.URL, r.Header)
 			switch {
 			case strings.HasPrefix(r.URL.Path, "/login/oauth/authorize"):
 				state := r.URL.Query().Get("state")
-				w.Header().Add("Location", "http://localhost:8081/callback?code=g0ZGZmNjVmOWI&state="+state)
+				w.Header().Add("Location", fmt.Sprintf("http://localhost:%d/callback?code=g0ZGZmNjVmOWI&state=%s", loginPort, state))
 				w.WriteHeader(302)
 			case strings.HasPrefix(r.URL.Path, "/login/oauth/access_token"):
 				res := `{
