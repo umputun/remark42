@@ -8,13 +8,14 @@ export default class Thread extends Component {
 
     return (
       <div className={b('thread', props)}>
-        <Comment data={comment} mods={{ level: mods.level }}/>
+        <Comment data={comment} mods={{ level: mods.level }} onReply={props.onReply}/>
 
         {
           !!replies.length && replies.map(thread => (
             <Thread
               data={thread}
               mods={{ level: mods.level < 5 ? mods.level + 1 : mods.level }}
+              onReply={props.onReply}
             />
           ))
         }
