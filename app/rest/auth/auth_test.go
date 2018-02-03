@@ -2,18 +2,18 @@ package auth
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"strings"
 	"testing"
 
-	"fmt"
-
 	"github.com/gorilla/sessions"
 	"github.com/stretchr/testify/assert"
-	"github.com/umputun/remark/app/store"
 	"golang.org/x/oauth2"
+
+	"github.com/umputun/remark/app/store"
 )
 
 func TestAuth(t *testing.T) {

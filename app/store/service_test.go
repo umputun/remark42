@@ -17,12 +17,12 @@ func TestService_Vote(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(res))
 	assert.Equal(t, 0, res[0].Score)
-	assert.Equal(t, map[string]bool{}, res[0].Votes)
+	assert.Equal(t, map[string]bool{}, res[0].Votes, "no votes initially")
 
 	c, err := b.Vote(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "user1", true)
 	assert.Nil(t, err)
 	assert.Equal(t, 1, c.Score)
-	assert.Equal(t, map[string]bool{"user1": true}, c.Votes)
+	assert.Equal(t, map[string]bool{"user1": true}, c.Votes, "user voted +")
 
 	_, err = b.Vote(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "user1", true)
 	assert.NotNil(t, err, "double-voting rejected")
@@ -38,7 +38,7 @@ func TestService_Vote(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(res))
 	assert.Equal(t, 0, res[0].Score)
-	assert.Equal(t, map[string]bool{}, res[0].Votes)
+	assert.Equal(t, map[string]bool{}, res[0].Votes, "vote reset ok")
 }
 
 func TestBoltDB_Pin(t *testing.T) {
