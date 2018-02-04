@@ -52,3 +52,6 @@ GET {{host}}/api/v1/count?site=remark&url=https://radio-t.com/p/2017/12/16/podca
 
 ### list commented posts
 GET {{host}}/api/v1/list?site=remark
+
+### get config
+GET {{host}}/api/v1/config

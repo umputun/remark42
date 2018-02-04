@@ -318,14 +318,14 @@ func (s *Server) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 func (s *Server) configCtrl(w http.ResponseWriter, r *http.Request) {
 	type config struct {
 		Version      string
-		EditDuration time.Duration
+		EditDuration int
 		Admins       []string
 		Auth         []string
 	}
 
 	cnf := config{
 		Version:      s.Version,
-		EditDuration: s.DataService.EditDuration,
+		EditDuration: int(s.DataService.EditDuration.Seconds()),
 		Admins:       s.Admins,
 	}
 	authNames := []string{}
