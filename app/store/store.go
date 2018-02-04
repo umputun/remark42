@@ -27,6 +27,7 @@ type Comment struct {
 	Timestamp time.Time       `json:"time"`
 	Pin       bool            `json:"pin,omitempty"`
 	Edit      *Edit           `json:"edit,omitempty"`
+	Deleted   bool            `json:"delete,omitempty"`
 }
 
 // Locator keeps site and url of the post

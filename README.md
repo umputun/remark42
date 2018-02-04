@@ -133,6 +133,7 @@ type Comment struct {
     Votes     map[string]bool `json:"votes"`   // comment votes, read only
     Timestamp time.Time       `json:"time"`    // time stamp, read only
     Pin       bool            `json:"pin"`     // pinned status, read only
+    Delete    bool            `json:"delete"`  // delete status, read only
 }
 
 type Locator struct {

@@ -40,12 +40,17 @@ func TestBoltDB_Delete(t *testing.T) {
 
 	res, err = b.Find(loc, "time")
 	assert.Nil(t, err)
-	assert.Equal(t, 1, len(res))
-	assert.Equal(t, "some text2", res[0].Text)
+	assert.Equal(t, 2, len(res))
+	assert.Equal(t, "this comment was deleted", res[0].Text)
+	assert.True(t, res[0].Deleted, "marked deleted")
+	assert.Equal(t, "some text2", res[1].Text)
+	assert.False(t, res[1].Deleted)
 
 	comments, err := b.Last("radio-t", 10)
 	assert.Nil(t, err)
-	assert.Equal(t, 1, len(comments), "only 1 left in last")
+	assert.Equal(t, 2, len(comments), "2 in last, nothing removed")
+	assert.Equal(t, "this comment was deleted", comments[1].Text)
+	assert.True(t, comments[1].Deleted, "marked deleted")
 }
 
 func TestBoltDB_Get(t *testing.T) {
