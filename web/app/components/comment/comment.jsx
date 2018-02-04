@@ -14,24 +14,29 @@ export default class Comment extends Component {
       isInputVisible: false,
     };
 
-    this.updateScoreState(props);
+    this.updateState(props);
 
     this.decreaseScore = this.decreaseScore.bind(this);
     this.increaseScore = this.increaseScore.bind(this);
     this.onReplyClick = this.onReplyClick.bind(this);
     this.onReply = this.onReply.bind(this);
+    this.onPinClick = this.onPinClick.bind(this);
+    this.onUnpinClick = this.onUnpinClick.bind(this);
+    this.onBlockClick = this.onBlockClick.bind(this);
+    this.onDeleteClick = this.onDeleteClick.bind(this);
   }
 
   componentWillReceiveProps(nextProps) {
-    this.updateScoreState(nextProps);
+    this.updateState(nextProps);
   }
 
-  updateScoreState(props) {
-    const { score = 0, votes = [] } = props.data;
+  updateState(props) {
+    const { pin, score = 0, votes = [] } = props.data;
     const userId = store.get('user').id;
 
     this.setState({
       score: score,
+      pinned: !!pin,
       scoreIncreased: userId in votes && votes[userId],
       scoreDecreased: userId in votes && !votes[userId],
     });
@@ -41,6 +46,34 @@ export default class Comment extends Component {
     const { isInputVisible } = this.state;
 
     this.setState({ isInputVisible: !isInputVisible });
+  }
+
+  onPinClick() {
+    const { id } = this.props.data;
+
+    this.setState({ pinned: true });
+
+    api.pin({ id, url }).then(() => {
+      api.getComment({ id }).then(comment => store.replaceComment(comment));
+    });
+  }
+
+  onUnpinClick() {
+    const { id } = this.props.data;
+
+    this.setState({ pinned: false });
+
+    api.pin({ id, url }).then(() => {
+      api.getComment({ id }).then(comment => store.replaceComment(comment));
+    });
+  }
+
+  onBlockClick() {
+    console.log('block');
+  }
+
+  onDeleteClick() {
+    console.log('delete');
   }
 
   increaseScore() {
@@ -82,8 +115,9 @@ export default class Comment extends Component {
     this.setState({ isInputVisible: false });
   }
 
-  render(props, { score, scoreIncreased, scoreDecreased, isInputVisible }) {
+  render(props, { pinned, score, scoreIncreased, scoreDecreased, isInputVisible }) {
     const { data, mix, mods = {} } = props;
+    const isAdmin = store.get('user').admin;
 
     const time = new Date(data.time);
     // TODO: which format for datetime should we choose?
@@ -100,9 +134,14 @@ export default class Comment extends Component {
       },
     };
 
-    return (
+    const defaultMods = {
+      pinned,
       // TODO: add default view mod or don't?
-      <div className={b('comment', props, { view: data.user.admin ? 'admin' : null })}>
+      view: o.user.admin ? 'admin' : null,
+    };
+
+    return (
+      <div className={b('comment', props, defaultMods)}>
         <div className="comment__body">
           <img src={o.user.picture} alt="" className="comment__avatar"/>
 
@@ -126,8 +165,31 @@ export default class Comment extends Component {
               <span className="comment__time">{o.time}</span>
 
               <span className="comment__controls">
-              <span className="comment__reply" onClick={this.onReplyClick}>reply</span>
-            </span>
+                <span className="comment__action" onClick={this.onReplyClick}>reply</span>
+              </span>
+
+              {
+                isAdmin &&
+                (
+                  <span className={b('comment__controls', {}, { view: 'admin' })}>
+
+                    {
+                      !pinned && (
+                        <span className="comment__action" onClick={this.onPinClick}>pin</span>
+                      )
+                    }
+
+                    {
+                      pinned && (
+                        <span className="comment__action" onClick={this.onUnpinClick}>unpin</span>
+                      )
+                    }
+
+                    <span className="comment__action" onClick={this.onBlockClick}>block</span>
+                    <span className="comment__action" onClick={this.onDeleteClick}>delete</span>
+                  </span>
+                )
+              }
             </div>
 
             <div className="comment__text" dangerouslySetInnerHTML={{ __html: o.text }}/>
