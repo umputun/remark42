@@ -186,7 +186,7 @@ func (s *Server) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
 	// render markdown
-	edit.Text = string(blackfriday.Run([]byte(edit.Text)))
+	edit.Text = string(blackfriday.Run([]byte(edit.Text), blackfriday.WithNoExtensions()))
 
 	log.Printf("[DEBUG] update comment %s, %+v", id, edit)
 
