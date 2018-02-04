@@ -23,6 +23,7 @@ export default class Comment extends Component {
     this.onPinClick = this.onPinClick.bind(this);
     this.onUnpinClick = this.onUnpinClick.bind(this);
     this.onBlockClick = this.onBlockClick.bind(this);
+    this.onUnblockClick = this.onUnblockClick.bind(this);
     this.onDeleteClick = this.onDeleteClick.bind(this);
   }
 
@@ -37,6 +38,7 @@ export default class Comment extends Component {
     this.setState({
       score: score,
       pinned: !!pin,
+      userBlocked: !!store.get('user').block,
       scoreIncreased: userId in votes && votes[userId],
       scoreDecreased: userId in votes && !votes[userId],
     });
@@ -69,11 +71,29 @@ export default class Comment extends Component {
   }
 
   onBlockClick() {
-    console.log('block');
+    const { user: { id } } = this.props.data;
+
+    this.setState({ userBlocked: true });
+
+    api.blockUser({ id });
+  }
+
+  onUnblockClick() {
+    const { user: { id } } = this.props.data;
+
+    this.setState({ userBlocked: false });
+
+    api.unblockUser({ id });
   }
 
   onDeleteClick() {
-    console.log('delete');
+    const { id } = this.props.data;
+
+    api.remove({ id }).then(() => {
+      if (this.props.onDelete) {
+        this.props.onDelete();
+      }
+    });
   }
 
   increaseScore() {
@@ -115,7 +135,7 @@ export default class Comment extends Component {
     this.setState({ isInputVisible: false });
   }
 
-  render(props, { pinned, score, scoreIncreased, scoreDecreased, isInputVisible }) {
+  render(props, { userBlocked, pinned, score, scoreIncreased, scoreDecreased, isInputVisible }) {
     const { data, mix, mods = {} } = props;
     const isAdmin = store.get('user').admin;
 
@@ -150,17 +170,17 @@ export default class Comment extends Component {
               <span className="comment__username">{o.user.name}</span>
 
               <span className="comment__score">
-              <span
-                className={b('comment__vote', {}, { type: 'up', selected: scoreIncreased })}
-                onClick={this.increaseScore}
-              >vote up</span>
+                <span
+                  className={b('comment__vote', {}, { type: 'up', selected: scoreIncreased })}
+                  onClick={this.increaseScore}
+                >vote up</span>
                 <span className="comment__score-sign">{o.score.sign}</span>
                 <span className="comment__score-value">{o.score.value}</span>
-              <span
-                className={b('comment__vote', {}, { type: 'down', selected: scoreDecreased })}
-                onClick={this.decreaseScore}
-              >vote down</span>
-            </span>
+                <span
+                  className={b('comment__vote', {}, { type: 'down', selected: scoreDecreased })}
+                  onClick={this.decreaseScore}
+                >vote down</span>
+              </span>
 
               <span className="comment__time">{o.time}</span>
 
@@ -185,7 +205,18 @@ export default class Comment extends Component {
                       )
                     }
 
-                    <span className="comment__action" onClick={this.onBlockClick}>block</span>
+                    {
+                      userBlocked && (
+                        <span className="comment__action" onClick={this.onUnblockClick}>unblock</span>
+                      )
+                    }
+
+                    {
+                      !userBlocked && (
+                        <span className="comment__action" onClick={this.onBlockClick}>block</span>
+                      )
+                    }
+
                     <span className="comment__action" onClick={this.onDeleteClick}>delete</span>
                   </span>
                 )
