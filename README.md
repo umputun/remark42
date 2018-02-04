@@ -187,6 +187,7 @@ Sort can be `time` or `score`. Supported sort order with prefix -/+, i.e. `-time
     ```
 - `GET /api/v1/user` - get user info, _auth required_
 - `PUT /api/v1/vote/{id}?site=site-id&url=post-url&vote=1` - vote for comment. `vote`=1 will increase score, -1 decrease. _auth required_
+- `GET /api/v1/config` - returns configuration (parameters)
 
 ### Admin
 

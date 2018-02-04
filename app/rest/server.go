@@ -317,10 +317,10 @@ func (s *Server) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 // GET /config - returns configuration
 func (s *Server) configCtrl(w http.ResponseWriter, r *http.Request) {
 	type config struct {
-		Version      string
-		EditDuration int
-		Admins       []string
-		Auth         []string
+		Version      string   `json:"version"`
+		EditDuration int      `json:"edit_duration"`
+		Admins       []string `json:"admins"`
+		Auth         []string `json:"auth_providers"`
 	}
 
 	cnf := config{
