@@ -142,7 +142,7 @@ func (s *Server) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	comment.User.IP = strings.Split(r.RemoteAddr, ":")[0]
 
 	// render markdown
-	comment.Text = string(blackfriday.Run([]byte(comment.Text)))
+	comment.Text = string(blackfriday.Run([]byte(comment.Text), blackfriday.WithNoExtensions()))
 
 	log.Printf("[DEBUG] create comment %+v", comment)
 
