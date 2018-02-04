@@ -95,13 +95,25 @@ func main() {
 
 	exporter := migrator.Remark{DataStore: dataStore}
 
-	authProviders := []auth.Provider{
-		auth.NewGoogle(auth.Params{
-			Cid: srvOpts.GoogleCID, Csecret: srvOpts.GoogleCSEC, SessionStore: sessionStore, RemarkURL: opts.RemarkURL}),
-		auth.NewGithub(auth.Params{
-			Cid: srvOpts.GithubCID, Csecret: srvOpts.GithubCSEC, SessionStore: sessionStore, RemarkURL: opts.RemarkURL}),
-		auth.NewFacebook(auth.Params{
-			Cid: srvOpts.FacebookCID, Csecret: srvOpts.FacebookCSEC, SessionStore: sessionStore, RemarkURL: opts.RemarkURL}),
+	authProviders := func() []auth.Provider {
+		providers := []auth.Provider{}
+
+		if srvOpts.GoogleCID != "" && srvOpts.GoogleCSEC != "" {
+			providers = append(providers, auth.NewGoogle(auth.Params{
+				Cid: srvOpts.GoogleCID, Csecret: srvOpts.GoogleCSEC, SessionStore: sessionStore, RemarkURL: opts.RemarkURL}))
+		}
+		if srvOpts.GithubCID != "" && srvOpts.GithubCSEC != "" {
+			providers = append(providers, auth.NewGithub(auth.Params{
+				Cid: srvOpts.GithubCID, Csecret: srvOpts.GithubCSEC, SessionStore: sessionStore, RemarkURL: opts.RemarkURL}))
+		}
+		if srvOpts.FacebookCID != "" && srvOpts.FacebookCSEC != "" {
+			providers = append(providers, auth.NewFacebook(auth.Params{
+				Cid: srvOpts.FacebookCID, Csecret: srvOpts.FacebookCSEC, SessionStore: sessionStore, RemarkURL: opts.RemarkURL}))
+		}
+		return providers
+	}()
+	if len(authProviders) == 0 {
+		log.Printf("[WARN] no auth providers defined")
 	}
 
 	srv := rest.Server{
