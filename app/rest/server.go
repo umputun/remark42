@@ -87,6 +87,7 @@ func (s *Server) Run(port int) {
 		rapi.Get("/last/{max}", s.lastCommentsCtrl)
 		rapi.Get("/count", s.countCtrl)
 		rapi.Get("/list", s.listCtrl)
+		rapi.Get("/config", s.configCtrl)
 
 		// protected routes, require auth
 		rapi.With(auth.Auth(s.SessionStore, s.Admins, maybeWithDevMode(auth.Full))).Group(func(rauth chi.Router) {
@@ -311,6 +312,29 @@ func (s *Server) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	renderJSONFromBytes(w, r, data)
+}
+
+// GET /config - returns configuration
+func (s *Server) configCtrl(w http.ResponseWriter, r *http.Request) {
+	type config struct {
+		Version      string
+		EditDuration time.Duration
+		Admins       []string
+		Auth         []string
+	}
+
+	cnf := config{
+		Version:      s.Version,
+		EditDuration: s.DataService.EditDuration,
+		Admins:       s.Admins,
+	}
+	authNames := []string{}
+	for _, ap := range s.AuthProviders {
+		authNames = append(authNames, ap.Name)
+	}
+	cnf.Auth = authNames
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, cnf)
 }
 
 // GET /user - returns user info
