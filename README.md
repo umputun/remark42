@@ -188,7 +188,15 @@ Sort can be `time` or `score`. Supported sort order with prefix -/+, i.e. `-time
 - `GET /api/v1/user` - get user info, _auth required_
 - `PUT /api/v1/vote/{id}?site=site-id&url=post-url&vote=1` - vote for comment. `vote`=1 will increase score, -1 decrease. _auth required_
 - `GET /api/v1/config` - returns configuration (parameters)
-
+    ```go
+    type config struct {
+        Version      string   `json:"version"`
+        EditDuration int      `json:"edit_duration"` // seconds
+        Admins       []string `json:"admins"`
+        Auth         []string `json:"auth_providers"`
+    }
+    ```
+    
 ### Admin
 
 - `DELETE /api/v1/admin/comment/{id}?site=site-id&url=post-url` - delete comment by `id`. _auth and admin required_
