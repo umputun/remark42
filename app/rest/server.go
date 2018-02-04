@@ -314,7 +314,7 @@ func (s *Server) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	renderJSONFromBytes(w, r, data)
 }
 
-// GET /config - returns configuration
+// GET /config?site=siteID - returns configuration
 func (s *Server) configCtrl(w http.ResponseWriter, r *http.Request) {
 	type config struct {
 		Version      string   `json:"version"`
