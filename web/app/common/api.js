@@ -24,14 +24,23 @@ export const getUser = () => fetcher.get('/user');
 /* admin */
 export const pin = ({ id, url }) => fetcher.put(`/admin/pin/${id}?url=${url}&pin=1`);
 
-export const unpin = ({ id, url }) => fetcher.get(`/admin/pin/${id}?url=${url}&pin=0`);
+export const unpin = ({ id, url }) => fetcher.put(`/admin/pin/${id}?url=${url}&pin=0`);
+
+export const remove = ({ id }) => fetcher.delete(`/admin/comment/${id}?url=${url}`);
+
+export const blockUser = ({ id }) => fetcher.put(`/admin/user/${id}?&block=1`);
+
+export const unblockUser = ({ id }) => fetcher.put(`/admin/user/${id}?&block=0`);
 
 export default {
   find,
   getComment,
-  pin,
-  unpin,
   vote,
   send,
   getUser,
+  pin,
+  unpin,
+  remove,
+  blockUser,
+  unblockUser,
 };
