@@ -30,7 +30,7 @@ Content-Type: application/json
 }
 
 ### pin comment
-PUT {{host}}/api/v1/admin/pin/3665976683?site=remark&url=https://radio-t.com/p/2017/12/16/podcast-576/&pin=0
+PUT {{host}}/api/v1/admin/pin/3665976683?site=remark&url=https://radio-t.com/p/2017/12/16/podcast-576/&pin=1
 
 ### vote for comment
 PUT {{host}}/api/v1/vote/3665976683?site=remark&url=https://radio-t.com/p/2017/12/16/podcast-576/&vote=1
@@ -55,3 +55,9 @@ GET {{host}}/api/v1/list?site=remark
 
 ### get config
 GET {{host}}/api/v1/config
+
+### block user
+PUT {{host}}/api/v1/admin/user/username?site=remark&block=1
+
+### delete comment by id
+DELETE {{host}}/api/v1/admin/comment/3665976683?site=remark&url=https://radio-t.com/p/2017/12/16/podcast-576/

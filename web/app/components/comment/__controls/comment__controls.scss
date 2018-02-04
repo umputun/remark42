@@ -1,7 +1,7 @@
 .comment__controls {
   display: inline-block;
-  margin-left: 8px;
   color: #06c5c5;
+  user-select: none;
 
   @media (hover: hover) {
     margin-left: 0;
