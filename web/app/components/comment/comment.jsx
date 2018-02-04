@@ -32,13 +32,13 @@ export default class Comment extends Component {
   }
 
   updateState(props) {
-    const { pin, score = 0, votes = [] } = props.data;
+    const { user: { block }, pin, score = 0, votes = [] } = props.data;
     const userId = store.get('user').id;
 
     this.setState({
       score: score,
       pinned: !!pin,
-      userBlocked: !!store.get('user').block,
+      userBlocked: !!block,
       scoreIncreased: userId in votes && votes[userId],
       scoreDecreased: userId in votes && !votes[userId],
     });

@@ -28,9 +28,9 @@ export const unpin = ({ id, url }) => fetcher.put(`/admin/pin/${id}?url=${url}&p
 
 export const remove = ({ id }) => fetcher.delete(`/admin/comment/${id}?url=${url}`);
 
-export const blockUser = ({ id }) => fetcher.put(`/admin/user/${id}?&block=1`);
+export const blockUser = ({ id }) => fetcher.put(`/admin/user/${id}?block=1`);
 
-export const unblockUser = ({ id }) => fetcher.put(`/admin/user/${id}?&block=0`);
+export const unblockUser = ({ id }) => fetcher.put(`/admin/user/${id}?block=0`);
 
 export default {
   find,
