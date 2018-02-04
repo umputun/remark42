@@ -222,13 +222,13 @@ func (s *Server) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		if e != nil {
 			return nil, e
 		}
-		comments = s.mod.maskBlockedUsers(comments)
+		maskedComments := s.mod.maskBlockedUsers(comments)
 		var b []byte
 		switch r.URL.Query().Get("format") {
 		case "tree":
-			b, e = encodeJSONWithHTML(format.MakeTree(comments, r.URL.Query().Get("sort")))
+			b, e = encodeJSONWithHTML(format.MakeTree(maskedComments, r.URL.Query().Get("sort")))
 		default:
-			b, e = encodeJSONWithHTML(comments)
+			b, e = encodeJSONWithHTML(maskedComments)
 		}
 		return b, e
 	})

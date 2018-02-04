@@ -88,10 +88,20 @@ func TestAdmin_Block(t *testing.T) {
 	assert.NotNil(t, srv)
 	defer cleanup(srv)
 
+	c1 := store.Comment{Text: "test test #1",
+		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"}}
+	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
+		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}, User: store.User{Name: "user2", ID: "user2"}}
+
+	_, err := srv.DataService.Create(c1)
+	assert.Nil(t, err)
+	_, err = srv.DataService.Create(c2)
+	assert.Nil(t, err)
+
 	block := func(val int) (code int, body []byte) {
 		client := http.Client{}
 		req, err := http.NewRequest(http.MethodPut,
-			fmt.Sprintf("http://127.0.0.1:%d/api/v1/admin/user/%s?site=radio-t&url=https://radio-t.com/blah&block=%d",
+			fmt.Sprintf("http://127.0.0.1:%d/api/v1/admin/user/%s?site=radio-t&block=%d",
 				port, "user1", val), nil)
 		assert.Nil(t, err)
 		resp, err := client.Do(req)
@@ -105,11 +115,19 @@ func TestAdmin_Block(t *testing.T) {
 	code, body := block(1)
 	require.Equal(t, 200, code)
 	j := JSON{}
-	err := json.Unmarshal(body, &j)
+	err = json.Unmarshal(body, &j)
 	assert.Nil(t, err)
 	assert.Equal(t, "user1", j["user_id"])
 	assert.Equal(t, true, j["block"])
 	assert.Equal(t, "radio-t", j["site_id"])
+
+	res, code := get(t, fmt.Sprintf("http://127.0.0.1:%d/api/v1/find?site=radio-t&url=https://radio-t.com/blah&sort=+time", port))
+	assert.Equal(t, 200, code)
+	comments := []store.Comment{}
+	err = json.Unmarshal([]byte(res), &comments)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(comments), "should have 2 comments")
+	assert.Equal(t, "this comment was deleted", comments[0].Text)
 
 	code, body = block(-1)
 	require.Equal(t, 200, code)

@@ -50,7 +50,7 @@ func (a *admin) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	a.cache.Flush()
 	render.Status(r, http.StatusOK)
-	render.JSON(w, r, JSON{"id": id, "loc": locator})
+	render.JSON(w, r, JSON{"id": id, "locator": locator})
 }
 
 // PUT /user/{userid}?site=side-id&block=1 - block or unblock user
