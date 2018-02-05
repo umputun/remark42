@@ -120,7 +120,7 @@ func (a *admin) maskBlockedUsers(comments []store.Comment) (res []store.Comment)
 	res = make([]store.Comment, len(comments))
 	for i, c := range comments {
 		if a.dataService.IsBlocked(c.Locator.SiteID, c.User.ID) {
-			c = store.MaskComment(c)
+			c.Mask()
 			c.User.Blocked = true
 		}
 		res[i] = c
