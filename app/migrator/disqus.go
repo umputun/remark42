@@ -118,15 +118,15 @@ func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 					c := store.Comment{
 						ID:        comment.UID,
 						Locator:   store.Locator{URL: postsMap[comment.Tid.Val], SiteID: siteID},
-						User:      store.User{ID: "disqus-" + comment.AuthorUserName, Name: comment.AuthorName, IP: comment.IP},
+						User:      store.User{ID: "disqus_" + comment.AuthorUserName, Name: comment.AuthorName, IP: comment.IP},
 						Text:      d.cleanText(comment.Message),
 						Timestamp: comment.CreatedAt,
 						ParentID:  comment.Pid.Val,
 					}
-					if c.User.ID == "disqus-" {
-						c.User.ID = "disqus-" + c.User.Name
+					if c.User.ID == "disqus_" { // empty comment.AuthorUserName from disqus
+						c.User.ID = "disqus_" + c.User.Name
 					}
-					if c.ID == "" {
+					if c.ID == "" { // no comment.UID
 						c.ID = comment.ID
 					}
 					commentsCh <- c
