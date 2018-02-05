@@ -139,7 +139,11 @@ func TestBoltDB_BlockList(t *testing.T) {
 
 	ids, err := b.Blocked("radio-t")
 	assert.NoError(t, err)
-	assert.Equal(t, []string{"user1", "user2"}, ids)
+
+	assert.Equal(t, 2, len(ids))
+	assert.Equal(t, "user1", ids[0].ID)
+	assert.Equal(t, "user2", ids[1].ID)
+	t.Logf("%+v", ids)
 }
 
 func TestBoltDB_List(t *testing.T) {

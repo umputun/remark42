@@ -56,6 +56,12 @@ type PostInfo struct {
 	Count int    `json:"count"`
 }
 
+// BlockedUser holds id and ts for blocked user
+type BlockedUser struct {
+	ID        string    `json:"id"`
+	Timestamp time.Time `json:"time"`
+}
+
 // GenID generates sha1(random) string
 func (c *Comment) GenID() error {
 	b := make([]byte, 64)

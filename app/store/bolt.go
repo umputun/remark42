@@ -312,8 +312,8 @@ func (b *BoltDB) IsBlocked(siteID string, userID string) (blocked bool) {
 }
 
 // Blocked get lists of blocked users for given site
-func (b *BoltDB) Blocked(siteID string) (userIDs []string, err error) {
-	userIDs = []string{}
+func (b *BoltDB) Blocked(siteID string) (users []BlockedUser, err error) {
+	users = []BlockedUser{}
 	bdb, err := b.db(siteID)
 	if err != nil {
 		return nil, err
@@ -325,12 +325,16 @@ func (b *BoltDB) Blocked(siteID string) (userIDs []string, err error) {
 			return nil
 		}
 		return bucket.ForEach(func(k []byte, v []byte) error {
-			userIDs = append(userIDs, string(k))
+			ts, err := time.ParseInLocation(time.RFC3339Nano, string(v), time.Local)
+			if err != nil {
+				return errors.Wrap(err, "can't parse block ts")
+			}
+			users = append(users, BlockedUser{ID: string(k), Timestamp: ts})
 			return nil
 		})
 	})
 
-	return userIDs, err
+	return users, err
 }
 
 // List returns list of buckets, which is list of all commented posts
