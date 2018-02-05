@@ -94,7 +94,6 @@ func main() {
 	}()
 
 	exporter := migrator.Remark{DataStore: dataStore}
-	authProviders := makeAuthProviders(sessionStore)
 
 	srv := rest.Server{
 		Version:       revision,
@@ -104,7 +103,7 @@ func main() {
 		DevMode:       opts.DevMode,
 		Exporter:      &exporter,
 		Cache:         common.NewLoadingCache(4*time.Hour, 15*time.Minute),
-		AuthProviders: authProviders,
+		AuthProviders: makeAuthProviders(sessionStore),
 	}
 
 	if opts.DevMode {
