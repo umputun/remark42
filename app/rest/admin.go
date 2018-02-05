@@ -33,6 +33,7 @@ func (a *admin) routes() chi.Router {
 	router.Get("/export", a.exportCtrl)
 	router.Post("/import", a.importCtrl)
 	router.Put("/pin/{id}", a.setPinCtrl)
+	router.Get("/blocked", a.blockedUsersCtrl)
 	return router
 }
 
@@ -65,6 +66,17 @@ func (a *admin) setBlockCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	a.cache.Flush()
 	render.JSON(w, r, JSON{"user_id": userID, "site_id": siteID, "block": blockStatus})
+}
+
+// GET /blocked?site=siteID - list blocked users
+func (a *admin) blockedUsersCtrl(w http.ResponseWriter, r *http.Request) {
+	siteID := r.URL.Query().Get("site")
+	users, err := a.dataService.Blocked(siteID)
+	if err != nil {
+		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get blocked users")
+		return
+	}
+	render.JSON(w, r, users)
 }
 
 // PUT /pin/{id}?site=siteID&url=post-url&pin=1

@@ -209,11 +209,14 @@ Sort can be `time` or `score`. Supported sort order with prefix -/+, i.e. `-time
 
 ### Admin
 
-- `DELETE /api/v1/admin/comment/{id}?site=site-id&url=post-url` - delete comment by `id`. _auth and admin required_
-- `PUT /api/v1/admin/user/{userid}?site=site-id&block=1` - block or unblock user. _auth and admin required_
-- `GET /api/v1/admin/export?site=side-id&mode=[stream|file]` - export all comments to json stream or gz file. _auth and admin required_
-- `POST /api/v1/admin/import?site=side-id` - import comments from the backup. _auth and admin required_
-- `PUT /api/v1/admin/pin/{id}?site=site-id&url=post-url&pin=1` - pin or unpin comment. _auth and admin required_
+- `DELETE /api/v1/admin/comment/{id}?site=site-id&url=post-url` - delete comment by `id`.
+- `PUT /api/v1/admin/user/{userid}?site=site-id&block=1` - block or unblock user.
+- `GET api/v1/admin/blocked` - list of blocked user ids.
+- `GET /api/v1/admin/export?site=side-id&mode=[stream|file]` - export all comments to json stream or gz file.
+- `POST /api/v1/admin/import?site=side-id` - import comments from the backup.
+- `PUT /api/v1/admin/pin/{id}?site=site-id&url=post-url&pin=1` - pin or unpin comment.
+
+_all calls require auth and admin_
 
 ## Technical details
 

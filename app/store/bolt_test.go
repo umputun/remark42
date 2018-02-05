@@ -127,7 +127,19 @@ func TestBoltDB_BlockUser(t *testing.T) {
 
 	assert.NoError(t, b.SetBlock("radio-t", "user1", false))
 	assert.False(t, b.IsBlocked("radio-t", "user1"), "user1 unblocked")
+}
 
+func TestBoltDB_BlockList(t *testing.T) {
+	defer os.Remove(testDb)
+	b := prep(t)
+
+	assert.NoError(t, b.SetBlock("radio-t", "user1", true))
+	assert.NoError(t, b.SetBlock("radio-t", "user2", true))
+	assert.NoError(t, b.SetBlock("radio-t", "user3", false))
+
+	ids, err := b.Blocked("radio-t")
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"user1", "user2"}, ids)
 }
 
 func TestBoltDB_List(t *testing.T) {

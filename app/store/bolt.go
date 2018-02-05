@@ -311,6 +311,28 @@ func (b *BoltDB) IsBlocked(siteID string, userID string) (blocked bool) {
 	return blocked
 }
 
+// Blocked get lists of blocked users for given site
+func (b *BoltDB) Blocked(siteID string) (userIDs []string, err error) {
+	userIDs = []string{}
+	bdb, err := b.db(siteID)
+	if err != nil {
+		return nil, err
+	}
+
+	err = bdb.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(blocksBucketName))
+		if bucket == nil {
+			return nil
+		}
+		return bucket.ForEach(func(k []byte, v []byte) error {
+			userIDs = append(userIDs, string(k))
+			return nil
+		})
+	})
+
+	return userIDs, err
+}
+
 // List returns list of buckets, which is list of all commented posts
 func (b BoltDB) List(siteID string) (list []PostInfo, err error) {
 

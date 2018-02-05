@@ -30,6 +30,7 @@ type Admin interface {
 	Delete(locator Locator, commentID string) error           // delete comment by id
 	SetBlock(siteID string, userID string, status bool) error // block or unblock  user
 	IsBlocked(siteID string, userID string) bool              // check if user blocked
+	Blocked(siteID string) (userIDs []string, err error)      // get list of blocked users
 }
 
 func sortComments(comments []Comment, sortFld string) []Comment {
