@@ -325,9 +325,9 @@ func (b *BoltDB) Blocked(siteID string) (users []BlockedUser, err error) {
 			return nil
 		}
 		return bucket.ForEach(func(k []byte, v []byte) error {
-			ts, err := time.ParseInLocation(time.RFC3339Nano, string(v), time.Local)
-			if err != nil {
-				return errors.Wrap(err, "can't parse block ts")
+			ts, e := time.ParseInLocation(time.RFC3339Nano, string(v), time.Local)
+			if e != nil {
+				return errors.Wrap(e, "can't parse block ts")
 			}
 			users = append(users, BlockedUser{ID: string(k), Timestamp: ts})
 			return nil
