@@ -226,6 +226,6 @@ Sort can be `time` or `score`. Supported sort order with prefix -/+, i.e. `-time
 - All heavy REST calls cached internally, default expiration 4h
 - Users activity throttled globally (up to 1000) and limited locally (per user, up to 10 req/sec)
 - Request timeout set to 60sec
-- Development mode (`--dev`) allows to test remark42 without login and with admin privileges. **should not be used in production deployemnt**
+- Development mode (`--dev`) allows to test remark42 without login and with admin privileges. **should not be used in production deployment**
 - User can vote for the comment multiple times but only to change his/her vote. Double-voting not allowed.
 - User can edit comments in 5 mins window after creation.
