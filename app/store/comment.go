@@ -4,10 +4,10 @@ import (
 	"crypto/rand"
 	"crypto/sha1"
 	"fmt"
+	"html/template"
 	"strings"
 	"time"
 
-	"github.com/alecthomas/template"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/pkg/errors"
 )
