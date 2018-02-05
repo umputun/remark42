@@ -52,7 +52,7 @@ func TestDisqus_Convert(t *testing.T) {
 		Text: `<p>The quick brown fox jumps over the lazy dog.</p><p><a href="https://https://radio-t.com" rel="nofollow noopener" title="radio-t">some link</a></p>`,
 		User: store.User{
 			Name: "Alexander Blah",
-			ID:   "facebook-1787732238",
+			ID:   "disqus-facebook-1787732238",
 			IP:   "178.178.178.178",
 		},
 	}
