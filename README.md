@@ -222,7 +222,7 @@ Sort can be `time` or `score`. Supported sort order with prefix -/+, i.e. `-time
 - Each site stored in a separate boltbd file.
 - In order to migrate/move remark42 to another host boltbd files should be transferred.
 - Automatic backup process runs every 24h and exports all content in json-like format to `backup-remark-YYYYMMDD.gz`.
-- Sessions implemented with [gorilla/sessions](https://github.com/gorilla/sessions) and file-system store under `SESSION_STORE` path and it uses HttpOnly, secure cookies.
+- Sessions implemented with [gorilla/sessions](https://github.com/gorilla/sessions) and file-system store under `SESSION_STORE` path. It uses HttpOnly, secure cookies.
 - All heavy REST calls cached internally, default expiration 4h
 - Users activity throttled globally (up to 1000) and limited locally (per user, up to 10 req/sec)
 - Request timeout set to 60sec
