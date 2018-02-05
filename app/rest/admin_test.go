@@ -35,8 +35,13 @@ func TestAdmin_Delete(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 
-	_, code := get(t, fmt.Sprintf("http://127.0.0.1:%d/api/v1/id/%s?site=radio-t&url=https://radio-t.com/blah", port, id1))
-	assert.Equal(t, 400, code)
+	body, code := get(t, fmt.Sprintf("http://127.0.0.1:%d/api/v1/id/%s?site=radio-t&url=https://radio-t.com/blah", port, id1))
+	assert.Equal(t, 200, code)
+	cr := store.Comment{}
+	err = json.Unmarshal([]byte(body), &cr)
+	assert.Nil(t, err)
+	assert.Equal(t, "this comment was deleted", cr.Text)
+	assert.True(t, cr.Deleted)
 }
 
 func TestAdmin_Pin(t *testing.T) {
