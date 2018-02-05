@@ -184,16 +184,16 @@ Sort can be `time` or `score`. Supported sort order with prefix -/+, i.e. `-time
 - `GET /api/v1/comments?site=site-id&user=id` - get comment by `user id`, returns `response` object
     ```go
     type response struct {
-    	Comments []store.Comment  `json:"comments"`
-    	Count    int              `json:"count"`
+        Comments []store.Comment  `json:"comments"`
+        Count    int              `json:"count"`
     }{}
     ```
 - `GET /api/v1/count?site=site-id&url=post-url` - get comment's count for `{url}`
 - `GET /api/v1/list?site=site-id` - list commented posts, returns array or `PostInfo`
     ```go
     type PostInfo struct {
-	    URL   string `json:"url"`
-	    Count int    `json:"count"`
+        URL   string `json:"url"`
+        Count int    `json:"count"`
     }
     ```
 - `GET /api/v1/user` - get user info, _auth required_
@@ -207,7 +207,7 @@ Sort can be `time` or `score`. Supported sort order with prefix -/+, i.e. `-time
         Auth         []string `json:"auth_providers"`
     }
     ```
-    
+
 ### Admin
 
 - `DELETE /api/v1/admin/comment/{id}?site=site-id&url=post-url` - delete comment by `id`. _auth and admin required_
@@ -215,3 +215,17 @@ Sort can be `time` or `score`. Supported sort order with prefix -/+, i.e. `-time
 - `GET /api/v1/admin/export?site=side-id&mode=[stream|file]` - export all comments to json stream or gz file. _auth and admin required_
 - `POST /api/v1/admin/import?site=side-id` - import comments from the backup. _auth and admin required_
 - `PUT /api/v1/admin/pin/{id}?site=site-id&url=post-url&pin=1` - pin or unpin comment. _auth and admin required_
+
+## Technical details
+
+- Data stored in [boltdb](https://github.com/boltdb/bolt) (embedded key/value database) files under `BOLTDB_PATH`
+- Each site stored in a separate boltbd file.
+- In order to migrate/move remark42 to another host boltbd files should be transferred.
+- Automatic backup process runs every 24h and exports all content in json-like format to `backup-remark-YYYYMMDD.gz`.
+- Sessions implemented with [gorilla/sessions](https://github.com/gorilla/sessions) and file-system store under `SESSION_STORE` path and it uses HttpOnly, secure cookies.
+- All heavy REST calls cached internally, default expiration 4h
+- Users activity throttled globally (up to 1000) and limited locally (per user, up to 10 req/sec)
+- Request timeout set to 60sec
+- Development mode (`--dev`) allows to test remark42 without login and with admin privileges. **should not be used in production deployemnt**
+- User can vote for the comment multiple times but only to change his/her vote. Double-voting not allowed.
+- User can edit comments in 5 mins window after creation.
