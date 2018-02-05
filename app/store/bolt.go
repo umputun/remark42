@@ -142,11 +142,8 @@ func (b *BoltDB) Delete(locator Locator, commentID string) error {
 			return errors.Wrapf(err, "can't load key %s from bucket %s", commentID, locator.URL)
 		}
 		// set deleted status and clear fields
+		comment = MaskComment(comment)
 		comment.Deleted = true
-		comment.Text = "this comment was deleted"
-		comment.Score = 0
-		comment.Votes = map[string]bool{}
-		comment.Edit = nil
 
 		if err := b.save(bucket, []byte(commentID), comment); err != nil {
 			return errors.Wrapf(err, "can't save deleted comment for key %s from bucket %s", commentID, locator.URL)

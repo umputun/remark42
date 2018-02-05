@@ -133,3 +133,12 @@ func sortComments(comments []Comment, sortFld string) []Comment {
 	})
 	return comments
 }
+
+// MaskComment clears comment info, reset to "Deleted/Blocked"
+func MaskComment(comment Comment) Comment {
+	comment.Text = "this comment was deleted"
+	comment.Score = 0
+	comment.Votes = map[string]bool{}
+	comment.Edit = nil
+	return comment
+}
