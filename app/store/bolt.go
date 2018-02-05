@@ -59,7 +59,9 @@ func (b *BoltDB) Create(comment Comment) (commentID string, err error) {
 
 	// fill ID and time if empty
 	if comment.ID == "" {
-		comment.ID = makeCommentID()
+		if err := comment.GenID(); err != nil {
+			return "", err
+		}
 	}
 	if comment.Timestamp.IsZero() {
 		comment.Timestamp = time.Now()
@@ -68,7 +70,7 @@ func (b *BoltDB) Create(comment Comment) (commentID string, err error) {
 		comment.Votes = make(map[string]bool)
 	}
 
-	comment = sanitizeComment(comment) // clear potentially dangerous js from all parts of comment
+	comment.Sanitize() // clear potentially dangerous js from all parts of comment
 
 	bdb, err := b.db(comment.Locator.SiteID)
 	if err != nil {
@@ -142,7 +144,7 @@ func (b *BoltDB) Delete(locator Locator, commentID string) error {
 			return errors.Wrapf(err, "can't load key %s from bucket %s", commentID, locator.URL)
 		}
 		// set deleted status and clear fields
-		comment = MaskComment(comment)
+		comment.Mask()
 		comment.Deleted = true
 
 		if err := b.save(bucket, []byte(commentID), comment); err != nil {

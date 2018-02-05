@@ -3,61 +3,9 @@ package store
 //go:generate sh -c "mockery -inpkg -name Interface -print > file.tmp && mv file.tmp store_mock.go"
 
 import (
-	"crypto/rand"
-	"crypto/sha1"
-	"fmt"
-	"html/template"
-	"log"
 	"sort"
 	"strings"
-	"time"
-
-	"github.com/microcosm-cc/bluemonday"
 )
-
-// Comment represents a single comment with optional reference to its parent
-type Comment struct {
-	ID        string          `json:"id"`
-	ParentID  string          `json:"pid"`
-	Text      string          `json:"text"`
-	User      User            `json:"user"`
-	Locator   Locator         `json:"locator"`
-	Score     int             `json:"score"`
-	Votes     map[string]bool `json:"votes"`
-	Timestamp time.Time       `json:"time"`
-	Pin       bool            `json:"pin,omitempty"`
-	Edit      *Edit           `json:"edit,omitempty"`
-	Deleted   bool            `json:"delete,omitempty"`
-}
-
-// Locator keeps site and url of the post
-type Locator struct {
-	SiteID string `json:"site,omitempty"`
-	URL    string `json:"url"`
-}
-
-// User holds user-related info
-type User struct {
-	Name    string `json:"name"`
-	ID      string `json:"id"`
-	Picture string `json:"picture"`
-	Profile string `json:"profile"`
-	Admin   bool   `json:"admin"`
-	Blocked bool   `json:"block,omitempty"`
-	IP      string `json:"-"`
-}
-
-// Edit indication
-type Edit struct {
-	Timestamp time.Time `json:"time"`
-	Summary   string    `json:"summary"`
-}
-
-// PostInfo holds summary for given post url
-type PostInfo struct {
-	URL   string `json:"url"`
-	Count int    `json:"count"`
-}
 
 // Interface combines all store interfaces
 type Interface interface {
@@ -84,34 +32,6 @@ type Admin interface {
 	IsBlocked(siteID string, userID string) bool              // check if user blocked
 }
 
-// makeCommentID generates sha1(random) string
-func makeCommentID() string {
-	b := make([]byte, 64)
-	if _, err := rand.Read(b); err != nil {
-		log.Fatalf("[ERROR] can't get randoms, %s", err)
-	}
-	s := sha1.New()
-	if _, err := s.Write(b); err != nil {
-		log.Fatalf("[ERROR] can't make sha1 for random, %s", err)
-	}
-	return fmt.Sprintf("%x", s.Sum(nil))
-}
-
-// clean dangerous html/js from the comment
-func sanitizeComment(comment Comment) Comment {
-	p := bluemonday.UGCPolicy()
-	comment.Text = p.Sanitize(comment.Text)
-	comment.User.ID = template.HTMLEscapeString(comment.User.ID)
-	comment.User.Name = template.HTMLEscapeString(comment.User.Name)
-	comment.User.Picture = p.Sanitize(comment.User.Picture)
-	comment.User.Profile = p.Sanitize(comment.User.Profile)
-
-	comment.Text = strings.Replace(comment.Text, "\n", "", -1)
-	comment.Text = strings.Replace(comment.Text, "\t", "", -1)
-
-	return comment
-}
-
 func sortComments(comments []Comment, sortFld string) []Comment {
 	sort.Slice(comments, func(i, j int) bool {
 		switch sortFld {
@@ -132,13 +52,4 @@ func sortComments(comments []Comment, sortFld string) []Comment {
 		}
 	})
 	return comments
-}
-
-// MaskComment clears comment info, reset to "Deleted/Blocked"
-func MaskComment(comment Comment) Comment {
-	comment.Text = "this comment was deleted"
-	comment.Score = 0
-	comment.Votes = map[string]bool{}
-	comment.Edit = nil
-	return comment
 }

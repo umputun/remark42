@@ -2,41 +2,35 @@ package store
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func TestStore_MakeCommentID(t *testing.T) {
-	cid1 := makeCommentID()
-	assert.True(t, len(cid1) > 8, "cid1 is long enough")
-
-	cid2 := makeCommentID()
-	assert.True(t, len(cid2) > 8, "cid2 is long enough")
-
-	assert.NotEqual(t, cid1, cid2, "cids different")
-}
-
-func TestStore_SanitizeComment(t *testing.T) {
-
-	tbl := []struct {
-		inp Comment
-		out Comment
-	}{
-		{inp: Comment{}, out: Comment{}},
-		{
-			inp: Comment{
-				Text: `blah <a href="javascript:alert('XSS1')" onmouseover="alert('XSS2')">XSS<a>` + "\n\t",
-				User: User{ID: `<a href="http://blah.com">username</a>`},
-			},
-			out: Comment{
-				Text: `blah XSS`,
-				User: User{ID: `&lt;a href=&#34;http://blah.com&#34;&gt;username&lt;/a&gt;`},
-			},
-		},
+func TestStore_sortComments(t *testing.T) {
+	cc := []Comment{
+		{ID: "1", Score: 5, Timestamp: time.Date(2018, 2, 5, 10, 1, 0, 0, time.Local)},
+		{ID: "2", Score: 4, Timestamp: time.Date(2018, 2, 5, 10, 2, 0, 0, time.Local)},
+		{ID: "3", Score: 6, Timestamp: time.Date(2018, 2, 5, 10, 3, 0, 0, time.Local)},
 	}
 
-	for n, tt := range tbl {
-		out := sanitizeComment(tt.inp)
-		assert.Equal(t, tt.out, out, "check #%d", n)
-	}
+	sortComments(cc, "+time")
+	assert.Equal(t, "1", cc[0].ID)
+	assert.Equal(t, "2", cc[1].ID)
+	assert.Equal(t, "3", cc[2].ID)
+
+	sortComments(cc, "-time")
+	assert.Equal(t, "3", cc[0].ID)
+	assert.Equal(t, "2", cc[1].ID)
+	assert.Equal(t, "1", cc[2].ID)
+
+	sortComments(cc, "score")
+	assert.Equal(t, "2", cc[0].ID)
+	assert.Equal(t, "1", cc[1].ID)
+	assert.Equal(t, "3", cc[2].ID)
+
+	sortComments(cc, "-score")
+	assert.Equal(t, "3", cc[0].ID)
+	assert.Equal(t, "1", cc[1].ID)
+	assert.Equal(t, "2", cc[2].ID)
 }
