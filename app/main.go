@@ -94,27 +94,7 @@ func main() {
 	}()
 
 	exporter := migrator.Remark{DataStore: dataStore}
-
-	authProviders := func() []auth.Provider {
-		providers := []auth.Provider{}
-
-		if srvOpts.GoogleCID != "" && srvOpts.GoogleCSEC != "" {
-			providers = append(providers, auth.NewGoogle(auth.Params{
-				Cid: srvOpts.GoogleCID, Csecret: srvOpts.GoogleCSEC, SessionStore: sessionStore, RemarkURL: opts.RemarkURL}))
-		}
-		if srvOpts.GithubCID != "" && srvOpts.GithubCSEC != "" {
-			providers = append(providers, auth.NewGithub(auth.Params{
-				Cid: srvOpts.GithubCID, Csecret: srvOpts.GithubCSEC, SessionStore: sessionStore, RemarkURL: opts.RemarkURL}))
-		}
-		if srvOpts.FacebookCID != "" && srvOpts.FacebookCSEC != "" {
-			providers = append(providers, auth.NewFacebook(auth.Params{
-				Cid: srvOpts.FacebookCID, Csecret: srvOpts.FacebookCSEC, SessionStore: sessionStore, RemarkURL: opts.RemarkURL}))
-		}
-		return providers
-	}()
-	if len(authProviders) == 0 {
-		log.Printf("[WARN] no auth providers defined")
-	}
+	authProviders := makeAuthProviders(sessionStore)
 
 	srv := rest.Server{
 		Version:       revision,
@@ -184,6 +164,27 @@ func makeDirs(dirs ...string) error {
 		}
 	}
 	return nil
+}
+
+func makeAuthProviders(sessionStore sessions.Store) []auth.Provider {
+	providers := []auth.Provider{}
+	srvOpts := opts.ServerCommand
+	if srvOpts.GoogleCID != "" && srvOpts.GoogleCSEC != "" {
+		providers = append(providers, auth.NewGoogle(auth.Params{
+			Cid: srvOpts.GoogleCID, Csecret: srvOpts.GoogleCSEC, SessionStore: sessionStore, RemarkURL: opts.RemarkURL}))
+	}
+	if srvOpts.GithubCID != "" && srvOpts.GithubCSEC != "" {
+		providers = append(providers, auth.NewGithub(auth.Params{
+			Cid: srvOpts.GithubCID, Csecret: srvOpts.GithubCSEC, SessionStore: sessionStore, RemarkURL: opts.RemarkURL}))
+	}
+	if srvOpts.FacebookCID != "" && srvOpts.FacebookCSEC != "" {
+		providers = append(providers, auth.NewFacebook(auth.Params{
+			Cid: srvOpts.FacebookCID, Csecret: srvOpts.FacebookCSEC, SessionStore: sessionStore, RemarkURL: opts.RemarkURL}))
+	}
+	if len(providers) == 0 {
+		log.Printf("[WARN] no auth providers defined")
+	}
+	return providers
 }
 
 func setupLog(dbg bool) {
