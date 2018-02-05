@@ -49,7 +49,6 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 | --site          |                      | `remark`               | no    | import | site ID                         |
 | --file          |                      | `disqus.xml`           | no    | import | import file                     |
 
-
 #### Run modes
 
 - `server` activates regular, server mode
@@ -93,6 +92,16 @@ _instructions for google oauth2 setup borrowed from [oauth2_proxy](https://githu
 1. Set "Site URL" to your domain, ex: `https://remark42.mysite.com`
 1. Under **"Facebook login"** / **"Settings"** fill "Valid OAuth redirect URIs" with your callback url constructed as domain + `/auth/facebook/callback`
 1. Select **"App Review"** and turn public flag on. This step may ask you to provide a link to your privacy policy.
+
+#### Initial import from disqus
+
+You can migrate comments from disqus. This procedure runs on server and works with disqus export file.
+
+1. Disqus provides an export of all comments on your site in a g-zipped file. This is found in your Moderation panel at Disqus Admin > Setup > Export. The export will be sent into a queue and then emailed to the address associated with your account once it's ready.
+2. Move this file to your remark42 host and unzip.
+3. Stop remark42 containers if started, i.e. `docker-compose stop` 
+4. Run import command - `docker-compose run --rm /srv/remark import --file=<disqus-export-xml> --site=<your site id>`
+5. Start remark42 containers `docker-compose up -d`
 
 ### Frontend
 

@@ -83,10 +83,9 @@ func main() {
 		return
 	}
 
-	srvOpts := opts.ServerCommand
 	dataService := store.Service{Interface: dataStore, EditDuration: 5 * time.Minute}
 	sessionStore := func() sessions.Store {
-		sess := sessions.NewFilesystemStore(srvOpts.SessionStore, []byte(srvOpts.StoreKey))
+		sess := sessions.NewFilesystemStore(opts.ServerCommand.SessionStore, []byte(opts.ServerCommand.StoreKey))
 		sess.Options.HttpOnly = true
 		sess.Options.Secure = true
 		sess.Options.MaxAge = 3600 * 24 * 365
@@ -120,7 +119,7 @@ func main() {
 		}.Do()
 	}
 
-	srv.Run(srvOpts.Port)
+	srv.Run(opts.ServerCommand.Port)
 }
 
 // makeBoltStore creates store for all sites
