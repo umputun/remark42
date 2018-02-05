@@ -95,8 +95,6 @@ _instructions for google oauth2 setup borrowed from [oauth2_proxy](https://githu
 
 #### Initial import from disqus
 
-You can migrate comments from disqus. This procedure runs on server and works with disqus export file.
-
 1. Disqus provides an export of all comments on your site in a g-zipped file. This is found in your Moderation panel at Disqus Admin > Setup > Export. The export will be sent into a queue and then emailed to the address associated with your account once it's ready.
 2. Move this file to your remark42 host and unzip.
 3. Stop remark42 containers if started, i.e. `docker-compose stop` 
@@ -229,3 +227,4 @@ Sort can be `time` or `score`. Supported sort order with prefix -/+, i.e. `-time
 - Development mode (`--dev`) allows to test remark42 without login and with admin privileges. **should not be used in production deployment**
 - User can vote for the comment multiple times but only to change his/her vote. Double-voting not allowed.
 - User can edit comments in 5 mins window after creation.
+- User ID prefixed by oauth provider name in order to avoid collisions and potential abuse.
