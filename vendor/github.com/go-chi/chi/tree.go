@@ -6,44 +6,61 @@ package chi
 
 import (
 	"fmt"
+	"math"
 	"net/http"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 )
 
 type methodTyp int
 
 const (
-	mCONNECT methodTyp = 1 << iota
+	mSTUB methodTyp = 1 << iota
+	mCONNECT
 	mDELETE
 	mGET
 	mHEAD
-	mLINK
 	mOPTIONS
 	mPATCH
 	mPOST
 	mPUT
 	mTRACE
-	mUNLINK
-	mSTUB
-
-	mALL methodTyp = mCONNECT | mDELETE | mGET | mHEAD | mLINK |
-		mOPTIONS | mPATCH | mPOST | mPUT | mTRACE | mUNLINK
 )
+
+var mALL = mCONNECT | mDELETE | mGET | mHEAD |
+	mOPTIONS | mPATCH | mPOST | mPUT | mTRACE
 
 var methodMap = map[string]methodTyp{
 	"CONNECT": mCONNECT,
 	"DELETE":  mDELETE,
 	"GET":     mGET,
 	"HEAD":    mHEAD,
-	"LINK":    mLINK,
 	"OPTIONS": mOPTIONS,
 	"PATCH":   mPATCH,
 	"POST":    mPOST,
 	"PUT":     mPUT,
 	"TRACE":   mTRACE,
-	"UNLINK":  mUNLINK,
+}
+
+// RegisterMethod adds support for custom HTTP method handlers, available
+// via Router#Method and Router#MethodFunc
+func RegisterMethod(method string) {
+	if method == "" {
+		return
+	}
+	method = strings.ToUpper(method)
+	if _, ok := methodMap[method]; ok {
+		return
+	}
+	n := len(methodMap)
+	if n > strconv.IntSize {
+		panic(fmt.Sprintf("chi: max number of methods reached (%d)", strconv.IntSize))
+	}
+	mt := methodTyp(math.Exp2(float64(n)))
+	methodMap[method] = mt
+	mALL |= mt
 }
 
 type nodeTyp uint8
@@ -341,7 +358,7 @@ func (n *node) setEndpoint(method methodTyp, handler http.Handler, pattern strin
 	}
 }
 
-func (n *node) FindRoute(rctx *Context, method methodTyp, path string) endpoints {
+func (n *node) FindRoute(rctx *Context, method methodTyp, path string) (*node, endpoints, http.Handler) {
 	// Reset the context routing pattern and params
 	rctx.routePattern = ""
 	rctx.routeParams.Keys = rctx.routeParams.Keys[:0]
@@ -350,7 +367,7 @@ func (n *node) FindRoute(rctx *Context, method methodTyp, path string) endpoints
 	// Find the routing handlers for the path
 	rn := n.findRoute(rctx, method, path)
 	if rn == nil {
-		return nil
+		return nil, nil, nil
 	}
 
 	// Record the routing params in the request lifecycle
@@ -363,7 +380,7 @@ func (n *node) FindRoute(rctx *Context, method methodTyp, path string) endpoints
 		rctx.RoutePatterns = append(rctx.RoutePatterns, rctx.routePattern)
 	}
 
-	return rn.endpoints
+	return rn, rn.endpoints, rn.endpoints[method].handler
 }
 
 // Recursive edge traversal by checking all nodeTyp groups along the way.
@@ -407,7 +424,7 @@ func (n *node) findRoute(rctx *Context, method methodTyp, path string) *node {
 				// label for param nodes is the delimiter byte
 				p := strings.IndexByte(xsearch, xn.tail)
 
-				if p <= 0 {
+				if p < 0 {
 					if xn.tail == '/' {
 						p = len(xsearch)
 					} else {
@@ -514,7 +531,7 @@ func (n *node) isLeaf() bool {
 	return n.endpoints != nil
 }
 
-func (n *node) matchPattern(pattern string) bool {
+func (n *node) findPattern(pattern string) bool {
 	nn := n
 	for _, nds := range nn.children {
 		if len(nds) == 0 {
@@ -551,7 +568,7 @@ func (n *node) matchPattern(pattern string) bool {
 			return true
 		}
 
-		return n.matchPattern(xpattern)
+		return n.findPattern(xpattern)
 	}
 	return false
 }
@@ -643,8 +660,22 @@ func patNextSegment(pattern string) (nodeTyp, string, string, byte, int, int) {
 	if ps >= 0 {
 		// Param/Regexp pattern is next
 		nt := ntParam
-		pe := strings.Index(pattern, "}")
-		if pe < 0 {
+
+		// Read to closing } taking into account opens and closes in curl count (cc)
+		cc := 0
+		pe := ps
+		for i, c := range pattern[ps:] {
+			if c == '{' {
+				cc++
+			} else if c == '}' {
+				cc--
+				if cc == 0 {
+					pe = ps + i
+					break
+				}
+			}
+		}
+		if pe == ps {
 			panic("chi: route param closing delimiter '}' is missing")
 		}
 
@@ -660,6 +691,15 @@ func patNextSegment(pattern string) (nodeTyp, string, string, byte, int, int) {
 			nt = ntRegexp
 			rexpat = key[idx+1:]
 			key = key[:idx]
+		}
+
+		if len(rexpat) > 0 {
+			if rexpat[0] != '^' {
+				rexpat = "^" + rexpat
+			}
+			if rexpat[len(rexpat)-1] != '$' {
+				rexpat = rexpat + "$"
+			}
 		}
 
 		return nt, key, rexpat, tail, ps, pe
