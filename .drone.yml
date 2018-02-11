@@ -10,12 +10,25 @@ pipeline:
       - cd app
       - go build -v ./...
 
-  docker:
+  docker-master:
     image: plugins/docker
     repo: umputun/remark
     secrets: [ docker_username, docker_password ]
     tags: 
       - ${DRONE_COMMIT_BRANCH/\//-}
+      - latest
+    when:
+      branch: [master, release/*]
+
+  docker-branch:
+    image: plugins/docker
+    repo: umputun/remark
+    secrets: [ docker_username, docker_password ]
+    tags: 
+      - ${DRONE_COMMIT_BRANCH/\//-}
+    when:
+      branch:
+        exclude: [master, release/*]
 
   deploy:
     image: appleboy/drone-ssh
