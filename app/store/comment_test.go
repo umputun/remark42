@@ -6,18 +6,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestComment_GenID(t *testing.T) {
-	c1 := Comment{}
-	assert.Nil(t, c1.GenID())
-	assert.True(t, len(c1.ID) > 8, "cid1 is long enough")
-
-	c2 := Comment{}
-	assert.Nil(t, c2.GenID())
-	assert.True(t, len(c2.ID) > 8, "cid2 is long enough")
-
-	assert.NotEqual(t, c1.ID, c2.ID, "cids different")
-}
-
 func TestComment_Sanitize(t *testing.T) {
 
 	tbl := []struct {

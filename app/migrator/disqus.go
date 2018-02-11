@@ -71,6 +71,8 @@ func (d *Disqus) Import(r io.Reader, siteID string) (err error) {
 	return nil
 }
 
+// convert disqus stream (xml) from reader and fill channel of comments.
+// runs async and closes channel on completion.
 func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 
 	postsMap := map[string]string{} // tid:url

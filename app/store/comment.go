@@ -1,15 +1,11 @@
 package store
 
 import (
-	"crypto/rand"
-	"crypto/sha1"
-	"fmt"
 	"html/template"
 	"strings"
 	"time"
 
 	"github.com/microcosm-cc/bluemonday"
-	"github.com/pkg/errors"
 )
 
 // Comment represents a single comment with optional reference to its parent
@@ -60,20 +56,6 @@ type PostInfo struct {
 type BlockedUser struct {
 	ID        string    `json:"id"`
 	Timestamp time.Time `json:"time"`
-}
-
-// GenID generates sha1(random) string
-func (c *Comment) GenID() error {
-	b := make([]byte, 64)
-	if _, err := rand.Read(b); err != nil {
-		return errors.Wrap(err, "can't get random")
-	}
-	s := sha1.New()
-	if _, err := s.Write(b); err != nil {
-		return errors.Wrap(err, "can't make sha1 for random")
-	}
-	c.ID = fmt.Sprintf("%x", s.Sum(nil))
-	return nil
 }
 
 // Sanitize clean dangerous html/js from the comment

@@ -2,13 +2,12 @@
 package tollbooth
 
 import (
-	"net/http"
-	"strings"
-	"time"
-
 	"github.com/didip/tollbooth/config"
 	"github.com/didip/tollbooth/errors"
 	"github.com/didip/tollbooth/libstring"
+	"net/http"
+	"strings"
+	"time"
 )
 
 // NewLimiter is a convenience function to config.NewLimiter.

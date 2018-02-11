@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/boltdb/bolt"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 )
 
@@ -59,9 +60,7 @@ func (b *BoltDB) Create(comment Comment) (commentID string, err error) {
 
 	// fill ID and time if empty
 	if comment.ID == "" {
-		if err = comment.GenID(); err != nil {
-			return "", err
-		}
+		comment.ID = uuid.New().String()
 	}
 	if comment.Timestamp.IsZero() {
 		comment.Timestamp = time.Now()
