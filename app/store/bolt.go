@@ -15,7 +15,7 @@ import (
 
 // BoltDB implements store.Interface, represents multiple sites with multiplexing to different bolt dbs. Thread safe.
 // there are 4 types of buckets:
-//  - comments for post. Each url (post) makes its own bucket and each k:v pair is commentID:comment
+//  - comments for post in "posts" top-level bucket. Each url (post) makes its own bucket and each k:v pair is commentID:comment
 //  - history of all comments. They all in a single "last" bucket (per site) and key is defined by ref struct as ts+commentID
 //    value is not full comment but a reference combined from post-url+commentID
 //  - user to comment references in "users" bucket. It used to get comments for user. Key is userID and value
@@ -39,8 +39,8 @@ const (
 
 // BoltSite defines single site param
 type BoltSite struct {
-	FileName string
-	SiteID   string
+	FileName string // full path to boltdb
+	SiteID   string // ID to access given site
 }
 
 // NewBoltDB makes persistent boltdb-based store
@@ -49,7 +49,7 @@ func NewBoltDB(sites ...BoltSite) (*BoltDB, error) {
 	result := BoltDB{dbs: make(map[string]*bolt.DB)}
 	for _, site := range sites {
 
-		db, err := bolt.Open(site.FileName, 0600, &bolt.Options{Timeout: 5 * time.Second})
+		db, err := bolt.Open(site.FileName, 0600, &bolt.Options{Timeout: 30 * time.Second})
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to make boltdb for %s", site.FileName)
 		}
@@ -74,7 +74,7 @@ func NewBoltDB(sites ...BoltSite) (*BoltDB, error) {
 		})
 
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to create top level bucket(s)")
+			return nil, errors.Wrap(err, "failed to create top level bucket)")
 		}
 
 		result.dbs[site.SiteID] = db
@@ -92,6 +92,7 @@ func (b *BoltDB) Create(comment Comment) (commentID string, err error) {
 	if comment.Timestamp.IsZero() {
 		comment.Timestamp = time.Now()
 	}
+	// reset votes if nothing
 	if comment.Votes == nil {
 		comment.Votes = make(map[string]bool)
 	}
@@ -171,10 +172,6 @@ func (b *BoltDB) Delete(locator Locator, commentID string) error {
 			return errors.Wrapf(err, "can't save deleted comment for key %s from bucket %s", commentID, locator.URL)
 		}
 
-		// if err := bucket.Delete([]byte(commentID)); err != nil {
-		// 	return errors.Wrapf(err, "can't delete key %s from bucket %s", commentID, locator.URL)
-		// }
-
 		// delete from "last" bucket
 		bucket = tx.Bucket([]byte(lastBucketName))
 		if bucket == nil {
@@ -231,8 +228,8 @@ func (b *BoltDB) Last(siteID string, max int) (comments []Comment, err error) {
 	}
 
 	err = bdb.View(func(tx *bolt.Tx) error {
-		lastBucket := tx.Bucket([]byte(lastBucketName))
-		c := lastBucket.Cursor()
+		lastBkt := tx.Bucket([]byte(lastBucketName))
+		c := lastBkt.Cursor()
 		for k, v := c.Last(); k != nil; k, v = c.Prev() {
 			url, commentID, e := refFromValue(v).parseValue()
 			if e != nil {
@@ -289,12 +286,7 @@ func (b *BoltDB) SetBlock(siteID string, userID string, status bool) error {
 	}
 
 	return bdb.Update(func(tx *bolt.Tx) error {
-
-		bucket, e := tx.CreateBucketIfNotExists([]byte(blocksBucketName))
-		if e != nil {
-			return errors.Errorf("no bucket %s in store", blocksBucketName)
-		}
-
+		bucket := tx.Bucket([]byte(blocksBucketName))
 		switch status {
 		case true:
 			if e := bucket.Put([]byte(userID), []byte(time.Now().Format(time.RFC3339Nano))); e != nil {
@@ -318,11 +310,8 @@ func (b *BoltDB) IsBlocked(siteID string, userID string) (blocked bool) {
 	}
 
 	_ = bdb.View(func(tx *bolt.Tx) error {
-		blocked = false
 		bucket := tx.Bucket([]byte(blocksBucketName))
-		if bucket != nil && bucket.Get([]byte(userID)) != nil {
-			blocked = true
-		}
+		blocked = bucket.Get([]byte(userID)) != nil
 		return nil
 	})
 	return blocked
@@ -363,12 +352,7 @@ func (b BoltDB) List(siteID string) (list []PostInfo, err error) {
 	}
 
 	err = bdb.View(func(tx *bolt.Tx) error {
-
 		postsBkt := tx.Bucket([]byte(postsBucketName))
-		if postsBkt == nil {
-			return errors.Errorf("can't get bucket %s", postsBucketName)
-		}
-
 		return postsBkt.ForEach(func(name []byte, _ []byte) error {
 			postURL := string(name)
 			bkt, e := b.getPostBucket(tx, postURL)
@@ -397,10 +381,6 @@ func (b *BoltDB) User(siteID string, userID string) (comments []Comment, totalCo
 	// get list of references to comments
 	err = bdb.View(func(tx *bolt.Tx) error {
 		userBucket := tx.Bucket([]byte(userBucketName))
-		if userBucket == nil {
-			return errors.Errorf("no bucket %s in store", userBucketName)
-		}
-
 		userBkt := userBucket.Bucket([]byte(userID))
 		if userBkt == nil {
 			return errors.Errorf("no comments for user %s in store", userID)
