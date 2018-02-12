@@ -67,7 +67,7 @@ export default class Root extends Component {
                   pinnedComments.map(comment => (
                     <Comment
                       data={comment}
-                      mods={{ level: 0, pinned: true }}
+                      mods={{ level: 0 }}
                       mix="root__pinned-comment"
                     />
                   ))

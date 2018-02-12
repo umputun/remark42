@@ -71,28 +71,30 @@ export default class Comment extends Component {
   }
 
   onBlockClick() {
-    const { user: { id } } = this.props.data;
+    const { id, user: { id: userId } } = this.props.data;
 
     this.setState({ userBlocked: true });
 
-    api.blockUser({ id });
+    api.blockUser({ id: userId }).then(() => {
+      api.getComment({ id }).then(comment => store.replaceComment(comment));
+    });
   }
 
   onUnblockClick() {
-    const { user: { id } } = this.props.data;
+    const { id, user: { id: userId } } = this.props.data;
 
     this.setState({ userBlocked: false });
 
-    api.unblockUser({ id });
+    api.unblockUser({ id: userId }).then(() => {
+      api.getComment({ id }).then(comment => store.replaceComment(comment));
+    });
   }
 
   onDeleteClick() {
     const { id } = this.props.data;
 
     api.remove({ id }).then(() => {
-      if (this.props.onDelete) {
-        this.props.onDelete();
-      }
+      api.getComment({ id }).then(comment => store.replaceComment(comment));
     });
   }
 
@@ -156,7 +158,8 @@ export default class Comment extends Component {
     };
 
     const defaultMods = {
-      marked: mods.pinned ? null : pinned,
+      pinned,
+      useless: userBlocked,
       // TODO: add default view mod or don't?
       view: o.user.admin ? 'admin' : null,
     };
