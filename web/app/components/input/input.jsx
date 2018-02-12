@@ -46,6 +46,7 @@ export default class Input extends Component {
         }
 
         this.fieldNode.value = '';
+        this.setState({ height: null });
       })
       .catch(() => {
         // TODO: do smth?
