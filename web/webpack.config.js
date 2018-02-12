@@ -13,6 +13,28 @@ const publicFolder = path.resolve(__dirname, 'public');
 const env = process.env.NODE_ENV || 'dev';
 const hash = env === 'production' ? '' : '.[hash]';
 
+const commonStyleLoaders = [
+  'css-loader',
+  {
+    loader: 'postcss-loader',
+    options: {
+      plugins: [
+        require('autoprefixer')({ browsers: ['> 1%'] }),
+        require('postcss-url')({ url: 'inline', maxSize: 5 }),
+        require('postcss-wrap')({ selector: `#${id}` }),
+        require('postcss-csso'),
+      ]
+    }
+  },
+  {
+    loader: 'sass-loader',
+    options: {
+      includePaths: [path.resolve(__dirname, 'app')],
+      // data: fs.readFileSync(path.resolve(__dirname, 'common/vars/vars.scss'), 'utf-8')
+    }
+  }
+];
+
 module.exports = {
   context: __dirname,
   entry: {
@@ -20,8 +42,7 @@ module.exports = {
   },
   output: {
     path: publicFolder,
-    // publicPath: '/path/to/public',
-    filename: `app${hash}.js`
+    filename: `remark${hash}.js`
   },
   resolve: {
     extensions: ['.jsx', '.js'],
@@ -47,30 +68,15 @@ module.exports = {
       },
       {
         test: /\.scss$/,
-        use: ExtractText.extract({
-          fallback: 'style-loader',
-          use: [
-            'css-loader',
-            {
-              loader: 'postcss-loader',
-              options: {
-                plugins: [
-                  require('autoprefixer')({ browsers: ['> 1%'] }),
-                  require('postcss-url')({ url: 'inline', maxSize: 5 }),
-                  require('postcss-wrap')({ selector: `#${id}` }),
-                  require('postcss-csso'),
-                ]
-              }
-            },
-            {
-              loader: 'sass-loader',
-              options: {
-                includePaths: [path.resolve(__dirname, 'app')],
-                // data: fs.readFileSync(path.resolve(__dirname, 'common/vars/vars.scss'), 'utf-8')
-              }
-            }
-          ]
-        }),
+        use: env === 'production'
+          ? ExtractText.extract({
+            fallback: 'style-loader',
+            use: commonStyleLoaders,
+          })
+          : [
+            'style-loader',
+            ...commonStyleLoaders,
+          ],
       },
       {
         test: /\.(png|jpg|jpeg|gif)$/,
@@ -91,13 +97,13 @@ module.exports = {
     new Define({
       'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),
     }),
-    new Html({ template: path.resolve(__dirname, 'index.ejs') }), // we should add it only in dev
+    new Html({ template: path.resolve(__dirname, 'index.ejs') }), // TODO: we should add it only in dev
     new ExtractText({
-      filename: `app${hash}.css`,
+      filename: `remark${hash}.css`,
       allChunks: true
     }),
-    new webpack.optimize.UglifyJsPlugin(), // TODO: enable it
     new webpack.optimize.ModuleConcatenationPlugin(),
+    ...(env === 'production' ? [new webpack.optimize.UglifyJsPlugin()] : []),
   ],
   watch: env === 'dev',
   watchOptions: {
