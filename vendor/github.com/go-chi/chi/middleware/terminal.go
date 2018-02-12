@@ -52,12 +52,12 @@ func init() {
 }
 
 // colorWrite
-func cW(w io.Writer, useColor bool, color []byte, s string, args ...interface{}) {
-	if isTTY && useColor {
+func cW(w io.Writer, color []byte, s string, args ...interface{}) {
+	if isTTY {
 		w.Write(color)
 	}
 	fmt.Fprintf(w, s, args...)
-	if isTTY && useColor {
+	if isTTY {
 		w.Write(reset)
 	}
 }
