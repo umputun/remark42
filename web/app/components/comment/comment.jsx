@@ -65,7 +65,7 @@ export default class Comment extends Component {
 
     this.setState({ pinned: false });
 
-    api.pin({ id, url }).then(() => {
+    api.unpin({ id, url }).then(() => {
       api.getComment({ id }).then(comment => store.replaceComment(comment));
     });
   }
@@ -144,6 +144,7 @@ export default class Comment extends Component {
     // TODO: add smth that will count 'hours ago' (mb this: https://github.com/catamphetamine/javascript-time-ago)
     // TODO: check out stash's impl;
     // TODO: don't forget about optional locales, m?
+    // TODO: also date must be a link to the comment
     const timeStr = `${time.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
     const o = {
       ...data,
@@ -155,7 +156,7 @@ export default class Comment extends Component {
     };
 
     const defaultMods = {
-      pinned,
+      marked: mods.pinned ? null : pinned,
       // TODO: add default view mod or don't?
       view: o.user.admin ? 'admin' : null,
     };
@@ -184,9 +185,13 @@ export default class Comment extends Component {
 
               <span className="comment__time">{o.time}</span>
 
-              <span className="comment__controls">
-                <span className="comment__action" onClick={this.onReplyClick}>reply</span>
-              </span>
+              {
+                !mods.pinned && (
+                  <span className="comment__controls">
+                    <span className="comment__action" onClick={this.onReplyClick}>reply</span>
+                  </span>
+                )
+              }
 
               {
                 isAdmin &&

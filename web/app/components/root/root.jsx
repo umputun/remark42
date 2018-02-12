@@ -4,6 +4,7 @@ import api from 'common/api';
 import { url, id } from 'common/settings';
 import store from 'common/store';
 
+import Comment from 'components/comment';
 import Input from 'components/input';
 import Thread from 'components/thread';
 
@@ -51,10 +52,29 @@ export default class Root extends Component {
       );
     }
 
+    // TODO: i think we should do it on backend
+    const pinnedComments = store.getPinnedComments();
+
     return (
       <div id={id}>
         <div className="root root__loading" id={id}>
           <Input mix="root__input" onSubmit={this.addComment}/>
+
+          {
+            !!pinnedComments.length && (
+              <div className="root__pinned-comments">
+                {
+                  pinnedComments.map(comment => (
+                    <Comment
+                      data={comment}
+                      mods={{ level: 0, pinned: true }}
+                      mix="root__pinned-comment"
+                    />
+                  ))
+                }
+              </div>
+            )
+          }
 
           {
             comments.map(thread => (

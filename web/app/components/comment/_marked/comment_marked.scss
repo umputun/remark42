@@ -1,0 +1,9 @@
+@import 'common/variables';
+
+.comment_marked {
+  &, &.comment_view_admin {
+    .comment__username {
+      font-weight: 700;
+    }
+  }
+}

@@ -25,6 +25,6 @@ require('./__vote/_type/_up/comment__vote_type_up.scss');
 
 require('./_level/comment_level.scss');
 
-require('./_pinned/comment_pinned.scss');
+require('./_marked/comment_marked.scss');
 
 require('./_view/_admin/comment_view_admin.scss');
