@@ -405,8 +405,8 @@ func (s *Server) voteCtrl(w http.ResponseWriter, r *http.Request) {
 
 // serves static files from /web
 func (s *Server) addFileServer(r chi.Router, path string, root http.FileSystem) {
+	log.Printf("[INFO] run file server for %s", root)
 	fs := http.StripPrefix(path, http.FileServer(root))
-
 	if path != "/" && path[len(path)-1] != '/' {
 		r.Get(path, http.RedirectHandler(path+"/", 301).ServeHTTP)
 		path += "/"
@@ -415,7 +415,7 @@ func (s *Server) addFileServer(r chi.Router, path string, root http.FileSystem) 
 
 	r.Get(path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// don't show dirs, just serve files
-		if strings.HasSuffix(r.URL.Path, "/") {
+		if strings.HasSuffix(r.URL.Path, "/") && len(r.URL.Path) > 1 && r.URL.Path != "/web/" {
 			http.NotFound(w, r)
 			return
 		}
