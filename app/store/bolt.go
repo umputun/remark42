@@ -56,20 +56,13 @@ func NewBoltDB(sites ...BoltSite) (*BoltDB, error) {
 
 		// make top-level buckets
 		err = db.Update(func(tx *bolt.Tx) error {
+			topBuckets := []string{postsBucketName, lastBucketName, userBucketName, blocksBucketName}
 			errs := new(multierror.Error)
+			for _, bktName := range topBuckets {
+				_, e := tx.CreateBucketIfNotExists([]byte(bktName))
+				errs = multierror.Append(errs, e)
 
-			_, e := tx.CreateBucketIfNotExists([]byte(postsBucketName))
-			errs = multierror.Append(errs, e)
-
-			_, e = tx.CreateBucketIfNotExists([]byte(lastBucketName))
-			errs = multierror.Append(errs, e)
-
-			_, e = tx.CreateBucketIfNotExists([]byte(userBucketName))
-			errs = multierror.Append(errs, e)
-
-			_, e = tx.CreateBucketIfNotExists([]byte(blocksBucketName))
-			errs = multierror.Append(errs, e)
-
+			}
 			return errs.ErrorOrNil()
 		})
 
