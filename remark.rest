@@ -26,7 +26,7 @@ Content-Type: application/json
 
 {
 	"text": "edit comment blah http://radio-t.com 12345",
-  "summary": "fix blah"
+  	"summary": "fix blah"
 }
 
 ### pin comment
@@ -45,7 +45,7 @@ GET {{host}}/api/v1/id/3665976683?site=remark&url=https://radio-t.com/p/2017/12/
 GET {{host}}/api/v1/id/a2ddb8d2f65008ee1a1e3af8df0f26beb042309c?site=remark&url=https://radio-t.com/blah1
 
 ### get comment by user id
-GET {{host}}/api/v1/comments?site=remark&user=umputun
+GET {{host}}/api/v1/comments?site=remark&user=disqus_umputun
 
 ### get counts
 GET {{host}}/api/v1/count?site=remark&url=https://radio-t.com/p/2017/12/16/podcast-576/
@@ -57,10 +57,10 @@ GET {{host}}/api/v1/list?site=remark
 GET {{host}}/api/v1/config
 
 ### block user
-PUT {{host}}/api/v1/admin/user/grigorybakunov?site=remark&block=1
+PUT {{host}}/api/v1/admin/user/disqus_grigorybakunov?site=remark&block=1
 
 ### unblock user
-PUT {{host}}/api/v1/admin/user/grigorybakunov?site=remark&block=0
+PUT {{host}}/api/v1/admin/user/disqus_grigorybakunov?site=remark&block=0
 
 ### list blocked user
 GET {{host}}/api/v1/admin/blocked?site=remark
