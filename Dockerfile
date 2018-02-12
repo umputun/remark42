@@ -21,7 +21,7 @@ ADD web /srv/web
 RUN apk add --no-cache --update git python make g++
 RUN \
     cd /srv/web && \
-    NODE_ENV=production npm i && npm run build
+    npm i && npm run build
 
 
 FROM umputun/baseimage:micro-latest
