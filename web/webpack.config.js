@@ -11,7 +11,7 @@ const Define = webpack.DefinePlugin;
 const { id } = require('./app/common/settings');
 const publicFolder = path.resolve(__dirname, 'public');
 const env = process.env.NODE_ENV || 'dev';
-const hash = env === 'production' ? '.[chunkhash]' : '.[hash]';
+const hash = env === 'production' ? '' : '.[hash]';
 
 module.exports = {
   context: __dirname,
@@ -47,29 +47,30 @@ module.exports = {
       },
       {
         test: /\.scss$/,
-        use: [
-          // TODO: style-loader must be turned on only for dev; for build we need extractCSS
-          'style-loader',
-          'css-loader',
-          {
-            loader: 'postcss-loader',
-            options: {
-              plugins: [
-                require('autoprefixer')({ browsers: ['> 1%'] }),
-                require('postcss-url')({ url: 'inline', maxSize: 5 }),
-                require('postcss-wrap')({ selector: `#${id}` }),
-                require('postcss-csso'),
-              ]
+        use: ExtractText.extract({
+          fallback: 'style-loader',
+          use: [
+            'css-loader',
+            {
+              loader: 'postcss-loader',
+              options: {
+                plugins: [
+                  require('autoprefixer')({ browsers: ['> 1%'] }),
+                  require('postcss-url')({ url: 'inline', maxSize: 5 }),
+                  require('postcss-wrap')({ selector: `#${id}` }),
+                  require('postcss-csso'),
+                ]
+              }
+            },
+            {
+              loader: 'sass-loader',
+              options: {
+                includePaths: [path.resolve(__dirname, 'app')],
+                // data: fs.readFileSync(path.resolve(__dirname, 'common/vars/vars.scss'), 'utf-8')
+              }
             }
-          },
-          {
-            loader: 'sass-loader',
-            options: {
-              includePaths: [path.resolve(__dirname, 'app')],
-              // data: fs.readFileSync(path.resolve(__dirname, 'common/vars/vars.scss'), 'utf-8')
-            }
-          }
-        ]
+          ]
+        }),
       },
       {
         test: /\.(png|jpg|jpeg|gif)$/,
@@ -95,7 +96,7 @@ module.exports = {
       filename: `app${hash}.css`,
       allChunks: true
     }),
-    // new webpack.optimize.UglifyJsPlugin(), // TODO: enable it
+    new webpack.optimize.UglifyJsPlugin(), // TODO: enable it
     new webpack.optimize.ModuleConcatenationPlugin(),
   ],
   watch: env === 'dev',
