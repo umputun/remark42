@@ -27,7 +27,7 @@ RUN \
 FROM umputun/baseimage:micro-latest
 
 COPY --from=build-backend /go/src/github.com/umputun/remark/remark /srv/
-COPY --from=build-frontend /go/src/github.com/umputun/remark/web/public/ /srv/web
+COPY --from=build-frontend /srv/web/public/ /srv/web
 RUN chown -R umputun:umputun /srv
 
 USER umputun
