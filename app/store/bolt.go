@@ -9,6 +9,7 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/google/uuid"
+	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 )
 
@@ -26,6 +27,7 @@ type BoltDB struct {
 
 const (
 	// top level buckets
+	postsBucketName  = "posts"
 	lastBucketName   = "last"
 	userBucketName   = "users"
 	blocksBucketName = "block"
@@ -46,10 +48,35 @@ func NewBoltDB(sites ...BoltSite) (*BoltDB, error) {
 	log.Printf("[INFO] bolt store for sites %+v", sites)
 	result := BoltDB{dbs: make(map[string]*bolt.DB)}
 	for _, site := range sites {
+
 		db, err := bolt.Open(site.FileName, 0600, &bolt.Options{Timeout: 5 * time.Second})
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to make boltdb for %s", site.FileName)
 		}
+
+		// make top-level buckets
+		err = db.Update(func(tx *bolt.Tx) error {
+			errs := new(multierror.Error)
+
+			_, e := tx.CreateBucketIfNotExists([]byte(postsBucketName))
+			errs = multierror.Append(errs, e)
+
+			_, e = tx.CreateBucketIfNotExists([]byte(lastBucketName))
+			errs = multierror.Append(errs, e)
+
+			_, e = tx.CreateBucketIfNotExists([]byte(userBucketName))
+			errs = multierror.Append(errs, e)
+
+			_, e = tx.CreateBucketIfNotExists([]byte(blocksBucketName))
+			errs = multierror.Append(errs, e)
+
+			return errs.ErrorOrNil()
+		})
+
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create top level bucket(s)")
+		}
+
 		result.dbs[site.SiteID] = db
 	}
 	return &result, nil
@@ -76,9 +103,10 @@ func (b *BoltDB) Create(comment Comment) (commentID string, err error) {
 		return "", err
 	}
 	err = bdb.Update(func(tx *bolt.Tx) error {
-		bucket, e := tx.CreateBucketIfNotExists([]byte(comment.Locator.URL)) // bucket per post url
+
+		bucket, e := b.makePostBucket(tx, comment.Locator.URL)
 		if e != nil {
-			return errors.Wrapf(e, "can't make or open bucket", comment.Locator.URL)
+			return e
 		}
 
 		// check if key already in store, reject doubles
@@ -92,10 +120,7 @@ func (b *BoltDB) Create(comment Comment) (commentID string, err error) {
 		}
 
 		// add reference to comment to "last" bucket
-		bucket, e = tx.CreateBucketIfNotExists([]byte(lastBucketName))
-		if e != nil {
-			return errors.Wrapf(e, "can't make bucket %s", lastBucketName)
-		}
+		bucket = tx.Bucket([]byte(lastBucketName))
 		rv := refFromComment(comment)
 		e = bucket.Put([]byte(rv.key), []byte(rv.value))
 		if e != nil {
@@ -103,10 +128,7 @@ func (b *BoltDB) Create(comment Comment) (commentID string, err error) {
 		}
 
 		// add reference to commentID to "users" bucket
-		bucket, e = tx.CreateBucketIfNotExists([]byte(userBucketName))
-		if e != nil {
-			return errors.Wrapf(e, "can't make bucket %s", userBucketName)
-		}
+		bucket = tx.Bucket([]byte(userBucketName))
 		// get bucket for userID
 		userBkt, e := bucket.CreateBucketIfNotExists([]byte(comment.User.ID))
 		if e != nil {
@@ -132,10 +154,9 @@ func (b *BoltDB) Delete(locator Locator, commentID string) error {
 
 	return bdb.Update(func(tx *bolt.Tx) error {
 
-		// mark deleted from post bucket, but don't remove. Needed to keep tree
-		bucket := tx.Bucket([]byte(locator.URL))
-		if bucket == nil {
-			return errors.Errorf("no bucket %s in store", locator.URL)
+		bucket, e := b.getPostBucket(tx, locator.URL)
+		if e != nil {
+			return e
 		}
 
 		comment, err := b.load(bucket, []byte(commentID))
@@ -177,9 +198,10 @@ func (b *BoltDB) Find(locator Locator, sortFld string) (comments []Comment, err 
 	}
 
 	err = bdb.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte(locator.URL))
-		if bucket == nil {
-			return errors.Errorf("no bucket %s in store", locator.URL)
+
+		bucket, e := b.getPostBucket(tx, locator.URL)
+		if e != nil {
+			return e
 		}
 
 		return bucket.ForEach(func(k, v []byte) error {
@@ -210,22 +232,18 @@ func (b *BoltDB) Last(siteID string, max int) (comments []Comment, err error) {
 
 	err = bdb.View(func(tx *bolt.Tx) error {
 		lastBucket := tx.Bucket([]byte(lastBucketName))
-		if lastBucket == nil {
-			return errors.Errorf("no bucket %s in store", lastBucketName)
-		}
-
 		c := lastBucket.Cursor()
 		for k, v := c.Last(); k != nil; k, v = c.Prev() {
 			url, commentID, e := refFromValue(v).parseValue()
 			if e != nil {
 				return e
 			}
-			urlBucket := tx.Bucket([]byte(url))
-			if urlBucket == nil {
-				return errors.Errorf("no bucket %s in store", url)
+			postBkt, e := b.getPostBucket(tx, url)
+			if e != nil {
+				return e
 			}
 
-			comment, e := b.load(urlBucket, []byte(commentID))
+			comment, e := b.load(postBkt, []byte(commentID))
 			if e != nil {
 				log.Printf("[WARN] can't load comment for %s from store %s", commentID, url)
 				continue
@@ -251,9 +269,9 @@ func (b *BoltDB) Count(locator Locator) (count int, err error) {
 	}
 
 	err = bdb.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte(locator.URL))
-		if bucket == nil {
-			return errors.Errorf("no bucket %s in store %s", locator.URL, locator.SiteID)
+		bucket, e := b.getPostBucket(tx, locator.URL)
+		if e != nil {
+			return e
 		}
 		count = bucket.Stats().KeyN
 		return nil
@@ -345,11 +363,19 @@ func (b BoltDB) List(siteID string) (list []PostInfo, err error) {
 	}
 
 	err = bdb.View(func(tx *bolt.Tx) error {
-		return tx.ForEach(func(name []byte, bkt *bolt.Bucket) error {
+
+		postsBkt := tx.Bucket([]byte(postsBucketName))
+		if postsBkt == nil {
+			return errors.Errorf("can't get bucket %s", postsBucketName)
+		}
+
+		return postsBkt.ForEach(func(name []byte, _ []byte) error {
 			postURL := string(name)
-			if postURL != lastBucketName && postURL != userBucketName {
-				list = append(list, PostInfo{URL: postURL, Count: bkt.Stats().KeyN})
+			bkt, e := b.getPostBucket(tx, postURL)
+			if e != nil {
+				return e
 			}
+			list = append(list, PostInfo{URL: postURL, Count: bkt.Stats().KeyN})
 			return nil
 		})
 	})
@@ -418,11 +444,10 @@ func (b *BoltDB) Get(locator Locator, commentID string) (comment Comment, err er
 	}
 
 	err = bdb.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte(locator.URL))
-		if bucket == nil {
-			return errors.Errorf("no bucket %s in store", locator.URL)
+		bucket, e := b.getPostBucket(tx, locator.URL)
+		if e != nil {
+			return e
 		}
-		var e error
 		comment, e = b.load(bucket, []byte(commentID))
 		return e
 	})
@@ -446,12 +471,36 @@ func (b *BoltDB) Put(locator Locator, comment Comment) error {
 	}
 
 	return bdb.Update(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte(locator.URL))
-		if bucket == nil {
-			return errors.Errorf("no bucket %s in store", locator.URL)
+		bucket, e := b.getPostBucket(tx, locator.URL)
+		if e != nil {
+			return e
 		}
 		return b.save(bucket, []byte(comment.ID), comment)
 	})
+}
+
+func (b *BoltDB) getPostBucket(tx *bolt.Tx, postURL string) (*bolt.Bucket, error) {
+	postsBkt := tx.Bucket([]byte(postsBucketName))
+	if postsBkt == nil {
+		return nil, errors.Errorf("no bucket %s", postsBucketName)
+	}
+	res := postsBkt.Bucket([]byte(postURL))
+	if res == nil {
+		return nil, errors.Errorf("no bucket %s in store", postURL)
+	}
+	return res, nil
+}
+
+func (b *BoltDB) makePostBucket(tx *bolt.Tx, postURL string) (*bolt.Bucket, error) {
+	postsBkt := tx.Bucket([]byte(postsBucketName))
+	if postsBkt == nil {
+		return nil, errors.Errorf("no bucket %s", postsBucketName)
+	}
+	res, err := postsBkt.CreateBucketIfNotExists([]byte(postURL))
+	if err != nil {
+		return nil, errors.Wrapf(err, "no bucket %s in store", postURL)
+	}
+	return res, nil
 }
 
 // save comment to key for bucket. Should run in update tx
