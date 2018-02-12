@@ -98,38 +98,38 @@ func (b *BoltDB) Create(comment Comment) (commentID string, err error) {
 	}
 	err = bdb.Update(func(tx *bolt.Tx) error {
 
-		bucket, e := b.makePostBucket(tx, comment.Locator.URL)
+		postBkt, e := b.makePostBucket(tx, comment.Locator.URL)
 		if e != nil {
 			return e
 		}
 
 		// check if key already in store, reject doubles
-		if bucket.Get([]byte(comment.ID)) != nil {
+		if postBkt.Get([]byte(comment.ID)) != nil {
 			return errors.Errorf("key %s already in store", comment.ID)
 		}
 
 		// serialize comment to json []byte for bolt and save
-		if e = b.save(bucket, []byte(comment.ID), comment); e != nil {
+		if e = b.save(postBkt, []byte(comment.ID), comment); e != nil {
 			return errors.Wrapf(e, "failed to put key %s to bucket %s", comment.ID, comment.Locator.URL)
 		}
 
 		// add reference to comment to "last" bucket
-		bucket = tx.Bucket([]byte(lastBucketName))
+		lastBkt := tx.Bucket([]byte(lastBucketName))
 		rv := refFromComment(comment)
-		e = bucket.Put([]byte(rv.key), []byte(rv.value))
+		e = lastBkt.Put([]byte(rv.key), []byte(rv.value))
 		if e != nil {
 			return errors.Wrapf(e, "can't put reference %s to %s", rv.value, lastBucketName)
 		}
 
 		// add reference to commentID to "users" bucket
-		bucket = tx.Bucket([]byte(userBucketName))
+		usersBkt := tx.Bucket([]byte(userBucketName))
 		// get bucket for userID
-		userBkt, e := bucket.CreateBucketIfNotExists([]byte(comment.User.ID))
+		userIDBkt, e := usersBkt.CreateBucketIfNotExists([]byte(comment.User.ID))
 		if e != nil {
 			return errors.Wrapf(e, "can't get bucket %s", comment.User.ID)
 		}
 		// put into individual user's bucket with ts as a key
-		if e = userBkt.Put([]byte(comment.Timestamp.Format(time.RFC3339Nano)), []byte(rv.value)); e != nil {
+		if e = userIDBkt.Put([]byte(comment.Timestamp.Format(time.RFC3339Nano)), []byte(rv.value)); e != nil {
 			return errors.Wrapf(e, "failed to put user comment %s for %s", comment.ID, comment.User.ID)
 		}
 		return nil
@@ -148,12 +148,12 @@ func (b *BoltDB) Delete(locator Locator, commentID string) error {
 
 	return bdb.Update(func(tx *bolt.Tx) error {
 
-		bucket, e := b.getPostBucket(tx, locator.URL)
+		postBkt, e := b.getPostBucket(tx, locator.URL)
 		if e != nil {
 			return e
 		}
 
-		comment, err := b.load(bucket, []byte(commentID))
+		comment, err := b.load(postBkt, []byte(commentID))
 		if err != nil {
 			return errors.Wrapf(err, "can't load key %s from bucket %s", commentID, locator.URL)
 		}
@@ -161,16 +161,13 @@ func (b *BoltDB) Delete(locator Locator, commentID string) error {
 		comment.Mask()
 		comment.Deleted = true
 
-		if err := b.save(bucket, []byte(commentID), comment); err != nil {
+		if err := b.save(postBkt, []byte(commentID), comment); err != nil {
 			return errors.Wrapf(err, "can't save deleted comment for key %s from bucket %s", commentID, locator.URL)
 		}
 
 		// delete from "last" bucket
-		bucket = tx.Bucket([]byte(lastBucketName))
-		if bucket == nil {
-			return errors.Errorf("no bucket %s in store", lastBucketName)
-		}
-		if err := bucket.Delete([]byte(commentID)); err != nil {
+		lastBkt := tx.Bucket([]byte(lastBucketName))
+		if err := lastBkt.Delete([]byte(commentID)); err != nil {
 			return errors.Wrapf(err, "can't delete key %s from bucket %s", commentID, lastBucketName)
 		}
 
@@ -320,9 +317,6 @@ func (b *BoltDB) Blocked(siteID string) (users []BlockedUser, err error) {
 
 	err = bdb.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(blocksBucketName))
-		if bucket == nil {
-			return nil
-		}
 		return bucket.ForEach(func(k []byte, v []byte) error {
 			ts, e := time.ParseInLocation(time.RFC3339Nano, string(v), time.Local)
 			if e != nil {
@@ -373,14 +367,14 @@ func (b *BoltDB) User(siteID string, userID string) (comments []Comment, totalCo
 	}
 	// get list of references to comments
 	err = bdb.View(func(tx *bolt.Tx) error {
-		userBucket := tx.Bucket([]byte(userBucketName))
-		userBkt := userBucket.Bucket([]byte(userID))
-		if userBkt == nil {
+		usersBkt := tx.Bucket([]byte(userBucketName))
+		userIDBkt := usersBkt.Bucket([]byte(userID))
+		if userIDBkt == nil {
 			return errors.Errorf("no comments for user %s in store", userID)
 		}
 
-		c := userBkt.Cursor()
-		totalComments = userBkt.Stats().KeyN
+		c := userIDBkt.Cursor()
+		totalComments = userIDBkt.Stats().KeyN
 		for k, v := c.Last(); k != nil; k, v = c.Prev() {
 			commentRefs = append(commentRefs, string(v))
 			if len(commentRefs) > userLimit {
