@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/didip/tollbooth"
+	"github.com/didip/tollbooth_chi"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/render"
@@ -61,7 +63,8 @@ func (s *Server) Run(port int) {
 	router := chi.NewRouter()
 	router.Use(middleware.RealIP, Recoverer)
 	router.Use(middleware.Throttle(1000), middleware.Timeout(60*time.Second))
-	router.Use(Limiter(10), AppInfo("remark42", s.Version), Ping, Logger(LogAll))
+	router.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
+	router.Use(AppInfo("remark42", s.Version), Ping, Logger(LogAll))
 	// all request by default allow anonymous access
 	router.Use(auth.Auth(s.SessionStore, s.Admins, maybeWithDevMode(auth.Anonymous)))
 	router.Use(context.ClearHandler) // if you aren't using gorilla/mux, you need to wrap your handlers with context.ClearHandler

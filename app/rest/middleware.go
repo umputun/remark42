@@ -13,50 +13,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/didip/tollbooth"
 	"github.com/go-chi/chi/middleware"
-	"github.com/go-chi/render"
 
 	"github.com/umputun/remark/app/rest/common"
 )
 
 // JSON is a map alias, just for convenience
 type JSON map[string]interface{}
-
-// Limiter middleware defines max recs/sec for given client. Client detected as a combination
-// of source IP, auth key and user agent.  Requests rejected with 429 status code.
-func Limiter(recSec int, excludeIps ...string) func(http.Handler) http.Handler {
-
-	return func(h http.Handler) http.Handler {
-		l := tollbooth.NewLimiter(int64(recSec), time.Second)
-
-		fn := func(w http.ResponseWriter, r *http.Request) {
-
-			for _, exclIP := range excludeIps {
-				if strings.HasPrefix(r.RemoteAddr, exclIP) {
-					h.ServeHTTP(w, r)
-					return
-				}
-			}
-
-			keys := []string{
-				r.Header.Get("RemoteAddr"),
-				r.Header.Get("X-Forwarded-For"),
-				r.Header.Get("X-Real-IP"),
-				r.Header.Get("User-Agent"),
-				r.Header.Get("Authorization"),
-			}
-
-			if httpError := tollbooth.LimitByKeys(l, keys); httpError != nil {
-				render.Status(r, httpError.StatusCode)
-				render.JSON(w, r, JSON{"error": httpError.Message})
-				return
-			}
-			h.ServeHTTP(w, r)
-		}
-		return http.HandlerFunc(fn)
-	}
-}
 
 // AppInfo adds custom app-info to the response header
 func AppInfo(app string, version string) func(http.Handler) http.Handler {

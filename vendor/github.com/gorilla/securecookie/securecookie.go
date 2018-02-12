@@ -102,7 +102,6 @@ var (
 	errTimestampExpired     = cookieError{typ: decodeError, msg: "expired timestamp"}
 	errDecryptionFailed     = cookieError{typ: decodeError, msg: "the value could not be decrypted"}
 	errValueNotByte         = cookieError{typ: decodeError, msg: "value not a []byte."}
-	errValueNotBytePtr      = cookieError{typ: decodeError, msg: "value not a pointer to []byte."}
 
 	// ErrMacInvalid indicates that cookie decoding failed because the HMAC
 	// could not be extracted and verified.  Direct use of this error
@@ -475,11 +474,12 @@ func (e NopEncoder) Serialize(src interface{}) ([]byte, error) {
 
 // Deserialize passes a []byte through as-is.
 func (e NopEncoder) Deserialize(src []byte, dst interface{}) error {
-	if dat, ok := dst.(*[]byte); ok {
-		*dat = src
+	if _, ok := dst.([]byte); ok {
+		dst = src
 		return nil
 	}
-	return errValueNotBytePtr
+
+	return errValueNotByte
 }
 
 // Encoding -------------------------------------------------------------------
