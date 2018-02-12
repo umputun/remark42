@@ -8,6 +8,9 @@ import Comment from 'components/comment';
 import Input from 'components/input';
 import Thread from 'components/thread';
 
+// api.getConfig().then(console.log.bind(console))
+// api.getUser().then(console.log.bind(console))
+
 export default class Root extends Component {
   constructor(props) {
     super(props);
@@ -19,16 +22,17 @@ export default class Root extends Component {
     this.addComment = this.addComment.bind(this);
   }
 
+  componentWillMount() {
+    store.onUpdate('comments', comments => this.setState({ comments }));
+  }
+
   componentDidMount() {
     api.getUser()
       .then(data => store.set('user', data))
       .catch(() => store.set('user', {}))
       .finally(() => {
         api.find({ url })
-          .then(({ comments } = {}) => {
-            store.set('comments', comments);
-            this.setState({ comments });
-          })
+          .then(({ comments } = {}) => store.set('comments', comments))
           .finally(() => this.setState({ loaded: true }));
       });
   }
@@ -58,7 +62,10 @@ export default class Root extends Component {
     return (
       <div id={id}>
         <div className="root root__loading" id={id}>
-          <Input mix="root__input" onSubmit={this.addComment}/>
+          <Input
+            mix="root__input"
+            onSubmit={this.addComment}
+          />
 
           {
             !!pinnedComments.length && (
