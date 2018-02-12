@@ -6,13 +6,24 @@ class Store {
 
     this.data = {};
 
+    this.listeners = {};
+
     _instance = this;
 
     return _instance;
   }
 
+  onUpdate(key, cb) {
+    if (!this.listeners[key]) this.listeners[key] = [];
+
+    this.listeners[key].push(cb);
+  }
+
+
   set(key, obj) {
     this.data[key] = obj;
+
+    if (this.listeners[key]) this.listeners[key].forEach(cb => cb(this.data[key]));
   }
 
   get(key) {
@@ -20,7 +31,6 @@ class Store {
   }
 
   addComment({ text, id, pid }) {
-    const comments = this.data.comments;
     const newComment = {
       comment: {
         id,
@@ -70,11 +80,11 @@ class Store {
       return root;
     };
 
-    this.data.comments = this.data.comments.map(thread => paste(thread, newReply));
+    this.set('comments', this.data.comments.map(thread => paste(thread, newReply)));
   }
 
   pasteComment(newComment) {
-    this.data.comments = [newComment].concat(this.data.comments);
+    this.set('comments', [newComment].concat(this.data.comments));
   }
 
   replaceComment(newComment) {
@@ -89,12 +99,14 @@ class Store {
         return thread;
       }
 
-      thread.replies = thread.replies.map(reply => replace(reply, comment));
+      if (thread.replies) {
+        thread.replies = thread.replies.map(reply => replace(reply, comment));
+      }
 
       return thread;
     };
 
-    this.data.comments = this.data.comments.map(thread => replace(thread, newComment));
+    this.set('comments', this.data.comments.map(thread => replace(thread, newComment)));
   }
 
   getPinnedComments() {
