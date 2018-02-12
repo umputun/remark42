@@ -283,6 +283,7 @@ func (s *Server) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get comment by id")
 		return
 	}
+	comment = s.mod.maskBlockedUsers([]store.Comment{comment})[0]
 	render.Status(r, http.StatusOK)
 	renderJSONWithHTML(w, r, comment)
 }
@@ -305,7 +306,7 @@ func (s *Server) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		if e != nil {
 			return nil, e
 		}
-
+		comments = s.mod.maskBlockedUsers(comments)
 		resp.Comments, resp.Count = comments, count
 		return encodeJSONWithHTML(resp)
 	})
