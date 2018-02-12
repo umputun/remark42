@@ -4,6 +4,8 @@ import fetcher from './fetcher'
 
 /* common */
 
+export const getConfig = () => fetcher.get(`/config`);
+
 export const find = ({ url }) => fetcher.get(`/find?url=${url}&sort=-score&format=tree`);
 
 export const getComment = ({ id }) => fetcher.get(`/id/${id}?url=${url}`);
@@ -33,11 +35,13 @@ export const blockUser = ({ id }) => fetcher.put(`/admin/user/${id}?block=1`);
 export const unblockUser = ({ id }) => fetcher.put(`/admin/user/${id}?block=0`);
 
 export default {
+  getConfig,
   find,
   getComment,
   vote,
   send,
   getUser,
+
   pin,
   unpin,
   remove,
