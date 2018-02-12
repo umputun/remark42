@@ -96,6 +96,18 @@ class Store {
 
     this.data.comments = this.data.comments.map(thread => replace(thread, newComment));
   }
+
+  getPinnedComments() {
+    return this.data.comments.reduce((acc, thread) => acc.concat(findPinnedComments(thread)), []);
+  }
+}
+
+function findPinnedComments(thread) {
+  if (thread.comment.pin) return [thread.comment];
+
+  if (thread.replies) return thread.replies.reduce((acc, thread) => findPinnedComments(thread), []);
+
+  return [];
 }
 
 export default new Store();
