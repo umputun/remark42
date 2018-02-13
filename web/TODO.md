@@ -1,12 +1,12 @@
 critical features:
 
-- auth
-  - `GET /auth/{provider}/login?from=http://url`
-  - `GET /auth/{provider}/logout`
+- improve iframe
+  - add default attrs
+  - auto height
 - get settings from outside
   - get path from url or by params
   - get siteid by params
-- load css by js
+- load css by js ?
 
 
 optimizations:
