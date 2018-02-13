@@ -111,7 +111,7 @@ TBD
 ### Authorization
 
 - `GET /auth/{provider}/login?from=http://url` - perform "social" login with one of supported providers and redirect to `url`
-- `GET /auth/{provider}/logout` - logout
+- `GET /auth/logout` - logout
 
 ```go
 type User struct {
