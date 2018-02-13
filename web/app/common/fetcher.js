@@ -21,41 +21,46 @@ fetcher.cancel = (mask) => {
 };
 
 methods.forEach(method => {
-  fetcher[method] = (url, body = {}, heads) => new Promise((resolve, reject) => {
-    const headers = Object.assign({
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-    }, heads);
+  fetcher[method] = data => {
+    const { url, body = {}, withCredentials = false } = (typeof data === 'string' ? { url: data } : data);
 
-    const parameters = {
-      method,
-      headers,
-    };
+    return new Promise((resolve, reject) => {
+      const headers = {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      };
 
-    if (Object.keys(body).length) {
-      parameters.data = body;
-    }
+      const parameters = {
+        method,
+        headers,
+        withCredentials,
+      };
 
-    parameters.url = `${basename}${url}`;
-    if (method !== 'post') parameters.url += (parameters.url.includes('?') ? '&' : '?') + `site=${siteId}`;
-    parameters.cancelToken = new CancelToken(executor => {
-      cancelHandler.push({
-        executor,
-        url: parameters.url,
+      if (Object.keys(body).length) {
+        parameters.data = body;
+      }
+
+      parameters.url = `${basename}${url}`;
+      if (method !== 'post') parameters.url += (parameters.url.includes('?') ? '&' : '?') + `site=${siteId}`;
+      parameters.cancelToken = new CancelToken(executor => {
+        cancelHandler.push({
+          executor,
+          url: parameters.url,
+        });
       });
+
+      axios(parameters)
+        .then(res => resolve(res.data))
+        .catch(error => {
+          if (!axios.isCancel(error)) {
+            reject(error);
+          }
+        })
+        .finally(() => {
+          cancelHandler = cancelHandler.filter(req => req.url !== parameters.url);
+        });
     });
-
-    axios(parameters)
-      .then(res => resolve(res.data))
-      .catch(error => {
-        if (!axios.isCancel(error)) {
-          reject(error);
-        }
-      })
-      .finally(() => {
-        cancelHandler = cancelHandler.filter(req => req.url !== parameters.url);
-      });
-  });
+  }
 });
 
 export default fetcher;
