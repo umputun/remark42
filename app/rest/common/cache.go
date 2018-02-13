@@ -15,12 +15,13 @@ type LoadingCache interface {
 
 // loadingCache implements LoadingCache interface on top of cache.Cache
 type loadingCache struct {
-	bytesCache *cache.Cache
+	bytesCache  *cache.Cache
+	postFlushFn func()
 }
 
 // NewLoadingCache makes loadingCache implementation
-func NewLoadingCache(defaultExpiration, cleanupInterval time.Duration) LoadingCache {
-	return &loadingCache{bytesCache: cache.New(defaultExpiration, cleanupInterval)}
+func NewLoadingCache(defaultExpiration, cleanupInterval time.Duration, postFlushFn func()) LoadingCache {
+	return &loadingCache{bytesCache: cache.New(defaultExpiration, cleanupInterval), postFlushFn: postFlushFn}
 }
 
 func (lc *loadingCache) Get(key string, ttl time.Duration, fn func() ([]byte, error)) (data []byte, err error) {
@@ -39,4 +40,7 @@ func (lc *loadingCache) Get(key string, ttl time.Duration, fn func() ([]byte, er
 
 func (lc *loadingCache) Flush() {
 	lc.bytesCache.Flush()
+	if lc.postFlushFn != nil {
+		lc.postFlushFn()
+	}
 }

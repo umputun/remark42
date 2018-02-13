@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"time"
 
@@ -101,9 +102,18 @@ func main() {
 		Admins:        opts.Admins,
 		DevMode:       opts.DevMode,
 		Exporter:      &exporter,
-		Cache:         common.NewLoadingCache(4*time.Hour, 15*time.Minute),
 		AuthProviders: makeAuthProviders(sessionStore),
 	}
+
+	srv.Cache = common.NewLoadingCache(4*time.Hour, 15*time.Minute, func() {
+		// set post-flush callback
+		resp, err := http.Get(opts.RemarkURL + "/api/v1/list")
+		if err != nil {
+			log.Printf("[WARN] failed to refresh cached list, %s", err)
+			return
+		}
+		resp.Body.Close()
+	})
 
 	if opts.DevMode {
 		log.Printf("[WARN] running in dev mode, no auth!")
