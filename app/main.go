@@ -113,7 +113,7 @@ func main() {
 				log.Printf("[WARN] failed to refresh cached list for %s, %s", site, err)
 				return
 			}
-			resp.Body.Close()
+			_ = resp.Body.Close()
 		}
 	})
 
