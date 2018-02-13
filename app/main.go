@@ -108,7 +108,7 @@ func main() {
 	srv.Cache = common.NewLoadingCache(4*time.Hour, 15*time.Minute, func() {
 		// set post-flush callback
 		for _, site := range opts.Sites {
-			resp, err := http.Get("http://localhost:8080/api/v1/list?" + site)
+			resp, err := http.Get("http://localhost:8080/api/v1/list?site=" + site)
 			if err != nil {
 				log.Printf("[WARN] failed to refresh cached list for %s, %s", site, err)
 				return
