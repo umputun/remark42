@@ -41,6 +41,6 @@ func (lc *loadingCache) Get(key string, ttl time.Duration, fn func() ([]byte, er
 func (lc *loadingCache) Flush() {
 	lc.bytesCache.Flush()
 	if lc.postFlushFn != nil {
-		lc.postFlushFn()
+		go lc.postFlushFn()
 	}
 }
