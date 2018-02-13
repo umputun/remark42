@@ -1,5 +1,4 @@
 import 'babel-polyfill'; // TODO: remove it
-import 'mimic'; // TODO: it's for dev only
 
 import 'common/polyfills'; // TODO: check it
 

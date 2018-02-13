@@ -18,7 +18,6 @@
     "extract-text-webpack-plugin": "^3.0.0",
     "file-loader": "^0.11.1",
     "html-webpack-plugin": "^2.30.1",
-    "mimic": "^2.0.2",
     "node-sass": "^4.5.2",
     "postcss-csso": "^2.0.0",
     "postcss-loader": "^2.0.5",
