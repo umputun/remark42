@@ -4,6 +4,7 @@ const path = require('path');
 const webpack = require('webpack');
 const ExtractText = require('extract-text-webpack-plugin');
 const Clean = require('clean-webpack-plugin');
+const Copy = require('copy-webpack-plugin');
 const Html = require('html-webpack-plugin');
 const Provide = webpack.ProvidePlugin;
 const Define = webpack.DefinePlugin;
@@ -104,6 +105,7 @@ module.exports = {
     }),
     new webpack.optimize.ModuleConcatenationPlugin(),
     ...(env === 'production' ? [new webpack.optimize.UglifyJsPlugin()] : []),
+    ...(env === 'production' ? [new Copy(['./iframe.html'])] : []),
   ],
   watch: env === 'dev',
   watchOptions: {
