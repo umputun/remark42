@@ -7,7 +7,6 @@ import { baseUrl, apiBase, siteId } from './settings';
 
 const fetcher = {};
 const methods = ['get', 'post', 'put', 'patch', 'delete', 'head'];
-const basename = `${baseUrl}${apiBase}`;
 
 const { CancelToken } = axios;
 let cancelHandler = [];
@@ -22,7 +21,13 @@ fetcher.cancel = (mask) => {
 
 methods.forEach(method => {
   fetcher[method] = data => {
-    const { url, body = {}, withCredentials = false } = (typeof data === 'string' ? { url: data } : data);
+    const {
+      url,
+      body = {},
+      withCredentials = false,
+      overriddenApiBase = apiBase,
+    } = (typeof data === 'string' ? { url: data } : data);
+    const basename = `${baseUrl}${overriddenApiBase}`;
 
     return new Promise((resolve, reject) => {
       const headers = {
