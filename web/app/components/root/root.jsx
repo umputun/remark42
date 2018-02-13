@@ -54,7 +54,7 @@ export default class Root extends Component {
   }
 
   onSignIn(provider) {
-    const newWindow = window.open(`${baseUrl}/auth/${provider}/login?from=${location.href}`);
+    const newWindow = window.open(`${baseUrl}/auth/${provider}/login?from=${encodeURIComponent(location.href)}`);
 
     let secondsPass = 0;
     const checkMsDelay = 200;
@@ -65,8 +65,8 @@ export default class Root extends Component {
         clearInterval(checkInterval);
         newWindow.close();
         api.getUser()
-          .then(data => {
-            store.set('user', data);
+          .then(user => {
+            store.set('user', user);
             this.setState({ user });
           })
           .catch(() => {}) // TODO: we need to handle it and write error to user
