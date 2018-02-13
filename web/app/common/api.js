@@ -4,6 +4,8 @@ import fetcher from './fetcher'
 
 /* common */
 
+export const logOut = () => fetcher.get({ url: `/auth/logout`, overriddenApiBase: '' });
+
 export const getConfig = () => fetcher.get(`/config`);
 
 export const find = ({ url }) => fetcher.get(`/find?url=${url}&sort=-score&format=tree`);
@@ -60,6 +62,7 @@ export const unblockUser = ({ id }) => fetcher.put({
 });
 
 export default {
+  logOut,
   getConfig,
   find,
   getComment,
