@@ -9,7 +9,6 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/google/uuid"
-	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 )
 
@@ -57,13 +56,12 @@ func NewBoltDB(sites ...BoltSite) (*BoltDB, error) {
 		// make top-level buckets
 		err = db.Update(func(tx *bolt.Tx) error {
 			topBuckets := []string{postsBucketName, lastBucketName, userBucketName, blocksBucketName}
-			errs := new(multierror.Error)
 			for _, bktName := range topBuckets {
-				_, e := tx.CreateBucketIfNotExists([]byte(bktName))
-				errs = multierror.Append(errs, e)
-
+				if _, e := tx.CreateBucketIfNotExists([]byte(bktName)); e != nil {
+					return errors.Wrapf(err, "failed to create top level bucket %s", bktName)
+				}
 			}
-			return errs.ErrorOrNil()
+			return nil
 		})
 
 		if err != nil {
