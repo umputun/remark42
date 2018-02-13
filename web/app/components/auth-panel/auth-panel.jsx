@@ -2,7 +2,7 @@ import { h, Component } from 'preact';
 
 export default class AuthPanel extends Component {
   render(props, state) {
-    const { user, providers } = props;
+    const { user, providers = [] } = props;
 
     return (
       <div className={b('auth-panel', props)}>

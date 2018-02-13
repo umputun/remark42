@@ -86,7 +86,7 @@ export default class Root extends Component {
     });
   }
 
-  render({}, { config, comments = [], user, loaded }) {
+  render({}, { config = {}, comments = [], user, loaded }) {
     if (!loaded) {
       return (
         <div id={id}>
