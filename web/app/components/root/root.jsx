@@ -1,15 +1,13 @@
 import { h, Component } from 'preact';
 import api from 'common/api';
 
-import { url, id } from 'common/settings';
+import { baseUrl, url, id } from 'common/settings';
 import store from 'common/store';
 
+import AuthPanel from 'components/auth-panel';
 import Comment from 'components/comment';
 import Input from 'components/input';
 import Thread from 'components/thread';
-
-// api.getConfig().then(console.log.bind(console))
-// api.getUser().then(console.log.bind(console))
 
 export default class Root extends Component {
   constructor(props) {
@@ -17,9 +15,12 @@ export default class Root extends Component {
 
     this.state = {
       loaded: false,
+      user: {},
     };
 
     this.addComment = this.addComment.bind(this);
+    this.onSignIn = this.onSignIn.bind(this);
+    this.onSignOut = this.onSignOut.bind(this);
   }
 
   componentWillMount() {
@@ -33,8 +34,44 @@ export default class Root extends Component {
       .finally(() => {
         api.find({ url })
           .then(({ comments } = {}) => store.set('comments', comments))
-          .finally(() => this.setState({ loaded: true }));
+          .finally(() => this.setState({
+            loaded: true,
+            user: store.get('user'),
+          }));
+
+        api.getConfig().then(config => {
+          store.set('config', config);
+          this.setState({ config });
+        })
       });
+  }
+
+  onSignOut() {
+    api.logOut().then(() => {
+      store.set('user', {});
+      this.setState({ user: {} });
+    });
+  }
+
+  onSignIn(provider) {
+    const newWindow = window.open(`${baseUrl}/auth/${provider}/login?from=${location.href}`);
+
+    let secondsPass = 0;
+    const checkMsDelay = 200;
+    const checkInterval = setInterval(() => {
+      secondsPass += checkMsDelay;
+
+      if (newWindow.location.domain === location.domain || secondsPass > 30000) {
+        clearInterval(checkInterval);
+        newWindow.close();
+        api.getUser()
+          .then(data => {
+            store.set('user', data);
+            this.setState({ user });
+          })
+          .catch(() => {}) // TODO: we need to handle it and write error to user
+      }
+    }, checkMsDelay);
   }
 
   addComment(data) {
@@ -47,7 +84,7 @@ export default class Root extends Component {
     });
   }
 
-  render({}, { comments = [], user = {}, loaded }) {
+  render({}, { config, comments = [], user, loaded }) {
     if (!loaded) {
       return (
         <div id={id}>
@@ -62,6 +99,14 @@ export default class Root extends Component {
     return (
       <div id={id}>
         <div className="root root__loading" id={id}>
+          <AuthPanel
+            mix="root__auth-panel"
+            user={user}
+            providers={config.auth_providers}
+            onSignIn={this.onSignIn}
+            onSignOut={this.onSignOut}
+          />
+
           <Input
             mix="root__input"
             onSubmit={this.addComment}
