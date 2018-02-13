@@ -61,9 +61,11 @@ export default class Root extends Component {
     const checkInterval = setInterval(() => {
       secondsPass += checkMsDelay;
 
-      if (newWindow.location.domain === location.domain || secondsPass > 30000) {
+      if (newWindow.location.origin === location.origin || secondsPass > 30000) {
         clearInterval(checkInterval);
+        secondsPass = 0;
         newWindow.close();
+
         api.getUser()
           .then(user => {
             store.set('user', user);
