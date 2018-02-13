@@ -10,29 +10,54 @@ export const find = ({ url }) => fetcher.get(`/find?url=${url}&sort=-score&forma
 
 export const getComment = ({ id }) => fetcher.get(`/id/${id}?url=${url}`);
 
-export const vote = ({ id, url, value }) => fetcher.put(`/vote/${id}?url=${url}&vote=${value}`);
-
-export const send = ({ text, pid }) => fetcher.post('/comment', {
-  text,
-  locator: {
-    site: siteId,
-    url
-  },
-  ...(pid ? { pid } : {}),
+export const vote = ({ id, url, value }) => fetcher.put({
+  url: `/vote/${id}?url=${url}&vote=${value}`,
+  withCredentials: true,
 });
 
-export const getUser = () => fetcher.get('/user');
+export const send = ({ text, pid }) => fetcher.post({
+  url: '/comment',
+  body: {
+    text,
+    locator: {
+      site: siteId,
+      url
+    },
+    ...(pid ? { pid } : {}),
+  },
+  withCredentials: true,
+});
+
+export const getUser = () => fetcher.get({
+  url: '/user',
+  withCredentials: true
+});
 
 /* admin */
-export const pin = ({ id, url }) => fetcher.put(`/admin/pin/${id}?url=${url}&pin=1`);
+export const pin = ({ id, url }) => fetcher.put({
+  url: `/admin/pin/${id}?url=${url}&pin=1`,
+  withCredentials: true,
+});
 
-export const unpin = ({ id, url }) => fetcher.put(`/admin/pin/${id}?url=${url}&pin=0`);
+export const unpin = ({ id, url }) => fetcher.put({
+  url: `/admin/pin/${id}?url=${url}&pin=0`,
+  withCredentials: true,
+});
 
-export const remove = ({ id }) => fetcher.delete(`/admin/comment/${id}?url=${url}`);
+export const remove = ({ id }) => fetcher.delete({
+  url: `/admin/comment/${id}?url=${url}`,
+  withCredentials: true,
+});
 
-export const blockUser = ({ id }) => fetcher.put(`/admin/user/${id}?block=1`);
+export const blockUser = ({ id }) => fetcher.put({
+  url: `/admin/user/${id}?block=1`,
+  withCredentials: true,
+});
 
-export const unblockUser = ({ id }) => fetcher.put(`/admin/user/${id}?block=0`);
+export const unblockUser = ({ id }) => fetcher.put({
+  url: `/admin/user/${id}?block=0`,
+  withCredentials: true,
+});
 
 export default {
   getConfig,
