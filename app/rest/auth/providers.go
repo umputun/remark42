@@ -79,18 +79,18 @@ func NewFacebook(p Params) Provider {
 			}
 			userInfo.ID = "facebook_" + userInfo.ID
 
-			// picture under picture[data[url]]
-			// if p, ok := data["picture"]; ok {
-			// 	if picMap, ok := p.(map[string]interface{}); ok {
-			// 		if d, ok := picMap["data"]; ok {
-			// 			if dataMap, ok := d.(map[string]interface{}); ok {
-			// 				if picURL, ok := dataMap["url"]; ok {
-			// 					userInfo.Picture = picURL.(string)
-			// 				}
-			// 			}
-			// 		}
-			// 	}
-			// }
+			// picture under picture[data[url]] TODO: make this horror simpler
+			if p, ok := data["picture"]; ok {
+				if picMap, ok := p.(map[string]interface{}); ok {
+					if d, ok := picMap["data"]; ok {
+						if dataMap, ok := d.(map[string]interface{}); ok {
+							if picURL, ok := dataMap["url"]; ok {
+								userInfo.Picture = picURL.(string)
+							}
+						}
+					}
+				}
+			}
 			return userInfo
 		},
 	})
