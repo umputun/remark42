@@ -422,7 +422,7 @@ func (s *Server) addFileServer(r chi.Router, path string, root http.FileSystem) 
 
 	r.Get(path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// don't show dirs, just serve files
-		if strings.HasSuffix(r.URL.Path, "/") && len(r.URL.Path) > 1 && r.URL.Path != "/"+path+"/" {
+		if strings.HasSuffix(r.URL.Path, "/") && len(r.URL.Path) > 1 && r.URL.Path != (path+"/") {
 			http.NotFound(w, r)
 			return
 		}
