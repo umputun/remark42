@@ -62,6 +62,7 @@ func NewGithub(p Params) Provider {
 
 // NewFacebook makes facebook oauth2 provider
 func NewFacebook(p Params) Provider {
+
 	return initProvider(p, Provider{
 		Name:        "facebook",
 		Endpoint:    facebook.Endpoint,
@@ -79,7 +80,7 @@ func NewFacebook(p Params) Provider {
 			}
 			userInfo.ID = "facebook_" + userInfo.ID
 
-			// picture under picture[data[url]] TODO: make this horror simpler
+			// picture under picture[data[url]]
 			if p, ok := data["picture"]; ok {
 				if picMap, ok := p.(map[string]interface{}); ok {
 					if d, ok := picMap["data"]; ok {
