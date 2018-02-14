@@ -73,7 +73,7 @@ func (p *Proxy) Put(u store.User) (avatarURL string, err error) {
 		return "", errors.Wrapf(err, "can't save file %s", avFile)
 	}
 
-	log.Printf("[DEBUG] saved avatar from %s to %s, user %q", avatarURL, avFile, u.Name)
+	log.Printf("[DEBUG] saved avatar from %s to %s, user %q", u.Picture, avFile, u.Name)
 	return p.RoutePath + "/" + u.ID + ".image", nil
 }
 
