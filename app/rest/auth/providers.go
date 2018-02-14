@@ -67,14 +67,14 @@ func NewFacebook(p Params) Provider {
 		Endpoint:    facebook.Endpoint,
 		RedirectURL: p.RemarkURL + "/auth/facebook/callback",
 		Scopes:      []string{"public_profile"},
-		InfoURL:     "https://graph.facebook.com/me?fields=id,name,picture,home",
+		InfoURL:     "https://graph.facebook.com/me?fields=id,name,picture",
 		Store:       p.SessionStore,
 		MapUser: func(data userData) store.User {
 			userInfo := store.User{
 				ID:      data.value("id"),
 				Name:    data.value("name"),
 				Picture: data.value("picture"),
-				Profile: data.value("home"),
+				// Profile: data.value("home"),
 			}
 			if userInfo.Name == "" {
 				userInfo.Name = userInfo.ID
