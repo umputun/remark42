@@ -17,6 +17,7 @@ import (
 	"github.com/gorilla/sessions"
 	"golang.org/x/oauth2"
 
+	"github.com/umputun/remark/app/rest/avatar"
 	"github.com/umputun/remark/app/rest/common"
 	"github.com/umputun/remark/app/store"
 )
@@ -31,6 +32,7 @@ type Provider struct {
 	Endpoint    oauth2.Endpoint
 	Scopes      []string
 	MapUser     func(userData) store.User
+	AvatarProxy *avatar.Proxy
 
 	conf *oauth2.Config
 }
@@ -41,6 +43,7 @@ type Params struct {
 	Csecret      string
 	SessionStore sessions.Store
 	RemarkURL    string
+	AvatarProxy  *avatar.Proxy
 }
 
 type userData map[string]interface{}
@@ -53,7 +56,7 @@ func (u userData) value(key string) string {
 }
 
 // newProvider makes auth for given provider
-func initProvider(p Params, provider Provider) Provider {
+func initProvider(p Params, provider Provider, avatarProxy *avatar.Proxy) Provider {
 	log.Printf("[INFO] create %s auth, id=%s, redir: %s", provider.Name, p.Cid, provider.RedirectURL)
 
 	conf := oauth2.Config{
@@ -66,6 +69,7 @@ func initProvider(p Params, provider Provider) Provider {
 
 	provider.conf = &conf
 	provider.Store = p.SessionStore
+	provider.AvatarProxy = avatarProxy
 	return provider
 }
 
@@ -161,7 +165,14 @@ func (p Provider) authHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("[DEBUG] got raw user info %+v", jData)
 
-	session.Values["uinfo"] = p.MapUser(jData)
+	u := p.MapUser(jData)
+	if avatarURL, e := p.AvatarProxy.Put(u); e == nil {
+		u.Picture = avatarURL
+	} else {
+		log.Printf("[WARN] failed to proxy avatar, %s", e)
+	}
+	session.Values["uinfo"] = u
+
 	if err = session.Save(r, w); err != nil {
 		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to save user info")
 		return

@@ -98,6 +98,12 @@ func main() {
 
 	exporter := migrator.Remark{DataStore: dataStore}
 
+	avatarProxy := &avatar.Proxy{
+		StorePath:     opts.ServerCommand.AvatarStore,
+		RoutePath:     "/api/v1/avatar",
+		DefaultAvatar: opts.ServerCommand.DefaultAvatar,
+	}
+
 	srv := rest.Server{
 		Version:       revision,
 		DataService:   dataService,
@@ -105,13 +111,9 @@ func main() {
 		Admins:        opts.Admins,
 		DevMode:       opts.DevMode,
 		Exporter:      &exporter,
-		AuthProviders: makeAuthProviders(sessionStore),
+		AuthProviders: makeAuthProviders(sessionStore, avatarProxy),
 		Cache:         common.NewLoadingCache(4*time.Hour, 15*time.Minute, postFlushFn),
-		AvatarProxy: avatar.Proxy{
-			StorePath:     opts.ServerCommand.AvatarStore,
-			RoutePath:     "/api/v1/avatar",
-			DefaultAvatar: opts.ServerCommand.DefaultAvatar,
-		},
+		AvatarProxy:   avatarProxy,
 	}
 
 	if opts.DevMode {
@@ -173,19 +175,19 @@ func makeDirs(dirs ...string) error {
 	return nil
 }
 
-func makeAuthProviders(sessionStore sessions.Store) []auth.Provider {
+func makeAuthProviders(sessionStore sessions.Store, avatarProxy *avatar.Proxy) []auth.Provider {
 	providers := []auth.Provider{}
 	srvOpts := opts.ServerCommand
 	if srvOpts.GoogleCID != "" && srvOpts.GoogleCSEC != "" {
-		providers = append(providers, auth.NewGoogle(auth.Params{
+		providers = append(providers, auth.NewGoogle(auth.Params{AvatarProxy: avatarProxy,
 			Cid: srvOpts.GoogleCID, Csecret: srvOpts.GoogleCSEC, SessionStore: sessionStore, RemarkURL: opts.RemarkURL}))
 	}
 	if srvOpts.GithubCID != "" && srvOpts.GithubCSEC != "" {
-		providers = append(providers, auth.NewGithub(auth.Params{
+		providers = append(providers, auth.NewGithub(auth.Params{AvatarProxy: avatarProxy,
 			Cid: srvOpts.GithubCID, Csecret: srvOpts.GithubCSEC, SessionStore: sessionStore, RemarkURL: opts.RemarkURL}))
 	}
 	if srvOpts.FacebookCID != "" && srvOpts.FacebookCSEC != "" {
-		providers = append(providers, auth.NewFacebook(auth.Params{
+		providers = append(providers, auth.NewFacebook(auth.Params{AvatarProxy: avatarProxy,
 			Cid: srvOpts.FacebookCID, Csecret: srvOpts.FacebookCSEC, SessionStore: sessionStore, RemarkURL: opts.RemarkURL}))
 	}
 	if len(providers) == 0 {

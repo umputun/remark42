@@ -6,9 +6,6 @@ import (
 
 	"github.com/gorilla/sessions"
 
-	"log"
-
-	"github.com/umputun/remark/app/rest/avatar"
 	"github.com/umputun/remark/app/rest/common"
 	"github.com/umputun/remark/app/store"
 )
@@ -32,7 +29,7 @@ var devUser = store.User{
 }
 
 // Auth middleware adds auth from session and populates user info
-func Auth(sessionStore sessions.Store, avatarProxy avatar.Proxy, admins []string, modes []Mode) func(http.Handler) http.Handler {
+func Auth(sessionStore sessions.Store, admins []string, modes []Mode) func(http.Handler) http.Handler {
 
 	inModes := func(mode Mode) bool {
 		for _, m := range modes {
@@ -80,12 +77,6 @@ func Auth(sessionStore sessions.Store, avatarProxy avatar.Proxy, admins []string
 						user.Admin = true
 						break
 					}
-				}
-
-				if avatarURL, e := avatarProxy.Put(user); e == nil {
-					user.Picture = avatarURL
-				} else {
-					log.Printf("[WARN] failed to proxy avatar, %s", e)
 				}
 
 				ctx := r.Context()
