@@ -56,7 +56,7 @@ func (u userData) value(key string) string {
 }
 
 // newProvider makes auth for given provider
-func initProvider(p Params, provider Provider, avatarProxy *avatar.Proxy) Provider {
+func initProvider(p Params, provider Provider) Provider {
 	log.Printf("[INFO] create %s auth, id=%s, redir: %s", provider.Name, p.Cid, provider.RedirectURL)
 
 	conf := oauth2.Config{
@@ -69,7 +69,7 @@ func initProvider(p Params, provider Provider, avatarProxy *avatar.Proxy) Provid
 
 	provider.conf = &conf
 	provider.Store = p.SessionStore
-	provider.AvatarProxy = avatarProxy
+	provider.AvatarProxy = p.AvatarProxy
 	return provider
 }
 
