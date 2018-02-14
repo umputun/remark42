@@ -80,10 +80,10 @@ func NewFacebook(p Params) Provider {
 			}
 			userInfo.ID = "facebook_" + userInfo.ID
 
-			log.Printf("%T", data["picture"])
 			// picture under picture[data[url]]
 			if p, ok := data["picture"]; ok {
 				if d, ok := p.(map[string]interface{}); ok {
+					log.Printf("%+v", d)
 					if picURL, ok := d["url"]; ok {
 						userInfo.Picture = picURL.(string)
 					}

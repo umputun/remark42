@@ -167,7 +167,7 @@ func (p Provider) AuthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("[DEBUG] %+v", jData)
+	log.Printf("[DEBUG] user info %+v", session.Values["uinfo"])
 
 	// redirect to back url if presented in login query params
 	if fromURL, ok := session.Values["from"]; ok {
