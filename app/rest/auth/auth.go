@@ -72,14 +72,14 @@ func initProvider(p Params, provider Provider) Provider {
 // Routes returns auth routes for given provider
 func (p Provider) Routes() chi.Router {
 	router := chi.NewRouter()
-	router.Get("/login", p.LoginHandler)
-	router.Get("/callback", p.AuthHandler)
-	router.Get("/logout", p.LogoutHandler)
+	router.Get("/login", p.loginHandler)
+	router.Get("/callback", p.authHandler)
+	router.Get("/logout", p.logoutHandler)
 	return router
 }
 
-// LoginHandler - GET /login?from=redirect-back-url
-func (p Provider) LoginHandler(w http.ResponseWriter, r *http.Request) {
+// loginHandler - GET /login?from=redirect-back-url
+func (p Provider) loginHandler(w http.ResponseWriter, r *http.Request) {
 
 	// make state (random) and store in session
 	state := p.randToken()
@@ -106,9 +106,9 @@ func (p Provider) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, loginURL, http.StatusTemporaryRedirect)
 }
 
-// AuthHandler fills user info and redirects to "from" url. This is callback url redirected locally by browser
+// authHandler fills user info and redirects to "from" url. This is callback url redirected locally by browser
 // GET /callback
-func (p Provider) AuthHandler(w http.ResponseWriter, r *http.Request) {
+func (p Provider) authHandler(w http.ResponseWriter, r *http.Request) {
 
 	session, err := p.Get(r, "remark")
 	if err != nil {
@@ -178,8 +178,8 @@ func (p Provider) AuthHandler(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, jData)
 }
 
-// LogoutHandler - GET /logout
-func (p Provider) LogoutHandler(w http.ResponseWriter, r *http.Request) {
+// logoutHandler - GET /logout
+func (p Provider) logoutHandler(w http.ResponseWriter, r *http.Request) {
 	session, err := p.Get(r, "remark")
 	if err != nil {
 		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "failed to get session")

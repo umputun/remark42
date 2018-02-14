@@ -28,6 +28,7 @@ func TestStore_MakeTree(t *testing.T) {
 		{ID: "22", ParentID: "2", Timestamp: time.Date(2017, 12, 25, 19, 47, 22, 0, time.UTC)},
 		{ID: "4", Timestamp: time.Date(2017, 12, 25, 19, 47, 22, 0, time.UTC)},
 		{ID: "3", Timestamp: time.Date(2017, 12, 25, 19, 47, 22, 0, time.UTC)},
+		{ID: "5", Deleted: true},
 	}
 
 	res := MakeTree(comments, "time")
