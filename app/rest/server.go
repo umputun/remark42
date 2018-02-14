@@ -68,7 +68,7 @@ func (s *Server) Run(port int) {
 	router.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
 
 	// all request by default allow anonymous access
-	router.Use(auth.Auth(s.SessionStore, s.Admins, maybeWithDevMode(auth.Anonymous)))
+	router.Use(auth.Auth(s.SessionStore, s.AvatarProxy, s.Admins, maybeWithDevMode(auth.Anonymous)))
 
 	router.Use(AppInfo("remark42", s.Version), Ping, Logger(LogAll))
 	router.Use(context.ClearHandler) // if you aren't using gorilla/mux, you need to wrap your handlers with context.ClearHandler
@@ -99,7 +99,7 @@ func (s *Server) Run(port int) {
 		rapi.Get("/config", s.configCtrl)
 
 		// protected routes, require auth
-		rapi.With(auth.Auth(s.SessionStore, s.Admins, maybeWithDevMode(auth.Full))).Group(func(rauth chi.Router) {
+		rapi.With(auth.Auth(s.SessionStore, s.AvatarProxy, s.Admins, maybeWithDevMode(auth.Full))).Group(func(rauth chi.Router) {
 			rauth.Post("/comment", s.createCommentCtrl)
 			rauth.Put("/comment/{id}", s.updateCommentCtrl)
 			rauth.Get("/user", s.userInfoCtrl)
