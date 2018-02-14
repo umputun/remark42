@@ -23,10 +23,16 @@ func MakeTree(comments []store.Comment, sortType string) *Tree {
 	res := Tree{}
 
 	topComments := res.filter(comments, "")
-	res.Nodes = make([]*Node, len(topComments))
-	for i, rc := range topComments {
+	res.Nodes = []*Node{}
+	for _, rc := range topComments {
 		node := Node{Comment: rc}
-		res.Nodes[i] = res.proc(comments, &node, rc.ID)
+
+		commentsTree := res.proc(comments, &node, rc.ID)
+		if commentsTree.Comment.Deleted && len(commentsTree.Replies) == 0 { // skip deleted with no subcomments
+			continue
+		}
+
+		res.Nodes = append(res.Nodes, res.proc(comments, &node, rc.ID))
 	}
 
 	res.sortNodes(sortType)
