@@ -22,9 +22,14 @@ services:
             - BOLTDB_PATH=/srv/var/db
             - BACKUP_PATH=/srv/var/backup
             - SESSION_STORE=/srv/var/session
-            - DEV=true # development mode flag. It turns authentication off, be careful!
+            # - DEV=true # development mode flag. It turns authentication off, be careful!
             - DEBUG=true
-
+            - REMARK_GOOGLE_CID
+            - REMARK_GOOGLE_CSEC
+            - REMARK_GITHUB_CID
+            - REMARK_GITHUB_CSEC
+            - REMARK_FACEBOOK_CID
+            - REMARK_FACEBOOK_CSEC
         volumes:
             - ./var:/srv/var
             - ./web:/srv/web # maps web directory directly to propagate local changes to container without redeploy

@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"log"
 	"strings"
 
 	"golang.org/x/oauth2/facebook"
@@ -71,19 +72,19 @@ func NewFacebook(p Params) Provider {
 		Store:       p.SessionStore,
 		MapUser: func(data userData) store.User {
 			userInfo := store.User{
-				ID:      data.value("id"),
-				Name:    data.value("name"),
-				Profile: data.value("home"),
+				ID:   data.value("id"),
+				Name: data.value("name"),
 			}
 			if userInfo.Name == "" {
 				userInfo.Name = userInfo.ID
 			}
 			userInfo.ID = "facebook_" + userInfo.ID
 
+			log.Printf("%T", data["picture"])
 			// picture under picture[data[url]]
 			if p, ok := data["picture"]; ok {
-				if data, ok := p.(map[string]interface{}); ok {
-					if picURL, ok := data["url"]; ok {
+				if d, ok := p.(map[string]interface{}); ok {
+					if picURL, ok := d["url"]; ok {
 						userInfo.Picture = picURL.(string)
 					}
 				}

@@ -189,7 +189,7 @@ func makeAuthProviders(sessionStore sessions.Store) []auth.Provider {
 // post-flush callback invoked by cache after each flush in async way
 func postFlushFn() {
 	for _, site := range opts.Sites {
-		resp, err := http.Get("http://localhost:8080/api/v1/list?site=" + site)
+		resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/list?site=%s", opts.ServerCommand.Port, site))
 		if err != nil {
 			log.Printf("[WARN] failed to refresh cached list for %s, %s", site, err)
 			return
