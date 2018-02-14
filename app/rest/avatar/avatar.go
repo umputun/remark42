@@ -54,7 +54,7 @@ func (p *Proxy) Put(u store.User) (avatarURL string, err error) {
 		return "", errors.Wrapf(err, "failed to make avatar location %s", location)
 	}
 
-	avFile := path.Join(location, u.ID+".png")
+	avFile := path.Join(location, u.ID+".image")
 	fh, err := os.Create(avFile)
 	if err != nil {
 		return "", errors.Wrapf(err, "can't create file %s", avFile)
@@ -70,7 +70,7 @@ func (p *Proxy) Put(u store.User) (avatarURL string, err error) {
 	}
 
 	log.Printf("[DEBUG] saved avatar from %s to %s, user %q", avatarURL, avFile, u.Name)
-	return p.RoutePath + "/" + u.ID + ".png", nil
+	return p.RoutePath + "/" + u.ID + ".image", nil
 }
 
 // Routes returns auth routes for given provider
@@ -78,7 +78,7 @@ func (p *Proxy) Routes() chi.Router {
 	router := chi.NewRouter()
 	router.Get("/{avatar}", func(w http.ResponseWriter, r *http.Request) {
 		avatar := chi.URLParam(r, "avatar")
-		location := p.location(strings.TrimSuffix(avatar, ".png"))
+		location := p.location(strings.TrimSuffix(avatar, ".image"))
 		avFile := path.Join(location, avatar)
 		fh, err := os.Open(avFile)
 		if err != nil {
