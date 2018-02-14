@@ -43,7 +43,7 @@ var opts struct {
 		FacebookCID  string `long:"facebook-cid" env:"REMARK_FACEBOOK_CID" description:"Facebook OAuth client ID"`
 		FacebookCSEC string `long:"facebook-csec" env:"REMARK_FACEBOOK_CSEC" description:"Facebook OAuth client secret"`
 
-		AvatarStore string `long:"avatars" env:"SESSION_STORE" default:"./var/avatars" description:"path to avatars directory"`
+		AvatarStore string `long:"avatars" env:"AVATAR_STORE" default:"./var/avatars" description:"path to avatars directory"`
 		Port        int    `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
 	} `command:"server" description:"run server"`
 
