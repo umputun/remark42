@@ -73,13 +73,21 @@ func NewFacebook(p Params) Provider {
 			userInfo := store.User{
 				ID:      data.value("id"),
 				Name:    data.value("name"),
-				Picture: data.value("picture"),
-				// Profile: data.value("home"),
+				Profile: data.value("home"),
 			}
 			if userInfo.Name == "" {
 				userInfo.Name = userInfo.ID
 			}
 			userInfo.ID = "facebook_" + userInfo.ID
+
+			// picture under picture[data[url]]
+			if p, ok := data["picture"]; ok {
+				if data, ok := p.(map[string]interface{}); ok {
+					if picURL, ok := data["url"]; ok {
+						userInfo.Picture = picURL.(string)
+					}
+				}
+			}
 			return userInfo
 		},
 	})
