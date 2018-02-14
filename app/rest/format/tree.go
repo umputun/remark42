@@ -32,7 +32,7 @@ func MakeTree(comments []store.Comment, sortType string) *Tree {
 			continue
 		}
 
-		res.Nodes = append(res.Nodes, res.proc(comments, &node, rc.ID))
+		res.Nodes = append(res.Nodes, commentsTree)
 	}
 
 	res.sortNodes(sortType)
