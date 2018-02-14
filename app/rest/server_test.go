@@ -347,7 +347,7 @@ func prep(t *testing.T) (srv *Server, port int) {
 		AuthProviders: nil,
 		Exporter:      &migrator.Remark{DataStore: dataStore},
 		Cache:         &mockCache{},
-		AvatarProxy:   avatar.Proxy{StorePath: "/tmp", RoutePath: "/api/v1/avatar"},
+		AvatarProxy:   &avatar.Proxy{StorePath: "/tmp", RoutePath: "/api/v1/avatar"},
 	}
 	go func() {
 		port = rand.Intn(50000) + 1025
