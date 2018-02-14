@@ -141,9 +141,9 @@ func Logger(flags ...LoggerFlag) func(http.Handler) http.Handler {
 					q = qun
 				}
 
-				log.Printf("[INFO] REST %s%s - %s - %s - %d (%d) - %v %s",
-					r.Method, user, q, strings.Split(r.RemoteAddr, ":")[0],
-					ww.Status(), ww.BytesWritten(), t2.Sub(t1), body)
+				log.Printf("[INFO] REST %s - %s - %s - %d (%d) - %v %s %s",
+					r.Method, q, strings.Split(r.RemoteAddr, ":")[0],
+					ww.Status(), ww.BytesWritten(), t2.Sub(t1), user, body)
 			}()
 
 			h.ServeHTTP(ww, r)
