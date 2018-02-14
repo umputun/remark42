@@ -103,19 +103,8 @@ func main() {
 		DevMode:       opts.DevMode,
 		Exporter:      &exporter,
 		AuthProviders: makeAuthProviders(sessionStore),
+		Cache:         common.NewLoadingCache(4*time.Hour, 15*time.Minute, postFlushFn),
 	}
-
-	srv.Cache = common.NewLoadingCache(4*time.Hour, 15*time.Minute, func() {
-		// set post-flush callback
-		for _, site := range opts.Sites {
-			resp, err := http.Get("http://localhost:8080/api/v1/list?site=" + site)
-			if err != nil {
-				log.Printf("[WARN] failed to refresh cached list for %s, %s", site, err)
-				return
-			}
-			_ = resp.Body.Close()
-		}
-	})
 
 	if opts.DevMode {
 		log.Printf("[WARN] running in dev mode, no auth!")
@@ -195,6 +184,18 @@ func makeAuthProviders(sessionStore sessions.Store) []auth.Provider {
 		log.Printf("[WARN] no auth providers defined")
 	}
 	return providers
+}
+
+// post-flush callback invoked by cache after each flush in async way
+func postFlushFn() {
+	for _, site := range opts.Sites {
+		resp, err := http.Get("http://localhost:8080/api/v1/list?site=" + site)
+		if err != nil {
+			log.Printf("[WARN] failed to refresh cached list for %s, %s", site, err)
+			return
+		}
+		_ = resp.Body.Close()
+	}
 }
 
 func setupLog(dbg bool) {
