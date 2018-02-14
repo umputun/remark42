@@ -13,7 +13,6 @@ import (
 
 	"log"
 
-	"bytes"
 	"image"
 	"image/png"
 
@@ -53,13 +52,13 @@ func (p *Proxy) Put(u store.User) (avatarURL string, err error) {
 		}
 	}()
 
-	pngWr := &bytes.Buffer{}
-	if err = p.convertToPng(resp.Body, pngWr); err != nil {
-		return "", err
-	}
+	//pngWr := &bytes.Buffer{}
+	//if err = p.convertToPng(resp.Body, pngWr); err != nil {
+	//	return "", err
+	//}
 
 	location := p.location(u.ID)
-	if err = os.Mkdir(location, 0600); err != nil && !strings.Contains(err.Error(), "file exists") {
+	if err = os.Mkdir(location, 0700); err != nil && !strings.Contains(err.Error(), "file exists") {
 		return "", errors.Wrapf(err, "failed to make avatar location %s", location)
 	}
 
@@ -74,7 +73,7 @@ func (p *Proxy) Put(u store.User) (avatarURL string, err error) {
 		}
 	}()
 
-	if _, err = io.Copy(fh, pngWr); err != nil {
+	if _, err = io.Copy(fh, resp.Body); err != nil {
 		return "", errors.Wrapf(err, "can't save file %s", avFile)
 	}
 	return p.RoutePath + "/" + u.ID + ".png", nil
@@ -99,7 +98,7 @@ func (p *Proxy) Routes() chi.Router {
 			}
 		}()
 
-		w.Header().Set("Content-Type", "image/png")
+		w.Header().Set("Content-Type", "image/*")
 		if status, ok := r.Context().Value(render.StatusCtxKey).(int); ok {
 			w.WriteHeader(status)
 		}
