@@ -13,9 +13,6 @@ import (
 
 	"log"
 
-	"image"
-	"image/png"
-
 	"fmt"
 	"hash/crc64"
 
@@ -52,11 +49,6 @@ func (p *Proxy) Put(u store.User) (avatarURL string, err error) {
 		}
 	}()
 
-	//pngWr := &bytes.Buffer{}
-	//if err = p.convertToPng(resp.Body, pngWr); err != nil {
-	//	return "", err
-	//}
-
 	location := p.location(u.ID)
 	if err = os.Mkdir(location, 0700); err != nil && !strings.Contains(err.Error(), "file exists") {
 		return "", errors.Wrapf(err, "failed to make avatar location %s", location)
@@ -76,6 +68,8 @@ func (p *Proxy) Put(u store.User) (avatarURL string, err error) {
 	if _, err = io.Copy(fh, resp.Body); err != nil {
 		return "", errors.Wrapf(err, "can't save file %s", avFile)
 	}
+
+	log.Printf("[DEBUG] saved avatar from %s to %s, user %q", avatarURL, avFile, u.Name)
 	return p.RoutePath + "/" + u.ID + ".png", nil
 }
 
@@ -108,18 +102,6 @@ func (p *Proxy) Routes() chi.Router {
 	})
 
 	return router
-}
-
-func (p *Proxy) convertToPng(r io.Reader, w io.Writer) error {
-	imageData, _, err := image.Decode(r)
-	if err != nil {
-		return errors.Wrap(err, "can't decode image")
-	}
-
-	if err = png.Encode(w, imageData); err != nil {
-		return errors.Wrap(err, "can't encode png image")
-	}
-	return nil
 }
 
 func (p *Proxy) location(id string) string {
