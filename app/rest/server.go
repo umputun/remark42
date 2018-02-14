@@ -153,10 +153,10 @@ func (s *Server) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	// render markdown
 	comment.Text = string(blackfriday.Run([]byte(comment.Text), blackfriday.WithNoExtensions()))
 
-	if avatarUrl, err := s.AvatarProxy.Put(user); err == nil {
-		comment.User.Picture = avatarUrl
+	if avatarURL, e := s.AvatarProxy.Put(user); e == nil {
+		comment.User.Picture = avatarURL
 	} else {
-		log.Printf("[WARN] failed to proxy avatar, %s", err)
+		log.Printf("[WARN] failed to proxy avatar, %s", e)
 	}
 
 	log.Printf("[DEBUG] create comment %+v", comment)

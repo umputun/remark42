@@ -1,6 +1,5 @@
 // Package avatar provides cached proxy for user pictures/avatars
 // refreshed by login and kept in local store
-
 package avatar
 
 import (
@@ -48,7 +47,10 @@ func (p *Proxy) Put(u store.User) (avatarURL string, err error) {
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to get avatar for user %s from %s", u.ID, u.Picture)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		e := resp.Body.Close()
+		log.Printf("[WARN] can't close response body, %s", e)
+	}()
 
 	pngWr := &bytes.Buffer{}
 	if err = p.convertToPng(resp.Body, pngWr); err != nil {
@@ -56,13 +58,20 @@ func (p *Proxy) Put(u store.User) (avatarURL string, err error) {
 	}
 
 	location := p.location(u.ID)
-	os.Mkdir(location, 0700)
+	if err = os.Mkdir(location, 0600); err != nil {
+		return "", errors.Wrapf(err, "failed to make avatar location %s", location)
+	}
+
 	avFile := path.Join(location, u.ID+".png")
 	fh, err := os.Create(avFile)
 	if err != nil {
 		return "", errors.Wrapf(err, "can't create file %s", avFile)
 	}
-	defer fh.Close()
+	defer func() {
+		e := fh.Close()
+		log.Printf("[WARN] can't close avatar file %s, %s", avFile, e)
+	}()
+
 	if _, err = io.Copy(fh, pngWr); err != nil {
 		return "", errors.Wrapf(err, "can't save file %s", avFile)
 	}
@@ -81,7 +90,12 @@ func (p *Proxy) Routes() chi.Router {
 			common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't load avatar")
 			return
 		}
-		defer fh.Close()
+
+		defer func() {
+			e := fh.Close()
+			log.Printf("[WARN] can't close avatar file %s, %s", avFile, e)
+		}()
+
 		w.Header().Set("Content-Type", "image/png")
 		if status, ok := r.Context().Value(render.StatusCtxKey).(int); ok {
 			w.WriteHeader(status)
