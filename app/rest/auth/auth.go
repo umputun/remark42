@@ -166,10 +166,12 @@ func (p Provider) authHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[DEBUG] got raw user info %+v", jData)
 
 	u := p.MapUser(jData)
-	if avatarURL, e := p.AvatarProxy.Put(u); e == nil {
-		u.Picture = avatarURL
-	} else {
-		log.Printf("[WARN] failed to proxy avatar, %s", e)
+	if p.AvatarProxy != nil {
+		if avatarURL, e := p.AvatarProxy.Put(u); e == nil {
+			u.Picture = avatarURL
+		} else {
+			log.Printf("[WARN] failed to proxy avatar, %s", e)
+		}
 	}
 	session.Values["uinfo"] = u
 
