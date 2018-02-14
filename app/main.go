@@ -15,6 +15,7 @@ import (
 	"github.com/umputun/remark/app/migrator"
 	"github.com/umputun/remark/app/rest"
 	"github.com/umputun/remark/app/rest/auth"
+	"github.com/umputun/remark/app/rest/avatar"
 	"github.com/umputun/remark/app/rest/common"
 	"github.com/umputun/remark/app/store"
 )
@@ -42,7 +43,8 @@ var opts struct {
 		FacebookCID  string `long:"facebook-cid" env:"REMARK_FACEBOOK_CID" description:"Facebook OAuth client ID"`
 		FacebookCSEC string `long:"facebook-csec" env:"REMARK_FACEBOOK_CSEC" description:"Facebook OAuth client secret"`
 
-		Port int `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
+		AvatarStore string `long:"avatars" env:"SESSION_STORE" default:"./var/avatars" description:"path to avatars directory"`
+		Port        int    `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
 	} `command:"server" description:"run server"`
 
 	ImportCommand struct {
@@ -64,7 +66,7 @@ func main() {
 	setupLog(opts.Dbg)
 	log.Print("[INFO] started remark")
 
-	if err := makeDirs(opts.BoltPath, opts.ServerCommand.SessionStore, opts.BackupLocation); err != nil {
+	if err := makeDirs(opts.BoltPath, opts.ServerCommand.SessionStore, opts.BackupLocation, opts.ServerCommand.AvatarStore); err != nil {
 		log.Fatalf("[ERROR] can't create directories, %+v", err)
 	}
 
@@ -104,6 +106,7 @@ func main() {
 		Exporter:      &exporter,
 		AuthProviders: makeAuthProviders(sessionStore),
 		Cache:         common.NewLoadingCache(4*time.Hour, 15*time.Minute, postFlushFn),
+		AvatarProxy:   avatar.Proxy{StorePath: opts.ServerCommand.AvatarStore, RoutePath: "/api/v1/avatar"},
 	}
 
 	if opts.DevMode {

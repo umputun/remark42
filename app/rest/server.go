@@ -23,6 +23,7 @@ import (
 
 	"github.com/umputun/remark/app/migrator"
 	"github.com/umputun/remark/app/rest/auth"
+	"github.com/umputun/remark/app/rest/avatar"
 	"github.com/umputun/remark/app/rest/common"
 	"github.com/umputun/remark/app/rest/format"
 	"github.com/umputun/remark/app/store"
@@ -38,6 +39,7 @@ type Server struct {
 	Exporter      migrator.Exporter
 	Cache         common.LoadingCache
 	DevMode       bool
+	AvatarProxy   avatar.Proxy
 
 	httpServer *http.Server
 	mod        admin
@@ -80,8 +82,9 @@ func (s *Server) Run(port int) {
 			// shortcut, can be any of providers, all logouts do the same - removes cookie
 			r.Get("/logout", s.AuthProviders[0].LogoutHandler)
 		}
-		r.Get("/avatar/{id}", s.avatarHandler)
 	})
+
+	router.Mount(s.AvatarProxy.RoutePath, s.AvatarProxy.Routes())
 
 	// api routes
 	router.Route("/api/v1", func(rapi chi.Router) {
@@ -149,6 +152,12 @@ func (s *Server) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 	// render markdown
 	comment.Text = string(blackfriday.Run([]byte(comment.Text), blackfriday.WithNoExtensions()))
+
+	if avatarUrl, err := s.AvatarProxy.Put(user); err == nil {
+		comment.User.Picture = avatarUrl
+	} else {
+		log.Printf("[WARN] failed to proxy avatar, %s", err)
+	}
 
 	log.Printf("[DEBUG] create comment %+v", comment)
 
@@ -405,9 +414,6 @@ func (s *Server) voteCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	s.Cache.Flush()
 	render.JSON(w, r, JSON{"id": comment.ID, "score": comment.Score})
-}
-
-func (s *Server) avatarHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // serves static files from /web
