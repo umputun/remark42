@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/umputun/remark/app/migrator"
+	"github.com/umputun/remark/app/rest/avatar"
 	"github.com/umputun/remark/app/store"
 )
 
@@ -79,7 +80,7 @@ func TestServer_CreateAndGet(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "<p><strong>test</strong> <em>123</em> http://radio-t.com</p>", comment.Text)
 	assert.Equal(t, store.User{Name: "developer one", ID: "dev",
-		Picture: "https://friends.radio-t.com/resources/images/rt_logo_64.png",
+		Picture: "/api/v1/avatar/dev.png",
 		Profile: "https://radio-t.com/info/", Admin: true, Blocked: false, IP: ""},
 		comment.User)
 	t.Logf("%+v", comment)
@@ -346,6 +347,7 @@ func prep(t *testing.T) (srv *Server, port int) {
 		AuthProviders: nil,
 		Exporter:      &migrator.Remark{DataStore: dataStore},
 		Cache:         &mockCache{},
+		AvatarProxy:   avatar.Proxy{StorePath: "/tmp", RoutePath: "/api/v1/avatar"},
 	}
 	go func() {
 		port = rand.Intn(50000) + 1025
