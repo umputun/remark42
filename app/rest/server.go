@@ -64,9 +64,11 @@ func (s *Server) Run(port int) {
 	router.Use(middleware.RealIP, Recoverer)
 	router.Use(middleware.Throttle(1000), middleware.Timeout(60*time.Second))
 	router.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
-	router.Use(AppInfo("remark42", s.Version), Ping, Logger(LogAll))
+
 	// all request by default allow anonymous access
 	router.Use(auth.Auth(s.SessionStore, s.Admins, maybeWithDevMode(auth.Anonymous)))
+
+	router.Use(AppInfo("remark42", s.Version), Ping, Logger(LogAll))
 	router.Use(context.ClearHandler) // if you aren't using gorilla/mux, you need to wrap your handlers with context.ClearHandler
 
 	// auth routes for all providers
