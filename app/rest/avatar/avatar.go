@@ -79,6 +79,7 @@ func (p *Proxy) Routes() chi.Router {
 	router.Get("/{avatar}", func(w http.ResponseWriter, r *http.Request) {
 		avatar := chi.URLParam(r, "avatar")
 		location := p.location(strings.TrimSuffix(avatar, ".image"))
+		location = p.location(strings.TrimSuffix(avatar, ".png"))
 		avFile := path.Join(location, avatar)
 		fh, err := os.Open(avFile)
 		if err != nil {
