@@ -80,7 +80,7 @@ func (s *Server) Run(port int) {
 			// shortcut, can be any of providers, all logouts do the same - removes cookie
 			r.Get("/logout", s.AuthProviders[0].LogoutHandler)
 		}
-		r.Get("/avatar/{id}", p.avatarHandler)
+		r.Get("/avatar/{id}", s.avatarHandler)
 	})
 
 	// api routes

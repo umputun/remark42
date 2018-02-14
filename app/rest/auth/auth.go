@@ -74,7 +74,7 @@ func (p Provider) Routes() chi.Router {
 	router := chi.NewRouter()
 	router.Get("/login", p.loginHandler)
 	router.Get("/callback", p.authHandler)
-	router.Get("/logout", p.logoutHandler)
+	router.Get("/logout", p.LogoutHandler)
 	return router
 }
 
@@ -178,8 +178,8 @@ func (p Provider) authHandler(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, jData)
 }
 
-// logoutHandler - GET /logout
-func (p Provider) logoutHandler(w http.ResponseWriter, r *http.Request) {
+// LogoutHandler - GET /logout
+func (p Provider) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	session, err := p.Get(r, "remark")
 	if err != nil {
 		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "failed to get session")
