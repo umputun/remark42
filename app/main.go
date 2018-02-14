@@ -43,8 +43,9 @@ var opts struct {
 		FacebookCID  string `long:"facebook-cid" env:"REMARK_FACEBOOK_CID" description:"Facebook OAuth client ID"`
 		FacebookCSEC string `long:"facebook-csec" env:"REMARK_FACEBOOK_CSEC" description:"Facebook OAuth client secret"`
 
-		AvatarStore string `long:"avatars" env:"AVATAR_STORE" default:"./var/avatars" description:"path to avatars directory"`
-		Port        int    `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
+		AvatarStore   string `long:"avatars" env:"AVATAR_STORE" default:"./var/avatars" description:"path to avatars directory"`
+		DefaultAvatar string `long:"avatar-def" env:"AVATAR_DEF" default:"./var/avatars/remark.image" description:"default avatar"`
+		Port          int    `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
 	} `command:"server" description:"run server"`
 
 	ImportCommand struct {
@@ -106,7 +107,11 @@ func main() {
 		Exporter:      &exporter,
 		AuthProviders: makeAuthProviders(sessionStore),
 		Cache:         common.NewLoadingCache(4*time.Hour, 15*time.Minute, postFlushFn),
-		AvatarProxy:   avatar.Proxy{StorePath: opts.ServerCommand.AvatarStore, RoutePath: "/api/v1/avatar"},
+		AvatarProxy: avatar.Proxy{
+			StorePath:     opts.ServerCommand.AvatarStore,
+			RoutePath:     "/api/v1/avatar",
+			DefaultAvatar: opts.ServerCommand.DefaultAvatar,
+		},
 	}
 
 	if opts.DevMode {

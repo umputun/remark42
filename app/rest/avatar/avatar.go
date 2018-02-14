@@ -34,7 +34,11 @@ type Proxy struct {
 
 // Put gets original avatar url from user info and returns proxied
 func (p *Proxy) Put(u store.User) (avatarURL string, err error) {
+
 	if u.Picture == "" {
+		if p.DefaultAvatar != "" {
+			return p.RoutePath + "/" + p.DefaultAvatar, nil
+		}
 		return "", errors.Errorf("no picture for %s", u.ID)
 	}
 
@@ -82,8 +86,14 @@ func (p *Proxy) Routes() chi.Router {
 		avFile := path.Join(location, avatar)
 		fh, err := os.Open(avFile)
 		if err != nil {
-			common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't load avatar")
-			return
+			if p.DefaultAvatar == "" {
+				common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't load avatar")
+				return
+			}
+			if fh, err = os.Open(path.Join(p.StorePath, p.DefaultAvatar)); err != nil {
+				common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't load default avatar")
+				return
+			}
 		}
 
 		defer func() {
