@@ -17,7 +17,7 @@ function initEmbed() {
 
   node.innerHTML = `
     <iframe
-      src="http://demo.remark42.com/iframe.html"
+      src="https://demo.remark42.com/web/iframe.html"
       width="100%"
       frameborder="0"
       allowtransparency="true"
@@ -31,12 +31,14 @@ function initEmbed() {
   `;
 
   const iframe = node.getElementsByTagName('iframe')[0];
-  let lastHeight = 0;
-  setInterval(() => {
-    if (iframe.contentWindow.html.innerHeight !== lastHeight) {
-      lastHeight = iframe.contentWindow.html.innerHeight;
-      iframe.style.height = `${lastHeight}px`;
-    }
-  }, 200);
+
+  window.addEventListener('message', updateIframeHeight);
+
+  function updateIframeHeight(event) {
+    try {
+      const data = JSON.parse(event.data);
+      iframe.style.height = `${data.remarkIframeHeight}px`;
+    } catch (e) {}
+  }
 }
 
