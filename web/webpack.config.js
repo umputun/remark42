@@ -39,11 +39,12 @@ const commonStyleLoaders = [
 module.exports = {
   context: __dirname,
   entry: {
-    app: './app/app',
+    remark: './app/remark',
+    embed: './app/embed',
   },
   output: {
     path: publicFolder,
-    filename: `remark${hash}.js`
+    filename: `[name]${hash}.js`
   },
   resolve: {
     extensions: ['.jsx', '.js'],
@@ -105,7 +106,7 @@ module.exports = {
     }),
     new webpack.optimize.ModuleConcatenationPlugin(),
     ...(env === 'production' ? [new webpack.optimize.UglifyJsPlugin()] : []),
-    ...(env === 'production' ? [new Copy(['./iframe.html'])] : []),
+    ...(env === 'production' ? [new Copy(['./iframe.html', './test-embed.html'])] : []),
   ],
   watch: env === 'dev',
   watchOptions: {
