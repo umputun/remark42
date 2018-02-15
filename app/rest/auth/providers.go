@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"encoding/json"
 	"strings"
 
 	"golang.org/x/oauth2/facebook"
@@ -19,7 +20,7 @@ func NewGoogle(p Params) Provider {
 		Scopes:      []string{"https://www.googleapis.com/auth/userinfo.email"},
 		InfoURL:     "https://www.googleapis.com/oauth2/v3/userinfo",
 		Store:       p.SessionStore,
-		MapUser: func(data userData) store.User {
+		MapUser: func(data userData, _ []byte) store.User {
 			userInfo := store.User{
 				ID:      data.value("email"),
 				Name:    data.value("name"),
@@ -44,7 +45,7 @@ func NewGithub(p Params) Provider {
 		Scopes:      []string{"user:email"},
 		InfoURL:     "https://api.github.com/user",
 		Store:       p.SessionStore,
-		MapUser: func(data userData) store.User {
+		MapUser: func(data userData, _ []byte) store.User {
 			userInfo := store.User{
 				ID:      data.value("login"),
 				Name:    data.value("name"),
@@ -63,6 +64,17 @@ func NewGithub(p Params) Provider {
 // NewFacebook makes facebook oauth2 provider
 func NewFacebook(p Params) Provider {
 
+	// response format for fb /me call
+	type uinfo struct {
+		ID      string `json:"id"`
+		Name    string `json:"name"`
+		Picture struct {
+			Data struct {
+				URL string `json:"url"`
+			} `json:"data"`
+		} `json:"picture"`
+	}
+
 	return initProvider(p, Provider{
 		Name:        "facebook",
 		Endpoint:    facebook.Endpoint,
@@ -70,7 +82,7 @@ func NewFacebook(p Params) Provider {
 		Scopes:      []string{"public_profile"},
 		InfoURL:     "https://graph.facebook.com/me?fields=id,name,picture",
 		Store:       p.SessionStore,
-		MapUser: func(data userData) store.User {
+		MapUser: func(data userData, bdata []byte) store.User {
 			userInfo := store.User{
 				ID:   data.value("id"),
 				Name: data.value("name"),
@@ -80,17 +92,9 @@ func NewFacebook(p Params) Provider {
 			}
 			userInfo.ID = "facebook_" + userInfo.ID
 
-			// picture under picture[data[url]]
-			if p, ok := data["picture"]; ok {
-				if picMap, ok := p.(map[string]interface{}); ok {
-					if d, ok := picMap["data"]; ok {
-						if dataMap, ok := d.(map[string]interface{}); ok {
-							if picURL, ok := dataMap["url"]; ok {
-								userInfo.Picture = picURL.(string)
-							}
-						}
-					}
-				}
+			uinfoJSON := uinfo{}
+			if err := json.Unmarshal(bdata, &uinfoJSON); err == nil {
+				userInfo.Picture = uinfoJSON.Picture.Data.URL
 			}
 			return userInfo
 		},

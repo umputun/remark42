@@ -31,7 +31,7 @@ type Provider struct {
 	InfoURL     string
 	Endpoint    oauth2.Endpoint
 	Scopes      []string
-	MapUser     func(userData) store.User
+	MapUser     func(userData, []byte) store.User
 	AvatarProxy *avatar.Proxy
 
 	conf *oauth2.Config
@@ -165,7 +165,7 @@ func (p Provider) authHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("[DEBUG] got raw user info %+v", jData)
 
-	u := p.MapUser(jData)
+	u := p.MapUser(jData, data)
 	if p.AvatarProxy != nil {
 		if avatarURL, e := p.AvatarProxy.Put(u); e == nil {
 			u.Picture = avatarURL
