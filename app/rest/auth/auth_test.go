@@ -71,7 +71,7 @@ func mockProvider(t *testing.T, sessStore sessions.Store, loginPort, authPort in
 		RedirectURL: fmt.Sprintf("http://localhost:%d/callback", loginPort),
 		Scopes:      []string{"user:email"},
 		InfoURL:     fmt.Sprintf("http://localhost:%d/user", authPort),
-		MapUser: func(data userData) store.User {
+		MapUser: func(data userData, _ []byte) store.User {
 			userInfo := store.User{
 				ID:      data.value("id"),
 				Name:    data.value("name"),
