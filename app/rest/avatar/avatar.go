@@ -3,6 +3,7 @@
 package avatar
 
 import (
+	"crypto/sha1"
 	"fmt"
 	"hash/crc64"
 	"io"
@@ -48,13 +49,13 @@ func (p *Proxy) Put(u store.User) (avatarURL string, err error) {
 			log.Printf("[WARN] can't close response body, %s", e)
 		}
 	}()
-
-	location := p.location(u.ID)
+	encID := p.encodeID(u.ID)
+	location := p.location(encID)
 	if err = os.Mkdir(location, 0700); err != nil && !strings.Contains(err.Error(), "file exists") {
 		return "", errors.Wrapf(err, "failed to make avatar location %s", location)
 	}
 
-	avFile := path.Join(location, u.ID+".image")
+	avFile := path.Join(location, encID+".image")
 	fh, err := os.Create(avFile)
 	if err != nil {
 		return "", errors.Wrapf(err, "can't create file %s", avFile)
@@ -70,7 +71,7 @@ func (p *Proxy) Put(u store.User) (avatarURL string, err error) {
 	}
 
 	log.Printf("[DEBUG] saved avatar from %s to %s, user %q", u.Picture, avFile, u.Name)
-	return p.RoutePath + "/" + u.ID + ".image", nil
+	return p.RoutePath + "/" + encID + ".image", nil
 }
 
 // Routes returns auth routes for given provider
@@ -108,6 +109,15 @@ func (p *Proxy) Routes() chi.Router {
 	})
 
 	return router
+}
+
+func (p *Proxy) encodeID(id string) string {
+	h := sha1.New()
+	_, err := h.Write([]byte(id))
+	if err != nil {
+		return id
+	}
+	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
 // get location for user id by adding partion to final path
