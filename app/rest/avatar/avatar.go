@@ -3,24 +3,20 @@
 package avatar
 
 import (
-	"net/http"
-	"time"
-
-	"os"
-	"path"
-
-	"io"
-
-	"log"
-
 	"fmt"
 	"hash/crc64"
-
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"path"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
 	"github.com/pkg/errors"
+
 	"github.com/umputun/remark/app/rest/common"
 	"github.com/umputun/remark/app/store"
 )
@@ -32,7 +28,7 @@ type Proxy struct {
 	RoutePath     string
 }
 
-// Put gets original avatar url from user info and returns proxied
+// Put gets original avatar url from user info and returns proxied url
 func (p *Proxy) Put(u store.User) (avatarURL string, err error) {
 
 	if u.Picture == "" {
@@ -114,8 +110,10 @@ func (p *Proxy) Routes() chi.Router {
 	return router
 }
 
+// get location for user id by adding partion to final path
+// the end result is a full path like this - /tmp/avatars.test/992
 func (p *Proxy) location(id string) string {
 	checksum64 := crc64.Checksum([]byte(id), crc64.MakeTable(crc64.ECMA))
-	partition := checksum64 % 1000
-	return path.Join(p.StorePath, fmt.Sprintf("%03d", partition))
+	partition := checksum64 % 100
+	return path.Join(p.StorePath, fmt.Sprintf("%02d", partition))
 }
