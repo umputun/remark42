@@ -29,6 +29,8 @@ type Proxy struct {
 	RoutePath     string
 }
 
+const imgSfx = ".image"
+
 // Put gets original avatar url from user info and returns proxied url
 func (p *Proxy) Put(u store.User) (avatarURL string, err error) {
 
@@ -39,6 +41,7 @@ func (p *Proxy) Put(u store.User) (avatarURL string, err error) {
 		return "", errors.Errorf("no picture for %s", u.ID)
 	}
 
+	// load avatar from remote location
 	client := http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Get(u.Picture)
 	if err != nil {
@@ -49,13 +52,18 @@ func (p *Proxy) Put(u store.User) (avatarURL string, err error) {
 			log.Printf("[WARN] can't close response body, %s", e)
 		}
 	}()
+
+	// get ID and location of locally cached avatar
 	encID := p.encodeID(u.ID)
-	location := p.location(encID)
-	if err = os.Mkdir(location, 0700); err != nil && !strings.Contains(err.Error(), "file exists") {
-		return "", errors.Wrapf(err, "failed to make avatar location %s", location)
+	location := p.location(encID) // location adds partion to path
+
+	if _, err = os.Stat(location); os.IsNotExist(err) {
+		if e := os.Mkdir(location, 0700); e != nil {
+			return "", errors.Wrapf(e, "failed to mkdir avatar location %s", location)
+		}
 	}
 
-	avFile := path.Join(location, encID+".image")
+	avFile := path.Join(location, encID+imgSfx)
 	fh, err := os.Create(avFile)
 	if err != nil {
 		return "", errors.Wrapf(err, "can't create file %s", avFile)
@@ -71,15 +79,17 @@ func (p *Proxy) Put(u store.User) (avatarURL string, err error) {
 	}
 
 	log.Printf("[DEBUG] saved avatar from %s to %s, user %q", u.Picture, avFile, u.Name)
-	return p.RoutePath + "/" + encID + ".image", nil
+	return p.RoutePath + "/" + encID + imgSfx, nil
 }
 
 // Routes returns auth routes for given provider
 func (p *Proxy) Routes() chi.Router {
 	router := chi.NewRouter()
+
+	// GET /123456789.image
 	router.Get("/{avatar}", func(w http.ResponseWriter, r *http.Request) {
 		avatar := chi.URLParam(r, "avatar")
-		location := p.location(strings.TrimSuffix(avatar, ".image"))
+		location := p.location(strings.TrimSuffix(avatar, imgSfx))
 		avFile := path.Join(location, avatar)
 		fh, err := os.Open(avFile)
 		if err != nil {
@@ -111,6 +121,7 @@ func (p *Proxy) Routes() chi.Router {
 	return router
 }
 
+// encodeID hashes user id to sha1
 func (p *Proxy) encodeID(id string) string {
 	h := sha1.New()
 	_, err := h.Write([]byte(id))
@@ -121,7 +132,7 @@ func (p *Proxy) encodeID(id string) string {
 }
 
 // get location for user id by adding partion to final path
-// the end result is a full path like this - /tmp/avatars.test/992
+// the end result is a full path like this - /tmp/avatars.test/92
 func (p *Proxy) location(id string) string {
 	checksum64 := crc64.Checksum([]byte(id), crc64.MakeTable(crc64.ECMA))
 	partition := checksum64 % 100

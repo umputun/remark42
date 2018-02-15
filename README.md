@@ -238,3 +238,4 @@ _all calls require auth and admin_
 - User can vote for the comment multiple times but only to change his/her vote. Double-voting not allowed.
 - User can edit comments in 5 mins window after creation.
 - User ID prefixed by oauth provider name in order to avoid collisions and potential abuse.
+- All avatars cached locally in order to prevent rate limiters from google/github/facebook.

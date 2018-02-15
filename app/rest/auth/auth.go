@@ -32,9 +32,9 @@ type Provider struct {
 	Endpoint    oauth2.Endpoint
 	Scopes      []string
 	MapUser     func(userData, []byte) store.User
-	AvatarProxy *avatar.Proxy
 
-	conf *oauth2.Config
+	avatarProxy *avatar.Proxy
+	conf        *oauth2.Config
 }
 
 // Params to make initialized and ready to use provider
@@ -69,7 +69,7 @@ func initProvider(p Params, provider Provider) Provider {
 
 	provider.conf = &conf
 	provider.Store = p.SessionStore
-	provider.AvatarProxy = p.AvatarProxy
+	provider.avatarProxy = p.AvatarProxy
 	return provider
 }
 
@@ -166,8 +166,8 @@ func (p Provider) authHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[DEBUG] got raw user info %+v", jData)
 
 	u := p.MapUser(jData, data)
-	if p.AvatarProxy != nil {
-		if avatarURL, e := p.AvatarProxy.Put(u); e == nil {
+	if p.avatarProxy != nil {
+		if avatarURL, e := p.avatarProxy.Put(u); e == nil {
 			u.Picture = avatarURL
 		} else {
 			log.Printf("[WARN] failed to proxy avatar, %s", e)
