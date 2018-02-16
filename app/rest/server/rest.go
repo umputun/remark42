@@ -166,7 +166,7 @@ func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = s.Notifier.OnUpdate(comment.Locator); err != nil {
+	if err = s.Notifier.OnUpdate(comment); err != nil {
 		log.Printf("[WARN] can't send notify event for %+v, %s", comment.Locator, err)
 	}
 

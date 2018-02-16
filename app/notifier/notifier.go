@@ -12,7 +12,7 @@ import (
 type Interface interface {
 	Subscribe(locator store.Locator, user store.User) error
 	UnSubscribe(locator store.Locator, user store.User) error
-	OnUpdate(locator store.Locator) error
+	OnUpdate(comment store.Comment) error
 	Status(locator store.Locator, user store.User) (bool, error)
 }
 
@@ -22,13 +22,13 @@ type NoOperation struct {
 	status map[string]struct{}
 }
 
-// NewNoperation makes NoOperation fake notifier
-func NewNoperation() *NoOperation {
+// NewNoOperation makes NoOperation fake notifier
+func NewNoOperation() *NoOperation {
 	res := NoOperation{status: map[string]struct{}{}}
 	return &res
 }
 
-// Subscribe is a fake, just loging attempt
+// Subscribe is a fake, just logging attempt
 func (n *NoOperation) Subscribe(locator store.Locator, user store.User) error {
 	n.Lock()
 	n.status[n.key(locator, user)] = struct{}{}
@@ -37,7 +37,7 @@ func (n *NoOperation) Subscribe(locator store.Locator, user store.User) error {
 	return nil
 }
 
-// UnSubscribe is a fake, just loging attempt
+// UnSubscribe is a fake, just logging attempt
 func (n *NoOperation) UnSubscribe(locator store.Locator, user store.User) error {
 	n.Lock()
 	delete(n.status, n.key(locator, user))
@@ -46,9 +46,9 @@ func (n *NoOperation) UnSubscribe(locator store.Locator, user store.User) error 
 	return nil
 }
 
-// OnUpdate is a fake, just loging event
-func (n *NoOperation) OnUpdate(locator store.Locator) error {
-	log.Printf("[DEBUG] update for %+v", locator)
+// OnUpdate is a fake, just logging event
+func (n *NoOperation) OnUpdate(comment store.Comment) error {
+	log.Printf("[DEBUG] update for %+v", comment)
 	return nil
 }
 

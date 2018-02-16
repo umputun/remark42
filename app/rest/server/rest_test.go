@@ -351,7 +351,7 @@ func prep(t *testing.T) (srv *Rest, port int) {
 		},
 		Exporter: &migrator.Remark{DataStore: dataStore},
 		Cache:    &mockCache{},
-		Notifier: notifier.NewNoperation(),
+		Notifier: notifier.NewNoOperation(),
 	}
 	go func() {
 		port = rand.Intn(50000) + 1025

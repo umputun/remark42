@@ -117,7 +117,7 @@ func main() {
 			AvatarProxy:  avatarProxy,
 		},
 		Cache:    rest.NewLoadingCache(4*time.Hour, 15*time.Minute, postFlushFn),
-		Notifier: notifier.NewNoperation(),
+		Notifier: notifier.NewNoOperation(),
 	}
 
 	if opts.DevMode {
