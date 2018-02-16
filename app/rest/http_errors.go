@@ -1,4 +1,4 @@
-package common
+package rest
 
 import (
 	"fmt"
@@ -16,12 +16,6 @@ func SendErrorJSON(w http.ResponseWriter, r *http.Request, code int, err error, 
 	logDetails(r, code, err, details)
 	render.Status(r, code)
 	render.JSON(w, r, map[string]interface{}{"error": err.Error(), "details": details})
-}
-
-// SendErrorText with simple text body and responds with error code
-func SendErrorText(w http.ResponseWriter, r *http.Request, code int, text string) {
-	render.Status(r, code)
-	render.PlainText(w, r, text)
 }
 
 func logDetails(r *http.Request, code int, err error, details string) {

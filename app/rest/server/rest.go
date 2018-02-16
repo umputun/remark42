@@ -1,4 +1,4 @@
-package rest
+package server
 
 import (
 	"bytes"
@@ -22,21 +22,21 @@ import (
 
 	"github.com/umputun/remark/app/migrator"
 	"github.com/umputun/remark/app/notifier"
+	"github.com/umputun/remark/app/rest"
 	"github.com/umputun/remark/app/rest/auth"
-	"github.com/umputun/remark/app/rest/common"
 	"github.com/umputun/remark/app/rest/format"
 	"github.com/umputun/remark/app/store"
 )
 
-// Server is a rest access server
-type Server struct {
+// Rest is a rest access server
+type Rest struct {
 	Version string
 	DevMode bool
 
 	DataService   store.Service
 	Authenticator auth.Authenticator
 	Exporter      migrator.Exporter
-	Cache         common.LoadingCache
+	Cache         rest.LoadingCache
 	Notifier      notifier.Interface
 
 	httpServer *http.Server
@@ -44,7 +44,7 @@ type Server struct {
 }
 
 // Run the lister and request's router, activate rest server
-func (s *Server) Run(port int) {
+func (s *Rest) Run(port int) {
 	log.Print("[INFO] activate rest server")
 
 	// add auth.Developer flag if dev mode is active
@@ -122,17 +122,17 @@ func (s *Server) Run(port int) {
 }
 
 // POST /comment - adds comment, resets all immutable fields
-func (s *Server) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
+func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 	comment := store.Comment{}
 	if err := render.DecodeJSON(r.Body, &comment); err != nil {
-		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't bind comment")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't bind comment")
 		return
 	}
 
-	user, err := common.GetUserInfo(r)
+	user, err := rest.GetUserInfo(r)
 	if err != nil { // this not suppose to happen (handled by Auth), just dbl-check
-		common.SendErrorJSON(w, r, http.StatusUnauthorized, err, "can't get user info")
+		rest.SendErrorJSON(w, r, http.StatusUnauthorized, err, "can't get user info")
 		return
 	}
 
@@ -156,13 +156,13 @@ func (s *Server) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 	// check if user blocked
 	if s.mod.checkBlocked(comment.Locator.SiteID, comment.User) {
-		common.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"), "user blocked")
+		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"), "user blocked")
 		return
 	}
 
 	id, err := s.DataService.Create(comment)
 	if err != nil {
-		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't save comment")
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't save comment")
 		return
 	}
 
@@ -176,7 +176,7 @@ func (s *Server) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 }
 
 // PUT /comment/{id}?site=siteID&url=post-url - update comment
-func (s *Server) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
+func (s *Rest) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 	edit := struct {
 		Text    string
@@ -184,13 +184,13 @@ func (s *Server) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	}{}
 
 	if err := render.DecodeJSON(r.Body, &edit); err != nil {
-		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't bind comment")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't bind comment")
 		return
 	}
 
-	user, err := common.GetUserInfo(r)
+	user, err := rest.GetUserInfo(r)
 	if err != nil { // this not suppose to happen (handled by Auth), just dbl-check
-		common.SendErrorJSON(w, r, http.StatusUnauthorized, err, "can't get user info")
+		rest.SendErrorJSON(w, r, http.StatusUnauthorized, err, "can't get user info")
 		return
 	}
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
@@ -203,18 +203,18 @@ func (s *Server) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 	var currComment store.Comment
 	if currComment, err = s.DataService.Get(locator, id); err != nil {
-		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't find comment")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't find comment")
 		return
 	}
 
 	if currComment.User.ID != user.ID {
-		common.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"), "can not edit comments for other users")
+		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"), "can not edit comments for other users")
 		return
 	}
 
 	res, err := s.DataService.EditComment(locator, id, edit.Text, store.Edit{Summary: edit.Summary})
 	if err != nil {
-		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't update comment")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't update comment")
 		return
 	}
 
@@ -224,7 +224,7 @@ func (s *Server) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 // GET /find?site=siteID&url=post-url&format=[tree|plain]&sort=[+/-time|+/-score]
 // find comments for given post. Returns in tree or plain formats, sorted
-func (s *Server) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
+func (s *Rest) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	log.Printf("[DEBUG] get comments for %+v", locator)
 
@@ -245,14 +245,14 @@ func (s *Server) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't find comments")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't find comments")
 		return
 	}
 	renderJSONFromBytes(w, r, data)
 }
 
 // GET /last/{max}?site=siteID - last comments for the siteID, across all posts, sorted by time
-func (s *Server) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
+func (s *Rest) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[DEBUG] get last comments for %s", r.URL.Query().Get("site"))
 
@@ -271,14 +271,14 @@ func (s *Server) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't get last comments")
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't get last comments")
 		return
 	}
 	renderJSONFromBytes(w, r, data)
 }
 
 // GET /id/{id}?site=siteID&url=post-url - gets a comment by id
-func (s *Server) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
+func (s *Rest) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	siteID := r.URL.Query().Get("site")
@@ -288,7 +288,7 @@ func (s *Server) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 
 	comment, err := s.DataService.Get(store.Locator{SiteID: siteID, URL: url}, id)
 	if err != nil {
-		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get comment by id")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get comment by id")
 		return
 	}
 	comment = s.mod.maskBlockedUsers([]store.Comment{comment})[0]
@@ -297,7 +297,7 @@ func (s *Server) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET /comments?site=siteID&user=id - returns comments for given userID
-func (s *Server) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
+func (s *Rest) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	userID := r.URL.Query().Get("user")
 	siteID := r.URL.Query().Get("site")
@@ -320,14 +320,14 @@ func (s *Server) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get comment by user id")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get comment by user id")
 		return
 	}
 	renderJSONFromBytes(w, r, data)
 }
 
 // GET /config?site=siteID - returns configuration
-func (s *Server) configCtrl(w http.ResponseWriter, r *http.Request) {
+func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 	type config struct {
 		Version      string   `json:"version"`
 		EditDuration int      `json:"edit_duration"`
@@ -350,28 +350,28 @@ func (s *Server) configCtrl(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET /user - returns user info
-func (s *Server) userInfoCtrl(w http.ResponseWriter, r *http.Request) {
-	user, err := common.GetUserInfo(r)
+func (s *Rest) userInfoCtrl(w http.ResponseWriter, r *http.Request) {
+	user, err := rest.GetUserInfo(r)
 	if err != nil {
-		common.SendErrorJSON(w, r, http.StatusUnauthorized, err, "can't get user info")
+		rest.SendErrorJSON(w, r, http.StatusUnauthorized, err, "can't get user info")
 		return
 	}
 	render.JSON(w, r, user)
 }
 
 // GET /count?site=siteID&url=post-url - get number of comments for given post
-func (s *Server) countCtrl(w http.ResponseWriter, r *http.Request) {
+func (s *Rest) countCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	count, err := s.DataService.Count(locator)
 	if err != nil {
-		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get count")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get count")
 		return
 	}
 	render.JSON(w, r, JSON{"count": count, "locator": locator})
 }
 
 // GET /list?site=siteID - list posts with comments
-func (s *Server) listCtrl(w http.ResponseWriter, r *http.Request) {
+func (s *Rest) listCtrl(w http.ResponseWriter, r *http.Request) {
 
 	siteID := r.URL.Query().Get("site")
 	data, err := s.Cache.Get(r.URL.String(), 8*time.Hour, func() ([]byte, error) {
@@ -383,18 +383,18 @@ func (s *Server) listCtrl(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get list of comments for "+siteID)
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get list of comments for "+siteID)
 		return
 	}
 	renderJSONFromBytes(w, r, data)
 }
 
 // PUT /vote/{id}?site=siteID&url=post-url&vote=1 - vote for/against comment
-func (s *Server) voteCtrl(w http.ResponseWriter, r *http.Request) {
+func (s *Rest) voteCtrl(w http.ResponseWriter, r *http.Request) {
 
-	user, err := common.GetUserInfo(r)
+	user, err := rest.GetUserInfo(r)
 	if err != nil {
-		common.SendErrorJSON(w, r, http.StatusUnauthorized, err, "can't get user info")
+		rest.SendErrorJSON(w, r, http.StatusUnauthorized, err, "can't get user info")
 		return
 	}
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
@@ -405,7 +405,7 @@ func (s *Server) voteCtrl(w http.ResponseWriter, r *http.Request) {
 
 	comment, err := s.DataService.Vote(locator, id, user.ID, vote)
 	if err != nil {
-		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't vote for comment")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't vote for comment")
 		return
 	}
 	s.Cache.Flush()
@@ -413,10 +413,10 @@ func (s *Server) voteCtrl(w http.ResponseWriter, r *http.Request) {
 }
 
 // PUT /notify?site=siteID&url=post-url&action=1 - subscribe/unsubscribe to notification
-func (s *Server) notifyActionCtrl(w http.ResponseWriter, r *http.Request) {
-	user, err := common.GetUserInfo(r)
+func (s *Rest) notifyActionCtrl(w http.ResponseWriter, r *http.Request) {
+	user, err := rest.GetUserInfo(r)
 	if err != nil {
-		common.SendErrorJSON(w, r, http.StatusUnauthorized, err, "can't get user info")
+		rest.SendErrorJSON(w, r, http.StatusUnauthorized, err, "can't get user info")
 		return
 	}
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
@@ -430,17 +430,17 @@ func (s *Server) notifyActionCtrl(w http.ResponseWriter, r *http.Request) {
 		action = "unsubscribe"
 	}
 	if err != nil {
-		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't subscribe/unsubscribe for notifications")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't subscribe/unsubscribe for notifications")
 		return
 	}
 	render.JSON(w, r, JSON{"locator": locator, "user": user.ID, "action": action})
 }
 
 // GET /notify?site=siteID&url=post-url - get notification status
-func (s *Server) notifyStatusCtrl(w http.ResponseWriter, r *http.Request) {
-	user, err := common.GetUserInfo(r)
+func (s *Rest) notifyStatusCtrl(w http.ResponseWriter, r *http.Request) {
+	user, err := rest.GetUserInfo(r)
 	if err != nil {
-		common.SendErrorJSON(w, r, http.StatusUnauthorized, err, "can't get user info")
+		rest.SendErrorJSON(w, r, http.StatusUnauthorized, err, "can't get user info")
 		return
 	}
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
@@ -452,7 +452,7 @@ func (s *Server) notifyStatusCtrl(w http.ResponseWriter, r *http.Request) {
 }
 
 // serves static files from /web
-func (s *Server) addFileServer(r chi.Router, path string, root http.FileSystem) {
+func (s *Rest) addFileServer(r chi.Router, path string, root http.FileSystem) {
 	log.Printf("[INFO] run file server for %s", root)
 	fs := http.StripPrefix(path, http.FileServer(root))
 	if path != "/" && path[len(path)-1] != '/' {
@@ -475,7 +475,7 @@ func (s *Server) addFileServer(r chi.Router, path string, root http.FileSystem) 
 func renderJSONWithHTML(w http.ResponseWriter, r *http.Request, v interface{}) {
 	data, err := encodeJSONWithHTML(v)
 	if err != nil {
-		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't render json response")
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't render json response")
 		return
 	}
 	renderJSONFromBytes(w, r, data)

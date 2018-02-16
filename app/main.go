@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/umputun/remark/app/notifier"
+	"github.com/umputun/remark/app/rest"
 
 	"github.com/gorilla/sessions"
 	"github.com/hashicorp/logutils"
@@ -15,10 +16,8 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/app/migrator"
-	"github.com/umputun/remark/app/rest"
 	"github.com/umputun/remark/app/rest/auth"
-	"github.com/umputun/remark/app/rest/avatar"
-	"github.com/umputun/remark/app/rest/common"
+	"github.com/umputun/remark/app/rest/server"
 	"github.com/umputun/remark/app/store"
 )
 
@@ -100,13 +99,13 @@ func main() {
 
 	exporter := migrator.Remark{DataStore: dataStore}
 
-	avatarProxy := &avatar.Proxy{
+	avatarProxy := &auth.AvatarProxy{
 		StorePath:     opts.ServerCommand.AvatarStore,
 		RoutePath:     "/api/v1/avatar",
 		DefaultAvatar: opts.ServerCommand.DefaultAvatar,
 	}
 
-	srv := rest.Server{
+	srv := server.Rest{
 		Version:     revision,
 		DataService: dataService,
 		DevMode:     opts.DevMode,
@@ -117,7 +116,7 @@ func main() {
 			Providers:    makeAuthProviders(sessionStore, avatarProxy),
 			AvatarProxy:  avatarProxy,
 		},
-		Cache:    common.NewLoadingCache(4*time.Hour, 15*time.Minute, postFlushFn),
+		Cache:    rest.NewLoadingCache(4*time.Hour, 15*time.Minute, postFlushFn),
 		Notifier: notifier.NewNoperation(),
 	}
 
@@ -180,7 +179,7 @@ func makeDirs(dirs ...string) error {
 	return nil
 }
 
-func makeAuthProviders(sessionStore sessions.Store, avatarProxy *avatar.Proxy) []auth.Provider {
+func makeAuthProviders(sessionStore sessions.Store, avatarProxy *auth.AvatarProxy) []auth.Provider {
 	providers := []auth.Provider{}
 	srvOpts := opts.ServerCommand
 	if srvOpts.GoogleCID != "" && srvOpts.GoogleCSEC != "" {

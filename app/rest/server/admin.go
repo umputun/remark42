@@ -1,4 +1,4 @@
-package rest
+package server
 
 import (
 	"compress/gzip"
@@ -12,7 +12,7 @@ import (
 	"github.com/go-chi/render"
 
 	"github.com/umputun/remark/app/migrator"
-	"github.com/umputun/remark/app/rest/common"
+	"github.com/umputun/remark/app/rest"
 	"github.com/umputun/remark/app/store"
 )
 
@@ -21,7 +21,7 @@ type admin struct {
 	dataService store.Service
 	exporter    migrator.Exporter
 	importer    migrator.Importer
-	cache       common.LoadingCache
+	cache       rest.LoadingCache
 }
 
 func (a *admin) routes(middlewares ...func(http.Handler) http.Handler) chi.Router {
@@ -45,7 +45,7 @@ func (a *admin) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 	err := a.dataService.Delete(locator, id)
 	if err != nil {
-		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete comment")
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete comment")
 		return
 	}
 	a.cache.Flush()
@@ -60,7 +60,7 @@ func (a *admin) setBlockCtrl(w http.ResponseWriter, r *http.Request) {
 	blockStatus := r.URL.Query().Get("block") == "1"
 
 	if err := a.dataService.SetBlock(siteID, userID, blockStatus); err != nil {
-		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set blocking status")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set blocking status")
 		return
 	}
 	a.cache.Flush()
@@ -72,7 +72,7 @@ func (a *admin) blockedUsersCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	users, err := a.dataService.Blocked(siteID)
 	if err != nil {
-		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get blocked users")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get blocked users")
 		return
 	}
 	render.JSON(w, r, users)
@@ -86,7 +86,7 @@ func (a *admin) setPinCtrl(w http.ResponseWriter, r *http.Request) {
 	pinStatus := r.URL.Query().Get("pin") == "1"
 
 	if err := a.dataService.SetPin(locator, commentID, pinStatus); err != nil {
-		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set pin status")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set pin status")
 		return
 	}
 	a.cache.Flush()
@@ -107,7 +107,7 @@ func (a *admin) exportCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := a.exporter.Export(writer, siteID); err != nil {
-		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "export failed")
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "export failed")
 	}
 }
 
@@ -116,7 +116,7 @@ func (a *admin) exportCtrl(w http.ResponseWriter, r *http.Request) {
 func (a *admin) importCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	if err := a.importer.Import(r.Body, siteID); err != nil {
-		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "import failed")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "import failed")
 	}
 	a.cache.Flush()
 }

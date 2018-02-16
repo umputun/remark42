@@ -1,6 +1,4 @@
-// Package avatar provides cached proxy for user pictures/avatars
-// refreshed by login and kept in local store
-package avatar
+package auth
 
 import (
 	"crypto/sha1"
@@ -18,12 +16,12 @@ import (
 	"github.com/go-chi/render"
 	"github.com/pkg/errors"
 
-	"github.com/umputun/remark/app/rest/common"
+	"github.com/umputun/remark/app/rest"
 	"github.com/umputun/remark/app/store"
 )
 
-// Proxy provides avatar store and http handler for avatars
-type Proxy struct {
+// AvatarProxy provides avatar store and http handler for avatars
+type AvatarProxy struct {
 	StorePath     string
 	DefaultAvatar string
 	RoutePath     string
@@ -32,7 +30,7 @@ type Proxy struct {
 const imgSfx = ".image"
 
 // Put gets original avatar url from user info and returns proxied url
-func (p *Proxy) Put(u store.User) (avatarURL string, err error) {
+func (p *AvatarProxy) Put(u store.User) (avatarURL string, err error) {
 
 	if u.Picture == "" {
 		if p.DefaultAvatar != "" {
@@ -83,7 +81,7 @@ func (p *Proxy) Put(u store.User) (avatarURL string, err error) {
 }
 
 // Routes returns auth routes for given provider
-func (p *Proxy) Routes() (string, chi.Router) {
+func (p *AvatarProxy) Routes() (string, chi.Router) {
 	router := chi.NewRouter()
 
 	// GET /123456789.image
@@ -94,11 +92,11 @@ func (p *Proxy) Routes() (string, chi.Router) {
 		fh, err := os.Open(avFile)
 		if err != nil {
 			if p.DefaultAvatar == "" {
-				common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't load avatar")
+				rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't load avatar")
 				return
 			}
 			if fh, err = os.Open(path.Join(p.StorePath, p.DefaultAvatar)); err != nil {
-				common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't load default avatar")
+				rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't load default avatar")
 				return
 			}
 		}
@@ -122,7 +120,7 @@ func (p *Proxy) Routes() (string, chi.Router) {
 }
 
 // encodeID hashes user id to sha1
-func (p *Proxy) encodeID(id string) string {
+func (p *AvatarProxy) encodeID(id string) string {
 	h := sha1.New()
 	_, err := h.Write([]byte(id))
 	if err != nil {
@@ -133,7 +131,7 @@ func (p *Proxy) encodeID(id string) string {
 
 // get location for user id by adding partion to final path
 // the end result is a full path like this - /tmp/avatars.test/92
-func (p *Proxy) location(id string) string {
+func (p *AvatarProxy) location(id string) string {
 	checksum64 := crc64.Checksum([]byte(id), crc64.MakeTable(crc64.ECMA))
 	partition := checksum64 % 100
 	return path.Join(p.StorePath, fmt.Sprintf("%02d", partition))

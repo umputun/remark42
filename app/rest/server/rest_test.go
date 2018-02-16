@@ -1,4 +1,4 @@
-package rest
+package server
 
 import (
 	"bytes"
@@ -19,7 +19,6 @@ import (
 	"github.com/umputun/remark/app/migrator"
 	"github.com/umputun/remark/app/notifier"
 	"github.com/umputun/remark/app/rest/auth"
-	"github.com/umputun/remark/app/rest/avatar"
 	"github.com/umputun/remark/app/store"
 )
 
@@ -348,7 +347,7 @@ func prep(t *testing.T) (srv *Server, port int) {
 		DevMode:     true,
 		Authenticator: auth.Authenticator{
 			Providers:   nil,
-			AvatarProxy: &avatar.Proxy{StorePath: "/tmp", RoutePath: "/api/v1/avatar"},
+			AvatarProxy: &auth.AvatarProxy{StorePath: "/tmp", RoutePath: "/api/v1/avatar"},
 		},
 		Exporter: &migrator.Remark{DataStore: dataStore},
 		Cache:    &mockCache{},

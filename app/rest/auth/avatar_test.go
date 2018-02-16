@@ -1,4 +1,4 @@
-package avatar
+package auth
 
 import (
 	"bytes"
@@ -15,7 +15,7 @@ import (
 )
 
 func TestPut(t *testing.T) {
-	p := Proxy{StorePath: "/tmp/avatars.test", RoutePath: "/avatar"}
+	p := AvatarProxy{StorePath: "/tmp/avatars.test", RoutePath: "/avatar"}
 	os.MkdirAll("/tmp/avatars.test", 0700)
 	defer os.RemoveAll("/tmp/avatars.test")
 
@@ -37,7 +37,7 @@ func TestPut(t *testing.T) {
 }
 
 func TestPutDefault(t *testing.T) {
-	p := Proxy{StorePath: "/tmp/avatars.test", RoutePath: "/avatar", DefaultAvatar: "default.image"}
+	p := AvatarProxy{StorePath: "/tmp/avatars.test", RoutePath: "/avatar", DefaultAvatar: "default.image"}
 	os.MkdirAll("/tmp/avatars.test", 0700)
 	ioutil.WriteFile("/tmp/avatars.test/default.image", []byte("1234567890"), 0600)
 	defer os.RemoveAll("/tmp/avatars.test")
@@ -52,7 +52,7 @@ func TestPutDefault(t *testing.T) {
 
 }
 func TestRoutes(t *testing.T) {
-	p := Proxy{StorePath: "/tmp/avatars.test", RoutePath: "/avatar", DefaultAvatar: "default.image"}
+	p := AvatarProxy{StorePath: "/tmp/avatars.test", RoutePath: "/avatar", DefaultAvatar: "default.image"}
 	os.MkdirAll("/tmp/avatars.test", 0700)
 	defer os.RemoveAll("/tmp/avatars.test")
 
@@ -78,7 +78,7 @@ func TestRoutes(t *testing.T) {
 	assert.Equal(t, int64(8432), sz)
 }
 func TestRoutesDefault(t *testing.T) {
-	p := Proxy{StorePath: "/tmp/avatars.test", RoutePath: "/avatar", DefaultAvatar: "default.image"}
+	p := AvatarProxy{StorePath: "/tmp/avatars.test", RoutePath: "/avatar", DefaultAvatar: "default.image"}
 	os.MkdirAll("/tmp/avatars.test", 0700)
 	ioutil.WriteFile("/tmp/avatars.test/default.image", []byte("1234567890"), 0600)
 	defer os.RemoveAll("/tmp/avatars.test")

@@ -1,4 +1,4 @@
-package rest
+package server
 
 import (
 	"bytes"
@@ -14,8 +14,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/middleware"
-
-	"github.com/umputun/remark/app/rest/common"
+	"github.com/umputun/remark/app/rest"
 )
 
 // JSON is a map alias, just for convenience
@@ -123,7 +122,7 @@ func Logger(flags ...LoggerFlag) func(http.Handler) http.Handler {
 				}
 
 				if inFlags(LogUser) {
-					u, err := common.GetUserInfo(r)
+					u, err := rest.GetUserInfo(r)
 					if err == nil && u.Name != "" {
 						user = fmt.Sprintf(" - %s %q", u.ID, u.Name)
 					}

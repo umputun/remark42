@@ -6,15 +6,14 @@ import (
 
 	"github.com/gorilla/sessions"
 
-	"github.com/umputun/remark/app/rest/avatar"
-	"github.com/umputun/remark/app/rest/common"
+	"github.com/umputun/remark/app/rest"
 	"github.com/umputun/remark/app/store"
 )
 
 // Authenticator is top level auth object providing middlewares
 type Authenticator struct {
 	SessionStore sessions.Store
-	AvatarProxy  *avatar.Proxy
+	AvatarProxy  *AvatarProxy
 	Admins       []string
 	Providers    []Provider
 }
@@ -56,7 +55,7 @@ func (a *Authenticator) Auth(modes []Mode) func(http.Handler) http.Handler {
 			if inModes(Developer) {
 				user := devUser
 				ctx := r.Context()
-				ctx = context.WithValue(ctx, common.ContextKey("user"), user)
+				ctx = context.WithValue(ctx, rest.ContextKey("user"), user)
 				r = r.WithContext(ctx)
 				h.ServeHTTP(w, r)
 				return
@@ -89,7 +88,7 @@ func (a *Authenticator) Auth(modes []Mode) func(http.Handler) http.Handler {
 				}
 
 				ctx := r.Context()
-				ctx = context.WithValue(ctx, common.ContextKey("user"), user)
+				ctx = context.WithValue(ctx, rest.ContextKey("user"), user)
 				r = r.WithContext(ctx)
 			}
 			h.ServeHTTP(w, r)
@@ -103,7 +102,7 @@ func (a *Authenticator) Auth(modes []Mode) func(http.Handler) http.Handler {
 func (a *Authenticator) AdminOnly(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 
-		user, err := common.GetUserInfo(r)
+		user, err := rest.GetUserInfo(r)
 		if err != nil {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
