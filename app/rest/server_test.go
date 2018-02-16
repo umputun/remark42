@@ -18,6 +18,7 @@ import (
 
 	"github.com/umputun/remark/app/migrator"
 	"github.com/umputun/remark/app/notifier"
+	"github.com/umputun/remark/app/rest/auth"
 	"github.com/umputun/remark/app/rest/avatar"
 	"github.com/umputun/remark/app/store"
 )
@@ -343,13 +344,15 @@ func prep(t *testing.T) (srv *Server, port int) {
 	dataStore, err := store.NewBoltDB(store.BoltSite{FileName: testDb, SiteID: "radio-t"})
 	require.Nil(t, err)
 	srv = &Server{
-		DataService:   store.Service{Interface: dataStore, EditDuration: 5 * time.Minute},
-		DevMode:       true,
-		AuthProviders: nil,
-		Exporter:      &migrator.Remark{DataStore: dataStore},
-		Cache:         &mockCache{},
-		AvatarProxy:   &avatar.Proxy{StorePath: "/tmp", RoutePath: "/api/v1/avatar"},
-		Notifier:      notifier.NewNoperation(),
+		DataService: store.Service{Interface: dataStore, EditDuration: 5 * time.Minute},
+		DevMode:     true,
+		Authenticator: auth.Authenticator{
+			Providers:   nil,
+			AvatarProxy: &avatar.Proxy{StorePath: "/tmp", RoutePath: "/api/v1/avatar"},
+		},
+		Exporter: &migrator.Remark{DataStore: dataStore},
+		Cache:    &mockCache{},
+		Notifier: notifier.NewNoperation(),
 	}
 	go func() {
 		port = rand.Intn(50000) + 1025
