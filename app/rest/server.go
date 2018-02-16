@@ -22,6 +22,7 @@ import (
 	"gopkg.in/russross/blackfriday.v2"
 
 	"github.com/umputun/remark/app/migrator"
+	"github.com/umputun/remark/app/notifier"
 	"github.com/umputun/remark/app/rest/auth"
 	"github.com/umputun/remark/app/rest/avatar"
 	"github.com/umputun/remark/app/rest/common"
@@ -38,8 +39,10 @@ type Server struct {
 	SessionStore  sessions.Store
 	Exporter      migrator.Exporter
 	Cache         common.LoadingCache
-	DevMode       bool
 	AvatarProxy   *avatar.Proxy
+	Notifier      notifier.Interface
+
+	DevMode bool
 
 	httpServer *http.Server
 	mod        admin
@@ -104,7 +107,7 @@ func (s *Server) Run(port int) {
 			rauth.Put("/comment/{id}", s.updateCommentCtrl)
 			rauth.Get("/user", s.userInfoCtrl)
 			rauth.Put("/vote/{id}", s.voteCtrl)
-
+			rauth.Put("/notify", s.notifyCtrl)
 			// admin routes, admin users only
 			s.mod = admin{dataService: s.DataService, exporter: s.Exporter, cache: s.Cache}
 			rauth.Mount("/admin", s.mod.routes())
@@ -167,8 +170,11 @@ func (s *Server) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.Cache.Flush() // reset all caches
+	if err = s.Notifier.OnUpdate(comment.Locator); err != nil {
+		log.Printf("[WARN] can't send notify event for %+v, %s", comment.Locator, err)
+	}
 
+	s.Cache.Flush() // reset all caches
 	render.Status(r, http.StatusCreated)
 	render.JSON(w, r, JSON{"id": id, "locator": comment.Locator})
 }
@@ -408,6 +414,27 @@ func (s *Server) voteCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	s.Cache.Flush()
 	render.JSON(w, r, JSON{"id": comment.ID, "score": comment.Score})
+}
+
+// PUT /notify?site=siteID&url=post-url&action=1 - subscribe/unsubscribe to notification
+func (s *Server) notifyCtrl(w http.ResponseWriter, r *http.Request) {
+	user, err := common.GetUserInfo(r)
+	if err != nil {
+		common.SendErrorJSON(w, r, http.StatusUnauthorized, err, "can't get user info")
+		return
+	}
+	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
+	action := r.URL.Query().Get("action")
+	switch action {
+	case "1":
+		err = s.Notifier.Subscribe(locator, user)
+	case "0":
+		err = s.Notifier.UnSubscribe(locator, user)
+	}
+	if err != nil {
+		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't subscribe/unsubscribe for notifications")
+		return
+	}
 }
 
 // serves static files from /web

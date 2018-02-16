@@ -7,6 +7,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/umputun/remark/app/notifier"
+
 	"github.com/gorilla/sessions"
 	"github.com/hashicorp/logutils"
 	"github.com/jessevdk/go-flags"
@@ -114,6 +116,7 @@ func main() {
 		AuthProviders: makeAuthProviders(sessionStore, avatarProxy),
 		Cache:         common.NewLoadingCache(4*time.Hour, 15*time.Minute, postFlushFn),
 		AvatarProxy:   avatarProxy,
+		Notifier:      notifier.NoOperation{},
 	}
 
 	if opts.DevMode {
