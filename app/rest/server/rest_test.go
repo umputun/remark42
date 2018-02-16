@@ -339,10 +339,10 @@ func TestServer_List(t *testing.T) {
 	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/blah1", Count: 3}, {URL: "https://radio-t.com/blah2", Count: 2}}, pi)
 }
 
-func prep(t *testing.T) (srv *Server, port int) {
+func prep(t *testing.T) (srv *Rest, port int) {
 	dataStore, err := store.NewBoltDB(store.BoltSite{FileName: testDb, SiteID: "radio-t"})
 	require.Nil(t, err)
-	srv = &Server{
+	srv = &Rest{
 		DataService: store.Service{Interface: dataStore, EditDuration: 5 * time.Minute},
 		DevMode:     true,
 		Authenticator: auth.Authenticator{
@@ -387,7 +387,7 @@ func addComment(t *testing.T, c store.Comment, port int) string {
 	return crResp["id"].(string)
 }
 
-func cleanup(srv *Server) {
+func cleanup(srv *Rest) {
 	srv.httpServer.Close()
 	srv.httpServer.Shutdown(context.Background())
 	os.Remove(testDb)
