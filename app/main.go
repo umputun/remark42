@@ -107,16 +107,18 @@ func main() {
 	}
 
 	srv := rest.Server{
-		Version:       revision,
-		DataService:   dataService,
-		SessionStore:  sessionStore,
-		Admins:        opts.Admins,
-		DevMode:       opts.DevMode,
-		Exporter:      &exporter,
-		AuthProviders: makeAuthProviders(sessionStore, avatarProxy),
-		Cache:         common.NewLoadingCache(4*time.Hour, 15*time.Minute, postFlushFn),
-		AvatarProxy:   avatarProxy,
-		Notifier:      notifier.NewNoperation(),
+		Version:     revision,
+		DataService: dataService,
+		DevMode:     opts.DevMode,
+		Exporter:    &exporter,
+		Authenticator: auth.Authenticator{
+			Admins:       opts.Admins,
+			SessionStore: sessionStore,
+			Providers:    makeAuthProviders(sessionStore, avatarProxy),
+			AvatarProxy:  avatarProxy,
+		},
+		Cache:    common.NewLoadingCache(4*time.Hour, 15*time.Minute, postFlushFn),
+		Notifier: notifier.NewNoperation(),
 	}
 
 	if opts.DevMode {

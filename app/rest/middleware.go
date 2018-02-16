@@ -141,9 +141,13 @@ func Logger(flags ...LoggerFlag) func(http.Handler) http.Handler {
 					q = qun
 				}
 
+				remoteIP := strings.Split(r.RemoteAddr, ":")[0]
+				if strings.HasPrefix(r.RemoteAddr, "[") {
+					remoteIP = strings.Split(r.RemoteAddr, "]:")[0] + "]"
+				}
+
 				log.Printf("[INFO] REST %s - %s - %s - %d (%d) - %v %s %s",
-					r.Method, q, strings.Split(r.RemoteAddr, ":")[0],
-					ww.Status(), ww.BytesWritten(), t2.Sub(t1), user, body)
+					r.Method, q, remoteIP, ww.Status(), ww.BytesWritten(), t2.Sub(t1), user, body)
 			}()
 
 			h.ServeHTTP(ww, r)

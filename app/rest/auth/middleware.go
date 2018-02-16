@@ -6,6 +6,7 @@ import (
 
 	"github.com/gorilla/sessions"
 
+	"github.com/umputun/remark/app/rest/avatar"
 	"github.com/umputun/remark/app/rest/common"
 	"github.com/umputun/remark/app/store"
 )
@@ -28,8 +29,16 @@ var devUser = store.User{
 	Admin:   true,
 }
 
+// Authenticator is top level auth object providing middlewares
+type Authenticator struct {
+	SessionStore sessions.Store
+	AvatarProxy  *avatar.Proxy
+	Admins       []string
+	Providers    []Provider
+}
+
 // Auth middleware adds auth from session and populates user info
-func Auth(sessionStore sessions.Store, admins []string, modes []Mode) func(http.Handler) http.Handler {
+func (a *Authenticator) Auth(modes []Mode) func(http.Handler) http.Handler {
 
 	inModes := func(mode Mode) bool {
 		for _, m := range modes {
@@ -53,7 +62,7 @@ func Auth(sessionStore sessions.Store, admins []string, modes []Mode) func(http.
 				return
 			}
 
-			session, err := sessionStore.Get(r, "remark")
+			session, err := a.SessionStore.Get(r, "remark")
 			if err != nil && inModes(Full) { // in full auth lack of session causes Unauthorized
 				http.Error(w, err.Error(), http.StatusUnauthorized)
 				return
@@ -72,7 +81,7 @@ func Auth(sessionStore sessions.Store, admins []string, modes []Mode) func(http.
 
 			if ok { // if uinfo in session, populate to context
 				user := uinfoData.(store.User)
-				for _, admin := range admins {
+				for _, admin := range a.Admins {
 					if admin == user.ID {
 						user.Admin = true
 						break
@@ -91,7 +100,7 @@ func Auth(sessionStore sessions.Store, admins []string, modes []Mode) func(http.
 }
 
 // AdminOnly allows access to admins
-func AdminOnly(next http.Handler) http.Handler {
+func (a *Authenticator) AdminOnly(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 
 		user, err := common.GetUserInfo(r)

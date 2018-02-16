@@ -83,7 +83,7 @@ func (p *Proxy) Put(u store.User) (avatarURL string, err error) {
 }
 
 // Routes returns auth routes for given provider
-func (p *Proxy) Routes() chi.Router {
+func (p *Proxy) Routes() (string, chi.Router) {
 	router := chi.NewRouter()
 
 	// GET /123456789.image
@@ -118,7 +118,7 @@ func (p *Proxy) Routes() chi.Router {
 		}
 	})
 
-	return router
+	return p.RoutePath, router
 }
 
 // encodeID hashes user id to sha1

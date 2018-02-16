@@ -66,7 +66,8 @@ func TestRoutes(t *testing.T) {
 	}
 
 	rr := httptest.NewRecorder()
-	handler := http.Handler(p.Routes())
+	_, routes := p.Routes()
+	handler := http.Handler(routes)
 	handler.ServeHTTP(rr, req)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
@@ -92,7 +93,8 @@ func TestRoutesDefault(t *testing.T) {
 	}
 
 	rr := httptest.NewRecorder()
-	handler := http.Handler(p.Routes())
+	_, routes := p.Routes()
+	handler := http.Handler(routes)
 	handler.ServeHTTP(rr, req)
 
 	assert.Equal(t, http.StatusOK, rr.Code)

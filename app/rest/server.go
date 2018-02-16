@@ -17,14 +17,12 @@ import (
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/render"
 	"github.com/gorilla/context"
-	"github.com/gorilla/sessions"
 	"github.com/pkg/errors"
 	"gopkg.in/russross/blackfriday.v2"
 
 	"github.com/umputun/remark/app/migrator"
 	"github.com/umputun/remark/app/notifier"
 	"github.com/umputun/remark/app/rest/auth"
-	"github.com/umputun/remark/app/rest/avatar"
 	"github.com/umputun/remark/app/rest/common"
 	"github.com/umputun/remark/app/rest/format"
 	"github.com/umputun/remark/app/store"
@@ -32,17 +30,14 @@ import (
 
 // Server is a rest access server
 type Server struct {
-	Version       string
+	Version string
+	DevMode bool
+
 	DataService   store.Service
-	Admins        []string
-	AuthProviders []auth.Provider
-	SessionStore  sessions.Store
+	Authenticator auth.Authenticator
 	Exporter      migrator.Exporter
 	Cache         common.LoadingCache
-	AvatarProxy   *avatar.Proxy
 	Notifier      notifier.Interface
-
-	DevMode bool
 
 	httpServer *http.Server
 	mod        admin
@@ -61,8 +56,8 @@ func (s *Server) Run(port int) {
 		return modes
 	}
 
-	if len(s.Admins) > 0 {
-		log.Printf("[DEBUG] admins %+v", s.Admins)
+	if len(s.Authenticator.Admins) > 0 {
+		log.Printf("[DEBUG] admins %+v", s.Authenticator.Admins)
 	}
 
 	router := chi.NewRouter()
@@ -71,23 +66,23 @@ func (s *Server) Run(port int) {
 	router.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
 
 	// all request by default allow anonymous access
-	router.Use(auth.Auth(s.SessionStore, s.Admins, maybeWithDevMode(auth.Anonymous)))
+	router.Use(s.Authenticator.Auth(maybeWithDevMode(auth.Anonymous)))
 
 	router.Use(AppInfo("remark42", s.Version), Ping, Logger(LogAll))
 	router.Use(context.ClearHandler) // if you aren't using gorilla/mux, you need to wrap your handlers with context.ClearHandler
 
 	// auth routes for all providers
 	router.Route("/auth", func(r chi.Router) {
-		for _, provider := range s.AuthProviders {
+		for _, provider := range s.Authenticator.Providers {
 			r.Mount("/"+provider.Name, provider.Routes()) // mount auth providers as /auth/{name}
 		}
-		if len(s.AuthProviders) > 0 {
+		if len(s.Authenticator.Providers) > 0 {
 			// shortcut, can be any of providers, all logouts do the same - removes cookie
-			r.Get("/logout", s.AuthProviders[0].LogoutHandler)
+			r.Get("/logout", s.Authenticator.Providers[0].LogoutHandler)
 		}
 	})
 
-	router.Mount(s.AvatarProxy.RoutePath, s.AvatarProxy.Routes())
+	router.Mount(s.Authenticator.AvatarProxy.Routes())
 
 	// api routes
 	router.Route("/api/v1", func(rapi chi.Router) {
@@ -102,7 +97,7 @@ func (s *Server) Run(port int) {
 		rapi.Get("/config", s.configCtrl)
 
 		// protected routes, require auth
-		rapi.With(auth.Auth(s.SessionStore, s.Admins, maybeWithDevMode(auth.Full))).Group(func(rauth chi.Router) {
+		rapi.With(s.Authenticator.Auth(maybeWithDevMode(auth.Full))).Group(func(rauth chi.Router) {
 			rauth.Post("/comment", s.createCommentCtrl)
 			rauth.Put("/comment/{id}", s.updateCommentCtrl)
 			rauth.Get("/user", s.userInfoCtrl)
@@ -111,7 +106,7 @@ func (s *Server) Run(port int) {
 			rauth.Get("/notify", s.notifyStatusCtrl)
 			// admin routes, admin users only
 			s.mod = admin{dataService: s.DataService, exporter: s.Exporter, cache: s.Cache}
-			rauth.Mount("/admin", s.mod.routes())
+			rauth.Mount("/admin", s.mod.routes(s.Authenticator.AdminOnly))
 		})
 	})
 
@@ -343,10 +338,10 @@ func (s *Server) configCtrl(w http.ResponseWriter, r *http.Request) {
 	cnf := config{
 		Version:      s.Version,
 		EditDuration: int(s.DataService.EditDuration.Seconds()),
-		Admins:       s.Admins,
+		Admins:       s.Authenticator.Admins,
 	}
 	authNames := []string{}
-	for _, ap := range s.AuthProviders {
+	for _, ap := range s.Authenticator.Providers {
 		authNames = append(authNames, ap.Name)
 	}
 	cnf.Auth = authNames

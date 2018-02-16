@@ -12,7 +12,6 @@ import (
 	"github.com/go-chi/render"
 
 	"github.com/umputun/remark/app/migrator"
-	"github.com/umputun/remark/app/rest/auth"
 	"github.com/umputun/remark/app/rest/common"
 	"github.com/umputun/remark/app/store"
 )
@@ -25,9 +24,9 @@ type admin struct {
 	cache       common.LoadingCache
 }
 
-func (a *admin) routes() chi.Router {
+func (a *admin) routes(middlewares ...func(http.Handler) http.Handler) chi.Router {
 	router := chi.NewRouter()
-	router.Use(auth.AdminOnly)
+	router.Use(middlewares...)
 	router.Delete("/comment/{id}", a.deleteCommentCtrl)
 	router.Put("/user/{userid}", a.setBlockCtrl)
 	router.Get("/export", a.exportCtrl)
