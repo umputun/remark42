@@ -107,7 +107,8 @@ func (s *Server) Run(port int) {
 			rauth.Put("/comment/{id}", s.updateCommentCtrl)
 			rauth.Get("/user", s.userInfoCtrl)
 			rauth.Put("/vote/{id}", s.voteCtrl)
-			rauth.Put("/notify", s.notifyCtrl)
+			rauth.Put("/notify", s.notifyActionCtrl)
+			rauth.Get("/notify", s.notifyStatusCtrl)
 			// admin routes, admin users only
 			s.mod = admin{dataService: s.DataService, exporter: s.Exporter, cache: s.Cache}
 			rauth.Mount("/admin", s.mod.routes())
@@ -417,24 +418,42 @@ func (s *Server) voteCtrl(w http.ResponseWriter, r *http.Request) {
 }
 
 // PUT /notify?site=siteID&url=post-url&action=1 - subscribe/unsubscribe to notification
-func (s *Server) notifyCtrl(w http.ResponseWriter, r *http.Request) {
+func (s *Server) notifyActionCtrl(w http.ResponseWriter, r *http.Request) {
 	user, err := common.GetUserInfo(r)
 	if err != nil {
 		common.SendErrorJSON(w, r, http.StatusUnauthorized, err, "can't get user info")
 		return
 	}
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
-	action := r.URL.Query().Get("action")
-	switch action {
+	action := "unknown"
+	switch r.URL.Query().Get("action") {
 	case "1":
 		err = s.Notifier.Subscribe(locator, user)
+		action = "subscribe"
 	case "0":
 		err = s.Notifier.UnSubscribe(locator, user)
+		action = "unsubscribe"
 	}
 	if err != nil {
 		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't subscribe/unsubscribe for notifications")
 		return
 	}
+	render.JSON(w, r, JSON{"locator": locator, "user": user.ID, "action": action})
+}
+
+// GET /notify?site=siteID&url=post-url - get notification status
+func (s *Server) notifyStatusCtrl(w http.ResponseWriter, r *http.Request) {
+	user, err := common.GetUserInfo(r)
+	if err != nil {
+		common.SendErrorJSON(w, r, http.StatusUnauthorized, err, "can't get user info")
+		return
+	}
+	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
+	status := "not subscribed"
+	if st, err := s.Notifier.Status(locator, user); err == nil && st {
+		status = "subscribed"
+	}
+	render.JSON(w, r, JSON{"locator": locator, "user": user.ID, "status": status})
 }
 
 // serves static files from /web

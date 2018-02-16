@@ -207,6 +207,7 @@ Sort can be `time` or `score`. Supported sort order with prefix -/+, i.e. `-time
     }
     ```
 - `PUT /api/v1/notify?site=site-id&url=post-url&action=1` - subscribe(action=1)/unsubscribe(0) comment notifications. _auth required_
+- `GET /api/v1/notify?site=site-id&url=post-url` - get subscription status. _auth required_
 
 ### Admin
 

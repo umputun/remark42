@@ -116,7 +116,7 @@ func main() {
 		AuthProviders: makeAuthProviders(sessionStore, avatarProxy),
 		Cache:         common.NewLoadingCache(4*time.Hour, 15*time.Minute, postFlushFn),
 		AvatarProxy:   avatarProxy,
-		Notifier:      notifier.NoOperation{},
+		Notifier:      notifier.NewNoperation(),
 	}
 
 	if opts.DevMode {
