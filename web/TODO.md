@@ -1,8 +1,5 @@
 critical features:
 
-- improve iframe
-  - add default attrs
-  - auto height
 - get settings from outside
   - get path from url or by params
   - get siteid by params
