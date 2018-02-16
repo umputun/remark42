@@ -16,7 +16,7 @@ import (
 	"github.com/umputun/remark/app/store"
 )
 
-func TestAuth(t *testing.T) {
+func TestLogin(t *testing.T) {
 
 	sessionStore := &mockStore{values: make(map[interface{}]interface{})}
 

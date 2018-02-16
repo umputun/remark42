@@ -1,231 +1,120 @@
-// Package auth provides oauth2 support as well as related middlewares.
 package auth
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/sha1"
-	"encoding/gob"
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
-	"log"
 	"net/http"
 
-	"github.com/go-chi/chi"
-	"github.com/go-chi/render"
 	"github.com/gorilla/sessions"
-	"golang.org/x/oauth2"
 
 	"github.com/umputun/remark/app/rest/avatar"
 	"github.com/umputun/remark/app/rest/common"
 	"github.com/umputun/remark/app/store"
 )
 
-// Provider represents oauth2 provider
-type Provider struct {
-	sessions.Store
-
-	Name        string
-	RedirectURL string
-	InfoURL     string
-	Endpoint    oauth2.Endpoint
-	Scopes      []string
-	MapUser     func(userData, []byte) store.User
-
-	avatarProxy *avatar.Proxy
-	conf        *oauth2.Config
-}
-
-// Params to make initialized and ready to use provider
-type Params struct {
-	Cid          string
-	Csecret      string
+// Authenticator is top level auth object providing middlewares
+type Authenticator struct {
 	SessionStore sessions.Store
-	RemarkURL    string
 	AvatarProxy  *avatar.Proxy
+	Admins       []string
+	Providers    []Provider
 }
 
-type userData map[string]interface{}
+// Mode defines behavior of Auth middleware
+type Mode int
 
-func (u userData) value(key string) string {
-	if val, ok := u[key]; ok {
-		return fmt.Sprintf("%v", val)
-	}
-	return ""
+// auth modes
+const (
+	Anonymous Mode = iota // propagates user info only, doesn't protect resource
+	Developer             // fake dev auth, admin too
+	Full                  // real auth
+)
+
+var devUser = store.User{
+	ID:      "dev",
+	Name:    "developer one",
+	Picture: "https://friends.radio-t.com/resources/images/rt_logo_64.png",
+	Profile: "https://radio-t.com/info/",
+	Admin:   true,
 }
 
-// newProvider makes auth for given provider
-func initProvider(p Params, provider Provider) Provider {
-	log.Printf("[INFO] create %s auth, id=%s, redir: %s", provider.Name, p.Cid, provider.RedirectURL)
+// Auth middleware adds auth from session and populates user info
+func (a *Authenticator) Auth(modes []Mode) func(http.Handler) http.Handler {
 
-	conf := oauth2.Config{
-		ClientID:     p.Cid,
-		ClientSecret: p.Csecret,
-		RedirectURL:  provider.RedirectURL,
-		Scopes:       provider.Scopes,
-		Endpoint:     provider.Endpoint,
-	}
-
-	provider.conf = &conf
-	provider.Store = p.SessionStore
-	provider.avatarProxy = p.AvatarProxy
-	return provider
-}
-
-// Routes returns auth routes for given provider
-func (p Provider) Routes() chi.Router {
-	router := chi.NewRouter()
-	router.Get("/login", p.loginHandler)
-	router.Get("/callback", p.authHandler)
-	router.Get("/logout", p.LogoutHandler)
-	return router
-}
-
-// loginHandler - GET /login?from=redirect-back-url
-func (p Provider) loginHandler(w http.ResponseWriter, r *http.Request) {
-
-	// make state (random) and store in session
-	state := p.randToken()
-	session, err := p.Get(r, "remark")
-	if err != nil {
-		log.Printf("[DEBUG] can't get session, %s", err)
-	}
-
-	session.Values["state"] = state
-
-	if from := r.URL.Query().Get("from"); from != "" {
-		session.Values["from"] = from
-	}
-
-	log.Printf("[DEBUG] login, %+v", session.Values)
-	if err := session.Save(r, w); err != nil {
-		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to save state")
-		return
-	}
-
-	// return login url
-	loginURL := p.conf.AuthCodeURL(state)
-	log.Printf("[DEBUG] login url %s", loginURL)
-	http.Redirect(w, r, loginURL, http.StatusTemporaryRedirect)
-}
-
-// authHandler fills user info and redirects to "from" url. This is callback url redirected locally by browser
-// GET /callback
-func (p Provider) authHandler(w http.ResponseWriter, r *http.Request) {
-
-	session, err := p.Get(r, "remark")
-	if err != nil {
-		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to get session")
-		return
-	}
-
-	// compare saved state to the one from redirect url
-	retrievedState, ok := session.Values["state"]
-	if !ok {
-		http.Error(w, "missing state in store", http.StatusUnauthorized)
-		return
-	}
-
-	if retrievedState == "" || retrievedState != r.URL.Query().Get("state") {
-		http.Error(w, fmt.Sprintf("unexpected state %v", retrievedState), http.StatusUnauthorized)
-		return
-	}
-
-	log.Printf("[DEBUG] auth, %+v", session.Values)
-	tok, err := p.conf.Exchange(context.Background(), r.URL.Query().Get("code"))
-	if err != nil {
-		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "exchange failed")
-		return
-	}
-
-	client := p.conf.Client(context.Background(), tok)
-	uinfo, err := client.Get(p.InfoURL)
-	if err != nil {
-		common.SendErrorJSON(w, r, http.StatusBadRequest, err, fmt.Sprintf("failed to get client info via %s", p.InfoURL))
-		return
-	}
-
-	defer func() {
-		if e := uinfo.Body.Close(); e != nil {
-			log.Printf("[WARN] failed to close response body, %s", e)
+	inModes := func(mode Mode) bool {
+		for _, m := range modes {
+			if m == mode {
+				return true
+			}
 		}
-	}()
-
-	data, err := ioutil.ReadAll(uinfo.Body)
-	if err != nil {
-		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to read user info")
-		return
+		return false
 	}
 
-	jData := map[string]interface{}{}
-	if e := json.Unmarshal(data, &jData); e != nil {
-		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to unmarshal user info")
-		return
-	}
-	log.Printf("[DEBUG] got raw user info %+v", jData)
+	f := func(h http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
 
-	u := p.MapUser(jData, data)
-	if p.avatarProxy != nil {
-		if avatarURL, e := p.avatarProxy.Put(u); e == nil {
-			u.Picture = avatarURL
-		} else {
-			log.Printf("[WARN] failed to proxy avatar, %s", e)
+			// for dev mode skip all real auth, make dev admin user
+			if inModes(Developer) {
+				user := devUser
+				ctx := r.Context()
+				ctx = context.WithValue(ctx, common.ContextKey("user"), user)
+				r = r.WithContext(ctx)
+				h.ServeHTTP(w, r)
+				return
+			}
+
+			session, err := a.SessionStore.Get(r, "remark")
+			if err != nil && inModes(Full) { // in full auth lack of session causes Unauthorized
+				http.Error(w, err.Error(), http.StatusUnauthorized)
+				return
+			}
+
+			if err != nil { // in any other mode just pass it to next handler
+				h.ServeHTTP(w, r)
+				return
+			}
+
+			uinfoData, ok := session.Values["uinfo"]
+			if !ok && inModes(Full) { // return StatusUnauthorized for full auth mode only
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+
+			if ok { // if uinfo in session, populate to context
+				user := uinfoData.(store.User)
+				for _, admin := range a.Admins {
+					if admin == user.ID {
+						user.Admin = true
+						break
+					}
+				}
+
+				ctx := r.Context()
+				ctx = context.WithValue(ctx, common.ContextKey("user"), user)
+				r = r.WithContext(ctx)
+			}
+			h.ServeHTTP(w, r)
 		}
+		return http.HandlerFunc(fn)
 	}
-	session.Values["uinfo"] = u
-
-	if err = session.Save(r, w); err != nil {
-		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to save user info")
-		return
-	}
-
-	log.Printf("[DEBUG] user info %+v", session.Values["uinfo"])
-
-	// redirect to back url if presented in login query params
-	if fromURL, ok := session.Values["from"]; ok {
-		http.Redirect(w, r, fromURL.(string), http.StatusTemporaryRedirect)
-		return
-	}
-
-	render.JSON(w, r, jData)
+	return f
 }
 
-// LogoutHandler - GET /logout
-func (p Provider) LogoutHandler(w http.ResponseWriter, r *http.Request) {
-	session, err := p.Get(r, "remark")
-	if err != nil {
-		common.SendErrorJSON(w, r, http.StatusBadRequest, err, "failed to get session")
-		return
+// AdminOnly allows access to admins
+func (a *Authenticator) AdminOnly(next http.Handler) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+
+		user, err := common.GetUserInfo(r)
+		if err != nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		if !user.Admin {
+			http.Error(w, "Access denied", http.StatusForbidden)
+			return
+		}
+
+		next.ServeHTTP(w, r)
 	}
-
-	session.Values["uinfo"] = ""
-	session.Values["from"] = ""
-	session.Values["state"] = ""
-
-	delete(session.Values, "uinfo")
-	delete(session.Values, "from")
-	delete(session.Values, "state")
-
-	if err = session.Save(r, w); err != nil {
-		common.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to reset user info")
-		return
-	}
-	log.Printf("[DEBUG] logout, %+v", session.Values)
-}
-
-func (p Provider) randToken() string {
-	b := make([]byte, 32)
-	if _, err := rand.Read(b); err != nil {
-		log.Fatalf("[ERROR] can't get randoms, %s", err)
-	}
-	s := sha1.New()
-	if _, err := s.Write(b); err != nil {
-		log.Printf("[WARN] can't write randoms, %s", err)
-	}
-	return fmt.Sprintf("%x", s.Sum(nil))
-}
-
-func init() {
-	gob.Register(store.User{})
+	return http.HandlerFunc(fn)
 }
