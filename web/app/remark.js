@@ -6,6 +6,8 @@ import Root from './components/root';
 
 import { NODE_ID } from './common/constants';
 
+require('./components/document');
+
 init();
 
 function init() {
