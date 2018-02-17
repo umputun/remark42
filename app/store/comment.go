@@ -34,10 +34,10 @@ type User struct {
 	Name    string `json:"name"`
 	ID      string `json:"id"`
 	Picture string `json:"picture"`
-	Profile string `json:"profile"`
+	Profile string `json:"profile,omitempty"`
 	Admin   bool   `json:"admin"`
 	Blocked bool   `json:"block,omitempty"`
-	IP      string `json:"-"`
+	IP      string `json:"ip,omitempty"`
 }
 
 // Edit indication
@@ -63,6 +63,16 @@ type NotifUser struct {
 	ID          string `json:"id"`
 	Destination string `json:"destination"`
 }
+
+// NotifScope defines "enum" of notification scopes
+type NotifScope int
+
+// All NotifScope values
+const (
+	ScopeSite  NotifScope = 1
+	ScopePost  NotifScope = 2
+	ScopeReply NotifScope = 3
+)
 
 // Sanitize clean dangerous html/js from the comment
 func (c *Comment) Sanitize() {

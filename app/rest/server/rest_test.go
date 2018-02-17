@@ -82,7 +82,7 @@ func TestServer_CreateAndGet(t *testing.T) {
 	assert.Equal(t, "<p><strong>test</strong> <em>123</em> http://radio-t.com</p>", comment.Text)
 	assert.Equal(t, store.User{Name: "developer one", ID: "dev",
 		Picture: "https://friends.radio-t.com/resources/images/rt_logo_64.png",
-		Profile: "https://radio-t.com/info/", Admin: true, Blocked: false, IP: ""},
+		Profile: "https://radio-t.com/info/", Admin: true, Blocked: false, IP: "127.0.0.1"},
 		comment.User)
 	t.Logf("%+v", comment)
 }

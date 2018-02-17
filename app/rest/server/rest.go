@@ -228,12 +228,12 @@ func (s *Rest) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	log.Printf("[DEBUG] get comments for %+v", locator)
 
-	data, err := s.Cache.Get(r.URL.String(), time.Hour, func() ([]byte, error) {
+	data, err := s.Cache.Get(s.urlKey(r), time.Hour, func() ([]byte, error) {
 		comments, e := s.DataService.Find(locator, r.URL.Query().Get("sort"))
 		if e != nil {
 			return nil, e
 		}
-		maskedComments := s.mod.maskBlockedUsers(comments)
+		maskedComments := s.mod.maskInfo(comments, r)
 		var b []byte
 		switch r.URL.Query().Get("format") {
 		case "tree":
@@ -261,12 +261,12 @@ func (s *Rest) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		max = 0
 	}
 
-	data, err := s.Cache.Get(r.URL.String(), time.Hour, func() ([]byte, error) {
+	data, err := s.Cache.Get(s.urlKey(r), time.Hour, func() ([]byte, error) {
 		comments, e := s.DataService.Last(r.URL.Query().Get("site"), max)
 		if e != nil {
 			return nil, e
 		}
-		comments = s.mod.maskBlockedUsers(comments)
+		comments = s.mod.maskInfo(comments, r)
 		return encodeJSONWithHTML(comments)
 	})
 
@@ -291,7 +291,7 @@ func (s *Rest) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get comment by id")
 		return
 	}
-	comment = s.mod.maskBlockedUsers([]store.Comment{comment})[0]
+	comment = s.mod.maskInfo([]store.Comment{comment}, r)[0]
 	render.Status(r, http.StatusOK)
 	renderJSONWithHTML(w, r, comment)
 }
@@ -309,12 +309,12 @@ func (s *Rest) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[DEBUG] get comments for userID %s, %s", userID, siteID)
 
-	data, err := s.Cache.Get(r.URL.String(), time.Hour, func() ([]byte, error) {
+	data, err := s.Cache.Get(s.urlKey(r), time.Hour, func() ([]byte, error) {
 		comments, count, e := s.DataService.User(siteID, userID)
 		if e != nil {
 			return nil, e
 		}
-		comments = s.mod.maskBlockedUsers(comments)
+		comments = s.mod.maskInfo(comments, r)
 		resp.Comments, resp.Count = comments, count
 		return encodeJSONWithHTML(resp)
 	})
@@ -374,7 +374,7 @@ func (s *Rest) countCtrl(w http.ResponseWriter, r *http.Request) {
 func (s *Rest) listCtrl(w http.ResponseWriter, r *http.Request) {
 
 	siteID := r.URL.Query().Get("site")
-	data, err := s.Cache.Get(r.URL.String(), 8*time.Hour, func() ([]byte, error) {
+	data, err := s.Cache.Get(s.urlKey(r), 8*time.Hour, func() ([]byte, error) {
 		posts, e := s.DataService.List(siteID)
 		if e != nil {
 			return nil, e
@@ -469,6 +469,16 @@ func (s *Rest) addFileServer(r chi.Router, path string, root http.FileSystem) {
 		}
 		fs.ServeHTTP(w, r)
 	}))
+}
+
+// urlKey gets url from request to use is as cache key
+// admins will have separate keys in order tp prevent leak of admin-only data to regular users
+func (s *Rest) urlKey(r *http.Request) string {
+	key := r.URL.String()
+	if user, err := rest.GetUserInfo(r); err == nil && user.Admin { // make seprate cache key for admins
+		key = "admin!!" + key
+	}
+	return key
 }
 
 // renderJSONWithHTML allows html tags and forces charset=utf-8

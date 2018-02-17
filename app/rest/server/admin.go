@@ -126,14 +126,28 @@ func (a *admin) checkBlocked(siteID string, user store.User) bool {
 }
 
 // processes comments and hides text of all comments for blocked users.
-// resets score and votes too
-func (a *admin) maskBlockedUsers(comments []store.Comment) (res []store.Comment) {
+// resets score and votes too. Also hides sensitive info for non-admin users
+func (a *admin) maskInfo(comments []store.Comment, r *http.Request) (res []store.Comment) {
 	res = make([]store.Comment, len(comments))
+
+	isAdmin := false
+	if user, err := rest.GetUserInfo(r); err == nil && user.Admin { // make seprate cache key for admins
+		isAdmin = true
+	}
+
 	for i, c := range comments {
+
+		// process blocked users
 		if a.dataService.IsBlocked(c.Locator.SiteID, c.User.ID) {
 			c.Mask()
 			c.User.Blocked = true
 		}
+
+		// hide info from non-admins
+		if !isAdmin {
+			c.User.IP = ""
+		}
+
 		res[i] = c
 	}
 	return res
