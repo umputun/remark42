@@ -4,19 +4,19 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>remark42</title>
-  <link rel="stylesheet" href="/web/remark.css">
+  <link rel="stylesheet" href="remark.css">
 </head>
 <body>
-<div id="remark42"></div>
-<script type="text/javascript" src="/web/remark.js"></script>
-<script>
-  var lastHeight = 0;
-  setInterval(() => {
-    if (document.body.offsetHeight !== lastHeight) {
-      lastHeight = document.body.offsetHeight;
-      window.parent.postMessage(JSON.stringify({ remarkIframeHeight: lastHeight }), '*');
-    }
-  }, 200);
-</script>
+  <div id="remark42"></div>
+  <script type="text/javascript" src="remark.js"></script>
+  <script>
+    var lastHeight = 0;
+    setInterval(() => {
+      if (document.body.offsetHeight !== lastHeight) {
+        lastHeight = document.body.offsetHeight;
+        window.parent.postMessage(JSON.stringify({ remarkIframeHeight: lastHeight }), '*');
+      }
+    }, 200);
+  </script>
 </body>
 </html>
