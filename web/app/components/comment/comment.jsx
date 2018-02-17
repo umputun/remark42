@@ -1,6 +1,7 @@
 import { h, Component } from 'preact';
 
 import api from 'common/api';
+import { API_BASE, BASE_URL } from 'common/constants';
 import { url } from 'common/settings';
 import store from 'common/store';
 
@@ -154,6 +155,10 @@ export default class Comment extends Component {
       score: {
         value: Math.abs(score),
         sign: score > 0 ? '+' : (score < 0 ? '−' : ''),
+      },
+      user: {
+        ...data.user,
+        picture: data.user.picture.indexOf(API_BASE) === 0 ? `${BASE_URL}${data.user.picture}` : data.user.picture,
       },
     };
 
