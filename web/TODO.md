@@ -1,11 +1,3 @@
-critical features:
-
-- get settings from outside
-  - get path from url or by params
-  - get siteid by params
-- load css by js ?
-
-
 optimizations:
 
 - rewrite fetcher if we need it (do we really need axios?)
