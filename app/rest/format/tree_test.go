@@ -66,7 +66,6 @@ const expJSON = `{
           "name": "",
           "id": "",
           "picture": "",
-          "profile": "",
           "admin": false
         },
         "locator": {
@@ -86,7 +85,6 @@ const expJSON = `{
               "name": "",
               "id": "",
               "picture": "",
-              "profile": "",
               "admin": false
             },
             "locator": {
@@ -106,7 +104,6 @@ const expJSON = `{
               "name": "",
               "id": "",
               "picture": "",
-              "profile": "",
               "admin": false
             },
             "locator": {
@@ -126,7 +123,6 @@ const expJSON = `{
               "name": "",
               "id": "",
               "picture": "",
-              "profile": "",
               "admin": false
             },
             "locator": {
@@ -146,7 +142,6 @@ const expJSON = `{
                   "name": "",
                   "id": "",
                   "picture": "",
-                  "profile": "",
                   "admin": false
                 },
                 "locator": {
@@ -166,7 +161,6 @@ const expJSON = `{
                   "name": "",
                   "id": "",
                   "picture": "",
-                  "profile": "",
                   "admin": false
                 },
                 "locator": {
@@ -188,7 +182,6 @@ const expJSON = `{
               "name": "",
               "id": "",
               "picture": "",
-              "profile": "",
               "admin": false
             },
             "locator": {
@@ -210,7 +203,6 @@ const expJSON = `{
           "name": "",
           "id": "",
           "picture": "",
-          "profile": "",
           "admin": false
         },
         "locator": {
@@ -230,7 +222,6 @@ const expJSON = `{
               "name": "",
               "id": "",
               "picture": "",
-              "profile": "",
               "admin": false
             },
             "locator": {
@@ -250,7 +241,6 @@ const expJSON = `{
               "name": "",
               "id": "",
               "picture": "",
-              "profile": "",
               "admin": false
             },
             "locator": {
@@ -272,7 +262,6 @@ const expJSON = `{
           "name": "",
           "id": "",
           "picture": "",
-          "profile": "",
           "admin": false
         },
         "locator": {
@@ -292,7 +281,6 @@ const expJSON = `{
           "name": "",
           "id": "",
           "picture": "",
-          "profile": "",
           "admin": false
         },
         "locator": {
