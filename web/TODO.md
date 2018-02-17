@@ -1,12 +1,21 @@
 optimizations:
 
 - rewrite fetcher if we need it (do we really need axios?)
-- remove mimic and other dev-tools
-- remove babel if we don't need it
+- remove dev-tools if we have some
+- remove babel-polyfill if we don't need it
 
 
 major features:
 
+- improve design
+  - add true preloader
+  - disable inputs for guests
+  - hide reply links for guests
+  - check mobile ui
+  - add icons for social networks 
+  - remove grey avatars 'cause we have default img
+  - add time format 'X hours ago'
+  - use static buttons 'reply', 'pin', etc instead of dynamic
 - edit comment
   - `PUT /api/v1/comment/{id}?site=site-id&url=post-url`
 - add description of web part to readme
