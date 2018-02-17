@@ -1,3 +1,5 @@
+import { NODE_ID } from 'common/constants';
+
 if (document.readyState !== 'interactive') {
   document.addEventListener('DOMContentLoaded', initEmbed);
 } else {
@@ -5,19 +7,29 @@ if (document.readyState !== 'interactive') {
 }
 
 function initEmbed() {
-  remark_config = remark_config || {}
-
-  const siteId = remark_config.site_id || 'remark42';
-  const node = document.getElementById(siteId);
+  const node = document.getElementById(NODE_ID);
 
   if (!node) {
     console.error('Remark42: Can\'t find root node.');
     return;
   }
 
+  remark_config = remark_config || {}
+
+  if (!remark_config.site_id) {
+    console.error('Remark42: Site ID is undefined.');
+    return;
+  }
+
+  remark_config.url = remark_config.url || window.location.href;
+
+  const query = Object.keys(remark_config)
+    .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(remark_config[key])}`)
+    .join('&');
+
   node.innerHTML = `
     <iframe
-      src="https://demo.remark42.com/web/iframe.html"
+      src="https://demo.remark42.com/web/iframe.html?${query}"
       width="100%"
       frameborder="0"
       allowtransparency="true"
