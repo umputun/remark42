@@ -31,7 +31,6 @@ import (
 // Rest is a rest access server
 type Rest struct {
 	Version string
-	DevMode bool
 
 	DataService   store.Service
 	Authenticator auth.Authenticator
@@ -47,15 +46,6 @@ type Rest struct {
 func (s *Rest) Run(port int) {
 	log.Print("[INFO] activate rest server")
 
-	// add auth.Developer flag if dev mode is active
-	maybeWithDevMode := func(mode auth.Mode) (modes []auth.Mode) {
-		modes = append(modes, mode)
-		if s.DevMode {
-			modes = append(modes, auth.Developer)
-		}
-		return modes
-	}
-
 	if len(s.Authenticator.Admins) > 0 {
 		log.Printf("[DEBUG] admins %+v", s.Authenticator.Admins)
 	}
@@ -66,7 +56,7 @@ func (s *Rest) Run(port int) {
 	router.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
 
 	// all request by default allow anonymous access
-	router.Use(s.Authenticator.Auth(maybeWithDevMode(auth.Anonymous)))
+	router.Use(s.Authenticator.Auth(false))
 
 	router.Use(AppInfo("remark42", s.Version), Ping, Logger(LogAll))
 	router.Use(context.ClearHandler) // if you aren't using gorilla/mux, you need to wrap your handlers with context.ClearHandler
@@ -97,7 +87,7 @@ func (s *Rest) Run(port int) {
 		rapi.Get("/config", s.configCtrl)
 
 		// protected routes, require auth
-		rapi.With(s.Authenticator.Auth(maybeWithDevMode(auth.Full))).Group(func(rauth chi.Router) {
+		rapi.With(s.Authenticator.Auth(true)).Group(func(rauth chi.Router) {
 			rauth.Post("/comment", s.createCommentCtrl)
 			rauth.Put("/comment/{id}", s.updateCommentCtrl)
 			rauth.Get("/user", s.userInfoCtrl)

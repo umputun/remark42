@@ -130,10 +130,8 @@ func (a *admin) checkBlocked(siteID string, user store.User) bool {
 func (a *admin) maskInfo(comments []store.Comment, r *http.Request) (res []store.Comment) {
 	res = make([]store.Comment, len(comments))
 
-	isAdmin := false
-	if user, err := rest.GetUserInfo(r); err == nil && user.Admin { // make seprate cache key for admins
-		isAdmin = true
-	}
+	user, err := rest.GetUserInfo(r)
+	isAdmin := (err == nil && user.Admin) // make seprate cache key for admins
 
 	for i, c := range comments {
 

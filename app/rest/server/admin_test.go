@@ -29,7 +29,8 @@ func TestAdmin_Delete(t *testing.T) {
 
 	client := http.Client{}
 	req, err := http.NewRequest(http.MethodDelete,
-		fmt.Sprintf("http://127.0.0.1:%d/api/v1/admin/comment/%s?site=radio-t&url=https://radio-t.com/blah", port, id1), nil)
+		fmt.Sprintf("http://dev:password@127.0.0.1:%d/api/v1/admin/comment/%s?site=radio-t&url=https://radio-t.com/blah",
+			port, id1), nil)
 	assert.Nil(t, err)
 	resp, err := client.Do(req)
 	assert.Nil(t, err)
@@ -60,8 +61,7 @@ func TestAdmin_Pin(t *testing.T) {
 	pin := func(val int) int {
 		client := http.Client{}
 		req, err := http.NewRequest(http.MethodPut,
-			fmt.Sprintf("http://127.0.0.1:%d/api/v1/admin/pin/%s?site=radio-t&url=https://radio-t.com/blah&pin=%d", port, id1, val),
-			nil)
+			fmt.Sprintf("http://dev:password@127.0.0.1:%d/api/v1/admin/pin/%s?site=radio-t&url=https://radio-t.com/blah&pin=%d", port, id1, val), nil)
 		assert.Nil(t, err)
 		resp, err := client.Do(req)
 		assert.Nil(t, err)
@@ -106,8 +106,7 @@ func TestAdmin_Block(t *testing.T) {
 	block := func(val int) (code int, body []byte) {
 		client := http.Client{}
 		req, err := http.NewRequest(http.MethodPut,
-			fmt.Sprintf("http://127.0.0.1:%d/api/v1/admin/user/%s?site=radio-t&block=%d",
-				port, "user1", val), nil)
+			fmt.Sprintf("http://dev:password@127.0.0.1:%d/api/v1/admin/user/%s?site=radio-t&block=%d", port, "user1", val), nil)
 		assert.Nil(t, err)
 		resp, err := client.Do(req)
 		require.Nil(t, err)
@@ -154,7 +153,7 @@ func TestAdmin_Export(t *testing.T) {
 	addComment(t, c1, port)
 	addComment(t, c2, port)
 
-	body, code := get(t, fmt.Sprintf("http://127.0.0.1:%d/api/v1/admin/export?site=radio-t&mode=stream", port))
+	body, code := get(t, fmt.Sprintf("http://dev:password@127.0.0.1:%d/api/v1/admin/export?site=radio-t&mode=stream", port))
 	assert.Equal(t, 200, code)
 	assert.Equal(t, 2, strings.Count(body, "\n"))
 	assert.Equal(t, 2, strings.Count(body, "\"text\""))

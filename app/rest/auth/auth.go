@@ -2,7 +2,9 @@ package auth
 
 import (
 	"context"
+	"encoding/base64"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/sessions"
 
@@ -16,17 +18,10 @@ type Authenticator struct {
 	AvatarProxy  *AvatarProxy
 	Admins       []string
 	Providers    []Provider
+
+	DevEnabled bool
+	DevPasswd  string
 }
-
-// Mode defines behavior of Auth middleware
-type Mode int
-
-// auth modes
-const (
-	Anonymous Mode = iota // propagates user info only, doesn't protect resource
-	Developer             // fake dev auth, admin too
-	Full                  // real auth
-)
 
 var devUser = store.User{
 	ID:      "dev",
@@ -37,22 +32,13 @@ var devUser = store.User{
 }
 
 // Auth middleware adds auth from session and populates user info
-func (a *Authenticator) Auth(modes []Mode) func(http.Handler) http.Handler {
-
-	inModes := func(mode Mode) bool {
-		for _, m := range modes {
-			if m == mode {
-				return true
-			}
-		}
-		return false
-	}
+func (a *Authenticator) Auth(reqAuth bool) func(http.Handler) http.Handler {
 
 	f := func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 
-			// for dev mode skip all real auth, make dev admin user
-			if inModes(Developer) {
+			// dev user - skip regular auth check and populate dev to context
+			if a.basicDevUser(w, r) {
 				user := devUser
 				ctx := r.Context()
 				ctx = context.WithValue(ctx, rest.ContextKey("user"), user)
@@ -62,18 +48,18 @@ func (a *Authenticator) Auth(modes []Mode) func(http.Handler) http.Handler {
 			}
 
 			session, err := a.SessionStore.Get(r, "remark")
-			if err != nil && inModes(Full) { // in full auth lack of session causes Unauthorized
-				http.Error(w, err.Error(), http.StatusUnauthorized)
+			if err != nil && reqAuth { // in full auth lack of session causes Unauthorized
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				return
 			}
 
-			if err != nil { // in any other mode just pass it to next handler
+			if err != nil { // in anonymous mode just pass it to next handler
 				h.ServeHTTP(w, r)
 				return
 			}
 
 			uinfoData, ok := session.Values["uinfo"]
-			if !ok && inModes(Full) { // return StatusUnauthorized for full auth mode only
+			if !ok && reqAuth {
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				return
 			}
@@ -116,4 +102,34 @@ func (a *Authenticator) AdminOnly(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	}
 	return http.HandlerFunc(fn)
+}
+
+func (a *Authenticator) basicDevUser(w http.ResponseWriter, r *http.Request) bool {
+
+	if a.DevPasswd == "" || !a.DevEnabled {
+		return false
+	}
+
+	w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
+
+	s := strings.SplitN(r.Header.Get("Authorization"), " ", 2)
+	if len(s) != 2 {
+		return false
+	}
+
+	b, err := base64.StdEncoding.DecodeString(s[1])
+	if err != nil {
+		return false
+	}
+
+	pair := strings.SplitN(string(b), ":", 2)
+	if len(pair) != 2 {
+		return false
+	}
+
+	if pair[0] != "dev" || pair[1] != a.DevPasswd {
+		return false
+	}
+
+	return true
 }

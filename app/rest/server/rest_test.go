@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gorilla/sessions"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -40,7 +41,7 @@ func TestServer_Create(t *testing.T) {
 	defer cleanup(srv)
 
 	r := strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
-	resp, err := http.Post(fmt.Sprintf("http://127.0.0.1:%d/api/v1/comment", port), "application/json", r)
+	resp, err := http.Post(fmt.Sprintf("http://dev:password@127.0.0.1:%d/api/v1/comment", port), "application/json", r)
 	assert.Nil(t, err)
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
@@ -62,7 +63,7 @@ func TestServer_CreateAndGet(t *testing.T) {
 
 	// create comment
 	r := strings.NewReader(`{"text": "**test** *123* http://radio-t.com", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
-	resp, err := http.Post(fmt.Sprintf("http://127.0.0.1:%d/api/v1/comment", port), "application/json", r)
+	resp, err := http.Post(fmt.Sprintf("http://dev:password@127.0.0.1:%d/api/v1/comment", port), "application/json", r)
 	assert.Nil(t, err)
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 	b, err := ioutil.ReadAll(resp.Body)
@@ -74,7 +75,7 @@ func TestServer_CreateAndGet(t *testing.T) {
 	id := c["id"].(string)
 
 	// get created comment by id
-	res, code := get(t, fmt.Sprintf("http://127.0.0.1:%d/api/v1/id/%s?site=radio-t&url=https://radio-t.com/blah1", port, id))
+	res, code := get(t, fmt.Sprintf("http://dev:password@127.0.0.1:%d/api/v1/id/%s?site=radio-t&url=https://radio-t.com/blah1", port, id))
 	assert.Equal(t, 200, code)
 	comment := store.Comment{}
 	err = json.Unmarshal([]byte(res), &comment)
@@ -135,7 +136,7 @@ func TestServer_Update(t *testing.T) {
 
 	client := http.Client{}
 	req, err := http.NewRequest(http.MethodPut,
-		fmt.Sprintf("http://127.0.0.1:%d/api/v1/comment/"+id+"?site=radio-t&url=https://radio-t.com/blah1", port),
+		fmt.Sprintf("http://dev:password@127.0.0.1:%d/api/v1/comment/"+id+"?site=radio-t&url=https://radio-t.com/blah1", port),
 		strings.NewReader(`{"text":"updated text", "summary":"my edit"}`))
 	assert.Nil(t, err)
 	b, err := client.Do(req)
@@ -154,7 +155,7 @@ func TestServer_Update(t *testing.T) {
 	assert.True(t, time.Since(c2.Edit.Timestamp) < 1*time.Second)
 
 	// read updated comment
-	res, code := get(t, fmt.Sprintf("http://127.0.0.1:%d/api/v1/id/%s?site=radio-t&url=https://radio-t.com/blah1", port, id))
+	res, code := get(t, fmt.Sprintf("http://dev:password@127.0.0.1:%d/api/v1/id/%s?site=radio-t&url=https://radio-t.com/blah1", port, id))
 	assert.Equal(t, 200, code)
 	c3 := store.Comment{}
 	err = json.Unmarshal([]byte(res), &c3)
@@ -230,7 +231,7 @@ func TestServer_UserInfo(t *testing.T) {
 	assert.NotNil(t, srv)
 	defer cleanup(srv)
 
-	body, code := get(t, fmt.Sprintf("http://127.0.0.1:%d/api/v1/user?site=radio-t", port))
+	body, code := get(t, fmt.Sprintf("http://dev:password@127.0.0.1:%d/api/v1/user?site=radio-t", port))
 	assert.Equal(t, 200, code)
 	user := store.User{}
 	err := json.Unmarshal([]byte(body), &user)
@@ -256,8 +257,8 @@ func TestServer_Vote(t *testing.T) {
 	vote := func(val int) int {
 		client := http.Client{}
 		req, err := http.NewRequest(http.MethodPut,
-			fmt.Sprintf("http://127.0.0.1:%d/api/v1/vote/%s?site=radio-t&url=https://radio-t.com/blah&vote=%d", port, id1, val),
-			nil)
+			fmt.Sprintf("http://dev:password@127.0.0.1:%d/api/v1/vote/%s?site=radio-t&url=https://radio-t.com/blah&vote=%d",
+				port, id1, val), nil)
 		assert.Nil(t, err)
 		resp, err := client.Do(req)
 		assert.Nil(t, err)
@@ -344,10 +345,12 @@ func prep(t *testing.T) (srv *Rest, port int) {
 	require.Nil(t, err)
 	srv = &Rest{
 		DataService: store.Service{Interface: dataStore, EditDuration: 5 * time.Minute},
-		DevMode:     true,
 		Authenticator: auth.Authenticator{
-			Providers:   nil,
-			AvatarProxy: &auth.AvatarProxy{StorePath: "/tmp", RoutePath: "/api/v1/avatar"},
+			SessionStore: sessions.NewFilesystemStore("/tmp", []byte("blah")),
+			DevEnabled:   true,
+			DevPasswd:    "password",
+			Providers:    nil,
+			AvatarProxy:  &auth.AvatarProxy{StorePath: "/tmp", RoutePath: "/api/v1/avatar"},
 		},
 		Exporter: &migrator.Remark{DataStore: dataStore},
 		Cache:    &mockCache{},
@@ -374,7 +377,7 @@ func addComment(t *testing.T, c store.Comment, port int) string {
 
 	b, err := json.Marshal(c)
 	assert.Nil(t, err, "can't marshal comment %+v", c)
-	resp, err := http.Post(fmt.Sprintf("http://127.0.0.1:%d/api/v1/comment", port), "application/json", bytes.NewBuffer(b))
+	resp, err := http.Post(fmt.Sprintf("http://dev:password@127.0.0.1:%d/api/v1/comment", port), "application/json", bytes.NewBuffer(b))
 	assert.Nil(t, err)
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 	b, err = ioutil.ReadAll(resp.Body)
