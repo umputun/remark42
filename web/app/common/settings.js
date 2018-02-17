@@ -1,15 +1,8 @@
-const baseUrl = 'https://demo.remark42.com';
-const apiBase = '/api/v1'
-const siteId = 'remark';
-const id = 'remark42';
-const url = 'https://radio-t.com/p/2017/12/16/podcast-576/';
-const userId = 'dev'; // for develop only
+const querySettings = window.location.search.substr(1).split('&').reduce((acc, param) => {
+  const pair = param.split('=');
+  acc[pair[0]] = decodeURIComponent(pair[1]);
+  return acc;
+}, {}) || {};
 
-module.exports = {
-  baseUrl,
-  siteId,
-  apiBase,
-  id,
-  url,
-  userId,
-};
+export const siteId = querySettings['site_id'];
+export const url = querySettings['url'];
