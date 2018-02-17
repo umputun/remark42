@@ -14,7 +14,12 @@ function initEmbed() {
     return;
   }
 
-  remark_config = remark_config || {}
+  try {
+    remark_config = remark_config || {}
+  } catch (e) {
+    console.error('Remark42: Config object is undefined.');
+    return;
+  }
 
   if (!remark_config.site_id) {
     console.error('Remark42: Site ID is undefined.');
@@ -29,7 +34,7 @@ function initEmbed() {
 
   node.innerHTML = `
     <iframe
-      src="https://demo.remark42.com/web/iframe.html?${query}"
+      src="${process.env.NODE_ENV === 'production' ? 'https://demo.remark42.com/web' : 'http://localhost:8080'}/iframe.html?${query}"
       width="100%"
       frameborder="0"
       allowtransparency="true"
