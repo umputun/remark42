@@ -1,7 +1,8 @@
 import { h, Component } from 'preact';
 import api from 'common/api';
 
-import { baseUrl, url, id } from 'common/settings';
+import { BASE_URL, NODE_ID } from 'common/constants';
+import { url } from 'common/settings';
 import store from 'common/store';
 
 import AuthPanel from 'components/auth-panel';
@@ -54,7 +55,7 @@ export default class Root extends Component {
   }
 
   onSignIn(provider) {
-    const newWindow = window.open(`${baseUrl}/auth/${provider}/login?from=${encodeURIComponent(location.href)}`);
+    const newWindow = window.open(`${BASE_URL}/auth/${provider}/login?from=${encodeURIComponent(location.href)}`);
 
     let secondsPass = 0;
     const checkMsDelay = 200;
@@ -89,7 +90,7 @@ export default class Root extends Component {
   render({}, { config = {}, comments = [], user, loaded }) {
     if (!loaded) {
       return (
-        <div id={id}>
+        <div id={NODE_ID}>
           <div className="root root_loading"/>
         </div>
       );
@@ -99,8 +100,8 @@ export default class Root extends Component {
     const pinnedComments = store.getPinnedComments();
 
     return (
-      <div id={id}>
-        <div className="root root__loading" id={id}>
+      <div id={NODE_ID}>
+        <div className="root root__loading">
           <AuthPanel
             mix="root__auth-panel"
             user={user}

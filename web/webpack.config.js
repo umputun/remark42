@@ -9,7 +9,7 @@ const Html = require('html-webpack-plugin');
 const Provide = webpack.ProvidePlugin;
 const Define = webpack.DefinePlugin;
 
-const { id } = require('./app/common/settings');
+const { NODE_ID } = require('./app/common/constants');
 const publicFolder = path.resolve(__dirname, 'public');
 const env = process.env.NODE_ENV || 'dev';
 const hash = env === 'production' ? '' : '.[hash]';
@@ -22,7 +22,7 @@ const commonStyleLoaders = [
       plugins: [
         require('autoprefixer')({ browsers: ['> 1%'] }),
         require('postcss-url')({ url: 'inline', maxSize: 5 }),
-        require('postcss-wrap')({ selector: `#${id}` }),
+        require('postcss-wrap')({ selector: `#${NODE_ID}` }),
         require('postcss-csso'),
       ]
     }

@@ -3,7 +3,8 @@ import 'common/promises';
 // TODO: i think we need to use unfetch here instead of heavy axios
 import axios from 'axios';
 
-import { baseUrl, apiBase, siteId } from './settings';
+import { BASE_URL, API_BASE } from './constants';
+import { siteId } from './settings';
 
 const fetcher = {};
 const methods = ['get', 'post', 'put', 'patch', 'delete', 'head'];
@@ -25,9 +26,9 @@ methods.forEach(method => {
       url,
       body = {},
       withCredentials = false,
-      overriddenApiBase = apiBase,
+      overriddenApiBase = API_BASE,
     } = (typeof data === 'string' ? { url: data } : data);
-    const basename = `${baseUrl}${overriddenApiBase}`;
+    const basename = `${BASE_URL}${overriddenApiBase}`;
 
     return new Promise((resolve, reject) => {
       const headers = {

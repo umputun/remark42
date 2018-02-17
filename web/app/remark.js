@@ -4,12 +4,12 @@ import 'common/polyfills'; // TODO: check it
 import { h, render } from 'preact';
 import Root from './components/root';
 
-import { id } from './common/settings';
+import { NODE_ID } from './common/constants';
 
 init();
 
 function init() {
-  const node = document.getElementById(id);
+  const node = document.getElementById(NODE_ID);
 
   if (!node) {
     console.error('Remark42: Can\'t find root node.');
