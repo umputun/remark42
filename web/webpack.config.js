@@ -40,7 +40,7 @@ module.exports = {
   context: __dirname,
   entry: {
     remark: './app/remark',
-    embed: './app/embed',
+    ...(env === 'production' ? { embed: './app/embed' } : {}),
   },
   output: {
     path: publicFolder,
