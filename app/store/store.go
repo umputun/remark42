@@ -33,6 +33,23 @@ type Admin interface {
 	Blocked(siteID string) ([]BlockedUser, error)             // get list of blocked users
 }
 
+// Notifier defines all store ops for update modifications
+type Notifier interface {
+	Set(locator Locator, user NotifUser, scope NotifScope, status bool) error // subscribe / unsubscribe user to locator updates
+	Status(locator Locator, userID string) bool                               // get subscription status for user & locator
+	List(locator Locator) ([]NotifUser, error)                                // list all subscribed users
+}
+
+// NotifScope defines "enum" of notification scopes
+type NotifScope int
+
+// All NotifScope values
+const (
+	ScopeSite  NotifScope = 1
+	ScopePost  NotifScope = 2
+	ScopeReply NotifScope = 3
+)
+
 func sortComments(comments []Comment, sortFld string) []Comment {
 	sort.Slice(comments, func(i, j int) bool {
 		switch sortFld {

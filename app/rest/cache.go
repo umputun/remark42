@@ -24,6 +24,7 @@ func NewLoadingCache(defaultExpiration, cleanupInterval time.Duration, postFlush
 	return &loadingCache{bytesCache: cache.New(defaultExpiration, cleanupInterval), postFlushFn: postFlushFn}
 }
 
+// Get is loading cache method to get value by key or load via fn if not found
 func (lc *loadingCache) Get(key string, ttl time.Duration, fn func() ([]byte, error)) (data []byte, err error) {
 	if b, ok := lc.bytesCache.Get(key); ok {
 		log.Printf("[DEBUG] cache hit %s", key)
@@ -38,6 +39,7 @@ func (lc *loadingCache) Get(key string, ttl time.Duration, fn func() ([]byte, er
 	return data, nil
 }
 
+// Flush clears cache and calls postFlushFn async
 func (lc *loadingCache) Flush() {
 	lc.bytesCache.Flush()
 	if lc.postFlushFn != nil {

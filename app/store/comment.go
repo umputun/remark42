@@ -58,6 +58,12 @@ type BlockedUser struct {
 	Timestamp time.Time `json:"time"`
 }
 
+// NotifUser holds id and destination for notifiable user
+type NotifUser struct {
+	ID          string `json:"id"`
+	Destination string `json:"destination"`
+}
+
 // Sanitize clean dangerous html/js from the comment
 func (c *Comment) Sanitize() {
 	p := bluemonday.UGCPolicy()
