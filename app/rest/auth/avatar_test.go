@@ -15,14 +15,14 @@ import (
 )
 
 func TestPut(t *testing.T) {
-	p := AvatarProxy{StorePath: "/tmp/avatars.test", RoutePath: "/avatar"}
+	p := AvatarProxy{StorePath: "/tmp/avatars.test", RoutePath: "/avatar", RemarkURL: "http://localhost:8080"}
 	os.MkdirAll("/tmp/avatars.test", 0700)
 	defer os.RemoveAll("/tmp/avatars.test")
 
 	u := store.User{ID: "user1", Name: "user1 name", Picture: "https://friends.radio-t.com/resources/images/rt_logo_64.png"}
 	res, err := p.Put(u)
 	assert.NoError(t, err)
-	assert.Equal(t, "/avatar/b3daa77b4c04a9551b8781d03191fe098f325e67.image", res)
+	assert.Equal(t, "http://localhost:8080/avatar/b3daa77b4c04a9551b8781d03191fe098f325e67.image", res)
 	fi, err := os.Stat("/tmp/avatars.test/30/b3daa77b4c04a9551b8781d03191fe098f325e67.image")
 	assert.NoError(t, err)
 	assert.Equal(t, int64(8432), fi.Size())
@@ -30,7 +30,7 @@ func TestPut(t *testing.T) {
 	u.ID = "user2"
 	res, err = p.Put(u)
 	assert.NoError(t, err)
-	assert.Equal(t, "/avatar/a1881c06eec96db9901c7bbfe41c42a3f08e9cb4.image", res)
+	assert.Equal(t, "http://localhost:8080/avatar/a1881c06eec96db9901c7bbfe41c42a3f08e9cb4.image", res)
 	fi, err = os.Stat("/tmp/avatars.test/84/a1881c06eec96db9901c7bbfe41c42a3f08e9cb4.image")
 	assert.NoError(t, err)
 	assert.Equal(t, int64(8432), fi.Size())

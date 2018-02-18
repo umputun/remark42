@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/umputun/remark/app/notifier"
@@ -103,7 +104,7 @@ func main() {
 	avatarProxy := &auth.AvatarProxy{
 		StorePath:     opts.ServerCommand.AvatarStore,
 		RoutePath:     "/api/v1/avatar",
-		RemarkURL:     opts.RemarkURL,
+		RemarkURL:     strings.TrimSuffix(opts.RemarkURL, "/"),
 		DefaultAvatar: opts.ServerCommand.DefaultAvatar,
 	}
 
