@@ -103,6 +103,7 @@ func main() {
 	avatarProxy := &auth.AvatarProxy{
 		StorePath:     opts.ServerCommand.AvatarStore,
 		RoutePath:     "/api/v1/avatar",
+		RemarkURL:     opts.RemarkURL,
 		DefaultAvatar: opts.ServerCommand.DefaultAvatar,
 	}
 

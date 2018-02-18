@@ -25,6 +25,7 @@ type AvatarProxy struct {
 	StorePath     string
 	DefaultAvatar string
 	RoutePath     string
+	RemarkURL     string
 }
 
 const imgSfx = ".image"
@@ -77,7 +78,7 @@ func (p *AvatarProxy) Put(u store.User) (avatarURL string, err error) {
 	}
 
 	log.Printf("[DEBUG] saved avatar from %s to %s, user %q", u.Picture, avFile, u.Name)
-	return p.RoutePath + "/" + encID + imgSfx, nil
+	return p.RemarkURL + p.RoutePath + "/" + encID + imgSfx, nil
 }
 
 // Routes returns auth routes for given provider
