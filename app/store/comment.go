@@ -58,22 +58,6 @@ type BlockedUser struct {
 	Timestamp time.Time `json:"time"`
 }
 
-// NotifUser holds id and destination for notifiable user
-type NotifUser struct {
-	ID          string `json:"id"`
-	Destination string `json:"destination"`
-}
-
-// NotifScope defines "enum" of notification scopes
-type NotifScope int
-
-// All NotifScope values
-const (
-	ScopeSite  NotifScope = 1
-	ScopePost  NotifScope = 2
-	ScopeReply NotifScope = 3
-)
-
 // Sanitize clean dangerous html/js from the comment
 func (c *Comment) Sanitize() {
 	p := bluemonday.UGCPolicy()
@@ -94,3 +78,19 @@ func (c *Comment) Mask() {
 	c.Votes = map[string]bool{}
 	c.Edit = nil
 }
+
+// NotifUser holds id and destination for notifiable user
+type NotifUser struct {
+	ID          string `json:"id"`
+	Destination string `json:"destination"`
+}
+
+// NotifScope defines "enum" of notification scopes
+type NotifScope int
+
+// All NotifScope values
+const (
+	ScopeSite  NotifScope = 1
+	ScopePost  NotifScope = 2
+	ScopeReply NotifScope = 3
+)

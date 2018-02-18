@@ -33,7 +33,7 @@ type Admin interface {
 	Blocked(siteID string) ([]BlockedUser, error)             // get list of blocked users
 }
 
-// Notifier defines all store ops to store/retrive notification info for users
+// Notifier defines all store ops to store/retrieve notification info for users
 type Notifier interface {
 	Set(locator Locator, user NotifUser, scope NotifScope, status bool) error // subscribe / unsubscribe user to locator updates
 	Status(locator Locator, userID string) bool                               // get subscription status for user & locator
