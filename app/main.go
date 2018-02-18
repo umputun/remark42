@@ -17,8 +17,8 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/app/migrator"
+	"github.com/umputun/remark/app/rest/api"
 	"github.com/umputun/remark/app/rest/auth"
-	"github.com/umputun/remark/app/rest/server"
 	"github.com/umputun/remark/app/store"
 )
 
@@ -108,7 +108,7 @@ func main() {
 		DefaultAvatar: opts.ServerCommand.DefaultAvatar,
 	}
 
-	srv := server.Rest{
+	srv := api.Rest{
 		Version:     revision,
 		DataService: dataService,
 		Exporter:    &exporter,
