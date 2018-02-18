@@ -9,10 +9,9 @@ const Html = require('html-webpack-plugin');
 const Provide = webpack.ProvidePlugin;
 const Define = webpack.DefinePlugin;
 
-const { id } = require('./app/common/settings');
+const { NODE_ID } = require('./app/common/constants');
 const publicFolder = path.resolve(__dirname, 'public');
 const env = process.env.NODE_ENV || 'dev';
-const hash = env === 'production' ? '' : '.[hash]';
 
 const commonStyleLoaders = [
   'css-loader',
@@ -22,7 +21,7 @@ const commonStyleLoaders = [
       plugins: [
         require('autoprefixer')({ browsers: ['> 1%'] }),
         require('postcss-url')({ url: 'inline', maxSize: 5 }),
-        require('postcss-wrap')({ selector: `#${id}` }),
+        require('postcss-wrap')({ selector: `#${NODE_ID}` }),
         require('postcss-csso'),
       ]
     }
@@ -44,7 +43,7 @@ module.exports = {
   },
   output: {
     path: publicFolder,
-    filename: `[name]${hash}.js`
+    filename: `[name].js`
   },
   resolve: {
     extensions: ['.jsx', '.js'],
@@ -99,14 +98,19 @@ module.exports = {
     new Define({
       'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),
     }),
-    new Html({ template: path.resolve(__dirname, 'index.ejs') }), // TODO: we should add it only in dev
+    new Html({ template: path.resolve(__dirname, 'index.ejs'), inject: false }), // TODO: we should add it only on demo serv
+    ...(env === 'production' ? [] : [new Html({
+      template: path.resolve(__dirname, 'dev.ejs'),
+      filename: 'dev.html',
+      inject: false,
+    })]),
     new ExtractText({
-      filename: `remark${hash}.css`,
+      filename: `remark.css`,
       allChunks: true
     }),
     new webpack.optimize.ModuleConcatenationPlugin(),
     ...(env === 'production' ? [new webpack.optimize.UglifyJsPlugin()] : []),
-    ...(env === 'production' ? [new Copy(['./iframe.html', './test-embed.html'])] : []),
+    new Copy(['./iframe.html']),
   ],
   watch: env === 'dev',
   watchOptions: {
