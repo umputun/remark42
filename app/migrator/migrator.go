@@ -25,11 +25,10 @@ type Exporter interface {
 
 // ImportParams defines everything needed to run import
 type ImportParams struct {
-	DataStore        store.Interface
-	InputFile        string
-	Provider         string
-	SiteID           string
-	DefaultAvatarURL string
+	DataStore store.Interface
+	InputFile string
+	Provider  string
+	SiteID    string
 }
 
 // ImportComments imports from given provider format and saves to store
@@ -39,7 +38,7 @@ func ImportComments(p ImportParams) error {
 	var importer Importer
 	switch p.Provider {
 	case "disqus":
-		importer = &Disqus{DataStore: p.DataStore, DefaultAvatarURL: p.DefaultAvatarURL}
+		importer = &Disqus{DataStore: p.DataStore}
 	case "native":
 		importer = &Remark{DataStore: p.DataStore}
 	default:

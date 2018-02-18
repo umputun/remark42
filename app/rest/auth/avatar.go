@@ -35,7 +35,7 @@ func (p *AvatarProxy) Put(u store.User) (avatarURL string, err error) {
 
 	if u.Picture == "" {
 		if p.DefaultAvatar != "" {
-			return p.RemarkURL + p.RoutePath + "/" + p.DefaultAvatar, nil
+			return p.Default(), nil
 		}
 		return "", errors.Errorf("no picture for %s", u.ID)
 	}
@@ -118,6 +118,11 @@ func (p *AvatarProxy) Routes() (string, chi.Router) {
 	})
 
 	return p.RoutePath, router
+}
+
+// Default returns full default avatar url
+func (p *AvatarProxy) Default() string {
+	return strings.TrimRight(p.RemarkURL, "/") + p.RoutePath + "/" + p.DefaultAvatar
 }
 
 // encodeID hashes user id to sha1

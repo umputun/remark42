@@ -18,10 +18,11 @@ import (
 
 // admin provides router for all requests available for admin users only
 type admin struct {
-	dataService store.Service
-	exporter    migrator.Exporter
-	importer    migrator.Importer
-	cache       rest.LoadingCache
+	dataService  store.Service
+	exporter     migrator.Exporter
+	importer     migrator.Importer
+	cache        rest.LoadingCache
+	defAvatarURL string
 }
 
 func (a *admin) routes(middlewares ...func(http.Handler) http.Handler) chi.Router {
@@ -127,7 +128,7 @@ func (a *admin) checkBlocked(siteID string, user store.User) bool {
 
 // processes comments and hides text of all comments for blocked users.
 // resets score and votes too. Also hides sensitive info for non-admin users
-func (a *admin) maskInfo(comments []store.Comment, r *http.Request) (res []store.Comment) {
+func (a *admin) alterComments(comments []store.Comment, r *http.Request) (res []store.Comment) {
 	res = make([]store.Comment, len(comments))
 
 	user, err := rest.GetUserInfo(r)
@@ -139,6 +140,11 @@ func (a *admin) maskInfo(comments []store.Comment, r *http.Request) (res []store
 		if a.dataService.IsBlocked(c.Locator.SiteID, c.User.ID) {
 			c.Mask()
 			c.User.Blocked = true
+		}
+
+		// set default avatar
+		if c.User.Picture == "" {
+			c.User.Picture = a.defAvatarURL
 		}
 
 		// hide info from non-admins

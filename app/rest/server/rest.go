@@ -95,7 +95,12 @@ func (s *Rest) Run(port int) {
 			rauth.Put("/notify", s.notifyActionCtrl)
 			rauth.Get("/notify", s.notifyStatusCtrl)
 			// admin routes, admin users only
-			s.mod = admin{dataService: s.DataService, exporter: s.Exporter, cache: s.Cache}
+			s.mod = admin{
+				dataService:  s.DataService,
+				exporter:     s.Exporter,
+				cache:        s.Cache,
+				defAvatarURL: s.Authenticator.AvatarProxy.Default(),
+			}
 			rauth.Mount("/admin", s.mod.routes(s.Authenticator.AdminOnly))
 		})
 	})
@@ -223,7 +228,7 @@ func (s *Rest) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		if e != nil {
 			return nil, e
 		}
-		maskedComments := s.mod.maskInfo(comments, r)
+		maskedComments := s.mod.alterComments(comments, r)
 		var b []byte
 		switch r.URL.Query().Get("format") {
 		case "tree":
@@ -256,7 +261,7 @@ func (s *Rest) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		if e != nil {
 			return nil, e
 		}
-		comments = s.mod.maskInfo(comments, r)
+		comments = s.mod.alterComments(comments, r)
 		return encodeJSONWithHTML(comments)
 	})
 
@@ -281,7 +286,7 @@ func (s *Rest) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get comment by id")
 		return
 	}
-	comment = s.mod.maskInfo([]store.Comment{comment}, r)[0]
+	comment = s.mod.alterComments([]store.Comment{comment}, r)[0]
 	render.Status(r, http.StatusOK)
 	renderJSONWithHTML(w, r, comment)
 }
@@ -304,7 +309,7 @@ func (s *Rest) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		if e != nil {
 			return nil, e
 		}
-		comments = s.mod.maskInfo(comments, r)
+		comments = s.mod.alterComments(comments, r)
 		resp.Comments, resp.Count = comments, count
 		return encodeJSONWithHTML(resp)
 	})
