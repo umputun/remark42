@@ -35,7 +35,7 @@ func (p *AvatarProxy) Put(u store.User) (avatarURL string, err error) {
 
 	if u.Picture == "" {
 		if p.DefaultAvatar != "" {
-			return p.RoutePath + "/" + p.DefaultAvatar, nil
+			return p.RemarkURL + p.RoutePath + "/" + p.DefaultAvatar, nil
 		}
 		return "", errors.Errorf("no picture for %s", u.ID)
 	}

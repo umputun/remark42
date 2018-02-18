@@ -79,10 +79,11 @@ func main() {
 	if p.Active != nil && p.Command.Find("import") == p.Active {
 		// import mode
 		params := migrator.ImportParams{
-			DataStore: dataStore,
-			InputFile: opts.ImportCommand.InputFile,
-			Provider:  opts.ImportCommand.Provider,
-			SiteID:    opts.ImportCommand.SiteID,
+			DataStore:        dataStore,
+			InputFile:        opts.ImportCommand.InputFile,
+			Provider:         opts.ImportCommand.Provider,
+			SiteID:           opts.ImportCommand.SiteID,
+			DefaultAvatarURL: opts.RemarkURL + "/api/v1/avatar/" + opts.ServerCommand.DefaultAvatar,
 		}
 		if err := migrator.ImportComments(params); err != nil {
 			log.Fatalf("[ERROR] failed to import, %+v", err)

@@ -16,13 +16,23 @@ func TestDisqus_Import(t *testing.T) {
 	defer os.Remove("/tmp/remark-test.db")
 	dataStore, err := store.NewBoltDB(store.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "test"})
 	require.Nil(t, err, "create store")
-	d := Disqus{DataStore: dataStore}
+	d := Disqus{DataStore: dataStore, DefaultAvatarURL: "http://localhost:8080/avatar.png"}
 	err = d.Import(strings.NewReader(xmlTest), "test")
 	assert.Nil(t, err)
 
 	last, err := dataStore.Last("test", 10)
 	assert.Nil(t, err)
 	assert.Equal(t, 3, len(last), "3 comments imported")
+
+	c := last[0]
+	assert.True(t, strings.HasPrefix(c.Text, "<p>Google App Engine"))
+	assert.Equal(t, "299986072", c.ID)
+	assert.Equal(t, "", c.ParentID)
+	assert.Equal(t, store.Locator{SiteID: "test", URL: "http://radio-t.umputun.com/2011/03/229_8880.html"}, c.Locator)
+	assert.Equal(t, "Dmitry Noname", c.User.Name)
+	assert.Equal(t, "disqus_google-74b9e7568ef6860e93862c5d77590123", c.User.ID)
+	assert.Equal(t, "89.89.89.139", c.User.IP)
+	assert.Equal(t, "http://localhost:8080/avatar.png", c.User.Picture)
 
 	posts, err := dataStore.List("test")
 	assert.Nil(t, err)

@@ -14,7 +14,8 @@ import (
 
 // Disqus implements Importer from disqus xml
 type Disqus struct {
-	DataStore store.Interface
+	DataStore        store.Interface
+	DefaultAvatarURL string
 }
 
 type disqusThread struct {
@@ -118,9 +119,14 @@ func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 						continue
 					}
 					c := store.Comment{
-						ID:        comment.UID,
-						Locator:   store.Locator{URL: postsMap[comment.Tid.Val], SiteID: siteID},
-						User:      store.User{ID: "disqus_" + comment.AuthorUserName, Name: comment.AuthorName, IP: comment.IP},
+						ID:      comment.UID,
+						Locator: store.Locator{URL: postsMap[comment.Tid.Val], SiteID: siteID},
+						User: store.User{
+							ID:      "disqus_" + comment.AuthorUserName,
+							Name:    comment.AuthorName,
+							Picture: d.DefaultAvatarURL,
+							IP:      comment.IP,
+						},
 						Text:      d.cleanText(comment.Message),
 						Timestamp: comment.CreatedAt,
 						ParentID:  comment.Pid.Val,
