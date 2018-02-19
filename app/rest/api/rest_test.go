@@ -56,6 +56,19 @@ func TestServer_Create(t *testing.T) {
 	assert.True(t, len(c["id"].(string)) > 8)
 }
 
+func TestServer_Preview(t *testing.T) {
+	srv, port := prep(t)
+	require.NotNil(t, srv)
+	defer cleanup(srv)
+
+	r := strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
+	resp, err := http.Post(fmt.Sprintf("http://127.0.0.1:%d/api/v1/preview", port), "application/json", r)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	b, err := ioutil.ReadAll(resp.Body)
+	assert.Nil(t, err)
+	assert.Equal(t, "<p>test 123</p>\n", string(b))
+}
+
 func TestServer_CreateAndGet(t *testing.T) {
 	srv, port := prep(t)
 	assert.NotNil(t, srv)
