@@ -19,14 +19,15 @@ type Remark struct {
 
 // Export all comments to writer as json strings. Each comment is one string, separated by "\n"
 func (r *Remark) Export(w io.Writer, siteID string) error {
-	topics, err := r.DataStore.List(siteID)
+	topics, err := r.DataStore.List(siteID, 0)
 	if err != nil {
 		return err
 	}
 	log.Printf("[DEBUG] exporting %d topics", len(topics))
 
 	commentsCount := 0
-	for _, topic := range topics {
+	for i := len(topics) - 1; i >= 0; i-- { // topics from List sorted in opposite direction
+		topic := topics[i]
 		comments, err := r.DataStore.Find(store.Locator{SiteID: siteID, URL: topic.URL}, "time")
 		if err != nil {
 			return err

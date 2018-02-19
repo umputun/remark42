@@ -22,7 +22,7 @@ type Accessor interface {
 	Last(siteID string, max int) ([]Comment, error)                     // last comments for given site, sorted by time
 	User(siteID string, userID string) ([]Comment, int, error)          // comments by user, sorted by time
 	Count(locator Locator) (int, error)                                 // number of comments for the post
-	List(siteID string) ([]PostInfo, error)                             // list of commented posts
+	List(siteID string, limit int) ([]PostInfo, error)                  // list of commented posts
 }
 
 // Admin defines all store ops avail for admin only

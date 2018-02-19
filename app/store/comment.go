@@ -71,12 +71,13 @@ func (c *Comment) Sanitize() {
 	c.Text = strings.Replace(c.Text, "\t", "", -1)
 }
 
-// Mask clears comment info, reset to "Deleted/Blocked"
-func (c *Comment) Mask() {
+// SetDeleted clears comment info, reset to "Deleted/Blocked"
+func (c *Comment) SetDeleted() {
 	c.Text = "this comment was deleted"
 	c.Score = 0
 	c.Votes = map[string]bool{}
 	c.Edit = nil
+	c.Deleted = true
 }
 
 // NotifUser holds id and destination for notifiable user

@@ -14,13 +14,14 @@ import (
 )
 
 // BoltDB implements store.Interface, represents multiple sites with multiplexing to different bolt dbs. Thread safe.
-// there are 4 types of buckets:
+// there are 5 types of top-level buckets:
 //  - comments for post in "posts" top-level bucket. Each url (post) makes its own bucket and each k:v pair is commentID:comment
 //  - history of all comments. They all in a single "last" bucket (per site) and key is defined by ref struct as ts+commentID
 //    value is not full comment but a reference combined from post-url+commentID
 //  - user to comment references in "users" bucket. It used to get comments for user. Key is userID and value
 //    is a nested bucket named userID with kv as ts:reference
 //  - blocking info sits in "block" bucket. Key is userID, value - ts
+//  - counts per post to keep number of comments. Key is post url, value - count
 type BoltDB struct {
 	dbs map[string]*bolt.DB
 }
@@ -75,7 +76,7 @@ func NewBoltDB(sites ...BoltSite) (*BoltDB, error) {
 	return &result, nil
 }
 
-// Create saves new comment to store
+// Create saves new comment to store. Adds to posts bucket, reference to last and user bucket and increments count bucket
 func (b *BoltDB) Create(comment Comment) (commentID string, err error) {
 
 	// fill ID and time if empty
@@ -143,7 +144,9 @@ func (b *BoltDB) Create(comment Comment) (commentID string, err error) {
 	return comment.ID, err
 }
 
-// Delete removes comment, by locator from the store
+// Delete removes comment, by locator from the store.
+// Posts collection only sets status to deleted and clear fileds in order to prevent breaking trees of replies.
+// From last bucket removed for real.
 func (b *BoltDB) Delete(locator Locator, commentID string) error {
 
 	bdb, err := b.db(locator.SiteID)
@@ -163,8 +166,7 @@ func (b *BoltDB) Delete(locator Locator, commentID string) error {
 			return errors.Wrapf(err, "can't load key %s from bucket %s", commentID, locator.URL)
 		}
 		// set deleted status and clear fields
-		comment.Mask()
-		comment.Deleted = true
+		comment.SetDeleted()
 
 		if err := b.save(postBkt, []byte(commentID), comment); err != nil {
 			return errors.Wrapf(err, "can't save deleted comment for key %s from bucket %s", commentID, locator.URL)
@@ -337,7 +339,8 @@ func (b *BoltDB) Blocked(siteID string) (users []BlockedUser, err error) {
 }
 
 // List returns list of all commented posts with counters
-func (b BoltDB) List(siteID string) (list []PostInfo, err error) {
+// uses count bucket to get number of comments
+func (b BoltDB) List(siteID string, limit int) (list []PostInfo, err error) {
 
 	bdb, err := b.db(siteID)
 	if err != nil {
@@ -346,15 +349,20 @@ func (b BoltDB) List(siteID string) (list []PostInfo, err error) {
 
 	err = bdb.View(func(tx *bolt.Tx) error {
 		postsBkt := tx.Bucket([]byte(postsBucketName))
-		return postsBkt.ForEach(func(name []byte, _ []byte) error {
-			postURL := string(name)
+
+		c := postsBkt.Cursor()
+		for k, _ := c.Last(); k != nil; k, _ = c.Prev() {
+			postURL := string(k)
 			count, e := b.count(tx, postURL, 0)
 			if e != nil {
 				return e
 			}
 			list = append(list, PostInfo{URL: postURL, Count: count})
-			return nil
-		})
+			if limit > 0 && len(list) >= limit {
+				break
+			}
+		}
+		return nil
 	})
 
 	return list, err
@@ -380,11 +388,11 @@ func (b *BoltDB) User(siteID string, userID string) (comments []Comment, totalCo
 		}
 
 		c := userIDBkt.Cursor()
-		totalComments = userIDBkt.Stats().KeyN
+		totalComments = 0
 		for k, v := c.Last(); k != nil; k, v = c.Prev() {
-			commentRefs = append(commentRefs, string(v))
-			if len(commentRefs) > userLimit {
-				break
+			totalComments++
+			if len(commentRefs) <= userLimit {
+				commentRefs = append(commentRefs, string(v))
 			}
 		}
 		return nil
@@ -502,7 +510,7 @@ func (b *BoltDB) load(bkt *bolt.Bucket, key []byte) (comment Comment, err error)
 }
 
 // count adds val to counts key postURL. val can be negative to substruct. if val 0 can be used as accessor
-// it uses seprate counts bucket because boltdb Stat call is very slow
+// it uses separate counts bucket because boltdb Stat call is very slow
 func (b *BoltDB) count(tx *bolt.Tx, postURL string, val int) (int, error) {
 
 	btoi := func(v []byte) int {
@@ -522,8 +530,8 @@ func (b *BoltDB) count(tx *bolt.Tx, postURL string, val int) (int, error) {
 	if val == 0 {
 		return btoi(countVal), nil
 	}
-	newVal := itob(btoi(countVal) + val)
-	return btoi(newVal), countBkt.Put([]byte(postURL), newVal)
+	updatedCount := btoi(countVal) + val
+	return updatedCount, countBkt.Put([]byte(postURL), itob(updatedCount))
 }
 
 func (b *BoltDB) db(siteID string) (*bolt.DB, error) {
