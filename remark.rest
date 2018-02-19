@@ -20,6 +20,18 @@ Content-Type: application/json
 	}
 }
 
+### preview comment
+POST {{host}}/api/v1/preview
+Content-Type: application/json
+
+{
+	"text": "comment *blah* http://radio-t.com",
+	"locator": {
+		"url": "https://radio-t.com/blah1",
+		"site": "remark"
+	}
+}
+
 ### update comment
 PUT {{host}}/api/v1/comment/7b88d7a91353ab206cb63cdca18fb26bcb30205b?site=remark&url=https://radio-t.com/blah1
 Content-Type: application/json

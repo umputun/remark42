@@ -84,6 +84,7 @@ func (s *Rest) Run(port int) {
 		rapi.Get("/count", s.countCtrl)
 		rapi.Get("/list", s.listCtrl)
 		rapi.Get("/config", s.configCtrl)
+		rapi.Post("/preview", s.previewCommentCtrl)
 
 		// protected routes, require auth
 		rapi.With(s.Authenticator.Auth(true)).Group(func(rauth chi.Router) {
@@ -167,6 +168,16 @@ func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	s.Cache.Flush() // reset all caches
 	render.Status(r, http.StatusCreated)
 	render.JSON(w, r, JSON{"id": id, "locator": comment.Locator})
+}
+
+func (s *Rest) previewCommentCtrl(w http.ResponseWriter, r *http.Request) {
+	comment := store.Comment{}
+	if err := render.DecodeJSON(r.Body, &comment); err != nil {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't bind comment")
+		return
+	}
+	comment.Text = string(blackfriday.Run([]byte(comment.Text), blackfriday.WithNoExtensions()))
+	render.HTML(w, r, comment.Text)
 }
 
 // PUT /comment/{id}?site=siteID&url=post-url - update comment

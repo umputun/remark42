@@ -150,6 +150,8 @@ type Locator struct {
 }
 ```
 
+- `POST /api/v1/preview` - preview comment in html. Body is `Comment` to render
+
 - `GET /api/v1/find?site=site-id&url=post-url&sort=fld&format=tree` - find all comments for given post
 
 This is the primary call used by UI to show comments for given post. It can return comments in two formats - `plain` and `tree`.
