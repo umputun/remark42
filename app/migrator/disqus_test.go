@@ -33,7 +33,7 @@ func TestDisqus_Import(t *testing.T) {
 	assert.Equal(t, "disqus_google-74b9e7568ef6860e93862c5d77590123", c.User.ID)
 	assert.Equal(t, "89.89.89.139", c.User.IP)
 
-	posts, err := dataStore.List("test")
+	posts, err := dataStore.List("test", 0)
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(posts), "2 posts")
 

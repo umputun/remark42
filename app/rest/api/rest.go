@@ -375,12 +375,18 @@ func (s *Rest) countCtrl(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, JSON{"count": count, "locator": locator})
 }
 
-// GET /list?site=siteID - list posts with comments
+// GET /list?site=siteID&limit=50 - list posts with comments
 func (s *Rest) listCtrl(w http.ResponseWriter, r *http.Request) {
 
 	siteID := r.URL.Query().Get("site")
+	limit := 0
+	limitStr := r.URL.Query().Get("limit")
+	if v, err := strconv.Atoi(limitStr); err == nil {
+		limit = v
+	}
+
 	data, err := s.Cache.Get(rest.URLKey(r), 8*time.Hour, func() ([]byte, error) {
-		posts, e := s.DataService.List(siteID)
+		posts, e := s.DataService.List(siteID, limit)
 		if e != nil {
 			return nil, e
 		}

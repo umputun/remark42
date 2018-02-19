@@ -160,9 +160,13 @@ func TestBoltDB_List(t *testing.T) {
 	_, err := b.Create(comment)
 	assert.Nil(t, err)
 
-	res, err := b.List("radio-t")
+	res, err := b.List("radio-t", 0)
 	assert.Nil(t, err)
-	assert.Equal(t, []PostInfo{{URL: "https://radio-t.com", Count: 2}, {URL: "https://radio-t.com/2", Count: 1}}, res)
+	assert.Equal(t, []PostInfo{{URL: "https://radio-t.com/2", Count: 1}, {URL: "https://radio-t.com", Count: 2}}, res)
+
+	res, err = b.List("radio-t", 1)
+	assert.Nil(t, err)
+	assert.Equal(t, []PostInfo{{URL: "https://radio-t.com/2", Count: 1}}, res)
 }
 
 func TestBoltDB_GetForUser(t *testing.T) {
