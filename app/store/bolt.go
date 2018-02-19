@@ -266,11 +266,8 @@ func (b *BoltDB) Count(locator Locator) (count int, err error) {
 
 	err = bdb.View(func(tx *bolt.Tx) error {
 		var e error
-		count, err = b.count(tx, locator.URL, 0)
-		if e != nil {
-			return e
-		}
-		return nil
+		count, e = b.count(tx, locator.URL, 0)
+		return e
 	})
 
 	return count, err
