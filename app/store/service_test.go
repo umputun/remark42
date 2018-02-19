@@ -84,6 +84,9 @@ func TestBoltDB_EditComment(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "my edit", c.Edit.Summary)
 	assert.Equal(t, "xxx", c.Text)
+
+	_, err = b.EditComment(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "xxx", Edit{Summary: "my edit"})
+	assert.NotNil(t, err, "allow edit once")
 }
 
 func TestBoltDB_EditCommentDurationFailed(t *testing.T) {
