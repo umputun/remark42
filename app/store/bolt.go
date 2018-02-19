@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 	"time"
 
@@ -30,6 +31,7 @@ const (
 	lastBucketName   = "last"
 	userBucketName   = "users"
 	blocksBucketName = "block"
+	countsBucketName = "counts"
 
 	// limits
 	lastLimit = 1000
@@ -55,7 +57,7 @@ func NewBoltDB(sites ...BoltSite) (*BoltDB, error) {
 
 		// make top-level buckets
 		err = db.Update(func(tx *bolt.Tx) error {
-			topBuckets := []string{postsBucketName, lastBucketName, userBucketName, blocksBucketName}
+			topBuckets := []string{postsBucketName, lastBucketName, userBucketName, blocksBucketName, countsBucketName}
 			for _, bktName := range topBuckets {
 				if _, e := tx.CreateBucketIfNotExists([]byte(bktName)); e != nil {
 					return errors.Wrapf(err, "failed to create top level bucket %s", bktName)
@@ -130,6 +132,11 @@ func (b *BoltDB) Create(comment Comment) (commentID string, err error) {
 		if e = userIDBkt.Put([]byte(comment.Timestamp.Format(time.RFC3339Nano)), []byte(rv.value)); e != nil {
 			return errors.Wrapf(e, "failed to put user comment %s for %s", comment.ID, comment.User.ID)
 		}
+
+		if _, e = b.count(tx, comment.Locator.URL, 1); e != nil {
+			return errors.Wrapf(e, "failed to increment count for %s", comment.Locator)
+		}
+
 		return nil
 	})
 
@@ -167,6 +174,10 @@ func (b *BoltDB) Delete(locator Locator, commentID string) error {
 		lastBkt := tx.Bucket([]byte(lastBucketName))
 		if err := lastBkt.Delete([]byte(commentID)); err != nil {
 			return errors.Wrapf(err, "can't delete key %s from bucket %s", commentID, lastBucketName)
+		}
+
+		if _, e = b.count(tx, comment.Locator.URL, -1); e != nil {
+			return errors.Wrapf(e, "failed to decrement count for %s", comment.Locator)
 		}
 
 		return nil
@@ -254,11 +265,11 @@ func (b *BoltDB) Count(locator Locator) (count int, err error) {
 	}
 
 	err = bdb.View(func(tx *bolt.Tx) error {
-		bucket, e := b.getPostBucket(tx, locator.URL)
+		var e error
+		count, err = b.count(tx, locator.URL, 0)
 		if e != nil {
 			return e
 		}
-		count = bucket.Stats().KeyN
 		return nil
 	})
 
@@ -328,7 +339,7 @@ func (b *BoltDB) Blocked(siteID string) (users []BlockedUser, err error) {
 	return users, err
 }
 
-// List returns list of buckets, which is list of all commented posts
+// List returns list of all commented posts with counters
 func (b BoltDB) List(siteID string) (list []PostInfo, err error) {
 
 	bdb, err := b.db(siteID)
@@ -340,11 +351,11 @@ func (b BoltDB) List(siteID string) (list []PostInfo, err error) {
 		postsBkt := tx.Bucket([]byte(postsBucketName))
 		return postsBkt.ForEach(func(name []byte, _ []byte) error {
 			postURL := string(name)
-			bkt, e := b.getPostBucket(tx, postURL)
+			count, e := b.count(tx, postURL, 0)
 			if e != nil {
 				return e
 			}
-			list = append(list, PostInfo{URL: postURL, Count: bkt.Stats().KeyN})
+			list = append(list, PostInfo{URL: postURL, Count: count})
 			return nil
 		})
 	})
@@ -491,6 +502,31 @@ func (b *BoltDB) load(bkt *bolt.Bucket, key []byte) (comment Comment, err error)
 		return comment, errors.Wrap(err, "failed to unmarshal")
 	}
 	return comment, nil
+}
+
+// count adds val to counts key postURL. val can be negative to substruct. if val 0 can be used as accessor
+// it uses seprate counts bucket because boltdb Stat call is very slow
+func (b *BoltDB) count(tx *bolt.Tx, postURL string, val int) (int, error) {
+
+	btoi := func(v []byte) int {
+		res, _ := strconv.Atoi(string(v))
+		return res
+	}
+
+	itob := func(v int) []byte {
+		return []byte(strconv.Itoa(v))
+	}
+
+	countBkt := tx.Bucket([]byte(countsBucketName))
+	countVal := countBkt.Get([]byte(postURL))
+	if countVal == nil {
+		countVal = itob(0)
+	}
+	if val == 0 {
+		return btoi(countVal), nil
+	}
+	newVal := itob(btoi(countVal) + val)
+	return btoi(newVal), countBkt.Put([]byte(postURL), newVal)
 }
 
 func (b *BoltDB) db(siteID string) (*bolt.DB, error) {
