@@ -28,8 +28,7 @@ var opts struct {
 	RemarkURL string   `long:"url" env:"REMARK_URL" default:"https://remark42.com" description:"url to remark"`
 	Admins    []string `long:"admin" env:"ADMIN" description:"admin(s) names" env-delim:","`
 
-	DevMode   bool   `long:"dev" env:"DEV" description:"development mode, no auth enforced"`
-	DevPasswd string `long:"dev-passwd" env:"DEV_PASSWD" default:"password" description:"development mode password"`
+	DevPasswd string `long:"dev-passwd" env:"DEV_PASSWD" default:"" description:"development mode password"`
 	Dbg       bool   `long:"dbg" env:"DEBUG" description:"debug mode"`
 
 	BackupLocation string `long:"backup" env:"BACKUP_PATH" default:"./var" description:"backups location"`
@@ -117,15 +116,15 @@ func main() {
 			SessionStore: sessionStore,
 			Providers:    makeAuthProviders(sessionStore, avatarProxy),
 			AvatarProxy:  avatarProxy,
-			DevEnabled:   opts.DevMode,
+			DevEnabled:   opts.DevPasswd != "",
 			DevPasswd:    opts.DevPasswd,
 		},
 		Cache:    rest.NewLoadingCache(4*time.Hour, 15*time.Minute, postFlushFn),
 		Notifier: notifier.NewNoOperation(),
 	}
 
-	if opts.DevMode {
-		log.Printf("[WARN] running in dev mode, no auth!")
+	if opts.DevPasswd != "" {
+		log.Printf("[WARN] running in dev mode")
 	}
 
 	for _, siteID := range opts.Sites {

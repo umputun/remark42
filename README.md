@@ -48,8 +48,7 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 | --site          |                      | `remark`               | no    | import | site ID                         |
 | --file          |                      | `disqus.xml`           | no    | import | import file                     |
 | --dbg           | DEBUG                | `false`                | no    | all    | debug mode                      |
-| --dev           | DEV                  | `false`                | no    | all    | enable `dev` user               |
-| --dev-password  | DEV_PASSWD           | `password`             | no    | all    | password for `dev` user         |
+| --dev-password  | DEV_PASSWD           |                        | no    | all    | password for `dev` user         |
 
 #### Run modes
 
@@ -100,7 +99,7 @@ _instructions for google oauth2 setup borrowed from [oauth2_proxy](https://githu
 1. Disqus provides an export of all comments on your site in a g-zipped file. This is found in your Moderation panel at Disqus Admin > Setup > Export. The export will be sent into a queue and then emailed to the address associated with your account once it's ready.
 2. Move this file to your remark42 host and unzip.
 3. Stop remark42 containers if started, i.e. `docker-compose stop` 
-4. Run import command - `docker-compose run --rm /srv/remark import --file=<disqus-export-xml> --site=<your site id>`
+4. Run import command - `docker-compose run --rm remark /srv/remark import --file=<disqus-export-xml> --site=<your site id>`
 5. Start remark42 containers `docker-compose up -d`
 
 ### Frontend
