@@ -76,3 +76,7 @@ PUT {{host}}/api/v1/notify?site=remark&url=https://radio-t.com/p/2017/12/16/podc
 
 ### subscribtion status
 GET {{host}}/api/v1/notify?site=remark&url=https://radio-t.com/p/2017/12/16/podcast-576/
+
+### ping
+GET {{host}}/ping
+

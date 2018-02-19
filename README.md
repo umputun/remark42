@@ -32,8 +32,6 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 | --------------- | -------------------- | ---------------------- | ----- | ------ | ------------------------------- |
 | --url           | REMARK_URL           | `https://remark42.com` | no    | all    | url to remark server            |
 | --bolt          | BOLTDB_PATH          | `/tmp`                 | no    | all    | path to data directory          |
-| --dbg           | DEBUG                | `false`                | no    | all    | debug mode                      |
-| --dev           | DEV                  | `false`                | no    | all    | development mode, no auth!      |
 | --site          | SITE                 | `remark`               | yes   | server | site name(s)                    |
 | --admin         | ADMIN                |                        | yes   | server | admin(s) names (user id)        |
 | --backup        | BACKUP_PATH          | `/tmp`                 | no    | server | backups location                |
@@ -49,6 +47,9 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 | --provider      |                      | `disqus`               | no    | import | provider type for import        |
 | --site          |                      | `remark`               | no    | import | site ID                         |
 | --file          |                      | `disqus.xml`           | no    | import | import file                     |
+| --dbg           | DEBUG                | `false`                | no    | all    | debug mode                      |
+| --dev           | DEV                  | `false`                | no    | all    | enable `dev` user               |
+| --dev-password  | DEV_PASSWD           | `password`             | no    | all    | password for `dev` user         |
 
 #### Run modes
 
@@ -236,7 +237,7 @@ _all calls require auth and admin_
 - All heavy REST calls cached internally, default expiration 4h
 - Users activity throttled globally (up to 1000) and limited locally (per user, up to 10 req/sec)
 - Request timeout set to 60sec
-- Development mode (`--dev`) allows to test remark42 without login and with admin privileges. **should not be used in production deployment**
+- Development mode (`--dev`) allows to test remark42 without social login and with admin privileges. Adds basic-auth for username: `dev`, password: `${DEV_PASSWD}`. **should not be used in production deployment**
 - User can vote for the comment multiple times but only to change his/her vote. Double-voting not allowed.
 - User can edit comments in 5 mins window after creation.
 - User ID prefixed by oauth provider name in order to avoid collisions and potential abuse.

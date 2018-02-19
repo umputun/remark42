@@ -222,7 +222,7 @@ func (s *Rest) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	log.Printf("[DEBUG] get comments for %+v", locator)
 
-	data, err := s.Cache.Get(s.urlKey(r), time.Hour, func() ([]byte, error) {
+	data, err := s.Cache.Get(rest.URLKey(r), time.Hour, func() ([]byte, error) {
 		comments, e := s.DataService.Find(locator, r.URL.Query().Get("sort"))
 		if e != nil {
 			return nil, e
@@ -255,7 +255,7 @@ func (s *Rest) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		max = 0
 	}
 
-	data, err := s.Cache.Get(s.urlKey(r), time.Hour, func() ([]byte, error) {
+	data, err := s.Cache.Get(rest.URLKey(r), time.Hour, func() ([]byte, error) {
 		comments, e := s.DataService.Last(r.URL.Query().Get("site"), max)
 		if e != nil {
 			return nil, e
@@ -303,7 +303,7 @@ func (s *Rest) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[DEBUG] get comments for userID %s, %s", userID, siteID)
 
-	data, err := s.Cache.Get(s.urlKey(r), time.Hour, func() ([]byte, error) {
+	data, err := s.Cache.Get(rest.URLKey(r), time.Hour, func() ([]byte, error) {
 		comments, count, e := s.DataService.User(siteID, userID)
 		if e != nil {
 			return nil, e
@@ -368,7 +368,7 @@ func (s *Rest) countCtrl(w http.ResponseWriter, r *http.Request) {
 func (s *Rest) listCtrl(w http.ResponseWriter, r *http.Request) {
 
 	siteID := r.URL.Query().Get("site")
-	data, err := s.Cache.Get(s.urlKey(r), 8*time.Hour, func() ([]byte, error) {
+	data, err := s.Cache.Get(rest.URLKey(r), 8*time.Hour, func() ([]byte, error) {
 		posts, e := s.DataService.List(siteID)
 		if e != nil {
 			return nil, e
@@ -463,16 +463,6 @@ func (s *Rest) addFileServer(r chi.Router, path string, root http.FileSystem) {
 		}
 		fs.ServeHTTP(w, r)
 	}))
-}
-
-// urlKey gets url from request to use is as cache key
-// admins will have separate keys in order tp prevent leak of admin-only data to regular users
-func (s *Rest) urlKey(r *http.Request) string {
-	key := r.URL.String()
-	if user, err := rest.GetUserInfo(r); err == nil && user.Admin { // make seprate cache key for admins
-		key = "admin!!" + key
-	}
-	return key
 }
 
 // renderJSONWithHTML allows html tags and forces charset=utf-8

@@ -2,6 +2,7 @@ package rest
 
 import (
 	"log"
+	"net/http"
 	"time"
 
 	cache "github.com/patrickmn/go-cache"
@@ -45,4 +46,14 @@ func (lc *loadingCache) Flush() {
 	if lc.postFlushFn != nil {
 		go lc.postFlushFn()
 	}
+}
+
+// URLKey gets url from request to use is as cache key
+// admins will have separate keys in order tp prevent leak of admin-only data to regular users
+func URLKey(r *http.Request) string {
+	key := r.URL.String()
+	if user, err := GetUserInfo(r); err == nil && user.Admin { // make seprate cache key for admins
+		key = "admin!!" + key
+	}
+	return key
 }
