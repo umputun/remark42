@@ -182,20 +182,28 @@ func makeDirs(dirs ...string) error {
 	return nil
 }
 
-func makeAuthProviders(sessionStore sessions.Store, avatarProxy *auth.AvatarProxy) []auth.Provider {
-	providers := []auth.Provider{}
+func makeAuthProviders(sessionStore sessions.Store, avatarProxy *auth.AvatarProxy) (providers []auth.Provider) {
+
+	makeParams := func(cid, secret string) auth.Params {
+		return auth.Params{
+			AvatarProxy:  avatarProxy,
+			SessionStore: sessionStore,
+			RemarkURL:    opts.RemarkURL,
+			Cid:          cid,
+			Csecret:      secret,
+		}
+	}
+
 	srvOpts := opts.ServerCommand
+
 	if srvOpts.GoogleCID != "" && srvOpts.GoogleCSEC != "" {
-		providers = append(providers, auth.NewGoogle(auth.Params{AvatarProxy: avatarProxy,
-			Cid: srvOpts.GoogleCID, Csecret: srvOpts.GoogleCSEC, SessionStore: sessionStore, RemarkURL: opts.RemarkURL}))
+		providers = append(providers, auth.NewGoogle(makeParams(srvOpts.GoogleCID, srvOpts.GoogleCSEC)))
 	}
 	if srvOpts.GithubCID != "" && srvOpts.GithubCSEC != "" {
-		providers = append(providers, auth.NewGithub(auth.Params{AvatarProxy: avatarProxy,
-			Cid: srvOpts.GithubCID, Csecret: srvOpts.GithubCSEC, SessionStore: sessionStore, RemarkURL: opts.RemarkURL}))
+		providers = append(providers, auth.NewGithub(makeParams(srvOpts.GithubCID, srvOpts.GithubCSEC)))
 	}
 	if srvOpts.FacebookCID != "" && srvOpts.FacebookCSEC != "" {
-		providers = append(providers, auth.NewFacebook(auth.Params{AvatarProxy: avatarProxy,
-			Cid: srvOpts.FacebookCID, Csecret: srvOpts.FacebookCSEC, SessionStore: sessionStore, RemarkURL: opts.RemarkURL}))
+		providers = append(providers, auth.NewFacebook(makeParams(srvOpts.FacebookCID, srvOpts.FacebookCSEC)))
 	}
 	if len(providers) == 0 {
 		log.Printf("[WARN] no auth providers defined")
@@ -205,13 +213,21 @@ func makeAuthProviders(sessionStore sessions.Store, avatarProxy *auth.AvatarProx
 
 // post-flush callback invoked by cache after each flush in async way
 func postFlushFn() {
+
+	urls := []string{
+		"http://localhost:%d/api/v1/list?site=%s",
+		"http://localhost:%d/api/v1/last/50?site=%s",
+	}
+
 	for _, site := range opts.Sites {
-		resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/list?site=%s", opts.ServerCommand.Port, site))
-		if err != nil {
-			log.Printf("[WARN] failed to refresh cached list for %s, %s", site, err)
-			return
+		for _, u := range urls {
+			resp, err := http.Get(fmt.Sprintf(u, opts.ServerCommand.Port, site))
+			if err != nil {
+				log.Printf("[WARN] failed to refresh cached list for %s, %s", site, err)
+				return
+			}
+			_ = resp.Body.Close()
 		}
-		_ = resp.Body.Close()
 	}
 }
 
