@@ -19,7 +19,7 @@ type Remark struct {
 
 // Export all comments to writer as json strings. Each comment is one string, separated by "\n"
 func (r *Remark) Export(w io.Writer, siteID string) error {
-	topics, err := r.DataStore.List(siteID, 0)
+	topics, err := r.DataStore.List(siteID, 0, 0)
 	if err != nil {
 		return err
 	}

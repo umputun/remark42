@@ -340,7 +340,7 @@ func (b *BoltDB) Blocked(siteID string) (users []BlockedUser, err error) {
 
 // List returns list of all commented posts with counters
 // uses count bucket to get number of comments
-func (b BoltDB) List(siteID string, limit int) (list []PostInfo, err error) {
+func (b BoltDB) List(siteID string, limit, skip int) (list []PostInfo, err error) {
 
 	bdb, err := b.db(siteID)
 	if err != nil {
@@ -351,7 +351,12 @@ func (b BoltDB) List(siteID string, limit int) (list []PostInfo, err error) {
 		postsBkt := tx.Bucket([]byte(postsBucketName))
 
 		c := postsBkt.Cursor()
+		n := 0
 		for k, _ := c.Last(); k != nil; k, _ = c.Prev() {
+			n++
+			if skip > 0 && n <= skip {
+				continue
+			}
 			postURL := string(k)
 			count, e := b.count(tx, postURL, 0)
 			if e != nil {
@@ -361,6 +366,7 @@ func (b BoltDB) List(siteID string, limit int) (list []PostInfo, err error) {
 			if limit > 0 && len(list) >= limit {
 				break
 			}
+
 		}
 		return nil
 	})

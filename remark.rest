@@ -63,7 +63,7 @@ GET {{host}}/api/v1/comments?site=remark&user=disqus_umputun
 GET {{host}}/api/v1/count?site=remark&url=https://radio-t.com/p/2017/12/16/podcast-576/
 
 ### list commented posts
-GET {{host}}/api/v1/list?site=remark
+GET {{host}}/api/v1/list?site=remark&limit=10&skip=5
 
 ### get config
 GET {{host}}/api/v1/config

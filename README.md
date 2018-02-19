@@ -190,7 +190,7 @@ Sort can be `time` or `score`. Supported sort order with prefix -/+, i.e. `-time
     }{}
     ```
 - `GET /api/v1/count?site=site-id&url=post-url` - get comment's count for `{url}`
-- `GET /api/v1/list?site=site-id&limit=5` - list commented posts, returns array or `PostInfo`, limit=0 will return all posts
+- `GET /api/v1/list?site=site-id&limit=5&skip=2` - list commented posts, returns array or `PostInfo`, limit=0 will return all posts
     ```go
     type PostInfo struct {
         URL   string `json:"url"`
