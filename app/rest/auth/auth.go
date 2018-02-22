@@ -37,18 +37,17 @@ func (a *Authenticator) Auth(reqAuth bool) func(http.Handler) http.Handler {
 	f := func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 
-			// dev user - skip regular auth check and populate dev to context
-			if a.basicDevUser(w, r) {
-				user := devUser
-				ctx := r.Context()
-				ctx = context.WithValue(ctx, rest.ContextKey("user"), user)
-				r = r.WithContext(ctx)
-				h.ServeHTTP(w, r)
-				return
-			}
-
 			session, err := a.SessionStore.Get(r, "remark")
 			if err != nil && reqAuth { // in full auth lack of session causes Unauthorized
+				if a.basicDevUser(w, r) { // fail-back to dev user if enabled
+					user := devUser
+					ctx := r.Context()
+					ctx = context.WithValue(ctx, rest.ContextKey("user"), user)
+					r = r.WithContext(ctx)
+					h.ServeHTTP(w, r)
+					return
+				}
+
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				return
 			}
