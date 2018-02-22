@@ -37,7 +37,7 @@ func (a *Authenticator) Auth(reqAuth bool) func(http.Handler) http.Handler {
 	f := func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 
-			if a.basicDevUser(w, r, reqAuth) { // fail-back to dev user if enabled
+			if a.basicDevUser(w, r) { // fail-back to dev user if enabled
 				user := devUser
 				ctx := r.Context()
 				ctx = context.WithValue(ctx, rest.ContextKey("user"), user)
@@ -103,14 +103,10 @@ func (a *Authenticator) AdminOnly(next http.Handler) http.Handler {
 	return http.HandlerFunc(fn)
 }
 
-func (a *Authenticator) basicDevUser(w http.ResponseWriter, r *http.Request, reqAuth bool) bool {
+func (a *Authenticator) basicDevUser(w http.ResponseWriter, r *http.Request) bool {
 
 	if a.DevPasswd == "" || !a.DevEnabled {
 		return false
-	}
-
-	if reqAuth {
-		w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
 	}
 
 	s := strings.SplitN(r.Header.Get("Authorization"), " ", 2)
