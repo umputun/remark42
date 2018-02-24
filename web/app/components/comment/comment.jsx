@@ -140,7 +140,7 @@ export default class Comment extends Component {
 
   render(props, { userBlocked, pinned, score, scoreIncreased, scoreDecreased, isInputVisible }) {
     const { data, mix, mods = {} } = props;
-    const isAdmin = !store.get('user').admin;
+    const isAdmin = store.get('user').admin;
 
     const time = new Date(data.time);
     // TODO: which format for datetime should we choose?
