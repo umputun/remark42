@@ -1,5 +1,7 @@
 export { default } from './root';
 
+require('./root.scss');
+
 require('./__auth-panel/root__auth-panel.scss');
 require('./__input/root__input.scss');
 require('./__pinned-comment/root__pinned-comment.scss');
