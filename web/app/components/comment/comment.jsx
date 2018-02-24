@@ -193,11 +193,7 @@ export default class Comment extends Component {
               </span>
 
               <span className="comment__time">{o.time}</span>
-            </div>
 
-            <div className="comment__text" dangerouslySetInnerHTML={{ __html: o.text }}/>
-
-            <div className="comment__actions">
               {
                 !mods.disabled && (
                   <span className="comment__controls">
@@ -240,6 +236,8 @@ export default class Comment extends Component {
                 )
               }
             </div>
+
+            <div className="comment__text" dangerouslySetInnerHTML={{ __html: o.text }}/>
           </div>
         </div>
 
