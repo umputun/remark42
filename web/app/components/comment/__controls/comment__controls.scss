@@ -1,5 +1,19 @@
 .comment__controls {
-  display: inline-block;
-  font-size: 12px;
+  display: inline;
   user-select: none;
+
+  @media (hover: hover) {
+    margin-left: 0;
+    transition: transform .2s .1s ease-out, opacity .2s .1s ease-out;
+    font-weight: 700;
+    opacity: 0;
+  }
+
+  + .comment__controls_view_admin {
+    &::before {
+      content: '•';
+      margin-left: 8px;
+      color: #777;
+    }
+  }
 }

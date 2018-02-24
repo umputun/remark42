@@ -6,4 +6,13 @@
   margin-bottom: $offset;
   font-size: 16px;
   line-height: 1.2;
+
+  @media (hover: hover) {
+    &:hover {
+      .comment__controls {
+        transform: translateX(8px);
+        opacity: 1;
+      }
+    }
+  }
 }

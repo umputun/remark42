@@ -5,10 +5,7 @@ require('./comment.scss');
 require('./__action/comment__action.scss');
 require('./__avatar/comment__avatar.scss');
 require('./__body/comment__body.scss');
-
 require('./__controls/comment__controls.scss');
-require('./__controls/_view/_admin/comment__controls_view_admin.scss');
-
 require('./__info/comment__info.scss');
 require('./__input/comment__input.scss');
 require('./__score/comment__score.scss');

@@ -1,9 +1,0 @@
-.comment__controls_view_admin {
-  &:not(:first-child) {
-    &::before {
-      content: '•';
-      margin-right: 12px;
-      color: #777;
-    }
-  }
-}
