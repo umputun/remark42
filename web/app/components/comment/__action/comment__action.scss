@@ -1,4 +1,10 @@
 .comment__action {
-  margin-left: 8px;
+  color: #777;
+  font-weight: 700;
+  margin-right: 12px;
   cursor: pointer;
+
+  &:hover {
+    color: #06c5c5;
+  }
 }

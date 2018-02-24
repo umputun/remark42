@@ -6,15 +6,4 @@
   margin-bottom: $offset;
   font-size: 16px;
   line-height: 1.2;
-
-  &:hover {
-    .comment__controls {
-      font-weight: 700;
-
-      @media (hover: hover) {
-        transform: translateX(8px);
-        opacity: 1;
-      }
-    }
-  }
 }
