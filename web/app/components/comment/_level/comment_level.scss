@@ -1,9 +1,9 @@
-@import 'common/variables';
+@import '../comment.vars';
 
 .comment_level {
   @for $i from 1 through 5 {
     &_#{$i} {
-      margin-left: $i * $offset / 2;
+      margin-left: $i * ($avatarSize + $avatarOffset);
     }
   }
 }
