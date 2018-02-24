@@ -1,6 +1,8 @@
 .comment__controls_view_admin {
-  &::before {
-    content: '•';
-    margin-right: 12px;
+  &:not(:first-child) {
+    &::before {
+      content: '•';
+      margin-right: 12px;
+    }
   }
 }
