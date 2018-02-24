@@ -10,7 +10,6 @@ major features:
   - add time format 'X hours ago'
   - use static buttons 'reply', 'pin', etc instead of dynamic
   - maybe we should change layout: vote buttons | avatar | info; info: (top: name, points, time), (center: text), (bottom: controls)
-  - 48px avatar → 24px
   - fix serif font in pinned comments and in auth panel
 - edit comment
   - `PUT /api/v1/comment/{id}?site=site-id&url=post-url`
