@@ -195,7 +195,7 @@ export default class Comment extends Component {
               <span className="comment__time">{o.time}</span>
 
               {
-                !pinned && (
+                !mods.disabled && (
                   <span className="comment__controls">
                     <span className="comment__action" onClick={this.onReplyClick}>reply</span>
                   </span>
