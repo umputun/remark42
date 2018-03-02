@@ -39,6 +39,8 @@ const (
 	userLimit = 50
 )
 
+const tsNano = "2006-01-02T15:04:05.000000000Z07:00"
+
 // BoltSite defines single site param
 type BoltSite struct {
 	FileName string // full path to boltdb
@@ -117,7 +119,7 @@ func (b *BoltDB) Create(comment Comment) (commentID string, err error) {
 		// add reference to comment to "last" bucket
 		lastBkt := tx.Bucket([]byte(lastBucketName))
 		ref := b.makeRef(comment)
-		commentTs := []byte(comment.Timestamp.Format(time.RFC3339Nano))
+		commentTs := []byte(comment.Timestamp.Format(tsNano))
 		e = lastBkt.Put(commentTs, ref)
 		if e != nil {
 			return errors.Wrapf(e, "can't put reference %s to %s", ref, lastBucketName)
@@ -288,7 +290,7 @@ func (b *BoltDB) SetBlock(siteID string, userID string, status bool) error {
 		bucket := tx.Bucket([]byte(blocksBucketName))
 		switch status {
 		case true:
-			if e := bucket.Put([]byte(userID), []byte(time.Now().Format(time.RFC3339Nano))); e != nil {
+			if e := bucket.Put([]byte(userID), []byte(time.Now().Format(tsNano))); e != nil {
 				return errors.Wrapf(e, "failed to put %s to %s", userID, blocksBucketName)
 			}
 		case false:
@@ -327,7 +329,7 @@ func (b *BoltDB) Blocked(siteID string) (users []BlockedUser, err error) {
 	err = bdb.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(blocksBucketName))
 		return bucket.ForEach(func(k []byte, v []byte) error {
-			ts, e := time.ParseInLocation(time.RFC3339Nano, string(v), time.Local)
+			ts, e := time.ParseInLocation(tsNano, string(v), time.Local)
 			if e != nil {
 				return errors.Wrap(e, "can't parse block ts")
 			}
