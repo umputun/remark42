@@ -116,10 +116,10 @@ func (b *BoltDB) Create(comment Comment) (commentID string, err error) {
 
 		// add reference to comment to "last" bucket
 		lastBkt := tx.Bucket([]byte(lastBucketName))
-		rv := refFromComment(comment)
-		e = lastBkt.Put([]byte(rv.key), []byte(rv.value))
+		ref := b.makeRef(comment)
+		e = lastBkt.Put(ref, ref)
 		if e != nil {
-			return errors.Wrapf(e, "can't put reference %s to %s", rv.value, lastBucketName)
+			return errors.Wrapf(e, "can't put reference %s to %s", ref, lastBucketName)
 		}
 
 		// add reference to commentID to "users" bucket
@@ -130,7 +130,7 @@ func (b *BoltDB) Create(comment Comment) (commentID string, err error) {
 			return errors.Wrapf(e, "can't get bucket %s", comment.User.ID)
 		}
 		// put into individual user's bucket with ts as a key
-		if e = userIDBkt.Put([]byte(comment.Timestamp.Format(time.RFC3339Nano)), []byte(rv.value)); e != nil {
+		if e = userIDBkt.Put([]byte(comment.Timestamp.Format(time.RFC3339Nano)), ref); e != nil {
 			return errors.Wrapf(e, "failed to put user comment %s for %s", comment.ID, comment.User.ID)
 		}
 
@@ -232,7 +232,7 @@ func (b *BoltDB) Last(siteID string, max int) (comments []Comment, err error) {
 		lastBkt := tx.Bucket([]byte(lastBucketName))
 		c := lastBkt.Cursor()
 		for k, v := c.Last(); k != nil; k, v = c.Prev() {
-			url, commentID, e := refFromValue(v).parseValue()
+			url, commentID, e := b.parseRef(v)
 			if e != nil {
 				return e
 			}
@@ -410,7 +410,7 @@ func (b *BoltDB) User(siteID string, userID string) (comments []Comment, totalCo
 
 	// retrieve comments for refs
 	for _, v := range commentRefs {
-		url, commentID, e := ref{value: v}.parseValue()
+		url, commentID, e := b.parseRef([]byte(v))
 		if e != nil {
 			return comments, totalComments, errors.Wrapf(e, "can't parse reference %s", v)
 		}
@@ -547,30 +547,16 @@ func (b *BoltDB) db(siteID string) (*bolt.DB, error) {
 	return nil, errors.Errorf("site %q not found", siteID)
 }
 
-// ref represents key:value pair for extra, index-only buckets
-type ref struct {
-	key   string
-	value string
+// makeRef creates reference combining url and comment id
+func (b *BoltDB) makeRef(comment Comment) []byte {
+	return []byte(fmt.Sprintf("%s!!%s", comment.Locator.URL, comment.ID))
 }
 
-// refFromComment makes reference record used for related buckets referencing prim data set
-func refFromComment(comment Comment) *ref {
-	result := ref{
-		key:   fmt.Sprintf("%s!!%s", comment.Timestamp.Format(time.RFC3339Nano), comment.ID),
-		value: fmt.Sprintf("%s!!%s", comment.Locator.URL, comment.ID),
-	}
-	return &result
-}
-
-func refFromValue(val []byte) *ref {
-	result := ref{value: string(val)}
-	return &result
-}
-
-func (r ref) parseValue() (url string, commentID string, err error) {
-	elems := strings.Split(r.value, "!!")
-	if len(elems) < 2 {
-		return "", "", errors.Errorf("can't parse ref %s", r)
+// parseRef gets parts of reference
+func (b *BoltDB) parseRef(val []byte) (url string, id string, err error) {
+	elems := strings.Split(string(val), "!!")
+	if len(elems) != 2 {
+		return "", "", errors.Errorf("invalid reference value %s", string(val))
 	}
 	return elems[0], elems[1], nil
 }
