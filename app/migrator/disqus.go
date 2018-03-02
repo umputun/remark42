@@ -68,7 +68,11 @@ func (d *Disqus) Import(r io.Reader, siteID string) (err error) {
 	}
 
 	log.Printf("[DEBUG] imported %d comments to site %s", passed, siteID)
-	return nil
+
+	if failed > 0 && passed == 0 {
+		err = errors.New("import failed")
+	}
+	return err
 }
 
 // convert disqus stream (xml) from reader and fill channel of comments.
