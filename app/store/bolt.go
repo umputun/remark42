@@ -117,7 +117,8 @@ func (b *BoltDB) Create(comment Comment) (commentID string, err error) {
 		// add reference to comment to "last" bucket
 		lastBkt := tx.Bucket([]byte(lastBucketName))
 		ref := b.makeRef(comment)
-		e = lastBkt.Put(ref, ref)
+		commentTs := []byte(comment.Timestamp.Format(time.RFC3339Nano))
+		e = lastBkt.Put(commentTs, ref)
 		if e != nil {
 			return errors.Wrapf(e, "can't put reference %s to %s", ref, lastBucketName)
 		}
@@ -130,7 +131,7 @@ func (b *BoltDB) Create(comment Comment) (commentID string, err error) {
 			return errors.Wrapf(e, "can't get bucket %s", comment.User.ID)
 		}
 		// put into individual user's bucket with ts as a key
-		if e = userIDBkt.Put([]byte(comment.Timestamp.Format(time.RFC3339Nano)), ref); e != nil {
+		if e = userIDBkt.Put(commentTs, ref); e != nil {
 			return errors.Wrapf(e, "failed to put user comment %s for %s", comment.ID, comment.User.ID)
 		}
 
