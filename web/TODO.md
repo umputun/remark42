@@ -1,14 +1,9 @@
 major features:
 
 - improve design
-  - disable inputs for guests
-  - hide reply links for guests
   - check mobile ui
   - add icons for social networks 
-  - remove grey avatars 'cause we have default img
   - add time format 'X hours ago'
-  - use static buttons 'reply', 'pin', etc instead of dynamic
-  - maybe we should change layout: vote buttons | avatar | info; info: (top: name, points, time), (center: text), (bottom: controls)
 - edit comment
   - `PUT /api/v1/comment/{id}?site=site-id&url=post-url`
 - add description of web part to readme
