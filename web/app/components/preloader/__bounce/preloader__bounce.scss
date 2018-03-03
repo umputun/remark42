@@ -1,0 +1,35 @@
+.preloader__bounce {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 3px;
+  background-color: #333;
+  border-radius: 100%;
+  animation: preloaderBounce 1.4s infinite ease-in-out both;
+
+  &:first-child {
+    animation-delay: -.32s;
+  }
+
+  &:nth-child(2) {
+    animation-delay: -.16s;
+  }
+
+  &:last-child {
+    margin-right: 0;
+  }
+
+  @keyframes preloaderBounce {
+    0% {
+      transform: scale(0);
+    }
+
+    40% {
+      transform: scale(1);
+    }
+
+    80%, 100% {
+      transform: scale(0);
+    }
+  }
+}
