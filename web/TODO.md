@@ -1,7 +1,6 @@
 major features:
 
 - improve design
-  - add true preloader
   - disable inputs for guests
   - hide reply links for guests
   - check mobile ui

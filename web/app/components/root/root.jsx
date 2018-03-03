@@ -101,22 +101,26 @@ export default class Root extends Component {
 
     // TODO: i think we should do it on backend
     const pinnedComments = store.getPinnedComments();
+    const isGuest = !Object.keys(user).length;
 
     return (
       <div id={NODE_ID}>
         <div className="root">
           <AuthPanel
-            mix="root__auth-panel"
             user={user}
             providers={config.auth_providers}
             onSignIn={this.onSignIn}
             onSignOut={this.onSignOut}
           />
 
-          <Input
-            mix="root__input"
-            onSubmit={this.addComment}
-          />
+          {
+            !isGuest && (
+              <Input
+                mix="root__input"
+                onSubmit={this.addComment}
+              />
+            )
+          }
 
           {
             !!pinnedComments.length && (
@@ -135,14 +139,20 @@ export default class Root extends Component {
           }
 
           {
-            comments.map(thread => (
-              <Thread
-                mix="root__thread"
-                mods={{ level: 0 }}
-                data={thread}
-                onReply={this.addComment}
-              />
-            ))
+            !!comments.length && (
+              <div className="root__threads">
+                {
+                  comments.map(thread => (
+                    <Thread
+                      mix="root__thread"
+                      mods={{ level: 0 }}
+                      data={thread}
+                      onReply={this.addComment}
+                    />
+                  ))
+                }
+              </div>
+            )
           }
         </div>
       </div>
