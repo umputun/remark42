@@ -21,7 +21,7 @@ const commonStyleLoaders = [
       plugins: [
         require('autoprefixer')({ browsers: ['> 1%'] }),
         require('postcss-url')({ url: 'inline', maxSize: 5 }),
-        require('postcss-wrap')({ selector: `#${NODE_ID}` }),
+        require('postcss-wrap')({ selector: `#${NODE_ID}` , skip: /^html|body$/}),
         require('postcss-csso'),
       ]
     }
