@@ -141,6 +141,7 @@ export default class Comment extends Component {
   render(props, { userBlocked, pinned, score, scoreIncreased, scoreDecreased, isInputVisible }) {
     const { data, mix, mods = {} } = props;
     const isAdmin = store.get('user').admin;
+    const isGuest = !Object.keys(store.get('user')).length;
 
     const time = new Date(data.time);
     // TODO: which format for datetime should we choose?
@@ -195,7 +196,7 @@ export default class Comment extends Component {
               <span className="comment__time">{o.time}</span>
 
               {
-                !mods.disabled && (
+                !mods.disabled && !isGuest && (
                   <span className="comment__controls">
                     <span className="comment__action" onClick={this.onReplyClick}>reply</span>
                   </span>
