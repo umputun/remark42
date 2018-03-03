@@ -177,7 +177,6 @@ export default class Comment extends Component {
 
           <div className="comment__content">
             <div className="comment__info">
-              {/* TODO: add link to user's profile in social if we have it */}
               <span className="comment__username">{o.user.name}</span>
 
               <span className="comment__score">
