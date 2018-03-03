@@ -3,8 +3,6 @@
   user-select: none;
 
   @media (hover: hover) {
-    margin-left: 0;
-    transition: transform .2s .1s ease-out, opacity .2s .1s ease-out;
     font-weight: 700;
     opacity: 0;
   }
