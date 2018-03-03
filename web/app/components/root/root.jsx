@@ -8,6 +8,7 @@ import store from 'common/store';
 import AuthPanel from 'components/auth-panel';
 import Comment from 'components/comment';
 import Input from 'components/input';
+import Preloader from 'components/preloader';
 import Thread from 'components/thread';
 
 export default class Root extends Component {
@@ -91,7 +92,9 @@ export default class Root extends Component {
     if (!loaded) {
       return (
         <div id={NODE_ID}>
-          <div className="root root_loading"/>
+          <div className="root">
+            <Preloader mix="root__preloader"/>
+          </div>
         </div>
       );
     }
@@ -101,7 +104,7 @@ export default class Root extends Component {
 
     return (
       <div id={NODE_ID}>
-        <div className="root root__loading">
+        <div className="root">
           <AuthPanel
             mix="root__auth-panel"
             user={user}
