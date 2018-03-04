@@ -89,16 +89,21 @@ func main() {
 		return
 	}
 
+	if opts.DevPasswd != "" {
+		log.Printf("[WARN] running in dev mode")
+	}
+
 	dataService := store.Service{Interface: dataStore, EditDuration: 5 * time.Minute}
 	sessionStore := func() sessions.Store {
 		sess := sessions.NewFilesystemStore(opts.ServerCommand.SessionStore, []byte(opts.ServerCommand.StoreKey))
 		sess.Options.HttpOnly = true
 		sess.Options.Secure = true
 		sess.Options.MaxAge = 3600 * 24 * 365
+		sess.Options.Path = "/"
 		return sess
 	}()
 
-	exporter := migrator.Remark{DataStore: dataStore}
+	exporter := &migrator.Remark{DataStore: dataStore}
 
 	avatarProxy := &auth.AvatarProxy{
 		StorePath:     opts.ServerCommand.AvatarStore,
@@ -107,10 +112,12 @@ func main() {
 		DefaultAvatar: opts.ServerCommand.DefaultAvatar,
 	}
 
+	activateBackup(exporter)
+
 	srv := api.Rest{
 		Version:     revision,
 		DataService: dataService,
-		Exporter:    &exporter,
+		Exporter:    exporter,
 		Authenticator: auth.Authenticator{
 			Admins:       opts.Admins,
 			SessionStore: sessionStore,
@@ -122,22 +129,21 @@ func main() {
 		Cache:    rest.NewLoadingCache(4*time.Hour, 15*time.Minute, postFlushFn),
 		Notifier: notifier.NewNoOperation(),
 	}
+	srv.Run(opts.ServerCommand.Port)
+}
 
-	if opts.DevPasswd != "" {
-		log.Printf("[WARN] running in dev mode")
-	}
-
+// activateBackup runs background backups for each site
+func activateBackup(exporter migrator.Exporter) {
 	for _, siteID := range opts.Sites {
-		go migrator.AutoBackup{
+		backup := migrator.AutoBackup{
 			Exporter:       &exporter,
 			BackupLocation: opts.BackupLocation,
 			SiteID:         siteID,
 			KeepMax:        opts.MaxBackupFiles,
 			Duration:       24 * time.Hour,
-		}.Do()
+		}
+		go backup.Do()
 	}
-
-	srv.Run(opts.ServerCommand.Port)
 }
 
 // makeBoltStore creates store for all sites

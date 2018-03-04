@@ -521,7 +521,7 @@ func (b *BoltDB) load(bkt *bolt.Bucket, key []byte) (comment Comment, err error)
 	return comment, nil
 }
 
-// count adds val to counts key postURL. val can be negative to substruct. if val 0 can be used as accessor
+// count adds val to counts key postURL. val can be negative to subtract. if val 0 can be used as accessor
 // it uses separate counts bucket because boltdb Stat call is very slow
 func (b *BoltDB) count(tx *bolt.Tx, postURL string, val int) (int, error) {
 
