@@ -317,6 +317,7 @@ func (b *BoltDB) IsBlocked(siteID string, userID string) (blocked bool) {
 }
 
 // Blocked get lists of blocked users for given site
+// bucket uses userID:
 func (b *BoltDB) Blocked(siteID string) (users []BlockedUser, err error) {
 	users = []BlockedUser{}
 	bdb, err := b.db(siteID)
@@ -467,6 +468,7 @@ func (b *BoltDB) Put(locator Locator, comment Comment) error {
 	})
 }
 
+// getPostBucket return bucket with all comments for postURL
 func (b *BoltDB) getPostBucket(tx *bolt.Tx, postURL string) (*bolt.Bucket, error) {
 	postsBkt := tx.Bucket([]byte(postsBucketName))
 	if postsBkt == nil {
@@ -479,6 +481,7 @@ func (b *BoltDB) getPostBucket(tx *bolt.Tx, postURL string) (*bolt.Bucket, error
 	return res, nil
 }
 
+// makePostBucket create new bucket for postURL as a key. This bucket holds all comments for the post.
 func (b *BoltDB) makePostBucket(tx *bolt.Tx, postURL string) (*bolt.Bucket, error) {
 	postsBkt := tx.Bucket([]byte(postsBucketName))
 	if postsBkt == nil {

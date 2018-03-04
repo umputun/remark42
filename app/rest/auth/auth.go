@@ -1,3 +1,4 @@
+// Package auth provides oauth2 support as well as related middlewares.
 package auth
 
 import (

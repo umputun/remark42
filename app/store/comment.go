@@ -71,7 +71,7 @@ func (c *Comment) Sanitize() {
 	c.Text = strings.Replace(c.Text, "\t", "", -1)
 }
 
-// SetDeleted clears comment info, reset to "Deleted/Blocked"
+// SetDeleted clears comment info, reset to deleted state
 func (c *Comment) SetDeleted() {
 	c.Text = "this comment was deleted"
 	c.Score = 0

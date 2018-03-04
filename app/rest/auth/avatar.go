@@ -30,9 +30,10 @@ type AvatarProxy struct {
 
 const imgSfx = ".image"
 
-// Put gets original avatar url from user info and returns proxied url
+// Put stores retrieved avatar to StorePath. Gets image from user info. Returns proxied url
 func (p *AvatarProxy) Put(u store.User) (avatarURL string, err error) {
 
+	// no picture for user, try default avatar
 	if u.Picture == "" {
 		if p.DefaultAvatar != "" {
 			return p.Default(), nil
@@ -128,14 +129,15 @@ func (p *AvatarProxy) Default() string {
 // encodeID hashes user id to sha1
 func (p *AvatarProxy) encodeID(id string) string {
 	h := sha1.New()
-	_, err := h.Write([]byte(id))
-	if err != nil {
+	if _, err := h.Write([]byte(id)); err != nil {
+		log.Printf("[WARN] can't hash id %s, %s", id, err)
 		return id
 	}
 	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
-// get location for user id by adding partion to final path
+// get location for user id by adding partion to final path in order to keep files
+// in different subdirectories and avoid too many files in a single place.
 // the end result is a full path like this - /tmp/avatars.test/92
 func (p *AvatarProxy) location(id string) string {
 	checksum64 := crc64.Checksum([]byte(id), crc64.MakeTable(crc64.ECMA))

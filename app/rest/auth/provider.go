@@ -1,4 +1,3 @@
-// Package auth provides oauth2 support as well as related middlewares.
 package auth
 
 import (
@@ -30,7 +29,7 @@ type Provider struct {
 	InfoURL     string
 	Endpoint    oauth2.Endpoint
 	Scopes      []string
-	MapUser     func(userData, []byte) store.User
+	MapUser     func(userData, []byte) store.User // map info from InfoURL to User
 
 	avatarProxy *AvatarProxy
 	conf        *oauth2.Config
@@ -198,10 +197,7 @@ func (p Provider) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session.Values["uinfo"] = ""
-	session.Values["from"] = ""
-	session.Values["state"] = ""
-
+	session.Values["uinfo"], session.Values["from"], session.Values["state"] = "", "", ""
 	delete(session.Values, "uinfo")
 	delete(session.Values, "from")
 	delete(session.Values, "state")
