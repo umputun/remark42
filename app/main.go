@@ -136,7 +136,7 @@ func main() {
 func activateBackup(exporter migrator.Exporter) {
 	for _, siteID := range opts.Sites {
 		backup := migrator.AutoBackup{
-			Exporter:       &exporter,
+			Exporter:       exporter,
 			BackupLocation: opts.BackupLocation,
 			SiteID:         siteID,
 			KeepMax:        opts.MaxBackupFiles,
