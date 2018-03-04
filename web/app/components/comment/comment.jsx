@@ -141,6 +141,7 @@ export default class Comment extends Component {
   render(props, { userBlocked, pinned, score, scoreIncreased, scoreDecreased, isInputVisible }) {
     const { data, mix, mods = {} } = props;
     const isAdmin = store.get('user').admin;
+    const isGuest = !Object.keys(store.get('user')).length;
 
     const time = new Date(data.time);
     // TODO: which format for datetime should we choose?
@@ -176,7 +177,6 @@ export default class Comment extends Component {
 
           <div className="comment__content">
             <div className="comment__info">
-              {/* TODO: add link to user's profile in social if we have it */}
               <span className="comment__username">{o.user.name}</span>
 
               <span className="comment__score">
@@ -195,7 +195,7 @@ export default class Comment extends Component {
               <span className="comment__time">{o.time}</span>
 
               {
-                !mods.disabled && (
+                !mods.disabled && !isGuest && (
                   <span className="comment__controls">
                     <span className="comment__action" onClick={this.onReplyClick}>reply</span>
                   </span>
