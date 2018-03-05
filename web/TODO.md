@@ -2,7 +2,7 @@ major features:
 
 - improve design
   - check mobile ui
-  - add icons for social networks 
+  - add styles for md text
   - add time format 'X hours ago'
 - edit comment
   - `PUT /api/v1/comment/{id}?site=site-id&url=post-url`

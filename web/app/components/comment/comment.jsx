@@ -180,16 +180,24 @@ export default class Comment extends Component {
               <span className="comment__username">{o.user.name}</span>
 
               <span className="comment__score">
-                <span
-                  className={b('comment__vote', {}, { type: 'up', selected: scoreIncreased })}
-                  onClick={this.increaseScore}
-                >vote up</span>
+                {
+                  !isGuest && (
+                    <span
+                      className={b('comment__vote', {}, { type: 'up', selected: scoreIncreased })}
+                      onClick={this.increaseScore}
+                    >vote up</span>
+                  )
+                }
                 <span className="comment__score-sign">{o.score.sign}</span>
                 <span className="comment__score-value">{o.score.value}</span>
-                <span
-                  className={b('comment__vote', {}, { type: 'down', selected: scoreDecreased })}
-                  onClick={this.decreaseScore}
-                >vote down</span>
+                {
+                  !isGuest && (
+                    <span
+                      className={b('comment__vote', {}, { type: 'down', selected: scoreDecreased })}
+                      onClick={this.decreaseScore}
+                    >vote down</span>
+                  )
+                }
               </span>
 
               <span className="comment__time">{o.time}</span>
