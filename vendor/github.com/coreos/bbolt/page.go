@@ -145,33 +145,12 @@ func (a pgids) merge(b pgids) pgids {
 	// Return the opposite slice if one is nil.
 	if len(a) == 0 {
 		return b
-	}
-	if len(b) == 0 {
+	} else if len(b) == 0 {
 		return a
 	}
-	merged := make(pgids, len(a)+len(b))
-	mergepgids(merged, a, b)
-	return merged
-}
 
-// mergepgids copies the sorted union of a and b into dst.
-// If dst is too small, it panics.
-func mergepgids(dst, a, b pgids) {
-	if len(dst) < len(a)+len(b) {
-		panic(fmt.Errorf("mergepgids bad len %d < %d + %d", len(dst), len(a), len(b)))
-	}
-	// Copy in the opposite slice if one is nil.
-	if len(a) == 0 {
-		copy(dst, b)
-		return
-	}
-	if len(b) == 0 {
-		copy(dst, a)
-		return
-	}
-
-	// Merged will hold all elements from both lists.
-	merged := dst[:0]
+	// Create a list to hold all elements from both lists.
+	merged := make(pgids, 0, len(a)+len(b))
 
 	// Assign lead to the slice with a lower starting value, follow to the higher value.
 	lead, follow := a, b
@@ -193,5 +172,7 @@ func mergepgids(dst, a, b pgids) {
 	}
 
 	// Append what's left in follow.
-	_ = append(merged, follow...)
+	merged = append(merged, follow...)
+
+	return merged
 }

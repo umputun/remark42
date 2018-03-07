@@ -15,11 +15,11 @@ and setting values. That's it.
 
 ## Project Status
 
-Bolt is stable, the API is fixed, and the file format is fixed. Full unit
-test coverage and randomized black box testing are used to ensure database
-consistency and thread safety. Bolt is currently used in high-load production
-environments serving databases as large as 1TB. Many companies such as
-Shopify and Heroku use Bolt-backed services every day.
+Bolt is stable and the API is fixed. Full unit test coverage and randomized
+black box testing are used to ensure database consistency and thread safety.
+Bolt is currently in high-load production environments serving databases as
+large as 1TB. Many companies such as Shopify and Heroku use Bolt-backed
+services every day.
 
 ## Table of Contents
 
@@ -209,7 +209,7 @@ and then safely close your transaction if an error is returned. This is the
 recommended way to use Bolt transactions.
 
 However, sometimes you may want to manually start and end your transactions.
-You can use the `DB.Begin()` function directly but **please** be sure to close
+You can use the `Tx.Begin()` function directly but **please** be sure to close
 the transaction.
 
 ```go
@@ -395,7 +395,7 @@ db.View(func(tx *bolt.Tx) error {
 	c := tx.Bucket([]byte("MyBucket")).Cursor()
 
 	prefix := []byte("1234")
-	for k, v := c.Seek(prefix); k != nil && bytes.HasPrefix(k, prefix); k, v = c.Next() {
+	for k, v := c.Seek(prefix); bytes.HasPrefix(k, prefix); k, v = c.Next() {
 		fmt.Printf("key=%s, value=%s\n", k, v)
 	}
 
@@ -448,10 +448,6 @@ db.View(func(tx *bolt.Tx) error {
 })
 ```
 
-Please note that keys and values in `ForEach()` are only valid while
-the transaction is open. If you need to use a key or value outside of
-the transaction, you must use `copy()` to copy it to another byte
-slice.
 
 ### Nested buckets
 
@@ -463,55 +459,6 @@ func (*Bucket) CreateBucket(key []byte) (*Bucket, error)
 func (*Bucket) CreateBucketIfNotExists(key []byte) (*Bucket, error)
 func (*Bucket) DeleteBucket(key []byte) error
 ```
-
-Say you had a multi-tenant application where the root level bucket was the account bucket. Inside of this bucket was a sequence of accounts which themselves are buckets. And inside the sequence bucket you could have many buckets pertaining to the Account itself (Users, Notes, etc) isolating the information into logical groupings.
-
-```go
-
-// createUser creates a new user in the given account.
-func createUser(accountID int, u *User) error {
-    // Start the transaction.
-    tx, err := db.Begin(true)
-    if err != nil {
-        return err
-    }
-    defer tx.Rollback()
-
-    // Retrieve the root bucket for the account.
-    // Assume this has already been created when the account was set up.
-    root := tx.Bucket([]byte(strconv.FormatUint(accountID, 10)))
-
-    // Setup the users bucket.
-    bkt, err := root.CreateBucketIfNotExists([]byte("USERS"))
-    if err != nil {
-        return err
-    }
-
-    // Generate an ID for the new user.
-    userID, err := bkt.NextSequence()
-    if err != nil {
-        return err
-    }
-    u.ID = userID
-
-    // Marshal and save the encoded user.
-    if buf, err := json.Marshal(u); err != nil {
-        return err
-    } else if err := bkt.Put([]byte(strconv.FormatUint(u.ID, 10)), buf); err != nil {
-        return err
-    }
-
-    // Commit the transaction.
-    if err := tx.Commit(); err != nil {
-        return err
-    }
-
-    return nil
-}
-
-```
-
-
 
 
 ### Database backups
@@ -768,9 +715,6 @@ Here are a few things to note when evaluating and using Bolt:
   can be reused by a new page or can be unmapped from virtual memory and you'll
   see an `unexpected fault address` panic when accessing it.
 
-* Bolt uses an exclusive write lock on the database file so it cannot be
-  shared by multiple processes.
-
 * Be careful when using `Bucket.FillPercent`. Setting a high fill percent for
   buckets that have random inserts will cause your database to have very poor
   page utilization.
@@ -904,13 +848,5 @@ Below is a list of public, open source projects that use Bolt:
 * [Algernon](https://github.com/xyproto/algernon) - A HTTP/2 web server with built-in support for Lua. Uses BoltDB as the default database backend.
 * [MuLiFS](https://github.com/dankomiocevic/mulifs) - Music Library Filesystem creates a filesystem to organise your music files.
 * [GoShort](https://github.com/pankajkhairnar/goShort) - GoShort is a URL shortener written in Golang and BoltDB for persistent key/value storage and for routing it's using high performent HTTPRouter.
-* [torrent](https://github.com/anacrolix/torrent) - Full-featured BitTorrent client package and utilities in Go. BoltDB is a storage backend in development.
-* [gopherpit](https://github.com/gopherpit/gopherpit) - A web service to manage Go remote import paths with custom domains
-* [bolter](https://github.com/hasit/bolter) - Command-line app for viewing BoltDB file in your terminal.
-* [btcwallet](https://github.com/btcsuite/btcwallet) - A bitcoin wallet.
-* [dcrwallet](https://github.com/decred/dcrwallet) - A wallet for the Decred cryptocurrency.
-* [Ironsmith](https://github.com/timshannon/ironsmith) - A simple, script-driven continuous integration (build - > test -> release) tool, with no external dependencies
-* [BoltHold](https://github.com/timshannon/bolthold) - An embeddable NoSQL store for Go types built on BoltDB
-* [Ponzu CMS](https://ponzu-cms.org) - Headless CMS + automatic JSON API with auto-HTTPS, HTTP/2 Server Push, and flexible server framework.
 
 If you are using Bolt in a project please send a pull request to add it to the list.

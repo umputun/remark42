@@ -8,10 +8,10 @@
   version = "v0.18.0"
 
 [[projects]]
-  name = "github.com/boltdb/bolt"
+  name = "github.com/coreos/bbolt"
   packages = ["."]
-  revision = "2f1ce7a837dcb8da3ec595b1dac9d0632f0f99e8"
-  version = "v1.3.1"
+  revision = "583e8937c61f1af6513608ccc75c97b6abdf4ff9"
+  version = "v1.3.0"
 
 [[projects]]
   name = "github.com/davecgh/go-spew"
@@ -201,6 +201,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "03e0673f56f51384e8528f760cd44327828e5ef158b97bbbebc678c52cec9cc3"
+  inputs-digest = "0d83e980a218ae9ca20daebde2587524e09b17a2d4c8f21ff717504f580b0dfc"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/boltdb/bolt"
+	"github.com/coreos/bbolt"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 )
