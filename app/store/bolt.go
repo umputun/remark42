@@ -116,9 +116,10 @@ func (b *BoltDB) Create(comment Comment) (commentID string, err error) {
 			return errors.Wrapf(e, "failed to put key %s to bucket %s", comment.ID, comment.Locator.URL)
 		}
 
+		ref := b.makeRef(comment)
+
 		// add reference to comment to "last" bucket
 		lastBkt := tx.Bucket([]byte(lastBucketName))
-		ref := b.makeRef(comment)
 		commentTs := []byte(comment.Timestamp.Format(tsNano))
 		e = lastBkt.Put(commentTs, ref)
 		if e != nil {
@@ -126,17 +127,16 @@ func (b *BoltDB) Create(comment Comment) (commentID string, err error) {
 		}
 
 		// add reference to commentID to "users" bucket
-		usersBkt := tx.Bucket([]byte(userBucketName))
-		// get bucket for userID
-		userIDBkt, e := usersBkt.CreateBucketIfNotExists([]byte(comment.User.ID))
+		userBkt, e := b.getUserBucket(tx, comment.User.ID)
 		if e != nil {
 			return errors.Wrapf(e, "can't get bucket %s", comment.User.ID)
 		}
 		// put into individual user's bucket with ts as a key
-		if e = userIDBkt.Put(commentTs, ref); e != nil {
+		if e = userBkt.Put(commentTs, ref); e != nil {
 			return errors.Wrapf(e, "failed to put user comment %s for %s", comment.ID, comment.User.ID)
 		}
 
+		// increment comments count for post url
 		if _, e = b.count(tx, comment.Locator.URL, 1); e != nil {
 			return errors.Wrapf(e, "failed to increment count for %s", comment.Locator)
 		}
@@ -181,6 +181,7 @@ func (b *BoltDB) Delete(locator Locator, commentID string) error {
 			return errors.Wrapf(err, "can't delete key %s from bucket %s", commentID, lastBucketName)
 		}
 
+		// decrement comments count for post url
 		if _, e = b.count(tx, comment.Locator.URL, -1); e != nil {
 			return errors.Wrapf(e, "failed to decrement count for %s", comment.Locator)
 		}
@@ -370,7 +371,6 @@ func (b BoltDB) List(siteID string, limit, skip int) (list []PostInfo, err error
 			if limit > 0 && len(list) >= limit {
 				break
 			}
-
 		}
 		return nil
 	})
@@ -494,6 +494,15 @@ func (b *BoltDB) makePostBucket(tx *bolt.Tx, postURL string) (*bolt.Bucket, erro
 		return nil, errors.Wrapf(err, "no bucket %s in store", postURL)
 	}
 	return res, nil
+}
+
+func (b *BoltDB) getUserBucket(tx *bolt.Tx, userID string) (*bolt.Bucket, error) {
+	usersBkt := tx.Bucket([]byte(userBucketName))
+	userIDBkt, e := usersBkt.CreateBucketIfNotExists([]byte(userID)) // get bucket for userID
+	if e != nil {
+		return nil, errors.Wrapf(e, "can't get bucket %s", userID)
+	}
+	return userIDBkt, nil
 }
 
 // save comment to key for bucket. Should run in update tx

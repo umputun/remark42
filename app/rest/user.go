@@ -1,7 +1,11 @@
 package rest
 
 import (
+	"crypto/sha1"
 	"errors"
+	"fmt"
+	"hash/crc64"
+	"log"
 	"net/http"
 
 	"github.com/umputun/remark/app/store"
@@ -23,4 +27,15 @@ func GetUserInfo(r *http.Request) (user store.User, err error) {
 	}
 
 	return store.User{}, errors.New("user can't be parsed")
+}
+
+// EncodeID hashes user id to sha1
+func EncodeID(id string) string {
+	h := sha1.New()
+	if _, err := h.Write([]byte(id)); err != nil {
+		// fail back to crc64
+		log.Printf("[WARN] can't hash id %s, %s", id, err)
+		return fmt.Sprintf("%x", crc64.Checksum([]byte(id), crc64.MakeTable(crc64.ECMA)))
+	}
+	return fmt.Sprintf("%x", h.Sum(nil))
 }

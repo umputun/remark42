@@ -51,6 +51,7 @@ func TestPutDefault(t *testing.T) {
 	assert.Equal(t, int64(10), fi.Size())
 
 }
+
 func TestRoutes(t *testing.T) {
 	p := AvatarProxy{StorePath: "/tmp/avatars.test", RoutePath: "/avatar", DefaultAvatar: "default.image"}
 	os.MkdirAll("/tmp/avatars.test", 0700)
@@ -77,6 +78,7 @@ func TestRoutes(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int64(8432), sz)
 }
+
 func TestRoutesDefault(t *testing.T) {
 	p := AvatarProxy{StorePath: "/tmp/avatars.test", RoutePath: "/avatar", DefaultAvatar: "default.image"}
 	os.MkdirAll("/tmp/avatars.test", 0700)

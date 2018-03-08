@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"crypto/sha1"
 	"fmt"
 	"hash/crc64"
 	"io"
@@ -54,7 +53,7 @@ func (p *AvatarProxy) Put(u store.User) (avatarURL string, err error) {
 	}()
 
 	// get ID and location of locally cached avatar
-	encID := p.encodeID(u.ID)
+	encID := rest.EncodeID(u.ID)
 	location := p.location(encID) // location adds partion to path
 
 	if _, err = os.Stat(location); os.IsNotExist(err) {
@@ -124,16 +123,6 @@ func (p *AvatarProxy) Routes() (string, chi.Router) {
 // Default returns full default avatar url
 func (p *AvatarProxy) Default() string {
 	return strings.TrimRight(p.RemarkURL, "/") + p.RoutePath + "/" + p.DefaultAvatar
-}
-
-// encodeID hashes user id to sha1
-func (p *AvatarProxy) encodeID(id string) string {
-	h := sha1.New()
-	if _, err := h.Write([]byte(id)); err != nil {
-		log.Printf("[WARN] can't hash id %s, %s", id, err)
-		return id
-	}
-	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
 // get location for user id by adding partion to final path in order to keep files

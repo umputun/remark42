@@ -8,6 +8,7 @@ import (
 	"golang.org/x/oauth2/github"
 	"golang.org/x/oauth2/google"
 
+	"github.com/umputun/remark/app/rest"
 	"github.com/umputun/remark/app/store"
 )
 
@@ -22,7 +23,7 @@ func NewGoogle(p Params) Provider {
 		Store:       p.SessionStore,
 		MapUser: func(data userData, _ []byte) store.User {
 			userInfo := store.User{
-				ID:      data.value("email"),
+				ID:      rest.EncodeID("google_" + data.value("email")),
 				Name:    data.value("name"),
 				Picture: data.value("picture"),
 				Profile: data.value("profile"),
@@ -30,7 +31,6 @@ func NewGoogle(p Params) Provider {
 			if userInfo.Name == "" {
 				userInfo.Name = strings.Split(userInfo.ID, "@")[0]
 			}
-			userInfo.ID = "google_" + userInfo.ID
 			return userInfo
 		},
 	})
@@ -47,7 +47,7 @@ func NewGithub(p Params) Provider {
 		Store:       p.SessionStore,
 		MapUser: func(data userData, _ []byte) store.User {
 			userInfo := store.User{
-				ID:      data.value("login"),
+				ID:      rest.EncodeID("github_" + data.value("login")),
 				Name:    data.value("name"),
 				Picture: data.value("avatar_url"),
 				Profile: data.value("html_url"),
@@ -55,7 +55,6 @@ func NewGithub(p Params) Provider {
 			if userInfo.Name == "" {
 				userInfo.Name = userInfo.ID
 			}
-			userInfo.ID = "github_" + userInfo.ID
 			return userInfo
 		},
 	})
@@ -84,13 +83,12 @@ func NewFacebook(p Params) Provider {
 		Store:       p.SessionStore,
 		MapUser: func(data userData, bdata []byte) store.User {
 			userInfo := store.User{
-				ID:   data.value("id"),
+				ID:   rest.EncodeID("facebook_" + data.value("id")),
 				Name: data.value("name"),
 			}
 			if userInfo.Name == "" {
 				userInfo.Name = userInfo.ID
 			}
-			userInfo.ID = "facebook_" + userInfo.ID
 
 			uinfoJSON := uinfo{}
 			if err := json.Unmarshal(bdata, &uinfoJSON); err == nil {
