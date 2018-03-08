@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 
@@ -53,8 +54,11 @@ func (p *AvatarProxy) Put(u store.User) (avatarURL string, err error) {
 	}()
 
 	// get ID and location of locally cached avatar
-	encID := rest.EncodeID(u.ID)
-	location := p.location(encID) // location adds partion to path
+	encID := u.ID // all locally created comments have userID encoded hex, imported extra need encoding.
+	if _, err := strconv.ParseUint(u.ID, 16, 64); err != nil {
+		encID = rest.EncodeID(u.ID)
+	}
+	location := p.location(u.ID) // location adds partion to path
 
 	if _, err = os.Stat(location); os.IsNotExist(err) {
 		if e := os.Mkdir(location, 0700); e != nil {
