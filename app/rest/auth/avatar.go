@@ -58,7 +58,7 @@ func (p *AvatarProxy) Put(u store.User) (avatarURL string, err error) {
 	if _, err := strconv.ParseUint(u.ID, 16, 64); err != nil {
 		encID = rest.EncodeID(u.ID)
 	}
-	location := p.location(u.ID) // location adds partion to path
+	location := p.location(encID) // location adds partion to path
 
 	if _, err = os.Stat(location); os.IsNotExist(err) {
 		if e := os.Mkdir(location, 0700); e != nil {
