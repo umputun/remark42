@@ -23,7 +23,7 @@ func NewGoogle(p Params) Provider {
 		Store:       p.SessionStore,
 		MapUser: func(data userData, _ []byte) store.User {
 			userInfo := store.User{
-				ID:      rest.EncodeID("google_" + data.value("email")),
+				ID:      rest.EncodeID("google_" + data.value("email")), // encode email
 				Name:    data.value("name"),
 				Picture: data.value("picture"),
 				Profile: data.value("profile"),
@@ -47,7 +47,7 @@ func NewGithub(p Params) Provider {
 		Store:       p.SessionStore,
 		MapUser: func(data userData, _ []byte) store.User {
 			userInfo := store.User{
-				ID:      rest.EncodeID("github_" + data.value("login")),
+				ID:      "github_" + data.value("login"),
 				Name:    data.value("name"),
 				Picture: data.value("avatar_url"),
 				Profile: data.value("html_url"),
@@ -83,7 +83,7 @@ func NewFacebook(p Params) Provider {
 		Store:       p.SessionStore,
 		MapUser: func(data userData, bdata []byte) store.User {
 			userInfo := store.User{
-				ID:   rest.EncodeID("facebook_" + data.value("id")),
+				ID:   "facebook_" + data.value("id"),
 				Name: data.value("name"),
 			}
 			if userInfo.Name == "" {
