@@ -1,4 +1,4 @@
-import { NODE_ID } from 'common/constants';
+import { BASE_URL, NODE_ID } from 'common/constants';
 
 if (document.readyState !== 'interactive') {
   document.addEventListener('DOMContentLoaded', initEmbed);
@@ -34,7 +34,7 @@ function initEmbed() {
 
   node.innerHTML = `
     <iframe
-      src="${process.env.NODE_ENV === 'production' ? 'https://demo.remark42.com/web' : ''}/iframe.html?${query}"
+      src="${process.env.NODE_ENV === 'production' ? `${BASE_URL}/web` : ''}/iframe.html?${query}"
       width="100%"
       frameborder="0"
       allowtransparency="true"
