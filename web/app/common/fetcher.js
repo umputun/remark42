@@ -1,7 +1,6 @@
 import 'common/promises';
 
 // TODO: i think we need to use unfetch here instead of heavy axios
-// import axios from 'axios';
 import fetch from 'unfetch';
 
 import { BASE_URL, API_BASE } from './constants';
@@ -9,17 +8,6 @@ import { siteId } from './settings';
 
 const fetcher = {};
 const methods = ['get', 'post', 'put', 'patch', 'delete', 'head'];
-
-// const { CancelToken } = axios;
-// let cancelHandler = [];
-
-// fetcher.cancel = (mask) => {
-//   cancelHandler.forEach(req => {
-//     if (req.url.includes(mask)) {
-//       req.executor('Operation canceled by the user.');
-//     }
-//   });
-// };
 
 methods.forEach(method => {
   fetcher[method] = data => {
@@ -31,6 +19,7 @@ methods.forEach(method => {
     } = (typeof data === 'string' ? { url: data } : data);
     const basename = `${BASE_URL}${overriddenApiBase}`;
 
+    // TODO: try to rewrite without promises
     return new Promise((resolve, reject) => {
       const parameters = {
         method: method.toUpperCase(),
