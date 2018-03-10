@@ -1,6 +1,7 @@
 import 'common/promises';
 
-// TODO: i think we need to use unfetch here instead of heavy axios
+// TODO: i've tried to rewrite it to unfetch but it wasn't easy to make it work
+// we need to try again later
 import axios from 'axios';
 
 import { BASE_URL, API_BASE } from './constants';
@@ -27,6 +28,7 @@ methods.forEach(method => {
       body = {},
       withCredentials = false,
       overriddenApiBase = API_BASE,
+      siteId = siteId,
     } = (typeof data === 'string' ? { url: data } : data);
     const basename = `${BASE_URL}${overriddenApiBase}`;
 
@@ -47,7 +49,11 @@ methods.forEach(method => {
       }
 
       parameters.url = `${basename}${url}`;
-      if (method !== 'post') parameters.url += (parameters.url.includes('?') ? '&' : '?') + `site=${siteId}`;
+
+      if (method !== 'post' && !parameters.url.includes('?site=') && !parameters.url.includes('&site=')) {
+        parameters.url += (parameters.url.includes('?') ? '&' : '?') + `site=${siteId}`;
+      }
+
       parameters.cancelToken = new CancelToken(executor => {
         cancelHandler.push({
           executor,
