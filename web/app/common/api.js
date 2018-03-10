@@ -2,7 +2,7 @@ import { siteId, url } from './settings';
 
 import fetcher from './fetcher'
 
-/* user */
+/* common */
 
 export const logOut = () => fetcher.get({ url: `/auth/logout`, overriddenApiBase: '' });
 
@@ -36,7 +36,6 @@ export const getUser = () => fetcher.get({
 });
 
 /* admin */
-
 export const pin = ({ id, url }) => fetcher.put({
   url: `/admin/pin/${id}?url=${url}&pin=1`,
   withCredentials: true,

@@ -42,7 +42,7 @@ methods.forEach(method => {
       };
 
       if (Object.keys(body).length) {
-        parameters.body = JSON.stringify(body);
+        parameters.data = body;
       }
 
       let requestUrl = `${basename}${url}`;
