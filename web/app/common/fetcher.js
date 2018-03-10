@@ -28,7 +28,6 @@ methods.forEach(method => {
       body = {},
       withCredentials = false,
       overriddenApiBase = API_BASE,
-      siteId = siteId,
     } = (typeof data === 'string' ? { url: data } : data);
     const basename = `${BASE_URL}${overriddenApiBase}`;
 
