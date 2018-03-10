@@ -34,6 +34,7 @@
     "babel-polyfill": "^6.23.0",
     "bem-react-helper": "^1.1.2",
     "preact": "^8.2.7",
-    "promise-polyfill": "^7.0.0"
+    "promise-polyfill": "^7.0.0",
+    "unfetch": "^3.0.0"
   }
 }
