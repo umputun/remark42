@@ -40,6 +40,7 @@ module.exports = {
   entry: {
     remark: './app/remark',
     embed: './app/embed',
+    counter: './app/counter',
   },
   output: {
     path: publicFolder,
@@ -98,7 +99,17 @@ module.exports = {
     new Define({
       'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),
     }),
-    new Html({ template: path.resolve(__dirname, 'index.ejs'), inject: false }), // TODO: we should add it only on demo serv
+    // TODO: we should add it only on demo serv
+    new Html({
+      template: path.resolve(__dirname, 'index.ejs'),
+      inject: false,
+    }),
+    // TODO: we should add it only on demo serv
+    new Html({
+      template: path.resolve(__dirname, 'counter.ejs'),
+      filename: 'counter.html',
+      inject: false,
+    }),
     ...(env === 'production' ? [] : [new Html({
       template: path.resolve(__dirname, 'dev.ejs'),
       filename: 'dev.html',
