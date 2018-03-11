@@ -18,7 +18,7 @@ RUN go build -o remark -ldflags "-X main.revision=$(git rev-parse --abbrev-ref H
 FROM node:9.4-alpine as build-frontend
 
 ADD web /srv/web
-RUN apk add --no-cache --update git python make g++
+RUN apk add --no-cache --update git
 RUN \
     cd /srv/web && \
     npm i && npm run build
