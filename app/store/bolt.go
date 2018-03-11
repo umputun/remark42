@@ -250,7 +250,9 @@ func (b *BoltDB) Last(siteID string, max int) (comments []Comment, err error) {
 				log.Printf("[WARN] can't load comment for %s from store %s", commentID, url)
 				continue
 			}
-
+			if comment.Deleted {
+				continue
+			}
 			comments = append(comments, comment)
 			if len(comments) >= max {
 				break

@@ -33,7 +33,7 @@ func TestBoltDB_Delete(t *testing.T) {
 	loc := Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
 	res, err := b.Find(loc, "time")
 	assert.Nil(t, err)
-	assert.Equal(t, 2, len(res))
+	assert.Equal(t, 2, len(res), "initially 2 comments")
 
 	err = b.Delete(loc, res[0].ID)
 	assert.Nil(t, err)
@@ -48,9 +48,7 @@ func TestBoltDB_Delete(t *testing.T) {
 
 	comments, err := b.Last("radio-t", 10)
 	assert.Nil(t, err)
-	assert.Equal(t, 2, len(comments), "2 in last, nothing removed")
-	assert.Equal(t, "this comment was deleted", comments[1].Text)
-	assert.True(t, comments[1].Deleted, "marked deleted")
+	assert.Equal(t, 1, len(comments), "1 in last, 1 removed")
 }
 
 func TestBoltDB_Get(t *testing.T) {
