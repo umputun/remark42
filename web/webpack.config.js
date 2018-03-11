@@ -41,6 +41,7 @@ module.exports = {
     remark: './app/remark',
     embed: './app/embed',
     counter: './app/counter',
+    'last-comments': './app/last-comments',
   },
   output: {
     path: publicFolder,
@@ -108,6 +109,12 @@ module.exports = {
     new Html({
       template: path.resolve(__dirname, 'counter.ejs'),
       filename: 'counter.html',
+      inject: false,
+    }),
+    // TODO: we should add it only on demo serv
+    new Html({
+      template: path.resolve(__dirname, 'last-comments.ejs'),
+      filename: 'last-comments.html',
       inject: false,
     }),
     ...(env === 'production' ? [] : [new Html({
