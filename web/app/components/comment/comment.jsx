@@ -33,16 +33,25 @@ export default class Comment extends Component {
   }
 
   updateState(props) {
-    const { user: { block }, pin, score = 0, votes = [] } = props.data;
-    const userId = store.get('user').id;
+    const { data: { user: { block }, pin, score = 0, votes = [] }, mods: { guest } = {} } = props;
 
-    this.setState({
-      score: score,
-      pinned: !!pin,
-      userBlocked: !!block,
-      scoreIncreased: userId in votes && votes[userId],
-      scoreDecreased: userId in votes && !votes[userId],
-    });
+    if (guest) {
+      this.setState({
+        guest,
+        score,
+      });
+    } else {
+      const userId = store.get('user').id;
+
+      this.setState({
+        guest,
+        score,
+        pinned: !!pin,
+        userBlocked: !!block,
+        scoreIncreased: userId in votes && votes[userId],
+        scoreDecreased: userId in votes && !votes[userId],
+      });
+    }
   }
 
   onReplyClick() {
@@ -138,10 +147,10 @@ export default class Comment extends Component {
     this.setState({ isInputVisible: false });
   }
 
-  render(props, { userBlocked, pinned, score, scoreIncreased, scoreDecreased, isInputVisible }) {
+  render(props, { guest, userBlocked, pinned, score, scoreIncreased, scoreDecreased, isInputVisible }) {
     const { data, mix, mods = {} } = props;
-    const isAdmin = store.get('user').admin;
-    const isGuest = !Object.keys(store.get('user')).length;
+    const isAdmin = !guest && store.get('user').admin;
+    const isGuest = guest || !Object.keys(store.get('user')).length;
 
     const time = new Date(data.time);
     // TODO: which format for datetime should we choose?
@@ -179,26 +188,25 @@ export default class Comment extends Component {
             <div className="comment__info">
               <span className="comment__username">{o.user.name}</span>
 
-              <span className="comment__score">
-                {
-                  !isGuest && (
+              {
+                !isGuest && (
+                  <span className="comment__score">
                     <span
                       className={b('comment__vote', {}, { type: 'up', selected: scoreIncreased })}
                       onClick={this.increaseScore}
                     >vote up</span>
-                  )
-                }
-                <span className="comment__score-sign">{o.score.sign}</span>
-                <span className="comment__score-value">{o.score.value}</span>
-                {
-                  !isGuest && (
+
+                    <span className="comment__score-sign">{o.score.sign}</span>
+
+                    <span className="comment__score-value">{o.score.value}</span>
+
                     <span
                       className={b('comment__vote', {}, { type: 'down', selected: scoreDecreased })}
                       onClick={this.decreaseScore}
                     >vote down</span>
-                  )
-                }
-              </span>
+                  </span>
+                )
+              }
 
               <span className="comment__time">{o.time}</span>
 
