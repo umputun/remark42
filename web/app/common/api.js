@@ -10,6 +10,8 @@ export const getConfig = () => fetcher.get(`/config`);
 
 export const find = ({ url }) => fetcher.get(`/find?url=${url}&sort=-score&format=tree`);
 
+export const last = ({ siteId, max }) => fetcher.get(`/last/${max}?site=${siteId}`);
+
 export const count = ({ url, siteId }) => fetcher.get(`/count?url=${url}&site=${siteId}`);
 
 export const getComment = ({ id }) => fetcher.get(`/id/${id}?url=${url}`);
@@ -67,6 +69,7 @@ export default {
   logOut,
   getConfig,
   find,
+  last,
   count,
   getComment,
   vote,
