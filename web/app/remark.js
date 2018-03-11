@@ -3,6 +3,7 @@ import 'common/polyfills'; // TODO: check it
 
 import { h, render } from 'preact';
 import Root from './components/root';
+import ListComments from './components/list-comments'; // TODO: temp solution for extracting styles
 
 import { NODE_ID } from './common/constants';
 
