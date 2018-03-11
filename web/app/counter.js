@@ -3,12 +3,12 @@ import { COUNTER_NODE_CLASSNAME } from './common/constants'
 import api from 'common/api';
 
 if (document.readyState !== 'interactive') {
-  document.addEventListener('DOMContentLoaded', initEmbed);
+  document.addEventListener('DOMContentLoaded', init);
 } else {
-  initCounter();
+  init();
 }
 
-function initCounter() {
+function init() {
   const nodes = document.getElementsByClassName(COUNTER_NODE_CLASSNAME);
 
   if (!nodes) {

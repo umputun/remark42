@@ -1,12 +1,12 @@
 import { BASE_URL, NODE_ID } from 'common/constants';
 
 if (document.readyState !== 'interactive') {
-  document.addEventListener('DOMContentLoaded', initEmbed);
+  document.addEventListener('DOMContentLoaded', init);
 } else {
-  initEmbed();
+  init();
 }
 
-function initEmbed() {
+function init() {
   const node = document.getElementById(NODE_ID);
 
   if (!node) {
