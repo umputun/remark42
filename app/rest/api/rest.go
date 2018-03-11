@@ -82,6 +82,7 @@ func (s *Rest) Run(port int) {
 		rapi.Get("/comments", s.findUserCommentsCtrl)
 		rapi.Get("/last/{max}", s.lastCommentsCtrl)
 		rapi.Get("/count", s.countCtrl)
+		rapi.Post("/count", s.countMultiCtrl)
 		rapi.Get("/list", s.listCtrl)
 		rapi.Get("/config", s.configCtrl)
 		rapi.Post("/preview", s.previewCommentCtrl)
@@ -373,6 +374,41 @@ func (s *Rest) countCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	render.JSON(w, r, JSON{"count": count, "locator": locator})
+}
+
+// POST /count?site=siteID - get number of comments for posts from post body
+func (s *Rest) countMultiCtrl(w http.ResponseWriter, r *http.Request) {
+	siteID := r.URL.Query().Get("site")
+
+	posts := []string{}
+
+	if err := render.DecodeJSON(r.Body, &posts); err != nil {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get list of posts from request")
+		return
+	}
+
+	key := rest.URLKey(r) + strings.Join(posts, ",")
+	data, err := s.Cache.Get(key, 8*time.Hour, func() ([]byte, error) {
+		lst, e := s.DataService.List(siteID, 0, 0)
+		if e != nil {
+			return nil, e
+		}
+		res := []store.PostInfo{}
+		for _, l := range lst {
+			for _, p := range posts {
+				if p == l.URL {
+					res = append(res, l)
+				}
+			}
+		}
+		return encodeJSONWithHTML(res)
+	})
+
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get counts for "+siteID)
+		return
+	}
+	renderJSONFromBytes(w, r, data)
 }
 
 // GET /list?site=siteID&limit=50&skip=10 - list posts with comments
