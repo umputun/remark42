@@ -12,7 +12,10 @@ export const find = ({ url }) => fetcher.get(`/find?url=${url}&sort=-score&forma
 
 export const last = ({ siteId, max }) => fetcher.get(`/last/${max}?site=${siteId}`);
 
-export const count = ({ url, siteId }) => fetcher.get(`/count?url=${url}&site=${siteId}`);
+export const count = ({ urls, siteId }) => fetcher.post({
+  url: `/count?site=${siteId}`,
+  body: urls,
+});
 
 export const getComment = ({ id }) => fetcher.get(`/id/${id}?url=${url}`);
 
