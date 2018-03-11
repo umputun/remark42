@@ -33,7 +33,7 @@ function init() {
     return acc;
   }, {});
 
-  api.count({ urls: Object.keys(map), siteId: remark_config.site_id })
+  api.counts({ urls: Object.keys(map), siteId: remark_config.site_id })
     .then(res => {
       res.forEach(item => (map[item.url].innerHTML = item.count));
     });

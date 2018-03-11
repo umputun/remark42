@@ -12,8 +12,8 @@ export const find = ({ url }) => fetcher.get(`/find?url=${url}&sort=-score&forma
 
 export const last = ({ siteId, max }) => fetcher.get(`/last/${max}?site=${siteId}`);
 
-export const count = ({ urls, siteId }) => fetcher.post({
-  url: `/count?site=${siteId}`,
+export const counts = ({ urls, siteId }) => fetcher.post({
+  url: `/counts?site=${siteId}`,
   body: urls,
 });
 
@@ -73,7 +73,7 @@ export default {
   getConfig,
   find,
   last,
-  count,
+  counts,
   getComment,
   vote,
   send,
