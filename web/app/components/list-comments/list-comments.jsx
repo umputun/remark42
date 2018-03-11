@@ -13,7 +13,7 @@ export default class ListComments extends Component {
             comments.map(comment => (
               <Comment
                 data={comment}
-                mods={{ level: 0, guest: true }}
+                mods={{ level: 0, guest: true, view: 'preview' }}
                 mix="list-comments__item"
               />
             ))
