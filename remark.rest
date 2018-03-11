@@ -63,13 +63,13 @@ GET {{host}}/api/v1/comments?site=remark&user=disqus_umputun
 GET {{host}}/api/v1/count?site=remark&url=https://radio-t.com/p/2017/12/16/podcast-576/
 
 ### get counts for many
-POST {{host}}/api/v1/count?site=remark
+POST {{host}}/api/v1/counts?site=remark
 Content-Type: application/json
 
 [
-    "https://radio-t.com/p/2017/12/16/podcast-576/",
-    "https://radio-t.com/p/2017/12/16/podcast-577/",
-    "https://radio-t.com/p/2017/12/16/podcast-578/"
+    "https://radio-t.com/p/2017/12/02/podcast-574/",
+    "https://radio-t.com/p/2017/12/09/podcast-575/",
+    "https://radio-t.com/p/2017/12/16/podcast-576/"
 ]
 
 ### list commented posts

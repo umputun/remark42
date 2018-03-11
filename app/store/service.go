@@ -79,3 +79,21 @@ func (s *Service) EditComment(locator Locator, commentID string, text string, ed
 	err = s.Put(locator, comment)
 	return comment, err
 }
+
+// Counts returns postID+count list for given comments
+func (s *Service) Counts(siteID string, commentIDs []string) ([]PostInfo, error) {
+	list, err := s.List(siteID, 0, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	res := []PostInfo{}
+	for _, p := range commentIDs {
+		for _, l := range list {
+			if p == l.URL {
+				res = append(res, l)
+			}
+		}
+	}
+	return res, nil
+}

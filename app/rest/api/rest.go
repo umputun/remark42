@@ -2,6 +2,8 @@ package api
 
 import (
 	"bytes"
+	"crypto/sha1"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -82,7 +84,7 @@ func (s *Rest) Run(port int) {
 		rapi.Get("/comments", s.findUserCommentsCtrl)
 		rapi.Get("/last/{max}", s.lastCommentsCtrl)
 		rapi.Get("/count", s.countCtrl)
-		rapi.Post("/count", s.countMultiCtrl)
+		rapi.Post("/counts", s.countMultiCtrl)
 		rapi.Get("/list", s.listCtrl)
 		rapi.Get("/config", s.configCtrl)
 		rapi.Post("/preview", s.previewCommentCtrl)
@@ -379,29 +381,27 @@ func (s *Rest) countCtrl(w http.ResponseWriter, r *http.Request) {
 // POST /count?site=siteID - get number of comments for posts from post body
 func (s *Rest) countMultiCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
-
 	posts := []string{}
-
 	if err := render.DecodeJSON(r.Body, &posts); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get list of posts from request")
 		return
 	}
 
+	// key could be long for multiple posts, make it sha1
 	key := rest.URLKey(r) + strings.Join(posts, ",")
-	data, err := s.Cache.Get(key, 8*time.Hour, func() ([]byte, error) {
-		lst, e := s.DataService.List(siteID, 0, 0)
+	hasher := sha1.New()
+	if _, err := hasher.Write([]byte(key)); err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't make sha1 for list of urls")
+		return
+	}
+	sha := base64.URLEncoding.EncodeToString(hasher.Sum(nil))
+
+	data, err := s.Cache.Get(sha, 8*time.Hour, func() ([]byte, error) {
+		counts, e := s.DataService.Counts(siteID, posts)
 		if e != nil {
 			return nil, e
 		}
-		res := []store.PostInfo{}
-		for _, l := range lst {
-			for _, p := range posts {
-				if p == l.URL {
-					res = append(res, l)
-				}
-			}
-		}
-		return encodeJSONWithHTML(res)
+		return encodeJSONWithHTML(counts)
 	})
 
 	if err != nil {

@@ -41,7 +41,7 @@ func TestService_Vote(t *testing.T) {
 	assert.Equal(t, map[string]bool{}, res[0].Votes, "vote reset ok")
 }
 
-func TestBoltDB_Pin(t *testing.T) {
+func TestService_Pin(t *testing.T) {
 	defer os.Remove(testDb)
 	b := Service{Interface: prep(t)}
 
@@ -65,7 +65,7 @@ func TestBoltDB_Pin(t *testing.T) {
 	assert.Equal(t, false, c.Pin)
 }
 
-func TestBoltDB_EditComment(t *testing.T) {
+func TestService_EditComment(t *testing.T) {
 	defer os.Remove(testDb)
 	b := Service{Interface: prep(t)}
 
@@ -89,7 +89,7 @@ func TestBoltDB_EditComment(t *testing.T) {
 	assert.NotNil(t, err, "allow edit once")
 }
 
-func TestBoltDB_EditCommentDurationFailed(t *testing.T) {
+func TestService_EditCommentDurationFailed(t *testing.T) {
 	defer os.Remove(testDb)
 
 	blt, err := NewBoltDB(BoltSite{FileName: "/tmp/test-remark.db", SiteID: "radio-t"})
@@ -117,4 +117,31 @@ func TestBoltDB_EditCommentDurationFailed(t *testing.T) {
 	comment, err = b.EditComment(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "xxx",
 		Edit{Summary: "my edit"})
 	assert.NotNil(t, err)
+}
+
+func TestService_Counts(t *testing.T) {
+	defer os.Remove(testDb)
+	b := prep(t) // two comments for https://radio-t.com
+
+	// add one more for https://radio-t.com/2
+	comment := Comment{
+		Text:      `some text, <a href="http://radio-t.com">link</a>`,
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
+		Locator:   Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"},
+		User:      User{ID: "user1", Name: "user name"},
+	}
+	_, err := b.Create(comment)
+	assert.Nil(t, err)
+
+	svc := Service{Interface: b}
+	res, err := svc.Counts("radio-t", []string{"https://radio-t.com/2"})
+	assert.Nil(t, err)
+	assert.Equal(t, []PostInfo{PostInfo{URL: "https://radio-t.com/2", Count: 1}}, res)
+
+	res, err = svc.Counts("radio-t", []string{"https://radio-t.com", "https://radio-t.com/2", "blah"})
+	assert.Nil(t, err)
+	assert.Equal(t, []PostInfo{
+		PostInfo{URL: "https://radio-t.com", Count: 2},
+		PostInfo{URL: "https://radio-t.com/2", Count: 1},
+	}, res)
 }

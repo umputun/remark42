@@ -329,6 +329,36 @@ func TestServer_Count(t *testing.T) {
 	assert.Equal(t, 2.0, j["count"])
 }
 
+func TestServer_Counts(t *testing.T) {
+	srv, port := prep(t)
+	assert.NotNil(t, srv)
+	defer cleanup(srv)
+
+	c1 := store.Comment{Text: "test test #1",
+		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}}
+	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
+		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah2"}}
+
+	addComment(t, c1, port)
+	addComment(t, c1, port)
+	addComment(t, c1, port)
+	addComment(t, c2, port)
+	addComment(t, c2, port)
+
+	r := strings.NewReader(`["https://radio-t.com/blah1","https://radio-t.com/blah2"]`)
+	resp, err := http.Post(fmt.Sprintf("http://dev:password@127.0.0.1:%d/api/v1/counts?site=radio-t", port), "application/json", r)
+	assert.Nil(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	body, err := ioutil.ReadAll(resp.Body)
+	assert.Nil(t, err)
+
+	j := []store.PostInfo{}
+	err = json.Unmarshal(body, &j)
+	assert.Nil(t, err)
+	assert.Equal(t, []store.PostInfo([]store.PostInfo{store.PostInfo{URL: "https://radio-t.com/blah1", Count: 3}, store.PostInfo{URL: "https://radio-t.com/blah2", Count: 2}}), j)
+}
+
 func TestServer_List(t *testing.T) {
 	srv, port := prep(t)
 	assert.NotNil(t, srv)
