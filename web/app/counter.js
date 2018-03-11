@@ -9,7 +9,7 @@ if (document.readyState !== 'interactive') {
 }
 
 function init() {
-  const nodes = document.getElementsByClassName(COUNTER_NODE_CLASSNAME);
+  const nodes = [].slice.call(document.getElementsByClassName(COUNTER_NODE_CLASSNAME));
 
   if (!nodes) {
     console.error('Remark42: Can\'t find counter nodes.');
@@ -28,10 +28,14 @@ function init() {
     return;
   }
 
-  [].slice.call(nodes).forEach(node => {
-    const url = node.dataset.url || remark_config.url || window.location.href;
-    api.count({ url, siteId: remark_config.site_id })
-      .then(({ count }) => { node.innerHTML = count; });
-  });
+  const map = nodes.reduce((acc, node) => {
+    acc[node.dataset.url || remark_config.url || window.location.href] = node;
+    return acc;
+  }, {});
+
+  api.count({ urls: Object.keys(map), siteId: remark_config.site_id })
+    .then(res => {
+      res.forEach(item => (map[item.url].innerHTML = item.count));
+    });
 }
 

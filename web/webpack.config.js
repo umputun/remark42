@@ -38,10 +38,10 @@ const commonStyleLoaders = [
 module.exports = {
   context: __dirname,
   entry: {
-    remark: './app/remark',
     embed: './app/embed',
     counter: './app/counter',
     'last-comments': './app/last-comments',
+    remark: './app/remark',
   },
   output: {
     path: publicFolder,
