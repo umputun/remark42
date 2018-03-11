@@ -284,6 +284,5 @@ function getTextSnippet(html) {
   const result = tmp.innerText || '';
   const snippet = result.substr(0, LENGTH);
 
-  console.log(snippet)
   return (snippet.length === LENGTH && result.length !== LENGTH) ? `${snippet}...` : snippet;
 }
