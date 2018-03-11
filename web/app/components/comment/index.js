@@ -27,3 +27,4 @@ require('./_pinned/comment_pinned.scss');
 require('./_useless/comment_useless.scss');
 
 require('./_view/_admin/comment_view_admin.scss');
+require('./_view/_preview/comment_view_preview.scss');

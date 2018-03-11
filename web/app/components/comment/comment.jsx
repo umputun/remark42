@@ -161,6 +161,7 @@ export default class Comment extends Component {
     const timeStr = `${time.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
     const o = {
       ...data,
+      text: mods.view === 'preview' ? getTextSnippet(data.text) : data.text,
       time: timeStr,
       score: {
         value: Math.abs(score),
@@ -182,7 +183,11 @@ export default class Comment extends Component {
     return (
       <div className={b('comment', props, defaultMods)}>
         <div className="comment__body">
-          <img src={o.user.picture} alt="" className="comment__avatar"/>
+          {
+            mods.view !== 'preview' && (
+              <img src={o.user.picture} alt="" className="comment__avatar"/>
+            )
+          }
 
           <div className="comment__content">
             <div className="comment__info">
@@ -208,7 +213,11 @@ export default class Comment extends Component {
                 )
               }
 
-              <span className="comment__time">{o.time}</span>
+              {
+                mods.view !== 'preview' && (
+                  <span className="comment__time">{o.time}</span>
+                )
+              }
 
               {
                 !mods.disabled && !isGuest && (
@@ -265,4 +274,16 @@ export default class Comment extends Component {
       </div>
     );
   }
+}
+
+function getTextSnippet(html) {
+  const LENGTH = 100;
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+
+  const result = tmp.innerText || '';
+  const snippet = result.substr(0, LENGTH);
+
+  console.log(snippet)
+  return (snippet.length === LENGTH && result.length !== LENGTH) ? `${snippet}...` : snippet;
 }

@@ -1,0 +1,18 @@
+.comment_view_preview {
+  .comment__username {
+    color: #0aa;
+  };
+
+  .comment__info {
+    display: inline;
+
+    &::after {
+      content: ' ';
+      color: #777;
+    }
+  }
+
+  .comment__text {
+    display: inline;
+  }
+}
