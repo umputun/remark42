@@ -23,7 +23,6 @@ import (
 	"gopkg.in/russross/blackfriday.v2"
 
 	"github.com/umputun/remark/app/migrator"
-	"github.com/umputun/remark/app/notifier"
 	"github.com/umputun/remark/app/rest"
 	"github.com/umputun/remark/app/rest/auth"
 	"github.com/umputun/remark/app/store"
@@ -37,7 +36,6 @@ type Rest struct {
 	Authenticator auth.Authenticator
 	Exporter      migrator.Exporter
 	Cache         rest.LoadingCache
-	Notifier      notifier.Interface
 
 	httpServer *http.Server
 	mod        admin
@@ -95,8 +93,6 @@ func (s *Rest) Run(port int) {
 			rauth.Put("/comment/{id}", s.updateCommentCtrl)
 			rauth.Get("/user", s.userInfoCtrl)
 			rauth.Put("/vote/{id}", s.voteCtrl)
-			rauth.Put("/notify", s.notifyActionCtrl)
-			rauth.Get("/notify", s.notifyStatusCtrl)
 			// admin routes, admin users only
 			s.mod = admin{
 				dataService:  s.DataService,
@@ -150,10 +146,6 @@ func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't save comment")
 		return
-	}
-
-	if err = s.Notifier.OnUpdate(comment); err != nil {
-		log.Printf("[WARN] can't send notify event for %+v, %s", comment.Locator, err)
 	}
 
 	s.Cache.Flush() // reset all caches
@@ -448,43 +440,6 @@ func (s *Rest) voteCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	s.Cache.Flush()
 	render.JSON(w, r, JSON{"id": comment.ID, "score": comment.Score})
-}
-
-// PUT /notify?site=siteID&action=1 - subscribe/unsubscribe to notification
-func (s *Rest) notifyActionCtrl(w http.ResponseWriter, r *http.Request) {
-	user, err := rest.GetUserInfo(r)
-	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusUnauthorized, err, "can't get user info")
-		return
-	}
-	action := "unknown"
-	switch r.URL.Query().Get("action") {
-	case "1":
-		err = s.Notifier.Subscribe(user)
-		action = "subscribe"
-	case "0":
-		err = s.Notifier.UnSubscribe(user)
-		action = "unsubscribe"
-	}
-	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't subscribe/unsubscribe")
-		return
-	}
-	render.JSON(w, r, JSON{"user": user.ID, "action": action})
-}
-
-// GET /notify?site=siteID - get notification status for user
-func (s *Rest) notifyStatusCtrl(w http.ResponseWriter, r *http.Request) {
-	user, err := rest.GetUserInfo(r)
-	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusUnauthorized, err, "can't get user info")
-		return
-	}
-	status := "not subscribed"
-	if st, err := s.Notifier.Status(user); err == nil && st {
-		status = "subscribed"
-	}
-	render.JSON(w, r, JSON{"user": user.ID, "status": status})
 }
 
 // serves static files from /web

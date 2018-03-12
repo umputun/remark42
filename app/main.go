@@ -8,15 +8,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/umputun/remark/app/notifier"
-	"github.com/umputun/remark/app/rest"
-
 	"github.com/gorilla/sessions"
 	"github.com/hashicorp/logutils"
 	"github.com/jessevdk/go-flags"
 	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/app/migrator"
+	"github.com/umputun/remark/app/rest"
 	"github.com/umputun/remark/app/rest/api"
 	"github.com/umputun/remark/app/rest/auth"
 	"github.com/umputun/remark/app/store"
@@ -126,8 +124,7 @@ func main() {
 			DevEnabled:   opts.DevPasswd != "",
 			DevPasswd:    opts.DevPasswd,
 		},
-		Cache:    rest.NewLoadingCache(4*time.Hour, 15*time.Minute, postFlushFn),
-		Notifier: notifier.NewNoOperation(),
+		Cache: rest.NewLoadingCache(4*time.Hour, 15*time.Minute, postFlushFn),
 	}
 	srv.Run(opts.ServerCommand.Port)
 }
