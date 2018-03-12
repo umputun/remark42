@@ -63,49 +63,59 @@ export default class Comment extends Component {
   onPinClick() {
     const { id } = this.props.data;
 
-    this.setState({ pinned: true });
+    if (confirm('Do you want to pin this comment?')) {
+      this.setState({ pinned: true });
 
-    api.pin({ id, url }).then(() => {
-      api.getComment({ id }).then(comment => store.replaceComment(comment));
-    });
+      api.pin({ id, url }).then(() => {
+        api.getComment({ id }).then(comment => store.replaceComment(comment));
+      });
+    }
   }
 
   onUnpinClick() {
     const { id } = this.props.data;
 
-    this.setState({ pinned: false });
+    if (confirm('Do you want to unpin this comment?')) {
+      this.setState({ pinned: false });
 
-    api.unpin({ id, url }).then(() => {
-      api.getComment({ id }).then(comment => store.replaceComment(comment));
-    });
+      api.unpin({ id, url }).then(() => {
+        api.getComment({ id }).then(comment => store.replaceComment(comment));
+      });
+    }
   }
 
   onBlockClick() {
     const { id, user: { id: userId } } = this.props.data;
 
-    this.setState({ userBlocked: true });
+    if (confirm('Do you want to block this user?')) {
+      this.setState({ userBlocked: true });
 
-    api.blockUser({ id: userId }).then(() => {
-      api.getComment({ id }).then(comment => store.replaceComment(comment));
-    });
+      api.blockUser({ id: userId }).then(() => {
+        api.getComment({ id }).then(comment => store.replaceComment(comment));
+      });
+    }
   }
 
   onUnblockClick() {
     const { id, user: { id: userId } } = this.props.data;
 
-    this.setState({ userBlocked: false });
+    if (confirm('Do you want to unblock this user?')) {
+      this.setState({ userBlocked: false });
 
-    api.unblockUser({ id: userId }).then(() => {
-      api.getComment({ id }).then(comment => store.replaceComment(comment));
-    });
+      api.unblockUser({ id: userId }).then(() => {
+        api.getComment({ id }).then(comment => store.replaceComment(comment));
+      });
+    }
   }
 
   onDeleteClick() {
     const { id } = this.props.data;
 
-    api.remove({ id }).then(() => {
-      api.getComment({ id }).then(comment => store.replaceComment(comment));
-    });
+    if (confirm('Do you want to delete this comment?')) {
+      api.remove({ id }).then(() => {
+        api.getComment({ id }).then(comment => store.replaceComment(comment));
+      });
+    }
   }
 
   increaseScore() {
