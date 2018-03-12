@@ -112,7 +112,7 @@ func (s *Rest) Run(port int) {
 	router.Get("/robots.txt", func(w http.ResponseWriter, r *http.Request) {
 		render.PlainText(w, r, "User-agent: *\nDisallow: /auth/\nDisallow: /api/\n")
 	})
-	s.addFileServer(router, "/web", http.Dir(filepath.Join(".", "web")))
+	addFileServer(router, "/web", http.Dir(filepath.Join(".", "web")))
 
 	s.httpServer = &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: router}
 	err := s.httpServer.ListenAndServe()
@@ -134,22 +134,10 @@ func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// reset comment to initial state
-	func() {
-		comment.ID = ""                 // don't allow user to define ID, force auto-gen
-		comment.Timestamp = time.Time{} // reset time, force auto-gen
-		comment.Votes = make(map[string]bool)
-		comment.Score = 0
-		comment.Edit = nil
-		comment.Pin = false
-	}()
-
+	comment.Init()
 	comment.User = user
 	comment.User.IP = strings.Split(r.RemoteAddr, ":")[0]
-
-	// render markdown
-	comment.Text = string(blackfriday.Run([]byte(comment.Text), blackfriday.WithNoExtensions()))
-
+	comment.Text = string(blackfriday.Run([]byte(comment.Text), blackfriday.WithNoExtensions())) // render markdown
 	log.Printf("[DEBUG] create comment %+v", comment)
 
 	// check if user blocked
@@ -500,7 +488,7 @@ func (s *Rest) notifyStatusCtrl(w http.ResponseWriter, r *http.Request) {
 }
 
 // serves static files from /web
-func (s *Rest) addFileServer(r chi.Router, path string, root http.FileSystem) {
+func addFileServer(r chi.Router, path string, root http.FileSystem) {
 	log.Printf("[INFO] run file server for %s, path %s", root, path)
 	origPath := path
 	fs := http.StripPrefix(path, http.FileServer(root))

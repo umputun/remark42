@@ -58,6 +58,16 @@ type BlockedUser struct {
 	Timestamp time.Time `json:"time"`
 }
 
+// Init comment skeleton
+func (c *Comment) Init() {
+	c.ID = ""                 // don't allow user to define ID, force auto-gen
+	c.Timestamp = time.Time{} // reset time, force auto-gen
+	c.Votes = make(map[string]bool)
+	c.Score = 0
+	c.Edit = nil
+	c.Pin = false
+}
+
 // Sanitize clean dangerous html/js from the comment
 func (c *Comment) Sanitize() {
 	p := bluemonday.UGCPolicy()
