@@ -18,7 +18,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/umputun/remark/app/migrator"
-	"github.com/umputun/remark/app/notifier"
 	"github.com/umputun/remark/app/rest/auth"
 	"github.com/umputun/remark/app/store"
 )
@@ -397,7 +396,6 @@ func prep(t *testing.T) (srv *Rest, port int) {
 		},
 		Exporter: &migrator.Remark{DataStore: dataStore},
 		Cache:    &mockCache{},
-		Notifier: notifier.NewNoOperation(),
 	}
 	go func() {
 		port = rand.Intn(50000) + 1025
