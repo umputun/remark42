@@ -143,5 +143,6 @@ func TestService_Counts(t *testing.T) {
 	assert.Equal(t, []PostInfo{
 		PostInfo{URL: "https://radio-t.com", Count: 2},
 		PostInfo{URL: "https://radio-t.com/2", Count: 1},
+		PostInfo{URL: "blah", Count: 0},
 	}, res)
 }

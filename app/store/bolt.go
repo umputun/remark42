@@ -550,7 +550,7 @@ func (b *BoltDB) count(tx *bolt.Tx, postURL string, val int) (int, error) {
 	if countVal == nil {
 		countVal = itob(0)
 	}
-	if val == 0 {
+	if val == 0 { // get current count, don't update
 		return btoi(countVal), nil
 	}
 	updatedCount := btoi(countVal) + val
