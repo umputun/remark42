@@ -59,7 +59,7 @@ GET {{host}}/api/v1/id/a2ddb8d2f65008ee1a1e3af8df0f26beb042309c?site=remark&url=
 ### get comment by user id
 GET {{host}}/api/v1/comments?site=remark&user=disqus_umputun
 
-### get counts
+### get count
 GET {{host}}/api/v1/count?site=remark&url=https://radio-t.com/p/2017/12/16/podcast-576/
 
 ### get counts for many

@@ -1,3 +1,4 @@
+// Package notifier handles update notification as well as subscriptions to notification
 package notifier
 
 import (
@@ -10,10 +11,10 @@ import (
 
 // Interface defines notifier, sending messages triggered by topic/reply updates
 type Interface interface {
-	Subscribe(locator store.Locator, user store.User) error
-	UnSubscribe(locator store.Locator, user store.User) error
+	Subscribe(user store.User) error
+	UnSubscribe(user store.User) error
 	OnUpdate(comment store.Comment) error
-	Status(locator store.Locator, user store.User) (bool, error)
+	Status(user store.User) (bool, error)
 }
 
 // NoOperation implements Interface doing nothing but logging
@@ -29,20 +30,20 @@ func NewNoOperation() *NoOperation {
 }
 
 // Subscribe is a fake, just logging attempt
-func (n *NoOperation) Subscribe(locator store.Locator, user store.User) error {
+func (n *NoOperation) Subscribe(user store.User) error {
 	n.Lock()
-	n.status[n.key(locator, user)] = struct{}{}
+	n.status[user.ID] = struct{}{}
 	n.Unlock()
-	log.Printf("[DEBUG] user %+v subscribed to %+v", user, locator)
+	log.Printf("[DEBUG] user %+v subscribed to updates", user)
 	return nil
 }
 
 // UnSubscribe is a fake, just logging attempt
-func (n *NoOperation) UnSubscribe(locator store.Locator, user store.User) error {
+func (n *NoOperation) UnSubscribe(user store.User) error {
 	n.Lock()
-	delete(n.status, n.key(locator, user))
+	delete(n.status, user.ID)
 	n.Unlock()
-	log.Printf("[DEBUG] user %+v unsubscribed from %+v", user, locator)
+	log.Printf("[DEBUG] user %+v unsubscribed from updates", user)
 	return nil
 }
 
@@ -52,11 +53,11 @@ func (n *NoOperation) OnUpdate(comment store.Comment) error {
 	return nil
 }
 
-// Status returns from in-memory
-func (n *NoOperation) Status(locator store.Locator, user store.User) (bool, error) {
+// Status returns from in-memory map
+func (n *NoOperation) Status(user store.User) (bool, error) {
 	n.RLock()
 	defer n.RUnlock()
-	_, found := n.status[n.key(locator, user)]
+	_, found := n.status[user.ID]
 	return found, nil
 }
 

@@ -462,48 +462,47 @@ func (s *Rest) voteCtrl(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, JSON{"id": comment.ID, "score": comment.Score})
 }
 
-// PUT /notify?site=siteID&url=post-url&action=1 - subscribe/unsubscribe to notification
+// PUT /notify?site=siteID&action=1 - subscribe/unsubscribe to notification
 func (s *Rest) notifyActionCtrl(w http.ResponseWriter, r *http.Request) {
 	user, err := rest.GetUserInfo(r)
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusUnauthorized, err, "can't get user info")
 		return
 	}
-	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	action := "unknown"
 	switch r.URL.Query().Get("action") {
 	case "1":
-		err = s.Notifier.Subscribe(locator, user)
+		err = s.Notifier.Subscribe(user)
 		action = "subscribe"
 	case "0":
-		err = s.Notifier.UnSubscribe(locator, user)
+		err = s.Notifier.UnSubscribe(user)
 		action = "unsubscribe"
 	}
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't subscribe/unsubscribe for notifications")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't subscribe/unsubscribe")
 		return
 	}
-	render.JSON(w, r, JSON{"locator": locator, "user": user.ID, "action": action})
+	render.JSON(w, r, JSON{"user": user.ID, "action": action})
 }
 
-// GET /notify?site=siteID&url=post-url - get notification status
+// GET /notify?site=siteID - get notification status for user
 func (s *Rest) notifyStatusCtrl(w http.ResponseWriter, r *http.Request) {
 	user, err := rest.GetUserInfo(r)
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusUnauthorized, err, "can't get user info")
 		return
 	}
-	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	status := "not subscribed"
-	if st, err := s.Notifier.Status(locator, user); err == nil && st {
+	if st, err := s.Notifier.Status(user); err == nil && st {
 		status = "subscribed"
 	}
-	render.JSON(w, r, JSON{"locator": locator, "user": user.ID, "status": status})
+	render.JSON(w, r, JSON{"user": user.ID, "status": status})
 }
 
 // serves static files from /web
 func (s *Rest) addFileServer(r chi.Router, path string, root http.FileSystem) {
-	log.Printf("[INFO] run file server for %s", root)
+	log.Printf("[INFO] run file server for %s, path %s", root, path)
+	origPath := path
 	fs := http.StripPrefix(path, http.FileServer(root))
 	if path != "/" && path[len(path)-1] != '/' {
 		r.Get(path, http.RedirectHandler(path+"/", 301).ServeHTTP)
@@ -513,7 +512,7 @@ func (s *Rest) addFileServer(r chi.Router, path string, root http.FileSystem) {
 
 	r.Get(path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// don't show dirs, just serve files
-		if strings.HasSuffix(r.URL.Path, "/") && len(r.URL.Path) > 1 && r.URL.Path != "/web/" {
+		if strings.HasSuffix(r.URL.Path, "/") && len(r.URL.Path) > 1 && r.URL.Path != (origPath+"/") {
 			http.NotFound(w, r)
 			return
 		}
@@ -536,7 +535,7 @@ func encodeJSONWithHTML(v interface{}) ([]byte, error) {
 	enc := json.NewEncoder(buf)
 	enc.SetEscapeHTML(false)
 	if err := enc.Encode(v); err != nil {
-		return nil, errors.Wrap(err, "can't encode to json")
+		return nil, errors.Wrap(err, "json encoding failed")
 	}
 	return buf.Bytes(), nil
 }
@@ -548,6 +547,6 @@ func renderJSONFromBytes(w http.ResponseWriter, r *http.Request, data []byte) {
 		w.WriteHeader(status)
 	}
 	if _, err := w.Write(data); err != nil {
-		log.Printf("[WARN] can't send response to %s, %s", r.RemoteAddr, err)
+		log.Printf("[WARN] failed to send response to %s, %s", r.RemoteAddr, err)
 	}
 }

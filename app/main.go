@@ -232,7 +232,9 @@ func postFlushFn() {
 				log.Printf("[WARN] failed to refresh cached list for %s, %s", site, err)
 				return
 			}
-			_ = resp.Body.Close()
+			if err = resp.Body.Close(); err != nil {
+				log.Printf("[WARN] failed to close response body, %s", err)
+			}
 		}
 	}
 }
