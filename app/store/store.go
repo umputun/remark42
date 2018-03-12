@@ -35,9 +35,9 @@ type Admin interface {
 
 // Notifier defines all store ops to store/retrieve notification info for users
 type Notifier interface {
-	Set(locator Locator, user NotifUser, scope NotifScope, status bool) error // subscribe / unsubscribe user to locator updates
-	Status(locator Locator, userID string) bool                               // get subscription status for user & locator
-	List(locator Locator) ([]NotifUser, error)                                // list all subscribed users
+	Set(locator Locator, user NotifUser, status bool) error // subscribe / unsubscribe user to locator updates
+	Status(locator Locator, userID string) bool             // get subscription status for user & locator
+	List(locator Locator) ([]NotifUser, error)              // list all subscribed users
 }
 
 func sortComments(comments []Comment, sortFld string) []Comment {
