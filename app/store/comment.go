@@ -67,6 +67,7 @@ func (c *Comment) Prepare() {
 	c.Score = 0
 	c.Edit = nil
 	c.Pin = false
+	c.Deleted = false
 }
 
 // Sanitize clean dangerous html/js from the comment

@@ -2,6 +2,7 @@ package store
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -29,4 +30,31 @@ func TestComment_Sanitize(t *testing.T) {
 		tt.inp.Sanitize()
 		assert.Equal(t, tt.out, tt.inp, "check #%d", n)
 	}
+}
+
+func TestComment_Prepare(t *testing.T) {
+	comment := Comment{
+		Text:      `blah`,
+		User:      User{ID: "username"},
+		ParentID:  "p123",
+		ID:        "123",
+		Locator:   Locator{SiteID: "site", URL: "url"},
+		Score:     10,
+		Pin:       true,
+		Deleted:   true,
+		Timestamp: time.Date(2018, 1, 1, 9, 30, 0, 0, time.Local),
+		Votes:     map[string]bool{"uu": true},
+	}
+
+	comment.Prepare()
+	assert.Equal(t, "", comment.ID)
+	assert.Equal(t, "p123", comment.ParentID)
+	assert.Equal(t, "blah", comment.Text)
+	assert.Equal(t, 0, comment.Score)
+	assert.Equal(t, false, comment.Pin)
+	assert.Equal(t, time.Time{}, comment.Timestamp)
+	assert.Equal(t, false, comment.Deleted)
+	assert.Equal(t, make(map[string]bool), comment.Votes)
+	assert.Equal(t, User{ID: "username"}, comment.User)
+
 }
