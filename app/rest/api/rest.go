@@ -134,7 +134,7 @@ func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	comment.Init()
+	comment.Prepare() // clean all fields user not suppoed to set
 	comment.User = user
 	comment.User.IP = strings.Split(r.RemoteAddr, ":")[0]
 	comment.Text = string(blackfriday.Run([]byte(comment.Text), blackfriday.WithNoExtensions())) // render markdown

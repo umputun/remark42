@@ -30,6 +30,9 @@ func (s *Service) Vote(locator Locator, commentID string, userID string, val boo
 		return comment, err
 	}
 
+	if comment.Votes == nil {
+		comment.Votes = make(map[string]bool)
+	}
 	v, voted := comment.Votes[userID]
 
 	if voted && v == val {

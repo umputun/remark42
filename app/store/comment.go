@@ -58,8 +58,9 @@ type BlockedUser struct {
 	Timestamp time.Time `json:"time"`
 }
 
-// Init comment skeleton
-func (c *Comment) Init() {
+// Prepare comment received from untrusted source by clearing all autogen fields and
+// reset everyting users not supposed to provide
+func (c *Comment) Prepare() {
 	c.ID = ""                 // don't allow user to define ID, force auto-gen
 	c.Timestamp = time.Time{} // reset time, force auto-gen
 	c.Votes = make(map[string]bool)
@@ -95,13 +96,3 @@ type NotifUser struct {
 	ID          string `json:"id"`
 	Destination string `json:"destination"`
 }
-
-// NotifScope defines "enum" of notification scopes
-type NotifScope int
-
-// All NotifScope values
-const (
-	ScopeSite  NotifScope = 1
-	ScopePost  NotifScope = 2
-	ScopeReply NotifScope = 3
-)
