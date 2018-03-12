@@ -148,7 +148,7 @@ func (b *BoltDB) Create(comment Comment) (commentID string, err error) {
 }
 
 // Delete removes comment, by locator from the store.
-// Posts collection only sets status to deleted and clear fileds in order to prevent breaking trees of replies.
+// Posts collection only sets status to deleted and clear fields in order to prevent breaking trees of replies.
 // From last bucket removed for real.
 func (b *BoltDB) Delete(locator Locator, commentID string) error {
 
