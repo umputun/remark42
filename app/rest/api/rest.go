@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -30,12 +29,12 @@ import (
 
 // Rest is a rest access server
 type Rest struct {
-	Version string
-
+	Version       string
 	DataService   store.Service
 	Authenticator auth.Authenticator
 	Exporter      migrator.Exporter
 	Cache         rest.LoadingCache
+	WebRoot       string
 
 	httpServer *http.Server
 	mod        admin
@@ -108,7 +107,7 @@ func (s *Rest) Run(port int) {
 	router.Get("/robots.txt", func(w http.ResponseWriter, r *http.Request) {
 		render.PlainText(w, r, "User-agent: *\nDisallow: /auth/\nDisallow: /api/\n")
 	})
-	addFileServer(router, "/web", http.Dir(filepath.Join(".", "web")))
+	addFileServer(router, "/web", http.Dir(s.WebRoot))
 
 	s.httpServer = &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: router}
 	err := s.httpServer.ListenAndServe()

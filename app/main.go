@@ -46,6 +46,7 @@ var opts struct {
 		AvatarStore   string `long:"avatars" env:"AVATAR_STORE" default:"./var/avatars" description:"path to avatars directory"`
 		DefaultAvatar string `long:"avatar-def" env:"AVATAR_DEF" default:"remark.image" description:"default avatar"`
 		Port          int    `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
+		WebRoot       string `long:"web-root" env:"REMARK_WEB_ROOT" default:"./web" description:"web root directory"`
 	} `command:"server" description:"run server"`
 
 	ImportCommand struct {
@@ -116,6 +117,7 @@ func main() {
 		Version:     revision,
 		DataService: dataService,
 		Exporter:    exporter,
+		WebRoot:     opts.ServerCommand.WebRoot,
 		Authenticator: auth.Authenticator{
 			Admins:       opts.Admins,
 			SessionStore: sessionStore,

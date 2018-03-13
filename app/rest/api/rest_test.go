@@ -23,6 +23,7 @@ import (
 )
 
 var testDb = "/tmp/test-remark.db"
+var testHtml = "/tmp/test-remark.html"
 
 func TestServer_Ping(t *testing.T) {
 	srv, port := prep(t)
@@ -382,6 +383,31 @@ func TestServer_List(t *testing.T) {
 	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/blah2", Count: 2}, {URL: "https://radio-t.com/blah1", Count: 3}}, pi)
 }
 
+func TestServer_Config(t *testing.T) {
+	srv, port := prep(t)
+	assert.NotNil(t, srv)
+	defer cleanup(srv)
+
+	body, code := get(t, fmt.Sprintf("http://127.0.0.1:%d/api/v1/config?site=radio-t", port))
+	assert.Equal(t, 200, code)
+	j := JSON{}
+	err := json.Unmarshal([]byte(body), &j)
+	assert.Nil(t, err)
+	assert.Equal(t, 300., j["edit_duration"])
+	assert.EqualValues(t, []interface{}([]interface{}{"a1", "a2"}), j["admins"])
+	t.Logf("%+v", j)
+}
+
+func TestServer_FileServer(t *testing.T) {
+	srv, port := prep(t)
+	assert.NotNil(t, srv)
+	defer cleanup(srv)
+
+	body, code := get(t, fmt.Sprintf("http://127.0.0.1:%d/web/test-remark.html", port))
+	assert.Equal(t, 200, code)
+	assert.Equal(t, "some html", body)
+}
+
 func prep(t *testing.T) (srv *Rest, port int) {
 	dataStore, err := store.NewBoltDB(store.BoltSite{FileName: testDb, SiteID: "radio-t"})
 	require.Nil(t, err)
@@ -393,14 +419,22 @@ func prep(t *testing.T) (srv *Rest, port int) {
 			DevPasswd:    "password",
 			Providers:    nil,
 			AvatarProxy:  &auth.AvatarProxy{StorePath: "/tmp", RoutePath: "/api/v1/avatar"},
+			Admins:       []string{"a1", "a2"},
 		},
 		Exporter: &migrator.Remark{DataStore: dataStore},
 		Cache:    &mockCache{},
+		WebRoot:  "/tmp",
 	}
+
+	ioutil.WriteFile(testHtml, []byte("some html"), 0700)
+	portSetCh := make(chan bool)
 	go func() {
 		port = rand.Intn(50000) + 1025
+		portSetCh <- true
 		srv.Run(port)
 	}()
+	<-portSetCh
+
 	time.Sleep(100 * time.Millisecond)
 	return srv, port
 }
@@ -435,6 +469,7 @@ func cleanup(srv *Rest) {
 	srv.httpServer.Close()
 	srv.httpServer.Shutdown(context.Background())
 	os.Remove(testDb)
+	os.Remove(testHtml)
 }
 
 type mockCache struct{}
