@@ -3,7 +3,7 @@ FROM umputun/baseimage:buildgo-latest as build-backend
 ADD . /go/src/github.com/umputun/remark
 WORKDIR /go/src/github.com/umputun/remark
 
-RUN cd app && go test -v $(go list -e ./... | grep -v vendor)
+RUN cd app && go test -v -race $(go list -e ./... | grep -v vendor)
 
 RUN gometalinter --disable-all --deadline=300s --vendor --enable=vet --enable=vetshadow --enable=golint \
     --enable=staticcheck --enable=ineffassign --enable=goconst --enable=errcheck --enable=unconvert \

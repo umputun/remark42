@@ -23,7 +23,7 @@ import (
 )
 
 var testDb = "/tmp/test-remark.db"
-var testHtml = "/tmp/test-remark.html"
+var testHTML = "/tmp/test-remark.html"
 
 func TestServer_Ping(t *testing.T) {
 	srv, port := prep(t)
@@ -426,7 +426,7 @@ func prep(t *testing.T) (srv *Rest, port int) {
 		WebRoot:  "/tmp",
 	}
 
-	ioutil.WriteFile(testHtml, []byte("some html"), 0700)
+	ioutil.WriteFile(testHTML, []byte("some html"), 0700)
 	portSetCh := make(chan bool)
 	go func() {
 		port = rand.Intn(50000) + 1025
@@ -469,7 +469,7 @@ func cleanup(srv *Rest) {
 	srv.httpServer.Close()
 	srv.httpServer.Shutdown(context.Background())
 	os.Remove(testDb)
-	os.Remove(testHtml)
+	os.Remove(testHTML)
 }
 
 type mockCache struct{}
