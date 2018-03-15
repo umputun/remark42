@@ -23,6 +23,7 @@ export default class Root extends Component {
     this.addComment = this.addComment.bind(this);
     this.onSignIn = this.onSignIn.bind(this);
     this.onSignOut = this.onSignOut.bind(this);
+    this.checkUrlHash = this.checkUrlHash.bind(this);
   }
 
   componentWillMount() {
@@ -36,16 +37,33 @@ export default class Root extends Component {
       .finally(() => {
         api.find({ url })
           .then(({ comments } = {}) => store.set('comments', comments))
-          .finally(() => this.setState({
-            loaded: true,
-            user: store.get('user'),
-          }));
+          .finally(() => {
+            this.setState({
+              loaded: true,
+              user: store.get('user'),
+            });
+
+            setTimeout(this.checkUrlHash);
+          });
 
         api.getConfig().then(config => {
           store.set('config', config);
           this.setState({ config });
         })
       });
+  }
+
+  checkUrlHash() {
+    if (window.parent.location.hash.indexOf('#remark__comment-') === 0) {
+      const comment = document.querySelector(window.parent.location.hash);
+
+      if (comment) {
+        setTimeout(() => {
+          comment.scrollIntoView();
+          window.scrollTo(window.scrollX, 0); // sometimes smth goes wrong and iframe scrolls; we return it here
+        }, 1000);
+      }
+    }
   }
 
   onSignOut() {
