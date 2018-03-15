@@ -191,7 +191,7 @@ export default class Comment extends Component {
     };
 
     return (
-      <div className={b('comment', props, defaultMods)}>
+      <div className={b('comment', props, defaultMods)} id={`remark__comment-${o.id}`}>
         <div className="comment__body">
           {
             mods.view !== 'preview' && (
