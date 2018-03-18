@@ -201,7 +201,17 @@ export default class Comment extends Component {
 
           <div className="comment__content">
             <div className="comment__info">
-              <span className="comment__username">{o.user.name}</span>
+              {
+                mods.view !== 'preview' && (
+                  <span className="comment__username">{o.user.name}</span>
+                )
+              }
+
+              {
+                mods.view === 'preview' && (
+                  <a href={`${o.locator.url}#remark__comment-${o.id}`} className="comment__username">{o.user.name}</a>
+                )
+              }
 
               {
                 !isGuest && (

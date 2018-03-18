@@ -1,4 +1,11 @@
 .comment__username {
   color: #777;
   font-weight: 700;
+  text-decoration: none;
+
+  &:link {
+    &:hover {
+      text-decoration: underline;
+    }
+  }
 }
