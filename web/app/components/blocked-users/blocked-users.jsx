@@ -20,7 +20,7 @@ export default class BlockedUsers extends Component {
       api.blockUser({ id: user.id }).then(() => {
         this.setState({ unblockedUsers: this.state.unblockedUsers.filter(x => x !== user.id) });
 
-        if (this.props.onUnblock) this.props.onUnblock(user.id);
+        if (this.props.onBlock) this.props.onBlock(user.id);
       });
     }
   }

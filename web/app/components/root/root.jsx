@@ -26,6 +26,7 @@ export default class Root extends Component {
     this.onSignOut = this.onSignOut.bind(this);
     this.onBlockedUsersShow = this.onBlockedUsersShow.bind(this);
     this.onBlockedUsersHide = this.onBlockedUsersHide.bind(this);
+    this.onUnblockSomeone = this.onUnblockSomeone.bind(this);
     this.checkUrlHash = this.checkUrlHash.bind(this);
   }
 
