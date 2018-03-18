@@ -1,0 +1,11 @@
+.blocked-users__list-item {
+  cursor: default;
+
+  @media (hover: hover) {
+    &:hover {
+      .blocked-users__action {
+        opacity: 1;
+      }
+    }
+  }
+}
