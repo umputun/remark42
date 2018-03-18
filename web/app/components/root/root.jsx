@@ -106,7 +106,19 @@ export default class Root extends Component {
   }
 
   onBlockedUsersHide() {
-    this.setState({ isBlockedVisible: false });
+    // if someone was unblocked let's reload comments
+    if (this.state.wasSomeoneUnblocked) {
+      api.find({ url }).then(({ comments } = {}) => store.set('comments', comments));
+    }
+
+    this.setState({
+      isBlockedVisible: false,
+      wasSomeoneUnblocked: false,
+    });
+  }
+
+  onUnblockSomeone() {
+    this.setState({ wasSomeoneUnblocked: true });
   }
 
   addComment(data) {
@@ -197,7 +209,7 @@ export default class Root extends Component {
           {
             isBlockedVisible && (
               <div className="root__main">
-                <BlockedUsers users={bannedUsers}/>
+                <BlockedUsers users={bannedUsers} onUnblock={this.onUnblockSomeone}/>
               </div>
             )
           }

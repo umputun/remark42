@@ -19,6 +19,8 @@ export default class BlockedUsers extends Component {
     if (confirm('Do you want to block this user?')) {
       api.blockUser({ id: user.id }).then(() => {
         this.setState({ unblockedUsers: this.state.unblockedUsers.filter(x => x !== user.id) });
+
+        if (this.props.onUnblock) this.props.onUnblock(user.id);
       });
     }
   }
@@ -27,6 +29,8 @@ export default class BlockedUsers extends Component {
     if (confirm('Do you want to unblock this user?')) {
       api.unblockUser({ id: user.id }).then(() => {
         this.setState({ unblockedUsers: this.state.unblockedUsers.concat([user.id]) });
+
+        if (this.props.onUnblock) this.props.onUnblock(user.id);
       });
     }
   }
