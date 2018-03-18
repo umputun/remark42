@@ -6,6 +6,7 @@ import { url } from 'common/settings';
 import store from 'common/store';
 
 import AuthPanel from 'components/auth-panel';
+import BlockedUsers from 'components/blocked-users';
 import Comment from 'components/comment';
 import Input from 'components/input';
 import Preloader from 'components/preloader';
@@ -23,6 +24,8 @@ export default class Root extends Component {
     this.addComment = this.addComment.bind(this);
     this.onSignIn = this.onSignIn.bind(this);
     this.onSignOut = this.onSignOut.bind(this);
+    this.onBlockedUsersShow = this.onBlockedUsersShow.bind(this);
+    this.onBlockedUsersHide = this.onBlockedUsersHide.bind(this);
     this.checkUrlHash = this.checkUrlHash.bind(this);
   }
 
@@ -96,6 +99,16 @@ export default class Root extends Component {
     }, checkMsDelay);
   }
 
+  onBlockedUsersShow() {
+    api.getBlocked().then(bannedUsers => {
+      this.setState({ bannedUsers, isBlockedVisible: true });
+    });
+  }
+
+  onBlockedUsersHide() {
+    this.setState({ isBlockedVisible: false });
+  }
+
   addComment(data) {
     store.addComment(data);
     this.setState({ comments: store.get('comments') });
@@ -106,7 +119,7 @@ export default class Root extends Component {
     });
   }
 
-  render({}, { config = {}, comments = [], user, loaded }) {
+  render({}, { config = {}, comments = [], user, loaded, isBlockedVisible, bannedUsers }) {
     if (!loaded) {
       return (
         <div id={NODE_ID}>
@@ -129,46 +142,62 @@ export default class Root extends Component {
             providers={config.auth_providers}
             onSignIn={this.onSignIn}
             onSignOut={this.onSignOut}
+            onBlockedUsersShow={this.onBlockedUsersShow}
+            onBlockedUsersHide={this.onBlockedUsersHide}
           />
 
           {
-            !isGuest && (
-              <Input
-                mix="root__input"
-                onSubmit={this.addComment}
-              />
-            )
-          }
-
-          {
-            !!pinnedComments.length && (
-              <div className="root__pinned-comments">
+            !isBlockedVisible && (
+              <div className="root__main">
                 {
-                  pinnedComments.map(comment => (
-                    <Comment
-                      data={comment}
-                      mods={{ level: 0, disabled: true }}
-                      mix="root__pinned-comment"
+                  !isGuest && (
+                    <Input
+                      mix="root__input"
+                      onSubmit={this.addComment}
                     />
-                  ))
+                  )
+                }
+
+                {
+                  !!pinnedComments.length && (
+                    <div className="root__pinned-comments">
+                      {
+                        pinnedComments.map(comment => (
+                          <Comment
+                            data={comment}
+                            mods={{ level: 0, disabled: true }}
+                            mix="root__pinned-comment"
+                          />
+                        ))
+                      }
+                    </div>
+                  )
+                }
+
+                {
+                  !!comments.length && (
+                    <div className="root__threads">
+                      {
+                        comments.map(thread => (
+                          <Thread
+                            mix="root__thread"
+                            mods={{ level: 0 }}
+                            data={thread}
+                            onReply={this.addComment}
+                          />
+                        ))
+                      }
+                    </div>
+                  )
                 }
               </div>
             )
           }
 
           {
-            !!comments.length && (
-              <div className="root__threads">
-                {
-                  comments.map(thread => (
-                    <Thread
-                      mix="root__thread"
-                      mods={{ level: 0 }}
-                      data={thread}
-                      onReply={this.addComment}
-                    />
-                  ))
-                }
+            isBlockedVisible && (
+              <div className="root__main">
+                <BlockedUsers users={bannedUsers}/>
               </div>
             )
           }
