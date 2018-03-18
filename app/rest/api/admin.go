@@ -142,6 +142,7 @@ func (a *admin) alterComments(comments []store.Comment, r *http.Request) (res []
 				c.SetDeleted()
 			}
 			c.User.Blocked = true
+			c.Deleted = true
 		}
 
 		// set default avatar
