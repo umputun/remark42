@@ -219,6 +219,7 @@ Sort can be `time` or `score`. Supported sort order with prefix -/+, i.e. `-time
   ```go
   type BlockedUser struct {
       ID        string    `json:"id"`
+      Name      string    `json:"name"`
       Timestamp time.Time `json:"time"`
   }
   ```
