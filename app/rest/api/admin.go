@@ -138,10 +138,8 @@ func (a *admin) alterComments(comments []store.Comment, r *http.Request) (res []
 
 		// process blocked users
 		if a.dataService.IsBlocked(c.Locator.SiteID, c.User.ID) {
-			if !isAdmin {
+			if !isAdmin { // reset comment to deleted for non-admins
 				c.SetDeleted()
-			} else {
-				c.Text += "\n\n*Blocked, visible for admins only*"
 			}
 			c.User.Blocked = true
 		}
