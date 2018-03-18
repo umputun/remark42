@@ -11,10 +11,6 @@ export default class BlockedUsers extends Component {
     }
   }
 
-  componentWillReceiveProps() {
-    this.setState({ unblockedUsers: [] });
-  }
-
   block(user) {
     if (confirm('Do you want to block this user?')) {
       api.blockUser({ id: user.id }).then(() => {
