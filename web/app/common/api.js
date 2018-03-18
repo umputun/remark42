@@ -68,6 +68,11 @@ export const unblockUser = ({ id }) => fetcher.put({
   withCredentials: true,
 });
 
+export const getBlocked = () => fetcher.get({
+  url: '/admin/blocked',
+  withCredentials: true,
+});
+
 export default {
   logOut,
   getConfig,
@@ -84,4 +89,5 @@ export default {
   remove,
   blockUser,
   unblockUser,
+  getBlocked,
 };
