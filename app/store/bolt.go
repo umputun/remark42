@@ -337,7 +337,14 @@ func (b *BoltDB) Blocked(siteID string) (users []BlockedUser, err error) {
 			if e != nil {
 				return errors.Wrap(e, "can't parse block ts")
 			}
-			users = append(users, BlockedUser{ID: string(k), Timestamp: ts})
+
+			// get user name from comment user section
+			userName := ""
+			if userComments, _, e := b.User(siteID, string(k), 1); e == nil && len(userComments) > 0 {
+				userName = userComments[0].User.Name
+			}
+
+			users = append(users, BlockedUser{ID: string(k), Name: userName, Timestamp: ts})
 			return nil
 		})
 	})
@@ -382,7 +389,7 @@ func (b BoltDB) List(siteID string, limit, skip int) (list []PostInfo, err error
 
 // User extracts all comments for given site and given userID
 // "users" bucket has sub-bucket for each userID, and keeps it as ts:ref
-func (b *BoltDB) User(siteID string, userID string) (comments []Comment, totalComments int, err error) {
+func (b *BoltDB) User(siteID string, userID string, limit int) (comments []Comment, totalComments int, err error) {
 
 	comments = []Comment{}
 	commentRefs := []string{}
@@ -391,6 +398,11 @@ func (b *BoltDB) User(siteID string, userID string) (comments []Comment, totalCo
 	if err != nil {
 		return nil, 0, err
 	}
+
+	if limit == 0 || limit > userLimit {
+		limit = userLimit
+	}
+
 	// get list of references to comments
 	err = bdb.View(func(tx *bolt.Tx) error {
 		usersBkt := tx.Bucket([]byte(userBucketName))
@@ -403,7 +415,7 @@ func (b *BoltDB) User(siteID string, userID string) (comments []Comment, totalCo
 		totalComments = 0
 		for k, v := c.Last(); k != nil; k, v = c.Prev() {
 			totalComments++
-			if len(commentRefs) <= userLimit {
+			if len(commentRefs) < limit {
 				commentRefs = append(commentRefs, string(v))
 			}
 		}

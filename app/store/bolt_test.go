@@ -175,11 +175,18 @@ func TestBoltDB_GetForUser(t *testing.T) {
 	defer os.Remove(testDb)
 	b := prep(t)
 
-	res, count, err := b.User("radio-t", "user1")
+	res, count, err := b.User("radio-t", "user1", 5)
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(res))
 	assert.Equal(t, 2, count)
 	assert.Equal(t, "some text2", res[0].Text, "sorted by -time")
+
+	res, count, err = b.User("radio-t", "user1", 1)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(res), "allow 1 comment")
+	assert.Equal(t, 2, count)
+	assert.Equal(t, "some text2", res[0].Text, "sorted by -time")
+
 }
 
 // makes new boltdb, put two records

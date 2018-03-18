@@ -15,14 +15,14 @@ type Interface interface {
 
 // Accessor defines all usual access ops avail for regular user
 type Accessor interface {
-	Create(comment Comment) (commentID string, err error)               // create new comment, avoid dups by id
-	Get(locator Locator, commentID string) (comment Comment, err error) // get comment by id
-	Put(locator Locator, comment Comment) error                         // update comment, mutable parts only
-	Find(locator Locator, sort string) ([]Comment, error)               // find comments for locator
-	Last(siteID string, max int) ([]Comment, error)                     // last comments for given site, sorted by time
-	User(siteID string, userID string) ([]Comment, int, error)          // comments by user, sorted by time
-	Count(locator Locator) (int, error)                                 // number of comments for the post
-	List(siteID string, limit int, skip int) ([]PostInfo, error)        // list of commented posts
+	Create(comment Comment) (commentID string, err error)                 // create new comment, avoid dups by id
+	Get(locator Locator, commentID string) (comment Comment, err error)   // get comment by id
+	Put(locator Locator, comment Comment) error                           // update comment, mutable parts only
+	Find(locator Locator, sort string) ([]Comment, error)                 // find comments for locator
+	Last(siteID string, limit int) ([]Comment, error)                     // last comments for given site, sorted by time
+	User(siteID string, userID string, limit int) ([]Comment, int, error) // comments by user, sorted by time
+	Count(locator Locator) (int, error)                                   // number of comments for the post
+	List(siteID string, limit int, skip int) ([]PostInfo, error)          // list of commented posts
 }
 
 // Admin defines all store ops avail for admin only
