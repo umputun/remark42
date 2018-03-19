@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi"
@@ -25,6 +26,9 @@ type AvatarProxy struct {
 	DefaultAvatar string
 	RoutePath     string
 	RemarkURL     string
+
+	once     sync.Once
+	ctcTable *crc64.Table
 }
 
 const imgSfx = ".image"
@@ -122,14 +126,15 @@ func (p *AvatarProxy) Routes() (string, chi.Router) {
 
 // Default returns full default avatar url
 func (p *AvatarProxy) Default() string {
-	return strings.TrimRight(p.RemarkURL, "/") + p.RoutePath + "/" + p.DefaultAvatar
+	return path.Join(p.RemarkURL, p.RoutePath, p.DefaultAvatar)
 }
 
 // get location for user id by adding partion to final path in order to keep files
 // in different subdirectories and avoid too many files in a single place.
 // the end result is a full path like this - /tmp/avatars.test/92
 func (p *AvatarProxy) location(id string) string {
-	checksum64 := crc64.Checksum([]byte(id), crc64.MakeTable(crc64.ECMA))
+	p.once.Do(func() { p.ctcTable = crc64.MakeTable(crc64.ECMA) })
+	checksum64 := crc64.Checksum([]byte(id), p.ctcTable)
 	partition := checksum64 % 100
 	return path.Join(p.StorePath, fmt.Sprintf("%02d", partition))
 }

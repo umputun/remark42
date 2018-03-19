@@ -33,7 +33,7 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 | --url           | REMARK_URL           | `https://remark42.com` | no    | all    | url to remark server            |
 | --bolt          | BOLTDB_PATH          | `/tmp`                 | no    | all    | path to data directory          |
 | --site          | SITE                 | `remark`               | yes   | server | site name(s)                    |
-| --admin         | ADMIN                |                        | yes   | server | admin(s) names (user id)        |
+| --admin         | ADMIN                |                        | yes   | server | admin names (list of user ids)  |
 | --backup        | BACKUP_PATH          | `/tmp`                 | no    | server | backups location                |
 | --max-back      | MAX_BACKUP_FILES     | `10`                   | no    | server | max backup files to keep        |
 | --session       | SESSION_STORE        | `/tmp`                 | no    | server | path to session store directory |
@@ -49,6 +49,8 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 | --file          |                      | `disqus.xml`           | no    | import | import file                     |
 | --dbg           | DEBUG                | `false`                | no    | all    | debug mode                      |
 | --dev-password  | DEV_PASSWD           |                        | no    | all    | password for `dev` user         |
+
+_all multi parameters separated by `,`_
 
 #### Run modes
 

@@ -106,3 +106,20 @@ func TestRoutesDefault(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int64(10), sz)
 }
+
+func TestLocation(t *testing.T) {
+	p := AvatarProxy{StorePath: "/tmp/avatars.test"}
+
+	tbl := []struct {
+		id  string
+		res string
+	}{
+		{"abc", "/tmp/avatars.test/35"},
+		{"xyz", "/tmp/avatars.test/69"},
+		{"blah blah", "/tmp/avatars.test/29"},
+	}
+
+	for i, tt := range tbl {
+		assert.Equal(t, tt.res, p.location(tt.id), "test #%d", i)
+	}
+}
