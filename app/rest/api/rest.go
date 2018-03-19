@@ -79,7 +79,7 @@ func (s *Rest) Run(port int) {
 		rapi.Get("/find", s.findCommentsCtrl)
 		rapi.Get("/id/{id}", s.commentByIDCtrl)
 		rapi.Get("/comments", s.findUserCommentsCtrl)
-		rapi.Get("/last/{max}", s.lastCommentsCtrl)
+		rapi.Get("/last/{limit}", s.lastCommentsCtrl)
 		rapi.Get("/count", s.countCtrl)
 		rapi.Post("/counts", s.countMultiCtrl)
 		rapi.Get("/list", s.listCtrl)
@@ -238,18 +238,18 @@ func (s *Rest) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	renderJSONFromBytes(w, r, data)
 }
 
-// GET /last/{max}?site=siteID - last comments for the siteID, across all posts, sorted by time
+// GET /last/{limit}?site=siteID - last comments for the siteID, across all posts, sorted by time
 func (s *Rest) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[DEBUG] get last comments for %s", r.URL.Query().Get("site"))
 
-	max, err := strconv.Atoi(chi.URLParam(r, "max"))
+	limit, err := strconv.Atoi(chi.URLParam(r, "limit"))
 	if err != nil {
-		max = 0
+		limit = 0
 	}
 
 	data, err := s.Cache.Get(rest.URLKey(r), time.Hour, func() ([]byte, error) {
-		comments, e := s.DataService.Last(r.URL.Query().Get("site"), max)
+		comments, e := s.DataService.Last(r.URL.Query().Get("site"), limit)
 		if e != nil {
 			return nil, e
 		}
@@ -289,6 +289,11 @@ func (s *Rest) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	userID := r.URL.Query().Get("user")
 	siteID := r.URL.Query().Get("site")
 
+	limit, err := strconv.Atoi(r.URL.Query().Get("limit"))
+	if err != nil {
+		limit = 0
+	}
+
 	resp := struct {
 		Comments []store.Comment
 		Count    int
@@ -297,7 +302,7 @@ func (s *Rest) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[DEBUG] get comments for userID %s, %s", userID, siteID)
 
 	data, err := s.Cache.Get(rest.URLKey(r), time.Hour, func() ([]byte, error) {
-		comments, count, e := s.DataService.User(siteID, userID, 0)
+		comments, count, e := s.DataService.User(siteID, userID, limit)
 		if e != nil {
 			return nil, e
 		}

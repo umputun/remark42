@@ -183,7 +183,7 @@ Sort can be `time` or `score`. Supported sort order with prefix -/+, i.e. `-time
 
 * `GET /api/v1/last/{max}?site=site-id` - get up to `{max}` last comments
 * `GET /api/v1/id/{id}?site=site-id` - get comment by `comment id`
-* `GET /api/v1/comments?site=site-id&user=id` - get comment by `user id`, returns `response` object
+* `GET /api/v1/comments?site=site-id&user=id&limit=N` - get comment by `user id`, returns `response` object
   ```go
   type response struct {
       Comments []store.Comment  `json:"comments"`
