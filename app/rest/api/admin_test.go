@@ -41,7 +41,7 @@ func TestAdmin_Delete(t *testing.T) {
 	cr := store.Comment{}
 	err = json.Unmarshal([]byte(body), &cr)
 	assert.Nil(t, err)
-	assert.Equal(t, "this comment was deleted", cr.Text)
+	assert.Equal(t, "", cr.Text)
 	assert.True(t, cr.Deleted)
 }
 
@@ -131,7 +131,8 @@ func TestAdmin_Block(t *testing.T) {
 	err = json.Unmarshal([]byte(res), &comments)
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(comments), "should have 2 comments")
-	assert.Equal(t, "this comment was deleted", comments[0].Text)
+	assert.Equal(t, "", comments[0].Text)
+	assert.True(t, comments[0].Deleted)
 
 	code, body = block(-1)
 	require.Equal(t, 200, code)

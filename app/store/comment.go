@@ -86,7 +86,7 @@ func (c *Comment) Sanitize() {
 
 // SetDeleted clears comment info, reset to deleted state
 func (c *Comment) SetDeleted() {
-	c.Text = "this comment was deleted"
+	c.Text = ""
 	c.Score = 0
 	c.Votes = map[string]bool{}
 	c.Edit = nil

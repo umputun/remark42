@@ -41,7 +41,7 @@ func TestBoltDB_Delete(t *testing.T) {
 	res, err = b.Find(loc, "time")
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(res))
-	assert.Equal(t, "this comment was deleted", res[0].Text)
+	assert.Equal(t, "", res[0].Text)
 	assert.True(t, res[0].Deleted, "marked deleted")
 	assert.Equal(t, "some text2", res[1].Text)
 	assert.False(t, res[1].Deleted)
