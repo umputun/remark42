@@ -20,15 +20,13 @@ type Authenticator struct {
 	Admins       []string
 	Providers    []Provider
 
-	DevEnabled bool
-	DevPasswd  string
+	DevPasswd string
 }
 
 var devUser = store.User{
 	ID:      "dev",
 	Name:    "developer one",
-	Picture: "https://friends.radio-t.com/resources/images/rt_logo_64.png",
-	Profile: "https://radio-t.com/info/",
+	Profile: "https://remark42.com",
 	Admin:   true,
 }
 
@@ -106,7 +104,7 @@ func (a *Authenticator) AdminOnly(next http.Handler) http.Handler {
 
 func (a *Authenticator) basicDevUser(w http.ResponseWriter, r *http.Request) bool {
 
-	if a.DevPasswd == "" || !a.DevEnabled {
+	if a.DevPasswd == "" {
 		return false
 	}
 

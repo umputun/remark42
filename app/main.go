@@ -123,7 +123,6 @@ func main() {
 			SessionStore: sessionStore,
 			Providers:    makeAuthProviders(sessionStore, avatarProxy),
 			AvatarProxy:  avatarProxy,
-			DevEnabled:   opts.DevPasswd != "",
 			DevPasswd:    opts.DevPasswd,
 		},
 		Cache: rest.NewLoadingCache(4*time.Hour, 15*time.Minute, postFlushFn),

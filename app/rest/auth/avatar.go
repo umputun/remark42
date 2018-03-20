@@ -126,7 +126,7 @@ func (p *AvatarProxy) Routes() (string, chi.Router) {
 
 // Default returns full default avatar url
 func (p *AvatarProxy) Default() string {
-	return path.Join(p.RemarkURL, p.RoutePath, p.DefaultAvatar)
+	return strings.TrimRight(p.RemarkURL, "/") + p.RoutePath + "/" + p.DefaultAvatar
 }
 
 // get location for user id by adding partion to final path in order to keep files
