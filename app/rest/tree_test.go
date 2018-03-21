@@ -12,7 +12,7 @@ import (
 	"github.com/umputun/remark/app/store"
 )
 
-func TestStore_MakeTree(t *testing.T) {
+func TestMakeTree(t *testing.T) {
 
 	// unsorted by purpose
 	comments := []store.Comment{

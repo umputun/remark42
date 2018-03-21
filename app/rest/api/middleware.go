@@ -2,7 +2,6 @@ package api
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -15,7 +14,6 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/middleware"
-	"github.com/pkg4go/rewrite"
 	"github.com/umputun/remark/app/rest"
 )
 
@@ -156,36 +154,5 @@ func Logger(flags ...LoggerFlag) func(http.Handler) http.Handler {
 		return http.HandlerFunc(fn)
 	}
 
-	return f
-}
-
-// Rewrite middleware with from->to rule. Supports regex (like nginx) and prevents multiple rewrites
-func Rewrite(from, to string) func(http.Handler) http.Handler {
-	rule, err := rewrite.NewRule(from, to)
-	if err != nil {
-		log.Printf("[WARN] can't parse rewrite rule %s - > %s, %s", from, to, err)
-	}
-
-	f := func(h http.Handler) http.Handler {
-		fn := func(w http.ResponseWriter, r *http.Request) {
-
-			ctx := r.Context()
-			// prevent double rewrites
-			if ctx != nil {
-				if _, ok := ctx.Value(rest.ContextKey("rewrite")).(bool); ok {
-					h.ServeHTTP(w, r)
-					return
-				}
-			}
-
-			if err == nil {
-				rule.Rewrite(r)
-				ctx = context.WithValue(ctx, rest.ContextKey("rewrite"), true)
-				r = r.WithContext(ctx)
-			}
-			h.ServeHTTP(w, r)
-		}
-		return http.HandlerFunc(fn)
-	}
 	return f
 }

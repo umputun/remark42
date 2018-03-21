@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"context"
 	"crypto/sha1"
 	"errors"
 	"fmt"
@@ -11,8 +12,7 @@ import (
 	"github.com/umputun/remark/app/store"
 )
 
-// ContextKey is a type to match on context
-type ContextKey string
+type contextKey string
 
 // GetUserInfo returns user from request context
 func GetUserInfo(r *http.Request) (user store.User, err error) {
@@ -22,11 +22,18 @@ func GetUserInfo(r *http.Request) (user store.User, err error) {
 		return store.User{}, errors.New("no info about user")
 	}
 
-	if u, ok := ctx.Value(ContextKey("user")).(store.User); ok {
+	if u, ok := ctx.Value(contextKey("user")).(store.User); ok {
 		return u, nil
 	}
 
 	return store.User{}, errors.New("user can't be parsed")
+}
+
+// SetUserInfo sets user into request context
+func SetUserInfo(r *http.Request, user store.User) *http.Request {
+	ctx := r.Context()
+	ctx = context.WithValue(ctx, contextKey("user"), user)
+	return r.WithContext(ctx)
 }
 
 // EncodeID hashes user id to sha1

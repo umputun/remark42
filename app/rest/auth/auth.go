@@ -2,7 +2,6 @@
 package auth
 
 import (
-	"context"
 	"encoding/base64"
 	"net/http"
 	"strings"
@@ -39,9 +38,7 @@ func (a *Authenticator) Auth(reqAuth bool) func(http.Handler) http.Handler {
 
 			if a.basicDevUser(w, r) { // fail-back to dev user if enabled
 				user := devUser
-				ctx := r.Context()
-				ctx = context.WithValue(ctx, rest.ContextKey("user"), user)
-				r = r.WithContext(ctx)
+				r = rest.SetUserInfo(r, user)
 				h.ServeHTTP(w, r)
 				return
 			}
@@ -72,9 +69,7 @@ func (a *Authenticator) Auth(reqAuth bool) func(http.Handler) http.Handler {
 					}
 				}
 
-				ctx := r.Context()
-				ctx = context.WithValue(ctx, rest.ContextKey("user"), user)
-				r = r.WithContext(ctx)
+				r = rest.SetUserInfo(r, user)
 			}
 			h.ServeHTTP(w, r)
 		}

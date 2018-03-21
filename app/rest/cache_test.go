@@ -1,7 +1,6 @@
 package rest
 
 import (
-	"context"
 	"net/http"
 	"testing"
 	"time"
@@ -45,10 +44,8 @@ func TestLoadingCache_URLKey(t *testing.T) {
 	key := URLKey(r)
 	assert.Equal(t, "http://blah/123", key)
 
-	ctx := context.Background()
 	user := store.User{Admin: true}
-	ctx = context.WithValue(ctx, ContextKey("user"), user)
-	r = r.WithContext(ctx)
+	r = SetUserInfo(r, user)
 	key = URLKey(r)
 	assert.Equal(t, "admin!!http://blah/123", key)
 }
