@@ -2,6 +2,7 @@ package auth
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -15,17 +16,28 @@ import (
 )
 
 func TestPut(t *testing.T) {
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/pic.png" {
+			w.Header().Set("Content-Type", "image/*")
+			fmt.Fprint(w, "some picture bin data")
+			return
+		}
+		http.Error(w, "not found", http.StatusNotFound)
+	}))
+	defer ts.Close()
+
 	p := AvatarProxy{StorePath: "/tmp/avatars.test", RoutePath: "/avatar", RemarkURL: "http://localhost:8080"}
 	os.MkdirAll("/tmp/avatars.test", 0700)
 	defer os.RemoveAll("/tmp/avatars.test")
 
-	u := store.User{ID: "user1", Name: "user1 name", Picture: "https://friends.radio-t.com/resources/images/rt_logo_64.png"}
+	u := store.User{ID: "user1", Name: "user1 name", Picture: ts.URL + "/pic.png"}
 	res, err := p.Put(u)
 	assert.NoError(t, err)
 	assert.Equal(t, "http://localhost:8080/avatar/b3daa77b4c04a9551b8781d03191fe098f325e67.image", res)
 	fi, err := os.Stat("/tmp/avatars.test/30/b3daa77b4c04a9551b8781d03191fe098f325e67.image")
 	assert.NoError(t, err)
-	assert.Equal(t, int64(8432), fi.Size())
+	assert.Equal(t, int64(21), fi.Size())
 
 	u.ID = "user2"
 	res, err = p.Put(u)
@@ -33,7 +45,7 @@ func TestPut(t *testing.T) {
 	assert.Equal(t, "http://localhost:8080/avatar/a1881c06eec96db9901c7bbfe41c42a3f08e9cb4.image", res)
 	fi, err = os.Stat("/tmp/avatars.test/84/a1881c06eec96db9901c7bbfe41c42a3f08e9cb4.image")
 	assert.NoError(t, err)
-	assert.Equal(t, int64(8432), fi.Size())
+	assert.Equal(t, int64(21), fi.Size())
 }
 
 func TestPutDefault(t *testing.T) {
@@ -53,11 +65,22 @@ func TestPutDefault(t *testing.T) {
 }
 
 func TestRoutes(t *testing.T) {
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/pic.png" {
+			w.Header().Set("Content-Type", "image/*")
+			fmt.Fprint(w, "some picture bin data")
+			return
+		}
+		http.Error(w, "not found", http.StatusNotFound)
+	}))
+	defer ts.Close()
+
 	p := AvatarProxy{StorePath: "/tmp/avatars.test", RoutePath: "/avatar", DefaultAvatar: "default.image"}
 	os.MkdirAll("/tmp/avatars.test", 0700)
 	defer os.RemoveAll("/tmp/avatars.test")
 
-	u := store.User{ID: "user1", Name: "user1 name", Picture: "https://friends.radio-t.com/resources/images/rt_logo_64.png"}
+	u := store.User{ID: "user1", Name: "user1 name", Picture: ts.URL + "/pic.png"}
 	_, err := p.Put(u)
 	assert.NoError(t, err)
 
@@ -76,7 +99,8 @@ func TestRoutes(t *testing.T) {
 	bb := bytes.Buffer{}
 	sz, err := io.Copy(&bb, rr.Body)
 	assert.NoError(t, err)
-	assert.Equal(t, int64(8432), sz)
+	assert.Equal(t, int64(21), sz)
+	assert.Equal(t, "some picture bin data", bb.String())
 }
 
 func TestRoutesDefault(t *testing.T) {
