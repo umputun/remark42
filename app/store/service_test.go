@@ -136,13 +136,13 @@ func TestService_Counts(t *testing.T) {
 	svc := Service{Interface: b}
 	res, err := svc.Counts("radio-t", []string{"https://radio-t.com/2"})
 	assert.Nil(t, err)
-	assert.Equal(t, []PostInfo{PostInfo{URL: "https://radio-t.com/2", Count: 1}}, res)
+	assert.Equal(t, []PostInfo{{URL: "https://radio-t.com/2", Count: 1}}, res)
 
 	res, err = svc.Counts("radio-t", []string{"https://radio-t.com", "https://radio-t.com/2", "blah"})
 	assert.Nil(t, err)
 	assert.Equal(t, []PostInfo{
-		PostInfo{URL: "https://radio-t.com", Count: 2},
-		PostInfo{URL: "https://radio-t.com/2", Count: 1},
-		PostInfo{URL: "blah", Count: 0},
+		{URL: "https://radio-t.com", Count: 2},
+		{URL: "https://radio-t.com/2", Count: 1},
+		{URL: "blah", Count: 0},
 	}, res)
 }

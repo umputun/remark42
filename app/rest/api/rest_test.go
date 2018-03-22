@@ -355,7 +355,8 @@ func TestServer_Counts(t *testing.T) {
 	j := []store.PostInfo{}
 	err = json.Unmarshal(body, &j)
 	assert.Nil(t, err)
-	assert.Equal(t, []store.PostInfo([]store.PostInfo{store.PostInfo{URL: "https://radio-t.com/blah1", Count: 3}, store.PostInfo{URL: "https://radio-t.com/blah2", Count: 2}}), j)
+	assert.Equal(t, []store.PostInfo([]store.PostInfo{{URL: "https://radio-t.com/blah1", Count: 3},
+		{URL: "https://radio-t.com/blah2", Count: 2}}), j)
 }
 
 func TestServer_List(t *testing.T) {

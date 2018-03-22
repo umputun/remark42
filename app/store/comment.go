@@ -64,7 +64,7 @@ type BlockedUser struct {
 }
 
 // PrepareUntrusted preprocess comment received from untrusted source by clearing all
-// autogen fields and reset everyting users not supposed to provide
+// autogen fields and reset everything users not supposed to provide
 func (c *Comment) PrepareUntrusted() {
 	c.ID = ""                 // don't allow user to define ID, force auto-gen
 	c.Timestamp = time.Time{} // reset time, force auto-gen
@@ -114,10 +114,4 @@ func (c *Comment) SetDeleted() {
 	c.Votes = map[string]bool{}
 	c.Edit = nil
 	c.Deleted = true
-}
-
-// NotifUser holds id and destination for notifiable user
-type NotifUser struct {
-	ID          string `json:"id"`
-	Destination string `json:"destination"`
 }
