@@ -1,7 +1,11 @@
 package store
 
 import (
+	"crypto/sha1"
+	"fmt"
+	"hash/crc64"
 	"html/template"
+	"strconv"
 	"strings"
 	"time"
 
@@ -59,9 +63,9 @@ type BlockedUser struct {
 	Timestamp time.Time `json:"time"`
 }
 
-// Prepare comment received from untrusted source by clearing all autogen fields and
-// reset everyting users not supposed to provide
-func (c *Comment) Prepare() {
+// PrepareUntrusted preprocess comment received from untrusted source by clearing all
+// autogen fields and reset everyting users not supposed to provide
+func (c *Comment) PrepareUntrusted() {
 	c.ID = ""                 // don't allow user to define ID, force auto-gen
 	c.Timestamp = time.Time{} // reset time, force auto-gen
 	c.Votes = make(map[string]bool)
@@ -82,6 +86,25 @@ func (c *Comment) Sanitize() {
 
 	c.Text = strings.Replace(c.Text, "\n", "", -1)
 	c.Text = strings.Replace(c.Text, "\t", "", -1)
+}
+
+// HashUserFields replace sensitive fields with hashes
+func (c *Comment) HashUserFields() {
+
+	hashVal := func(val string) string {
+		if _, err := strconv.ParseUint(val, 16, 64); err == nil || val == "" {
+			return val // already hashed
+		}
+		h := sha1.New()
+		if _, err := h.Write([]byte(val)); err != nil {
+			// fail back to crc64
+			return fmt.Sprintf("%x", crc64.Checksum([]byte(val), crc64.MakeTable(crc64.ECMA)))
+		}
+		return fmt.Sprintf("%x", h.Sum(nil))
+	}
+
+	c.User.IP = hashVal(c.User.IP)
+	c.User.ID = hashVal(c.User.ID)
 }
 
 // SetDeleted clears comment info, reset to deleted state

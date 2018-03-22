@@ -36,8 +36,8 @@ type Rest struct {
 	Cache         rest.LoadingCache
 	WebRoot       string
 
-	httpServer *http.Server
-	mod        admin
+	httpServer    *http.Server
+	amdminService admin
 }
 
 // Run the lister and request's router, activate rest server
@@ -46,6 +46,10 @@ func (s *Rest) Run(port int) {
 
 	if len(s.Authenticator.Admins) > 0 {
 		log.Printf("[DEBUG] admins %+v", s.Authenticator.Admins)
+	}
+
+	s.amdminService = admin{dataService: s.DataService, exporter: s.Exporter, cache: s.Cache,
+		defAvatarURL: s.Authenticator.AvatarProxy.Default(),
 	}
 
 	router := chi.NewRouter()
@@ -92,14 +96,9 @@ func (s *Rest) Run(port int) {
 			rauth.Put("/comment/{id}", s.updateCommentCtrl)
 			rauth.Get("/user", s.userInfoCtrl)
 			rauth.Put("/vote/{id}", s.voteCtrl)
+
 			// admin routes, admin users only
-			s.mod = admin{
-				dataService:  s.DataService,
-				exporter:     s.Exporter,
-				cache:        s.Cache,
-				defAvatarURL: s.Authenticator.AvatarProxy.Default(),
-			}
-			rauth.Mount("/admin", s.mod.routes(s.Authenticator.AdminOnly))
+			rauth.Mount("/admin", s.amdminService.routes(s.Authenticator.AdminOnly))
 		})
 	})
 
@@ -129,14 +128,14 @@ func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	comment.Prepare() // clean all fields user not suppoed to set
+	comment.PrepareUntrusted() // clean all fields user not suppoed to set
 	comment.User = user
 	comment.User.IP = strings.Split(r.RemoteAddr, ":")[0]
 	comment.Text = string(blackfriday.Run([]byte(comment.Text), blackfriday.WithNoExtensions())) // render markdown
 	log.Printf("[DEBUG] create comment %+v", comment)
 
 	// check if user blocked
-	if s.mod.checkBlocked(comment.Locator.SiteID, comment.User) {
+	if s.amdminService.checkBlocked(comment.Locator.SiteID, comment.User) {
 		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"), "user blocked")
 		return
 	}
@@ -220,7 +219,7 @@ func (s *Rest) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		if e != nil {
 			return nil, e
 		}
-		maskedComments := s.mod.alterComments(comments, r)
+		maskedComments := s.amdminService.alterComments(comments, r)
 		var b []byte
 		switch r.URL.Query().Get("format") {
 		case "tree":
@@ -253,7 +252,7 @@ func (s *Rest) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		if e != nil {
 			return nil, e
 		}
-		comments = s.mod.alterComments(comments, r)
+		comments = s.amdminService.alterComments(comments, r)
 		return encodeJSONWithHTML(comments)
 	})
 
@@ -278,7 +277,7 @@ func (s *Rest) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get comment by id")
 		return
 	}
-	comment = s.mod.alterComments([]store.Comment{comment}, r)[0]
+	comment = s.amdminService.alterComments([]store.Comment{comment}, r)[0]
 	render.Status(r, http.StatusOK)
 	renderJSONWithHTML(w, r, comment)
 }
@@ -306,7 +305,7 @@ func (s *Rest) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		if e != nil {
 			return nil, e
 		}
-		comments = s.mod.alterComments(comments, r)
+		comments = s.amdminService.alterComments(comments, r)
 		resp.Comments, resp.Count = comments, count
 		return encodeJSONWithHTML(resp)
 	})

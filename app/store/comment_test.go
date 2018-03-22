@@ -32,7 +32,7 @@ func TestComment_Sanitize(t *testing.T) {
 	}
 }
 
-func TestComment_Prepare(t *testing.T) {
+func TestComment_PrepareUntrusted(t *testing.T) {
 	comment := Comment{
 		Text:      `blah`,
 		User:      User{ID: "username"},
@@ -46,7 +46,7 @@ func TestComment_Prepare(t *testing.T) {
 		Votes:     map[string]bool{"uu": true},
 	}
 
-	comment.Prepare()
+	comment.PrepareUntrusted()
 	assert.Equal(t, "", comment.ID)
 	assert.Equal(t, "p123", comment.ParentID)
 	assert.Equal(t, "blah", comment.Text)
@@ -57,4 +57,28 @@ func TestComment_Prepare(t *testing.T) {
 	assert.Equal(t, make(map[string]bool), comment.Votes)
 	assert.Equal(t, User{ID: "username"}, comment.User)
 
+}
+
+func TestComment_HashUserFields(t *testing.T) {
+	tbl := []struct {
+		inp Comment
+		out Comment
+	}{
+		{inp: Comment{}, out: Comment{}},
+		{
+			inp: Comment{
+				Text: "blah",
+				User: User{ID: "my id", IP: "127.0.0.1"},
+			},
+			out: Comment{
+				Text: "blah",
+				User: User{ID: "de58071dda71e1783b6deb931ddb48bb66966f79", IP: "4b84b15bff6ee5796152495a230e45e3d7e947d9"},
+			},
+		},
+	}
+
+	for n, tt := range tbl {
+		tt.inp.HashUserFields()
+		assert.Equal(t, tt.out, tt.inp, "check #%d", n)
+	}
 }

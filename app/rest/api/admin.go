@@ -126,7 +126,7 @@ func (a *admin) checkBlocked(siteID string, user store.User) bool {
 	return a.dataService.IsBlocked(siteID, user.ID)
 }
 
-// processes comments and hides text of all comments for blocked users.
+// post-processes comments, hides text of all comments for blocked users,
 // resets score and votes too. Also hides sensitive info for non-admin users
 func (a *admin) alterComments(comments []store.Comment, r *http.Request) (res []store.Comment) {
 	res = make([]store.Comment, len(comments))
@@ -143,11 +143,6 @@ func (a *admin) alterComments(comments []store.Comment, r *http.Request) (res []
 			}
 			c.User.Blocked = true
 			c.Deleted = true
-		}
-
-		// set default avatar
-		if c.User.Picture == "" {
-			c.User.Picture = a.defAvatarURL
 		}
 
 		// hide info from non-admins
