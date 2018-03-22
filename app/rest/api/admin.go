@@ -145,6 +145,11 @@ func (a *admin) alterComments(comments []store.Comment, r *http.Request) (res []
 			c.Deleted = true
 		}
 
+		// set default avatar
+		if c.User.Picture == "" {
+			c.User.Picture = a.defAvatarURL
+		}
+
 		// hide info from non-admins
 		if !isAdmin {
 			c.User.IP = ""
