@@ -14,7 +14,7 @@ import (
 
 // Disqus implements Importer from disqus xml
 type Disqus struct {
-	DataStore store.Interface
+	CommentCreator
 }
 
 type disqusThread struct {
@@ -56,7 +56,7 @@ func (d *Disqus) Import(r io.Reader, siteID string) (err error) {
 	commentsCh := d.convert(r, siteID)
 	failed, passed := 0, 0
 	for c := range commentsCh {
-		if _, err = d.DataStore.Create(c); err != nil {
+		if _, err = d.Create(c); err != nil {
 			failed++
 			continue
 		}

@@ -14,12 +14,13 @@ import (
 
 // Remark implements exporter and importer for internal store
 type Remark struct {
-	DataStore store.Interface
+	CommentCreator
+	CommentFinder
 }
 
 // Export all comments to writer as json strings. Each comment is one string, separated by "\n"
 func (r *Remark) Export(w io.Writer, siteID string) error {
-	topics, err := r.DataStore.List(siteID, 0, 0)
+	topics, err := r.List(siteID, 0, 0)
 	if err != nil {
 		return err
 	}
@@ -28,7 +29,7 @@ func (r *Remark) Export(w io.Writer, siteID string) error {
 	commentsCount := 0
 	for i := len(topics) - 1; i >= 0; i-- { // topics from List sorted in opposite direction
 		topic := topics[i]
-		comments, err := r.DataStore.Find(store.Locator{SiteID: siteID, URL: topic.URL}, "time")
+		comments, err := r.Find(store.Locator{SiteID: siteID, URL: topic.URL}, "time")
 		if err != nil {
 			return err
 		}
@@ -70,7 +71,7 @@ func (r *Remark) Import(reader io.Reader, siteID string) error {
 			log.Printf("[WARN] unmarshal failed for %s, %s", string(rec), err)
 			continue
 		}
-		if _, err := r.DataStore.Create(comment); err != nil {
+		if _, err := r.Create(comment); err != nil {
 			failed++
 			log.Printf("[WARN] can't write %+v to store, %s", comment, err)
 			continue

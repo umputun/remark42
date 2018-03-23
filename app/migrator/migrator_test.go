@@ -24,10 +24,10 @@ func TestMigrator_ImportDisqus(t *testing.T) {
 	require.Nil(t, err, "create store")
 
 	err = ImportComments(ImportParams{
-		DataStore: dataStore,
-		InputFile: "/tmp/disqus-test.xml",
-		SiteID:    "test",
-		Provider:  "disqus",
+		CommentCreator: dataStore,
+		InputFile:      "/tmp/disqus-test.xml",
+		SiteID:         "test",
+		Provider:       "disqus",
 	})
 	assert.Nil(t, err)
 
@@ -52,10 +52,10 @@ func TestMigrator_ImportRemark(t *testing.T) {
 	require.Nil(t, err, "create store")
 
 	err = ImportComments(ImportParams{
-		DataStore: dataStore,
-		InputFile: "/tmp/disqus-test.r42",
-		SiteID:    "radio-t",
-		Provider:  "native",
+		CommentCreator: dataStore,
+		InputFile:      "/tmp/disqus-test.r42",
+		SiteID:         "radio-t",
+		Provider:       "native",
 	})
 	assert.Nil(t, err)
 

@@ -420,7 +420,7 @@ func prep(t *testing.T) (srv *Rest, port int) {
 			AvatarProxy:  &auth.AvatarProxy{StorePath: "/tmp", RoutePath: "/api/v1/avatar"},
 			Admins:       []string{"a1", "a2"},
 		},
-		Exporter: &migrator.Remark{DataStore: dataStore},
+		Exporter: &migrator.Remark{CommentFinder: dataStore},
 		Cache:    &mockCache{},
 		WebRoot:  "/tmp",
 	}

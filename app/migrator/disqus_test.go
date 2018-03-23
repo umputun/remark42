@@ -16,7 +16,7 @@ func TestDisqus_Import(t *testing.T) {
 	defer os.Remove("/tmp/remark-test.db")
 	dataStore, err := store.NewBoltDB(store.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "test"})
 	require.Nil(t, err, "create store")
-	d := Disqus{DataStore: dataStore}
+	d := Disqus{CommentCreator: dataStore}
 	err = d.Import(strings.NewReader(xmlTest), "test")
 	assert.Nil(t, err)
 

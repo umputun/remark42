@@ -23,9 +23,20 @@ type Exporter interface {
 	Export(w io.Writer, siteID string) error
 }
 
+// CommentCreator is a minimal interface used by importer to make comments
+type CommentCreator interface {
+	Create(comment store.Comment) (commentID string, err error)
+}
+
+// CommentFinder is a minimal interface used by exporter to find comments and list posts
+type CommentFinder interface {
+	Find(locator store.Locator, sort string) ([]store.Comment, error)
+	List(siteID string, limit int, skip int) ([]store.PostInfo, error)
+}
+
 // ImportParams defines everything needed to run import
 type ImportParams struct {
-	DataStore store.Interface
+	CommentCreator
 	InputFile string
 	Provider  string
 	SiteID    string
@@ -38,9 +49,9 @@ func ImportComments(p ImportParams) error {
 	var importer Importer
 	switch p.Provider {
 	case "disqus":
-		importer = &Disqus{DataStore: p.DataStore}
+		importer = &Disqus{CommentCreator: p.CommentCreator}
 	case "native":
-		importer = &Remark{DataStore: p.DataStore}
+		importer = &Remark{CommentCreator: p.CommentCreator}
 	default:
 		return errors.Errorf("unsupported import provider %s", p.Provider)
 	}

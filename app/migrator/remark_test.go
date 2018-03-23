@@ -16,7 +16,7 @@ var testDb = "/tmp/test-remark.db"
 
 func TestRemark_Export(t *testing.T) {
 	b := prep(t)
-	r := Remark{DataStore: b}
+	r := Remark{CommentFinder: b}
 
 	buf := &bytes.Buffer{}
 	err := r.Export(buf, "radio-t")
@@ -41,7 +41,7 @@ func TestRemark_Import(t *testing.T) {
 	os.Remove(testDb)
 	b, err := store.NewBoltDB(store.BoltSite{SiteID: "radio-t", FileName: testDb})
 	assert.Nil(t, err)
-	r := Remark{DataStore: b}
+	r := Remark{CommentCreator: b}
 	err = r.Import(buf, "radio-t")
 	assert.Nil(t, err)
 
