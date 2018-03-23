@@ -54,11 +54,13 @@ func TestRemark_Import(t *testing.T) {
 }
 
 // makes new boltdb, put two records
-func prep(t *testing.T) *store.BoltDB {
+func prep(t *testing.T) *store.Service {
 	os.Remove(testDb)
 
-	b, err := store.NewBoltDB(store.BoltSite{SiteID: "radio-t", FileName: testDb})
+	boltStore, err := store.NewBoltDB(store.BoltSite{SiteID: "radio-t", FileName: testDb})
 	assert.Nil(t, err)
+
+	b := &store.Service{Interface: boltStore}
 
 	comment := store.Comment{
 		ID:        "efbc17f177ee1a1c0ee6e1e025749966ec071adc",

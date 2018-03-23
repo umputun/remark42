@@ -11,7 +11,7 @@ import (
 var testDb = "/tmp/test-remark.db"
 
 func TestBoltDB_CreateAndFind(t *testing.T) {
-	var b Interface = prep(t)
+	var b = prep(t)
 	defer os.Remove(testDb)
 
 	res, err := b.Find(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "time")
@@ -190,11 +190,12 @@ func TestBoltDB_GetForUser(t *testing.T) {
 }
 
 // makes new boltdb, put two records
-func prep(t *testing.T) *BoltDB {
+func prep(t *testing.T) *Service {
 	os.Remove(testDb)
 
-	b, err := NewBoltDB(BoltSite{FileName: "/tmp/test-remark.db", SiteID: "radio-t"})
+	boltStore, err := NewBoltDB(BoltSite{FileName: "/tmp/test-remark.db", SiteID: "radio-t"})
 	assert.Nil(t, err)
+	b := &Service{Interface: boltStore}
 
 	comment := Comment{
 		ID:        "id-1",

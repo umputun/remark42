@@ -97,8 +97,8 @@ func (c *Comment) sanitize() {
 	c.Text = strings.Replace(c.Text, "\t", "", -1)
 }
 
-// HashUserFields replace sensitive fields with hashes
-func (c *Comment) hashUserFields() {
+// hashIP replace sensitive fields with hashes
+func (u *User) hashIP() {
 
 	hashVal := func(val string) string {
 		if _, err := strconv.ParseUint(val, 16, 64); err == nil || val == "" {
@@ -112,6 +112,5 @@ func (c *Comment) hashUserFields() {
 		return fmt.Sprintf("%x", h.Sum(nil))
 	}
 
-	c.User.IP = hashVal(c.User.IP)
-	c.User.ID = hashVal(c.User.ID)
+	u.IP = hashVal(u.IP)
 }

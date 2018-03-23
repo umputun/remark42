@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/coreos/bbolt"
-	"github.com/google/uuid"
 	"github.com/pkg/errors"
 )
 
@@ -80,20 +79,6 @@ func NewBoltDB(sites ...BoltSite) (*BoltDB, error) {
 
 // Create saves new comment to store. Adds to posts bucket, reference to last and user bucket and increments count bucket
 func (b *BoltDB) Create(comment Comment) (commentID string, err error) {
-
-	// fill ID and time if empty
-	if comment.ID == "" {
-		comment.ID = uuid.New().String()
-	}
-	if comment.Timestamp.IsZero() {
-		comment.Timestamp = time.Now()
-	}
-	// reset votes if nothing
-	if comment.Votes == nil {
-		comment.Votes = make(map[string]bool)
-	}
-
-	comment.sanitize() // clear potentially dangerous js from all parts of comment
 
 	bdb, err := b.db(comment.Locator.SiteID)
 	if err != nil {

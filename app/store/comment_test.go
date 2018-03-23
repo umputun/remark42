@@ -58,27 +58,3 @@ func TestComment_PrepareUntrusted(t *testing.T) {
 	assert.Equal(t, User{ID: "username"}, comment.User)
 
 }
-
-func TestComment_HashUserFields(t *testing.T) {
-	tbl := []struct {
-		inp Comment
-		out Comment
-	}{
-		{inp: Comment{}, out: Comment{}},
-		{
-			inp: Comment{
-				Text: "blah",
-				User: User{ID: "my id", IP: "127.0.0.1"},
-			},
-			out: Comment{
-				Text: "blah",
-				User: User{ID: "de58071dda71e1783b6deb931ddb48bb66966f79", IP: "4b84b15bff6ee5796152495a230e45e3d7e947d9"},
-			},
-		},
-	}
-
-	for n, tt := range tbl {
-		tt.inp.hashUserFields()
-		assert.Equal(t, tt.out, tt.inp, "check #%d", n)
-	}
-}
