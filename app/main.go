@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/bbolt"
 	"github.com/gorilla/sessions"
 	"github.com/hashicorp/logutils"
 	"github.com/jessevdk/go-flags"
@@ -150,7 +151,7 @@ func makeBoltStore(siteNames []string) store.Interface {
 	for _, site := range siteNames {
 		sites = append(sites, store.BoltSite{SiteID: site, FileName: fmt.Sprintf("%s/%s.db", opts.BoltPath, site)})
 	}
-	result, err := store.NewBoltDB(sites...)
+	result, err := store.NewBoltDB(bolt.Options{Timeout: 30 * time.Second}, sites...)
 	if err != nil {
 		log.Fatalf("[ERROR] can't initialize data store, %+v", err)
 	}

@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/bbolt"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -92,7 +93,7 @@ func TestService_EditComment(t *testing.T) {
 func TestService_EditCommentDurationFailed(t *testing.T) {
 	defer os.Remove(testDb)
 
-	blt, err := NewBoltDB(BoltSite{FileName: "/tmp/test-remark.db", SiteID: "radio-t"})
+	blt, err := NewBoltDB(bolt.Options{}, BoltSite{FileName: "/tmp/test-remark.db", SiteID: "radio-t"})
 	assert.Nil(t, err)
 
 	comment := Comment{

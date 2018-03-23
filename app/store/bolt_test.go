@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/bbolt"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -193,7 +194,7 @@ func TestBoltDB_GetForUser(t *testing.T) {
 func prep(t *testing.T) *Service {
 	os.Remove(testDb)
 
-	boltStore, err := NewBoltDB(BoltSite{FileName: "/tmp/test-remark.db", SiteID: "radio-t"})
+	boltStore, err := NewBoltDB(bolt.Options{}, BoltSite{FileName: "/tmp/test-remark.db", SiteID: "radio-t"})
 	assert.Nil(t, err)
 	b := &Service{Interface: boltStore}
 

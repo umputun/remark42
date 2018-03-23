@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/coreos/bbolt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -20,7 +21,7 @@ func TestMigrator_ImportDisqus(t *testing.T) {
 	err := ioutil.WriteFile("/tmp/disqus-test.xml", []byte(xmlTest), 0600)
 	require.Nil(t, err)
 
-	dataStore, err := store.NewBoltDB(store.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "test"})
+	dataStore, err := store.NewBoltDB(bolt.Options{}, store.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "test"})
 	require.Nil(t, err, "create store")
 
 	err = ImportComments(ImportParams{
@@ -48,7 +49,7 @@ func TestMigrator_ImportRemark(t *testing.T) {
 	err := ioutil.WriteFile("/tmp/disqus-test.r42", []byte(data), 0600)
 	require.Nil(t, err)
 
-	dataStore, err := store.NewBoltDB(store.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "radio-t"})
+	dataStore, err := store.NewBoltDB(bolt.Options{}, store.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "radio-t"})
 	require.Nil(t, err, "create store")
 
 	err = ImportComments(ImportParams{

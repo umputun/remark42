@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/bbolt"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/umputun/remark/app/store"
@@ -39,7 +40,7 @@ func TestRemark_Import(t *testing.T) {
 	buf.WriteString(r2)
 
 	os.Remove(testDb)
-	b, err := store.NewBoltDB(store.BoltSite{SiteID: "radio-t", FileName: testDb})
+	b, err := store.NewBoltDB(bolt.Options{}, store.BoltSite{SiteID: "radio-t", FileName: testDb})
 	assert.Nil(t, err)
 	r := Remark{CommentCreator: b}
 	err = r.Import(buf, "radio-t")
@@ -57,7 +58,7 @@ func TestRemark_Import(t *testing.T) {
 func prep(t *testing.T) *store.Service {
 	os.Remove(testDb)
 
-	boltStore, err := store.NewBoltDB(store.BoltSite{SiteID: "radio-t", FileName: testDb})
+	boltStore, err := store.NewBoltDB(bolt.Options{}, store.BoltSite{SiteID: "radio-t", FileName: testDb})
 	assert.Nil(t, err)
 
 	b := &store.Service{Interface: boltStore}

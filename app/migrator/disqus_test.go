@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/bbolt"
 	"github.com/stretchr/testify/require"
 
 	"github.com/stretchr/testify/assert"
@@ -14,7 +15,7 @@ import (
 
 func TestDisqus_Import(t *testing.T) {
 	defer os.Remove("/tmp/remark-test.db")
-	dataStore, err := store.NewBoltDB(store.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "test"})
+	dataStore, err := store.NewBoltDB(bolt.Options{}, store.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "test"})
 	require.Nil(t, err, "create store")
 	d := Disqus{CommentCreator: dataStore}
 	err = d.Import(strings.NewReader(xmlTest), "test")

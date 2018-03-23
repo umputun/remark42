@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/bbolt"
 	"github.com/gorilla/sessions"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -409,7 +410,7 @@ func TestServer_FileServer(t *testing.T) {
 }
 
 func prep(t *testing.T) (srv *Rest, port int) {
-	dataStore, err := store.NewBoltDB(store.BoltSite{FileName: testDb, SiteID: "radio-t"})
+	dataStore, err := store.NewBoltDB(bolt.Options{}, store.BoltSite{FileName: testDb, SiteID: "radio-t"})
 	require.Nil(t, err)
 	srv = &Rest{
 		DataService: store.Service{Interface: dataStore, EditDuration: 5 * time.Minute},
