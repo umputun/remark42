@@ -75,8 +75,17 @@ func (c *Comment) PrepareUntrusted() {
 	c.Deleted = false
 }
 
-// Sanitize clean dangerous html/js from the comment
-func (c *Comment) Sanitize() {
+// SetDeleted clears comment info, reset to deleted state
+func (c *Comment) SetDeleted() {
+	c.Text = ""
+	c.Score = 0
+	c.Votes = map[string]bool{}
+	c.Edit = nil
+	c.Deleted = true
+}
+
+// sanitize clean dangerous html/js from the comment
+func (c *Comment) sanitize() {
 	p := bluemonday.UGCPolicy()
 	c.Text = p.Sanitize(c.Text)
 	c.User.ID = template.HTMLEscapeString(c.User.ID)
@@ -89,7 +98,7 @@ func (c *Comment) Sanitize() {
 }
 
 // HashUserFields replace sensitive fields with hashes
-func (c *Comment) HashUserFields() {
+func (c *Comment) hashUserFields() {
 
 	hashVal := func(val string) string {
 		if _, err := strconv.ParseUint(val, 16, 64); err == nil || val == "" {
@@ -105,13 +114,4 @@ func (c *Comment) HashUserFields() {
 
 	c.User.IP = hashVal(c.User.IP)
 	c.User.ID = hashVal(c.User.ID)
-}
-
-// SetDeleted clears comment info, reset to deleted state
-func (c *Comment) SetDeleted() {
-	c.Text = ""
-	c.Score = 0
-	c.Votes = map[string]bool{}
-	c.Edit = nil
-	c.Deleted = true
 }

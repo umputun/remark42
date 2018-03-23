@@ -78,7 +78,7 @@ func (s *Service) EditComment(locator Locator, commentID string, text string, ed
 	comment.Text = text
 	comment.Edit = &edit
 	comment.Edit.Timestamp = time.Now()
-	comment.Sanitize()
+	comment.sanitize()
 	err = s.Put(locator, comment)
 	return comment, err
 }

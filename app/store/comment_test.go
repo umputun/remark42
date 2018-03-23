@@ -27,7 +27,7 @@ func TestComment_Sanitize(t *testing.T) {
 	}
 
 	for n, tt := range tbl {
-		tt.inp.Sanitize()
+		tt.inp.sanitize()
 		assert.Equal(t, tt.out, tt.inp, "check #%d", n)
 	}
 }
@@ -78,7 +78,7 @@ func TestComment_HashUserFields(t *testing.T) {
 	}
 
 	for n, tt := range tbl {
-		tt.inp.HashUserFields()
+		tt.inp.hashUserFields()
 		assert.Equal(t, tt.out, tt.inp, "check #%d", n)
 	}
 }

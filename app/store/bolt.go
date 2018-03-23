@@ -93,7 +93,7 @@ func (b *BoltDB) Create(comment Comment) (commentID string, err error) {
 		comment.Votes = make(map[string]bool)
 	}
 
-	comment.Sanitize() // clear potentially dangerous js from all parts of comment
+	comment.sanitize() // clear potentially dangerous js from all parts of comment
 
 	bdb, err := b.db(comment.Locator.SiteID)
 	if err != nil {
