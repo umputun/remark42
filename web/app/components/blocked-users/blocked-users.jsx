@@ -57,7 +57,9 @@ export default class BlockedUsers extends Component {
 
                   return (
                     <li className={b('blocked-users__list-item', {}, { view: isUserUnblocked ? 'invisible' : null })}>
-                      <span className="blocked-users__username">{user.id}</span>
+                      <span className="blocked-users__username">{user.name}</span>
+                      {' '}
+                      <span className="blocked-users__user-id">({user.id})</span>
 
                       {
                         isUserUnblocked && (
