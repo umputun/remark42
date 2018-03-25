@@ -176,12 +176,16 @@ export default class Comment extends Component {
     const o = {
       ...data,
       text:
-        userBlocked
-          ? 'This user was blocked'
+        data.text.length
+          ? (mods.view === 'preview' ? getTextSnippet(data.text) : data.text)
           : (
-            deleted
-              ? 'This comment was deleted'
-              : (mods.view === 'preview' ? getTextSnippet(data.text) : data.text)
+            userBlocked
+              ? 'This user was blocked'
+              : (
+                deleted
+                ? 'This comment was deleted'
+                : data.text
+              )
           ),
       time: timeStr,
       score: {
@@ -247,6 +251,20 @@ export default class Comment extends Component {
               {
                 mods.view !== 'preview' && (
                   <span className="comment__time">{o.time}</span>
+                )
+              }
+
+              {
+                isAdmin && data.text.length === 0 && defaultMods.useless && (
+                  <span className="comment__status">
+                    {
+                      userBlocked && "blocked"
+                    }
+
+                    {
+                      !userBlocked && deleted && "deleted"
+                    }
+                  </span>
                 )
               }
 
