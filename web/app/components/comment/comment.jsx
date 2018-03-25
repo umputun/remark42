@@ -303,7 +303,11 @@ export default class Comment extends Component {
                       )
                     }
 
-                    <span className="comment__action" onClick={this.onDeleteClick}>delete</span>
+                    {
+                      !deleted && (
+                        <span className="comment__action" onClick={this.onDeleteClick}>delete</span>
+                      )
+                    }
                   </span>
                 )
               }
