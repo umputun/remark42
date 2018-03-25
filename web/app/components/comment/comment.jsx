@@ -39,6 +39,7 @@ export default class Comment extends Component {
       this.setState({
         guest,
         score,
+        deleted: props.data ? props.data.delete : false,
       });
     } else {
       const userId = store.get('user').id;
@@ -47,6 +48,7 @@ export default class Comment extends Component {
         guest,
         score,
         pinned: !!pin,
+        deleted: props.data ? props.data.delete : false,
         userBlocked: !!block,
         scoreIncreased: userId in votes && votes[userId],
         scoreDecreased: userId in votes && !votes[userId],
@@ -112,6 +114,8 @@ export default class Comment extends Component {
     const { id } = this.props.data;
 
     if (confirm('Do you want to delete this comment?')) {
+      this.setState({ deleted: true });
+
       api.remove({ id }).then(() => {
         api.getComment({ id }).then(comment => store.replaceComment(comment));
       });
@@ -157,7 +161,7 @@ export default class Comment extends Component {
     this.setState({ isInputVisible: false });
   }
 
-  render(props, { guest, userBlocked, pinned, score, scoreIncreased, scoreDecreased, isInputVisible }) {
+  render(props, { guest, userBlocked, pinned, score, scoreIncreased, scoreDecreased, isInputVisible, deleted }) {
     const { data, mix, mods = {} } = props;
     const isAdmin = !guest && store.get('user').admin;
     const isGuest = guest || !Object.keys(store.get('user')).length;
@@ -171,7 +175,14 @@ export default class Comment extends Component {
     const timeStr = `${time.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
     const o = {
       ...data,
-      text: mods.view === 'preview' ? getTextSnippet(data.text) : data.text,
+      text:
+        userBlocked
+          ? 'This user was blocked'
+          : (
+            deleted
+              ? 'This comment was deleted'
+              : (mods.view === 'preview' ? getTextSnippet(data.text) : data.text)
+          ),
       time: timeStr,
       score: {
         value: Math.abs(score),
@@ -185,7 +196,7 @@ export default class Comment extends Component {
 
     const defaultMods = {
       pinned,
-      useless: userBlocked,
+      useless: userBlocked || deleted,
       // TODO: add default view mod or don't?
       view: o.user.admin ? 'admin' : null,
     };
