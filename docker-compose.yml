@@ -15,15 +15,16 @@ services:
               max-file: "5"
 
         # uncomment to expose directly (no proxy)
-        # ports:
-        #   - "8080:8080"
+        ports:
+          - "80:8080"
 
         environment:
-            - REMARK_URL=https://demo.remark42.com
+            # - REMARK_URL=https://demo.remark42.com
+            - REMARK_URL
             - BOLTDB_PATH=/srv/var/db
             - BACKUP_PATH=/srv/var/backup
             - SESSION_STORE=/srv/var/session
-            - DEV_PASSWD=password # development mode, be careful!
+            # - DEV_PASSWD=password # development mode, be careful!
             - DEBUG=true
             - REMARK_GOOGLE_CID
             - REMARK_GOOGLE_CSEC
@@ -31,6 +32,8 @@ services:
             - REMARK_GITHUB_CSEC
             - REMARK_FACEBOOK_CID
             - REMARK_FACEBOOK_CSEC
+            - REMARK_DISQUS_CID
+            - REMARK_DISQUS_CSEC
         volumes:
             - ./var:/srv/var
             - ./web:/srv/web # maps web directory directly to propagate local changes to container without redeploy

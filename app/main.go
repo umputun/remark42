@@ -43,6 +43,8 @@ var opts struct {
 		GithubCSEC   string `long:"github-csec" env:"REMARK_GITHUB_CSEC" description:"Github OAuth client secret"`
 		FacebookCID  string `long:"facebook-cid" env:"REMARK_FACEBOOK_CID" description:"Facebook OAuth client ID"`
 		FacebookCSEC string `long:"facebook-csec" env:"REMARK_FACEBOOK_CSEC" description:"Facebook OAuth client secret"`
+		DisqusCID    string `long:"disqus-cid" env:"REMARK_DISQUS_CID" description:"Disqus OAuth client ID"`
+		DisqusCSEC   string `long:"disqus-csec" env:"REMARK_DISQUS_CSEC" description:"Disqus OAuth client secret"`
 
 		AvatarStore   string `long:"avatars" env:"AVATAR_STORE" default:"./var/avatars" description:"path to avatars directory"`
 		DefaultAvatar string `long:"avatar-def" env:"AVATAR_DEF" default:"remark.image" description:"default avatar"`
@@ -209,6 +211,9 @@ func makeAuthProviders(sessionStore sessions.Store, avatarProxy *auth.AvatarProx
 	}
 	if srvOpts.FacebookCID != "" && srvOpts.FacebookCSEC != "" {
 		providers = append(providers, auth.NewFacebook(makeParams(srvOpts.FacebookCID, srvOpts.FacebookCSEC)))
+	}
+	if srvOpts.DisqusCID != "" && srvOpts.DisqusCSEC != "" {
+		providers = append(providers, auth.NewDisqus(makeParams(srvOpts.DisqusCID, srvOpts.DisqusCSEC)))
 	}
 	if len(providers) == 0 {
 		log.Printf("[WARN] no auth providers defined")

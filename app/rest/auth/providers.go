@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 
+	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/facebook"
 	"golang.org/x/oauth2/github"
 	"golang.org/x/oauth2/google"
@@ -93,6 +94,33 @@ func NewFacebook(p Params) Provider {
 			uinfoJSON := uinfo{}
 			if err := json.Unmarshal(bdata, &uinfoJSON); err == nil {
 				userInfo.Picture = uinfoJSON.Picture.Data.URL
+			}
+			return userInfo
+		},
+	})
+}
+
+// NewDisqus makes disqus oauth2 provider. TODO: WIP - seems to need client_id param
+func NewDisqus(p Params) Provider {
+	return initProvider(p, Provider{
+		Name: "disqus",
+		Endpoint: oauth2.Endpoint{
+			AuthURL:  "https://disqus.com/api/oauth/2.0/authorize/",
+			TokenURL: "https://disqus.com/api/oauth/2.0/access_token/",
+		},
+		RedirectURL: p.RemarkURL + "/auth/disqus/callback",
+		Scopes:      []string{"read"},
+		InfoURL:     "https://disqus.com/api/3.0/users/details.json",
+		Store:       p.SessionStore,
+		MapUser: func(data userData, _ []byte) store.User {
+			userInfo := store.User{
+				ID:      "disqus_" + data.value("login"),
+				Name:    data.value("name"),
+				Picture: data.value("avatar_url"),
+				Profile: data.value("html_url"),
+			}
+			if userInfo.Name == "" {
+				userInfo.Name = userInfo.ID
 			}
 			return userInfo
 		},
