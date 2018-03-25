@@ -9,6 +9,52 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestService_CreateFromEmpty(t *testing.T) {
+	defer os.Remove(testDb)
+	b := Service{Interface: prep(t), Secret: "secret 123"}
+	comment := Comment{
+		Text:    "text",
+		User:    User{IP: "192.168.1.1", ID: "user"},
+		Locator: Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+	}
+	id, err := b.Create(comment)
+	assert.NoError(t, err)
+	assert.True(t, id != "", id)
+
+	res, err := b.Get(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, id)
+	assert.NoError(t, err)
+	t.Logf("%+v", res)
+	assert.Equal(t, "text", res.Text)
+	assert.True(t, time.Since(res.Timestamp).Seconds() < 1)
+	assert.Equal(t, "user", res.User.ID)
+	assert.Equal(t, "9f41a4b2dca0c826f1aa2c69246347758a43eac1", res.User.IP)
+	assert.Equal(t, map[string]bool{}, res.Votes)
+}
+
+func TestService_CreateFromPartial(t *testing.T) {
+	defer os.Remove(testDb)
+	b := Service{Interface: prep(t), Secret: "secret 123"}
+	comment := Comment{
+		Text:      "text",
+		Timestamp: time.Date(2018, 3, 25, 16, 34, 33, 0, time.UTC),
+		Votes:     map[string]bool{"u1": true, "u2": false},
+		User:      User{IP: "192.168.1.1", ID: "user"},
+		Locator:   Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+	}
+	id, err := b.Create(comment)
+	assert.NoError(t, err)
+	assert.True(t, id != "", id)
+
+	res, err := b.Get(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, id)
+	assert.NoError(t, err)
+	t.Logf("%+v", res)
+	assert.Equal(t, "text", res.Text)
+	assert.Equal(t, comment.Timestamp, res.Timestamp)
+	assert.Equal(t, "user", res.User.ID)
+	assert.Equal(t, "9f41a4b2dca0c826f1aa2c69246347758a43eac1", res.User.IP)
+	assert.Equal(t, comment.Votes, res.Votes)
+}
+
 func TestService_Vote(t *testing.T) {
 	defer os.Remove(testDb)
 	b := Service{Interface: prep(t)}

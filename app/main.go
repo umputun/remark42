@@ -93,7 +93,7 @@ func main() {
 		log.Printf("[WARN] running in dev mode")
 	}
 
-	dataService := store.Service{Interface: dataStore, EditDuration: 5 * time.Minute}
+	dataService := store.Service{Interface: dataStore, EditDuration: 5 * time.Minute, Secret: opts.ServerCommand.StoreKey}
 	sessionStore := func() sessions.Store {
 		sess := sessions.NewFilesystemStore(opts.ServerCommand.SessionStore, []byte(opts.ServerCommand.StoreKey))
 		sess.Options.HttpOnly = true

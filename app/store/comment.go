@@ -1,10 +1,11 @@
 package store
 
 import (
+	"crypto/hmac"
 	"crypto/sha1"
 	"fmt"
-	"hash/crc64"
 	"html/template"
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -98,16 +99,16 @@ func (c *Comment) sanitize() {
 }
 
 // hashIP replace sensitive fields with hashes
-func (u *User) hashIP() {
+func (u *User) hashIP(secret string) {
 
 	hashVal := func(val string) string {
 		if _, err := strconv.ParseUint(val, 16, 64); err == nil || val == "" {
 			return val // already hashed
 		}
-		h := sha1.New()
+		key := []byte(secret)
+		h := hmac.New(sha1.New, key)
 		if _, err := h.Write([]byte(val)); err != nil {
-			// fail back to crc64
-			return fmt.Sprintf("%x", crc64.Checksum([]byte(val), crc64.MakeTable(crc64.ECMA)))
+			log.Printf("[WARN] can't hash ip, %s", err)
 		}
 		return fmt.Sprintf("%x", h.Sum(nil))
 	}

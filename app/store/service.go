@@ -11,6 +11,7 @@ import (
 type Service struct {
 	Interface
 	EditDuration time.Duration
+	Secret       string
 }
 
 // Create prepares comment and forward to Interface.Create
@@ -27,8 +28,8 @@ func (s *Service) Create(comment Comment) (commentID string, err error) {
 		comment.Votes = make(map[string]bool)
 	}
 
-	comment.sanitize()    // clear potentially dangerous js from all parts of comment
-	comment.User.hashIP() // replace ip by hash
+	comment.sanitize()            // clear potentially dangerous js from all parts of comment
+	comment.User.hashIP(s.Secret) // replace ip by hash
 
 	return s.Interface.Create(comment)
 }
