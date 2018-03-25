@@ -255,16 +255,14 @@ export default class Comment extends Component {
               }
 
               {
-                isAdmin && data.text.length === 0 && defaultMods.useless && (
-                  <span className="comment__status">
-                    {
-                      userBlocked && "blocked"
-                    }
+                isAdmin && userBlocked && (
+                  <span className="comment__status">blocked</span>
+                )
+              }
 
-                    {
-                      !userBlocked && deleted && "deleted"
-                    }
-                  </span>
+              {
+                isAdmin && !userBlocked && deleted && (
+                  <span className="comment__status">deleted</span>
                 )
               }
 
