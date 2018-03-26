@@ -12,8 +12,7 @@ const Define = webpack.DefinePlugin;
 const { NODE_ID } = require('./app/common/constants');
 const publicFolder = path.resolve(__dirname, 'public');
 const env = process.env.NODE_ENV || 'dev';
-// const url = process.env.REMARK_URL || 'https://demo.remark42.com';
-const url = process.env.REMARK_URL;
+const url = process.env.REMARK_URL || 'https://demo.remark42.com';
 
 const commonStyleLoaders = [
   'css-loader',
