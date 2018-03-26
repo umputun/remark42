@@ -10,17 +10,6 @@ import { siteId } from './settings';
 const fetcher = {};
 const methods = ['get', 'post', 'put', 'patch', 'delete', 'head'];
 
-const { CancelToken } = axios;
-let cancelHandler = [];
-
-fetcher.cancel = (mask) => {
-  cancelHandler.forEach(req => {
-    if (req.url.includes(mask)) {
-      req.executor('Operation canceled by the user.');
-    }
-  });
-};
-
 methods.forEach(method => {
   fetcher[method] = data => {
     const {
@@ -53,23 +42,9 @@ methods.forEach(method => {
         parameters.url += (parameters.url.includes('?') ? '&' : '?') + `site=${siteId}`;
       }
 
-      parameters.cancelToken = new CancelToken(executor => {
-        cancelHandler.push({
-          executor,
-          url: parameters.url,
-        });
-      });
-
       axios(parameters)
         .then(res => resolve(res.data))
-        .catch(error => {
-          if (!axios.isCancel(error)) {
-            reject(error);
-          }
-        })
-        .finally(() => {
-          cancelHandler = cancelHandler.filter(req => req.url !== parameters.url);
-        });
+        .catch(error => reject(error));
     });
   }
 });
