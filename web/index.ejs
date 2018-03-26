@@ -30,7 +30,7 @@
 
     (function() {
       var d = document, s = d.createElement('script');
-      s.src = 'https://demo.remark42.com/web/embed.js';
+      s.src = '<%= htmlWebpackPlugin.options.baseUrl %>/web/embed.js';
       s.type = 'text/javascript';
       (d.head || d.body).appendChild(s);
     })();

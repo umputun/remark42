@@ -29,7 +29,7 @@
 
     (function() {
       var d = document, s = d.createElement('script');
-      s.src = 'https://demo.remark42.com/web/last-comments.js';
+      s.src = '<%= htmlWebpackPlugin.options.baseUrl %>/web/last-comments.js';
       s.type = 'text/javascript';
       (d.head || d.body).appendChild(s);
     })();

@@ -44,7 +44,7 @@
 
     (function() {
       var d = document, s = d.createElement('script');
-      s.src = 'https://demo.remark42.com/web/counter.js';
+      s.src = '<%= htmlWebpackPlugin.options.baseUrl %>/web/counter.js';
       s.type = 'text/javascript';
       (d.head || d.body).appendChild(s);
     })();
