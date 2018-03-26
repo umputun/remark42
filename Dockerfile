@@ -20,6 +20,7 @@ FROM node:9.4-alpine as build-frontend
 ADD web /srv/web
 RUN \
     cd /srv/web && \
+    rm -rf ./node_modules && \
     npm i && npm run build
 
 
