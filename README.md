@@ -108,17 +108,17 @@ _instructions for google oauth2 setup borrowed from [oauth2_proxy](https://githu
 
 Frontend part is building automatically along with backend if you use `docker-compose`.
 
-For manual installation:
+For manual building:
 
-- Install [Node.js 8](https://nodejs.org/en/) or higher;
-- Run `npm install` inside `./web`;
-- Run `npm run build`;
-- Result files will be saved in `./web/public`.
+- install [Node.js 8](https://nodejs.org/en/) or higher;
+- run `npm install` inside `./web`;
+- run `npm run build` there;
+- result files will be saved in `./web/public`.
 
 For development mode use `npm start` instead of `npm run build`.
 In this case `webpack` will serve files using `webpack-dev-server` on `localhost:8080`.
 
-Urls for development mode:
+URLs for development:
 
 - `localhost:8080` — page with embedded script from `REMARK_URL` (default: `https://demo.remark42.com`);
 - `localhost:8080/dev.html` — page with embedded script from local folder;
