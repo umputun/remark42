@@ -1,12 +1,23 @@
+major fixes:
+
+- comment scroller:  
+  we can't get access to window.parent.location, 
+  so we need to use postMessage for pushing location.hash 
+  into the iframe 
+
 major features:
 
 - improve design
   - check mobile ui
-  - add styles for md text
+  - check styles for md text
   - add time format 'X hours ago'
+  - try to move voting buttons from the top line to the left side
+  - improve thread design
 - edit comment
   - `PUT /api/v1/comment/{id}?site=site-id&url=post-url`
 - add description of web part to readme
+- show comments of blocked users in the list of them
+
 
 optimizations:
 
@@ -17,10 +28,9 @@ optimizations:
   
 minor features:
   
-- add manual sort
+- maybe add manual sort
   - `GET /api/v1/find?site=site-id&url=post-url&sort=fld&format=tree`
-- add comments counter
-  - `GET /api/v1/count?site=site-id&url=post-url`
+- show list of user comments for admin?
 
 
 other:
