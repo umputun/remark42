@@ -30,7 +30,7 @@ func NewGoogle(p Params) Provider {
 				Profile: data.value("profile"),
 			}
 			if userInfo.Name == "" {
-				userInfo.Name = strings.Split(userInfo.ID, "@")[0]
+				userInfo.Name = strings.Split(data.value("email"), "@")[0]
 			}
 			return userInfo
 		},

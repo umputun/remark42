@@ -112,12 +112,6 @@
   version = "v0.8.0"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/pkg4go/rewrite"
-  packages = ["."]
-  revision = "7a613570d084fe7506c069d2cd8216d4795bd7e0"
-
-[[projects]]
   name = "github.com/pmezard/go-difflib"
   packages = ["difflib"]
   revision = "792786c7400a136282c1664665ae0a8db921c6c2"
@@ -201,6 +195,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "0d83e980a218ae9ca20daebde2587524e09b17a2d4c8f21ff717504f580b0dfc"
+  inputs-digest = "f4e55d0be501f335781d2365e71384e7aee319599603a8f3fef16759e9fd57d1"
   solver-name = "gps-cdcl"
   solver-version = 1
