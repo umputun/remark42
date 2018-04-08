@@ -10,7 +10,6 @@ const Define = webpack.DefinePlugin;
 
 const { NODE_ID } = require('./app/common/constants');
 const publicFolder = path.resolve(__dirname, 'public');
-console.log(process)
 const env = process.env.NODE_ENV || 'dev';
 const url = process.env.REMARK_URL || 'https://demo.remark42.com';
 
