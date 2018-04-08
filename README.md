@@ -23,7 +23,7 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 
 * copy provided `docker-compose.yml` and customize for your needs
 * make sure you **don't keep** `DEV=true` for any non-development deployments
-* pull prepared images from docker hub and start - `docker-compose pull && docker compose up -d`
+* pull prepared images from docker hub and start - `docker-compose pull && docker-compose up -d`
 * alternatively compile from sources - `docker-compose build`
 
 #### Parameters
