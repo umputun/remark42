@@ -13,6 +13,10 @@ const publicFolder = path.resolve(__dirname, 'public');
 const env = process.env.NODE_ENV || 'dev';
 const url = process.env.REMARK_URL || 'https://demo.remark42.com';
 
+// let's log some env variables because we can
+console.log(`NODE_ENV = ${env}`);
+console.log(`REMARK_URL = ${url}`);
+
 const commonStyleLoaders = [
   'css-loader',
   {
