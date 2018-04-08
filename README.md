@@ -22,6 +22,9 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 ### Backend
 
 * copy provided `docker-compose.yml` and customize for your needs
+* make sure you **don't keep** `DEV_PASSWD=something...` for any non-development deployments
+* prepare user id for container ``export USER=`id -u $USER` ``
+* pull prepared images from docker hub and start - `docker-compose pull && docker compose up -d`
 * make sure you **don't keep** `DEV=true` for any non-development deployments
 * pull prepared images from docker hub and start - `docker-compose pull && docker-compose up -d`
 * alternatively compile from sources - `docker-compose build`
@@ -98,10 +101,10 @@ _instructions for google oauth2 setup borrowed from [oauth2_proxy](https://githu
 
 #### Initial import from Disqus
 
-1.  Disqus provides an export of all comments on your site in a g-zipped file. This is found in your Moderation panel at Disqus Admin > Setup > Export. The export will be sent into a queue and then emailed to the address associated with your account once it's ready. Direct link to export will be `https://<siteud>.disqus.com/admin/discussions/export/`
-2.  Move this file to your remark42 host and unzip.
+1.  Disqus provides an export of all comments on your site in a g-zipped file. This is found in your Moderation panel at Disqus Admin > Setup > Export. The export will be sent into a queue and then emailed to the address associated with your account once it's ready. Direct link to export will be something like `https://<siteud>.disqus.com/admin/discussions/export/`. See [importing-exporting](https://help.disqus.com/customer/portal/articles/1104797-importing-exporting) for more details.
+2.  Move this file to your remark42 host and unzip, i.e. `gunzip <disqus-export-name>.xml.gz`.
 3.  Stop remark42 containers if started, i.e. `docker-compose stop`
-4.  Run import command - `docker-compose run --rm remark /srv/remark import --file=<disqus-export-xml> --site=<your site id>`
+4.  Run import command - `docker-compose run --rm remark /srv/remark import --file=<disqus-export-name>.xml --site=<your site id>`
 5.  Start remark42 containers `docker-compose up -d`
 
 ### Frontend
@@ -246,7 +249,7 @@ Sort can be `time` or `score`. Supported sort order with prefix -/+, i.e. `-time
 * `POST /api/v1/admin/import?site=side-id` - import comments from the backup.
 * `PUT /api/v1/admin/pin/{id}?site=site-id&url=post-url&pin=1` - pin or unpin comment.
 
-_all calls require auth and admin_
+_all admin calls require auth and admin privilege_
 
 ## Technical details
 
@@ -256,9 +259,9 @@ _all calls require auth and admin_
 * Automatic backup process runs every 24h and exports all content in json-like format to `backup-remark-YYYYMMDD.gz`.
 * Sessions implemented with [gorilla/sessions](https://github.com/gorilla/sessions) and file-system store under `SESSION_STORE` path. It uses HttpOnly, secure cookies.
 * All heavy REST calls cached internally, default expiration 4h
-* Users activity throttled globally (up to 1000) and limited locally (per user, up to 10 req/sec)
+* User's activity throttled globally (up to 1000 simultaneous requests) and limited locally (per user, up to 10 req/sec)
 * Request timeout set to 60sec
-* Development mode (`--dev`) allows to test remark42 without social login and with admin privileges. Adds basic-auth for username: `dev`, password: `${DEV_PASSWD}`. **should not be used in production deployment**
+* Development mode (`--dev-password` set) allows to test remark42 without social login and with admin privileges. Adds basic-auth for username: `dev`, password: `${DEV_PASSWD}`. **should not be used in production deployment**
 * User can vote for the comment multiple times but only to change his/her vote. Double-voting not allowed.
 * User can edit comments in 5 mins window after creation.
 * User ID prefixed by oauth provider name in order to avoid collisions and potential abuse.
