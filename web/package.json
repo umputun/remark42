@@ -2,7 +2,7 @@
   "name": "remark-ui",
   "version": "0.1.0",
   "scripts": {
-    "build": "NODE_ENV=production webpack --config ./webpack.config.js",
+    "build": "webpack --config ./webpack.config.js",
     "start": "webpack-dev-server --progress --hot --inline --config ./webpack.config.js",
     "reinstall": "rm -rf ./node_modules/ && npm install"
   },
