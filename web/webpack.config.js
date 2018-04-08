@@ -1,4 +1,3 @@
-const fs = require('fs');
 const path = require('path');
 
 const webpack = require('webpack');
@@ -11,6 +10,7 @@ const Define = webpack.DefinePlugin;
 
 const { NODE_ID } = require('./app/common/constants');
 const publicFolder = path.resolve(__dirname, 'public');
+console.log(process)
 const env = process.env.NODE_ENV || 'dev';
 const url = process.env.REMARK_URL || 'https://demo.remark42.com';
 
@@ -31,7 +31,6 @@ const commonStyleLoaders = [
     loader: 'sass-loader',
     options: {
       includePaths: [path.resolve(__dirname, 'app')],
-      // data: fs.readFileSync(path.resolve(__dirname, 'common/vars/vars.scss'), 'utf-8')
     }
   }
 ];
