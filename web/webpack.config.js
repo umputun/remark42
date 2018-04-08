@@ -1,4 +1,3 @@
-const fs = require('fs');
 const path = require('path');
 
 const webpack = require('webpack');
@@ -31,7 +30,6 @@ const commonStyleLoaders = [
     loader: 'sass-loader',
     options: {
       includePaths: [path.resolve(__dirname, 'app')],
-      // data: fs.readFileSync(path.resolve(__dirname, 'common/vars/vars.scss'), 'utf-8')
     }
   }
 ];
