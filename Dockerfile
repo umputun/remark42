@@ -17,6 +17,9 @@ RUN go build -o remark -ldflags "-X main.revision=$(git rev-parse --abbrev-ref H
 
 FROM node:9.4-alpine as build-frontend
 
+ARG REMARK_URL
+ENV REMARK_URL $REMARK_URL
+
 ADD web /srv/web
 RUN \
     cd /srv/web && \
