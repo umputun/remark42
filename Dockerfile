@@ -33,6 +33,9 @@ COPY --from=build-backend /go/src/github.com/umputun/remark/remark /srv/
 COPY --from=build-frontend /srv/web/public/ /srv/web
 RUN chown -R umputun:umputun /srv
 
+ADD start.sh /srv/start.sh
+RUN chmod +x /srv/start.sh
+
 USER umputun
 
 WORKDIR /srv
