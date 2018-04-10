@@ -2,10 +2,7 @@ version: '2'
 
 services:
     remark:
-        build:
-          context: .
-          args:
-            - REMARK_URL=${REMARK_URL}
+        build: .
         image: umputun/remark:master
         container_name: "remark"
         hostname: "remark"
