@@ -24,7 +24,6 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 * copy provided `docker-compose.yml` and customize for your needs
 * make sure you **don't keep** `DEV_PASSWD=something...` for any non-development deployments
 * prepare user id for container ``export USER=`id -u $USER` ``
-* pull prepared images from docker hub and start - `docker-compose pull && docker compose up -d`
 * make sure you **don't keep** `DEV=true` for any non-development deployments
 * pull prepared images from docker hub and start - `docker-compose pull && docker-compose up -d`
 * alternatively compile from sources - `docker-compose build`
