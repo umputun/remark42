@@ -44,7 +44,8 @@
 
     (function() {
       var d = document, s = d.createElement('script');
-      s.src = '<%= htmlWebpackPlugin.options.baseUrl %>/web/counter.js';
+      var baseurl = '';
+      s.src = baseurl + '/web/counter.js';
       s.type = 'text/javascript';
       (d.head || d.body).appendChild(s);
     })();

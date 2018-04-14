@@ -30,7 +30,8 @@
 
     (function() {
       var d = document, s = d.createElement('script');
-      s.src = '<%= htmlWebpackPlugin.options.baseUrl %>/web/embed.js';
+      var baseurl = '';
+      s.src = baseurl + '/web/embed.js';
       s.type = 'text/javascript';
       (d.head || d.body).appendChild(s);
     })();

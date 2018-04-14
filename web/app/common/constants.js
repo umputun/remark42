@@ -1,4 +1,4 @@
-const BASE_URL = process.env.BASE_URL;
+const BASE_URL = '/';
 const API_BASE = '/api/v1';
 const NODE_ID = 'remark42';
 const COUNTER_NODE_CLASSNAME = 'remark42__counter';

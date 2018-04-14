@@ -11,11 +11,9 @@ const Define = webpack.DefinePlugin;
 const { NODE_ID } = require('./app/common/constants');
 const publicFolder = path.resolve(__dirname, 'public');
 const env = process.env.NODE_ENV || 'dev';
-const url = process.env.REMARK_URL || 'https://demo.remark42.com';
 
 // let's log some env variables because we can
 console.log(`NODE_ENV = ${env}`);
-console.log(`REMARK_URL = ${url}`);
 
 const commonStyleLoaders = [
   'css-loader',
@@ -102,27 +100,23 @@ module.exports = {
     }),
     new Define({
       'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),
-      'process.env.BASE_URL': JSON.stringify(url),
     }),
     // TODO: we should add it only on demo serv
     new Html({
       template: path.resolve(__dirname, 'index.ejs'),
       inject: false,
-      baseUrl: url,
     }),
     // TODO: we should add it only on demo serv
     new Html({
       template: path.resolve(__dirname, 'counter.ejs'),
       filename: 'counter.html',
       inject: false,
-      baseUrl: url,
     }),
     // TODO: we should add it only on demo serv
     new Html({
       template: path.resolve(__dirname, 'last-comments.ejs'),
       filename: 'last-comments.html',
       inject: false,
-      baseUrl: url,
     }),
     ...(env === 'production' ? [] : [new Html({
       template: path.resolve(__dirname, 'dev.ejs'),

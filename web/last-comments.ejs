@@ -29,7 +29,8 @@
 
     (function() {
       var d = document, s = d.createElement('script');
-      s.src = '<%= htmlWebpackPlugin.options.baseUrl %>/web/last-comments.js';
+      var baseurl = '';
+      s.src = baseurl + '/web/last-comments.js';
       s.type = 'text/javascript';
       (d.head || d.body).appendChild(s);
     })();
