@@ -6,6 +6,9 @@ echo "prepare environment"
 sed -i "s|BASE_URL:\"[^\"]*\"|BASE_URL:\"${REMARK_URL}\"|g" /srv/web/*.js
 sed -i "s|var baseurl = '[^']*';|var baseurl = '${REMARK_URL}';|g" /srv/web/*.html
 
+# copy default avatar
+cp -fv /srv/web/remark.image /srv/var/avatars/remark.image
+
 echo "start remark42 server"
 
 /sbin/su-exec ${USER} /srv/remark server
