@@ -20,6 +20,7 @@ services:
 
         environment:
             # - REMARK_URL=https://demo.remark42.com
+            - USER
             - REMARK_URL
             - BOLTDB_PATH=/srv/var/db
             - BACKUP_PATH=/srv/var/backup
@@ -38,5 +39,5 @@ services:
             - ./var:/srv/var
             #- ./web:/srv/web # uncomment to map web directory directly. It will propagate local changes to container without redeploy
 
-        user: ${USER} # if local UID != 1001 (default) set `USER` in your env, i.e. export USER=`id -u $USER`
+#        user: ${USER} # if local UID != 1001 (default) set `USER` in your env, i.e. export USER=`id -u $USER`
         command: /srv/start.sh
