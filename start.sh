@@ -3,4 +3,4 @@
 echo "prepare environment"
 
 echo "start remark42 server"
-/srv/remark server
+/sbin/su-exec umputun /srv/remark server
