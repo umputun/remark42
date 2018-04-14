@@ -40,7 +40,8 @@ export default class Root extends Component {
       .catch(() => store.set('user', {}))
       .finally(() => {
         api.find({ url })
-          .then(({ comments } = {}) => store.set('comments', comments))
+          .then(({ comments = [] } = {}) => store.set('comments', comments))
+          .catch(() => store.set('comments', []))
           .finally(() => {
             this.setState({
               loaded: true,
