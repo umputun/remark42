@@ -33,13 +33,16 @@ export default class Comment extends Component {
   }
 
   updateState(props) {
-    const { data: { user: { block }, pin, score = 0, votes = [] }, mods: { guest } = {} } = props;
+    const { data, data: { user: { block }, pin }, mods: { guest } = {} } = props;
+
+    const votes = data && data.votes || [];
+    const score = data && data.score || 0;
 
     if (guest) {
       this.setState({
         guest,
         score,
-        deleted: props.data ? props.data.delete : false,
+        deleted: data ? data.delete : false,
       });
     } else {
       const userId = store.get('user').id;
@@ -48,7 +51,7 @@ export default class Comment extends Component {
         guest,
         score,
         pinned: !!pin,
-        deleted: props.data ? props.data.delete : false,
+        deleted: data ? data.delete : false,
         userBlocked: !!block,
         scoreIncreased: userId in votes && votes[userId],
         scoreDecreased: userId in votes && !votes[userId],
