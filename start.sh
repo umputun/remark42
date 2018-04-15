@@ -8,7 +8,7 @@ sed -i "s|var baseurl = '[^']*';|var baseurl = '${REMARK_URL}';|g" /srv/web/*.ht
 
 # copy default avatar
 mkdir -p /srv/var/avatars
-cp -fv /srv/web/remark.image /srv/var/avatars/remark.image
+cp -nv /srv/web/remark.image /srv/var/avatars/remark.image
 
 echo "start remark42 server"
 
