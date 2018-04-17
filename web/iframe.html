@@ -8,7 +8,6 @@
 </head>
 <body>
   <div id="remark42"></div>
-  <script type="text/javascript" src="remark.js"></script>
   <script>
     var lastHeight = 0;
     setInterval(() => {
@@ -17,6 +16,16 @@
         window.parent.postMessage(JSON.stringify({ remarkIframeHeight: lastHeight }), '*');
       }
     }, 200);
+
+    window.addEventListener('message', updateHash);
+
+    function updateHash(event) {
+      try {
+        const data = JSON.parse(event.data);
+        location.hash = data.hash;
+      } catch (e) {}
+    }
   </script>
+  <script type="text/javascript" src="remark.js"></script>
 </body>
 </html>

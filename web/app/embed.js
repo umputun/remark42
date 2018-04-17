@@ -51,11 +51,19 @@ function init() {
 
   window.addEventListener('message', updateIframeHeight);
 
+  window.addEventListener('hashchange', postHashToIframe);
+
+  setTimeout(postHashToIframe, 1000);
+
   function updateIframeHeight(event) {
     try {
       const data = JSON.parse(event.data);
       iframe.style.height = `${data.remarkIframeHeight}px`;
     } catch (e) {}
+  }
+
+  function postHashToIframe() {
+    iframe.contentWindow.postMessage(JSON.stringify({ hash: location.hash }), '*');
   }
 }
 
