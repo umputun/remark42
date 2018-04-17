@@ -1,7 +1,5 @@
 import Promise from 'promise-polyfill';
 
-Promise._unhandledRejectionFn = () => {};
-
 Promise.prototype.finally = function finallyFn(callback) {
   const constructor = this.constructor;
 
