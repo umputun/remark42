@@ -59,8 +59,8 @@ export default class Root extends Component {
   }
 
   checkUrlHash() {
-    if (window.parent.location.hash.indexOf('#remark__comment-') === 0) {
-      const comment = document.querySelector(window.parent.location.hash);
+    if (window.location.hash.indexOf('#remark__comment-') === 0) {
+      const comment = document.querySelector(window.location.hash);
 
       if (comment) {
         setTimeout(() => {

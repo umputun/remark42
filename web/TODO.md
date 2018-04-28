@@ -1,10 +1,3 @@
-major fixes:
-
-- comment scroller:  
-  we can't get access to window.parent.location, 
-  so we need to use postMessage for pushing location.hash 
-  into the iframe 
-
 major features:
 
 - improve design
