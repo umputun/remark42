@@ -6,7 +6,7 @@ import api from 'common/api';
 
 import ListComments from 'components/list-comments';
 
-if (document.readyState !== 'interactive') {
+if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
 } else {
   init();

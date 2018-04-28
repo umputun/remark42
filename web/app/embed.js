@@ -1,6 +1,6 @@
 import { BASE_URL, NODE_ID } from 'common/constants';
 
-if (document.readyState !== 'interactive') {
+if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
 } else {
   init();

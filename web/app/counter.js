@@ -2,7 +2,7 @@ import { COUNTER_NODE_CLASSNAME } from './common/constants'
 
 import api from 'common/api';
 
-if (document.readyState !== 'interactive') {
+if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
 } else {
   init();

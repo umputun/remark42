@@ -9,7 +9,11 @@ import { NODE_ID } from './common/constants';
 
 require('./components/document');
 
-init();
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
 
 function init() {
   const node = document.getElementById(NODE_ID);
