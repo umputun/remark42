@@ -333,7 +333,7 @@ export default class Comment extends Component {
 function getTextSnippet(html) {
   const LENGTH = 100;
   const tmp = document.createElement('div');
-  tmp.innerHTML = html;
+  tmp.innerHTML = html.replace('</p><p>', ' ');
 
   const result = tmp.innerText || '';
   const snippet = result.substr(0, LENGTH);
