@@ -421,9 +421,10 @@ func prep(t *testing.T) (srv *Rest, port int) {
 			AvatarProxy:  &auth.AvatarProxy{StorePath: "/tmp", RoutePath: "/api/v1/avatar"},
 			Admins:       []string{"a1", "a2"},
 		},
-		Exporter: &migrator.Remark{CommentFinder: dataStore},
-		Cache:    &mockCache{},
-		WebRoot:  "/tmp",
+		NativeMigrator: migrator.Remark{CommentFinder: dataStore, CommentCreator: dataStore},
+		DisqusImporter: &migrator.Disqus{CommentCreator: dataStore},
+		Cache:          &mockCache{},
+		WebRoot:        "/tmp",
 	}
 
 	ioutil.WriteFile(testHTML, []byte("some html"), 0700)

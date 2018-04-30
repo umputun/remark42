@@ -107,4 +107,3 @@ GET {{host}}/api/v1/avatar/blah
 
 ### ping
 GET {{host}}/ping
-

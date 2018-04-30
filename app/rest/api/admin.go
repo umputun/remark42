@@ -19,9 +19,8 @@ import (
 // admin provides router for all requests available for admin users only
 type admin struct {
 	dataService    store.Service
-	exporterNative migrator.Exporter
-	importerNative migrator.Importer
-	importerDisqus migrator.Importer
+	nativeMigrator migrator.Remark
+	disqusImporter migrator.Importer
 	cache          rest.LoadingCache
 	defAvatarURL   string
 }
@@ -108,7 +107,7 @@ func (a *admin) exportCtrl(w http.ResponseWriter, r *http.Request) {
 		writer = gzip.NewWriter(w)
 	}
 
-	if err := a.exporterNative.Export(writer, siteID); err != nil {
+	if err := a.nativeMigrator.Export(writer, siteID); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "export failed")
 	}
 }
@@ -117,13 +116,14 @@ func (a *admin) exportCtrl(w http.ResponseWriter, r *http.Request) {
 // imports comments from post body.
 func (a *admin) importCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
-	importer := a.importerNative
+	var importer migrator.Importer = &a.nativeMigrator
 	if r.URL.Query().Get("provider") == "disqus" {
-		importer = a.importerDisqus
+		importer = a.disqusImporter
 	}
 
 	if err := importer.Import(r.Body, siteID); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "import failed")
+		return
 	}
 	a.cache.Flush()
 }

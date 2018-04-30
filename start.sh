@@ -12,4 +12,4 @@ cp -nv /srv/web/remark.image /srv/var/avatars/remark.image
 
 echo "start remark42 server"
 
-/sbin/su-exec ${USER} /srv/remark server
+/sbin/su-exec ${USER} /srv/remark

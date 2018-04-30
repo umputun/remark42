@@ -35,9 +35,8 @@ type Rest struct {
 	Cache         rest.LoadingCache
 	WebRoot       string
 
-	Exporter migrator.Exporter
-	Importer migrator.Importer
-	Disqus   migrator.Importer
+	NativeMigrator migrator.Remark
+	DisqusImporter migrator.Importer
 
 	httpServer    *http.Server
 	amdminService admin
@@ -53,9 +52,8 @@ func (s *Rest) Run(port int) {
 
 	s.amdminService = admin{
 		dataService:    s.DataService,
-		exporterNative: s.Exporter,
-		importerNative: s.Importer,
-		importerDisqus: s.Disqus,
+		nativeMigrator: s.NativeMigrator,
+		disqusImporter: s.DisqusImporter,
 		cache:          s.Cache,
 		defAvatarURL:   s.Authenticator.AvatarProxy.Default(),
 	}
