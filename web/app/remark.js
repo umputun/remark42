@@ -7,8 +7,6 @@ import ListComments from './components/list-comments'; // TODO: temp solution fo
 
 import { NODE_ID } from './common/constants';
 
-require('./components/document');
-
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
 } else {
