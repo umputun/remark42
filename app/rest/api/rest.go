@@ -32,9 +32,12 @@ type Rest struct {
 	Version       string
 	DataService   store.Service
 	Authenticator auth.Authenticator
-	Exporter      migrator.Exporter
 	Cache         rest.LoadingCache
 	WebRoot       string
+
+	Exporter migrator.Exporter
+	Importer migrator.Importer
+	Disqus   migrator.Importer
 
 	httpServer    *http.Server
 	amdminService admin
@@ -48,8 +51,13 @@ func (s *Rest) Run(port int) {
 		log.Printf("[DEBUG] admins %+v", s.Authenticator.Admins)
 	}
 
-	s.amdminService = admin{dataService: s.DataService, exporter: s.Exporter, cache: s.Cache,
-		defAvatarURL: s.Authenticator.AvatarProxy.Default(),
+	s.amdminService = admin{
+		dataService:    s.DataService,
+		exporterNative: s.Exporter,
+		importerNative: s.Importer,
+		importerDisqus: s.Disqus,
+		cache:          s.Cache,
+		defAvatarURL:   s.Authenticator.AvatarProxy.Default(),
 	}
 
 	router := chi.NewRouter()

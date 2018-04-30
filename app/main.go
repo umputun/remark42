@@ -120,6 +120,8 @@ func main() {
 		Version:     revision,
 		DataService: dataService,
 		Exporter:    exporter,
+		Importer:    &migrator.Remark{CommentCreator: dataStore},
+		Disqus:      &migrator.Disqus{CommentCreator: dataStore},
 		WebRoot:     opts.ServerCommand.WebRoot,
 		Authenticator: auth.Authenticator{
 			Admins:       opts.Admins,

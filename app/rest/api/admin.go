@@ -18,11 +18,12 @@ import (
 
 // admin provides router for all requests available for admin users only
 type admin struct {
-	dataService  store.Service
-	exporter     migrator.Exporter
-	importer     migrator.Importer
-	cache        rest.LoadingCache
-	defAvatarURL string
+	dataService    store.Service
+	exporterNative migrator.Exporter
+	importerNative migrator.Importer
+	importerDisqus migrator.Importer
+	cache          rest.LoadingCache
+	defAvatarURL   string
 }
 
 func (a *admin) routes(middlewares ...func(http.Handler) http.Handler) chi.Router {
@@ -107,16 +108,21 @@ func (a *admin) exportCtrl(w http.ResponseWriter, r *http.Request) {
 		writer = gzip.NewWriter(w)
 	}
 
-	if err := a.exporter.Export(writer, siteID); err != nil {
+	if err := a.exporterNative.Export(writer, siteID); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "export failed")
 	}
 }
 
-// POST /import?site=site-id
+// POST /import?site=site-id&provider=disqus|remark
 // imports comments from post body.
 func (a *admin) importCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
-	if err := a.importer.Import(r.Body, siteID); err != nil {
+	importer := a.importerNative
+	if r.URL.Query().Get("provider") == "disqus" {
+		importer = a.importerDisqus
+	}
+
+	if err := importer.Import(r.Body, siteID); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "import failed")
 	}
 	a.cache.Flush()

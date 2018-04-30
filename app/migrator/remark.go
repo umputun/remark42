@@ -56,6 +56,11 @@ func (r *Remark) Export(w io.Writer, siteID string) error {
 
 // Import comments from json strings produced by Remark.Export
 func (r *Remark) Import(reader io.Reader, siteID string) error {
+
+	if err := r.DeleteAll(siteID); err != nil {
+		return err
+	}
+
 	failed := 0
 	total, comments := 0, 0
 	scanner := bufio.NewScanner(reader)

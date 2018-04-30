@@ -53,6 +53,10 @@ type uid struct {
 // Import from disqus and save to store
 func (d *Disqus) Import(r io.Reader, siteID string) (err error) {
 
+	if err = d.DeleteAll(siteID); err != nil {
+		return err
+	}
+
 	commentsCh := d.convert(r, siteID)
 	failed, passed := 0, 0
 	for c := range commentsCh {
@@ -145,7 +149,6 @@ func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 						log.Printf("[DEBUG] processed %d comments", stats.commentsCount)
 					}
 				}
-
 			}
 		}
 		close(commentsCh)
