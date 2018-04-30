@@ -69,7 +69,10 @@ export default class Input extends Component {
           {props.children}
         </textarea>
 
-        <button className="input__button" type="submit">Send</button>
+        <div className="input__buttons">
+          <button className={b('input__button', {}, { type: 'preview' })} type="button">Preview</button>
+          <button className={b('input__button', {}, { type: 'send' })} type="submit">Send</button>
+        </div>
       </form>
     );
   }
