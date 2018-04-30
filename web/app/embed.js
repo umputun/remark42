@@ -26,7 +26,7 @@ function init() {
     return;
   }
 
-  remark_config.url = remark_config.url || window.location.href;
+  remark_config.url = (remark_config.url || window.location.href).split('#')[0];
 
   const query = Object.keys(remark_config)
     .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(remark_config[key])}`)
