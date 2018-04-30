@@ -83,7 +83,18 @@ func main() {
 		return sess
 	}()
 
-	nativeMigrator := migrator.Remark{CommentFinder: dataStore}
+	exporter := migrator.Remark{CommentFinder: dataStore}
+	cache := rest.NewLoadingCache(4*time.Hour, 15*time.Minute, postFlushFn)
+
+	activateBackup(&exporter)
+
+	importSrv := api.Import{
+		Version:        revision,
+		Cache:          cache,
+		NativeImporter: &migrator.Remark{CommentCreator: dataStore},
+		DisqusImporter: &migrator.Disqus{CommentCreator: dataStore},
+	}
+	go importSrv.Run(opts.Port + 1)
 
 	avatarProxy := &auth.AvatarProxy{
 		StorePath:     opts.AvatarStore,
@@ -92,14 +103,11 @@ func main() {
 		DefaultAvatar: opts.DefaultAvatar,
 	}
 
-	activateBackup(&nativeMigrator)
-
 	srv := api.Rest{
-		Version:        revision,
-		DataService:    dataService,
-		NativeMigrator: nativeMigrator,
-		DisqusImporter: &migrator.Disqus{CommentCreator: dataStore},
-		WebRoot:        opts.WebRoot,
+		Version:     revision,
+		DataService: dataService,
+		Exporter:    &exporter,
+		WebRoot:     opts.WebRoot,
 		Authenticator: auth.Authenticator{
 			Admins:       opts.Admins,
 			SessionStore: sessionStore,
@@ -107,7 +115,7 @@ func main() {
 			AvatarProxy:  avatarProxy,
 			DevPasswd:    opts.DevPasswd,
 		},
-		Cache: rest.NewLoadingCache(4*time.Hour, 15*time.Minute, postFlushFn),
+		Cache: cache,
 	}
 	srv.Run(opts.Port)
 }

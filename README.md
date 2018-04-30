@@ -23,34 +23,34 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 
 * copy provided `docker-compose.yml` and customize for your needs
 * make sure you **don't keep** `DEV_PASSWD=something...` for any non-development deployments
-* prepare user id for container ``export USER=`id -u $USER` ``
+* prepare user id for container `` export USER=`id -u $USER` ``
 * make sure you **don't keep** `DEV=true` for any non-development deployments
 * pull prepared images from docker hub and start - `docker-compose pull && docker-compose up -d`
 * alternatively compile from sources - `docker-compose build`
 
 #### Parameters
 
-| Command line    | Environment          | Default                | Multi | Scope  | Description                     |
-| --------------- | -------------------- | ---------------------- | ----- | ------ | ------------------------------- |
-| --url           | REMARK_URL           | `https://remark42.com` | no    | all    | url to remark server            |
-| --bolt          | BOLTDB_PATH          | `/tmp`                 | no    | all    | path to data directory          |
-| --site          | SITE                 | `remark`               | yes   | server | site name(s)                    |
-| --admin         | ADMIN                |                        | yes   | server | admin names (list of user ids)  |
-| --backup        | BACKUP_PATH          | `/tmp`                 | no    | server | backups location                |
-| --max-back      | MAX_BACKUP_FILES     | `10`                   | no    | server | max backup files to keep        |
-| --session       | SESSION_STORE        | `/tmp`                 | no    | server | path to session store directory |
-| --store-key     | STORE_KEY            | `secure-store-key`     | no    | server | session store encryption key    |
-| --google-cid    | REMARK_GOOGLE_CID    |                        | no    | server | Google OAuth client ID          |
-| --google-csec   | REMARK_GOOGLE_CSEC   |                        | no    | server | Google OAuth client secret      |
-| --facebook-cid  | REMARK_FACEBOOK_CID  |                        | no    | server | Facebook OAuth client ID        |
-| --facebook-csec | REMARK_FACEBOOK_CSEC |                        | no    | server | Facebook OAuth client secret    |
-| --github-cid    | REMARK_GITHUB_CID    |                        | no    | server | Github OAuth client ID          |
-| --github-csec   | REMARK_GITHUB_CSEC   |                        | no    | server | Github OAuth client secret      |
-| --provider      |                      | `disqus`               | no    | import | provider type for import        |
-| --site          |                      | `remark`               | no    | import | site ID                         |
-| --file          |                      | `disqus.xml`           | no    | import | import file                     |
-| --dbg           | DEBUG                | `false`                | no    | all    | debug mode                      |
-| --dev-password  | DEV_PASSWD           |                        | no    | all    | password for `dev` user         |
+| Command line    | Environment          | Default                | Multi | Description                     |
+| --------------- | -------------------- | ---------------------- | ----- | ------------------------------- |
+| --url           | REMARK_URL           | `https://remark42.com` | no    | url to remark server            |
+| --bolt          | BOLTDB_PATH          | `/tmp`                 | no    | path to data directory          |
+| --site          | SITE                 | `remark`               | yes   | site name(s)                    |
+| --admin         | ADMIN                |                        | yes   | admin names (list of user ids)  |
+| --backup        | BACKUP_PATH          | `/tmp`                 | no    | backups location                |
+| --max-back      | MAX_BACKUP_FILES     | `10`                   | no    | max backup files to keep        |
+| --session       | SESSION_STORE        | `/tmp`                 | no    | path to session store directory |
+| --store-key     | STORE_KEY            | `secure-store-key`     | no    | session store encryption key    |
+| --google-cid    | REMARK_GOOGLE_CID    |                        | no    | Google OAuth client ID          |
+| --google-csec   | REMARK_GOOGLE_CSEC   |                        | no    | Google OAuth client secret      |
+| --facebook-cid  | REMARK_FACEBOOK_CID  |                        | no    | Facebook OAuth client ID        |
+| --facebook-csec | REMARK_FACEBOOK_CSEC |                        | no    | Facebook OAuth client secret    |
+| --github-cid    | REMARK_GITHUB_CID    |                        | no    | Github OAuth client ID          |
+| --github-csec   | REMARK_GITHUB_CSEC   |                        | no    | Github OAuth client secret      |
+| --provider      |                      | `disqus`               | no    | provider type for import        |
+| --site          |                      | `remark`               | no    | site ID                         |
+| --file          |                      | `disqus.xml`           | no    | import file                     |
+| --dbg           | DEBUG                | `false`                | no    | debug mode                      |
+| --dev-password  | DEV_PASSWD           |                        | no    | password for `dev` user         |
 
 _all multi parameters separated by `,`_
 
@@ -101,10 +101,8 @@ _instructions for google oauth2 setup borrowed from [oauth2_proxy](https://githu
 #### Initial import from Disqus
 
 1.  Disqus provides an export of all comments on your site in a g-zipped file. This is found in your Moderation panel at Disqus Admin > Setup > Export. The export will be sent into a queue and then emailed to the address associated with your account once it's ready. Direct link to export will be something like `https://<siteud>.disqus.com/admin/discussions/export/`. See [importing-exporting](https://help.disqus.com/customer/portal/articles/1104797-importing-exporting) for more details.
-2.  Move this file to your remark42 host and unzip, i.e. `gunzip <disqus-export-name>.xml.gz`.
-3.  Stop remark42 containers if started, i.e. `docker-compose stop`
-4.  Run import command - `docker-compose run --rm remark /srv/remark import --file=<disqus-export-name>.xml --site=<your site id>`
-5.  Start remark42 containers `docker-compose up -d`
+2.  Move this file to your remark42 host within `.var` and unzip, i.e. `gunzip <disqus-export-name>.xml.gz`.
+3.  Run import command - `docker-compose run remark /srv/import-disqus.sh <disqus-export-name>.xml <your site id>`
 
 ### Frontend
 
@@ -112,20 +110,20 @@ Frontend part is building automatically along with backend if you use `docker-co
 
 For manual building:
 
-- install [Node.js 8](https://nodejs.org/en/) or higher;
-- run `npm install` inside `./web`;
-- run `npm run build` there;
-- result files will be saved in `./web/public`.
+* install [Node.js 8](https://nodejs.org/en/) or higher;
+* run `npm install` inside `./web`;
+* run `npm run build` there;
+* result files will be saved in `./web/public`.
 
 For development mode use `npm start` instead of `npm run build`.
 In this case `webpack` will serve files using `webpack-dev-server` on `localhost:8080`.
 
 URLs for development:
 
-- `localhost:8080` — page with embedded script from `REMARK_URL` (default: `https://demo.remark42.com`);
-- `localhost:8080/dev.html` — page with embedded script from local folder;
-- `localhost:8080/last-comments.html` — page with embedded script for last comments;
-- `localhost:8080/counter.html` — page with embedded script for counter with examples.
+* `localhost:8080` — page with embedded script from `REMARK_URL` (default: `https://demo.remark42.com`);
+* `localhost:8080/dev.html` — page with embedded script from local folder;
+* `localhost:8080/last-comments.html` — page with embedded script for last comments;
+* `localhost:8080/counter.html` — page with embedded script for counter with examples.
 
 ## API
 

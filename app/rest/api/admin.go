@@ -18,11 +18,10 @@ import (
 
 // admin provides router for all requests available for admin users only
 type admin struct {
-	dataService    store.Service
-	nativeMigrator migrator.Remark
-	disqusImporter migrator.Importer
-	cache          rest.LoadingCache
-	defAvatarURL   string
+	dataService  store.Service
+	exporter     migrator.Exporter
+	cache        rest.LoadingCache
+	defAvatarURL string
 }
 
 func (a *admin) routes(middlewares ...func(http.Handler) http.Handler) chi.Router {
@@ -31,7 +30,7 @@ func (a *admin) routes(middlewares ...func(http.Handler) http.Handler) chi.Route
 	router.Delete("/comment/{id}", a.deleteCommentCtrl)
 	router.Put("/user/{userid}", a.setBlockCtrl)
 	router.Get("/export", a.exportCtrl)
-	router.Post("/import", a.importCtrl)
+
 	router.Put("/pin/{id}", a.setPinCtrl)
 	router.Get("/blocked", a.blockedUsersCtrl)
 	return router
@@ -107,25 +106,9 @@ func (a *admin) exportCtrl(w http.ResponseWriter, r *http.Request) {
 		writer = gzip.NewWriter(w)
 	}
 
-	if err := a.nativeMigrator.Export(writer, siteID); err != nil {
+	if err := a.exporter.Export(writer, siteID); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "export failed")
 	}
-}
-
-// POST /import?site=site-id&provider=disqus|remark
-// imports comments from post body.
-func (a *admin) importCtrl(w http.ResponseWriter, r *http.Request) {
-	siteID := r.URL.Query().Get("site")
-	var importer migrator.Importer = &a.nativeMigrator
-	if r.URL.Query().Get("provider") == "disqus" {
-		importer = a.disqusImporter
-	}
-
-	if err := importer.Import(r.Body, siteID); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "import failed")
-		return
-	}
-	a.cache.Flush()
 }
 
 func (a *admin) checkBlocked(siteID string, user store.User) bool {

@@ -421,20 +421,31 @@ func prep(t *testing.T) (srv *Rest, port int) {
 			AvatarProxy:  &auth.AvatarProxy{StorePath: "/tmp", RoutePath: "/api/v1/avatar"},
 			Admins:       []string{"a1", "a2"},
 		},
-		NativeMigrator: migrator.Remark{CommentFinder: dataStore, CommentCreator: dataStore},
+		Exporter: &migrator.Remark{CommentFinder: dataStore},
+		Cache:    &mockCache{},
+		WebRoot:  "/tmp",
+	}
+
+	importSrv := &Import{
 		DisqusImporter: &migrator.Disqus{CommentCreator: dataStore},
+		NativeImporter: &migrator.Remark{CommentCreator: dataStore},
 		Cache:          &mockCache{},
-		WebRoot:        "/tmp",
 	}
 
 	ioutil.WriteFile(testHTML, []byte("some html"), 0700)
 	portSetCh := make(chan bool)
+
 	go func() {
 		port = rand.Intn(50000) + 1025
 		portSetCh <- true
 		srv.Run(port)
 	}()
+
 	<-portSetCh
+
+	go func() {
+		importSrv.Run(port + 1)
+	}()
 
 	time.Sleep(100 * time.Millisecond)
 	return srv, port

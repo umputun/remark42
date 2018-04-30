@@ -35,8 +35,7 @@ type Rest struct {
 	Cache         rest.LoadingCache
 	WebRoot       string
 
-	NativeMigrator migrator.Remark
-	DisqusImporter migrator.Importer
+	Exporter migrator.Exporter
 
 	httpServer    *http.Server
 	amdminService admin
@@ -44,18 +43,17 @@ type Rest struct {
 
 // Run the lister and request's router, activate rest server
 func (s *Rest) Run(port int) {
-	log.Print("[INFO] activate rest server")
+	log.Printf("[INFO] activate rest server on port %d", port)
 
 	if len(s.Authenticator.Admins) > 0 {
 		log.Printf("[DEBUG] admins %+v", s.Authenticator.Admins)
 	}
 
 	s.amdminService = admin{
-		dataService:    s.DataService,
-		nativeMigrator: s.NativeMigrator,
-		disqusImporter: s.DisqusImporter,
-		cache:          s.Cache,
-		defAvatarURL:   s.Authenticator.AvatarProxy.Default(),
+		dataService:  s.DataService,
+		exporter:     s.Exporter,
+		cache:        s.Cache,
+		defAvatarURL: s.Authenticator.AvatarProxy.Default(),
 	}
 
 	router := chi.NewRouter()
