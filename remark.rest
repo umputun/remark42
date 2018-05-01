@@ -25,11 +25,7 @@ POST {{host}}/api/v1/preview
 Content-Type: application/json
 
 {
-	"text": "comment *blah* http://radio-t.com",
-	"locator": {
-		"url": "https://radio-t.com/blah1",
-		"site": "remark"
-	}
+	"text": "comment *blah* http://radio-t.com"
 }
 
 ### update comment

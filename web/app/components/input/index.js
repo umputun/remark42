@@ -1,3 +1,5 @@
+import 'components/raw-content';
+
 export { default } from './input';
 
 require('./input.scss');
@@ -8,3 +10,4 @@ require('./__button/_type/_send/input__button_type_send.scss');
 
 require('./__buttons/input__buttons.scss');
 require('./__field/input__field.scss');
+require('./__preview/input__preview.scss');

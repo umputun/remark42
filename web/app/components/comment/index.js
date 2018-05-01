@@ -1,3 +1,5 @@
+import 'components/raw-content';
+
 export { default } from './comment';
 
 require('./comment.scss');

@@ -219,7 +219,10 @@ export default class Comment extends Component {
               <a href={`${o.locator.url}#remark__comment-${o.id}`} className="comment__username">{o.user.name}</a>
             </div>
             {' '}
-            <div className="comment__text" dangerouslySetInnerHTML={{ __html: o.text }}/>
+            <div
+              className={b('comment__text', { mix: 'raw-content' })}
+              dangerouslySetInnerHTML={{ __html: o.text }}
+            />
           </div>
         </div>
       );
@@ -273,7 +276,10 @@ export default class Comment extends Component {
             }
           </div>
 
-          <div className="comment__text" dangerouslySetInnerHTML={{ __html: o.text }}/>
+          <div
+            className={b('comment__text', { mix: 'raw-content' })}
+            dangerouslySetInnerHTML={{ __html: o.text }}
+          />
 
           <div className="comment__actions">
             {

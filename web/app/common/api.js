@@ -2,6 +2,8 @@ import { siteId, url } from './settings';
 
 import fetcher from './fetcher'
 
+// TODO: rename actions
+
 /* common */
 
 export const logOut = () => fetcher.get({ url: `/auth/logout`, overriddenApiBase: '' });
@@ -30,9 +32,17 @@ export const send = ({ text, pid }) => fetcher.post({
     text,
     locator: {
       site: siteId,
-      url
+      url,
     },
     ...(pid ? { pid } : {}),
+  },
+  withCredentials: true,
+});
+
+export const getPreview = ({ text }) => fetcher.post({
+  url: '/preview',
+  body: {
+    text,
   },
   withCredentials: true,
 });
@@ -83,6 +93,7 @@ export default {
   vote,
   send,
   getUser,
+  getPreview,
 
   pin,
   unpin,
