@@ -2,7 +2,7 @@
   background: #0aa;
   color: #fff;
 
-  &:hover {
+  &:hover, &:focus {
     background: #06c5c5;
   }
 }

@@ -1,0 +1,28 @@
+.comment_replying {
+  border: 3px solid #eee;
+
+  @media (min-width: 768px) {
+    border: 0;
+    padding-top: 0;
+  }
+
+  .comment__body {
+    padding: 8px 8px 0;
+
+    @media (min-width: 768px) {
+      padding: 0;
+    }
+  }
+
+  .comment__input {
+    border-left-width: 0;
+    border-right-width: 0;
+    border-bottom-width: 0;
+    padding-left: 0;
+
+    @media (min-width: 768px) {
+      border: 3px solid #eee;
+      padding-left: 32px;
+    }
+  }
+}

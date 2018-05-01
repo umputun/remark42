@@ -1,9 +1,19 @@
 @import '../comment.vars';
 
-.comment_level {
-  @for $i from 1 through 5 {
+@for $i from 1 through 5 {
+  .comment_level {
     &_#{$i} {
-      margin-left: $i * ($avatarSize + $avatarOffset);
+      padding-left: $i * ($avatarSize + $avatarOffset);
+
+      &.comment_replying {
+        .comment__input {
+          margin-left: -$i * ($avatarSize + $avatarOffset);
+
+          @media (min-width: 768px) {
+            margin-left: 0;
+          }
+        }
+      }
     }
   }
 }

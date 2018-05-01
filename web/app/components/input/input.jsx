@@ -59,6 +59,7 @@ export default class Input extends Component {
       <form className={b('input', props)} onSubmit={this.send}>
         <textarea
           className="input__field"
+          placeholder="Your comment here"
           onInput={this.autoResize}
           onKeyDown={this.onKeyDown}
           style={{ height }}

@@ -1,5 +1,5 @@
 .input__button_type_preview {
-  &:hover {
+  &:hover, &:focus {
     box-shadow: inset 0 0 0 2px #0aa;
     color: #099;
   }
