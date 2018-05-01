@@ -1,5 +1,6 @@
 .comment_replying {
   border: 3px solid #eee;
+  padding-bottom: 0;
 
   @media (min-width: 768px) {
     border: 0;
@@ -18,11 +19,19 @@
     border-left-width: 0;
     border-right-width: 0;
     border-bottom-width: 0;
-    padding-left: 0;
 
     @media (min-width: 768px) {
       border: 3px solid #eee;
-      padding-left: 32px;
+    }
+  }
+
+  .comment__score {
+    top: 12px;
+    right: 8px;
+
+    @media (min-width: 768px) {
+      top: 4px;
+      right: 0;
     }
   }
 }

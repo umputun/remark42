@@ -1,0 +1,17 @@
+.comment__control {
+  margin-right: 8px;
+  cursor: pointer;
+  color: #8CD4D4;
+
+  &:last-child {
+    margin-right: 0;
+  }
+
+  &:hover {
+    color: #0aa;
+  }
+
+  &:focus {
+    outline: none;
+  }
+}

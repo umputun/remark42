@@ -1,8 +1,12 @@
 .comment__score {
-  display: inline-block;
-  margin-left: 8px;
-  vertical-align: middle;
+  position: absolute;
+  top: 4px;
+  right: 0;
+  min-width: 60px;
   font-size: 0;
-  color: #666;
+  font-weight: 700;
+  text-align: right;
+  color: #AAA;
+  user-select: none;
   cursor: default;
 }

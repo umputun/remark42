@@ -1,13 +1,13 @@
-@import '../comment.vars';
+$step: 24px;
 
 @for $i from 1 through 5 {
   .comment_level {
     &_#{$i} {
-      padding-left: $i * ($avatarSize + $avatarOffset);
+      padding-left: $i * $step;
 
       &.comment_replying {
         .comment__input {
-          margin-left: -$i * ($avatarSize + $avatarOffset);
+          margin-left: -$i * $step;
 
           @media (min-width: 768px) {
             margin-left: 0;

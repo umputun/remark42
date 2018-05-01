@@ -1,10 +1,8 @@
-@import '../comment.vars';
-
 .comment__avatar {
   display: inline-block;
-  width: $avatarSize;
-  height: $avatarSize;
-  margin-right: $avatarOffset;
+  width: 24px;
+  height: 24px;
+  margin-right: 8px;
   vertical-align: middle;
   border-radius: 4px;
 }

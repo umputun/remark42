@@ -1,14 +1,23 @@
 .comment__action {
-  margin-left: 8px;
-  font-weight: 700;
-  color: #0aa;
+  font-size: 14px;
   cursor: pointer;
+  user-select: none;
+  color: #8CD4D4;
 
   &:hover {
-    color: #06c5c5;
+    color: #0aa;
   }
 
   &:focus {
     outline: none;
+  }
+
+  + .comment__controls {
+    &::before {
+      content: '•';
+      margin-left: 8px;
+      margin-right: 8px;
+      color: #777;
+    }
   }
 }

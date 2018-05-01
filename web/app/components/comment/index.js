@@ -3,12 +3,19 @@ export { default } from './comment';
 require('./comment.scss');
 
 require('./__action/comment__action.scss');
+
 require('./__avatar/comment__avatar.scss');
+require('./__avatar/_default/comment__avatar_default.scss');
+
+require('./__control/comment__control.scss');
 require('./__controls/comment__controls.scss');
 require('./__info/comment__info.scss');
 require('./__input/comment__input.scss');
+
 require('./__score/comment__score.scss');
-require('./__score-sign/comment__score-sign.scss');
+require('./__score/_view/_negative/comment__score_view_negative.scss');
+require('./__score/_view/_positive/comment__score_view_positive.scss');
+
 require('./__score-value/comment__score-value.scss');
 require('./__status/comment__status.scss');
 require('./__text/comment__text.scss');

@@ -176,13 +176,6 @@ export default class Comment extends Component {
     const isAdmin = !guest && store.get('user').admin;
     const isGuest = guest || !Object.keys(store.get('user')).length;
 
-    const time = new Date(data.time);
-    // TODO: which format for datetime should we choose?
-    // TODO: add smth that will count 'hours ago' (mb this: https://github.com/catamphetamine/javascript-time-ago)
-    // TODO: check out stash's impl;
-    // TODO: don't forget about optional locales, m?
-    // TODO: also date must be a link to the comment
-    const timeStr = `${time.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
     const o = {
       ...data,
       text:
@@ -197,14 +190,16 @@ export default class Comment extends Component {
                 : data.text
               )
           ),
-      time: timeStr,
+      time: formatTime(new Date(data.time)),
       score: {
         value: Math.abs(score),
-        sign: score > 0 ? '+' : (score < 0 ? '−' : ''),
+        sign: score > 0 ? '+' : (score < 0 ? '−' : null),
+        view: score > 0 ? 'positive' : (score < 0 ? 'negative' : null),
       },
       user: {
         ...data.user,
         picture: data.user.picture.indexOf(API_BASE) === 0 ? `${BASE_URL}${data.user.picture}` : data.user.picture,
+        isDefaultPicture: data.user.picture.indexOf('/avatar/remark.image') > -1, // TODO: rewrite it on backend
       },
     };
 
@@ -234,116 +229,120 @@ export default class Comment extends Component {
       <div className={b('comment', props, defaultMods)} id={`remark__comment-${o.id}`}>
         <div className="comment__body">
           <div className="comment__info">
-            <img src={o.user.picture} alt="" className="comment__avatar"/>
+            <img
+              className={b('comment__avatar', {}, { default: o.user.isDefaultPicture })}
+              src={o.user.isDefaultPicture ? require('./__avatar/comment__avatar.svg') : o.user.picture}
+              alt=""
+            />
 
             <span className="comment__username">{o.user.name}</span>
-
-            {
-              !isGuest && (
-                <span className="comment__score">
-                  <span
-                    className={b('comment__vote', {}, { type: 'up', selected: scoreIncreased })}
-                    onClick={this.increaseScore}
-                  >vote up</span>
-
-                  <span className="comment__score-sign">{o.score.sign}</span>
-
-                  <span className="comment__score-value">{o.score.value}</span>
-
-                  <span
-                    className={b('comment__vote', {}, { type: 'down', selected: scoreDecreased })}
-                    onClick={this.decreaseScore}
-                  >vote down</span>
-                </span>
-              )
-            }
 
             <span className="comment__time">{o.time}</span>
 
             {
               isAdmin && userBlocked && (
-                <span className="comment__status">blocked</span>
+                <span className="comment__status">Blocked</span>
               )
             }
 
             {
               isAdmin && !userBlocked && deleted && (
-                <span className="comment__status">deleted</span>
+                <span className="comment__status">Deleted</span>
               )
             }
 
             {
-              !mods.disabled && !isGuest && (
-                <span className="comment__controls">
+              !isGuest && (
+                <span className={b('comment__score', {}, { view: o.score.view })}>
                   <span
-                    className="comment__action"
-                    tabIndex="0"
-                    onClick={this.toggleInputVisibility}
-                  >reply</span>
-                </span>
-              )
-            }
+                    className={b('comment__vote', {}, { type: 'up', selected: scoreIncreased })}
+                    onClick={this.increaseScore}
+                  >Vote up</span>
 
-            {
-              isAdmin &&
-              (
-                <span className={b('comment__controls', {}, { view: 'admin' })}>
+                  <span className="comment__score-value">
+                    {o.score.sign}{o.score.value}
+                  </span>
 
-                  {
-                    !pinned && (
-                      <span
-                        className="comment__action"
-                        tabIndex="0"
-                        onClick={this.onPinClick}
-                      >pin</span>
-                    )
-                  }
 
-                  {
-                    pinned && (
-                      <span
-                        className="comment__action"
-                        tabIndex="0"
-                        onClick={this.onUnpinClick}
-                      >unpin</span>
-                    )
-                  }
-
-                  {
-                    userBlocked && (
-                      <span
-                        className="comment__action"
-                        tabIndex="0"
-                        onClick={this.onUnblockClick}
-                      >unblock</span>
-                    )
-                  }
-
-                  {
-                    !userBlocked && (
-                      <span
-                        className="comment__action"
-                        tabIndex="0"
-                        onClick={this.onBlockClick}
-                      >block</span>
-                    )
-                  }
-
-                  {
-                    !deleted && (
-                      <span
-                        className="comment__action"
-                        tabIndex="0"
-                        onClick={this.onDeleteClick}
-                      >delete</span>
-                    )
-                  }
+                  <span
+                    className={b('comment__vote', {}, { type: 'down', selected: scoreDecreased })}
+                    onClick={this.decreaseScore}
+                  >Vote down</span>
                 </span>
               )
             }
           </div>
 
           <div className="comment__text" dangerouslySetInnerHTML={{ __html: o.text }}/>
+
+          <div className="comment__actions">
+            {
+              !mods.disabled && !isGuest && (
+                <span
+                  className="comment__action"
+                  tabIndex="0"
+                  onClick={this.toggleInputVisibility}
+                >{isInputVisible ? 'Cancel' : 'Reply'}</span>
+              )
+            }
+
+            {
+              isAdmin &&
+              (
+                <span className="comment__controls">
+                  {
+                    !pinned && (
+                      <span
+                        className="comment__control"
+                        tabIndex="0"
+                        onClick={this.onPinClick}
+                      >Pin</span>
+                    )
+                  }
+
+                  {
+                    pinned && (
+                      <span
+                        className="comment__control"
+                        tabIndex="0"
+                        onClick={this.onUnpinClick}
+                      >Unpin</span>
+                    )
+                  }
+
+                  {
+                    userBlocked && (
+                      <span
+                        className="comment__control"
+                        tabIndex="0"
+                        onClick={this.onUnblockClick}
+                      >Unblock</span>
+                    )
+                  }
+
+                  {
+                    !userBlocked && (
+                      <span
+                        className="comment__control"
+                        tabIndex="0"
+                        onClick={this.onBlockClick}
+                      >Block</span>
+                    )
+                  }
+
+                  {
+                    !deleted && (
+                      <span
+                        className="comment__control"
+                        tabIndex="0"
+                        onClick={this.onDeleteClick}
+                      >Delete</span>
+                    )
+                  }
+                </span>
+              )
+            }
+          </div>
         </div>
 
         {
@@ -365,4 +364,15 @@ function getTextSnippet(html) {
   const snippet = result.substr(0, LENGTH);
 
   return (snippet.length === LENGTH && result.length !== LENGTH) ? `${snippet}...` : snippet;
+}
+
+function formatTime(time) {
+  // 'ru-RU' adds a dot as a separator
+  const date = time.toLocaleDateString(['ru-RU'], { day: '2-digit', month: '2-digit', year: '2-digit' });
+
+  // do it manually because Intl API doesn't add leading zeros to hours; idk why
+  const hours = `0${time.getHours()}`.slice(-2);
+  const mins = `0${time.getMinutes()}`.slice(-2);
+
+  return `${date} at ${hours}:${mins}`;
 }
