@@ -212,29 +212,27 @@ export default class Comment extends Component {
       replying: isInputVisible,
     };
 
-    // TODO: remove so much mods.view !== 'preview'
+    if (mods.view === 'preview') {
+      return (
+        <div className={b('comment', props, defaultMods)} id={`remark__comment-${o.id}`}>
+          <div className="comment__body">
+            <div className="comment__info">
+              <a href={`${o.locator.url}#remark__comment-${o.id}`} className="comment__username">{o.user.name}</a>
+            </div>
+            {' '}
+            <div className="comment__text" dangerouslySetInnerHTML={{ __html: o.text }}/>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div className={b('comment', props, defaultMods)} id={`remark__comment-${o.id}`}>
         <div className="comment__body">
           <div className="comment__info">
-            {
-              mods.view !== 'preview' && (
-                <img src={o.user.picture} alt="" className="comment__avatar"/>
-              )
-            }
+            <img src={o.user.picture} alt="" className="comment__avatar"/>
 
-            {
-              mods.view !== 'preview' && (
-                <span className="comment__username">{o.user.name}</span>
-              )
-            }
-
-            {
-              mods.view === 'preview' && (
-                <a href={`${o.locator.url}#remark__comment-${o.id}`} className="comment__username">{o.user.name}</a>
-              )
-            }
+            <span className="comment__username">{o.user.name}</span>
 
             {
               !isGuest && (
@@ -256,11 +254,7 @@ export default class Comment extends Component {
               )
             }
 
-            {
-              mods.view !== 'preview' && (
-                <span className="comment__time">{o.time}</span>
-              )
-            }
+            <span className="comment__time">{o.time}</span>
 
             {
               isAdmin && userBlocked && (
