@@ -65,7 +65,11 @@ export default class Comment extends Component {
     this.setState({ isInputVisible: !isInputVisible });
 
     if (this.props.onReplyClick) {
-      this.props.onReplyClick(() => this.setState({ isInputVisible: false }));
+      if (!isInputVisible) {
+        this.props.onReplyClick(() => this.setState({ isInputVisible: false }));
+      } else {
+        this.props.onReplyClick(null);
+      }
     }
   }
 
