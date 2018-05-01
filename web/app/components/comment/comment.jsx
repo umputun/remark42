@@ -11,11 +11,15 @@ export default class Comment extends Component {
   constructor(props) {
     super(props);
 
+    this.state = {
+      isInputVisible: false,
+    };
+
     this.updateState(props);
 
     this.decreaseScore = this.decreaseScore.bind(this);
     this.increaseScore = this.increaseScore.bind(this);
-    this.onReplyClick = this.onReplyClick.bind(this);
+    this.toggleInputVisibility = this.toggleInputVisibility.bind(this);
     this.onReply = this.onReply.bind(this);
     this.onPinClick = this.onPinClick.bind(this);
     this.onUnpinClick = this.onUnpinClick.bind(this);
@@ -55,13 +59,13 @@ export default class Comment extends Component {
     }
   }
 
-  onReplyClick() {
-    const { data: { id }, replyingCommentId } = this.props;
+  toggleInputVisibility() {
+    const { isInputVisible } = this.state;
 
-    if (replyingCommentId === id) {
-      store.set('replyingCommentId', null);
-    } else {
-      store.set('replyingCommentId', id);
+    this.setState({ isInputVisible: !isInputVisible });
+
+    if (this.props.onReplyClick) {
+      this.props.onReplyClick(() => this.setState({ isInputVisible: false }));
     }
   }
 
@@ -163,8 +167,8 @@ export default class Comment extends Component {
     this.props.onReply(...rest);
   }
 
-  render(props, { guest, userBlocked, pinned, score, scoreIncreased, scoreDecreased, deleted }) {
-    const { data, mix, mods = {}, replyingCommentId } = props;
+  render(props, { guest, userBlocked, pinned, score, scoreIncreased, scoreDecreased, deleted, isInputVisible }) {
+    const { data, mix, mods = {} } = props;
     const isAdmin = !guest && store.get('user').admin;
     const isGuest = guest || !Object.keys(store.get('user')).length;
 
@@ -205,7 +209,7 @@ export default class Comment extends Component {
       useless: userBlocked || deleted,
       // TODO: add default view mod or don't?
       view: o.user.admin ? 'admin' : null,
-      replying: replyingCommentId === o.id,
+      replying: isInputVisible,
     };
 
     return (
@@ -275,7 +279,7 @@ export default class Comment extends Component {
                     <span
                       className="comment__action"
                       tabIndex="0"
-                      onClick={this.onReplyClick}
+                      onClick={this.toggleInputVisibility}
                     >reply</span>
                   </span>
                 )
@@ -345,7 +349,7 @@ export default class Comment extends Component {
         </div>
 
         {
-          o.id === replyingCommentId && (
+          isInputVisible && (
             <Input mix="comment__input" onSubmit={this.onReply} pid={o.id} autoFocus/>
           )
         }
