@@ -19,6 +19,7 @@ export default class Root extends Component {
     this.state = {
       loaded: false,
       user: {},
+      replyingCommentId: null,
     };
 
     this.addComment = this.addComment.bind(this);
@@ -32,6 +33,7 @@ export default class Root extends Component {
 
   componentWillMount() {
     store.onUpdate('comments', comments => this.setState({ comments }));
+    store.onUpdate('replyingCommentId', id => this.setState({ replyingCommentId: id }));
   }
 
   componentDidMount() {
@@ -130,10 +132,11 @@ export default class Root extends Component {
     api.getComment({ id: data.id }).then(comment => {
       store.replaceComment(comment);
       this.setState({ comments: store.get('comments') });
+      store.set('replyingCommentId', null);
     });
   }
 
-  render({}, { config = {}, comments = [], user, loaded, isBlockedVisible, bannedUsers }) {
+  render({}, { config = {}, comments = [], user, loaded, isBlockedVisible, bannedUsers, replyingCommentId }) {
     if (!loaded) {
       return (
         <div id={NODE_ID}>
@@ -198,6 +201,7 @@ export default class Root extends Component {
                             mods={{ level: 0 }}
                             data={thread}
                             onReply={this.addComment}
+                            replyingCommentId={replyingCommentId}
                           />
                         ))
                       }

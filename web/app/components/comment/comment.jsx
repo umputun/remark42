@@ -11,10 +11,6 @@ export default class Comment extends Component {
   constructor(props) {
     super(props);
 
-    this.state = {
-      isInputVisible: false,
-    };
-
     this.updateState(props);
 
     this.decreaseScore = this.decreaseScore.bind(this);
@@ -60,9 +56,13 @@ export default class Comment extends Component {
   }
 
   onReplyClick() {
-    const { isInputVisible } = this.state;
+    const { data: { id }, replyingCommentId } = this.props;
 
-    this.setState({ isInputVisible: !isInputVisible });
+    if (replyingCommentId === id) {
+      store.set('replyingCommentId', null);
+    } else {
+      store.set('replyingCommentId', id);
+    }
   }
 
   onPinClick() {
@@ -161,11 +161,10 @@ export default class Comment extends Component {
 
   onReply(...rest) {
     this.props.onReply(...rest);
-    this.setState({ isInputVisible: false });
   }
 
-  render(props, { guest, userBlocked, pinned, score, scoreIncreased, scoreDecreased, isInputVisible, deleted }) {
-    const { data, mix, mods = {} } = props;
+  render(props, { guest, userBlocked, pinned, score, scoreIncreased, scoreDecreased, deleted }) {
+    const { data, mix, mods = {}, replyingCommentId } = props;
     const isAdmin = !guest && store.get('user').admin;
     const isGuest = guest || !Object.keys(store.get('user')).length;
 
@@ -206,6 +205,7 @@ export default class Comment extends Component {
       useless: userBlocked || deleted,
       // TODO: add default view mod or don't?
       view: o.user.admin ? 'admin' : null,
+      replying: replyingCommentId === o.id,
     };
 
     return (
@@ -345,7 +345,7 @@ export default class Comment extends Component {
         </div>
 
         {
-          isInputVisible && (
+          o.id === replyingCommentId && (
             <Input mix="comment__input" onSubmit={this.onReply} pid={o.id} autoFocus/>
           )
         }
