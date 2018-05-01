@@ -272,7 +272,11 @@ export default class Comment extends Component {
               {
                 !mods.disabled && !isGuest && (
                   <span className="comment__controls">
-                    <span className="comment__action" onClick={this.onReplyClick}>reply</span>
+                    <span
+                      className="comment__action"
+                      tabIndex="0"
+                      onClick={this.onReplyClick}
+                    >reply</span>
                   </span>
                 )
               }
@@ -284,31 +288,51 @@ export default class Comment extends Component {
 
                     {
                       !pinned && (
-                        <span className="comment__action" onClick={this.onPinClick}>pin</span>
+                        <span
+                          className="comment__action"
+                          tabIndex="0"
+                          onClick={this.onPinClick}
+                        >pin</span>
                       )
                     }
 
                     {
                       pinned && (
-                        <span className="comment__action" onClick={this.onUnpinClick}>unpin</span>
+                        <span
+                          className="comment__action"
+                          tabIndex="0"
+                          onClick={this.onUnpinClick}
+                        >unpin</span>
                       )
                     }
 
                     {
                       userBlocked && (
-                        <span className="comment__action" onClick={this.onUnblockClick}>unblock</span>
+                        <span
+                          className="comment__action"
+                          tabIndex="0"
+                          onClick={this.onUnblockClick}
+                        >unblock</span>
                       )
                     }
 
                     {
                       !userBlocked && (
-                        <span className="comment__action" onClick={this.onBlockClick}>block</span>
+                        <span
+                          className="comment__action"
+                          tabIndex="0"
+                          onClick={this.onBlockClick}
+                        >block</span>
                       )
                     }
 
                     {
                       !deleted && (
-                        <span className="comment__action" onClick={this.onDeleteClick}>delete</span>
+                        <span
+                          className="comment__action"
+                          tabIndex="0"
+                          onClick={this.onDeleteClick}
+                        >delete</span>
                       )
                     }
                   </span>
