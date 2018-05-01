@@ -212,140 +212,140 @@ export default class Comment extends Component {
       replying: isInputVisible,
     };
 
+    // TODO: remove so much mods.view !== 'preview'
+
     return (
       <div className={b('comment', props, defaultMods)} id={`remark__comment-${o.id}`}>
         <div className="comment__body">
-          {
-            mods.view !== 'preview' && (
-              <img src={o.user.picture} alt="" className="comment__avatar"/>
-            )
-          }
+          <div className="comment__info">
+            {
+              mods.view !== 'preview' && (
+                <img src={o.user.picture} alt="" className="comment__avatar"/>
+              )
+            }
 
-          <div className="comment__content">
-            <div className="comment__info">
-              {
-                mods.view !== 'preview' && (
-                  <span className="comment__username">{o.user.name}</span>
-                )
-              }
+            {
+              mods.view !== 'preview' && (
+                <span className="comment__username">{o.user.name}</span>
+              )
+            }
 
-              {
-                mods.view === 'preview' && (
-                  <a href={`${o.locator.url}#remark__comment-${o.id}`} className="comment__username">{o.user.name}</a>
-                )
-              }
+            {
+              mods.view === 'preview' && (
+                <a href={`${o.locator.url}#remark__comment-${o.id}`} className="comment__username">{o.user.name}</a>
+              )
+            }
 
-              {
-                !isGuest && (
-                  <span className="comment__score">
-                    <span
-                      className={b('comment__vote', {}, { type: 'up', selected: scoreIncreased })}
-                      onClick={this.increaseScore}
-                    >vote up</span>
+            {
+              !isGuest && (
+                <span className="comment__score">
+                  <span
+                    className={b('comment__vote', {}, { type: 'up', selected: scoreIncreased })}
+                    onClick={this.increaseScore}
+                  >vote up</span>
 
-                    <span className="comment__score-sign">{o.score.sign}</span>
+                  <span className="comment__score-sign">{o.score.sign}</span>
 
-                    <span className="comment__score-value">{o.score.value}</span>
+                  <span className="comment__score-value">{o.score.value}</span>
 
-                    <span
-                      className={b('comment__vote', {}, { type: 'down', selected: scoreDecreased })}
-                      onClick={this.decreaseScore}
-                    >vote down</span>
-                  </span>
-                )
-              }
+                  <span
+                    className={b('comment__vote', {}, { type: 'down', selected: scoreDecreased })}
+                    onClick={this.decreaseScore}
+                  >vote down</span>
+                </span>
+              )
+            }
 
-              {
-                mods.view !== 'preview' && (
-                  <span className="comment__time">{o.time}</span>
-                )
-              }
+            {
+              mods.view !== 'preview' && (
+                <span className="comment__time">{o.time}</span>
+              )
+            }
 
-              {
-                isAdmin && userBlocked && (
-                  <span className="comment__status">blocked</span>
-                )
-              }
+            {
+              isAdmin && userBlocked && (
+                <span className="comment__status">blocked</span>
+              )
+            }
 
-              {
-                isAdmin && !userBlocked && deleted && (
-                  <span className="comment__status">deleted</span>
-                )
-              }
+            {
+              isAdmin && !userBlocked && deleted && (
+                <span className="comment__status">deleted</span>
+              )
+            }
 
-              {
-                !mods.disabled && !isGuest && (
-                  <span className="comment__controls">
-                    <span
-                      className="comment__action"
-                      tabIndex="0"
-                      onClick={this.toggleInputVisibility}
-                    >reply</span>
-                  </span>
-                )
-              }
+            {
+              !mods.disabled && !isGuest && (
+                <span className="comment__controls">
+                  <span
+                    className="comment__action"
+                    tabIndex="0"
+                    onClick={this.toggleInputVisibility}
+                  >reply</span>
+                </span>
+              )
+            }
 
-              {
-                isAdmin &&
-                (
-                  <span className={b('comment__controls', {}, { view: 'admin' })}>
+            {
+              isAdmin &&
+              (
+                <span className={b('comment__controls', {}, { view: 'admin' })}>
 
-                    {
-                      !pinned && (
-                        <span
-                          className="comment__action"
-                          tabIndex="0"
-                          onClick={this.onPinClick}
-                        >pin</span>
-                      )
-                    }
+                  {
+                    !pinned && (
+                      <span
+                        className="comment__action"
+                        tabIndex="0"
+                        onClick={this.onPinClick}
+                      >pin</span>
+                    )
+                  }
 
-                    {
-                      pinned && (
-                        <span
-                          className="comment__action"
-                          tabIndex="0"
-                          onClick={this.onUnpinClick}
-                        >unpin</span>
-                      )
-                    }
+                  {
+                    pinned && (
+                      <span
+                        className="comment__action"
+                        tabIndex="0"
+                        onClick={this.onUnpinClick}
+                      >unpin</span>
+                    )
+                  }
 
-                    {
-                      userBlocked && (
-                        <span
-                          className="comment__action"
-                          tabIndex="0"
-                          onClick={this.onUnblockClick}
-                        >unblock</span>
-                      )
-                    }
+                  {
+                    userBlocked && (
+                      <span
+                        className="comment__action"
+                        tabIndex="0"
+                        onClick={this.onUnblockClick}
+                      >unblock</span>
+                    )
+                  }
 
-                    {
-                      !userBlocked && (
-                        <span
-                          className="comment__action"
-                          tabIndex="0"
-                          onClick={this.onBlockClick}
-                        >block</span>
-                      )
-                    }
+                  {
+                    !userBlocked && (
+                      <span
+                        className="comment__action"
+                        tabIndex="0"
+                        onClick={this.onBlockClick}
+                      >block</span>
+                    )
+                  }
 
-                    {
-                      !deleted && (
-                        <span
-                          className="comment__action"
-                          tabIndex="0"
-                          onClick={this.onDeleteClick}
-                        >delete</span>
-                      )
-                    }
-                  </span>
-                )
-              }
-            </div>
-
-            <div className="comment__text" dangerouslySetInnerHTML={{ __html: o.text }}/>
+                  {
+                    !deleted && (
+                      <span
+                        className="comment__action"
+                        tabIndex="0"
+                        onClick={this.onDeleteClick}
+                      >delete</span>
+                    )
+                  }
+                </span>
+              )
+            }
           </div>
+
+          <div className="comment__text" dangerouslySetInnerHTML={{ __html: o.text }}/>
         </div>
 
         {

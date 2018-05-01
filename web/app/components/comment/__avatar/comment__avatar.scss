@@ -1,11 +1,10 @@
 @import '../comment.vars';
 
 .comment__avatar {
-  flex-shrink: 0;
-  flex-grow: 0;
   display: inline-block;
   width: $avatarSize;
   height: $avatarSize;
   margin-right: $avatarOffset;
+  vertical-align: middle;
   border-radius: 4px;
 }
