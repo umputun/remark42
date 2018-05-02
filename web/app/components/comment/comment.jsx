@@ -254,26 +254,24 @@ export default class Comment extends Component {
               )
             }
 
-            {
-              !isGuest && (
-                <span className={b('comment__score', {}, { view: o.score.view })}>
-                  <span
-                    className={b('comment__vote', {}, { type: 'up', selected: scoreIncreased })}
-                    onClick={this.increaseScore}
-                  >Vote up</span>
+            <span className={b('comment__score', {}, { view: o.score.view })}>
+              <span
+                className={b('comment__vote', {}, { type: 'up', selected: scoreIncreased, disabled: isGuest })}
+                onClick={this.increaseScore}
+                title={isGuest ? 'Only authorized users are allowed to vote' : null}
+              >Vote up</span>
 
-                  <span className="comment__score-value">
-                    {o.score.sign}{o.score.value}
-                  </span>
+              <span className="comment__score-value">
+                {o.score.sign}{o.score.value}
+              </span>
 
 
-                  <span
-                    className={b('comment__vote', {}, { type: 'down', selected: scoreDecreased })}
-                    onClick={this.decreaseScore}
-                  >Vote down</span>
-                </span>
-              )
-            }
+              <span
+                className={b('comment__vote', {}, { type: 'down', selected: scoreDecreased, disabled: isGuest })}
+                onClick={this.decreaseScore}
+                title={isGuest ? 'Only authorized users are allowed to vote' : null}
+              >Vote down</span>
+            </span>
           </div>
 
           <div
@@ -353,7 +351,12 @@ export default class Comment extends Component {
 
         {
           isInputVisible && (
-            <Input mix="comment__input" onSubmit={this.onReply} pid={o.id} autoFocus/>
+            <Input
+              mix="comment__input"
+              onSubmit={this.onReply}
+              pid={o.id}
+              autoFocus
+            />
           )
         }
       </div>
