@@ -51,10 +51,10 @@ type uid struct {
 }
 
 // Import from disqus and save to store
-func (d *Disqus) Import(r io.Reader, siteID string) (err error) {
+func (d *Disqus) Import(r io.Reader, siteID string) (size int, err error) {
 
 	if err = d.DeleteAll(siteID); err != nil {
-		return err
+		return 0, err
 	}
 
 	commentsCh := d.convert(r, siteID)
@@ -68,7 +68,7 @@ func (d *Disqus) Import(r io.Reader, siteID string) (err error) {
 	}
 
 	if failed > 0 {
-		return errors.Errorf("failed to save %d comments", failed)
+		return passed, errors.Errorf("failed to save %d comments", failed)
 	}
 
 	log.Printf("[DEBUG] imported %d comments to site %s", passed, siteID)
@@ -76,7 +76,7 @@ func (d *Disqus) Import(r io.Reader, siteID string) (err error) {
 	if failed > 0 && passed == 0 {
 		err = errors.New("import failed")
 	}
-	return err
+	return passed, err
 }
 
 // convert disqus stream (xml) from reader and fill channel of comments.

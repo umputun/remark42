@@ -19,10 +19,10 @@ type Remark struct {
 }
 
 // Export all comments to writer as json strings. Each comment is one string, separated by "\n"
-func (r *Remark) Export(w io.Writer, siteID string) error {
+func (r *Remark) Export(w io.Writer, siteID string) (size int, err error) {
 	topics, err := r.List(siteID, 0, 0)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	log.Printf("[DEBUG] exporting %d topics", len(topics))
 
@@ -31,7 +31,7 @@ func (r *Remark) Export(w io.Writer, siteID string) error {
 		topic := topics[i]
 		comments, err := r.Find(store.Locator{SiteID: siteID, URL: topic.URL}, "time")
 		if err != nil {
-			return err
+			return commentsCount, err
 		}
 
 		for _, comment := range comments {
@@ -41,24 +41,24 @@ func (r *Remark) Export(w io.Writer, siteID string) error {
 			enc.SetEscapeHTML(false)
 
 			if err := enc.Encode(comment); err != nil {
-				return errors.Wrapf(err, "can't marshal %v", comments)
+				return commentsCount, errors.Wrapf(err, "can't marshal %v", comments)
 			}
 			data := buf.Bytes()
 			if _, err := w.Write(data); err != nil {
-				return errors.Wrap(err, "can't write comment data")
+				return commentsCount, errors.Wrap(err, "can't write comment data")
 			}
 			commentsCount++
 		}
 	}
 	log.Printf("[DEBUG] exported %d comments", commentsCount)
-	return nil
+	return commentsCount, nil
 }
 
 // Import comments from json strings produced by Remark.Export
-func (r *Remark) Import(reader io.Reader, siteID string) error {
+func (r *Remark) Import(reader io.Reader, siteID string) (size int, err error) {
 
 	if err := r.DeleteAll(siteID); err != nil {
-		return err
+		return 0, err
 	}
 
 	failed := 0
@@ -87,11 +87,11 @@ func (r *Remark) Import(reader io.Reader, siteID string) error {
 		}
 	}
 	if scanner.Err() != nil {
-		return errors.Wrap(scanner.Err(), "error in scan")
+		return comments, errors.Wrap(scanner.Err(), "error in scan")
 	}
 	if failed > 0 {
-		return errors.Errorf("failed to save %d comments", failed)
+		return comments, errors.Errorf("failed to save %d comments", failed)
 	}
 	log.Printf("[INFO] imported %d comments from %d records", comments, total)
-	return nil
+	return comments, nil
 }

@@ -24,13 +24,14 @@ func TestMigrator_ImportDisqus(t *testing.T) {
 	dataStore, err := store.NewBoltDB(bolt.Options{}, store.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "test"})
 	require.Nil(t, err, "create store")
 
-	err = ImportComments(ImportParams{
+	size, err := ImportComments(ImportParams{
 		CommentCreator: dataStore,
 		InputFile:      "/tmp/disqus-test.xml",
 		SiteID:         "test",
 		Provider:       "disqus",
 	})
 	assert.Nil(t, err)
+	assert.Equal(t, 3, size)
 
 	last, err := dataStore.Last("test", 10)
 	assert.Nil(t, err)
@@ -52,13 +53,14 @@ func TestMigrator_ImportRemark(t *testing.T) {
 	dataStore, err := store.NewBoltDB(bolt.Options{}, store.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "radio-t"})
 	require.Nil(t, err, "create store")
 
-	err = ImportComments(ImportParams{
+	size, err := ImportComments(ImportParams{
 		CommentCreator: dataStore,
 		InputFile:      "/tmp/disqus-test.r42",
 		SiteID:         "radio-t",
 		Provider:       "native",
 	})
 	assert.Nil(t, err)
+	assert.Equal(t, 2, size)
 
 	last, err := dataStore.Last("radio-t", 10)
 	assert.Nil(t, err)

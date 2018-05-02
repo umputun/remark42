@@ -18,8 +18,9 @@ func TestDisqus_Import(t *testing.T) {
 	dataStore, err := store.NewBoltDB(bolt.Options{}, store.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "test"})
 	require.Nil(t, err, "create store")
 	d := Disqus{CommentCreator: dataStore}
-	err = d.Import(strings.NewReader(xmlTest), "test")
+	size, err := d.Import(strings.NewReader(xmlTest), "test")
 	assert.Nil(t, err)
+	assert.Equal(t, 3, size)
 
 	last, err := dataStore.Last("test", 10)
 	assert.Nil(t, err)

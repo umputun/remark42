@@ -20,8 +20,9 @@ func TestRemark_Export(t *testing.T) {
 	r := Remark{CommentFinder: b}
 
 	buf := &bytes.Buffer{}
-	err := r.Export(buf, "radio-t")
+	size, err := r.Export(buf, "radio-t")
 	assert.Nil(t, err)
+	assert.Equal(t, 2, size)
 
 	c1, err := buf.ReadString('\n')
 	assert.Nil(t, err)
@@ -43,8 +44,9 @@ func TestRemark_Import(t *testing.T) {
 	b, err := store.NewBoltDB(bolt.Options{}, store.BoltSite{SiteID: "radio-t", FileName: testDb})
 	assert.Nil(t, err)
 	r := Remark{CommentCreator: b}
-	err = r.Import(buf, "radio-t")
+	size, err := r.Import(buf, "radio-t")
 	assert.Nil(t, err)
+	assert.Equal(t, 2, size)
 
 	comments, err := b.Find(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com"}, "time")
 	assert.Nil(t, err)

@@ -46,7 +46,7 @@ func (ab AutoBackup) makeBackup() (string, error) {
 	}
 	gz := gzip.NewWriter(fh)
 
-	if err = ab.Exporter.Export(gz, ab.SiteID); err != nil {
+	if _, err = ab.Exporter.Export(gz, ab.SiteID); err != nil {
 		return "", errors.Wrapf(err, "export failed for %s", ab.SiteID)
 	}
 	if err = gz.Close(); err != nil {

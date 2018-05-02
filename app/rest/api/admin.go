@@ -106,9 +106,11 @@ func (a *admin) exportCtrl(w http.ResponseWriter, r *http.Request) {
 		writer = gzip.NewWriter(w)
 	}
 
-	if err := a.exporter.Export(writer, siteID); err != nil {
+	if _, err := a.exporter.Export(writer, siteID); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "export failed")
+		return
 	}
+
 }
 
 func (a *admin) checkBlocked(siteID string, user store.User) bool {

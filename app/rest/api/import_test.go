@@ -29,7 +29,7 @@ func TestImport(t *testing.T) {
 	resp, err := http.Post(fmt.Sprintf("http://dev:password@127.0.0.1:%d/api/v1/admin/import?site=radio-t&provider=native",
 		port), "application/json", r)
 	assert.Nil(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 }
 
 func prepImportSrv(t *testing.T) (srv *Import, port int) {

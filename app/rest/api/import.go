@@ -10,6 +10,7 @@ import (
 	"github.com/didip/tollbooth_chi"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+	"github.com/go-chi/render"
 	"github.com/umputun/remark/app/migrator"
 	"github.com/umputun/remark/app/rest"
 )
@@ -51,9 +52,13 @@ func (s *Import) importCtrl(w http.ResponseWriter, r *http.Request) {
 		importer = s.DisqusImporter
 	}
 
-	if err := importer.Import(r.Body, siteID); err != nil {
+	size, err := importer.Import(r.Body, siteID)
+	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "import failed")
 		return
 	}
 	s.Cache.Flush()
+
+	render.Status(r, http.StatusCreated)
+	render.JSON(w, r, JSON{"status": "ok", "size": size})
 }

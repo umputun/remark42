@@ -54,7 +54,7 @@ func TestMigrator_MakeBackup(t *testing.T) {
 
 type mockExporter struct{}
 
-func (mock *mockExporter) Export(w io.Writer, siteID string) error {
+func (mock *mockExporter) Export(w io.Writer, siteID string) (int, error) {
 	w.Write([]byte("some export blah blah 1234567890"))
-	return nil
+	return 1000, nil
 }
