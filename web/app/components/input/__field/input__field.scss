@@ -2,7 +2,8 @@
   $lineHeight: 1.4;
   $fontSize: 16px;
   $paddingVrt: 10px;
-  $height: $fontSize * $lineHeight + $paddingVrt * 2;
+  $lines: 3;
+  $height: $fontSize * $lineHeight * $lines + $paddingVrt * 2;
 
   box-sizing: border-box;
   width: 100%;
@@ -12,11 +13,12 @@
   font-family: 'PT Sans', Helvetica, Arial, sans-serif;
   font-size: $fontSize;
   line-height: $lineHeight;
+  background: #fff;
   border: 0;
   resize: none;
 
   &:focus {
-    box-shadow: inset 0 0 0 2px #0aa;
+    box-shadow: inset 0 0 0 2px #259C9A;
     outline: none;
   }
 
