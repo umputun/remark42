@@ -169,6 +169,10 @@ export default class Comment extends Component {
 
   onReply(...rest) {
     this.props.onReply(...rest);
+
+    this.setState({
+      isInputVisible: false,
+    });
   }
 
   render(props, { guest, userBlocked, pinned, score, scoreIncreased, scoreDecreased, deleted, isInputVisible }) {
