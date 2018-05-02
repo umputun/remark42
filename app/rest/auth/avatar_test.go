@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -48,20 +47,11 @@ func TestPut(t *testing.T) {
 	assert.Equal(t, int64(21), fi.Size())
 }
 
-func TestPutDefault(t *testing.T) {
-	p := AvatarProxy{StorePath: "/tmp/avatars.test", RoutePath: "/avatar", DefaultAvatar: "default.image"}
-	os.MkdirAll("/tmp/avatars.test", 0700)
-	ioutil.WriteFile("/tmp/avatars.test/default.image", []byte("1234567890"), 0600)
-	defer os.RemoveAll("/tmp/avatars.test")
-
+func TestPutNoAvatar(t *testing.T) {
+	p := AvatarProxy{StorePath: "/tmp/avatars.test", RoutePath: "/avatar"}
 	u := store.User{ID: "user1", Name: "user1 name"}
-	res, err := p.Put(u)
-	assert.NoError(t, err)
-	assert.Equal(t, "/avatar/default.image", res)
-	fi, err := os.Stat("/tmp/avatars.test/default.image")
-	assert.NoError(t, err)
-	assert.Equal(t, int64(10), fi.Size())
-
+	_, err := p.Put(u)
+	assert.Error(t, err)
 }
 
 func TestRoutes(t *testing.T) {
@@ -76,7 +66,7 @@ func TestRoutes(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	p := AvatarProxy{StorePath: "/tmp/avatars.test", RoutePath: "/avatar", DefaultAvatar: "default.image"}
+	p := AvatarProxy{StorePath: "/tmp/avatars.test", RoutePath: "/avatar"}
 	os.MkdirAll("/tmp/avatars.test", 0700)
 	defer os.RemoveAll("/tmp/avatars.test")
 
@@ -101,34 +91,6 @@ func TestRoutes(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int64(21), sz)
 	assert.Equal(t, "some picture bin data", bb.String())
-}
-
-func TestRoutesDefault(t *testing.T) {
-	p := AvatarProxy{StorePath: "/tmp/avatars.test", RoutePath: "/avatar", DefaultAvatar: "default.image"}
-	os.MkdirAll("/tmp/avatars.test", 0700)
-	ioutil.WriteFile("/tmp/avatars.test/default.image", []byte("1234567890"), 0600)
-	defer os.RemoveAll("/tmp/avatars.test")
-
-	u := store.User{ID: "user1", Name: "user1 name"}
-	_, err := p.Put(u)
-	assert.NoError(t, err)
-
-	req, err := http.NewRequest("GET", "/no-such-thing.image", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	rr := httptest.NewRecorder()
-	_, routes := p.Routes()
-	handler := http.Handler(routes)
-	handler.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Equal(t, http.Header{"Content-Type": []string{"image/*"}}, rr.HeaderMap)
-	bb := bytes.Buffer{}
-	sz, err := io.Copy(&bb, rr.Body)
-	assert.NoError(t, err)
-	assert.Equal(t, int64(10), sz)
 }
 
 func TestLocation(t *testing.T) {

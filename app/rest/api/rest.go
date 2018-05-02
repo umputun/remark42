@@ -50,10 +50,9 @@ func (s *Rest) Run(port int) {
 	}
 
 	s.amdminService = admin{
-		dataService:  s.DataService,
-		exporter:     s.Exporter,
-		cache:        s.Cache,
-		defAvatarURL: s.Authenticator.AvatarProxy.Default(),
+		dataService: s.DataService,
+		exporter:    s.Exporter,
+		cache:       s.Cache,
 	}
 
 	router := chi.NewRouter()

@@ -22,10 +22,9 @@ import (
 
 // AvatarProxy provides avatar store and http handler for avatars
 type AvatarProxy struct {
-	StorePath     string
-	DefaultAvatar string
-	RoutePath     string
-	RemarkURL     string
+	StorePath string
+	RoutePath string
+	RemarkURL string
 
 	once     sync.Once
 	ctcTable *crc64.Table
@@ -38,9 +37,6 @@ func (p *AvatarProxy) Put(u store.User) (avatarURL string, err error) {
 
 	// no picture for user, try default avatar
 	if u.Picture == "" {
-		if p.DefaultAvatar != "" {
-			return p.Default(), nil
-		}
 		return "", errors.Errorf("no picture for %s", u.ID)
 	}
 
@@ -96,14 +92,8 @@ func (p *AvatarProxy) Routes() (string, chi.Router) {
 		avFile := path.Join(location, avatar)
 		fh, err := os.Open(avFile)
 		if err != nil {
-			if p.DefaultAvatar == "" {
-				rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't load avatar")
-				return
-			}
-			if fh, err = os.Open(path.Join(p.StorePath, p.DefaultAvatar)); err != nil {
-				rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't load default avatar")
-				return
-			}
+			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't load avatar")
+			return
 		}
 
 		defer func() {
@@ -122,11 +112,6 @@ func (p *AvatarProxy) Routes() (string, chi.Router) {
 	})
 
 	return p.RoutePath, router
-}
-
-// Default returns full default avatar url
-func (p *AvatarProxy) Default() string {
-	return strings.TrimRight(p.RemarkURL, "/") + p.RoutePath + "/" + p.DefaultAvatar
 }
 
 // get location for user id by adding partion to final path in order to keep files

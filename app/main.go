@@ -34,6 +34,7 @@ var opts struct {
 	MaxBackupFiles int    `long:"max-back" env:"MAX_BACKUP_FILES" default:"10" description:"max backups to keep"`
 
 	SessionStore string `long:"session" env:"SESSION_STORE" default:"./var" description:"path to session store directory"`
+	AvatarStore  string `long:"avatars" env:"AVATAR_STORE" default:"./var/avatars" description:"path to avatars directory"`
 	StoreKey     string `long:"store-key" env:"STORE_KEY" default:"secure-store-key" description:"store key"`
 
 	GoogleCID    string `long:"google-cid" env:"REMARK_GOOGLE_CID" description:"Google OAuth client ID"`
@@ -45,10 +46,8 @@ var opts struct {
 	DisqusCID    string `long:"disqus-cid" env:"REMARK_DISQUS_CID" description:"Disqus OAuth client ID"`
 	DisqusCSEC   string `long:"disqus-csec" env:"REMARK_DISQUS_CSEC" description:"Disqus OAuth client secret"`
 
-	AvatarStore   string `long:"avatars" env:"AVATAR_STORE" default:"./var/avatars" description:"path to avatars directory"`
-	DefaultAvatar string `long:"avatar-def" env:"AVATAR_DEF" default:"remark.image" description:"default avatar"`
-	Port          int    `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
-	WebRoot       string `long:"web-root" env:"REMARK_WEB_ROOT" default:"./web" description:"web root directory"`
+	Port    int    `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
+	WebRoot string `long:"web-root" env:"REMARK_WEB_ROOT" default:"./web" description:"web root directory"`
 }
 
 var revision = "unknown"
