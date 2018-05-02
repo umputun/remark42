@@ -96,10 +96,9 @@ func main() {
 	go importSrv.Run(opts.Port + 1)
 
 	avatarProxy := &auth.AvatarProxy{
-		StorePath:     opts.AvatarStore,
-		RoutePath:     "/api/v1/avatar",
-		RemarkURL:     strings.TrimSuffix(opts.RemarkURL, "/"),
-		DefaultAvatar: opts.DefaultAvatar,
+		StorePath: opts.AvatarStore,
+		RoutePath: "/api/v1/avatar",
+		RemarkURL: strings.TrimSuffix(opts.RemarkURL, "/"),
 	}
 
 	srv := api.Rest{
