@@ -54,11 +54,6 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 
 _all multi parameters separated by `,`_
 
-#### Run modes
-
-* `server` activates regular, server mode
-* `import` performs import from external providers (disqus and internal json, see `/api/v1/admin/export`)
-
 #### Register oauth2 providers
 
 Authentication handled by external providers. You should setup oauth2 for all (or some) of them in order to allow users to make comments. It is not mandatory to have all of them, but at least one should be property configured.
