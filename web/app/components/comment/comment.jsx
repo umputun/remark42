@@ -199,7 +199,7 @@ export default class Comment extends Component {
       user: {
         ...data.user,
         picture: data.user.picture.indexOf(API_BASE) === 0 ? `${BASE_URL}${data.user.picture}` : data.user.picture,
-        isDefaultPicture: data.user.picture.indexOf('/avatar/remark.image') > -1, // TODO: rewrite it on backend
+        isDefaultPicture: !data.user.picture.length,
       },
     };
 
