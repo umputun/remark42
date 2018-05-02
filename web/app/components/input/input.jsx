@@ -30,7 +30,10 @@ export default class Input extends Component {
 
   autoResize() {
     this.fieldNode.style.height = '';
-    this.setState({ height: this.fieldNode.scrollHeight });
+    this.setState({
+      height: this.fieldNode.scrollHeight,
+      preview: null,
+    });
   }
 
   send(e) {
