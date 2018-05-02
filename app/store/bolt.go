@@ -38,6 +38,8 @@ const (
 	userLimit = 50
 )
 
+var topBuckets = []string{postsBucketName, lastBucketName, userBucketName, blocksBucketName, countsBucketName}
+
 const tsNano = "2006-01-02T15:04:05.000000000Z07:00"
 
 // BoltSite defines single site param
@@ -59,7 +61,6 @@ func NewBoltDB(options bolt.Options, sites ...BoltSite) (*BoltDB, error) {
 
 		// make top-level buckets
 		err = db.Update(func(tx *bolt.Tx) error {
-			topBuckets := []string{postsBucketName, lastBucketName, userBucketName, blocksBucketName, countsBucketName}
 			for _, bktName := range topBuckets {
 				if _, e := tx.CreateBucketIfNotExists([]byte(bktName)); e != nil {
 					return errors.Wrapf(err, "failed to create top level bucket %s", bktName)
@@ -173,6 +174,29 @@ func (b *BoltDB) Delete(locator Locator, commentID string) error {
 
 		return nil
 	})
+}
+
+// DeleteAll removes all top-level buckets for given siteID
+func (b *BoltDB) DeleteAll(siteID string) error {
+
+	bdb, err := b.db(siteID)
+	if err != nil {
+		return err
+	}
+	// delete top-level buckets
+	err = bdb.Update(func(tx *bolt.Tx) error {
+		for _, bktName := range topBuckets {
+			if e := tx.DeleteBucket([]byte(bktName)); e != nil {
+				return errors.Wrapf(err, "failed to delete top level bucket %s", bktName)
+			}
+			if _, e := tx.CreateBucketIfNotExists([]byte(bktName)); e != nil {
+				return errors.Wrapf(err, "failed to create top level bucket %s", bktName)
+			}
+		}
+		return nil
+	})
+
+	return errors.Wrapf(err, "failed to delete top level buckets fro site %s", siteID)
 }
 
 // Find returns all comments for post and sorts results

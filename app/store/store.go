@@ -28,6 +28,7 @@ type Accessor interface {
 // Admin defines all store ops avail for admin only
 type Admin interface {
 	Delete(locator Locator, commentID string) error           // delete comment by id
+	DeleteAll(siteID string) error                            // delete all data from site
 	SetBlock(siteID string, userID string, status bool) error // block or unblock  user
 	IsBlocked(siteID string, userID string) bool              // check if user blocked
 	Blocked(siteID string) ([]BlockedUser, error)             // get list of blocked users

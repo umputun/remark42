@@ -20,7 +20,6 @@ import (
 type admin struct {
 	dataService  store.Service
 	exporter     migrator.Exporter
-	importer     migrator.Importer
 	cache        rest.LoadingCache
 	defAvatarURL string
 }
@@ -31,7 +30,7 @@ func (a *admin) routes(middlewares ...func(http.Handler) http.Handler) chi.Route
 	router.Delete("/comment/{id}", a.deleteCommentCtrl)
 	router.Put("/user/{userid}", a.setBlockCtrl)
 	router.Get("/export", a.exportCtrl)
-	router.Post("/import", a.importCtrl)
+
 	router.Put("/pin/{id}", a.setPinCtrl)
 	router.Get("/blocked", a.blockedUsersCtrl)
 	return router
@@ -110,16 +109,6 @@ func (a *admin) exportCtrl(w http.ResponseWriter, r *http.Request) {
 	if err := a.exporter.Export(writer, siteID); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "export failed")
 	}
-}
-
-// POST /import?site=site-id
-// imports comments from post body.
-func (a *admin) importCtrl(w http.ResponseWriter, r *http.Request) {
-	siteID := r.URL.Query().Get("site")
-	if err := a.importer.Import(r.Body, siteID); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "import failed")
-	}
-	a.cache.Flush()
 }
 
 func (a *admin) checkBlocked(siteID string, user store.User) bool {

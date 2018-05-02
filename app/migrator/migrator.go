@@ -26,6 +26,7 @@ type Exporter interface {
 // CommentCreator is a minimal interface used by importer to make comments
 type CommentCreator interface {
 	Create(comment store.Comment) (commentID string, err error)
+	DeleteAll(siteID string) error
 }
 
 // CommentFinder is a minimal interface used by exporter to find comments and list posts

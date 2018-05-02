@@ -32,9 +32,10 @@ type Rest struct {
 	Version       string
 	DataService   store.Service
 	Authenticator auth.Authenticator
-	Exporter      migrator.Exporter
 	Cache         rest.LoadingCache
 	WebRoot       string
+
+	Exporter migrator.Exporter
 
 	httpServer    *http.Server
 	amdminService admin
@@ -42,13 +43,16 @@ type Rest struct {
 
 // Run the lister and request's router, activate rest server
 func (s *Rest) Run(port int) {
-	log.Print("[INFO] activate rest server")
+	log.Printf("[INFO] activate rest server on port %d", port)
 
 	if len(s.Authenticator.Admins) > 0 {
 		log.Printf("[DEBUG] admins %+v", s.Authenticator.Admins)
 	}
 
-	s.amdminService = admin{dataService: s.DataService, exporter: s.Exporter, cache: s.Cache,
+	s.amdminService = admin{
+		dataService:  s.DataService,
+		exporter:     s.Exporter,
+		cache:        s.Cache,
 		defAvatarURL: s.Authenticator.AvatarProxy.Default(),
 	}
 

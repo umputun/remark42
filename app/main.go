@@ -33,30 +33,22 @@ var opts struct {
 	BackupLocation string `long:"backup" env:"BACKUP_PATH" default:"./var" description:"backups location"`
 	MaxBackupFiles int    `long:"max-back" env:"MAX_BACKUP_FILES" default:"10" description:"max backups to keep"`
 
-	ServerCommand struct {
-		SessionStore string `long:"session" env:"SESSION_STORE" default:"./var" description:"path to session store directory"`
-		StoreKey     string `long:"store-key" env:"STORE_KEY" default:"secure-store-key" description:"store key"`
+	SessionStore string `long:"session" env:"SESSION_STORE" default:"./var" description:"path to session store directory"`
+	StoreKey     string `long:"store-key" env:"STORE_KEY" default:"secure-store-key" description:"store key"`
 
-		GoogleCID    string `long:"google-cid" env:"REMARK_GOOGLE_CID" description:"Google OAuth client ID"`
-		GoogleCSEC   string `long:"google-csec" env:"REMARK_GOOGLE_CSEC" description:"Google OAuth client secret"`
-		GithubCID    string `long:"github-cid" env:"REMARK_GITHUB_CID" description:"Github OAuth client ID"`
-		GithubCSEC   string `long:"github-csec" env:"REMARK_GITHUB_CSEC" description:"Github OAuth client secret"`
-		FacebookCID  string `long:"facebook-cid" env:"REMARK_FACEBOOK_CID" description:"Facebook OAuth client ID"`
-		FacebookCSEC string `long:"facebook-csec" env:"REMARK_FACEBOOK_CSEC" description:"Facebook OAuth client secret"`
-		DisqusCID    string `long:"disqus-cid" env:"REMARK_DISQUS_CID" description:"Disqus OAuth client ID"`
-		DisqusCSEC   string `long:"disqus-csec" env:"REMARK_DISQUS_CSEC" description:"Disqus OAuth client secret"`
+	GoogleCID    string `long:"google-cid" env:"REMARK_GOOGLE_CID" description:"Google OAuth client ID"`
+	GoogleCSEC   string `long:"google-csec" env:"REMARK_GOOGLE_CSEC" description:"Google OAuth client secret"`
+	GithubCID    string `long:"github-cid" env:"REMARK_GITHUB_CID" description:"Github OAuth client ID"`
+	GithubCSEC   string `long:"github-csec" env:"REMARK_GITHUB_CSEC" description:"Github OAuth client secret"`
+	FacebookCID  string `long:"facebook-cid" env:"REMARK_FACEBOOK_CID" description:"Facebook OAuth client ID"`
+	FacebookCSEC string `long:"facebook-csec" env:"REMARK_FACEBOOK_CSEC" description:"Facebook OAuth client secret"`
+	DisqusCID    string `long:"disqus-cid" env:"REMARK_DISQUS_CID" description:"Disqus OAuth client ID"`
+	DisqusCSEC   string `long:"disqus-csec" env:"REMARK_DISQUS_CSEC" description:"Disqus OAuth client secret"`
 
-		AvatarStore   string `long:"avatars" env:"AVATAR_STORE" default:"./var/avatars" description:"path to avatars directory"`
-		DefaultAvatar string `long:"avatar-def" env:"AVATAR_DEF" default:"remark.image" description:"default avatar"`
-		Port          int    `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
-		WebRoot       string `long:"web-root" env:"REMARK_WEB_ROOT" default:"./web" description:"web root directory"`
-	} `command:"server" description:"run server"`
-
-	ImportCommand struct {
-		Provider  string `long:"provider" default:"disqus" description:"provider type"`
-		SiteID    string `long:"site" default:"remark" description:"site ID"`
-		InputFile string `long:"file" default:"disqus.xml" description:"input file"`
-	} `command:"import" description:"import comments from external sources"`
+	AvatarStore   string `long:"avatars" env:"AVATAR_STORE" default:"./var/avatars" description:"path to avatars directory"`
+	DefaultAvatar string `long:"avatar-def" env:"AVATAR_DEF" default:"remark.image" description:"default avatar"`
+	Port          int    `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
+	WebRoot       string `long:"web-root" env:"REMARK_WEB_ROOT" default:"./web" description:"web root directory"`
 }
 
 var revision = "unknown"
@@ -71,33 +63,19 @@ func main() {
 	setupLog(opts.Dbg)
 	log.Print("[INFO] started remark")
 
-	if err := makeDirs(opts.BoltPath, opts.ServerCommand.SessionStore, opts.BackupLocation, opts.ServerCommand.AvatarStore); err != nil {
+	if err := makeDirs(opts.BoltPath, opts.SessionStore, opts.BackupLocation, opts.AvatarStore); err != nil {
 		log.Fatalf("[ERROR] can't create directories, %+v", err)
 	}
 
 	dataStore := makeBoltStore(opts.Sites)
 
-	if p.Active != nil && p.Command.Find("import") == p.Active {
-		// import mode
-		params := migrator.ImportParams{
-			CommentCreator: dataStore,
-			InputFile:      opts.ImportCommand.InputFile,
-			Provider:       opts.ImportCommand.Provider,
-			SiteID:         opts.ImportCommand.SiteID,
-		}
-		if err := migrator.ImportComments(params); err != nil {
-			log.Fatalf("[ERROR] failed to import, %+v", err)
-		}
-		return
-	}
-
 	if opts.DevPasswd != "" {
 		log.Printf("[WARN] running in dev mode")
 	}
 
-	dataService := store.Service{Interface: dataStore, EditDuration: 5 * time.Minute, Secret: opts.ServerCommand.StoreKey}
+	dataService := store.Service{Interface: dataStore, EditDuration: 5 * time.Minute, Secret: opts.StoreKey}
 	sessionStore := func() sessions.Store {
-		sess := sessions.NewFilesystemStore(opts.ServerCommand.SessionStore, []byte(opts.ServerCommand.StoreKey))
+		sess := sessions.NewFilesystemStore(opts.SessionStore, []byte(opts.StoreKey))
 		sess.Options.HttpOnly = true
 		sess.Options.Secure = true
 		sess.Options.MaxAge = 3600 * 24 * 365
@@ -105,22 +83,31 @@ func main() {
 		return sess
 	}()
 
-	exporter := &migrator.Remark{CommentFinder: dataStore}
+	exporter := migrator.Remark{CommentFinder: dataStore}
+	cache := rest.NewLoadingCache(4*time.Hour, 15*time.Minute, postFlushFn)
+
+	activateBackup(&exporter)
+
+	importSrv := api.Import{
+		Version:        revision,
+		Cache:          cache,
+		NativeImporter: &migrator.Remark{CommentCreator: dataStore},
+		DisqusImporter: &migrator.Disqus{CommentCreator: dataStore},
+	}
+	go importSrv.Run(opts.Port + 1)
 
 	avatarProxy := &auth.AvatarProxy{
-		StorePath:     opts.ServerCommand.AvatarStore,
+		StorePath:     opts.AvatarStore,
 		RoutePath:     "/api/v1/avatar",
 		RemarkURL:     strings.TrimSuffix(opts.RemarkURL, "/"),
-		DefaultAvatar: opts.ServerCommand.DefaultAvatar,
+		DefaultAvatar: opts.DefaultAvatar,
 	}
-
-	activateBackup(exporter)
 
 	srv := api.Rest{
 		Version:     revision,
 		DataService: dataService,
-		Exporter:    exporter,
-		WebRoot:     opts.ServerCommand.WebRoot,
+		Exporter:    &exporter,
+		WebRoot:     opts.WebRoot,
 		Authenticator: auth.Authenticator{
 			Admins:       opts.Admins,
 			SessionStore: sessionStore,
@@ -128,9 +115,9 @@ func main() {
 			AvatarProxy:  avatarProxy,
 			DevPasswd:    opts.DevPasswd,
 		},
-		Cache: rest.NewLoadingCache(4*time.Hour, 15*time.Minute, postFlushFn),
+		Cache: cache,
 	}
-	srv.Run(opts.ServerCommand.Port)
+	srv.Run(opts.Port)
 }
 
 // activateBackup runs background backups for each site
@@ -201,19 +188,17 @@ func makeAuthProviders(sessionStore sessions.Store, avatarProxy *auth.AvatarProx
 		}
 	}
 
-	srvOpts := opts.ServerCommand
-
-	if srvOpts.GoogleCID != "" && srvOpts.GoogleCSEC != "" {
-		providers = append(providers, auth.NewGoogle(makeParams(srvOpts.GoogleCID, srvOpts.GoogleCSEC)))
+	if opts.GoogleCID != "" && opts.GoogleCSEC != "" {
+		providers = append(providers, auth.NewGoogle(makeParams(opts.GoogleCID, opts.GoogleCSEC)))
 	}
-	if srvOpts.GithubCID != "" && srvOpts.GithubCSEC != "" {
-		providers = append(providers, auth.NewGithub(makeParams(srvOpts.GithubCID, srvOpts.GithubCSEC)))
+	if opts.GithubCID != "" && opts.GithubCSEC != "" {
+		providers = append(providers, auth.NewGithub(makeParams(opts.GithubCID, opts.GithubCSEC)))
 	}
-	if srvOpts.FacebookCID != "" && srvOpts.FacebookCSEC != "" {
-		providers = append(providers, auth.NewFacebook(makeParams(srvOpts.FacebookCID, srvOpts.FacebookCSEC)))
+	if opts.FacebookCID != "" && opts.FacebookCSEC != "" {
+		providers = append(providers, auth.NewFacebook(makeParams(opts.FacebookCID, opts.FacebookCSEC)))
 	}
-	if srvOpts.DisqusCID != "" && srvOpts.DisqusCSEC != "" {
-		providers = append(providers, auth.NewDisqus(makeParams(srvOpts.DisqusCID, srvOpts.DisqusCSEC)))
+	if opts.DisqusCID != "" && opts.DisqusCSEC != "" {
+		providers = append(providers, auth.NewDisqus(makeParams(opts.DisqusCID, opts.DisqusCSEC)))
 	}
 	if len(providers) == 0 {
 		log.Printf("[WARN] no auth providers defined")
@@ -224,6 +209,7 @@ func makeAuthProviders(sessionStore sessions.Store, avatarProxy *auth.AvatarProx
 // post-flush callback invoked by cache after each flush in async way
 func postFlushFn() {
 
+	// list of heavy urls for pre-heating on cache change
 	urls := []string{
 		"http://localhost:%d/api/v1/list?site=%s",
 		"http://localhost:%d/api/v1/last/50?site=%s",
@@ -231,7 +217,7 @@ func postFlushFn() {
 
 	for _, site := range opts.Sites {
 		for _, u := range urls {
-			resp, err := http.Get(fmt.Sprintf(u, opts.ServerCommand.Port, site))
+			resp, err := http.Get(fmt.Sprintf(u, opts.Port, site))
 			if err != nil {
 				log.Printf("[WARN] failed to refresh cached list for %s, %s", site, err)
 				return
