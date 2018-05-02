@@ -33,6 +33,9 @@ RUN chown -R umputun:umputun /srv
 ADD start.sh /srv/start.sh
 RUN chmod +x /srv/start.sh
 
+ADD import-disqus.sh /srv/import-disqus.sh
+RUN chmod +x /srv/import-disqus.sh
+
 WORKDIR /srv
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s CMD curl --fail http://localhost:8080/ping || exit 1
