@@ -115,11 +115,17 @@ class Store {
 }
 
 function findPinnedComments(thread) {
-  if (thread.comment.pin) return [thread.comment];
+  let result = [];
 
-  if (thread.replies) return thread.replies.reduce((acc, thread) => findPinnedComments(thread), []);
+  if (thread.comment.pin) {
+    result = result.concat(thread.comment);
+  }
 
-  return [];
+  if (thread.replies) {
+    result = result.concat(thread.replies.reduce((acc, thread) => acc.concat(findPinnedComments(thread)), []));
+  }
+
+  return result;
 }
 
 export default new Store();
