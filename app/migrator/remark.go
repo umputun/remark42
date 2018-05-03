@@ -12,15 +12,14 @@ import (
 	"github.com/umputun/remark/app/store"
 )
 
-// Remark implements exporter and importer for internal store
+// Remark implements exporter and importer for internal store format
 type Remark struct {
-	CommentCreator
-	CommentFinder
+	DataStore store.Interface
 }
 
 // Export all comments to writer as json strings. Each comment is one string, separated by "\n"
 func (r *Remark) Export(w io.Writer, siteID string) (size int, err error) {
-	topics, err := r.List(siteID, 0, 0)
+	topics, err := r.DataStore.List(siteID, 0, 0)
 	if err != nil {
 		return 0, err
 	}
@@ -29,7 +28,7 @@ func (r *Remark) Export(w io.Writer, siteID string) (size int, err error) {
 	commentsCount := 0
 	for i := len(topics) - 1; i >= 0; i-- { // topics from List sorted in opposite direction
 		topic := topics[i]
-		comments, err := r.Find(store.Locator{SiteID: siteID, URL: topic.URL}, "time")
+		comments, err := r.DataStore.Find(store.Locator{SiteID: siteID, URL: topic.URL}, "time")
 		if err != nil {
 			return commentsCount, err
 		}
@@ -57,7 +56,7 @@ func (r *Remark) Export(w io.Writer, siteID string) (size int, err error) {
 // Import comments from json strings produced by Remark.Export
 func (r *Remark) Import(reader io.Reader, siteID string) (size int, err error) {
 
-	if err := r.DeleteAll(siteID); err != nil {
+	if err := r.DataStore.DeleteAll(siteID); err != nil {
 		return 0, err
 	}
 
@@ -76,7 +75,7 @@ func (r *Remark) Import(reader io.Reader, siteID string) (size int, err error) {
 			log.Printf("[WARN] unmarshal failed for %s, %s", string(rec), err)
 			continue
 		}
-		if _, err := r.Create(comment); err != nil {
+		if _, err := r.DataStore.Create(comment); err != nil {
 			failed++
 			log.Printf("[WARN] can't write %+v to store, %s", comment, err)
 			continue

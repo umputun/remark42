@@ -38,8 +38,6 @@ const (
 	userLimit = 50
 )
 
-var topBuckets = []string{postsBucketName, lastBucketName, userBucketName, blocksBucketName, countsBucketName}
-
 const tsNano = "2006-01-02T15:04:05.000000000Z07:00"
 
 // BoltSite defines single site param
@@ -60,6 +58,7 @@ func NewBoltDB(options bolt.Options, sites ...BoltSite) (*BoltDB, error) {
 		}
 
 		// make top-level buckets
+		topBuckets := []string{postsBucketName, lastBucketName, userBucketName, blocksBucketName, countsBucketName}
 		err = db.Update(func(tx *bolt.Tx) error {
 			for _, bktName := range topBuckets {
 				if _, e := tx.CreateBucketIfNotExists([]byte(bktName)); e != nil {
@@ -183,9 +182,14 @@ func (b *BoltDB) DeleteAll(siteID string) error {
 	if err != nil {
 		return err
 	}
+
+	// delete all buckets except blocked users
+	toDelete := []string{postsBucketName, lastBucketName, userBucketName, countsBucketName}
+
 	// delete top-level buckets
 	err = bdb.Update(func(tx *bolt.Tx) error {
-		for _, bktName := range topBuckets {
+		for _, bktName := range toDelete {
+
 			if e := tx.DeleteBucket([]byte(bktName)); e != nil {
 				return errors.Wrapf(err, "failed to delete top level bucket %s", bktName)
 			}

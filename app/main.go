@@ -82,7 +82,7 @@ func main() {
 		return sess
 	}()
 
-	exporter := migrator.Remark{CommentFinder: &dataService}
+	exporter := migrator.Remark{DataStore: &dataService}
 	cache := rest.NewLoadingCache(4*time.Hour, 15*time.Minute, postFlushFn)
 
 	activateBackup(&exporter)
@@ -90,8 +90,8 @@ func main() {
 	importSrv := api.Import{
 		Version:        revision,
 		Cache:          cache,
-		NativeImporter: &migrator.Remark{CommentCreator: &dataService},
-		DisqusImporter: &migrator.Disqus{CommentCreator: &dataService},
+		NativeImporter: &migrator.Remark{DataStore: &dataService},
+		DisqusImporter: &migrator.Disqus{DataStore: &dataService},
 	}
 	go importSrv.Run(opts.Port + 1)
 

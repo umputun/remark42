@@ -37,8 +37,8 @@ func prepImportSrv(t *testing.T) (srv *Import, port int) {
 	require.Nil(t, err)
 
 	srv = &Import{
-		DisqusImporter: &migrator.Disqus{CommentCreator: dataStore},
-		NativeImporter: &migrator.Remark{CommentCreator: dataStore},
+		DisqusImporter: &migrator.Disqus{DataStore: dataStore},
+		NativeImporter: &migrator.Remark{DataStore: dataStore},
 		Cache:          &mockCache{},
 	}
 

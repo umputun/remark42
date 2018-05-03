@@ -23,7 +23,6 @@ import (
 	"github.com/umputun/remark/app/store"
 )
 
-
 var testDb = "/tmp/test-remark.db"
 var testHTML = "/tmp/test-remark.html"
 
@@ -422,14 +421,14 @@ func prep(t *testing.T) (srv *Rest, port int) {
 			AvatarProxy:  &auth.AvatarProxy{StorePath: "/tmp", RoutePath: "/api/v1/avatar"},
 			Admins:       []string{"a1", "a2"},
 		},
-		Exporter: &migrator.Remark{CommentFinder: dataStore},
+		Exporter: &migrator.Remark{DataStore: dataStore},
 		Cache:    &mockCache{},
 		WebRoot:  "/tmp",
 	}
 
 	importSrv := &Import{
-		DisqusImporter: &migrator.Disqus{CommentCreator: dataStore},
-		NativeImporter: &migrator.Remark{CommentCreator: dataStore},
+		DisqusImporter: &migrator.Disqus{DataStore: dataStore},
+		NativeImporter: &migrator.Remark{DataStore: dataStore},
 		Cache:          &mockCache{},
 	}
 
