@@ -20,6 +20,8 @@ export default class Input extends Component {
     if (this.props.autoFocus) {
       this.fieldNode.focus();
     }
+
+    this.fieldNode.value = '';
   }
 
   onKeyDown(e) {
