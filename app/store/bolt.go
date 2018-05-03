@@ -453,7 +453,7 @@ func (b *BoltDB) User(siteID string, userID string, limit int) (comments []Comme
 	return comments, totalComments, err
 }
 
-// Get for locator.URL and commentID string
+// Get returns comment for locator.URL and commentID string
 func (b *BoltDB) Get(locator Locator, commentID string) (comment Comment, err error) {
 
 	bdb, err := b.db(locator.SiteID)

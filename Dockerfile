@@ -34,7 +34,8 @@ ADD start.sh /srv/start.sh
 RUN chmod +x /srv/start.sh
 
 ADD import-disqus.sh /srv/import-disqus.sh
-RUN chmod +x /srv/import-disqus.sh
+ADD restore-backup.sh /srv/restore-backup.sh
+RUN chmod +x /srv/import-disqus.sh /srv/restore-backup.sh
 
 WORKDIR /srv
 EXPOSE 8080
