@@ -3,10 +3,9 @@
   font-weight: 700;
   text-decoration: none;
   color: #777;
+  cursor: pointer;
 
-  &:link {
-    &:hover {
-      text-decoration: underline;
-    }
+  &:hover {
+    opacity: .75;
   }
 }

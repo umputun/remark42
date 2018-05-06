@@ -13,6 +13,7 @@ export default class Comment extends Component {
 
     this.state = {
       isInputVisible: false,
+      isUserIdVisible: false,
     };
 
     this.updateState(props);
@@ -20,6 +21,7 @@ export default class Comment extends Component {
     this.decreaseScore = this.decreaseScore.bind(this);
     this.increaseScore = this.increaseScore.bind(this);
     this.toggleInputVisibility = this.toggleInputVisibility.bind(this);
+    this.toggleUserIdVisibility = this.toggleUserIdVisibility.bind(this);
     this.onReply = this.onReply.bind(this);
     this.onPinClick = this.onPinClick.bind(this);
     this.onUnpinClick = this.onUnpinClick.bind(this);
@@ -71,6 +73,10 @@ export default class Comment extends Component {
         this.props.onReplyClick(null);
       }
     }
+  }
+
+  toggleUserIdVisibility() {
+    this.setState({ isUserIdVisible: !this.state.isUserIdVisible });
   }
 
   onPinClick() {
@@ -175,7 +181,7 @@ export default class Comment extends Component {
     });
   }
 
-  render(props, { guest, userBlocked, pinned, score, scoreIncreased, scoreDecreased, deleted, isInputVisible }) {
+  render(props, { guest, isUserIdVisible, userBlocked, pinned, score, scoreIncreased, scoreDecreased, deleted, isInputVisible }) {
     const { data, mix, mods = {} } = props;
     const isAdmin = !guest && store.get('user').admin;
     const isGuest = guest || !Object.keys(store.get('user')).length;
@@ -242,7 +248,15 @@ export default class Comment extends Component {
               alt=""
             />
 
-            <span className="comment__username">{o.user.name}</span>
+            <span
+              className="comment__username"
+              title={o.user.id}
+              onClick={this.toggleUserIdVisibility}
+            >{o.user.name}</span>
+
+            {
+              isUserIdVisible && <span className="comment__user-id"> ({o.user.id})</span>
+            }
 
             <span className="comment__time">{o.time}</span>
 
@@ -358,6 +372,7 @@ export default class Comment extends Component {
             <Input
               mix="comment__input"
               onSubmit={this.onReply}
+              onCancel={this.toggleInputVisibility}
               pid={o.id}
               autoFocus
             />

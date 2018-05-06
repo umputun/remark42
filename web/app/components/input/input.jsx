@@ -25,17 +25,22 @@ export default class Input extends Component {
   }
 
   onKeyDown(e) {
+    // send on cmd+enter / ctrl+enter
     if (e.keyCode === 13 && (e.metaKey || e.ctrlKey)) {
       this.send();
+    }
+
+    // cancel on esc
+    if (e.keyCode === 27 && this.props.onCancel) {
+      this.props.onCancel();
     }
   }
 
   autoResize() {
     this.fieldNode.style.height = '';
-    this.setState({
-      height: this.fieldNode.scrollHeight,
-      preview: null,
-    });
+    this.fieldNode.style.height = `${this.fieldNode.scrollHeight}px`;
+
+    this.setState({ preview: null });
   }
 
   send(e) {
@@ -56,7 +61,8 @@ export default class Input extends Component {
         }
 
         this.fieldNode.value = '';
-        this.setState({ height: null, preview: null });
+        this.fieldNode.style.height = '';
+        this.setState({ preview: null });
       })
       .catch(() => {
         // TODO: do smth?
@@ -76,7 +82,7 @@ export default class Input extends Component {
       });
   }
 
-  render(props, { height, isFieldDisabled, preview }) {
+  render(props, { isFieldDisabled, preview }) {
     return (
       <form className={b('input', props)} onSubmit={this.send}>
         <textarea
@@ -84,7 +90,6 @@ export default class Input extends Component {
           placeholder="Your comment here"
           onInput={this.autoResize}
           onKeyDown={this.onKeyDown}
-          style={{ height }}
           ref={r => (this.fieldNode = r)}
           required
           disabled={isFieldDisabled}
