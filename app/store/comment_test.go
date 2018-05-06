@@ -20,7 +20,7 @@ func TestComment_Sanitize(t *testing.T) {
 				User: User{ID: `<a href="http://blah.com">username</a>`},
 			},
 			out: Comment{
-				Text: `blah XSS`,
+				Text: "blah XSS\n\t",
 				User: User{ID: `&lt;a href=&#34;http://blah.com&#34;&gt;username&lt;/a&gt;`},
 			},
 		},

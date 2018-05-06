@@ -67,7 +67,7 @@ func TestServer_Preview(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	b, err := ioutil.ReadAll(resp.Body)
 	assert.Nil(t, err)
-	assert.Equal(t, "<p>test 123</p>", string(b))
+	assert.Equal(t, "<p>test 123</p>\n", string(b))
 }
 
 func TestServer_PreviewWithMD(t *testing.T) {
@@ -121,7 +121,7 @@ func TestServer_CreateAndGet(t *testing.T) {
 	comment := store.Comment{}
 	err = json.Unmarshal([]byte(res), &comment)
 	assert.Nil(t, err)
-	assert.Equal(t, "<p><strong>test</strong> <em>123</em> http://radio-t.com</p>", comment.Text)
+	assert.Equal(t, "<p><strong>test</strong> <em>123</em> http://radio-t.com</p>\n", comment.Text)
 	assert.Equal(t, store.User{Name: "developer one", ID: "dev",
 		Picture: "/api/v1/avatar/remark.image", Admin: true, Blocked: false, IP: "ae12fe3b5f129b5cc4cdd2b136b7b7947c4d2741"},
 		comment.User)
@@ -190,7 +190,7 @@ func TestServer_Update(t *testing.T) {
 	err = json.Unmarshal(body, &c2)
 	assert.Nil(t, err)
 	assert.Equal(t, id, c2.ID)
-	assert.Equal(t, "<p>updated text</p>", c2.Text)
+	assert.Equal(t, "<p>updated text</p>\n", c2.Text)
 	assert.Equal(t, "my edit", c2.Edit.Summary)
 	assert.True(t, time.Since(c2.Edit.Timestamp) < 1*time.Second)
 
