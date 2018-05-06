@@ -12,15 +12,25 @@ import Input from 'components/input';
 import Preloader from 'components/preloader';
 import Thread from 'components/thread';
 
+const LS_SORT_KEY = '__remarkSort';
+
 export default class Root extends Component {
   constructor(props) {
     super(props);
+
+    let sort;
+
+    try {
+      sort = localStorage.getItem(LS_SORT_KEY);
+    } catch(e) {
+      sort = '-score';
+    }
 
     this.state = {
       loaded: false,
       user: {},
       replyingCommentId: null,
-      sort: '-score',
+      sort,
     };
 
     this.addComment = this.addComment.bind(this);
@@ -141,6 +151,12 @@ export default class Root extends Component {
 
     this.setState({ sort });
 
+    try {
+      localStorage.setItem(LS_SORT_KEY, sort);
+    } catch (e) {
+      // can't save; ignore it
+    }
+
     api.find({ sort, url }).then(({ comments } = {}) => store.set('comments', comments));
   }
 
@@ -159,7 +175,7 @@ export default class Root extends Component {
     });
   }
 
-  render({}, { config = {}, comments = [], user, loaded, isBlockedVisible, bannedUsers, replyingCommentId }) {
+  render({}, { config = {}, comments = [], user, sort, loaded, isBlockedVisible, bannedUsers, replyingCommentId }) {
     if (!loaded) {
       return (
         <div id={NODE_ID}>
@@ -179,6 +195,7 @@ export default class Root extends Component {
         <div className="root">
           <AuthPanel
             user={user}
+            sort={sort}
             providers={config.auth_providers}
             onSignIn={this.onSignIn}
             onSignOut={this.onSignOut}
