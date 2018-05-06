@@ -81,6 +81,9 @@ func TestMakeTreeSorts(t *testing.T) {
 
 	res = MakeTree(comments, "-score")
 	assert.Equal(t, "2", res.Nodes[0].Comment.ID)
+	assert.Equal(t, "1", res.Nodes[1].Comment.ID)
+	assert.Equal(t, "3", res.Nodes[2].Comment.ID)
+	assert.Equal(t, "6", res.Nodes[3].Comment.ID)
 }
 
 func BenchmarkTree(b *testing.B) {

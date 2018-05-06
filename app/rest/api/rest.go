@@ -215,10 +215,11 @@ func (s *Rest) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 // find comments for given post. Returns in tree or plain formats, sorted
 func (s *Rest) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
-	log.Printf("[DEBUG] get comments for %+v", locator)
+	sort := r.URL.Query().Get("sort")
+	log.Printf("[DEBUG] get comments for %+v, sort %s", locator, sort)
 
 	data, err := s.Cache.Get(rest.URLKey(r), time.Hour, func() ([]byte, error) {
-		comments, e := s.DataService.Find(locator, r.URL.Query().Get("sort"))
+		comments, e := s.DataService.Find(locator, sort)
 		if e != nil {
 			return nil, e
 		}
@@ -226,7 +227,7 @@ func (s *Rest) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		var b []byte
 		switch r.URL.Query().Get("format") {
 		case "tree":
-			b, e = encodeJSONWithHTML(rest.MakeTree(maskedComments, r.URL.Query().Get("sort")))
+			b, e = encodeJSONWithHTML(rest.MakeTree(maskedComments, sort))
 		default:
 			b, e = encodeJSONWithHTML(maskedComments)
 		}

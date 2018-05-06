@@ -45,7 +45,13 @@ func sortComments(comments []Comment, sortFld string) []Comment {
 
 		case "+score", "-score", "score":
 			if strings.HasPrefix(sortFld, "-") {
+				if comments[i].Score == comments[j].Score {
+					return comments[i].Timestamp.Before(comments[j].Timestamp)
+				}
 				return comments[i].Score > comments[j].Score
+			}
+			if comments[i].Score == comments[j].Score {
+				return comments[i].Timestamp.Before(comments[j].Timestamp)
 			}
 			return comments[i].Score < comments[j].Score
 
