@@ -358,6 +358,7 @@ export default class Comment extends Component {
             <Input
               mix="comment__input"
               onSubmit={this.onReply}
+              onCancel={this.toggleInputVisibility}
               pid={o.id}
               autoFocus
             />
