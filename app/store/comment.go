@@ -7,7 +7,6 @@ import (
 	"html/template"
 	"log"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/microcosm-cc/bluemonday"
@@ -92,8 +91,8 @@ func (c *Comment) Sanitize() {
 	c.User.Name = template.HTMLEscapeString(c.User.Name)
 	c.User.Picture = p.Sanitize(c.User.Picture)
 
-	c.Text = strings.Replace(c.Text, "\n", "", -1)
-	c.Text = strings.Replace(c.Text, "\t", "", -1)
+	// c.Text = strings.Replace(c.Text, "\n", "", -1)
+	// c.Text = strings.Replace(c.Text, "\t", "", -1)
 }
 
 // hashIP replace sensitive fields with hashes

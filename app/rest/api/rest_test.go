@@ -70,6 +70,33 @@ func TestServer_Preview(t *testing.T) {
 	assert.Equal(t, "<p>test 123</p>", string(b))
 }
 
+func TestServer_PreviewWithMD(t *testing.T) {
+	srv, port := prep(t)
+	require.NotNil(t, srv)
+	defer cleanup(srv)
+
+	text := `
+# h1
+
+BKT
+func TestServer_Preview(t *testing.T) {
+srv, port := prep(t)
+  require.NotNil(t, srv)
+}
+BKT
+`
+	text = strings.Replace(text, "BKT", "```", -1)
+	j := fmt.Sprintf(`{"text": "%s", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, text)
+	j = strings.Replace(j, "\n", "\\n", -1)
+	t.Log(j)
+	r := strings.NewReader(j)
+	resp, err := http.Post(fmt.Sprintf("http://127.0.0.1:%d/api/v1/preview", port), "application/json", r)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	b, err := ioutil.ReadAll(resp.Body)
+	assert.Nil(t, err)
+	assert.Equal(t, "<h1>h1</h1>\n\n<pre><code>func TestServer_Preview(t *testing.T) {\nsrv, port := prep(t)\n  require.NotNil(t, srv)\n}\n</code></pre>\n", string(b))
+}
+
 func TestServer_CreateAndGet(t *testing.T) {
 	srv, port := prep(t)
 	assert.NotNil(t, srv)
