@@ -1,5 +1,11 @@
 .auth-panel__column {
+  &:nth-child(1) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   &:nth-child(2) {
     margin-left: 8px;
+    text-align: right;
   }
 }

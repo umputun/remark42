@@ -20,6 +20,7 @@ export default class Root extends Component {
       loaded: false,
       user: {},
       replyingCommentId: null,
+      sort: '-score',
     };
 
     this.addComment = this.addComment.bind(this);
@@ -28,6 +29,7 @@ export default class Root extends Component {
     this.onBlockedUsersShow = this.onBlockedUsersShow.bind(this);
     this.onBlockedUsersHide = this.onBlockedUsersHide.bind(this);
     this.onReplyClick = this.onReplyClick.bind(this);
+    this.onSortChange = this.onSortChange.bind(this);
     this.onUnblockSomeone = this.onUnblockSomeone.bind(this);
     this.checkUrlHash = this.checkUrlHash.bind(this);
   }
@@ -38,11 +40,13 @@ export default class Root extends Component {
   }
 
   componentDidMount() {
+    const { sort } = this.state;
+
     api.getUser()
       .then(data => store.set('user', data))
       .catch(() => store.set('user', {}))
       .finally(() => {
-        api.find({ url })
+        api.find({ sort, url })
           .then(({ comments = [] } = {}) => store.set('comments', comments))
           .catch(() => store.set('comments', []))
           .finally(() => {
@@ -111,9 +115,11 @@ export default class Root extends Component {
   }
 
   onBlockedUsersHide() {
+    const { wasSomeoneUnblocked, sort } = this.state;
+
     // if someone was unblocked let's reload comments
-    if (this.state.wasSomeoneUnblocked) {
-      api.find({ url }).then(({ comments } = {}) => store.set('comments', comments));
+    if (wasSomeoneUnblocked) {
+      api.find({ sort, url }).then(({ comments } = {}) => store.set('comments', comments));
     }
 
     this.setState({
@@ -128,6 +134,14 @@ export default class Root extends Component {
     }
 
     this.onPrevReplyClickCallback = cb;
+  }
+
+  onSortChange(sort) {
+    if (sort === this.state.sort) return;
+
+    this.setState({ sort });
+
+    api.find({ sort, url }).then(({ comments } = {}) => store.set('comments', comments));
   }
 
   onUnblockSomeone() {
@@ -170,6 +184,7 @@ export default class Root extends Component {
             onSignOut={this.onSignOut}
             onBlockedUsersShow={this.onBlockedUsersShow}
             onBlockedUsersHide={this.onBlockedUsersHide}
+            onSortChange={this.onSortChange}
           />
 
           {

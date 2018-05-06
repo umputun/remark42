@@ -10,7 +10,7 @@ export const logOut = () => fetcher.get({ url: `/auth/logout`, overriddenApiBase
 
 export const getConfig = () => fetcher.get(`/config`);
 
-export const find = ({ url }) => fetcher.get(`/find?url=${url}&sort=-score&format=tree`);
+export const find = ({ sort, url }) => fetcher.get(`/find?url=${url}&sort=${sort}&format=tree`);
 
 export const last = ({ siteId, max }) => fetcher.get(`/last/${max}?site=${siteId}`);
 

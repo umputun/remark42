@@ -1,4 +1,5 @@
 import 'babel-polyfill'; // TODO: remove it
+import 'common/promises';
 import 'common/polyfills'; // TODO: check it
 
 import { h, render } from 'preact';

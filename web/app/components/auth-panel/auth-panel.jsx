@@ -6,6 +6,13 @@ export default class AuthPanel extends Component {
 
     this.toggleUserId = this.toggleUserId.bind(this);
     this.toggleBlockedVisibility = this.toggleBlockedVisibility.bind(this);
+    this.onSortChange = this.onSortChange.bind(this);
+  }
+
+  onSortChange(e) {
+    if (this.props.onSortChange) {
+      this.props.onSortChange(e.target.value);
+    }
   }
 
   toggleUserId() {
@@ -23,7 +30,9 @@ export default class AuthPanel extends Component {
   }
 
   render(props, { isUserIdVisible, isBlockedVisible }) {
-    const { user, providers = [] } = props;
+    const { user, providers = [], sort } = props;
+
+    const sortArray = getSortArray(sort);
 
     return (
       <div className={b('auth-panel', props)}>
@@ -65,17 +74,64 @@ export default class AuthPanel extends Component {
           )
         }
 
-        {
-          user.admin && (
-            <div className="auth-panel__column">
+        <div className="auth-panel__column">
+          {
+            user.admin && (
               <span
-                className="auth-panel__pseudo-link"
+                className="auth-panel__pseudo-link auth-panel__admin-action"
                 onClick={this.toggleBlockedVisibility}
-              >{isBlockedVisible ? 'hide' : 'show'} blocked</span>
-            </div>
-          )
-        }
+              >{isBlockedVisible ? 'Hide' : 'Show'} blocked</span>
+            )
+          }
+
+          {user.admin && ' • '}
+
+          {
+            !!user.name && (
+              <span className="auth-panel__sort">
+                Sort by
+                {' '}
+                <select className="auth-panel__select" onChange={this.onSortChange}>
+                  {
+                    sortArray.map(sort => (
+                      <option value={sort.value} selected={sort.selected}>{sort.label}</option>
+                    ))
+                  }
+                </select>
+              </span>
+            )
+          }
+        </div>
       </div>
     );
   }
+}
+
+function getSortArray(currentSort) {
+  const sortArray = [
+    {
+      value: '-score',
+      label: 'Best',
+    },
+    {
+      value: '+score',
+      label: 'Worst',
+    },
+    {
+      value: '-time',
+      label: 'Newest',
+    },
+    {
+      value: '+time',
+      label: 'Oldest',
+    },
+  ];
+
+  return sortArray.map(sort => {
+    if (sort.value === currentSort) {
+      sort.selected = true;
+    }
+
+    return sort;
+  });
 }

@@ -1,5 +1,3 @@
-import 'common/promises';
-
 // TODO: i've tried to rewrite it to unfetch but it wasn't easy to make it work
 // we need to try again later
 import axios from 'axios';
