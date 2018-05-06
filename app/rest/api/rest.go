@@ -41,6 +41,10 @@ type Rest struct {
 	amdminService admin
 }
 
+var mdExt = blackfriday.NoIntraEmphasis | blackfriday.Tables | blackfriday.FencedCode |
+	blackfriday.Strikethrough | blackfriday.SpaceHeadings | blackfriday.HeadingIDs |
+	blackfriday.BackslashLineBreak
+
 // Run the lister and request's router, activate rest server
 func (s *Rest) Run(port int) {
 	log.Printf("[INFO] activate rest server on port %d", port)
@@ -134,7 +138,7 @@ func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	comment.PrepareUntrusted() // clean all fields user not suppoed to set
 	comment.User = user
 	comment.User.IP = strings.Split(r.RemoteAddr, ":")[0]
-	comment.Text = string(blackfriday.Run([]byte(comment.Text), blackfriday.WithExtensions(blackfriday.CommonExtensions)))
+	comment.Text = string(blackfriday.Run([]byte(comment.Text), blackfriday.WithExtensions(mdExt)))
 	log.Printf("[DEBUG] create comment %+v", comment)
 
 	// check if user blocked
@@ -160,7 +164,7 @@ func (s *Rest) previewCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't bind comment")
 		return
 	}
-	comment.Text = string(blackfriday.Run([]byte(comment.Text), blackfriday.WithExtensions(blackfriday.CommonExtensions)))
+	comment.Text = string(blackfriday.Run([]byte(comment.Text), blackfriday.WithExtensions(mdExt)))
 	render.HTML(w, r, comment.Text)
 }
 
