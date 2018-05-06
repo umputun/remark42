@@ -63,7 +63,7 @@ func TestServer_Preview(t *testing.T) {
 	defer cleanup(srv)
 
 	r := strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
-	resp, err := http.Post(fmt.Sprintf("http://127.0.0.1:%d/api/v1/preview", port), "application/json", r)
+	resp, err := http.Post(fmt.Sprintf("http://dev:password@127.0.0.1:%d/api/v1/preview", port), "application/json", r)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	b, err := ioutil.ReadAll(resp.Body)
 	assert.Nil(t, err)
@@ -90,7 +90,7 @@ BKT
 	j = strings.Replace(j, "\n", "\\n", -1)
 	t.Log(j)
 	r := strings.NewReader(j)
-	resp, err := http.Post(fmt.Sprintf("http://127.0.0.1:%d/api/v1/preview", port), "application/json", r)
+	resp, err := http.Post(fmt.Sprintf("http://dev:password@127.0.0.1:%d/api/v1/preview", port), "application/json", r)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	b, err := ioutil.ReadAll(resp.Body)
 	assert.Nil(t, err)

@@ -138,6 +138,12 @@ func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	comment.PrepareUntrusted() // clean all fields user not suppoed to set
 	comment.User = user
 	comment.User.IP = strings.Split(r.RemoteAddr, ":")[0]
+
+	if comment.Validate() != nil {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment")
+		return
+	}
+
 	comment.Text = string(blackfriday.Run([]byte(comment.Text), blackfriday.WithExtensions(mdExt)))
 	log.Printf("[DEBUG] create comment %+v", comment)
 
@@ -162,6 +168,17 @@ func (s *Rest) previewCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	comment := store.Comment{}
 	if err := render.DecodeJSON(r.Body, &comment); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't bind comment")
+		return
+	}
+
+	user, err := rest.GetUserInfo(r)
+	if err != nil { // this not suppose to happen (handled by Auth), just dbl-check
+		rest.SendErrorJSON(w, r, http.StatusUnauthorized, err, "can't get user info")
+		return
+	}
+	comment.User = user
+	if err := comment.Validate(); err != nil {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment")
 		return
 	}
 

@@ -3,6 +3,7 @@ package store
 import (
 	"crypto/hmac"
 	"crypto/sha1"
+	"errors"
 	"fmt"
 	"html/template"
 	"log"
@@ -62,6 +63,9 @@ type BlockedUser struct {
 	Timestamp time.Time `json:"time"`
 }
 
+// MaxCommentSize defines max size of comment's text
+const MaxCommentSize = 2048
+
 // PrepareUntrusted preprocess comment received from untrusted source by clearing all
 // autogen fields and reset everything users not supposed to provide
 func (c *Comment) PrepareUntrusted() {
@@ -93,6 +97,20 @@ func (c *Comment) Sanitize() {
 
 	// c.Text = strings.Replace(c.Text, "\n", "", -1)
 	// c.Text = strings.Replace(c.Text, "\t", "", -1)
+}
+
+// Validate comment
+func (c *Comment) Validate() error {
+	if c.Text == "" {
+		return errors.New("empty comment text")
+	}
+	if len(c.Text) > MaxCommentSize {
+		return errors.New("comment text exceeded max allowed size")
+	}
+	if c.User.ID == "" || c.User.Name == "" {
+		return errors.New("empty user info")
+	}
+	return nil
 }
 
 // hashIP replace sensitive fields with hashes
