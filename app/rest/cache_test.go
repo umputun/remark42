@@ -44,8 +44,13 @@ func TestLoadingCache_URLKey(t *testing.T) {
 	key := URLKey(r)
 	assert.Equal(t, "http://blah/123", key)
 
+	r, err = http.NewRequest("GET", "http://blah/123?key=v&k2=v2", nil)
+	assert.Nil(t, err)
+	key = URLKey(r)
+	assert.Equal(t, "http://blah/123?key=v&k2=v2", key)
+
 	user := store.User{Admin: true}
 	r = SetUserInfo(r, user)
 	key = URLKey(r)
-	assert.Equal(t, "admin!!http://blah/123", key)
+	assert.Equal(t, "admin!!http://blah/123?key=v&k2=v2", key)
 }

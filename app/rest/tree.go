@@ -77,9 +77,9 @@ func (t *Tree) sortNodes(sortType string) {
 
 		case "+score", "-score", "score":
 			if strings.HasPrefix(sortType, "-") {
-				return t.Nodes[i].Comment.Score > t.Nodes[j].Comment.Score
+				return t.Nodes[i].Comment.Score < t.Nodes[j].Comment.Score
 			}
-			return t.Nodes[i].Comment.Score < t.Nodes[j].Comment.Score
+			return t.Nodes[i].Comment.Score > t.Nodes[j].Comment.Score
 
 		default:
 			return t.Nodes[i].Comment.Timestamp.Before(t.Nodes[j].Comment.Timestamp)
