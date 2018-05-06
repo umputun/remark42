@@ -42,7 +42,7 @@ func TestMakeTree(t *testing.T) {
 	// t.Log(string(buf.Bytes()))
 }
 
-func TestMakeTreeSorts(t *testing.T) {
+func TestTreeSortNodes(t *testing.T) {
 	// unsorted by purpose
 	comments := []store.Comment{
 		{ID: "14", ParentID: "1", Timestamp: time.Date(2017, 12, 25, 19, 46, 14, 0, time.UTC)},
