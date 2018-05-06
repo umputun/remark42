@@ -134,7 +134,7 @@ func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	comment.PrepareUntrusted() // clean all fields user not suppoed to set
 	comment.User = user
 	comment.User.IP = strings.Split(r.RemoteAddr, ":")[0]
-	comment.Text = string(blackfriday.Run([]byte(comment.Text), blackfriday.CommonExtensions) // render markdown
+	comment.Text = string(blackfriday.Run([]byte(comment.Text), blackfriday.WithExtensions(blackfriday.CommonExtensions)))
 	log.Printf("[DEBUG] create comment %+v", comment)
 
 	// check if user blocked
@@ -160,7 +160,7 @@ func (s *Rest) previewCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't bind comment")
 		return
 	}
-	comment.Text = string(blackfriday.Run([]byte(comment.Text), blackfriday.CommonExtensions)
+	comment.Text = string(blackfriday.Run([]byte(comment.Text), blackfriday.WithExtensions(blackfriday.CommonExtensions)))
 	render.HTML(w, r, comment.Text)
 }
 
