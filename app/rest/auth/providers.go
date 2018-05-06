@@ -25,7 +25,7 @@ func NewGoogle(p Params) Provider {
 		MapUser: func(data userData, _ []byte) store.User {
 			userInfo := store.User{
 				// encode email with provider name to avoid collision if same id returned by other provider
-				ID:      "google_" + rest.EncodeID("google_"+data.value("email")),
+				ID:      "google_" + rest.EncodeID(data.value("email")),
 				Name:    data.value("name"),
 				Picture: data.value("picture"),
 			}
@@ -48,7 +48,7 @@ func NewGithub(p Params) Provider {
 		Store:       p.SessionStore,
 		MapUser: func(data userData, _ []byte) store.User {
 			userInfo := store.User{
-				ID:      "github_" + rest.EncodeID("github_"+data.value("login")),
+				ID:      "github_" + rest.EncodeID(data.value("login")),
 				Name:    data.value("name"),
 				Picture: data.value("avatar_url"),
 			}
@@ -83,7 +83,7 @@ func NewFacebook(p Params) Provider {
 		Store:       p.SessionStore,
 		MapUser: func(data userData, bdata []byte) store.User {
 			userInfo := store.User{
-				ID:   "facebook_" + ("facebook_" + rest.EncodeID(data.value("id"))),
+				ID:   "facebook_" + rest.EncodeID(data.value("id")),
 				Name: data.value("name"),
 			}
 			if userInfo.Name == "" {
@@ -113,7 +113,7 @@ func NewDisqus(p Params) Provider {
 		Store:       p.SessionStore,
 		MapUser: func(data userData, _ []byte) store.User {
 			userInfo := store.User{
-				ID:      "disqus_" + rest.EncodeID("disqus_"+data.value("login")),
+				ID:      "disqus_" + rest.EncodeID(data.value("login")),
 				Name:    data.value("name"),
 				Picture: data.value("avatar_url"),
 			}
