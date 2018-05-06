@@ -67,7 +67,7 @@ func TestServer_Preview(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	b, err := ioutil.ReadAll(resp.Body)
 	assert.Nil(t, err)
-	assert.Equal(t, "<p>test 123</p>\n", string(b))
+	assert.Equal(t, "<p>test 123</p>", string(b))
 }
 
 func TestServer_CreateAndGet(t *testing.T) {
