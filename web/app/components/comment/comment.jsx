@@ -242,7 +242,7 @@ export default class Comment extends Component {
               alt=""
             />
 
-            <span className="comment__username">{o.user.name}</span>
+            <span className="comment__username" title={o.user.id}>{o.user.name}</span>
 
             <span className="comment__time">{o.time}</span>
 
