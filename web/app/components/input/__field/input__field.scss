@@ -17,6 +17,7 @@
   border: 0;
   resize: none;
   backface-visibility: hidden; // let's try to fix blinking in Safari
+  transform: translateZ(0); // let's try to fix blinking in Safari, again
 
   &:focus {
     box-shadow: inset 0 0 0 2px #259C9A;
