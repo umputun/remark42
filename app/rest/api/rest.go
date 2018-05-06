@@ -164,6 +164,8 @@ func (s *Rest) previewCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't bind comment")
 		return
 	}
+
+	comment.Sanitize()
 	comment.Text = string(blackfriday.Run([]byte(comment.Text), blackfriday.WithExtensions(mdExt)))
 	render.HTML(w, r, comment.Text)
 }

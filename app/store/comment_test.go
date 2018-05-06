@@ -27,7 +27,7 @@ func TestComment_Sanitize(t *testing.T) {
 	}
 
 	for n, tt := range tbl {
-		tt.inp.sanitize()
+		tt.inp.Sanitize()
 		assert.Equal(t, tt.out, tt.inp, "check #%d", n)
 	}
 }

@@ -84,8 +84,8 @@ func (c *Comment) SetDeleted() {
 	c.Deleted = true
 }
 
-// sanitize clean dangerous html/js from the comment
-func (c *Comment) sanitize() {
+// Sanitize clean dangerous html/js from the comment
+func (c *Comment) Sanitize() {
 	p := bluemonday.UGCPolicy()
 	c.Text = p.Sanitize(c.Text)
 	c.User.ID = template.HTMLEscapeString(c.User.ID)
