@@ -165,8 +165,8 @@ func (s *Rest) previewCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	comment.Sanitize()
 	comment.Text = string(blackfriday.Run([]byte(comment.Text), blackfriday.WithExtensions(mdExt)))
+	comment.Sanitize()
 	render.HTML(w, r, comment.Text)
 }
 
