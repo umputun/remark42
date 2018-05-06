@@ -216,7 +216,10 @@ func (s *Rest) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 func (s *Rest) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	sort := r.URL.Query().Get("sort")
-	log.Printf("[DEBUG] get comments for %+v, sort %s", locator, sort)
+	if strings.HasPrefix(sort, " ") { // restore + replaced by " "
+		sort = "+" + sort[1:]
+	}
+	log.Printf("[DEBUG] get comments for %+v, sort %s, format %s", locator, sort, r.URL.Query().Get("format"))
 
 	data, err := s.Cache.Get(rest.URLKey(r), time.Hour, func() ([]byte, error) {
 		comments, e := s.DataService.Find(locator, sort)
