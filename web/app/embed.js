@@ -57,7 +57,7 @@ function init() {
 
   function updateIframeHeight(event) {
     try {
-      const data = JSON.parse(event.data);
+      const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
       iframe.style.height = `${data.remarkIframeHeight}px`;
     } catch (e) {}
   }
