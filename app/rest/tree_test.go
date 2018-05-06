@@ -57,23 +57,30 @@ func TestMakeTreeSorts(t *testing.T) {
 		{ID: "22", ParentID: "2", Timestamp: time.Date(2017, 12, 25, 19, 47, 22, 0, time.UTC)},
 		{ID: "4", Timestamp: time.Date(2017, 12, 25, 19, 47, 22, 0, time.UTC), Score: -2},
 		{ID: "3", Timestamp: time.Date(2017, 12, 25, 19, 47, 22, 100, time.UTC)},
+		{ID: "6", Timestamp: time.Date(2017, 12, 25, 19, 47, 22, 200, time.UTC)},
 		{ID: "5", Deleted: true},
 	}
 
 	res := MakeTree(comments, "time")
 	assert.Equal(t, "1", res.Nodes[0].Comment.ID)
 
-	res = MakeTree(comments, "+time")
+	res = MakeTree(comments, "time")
 	assert.Equal(t, "1", res.Nodes[0].Comment.ID)
 
 	res = MakeTree(comments, "-time")
-	assert.Equal(t, "3", res.Nodes[0].Comment.ID)
+	assert.Equal(t, "6", res.Nodes[0].Comment.ID)
 
 	res = MakeTree(comments, "score")
-	assert.Equal(t, "2", res.Nodes[0].Comment.ID)
+	assert.Equal(t, "4", res.Nodes[0].Comment.ID)
+	assert.Equal(t, "3", res.Nodes[1].Comment.ID)
+	assert.Equal(t, "6", res.Nodes[2].Comment.ID)
+	assert.Equal(t, "1", res.Nodes[3].Comment.ID)
+
+	res = MakeTree(comments, "+score")
+	assert.Equal(t, "4", res.Nodes[0].Comment.ID)
 
 	res = MakeTree(comments, "-score")
-	assert.Equal(t, "4", res.Nodes[0].Comment.ID)
+	assert.Equal(t, "2", res.Nodes[0].Comment.ID)
 }
 
 func BenchmarkTree(b *testing.B) {

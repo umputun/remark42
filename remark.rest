@@ -1,6 +1,6 @@
 
 ### find request with tree
-GET {{host}}/api/v1/find?site=remark&sort=-score&format=tree&url=https://radio-t.com/p/2017/12/16/podcast-576/
+GET {{host}}/api/v1/find?site=remark&sort=+score&format=tree&url=https://radio-t.com/p/2017/12/16/podcast-576/
 
 ### find request with plain
 GET {{host}}/api/v1/find?site=remark&sort=-score&format=plain&url=https://radio-t.com/p/2017/12/16/podcast-576/
