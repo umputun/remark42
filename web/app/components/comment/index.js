@@ -22,6 +22,7 @@ require('./__score-value/comment__score-value.scss');
 require('./__status/comment__status.scss');
 require('./__text/comment__text.scss');
 require('./__time/comment__time.scss');
+require('./__user-id/comment__user-id.scss');
 require('./__username/comment__username.scss');
 
 require('./__vote/comment__vote.scss');
