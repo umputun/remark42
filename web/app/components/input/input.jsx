@@ -38,10 +38,9 @@ export default class Input extends Component {
 
   autoResize() {
     this.fieldNode.style.height = '';
-    this.setState({
-      height: this.fieldNode.scrollHeight,
-      preview: null,
-    });
+    this.fieldNode.style.height = `${this.fieldNode.scrollHeight}px`;
+
+    this.setState({ preview: null });
   }
 
   send(e) {
@@ -62,7 +61,8 @@ export default class Input extends Component {
         }
 
         this.fieldNode.value = '';
-        this.setState({ height: null, preview: null });
+        this.fieldNode.style.height = '';
+        this.setState({ preview: null });
       })
       .catch(() => {
         // TODO: do smth?
@@ -82,7 +82,7 @@ export default class Input extends Component {
       });
   }
 
-  render(props, { height, isFieldDisabled, preview }) {
+  render(props, { isFieldDisabled, preview }) {
     return (
       <form className={b('input', props)} onSubmit={this.send}>
         <textarea
@@ -90,7 +90,6 @@ export default class Input extends Component {
           placeholder="Your comment here"
           onInput={this.autoResize}
           onKeyDown={this.onKeyDown}
-          style={{ height }}
           ref={r => (this.fieldNode = r)}
           required
           disabled={isFieldDisabled}
