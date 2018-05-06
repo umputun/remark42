@@ -31,7 +31,6 @@ require('./__vote/_type/_down/comment__vote_type_down.scss');
 require('./__vote/_type/_up/comment__vote_type_up.scss');
 
 require('./_level/comment_level.scss');
-require('./_pinned/comment_pinned.scss');
 require('./_replying/comment_replying.scss');
 require('./_useless/comment_useless.scss');
 
