@@ -34,7 +34,7 @@ func TestLogin(t *testing.T) {
 	u := store.User{}
 	err = json.Unmarshal(body, &u)
 	assert.Nil(t, err)
-	assert.Equal(t, store.User{Name: "blah", ID: "myuser", Picture: "", Profile: "http://blah.com/p.html",
+	assert.Equal(t, store.User{Name: "blah", ID: "myuser", Picture: "",
 		Admin: false, Blocked: false, IP: ""}, u)
 }
 
@@ -76,7 +76,6 @@ func mockProvider(t *testing.T, sessStore sessions.Store, loginPort, authPort in
 				ID:      data.value("id"),
 				Name:    data.value("name"),
 				Picture: data.value("picture"),
-				Profile: data.value("profile"),
 			}
 			return userInfo
 		},

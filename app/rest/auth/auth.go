@@ -25,7 +25,6 @@ type Authenticator struct {
 var devUser = store.User{
 	ID:      "dev",
 	Name:    "developer one",
-	Profile: "https://remark42.com",
 	Picture: "/api/v1/avatar/remark.image",
 	Admin:   true,
 }

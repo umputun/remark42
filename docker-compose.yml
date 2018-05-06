@@ -15,8 +15,8 @@ services:
               max-file: "5"
 
         # uncomment to expose directly (no proxy)
-        ports:
-          - "80:8080"
+        #ports:
+        #  - "80:8080"
 
         environment:
             # - REMARK_URL=https://demo.remark42.com
@@ -39,5 +39,4 @@ services:
             - ./var:/srv/var
             #- ./web:/srv/web # uncomment to map web directory directly. It will propagate local changes to container without redeploy
 
-#        user: ${USER} # if local UID != 1001 (default) set `USER` in your env, i.e. export USER=`id -u $USER`
         command: /srv/start.sh

@@ -24,10 +24,9 @@ func NewGoogle(p Params) Provider {
 		Store:       p.SessionStore,
 		MapUser: func(data userData, _ []byte) store.User {
 			userInfo := store.User{
-				ID:      rest.EncodeID("google_" + data.value("email")), // encode email
+				ID:      "google_" + rest.EncodeID(data.value("email")), // encode email
 				Name:    data.value("name"),
 				Picture: data.value("picture"),
-				Profile: data.value("profile"),
 			}
 			if userInfo.Name == "" {
 				userInfo.Name = strings.Split(data.value("email"), "@")[0]
@@ -48,10 +47,9 @@ func NewGithub(p Params) Provider {
 		Store:       p.SessionStore,
 		MapUser: func(data userData, _ []byte) store.User {
 			userInfo := store.User{
-				ID:      "github_" + data.value("login"),
+				ID:      "github_" + rest.EncodeID(data.value("login")),
 				Name:    data.value("name"),
 				Picture: data.value("avatar_url"),
-				Profile: data.value("html_url"),
 			}
 			if userInfo.Name == "" {
 				userInfo.Name = userInfo.ID
@@ -84,7 +82,7 @@ func NewFacebook(p Params) Provider {
 		Store:       p.SessionStore,
 		MapUser: func(data userData, bdata []byte) store.User {
 			userInfo := store.User{
-				ID:   "facebook_" + data.value("id"),
+				ID:   "facebook_" + rest.EncodeID(data.value("id")),
 				Name: data.value("name"),
 			}
 			if userInfo.Name == "" {
@@ -114,10 +112,9 @@ func NewDisqus(p Params) Provider {
 		Store:       p.SessionStore,
 		MapUser: func(data userData, _ []byte) store.User {
 			userInfo := store.User{
-				ID:      "disqus_" + data.value("login"),
+				ID:      "disqus_" + rest.EncodeID(data.value("login")),
 				Name:    data.value("name"),
 				Picture: data.value("avatar_url"),
-				Profile: data.value("html_url"),
 			}
 			if userInfo.Name == "" {
 				userInfo.Name = userInfo.ID

@@ -39,7 +39,6 @@ type User struct {
 	Name    string `json:"name"`
 	ID      string `json:"id"`
 	Picture string `json:"picture"`
-	Profile string `json:"profile,omitempty"`
 	Admin   bool   `json:"admin"`
 	Blocked bool   `json:"block,omitempty"`
 	IP      string `json:"ip,omitempty"`
@@ -92,7 +91,6 @@ func (c *Comment) sanitize() {
 	c.User.ID = template.HTMLEscapeString(c.User.ID)
 	c.User.Name = template.HTMLEscapeString(c.User.Name)
 	c.User.Picture = p.Sanitize(c.User.Picture)
-	c.User.Profile = p.Sanitize(c.User.Profile)
 
 	c.Text = strings.Replace(c.Text, "\n", "", -1)
 	c.Text = strings.Replace(c.Text, "\t", "", -1)
