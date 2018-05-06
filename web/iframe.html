@@ -19,7 +19,7 @@
   <div id="remark42"></div>
   <script>
     var lastHeight = 0;
-    setInterval(() => {
+    setInterval(function() {
       if (document.body.offsetHeight !== lastHeight) {
         lastHeight = document.body.offsetHeight;
         window.parent.postMessage(JSON.stringify({ remarkIframeHeight: lastHeight }), '*');
@@ -30,7 +30,7 @@
 
     function updateHash(event) {
       try {
-        const data = JSON.parse(event.data);
+        const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
         location.hash = data.hash;
       } catch (e) {}
     }
