@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/coreos/bbolt"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -164,6 +165,33 @@ func TestService_EditCommentDurationFailed(t *testing.T) {
 	comment, err = b.EditComment(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "xxx",
 		Edit{Summary: "my edit"})
 	assert.NotNil(t, err)
+}
+
+func TestService_ValidateComment(t *testing.T) {
+
+	b := Service{MaxCommentSize: 2000}
+	longText := ""
+	for i := 0; i < 4000; i++ {
+		longText += "X"
+	}
+	tbl := []struct {
+		inp Comment
+		err error
+	}{
+		{inp: Comment{}, err: errors.New("empty comment text")},
+		{inp: Comment{Text: "something blah", User: User{ID: "myid", Name: "name"}}, err: nil},
+		{inp: Comment{Text: "something blah", User: User{ID: "myid"}}, err: errors.New("empty user info")},
+		{inp: Comment{Text: longText, User: User{ID: "myid", Name: "name"}}, err: errors.New("comment text exceeded max allowed size")},
+	}
+
+	for n, tt := range tbl {
+		e := b.ValidateComment(&tt.inp)
+		if tt.err == nil {
+			assert.Nil(t, e, "check #%d", n)
+			continue
+		}
+		assert.EqualError(t, tt.err, e.Error(), "check #%d", n)
+	}
 }
 
 func TestService_Counts(t *testing.T) {

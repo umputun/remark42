@@ -2,6 +2,7 @@ package rest
 
 import (
 	"net/http"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -10,32 +11,32 @@ import (
 )
 
 func TestLoadingCache_Get(t *testing.T) {
-	var postFnCall, coldCalls int
+	var postFnCall, coldCalls int32
 	lc := NewLoadingCache(1*time.Minute, 200*time.Millisecond, func() {
-		postFnCall++
+		atomic.AddInt32(&postFnCall, 1)
 	})
 
 	res, err := lc.Get("key", time.Minute, func() ([]byte, error) {
-		coldCalls++
+		atomic.AddInt32(&coldCalls, 1)
 		return []byte("result"), nil
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, "result", string(res))
-	assert.Equal(t, 1, coldCalls)
-	assert.Equal(t, 0, postFnCall)
+	assert.Equal(t, int32(1), atomic.LoadInt32(&coldCalls))
+	assert.Equal(t, int32(0), atomic.LoadInt32(&postFnCall))
 
 	res, err = lc.Get("key", time.Minute, func() ([]byte, error) {
-		coldCalls++
+		atomic.AddInt32(&coldCalls, 1)
 		return []byte("result"), nil
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, "result", string(res))
-	assert.Equal(t, 1, coldCalls)
-	assert.Equal(t, 0, postFnCall)
+	assert.Equal(t, int32(1), atomic.LoadInt32(&coldCalls))
+	assert.Equal(t, int32(0), atomic.LoadInt32(&postFnCall))
 
 	lc.Flush()
 	time.Sleep(100 * time.Millisecond) // let postFn to do its thing
-	assert.Equal(t, 1, postFnCall)
+	assert.Equal(t, int32(1), atomic.LoadInt32(&postFnCall))
 }
 
 func TestLoadingCache_URLKey(t *testing.T) {

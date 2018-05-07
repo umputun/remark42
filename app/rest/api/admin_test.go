@@ -19,9 +19,9 @@ func TestAdmin_Delete(t *testing.T) {
 	assert.NotNil(t, srv)
 	defer cleanup(srv)
 
-	c1 := store.Comment{Text: "test test #1",
+	c1 := store.Comment{Text: "test test #1", User: store.User{ID: "id", Name: "name"},
 		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}}
-	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
+	c2 := store.Comment{Text: "test test #2", User: store.User{ID: "id", Name: "name"}, ParentID: "p1",
 		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}}
 
 	id1 := addComment(t, c1, port)

@@ -10,8 +10,9 @@ import (
 // Service wraps store.Interface with additional methods
 type Service struct {
 	Interface
-	EditDuration time.Duration
-	Secret       string
+	EditDuration   time.Duration
+	Secret         string
+	MaxCommentSize int
 }
 
 // Create prepares comment and forward to Interface.Create
@@ -114,4 +115,22 @@ func (s *Service) Counts(siteID string, postIDs []string) ([]PostInfo, error) {
 		}
 	}
 	return res, nil
+}
+
+// ValidateComment checks if comment size below max and user fields set
+func (s *Service) ValidateComment(c *Comment) error {
+	maxSize := s.MaxCommentSize
+	if s.MaxCommentSize <= 0 {
+		maxSize = 2000
+	}
+	if c.Text == "" {
+		return errors.New("empty comment text")
+	}
+	if len(c.Text) > maxSize {
+		return errors.New("comment text exceeded max allowed size")
+	}
+	if c.User.ID == "" || c.User.Name == "" {
+		return errors.New("empty user info")
+	}
+	return nil
 }

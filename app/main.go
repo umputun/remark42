@@ -33,9 +33,10 @@ var opts struct {
 	BackupLocation string `long:"backup" env:"BACKUP_PATH" default:"./var/backup" description:"backups location"`
 	MaxBackupFiles int    `long:"max-back" env:"MAX_BACKUP_FILES" default:"10" description:"max backups to keep"`
 
-	SessionStore string `long:"session" env:"SESSION_STORE" default:"./var/session" description:"session store location"`
-	AvatarStore  string `long:"avatars" env:"AVATAR_STORE" default:"./var/avatars" description:"avatars location"`
-	StoreKey     string `long:"store-key" env:"STORE_KEY" default:"secure-store-key" description:"store key"`
+	SessionStore   string `long:"session" env:"SESSION_STORE" default:"./var/session" description:"session store location"`
+	AvatarStore    string `long:"avatars" env:"AVATAR_STORE" default:"./var/avatars" description:"avatars location"`
+	StoreKey       string `long:"store-key" env:"STORE_KEY" default:"secure-store-key" description:"store key"`
+	MaxCommentSize int    `long:"max-comment" env:"MAX_COMMENT_SIZE" default:"2048" description:"max comment size"`
 
 	GoogleCID    string `long:"google-cid" env:"REMARK_GOOGLE_CID" description:"Google OAuth client ID"`
 	GoogleCSEC   string `long:"google-csec" env:"REMARK_GOOGLE_CSEC" description:"Google OAuth client secret"`
@@ -72,7 +73,13 @@ func main() {
 		log.Printf("[WARN] running in dev mode")
 	}
 
-	dataService := store.Service{Interface: dataStore, EditDuration: 5 * time.Minute, Secret: opts.StoreKey}
+	dataService := store.Service{
+		Interface:      dataStore,
+		EditDuration:   5 * time.Minute,
+		Secret:         opts.StoreKey,
+		MaxCommentSize: opts.MaxCommentSize,
+	}
+
 	sessionStore := func() sessions.Store {
 		sess := sessions.NewFilesystemStore(opts.SessionStore, []byte(opts.StoreKey))
 		sess.Options.HttpOnly = true
