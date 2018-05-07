@@ -350,16 +350,18 @@ func (s *Rest) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 // GET /config?site=siteID - returns configuration
 func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 	type config struct {
-		Version      string   `json:"version"`
-		EditDuration int      `json:"edit_duration"`
-		Admins       []string `json:"admins"`
-		Auth         []string `json:"auth_providers"`
+		Version        string   `json:"version"`
+		EditDuration   int      `json:"edit_duration"`
+		MaxCommentSize int      `json:"max_comment_size"`
+		Admins         []string `json:"admins"`
+		Auth           []string `json:"auth_providers"`
 	}
 
 	cnf := config{
-		Version:      s.Version,
-		EditDuration: int(s.DataService.EditDuration.Seconds()),
-		Admins:       s.Authenticator.Admins,
+		Version:        s.Version,
+		EditDuration:   int(s.DataService.EditDuration.Seconds()),
+		MaxCommentSize: s.DataService.MaxCommentSize,
+		Admins:         s.Authenticator.Admins,
 	}
 	authNames := []string{}
 	for _, ap := range s.Authenticator.Providers {
