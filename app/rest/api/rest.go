@@ -139,7 +139,7 @@ func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	comment.User = user
 	comment.User.IP = strings.Split(r.RemoteAddr, ":")[0]
 
-	if err := s.DataService.ValidateComment(&comment); err != nil {
+	if err = s.DataService.ValidateComment(&comment); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment")
 		return
 	}
@@ -177,7 +177,7 @@ func (s *Rest) previewCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	comment.User = user
-	if err := s.DataService.ValidateComment(&comment); err != nil {
+	if err = s.DataService.ValidateComment(&comment); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment")
 		return
 	}
