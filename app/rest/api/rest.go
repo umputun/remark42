@@ -42,7 +42,7 @@ type Rest struct {
 }
 
 var mdExt = blackfriday.NoIntraEmphasis | blackfriday.Tables | blackfriday.FencedCode |
-	blackfriday.Strikethrough | blackfriday.SpaceHeadings | blackfriday.HeadingIDs |
+	blackfriday.Strikethrough | blackfriday.SpaceHeadings | blackfriday.HardLineBreak |
 	blackfriday.BackslashLineBreak
 
 // Run the lister and request's router, activate rest server
