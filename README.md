@@ -22,37 +22,34 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 ### Backend
 
 * copy provided `docker-compose.yml` and customize for your needs
-* make sure you **don't keep** `DEV_PASSWD=something...` for any non-development deployments
 * prepare user id for container `` export USER=`id -u $USER` ``
-* make sure you **don't keep** `DEV=true` for any non-development deployments
+* make sure you **don't keep** `DEV_PASSWD=something...` for any non-development deployments
 * pull prepared images from docker hub and start - `docker-compose pull && docker-compose up -d`
-* alternatively compile from sources - `docker-compose build`
+* alternatively compile from sources - `docker-compose build && docker-compose up -d`
 
 #### Parameters
 
-| Command line    | Environment          | Default                | Multi | Description                     |
-| --------------- | -------------------- | ---------------------- | ----- | ------------------------------- |
-| --url           | REMARK_URL           | `https://remark42.com` | no    | url to remark server            |
-| --bolt          | BOLTDB_PATH          | `/tmp`                 | no    | path to data directory          |
-| --site          | SITE                 | `remark`               | yes   | site name(s)                    |
-| --admin         | ADMIN                |                        | yes   | admin names (list of user ids)  |
-| --backup        | BACKUP_PATH          | `/tmp`                 | no    | backups location                |
-| --max-back      | MAX_BACKUP_FILES     | `10`                   | no    | max backup files to keep        |
-| --session       | SESSION_STORE        | `/tmp`                 | no    | path to session store directory |
-| --store-key     | STORE_KEY            | `secure-store-key`     | no    | session store encryption key    |
-| --google-cid    | REMARK_GOOGLE_CID    |                        | no    | Google OAuth client ID          |
-| --google-csec   | REMARK_GOOGLE_CSEC   |                        | no    | Google OAuth client secret      |
-| --facebook-cid  | REMARK_FACEBOOK_CID  |                        | no    | Facebook OAuth client ID        |
-| --facebook-csec | REMARK_FACEBOOK_CSEC |                        | no    | Facebook OAuth client secret    |
-| --github-cid    | REMARK_GITHUB_CID    |                        | no    | Github OAuth client ID          |
-| --github-csec   | REMARK_GITHUB_CSEC   |                        | no    | Github OAuth client secret      |
-| --provider      |                      | `disqus`               | no    | provider type for import        |
-| --site          |                      | `remark`               | no    | site ID                         |
-| --file          |                      | `disqus.xml`           | no    | import file                     |
-| --dbg           | DEBUG                | `false`                | no    | debug mode                      |
-| --dev-password  | DEV_PASSWD           |                        | no    | password for `dev` user         |
+| Command line    | Environment          | Default                | Multi            | Description                     |
+| --------------- | -------------------- | ---------------------- | ---------------- | ------------------------------- |
+| --url           | REMARK_URL           | `https://remark42.com` | no               | url to remark server            |
+| --bolt          | BOLTDB_PATH          | `/tmp`                 | no               | path to data directory          |
+| --site          | SITE                 | `remark`               | yes              | site name(s)                    |
+| --admin         | ADMIN                |                        | yes              | admin names (list of user ids)  |
+| --backup        | BACKUP_PATH          | `/tmp`                 | no               | backups location                |
+| --max-back      | MAX_BACKUP_FILES     | `10`                   | no               | max backup files to keep        |
+| --session       | SESSION_STORE        | `/tmp`                 | no               | path to session store directory |
+| --store-key     | STORE_KEY            | `secure-store-key`     | no               | session store encryption key    |
+| --max-comment   | MAX_COMMENT_SIZE     | 2048                   | no               | comment's size limit            |
+| --google-cid    | REMARK_GOOGLE_CID    |                        | no               | Google OAuth client ID          |
+| --google-csec   | REMARK_GOOGLE_CSEC   |                        | no               | Google OAuth client secret      |
+| --facebook-cid  | REMARK_FACEBOOK_CID  |                        | no               | Facebook OAuth client ID        |
+| --facebook-csec | REMARK_FACEBOOK_CSEC |                        | no               | Facebook OAuth client secret    |
+| --github-cid    | REMARK_GITHUB_CID    |                        | no               | Github OAuth client ID          |
+| --github-csec   | REMARK_GITHUB_CSEC   |                        | no               | Github OAuth client secret      |
+| --dbg           | DEBUG                | `false`                | no               | debug mode                      |
+| --dev-password  | DEV_PASSWD           |                        | no               | password for `dev` user         |
 
-_all multi parameters separated by `,`_
+_all multi parameters separated by `,` in environment or repeated with commend like key, like `--site=s1 --site=s2 ...`_
 
 #### Register oauth2 providers
 
@@ -132,7 +129,6 @@ type User struct {
     Name    string `json:"name"`
     ID      string `json:"id"`
     Picture string `json:"picture"`
-    Profile string `json:"profile"`
     Admin   bool   `json:"admin"`
     Blocked bool   `json:"block"`
 }
@@ -166,7 +162,7 @@ type Locator struct {
 
 * `POST /api/v1/preview` - preview comment in html. Body is `Comment` to render
 
-* `GET /api/v1/find?site=site-id&url=post-url&sort=fld&format=tree` - find all comments for given post
+* `GET /api/v1/find?site=site-id&url=post-url&sort=fld&format=tree|plain` - find all comments for given post
 
 This is the primary call used by UI to show comments for given post. It can return comments in two formats - `plain` and `tree`.
 In plain format result will be sorted list of `Comment`. In tree format this is going to be tree-like object with this structure:
@@ -256,5 +252,5 @@ _all admin calls require auth and admin privilege_
 * Development mode (`--dev-password` set) allows to test remark42 without social login and with admin privileges. Adds basic-auth for username: `dev`, password: `${DEV_PASSWD}`. **should not be used in production deployment**
 * User can vote for the comment multiple times but only to change his/her vote. Double-voting not allowed.
 * User can edit comments in 5 mins window after creation.
-* User ID prefixed by oauth provider name in order to avoid collisions and potential abuse.
+* User ID hashed abd prefixed by oauth provider name in order to avoid collisions and potential abuse.
 * All avatars cached locally in order to prevent rate limiters from google/github/facebook.
