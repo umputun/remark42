@@ -53,7 +53,7 @@ func (p *AvatarProxy) Put(u store.User) (avatarURL string, err error) {
 	}()
 
 	// get ID and location of locally cached avatar
-	encID := rest.EncodeID(u.ID)
+	encID := store.EncodeID(u.ID)
 	location := p.location(encID) // location adds partion to path
 
 	if _, err = os.Stat(location); os.IsNotExist(err) {

@@ -4,6 +4,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha1"
 	"fmt"
+	"hash/crc64"
 	"html/template"
 	"log"
 	"strconv"
@@ -95,7 +96,7 @@ func (c *Comment) Sanitize() {
 	// c.Text = strings.Replace(c.Text, "\t", "", -1)
 }
 
-// hashIP replace sensitive fields with hashes
+// hashIP replace sensitive fields with hmac
 func (u *User) hashIP(secret string) {
 
 	hashVal := func(val string) string {
@@ -111,4 +112,16 @@ func (u *User) hashIP(secret string) {
 	}
 
 	u.IP = hashVal(u.IP)
+}
+
+// EncodeID hashes id to sha1. The function intentionally left outside of User struct because in some cases
+// we need hashing for parts of id, in some others hasing for non-User values.
+func EncodeID(id string) string {
+	h := sha1.New()
+	if _, err := h.Write([]byte(id)); err != nil {
+		// fail back to crc64
+		log.Printf("[WARN] can't hash id %s, %s", id, err)
+		return fmt.Sprintf("%x", crc64.Checksum([]byte(id), crc64.MakeTable(crc64.ECMA)))
+	}
+	return fmt.Sprintf("%x", h.Sum(nil))
 }

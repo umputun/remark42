@@ -129,7 +129,7 @@ func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 						ID:      comment.UID,
 						Locator: store.Locator{URL: postsMap[comment.Tid.Val], SiteID: siteID},
 						User: store.User{
-							ID:   "disqus_" + comment.AuthorUserName,
+							ID:   "disqus_" + store.EncodeID(comment.AuthorUserName),
 							Name: comment.AuthorName,
 							IP:   comment.IP,
 						},

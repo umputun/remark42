@@ -41,6 +41,8 @@ type Rest struct {
 	amdminService admin
 }
 
+const hardBodyLimit = 1024 * 64 // limit size of body
+
 var mdExt = blackfriday.NoIntraEmphasis | blackfriday.Tables | blackfriday.FencedCode |
 	blackfriday.Strikethrough | blackfriday.SpaceHeadings | blackfriday.HardLineBreak |
 	blackfriday.BackslashLineBreak
@@ -124,7 +126,7 @@ func (s *Rest) Run(port int) {
 func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 	comment := store.Comment{}
-	if err := render.DecodeJSON(r.Body, &comment); err != nil {
+	if err := render.DecodeJSON(http.MaxBytesReader(w, r.Body, hardBodyLimit), &comment); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't bind comment")
 		return
 	}
@@ -166,7 +168,7 @@ func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 func (s *Rest) previewCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	comment := store.Comment{}
-	if err := render.DecodeJSON(r.Body, &comment); err != nil {
+	if err := render.DecodeJSON(http.MaxBytesReader(w, r.Body, hardBodyLimit), &comment); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't bind comment")
 		return
 	}
@@ -195,7 +197,7 @@ func (s *Rest) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		Summary string
 	}{}
 
-	if err := render.DecodeJSON(r.Body, &edit); err != nil {
+	if err := render.DecodeJSON(http.MaxBytesReader(w, r.Body, hardBodyLimit), &edit); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't bind comment")
 		return
 	}
@@ -397,7 +399,7 @@ func (s *Rest) countCtrl(w http.ResponseWriter, r *http.Request) {
 func (s *Rest) countMultiCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	posts := []string{}
-	if err := render.DecodeJSON(r.Body, &posts); err != nil {
+	if err := render.DecodeJSON(http.MaxBytesReader(w, r.Body, hardBodyLimit), &posts); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get list of posts from request")
 		return
 	}

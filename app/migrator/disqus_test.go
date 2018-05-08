@@ -32,7 +32,7 @@ func TestDisqus_Import(t *testing.T) {
 	assert.Equal(t, "", c.ParentID)
 	assert.Equal(t, store.Locator{SiteID: "test", URL: "http://radio-t.umputun.com/2011/03/229_8880.html"}, c.Locator)
 	assert.Equal(t, "Dmitry Noname", c.User.Name)
-	assert.Equal(t, "disqus_google-74b9e7568ef6860e93862c5d77590123", c.User.ID)
+	assert.Equal(t, "disqus_8799342cdf328253e03313958ffc6a433659d7ff", c.User.ID)
 	assert.Equal(t, "89.89.89.139", c.User.IP)
 
 	posts, err := dataStore.List("test", 0, 0)
@@ -63,7 +63,7 @@ func TestDisqus_Convert(t *testing.T) {
 		Text: `<p>The quick brown fox jumps over the lazy dog.</p><p><a href="https://https://radio-t.com" rel="nofollow noopener" title="radio-t">some link</a></p>`,
 		User: store.User{
 			Name: "Alexander Blah",
-			ID:   "disqus_facebook-1787732238",
+			ID:   "disqus_328c8b68974aef73785f6b38c3d3fedfdf941434",
 			IP:   "178.178.178.178",
 		},
 	}
