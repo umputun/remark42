@@ -114,7 +114,7 @@ func (p *AvatarProxy) Routes() (string, chi.Router) {
 	return p.RoutePath, router
 }
 
-// get location for user id by adding partion to final path in order to keep files
+// get location for user id by adding partition to final path in order to keep files
 // in different subdirectories and avoid too many files in a single place.
 // the end result is a full path like this - /tmp/avatars.test/92
 func (p *AvatarProxy) location(id string) string {

@@ -32,13 +32,12 @@ type Rest struct {
 	Version       string
 	DataService   store.Service
 	Authenticator auth.Authenticator
+	Exporter      migrator.Exporter
 	Cache         rest.LoadingCache
 	WebRoot       string
 
-	Exporter migrator.Exporter
-
-	httpServer    *http.Server
-	amdminService admin
+	httpServer   *http.Server
+	adminService admin
 }
 
 const hardBodyLimit = 1024 * 64 // limit size of body
@@ -55,7 +54,7 @@ func (s *Rest) Run(port int) {
 		log.Printf("[DEBUG] admins %+v", s.Authenticator.Admins)
 	}
 
-	s.amdminService = admin{
+	s.adminService = admin{
 		dataService: s.DataService,
 		exporter:    s.Exporter,
 		cache:       s.Cache,
@@ -107,14 +106,15 @@ func (s *Rest) Run(port int) {
 			rauth.Put("/vote/{id}", s.voteCtrl)
 
 			// admin routes, admin users only
-			rauth.Mount("/admin", s.amdminService.routes(s.Authenticator.AdminOnly))
+			rauth.Mount("/admin", s.adminService.routes(s.Authenticator.AdminOnly))
 		})
 	})
 
-	// add robots and file server for static content from /web
 	router.Get("/robots.txt", func(w http.ResponseWriter, r *http.Request) {
 		render.PlainText(w, r, "User-agent: *\nDisallow: /auth/\nDisallow: /api/\n")
 	})
+
+	// file server for static content from /web
 	addFileServer(router, "/web", http.Dir(s.WebRoot))
 
 	s.httpServer = &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: router}
@@ -150,7 +150,7 @@ func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[DEBUG] create comment %+v", comment)
 
 	// check if user blocked
-	if s.amdminService.checkBlocked(comment.Locator.SiteID, comment.User) {
+	if s.adminService.checkBlocked(comment.Locator.SiteID, comment.User) {
 		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"), "user blocked")
 		return
 	}
@@ -251,7 +251,7 @@ func (s *Rest) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		if e != nil {
 			return nil, e
 		}
-		maskedComments := s.amdminService.alterComments(comments, r)
+		maskedComments := s.adminService.alterComments(comments, r)
 		var b []byte
 		switch r.URL.Query().Get("format") {
 		case "tree":
@@ -284,7 +284,7 @@ func (s *Rest) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		if e != nil {
 			return nil, e
 		}
-		comments = s.amdminService.alterComments(comments, r)
+		comments = s.adminService.alterComments(comments, r)
 		return encodeJSONWithHTML(comments)
 	})
 
@@ -309,7 +309,7 @@ func (s *Rest) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get comment by id")
 		return
 	}
-	comment = s.amdminService.alterComments([]store.Comment{comment}, r)[0]
+	comment = s.adminService.alterComments([]store.Comment{comment}, r)[0]
 	render.Status(r, http.StatusOK)
 	renderJSONWithHTML(w, r, comment)
 }
@@ -337,7 +337,7 @@ func (s *Rest) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		if e != nil {
 			return nil, e
 		}
-		comments = s.amdminService.alterComments(comments, r)
+		comments = s.adminService.alterComments(comments, r)
 		resp.Comments, resp.Count = comments, count
 		return encodeJSONWithHTML(resp)
 	})

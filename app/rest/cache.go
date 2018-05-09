@@ -54,7 +54,7 @@ func (lc *loadingCache) Flush() {
 func URLKey(r *http.Request) string {
 	adminPrefix := "admin!!"
 	key := strings.TrimPrefix(r.URL.String(), adminPrefix)     // prevents attach with fake url to get admin view
-	if user, err := GetUserInfo(r); err == nil && user.Admin { // make seprate cache key for admins
+	if user, err := GetUserInfo(r); err == nil && user.Admin { // make separate cache key for admins
 		key = adminPrefix + key
 	}
 	return key
