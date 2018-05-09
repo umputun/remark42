@@ -33,8 +33,8 @@ RUN chown -R umputun:umputun /srv
 ADD start.sh /srv/start.sh
 RUN chmod +x /srv/start.sh
 
-ADD import-disqus.sh /srv/import-disqus.sh
-ADD restore-backup.sh /srv/restore-backup.sh
+ADD scripts/import-disqus.sh /srv/import-disqus.sh
+ADD scripts/restore-backup.sh /srv/restore-backup.sh
 RUN chmod +x /srv/import-disqus.sh /srv/restore-backup.sh
 
 WORKDIR /srv
