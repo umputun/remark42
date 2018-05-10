@@ -15,6 +15,8 @@ type Service struct {
 	MaxCommentSize int
 }
 
+const defaultCommentMaxSize = 2000
+
 // Create prepares comment and forward to Interface.Create
 func (s *Service) Create(comment Comment) (commentID string, err error) {
 	// fill ID and time if empty
@@ -29,6 +31,9 @@ func (s *Service) Create(comment Comment) (commentID string, err error) {
 		comment.Votes = make(map[string]bool)
 	}
 
+	if err = s.ValidateComment(&comment); err != nil {
+		return "", err
+	}
 	comment.Sanitize()            // clear potentially dangerous js from all parts of comment
 	comment.User.hashIP(s.Secret) // replace ip by hash
 
@@ -101,6 +106,11 @@ func (s *Service) EditComment(locator Locator, commentID string, text string, ed
 	comment.Text = text
 	comment.Edit = &edit
 	comment.Edit.Timestamp = time.Now()
+
+	if err = s.ValidateComment(&comment); err != nil {
+		return comment, err
+	}
+
 	comment.Sanitize()
 	err = s.Put(locator, comment)
 	return comment, err
@@ -121,7 +131,7 @@ func (s *Service) Counts(siteID string, postIDs []string) ([]PostInfo, error) {
 func (s *Service) ValidateComment(c *Comment) error {
 	maxSize := s.MaxCommentSize
 	if s.MaxCommentSize <= 0 {
-		maxSize = 2000
+		maxSize = defaultCommentMaxSize
 	}
 	if c.Text == "" {
 		return errors.New("empty comment text")
@@ -130,7 +140,7 @@ func (s *Service) ValidateComment(c *Comment) error {
 		return errors.New("comment text exceeded max allowed size")
 	}
 	if c.User.ID == "" || c.User.Name == "" {
-		return errors.New("empty user info")
+		return errors.Errorf("empty user info")
 	}
 	return nil
 }

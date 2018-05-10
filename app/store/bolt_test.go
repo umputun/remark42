@@ -18,7 +18,7 @@ func TestBoltDB_CreateAndFind(t *testing.T) {
 	res, err := b.Find(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "time")
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(res))
-	assert.Equal(t, `some text, <a href="http://radio-t.com" rel="nofollow">link</a>`, res[0].Text)
+	assert.Equal(t, `some text, <a href="http://radio-t.com">link</a>`, res[0].Text)
 	assert.Equal(t, "user1", res[0].User.ID)
 	t.Log(res[0].ID)
 
@@ -172,6 +172,7 @@ func TestBoltDB_List(t *testing.T) {
 
 	// add one more for https://radio-t.com/2
 	comment := Comment{
+		ID:        "12345",
 		Text:      `some text, <a href="http://radio-t.com">link</a>`,
 		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
 		Locator:   Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"},
@@ -212,12 +213,12 @@ func TestBoltDB_GetForUser(t *testing.T) {
 }
 
 // makes new boltdb, put two records
-func prep(t *testing.T) *Service {
+func prep(t *testing.T) *BoltDB {
 	os.Remove(testDb)
 
 	boltStore, err := NewBoltDB(bolt.Options{}, BoltSite{FileName: "/tmp/test-remark.db", SiteID: "radio-t"})
 	assert.Nil(t, err)
-	b := &Service{Interface: boltStore}
+	b := boltStore
 
 	comment := Comment{
 		ID:        "id-1",

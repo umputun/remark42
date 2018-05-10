@@ -141,6 +141,37 @@ func TestAdmin_Block(t *testing.T) {
 	assert.Equal(t, false, j["block"])
 }
 
+func TestAdmin_BlockedList(t *testing.T) {
+	srv, port := prep(t)
+	assert.NotNil(t, srv)
+	defer cleanup(srv)
+
+	client := http.Client{}
+
+	// block user1
+	req, err := http.NewRequest(http.MethodPut,
+		fmt.Sprintf("http://dev:password@127.0.0.1:%d/api/v1/admin/user/%s?site=radio-t&block=%d", port, "user1", 1), nil)
+	assert.Nil(t, err)
+	_, err = client.Do(req)
+	require.Nil(t, err)
+
+	// block user2
+	req, err = http.NewRequest(http.MethodPut,
+		fmt.Sprintf("http://dev:password@127.0.0.1:%d/api/v1/admin/user/%s?site=radio-t&block=%d", port, "user2", 1), nil)
+	assert.Nil(t, err)
+	_, err = client.Do(req)
+	require.Nil(t, err)
+
+	res, code := get(t, fmt.Sprintf("http://dev:password@127.0.0.1:%d/api/v1/admin/blocked?site=radio-t", port))
+	require.Equal(t, 200, code, res)
+	users := []store.BlockedUser{}
+	err = json.Unmarshal([]byte(res), &users)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(users), "two users blocked")
+	assert.Equal(t, "user1", users[0].ID)
+	assert.Equal(t, "user2", users[1].ID)
+}
+
 func TestAdmin_Export(t *testing.T) {
 	srv, port := prep(t)
 	assert.NotNil(t, srv)

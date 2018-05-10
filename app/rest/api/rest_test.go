@@ -57,6 +57,26 @@ func TestServer_Create(t *testing.T) {
 	assert.True(t, len(c["id"].(string)) > 8)
 }
 
+func TestServer_CreateTooBig(t *testing.T) {
+	srv, port := prep(t)
+	require.NotNil(t, srv)
+	defer cleanup(srv)
+
+	longComment := fmt.Sprintf(`{"text": "%6000s", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, "blah")
+	r := strings.NewReader(longComment)
+	resp, err := http.Post(fmt.Sprintf("http://dev:password@127.0.0.1:%d/api/v1/comment", port), "application/json", r)
+	assert.Nil(t, err)
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	b, err := ioutil.ReadAll(resp.Body)
+	assert.Nil(t, err)
+	c := JSON{}
+	err = json.Unmarshal(b, &c)
+	assert.Nil(t, err)
+
+	assert.Equal(t, "comment text exceeded max allowed size", c["error"])
+	assert.Equal(t, "can't save comment", c["details"])
+}
+
 func TestServer_Preview(t *testing.T) {
 	srv, port := prep(t)
 	require.NotNil(t, srv)

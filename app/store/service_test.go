@@ -1,6 +1,7 @@
 package store
 
 import (
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -15,7 +16,7 @@ func TestService_CreateFromEmpty(t *testing.T) {
 	b := Service{Interface: prep(t), Secret: "secret 123"}
 	comment := Comment{
 		Text:    "text",
-		User:    User{IP: "192.168.1.1", ID: "user"},
+		User:    User{IP: "192.168.1.1", ID: "user", Name: "name"},
 		Locator: Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
 	}
 	id, err := b.Create(comment)
@@ -28,7 +29,8 @@ func TestService_CreateFromEmpty(t *testing.T) {
 	assert.Equal(t, "text", res.Text)
 	assert.True(t, time.Since(res.Timestamp).Seconds() < 1)
 	assert.Equal(t, "user", res.User.ID)
-	assert.Equal(t, "9f41a4b2dca0c826f1aa2c69246347758a43eac1", res.User.IP)
+	assert.Equal(t, "name", res.User.Name)
+	assert.Equal(t, "23f97cf4d5c29ef788ca2bdd1c9e75656c0e4149", res.User.IP)
 	assert.Equal(t, map[string]bool{}, res.Votes)
 }
 
@@ -39,7 +41,7 @@ func TestService_CreateFromPartial(t *testing.T) {
 		Text:      "text",
 		Timestamp: time.Date(2018, 3, 25, 16, 34, 33, 0, time.UTC),
 		Votes:     map[string]bool{"u1": true, "u2": false},
-		User:      User{IP: "192.168.1.1", ID: "user"},
+		User:      User{IP: "192.168.1.1", ID: "user", Name: "name"},
 		Locator:   Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
 	}
 	id, err := b.Create(comment)
@@ -52,7 +54,8 @@ func TestService_CreateFromPartial(t *testing.T) {
 	assert.Equal(t, "text", res.Text)
 	assert.Equal(t, comment.Timestamp, res.Timestamp)
 	assert.Equal(t, "user", res.User.ID)
-	assert.Equal(t, "9f41a4b2dca0c826f1aa2c69246347758a43eac1", res.User.IP)
+	assert.Equal(t, "name", res.User.Name)
+	assert.Equal(t, "23f97cf4d5c29ef788ca2bdd1c9e75656c0e4149", res.User.IP)
 	assert.Equal(t, comment.Votes, res.Votes)
 }
 
@@ -60,10 +63,18 @@ func TestService_Vote(t *testing.T) {
 	defer os.Remove(testDb)
 	b := Service{Interface: prep(t)}
 
+	comment := Comment{
+		Text:    "text",
+		User:    User{IP: "192.168.1.1", ID: "user", Name: "name"},
+		Locator: Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+	}
+	_, err := b.Create(comment)
+	assert.NoError(t, err)
+
 	res, err := b.Last("radio-t", 0)
 	t.Logf("%+v", res[0])
 	assert.Nil(t, err)
-	assert.Equal(t, 2, len(res))
+	assert.Equal(t, 3, len(res))
 	assert.Equal(t, 0, res[0].Score)
 	assert.Equal(t, map[string]bool{}, res[0].Votes, "no votes initially")
 
@@ -77,14 +88,14 @@ func TestService_Vote(t *testing.T) {
 
 	res, err = b.Last("radio-t", 0)
 	assert.Nil(t, err)
-	assert.Equal(t, 2, len(res))
+	assert.Equal(t, 3, len(res))
 	assert.Equal(t, 1, res[0].Score)
 
 	_, err = b.Vote(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "user1", false)
 	assert.Nil(t, err, "vote reset")
 	res, err = b.Last("radio-t", 0)
 	assert.Nil(t, err)
-	assert.Equal(t, 2, len(res))
+	assert.Equal(t, 3, len(res))
 	assert.Equal(t, 0, res[0].Score)
 	assert.Equal(t, map[string]bool{}, res[0].Votes, "vote reset ok")
 }
@@ -170,10 +181,8 @@ func TestService_EditCommentDurationFailed(t *testing.T) {
 func TestService_ValidateComment(t *testing.T) {
 
 	b := Service{MaxCommentSize: 2000}
-	longText := ""
-	for i := 0; i < 4000; i++ {
-		longText += "X"
-	}
+	longText := fmt.Sprintf("%4000s", "X")
+
 	tbl := []struct {
 		inp Comment
 		err error
@@ -200,6 +209,7 @@ func TestService_Counts(t *testing.T) {
 
 	// add one more for https://radio-t.com/2
 	comment := Comment{
+		ID:        "123456",
 		Text:      `some text, <a href="http://radio-t.com">link</a>`,
 		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
 		Locator:   Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"},

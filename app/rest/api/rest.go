@@ -140,12 +140,6 @@ func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	comment.PrepareUntrusted() // clean all fields user not suppoed to set
 	comment.User = user
 	comment.User.IP = strings.Split(r.RemoteAddr, ":")[0]
-
-	if err = s.DataService.ValidateComment(&comment); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment")
-		return
-	}
-
 	comment.Text = string(blackfriday.Run([]byte(comment.Text), blackfriday.WithExtensions(mdExt)))
 	log.Printf("[DEBUG] create comment %+v", comment)
 
