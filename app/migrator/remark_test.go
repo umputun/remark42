@@ -43,7 +43,7 @@ func TestRemark_Import(t *testing.T) {
 	os.Remove(testDb)
 	b, err := store.NewBoltDB(bolt.Options{}, store.BoltSite{SiteID: "radio-t", FileName: testDb})
 	assert.Nil(t, err)
-	r := Remark{DataStore: b}
+	r := Remark{DataStore: &store.Service{Interface: b}}
 	size, err := r.Import(buf, "radio-t")
 	assert.Nil(t, err)
 	assert.Equal(t, 2, size)

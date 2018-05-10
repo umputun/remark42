@@ -25,7 +25,7 @@ type Exporter interface {
 
 // ImportParams defines everything needed to run import
 type ImportParams struct {
-	DataStore store.Interface
+	DataStore *store.Service
 	InputFile string
 	Provider  string
 	SiteID    string

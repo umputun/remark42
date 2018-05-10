@@ -14,7 +14,7 @@ import (
 
 // Remark implements exporter and importer for internal store format
 type Remark struct {
-	DataStore store.Interface
+	DataStore *store.Service
 }
 
 // Export all comments to writer as json strings. Each comment is one string, separated by "\n"

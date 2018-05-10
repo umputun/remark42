@@ -143,7 +143,7 @@ func TestServer_CreateAndGet(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "<p><strong>test</strong> <em>123</em> http://radio-t.com</p>\n", comment.Text)
 	assert.Equal(t, store.User{Name: "developer one", ID: "dev",
-		Picture: "/api/v1/avatar/remark.image", Admin: true, Blocked: false, IP: "ae12fe3b5f129b5cc4cdd2b136b7b7947c4d2741"},
+		Picture: "/api/v1/avatar/remark.image", Admin: true, Blocked: false, IP: "ea64bfc178468d943ca5b836e2e700c335404973"},
 		comment.User)
 	t.Logf("%+v", comment)
 }
@@ -456,8 +456,9 @@ func TestServer_FileServer(t *testing.T) {
 }
 
 func prep(t *testing.T) (srv *Rest, port int) {
-	dataStore, err := store.NewBoltDB(bolt.Options{}, store.BoltSite{FileName: testDb, SiteID: "radio-t"})
+	b, err := store.NewBoltDB(bolt.Options{}, store.BoltSite{FileName: testDb, SiteID: "radio-t"})
 	require.Nil(t, err)
+	dataStore := &store.Service{Interface: b}
 	srv = &Rest{
 		DataService: store.Service{Interface: dataStore, EditDuration: 5 * time.Minute, MaxCommentSize: 4000},
 		Authenticator: auth.Authenticator{

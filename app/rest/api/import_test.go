@@ -33,9 +33,9 @@ func TestImport(t *testing.T) {
 }
 
 func prepImportSrv(t *testing.T) (srv *Import, port int) {
-	dataStore, err := store.NewBoltDB(bolt.Options{}, store.BoltSite{FileName: testDb, SiteID: "radio-t"})
+	b, err := store.NewBoltDB(bolt.Options{}, store.BoltSite{FileName: testDb, SiteID: "radio-t"})
 	require.Nil(t, err)
-
+	dataStore := &store.Service{Interface: b}
 	srv = &Import{
 		DisqusImporter: &migrator.Disqus{DataStore: dataStore},
 		NativeImporter: &migrator.Remark{DataStore: dataStore},
