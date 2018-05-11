@@ -58,7 +58,7 @@ func (s *Service) Vote(locator Locator, commentID string, userID string, val boo
 		return comment, err
 	}
 
-	if comment.User.ID == userID {
+	if comment.User.ID == userID && userID != "dev" {
 		return comment, errors.Errorf("user %s can not vote for his own comment %s", userID, commentID)
 	}
 
