@@ -58,6 +58,10 @@ func (s *Service) Vote(locator Locator, commentID string, userID string, val boo
 		return comment, err
 	}
 
+	if comment.User.ID == userID {
+		return comment, errors.Errorf("user %s can not vote for his own comment %s", userID, commentID)
+	}
+
 	if comment.Votes == nil {
 		comment.Votes = make(map[string]bool)
 	}
