@@ -8,11 +8,12 @@ export default class Input extends Component {
 
     this.state = {
       preview: null,
+      isErrorShown: false,
     };
 
-    this.autoResize = this.autoResize.bind(this);
     this.send = this.send.bind(this);
     this.getPreview = this.getPreview.bind(this);
+    this.onInput = this.onInput.bind(this);
     this.onKeyDown = this.onKeyDown.bind(this);
   }
 
@@ -36,11 +37,18 @@ export default class Input extends Component {
     }
   }
 
+  onInput() {
+    this.autoResize();
+
+    this.setState({
+      preview: null,
+      isErrorShown: false,
+    });
+  }
+
   autoResize() {
     this.fieldNode.style.height = '';
     this.fieldNode.style.height = `${this.fieldNode.scrollHeight}px`;
-
-    this.setState({ preview: null });
   }
 
   send(e) {
@@ -51,7 +59,7 @@ export default class Input extends Component {
 
     if (!text || !text.trim()) return;
 
-    this.setState({ isFieldDisabled: true });
+    this.setState({ isFieldDisabled: true, isErrorShown: false });
 
     api.send({ text, ...(pid ? { pid } : {}) })
       .then(({ id }) => {
@@ -65,7 +73,7 @@ export default class Input extends Component {
         this.setState({ preview: null });
       })
       .catch(() => {
-        // TODO: do smth?
+        this.setState({ isErrorShown: true });
       })
       .finally(() => this.setState({ isFieldDisabled: false }));
   }
@@ -75,20 +83,22 @@ export default class Input extends Component {
 
     if (!text || !text.trim()) return;
 
+    this.setState({ isErrorShown: false });
+
     api.getPreview({ text })
       .then(preview => this.setState({ preview }))
       .catch(() => {
-        // TODO: do smth?
+        this.setState({ isErrorShown: true });
       });
   }
 
-  render(props, { isFieldDisabled, preview }) {
+  render(props, { isFieldDisabled, isErrorShown, preview }) {
     return (
       <form className={b('input', props)} onSubmit={this.send}>
         <textarea
           className="input__field"
           placeholder="Your comment here"
-          onInput={this.autoResize}
+          onInput={this.onInput}
           onKeyDown={this.onKeyDown}
           ref={r => (this.fieldNode = r)}
           required
@@ -96,6 +106,10 @@ export default class Input extends Component {
         >
           {props.children}
         </textarea>
+
+        {
+          isErrorShown && <p className="input__error">Something went wrong. Please try again a bit later.</p>
+        }
 
         <div className="input__buttons">
           <button
