@@ -49,11 +49,11 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 | --dbg           | DEBUG                | `false`                | no               | debug mode                      |
 | --dev-password  | DEV_PASSWD           |                        | no               | password for `dev` user         |
 
-_all multi parameters separated by `,` in environment or repeated with commend like key, like `--site=s1 --site=s2 ...`_
+_all multi parameters separated by `,` in environment or repeated with command line key, like `--site=s1 --site=s2 ...`_
 
 #### Register oauth2 providers
 
-Authentication handled by external providers. You should setup oauth2 for all (or some) of them in order to allow users to make comments. It is not mandatory to have all of them, but at least one should be property configured.
+Authentication handled by external providers. You should setup oauth2 for all (or some) of them to allow users to make comments. It is not mandatory to have all of them, but at least one should be correctly configured.
 
 ##### Google Auth Provider
 
@@ -343,5 +343,5 @@ _all admin calls require auth and admin privilege_
 * Development mode (`--dev-password` set) allows to test remark42 without social login and with admin privileges. Adds basic-auth for username: `dev`, password: `${DEV_PASSWD}`. **should not be used in production deployment**
 * User can vote for the comment multiple times but only to change his/her vote. Double-voting not allowed.
 * User can edit comments in 5 mins window after creation.
-* User ID hashed abd prefixed by oauth provider name in order to avoid collisions and potential abuse.
-* All avatars cached locally in order to prevent rate limiters from google/github/facebook.
+* User ID hashed and prefixed by oauth provider name to avoid collisions and potential abuse.
+* All avatars cached locally to prevent rate limiters from google/github/facebook.
