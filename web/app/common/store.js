@@ -110,7 +110,9 @@ class Store {
   }
 
   getPinnedComments() {
-    return this.data.comments.reduce((acc, thread) => acc.concat(findPinnedComments(thread)), []);
+    const comments = this.data.comments || [];
+
+    return comments.reduce((acc, thread) => acc.concat(findPinnedComments(thread)), []);
   }
 }
 

@@ -185,6 +185,7 @@ export default class Comment extends Component {
     const { data, mix, mods = {} } = props;
     const isAdmin = !guest && store.get('user').admin;
     const isGuest = guest || !Object.keys(store.get('user')).length;
+    const isCurrentUser = (data.user && data.user.id) === (store.get('user') && store.get('user').id);
 
     const o = {
       ...data,
@@ -274,9 +275,9 @@ export default class Comment extends Component {
 
             <span className={b('comment__score', {}, { view: o.score.view })}>
               <span
-                className={b('comment__vote', {}, { type: 'up', selected: scoreIncreased, disabled: isGuest })}
+                className={b('comment__vote', {}, { type: 'up', selected: scoreIncreased, disabled: isGuest || isCurrentUser })}
                 onClick={this.increaseScore}
-                title={isGuest ? 'Only authorized users are allowed to vote' : null}
+                title={isGuest ? 'Only authorized users are allowed to vote' : (isCurrentUser ? 'You can\'t vote for your own comment' : null)}
               >Vote up</span>
 
               <span className="comment__score-value">
@@ -285,9 +286,9 @@ export default class Comment extends Component {
 
 
               <span
-                className={b('comment__vote', {}, { type: 'down', selected: scoreDecreased, disabled: isGuest })}
+                className={b('comment__vote', {}, { type: 'down', selected: scoreDecreased, disabled: isGuest || isCurrentUser })}
                 onClick={this.decreaseScore}
-                title={isGuest ? 'Only authorized users are allowed to vote' : null}
+                title={isGuest ? 'Only authorized users are allowed to vote' : (isCurrentUser ? 'You can\'t vote for your own comment' : null)}
               >Vote down</span>
             </span>
           </div>
