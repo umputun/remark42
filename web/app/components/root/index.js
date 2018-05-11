@@ -2,6 +2,8 @@ export { default } from './root';
 
 require('./root.scss');
 
+require('./__copyright/root__copyright.scss');
+require('./__copyright-link/root__copyright-link.scss');
 require('./__input/root__input.scss');
 require('./__preloader/root__preloader.scss');
 require('./__pinned-comment/root__pinned-comment.scss');

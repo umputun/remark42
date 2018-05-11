@@ -278,6 +278,10 @@ export default class Root extends Component {
               </div>
             )
           }
+
+          <p className="root__copyright">
+            Powered by <a href="https://remark42.com/" className="root__copyright-link">Remark42</a>
+          </p>
         </div>
       </div>
     );
