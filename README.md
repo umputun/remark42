@@ -117,6 +117,97 @@ URLs for development:
 * `localhost:8080/last-comments.html` — page with embedded script for last comments;
 * `localhost:8080/counter.html` — page with embedded script for counter with examples.
 
+#### Usage
+
+##### Comments
+
+It's a main widget which renders list of comments. 
+
+Add this snippet to the bottom of web page:
+
+```html
+<script>
+  var remark_config = {
+    site_id: 'YOUR_SITE_ID',
+    url: 'PAGE_URL', // optional param; if url isn't defined window.location.href will be used 
+  };
+
+  (function() {
+    var d = document, s = d.createElement('script');
+    s.src = '/web/embed.js'; // prepend this address with domain where remark42 is placed
+    (d.head || d.body).appendChild(s);
+  })();
+</script>
+```
+
+And then add this node in the place where you want to see Remark42 widget:
+
+```html
+<div id="remark42"></div>
+``` 
+
+After that widget will be rendered inside this node.
+
+##### Last comments
+
+It's a widget which renders list of last comments from your site.
+
+Add this snippet to the bottom of web page:
+
+```html
+<script>
+  var remark_config = {
+    site_id: 'YOUR_SITE_ID', 
+  };
+
+  (function() {
+    var d = document, s = d.createElement('script');
+    s.src = '/web/last-comments.js'; // prepend this address with domain where remark42 is placed
+    (d.head || d.body).appendChild(s);
+  })();
+</script>
+```
+
+And then add this node in the place where you want to see last comments widget:
+
+```html
+<div class="remark42__last-comments" data-max="50"></div>
+```
+
+`data-max` sets the max amount of comments (default: `15`).
+
+##### Counter
+
+It's a widget which renders a number of comments for the specified page.
+
+Add this snippet to the bottom of web page:
+
+```html
+<script>
+  var remark_config = {
+    site_id: 'YOUR_SITE_ID', 
+  };
+
+  (function() {
+    var d = document, s = d.createElement('script');
+    s.src = '/web/counter.js'; // prepend this address with domain where remark42 is placed
+    (d.head || d.body).appendChild(s);
+  })();
+</script>
+```
+
+And then add a node like this in the place where you want to see a number of comments:
+
+```html
+<span class="remark42__counter" data-url="https://domain.com/path/to/article/"></span>
+```
+
+You can use as many nodes like this as you need to. 
+The script will found all them by the class `remark__counter`, 
+and it will use `data-url` attribute to define the page with comments.
+
+Also script can uses `url` property from `remark_config` object, or `window.location.href` if nothing else is defined. 
+
 ## API
 
 ### Authorization
