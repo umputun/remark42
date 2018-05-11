@@ -3,6 +3,7 @@ package store
 import (
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -83,8 +84,12 @@ func TestService_Vote(t *testing.T) {
 	assert.Equal(t, 1, c.Score)
 	assert.Equal(t, map[string]bool{"user1": true}, c.Votes, "user voted +")
 
+	c, err = b.Vote(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "user", true)
+	assert.NotNil(t, "self-voting not allowed")
+
 	_, err = b.Vote(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "user1", true)
 	assert.NotNil(t, err, "double-voting rejected")
+	assert.True(t, strings.HasPrefix(err.Error(), "user user1 already voted"))
 
 	res, err = b.Last("radio-t", 0)
 	assert.Nil(t, err)
