@@ -27,7 +27,8 @@ export default class Root extends Component {
     }
 
     this.state = {
-      loaded: false,
+      isLoaded: false,
+      isCommentsListLoading: false,
       user: {},
       replyingCommentId: null,
       sort,
@@ -56,12 +57,17 @@ export default class Root extends Component {
       .then(data => store.set('user', data))
       .catch(() => store.set('user', {}))
       .finally(() => {
+        this.setState({
+          isLoaded: true,
+          isCommentsListLoading: true,
+        });
+
         api.find({ sort, url })
           .then(({ comments = [] } = {}) => store.set('comments', comments))
           .catch(() => store.set('comments', []))
           .finally(() => {
             this.setState({
-              loaded: true,
+              isCommentsListLoading: false,
               user: store.get('user'),
             });
 
@@ -149,7 +155,7 @@ export default class Root extends Component {
   onSortChange(sort) {
     if (sort === this.state.sort) return;
 
-    this.setState({ sort });
+    this.setState({ sort, isCommentsListLoading: true });
 
     try {
       localStorage.setItem(LS_SORT_KEY, sort);
@@ -157,7 +163,11 @@ export default class Root extends Component {
       // can't save; ignore it
     }
 
-    api.find({ sort, url }).then(({ comments } = {}) => store.set('comments', comments));
+    api.find({ sort, url })
+      .then(({ comments } = {}) => store.set('comments', comments))
+      .finally(() => {
+        this.setState({ isCommentsListLoading: false });
+      });
   }
 
   onUnblockSomeone() {
@@ -175,8 +185,8 @@ export default class Root extends Component {
     });
   }
 
-  render({}, { config = {}, comments = [], user, sort, loaded, isBlockedVisible, bannedUsers, replyingCommentId }) {
-    if (!loaded) {
+  render({}, { config = {}, comments = [], user, sort, isLoaded, isBlockedVisible, isCommentsListLoading, bannedUsers, replyingCommentId }) {
+    if (!isLoaded) {
       return (
         <div id={NODE_ID}>
           <div className="root">
@@ -233,7 +243,7 @@ export default class Root extends Component {
                 }
 
                 {
-                  !!comments.length && (
+                  !!comments.length && !isCommentsListLoading && (
                     <div className="root__threads">
                       {
                         comments.map(thread => (
@@ -246,6 +256,14 @@ export default class Root extends Component {
                           />
                         ))
                       }
+                    </div>
+                  )
+                }
+
+                {
+                  isCommentsListLoading && (
+                    <div className="root__threads">
+                      <Preloader mix="root__preloader"/>
                     </div>
                   )
                 }
