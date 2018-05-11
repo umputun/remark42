@@ -7,10 +7,8 @@ $step: 24px;
 
       &.comment_replying {
         .comment__input {
-          margin-left: -$i * $step;
-
-          @media (min-width: 768px) {
-            margin-left: 0;
+          @media (hover: none) and (max-width: 768px) {
+            margin-left: -$i * $step;
           }
         }
       }
