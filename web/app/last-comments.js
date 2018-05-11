@@ -1,6 +1,6 @@
 import { h, render } from 'preact';
 
-import { BASE_URL, LAST_COMMENTS_DEFAULT_MAX, LAST_COMMENTS_NODE_CLASSNAME } from './common/constants'
+import { BASE_URL, DEFAULT_LAST_COMMENTS_MAX, LAST_COMMENTS_NODE_CLASSNAME } from './common/constants'
 
 import api from 'common/api';
 
@@ -38,7 +38,7 @@ function init() {
   (document.head || document.body).appendChild(styles);
 
   [].slice.call(nodes).forEach(node => {
-    const max = node.dataset.max || remark_config.max_last_comments || LAST_COMMENTS_DEFAULT_MAX;
+    const max = node.dataset.max || remark_config.max_last_comments || DEFAULT_LAST_COMMENTS_MAX;
     api.last({ max, siteId: remark_config.site_id })
       .then(comments => {
         try {

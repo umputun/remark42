@@ -1,14 +1,21 @@
 import { h, Component } from 'preact';
 
+import { DEFAULT_MAX_COMMENT_SIZE } from 'common/constants';
+
 import api from 'common/api';
+import store from 'common/store';
 
 export default class Input extends Component {
   constructor(props) {
     super(props);
 
+    const config = store.get('config') || {};
+
     this.state = {
       preview: null,
       isErrorShown: false,
+      maxLength: config.max_comment_size || DEFAULT_MAX_COMMENT_SIZE,
+      commentLength: 0,
     };
 
     this.send = this.send.bind(this);
@@ -23,6 +30,10 @@ export default class Input extends Component {
     }
 
     this.fieldNode.value = '';
+
+    store.onUpdate('config', config => {
+      this.setState({ maxLength: config && config.max_comment_size || DEFAULT_MAX_COMMENT_SIZE });
+    });
   }
 
   onKeyDown(e) {
@@ -43,6 +54,7 @@ export default class Input extends Component {
     this.setState({
       preview: null,
       isErrorShown: false,
+      commentLength: this.fieldNode.value.length,
     });
   }
 
@@ -92,20 +104,29 @@ export default class Input extends Component {
       });
   }
 
-  render(props, { isFieldDisabled, isErrorShown, preview }) {
+  render(props, { isFieldDisabled, isErrorShown, preview, maxLength, commentLength }) {
+    const charactersLeft = maxLength - commentLength;
+
     return (
       <form className={b('input', props)} onSubmit={this.send}>
-        <textarea
-          className="input__field"
-          placeholder="Your comment here"
-          onInput={this.onInput}
-          onKeyDown={this.onKeyDown}
-          ref={r => (this.fieldNode = r)}
-          required
-          disabled={isFieldDisabled}
-        >
-          {props.children}
-        </textarea>
+        <div className="input__field-wrapper">
+          <textarea
+            className="input__field"
+            placeholder="Your comment here"
+            maxLength={maxLength}
+            onInput={this.onInput}
+            onKeyDown={this.onKeyDown}
+            ref={r => (this.fieldNode = r)}
+            required
+            disabled={isFieldDisabled}
+          />
+
+          {
+            (charactersLeft < 100) && (
+              <span className="input__counter">{charactersLeft}</span>
+            )
+          }
+        </div>
 
         {
           isErrorShown && <p className="input__error">Something went wrong. Please try again a bit later.</p>
