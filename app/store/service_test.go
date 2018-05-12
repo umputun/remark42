@@ -195,7 +195,7 @@ func TestService_ValidateComment(t *testing.T) {
 		{inp: Comment{}, err: errors.New("empty comment text")},
 		{inp: Comment{Text: "something blah", User: User{ID: "myid", Name: "name"}}, err: nil},
 		{inp: Comment{Text: "something blah", User: User{ID: "myid"}}, err: errors.New("empty user info")},
-		{inp: Comment{Text: longText, User: User{ID: "myid", Name: "name"}}, err: errors.New("comment text exceeded max allowed size")},
+		{inp: Comment{Text: longText, User: User{ID: "myid", Name: "name"}}, err: errors.New("comment text exceeded max allowed size 2000 (4000)")},
 	}
 
 	for n, tt := range tbl {

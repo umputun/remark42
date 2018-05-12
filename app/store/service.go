@@ -133,8 +133,8 @@ func (s *Service) ValidateComment(c *Comment) error {
 	if c.Text == "" {
 		return errors.New("empty comment text")
 	}
-	if len(c.Text) > maxSize {
-		return errors.New("comment text exceeded max allowed size")
+	if len([]rune(c.Text)) > maxSize {
+		return errors.Errorf("comment text exceeded max allowed size %d (%d)", maxSize, len([]rune(c.Text)))
 	}
 	if c.User.ID == "" || c.User.Name == "" {
 		return errors.Errorf("empty user info")

@@ -62,7 +62,7 @@ func TestServer_CreateTooBig(t *testing.T) {
 	require.NotNil(t, srv)
 	defer cleanup(srv)
 
-	longComment := fmt.Sprintf(`{"text": "%4001s", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, "X")
+	longComment := fmt.Sprintf(`{"text": "%4001s", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, "Щ")
 	r := strings.NewReader(longComment)
 	resp, err := http.Post(fmt.Sprintf("http://dev:password@127.0.0.1:%d/api/v1/comment", port), "application/json", r)
 	assert.Nil(t, err)
@@ -73,7 +73,7 @@ func TestServer_CreateTooBig(t *testing.T) {
 	err = json.Unmarshal(b, &c)
 	assert.Nil(t, err)
 
-	assert.Equal(t, "comment text exceeded max allowed size", c["error"])
+	assert.Equal(t, "comment text exceeded max allowed size 4000 (4001)", c["error"])
 	assert.Equal(t, "invalid comment", c["details"])
 }
 
