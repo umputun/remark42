@@ -67,4 +67,10 @@
       margin-bottom: 0;
     }
   }
+
+  sup, sub {
+    sup, sub {
+      vertical-align: middle; // to prevent some visual cheats
+    }
+  }
 }
