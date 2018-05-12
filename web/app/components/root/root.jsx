@@ -1,7 +1,7 @@
 import { h, Component } from 'preact';
 import api from 'common/api';
 
-import { BASE_URL, NODE_ID, COMMENT_NODE_CLASSNAME_PREFIX } from 'common/constants';
+import { BASE_URL, NODE_ID, COMMENT_NODE_CLASSNAME_PREFIX, DEFAULT_SORT } from 'common/constants';
 import { url } from 'common/settings';
 import store from 'common/store';
 
@@ -21,9 +21,9 @@ export default class Root extends Component {
     let sort;
 
     try {
-      sort = localStorage.getItem(LS_SORT_KEY);
+      sort = localStorage.getItem(LS_SORT_KEY) || DEFAULT_SORT;
     } catch(e) {
-      sort = '-score';
+      sort = DEFAULT_SORT;
     }
 
     this.state = {

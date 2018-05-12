@@ -11,6 +11,7 @@ const PROVIDER_NAMES = {
   facebook: 'Facebook',
   github: 'GitHub',
 };
+const DEFAULT_SORT = '-score';
 
 module.exports = {
   BASE_URL,
@@ -22,4 +23,5 @@ module.exports = {
   DEFAULT_LAST_COMMENTS_MAX,
   DEFAULT_MAX_COMMENT_SIZE,
   PROVIDER_NAMES,
+  DEFAULT_SORT,
 };
