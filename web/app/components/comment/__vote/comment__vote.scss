@@ -1,13 +1,11 @@
 .comment__vote {
   display: inline-block;
-  border-top: 9px solid #dedede;
-  border-right: 7px solid transparent;
-  border-left: 7px solid transparent;
-  font-size: 0;
-  line-height: 0;
+  font-size: 14px;
+  line-height: 1;
+  color: #dedede;
   cursor: pointer;
 
   &:hover {
-    border-top-color: #0aa;
+    color: #0aa;
   }
 }

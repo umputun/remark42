@@ -277,8 +277,8 @@ export default class Comment extends Component {
               <span
                 className={b('comment__vote', {}, { type: 'up', selected: scoreIncreased, disabled: isGuest || isCurrentUser })}
                 onClick={this.increaseScore}
-                title={isGuest ? 'Only authorized users are allowed to vote' : (isCurrentUser ? 'You can\'t vote for your own comment' : null)}
-              >Vote up</span>
+                title={isGuest ? 'Only authorized users are allowed to vote' : (isCurrentUser ? 'You can\'t vote for your own comment' : 'Vote up')}
+              >⬆</span>
 
               <span className="comment__score-value">
                 {o.score.sign}{o.score.value}
@@ -288,8 +288,8 @@ export default class Comment extends Component {
               <span
                 className={b('comment__vote', {}, { type: 'down', selected: scoreDecreased, disabled: isGuest || isCurrentUser })}
                 onClick={this.decreaseScore}
-                title={isGuest ? 'Only authorized users are allowed to vote' : (isCurrentUser ? 'You can\'t vote for your own comment' : null)}
-              >Vote down</span>
+                title={isGuest ? 'Only authorized users are allowed to vote' : (isCurrentUser ? 'You can\'t vote for your own comment' : 'Vote down')}
+              >⬇</span>
             </span>
           </div>
 
