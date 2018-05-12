@@ -149,10 +149,12 @@ export default class Input extends Component {
           // TODO: it can be more elegant;
           // for example it can render full comment component here (or above textarea on mobile)
           !!preview && (
-            <div
-              className={b('input__preview', { mix: 'raw-content' })}
-              dangerouslySetInnerHTML={{ __html: preview }}
-            />
+            <div className="input__preview-wrapper">
+              <div
+                className={b('input__preview', { mix: 'raw-content' })}
+                dangerouslySetInnerHTML={{ __html: preview }}
+              />
+            </div>
           )
         }
       </form>
