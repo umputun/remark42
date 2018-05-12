@@ -30,6 +30,7 @@ func TestLogin(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 	body, err := ioutil.ReadAll(resp.Body)
+	assert.Nil(t, err)
 	t.Logf("resp %s", string(body))
 	u := store.User{}
 	err = json.Unmarshal(body, &u)
