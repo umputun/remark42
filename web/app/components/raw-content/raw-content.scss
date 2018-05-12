@@ -58,5 +58,13 @@
   pre {
     overflow-x: auto;
     tab-size: 2;
+
+    &:first-child {
+      margin-top: 0;
+    }
+
+    &:last-child {
+      margin-bottom: 0;
+    }
   }
 }
