@@ -117,7 +117,7 @@ func (p *AvatarProxy) Routes() (string, chi.Router) {
 		}()
 
 		w.Header().Set("Content-Type", "image/*")
-		if fi, err := fh.Stat(); err == nil {
+		if fi, e := fh.Stat(); e == nil {
 			w.Header().Set("Content-Length", strconv.Itoa(int(fi.Size())))
 		}
 
