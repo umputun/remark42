@@ -88,21 +88,17 @@ export default class AuthPanel extends Component {
 
           {user.admin && ' • '}
 
-          {
-            !!user.id && (
-              <span className="auth-panel__sort">
-                Sort by
-                {' '}
-                <select className="auth-panel__select" onChange={this.onSortChange}>
-                  {
-                    sortArray.map(sort => (
-                      <option value={sort.value} selected={sort.selected}>{sort.label}</option>
-                    ))
-                  }
-                </select>
-              </span>
-            )
-          }
+          <span className="auth-panel__sort">
+            Sort by
+            {' '}
+            <select className="auth-panel__select" onChange={this.onSortChange}>
+              {
+                sortArray.map(sort => (
+                  <option value={sort.value} selected={sort.selected}>{sort.label}</option>
+                ))
+              }
+            </select>
+          </span>
         </div>
       </div>
     );
