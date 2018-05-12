@@ -1,7 +1,7 @@
 import { h, Component } from 'preact';
 import api from 'common/api';
 
-import { BASE_URL, NODE_ID } from 'common/constants';
+import { BASE_URL, NODE_ID, COMMENT_NODE_CLASSNAME_PREFIX } from 'common/constants';
 import { url } from 'common/settings';
 import store from 'common/store';
 
@@ -82,7 +82,7 @@ export default class Root extends Component {
   }
 
   checkUrlHash() {
-    if (window.location.hash.indexOf('#remark__comment-') === 0) {
+    if (window.location.hash.indexOf(`#${COMMENT_NODE_CLASSNAME_PREFIX}`) === 0) {
       const comment = document.querySelector(window.location.hash);
 
       if (comment) {

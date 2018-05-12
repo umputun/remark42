@@ -13,6 +13,7 @@ require('./__control/comment__control.scss');
 require('./__controls/comment__controls.scss');
 require('./__info/comment__info.scss');
 require('./__input/comment__input.scss');
+require('./__link-to-parent/comment__link-to-parent.scss');
 
 require('./__score/comment__score.scss');
 require('./__score/_view/_negative/comment__score_view_negative.scss');

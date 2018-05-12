@@ -1,7 +1,7 @@
 import { h, Component } from 'preact';
 
 import api from 'common/api';
-import { API_BASE, BASE_URL } from 'common/constants';
+import { API_BASE, BASE_URL, COMMENT_NODE_CLASSNAME_PREFIX } from 'common/constants';
 import { url } from 'common/settings';
 import store from 'common/store';
 
@@ -22,6 +22,7 @@ export default class Comment extends Component {
     this.increaseScore = this.increaseScore.bind(this);
     this.toggleInputVisibility = this.toggleInputVisibility.bind(this);
     this.toggleUserIdVisibility = this.toggleUserIdVisibility.bind(this);
+    this.scrollToParent = this.scrollToParent.bind(this);
     this.onReply = this.onReply.bind(this);
     this.onPinClick = this.onPinClick.bind(this);
     this.onUnpinClick = this.onUnpinClick.bind(this);
@@ -181,6 +182,14 @@ export default class Comment extends Component {
     });
   }
 
+  scrollToParent(e) {
+    const { data: { pid } } = this.props;
+
+    e.preventDefault();
+
+    window.location.hash = `#${COMMENT_NODE_CLASSNAME_PREFIX}${pid}`;
+  }
+
   render(props, { guest, isUserIdVisible, userBlocked, pinned, score, scoreIncreased, scoreDecreased, deleted, isInputVisible }) {
     const { data, mix, mods = {} } = props;
     const isAdmin = !guest && store.get('user').admin;
@@ -224,10 +233,10 @@ export default class Comment extends Component {
 
     if (mods.view === 'preview') {
       return (
-        <div className={b('comment', props, defaultMods)} id={`remark__comment-${o.id}`}>
+        <div className={b('comment', props, defaultMods)} id={`${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}>
           <div className="comment__body">
             <div className="comment__info">
-              <a href={`${o.locator.url}#remark__comment-${o.id}`} className="comment__username">{o.user.name}</a>
+              <a href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`} className="comment__username">{o.user.name}</a>
             </div>
             {' '}
             <div
@@ -240,7 +249,7 @@ export default class Comment extends Component {
     }
 
     return (
-      <div className={b('comment', props, defaultMods)} id={`remark__comment-${o.id}`}>
+      <div className={b('comment', props, defaultMods)} id={`${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}>
         <div className="comment__body">
           <div className="comment__info">
             <img
@@ -259,7 +268,7 @@ export default class Comment extends Component {
               isUserIdVisible && <span className="comment__user-id"> ({o.user.id})</span>
             }
 
-            <a href={`${o.locator.url}#remark__comment-${o.id}`} className="comment__time">{o.time}</a>
+            <a href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`} className="comment__time">{o.time}</a>
 
             {
               isAdmin && userBlocked && (
@@ -291,6 +300,16 @@ export default class Comment extends Component {
                 title={isGuest ? 'Only authorized users are allowed to vote' : (isCurrentUser ? 'You can\'t vote for your own comment' : null)}
               >Vote down</span>
             </span>
+
+            {
+              mods.level > 0 && (
+                <a
+                  className="comment__link-to-parent"
+                  href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.pid}`}
+                  onClick={this.scrollToParent}
+                />
+              )
+            }
           </div>
 
           <div
