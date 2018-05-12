@@ -1,13 +1,15 @@
 .comment__vote {
   display: inline-block;
-  border-top: 9px solid #dedede;
-  border-right: 7px solid transparent;
-  border-left: 7px solid transparent;
+  width: 16px;
+  height: 14px;
+  vertical-align: middle;
   font-size: 0;
   line-height: 0;
+  background: url('comment__vote.svg') center no-repeat;
+  background-size: contain;
   cursor: pointer;
 
   &:hover {
-    border-top-color: #0aa;
+    background-image: url('_selected/comment__vote_selected.svg');
   }
 }
