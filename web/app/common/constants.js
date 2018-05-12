@@ -7,6 +7,7 @@ const LAST_COMMENTS_NODE_CLASSNAME = 'remark42__last-comments';
 const DEFAULT_LAST_COMMENTS_MAX = 15;
 const DEFAULT_MAX_COMMENT_SIZE = 1000;
 const DEFAULT_SORT = '-score';
+const USELESS_COMMENT_SCORE = -10;
 const PROVIDER_NAMES = {
   google: 'Google',
   facebook: 'Facebook',
@@ -24,4 +25,5 @@ module.exports = {
   DEFAULT_MAX_COMMENT_SIZE,
   PROVIDER_NAMES,
   DEFAULT_SORT,
+  USELESS_COMMENT_SCORE,
 };
