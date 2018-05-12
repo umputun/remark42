@@ -96,6 +96,20 @@ _instructions for google oauth2 setup borrowed from [oauth2_proxy](https://githu
 2.  Move this file to your remark42 host within `.var` and unzip, i.e. `gunzip <disqus-export-name>.xml.gz`.
 3.  Run import command - `docker-compose exec remark /srv/import-disqus.sh <disqus-export-name>.xml <your site id>`
 
+
+#### Admin users
+
+Admins/moderators should be defined in `docker-compose.yml` as a list of user IDs or passed in the command line. 
+
+```
+    environment:
+        - ADMIN=github_ef0f706a79cc24b17bbbb374cd234a691a034128,github_dae9983158e9e5e127ef2b87a411ef13c891e9e5
+```
+
+To get user id just login and click on your username or any other user you want to promote to admins. 
+It will expand login info and show full user ID.
+
+
 ### Frontend
 
 Frontend part is building automatically along with backend if you use `docker-compose`.
