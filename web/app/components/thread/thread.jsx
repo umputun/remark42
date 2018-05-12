@@ -7,7 +7,7 @@ export default class Thread extends Component {
     const { data: { comment, replies = [] }, mix, mods = {}, onReplyClick } = props;
 
     return (
-      <div className={b('thread', props)}>
+      <div className={b('thread', props)} role="list" >
         <Comment
           data={comment}
           mods={{ level: mods.level }}

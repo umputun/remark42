@@ -223,7 +223,7 @@ export default class Root extends Component {
 
                 {
                   !!pinnedComments.length && (
-                    <div className="root__pinned-comments">
+                    <div className="root__pinned-comments" role="region" aria-label="Pinned Comments">
                       {
                         pinnedComments.map(comment => (
                           <Comment
@@ -268,13 +268,13 @@ export default class Root extends Component {
 
           {
             isBlockedVisible && (
-              <div className="root__main">
+              <div className="root__main" role="region" aria-label="Blocked Users">
                 <BlockedUsers users={bannedUsers} onUnblock={this.onUnblockSomeone}/>
               </div>
             )
           }
 
-          <p className="root__copyright">
+          <p className="root__copyright" role="contentinfo">
             Powered by <a href="https://remark42.com/" className="root__copyright-link">Remark42</a>
           </p>
         </div>
