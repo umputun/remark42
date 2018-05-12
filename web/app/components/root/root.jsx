@@ -57,17 +57,12 @@ export default class Root extends Component {
       .then(data => store.set('user', data))
       .catch(() => store.set('user', {}))
       .finally(() => {
-        this.setState({
-          isLoaded: true,
-          isCommentsListLoading: true,
-        });
-
         api.find({ sort, url })
           .then(({ comments = [] } = {}) => store.set('comments', comments))
           .catch(() => store.set('comments', []))
           .finally(() => {
             this.setState({
-              isCommentsListLoading: false,
+              isLoaded: true,
               user: store.get('user'),
             });
 
