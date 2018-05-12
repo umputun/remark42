@@ -31,9 +31,6 @@ func (s *Service) Create(comment Comment) (commentID string, err error) {
 		comment.Votes = make(map[string]bool)
 	}
 
-	if err = s.ValidateComment(&comment); err != nil {
-		return "", err
-	}
 	comment.Sanitize()            // clear potentially dangerous js from all parts of comment
 	comment.User.hashIP(s.Secret) // replace ip by hash
 
@@ -110,10 +107,6 @@ func (s *Service) EditComment(locator Locator, commentID string, text string, ed
 	comment.Text = text
 	comment.Edit = &edit
 	comment.Edit.Timestamp = time.Now()
-
-	if err = s.ValidateComment(&comment); err != nil {
-		return comment, err
-	}
 
 	comment.Sanitize()
 	err = s.Put(locator, comment)
