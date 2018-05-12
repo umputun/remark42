@@ -62,11 +62,11 @@ func TestServer_CreateTooBig(t *testing.T) {
 	require.NotNil(t, srv)
 	defer cleanup(srv)
 
-	longComment := fmt.Sprintf(`{"text": "%6000s", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, "blah")
+	longComment := fmt.Sprintf(`{"text": "%4001s", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, "X")
 	r := strings.NewReader(longComment)
 	resp, err := http.Post(fmt.Sprintf("http://dev:password@127.0.0.1:%d/api/v1/comment", port), "application/json", r)
 	assert.Nil(t, err)
-	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	b, err := ioutil.ReadAll(resp.Body)
 	assert.Nil(t, err)
 	c := JSON{}
@@ -74,7 +74,7 @@ func TestServer_CreateTooBig(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.Equal(t, "comment text exceeded max allowed size", c["error"])
-	assert.Equal(t, "can't save comment", c["details"])
+	assert.Equal(t, "invalid comment", c["details"])
 }
 
 func TestServer_Preview(t *testing.T) {
@@ -444,6 +444,7 @@ func TestServer_Config(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 300., j["edit_duration"])
 	assert.EqualValues(t, []interface{}([]interface{}{"a1", "a2"}), j["admins"])
+	assert.Equal(t, 4000., j["max_comment_size"])
 	t.Logf("%+v", j)
 }
 
