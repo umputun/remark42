@@ -32,7 +32,7 @@ pipeline:
         exclude: [master, release/*]
         event: push
 
-  pr_build:
+  docker-pullrequest:
     image: docker
     commands:
       - docker build .
