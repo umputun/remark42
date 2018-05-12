@@ -39,7 +39,6 @@ export default class Root extends Component {
     this.onSignOut = this.onSignOut.bind(this);
     this.onBlockedUsersShow = this.onBlockedUsersShow.bind(this);
     this.onBlockedUsersHide = this.onBlockedUsersHide.bind(this);
-    this.onReplyClick = this.onReplyClick.bind(this);
     this.onSortChange = this.onSortChange.bind(this);
     this.onUnblockSomeone = this.onUnblockSomeone.bind(this);
     this.checkUrlHash = this.checkUrlHash.bind(this);
@@ -137,14 +136,6 @@ export default class Root extends Component {
       isBlockedVisible: false,
       wasSomeoneUnblocked: false,
     });
-  }
-
-  onReplyClick(cb) {
-    if (this.onPrevReplyClickCallback) {
-      this.onPrevReplyClickCallback();
-    }
-
-    this.onPrevReplyClickCallback = cb;
   }
 
   onSortChange(sort) {
@@ -247,7 +238,6 @@ export default class Root extends Component {
                             mods={{ level: 0 }}
                             data={thread}
                             onReply={this.addComment}
-                            onReplyClick={this.onReplyClick}
                           />
                         ))
                       }
