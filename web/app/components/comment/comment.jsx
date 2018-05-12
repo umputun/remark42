@@ -21,6 +21,7 @@ export default class Comment extends Component {
     this.decreaseScore = this.decreaseScore.bind(this);
     this.increaseScore = this.increaseScore.bind(this);
     this.toggleInputVisibility = this.toggleInputVisibility.bind(this);
+    this.toggleCollapse = this.toggleCollapse.bind(this);
     this.toggleUserIdVisibility = this.toggleUserIdVisibility.bind(this);
     this.scrollToParent = this.scrollToParent.bind(this);
     this.onReply = this.onReply.bind(this);
@@ -194,6 +195,12 @@ export default class Comment extends Component {
     }
   }
 
+  toggleCollapse() {
+    if (this.props.onCollapseToggle) {
+      this.props.onCollapseToggle();
+    }
+  }
+
   render(props, { guest, isUserIdVisible, userBlocked, pinned, score, scoreIncreased, scoreDecreased, deleted, isInputVisible }) {
     const { data, mods = {} } = props;
     const isAdmin = !guest && store.get('user').admin;
@@ -331,6 +338,15 @@ export default class Comment extends Component {
                       tabIndex="0"
                       onClick={this.toggleInputVisibility}
                     >{isInputVisible ? 'Cancel' : 'Reply'}</span>
+                  )
+                }
+
+                {
+                  !mods.disabled && mods.collapsible && (
+                    <span
+                      className={b('comment__action', {}, { type: 'collapse', selected: mods.collapsed })}
+                      onClick={this.toggleCollapse}
+                    >{mods.collapsed ? '+' : '−'}</span>
                   )
                 }
 

@@ -1,0 +1,26 @@
+.comment__action_type_collapse {
+  display: inline-block;
+  box-sizing: border-box;
+  width: 12px;
+  height: 12px;
+  font-size: 12px;
+  line-height: 10px;
+  text-align: center;
+  border: 1px solid #ccc;
+  border-radius: 2px;
+  color: #ccc;
+
+  &:hover {
+    border-color: #0aa;
+    color: #0aa;
+  }
+
+  &.comment__action_selected {
+    background: #ccc;
+    color: #fff;
+
+    &:hover {
+      background: #0aa;
+    }
+  }
+}
