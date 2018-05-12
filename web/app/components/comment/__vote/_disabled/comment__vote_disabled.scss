@@ -1,6 +1,6 @@
 .comment__vote_disabled {
   &, &:hover {
-    color: #ededed;
+    border-top-color: #ededed;
     cursor: not-allowed;
   }
 }
