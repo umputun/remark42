@@ -2,4 +2,9 @@
   margin-left: 8px;
   vertical-align: middle;
   color: #999;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
 }

@@ -259,7 +259,7 @@ export default class Comment extends Component {
               isUserIdVisible && <span className="comment__user-id"> ({o.user.id})</span>
             }
 
-            <span className="comment__time">{o.time}</span>
+            <a href={`${o.locator.url}#remark__comment-${o.id}`} className="comment__time">{o.time}</a>
 
             {
               isAdmin && userBlocked && (
