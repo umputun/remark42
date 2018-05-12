@@ -26,12 +26,15 @@
       }
     }, 200);
 
-    window.addEventListener('message', updateHash);
+    window.addEventListener('message', receiveMessages);
 
-    function updateHash(event) {
+    function receiveMessages(event) {
       try {
         const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-        location.hash = data.hash;
+
+        if (data.hash) {
+          location.hash = data.hash;
+        }
       } catch (e) {}
     }
   </script>

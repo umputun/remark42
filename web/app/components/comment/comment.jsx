@@ -3,6 +3,7 @@ import { h, Component } from 'preact';
 import api from 'common/api';
 import { API_BASE, BASE_URL, COMMENT_NODE_CLASSNAME_PREFIX } from 'common/constants';
 import { url } from 'common/settings';
+import postMessage from 'common/post-message';
 import store from 'common/store';
 
 import Input from 'components/input';
@@ -187,8 +188,8 @@ export default class Comment extends Component {
 
     e.preventDefault();
 
-    window.location.hash = '';
-    window.location.hash = `#${COMMENT_NODE_CLASSNAME_PREFIX}${pid}`;
+    postMessage({ hash: '' });
+    postMessage({ hash: `#${COMMENT_NODE_CLASSNAME_PREFIX}${pid}` });
   }
 
   render(props, { guest, isUserIdVisible, userBlocked, pinned, score, scoreIncreased, scoreDecreased, deleted, isInputVisible }) {
@@ -272,6 +273,16 @@ export default class Comment extends Component {
             <a href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`} className="comment__time">{o.time}</a>
 
             {
+              mods.level > 0 && (
+                <a
+                  className="comment__link-to-parent"
+                  href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.pid}`}
+                  onClick={this.scrollToParent}
+                />
+              )
+            }
+
+            {
               isAdmin && userBlocked && (
                 <span className="comment__status">Blocked</span>
               )
@@ -301,16 +312,6 @@ export default class Comment extends Component {
                 title={isGuest ? 'Only authorized users are allowed to vote' : (isCurrentUser ? 'You can\'t vote for your own comment' : null)}
               >Vote down</span>
             </span>
-
-            {
-              mods.level > 0 && (
-                <a
-                  className="comment__link-to-parent"
-                  href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.pid}`}
-                  onClick={this.scrollToParent}
-                />
-              )
-            }
           </div>
 
           <div

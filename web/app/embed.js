@@ -49,16 +49,22 @@ function init() {
 
   const iframe = node.getElementsByTagName('iframe')[0];
 
-  window.addEventListener('message', updateIframeHeight);
+  window.addEventListener('message', receiveMessages);
 
   window.addEventListener('hashchange', postHashToIframe);
 
   setTimeout(postHashToIframe, 1000);
 
-  function updateIframeHeight(event) {
+  function receiveMessages(event) {
     try {
       const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-      iframe.style.height = `${data.remarkIframeHeight}px`;
+      if (data.remarkIframeHeight) {
+        iframe.style.height = `${data.remarkIframeHeight}px`;
+      }
+
+      if (data.hash) {
+        window.location.hash = data.hash;
+      }
     } catch (e) {}
   }
 
