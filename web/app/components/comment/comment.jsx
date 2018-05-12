@@ -187,6 +187,7 @@ export default class Comment extends Component {
 
     e.preventDefault();
 
+    window.location.hash = '';
     window.location.hash = `#${COMMENT_NODE_CLASSNAME_PREFIX}${pid}`;
   }
 
@@ -249,7 +250,7 @@ export default class Comment extends Component {
     }
 
     return (
-      <div className={b('comment', props, defaultMods)} id={`${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}>
+      <div className={b('comment', props, defaultMods)} id={mods.disabled ? null : `${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}>
         <div className="comment__body">
           <div className="comment__info">
             <img
