@@ -244,7 +244,7 @@ export default class Comment extends Component {
 
     if (mods.view === 'preview') {
       return (
-        <div className={b('comment', props, defaultMods)} id={`${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}>
+        <div className={b('comment', props, defaultMods)}>
           <div className="comment__body">
             <div className="comment__info">
               <a href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`} className="comment__username">{o.user.name}</a>
