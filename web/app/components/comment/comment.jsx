@@ -328,86 +328,82 @@ export default class Comment extends Component {
             dangerouslySetInnerHTML={{ __html: o.text }}
           />
 
-          {
-            !deleted && (
-              <div className="comment__actions">
-                {
-                  !mods.disabled && !isGuest && (
-                    <span
-                      className="comment__action"
-                      tabIndex="0"
-                      onClick={this.toggleInputVisibility}
-                    >{isInputVisible ? 'Cancel' : 'Reply'}</span>
-                  )
-                }
+          <div className="comment__actions">
+            {
+              !deleted && !mods.disabled && !isGuest && (
+                <span
+                  className="comment__action"
+                  tabIndex="0"
+                  onClick={this.toggleInputVisibility}
+                >{isInputVisible ? 'Cancel' : 'Reply'}</span>
+              )
+            }
 
-                {
-                  !mods.disabled && mods.collapsible && (
-                    <span
-                      className={b('comment__action', {}, { type: 'collapse', selected: mods.collapsed })}
-                      onClick={this.toggleCollapse}
-                    >{mods.collapsed ? '+' : '−'}</span>
-                  )
-                }
+            {
+              !mods.disabled && mods.collapsible && (
+                <span
+                  className={b('comment__action', {}, { type: 'collapse', selected: mods.collapsed })}
+                  onClick={this.toggleCollapse}
+                >{mods.collapsed ? '+' : '−'}</span>
+              )
+            }
 
-                {
-                  isAdmin && (
-                    <span className="comment__controls">
-                      {
-                        !pinned && (
-                          <span
-                            className="comment__control"
-                            tabIndex="0"
-                            onClick={this.onPinClick}
-                          >Pin</span>
-                        )
-                      }
+            {
+              !deleted && isAdmin && (
+                <span className="comment__controls">
+                  {
+                    !pinned && (
+                      <span
+                        className="comment__control"
+                        tabIndex="0"
+                        onClick={this.onPinClick}
+                      >Pin</span>
+                    )
+                  }
 
-                      {
-                        pinned && (
-                          <span
-                            className="comment__control"
-                            tabIndex="0"
-                            onClick={this.onUnpinClick}
-                          >Unpin</span>
-                        )
-                      }
+                  {
+                    pinned && (
+                      <span
+                        className="comment__control"
+                        tabIndex="0"
+                        onClick={this.onUnpinClick}
+                      >Unpin</span>
+                    )
+                  }
 
-                      {
-                        userBlocked && (
-                          <span
-                            className="comment__control"
-                            tabIndex="0"
-                            onClick={this.onUnblockClick}
-                          >Unblock</span>
-                        )
-                      }
+                  {
+                    userBlocked && (
+                      <span
+                        className="comment__control"
+                        tabIndex="0"
+                        onClick={this.onUnblockClick}
+                      >Unblock</span>
+                    )
+                  }
 
-                      {
-                        !userBlocked && (
-                          <span
-                            className="comment__control"
-                            tabIndex="0"
-                            onClick={this.onBlockClick}
-                          >Block</span>
-                        )
-                      }
+                  {
+                    !userBlocked && (
+                      <span
+                        className="comment__control"
+                        tabIndex="0"
+                        onClick={this.onBlockClick}
+                      >Block</span>
+                    )
+                  }
 
-                      {
-                        !deleted && (
-                          <span
-                            className="comment__control"
-                            tabIndex="0"
-                            onClick={this.onDeleteClick}
-                          >Delete</span>
-                        )
-                      }
-                    </span>
-                  )
-                }
-              </div>
-            )
-          }
+                  {
+                    !deleted && (
+                      <span
+                        className="comment__control"
+                        tabIndex="0"
+                        onClick={this.onDeleteClick}
+                      >Delete</span>
+                    )
+                  }
+                </span>
+              )
+            }
+          </div>
         </div>
 
         {
