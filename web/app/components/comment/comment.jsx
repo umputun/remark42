@@ -65,15 +65,16 @@ export default class Comment extends Component {
 
   toggleInputVisibility() {
     const { isInputVisible } = this.state;
+    const onPrevReplyCb = store.get('onPrevReplyCb');
 
     this.setState({ isInputVisible: !isInputVisible });
 
-    if (this.props.onReplyClick) {
-      if (!isInputVisible) {
-        this.props.onReplyClick(() => this.setState({ isInputVisible: false }));
-      } else {
-        this.props.onReplyClick(null);
-      }
+    if (onPrevReplyCb) onPrevReplyCb();
+
+    if (!isInputVisible) {
+      store.set('onPrevReplyCb', () => this.setState({ isInputVisible: false }));
+    } else {
+      store.set('onPrevReplyCb', null);
     }
   }
 
