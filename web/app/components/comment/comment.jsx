@@ -185,11 +185,21 @@ export default class Comment extends Component {
 
   scrollToParent(e) {
     const { data: { pid } } = this.props;
+    const hash = `#${COMMENT_NODE_CLASSNAME_PREFIX}${pid}`;
 
     e.preventDefault();
 
+    // reset old hash
     postMessage({ hash: '' });
-    postMessage({ hash: `#${COMMENT_NODE_CLASSNAME_PREFIX}${pid}` });
+
+    // set new hash
+    postMessage({ hash });
+
+    // try to scroll into view
+    const parentCommentNode = document.querySelector(hash);
+    if (parentCommentNode) {
+      parentCommentNode.scrollIntoView();
+    }
   }
 
   render(props, { guest, isUserIdVisible, userBlocked, pinned, score, scoreIncreased, scoreDecreased, deleted, isInputVisible }) {
