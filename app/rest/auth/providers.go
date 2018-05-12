@@ -51,6 +51,10 @@ func NewGithub(p Params) Provider {
 				Name:    data.value("name"),
 				Picture: data.value("avatar_url"),
 			}
+			// github may have no user name, use login in this case
+			if userInfo.Name == "<nil>" {
+				userInfo.Name = data.value("login")
+			}
 			if userInfo.Name == "" {
 				userInfo.Name = userInfo.ID
 			}
