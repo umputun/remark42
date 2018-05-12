@@ -44,7 +44,7 @@ const hardBodyLimit = 1024 * 64 // limit size of body
 
 var mdExt = blackfriday.NoIntraEmphasis | blackfriday.Tables | blackfriday.FencedCode |
 	blackfriday.Strikethrough | blackfriday.SpaceHeadings | blackfriday.HardLineBreak |
-	blackfriday.BackslashLineBreak
+	blackfriday.BackslashLineBreak | blackfriday.Autolink
 
 // Run the lister and request's router, activate rest server
 func (s *Rest) Run(port int) {

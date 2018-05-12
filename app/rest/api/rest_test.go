@@ -143,7 +143,7 @@ func TestServer_CreateAndGet(t *testing.T) {
 	comment := store.Comment{}
 	err = json.Unmarshal([]byte(res), &comment)
 	assert.Nil(t, err)
-	assert.Equal(t, "<p><strong>test</strong> <em>123</em> http://radio-t.com</p>\n", comment.Text)
+	assert.Equal(t, `<p><strong>test</strong> <em>123</em> <a href="http://radio-t.com" rel="nofollow">http://radio-t.com</a></p>`+"\n", comment.Text)
 	assert.Equal(t, store.User{Name: "developer one", ID: "dev",
 		Picture: "/api/v1/avatar/remark.image", Admin: true, Blocked: false, IP: "ea64bfc178468d943ca5b836e2e700c335404973"},
 		comment.User)
