@@ -3,7 +3,6 @@ import { h, Component } from 'preact';
 import api from 'common/api';
 import { API_BASE, BASE_URL, COMMENT_NODE_CLASSNAME_PREFIX } from 'common/constants';
 import { url } from 'common/settings';
-import postMessage from 'common/post-message';
 import store from 'common/store';
 
 import Input from 'components/input';
@@ -185,18 +184,11 @@ export default class Comment extends Component {
 
   scrollToParent(e) {
     const { data: { pid } } = this.props;
-    const hash = `#${COMMENT_NODE_CLASSNAME_PREFIX}${pid}`;
 
     e.preventDefault();
 
-    // reset old hash
-    postMessage({ hash: '' });
+    const parentCommentNode = document.getElementById(`${COMMENT_NODE_CLASSNAME_PREFIX}${pid}`);
 
-    // set new hash
-    postMessage({ hash });
-
-    // try to scroll into view
-    const parentCommentNode = document.querySelector(hash);
     if (parentCommentNode) {
       parentCommentNode.scrollIntoView();
     }

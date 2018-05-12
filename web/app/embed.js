@@ -61,10 +61,6 @@ function init() {
       if (data.remarkIframeHeight) {
         iframe.style.height = `${data.remarkIframeHeight}px`;
       }
-
-      if (data.hash) {
-        window.location.hash = data.hash;
-      }
     } catch (e) {}
   }
 
