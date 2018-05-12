@@ -1,7 +1,7 @@
 import { h, Component } from 'preact';
 
 import api from 'common/api';
-import { API_BASE, BASE_URL, COMMENT_NODE_CLASSNAME_PREFIX } from 'common/constants';
+import { API_BASE, BASE_URL, COMMENT_NODE_CLASSNAME_PREFIX, USELESS_COMMENT_SCORE } from 'common/constants';
 import { url } from 'common/settings';
 import store from 'common/store';
 
@@ -21,6 +21,7 @@ export default class Comment extends Component {
     this.decreaseScore = this.decreaseScore.bind(this);
     this.increaseScore = this.increaseScore.bind(this);
     this.toggleInputVisibility = this.toggleInputVisibility.bind(this);
+    this.toggleCollapse = this.toggleCollapse.bind(this);
     this.toggleUserIdVisibility = this.toggleUserIdVisibility.bind(this);
     this.scrollToParent = this.scrollToParent.bind(this);
     this.onReply = this.onReply.bind(this);
@@ -194,8 +195,14 @@ export default class Comment extends Component {
     }
   }
 
+  toggleCollapse() {
+    if (this.props.onCollapseToggle) {
+      this.props.onCollapseToggle();
+    }
+  }
+
   render(props, { guest, isUserIdVisible, userBlocked, pinned, score, scoreIncreased, scoreDecreased, deleted, isInputVisible }) {
-    const { data, mix, mods = {} } = props;
+    const { data, mods = {} } = props;
     const isAdmin = !guest && store.get('user').admin;
     const isGuest = guest || !Object.keys(store.get('user')).length;
     const isCurrentUser = (data.user && data.user.id) === (store.get('user') && store.get('user').id);
@@ -229,7 +236,7 @@ export default class Comment extends Component {
 
     const defaultMods = {
       pinned,
-      useless: userBlocked || deleted,
+      useless: userBlocked || deleted || (score <= USELESS_COMMENT_SCORE && !mods.pinned && !mods.disabled),
       // TODO: add default view mod or don't?
       view: o.user.admin ? 'admin' : null,
       replying: isInputVisible,
@@ -237,7 +244,7 @@ export default class Comment extends Component {
 
     if (mods.view === 'preview') {
       return (
-        <div className={b('comment', props, defaultMods)} id={`${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`} role="listitem article" aria-level={mods.level}>
+        <div className={b('comment', props, defaultMods)} role="listitem article" aria-level={mods.level}>
           <div className="comment__body">
             <div className="comment__info">
               <a href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`} className="comment__username">{o.user.name}</a>
@@ -328,7 +335,7 @@ export default class Comment extends Component {
 
           <div className="comment__actions">
             {
-              !mods.disabled && !isGuest && (
+              !deleted && !mods.disabled && !isGuest && (
                 <span
                   className="comment__action"
                   role="button"
@@ -339,8 +346,16 @@ export default class Comment extends Component {
             }
 
             {
-              isAdmin &&
-              (
+              !mods.disabled && mods.collapsible && (
+                <span
+                  className={b('comment__action', {}, { type: 'collapse', selected: mods.collapsed })}
+                  onClick={this.toggleCollapse}
+                >{mods.collapsed ? '+' : '−'}</span>
+              )
+            }
+
+            {
+              !deleted && isAdmin && (
                 <span className="comment__controls">
                   {
                     !pinned && (

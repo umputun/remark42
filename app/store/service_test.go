@@ -85,7 +85,7 @@ func TestService_Vote(t *testing.T) {
 	assert.Equal(t, map[string]bool{"user1": true}, c.Votes, "user voted +")
 
 	c, err = b.Vote(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "user", true)
-	assert.NotNil(t, "self-voting not allowed")
+	assert.NotNil(t, err, "self-voting not allowed")
 
 	_, err = b.Vote(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "user1", true)
 	assert.NotNil(t, err, "double-voting rejected")
@@ -178,7 +178,7 @@ func TestService_EditCommentDurationFailed(t *testing.T) {
 
 	time.Sleep(time.Second)
 
-	comment, err = b.EditComment(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "xxx",
+	_, err = b.EditComment(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "xxx",
 		Edit{Summary: "my edit"})
 	assert.NotNil(t, err)
 }
@@ -195,7 +195,7 @@ func TestService_ValidateComment(t *testing.T) {
 		{inp: Comment{}, err: errors.New("empty comment text")},
 		{inp: Comment{Text: "something blah", User: User{ID: "myid", Name: "name"}}, err: nil},
 		{inp: Comment{Text: "something blah", User: User{ID: "myid"}}, err: errors.New("empty user info")},
-		{inp: Comment{Text: longText, User: User{ID: "myid", Name: "name"}}, err: errors.New("comment text exceeded max allowed size")},
+		{inp: Comment{Text: longText, User: User{ID: "myid", Name: "name"}}, err: errors.New("comment text exceeded max allowed size 2000 (4000)")},
 	}
 
 	for n, tt := range tbl {

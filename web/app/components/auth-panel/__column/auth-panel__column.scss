@@ -1,6 +1,7 @@
 .auth-panel__column {
   &:nth-child(1) {
     overflow: hidden;
+    font-weight: 700;
     text-overflow: ellipsis;
   }
 

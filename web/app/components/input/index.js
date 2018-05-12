@@ -14,3 +14,4 @@ require('./__error/input__error.scss');
 require('./__field/input__field.scss');
 require('./__field-wrapper/input__field-wrapper.scss');
 require('./__preview/input__preview.scss');
+require('./__preview-wrapper/input__preview-wrapper.scss');

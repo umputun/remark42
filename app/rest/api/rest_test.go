@@ -62,19 +62,19 @@ func TestServer_CreateTooBig(t *testing.T) {
 	require.NotNil(t, srv)
 	defer cleanup(srv)
 
-	longComment := fmt.Sprintf(`{"text": "%6000s", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, "blah")
+	longComment := fmt.Sprintf(`{"text": "%4001s", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, "Щ")
 	r := strings.NewReader(longComment)
 	resp, err := http.Post(fmt.Sprintf("http://dev:password@127.0.0.1:%d/api/v1/comment", port), "application/json", r)
 	assert.Nil(t, err)
-	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	b, err := ioutil.ReadAll(resp.Body)
 	assert.Nil(t, err)
 	c := JSON{}
 	err = json.Unmarshal(b, &c)
 	assert.Nil(t, err)
 
-	assert.Equal(t, "comment text exceeded max allowed size", c["error"])
-	assert.Equal(t, "can't save comment", c["details"])
+	assert.Equal(t, "comment text exceeded max allowed size 4000 (4001)", c["error"])
+	assert.Equal(t, "invalid comment", c["details"])
 }
 
 func TestServer_Preview(t *testing.T) {
@@ -84,6 +84,7 @@ func TestServer_Preview(t *testing.T) {
 
 	r := strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
 	resp, err := http.Post(fmt.Sprintf("http://dev:password@127.0.0.1:%d/api/v1/preview", port), "application/json", r)
+	assert.Nil(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	b, err := ioutil.ReadAll(resp.Body)
 	assert.Nil(t, err)
@@ -111,6 +112,7 @@ BKT
 	t.Log(j)
 	r := strings.NewReader(j)
 	resp, err := http.Post(fmt.Sprintf("http://dev:password@127.0.0.1:%d/api/v1/preview", port), "application/json", r)
+	assert.Nil(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	b, err := ioutil.ReadAll(resp.Body)
 	assert.Nil(t, err)
@@ -141,7 +143,7 @@ func TestServer_CreateAndGet(t *testing.T) {
 	comment := store.Comment{}
 	err = json.Unmarshal([]byte(res), &comment)
 	assert.Nil(t, err)
-	assert.Equal(t, "<p><strong>test</strong> <em>123</em> http://radio-t.com</p>\n", comment.Text)
+	assert.Equal(t, `<p><strong>test</strong> <em>123</em> <a href="http://radio-t.com" rel="nofollow">http://radio-t.com</a></p>`+"\n", comment.Text)
 	assert.Equal(t, store.User{Name: "developer one", ID: "dev",
 		Picture: "/api/v1/avatar/remark.image", Admin: true, Blocked: false, IP: "ea64bfc178468d943ca5b836e2e700c335404973"},
 		comment.User)
@@ -442,6 +444,7 @@ func TestServer_Config(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 300., j["edit_duration"])
 	assert.EqualValues(t, []interface{}([]interface{}{"a1", "a2"}), j["admins"])
+	assert.Equal(t, 4000., j["max_comment_size"])
 	t.Logf("%+v", j)
 }
 

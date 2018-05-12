@@ -9,7 +9,7 @@
   }
 
   // it isn't mobile first, but it's fine here
-  @media (hover: none) and (max-width: 768px) {
+  @media (-moz-touch-enabled: 1) and (max-width: 768px), (pointer:coarse) and (max-width: 768px) {
     border: 8px solid #eee;
     padding-bottom: 0;
 

@@ -1,5 +1,6 @@
 .comment__action {
   font-size: 14px;
+  vertical-align: middle;
   cursor: pointer;
   user-select: none;
   color: #259C9A;
@@ -10,6 +11,10 @@
 
   &:focus {
     outline: none;
+  }
+
+  + .comment__action {
+    margin-left: 8px;
   }
 
   + .comment__controls {

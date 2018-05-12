@@ -44,7 +44,7 @@ const hardBodyLimit = 1024 * 64 // limit size of body
 
 var mdExt = blackfriday.NoIntraEmphasis | blackfriday.Tables | blackfriday.FencedCode |
 	blackfriday.Strikethrough | blackfriday.SpaceHeadings | blackfriday.HardLineBreak |
-	blackfriday.BackslashLineBreak
+	blackfriday.BackslashLineBreak | blackfriday.Autolink
 
 // Run the lister and request's router, activate rest server
 func (s *Rest) Run(port int) {
@@ -137,9 +137,14 @@ func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	comment.PrepareUntrusted() // clean all fields user not suppoed to set
+	comment.PrepareUntrusted() // clean all fields user not supposed to set
 	comment.User = user
 	comment.User.IP = strings.Split(r.RemoteAddr, ":")[0]
+	if err = s.DataService.ValidateComment(&comment); err != nil {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment")
+		return
+	}
+
 	comment.Text = string(blackfriday.Run([]byte(comment.Text), blackfriday.WithExtensions(mdExt)))
 	log.Printf("[DEBUG] create comment %+v", comment)
 

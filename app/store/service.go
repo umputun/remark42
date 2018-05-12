@@ -31,9 +31,6 @@ func (s *Service) Create(comment Comment) (commentID string, err error) {
 		comment.Votes = make(map[string]bool)
 	}
 
-	if err = s.ValidateComment(&comment); err != nil {
-		return "", err
-	}
 	comment.Sanitize()            // clear potentially dangerous js from all parts of comment
 	comment.User.hashIP(s.Secret) // replace ip by hash
 
@@ -111,10 +108,6 @@ func (s *Service) EditComment(locator Locator, commentID string, text string, ed
 	comment.Edit = &edit
 	comment.Edit.Timestamp = time.Now()
 
-	if err = s.ValidateComment(&comment); err != nil {
-		return comment, err
-	}
-
 	comment.Sanitize()
 	err = s.Put(locator, comment)
 	return comment, err
@@ -140,8 +133,8 @@ func (s *Service) ValidateComment(c *Comment) error {
 	if c.Text == "" {
 		return errors.New("empty comment text")
 	}
-	if len(c.Text) > maxSize {
-		return errors.New("comment text exceeded max allowed size")
+	if len([]rune(c.Text)) > maxSize {
+		return errors.Errorf("comment text exceeded max allowed size %d (%d)", maxSize, len([]rune(c.Text)))
 	}
 	if c.User.ID == "" || c.User.Name == "" {
 		return errors.Errorf("empty user info")

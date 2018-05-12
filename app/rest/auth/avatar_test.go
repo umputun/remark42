@@ -85,7 +85,11 @@ func TestRoutes(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Equal(t, http.Header{"Content-Type": []string{"image/*"}}, rr.HeaderMap)
+
+	assert.Equal(t, []string{"image/*"}, rr.HeaderMap["Content-Type"])
+	assert.Equal(t, []string{"21"}, rr.HeaderMap["Content-Length"])
+	assert.NotNil(t, rr.HeaderMap["Etag"])
+
 	bb := bytes.Buffer{}
 	sz, err := io.Copy(&bb, rr.Body)
 	assert.NoError(t, err)

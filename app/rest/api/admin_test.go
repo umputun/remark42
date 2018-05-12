@@ -105,13 +105,13 @@ func TestAdmin_Block(t *testing.T) {
 
 	block := func(val int) (code int, body []byte) {
 		client := http.Client{}
-		req, err := http.NewRequest(http.MethodPut,
+		req, e := http.NewRequest(http.MethodPut,
 			fmt.Sprintf("http://dev:password@127.0.0.1:%d/api/v1/admin/user/%s?site=radio-t&block=%d", port, "user1", val), nil)
-		assert.Nil(t, err)
-		resp, err := client.Do(req)
-		require.Nil(t, err)
-		body, err = ioutil.ReadAll(resp.Body)
-		assert.Nil(t, err)
+		assert.Nil(t, e)
+		resp, e := client.Do(req)
+		require.Nil(t, e)
+		body, e = ioutil.ReadAll(resp.Body)
+		assert.Nil(t, e)
 		resp.Body.Close()
 		return resp.StatusCode, body
 	}
