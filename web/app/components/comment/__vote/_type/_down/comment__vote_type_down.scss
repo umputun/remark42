@@ -1,4 +1,10 @@
 .comment__vote_type_down {
   transform: scale(1, -1);
   margin-left: 4px;
+
+  &.comment__vote_selected {
+    &, &:hover {
+      background-image: url('comment__vote_type_down.svg');
+    }
+  }
 }
