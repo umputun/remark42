@@ -19,6 +19,7 @@ pipeline:
       - latest
     when:
       branch: [master, release/*]
+      event: push
 
   docker-branch:
     image: plugins/docker
@@ -29,6 +30,16 @@ pipeline:
     when:
       branch:
         exclude: [master, release/*]
+        event: push
+
+  pr_build:
+    image: docker
+    commands:
+      - docker build .
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    when:
+      event: pull
 
   deploy:
     image: appleboy/drone-ssh
@@ -42,6 +53,7 @@ pipeline:
       - docker-compose up -d
     when:
       branch: master
+      event: push
 
   notify:
     image: drillster/drone-email
