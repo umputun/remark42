@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -87,7 +88,20 @@ func (p *AvatarProxy) Routes() (string, chi.Router) {
 
 	// GET /123456789.image
 	router.Get("/{avatar}", func(w http.ResponseWriter, r *http.Request) {
+
 		avatar := chi.URLParam(r, "avatar")
+
+		// client-side caching
+		etag := `"` + avatar + `"`
+		w.Header().Set("Etag", etag)
+		w.Header().Set("Cache-Control", "max-age=2592000") // 30 days
+		if match := r.Header.Get("If-None-Match"); match != "" {
+			if strings.Contains(match, etag) {
+				w.WriteHeader(http.StatusNotModified)
+				return
+			}
+		}
+
 		location := p.location(strings.TrimSuffix(avatar, imgSfx))
 		avFile := path.Join(location, avatar)
 		fh, err := os.Open(avFile)
@@ -103,6 +117,11 @@ func (p *AvatarProxy) Routes() (string, chi.Router) {
 		}()
 
 		w.Header().Set("Content-Type", "image/*")
+		if fi, err := fh.Stat(); err == nil {
+			w.Header().Set("Content-Length", strconv.Itoa(int(fi.Size())))
+		}
+
+		// write all headers
 		if status, ok := r.Context().Value(render.StatusCtxKey).(int); ok {
 			w.WriteHeader(status)
 		}
