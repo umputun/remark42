@@ -6,6 +6,11 @@ const COMMENT_NODE_CLASSNAME_PREFIX = 'remark42__comment-';
 const LAST_COMMENTS_NODE_CLASSNAME = 'remark42__last-comments';
 const DEFAULT_LAST_COMMENTS_MAX = 15;
 const DEFAULT_MAX_COMMENT_SIZE = 1000;
+const PROVIDER_NAMES = {
+  google: 'Google',
+  facebook: 'Facebook',
+  github: 'GitHub',
+};
 
 module.exports = {
   BASE_URL,
@@ -16,4 +21,5 @@ module.exports = {
   COMMENT_NODE_CLASSNAME_PREFIX,
   DEFAULT_LAST_COMMENTS_MAX,
   DEFAULT_MAX_COMMENT_SIZE,
+  PROVIDER_NAMES,
 };

@@ -1,5 +1,7 @@
 import { h, Component } from 'preact';
 
+import { PROVIDER_NAMES } from 'common/constants';
+
 export default class AuthPanel extends Component {
   constructor(props) {
     super(props);
@@ -56,7 +58,7 @@ export default class AuthPanel extends Component {
               {' '}
               {
                 providers.map((provider, i) => {
-                  const comma = i === 0 ? '' : ', ';
+                  const comma = i === 0 ? '' : (i === providers.length - 1 ? ' or ' : ', ');
 
                   return (
                     <span>
@@ -64,7 +66,7 @@ export default class AuthPanel extends Component {
                       <span
                         className="auth-panel__pseudo-link"
                         onClick={() => props.onSignIn(provider)}
-                      >{provider}</span>
+                      >{PROVIDER_NAMES[provider]}</span>
                     </span>
                   )
                 })
