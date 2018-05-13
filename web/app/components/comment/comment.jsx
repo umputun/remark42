@@ -311,6 +311,7 @@ export default class Comment extends Component {
                 className={b('comment__vote', {}, { type: 'up', selected: scoreIncreased, disabled: isGuest || isCurrentUser })}
                 role="button"
                 aria-disabled={isGuest || isCurrentUser}
+                tabIndex="0"
                 onClick={isGuest || isCurrentUser ? null : this.increaseScore}
                 title={isGuest ? 'Only authorized users are allowed to vote' : (isCurrentUser ? 'You can\'t vote for your own comment' : null)}
               >Vote up</span>
@@ -324,6 +325,7 @@ export default class Comment extends Component {
                 className={b('comment__vote', {}, { type: 'down', selected: scoreDecreased, disabled: isGuest || isCurrentUser })}
                 role="button"
                 aria-disabled={isGuest || isCurrentUser ? 'true' : 'false'}
+                tabIndex="0"
                 onClick={isGuest || isCurrentUser ? null : this.decreaseScore}
                 title={isGuest ? 'Only authorized users are allowed to vote' : (isCurrentUser ? 'You can\'t vote for your own comment' : null)}
               >Vote down</span>
@@ -351,6 +353,7 @@ export default class Comment extends Component {
               !mods.disabled && mods.collapsible && (
                 <span
                   className={b('comment__action', {}, { type: 'collapse', selected: mods.collapsed })}
+                  tabIndex="0"
                   onClick={this.toggleCollapse}
                 >{mods.collapsed ? '+' : '−'}</span>
               )
