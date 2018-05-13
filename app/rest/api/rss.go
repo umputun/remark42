@@ -62,7 +62,7 @@ func (s *Rest) toRssFeed(url string, comments []store.Comment) (string, error) {
 	feed.Items = []*feeds.Item{}
 	for _, c := range comments {
 		f := feeds.Item{
-			Title:       "update",
+			Title:       c.User.Name,
 			Link:        &feeds.Link{Href: url},
 			Description: c.Text,
 			Created:     c.Timestamp,
