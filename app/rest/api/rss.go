@@ -5,11 +5,18 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
 	"github.com/gorilla/feeds"
 	"github.com/umputun/remark/app/rest"
 	"github.com/umputun/remark/app/store"
 )
+
+func (s *Rest) rssRoutes() chi.Router {
+	router := chi.NewRouter()
+	router.Get("/post", s.rssPostCommentsCtrl)
+	return router
+}
 
 // GET /rss/post?site=siteID&url=post-url
 func (s *Rest) rssPostCommentsCtrl(w http.ResponseWriter, r *http.Request) {
