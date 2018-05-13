@@ -35,7 +35,7 @@ export default class BlockedUsers extends Component {
     const { users } = props;
 
     return (
-      <div className={b('blocked-users', props)}>
+      <div className={b('blocked-users', props)} role="region" aria-label="Blocked users">
         {
           !users.length && (
             <p>There are no blocked users.</p>

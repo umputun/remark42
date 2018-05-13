@@ -46,7 +46,7 @@ export default class AuthPanel extends Component {
               <strong className="auth-panel__username" onClick={this.toggleUserId}>{user.name}</strong>
               {isUserIdVisible && <span className="auth-panel__user-id"> ({user.id})</span>}.
               {' '}
-              <span className="auth-panel__pseudo-link" role="link" onClick={props.onSignOut}>Sign out?</span>
+              <span className="auth-panel__pseudo-link" role="link" tabIndex="0" onClick={props.onSignOut}>Sign out?</span>
             </div>
           )
         }
@@ -66,6 +66,7 @@ export default class AuthPanel extends Component {
                       <span
                         className="auth-panel__pseudo-link"
                         role="link"
+                        tabIndex="0"
                         onClick={() => props.onSignIn(provider)}
                       >{PROVIDER_NAMES[provider]}</span>
                     </span>
@@ -83,6 +84,7 @@ export default class AuthPanel extends Component {
               <span
                 className="auth-panel__pseudo-link auth-panel__admin-action"
                 role="link"
+                tabIndex="0"
                 onClick={this.toggleBlockedVisibility}
               >{isBlockedVisible ? 'Hide' : 'Show'} blocked</span>
             )

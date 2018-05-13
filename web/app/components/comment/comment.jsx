@@ -244,7 +244,7 @@ export default class Comment extends Component {
 
     if (mods.view === 'preview') {
       return (
-        <div className={b('comment', props, defaultMods)} role="listitem article" aria-level={mods.level}>
+        <article className={b('comment', props, defaultMods)}>
           <div className="comment__body">
             <div className="comment__info">
               <a href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`} className="comment__username">{o.user.name}</a>
@@ -255,12 +255,12 @@ export default class Comment extends Component {
               dangerouslySetInnerHTML={{ __html: o.text }}
             />
           </div>
-        </div>
+        </article>
       );
     }
 
     return (
-      <div className={b('comment', props, defaultMods)} id={mods.disabled ? null : `${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}>
+      <article className={b('comment', props, defaultMods)} id={mods.disabled ? null : `${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}>
         <div className="comment__body">
           <div className="comment__info">
             <img
@@ -286,7 +286,8 @@ export default class Comment extends Component {
                 <a
                   className="comment__link-to-parent"
                   href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.pid}`}
-                  aria-label="Parent comment"
+                  aria-label="Go to parent comment"
+                  title="Go to parent comment"
                   onClick={this.scrollToParent}
                 />
               )
@@ -308,7 +309,7 @@ export default class Comment extends Component {
               <span
                 className={b('comment__vote', {}, { type: 'up', selected: scoreIncreased, disabled: isGuest || isCurrentUser })}
                 role="button"
-                aria-disabled={isGuest || isCurrentUser ? 'true' : 'false'}
+                aria-disabled={isGuest || isCurrentUser}
                 onClick={isGuest || isCurrentUser ? null : this.increaseScore}
                 title={isGuest ? 'Only authorized users are allowed to vote' : (isCurrentUser ? 'You can\'t vote for your own comment' : null)}
               >Vote up</span>
@@ -428,7 +429,7 @@ export default class Comment extends Component {
             />
           )
         }
-      </div>
+      </article>
     );
   }
 }

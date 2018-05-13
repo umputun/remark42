@@ -223,7 +223,7 @@ export default class Root extends Component {
 
                 {
                   !!pinnedComments.length && (
-                    <div className="root__pinned-comments" role="region" aria-label="Pinned Comments">
+                    <div className="root__pinned-comments" role="region" aria-label="Pinned comments">
                       {
                         pinnedComments.map(comment => (
                           <Comment
@@ -239,7 +239,7 @@ export default class Root extends Component {
 
                 {
                   !!comments.length && !isCommentsListLoading && (
-                    <div className="root__threads">
+                    <div className="root__threads" role="list">
                       {
                         comments.map(thread => (
                           <Thread
@@ -257,7 +257,7 @@ export default class Root extends Component {
 
                 {
                   isCommentsListLoading && (
-                    <div className="root__threads">
+                    <div className="root__threads" role="list">
                       <Preloader mix="root__preloader"/>
                     </div>
                   )
@@ -268,7 +268,7 @@ export default class Root extends Component {
 
           {
             isBlockedVisible && (
-              <div className="root__main" role="region" aria-label="Blocked Users">
+              <div className="root__main">
                 <BlockedUsers users={bannedUsers} onUnblock={this.onUnblockSomeone}/>
               </div>
             )
