@@ -108,7 +108,7 @@ export default class Input extends Component {
     const charactersLeft = maxLength - commentLength;
 
     return (
-      <form className={b('input', props)} onSubmit={this.send} role="form" aria-label="New Comment">
+      <form className={b('input', props)} onSubmit={this.send} role="form" aria-label="New comment">
         <div className="input__field-wrapper">
           <textarea
             className="input__field"
