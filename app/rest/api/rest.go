@@ -117,7 +117,13 @@ func (s *Rest) Run(port int) {
 	// file server for static content from /web
 	addFileServer(router, "/web", http.Dir(s.WebRoot))
 
-	s.httpServer = &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: router}
+	s.httpServer = &http.Server{
+		Addr:              fmt.Sprintf(":%d", port),
+		Handler:           router,
+		ReadHeaderTimeout: 5 * time.Second,
+		WriteTimeout:      5 * time.Second,
+		IdleTimeout:       30 * time.Second,
+	}
 	err := s.httpServer.ListenAndServe()
 	log.Printf("[WARN] http server terminated, %s", err)
 }
