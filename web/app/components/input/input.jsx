@@ -108,7 +108,7 @@ export default class Input extends Component {
     const charactersLeft = maxLength - commentLength;
 
     return (
-      <form className={b('input', props)} onSubmit={this.send}>
+      <form className={b('input', props)} onSubmit={this.send} role="form" aria-label="New Comment">
         <div className="input__field-wrapper">
           <textarea
             className="input__field"
@@ -129,7 +129,7 @@ export default class Input extends Component {
         </div>
 
         {
-          isErrorShown && <p className="input__error">Something went wrong. Please try again a bit later.</p>
+          isErrorShown && <p className="input__error" role="alert">Something went wrong. Please try again a bit later.</p>
         }
 
         <div className="input__buttons">

@@ -22,7 +22,10 @@ export default class Thread extends Component {
     const { data: { comment, replies = [] }, mix, mods = {} } = props;
 
     return (
-      <div className={b('thread', props)}>
+      <div
+      className={b('thread', props)}
+      role={['listitem'].concat(!collapsed && replies.length ? 'list' : [])}
+      aria-expanded={!collapsed}>
         <Comment
           data={comment}
           mods={{ level: mods.level, collapsed, collapsible: !!replies.length }}

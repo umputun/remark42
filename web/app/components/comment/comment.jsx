@@ -245,7 +245,7 @@ export default class Comment extends Component {
 
     if (mods.view === 'preview') {
       return (
-        <div className={b('comment', props, defaultMods)}>
+        <article className={b('comment', props, defaultMods)}>
           <div className="comment__body">
             <div className="comment__info">
               <a href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`} className="comment__username">{o.user.name}</a>
@@ -256,12 +256,12 @@ export default class Comment extends Component {
               dangerouslySetInnerHTML={{ __html: o.text }}
             />
           </div>
-        </div>
+        </article>
       );
     }
 
     return (
-      <div className={b('comment', props, defaultMods)} id={mods.disabled ? null : `${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}>
+      <article className={b('comment', props, defaultMods)} id={mods.disabled ? null : `${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}>
         <div className="comment__body">
           <div className="comment__info">
             <img
@@ -287,6 +287,8 @@ export default class Comment extends Component {
                 <a
                   className="comment__link-to-parent"
                   href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.pid}`}
+                  aria-label="Go to parent comment"
+                  title="Go to parent comment"
                   onClick={this.scrollToParent}
                 />
               )
@@ -307,6 +309,8 @@ export default class Comment extends Component {
             <span className={b('comment__score', {}, { view: o.score.view })}>
               <span
                 className={b('comment__vote', {}, { type: 'up', selected: scoreIncreased, disabled: isGuest || isCurrentUser })}
+                role="button"
+                aria-disabled={isGuest || isCurrentUser}
                 onClick={isGuest || isCurrentUser ? null : this.increaseScore}
                 title={isGuest ? 'Only authorized users are allowed to vote' : (isCurrentUser ? 'You can\'t vote for your own comment' : null)}
               >Vote up</span>
@@ -318,6 +322,8 @@ export default class Comment extends Component {
 
               <span
                 className={b('comment__vote', {}, { type: 'down', selected: scoreDecreased, disabled: isGuest || isCurrentUser })}
+                role="button"
+                aria-disabled={isGuest || isCurrentUser ? 'true' : 'false'}
                 onClick={isGuest || isCurrentUser ? null : this.decreaseScore}
                 title={isGuest ? 'Only authorized users are allowed to vote' : (isCurrentUser ? 'You can\'t vote for your own comment' : null)}
               >Vote down</span>
@@ -334,6 +340,7 @@ export default class Comment extends Component {
               !deleted && !mods.disabled && !isGuest && (
                 <span
                   className="comment__action"
+                  role="button"
                   tabIndex="0"
                   onClick={this.toggleInputVisibility}
                 >{isInputVisible ? 'Cancel' : 'Reply'}</span>
@@ -356,6 +363,7 @@ export default class Comment extends Component {
                     !pinned && (
                       <span
                         className="comment__control"
+                        role="button"
                         tabIndex="0"
                         onClick={this.onPinClick}
                       >Pin</span>
@@ -366,6 +374,7 @@ export default class Comment extends Component {
                     pinned && (
                       <span
                         className="comment__control"
+                        role="button"
                         tabIndex="0"
                         onClick={this.onUnpinClick}
                       >Unpin</span>
@@ -376,6 +385,7 @@ export default class Comment extends Component {
                     userBlocked && (
                       <span
                         className="comment__control"
+                        role="button"
                         tabIndex="0"
                         onClick={this.onUnblockClick}
                       >Unblock</span>
@@ -386,6 +396,7 @@ export default class Comment extends Component {
                     !userBlocked && (
                       <span
                         className="comment__control"
+                        role="button"
                         tabIndex="0"
                         onClick={this.onBlockClick}
                       >Block</span>
@@ -396,6 +407,7 @@ export default class Comment extends Component {
                     !deleted && (
                       <span
                         className="comment__control"
+                        role="button"
                         tabIndex="0"
                         onClick={this.onDeleteClick}
                       >Delete</span>
@@ -418,7 +430,7 @@ export default class Comment extends Component {
             />
           )
         }
-      </div>
+      </article>
     );
   }
 }
