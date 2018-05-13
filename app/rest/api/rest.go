@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Depado/bfchroma"
 	"github.com/didip/tollbooth"
 	"github.com/didip/tollbooth_chi"
 	"github.com/go-chi/chi"
@@ -183,7 +184,9 @@ func (s *Rest) previewCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	comment.Text = string(blackfriday.Run([]byte(comment.Text), blackfriday.WithExtensions(mdExt)))
+	comment.Text = string(blackfriday.Run([]byte(comment.Text),
+		blackfriday.WithRenderer(bfchroma.NewRenderer(bfchroma.WithoutAutodetect()))))
+	//comment.Text = string(blackfriday.Run([]byte(comment.Text), blackfriday.WithExtensions(mdExt)))
 	comment.Sanitize()
 	render.HTML(w, r, comment.Text)
 }

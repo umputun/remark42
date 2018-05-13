@@ -1,0 +1,21 @@
+workspace:
+  base: /go
+  path: src/github.com/Depado/bfchroma/
+
+pipeline:
+  # Dep and vendoring
+  prerequisites:
+    image: golang:1.9
+    commands:
+      - go get -u github.com/golang/dep/cmd/dep
+      - dep ensure
+
+  # Test
+  test:
+    image: golang:1.9
+    commands:
+      - go test -race -coverprofile=coverage.txt -covermode=atomic
+  
+  codecov:
+    image: robertstettner/drone-codecov
+    secrets: [ codecov_token ]
