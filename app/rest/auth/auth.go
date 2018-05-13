@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/go-errors/errors"
 	"github.com/gorilla/sessions"
+	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/app/rest"
 	"github.com/umputun/remark/app/store"
