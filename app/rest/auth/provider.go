@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
@@ -173,10 +174,19 @@ func (p Provider) authHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	session.Values["uinfo"] = u
 
+	xsrfToken := p.randToken()
+	session.Values["xsrf_token"] = xsrfToken
+
+	xsrfCookie := http.Cookie{Name: "XSRF-TOKEN", Value: p.randToken(), HttpOnly: false, Path: "/",
+		MaxAge: 3600 * 24 * 365, Secure: true,
+	}
+	http.SetCookie(w, &xsrfCookie)
+
 	if err = session.Save(r, w); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to save user info")
 		return
 	}
+	p.sendXsrfCookie(w)
 
 	log.Printf("[DEBUG] user info %+v", session.Values["uinfo"])
 
@@ -185,7 +195,6 @@ func (p Provider) authHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, fromURL.(string), http.StatusTemporaryRedirect)
 		return
 	}
-
 	render.JSON(w, r, jData)
 }
 
@@ -201,12 +210,28 @@ func (p Provider) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	delete(session.Values, "uinfo")
 	delete(session.Values, "from")
 	delete(session.Values, "state")
+	delete(session.Values, "xsrf_token")
+	xsrfCookie := http.Cookie{Name: "XSRF-TOKEN", Value: "", HttpOnly: false, Path: "/",
+		MaxAge: -1, Expires: time.Unix(0, 0), Secure: true}
+	http.SetCookie(w, &xsrfCookie)
 
 	if err = session.Save(r, w); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to reset user info")
 		return
 	}
 	log.Printf("[DEBUG] logout, %+v", session.Values)
+}
+
+func (p Provider) sendXsrfCookie(w http.ResponseWriter) {
+	xsrfCookie := http.Cookie{
+		Name:     "XSRF-TOKEN",
+		Value:    p.randToken(),
+		HttpOnly: false,
+		Path:     "/",
+		MaxAge:   3600 * 24 * 365,
+		Secure:   true,
+	}
+	http.SetCookie(w, &xsrfCookie)
 }
 
 func (p Provider) randToken() string {

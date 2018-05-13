@@ -32,6 +32,7 @@ func TestLogin(t *testing.T) {
 	body, err := ioutil.ReadAll(resp.Body)
 	assert.Nil(t, err)
 	t.Logf("resp %s", string(body))
+	t.Logf("headers: %+v", resp.Header)
 	u := store.User{}
 	err = json.Unmarshal(body, &u)
 	assert.Nil(t, err)
@@ -58,6 +59,7 @@ func TestLogout(t *testing.T) {
 
 	s, err := sessionStore.Get(nil, "remark")
 	assert.Nil(t, err)
+	t.Log(s.Values)
 	assert.Equal(t, 0, len(s.Values))
 }
 

@@ -3,6 +3,7 @@ package auth
 
 import (
 	"encoding/base64"
+	"log"
 	"net/http"
 	"strings"
 
@@ -56,6 +57,30 @@ func (a *Authenticator) Auth(reqAuth bool) func(http.Handler) http.Handler {
 			uinfoData, ok := session.Values["uinfo"]
 			if !ok && reqAuth {
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+
+			xsrfStatus := func() bool {
+				xsrfToken := r.Header.Get("X-XSRF-TOKEN")
+				sessionToken, headerOk := session.Values["xsrf_token"]
+				if (xsrfToken == "" || sessionToken == nil || !headerOk) && reqAuth {
+					log.Print("[WARN] no xsrf_token in session")
+					return false
+				}
+
+				if xsrfToken != sessionToken {
+					log.Printf("[WARN] xsrf header not matched session token, %q != %q", xsrfToken, sessionToken)
+					return false
+				}
+				return true
+			}()
+
+			if xsrfStatus {
+				if reqAuth {
+					http.Error(w, "Unauthorized", http.StatusUnauthorized)
+					return
+				}
+				h.ServeHTTP(w, r) // in anonymous mode just pass it to next handler
 				return
 			}
 
