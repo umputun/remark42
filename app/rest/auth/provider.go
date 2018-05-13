@@ -186,7 +186,6 @@ func (p Provider) authHandler(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to save user info")
 		return
 	}
-	p.sendXSRFCookie(w)
 
 	log.Printf("[DEBUG] user info %+v", session.Values["uinfo"])
 
@@ -220,18 +219,6 @@ func (p Provider) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Printf("[DEBUG] logout, %+v", session.Values)
-}
-
-func (p Provider) sendXSRFCookie(w http.ResponseWriter) {
-	xsrfCookie := http.Cookie{
-		Name:     "XSRF-TOKEN",
-		Value:    p.randToken(),
-		HttpOnly: false,
-		Path:     "/",
-		MaxAge:   3600 * 24 * 365,
-		Secure:   true,
-	}
-	http.SetCookie(w, &xsrfCookie)
 }
 
 func (p Provider) randToken() string {
