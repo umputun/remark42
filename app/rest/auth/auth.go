@@ -64,7 +64,7 @@ func (a *Authenticator) Auth(reqAuth bool) func(http.Handler) http.Handler {
 			xsrfError := func() error {
 				xsrfToken := r.Header.Get("X-XSRF-TOKEN")
 				sessionToken, headerOk := session.Values["xsrf_token"]
-				if (xsrfToken == "" || sessionToken == nil || !headerOk) && reqAuth {
+				if !headerOk || xsrfToken == "" || sessionToken == nil {
 					return errors.New(" no xsrf_token in session")
 				}
 
