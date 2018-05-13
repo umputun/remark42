@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/go-errors/errors"
 	"github.com/gorilla/sessions"
 
 	"github.com/umputun/remark/app/rest"
@@ -60,23 +61,22 @@ func (a *Authenticator) Auth(reqAuth bool) func(http.Handler) http.Handler {
 				return
 			}
 
-			xsrfStatus := func() bool {
+			xsrfError := func() error {
 				xsrfToken := r.Header.Get("X-XSRF-TOKEN")
 				sessionToken, headerOk := session.Values["xsrf_token"]
 				if (xsrfToken == "" || sessionToken == nil || !headerOk) && reqAuth {
-					log.Print("[WARN] no xsrf_token in session")
-					return false
+					return errors.New(" no xsrf_token in session")
 				}
 
 				if xsrfToken != sessionToken {
-					log.Printf("[WARN] xsrf header not matched session token, %q != %q", xsrfToken, sessionToken)
-					return false
+					return errors.Errorf("xsrf header not matched session token, %q != %q", xsrfToken, sessionToken)
 				}
-				return true
+				return nil
 			}()
 
-			if !xsrfStatus {
+			if xsrfError != nil {
 				if reqAuth {
+					log.Printf("[WARN] %s", xsrfError.Error())
 					http.Error(w, "Unauthorized", http.StatusUnauthorized)
 					return
 				}
