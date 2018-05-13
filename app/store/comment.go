@@ -7,6 +7,7 @@ import (
 	"hash/crc64"
 	"html/template"
 	"log"
+	"regexp"
 	"strconv"
 	"time"
 
@@ -87,6 +88,7 @@ func (c *Comment) SetDeleted() {
 // Sanitize clean dangerous html/js from the comment
 func (c *Comment) Sanitize() {
 	p := bluemonday.UGCPolicy()
+	p.AllowAttrs("class").Matching(regexp.MustCompile("^language-[a-zA-Z0-9]+$")).OnElements("code")
 	c.Text = p.Sanitize(c.Text)
 	c.User.ID = template.HTMLEscapeString(c.User.ID)
 	c.User.Name = template.HTMLEscapeString(c.User.Name)
