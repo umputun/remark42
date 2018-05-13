@@ -75,7 +75,7 @@ func (a *Authenticator) Auth(reqAuth bool) func(http.Handler) http.Handler {
 				return true
 			}()
 
-			if xsrfStatus {
+			if !xsrfStatus {
 				if reqAuth {
 					http.Error(w, "Unauthorized", http.StatusUnauthorized)
 					return
