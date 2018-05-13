@@ -177,7 +177,7 @@ func (p Provider) authHandler(w http.ResponseWriter, r *http.Request) {
 	xsrfToken := p.randToken()
 	session.Values["xsrf_token"] = xsrfToken
 
-	xsrfCookie := http.Cookie{Name: "XSRF-TOKEN", Value: p.randToken(), HttpOnly: false, Path: "/",
+	xsrfCookie := http.Cookie{Name: "XSRF-TOKEN", Value: xsrfToken, HttpOnly: false, Path: "/",
 		MaxAge: 3600 * 24 * 365, Secure: true,
 	}
 	http.SetCookie(w, &xsrfCookie)
