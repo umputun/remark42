@@ -55,7 +55,7 @@ func (p *AvatarProxy) Put(u store.User) (avatarURL string, err error) {
 
 	// get ID and location of locally cached avatar
 	encID := store.EncodeID(u.ID)
-	location := p.location(encID) // location adds partion to path
+	location := p.location(encID) // location adds partition to path
 
 	if _, err = os.Stat(location); os.IsNotExist(err) {
 		if e := os.Mkdir(location, 0700); e != nil {

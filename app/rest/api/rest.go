@@ -97,6 +97,7 @@ func (s *Rest) Run(port int) {
 		rapi.Get("/list", s.listCtrl)
 		rapi.Get("/config", s.configCtrl)
 		rapi.Post("/preview", s.previewCommentCtrl)
+		rapi.Get("/rss", s.rssPostCommentsCtrl)
 
 		// protected routes, require auth
 		rapi.With(s.Authenticator.Auth(true)).Group(func(rauth chi.Router) {
