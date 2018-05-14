@@ -27,7 +27,7 @@ func (s *Rest) rssPostCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	sort := "-time"
 	log.Printf("[DEBUG] get rss for post %+v", locator)
 
-	data, err := s.Cache.Get(rest.URLKey(r), time.Minute, func() ([]byte, error) {
+	data, err := s.Cache.Get(rest.URLKey(r), 4*time.Hour, func() ([]byte, error) {
 		comments, e := s.DataService.Find(locator, sort)
 		if e != nil {
 			return nil, e
@@ -58,7 +58,7 @@ func (s *Rest) rssPostCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 func (s *Rest) rssSiteCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[DEBUG] get rss for site %s", r.URL.Query().Get("site"))
 
-	data, err := s.Cache.Get(rest.URLKey(r), time.Minute, func() ([]byte, error) {
+	data, err := s.Cache.Get(rest.URLKey(r), 4*time.Hour, func() ([]byte, error) {
 		comments, e := s.DataService.Last(r.URL.Query().Get("site"), maxRssItems)
 		if e != nil {
 			return nil, e
