@@ -366,3 +366,4 @@ _all admin calls require auth and admin privilege_
 * User can edit comments in 5 mins window after creation.
 * User ID hashed and prefixed by oauth provider name to avoid collisions and potential abuse.
 * All avatars cached locally to prevent rate limiters from google/github/facebook.
+* Docker build uses [publicly available](https://github.com/umputun/baseimage) base images.
