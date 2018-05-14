@@ -24,7 +24,7 @@ RUN \
     npm i && npm run build
 
 
-FROM umputun/baseimage:micro-latest
+FROM umputun/baseimage:app-latest
 
 COPY --from=build-backend /go/src/github.com/umputun/remark/remark /srv/
 COPY --from=build-frontend /srv/web/public/ /srv/web
