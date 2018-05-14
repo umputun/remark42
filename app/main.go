@@ -37,7 +37,7 @@ var opts struct {
 	SessionStore   string `long:"session" env:"SESSION_STORE" default:"./var/session" description:"session store location"`
 	AvatarStore    string `long:"avatars" env:"AVATAR_STORE" default:"./var/avatars" description:"avatars location"`
 	MaxCommentSize int    `long:"max-comment" env:"MAX_COMMENT_SIZE" default:"2048" description:"max comment size"`
-	SecretKey      string `long:"secret" env:"SECRET_KEY" required:"true" description:"secret key"`
+	SecretKey      string `long:"secret" env:"SECRET" required:"true" description:"secret key"`
 
 	GoogleCID    string `long:"google-cid" env:"REMARK_GOOGLE_CID" description:"Google OAuth client ID"`
 	GoogleCSEC   string `long:"google-csec" env:"REMARK_GOOGLE_CSEC" description:"Google OAuth client secret"`
