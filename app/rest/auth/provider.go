@@ -15,6 +15,7 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
 	"github.com/gorilla/sessions"
+	"github.com/umputun/remark/app/rest/avatar"
 	"golang.org/x/oauth2"
 
 	"github.com/umputun/remark/app/rest"
@@ -32,7 +33,7 @@ type Provider struct {
 	Scopes      []string
 	MapUser     func(userData, []byte) store.User // map info from InfoURL to User
 
-	avatarProxy *AvatarProxy
+	avatarProxy *avatar.Proxy
 	conf        *oauth2.Config
 }
 
@@ -42,7 +43,7 @@ type Params struct {
 	Csecret      string
 	SessionStore sessions.Store
 	RemarkURL    string
-	AvatarProxy  *AvatarProxy
+	AvatarProxy  *avatar.Proxy
 }
 
 type userData map[string]interface{}

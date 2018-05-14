@@ -17,6 +17,7 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/umputun/remark/app/rest/avatar"
 
 	"github.com/umputun/remark/app/migrator"
 	"github.com/umputun/remark/app/rest/auth"
@@ -468,7 +469,7 @@ func prep(t *testing.T) (srv *Rest, port int) {
 			SessionStore: sessions.NewFilesystemStore("/tmp", []byte("blah")),
 			DevPasswd:    "password",
 			Providers:    nil,
-			AvatarProxy:  &auth.AvatarProxy{StorePath: "/tmp", RoutePath: "/api/v1/avatar"},
+			AvatarProxy:  &avatar.Proxy{StorePath: "/tmp", RoutePath: "/api/v1/avatar"},
 			Admins:       []string{"a1", "a2"},
 		},
 		Exporter: &migrator.Remark{DataStore: dataStore},

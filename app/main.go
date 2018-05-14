@@ -18,6 +18,7 @@ import (
 	"github.com/umputun/remark/app/rest"
 	"github.com/umputun/remark/app/rest/api"
 	"github.com/umputun/remark/app/rest/auth"
+	"github.com/umputun/remark/app/rest/avatar"
 	"github.com/umputun/remark/app/store"
 )
 
@@ -102,7 +103,7 @@ func main() {
 	}
 	go importSrv.Run(opts.Port + 1)
 
-	avatarProxy := &auth.AvatarProxy{
+	avatarProxy := &avatar.Proxy{
 		StorePath: opts.AvatarStore,
 		RoutePath: "/api/v1/avatar",
 		RemarkURL: strings.TrimSuffix(opts.RemarkURL, "/"),
@@ -181,7 +182,7 @@ func makeDirs(dirs ...string) error {
 	return nil
 }
 
-func makeAuthProviders(sessionStore sessions.Store, avatarProxy *auth.AvatarProxy) (providers []auth.Provider) {
+func makeAuthProviders(sessionStore sessions.Store, avatarProxy *avatar.Proxy) (providers []auth.Provider) {
 
 	makeParams := func(cid, secret string) auth.Params {
 		return auth.Params{

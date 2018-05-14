@@ -1,4 +1,6 @@
-package auth
+// Package avatar provides file-system store and http handler for avatars
+// On user login auth will call Put and it will retrieve and save picture locally.
+package avatar
 
 import (
 	"fmt"
@@ -21,8 +23,8 @@ import (
 	"github.com/umputun/remark/app/store"
 )
 
-// AvatarProxy provides avatar store and http handler for avatars
-type AvatarProxy struct {
+// Proxy is avatar store and http handler for avatars
+type Proxy struct {
 	StorePath string
 	RoutePath string
 	RemarkURL string
@@ -34,7 +36,7 @@ type AvatarProxy struct {
 const imgSfx = ".image"
 
 // Put stores retrieved avatar to StorePath. Gets image from user info. Returns proxied url
-func (p *AvatarProxy) Put(u store.User) (avatarURL string, err error) {
+func (p *Proxy) Put(u store.User) (avatarURL string, err error) {
 
 	// no picture for user, try default avatar
 	if u.Picture == "" {
@@ -83,7 +85,7 @@ func (p *AvatarProxy) Put(u store.User) (avatarURL string, err error) {
 }
 
 // Routes returns auth routes for given provider
-func (p *AvatarProxy) Routes() (string, chi.Router) {
+func (p *Proxy) Routes() (string, chi.Router) {
 	router := chi.NewRouter()
 
 	// GET /123456789.image
@@ -91,7 +93,7 @@ func (p *AvatarProxy) Routes() (string, chi.Router) {
 
 		avatar := chi.URLParam(r, "avatar")
 
-		// client-side caching
+		// enforce client-side caching
 		etag := `"` + avatar + `"`
 		w.Header().Set("Etag", etag)
 		w.Header().Set("Cache-Control", "max-age=2592000") // 30 days
@@ -133,10 +135,10 @@ func (p *AvatarProxy) Routes() (string, chi.Router) {
 	return p.RoutePath, router
 }
 
-// get location for user id by adding partition to final path in order to keep files
+// get location (directory) for user id by adding partition to final path in order to keep files
 // in different subdirectories and avoid too many files in a single place.
 // the end result is a full path like this - /tmp/avatars.test/92
-func (p *AvatarProxy) location(id string) string {
+func (p *Proxy) location(id string) string {
 	p.once.Do(func() { p.ctcTable = crc64.MakeTable(crc64.ECMA) })
 	checksum64 := crc64.Checksum([]byte(id), p.ctcTable)
 	partition := checksum64 % 100

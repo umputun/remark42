@@ -82,7 +82,7 @@ func (s *Rest) Run(port int) {
 		}
 	})
 
-	router.Mount(s.Authenticator.AvatarProxy.Routes())
+	router.Mount(s.Authenticator.AvatarProxy.Routes()) // mount avatars controller to /api/v1/avatar/{file.img}
 
 	// api routes
 	router.Route("/api/v1", func(rapi chi.Router) {

@@ -11,13 +11,14 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/app/rest"
+	"github.com/umputun/remark/app/rest/avatar"
 	"github.com/umputun/remark/app/store"
 )
 
 // Authenticator is top level auth object providing middlewares
 type Authenticator struct {
 	SessionStore sessions.Store
-	AvatarProxy  *AvatarProxy
+	AvatarProxy  *avatar.Proxy
 	Admins       []string
 	Providers    []Provider
 
