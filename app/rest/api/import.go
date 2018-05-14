@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/didip/tollbooth"
@@ -22,6 +23,7 @@ type Import struct {
 	Cache          rest.LoadingCache
 	NativeImporter migrator.Importer
 	DisqusImporter migrator.Importer
+	SecretKey      string
 
 	httpServer *http.Server
 }
@@ -44,9 +46,17 @@ func (s *Import) Run(port int) {
 	log.Printf("[WARN] http server terminated, %s", err)
 }
 
-// POST /import?site=site-id&provider=disqus|remark
+// POST /import?secret=key&site=site-id&provider=disqus|remark
 // imports comments from post body.
 func (s *Import) importCtrl(w http.ResponseWriter, r *http.Request) {
+
+	secret := r.URL.Query().Get("secret")
+	if strings.TrimSpace(secret) == "" || secret != s.SecretKey {
+		render.Status(r, http.StatusForbidden)
+		render.JSON(w, r, JSON{"status": "error", "details": "secret key"})
+		return
+	}
+
 	siteID := r.URL.Query().Get("site")
 	importer := s.NativeImporter
 	if r.URL.Query().Get("provider") == "disqus" {

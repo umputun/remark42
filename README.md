@@ -38,7 +38,7 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 | --backup        | BACKUP_PATH          | `/tmp`                 | no               | backups location                |
 | --max-back      | MAX_BACKUP_FILES     | `10`                   | no               | max backup files to keep        |
 | --session       | SESSION_STORE        | `/tmp`                 | no               | path to session store directory |
-| --store-key     | STORE_KEY            | `secure-store-key`     | no               | session store encryption key    |
+| --secret        | SECRET               |                        | no               | secret key, required            |
 | --max-comment   | MAX_COMMENT_SIZE     | 2048                   | no               | comment's size limit            |
 | --google-cid    | REMARK_GOOGLE_CID    |                        | no               | Google OAuth client ID          |
 | --google-csec   | REMARK_GOOGLE_CSEC   |                        | no               | Google OAuth client secret      |
@@ -48,6 +48,8 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 | --github-csec   | REMARK_GITHUB_CSEC   |                        | no               | Github OAuth client secret      |
 | --dbg           | DEBUG                | `false`                | no               | debug mode                      |
 | --dev-password  | DEV_PASSWD           |                        | no               | password for `dev` user         |
+
+**User has to provide secret key, can be any long and hard-to-guess string.**
 
 _all multi parameters separated by `,` in environment or repeated with command line key, like `--site=s1 --site=s2 ...`_
 

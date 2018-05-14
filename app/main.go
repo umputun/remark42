@@ -36,8 +36,8 @@ var opts struct {
 
 	SessionStore   string `long:"session" env:"SESSION_STORE" default:"./var/session" description:"session store location"`
 	AvatarStore    string `long:"avatars" env:"AVATAR_STORE" default:"./var/avatars" description:"avatars location"`
-	StoreKey       string `long:"store-key" env:"STORE_KEY" default:"secure-store-key" description:"store key"`
 	MaxCommentSize int    `long:"max-comment" env:"MAX_COMMENT_SIZE" default:"2048" description:"max comment size"`
+	SecretKey      string `long:"secret" env:"SECRET_KEY" required:"true" description:"secret key"`
 
 	GoogleCID    string `long:"google-cid" env:"REMARK_GOOGLE_CID" description:"Google OAuth client ID"`
 	GoogleCSEC   string `long:"google-csec" env:"REMARK_GOOGLE_CSEC" description:"Google OAuth client secret"`
@@ -77,12 +77,12 @@ func main() {
 	dataService := store.Service{
 		Interface:      dataStore,
 		EditDuration:   5 * time.Minute,
-		Secret:         opts.StoreKey,
+		Secret:         opts.SecretKey,
 		MaxCommentSize: opts.MaxCommentSize,
 	}
 
 	sessionStore := func() sessions.Store {
-		sess := sessions.NewFilesystemStore(opts.SessionStore, []byte(opts.StoreKey))
+		sess := sessions.NewFilesystemStore(opts.SessionStore, []byte(opts.SecretKey))
 		sess.Options.HttpOnly = true
 		sess.Options.Secure = true
 		sess.Options.MaxAge = 3600 * 24 * 365
@@ -100,6 +100,7 @@ func main() {
 		Cache:          cache,
 		NativeImporter: &migrator.Remark{DataStore: &dataService},
 		DisqusImporter: &migrator.Disqus{DataStore: &dataService},
+		SecretKey:      opts.SecretKey,
 	}
 	go importSrv.Run(opts.Port + 1)
 
