@@ -326,8 +326,12 @@ Sort can be `time` or `score`. Supported sort order with prefix -/+, i.e. `-time
       Admins       []string `json:"admins"`
       Auth         []string `json:"auth_providers"`
   }
-  ```
+  ``` 
+  
+### RSS feeds
+  
 * `GET /api/v1/rss/post?site=site-id&url=post-url` - rss feed for a post
+* `GET /api/v1/rss/site?site=site-id` - rss feed for given site
 
 ### Admin
 
