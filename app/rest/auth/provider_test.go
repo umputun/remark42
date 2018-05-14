@@ -11,6 +11,7 @@ import (
 
 	"github.com/gorilla/sessions"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/oauth2"
 
 	"github.com/umputun/remark/app/store"
@@ -43,18 +44,18 @@ func TestLogin(t *testing.T) {
 func TestLogout(t *testing.T) {
 	sessionStore := &mockStore{values: make(map[interface{}]interface{})}
 
-	_, ts, ots := mockProvider(t, sessionStore, 8991, 8992)
+	_, ts, ots := mockProvider(t, sessionStore, 8691, 8692)
 	defer func() {
 		ts.Close()
 		ots.Close()
 	}()
 
-	resp, err := http.Get("http://localhost:8991/login")
-	assert.Nil(t, err)
+	resp, err := http.Get("http://localhost:8691/login")
+	require.Nil(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 
-	_, err = http.Get("http://localhost:8991/logout")
-	assert.Nil(t, err)
+	_, err = http.Get("http://localhost:8691/logout")
+	require.Nil(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 
 	s, err := sessionStore.Get(nil, "remark")
