@@ -12,9 +12,12 @@ import (
 	"github.com/umputun/remark/app/store"
 )
 
+const maxRssItems = 20
+
 func (s *Rest) rssRoutes() chi.Router {
 	router := chi.NewRouter()
 	router.Get("/post", s.rssPostCommentsCtrl)
+	router.Get("/site", s.rssSiteCommentsCtrl)
 	return router
 }
 
@@ -29,9 +32,8 @@ func (s *Rest) rssPostCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		if e != nil {
 			return nil, e
 		}
-		maskedComments := s.adminService.alterComments(comments, r)
-
-		rss, e := s.toRssFeed(locator.URL, maskedComments)
+		comments = s.adminService.alterComments(comments, r)
+		rss, e := s.toRssFeed(locator.URL, comments)
 		if e != nil {
 			return nil, e
 		}
@@ -52,6 +54,31 @@ func (s *Rest) rssPostCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// GET /rss/site?site=siteID
+func (s *Rest) rssSiteCommentsCtrl(w http.ResponseWriter, r *http.Request) {
+	log.Printf("[DEBUG] get rss for site %s", r.URL.Query().Get("site"))
+
+	data, err := s.Cache.Get(rest.URLKey(r), time.Hour, func() ([]byte, error) {
+		comments, e := s.DataService.Last(r.URL.Query().Get("site"), maxRssItems)
+		if e != nil {
+			return nil, e
+		}
+		comments = s.adminService.alterComments(comments, r)
+
+		rss, e := s.toRssFeed(r.URL.Query().Get("site"), comments)
+		if e != nil {
+			return nil, e
+		}
+		return []byte(rss), e
+	})
+
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't get last comments")
+		return
+	}
+	renderJSONFromBytes(w, r, data)
+}
+
 func (s *Rest) toRssFeed(url string, comments []store.Comment) (string, error) {
 
 	lastCommentTS := time.Unix(0, 0)
@@ -67,15 +94,18 @@ func (s *Rest) toRssFeed(url string, comments []store.Comment) (string, error) {
 	}
 
 	feed.Items = []*feeds.Item{}
-	for _, c := range comments {
+	for i, c := range comments {
 		f := feeds.Item{
 			Title:       c.User.Name,
-			Link:        &feeds.Link{Href: url},
+			Link:        &feeds.Link{Href: c.Locator.URL},
 			Description: c.Text,
 			Created:     c.Timestamp,
 			Author:      &feeds.Author{Name: c.User.Name},
 		}
 		feed.Items = append(feed.Items, &f)
+		if i > maxRssItems {
+			break
+		}
 	}
 	return feed.ToRss()
 }
