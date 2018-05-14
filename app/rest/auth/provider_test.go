@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gorilla/sessions"
 	"github.com/stretchr/testify/assert"
@@ -128,6 +129,7 @@ func mockProvider(t *testing.T, sessStore sessions.Store, loginPort, authPort in
 	go oauth.ListenAndServe()
 	go ts.ListenAndServe()
 
+	time.Sleep(time.Millisecond * 100) // let the start
 	return provider, ts, oauth
 }
 
