@@ -88,7 +88,7 @@ func Logger(flags ...LoggerFlag) func(http.Handler) http.Handler {
 
 	inFlags := func(f LoggerFlag) bool {
 		for _, flg := range flags {
-			if flg == LogAll || flg == f {
+			if (flg == LogAll && f != LogNone) || flg == f {
 				return true
 			}
 		}

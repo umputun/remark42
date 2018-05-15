@@ -63,16 +63,12 @@ func (s *Rest) Run(port int) {
 	router := chi.NewRouter()
 	router.Use(middleware.RealIP, Recoverer)
 	router.Use(middleware.Throttle(1000), middleware.Timeout(60*time.Second))
-	router.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
-
-	// all request by default allow anonymous access
-	router.Use(s.Authenticator.Auth(false))
-
-	router.Use(AppInfo("remark42", s.Version), Ping, Logger(LogAll))
+	router.Use(AppInfo("remark42", s.Version), Ping)
 	router.Use(context.ClearHandler) // if you aren't using gorilla/mux, you need to wrap your handlers with context.ClearHandler
 
 	// auth routes for all providers
 	router.Route("/auth", func(r chi.Router) {
+		r.Use(Logger(LogAll), tollbooth_chi.LimitHandler(tollbooth.NewLimiter(5, nil)))
 		for _, provider := range s.Authenticator.Providers {
 			r.Mount("/"+provider.Name, provider.Routes()) // mount auth providers as /auth/{name}
 		}
@@ -90,21 +86,26 @@ func (s *Rest) Run(port int) {
 
 	// api routes
 	router.Route("/api/v1", func(rapi chi.Router) {
+		rapi.Use(Logger(LogAll), tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
 
 		// open routes
-		rapi.Get("/find", s.findCommentsCtrl)
-		rapi.Get("/id/{id}", s.commentByIDCtrl)
-		rapi.Get("/comments", s.findUserCommentsCtrl)
-		rapi.Get("/last/{limit}", s.lastCommentsCtrl)
-		rapi.Get("/count", s.countCtrl)
-		rapi.Post("/counts", s.countMultiCtrl)
-		rapi.Get("/list", s.listCtrl)
-		rapi.Get("/config", s.configCtrl)
-		rapi.Post("/preview", s.previewCommentCtrl)
-		rapi.Mount("/rss", s.rssRoutes())
+		rapi.Group(func(ropen chi.Router) {
+			ropen.Use(s.Authenticator.Auth(false))
+			ropen.Get("/find", s.findCommentsCtrl)
+			ropen.Get("/id/{id}", s.commentByIDCtrl)
+			ropen.Get("/comments", s.findUserCommentsCtrl)
+			ropen.Get("/last/{limit}", s.lastCommentsCtrl)
+			ropen.Get("/count", s.countCtrl)
+			ropen.Post("/counts", s.countMultiCtrl)
+			ropen.Get("/list", s.listCtrl)
+			ropen.Get("/config", s.configCtrl)
+			ropen.Post("/preview", s.previewCommentCtrl)
+			ropen.Mount("/rss", s.rssRoutes())
+		})
 
 		// protected routes, require auth
-		rapi.With(s.Authenticator.Auth(true)).Group(func(rauth chi.Router) {
+		rapi.Group(func(rauth chi.Router) {
+			rauth.Use(s.Authenticator.Auth(true))
 			rauth.Post("/comment", s.createCommentCtrl)
 			rauth.Put("/comment/{id}", s.updateCommentCtrl)
 			rauth.Get("/user", s.userInfoCtrl)
@@ -502,14 +503,15 @@ func addFileServer(r chi.Router, path string, root http.FileSystem) {
 	}
 	path += "*"
 
-	r.Get(path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// don't show dirs, just serve files
-		if strings.HasSuffix(r.URL.Path, "/") && len(r.URL.Path) > 1 && r.URL.Path != (origPath+"/") {
-			http.NotFound(w, r)
-			return
-		}
-		fs.ServeHTTP(w, r)
-	}))
+	r.With(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(20, nil))).
+		Get(path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// don't show dirs, just serve files
+			if strings.HasSuffix(r.URL.Path, "/") && len(r.URL.Path) > 1 && r.URL.Path != (origPath+"/") {
+				http.NotFound(w, r)
+				return
+			}
+			fs.ServeHTTP(w, r)
+		}))
 }
 
 // renderJSONWithHTML allows html tags and forces charset=utf-8
