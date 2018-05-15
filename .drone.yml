@@ -39,7 +39,7 @@ pipeline:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     when:
-      event: pull
+      event: pull_request
 
   deploy:
     image: appleboy/drone-ssh
