@@ -13,10 +13,42 @@
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
     }
+    .iframe_preloader {
+        position: absolute;
+        left: 0;
+        right: 0;
+        margin: 0 auto;
+        width: 60px;
+        text-align: center;
+        font-size: 0;
+    }
+    .iframe_preloader__bounce {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        margin-right: 3px;
+        background-color: #333;
+        border-radius: 100%;
+        animation: iframePreloaderBounce 1.4s infinite ease-in-out both;
+    }
+    .iframe_preloader__bounce:first-child {animation-delay: -.32s;}
+    .iframe_preloader__bounce:nth-child(2) {animation-delay: -.16s;}
+    .iframe_preloader__bounce:last-child {margin-right: 0;}
+     @keyframes iframePreloaderBounce {
+        0% {transform: scale(0);}
+        40% {transform: scale(1);}
+        80%, 100% {transform: scale(0);}
+    }
   </style>
 </head>
 <body>
-  <div id="remark42"></div>
+  <div id="remark42">
+      <div class="iframe_preloader">
+          <div class="iframe_preloader__bounce"></div>
+          <div class="iframe_preloader__bounce"></div>
+          <div class="iframe_preloader__bounce"></div>
+      </div>
+  </div>
   <script>
     var lastHeight = 0;
     setInterval(function() {
