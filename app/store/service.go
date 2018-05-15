@@ -88,8 +88,14 @@ func (s *Service) Vote(locator Locator, commentID string, userID string, val boo
 	return comment, s.Put(locator, comment)
 }
 
+type EditRequest struct {
+	Text    string
+	Orig    string
+	Summary string
+}
+
 // EditComment to edit text and update Edit info
-func (s *Service) EditComment(locator Locator, commentID string, text string, edit Edit) (comment Comment, err error) {
+func (s *Service) EditComment(locator Locator, commentID string, req EditRequest) (comment Comment, err error) {
 	comment, err = s.Get(locator, commentID)
 	if err != nil {
 		return comment, err
@@ -104,9 +110,12 @@ func (s *Service) EditComment(locator Locator, commentID string, text string, ed
 		return comment, errors.Errorf("too late to edit %s", commentID)
 	}
 
-	comment.Text = text
-	comment.Edit = &edit
-	comment.Edit.Timestamp = time.Now()
+	comment.Text = req.Text
+	comment.Orig = req.Orig
+	comment.Edit = &Edit{
+		Timestamp: time.Now(),
+		Summary:   req.Summary,
+	}
 
 	comment.Sanitize()
 	err = s.Put(locator, comment)
@@ -130,11 +139,11 @@ func (s *Service) ValidateComment(c *Comment) error {
 	if s.MaxCommentSize <= 0 {
 		maxSize = defaultCommentMaxSize
 	}
-	if c.Text == "" {
+	if c.Orig == "" {
 		return errors.New("empty comment text")
 	}
-	if len([]rune(c.Text)) > maxSize {
-		return errors.Errorf("comment text exceeded max allowed size %d (%d)", maxSize, len([]rune(c.Text)))
+	if len([]rune(c.Orig)) > maxSize {
+		return errors.Errorf("comment text exceeded max allowed size %d (%d)", maxSize, len([]rune(c.Orig)))
 	}
 	if c.User.ID == "" || c.User.Name == "" {
 		return errors.Errorf("empty user info")

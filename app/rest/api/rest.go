@@ -148,17 +148,18 @@ func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusUnauthorized, err, "can't get user info")
 		return
 	}
+	log.Printf("[DEBUG] create comment %+v", comment)
 
 	comment.PrepareUntrusted() // clean all fields user not supposed to set
 	comment.User = user
 	comment.User.IP = strings.Split(r.RemoteAddr, ":")[0]
+
+	comment.Orig = comment.Text // original comment text, prior to md render
 	if err = s.DataService.ValidateComment(&comment); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment")
 		return
 	}
-
 	comment.Text = string(blackfriday.Run([]byte(comment.Text), blackfriday.WithExtensions(mdExt)))
-	log.Printf("[DEBUG] create comment %+v", comment)
 
 	// check if user blocked
 	if s.adminService.checkBlocked(comment.Locator.SiteID, comment.User) {
@@ -190,6 +191,7 @@ func (s *Rest) previewCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	comment.User = user
+	comment.Orig = comment.Text
 	if err = s.DataService.ValidateComment(&comment); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment")
 		return
@@ -223,9 +225,6 @@ func (s *Rest) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	id := chi.URLParam(r, "id")
 
-	// render markdown
-	edit.Text = string(blackfriday.Run([]byte(edit.Text), blackfriday.WithNoExtensions()))
-
 	log.Printf("[DEBUG] update comment %s, %+v", id, edit)
 
 	var currComment store.Comment
@@ -239,7 +238,13 @@ func (s *Rest) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := s.DataService.EditComment(locator, id, edit.Text, store.Edit{Summary: edit.Summary})
+	editReq := store.EditRequest{
+		Text:    string(blackfriday.Run([]byte(edit.Text), blackfriday.WithExtensions(mdExt))), // render markdown
+		Orig:    edit.Text,
+		Summary: edit.Summary,
+	}
+
+	res, err := s.DataService.EditComment(locator, id, editReq)
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't update comment")
 		return

@@ -128,8 +128,8 @@ func TestServer_CreateAndGet(t *testing.T) {
 	// create comment
 	r := strings.NewReader(`{"text": "**test** *123* http://radio-t.com", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
 	resp, err := http.Post(fmt.Sprintf("http://dev:password@127.0.0.1:%d/api/v1/comment", port), "application/json", r)
-	assert.Nil(t, err)
-	assert.Equal(t, http.StatusCreated, resp.StatusCode)
+	require.Nil(t, err)
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
 	b, err := ioutil.ReadAll(resp.Body)
 	assert.Nil(t, err)
 	c := JSON{}
@@ -145,6 +145,7 @@ func TestServer_CreateAndGet(t *testing.T) {
 	err = json.Unmarshal([]byte(res), &comment)
 	assert.Nil(t, err)
 	assert.Equal(t, `<p><strong>test</strong> <em>123</em> <a href="http://radio-t.com" rel="nofollow">http://radio-t.com</a></p>`+"\n", comment.Text)
+	assert.Equal(t, "**test** *123* http://radio-t.com", comment.Orig)
 	assert.Equal(t, store.User{Name: "developer one", ID: "dev",
 		Picture: "/api/v1/avatar/remark.image", Admin: true, Blocked: false, IP: "ea64bfc178468d943ca5b836e2e700c335404973"},
 		comment.User)
@@ -214,6 +215,7 @@ func TestServer_Update(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, id, c2.ID)
 	assert.Equal(t, "<p>updated text</p>\n", c2.Text)
+	assert.Equal(t, "updated text", c2.Orig)
 	assert.Equal(t, "my edit", c2.Edit.Summary)
 	assert.True(t, time.Since(c2.Edit.Timestamp) < 1*time.Second)
 

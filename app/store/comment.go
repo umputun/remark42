@@ -19,6 +19,7 @@ type Comment struct {
 	ID        string          `json:"id"`
 	ParentID  string          `json:"pid"`
 	Text      string          `json:"text"`
+	Orig      string          `json:"orig,omitempty"`
 	User      User            `json:"user"`
 	Locator   Locator         `json:"locator"`
 	Score     int             `json:"score"`
@@ -64,7 +65,7 @@ type BlockedUser struct {
 	Timestamp time.Time `json:"time"`
 }
 
-// PrepareUntrusted preprocess comment received from untrusted source by clearing all
+// PrepareUntrusted pre-processes a comment received from untrusted source by clearing all
 // autogen fields and reset everything users not supposed to provide
 func (c *Comment) PrepareUntrusted() {
 	c.ID = ""                 // don't allow user to define ID, force auto-gen
@@ -79,6 +80,7 @@ func (c *Comment) PrepareUntrusted() {
 // SetDeleted clears comment info, reset to deleted state
 func (c *Comment) SetDeleted() {
 	c.Text = ""
+	c.Orig = ""
 	c.Score = 0
 	c.Votes = map[string]bool{}
 	c.Edit = nil
@@ -90,15 +92,13 @@ func (c *Comment) Sanitize() {
 	p := bluemonday.UGCPolicy()
 	p.AllowAttrs("class").Matching(regexp.MustCompile("^language-[a-zA-Z0-9]+$")).OnElements("code")
 	c.Text = p.Sanitize(c.Text)
+	c.Orig = p.Sanitize(c.Orig)
 	c.User.ID = template.HTMLEscapeString(c.User.ID)
 	c.User.Name = template.HTMLEscapeString(c.User.Name)
 	c.User.Picture = p.Sanitize(c.User.Picture)
-
-	// c.Text = strings.Replace(c.Text, "\n", "", -1)
-	// c.Text = strings.Replace(c.Text, "\t", "", -1)
 }
 
-// hashIP replace sensitive fields with hmac
+// hashIP replace IP field with hashed hmac
 func (u *User) hashIP(secret string) {
 
 	hashVal := func(val string) string {
@@ -117,7 +117,7 @@ func (u *User) hashIP(secret string) {
 }
 
 // EncodeID hashes id to sha1. The function intentionally left outside of User struct because in some cases
-// we need hashing for parts of id, in some others hasing for non-User values.
+// we need hashing for parts of id, in some others hashing for non-User values.
 func EncodeID(id string) string {
 	h := sha1.New()
 	if _, err := h.Write([]byte(id)); err != nil {

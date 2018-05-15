@@ -139,17 +139,20 @@ func TestService_EditComment(t *testing.T) {
 	assert.Equal(t, 2, len(res))
 	assert.Nil(t, res[0].Edit)
 
-	comment, err := b.EditComment(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "xxx", Edit{Summary: "my edit"})
+	comment, err := b.EditComment(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID,
+		EditRequest{Orig: "yyy", Text: "xxx", Summary: "my edit"})
 	assert.Nil(t, err)
 	assert.Equal(t, "my edit", comment.Edit.Summary)
 	assert.Equal(t, "xxx", comment.Text)
+	assert.Equal(t, "yyy", comment.Orig)
 
 	c, err := b.Get(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID)
 	assert.Nil(t, err)
 	assert.Equal(t, "my edit", c.Edit.Summary)
 	assert.Equal(t, "xxx", c.Text)
 
-	_, err = b.EditComment(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "xxx", Edit{Summary: "my edit"})
+	_, err = b.EditComment(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID,
+		EditRequest{Orig: "yyy", Text: "xxx", Summary: "my edit"})
 	assert.NotNil(t, err, "allow edit once")
 }
 
@@ -178,8 +181,8 @@ func TestService_EditCommentDurationFailed(t *testing.T) {
 
 	time.Sleep(time.Second)
 
-	_, err = b.EditComment(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "xxx",
-		Edit{Summary: "my edit"})
+	_, err = b.EditComment(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID,
+		EditRequest{Orig: "yyy", Text: "xxx", Summary: "my edit"})
 	assert.NotNil(t, err)
 }
 
@@ -193,9 +196,9 @@ func TestService_ValidateComment(t *testing.T) {
 		err error
 	}{
 		{inp: Comment{}, err: errors.New("empty comment text")},
-		{inp: Comment{Text: "something blah", User: User{ID: "myid", Name: "name"}}, err: nil},
-		{inp: Comment{Text: "something blah", User: User{ID: "myid"}}, err: errors.New("empty user info")},
-		{inp: Comment{Text: longText, User: User{ID: "myid", Name: "name"}}, err: errors.New("comment text exceeded max allowed size 2000 (4000)")},
+		{inp: Comment{Orig: "something blah", User: User{ID: "myid", Name: "name"}}, err: nil},
+		{inp: Comment{Orig: "something blah", User: User{ID: "myid"}}, err: errors.New("empty user info")},
+		{inp: Comment{Orig: longText, User: User{ID: "myid", Name: "name"}}, err: errors.New("comment text exceeded max allowed size 2000 (4000)")},
 	}
 
 	for n, tt := range tbl {
