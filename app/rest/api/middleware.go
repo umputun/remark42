@@ -77,6 +77,7 @@ const (
 	LogAll LoggerFlag = iota
 	LogUser
 	LogBody
+	LogNone
 )
 const maxBody = 1024
 
@@ -97,6 +98,12 @@ func Logger(flags ...LoggerFlag) func(http.Handler) http.Handler {
 	f := func(h http.Handler) http.Handler {
 
 		fn := func(w http.ResponseWriter, r *http.Request) {
+
+			if inFlags(LogNone) { // skip logging
+				h.ServeHTTP(w, r)
+				return
+			}
+
 			ww := middleware.NewWrapResponseWriter(w, 1)
 
 			body, user := func() (body string, user string) {

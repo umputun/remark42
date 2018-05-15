@@ -82,7 +82,11 @@ func (s *Rest) Run(port int) {
 		}
 	})
 
-	router.Mount(s.Authenticator.AvatarProxy.Routes()) // mount avatars controller to /api/v1/avatar/{file.img}
+	avatarMiddlewares := []func(http.Handler) http.Handler{
+		Logger(LogNone),
+		tollbooth_chi.LimitHandler(tollbooth.NewLimiter(100, nil)),
+	}
+	router.Mount(s.Authenticator.AvatarProxy.Routes(avatarMiddlewares...)) // mount avatars controller to /api/v1/avatar/{file.img}
 
 	// api routes
 	router.Route("/api/v1", func(rapi chi.Router) {

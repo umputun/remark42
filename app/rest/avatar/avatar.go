@@ -85,8 +85,9 @@ func (p *Proxy) Put(u store.User) (avatarURL string, err error) {
 }
 
 // Routes returns auth routes for given provider
-func (p *Proxy) Routes() (string, chi.Router) {
+func (p *Proxy) Routes(middlewares ...func(http.Handler) http.Handler) (string, chi.Router) {
 	router := chi.NewRouter()
+	router.Use(middlewares...)
 
 	// GET /123456789.image
 	router.Get("/{avatar}", func(w http.ResponseWriter, r *http.Request) {
