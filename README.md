@@ -251,7 +251,8 @@ _currently supported providers are `google`, `facebook` and `github`_
 type Comment struct {
     ID        string          `json:"id"`      // comment ID, read only
     ParentID  string          `json:"pid"`     // parent ID
-    Text      string          `json:"text"`    // comment text
+    Text      string          `json:"text"`    // comment text, after md processing
+    Orig      string          `json:"orig"`    // original comment text
     User      User            `json:"user"`    // user info, read only
     Locator   Locator         `json:"locator"` // post locator
     Score     int             `json:"score"`   // comment score, read only

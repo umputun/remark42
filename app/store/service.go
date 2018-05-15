@@ -88,6 +88,7 @@ func (s *Service) Vote(locator Locator, commentID string, userID string, val boo
 	return comment, s.Put(locator, comment)
 }
 
+// EditRequest contains fields needed for comment update
 type EditRequest struct {
 	Text    string
 	Orig    string
