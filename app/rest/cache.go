@@ -1,7 +1,6 @@
 package rest
 
 import (
-	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -29,11 +28,9 @@ func NewLoadingCache(defaultExpiration, cleanupInterval time.Duration, postFlush
 // Get is loading cache method to get value by key or load via fn if not found
 func (lc *loadingCache) Get(key string, ttl time.Duration, fn func() ([]byte, error)) (data []byte, err error) {
 	if b, ok := lc.bytesCache.Get(key); ok {
-		log.Printf("[DEBUG] cache hit %s", key)
 		return b.([]byte), nil
 	}
 
-	log.Printf("[DEBUG] cache miss %s", key)
 	if data, err = fn(); err != nil {
 		return data, err
 	}
