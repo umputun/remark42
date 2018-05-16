@@ -1,0 +1,21 @@
+/logs/
+/target/
+/var/
+/web/node_modules/
+/web/public/
+/.vscode/
+/.idea/
+#/.git/
+
+# source files
+docker-compose.yml
+
+# generated files
+*.cov
+.cover
+target
+debug
+debug.test
+*.prof
+*.test
+
