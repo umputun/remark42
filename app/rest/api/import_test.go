@@ -14,9 +14,10 @@ import (
 	"github.com/coreos/bbolt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/umputun/remark/app/store/engine"
+	"github.com/umputun/remark/app/store/service"
 
 	"github.com/umputun/remark/app/migrator"
-	"github.com/umputun/remark/app/store"
 )
 
 func TestImport(t *testing.T) {
@@ -52,9 +53,9 @@ func TestImportRejected(t *testing.T) {
 }
 
 func prepImportSrv(t *testing.T) (srv *Import, port int) {
-	b, err := store.NewBoltDB(bolt.Options{}, store.BoltSite{FileName: testDb, SiteID: "radio-t"})
+	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDb, SiteID: "radio-t"})
 	require.Nil(t, err)
-	dataStore := &store.Service{Interface: b}
+	dataStore := &service.DataStore{Interface: b}
 	srv = &Import{
 		DisqusImporter: &migrator.Disqus{DataStore: dataStore},
 		NativeImporter: &migrator.Remark{DataStore: dataStore},

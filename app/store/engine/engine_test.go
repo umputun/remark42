@@ -1,14 +1,16 @@
-package store
+package engine
 
 import (
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/umputun/remark/app/store"
 )
 
-func TestStore_sortComments(t *testing.T) {
-	cc := []Comment{
+func TestEngine_sortComments(t *testing.T) {
+	cc := []store.Comment{
 		{ID: "1", Score: 5, Timestamp: time.Date(2018, 2, 5, 10, 1, 0, 0, time.Local)},
 		{ID: "2", Score: 4, Timestamp: time.Date(2018, 2, 5, 10, 2, 0, 0, time.Local)},
 		{ID: "3", Score: 6, Timestamp: time.Date(2018, 2, 5, 10, 3, 0, 0, time.Local)},

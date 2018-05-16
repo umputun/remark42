@@ -8,16 +8,19 @@ import (
 
 	"github.com/coreos/bbolt"
 	"github.com/stretchr/testify/require"
+	"github.com/umputun/remark/app/store"
+	"github.com/umputun/remark/app/store/engine"
+	"github.com/umputun/remark/app/store/service"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/umputun/remark/app/store"
 )
 
 func TestDisqus_Import(t *testing.T) {
 	defer os.Remove("/tmp/remark-test.db")
-	dataStore, err := store.NewBoltDB(bolt.Options{}, store.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "test"})
+	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "test"})
 	require.Nil(t, err, "create store")
-	d := Disqus{DataStore: dataStore}
+	dataStore := service.DataStore{Interface: b}
+	d := Disqus{DataStore: &dataStore}
 	size, err := d.Import(strings.NewReader(xmlTest), "test")
 	assert.Nil(t, err)
 	assert.Equal(t, 3, size)
@@ -33,7 +36,7 @@ func TestDisqus_Import(t *testing.T) {
 	assert.Equal(t, store.Locator{SiteID: "test", URL: "http://radio-t.umputun.com/2011/03/229_8880.html"}, c.Locator)
 	assert.Equal(t, "Dmitry Noname", c.User.Name)
 	assert.Equal(t, "disqus_8799342cdf328253e03313958ffc6a433659d7ff", c.User.ID)
-	assert.Equal(t, "89.89.89.139", c.User.IP)
+	assert.Equal(t, "96243f024cf6ad42b66f0c72709ae20b5d10ec14", c.User.IP)
 
 	posts, err := dataStore.List("test", 0, 0)
 	assert.Nil(t, err)

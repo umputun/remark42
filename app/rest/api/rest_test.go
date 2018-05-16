@@ -17,11 +17,13 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/umputun/remark/app/rest/avatar"
+	"github.com/umputun/remark/app/store/service"
 
 	"github.com/umputun/remark/app/migrator"
 	"github.com/umputun/remark/app/rest/auth"
+	"github.com/umputun/remark/app/rest/avatar"
 	"github.com/umputun/remark/app/store"
+	"github.com/umputun/remark/app/store/engine"
 )
 
 var testDb = "/tmp/test-remark.db"
@@ -147,7 +149,7 @@ func TestServer_CreateAndGet(t *testing.T) {
 	assert.Equal(t, `<p><strong>test</strong> <em>123</em> <a href="http://radio-t.com" rel="nofollow">http://radio-t.com</a></p>`+"\n", comment.Text)
 	assert.Equal(t, "**test** *123* http://radio-t.com", comment.Orig)
 	assert.Equal(t, store.User{Name: "developer one", ID: "dev",
-		Picture: "/api/v1/avatar/remark.image", Admin: true, Blocked: false, IP: "ea64bfc178468d943ca5b836e2e700c335404973"},
+		Picture: "/api/v1/avatar/remark.image", Admin: true, Blocked: false, IP: "dbc7c999343f003f189f70aaf52cc04443f90790"},
 		comment.User)
 	t.Logf("%+v", comment)
 }
@@ -462,11 +464,11 @@ func TestServer_FileServer(t *testing.T) {
 }
 
 func prep(t *testing.T) (srv *Rest, port int) {
-	b, err := store.NewBoltDB(bolt.Options{}, store.BoltSite{FileName: testDb, SiteID: "radio-t"})
+	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDb, SiteID: "radio-t"})
 	require.Nil(t, err)
-	dataStore := &store.Service{Interface: b}
+	dataStore := service.DataStore{Interface: b, EditDuration: 5 * time.Minute, MaxCommentSize: 4000, Secret: "123456"}
 	srv = &Rest{
-		DataService: store.Service{Interface: dataStore, EditDuration: 5 * time.Minute, MaxCommentSize: 4000},
+		DataService: dataStore,
 		Authenticator: auth.Authenticator{
 			SessionStore: sessions.NewFilesystemStore("/tmp", []byte("blah")),
 			DevPasswd:    "password",
@@ -474,14 +476,14 @@ func prep(t *testing.T) (srv *Rest, port int) {
 			AvatarProxy:  &avatar.Proxy{StorePath: "/tmp", RoutePath: "/api/v1/avatar"},
 			Admins:       []string{"a1", "a2"},
 		},
-		Exporter: &migrator.Remark{DataStore: dataStore},
+		Exporter: &migrator.Remark{DataStore: &dataStore},
 		Cache:    &mockCache{},
 		WebRoot:  "/tmp",
 	}
 
 	importSrv := &Import{
-		DisqusImporter: &migrator.Disqus{DataStore: dataStore},
-		NativeImporter: &migrator.Remark{DataStore: dataStore},
+		DisqusImporter: &migrator.Disqus{DataStore: &dataStore},
+		NativeImporter: &migrator.Remark{DataStore: &dataStore},
 		Cache:          &mockCache{},
 	}
 

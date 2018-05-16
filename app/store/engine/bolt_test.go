@@ -1,4 +1,4 @@
-package store
+package engine
 
 import (
 	"os"
@@ -7,6 +7,8 @@ import (
 
 	"github.com/coreos/bbolt"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/umputun/remark/app/store"
 )
 
 var testDb = "/tmp/test-remark.db"
@@ -15,14 +17,14 @@ func TestBoltDB_CreateAndFind(t *testing.T) {
 	var b = prep(t)
 	defer os.Remove(testDb)
 
-	res, err := b.Find(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "time")
+	res, err := b.Find(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "time")
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(res))
 	assert.Equal(t, `some text, <a href="http://radio-t.com">link</a>`, res[0].Text)
 	assert.Equal(t, "user1", res[0].User.ID)
 	t.Log(res[0].ID)
 
-	_, err = b.Create(Comment{ID: res[0].ID, Locator: Locator{URL: "https://radio-t.com", SiteID: "radio-t"}})
+	_, err = b.Create(store.Comment{ID: res[0].ID, Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}})
 	assert.NotNil(t, err)
 	assert.Equal(t, "key id-1 already in store", err.Error())
 }
@@ -31,7 +33,7 @@ func TestBoltDB_Delete(t *testing.T) {
 	defer os.Remove(testDb)
 	b := prep(t)
 
-	loc := Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
+	loc := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
 	res, err := b.Find(loc, "time")
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(res), "initially 2 comments")
@@ -56,7 +58,7 @@ func TestBoltDB_DeleteAll(t *testing.T) {
 	defer os.Remove(testDb)
 	b := prep(t)
 
-	loc := Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
+	loc := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
 	res, err := b.Find(loc, "time")
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(res), "initially 2 comments")
@@ -68,7 +70,7 @@ func TestBoltDB_DeleteAll(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 0, len(comments), "nothing left")
 
-	c, err := b.Count(Locator{URL: "https://radio-t.com", SiteID: "radio-t"})
+	c, err := b.Count(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"})
 	assert.Nil(t, err)
 	assert.Equal(t, 0, c, "0 count")
 }
@@ -77,22 +79,22 @@ func TestBoltDB_Get(t *testing.T) {
 	defer os.Remove(testDb)
 	b := prep(t)
 
-	res, err := b.Find(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "time")
+	res, err := b.Find(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "time")
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(res))
 
-	comment, err := b.Get(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[1].ID)
+	comment, err := b.Get(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[1].ID)
 	assert.Nil(t, err)
 	assert.Equal(t, "some text2", comment.Text)
 
-	comment, err = b.Get(Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "1234567")
+	comment, err = b.Get(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "1234567")
 	assert.NotNil(t, err)
 }
 
 func TestBoltDB_Put(t *testing.T) {
 	defer os.Remove(testDb)
 	b := prep(t)
-	loc := Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
+	loc := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
 	res, err := b.Find(loc, "time")
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(res))
@@ -129,7 +131,7 @@ func TestBoltDB_Count(t *testing.T) {
 	defer os.Remove(testDb)
 	b := prep(t)
 
-	c, err := b.Count(Locator{URL: "https://radio-t.com", SiteID: "radio-t"})
+	c, err := b.Count(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"})
 	assert.Nil(t, err)
 	assert.Equal(t, 2, c)
 }
@@ -171,27 +173,27 @@ func TestBoltDB_List(t *testing.T) {
 	b := prep(t) // two comments for https://radio-t.com
 
 	// add one more for https://radio-t.com/2
-	comment := Comment{
+	comment := store.Comment{
 		ID:        "12345",
 		Text:      `some text, <a href="http://radio-t.com">link</a>`,
 		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
-		Locator:   Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"},
-		User:      User{ID: "user1", Name: "user name"},
+		Locator:   store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"},
+		User:      store.User{ID: "user1", Name: "user name"},
 	}
 	_, err := b.Create(comment)
 	assert.Nil(t, err)
 
 	res, err := b.List("radio-t", 0, 0)
 	assert.Nil(t, err)
-	assert.Equal(t, []PostInfo{{URL: "https://radio-t.com/2", Count: 1}, {URL: "https://radio-t.com", Count: 2}}, res)
+	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/2", Count: 1}, {URL: "https://radio-t.com", Count: 2}}, res)
 
 	res, err = b.List("radio-t", 1, 0)
 	assert.Nil(t, err)
-	assert.Equal(t, []PostInfo{{URL: "https://radio-t.com/2", Count: 1}}, res)
+	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/2", Count: 1}}, res)
 
 	res, err = b.List("radio-t", 1, 1)
 	assert.Nil(t, err)
-	assert.Equal(t, []PostInfo{{URL: "https://radio-t.com", Count: 2}}, res)
+	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com", Count: 2}}, res)
 }
 
 func TestBoltDB_GetForUser(t *testing.T) {
@@ -220,22 +222,22 @@ func prep(t *testing.T) *BoltDB {
 	assert.Nil(t, err)
 	b := boltStore
 
-	comment := Comment{
+	comment := store.Comment{
 		ID:        "id-1",
 		Text:      `some text, <a href="http://radio-t.com">link</a>`,
 		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
-		Locator:   Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
-		User:      User{ID: "user1", Name: "user name"},
+		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+		User:      store.User{ID: "user1", Name: "user name"},
 	}
 	_, err = b.Create(comment)
 	assert.Nil(t, err)
 
-	comment = Comment{
+	comment = store.Comment{
 		ID:        "id-2",
 		Text:      "some text2",
 		Timestamp: time.Date(2017, 12, 20, 15, 18, 23, 0, time.Local),
-		Locator:   Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
-		User:      User{ID: "user1", Name: "user name"},
+		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+		User:      store.User{ID: "user1", Name: "user name"},
 	}
 	_, err = b.Create(comment)
 	assert.Nil(t, err)

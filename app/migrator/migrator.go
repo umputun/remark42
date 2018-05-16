@@ -10,7 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/umputun/remark/app/store"
+	"github.com/umputun/remark/app/store/service"
 )
 
 // Importer defines interface to convert posts from external sources
@@ -25,7 +25,7 @@ type Exporter interface {
 
 // ImportParams defines everything needed to run import
 type ImportParams struct {
-	DataStore *store.Service
+	DataStore *service.DataStore
 	InputFile string
 	Provider  string
 	SiteID    string

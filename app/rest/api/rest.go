@@ -19,6 +19,7 @@ import (
 	"github.com/go-chi/render"
 	"github.com/gorilla/context"
 	"github.com/pkg/errors"
+	"github.com/umputun/remark/app/store/service"
 	"gopkg.in/russross/blackfriday.v2"
 
 	"github.com/umputun/remark/app/migrator"
@@ -30,7 +31,7 @@ import (
 // Rest is a rest access server
 type Rest struct {
 	Version       string
-	DataService   store.Service
+	DataService   service.DataStore
 	Authenticator auth.Authenticator
 	Exporter      migrator.Exporter
 	Cache         rest.LoadingCache
@@ -238,7 +239,7 @@ func (s *Rest) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	editReq := store.EditRequest{
+	editReq := service.EditRequest{
 		Text:    string(blackfriday.Run([]byte(edit.Text), blackfriday.WithExtensions(mdExt))), // render markdown
 		Orig:    edit.Text,
 		Summary: edit.Summary,

@@ -1,14 +1,8 @@
 package store
 
 import (
-	"crypto/hmac"
-	"crypto/sha1"
-	"fmt"
-	"hash/crc64"
 	"html/template"
-	"log"
 	"regexp"
-	"strconv"
 	"time"
 
 	"github.com/microcosm-cc/bluemonday"
@@ -34,16 +28,6 @@ type Comment struct {
 type Locator struct {
 	SiteID string `json:"site,omitempty"`
 	URL    string `json:"url"`
-}
-
-// User holds user-related info
-type User struct {
-	Name    string `json:"name"`
-	ID      string `json:"id"`
-	Picture string `json:"picture"`
-	Admin   bool   `json:"admin"`
-	Blocked bool   `json:"block,omitempty"`
-	IP      string `json:"ip,omitempty"`
 }
 
 // Edit indication
@@ -96,34 +80,4 @@ func (c *Comment) Sanitize() {
 	c.User.ID = template.HTMLEscapeString(c.User.ID)
 	c.User.Name = template.HTMLEscapeString(c.User.Name)
 	c.User.Picture = p.Sanitize(c.User.Picture)
-}
-
-// hashIP replace IP field with hashed hmac
-func (u *User) hashIP(secret string) {
-
-	hashVal := func(val string) string {
-		if _, err := strconv.ParseUint(val, 16, 64); err == nil || val == "" {
-			return val // already hashed
-		}
-		key := []byte(secret)
-		h := hmac.New(sha1.New, key)
-		if _, err := h.Write([]byte(val)); err != nil {
-			log.Printf("[WARN] can't hash ip, %s", err)
-		}
-		return fmt.Sprintf("%x", h.Sum(nil))
-	}
-
-	u.IP = hashVal(u.IP)
-}
-
-// EncodeID hashes id to sha1. The function intentionally left outside of User struct because in some cases
-// we need hashing for parts of id, in some others hashing for non-User values.
-func EncodeID(id string) string {
-	h := sha1.New()
-	if _, err := h.Write([]byte(id)); err != nil {
-		// fail back to crc64
-		log.Printf("[WARN] can't hash id %s, %s", id, err)
-		return fmt.Sprintf("%x", crc64.Checksum([]byte(id), crc64.MakeTable(crc64.ECMA)))
-	}
-	return fmt.Sprintf("%x", h.Sum(nil))
 }

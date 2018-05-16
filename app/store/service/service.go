@@ -1,15 +1,18 @@
-package store
+package service
 
 import (
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+
+	R "github.com/umputun/remark/app/store"
+	"github.com/umputun/remark/app/store/engine"
 )
 
-// Service wraps store.Interface with additional methods
-type Service struct {
-	Interface
+// DataStore wraps store.Interface with additional methods
+type DataStore struct {
+	engine.Interface
 	EditDuration   time.Duration
 	Secret         string
 	MaxCommentSize int
@@ -18,7 +21,7 @@ type Service struct {
 const defaultCommentMaxSize = 2000
 
 // Create prepares comment and forward to Interface.Create
-func (s *Service) Create(comment Comment) (commentID string, err error) {
+func (s *DataStore) Create(comment R.Comment) (commentID string, err error) {
 	// fill ID and time if empty
 	if comment.ID == "" {
 		comment.ID = uuid.New().String()
@@ -32,13 +35,13 @@ func (s *Service) Create(comment Comment) (commentID string, err error) {
 	}
 
 	comment.Sanitize()            // clear potentially dangerous js from all parts of comment
-	comment.User.hashIP(s.Secret) // replace ip by hash
+	comment.User.HashIP(s.Secret) // replace ip by hash
 
 	return s.Interface.Create(comment)
 }
 
 // SetPin pin/un-pin comment as special
-func (s *Service) SetPin(locator Locator, commentID string, status bool) error {
+func (s *DataStore) SetPin(locator R.Locator, commentID string, status bool) error {
 	comment, err := s.Get(locator, commentID)
 	if err != nil {
 		return err
@@ -48,7 +51,7 @@ func (s *Service) SetPin(locator Locator, commentID string, status bool) error {
 }
 
 // Vote for comment by id and locator
-func (s *Service) Vote(locator Locator, commentID string, userID string, val bool) (comment Comment, err error) {
+func (s *DataStore) Vote(locator R.Locator, commentID string, userID string, val bool) (comment R.Comment, err error) {
 
 	comment, err = s.Get(locator, commentID)
 	if err != nil {
@@ -96,7 +99,7 @@ type EditRequest struct {
 }
 
 // EditComment to edit text and update Edit info
-func (s *Service) EditComment(locator Locator, commentID string, req EditRequest) (comment Comment, err error) {
+func (s *DataStore) EditComment(locator R.Locator, commentID string, req EditRequest) (comment R.Comment, err error) {
 	comment, err = s.Get(locator, commentID)
 	if err != nil {
 		return comment, err
@@ -113,7 +116,7 @@ func (s *Service) EditComment(locator Locator, commentID string, req EditRequest
 
 	comment.Text = req.Text
 	comment.Orig = req.Orig
-	comment.Edit = &Edit{
+	comment.Edit = &R.Edit{
 		Timestamp: time.Now(),
 		Summary:   req.Summary,
 	}
@@ -124,18 +127,18 @@ func (s *Service) EditComment(locator Locator, commentID string, req EditRequest
 }
 
 // Counts returns postID+count list for given comments
-func (s *Service) Counts(siteID string, postIDs []string) ([]PostInfo, error) {
-	res := []PostInfo{}
+func (s *DataStore) Counts(siteID string, postIDs []string) ([]R.PostInfo, error) {
+	res := []R.PostInfo{}
 	for _, p := range postIDs {
-		if c, err := s.Count(Locator{SiteID: siteID, URL: p}); err == nil {
-			res = append(res, PostInfo{URL: p, Count: c})
+		if c, err := s.Count(R.Locator{SiteID: siteID, URL: p}); err == nil {
+			res = append(res, R.PostInfo{URL: p, Count: c})
 		}
 	}
 	return res, nil
 }
 
 // ValidateComment checks if comment size below max and user fields set
-func (s *Service) ValidateComment(c *Comment) error {
+func (s *DataStore) ValidateComment(c *R.Comment) error {
 	maxSize := s.MaxCommentSize
 	if s.MaxCommentSize <= 0 {
 		maxSize = defaultCommentMaxSize

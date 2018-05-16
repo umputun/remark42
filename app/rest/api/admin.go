@@ -14,11 +14,12 @@ import (
 	"github.com/umputun/remark/app/migrator"
 	"github.com/umputun/remark/app/rest"
 	"github.com/umputun/remark/app/store"
+	"github.com/umputun/remark/app/store/service"
 )
 
 // admin provides router for all requests available for admin users only
 type admin struct {
-	dataService  store.Service
+	dataService  service.DataStore
 	exporter     migrator.Exporter
 	cache        rest.LoadingCache
 	defAvatarURL string

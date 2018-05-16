@@ -13,13 +13,14 @@ import (
 	"github.com/hashicorp/logutils"
 	"github.com/jessevdk/go-flags"
 	"github.com/pkg/errors"
+	"github.com/umputun/remark/app/store/engine"
+	"github.com/umputun/remark/app/store/service"
 
 	"github.com/umputun/remark/app/migrator"
 	"github.com/umputun/remark/app/rest"
 	"github.com/umputun/remark/app/rest/api"
 	"github.com/umputun/remark/app/rest/auth"
 	"github.com/umputun/remark/app/rest/avatar"
-	"github.com/umputun/remark/app/store"
 )
 
 var opts struct {
@@ -74,7 +75,7 @@ func main() {
 		log.Printf("[WARN] running in dev mode")
 	}
 
-	dataService := store.Service{
+	dataService := service.DataStore{
 		Interface:      dataStore,
 		EditDuration:   5 * time.Minute,
 		Secret:         opts.SecretKey,
@@ -142,12 +143,12 @@ func activateBackup(exporter migrator.Exporter) {
 }
 
 // makeBoltStore creates store for all sites
-func makeBoltStore(siteNames []string) store.Interface {
-	sites := []store.BoltSite{}
+func makeBoltStore(siteNames []string) engine.Interface {
+	sites := []engine.BoltSite{}
 	for _, site := range siteNames {
-		sites = append(sites, store.BoltSite{SiteID: site, FileName: fmt.Sprintf("%s/%s.db", opts.BoltPath, site)})
+		sites = append(sites, engine.BoltSite{SiteID: site, FileName: fmt.Sprintf("%s/%s.db", opts.BoltPath, site)})
 	}
-	result, err := store.NewBoltDB(bolt.Options{Timeout: 30 * time.Second}, sites...)
+	result, err := engine.NewBoltDB(bolt.Options{Timeout: 30 * time.Second}, sites...)
 	if err != nil {
 		log.Fatalf("[ERROR] can't initialize data store, %+v", err)
 	}

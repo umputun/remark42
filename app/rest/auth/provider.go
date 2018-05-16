@@ -15,10 +15,10 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
 	"github.com/gorilla/sessions"
-	"github.com/umputun/remark/app/rest/avatar"
 	"golang.org/x/oauth2"
 
 	"github.com/umputun/remark/app/rest"
+	"github.com/umputun/remark/app/rest/avatar"
 	"github.com/umputun/remark/app/store"
 )
 

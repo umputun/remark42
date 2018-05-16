@@ -9,8 +9,9 @@ import (
 
 	"github.com/coreos/bbolt"
 	"github.com/stretchr/testify/assert"
-
 	"github.com/umputun/remark/app/store"
+	"github.com/umputun/remark/app/store/engine"
+	"github.com/umputun/remark/app/store/service"
 )
 
 var testDb = "/tmp/test-remark.db"
@@ -41,9 +42,9 @@ func TestRemark_Import(t *testing.T) {
 	buf.WriteString(r2)
 
 	os.Remove(testDb)
-	b, err := store.NewBoltDB(bolt.Options{}, store.BoltSite{SiteID: "radio-t", FileName: testDb})
+	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{SiteID: "radio-t", FileName: testDb})
 	assert.Nil(t, err)
-	r := Remark{DataStore: &store.Service{Interface: b}}
+	r := Remark{DataStore: &service.DataStore{Interface: b}}
 	size, err := r.Import(buf, "radio-t")
 	assert.Nil(t, err)
 	assert.Equal(t, 2, size)
@@ -57,13 +58,13 @@ func TestRemark_Import(t *testing.T) {
 }
 
 // makes new boltdb, put two records
-func prep(t *testing.T) *store.Service {
+func prep(t *testing.T) *service.DataStore {
 	os.Remove(testDb)
 
-	boltStore, err := store.NewBoltDB(bolt.Options{}, store.BoltSite{SiteID: "radio-t", FileName: testDb})
+	boltStore, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{SiteID: "radio-t", FileName: testDb})
 	assert.Nil(t, err)
 
-	b := &store.Service{Interface: boltStore}
+	b := &service.DataStore{Interface: boltStore}
 
 	comment := store.Comment{
 		ID:        "efbc17f177ee1a1c0ee6e1e025749966ec071adc",
