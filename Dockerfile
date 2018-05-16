@@ -1,7 +1,9 @@
 FROM umputun/baseimage:buildgo-latest as build-backend
 
-ADD . /go/src/github.com/umputun/remark
 WORKDIR /go/src/github.com/umputun/remark
+
+ADD app /go/src/github.com/umputun/remark/app
+ADD vendor /go/src/github.com/umputun/remark/vendor
 
 RUN cd app && go test -v $(go list -e ./... | grep -v vendor)
 
