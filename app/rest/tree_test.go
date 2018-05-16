@@ -50,8 +50,8 @@ func TestTreeSortNodes(t *testing.T) {
 		{ID: "2", Timestamp: time.Date(2017, 12, 25, 19, 47, 2, 0, time.UTC), Score: 3},
 		{ID: "11", ParentID: "1", Timestamp: time.Date(2017, 12, 25, 19, 46, 11, 0, time.UTC)},
 		{ID: "13", ParentID: "1", Timestamp: time.Date(2017, 12, 25, 19, 46, 13, 0, time.UTC)},
-		{ID: "12", ParentID: "1", Timestamp: time.Date(2017, 12, 25, 19, 46, 12, 0, time.UTC)},
-		{ID: "131", ParentID: "13", Timestamp: time.Date(2017, 12, 25, 19, 46, 31, 0, time.UTC)},
+		{ID: "12", ParentID: "1", Timestamp: time.Date(2017, 12, 25, 19, 46, 14, 0, time.UTC)},
+		{ID: "131", ParentID: "13", Timestamp: time.Date(2017, 12, 25, 19, 50, 31, 0, time.UTC)},
 		{ID: "132", ParentID: "13", Timestamp: time.Date(2017, 12, 25, 19, 46, 32, 0, time.UTC)},
 		{ID: "21", ParentID: "2", Timestamp: time.Date(2017, 12, 25, 19, 47, 21, 0, time.UTC)},
 		{ID: "22", ParentID: "2", Timestamp: time.Date(2017, 12, 25, 19, 47, 22, 0, time.UTC)},
@@ -61,14 +61,13 @@ func TestTreeSortNodes(t *testing.T) {
 		{ID: "5", Deleted: true},
 	}
 
-	res := MakeTree(comments, "time")
-	assert.Equal(t, "1", res.Nodes[0].Comment.ID)
-
-	res = MakeTree(comments, "time")
-	assert.Equal(t, "1", res.Nodes[0].Comment.ID)
+	res := MakeTree(comments, "+time")
+	assert.Equal(t, "2", res.Nodes[0].Comment.ID)
+	t.Log(res.Nodes[0].Comment.ID, res.Nodes[0].ts)
 
 	res = MakeTree(comments, "-time")
-	assert.Equal(t, "6", res.Nodes[0].Comment.ID)
+	t.Log(res.Nodes[0].Comment.ID, res.Nodes[0].ts)
+	assert.Equal(t, "1", res.Nodes[0].Comment.ID)
 
 	res = MakeTree(comments, "score")
 	assert.Equal(t, "4", res.Nodes[0].Comment.ID)
