@@ -61,13 +61,18 @@ func TestTreeSortNodes(t *testing.T) {
 		{ID: "5", Deleted: true},
 	}
 
-	res := MakeTree(comments, "+time")
+	res := MakeTree(comments, "+active")
 	assert.Equal(t, "2", res.Nodes[0].Comment.ID)
 	t.Log(res.Nodes[0].Comment.ID, res.Nodes[0].ts)
 
-	res = MakeTree(comments, "-time")
+	res = MakeTree(comments, "-active")
 	t.Log(res.Nodes[0].Comment.ID, res.Nodes[0].ts)
 	assert.Equal(t, "1", res.Nodes[0].Comment.ID)
+
+	res = MakeTree(comments, "+time")
+	t.Log(res.Nodes[0].Comment.ID, res.Nodes[0].ts)
+	res = MakeTree(comments, "-time")
+	assert.Equal(t, "6", res.Nodes[0].Comment.ID)
 
 	res = MakeTree(comments, "score")
 	assert.Equal(t, "4", res.Nodes[0].Comment.ID)

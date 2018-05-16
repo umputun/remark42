@@ -37,7 +37,7 @@ type Admin interface {
 func sortComments(comments []Comment, sortFld string) []Comment {
 	sort.Slice(comments, func(i, j int) bool {
 		switch sortFld {
-		case "+time", "-time", "time":
+		case "+time", "-time", "time", "+active", "-active", "active":
 			if strings.HasPrefix(sortFld, "-") {
 				return comments[i].Timestamp.After(comments[j].Timestamp)
 			}

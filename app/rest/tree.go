@@ -89,6 +89,12 @@ func (t *Tree) sortNodes(sortType string) {
 		switch sortType {
 		case "+time", "-time", "time":
 			if strings.HasPrefix(sortType, "-") {
+				return t.Nodes[i].Comment.Timestamp.After(t.Nodes[j].Comment.Timestamp)
+			}
+			return t.Nodes[i].Comment.Timestamp.Before(t.Nodes[j].Comment.Timestamp)
+
+		case "+active", "-active", "active":
+			if strings.HasPrefix(sortType, "-") {
 				return t.Nodes[i].ts.After(t.Nodes[j].ts)
 			}
 			return t.Nodes[i].ts.Before(t.Nodes[j].ts)
