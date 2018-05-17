@@ -117,7 +117,6 @@ export default class Input extends Component {
             onInput={this.onInput}
             onKeyDown={this.onKeyDown}
             ref={r => (this.fieldNode = r)}
-            required
             disabled={isFieldDisabled}
           />
 
