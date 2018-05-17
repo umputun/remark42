@@ -1,6 +1,6 @@
 
 ### find request with tree
-GET {{host}}/api/v1/find?site=remark&sort=-score&format=tree&url=https://remark42.com/demo/
+GET {{host}}/api/v1/find?site=remark&sort=-active&format=tree&url=https://remark42.com/demo/
 
 ### find request with plain
 GET {{host}}/api/v1/find?site=remark&sort=-score&format=plain&url=https://remark42.com/demo/
