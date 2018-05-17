@@ -17,13 +17,13 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/umputun/remark/app/store/service"
 
 	"github.com/umputun/remark/app/migrator"
 	"github.com/umputun/remark/app/rest/auth"
 	"github.com/umputun/remark/app/rest/avatar"
 	"github.com/umputun/remark/app/store"
 	"github.com/umputun/remark/app/store/engine"
+	"github.com/umputun/remark/app/store/service"
 )
 
 var testDb = "/tmp/test-remark.db"

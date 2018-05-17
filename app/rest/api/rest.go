@@ -19,13 +19,13 @@ import (
 	"github.com/go-chi/render"
 	"github.com/gorilla/context"
 	"github.com/pkg/errors"
-	"github.com/umputun/remark/app/store/service"
 	"gopkg.in/russross/blackfriday.v2"
 
 	"github.com/umputun/remark/app/migrator"
 	"github.com/umputun/remark/app/rest"
 	"github.com/umputun/remark/app/rest/auth"
 	"github.com/umputun/remark/app/store"
+	"github.com/umputun/remark/app/store/service"
 )
 
 // Rest is a rest access server

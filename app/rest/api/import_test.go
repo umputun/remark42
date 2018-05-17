@@ -14,10 +14,10 @@ import (
 	"github.com/coreos/bbolt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/umputun/remark/app/store/engine"
-	"github.com/umputun/remark/app/store/service"
 
 	"github.com/umputun/remark/app/migrator"
+	"github.com/umputun/remark/app/store/engine"
+	"github.com/umputun/remark/app/store/service"
 )
 
 func TestImport(t *testing.T) {

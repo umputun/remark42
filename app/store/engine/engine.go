@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	R "github.com/umputun/remark/app/store"
+	"github.com/umputun/remark/app/store"
 )
 
 //go:generate sh -c "mockery -inpkg -name Interface -print > file.tmp && mv file.tmp engine_mock.go"
@@ -19,26 +19,27 @@ type Interface interface {
 
 // Accessor defines all usual access ops avail for regular user
 type Accessor interface {
-	Create(comment R.Comment) (commentID string, err error)                 // create new comment, avoid dups by id
-	Get(locator R.Locator, commentID string) (comment R.Comment, err error) // get comment by id
-	Put(locator R.Locator, comment R.Comment) error                         // update comment, mutable parts only
-	Find(locator R.Locator, sort string) ([]R.Comment, error)               // find comments for locator
-	Last(siteID string, limit int) ([]R.Comment, error)                     // last comments for given site, sorted by time
-	User(siteID string, userID string, limit int) ([]R.Comment, int, error) // comments by user, sorted by time
-	Count(locator R.Locator) (int, error)                                   // number of comments for the post
-	List(siteID string, limit int, skip int) ([]R.PostInfo, error)          // list of commented posts
+	Create(comment store.Comment) (commentID string, err error)                 // create new comment, avoid dups by id
+	Get(locator store.Locator, commentID string) (store.Comment, error)         // get comment by id
+	Put(locator store.Locator, comment store.Comment) error                     // update comment, mutable parts only
+	Find(locator store.Locator, sort string) ([]store.Comment, error)           // find comments for locator
+	Last(siteID string, limit int) ([]store.Comment, error)                     // last comments for given site, sorted by time
+	User(siteID string, userID string, limit int) ([]store.Comment, int, error) // comments by user, sorted by time
+	Count(locator store.Locator) (int, error)                                   // number of comments for the post
+	List(siteID string, limit int, skip int) ([]store.PostInfo, error)          // list of commented posts
 }
 
 // Admin defines all store ops avail for admin only
 type Admin interface {
-	Delete(locator R.Locator, commentID string) error         // delete comment by id
+	Delete(locator store.Locator, commentID string) error     // delete comment by id
 	DeleteAll(siteID string) error                            // delete all data from site
 	SetBlock(siteID string, userID string, status bool) error // block or unblock  user
 	IsBlocked(siteID string, userID string) bool              // check if user blocked
-	Blocked(siteID string) ([]R.BlockedUser, error)           // get list of blocked users
+	Blocked(siteID string) ([]store.BlockedUser, error)       // get list of blocked users
 }
 
-func sortComments(comments []R.Comment, sortFld string) []R.Comment {
+// sortComments is for engines can't sort data internally
+func sortComments(comments []store.Comment, sortFld string) []store.Comment {
 	sort.Slice(comments, func(i, j int) bool {
 		switch sortFld {
 		case "+time", "-time", "time", "+active", "-active", "active":
