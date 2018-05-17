@@ -95,13 +95,16 @@ export default class AuthPanel extends Component {
           <span className="auth-panel__sort">
             Sort by
             {' '}
-            <select className="auth-panel__select" onChange={this.onSortChange}>
-              {
-                sortArray.map(sort => (
-                  <option value={sort.value} selected={sort.selected}>{sort.label}</option>
-                ))
-              }
-            </select>
+            <label className="auth-panel__select-label">
+              {sortArray.find(x => x.selected).label}
+              <select className="auth-panel__select" onChange={this.onSortChange}>
+                {
+                  sortArray.map(sort => (
+                    <option value={sort.value} selected={sort.selected}>{sort.label}</option>
+                  ))
+                }
+              </select>
+            </label>
           </span>
         </div>
       </div>
@@ -126,6 +129,14 @@ function getSortArray(currentSort) {
     {
       value: '+time',
       label: 'Oldest',
+    },
+    {
+      value: '-active',
+      label: 'Recently updated',
+    },
+    {
+      value: '+active',
+      label: 'Least recently updated',
     },
   ];
 
