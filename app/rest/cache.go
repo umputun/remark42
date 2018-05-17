@@ -40,6 +40,8 @@ func NewLoadingCache(options ...CacheOption) LoadingCache {
 		}
 	}
 	res.bytesCache = cache.New(res.defaultExpiration, res.cleanupInterval)
+	log.Printf("[DEBUG] create cache with cleanupInterval=%s, maxKeys=%d, maxValueSize=%d",
+		res.cleanupInterval, res.maxKeys, res.maxValueSize)
 
 	return &res
 }

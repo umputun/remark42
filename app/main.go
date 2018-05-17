@@ -40,6 +40,9 @@ var opts struct {
 	MaxCommentSize int    `long:"max-comment" env:"MAX_COMMENT_SIZE" default:"2048" description:"max comment size"`
 	SecretKey      string `long:"secret" env:"SECRET" required:"true" description:"secret key"`
 
+	MaxCachedItems int `long:"max-cache-items" env:"MAX_CACHE_ITEMS" default:"1000" description:"max cached items"`
+	MaxCachedValue int `long:"max-cache-value" env:"MAX_CACHE_VALUE" default:"65536" description:"max size of cached value"`
+
 	GoogleCID    string `long:"google-cid" env:"REMARK_GOOGLE_CID" description:"Google OAuth client ID"`
 	GoogleCSEC   string `long:"google-csec" env:"REMARK_GOOGLE_CSEC" description:"Google OAuth client secret"`
 	GithubCID    string `long:"github-cid" env:"REMARK_GITHUB_CID" description:"Github OAuth client ID"`
@@ -92,7 +95,8 @@ func main() {
 	}()
 
 	exporter := migrator.Remark{DataStore: &dataService}
-	cache := rest.NewLoadingCache(rest.MaxValueSize(64*1024), rest.MaxKeys(1000), rest.PostFlushFn(postFlushFn))
+	cache := rest.NewLoadingCache(rest.MaxValueSize(opts.MaxCachedValue), rest.MaxKeys(opts.MaxCachedItems),
+		rest.PostFlushFn(postFlushFn))
 
 	activateBackup(&exporter)
 
