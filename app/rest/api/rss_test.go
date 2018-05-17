@@ -16,6 +16,8 @@ func TestServer_RssPost(t *testing.T) {
 	assert.NotNil(t, srv)
 	defer cleanup(srv)
 
+	waitOnMinChange()
+
 	// add one more comment
 	r := strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
 	resp, err := http.Post(fmt.Sprintf("http://dev:password@127.0.0.1:%d/api/v1/comment", port), "application/json", r)
@@ -54,6 +56,8 @@ func TestServer_RssSite(t *testing.T) {
 	srv, port := prep(t)
 	assert.NotNil(t, srv)
 	defer cleanup(srv)
+
+	waitOnMinChange()
 
 	pubDate := time.Now().Format(time.RFC1123Z)
 
@@ -98,6 +102,12 @@ func TestServer_RssSite(t *testing.T) {
 
 	expected, res = cleanRssFormatting(expected, res)
 	assert.Equal(t, expected, res)
+}
+
+func waitOnMinChange() {
+	if time.Now().Second() == 59 {
+		time.Sleep(1001 * time.Millisecond)
+	}
 }
 
 // clean formatting, i.e. multiple spaces, \t, \n
