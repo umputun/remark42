@@ -77,7 +77,14 @@ func (s *Rest) rssSiteCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't get last comments")
 		return
 	}
-	renderJSONFromBytes(w, r, data)
+
+	w.Header().Set("Content-Type", "application/xml; charset=utf-8")
+	if status, ok := r.Context().Value(render.StatusCtxKey).(int); ok {
+		w.WriteHeader(status)
+	}
+	if _, err := w.Write(data); err != nil {
+		log.Printf("[WARN] failed to send response to %s, %s", r.RemoteAddr, err)
+	}
 }
 
 func (s *Rest) toRssFeed(url string, comments []store.Comment) (string, error) {
