@@ -265,7 +265,7 @@ func (s *Rest) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("[DEBUG] get comments for %+v, sort %s, format %s", locator, sort, r.URL.Query().Get("format"))
 
-	data, err := s.Cache.Get(rest.URLKey(r), time.Hour, func() ([]byte, error) {
+	data, err := s.Cache.Get(rest.URLKey(r), 4*time.Hour, func() ([]byte, error) {
 		comments, e := s.DataService.Find(locator, sort)
 		if e != nil {
 			return nil, e
@@ -298,7 +298,7 @@ func (s *Rest) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		limit = 0
 	}
 
-	data, err := s.Cache.Get(rest.URLKey(r), time.Hour, func() ([]byte, error) {
+	data, err := s.Cache.Get(rest.URLKey(r), 4*time.Hour, func() ([]byte, error) {
 		comments, e := s.DataService.Last(r.URL.Query().Get("site"), limit)
 		if e != nil {
 			return nil, e
@@ -351,7 +351,7 @@ func (s *Rest) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[DEBUG] get comments for userID %s, %s", userID, siteID)
 
-	data, err := s.Cache.Get(rest.URLKey(r), time.Hour, func() ([]byte, error) {
+	data, err := s.Cache.Get(rest.URLKey(r), 4*time.Hour, func() ([]byte, error) {
 		comments, count, e := s.DataService.User(siteID, userID, limit)
 		if e != nil {
 			return nil, e

@@ -92,7 +92,7 @@ func main() {
 	}()
 
 	exporter := migrator.Remark{DataStore: &dataService}
-	cache := rest.NewLoadingCache(4*time.Hour, 1*time.Minute, postFlushFn)
+	cache := rest.NewLoadingCache(rest.MaxValueSize(64*1024), rest.MaxKeys(1000), rest.PostFlushFn(postFlushFn))
 
 	activateBackup(&exporter)
 
