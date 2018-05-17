@@ -3,11 +3,13 @@ package rest
 import (
 	"fmt"
 	"net/http"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/umputun/remark/app/store"
 )
 
@@ -124,6 +126,7 @@ func TestLoadingCache_MaxSize(t *testing.T) {
 	assert.Equal(t, "result-big", string(res), "got not cached value")
 
 }
+
 func TestLoadingCache_URLKey(t *testing.T) {
 	r, err := http.NewRequest("GET", "http://blah/123", nil)
 	assert.Nil(t, err)
@@ -139,4 +142,31 @@ func TestLoadingCache_URLKey(t *testing.T) {
 	r = SetUserInfo(r, user)
 	key = URLKey(r)
 	assert.Equal(t, "admin!!http://blah/123?key=v&k2=v2", key)
+}
+
+func TestLoadingCache_Parallel(t *testing.T) {
+	var coldCalls int32
+	lc := NewLoadingCache(CleanupInterval(time.Second))
+
+	res, err := lc.Get("key", time.Minute, func() ([]byte, error) {
+		return []byte("value"), nil
+	})
+	assert.Nil(t, err)
+	assert.Equal(t, "value", string(res))
+
+	wg := sync.WaitGroup{}
+	for i := 0; i < 1000; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			res, err := lc.Get("key", time.Minute, func() ([]byte, error) {
+				atomic.AddInt32(&coldCalls, 1)
+				return []byte(fmt.Sprintf("result-%d", i)), nil
+			})
+			require.Nil(t, err)
+			require.Equal(t, "value", string(res))
+		}()
+	}
+	wg.Wait()
+	assert.Equal(t, int32(0), atomic.LoadInt32(&coldCalls))
 }
