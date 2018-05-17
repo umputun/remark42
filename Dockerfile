@@ -28,8 +28,6 @@ RUN \
 FROM umputun/baseimage:app-latest
 
 WORKDIR /srv
-EXPOSE 8080
-HEALTHCHECK --interval=30s --timeout=3s CMD curl --fail http://localhost:8080/ping || exit 1
 
 ADD scripts/import-disqus.sh /srv/import-disqus.sh
 ADD scripts/restore-backup.sh /srv/restore-backup.sh
@@ -41,6 +39,9 @@ RUN chmod +x /srv/start.sh /srv/import-disqus.sh /srv/restore-backup.sh
 COPY --from=build-backend /go/src/github.com/umputun/remark/remark /srv/
 COPY --from=build-frontend /srv/web/public/ /srv/web
 RUN chown -R umputun:umputun /srv
+
+EXPOSE 8080
+HEALTHCHECK --interval=30s --timeout=3s CMD curl --fail http://localhost:8080/ping || exit 1
 
 CMD ["/srv/start.sh"]
 ENTRYPOINT ["/init.sh"]
