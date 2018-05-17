@@ -37,6 +37,11 @@ type Rest struct {
 	Cache         rest.LoadingCache
 	WebRoot       string
 
+	ScoreThresholds struct {
+		Low      int
+		Critical int
+	}
+
 	httpServer   *http.Server
 	adminService admin
 }
@@ -376,6 +381,8 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		MaxCommentSize int      `json:"max_comment_size"`
 		Admins         []string `json:"admins"`
 		Auth           []string `json:"auth_providers"`
+		LowScore       int      `json:"low_score"`
+		CriticalScore  int      `json:"critical_score"`
 	}
 
 	cnf := config{
@@ -383,6 +390,8 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		EditDuration:   int(s.DataService.EditDuration.Seconds()),
 		MaxCommentSize: s.DataService.MaxCommentSize,
 		Admins:         s.Authenticator.Admins,
+		LowScore:       s.ScoreThresholds.Low,
+		CriticalScore:  s.ScoreThresholds.Critical,
 	}
 	authNames := []string{}
 	for _, ap := range s.Authenticator.Providers {

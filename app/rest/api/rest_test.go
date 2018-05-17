@@ -450,6 +450,8 @@ func TestServer_Config(t *testing.T) {
 	assert.Equal(t, 300., j["edit_duration"])
 	assert.EqualValues(t, []interface{}([]interface{}{"a1", "a2"}), j["admins"])
 	assert.Equal(t, 4000., j["max_comment_size"])
+	assert.Equal(t, -5., j["low_score"])
+	assert.Equal(t, -10., j["critical_score"])
 	t.Logf("%+v", j)
 }
 
@@ -480,6 +482,7 @@ func prep(t *testing.T) (srv *Rest, port int) {
 		Cache:    &mockCache{},
 		WebRoot:  "/tmp",
 	}
+	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = -5, -10
 
 	importSrv := &Import{
 		DisqusImporter: &migrator.Disqus{DataStore: &dataStore},
