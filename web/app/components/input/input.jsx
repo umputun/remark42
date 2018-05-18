@@ -84,7 +84,7 @@ export default class Input extends Component {
     this.setState({ isFieldDisabled: true, isErrorShown: false });
 
     if (mods.mode === 'edit') {
-      api.edit({ text })
+      api.edit({ text, id })
         .then(() => {
           if (this.props.onSubmit) {
             this.props.onSubmit({ id });
