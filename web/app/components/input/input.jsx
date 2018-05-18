@@ -141,7 +141,7 @@ export default class Input extends Component {
           <textarea
             className="input__field"
             placeholder="Your comment here"
-            defaultValue={'asdasdasdas'}
+            defaultValue={value}
             maxLength={maxLength}
             onInput={this.onInput}
             onKeyDown={this.onKeyDown}
