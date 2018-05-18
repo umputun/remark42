@@ -240,7 +240,7 @@ func (s *Rest) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	id := chi.URLParam(r, "id")
 
-	log.Printf("[DEBUG] update comment %s, %+v", id, edit)
+	log.Printf("[DEBUG] update comment %s", id)
 
 	var currComment store.Comment
 	if currComment, err = s.DataService.Get(locator, id); err != nil {
