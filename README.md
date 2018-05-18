@@ -50,11 +50,12 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 | --github-csec     | REMARK_GITHUB_CSEC   |                        | no               | Github OAuth client secret              |
 | --low-score       | LOW_SCORE            | `-5`                   | no               | Low score threshold                     |
 | --critical-score  | CRITICAL_SCORE       | `-10`                  | no               | Critical score threshold                |
+| --img-proxy       | IMG_PROXY            | `false`                | no               | Enable http->https proxy for images     |
 | --dbg             | DEBUG                | `false`                | no               | debug mode                              |
 | --dev-password    | DEV_PASSWD           |                        | no               | password for `dev` user                 |
 
 
-**User has to provide secret key, can be any long and hard-to-guess string.**
+**user has to provide secret key, can be any long and hard-to-guess string.**
 
 _all multi parameters separated by `,` in environment or repeated with command line key, like `--site=s1 --site=s2 ...`_
 
