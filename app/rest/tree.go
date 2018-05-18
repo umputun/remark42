@@ -20,9 +20,10 @@ type Node struct {
 	ts      time.Time
 }
 
-// timeStamp wraps time.Time to simplify pointer ops
-type timeStamp struct {
-	time.Time
+// recurData wraps all fileds used in recursive processing as intermediate results
+type recurData struct {
+	ts      time.Time
+	visible bool
 }
 
 // MakeTree gets unsorted list of comments and produces Tree
@@ -34,9 +35,10 @@ func MakeTree(comments []store.Comment, sortType string) *Tree {
 	for _, rootComment := range topComments {
 		node := Node{Comment: rootComment}
 
-		ts := timeStamp{}
-		commentsTree, t := res.proc(comments, &node, &ts, rootComment.ID)
-		if rootComment.Deleted && len(commentsTree.Replies) == 0 { // skip deleted with no subcomments
+		rd := recurData{}
+		commentsTree, t := res.proc(comments, &node, &rd, rootComment.ID)
+		// skip deleted with no sub-comments ar all sub-comments deleted
+		if rootComment.Deleted && (len(commentsTree.Replies) == 0 || !rd.visible) {
 			continue
 		}
 		commentsTree.ts = t
@@ -48,26 +50,29 @@ func MakeTree(comments []store.Comment, sortType string) *Tree {
 }
 
 // proc makes tree for one top-level comment recursively
-func (t *Tree) proc(comments []store.Comment, node *Node, ts *timeStamp, parentID string) (*Node, time.Time) {
+func (t *Tree) proc(comments []store.Comment, node *Node, rd *recurData, parentID string) (*Node, time.Time) {
 
-	if ts.IsZero() {
-		ts.Time = node.Comment.Timestamp
+	if rd.ts.IsZero() {
+		rd.ts = node.Comment.Timestamp
 	}
 
 	repComments := t.filter(comments, parentID)
 	for _, rc := range repComments {
-		if rc.Timestamp.After(ts.Time) {
-			ts.Time = rc.Timestamp
+		if rc.Timestamp.After(rd.ts) {
+			rd.ts = rc.Timestamp
+		}
+		if !rc.Deleted {
+			rd.visible = true
 		}
 		rnode := &Node{Comment: rc, Replies: []*Node{}}
 		node.Replies = append(node.Replies, rnode)
-		t.proc(comments, rnode, ts, rc.ID)
+		t.proc(comments, rnode, rd, rc.ID)
 	}
 	// replies always sorted by time
 	sort.Slice(node.Replies, func(i, j int) bool {
 		return node.Replies[i].Comment.Timestamp.Before(node.Replies[j].Comment.Timestamp)
 	})
-	return node, ts.Time
+	return node, rd.ts
 }
 
 // filter returns comments for parentID

@@ -29,6 +29,10 @@ func TestMakeTree(t *testing.T) {
 		{ID: "4", Timestamp: time.Date(2017, 12, 25, 19, 47, 22, 0, time.UTC)},
 		{ID: "3", Timestamp: time.Date(2017, 12, 25, 19, 47, 22, 0, time.UTC)},
 		{ID: "5", Deleted: true},
+		{ID: "6", Deleted: true},
+		{ID: "61", ParentID: "6", Deleted: true},
+		{ID: "62", ParentID: "6", Deleted: true},
+		{ID: "611", ParentID: "61", Deleted: true},
 	}
 
 	res := MakeTree(comments, "time")
