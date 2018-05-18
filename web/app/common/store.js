@@ -31,10 +31,12 @@ class Store {
   }
 
   addComment(comment) {
+    const newComment = { comment };
+
     if (comment.pid) {
-      this.pasteReply(comment);
+      this.pasteReply(newComment);
     } else {
-      this.pasteComment(comment);
+      this.pasteComment(newComment);
     }
   }
 
