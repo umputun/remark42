@@ -26,6 +26,7 @@ export default class Comment extends Component {
     this.toggleCollapse = this.toggleCollapse.bind(this);
     this.toggleUserIdVisibility = this.toggleUserIdVisibility.bind(this);
     this.scrollToParent = this.scrollToParent.bind(this);
+    this.onEdit = this.onEdit.bind(this);
     this.onReply = this.onReply.bind(this);
     this.onPinClick = this.onPinClick.bind(this);
     this.onUnpinClick = this.onUnpinClick.bind(this);
