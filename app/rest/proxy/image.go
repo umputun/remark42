@@ -54,7 +54,11 @@ func (p Image) Routes() chi.Router {
 			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get image "+string(src))
 			return
 		}
-		defer resp.Body.Close()
+		defer func() {
+			if e := resp.Body.Close(); e != nil {
+				log.Printf("[WARN] can't close body, %s", e)
+			}
+		}()
 
 		for k, v := range resp.Header {
 			if strings.EqualFold(k, "Content-Type") {
@@ -74,7 +78,9 @@ func (p Image) Routes() chi.Router {
 				return
 			}
 		}
-		io.Copy(w, resp.Body)
+		if _, e := io.Copy(w, resp.Body); e != nil {
+			log.Printf("[WARN] can't copy image stream, %s", e)
+		}
 	})
 	return router
 }
