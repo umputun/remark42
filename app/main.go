@@ -39,7 +39,7 @@ var opts struct {
 	AvatarStore    string `long:"avatars" env:"AVATAR_STORE" default:"./var/avatars" description:"avatars location"`
 	MaxCommentSize int    `long:"max-comment" env:"MAX_COMMENT_SIZE" default:"2048" description:"max comment size"`
 	SecretKey      string `long:"secret" env:"SECRET" required:"true" description:"secret key"`
-	EnableProxy    bool   `long:"proxy" env:"PROXY" description:"enable proxy"`
+	ImageProxy     bool   `long:"img-proxy" env:"IMG_PROXY" description:"enable image proxy"`
 	MaxCachedItems int    `long:"max-cache-items" env:"MAX_CACHE_ITEMS" default:"1000" description:"max cached items"`
 	MaxCachedValue int    `long:"max-cache-value" env:"MAX_CACHE_VALUE" default:"65536" description:"max size of cached value"`
 
@@ -123,7 +123,7 @@ func main() {
 		DataService: dataService,
 		Exporter:    &exporter,
 		WebRoot:     opts.WebRoot,
-		ImageProxy:  proxy.Image{Enabled: opts.EnableProxy, RoutePath: "/img"},
+		ImageProxy:  proxy.Image{Enabled: opts.ImageProxy, RoutePath: "/img"},
 		Authenticator: auth.Authenticator{
 			Admins:       opts.Admins,
 			SessionStore: sessionStore,
