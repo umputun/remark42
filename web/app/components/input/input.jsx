@@ -29,11 +29,17 @@ export default class Input extends Component {
   }
 
   componentDidMount() {
+    const { mods = {} } = this.props;
+
     if (this.props.autoFocus) {
       this.fieldNode.focus();
     }
 
-    this.fieldNode.value = '';
+    if (mods.mode !== 'edit') {
+      this.fieldNode.value = '';
+    } else {
+      this.autoResize();
+    }
 
     store.onUpdate('config', config => {
       this.setState({ maxLength: config && config.max_comment_size || DEFAULT_MAX_COMMENT_SIZE });
@@ -69,7 +75,7 @@ export default class Input extends Component {
 
   send(e) {
     const text = this.fieldNode.value;
-    const pid = this.props.pid;
+    const { mods = {}, pid, id } = this.props;
 
     if (e) e.preventDefault();
 
@@ -77,21 +83,38 @@ export default class Input extends Component {
 
     this.setState({ isFieldDisabled: true, isErrorShown: false });
 
-    api.send({ text, ...(pid ? { pid } : {}) })
-      .then(({ id }) => {
-        // TODO: maybe we should run onsubmit before send; like in optimistic ui
-        if (this.props.onSubmit) {
-          this.props.onSubmit({ text, id, pid });
-        }
+    if (mods.mode === 'edit') {
+      api.edit({ text })
+        .then(() => {
+          if (this.props.onSubmit) {
+            this.props.onSubmit({ id });
+          }
 
-        this.fieldNode.value = '';
-        this.fieldNode.style.height = '';
-        this.setState({ preview: null });
-      })
-      .catch(() => {
-        this.setState({ isErrorShown: true });
-      })
-      .finally(() => this.setState({ isFieldDisabled: false }));
+          this.fieldNode.value = '';
+          this.fieldNode.style.height = '';
+          this.setState({ preview: null });
+        })
+        .catch(() => {
+          this.setState({ isErrorShown: true });
+        })
+        .finally(() => this.setState({ isFieldDisabled: false }));
+    } else {
+      api.send({ text, ...(pid ? { pid } : {}) })
+        .then(({ id }) => {
+          // TODO: maybe we should run onsubmit before send; like in optimistic ui
+          if (this.props.onSubmit) {
+            this.props.onSubmit({ text, id, pid });
+          }
+
+          this.fieldNode.value = '';
+          this.fieldNode.style.height = '';
+          this.setState({ preview: null });
+        })
+        .catch(() => {
+          this.setState({ isErrorShown: true });
+        })
+        .finally(() => this.setState({ isFieldDisabled: false }));
+    }
   }
 
   getPreview() {
@@ -110,7 +133,9 @@ export default class Input extends Component {
 
   render(props, { isFieldDisabled, isErrorShown, preview, maxLength, commentLength }) {
     const charactersLeft = maxLength - commentLength;
-    const { mods = {} } = props;
+    const { mods = {}, value = null } = props;
+
+    console.log(value)
 
     return (
       <form className={b('input', props)} onSubmit={this.send} role="form" aria-label="New comment">
@@ -118,6 +143,7 @@ export default class Input extends Component {
           <textarea
             className="input__field"
             placeholder="Your comment here"
+            value={value}
             maxLength={maxLength}
             onInput={this.onInput}
             onKeyDown={this.onKeyDown}
