@@ -95,7 +95,7 @@ export default class Comment extends Component {
     const { isReplying } = this.state;
     const onPrevInputToggleCb = store.get('onPrevInputToggleCb');
 
-    this.setState({ isReplying: !isReplying });
+    this.setState({ isEditing: false }, () => this.setState({ isReplying: !isReplying }));
 
     if (onPrevInputToggleCb) onPrevInputToggleCb();
 
@@ -110,7 +110,7 @@ export default class Comment extends Component {
     const { isEditing } = this.state;
     const onPrevInputToggleCb = store.get('onPrevInputToggleCb');
 
-    this.setState({ isEditing: !isEditing });
+    this.setState({ isReplying: false }, () => this.setState({ isEditing: !isEditing }));
 
     if (onPrevInputToggleCb) onPrevInputToggleCb();
 
