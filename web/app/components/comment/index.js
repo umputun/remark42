@@ -6,6 +6,7 @@ require('./comment.scss');
 
 require('./__action/comment__action.scss');
 require('./__action/_type/_collapse/comment__action_type_collapse.scss');
+require('./__action/_type/_edit/comment__action_type_edit.scss');
 
 require('./__avatar/comment__avatar.scss');
 require('./__avatar/_default/comment__avatar_default.scss');
@@ -34,6 +35,7 @@ require('./__vote/_type/_down/comment__vote_type_down.scss');
 require('./__vote/_type/_up/comment__vote_type_up.scss');
 
 require('./_level/comment_level.scss');
+require('./_editing/comment_editing.scss');
 require('./_replying/comment_replying.scss');
 require('./_useless/comment_useless.scss');
 

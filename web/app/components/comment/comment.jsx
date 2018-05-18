@@ -12,7 +12,8 @@ export default class Comment extends Component {
     super(props);
 
     this.state = {
-      isInputVisible: false,
+      isReplying: false,
+      isEditing: false,
       isUserIdVisible: false,
     };
 
@@ -20,7 +21,8 @@ export default class Comment extends Component {
 
     this.decreaseScore = this.decreaseScore.bind(this);
     this.increaseScore = this.increaseScore.bind(this);
-    this.toggleInputVisibility = this.toggleInputVisibility.bind(this);
+    this.toggleEditing = this.toggleEditing.bind(this);
+    this.toggleReplying = this.toggleReplying.bind(this);
     this.toggleCollapse = this.toggleCollapse.bind(this);
     this.toggleUserIdVisibility = this.toggleUserIdVisibility.bind(this);
     this.scrollToParent = this.scrollToParent.bind(this);
@@ -63,18 +65,33 @@ export default class Comment extends Component {
     }
   }
 
-  toggleInputVisibility() {
-    const { isInputVisible } = this.state;
-    const onPrevReplyCb = store.get('onPrevReplyCb');
+  toggleReplying() {
+    const { isReplying } = this.state;
+    const onPrevInputToggleCb = store.get('onPrevInputToggleCb');
 
-    this.setState({ isInputVisible: !isInputVisible });
+    this.setState({ isReplying: !isReplying });
 
-    if (onPrevReplyCb) onPrevReplyCb();
+    if (onPrevInputToggleCb) onPrevInputToggleCb();
 
-    if (!isInputVisible) {
-      store.set('onPrevReplyCb', () => this.setState({ isInputVisible: false }));
+    if (!isReplying) {
+      store.set('onPrevInputToggleCb', () => this.setState({ isReplying: false }));
     } else {
-      store.set('onPrevReplyCb', null);
+      store.set('onPrevInputToggleCb', null);
+    }
+  }
+
+  toggleEditing() {
+    const { isEditing } = this.state;
+    const onPrevInputToggleCb = store.get('onPrevInputToggleCb');
+
+    this.setState({ isEditing: !isEditing });
+
+    if (onPrevInputToggleCb) onPrevInputToggleCb();
+
+    if (!isEditing) {
+      store.set('onPrevInputToggleCb', () => this.setState({ isEditing: false }));
+    } else {
+      store.set('onPrevInputToggleCb', null);
     }
   }
 
@@ -180,7 +197,15 @@ export default class Comment extends Component {
     this.props.onReply(...rest);
 
     this.setState({
-      isInputVisible: false,
+      isReplying: false,
+    });
+  }
+
+  onEdit(...rest) {
+    this.props.onEdit(...rest);
+
+    this.setState({
+      isEditing: false,
     });
   }
 
@@ -202,7 +227,7 @@ export default class Comment extends Component {
     }
   }
 
-  render(props, { guest, isUserIdVisible, userBlocked, pinned, score, scoreIncreased, scoreDecreased, deleted, isInputVisible }) {
+  render(props, { guest, isUserIdVisible, userBlocked, pinned, score, scoreIncreased, scoreDecreased, deleted, isReplying, isEditing }) {
     const { data, mods = {} } = props;
     const isAdmin = !guest && store.get('user').admin;
     const isGuest = guest || !Object.keys(store.get('user')).length;
@@ -240,7 +265,8 @@ export default class Comment extends Component {
       useless: userBlocked || deleted || (score <= USELESS_COMMENT_SCORE && !mods.pinned && !mods.disabled),
       // TODO: add default view mod or don't?
       view: o.user.admin ? 'admin' : null,
-      replying: isInputVisible,
+      replying: isReplying,
+      editing: isEditing,
     };
 
     if (mods.view === 'preview') {
@@ -344,8 +370,19 @@ export default class Comment extends Component {
                   className="comment__action"
                   role="button"
                   tabIndex="0"
-                  onClick={this.toggleInputVisibility}
-                >{isInputVisible ? 'Cancel' : 'Reply'}</span>
+                  onClick={this.toggleReplying}
+                >{isReplying ? 'Cancel' : 'Reply'}</span>
+              )
+            }
+
+            {
+              !deleted && !mods.disabled && !!o.orig && isCurrentUser && (
+                <span
+                  className="comment__action comment__action_type_edit"
+                  role="button"
+                  tabIndex="0"
+                  onClick={this.toggleEditing}
+                >{isEditing ? 'Cancel' : 'Edit'}</span>
               )
             }
 
@@ -423,12 +460,26 @@ export default class Comment extends Component {
         </div>
 
         {
-          isInputVisible && (
+          isReplying && (
             <Input
               mix="comment__input"
               onSubmit={this.onReply}
-              onCancel={this.toggleInputVisibility}
+              onCancel={this.toggleReplying}
               pid={o.id}
+              autoFocus
+            />
+          )
+        }
+
+        {
+          isEditing && (
+            <Input
+              mix="comment__input"
+              mods={{ mode: 'edit' }}
+              onSubmit={this.onEdit}
+              onCancel={this.toggleReplying}
+              id={o.id}
+              value={o.orig}
               autoFocus
             />
           )
