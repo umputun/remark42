@@ -51,25 +51,27 @@ export default class Root extends Component {
 
   componentDidMount() {
     const { sort } = this.state;
-    api.getConfig().then(config => {
-          store.set('config', config);
-          this.setState({ config });
-    });
-    Promise.all([
-        api.getUser()
-            .then(data => store.set('user', data))
-            .catch(() => store.set('user', {})),
-        api.find({ sort, url })
-            .then(({ comments = [] } = {}) => store.set('comments', comments))
-            .catch(() => store.set('comments', [])),
-    ]).finally(() => {
-        this.setState({
-            isLoaded: true,
-            user: store.get('user'),
-        });
 
-        setTimeout(this.checkUrlHash);
-    })
+    api.getConfig().then(config => {
+      store.set('config', config);
+      this.setState({ config });
+    });
+
+    Promise.all([
+      api.getUser()
+        .then(data => store.set('user', data))
+        .catch(() => store.set('user', {})),
+      api.find({ sort, url })
+        .then(({ comments = [] } = {}) => store.set('comments', comments))
+        .catch(() => store.set('comments', [])),
+    ]).finally(() => {
+      this.setState({
+        isLoaded: true,
+        user: store.get('user'),
+      });
+
+      setTimeout(this.checkUrlHash);
+    });
   }
 
   checkUrlHash() {
