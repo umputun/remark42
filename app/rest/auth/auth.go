@@ -61,20 +61,7 @@ func (a *Authenticator) Auth(reqAuth bool) func(http.Handler) http.Handler {
 				return
 			}
 
-			xsrfError := func() error {
-				xsrfToken := r.Header.Get("X-XSRF-TOKEN")
-				sessionToken, headerOk := session.Values["xsrf_token"]
-				if !headerOk || xsrfToken == "" || sessionToken == nil {
-					return errors.New(" no xsrf_token in session")
-				}
-
-				if xsrfToken != sessionToken {
-					return errors.Errorf("xsrf header not matched session token, %q != %q", xsrfToken, sessionToken)
-				}
-				return nil
-			}()
-
-			if xsrfError != nil {
+			if xsrfError := a.checkXsrf(r, session); xsrfError != nil {
 				if reqAuth {
 					log.Printf("[WARN] %s", xsrfError.Error())
 					http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -100,6 +87,19 @@ func (a *Authenticator) Auth(reqAuth bool) func(http.Handler) http.Handler {
 		return http.HandlerFunc(fn)
 	}
 	return f
+}
+
+func (a *Authenticator) checkXsrf(r *http.Request, session *sessions.Session) error {
+	xsrfToken := r.Header.Get("X-XSRF-TOKEN")
+	sessionToken, headerOk := session.Values["xsrf_token"]
+	if !headerOk || xsrfToken == "" || sessionToken == nil {
+		return errors.New(" no xsrf_token in session")
+	}
+
+	if xsrfToken != sessionToken {
+		return errors.Errorf("xsrf header not matched session token, %q != %q", xsrfToken, sessionToken)
+	}
+	return nil
 }
 
 // AdminOnly allows access to admins
