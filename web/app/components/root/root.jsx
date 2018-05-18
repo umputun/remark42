@@ -33,6 +33,8 @@ export default class Root extends Component {
       sort,
     };
 
+    this.addComment = this.addComment.bind(this);
+    this.replaceComment = this.replaceComment.bind(this);
     this.onSignIn = this.onSignIn.bind(this);
     this.onSignOut = this.onSignOut.bind(this);
     this.onBlockedUsersShow = this.onBlockedUsersShow.bind(this);
@@ -156,6 +158,14 @@ export default class Root extends Component {
     this.setState({ wasSomeoneUnblocked: true });
   }
 
+  addComment(comment) {
+    store.addComment(comment);
+  }
+
+  replaceComment(comment) {
+    store.replaceComment(comment);
+  }
+
   render({}, { config = {}, comments = [], user, sort, isLoaded, isBlockedVisible, isCommentsListLoading, bannedUsers }) {
     if (!isLoaded) {
       return (
@@ -193,7 +203,7 @@ export default class Root extends Component {
                     <Input
                       mix="root__input"
                       mods={{ type: 'main' }}
-                      onSubmit={store.addComment}
+                      onSubmit={this.addComment}
                     />
                   )
                 }
@@ -223,8 +233,8 @@ export default class Root extends Component {
                             mix="root__thread"
                             mods={{ level: 0 }}
                             data={thread}
-                            onReply={store.addComment}
-                            onEdit={store.replaceComment}
+                            onReply={this.addComment}
+                            onEdit={this.replaceComment}
                           />
                         ))
                       }
