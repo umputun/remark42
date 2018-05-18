@@ -259,7 +259,7 @@ export default class Comment extends Component {
     const isGuest = guest || !Object.keys(store.get('user')).length;
     const isCurrentUser = (data.user && data.user.id) === (store.get('user') && store.get('user').id);
     const config = store.get('config') || {};
-    const criticalCommentScore = config.critical_score;
+    const lowCommentScore = config.low_score;
 
     const o = {
       ...data,
@@ -290,8 +290,8 @@ export default class Comment extends Component {
 
     const defaultMods = {
       pinned,
-      // TODO: we also have low_score, so we need to collapse comments on critical score in future
-      useless: userBlocked || deleted || (score <= criticalCommentScore && !mods.pinned && !mods.disabled),
+      // TODO: we also have critical_score, so we need to collapse comments with it in future
+      useless: userBlocked || deleted || (score <= lowCommentScore && !mods.pinned && !mods.disabled),
       // TODO: add default view mod or don't?
       view: o.user.admin ? 'admin' : null,
       replying: isReplying,
