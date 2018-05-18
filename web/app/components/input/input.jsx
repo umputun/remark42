@@ -46,6 +46,13 @@ export default class Input extends Component {
     });
   }
 
+  shouldComponentUpdate(nextProps) {
+    return nextProps.id !== this.props.id
+      || nextProps.pid !== this.props.pid
+      || nextProps.value !== this.props.value
+      || nextProps.errorMessage !== this.props.errorMessage;
+  }
+
   onKeyDown(e) {
     // send on cmd+enter / ctrl+enter
     if (e.keyCode === 13 && (e.metaKey || e.ctrlKey)) {
