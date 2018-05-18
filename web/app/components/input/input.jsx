@@ -85,9 +85,9 @@ export default class Input extends Component {
 
     if (mods.mode === 'edit') {
       api.edit({ text, id })
-        .then(() => {
+        .then(comment => {
           if (this.props.onSubmit) {
-            this.props.onSubmit({ id });
+            this.props.onSubmit(comment);
           }
 
           this.fieldNode.value = '';

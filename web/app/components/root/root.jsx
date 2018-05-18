@@ -167,11 +167,9 @@ export default class Root extends Component {
     });
   }
 
-  editComment(data) {
-    api.getComment({ id: data.id }).then(comment => {
-      store.replaceComment(comment);
-      this.setState({ comments: store.get('comments') });
-    });
+  editComment(comment) {
+    store.replaceComment(comment);
+    this.setState({ comments: store.get('comments') });
   }
 
   render({}, { config = {}, comments = [], user, sort, isLoaded, isBlockedVisible, isCommentsListLoading, bannedUsers }) {
