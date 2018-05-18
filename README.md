@@ -52,7 +52,7 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 | --critical-score  | CRITICAL_SCORE       | `-10`                  | no               | Critical score threshold                |
 | --img-proxy       | IMG_PROXY            | `false`                | no               | Enable http->https proxy for images     |
 | --dbg             | DEBUG                | `false`                | no               | debug mode                              |
-| --dev-password    | DEV_PASSWD           |                        | no               | password for `dev` user                 |
+| --dev-passwd      | DEV_PASSWD           |                        | no               | password for `dev` user                 |
 
 
 **user has to provide secret key, can be any long and hard-to-guess string.**
