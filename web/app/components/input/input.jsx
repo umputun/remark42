@@ -95,38 +95,24 @@ export default class Input extends Component {
 
     this.setState({ isFieldDisabled: true, isErrorShown: false });
 
-    if (mods.mode === 'edit') {
-      api.edit({ text, id })
-        .then(comment => {
-          if (this.props.onSubmit) {
-            this.props.onSubmit(comment);
-          }
+    const request = mods.mode === 'edit'
+      ? api.edit({ text, id })
+      : api.send({ text, ...(pid ? { pid } : {}) });
 
-          this.fieldNode.value = '';
-          this.fieldNode.style.height = '';
-          this.setState({ preview: null });
-        })
-        .catch(() => {
-          this.setState({ isErrorShown: true });
-        })
-        .finally(() => this.setState({ isFieldDisabled: false }));
-    } else {
-      api.send({ text, ...(pid ? { pid } : {}) })
-        .then(({ id }) => {
-          // TODO: maybe we should run onsubmit before send; like in optimistic ui
-          if (this.props.onSubmit) {
-            this.props.onSubmit({ text, id, pid });
-          }
+    request
+      .then(comment => {
+        if (this.props.onSubmit) {
+          this.props.onSubmit(comment);
+        }
 
-          this.fieldNode.value = '';
-          this.fieldNode.style.height = '';
-          this.setState({ preview: null });
-        })
-        .catch(() => {
-          this.setState({ isErrorShown: true });
-        })
-        .finally(() => this.setState({ isFieldDisabled: false }));
-    }
+        this.fieldNode.value = '';
+        this.fieldNode.style.height = '';
+        this.setState({ preview: null });
+      })
+      .catch(() => {
+        this.setState({ isErrorShown: true });
+      })
+      .finally(() => this.setState({ isFieldDisabled: false }));
   }
 
   getPreview() {

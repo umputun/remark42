@@ -33,7 +33,7 @@ export default class Root extends Component {
       sort,
     };
 
-    this.addComment = this.addComment.bind(this);
+    this.replaceComment = this.replaceComment.bind(this);
     this.onSignIn = this.onSignIn.bind(this);
     this.onSignOut = this.onSignOut.bind(this);
     this.onBlockedUsersShow = this.onBlockedUsersShow.bind(this);
@@ -157,17 +157,7 @@ export default class Root extends Component {
     this.setState({ wasSomeoneUnblocked: true });
   }
 
-  addComment(data) {
-    store.addComment(data);
-    this.setState({ comments: store.get('comments') });
-
-    api.getComment({ id: data.id }).then(comment => {
-      store.replaceComment(comment);
-      this.setState({ comments: store.get('comments') });
-    });
-  }
-
-  editComment(comment) {
+  replaceComment(comment) {
     store.replaceComment(comment);
     this.setState({ comments: store.get('comments') });
   }
@@ -209,7 +199,7 @@ export default class Root extends Component {
                     <Input
                       mix="root__input"
                       mods={{ type: 'main' }}
-                      onSubmit={this.addComment}
+                      onSubmit={this.replaceComment}
                     />
                   )
                 }
@@ -239,8 +229,8 @@ export default class Root extends Component {
                             mix="root__thread"
                             mods={{ level: 0 }}
                             data={thread}
-                            onReply={this.addComment}
-                            onEdit={this.editComment}
+                            onReply={this.replaceComment}
+                            onEdit={this.replaceComment}
                           />
                         ))
                       }
