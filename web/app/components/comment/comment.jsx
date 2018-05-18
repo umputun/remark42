@@ -15,6 +15,7 @@ export default class Comment extends Component {
       isReplying: false,
       isEditing: false,
       isUserIdVisible: false,
+      editTimeLeft: null,
     };
 
     this.updateState(props);
@@ -40,10 +41,15 @@ export default class Comment extends Component {
   }
 
   updateState(props) {
-    const { data, data: { user: { block }, pin }, mods: { guest } = {} } = props;
+    const { data, data: { user: { block, id: commentUserId }, pin }, mods: { guest } = {} } = props;
 
     const votes = data && data.votes || [];
     const score = data && data.score || 0;
+
+    if (this.editTimerInterval) {
+      clearInterval(this.editTimerInterval);
+      this.editTimerInterval = null;
+    }
 
     if (guest) {
       this.setState({
@@ -63,6 +69,25 @@ export default class Comment extends Component {
         scoreIncreased: userId in votes && votes[userId],
         scoreDecreased: userId in votes && !votes[userId],
       });
+
+      if (userId === commentUserId) {
+        const editDuration = store.get('config') && store.get('config').edit_duration;
+        const getEditTimeLeft = () => Math.floor(editDuration - (new Date() - new Date(data.time)) / 1000);
+
+        if (getEditTimeLeft() > 0) {
+          this.editTimerInterval = setInterval(() => {
+            const editTimeLeft = getEditTimeLeft();
+
+            if (editTimeLeft < 0) {
+              clearInterval(this.editTimerInterval);
+              this.editTimerInterval = null;
+              this.setState({ editTimeLeft: null });
+            } else {
+              this.setState({ editTimeLeft });
+            }
+          }, 1000);
+        }
+      }
     }
   }
 
@@ -228,12 +253,13 @@ export default class Comment extends Component {
     }
   }
 
-  render(props, { guest, isUserIdVisible, userBlocked, pinned, score, scoreIncreased, scoreDecreased, deleted, isReplying, isEditing }) {
+  render(props, { guest, isUserIdVisible, userBlocked, pinned, score, scoreIncreased, scoreDecreased, deleted, isReplying, isEditing, editTimeLeft }) {
     const { data, mods = {} } = props;
     const isAdmin = !guest && store.get('user').admin;
     const isGuest = guest || !Object.keys(store.get('user')).length;
     const isCurrentUser = (data.user && data.user.id) === (store.get('user') && store.get('user').id);
-    const criticalCommentScore = store.get('config') && store.get('config').critical_score;
+    const config = store.get('config') || {};
+    const criticalCommentScore = config.critical_score;
 
     const o = {
       ...data,
@@ -379,13 +405,13 @@ export default class Comment extends Component {
             }
 
             {
-              !deleted && !mods.disabled && !!o.orig && isCurrentUser && (
+              !deleted && !mods.disabled && !!o.orig && isCurrentUser && (!!editTimeLeft || isEditing) && (
                 <span
                   className="comment__action comment__action_type_edit"
                   role="button"
                   tabIndex="0"
                   onClick={this.toggleEditing}
-                >{isEditing ? 'Cancel' : 'Edit'}</span>
+                >{isEditing ? 'Cancel' : 'Edit'}{editTimeLeft && ` (${editTimeLeft})`}</span>
               )
             }
 
@@ -483,6 +509,7 @@ export default class Comment extends Component {
               onCancel={this.toggleEditing}
               id={o.id}
               value={o.orig}
+              errorMessage={!editTimeLeft && 'Editing time has expired.'}
               autoFocus
             />
           )

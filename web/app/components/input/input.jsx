@@ -133,7 +133,7 @@ export default class Input extends Component {
 
   render(props, { isFieldDisabled, isErrorShown, preview, maxLength, commentLength }) {
     const charactersLeft = maxLength - commentLength;
-    const { mods = {}, value = null } = props;
+    const { mods = {}, value = null, errorMessage } = props;
 
     return (
       <form className={b('input', props)} onSubmit={this.send} role="form" aria-label="New comment">
@@ -157,7 +157,11 @@ export default class Input extends Component {
         </div>
 
         {
-          isErrorShown && <p className="input__error" role="alert">Something went wrong. Please try again a bit later.</p>
+          (isErrorShown || !!errorMessage) && (
+            <p className="input__error" role="alert">
+              {errorMessage || 'Something went wrong. Please try again a bit later.'}
+            </p>
+          )
         }
 
         <div className="input__actions">
