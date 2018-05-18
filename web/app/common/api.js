@@ -41,7 +41,7 @@ export const send = ({ text, pid }) => fetcher.post({
 });
 
 export const edit = ({ text, id }) => fetcher.put({
-  url: `/comment/${id}`,
+  url: `/comment/${id}?url=${url}`,
   body: {
     text,
   },
