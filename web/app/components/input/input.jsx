@@ -1,9 +1,13 @@
 import { h, Component } from 'preact';
 
-import { DEFAULT_MAX_COMMENT_SIZE } from 'common/constants';
+import { BASE_URL, API_BASE, DEFAULT_MAX_COMMENT_SIZE } from 'common/constants';
+import { siteId, url } from 'common/settings';
 
 import api from 'common/api';
 import store from 'common/store';
+
+const RSS_THREAD_URL = `${BASE_URL}${API_BASE}/rss/post?site=${siteId}&url=${url}`;
+const RSS_SITE_URL = `${BASE_URL}${API_BASE}/rss/site?site=${siteId}`;
 
 export default class Input extends Component {
   constructor(props) {
@@ -131,7 +135,7 @@ export default class Input extends Component {
           isErrorShown && <p className="input__error" role="alert">Something went wrong. Please try again a bit later.</p>
         }
 
-        <div className="input__buttons">
+        <div className="input__actions">
           <button
             className={b('input__button', {}, { type: 'preview' })}
             type="button"
@@ -142,6 +146,17 @@ export default class Input extends Component {
             className={b('input__button', {}, { type: 'send' })}
             type="submit"
           >Send</button>
+
+          <div className="input__rss">
+            Subscribe to&nbsp;this
+            {' '}
+            <a className="input__rss-link" href={RSS_THREAD_URL} target="_blank">Thread</a>
+            {' '}
+            or&nbsp;
+            <a className="input__rss-link" href={RSS_SITE_URL} target="_blank">Site</a>
+            {' '}
+            by&nbsp;RSS
+          </div>
         </div>
 
         {
