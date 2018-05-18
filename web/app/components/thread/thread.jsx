@@ -31,6 +31,7 @@ export default class Thread extends Component {
           data={comment}
           mods={{ level: mods.level, collapsed, collapsible: !!replies.length }}
           onReply={props.onReply}
+          onEdit={props.onEdit}
           onCollapseToggle={this.onCollapseToggle}
         />
 
@@ -40,6 +41,7 @@ export default class Thread extends Component {
               data={thread}
               mods={{ level: mods.level < 5 ? mods.level + 1 : mods.level }}
               onReply={props.onReply}
+              onEdit={props.onEdit}
             />
           ))
         }
