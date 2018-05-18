@@ -15,6 +15,9 @@ import (
 
 const maxRssItems = 20
 
+// ui uses links like <post-url>#remark42__comment-<comment-id>
+const uiNav = "#remark42__comment-"
+
 func (s *Rest) rssRoutes() chi.Router {
 	router := chi.NewRouter()
 	router.Get("/post", s.rssPostCommentsCtrl)
@@ -105,7 +108,7 @@ func (s *Rest) toRssFeed(url string, comments []store.Comment) (string, error) {
 	for i, c := range comments {
 		f := feeds.Item{
 			Title:       c.User.Name,
-			Link:        &feeds.Link{Href: c.Locator.URL},
+			Link:        &feeds.Link{Href: c.Locator.URL + uiNav + c.ID},
 			Description: c.Text,
 			Created:     c.Timestamp,
 			Author:      &feeds.Author{Name: c.User.Name},
