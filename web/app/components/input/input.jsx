@@ -51,11 +51,12 @@ export default class Input extends Component {
     this.fieldNode.value = '';
   }
 
-  shouldComponentUpdate(nextProps) {
+  shouldComponentUpdate(nextProps, nextState) {
     return nextProps.id !== this.props.id
       || nextProps.pid !== this.props.pid
       || nextProps.value !== this.props.value
-      || nextProps.errorMessage !== this.props.errorMessage;
+      || nextProps.errorMessage !== this.props.errorMessage
+      || nextState !== this.state;
   }
 
   onKeyDown(e) {
