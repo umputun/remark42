@@ -104,10 +104,6 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 	if err != nil {
 		return comment, err
 	}
-	// edit allowed only once
-	if comment.Edit != nil {
-		return comment, errors.Errorf("comment %s already edited at %s", commentID, comment.Edit.Timestamp)
-	}
 
 	// edit allowed in editDuration window only
 	if s.EditDuration > 0 && time.Now().After(comment.Timestamp.Add(s.EditDuration)) {

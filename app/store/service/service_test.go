@@ -158,7 +158,7 @@ func TestService_EditComment(t *testing.T) {
 
 	_, err = b.EditComment(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID,
 		EditRequest{Orig: "yyy", Text: "xxx", Summary: "my edit"})
-	assert.NotNil(t, err, "allow edit once")
+	assert.Nil(t, err, "allow second edit")
 }
 
 func TestService_EditCommentDurationFailed(t *testing.T) {
