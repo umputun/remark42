@@ -1,7 +1,7 @@
 import { h, Component } from 'preact';
 
 import api from 'common/api';
-import { API_BASE, BASE_URL, COMMENT_NODE_CLASSNAME_PREFIX, USELESS_COMMENT_SCORE } from 'common/constants';
+import { API_BASE, BASE_URL, COMMENT_NODE_CLASSNAME_PREFIX } from 'common/constants';
 import { url } from 'common/settings';
 import store from 'common/store';
 
@@ -233,6 +233,7 @@ export default class Comment extends Component {
     const isAdmin = !guest && store.get('user').admin;
     const isGuest = guest || !Object.keys(store.get('user')).length;
     const isCurrentUser = (data.user && data.user.id) === (store.get('user') && store.get('user').id);
+    const criticalCommentScore = store.get('config') && store.get('config').critical_score;
 
     const o = {
       ...data,
@@ -263,7 +264,8 @@ export default class Comment extends Component {
 
     const defaultMods = {
       pinned,
-      useless: userBlocked || deleted || (score <= USELESS_COMMENT_SCORE && !mods.pinned && !mods.disabled),
+      // TODO: we also have low_score, so we need to collapse comments on critical score in future
+      useless: userBlocked || deleted || (score <= criticalCommentScore && !mods.pinned && !mods.disabled),
       // TODO: add default view mod or don't?
       view: o.user.admin ? 'admin' : null,
       replying: isReplying,
