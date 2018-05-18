@@ -2,14 +2,17 @@ package service
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/coreos/bbolt"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/umputun/remark/app/store"
 	"github.com/umputun/remark/app/store/engine"
@@ -108,6 +111,66 @@ func TestService_Vote(t *testing.T) {
 	assert.Equal(t, 3, len(res))
 	assert.Equal(t, 0, res[0].Score)
 	assert.Equal(t, map[string]bool{}, res[0].Votes, "vote reset ok")
+}
+
+func TestService_VoteAggressive(t *testing.T) {
+	defer os.Remove(testDb)
+	b := DataStore{Interface: prepStoreEngine(t)}
+
+	comment := store.Comment{
+		Text:    "text",
+		User:    store.User{IP: "192.168.1.1", ID: "user", Name: "name"},
+		Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+	}
+	_, err := b.Create(comment)
+	assert.NoError(t, err)
+
+	res, err := b.Last("radio-t", 0)
+	require.Nil(t, err)
+	t.Logf("%+v", res[0])
+	assert.Equal(t, 3, len(res))
+	assert.Equal(t, 0, res[0].Score)
+	assert.Equal(t, map[string]bool{}, res[0].Votes, "no votes initially")
+
+	// add a vote as user2
+	_, err = b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "user2", true)
+	require.Nil(t, err)
+
+	// crazy vote +1 as user1
+	var wg sync.WaitGroup
+	for i := 0; i < 1000; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "user1", true)
+		}()
+	}
+	wg.Wait()
+	res, err = b.Last("radio-t", 0)
+	require.NoError(t, err)
+
+	t.Logf("%+v", res[0])
+	assert.Equal(t, 3, len(res))
+	assert.Equal(t, 2, res[0].Score, "add single +1")
+	assert.Equal(t, 2, len(res[0].Votes), "made a single vote")
+
+	// random +1/-1 result should be [0..2]
+	rand.Seed(time.Now().UnixNano())
+	for i := 0; i < 1000; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			val := rand.Intn(2) > 0
+			b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "user1", val)
+		}()
+	}
+	wg.Wait()
+	res, err = b.Last("radio-t", 0)
+	require.NoError(t, err)
+	assert.Equal(t, 3, len(res))
+	t.Logf("%+v %d", res[0], res[0].Score)
+	assert.True(t, res[0].Score >= 0 && res[0].Score <= 2, "unexpected score %d", res[0].Score)
+
 }
 
 func TestService_Pin(t *testing.T) {
