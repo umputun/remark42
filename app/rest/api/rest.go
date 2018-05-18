@@ -214,6 +214,7 @@ func (s *Rest) previewCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	//comment.Text = string(blackfriday.Run([]byte(comment.Text),
 	//	blackfriday.WithRenderer(bfchroma.NewRenderer(bfchroma.WithoutAutodetect()))))
 	comment.Text = string(blackfriday.Run([]byte(comment.Text), blackfriday.WithExtensions(mdExt)))
+	comment.Text = s.ImageProxy.Convert(comment.Text)
 	comment.Sanitize()
 	render.HTML(w, r, comment.Text)
 }
