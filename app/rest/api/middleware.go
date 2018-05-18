@@ -87,58 +87,17 @@ var reMultWhtsp = regexp.MustCompile(`[\s\p{Zs}]{2,}`)
 // Logger middleware prints http log. Customized by set of LoggerFlag
 func Logger(flags ...LoggerFlag) func(http.Handler) http.Handler {
 
-	inFlags := func(f LoggerFlag) bool {
-		for _, flg := range flags {
-			if (flg == LogAll && f != LogNone) || flg == f {
-				return true
-			}
-		}
-		return false
-	}
-
 	f := func(h http.Handler) http.Handler {
 
 		fn := func(w http.ResponseWriter, r *http.Request) {
 
-			if inFlags(LogNone) { // skip logging
+			if inLogFlags(LogNone, flags) { // skip logging
 				h.ServeHTTP(w, r)
 				return
 			}
 
 			ww := middleware.NewWrapResponseWriter(w, 1)
-
-			body, user := func() (body string, user string) {
-				ctx := r.Context()
-				if ctx == nil {
-					return "", ""
-				}
-
-				if inFlags(LogBody) {
-					if content, err := ioutil.ReadAll(r.Body); err == nil {
-						body = string(content)
-						r.Body = ioutil.NopCloser(bytes.NewReader(content))
-
-						if len(body) > 0 {
-							body = strings.Replace(body, "\n", " ", -1)
-							body = reMultWhtsp.ReplaceAllString(body, " ")
-						}
-
-						if len(body) > maxBody {
-							body = body[:maxBody] + "..."
-						}
-					}
-				}
-
-				if inFlags(LogUser) {
-					u, err := rest.GetUserInfo(r)
-					if err == nil && u.Name != "" {
-						user = fmt.Sprintf(" - %s %q", u.ID, u.Name)
-					}
-				}
-
-				return body, user
-			}()
-
+			body, user := getBodyAndUser(r, flags)
 			t1 := time.Now()
 			defer func() {
 				t2 := time.Now()
@@ -163,4 +122,45 @@ func Logger(flags ...LoggerFlag) func(http.Handler) http.Handler {
 	}
 
 	return f
+}
+
+func getBodyAndUser(r *http.Request, flags []LoggerFlag) (body string, user string) {
+	ctx := r.Context()
+	if ctx == nil {
+		return "", ""
+	}
+
+	if inLogFlags(LogBody, flags) {
+		if content, err := ioutil.ReadAll(r.Body); err == nil {
+			body = string(content)
+			r.Body = ioutil.NopCloser(bytes.NewReader(content))
+
+			if len(body) > 0 {
+				body = strings.Replace(body, "\n", " ", -1)
+				body = reMultWhtsp.ReplaceAllString(body, " ")
+			}
+
+			if len(body) > maxBody {
+				body = body[:maxBody] + "..."
+			}
+		}
+	}
+
+	if inLogFlags(LogUser, flags) {
+		u, err := rest.GetUserInfo(r)
+		if err == nil && u.Name != "" {
+			user = fmt.Sprintf(" - %s %q", u.ID, u.Name)
+		}
+	}
+
+	return body, user
+}
+
+func inLogFlags(f LoggerFlag, flags []LoggerFlag) bool {
+	for _, flg := range flags {
+		if (flg == LogAll && f != LogNone) || flg == f {
+			return true
+		}
+	}
+	return false
 }

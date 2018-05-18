@@ -61,7 +61,7 @@ func (a *Authenticator) Auth(reqAuth bool) func(http.Handler) http.Handler {
 				return
 			}
 
-			if xsrfError := a.checkXsrf(r, session); xsrfError != nil {
+			if xsrfError := a.checkXSRF(r, session); xsrfError != nil {
 				if reqAuth {
 					log.Printf("[WARN] %s", xsrfError.Error())
 					http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -89,7 +89,7 @@ func (a *Authenticator) Auth(reqAuth bool) func(http.Handler) http.Handler {
 	return f
 }
 
-func (a *Authenticator) checkXsrf(r *http.Request, session *sessions.Session) error {
+func (a *Authenticator) checkXSRF(r *http.Request, session *sessions.Session) error {
 	xsrfToken := r.Header.Get("X-XSRF-TOKEN")
 	sessionToken, headerOk := session.Values["xsrf_token"]
 	if !headerOk || xsrfToken == "" || sessionToken == nil {
