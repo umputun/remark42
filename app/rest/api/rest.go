@@ -187,9 +187,15 @@ func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// DataService modifies comment
+	finalComment, err := s.DataService.Get(comment.Locator, id)
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't load created comment")
+		return
+	}
 	s.Cache.Flush() // reset all caches
 	render.Status(r, http.StatusCreated)
-	render.JSON(w, r, JSON{"id": id, "locator": comment.Locator})
+	render.JSON(w, r, &finalComment)
 }
 
 func (s *Rest) previewCommentCtrl(w http.ResponseWriter, r *http.Request) {

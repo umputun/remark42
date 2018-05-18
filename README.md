@@ -10,6 +10,7 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 * Voting and pinning system
 * Sortable comments
 * Extractor for recent comments, cross-post
+* RSS for all comments and each post
 * Export data to json with automatic backups
 * No external databases, everything embedded in a single data file
 * Fully dockerized and can be deployed in a single command
