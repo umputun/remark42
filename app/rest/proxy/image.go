@@ -31,7 +31,6 @@ func (p Image) Convert(commentHTML string) string {
 	if err != nil {
 		return commentHTML
 	}
-	log.Print(p.replace(commentHTML, imgs))
 
 	return p.replace(commentHTML, imgs)
 }
@@ -48,7 +47,7 @@ func (p Image) Routes() chi.Router {
 			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't decode image url")
 			return
 		}
-		client := http.Client{Timeout: 5 * time.Second}
+		client := http.Client{Timeout: 30 * time.Second}
 		resp, err := client.Get(string(src))
 		if err != nil {
 			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get image "+string(src))
