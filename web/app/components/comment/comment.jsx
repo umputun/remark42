@@ -477,7 +477,7 @@ export default class Comment extends Component {
               mix="comment__input"
               mods={{ mode: 'edit' }}
               onSubmit={this.onEdit}
-              onCancel={this.toggleReplying}
+              onCancel={this.toggleEditing}
               id={o.id}
               value={o.orig}
               autoFocus
