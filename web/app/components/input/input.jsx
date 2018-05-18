@@ -29,7 +29,7 @@ export default class Input extends Component {
   }
 
   componentDidMount() {
-    const { mods = {} } = this.props;
+    const { mods = {}, value } = this.props;
 
     if (this.props.autoFocus) {
       this.fieldNode.focus();
@@ -38,12 +38,17 @@ export default class Input extends Component {
     if (mods.mode !== 'edit') {
       this.fieldNode.value = '';
     } else {
+      this.fieldNode.value = value;
       this.autoResize();
     }
 
     store.onUpdate('config', config => {
       this.setState({ maxLength: config && config.max_comment_size || DEFAULT_MAX_COMMENT_SIZE });
     });
+  }
+
+  componentWillUnmount() {
+    this.fieldNode.value = '';
   }
 
   shouldComponentUpdate(nextProps) {
