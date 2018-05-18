@@ -24,26 +24,26 @@ type Import struct {
 	NativeImporter migrator.Importer
 	DisqusImporter migrator.Importer
 	SecretKey      string
-
-	httpServer *http.Server
 }
 
 // Run the listener and request's router, activate rest server
 // this server doesn't have any authentication and SHOULDN'T BE EXPOSED in any way
 func (s *Import) Run(port int) {
 	log.Printf("[INFO] activate import server on port %d", port)
+	router := s.routes()
+	httpServer := &http.Server{Addr: fmt.Sprintf("127.0.0.1:%d", port), Handler: router}
+	err := httpServer.ListenAndServe()
+	log.Printf("[WARN] http server terminated, %s", err)
+}
 
+func (s Import) routes() chi.Router {
 	router := chi.NewRouter()
 	router.Use(middleware.RealIP, Recoverer)
 	router.Use(middleware.Throttle(1000), middleware.Timeout(60*time.Second))
 	router.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
 	router.Use(AppInfo("remark42-importer", s.Version), Ping, Logger(LogAll))
-
 	router.Post("/api/v1/admin/import", s.importCtrl)
-
-	s.httpServer = &http.Server{Addr: fmt.Sprintf("127.0.0.1:%d", port), Handler: router}
-	err := s.httpServer.ListenAndServe()
-	log.Printf("[WARN] http server terminated, %s", err)
+	return router
 }
 
 // POST /import?secret=key&site=site-id&provider=disqus|remark

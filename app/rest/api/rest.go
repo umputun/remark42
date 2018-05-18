@@ -60,17 +60,31 @@ func (s *Rest) Run(port int) {
 		log.Printf("[DEBUG] admins %+v", s.Authenticator.Admins)
 	}
 
-	s.adminService = admin{
-		dataService: s.DataService,
-		exporter:    s.Exporter,
-		cache:       s.Cache,
-	}
+	router := s.routes()
 
+	s.httpServer = &http.Server{
+		Addr:              fmt.Sprintf(":%d", port),
+		Handler:           router,
+		ReadHeaderTimeout: 5 * time.Second,
+		WriteTimeout:      5 * time.Second,
+		IdleTimeout:       30 * time.Second,
+	}
+	err := s.httpServer.ListenAndServe()
+	log.Printf("[WARN] http server terminated, %s", err)
+}
+
+func (s *Rest) routes() chi.Router {
 	router := chi.NewRouter()
 	router.Use(middleware.RealIP, Recoverer)
 	router.Use(middleware.Throttle(1000), middleware.Timeout(60*time.Second))
 	router.Use(AppInfo("remark42", s.Version), Ping)
 	router.Use(context.ClearHandler) // if you aren't using gorilla/mux, you need to wrap your handlers with context.ClearHandler
+
+	s.adminService = admin{
+		dataService: s.DataService,
+		exporter:    s.Exporter,
+		cache:       s.Cache,
+	}
 
 	// auth routes for all providers
 	router.Route("/auth", func(r chi.Router) {
@@ -88,7 +102,7 @@ func (s *Rest) Run(port int) {
 		Logger(LogNone),
 		tollbooth_chi.LimitHandler(tollbooth.NewLimiter(100, nil)),
 	}
-	router.Mount(s.Authenticator.AvatarProxy.Routes(avatarMiddlewares...)) // mount avatars controller to /api/v1/avatar/{file.img}
+	router.Mount(s.Authenticator.AvatarProxy.Routes(avatarMiddlewares...)) // mount avatars to /api/v1/avatar/{file.img}
 
 	// api routes
 	router.Route("/api/v1", func(rapi chi.Router) {
@@ -128,16 +142,7 @@ func (s *Rest) Run(port int) {
 
 	// file server for static content from /web
 	addFileServer(router, "/web", http.Dir(s.WebRoot))
-
-	s.httpServer = &http.Server{
-		Addr:              fmt.Sprintf(":%d", port),
-		Handler:           router,
-		ReadHeaderTimeout: 5 * time.Second,
-		WriteTimeout:      5 * time.Second,
-		IdleTimeout:       30 * time.Second,
-	}
-	err := s.httpServer.ListenAndServe()
-	log.Printf("[WARN] http server terminated, %s", err)
+	return router
 }
 
 // POST /comment - adds comment, resets all immutable fields

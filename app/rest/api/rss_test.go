@@ -12,21 +12,27 @@ import (
 )
 
 func TestServer_RssPost(t *testing.T) {
-	srv, port := prep(t)
+	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(srv)
+	defer cleanup(ts)
 
 	waitOnMinChange()
 
 	// add one more comment
 	r := strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
-	resp, err := http.Post(fmt.Sprintf("http://dev:password@127.0.0.1:%d/api/v1/comment", port), "application/json", r)
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	req, err := http.NewRequest("POST", ts.URL+"/api/v1/comment", r)
+	assert.Nil(t, err)
+	withBasicAuth(req, "dev", "password")
+
+	resp, err := client.Do(req)
 	assert.Nil(t, err)
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
 	pubDate := time.Now().Format(time.RFC1123Z)
 
-	res, code := get(t, fmt.Sprintf("http://dev:password@127.0.0.1:%d/api/v1/rss/post?site=radio-t&url=https://radio-t.com/blah1", port))
+	res, code := get(t, ts.URL+"/api/v1/rss/post?site=radio-t&url=https://radio-t.com/blah1")
 	assert.Equal(t, 200, code)
 
 	assert.Nil(t, err)
@@ -53,25 +59,33 @@ func TestServer_RssPost(t *testing.T) {
 }
 
 func TestServer_RssSite(t *testing.T) {
-	srv, port := prep(t)
+	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(srv)
+	defer cleanup(ts)
 
 	waitOnMinChange()
 
 	pubDate := time.Now().Format(time.RFC1123Z)
 
+	client := &http.Client{Timeout: 5 * time.Second}
+
 	r := strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah10", "site": "radio-t"}}`)
-	resp, err := http.Post(fmt.Sprintf("http://dev:password@127.0.0.1:%d/api/v1/comment", port), "application/json", r)
+	req, err := http.NewRequest("POST", ts.URL+"/api/v1/comment", r)
+	assert.Nil(t, err)
+	withBasicAuth(req, "dev", "password")
+	resp, err := client.Do(req)
 	assert.Nil(t, err)
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
 	r = strings.NewReader(`{"text": "xyz test", "locator":{"url": "https://radio-t.com/blah11", "site": "radio-t"}}`)
-	resp, err = http.Post(fmt.Sprintf("http://dev:password@127.0.0.1:%d/api/v1/comment", port), "application/json", r)
+	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", r)
+	assert.Nil(t, err)
+	withBasicAuth(req, "dev", "password")
+	resp, err = client.Do(req)
 	assert.Nil(t, err)
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
-	res, code := get(t, fmt.Sprintf("http://dev:password@127.0.0.1:%d/api/v1/rss/site?site=radio-t", port))
+	res, code := get(t, ts.URL+"/api/v1/rss/site?site=radio-t")
 	assert.Equal(t, 200, code)
 
 	assert.Nil(t, err)

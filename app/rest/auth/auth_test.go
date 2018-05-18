@@ -25,7 +25,7 @@ func TestAuthRequired(t *testing.T) {
 
 	client := &http.Client{Timeout: 1 * time.Second}
 	req, err := http.NewRequest("GET", server.URL+"/auth", nil)
-	req.Header.Add("Authorization", "Basic "+basicAuth("dev", "123456"))
+	req = withBasicAuth(req, "dev", "123456")
 	resp, err := client.Do(req)
 	require.NoError(t, err)
 	assert.Equal(t, 201, resp.StatusCode, "valid auth user")
@@ -36,7 +36,7 @@ func TestAuthRequired(t *testing.T) {
 	assert.Equal(t, 401, resp.StatusCode, "no auth user")
 
 	req, err = http.NewRequest("GET", server.URL+"/auth", nil)
-	req.Header.Add("Authorization", "Basic "+basicAuth("dev", "ZZZZ123456"))
+	req = withBasicAuth(req, "dev", "xyz")
 	resp, err = client.Do(req)
 	require.NoError(t, err)
 	assert.Equal(t, 401, resp.StatusCode, "wrong auth creds")
@@ -54,7 +54,7 @@ func TestAuthNotRequired(t *testing.T) {
 
 	client := &http.Client{Timeout: 1 * time.Second}
 	req, err := http.NewRequest("GET", server.URL+"/auth", nil)
-	req.Header.Add("Authorization", "Basic "+basicAuth("dev", "123456"))
+	req = withBasicAuth(req, "dev", "123456")
 	resp, err := client.Do(req)
 	require.NoError(t, err)
 	assert.Equal(t, 201, resp.StatusCode, "valid auth user")
@@ -65,7 +65,7 @@ func TestAuthNotRequired(t *testing.T) {
 	assert.Equal(t, 201, resp.StatusCode, "no auth user")
 
 	req, err = http.NewRequest("GET", server.URL+"/auth", nil)
-	req.Header.Add("Authorization", "Basic "+basicAuth("dev", "ZZZZ123456"))
+	req = withBasicAuth(req, "dev", "ZZZZ123456")
 	resp, err = client.Do(req)
 	require.NoError(t, err)
 	assert.Equal(t, 201, resp.StatusCode, "wrong auth creds")
@@ -83,20 +83,21 @@ func TestAdminRequired(t *testing.T) {
 
 	client := &http.Client{Timeout: 1 * time.Second}
 	req, err := http.NewRequest("GET", server.URL+"/auth", nil)
-	req.Header.Add("Authorization", "Basic "+basicAuth("dev", "123456"))
+	req = withBasicAuth(req, "dev", "123456")
 	resp, err := client.Do(req)
 	require.NoError(t, err)
 	assert.Equal(t, 201, resp.StatusCode, "valid auth user, admin")
 
 	devUser.Admin = false
 	req, err = http.NewRequest("GET", server.URL+"/auth", nil)
-	req.Header.Add("Authorization", "Basic "+basicAuth("dev", "123456"))
+	req = withBasicAuth(req, "dev", "123456")
 	resp, err = client.Do(req)
 	require.NoError(t, err)
 	assert.Equal(t, 403, resp.StatusCode, "valid auth user, not admin")
 
 }
-func basicAuth(username, password string) string {
+func withBasicAuth(r *http.Request, username, password string) *http.Request {
 	auth := username + ":" + password
-	return base64.StdEncoding.EncodeToString([]byte(auth))
+	r.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(auth)))
+	return r
 }
