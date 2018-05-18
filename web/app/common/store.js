@@ -30,21 +30,11 @@ class Store {
     return this.data[key];
   }
 
-  addComment({ text, id, pid }) {
-    const newComment = {
-      comment: {
-        id,
-        text,
-        user: this.get('user'),
-        time: new Date(),
-        ...(pid ? { pid } : {}),
-      },
-    };
-
-    if (pid) {
-      this.pasteReply(newComment);
+  addComment(comment) {
+    if (comment.pid) {
+      this.pasteReply(comment);
     } else {
-      this.pasteComment(newComment);
+      this.pasteComment(comment);
     }
   }
 
