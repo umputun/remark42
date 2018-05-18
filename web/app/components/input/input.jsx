@@ -135,15 +135,13 @@ export default class Input extends Component {
     const charactersLeft = maxLength - commentLength;
     const { mods = {}, value = null } = props;
 
-    console.log(value)
-
     return (
       <form className={b('input', props)} onSubmit={this.send} role="form" aria-label="New comment">
         <div className="input__field-wrapper">
           <textarea
             className="input__field"
             placeholder="Your comment here"
-            value={value}
+            defaultValue={'asdasdasdas'}
             maxLength={maxLength}
             onInput={this.onInput}
             onKeyDown={this.onKeyDown}
