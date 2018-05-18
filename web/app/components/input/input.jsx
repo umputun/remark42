@@ -110,6 +110,7 @@ export default class Input extends Component {
 
   render(props, { isFieldDisabled, isErrorShown, preview, maxLength, commentLength }) {
     const charactersLeft = maxLength - commentLength;
+    const { mods = {} } = props;
 
     return (
       <form className={b('input', props)} onSubmit={this.send} role="form" aria-label="New comment">
@@ -147,16 +148,20 @@ export default class Input extends Component {
             type="submit"
           >Send</button>
 
-          <div className="input__rss">
-            Subscribe to&nbsp;this
-            {' '}
-            <a className="input__rss-link" href={RSS_THREAD_URL} target="_blank">Thread</a>
-            {' '}
-            or&nbsp;
-            <a className="input__rss-link" href={RSS_SITE_URL} target="_blank">Site</a>
-            {' '}
-            by&nbsp;RSS
-          </div>
+          {
+            mods.type === 'main' && (
+              <div className="input__rss">
+                Subscribe to&nbsp;this
+                {' '}
+                <a className="input__rss-link" href={RSS_THREAD_URL} target="_blank">Thread</a>
+                {' '}
+                or&nbsp;
+                <a className="input__rss-link" href={RSS_SITE_URL} target="_blank">Site</a>
+                {' '}
+                by&nbsp;RSS
+              </div>
+            )
+          }
         </div>
 
         {

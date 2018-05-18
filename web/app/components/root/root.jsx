@@ -206,6 +206,7 @@ export default class Root extends Component {
                   !isGuest && (
                     <Input
                       mix="root__input"
+                      mods={{ type: 'main' }}
                       onSubmit={this.addComment}
                     />
                   )
