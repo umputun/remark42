@@ -123,7 +123,7 @@ func main() {
 		DataService: dataService,
 		Exporter:    &exporter,
 		WebRoot:     opts.WebRoot,
-		ImageProxy:  proxy.Image{Enabled: opts.ImageProxy, RoutePath: "/img"},
+		ImageProxy:  proxy.Image{Enabled: opts.ImageProxy, RoutePath: "/api/v1/img"},
 		Authenticator: auth.Authenticator{
 			Admins:       opts.Admins,
 			SessionStore: sessionStore,

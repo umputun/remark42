@@ -123,7 +123,7 @@ func (s *Rest) routes() chi.Router {
 			ropen.Get("/config", s.configCtrl)
 			ropen.Post("/preview", s.previewCommentCtrl)
 			ropen.Mount("/rss", s.rssRoutes())
-			ropen.Mount("/proxy", s.ImageProxy.Routes())
+			ropen.Mount("/img", s.ImageProxy.Routes())
 		})
 
 		// protected routes, require auth
