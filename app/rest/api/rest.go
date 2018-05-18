@@ -24,6 +24,7 @@ import (
 	"github.com/umputun/remark/app/migrator"
 	"github.com/umputun/remark/app/rest"
 	"github.com/umputun/remark/app/rest/auth"
+	"github.com/umputun/remark/app/rest/proxy"
 	"github.com/umputun/remark/app/store"
 	"github.com/umputun/remark/app/store/service"
 )
@@ -35,6 +36,7 @@ type Rest struct {
 	Authenticator auth.Authenticator
 	Exporter      migrator.Exporter
 	Cache         rest.LoadingCache
+	ImageProxy    proxy.Image
 	WebRoot       string
 
 	ScoreThresholds struct {
@@ -121,6 +123,7 @@ func (s *Rest) routes() chi.Router {
 			ropen.Get("/config", s.configCtrl)
 			ropen.Post("/preview", s.previewCommentCtrl)
 			ropen.Mount("/rss", s.rssRoutes())
+			ropen.Mount("/proxy", s.ImageProxy.Routes())
 		})
 
 		// protected routes, require auth
@@ -171,7 +174,7 @@ func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	comment.Text = string(blackfriday.Run([]byte(comment.Text), blackfriday.WithExtensions(mdExt)))
-
+	comment.Text = s.ImageProxy.Convert(comment.Text)
 	// check if user blocked
 	if s.adminService.checkBlocked(comment.Locator.SiteID, comment.User) {
 		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"), "user blocked")
@@ -249,8 +252,10 @@ func (s *Rest) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	text := string(blackfriday.Run([]byte(edit.Text), blackfriday.WithExtensions(mdExt))) // render markdown
+	text = s.ImageProxy.Convert(text)
 	editReq := service.EditRequest{
-		Text:    string(blackfriday.Run([]byte(edit.Text), blackfriday.WithExtensions(mdExt))), // render markdown
+		Text:    text,
 		Orig:    edit.Text,
 		Summary: edit.Summary,
 	}

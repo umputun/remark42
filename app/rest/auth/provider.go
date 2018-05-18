@@ -18,7 +18,7 @@ import (
 	"golang.org/x/oauth2"
 
 	"github.com/umputun/remark/app/rest"
-	"github.com/umputun/remark/app/rest/avatar"
+	"github.com/umputun/remark/app/rest/proxy"
 	"github.com/umputun/remark/app/store"
 )
 
@@ -33,7 +33,7 @@ type Provider struct {
 	Scopes      []string
 	MapUser     func(userData, []byte) store.User // map info from InfoURL to User
 
-	avatarProxy *avatar.Proxy
+	avatarProxy *proxy.Avatar
 	conf        *oauth2.Config
 }
 
@@ -43,7 +43,7 @@ type Params struct {
 	Csecret      string
 	SessionStore sessions.Store
 	RemarkURL    string
-	AvatarProxy  *avatar.Proxy
+	AvatarProxy  *proxy.Avatar
 }
 
 type userData map[string]interface{}

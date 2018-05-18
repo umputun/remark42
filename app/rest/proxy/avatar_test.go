@@ -1,4 +1,4 @@
-package avatar
+package proxy
 
 import (
 	"bytes"
@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
 	"github.com/umputun/remark/app/store"
 )
 
@@ -26,7 +25,7 @@ func TestPut(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	p := Proxy{StorePath: "/tmp/avatars.test", RoutePath: "/avatar", RemarkURL: "http://localhost:8080"}
+	p := Avatar{StorePath: "/tmp/avatars.test", RoutePath: "/avatar", RemarkURL: "http://localhost:8080"}
 	os.MkdirAll("/tmp/avatars.test", 0700)
 	defer os.RemoveAll("/tmp/avatars.test")
 
@@ -48,7 +47,7 @@ func TestPut(t *testing.T) {
 }
 
 func TestPutNoAvatar(t *testing.T) {
-	p := Proxy{StorePath: "/tmp/avatars.test", RoutePath: "/avatar"}
+	p := Avatar{StorePath: "/tmp/avatars.test", RoutePath: "/avatar"}
 	u := store.User{ID: "user1", Name: "user1 name"}
 	_, err := p.Put(u)
 	assert.Error(t, err)
@@ -66,7 +65,7 @@ func TestRoutes(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	p := Proxy{StorePath: "/tmp/avatars.test", RoutePath: "/avatar"}
+	p := Avatar{StorePath: "/tmp/avatars.test", RoutePath: "/avatar"}
 	os.MkdirAll("/tmp/avatars.test", 0700)
 	defer os.RemoveAll("/tmp/avatars.test")
 
@@ -98,7 +97,7 @@ func TestRoutes(t *testing.T) {
 }
 
 func TestLocation(t *testing.T) {
-	p := Proxy{StorePath: "/tmp/avatars.test"}
+	p := Avatar{StorePath: "/tmp/avatars.test"}
 
 	tbl := []struct {
 		id  string

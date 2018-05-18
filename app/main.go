@@ -20,7 +20,7 @@ import (
 	"github.com/umputun/remark/app/rest"
 	"github.com/umputun/remark/app/rest/api"
 	"github.com/umputun/remark/app/rest/auth"
-	"github.com/umputun/remark/app/rest/avatar"
+	"github.com/umputun/remark/app/rest/proxy"
 )
 
 var opts struct {
@@ -39,9 +39,9 @@ var opts struct {
 	AvatarStore    string `long:"avatars" env:"AVATAR_STORE" default:"./var/avatars" description:"avatars location"`
 	MaxCommentSize int    `long:"max-comment" env:"MAX_COMMENT_SIZE" default:"2048" description:"max comment size"`
 	SecretKey      string `long:"secret" env:"SECRET" required:"true" description:"secret key"`
-
-	MaxCachedItems int `long:"max-cache-items" env:"MAX_CACHE_ITEMS" default:"1000" description:"max cached items"`
-	MaxCachedValue int `long:"max-cache-value" env:"MAX_CACHE_VALUE" default:"65536" description:"max size of cached value"`
+	EnableProxy    bool   `long:"proxy" env:"PROXY" description:"enable proxy"`
+	MaxCachedItems int    `long:"max-cache-items" env:"MAX_CACHE_ITEMS" default:"1000" description:"max cached items"`
+	MaxCachedValue int    `long:"max-cache-value" env:"MAX_CACHE_VALUE" default:"65536" description:"max size of cached value"`
 
 	LowScore      int `long:"low-score" env:"LOW_SCORE" default:"-5" description:"low score threshold"`
 	CriticalScore int `long:"critical-score" env:"CRITICAL_SCORE" default:"-10" description:"critical score threshold"`
@@ -112,7 +112,7 @@ func main() {
 	}
 	go importSrv.Run(opts.Port + 1)
 
-	avatarProxy := &avatar.Proxy{
+	avatarProxy := &proxy.Avatar{
 		StorePath: opts.AvatarStore,
 		RoutePath: "/api/v1/avatar",
 		RemarkURL: strings.TrimSuffix(opts.RemarkURL, "/"),
@@ -123,6 +123,7 @@ func main() {
 		DataService: dataService,
 		Exporter:    &exporter,
 		WebRoot:     opts.WebRoot,
+		ImageProxy:  proxy.Image{Enabled: opts.EnableProxy, RoutePath: "/img"},
 		Authenticator: auth.Authenticator{
 			Admins:       opts.Admins,
 			SessionStore: sessionStore,
@@ -192,7 +193,7 @@ func makeDirs(dirs ...string) error {
 	return nil
 }
 
-func makeAuthProviders(sessionStore sessions.Store, avatarProxy *avatar.Proxy) (providers []auth.Provider) {
+func makeAuthProviders(sessionStore sessions.Store, avatarProxy *proxy.Avatar) (providers []auth.Provider) {
 
 	makeParams := func(cid, secret string) auth.Params {
 		return auth.Params{

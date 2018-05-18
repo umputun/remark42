@@ -20,7 +20,7 @@ import (
 
 	"github.com/umputun/remark/app/migrator"
 	"github.com/umputun/remark/app/rest/auth"
-	"github.com/umputun/remark/app/rest/avatar"
+	"github.com/umputun/remark/app/rest/proxy"
 	"github.com/umputun/remark/app/store"
 	"github.com/umputun/remark/app/store/engine"
 	"github.com/umputun/remark/app/store/service"
@@ -472,7 +472,7 @@ func prep(t *testing.T) (srv *Rest, ts *httptest.Server) {
 			SessionStore: sessions.NewFilesystemStore("/tmp", []byte("blah")),
 			DevPasswd:    "password",
 			Providers:    nil,
-			AvatarProxy:  &avatar.Proxy{StorePath: "/tmp", RoutePath: "/api/v1/avatar"},
+			AvatarProxy:  &proxy.Avatar{StorePath: "/tmp", RoutePath: "/api/v1/avatar"},
 			Admins:       []string{"a1", "a2"},
 		},
 		Exporter: &migrator.Remark{DataStore: &dataStore},

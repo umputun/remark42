@@ -8,6 +8,18 @@
   version = "v0.18.0"
 
 [[projects]]
+  name = "github.com/PuerkitoBio/goquery"
+  packages = ["."]
+  revision = "a86ea073017a6beddef78c8659e7224e8ca634b0"
+  version = "v1.4.0"
+
+[[projects]]
+  name = "github.com/andybalholm/cascadia"
+  packages = ["."]
+  revision = "901648c87902174f774fac311d7f176f8647bdaa"
+  version = "v1.0.0"
+
+[[projects]]
   name = "github.com/coreos/bbolt"
   packages = ["."]
   revision = "583e8937c61f1af6513608ccc75c97b6abdf4ff9"
@@ -201,6 +213,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "b3e210953878a43cfcd3a8082639f5abc321ff78e68543913b64b4c62400805f"
+  inputs-digest = "01a2d611ea5b99d8ca13e5b12fdeddc9db5a791b054172e1f49e612579151623"
   solver-name = "gps-cdcl"
   solver-version = 1

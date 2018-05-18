@@ -1,6 +1,4 @@
-// Package avatar provides file-system store and http handler for avatars
-// On user login auth will call Put and it will retrieve and save picture locally.
-package avatar
+package proxy
 
 import (
 	"fmt"
@@ -23,8 +21,9 @@ import (
 	"github.com/umputun/remark/app/store"
 )
 
-// Proxy is avatar store and http handler for avatars
-type Proxy struct {
+// Avatar provides file-system store and http handler for avatars
+// On user login auth will call Put and it will retrieve and save picture locally.
+type Avatar struct {
 	StorePath string
 	RoutePath string
 	RemarkURL string
@@ -36,7 +35,7 @@ type Proxy struct {
 const imgSfx = ".image"
 
 // Put stores retrieved avatar to StorePath. Gets image from user info. Returns proxied url
-func (p *Proxy) Put(u store.User) (avatarURL string, err error) {
+func (p *Avatar) Put(u store.User) (avatarURL string, err error) {
 
 	// no picture for user, try default avatar
 	if u.Picture == "" {
@@ -85,7 +84,7 @@ func (p *Proxy) Put(u store.User) (avatarURL string, err error) {
 }
 
 // Routes returns auth routes for given provider
-func (p *Proxy) Routes(middlewares ...func(http.Handler) http.Handler) (string, chi.Router) {
+func (p *Avatar) Routes(middlewares ...func(http.Handler) http.Handler) (string, chi.Router) {
 	router := chi.NewRouter()
 	router.Use(middlewares...)
 
@@ -139,7 +138,7 @@ func (p *Proxy) Routes(middlewares ...func(http.Handler) http.Handler) (string, 
 // get location (directory) for user id by adding partition to final path in order to keep files
 // in different subdirectories and avoid too many files in a single place.
 // the end result is a full path like this - /tmp/avatars.test/92
-func (p *Proxy) location(id string) string {
+func (p *Avatar) location(id string) string {
 	p.once.Do(func() { p.ctcTable = crc64.MakeTable(crc64.ECMA) })
 	checksum64 := crc64.Checksum([]byte(id), p.ctcTable)
 	partition := checksum64 % 100

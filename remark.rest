@@ -20,6 +20,18 @@ Content-Type: application/json
 	}
 }
 
+### create comment with image
+POST {{host}}/api/v1/comment
+Content-Type: application/json
+
+{
+	"text": "comment *blah* http://radio-t.com <img src=\"http://minionomaniya.ru/wp-content/uploads/2016/01/Кевин.jpg\">",
+	"locator": {
+		"url": "https://radio-t.com/blah1",
+		"site": "remark"
+	}
+}
+
 ### preview comment
 POST {{host}}/api/v1/preview
 Content-Type: application/json
