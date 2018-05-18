@@ -33,6 +33,7 @@ export default class Root extends Component {
       sort,
     };
 
+    this.addComment = this.addComment.bind(this);
     this.replaceComment = this.replaceComment.bind(this);
     this.onSignIn = this.onSignIn.bind(this);
     this.onSignOut = this.onSignOut.bind(this);
@@ -157,6 +158,11 @@ export default class Root extends Component {
     this.setState({ wasSomeoneUnblocked: true });
   }
 
+  addComment(comment) {
+    store.addComment(comment);
+    this.setState({ comments: store.get('comments') });
+  }
+
   replaceComment(comment) {
     store.replaceComment(comment);
     this.setState({ comments: store.get('comments') });
@@ -199,7 +205,7 @@ export default class Root extends Component {
                     <Input
                       mix="root__input"
                       mods={{ type: 'main' }}
-                      onSubmit={this.replaceComment}
+                      onSubmit={this.addComment}
                     />
                   )
                 }
@@ -229,7 +235,7 @@ export default class Root extends Component {
                             mix="root__thread"
                             mods={{ level: 0 }}
                             data={thread}
-                            onReply={this.replaceComment}
+                            onReply={this.addComment}
                             onEdit={this.replaceComment}
                           />
                         ))
