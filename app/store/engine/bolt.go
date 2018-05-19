@@ -206,8 +206,8 @@ func (b *BoltDB) DeleteAll(siteID string) error {
 }
 
 // Find returns all comments for post and sorts results
-func (b *BoltDB) Find(locator store.Locator, sortFld string) (comments []store.Comment, err error) {
-	comments = []store.Comment{}
+func (b *BoltDB) Find(locator store.Locator, sortFld string) ([]store.Comment, error) {
+	var comments []store.Comment
 
 	bdb, err := b.db(locator.SiteID)
 	if err != nil {
@@ -215,10 +215,13 @@ func (b *BoltDB) Find(locator store.Locator, sortFld string) (comments []store.C
 	}
 
 	err = bdb.View(func(tx *bolt.Tx) error {
-
-		bucket, e := b.getPostBucket(tx, locator.URL)
-		if e != nil {
-			return e
+		bucket, err := b.getPostBucket(tx, locator.URL)
+		switch errors.Cause(err) {
+		case ErrBucketDoesNotExists:
+			// for this abstraction level this means that found 0 comments
+			return nil
+		default:
+			return err
 		}
 
 		return bucket.ForEach(func(k, v []byte) error {
@@ -372,8 +375,12 @@ func (b *BoltDB) Blocked(siteID string) (users []store.BlockedUser, err error) {
 func (b BoltDB) List(siteID string, limit, skip int) (list []store.PostInfo, err error) {
 
 	bdb, err := b.db(siteID)
-	if err != nil {
+	switch errors.Cause(err) {
+	default:
 		return nil, err
+	case ErrDBDoesNotExists:
+		return []store.PostInfo{}, nil
+	case nil:
 	}
 
 	err = bdb.View(func(tx *bolt.Tx) error {
@@ -423,7 +430,10 @@ func (b *BoltDB) User(siteID string, userID string, limit int) (comments []store
 		usersBkt := tx.Bucket([]byte(userBucketName))
 		userIDBkt := usersBkt.Bucket([]byte(userID))
 		if userIDBkt == nil {
-			return errors.Errorf("no comments for user %s in store", userID)
+			// if userID bucket does not exists, then user has no comments
+			// userID bucket will be created after first user comment
+			// idea: most users - readers
+			return nil
 		}
 
 		c := userIDBkt.Cursor()
@@ -459,14 +469,22 @@ func (b *BoltDB) User(siteID string, userID string, limit int) (comments []store
 func (b *BoltDB) Get(locator store.Locator, commentID string) (comment store.Comment, err error) {
 
 	bdb, err := b.db(locator.SiteID)
-	if err != nil {
-		return comment, err
+	switch errors.Cause(err) {
+	default:
+		return store.Comment{}, err
+	case ErrDBDoesNotExists:
+		return store.Comment{}, errors.Wrapf(ErrRecordDoesNotExists, "comment: %s", commentID)
+	case nil:
 	}
 
 	err = bdb.View(func(tx *bolt.Tx) error {
-		bucket, e := b.getPostBucket(tx, locator.URL)
-		if e != nil {
-			return e
+		bucket, err := b.getPostBucket(tx, locator.URL)
+		switch errors.Cause(err) {
+		default:
+			return err
+		case ErrBucketDoesNotExists:
+			return errors.Wrapf(ErrRecordDoesNotExists, "comment: %s", commentID)
+		case nil:
 		}
 		comment, e = b.load(bucket, []byte(commentID))
 		return e
