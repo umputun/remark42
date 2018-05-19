@@ -207,21 +207,21 @@ func (b *BoltDB) DeleteAll(siteID string) error {
 
 // Find returns all comments for post and sorts results
 func (b *BoltDB) Find(locator store.Locator, sortFld string) ([]store.Comment, error) {
-	var comments []store.Comment
-
 	bdb, err := b.db(locator.SiteID)
 	if err != nil {
 		return nil, err
 	}
 
+	comments := []store.Comment{}
 	err = bdb.View(func(tx *bolt.Tx) error {
 		bucket, err := b.getPostBucket(tx, locator.URL)
 		switch errors.Cause(err) {
+		default:
+			return err
 		case ErrBucketDoesNotExists:
 			// for this abstraction level this means that found 0 comments
 			return nil
-		default:
-			return err
+		case nil:
 		}
 
 		return bucket.ForEach(func(k, v []byte) error {
@@ -233,9 +233,12 @@ func (b *BoltDB) Find(locator store.Locator, sortFld string) ([]store.Comment, e
 			return nil
 		})
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	comments = sortComments(comments, sortFld)
-	return comments, err
+	return comments, nil
 }
 
 // Last returns up to max last comments for given siteID
