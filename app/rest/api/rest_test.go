@@ -487,8 +487,8 @@ func prep(t *testing.T) (srv *Rest, ts *httptest.Server) {
 }
 
 func withBasicAuth(r *http.Request, username, password string) *http.Request {
-	auth := username + ":" + password
-	r.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(auth)))
+	creds := username + ":" + password
+	r.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(creds)))
 	return r
 }
 

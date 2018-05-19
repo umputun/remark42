@@ -336,7 +336,7 @@ func (s *Rest) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 			filterDeleted = append(filterDeleted, c)
 		}
 
-		return encodeJSONWithHTML(comments)
+		return encodeJSONWithHTML(filterDeleted)
 	})
 
 	if err != nil {
@@ -425,6 +425,9 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		authNames = append(authNames, ap.Name)
 	}
 	cnf.Auth = authNames
+	if s.Authenticator.Admins == nil { // prevent json serialization to nil
+		s.Authenticator.Admins = []string{}
+	}
 	render.Status(r, http.StatusOK)
 	render.JSON(w, r, cnf)
 }
