@@ -402,11 +402,16 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		CriticalScore  int      `json:"critical_score"`
 	}
 
+	admins := s.Authenticator.Admins
+	if admins == nil {
+		admins = []string{}
+	}
+
 	cnf := config{
 		Version:        s.Version,
 		EditDuration:   int(s.DataService.EditDuration.Seconds()),
 		MaxCommentSize: s.DataService.MaxCommentSize,
-		Admins:         s.Authenticator.Admins,
+		Admins:         admins,
 		LowScore:       s.ScoreThresholds.Low,
 		CriticalScore:  s.ScoreThresholds.Critical,
 	}

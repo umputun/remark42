@@ -81,10 +81,6 @@ func main() {
 		log.Printf("[WARN] running in dev mode")
 	}
 
-	if opts.Admins == nil {
-		opts.Admins = []string{}
-	}
-
 	dataService := service.DataStore{
 		Interface:      dataStore,
 		EditDuration:   5 * time.Minute,
