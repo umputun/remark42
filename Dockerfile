@@ -13,6 +13,7 @@ RUN gometalinter --disable-all --deadline=300s --vendor --enable=vet --enable=ve
 
 RUN mkdir -p target && /script/coverage.sh
 
+ADD .git /go/src/github.com/umputun/remark/.git
 RUN go build -o remark -ldflags "-X main.revision=$(git rev-parse --abbrev-ref HEAD)-$(git describe --abbrev=7 --always --tags)-$(date +%Y%m%d-%H:%M:%S) -s -w" ./app
 
 
