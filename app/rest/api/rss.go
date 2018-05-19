@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -112,6 +113,15 @@ func (s *Rest) toRssFeed(url string, comments []store.Comment) (string, error) {
 			Description: c.Text,
 			Created:     c.Timestamp,
 			Author:      &feeds.Author{Name: c.User.Name},
+		}
+		if c.ParentID != "" {
+			// add indication to parent comment
+			parentComment, err := s.DataService.Get(c.Locator, c.ParentID)
+			if err == nil {
+				f.Title = fmt.Sprintf("%s > %s", c.User.Name, parentComment.User.Name)
+			} else {
+				log.Printf("[WARN] failed to get info about parent comment, %s", err)
+			}
 		}
 		feed.Items = append(feed.Items, &f)
 		if i > maxRssItems {

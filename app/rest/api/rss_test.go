@@ -100,6 +100,58 @@ func TestServer_RssSite(t *testing.T) {
 	assert.Equal(t, expected, res)
 }
 
+func TestServer_RssWithReply(t *testing.T) {
+	srv, ts := prep(t)
+	assert.NotNil(t, srv)
+	defer cleanup(ts)
+
+	waitOnMinChange()
+
+	pubDate := time.Now().Format(time.RFC1123Z)
+
+	c1 := store.Comment{
+		Text:    "test 123",
+		Locator: store.Locator{URL: "https://radio-t.com/blah10", SiteID: "radio-t"},
+	}
+	c2 := store.Comment{
+		Text:    "xyz test",
+		Locator: store.Locator{URL: "https://radio-t.com/blah10", SiteID: "radio-t"},
+	}
+	id1 := addComment(t, c1, ts)
+	c2.ParentID = id1
+	id2 := addComment(t, c2, ts)
+
+	res, code := get(t, ts.URL+"/api/v1/rss/post?site=radio-t&url=https://radio-t.com/blah10")
+	assert.Equal(t, 200, code)
+	t.Log(res)
+
+	expected := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+		  <channel>
+		    <title>Remark42 comments</title>
+		    <link>https://radio-t.com/blah10</link>
+		    <description>comment updates</description>
+		    <pubDate>%s</pubDate>
+		    <item>
+		      <title>developer one &gt; developer one</title>
+		      <link>https://radio-t.com/blah10#remark42__comment-%s</link>
+		      <description>&lt;p&gt;xyz test&lt;/p&gt;&#xA;</description>
+		      <author>developer one</author>
+		      <pubDate>%s</pubDate>
+		    </item>
+		    <item>
+		      <title>developer one</title>
+		      <link>https://radio-t.com/blah10#remark42__comment-%s</link>
+		      <description>&lt;p&gt;test 123&lt;/p&gt;&#xA;</description>
+		      <author>developer one</author>
+		      <pubDate>%s</pubDate>
+		    </item>
+		  </channel>
+		</rss>`, pubDate, id2, pubDate, id1, pubDate)
+
+	expected, res = cleanRssFormatting(expected, res)
+	assert.Equal(t, expected, res)
+}
+
 func waitOnMinChange() {
 	if time.Now().Second() == 59 {
 		time.Sleep(1001 * time.Millisecond)
