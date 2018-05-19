@@ -372,8 +372,7 @@ func (b *BoltDB) Blocked(siteID string) (users []store.BlockedUser, err error) {
 
 // List returns list of all commented posts with counters
 // uses count bucket to get number of comments
-func (b BoltDB) List(siteID string, limit, skip int) (list []store.PostInfo, err error) {
-
+func (b BoltDB) List(siteID string, limit, skip int) ([]store.PostInfo, error) {
 	bdb, err := b.db(siteID)
 	switch errors.Cause(err) {
 	default:
@@ -383,12 +382,13 @@ func (b BoltDB) List(siteID string, limit, skip int) (list []store.PostInfo, err
 	case nil:
 	}
 
+	list := []store.PostInfo{}
 	err = bdb.View(func(tx *bolt.Tx) error {
 		postsBkt := tx.Bucket([]byte(postsBucketName))
 
-		c := postsBkt.Cursor()
+		cursor := postsBkt.Cursor()
 		n := 0
-		for k, _ := c.Last(); k != nil; k, _ = c.Prev() {
+		for k, _ := cursor.Last(); k != nil; k, _ = cursor.Prev() {
 			n++
 			if skip > 0 && n <= skip {
 				continue
@@ -403,19 +403,19 @@ func (b BoltDB) List(siteID string, limit, skip int) (list []store.PostInfo, err
 				break
 			}
 		}
+
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
 
-	return list, err
+	return list, nil
 }
 
 // User extracts all comments for given site and given userID
 // "users" bucket has sub-bucket for each userID, and keeps it as ts:ref
-func (b *BoltDB) User(siteID string, userID string, limit int) (comments []store.Comment, totalComments int, err error) {
-
-	comments = []store.Comment{}
-	commentRefs := []string{}
-
+func (b *BoltDB) User(siteID string, userID string, limit int) ([]store.Comment, int, error) {
 	bdb, err := b.db(siteID)
 	if err != nil {
 		return nil, 0, err
@@ -426,6 +426,9 @@ func (b *BoltDB) User(siteID string, userID string, limit int) (comments []store
 	}
 
 	// get list of references to comments
+	var comments []store.Comment
+	var commentRefs []string
+	var totalComments int
 	err = bdb.View(func(tx *bolt.Tx) error {
 		usersBkt := tx.Bucket([]byte(userBucketName))
 		userIDBkt := usersBkt.Bucket([]byte(userID))
@@ -448,26 +451,26 @@ func (b *BoltDB) User(siteID string, userID string, limit int) (comments []store
 	})
 
 	if err != nil {
-		return comments, totalComments, err
+		return nil, 0, err
 	}
 
 	// retrieve comments for refs
 	for _, v := range commentRefs {
 		url, commentID, e := b.parseRef([]byte(v))
 		if e != nil {
-			return comments, totalComments, errors.Wrapf(e, "can't parse reference %s", v)
+			return nil, 0, errors.Wrapf(e, "can't parse reference %s", v)
 		}
+
 		if c, e := b.Get(store.Locator{SiteID: siteID, URL: url}, commentID); e == nil {
 			comments = append(comments, c)
 		}
 	}
 
-	return comments, totalComments, err
+	return comments, totalComments, nil
 }
 
 // Get returns comment for locator.URL and commentID string
-func (b *BoltDB) Get(locator store.Locator, commentID string) (comment store.Comment, err error) {
-
+func (b *BoltDB) Get(locator store.Locator, commentID string) (store.Comment, error) {
 	bdb, err := b.db(locator.SiteID)
 	switch errors.Cause(err) {
 	default:
@@ -477,6 +480,7 @@ func (b *BoltDB) Get(locator store.Locator, commentID string) (comment store.Com
 	case nil:
 	}
 
+	var comment store.Comment
 	err = bdb.View(func(tx *bolt.Tx) error {
 		bucket, err := b.getPostBucket(tx, locator.URL)
 		switch errors.Cause(err) {
@@ -486,9 +490,11 @@ func (b *BoltDB) Get(locator store.Locator, commentID string) (comment store.Com
 			return errors.Wrapf(ErrRecordDoesNotExists, "comment: %s", commentID)
 		case nil:
 		}
-		comment, e = b.load(bucket, []byte(commentID))
-		return e
+
+		comment, err = b.load(bucket, []byte(commentID))
+		return err
 	})
+
 	return comment, err
 }
 
