@@ -502,9 +502,7 @@ func (b *BoltDB) Put(locator store.Locator, comment store.Comment) error {
 // getPostBucket return bucket with all comments for postURL
 func (b *BoltDB) getPostBucket(tx *bolt.Tx, postURL string) (*bolt.Bucket, error) {
 	postsBkt := tx.Bucket([]byte(postsBucketName))
-	if postsBkt == nil {
-		return nil, errors.Errorf("no bucket %s", postsBucketName)
-	}
+
 	res := postsBkt.Bucket([]byte(postURL))
 	if res == nil {
 		return nil, errors.Errorf("no bucket %s in store", postURL)
@@ -515,9 +513,7 @@ func (b *BoltDB) getPostBucket(tx *bolt.Tx, postURL string) (*bolt.Bucket, error
 // makePostBucket create new bucket for postURL as a key. This bucket holds all comments for the post.
 func (b *BoltDB) makePostBucket(tx *bolt.Tx, postURL string) (*bolt.Bucket, error) {
 	postsBkt := tx.Bucket([]byte(postsBucketName))
-	if postsBkt == nil {
-		return nil, errors.Errorf("no bucket %s", postsBucketName)
-	}
+
 	res, err := postsBkt.CreateBucketIfNotExists([]byte(postURL))
 	if err != nil {
 		return nil, errors.Wrapf(err, "no bucket %s in store", postURL)
