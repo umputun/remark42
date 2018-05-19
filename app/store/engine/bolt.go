@@ -505,7 +505,7 @@ func (b *BoltDB) getPostBucket(tx *bolt.Tx, postURL string) (*bolt.Bucket, error
 
 	res := postsBkt.Bucket([]byte(postURL))
 	if res == nil {
-		return nil, errors.Errorf("no bucket %s in store", postURL)
+		return nil, errors.Wrapf(ErrBucketDoesNotExists, "bucket: %s", postURL)
 	}
 	return res, nil
 }
@@ -516,16 +516,17 @@ func (b *BoltDB) makePostBucket(tx *bolt.Tx, postURL string) (*bolt.Bucket, erro
 
 	res, err := postsBkt.CreateBucketIfNotExists([]byte(postURL))
 	if err != nil {
-		return nil, errors.Wrapf(err, "no bucket %s in store", postURL)
+		return nil, errors.Wrapf(ErrBucketDoesNotExists, "bucket: %s", postURL)
 	}
 	return res, nil
 }
 
 func (b *BoltDB) getUserBucket(tx *bolt.Tx, userID string) (*bolt.Bucket, error) {
 	usersBkt := tx.Bucket([]byte(userBucketName))
+
 	userIDBkt, e := usersBkt.CreateBucketIfNotExists([]byte(userID)) // get bucket for userID
 	if e != nil {
-		return nil, errors.Wrapf(e, "can't get bucket %s", userID)
+		return nil, errors.Wrapf(ErrBucketDoesNotExists, "bucket: %s", userID)
 	}
 	return userIDBkt, nil
 }
@@ -584,7 +585,7 @@ func (b *BoltDB) db(siteID string) (*bolt.DB, error) {
 	if res, ok := b.dbs[siteID]; ok {
 		return res, nil
 	}
-	return nil, errors.Errorf("site %q not found", siteID)
+	return nil, errors.Wrapf(ErrDBDoesNotExists, "database: %s", siteID)
 }
 
 // makeRef creates reference combining url and comment id
