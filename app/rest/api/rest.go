@@ -326,6 +326,16 @@ func (s *Rest) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 			return nil, e
 		}
 		comments = s.adminService.alterComments(comments, r)
+
+		// filter deleted from last comments view. Blocked marked as deleted and will sneak in without
+		filterDeleted := []store.Comment{}
+		for _, c := range comments {
+			if c.Deleted {
+				continue
+			}
+			filterDeleted = append(filterDeleted, c)
+		}
+
 		return encodeJSONWithHTML(comments)
 	})
 
