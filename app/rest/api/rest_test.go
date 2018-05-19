@@ -159,7 +159,7 @@ func TestServer_Find(t *testing.T) {
 	defer cleanup(ts)
 
 	_, code := get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah1")
-	assert.Equal(t, 400, code, "nothing in")
+	assert.Equal(t, 200, code, "nothing in")
 
 	c1 := store.Comment{Text: "test test #1", ParentID: "p1",
 		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}}
@@ -276,7 +276,7 @@ func TestServer_FindUserComments(t *testing.T) {
 	addComment(t, c2, ts)
 
 	_, code := get(t, ts.URL+"/api/v1/comments?site=radio-t&user=blah")
-	assert.Equal(t, 400, code, "noting for user blah")
+	assert.Equal(t, 200, code, "noting for user blah")
 
 	res, code := get(t, ts.URL+"/api/v1/comments?site=radio-t&user=dev")
 	assert.Equal(t, 200, code)

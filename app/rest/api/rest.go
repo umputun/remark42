@@ -26,6 +26,7 @@ import (
 	"github.com/umputun/remark/app/rest/auth"
 	"github.com/umputun/remark/app/rest/proxy"
 	"github.com/umputun/remark/app/store"
+	"github.com/umputun/remark/app/store/engine"
 	"github.com/umputun/remark/app/store/service"
 )
 
@@ -357,6 +358,11 @@ func (s *Rest) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 
 	comment, err := s.DataService.Get(store.Locator{SiteID: siteID, URL: url}, id)
 	if err != nil {
+		if errors.Cause(err) == engine.ErrRecordDoesNotExists {
+			rest.SendErrorJSON(w, r, http.StatusNotFound, err, "comment does not exists")
+			return
+		}
+
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get comment by id")
 		return
 	}
