@@ -1,0 +1,13 @@
+dist: trusty
+sudo: required
+language: go
+
+services:
+  - docker
+
+install:
+  - docker --version
+  - docker-compose --version
+
+script:
+  - docker build .
