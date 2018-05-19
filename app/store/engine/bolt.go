@@ -214,10 +214,10 @@ func (b *BoltDB) Find(locator store.Locator, sortFld string) ([]store.Comment, e
 
 	comments := []store.Comment{}
 	err = bdb.View(func(tx *bolt.Tx) error {
-		bucket, err := b.getPostBucket(tx, locator.URL)
-		switch errors.Cause(err) {
+		bucket, e := b.getPostBucket(tx, locator.URL)
+		switch errors.Cause(e) {
 		default:
-			return err
+			return e
 		case ErrBucketDoesNotExists:
 			// for this abstraction level this means that found 0 comments
 			return nil
@@ -485,17 +485,17 @@ func (b *BoltDB) Get(locator store.Locator, commentID string) (store.Comment, er
 
 	var comment store.Comment
 	err = bdb.View(func(tx *bolt.Tx) error {
-		bucket, err := b.getPostBucket(tx, locator.URL)
-		switch errors.Cause(err) {
+		bucket, e := b.getPostBucket(tx, locator.URL)
+		switch errors.Cause(e) {
 		default:
-			return err
+			return e
 		case ErrBucketDoesNotExists:
 			return errors.Wrapf(ErrRecordDoesNotExists, "comment: %s", commentID)
 		case nil:
 		}
 
-		comment, err = b.load(bucket, []byte(commentID))
-		return err
+		comment, e = b.load(bucket, []byte(commentID))
+		return e
 	})
 
 	return comment, err

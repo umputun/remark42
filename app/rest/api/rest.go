@@ -351,10 +351,10 @@ func (s *Rest) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 		if errors.Cause(err) == engine.ErrRecordDoesNotExists {
 			rest.SendErrorJSON(w, r, http.StatusNotFound, err, "comment does not exists")
 			return
-		} else {
-			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get comment by id")
-			return
 		}
+
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get comment by id")
+		return
 	}
 	comment = s.adminService.alterComments([]store.Comment{comment}, r)[0]
 	render.Status(r, http.StatusOK)
