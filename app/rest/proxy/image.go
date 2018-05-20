@@ -59,6 +59,11 @@ func (p Image) Routes() chi.Router {
 			}
 		}()
 
+		if resp.StatusCode != http.StatusOK {
+			w.WriteHeader(resp.StatusCode)
+			return
+		}
+
 		for k, v := range resp.Header {
 			if strings.EqualFold(k, "Content-Type") {
 				w.Header().Set(k, v[0])
