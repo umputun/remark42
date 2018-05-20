@@ -5,7 +5,7 @@ WORKDIR /go/src/github.com/umputun/remark
 ADD app /go/src/github.com/umputun/remark/app
 ADD vendor /go/src/github.com/umputun/remark/vendor
 
-RUN cd app && go test -v $(go list -e ./... | grep -v vendor)
+RUN cd app && go test $(go list -e ./... | grep -v vendor)
 
 RUN gometalinter --disable-all --deadline=300s --vendor --enable=vet --enable=vetshadow --enable=golint \
     --enable=staticcheck --enable=ineffassign --enable=goconst --enable=errcheck --enable=unconvert \
