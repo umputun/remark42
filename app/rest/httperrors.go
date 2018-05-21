@@ -13,12 +13,12 @@ import (
 
 // SendErrorJSON makes {error: blah, details: blah} json body and responds with error code
 func SendErrorJSON(w http.ResponseWriter, r *http.Request, code int, err error, details string) {
-	logDetails(r, code, err, details)
+	log.Printf("[DEBUG] %s", errDetailsMsg(r, code, err, details))
 	render.Status(r, code)
 	render.JSON(w, r, map[string]interface{}{"error": err.Error(), "details": details})
 }
 
-func logDetails(r *http.Request, code int, err error, details string) {
+func errDetailsMsg(r *http.Request, code int, err error, details string) string {
 	uinfoStr := ""
 	if user, e := GetUserInfo(r); e == nil {
 		uinfoStr = user.Name + "/" + user.ID + " - "
@@ -35,6 +35,6 @@ func logDetails(r *http.Request, code int, err error, details string) {
 		srcFileInfo = fmt.Sprintf(" [caused by %s:%d]", strings.Join(fnameElems[len(fnameElems)-3:], "/"), line)
 	}
 
-	log.Printf("[DEBUG] %s - %v - %d - %s%s - %s%s",
+	return fmt.Sprintf("%s - %v - %d - %s%s - %s%s",
 		details, err, code, uinfoStr, strings.Split(r.RemoteAddr, ":")[0], q, srcFileInfo)
 }
