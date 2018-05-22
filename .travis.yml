@@ -13,5 +13,5 @@ script:
 
 after_success:
   - cd app
-  - go test -v -covermode=count -coverprofile=coverage.out 
+  - go test $(go list -e ./... | grep -v vendor) -covermode=count -coverprofile=coverage.out
   - goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN
