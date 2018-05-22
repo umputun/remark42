@@ -12,10 +12,6 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/gorilla/context"
-
-[[constraint]]
-  branch = "master"
   name = "github.com/hashicorp/logutils"
 
 [[constraint]]

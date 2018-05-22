@@ -32,6 +32,12 @@
   version = "v1.1.0"
 
 [[projects]]
+  name = "github.com/dgrijalva/jwt-go"
+  packages = ["."]
+  revision = "06ea1031745cb8b3dab3f6a236daf2b0aa468b7e"
+  version = "v3.2.0"
+
+[[projects]]
   name = "github.com/didip/tollbooth"
   packages = [
     ".",
@@ -213,6 +219,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "01a2d611ea5b99d8ca13e5b12fdeddc9db5a791b054172e1f49e612579151623"
+  inputs-digest = "879764a044d263d9d6e943970fe58f3b3fdabbe1344dfcaf9b5bbab95040a175"
   solver-name = "gps-cdcl"
   solver-version = 1
