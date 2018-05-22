@@ -40,7 +40,6 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 | --max-back        | MAX_BACKUP_FILES     | `10`                   | no               | max backup files to keep                |
 | --max-cache-items | MAX_CACHE_ITEMS      | `1000`                 | no               | max number of cached items, 0-unlimited |
 | --max-cache-value | MAX_CACHE_VALUE      | `65536`                | no               | max size of cached value, o-unlimited   |
-| --session         | SESSION_STORE        | `/tmp`                 | no               | path to session store directory         |
 | --secret          | SECRET               |                        | no               | secret key, required                    |
 | --max-comment     | MAX_COMMENT_SIZE     | 2048                   | no               | comment's size limit                    |
 | --google-cid      | REMARK_GOOGLE_CID    |                        | no               | Google OAuth client ID                  |
