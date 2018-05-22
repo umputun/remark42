@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"log"
 	"net/http"
 	"time"
 
@@ -22,9 +21,11 @@ type JWT struct {
 // CustomClaims stores user info for auth and state & from from login
 type CustomClaims struct {
 	jwt.StandardClaims
-	User  *store.User `json:"user,omitempty"`
-	State string      `json:"state,omitempty"`
-	From  string      `json:"from,omitempty"`
+	User *store.User `json:"user,omitempty"`
+
+	// state and from used for oauth handshake
+	State string `json:"state,omitempty"`
+	From  string `json:"from,omitempty"`
 }
 
 const jwtCookieName = "JWT"
@@ -43,7 +44,7 @@ func NewJWT(secret string, secureCookies bool, exp time.Duration) *JWT {
 }
 
 // Set creates jwt cookie with xsrf cookie and put it to ResponseWriter
-// accepts claims and sets expiration
+// accepts claims and sets expiration if none defined
 func (j *JWT) Set(w http.ResponseWriter, claims *CustomClaims) error {
 	if claims.ExpiresAt == 0 {
 		claims.ExpiresAt = time.Now().Add(j.exp).Unix()
@@ -106,7 +107,6 @@ func (j *JWT) Get(r *http.Request) (*CustomClaims, error) {
 	if fromCookie && claims.User != nil {
 		xsrf := r.Header.Get(xsrfHeaderKey)
 		if claims.Id != xsrf {
-			log.Printf("[WARN] xsrf not matched jti, %s != %s", xsrf, claims.Id)
 			return nil, errors.New("xsrf mismatch")
 		}
 	}
