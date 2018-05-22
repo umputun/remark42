@@ -17,7 +17,6 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/render"
-	"github.com/gorilla/context"
 	"github.com/pkg/errors"
 	"gopkg.in/russross/blackfriday.v2"
 
@@ -80,7 +79,6 @@ func (s *Rest) routes() chi.Router {
 	router.Use(middleware.RealIP, Recoverer)
 	router.Use(middleware.Throttle(1000), middleware.Timeout(60*time.Second))
 	router.Use(AppInfo("remark42", s.Version), Ping)
-	router.Use(context.ClearHandler) // if you aren't using gorilla/mux, you need to wrap your handlers with context.ClearHandler
 
 	s.adminService = admin{
 		dataService: s.DataService,

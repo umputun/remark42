@@ -6,11 +6,11 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/http/cookiejar"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/gorilla/sessions"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/oauth2"
@@ -20,21 +20,28 @@ import (
 
 func TestLogin(t *testing.T) {
 
-	sessionStore := &mockStore{values: make(map[interface{}]interface{})}
-
-	_, ts, ots := mockProvider(t, sessionStore, 8981, 8982)
+	_, ts, ots := mockProvider(t, 8981, 8982)
 	defer func() {
 		ts.Close()
 		ots.Close()
 	}()
 
-	resp, err := http.Get("http://localhost:8981/login")
+	jar, err := cookiejar.New(nil)
+	client := &http.Client{Jar: jar, Timeout: 5 * time.Second}
+	resp, err := client.Get("http://localhost:8981/login")
 	assert.Nil(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 	body, err := ioutil.ReadAll(resp.Body)
 	assert.Nil(t, err)
 	t.Logf("resp %s", string(body))
 	t.Logf("headers: %+v", resp.Header)
+
+	assert.Equal(t, 2, len(resp.Cookies()))
+	assert.Equal(t, "JWT", resp.Cookies()[0].Name)
+	assert.NotEqual(t, "", resp.Cookies()[0].Value, "jwt set")
+	assert.Equal(t, "XSRF-TOKEN", resp.Cookies()[1].Name)
+	assert.NotEqual(t, "", resp.Cookies()[1].Value, "xsrf cookie set")
+
 	u := store.User{}
 	err = json.Unmarshal(body, &u)
 	assert.Nil(t, err)
@@ -43,29 +50,33 @@ func TestLogin(t *testing.T) {
 }
 
 func TestLogout(t *testing.T) {
-	sessionStore := &mockStore{values: make(map[interface{}]interface{})}
 
-	_, ts, ots := mockProvider(t, sessionStore, 8691, 8692)
+	_, ts, ots := mockProvider(t, 8691, 8692)
 	defer func() {
 		ts.Close()
 		ots.Close()
 	}()
 
-	resp, err := http.Get("http://localhost:8691/login")
+	jar, err := cookiejar.New(nil)
+	require.Nil(t, err)
+	client := &http.Client{Jar: jar, Timeout: 5 * time.Second}
+
+	resp, err := client.Get("http://localhost:8691/login")
+	require.Nil(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+	assert.Equal(t, 2, len(resp.Cookies()))
+	resp, err = client.Get("http://localhost:8691/logout")
 	require.Nil(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 
-	_, err = http.Get("http://localhost:8691/logout")
-	require.Nil(t, err)
-	assert.Equal(t, 200, resp.StatusCode)
-
-	s, err := sessionStore.Get(nil, "remark")
-	assert.Nil(t, err)
-	t.Log(s.Values)
-	assert.Equal(t, 0, len(s.Values))
+	assert.Equal(t, 2, len(resp.Cookies()))
+	assert.Equal(t, "JWT", resp.Cookies()[0].Name, "jwt cookie cleared")
+	assert.Equal(t, "", resp.Cookies()[0].Value)
+	assert.Equal(t, "XSRF-TOKEN", resp.Cookies()[1].Name, "xsrf cookie cleared")
+	assert.Equal(t, "", resp.Cookies()[1].Value)
 }
 
-func mockProvider(t *testing.T, sessStore sessions.Store, loginPort, authPort int) (provider Provider, ts *http.Server, oauth *http.Server) {
+func mockProvider(t *testing.T, loginPort, authPort int) (provider Provider, ts *http.Server, oauth *http.Server) {
 
 	provider = Provider{
 		Name: "mock",
@@ -86,7 +97,7 @@ func mockProvider(t *testing.T, sessStore sessions.Store, loginPort, authPort in
 		},
 	}
 
-	provider = initProvider(Params{SessionStore: sessStore, Cid: "cid", Csecret: "csecret"}, provider)
+	provider = initProvider(Params{Cid: "cid", Csecret: "csecret", JwtService: NewJWT("12345", false, time.Hour)}, provider)
 
 	ts = &http.Server{Addr: fmt.Sprintf(":%d", loginPort), Handler: provider.Routes()}
 
@@ -131,30 +142,4 @@ func mockProvider(t *testing.T, sessStore sessions.Store, loginPort, authPort in
 
 	time.Sleep(time.Millisecond * 100) // let the start
 	return provider, ts, oauth
-}
-
-type mockStore struct {
-	values map[interface{}]interface{}
-}
-
-func (ms *mockStore) Get(r *http.Request, name string) (*sessions.Session, error) {
-	if ms.values == nil {
-		ms.values = make(map[interface{}]interface{})
-	}
-	s := sessions.NewSession(ms, name)
-	s.Values = ms.values
-	return s, nil
-}
-
-func (ms *mockStore) New(r *http.Request, name string) (*sessions.Session, error) {
-	ms.values = make(map[interface{}]interface{})
-	return &sessions.Session{Values: ms.values}, nil
-}
-
-func (ms *mockStore) Save(r *http.Request, w http.ResponseWriter, s *sessions.Session) error {
-	if ms.values == nil {
-		ms.values = make(map[interface{}]interface{})
-	}
-	ms.values = s.Values
-	return nil
 }

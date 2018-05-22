@@ -24,9 +24,10 @@ type Image struct {
 
 // Convert all img src links without https to proxied links
 func (p Image) Convert(commentHTML string) string {
-	if !p.Enabled {
+	if !p.Enabled || strings.HasPrefix(p.RemarkURL, "http://") {
 		return commentHTML
 	}
+
 	imgs, err := p.extract(commentHTML)
 	if err != nil {
 		return commentHTML
@@ -108,10 +109,12 @@ func (p Image) extract(commentHTML string) ([]string, error) {
 
 // replace img links in commentHTML with route to proxy with base64 encoded original link
 func (p Image) replace(commentHTML string, imgs []string) string {
+
 	for _, img := range imgs {
 		encodedImgURL := base64.URLEncoding.EncodeToString([]byte(img))
 		resImgURL := p.RemarkURL + p.RoutePath + "?src=" + encodedImgURL
 		commentHTML = strings.Replace(commentHTML, img, resImgURL, -1)
 	}
+
 	return commentHTML
 }

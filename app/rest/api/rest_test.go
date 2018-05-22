@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/coreos/bbolt"
-	"github.com/gorilla/sessions"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -469,11 +468,10 @@ func prep(t *testing.T) (srv *Rest, ts *httptest.Server) {
 	srv = &Rest{
 		DataService: dataStore,
 		Authenticator: auth.Authenticator{
-			SessionStore: sessions.NewFilesystemStore("/tmp", []byte("blah")),
-			DevPasswd:    "password",
-			Providers:    nil,
-			AvatarProxy:  &proxy.Avatar{StorePath: "/tmp", RoutePath: "/api/v1/avatar"},
-			Admins:       []string{"a1", "a2"},
+			DevPasswd:   "password",
+			Providers:   nil,
+			AvatarProxy: &proxy.Avatar{StorePath: "/tmp", RoutePath: "/api/v1/avatar"},
+			Admins:      []string{"a1", "a2"},
 		},
 		Exporter: &migrator.Remark{DataStore: &dataStore},
 		Cache:    &mockCache{},

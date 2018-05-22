@@ -7,9 +7,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gorilla/sessions"
-	"github.com/pkg/errors"
-
 	"github.com/umputun/remark/app/rest"
 	"github.com/umputun/remark/app/rest/proxy"
 	"github.com/umputun/remark/app/store"
@@ -17,11 +14,11 @@ import (
 
 // Authenticator is top level auth object providing middlewares
 type Authenticator struct {
-	SessionStore sessions.Store
-	AvatarProxy  *proxy.Avatar
-	Admins       []string
-	Providers    []Provider
-	DevPasswd    string
+	JWTService  *JWT
+	AvatarProxy *proxy.Avatar
+	Admins      []string
+	Providers   []Provider
+	DevPasswd   string
 }
 
 var devUser = store.User{
@@ -44,42 +41,35 @@ func (a *Authenticator) Auth(reqAuth bool) func(http.Handler) http.Handler {
 				return
 			}
 
-			session, err := a.SessionStore.Get(r, "remark")
+			claims, err := a.JWTService.Get(r)
 			if err != nil && reqAuth { // in full auth lack of session causes Unauthorized
+				log.Printf("[WARN] failed auth, %s", err)
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				return
 			}
 
-			if err != nil { // in anonymous mode just pass it to next handler
+			if err != nil { // in anonymous mode just pass it to the next handler
 				h.ServeHTTP(w, r)
 				return
 			}
 
-			uinfoData, ok := session.Values["uinfo"]
-			if !ok && reqAuth {
+			if claims.User == nil && reqAuth {
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				return
 			}
 
-			if xsrfError := a.checkXSRF(r, session); xsrfError != nil {
-				if reqAuth {
-					log.Printf("[WARN] %s", xsrfError.Error())
-					http.Error(w, "Unauthorized", http.StatusUnauthorized)
-					return
-				}
-				h.ServeHTTP(w, r) // in anonymous mode just pass it to next handler
-				return
-			}
-
-			if ok { // if uinfo in session, populate to context
-				user := uinfoData.(store.User)
+			if claims.User != nil { // if uinfo in token populate it to context
+				user := *claims.User
 				for _, admin := range a.Admins {
 					if admin == user.ID {
 						user.Admin = true
 						break
 					}
 				}
-
+				// refresh token if it close to expiration
+				if _, err := a.JWTService.Refresh(w, r); err != nil {
+					log.Printf("[WARN] can't refresh jwt, %s", err)
+				}
 				r = rest.SetUserInfo(r, user)
 			}
 			h.ServeHTTP(w, r)
@@ -87,19 +77,6 @@ func (a *Authenticator) Auth(reqAuth bool) func(http.Handler) http.Handler {
 		return http.HandlerFunc(fn)
 	}
 	return f
-}
-
-func (a *Authenticator) checkXSRF(r *http.Request, session *sessions.Session) error {
-	xsrfToken := r.Header.Get("X-XSRF-TOKEN")
-	sessionToken, headerOk := session.Values["xsrf_token"]
-	if !headerOk || xsrfToken == "" || sessionToken == nil {
-		return errors.New(" no xsrf_token in session")
-	}
-
-	if xsrfToken != sessionToken {
-		return errors.Errorf("xsrf header not matched session token, %q != %q", xsrfToken, sessionToken)
-	}
-	return nil
 }
 
 // AdminOnly allows access to admins

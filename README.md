@@ -1,4 +1,4 @@
-# remark42 [![Build Status](https://travis-ci.org/umputun/remark.svg?branch=master)](https://travis-ci.org/umputun/remark) [![Go Report Card](https://goreportcard.com/badge/github.com/umputun/remark)](https://goreportcard.com/report/github.com/umputun/remark)
+# remark42 [![Build Status](https://travis-ci.org/umputun/remark.svg?branch=master)](https://travis-ci.org/umputun/remark) [![Go Report Card](https://goreportcard.com/badge/github.com/umputun/remark)](https://goreportcard.com/report/github.com/umputun/remark) [![Coverage Status](https://coveralls.io/repos/github/umputun/remark/badge.svg?branch=develop)](https://coveralls.io/github/umputun/remark?branch=develop)
 
 Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engine, which doesn't spy on users. It can be embedded into blogs, articles or any other place where readers add comments.
 
@@ -40,7 +40,6 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 | --max-back        | MAX_BACKUP_FILES     | `10`                   | no               | max backup files to keep                |
 | --max-cache-items | MAX_CACHE_ITEMS      | `1000`                 | no               | max number of cached items, 0-unlimited |
 | --max-cache-value | MAX_CACHE_VALUE      | `65536`                | no               | max size of cached value, o-unlimited   |
-| --session         | SESSION_STORE        | `/tmp`                 | no               | path to session store directory         |
 | --secret          | SECRET               |                        | no               | secret key, required                    |
 | --max-comment     | MAX_COMMENT_SIZE     | 2048                   | no               | comment's size limit                    |
 | --google-cid      | REMARK_GOOGLE_CID    |                        | no               | Google OAuth client ID                  |
@@ -367,7 +366,7 @@ _all admin calls require auth and admin privilege_
 * Each site stored in a separate boltbd file.
 * In order to migrate/move remark42 to another host boltbd files should be transferred.
 * Automatic backup process runs every 24h and exports all content in json-like format to `backup-remark-YYYYMMDD.gz`.
-* Sessions implemented with [gorilla/sessions](https://github.com/gorilla/sessions) and file-system store under `SESSION_STORE` path. It uses HttpOnly, secure cookies.
+* Authentication implemented with [jwt](https://github.com/dgrijalva/jwt-go) stored in a cookie. It uses HttpOnly, secure cookies.
 * All heavy REST calls cached internally, default expiration 4h
 * User's activity throttled globally (up to 1000 simultaneous requests) and limited locally (per user, up to 10 req/sec)
 * Request timeout set to 60sec

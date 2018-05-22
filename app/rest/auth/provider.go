@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha1"
-	"encoding/gob"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -12,9 +11,9 @@ import (
 	"net/http"
 	"time"
 
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
-	"github.com/gorilla/sessions"
 	"golang.org/x/oauth2"
 
 	"github.com/umputun/remark/app/rest"
@@ -24,26 +23,26 @@ import (
 
 // Provider represents oauth2 provider
 type Provider struct {
-	sessions.Store
-
 	Name        string
 	RedirectURL string
 	InfoURL     string
 	Endpoint    oauth2.Endpoint
 	Scopes      []string
 	MapUser     func(userData, []byte) store.User // map info from InfoURL to User
+	Secret      string
 
 	avatarProxy *proxy.Avatar
 	conf        *oauth2.Config
+	jwtService  *JWT
 }
 
 // Params to make initialized and ready to use provider
 type Params struct {
-	Cid          string
-	Csecret      string
-	SessionStore sessions.Store
-	RemarkURL    string
-	AvatarProxy  *proxy.Avatar
+	Cid         string
+	Csecret     string
+	RemarkURL   string
+	AvatarProxy *proxy.Avatar
+	JwtService  *JWT
 }
 
 type userData map[string]interface{}
@@ -68,8 +67,8 @@ func initProvider(p Params, provider Provider) Provider {
 	}
 
 	provider.conf = &conf
-	provider.Store = p.SessionStore
 	provider.avatarProxy = p.AvatarProxy
+	provider.jwtService = p.JwtService
 	return provider
 }
 
@@ -87,52 +86,47 @@ func (p Provider) loginHandler(w http.ResponseWriter, r *http.Request) {
 
 	// make state (random) and store in session
 	state := p.randToken()
-	session, err := p.Get(r, "remark")
-	if err != nil {
-		log.Printf("[DEBUG] can't get session, %s", err)
+
+	claims := CustomClaims{
+		State: state,
+		From:  r.URL.Query().Get("from"),
+		StandardClaims: jwt.StandardClaims{
+			Id:        p.randToken(),
+			Issuer:    "remark42",
+			ExpiresAt: time.Now().Add(30 * time.Minute).Unix(),
+			NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
+		},
 	}
 
-	session.Values["state"] = state
-
-	if from := r.URL.Query().Get("from"); from != "" {
-		session.Values["from"] = from
-	}
-
-	log.Printf("[DEBUG] login, %+v", session.Values)
-	if err := session.Save(r, w); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to save state")
+	if err := p.jwtService.Set(w, &claims); err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to set jwt")
 		return
 	}
 
 	// return login url
 	loginURL := p.conf.AuthCodeURL(state)
 	log.Printf("[DEBUG] login url %s", loginURL)
-	http.Redirect(w, r, loginURL, http.StatusTemporaryRedirect)
+
+	http.Redirect(w, r, loginURL, http.StatusFound)
 }
 
 // authHandler fills user info and redirects to "from" url. This is callback url redirected locally by browser
 // GET /callback
 func (p Provider) authHandler(w http.ResponseWriter, r *http.Request) {
 
-	session, err := p.Get(r, "remark")
+	oauthClaims, err := p.jwtService.Get(r)
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to get session")
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to get jwt")
 		return
 	}
 
-	// compare saved state to the one from redirect url
-	retrievedState, ok := session.Values["state"]
-	if !ok {
-		http.Error(w, "missing state in store", http.StatusUnauthorized)
-		return
-	}
-
+	retrievedState := oauthClaims.State
 	if retrievedState == "" || retrievedState != r.URL.Query().Get("state") {
 		http.Error(w, fmt.Sprintf("unexpected state %v", retrievedState), http.StatusUnauthorized)
 		return
 	}
 
-	log.Printf("[DEBUG] auth, %+v", session.Values)
+	log.Printf("[DEBUG] auth with state %s", retrievedState)
 	tok, err := p.conf.Exchange(context.Background(), r.URL.Query().Get("code"))
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "exchange failed")
@@ -173,26 +167,25 @@ func (p Provider) authHandler(w http.ResponseWriter, r *http.Request) {
 			log.Printf("[WARN] failed to proxy avatar, %s", e)
 		}
 	}
-	session.Values["uinfo"] = u
 
-	xsrfToken := p.randToken()
-	session.Values["xsrf_token"] = xsrfToken
-
-	xsrfCookie := http.Cookie{Name: "XSRF-TOKEN", Value: xsrfToken, HttpOnly: false, Path: "/",
-		MaxAge: 3600 * 24 * 365, Secure: true,
+	authClaims := &CustomClaims{
+		User: &u,
+		StandardClaims: jwt.StandardClaims{
+			Issuer: "remark42",
+			Id:     p.randToken(),
+		},
 	}
-	http.SetCookie(w, &xsrfCookie)
 
-	if err = session.Save(r, w); err != nil {
+	if err = p.jwtService.Set(w, authClaims); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to save user info")
 		return
 	}
 
-	log.Printf("[DEBUG] user info %+v", session.Values["uinfo"])
+	log.Printf("[DEBUG] user info %+v", u)
 
 	// redirect to back url if presented in login query params
-	if fromURL, ok := session.Values["from"]; ok {
-		http.Redirect(w, r, fromURL.(string), http.StatusTemporaryRedirect)
+	if oauthClaims.From != "" {
+		http.Redirect(w, r, oauthClaims.From, http.StatusTemporaryRedirect)
 		return
 	}
 	render.JSON(w, r, jData)
@@ -200,26 +193,8 @@ func (p Provider) authHandler(w http.ResponseWriter, r *http.Request) {
 
 // LogoutHandler - GET /logout
 func (p Provider) LogoutHandler(w http.ResponseWriter, r *http.Request) {
-	session, err := p.Get(r, "remark")
-	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "failed to get session")
-		return
-	}
-
-	session.Values["uinfo"], session.Values["from"], session.Values["state"] = "", "", ""
-	delete(session.Values, "uinfo")
-	delete(session.Values, "from")
-	delete(session.Values, "state")
-	delete(session.Values, "xsrf_token")
-	xsrfCookie := http.Cookie{Name: "XSRF-TOKEN", Value: "", HttpOnly: false, Path: "/",
-		MaxAge: -1, Expires: time.Unix(0, 0), Secure: true}
-	http.SetCookie(w, &xsrfCookie)
-
-	if err = session.Save(r, w); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to reset user info")
-		return
-	}
-	log.Printf("[DEBUG] logout, %+v", session.Values)
+	p.jwtService.Reset(w)
+	log.Printf("[DEBUG] logout")
 }
 
 func (p Provider) randToken() string {
@@ -232,8 +207,4 @@ func (p Provider) randToken() string {
 		log.Printf("[WARN] can't write randoms, %s", err)
 	}
 	return fmt.Sprintf("%x", s.Sum(nil))
-}
-
-func init() {
-	gob.Register(store.User{})
 }

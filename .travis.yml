@@ -1,6 +1,19 @@
+language: go
+
+go:
+  - "1.10.x"
+
+before_install:
+  - go get golang.org/x/tools/cmd/cover
+  - go get github.com/mattn/goveralls
+
 install:
   - docker --version
   - docker-compose --version
 
 script:
   - docker build .
+
+after_success:
+  - go test $(go list -e ./... | grep -v vendor) -covermode=count -coverprofile=coverage.out
+  - goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN

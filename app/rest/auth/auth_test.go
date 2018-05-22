@@ -3,19 +3,81 @@ package auth
 import (
 	"encoding/base64"
 	"net/http"
+	"net/http/cookiejar"
 	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/go-chi/chi"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+func TestAuthJWTCookie(t *testing.T) {
+	a := Authenticator{DevPasswd: "123456", JWTService: NewJWT("xyz 12345", false, time.Hour)}
+	router := chi.NewRouter()
+	router.With(a.Auth(true)).Get("/auth", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(201)
+	})
+	server := httptest.NewServer(router)
+	defer server.Close()
+
+	expiration := int(time.Duration(365 * 24 * time.Hour).Seconds())
+	req, err := http.NewRequest("GET", server.URL+"/auth", nil)
+	require.Nil(t, err)
+	req.AddCookie(&http.Cookie{Name: "JWT", Value: testJwtValid, HttpOnly: true, Path: "/", MaxAge: expiration, Secure: false})
+	req.Header.Add("X-XSRF-TOKEN", "random id")
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	assert.Equal(t, 201, resp.StatusCode, "valid auth user")
+
+	req, err = http.NewRequest("GET", server.URL+"/auth", nil)
+	require.Nil(t, err)
+	req.AddCookie(&http.Cookie{Name: "JWT", Value: testJwtValid, HttpOnly: true, Path: "/", MaxAge: expiration, Secure: false})
+	req.Header.Add("X-XSRF-TOKEN", "wrong id")
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	assert.Equal(t, 401, resp.StatusCode, "xsrf mismatch")
+
+	req, err = http.NewRequest("GET", server.URL+"/auth", nil)
+	require.Nil(t, err)
+	req.AddCookie(&http.Cookie{Name: "JWT", Value: testJwtExpired, HttpOnly: true, Path: "/", MaxAge: expiration, Secure: false})
+	req.Header.Add("X-XSRF-TOKEN", "random id")
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	assert.Equal(t, 401, resp.StatusCode, "token expired")
+}
+
+func TestAuthJWTHeader(t *testing.T) {
+	a := Authenticator{DevPasswd: "123456", JWTService: NewJWT("xyz 12345", false, time.Hour)}
+	router := chi.NewRouter()
+	router.With(a.Auth(true)).Get("/auth", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(201)
+	})
+	server := httptest.NewServer(router)
+	defer server.Close()
+
+	jar, err := cookiejar.New(nil)
+	require.Nil(t, err)
+	client := &http.Client{Jar: jar, Timeout: 5 * time.Second}
+	req, err := http.NewRequest("GET", server.URL+"/auth", nil)
+	require.Nil(t, err)
+	req.Header.Add("X-JWT", testJwtValid)
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	assert.Equal(t, 201, resp.StatusCode, "valid auth user")
+
+	req, err = http.NewRequest("GET", server.URL+"/auth", nil)
+	require.Nil(t, err)
+	req.Header.Add("X-JWT", testJwtExpired)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	assert.Equal(t, 401, resp.StatusCode, "invalid auth token")
+}
 func TestAuthRequired(t *testing.T) {
-	store := mockStore{}
-	a := Authenticator{SessionStore: &store, DevPasswd: "123456"}
+	a := Authenticator{DevPasswd: "123456"}
 	router := chi.NewRouter()
 	router.With(a.Auth(true)).Get("/auth", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(201)
@@ -43,8 +105,7 @@ func TestAuthRequired(t *testing.T) {
 }
 
 func TestAuthNotRequired(t *testing.T) {
-	store := mockStore{}
-	a := Authenticator{SessionStore: &store, DevPasswd: "123456"}
+	a := Authenticator{DevPasswd: "123456"}
 	router := chi.NewRouter()
 	router.With(a.Auth(false)).Get("/auth", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(201)
@@ -72,8 +133,7 @@ func TestAuthNotRequired(t *testing.T) {
 }
 
 func TestAdminRequired(t *testing.T) {
-	store := mockStore{}
-	a := Authenticator{SessionStore: &store, DevPasswd: "123456"}
+	a := Authenticator{DevPasswd: "123456"}
 	router := chi.NewRouter()
 	router.With(a.Auth(true), a.AdminOnly).Get("/auth", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(201)

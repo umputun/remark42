@@ -5,12 +5,17 @@ workspace:
 pipeline:
   
   build:
-    image: golang:1.9-alpine
+    image: golang:1.10-alpine
     commands:
       - cd app
       - go build -v ./...
+      # - apk add --no-cache git
+      # - go get golang.org/x/tools/cmd/cover
+      # - go get github.com/mattn/goveralls
+      # - go test -v -covermode=count -coverprofile=coverage.out 
+      # - /go/bin/goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN
 
-  docker-master:
+  docker_master:
     image: plugins/docker
     repo: umputun/remark
     secrets: [ docker_username, docker_password ]
@@ -21,7 +26,7 @@ pipeline:
       branch: [master, release/*]
       event: push
 
-  docker-branch:
+  docker_branch:
     image: plugins/docker
     repo: umputun/remark
     secrets: [ docker_username, docker_password ]
@@ -32,7 +37,7 @@ pipeline:
         exclude: [master, release/*]
         event: push
 
-  docker-pullrequest:
+  docker_pullrequest:
     image: docker
     commands:
       - docker build .

@@ -20,7 +20,6 @@ func NewGoogle(p Params) Provider {
 		RedirectURL: p.RemarkURL + "/auth/google/callback",
 		Scopes:      []string{"https://www.googleapis.com/auth/userinfo.email"},
 		InfoURL:     "https://www.googleapis.com/oauth2/v3/userinfo",
-		Store:       p.SessionStore,
 		MapUser: func(data userData, _ []byte) store.User {
 			userInfo := store.User{
 				// encode email with provider name to avoid collision if same id returned by other provider
@@ -44,7 +43,6 @@ func NewGithub(p Params) Provider {
 		RedirectURL: p.RemarkURL + "/auth/github/callback",
 		Scopes:      []string{"user:email"},
 		InfoURL:     "https://api.github.com/user",
-		Store:       p.SessionStore,
 		MapUser: func(data userData, _ []byte) store.User {
 			userInfo := store.User{
 				ID:      "github_" + store.EncodeID(data.value("login")),
@@ -83,7 +81,6 @@ func NewFacebook(p Params) Provider {
 		RedirectURL: p.RemarkURL + "/auth/facebook/callback",
 		Scopes:      []string{"public_profile"},
 		InfoURL:     "https://graph.facebook.com/me?fields=id,name,picture",
-		Store:       p.SessionStore,
 		MapUser: func(data userData, bdata []byte) store.User {
 			userInfo := store.User{
 				ID:   "facebook_" + store.EncodeID(data.value("id")),
@@ -113,7 +110,6 @@ func NewDisqus(p Params) Provider {
 		RedirectURL: p.RemarkURL + "/auth/disqus/callback",
 		Scopes:      []string{"read"},
 		InfoURL:     "https://disqus.com/api/3.0/users/details.json",
-		Store:       p.SessionStore,
 		MapUser: func(data userData, _ []byte) store.User {
 			userInfo := store.User{
 				ID:      "disqus_" + store.EncodeID(data.value("login")),

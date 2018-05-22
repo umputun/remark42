@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/coreos/bbolt"
-	"github.com/gorilla/sessions"
 	"github.com/hashicorp/logutils"
 	"github.com/jessevdk/go-flags"
 	"github.com/pkg/errors"
@@ -34,17 +33,15 @@ var opts struct {
 
 	BackupLocation string `long:"backup" env:"BACKUP_PATH" default:"./var/backup" description:"backups location"`
 	MaxBackupFiles int    `long:"max-back" env:"MAX_BACKUP_FILES" default:"10" description:"max backups to keep"`
-
-	SessionStore   string `long:"session" env:"SESSION_STORE" default:"./var/session" description:"session store location"`
 	AvatarStore    string `long:"avatars" env:"AVATAR_STORE" default:"./var/avatars" description:"avatars location"`
-	MaxCommentSize int    `long:"max-comment" env:"MAX_COMMENT_SIZE" default:"2048" description:"max comment size"`
-	SecretKey      string `long:"secret" env:"SECRET" required:"true" description:"secret key"`
 	ImageProxy     bool   `long:"img-proxy" env:"IMG_PROXY" description:"enable image proxy"`
+
+	MaxCommentSize int    `long:"max-comment" env:"MAX_COMMENT_SIZE" default:"2048" description:"max comment size"`
 	MaxCachedItems int    `long:"max-cache-items" env:"MAX_CACHE_ITEMS" default:"1000" description:"max cached items"`
 	MaxCachedValue int    `long:"max-cache-value" env:"MAX_CACHE_VALUE" default:"65536" description:"max size of cached value"`
-
-	LowScore      int `long:"low-score" env:"LOW_SCORE" default:"-5" description:"low score threshold"`
-	CriticalScore int `long:"critical-score" env:"CRITICAL_SCORE" default:"-10" description:"critical score threshold"`
+	SecretKey      string `long:"secret" env:"SECRET" required:"true" description:"secret key"`
+	LowScore       int    `long:"low-score" env:"LOW_SCORE" default:"-5" description:"low score threshold"`
+	CriticalScore  int    `long:"critical-score" env:"CRITICAL_SCORE" default:"-10" description:"critical score threshold"`
 
 	GoogleCID    string `long:"google-cid" env:"REMARK_GOOGLE_CID" description:"Google OAuth client ID"`
 	GoogleCSEC   string `long:"google-csec" env:"REMARK_GOOGLE_CSEC" description:"Google OAuth client secret"`
@@ -71,7 +68,7 @@ func main() {
 	setupLog(opts.Dbg)
 	log.Print("[INFO] started remark")
 
-	if err := makeDirs(opts.BoltPath, opts.SessionStore, opts.BackupLocation, opts.AvatarStore); err != nil {
+	if err := makeDirs(opts.BoltPath, opts.BackupLocation, opts.AvatarStore); err != nil {
 		log.Fatalf("[ERROR] can't create directories, %+v", err)
 	}
 
@@ -87,15 +84,6 @@ func main() {
 		Secret:         opts.SecretKey,
 		MaxCommentSize: opts.MaxCommentSize,
 	}
-
-	sessionStore := func() sessions.Store {
-		sess := sessions.NewFilesystemStore(opts.SessionStore, []byte(opts.SecretKey))
-		sess.Options.HttpOnly = true
-		sess.Options.Secure = true
-		sess.Options.MaxAge = 3600 * 24 * 365
-		sess.Options.Path = "/"
-		return sess
-	}()
 
 	exporter := migrator.Remark{DataStore: &dataService}
 	cache := rest.NewLoadingCache(rest.MaxValueSize(opts.MaxCachedValue), rest.MaxKeys(opts.MaxCachedItems),
@@ -118,6 +106,8 @@ func main() {
 		RemarkURL: strings.TrimSuffix(opts.RemarkURL, "/"),
 	}
 
+	jwtService := auth.NewJWT(opts.SecretKey, strings.HasPrefix(opts.RemarkURL, "https://"), 7*24*time.Hour)
+
 	srv := api.Rest{
 		Version:     revision,
 		DataService: dataService,
@@ -125,11 +115,11 @@ func main() {
 		WebRoot:     opts.WebRoot,
 		ImageProxy:  proxy.Image{Enabled: opts.ImageProxy, RoutePath: "/api/v1/img", RemarkURL: opts.RemarkURL},
 		Authenticator: auth.Authenticator{
-			Admins:       opts.Admins,
-			SessionStore: sessionStore,
-			Providers:    makeAuthProviders(sessionStore, avatarProxy),
-			AvatarProxy:  avatarProxy,
-			DevPasswd:    opts.DevPasswd,
+			JWTService:  jwtService,
+			Admins:      opts.Admins,
+			Providers:   makeAuthProviders(jwtService, avatarProxy),
+			AvatarProxy: avatarProxy,
+			DevPasswd:   opts.DevPasswd,
 		},
 		Cache: cache,
 	}
@@ -193,15 +183,15 @@ func makeDirs(dirs ...string) error {
 	return nil
 }
 
-func makeAuthProviders(sessionStore sessions.Store, avatarProxy *proxy.Avatar) (providers []auth.Provider) {
+func makeAuthProviders(jwtService *auth.JWT, avatarProxy *proxy.Avatar) (providers []auth.Provider) {
 
 	makeParams := func(cid, secret string) auth.Params {
 		return auth.Params{
-			AvatarProxy:  avatarProxy,
-			SessionStore: sessionStore,
-			RemarkURL:    opts.RemarkURL,
-			Cid:          cid,
-			Csecret:      secret,
+			JwtService:  jwtService,
+			AvatarProxy: avatarProxy,
+			RemarkURL:   opts.RemarkURL,
+			Cid:         cid,
+			Csecret:     secret,
 		}
 	}
 
