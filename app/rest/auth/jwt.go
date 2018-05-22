@@ -120,9 +120,8 @@ func (j *JWT) Refresh(w http.ResponseWriter, r *http.Request) (*CustomClaims, er
 	if err != nil {
 		return nil, err
 	}
-	untilExp := time.Unix(claims.ExpiresAt, 0).Sub(time.Now()).Seconds()
-	log.Print(untilExp)
-	if untilExp < j.exp.Seconds()/2 {
+	untilExp := claims.ExpiresAt - time.Now().Unix()
+	if untilExp <= int64(j.exp.Seconds()/2) {
 		claims.ExpiresAt = time.Now().Add(j.exp).Unix()
 		e := j.Set(w, claims)
 		return claims, e

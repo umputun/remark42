@@ -106,7 +106,7 @@ func main() {
 		RemarkURL: strings.TrimSuffix(opts.RemarkURL, "/"),
 	}
 
-	jwtService := auth.NewJWT(opts.SecretKey, strings.HasPrefix(opts.RemarkURL, "https://"), time.Duration(7*24*time.Hour))
+	jwtService := auth.NewJWT(opts.SecretKey, strings.HasPrefix(opts.RemarkURL, "https://"), 7*24*time.Hour)
 
 	srv := api.Rest{
 		Version:     revision,
