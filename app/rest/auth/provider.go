@@ -176,7 +176,6 @@ func (p Provider) authHandler(w http.ResponseWriter, r *http.Request) {
 			Issuer:    "remark42",
 			Id:        p.randToken(),
 			ExpiresAt: time.Now().Add(7 * 24 * time.Hour).Unix(),
-			NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
 		},
 	}
 

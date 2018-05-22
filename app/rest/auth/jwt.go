@@ -35,20 +35,20 @@ const xsrfHeaderKey = "X-XSRF-TOKEN"
 // Set creates jwt cookie with xsrf cookie and put it to ResponseWriter
 func (j *JWT) Set(w http.ResponseWriter, claims *CustomClaims) error {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString([]byte([]byte(j.secret)))
+	tokenString, err := token.SignedString([]byte(j.secret))
 	if err != nil {
 		return errors.Wrap(err, "can't sign jwt token")
 	}
 
-	expiration := int(time.Duration(365 * 24 * time.Hour).Seconds())
+	cookieExpiration := 365 * 24 * 3600 // 1year
 
 	jwtCookie := http.Cookie{Name: jwtCookieName, Value: tokenString, HttpOnly: true, Path: "/",
-		MaxAge: expiration, Secure: j.secureCookies}
+		MaxAge: cookieExpiration, Secure: j.secureCookies}
 	http.SetCookie(w, &jwtCookie)
 
 	jti := claims.Id
 	xsrfCookie := http.Cookie{Name: xsrfCookieName, Value: jti, HttpOnly: false, Path: "/",
-		MaxAge: expiration, Secure: j.secureCookies}
+		MaxAge: cookieExpiration, Secure: j.secureCookies}
 	http.SetCookie(w, &xsrfCookie)
 
 	return nil
