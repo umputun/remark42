@@ -132,10 +132,10 @@ func (j *JWT) Refresh(w http.ResponseWriter, r *http.Request) (*CustomClaims, er
 // Reset token's cookies
 func (j *JWT) Reset(w http.ResponseWriter) {
 	jwtCookie := http.Cookie{Name: jwtCookieName, Value: "", HttpOnly: false, Path: "/",
-		MaxAge: -1, Expires: time.Unix(0, 0), Secure: true}
+		MaxAge: -1, Expires: time.Unix(0, 0), Secure: j.secureCookies}
 	http.SetCookie(w, &jwtCookie)
 
 	xsrfCookie := http.Cookie{Name: xsrfCookieName, Value: "", HttpOnly: false, Path: "/",
-		MaxAge: -1, Expires: time.Unix(0, 0), Secure: true}
+		MaxAge: -1, Expires: time.Unix(0, 0), Secure: j.secureCookies}
 	http.SetCookie(w, &xsrfCookie)
 }
