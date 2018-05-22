@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha1"
-	"encoding/gob"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -208,8 +207,4 @@ func (p Provider) randToken() string {
 		log.Printf("[WARN] can't write randoms, %s", err)
 	}
 	return fmt.Sprintf("%x", s.Sum(nil))
-}
-
-func init() {
-	gob.Register(store.User{})
 }
