@@ -10,10 +10,10 @@ pipeline:
       - apk add --no-cache git
       - cd app
       - go build -v ./...
-      - go get golang.org/x/tools/cmd/cover
-      - go get github.com/mattn/goveralls
-      - go test -v -covermode=count -coverprofile=coverage.out 
-      - /go/bin/goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN
+      # - go get golang.org/x/tools/cmd/cover
+      # - go get github.com/mattn/goveralls
+      # - go test -v -covermode=count -coverprofile=coverage.out 
+      # - /go/bin/goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN
 
   docker_master:
     image: plugins/docker
