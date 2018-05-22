@@ -12,3 +12,4 @@ debug.test
 /web/public/
 *.prof
 *.test
+/rest-client.env.json

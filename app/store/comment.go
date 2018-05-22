@@ -69,6 +69,7 @@ func (c *Comment) SetDeleted() {
 	c.Votes = map[string]bool{}
 	c.Edit = nil
 	c.Deleted = true
+	c.Pin = false
 }
 
 // Sanitize clean dangerous html/js from the comment

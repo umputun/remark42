@@ -58,3 +58,28 @@ func TestComment_PrepareUntrusted(t *testing.T) {
 	assert.Equal(t, User{ID: "username"}, comment.User)
 
 }
+
+func TestComment_SetDeleted(t *testing.T) {
+	comment := Comment{
+		Text:      `blah`,
+		User:      User{ID: "username"},
+		ParentID:  "p123",
+		ID:        "123",
+		Locator:   Locator{SiteID: "site", URL: "url"},
+		Score:     10,
+		Deleted:   false,
+		Timestamp: time.Date(2018, 1, 1, 9, 30, 0, 0, time.Local),
+		Votes:     map[string]bool{"uu": true},
+		Pin:       true,
+	}
+
+	comment.SetDeleted()
+
+	assert.Equal(t, "", comment.Text)
+	assert.Equal(t, "", comment.Orig)
+	assert.Equal(t, map[string]bool{}, comment.Votes)
+	assert.Equal(t, 0, comment.Score)
+	assert.True(t, comment.Deleted)
+	assert.Nil(t, comment.Edit)
+	assert.False(t, comment.Pin)
+}

@@ -82,28 +82,10 @@
   version = "0.2"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/gorilla/context"
-  packages = ["."]
-  revision = "08b5f424b9271eedf6f9f0ce86cb9396ed337a42"
-
-[[projects]]
   name = "github.com/gorilla/feeds"
   packages = ["."]
   revision = "6edcbcd2d57fd0bbd7f39947a593ed0c06648388"
   version = "v1.1.0"
-
-[[projects]]
-  name = "github.com/gorilla/securecookie"
-  packages = ["."]
-  revision = "667fe4e3466a040b780561fe9b51a83a3753eefc"
-  version = "v1.1"
-
-[[projects]]
-  name = "github.com/gorilla/sessions"
-  packages = ["."]
-  revision = "ca9ada44574153444b00d3fd9c8559e4cc95f896"
-  version = "v1.1"
 
 [[projects]]
   branch = "master"
@@ -219,6 +201,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "879764a044d263d9d6e943970fe58f3b3fdabbe1344dfcaf9b5bbab95040a175"
+  inputs-digest = "48cfa8d6976e8914b91fc23341763e819862c54011b4c57845c1965c1e546000"
   solver-name = "gps-cdcl"
   solver-version = 1

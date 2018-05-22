@@ -9,6 +9,7 @@
 
 # source files
 docker-compose.yml
+rest-client.env.json
 
 # generated files
 *.cov
