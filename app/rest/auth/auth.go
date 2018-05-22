@@ -48,7 +48,7 @@ func (a *Authenticator) Auth(reqAuth bool) func(http.Handler) http.Handler {
 				return
 			}
 
-			if err != nil { // in anonymous mode just pass it to next handler
+			if err != nil { // in anonymous mode just pass it to the next handler
 				h.ServeHTTP(w, r)
 				return
 			}
@@ -58,18 +58,18 @@ func (a *Authenticator) Auth(reqAuth bool) func(http.Handler) http.Handler {
 				return
 			}
 
-			if claims.User != nil { // if uinfo in session, populate to context
+			if claims.User != nil { // if uinfo in token populate it to context
 				user := *claims.User
 				for _, admin := range a.Admins {
 					if admin == user.ID {
 						user.Admin = true
 						break
 					}
-					if _, err := a.JWTService.Refresh(w, r); err != nil {
-						log.Printf("[WARN] can't refresh jwt, %s", err)
-					}
 				}
-
+				// refresh token if it close to expiration
+				if _, err := a.JWTService.Refresh(w, r); err != nil {
+					log.Printf("[WARN] can't refresh jwt, %s", err)
+				}
 				r = rest.SetUserInfo(r, user)
 			}
 			h.ServeHTTP(w, r)

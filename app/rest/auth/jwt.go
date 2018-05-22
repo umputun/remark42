@@ -61,8 +61,7 @@ func (j *JWT) Set(w http.ResponseWriter, claims *CustomClaims) error {
 		MaxAge: cookieExpiration, Secure: j.secureCookies}
 	http.SetCookie(w, &jwtCookie)
 
-	jti := claims.Id
-	xsrfCookie := http.Cookie{Name: xsrfCookieName, Value: jti, HttpOnly: false, Path: "/",
+	xsrfCookie := http.Cookie{Name: xsrfCookieName, Value: claims.Id, HttpOnly: false, Path: "/",
 		MaxAge: cookieExpiration, Secure: j.secureCookies}
 	http.SetCookie(w, &xsrfCookie)
 
@@ -70,7 +69,7 @@ func (j *JWT) Set(w http.ResponseWriter, claims *CustomClaims) error {
 }
 
 // Get jwt from header or cookie
-// if cookie used verify xsrf token to match
+// if cookie used, verify xsrf token to match
 func (j *JWT) Get(r *http.Request) (*CustomClaims, error) {
 
 	fromCookie := false
@@ -114,7 +113,7 @@ func (j *JWT) Get(r *http.Request) (*CustomClaims, error) {
 	return claims, nil
 }
 
-// Refresh gets jwt from request, checks if it will be expiring soon and create new onw
+// Refresh gets jwt from request, checks if it will be expiring soon (1/2 of expiration) and create the new onw
 func (j *JWT) Refresh(w http.ResponseWriter, r *http.Request) (*CustomClaims, error) {
 	claims, err := j.Get(r)
 	if err != nil {
