@@ -7,12 +7,11 @@ import (
 	"testing"
 	"time"
 
+	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/umputun/remark/app/store"
-
-	jwt "github.com/dgrijalva/jwt-go"
 )
 
 var testJwtValid = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjI3ODkxOTE4MjIsImp0aSI6InJhbmRvbSBpZCI" +
@@ -23,7 +22,7 @@ var testJwtExpired = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1MjY4ODc4M
 	"sImFkbWluIjpmYWxzZX0sInN0YXRlIjoiMTIzNDU2IiwiZnJvbSI6ImZyb20ifQ.4_dCrY9ihyfZIedz-kZwBTxmxU1a52V7IqeJrOqTzE4"
 
 func TestJWT_Set(t *testing.T) {
-	j := JWT{secret: "xyz 12345"}
+	j := NewJWT("xyz 12345", false, time.Hour)
 
 	claims := &CustomClaims{
 		State: "123456",
@@ -54,7 +53,7 @@ func TestJWT_Set(t *testing.T) {
 }
 
 func TestJWT_GetFromHeader(t *testing.T) {
-	j := JWT{secret: "xyz 12345"}
+	j := NewJWT("xyz 12345", false, time.Hour)
 
 	req := httptest.NewRequest("GET", "/", nil)
 	req.Header.Add(jwtHeaderKey, testJwtValid)
@@ -78,7 +77,7 @@ func TestJWT_GetFromHeader(t *testing.T) {
 }
 
 func TestJWT_SetAndGetWithCookies(t *testing.T) {
-	j := JWT{secret: "xyz 12345"}
+	j := NewJWT("xyz 12345", false, time.Hour)
 
 	claims := &CustomClaims{
 		State: "123456",
@@ -117,7 +116,7 @@ func TestJWT_SetAndGetWithCookies(t *testing.T) {
 }
 
 func TestJWT_SetAndGetWithCookiesExpired(t *testing.T) {
-	j := JWT{secret: "xyz 12345"}
+	j := NewJWT("xyz 12345", false, time.Hour)
 
 	claims := &CustomClaims{
 		State: "123456",
@@ -152,4 +151,42 @@ func TestJWT_SetAndGetWithCookiesExpired(t *testing.T) {
 	_, err = j.Get(req)
 	assert.NotNil(t, err)
 	assert.True(t, strings.HasPrefix(err.Error(), "can't parse jwt: token is expired by"), err.Error())
+}
+
+func TestJWT_Refresh(t *testing.T) {
+	j := NewJWT("xyz 12345", false, 2*time.Second)
+
+	claims := &CustomClaims{
+		State: "123456",
+		From:  "from",
+		User: &store.User{
+			ID:   "id1",
+			Name: "name1",
+		},
+		StandardClaims: jwt.StandardClaims{
+			Id:     "random id",
+			Issuer: "remark42",
+		},
+	}
+	// set token
+	rr := httptest.NewRecorder()
+	err := j.Set(rr, claims)
+	assert.Nil(t, err)
+	cookies := rr.Result().Cookies()
+	require.Equal(t, 2, len(cookies))
+
+	req, err := http.NewRequest("GET", "http://example.com/blah", nil)
+	require.Nil(t, err)
+	req.AddCookie(cookies[0])
+	req.Header.Add(xsrfHeaderKey, "random id")
+
+	claims2, err := j.Refresh(rr, req)
+	require.Nil(t, err)
+	assert.Equal(t, claims.ExpiresAt, claims2.ExpiresAt, "no refresh yet")
+
+	time.Sleep(1 * time.Second)
+	claims2, err = j.Refresh(rr, req)
+	assert.Nil(t, err)
+	assert.True(t, claims.ExpiresAt < claims2.ExpiresAt, "refreshed")
+	t.Log(claims.ExpiresAt, claims2.ExpiresAt)
 }

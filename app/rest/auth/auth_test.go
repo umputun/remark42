@@ -9,13 +9,12 @@ import (
 	"time"
 
 	"github.com/go-chi/chi"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestAuthJWTCookie(t *testing.T) {
-	a := Authenticator{DevPasswd: "123456", JWTService: JWT{secret: "xyz 12345", secureCookies: false}}
+	a := Authenticator{DevPasswd: "123456", JWTService: NewJWT("xyz 12345", false, time.Hour)}
 	router := chi.NewRouter()
 	router.With(a.Auth(true)).Get("/auth", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(201)
@@ -52,8 +51,7 @@ func TestAuthJWTCookie(t *testing.T) {
 }
 
 func TestAuthJWTHeader(t *testing.T) {
-	a := Authenticator{DevPasswd: "123456", JWTService: JWT{secret: "xyz 12345", secureCookies: false}}
-
+	a := Authenticator{DevPasswd: "123456", JWTService: NewJWT("xyz 12345", false, time.Hour)}
 	router := chi.NewRouter()
 	router.With(a.Auth(true)).Get("/auth", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(201)
@@ -79,7 +77,6 @@ func TestAuthJWTHeader(t *testing.T) {
 	assert.Equal(t, 401, resp.StatusCode, "invalid auth token")
 }
 func TestAuthRequired(t *testing.T) {
-
 	a := Authenticator{DevPasswd: "123456"}
 	router := chi.NewRouter()
 	router.With(a.Auth(true)).Get("/auth", func(w http.ResponseWriter, r *http.Request) {

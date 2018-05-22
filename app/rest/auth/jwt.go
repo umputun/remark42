@@ -16,15 +16,15 @@ import (
 type JWT struct {
 	secret        string
 	secureCookies bool
+	exp           time.Duration
 }
 
 // CustomClaims stores user info for auth and state & from from login
 type CustomClaims struct {
 	jwt.StandardClaims
-	User *store.User `json:"user,omitempty"`
-
-	State string `json:"state,omitempty"`
-	From  string `json:"from,omitempty"`
+	User  *store.User `json:"user,omitempty"`
+	State string      `json:"state,omitempty"`
+	From  string      `json:"from,omitempty"`
 }
 
 const jwtCookieName = "JWT"
@@ -32,15 +32,29 @@ const jwtHeaderKey = "X-JWT"
 const xsrfCookieName = "XSRF-TOKEN"
 const xsrfHeaderKey = "X-XSRF-TOKEN"
 
+// NewJWT makes JWT service
+func NewJWT(secret string, secureCookies bool, exp time.Duration) *JWT {
+	res := JWT{
+		secret:        secret,
+		secureCookies: secureCookies,
+		exp:           exp,
+	}
+	return &res
+}
+
 // Set creates jwt cookie with xsrf cookie and put it to ResponseWriter
+// accepts claims and sets expiration
 func (j *JWT) Set(w http.ResponseWriter, claims *CustomClaims) error {
+	if claims.ExpiresAt == 0 {
+		claims.ExpiresAt = time.Now().Add(j.exp).Unix()
+	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString([]byte(j.secret))
 	if err != nil {
 		return errors.Wrap(err, "can't sign jwt token")
 	}
 
-	cookieExpiration := 365 * 24 * 3600 // 1year
+	cookieExpiration := 365 * 24 * 3600 // 1 year
 
 	jwtCookie := http.Cookie{Name: jwtCookieName, Value: tokenString, HttpOnly: true, Path: "/",
 		MaxAge: cookieExpiration, Secure: j.secureCookies}
@@ -100,6 +114,22 @@ func (j *JWT) Get(r *http.Request) (*CustomClaims, error) {
 	return claims, nil
 }
 
+// Refresh gets jwt from request, checks if it will be expiring soon and create new onw
+func (j *JWT) Refresh(w http.ResponseWriter, r *http.Request) (*CustomClaims, error) {
+	claims, err := j.Get(r)
+	if err != nil {
+		return nil, err
+	}
+	untilExp := time.Unix(claims.ExpiresAt, 0).Sub(time.Now()).Seconds()
+	log.Print(untilExp)
+	if untilExp < j.exp.Seconds()/2 {
+		claims.ExpiresAt = time.Now().Add(j.exp).Unix()
+		e := j.Set(w, claims)
+		return claims, e
+	}
+	return claims, nil
+}
+
 // Reset token's cookies
 func (j *JWT) Reset(w http.ResponseWriter) {
 	jwtCookie := http.Cookie{Name: jwtCookieName, Value: "", HttpOnly: false, Path: "/",
@@ -109,16 +139,4 @@ func (j *JWT) Reset(w http.ResponseWriter) {
 	xsrfCookie := http.Cookie{Name: xsrfCookieName, Value: "", HttpOnly: false, Path: "/",
 		MaxAge: -1, Expires: time.Unix(0, 0), Secure: true}
 	http.SetCookie(w, &xsrfCookie)
-}
-
-func (j *JWT) verify(claims CustomClaims) error {
-
-	if time.Now().Unix() > claims.ExpiresAt {
-		return errors.Errorf("token exp failed %d:%d", claims.ExpiresAt, time.Now().Unix())
-	}
-
-	if time.Now().Unix() < claims.NotBefore {
-		return errors.Errorf("token nbf failed %d:%d", claims.NotBefore, time.Now().Unix())
-	}
-	return nil
 }

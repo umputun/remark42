@@ -95,10 +95,9 @@ func mockProvider(t *testing.T, loginPort, authPort int) (provider Provider, ts 
 			}
 			return userInfo
 		},
-		jwtService: &JWT{secret: "12345", secureCookies: false},
 	}
 
-	provider = initProvider(Params{Cid: "cid", Csecret: "csecret"}, provider)
+	provider = initProvider(Params{Cid: "cid", Csecret: "csecret", JwtService: NewJWT("12345", false, time.Hour)}, provider)
 
 	ts = &http.Server{Addr: fmt.Sprintf(":%d", loginPort), Handler: provider.Routes()}
 

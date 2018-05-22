@@ -14,11 +14,11 @@ import (
 
 // Authenticator is top level auth object providing middlewares
 type Authenticator struct {
+	JWTService  *JWT
 	AvatarProxy *proxy.Avatar
 	Admins      []string
 	Providers   []Provider
 	DevPasswd   string
-	JWTService  JWT
 }
 
 var devUser = store.User{
@@ -64,6 +64,9 @@ func (a *Authenticator) Auth(reqAuth bool) func(http.Handler) http.Handler {
 					if admin == user.ID {
 						user.Admin = true
 						break
+					}
+					if _, err := a.JWTService.Refresh(w, r); err != nil {
+						log.Printf("[WARN] can't refresh jwt, %s", err)
 					}
 				}
 

@@ -106,6 +106,8 @@ func main() {
 		RemarkURL: strings.TrimSuffix(opts.RemarkURL, "/"),
 	}
 
+	jwtService := auth.NewJWT(opts.SecretKey, strings.HasPrefix(opts.RemarkURL, "https://"), time.Duration(7*24*time.Hour))
+
 	srv := api.Rest{
 		Version:     revision,
 		DataService: dataService,
@@ -113,8 +115,9 @@ func main() {
 		WebRoot:     opts.WebRoot,
 		ImageProxy:  proxy.Image{Enabled: opts.ImageProxy, RoutePath: "/api/v1/img", RemarkURL: opts.RemarkURL},
 		Authenticator: auth.Authenticator{
+			JWTService:  jwtService,
 			Admins:      opts.Admins,
-			Providers:   makeAuthProviders(avatarProxy),
+			Providers:   makeAuthProviders(jwtService, avatarProxy),
 			AvatarProxy: avatarProxy,
 			DevPasswd:   opts.DevPasswd,
 		},
@@ -180,10 +183,11 @@ func makeDirs(dirs ...string) error {
 	return nil
 }
 
-func makeAuthProviders(avatarProxy *proxy.Avatar) (providers []auth.Provider) {
+func makeAuthProviders(jwtService *auth.JWT, avatarProxy *proxy.Avatar) (providers []auth.Provider) {
 
 	makeParams := func(cid, secret string) auth.Params {
 		return auth.Params{
+			JwtService:  jwtService,
 			AvatarProxy: avatarProxy,
 			RemarkURL:   opts.RemarkURL,
 			Cid:         cid,

@@ -10,7 +10,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"strings"
 	"time"
 
 	jwt "github.com/dgrijalva/jwt-go"
@@ -44,6 +43,7 @@ type Params struct {
 	Csecret     string
 	RemarkURL   string
 	AvatarProxy *proxy.Avatar
+	JwtService  *JWT
 }
 
 type userData map[string]interface{}
@@ -69,8 +69,7 @@ func initProvider(p Params, provider Provider) Provider {
 
 	provider.conf = &conf
 	provider.avatarProxy = p.AvatarProxy
-	provider.jwtService = &JWT{secret: provider.Secret, secureCookies: strings.HasPrefix(p.RemarkURL, "https://")}
-
+	provider.jwtService = p.JwtService
 	return provider
 }
 
@@ -89,7 +88,7 @@ func (p Provider) loginHandler(w http.ResponseWriter, r *http.Request) {
 	// make state (random) and store in session
 	state := p.randToken()
 
-	claims := &CustomClaims{
+	claims := CustomClaims{
 		State: state,
 		From:  r.URL.Query().Get("from"),
 		StandardClaims: jwt.StandardClaims{
@@ -100,7 +99,7 @@ func (p Provider) loginHandler(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	if err := p.jwtService.Set(w, claims); err != nil {
+	if err := p.jwtService.Set(w, &claims); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to set jwt")
 		return
 	}
@@ -173,9 +172,8 @@ func (p Provider) authHandler(w http.ResponseWriter, r *http.Request) {
 	authClaims := &CustomClaims{
 		User: &u,
 		StandardClaims: jwt.StandardClaims{
-			Issuer:    "remark42",
-			Id:        p.randToken(),
-			ExpiresAt: time.Now().Add(7 * 24 * time.Hour).Unix(),
+			Issuer: "remark42",
+			Id:     p.randToken(),
 		},
 	}
 
