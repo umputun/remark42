@@ -54,7 +54,7 @@ func NewGithub(p Params) Provider {
 				userInfo.Name = data.value("login")
 			}
 			if userInfo.Name == "" {
-				userInfo.Name = userInfo.ID
+				userInfo.Name = userInfo.ID[0:16]
 			}
 			return userInfo
 		},
@@ -87,7 +87,7 @@ func NewFacebook(p Params) Provider {
 				Name: data.value("name"),
 			}
 			if userInfo.Name == "" {
-				userInfo.Name = userInfo.ID
+				userInfo.Name = userInfo.ID[0:16]
 			}
 
 			uinfoJSON := uinfo{}
