@@ -2,6 +2,7 @@ package migrator
 
 import (
 	"bytes"
+	"fmt"
 	"log"
 	"os"
 	"testing"
@@ -55,6 +56,28 @@ func TestRemark_Import(t *testing.T) {
 	assert.Equal(t, "efbc17f177ee1a1c0ee6e1e025749966ec071adc", comments[0].ID)
 	assert.Equal(t, "afbc17f177ee1a1c0ee6e1e025749966ec071adc", comments[1].ID)
 	assert.Equal(t, "efbc17f177ee1a1c0ee6e1e025749966ec071adc", comments[1].ParentID)
+}
+
+func TestRemark_ImportManyWithError(t *testing.T) {
+	goodRec := `{"id":"%d","pid":"","text":"some text, <a href=\"http://radio-t.com\" rel=\"nofollow\">link</a>","user":{"name":"user name","id":"user1","picture":"","profile":"","admin":false},"locator":{"site":"radio-t","url":"https://radio-t.com"},"score":0,"votes":{},"time":"2017-12-20T15:18:22-06:00"}` + "\n"
+
+	buf := &bytes.Buffer{}
+	for i := 0; i < 1200; i++ {
+		buf.WriteString(fmt.Sprintf(goodRec, i))
+	}
+	buf.WriteString("bad1\n")
+	buf.WriteString("bad2\n")
+
+	os.Remove(testDb)
+	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{SiteID: "radio-t", FileName: testDb})
+	assert.Nil(t, err)
+	r := Remark{DataStore: &service.DataStore{Interface: b}}
+	n, err := r.Import(buf, "radio-t")
+	assert.EqualError(t, err, "failed to save 2 comments")
+	assert.Equal(t, 1200, n)
+	comments, err := b.Find(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com"}, "time")
+	assert.Nil(t, err)
+	assert.Equal(t, 1200, len(comments))
 }
 
 // makes new boltdb, put two records

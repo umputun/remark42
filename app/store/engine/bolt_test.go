@@ -214,6 +214,27 @@ func TestBoltDB_GetForUser(t *testing.T) {
 
 }
 
+func TestBoltDB_Ref(t *testing.T) {
+	b := BoltDB{}
+	comment := store.Comment{
+		ID:        "12345",
+		Text:      `some text, <a href="http://radio-t.com">link</a>`,
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
+		Locator:   store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"},
+		User:      store.User{ID: "user1", Name: "user name"},
+	}
+	res := b.makeRef(comment)
+	assert.Equal(t, "https://radio-t.com/2!!12345", string(res))
+
+	url, id, err := b.parseRef([]byte("https://radio-t.com/2!!12345"))
+	assert.Nil(t, err)
+	assert.Equal(t, "https://radio-t.com/2", url)
+	assert.Equal(t, "12345", id)
+
+	_, _, err = b.parseRef([]byte("https://radio-t.com/2"))
+	assert.NotNil(t, err)
+}
+
 // makes new boltdb, put two records
 func prep(t *testing.T) *BoltDB {
 	os.Remove(testDb)
