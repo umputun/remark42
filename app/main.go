@@ -25,6 +25,7 @@ import (
 	"github.com/umputun/remark/app/rest/proxy"
 )
 
+// Opts with command line flags and env
 type Opts struct {
 	BoltPath  string   `long:"bolt" env:"BOLTDB_PATH" default:"./var" description:"parent dir for bolt files"`
 	Sites     []string `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
@@ -62,7 +63,8 @@ type Opts struct {
 var opts Opts
 var revision = "unknown"
 
-type application struct {
+// Application holds all active objects
+type Application struct {
 	Opts
 	srv      api.Rest
 	importer api.Import
@@ -96,7 +98,7 @@ func main() {
 }
 
 // Run all application objects
-func Run(ctx context.Context, a *application) error {
+func Run(ctx context.Context, a *Application) error {
 	if a.DevPasswd != "" {
 		log.Printf("[WARN] running in dev mode")
 	}
@@ -115,7 +117,7 @@ func Run(ctx context.Context, a *application) error {
 
 // Setup prepares application and return all active parts
 // doesn't start anything
-func Setup(opts Opts) (*application, error) {
+func Setup(opts Opts) (*Application, error) {
 	setupLog(opts.Dbg)
 
 	if err := makeDirs(opts.BoltPath, opts.BackupLocation, opts.AvatarStore); err != nil {
@@ -166,7 +168,7 @@ func Setup(opts Opts) (*application, error) {
 		Cache: cache,
 	}
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = opts.LowScore, opts.CriticalScore
-	return &application{srv: srv, importer: importer, exporter: exporter, Opts: opts}, nil
+	return &Application{srv: srv, importer: importer, exporter: exporter, Opts: opts}, nil
 }
 
 // activateBackup runs background backups for each site

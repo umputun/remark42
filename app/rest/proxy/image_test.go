@@ -62,7 +62,7 @@ func TestImage_Routes(t *testing.T) {
 	img := Image{Enabled: true, RemarkURL: "https://demo.remark42.com", RoutePath: "/api/v1/proxy"}
 	router := img.Routes()
 
-	httpSrv := imgHttpServer(t)
+	httpSrv := imgHTTPServer(t)
 	defer httpSrv.Close()
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -88,7 +88,7 @@ func TestPicture_Convert(t *testing.T) {
 	assert.Equal(t, `<img src="/img?src=aHR0cDovL3JhZGlvLXQuY29tL2ltZzMucG5n"/> xyz <img src="/img?src=aHR0cDovL2ltYWdlcy5wZXhlbHMuY29tLzY3NjM2L2ltZzQuanBlZw==">`, r)
 }
 
-func imgHttpServer(t *testing.T) *httptest.Server {
+func imgHTTPServer(t *testing.T) *httptest.Server {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/image/img1.png" {
 			t.Log("http img request", r.URL)

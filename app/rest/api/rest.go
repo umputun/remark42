@@ -75,11 +75,14 @@ func (s *Rest) Run(port int) {
 	log.Printf("[WARN] http server terminated, %s", err)
 }
 
+// Shutdown rest http server
 func (s *Rest) Shutdown() {
 	log.Print("[WARN] shutdown rest server")
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	s.httpServer.Shutdown(ctx)
+	if err := s.httpServer.Shutdown(ctx); err != nil {
+		log.Printf("[DEBUG] rest shutdown error, %s", err)
+	}
 	log.Print("[DEBUG] shutdown rest server completed")
 }
 

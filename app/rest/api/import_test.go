@@ -30,6 +30,7 @@ func TestImport(t *testing.T) {
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=radio-t&provider=native&secret=123456", r)
 	assert.Nil(t, err)
 	resp, err := client.Do(req)
+	assert.Nil(t, err)
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
 	b, err := ioutil.ReadAll(resp.Body)

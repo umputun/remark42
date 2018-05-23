@@ -157,6 +157,7 @@ func TestLoadingCache_Parallel(t *testing.T) {
 	wg := sync.WaitGroup{}
 	for i := 0; i < 1000; i++ {
 		wg.Add(1)
+		i := i
 		go func() {
 			defer wg.Done()
 			res, err := lc.Get("key", time.Minute, func() ([]byte, error) {

@@ -27,6 +27,7 @@ func TestLogin(t *testing.T) {
 	}()
 
 	jar, err := cookiejar.New(nil)
+	require.Nil(t, err)
 	client := &http.Client{Jar: jar, Timeout: 5 * time.Second}
 	resp, err := client.Get("http://localhost:8981/login")
 	assert.Nil(t, err)

@@ -87,17 +87,20 @@ func TestAuthRequired(t *testing.T) {
 
 	client := &http.Client{Timeout: 1 * time.Second}
 	req, err := http.NewRequest("GET", server.URL+"/auth", nil)
+	require.NoError(t, err)
 	req = withBasicAuth(req, "dev", "123456")
 	resp, err := client.Do(req)
 	require.NoError(t, err)
 	assert.Equal(t, 201, resp.StatusCode, "valid auth user")
 
 	req, err = http.NewRequest("GET", server.URL+"/auth", nil)
+	require.NoError(t, err)
 	resp, err = client.Do(req)
 	require.NoError(t, err)
 	assert.Equal(t, 401, resp.StatusCode, "no auth user")
 
 	req, err = http.NewRequest("GET", server.URL+"/auth", nil)
+	require.NoError(t, err)
 	req = withBasicAuth(req, "dev", "xyz")
 	resp, err = client.Do(req)
 	require.NoError(t, err)
@@ -115,17 +118,20 @@ func TestAuthNotRequired(t *testing.T) {
 
 	client := &http.Client{Timeout: 1 * time.Second}
 	req, err := http.NewRequest("GET", server.URL+"/auth", nil)
+	require.NoError(t, err)
 	req = withBasicAuth(req, "dev", "123456")
 	resp, err := client.Do(req)
 	require.NoError(t, err)
 	assert.Equal(t, 201, resp.StatusCode, "valid auth user")
 
 	req, err = http.NewRequest("GET", server.URL+"/auth", nil)
+	require.NoError(t, err)
 	resp, err = client.Do(req)
 	require.NoError(t, err)
 	assert.Equal(t, 201, resp.StatusCode, "no auth user")
 
 	req, err = http.NewRequest("GET", server.URL+"/auth", nil)
+	require.NoError(t, err)
 	req = withBasicAuth(req, "dev", "ZZZZ123456")
 	resp, err = client.Do(req)
 	require.NoError(t, err)
@@ -143,6 +149,7 @@ func TestAdminRequired(t *testing.T) {
 
 	client := &http.Client{Timeout: 1 * time.Second}
 	req, err := http.NewRequest("GET", server.URL+"/auth", nil)
+	require.NoError(t, err)
 	req = withBasicAuth(req, "dev", "123456")
 	resp, err := client.Do(req)
 	require.NoError(t, err)
@@ -150,6 +157,7 @@ func TestAdminRequired(t *testing.T) {
 
 	devUser.Admin = false
 	req, err = http.NewRequest("GET", server.URL+"/auth", nil)
+	require.NoError(t, err)
 	req = withBasicAuth(req, "dev", "123456")
 	resp, err = client.Do(req)
 	require.NoError(t, err)
