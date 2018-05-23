@@ -15,5 +15,7 @@ script:
   - docker build .
 
 after_success:
+  - echo 'America/Chicago' | sudo tee /etc/timezone
+  - sudo dpkg-reconfigure --frontend noninteractive tzdata
   - go test $(go list -e ./... | grep -v vendor) -covermode=count -coverprofile=coverage.out
   - goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN
