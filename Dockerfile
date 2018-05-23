@@ -7,6 +7,7 @@ WORKDIR /go/src/github.com/umputun/remark
 
 ADD app /go/src/github.com/umputun/remark/app
 ADD vendor /go/src/github.com/umputun/remark/vendor
+ADD .git /go/src/github.com/umputun/remark/.git
 
 RUN cd app && go test $(go list -e ./... | grep -v vendor)
 
@@ -21,7 +22,6 @@ RUN if [ "x$COVERALLS_TOKEN" = "x" ] ; then \
     else go get github.com/mattn/goveralls && \
     goveralls -coverprofile=.cover/cover.out -service=travis-ci -repotoken $COVERALLS_TOKEN; fi
 
-ADD .git /go/src/github.com/umputun/remark/.git
 RUN go build -o remark -ldflags "-X main.revision=$(git rev-parse --abbrev-ref HEAD)-$(git describe --abbrev=7 --always --tags)-$(date +%Y%m%d-%H:%M:%S) -s -w" ./app
 
 
