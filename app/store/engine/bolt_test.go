@@ -27,6 +27,9 @@ func TestBoltDB_CreateAndFind(t *testing.T) {
 	_, err = b.Create(store.Comment{ID: res[0].ID, Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}})
 	assert.NotNil(t, err)
 	assert.Equal(t, "key id-1 already in store", err.Error())
+
+	res, err = b.Find(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t-bad"}, "time")
+	assert.EqualError(t, err, `site "radio-t-bad" not found`)
 }
 
 func TestBoltDB_Delete(t *testing.T) {
@@ -52,6 +55,13 @@ func TestBoltDB_Delete(t *testing.T) {
 	comments, err := b.Last("radio-t", 10)
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(comments), "1 in last, 1 removed")
+
+	err = b.Delete(loc, "123456")
+	assert.NotNil(t, err)
+
+	loc.SiteID = "bad"
+	err = b.Delete(loc, res[0].ID)
+	assert.EqualError(t, err, `site "bad" not found`)
 }
 
 func TestBoltDB_DeleteAll(t *testing.T) {
@@ -73,6 +83,9 @@ func TestBoltDB_DeleteAll(t *testing.T) {
 	c, err := b.Count(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"})
 	assert.Nil(t, err)
 	assert.Equal(t, 0, c, "0 count")
+
+	err = b.DeleteAll("bad")
+	assert.EqualError(t, err, `site "bad" not found`)
 }
 
 func TestBoltDB_Get(t *testing.T) {
@@ -89,6 +102,9 @@ func TestBoltDB_Get(t *testing.T) {
 
 	comment, err = b.Get(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "1234567")
 	assert.NotNil(t, err)
+
+	_, err = b.Get(store.Locator{URL: "https://radio-t.com", SiteID: "bad"}, res[1].ID)
+	assert.EqualError(t, err, `site "bad" not found`)
 }
 
 func TestBoltDB_Put(t *testing.T) {
@@ -110,6 +126,9 @@ func TestBoltDB_Put(t *testing.T) {
 	assert.Equal(t, "abc 123", comment.Text)
 	assert.Equal(t, res[0].ID, comment.ID)
 	assert.Equal(t, 100, comment.Score)
+
+	err = b.Put(store.Locator{URL: "https://radio-t.com", SiteID: "bad"}, comment)
+	assert.EqualError(t, err, `site "bad" not found`)
 }
 
 func TestBoltDB_Last(t *testing.T) {
@@ -125,6 +144,9 @@ func TestBoltDB_Last(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(res))
 	assert.Equal(t, "some text2", res[0].Text)
+
+	_, err = b.Last("bad", 0)
+	assert.EqualError(t, err, `site "bad" not found`)
 }
 
 func TestBoltDB_Count(t *testing.T) {
@@ -134,6 +156,13 @@ func TestBoltDB_Count(t *testing.T) {
 	c, err := b.Count(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"})
 	assert.Nil(t, err)
 	assert.Equal(t, 2, c)
+
+	c, err = b.Count(store.Locator{URL: "https://radio-t.com-xxx", SiteID: "radio-t"})
+	assert.Nil(t, err)
+	assert.Equal(t, 0, c)
+
+	_, err = b.Count(store.Locator{URL: "https://radio-t.com", SiteID: "bad"})
+	assert.EqualError(t, err, `site "bad" not found`)
 }
 
 func TestBoltDB_BlockUser(t *testing.T) {
@@ -149,6 +178,9 @@ func TestBoltDB_BlockUser(t *testing.T) {
 
 	assert.NoError(t, b.SetBlock("radio-t", "user1", false))
 	assert.False(t, b.IsBlocked("radio-t", "user1"), "user1 unblocked")
+
+	assert.EqualError(t, b.SetBlock("bad", "user1", true), `site "bad" not found`)
+	assert.NoError(t, b.SetBlock("radio-t", "userX", false))
 }
 
 func TestBoltDB_BlockList(t *testing.T) {
@@ -166,6 +198,9 @@ func TestBoltDB_BlockList(t *testing.T) {
 	assert.Equal(t, "user1", ids[0].ID)
 	assert.Equal(t, "user2", ids[1].ID)
 	t.Logf("%+v", ids)
+
+	_, err = b.Blocked("bad")
+	assert.EqualError(t, err, `site "bad" not found`)
 }
 
 func TestBoltDB_List(t *testing.T) {
@@ -187,6 +222,10 @@ func TestBoltDB_List(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/2", Count: 1}, {URL: "https://radio-t.com", Count: 2}}, res)
 
+	res, err = b.List("radio-t", -1, -1)
+	assert.Nil(t, err)
+	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/2", Count: 1}, {URL: "https://radio-t.com", Count: 2}}, res)
+
 	res, err = b.List("radio-t", 1, 0)
 	assert.Nil(t, err)
 	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/2", Count: 1}}, res)
@@ -194,6 +233,9 @@ func TestBoltDB_List(t *testing.T) {
 	res, err = b.List("radio-t", 1, 1)
 	assert.Nil(t, err)
 	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com", Count: 2}}, res)
+
+	res, err = b.List("bad", 1, 1)
+	assert.EqualError(t, err, `site "bad" not found`)
 }
 
 func TestBoltDB_GetForUser(t *testing.T) {
@@ -212,6 +254,11 @@ func TestBoltDB_GetForUser(t *testing.T) {
 	assert.Equal(t, 2, count)
 	assert.Equal(t, "some text2", res[0].Text, "sorted by -time")
 
+	_, _, err = b.User("bad", "user1", 1)
+	assert.EqualError(t, err, `site "bad" not found`)
+
+	_, _, err = b.User("radio-t", "userZ", 1)
+	assert.EqualError(t, err, `no comments for user userZ in store`)
 }
 
 func TestBoltDB_Ref(t *testing.T) {
