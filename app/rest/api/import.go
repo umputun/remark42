@@ -60,7 +60,7 @@ func (s *Import) Shutdown() {
 	log.Print("[DEBUG] shutdown import server completed")
 }
 
-func (s Import) routes() chi.Router {
+func (s *Import) routes() chi.Router {
 	router := chi.NewRouter()
 	router.Use(middleware.RealIP, Recoverer)
 	router.Use(middleware.Throttle(1000), middleware.Timeout(60*time.Second))
