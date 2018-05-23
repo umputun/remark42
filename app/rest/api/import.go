@@ -1,10 +1,12 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/didip/tollbooth"
@@ -24,6 +26,9 @@ type Import struct {
 	NativeImporter migrator.Importer
 	DisqusImporter migrator.Importer
 	SecretKey      string
+
+	httpServer *http.Server
+	lock       sync.Mutex
 }
 
 // Run the listener and request's router, activate rest server
@@ -31,12 +36,31 @@ type Import struct {
 func (s *Import) Run(port int) {
 	log.Printf("[INFO] activate import server on port %d", port)
 	router := s.routes()
-	httpServer := &http.Server{Addr: fmt.Sprintf("127.0.0.1:%d", port), Handler: router}
-	err := httpServer.ListenAndServe()
+
+	s.lock.Lock()
+	s.httpServer = &http.Server{Addr: fmt.Sprintf("127.0.0.1:%d", port), Handler: router}
+	s.lock.Unlock()
+
+	err := s.httpServer.ListenAndServe()
 	log.Printf("[WARN] http server terminated, %s", err)
 }
 
-func (s Import) routes() chi.Router {
+// Shutdown import http server
+func (s *Import) Shutdown() {
+	log.Print("[WARN] shutdown import server")
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	s.lock.Lock()
+	if err := s.httpServer.Shutdown(ctx); err != nil {
+		log.Printf("[DEBUG] importer shutdown error, %s", err)
+	}
+	s.lock.Unlock()
+
+	log.Print("[DEBUG] shutdown import server completed")
+}
+
+func (s *Import) routes() chi.Router {
 	router := chi.NewRouter()
 	router.Use(middleware.RealIP, Recoverer)
 	router.Use(middleware.Throttle(1000), middleware.Timeout(60*time.Second))

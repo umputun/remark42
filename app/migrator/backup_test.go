@@ -1,6 +1,7 @@
 package migrator
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -11,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestMigrator_RemoveOldBackupFiles(t *testing.T) {
+func TestBackup_RemoveOldBackupFiles(t *testing.T) {
 	loc := "/tmp/remark-backups.test"
 	defer os.RemoveAll(loc)
 
@@ -36,7 +37,7 @@ func TestMigrator_RemoveOldBackupFiles(t *testing.T) {
 	assert.Equal(t, "backup-site2-20171210.gz", ff[3].Name())
 }
 
-func TestMigrator_MakeBackup(t *testing.T) {
+func TestBackup_MakeBackup(t *testing.T) {
 	loc := "/tmp/remark-backups.test"
 	defer os.RemoveAll(loc)
 	os.MkdirAll(loc, 0700)
@@ -47,6 +48,26 @@ func TestMigrator_MakeBackup(t *testing.T) {
 	expFile := fmt.Sprintf("/tmp/remark-backups.test/backup-site1-%s.gz", time.Now().Format("20060102"))
 	assert.Equal(t, expFile, fname)
 
+	fi, err := os.Lstat(expFile)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(52), fi.Size())
+}
+
+func TestBackup_Do(t *testing.T) {
+	loc := "/tmp/remark-backups.test"
+	defer os.RemoveAll(loc)
+	os.MkdirAll(loc, 0700)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		time.Sleep(time.Second)
+		cancel()
+	}()
+
+	bk := AutoBackup{BackupLocation: loc, SiteID: "site1", KeepMax: 3, Exporter: &mockExporter{}, Duration: 600 * time.Millisecond}
+	bk.Do(ctx)
+
+	expFile := fmt.Sprintf("/tmp/remark-backups.test/backup-site1-%s.gz", time.Now().Format("20060102"))
 	fi, err := os.Lstat(expFile)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(52), fi.Size())

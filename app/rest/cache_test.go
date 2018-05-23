@@ -43,7 +43,7 @@ func TestLoadingCache_Get(t *testing.T) {
 func TestLoadingCache_MaxKeys(t *testing.T) {
 	var postFnCall, coldCalls int32
 	lc := NewLoadingCache(CleanupInterval(200*time.Millisecond), PostFlushFn(func() { atomic.AddInt32(&postFnCall, 1) }),
-		MaxKeys(5), MaxValueSize(10))
+		MaxKeys(5), MaxValSize(10))
 
 	// put 5 keys to cache
 	for i := 0; i < 5; i++ {
@@ -97,7 +97,7 @@ func TestLoadingCache_MaxKeys(t *testing.T) {
 }
 
 func TestLoadingCache_MaxSize(t *testing.T) {
-	lc := NewLoadingCache(CleanupInterval(200*time.Millisecond), MaxKeys(5), MaxValueSize(10))
+	lc := NewLoadingCache(CleanupInterval(200*time.Millisecond), MaxKeys(5), MaxValSize(10))
 
 	// put good size value to cache and make sure it cached
 	res, err := lc.Get("key-Z", time.Minute, func() ([]byte, error) {
@@ -157,6 +157,7 @@ func TestLoadingCache_Parallel(t *testing.T) {
 	wg := sync.WaitGroup{}
 	for i := 0; i < 1000; i++ {
 		wg.Add(1)
+		i := i
 		go func() {
 			defer wg.Done()
 			res, err := lc.Get("key", time.Minute, func() ([]byte, error) {

@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/coreos/bbolt"
@@ -22,7 +25,8 @@ import (
 	"github.com/umputun/remark/app/rest/proxy"
 )
 
-var opts struct {
+// Opts with command line flags and env
+type Opts struct {
 	BoltPath  string   `long:"bolt" env:"BOLTDB_PATH" default:"./var" description:"parent dir for bolt files"`
 	Sites     []string `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
 	RemarkURL string   `long:"url" env:"REMARK_URL" default:"https://remark42.com" description:"url to remark"`
@@ -58,47 +62,62 @@ var opts struct {
 
 var revision = "unknown"
 
+// Application holds all active objects
+type Application struct {
+	Opts
+	srv        *api.Rest
+	importer   *api.Import
+	exporter   migrator.Exporter
+	terminated chan struct{}
+}
+
 func main() {
 	fmt.Printf("remark %s\n", revision)
+
+	var opts Opts
 	p := flags.NewParser(&opts, flags.Default)
 	if _, e := p.ParseArgs(os.Args[1:]); e != nil {
 		os.Exit(1)
 	}
-
-	setupLog(opts.Dbg)
 	log.Print("[INFO] started remark")
 
-	if err := makeDirs(opts.BoltPath, opts.BackupLocation, opts.AvatarStore); err != nil {
-		log.Fatalf("[ERROR] can't create directories, %+v", err)
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() { // catch signal and invoke graceful termination
+		stop := make(chan os.Signal, 1)
+		signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+		<-stop
+		log.Print("[WARN] interrupt signal")
+		cancel()
+	}()
+
+	app, err := New(opts)
+	if err != nil {
+		log.Fatalf("[ERROR] failed to setup application, %+v", err)
 	}
+	err = app.Run(ctx)
+	log.Printf("[INFO] remark terminated %s", err)
+}
 
-	dataStore := makeBoltStore(opts.Sites)
+// New prepares application and return it with all active parts
+// doesn't start anything
+func New(opts Opts) (*Application, error) {
+	setupLog(opts.Dbg)
 
-	if opts.DevPasswd != "" {
-		log.Printf("[WARN] running in dev mode")
+	if err := makeDirs(opts.BoltPath, opts.BackupLocation, opts.AvatarStore); err != nil {
+		return nil, err
 	}
 
 	dataService := service.DataStore{
-		Interface:      dataStore,
+		Interface:      makeBoltStore(opts.Sites, opts.BoltPath),
 		EditDuration:   5 * time.Minute,
 		Secret:         opts.SecretKey,
 		MaxCommentSize: opts.MaxCommentSize,
 	}
 
-	exporter := migrator.Remark{DataStore: &dataService}
-	cache := rest.NewLoadingCache(rest.MaxValueSize(opts.MaxCachedValue), rest.MaxKeys(opts.MaxCachedItems),
-		rest.PostFlushFn(postFlushFn))
+	cache := rest.NewLoadingCache(rest.MaxValSize(opts.MaxCachedValue), rest.MaxKeys(opts.MaxCachedItems),
+		rest.PostFlushFn(postFlushFn(opts.Sites, opts.Port)))
 
-	activateBackup(&exporter)
-
-	importSrv := api.Import{
-		Version:        revision,
-		Cache:          cache,
-		NativeImporter: &migrator.Remark{DataStore: &dataService},
-		DisqusImporter: &migrator.Disqus{DataStore: &dataService},
-		SecretKey:      opts.SecretKey,
-	}
-	go importSrv.Run(opts.Port + 1)
+	jwtService := auth.NewJWT(opts.SecretKey, strings.HasPrefix(opts.RemarkURL, "https://"), 7*24*time.Hour)
 
 	avatarProxy := &proxy.Avatar{
 		StorePath: opts.AvatarStore,
@@ -106,46 +125,79 @@ func main() {
 		RemarkURL: strings.TrimSuffix(opts.RemarkURL, "/"),
 	}
 
-	jwtService := auth.NewJWT(opts.SecretKey, strings.HasPrefix(opts.RemarkURL, "https://"), 7*24*time.Hour)
+	exporter := &migrator.Remark{DataStore: &dataService}
 
-	srv := api.Rest{
+	importer := &api.Import{
+		Version:        revision,
+		Cache:          cache,
+		NativeImporter: &migrator.Remark{DataStore: &dataService},
+		DisqusImporter: &migrator.Disqus{DataStore: &dataService},
+		SecretKey:      opts.SecretKey,
+	}
+
+	srv := &api.Rest{
 		Version:     revision,
 		DataService: dataService,
-		Exporter:    &exporter,
+		Exporter:    exporter,
 		WebRoot:     opts.WebRoot,
 		ImageProxy:  proxy.Image{Enabled: opts.ImageProxy, RoutePath: "/api/v1/img", RemarkURL: opts.RemarkURL},
 		Authenticator: auth.Authenticator{
 			JWTService:  jwtService,
 			Admins:      opts.Admins,
-			Providers:   makeAuthProviders(jwtService, avatarProxy),
+			Providers:   makeAuthProviders(jwtService, avatarProxy, opts),
 			AvatarProxy: avatarProxy,
 			DevPasswd:   opts.DevPasswd,
 		},
 		Cache: cache,
 	}
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = opts.LowScore, opts.CriticalScore
-	srv.Run(opts.Port)
+	tch := make(chan struct{})
+	return &Application{srv: srv, importer: importer, exporter: exporter, Opts: opts, terminated: tch}, nil
+}
+
+// Run all application objects
+func (a *Application) Run(ctx context.Context) error {
+	if a.DevPasswd != "" {
+		log.Printf("[WARN] running in dev mode")
+	}
+
+	go func() {
+		// shutdown on context cancellation
+		<-ctx.Done()
+		a.srv.Shutdown()
+		a.importer.Shutdown()
+	}()
+	a.activateBackup(ctx) // runs in goroutine for each site
+	go a.importer.Run(a.Port + 1)
+	a.srv.Run(a.Port)
+	close(a.terminated)
+	return nil
+}
+
+// Wait for application completion (termination)
+func (a *Application) Wait() {
+	<-a.terminated
 }
 
 // activateBackup runs background backups for each site
-func activateBackup(exporter migrator.Exporter) {
-	for _, siteID := range opts.Sites {
+func (a *Application) activateBackup(ctx context.Context) {
+	for _, siteID := range a.Sites {
 		backup := migrator.AutoBackup{
-			Exporter:       exporter,
-			BackupLocation: opts.BackupLocation,
+			Exporter:       a.exporter,
+			BackupLocation: a.BackupLocation,
 			SiteID:         siteID,
-			KeepMax:        opts.MaxBackupFiles,
+			KeepMax:        a.MaxBackupFiles,
 			Duration:       24 * time.Hour,
 		}
-		go backup.Do()
+		go backup.Do(ctx)
 	}
 }
 
 // makeBoltStore creates store for all sites
-func makeBoltStore(siteNames []string) engine.Interface {
+func makeBoltStore(siteNames []string, path string) engine.Interface {
 	sites := []engine.BoltSite{}
 	for _, site := range siteNames {
-		sites = append(sites, engine.BoltSite{SiteID: site, FileName: fmt.Sprintf("%s/%s.db", opts.BoltPath, site)})
+		sites = append(sites, engine.BoltSite{SiteID: site, FileName: fmt.Sprintf("%s/%s.db", path, site)})
 	}
 	result, err := engine.NewBoltDB(bolt.Options{Timeout: 30 * time.Second}, sites...)
 	if err != nil {
@@ -183,7 +235,7 @@ func makeDirs(dirs ...string) error {
 	return nil
 }
 
-func makeAuthProviders(jwtService *auth.JWT, avatarProxy *proxy.Avatar) (providers []auth.Provider) {
+func makeAuthProviders(jwtService *auth.JWT, avatarProxy *proxy.Avatar, opts Opts) (providers []auth.Provider) {
 
 	makeParams := func(cid, secret string) auth.Params {
 		return auth.Params{
@@ -214,23 +266,25 @@ func makeAuthProviders(jwtService *auth.JWT, avatarProxy *proxy.Avatar) (provide
 }
 
 // post-flush callback invoked by cache after each flush in async way
-func postFlushFn() {
+func postFlushFn(sites []string, port int) func() {
 
-	// list of heavy urls for pre-heating on cache change
-	urls := []string{
-		"http://localhost:%d/api/v1/list?site=%s",
-		"http://localhost:%d/api/v1/last/50?site=%s",
-	}
+	return func() {
+		// list of heavy urls for pre-heating on cache change
+		urls := []string{
+			"http://localhost:%d/api/v1/list?site=%s",
+			"http://localhost:%d/api/v1/last/50?site=%s",
+		}
 
-	for _, site := range opts.Sites {
-		for _, u := range urls {
-			resp, err := http.Get(fmt.Sprintf(u, opts.Port, site))
-			if err != nil {
-				log.Printf("[WARN] failed to refresh cached list for %s, %s", site, err)
-				return
-			}
-			if err = resp.Body.Close(); err != nil {
-				log.Printf("[WARN] failed to close response body, %s", err)
+		for _, site := range sites {
+			for _, u := range urls {
+				resp, err := http.Get(fmt.Sprintf(u, port, site))
+				if err != nil {
+					log.Printf("[WARN] failed to refresh cached list for %s, %s", site, err)
+					return
+				}
+				if err = resp.Body.Close(); err != nil {
+					log.Printf("[WARN] failed to close response body, %s", err)
+				}
 			}
 		}
 	}

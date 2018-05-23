@@ -14,8 +14,8 @@ import (
 var testDb = "/tmp/test-remark.db"
 
 func TestBoltDB_CreateAndFind(t *testing.T) {
-	var b = prep(t)
 	defer os.Remove(testDb)
+	var b = prep(t)
 
 	res, err := b.Find(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "time")
 	assert.Nil(t, err)
@@ -30,8 +30,8 @@ func TestBoltDB_CreateAndFind(t *testing.T) {
 }
 
 func TestBoltDB_Delete(t *testing.T) {
-	defer os.Remove(testDb)
 	b := prep(t)
+	defer os.Remove(testDb)
 
 	loc := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
 	res, err := b.Find(loc, "time")
@@ -218,7 +218,7 @@ func TestBoltDB_GetForUser(t *testing.T) {
 func prep(t *testing.T) *BoltDB {
 	os.Remove(testDb)
 
-	boltStore, err := NewBoltDB(bolt.Options{}, BoltSite{FileName: "/tmp/test-remark.db", SiteID: "radio-t"})
+	boltStore, err := NewBoltDB(bolt.Options{}, BoltSite{FileName: testDb, SiteID: "radio-t"})
 	assert.Nil(t, err)
 	b := boltStore
 

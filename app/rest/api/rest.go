@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha1"
 	"encoding/base64"
 	"encoding/json"
@@ -10,6 +11,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/didip/tollbooth"
@@ -43,7 +45,9 @@ type Rest struct {
 		Critical int
 	}
 
-	httpServer   *http.Server
+	httpServer *http.Server
+	lock       sync.Mutex
+
 	adminService admin
 }
 
@@ -63,6 +67,7 @@ func (s *Rest) Run(port int) {
 
 	router := s.routes()
 
+	s.lock.Lock()
 	s.httpServer = &http.Server{
 		Addr:              fmt.Sprintf(":%d", port),
 		Handler:           router,
@@ -70,8 +75,23 @@ func (s *Rest) Run(port int) {
 		WriteTimeout:      5 * time.Second,
 		IdleTimeout:       30 * time.Second,
 	}
+	s.lock.Unlock()
+
 	err := s.httpServer.ListenAndServe()
 	log.Printf("[WARN] http server terminated, %s", err)
+}
+
+// Shutdown rest http server
+func (s *Rest) Shutdown() {
+	log.Print("[WARN] shutdown rest server")
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	s.lock.Lock()
+	if err := s.httpServer.Shutdown(ctx); err != nil {
+		log.Printf("[DEBUG] rest shutdown error, %s", err)
+	}
+	log.Print("[DEBUG] shutdown rest server completed")
+	s.lock.Unlock()
 }
 
 func (s *Rest) routes() chi.Router {
