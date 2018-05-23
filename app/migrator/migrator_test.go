@@ -68,3 +68,26 @@ func TestMigrator_ImportRemark(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(last), "2 comments imported")
 }
+
+func TestMigrator_ImportFailed(t *testing.T) {
+
+	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "test"})
+	require.Nil(t, err, "create store")
+	dataStore := &service.DataStore{Interface: b}
+	_, err = ImportComments(ImportParams{
+		DataStore: dataStore,
+		InputFile: "/tmp/disqus-test.xml",
+		SiteID:    "test",
+		Provider:  "bad",
+	})
+
+	assert.EqualError(t, err, "unsupported import provider bad")
+
+	_, err = ImportComments(ImportParams{
+		DataStore: dataStore,
+		InputFile: "/tmp/disqus-test-bad.xml",
+		SiteID:    "test",
+		Provider:  "native",
+	})
+	assert.EqualError(t, err, "can't open import file /tmp/disqus-test-bad.xml: open /tmp/disqus-test-bad.xml: no such file or directory")
+}
