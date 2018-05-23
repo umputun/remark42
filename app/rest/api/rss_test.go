@@ -153,8 +153,11 @@ func TestServer_RssWithReply(t *testing.T) {
 }
 
 func waitOnMinChange() {
-	if time.Now().Second() == 59 {
-		time.Sleep(1001 * time.Millisecond)
+	for {
+		if time.Now().Second() != 59 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 }
 
