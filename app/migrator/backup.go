@@ -2,6 +2,7 @@ package migrator
 
 import (
 	"compress/gzip"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -23,17 +24,24 @@ type AutoBackup struct {
 }
 
 // Do runs daily export to local files, keeps up to keepMax backups for given siteID
-func (ab AutoBackup) Do() {
+func (ab AutoBackup) Do(ctx context.Context) {
 	log.Printf("[INFO] activate auto-backup for %s", ab.BackupLocation)
 	tick := time.NewTicker(ab.Duration)
 	log.Printf("[DEBUG] first backup at %s", time.Now().Add(ab.Duration))
-	for range tick.C {
-		if _, err := ab.makeBackup(); err != nil {
-			log.Printf("[WARN] auto-backup for %s failed, %s", ab.SiteID, err)
-			continue
+
+	for {
+		select {
+		case <-tick.C:
+			if _, err := ab.makeBackup(); err != nil {
+				log.Printf("[WARN] auto-backup for %s failed, %s", ab.SiteID, err)
+				continue
+			}
+			ab.removeOldBackupFiles()
+			log.Printf("[DEBUG] next backup at %s", time.Now().Add(ab.Duration))
+		case <-ctx.Done():
+			log.Printf("[WARN] terminated autobackup for %s", ab.SiteID)
+			return
 		}
-		ab.removeOldBackupFiles()
-		log.Printf("[DEBUG] next backup at %s", time.Now().Add(ab.Duration))
 	}
 }
 

@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha1"
 	"encoding/base64"
 	"encoding/json"
@@ -72,6 +73,14 @@ func (s *Rest) Run(port int) {
 	}
 	err := s.httpServer.ListenAndServe()
 	log.Printf("[WARN] http server terminated, %s", err)
+}
+
+func (s *Rest) Shutdown() {
+	log.Print("[WARN] shutdown rest server")
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	s.httpServer.Shutdown(ctx)
+	log.Print("[DEBUG] shutdown rest server completed")
 }
 
 func (s *Rest) routes() chi.Router {

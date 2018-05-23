@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/coreos/bbolt"
@@ -22,7 +25,7 @@ import (
 	"github.com/umputun/remark/app/rest/proxy"
 )
 
-var opts struct {
+type Opts struct {
 	BoltPath  string   `long:"bolt" env:"BOLTDB_PATH" default:"./var" description:"parent dir for bolt files"`
 	Sites     []string `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
 	RemarkURL string   `long:"url" env:"REMARK_URL" default:"https://remark42.com" description:"url to remark"`
@@ -56,7 +59,15 @@ var opts struct {
 	WebRoot string `long:"web-root" env:"REMARK_WEB_ROOT" default:"./web" description:"web root directory"`
 }
 
+var opts Opts
 var revision = "unknown"
+
+type application struct {
+	Opts
+	srv      api.Rest
+	importer api.Import
+	exporter migrator.Exporter
+}
 
 func main() {
 	fmt.Printf("remark %s\n", revision)
@@ -64,41 +75,64 @@ func main() {
 	if _, e := p.ParseArgs(os.Args[1:]); e != nil {
 		os.Exit(1)
 	}
-
-	setupLog(opts.Dbg)
 	log.Print("[INFO] started remark")
 
-	if err := makeDirs(opts.BoltPath, opts.BackupLocation, opts.AvatarStore); err != nil {
-		log.Fatalf("[ERROR] can't create directories, %+v", err)
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// graceful termination
+	go func() {
+		stop := make(chan os.Signal, 1)
+		signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+		<-stop
+		log.Print("[WARN] interrupt signal")
+		cancel()
+	}()
+
+	app, err := Setup(opts)
+	if err != nil {
+		log.Fatalf("[ERROR] failed to setup application, %+v", err)
 	}
+	log.Printf("[INFO] remark terminated %s", Run(ctx, app))
+}
 
-	dataStore := makeBoltStore(opts.Sites)
-
-	if opts.DevPasswd != "" {
+// Run all application objects
+func Run(ctx context.Context, a *application) error {
+	if a.DevPasswd != "" {
 		log.Printf("[WARN] running in dev mode")
 	}
 
+	activateBackup(ctx, a.exporter) // runs in goroutine for each site
+	go a.importer.Run(a.Port + 1)
+	go a.srv.Run(opts.Port)
+
+	// shutdown on context cancellation
+	<-ctx.Done()
+	a.srv.Shutdown()
+	a.importer.Shutdown()
+
+	return ctx.Err()
+}
+
+// Setup prepares application and return all active parts
+// doesn't start anything
+func Setup(opts Opts) (*application, error) {
+	setupLog(opts.Dbg)
+
+	if err := makeDirs(opts.BoltPath, opts.BackupLocation, opts.AvatarStore); err != nil {
+		return nil, err
+	}
+
 	dataService := service.DataStore{
-		Interface:      dataStore,
+		Interface:      makeBoltStore(opts.Sites),
 		EditDuration:   5 * time.Minute,
 		Secret:         opts.SecretKey,
 		MaxCommentSize: opts.MaxCommentSize,
 	}
 
-	exporter := migrator.Remark{DataStore: &dataService}
 	cache := rest.NewLoadingCache(rest.MaxValueSize(opts.MaxCachedValue), rest.MaxKeys(opts.MaxCachedItems),
 		rest.PostFlushFn(postFlushFn))
 
-	activateBackup(&exporter)
-
-	importSrv := api.Import{
-		Version:        revision,
-		Cache:          cache,
-		NativeImporter: &migrator.Remark{DataStore: &dataService},
-		DisqusImporter: &migrator.Disqus{DataStore: &dataService},
-		SecretKey:      opts.SecretKey,
-	}
-	go importSrv.Run(opts.Port + 1)
+	jwtService := auth.NewJWT(opts.SecretKey, strings.HasPrefix(opts.RemarkURL, "https://"), 7*24*time.Hour)
 
 	avatarProxy := &proxy.Avatar{
 		StorePath: opts.AvatarStore,
@@ -106,12 +140,20 @@ func main() {
 		RemarkURL: strings.TrimSuffix(opts.RemarkURL, "/"),
 	}
 
-	jwtService := auth.NewJWT(opts.SecretKey, strings.HasPrefix(opts.RemarkURL, "https://"), 7*24*time.Hour)
+	exporter := &migrator.Remark{DataStore: &dataService}
+
+	importer := api.Import{
+		Version:        revision,
+		Cache:          cache,
+		NativeImporter: &migrator.Remark{DataStore: &dataService},
+		DisqusImporter: &migrator.Disqus{DataStore: &dataService},
+		SecretKey:      opts.SecretKey,
+	}
 
 	srv := api.Rest{
 		Version:     revision,
 		DataService: dataService,
-		Exporter:    &exporter,
+		Exporter:    exporter,
 		WebRoot:     opts.WebRoot,
 		ImageProxy:  proxy.Image{Enabled: opts.ImageProxy, RoutePath: "/api/v1/img", RemarkURL: opts.RemarkURL},
 		Authenticator: auth.Authenticator{
@@ -124,11 +166,11 @@ func main() {
 		Cache: cache,
 	}
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = opts.LowScore, opts.CriticalScore
-	srv.Run(opts.Port)
+	return &application{srv: srv, importer: importer, exporter: exporter, Opts: opts}, nil
 }
 
 // activateBackup runs background backups for each site
-func activateBackup(exporter migrator.Exporter) {
+func activateBackup(ctx context.Context, exporter migrator.Exporter) {
 	for _, siteID := range opts.Sites {
 		backup := migrator.AutoBackup{
 			Exporter:       exporter,
@@ -137,7 +179,7 @@ func activateBackup(exporter migrator.Exporter) {
 			KeepMax:        opts.MaxBackupFiles,
 			Duration:       24 * time.Hour,
 		}
-		go backup.Do()
+		go backup.Do(ctx)
 	}
 }
 

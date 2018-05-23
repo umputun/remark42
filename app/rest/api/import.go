@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -24,6 +25,8 @@ type Import struct {
 	NativeImporter migrator.Importer
 	DisqusImporter migrator.Importer
 	SecretKey      string
+
+	httpServer *http.Server
 }
 
 // Run the listener and request's router, activate rest server
@@ -31,9 +34,17 @@ type Import struct {
 func (s *Import) Run(port int) {
 	log.Printf("[INFO] activate import server on port %d", port)
 	router := s.routes()
-	httpServer := &http.Server{Addr: fmt.Sprintf("127.0.0.1:%d", port), Handler: router}
-	err := httpServer.ListenAndServe()
+	s.httpServer = &http.Server{Addr: fmt.Sprintf("127.0.0.1:%d", port), Handler: router}
+	err := s.httpServer.ListenAndServe()
 	log.Printf("[WARN] http server terminated, %s", err)
+}
+
+func (s *Import) Shutdown() {
+	log.Print("[WARN] shutdown import server")
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	s.httpServer.Shutdown(ctx)
+	log.Print("[DEBUG] shutdown import server completed")
 }
 
 func (s Import) routes() chi.Router {
