@@ -60,19 +60,21 @@ type Opts struct {
 	WebRoot string `long:"web-root" env:"REMARK_WEB_ROOT" default:"./web" description:"web root directory"`
 }
 
-var opts Opts
 var revision = "unknown"
 
 // Application holds all active objects
 type Application struct {
 	Opts
-	srv      api.Rest
-	importer api.Import
-	exporter migrator.Exporter
+	srv        *api.Rest
+	importer   *api.Import
+	exporter   migrator.Exporter
+	terminated chan struct{}
 }
 
 func main() {
 	fmt.Printf("remark %s\n", revision)
+
+	var opts Opts
 	p := flags.NewParser(&opts, flags.Default)
 	if _, e := p.ParseArgs(os.Args[1:]); e != nil {
 		os.Exit(1)
@@ -80,9 +82,7 @@ func main() {
 	log.Print("[INFO] started remark")
 
 	ctx, cancel := context.WithCancel(context.Background())
-
-	// catch signal and invoke graceful termination
-	go func() {
+	go func() { // catch signal and invoke graceful termination
 		stop := make(chan os.Signal, 1)
 		signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 		<-stop
@@ -94,7 +94,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("[ERROR] failed to setup application, %+v", err)
 	}
-	log.Printf("[INFO] remark terminated %s", app.Run(ctx))
+	err = app.Run(ctx)
+	log.Printf("[INFO] remark terminated %s", err)
 }
 
 // New prepares application and return it with all active parts
@@ -114,7 +115,7 @@ func New(opts Opts) (*Application, error) {
 	}
 
 	cache := rest.NewLoadingCache(rest.MaxValSize(opts.MaxCachedValue), rest.MaxKeys(opts.MaxCachedItems),
-		rest.PostFlushFn(postFlushFn))
+		rest.PostFlushFn(postFlushFn(opts.Sites, opts.Port)))
 
 	jwtService := auth.NewJWT(opts.SecretKey, strings.HasPrefix(opts.RemarkURL, "https://"), 7*24*time.Hour)
 
@@ -126,7 +127,7 @@ func New(opts Opts) (*Application, error) {
 
 	exporter := &migrator.Remark{DataStore: &dataService}
 
-	importer := api.Import{
+	importer := &api.Import{
 		Version:        revision,
 		Cache:          cache,
 		NativeImporter: &migrator.Remark{DataStore: &dataService},
@@ -134,7 +135,7 @@ func New(opts Opts) (*Application, error) {
 		SecretKey:      opts.SecretKey,
 	}
 
-	srv := api.Rest{
+	srv := &api.Rest{
 		Version:     revision,
 		DataService: dataService,
 		Exporter:    exporter,
@@ -143,14 +144,15 @@ func New(opts Opts) (*Application, error) {
 		Authenticator: auth.Authenticator{
 			JWTService:  jwtService,
 			Admins:      opts.Admins,
-			Providers:   makeAuthProviders(jwtService, avatarProxy),
+			Providers:   makeAuthProviders(jwtService, avatarProxy, opts),
 			AvatarProxy: avatarProxy,
 			DevPasswd:   opts.DevPasswd,
 		},
 		Cache: cache,
 	}
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = opts.LowScore, opts.CriticalScore
-	return &Application{srv: srv, importer: importer, exporter: exporter, Opts: opts}, nil
+	tch := make(chan struct{})
+	return &Application{srv: srv, importer: importer, exporter: exporter, Opts: opts, terminated: tch}, nil
 }
 
 // Run all application objects
@@ -159,15 +161,22 @@ func (a *Application) Run(ctx context.Context) error {
 		log.Printf("[WARN] running in dev mode")
 	}
 
+	go func() {
+		// shutdown on context cancellation
+		<-ctx.Done()
+		a.srv.Shutdown()
+		a.importer.Shutdown()
+	}()
 	a.activateBackup(ctx) // runs in goroutine for each site
 	go a.importer.Run(a.Port + 1)
-	go a.srv.Run(opts.Port)
+	a.srv.Run(a.Port)
+	close(a.terminated)
+	return nil
+}
 
-	// shutdown on context cancellation
-	<-ctx.Done()
-	a.srv.Shutdown()
-	a.importer.Shutdown()
-	return ctx.Err()
+// Wait for application completion (termination)
+func (a *Application) Wait() {
+	<-a.terminated
 }
 
 // activateBackup runs background backups for each site
@@ -226,7 +235,7 @@ func makeDirs(dirs ...string) error {
 	return nil
 }
 
-func makeAuthProviders(jwtService *auth.JWT, avatarProxy *proxy.Avatar) (providers []auth.Provider) {
+func makeAuthProviders(jwtService *auth.JWT, avatarProxy *proxy.Avatar, opts Opts) (providers []auth.Provider) {
 
 	makeParams := func(cid, secret string) auth.Params {
 		return auth.Params{
@@ -257,23 +266,25 @@ func makeAuthProviders(jwtService *auth.JWT, avatarProxy *proxy.Avatar) (provide
 }
 
 // post-flush callback invoked by cache after each flush in async way
-func postFlushFn() {
+func postFlushFn(sites []string, port int) func() {
 
-	// list of heavy urls for pre-heating on cache change
-	urls := []string{
-		"http://localhost:%d/api/v1/list?site=%s",
-		"http://localhost:%d/api/v1/last/50?site=%s",
-	}
+	return func() {
+		// list of heavy urls for pre-heating on cache change
+		urls := []string{
+			"http://localhost:%d/api/v1/list?site=%s",
+			"http://localhost:%d/api/v1/last/50?site=%s",
+		}
 
-	for _, site := range opts.Sites {
-		for _, u := range urls {
-			resp, err := http.Get(fmt.Sprintf(u, opts.Port, site))
-			if err != nil {
-				log.Printf("[WARN] failed to refresh cached list for %s, %s", site, err)
-				return
-			}
-			if err = resp.Body.Close(); err != nil {
-				log.Printf("[WARN] failed to close response body, %s", err)
+		for _, site := range sites {
+			for _, u := range urls {
+				resp, err := http.Get(fmt.Sprintf(u, port, site))
+				if err != nil {
+					log.Printf("[WARN] failed to refresh cached list for %s, %s", site, err)
+					return
+				}
+				if err = resp.Body.Close(); err != nil {
+					log.Printf("[WARN] failed to close response body, %s", err)
+				}
 			}
 		}
 	}

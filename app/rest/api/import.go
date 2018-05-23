@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/didip/tollbooth"
@@ -27,6 +28,7 @@ type Import struct {
 	SecretKey      string
 
 	httpServer *http.Server
+	lock       sync.Mutex
 }
 
 // Run the listener and request's router, activate rest server
@@ -34,7 +36,11 @@ type Import struct {
 func (s *Import) Run(port int) {
 	log.Printf("[INFO] activate import server on port %d", port)
 	router := s.routes()
+
+	s.lock.Lock()
 	s.httpServer = &http.Server{Addr: fmt.Sprintf("127.0.0.1:%d", port), Handler: router}
+	s.lock.Unlock()
+
 	err := s.httpServer.ListenAndServe()
 	log.Printf("[WARN] http server terminated, %s", err)
 }
@@ -44,9 +50,13 @@ func (s *Import) Shutdown() {
 	log.Print("[WARN] shutdown import server")
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
+
+	s.lock.Lock()
 	if err := s.httpServer.Shutdown(ctx); err != nil {
 		log.Printf("[DEBUG] importer shutdown error, %s", err)
 	}
+	s.lock.Unlock()
+
 	log.Print("[DEBUG] shutdown import server completed")
 }
 
