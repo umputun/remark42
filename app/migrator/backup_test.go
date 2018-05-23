@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestMigrator_RemoveOldBackupFiles(t *testing.T) {
+func TestBackup_RemoveOldBackupFiles(t *testing.T) {
 	loc := "/tmp/remark-backups.test"
 	defer os.RemoveAll(loc)
 
@@ -37,7 +37,7 @@ func TestMigrator_RemoveOldBackupFiles(t *testing.T) {
 	assert.Equal(t, "backup-site2-20171210.gz", ff[3].Name())
 }
 
-func TestMigrator_MakeBackup(t *testing.T) {
+func TestBackup_MakeBackup(t *testing.T) {
 	loc := "/tmp/remark-backups.test"
 	defer os.RemoveAll(loc)
 	os.MkdirAll(loc, 0700)
@@ -53,7 +53,7 @@ func TestMigrator_MakeBackup(t *testing.T) {
 	assert.Equal(t, int64(52), fi.Size())
 }
 
-func TestMigrator_Do(t *testing.T) {
+func TestBackup_Do(t *testing.T) {
 	loc := "/tmp/remark-backups.test"
 	defer os.RemoveAll(loc)
 	os.MkdirAll(loc, 0700)
