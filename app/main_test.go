@@ -6,6 +6,8 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
+	"syscall"
 	"testing"
 	"time"
 
@@ -36,6 +38,17 @@ func TestApplicationShutdown(t *testing.T) {
 	app.Run(ctx)
 	assert.True(t, time.Since(st).Seconds() < 1, "should take about 500msec")
 	app.Wait()
+}
+
+func TestApplicationMainSignal(t *testing.T) {
+	os.Args = []string{"test", "--secret=123456", "--bolt=/tmp/xyz", "--backup=/tmp", "--avatars=/tmp", "--port=18100"}
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+		syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
+	}()
+	st := time.Now()
+	main()
+	assert.True(t, time.Since(st).Seconds() < 1, "should take about 500msec")
 }
 
 func prepApp(t *testing.T, port int, duration time.Duration) (*Application, context.Context) {
