@@ -81,7 +81,7 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	// graceful termination
+	// catch signal and invoke graceful termination
 	go func() {
 		stop := make(chan os.Signal, 1)
 		signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
@@ -90,34 +90,16 @@ func main() {
 		cancel()
 	}()
 
-	app, err := Setup(opts)
+	app, err := New(opts)
 	if err != nil {
 		log.Fatalf("[ERROR] failed to setup application, %+v", err)
 	}
-	log.Printf("[INFO] remark terminated %s", Run(ctx, app))
+	log.Printf("[INFO] remark terminated %s", app.Run(ctx))
 }
 
-// Run all application objects
-func Run(ctx context.Context, a *Application) error {
-	if a.DevPasswd != "" {
-		log.Printf("[WARN] running in dev mode")
-	}
-
-	activateBackup(ctx, a.exporter) // runs in goroutine for each site
-	go a.importer.Run(a.Port + 1)
-	go a.srv.Run(opts.Port)
-
-	// shutdown on context cancellation
-	<-ctx.Done()
-	a.srv.Shutdown()
-	a.importer.Shutdown()
-
-	return ctx.Err()
-}
-
-// Setup prepares application and return all active parts
+// New prepares application and return it with all active parts
 // doesn't start anything
-func Setup(opts Opts) (*Application, error) {
+func New(opts Opts) (*Application, error) {
 	setupLog(opts.Dbg)
 
 	if err := makeDirs(opts.BoltPath, opts.BackupLocation, opts.AvatarStore); err != nil {
@@ -125,13 +107,13 @@ func Setup(opts Opts) (*Application, error) {
 	}
 
 	dataService := service.DataStore{
-		Interface:      makeBoltStore(opts.Sites),
+		Interface:      makeBoltStore(opts.Sites, opts.BoltPath),
 		EditDuration:   5 * time.Minute,
 		Secret:         opts.SecretKey,
 		MaxCommentSize: opts.MaxCommentSize,
 	}
 
-	cache := rest.NewLoadingCache(rest.MaxValueSize(opts.MaxCachedValue), rest.MaxKeys(opts.MaxCachedItems),
+	cache := rest.NewLoadingCache(rest.MaxValSize(opts.MaxCachedValue), rest.MaxKeys(opts.MaxCachedItems),
 		rest.PostFlushFn(postFlushFn))
 
 	jwtService := auth.NewJWT(opts.SecretKey, strings.HasPrefix(opts.RemarkURL, "https://"), 7*24*time.Hour)
@@ -171,14 +153,31 @@ func Setup(opts Opts) (*Application, error) {
 	return &Application{srv: srv, importer: importer, exporter: exporter, Opts: opts}, nil
 }
 
+// Run all application objects
+func (a *Application) Run(ctx context.Context) error {
+	if a.DevPasswd != "" {
+		log.Printf("[WARN] running in dev mode")
+	}
+
+	a.activateBackup(ctx) // runs in goroutine for each site
+	go a.importer.Run(a.Port + 1)
+	go a.srv.Run(opts.Port)
+
+	// shutdown on context cancellation
+	<-ctx.Done()
+	a.srv.Shutdown()
+	a.importer.Shutdown()
+	return ctx.Err()
+}
+
 // activateBackup runs background backups for each site
-func activateBackup(ctx context.Context, exporter migrator.Exporter) {
-	for _, siteID := range opts.Sites {
+func (a *Application) activateBackup(ctx context.Context) {
+	for _, siteID := range a.Sites {
 		backup := migrator.AutoBackup{
-			Exporter:       exporter,
-			BackupLocation: opts.BackupLocation,
+			Exporter:       a.exporter,
+			BackupLocation: a.BackupLocation,
 			SiteID:         siteID,
-			KeepMax:        opts.MaxBackupFiles,
+			KeepMax:        a.MaxBackupFiles,
 			Duration:       24 * time.Hour,
 		}
 		go backup.Do(ctx)
@@ -186,10 +185,10 @@ func activateBackup(ctx context.Context, exporter migrator.Exporter) {
 }
 
 // makeBoltStore creates store for all sites
-func makeBoltStore(siteNames []string) engine.Interface {
+func makeBoltStore(siteNames []string, path string) engine.Interface {
 	sites := []engine.BoltSite{}
 	for _, site := range siteNames {
-		sites = append(sites, engine.BoltSite{SiteID: site, FileName: fmt.Sprintf("%s/%s.db", opts.BoltPath, site)})
+		sites = append(sites, engine.BoltSite{SiteID: site, FileName: fmt.Sprintf("%s/%s.db", path, site)})
 	}
 	result, err := engine.NewBoltDB(bolt.Options{Timeout: 30 * time.Second}, sites...)
 	if err != nil {

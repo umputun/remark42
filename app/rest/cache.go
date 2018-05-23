@@ -82,9 +82,9 @@ func (lc *loadingCache) allowed(data []byte) bool {
 // CacheOption func type
 type CacheOption func(lc *loadingCache) error
 
-// MaxValueSize functional option defines the largest value's size allowed to be cached
+// MaxValSize functional option defines the largest value's size allowed to be cached
 // By default it is 0, which means unlimited.
-func MaxValueSize(max int) CacheOption {
+func MaxValSize(max int) CacheOption {
 	return func(lc *loadingCache) error {
 		lc.maxValueSize = max
 		return nil
