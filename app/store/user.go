@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"hash/crc64"
 	"log"
-	"strconv"
+	"regexp"
 )
 
 // User holds user-related info
@@ -19,12 +19,14 @@ type User struct {
 	IP      string `json:"ip,omitempty"`
 }
 
+var reValidSha = regexp.MustCompile("^[a-fA-F0-9]{40}$")
+
 // HashIP replace IP field with hashed hmac
 func (u *User) HashIP(secret string) {
 
 	hashVal := func(val string) string {
-		if _, err := strconv.ParseUint(val, 16, 64); err == nil || val == "" {
-			return val // already hashed
+		if val == "" || reValidSha.Match([]byte(val)) {
+			return val // already hashed or empty
 		}
 		key := []byte(secret)
 		h := hmac.New(sha1.New, key)

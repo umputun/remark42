@@ -28,6 +28,8 @@ func TestUser_HashIP(t *testing.T) {
 	}{
 		{"127.0.0.1", "ae12fe3b5f129b5cc4cdd2b136b7b7947c4d2741", "dbc7c999343f003f189f70aaf52cc04443f90790"},
 		{"8.8.8.8", "8cee77c27e32a2b5aec95c29888ac9946618d9a2", "70a46afce9633f010b06e129b8ad08243a1c4da9"},
+		{"8cee77c27e32a2b5aec95c29888ac9946618d9a2", "8cee77c27e32a2b5aec95c29888ac9946618d9a2", "8cee77c27e32a2b5aec95c29888ac9946618d9a2"},
+		{"", "", ""},
 	}
 
 	for i, tt := range tbl {
