@@ -115,6 +115,43 @@ func TestJWT_SetAndGetWithCookies(t *testing.T) {
 	assert.Equal(t, "remark42", claims.Issuer)
 }
 
+func TestJWT_SetAndGetWithXsrfMismatch(t *testing.T) {
+	j := NewJWT("xyz 12345", false, time.Hour)
+
+	claims := &CustomClaims{
+		State: "123456",
+		From:  "from",
+		User: &store.User{
+			ID:   "id1",
+			Name: "name1",
+		},
+		StandardClaims: jwt.StandardClaims{
+			Id:        "random id",
+			Issuer:    "remark42",
+			ExpiresAt: time.Date(2058, 5, 21, 1, 30, 22, 0, time.Local).Unix(),
+			NotBefore: time.Date(2018, 5, 21, 1, 30, 22, 0, time.Local).Unix(),
+		},
+	}
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/valid" {
+			j.Set(w, claims)
+			w.WriteHeader(200)
+		}
+	}))
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL + "/valid")
+	require.Nil(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+
+	req := httptest.NewRequest("GET", "/valid", nil)
+	req.AddCookie(resp.Cookies()[0])
+	req.Header.Add(xsrfHeaderKey, "random id wrong")
+	claims, err = j.Get(req)
+	assert.EqualError(t, err, "xsrf mismatch")
+}
+
 func TestJWT_SetAndGetWithCookiesExpired(t *testing.T) {
 	j := NewJWT("xyz 12345", false, time.Hour)
 
