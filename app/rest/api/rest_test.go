@@ -462,7 +462,8 @@ func TestServer_FileServer(t *testing.T) {
 }
 
 func TestServer_Shutdown(t *testing.T) {
-	srv := Rest{Authenticator: auth.Authenticator{}, AvatarProxy: &proxy.Avatar{StorePath: "/tmp", RoutePath: "/api/v1/avatar"}}
+	srv := Rest{Authenticator: auth.Authenticator{},
+		AvatarProxy: &proxy.Avatar{StorePath: "/tmp", RoutePath: "/api/v1/avatar"}, ImageProxy: &proxy.Image{}}
 	go func() {
 		time.Sleep(100 * time.Millisecond)
 		srv.Shutdown()
@@ -487,6 +488,7 @@ func prep(t *testing.T) (srv *Rest, ts *httptest.Server) {
 		Cache:       &mockCache{},
 		WebRoot:     "/tmp",
 		AvatarProxy: &proxy.Avatar{StorePath: "/tmp", RoutePath: "/api/v1/avatar"},
+		ImageProxy:  &proxy.Image{},
 	}
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = -5, -10
 
