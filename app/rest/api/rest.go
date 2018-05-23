@@ -37,7 +37,8 @@ type Rest struct {
 	Authenticator auth.Authenticator
 	Exporter      migrator.Exporter
 	Cache         rest.LoadingCache
-	ImageProxy    proxy.Image
+	AvatarProxy   *proxy.Avatar
+	ImageProxy    *proxy.Image
 	WebRoot       string
 
 	ScoreThresholds struct {
@@ -122,7 +123,7 @@ func (s *Rest) routes() chi.Router {
 		Logger(LogNone),
 		tollbooth_chi.LimitHandler(tollbooth.NewLimiter(100, nil)),
 	}
-	router.Mount(s.Authenticator.AvatarProxy.Routes(avatarMiddlewares...)) // mount avatars to /api/v1/avatar/{file.img}
+	router.Mount(s.AvatarProxy.Routes(avatarMiddlewares...)) // mount avatars to /api/v1/avatar/{file.img}
 
 	// api routes
 	router.Route("/api/v1", func(rapi chi.Router) {

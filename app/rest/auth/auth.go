@@ -8,17 +8,15 @@ import (
 	"strings"
 
 	"github.com/umputun/remark/app/rest"
-	"github.com/umputun/remark/app/rest/proxy"
 	"github.com/umputun/remark/app/store"
 )
 
 // Authenticator is top level auth object providing middlewares
 type Authenticator struct {
-	JWTService  *JWT
-	AvatarProxy *proxy.Avatar
-	Admins      []string
-	Providers   []Provider
-	DevPasswd   string
+	JWTService *JWT
+	Admins     []string
+	Providers  []Provider
+	DevPasswd  string
 }
 
 var devUser = store.User{

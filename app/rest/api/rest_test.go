@@ -461,6 +461,17 @@ func TestServer_FileServer(t *testing.T) {
 	assert.Equal(t, "some html", body)
 }
 
+func TestServer_Shutdown(t *testing.T) {
+	srv := Rest{Authenticator: auth.Authenticator{}, AvatarProxy: &proxy.Avatar{StorePath: "/tmp", RoutePath: "/api/v1/avatar"}}
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+		srv.Shutdown()
+	}()
+	st := time.Now()
+	srv.Run(0)
+	assert.True(t, time.Since(st).Seconds() < 1, "should take about 100ms")
+}
+
 func prep(t *testing.T) (srv *Rest, ts *httptest.Server) {
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDb, SiteID: "radio-t"})
 	require.Nil(t, err)
@@ -468,14 +479,14 @@ func prep(t *testing.T) (srv *Rest, ts *httptest.Server) {
 	srv = &Rest{
 		DataService: dataStore,
 		Authenticator: auth.Authenticator{
-			DevPasswd:   "password",
-			Providers:   nil,
-			AvatarProxy: &proxy.Avatar{StorePath: "/tmp", RoutePath: "/api/v1/avatar"},
-			Admins:      []string{"a1", "a2"},
+			DevPasswd: "password",
+			Providers: nil,
+			Admins:    []string{"a1", "a2"},
 		},
-		Exporter: &migrator.Remark{DataStore: &dataStore},
-		Cache:    &mockCache{},
-		WebRoot:  "/tmp",
+		Exporter:    &migrator.Remark{DataStore: &dataStore},
+		Cache:       &mockCache{},
+		WebRoot:     "/tmp",
+		AvatarProxy: &proxy.Avatar{StorePath: "/tmp", RoutePath: "/api/v1/avatar"},
 	}
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = -5, -10
 
