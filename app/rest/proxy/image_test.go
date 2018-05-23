@@ -80,12 +80,20 @@ func TestImage_Routes(t *testing.T) {
 	resp, err = http.Get(ts.URL + "/?src=" + encodedImgURL)
 	require.Nil(t, err)
 	assert.Equal(t, 404, resp.StatusCode)
+
+	encodedImgURL = base64.URLEncoding.EncodeToString([]byte(httpSrv.URL + "bad encoding"))
+	resp, err = http.Get(ts.URL + "/?src=" + encodedImgURL)
+	require.Nil(t, err)
+	assert.Equal(t, 400, resp.StatusCode)
 }
 
 func TestPicture_Convert(t *testing.T) {
 	img := Image{Enabled: true, RoutePath: "/img"}
 	r := img.Convert(`<img src="http://radio-t.com/img3.png"/> xyz <img src="http://images.pexels.com/67636/img4.jpeg">`)
 	assert.Equal(t, `<img src="/img?src=aHR0cDovL3JhZGlvLXQuY29tL2ltZzMucG5n"/> xyz <img src="/img?src=aHR0cDovL2ltYWdlcy5wZXhlbHMuY29tLzY3NjM2L2ltZzQuanBlZw==">`, r)
+
+	r = img.Convert(`<img src="https://radio-t.com/img3.png"/> xyz <img src="http://images.pexels.com/67636/img4.jpeg">`)
+	assert.Equal(t, `<img src="https://radio-t.com/img3.png"/> xyz <img src="/img?src=aHR0cDovL2ltYWdlcy5wZXhlbHMuY29tLzY3NjM2L2ltZzQuanBlZw==">`, r)
 }
 
 func imgHTTPServer(t *testing.T) *httptest.Server {
