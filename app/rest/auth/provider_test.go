@@ -77,6 +77,17 @@ func TestLogout(t *testing.T) {
 	assert.Equal(t, "", resp.Cookies()[1].Value)
 }
 
+func TestInitProvider(t *testing.T) {
+	params := Params{Cid: "cid", Csecret: "csecret", RemarkURL: "url"}
+	provider := Provider{Name: "test", RedirectURL: "redir", Secret: "123456"}
+	res := initProvider(params, provider)
+	assert.Equal(t, "cid", res.conf.ClientID)
+	assert.Equal(t, "csecret", res.conf.ClientSecret)
+	assert.Equal(t, "redir", res.RedirectURL)
+	assert.Equal(t, "123456", res.Secret)
+	assert.Equal(t, "test", res.Name)
+}
+
 func mockProvider(t *testing.T, loginPort, authPort int) (provider Provider, ts *http.Server, oauth *http.Server) {
 
 	provider = Provider{
