@@ -54,6 +54,17 @@ func TestImportRejected(t *testing.T) {
 	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 }
 
+func TestImportShutdown(t *testing.T) {
+	srv := Import{}
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+		srv.Shutdown()
+	}()
+	st := time.Now()
+	srv.Run(0)
+	assert.True(t, time.Since(st).Seconds() < 1, "should take about 100ms")
+}
+
 func prepImportSrv(t *testing.T) (svc *Import, ts *httptest.Server) {
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDb, SiteID: "radio-t"})
 	require.Nil(t, err)
