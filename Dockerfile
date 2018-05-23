@@ -24,9 +24,7 @@ RUN if [ "x$COVERALLS_TOKEN" = "x" ] ; then \
     else go get github.com/mattn/goveralls && \
     goveralls -coverprofile=.cover/cover.out -service=travis-ci -repotoken $COVERALLS_TOKEN; fi
 
-RUN \
-    echo "rev=$(git rev-parse --abbrev-ref HEAD)" && \
-    go build -o remark -ldflags "-X main.revision=$(git rev-parse --abbrev-ref HEAD)-$(git describe --abbrev=7 --always --tags)-$(date +%Y%m%d-%H:%M:%S) -s -w" ./app
+RUN go build -o remark -ldflags "-X main.revision=$(git rev-parse --abbrev-ref HEAD)-$(git describe --abbrev=7 --always --tags)-$(date +%Y%m%d-%H:%M:%S) -s -w" ./app
 
 
 FROM node:9.4-alpine as build-frontend
