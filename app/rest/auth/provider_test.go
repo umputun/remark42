@@ -30,7 +30,7 @@ func TestLogin(t *testing.T) {
 	require.Nil(t, err)
 	client := &http.Client{Jar: jar, Timeout: 5 * time.Second}
 	resp, err := client.Get("http://localhost:8981/login")
-	assert.Nil(t, err)
+	require.Nil(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 	body, err := ioutil.ReadAll(resp.Body)
 	assert.Nil(t, err)
@@ -92,7 +92,7 @@ func TestLogout(t *testing.T) {
 func TestInitProvider(t *testing.T) {
 	params := Params{RemarkURL: "url", SecretKey: "123456", Cid: "cid", Csecret: "csecret"}
 	provider := Provider{Name: "test", RedirectURL: "redir"}
-	res := initProvider(params, &provider)
+	res := initProvider(params, provider)
 	assert.Equal(t, "cid", res.conf.ClientID)
 	assert.Equal(t, "csecret", res.conf.ClientSecret)
 	assert.Equal(t, "redir", res.RedirectURL)
@@ -100,9 +100,9 @@ func TestInitProvider(t *testing.T) {
 	assert.Equal(t, "test", res.Name)
 }
 
-func mockProvider(t *testing.T, loginPort, authPort int) (provider *Provider, ts *http.Server, oauth *http.Server) {
+func mockProvider(t *testing.T, loginPort, authPort int) (*Provider, *http.Server, *http.Server) {
 
-	provider = &Provider{
+	provider := Provider{
 		Name: "mock",
 		Endpoint: oauth2.Endpoint{
 			AuthURL:  fmt.Sprintf("http://localhost:%d/login/oauth/authorize", authPort),
@@ -122,11 +122,11 @@ func mockProvider(t *testing.T, loginPort, authPort int) (provider *Provider, ts
 	}
 	params := Params{RemarkURL: "url", SecretKey: "123456", Cid: "cid", Csecret: "csecret",
 		JwtService: NewJWT("12345", false, time.Hour), Admins: []string{""}}
-	initProvider(params, provider)
+	provider = initProvider(params, provider)
 
-	ts = &http.Server{Addr: fmt.Sprintf(":%d", loginPort), Handler: provider.Routes()}
+	ts := &http.Server{Addr: fmt.Sprintf(":%d", loginPort), Handler: provider.Routes()}
 
-	oauth = &http.Server{
+	oauth := &http.Server{
 		Addr: fmt.Sprintf(":%d", authPort),
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			log.Printf("[MOCK OAUTH] request %s %s %+v", r.Method, r.URL, r.Header)
@@ -166,5 +166,5 @@ func mockProvider(t *testing.T, loginPort, authPort int) (provider *Provider, ts
 	go ts.ListenAndServe()
 
 	time.Sleep(time.Millisecond * 100) // let the start
-	return provider, ts, oauth
+	return &provider, ts, oauth
 }
