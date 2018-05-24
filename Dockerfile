@@ -21,8 +21,7 @@ RUN mkdir -p target && /script/coverage.sh
 
 RUN if [ "x$COVERALLS_TOKEN" = "x" ] ; then \
     echo coverall not enabled ; \
-    else go get github.com/mattn/goveralls && \
-    goveralls -coverprofile=.cover/cover.out -service=travis-ci -repotoken $COVERALLS_TOKEN; fi
+    else goveralls -coverprofile=.cover/cover.out -service=travis-ci -repotoken $COVERALLS_TOKEN; fi
 
 RUN go build -o remark -ldflags "-X main.revision=$(git rev-parse --abbrev-ref HEAD)-$(git describe --abbrev=7 --always --tags)-$(date +%Y%m%d-%H:%M:%S) -s -w" ./app
 
@@ -49,7 +48,7 @@ RUN chmod +x /srv/start.sh /srv/import-disqus.sh /srv/restore-backup.sh
 
 COPY --from=build-backend /go/src/github.com/umputun/remark/remark /srv/
 COPY --from=build-frontend /srv/web/public/ /srv/web
-RUN chown -R umputun:umputun /srv
+RUN chown -R app:app /srv
 
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s CMD curl --fail http://localhost:8080/ping || exit 1
