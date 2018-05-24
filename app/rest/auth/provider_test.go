@@ -78,8 +78,8 @@ func TestLogout(t *testing.T) {
 }
 
 func TestInitProvider(t *testing.T) {
-	params := Params{Cid: "cid", Csecret: "csecret", RemarkURL: "url"}
-	provider := Provider{Name: "test", RedirectURL: "redir", Secret: "123456"}
+	params := Params{RemarkURL: "url", Secret: "123456", Cid: "cid", Csecret: "csecret"}
+	provider := Provider{Name: "test", RedirectURL: "redir"}
 	res := initProvider(params, provider)
 	assert.Equal(t, "cid", res.conf.ClientID)
 	assert.Equal(t, "csecret", res.conf.ClientSecret)
@@ -108,8 +108,8 @@ func mockProvider(t *testing.T, loginPort, authPort int) (provider Provider, ts 
 			return userInfo
 		},
 	}
-
-	provider = initProvider(Params{Cid: "cid", Csecret: "csecret", JwtService: NewJWT("12345", false, time.Hour)}, provider)
+	jwtServcie := NewJWT("12345", false, time.Hour)
+	provider = initProvider(Params{RemarkURL: "url", Secret: "123456", Cid: "cid", Csecret: "csecret", JwtService: jwtServcie}, provider)
 
 	ts = &http.Server{Addr: fmt.Sprintf(":%d", loginPort), Handler: provider.Routes()}
 
