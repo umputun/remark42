@@ -244,6 +244,8 @@ func makeAuthProviders(jwtService *auth.JWT, avatarProxy *proxy.Avatar, opts Opt
 			RemarkURL:   opts.RemarkURL,
 			Cid:         cid,
 			Csecret:     secret,
+			Admins:      opts.Admins,
+			SecretKey:   opts.SecretKey,
 		}
 	}
 

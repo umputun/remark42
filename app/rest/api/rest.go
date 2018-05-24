@@ -439,13 +439,14 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		LowScore:       s.ScoreThresholds.Low,
 		CriticalScore:  s.ScoreThresholds.Critical,
 	}
-	authNames := []string{}
+
+	cnf.Auth = []string{}
 	for _, ap := range s.Authenticator.Providers {
-		authNames = append(authNames, ap.Name)
+		cnf.Auth = append(cnf.Auth, ap.Name)
 	}
-	cnf.Auth = authNames
-	if s.Authenticator.Admins == nil { // prevent json serialization to nil
-		s.Authenticator.Admins = []string{}
+
+	if cnf.Admins == nil { // prevent json serialization to nil
+		cnf.Admins = []string{}
 	}
 	render.Status(r, http.StatusOK)
 	render.JSON(w, r, cnf)

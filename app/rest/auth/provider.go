@@ -38,7 +38,8 @@ type Params struct {
 	RemarkURL   string
 	AvatarProxy *proxy.Avatar
 	JwtService  *JWT
-	Secret      string
+	SecretKey   string
+	Admins      []string
 	Cid         string
 	Csecret     string
 }
@@ -53,7 +54,7 @@ func (u userData) value(key string) string {
 }
 
 // newProvider makes auth for given provider
-func initProvider(p Params, provider Provider) Provider {
+func initProvider(p Params, provider *Provider) Provider {
 	log.Printf("[INFO] create %s auth, id=%s, redir: %s", provider.Name, provider.Cid, provider.RedirectURL)
 	provider.Params = p
 	conf := oauth2.Config{
@@ -65,11 +66,11 @@ func initProvider(p Params, provider Provider) Provider {
 	}
 
 	provider.conf = &conf
-	return provider
+	return *provider
 }
 
 // Routes returns auth routes for given provider
-func (p Provider) Routes() chi.Router {
+func (p *Provider) Routes() chi.Router {
 	router := chi.NewRouter()
 	router.Get("/login", p.loginHandler)
 	router.Get("/callback", p.authHandler)
@@ -78,7 +79,7 @@ func (p Provider) Routes() chi.Router {
 }
 
 // loginHandler - GET /login?from=redirect-back-url
-func (p Provider) loginHandler(w http.ResponseWriter, r *http.Request) {
+func (p *Provider) loginHandler(w http.ResponseWriter, r *http.Request) {
 
 	// make state (random) and store in session
 	state := p.randToken()
@@ -108,7 +109,7 @@ func (p Provider) loginHandler(w http.ResponseWriter, r *http.Request) {
 
 // authHandler fills user info and redirects to "from" url. This is callback url redirected locally by browser
 // GET /callback
-func (p Provider) authHandler(w http.ResponseWriter, r *http.Request) {
+func (p *Provider) authHandler(w http.ResponseWriter, r *http.Request) {
 
 	oauthClaims, err := p.JwtService.Get(r)
 	if err != nil {
@@ -163,6 +164,7 @@ func (p Provider) authHandler(w http.ResponseWriter, r *http.Request) {
 			log.Printf("[WARN] failed to proxy avatar, %s", e)
 		}
 	}
+	u.Admin = isAdmin(u.ID, p.Admins)
 
 	authClaims := &CustomClaims{
 		User: &u,
@@ -184,16 +186,16 @@ func (p Provider) authHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, oauthClaims.From, http.StatusTemporaryRedirect)
 		return
 	}
-	render.JSON(w, r, jData)
+	render.JSON(w, r, &u)
 }
 
 // LogoutHandler - GET /logout
-func (p Provider) LogoutHandler(w http.ResponseWriter, r *http.Request) {
+func (p *Provider) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	p.JwtService.Reset(w)
 	log.Printf("[DEBUG] logout")
 }
 
-func (p Provider) randToken() string {
+func (p *Provider) randToken() string {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
 		log.Fatalf("[ERROR] can't get randoms, %s", err)

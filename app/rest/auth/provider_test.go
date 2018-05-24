@@ -20,7 +20,7 @@ import (
 
 func TestLogin(t *testing.T) {
 
-	_, ts, ots := mockProvider(t, 8981, 8982)
+	p, ts, ots := mockProvider(t, 8981, 8982)
 	defer func() {
 		ts.Close()
 		ots.Close()
@@ -46,8 +46,20 @@ func TestLogin(t *testing.T) {
 	u := store.User{}
 	err = json.Unmarshal(body, &u)
 	assert.Nil(t, err)
-	assert.Equal(t, store.User{Name: "blah", ID: "myuser", Picture: "",
+	assert.Equal(t, store.User{Name: "blah", ID: "mock_myuser", Picture: "http://exmple.com/pic1.png",
 		Admin: false, Blocked: false, IP: ""}, u)
+
+	// check admin user
+	p.Admins = []string{"mock_myuser"}
+	resp, err = client.Get("http://localhost:8981/login")
+	assert.Nil(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+	body, err = ioutil.ReadAll(resp.Body)
+	assert.Nil(t, err)
+	err = json.Unmarshal(body, &u)
+	assert.Nil(t, err)
+	assert.Equal(t, store.User{Name: "blah", ID: "mock_myuser", Picture: "http://exmple.com/pic1.png",
+		Admin: true, Blocked: false, IP: ""}, u)
 }
 
 func TestLogout(t *testing.T) {
@@ -78,19 +90,19 @@ func TestLogout(t *testing.T) {
 }
 
 func TestInitProvider(t *testing.T) {
-	params := Params{RemarkURL: "url", Secret: "123456", Cid: "cid", Csecret: "csecret"}
+	params := Params{RemarkURL: "url", SecretKey: "123456", Cid: "cid", Csecret: "csecret"}
 	provider := Provider{Name: "test", RedirectURL: "redir"}
-	res := initProvider(params, provider)
+	res := initProvider(params, &provider)
 	assert.Equal(t, "cid", res.conf.ClientID)
 	assert.Equal(t, "csecret", res.conf.ClientSecret)
 	assert.Equal(t, "redir", res.RedirectURL)
-	assert.Equal(t, "123456", res.Secret)
+	assert.Equal(t, "123456", res.SecretKey)
 	assert.Equal(t, "test", res.Name)
 }
 
-func mockProvider(t *testing.T, loginPort, authPort int) (provider Provider, ts *http.Server, oauth *http.Server) {
+func mockProvider(t *testing.T, loginPort, authPort int) (provider *Provider, ts *http.Server, oauth *http.Server) {
 
-	provider = Provider{
+	provider = &Provider{
 		Name: "mock",
 		Endpoint: oauth2.Endpoint{
 			AuthURL:  fmt.Sprintf("http://localhost:%d/login/oauth/authorize", authPort),
@@ -101,15 +113,16 @@ func mockProvider(t *testing.T, loginPort, authPort int) (provider Provider, ts 
 		InfoURL:     fmt.Sprintf("http://localhost:%d/user", authPort),
 		MapUser: func(data userData, _ []byte) store.User {
 			userInfo := store.User{
-				ID:      data.value("id"),
+				ID:      "mock_" + data.value("id"),
 				Name:    data.value("name"),
 				Picture: data.value("picture"),
 			}
 			return userInfo
 		},
 	}
-	jwtServcie := NewJWT("12345", false, time.Hour)
-	provider = initProvider(Params{RemarkURL: "url", Secret: "123456", Cid: "cid", Csecret: "csecret", JwtService: jwtServcie}, provider)
+	params := Params{RemarkURL: "url", SecretKey: "123456", Cid: "cid", Csecret: "csecret",
+		JwtService: NewJWT("12345", false, time.Hour), Admins: []string{""}}
+	initProvider(params, provider)
 
 	ts = &http.Server{Addr: fmt.Sprintf(":%d", loginPort), Handler: provider.Routes()}
 
@@ -138,7 +151,7 @@ func mockProvider(t *testing.T, loginPort, authPort int) (provider Provider, ts 
 				res := `{
 					"id":"myuser",
 					"name":"blah",
-					"profile": "http://blah.com/p.html"
+					"picture":"http://exmple.com/pic1.png"
 					}`
 				w.Header().Set("Content-Type", "application/json; charset=utf-8")
 				w.WriteHeader(200)

@@ -14,7 +14,7 @@ import (
 
 // NewGoogle makes google oauth2 provider
 func NewGoogle(p Params) Provider {
-	return initProvider(p, Provider{
+	return initProvider(p, &Provider{
 		Name:        "google",
 		Endpoint:    google.Endpoint,
 		RedirectURL: p.RemarkURL + "/auth/google/callback",
@@ -37,7 +37,7 @@ func NewGoogle(p Params) Provider {
 
 // NewGithub makes github oauth2 provider
 func NewGithub(p Params) Provider {
-	return initProvider(p, Provider{
+	return initProvider(p, &Provider{
 		Name:        "github",
 		Endpoint:    github.Endpoint,
 		RedirectURL: p.RemarkURL + "/auth/github/callback",
@@ -75,7 +75,7 @@ func NewFacebook(p Params) Provider {
 		} `json:"picture"`
 	}
 
-	return initProvider(p, Provider{
+	return initProvider(p, &Provider{
 		Name:        "facebook",
 		Endpoint:    facebook.Endpoint,
 		RedirectURL: p.RemarkURL + "/auth/facebook/callback",
@@ -101,7 +101,7 @@ func NewFacebook(p Params) Provider {
 
 // NewDisqus makes disqus oauth2 provider. TODO: WIP - seems to need client_id param
 func NewDisqus(p Params) Provider {
-	return initProvider(p, Provider{
+	return initProvider(p, &Provider{
 		Name: "disqus",
 		Endpoint: oauth2.Endpoint{
 			AuthURL:  "https://disqus.com/api/oauth/2.0/authorize/",
