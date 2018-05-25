@@ -13,6 +13,7 @@ import (
 
 	"github.com/umputun/remark/app/migrator"
 	"github.com/umputun/remark/app/rest"
+	"github.com/umputun/remark/app/rest/cache"
 	"github.com/umputun/remark/app/store"
 	"github.com/umputun/remark/app/store/service"
 )
@@ -21,7 +22,7 @@ import (
 type admin struct {
 	dataService  service.DataStore
 	exporter     migrator.Exporter
-	cache        rest.LoadingCache
+	cache        cache.LoadingCache
 	defAvatarURL string
 }
 

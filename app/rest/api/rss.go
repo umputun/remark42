@@ -11,6 +11,7 @@ import (
 	"github.com/gorilla/feeds"
 
 	"github.com/umputun/remark/app/rest"
+	"github.com/umputun/remark/app/rest/cache"
 	"github.com/umputun/remark/app/store"
 )
 
@@ -32,7 +33,7 @@ func (s *Rest) rssPostCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	sort := "-time"
 	log.Printf("[DEBUG] get rss for post %+v", locator)
 
-	data, err := s.Cache.Get(rest.URLKey(r), 4*time.Hour, func() ([]byte, error) {
+	data, err := s.Cache.Get(cache.Key(cache.URLKey(r), locator.SiteID, locator.URL), 4*time.Hour, func() ([]byte, error) {
 		comments, e := s.DataService.Find(locator, sort)
 		if e != nil {
 			return nil, e
@@ -61,10 +62,11 @@ func (s *Rest) rssPostCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 // GET /rss/site?site=siteID
 func (s *Rest) rssSiteCommentsCtrl(w http.ResponseWriter, r *http.Request) {
-	log.Printf("[DEBUG] get rss for site %s", r.URL.Query().Get("site"))
+	siteID := r.URL.Query().Get("site")
+	log.Printf("[DEBUG] get rss for site %s", siteID)
 
-	data, err := s.Cache.Get(rest.URLKey(r), 4*time.Hour, func() ([]byte, error) {
-		comments, e := s.DataService.Last(r.URL.Query().Get("site"), maxRssItems)
+	data, err := s.Cache.Get(cache.Key(cache.URLKey(r), siteID), 4*time.Hour, func() ([]byte, error) {
+		comments, e := s.DataService.Last(siteID, maxRssItems)
 		if e != nil {
 			return nil, e
 		}

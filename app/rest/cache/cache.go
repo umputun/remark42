@@ -1,4 +1,4 @@
-package rest
+package cache
 
 import (
 	"log"
@@ -9,6 +9,7 @@ import (
 
 	"github.com/patrickmn/go-cache"
 	"github.com/pkg/errors"
+	"github.com/umputun/remark/app/rest"
 )
 
 // LoadingCache defines interface for caching
@@ -17,8 +18,8 @@ type LoadingCache interface {
 	Flush(scopes ...string)
 }
 
-// CacheKey makes full key from primary key ans scopes
-func CacheKey(key string, scopes ...string) string {
+// Key makes full key from primary key ans scopes
+func Key(key string, scopes ...string) string {
 	return strings.Join(scopes, "$$") + "@@" + key
 }
 func parseKey(fullKey string) (key string, scopes []string, err error) {
@@ -101,8 +102,11 @@ func (lc *loadingCache) Flush(scopes ...string) {
 
 	if len(scopes) == 0 {
 		lc.bytesCache.Flush()
+		go lc.postFlushFn()
+		return
 	}
 
+	// check if fullKey has matching scopes
 	inScope := func(fullKey string) bool {
 		for _, s := range scopes {
 			_, keyScopes, err := parseKey(fullKey)
@@ -118,18 +122,18 @@ func (lc *loadingCache) Flush(scopes ...string) {
 		return false
 	}
 
-	if len(scopes) > 0 {
-		matchedKeys := []string{}
-		lc.withLock(func() {
-			for k := range lc.activeKeys {
-				if inScope(k) {
-					matchedKeys = append(matchedKeys, k)
-				}
+	// all matchedKeys should be collected first
+	// we can't delete it from locked section, it will lock on eviction callback
+	matchedKeys := []string{}
+	lc.withLock(func() {
+		for k := range lc.activeKeys {
+			if inScope(k) {
+				matchedKeys = append(matchedKeys, k)
 			}
-		})
-		for _, mkey := range matchedKeys {
-			lc.bytesCache.Delete(mkey)
 		}
+	})
+	for _, mkey := range matchedKeys {
+		lc.bytesCache.Delete(mkey)
 	}
 
 	if lc.postFlushFn != nil {
@@ -188,8 +192,8 @@ func PostFlushFn(postFlushFn func()) CacheOption {
 // admins will have different keys in order to prevent leak of admin-only data to regular users
 func URLKey(r *http.Request) string {
 	adminPrefix := "admin!!"
-	key := strings.TrimPrefix(r.URL.String(), adminPrefix)     // prevents attach with fake url to get admin view
-	if user, err := GetUserInfo(r); err == nil && user.Admin { // make separate cache key for admins
+	key := strings.TrimPrefix(r.URL.String(), adminPrefix)          // prevents attach with fake url to get admin view
+	if user, err := rest.GetUserInfo(r); err == nil && user.Admin { // make separate cache key for admins
 		key = adminPrefix + key
 	}
 	return key

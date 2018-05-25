@@ -1,4 +1,4 @@
-package rest
+package cache
 
 import (
 	"fmt"
@@ -10,6 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/umputun/remark/app/rest"
 	"github.com/umputun/remark/app/store"
 )
 
@@ -139,7 +140,7 @@ func TestLoadingCache_URLKey(t *testing.T) {
 	assert.Equal(t, "http://blah/123?key=v&k2=v2", key)
 
 	user := store.User{Admin: true}
-	r = SetUserInfo(r, user)
+	r = rest.SetUserInfo(r, user)
 	key = URLKey(r)
 	assert.Equal(t, "admin!!http://blah/123?key=v&k2=v2", key)
 }
@@ -175,25 +176,25 @@ func TestLoadingCache_Parallel(t *testing.T) {
 func TestLoadingCache_Scopes(t *testing.T) {
 	lc := NewLoadingCache(CleanupInterval(time.Second))
 
-	res, err := lc.Get(CacheKey("key", "s1", "s2"), time.Minute, func() ([]byte, error) {
+	res, err := lc.Get(Key("key", "s1", "s2"), time.Minute, func() ([]byte, error) {
 		return []byte("value"), nil
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, "value", string(res))
 
-	res, err = lc.Get(CacheKey("key2", "s2"), time.Minute, func() ([]byte, error) {
+	res, err = lc.Get(Key("key2", "s2"), time.Minute, func() ([]byte, error) {
 		return []byte("value2"), nil
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, "value2", string(res))
 
 	lc.Flush("s1")
-	lc.Get(CacheKey("key2", "s2"), time.Minute, func() ([]byte, error) {
+	lc.Get(Key("key2", "s2"), time.Minute, func() ([]byte, error) {
 		assert.Fail(t, "should stay")
 		return nil, nil
 	})
 
-	res, err = lc.Get(CacheKey("key", "s1", "s2"), time.Minute, func() ([]byte, error) {
+	res, err = lc.Get(Key("key", "s1", "s2"), time.Minute, func() ([]byte, error) {
 		return []byte("value-upd"), nil
 	})
 	assert.Equal(t, "value-upd", string(res), "was deleted, update")
@@ -211,7 +212,7 @@ func TestLoadingCache_Keys(t *testing.T) {
 	}
 
 	for n, tt := range tbl {
-		full := CacheKey(tt.key, tt.scopes...)
+		full := Key(tt.key, tt.scopes...)
 		assert.Equal(t, tt.full, full, "making key, #%d", n)
 
 		k, s, e := parseKey(full)

@@ -17,12 +17,13 @@ import (
 
 	"github.com/umputun/remark/app/migrator"
 	"github.com/umputun/remark/app/rest"
+	"github.com/umputun/remark/app/rest/cache"
 )
 
 // Import rest runs on unexposed port and available for local requests only
 type Import struct {
 	Version        string
-	Cache          rest.LoadingCache
+	Cache          cache.LoadingCache
 	NativeImporter migrator.Importer
 	DisqusImporter migrator.Importer
 	SecretKey      string
