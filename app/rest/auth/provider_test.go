@@ -46,20 +46,19 @@ func TestLogin(t *testing.T) {
 	u := store.User{}
 	err = json.Unmarshal(body, &u)
 	assert.Nil(t, err)
-	assert.Equal(t, store.User{Name: "blah", ID: "mock_myuser", Picture: "http://exmple.com/pic1.png",
+	assert.Equal(t, store.User{Name: "blah", ID: "mock_myuser1", Picture: "http://exmple.com/pic1.png",
 		Admin: false, Blocked: false, IP: ""}, u)
 
 	// check admin user
-	//p.Admins = []string{"mock_myuser"}
-	//resp, err = client.Get("http://localhost:8981/login")
-	//assert.Nil(t, err)
-	//assert.Equal(t, 200, resp.StatusCode)
-	//body, err = ioutil.ReadAll(resp.Body)
-	//assert.Nil(t, err)
-	//err = json.Unmarshal(body, &u)
-	//assert.Nil(t, err)
-	//assert.Equal(t, store.User{Name: "blah", ID: "mock_myuser", Picture: "http://exmple.com/pic1.png",
-	//	Admin: true, Blocked: false, IP: ""}, u)
+	resp, err = client.Get("http://localhost:8981/login")
+	assert.Nil(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+	body, err = ioutil.ReadAll(resp.Body)
+	assert.Nil(t, err)
+	err = json.Unmarshal(body, &u)
+	assert.Nil(t, err)
+	assert.Equal(t, store.User{Name: "blah", ID: "mock_myuser2", Picture: "http://exmple.com/pic1.png",
+		Admin: true, Blocked: false, IP: ""}, u)
 }
 
 func TestLogout(t *testing.T) {
@@ -121,10 +120,13 @@ func mockProvider(t *testing.T, loginPort, authPort int) (*Provider, *http.Serve
 		},
 	}
 	params := Params{RemarkURL: "url", SecretKey: "123456", Cid: "cid", Csecret: "csecret",
-		JwtService: NewJWT("12345", false, time.Hour), Admins: []string{""}}
+		JwtService: NewJWT("12345", false, time.Hour), Admins: []string{"mock_myuser2"}}
 	provider = initProvider(params, provider)
 
 	ts := &http.Server{Addr: fmt.Sprintf(":%d", loginPort), Handler: provider.Routes()}
+
+	count := 0
+	useIds := []string{"myuser1", "myuser2"}
 
 	oauth := &http.Server{
 		Addr: fmt.Sprintf(":%d", authPort),
@@ -148,11 +150,13 @@ func mockProvider(t *testing.T, loginPort, authPort int) (*Provider, *http.Serve
 				w.WriteHeader(200)
 				w.Write([]byte(res))
 			case strings.HasPrefix(r.URL.Path, "/user"):
-				res := `{
-					"id":"myuser",
+
+				res := fmt.Sprintf(`{
+					"id": "%s",
 					"name":"blah",
 					"picture":"http://exmple.com/pic1.png"
-					}`
+					}`, useIds[count])
+				count++
 				w.Header().Set("Content-Type", "application/json; charset=utf-8")
 				w.WriteHeader(200)
 				w.Write([]byte(res))
