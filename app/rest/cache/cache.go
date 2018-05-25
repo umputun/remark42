@@ -48,7 +48,7 @@ type loadingCache struct {
 }
 
 // NewLoadingCache makes loadingCache implementation
-func NewLoadingCache(options ...Option) *loadingCache {
+func NewLoadingCache(options ...Option) LoadingCache {
 	res := loadingCache{
 		defaultExpiration: time.Hour,
 		cleanupInterval:   5 * time.Minute,

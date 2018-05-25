@@ -188,9 +188,9 @@ func TestLoadingCache_Scopes(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "value2", string(res))
 
-	assert.Equal(t, 2, len(lc.activeKeys))
+	assert.Equal(t, 2, len(lc.(*loadingCache).activeKeys))
 	lc.Flush("s1")
-	assert.Equal(t, 1, len(lc.activeKeys))
+	assert.Equal(t, 1, len(lc.(*loadingCache).activeKeys))
 
 	lc.Get(Key("key2", "s2"), time.Minute, func() ([]byte, error) {
 		assert.Fail(t, "should stay")
@@ -223,7 +223,7 @@ func TestLoadingCache_Flush(t *testing.T) {
 		addToCache(Key("key5", "s2"))
 		addToCache(Key("key6"))
 		addToCache(Key("key7", "s4", "s3"))
-		require.Equal(t, 7, len(lc.activeKeys), "cache init")
+		require.Equal(t, 7, len(lc.(*loadingCache).activeKeys), "cache init")
 	}
 
 	tbl := []struct {
@@ -244,8 +244,8 @@ func TestLoadingCache_Flush(t *testing.T) {
 	for i, tt := range tbl {
 		init()
 		lc.Flush(tt.scopes...)
-		assert.Equal(t, tt.left, len(lc.activeKeys), "keys size, %s #%d", tt.msg, i)
-		assert.Equal(t, tt.left, len(lc.bytesCache.Items()), "items size, %s #%d", tt.msg, i)
+		assert.Equal(t, tt.left, len(lc.(*loadingCache).activeKeys), "keys size, %s #%d", tt.msg, i)
+		assert.Equal(t, tt.left, len(lc.(*loadingCache).bytesCache.Items()), "items size, %s #%d", tt.msg, i)
 
 	}
 }
