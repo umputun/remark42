@@ -93,7 +93,7 @@ func (s *Import) importCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "import failed")
 		return
 	}
-	s.Cache.Flush()
+	s.Cache.Flush(siteID)
 
 	render.Status(r, http.StatusCreated)
 	render.JSON(w, r, JSON{"status": "ok", "size": size})

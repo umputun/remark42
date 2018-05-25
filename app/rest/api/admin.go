@@ -50,7 +50,7 @@ func (a *admin) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete comment")
 		return
 	}
-	a.cache.Flush()
+	a.cache.Flush(locator.SiteID, locator.URL)
 	render.Status(r, http.StatusOK)
 	render.JSON(w, r, JSON{"id": id, "locator": locator})
 }
@@ -65,7 +65,7 @@ func (a *admin) setBlockCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set blocking status")
 		return
 	}
-	a.cache.Flush()
+	a.cache.Flush(siteID, userID)
 	render.JSON(w, r, JSON{"user_id": userID, "site_id": siteID, "block": blockStatus})
 }
 
@@ -91,7 +91,7 @@ func (a *admin) setPinCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set pin status")
 		return
 	}
-	a.cache.Flush()
+	a.cache.Flush(locator.URL)
 	render.JSON(w, r, JSON{"id": commentID, "locator": locator, "pin": pinStatus})
 }
 
