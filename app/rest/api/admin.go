@@ -106,7 +106,11 @@ func (a *admin) exportCtrl(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Disposition", "attachment;filename="+exportFile)
 		w.WriteHeader(http.StatusOK)
 		gzWriter := gzip.NewWriter(w)
-		defer gzWriter.Close()
+		defer func() {
+			if e := gzWriter.Close(); e != nil {
+				log.Printf("[WARN] can't close gzip writer, %s", e)
+			}
+		}()
 		writer = gzWriter
 	}
 
