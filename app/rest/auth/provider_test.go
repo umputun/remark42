@@ -20,7 +20,7 @@ import (
 
 func TestLogin(t *testing.T) {
 
-	_, ts, ots := mockProvider(t, 8981, 8982)
+	ts, ots := mockProvider(t, 8981, 8982)
 	defer func() {
 		ts.Close()
 		ots.Close()
@@ -63,7 +63,7 @@ func TestLogin(t *testing.T) {
 
 func TestLogout(t *testing.T) {
 
-	_, ts, ots := mockProvider(t, 8691, 8692)
+	ts, ots := mockProvider(t, 8691, 8692)
 	defer func() {
 		ts.Close()
 		ots.Close()
@@ -99,7 +99,7 @@ func TestInitProvider(t *testing.T) {
 	assert.Equal(t, "test", res.Name)
 }
 
-func mockProvider(t *testing.T, loginPort, authPort int) (*Provider, *http.Server, *http.Server) {
+func mockProvider(t *testing.T, loginPort, authPort int) (*http.Server, *http.Server) {
 
 	provider := Provider{
 		Name: "mock",
@@ -170,5 +170,5 @@ func mockProvider(t *testing.T, loginPort, authPort int) (*Provider, *http.Serve
 	go ts.ListenAndServe()
 
 	time.Sleep(time.Millisecond * 100) // let the start
-	return &provider, ts, oauth
+	return ts, oauth
 }

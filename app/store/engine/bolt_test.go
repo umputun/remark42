@@ -33,8 +33,8 @@ func TestBoltDB_CreateAndFind(t *testing.T) {
 }
 
 func TestBoltDB_Delete(t *testing.T) {
-	b := prep(t)
 	defer os.Remove(testDb)
+	b := prep(t)
 
 	loc := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
 	res, err := b.Find(loc, "time")
@@ -285,6 +285,7 @@ func TestBoltDB_Ref(t *testing.T) {
 // makes new boltdb, put two records
 func prep(t *testing.T) *BoltDB {
 	os.Remove(testDb)
+	time.Sleep(10 * time.Millisecond)
 
 	boltStore, err := NewBoltDB(bolt.Options{}, BoltSite{FileName: testDb, SiteID: "radio-t"})
 	assert.Nil(t, err)
