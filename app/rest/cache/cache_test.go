@@ -220,4 +220,9 @@ func TestLoadingCache_Keys(t *testing.T) {
 		assert.Equal(t, tt.scopes, s)
 		assert.Equal(t, tt.key, k)
 	}
+
+	_, _, err := parseKey("abc")
+	assert.Error(t, err)
+	_, _, err = parseKey("")
+	assert.Error(t, err)
 }
