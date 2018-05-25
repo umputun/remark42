@@ -55,6 +55,7 @@ func (u userData) value(key string) string {
 
 // newProvider makes auth for given provider
 func initProvider(p Params, provider Provider) Provider {
+	log.Printf("[INFO] init auth provider %s", provider.Name)
 	provider.Params = p
 	provider.conf = oauth2.Config{
 		ClientID:     provider.Cid,
@@ -64,7 +65,7 @@ func initProvider(p Params, provider Provider) Provider {
 		Endpoint:     provider.Endpoint,
 	}
 
-	log.Printf("[INFO] create %s auth, id=%s, redir: %s, endpoint: %s",
+	log.Printf("[DEBUG] created %s auth, id=%s, redir=%s, endpoint=%s",
 		provider.Name, provider.Cid, provider.Endpoint, provider.RedirectURL)
 	return provider
 }
