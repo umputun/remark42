@@ -1,12 +1,14 @@
 package api
 
 import (
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -175,7 +177,7 @@ func TestAdmin_BlockedList(t *testing.T) {
 	assert.Equal(t, "user2", users[1].ID)
 }
 
-func TestAdmin_Export(t *testing.T) {
+func TestAdmin_ExportStream(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
 	defer cleanup(ts)
@@ -193,4 +195,36 @@ func TestAdmin_Export(t *testing.T) {
 	assert.Equal(t, 2, strings.Count(body, "\n"))
 	assert.Equal(t, 2, strings.Count(body, "\"text\""))
 	t.Logf("%s", body)
+}
+
+func TestAdmin_ExportFile(t *testing.T) {
+	srv, ts := prep(t)
+	assert.NotNil(t, srv)
+	defer cleanup(ts)
+
+	c1 := store.Comment{Text: "test test #1",
+		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}}
+	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
+		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah2"}}
+
+	addComment(t, c1, ts)
+	addComment(t, c2, ts)
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	req, err := http.NewRequest("GET", ts.URL+"/api/v1/admin/export?site=radio-t&mode=file", nil)
+	require.Nil(t, err)
+	withBasicAuth(req, "dev", "password")
+	resp, err := client.Do(req)
+	require.Nil(t, err)
+
+	assert.Equal(t, 200, resp.StatusCode)
+	assert.Equal(t, "application/gzip", resp.Header.Get("Content-Type"))
+
+	ungzReader, err := gzip.NewReader(resp.Body)
+	assert.NoError(t, err)
+	ungzBody, err := ioutil.ReadAll(ungzReader)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, strings.Count(string(ungzBody), "\n"))
+	assert.Equal(t, 2, strings.Count(string(ungzBody), "\"text\""))
+	t.Logf("%s", string(ungzBody))
 }

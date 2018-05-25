@@ -13,6 +13,7 @@ import (
 
 	"github.com/umputun/remark/app/migrator"
 	"github.com/umputun/remark/app/rest"
+	"github.com/umputun/remark/app/rest/cache"
 	"github.com/umputun/remark/app/store"
 	"github.com/umputun/remark/app/store/service"
 )
@@ -21,7 +22,7 @@ import (
 type admin struct {
 	dataService  service.DataStore
 	exporter     migrator.Exporter
-	cache        rest.LoadingCache
+	cache        cache.LoadingCache
 	defAvatarURL string
 }
 
@@ -49,7 +50,7 @@ func (a *admin) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete comment")
 		return
 	}
-	a.cache.Flush()
+	a.cache.Flush(locator.SiteID, locator.URL)
 	render.Status(r, http.StatusOK)
 	render.JSON(w, r, JSON{"id": id, "locator": locator})
 }
@@ -64,7 +65,7 @@ func (a *admin) setBlockCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set blocking status")
 		return
 	}
-	a.cache.Flush()
+	a.cache.Flush(siteID, userID)
 	render.JSON(w, r, JSON{"user_id": userID, "site_id": siteID, "block": blockStatus})
 }
 
@@ -90,7 +91,7 @@ func (a *admin) setPinCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set pin status")
 		return
 	}
-	a.cache.Flush()
+	a.cache.Flush(locator.URL)
 	render.JSON(w, r, JSON{"id": commentID, "locator": locator, "pin": pinStatus})
 }
 
@@ -104,7 +105,13 @@ func (a *admin) exportCtrl(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/gzip")
 		w.Header().Set("Content-Disposition", "attachment;filename="+exportFile)
 		w.WriteHeader(http.StatusOK)
-		writer = gzip.NewWriter(w)
+		gzWriter := gzip.NewWriter(w)
+		defer func() {
+			if e := gzWriter.Close(); e != nil {
+				log.Printf("[WARN] can't close gzip writer, %s", e)
+			}
+		}()
+		writer = gzWriter
 	}
 
 	if _, err := a.exporter.Export(writer, siteID); err != nil {

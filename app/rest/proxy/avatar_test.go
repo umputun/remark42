@@ -4,16 +4,18 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/umputun/remark/app/store"
 )
 
-func TestPut(t *testing.T) {
+func TestAvatar_Put(t *testing.T) {
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/pic.png" {
@@ -46,18 +48,36 @@ func TestPut(t *testing.T) {
 	assert.Equal(t, int64(21), fi.Size())
 }
 
-func TestPutNoAvatar(t *testing.T) {
+func TestAvatar_PutFailed(t *testing.T) {
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Print("request: ", r.URL.Path)
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer ts.Close()
+
 	p := Avatar{StorePath: "/tmp/avatars.test", RoutePath: "/avatar"}
 	u := store.User{ID: "user1", Name: "user1 name"}
 	_, err := p.Put(u)
-	assert.Error(t, err)
+	assert.EqualError(t, err, "no picture for user1")
+
+	u = store.User{ID: "user1", Name: "user1 name", Picture: "http://127.0.0.1:12345/avater/pic"}
+	_, err = p.Put(u)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "connect: connection refused")
+
+	u = store.User{ID: "user1", Name: "user1 name", Picture: ts.URL + "/avatar/pic"}
+	_, err = p.Put(u)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to get avatar from the orig")
 }
 
-func TestRoutes(t *testing.T) {
+func TestAvatar_Routes(t *testing.T) {
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/pic.png" {
 			w.Header().Set("Content-Type", "image/*")
+			w.Header().Set("Custom-Header", "xyz")
 			fmt.Fprint(w, "some picture bin data")
 			return
 		}
@@ -87,6 +107,7 @@ func TestRoutes(t *testing.T) {
 
 	assert.Equal(t, []string{"image/*"}, rr.HeaderMap["Content-Type"])
 	assert.Equal(t, []string{"21"}, rr.HeaderMap["Content-Length"])
+	assert.Equal(t, []string(nil), rr.HeaderMap["Custom-Header"], "strip all custom headers")
 	assert.NotNil(t, rr.HeaderMap["Etag"])
 
 	bb := bytes.Buffer{}
@@ -96,7 +117,7 @@ func TestRoutes(t *testing.T) {
 	assert.Equal(t, "some picture bin data", bb.String())
 }
 
-func TestLocation(t *testing.T) {
+func TestAvatar_Location(t *testing.T) {
 	p := Avatar{StorePath: "/tmp/avatars.test"}
 
 	tbl := []struct {

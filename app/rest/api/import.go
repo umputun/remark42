@@ -17,12 +17,13 @@ import (
 
 	"github.com/umputun/remark/app/migrator"
 	"github.com/umputun/remark/app/rest"
+	"github.com/umputun/remark/app/rest/cache"
 )
 
 // Import rest runs on unexposed port and available for local requests only
 type Import struct {
 	Version        string
-	Cache          rest.LoadingCache
+	Cache          cache.LoadingCache
 	NativeImporter migrator.Importer
 	DisqusImporter migrator.Importer
 	SecretKey      string
@@ -92,7 +93,7 @@ func (s *Import) importCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "import failed")
 		return
 	}
-	s.Cache.Flush()
+	s.Cache.Flush(siteID)
 
 	render.Status(r, http.StatusCreated)
 	render.JSON(w, r, JSON{"status": "ok", "size": size})

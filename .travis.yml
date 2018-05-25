@@ -5,6 +5,7 @@ install:
 script:
   - docker build
       --build-arg COVERALLS_TOKEN=$COVERALLS_TOKEN
+      --build-arg CODECOV_TOKEN=$CODECOV_TOKEN
       --build-arg CI=$CI
       --build-arg TRAVIS=$TRAVIS
       --build-arg TRAVIS_BRANCH=$TRAVIS_BRANCH

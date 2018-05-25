@@ -19,9 +19,9 @@ import (
 	"github.com/umputun/remark/app/store/service"
 
 	"github.com/umputun/remark/app/migrator"
-	"github.com/umputun/remark/app/rest"
 	"github.com/umputun/remark/app/rest/api"
 	"github.com/umputun/remark/app/rest/auth"
+	"github.com/umputun/remark/app/rest/cache"
 	"github.com/umputun/remark/app/rest/proxy"
 )
 
@@ -114,8 +114,8 @@ func New(opts Opts) (*Application, error) {
 		MaxCommentSize: opts.MaxCommentSize,
 	}
 
-	cache := rest.NewLoadingCache(rest.MaxValSize(opts.MaxCachedValue), rest.MaxKeys(opts.MaxCachedItems),
-		rest.PostFlushFn(postFlushFn(opts.Sites, opts.Port)))
+	cache := cache.NewLoadingCache(cache.MaxValSize(opts.MaxCachedValue), cache.MaxKeys(opts.MaxCachedItems),
+		cache.PostFlushFn(postFlushFn(opts.Sites, opts.Port)))
 
 	jwtService := auth.NewJWT(opts.SecretKey, strings.HasPrefix(opts.RemarkURL, "https://"), 7*24*time.Hour)
 
