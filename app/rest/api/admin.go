@@ -105,7 +105,9 @@ func (a *admin) exportCtrl(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/gzip")
 		w.Header().Set("Content-Disposition", "attachment;filename="+exportFile)
 		w.WriteHeader(http.StatusOK)
-		writer = gzip.NewWriter(w)
+		gzWriter := gzip.NewWriter(w)
+		defer gzWriter.Close()
+		writer = gzWriter
 	}
 
 	if _, err := a.exporter.Export(writer, siteID); err != nil {
