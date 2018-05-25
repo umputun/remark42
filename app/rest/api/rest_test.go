@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/umputun/remark/app/migrator"
+	"github.com/umputun/remark/app/rest"
 	"github.com/umputun/remark/app/rest/auth"
 	"github.com/umputun/remark/app/rest/proxy"
 	"github.com/umputun/remark/app/store"
@@ -160,13 +161,14 @@ func TestServer_Find(t *testing.T) {
 	_, code := get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah1")
 	assert.Equal(t, 400, code, "nothing in")
 
-	c1 := store.Comment{Text: "test test #1", ParentID: "p1",
+	c1 := store.Comment{Text: "test test #1", ParentID: "",
 		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}}
-	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
-		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}}
-
 	id1 := addComment(t, c1, ts)
+
+	c2 := store.Comment{Text: "test test #2", ParentID: id1,
+		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}}
 	id2 := addComment(t, c2, ts)
+
 	assert.NotEqual(t, id1, id2)
 
 	// get sorted by +time
@@ -187,6 +189,15 @@ func TestServer_Find(t *testing.T) {
 	assert.Equal(t, 2, len(comments), "should have 2 comments")
 	assert.Equal(t, id1, comments[1].ID)
 	assert.Equal(t, id2, comments[0].ID)
+
+	// get in tree mode
+	tree := rest.Tree{}
+	res, code = get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah1&format=tree")
+	assert.Equal(t, 200, code)
+	err = json.Unmarshal([]byte(res), &tree)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(tree.Nodes))
+	assert.Equal(t, 1, len(tree.Nodes[0].Replies))
 }
 
 func TestServer_Update(t *testing.T) {
