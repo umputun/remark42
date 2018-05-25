@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/go-chi/chi"
-	"github.com/go-chi/render"
 	"github.com/gorilla/feeds"
 
 	"github.com/umputun/remark/app/rest"
@@ -52,9 +51,8 @@ func (s *Rest) rssPostCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/xml; charset=utf-8")
-	if status, ok := r.Context().Value(render.StatusCtxKey).(int); ok {
-		w.WriteHeader(status)
-	}
+	w.WriteHeader(http.StatusOK)
+
 	if _, err := w.Write(data); err != nil {
 		log.Printf("[WARN] failed to send response to %s, %s", r.RemoteAddr, err)
 	}
@@ -80,14 +78,12 @@ func (s *Rest) rssSiteCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't get last comments")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get last comments")
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/xml; charset=utf-8")
-	if status, ok := r.Context().Value(render.StatusCtxKey).(int); ok {
-		w.WriteHeader(status)
-	}
+	w.WriteHeader(http.StatusOK)
 	if _, err := w.Write(data); err != nil {
 		log.Printf("[WARN] failed to send response to %s, %s", r.RemoteAddr, err)
 	}

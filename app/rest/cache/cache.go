@@ -18,10 +18,11 @@ type LoadingCache interface {
 	Flush(scopes ...string)
 }
 
-// Key makes full key from primary key ans scopes
+// Key makes full key from primary key and scopes
 func Key(key string, scopes ...string) string {
 	return strings.Join(scopes, "$$") + "@@" + key
 }
+
 func parseKey(fullKey string) (key string, scopes []string, err error) {
 	elems := strings.Split(fullKey, "@@")
 	if len(elems) != 2 {
@@ -44,7 +45,7 @@ type loadingCache struct {
 	maxKeys           int
 	maxValueSize      int
 
-	activeKeys map[string]struct{}
+	activeKeys map[string]struct{} // keep all current cached keys
 	lock       sync.Mutex
 }
 
@@ -65,6 +66,7 @@ func NewLoadingCache(options ...Option) LoadingCache {
 	}
 	res.bytesCache = cache.New(res.defaultExpiration, res.cleanupInterval)
 
+	// OnEvicted called automatically for expired and manually deleted
 	res.bytesCache.OnEvicted(func(key string, _ interface{}) {
 		res.withLock(func() { delete(res.activeKeys, key) })
 	})

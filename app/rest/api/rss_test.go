@@ -47,6 +47,9 @@ func TestServer_RssPost(t *testing.T) {
 
 	expected, res = cleanRssFormatting(expected, res)
 	assert.Equal(t, expected, res)
+
+	res, code = get(t, ts.URL+"/api/v1/rss/post?site=radio-t-bad&url=https://radio-t.com/blah1")
+	assert.Equal(t, 400, code)
 }
 
 func TestServer_RssSite(t *testing.T) {
@@ -98,6 +101,9 @@ func TestServer_RssSite(t *testing.T) {
 
 	expected, res = cleanRssFormatting(expected, res)
 	assert.Equal(t, expected, res)
+
+	_, code = get(t, ts.URL+"/api/v1/rss/site?site=bad-radio-t")
+	assert.Equal(t, 400, code)
 }
 
 func TestServer_RssWithReply(t *testing.T) {
