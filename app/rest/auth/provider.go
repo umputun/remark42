@@ -30,7 +30,7 @@ type Provider struct {
 	Endpoint    oauth2.Endpoint
 	Scopes      []string
 	MapUser     func(userData, []byte) store.User // map info from InfoURL to User
-	conf        *oauth2.Config
+	conf        oauth2.Config
 }
 
 // Params to make initialized and ready to use provider
@@ -55,9 +55,8 @@ func (u userData) value(key string) string {
 
 // newProvider makes auth for given provider
 func initProvider(p Params, provider Provider) Provider {
-	log.Printf("[INFO] create %s auth, id=%s, redir: %s", provider.Name, provider.Cid, provider.RedirectURL)
 	provider.Params = p
-	conf := oauth2.Config{
+	provider.conf = oauth2.Config{
 		ClientID:     provider.Cid,
 		ClientSecret: provider.Csecret,
 		RedirectURL:  provider.RedirectURL,
@@ -65,12 +64,13 @@ func initProvider(p Params, provider Provider) Provider {
 		Endpoint:     provider.Endpoint,
 	}
 
-	provider.conf = &conf
+	log.Printf("[INFO] create %s auth, id=%s, redir: %s, endpoint: %s",
+		provider.Name, provider.Cid, provider.Endpoint, provider.RedirectURL)
 	return provider
 }
 
 // Routes returns auth routes for given provider
-func (p *Provider) Routes() chi.Router {
+func (p Provider) Routes() chi.Router {
 	router := chi.NewRouter()
 	router.Get("/login", p.loginHandler)
 	router.Get("/callback", p.authHandler)
@@ -79,8 +79,9 @@ func (p *Provider) Routes() chi.Router {
 }
 
 // loginHandler - GET /login?from=redirect-back-url
-func (p *Provider) loginHandler(w http.ResponseWriter, r *http.Request) {
+func (p Provider) loginHandler(w http.ResponseWriter, r *http.Request) {
 
+	log.Printf("[DEBUG] login with %s", p.Name)
 	// make state (random) and store in session
 	state := p.randToken()
 
@@ -109,7 +110,7 @@ func (p *Provider) loginHandler(w http.ResponseWriter, r *http.Request) {
 
 // authHandler fills user info and redirects to "from" url. This is callback url redirected locally by browser
 // GET /callback
-func (p *Provider) authHandler(w http.ResponseWriter, r *http.Request) {
+func (p Provider) authHandler(w http.ResponseWriter, r *http.Request) {
 
 	oauthClaims, err := p.JwtService.Get(r)
 	if err != nil {
@@ -190,12 +191,12 @@ func (p *Provider) authHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // LogoutHandler - GET /logout
-func (p *Provider) LogoutHandler(w http.ResponseWriter, r *http.Request) {
+func (p Provider) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	p.JwtService.Reset(w)
 	log.Printf("[DEBUG] logout")
 }
 
-func (p *Provider) randToken() string {
+func (p Provider) randToken() string {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
 		log.Fatalf("[ERROR] can't get randoms, %s", err)

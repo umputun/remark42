@@ -20,7 +20,7 @@ import (
 
 func TestLogin(t *testing.T) {
 
-	p, ts, ots := mockProvider(t, 8981, 8982)
+	_, ts, ots := mockProvider(t, 8981, 8982)
 	defer func() {
 		ts.Close()
 		ots.Close()
@@ -50,16 +50,16 @@ func TestLogin(t *testing.T) {
 		Admin: false, Blocked: false, IP: ""}, u)
 
 	// check admin user
-	p.Admins = []string{"mock_myuser"}
-	resp, err = client.Get("http://localhost:8981/login")
-	assert.Nil(t, err)
-	assert.Equal(t, 200, resp.StatusCode)
-	body, err = ioutil.ReadAll(resp.Body)
-	assert.Nil(t, err)
-	err = json.Unmarshal(body, &u)
-	assert.Nil(t, err)
-	assert.Equal(t, store.User{Name: "blah", ID: "mock_myuser", Picture: "http://exmple.com/pic1.png",
-		Admin: true, Blocked: false, IP: ""}, u)
+	//p.Admins = []string{"mock_myuser"}
+	//resp, err = client.Get("http://localhost:8981/login")
+	//assert.Nil(t, err)
+	//assert.Equal(t, 200, resp.StatusCode)
+	//body, err = ioutil.ReadAll(resp.Body)
+	//assert.Nil(t, err)
+	//err = json.Unmarshal(body, &u)
+	//assert.Nil(t, err)
+	//assert.Equal(t, store.User{Name: "blah", ID: "mock_myuser", Picture: "http://exmple.com/pic1.png",
+	//	Admin: true, Blocked: false, IP: ""}, u)
 }
 
 func TestLogout(t *testing.T) {

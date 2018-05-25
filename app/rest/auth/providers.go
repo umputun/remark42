@@ -37,6 +37,7 @@ func NewGoogle(p Params) Provider {
 
 // NewGithub makes github oauth2 provider
 func NewGithub(p Params) Provider {
+
 	return initProvider(p, Provider{
 		Name:        "github",
 		Endpoint:    github.Endpoint,
