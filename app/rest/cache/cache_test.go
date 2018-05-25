@@ -188,7 +188,10 @@ func TestLoadingCache_Scopes(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "value2", string(res))
 
+	assert.Equal(t, 2, len(lc.activeKeys))
 	lc.Flush("s1")
+	assert.Equal(t, 1, len(lc.activeKeys))
+
 	lc.Get(Key("key2", "s2"), time.Minute, func() ([]byte, error) {
 		assert.Fail(t, "should stay")
 		return nil, nil
@@ -198,6 +201,53 @@ func TestLoadingCache_Scopes(t *testing.T) {
 		return []byte("value-upd"), nil
 	})
 	assert.Equal(t, "value-upd", string(res), "was deleted, update")
+}
+
+func TestLoadingCache_Flush(t *testing.T) {
+	lc := NewLoadingCache(CleanupInterval(time.Second))
+
+	addToCache := func(key string, scopes ...string) {
+		res, err := lc.Get(key, time.Minute, func() ([]byte, error) {
+			return []byte("value" + key), nil
+		})
+		require.Nil(t, err)
+		require.Equal(t, "value"+key, string(res))
+	}
+
+	init := func() {
+		lc.Flush()
+		addToCache(Key("key1", "s1", "s2"))
+		addToCache(Key("key2", "s1", "s2", "s3"))
+		addToCache(Key("key3", "s1", "s2", "s3"))
+		addToCache(Key("key4", "s2", "s3"))
+		addToCache(Key("key5", "s2"))
+		addToCache(Key("key6"))
+		addToCache(Key("key7", "s4", "s3"))
+		require.Equal(t, 7, len(lc.activeKeys), "cache init")
+	}
+
+	tbl := []struct {
+		scopes []string
+		left   int
+		msg    string
+	}{
+		{[]string{}, 0, "full flush, no scopes"},
+		{[]string{"s0"}, 7, "flush wrong scope"},
+		{[]string{"s1"}, 4, "flush s1 scope"},
+		{[]string{"s2", "s1"}, 2, "flush s2+s1 scope"},
+		{[]string{"s1", "s2"}, 2, "flush s1+s2 scope"},
+		{[]string{"s1", "s2", "s4"}, 1, "flush s1+s2+s4 scope"},
+		{[]string{"s1", "s2", "s3"}, 1, "flush s1+s2+s3 scope"},
+		{[]string{"s1", "s2", "ss"}, 2, "flush s1+s2+wrong scope"},
+	}
+
+	for i, tt := range tbl {
+		init()
+		lc.Flush(tt.scopes...)
+		assert.Equal(t, tt.left, len(lc.activeKeys), "keys size, %s #%d", tt.msg, i)
+		assert.Equal(t, tt.left, len(lc.bytesCache.Items()), "items size, %s #%d", tt.msg, i)
+
+	}
 }
 
 func TestLoadingCache_Keys(t *testing.T) {
