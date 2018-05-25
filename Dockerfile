@@ -1,9 +1,17 @@
 FROM umputun/baseimage:buildgo-latest as build-backend
 
 ARG COVERALLS_TOKEN
-ARG TRAVIS_JOB_ID
-ARG TRAVIS_PULL_REQUEST
+ARG CI
+ARG TRAVIS
 ARG TRAVIS_BRANCH
+ARG TRAVIS_COMMIT
+ARG TRAVIS_JOB_ID
+ARG TRAVIS_JOB_NUMBER
+ARG TRAVIS_OS_NAME
+ARG TRAVIS_PULL_REQUEST
+ARG TRAVIS_PULL_REQUEST_SHA
+ARG TRAVIS_REPO_SLUG
+ARG TRAVIS_TAG
 
 WORKDIR /go/src/github.com/umputun/remark
 
@@ -21,8 +29,7 @@ RUN mkdir -p target && /script/coverage.sh
 
 RUN if [ "x$COVERALLS_TOKEN" = "x" ] ; then \
     echo coverall not enabled ; \
-    else go get github.com/mattn/goveralls && \
-    goveralls -coverprofile=.cover/cover.out -service=travis-ci -repotoken $COVERALLS_TOKEN; fi
+    else goveralls -coverprofile=.cover/cover.out -service=travis-ci -repotoken $COVERALLS_TOKEN; fi
 
 RUN go build -o remark -ldflags "-X main.revision=$(git rev-parse --abbrev-ref HEAD)-$(git describe --abbrev=7 --always --tags)-$(date +%Y%m%d-%H:%M:%S) -s -w" ./app
 
