@@ -41,6 +41,7 @@ func TestRemark_Import(t *testing.T) {
 	buf := &bytes.Buffer{}
 	buf.WriteString(r1)
 	buf.WriteString(r2)
+	buf.WriteString("{}")
 
 	os.Remove(testDb)
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{SiteID: "radio-t", FileName: testDb})

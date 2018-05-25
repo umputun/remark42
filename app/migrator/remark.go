@@ -66,7 +66,7 @@ func (r *Remark) Import(reader io.Reader, siteID string) (size int, err error) {
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
 		rec := scanner.Bytes()
-		if len(rec) < 2 {
+		if len(rec) < 3 {
 			continue
 		}
 		total++
