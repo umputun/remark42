@@ -17,6 +17,7 @@ type LoadingCache interface {
 	Flush(scopes ...string)
 }
 
+// CacheKey makes full key from primary key ans scopes
 func CacheKey(key string, scopes ...string) string {
 	return strings.Join(scopes, "$$") + "@@" + key
 }
