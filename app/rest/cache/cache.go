@@ -49,7 +49,7 @@ type loadingCache struct {
 }
 
 // NewLoadingCache makes loadingCache implementation
-func NewLoadingCache(options ...CacheOption) LoadingCache {
+func NewLoadingCache(options ...Option) LoadingCache {
 	res := loadingCache{
 		defaultExpiration: time.Hour,
 		cleanupInterval:   5 * time.Minute,
@@ -151,12 +151,12 @@ func (lc *loadingCache) allowed(data []byte) bool {
 	return true
 }
 
-// CacheOption func type
-type CacheOption func(lc *loadingCache) error
+// Option func type
+type Option func(lc *loadingCache) error
 
 // MaxValSize functional option defines the largest value's size allowed to be cached
 // By default it is 0, which means unlimited.
-func MaxValSize(max int) CacheOption {
+func MaxValSize(max int) Option {
 	return func(lc *loadingCache) error {
 		lc.maxValueSize = max
 		return nil
@@ -165,7 +165,7 @@ func MaxValSize(max int) CacheOption {
 
 // MaxKeys functional option defines how many keys to keep.
 // By default it is 0, which means unlimited.
-func MaxKeys(max int) CacheOption {
+func MaxKeys(max int) Option {
 	return func(lc *loadingCache) error {
 		lc.maxKeys = max
 		return nil
@@ -173,7 +173,7 @@ func MaxKeys(max int) CacheOption {
 }
 
 // CleanupInterval functional option defines how often cleanup loop activated.
-func CleanupInterval(interval time.Duration) CacheOption {
+func CleanupInterval(interval time.Duration) Option {
 	return func(lc *loadingCache) error {
 		lc.cleanupInterval = interval
 		return nil
@@ -181,7 +181,7 @@ func CleanupInterval(interval time.Duration) CacheOption {
 }
 
 // PostFlushFn functional option defines how callback function called after each Flush.
-func PostFlushFn(postFlushFn func()) CacheOption {
+func PostFlushFn(postFlushFn func()) Option {
 	return func(lc *loadingCache) error {
 		lc.postFlushFn = postFlushFn
 		return nil
