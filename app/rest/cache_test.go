@@ -171,3 +171,52 @@ func TestLoadingCache_Parallel(t *testing.T) {
 	wg.Wait()
 	assert.Equal(t, int32(0), atomic.LoadInt32(&coldCalls))
 }
+
+func TestLoadingCache_Scopes(t *testing.T) {
+	lc := NewLoadingCache(CleanupInterval(time.Second))
+
+	res, err := lc.Get(CacheKey("key", "s1", "s2"), time.Minute, func() ([]byte, error) {
+		return []byte("value"), nil
+	})
+	assert.Nil(t, err)
+	assert.Equal(t, "value", string(res))
+
+	res, err = lc.Get(CacheKey("key2", "s2"), time.Minute, func() ([]byte, error) {
+		return []byte("value2"), nil
+	})
+	assert.Nil(t, err)
+	assert.Equal(t, "value2", string(res))
+
+	lc.Flush("s1")
+	lc.Get(CacheKey("key2", "s2"), time.Minute, func() ([]byte, error) {
+		assert.Fail(t, "should stay")
+		return nil, nil
+	})
+
+	res, err = lc.Get(CacheKey("key", "s1", "s2"), time.Minute, func() ([]byte, error) {
+		return []byte("value-upd"), nil
+	})
+	assert.Equal(t, "value-upd", string(res), "was deleted, update")
+}
+
+func TestLoadingCache_Keys(t *testing.T) {
+	tbl := []struct {
+		key    string
+		scopes []string
+		full   string
+	}{
+		{"key1", []string{"s1"}, "s1@@key1"},
+		{"key2", []string{"s11", "s2"}, "s11$$s2@@key2"},
+		{"key3", []string{}, "@@key3"},
+	}
+
+	for n, tt := range tbl {
+		full := CacheKey(tt.key, tt.scopes...)
+		assert.Equal(t, tt.full, full, "making key, #%d", n)
+
+		k, s, e := parseKey(full)
+		assert.Nil(t, e)
+		assert.Equal(t, tt.scopes, s)
+		assert.Equal(t, tt.key, k)
+	}
+}

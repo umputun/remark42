@@ -567,4 +567,4 @@ func (mc *mockCache) Get(key string, ttl time.Duration, fn func() ([]byte, error
 	return fn()
 }
 
-func (mc *mockCache) Flush() {}
+func (mc *mockCache) Flush(scopes ...string) {}

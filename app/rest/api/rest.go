@@ -212,7 +212,8 @@ func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't load created comment")
 		return
 	}
-	s.Cache.Flush() // reset all caches
+	s.Cache.Flush(comment.Locator.URL, "last", comment.User.ID)
+
 	render.Status(r, http.StatusCreated)
 	render.JSON(w, r, &finalComment)
 }
@@ -293,7 +294,7 @@ func (s *Rest) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.Cache.Flush() // reset all caches
+	s.Cache.Flush(locator.URL, "last", user.ID)
 	render.JSON(w, r, res)
 }
 
@@ -307,7 +308,7 @@ func (s *Rest) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("[DEBUG] get comments for %+v, sort %s, format %s", locator, sort, r.URL.Query().Get("format"))
 
-	data, err := s.Cache.Get(rest.URLKey(r), 4*time.Hour, func() ([]byte, error) {
+	data, err := s.Cache.Get(rest.CacheKey(rest.URLKey(r), locator.SiteID, locator.URL), 4*time.Hour, func() ([]byte, error) {
 		comments, e := s.DataService.Find(locator, sort)
 		if e != nil {
 			return nil, e
@@ -332,16 +333,16 @@ func (s *Rest) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 // GET /last/{limit}?site=siteID - last comments for the siteID, across all posts, sorted by time
 func (s *Rest) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
-
-	log.Printf("[DEBUG] get last comments for %s", r.URL.Query().Get("site"))
+	siteID := r.URL.Query().Get("site")
+	log.Printf("[DEBUG] get last comments for %s", siteID)
 
 	limit, err := strconv.Atoi(chi.URLParam(r, "limit"))
 	if err != nil {
 		limit = 0
 	}
 
-	data, err := s.Cache.Get(rest.URLKey(r), 4*time.Hour, func() ([]byte, error) {
-		comments, e := s.DataService.Last(r.URL.Query().Get("site"), limit)
+	data, err := s.Cache.Get(rest.CacheKey(rest.URLKey(r), "last", siteID), 4*time.Hour, func() ([]byte, error) {
+		comments, e := s.DataService.Last(siteID, limit)
 		if e != nil {
 			return nil, e
 		}
@@ -403,7 +404,7 @@ func (s *Rest) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[DEBUG] get comments for userID %s, %s", userID, siteID)
 
-	data, err := s.Cache.Get(rest.URLKey(r), 4*time.Hour, func() ([]byte, error) {
+	data, err := s.Cache.Get(rest.CacheKey(rest.URLKey(r), userID, siteID), 4*time.Hour, func() ([]byte, error) {
 		comments, count, e := s.DataService.User(siteID, userID, limit)
 		if e != nil {
 			return nil, e
@@ -492,7 +493,7 @@ func (s *Rest) countMultiCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	sha := base64.URLEncoding.EncodeToString(hasher.Sum(nil))
 
-	data, err := s.Cache.Get(sha, 8*time.Hour, func() ([]byte, error) {
+	data, err := s.Cache.Get(rest.CacheKey(sha, siteID), 8*time.Hour, func() ([]byte, error) {
 		counts, e := s.DataService.Counts(siteID, posts)
 		if e != nil {
 			return nil, e
@@ -520,7 +521,7 @@ func (s *Rest) listCtrl(w http.ResponseWriter, r *http.Request) {
 		skip = v
 	}
 
-	data, err := s.Cache.Get(rest.URLKey(r), 8*time.Hour, func() ([]byte, error) {
+	data, err := s.Cache.Get(rest.CacheKey(rest.URLKey(r), siteID), 8*time.Hour, func() ([]byte, error) {
 		posts, e := s.DataService.List(siteID, limit, skip)
 		if e != nil {
 			return nil, e
@@ -554,7 +555,7 @@ func (s *Rest) voteCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't vote for comment")
 		return
 	}
-	s.Cache.Flush()
+	s.Cache.Flush(locator.URL)
 	render.JSON(w, r, JSON{"id": comment.ID, "score": comment.Score})
 }
 
