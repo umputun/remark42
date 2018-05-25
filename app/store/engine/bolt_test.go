@@ -11,7 +11,7 @@ import (
 	"github.com/umputun/remark/app/store"
 )
 
-var testDb = "/tmp/test-remark.db"
+var testDb = "test-remark.db"
 
 func TestBoltDB_CreateAndFind(t *testing.T) {
 	defer os.Remove(testDb)
@@ -285,7 +285,6 @@ func TestBoltDB_Ref(t *testing.T) {
 // makes new boltdb, put two records
 func prep(t *testing.T) *BoltDB {
 	os.Remove(testDb)
-	time.Sleep(10 * time.Millisecond)
 
 	boltStore, err := NewBoltDB(bolt.Options{}, BoltSite{FileName: testDb, SiteID: "radio-t"})
 	assert.Nil(t, err)
