@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/go-chi/chi"
-	"github.com/go-chi/render"
 	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/app/rest"
@@ -53,6 +52,10 @@ func (p *Avatar) Put(u store.User) (avatarURL string, err error) {
 			log.Printf("[WARN] can't close response body, %s", e)
 		}
 	}()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", errors.Errorf("failed to get avatar from the orig, status %s", resp.Status)
+	}
 
 	// get ID and location of locally cached avatar
 	encID := store.EncodeID(u.ID)
@@ -122,11 +125,7 @@ func (p *Avatar) Routes(middlewares ...func(http.Handler) http.Handler) (string,
 		if fi, e := fh.Stat(); e == nil {
 			w.Header().Set("Content-Length", strconv.Itoa(int(fi.Size())))
 		}
-
-		// write all headers
-		if status, ok := r.Context().Value(render.StatusCtxKey).(int); ok {
-			w.WriteHeader(status)
-		}
+		w.WriteHeader(http.StatusOK)
 		if _, err = io.Copy(w, fh); err != nil {
 			log.Printf("[WARN] can't send response to %s, %s", r.RemoteAddr, err)
 		}
