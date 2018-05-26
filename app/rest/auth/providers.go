@@ -2,7 +2,6 @@ package auth
 
 import (
 	"encoding/json"
-	"strings"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/facebook"
@@ -23,12 +22,12 @@ func NewGoogle(p Params) Provider {
 		MapUser: func(data userData, _ []byte) store.User {
 			userInfo := store.User{
 				// encode email with provider name to avoid collision if same id returned by other provider
-				ID:      "google_" + store.EncodeID(data.value("email")),
+				ID:      "google_" + store.EncodeID(data.value("sub")),
 				Name:    data.value("name"),
 				Picture: data.value("picture"),
 			}
 			if userInfo.Name == "" {
-				userInfo.Name = strings.Split(data.value("email"), "@")[0]
+				userInfo.Name = "unknown"
 			}
 			return userInfo
 		},
