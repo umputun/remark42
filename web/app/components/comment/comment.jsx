@@ -46,7 +46,6 @@ export default class Comment extends Component {
     const { data, data: { user: { block, id: commentUserId }, pin }, mods: { guest } = {} } = props;
 
     const votes = data && data.votes || [];
-    const score = data && data.score || 0;
 
     if (this.editTimerInterval) {
       clearInterval(this.editTimerInterval);
@@ -56,7 +55,6 @@ export default class Comment extends Component {
     if (guest) {
       this.setState({
         guest,
-        score,
         deleted: data ? data.delete : false,
       });
     } else {
@@ -64,7 +62,6 @@ export default class Comment extends Component {
 
       this.setState({
         guest,
-        score,
         pinned: !!pin,
         deleted: data ? data.delete : false,
         userBlocked: !!block,
@@ -188,31 +185,37 @@ export default class Comment extends Component {
   }
 
   increaseScore() {
-    const { score, scoreIncreased, scoreDecreased } = this.state;
-    const { id } = this.props.data;
+    const { scoreIncreased, scoreDecreased } = this.state;
+    const { id, score } = this.props.data;
 
     if (scoreIncreased) return;
+
+    const newScore = score + 1;
 
     this.setState({
       scoreIncreased: !scoreDecreased,
       scoreDecreased: false,
-      score: score + 1,
     });
+
+    store.replaceComment(Object.assign({}, this.props.data, { score: newScore }));
 
     this.votingPromise = this.votingPromise.then(() => api.vote({ id, url, value: 1 }));
   }
 
   decreaseScore() {
-    const { score, scoreIncreased, scoreDecreased } = this.state;
-    const { id } = this.props.data;
+    const { scoreIncreased, scoreDecreased } = this.state;
+    const { id, score } = this.props.data;
 
     if (scoreDecreased) return;
+
+    const newScore = score - 1;
 
     this.setState({
       scoreDecreased: !scoreIncreased,
       scoreIncreased: false,
-      score: score - 1,
     });
+
+    store.replaceComment(Object.assign({}, this.props.data, { score: newScore }));
 
     this.votingPromise = this.votingPromise.then(() => api.vote({ id, url, value: -1 }));
   }
@@ -251,8 +254,8 @@ export default class Comment extends Component {
     }
   }
 
-  render(props, { guest, isUserIdVisible, userBlocked, pinned, score, scoreIncreased, scoreDecreased, deleted, isReplying, isEditing, editTimeLeft }) {
-    const { data, mods = {} } = props;
+  render(props, { guest, isUserIdVisible, userBlocked, pinned, scoreIncreased, scoreDecreased, deleted, isReplying, isEditing, editTimeLeft }) {
+    const { data, data: { score }, mods = {} } = props;
     const isAdmin = !guest && store.get('user').admin;
     const isGuest = guest || !Object.keys(store.get('user')).length;
     const isCurrentUser = (data.user && data.user.id) === (store.get('user') && store.get('user').id);
