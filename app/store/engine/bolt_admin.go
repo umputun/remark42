@@ -106,9 +106,9 @@ func (b *BoltDB) DeleteUser(siteID string, userID string) error {
 		for _, postInfo := range posts {
 			postBkt := postsBkt.Bucket([]byte(postInfo.URL))
 			err = postsBkt.ForEach(func(k []byte, v []byte) error {
-				comment, err := b.load(postBkt, k)
-				if err != nil {
-					return errors.Wrapf(err, "can't load key %s from bucket %s", k, postInfo.URL)
+				comment, e := b.load(postBkt, k)
+				if e != nil {
+					return errors.Wrapf(e, "can't load key %s from bucket %s", k, postInfo.URL)
 				}
 				if comment.User.ID == userID {
 					comments = append(comments, commentInfo{locator: comment.Locator, commentID: comment.ID})
@@ -128,7 +128,9 @@ func (b *BoltDB) DeleteUser(siteID string, userID string) error {
 
 	// delete collected comments
 	for _, ci := range comments {
-		b.Delete(ci.locator, ci.commentID, store.HardDelete)
+		if e := b.Delete(ci.locator, ci.commentID, store.HardDelete); e != nil {
+			return errors.Wrapf(err, "failed to delete comment %+v", ci)
+		}
 	}
 
 	//  delete  user bucket
