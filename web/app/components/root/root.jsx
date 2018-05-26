@@ -80,8 +80,7 @@ export default class Root extends Component {
 
       if (comment) {
         setTimeout(() => {
-          comment.scrollIntoView();
-          window.scrollTo(window.scrollX, 0); // sometimes smth goes wrong and iframe scrolls; we return it back
+          window.parent.postMessage(JSON.stringify({ scrollTo: comment.getBoundingClientRect().top }), '*');
         }, 500);
       }
     }
