@@ -1,4 +1,4 @@
-import { BASE_URL, NODE_ID } from 'common/constants';
+import { BASE_URL, NODE_ID, COMMENT_NODE_CLASSNAME_PREFIX } from 'common/constants';
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
@@ -69,13 +69,18 @@ function init() {
         // so let's check it and prevent our scrolling if it so
         if (data.scrollTo + iframeTop === 0) return;
 
-        window.scrollTo(window.pageXOffset, data.scrollTo + iframe.getBoundingClientRect().top);
+        window.scrollTo(window.pageXOffset, data.scrollTo + iframeTop);
       }
     } catch (e) {}
   }
 
-  function postHashToIframe() {
-    iframe.contentWindow.postMessage(JSON.stringify({ hash: location.hash }), '*');
+  function postHashToIframe(e) {
+    if (!e && location.hash.indexOf(`#${COMMENT_NODE_CLASSNAME_PREFIX}`) === 0) {
+      iframe.contentWindow.postMessage(JSON.stringify({ hash: location.hash }), '*');
+    } else if (e && e.newURL.includes(`#${COMMENT_NODE_CLASSNAME_PREFIX}`)) {
+      e.preventDefault();
+      iframe.contentWindow.postMessage(JSON.stringify({ hash: `#${e.newURL.split('#')[1]}` }), '*');
+    }
   }
 }
 

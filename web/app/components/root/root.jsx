@@ -70,6 +70,7 @@ export default class Root extends Component {
       });
 
       setTimeout(this.checkUrlHash);
+      window.addEventListener('hashchange', this.checkUrlHash);
     });
   }
 
