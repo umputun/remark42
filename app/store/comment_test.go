@@ -62,7 +62,7 @@ func TestComment_PrepareUntrusted(t *testing.T) {
 func TestComment_SetDeleted(t *testing.T) {
 	comment := Comment{
 		Text:      `blah`,
-		User:      User{ID: "username"},
+		User:      User{ID: "userid", Name: "username", IP: "123", Picture: "pic"},
 		ParentID:  "p123",
 		ID:        "123",
 		Locator:   Locator{SiteID: "site", URL: "url"},
@@ -73,7 +73,7 @@ func TestComment_SetDeleted(t *testing.T) {
 		Pin:       true,
 	}
 
-	comment.SetDeleted()
+	comment.SetDeleted(SoftDelete)
 
 	assert.Equal(t, "", comment.Text)
 	assert.Equal(t, "", comment.Orig)
@@ -82,4 +82,31 @@ func TestComment_SetDeleted(t *testing.T) {
 	assert.True(t, comment.Deleted)
 	assert.Nil(t, comment.Edit)
 	assert.False(t, comment.Pin)
+	assert.Equal(t, User{Name: "username", ID: "userid", Picture: "pic", Admin: false, Blocked: false, IP: "123"}, comment.User)
+}
+
+func TestComment_SetDeletedHard(t *testing.T) {
+	comment := Comment{
+		Text:      `blah`,
+		User:      User{ID: "userid", Name: "username", IP: "123", Picture: "pic"},
+		ParentID:  "p123",
+		ID:        "123",
+		Locator:   Locator{SiteID: "site", URL: "url"},
+		Score:     10,
+		Deleted:   false,
+		Timestamp: time.Date(2018, 1, 1, 9, 30, 0, 0, time.Local),
+		Votes:     map[string]bool{"uu": true},
+		Pin:       true,
+	}
+
+	comment.SetDeleted(HardDelete)
+
+	assert.Equal(t, "", comment.Text)
+	assert.Equal(t, "", comment.Orig)
+	assert.Equal(t, map[string]bool{}, comment.Votes)
+	assert.Equal(t, 0, comment.Score)
+	assert.True(t, comment.Deleted)
+	assert.Nil(t, comment.Edit)
+	assert.False(t, comment.Pin)
+	assert.Equal(t, User{Name: "deleted", ID: "deleted", Picture: "", Admin: false, Blocked: false, IP: ""}, comment.User)
 }

@@ -41,7 +41,7 @@ func TestBoltDB_Delete(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(res), "initially 2 comments")
 
-	err = b.Delete(loc, res[0].ID)
+	err = b.Delete(loc, res[0].ID, store.SoftDelete)
 	assert.Nil(t, err)
 
 	res, err = b.Find(loc, "time")
@@ -49,6 +49,8 @@ func TestBoltDB_Delete(t *testing.T) {
 	assert.Equal(t, 2, len(res))
 	assert.Equal(t, "", res[0].Text)
 	assert.True(t, res[0].Deleted, "marked deleted")
+	assert.Equal(t, store.User{Name: "user name", ID: "user1", Picture: "", Admin: false, Blocked: false, IP: ""}, res[0].User)
+
 	assert.Equal(t, "some text2", res[1].Text)
 	assert.False(t, res[1].Deleted)
 
@@ -56,12 +58,32 @@ func TestBoltDB_Delete(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(comments), "1 in last, 1 removed")
 
-	err = b.Delete(loc, "123456")
+	err = b.Delete(loc, "123456", store.SoftDelete)
 	assert.NotNil(t, err)
 
 	loc.SiteID = "bad"
-	err = b.Delete(loc, res[0].ID)
+	err = b.Delete(loc, res[0].ID, store.SoftDelete)
 	assert.EqualError(t, err, `site "bad" not found`)
+}
+
+func TestBoltDB_DeleteHard(t *testing.T) {
+	defer os.Remove(testDb)
+	b := prep(t)
+
+	loc := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
+	res, err := b.Find(loc, "time")
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(res), "initially 2 comments")
+
+	err = b.Delete(loc, res[0].ID, store.HardDelete)
+	assert.Nil(t, err)
+
+	res, err = b.Find(loc, "time")
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(res))
+	assert.Equal(t, "", res[0].Text)
+	assert.True(t, res[0].Deleted, "marked deleted")
+	assert.Equal(t, store.User{Name: "deleted", ID: "deleted", Picture: "", Admin: false, Blocked: false, IP: ""}, res[0].User)
 }
 
 func TestBoltDB_DeleteAll(t *testing.T) {

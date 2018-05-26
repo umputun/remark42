@@ -135,7 +135,8 @@ func mockProvider(t *testing.T, loginPort, authPort int) (*http.Server, *http.Se
 			switch {
 			case strings.HasPrefix(r.URL.Path, "/login/oauth/authorize"):
 				state := r.URL.Query().Get("state")
-				w.Header().Add("Location", fmt.Sprintf("http://localhost:%d/callback?code=g0ZGZmNjVmOWI&state=%s", loginPort, state))
+				w.Header().Add("Location", fmt.Sprintf("http://localhost:%d/callback?code=g0ZGZmNjVmOWI&state=%s",
+					loginPort, state))
 				w.WriteHeader(302)
 			case strings.HasPrefix(r.URL.Path, "/login/oauth/access_token"):
 				res := `{
@@ -150,7 +151,6 @@ func mockProvider(t *testing.T, loginPort, authPort int) (*http.Server, *http.Se
 				w.WriteHeader(200)
 				w.Write([]byte(res))
 			case strings.HasPrefix(r.URL.Path, "/user"):
-
 				res := fmt.Sprintf(`{
 					"id": "%s",
 					"name":"blah",

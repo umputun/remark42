@@ -49,6 +49,15 @@ type BlockedUser struct {
 	Timestamp time.Time `json:"time"`
 }
 
+// DeleteMode defines how much comment info will be erased
+type DeleteMode int
+
+// DeleteMode enum
+const (
+	SoftDelete DeleteMode = 0
+	HardDelete DeleteMode = 1
+)
+
 // PrepareUntrusted pre-processes a comment received from untrusted source by clearing all
 // autogen fields and reset everything users not supposed to provide
 func (c *Comment) PrepareUntrusted() {
@@ -61,8 +70,8 @@ func (c *Comment) PrepareUntrusted() {
 	c.Deleted = false
 }
 
-// SetDeleted clears comment info, reset to deleted state
-func (c *Comment) SetDeleted() {
+// SetDeleted clears comment info, reset to deleted state. hard flag will clear all user info as well
+func (c *Comment) SetDeleted(mode DeleteMode) {
 	c.Text = ""
 	c.Orig = ""
 	c.Score = 0
@@ -70,6 +79,13 @@ func (c *Comment) SetDeleted() {
 	c.Edit = nil
 	c.Deleted = true
 	c.Pin = false
+
+	if mode == HardDelete {
+		c.User.Name = "deleted"
+		c.User.ID = "deleted"
+		c.User.Picture = ""
+		c.User.IP = ""
+	}
 }
 
 // Sanitize clean dangerous html/js from the comment

@@ -45,7 +45,7 @@ func (a *admin) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	log.Printf("[INFO] delete comment %s", id)
 
-	err := a.dataService.Delete(locator, id)
+	err := a.dataService.Delete(locator, id, store.SoftDelete)
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete comment")
 		return
@@ -118,7 +118,6 @@ func (a *admin) exportCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "export failed")
 		return
 	}
-
 }
 
 func (a *admin) checkBlocked(siteID string, user store.User) bool {
@@ -138,7 +137,7 @@ func (a *admin) alterComments(comments []store.Comment, r *http.Request) (res []
 		// process blocked users
 		if a.dataService.IsBlocked(c.Locator.SiteID, c.User.ID) {
 			if !isAdmin { // reset comment to deleted for non-admins
-				c.SetDeleted()
+				c.SetDeleted(store.SoftDelete)
 			}
 			c.User.Blocked = true
 			c.Deleted = true

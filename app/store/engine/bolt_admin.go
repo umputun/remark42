@@ -1,0 +1,217 @@
+package engine
+
+import (
+	"time"
+
+	"github.com/coreos/bbolt"
+	"github.com/pkg/errors"
+
+	"github.com/umputun/remark/app/store"
+)
+
+// Delete removes comment, by locator from the store.
+// Posts collection only sets status to deleted and clear fields in order to prevent breaking trees of replies.
+// From last bucket removed for real.
+func (b *BoltDB) Delete(locator store.Locator, commentID string, mode store.DeleteMode) error {
+
+	bdb, err := b.db(locator.SiteID)
+	if err != nil {
+		return err
+	}
+
+	return bdb.Update(func(tx *bolt.Tx) error {
+
+		postBkt, e := b.getPostBucket(tx, locator.URL)
+		if e != nil {
+			return e
+		}
+
+		comment, err := b.load(postBkt, []byte(commentID))
+		if err != nil {
+			return errors.Wrapf(err, "can't load key %s from bucket %s", commentID, locator.URL)
+		}
+		// set deleted status and clear fields
+		comment.SetDeleted(mode)
+
+		if err := b.save(postBkt, []byte(commentID), comment); err != nil {
+			return errors.Wrapf(err, "can't save deleted comment for key %s from bucket %s", commentID, locator.URL)
+		}
+
+		// delete from "last" bucket
+		lastBkt := tx.Bucket([]byte(lastBucketName))
+		if err := lastBkt.Delete([]byte(commentID)); err != nil {
+			return errors.Wrapf(err, "can't delete key %s from bucket %s", commentID, lastBucketName)
+		}
+
+		// decrement comments count for post url
+		if _, e = b.count(tx, comment.Locator.URL, -1); e != nil {
+			return errors.Wrapf(e, "failed to decrement count for %s", comment.Locator)
+		}
+
+		return nil
+	})
+}
+
+// DeleteAll removes all top-level buckets for given siteID
+func (b *BoltDB) DeleteAll(siteID string) error {
+
+	bdb, err := b.db(siteID)
+	if err != nil {
+		return err
+	}
+
+	// delete all buckets except blocked users
+	toDelete := []string{postsBucketName, lastBucketName, userBucketName, countsBucketName}
+
+	// delete top-level buckets
+	err = bdb.Update(func(tx *bolt.Tx) error {
+		for _, bktName := range toDelete {
+
+			if e := tx.DeleteBucket([]byte(bktName)); e != nil {
+				return errors.Wrapf(err, "failed to delete top level bucket %s", bktName)
+			}
+			if _, e := tx.CreateBucketIfNotExists([]byte(bktName)); e != nil {
+				return errors.Wrapf(err, "failed to create top level bucket %s", bktName)
+			}
+		}
+		return nil
+	})
+
+	return errors.Wrapf(err, "failed to delete top level buckets fro site %s", siteID)
+}
+
+// DeleteUser removes all comments for given user. Everyting will be market as deleted
+// and user name and userID will be changed to "deleted". Also removes from last and from user buckets.
+func (b *BoltDB) DeleteUser(siteID string, userID string) error {
+	bdb, err := b.db(siteID)
+	if err != nil {
+		return err
+	}
+
+	// get list of all comments outside of transaction loop
+	posts, err := b.List(siteID, 0, 0)
+	if err != nil {
+		return err
+	}
+
+	type commentInfo struct {
+		locator   store.Locator
+		commentID string
+	}
+
+	// get list of commentID for all user's comment
+	comments := []commentInfo{}
+	err = bdb.View(func(tx *bolt.Tx) error {
+		postsBkt := tx.Bucket([]byte(postsBucketName))
+		for _, postInfo := range posts {
+			postBkt := postsBkt.Bucket([]byte(postInfo.URL))
+			err = postsBkt.ForEach(func(k []byte, v []byte) error {
+				comment, err := b.load(postBkt, k)
+				if err != nil {
+					return errors.Wrapf(err, "can't load key %s from bucket %s", k, postInfo.URL)
+				}
+				if comment.User.ID == userID {
+					comments = append(comments, commentInfo{locator: comment.Locator, commentID: comment.ID})
+				}
+				return nil
+			})
+
+			if err != nil {
+				return errors.Wrapf(err, "failed to delete comments from %s", postInfo.URL)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return errors.Wrapf(err, "failed to collect list of all comments for deletion")
+	}
+
+	// delete collected comments
+	for _, ci := range comments {
+		b.Delete(ci.locator, ci.commentID, store.HardDelete)
+	}
+
+	//  delete  user bucket
+	err = bdb.Update(func(tx *bolt.Tx) error {
+		usersBkt := tx.Bucket([]byte(userBucketName))
+		if usersBkt != nil {
+			if e := usersBkt.DeleteBucket([]byte(userID)); e != nil {
+				return errors.Wrapf(err, "failed to delete user bucker for %s", userID)
+			}
+		}
+		return nil
+	})
+
+	return nil
+}
+
+// SetBlock blocks/unblocks user for given site
+func (b *BoltDB) SetBlock(siteID string, userID string, status bool) error {
+
+	bdb, err := b.db(siteID)
+	if err != nil {
+		return err
+	}
+
+	return bdb.Update(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(blocksBucketName))
+		switch status {
+		case true:
+			if e := bucket.Put([]byte(userID), []byte(time.Now().Format(tsNano))); e != nil {
+				return errors.Wrapf(e, "failed to put %s to %s", userID, blocksBucketName)
+			}
+		case false:
+			if e := bucket.Delete([]byte(userID)); e != nil {
+				return errors.Wrapf(e, "failed to clean %s from %s", userID, blocksBucketName)
+			}
+		}
+		return nil
+	})
+}
+
+// IsBlocked checks if user blocked
+func (b *BoltDB) IsBlocked(siteID string, userID string) (blocked bool) {
+
+	bdb, err := b.db(siteID)
+	if err != nil {
+		return false
+	}
+
+	_ = bdb.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(blocksBucketName))
+		blocked = bucket.Get([]byte(userID)) != nil
+		return nil
+	})
+	return blocked
+}
+
+// Blocked get lists of blocked users for given site
+// bucket uses userID:
+func (b *BoltDB) Blocked(siteID string) (users []store.BlockedUser, err error) {
+	users = []store.BlockedUser{}
+	bdb, err := b.db(siteID)
+	if err != nil {
+		return nil, err
+	}
+
+	err = bdb.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(blocksBucketName))
+		return bucket.ForEach(func(k []byte, v []byte) error {
+			ts, e := time.ParseInLocation(tsNano, string(v), time.Local)
+			if e != nil {
+				return errors.Wrap(e, "can't parse block ts")
+			}
+
+			// get user name from comment user section
+			userName := ""
+			if userComments, _, e := b.User(siteID, string(k), 1); e == nil && len(userComments) > 0 {
+				userName = userComments[0].User.Name
+			}
+
+			users = append(users, store.BlockedUser{ID: string(k), Name: userName, Timestamp: ts})
+			return nil
+		})
+	})
+
+	return users, err
+}
