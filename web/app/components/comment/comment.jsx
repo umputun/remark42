@@ -18,6 +18,8 @@ export default class Comment extends Component {
       editTimeLeft: null,
     };
 
+    this.votingPromise = Promise.resolve();
+
     this.updateState(props);
 
     this.decreaseScore = this.decreaseScore.bind(this);
@@ -197,9 +199,13 @@ export default class Comment extends Component {
       score: score + 1,
     });
 
-    api.vote({ id, url, value: 1 }).then(() => {
-      api.getComment({ id }).then(comment => store.replaceComment(comment));
-    });
+    this.votingPromise = this.votingPromise
+      .then(() => {
+        return api.vote({ id, url, value: 1 })
+          .then(() => {
+            api.getComment({ id }).then(comment => store.replaceComment(comment));
+          });
+      });
   }
 
   decreaseScore() {
@@ -214,9 +220,13 @@ export default class Comment extends Component {
       score: score - 1,
     });
 
-    api.vote({ id, url, value: -1 }).then(() => {
-      api.getComment({ id }).then(comment => store.replaceComment(comment));
-    });
+    this.votingPromise = this.votingPromise
+      .then(() => {
+        return api.vote({ id, url, value: -1 })
+          .then(() => {
+            api.getComment({ id }).then(comment => store.replaceComment(comment));
+          });
+      });
   }
 
   onReply(...rest) {
