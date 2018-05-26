@@ -10,4 +10,9 @@
   &:focus {
     outline: none;
   }
+
+  &:disabled {
+    opacity: .5;
+    pointer-events: none;
+  }
 }

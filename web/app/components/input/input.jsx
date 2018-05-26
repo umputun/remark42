@@ -18,6 +18,7 @@ export default class Input extends Component {
     this.state = {
       preview: null,
       isErrorShown: false,
+      isDisabled: false,
       maxLength: config.max_comment_size || DEFAULT_MAX_COMMENT_SIZE,
       commentLength: 0,
     };
@@ -94,7 +95,7 @@ export default class Input extends Component {
 
     if (!text || !text.trim()) return;
 
-    this.setState({ isFieldDisabled: true, isErrorShown: false });
+    this.setState({ isDisabled: true, isErrorShown: false });
 
     const request = mods.mode === 'edit'
       ? api.edit({ text, id })
@@ -113,7 +114,7 @@ export default class Input extends Component {
       .catch(() => {
         this.setState({ isErrorShown: true });
       })
-      .finally(() => this.setState({ isFieldDisabled: false }));
+      .finally(() => this.setState({ isDisabled: false }));
   }
 
   getPreview() {
@@ -130,7 +131,7 @@ export default class Input extends Component {
       });
   }
 
-  render(props, { isFieldDisabled, isErrorShown, preview, maxLength, commentLength }) {
+  render(props, { isDisabled, isErrorShown, preview, maxLength, commentLength }) {
     const charactersLeft = maxLength - commentLength;
     const { mods = {}, value = null, errorMessage } = props;
 
@@ -145,7 +146,7 @@ export default class Input extends Component {
             onInput={this.onInput}
             onKeyDown={this.onKeyDown}
             ref={r => (this.fieldNode = r)}
-            disabled={isFieldDisabled}
+            disabled={isDisabled}
           />
 
           {
@@ -167,12 +168,14 @@ export default class Input extends Component {
           <button
             className={b('input__button', {}, { type: 'preview' })}
             type="button"
+            disabled={isDisabled}
             onClick={this.getPreview}
           >Preview</button>
 
           <button
             className={b('input__button', {}, { type: 'send' })}
             type="submit"
+            disabled={isDisabled}
           >Send</button>
 
           {
