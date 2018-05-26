@@ -103,9 +103,9 @@ func (b *BoltDB) DeleteUser(siteID string, userID string) error {
 
 	// get list of commentID for all user's comment
 	comments := []commentInfo{}
-	err = bdb.View(func(tx *bolt.Tx) error {
-		postsBkt := tx.Bucket([]byte(postsBucketName))
-		for _, postInfo := range posts {
+	for _, postInfo := range posts {
+		err = bdb.View(func(tx *bolt.Tx) error {
+			postsBkt := tx.Bucket([]byte(postsBucketName))
 			postBkt := postsBkt.Bucket([]byte(postInfo.URL))
 			err = postBkt.ForEach(func(postURL []byte, commentVal []byte) error {
 				comment := store.Comment{}
@@ -117,17 +117,15 @@ func (b *BoltDB) DeleteUser(siteID string, userID string) error {
 				}
 				return nil
 			})
-
-			if err != nil {
-				return errors.Wrapf(err, "failed to delete comments from %s", postInfo.URL)
-			}
+			return errors.Wrapf(err, "failed to collect list of comments for deletion from %s", postInfo.URL)
+		})
+		if err != nil {
+			return err
 		}
-		return nil
-	})
-	if err != nil {
-		return errors.Wrapf(err, "failed to collect list of all comments for deletion")
 	}
+
 	log.Printf("[DEBUG] comments for removal=%d", len(comments))
+
 	// delete collected comments
 	for _, ci := range comments {
 		if e := b.Delete(ci.locator, ci.commentID, store.HardDelete); e != nil {
