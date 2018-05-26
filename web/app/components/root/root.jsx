@@ -70,6 +70,7 @@ export default class Root extends Component {
       });
 
       setTimeout(this.checkUrlHash);
+      window.addEventListener('hashchange', this.checkUrlHash);
     });
   }
 
@@ -80,7 +81,7 @@ export default class Root extends Component {
       if (comment) {
         setTimeout(() => {
           comment.scrollIntoView();
-          window.scrollTo(window.scrollX, 0); // sometimes smth goes wrong and iframe scrolls; we return it here
+          window.scrollTo(window.scrollX, 0); // sometimes smth goes wrong and iframe scrolls; we return it back
         }, 500);
       }
     }
