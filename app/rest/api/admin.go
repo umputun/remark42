@@ -61,15 +61,13 @@ func (a *admin) deleteUserCtrl(w http.ResponseWriter, r *http.Request) {
 
 	userID := chi.URLParam(r, "userid")
 	siteID := r.URL.Query().Get("site")
-	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	log.Printf("[INFO] delete all user comments for %s, site %s", userID, siteID)
 
-	err := a.dataService.DeleteUser(siteID, userID)
-	if err != nil {
+	if err := a.dataService.DeleteUser(siteID, userID); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete user")
 		return
 	}
-	a.cache.Flush(locator.SiteID, locator.URL)
+	a.cache.Flush(siteID, userID)
 	render.Status(r, http.StatusOK)
 	render.JSON(w, r, JSON{"user_id": userID, "site_id": siteID})
 }
