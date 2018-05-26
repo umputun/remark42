@@ -31,6 +31,7 @@ func (a *admin) routes(middlewares ...func(http.Handler) http.Handler) chi.Route
 	router.Use(middlewares...)
 	router.Delete("/comment/{id}", a.deleteCommentCtrl)
 	router.Put("/user/{userid}", a.setBlockCtrl)
+	router.Delete("/user/{userid}", a.deleteUserCtrl)
 	router.Get("/export", a.exportCtrl)
 
 	router.Put("/pin/{id}", a.setPinCtrl)
@@ -53,6 +54,24 @@ func (a *admin) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	a.cache.Flush(locator.SiteID, locator.URL)
 	render.Status(r, http.StatusOK)
 	render.JSON(w, r, JSON{"id": id, "locator": locator})
+}
+
+// DELETE /user/{userid}?site=side-id
+func (a *admin) deleteUserCtrl(w http.ResponseWriter, r *http.Request) {
+
+	userID := chi.URLParam(r, "userid")
+	siteID := r.URL.Query().Get("site")
+	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
+	log.Printf("[INFO] delete all user comments for %s, site %s", userID, siteID)
+
+	err := a.dataService.DeleteUser(siteID, userID)
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete user")
+		return
+	}
+	a.cache.Flush(locator.SiteID, locator.URL)
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, JSON{"user_id": userID, "site_id": siteID})
 }
 
 // PUT /user/{userid}?site=side-id&block=1 - block or unblock user

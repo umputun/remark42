@@ -46,6 +46,60 @@ func TestAdmin_Delete(t *testing.T) {
 	assert.True(t, cr.Deleted)
 }
 
+func TestAdmin_DeleteUser(t *testing.T) {
+	srv, ts := prep(t)
+	assert.NotNil(t, srv)
+	defer cleanup(ts)
+
+	c1 := store.Comment{Text: "test test #1", Orig: "o test test #1", User: store.User{ID: "id1", Name: "name"},
+		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}}
+	c2 := store.Comment{Text: "test test #2", Orig: "o test test #2", User: store.User{ID: "id2", Name: "name"}, ParentID: "p1",
+		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}}
+	c3 := store.Comment{Text: "test test #3", Orig: "o test test #3", User: store.User{ID: "id2", Name: "name"}, ParentID: "",
+		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}}
+
+	// write comments directly to store to keep user id
+	id1, err := srv.DataService.Create(c1)
+	assert.NoError(t, err)
+	_, err = srv.DataService.Create(c2)
+	assert.NoError(t, err)
+	_, err = srv.DataService.Create(c3)
+	assert.NoError(t, err)
+
+	client := http.Client{}
+	req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/api/v1/admin/user/%s?site=radio-t", ts.URL, "id2"), nil)
+	assert.Nil(t, err)
+	withBasicAuth(req, "dev", "password")
+	resp, err := client.Do(req)
+	assert.Nil(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+
+	// all 3 comments here, but for id2 they deleted
+	res, code := get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah&sort=+time")
+	assert.Equal(t, 200, code)
+	comments := []store.Comment{}
+	err = json.Unmarshal([]byte(res), &comments)
+	assert.Nil(t, err)
+	assert.Equal(t, 3, len(comments), "should have 3 comment")
+
+	// id1 comment untouched
+	assert.Equal(t, id1, comments[0].ID)
+	assert.Equal(t, "o test test #1", comments[0].Orig)
+	assert.False(t, comments[0].Deleted)
+	t.Logf("%+v", comments[0].User)
+
+	// id2 comments fully deleted
+	assert.Equal(t, "", comments[1].Text)
+	assert.Equal(t, "", comments[1].Orig)
+	assert.Equal(t, store.User{Name: "deleted", ID: "deleted", Picture: "", Admin: false, Blocked: false, IP: ""}, comments[1].User)
+	assert.True(t, comments[1].Deleted)
+
+	assert.Equal(t, "", comments[2].Text)
+	assert.Equal(t, "", comments[2].Orig)
+	assert.Equal(t, store.User{Name: "deleted", ID: "deleted", Picture: "", Admin: false, Blocked: false, IP: ""}, comments[1].User)
+	assert.True(t, comments[2].Deleted)
+}
+
 func TestAdmin_Pin(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
