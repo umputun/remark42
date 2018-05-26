@@ -179,7 +179,11 @@ export default class Comment extends Component {
     const { id } = this.props.data;
 
     if (confirm('Do you want to delete this comment?')) {
-      this.setState({ deleted: true });
+      this.setState({
+        deleted: true,
+        isEditing: false,
+        isReplying: false,
+      });
 
       api.remove({ id }).then(() => {
         api.getComment({ id }).then(comment => store.replaceComment(comment));
