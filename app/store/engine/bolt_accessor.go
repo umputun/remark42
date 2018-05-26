@@ -407,7 +407,7 @@ func (b *BoltDB) save(bkt *bolt.Bucket, key []byte, comment store.Comment) (err 
 func (b *BoltDB) load(bkt *bolt.Bucket, key []byte) (comment store.Comment, err error) {
 	commentVal := bkt.Get(key)
 	if commentVal == nil {
-		return comment, errors.Errorf("no comment for %s", key)
+		return comment, errors.Errorf("no comments for %s", key)
 	}
 
 	if err = json.Unmarshal(commentVal, &comment); err != nil {

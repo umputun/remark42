@@ -1,6 +1,8 @@
 package engine
 
 import (
+	"encoding/json"
+	"log"
 	"time"
 
 	"github.com/coreos/bbolt"
@@ -105,10 +107,10 @@ func (b *BoltDB) DeleteUser(siteID string, userID string) error {
 		postsBkt := tx.Bucket([]byte(postsBucketName))
 		for _, postInfo := range posts {
 			postBkt := postsBkt.Bucket([]byte(postInfo.URL))
-			err = postsBkt.ForEach(func(k []byte, v []byte) error {
-				comment, e := b.load(postBkt, k)
-				if e != nil {
-					return errors.Wrapf(e, "can't load key %s from bucket %s", k, postInfo.URL)
+			err = postBkt.ForEach(func(postURL []byte, commentVal []byte) error {
+				comment := store.Comment{}
+				if err = json.Unmarshal(commentVal, &comment); err != nil {
+					return errors.Wrap(err, "failed to unmarshal")
 				}
 				if comment.User.ID == userID {
 					comments = append(comments, commentInfo{locator: comment.Locator, commentID: comment.ID})
@@ -125,7 +127,7 @@ func (b *BoltDB) DeleteUser(siteID string, userID string) error {
 	if err != nil {
 		return errors.Wrapf(err, "failed to collect list of all comments for deletion")
 	}
-
+	log.Printf("[DEBUG] comments for removal=%d", len(comments))
 	// delete collected comments
 	for _, ci := range comments {
 		if e := b.Delete(ci.locator, ci.commentID, store.HardDelete); e != nil {
