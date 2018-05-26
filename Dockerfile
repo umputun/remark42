@@ -1,7 +1,6 @@
 FROM umputun/baseimage:buildgo-latest as build-backend
 
 ARG COVERALLS_TOKEN
-ARG CODECOV_TOKEN
 ARG CI
 ARG TRAVIS
 ARG TRAVIS_BRANCH
@@ -31,11 +30,6 @@ RUN mkdir -p target && /script/coverage.sh
 RUN if [ -z "$COVERALLS_TOKEN" ] ; then \
     echo coverall not enabled ; \
     else goveralls -coverprofile=.cover/cover.out -service=travis-ci -repotoken $COVERALLS_TOKEN; fi
-
-RUN if [ -z "$CODECOV_TOKEN"  ] ; then \
-    echo codecov not enabled ; \
-    else curl -s https://codecov.io/bash -o codecov && \
-    bash codecov -f .cover/cover.out -X fix; fi
 
 RUN go build -o remark -ldflags "-X main.revision=$(git rev-parse --abbrev-ref HEAD)-$(git describe --abbrev=7 --always --tags)-$(date +%Y%m%d-%H:%M:%S) -s -w" ./app
 
