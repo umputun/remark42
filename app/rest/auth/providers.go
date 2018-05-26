@@ -42,7 +42,7 @@ func NewGithub(p Params) Provider {
 		Name:        "github",
 		Endpoint:    github.Endpoint,
 		RedirectURL: p.RemarkURL + "/auth/github/callback",
-		Scopes:      []string{"read:user"},
+		Scopes:      []string{},
 		InfoURL:     "https://api.github.com/user",
 		MapUser: func(data userData, _ []byte) store.User {
 			userInfo := store.User{
