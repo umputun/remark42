@@ -63,7 +63,7 @@ func (s *Rest) rssSiteCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	log.Printf("[DEBUG] get rss for site %s", siteID)
 
-	data, err := s.Cache.Get(cache.Key(cache.URLKey(r), siteID), 4*time.Hour, func() ([]byte, error) {
+	data, err := s.Cache.Get(cache.Key(cache.URLKey(r), siteID, "last"), 4*time.Hour, func() ([]byte, error) {
 		comments, e := s.DataService.Last(siteID, maxRssItems)
 		if e != nil {
 			return nil, e
