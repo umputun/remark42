@@ -33,7 +33,6 @@ func (a *admin) routes(middlewares ...func(http.Handler) http.Handler) chi.Route
 	router.Put("/user/{userid}", a.setBlockCtrl)
 	router.Delete("/user/{userid}", a.deleteUserCtrl)
 	router.Get("/export", a.exportCtrl)
-
 	router.Put("/pin/{id}", a.setPinCtrl)
 	router.Get("/blocked", a.blockedUsersCtrl)
 	return router
