@@ -363,7 +363,7 @@ _all admin calls require auth and admin privilege_
 
 ## Technical details
 
-* Data stored in [boltdb](https://github.com/boltdb/bolt) (embedded key/value database) files under `BOLTDB_PATH`
+* Data stored in [boltdb](https://github.com/coreos/bbolt) (embedded key/value database) files under `BOLTDB_PATH`
 * Each site stored in a separate boltbd file.
 * In order to migrate/move remark42 to another host boltbd files should be transferred.
 * Automatic backup process runs every 24h and exports all content in json-like format to `backup-remark-YYYYMMDD.gz`.
