@@ -19,7 +19,7 @@
     "extract-text-webpack-plugin": "^3.0.0",
     "file-loader": "^0.11.1",
     "html-webpack-plugin": "^2.30.1",
-    "node-sass": "^4.5.2",
+    "node-sass": "sass/node-sass#v5",
     "postcss-csso": "^2.0.0",
     "postcss-loader": "^2.0.5",
     "postcss-url": "^6.1.0",
