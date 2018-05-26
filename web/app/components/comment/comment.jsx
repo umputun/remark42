@@ -286,6 +286,12 @@ export default class Comment extends Component {
               )
           ),
       time: formatTime(new Date(data.time)),
+      orig: isEditing && data.orig && data.orig
+        .replace(/&[#A-Za-z0-9]+;/gi, entity => {
+          const span = document.createElement('span');
+          span.innerHTML = entity;
+          return span.innerText;
+        }),
       score: {
         value: Math.abs(score),
         sign: score > 0 ? '+' : (score < 0 ? '−' : null),
