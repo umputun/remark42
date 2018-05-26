@@ -11,15 +11,15 @@ func TestProviders_NewGoogle(t *testing.T) {
 	r := NewGoogle(Params{RemarkURL: "http://demo.remark42.com", Cid: "cid", Csecret: "cs"})
 	assert.Equal(t, "google", r.Name)
 
-	udata := userData{"email": "xyz@mail.com", "name": "test user", "picture": "http://demo.remark42.com/blah.png"}
+	udata := userData{"sub": "1234567890", "name": "test user", "picture": "http://demo.remark42.com/blah.png"}
 	user := r.MapUser(udata, nil)
-	assert.Equal(t, store.User{Name: "test user", ID: "google_4578b610e8ad06d15e78379516a035a99de6a4d8",
+	assert.Equal(t, store.User{Name: "test user", ID: "google_01b307acba4f54f55aafc33bb06bbbf6ca803e9a",
 		Picture: "http://demo.remark42.com/blah.png", Admin: false, Blocked: false, IP: ""}, user, "got %+v", user)
 
 	// no name in data
-	udata = userData{"email": "xyz@mail.com", "picture": "http://demo.remark42.com/blah.png"}
+	udata = userData{"sub": "1234567890", "picture": "http://demo.remark42.com/blah.png"}
 	user = r.MapUser(udata, nil)
-	assert.Equal(t, store.User{Name: "xyz", ID: "google_4578b610e8ad06d15e78379516a035a99de6a4d8",
+	assert.Equal(t, store.User{Name: "noname_1b30", ID: "google_01b307acba4f54f55aafc33bb06bbbf6ca803e9a",
 		Picture: "http://demo.remark42.com/blah.png", Admin: false, Blocked: false, IP: ""}, user, "got %+v", user)
 }
 

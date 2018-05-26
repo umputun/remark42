@@ -27,7 +27,7 @@ func NewGoogle(p Params) Provider {
 				Picture: data.value("picture"),
 			}
 			if userInfo.Name == "" {
-				userInfo.Name = "unknown"
+				userInfo.Name = "noname_" + userInfo.ID[8:12]
 			}
 			return userInfo
 		},
