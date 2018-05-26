@@ -75,11 +75,12 @@ function init() {
   }
 
   function postHashToIframe(e) {
-    if (!e && location.hash.indexOf(`#${COMMENT_NODE_CLASSNAME_PREFIX}`) === 0) {
-      iframe.contentWindow.postMessage(JSON.stringify({ hash: location.hash }), '*');
-    } else if (e && e.newURL.includes(`#${COMMENT_NODE_CLASSNAME_PREFIX}`)) {
-      e.preventDefault();
-      iframe.contentWindow.postMessage(JSON.stringify({ hash: `#${e.newURL.split('#')[1]}` }), '*');
+    const hash = e ? `#${e.newURL.split('#')[1]}` : window.location.hash;
+
+    if (hash.indexOf(`#${COMMENT_NODE_CLASSNAME_PREFIX}`) === 0) {
+      if (e) e.preventDefault();
+
+      iframe.contentWindow.postMessage(JSON.stringify({ hash }), '*');
     }
   }
 }

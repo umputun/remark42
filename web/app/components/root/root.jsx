@@ -74,9 +74,13 @@ export default class Root extends Component {
     });
   }
 
-  checkUrlHash() {
-    if (window.location.hash.indexOf(`#${COMMENT_NODE_CLASSNAME_PREFIX}`) === 0) {
-      const comment = document.querySelector(window.location.hash);
+  checkUrlHash(e) {
+    const hash = e ? `#${e.newURL.split('#')[1]}` : window.location.hash;
+
+    if (hash.indexOf(`#${COMMENT_NODE_CLASSNAME_PREFIX}`) === 0) {
+      if (e) e.preventDefault();
+
+      const comment = document.querySelector(hash);
 
       if (comment) {
         setTimeout(() => {
