@@ -63,13 +63,7 @@ function init() {
       }
 
       if (data.scrollTo) {
-        const iframeTop = iframe.getBoundingClientRect().top;
-
-        // sometimes browser is already scrolled to the element (like Safari on macOS)
-        // so let's check it and prevent our scrolling if it so
-        if (data.scrollTo + iframeTop === 0) return;
-
-        window.scrollTo(window.pageXOffset, data.scrollTo + iframeTop);
+        window.scrollTo(window.pageXOffset, data.scrollTo + iframe.getBoundingClientRect().top + window.pageYOffset);
       }
     } catch (e) {}
   }
