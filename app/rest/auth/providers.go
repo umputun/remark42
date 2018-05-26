@@ -18,7 +18,7 @@ func NewGoogle(p Params) Provider {
 		Name:        "google",
 		Endpoint:    google.Endpoint,
 		RedirectURL: p.RemarkURL + "/auth/google/callback",
-		Scopes:      []string{"https://www.googleapis.com/auth/userinfo.email"},
+		Scopes:      []string{"https://www.googleapis.com/auth/userinfo.profile"},
 		InfoURL:     "https://www.googleapis.com/oauth2/v3/userinfo",
 		MapUser: func(data userData, _ []byte) store.User {
 			userInfo := store.User{
