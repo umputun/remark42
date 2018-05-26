@@ -193,17 +193,19 @@ export default class Comment extends Component {
 
     if (scoreIncreased) return;
 
-    const newScore = score + 1;
-
     this.setState({
       scoreIncreased: !scoreDecreased,
       scoreDecreased: false,
-      score: newScore,
+      score: score + 1,
     });
 
-    store.replaceComment(Object.assign({}, this.props.data, { score: newScore }));
-
-    this.votingPromise = this.votingPromise.then(() => api.vote({ id, url, value: 1 }));
+    this.votingPromise = this.votingPromise
+      .then(() => {
+        return api.vote({ id, url, value: 1 })
+          .then(() => {
+            api.getComment({ id }).then(comment => store.replaceComment(comment));
+          });
+      });
   }
 
   decreaseScore() {
@@ -212,17 +214,19 @@ export default class Comment extends Component {
 
     if (scoreDecreased) return;
 
-    const newScore = score - 1;
-
     this.setState({
       scoreDecreased: !scoreIncreased,
       scoreIncreased: false,
-      score: newScore,
+      score: score - 1,
     });
 
-    store.replaceComment(Object.assign({}, this.props.data, { score: newScore }));
-
-    this.votingPromise = this.votingPromise.then(() => api.vote({ id, url, value: -1 }));
+    this.votingPromise = this.votingPromise
+      .then(() => {
+        return api.vote({ id, url, value: -1 })
+          .then(() => {
+            api.getComment({ id }).then(comment => store.replaceComment(comment));
+          });
+      });
   }
 
   onReply(...rest) {
