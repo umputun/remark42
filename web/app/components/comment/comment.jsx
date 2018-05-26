@@ -199,13 +199,7 @@ export default class Comment extends Component {
       score: score + 1,
     });
 
-    this.votingPromise = this.votingPromise
-      .then(() => {
-        return api.vote({ id, url, value: 1 })
-          .then(() => {
-            api.getComment({ id }).then(comment => store.replaceComment(comment));
-          });
-      });
+    this.votingPromise = this.votingPromise.then(() => api.vote({ id, url, value: 1 }));
   }
 
   decreaseScore() {
@@ -220,13 +214,7 @@ export default class Comment extends Component {
       score: score - 1,
     });
 
-    this.votingPromise = this.votingPromise
-      .then(() => {
-        return api.vote({ id, url, value: -1 })
-          .then(() => {
-            api.getComment({ id }).then(comment => store.replaceComment(comment));
-          });
-      });
+    this.votingPromise = this.votingPromise.then(() => api.vote({ id, url, value: -1 }));
   }
 
   onReply(...rest) {
