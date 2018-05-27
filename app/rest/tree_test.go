@@ -49,8 +49,10 @@ func TestMakeTree(t *testing.T) {
 	assert.Nil(t, err)
 	expected, actual := cleanFormatting(expJSON, buf.String())
 	assert.Equal(t, expected, actual)
-
 	assert.Equal(t, store.PostInfo{URL: "url", Count: 17, FirstTS: ts(46, 1), LastTS: ts(47, 22)}, res.Info)
+
+	res = MakeTree([]store.Comment{}, "time")
+	assert.Equal(t, &Tree{}, res)
 }
 
 func TestTreeSortNodes(t *testing.T) {
@@ -82,6 +84,8 @@ func TestTreeSortNodes(t *testing.T) {
 
 	res = MakeTree(comments, "+time")
 	t.Log(res.Nodes[0].Comment.ID, res.Nodes[0].tsModified)
+	assert.Equal(t, "1", res.Nodes[0].Comment.ID)
+
 	res = MakeTree(comments, "-time")
 	assert.Equal(t, "6", res.Nodes[0].Comment.ID)
 
@@ -99,6 +103,11 @@ func TestTreeSortNodes(t *testing.T) {
 	assert.Equal(t, "1", res.Nodes[1].Comment.ID)
 	assert.Equal(t, "3", res.Nodes[2].Comment.ID)
 	assert.Equal(t, "6", res.Nodes[3].Comment.ID)
+
+	res = MakeTree(comments, "undefined")
+	t.Log(res.Nodes[0].Comment.ID, res.Nodes[0].tsModified)
+	assert.Equal(t, "1", res.Nodes[0].Comment.ID)
+
 }
 
 func BenchmarkTree(b *testing.B) {
