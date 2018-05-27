@@ -268,6 +268,20 @@ func TestServer_Last(t *testing.T) {
 	err = json.Unmarshal([]byte(res), &comments)
 	assert.Nil(t, err)
 	assert.Equal(t, 3, len(comments), "should have 3 comments")
+
+	res, code = get(t, ts.URL+"/api/v1/last/X?site=radio-t")
+	assert.Equal(t, 200, code)
+	err = json.Unmarshal([]byte(res), &comments)
+	assert.Nil(t, err)
+	assert.Equal(t, 3, len(comments), "should have 3 comments")
+
+	err = srv.DataService.Delete(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}, id1, store.SoftDelete)
+	assert.Nil(t, err)
+	res, code = get(t, ts.URL+"/api/v1/last/5?site=radio-t")
+	assert.Equal(t, 200, code)
+	err = json.Unmarshal([]byte(res), &comments)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(comments), "should have 2 comments")
 }
 
 func TestServer_FindUserComments(t *testing.T) {
@@ -491,6 +505,11 @@ func TestServer_Info(t *testing.T) {
 	exp := store.PostInfo{URL: "https://radio-t.com/blah1", Count: 3,
 		FirstTS: time.Date(2018, 05, 27, 1, 14, 10, 0, time.Local), LastTS: time.Date(2018, 05, 27, 1, 14, 25, 0, time.Local)}
 	assert.Equal(t, exp, info)
+
+	_, code = get(t, ts.URL+"/api/v1/info?site=radio-t&url=https://radio-t.com/blah-no")
+	assert.Equal(t, 400, code)
+	_, code = get(t, ts.URL+"/api/v1/info?site=radio-t-no&url=https://radio-t.com/blah-no")
+	assert.Equal(t, 400, code)
 }
 
 func TestServer_FileServer(t *testing.T) {

@@ -74,6 +74,9 @@ func TestBoltDB_Put(t *testing.T) {
 
 	err = b.Put(store.Locator{URL: "https://radio-t.com", SiteID: "bad"}, comment)
 	assert.EqualError(t, err, `site "bad" not found`)
+
+	err = b.Put(store.Locator{URL: "https://radio-t.com-bad", SiteID: "radio-t"}, comment)
+	assert.EqualError(t, err, `no bucket https://radio-t.com-bad in store`)
 }
 
 func TestBoltDB_Last(t *testing.T) {
@@ -219,6 +222,11 @@ func TestBoltDB_Ref(t *testing.T) {
 
 	_, _, err = b.parseRef([]byte("https://radio-t.com/2"))
 	assert.NotNil(t, err)
+}
+
+func TestBoltDB_New(t *testing.T) {
+	_, err := NewBoltDB(bolt.Options{}, BoltSite{FileName: "/dev/nul", SiteID: "radio-t"})
+	assert.EqualError(t, err, "failed to make boltdb for /dev/nul: open /dev/nul: operation not permitted")
 }
 
 // makes new boltdb, put two records

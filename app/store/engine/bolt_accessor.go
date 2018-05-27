@@ -6,7 +6,6 @@ import (
 	"log"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/coreos/bbolt"
 	"github.com/pkg/errors"
@@ -478,27 +477,6 @@ func (b *BoltDB) db(siteID string) (*bolt.DB, error) {
 		return res, nil
 	}
 	return nil, errors.Errorf("site %q not found", siteID)
-}
-
-// timeRange gets time of first and last comment
-func (b *BoltDB) timeRange(bkt *bolt.Bucket) (from, to time.Time, err error) {
-	c := bkt.Cursor()
-	_, first := c.First()
-	_, last := c.Last()
-	if first == nil || last == nil {
-		return time.Time{}, time.Time{}, errors.Errorf("no comments")
-	}
-
-	comment := store.Comment{}
-	if err = json.Unmarshal(first, &comment); err != nil {
-		return time.Time{}, time.Time{}, errors.Wrap(err, "failed to unmarshal")
-	}
-	from = comment.Timestamp
-	if err = json.Unmarshal(last, &comment); err != nil {
-		return time.Time{}, time.Time{}, errors.Wrap(err, "failed to unmarshal")
-	}
-	to = comment.Timestamp
-	return from, to, nil
 }
 
 // makeRef creates reference combining url and comment id
