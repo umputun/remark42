@@ -43,6 +43,10 @@ func TestBoltDB_Delete(t *testing.T) {
 	loc.SiteID = "bad"
 	err = b.Delete(loc, res[0].ID, store.SoftDelete)
 	assert.EqualError(t, err, `site "bad" not found`)
+
+	loc = store.Locator{URL: "https://radio-t.com/bad", SiteID: "radio-t"}
+	err = b.Delete(loc, res[0].ID, store.SoftDelete)
+	assert.EqualError(t, err, `no bucket https://radio-t.com/bad in store`)
 }
 
 func TestBoltDB_DeleteHard(t *testing.T) {
@@ -112,6 +116,9 @@ func TestBoltDB_DeleteUser(t *testing.T) {
 	comments, err := b.Last("radio-t", 10)
 	assert.Nil(t, err)
 	assert.Equal(t, 0, len(comments), "nothing left")
+
+	err = b.DeleteUser("radio-t-bad", "user1")
+	assert.EqualError(t, err, `site "radio-t-bad" not found`)
 }
 
 func TestBoltDB_BlockUser(t *testing.T) {
@@ -130,6 +137,8 @@ func TestBoltDB_BlockUser(t *testing.T) {
 
 	assert.EqualError(t, b.SetBlock("bad", "user1", true), `site "bad" not found`)
 	assert.NoError(t, b.SetBlock("radio-t", "userX", false))
+
+	assert.False(t, b.IsBlocked("radio-t-bad", "user1"), "nothing blocked on wrong site")
 }
 
 func TestBoltDB_BlockList(t *testing.T) {

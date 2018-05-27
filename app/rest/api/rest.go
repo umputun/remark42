@@ -142,6 +142,8 @@ func (s *Rest) routes() chi.Router {
 			ropen.Get("/list", s.listCtrl)
 			ropen.Get("/config", s.configCtrl)
 			ropen.Post("/preview", s.previewCommentCtrl)
+			ropen.Get("/info", s.infoCtrl)
+
 			ropen.Mount("/rss", s.rssRoutes())
 			ropen.Mount("/img", s.ImageProxy.Routes())
 		})
@@ -245,6 +247,26 @@ func (s *Rest) previewCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	comment.Text = s.ImageProxy.Convert(comment.Text)
 	comment.Sanitize()
 	render.HTML(w, r, comment.Text)
+}
+
+// GET /info?site=siteID&url=post-url - get info about the post
+func (s *Rest) infoCtrl(w http.ResponseWriter, r *http.Request) {
+	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
+
+	data, err := s.Cache.Get(cache.Key(cache.URLKey(r), locator.SiteID, locator.URL), 4*time.Hour, func() ([]byte, error) {
+		info, e := s.DataService.Info(locator)
+		if e != nil {
+			return nil, e
+		}
+		return encodeJSONWithHTML(info)
+	})
+
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get post info")
+		return
+	}
+
+	renderJSONFromBytes(w, r, data)
 }
 
 // PUT /comment/{id}?site=siteID&url=post-url - update comment

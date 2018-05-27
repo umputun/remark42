@@ -462,6 +462,37 @@ func TestServer_Config(t *testing.T) {
 	t.Logf("%+v", j)
 }
 
+func TestServer_Info(t *testing.T) {
+	srv, ts := prep(t)
+	assert.NotNil(t, srv)
+	defer cleanup(ts)
+
+	user := store.User{ID: "user1", Name: "user name 1"}
+	c1 := store.Comment{User: user, Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
+		URL: "https://radio-t.com/blah1"}, Timestamp: time.Date(2018, 05, 27, 1, 14, 10, 0, time.Local)}
+	c2 := store.Comment{User: user, Text: "test test #2", ParentID: "p1", Locator: store.Locator{SiteID: "radio-t",
+		URL: "https://radio-t.com/blah1"}, Timestamp: time.Date(2018, 05, 27, 1, 14, 20, 0, time.Local)}
+	c3 := store.Comment{User: user, Text: "test test #3", ParentID: "p1", Locator: store.Locator{SiteID: "radio-t",
+		URL: "https://radio-t.com/blah1"}, Timestamp: time.Date(2018, 05, 27, 1, 14, 25, 0, time.Local)}
+
+	_, err := srv.DataService.Create(c1)
+	require.Nil(t, err, "%+v", err)
+	_, err = srv.DataService.Create(c2)
+	require.Nil(t, err)
+	_, err = srv.DataService.Create(c3)
+	require.Nil(t, err)
+
+	body, code := get(t, ts.URL+"/api/v1/info?site=radio-t&url=https://radio-t.com/blah1")
+	assert.Equal(t, 200, code)
+
+	info := store.PostInfo{}
+	err = json.Unmarshal([]byte(body), &info)
+	assert.Nil(t, err)
+	exp := store.PostInfo{URL: "https://radio-t.com/blah1", Count: 3,
+		FirstTS: time.Date(2018, 05, 27, 1, 14, 10, 0, time.Local), LastTS: time.Date(2018, 05, 27, 1, 14, 25, 0, time.Local)}
+	assert.Equal(t, exp, info)
+}
+
 func TestServer_FileServer(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)

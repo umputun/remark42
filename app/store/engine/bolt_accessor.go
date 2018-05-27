@@ -261,30 +261,30 @@ func (b BoltDB) List(siteID string, limit, skip int) (list []store.PostInfo, err
 	return list, err
 }
 
-// Info returns time range and count
+// Info returns time range and count for locator
 func (b *BoltDB) Info(locator store.Locator) (store.PostInfo, error) {
 	bdb, err := b.db(locator.SiteID)
 	if err != nil {
 		return store.PostInfo{}, err
 	}
 
-	postInfo := store.PostInfo{}
+	comments, err := b.Find(locator, "+time")
+	if err != nil {
+		return store.PostInfo{}, err
+	}
+
+	postInfo := store.PostInfo{
+		URL:     locator.URL,
+		FirstTS: comments[0].Timestamp,
+		LastTS:  comments[len(comments)-1].Timestamp,
+	}
+
 	err = bdb.View(func(tx *bolt.Tx) error {
-		bucket, e := b.getPostBucket(tx, locator.URL)
-		if e != nil {
-			return e
-		}
 		count, e := b.count(tx, locator.URL, 0)
 		if e != nil {
 			return e
 		}
-		firstTS, lastTS, e := b.timeRange(bucket)
-		if e != nil {
-			return e
-		}
-		postInfo.URL = locator.URL
 		postInfo.Count = count
-		postInfo.FirstTS, postInfo.LastTS = firstTS, lastTS
 		return nil
 	})
 

@@ -155,7 +155,7 @@ func TestBoltDB_Info(t *testing.T) {
 	comment := store.Comment{
 		ID:        "12345",
 		Text:      `some text, <a href="http://radio-t.com">link</a>`,
-		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 24, 0, time.Local),
 		Locator:   store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"},
 		User:      store.User{ID: "user1", Name: "user name"},
 	}
@@ -164,7 +164,7 @@ func TestBoltDB_Info(t *testing.T) {
 
 	r, err := b.Info(store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"})
 	require.Nil(t, err)
-	assert.Equal(t, store.PostInfo{URL: "https://radio-t.com/2", Count: 1, FirstTS: ts(22), LastTS: ts(22)}, r)
+	assert.Equal(t, store.PostInfo{URL: "https://radio-t.com/2", Count: 1, FirstTS: ts(24), LastTS: ts(24)}, r)
 
 	r, err = b.Info(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"})
 	require.Nil(t, err)
