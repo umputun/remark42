@@ -284,6 +284,7 @@ In plain format result will be sorted list of `Comment`. In tree format this is 
 ```go
 type Tree struct {
     Nodes []Node `json:"comments"`
+    Info  store.PostInfo `json:"info,omitempty"`
 }
 
 type Node struct {
@@ -320,6 +321,8 @@ Sort can be `time`, `active` or `score`. Supported sort order with prefix -/+, i
   type PostInfo struct {
       URL   string `json:"url"`
       Count int    `json:"count"`
+      FirstTS time.Time `json:"first_time,omitempty"`
+      LastTS  time.Time `json:"last_time,omitempty"`
   }
   ```
 * `GET /api/v1/user` - get user info, _auth required_
@@ -336,6 +339,7 @@ Sort can be `time`, `active` or `score`. Supported sort order with prefix -/+, i
       CriticalScore int      `json:"critical_score"`
   }
   ``` 
+* `GET /api/v1/info?site=site-idd&url=post-ur` - returns `PostInfo` for site and url
   
 ### RSS feeds
   

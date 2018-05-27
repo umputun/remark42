@@ -198,6 +198,8 @@ func TestServer_Find(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(tree.Nodes))
 	assert.Equal(t, 1, len(tree.Nodes[0].Replies))
+	assert.Equal(t, 2, tree.Info.Count)
+	assert.Equal(t, "https://radio-t.com/blah1", tree.Info.URL)
 }
 
 func TestServer_Update(t *testing.T) {
