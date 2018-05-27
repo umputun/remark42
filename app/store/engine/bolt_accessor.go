@@ -6,6 +6,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/coreos/bbolt"
 	"github.com/pkg/errors"
@@ -248,6 +249,7 @@ func (b BoltDB) List(siteID string, limit, skip int) (list []store.PostInfo, err
 			if e != nil {
 				return e
 			}
+
 			list = append(list, store.PostInfo{URL: postURL, Count: count})
 			if limit > 0 && len(list) >= limit {
 				break
@@ -257,6 +259,36 @@ func (b BoltDB) List(siteID string, limit, skip int) (list []store.PostInfo, err
 	})
 
 	return list, err
+}
+
+// Info returns time range and count
+func (b *BoltDB) Info(locator store.Locator) (store.PostInfo, error) {
+	bdb, err := b.db(locator.SiteID)
+	if err != nil {
+		return store.PostInfo{}, err
+	}
+
+	postInfo := store.PostInfo{}
+	err = bdb.View(func(tx *bolt.Tx) error {
+		bucket, e := b.getPostBucket(tx, locator.URL)
+		if e != nil {
+			return e
+		}
+		count, e := b.count(tx, locator.URL, 0)
+		if e != nil {
+			return e
+		}
+		firstTS, lastTS, e := b.timeRange(bucket)
+		if e != nil {
+			return e
+		}
+		postInfo.URL = locator.URL
+		postInfo.Count = count
+		postInfo.FirstTS, postInfo.LastTS = firstTS, lastTS
+		return nil
+	})
+
+	return postInfo, err
 }
 
 // User extracts all comments for given site and given userID
@@ -446,6 +478,27 @@ func (b *BoltDB) db(siteID string) (*bolt.DB, error) {
 		return res, nil
 	}
 	return nil, errors.Errorf("site %q not found", siteID)
+}
+
+// timeRange gets time of first and last comment
+func (b *BoltDB) timeRange(bkt *bolt.Bucket) (from, to time.Time, err error) {
+	c := bkt.Cursor()
+	_, first := c.First()
+	_, last := c.Last()
+	if first == nil || last == nil {
+		return time.Time{}, time.Time{}, errors.Errorf("no comments")
+	}
+
+	comment := store.Comment{}
+	if err = json.Unmarshal(first, &comment); err != nil {
+		return time.Time{}, time.Time{}, errors.Wrap(err, "failed to unmarshal")
+	}
+	from = comment.Timestamp
+	if err = json.Unmarshal(last, &comment); err != nil {
+		return time.Time{}, time.Time{}, errors.Wrap(err, "failed to unmarshal")
+	}
+	to = comment.Timestamp
+	return from, to, nil
 }
 
 // makeRef creates reference combining url and comment id

@@ -7,6 +7,7 @@ import (
 
 	"github.com/coreos/bbolt"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/umputun/remark/app/store"
 )
@@ -142,6 +143,38 @@ func TestBoltDB_List(t *testing.T) {
 
 	res, err = b.List("bad", 1, 1)
 	assert.EqualError(t, err, `site "bad" not found`)
+}
+
+func TestBoltDB_Info(t *testing.T) {
+	defer os.Remove(testDb)
+	b := prep(t) // two comments for https://radio-t.com
+
+	ts := func(min int) time.Time { return time.Date(2017, 12, 20, 15, 18, min, 0, time.Local) }
+
+	// add one more for https://radio-t.com/2
+	comment := store.Comment{
+		ID:        "12345",
+		Text:      `some text, <a href="http://radio-t.com">link</a>`,
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
+		Locator:   store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"},
+		User:      store.User{ID: "user1", Name: "user name"},
+	}
+	_, err := b.Create(comment)
+	assert.Nil(t, err)
+
+	r, err := b.Info(store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"})
+	require.Nil(t, err)
+	assert.Equal(t, store.PostInfo{URL: "https://radio-t.com/2", Count: 1, FirstTS: ts(22), LastTS: ts(22)}, r)
+
+	r, err = b.Info(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"})
+	require.Nil(t, err)
+	assert.Equal(t, store.PostInfo{URL: "https://radio-t.com", Count: 2, FirstTS: ts(22), LastTS: ts(23)}, r)
+
+	_, err = b.Info(store.Locator{URL: "https://radio-t.com/error", SiteID: "radio-t"})
+	require.NotNil(t, err)
+
+	_, err = b.Info(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t-error"})
+	require.NotNil(t, err)
 }
 
 func TestBoltDB_GetForUser(t *testing.T) {

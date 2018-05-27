@@ -27,6 +27,7 @@ type Accessor interface {
 	User(siteID string, userID string, limit int) ([]store.Comment, int, error) // comments by user, sorted by time
 	Count(locator store.Locator) (int, error)                                   // number of comments for the post
 	List(siteID string, limit int, skip int) ([]store.PostInfo, error)          // list of commented posts
+	Info(locator store.Locator) (store.PostInfo, error)                         // get post info
 }
 
 // Admin defines all store ops avail for admin only
