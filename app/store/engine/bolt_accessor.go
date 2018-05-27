@@ -6,7 +6,6 @@ import (
 	"log"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/coreos/bbolt"
 	"github.com/pkg/errors"
@@ -134,77 +133,6 @@ func (b *BoltDB) Create(comment store.Comment) (commentID string, err error) {
 	return comment.ID, err
 }
 
-// Delete removes comment, by locator from the store.
-// Posts collection only sets status to deleted and clear fields in order to prevent breaking trees of replies.
-// From last bucket removed for real.
-func (b *BoltDB) Delete(locator store.Locator, commentID string) error {
-
-	bdb, err := b.db(locator.SiteID)
-	if err != nil {
-		return err
-	}
-
-	return bdb.Update(func(tx *bolt.Tx) error {
-
-		postBkt, e := b.getPostBucket(tx, locator.URL)
-		if e != nil {
-			return e
-		}
-
-		comment, err := b.load(postBkt, []byte(commentID))
-		if err != nil {
-			return errors.Wrapf(err, "can't load key %s from bucket %s", commentID, locator.URL)
-		}
-		// set deleted status and clear fields
-		comment.SetDeleted()
-
-		if err := b.save(postBkt, []byte(commentID), comment); err != nil {
-			return errors.Wrapf(err, "can't save deleted comment for key %s from bucket %s", commentID, locator.URL)
-		}
-
-		// delete from "last" bucket
-		lastBkt := tx.Bucket([]byte(lastBucketName))
-		if err := lastBkt.Delete([]byte(commentID)); err != nil {
-			return errors.Wrapf(err, "can't delete key %s from bucket %s", commentID, lastBucketName)
-		}
-
-		// decrement comments count for post url
-		if _, e = b.count(tx, comment.Locator.URL, -1); e != nil {
-			return errors.Wrapf(e, "failed to decrement count for %s", comment.Locator)
-		}
-
-		return nil
-	})
-}
-
-// DeleteAll removes all top-level buckets for given siteID
-func (b *BoltDB) DeleteAll(siteID string) error {
-
-	bdb, err := b.db(siteID)
-	if err != nil {
-		return err
-	}
-
-	// delete all buckets except blocked users
-	toDelete := []string{postsBucketName, lastBucketName, userBucketName, countsBucketName}
-
-	// delete top-level buckets
-	err = bdb.Update(func(tx *bolt.Tx) error {
-		for _, bktName := range toDelete {
-
-			if e := tx.DeleteBucket([]byte(bktName)); e != nil {
-				return errors.Wrapf(err, "failed to delete top level bucket %s", bktName)
-			}
-			if _, e := tx.CreateBucketIfNotExists([]byte(bktName)); e != nil {
-				return errors.Wrapf(err, "failed to create top level bucket %s", bktName)
-			}
-		}
-		return nil
-	})
-
-	return errors.Wrapf(err, "failed to delete top level buckets fro site %s", siteID)
-}
-
 // Find returns all comments for post and sorts results
 func (b *BoltDB) Find(locator store.Locator, sortFld string) (comments []store.Comment, err error) {
 	comments = []store.Comment{}
@@ -294,77 +222,6 @@ func (b *BoltDB) Count(locator store.Locator) (count int, err error) {
 	})
 
 	return count, err
-}
-
-// SetBlock blocks/unblocks user for given site
-func (b *BoltDB) SetBlock(siteID string, userID string, status bool) error {
-
-	bdb, err := b.db(siteID)
-	if err != nil {
-		return err
-	}
-
-	return bdb.Update(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte(blocksBucketName))
-		switch status {
-		case true:
-			if e := bucket.Put([]byte(userID), []byte(time.Now().Format(tsNano))); e != nil {
-				return errors.Wrapf(e, "failed to put %s to %s", userID, blocksBucketName)
-			}
-		case false:
-			if e := bucket.Delete([]byte(userID)); e != nil {
-				return errors.Wrapf(e, "failed to clean %s from %s", userID, blocksBucketName)
-			}
-		}
-		return nil
-	})
-}
-
-// IsBlocked checks if user blocked
-func (b *BoltDB) IsBlocked(siteID string, userID string) (blocked bool) {
-
-	bdb, err := b.db(siteID)
-	if err != nil {
-		return false
-	}
-
-	_ = bdb.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte(blocksBucketName))
-		blocked = bucket.Get([]byte(userID)) != nil
-		return nil
-	})
-	return blocked
-}
-
-// Blocked get lists of blocked users for given site
-// bucket uses userID:
-func (b *BoltDB) Blocked(siteID string) (users []store.BlockedUser, err error) {
-	users = []store.BlockedUser{}
-	bdb, err := b.db(siteID)
-	if err != nil {
-		return nil, err
-	}
-
-	err = bdb.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte(blocksBucketName))
-		return bucket.ForEach(func(k []byte, v []byte) error {
-			ts, e := time.ParseInLocation(tsNano, string(v), time.Local)
-			if e != nil {
-				return errors.Wrap(e, "can't parse block ts")
-			}
-
-			// get user name from comment user section
-			userName := ""
-			if userComments, _, e := b.User(siteID, string(k), 1); e == nil && len(userComments) > 0 {
-				userName = userComments[0].User.Name
-			}
-
-			users = append(users, store.BlockedUser{ID: string(k), Name: userName, Timestamp: ts})
-			return nil
-		})
-	})
-
-	return users, err
 }
 
 // List returns list of all commented posts with counters
@@ -550,7 +407,7 @@ func (b *BoltDB) save(bkt *bolt.Bucket, key []byte, comment store.Comment) (err 
 func (b *BoltDB) load(bkt *bolt.Bucket, key []byte) (comment store.Comment, err error) {
 	commentVal := bkt.Get(key)
 	if commentVal == nil {
-		return comment, errors.Errorf("no comment for %s", key)
+		return comment, errors.Errorf("no comments for %s", key)
 	}
 
 	if err = json.Unmarshal(commentVal, &comment); err != nil {

@@ -31,8 +31,8 @@ func (a *admin) routes(middlewares ...func(http.Handler) http.Handler) chi.Route
 	router.Use(middlewares...)
 	router.Delete("/comment/{id}", a.deleteCommentCtrl)
 	router.Put("/user/{userid}", a.setBlockCtrl)
+	router.Delete("/user/{userid}", a.deleteUserCtrl)
 	router.Get("/export", a.exportCtrl)
-
 	router.Put("/pin/{id}", a.setPinCtrl)
 	router.Get("/blocked", a.blockedUsersCtrl)
 	return router
@@ -45,7 +45,7 @@ func (a *admin) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	log.Printf("[INFO] delete comment %s", id)
 
-	err := a.dataService.Delete(locator, id)
+	err := a.dataService.Delete(locator, id, store.SoftDelete)
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete comment")
 		return
@@ -53,6 +53,22 @@ func (a *admin) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	a.cache.Flush(locator.SiteID, locator.URL)
 	render.Status(r, http.StatusOK)
 	render.JSON(w, r, JSON{"id": id, "locator": locator})
+}
+
+// DELETE /user/{userid}?site=side-id
+func (a *admin) deleteUserCtrl(w http.ResponseWriter, r *http.Request) {
+
+	userID := chi.URLParam(r, "userid")
+	siteID := r.URL.Query().Get("site")
+	log.Printf("[INFO] delete all user comments for %s, site %s", userID, siteID)
+
+	if err := a.dataService.DeleteUser(siteID, userID); err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete user")
+		return
+	}
+	a.cache.Flush(siteID, userID)
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, JSON{"user_id": userID, "site_id": siteID})
 }
 
 // PUT /user/{userid}?site=side-id&block=1 - block or unblock user
@@ -118,7 +134,6 @@ func (a *admin) exportCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "export failed")
 		return
 	}
-
 }
 
 func (a *admin) checkBlocked(siteID string, user store.User) bool {
@@ -138,7 +153,7 @@ func (a *admin) alterComments(comments []store.Comment, r *http.Request) (res []
 		// process blocked users
 		if a.dataService.IsBlocked(c.Locator.SiteID, c.User.ID) {
 			if !isAdmin { // reset comment to deleted for non-admins
-				c.SetDeleted()
+				c.SetDeleted(store.SoftDelete)
 			}
 			c.User.Blocked = true
 			c.Deleted = true
