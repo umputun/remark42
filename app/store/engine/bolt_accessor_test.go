@@ -225,8 +225,8 @@ func TestBoltDB_Ref(t *testing.T) {
 }
 
 func TestBoltDB_New(t *testing.T) {
-	_, err := NewBoltDB(bolt.Options{}, BoltSite{FileName: "/dev/nul", SiteID: "radio-t"})
-	assert.EqualError(t, err, "failed to make boltdb for /dev/nul: open /dev/nul: operation not permitted")
+	_, err := NewBoltDB(bolt.Options{}, BoltSite{FileName: "/tmp/no-such-place/tmp.db", SiteID: "radio-t"})
+	assert.EqualError(t, err, "failed to make boltdb for /tmp/no-such-place/tmp.db: open /tmp/no-such-place/tmp.db: no such file or directory")
 }
 
 // makes new boltdb, put two records
