@@ -16,7 +16,7 @@ func TestServer_RssPost(t *testing.T) {
 	assert.NotNil(t, srv)
 	defer cleanup(ts)
 
-	waitOnMinChange()
+	waitOnSecChange()
 
 	c1 := store.Comment{
 		Text:    "test 123",
@@ -57,7 +57,7 @@ func TestServer_RssSite(t *testing.T) {
 	assert.NotNil(t, srv)
 	defer cleanup(ts)
 
-	waitOnMinChange()
+	waitOnSecChange()
 
 	pubDate := time.Now().Format(time.RFC1123Z)
 
@@ -111,7 +111,7 @@ func TestServer_RssWithReply(t *testing.T) {
 	assert.NotNil(t, srv)
 	defer cleanup(ts)
 
-	waitOnMinChange()
+	waitOnSecChange()
 
 	pubDate := time.Now().Format(time.RFC1123Z)
 
@@ -158,9 +158,9 @@ func TestServer_RssWithReply(t *testing.T) {
 	assert.Equal(t, expected, res)
 }
 
-func waitOnMinChange() {
+func waitOnSecChange() {
 	for {
-		if time.Now().Nanosecond() > 500000000 {
+		if time.Now().Nanosecond() < 100000000 {
 			break
 		}
 		time.Sleep(10 * time.Nanosecond)
