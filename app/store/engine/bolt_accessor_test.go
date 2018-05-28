@@ -7,6 +7,7 @@ import (
 
 	"github.com/coreos/bbolt"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/umputun/remark/app/store"
 )
@@ -30,6 +31,30 @@ func TestBoltDB_CreateAndFind(t *testing.T) {
 
 	res, err = b.Find(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t-bad"}, "time")
 	assert.EqualError(t, err, `site "radio-t-bad" not found`)
+}
+
+func TestBoltDB_CreateReadOnly(t *testing.T) {
+	defer os.Remove(testDb)
+	var b = prep(t)
+
+	comment := store.Comment{
+		ID:        "id-ro",
+		Text:      `some text, <a href="http://radio-t.com">link</a>`,
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
+		Locator:   store.Locator{URL: "https://radio-t.com/ro", SiteID: "radio-t"},
+		User:      store.User{ID: "user1", Name: "user name"},
+	}
+	err := b.SetReadOnly(comment.Locator, true)
+	require.Nil(t, err)
+
+	_, err = b.Create(comment)
+	assert.NotNil(t, err)
+	assert.Equal(t, "post https://radio-t.com/ro is read-only", err.Error())
+
+	err = b.SetReadOnly(comment.Locator, false)
+	require.Nil(t, err)
+	_, err = b.Create(comment)
+	assert.Nil(t, err)
 }
 
 func TestBoltDB_Get(t *testing.T) {
@@ -73,6 +98,9 @@ func TestBoltDB_Put(t *testing.T) {
 
 	err = b.Put(store.Locator{URL: "https://radio-t.com", SiteID: "bad"}, comment)
 	assert.EqualError(t, err, `site "bad" not found`)
+
+	err = b.Put(store.Locator{URL: "https://radio-t.com-bad", SiteID: "radio-t"}, comment)
+	assert.EqualError(t, err, `no bucket https://radio-t.com-bad in store`)
 }
 
 func TestBoltDB_Last(t *testing.T) {
@@ -124,24 +152,72 @@ func TestBoltDB_List(t *testing.T) {
 	_, err := b.Create(comment)
 	assert.Nil(t, err)
 
+	ts := func(sec int) time.Time { return time.Date(2017, 12, 20, 15, 18, sec, 0, time.Local) }
+
 	res, err := b.List("radio-t", 0, 0)
 	assert.Nil(t, err)
-	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/2", Count: 1}, {URL: "https://radio-t.com", Count: 2}}, res)
+	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/2", Count: 1, FirstTS: ts(22), LastTS: ts(22)},
+		{URL: "https://radio-t.com", Count: 2, FirstTS: ts(22), LastTS: ts(23)}},
+		res)
 
 	res, err = b.List("radio-t", -1, -1)
 	assert.Nil(t, err)
-	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/2", Count: 1}, {URL: "https://radio-t.com", Count: 2}}, res)
+	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/2", Count: 1, FirstTS: ts(22), LastTS: ts(22)},
+		{URL: "https://radio-t.com", Count: 2, FirstTS: ts(22), LastTS: ts(23)}}, res)
 
 	res, err = b.List("radio-t", 1, 0)
 	assert.Nil(t, err)
-	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/2", Count: 1}}, res)
+	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/2", Count: 1, FirstTS: ts(22), LastTS: ts(22)}}, res)
 
 	res, err = b.List("radio-t", 1, 1)
 	assert.Nil(t, err)
-	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com", Count: 2}}, res)
+	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com", Count: 2, FirstTS: ts(22), LastTS: ts(23)}}, res)
 
 	res, err = b.List("bad", 1, 1)
 	assert.EqualError(t, err, `site "bad" not found`)
+}
+
+func TestBoltDB_Info(t *testing.T) {
+	defer os.Remove(testDb)
+	b := prep(t) // two comments for https://radio-t.com
+
+	ts := func(min int) time.Time { return time.Date(2017, 12, 20, 15, 18, min, 0, time.Local) }
+
+	// add one more for https://radio-t.com/2
+	comment := store.Comment{
+		ID:        "12345",
+		Text:      `some text, <a href="http://radio-t.com">link</a>`,
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 24, 0, time.Local),
+		Locator:   store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"},
+		User:      store.User{ID: "user1", Name: "user name"},
+	}
+	_, err := b.Create(comment)
+	assert.Nil(t, err)
+
+	r, err := b.Info(store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"}, 0)
+	require.Nil(t, err)
+	assert.Equal(t, store.PostInfo{URL: "https://radio-t.com/2", Count: 1, FirstTS: ts(24), LastTS: ts(24)}, r)
+
+	r, err = b.Info(store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"}, 10)
+	require.Nil(t, err)
+	assert.Equal(t, store.PostInfo{URL: "https://radio-t.com/2", Count: 1, FirstTS: ts(24), LastTS: ts(24), ReadOnly: true}, r)
+
+	r, err = b.Info(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, 0)
+	require.Nil(t, err)
+	assert.Equal(t, store.PostInfo{URL: "https://radio-t.com", Count: 2, FirstTS: ts(22), LastTS: ts(23)}, r)
+
+	_, err = b.Info(store.Locator{URL: "https://radio-t.com/error", SiteID: "radio-t"}, 0)
+	require.NotNil(t, err)
+
+	_, err = b.Info(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t-error"}, 0)
+	require.NotNil(t, err)
+
+	err = b.SetReadOnly(store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"}, true)
+	require.Nil(t, err)
+	r, err = b.Info(store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"}, 0)
+	require.Nil(t, err)
+	assert.Equal(t, store.PostInfo{URL: "https://radio-t.com/2", Count: 1, FirstTS: ts(24), LastTS: ts(24), ReadOnly: true}, r)
+
 }
 
 func TestBoltDB_GetForUser(t *testing.T) {
@@ -186,6 +262,11 @@ func TestBoltDB_Ref(t *testing.T) {
 
 	_, _, err = b.parseRef([]byte("https://radio-t.com/2"))
 	assert.NotNil(t, err)
+}
+
+func TestBoltDB_New(t *testing.T) {
+	_, err := NewBoltDB(bolt.Options{}, BoltSite{FileName: "/tmp/no-such-place/tmp.db", SiteID: "radio-t"})
+	assert.EqualError(t, err, "failed to make boltdb for /tmp/no-such-place/tmp.db: open /tmp/no-such-place/tmp.db: no such file or directory")
 }
 
 // makes new boltdb, put two records

@@ -50,10 +50,12 @@ WORKDIR /srv
 
 ADD scripts/import-disqus.sh /srv/import-disqus.sh
 ADD scripts/restore-backup.sh /srv/restore-backup.sh
+ADD scripts/migrate-data.sh /srv/migrate-data.sh
+ADD scripts/create-backup.sh /srv/create-backup.sh
 
 ADD start.sh /srv/start.sh
 
-RUN chmod +x /srv/start.sh /srv/import-disqus.sh /srv/restore-backup.sh
+RUN chmod +x /srv/start.sh /srv/import-disqus.sh /srv/restore-backup.sh /srv/migrate-data.sh /srv/create-backup.sh
 
 COPY --from=build-backend /go/src/github.com/umputun/remark/remark /srv/
 COPY --from=build-frontend /srv/web/public/ /srv/web

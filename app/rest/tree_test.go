@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"io/ioutil"
+	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -14,36 +16,46 @@ import (
 
 func TestMakeTree(t *testing.T) {
 
+	loc := store.Locator{URL: "url", SiteID: "site"}
+	ts := func(min int, sec int) time.Time { return time.Date(2017, 12, 25, 19, min, sec, 0, time.UTC) }
+
 	// unsorted by purpose
 	comments := []store.Comment{
-		{ID: "14", ParentID: "1", Timestamp: time.Date(2017, 12, 25, 19, 46, 14, 0, time.UTC)},
-		{ID: "1", Timestamp: time.Date(2017, 12, 25, 19, 46, 1, 0, time.UTC)},
-		{ID: "2", Timestamp: time.Date(2017, 12, 25, 19, 47, 2, 0, time.UTC)},
-		{ID: "11", ParentID: "1", Timestamp: time.Date(2017, 12, 25, 19, 46, 11, 0, time.UTC)},
-		{ID: "13", ParentID: "1", Timestamp: time.Date(2017, 12, 25, 19, 46, 13, 0, time.UTC)},
-		{ID: "12", ParentID: "1", Timestamp: time.Date(2017, 12, 25, 19, 46, 12, 0, time.UTC)},
-		{ID: "131", ParentID: "13", Timestamp: time.Date(2017, 12, 25, 19, 46, 31, 0, time.UTC)},
-		{ID: "132", ParentID: "13", Timestamp: time.Date(2017, 12, 25, 19, 46, 32, 0, time.UTC)},
-		{ID: "21", ParentID: "2", Timestamp: time.Date(2017, 12, 25, 19, 47, 21, 0, time.UTC)},
-		{ID: "22", ParentID: "2", Timestamp: time.Date(2017, 12, 25, 19, 47, 22, 0, time.UTC)},
-		{ID: "4", Timestamp: time.Date(2017, 12, 25, 19, 47, 22, 0, time.UTC)},
-		{ID: "3", Timestamp: time.Date(2017, 12, 25, 19, 47, 22, 0, time.UTC)},
-		{ID: "5", Deleted: true},
-		{ID: "6", Deleted: true},
-		{ID: "61", ParentID: "6", Deleted: true},
-		{ID: "62", ParentID: "6", Deleted: true},
-		{ID: "611", ParentID: "61", Deleted: true},
+		{Locator: loc, ID: "14", ParentID: "1", Timestamp: ts(46, 14)},
+		{Locator: loc, ID: "1", Timestamp: ts(46, 1)},
+		{Locator: loc, ID: "2", Timestamp: ts(47, 2)},
+		{Locator: loc, ID: "11", ParentID: "1", Timestamp: ts(46, 11)},
+		{Locator: loc, ID: "13", ParentID: "1", Timestamp: ts(46, 13)},
+		{Locator: loc, ID: "12", ParentID: "1", Timestamp: ts(46, 12)},
+		{Locator: loc, ID: "131", ParentID: "13", Timestamp: ts(46, 31)},
+		{Locator: loc, ID: "132", ParentID: "13", Timestamp: ts(46, 32)},
+		{Locator: loc, ID: "21", ParentID: "2", Timestamp: ts(47, 21)},
+		{Locator: loc, ID: "22", ParentID: "2", Timestamp: ts(47, 22)},
+		{Locator: loc, ID: "4", Timestamp: ts(47, 22)},
+		{Locator: loc, ID: "3", Timestamp: ts(47, 22)},
+		{Locator: loc, ID: "5", Deleted: true},
+		{Locator: loc, ID: "6", Deleted: true},
+		{Locator: loc, ID: "61", ParentID: "6", Deleted: true},
+		{Locator: loc, ID: "62", ParentID: "6", Deleted: true},
+		{Locator: loc, ID: "611", ParentID: "61", Deleted: true},
 	}
 
-	res := MakeTree(comments, "time")
+	res := MakeTree(comments, "time", 0)
 
 	buf := &bytes.Buffer{}
 	enc := json.NewEncoder(buf)
 	enc.SetIndent("", "  ")
 	err := enc.Encode(res)
 	assert.Nil(t, err)
-	assert.Equal(t, expJSON, buf.String())
-	// t.Log(string(buf.Bytes()))
+	expected, actual := cleanFormatting(expJSON, buf.String())
+	assert.Equal(t, expected, actual)
+	assert.Equal(t, store.PostInfo{URL: "url", Count: 17, FirstTS: ts(46, 1), LastTS: ts(47, 22)}, res.Info)
+
+	res = MakeTree([]store.Comment{}, "time", 0)
+	assert.Equal(t, &Tree{}, res)
+
+	res = MakeTree(comments, "time", 10)
+	assert.Equal(t, store.PostInfo{URL: "url", Count: 17, FirstTS: ts(46, 1), LastTS: ts(47, 22), ReadOnly: true}, res.Info)
 }
 
 func TestTreeSortNodes(t *testing.T) {
@@ -65,33 +77,39 @@ func TestTreeSortNodes(t *testing.T) {
 		{ID: "5", Deleted: true},
 	}
 
-	res := MakeTree(comments, "+active")
+	res := MakeTree(comments, "+active", 0)
 	assert.Equal(t, "2", res.Nodes[0].Comment.ID)
-	t.Log(res.Nodes[0].Comment.ID, res.Nodes[0].ts)
+	t.Log(res.Nodes[0].Comment.ID, res.Nodes[0].tsModified)
 
-	res = MakeTree(comments, "-active")
-	t.Log(res.Nodes[0].Comment.ID, res.Nodes[0].ts)
+	res = MakeTree(comments, "-active", 0)
+	t.Log(res.Nodes[0].Comment.ID, res.Nodes[0].tsModified)
 	assert.Equal(t, "1", res.Nodes[0].Comment.ID)
 
-	res = MakeTree(comments, "+time")
-	t.Log(res.Nodes[0].Comment.ID, res.Nodes[0].ts)
-	res = MakeTree(comments, "-time")
+	res = MakeTree(comments, "+time", 0)
+	t.Log(res.Nodes[0].Comment.ID, res.Nodes[0].tsModified)
+	assert.Equal(t, "1", res.Nodes[0].Comment.ID)
+
+	res = MakeTree(comments, "-time", 0)
 	assert.Equal(t, "6", res.Nodes[0].Comment.ID)
 
-	res = MakeTree(comments, "score")
+	res = MakeTree(comments, "score", 0)
 	assert.Equal(t, "4", res.Nodes[0].Comment.ID)
 	assert.Equal(t, "3", res.Nodes[1].Comment.ID)
 	assert.Equal(t, "6", res.Nodes[2].Comment.ID)
 	assert.Equal(t, "1", res.Nodes[3].Comment.ID)
 
-	res = MakeTree(comments, "+score")
+	res = MakeTree(comments, "+score", 0)
 	assert.Equal(t, "4", res.Nodes[0].Comment.ID)
 
-	res = MakeTree(comments, "-score")
+	res = MakeTree(comments, "-score", 0)
 	assert.Equal(t, "2", res.Nodes[0].Comment.ID)
 	assert.Equal(t, "1", res.Nodes[1].Comment.ID)
 	assert.Equal(t, "3", res.Nodes[2].Comment.ID)
 	assert.Equal(t, "6", res.Nodes[3].Comment.ID)
+
+	res = MakeTree(comments, "undefined", 0)
+	t.Log(res.Nodes[0].Comment.ID, res.Nodes[0].tsModified)
+	assert.Equal(t, "1", res.Nodes[0].Comment.ID)
 }
 
 func BenchmarkTree(b *testing.B) {
@@ -102,7 +120,7 @@ func BenchmarkTree(b *testing.B) {
 	assert.Nil(b, err)
 
 	for i := 0; i < b.N; i++ {
-		res := MakeTree(comments, "time")
+		res := MakeTree(comments, "time", 0)
 		assert.NotNil(b, res)
 	}
 }
@@ -120,8 +138,9 @@ const expJSON = `{
           "picture": "",
           "admin": false
         },
-        "locator": {
-          "url": ""
+        "locator": { 
+          "site": "site",
+          "url": "url"
         },
         "score": 0,
         "votes": null,
@@ -140,7 +159,8 @@ const expJSON = `{
               "admin": false
             },
             "locator": {
-              "url": ""
+              "site": "site",
+          	  "url": "url"
             },
             "score": 0,
             "votes": null,
@@ -159,7 +179,8 @@ const expJSON = `{
               "admin": false
             },
             "locator": {
-              "url": ""
+              "site": "site",
+              "url": "url"
             },
             "score": 0,
             "votes": null,
@@ -178,7 +199,8 @@ const expJSON = `{
               "admin": false
             },
             "locator": {
-              "url": ""
+              "site": "site",
+              "url": "url"
             },
             "score": 0,
             "votes": null,
@@ -197,7 +219,8 @@ const expJSON = `{
                   "admin": false
                 },
                 "locator": {
-                  "url": ""
+                  "site": "site",
+                  "url": "url"
                 },
                 "score": 0,
                 "votes": null,
@@ -216,7 +239,8 @@ const expJSON = `{
                   "admin": false
                 },
                 "locator": {
-                  "url": ""
+                  "site": "site",
+                  "url": "url"
                 },
                 "score": 0,
                 "votes": null,
@@ -237,7 +261,8 @@ const expJSON = `{
               "admin": false
             },
             "locator": {
-              "url": ""
+              "site": "site",
+              "url": "url"
             },
             "score": 0,
             "votes": null,
@@ -258,7 +283,8 @@ const expJSON = `{
           "admin": false
         },
         "locator": {
-          "url": ""
+          "site": "site",
+          "url": "url"
         },
         "score": 0,
         "votes": null,
@@ -277,7 +303,8 @@ const expJSON = `{
               "admin": false
             },
             "locator": {
-              "url": ""
+              "site": "site",
+              "url": "url"
             },
             "score": 0,
             "votes": null,
@@ -296,7 +323,8 @@ const expJSON = `{
               "admin": false
             },
             "locator": {
-              "url": ""
+              "site": "site",
+              "url": "url"
             },
             "score": 0,
             "votes": null,
@@ -317,7 +345,8 @@ const expJSON = `{
           "admin": false
         },
         "locator": {
-          "url": ""
+          "site": "site",
+          "url": "url"
         },
         "score": 0,
         "votes": null,
@@ -336,13 +365,32 @@ const expJSON = `{
           "admin": false
         },
         "locator": {
-          "url": ""
+          "site": "site",
+          "url": "url"
         },
         "score": 0,
         "votes": null,
         "time": "2017-12-25T19:47:22Z"
       }
     }
-  ]
+  ],
+  "info": {
+	 "url": "url",
+	 "count": 17,
+     "first_time": "2017-12-25T19:46:01Z",
+     "last_time": "2017-12-25T19:47:22Z"
+   }
 }
 `
+
+func cleanFormatting(expected, actual string) (string, string) {
+	reSpaces := regexp.MustCompile(`[\s\p{Zs}]{2,}`)
+
+	expected = strings.Replace(expected, "\n", " ", -1)
+	expected = strings.Replace(expected, "\t", " ", -1)
+	expected = reSpaces.ReplaceAllString(expected, " ")
+
+	actual = strings.Replace(actual, "\n", " ", -1)
+	actual = reSpaces.ReplaceAllString(actual, " ")
+	return expected, actual
+}

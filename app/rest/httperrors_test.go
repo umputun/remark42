@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/umputun/remark/app/store"
 )
 
 func TestSendErrorJSON(t *testing.T) {
@@ -39,8 +40,21 @@ func TestErrorDetailsMsg(t *testing.T) {
 	callerFn := func() {
 		req, err := http.NewRequest("GET", "https://example.com/test?k1=v1&k2=v2", nil)
 		require.Nil(t, err)
+		req.RemoteAddr = "1.2.3.4"
 		msg := errDetailsMsg(req, 500, errors.New("error 500"), "error details 123456")
-		assert.Equal(t, "error details 123456 - error 500 - 500 -  - https://example.com/test?k1=v1&k2=v2 [caused by app/rest/httperrors_test.go:45]", msg)
+		assert.Equal(t, "error details 123456 - error 500 - 500 - 1.2.3.4 - https://example.com/test?k1=v1&k2=v2 [caused by app/rest/httperrors_test.go:47 rest.TestErrorDetailsMsg]", msg)
+	}
+	callerFn()
+}
+
+func TestErrorDetailsMsgWithUser(t *testing.T) {
+	callerFn := func() {
+		req, err := http.NewRequest("GET", "https://example.com/test?k1=v1&k2=v2", nil)
+		req.RemoteAddr = "127.0.0.1:1234"
+		req = SetUserInfo(req, store.User{Name: "test", ID: "id"})
+		require.Nil(t, err)
+		msg := errDetailsMsg(req, 500, errors.New("error 500"), "error details 123456")
+		assert.Equal(t, "error details 123456 - error 500 - 500 - test/id - 127.0.0.1 - https://example.com/test?k1=v1&k2=v2 [caused by app/rest/httperrors_test.go:59 rest.TestErrorDetailsMsgWithUser]", msg)
 	}
 	callerFn()
 }

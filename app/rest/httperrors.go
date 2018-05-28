@@ -23,18 +23,22 @@ func errDetailsMsg(r *http.Request, code int, err error, details string) string 
 	if user, e := GetUserInfo(r); e == nil {
 		uinfoStr = user.Name + "/" + user.ID + " - "
 	}
-
 	q := r.URL.String()
 	if qun, e := url.QueryUnescape(q); e == nil {
 		q = qun
 	}
 
 	srcFileInfo := ""
-	if _, file, line, ok := runtime.Caller(2); ok {
+	if pc, file, line, ok := runtime.Caller(2); ok {
 		fnameElems := strings.Split(file, "/")
-		srcFileInfo = fmt.Sprintf(" [caused by %s:%d]", strings.Join(fnameElems[len(fnameElems)-3:], "/"), line)
+		funcNameElems := strings.Split(runtime.FuncForPC(pc).Name(), "/")
+		srcFileInfo = fmt.Sprintf(" [caused by %s:%d %s]", strings.Join(fnameElems[len(fnameElems)-3:], "/"),
+			line, funcNameElems[len(funcNameElems)-1])
 	}
 
-	return fmt.Sprintf("%s - %v - %d - %s%s - %s%s",
-		details, err, code, uinfoStr, strings.Split(r.RemoteAddr, ":")[0], q, srcFileInfo)
+	remoteIP := r.RemoteAddr
+	if pos := strings.Index(remoteIP, ":"); pos >= 0 {
+		remoteIP = remoteIP[:pos]
+	}
+	return fmt.Sprintf("%s - %v - %d - %s%s - %s%s", details, err, code, uinfoStr, remoteIP, q, srcFileInfo)
 }

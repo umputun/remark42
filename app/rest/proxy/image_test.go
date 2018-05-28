@@ -94,6 +94,14 @@ func TestPicture_Convert(t *testing.T) {
 
 	r = img.Convert(`<img src="https://radio-t.com/img3.png"/> xyz <img src="http://images.pexels.com/67636/img4.jpeg">`)
 	assert.Equal(t, `<img src="https://radio-t.com/img3.png"/> xyz <img src="/img?src=aHR0cDovL2ltYWdlcy5wZXhlbHMuY29tLzY3NjM2L2ltZzQuanBlZw==">`, r)
+
+	img = Image{Enabled: true, RoutePath: "/img", RemarkURL: "http://example.com"}
+	r = img.Convert(`<img src="http://radio-t.com/img3.png"/> xyz`)
+	assert.Equal(t, `<img src="http://radio-t.com/img3.png"/> xyz`, r, "http:// remark url, no proxy")
+
+	img = Image{Enabled: false, RoutePath: "/img"}
+	r = img.Convert(`<img src="http://radio-t.com/img3.png"/> xyz`)
+	assert.Equal(t, `<img src="http://radio-t.com/img3.png"/> xyz`, r, "disabled, no proxy")
 }
 
 func imgHTTPServer(t *testing.T) *httptest.Server {

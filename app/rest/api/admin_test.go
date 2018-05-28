@@ -231,6 +231,50 @@ func TestAdmin_BlockedList(t *testing.T) {
 	assert.Equal(t, "user2", users[1].ID)
 }
 
+func TestAdmin_ReadOnly(t *testing.T) {
+	srv, ts := prep(t)
+	assert.NotNil(t, srv)
+	defer cleanup(ts)
+
+	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
+		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"}}
+	c2 := store.Comment{Text: "test test #2", ParentID: "p1", Locator: store.Locator{SiteID: "radio-t",
+		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user2", ID: "user2"}}
+
+	_, err := srv.DataService.Create(c1)
+	assert.Nil(t, err)
+	_, err = srv.DataService.Create(c2)
+	assert.Nil(t, err)
+
+	info, err := srv.DataService.Info(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}, 0)
+	assert.Nil(t, err)
+	assert.False(t, info.ReadOnly)
+
+	client := http.Client{}
+
+	// set post to read-only
+	req, err := http.NewRequest(http.MethodPut,
+		fmt.Sprintf("%s/api/v1/admin/readonly?site=radio-t&url=https://radio-t.com/blah&ro=1", ts.URL), nil)
+	assert.Nil(t, err)
+	withBasicAuth(req, "dev", "password")
+	_, err = client.Do(req)
+	require.Nil(t, err)
+	info, err = srv.DataService.Info(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}, 0)
+	assert.Nil(t, err)
+	assert.True(t, info.ReadOnly)
+
+	// resset post's read-only
+	req, err = http.NewRequest(http.MethodPut,
+		fmt.Sprintf("%s/api/v1/admin/readonly?site=radio-t&url=https://radio-t.com/blah&ro=0", ts.URL), nil)
+	assert.Nil(t, err)
+	withBasicAuth(req, "dev", "password")
+	_, err = client.Do(req)
+	require.Nil(t, err)
+	info, err = srv.DataService.Info(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}, 0)
+	assert.Nil(t, err)
+	assert.False(t, info.ReadOnly)
+}
+
 func TestAdmin_ExportStream(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)

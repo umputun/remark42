@@ -33,15 +33,15 @@ import (
 
 // Rest is a rest access server
 type Rest struct {
-	Version       string
-	DataService   service.DataStore
-	Authenticator auth.Authenticator
-	Exporter      migrator.Exporter
-	Cache         cache.LoadingCache
-	AvatarProxy   *proxy.Avatar
-	ImageProxy    *proxy.Image
-	WebRoot       string
-
+	Version         string
+	DataService     service.DataStore
+	Authenticator   auth.Authenticator
+	Exporter        migrator.Exporter
+	Cache           cache.LoadingCache
+	AvatarProxy     *proxy.Avatar
+	ImageProxy      *proxy.Image
+	WebRoot         string
+	ReadOnlyAge     int
 	ScoreThresholds struct {
 		Low      int
 		Critical int
@@ -142,6 +142,8 @@ func (s *Rest) routes() chi.Router {
 			ropen.Get("/list", s.listCtrl)
 			ropen.Get("/config", s.configCtrl)
 			ropen.Post("/preview", s.previewCommentCtrl)
+			ropen.Get("/info", s.infoCtrl)
+
 			ropen.Mount("/rss", s.rssRoutes())
 			ropen.Mount("/img", s.ImageProxy.Routes())
 		})
@@ -201,6 +203,13 @@ func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if s.ReadOnlyAge > 0 {
+		if info, e := s.DataService.Info(comment.Locator, s.ReadOnlyAge); e == nil && info.ReadOnly {
+			rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"), "old post, read-only")
+			return
+		}
+	}
+
 	id, err := s.DataService.Create(comment)
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't save comment")
@@ -245,6 +254,26 @@ func (s *Rest) previewCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	comment.Text = s.ImageProxy.Convert(comment.Text)
 	comment.Sanitize()
 	render.HTML(w, r, comment.Text)
+}
+
+// GET /info?site=siteID&url=post-url - get info about the post
+func (s *Rest) infoCtrl(w http.ResponseWriter, r *http.Request) {
+	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
+
+	data, err := s.Cache.Get(cache.Key(cache.URLKey(r), locator.SiteID, locator.URL), 4*time.Hour, func() ([]byte, error) {
+		info, e := s.DataService.Info(locator, s.ReadOnlyAge)
+		if e != nil {
+			return nil, e
+		}
+		return encodeJSONWithHTML(info)
+	})
+
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get post info")
+		return
+	}
+
+	renderJSONFromBytes(w, r, data)
 }
 
 // PUT /comment/{id}?site=siteID&url=post-url - update comment
@@ -318,7 +347,7 @@ func (s *Rest) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		var b []byte
 		switch r.URL.Query().Get("format") {
 		case "tree":
-			b, e = encodeJSONWithHTML(rest.MakeTree(maskedComments, sort))
+			b, e = encodeJSONWithHTML(rest.MakeTree(maskedComments, sort, s.ReadOnlyAge))
 		default:
 			b, e = encodeJSONWithHTML(maskedComments)
 		}
@@ -432,6 +461,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		Auth           []string `json:"auth_providers"`
 		LowScore       int      `json:"low_score"`
 		CriticalScore  int      `json:"critical_score"`
+		ReadOnlyAge    int      `json:"readonly_age"`
 	}
 
 	cnf := config{
@@ -441,6 +471,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		Admins:         s.Authenticator.Admins,
 		LowScore:       s.ScoreThresholds.Low,
 		CriticalScore:  s.ScoreThresholds.Critical,
+		ReadOnlyAge:    s.ReadOnlyAge,
 	}
 
 	cnf.Auth = []string{}
