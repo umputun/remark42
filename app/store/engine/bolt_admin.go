@@ -28,8 +28,8 @@ func (b *BoltDB) Delete(locator store.Locator, commentID string, mode store.Dele
 			return e
 		}
 
-		comment, err := b.load(postBkt, []byte(commentID))
-		if err != nil {
+		comment := store.Comment{}
+		if err := b.load(postBkt, []byte(commentID), &comment); err != nil {
 			return errors.Wrapf(err, "can't load key %s from bucket %s", commentID, locator.URL)
 		}
 		// set deleted status and clear fields
@@ -63,7 +63,7 @@ func (b *BoltDB) DeleteAll(siteID string) error {
 	}
 
 	// delete all buckets except blocked users
-	toDelete := []string{postsBucketName, lastBucketName, userBucketName, countsBucketName}
+	toDelete := []string{postsBucketName, lastBucketName, userBucketName, infoBucketName}
 
 	// delete top-level buckets
 	err = bdb.Update(func(tx *bolt.Tx) error {

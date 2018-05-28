@@ -81,6 +81,7 @@ func TestServer_CreateOldPost(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
+	assert.Nil(t, srv.DataService.DeleteAll("radio-t"))
 	// make too old comment
 	old = store.Comment{Text: "test test old", ParentID: "", Timestamp: time.Now().AddDate(0, 0, -15),
 		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}, User: store.User{ID: "u1"}}

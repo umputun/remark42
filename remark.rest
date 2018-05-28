@@ -102,7 +102,7 @@ GET {{host}}/api/v1/admin/blocked?site=remark
 DELETE {{host}}/api/v1/admin/comment/3665976683?site=remark&url=https://remark42.com/demo/
 
 ### get post info
-GET {{host}}/api/v1/info?site=remark&url=https://radio-t.com/blah1
+GET {{host}}/api/v1/info?site=remark&url=https://remark42.com/demo/
 
 ### post rss
 GET {{host}}/api/v1/rss/post?site=remark&url=https://remark42.com/demo/

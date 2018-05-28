@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"strconv"
 	"strings"
 	"time"
 
@@ -33,7 +32,7 @@ const (
 	lastBucketName   = "last"
 	userBucketName   = "users"
 	blocksBucketName = "block"
-	countsBucketName = "counts"
+	infoBucketName   = "info"
 
 	// limits
 	lastLimit = 1000
@@ -60,7 +59,7 @@ func NewBoltDB(options bolt.Options, sites ...BoltSite) (*BoltDB, error) {
 		}
 
 		// make top-level buckets
-		topBuckets := []string{postsBucketName, lastBucketName, userBucketName, blocksBucketName, countsBucketName}
+		topBuckets := []string{postsBucketName, lastBucketName, userBucketName, blocksBucketName, infoBucketName}
 		err = db.Update(func(tx *bolt.Tx) error {
 			for _, bktName := range topBuckets {
 				if _, e := tx.CreateBucketIfNotExists([]byte(bktName)); e != nil {
@@ -123,11 +122,10 @@ func (b *BoltDB) Create(comment store.Comment) (commentID string, err error) {
 			return errors.Wrapf(e, "failed to put user comment %s for %s", comment.ID, comment.User.ID)
 		}
 
-		// increment comments count for post url
-		if _, e = b.count(tx, comment.Locator.URL, 1); e != nil {
-			return errors.Wrapf(e, "failed to increment count for %s", comment.Locator)
+		// set info with countfor post url
+		if _, e = b.setInfo(tx, comment); e != nil {
+			return errors.Wrapf(e, "failed to set info for %s", comment.Locator)
 		}
-
 		return nil
 	})
 
@@ -189,8 +187,8 @@ func (b *BoltDB) Last(siteID string, max int) (comments []store.Comment, err err
 				return e
 			}
 
-			comment, e := b.load(postBkt, []byte(commentID))
-			if e != nil {
+			comment := store.Comment{}
+			if e := b.load(postBkt, []byte(commentID), &comment); e != nil {
 				log.Printf("[WARN] can't load comment for %s from store %s", commentID, url)
 				continue
 			}
@@ -268,29 +266,17 @@ func (b *BoltDB) Info(locator store.Locator, readOnlyAge int) (store.PostInfo, e
 		return store.PostInfo{}, err
 	}
 
-	comments, err := b.Find(locator, "+time")
-	if err != nil {
-		return store.PostInfo{}, err
-	}
-
-	postInfo := store.PostInfo{
-		URL:     locator.URL,
-		FirstTS: comments[0].Timestamp,
-		LastTS:  comments[len(comments)-1].Timestamp,
-	}
-	postInfo.ReadOnly = readOnlyAge > 0 && !postInfo.FirstTS.IsZero() &&
-		postInfo.FirstTS.AddDate(0, 0, readOnlyAge).Before(time.Now())
-
+	info := store.PostInfo{}
 	err = bdb.View(func(tx *bolt.Tx) error {
-		count, e := b.count(tx, locator.URL, 0)
-		if e != nil {
-			return e
+		infoBkt := tx.Bucket([]byte(infoBucketName))
+		if e := b.load(infoBkt, []byte(locator.URL), &info); e != nil {
+			return errors.Wrapf(e, "can't load info for %s", locator.URL)
 		}
-		postInfo.Count = count
 		return nil
 	})
 
-	return postInfo, err
+	info.ReadOnly = readOnlyAge > 0 && !info.FirstTS.IsZero() && info.FirstTS.AddDate(0, 0, readOnlyAge).Before(time.Now())
+	return info, err
 }
 
 // User extracts all comments for given site and given userID
@@ -359,8 +345,7 @@ func (b *BoltDB) Get(locator store.Locator, commentID string) (comment store.Com
 		if e != nil {
 			return e
 		}
-		comment, e = b.load(bucket, []byte(commentID))
-		return e
+		return b.load(bucket, []byte(commentID), &comment)
 	})
 	return comment, err
 }
@@ -425,54 +410,66 @@ func (b *BoltDB) getUserBucket(tx *bolt.Tx, userID string) (*bolt.Bucket, error)
 	return userIDBkt, nil
 }
 
-// save comment to key for bucket. Should run in update tx
-func (b *BoltDB) save(bkt *bolt.Bucket, key []byte, comment store.Comment) (err error) {
-	jdata, jerr := json.Marshal(&comment)
+// save marshaled value to key for bucket. Should run in update tx
+func (b *BoltDB) save(bkt *bolt.Bucket, key []byte, value interface{}) (err error) {
+	if value == nil {
+		return errors.Errorf("can't save nil value for %s", key)
+	}
+	jdata, jerr := json.Marshal(value)
 	if jerr != nil {
 		return errors.Wrap(jerr, "can't marshal comment")
 	}
-	if err = bkt.Put([]byte(comment.ID), jdata); err != nil {
+	if err = bkt.Put(key, jdata); err != nil {
 		return errors.Wrapf(err, "failed to save key %s", key)
 	}
 	return nil
 }
 
-// load comment by key from bucket. Should run in view tx
-func (b *BoltDB) load(bkt *bolt.Bucket, key []byte) (comment store.Comment, err error) {
-	commentVal := bkt.Get(key)
-	if commentVal == nil {
-		return comment, errors.Errorf("no comments for %s", key)
+// load and unmarshal json value by key from bucket. Should run in view tx
+func (b *BoltDB) load(bkt *bolt.Bucket, key []byte, res interface{}) error {
+	value := bkt.Get(key)
+	if value == nil {
+		return errors.Errorf("no value for %s", key)
 	}
 
-	if err = json.Unmarshal(commentVal, &comment); err != nil {
-		return comment, errors.Wrap(err, "failed to unmarshal")
+	if err := json.Unmarshal(value, &res); err != nil {
+		return errors.Wrap(err, "failed to unmarshal")
 	}
-	return comment, nil
+	return nil
 }
 
 // count adds val to counts key postURL. val can be negative to subtract. if val 0 can be used as accessor
 // it uses separate counts bucket because boltdb Stat call is very slow
 func (b *BoltDB) count(tx *bolt.Tx, postURL string, val int) (int, error) {
 
-	btoi := func(v []byte) int {
-		res, _ := strconv.Atoi(string(v))
-		return res
-	}
+	infoBkt := tx.Bucket([]byte(infoBucketName))
 
-	itob := func(v int) []byte {
-		return []byte(strconv.Itoa(v))
-	}
-
-	countBkt := tx.Bucket([]byte(countsBucketName))
-	countVal := countBkt.Get([]byte(postURL))
-	if countVal == nil {
-		countVal = itob(0)
+	info := store.PostInfo{}
+	if err := b.load(infoBkt, []byte(postURL), &info); err != nil {
+		info = store.PostInfo{}
 	}
 	if val == 0 { // get current count, don't update
-		return btoi(countVal), nil
+		return info.Count, nil
 	}
-	updatedCount := btoi(countVal) + val
-	return updatedCount, countBkt.Put([]byte(postURL), itob(updatedCount))
+	info.Count += val
+
+	return info.Count, b.save(infoBkt, []byte(postURL), &info)
+}
+
+func (b *BoltDB) setInfo(tx *bolt.Tx, comment store.Comment) (store.PostInfo, error) {
+	infoBkt := tx.Bucket([]byte(infoBucketName))
+	info := store.PostInfo{}
+	if err := b.load(infoBkt, []byte(comment.Locator.URL), &info); err != nil {
+		info = store.PostInfo{
+			Count:   0,
+			URL:     comment.Locator.URL,
+			FirstTS: comment.Timestamp,
+			LastTS:  comment.Timestamp,
+		}
+	}
+	info.Count++
+	info.LastTS = comment.Timestamp
+	return info, b.save(infoBkt, []byte(comment.Locator.URL), &info)
 }
 
 func (b *BoltDB) db(siteID string) (*bolt.DB, error) {
