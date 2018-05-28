@@ -66,7 +66,7 @@ var revision = "unknown"
 type Application struct {
 	Opts
 	srv        *api.Rest
-	importer   *api.Import
+	migrator   *api.Migrator
 	exporter   migrator.Exporter
 	terminated chan struct{}
 }
@@ -127,11 +127,12 @@ func New(opts Opts) (*Application, error) {
 
 	exporter := &migrator.Remark{DataStore: &dataService}
 
-	importer := &api.Import{
+	migrator := &api.Migrator{
 		Version:        revision,
 		Cache:          cache,
 		NativeImporter: &migrator.Remark{DataStore: &dataService},
 		DisqusImporter: &migrator.Disqus{DataStore: &dataService},
+		NativeExported: &migrator.Remark{DataStore: &dataService},
 		SecretKey:      opts.SecretKey,
 	}
 
@@ -153,7 +154,7 @@ func New(opts Opts) (*Application, error) {
 	}
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = opts.LowScore, opts.CriticalScore
 	tch := make(chan struct{})
-	return &Application{srv: srv, importer: importer, exporter: exporter, Opts: opts, terminated: tch}, nil
+	return &Application{srv: srv, migrator: migrator, exporter: exporter, Opts: opts, terminated: tch}, nil
 }
 
 // Run all application objects
@@ -166,10 +167,10 @@ func (a *Application) Run(ctx context.Context) error {
 		// shutdown on context cancellation
 		<-ctx.Done()
 		a.srv.Shutdown()
-		a.importer.Shutdown()
+		a.migrator.Shutdown()
 	}()
 	a.activateBackup(ctx) // runs in goroutine for each site
-	go a.importer.Run(a.Port + 1)
+	go a.migrator.Run(a.Port + 1)
 	a.srv.Run(a.Port)
 	close(a.terminated)
 	return nil
