@@ -203,7 +203,7 @@ func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if info, err := s.DataService.Info(comment.Locator, s.ReadOnlyAge); err == nil && info.ReadOnly {
+	if info, e := s.DataService.Info(comment.Locator, s.ReadOnlyAge); e == nil && info.ReadOnly {
 		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"), "old post, read-only")
 		return
 	}
