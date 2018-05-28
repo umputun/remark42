@@ -64,7 +64,7 @@ func (s *Import) Shutdown() {
 func (s *Import) routes() chi.Router {
 	router := chi.NewRouter()
 	router.Use(middleware.RealIP, Recoverer)
-	router.Use(middleware.Throttle(1000), middleware.Timeout(60*time.Second))
+	router.Use(middleware.Throttle(1000), middleware.Timeout(15*time.Minute))
 	router.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
 	router.Use(AppInfo("remark42-importer", s.Version), Ping, Logger(LogAll))
 	router.Post("/api/v1/admin/import", s.importCtrl)
