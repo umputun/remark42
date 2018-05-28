@@ -128,21 +128,26 @@ func TestBoltDB_List(t *testing.T) {
 	_, err := b.Create(comment)
 	assert.Nil(t, err)
 
+	ts := func(sec int) time.Time { return time.Date(2017, 12, 20, 15, 18, sec, 0, time.Local) }
+
 	res, err := b.List("radio-t", 0, 0)
 	assert.Nil(t, err)
-	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/2", Count: 1}, {URL: "https://radio-t.com", Count: 2}}, res)
+	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/2", Count: 1, FirstTS: ts(22), LastTS: ts(22)},
+		{URL: "https://radio-t.com", Count: 2, FirstTS: ts(22), LastTS: ts(23)}},
+		res)
 
 	res, err = b.List("radio-t", -1, -1)
 	assert.Nil(t, err)
-	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/2", Count: 1}, {URL: "https://radio-t.com", Count: 2}}, res)
+	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/2", Count: 1, FirstTS: ts(22), LastTS: ts(22)},
+		{URL: "https://radio-t.com", Count: 2, FirstTS: ts(22), LastTS: ts(23)}}, res)
 
 	res, err = b.List("radio-t", 1, 0)
 	assert.Nil(t, err)
-	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/2", Count: 1}}, res)
+	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/2", Count: 1, FirstTS: ts(22), LastTS: ts(22)}}, res)
 
 	res, err = b.List("radio-t", 1, 1)
 	assert.Nil(t, err)
-	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com", Count: 2}}, res)
+	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com", Count: 2, FirstTS: ts(22), LastTS: ts(23)}}, res)
 
 	res, err = b.List("bad", 1, 1)
 	assert.EqualError(t, err, `site "bad" not found`)

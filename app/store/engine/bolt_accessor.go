@@ -243,12 +243,12 @@ func (b BoltDB) List(siteID string, limit, skip int) (list []store.PostInfo, err
 				continue
 			}
 			postURL := string(k)
-			count, e := b.count(tx, postURL, 0)
-			if e != nil {
-				return e
+			infoBkt := tx.Bucket([]byte(infoBucketName))
+			info := store.PostInfo{}
+			if e := b.load(infoBkt, []byte(postURL), &info); e != nil {
+				return errors.Wrapf(e, "can't load info for %s", postURL)
 			}
-
-			list = append(list, store.PostInfo{URL: postURL, Count: count})
+			list = append(list, info)
 			if limit > 0 && len(list) >= limit {
 				break
 			}
