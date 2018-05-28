@@ -29,7 +29,7 @@ import (
 var testDb = "/tmp/test-remark.db"
 var testHTML = "/tmp/test-remark.html"
 
-func TestServer_Ping(t *testing.T) {
+func TestRest_Ping(t *testing.T) {
 	srv, ts := prep(t)
 	require.NotNil(t, srv)
 	defer cleanup(ts)
@@ -39,7 +39,7 @@ func TestServer_Ping(t *testing.T) {
 	assert.Equal(t, 200, code)
 }
 
-func TestServer_Create(t *testing.T) {
+func TestRest_Create(t *testing.T) {
 	srv, ts := prep(t)
 	require.NotNil(t, srv)
 	defer cleanup(ts)
@@ -60,7 +60,7 @@ func TestServer_Create(t *testing.T) {
 	assert.True(t, len(c["id"].(string)) > 8)
 }
 
-func TestServer_CreateOldPost(t *testing.T) {
+func TestRest_CreateOldPost(t *testing.T) {
 	srv, ts := prep(t)
 	require.NotNil(t, srv)
 	defer cleanup(ts)
@@ -94,7 +94,7 @@ func TestServer_CreateOldPost(t *testing.T) {
 	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 }
 
-func TestServer_CreateTooBig(t *testing.T) {
+func TestRest_CreateTooBig(t *testing.T) {
 	srv, ts := prep(t)
 	require.NotNil(t, srv)
 	defer cleanup(ts)
@@ -114,7 +114,7 @@ func TestServer_CreateTooBig(t *testing.T) {
 	assert.Equal(t, "invalid comment", c["details"])
 }
 
-func TestServer_Preview(t *testing.T) {
+func TestRest_Preview(t *testing.T) {
 	srv, ts := prep(t)
 	require.NotNil(t, srv)
 	defer cleanup(ts)
@@ -127,7 +127,7 @@ func TestServer_Preview(t *testing.T) {
 	assert.Equal(t, "<p>test 123</p>\n", string(b))
 }
 
-func TestServer_PreviewWithMD(t *testing.T) {
+func TestRest_PreviewWithMD(t *testing.T) {
 	srv, ts := prep(t)
 	require.NotNil(t, srv)
 	defer cleanup(ts)
@@ -136,7 +136,7 @@ func TestServer_PreviewWithMD(t *testing.T) {
 # h1
 
 BKT
-func TestServer_Preview(t *testing.T) {
+func TestRest_Preview(t *testing.T) {
 srv, ts := prep(t)
   require.NotNil(t, srv)
 }
@@ -152,10 +152,10 @@ BKT
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	b, err := ioutil.ReadAll(resp.Body)
 	assert.Nil(t, err)
-	assert.Equal(t, "<h1>h1</h1>\n\n<pre><code>func TestServer_Preview(t *testing.T) {\nsrv, ts := prep(t)\n  require.NotNil(t, srv)\n}\n</code></pre>\n", string(b))
+	assert.Equal(t, "<h1>h1</h1>\n\n<pre><code>func TestRest_Preview(t *testing.T) {\nsrv, ts := prep(t)\n  require.NotNil(t, srv)\n}\n</code></pre>\n", string(b))
 }
 
-func TestServer_CreateAndGet(t *testing.T) {
+func TestRest_CreateAndGet(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
 	defer cleanup(ts)
@@ -187,7 +187,7 @@ func TestServer_CreateAndGet(t *testing.T) {
 	t.Logf("%+v", comment)
 }
 
-func TestServer_Find(t *testing.T) {
+func TestRest_Find(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
 	defer cleanup(ts)
@@ -237,7 +237,7 @@ func TestServer_Find(t *testing.T) {
 	assert.False(t, tree.Info.ReadOnly, "post is fresh")
 }
 
-func TestServer_FindAge(t *testing.T) {
+func TestRest_FindAge(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
 	defer cleanup(ts)
@@ -269,7 +269,7 @@ func TestServer_FindAge(t *testing.T) {
 	assert.True(t, tree.Info.ReadOnly, "post is old")
 }
 
-func TestServer_Update(t *testing.T) {
+func TestRest_Update(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
 	defer cleanup(ts)
@@ -308,7 +308,7 @@ func TestServer_Update(t *testing.T) {
 	assert.Equal(t, c2, c3, "same as response from update")
 }
 
-func TestServer_Last(t *testing.T) {
+func TestRest_Last(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
 	defer cleanup(ts)
@@ -353,7 +353,7 @@ func TestServer_Last(t *testing.T) {
 	assert.Equal(t, 2, len(comments), "should have 2 comments")
 }
 
-func TestServer_FindUserComments(t *testing.T) {
+func TestRest_FindUserComments(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
 	defer cleanup(ts)
@@ -385,7 +385,7 @@ func TestServer_FindUserComments(t *testing.T) {
 	assert.Equal(t, 3, resp.Count, "should have 3 count")
 }
 
-func TestServer_UserInfo(t *testing.T) {
+func TestRest_UserInfo(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
 	defer cleanup(ts)
@@ -399,7 +399,7 @@ func TestServer_UserInfo(t *testing.T) {
 		Picture: "/api/v1/avatar/remark.image", Admin: true, Blocked: false, IP: ""}, user)
 }
 
-func TestServer_Vote(t *testing.T) {
+func TestRest_Vote(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
 	defer cleanup(ts)
@@ -443,7 +443,7 @@ func TestServer_Vote(t *testing.T) {
 	assert.Equal(t, map[string]bool{}, cr.Votes)
 }
 
-func TestServer_Count(t *testing.T) {
+func TestRest_Count(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
 	defer cleanup(ts)
@@ -473,7 +473,7 @@ func TestServer_Count(t *testing.T) {
 	assert.Equal(t, 2.0, j["count"])
 }
 
-func TestServer_Counts(t *testing.T) {
+func TestRest_Counts(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
 	defer cleanup(ts)
@@ -503,7 +503,7 @@ func TestServer_Counts(t *testing.T) {
 		{URL: "https://radio-t.com/blah2", Count: 2}}), j)
 }
 
-func TestServer_List(t *testing.T) {
+func TestRest_List(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
 	defer cleanup(ts)
@@ -530,7 +530,7 @@ func TestServer_List(t *testing.T) {
 	assert.Equal(t, 3, pi[1].Count)
 }
 
-func TestServer_Config(t *testing.T) {
+func TestRest_Config(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
 	defer cleanup(ts)
@@ -549,7 +549,7 @@ func TestServer_Config(t *testing.T) {
 	t.Logf("%+v", j)
 }
 
-func TestServer_Info(t *testing.T) {
+func TestRest_Info(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
 	defer cleanup(ts)
@@ -585,7 +585,7 @@ func TestServer_Info(t *testing.T) {
 	assert.Equal(t, 400, code)
 }
 
-func TestServer_FileServer(t *testing.T) {
+func TestRest_FileServer(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
 	defer cleanup(ts)
@@ -595,7 +595,7 @@ func TestServer_FileServer(t *testing.T) {
 	assert.Equal(t, "some html", body)
 }
 
-func TestServer_Shutdown(t *testing.T) {
+func TestRest_Shutdown(t *testing.T) {
 	srv := Rest{Authenticator: auth.Authenticator{},
 		AvatarProxy: &proxy.Avatar{StorePath: "/tmp", RoutePath: "/api/v1/avatar"}, ImageProxy: &proxy.Image{}}
 	go func() {

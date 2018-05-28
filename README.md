@@ -33,13 +33,14 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 | Command line      | Environment          | Default                | Multi | Description                             |
 | ----------------- | -------------------- | ---------------------- | ----- | --------------------------------------- |
 | --url             | REMARK_URL           | `https://remark42.com` | no    | url to remark server                    |
-| --bolt            | BOLTDB_PATH          | `/tmp`                 | no    | path to data directory                  |
+| --bolt            | BOLTDB_PATH          | `./var`                | no    | path to data directory                  |
 | --site            | SITE                 | `remark`               | yes   | site name(s)                            |
 | --admin           | ADMIN                |                        | yes   | admin names (list of user ids)          |
-| --backup          | BACKUP_PATH          | `/tmp`                 | no    | backups location                        |
+| --backup          | BACKUP_PATH          | `./var/backup`         | no    | backups location                        |
 | --max-back        | MAX_BACKUP_FILES     | `10`                   | no    | max backup files to keep                |
 | --max-cache-items | MAX_CACHE_ITEMS      | `1000`                 | no    | max number of cached items, 0-unlimited |
 | --max-cache-value | MAX_CACHE_VALUE      | `65536`                | no    | max size of cached value, o-unlimited   |
+| --avatars         | AVATAR_STORE         | `./var/avatars`        | no    | avatars location                        |
 | --secret          | SECRET               |                        | no    | secret key, required                    |
 | --max-comment     | MAX_COMMENT_SIZE     | 2048                   | no    | comment's size limit                    |
 | --google-cid      | REMARK_GOOGLE_CID    |                        | no    | Google OAuth client ID                  |
@@ -103,6 +104,26 @@ _instructions for google oauth2 setup borrowed from [oauth2_proxy](https://githu
 1.  Disqus provides an export of all comments on your site in a g-zipped file. This is found in your Moderation panel at Disqus Admin > Setup > Export. The export will be sent into a queue and then emailed to the address associated with your account once it's ready. Direct link to export will be something like `https://<siteud>.disqus.com/admin/discussions/export/`. See [importing-exporting](https://help.disqus.com/customer/portal/articles/1104797-importing-exporting) for more details.
 2.  Move this file to your remark42 host within `.var` and unzip, i.e. `gunzip <disqus-export-name>.xml.gz`.
 3.  Run import command - `docker-compose exec remark /srv/import-disqus.sh <disqus-export-name>.xml <your site id>`
+
+#### Backup and restore
+
+##### Automatic backups
+Remark42 by default makes daily backup files under `${BACKUP_PATH}` (default `./var/backup`). Backups kept up to `${MAX_BACKUP_FILES}` (default 10). Each backup file contains exported and gzipped content, i.e., all comments. At any point, the user can restore such backup and revert all comments to the desirable state. Note: restore procedure cleans the current data store and replaces all comments with comments from the backup file.
+
+For safety and security reasons restore functionality not exposed outside of your server by default. The recommended way to restore from the backup is to use provided `scripts/restore-backup.sh`. It can run inside the container:
+
+`docker-compose exec remark /srv/restore-backup.sh <backup-filename.gz> <your site id>`
+
+##### Schema migration
+
+One special case for backup/restore is schema migration. Some versions or remark42 may extend or change the schema 
+and for such upgrades migration required. Provided migration script `scripts/migrate-data.sh` makes a fresh backup and then loads it back to your remark42 instance.
+
+`docker-compose exec remark /srv/migrate-data.sh <your site id>`
+
+##### Manual backup
+
+
 
 
 #### Admin users
