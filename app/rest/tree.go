@@ -22,7 +22,7 @@ type Node struct {
 	tsCreated  time.Time
 }
 
-// recurData wraps all fileds used in recursive processing as intermediate results
+// recurData wraps all fields used in recursive processing as intermediate results
 type recurData struct {
 	tsModified time.Time
 	tsCreated  time.Time

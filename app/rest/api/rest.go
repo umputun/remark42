@@ -347,7 +347,11 @@ func (s *Rest) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		var b []byte
 		switch r.URL.Query().Get("format") {
 		case "tree":
-			b, e = encodeJSONWithHTML(rest.MakeTree(maskedComments, sort, s.ReadOnlyAge))
+			tree := rest.MakeTree(maskedComments, sort, s.ReadOnlyAge)
+			if s.DataService.IsReadOnly(locator) {
+				tree.Info.ReadOnly = true
+			}
+			b, e = encodeJSONWithHTML(tree)
 		default:
 			b, e = encodeJSONWithHTML(maskedComments)
 		}

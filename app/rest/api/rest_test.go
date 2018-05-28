@@ -269,6 +269,48 @@ func TestRest_FindAge(t *testing.T) {
 	assert.True(t, tree.Info.ReadOnly, "post is old")
 }
 
+func TestRest_FindReadOnly(t *testing.T) {
+	srv, ts := prep(t)
+	assert.NotNil(t, srv)
+	defer cleanup(ts)
+
+	c1 := store.Comment{Text: "test test #1", ParentID: "", Timestamp: time.Now().AddDate(0, 0, -1),
+		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}, User: store.User{ID: "u1"}}
+	_, err := srv.DataService.Create(c1)
+
+	require.Nil(t, err)
+
+	c2 := store.Comment{Text: "test test #2", ParentID: "", Timestamp: time.Now().AddDate(0, 0, -2),
+		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah2"}, User: store.User{ID: "u1"}}
+	_, err = srv.DataService.Create(c2)
+	require.Nil(t, err)
+
+	// set post to read-only
+	client := http.Client{}
+	req, err := http.NewRequest(http.MethodPut,
+		fmt.Sprintf("%s/api/v1/admin/readonly?site=radio-t&url=https://radio-t.com/blah1&ro=1", ts.URL), nil)
+	assert.Nil(t, err)
+	withBasicAuth(req, "dev", "password")
+	_, err = client.Do(req)
+	require.Nil(t, err)
+
+	tree := rest.Tree{}
+	res, code := get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah1&format=tree")
+	assert.Equal(t, 200, code)
+	err = json.Unmarshal([]byte(res), &tree)
+	require.Nil(t, err)
+	assert.Equal(t, "https://radio-t.com/blah1", tree.Info.URL)
+	assert.True(t, tree.Info.ReadOnly, "post is ro")
+
+	tree = rest.Tree{}
+	res, code = get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah2&format=tree")
+	assert.Equal(t, 200, code)
+	err = json.Unmarshal([]byte(res), &tree)
+	require.Nil(t, err)
+	assert.Equal(t, "https://radio-t.com/blah2", tree.Info.URL)
+	assert.False(t, tree.Info.ReadOnly, "post is writable")
+}
+
 func TestRest_Update(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
