@@ -350,6 +350,38 @@ func TestRest_Update(t *testing.T) {
 	assert.Equal(t, c2, c3, "same as response from update")
 }
 
+func TestRest_UpdateNotOwner(t *testing.T) {
+	srv, ts := prep(t)
+	assert.NotNil(t, srv)
+	defer cleanup(ts)
+
+	c1 := store.Comment{Text: "test test #1", ParentID: "p1",
+		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}, User: store.User{ID: "xyz"}}
+	id1, err := srv.DataService.Create(c1)
+	assert.Nil(t, err)
+
+	client := http.Client{}
+	req, err := http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/"+id1+
+		"?site=radio-t&url=https://radio-t.com/blah1", strings.NewReader(`{"text":"updated text", "summary":"my edit"}`))
+	assert.Nil(t, err)
+	req = withBasicAuth(req, "dev", "password")
+	b, err := client.Do(req)
+	assert.Nil(t, err)
+	body, err := ioutil.ReadAll(b.Body)
+	assert.Nil(t, err)
+	assert.Equal(t, 403, b.StatusCode, string(body), "update from non-owner")
+	assert.Equal(t, `{"details":"can not edit comments for other users","error":"rejected"}`+"\n", string(body))
+
+	client = http.Client{}
+	req, err = http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/"+id1+
+		"?site=radio-t&url=https://radio-t.com/blah1", strings.NewReader(`ERRR "text":"updated text", "summary":"my"}`))
+	assert.Nil(t, err)
+	req = withBasicAuth(req, "dev", "password")
+	b, err = client.Do(req)
+	assert.Nil(t, err)
+	assert.Equal(t, 400, b.StatusCode, string(body), "update is not json")
+}
+
 func TestRest_Last(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
