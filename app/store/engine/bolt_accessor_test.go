@@ -33,6 +33,30 @@ func TestBoltDB_CreateAndFind(t *testing.T) {
 	assert.EqualError(t, err, `site "radio-t-bad" not found`)
 }
 
+func TestBoltDB_CreateReadOnly(t *testing.T) {
+	defer os.Remove(testDb)
+	var b = prep(t)
+
+	comment := store.Comment{
+		ID:        "id-ro",
+		Text:      `some text, <a href="http://radio-t.com">link</a>`,
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
+		Locator:   store.Locator{URL: "https://radio-t.com/ro", SiteID: "radio-t"},
+		User:      store.User{ID: "user1", Name: "user name"},
+	}
+	err := b.SetReadOnly(comment.Locator, true)
+	require.Nil(t, err)
+
+	_, err = b.Create(comment)
+	assert.NotNil(t, err)
+	assert.Equal(t, "post https://radio-t.com/ro is read-only", err.Error())
+
+	err = b.SetReadOnly(comment.Locator, false)
+	require.Nil(t, err)
+	_, err = b.Create(comment)
+	assert.Nil(t, err)
+}
+
 func TestBoltDB_Get(t *testing.T) {
 	defer os.Remove(testDb)
 	b := prep(t)
@@ -187,6 +211,13 @@ func TestBoltDB_Info(t *testing.T) {
 
 	_, err = b.Info(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t-error"}, 0)
 	require.NotNil(t, err)
+
+	err = b.SetReadOnly(store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"}, true)
+	require.Nil(t, err)
+	r, err = b.Info(store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"}, 0)
+	require.Nil(t, err)
+	assert.Equal(t, store.PostInfo{URL: "https://radio-t.com/2", Count: 1, FirstTS: ts(24), LastTS: ts(24), ReadOnly: true}, r)
+
 }
 
 func TestBoltDB_GetForUser(t *testing.T) {

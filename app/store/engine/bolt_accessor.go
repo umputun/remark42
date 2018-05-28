@@ -22,17 +22,19 @@ import (
 //    is a nested bucket named userID with kv as ts:reference
 //  - blocking info sits in "block" bucket. Key is userID, value - ts
 //  - counts per post to keep number of comments. Key is post url, value - count
+//  - readonly per post to keep status of manually set RO posts. Key is post url, value - ts
 type BoltDB struct {
 	dbs map[string]*bolt.DB
 }
 
 const (
 	// top level buckets
-	postsBucketName  = "posts"
-	lastBucketName   = "last"
-	userBucketName   = "users"
-	blocksBucketName = "block"
-	infoBucketName   = "info"
+	postsBucketName    = "posts"
+	lastBucketName     = "last"
+	userBucketName     = "users"
+	blocksBucketName   = "block"
+	infoBucketName     = "info"
+	readonlyBucketName = "readonly"
 
 	// limits
 	lastLimit = 1000
@@ -59,7 +61,8 @@ func NewBoltDB(options bolt.Options, sites ...BoltSite) (*BoltDB, error) {
 		}
 
 		// make top-level buckets
-		topBuckets := []string{postsBucketName, lastBucketName, userBucketName, blocksBucketName, infoBucketName}
+		topBuckets := []string{postsBucketName, lastBucketName, userBucketName, blocksBucketName,
+			infoBucketName, readonlyBucketName}
 		err = db.Update(func(tx *bolt.Tx) error {
 			for _, bktName := range topBuckets {
 				if _, e := tx.CreateBucketIfNotExists([]byte(bktName)); e != nil {
@@ -85,6 +88,11 @@ func (b *BoltDB) Create(comment store.Comment) (commentID string, err error) {
 	if err != nil {
 		return "", err
 	}
+
+	if b.IsReadOnly(comment.Locator) {
+		return "", errors.Errorf("post %s is read-only", comment.Locator.URL)
+	}
+
 	err = bdb.Update(func(tx *bolt.Tx) error {
 
 		postBkt, e := b.makePostBucket(tx, comment.Locator.URL)
@@ -275,7 +283,11 @@ func (b *BoltDB) Info(locator store.Locator, readOnlyAge int) (store.PostInfo, e
 		return nil
 	})
 
+	// set read-only from age and manual bucket
 	info.ReadOnly = readOnlyAge > 0 && !info.FirstTS.IsZero() && info.FirstTS.AddDate(0, 0, readOnlyAge).Before(time.Now())
+	if b.IsReadOnly(locator) {
+		info.ReadOnly = true
+	}
 	return info, err
 }
 

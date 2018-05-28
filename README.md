@@ -340,8 +340,9 @@ Sort can be `time`, `active` or `score`. Supported sort order with prefix -/+, i
 * `GET /api/v1/list?site=site-id&limit=5&skip=2` - list commented posts, returns array or `PostInfo`, limit=0 will return all posts
   ```go
   type PostInfo struct {
-      URL   string `json:"url"`
-      Count int    `json:"count"`
+      URL   string      `json:"url"`
+      Count int         `json:"count"`
+      ReadOnly bool     `json:"read_only,omitempty"`
       FirstTS time.Time `json:"first_time,omitempty"`
       LastTS  time.Time `json:"last_time,omitempty"`
   }
@@ -383,6 +384,7 @@ Sort can be `time`, `active` or `score`. Supported sort order with prefix -/+, i
 * `POST /api/v1/admin/import?site=side-id` - import comments from the backup.
 * `PUT /api/v1/admin/pin/{id}?site=site-id&url=post-url&pin=1` - pin or unpin comment.
 * `DELETE /api/v1/admin/user/{userid}?site=site-id&block=1` - delete all user's comments.
+* `PUT /api/v1/admin/readonly?site=site-id&url=post-url&ro=1` - set read-only status
 
 _all admin calls require auth and admin privilege_
 

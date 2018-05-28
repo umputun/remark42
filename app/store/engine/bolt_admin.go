@@ -217,3 +217,42 @@ func (b *BoltDB) Blocked(siteID string) (users []store.BlockedUser, err error) {
 
 	return users, err
 }
+
+// SetReadOnly makes post read-only or reset the ro flag
+func (b *BoltDB) SetReadOnly(locator store.Locator, status bool) error {
+	bdb, err := b.db(locator.SiteID)
+	if err != nil {
+		return err
+	}
+
+	return bdb.Update(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(readonlyBucketName))
+		switch status {
+		case true:
+			if e := bucket.Put([]byte(locator.URL), []byte(time.Now().Format(tsNano))); e != nil {
+				return errors.Wrapf(e, "failed to set ro for %s to %s", locator.URL, status)
+			}
+		case false:
+			if e := bucket.Delete([]byte(locator.URL)); e != nil {
+				return errors.Wrapf(e, "failed to clean ro for %s", locator.URL)
+			}
+		}
+		return nil
+	})
+}
+
+// IsReadOnly checks if user blocked
+func (b *BoltDB) IsReadOnly(locator store.Locator) (ro bool) {
+
+	bdb, err := b.db(locator.SiteID)
+	if err != nil {
+		return false
+	}
+
+	_ = bdb.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(readonlyBucketName))
+		ro = bucket.Get([]byte(locator.URL)) != nil
+		return nil
+	})
+	return ro
+}

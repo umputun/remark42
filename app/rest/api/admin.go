@@ -35,6 +35,7 @@ func (a *admin) routes(middlewares ...func(http.Handler) http.Handler) chi.Route
 	router.Get("/export", a.exportCtrl)
 	router.Put("/pin/{id}", a.setPinCtrl)
 	router.Get("/blocked", a.blockedUsersCtrl)
+	router.Put("/readonly", a.setReadOnlyCtrl)
 	return router
 }
 
@@ -94,6 +95,19 @@ func (a *admin) blockedUsersCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	render.JSON(w, r, users)
+}
+
+// PUT /readonly?site=siteID&url=post-url&ro=1 - set or reset read-only status for the post
+func (a *admin) setReadOnlyCtrl(w http.ResponseWriter, r *http.Request) {
+	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
+	roStatus := r.URL.Query().Get("ro") == "1"
+
+	if err := a.dataService.SetReadOnly(locator, roStatus); err != nil {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set readonly status")
+		return
+	}
+	a.cache.Flush(locator.SiteID)
+	render.JSON(w, r, JSON{"locator": locator, "read-only": roStatus})
 }
 
 // PUT /pin/{id}?site=siteID&url=post-url&pin=1

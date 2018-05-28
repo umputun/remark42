@@ -10,7 +10,7 @@ import (
 	"github.com/umputun/remark/app/store"
 )
 
-func TestBoltDB_Delete(t *testing.T) {
+func TestBoltAdmin_Delete(t *testing.T) {
 	defer os.Remove(testDb)
 	b := prep(t)
 
@@ -48,7 +48,7 @@ func TestBoltDB_Delete(t *testing.T) {
 	assert.EqualError(t, err, `no bucket https://radio-t.com/bad in store`)
 }
 
-func TestBoltDB_DeleteHard(t *testing.T) {
+func TestBoltAdmin_DeleteHard(t *testing.T) {
 	defer os.Remove(testDb)
 	b := prep(t)
 
@@ -68,7 +68,7 @@ func TestBoltDB_DeleteHard(t *testing.T) {
 	assert.Equal(t, store.User{Name: "deleted", ID: "deleted", Picture: "", Admin: false, Blocked: false, IP: ""}, res[0].User)
 }
 
-func TestBoltDB_DeleteAll(t *testing.T) {
+func TestBoltAdmin_DeleteAll(t *testing.T) {
 	defer os.Remove(testDb)
 	b := prep(t)
 
@@ -92,7 +92,7 @@ func TestBoltDB_DeleteAll(t *testing.T) {
 	assert.EqualError(t, err, `site "bad" not found`)
 }
 
-func TestBoltDB_DeleteUser(t *testing.T) {
+func TestBoltAdmin_DeleteUser(t *testing.T) {
 	defer os.Remove(testDb)
 	b := prep(t)
 	err := b.DeleteUser("radio-t", "user1")
@@ -120,7 +120,7 @@ func TestBoltDB_DeleteUser(t *testing.T) {
 	assert.EqualError(t, err, `site "radio-t-bad" not found`)
 }
 
-func TestBoltDB_BlockUser(t *testing.T) {
+func TestBoltAdmin_BlockUser(t *testing.T) {
 	defer os.Remove(testDb)
 	b := prep(t)
 
@@ -140,7 +140,7 @@ func TestBoltDB_BlockUser(t *testing.T) {
 	assert.False(t, b.IsBlocked("radio-t-bad", "user1"), "nothing blocked on wrong site")
 }
 
-func TestBoltDB_BlockList(t *testing.T) {
+func TestBoltAdmin_BlockList(t *testing.T) {
 	defer os.Remove(testDb)
 	b := prep(t)
 
@@ -158,4 +158,24 @@ func TestBoltDB_BlockList(t *testing.T) {
 
 	_, err = b.Blocked("bad")
 	assert.EqualError(t, err, `site "bad" not found`)
+}
+
+func TestBoltAdmin_ReadOnly(t *testing.T) {
+	defer os.Remove(testDb)
+	b := prep(t)
+
+	assert.False(t, b.IsReadOnly(store.Locator{SiteID: "radio-t", URL: "url-1"}), "nothing ro")
+
+	assert.NoError(t, b.SetReadOnly(store.Locator{SiteID: "radio-t", URL: "url-1"}, true))
+	assert.True(t, b.IsReadOnly(store.Locator{SiteID: "radio-t", URL: "url-1"}), "url-1 ro")
+
+	assert.False(t, b.IsReadOnly(store.Locator{SiteID: "radio-t", URL: "url-2"}), "url-2 still writable")
+
+	assert.NoError(t, b.SetReadOnly(store.Locator{SiteID: "radio-t", URL: "url-1"}, false))
+	assert.False(t, b.IsReadOnly(store.Locator{SiteID: "radio-t", URL: "url-1"}), "url-1 writable")
+
+	assert.EqualError(t, b.SetReadOnly(store.Locator{SiteID: "bad", URL: "url-1"}, true), `site "bad" not found`)
+	assert.NoError(t, b.SetReadOnly(store.Locator{SiteID: "radio-t", URL: "url-1xyz"}, false))
+
+	assert.False(t, b.IsReadOnly(store.Locator{SiteID: "radio-t-bad", URL: "url-1"}), "nothing blocked on wrong site")
 }
