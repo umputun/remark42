@@ -524,7 +524,10 @@ func TestServer_List(t *testing.T) {
 	pi := []store.PostInfo{}
 	err := json.Unmarshal([]byte(body), &pi)
 	assert.Nil(t, err)
-	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/blah2", Count: 2}, {URL: "https://radio-t.com/blah1", Count: 3}}, pi)
+	assert.Equal(t, "https://radio-t.com/blah2", pi[0].URL)
+	assert.Equal(t, 2, pi[0].Count)
+	assert.Equal(t, "https://radio-t.com/blah1", pi[1].URL)
+	assert.Equal(t, 3, pi[1].Count)
 }
 
 func TestServer_Config(t *testing.T) {
