@@ -47,7 +47,7 @@ func TestServer_Create(t *testing.T) {
 	resp, err := post(t, ts.URL+"/api/v1/comment",
 		`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
 	assert.Nil(t, err)
-	assert.Equal(t, http.StatusCreated, resp.StatusCode)
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
 
 	b, err := ioutil.ReadAll(resp.Body)
 	assert.Nil(t, err)
@@ -58,6 +58,39 @@ func TestServer_Create(t *testing.T) {
 	assert.Equal(t, "radio-t", loc["site"])
 	assert.Equal(t, "https://radio-t.com/blah1", loc["url"])
 	assert.True(t, len(c["id"].(string)) > 8)
+}
+
+func TestServer_CreateOldPost(t *testing.T) {
+	srv, ts := prep(t)
+	require.NotNil(t, srv)
+	defer cleanup(ts)
+
+	// make old, but not too old comment
+	old := store.Comment{Text: "test test old", ParentID: "", Timestamp: time.Now().AddDate(0, 0, -5),
+		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}, User: store.User{ID: "u1"}}
+	_, err := srv.DataService.Create(old)
+	assert.Nil(t, err)
+
+	comments, err := srv.DataService.Find(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}, "time")
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(comments))
+
+	// try to add new comment to the same old post
+	resp, err := post(t, ts.URL+"/api/v1/comment",
+		`{"text": "test 123", "locator":{"site": "radio-t","url": "https://radio-t.com/blah1"}}`)
+	assert.Nil(t, err)
+	assert.Equal(t, http.StatusCreated, resp.StatusCode)
+
+	// make too old comment
+	old = store.Comment{Text: "test test old", ParentID: "", Timestamp: time.Now().AddDate(0, 0, -15),
+		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}, User: store.User{ID: "u1"}}
+	_, err = srv.DataService.Create(old)
+	assert.Nil(t, err)
+
+	resp, err = post(t, ts.URL+"/api/v1/comment",
+		`{"text": "test 123", "locator":{"site": "radio-t","url": "https://radio-t.com/blah1"}}`)
+	assert.Nil(t, err)
+	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 }
 
 func TestServer_CreateTooBig(t *testing.T) {
@@ -200,6 +233,39 @@ func TestServer_Find(t *testing.T) {
 	assert.Equal(t, 1, len(tree.Nodes[0].Replies))
 	assert.Equal(t, 2, tree.Info.Count)
 	assert.Equal(t, "https://radio-t.com/blah1", tree.Info.URL)
+	assert.False(t, tree.Info.ReadOnly, "post is fresh")
+}
+
+func TestServer_FindAge(t *testing.T) {
+	srv, ts := prep(t)
+	assert.NotNil(t, srv)
+	defer cleanup(ts)
+
+	c1 := store.Comment{Text: "test test #1", ParentID: "", Timestamp: time.Now().AddDate(0, 0, -5),
+		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}, User: store.User{ID: "u1"}}
+	_, err := srv.DataService.Create(c1)
+	require.Nil(t, err)
+
+	c2 := store.Comment{Text: "test test #2", ParentID: "", Timestamp: time.Now().AddDate(0, 0, -15),
+		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah2"}, User: store.User{ID: "u1"}}
+	_, err = srv.DataService.Create(c2)
+	require.Nil(t, err)
+
+	tree := rest.Tree{}
+
+	res, code := get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah1&format=tree")
+	assert.Equal(t, 200, code)
+	err = json.Unmarshal([]byte(res), &tree)
+	assert.Nil(t, err)
+	assert.Equal(t, "https://radio-t.com/blah1", tree.Info.URL)
+	assert.False(t, tree.Info.ReadOnly, "post is fresh")
+
+	res, code = get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah2&format=tree")
+	assert.Equal(t, 200, code)
+	err = json.Unmarshal([]byte(res), &tree)
+	assert.Nil(t, err)
+	assert.Equal(t, "https://radio-t.com/blah2", tree.Info.URL)
+	assert.True(t, tree.Info.ReadOnly, "post is old")
 }
 
 func TestServer_Update(t *testing.T) {
@@ -475,6 +541,7 @@ func TestServer_Config(t *testing.T) {
 	assert.Equal(t, 4000., j["max_comment_size"])
 	assert.Equal(t, -5., j["low_score"])
 	assert.Equal(t, -10., j["critical_score"])
+	assert.Equal(t, 10., j["readonly_age"])
 	t.Logf("%+v", j)
 }
 
@@ -552,6 +619,7 @@ func prep(t *testing.T) (srv *Rest, ts *httptest.Server) {
 		WebRoot:     "/tmp",
 		AvatarProxy: &proxy.Avatar{StorePath: "/tmp", RoutePath: "/api/v1/avatar"},
 		ImageProxy:  &proxy.Image{},
+		ReadOnlyAge: 10,
 	}
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = -5, -10
 

@@ -165,18 +165,22 @@ func TestBoltDB_Info(t *testing.T) {
 	_, err := b.Create(comment)
 	assert.Nil(t, err)
 
-	r, err := b.Info(store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"})
+	r, err := b.Info(store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"}, 0)
 	require.Nil(t, err)
 	assert.Equal(t, store.PostInfo{URL: "https://radio-t.com/2", Count: 1, FirstTS: ts(24), LastTS: ts(24)}, r)
 
-	r, err = b.Info(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"})
+	r, err = b.Info(store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"}, 10)
+	require.Nil(t, err)
+	assert.Equal(t, store.PostInfo{URL: "https://radio-t.com/2", Count: 1, FirstTS: ts(24), LastTS: ts(24), ReadOnly: true}, r)
+
+	r, err = b.Info(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, 0)
 	require.Nil(t, err)
 	assert.Equal(t, store.PostInfo{URL: "https://radio-t.com", Count: 2, FirstTS: ts(22), LastTS: ts(23)}, r)
 
-	_, err = b.Info(store.Locator{URL: "https://radio-t.com/error", SiteID: "radio-t"})
+	_, err = b.Info(store.Locator{URL: "https://radio-t.com/error", SiteID: "radio-t"}, 0)
 	require.NotNil(t, err)
 
-	_, err = b.Info(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t-error"})
+	_, err = b.Info(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t-error"}, 0)
 	require.NotNil(t, err)
 }
 

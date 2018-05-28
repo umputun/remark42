@@ -40,7 +40,7 @@ func TestMakeTree(t *testing.T) {
 		{Locator: loc, ID: "611", ParentID: "61", Deleted: true},
 	}
 
-	res := MakeTree(comments, "time")
+	res := MakeTree(comments, "time", 0)
 
 	buf := &bytes.Buffer{}
 	enc := json.NewEncoder(buf)
@@ -51,8 +51,11 @@ func TestMakeTree(t *testing.T) {
 	assert.Equal(t, expected, actual)
 	assert.Equal(t, store.PostInfo{URL: "url", Count: 17, FirstTS: ts(46, 1), LastTS: ts(47, 22)}, res.Info)
 
-	res = MakeTree([]store.Comment{}, "time")
+	res = MakeTree([]store.Comment{}, "time", 0)
 	assert.Equal(t, &Tree{}, res)
+
+	res = MakeTree(comments, "time", 10)
+	assert.Equal(t, store.PostInfo{URL: "url", Count: 17, FirstTS: ts(46, 1), LastTS: ts(47, 22), ReadOnly: true}, res.Info)
 }
 
 func TestTreeSortNodes(t *testing.T) {
@@ -74,40 +77,39 @@ func TestTreeSortNodes(t *testing.T) {
 		{ID: "5", Deleted: true},
 	}
 
-	res := MakeTree(comments, "+active")
+	res := MakeTree(comments, "+active", 0)
 	assert.Equal(t, "2", res.Nodes[0].Comment.ID)
 	t.Log(res.Nodes[0].Comment.ID, res.Nodes[0].tsModified)
 
-	res = MakeTree(comments, "-active")
+	res = MakeTree(comments, "-active", 0)
 	t.Log(res.Nodes[0].Comment.ID, res.Nodes[0].tsModified)
 	assert.Equal(t, "1", res.Nodes[0].Comment.ID)
 
-	res = MakeTree(comments, "+time")
+	res = MakeTree(comments, "+time", 0)
 	t.Log(res.Nodes[0].Comment.ID, res.Nodes[0].tsModified)
 	assert.Equal(t, "1", res.Nodes[0].Comment.ID)
 
-	res = MakeTree(comments, "-time")
+	res = MakeTree(comments, "-time", 0)
 	assert.Equal(t, "6", res.Nodes[0].Comment.ID)
 
-	res = MakeTree(comments, "score")
+	res = MakeTree(comments, "score", 0)
 	assert.Equal(t, "4", res.Nodes[0].Comment.ID)
 	assert.Equal(t, "3", res.Nodes[1].Comment.ID)
 	assert.Equal(t, "6", res.Nodes[2].Comment.ID)
 	assert.Equal(t, "1", res.Nodes[3].Comment.ID)
 
-	res = MakeTree(comments, "+score")
+	res = MakeTree(comments, "+score", 0)
 	assert.Equal(t, "4", res.Nodes[0].Comment.ID)
 
-	res = MakeTree(comments, "-score")
+	res = MakeTree(comments, "-score", 0)
 	assert.Equal(t, "2", res.Nodes[0].Comment.ID)
 	assert.Equal(t, "1", res.Nodes[1].Comment.ID)
 	assert.Equal(t, "3", res.Nodes[2].Comment.ID)
 	assert.Equal(t, "6", res.Nodes[3].Comment.ID)
 
-	res = MakeTree(comments, "undefined")
+	res = MakeTree(comments, "undefined", 0)
 	t.Log(res.Nodes[0].Comment.ID, res.Nodes[0].tsModified)
 	assert.Equal(t, "1", res.Nodes[0].Comment.ID)
-
 }
 
 func BenchmarkTree(b *testing.B) {
@@ -118,7 +120,7 @@ func BenchmarkTree(b *testing.B) {
 	assert.Nil(b, err)
 
 	for i := 0; i < b.N; i++ {
-		res := MakeTree(comments, "time")
+		res := MakeTree(comments, "time", 0)
 		assert.NotNil(b, res)
 	}
 }

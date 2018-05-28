@@ -33,15 +33,15 @@ import (
 
 // Rest is a rest access server
 type Rest struct {
-	Version       string
-	DataService   service.DataStore
-	Authenticator auth.Authenticator
-	Exporter      migrator.Exporter
-	Cache         cache.LoadingCache
-	AvatarProxy   *proxy.Avatar
-	ImageProxy    *proxy.Image
-	WebRoot       string
-
+	Version         string
+	DataService     service.DataStore
+	Authenticator   auth.Authenticator
+	Exporter        migrator.Exporter
+	Cache           cache.LoadingCache
+	AvatarProxy     *proxy.Avatar
+	ImageProxy      *proxy.Image
+	WebRoot         string
+	ReadOnlyAge     int
 	ScoreThresholds struct {
 		Low      int
 		Critical int
@@ -203,6 +203,11 @@ func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if info, err := s.DataService.Info(comment.Locator, s.ReadOnlyAge); err == nil && info.ReadOnly {
+		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"), "old post, read-only")
+		return
+	}
+
 	id, err := s.DataService.Create(comment)
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't save comment")
@@ -254,7 +259,7 @@ func (s *Rest) infoCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 
 	data, err := s.Cache.Get(cache.Key(cache.URLKey(r), locator.SiteID, locator.URL), 4*time.Hour, func() ([]byte, error) {
-		info, e := s.DataService.Info(locator)
+		info, e := s.DataService.Info(locator, s.ReadOnlyAge)
 		if e != nil {
 			return nil, e
 		}
@@ -340,7 +345,7 @@ func (s *Rest) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		var b []byte
 		switch r.URL.Query().Get("format") {
 		case "tree":
-			b, e = encodeJSONWithHTML(rest.MakeTree(maskedComments, sort))
+			b, e = encodeJSONWithHTML(rest.MakeTree(maskedComments, sort, s.ReadOnlyAge))
 		default:
 			b, e = encodeJSONWithHTML(maskedComments)
 		}
@@ -454,6 +459,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		Auth           []string `json:"auth_providers"`
 		LowScore       int      `json:"low_score"`
 		CriticalScore  int      `json:"critical_score"`
+		ReadOnlyAge    int      `json:"readonly_age"`
 	}
 
 	cnf := config{
@@ -463,6 +469,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		Admins:         s.Authenticator.Admins,
 		LowScore:       s.ScoreThresholds.Low,
 		CriticalScore:  s.ScoreThresholds.Critical,
+		ReadOnlyAge:    s.ReadOnlyAge,
 	}
 
 	cnf.Auth = []string{}

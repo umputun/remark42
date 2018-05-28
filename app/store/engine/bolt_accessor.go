@@ -6,6 +6,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/coreos/bbolt"
 	"github.com/pkg/errors"
@@ -261,7 +262,7 @@ func (b BoltDB) List(siteID string, limit, skip int) (list []store.PostInfo, err
 }
 
 // Info returns time range and count for locator
-func (b *BoltDB) Info(locator store.Locator) (store.PostInfo, error) {
+func (b *BoltDB) Info(locator store.Locator, readOnlyAge int) (store.PostInfo, error) {
 	bdb, err := b.db(locator.SiteID)
 	if err != nil {
 		return store.PostInfo{}, err
@@ -277,6 +278,8 @@ func (b *BoltDB) Info(locator store.Locator) (store.PostInfo, error) {
 		FirstTS: comments[0].Timestamp,
 		LastTS:  comments[len(comments)-1].Timestamp,
 	}
+	postInfo.ReadOnly = readOnlyAge > 0 && !postInfo.FirstTS.IsZero() &&
+		postInfo.FirstTS.AddDate(0, 0, readOnlyAge).Before(time.Now())
 
 	err = bdb.View(func(tx *bolt.Tx) error {
 		count, e := b.count(tx, locator.URL, 0)

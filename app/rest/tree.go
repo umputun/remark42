@@ -30,7 +30,7 @@ type recurData struct {
 }
 
 // MakeTree gets unsorted list of comments and produces Tree
-func MakeTree(comments []store.Comment, sortType string) *Tree {
+func MakeTree(comments []store.Comment, sortType string, readOnlyAge int) *Tree {
 	if len(comments) == 0 {
 		return &Tree{}
 	}
@@ -63,6 +63,9 @@ func MakeTree(comments []store.Comment, sortType string) *Tree {
 		if commentsTree.tsModified.After(res.Info.LastTS) {
 			res.Info.LastTS = commentsTree.tsModified
 		}
+
+		res.Info.ReadOnly = readOnlyAge > 0 && !res.Info.FirstTS.IsZero() &&
+			res.Info.FirstTS.AddDate(0, 0, readOnlyAge).Before(time.Now())
 
 		res.Nodes = append(res.Nodes, commentsTree)
 	}

@@ -38,10 +38,11 @@ type Edit struct {
 
 // PostInfo holds summary for given post url
 type PostInfo struct {
-	URL     string    `json:"url"`
-	Count   int       `json:"count"`
-	FirstTS time.Time `json:"first_time,omitempty"`
-	LastTS  time.Time `json:"last_time,omitempty"`
+	URL      string    `json:"url"`
+	Count    int       `json:"count"`
+	ReadOnly bool      `json:"read_only,omitempty"`
+	FirstTS  time.Time `json:"first_time,omitempty"`
+	LastTS   time.Time `json:"last_time,omitempty"`
 }
 
 // BlockedUser holds id and ts for blocked user
