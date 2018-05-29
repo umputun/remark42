@@ -222,7 +222,7 @@ func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't load created comment")
 		return
 	}
-	s.Cache.Flush(comment.Locator.URL, "last", comment.User.ID)
+	s.Cache.Flush(comment.Locator.URL, "last", comment.User.ID, comment.Locator.SiteID)
 
 	render.Status(r, http.StatusCreated)
 	render.JSON(w, r, &finalComment)
