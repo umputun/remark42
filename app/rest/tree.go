@@ -8,7 +8,7 @@ import (
 	"github.com/umputun/remark/app/store"
 )
 
-// Tree is formatter making tree from list of comments
+// Tree is formatter making tree from the list of comments
 type Tree struct {
 	Nodes []*Node        `json:"comments"`
 	Info  store.PostInfo `json:"info,omitempty"`
@@ -30,6 +30,9 @@ type recurData struct {
 }
 
 // MakeTree gets unsorted list of comments and produces Tree
+// It will make store.PostInfo by itself and will mark Info.ReadOnly based on passed readOnlyAge
+// Tree maker is local and has no access to the data store. By this reason it has to make Info and won't be able
+// to handle store's read-only status. This status should be set by caller.
 func MakeTree(comments []store.Comment, sortType string, readOnlyAge int) *Tree {
 	if len(comments) == 0 {
 		return &Tree{}
