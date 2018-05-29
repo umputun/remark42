@@ -68,7 +68,7 @@ func (m *Migrator) routes() chi.Router {
 	router.Use(middleware.RealIP, Recoverer)
 	router.Use(middleware.Throttle(1000), middleware.Timeout(15*time.Minute))
 	router.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
-	router.Use(AppInfo("remark42-importer", m.Version), Ping, Logger(LogAll))
+	router.Use(AppInfo("remark42-migrator", m.Version), Ping, Logger(LogAll))
 	router.Post("/api/v1/admin/import", m.importCtrl)
 	router.Get("/api/v1/admin/export", m.exportCtrl)
 	return router
