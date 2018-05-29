@@ -128,7 +128,15 @@ module.exports = {
       allChunks: true
     }),
     new webpack.optimize.ModuleConcatenationPlugin(),
-    ...(env === 'production' ? [new webpack.optimize.UglifyJsPlugin()] : []),
+    ...(env === 'production' 
+      ? [
+          new webpack.optimize.UglifyJsPlugin({
+            output: {
+              comments: false,
+            },
+          })
+        ] 
+      : []),
     new Copy(['./iframe.html']),
   ],
   watch: env === 'dev',
