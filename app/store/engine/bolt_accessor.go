@@ -35,6 +35,7 @@ const (
 	blocksBucketName   = "block"
 	infoBucketName     = "info"
 	readonlyBucketName = "readonly"
+	verifiedBucketName = "verified"
 
 	// limits
 	lastLimit = 1000
@@ -62,7 +63,7 @@ func NewBoltDB(options bolt.Options, sites ...BoltSite) (*BoltDB, error) {
 
 		// make top-level buckets
 		topBuckets := []string{postsBucketName, lastBucketName, userBucketName, blocksBucketName,
-			infoBucketName, readonlyBucketName}
+			infoBucketName, readonlyBucketName, verifiedBucketName}
 		err = db.Update(func(tx *bolt.Tx) error {
 			for _, bktName := range topBuckets {
 				if _, e := tx.CreateBucketIfNotExists([]byte(bktName)); e != nil {

@@ -40,6 +40,8 @@ type Admin interface {
 	Blocked(siteID string) ([]store.BlockedUser, error)                          // get list of blocked users
 	SetReadOnly(locator store.Locator, status bool) error                        // set/reset read-only flag
 	IsReadOnly(locator store.Locator) bool                                       // check if post read-only
+	SetVerified(siteID string, userID string, status bool) error                 // set/reset verified flag
+	IsVerified(siteID string, userID string) bool                                // check verified status
 }
 
 // sortComments is for engines can't sort data internally
