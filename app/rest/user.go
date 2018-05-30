@@ -17,7 +17,6 @@ func GetUserInfo(r *http.Request) (user store.User, err error) {
 	if ctx == nil {
 		return store.User{}, errors.New("no info about user")
 	}
-
 	if u, ok := ctx.Value(contextKey("user")).(store.User); ok {
 		return u, nil
 	}
