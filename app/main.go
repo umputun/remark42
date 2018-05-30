@@ -114,7 +114,7 @@ func New(opts Opts) (*Application, error) {
 		MaxCommentSize: opts.MaxCommentSize,
 	}
 
-	cache := cache.NewLoadingCache(cache.MaxValSize(opts.MaxCachedValue), cache.MaxKeys(opts.MaxCachedItems),
+	loadingCache := cache.NewLoadingCache(cache.MaxValSize(opts.MaxCachedValue), cache.MaxKeys(opts.MaxCachedItems),
 		cache.PostFlushFn(postFlushFn(opts.Sites, opts.Port)))
 
 	jwtService := auth.NewJWT(opts.SecretKey, strings.HasPrefix(opts.RemarkURL, "https://"), 7*24*time.Hour)
@@ -127,9 +127,9 @@ func New(opts Opts) (*Application, error) {
 
 	exporter := &migrator.Remark{DataStore: &dataService}
 
-	migrator := &api.Migrator{
+	migr := &api.Migrator{
 		Version:        revision,
-		Cache:          cache,
+		Cache:          loadingCache,
 		NativeImporter: &migrator.Remark{DataStore: &dataService},
 		DisqusImporter: &migrator.Disqus{DataStore: &dataService},
 		NativeExported: &migrator.Remark{DataStore: &dataService},
@@ -150,11 +150,11 @@ func New(opts Opts) (*Application, error) {
 			Providers:  makeAuthProviders(jwtService, avatarProxy, dataService, opts),
 			DevPasswd:  opts.DevPasswd,
 		},
-		Cache: cache,
+		Cache: loadingCache,
 	}
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = opts.LowScore, opts.CriticalScore
 	tch := make(chan struct{})
-	return &Application{srv: srv, migrator: migrator, exporter: exporter, Opts: opts, terminated: tch}, nil
+	return &Application{srv: srv, migrator: migr, exporter: exporter, Opts: opts, terminated: tch}, nil
 }
 
 // Run all application objects
