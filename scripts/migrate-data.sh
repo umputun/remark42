@@ -21,3 +21,5 @@ curl -X POST -H "Content-Type: application/json" --data-binary @/tmp/backup.rema
 
 rm /tmp/backup.remark
 rm /tmp/export-remark.gz
+
+echo "migration completed"
