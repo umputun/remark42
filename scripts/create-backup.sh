@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # this scrips makes a backup file to /srv/var/userbackup-<site>-<timestamp>.gz
-
+set -e
 BACKUP_PATH=${BACKUP_PATH:-./var}
 backup_file=${BACKUP_PATH}/userbackup-${1}-$(date +%s).gz
 echo "make backup file for site $1 to $backup_file"
