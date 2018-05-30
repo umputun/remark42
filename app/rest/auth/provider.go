@@ -35,13 +35,14 @@ type Provider struct {
 
 // Params to make initialized and ready to use provider
 type Params struct {
-	RemarkURL   string
-	AvatarProxy *proxy.Avatar
-	JwtService  *JWT
-	SecretKey   string
-	Admins      []string
-	Cid         string
-	Csecret     string
+	RemarkURL    string
+	AvatarProxy  *proxy.Avatar
+	JwtService   *JWT
+	IsVerifiedFn func(siteID string, userID string) bool
+	SecretKey    string
+	Admins       []string
+	Cid          string
+	Csecret      string
 }
 
 type userData map[string]interface{}
@@ -79,7 +80,7 @@ func (p Provider) Routes() chi.Router {
 	return router
 }
 
-// loginHandler - GET /login?from=redirect-back-url
+// loginHandler - GET /login?from=redirect-back-url&site=siteID
 func (p Provider) loginHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[DEBUG] login with %s", p.Name)
@@ -87,8 +88,9 @@ func (p Provider) loginHandler(w http.ResponseWriter, r *http.Request) {
 	state := p.randToken()
 
 	claims := CustomClaims{
-		State: state,
-		From:  r.URL.Query().Get("from"),
+		State:  state,
+		From:   r.URL.Query().Get("from"),
+		SiteID: r.URL.Query().Get("site"),
 		StandardClaims: jwt.StandardClaims{
 			Id:        p.randToken(),
 			Issuer:    "remark42",
@@ -166,7 +168,11 @@ func (p Provider) authHandler(w http.ResponseWriter, r *http.Request) {
 			log.Printf("[WARN] failed to proxy avatar, %s", e)
 		}
 	}
+
 	u.Admin = isAdmin(u.ID, p.Admins)
+	if p.IsVerifiedFn != nil {
+		u.Verified = p.IsVerifiedFn(oauthClaims.SiteID, u.ID)
+	}
 
 	authClaims := &CustomClaims{
 		User: &u,

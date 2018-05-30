@@ -29,7 +29,7 @@ func TestLogin(t *testing.T) {
 	jar, err := cookiejar.New(nil)
 	require.Nil(t, err)
 	client := &http.Client{Jar: jar, Timeout: 5 * time.Second}
-	resp, err := client.Get("http://localhost:8981/login")
+	resp, err := client.Get("http://localhost:8981/login?site=remark")
 	require.Nil(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 	body, err := ioutil.ReadAll(resp.Body)
@@ -50,7 +50,7 @@ func TestLogin(t *testing.T) {
 		Admin: false, Blocked: false, IP: ""}, u)
 
 	// check admin user
-	resp, err = client.Get("http://localhost:8981/login")
+	resp, err = client.Get("http://localhost:8981/login?site=remark")
 	assert.Nil(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 	body, err = ioutil.ReadAll(resp.Body)
@@ -58,7 +58,7 @@ func TestLogin(t *testing.T) {
 	err = json.Unmarshal(body, &u)
 	assert.Nil(t, err)
 	assert.Equal(t, store.User{Name: "blah", ID: "mock_myuser2", Picture: "http://exmple.com/pic1.png",
-		Admin: true, Blocked: false, IP: ""}, u)
+		Admin: true, Blocked: false, IP: "", Verified: true}, u)
 }
 
 func TestLogout(t *testing.T) {
@@ -120,7 +120,8 @@ func mockProvider(t *testing.T, loginPort, authPort int) (*http.Server, *http.Se
 		},
 	}
 	params := Params{RemarkURL: "url", SecretKey: "123456", Cid: "cid", Csecret: "csecret",
-		JwtService: NewJWT("12345", false, time.Hour), Admins: []string{"mock_myuser2"}}
+		JwtService: NewJWT("12345", false, time.Hour), Admins: []string{"mock_myuser2"},
+		IsVerifiedFn: func(siteID, userID string) bool { return userID == "mock_myuser2" }}
 	provider = initProvider(params, provider)
 
 	ts := &http.Server{Addr: fmt.Sprintf(":%d", loginPort), Handler: provider.Routes()}
