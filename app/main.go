@@ -47,14 +47,13 @@ type Opts struct {
 	LowScore       int    `long:"low-score" env:"LOW_SCORE" default:"-5" description:"low score threshold"`
 	CriticalScore  int    `long:"critical-score" env:"CRITICAL_SCORE" default:"-10" description:"critical score threshold"`
 	ReadOnlyAge    int    `long:"read-age" env:"READONLY_AGE" default:"0" description:"read-only age of comments"`
-	GoogleCID      string `long:"google-cid" env:"REMARK_GOOGLE_CID" description:"Google OAuth client ID"`
-	GoogleCSEC     string `long:"google-csec" env:"REMARK_GOOGLE_CSEC" description:"Google OAuth client secret"`
-	GithubCID      string `long:"github-cid" env:"REMARK_GITHUB_CID" description:"Github OAuth client ID"`
-	GithubCSEC     string `long:"github-csec" env:"REMARK_GITHUB_CSEC" description:"Github OAuth client secret"`
-	FacebookCID    string `long:"facebook-cid" env:"REMARK_FACEBOOK_CID" description:"Facebook OAuth client ID"`
-	FacebookCSEC   string `long:"facebook-csec" env:"REMARK_FACEBOOK_CSEC" description:"Facebook OAuth client secret"`
-	DisqusCID      string `long:"disqus-cid" env:"REMARK_DISQUS_CID" description:"Disqus OAuth client ID"`
-	DisqusCSEC     string `long:"disqus-csec" env:"REMARK_DISQUS_CSEC" description:"Disqus OAuth client secret"`
+
+	GoogleCID    string `long:"google-cid" env:"REMARK_GOOGLE_CID" description:"Google OAuth client ID"`
+	GoogleCSEC   string `long:"google-csec" env:"REMARK_GOOGLE_CSEC" description:"Google OAuth client secret"`
+	GithubCID    string `long:"github-cid" env:"REMARK_GITHUB_CID" description:"Github OAuth client ID"`
+	GithubCSEC   string `long:"github-csec" env:"REMARK_GITHUB_CSEC" description:"Github OAuth client secret"`
+	FacebookCID  string `long:"facebook-cid" env:"REMARK_FACEBOOK_CID" description:"Facebook OAuth client ID"`
+	FacebookCSEC string `long:"facebook-csec" env:"REMARK_FACEBOOK_CSEC" description:"Facebook OAuth client secret"`
 
 	Port    int    `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
 	WebRoot string `long:"web-root" env:"REMARK_WEB_ROOT" default:"./web" description:"web root directory"`
@@ -65,10 +64,10 @@ var revision = "unknown"
 // Application holds all active objects
 type Application struct {
 	Opts
-	srv        *api.Rest
-	migrator   *api.Migrator
-	exporter   migrator.Exporter
-	terminated chan struct{}
+	restSrv     *api.Rest
+	migratorSrv *api.Migrator
+	exporter    migrator.Exporter
+	terminated  chan struct{}
 }
 
 func main() {
@@ -154,7 +153,7 @@ func New(opts Opts) (*Application, error) {
 	}
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = opts.LowScore, opts.CriticalScore
 	tch := make(chan struct{})
-	return &Application{srv: srv, migrator: migr, exporter: exporter, Opts: opts, terminated: tch}, nil
+	return &Application{restSrv: srv, migratorSrv: migr, exporter: exporter, Opts: opts, terminated: tch}, nil
 }
 
 // Run all application objects
@@ -166,12 +165,12 @@ func (a *Application) Run(ctx context.Context) error {
 	go func() {
 		// shutdown on context cancellation
 		<-ctx.Done()
-		a.srv.Shutdown()
-		a.migrator.Shutdown()
+		a.restSrv.Shutdown()
+		a.migratorSrv.Shutdown()
 	}()
 	a.activateBackup(ctx) // runs in goroutine for each site
-	go a.migrator.Run(a.Port + 1)
-	a.srv.Run(a.Port)
+	go a.migratorSrv.Run(a.Port + 1)
+	a.restSrv.Run(a.Port)
 	close(a.terminated)
 	return nil
 }
@@ -261,9 +260,6 @@ func makeAuthProviders(jwtService *auth.JWT, avatarProxy *proxy.Avatar, ds servi
 	}
 	if opts.FacebookCID != "" && opts.FacebookCSEC != "" {
 		providers = append(providers, auth.NewFacebook(makeParams(opts.FacebookCID, opts.FacebookCSEC)))
-	}
-	if opts.DisqusCID != "" && opts.DisqusCSEC != "" {
-		providers = append(providers, auth.NewDisqus(makeParams(opts.DisqusCID, opts.DisqusCSEC)))
 	}
 	if len(providers) == 0 {
 		log.Printf("[WARN] no auth providers defined")
