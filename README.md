@@ -112,19 +112,20 @@ Remark42 by default makes daily backup files under `${BACKUP_PATH}` (default `./
 
 For safety and security reasons restore functionality not exposed outside of your server by default. The recommended way to restore from the backup is to use provided `scripts/restore-backup.sh`. It can run inside the container:
 
-`docker-compose exec remark /srv/restore-backup.sh <backup-filename.gz> <your site id>`
+`docker-compose exec remark42 /srv/restore-backup.sh {backup-filename.gz} {your site id}`
 
 ##### Schema migration
 
 One special case for backup/restore is schema migration. Some versions or remark42 may extend or change the schema 
 and for such upgrades migration required. Provided migration script `scripts/migrate-data.sh` makes a fresh backup and then loads it back to your remark42 instance.
 
-`docker-compose exec remark /srv/migrate-data.sh <your site id>`
+`docker-compose exec remark42 /srv/migrate-data.sh {your site id}`
 
 ##### Manual backup
 
+In addition to automatic backups user can make a backup manually. This command makes `userbackup-{site id}-{timestamp}.gz`
 
-
+`docker-compose exec remark42 /srv/create-backup.sh {your site id}`
 
 #### Admin users
 
