@@ -1,9 +1,9 @@
 #!/bin/sh
 set -e
 echo "import backup file $1 to site $2"
-
+BACKUP_PATH=${BACKUP_PATH:-./var}
 echo "unpack $1"
-gunzip -c /srv/var/backup/$1 >/tmp/backup.remark
+gunzip -c ${BACKUP_PATH}/$1 >/tmp/backup.remark
 
 size=`stat -c "%s" /tmp/backup.remark`
 echo "source file size ${size}"
