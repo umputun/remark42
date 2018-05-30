@@ -24,8 +24,9 @@ type CustomClaims struct {
 	User *store.User `json:"user,omitempty"`
 
 	// state and from used for oauth handshake
-	State string `json:"state,omitempty"`
-	From  string `json:"from,omitempty"`
+	State  string `json:"state,omitempty"`
+	From   string `json:"from,omitempty"`
+	SiteID string `json:"site_id,omitempty"`
 }
 
 const jwtCookieName = "JWT"

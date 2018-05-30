@@ -128,11 +128,12 @@ func (s *Rest) routes() chi.Router {
 
 	// api routes
 	router.Route("/api/v1", func(rapi chi.Router) {
-		rapi.Use(Logger(LogAll), tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
+		rapi.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
 
 		// open routes
 		rapi.Group(func(ropen chi.Router) {
 			ropen.Use(s.Authenticator.Auth(false))
+			ropen.Use(Logger(LogAll))
 			ropen.Get("/find", s.findCommentsCtrl)
 			ropen.Get("/id/{id}", s.commentByIDCtrl)
 			ropen.Get("/comments", s.findUserCommentsCtrl)
@@ -151,13 +152,14 @@ func (s *Rest) routes() chi.Router {
 		// protected routes, require auth
 		rapi.Group(func(rauth chi.Router) {
 			rauth.Use(s.Authenticator.Auth(true))
+			rauth.Use(Logger(LogAll))
 			rauth.Post("/comment", s.createCommentCtrl)
 			rauth.Put("/comment/{id}", s.updateCommentCtrl)
 			rauth.Get("/user", s.userInfoCtrl)
 			rauth.Put("/vote/{id}", s.voteCtrl)
 
 			// admin routes, admin users only
-			rauth.Mount("/admin", s.adminService.routes(s.Authenticator.AdminOnly))
+			rauth.Mount("/admin", s.adminService.routes(s.Authenticator.AdminOnly, Logger(LogAll)))
 		})
 	})
 

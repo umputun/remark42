@@ -230,7 +230,7 @@ func (b *BoltDB) SetReadOnly(locator store.Locator, status bool) error {
 		switch status {
 		case true:
 			if e := bucket.Put([]byte(locator.URL), []byte(time.Now().Format(tsNano))); e != nil {
-				return errors.Wrapf(e, "failed to set ro for %s to %s", locator.URL, status)
+				return errors.Wrapf(e, "failed to set ro for %s", locator.URL)
 			}
 		case false:
 			if e := bucket.Delete([]byte(locator.URL)); e != nil {
@@ -255,4 +255,43 @@ func (b *BoltDB) IsReadOnly(locator store.Locator) (ro bool) {
 		return nil
 	})
 	return ro
+}
+
+// SetVerified makes user verified or reset the flag
+func (b *BoltDB) SetVerified(siteID string, userID string, status bool) error {
+	bdb, err := b.db(siteID)
+	if err != nil {
+		return err
+	}
+
+	return bdb.Update(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(verifiedBucketName))
+		switch status {
+		case true:
+			if e := bucket.Put([]byte(userID), []byte(time.Now().Format(tsNano))); e != nil {
+				return errors.Wrapf(e, "failed to set verified status for %s", userID)
+			}
+		case false:
+			if e := bucket.Delete([]byte(userID)); e != nil {
+				return errors.Wrapf(e, "failed to clean verified status for %s", userID)
+			}
+		}
+		return nil
+	})
+}
+
+// IsVerified checks if user verified
+func (b *BoltDB) IsVerified(siteID string, userID string) (verified bool) {
+
+	bdb, err := b.db(siteID)
+	if err != nil {
+		return false
+	}
+
+	_ = bdb.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(verifiedBucketName))
+		verified = bucket.Get([]byte(userID)) != nil
+		return nil
+	})
+	return verified
 }

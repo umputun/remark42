@@ -1,12 +1,12 @@
 
 ### find request with tree
-GET {{host}}/api/v1/find?site=radiot&sort=-active&format=tree&url=https://radio-t.com/p/2018/05/05/podcast-596/
+GET {{host}}/api/v1/find?site={{site}}&sort=-active&format=tree&url={{url}}
 
 ### find request with plain
-GET {{host}}/api/v1/find?site=radiot&sort=-time&format=plain&url=https://radio-t.com/p/2018/05/08/prep-597/
+GET {{host}}/api/v1/find?site={{site}}&sort=-time&format=plain&url={{url}}
 
 ### last 50 comments
-GET {{host}}/api/v1/last/50?site=remark
+GET {{host}}/api/v1/last/50?site={{site}}
 
 ### create comment
 POST {{host}}/api/v1/comment
@@ -15,8 +15,8 @@ Content-Type: application/json
 {
 	"text": "comment *blah* http://radio-t.com",
 	"locator": {
-		"url": "https://radio-t.com/blah1",
-		"site": "remark"
+		"url": "{{url}}",
+		"site": "{{site}}"
 	}
 }
 
@@ -27,8 +27,8 @@ Content-Type: application/json
 {
 	"text": "comment *blah* http://radio-t.com <img src=\"http://minionomaniya.ru/wp-content/uploads/2016/01/Кевин.jpg\">",
 	"locator": {
-		"url": "https://radio-t.com/blah1",
-		"site": "remark"
+		"url": "{{url}}",
+		"site": "{{site}}"
 	}
 }
 
@@ -50,28 +50,28 @@ Content-Type: application/json
 }
 
 ### pin comment
-PUT {{host}}/api/v1/admin/pin/3665976683?site=remark&url=https://remark42.com/demo/&pin=1
+PUT {{host}}/api/v1/admin/pin/3665976683?site=remark&url={{url}}&pin=1
 
 ### vote for comment
-PUT {{host}}/api/v1/vote/3665976683?site=remark&url=https://remark42.com/demo/&vote=1
+PUT {{host}}/api/v1/vote/3665976683?site=remark&url={{url}}&vote=1
 
 ### get user info
 GET {{host}}/api/v1/user
 
 ### get comment by id
-GET {{host}}/api/v1/id/3665976683?site=remark&url=https://remark42.com/demo/
+GET {{host}}/api/v1/id/3665976683?site=remark&url={{url}}
 
 ### get comment by id 2
 GET {{host}}/api/v1/id/a2ddb8d2f65008ee1a1e3af8df0f26beb042309c?site=remark&url=https://radio-t.com/blah1
 
 ### get comment by user id
-GET {{host}}/api/v1/comments?site=remark&user=disqus_umputun&limit=5
+GET {{host}}/api/v1/comments?site={{site}}&user=github_ef0f706a79cc24b17bbbb374cd234a691d034128&limit=5
 
 ### get comment by user id2
 GET {{host}}/api/v1/comments?site=remark&user=disqus_kpmy
 
 ### get count
-GET {{host}}/api/v1/count?site=remark&url=https://remark42.com/demo/
+GET {{host}}/api/v1/count?site=remark&url={{url}}
 
 ### get counts for many
 POST {{host}}/api/v1/counts?site=remark
@@ -80,11 +80,11 @@ Content-Type: application/json
 [
     "https://radio-t.com/p/2017/12/02/podcast-574/",
     "https://radio-t.com/p/2017/12/09/podcast-575/",
-    "https://remark42.com/demo/"
+    "{{url}}"
 ]
 
 ### list commented posts
-GET {{host}}/api/v1/list?site=radiot&limit=10&skip=5
+GET {{host}}/api/v1/list?site={{site}}&limit=10&skip=5
 
 ### get config
 GET {{host}}/api/v1/config
@@ -96,16 +96,16 @@ PUT {{host}}/api/v1/admin/user/disqus_grigorybakunov?site=remark&block=1
 PUT {{host}}/api/v1/admin/user/disqus_grigorybakunov?site=remark&block=0
 
 ### list blocked user
-GET {{host}}/api/v1/admin/blocked?site=remark
+GET {{host}}/api/v1/admin/blocked?site={{site}}
 
 ### delete comment by id
-DELETE {{host}}/api/v1/admin/comment/3665976683?site=remark&url=https://remark42.com/demo/
+DELETE {{host}}/api/v1/admin/comment/3665976683?site=remark&url={{url}}
 
 ### get post info
-GET {{host}}/api/v1/info?site=radiot&url=https://radio-t.com/p/2018/05/08/prep-597/
+GET {{host}}/api/v1/info?site={{site}}&url=https://radio-t.com/p/2018/05/08/prep-597/
 
 ### post rss
-GET {{host}}/api/v1/rss/post?site=remark&url=https://remark42.com/demo/
+GET {{host}}/api/v1/rss/post?site=remark&url={{url}}
 
 ### site rss
 PUT {{host}}/api/v1/rss/site?site=remark

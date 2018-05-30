@@ -11,12 +11,13 @@ import (
 
 // User holds user-related info
 type User struct {
-	Name    string `json:"name"`
-	ID      string `json:"id"`
-	Picture string `json:"picture"`
-	Admin   bool   `json:"admin"`
-	Blocked bool   `json:"block,omitempty"`
-	IP      string `json:"ip,omitempty"`
+	Name     string `json:"name"`
+	ID       string `json:"id"`
+	Picture  string `json:"picture"`
+	Admin    bool   `json:"admin"`
+	Blocked  bool   `json:"block,omitempty"`
+	IP       string `json:"ip,omitempty"`
+	Verified bool   `json:"verified,omitempty"`
 }
 
 var reValidSha = regexp.MustCompile("^[a-fA-F0-9]{40}$")

@@ -179,3 +179,22 @@ func TestBoltAdmin_ReadOnly(t *testing.T) {
 
 	assert.False(t, b.IsReadOnly(store.Locator{SiteID: "radio-t-bad", URL: "url-1"}), "nothing blocked on wrong site")
 }
+
+func TestBoltAdmin_Verified(t *testing.T) {
+	defer os.Remove(testDb)
+	b := prep(t)
+
+	assert.False(t, b.IsVerified("radio-t", "u1"), "nothing verified")
+
+	assert.NoError(t, b.SetVerified("radio-t", "u1", true))
+	assert.True(t, b.IsVerified("radio-t", "u1"), "u1 verified")
+
+	assert.False(t, b.IsVerified("radio-t", "u2"), "u2 still not verified")
+	assert.NoError(t, b.SetVerified("radio-t", "u1", false))
+	assert.False(t, b.IsVerified("radio-t", "u1"), "u1 not verified anymore")
+
+	assert.EqualError(t, b.SetVerified("bad", "u1", true), `site "bad" not found`)
+	assert.NoError(t, b.SetVerified("radio-t", "u1xyz", false))
+
+	assert.False(t, b.IsVerified("radio-t-bad", "u1"), "nothing verified on wrong site")
+}

@@ -147,7 +147,7 @@ func New(opts Opts) (*Application, error) {
 		Authenticator: auth.Authenticator{
 			JWTService: jwtService,
 			Admins:     opts.Admins,
-			Providers:  makeAuthProviders(jwtService, avatarProxy, opts),
+			Providers:  makeAuthProviders(jwtService, avatarProxy, dataService, opts),
 			DevPasswd:  opts.DevPasswd,
 		},
 		Cache: cache,
@@ -237,20 +237,22 @@ func makeDirs(dirs ...string) error {
 	return nil
 }
 
-func makeAuthProviders(jwtService *auth.JWT, avatarProxy *proxy.Avatar, opts Opts) (providers []auth.Provider) {
+func makeAuthProviders(jwtService *auth.JWT, avatarProxy *proxy.Avatar, ds service.DataStore, opts Opts) []auth.Provider {
 
 	makeParams := func(cid, secret string) auth.Params {
 		return auth.Params{
-			JwtService:  jwtService,
-			AvatarProxy: avatarProxy,
-			RemarkURL:   opts.RemarkURL,
-			Cid:         cid,
-			Csecret:     secret,
-			Admins:      opts.Admins,
-			SecretKey:   opts.SecretKey,
+			JwtService:   jwtService,
+			AvatarProxy:  avatarProxy,
+			RemarkURL:    opts.RemarkURL,
+			Cid:          cid,
+			Csecret:      secret,
+			Admins:       opts.Admins,
+			SecretKey:    opts.SecretKey,
+			IsVerifiedFn: ds.IsVerifiedFn(),
 		}
 	}
 
+	providers := []auth.Provider{}
 	if opts.GoogleCID != "" && opts.GoogleCSEC != "" {
 		providers = append(providers, auth.NewGoogle(makeParams(opts.GoogleCID, opts.GoogleCSEC)))
 	}

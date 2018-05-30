@@ -275,6 +275,44 @@ func TestAdmin_ReadOnly(t *testing.T) {
 	assert.False(t, info.ReadOnly)
 }
 
+func TestAdmin_Verify(t *testing.T) {
+	srv, ts := prep(t)
+	assert.NotNil(t, srv)
+	defer cleanup(ts)
+
+	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
+		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"}}
+	c2 := store.Comment{Text: "test test #2", ParentID: "p1", Locator: store.Locator{SiteID: "radio-t",
+		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user2", ID: "user2"}}
+
+	_, err := srv.DataService.Create(c1)
+	assert.Nil(t, err)
+	_, err = srv.DataService.Create(c2)
+	assert.Nil(t, err)
+
+	verified := srv.DataService.IsVerified("radio-t", "user1")
+	assert.False(t, verified)
+
+	client := http.Client{}
+	req, err := http.NewRequest(http.MethodPut,
+		fmt.Sprintf("%s/api/v1/admin/verify/user1?site=radio-t&verified=1", ts.URL), nil)
+	assert.Nil(t, err)
+	withBasicAuth(req, "dev", "password")
+	_, err = client.Do(req)
+	require.Nil(t, err)
+	verified = srv.DataService.IsVerified("radio-t", "user1")
+	assert.True(t, verified)
+
+	req, err = http.NewRequest(http.MethodPut,
+		fmt.Sprintf("%s/api/v1/admin/verify/user1?site=radio-t&verified=0", ts.URL), nil)
+	assert.Nil(t, err)
+	withBasicAuth(req, "dev", "password")
+	_, err = client.Do(req)
+	require.Nil(t, err)
+	verified = srv.DataService.IsVerified("radio-t", "user1")
+	assert.False(t, verified)
+}
+
 func TestAdmin_ExportStream(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)

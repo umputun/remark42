@@ -150,3 +150,13 @@ func (s *DataStore) ValidateComment(c *store.Comment) error {
 	}
 	return nil
 }
+
+// IsVerifiedFn returns func to check if user verified or not
+func (s *DataStore) IsVerifiedFn() func(siteID string, userID string) bool {
+	return func(siteID string, userID string) bool {
+		if siteID == "" {
+			return false
+		}
+		return s.IsVerified(siteID, userID)
+	}
+}

@@ -32,6 +32,7 @@ func (a *admin) routes(middlewares ...func(http.Handler) http.Handler) chi.Route
 	router.Delete("/comment/{id}", a.deleteCommentCtrl)
 	router.Put("/user/{userid}", a.setBlockCtrl)
 	router.Delete("/user/{userid}", a.deleteUserCtrl)
+	router.Put("/verify/{userid}", a.setVerifyCtrl)
 	router.Get("/export", a.exportCtrl)
 	router.Put("/pin/{id}", a.setPinCtrl)
 	router.Get("/blocked", a.blockedUsersCtrl)
@@ -108,6 +109,20 @@ func (a *admin) setReadOnlyCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	a.cache.Flush(locator.SiteID)
 	render.JSON(w, r, JSON{"locator": locator, "read-only": roStatus})
+}
+
+// PUT /verify?site=siteID&url=post-url&ro=1 - set or reset read-only status for the post
+func (a *admin) setVerifyCtrl(w http.ResponseWriter, r *http.Request) {
+	userID := chi.URLParam(r, "userid")
+	siteID := r.URL.Query().Get("site")
+	verifyStatus := r.URL.Query().Get("verified") == "1"
+
+	if err := a.dataService.SetVerified(siteID, userID, verifyStatus); err != nil {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set verify status")
+		return
+	}
+	a.cache.Flush(siteID, userID)
+	render.JSON(w, r, JSON{"user": userID, "verified": verifyStatus})
 }
 
 // PUT /pin/{id}?site=siteID&url=post-url&pin=1
