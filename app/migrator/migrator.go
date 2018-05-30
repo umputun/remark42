@@ -9,8 +9,7 @@ import (
 	"os"
 
 	"github.com/pkg/errors"
-
-	"github.com/umputun/remark/app/store/service"
+	"github.com/umputun/remark/app/store"
 )
 
 // Importer defines interface to convert posts from external sources
@@ -23,9 +22,17 @@ type Exporter interface {
 	Export(w io.Writer, siteID string) (int, error)
 }
 
+// Store defines minimal interface needed to export and import comments
+type Store interface {
+	Create(comment store.Comment) (commentID string, err error)
+	Find(locator store.Locator, sort string) ([]store.Comment, error)
+	List(siteID string, limit int, skip int) ([]store.PostInfo, error)
+	DeleteAll(siteID string) error
+}
+
 // ImportParams defines everything needed to run import
 type ImportParams struct {
-	DataStore *service.DataStore
+	DataStore Store
 	InputFile string
 	Provider  string
 	SiteID    string

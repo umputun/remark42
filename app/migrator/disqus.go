@@ -10,12 +10,11 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/app/store"
-	"github.com/umputun/remark/app/store/service"
 )
 
 // Disqus implements Importer from disqus xml
 type Disqus struct {
-	DataStore *service.DataStore
+	DataStore Store
 }
 
 type disqusThread struct {

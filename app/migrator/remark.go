@@ -8,14 +8,12 @@ import (
 	"log"
 
 	"github.com/pkg/errors"
-	"github.com/umputun/remark/app/store/service"
-
 	"github.com/umputun/remark/app/store"
 )
 
 // Remark implements exporter and importer for internal store format
 type Remark struct {
-	DataStore *service.DataStore
+	DataStore Store
 }
 
 // Export all comments to writer as json strings. Each comment is one string, separated by "\n"
