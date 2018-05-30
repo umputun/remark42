@@ -272,7 +272,7 @@ func (b *BoltDB) SetVerified(siteID string, userID string, status bool) error {
 				return errors.Wrapf(e, "failed to set verified status for %s", userID)
 			}
 		case false:
-			if e := bucket.Delete([]byte([]byte(userID))); e != nil {
+			if e := bucket.Delete([]byte(userID)); e != nil {
 				return errors.Wrapf(e, "failed to clean verified status for %s", userID)
 			}
 		}
