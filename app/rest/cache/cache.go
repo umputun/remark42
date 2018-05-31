@@ -3,10 +3,9 @@ package cache
 import (
 	"log"
 	"strings"
-	"sync"
 	"time"
 
-	"github.com/patrickmn/go-cache"
+	"github.com/hashicorp/golang-lru"
 	"github.com/pkg/errors"
 )
 
@@ -36,42 +35,29 @@ func parseKey(fullKey string) (key string, scopes []string, err error) {
 
 // loadingCache implements LoadingCache interface on top of cache.Cache (go-cache)
 type loadingCache struct {
-	bytesCache        *cache.Cache
-	postFlushFn       func()
-	defaultExpiration time.Duration
-	cleanupInterval   time.Duration
-	maxKeys           int
-	maxValueSize      int
-
-	activeKeys map[string]struct{} // keep all current cached keys
-	lock       sync.Mutex
+	bytesCache   *lru.Cache
+	postFlushFn  func()
+	maxKeys      int
+	maxValueSize int
 }
 
 // NewLoadingCache makes loadingCache implementation
 func NewLoadingCache(options ...Option) LoadingCache {
 	res := loadingCache{
-		defaultExpiration: time.Hour,
-		cleanupInterval:   5 * time.Minute,
-		postFlushFn:       func() {},
-		maxKeys:           0,
-		maxValueSize:      0,
-		activeKeys:        map[string]struct{}{},
+		postFlushFn:  func() {},
+		maxKeys:      1000,
+		maxValueSize: 0,
 	}
 	for _, opt := range options {
 		if err := opt(&res); err != nil {
 			log.Printf("[WARN] failed to set cache option, %v", err)
 		}
 	}
-	res.bytesCache = cache.New(res.defaultExpiration, res.cleanupInterval)
 
 	// OnEvicted called automatically for expired and manually deleted
-	res.bytesCache.OnEvicted(func(key string, _ interface{}) {
-		res.withLock(func() { delete(res.activeKeys, key) })
-	})
+	res.bytesCache, _ = lru.New(res.maxKeys)
 
-	log.Printf("[DEBUG] create cache with cleanupInterval=%s, maxKeys=%d, maxValueSize=%d",
-		res.cleanupInterval, res.maxKeys, res.maxValueSize)
-
+	log.Printf("[DEBUG] create lru cache, maxKeys=%d, maxValueSize=%d", res.maxKeys, res.maxValueSize)
 	return &res
 }
 
@@ -85,24 +71,16 @@ func (lc *loadingCache) Get(key string, ttl time.Duration, fn func() ([]byte, er
 		return data, err
 	}
 	if lc.allowed(data) {
-		lc.bytesCache.Set(key, data, ttl)
-		lc.withLock(func() { lc.activeKeys[key] = struct{}{} })
+		lc.bytesCache.Add(key, data)
 	}
 	return data, nil
-}
-
-func (lc *loadingCache) withLock(fn func()) {
-	lc.lock.Lock()
-	fn()
-	lc.lock.Unlock()
 }
 
 // Flush clears cache and calls postFlushFn async
 func (lc *loadingCache) Flush(scopes ...string) {
 
 	if len(scopes) == 0 {
-		lc.bytesCache.Flush()
-		lc.withLock(func() { lc.activeKeys = map[string]struct{}{} })
+		lc.bytesCache.Purge()
 		go lc.postFlushFn()
 		return
 	}
@@ -126,15 +104,14 @@ func (lc *loadingCache) Flush(scopes ...string) {
 	// all matchedKeys should be collected first
 	// we can't delete it from locked section, it will lock on eviction callback
 	matchedKeys := []string{}
-	lc.withLock(func() {
-		for k := range lc.activeKeys {
-			if inScope(k) {
-				matchedKeys = append(matchedKeys, k)
-			}
+	for _, k := range lc.bytesCache.Keys() {
+		key := k.(string)
+		if inScope(key) {
+			matchedKeys = append(matchedKeys, key)
 		}
-	})
+	}
 	for _, mkey := range matchedKeys {
-		lc.bytesCache.Delete(mkey)
+		lc.bytesCache.Remove(mkey)
 	}
 
 	if lc.postFlushFn != nil {
@@ -144,9 +121,6 @@ func (lc *loadingCache) Flush(scopes ...string) {
 
 func (lc *loadingCache) allowed(data []byte) bool {
 	if lc.maxValueSize > 0 && len(data) >= lc.maxValueSize {
-		return false
-	}
-	if lc.maxKeys > 0 && lc.bytesCache.ItemCount() >= lc.maxKeys {
 		return false
 	}
 	return true

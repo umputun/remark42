@@ -3,7 +3,6 @@ package cache
 import (
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/umputun/remark/app/rest"
 )
@@ -25,14 +24,6 @@ func MaxValSize(max int) Option {
 func MaxKeys(max int) Option {
 	return func(lc *loadingCache) error {
 		lc.maxKeys = max
-		return nil
-	}
-}
-
-// CleanupInterval functional option defines how often cleanup loop activated.
-func CleanupInterval(interval time.Duration) Option {
-	return func(lc *loadingCache) error {
-		lc.cleanupInterval = interval
 		return nil
 	}
 }
