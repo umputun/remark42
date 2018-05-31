@@ -19,10 +19,6 @@
   name = "github.com/microcosm-cc/bluemonday"
 
 [[constraint]]
-  name = "github.com/patrickmn/go-cache"
-  version = "2.1.0"
-
-[[constraint]]
   name = "gopkg.in/russross/blackfriday.v2"
   version = "2.0.0"
 
