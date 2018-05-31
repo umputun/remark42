@@ -82,7 +82,7 @@ func (b *BoltDB) DeleteAll(siteID string) error {
 	return errors.Wrapf(err, "failed to delete top level buckets fro site %s", siteID)
 }
 
-// DeleteUser removes all comments for given user. Everyting will be market as deleted
+// DeleteUser removes all comments for given user. Everything will be market as deleted
 // and user name and userID will be changed to "deleted". Also removes from last and from user buckets.
 func (b *BoltDB) DeleteUser(siteID string, userID string) error {
 	bdb, err := b.db(siteID)
