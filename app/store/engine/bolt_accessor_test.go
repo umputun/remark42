@@ -29,7 +29,7 @@ func TestBoltDB_CreateAndFind(t *testing.T) {
 	assert.NotNil(t, err)
 	assert.Equal(t, "key id-1 already in store", err.Error())
 
-	res, err = b.Find(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t-bad"}, "time")
+	_, err = b.Find(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t-bad"}, "time")
 	assert.EqualError(t, err, `site "radio-t-bad" not found`)
 }
 
@@ -173,7 +173,7 @@ func TestBoltDB_List(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com", Count: 2, FirstTS: ts(22), LastTS: ts(23)}}, res)
 
-	res, err = b.List("bad", 1, 1)
+	_, err = b.List("bad", 1, 1)
 	assert.EqualError(t, err, `site "bad" not found`)
 }
 
