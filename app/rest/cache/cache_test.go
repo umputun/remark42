@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"sync"
@@ -40,6 +41,11 @@ func TestLoadingCache_Get(t *testing.T) {
 	lc.Flush()
 	time.Sleep(100 * time.Millisecond) // let postFn to do its thing
 	assert.Equal(t, int32(1), atomic.LoadInt32(&postFnCall))
+
+	res, err = lc.Get("key", func() ([]byte, error) {
+		return nil, errors.New("err")
+	})
+	assert.NotNil(t, err)
 }
 
 func TestLoadingCache_MaxKeys(t *testing.T) {
@@ -239,6 +245,19 @@ func TestLoadingCache_Flush(t *testing.T) {
 		lc.Flush(tt.scopes...)
 		assert.Equal(t, tt.left, lc.(*loadingCache).bytesCache.Len(), "keys size, %s #%d", tt.msg, i)
 	}
+}
+
+func TestLoadingCache_FlushFailed(t *testing.T) {
+	lc := NewLoadingCache()
+	val, err := lc.Get("invalid-composite", func() ([]byte, error) {
+		return []byte("value"), nil
+	})
+	assert.Nil(t, err)
+	assert.Equal(t, "value", string(val))
+	assert.Equal(t, 1, lc.(*loadingCache).bytesCache.Len())
+
+	lc.Flush("invalid-composite")
+	assert.Equal(t, 1, lc.(*loadingCache).bytesCache.Len())
 }
 
 func TestLoadingCache_Keys(t *testing.T) {
