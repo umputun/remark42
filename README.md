@@ -127,6 +127,12 @@ In addition to automatic backups user can make a backup manually. This command m
 
 `docker-compose exec remark42 /srv/create-backup.sh {your site id}`
 
+##### Backup format
+
+Backup file is a text file with all exported comments separated by EOL. Each backup record is a valid json with all key/value
+unmarshaled from `Comment` struct (see below). 
+
+
 #### Admin users
 
 Admins/moderators should be defined in `docker-compose.yml` as a list of user IDs or passed in the command line. 
