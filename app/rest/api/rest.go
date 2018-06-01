@@ -165,9 +165,10 @@ func (s *Rest) routes() chi.Router {
 		})
 	})
 
-	router.Get("/robots.txt", func(w http.ResponseWriter, r *http.Request) {
-		render.PlainText(w, r, "User-agent: *\nDisallow: /auth/\nDisallow: /api/\n")
-	})
+	router.With(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil))).
+		Get("/robots.txt", func(w http.ResponseWriter, r *http.Request) {
+			render.PlainText(w, r, "User-agent: *\nDisallow: /auth/\nDisallow: /api/\n")
+		})
 
 	// file server for static content from /web
 	addFileServer(router, "/web", http.Dir(s.WebRoot))
