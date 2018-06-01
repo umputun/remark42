@@ -85,7 +85,7 @@ const maxBody = 1024
 var reMultWhtsp = regexp.MustCompile(`[\s\p{Zs}]{2,}`)
 
 // Logger middleware prints http log. Customized by set of LoggerFlag
-func Logger(flags ...LoggerFlag) func(http.Handler) http.Handler {
+func Logger(ipFn func(ip string) string, flags ...LoggerFlag) func(http.Handler) http.Handler {
 
 	f := func(h http.Handler) http.Handler {
 
@@ -110,6 +110,9 @@ func Logger(flags ...LoggerFlag) func(http.Handler) http.Handler {
 				remoteIP := strings.Split(r.RemoteAddr, ":")[0]
 				if strings.HasPrefix(r.RemoteAddr, "[") {
 					remoteIP = strings.Split(r.RemoteAddr, "]:")[0] + "]"
+				}
+				if ipFn != nil {
+					remoteIP = ipFn(remoteIP)
 				}
 
 				log.Printf("[INFO] REST %s - %s - %s - %d (%d) - %v %s %s",

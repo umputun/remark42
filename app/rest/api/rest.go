@@ -108,9 +108,11 @@ func (s *Rest) routes() chi.Router {
 		cache:       s.Cache,
 	}
 
+	ipFn := func(ip string) string { return store.HashValue(ip, s.DataService.Secret)[:8] }
+
 	// auth routes for all providers
 	router.Route("/auth", func(r chi.Router) {
-		r.Use(Logger(LogAll), tollbooth_chi.LimitHandler(tollbooth.NewLimiter(5, nil)))
+		r.Use(Logger(ipFn, LogAll), tollbooth_chi.LimitHandler(tollbooth.NewLimiter(5, nil)))
 		for _, provider := range s.Authenticator.Providers {
 			r.Mount("/"+provider.Name, provider.Routes()) // mount auth providers as /auth/{name}
 		}
@@ -121,7 +123,7 @@ func (s *Rest) routes() chi.Router {
 	})
 
 	avatarMiddlewares := []func(http.Handler) http.Handler{
-		Logger(LogNone),
+		Logger(ipFn, LogNone),
 		tollbooth_chi.LimitHandler(tollbooth.NewLimiter(100, nil)),
 	}
 	router.Mount(s.AvatarProxy.Routes(avatarMiddlewares...)) // mount avatars to /api/v1/avatar/{file.img}
@@ -133,7 +135,7 @@ func (s *Rest) routes() chi.Router {
 		// open routes
 		rapi.Group(func(ropen chi.Router) {
 			ropen.Use(s.Authenticator.Auth(false))
-			ropen.Use(Logger(LogAll))
+			ropen.Use(Logger(ipFn, LogAll))
 			ropen.Get("/find", s.findCommentsCtrl)
 			ropen.Get("/id/{id}", s.commentByIDCtrl)
 			ropen.Get("/comments", s.findUserCommentsCtrl)
@@ -152,14 +154,14 @@ func (s *Rest) routes() chi.Router {
 		// protected routes, require auth
 		rapi.Group(func(rauth chi.Router) {
 			rauth.Use(s.Authenticator.Auth(true))
-			rauth.Use(Logger(LogAll))
+			rauth.Use(Logger(ipFn, LogAll))
 			rauth.Post("/comment", s.createCommentCtrl)
 			rauth.Put("/comment/{id}", s.updateCommentCtrl)
 			rauth.Get("/user", s.userInfoCtrl)
 			rauth.Put("/vote/{id}", s.voteCtrl)
 
 			// admin routes, admin users only
-			rauth.Mount("/admin", s.adminService.routes(s.Authenticator.AdminOnly, Logger(LogAll)))
+			rauth.Mount("/admin", s.adminService.routes(s.Authenticator.AdminOnly, Logger(nil, LogAll)))
 		})
 	})
 

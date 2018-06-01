@@ -24,20 +24,20 @@ var reValidSha = regexp.MustCompile("^[a-fA-F0-9]{40}$")
 
 // HashIP replace IP field with hashed hmac
 func (u *User) HashIP(secret string) {
+	u.IP = HashValue(u.IP, secret)
+}
 
-	hashVal := func(val string) string {
-		if val == "" || reValidSha.Match([]byte(val)) {
-			return val // already hashed or empty
-		}
-		key := []byte(secret)
-		h := hmac.New(sha1.New, key)
-		if _, err := h.Write([]byte(val)); err != nil {
-			log.Printf("[WARN] can't hash ip, %s", err)
-		}
-		return fmt.Sprintf("%x", h.Sum(nil))
+// HashValue makes hmac with secret
+func HashValue(val string, secret string) string {
+	if val == "" || reValidSha.Match([]byte(val)) {
+		return val // already hashed or empty
 	}
-
-	u.IP = hashVal(u.IP)
+	key := []byte(secret)
+	h := hmac.New(sha1.New, key)
+	if _, err := h.Write([]byte(val)); err != nil {
+		log.Printf("[WARN] can't hash ip, %s", err)
+	}
+	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
 // EncodeID hashes id to sha1. The function intentionally left outside of User struct because in some cases
