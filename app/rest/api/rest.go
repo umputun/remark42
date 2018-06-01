@@ -108,7 +108,7 @@ func (s *Rest) routes() chi.Router {
 		cache:       s.Cache,
 	}
 
-	ipFn := func(ip string) string { return store.HashValue(ip, s.DataService.Secret)[:8] }
+	ipFn := func(ip string) string { return store.HashValue(ip, s.DataService.Secret)[:12] }
 
 	// auth routes for all providers
 	router.Route("/auth", func(r chi.Router) {
