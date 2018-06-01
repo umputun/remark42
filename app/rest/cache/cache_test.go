@@ -19,7 +19,7 @@ func TestLoadingCache_Get(t *testing.T) {
 	var postFnCall, coldCalls int32
 	lc := NewLoadingCache(PostFlushFn(func() { atomic.AddInt32(&postFnCall, 1) }))
 
-	res, err := lc.Get("key", time.Minute, func() ([]byte, error) {
+	res, err := lc.Get("key", func() ([]byte, error) {
 		atomic.AddInt32(&coldCalls, 1)
 		return []byte("result"), nil
 	})
@@ -28,7 +28,7 @@ func TestLoadingCache_Get(t *testing.T) {
 	assert.Equal(t, int32(1), atomic.LoadInt32(&coldCalls))
 	assert.Equal(t, int32(0), atomic.LoadInt32(&postFnCall))
 
-	res, err = lc.Get("key", time.Minute, func() ([]byte, error) {
+	res, err = lc.Get("key", func() ([]byte, error) {
 		atomic.AddInt32(&coldCalls, 1)
 		return []byte("result"), nil
 	})
@@ -49,7 +49,7 @@ func TestLoadingCache_MaxKeys(t *testing.T) {
 
 	// put 5 keys to cache
 	for i := 0; i < 5; i++ {
-		res, err := lc.Get(fmt.Sprintf("key-%d", i), 500*time.Millisecond, func() ([]byte, error) {
+		res, err := lc.Get(fmt.Sprintf("key-%d", i), func() ([]byte, error) {
 			atomic.AddInt32(&coldCalls, 1)
 			return []byte(fmt.Sprintf("result-%d", i)), nil
 		})
@@ -60,14 +60,14 @@ func TestLoadingCache_MaxKeys(t *testing.T) {
 	}
 
 	// check if really cached
-	res, err := lc.Get("key-3", time.Minute, func() ([]byte, error) {
+	res, err := lc.Get("key-3", func() ([]byte, error) {
 		return []byte("result-blah"), nil
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, "result-3", string(res), "should be cached")
 
 	// try to cache after maxKeys reached
-	res, err = lc.Get("key-X", time.Minute, func() ([]byte, error) {
+	res, err = lc.Get("key-X", func() ([]byte, error) {
 		return []byte("result-X"), nil
 	})
 	assert.Nil(t, err)
@@ -76,13 +76,13 @@ func TestLoadingCache_MaxKeys(t *testing.T) {
 	assert.Equal(t, 5, lc.(*loadingCache).bytesCache.Len())
 
 	// put to cache and make sure it cached
-	res, err = lc.Get("key-Z", time.Minute, func() ([]byte, error) {
+	res, err = lc.Get("key-Z", func() ([]byte, error) {
 		return []byte("result-Z"), nil
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, "result-Z", string(res))
 
-	res, err = lc.Get("key-Z", time.Minute, func() ([]byte, error) {
+	res, err = lc.Get("key-Z", func() ([]byte, error) {
 		return []byte("result-Zzzz"), nil
 	})
 	assert.Nil(t, err)
@@ -94,26 +94,26 @@ func TestLoadingCache_MaxSize(t *testing.T) {
 	lc := NewLoadingCache(MaxKeys(5), MaxValSize(10))
 
 	// put good size value to cache and make sure it cached
-	res, err := lc.Get("key-Z", time.Minute, func() ([]byte, error) {
+	res, err := lc.Get("key-Z", func() ([]byte, error) {
 		return []byte("result-Z"), nil
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, "result-Z", string(res))
 
-	res, err = lc.Get("key-Z", time.Minute, func() ([]byte, error) {
+	res, err = lc.Get("key-Z", func() ([]byte, error) {
 		return []byte("result-Zzzz"), nil
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, "result-Z", string(res), "got cached value")
 
 	// put too big value to cache and make sure it is not cached
-	res, err = lc.Get("key-Big", time.Minute, func() ([]byte, error) {
+	res, err = lc.Get("key-Big", func() ([]byte, error) {
 		return []byte("1234567890"), nil
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, "1234567890", string(res))
 
-	res, err = lc.Get("key-Big", time.Minute, func() ([]byte, error) {
+	res, err = lc.Get("key-Big", func() ([]byte, error) {
 		return []byte("result-big"), nil
 	})
 	assert.Nil(t, err)
@@ -142,7 +142,7 @@ func TestLoadingCache_Parallel(t *testing.T) {
 	var coldCalls int32
 	lc := NewLoadingCache()
 
-	res, err := lc.Get("key", time.Minute, func() ([]byte, error) {
+	res, err := lc.Get("key", func() ([]byte, error) {
 		return []byte("value"), nil
 	})
 	assert.Nil(t, err)
@@ -154,7 +154,7 @@ func TestLoadingCache_Parallel(t *testing.T) {
 		i := i
 		go func() {
 			defer wg.Done()
-			res, err := lc.Get("key", time.Minute, func() ([]byte, error) {
+			res, err := lc.Get("key", func() ([]byte, error) {
 				atomic.AddInt32(&coldCalls, 1)
 				return []byte(fmt.Sprintf("result-%d", i)), nil
 			})
@@ -169,13 +169,13 @@ func TestLoadingCache_Parallel(t *testing.T) {
 func TestLoadingCache_Scopes(t *testing.T) {
 	lc := NewLoadingCache()
 
-	res, err := lc.Get(Key("key", "s1", "s2"), time.Minute, func() ([]byte, error) {
+	res, err := lc.Get(Key("key", "s1", "s2"), func() ([]byte, error) {
 		return []byte("value"), nil
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, "value", string(res))
 
-	res, err = lc.Get(Key("key2", "s2"), time.Minute, func() ([]byte, error) {
+	res, err = lc.Get(Key("key2", "s2"), func() ([]byte, error) {
 		return []byte("value2"), nil
 	})
 	assert.Nil(t, err)
@@ -185,12 +185,12 @@ func TestLoadingCache_Scopes(t *testing.T) {
 	lc.Flush("s1")
 	assert.Equal(t, 1, lc.(*loadingCache).bytesCache.Len())
 
-	lc.Get(Key("key2", "s2"), time.Minute, func() ([]byte, error) {
+	lc.Get(Key("key2", "s2"), func() ([]byte, error) {
 		assert.Fail(t, "should stay")
 		return nil, nil
 	})
 
-	res, err = lc.Get(Key("key", "s1", "s2"), time.Minute, func() ([]byte, error) {
+	res, err = lc.Get(Key("key", "s1", "s2"), func() ([]byte, error) {
 		return []byte("value-upd"), nil
 	})
 	assert.Equal(t, "value-upd", string(res), "was deleted, update")
@@ -200,7 +200,7 @@ func TestLoadingCache_Flush(t *testing.T) {
 	lc := NewLoadingCache()
 
 	addToCache := func(key string, scopes ...string) {
-		res, err := lc.Get(key, time.Minute, func() ([]byte, error) {
+		res, err := lc.Get(key, func() ([]byte, error) {
 			return []byte("value" + key), nil
 		})
 		require.Nil(t, err)

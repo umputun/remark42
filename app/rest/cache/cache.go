@@ -3,7 +3,6 @@ package cache
 import (
 	"log"
 	"strings"
-	"time"
 
 	"github.com/hashicorp/golang-lru"
 	"github.com/pkg/errors"
@@ -11,7 +10,7 @@ import (
 
 // LoadingCache defines interface for caching
 type LoadingCache interface {
-	Get(key string, ttl time.Duration, fn func() ([]byte, error)) (data []byte, err error)
+	Get(key string, fn func() ([]byte, error)) (data []byte, err error)
 	Flush(scopes ...string)
 }
 
@@ -62,7 +61,7 @@ func NewLoadingCache(options ...Option) LoadingCache {
 }
 
 // Get is loading cache method to get value by key or load via fn if not found
-func (lc *loadingCache) Get(key string, ttl time.Duration, fn func() ([]byte, error)) (data []byte, err error) {
+func (lc *loadingCache) Get(key string, fn func() ([]byte, error)) (data []byte, err error) {
 	if b, ok := lc.bytesCache.Get(key); ok {
 		return b.([]byte), nil
 	}
