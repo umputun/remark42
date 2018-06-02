@@ -294,7 +294,7 @@ func (b *BoltDB) Info(locator store.Locator, readOnlyAge int) (store.PostInfo, e
 
 // User extracts all comments for given site and given userID
 // "users" bucket has sub-bucket for each userID, and keeps it as ts:ref
-func (b *BoltDB) User(siteID string, userID string, limit int) (comments []store.Comment, totalComments int, err error) {
+func (b *BoltDB) User(siteID, userID string, limit, skip int) (comments []store.Comment, totalComments int, err error) {
 
 	comments = []store.Comment{}
 	commentRefs := []string{}
@@ -318,8 +318,13 @@ func (b *BoltDB) User(siteID string, userID string, limit int) (comments []store
 
 		c := userIDBkt.Cursor()
 		totalComments = 0
+		skipComments := 0
 		for k, v := c.Last(); k != nil; k, v = c.Prev() {
 			totalComments++
+			if skip > 0 && skipComments < skip {
+				skipComments++
+				continue
+			}
 			if len(commentRefs) < limit {
 				commentRefs = append(commentRefs, string(v))
 			}

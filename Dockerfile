@@ -31,7 +31,10 @@ RUN if [ -z "$COVERALLS_TOKEN" ] ; then \
     echo coverall not enabled ; \
     else goveralls -coverprofile=.cover/cover.out -service=travis-ci -repotoken $COVERALLS_TOKEN; fi
 
-RUN go build -o remark -ldflags "-X main.revision=$(git rev-parse --abbrev-ref HEAD)-$(git describe --abbrev=7 --always --tags)-$(date +%Y%m%d-%H:%M:%S) -s -w" ./app
+RUN \
+    version=$(git rev-parse --abbrev-ref HEAD)-$(git describe --abbrev=7 --always --tags)-$(date +%Y%m%d-%H:%M:%S) && \
+    echo "version $version" && \  
+    go build -o remark -ldflags "-X main.revision=${version} -s -w" ./app
 
 
 FROM node:9.4-alpine as build-frontend

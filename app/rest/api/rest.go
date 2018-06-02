@@ -444,7 +444,7 @@ func (s *Rest) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[DEBUG] get comments for userID %s, %s", userID, siteID)
 
 	data, err := s.Cache.Get(cache.Key(cache.URLKey(r), userID, siteID), func() ([]byte, error) {
-		comments, count, e := s.DataService.User(siteID, userID, limit)
+		comments, count, e := s.DataService.User(siteID, userID, limit, 0)
 		if e != nil {
 			return nil, e
 		}

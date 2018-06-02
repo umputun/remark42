@@ -17,17 +17,25 @@ type Interface interface {
 	Admin
 }
 
+// UserRequest is the request send to get comments by user
+type UserRequest struct {
+	SiteID string
+	UserID string
+	Limit  int
+	Skip   int
+}
+
 // Accessor defines all usual access ops avail for regular user
 type Accessor interface {
-	Create(comment store.Comment) (commentID string, err error)                 // create new comment, avoid dups by id
-	Get(locator store.Locator, commentID string) (store.Comment, error)         // get comment by id
-	Put(locator store.Locator, comment store.Comment) error                     // update comment, mutable parts only
-	Find(locator store.Locator, sort string) ([]store.Comment, error)           // find comments for locator
-	Last(siteID string, limit int) ([]store.Comment, error)                     // last comments for given site, sorted by time
-	User(siteID string, userID string, limit int) ([]store.Comment, int, error) // comments by user, sorted by time
-	Count(locator store.Locator) (int, error)                                   // number of comments for the post
-	List(siteID string, limit int, skip int) ([]store.PostInfo, error)          // list of commented posts
-	Info(locator store.Locator, readonlyAge int) (store.PostInfo, error)        // get post info
+	Create(comment store.Comment) (commentID string, err error)                // create new comment, avoid dups by id
+	Get(locator store.Locator, commentID string) (store.Comment, error)        // get comment by id
+	Put(locator store.Locator, comment store.Comment) error                    // update comment, mutable parts only
+	Find(locator store.Locator, sort string) ([]store.Comment, error)          // find comments for locator
+	Last(siteID string, limit int) ([]store.Comment, error)                    // last comments for given site, sorted by time
+	User(siteID, userID string, limit, skip int) ([]store.Comment, int, error) // comments by user, sorted by time
+	Count(locator store.Locator) (int, error)                                  // number of comments for the post
+	List(siteID string, limit int, skip int) ([]store.PostInfo, error)         // list of commented posts
+	Info(locator store.Locator, readonlyAge int) (store.PostInfo, error)       // get post info
 }
 
 // Admin defines all store ops avail for admin only
