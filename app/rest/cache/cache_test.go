@@ -42,7 +42,7 @@ func TestLoadingCache_Get(t *testing.T) {
 	time.Sleep(100 * time.Millisecond) // let postFn to do its thing
 	assert.Equal(t, int32(1), atomic.LoadInt32(&postFnCall))
 
-	res, err = lc.Get("key", func() ([]byte, error) {
+	_, err = lc.Get("key", func() ([]byte, error) {
 		return nil, errors.New("err")
 	})
 	assert.NotNil(t, err)
@@ -199,6 +199,7 @@ func TestLoadingCache_Scopes(t *testing.T) {
 	res, err = lc.Get(Key("key", "s1", "s2"), func() ([]byte, error) {
 		return []byte("value-upd"), nil
 	})
+	assert.Nil(t, err)
 	assert.Equal(t, "value-upd", string(res), "was deleted, update")
 }
 

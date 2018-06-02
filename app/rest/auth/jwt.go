@@ -24,9 +24,10 @@ type CustomClaims struct {
 	User *store.User `json:"user,omitempty"`
 
 	// state and from used for oauth handshake
-	State  string `json:"state,omitempty"`
-	From   string `json:"from,omitempty"`
-	SiteID string `json:"site_id,omitempty"`
+	State       string `json:"state,omitempty"`
+	From        string `json:"from,omitempty"`
+	SiteID      string `json:"site_id,omitempty"`
+	SessionOnly bool   `json:"sess_only,omitempty"`
 }
 
 const jwtCookieName = "JWT"
@@ -45,8 +46,8 @@ func NewJWT(secret string, secureCookies bool, exp time.Duration) *JWT {
 }
 
 // Set creates jwt cookie with xsrf cookie and put it to ResponseWriter
-// accepts claims and sets expiration if none defined
-func (j *JWT) Set(w http.ResponseWriter, claims *CustomClaims) error {
+// accepts claims and sets expiration if none defined. permanent flag means long-living cookie, false makes it session only.
+func (j *JWT) Set(w http.ResponseWriter, claims *CustomClaims, sessionOnly bool) error {
 	if claims.ExpiresAt == 0 {
 		claims.ExpiresAt = time.Now().Add(j.exp).Unix()
 	}
@@ -56,7 +57,10 @@ func (j *JWT) Set(w http.ResponseWriter, claims *CustomClaims) error {
 		return errors.Wrap(err, "can't sign jwt token")
 	}
 
-	cookieExpiration := 365 * 24 * 3600 // 1 year
+	cookieExpiration := 0 // session cookie
+	if !sessionOnly {
+		cookieExpiration = 365 * 24 * 3600 // 1 year
+	}
 
 	jwtCookie := http.Cookie{Name: jwtCookieName, Value: tokenString, HttpOnly: true, Path: "/",
 		MaxAge: cookieExpiration, Secure: j.secureCookies}
@@ -123,7 +127,7 @@ func (j *JWT) Refresh(w http.ResponseWriter, r *http.Request) (*CustomClaims, er
 	untilExp := claims.ExpiresAt - time.Now().Unix()
 	if untilExp <= int64(j.exp.Seconds()/2) {
 		claims.ExpiresAt = time.Now().Add(j.exp).Unix()
-		e := j.Set(w, claims)
+		e := j.Set(w, claims, claims.SessionOnly)
 		return claims, e
 	}
 	return claims, nil

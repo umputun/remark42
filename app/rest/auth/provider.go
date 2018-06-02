@@ -80,7 +80,7 @@ func (p Provider) Routes() chi.Router {
 	return router
 }
 
-// loginHandler - GET /login?from=redirect-back-url&site=siteID
+// loginHandler - GET /login?from=redirect-back-url&site=siteID&session=1
 func (p Provider) loginHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[DEBUG] login with %s", p.Name)
@@ -88,9 +88,10 @@ func (p Provider) loginHandler(w http.ResponseWriter, r *http.Request) {
 	state := p.randToken()
 
 	claims := CustomClaims{
-		State:  state,
-		From:   r.URL.Query().Get("from"),
-		SiteID: r.URL.Query().Get("site"),
+		State:       state,
+		From:        r.URL.Query().Get("from"),
+		SiteID:      r.URL.Query().Get("site"),
+		SessionOnly: r.URL.Query().Get("session") != "" && r.URL.Query().Get("session") != "0",
 		StandardClaims: jwt.StandardClaims{
 			Id:        p.randToken(),
 			Issuer:    "remark42",
@@ -99,7 +100,7 @@ func (p Provider) loginHandler(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	if err := p.JwtService.Set(w, &claims); err != nil {
+	if err := p.JwtService.Set(w, &claims, false); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to set jwt")
 		return
 	}
@@ -180,9 +181,10 @@ func (p Provider) authHandler(w http.ResponseWriter, r *http.Request) {
 			Issuer: "remark42",
 			Id:     p.randToken(),
 		},
+		SessionOnly: oauthClaims.SessionOnly,
 	}
 
-	if err = p.JwtService.Set(w, authClaims); err != nil {
+	if err = p.JwtService.Set(w, authClaims, oauthClaims.SessionOnly); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to save user info")
 		return
 	}

@@ -105,7 +105,7 @@ func (s *Rest) routes() chi.Router {
 		cache:       s.Cache,
 	}
 
-	ipFn := func(ip string) string { return store.HashValue(ip, s.DataService.Secret)[:12] }
+	ipFn := func(ip string) string { return store.HashValue(ip, s.DataService.Secret)[:12] } // logger uses it for anonymization
 
 	// auth routes for all providers
 	router.Route("/auth", func(r chi.Router) {

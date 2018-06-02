@@ -29,6 +29,8 @@ func TestLogin(t *testing.T) {
 	jar, err := cookiejar.New(nil)
 	require.Nil(t, err)
 	client := &http.Client{Jar: jar, Timeout: 5 * time.Second}
+
+	// check non-admin, permanent
 	resp, err := client.Get("http://localhost:8981/login?site=remark")
 	require.Nil(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
@@ -40,6 +42,7 @@ func TestLogin(t *testing.T) {
 	assert.Equal(t, 2, len(resp.Cookies()))
 	assert.Equal(t, "JWT", resp.Cookies()[0].Name)
 	assert.NotEqual(t, "", resp.Cookies()[0].Value, "jwt set")
+	assert.Equal(t, 31536000, resp.Cookies()[0].MaxAge)
 	assert.Equal(t, "XSRF-TOKEN", resp.Cookies()[1].Name)
 	assert.NotEqual(t, "", resp.Cookies()[1].Value, "xsrf cookie set")
 
@@ -59,6 +62,42 @@ func TestLogin(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, store.User{Name: "blah", ID: "mock_myuser2", Picture: "http://exmple.com/pic1.png",
 		Admin: true, Blocked: false, IP: "", Verified: true}, u)
+}
+
+func TestLoginSessionOnly(t *testing.T) {
+
+	ts, ots := mockProvider(t, 8981, 8982)
+	defer func() {
+		ts.Close()
+		ots.Close()
+	}()
+
+	jar, err := cookiejar.New(nil)
+	require.Nil(t, err)
+	client := &http.Client{Jar: jar, Timeout: 5 * time.Second}
+
+	// check non-admin, session
+	resp, err := client.Get("http://localhost:8981/login?site=remark&session=1")
+	require.Nil(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+	assert.Equal(t, 2, len(resp.Cookies()))
+	assert.Equal(t, "JWT", resp.Cookies()[0].Name)
+	assert.NotEqual(t, "", resp.Cookies()[0].Value, "jwt set")
+	assert.Equal(t, 0, resp.Cookies()[0].MaxAge)
+	assert.Equal(t, "XSRF-TOKEN", resp.Cookies()[1].Name)
+	assert.NotEqual(t, "", resp.Cookies()[1].Value, "xsrf cookie set")
+
+	req, err := http.NewRequest("GET", "http://example.com", nil)
+	require.Nil(t, err)
+	req.AddCookie(resp.Cookies()[0])
+	req.AddCookie(resp.Cookies()[1])
+	req.Header.Add("X-XSRF-TOKEN", resp.Cookies()[1].Value)
+
+	jwtService := NewJWT("12345", false, time.Hour)
+	res, err := jwtService.Get(req)
+	require.Nil(t, err)
+	assert.Equal(t, true, res.SessionOnly)
+	t.Logf("%+v", res)
 }
 
 func TestLogout(t *testing.T) {
@@ -170,6 +209,6 @@ func mockProvider(t *testing.T, loginPort, authPort int) (*http.Server, *http.Se
 	go oauth.ListenAndServe()
 	go ts.ListenAndServe()
 
-	time.Sleep(time.Millisecond * 100) // let the start
+	time.Sleep(time.Millisecond * 100) // let them start
 	return ts, oauth
 }

@@ -46,7 +46,7 @@ func TestMiddleware_GetBodyAndUser(t *testing.T) {
 	assert.Equal(t, "", user, "no user")
 
 	req = rest.SetUserInfo(req, store.User{ID: "id1", Name: "user1"})
-	body, user = getBodyAndUser(req, []LoggerFlag{LogAll})
+	_, user = getBodyAndUser(req, []LoggerFlag{LogAll})
 	assert.Equal(t, ` - id1 "user1"`, user, "no user")
 
 	body, user = getBodyAndUser(req, nil)

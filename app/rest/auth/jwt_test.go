@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -18,7 +18,12 @@ var testJwtValid = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjI3ODkxOTE4MjI
 	"sImlzcyI6InJlbWFyazQyIiwibmJmIjoxNTI2ODg0MjIyLCJ1c2VyIjp7Im5hbWUiOiJuYW1lMSIsImlkIjoiaWQxIiwicGljdHVyZS" +
 	"I6IiIsImFkbWluIjpmYWxzZX0sInN0YXRlIjoiMTIzNDU2IiwiZnJvbSI6ImZyb20ifQ._loFgh3g45gr9TtGqvM3N584I_6EHEOJnYb6Py84stQ"
 
-var testJwtExpired = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1MjY4ODc4MjIsImp0aSI6InJhbmRvbSBpZCIs" + "ImlzcyI6InJlbWFyazQyIiwibmJmIjoxNTI2ODg0MjIyLCJ1c2VyIjp7Im5hbWUiOiJuYW1lMSIsImlkIjoiaWQxIiwicGljdHVyZSI6IiI" +
+var testJwtValidSess = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjI3ODkxOTE4MjIsImp0aSI6InJhbmRvbSBpZCIsImlzcyI6In" +
+	"JlbWFyazQyIiwibmJmIjoxNTI2ODg0MjIyLCJ1c2VyIjp7Im5hbWUiOiJuYW1lMSIsImlkIjoiaWQxIiwicGljdHVyZSI6IiIsIm" +
+	"FkbWluIjpmYWxzZX0sInN0YXRlIjoiMTIzNDU2IiwiZnJvbSI6ImZyb20iLCJzZXNzX29ubHkiOnRydWV9.p6w0sM_NYaRuyhyA9jqfWlB5cx1vZPGhXGC5geSX7nA"
+
+var testJwtExpired = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1MjY4ODc4MjIsImp0aSI6InJhbmRvbSBpZCIs" +
+	"ImlzcyI6InJlbWFyazQyIiwibmJmIjoxNTI2ODg0MjIyLCJ1c2VyIjp7Im5hbWUiOiJuYW1lMSIsImlkIjoiaWQxIiwicGljdHVyZSI6IiI" +
 	"sImFkbWluIjpmYWxzZX0sInN0YXRlIjoiMTIzNDU2IiwiZnJvbSI6ImZyb20ifQ.4_dCrY9ihyfZIedz-kZwBTxmxU1a52V7IqeJrOqTzE4"
 
 func TestJWT_Set(t *testing.T) {
@@ -39,15 +44,29 @@ func TestJWT_Set(t *testing.T) {
 		},
 	}
 
+	claims.SessionOnly = false
 	rr := httptest.NewRecorder()
-	err := j.Set(rr, claims)
+	err := j.Set(rr, claims, claims.SessionOnly)
 	assert.Nil(t, err)
 	cookies := rr.Result().Cookies()
 	t.Log(cookies)
 	require.Equal(t, 2, len(cookies))
 	assert.Equal(t, "JWT", cookies[0].Name)
 	assert.Equal(t, testJwtValid, cookies[0].Value)
+	assert.Equal(t, 31536000, cookies[0].MaxAge)
+	assert.Equal(t, "XSRF-TOKEN", cookies[1].Name)
+	assert.Equal(t, "random id", cookies[1].Value)
 
+	claims.SessionOnly = true
+	rr = httptest.NewRecorder()
+	err = j.Set(rr, claims, claims.SessionOnly)
+	assert.Nil(t, err)
+	cookies = rr.Result().Cookies()
+	t.Log(cookies)
+	require.Equal(t, 2, len(cookies))
+	assert.Equal(t, "JWT", cookies[0].Name)
+	assert.Equal(t, testJwtValidSess, cookies[0].Value)
+	assert.Equal(t, 0, cookies[0].MaxAge)
 	assert.Equal(t, "XSRF-TOKEN", cookies[1].Name)
 	assert.Equal(t, "random id", cookies[1].Value)
 }
@@ -80,8 +99,9 @@ func TestJWT_SetAndGetWithCookies(t *testing.T) {
 	j := NewJWT("xyz 12345", false, time.Hour)
 
 	claims := &CustomClaims{
-		State: "123456",
-		From:  "from",
+		State:       "123456",
+		From:        "from",
+		SessionOnly: true,
 		User: &store.User{
 			ID:   "id1",
 			Name: "name1",
@@ -96,7 +116,7 @@ func TestJWT_SetAndGetWithCookies(t *testing.T) {
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/valid" {
-			j.Set(w, claims)
+			j.Set(w, claims, true)
 			w.WriteHeader(200)
 		}
 	}))
@@ -113,6 +133,8 @@ func TestJWT_SetAndGetWithCookies(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, &store.User{Name: "name1", ID: "id1", Picture: "", Admin: false, Blocked: false, IP: ""}, claims.User)
 	assert.Equal(t, "remark42", claims.Issuer)
+	assert.Equal(t, true, claims.SessionOnly)
+	t.Log(resp.Cookies())
 }
 
 func TestJWT_SetAndGetWithXsrfMismatch(t *testing.T) {
@@ -135,7 +157,7 @@ func TestJWT_SetAndGetWithXsrfMismatch(t *testing.T) {
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/valid" {
-			j.Set(w, claims)
+			j.Set(w, claims, true)
 			w.WriteHeader(200)
 		}
 	}))
@@ -172,7 +194,7 @@ func TestJWT_SetAndGetWithCookiesExpired(t *testing.T) {
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/expired" {
-			j.Set(w, claims)
+			j.Set(w, claims, true)
 			w.WriteHeader(200)
 		}
 	}))
@@ -207,7 +229,7 @@ func TestJWT_Refresh(t *testing.T) {
 	}
 	// set token
 	rr := httptest.NewRecorder()
-	err := j.Set(rr, claims)
+	err := j.Set(rr, claims, true)
 	assert.Nil(t, err)
 	cookies := rr.Result().Cookies()
 	require.Equal(t, 2, len(cookies))
