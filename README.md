@@ -357,6 +357,7 @@ Sort can be `time`, `active` or `score`. Supported sort order with prefix -/+, i
   ```
 * `GET /api/v1/user` - get user info, _auth required_
 * `PUT /api/v1/vote/{id}?site=site-id&url=post-url&vote=1` - vote for comment. `vote`=1 will increase score, -1 decrease. _auth required_
+* `GET /api/v1/userdata?site=site-id` - export all user data to gz stream  _auth required_
 * `GET /api/v1/config?site=site-id` - returns configuration (parameters) for given site
 
   ```go

@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/sha1"
 	"encoding/base64"
@@ -159,6 +160,7 @@ func (s *Rest) routes() chi.Router {
 			rauth.Put("/comment/{id}", s.updateCommentCtrl)
 			rauth.Get("/user", s.userInfoCtrl)
 			rauth.Put("/vote/{id}", s.voteCtrl)
+			rauth.Get("/userdata", s.userAllDataCtrl)
 
 			// admin routes, admin users only
 			rauth.Mount("/admin", s.adminService.routes(s.Authenticator.AdminOnly, Logger(nil, LogAll)))
@@ -603,6 +605,56 @@ func (s *Rest) voteCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	s.Cache.Flush(locator.URL)
 	render.JSON(w, r, JSON{"id": comment.ID, "score": comment.Score})
+}
+
+// GET /userdata?site=siteID - exports all data about the user as a json fragments
+func (s *Rest) userAllDataCtrl(w http.ResponseWriter, r *http.Request) {
+	siteID := r.URL.Query().Get("site")
+	user, err := rest.GetUserInfo(r)
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusUnauthorized, err, "can't get user info")
+		return
+	}
+	userB, err := json.Marshal(&user)
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't marshal user info")
+		return
+	}
+
+	exportFile := fmt.Sprintf("%s-%s-%s.json.gz", siteID, user.ID, time.Now().Format("20060102"))
+	w.Header().Set("Content-Type", "application/gzip")
+	w.Header().Set("Content-Disposition", "attachment;filename="+exportFile)
+	gzWriter := gzip.NewWriter(w)
+	defer func() {
+		if e := gzWriter.Close(); e != nil {
+			log.Printf("[WARN] can't close gzip writer, %s", e)
+		}
+	}()
+
+	if _, e := gzWriter.Write(userB); e != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, e, "can't write user info")
+		return
+	}
+
+	for i := 0; i < 1000; i++ {
+		comments, err := s.DataService.User(siteID, user.ID, 1000, i*1000)
+		if err != nil {
+			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't write user comments")
+			return
+		}
+		b, err := json.Marshal(comments)
+		if err != nil {
+			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't marshal user comments")
+			return
+		}
+		if _, e := gzWriter.Write(b); e != nil {
+			rest.SendErrorJSON(w, r, http.StatusInternalServerError, e, "can't write user comment")
+			return
+		}
+		if len(comments) != 1000 {
+			break
+		}
+	}
 }
 
 // serves static files from /web

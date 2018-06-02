@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -657,6 +658,45 @@ func TestRest_Info(t *testing.T) {
 	assert.Equal(t, 400, code)
 	_, code = get(t, ts.URL+"/api/v1/info?site=radio-t-no&url=https://radio-t.com/blah-no")
 	assert.Equal(t, 400, code)
+}
+
+func TestRest_UserAllData(t *testing.T) {
+	srv, ts := prep(t)
+	assert.NotNil(t, srv)
+	defer cleanup(ts)
+
+	// write 3 comments
+	user := store.User{ID: "dev", Name: "user name 1"}
+	c1 := store.Comment{User: user, Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
+		URL: "https://radio-t.com/blah1"}, Timestamp: time.Date(2018, 05, 27, 1, 14, 10, 0, time.Local)}
+	c2 := store.Comment{User: user, Text: "test test #2", ParentID: "p1", Locator: store.Locator{SiteID: "radio-t",
+		URL: "https://radio-t.com/blah1"}, Timestamp: time.Date(2018, 05, 27, 1, 14, 20, 0, time.Local)}
+	c3 := store.Comment{User: user, Text: "test test #3", ParentID: "p1", Locator: store.Locator{SiteID: "radio-t",
+		URL: "https://radio-t.com/blah1"}, Timestamp: time.Date(2018, 05, 27, 1, 14, 25, 0, time.Local)}
+	_, err := srv.DataService.Create(c1)
+	require.Nil(t, err, "%+v", err)
+	_, err = srv.DataService.Create(c2)
+	require.Nil(t, err)
+	_, err = srv.DataService.Create(c3)
+	require.Nil(t, err)
+
+	client := &http.Client{Timeout: 1 * time.Second}
+	req, err := http.NewRequest("GET", ts.URL+"/api/v1/userdata?site=radio-t", nil)
+	require.Nil(t, err)
+	req = withBasicAuth(req, "dev", "password")
+	resp, err := client.Do(req)
+	require.Nil(t, err)
+	require.Equal(t, 200, resp.StatusCode)
+	require.Equal(t, "application/gzip", resp.Header.Get("Content-Type"))
+
+	ungzReader, err := gzip.NewReader(resp.Body)
+	assert.NoError(t, err)
+	ungzBody, err := ioutil.ReadAll(ungzReader)
+	assert.NoError(t, err)
+	assert.True(t, strings.HasPrefix(string(ungzBody),
+		`{"name":"developer one","id":"dev","picture":"/api/v1/avatar/remark.image","admin":true}[`))
+	assert.Equal(t, 3, strings.Count(string(ungzBody), `"text":`), "3 comments inside")
+	t.Logf("%s", string(ungzBody))
 }
 
 func TestRest_FileServer(t *testing.T) {
