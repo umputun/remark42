@@ -294,14 +294,14 @@ func (b *BoltDB) Info(locator store.Locator, readOnlyAge int) (store.PostInfo, e
 
 // User extracts all comments for given site and given userID
 // "users" bucket has sub-bucket for each userID, and keeps it as ts:ref
-func (b *BoltDB) User(siteID, userID string, limit, skip int) (comments []store.Comment, totalComments int, err error) {
+func (b *BoltDB) User(siteID, userID string, limit, skip int) (comments []store.Comment, err error) {
 
 	comments = []store.Comment{}
 	commentRefs := []string{}
 
 	bdb, err := b.db(siteID)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
 	if limit == 0 || limit > userLimit {
@@ -317,37 +317,56 @@ func (b *BoltDB) User(siteID, userID string, limit, skip int) (comments []store.
 		}
 
 		c := userIDBkt.Cursor()
-		totalComments = 0
 		skipComments := 0
 		for k, v := c.Last(); k != nil; k, v = c.Prev() {
-			totalComments++
+			if len(commentRefs) >= limit {
+				break
+			}
 			if skip > 0 && skipComments < skip {
 				skipComments++
 				continue
 			}
-			if len(commentRefs) < limit {
-				commentRefs = append(commentRefs, string(v))
-			}
+			commentRefs = append(commentRefs, string(v))
 		}
 		return nil
 	})
 
 	if err != nil {
-		return comments, totalComments, err
+		return comments, err
 	}
 
 	// retrieve comments for refs
 	for _, v := range commentRefs {
 		url, commentID, e := b.parseRef([]byte(v))
 		if e != nil {
-			return comments, totalComments, errors.Wrapf(e, "can't parse reference %s", v)
+			return comments, errors.Wrapf(e, "can't parse reference %s", v)
 		}
 		if c, e := b.Get(store.Locator{SiteID: siteID, URL: url}, commentID); e == nil {
 			comments = append(comments, c)
 		}
 	}
 
-	return comments, totalComments, err
+	return comments, err
+}
+
+// UserCount returns number of comments for user TODO: this can be slow, but userIDBkt just refs
+func (b *BoltDB) UserCount(siteID, userID string) (int, error) {
+	bdb, err := b.db(siteID)
+	if err != nil {
+		return 0, err
+	}
+	count := 0
+	err = bdb.View(func(tx *bolt.Tx) error {
+		usersBkt := tx.Bucket([]byte(userBucketName))
+		userIDBkt := usersBkt.Bucket([]byte(userID))
+		if userIDBkt == nil {
+			return errors.Errorf("no comments for user %s in store", userID)
+		}
+		stats := userIDBkt.Stats()
+		count = stats.KeyN
+		return nil
+	})
+	return count, err
 }
 
 // Get returns comment for locator.URL and commentID string

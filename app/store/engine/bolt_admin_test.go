@@ -109,7 +109,7 @@ func TestBoltAdmin_DeleteUser(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 0, c, "0 count")
 
-	_, _, err = b.User("radio-t", "user1", 5, 0)
+	_, err = b.User("radio-t", "user1", 5, 0)
 	assert.EqualError(t, err, "no comments for user user1 in store")
 
 	comments, err := b.Last("radio-t", 10)

@@ -225,28 +225,25 @@ func TestBoltDB_GetForUser(t *testing.T) {
 	defer os.Remove(testDb)
 	b := prep(t)
 
-	res, count, err := b.User("radio-t", "user1", 5, 0)
+	res, err := b.User("radio-t", "user1", 5, 0)
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(res))
-	assert.Equal(t, 2, count)
 	assert.Equal(t, "some text2", res[0].Text, "sorted by -time")
 
-	res, count, err = b.User("radio-t", "user1", 1, 0)
+	res, err = b.User("radio-t", "user1", 1, 0)
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(res), "allow 1 comment")
-	assert.Equal(t, 2, count)
 	assert.Equal(t, "some text2", res[0].Text, "sorted by -time")
 
-	res, count, err = b.User("radio-t", "user1", 1, 1)
+	res, err = b.User("radio-t", "user1", 1, 1)
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(res), "allow 1 comment")
-	assert.Equal(t, 2, count)
 	assert.Equal(t, `some text, <a href="http://radio-t.com">link</a>`, res[0].Text, "second comment")
 
-	_, _, err = b.User("bad", "user1", 1, 0)
+	_, err = b.User("bad", "user1", 1, 0)
 	assert.EqualError(t, err, `site "bad" not found`)
 
-	_, _, err = b.User("radio-t", "userZ", 1, 0)
+	_, err = b.User("radio-t", "userZ", 1, 0)
 	assert.EqualError(t, err, `no comments for user userZ in store`)
 }
 
@@ -271,34 +268,44 @@ func TestBoltDB_GetForUserPagination(t *testing.T) {
 	}
 
 	// seek 0, 5 comments
-	res, count, err := b.User("radio-t", "user1", 5, 0)
+	res, err := b.User("radio-t", "user1", 5, 0)
 	assert.Nil(t, err)
-	assert.Equal(t, 50, count)
 	assert.Equal(t, 5, len(res))
 	assert.Equal(t, "id-49", res[0].ID)
 	assert.Equal(t, "id-45", res[4].ID)
 
 	// seek 10, 3 comments
-	res, count, err = b.User("radio-t", "user1", 3, 10)
+	res, err = b.User("radio-t", "user1", 3, 10)
 	assert.Nil(t, err)
-	assert.Equal(t, 50, count)
 	assert.Equal(t, 3, len(res))
 	assert.Equal(t, "id-39", res[0].ID)
 	assert.Equal(t, "id-37", res[2].ID)
 
 	// seek 45, ask 10 comments
-	res, count, err = b.User("radio-t", "user1", 10, 45)
+	res, err = b.User("radio-t", "user1", 10, 45)
 	assert.Nil(t, err)
-	assert.Equal(t, 50, count)
 	assert.Equal(t, 5, len(res))
 	assert.Equal(t, "id-4", res[0].ID)
 	assert.Equal(t, "id-0", res[4].ID)
 
 	// seek 55, ask 10 comments
-	res, count, err = b.User("radio-t", "user1", 10, 55)
+	res, err = b.User("radio-t", "user1", 10, 55)
 	assert.Nil(t, err)
-	assert.Equal(t, 50, count)
 	assert.Equal(t, 0, len(res))
+}
+
+func TestBoltDB_GetForUserCounter(t *testing.T) {
+	defer os.Remove(testDb)
+	b := prep(t)
+	count, err := b.UserCount("radio-t", "user1")
+	assert.Nil(t, err)
+	assert.Equal(t, 2, count)
+
+	_, err = b.UserCount("bad", "user1")
+	assert.EqualError(t, err, `site "bad" not found`)
+
+	_, err = b.UserCount("radio-t", "userZ")
+	assert.EqualError(t, err, `no comments for user userZ in store`)
 }
 
 func TestBoltDB_Ref(t *testing.T) {

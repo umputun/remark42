@@ -206,7 +206,7 @@ func (b *BoltDB) Blocked(siteID string) (users []store.BlockedUser, err error) {
 
 			// get user name from comment user section
 			userName := ""
-			userComments, _, e := b.User(siteID, string(k), 1, 0)
+			userComments, e := b.User(siteID, string(k), 1, 0)
 			if e == nil && len(userComments) > 0 {
 				userName = userComments[0].User.Name
 			}
