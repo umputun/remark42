@@ -1,6 +1,7 @@
 package api
 
 import (
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -236,6 +237,84 @@ func TestRest_Vote(t *testing.T) {
 	assert.Equal(t, map[string]bool{}, cr.Votes)
 }
 
+func TestRest_UserAllData(t *testing.T) {
+	srv, ts := prep(t)
+	assert.NotNil(t, srv)
+	defer cleanup(ts)
+
+	// write 3 comments
+	user := store.User{ID: "dev", Name: "user name 1"}
+	c1 := store.Comment{User: user, Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
+		URL: "https://radio-t.com/blah1"}, Timestamp: time.Date(2018, 05, 27, 1, 14, 10, 0, time.Local)}
+	c2 := store.Comment{User: user, Text: "test test #2", ParentID: "p1", Locator: store.Locator{SiteID: "radio-t",
+		URL: "https://radio-t.com/blah1"}, Timestamp: time.Date(2018, 05, 27, 1, 14, 20, 0, time.Local)}
+	c3 := store.Comment{User: user, Text: "test test #3", ParentID: "p1", Locator: store.Locator{SiteID: "radio-t",
+		URL: "https://radio-t.com/blah1"}, Timestamp: time.Date(2018, 05, 27, 1, 14, 25, 0, time.Local)}
+	_, err := srv.DataService.Create(c1)
+	require.Nil(t, err, "%+v", err)
+	_, err = srv.DataService.Create(c2)
+	require.Nil(t, err)
+	_, err = srv.DataService.Create(c3)
+	require.Nil(t, err)
+
+	client := &http.Client{Timeout: 1 * time.Second}
+	req, err := http.NewRequest("GET", ts.URL+"/api/v1/userdata?site=radio-t", nil)
+	require.Nil(t, err)
+	req = withBasicAuth(req, "dev", "password")
+	resp, err := client.Do(req)
+	require.Nil(t, err)
+	require.Equal(t, 200, resp.StatusCode)
+	require.Equal(t, "application/gzip", resp.Header.Get("Content-Type"))
+
+	ungzReader, err := gzip.NewReader(resp.Body)
+	assert.NoError(t, err)
+	ungzBody, err := ioutil.ReadAll(ungzReader)
+	assert.NoError(t, err)
+	assert.True(t, strings.HasPrefix(string(ungzBody),
+		`{"name":"developer one","id":"dev","picture":"/api/v1/avatar/remark.image","admin":true}[`))
+	assert.Equal(t, 3, strings.Count(string(ungzBody), `"text":`), "3 comments inside")
+	t.Logf("%s", string(ungzBody))
+
+	req, err = http.NewRequest("GET", ts.URL+"/api/v1/userdata?site=radio-t", nil)
+	require.Nil(t, err)
+	resp, err = client.Do(req)
+	require.Nil(t, err)
+	require.Equal(t, 401, resp.StatusCode)
+}
+func TestRest_UserAllDataManyComments(t *testing.T) {
+	srv, ts := prep(t)
+	assert.NotNil(t, srv)
+	defer cleanup(ts)
+
+	user := store.User{ID: "dev", Name: "user name 1"}
+	c := store.Comment{User: user, Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
+		URL: "https://radio-t.com/blah1"}, Timestamp: time.Date(2018, 05, 27, 1, 14, 10, 0, time.Local)}
+
+	for i := 0; i < 478; i++ {
+		c.ID = fmt.Sprintf("id-%03d", i)
+		c.Timestamp = c.Timestamp.Add(time.Second)
+		_, err := srv.DataService.Create(c)
+		require.Nil(t, err)
+	}
+
+	client := &http.Client{Timeout: 1 * time.Second}
+	req, err := http.NewRequest("GET", ts.URL+"/api/v1/userdata?site=radio-t", nil)
+	require.Nil(t, err)
+	req = withBasicAuth(req, "dev", "password")
+	resp, err := client.Do(req)
+	require.Nil(t, err)
+	require.Equal(t, 200, resp.StatusCode)
+	require.Equal(t, "application/gzip", resp.Header.Get("Content-Type"))
+
+	ungzReader, err := gzip.NewReader(resp.Body)
+	assert.NoError(t, err)
+	ungzBody, err := ioutil.ReadAll(ungzReader)
+	assert.NoError(t, err)
+	assert.True(t, strings.HasPrefix(string(ungzBody),
+		`{"name":"developer one","id":"dev","picture":"/api/v1/avatar/remark.image","admin":true}[`))
+	assert.Equal(t, 478, strings.Count(string(ungzBody), `"text":`), "478 comments inside")
+}
+
 func TestRest_DeleteMe(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
@@ -247,6 +326,7 @@ func TestRest_DeleteMe(t *testing.T) {
 	req = withBasicAuth(req, "dev", "password")
 	resp, err := client.Do(req)
 	assert.Nil(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
 	body, err := ioutil.ReadAll(resp.Body)
 	assert.Nil(t, err)
 
@@ -260,4 +340,10 @@ func TestRest_DeleteMe(t *testing.T) {
 	claims, err := srv.Authenticator.JWTService.Parse(token)
 	assert.Nil(t, err)
 	assert.Equal(t, "dev", claims.User.ID)
+
+	req, err = http.NewRequest(http.MethodPost, fmt.Sprintf("%s/api/v1/deleteme?site=radio-t", ts.URL), nil)
+	assert.Nil(t, err)
+	resp, err = client.Do(req)
+	assert.Nil(t, err)
+	assert.Equal(t, 401, resp.StatusCode)
 }

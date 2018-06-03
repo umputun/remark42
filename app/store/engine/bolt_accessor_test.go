@@ -258,8 +258,8 @@ func TestBoltDB_GetForUserPagination(t *testing.T) {
 		User:    store.User{ID: "user1", Name: "user name"},
 	}
 
-	// write 50 comments
-	for i := 0; i < 50; i++ {
+	// write 200 comments
+	for i := 0; i < 200; i++ {
 		c.ID = fmt.Sprintf("id-%d", i)
 		c.Text = fmt.Sprintf("text #%d", i)
 		c.Timestamp = time.Date(2017, 12, 20, 15, 18, i, 0, time.Local)
@@ -267,29 +267,35 @@ func TestBoltDB_GetForUserPagination(t *testing.T) {
 		require.Nil(t, err)
 	}
 
+	// get all comments
+	res, err := b.User("radio-t", "user1", 0, 0)
+	assert.Nil(t, err)
+	assert.Equal(t, 200, len(res))
+	assert.Equal(t, "id-199", res[0].ID)
+
 	// seek 0, 5 comments
-	res, err := b.User("radio-t", "user1", 5, 0)
+	res, err = b.User("radio-t", "user1", 5, 0)
 	assert.Nil(t, err)
 	assert.Equal(t, 5, len(res))
-	assert.Equal(t, "id-49", res[0].ID)
-	assert.Equal(t, "id-45", res[4].ID)
+	assert.Equal(t, "id-199", res[0].ID)
+	assert.Equal(t, "id-195", res[4].ID)
 
 	// seek 10, 3 comments
 	res, err = b.User("radio-t", "user1", 3, 10)
 	assert.Nil(t, err)
 	assert.Equal(t, 3, len(res))
-	assert.Equal(t, "id-39", res[0].ID)
-	assert.Equal(t, "id-37", res[2].ID)
+	assert.Equal(t, "id-189", res[0].ID)
+	assert.Equal(t, "id-187", res[2].ID)
 
-	// seek 45, ask 10 comments
-	res, err = b.User("radio-t", "user1", 10, 45)
+	// seek 195, ask 10 comments
+	res, err = b.User("radio-t", "user1", 10, 195)
 	assert.Nil(t, err)
 	assert.Equal(t, 5, len(res))
 	assert.Equal(t, "id-4", res[0].ID)
 	assert.Equal(t, "id-0", res[4].ID)
 
-	// seek 55, ask 10 comments
-	res, err = b.User("radio-t", "user1", 10, 55)
+	// seek 255, ask 10 comments
+	res, err = b.User("radio-t", "user1", 10, 255)
 	assert.Nil(t, err)
 	assert.Equal(t, 0, len(res))
 }

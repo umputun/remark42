@@ -193,8 +193,9 @@ func (s *Rest) userAllDataCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for i := 0; i < 1000; i++ {
-		comments, err := s.DataService.User(siteID, user.ID, 1000, i*1000)
+	// get comments in 100 in each paginated request
+	for i := 0; i < 100; i++ {
+		comments, err := s.DataService.User(siteID, user.ID, 100, i*100)
 		if err != nil {
 			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't write user comments")
 			return
@@ -208,7 +209,7 @@ func (s *Rest) userAllDataCtrl(w http.ResponseWriter, r *http.Request) {
 			rest.SendErrorJSON(w, r, http.StatusInternalServerError, e, "can't write user comment")
 			return
 		}
-		if len(comments) != 1000 {
+		if len(comments) != 100 {
 			break
 		}
 	}

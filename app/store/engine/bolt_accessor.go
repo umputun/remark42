@@ -39,7 +39,7 @@ const (
 
 	// limits
 	lastLimit = 1000
-	userLimit = 50
+	userLimit = 500
 )
 
 const tsNano = "2006-01-02T15:04:05.000000000Z07:00"
