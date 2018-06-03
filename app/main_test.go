@@ -70,6 +70,7 @@ func prepApp(t *testing.T, port int, duration time.Duration) (*Application, cont
 	opts.GithubCSEC, opts.GithubCID = "csec", "cid"
 	opts.GoogleCSEC, opts.GoogleCID = "csec", "cid"
 	opts.FacebookCSEC, opts.FacebookCID = "csec", "cid"
+	opts.YandexCSEC, opts.YandexCID = "csec", "cid"
 	opts.Port = port
 
 	os.Remove(opts.BoltPath + "/remark.db")

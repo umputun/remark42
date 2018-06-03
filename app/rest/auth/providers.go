@@ -2,10 +2,12 @@ package auth
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"golang.org/x/oauth2/facebook"
 	"golang.org/x/oauth2/github"
 	"golang.org/x/oauth2/google"
+	"golang.org/x/oauth2/yandex"
 
 	"github.com/umputun/remark/app/store"
 )
@@ -88,6 +90,35 @@ func NewFacebook(p Params) Provider {
 			uinfoJSON := uinfo{}
 			if err := json.Unmarshal(bdata, &uinfoJSON); err == nil {
 				userInfo.Picture = uinfoJSON.Picture.Data.URL
+			}
+			return userInfo
+		},
+	})
+}
+
+// NewYandex makes yandex oauth2 provider
+func NewYandex(p Params) Provider {
+	return initProvider(p, Provider{
+		Name:        "yandex",
+		Endpoint:    yandex.Endpoint,
+		RedirectURL: p.RemarkURL + "/auth/yandex/callback",
+		Scopes:      []string{},
+		// See https://tech.yandex.com/passport/doc/dg/reference/response-docpage/
+		InfoURL: "https://login.yandex.ru/info?format=json",
+		MapUser: func(data userData, _ []byte) store.User {
+			userInfo := store.User{
+				ID:   "yandex_" + store.EncodeID(data.value("id")),
+				Name: data.value("display_name"), // using Display Name by default
+			}
+			if userInfo.Name == "" {
+				userInfo.Name = data.value("real_name") // using Real Name (== full name) if Display Name is empty
+			}
+			if userInfo.Name == "" {
+				userInfo.Name = data.value("login") // otherwise using login
+			}
+
+			if data.value("default_avatar_id") != "" {
+				userInfo.Picture = fmt.Sprintf("https://avatars.yandex.net/get-yapic/%s/islands-200", data.value("default_avatar_id"))
 			}
 			return userInfo
 		},
