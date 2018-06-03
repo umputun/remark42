@@ -48,7 +48,8 @@ type Params struct {
 type userData map[string]interface{}
 
 func (u userData) value(key string) string {
-	if val, ok := u[key]; ok {
+	// json.Unmarshal converts json "null" value to go's "nil", in this case return empty string
+	if val, ok := u[key]; ok && val != nil {
 		return fmt.Sprintf("%v", val)
 	}
 	return ""
