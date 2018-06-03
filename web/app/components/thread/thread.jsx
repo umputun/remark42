@@ -2,6 +2,7 @@ import { h, Component } from 'preact';
 
 import { LS_COLLAPSE_KEY } from 'common/constants';
 import { siteId, url } from 'common/settings';
+import store from 'common/store';
 
 import Comment from 'components/comment';
 
@@ -23,10 +24,15 @@ export default class Thread extends Component {
   }
 
   updateCollapsedState(comment) {
+    const config = store.get('config') || {};
+    const score = comment.score || 0;
+
     this.lsCollapsedID = `${siteId}_${url}_${comment.id}`;
 
     this.state = {
-      collapsed: getCollapsedComments().includes(this.lsCollapsedID),
+      collapsed: !this.state.isCollapsedChanged && score <= config.critical_score
+                 || getCollapsedComments().includes(this.lsCollapsedID),
+      isCollapsedChanged: true,
     };
   }
 
@@ -49,7 +55,7 @@ export default class Thread extends Component {
   }
 
   render(props, { collapsed }) {
-    const { data: { comment, replies = [] }, mix, mods = {} } = props;
+    const { data: { comment, replies = [] }, mods = {} } = props;
 
     return (
       <div
@@ -59,7 +65,7 @@ export default class Thread extends Component {
       >
         <Comment
           data={comment}
-          mods={{ level: mods.level, collapsed, collapsible: !!replies.length }}
+          mods={{ level: mods.level, collapsed }}
           onReply={props.onReply}
           onEdit={props.onEdit}
           onCollapseToggle={this.onCollapseToggle}

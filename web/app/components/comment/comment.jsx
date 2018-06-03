@@ -262,6 +262,11 @@ export default class Comment extends Component {
   }
 
   toggleCollapse() {
+    this.setState({
+      isEditing: false,
+      isReplying: false,
+    });
+
     if (this.props.onCollapseToggle) {
       this.props.onCollapseToggle();
     }
@@ -385,6 +390,16 @@ export default class Comment extends Component {
               )
             }
 
+            {
+              !mods.disabled && (
+                <span
+                  className={b('comment__action', {}, { type: 'collapse', selected: mods.collapsed })}
+                  tabIndex="0"
+                  onClick={this.toggleCollapse}
+                >{mods.collapsed ? '+' : '−'}</span>
+              )
+            }
+
             <span className={b('comment__score', {}, { view: o.score.view })}>
               <span
                 className={b('comment__vote', {}, { type: 'up', selected: scoreIncreased, disabled: isGuest || isCurrentUser })}
@@ -436,16 +451,6 @@ export default class Comment extends Component {
                   tabIndex="0"
                   onClick={this.toggleEditing}
                 >{isEditing ? 'Cancel' : 'Edit'}{editTimeLeft && ` (${editTimeLeft})`}</span>
-              )
-            }
-
-            {
-              !mods.disabled && mods.collapsible && (
-                <span
-                  className={b('comment__action', {}, { type: 'collapse', selected: mods.collapsed })}
-                  tabIndex="0"
-                  onClick={this.toggleCollapse}
-                >{mods.collapsed ? '+' : '−'}</span>
               )
             }
 
