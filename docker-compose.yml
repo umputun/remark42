@@ -4,7 +4,7 @@ services:
     remark:
         build: .
         image: umputun/remark:master
-        container_name: "remark"
+        container_name: "remark42"
         hostname: "remark"
         restart: always
 

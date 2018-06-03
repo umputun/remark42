@@ -26,6 +26,42 @@ var testJwtExpired = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1MjY4ODc4M
 	"ImlzcyI6InJlbWFyazQyIiwibmJmIjoxNTI2ODg0MjIyLCJ1c2VyIjp7Im5hbWUiOiJuYW1lMSIsImlkIjoiaWQxIiwicGljdHVyZSI6IiI" +
 	"sImFkbWluIjpmYWxzZX0sInN0YXRlIjoiMTIzNDU2IiwiZnJvbSI6ImZyb20ifQ.4_dCrY9ihyfZIedz-kZwBTxmxU1a52V7IqeJrOqTzE4"
 
+func TestJWT_Token(t *testing.T) {
+	j := NewJWT("xyz 12345", false, time.Hour)
+
+	claims := &CustomClaims{
+		State: "123456",
+		From:  "from",
+		User: &store.User{
+			ID:   "id1",
+			Name: "name1",
+		},
+		StandardClaims: jwt.StandardClaims{
+			Id:        "random id",
+			Issuer:    "remark42",
+			ExpiresAt: time.Date(2058, 5, 21, 1, 30, 22, 0, time.Local).Unix(),
+			NotBefore: time.Date(2018, 5, 21, 1, 30, 22, 0, time.Local).Unix(),
+		},
+	}
+
+	res, err := j.Token(claims)
+	assert.Nil(t, err)
+	assert.Equal(t, testJwtValid, res)
+}
+
+func TestJWT_Parse(t *testing.T) {
+	j := NewJWT("xyz 12345", false, time.Hour)
+	claims, err := j.Parse(testJwtValid)
+	assert.NoError(t, err)
+	assert.Equal(t, &store.User{Name: "name1", ID: "id1"}, claims.User)
+
+	_, err = j.Parse(testJwtExpired)
+	assert.NotNil(t, err, "expired token")
+
+	_, err = j.Parse("bad")
+	assert.NotNil(t, err, "bad token")
+}
+
 func TestJWT_Set(t *testing.T) {
 	j := NewJWT("xyz 12345", false, time.Hour)
 
@@ -85,13 +121,13 @@ func TestJWT_GetFromHeader(t *testing.T) {
 	req.Header.Add(jwtHeaderKey, testJwtExpired)
 	_, err = j.Get(req)
 	assert.NotNil(t, err)
-	assert.True(t, strings.HasPrefix(err.Error(), "can't parse jwt: token is expired by"), err.Error())
+	assert.True(t, strings.Contains(err.Error(), "can't parse jwt: token is expired by"), err.Error())
 
 	req = httptest.NewRequest("GET", "/", nil)
 	req.Header.Add(jwtHeaderKey, "bad bad token")
 	_, err = j.Get(req)
 	assert.NotNil(t, err)
-	assert.True(t, strings.HasPrefix(err.Error(), "can't parse jwt: token contains an invalid number of segments"), err.Error())
+	assert.True(t, strings.Contains(err.Error(), "can't parse jwt: token contains an invalid number of segments"), err.Error())
 
 }
 
@@ -209,7 +245,7 @@ func TestJWT_SetAndGetWithCookiesExpired(t *testing.T) {
 	req.Header.Add(xsrfHeaderKey, "random id")
 	_, err = j.Get(req)
 	assert.NotNil(t, err)
-	assert.True(t, strings.HasPrefix(err.Error(), "can't parse jwt: token is expired by"), err.Error())
+	assert.True(t, strings.Contains(err.Error(), "can't parse jwt: token is expired by"), err.Error())
 }
 
 func TestJWT_Refresh(t *testing.T) {

@@ -45,16 +45,45 @@ func NewJWT(secret string, secureCookies bool, exp time.Duration) *JWT {
 	return &res
 }
 
+// Token makes jwt with claims
+func (j *JWT) Token(claims *CustomClaims) (string, error) {
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString([]byte(j.secret))
+	if err != nil {
+		return "", errors.Wrap(err, "can't sign jwt token")
+	}
+	return tokenString, nil
+}
+
+// Parse token string and verify
+func (j *JWT) Parse(tokenString string) (*CustomClaims, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, errors.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(j.secret), nil
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "can't parse jwt")
+	}
+
+	claims, ok := token.Claims.(*CustomClaims)
+	if !ok || !token.Valid {
+		return nil, errors.New("invalid jwt")
+	}
+	return claims, nil
+}
+
 // Set creates jwt cookie with xsrf cookie and put it to ResponseWriter
 // accepts claims and sets expiration if none defined. permanent flag means long-living cookie, false makes it session only.
 func (j *JWT) Set(w http.ResponseWriter, claims *CustomClaims, sessionOnly bool) error {
 	if claims.ExpiresAt == 0 {
 		claims.ExpiresAt = time.Now().Add(j.exp).Unix()
 	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString([]byte(j.secret))
+
+	tokenString, err := j.Token(claims)
 	if err != nil {
-		return errors.Wrap(err, "can't sign jwt token")
+		return errors.Wrap(err, "failed to make jwt token")
 	}
 
 	cookieExpiration := 0 // session cookie
@@ -80,10 +109,12 @@ func (j *JWT) Get(r *http.Request) (*CustomClaims, error) {
 	fromCookie := false
 	tokenString := ""
 
+	// try to get from X-JWT header
 	if tokenHeader := r.Header.Get(jwtHeaderKey); tokenHeader != "" {
 		tokenString = tokenHeader
 	}
 
+	// try to get from JWT cookie
 	if tokenString == "" {
 		fromCookie = true
 		jc, err := r.Cookie(jwtCookieName)
@@ -93,19 +124,9 @@ func (j *JWT) Get(r *http.Request) (*CustomClaims, error) {
 		tokenString = jc.Value
 	}
 
-	token, err := jwt.ParseWithClaims(tokenString, &CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, errors.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-		return []byte(j.secret), nil
-	})
+	claims, err := j.Parse(tokenString)
 	if err != nil {
-		return nil, errors.Wrap(err, "can't parse jwt")
-	}
-
-	claims, ok := token.Claims.(*CustomClaims)
-	if !ok || !token.Valid {
-		return nil, errors.New("invalid jwt")
+		return nil, errors.Wrap(err, "failed to get jwt")
 	}
 
 	if fromCookie && claims.User != nil {

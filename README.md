@@ -102,8 +102,8 @@ _instructions for google oauth2 setup borrowed from [oauth2_proxy](https://githu
 #### Initial import from Disqus
 
 1.  Disqus provides an export of all comments on your site in a g-zipped file. This is found in your Moderation panel at Disqus Admin > Setup > Export. The export will be sent into a queue and then emailed to the address associated with your account once it's ready. Direct link to export will be something like `https://<siteud>.disqus.com/admin/discussions/export/`. See [importing-exporting](https://help.disqus.com/customer/portal/articles/1104797-importing-exporting) for more details.
-2.  Move this file to your remark42 host within `.var` and unzip, i.e. `gunzip <disqus-export-name>.xml.gz`.
-3.  Run import command - `docker-compose exec remark /srv/import-disqus.sh <disqus-export-name>.xml <your site id>`
+2.  Move this file to your remark42 host within `./var` and unzip, i.e. `gunzip <disqus-export-name>.xml.gz`.
+3.  Run import command - `docker-compose exec remark42 /srv/import-disqus.sh <disqus-export-name>.xml <your site id>`
 
 #### Backup and restore
 
@@ -131,7 +131,6 @@ In addition to automatic backups user can make a backup manually. This command m
 
 Backup file is a text file with all exported comments separated by EOL. Each backup record is a valid json with all key/value
 unmarshaled from `Comment` struct (see below). 
-
 
 #### Admin users
 

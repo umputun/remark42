@@ -157,6 +157,7 @@ func (s *Rest) routes() chi.Router {
 			rauth.Get("/user", s.userInfoCtrl)
 			rauth.Put("/vote/{id}", s.voteCtrl)
 			rauth.Get("/userdata", s.userAllDataCtrl)
+			rauth.Post("/deleteme", s.deleteMeCtrl)
 
 			// admin routes, admin users only
 			rauth.Mount("/admin", s.adminService.routes(s.Authenticator.AdminOnly, Logger(nil, LogAll)))

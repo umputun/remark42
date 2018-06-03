@@ -10,11 +10,13 @@ import (
 	"strings"
 	"time"
 
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
 	blackfriday "gopkg.in/russross/blackfriday.v2"
 
 	"github.com/umputun/remark/app/rest"
+	"github.com/umputun/remark/app/rest/auth"
 	"github.com/umputun/remark/app/store"
 	"github.com/umputun/remark/app/store/service"
 )
@@ -210,4 +212,31 @@ func (s *Rest) userAllDataCtrl(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
+}
+
+// POST /deleteme?site_id=site
+func (s *Rest) deleteMeCtrl(w http.ResponseWriter, r *http.Request) {
+	user, err := rest.GetUserInfo(r)
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusUnauthorized, err, "can't get user info")
+		return
+	}
+	siteID := r.URL.Query().Get("site")
+
+	claims := auth.CustomClaims{
+		SiteID: siteID,
+		StandardClaims: jwt.StandardClaims{
+			Issuer:    "remark42",
+			ExpiresAt: time.Now().AddDate(0, 3, 0).Unix(),
+			NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
+		},
+		User: &user,
+	}
+
+	tokenStr, err := s.Authenticator.JWTService.Token(&claims)
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't make token")
+		return
+	}
+	render.JSON(w, r, JSON{"site": siteID, "user_id": user.ID, "token": tokenStr})
 }
