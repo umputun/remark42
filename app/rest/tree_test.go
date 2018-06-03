@@ -62,19 +62,19 @@ func TestTreeSortNodes(t *testing.T) {
 	// unsorted by purpose
 	comments := []store.Comment{
 		{ID: "14", ParentID: "1", Timestamp: time.Date(2017, 12, 25, 19, 46, 14, 0, time.UTC)},
+		{ID: "132", ParentID: "13", Timestamp: time.Date(2017, 12, 25, 19, 46, 32, 0, time.UTC)},
 		{ID: "1", Timestamp: time.Date(2017, 12, 25, 19, 46, 1, 0, time.UTC), Score: 2},
 		{ID: "2", Timestamp: time.Date(2017, 12, 25, 19, 47, 2, 0, time.UTC), Score: 3},
 		{ID: "11", ParentID: "1", Timestamp: time.Date(2017, 12, 25, 19, 46, 11, 0, time.UTC)},
 		{ID: "13", ParentID: "1", Timestamp: time.Date(2017, 12, 25, 19, 46, 13, 0, time.UTC)},
 		{ID: "12", ParentID: "1", Timestamp: time.Date(2017, 12, 25, 19, 46, 14, 0, time.UTC)},
 		{ID: "131", ParentID: "13", Timestamp: time.Date(2017, 12, 25, 19, 50, 31, 0, time.UTC)},
-		{ID: "132", ParentID: "13", Timestamp: time.Date(2017, 12, 25, 19, 46, 32, 0, time.UTC)},
 		{ID: "21", ParentID: "2", Timestamp: time.Date(2017, 12, 25, 19, 47, 21, 0, time.UTC)},
 		{ID: "22", ParentID: "2", Timestamp: time.Date(2017, 12, 25, 19, 47, 22, 0, time.UTC)},
 		{ID: "4", Timestamp: time.Date(2017, 12, 25, 19, 47, 22, 0, time.UTC), Score: -2},
 		{ID: "3", Timestamp: time.Date(2017, 12, 25, 19, 47, 22, 100, time.UTC)},
 		{ID: "6", Timestamp: time.Date(2017, 12, 25, 19, 47, 22, 200, time.UTC)},
-		{ID: "5", Deleted: true},
+		{ID: "5", Deleted: true, Timestamp: time.Date(2017, 12, 25, 19, 47, 22, 150, time.UTC)},
 	}
 
 	res := MakeTree(comments, "+active", 0)
