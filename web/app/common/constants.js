@@ -12,6 +12,7 @@ const PROVIDER_NAMES = {
   facebook: 'Facebook',
   github: 'GitHub',
 };
+const LS_COLLAPSE_KEY = '__remarkCollapsed';
 
 module.exports = {
   BASE_URL,
@@ -24,4 +25,5 @@ module.exports = {
   DEFAULT_MAX_COMMENT_SIZE,
   PROVIDER_NAMES,
   DEFAULT_SORT,
+  LS_COLLAPSE_KEY,
 };
