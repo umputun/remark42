@@ -41,13 +41,14 @@ func MakeTree(comments []store.Comment, sortType string, readOnlyAge int) *Tree 
 	res := Tree{
 		Info: store.PostInfo{
 			URL:     comments[0].Locator.URL,
-			Count:   len(comments), // TODO: includes deleted?
 			FirstTS: comments[0].Timestamp,
 			LastTS:  comments[0].Timestamp,
 		},
 	}
+	res.Info.Count = len(res.filter(comments, func(c store.Comment) bool { return !c.Deleted }))
 
-	topComments := res.filter(comments, "")
+	topComments := res.filter(comments, func(c store.Comment) bool { return c.ParentID == "" })
+
 	res.Nodes = []*Node{}
 	for _, rootComment := range topComments {
 		node := Node{Comment: rootComment}
@@ -84,7 +85,7 @@ func (t *Tree) proc(comments []store.Comment, node *Node, rd *recurData, parentI
 		rd.tsModified, rd.tsCreated = node.Comment.Timestamp, node.Comment.Timestamp
 	}
 
-	repComments := t.filter(comments, parentID)
+	repComments := t.filter(comments, func(comment store.Comment) bool { return comment.ParentID == parentID })
 	for _, rc := range repComments {
 		if rc.Timestamp.After(rd.tsModified) {
 			rd.tsModified = rc.Timestamp
@@ -107,10 +108,10 @@ func (t *Tree) proc(comments []store.Comment, node *Node, rd *recurData, parentI
 }
 
 // filter returns comments for parentID
-func (t *Tree) filter(comments []store.Comment, parentID string) (f []store.Comment) {
+func (t *Tree) filter(comments []store.Comment, fn func(comment store.Comment) bool) (f []store.Comment) {
 
 	for _, c := range comments {
-		if c.ParentID == parentID {
+		if fn(c) {
 			f = append(f, c)
 		}
 	}

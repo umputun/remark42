@@ -49,13 +49,13 @@ func TestMakeTree(t *testing.T) {
 	assert.Nil(t, err)
 	expected, actual := cleanFormatting(expJSON, buf.String())
 	assert.Equal(t, expected, actual)
-	assert.Equal(t, store.PostInfo{URL: "url", Count: 17, FirstTS: ts(46, 1), LastTS: ts(47, 22)}, res.Info)
+	assert.Equal(t, store.PostInfo{URL: "url", Count: 12, FirstTS: ts(46, 1), LastTS: ts(47, 22)}, res.Info)
 
 	res = MakeTree([]store.Comment{}, "time", 0)
 	assert.Equal(t, &Tree{}, res)
 
 	res = MakeTree(comments, "time", 10)
-	assert.Equal(t, store.PostInfo{URL: "url", Count: 17, FirstTS: ts(46, 1), LastTS: ts(47, 22), ReadOnly: true}, res.Info)
+	assert.Equal(t, store.PostInfo{URL: "url", Count: 12, FirstTS: ts(46, 1), LastTS: ts(47, 22), ReadOnly: true}, res.Info)
 }
 
 func TestTreeSortNodes(t *testing.T) {
@@ -376,7 +376,7 @@ const expJSON = `{
   ],
   "info": {
 	 "url": "url",
-	 "count": 17,
+	 "count": 12,
      "first_time": "2017-12-25T19:46:01Z",
      "last_time": "2017-12-25T19:47:22Z"
    }
