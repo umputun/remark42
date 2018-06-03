@@ -74,6 +74,7 @@ export default class Thread extends Component {
         {
           !collapsed && !!replies.length && replies.map(thread => (
             <Thread
+              key={thread.comment.id}
               data={thread}
               mods={{ level: mods.level < 5 ? mods.level + 1 : mods.level }}
               onReply={props.onReply}

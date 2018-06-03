@@ -1,7 +1,7 @@
 import { h, Component } from 'preact';
 import api from 'common/api';
 
-import { BASE_URL, NODE_ID, COMMENT_NODE_CLASSNAME_PREFIX, DEFAULT_SORT } from 'common/constants';
+import { BASE_URL, NODE_ID, COMMENT_NODE_CLASSNAME_PREFIX, DEFAULT_SORT, LS_SORT_KEY, MAX_SHOWN_ROOT_COMMENTS } from 'common/constants';
 import { url } from 'common/settings';
 import store from 'common/store';
 
@@ -11,8 +11,6 @@ import Comment from 'components/comment';
 import Input from 'components/input';
 import Preloader from 'components/preloader';
 import Thread from 'components/thread';
-
-const LS_SORT_KEY = '__remarkSort';
 
 export default class Root extends Component {
   constructor(props) {
@@ -31,6 +29,7 @@ export default class Root extends Component {
       isCommentsListLoading: false,
       user: {},
       sort,
+      commentsShown: MAX_SHOWN_ROOT_COMMENTS,
     };
 
     this.addComment = this.addComment.bind(this);
@@ -42,6 +41,7 @@ export default class Root extends Component {
     this.onSortChange = this.onSortChange.bind(this);
     this.onUnblockSomeone = this.onUnblockSomeone.bind(this);
     this.checkUrlHash = this.checkUrlHash.bind(this);
+    this.showMore = this.showMore.bind(this);
   }
 
   componentWillMount() {
@@ -170,7 +170,13 @@ export default class Root extends Component {
     store.replaceComment(comment);
   }
 
-  render({}, { config = {}, comments = [], user, sort, isLoaded, isBlockedVisible, isCommentsListLoading, bannedUsers }) {
+  showMore() {
+    this.setState({
+      commentsShown: this.state.commentsShown + MAX_SHOWN_ROOT_COMMENTS,
+    });
+  }
+
+  render({}, { config = {}, comments = [], user, sort, isLoaded, isBlockedVisible, isCommentsListLoading, bannedUsers, commentsShown }) {
     if (!isLoaded) {
       return (
         <div id={NODE_ID}>
@@ -232,8 +238,9 @@ export default class Root extends Component {
                   !!comments.length && !isCommentsListLoading && (
                     <div className="root__threads" role="list">
                       {
-                        comments.map(thread => (
+                        comments.slice(0, commentsShown).map(thread => (
                           <Thread
+                            key={thread.comment.id}
                             mix="root__thread"
                             mods={{ level: 0 }}
                             data={thread}
@@ -241,6 +248,15 @@ export default class Root extends Component {
                             onEdit={this.replaceComment}
                           />
                         ))
+                      }
+
+                      {
+                        commentsShown < comments.length && (
+                          <button
+                            className="root__show-more"
+                            onClick={this.showMore}
+                          >Show more</button>
+                        )
                       }
                     </div>
                   )
