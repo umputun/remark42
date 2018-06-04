@@ -155,6 +155,30 @@ func TestLoadingCache_MaxCacheSize(t *testing.T) {
 	assert.Equal(t, 2, lc.(*loadingCache).bytesCache.Len())
 }
 
+func TestLoadingCache_MaxCacheSizeParallel(t *testing.T) {
+	lc, err := NewLoadingCache(MaxCacheSize(123), MaxKeys(10000))
+	require.Nil(t, err)
+
+	wg := sync.WaitGroup{}
+	for i := 0; i < 1000; i++ {
+		wg.Add(1)
+		i := i
+		go func() {
+			defer wg.Done()
+			res, err := lc.Get(fmt.Sprintf("key-%d", i), func() ([]byte, error) {
+				return []byte(fmt.Sprintf("result-%d", i)), nil
+			})
+			require.Nil(t, err)
+			require.Equal(t, fmt.Sprintf("result-%d", i), string(res))
+			size := atomic.LoadInt64(&lc.(*loadingCache).currentSize)
+			require.True(t, size < 200 && size > 0, "unexpected size=%d", size) // won't be exactly 123 due parallel
+		}()
+	}
+	wg.Wait()
+	assert.True(t, lc.(*loadingCache).currentSize < 123 && lc.(*loadingCache).currentSize > 0)
+	t.Log("size=", lc.(*loadingCache).currentSize)
+}
+
 func TestLoadingCache_URLKey(t *testing.T) {
 	r, err := http.NewRequest("GET", "http://blah/123", nil)
 	assert.Nil(t, err)
