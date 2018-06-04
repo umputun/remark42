@@ -89,6 +89,18 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/hashicorp/errwrap"
+  packages = ["."]
+  revision = "7554cd9344cec97297fa6649b055a8c98c2a1e55"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/hashicorp/go-multierror"
+  packages = ["."]
+  revision = "b7773ae218740a7be65057fc60b366a49b538a44"
+
+[[projects]]
+  branch = "master"
   name = "github.com/hashicorp/golang-lru"
   packages = [
     ".",
@@ -210,6 +222,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "c8c9fb610c16f220dc9d51f9a97d7a1657052a5b5f29a6843b97d0a99e25689f"
+  inputs-digest = "dd700af9d574d75a9afc92a7dbf61485a1785c38c7b93667b1be423c4fe814d7"
   solver-name = "gps-cdcl"
   solver-version = 1

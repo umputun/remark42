@@ -13,6 +13,7 @@ import (
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
+	multierror "github.com/hashicorp/go-multierror"
 	blackfriday "gopkg.in/russross/blackfriday.v2"
 
 	"github.com/umputun/remark/app/rest"
@@ -188,26 +189,22 @@ func (s *Rest) userAllDataCtrl(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	// send prefix
-	if _, e := gzWriter.Write([]byte(`{"info": `)); e != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, e, "can't write user info")
-		return
+	write := func(val []byte) error {
+		_, e := gzWriter.Write(val)
+		return e
 	}
-	// send user info
-	if _, e := gzWriter.Write(userB); e != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, e, "can't write user info")
-		return
-	}
-	if _, e := gzWriter.Write([]byte(`, "comments":`)); e != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, e, "can't write user info")
-		return
-	}
+
+	var merr error
+
+	merr = multierror.Append(merr, write([]byte(`{"info": `)))     // send user prefix
+	merr = multierror.Append(merr, write(userB))                   // send user info
+	merr = multierror.Append(merr, write([]byte(`, "comments":`))) // send comments prefix
 
 	// get comments in 100 in each paginated request
 	for i := 0; i < 100; i++ {
 		comments, err := s.DataService.User(siteID, user.ID, 100, i*100)
 		if err != nil {
-			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't write user comments")
+			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't get user comments")
 			return
 		}
 		b, err := json.Marshal(comments)
@@ -215,16 +212,16 @@ func (s *Rest) userAllDataCtrl(w http.ResponseWriter, r *http.Request) {
 			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't marshal user comments")
 			return
 		}
-		if _, e := gzWriter.Write(b); e != nil {
-			rest.SendErrorJSON(w, r, http.StatusInternalServerError, e, "can't write user comment")
-			return
-		}
+
+		merr = multierror.Append(merr, write(b))
 		if len(comments) != 100 {
 			break
 		}
 	}
-	if _, e := gzWriter.Write([]byte(`}`)); e != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, e, "can't write user info")
+
+	merr = multierror.Append(merr, write([]byte(`}`)))
+	if merr.(*multierror.Error).ErrorOrNil() != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, merr, "can't write user info")
 		return
 	}
 
