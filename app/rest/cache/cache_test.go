@@ -18,8 +18,8 @@ import (
 
 func TestLoadingCache_Get(t *testing.T) {
 	var postFnCall, coldCalls int32
-	lc := NewLoadingCache(PostFlushFn(func() { atomic.AddInt32(&postFnCall, 1) }))
-
+	lc, err := NewLoadingCache(PostFlushFn(func() { atomic.AddInt32(&postFnCall, 1) }))
+	require.Nil(t, err)
 	res, err := lc.Get("key", func() ([]byte, error) {
 		atomic.AddInt32(&coldCalls, 1)
 		return []byte("result"), nil
@@ -50,16 +50,17 @@ func TestLoadingCache_Get(t *testing.T) {
 
 func TestLoadingCache_MaxKeys(t *testing.T) {
 	var postFnCall, coldCalls int32
-	lc := NewLoadingCache(PostFlushFn(func() { atomic.AddInt32(&postFnCall, 1) }),
+	lc, err := NewLoadingCache(PostFlushFn(func() { atomic.AddInt32(&postFnCall, 1) }),
 		MaxKeys(5), MaxValSize(10))
+	require.Nil(t, err)
 
 	// put 5 keys to cache
 	for i := 0; i < 5; i++ {
-		res, err := lc.Get(fmt.Sprintf("key-%d", i), func() ([]byte, error) {
+		res, e := lc.Get(fmt.Sprintf("key-%d", i), func() ([]byte, error) {
 			atomic.AddInt32(&coldCalls, 1)
 			return []byte(fmt.Sprintf("result-%d", i)), nil
 		})
-		assert.Nil(t, err)
+		assert.Nil(t, e)
 		assert.Equal(t, fmt.Sprintf("result-%d", i), string(res))
 		assert.Equal(t, int32(i+1), atomic.LoadInt32(&coldCalls))
 		assert.Equal(t, int32(0), atomic.LoadInt32(&postFnCall))
@@ -96,9 +97,9 @@ func TestLoadingCache_MaxKeys(t *testing.T) {
 	assert.Equal(t, 5, lc.(*loadingCache).bytesCache.Len())
 }
 
-func TestLoadingCache_MaxSize(t *testing.T) {
-	lc := NewLoadingCache(MaxKeys(5), MaxValSize(10))
-
+func TestLoadingCache_MaxValueSize(t *testing.T) {
+	lc, err := NewLoadingCache(MaxKeys(5), MaxValSize(10))
+	require.Nil(t, err)
 	// put good size value to cache and make sure it cached
 	res, err := lc.Get("key-Z", func() ([]byte, error) {
 		return []byte("result-Z"), nil
@@ -124,7 +125,34 @@ func TestLoadingCache_MaxSize(t *testing.T) {
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, "result-big", string(res), "got not cached value")
+}
 
+func TestLoadingCache_MaxCacheSize(t *testing.T) {
+	lc, err := NewLoadingCache(MaxKeys(50), MaxCacheSize(20))
+	require.Nil(t, err)
+
+	// put good size value to cache and make sure it cached
+	res, err := lc.Get("key-Z", func() ([]byte, error) {
+		return []byte("result-Z"), nil
+	})
+	assert.Nil(t, err)
+	assert.Equal(t, "result-Z", string(res))
+	assert.Equal(t, int64(8), lc.(*loadingCache).currentSize)
+
+	_, err = lc.Get("key-Z2", func() ([]byte, error) {
+		return []byte("result-Z"), nil
+	})
+	assert.Nil(t, err)
+	assert.Equal(t, int64(16), lc.(*loadingCache).currentSize)
+
+	// this will cause removal
+	_, err = lc.Get("key-Z3", func() ([]byte, error) {
+		return []byte("result-Z"), nil
+	})
+	assert.Nil(t, err)
+	assert.Equal(t, int64(16), lc.(*loadingCache).currentSize)
+
+	assert.Equal(t, 2, lc.(*loadingCache).bytesCache.Len())
 }
 
 func TestLoadingCache_URLKey(t *testing.T) {
@@ -146,7 +174,8 @@ func TestLoadingCache_URLKey(t *testing.T) {
 
 func TestLoadingCache_Parallel(t *testing.T) {
 	var coldCalls int32
-	lc := NewLoadingCache()
+	lc, err := NewLoadingCache()
+	require.Nil(t, err)
 
 	res, err := lc.Get("key", func() ([]byte, error) {
 		return []byte("value"), nil
@@ -173,7 +202,8 @@ func TestLoadingCache_Parallel(t *testing.T) {
 }
 
 func TestLoadingCache_Scopes(t *testing.T) {
-	lc := NewLoadingCache()
+	lc, err := NewLoadingCache()
+	require.Nil(t, err)
 
 	res, err := lc.Get(Key("key", "s1", "s2"), func() ([]byte, error) {
 		return []byte("value"), nil
@@ -204,7 +234,8 @@ func TestLoadingCache_Scopes(t *testing.T) {
 }
 
 func TestLoadingCache_Flush(t *testing.T) {
-	lc := NewLoadingCache()
+	lc, err := NewLoadingCache()
+	require.Nil(t, err)
 
 	addToCache := func(key string, scopes ...string) {
 		res, err := lc.Get(key, func() ([]byte, error) {
@@ -249,7 +280,8 @@ func TestLoadingCache_Flush(t *testing.T) {
 }
 
 func TestLoadingCache_FlushFailed(t *testing.T) {
-	lc := NewLoadingCache()
+	lc, err := NewLoadingCache()
+	require.Nil(t, err)
 	val, err := lc.Get("invalid-composite", func() ([]byte, error) {
 		return []byte("value"), nil
 	})

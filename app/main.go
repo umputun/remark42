@@ -40,13 +40,15 @@ type Opts struct {
 	AvatarStore    string `long:"avatars" env:"AVATAR_STORE" default:"./var/avatars" description:"avatars location"`
 	ImageProxy     bool   `long:"img-proxy" env:"IMG_PROXY" description:"enable image proxy"`
 
-	MaxCommentSize int    `long:"max-comment" env:"MAX_COMMENT_SIZE" default:"2048" description:"max comment size"`
-	MaxCachedItems int    `long:"max-cache-items" env:"MAX_CACHE_ITEMS" default:"1000" description:"max cached items"`
-	MaxCachedValue int    `long:"max-cache-value" env:"MAX_CACHE_VALUE" default:"65536" description:"max size of cached value"`
-	SecretKey      string `long:"secret" env:"SECRET" required:"true" description:"secret key"`
-	LowScore       int    `long:"low-score" env:"LOW_SCORE" default:"-5" description:"low score threshold"`
-	CriticalScore  int    `long:"critical-score" env:"CRITICAL_SCORE" default:"-10" description:"critical score threshold"`
-	ReadOnlyAge    int    `long:"read-age" env:"READONLY_AGE" default:"0" description:"read-only age of comments"`
+	MaxCommentSize int `long:"max-comment" env:"MAX_COMMENT_SIZE" default:"2048" description:"max comment size"`
+	MaxCachedItems int `long:"max-cache-items" env:"MAX_CACHE_ITEMS" default:"1000" description:"max cached items"`
+	MaxCachedValue int `long:"max-cache-value" env:"MAX_CACHE_VALUE" default:"65536" description:"max size of cached value"`
+	MaxCacheSize   int `long:"max-cache-size" env:"MAX_CACHE_SIZE" default:"50000000" description:"max size of total cache"`
+
+	SecretKey     string `long:"secret" env:"SECRET" required:"true" description:"secret key"`
+	LowScore      int    `long:"low-score" env:"LOW_SCORE" default:"-5" description:"low score threshold"`
+	CriticalScore int    `long:"critical-score" env:"CRITICAL_SCORE" default:"-10" description:"critical score threshold"`
+	ReadOnlyAge   int    `long:"read-age" env:"READONLY_AGE" default:"0" description:"read-only age of comments"`
 
 	GoogleCID    string `long:"google-cid" env:"REMARK_GOOGLE_CID" description:"Google OAuth client ID"`
 	GoogleCSEC   string `long:"google-csec" env:"REMARK_GOOGLE_CSEC" description:"Google OAuth client secret"`
@@ -113,8 +115,11 @@ func New(opts Opts) (*Application, error) {
 		MaxCommentSize: opts.MaxCommentSize,
 	}
 
-	loadingCache := cache.NewLoadingCache(cache.MaxValSize(opts.MaxCachedValue), cache.MaxKeys(opts.MaxCachedItems),
+	loadingCache, err := cache.NewLoadingCache(cache.MaxValSize(opts.MaxCachedValue), cache.MaxKeys(opts.MaxCachedItems),
 		cache.PostFlushFn(postFlushFn(opts.Sites, opts.Port)))
+	if err != nil {
+		return nil, err
+	}
 
 	jwtService := auth.NewJWT(opts.SecretKey, strings.HasPrefix(opts.RemarkURL, "https://"), 7*24*time.Hour)
 

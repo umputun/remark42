@@ -28,6 +28,15 @@ func MaxKeys(max int) Option {
 	}
 }
 
+// MaxCacheSize functional option defines the total size of cached data.
+// By default it is 0, which means unlimited.
+func MaxCacheSize(max int64) Option {
+	return func(lc *loadingCache) error {
+		lc.maxCacheSize = max
+		return nil
+	}
+}
+
 // PostFlushFn functional option defines how callback function called after each Flush.
 func PostFlushFn(postFlushFn func()) Option {
 	return func(lc *loadingCache) error {

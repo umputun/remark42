@@ -3,6 +3,7 @@ package cache
 import (
 	"log"
 	"strings"
+	"sync/atomic"
 
 	"github.com/hashicorp/golang-lru"
 	"github.com/pkg/errors"
@@ -38,10 +39,12 @@ type loadingCache struct {
 	postFlushFn  func()
 	maxKeys      int
 	maxValueSize int
+	maxCacheSize int64
+	currentSize  int64
 }
 
 // NewLoadingCache makes loadingCache implementation
-func NewLoadingCache(options ...Option) LoadingCache {
+func NewLoadingCache(options ...Option) (LoadingCache, error) {
 	res := loadingCache{
 		postFlushFn:  func() {},
 		maxKeys:      1000,
@@ -53,11 +56,19 @@ func NewLoadingCache(options ...Option) LoadingCache {
 		}
 	}
 
+	onEvicted := func(key interface{}, value interface{}) {
+		size := len(value.([]byte))
+		atomic.AddInt64(&res.currentSize, -1*int64(size))
+	}
+
+	var err error
 	// OnEvicted called automatically for expired and manually deleted
-	res.bytesCache, _ = lru.New(res.maxKeys)
+	if res.bytesCache, err = lru.NewWithEvict(res.maxKeys, onEvicted); err != nil {
+		return nil, errors.Wrap(err, "failed to make cache")
+	}
 
 	log.Printf("[DEBUG] create lru cache, maxKeys=%d, maxValueSize=%d", res.maxKeys, res.maxValueSize)
-	return &res
+	return &res, nil
 }
 
 // Get is loading cache method to get value by key or load via fn if not found
@@ -71,6 +82,13 @@ func (lc *loadingCache) Get(key string, fn func() ([]byte, error)) (data []byte,
 	}
 	if lc.allowed(data) {
 		lc.bytesCache.Add(key, data)
+		atomic.AddInt64(&lc.currentSize, int64(len(data)))
+
+		if lc.maxCacheSize > 0 && atomic.LoadInt64(&lc.currentSize) > lc.maxCacheSize {
+			for atomic.LoadInt64(&lc.currentSize) > lc.maxCacheSize {
+				lc.bytesCache.RemoveOldest()
+			}
+		}
 	}
 	return data, nil
 }
