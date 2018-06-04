@@ -164,7 +164,7 @@ func (s *Rest) voteCtrl(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, JSON{"id": comment.ID, "score": comment.Score})
 }
 
-// GET /userdata?site=siteID - exports all data about the user as a json fragments
+// GET /userdata?site=siteID - exports all data about the user as a json with user info and list of all comments
 func (s *Rest) userAllDataCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	user, err := rest.GetUserInfo(r)
@@ -188,7 +188,17 @@ func (s *Rest) userAllDataCtrl(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
+	// send prefix
+	if _, e := gzWriter.Write([]byte(`{"info": `)); e != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, e, "can't write user info")
+		return
+	}
+	// send user info
 	if _, e := gzWriter.Write(userB); e != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, e, "can't write user info")
+		return
+	}
+	if _, e := gzWriter.Write([]byte(`, "comments":`)); e != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, e, "can't write user info")
 		return
 	}
@@ -213,9 +223,15 @@ func (s *Rest) userAllDataCtrl(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
+	if _, e := gzWriter.Write([]byte(`}`)); e != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, e, "can't write user info")
+		return
+	}
+
 }
 
-// POST /deleteme?site_id=site
+// POST /deleteme?site_id=site - requesting delete of all user info
+// makes jwt with user info and sends it back as a part of json response
 func (s *Rest) deleteMeCtrl(w http.ResponseWriter, r *http.Request) {
 	user, err := rest.GetUserInfo(r)
 	if err != nil {

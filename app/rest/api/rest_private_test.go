@@ -135,7 +135,7 @@ func TestRest_Update(t *testing.T) {
 	req, err := http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/"+id+"?site=radio-t&url=https://radio-t.com/blah1",
 		strings.NewReader(`{"text":"updated text", "summary":"my edit"}`))
 	assert.Nil(t, err)
-	req = withBasicAuth(req, "dev", "password")
+	req.SetBasicAuth("dev", "password")
 	b, err := client.Do(req)
 	assert.Nil(t, err)
 	body, err := ioutil.ReadAll(b.Body)
@@ -175,7 +175,7 @@ func TestRest_UpdateNotOwner(t *testing.T) {
 	req, err := http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/"+id1+
 		"?site=radio-t&url=https://radio-t.com/blah1", strings.NewReader(`{"text":"updated text", "summary":"my edit"}`))
 	assert.Nil(t, err)
-	req = withBasicAuth(req, "dev", "password")
+	req.SetBasicAuth("dev", "password")
 	b, err := client.Do(req)
 	assert.Nil(t, err)
 	body, err := ioutil.ReadAll(b.Body)
@@ -187,7 +187,7 @@ func TestRest_UpdateNotOwner(t *testing.T) {
 	req, err = http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/"+id1+
 		"?site=radio-t&url=https://radio-t.com/blah1", strings.NewReader(`ERRR "text":"updated text", "summary":"my"}`))
 	assert.Nil(t, err)
-	req = withBasicAuth(req, "dev", "password")
+	req.SetBasicAuth("dev", "password")
 	b, err = client.Do(req)
 	assert.Nil(t, err)
 	assert.Equal(t, 400, b.StatusCode, string(body), "update is not json")
@@ -211,7 +211,7 @@ func TestRest_Vote(t *testing.T) {
 		req, err := http.NewRequest(http.MethodPut,
 			fmt.Sprintf("%s/api/v1/vote/%s?site=radio-t&url=https://radio-t.com/blah&vote=%d", ts.URL, id1, val), nil)
 		assert.Nil(t, err)
-		req = withBasicAuth(req, "dev", "password")
+		req.SetBasicAuth("dev", "password")
 		resp, err := client.Do(req)
 		assert.Nil(t, err)
 		return resp.StatusCode
@@ -260,7 +260,7 @@ func TestRest_UserAllData(t *testing.T) {
 	client := &http.Client{Timeout: 1 * time.Second}
 	req, err := http.NewRequest("GET", ts.URL+"/api/v1/userdata?site=radio-t", nil)
 	require.Nil(t, err)
-	req = withBasicAuth(req, "dev", "password")
+	req.SetBasicAuth("dev", "password")
 	resp, err := client.Do(req)
 	require.Nil(t, err)
 	require.Equal(t, 200, resp.StatusCode)
@@ -271,9 +271,19 @@ func TestRest_UserAllData(t *testing.T) {
 	ungzBody, err := ioutil.ReadAll(ungzReader)
 	assert.NoError(t, err)
 	assert.True(t, strings.HasPrefix(string(ungzBody),
-		`{"name":"developer one","id":"dev","picture":"/api/v1/avatar/remark.image","admin":true}[`))
+		`{"info": {"name":"developer one","id":"dev","picture":"/api/v1/avatar/remark.image","admin":true}, "comments":[{`))
 	assert.Equal(t, 3, strings.Count(string(ungzBody), `"text":`), "3 comments inside")
 	t.Logf("%s", string(ungzBody))
+
+	parsed := struct {
+		Info     store.User      `json:"info"`
+		Comments []store.Comment `json:"comments"`
+	}{}
+
+	err = json.Unmarshal(ungzBody, &parsed)
+	assert.Nil(t, err)
+	assert.Equal(t, store.User{Name: "developer one", ID: "dev", Picture: "/api/v1/avatar/remark.image", Admin: true}, parsed.Info)
+	assert.Equal(t, 3, len(parsed.Comments))
 
 	req, err = http.NewRequest("GET", ts.URL+"/api/v1/userdata?site=radio-t", nil)
 	require.Nil(t, err)
@@ -281,6 +291,7 @@ func TestRest_UserAllData(t *testing.T) {
 	require.Nil(t, err)
 	require.Equal(t, 401, resp.StatusCode)
 }
+
 func TestRest_UserAllDataManyComments(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
@@ -300,7 +311,7 @@ func TestRest_UserAllDataManyComments(t *testing.T) {
 	client := &http.Client{Timeout: 1 * time.Second}
 	req, err := http.NewRequest("GET", ts.URL+"/api/v1/userdata?site=radio-t", nil)
 	require.Nil(t, err)
-	req = withBasicAuth(req, "dev", "password")
+	req.SetBasicAuth("dev", "password")
 	resp, err := client.Do(req)
 	require.Nil(t, err)
 	require.Equal(t, 200, resp.StatusCode)
@@ -311,7 +322,7 @@ func TestRest_UserAllDataManyComments(t *testing.T) {
 	ungzBody, err := ioutil.ReadAll(ungzReader)
 	assert.NoError(t, err)
 	assert.True(t, strings.HasPrefix(string(ungzBody),
-		`{"name":"developer one","id":"dev","picture":"/api/v1/avatar/remark.image","admin":true}[`))
+		`{"info": {"name":"developer one","id":"dev","picture":"/api/v1/avatar/remark.image","admin":true}, "comments":[{`))
 	assert.Equal(t, 478, strings.Count(string(ungzBody), `"text":`), "478 comments inside")
 }
 
@@ -323,7 +334,7 @@ func TestRest_DeleteMe(t *testing.T) {
 	client := http.Client{}
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/api/v1/deleteme?site=radio-t", ts.URL), nil)
 	assert.Nil(t, err)
-	req = withBasicAuth(req, "dev", "password")
+	req.SetBasicAuth("dev", "password")
 	resp, err := client.Do(req)
 	assert.Nil(t, err)
 	assert.Equal(t, 200, resp.StatusCode)

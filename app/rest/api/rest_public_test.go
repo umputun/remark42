@@ -170,7 +170,7 @@ func TestRest_FindReadOnly(t *testing.T) {
 	req, err := http.NewRequest(http.MethodPut,
 		fmt.Sprintf("%s/api/v1/admin/readonly?site=radio-t&url=https://radio-t.com/blah1&ro=1", ts.URL), nil)
 	assert.Nil(t, err)
-	withBasicAuth(req, "dev", "password")
+	req.SetBasicAuth("dev", "password")
 	_, err = client.Do(req)
 	require.Nil(t, err)
 

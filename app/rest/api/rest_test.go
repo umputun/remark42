@@ -2,7 +2,6 @@ package api
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
@@ -75,12 +74,6 @@ func prep(t *testing.T) (srv *Rest, ts *httptest.Server) {
 	return srv, ts
 }
 
-func withBasicAuth(r *http.Request, username, password string) *http.Request {
-	creds := username + ":" + password
-	r.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(creds)))
-	return r
-}
-
 func get(t *testing.T, url string) (string, int) {
 	r, err := http.Get(url)
 	require.Nil(t, err)
@@ -94,7 +87,7 @@ func getWithAuth(t *testing.T, url string) (string, int) {
 	client := &http.Client{Timeout: 5 * time.Second}
 	req, err := http.NewRequest("GET", url, nil)
 	require.Nil(t, err)
-	withBasicAuth(req, "dev", "password")
+	req.SetBasicAuth("dev", "password")
 	r, err := client.Do(req)
 	require.Nil(t, err)
 	defer r.Body.Close()
@@ -107,7 +100,7 @@ func post(t *testing.T, url string, body string) (*http.Response, error) {
 	client := &http.Client{Timeout: 5 * time.Second}
 	req, err := http.NewRequest("POST", url, strings.NewReader(body))
 	assert.Nil(t, err)
-	withBasicAuth(req, "dev", "password")
+	req.SetBasicAuth("dev", "password")
 	return client.Do(req)
 }
 
@@ -119,7 +112,7 @@ func addComment(t *testing.T, c store.Comment, ts *httptest.Server) string {
 	client := &http.Client{Timeout: 5 * time.Second}
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/comment", bytes.NewBuffer(b))
 	assert.Nil(t, err)
-	withBasicAuth(req, "dev", "password")
+	req.SetBasicAuth("dev", "password")
 	resp, err := client.Do(req)
 	assert.Nil(t, err)
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)

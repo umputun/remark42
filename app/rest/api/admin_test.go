@@ -32,7 +32,7 @@ func TestAdmin_Delete(t *testing.T) {
 	req, err := http.NewRequest(http.MethodDelete,
 		fmt.Sprintf("%s/api/v1/admin/comment/%s?site=radio-t&url=https://radio-t.com/blah", ts.URL, id1), nil)
 	assert.Nil(t, err)
-	withBasicAuth(req, "dev", "password")
+	req.SetBasicAuth("dev", "password")
 	resp, err := client.Do(req)
 	assert.Nil(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
@@ -69,7 +69,7 @@ func TestAdmin_DeleteUser(t *testing.T) {
 	client := http.Client{}
 	req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/api/v1/admin/user/%s?site=radio-t", ts.URL, "id2"), nil)
 	assert.Nil(t, err)
-	withBasicAuth(req, "dev", "password")
+	req.SetBasicAuth("dev", "password")
 	resp, err := client.Do(req)
 	assert.Nil(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
@@ -118,7 +118,7 @@ func TestAdmin_Pin(t *testing.T) {
 		req, err := http.NewRequest(http.MethodPut,
 			fmt.Sprintf("%s/api/v1/admin/pin/%s?site=radio-t&url=https://radio-t.com/blah&pin=%d", ts.URL, id1, val), nil)
 		assert.Nil(t, err)
-		withBasicAuth(req, "dev", "password")
+		req.SetBasicAuth("dev", "password")
 		resp, err := client.Do(req)
 		assert.Nil(t, err)
 		return resp.StatusCode
@@ -164,7 +164,7 @@ func TestAdmin_Block(t *testing.T) {
 		req, e := http.NewRequest(http.MethodPut,
 			fmt.Sprintf("%s/api/v1/admin/user/%s?site=radio-t&block=%d", ts.URL, "user1", val), nil)
 		assert.Nil(t, e)
-		withBasicAuth(req, "dev", "password")
+		req.SetBasicAuth("dev", "password")
 		resp, e := client.Do(req)
 		require.Nil(t, e)
 		body, e = ioutil.ReadAll(resp.Body)
@@ -209,7 +209,7 @@ func TestAdmin_BlockedList(t *testing.T) {
 	req, err := http.NewRequest(http.MethodPut,
 		fmt.Sprintf("%s/api/v1/admin/user/%s?site=radio-t&block=%d", ts.URL, "user1", 1), nil)
 	assert.Nil(t, err)
-	withBasicAuth(req, "dev", "password")
+	req.SetBasicAuth("dev", "password")
 	_, err = client.Do(req)
 	require.Nil(t, err)
 
@@ -217,7 +217,7 @@ func TestAdmin_BlockedList(t *testing.T) {
 	req, err = http.NewRequest(http.MethodPut,
 		fmt.Sprintf("%s/api/v1/admin/user/%s?site=radio-t&block=%d", ts.URL, "user2", 1), nil)
 	assert.Nil(t, err)
-	withBasicAuth(req, "dev", "password")
+	req.SetBasicAuth("dev", "password")
 	_, err = client.Do(req)
 	require.Nil(t, err)
 
@@ -256,7 +256,7 @@ func TestAdmin_ReadOnly(t *testing.T) {
 	req, err := http.NewRequest(http.MethodPut,
 		fmt.Sprintf("%s/api/v1/admin/readonly?site=radio-t&url=https://radio-t.com/blah&ro=1", ts.URL), nil)
 	assert.Nil(t, err)
-	withBasicAuth(req, "dev", "password")
+	req.SetBasicAuth("dev", "password")
 	_, err = client.Do(req)
 	require.Nil(t, err)
 	info, err = srv.DataService.Info(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}, 0)
@@ -267,7 +267,7 @@ func TestAdmin_ReadOnly(t *testing.T) {
 	req, err = http.NewRequest(http.MethodPut,
 		fmt.Sprintf("%s/api/v1/admin/readonly?site=radio-t&url=https://radio-t.com/blah&ro=0", ts.URL), nil)
 	assert.Nil(t, err)
-	withBasicAuth(req, "dev", "password")
+	req.SetBasicAuth("dev", "password")
 	_, err = client.Do(req)
 	require.Nil(t, err)
 	info, err = srv.DataService.Info(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}, 0)
@@ -297,7 +297,7 @@ func TestAdmin_Verify(t *testing.T) {
 	req, err := http.NewRequest(http.MethodPut,
 		fmt.Sprintf("%s/api/v1/admin/verify/user1?site=radio-t&verified=1", ts.URL), nil)
 	assert.Nil(t, err)
-	withBasicAuth(req, "dev", "password")
+	req.SetBasicAuth("dev", "password")
 	_, err = client.Do(req)
 	require.Nil(t, err)
 	verified = srv.DataService.IsVerified("radio-t", "user1")
@@ -306,7 +306,7 @@ func TestAdmin_Verify(t *testing.T) {
 	req, err = http.NewRequest(http.MethodPut,
 		fmt.Sprintf("%s/api/v1/admin/verify/user1?site=radio-t&verified=0", ts.URL), nil)
 	assert.Nil(t, err)
-	withBasicAuth(req, "dev", "password")
+	req.SetBasicAuth("dev", "password")
 	_, err = client.Do(req)
 	require.Nil(t, err)
 	verified = srv.DataService.IsVerified("radio-t", "user1")
@@ -349,7 +349,7 @@ func TestAdmin_ExportFile(t *testing.T) {
 	client := &http.Client{Timeout: 5 * time.Second}
 	req, err := http.NewRequest("GET", ts.URL+"/api/v1/admin/export?site=radio-t&mode=file", nil)
 	require.Nil(t, err)
-	withBasicAuth(req, "dev", "password")
+	req.SetBasicAuth("dev", "password")
 	resp, err := client.Do(req)
 	require.Nil(t, err)
 
