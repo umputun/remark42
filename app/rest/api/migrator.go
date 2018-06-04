@@ -103,7 +103,7 @@ func (m *Migrator) importCtrl(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET /export?site=site-id&secret=12345
-// exports all comments for siteID as json stream or gz file
+// exports all comments for siteID as gz file
 func (m *Migrator) exportCtrl(w http.ResponseWriter, r *http.Request) {
 
 	secret := r.URL.Query().Get("secret")
