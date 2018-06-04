@@ -171,7 +171,7 @@ func TestLoadingCache_MaxCacheSizeParallel(t *testing.T) {
 			require.Nil(t, err)
 			require.Equal(t, fmt.Sprintf("result-%d", i), string(res))
 			size := atomic.LoadInt64(&lc.(*loadingCache).currentSize)
-			require.True(t, size < 200 && size > 0, "unexpected size=%d", size) // won't be exactly 123 due parallel
+			require.True(t, size < 200 && size >= 0, "unexpected size=%d", size) // won't be exactly 123 due parallel
 		}()
 	}
 	wg.Wait()
