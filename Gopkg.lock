@@ -180,7 +180,8 @@
     "google",
     "internal",
     "jws",
-    "jwt"
+    "jwt",
+    "yandex"
   ]
   revision = "543e37812f10c46c622c9575afd7ad22f22a12ba"
 
@@ -222,6 +223,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "dd700af9d574d75a9afc92a7dbf61485a1785c38c7b93667b1be423c4fe814d7"
+  inputs-digest = "e849348430ea10a86642c328c52b516e237207389cf765ff1849c8bded391d4a"
   solver-name = "gps-cdcl"
   solver-version = 1

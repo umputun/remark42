@@ -56,6 +56,8 @@ type Opts struct {
 	GithubCSEC   string `long:"github-csec" env:"REMARK_GITHUB_CSEC" description:"Github OAuth client secret"`
 	FacebookCID  string `long:"facebook-cid" env:"REMARK_FACEBOOK_CID" description:"Facebook OAuth client ID"`
 	FacebookCSEC string `long:"facebook-csec" env:"REMARK_FACEBOOK_CSEC" description:"Facebook OAuth client secret"`
+	YandexCID    string `long:"yandex-cid" env:"REMARK_YANDEX_CID" description:"Yandex OAuth client ID"`
+	YandexCSEC   string `long:"yandex-csec" env:"REMARK_YANDEX_CSEC" description:"Yandex OAuth client secret"`
 
 	Port    int    `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
 	WebRoot string `long:"web-root" env:"REMARK_WEB_ROOT" default:"./web" description:"web root directory"`
@@ -265,6 +267,9 @@ func makeAuthProviders(jwtService *auth.JWT, avatarProxy *proxy.Avatar, ds servi
 	}
 	if opts.FacebookCID != "" && opts.FacebookCSEC != "" {
 		providers = append(providers, auth.NewFacebook(makeParams(opts.FacebookCID, opts.FacebookCSEC)))
+	}
+	if opts.YandexCID != "" && opts.YandexCSEC != "" {
+		providers = append(providers, auth.NewYandex(makeParams(opts.YandexCID, opts.YandexCSEC)))
 	}
 	if len(providers) == 0 {
 		log.Printf("[WARN] no auth providers defined")

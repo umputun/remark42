@@ -2,7 +2,7 @@
 
 Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engine, which doesn't spy on users. It can be embedded into blogs, articles or any other place where readers add comments.
 
-* Social login via Google, Facebook and Github
+* Social login via Google, Facebook, Github and Yandex
 * Multi-level nested comments with both tree and plain presentations
 * Import from disqus
 * Markdown support
@@ -30,30 +30,32 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 
 #### Parameters
 
-| Command line      | Environment          | Default                | Multi | Description                             |
-| ----------------- | -------------------- | ---------------------- | ----- | --------------------------------------- |
-| --url             | REMARK_URL           | `https://remark42.com` | no    | url to remark server                    |
-| --bolt            | BOLTDB_PATH          | `./var`                | no    | path to data directory                  |
-| --site            | SITE                 | `remark`               | yes   | site name(s)                            |
-| --admin           | ADMIN                |                        | yes   | admin names (list of user ids)          |
-| --backup          | BACKUP_PATH          | `./var/backup`         | no    | backups location                        |
-| --max-back        | MAX_BACKUP_FILES     | `10`                   | no    | max backup files to keep                |
-| --max-cache-items | MAX_CACHE_ITEMS      | `1000`                 | no    | max number of cached items, 0-unlimited |
-| --max-cache-value | MAX_CACHE_VALUE      | `65536`                | no    | max size of cached value, o-unlimited   |
-| --avatars         | AVATAR_STORE         | `./var/avatars`        | no    | avatars location                        |
-| --secret          | SECRET               |                        | no    | secret key, required                    |
-| --max-comment     | MAX_COMMENT_SIZE     | 2048                   | no    | comment's size limit                    |
-| --google-cid      | REMARK_GOOGLE_CID    |                        | no    | Google OAuth client ID                  |
-| --google-csec     | REMARK_GOOGLE_CSEC   |                        | no    | Google OAuth client secret              |
-| --facebook-cid    | REMARK_FACEBOOK_CID  |                        | no    | Facebook OAuth client ID                |
-| --facebook-csec   | REMARK_FACEBOOK_CSEC |                        | no    | Facebook OAuth client secret            |
-| --github-cid      | REMARK_GITHUB_CID    |                        | no    | Github OAuth client ID                  |
-| --github-csec     | REMARK_GITHUB_CSEC   |                        | no    | Github OAuth client secret              |
-| --low-score       | LOW_SCORE            | `-5`                   | no    | Low score threshold                     |
-| --critical-score  | CRITICAL_SCORE       | `-10`                  | no    | Critical score threshold                |
-| --img-proxy       | IMG_PROXY            | `false`                | no    | Enable http->https proxy for images     |
-| --dbg             | DEBUG                | `false`                | no    | debug mode                              |
-| --dev-passwd      | DEV_PASSWD           |                        | no    | password for `dev` user                 |
+| Command line      | Environment          | Default                | Multi | Description                                 |
+| ----------------- | -------------------- | ---------------------- | ----- | --------------------------------------------|
+| --url             | REMARK_URL           | `https://remark42.com` | no    | url to remark server                        |
+| --bolt            | BOLTDB_PATH          | `./var`                | no    | path to data directory                      |
+| --site            | SITE                 | `remark`               | yes   | site name(s)                                |
+| --admin           | ADMIN                |                        | yes   | admin names (list of user ids)              |
+| --backup          | BACKUP_PATH          | `./var/backup`         | no    | backups location                            |
+| --max-back        | MAX_BACKUP_FILES     | `10`                   | no    | max backup files to keep                    |
+| --max-cache-items | MAX_CACHE_ITEMS      | `1000`                 | no    | max number of cached items, `0` - unlimited |
+| --max-cache-value | MAX_CACHE_VALUE      | `65536`                | no    | max size of cached value, `0` - unlimited   |
+| --avatars         | AVATAR_STORE         | `./var/avatars`        | no    | avatars location                            |
+| --secret          | SECRET               |                        | no    | secret key, required                        |
+| --max-comment     | MAX_COMMENT_SIZE     | 2048                   | no    | comment's size limit                        |
+| --google-cid      | REMARK_GOOGLE_CID    |                        | no    | Google OAuth client ID                      |
+| --google-csec     | REMARK_GOOGLE_CSEC   |                        | no    | Google OAuth client secret                  |
+| --facebook-cid    | REMARK_FACEBOOK_CID  |                        | no    | Facebook OAuth client ID                    |
+| --facebook-csec   | REMARK_FACEBOOK_CSEC |                        | no    | Facebook OAuth client secret                |
+| --github-cid      | REMARK_GITHUB_CID    |                        | no    | Github OAuth client ID                      |
+| --github-csec     | REMARK_GITHUB_CSEC   |                        | no    | Github OAuth client secret                  |
+| --yandex-cid      | REMARK_YANDEX_CID    |                        | no    | Yandex OAuth client ID                      |
+| --yandex-csec     | REMARK_YANDEX_CSEC   |                        | no    | Yandex OAuth client secret                  |
+| --low-score       | LOW_SCORE            | `-5`                   | no    | Low score threshold                         |
+| --critical-score  | CRITICAL_SCORE       | `-10`                  | no    | Critical score threshold                    |
+| --img-proxy       | IMG_PROXY            | `false`                | no    | Enable http->https proxy for images         |
+| --dbg             | DEBUG                | `false`                | no    | debug mode                                  |
+| --dev-passwd      | DEV_PASSWD           |                        | no    | password for `dev` user                     |
 
 
 **user has to provide secret key, can be any long and hard-to-guess string.**
@@ -98,6 +100,19 @@ _instructions for google oauth2 setup borrowed from [oauth2_proxy](https://githu
 1.  Set "Site URL" to your domain, ex: `https://remark42.mysite.com`
 1.  Under **"Facebook login"** / **"Settings"** fill "Valid OAuth redirect URIs" with your callback url constructed as domain + `/auth/facebook/callback`
 1.  Select **"App Review"** and turn public flag on. This step may ask you to provide a link to your privacy policy.
+
+##### Yandex Auth Provider
+
+1.  Create a new **"OAuth App"**: https://oauth.yandex.com/client/new
+1.  Fill **"App name"** for your site
+1.  Under **Platforms** select **"Web services"** and enter **"Callback URI #1"** constructed as domain + `/auth/yandex/callback`. ie `https://remark42.mysite.com/auth/yandex/callback`
+1.  Select **Permissions**. You need following permissions only from the **"Yandex.Passport API"** section:
+    * Access to user avatar
+    * Access to username, first name and surname, gender
+1.  Fill out the rest of fields if needed
+1.  Take note of the **ID** and **Password**
+
+For more details refer to [Yandex OAuth](https://tech.yandex.com/oauth/doc/dg/concepts/about-docpage/) and [Yandex.Passport](https://tech.yandex.com/passport/doc/dg/index-docpage/) API documentation.
 
 #### Initial import from Disqus
 
@@ -275,7 +290,7 @@ type User struct {
 }
 ```
 
-_currently supported providers are `google`, `facebook` and `github`_
+_currently supported providers are `google`, `facebook`, `github` and `yandex`_
 
 ### Commenting
 
@@ -412,5 +427,5 @@ _all admin calls require auth and admin privilege_
 * User can vote for the comment multiple times but only to change his/her vote. Double-voting not allowed.
 * User can edit comments in 5 mins window after creation.
 * User ID hashed and prefixed by oauth provider name to avoid collisions and potential abuse.
-* All avatars cached locally to prevent rate limiters from google/github/facebook.
+* All avatars cached locally to prevent rate limiters from google/github/facebook/yandex.
 * Docker build uses [publicly available](https://github.com/umputun/baseimage) base images.
