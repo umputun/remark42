@@ -3,6 +3,7 @@ package cache
 import (
 	"errors"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"sync"
 	"sync/atomic"
@@ -164,6 +165,7 @@ func TestLoadingCache_MaxCacheSizeParallel(t *testing.T) {
 		wg.Add(1)
 		i := i
 		go func() {
+			time.Sleep(time.Duration(rand.Intn(100)) * time.Nanosecond)
 			defer wg.Done()
 			res, err := lc.Get(fmt.Sprintf("key-%d", i), func() ([]byte, error) {
 				return []byte(fmt.Sprintf("result-%d", i)), nil
@@ -175,7 +177,7 @@ func TestLoadingCache_MaxCacheSizeParallel(t *testing.T) {
 		}()
 	}
 	wg.Wait()
-	assert.True(t, lc.(*loadingCache).currentSize < 123 && lc.(*loadingCache).currentSize > 0)
+	assert.True(t, lc.(*loadingCache).currentSize < 123 && lc.(*loadingCache).currentSize >= 0)
 	t.Log("size=", lc.(*loadingCache).currentSize)
 }
 
