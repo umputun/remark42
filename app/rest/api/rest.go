@@ -164,10 +164,13 @@ func (s *Rest) routes() chi.Router {
 		})
 	})
 
-	router.With(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil))).
+	router.With(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(50, nil))).
 		Get("/robots.txt", func(w http.ResponseWriter, r *http.Request) {
-			render.PlainText(w, r, "User-agent: *\nDisallow: /auth/\nDisallow: /api/\n"+
-				"Allow: /api/v1/find\nAllow: /api/v1/last\n")
+			allowed := []string{"/find", "/last", "/id", "/count", "/counts", "/list", "/config", "/img"}
+			for i := range allowed {
+				allowed[i] = "Allow: /api/v1" + allowed[i]
+			}
+			render.PlainText(w, r, "User-agent: *\nDisallow: /auth/\nDisallow: /api/\n"+strings.Join(allowed, "\n"))
 		})
 
 	// file server for static content from /web

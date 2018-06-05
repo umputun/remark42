@@ -423,3 +423,13 @@ func TestRest_Info(t *testing.T) {
 	_, code = get(t, ts.URL+"/api/v1/info?site=radio-t-no&url=https://radio-t.com/blah-no")
 	assert.Equal(t, 400, code)
 }
+
+func TestRest_Robots(t *testing.T) {
+	srv, ts := prep(t)
+	assert.NotNil(t, srv)
+	defer cleanup(ts)
+
+	body, code := get(t, ts.URL+"/robots.txt")
+	assert.Equal(t, 200, code)
+	assert.Equal(t, "User-agent: *\nDisallow: /auth/\nDisallow: /api/\nAllow: /api/v1/find\nAllow: /api/v1/last\nAllow: /api/v1/id\nAllow: /api/v1/count\nAllow: /api/v1/counts\nAllow: /api/v1/list\nAllow: /api/v1/config\nAllow: /api/v1/img", string(body))
+}
