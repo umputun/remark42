@@ -166,7 +166,7 @@ func (s *Rest) routes() chi.Router {
 
 	router.With(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(50, nil))).
 		Get("/robots.txt", func(w http.ResponseWriter, r *http.Request) {
-			allowed := []string{"/find", "/last", "/id", "/count", "/counts", "/list", "/config", "/img"}
+			allowed := []string{"/find", "/last", "/id", "/count", "/counts", "/list", "/config", "/img", "/avatar"}
 			for i := range allowed {
 				allowed[i] = "Allow: /api/v1" + allowed[i]
 			}

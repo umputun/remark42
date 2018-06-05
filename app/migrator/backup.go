@@ -25,9 +25,9 @@ type AutoBackup struct {
 
 // Do runs daily export to local files, keeps up to keepMax backups for given siteID
 func (ab AutoBackup) Do(ctx context.Context) {
-	log.Printf("[INFO] activate auto-backup for %s", ab.BackupLocation)
+	log.Printf("[INFO] activate auto-backup for %s under %s, duration %s", ab.SiteID, ab.BackupLocation, ab.Duration)
 	tick := time.NewTicker(ab.Duration)
-	log.Printf("[DEBUG] first backup at %s", time.Now().Add(ab.Duration))
+	log.Printf("[DEBUG] first backup for %s at %s", ab.SiteID, time.Now().Add(ab.Duration))
 
 	for {
 		select {
@@ -37,7 +37,7 @@ func (ab AutoBackup) Do(ctx context.Context) {
 				continue
 			}
 			ab.removeOldBackupFiles()
-			log.Printf("[DEBUG] next backup at %s", time.Now().Add(ab.Duration))
+			log.Printf("[DEBUG] next backup for %s at %s", ab.SiteID, time.Now().Add(ab.Duration))
 		case <-ctx.Done():
 			log.Printf("[WARN] terminated autobackup for %s", ab.SiteID)
 			return
