@@ -204,6 +204,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		EditDuration   int      `json:"edit_duration"`
 		MaxCommentSize int      `json:"max_comment_size"`
 		Admins         []string `json:"admins"`
+		AdminEmail     string   `json:"admin_email"`
 		Auth           []string `json:"auth_providers"`
 		LowScore       int      `json:"low_score"`
 		CriticalScore  int      `json:"critical_score"`
@@ -215,6 +216,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		EditDuration:   int(s.DataService.EditDuration.Seconds()),
 		MaxCommentSize: s.DataService.MaxCommentSize,
 		Admins:         s.Authenticator.Admins,
+		AdminEmail:     s.Authenticator.AdminEmail,
 		LowScore:       s.ScoreThresholds.Low,
 		CriticalScore:  s.ScoreThresholds.Critical,
 		ReadOnlyAge:    s.ReadOnlyAge,

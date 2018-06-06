@@ -58,6 +58,7 @@ func prep(t *testing.T) (srv *Rest, ts *httptest.Server) {
 			DevPasswd:  "password",
 			Providers:  nil,
 			Admins:     []string{"a1", "a2"},
+			AdminEmail: "admin@remark-42.com",
 			JWTService: auth.NewJWT("12345", false, time.Minute),
 		},
 		Exporter:    &migrator.Remark{DataStore: &dataStore},

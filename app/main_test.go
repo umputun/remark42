@@ -38,6 +38,9 @@ func TestApplication(t *testing.T) {
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 	body, _ = ioutil.ReadAll(resp.Body)
 	t.Log(string(body))
+
+	assert.Equal(t, "admin@demo.remark42.com", app.restSrv.Authenticator.AdminEmail, "default admin email")
+
 	app.Wait()
 }
 
@@ -64,7 +67,7 @@ func prepApp(t *testing.T, port int, duration time.Duration) (*Application, cont
 	// prepare options
 	opts := Opts{}
 	p := flags.NewParser(&opts, flags.Default)
-	p.ParseArgs([]string{"--secret=123456", "--dev-passwd=password"})
+	p.ParseArgs([]string{"--secret=123456", "--dev-passwd=password", "--url=https://demo.remark42.com"})
 	opts.AvatarStore, opts.BackupLocation = "/tmp", "/tmp"
 	opts.BoltPath = fmt.Sprintf("/tmp/%d", port)
 	opts.GithubCSEC, opts.GithubCID = "csec", "cid"

@@ -16,6 +16,7 @@ type Authenticator struct {
 	JWTService *JWT
 	Providers  []Provider
 	Admins     []string
+	AdminEmail string
 	DevPasswd  string
 }
 

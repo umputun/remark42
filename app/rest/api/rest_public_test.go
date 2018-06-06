@@ -381,6 +381,7 @@ func TestRest_Config(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 300., j["edit_duration"])
 	assert.EqualValues(t, []interface{}([]interface{}{"a1", "a2"}), j["admins"])
+	assert.Equal(t, "admin@remark-42.com", j["admin_email"])
 	assert.Equal(t, 4000., j["max_comment_size"])
 	assert.Equal(t, -5., j["low_score"])
 	assert.Equal(t, -10., j["critical_score"])

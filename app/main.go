@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"strings"
@@ -27,13 +28,13 @@ import (
 
 // Opts with command line flags and env
 type Opts struct {
-	BoltPath  string   `long:"bolt" env:"BOLTDB_PATH" default:"./var" description:"parent dir for bolt files"`
-	Sites     []string `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
-	RemarkURL string   `long:"url" env:"REMARK_URL" default:"https://remark42.com" description:"url to remark"`
-	Admins    []string `long:"admin" env:"ADMIN" description:"admin(s) names" env-delim:","`
-
-	DevPasswd string `long:"dev-passwd" env:"DEV_PASSWD" default:"" description:"development mode password"`
-	Dbg       bool   `long:"dbg" env:"DEBUG" description:"debug mode"`
+	BoltPath   string   `long:"bolt" env:"BOLTDB_PATH" default:"./var" description:"parent dir for bolt files"`
+	Sites      []string `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
+	RemarkURL  string   `long:"url" env:"REMARK_URL" default:"https://remark42.com" description:"url to remark"`
+	Admins     []string `long:"admin" env:"ADMIN" description:"admin(s) names" env-delim:","`
+	AdminEmail string   `long:"admin-email" env:"ADMIN_EMAIL" default:"" description:"admin email"`
+	DevPasswd  string   `long:"dev-passwd" env:"DEV_PASSWD" default:"" description:"development mode password"`
+	Dbg        bool     `long:"dbg" env:"DEBUG" description:"debug mode"`
 
 	BackupLocation string `long:"backup" env:"BACKUP_PATH" default:"./var/backup" description:"backups location"`
 	MaxBackupFiles int    `long:"max-back" env:"MAX_BACKUP_FILES" default:"10" description:"max backups to keep"`
@@ -154,11 +155,20 @@ func New(opts Opts) (*Application, error) {
 		Authenticator: auth.Authenticator{
 			JWTService: jwtService,
 			Admins:     opts.Admins,
+			AdminEmail: opts.AdminEmail,
 			Providers:  makeAuthProviders(jwtService, avatarProxy, dataService, opts),
 			DevPasswd:  opts.DevPasswd,
 		},
 		Cache: loadingCache,
 	}
+
+	// no admin email, use admin@domain
+	if srv.Authenticator.AdminEmail == "" {
+		if u, err := url.Parse(opts.RemarkURL); err == nil {
+			srv.Authenticator.AdminEmail = "admin@" + u.Host
+		}
+	}
+
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = opts.LowScore, opts.CriticalScore
 	tch := make(chan struct{})
 	return &Application{restSrv: srv, migratorSrv: migr, exporter: exporter, Opts: opts, terminated: tch}, nil
