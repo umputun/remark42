@@ -14,6 +14,7 @@ func TestUser_EncodeID(t *testing.T) {
 		{"myid", "6e34471f84557e1713012d64a7477c71bfdac631"},
 		{"", "da39a3ee5e6b4b0d3255bfef95601890afd80709"},
 		{"blah blah", "135a1e01bae742c4a576b20fd41a683f6483ca43"},
+		{"da39a3ee5e6b4b0d3255bfef95601890afd80709", "da39a3ee5e6b4b0d3255bfef95601890afd80709"},
 	}
 
 	for i, tt := range tbl {

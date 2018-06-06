@@ -29,11 +29,10 @@ func (s *Rest) rssRoutes() chi.Router {
 // GET /rss/post?site=siteID&url=post-url
 func (s *Rest) rssPostCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
-	sort := "-time"
 	log.Printf("[DEBUG] get rss for post %+v", locator)
 
 	data, err := s.Cache.Get(cache.Key(cache.URLKey(r), locator.SiteID, locator.URL), func() ([]byte, error) {
-		comments, e := s.DataService.Find(locator, sort)
+		comments, e := s.DataService.Find(locator, "-time")
 		if e != nil {
 			return nil, e
 		}

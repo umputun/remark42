@@ -86,9 +86,33 @@ func TestRest_CreateTooBig(t *testing.T) {
 	c := JSON{}
 	err = json.Unmarshal(b, &c)
 	assert.Nil(t, err)
-
 	assert.Equal(t, "comment text exceeded max allowed size 4000 (4001)", c["error"])
 	assert.Equal(t, "invalid comment", c["details"])
+
+	veryLongComment := fmt.Sprintf(`{"text": "%70000s", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, "Щ")
+	resp, err = post(t, ts.URL+"/api/v1/comment", veryLongComment)
+	assert.Nil(t, err)
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	b, err = ioutil.ReadAll(resp.Body)
+	assert.Nil(t, err)
+	c = JSON{}
+	err = json.Unmarshal(b, &c)
+	assert.Nil(t, err)
+	assert.Equal(t, "http: request body too large", c["error"])
+	assert.Equal(t, "can't bind comment", c["details"])
+}
+
+func TestRest_CreateRejected(t *testing.T) {
+
+	srv, ts := prep(t)
+	require.NotNil(t, srv)
+	defer cleanup(ts)
+	body := `{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`
+
+	// try to create without auth
+	resp, err := http.Post(ts.URL+"/api/v1/comment", "", strings.NewReader(body))
+	assert.Nil(t, err)
+	assert.Equal(t, 401, resp.StatusCode)
 }
 func TestRest_CreateAndGet(t *testing.T) {
 	srv, ts := prep(t)

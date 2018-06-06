@@ -35,7 +35,9 @@ func HashValue(val string, secret string) string {
 	key := []byte(secret)
 	h := hmac.New(sha1.New, key)
 	if _, err := h.Write([]byte(val)); err != nil {
+		// fail back to crc64
 		log.Printf("[WARN] can't hash ip, %s", err)
+		return fmt.Sprintf("%x", crc64.Checksum([]byte(val), crc64.MakeTable(crc64.ECMA)))
 	}
 	return fmt.Sprintf("%x", h.Sum(nil))
 }
@@ -43,6 +45,9 @@ func HashValue(val string, secret string) string {
 // EncodeID hashes id to sha1. The function intentionally left outside of User struct because in some cases
 // we need hashing for parts of id, in some others hashing for non-User values.
 func EncodeID(id string) string {
+	if reValidSha.Match([]byte(id)) {
+		return id // already hashed or empty
+	}
 	h := sha1.New()
 	if _, err := h.Write([]byte(id)); err != nil {
 		// fail back to crc64
