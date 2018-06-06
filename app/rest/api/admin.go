@@ -91,7 +91,7 @@ func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[INFO] delete all user comments by request for %s, site %s", claims.User.ID, claims.SiteID)
 
 	if err := a.dataService.DeleteUser(claims.SiteID, claims.User.ID); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete user")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete user")
 		return
 	}
 	a.cache.Flush(claims.SiteID, claims.User.ID)

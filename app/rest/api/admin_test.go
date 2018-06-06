@@ -456,10 +456,23 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 
 	token, err := srv.Authenticator.JWTService.Token(&claims)
 	assert.Nil(t, err)
-	req, err = http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, token), nil)
+	req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, token), nil)
 	assert.Nil(t, err)
 	req.SetBasicAuth("dev", "bad-password")
 	resp, err = client.Do(req)
 	assert.Nil(t, err)
 	assert.Equal(t, 401, resp.StatusCode)
+
+	// try bad user
+	badClaims := claims
+	badClaims.User.ID = "no-such-id"
+	token, err = srv.Authenticator.JWTService.Token(&badClaims)
+	assert.Nil(t, err)
+	req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, token), nil)
+	assert.Nil(t, err)
+	req.SetBasicAuth("dev", "password")
+	resp, err = client.Do(req)
+	assert.Nil(t, err)
+	assert.Equal(t, 400, resp.StatusCode, resp.Status)
+
 }

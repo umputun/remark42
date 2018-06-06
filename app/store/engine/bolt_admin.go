@@ -138,13 +138,21 @@ func (b *BoltDB) DeleteUser(siteID string, userID string) error {
 		usersBkt := tx.Bucket([]byte(userBucketName))
 		if usersBkt != nil {
 			if e := usersBkt.DeleteBucket([]byte(userID)); e != nil {
-				return errors.Wrapf(err, "failed to delete user bucker for %s", userID)
+				return errors.Wrapf(err, "failed to delete user bucket for %s", userID)
 			}
 		}
 		return nil
 	})
 
-	return nil
+	if err != nil {
+		return errors.Wrap(err, "can't delete user meta")
+	}
+
+	if len(comments) == 0 {
+		return errors.Errorf("unknown user %s", userID)
+	}
+
+	return err
 }
 
 // SetBlock blocks/unblocks user for given site
