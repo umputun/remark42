@@ -38,6 +38,7 @@ type Rest struct {
 	AvatarProxy     *proxy.Avatar
 	ImageProxy      *proxy.Image
 	WebRoot         string
+	RemarkURL       string
 	ReadOnlyAge     int
 	ScoreThresholds struct {
 		Low      int
@@ -100,9 +101,10 @@ func (s *Rest) routes() chi.Router {
 	router.Use(AppInfo("remark42", s.Version), Ping)
 
 	s.adminService = admin{
-		dataService: s.DataService,
-		exporter:    s.Exporter,
-		cache:       s.Cache,
+		dataService:   s.DataService,
+		exporter:      s.Exporter,
+		cache:         s.Cache,
+		authenticator: s.Authenticator,
 	}
 
 	ipFn := func(ip string) string { return store.HashValue(ip, s.DataService.Secret)[:12] } // logger uses it for anonymization

@@ -252,5 +252,6 @@ func (s *Rest) deleteMeCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't make token")
 		return
 	}
-	render.JSON(w, r, JSON{"site": siteID, "user_id": user.ID, "token": tokenStr})
+	link := fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", s.RemarkURL, tokenStr)
+	render.JSON(w, r, JSON{"site": siteID, "user_id": user.ID, "token": tokenStr, "link": link})
 }

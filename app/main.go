@@ -147,6 +147,7 @@ func New(opts Opts) (*Application, error) {
 		DataService: dataService,
 		Exporter:    exporter,
 		WebRoot:     opts.WebRoot,
+		RemarkURL:   opts.RemarkURL,
 		ImageProxy:  &proxy.Image{Enabled: opts.ImageProxy, RoutePath: "/api/v1/img", RemarkURL: opts.RemarkURL},
 		AvatarProxy: avatarProxy,
 		ReadOnlyAge: opts.ReadOnlyAge,

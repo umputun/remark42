@@ -10,8 +10,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/umputun/remark/app/rest/auth"
 	"github.com/umputun/remark/app/store"
 )
 
@@ -363,4 +365,101 @@ func TestAdmin_ExportFile(t *testing.T) {
 	assert.Equal(t, 2, strings.Count(string(ungzBody), "\n"))
 	assert.Equal(t, 2, strings.Count(string(ungzBody), "\"text\""))
 	t.Logf("%s", string(ungzBody))
+}
+
+func TestAdmin_DeleteMeRequest(t *testing.T) {
+	srv, ts := prep(t)
+	assert.NotNil(t, srv)
+	defer cleanup(ts)
+
+	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
+		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"}}
+	c2 := store.Comment{Text: "test test #2", ParentID: "p1", Locator: store.Locator{SiteID: "radio-t",
+		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user2", ID: "user2"}}
+
+	_, err := srv.DataService.Create(c1)
+	assert.Nil(t, err)
+	_, err = srv.DataService.Create(c2)
+	assert.Nil(t, err)
+
+	comments, err := srv.DataService.User("radio-t", "user1", 0, 0)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(comments), "a comment for user1")
+
+	claims := auth.CustomClaims{
+		SiteID:      "radio-t",
+		SessionOnly: true,
+		StandardClaims: jwt.StandardClaims{
+			Id:        "1234567",
+			Issuer:    "remark42",
+			NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
+			ExpiresAt: time.Now().Add(30 * time.Minute).Unix(),
+		},
+		User: &store.User{
+			ID: "user1",
+		},
+	}
+
+	token, err := srv.Authenticator.JWTService.Token(&claims)
+	assert.Nil(t, err)
+
+	client := http.Client{}
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, token), nil)
+	assert.Nil(t, err)
+	req.SetBasicAuth("dev", "password")
+	resp, err := client.Do(req)
+	assert.Nil(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+
+	_, err = srv.DataService.User("radio-t", "user1", 0, 0)
+	assert.EqualError(t, err, "no comments for user user1 in store")
+}
+
+func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
+	srv, ts := prep(t)
+	assert.NotNil(t, srv)
+	defer cleanup(ts)
+
+	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
+		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"}}
+	c2 := store.Comment{Text: "test test #2", ParentID: "p1", Locator: store.Locator{SiteID: "radio-t",
+		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user2", ID: "user2"}}
+
+	_, err := srv.DataService.Create(c1)
+	assert.Nil(t, err)
+	_, err = srv.DataService.Create(c2)
+	assert.Nil(t, err)
+
+	// try with bad token
+	client := http.Client{}
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, "bad token"), nil)
+	assert.Nil(t, err)
+	req.SetBasicAuth("dev", "password")
+	resp, err := client.Do(req)
+	assert.Nil(t, err)
+	assert.Equal(t, 400, resp.StatusCode)
+
+	// try with bad auth
+	claims := auth.CustomClaims{
+		SiteID:      "radio-t",
+		SessionOnly: true,
+		StandardClaims: jwt.StandardClaims{
+			Id:        "1234567",
+			Issuer:    "remark42",
+			NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
+			ExpiresAt: time.Now().Add(30 * time.Minute).Unix(),
+		},
+		User: &store.User{
+			ID: "user1",
+		},
+	}
+
+	token, err := srv.Authenticator.JWTService.Token(&claims)
+	assert.Nil(t, err)
+	req, err = http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, token), nil)
+	assert.Nil(t, err)
+	req.SetBasicAuth("dev", "bad-password")
+	resp, err = client.Do(req)
+	assert.Nil(t, err)
+	assert.Equal(t, 401, resp.StatusCode)
 }

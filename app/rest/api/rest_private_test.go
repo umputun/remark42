@@ -375,6 +375,7 @@ func TestRest_DeleteMe(t *testing.T) {
 	claims, err := srv.Authenticator.JWTService.Parse(token)
 	assert.Nil(t, err)
 	assert.Equal(t, "dev", claims.User.ID)
+	assert.Equal(t, "https://demo.remark42.com/api/v1/admin/deleteme?token="+token, m["link"])
 
 	req, err = http.NewRequest(http.MethodPost, fmt.Sprintf("%s/api/v1/deleteme?site=radio-t", ts.URL), nil)
 	assert.Nil(t, err)

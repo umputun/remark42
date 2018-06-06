@@ -63,6 +63,7 @@ func prep(t *testing.T) (srv *Rest, ts *httptest.Server) {
 		Exporter:    &migrator.Remark{DataStore: &dataStore},
 		Cache:       &mockCache{},
 		WebRoot:     "/tmp",
+		RemarkURL:   "https://demo.remark42.com",
 		AvatarProxy: &proxy.Avatar{StorePath: "/tmp", RoutePath: "/api/v1/avatar"},
 		ImageProxy:  &proxy.Image{},
 		ReadOnlyAge: 10,

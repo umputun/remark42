@@ -393,6 +393,8 @@ func TestRest_Info(t *testing.T) {
 	assert.NotNil(t, srv)
 	defer cleanup(ts)
 
+	srv.ReadOnlyAge = 10000000 // make sure we don't hit read-only
+
 	user := store.User{ID: "user1", Name: "user name 1"}
 	c1 := store.Comment{User: user, Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
 		URL: "https://radio-t.com/blah1"}, Timestamp: time.Date(2018, 05, 27, 1, 14, 10, 0, time.Local)}

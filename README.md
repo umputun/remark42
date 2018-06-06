@@ -411,6 +411,7 @@ Sort can be `time`, `active` or `score`. Supported sort order with prefix -/+, i
 * `DELETE /api/v1/admin/user/{userid}?site=site-id&block=1` - delete all user's comments.
 * `PUT /api/v1/admin/readonly?site=site-id&url=post-url&ro=1` - set read-only status
 * `PUT /api/v1/admin/verify/{userid}?site=site-id&verified=1` - set verified status
+* `GET /api/v1/admin/deleteme?token=token` - process deleteme user's request
 
 _all admin calls require auth and admin privilege_
 
