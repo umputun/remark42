@@ -30,7 +30,7 @@ import (
 type Opts struct {
 	BoltPath   string   `long:"bolt" env:"BOLTDB_PATH" default:"./var" description:"parent dir for bolt files"`
 	Sites      []string `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
-	RemarkURL  string   `long:"url" env:"REMARK_URL" default:"https://remark42.com" description:"url to remark"`
+	RemarkURL  string   `long:"url" env:"REMARK_URL" required:"true" description:"url to remark"`
 	Admins     []string `long:"admin" env:"ADMIN" description:"admin(s) names" env-delim:","`
 	AdminEmail string   `long:"admin-email" env:"ADMIN_EMAIL" default:"" description:"admin email"`
 	DevPasswd  string   `long:"dev-passwd" env:"DEV_PASSWD" default:"" description:"development mode password"`
@@ -111,8 +111,16 @@ func New(opts Opts) (*Application, error) {
 		return nil, err
 	}
 
+	if !strings.HasPrefix(opts.RemarkURL, "http://") && !strings.HasPrefix(opts.RemarkURL, "https://") {
+		return nil, errors.Errorf("invalid remark42 url %s", opts.RemarkURL)
+	}
+
+	boltStore, err := makeBoltStore(opts.Sites, opts.BoltPath)
+	if err != nil {
+		return nil, err
+	}
 	dataService := service.DataStore{
-		Interface:      makeBoltStore(opts.Sites, opts.BoltPath),
+		Interface:      boltStore,
 		EditDuration:   5 * time.Minute,
 		Secret:         opts.SecretKey,
 		MaxCommentSize: opts.MaxCommentSize,
@@ -213,16 +221,16 @@ func (a *Application) activateBackup(ctx context.Context) {
 }
 
 // makeBoltStore creates store for all sites
-func makeBoltStore(siteNames []string, path string) engine.Interface {
+func makeBoltStore(siteNames []string, path string) (engine.Interface, error) {
 	sites := []engine.BoltSite{}
 	for _, site := range siteNames {
 		sites = append(sites, engine.BoltSite{SiteID: site, FileName: fmt.Sprintf("%s/%s.db", path, site)})
 	}
 	result, err := engine.NewBoltDB(bolt.Options{Timeout: 30 * time.Second}, sites...)
 	if err != nil {
-		log.Fatalf("[ERROR] can't initialize data store, %+v", err)
+		return nil, errors.Wrap(err, "can't initialize data store")
 	}
-	return result
+	return result, nil
 }
 
 // mkdir -p for all dirs

@@ -44,6 +44,24 @@ func TestApplication(t *testing.T) {
 	app.Wait()
 }
 
+func TestApplicationFailed(t *testing.T) {
+	opts := Opts{}
+	p := flags.NewParser(&opts, flags.Default)
+
+	// RO bolt location
+	p.ParseArgs([]string{"--secret=123456", "--url=https://demo.remark42.com", "--bolt=/dev/null"})
+	_, err := New(opts)
+	assert.EqualError(t, err, "can't initialize data store: failed to make boltdb for /dev/null/remark.db: "+
+		"open /dev/null/remark.db: not a directory")
+	t.Log(err)
+
+	//p.ParseArgs([]string{"--secret=123456", "--url=https://demo.remark42.com", "--bolt=/tmp", "--backup=/not-writable"})
+	//_, err = New(opts)
+	//assert.EqualError(t, err, "can't initialize data store: failed to make boltdb for /dev/null/remark.db: "+
+	//	"open /dev/null/remark.db: not a directory")
+	//t.Log(err)
+}
+
 func TestApplicationShutdown(t *testing.T) {
 	app, ctx := prepApp(t, 18090, 500*time.Millisecond)
 	st := time.Now()
@@ -53,7 +71,9 @@ func TestApplicationShutdown(t *testing.T) {
 }
 
 func TestApplicationMainSignal(t *testing.T) {
-	os.Args = []string{"test", "--secret=123456", "--bolt=/tmp/xyz", "--backup=/tmp", "--avatars=/tmp", "--port=18100"}
+	os.Args = []string{"test", "--secret=123456", "--bolt=/tmp/xyz", "--backup=/tmp", "--avatars=/tmp",
+		"--port=18100", "--url=https://demo.remark42.com"}
+
 	go func() {
 		time.Sleep(100 * time.Millisecond)
 		syscall.Kill(syscall.Getpid(), syscall.SIGTERM)

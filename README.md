@@ -32,10 +32,11 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 
 | Command line      | Environment          | Default                | Multi | Description                                    |
 | ----------------- | -------------------- | ---------------------- | ----- | ---------------------------------------------- |
-| --url             | REMARK_URL           | `https://remark42.com` | no    | url to remark server                           |
+| --url             | REMARK_URL           |                        | no    | url to remark42 server                         |
 | --bolt            | BOLTDB_PATH          | `./var`                | no    | path to data directory                         |
 | --site            | SITE                 | `remark`               | yes   | site name(s)                                   |
 | --admin           | ADMIN                |                        | yes   | admin names (list of user ids)                 |
+| --admin-email     | ADMIN_EMAIL          | `admin@${REMARK_URL}`  | no    | admin email                                    |  
 | --backup          | BACKUP_PATH          | `./var/backup`         | no    | backups location                               |
 | --max-back        | MAX_BACKUP_FILES     | `10`                   | no    | max backup files to keep                       |
 | --max-cache-items | MAX_CACHE_ITEMS      | `1000`                 | no    | max number of cached items, `0` - unlimited    |
@@ -58,9 +59,35 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 | --dbg             | DEBUG                | `false`                | no    | debug mode                                     |
 | --dev-passwd      | DEV_PASSWD           |                        | no    | password for `dev` user                        |
 
+##### Required parameters
 
-**user has to provide secret key, can be any long and hard-to-guess string.**
+Most of the parameters have sane defaults and don't require customization. There are only a few parameters user has to define:  
 
+1. `SECRET` - secret key, can be any long and hard-to-guess string.
+1. `REMARK_URL` - url pointing to your remark42 server, i.e. `https://demo.reamark42.com`
+1. At least one pair of `REMARK_<PROVIDER>_CID` and `REMARK_<PROVIDER>_CSEC` defining oauth2 provider(s)
+
+The minimal `docker-compose.yml` has to include all required parameters:
+
+```yaml
+version: '2'
+
+services:
+    remark:
+        image: umputun/remark:master
+        restart: always
+
+        environment:
+            - REMARK_URL=https://demo.remark42.com  # url pointing to your remark42 server
+            - USER=1001                             # UID on the host machine 
+            - SECRET=abcd-123456-xyz-$%^&           # secret key
+            - REMARK_GITHUB_CID=12345667890         # oauth2 client ID
+            - REMARK_GITHUB_CSEC=abcdefg12345678    # oauth2 client secret
+        volumes:
+            - ./var:/srv/var                        # persistent volume to store all remark42 data 
+```
+
+ 
 _all multi parameters separated by `,` in environment or repeated with command line key, like `--site=s1 --site=s2 ...`_
 
 #### Register oauth2 providers
@@ -426,8 +453,8 @@ _all admin calls require auth and admin privilege_
 * There is no cross-site login, i.e., user's behavior can't be analyzed across independent sites running remark42.
 * There are no third-party analytic services involved.
 * User can request all information remark42 knows about and export to gz file.
-* Supported complete cleanup of all information related to user activity.
-* Cookie lifespan can be restricted to session-only 
+* Supported complete cleanup of all information related to user activity on demand.
+* Cookie lifespan can be restricted to session-only. 
 * All potentially sensitive data stored by remark42 hashed and encrypted.
 
 
@@ -435,11 +462,11 @@ _all admin calls require auth and admin privilege_
 
 * Data stored in [boltdb](https://github.com/coreos/bbolt) (embedded key/value database) files under `BOLTDB_PATH`
 * Each site stored in a separate boltbd file.
-* In order to migrate/move remark42 to another host boltbd files should be transferred.
+* In order to migrate/move remark42 to another host boltbd files as well as avatars directory `AVATAR_STORE` should be transferred.
 * Automatic backup process runs every 24h and exports all content in json-like format to `backup-remark-YYYYMMDD.gz`.
 * Authentication implemented with [jwt](https://github.com/dgrijalva/jwt-go) stored in a cookie. It uses HttpOnly, secure cookies.
-* All heavy REST calls cached internally, default expiration 4h
-* User's activity throttled globally (up to 1000 simultaneous requests) and limited locally (per user, up to 10 req/sec)
+* All heavy REST calls cached internally in LRU cache limited by `MAX_CACHE_ITEMS` and `MAX_CACHE_SIZE`.
+* User's activity throttled globally (up to 1000 simultaneous requests) and limited locally (per user, usually up to 10 req/sec)
 * Request timeout set to 60sec
 * Development mode (`--dev-password` set) allows to test remark42 without social login and with admin privileges. Adds basic-auth for username: `dev`, password: `${DEV_PASSWD}`. **should not be used in production deployment**
 * User can vote for the comment multiple times but only to change his/her vote. Double-voting not allowed.
