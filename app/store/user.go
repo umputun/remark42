@@ -3,8 +3,10 @@ package store
 import (
 	"crypto/hmac"
 	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
 	"hash/crc64"
+	"io"
 	"log"
 	"regexp"
 )
@@ -29,30 +31,30 @@ func (u *User) HashIP(secret string) {
 
 // HashValue makes hmac with secret
 func HashValue(val string, secret string) string {
-	if val == "" || reValidSha.Match([]byte(val)) {
+	if val == "" || reValidSha.MatchString(val) {
 		return val // already hashed or empty
 	}
 	key := []byte(secret)
 	h := hmac.New(sha1.New, key)
-	if _, err := h.Write([]byte(val)); err != nil {
+	if _, err := io.WriteString(h, val); err != nil {
 		// fail back to crc64
 		log.Printf("[WARN] can't hash ip, %s", err)
 		return fmt.Sprintf("%x", crc64.Checksum([]byte(val), crc64.MakeTable(crc64.ECMA)))
 	}
-	return fmt.Sprintf("%x", h.Sum(nil))
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 // EncodeID hashes id to sha1. The function intentionally left outside of User struct because in some cases
 // we need hashing for parts of id, in some others hashing for non-User values.
 func EncodeID(id string) string {
-	if reValidSha.Match([]byte(id)) {
+	if reValidSha.MatchString(id) {
 		return id // already hashed or empty
 	}
 	h := sha1.New()
-	if _, err := h.Write([]byte(id)); err != nil {
+	if _, err := io.WriteString(h, id); err != nil {
 		// fail back to crc64
 		log.Printf("[WARN] can't hash id %s, %s", id, err)
 		return fmt.Sprintf("%x", crc64.Checksum([]byte(id), crc64.MakeTable(crc64.ECMA)))
 	}
-	return fmt.Sprintf("%x", h.Sum(nil))
+	return hex.EncodeToString(h.Sum(nil))
 }

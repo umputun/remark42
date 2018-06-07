@@ -55,11 +55,19 @@ func TestApplicationFailed(t *testing.T) {
 		"open /dev/null/remark.db: not a directory")
 	t.Log(err)
 
-	//p.ParseArgs([]string{"--secret=123456", "--url=https://demo.remark42.com", "--bolt=/tmp", "--backup=/not-writable"})
-	//_, err = New(opts)
-	//assert.EqualError(t, err, "can't initialize data store: failed to make boltdb for /dev/null/remark.db: "+
-	//	"open /dev/null/remark.db: not a directory")
-	//t.Log(err)
+	// RO backup location
+	opts = Opts{}
+	p.ParseArgs([]string{"--secret=123456", "--url=https://demo.remark42.com", "--bolt=/tmp", "--backup=/dev/null/not-writable"})
+	_, err = New(opts)
+	assert.EqualError(t, err, "can't check directory status for /dev/null/not-writable: stat /dev/null/not-writable: not a directory")
+	t.Log(err)
+
+	// invalid url
+	opts = Opts{}
+	p.ParseArgs([]string{"--secret=123456", "--url=demo.remark42.com", "--bolt=/tmp"})
+	_, err = New(opts)
+	assert.EqualError(t, err, "invalid remark42 url demo.remark42.com")
+	t.Log(err)
 }
 
 func TestApplicationShutdown(t *testing.T) {
