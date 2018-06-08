@@ -48,8 +48,14 @@ func (p Image) Routes() chi.Router {
 			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't decode image url")
 			return
 		}
+
 		client := http.Client{Timeout: 30 * time.Second}
-		resp, err := client.Get(string(src))
+		var resp *http.Response
+		err = retry(5, time.Second, func() error {
+			var e error
+			resp, e = client.Get(string(src))
+			return e
+		})
 		if err != nil {
 			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get image "+string(src))
 			return

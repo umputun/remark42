@@ -17,8 +17,8 @@ import (
 
 // AvatarStore defines interface to store and serve avatars
 type AvatarStore interface {
-	Put(userID string, reader io.Reader) (avatarURL string, err error)
-	Get(userID string) (reader io.ReadCloser, size int, err error)
+	Put(userID string, reader io.Reader) (avatar string, err error)
+	Get(avatar string) (reader io.ReadCloser, size int, err error)
 }
 
 // FSAvatarStore implements AvatarStore for local file system
@@ -33,7 +33,7 @@ func NewFSAvatarStore(storePath string) *FSAvatarStore {
 	return &FSAvatarStore{storePath: storePath}
 }
 
-// Put avatar for userID to file and return avatar name
+// Put avatar for userID to file and return avatar's file name (base), like 12345678.image
 func (fs *FSAvatarStore) Put(userID string, reader io.Reader) (avatar string, err error) {
 
 	id := store.EncodeID(userID)

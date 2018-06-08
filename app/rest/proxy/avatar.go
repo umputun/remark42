@@ -40,10 +40,16 @@ func (p *Avatar) Put(u store.User) (avatarURL string, err error) {
 
 	// load avatar from remote location
 	client := http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Get(u.Picture)
+	var resp *http.Response
+	err = retry(5, time.Second, func() error {
+		var e error
+		resp, e = client.Get(u.Picture)
+		return e
+	})
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to get avatar for user %s from %s", u.ID, u.Picture)
+		return "", errors.Wrap(err, "failed to fetch avatar from the orig")
 	}
+
 	defer func() {
 		if e := resp.Body.Close(); e != nil {
 			log.Printf("[WARN] can't close response body, %s", e)
@@ -105,4 +111,14 @@ func (p *Avatar) Routes(middlewares ...func(http.Handler) http.Handler) (string,
 	})
 
 	return p.RoutePath, router
+}
+
+func retry(retries int, delay time.Duration, fn func() error) (err error) {
+	for i := 0; i < retries; i++ {
+		if err = fn(); err == nil {
+			return nil
+		}
+		time.Sleep(delay)
+	}
+	return errors.Wrap(err, "retry failed")
 }

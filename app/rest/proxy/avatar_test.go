@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -9,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -117,4 +119,24 @@ func TestAvatar_Routes(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int64(21), sz)
 	assert.Equal(t, "some picture bin data", bb.String())
+}
+
+func TestAvatar_Retry(t *testing.T) {
+	i := 0
+	err := retry(5, time.Millisecond, func() error {
+		if i == 3 {
+			return nil
+		}
+		i++
+		return errors.New("err")
+	})
+	assert.Nil(t, err)
+	assert.Equal(t, 3, i)
+
+	st := time.Now()
+	err = retry(5, time.Millisecond, func() error {
+		return errors.New("err")
+	})
+	assert.NotNil(t, err)
+	assert.True(t, time.Since(st) >= time.Microsecond*5)
 }
