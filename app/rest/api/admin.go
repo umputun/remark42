@@ -24,7 +24,6 @@ type admin struct {
 	dataService   service.DataStore
 	exporter      migrator.Exporter
 	cache         cache.LoadingCache
-	defAvatarURL  string
 	authenticator auth.Authenticator
 }
 

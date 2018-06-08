@@ -26,8 +26,8 @@ type disqusThread struct {
 	CreateAt    time.Time `xml:"createdAt"`
 	AuthorName  string    `xml:"author>name"`
 	AuthorEmail string    `xml:"author>email"`
-	Anonymous   bool      `xml:"author>isAnonymous"`
 	IP          string    `xml:"ipAddress"`
+	Anonymous   bool      `xml:"author>isAnonymous"`
 	Closed      bool      `xml:"isClosed"`
 	Deleted     bool      `xml:"isDeleted"`
 }
@@ -37,13 +37,13 @@ type disqusComment struct {
 	ID             string    `xml:"id"`
 	Message        string    `xml:"message"`
 	CreatedAt      time.Time `xml:"createdAt"`
-	IsSpam         bool      `xml:"isSpam"`
 	AuthorEmail    string    `xml:"author>email"`
 	AuthorName     string    `xml:"author>name"`
 	AuthorUserName string    `xml:"author>username"`
 	IP             string    `xml:"ipAddress"`
 	Tid            uid       `xml:"thread"`
 	Pid            uid       `xml:"parent"`
+	IsSpam         bool      `xml:"isSpam"`
 }
 
 type uid struct {

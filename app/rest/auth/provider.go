@@ -163,18 +163,7 @@ func (p Provider) authHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[DEBUG] got raw user info %+v", jData)
 
 	u := p.MapUser(jData, data)
-	if p.AvatarProxy != nil {
-		if avatarURL, e := p.AvatarProxy.Put(u); e == nil {
-			u.Picture = avatarURL
-		} else {
-			log.Printf("[WARN] failed to proxy avatar, %s", e)
-		}
-	}
-
-	u.Admin = isAdmin(u.ID, p.Admins)
-	if p.IsVerifiedFn != nil {
-		u.Verified = p.IsVerifiedFn(oauthClaims.SiteID, u.ID)
-	}
+	u = p.alterUser(u, oauthClaims)
 
 	authClaims := &CustomClaims{
 		User: &u,
@@ -198,6 +187,22 @@ func (p Provider) authHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	render.JSON(w, r, &u)
+}
+
+// alterUser sets fileds not handled by provider's MapUser, things like avatar, admin, verified
+func (p Provider) alterUser(u store.User, oauthClaims *CustomClaims) store.User {
+	if p.AvatarProxy != nil {
+		if avatarURL, e := p.AvatarProxy.Put(u); e == nil {
+			u.Picture = avatarURL
+		} else {
+			log.Printf("[WARN] failed to proxy avatar, %s", e)
+		}
+	}
+	u.Admin = isAdmin(u.ID, p.Admins)
+	if p.IsVerifiedFn != nil {
+		u.Verified = p.IsVerifiedFn(oauthClaims.SiteID, u.ID)
+	}
+	return u
 }
 
 // LogoutHandler - GET /logout

@@ -19,7 +19,7 @@ import (
 
 func TestApplication(t *testing.T) {
 	app, ctx := prepApp(t, 18080, 500*time.Millisecond)
-	go app.Run(ctx)
+	go func() { _ = app.Run(ctx) }()
 	time.Sleep(100 * time.Millisecond) // let server start
 
 	// send ping

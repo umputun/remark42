@@ -1,12 +1,5 @@
 package cache
 
-import (
-	"net/http"
-	"strings"
-
-	"github.com/umputun/remark/app/rest"
-)
-
 // Option func type
 type Option func(lc *loadingCache) error
 
@@ -43,15 +36,4 @@ func PostFlushFn(postFlushFn func()) Option {
 		lc.postFlushFn = postFlushFn
 		return nil
 	}
-}
-
-// URLKey gets url from request to use it as cache key
-// admins will have different keys in order to prevent leak of admin-only data to regular users
-func URLKey(r *http.Request) string {
-	adminPrefix := "admin!!"
-	key := strings.TrimPrefix(r.URL.String(), adminPrefix)          // prevents attach with fake url to get admin view
-	if user, err := rest.GetUserInfo(r); err == nil && user.Admin { // make separate cache key for admins
-		key = adminPrefix + key
-	}
-	return key
 }

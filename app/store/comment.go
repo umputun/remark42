@@ -19,8 +19,8 @@ type Comment struct {
 	Score     int             `json:"score"`
 	Votes     map[string]bool `json:"votes"`
 	Timestamp time.Time       `json:"time"`
-	Pin       bool            `json:"pin,omitempty"`
 	Edit      *Edit           `json:"edit,omitempty"` // pointer to have empty default in json response
+	Pin       bool            `json:"pin,omitempty"`
 	Deleted   bool            `json:"delete,omitempty"`
 }
 

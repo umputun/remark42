@@ -1,13 +1,11 @@
 package proxy
 
 import (
-	"hash/crc64"
 	"io"
 	"log"
 	"net/http"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/go-chi/chi"
@@ -23,9 +21,6 @@ type Avatar struct {
 	Store     AvatarStore
 	RoutePath string
 	RemarkURL string
-
-	once     sync.Once
-	ctcTable *crc64.Table
 }
 
 const imgSfx = ".image"

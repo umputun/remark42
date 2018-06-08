@@ -27,6 +27,7 @@ import (
 )
 
 // Opts with command line flags and env
+// nolint:maligned
 type Opts struct {
 	BoltPath   string   `long:"bolt" env:"BOLTDB_PATH" default:"./var" description:"parent dir for bolt files"`
 	Sites      []string `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`

@@ -2,11 +2,13 @@ package cache
 
 import (
 	"log"
+	"net/http"
 	"strings"
 	"sync/atomic"
 
 	"github.com/hashicorp/golang-lru"
 	"github.com/pkg/errors"
+	"github.com/umputun/remark/app/rest"
 )
 
 // LoadingCache defines interface for caching
@@ -141,4 +143,15 @@ func (lc *loadingCache) allowed(data []byte) bool {
 		return false
 	}
 	return true
+}
+
+// URLKey gets url from request to use it as cache key
+// admins will have different keys in order to prevent leak of admin-only data to regular users
+func URLKey(r *http.Request) string {
+	adminPrefix := "admin!!"
+	key := strings.TrimPrefix(r.URL.String(), adminPrefix)          // prevents attach with fake url to get admin view
+	if user, err := rest.GetUserInfo(r); err == nil && user.Admin { // make separate cache key for admins
+		key = adminPrefix + key
+	}
+	return key
 }
