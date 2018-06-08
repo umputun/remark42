@@ -9,11 +9,6 @@ pipeline:
     commands:
       - cd app
       - go build -v ./...
-      # - apk add --no-cache git
-      # - go get golang.org/x/tools/cmd/cover
-      # - go get github.com/mattn/goveralls
-      # - go test -v -covermode=count -coverprofile=coverage.out 
-      # - /go/bin/goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN
 
   docker_master:
     image: plugins/docker
@@ -21,10 +16,20 @@ pipeline:
     secrets: [ docker_username, docker_password ]
     tags: 
       - ${DRONE_COMMIT_BRANCH/\//-}
-      - latest
     when:
       branch: [master, release/*]
       event: push
+
+  docker_tag:
+    image: plugins/docker
+    repo: umputun/remark
+    secrets: [ docker_username, docker_password ]
+    tags: 
+      - ${DRONE_TAG}
+      - latest
+    when:
+      branch: [refs/tags/*]
+      event: tag
 
   docker_branch:
     image: plugins/docker
