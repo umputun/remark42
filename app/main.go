@@ -135,7 +135,7 @@ func New(opts Opts) (*Application, error) {
 	jwtService := auth.NewJWT(opts.SecretKey, strings.HasPrefix(opts.RemarkURL, "https://"), 7*24*time.Hour)
 
 	avatarProxy := &proxy.Avatar{
-		StorePath: opts.AvatarStore,
+		Store:     proxy.NewFSAvatarStore(opts.AvatarStore),
 		RoutePath: "/api/v1/avatar",
 		RemarkURL: strings.TrimSuffix(opts.RemarkURL, "/"),
 	}

@@ -1,13 +1,10 @@
 package proxy
 
 import (
-	"fmt"
 	"hash/crc64"
 	"io"
 	"log"
 	"net/http"
-	"os"
-	"path"
 	"strconv"
 	"strings"
 	"sync"
@@ -23,7 +20,7 @@ import (
 // Avatar provides file-system store and http handler for avatars
 // On user login auth will call Put and it will retrieve and save picture locally.
 type Avatar struct {
-	StorePath string
+	Store     AvatarStore
 	RoutePath string
 	RemarkURL string
 
@@ -57,33 +54,13 @@ func (p *Avatar) Put(u store.User) (avatarURL string, err error) {
 		return "", errors.Errorf("failed to get avatar from the orig, status %s", resp.Status)
 	}
 
-	// get ID and location of locally cached avatar
-	encID := store.EncodeID(u.ID)
-	location := p.location(encID) // location adds partition to path
-
-	if _, err = os.Stat(location); os.IsNotExist(err) {
-		if e := os.Mkdir(location, 0700); e != nil {
-			return "", errors.Wrapf(e, "failed to mkdir avatar location %s", location)
-		}
-	}
-
-	avFile := path.Join(location, encID+imgSfx)
-	fh, err := os.Create(avFile)
+	avatar, err := p.Store.Put(u.ID, resp.Body)
 	if err != nil {
-		return "", errors.Wrapf(err, "can't create file %s", avFile)
-	}
-	defer func() {
-		if e := fh.Close(); e != nil {
-			log.Printf("[WARN] can't close avatar file %s, %s", avFile, e)
-		}
-	}()
-
-	if _, err = io.Copy(fh, resp.Body); err != nil {
-		return "", errors.Wrapf(err, "can't save file %s", avFile)
+		return "", err
 	}
 
-	log.Printf("[DEBUG] saved avatar from %s to %s, user %q", u.Picture, avFile, u.Name)
-	return p.RemarkURL + p.RoutePath + "/" + encID + imgSfx, nil
+	log.Printf("[DEBUG] saved avatar from %s to %s, user %q", u.Picture, avatar, u.Name)
+	return p.RemarkURL + p.RoutePath + "/" + avatar, nil
 }
 
 // Routes returns auth routes for given provider
@@ -107,39 +84,25 @@ func (p *Avatar) Routes(middlewares ...func(http.Handler) http.Handler) (string,
 			}
 		}
 
-		location := p.location(strings.TrimSuffix(avatar, imgSfx))
-		avFile := path.Join(location, avatar)
-		fh, err := os.Open(avFile)
+		avReader, size, err := p.Store.Get(avatar)
 		if err != nil {
 			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't load avatar")
 			return
 		}
 
 		defer func() {
-			if e := fh.Close(); e != nil {
-				log.Printf("[WARN] can't close avatar file %s, %s", avFile, e)
+			if e := avReader.Close(); e != nil {
+				log.Printf("[WARN] can't close avatar reader for %s, %s", avatar, e)
 			}
 		}()
 
 		w.Header().Set("Content-Type", "image/*")
-		if fi, e := fh.Stat(); e == nil {
-			w.Header().Set("Content-Length", strconv.Itoa(int(fi.Size())))
-		}
+		w.Header().Set("Content-Length", strconv.Itoa(size))
 		w.WriteHeader(http.StatusOK)
-		if _, err = io.Copy(w, fh); err != nil {
+		if _, err = io.Copy(w, avReader); err != nil {
 			log.Printf("[WARN] can't send response to %s, %s", r.RemoteAddr, err)
 		}
 	})
 
 	return p.RoutePath, router
-}
-
-// get location (directory) for user id by adding partition to final path in order to keep files
-// in different subdirectories and avoid too many files in a single place.
-// the end result is a full path like this - /tmp/avatars.test/92
-func (p *Avatar) location(id string) string {
-	p.once.Do(func() { p.ctcTable = crc64.MakeTable(crc64.ECMA) })
-	checksum64 := crc64.Checksum([]byte(id), p.ctcTable)
-	partition := checksum64 % 100
-	return path.Join(p.StorePath, fmt.Sprintf("%02d", partition))
 }

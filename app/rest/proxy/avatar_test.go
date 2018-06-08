@@ -12,6 +12,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"github.com/umputun/remark/app/store"
 )
 
@@ -27,7 +28,7 @@ func TestAvatar_Put(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	p := Avatar{StorePath: "/tmp/avatars.test", RoutePath: "/avatar", RemarkURL: "http://localhost:8080"}
+	p := Avatar{RoutePath: "/avatar", RemarkURL: "http://localhost:8080", Store: NewFSAvatarStore("/tmp/avatars.test")}
 	os.MkdirAll("/tmp/avatars.test", 0700)
 	defer os.RemoveAll("/tmp/avatars.test")
 
@@ -56,7 +57,8 @@ func TestAvatar_PutFailed(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	p := Avatar{StorePath: "/tmp/avatars.test", RoutePath: "/avatar"}
+	p := Avatar{RoutePath: "/avatar", Store: NewFSAvatarStore("/tmp/avatars.test")}
+
 	u := store.User{ID: "user1", Name: "user1 name"}
 	_, err := p.Put(u)
 	assert.EqualError(t, err, "no picture for user1")
@@ -85,7 +87,7 @@ func TestAvatar_Routes(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	p := Avatar{StorePath: "/tmp/avatars.test", RoutePath: "/avatar"}
+	p := Avatar{RoutePath: "/avatar", Store: NewFSAvatarStore("/tmp/avatars.test")}
 	os.MkdirAll("/tmp/avatars.test", 0700)
 	defer os.RemoveAll("/tmp/avatars.test")
 
@@ -115,21 +117,4 @@ func TestAvatar_Routes(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int64(21), sz)
 	assert.Equal(t, "some picture bin data", bb.String())
-}
-
-func TestAvatar_Location(t *testing.T) {
-	p := Avatar{StorePath: "/tmp/avatars.test"}
-
-	tbl := []struct {
-		id  string
-		res string
-	}{
-		{"abc", "/tmp/avatars.test/35"},
-		{"xyz", "/tmp/avatars.test/69"},
-		{"blah blah", "/tmp/avatars.test/29"},
-	}
-
-	for i, tt := range tbl {
-		assert.Equal(t, tt.res, p.location(tt.id), "test #%d", i)
-	}
 }

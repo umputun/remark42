@@ -37,12 +37,14 @@ func TestRest_FileServer(t *testing.T) {
 }
 
 func TestRest_Shutdown(t *testing.T) {
-	srv := Rest{Authenticator: auth.Authenticator{},
-		AvatarProxy: &proxy.Avatar{StorePath: "/tmp", RoutePath: "/api/v1/avatar"}, ImageProxy: &proxy.Image{}}
+	srv := Rest{Authenticator: auth.Authenticator{}, AvatarProxy: &proxy.Avatar{Store: proxy.NewFSAvatarStore("/tmp"),
+		RoutePath: "/api/v1/avatar"}, ImageProxy: &proxy.Image{}}
+
 	go func() {
 		time.Sleep(100 * time.Millisecond)
 		srv.Shutdown()
 	}()
+
 	st := time.Now()
 	srv.Run(0)
 	assert.True(t, time.Since(st).Seconds() < 1, "should take about 100ms")
@@ -65,7 +67,7 @@ func prep(t *testing.T) (srv *Rest, ts *httptest.Server) {
 		Cache:       &mockCache{},
 		WebRoot:     "/tmp",
 		RemarkURL:   "https://demo.remark42.com",
-		AvatarProxy: &proxy.Avatar{StorePath: "/tmp", RoutePath: "/api/v1/avatar"},
+		AvatarProxy: &proxy.Avatar{Store: proxy.NewFSAvatarStore("/tmp"), RoutePath: "/api/v1/avatar"},
 		ImageProxy:  &proxy.Image{},
 		ReadOnlyAge: 10,
 	}
