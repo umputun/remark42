@@ -18,7 +18,12 @@ type DataStore struct {
 	Secret         string
 	MaxCommentSize int
 
-	lock sync.Mutex
+	// granular locks
+	scopedLocks struct {
+		sync.Mutex
+		sync.Once
+		locks map[string]sync.Locker
+	}
 }
 
 const defaultCommentMaxSize = 2000
@@ -56,8 +61,10 @@ func (s *DataStore) SetPin(locator store.Locator, commentID string, status bool)
 // Vote for comment by id and locator
 func (s *DataStore) Vote(locator store.Locator, commentID string, userID string, val bool) (comment store.Comment, err error) {
 
-	s.lock.Lock()
-	defer s.lock.Unlock()
+	cLock := s.getsScopedLocks(locator.URL) // get lock for URL scope
+
+	cLock.Lock()
+	defer cLock.Unlock()
 
 	comment, err = s.Get(locator, commentID)
 	if err != nil {
@@ -165,4 +172,19 @@ func (s *DataStore) IsVerifiedFn() func(siteID string, userID string) bool {
 		}
 		return s.IsVerified(siteID, userID)
 	}
+}
+
+// getsScopedLocks pull lock from the map if found or create a new one
+func (s *DataStore) getsScopedLocks(id string) (lock sync.Locker) {
+	s.scopedLocks.Do(func() { s.scopedLocks.locks = map[string]sync.Locker{} })
+
+	s.scopedLocks.Lock()
+	lock, ok := s.scopedLocks.locks[id]
+	if !ok {
+		lock = &sync.Mutex{}
+		s.scopedLocks.locks[id] = lock
+	}
+	s.scopedLocks.Unlock()
+
+	return lock
 }

@@ -200,7 +200,6 @@ func TestService_VoteConcurrent(t *testing.T) {
 	wg.Wait()
 	res, err = b.Last("radio-t", 0)
 	require.NoError(t, err)
-	t.Logf("%+v %d", res[0], res[0].Score)
 	assert.Equal(t, 1000, res[0].Score, "should have 1000 score")
 	assert.Equal(t, 1000, len(res[0].Votes), "should have 1000 votes")
 }
