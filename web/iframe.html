@@ -83,9 +83,10 @@
     function receiveMessages(event) {
       try {
         const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+        const isItHash = data.hash && data.hash.indexOf("#") === 0;
 
-        if (data.hash) {
-          location.hash = data.hash;
+        if (isItHash) {
+          location.replace(data.hash);
         }
       } catch (e) {}
     }

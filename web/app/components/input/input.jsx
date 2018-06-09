@@ -65,11 +65,6 @@ export default class Input extends Component {
     if (e.keyCode === 13 && (e.metaKey || e.ctrlKey)) {
       this.send();
     }
-
-    // cancel on esc
-    if (e.keyCode === 27 && this.props.onCancel) {
-      this.props.onCancel();
-    }
   }
 
   onInput() {
