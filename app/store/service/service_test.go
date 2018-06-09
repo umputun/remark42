@@ -170,7 +170,39 @@ func TestService_VoteAggressive(t *testing.T) {
 	assert.Equal(t, 3, len(res))
 	t.Logf("%+v %d", res[0], res[0].Score)
 	assert.True(t, res[0].Score >= 0 && res[0].Score <= 2, "unexpected score %d", res[0].Score)
+}
 
+func TestService_VoteConcurrent(t *testing.T) {
+
+	defer os.Remove(testDb)
+	b := DataStore{Interface: prepStoreEngine(t)}
+
+	comment := store.Comment{
+		Text:    "text",
+		User:    store.User{IP: "192.168.1.1", ID: "user", Name: "name"},
+		Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+	}
+	_, err := b.Create(comment)
+	assert.NoError(t, err)
+	res, err := b.Last("radio-t", 0)
+	require.Nil(t, err)
+
+	// concurrent vote +1 as multiple users for the same comment
+	var wg sync.WaitGroup
+	for i := 0; i < 1000; i++ {
+		wg.Add(1)
+		i := i
+		go func() {
+			defer wg.Done()
+			b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, fmt.Sprintf("user1-%d", i), true)
+		}()
+	}
+	wg.Wait()
+	res, err = b.Last("radio-t", 0)
+	require.NoError(t, err)
+	t.Logf("%+v %d", res[0], res[0].Score)
+	assert.Equal(t, 1000, res[0].Score, "should have 1000 score")
+	assert.Equal(t, 1000, len(res[0].Votes), "should have 1000 votes")
 }
 
 func TestService_Pin(t *testing.T) {

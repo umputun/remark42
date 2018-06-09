@@ -1,6 +1,7 @@
 package service
 
 import (
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -16,6 +17,8 @@ type DataStore struct {
 	EditDuration   time.Duration
 	Secret         string
 	MaxCommentSize int
+
+	lock sync.Mutex
 }
 
 const defaultCommentMaxSize = 2000
@@ -52,6 +55,9 @@ func (s *DataStore) SetPin(locator store.Locator, commentID string, status bool)
 
 // Vote for comment by id and locator
 func (s *DataStore) Vote(locator store.Locator, commentID string, userID string, val bool) (comment store.Comment, err error) {
+
+	s.lock.Lock()
+	defer s.lock.Unlock()
 
 	comment, err = s.Get(locator, commentID)
 	if err != nil {
