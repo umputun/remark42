@@ -30,34 +30,37 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 
 #### Parameters
 
-| Command line         | Environment        | Default               | Multi | Description                                    |
-| -------------------- | ------------------ | --------------------- | ----- | ---------------------------------------------- |
-| --url                | REMARK_URL         |                       | no    | url to remark42 server, required               |
-| --secret             | SECRET             |                       | no    | secret key, required                           |
-| --bolt               | BOLTDB_PATH        | `./var`               | no    | path to data directory                         |
-| --site               | SITE               | `remark`              | yes   | site name(s)                                   |
-| --admin              | ADMIN              |                       | yes   | admin names (list of user ids)                 |
-| --admin-email        | ADMIN_EMAIL        | `admin@${REMARK_URL}` | no    | admin email                                    |  |
-| --backup             | BACKUP_PATH        | `./var/backup`        | no    | backups location                               |
-| --max-back           | MAX_BACKUP_FILES   | `10`                  | no    | max backup files to keep                       |
-| --max-cache-items    | MAX_CACHE_ITEMS    | `1000`                | no    | max number of cached items, `0` - unlimited    |
-| --max-cache-value    | MAX_CACHE_VALUE    | `65536`               | no    | max size of cached value, `0` - unlimited      |
-| --max-cache-size     | MAX_CACHE_SIZE     | `50000000`            | no    | max size of all cached values, `0` - unlimited |
-| --avatars            | AVATAR_STORE       | `./var/avatars`       | no    | avatars location                               |
-| --max-comment        | MAX_COMMENT_SIZE   | 2048                  | no    | comment's size limit                           |
-| --auth.google.cid    | AUTH_GOOGLE_CID    |                       | no    | Google OAuth client ID                         |
-| --auth.google.csec   | AUTH_GOOGLE_CSEC   |                       | no    | Google OAuth client secret                     |
-| --auth.facebook.cid  | AUTH_FACEBOOK_CID  |                       | no    | Facebook OAuth client ID                       |
-| --auth.facebook.csec | AUTH_FACEBOOK_CSEC |                       | no    | Facebook OAuth client secret                   |
-| --auth.github.cid    | AUTH_GITHUB_CID    |                       | no    | Github OAuth client ID                         |
-| --auth.github.csec   | AUTH_GITHUB_CSEC   |                       | no    | Github OAuth client secret                     |
-| --auth.yandex.cid    | AUTH_YANDEX_CID    |                       | no    | Yandex OAuth client ID                         |
-| --auth.yandex.csec   | AUTH_YANDEX_CSEC   |                       | no    | Yandex OAuth client secret                     |
-| --low-score          | LOW_SCORE          | `-5`                  | no    | Low score threshold                            |
-| --critical-score     | CRITICAL_SCORE     | `-10`                 | no    | Critical score threshold                       |
-| --img-proxy          | IMG_PROXY          | `false`               | no    | Enable http->https proxy for images            |
-| --dbg                | DEBUG              | `false`               | no    | debug mode                                     |
-| --dev-passwd         | DEV_PASSWD         |                       | no    | password for `dev` user                        |
+| Command line       | Environment        | Default               | Description                                    |
+| ------------------ | ------------------ | --------------------- | ---------------------------------------------- |
+| url                | REMARK_URL         |                       | url to remark42 server, _required_             |
+| secret             | SECRET             |                       | secret key, _required_                         |
+| bolt               | BOLTDB_PATH        | `./var`               | path to data directory                         |
+| site               | SITE               | `remark`              | site name(s), _multi_                          |
+| admin              | ADMIN              |                       | admin names (list of user ids), _multi_        |
+| admin-email        | ADMIN_EMAIL        | `admin@${REMARK_URL}` | admin email                                    |
+| backup             | BACKUP_PATH        | `./var/backup`        | backups location                               |
+| max-back           | MAX_BACKUP_FILES   | `10`                  | max backup files to keep                       |
+| max-cache-items    | MAX_CACHE_ITEMS    | `1000`                | max number of cached items, `0` - unlimited    |
+| max-cache-value    | MAX_CACHE_VALUE    | `65536`               | max size of cached value, `0` - unlimited      |
+| max-cache-size     | MAX_CACHE_SIZE     | `50000000`            | max size of all cached values, `0` - unlimited |
+| avatars            | AVATAR_STORE       | `./var/avatars`       | avatars location                               |
+| max-comment        | MAX_COMMENT_SIZE   | 2048                  | comment's size limit                           |
+| auth.google.cid    | AUTH_GOOGLE_CID    |                       | Google OAuth client ID                         |
+| auth.google.csec   | AUTH_GOOGLE_CSEC   |                       | Google OAuth client secret                     |
+| auth.facebook.cid  | AUTH_FACEBOOK_CID  |                       | Facebook OAuth client ID                       |
+| auth.facebook.csec | AUTH_FACEBOOK_CSEC |                       | Facebook OAuth client secret                   |
+| auth.github.cid    | AUTH_GITHUB_CID    |                       | Github OAuth client ID                         |
+| auth.github.csec   | AUTH_GITHUB_CSEC   |                       | Github OAuth client secret                     |
+| auth.yandex.cid    | AUTH_YANDEX_CID    |                       | Yandex OAuth client ID                         |
+| auth.yandex.csec   | AUTH_YANDEX_CSEC   |                       | Yandex OAuth client secret                     |
+| low-score          | LOW_SCORE          | `-5`                  | Low score threshold                            |
+| critical-score     | CRITICAL_SCORE     | `-10`                 | Critical score threshold                       |
+| img-proxy          | IMG_PROXY          | `false`               | Enable http->https proxy for images            |
+| dbg                | DEBUG              | `false`               | debug mode                                     |
+| dev-passwd         | DEV_PASSWD         |                       | password for `dev` user                        |
+
+1. _multi_ parameters separated by `,` in the environment or repeated with command line key, like `--site=s1 --site=s2 ...`
+2. _required_ parameters have to be presented in the environment or provided in command line_
 
 ##### Required parameters
 
@@ -65,7 +68,7 @@ Most of the parameters have sane defaults and don't require customization. There
 
 1. `SECRET` - secret key, can be any long and hard-to-guess string.
 1. `REMARK_URL` - url pointing to your remark42 server, i.e. `https://demo.reamark42.com`
-1. At least one pair of `REMARK_<PROVIDER>_CID` and `REMARK_<PROVIDER>_CSEC` defining oauth2 provider(s)
+2. At least one pair of `AUTH_<PROVIDER>_CID` and `AUTH_<PROVIDER>_CSEC` defining oauth2 provider(s)
 
 The minimal `docker-compose.yml` has to include all required parameters:
 
