@@ -7,7 +7,7 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 * Import from disqus
 * Markdown support
 * Moderator can remove comments and block users
-* Voting and pinning system
+* Voting, pinning and verification system
 * Sortable comments
 * Extractor for recent comments, cross-post
 * RSS for all comments and each post
@@ -17,6 +17,7 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 * Clean, lightweight and fully customizable UI
 * Multi-site mode from a single instance
 * Integration with automatic ssl via [nginx-le](https://github.com/umputun/nginx-le)
+* [Privacy focused](#privacy)
 
 ## Install
 
@@ -59,8 +60,9 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 | dbg                | DEBUG              | `false`               | debug mode                                     |
 | dev-passwd         | DEV_PASSWD         |                       | password for `dev` user                        |
 
-1. _multi_ parameters separated by `,` in the environment or repeated with command line key, like `--site=s1 --site=s2 ...`
-2. _required_ parameters have to be presented in the environment or provided in command line_
+* command line parameters are long form `--<key>=value`, i.e. `--site=https://demo.remark42.com`
+* _multi_ parameters separated by `,` in the environment or repeated with command line key, like `--site=s1 --site=s2 ...`
+* _required_ parameters have to be presented in the environment or provided in command line_
 
 ##### Required parameters
 
@@ -84,8 +86,8 @@ services:
             - REMARK_URL=https://demo.remark42.com  # url pointing to your remark42 server
             - USER=1001                             # UID on the host machine 
             - SECRET=abcd-123456-xyz-$%^&           # secret key
-            - AUTH_GITHUB_CID=12345667890         # oauth2 client ID
-            - AUTH_GITHUB_CSEC=abcdefg12345678    # oauth2 client secret
+            - AUTH_GITHUB_CID=12345667890           # oauth2 client ID
+            - AUTH_GITHUB_CSEC=abcdefg12345678      # oauth2 client secret
         volumes:
             - ./var:/srv/var                        # persistent volume to store all remark42 data 
 ```
