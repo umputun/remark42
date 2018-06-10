@@ -62,7 +62,7 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 
 * command line parameters are long form `--<key>=value`, i.e. `--site=https://demo.remark42.com`
 * _multi_ parameters separated by `,` in the environment or repeated with command line key, like `--site=s1 --site=s2 ...`
-* _required_ parameters have to be presented in the environment or provided in command line_
+* _required_ parameters have to be presented in the environment or provided in command line
 
 ##### Required parameters
 
@@ -91,9 +91,6 @@ services:
         volumes:
             - ./var:/srv/var                        # persistent volume to store all remark42 data 
 ```
-
- 
-_all multi parameters separated by `,` in environment or repeated with command line key, like `--site=s1 --site=s2 ...`_
 
 #### Register oauth2 providers
 
