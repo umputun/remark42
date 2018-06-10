@@ -78,10 +78,10 @@ The minimal `docker-compose.yml` has to include all required parameters:
 version: '2'
 
 services:
-    remark:
+    remark42:
         image: umputun/remark:master
         restart: always
-
+        container_name: "remark42"
         environment:
             - REMARK_URL=https://demo.remark42.com  # url pointing to your remark42 server
             - SECRET=abcd-123456-xyz-$%^&           # secret key
