@@ -6,3 +6,4 @@ const querySettings = window.location.search.substr(1).split('&').reduce((acc, p
 
 export const siteId = querySettings['site_id'];
 export const url = querySettings['url'];
+export const maxShownComments = querySettings['max_shown_comments'];
