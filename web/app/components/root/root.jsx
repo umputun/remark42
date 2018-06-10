@@ -2,7 +2,7 @@ import { h, Component } from 'preact';
 import api from 'common/api';
 
 import { BASE_URL, NODE_ID, COMMENT_NODE_CLASSNAME_PREFIX, DEFAULT_SORT, LS_SORT_KEY, MAX_SHOWN_ROOT_COMMENTS } from 'common/constants';
-import { url } from 'common/settings';
+import { url, maxShownComments } from 'common/settings';
 import store from 'common/store';
 
 import AuthPanel from 'components/auth-panel';
@@ -11,6 +11,8 @@ import Comment from 'components/comment';
 import Input from 'components/input';
 import Preloader from 'components/preloader';
 import Thread from 'components/thread';
+
+const IS_MOBILE = /Android|webOS|iPhone|iPad|iPod|Opera Mini|Windows Phone/i.test(navigator.userAgent);
 
 export default class Root extends Component {
   constructor(props) {
@@ -29,7 +31,7 @@ export default class Root extends Component {
       isCommentsListLoading: false,
       user: {},
       sort,
-      commentsShown: MAX_SHOWN_ROOT_COMMENTS,
+      commentsShown: maxShownComments || MAX_SHOWN_ROOT_COMMENTS,
     };
 
     this.addComment = this.addComment.bind(this);
@@ -238,7 +240,7 @@ export default class Root extends Component {
                   !!comments.length && !isCommentsListLoading && (
                     <div className="root__threads" role="list">
                       {
-                        comments.slice(0, commentsShown).map(thread => (
+                        (IS_MOBILE ? comments.slice(0, commentsShown) : comments).map(thread => (
                           <Thread
                             key={thread.comment.id}
                             mix="root__thread"
@@ -251,7 +253,7 @@ export default class Root extends Component {
                       }
 
                       {
-                        commentsShown < comments.length && (
+                        commentsShown < comments.length && IS_MOBILE && (
                           <button
                             className="root__show-more"
                             onClick={this.showMore}
