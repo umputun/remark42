@@ -84,10 +84,10 @@ services:
 
         environment:
             - REMARK_URL=https://demo.remark42.com  # url pointing to your remark42 server
-            - USER=1001                             # UID on the host machine 
             - SECRET=abcd-123456-xyz-$%^&           # secret key
             - AUTH_GITHUB_CID=12345667890           # oauth2 client ID
             - AUTH_GITHUB_CSEC=abcdefg12345678      # oauth2 client secret
+            - USER=1001                             # UID on the host machine, i.e `id -u`
         volumes:
             - ./var:/srv/var                        # persistent volume to store all remark42 data 
 ```
