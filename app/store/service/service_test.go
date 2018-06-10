@@ -189,7 +189,7 @@ func TestService_VoteConcurrent(t *testing.T) {
 
 	// concurrent vote +1 as multiple users for the same comment
 	var wg sync.WaitGroup
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < 100; i++ {
 		wg.Add(1)
 		i := i
 		go func() {
@@ -200,8 +200,8 @@ func TestService_VoteConcurrent(t *testing.T) {
 	wg.Wait()
 	res, err = b.Last("radio-t", 0)
 	require.NoError(t, err)
-	assert.Equal(t, 1000, res[0].Score, "should have 1000 score")
-	assert.Equal(t, 1000, len(res[0].Votes), "should have 1000 votes")
+	assert.Equal(t, 100, res[0].Score, "should have 1000 score")
+	assert.Equal(t, 100, len(res[0].Votes), "should have 1000 votes")
 }
 
 func TestService_Pin(t *testing.T) {
