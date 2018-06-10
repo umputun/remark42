@@ -29,31 +29,28 @@ import (
 // Opts with command line flags and env
 // nolint:maligned
 type Opts struct {
-	BoltPath   string   `long:"bolt" env:"BOLTDB_PATH" default:"./var" description:"parent dir for bolt files"`
-	Sites      []string `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
-	RemarkURL  string   `long:"url" env:"REMARK_URL" required:"true" description:"url to remark"`
-	Admins     []string `long:"admin" env:"ADMIN" description:"admin(s) names" env-delim:","`
-	AdminEmail string   `long:"admin-email" env:"ADMIN_EMAIL" default:"" description:"admin email"`
-	DevPasswd  string   `long:"dev-passwd" env:"DEV_PASSWD" default:"" description:"development mode password"`
-	Dbg        bool     `long:"dbg" env:"DEBUG" description:"debug mode"`
+	SecretKey string `long:"secret" env:"SECRET" required:"true" description:"secret key"`
+	RemarkURL string `long:"url" env:"REMARK_URL" required:"true" description:"url to remark"`
 
-	BackupLocation string `long:"backup" env:"BACKUP_PATH" default:"./var/backup" description:"backups location"`
-	MaxBackupFiles int    `long:"max-back" env:"MAX_BACKUP_FILES" default:"10" description:"max backups to keep"`
-	AvatarStore    string `long:"avatars" env:"AVATAR_STORE" default:"./var/avatars" description:"avatars location"`
-	ImageProxy     bool   `long:"img-proxy" env:"IMG_PROXY" description:"enable image proxy"`
-
-	MaxCommentSize int `long:"max-comment" env:"MAX_COMMENT_SIZE" default:"2048" description:"max comment size"`
-	MaxCachedItems int `long:"max-cache-items" env:"MAX_CACHE_ITEMS" default:"1000" description:"max cached items"`
-	MaxCachedValue int `long:"max-cache-value" env:"MAX_CACHE_VALUE" default:"65536" description:"max size of cached value"`
-	MaxCacheSize   int `long:"max-cache-size" env:"MAX_CACHE_SIZE" default:"50000000" description:"max size of total cache"`
-
-	SecretKey     string `long:"secret" env:"SECRET" required:"true" description:"secret key"`
-	LowScore      int    `long:"low-score" env:"LOW_SCORE" default:"-5" description:"low score threshold"`
-	CriticalScore int    `long:"critical-score" env:"CRITICAL_SCORE" default:"-10" description:"critical score threshold"`
-	ReadOnlyAge   int    `long:"read-age" env:"READONLY_AGE" default:"0" description:"read-only age of comments"`
-
-	Port    int    `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
-	WebRoot string `long:"web-root" env:"REMARK_WEB_ROOT" default:"./web" description:"web root directory"`
+	BoltPath       string   `long:"bolt" env:"BOLTDB_PATH" default:"./var" description:"parent dir for bolt files"`
+	Sites          []string `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
+	Admins         []string `long:"admin" env:"ADMIN" description:"admin(s) names" env-delim:","`
+	AdminEmail     string   `long:"admin-email" env:"ADMIN_EMAIL" default:"" description:"admin email"`
+	DevPasswd      string   `long:"dev-passwd" env:"DEV_PASSWD" default:"" description:"development mode password"`
+	BackupLocation string   `long:"backup" env:"BACKUP_PATH" default:"./var/backup" description:"backups location"`
+	MaxBackupFiles int      `long:"max-back" env:"MAX_BACKUP_FILES" default:"10" description:"max backups to keep"`
+	AvatarStore    string   `long:"avatars" env:"AVATAR_STORE" default:"./var/avatars" description:"avatars location"`
+	ImageProxy     bool     `long:"img-proxy" env:"IMG_PROXY" description:"enable image proxy"`
+	MaxCommentSize int      `long:"max-comment" env:"MAX_COMMENT_SIZE" default:"2048" description:"max comment size"`
+	MaxCachedItems int      `long:"max-cache-items" env:"MAX_CACHE_ITEMS" default:"1000" description:"max cached items"`
+	MaxCachedValue int      `long:"max-cache-value" env:"MAX_CACHE_VALUE" default:"65536" description:"max size of cached value"`
+	MaxCacheSize   int      `long:"max-cache-size" env:"MAX_CACHE_SIZE" default:"50000000" description:"max size of total cache"`
+	LowScore       int      `long:"low-score" env:"LOW_SCORE" default:"-5" description:"low score threshold"`
+	CriticalScore  int      `long:"critical-score" env:"CRITICAL_SCORE" default:"-10" description:"critical score threshold"`
+	ReadOnlyAge    int      `long:"read-age" env:"READONLY_AGE" default:"0" description:"read-only age of comments"`
+	Port           int      `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
+	WebRoot        string   `long:"web-root" env:"REMARK_WEB_ROOT" default:"./web" description:"web root directory"`
+	Dbg            bool     `long:"dbg" env:"DEBUG" description:"debug mode"`
 
 	Auth struct {
 		Google   AuthGroup `group:"google" namespace:"google" env-namespace:"GOOGLE" description:"Google OAuth"`
