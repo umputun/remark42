@@ -53,7 +53,7 @@ func TestRest_Shutdown(t *testing.T) {
 func prep(t *testing.T) (srv *Rest, ts *httptest.Server) {
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDb, SiteID: "radio-t"})
 	require.Nil(t, err)
-	dataStore := service.DataStore{Interface: b, EditDuration: 5 * time.Minute, MaxCommentSize: 4000, Secret: "123456"}
+	dataStore := &service.DataStore{Interface: b, EditDuration: 5 * time.Minute, MaxCommentSize: 4000, Secret: "123456"}
 	srv = &Rest{
 		DataService: dataStore,
 		Authenticator: auth.Authenticator{
@@ -63,7 +63,7 @@ func prep(t *testing.T) (srv *Rest, ts *httptest.Server) {
 			AdminEmail: "admin@remark-42.com",
 			JWTService: auth.NewJWT("12345", false, time.Minute),
 		},
-		Exporter:    &migrator.Remark{DataStore: &dataStore},
+		Exporter:    &migrator.Remark{DataStore: dataStore},
 		Cache:       &mockCache{},
 		WebRoot:     "/tmp",
 		RemarkURL:   "https://demo.remark42.com",

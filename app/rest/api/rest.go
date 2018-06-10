@@ -31,7 +31,7 @@ import (
 // Rest is a rest access server
 type Rest struct {
 	Version         string
-	DataService     service.DataStore
+	DataService     *service.DataStore
 	Authenticator   auth.Authenticator
 	Exporter        migrator.Exporter
 	Cache           cache.LoadingCache

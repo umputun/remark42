@@ -120,7 +120,7 @@ func New(opts Opts) (*Application, error) {
 	if err != nil {
 		return nil, err
 	}
-	dataService := service.DataStore{
+	dataService := &service.DataStore{
 		Interface:      boltStore,
 		EditDuration:   5 * time.Minute,
 		Secret:         opts.SecretKey,
@@ -141,14 +141,14 @@ func New(opts Opts) (*Application, error) {
 		RemarkURL: strings.TrimSuffix(opts.RemarkURL, "/"),
 	}
 
-	exporter := &migrator.Remark{DataStore: &dataService}
+	exporter := &migrator.Remark{DataStore: dataService}
 
 	migr := &api.Migrator{
 		Version:        revision,
 		Cache:          loadingCache,
-		NativeImporter: &migrator.Remark{DataStore: &dataService},
-		DisqusImporter: &migrator.Disqus{DataStore: &dataService},
-		NativeExported: &migrator.Remark{DataStore: &dataService},
+		NativeImporter: &migrator.Remark{DataStore: dataService},
+		DisqusImporter: &migrator.Disqus{DataStore: dataService},
+		NativeExported: &migrator.Remark{DataStore: dataService},
 		SecretKey:      opts.SecretKey,
 	}
 
@@ -263,7 +263,7 @@ func makeDirs(dirs ...string) error {
 	return nil
 }
 
-func makeAuthProviders(jwtService *auth.JWT, avatarProxy *proxy.Avatar, ds service.DataStore, opts Opts) []auth.Provider {
+func makeAuthProviders(jwtService *auth.JWT, avatarProxy *proxy.Avatar, ds *service.DataStore, opts Opts) []auth.Provider {
 
 	makeParams := func(cid, secret string) auth.Params {
 		return auth.Params{

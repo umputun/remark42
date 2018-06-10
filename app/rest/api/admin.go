@@ -21,7 +21,7 @@ import (
 
 // admin provides router for all requests available for admin users only
 type admin struct {
-	dataService   service.DataStore
+	dataService   *service.DataStore
 	exporter      migrator.Exporter
 	cache         cache.LoadingCache
 	authenticator auth.Authenticator
