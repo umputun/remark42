@@ -225,12 +225,12 @@ func (p *Parser) writeHelpOption(writer *bufio.Writer, option *Option, info alig
 		}
 
 		var envDef string
-		if option.EnvDefaultKey != "" {
+		if option.EnvKeyWithNamespace() != "" {
 			var envPrintable string
 			if runtime.GOOS == "windows" {
-				envPrintable = "%" + option.EnvDefaultKey + "%"
+				envPrintable = "%" + option.EnvKeyWithNamespace() + "%"
 			} else {
-				envPrintable = "$" + option.EnvDefaultKey
+				envPrintable = "$" + option.EnvKeyWithNamespace()
 			}
 			envDef = fmt.Sprintf(" [%s]", envPrintable)
 		}

@@ -98,10 +98,10 @@ func prepApp(t *testing.T, port int, duration time.Duration) (*Application, cont
 	p.ParseArgs([]string{"--secret=123456", "--dev-passwd=password", "--url=https://demo.remark42.com"})
 	opts.AvatarStore, opts.BackupLocation = "/tmp", "/tmp"
 	opts.BoltPath = fmt.Sprintf("/tmp/%d", port)
-	opts.GithubCSEC, opts.GithubCID = "csec", "cid"
-	opts.GoogleCSEC, opts.GoogleCID = "csec", "cid"
-	opts.FacebookCSEC, opts.FacebookCID = "csec", "cid"
-	opts.YandexCSEC, opts.YandexCID = "csec", "cid"
+	opts.Auth.Github.CSEC, opts.Auth.Github.CID = "csec", "cid"
+	opts.Auth.Google.CSEC, opts.Auth.Google.CID = "csec", "cid"
+	opts.Auth.Facebook.CSEC, opts.Auth.Facebook.CID = "csec", "cid"
+	opts.Auth.Yandex.CSEC, opts.Auth.Yandex.CID = "csec", "cid"
 	opts.Port = port
 
 	os.Remove(opts.BoltPath + "/remark.db")

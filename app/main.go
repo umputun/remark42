@@ -52,17 +52,21 @@ type Opts struct {
 	CriticalScore int    `long:"critical-score" env:"CRITICAL_SCORE" default:"-10" description:"critical score threshold"`
 	ReadOnlyAge   int    `long:"read-age" env:"READONLY_AGE" default:"0" description:"read-only age of comments"`
 
-	GoogleCID    string `long:"google-cid" env:"REMARK_GOOGLE_CID" description:"Google OAuth client ID"`
-	GoogleCSEC   string `long:"google-csec" env:"REMARK_GOOGLE_CSEC" description:"Google OAuth client secret"`
-	GithubCID    string `long:"github-cid" env:"REMARK_GITHUB_CID" description:"Github OAuth client ID"`
-	GithubCSEC   string `long:"github-csec" env:"REMARK_GITHUB_CSEC" description:"Github OAuth client secret"`
-	FacebookCID  string `long:"facebook-cid" env:"REMARK_FACEBOOK_CID" description:"Facebook OAuth client ID"`
-	FacebookCSEC string `long:"facebook-csec" env:"REMARK_FACEBOOK_CSEC" description:"Facebook OAuth client secret"`
-	YandexCID    string `long:"yandex-cid" env:"REMARK_YANDEX_CID" description:"Yandex OAuth client ID"`
-	YandexCSEC   string `long:"yandex-csec" env:"REMARK_YANDEX_CSEC" description:"Yandex OAuth client secret"`
-
 	Port    int    `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
 	WebRoot string `long:"web-root" env:"REMARK_WEB_ROOT" default:"./web" description:"web root directory"`
+
+	Auth struct {
+		Google   AuthGroup `group:"google" namespace:"google" env-namespace:"GOOGLE" description:"Google OAuth"`
+		Github   AuthGroup `group:"github" namespace:"github" env-namespace:"GITHUB" description:"Github OAuth"`
+		Facebook AuthGroup `group:"facebook" namespace:"facebook" env-namespace:"FACEBOOK" description:"Facebook OAuth"`
+		Yandex   AuthGroup `group:"yandex" namespace:"yandex" env-namespace:"YANDEX" description:"Yandex OAuth"`
+	} `group:"auth" namespace:"auth" env-namespace:"AUTH"`
+}
+
+// AuthGroup defines options group for auth params
+type AuthGroup struct {
+	CID  string `long:"cid" env:"CID" description:"OAuth client ID"`
+	CSEC string `long:"csec" env:"CSEC" description:"OAuth client secret"`
 }
 
 var revision = "unknown"
@@ -85,7 +89,7 @@ func main() {
 		os.Exit(1)
 	}
 	log.Print("[INFO] started remark")
-
+	resetEnv("SECRET", "AUTH_GOOGLE_CSEC", "AUTH_GITHUB_CSEC", "AUTH_FACEBOOK_CSEC", "AUTH_YANDEX_CSEC")
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() { // catch signal and invoke graceful termination
 		stop := make(chan os.Signal, 1)
@@ -279,17 +283,17 @@ func makeAuthProviders(jwtService *auth.JWT, avatarProxy *proxy.Avatar, ds *serv
 	}
 
 	providers := []auth.Provider{}
-	if opts.GoogleCID != "" && opts.GoogleCSEC != "" {
-		providers = append(providers, auth.NewGoogle(makeParams(opts.GoogleCID, opts.GoogleCSEC)))
+	if opts.Auth.Google.CID != "" && opts.Auth.Google.CSEC != "" {
+		providers = append(providers, auth.NewGoogle(makeParams(opts.Auth.Google.CID, opts.Auth.Google.CSEC)))
 	}
-	if opts.GithubCID != "" && opts.GithubCSEC != "" {
-		providers = append(providers, auth.NewGithub(makeParams(opts.GithubCID, opts.GithubCSEC)))
+	if opts.Auth.Github.CID != "" && opts.Auth.Github.CSEC != "" {
+		providers = append(providers, auth.NewGithub(makeParams(opts.Auth.Github.CID, opts.Auth.Github.CSEC)))
 	}
-	if opts.FacebookCID != "" && opts.FacebookCSEC != "" {
-		providers = append(providers, auth.NewFacebook(makeParams(opts.FacebookCID, opts.FacebookCSEC)))
+	if opts.Auth.Facebook.CID != "" && opts.Auth.Facebook.CSEC != "" {
+		providers = append(providers, auth.NewFacebook(makeParams(opts.Auth.Facebook.CID, opts.Auth.Facebook.CSEC)))
 	}
-	if opts.YandexCID != "" && opts.YandexCSEC != "" {
-		providers = append(providers, auth.NewYandex(makeParams(opts.YandexCID, opts.YandexCSEC)))
+	if opts.Auth.Yandex.CID != "" && opts.Auth.Yandex.CSEC != "" {
+		providers = append(providers, auth.NewYandex(makeParams(opts.Auth.Yandex.CID, opts.Auth.Yandex.CSEC)))
 	}
 	if len(providers) == 0 {
 		log.Printf("[WARN] no auth providers defined")
@@ -319,6 +323,12 @@ func postFlushFn(sites []string, port int) func() {
 				}
 			}
 		}
+	}
+}
+
+func resetEnv(envs ...string) {
+	for _, env := range envs {
+		os.Unsetenv(env)
 	}
 }
 
