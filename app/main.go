@@ -328,7 +328,9 @@ func postFlushFn(sites []string, port int) func() {
 
 func resetEnv(envs ...string) {
 	for _, env := range envs {
-		os.Unsetenv(env)
+		if err := os.Unsetenv(env); err != nil {
+			log.Printf("[WARN] can't unset env %s, %s", env, err)
+		}
 	}
 }
 
