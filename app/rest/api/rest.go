@@ -172,7 +172,7 @@ func (s *Rest) routes() chi.Router {
 			for i := range allowed {
 				allowed[i] = "Allow: /api/v1" + allowed[i]
 			}
-			render.PlainText(w, r, "User-agent: *\nDisallow: /auth/\nDisallow: /api/\n"+strings.Join(allowed, "\n"))
+			render.PlainText(w, r, "User-agent: *\nDisallow: /auth/\nDisallow: /api/\n"+strings.Join(allowed, "\n")+"\n")
 		})
 
 	// file server for static content from /web
