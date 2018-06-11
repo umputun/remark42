@@ -130,7 +130,7 @@ func New(opts Opts) (*Application, error) {
 		MaxCommentSize: opts.MaxCommentSize,
 	}
 
-	loadingCache, err := cache.NewLoadingCache(cache.MaxValSize(opts.MaxCachedValue), cache.MaxKeys(opts.MaxCachedItems),
+	loadingCache, err := cache.NewMemoryCache(cache.MaxValSize(opts.MaxCachedValue), cache.MaxKeys(opts.MaxCachedItems),
 		cache.PostFlushFn(postFlushFn(opts.Sites, opts.Port)))
 	if err != nil {
 		return nil, err

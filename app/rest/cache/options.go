@@ -1,12 +1,12 @@
 package cache
 
 // Option func type
-type Option func(lc *loadingCache) error
+type Option func(lc *memoryCache) error
 
 // MaxValSize functional option defines the largest value's size allowed to be cached
 // By default it is 0, which means unlimited.
 func MaxValSize(max int) Option {
-	return func(lc *loadingCache) error {
+	return func(lc *memoryCache) error {
 		lc.maxValueSize = max
 		return nil
 	}
@@ -15,7 +15,7 @@ func MaxValSize(max int) Option {
 // MaxKeys functional option defines how many keys to keep.
 // By default it is 0, which means unlimited.
 func MaxKeys(max int) Option {
-	return func(lc *loadingCache) error {
+	return func(lc *memoryCache) error {
 		lc.maxKeys = max
 		return nil
 	}
@@ -24,7 +24,7 @@ func MaxKeys(max int) Option {
 // MaxCacheSize functional option defines the total size of cached data.
 // By default it is 0, which means unlimited.
 func MaxCacheSize(max int64) Option {
-	return func(lc *loadingCache) error {
+	return func(lc *memoryCache) error {
 		lc.maxCacheSize = max
 		return nil
 	}
@@ -32,7 +32,7 @@ func MaxCacheSize(max int64) Option {
 
 // PostFlushFn functional option defines how callback function called after each Flush.
 func PostFlushFn(postFlushFn func()) Option {
-	return func(lc *loadingCache) error {
+	return func(lc *memoryCache) error {
 		lc.postFlushFn = postFlushFn
 		return nil
 	}
