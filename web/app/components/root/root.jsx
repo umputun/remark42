@@ -1,3 +1,5 @@
+import 'mimic';
+
 import { h, Component } from 'preact';
 import api from 'common/api';
 

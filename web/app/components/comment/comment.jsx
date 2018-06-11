@@ -15,6 +15,7 @@ export default class Comment extends Component {
       isReplying: false,
       isEditing: false,
       isUserIdVisible: false,
+      isUserVerified: false,
       editTimeLeft: null,
     };
 
@@ -33,6 +34,8 @@ export default class Comment extends Component {
     this.onReply = this.onReply.bind(this);
     this.onPinClick = this.onPinClick.bind(this);
     this.onUnpinClick = this.onUnpinClick.bind(this);
+    this.onVerifyClick = this.onVerifyClick.bind(this);
+    this.onUnverifyClick = this.onUnverifyClick.bind(this);
     this.onBlockClick = this.onBlockClick.bind(this);
     this.onUnblockClick = this.onUnblockClick.bind(this);
     this.onDeleteClick = this.onDeleteClick.bind(this);
@@ -146,6 +149,30 @@ export default class Comment extends Component {
       this.setState({ pinned: false });
 
       api.unpin({ id, url }).then(() => {
+        api.getComment({ id }).then(comment => store.replaceComment(comment));
+      });
+    }
+  }
+
+  onVerifyClick() {
+    const { id, user: { id: userId } } = this.props.data;
+
+    if (confirm('Do you want to verify this user?')) {
+      this.setState({ isUserVerified: true });
+
+      api.verify({ id: userId }).then(() => {
+        api.getComment({ id }).then(comment => store.replaceComment(comment));
+      });
+    }
+  }
+
+  onUnverifyClick() {
+    const { id, user: { id: userId } } = this.props.data;
+
+    if (confirm('Do you want to unverify this user?')) {
+      this.setState({ isUserVerified: false });
+
+      api.unverify({ id: userId }).then(() => {
         api.getComment({ id }).then(comment => store.replaceComment(comment));
       });
     }
@@ -272,7 +299,20 @@ export default class Comment extends Component {
     }
   }
 
-  render(props, { guest, isUserIdVisible, userBlocked, pinned, score, scoreIncreased, scoreDecreased, deleted, isReplying, isEditing, editTimeLeft }) {
+  render(props, {
+    guest,
+    isUserIdVisible,
+    userBlocked,
+    pinned,
+    score,
+    scoreIncreased,
+    scoreDecreased,
+    deleted,
+    isReplying,
+    isEditing,
+    isUserVerified,
+    editTimeLeft,
+  }) {
     const { data, mods = {} } = props;
     const isAdmin = !guest && store.get('user').admin;
     const isGuest = guest || !Object.keys(store.get('user')).length;
@@ -314,6 +354,7 @@ export default class Comment extends Component {
         ...data.user,
         picture: data.user.picture.indexOf(API_BASE) === 0 ? `${BASE_URL}${data.user.picture}` : data.user.picture,
         isDefaultPicture: !data.user.picture.length,
+        verified: data.user.verified || isUserVerified,
       },
     };
 
@@ -362,6 +403,26 @@ export default class Comment extends Component {
 
             {
               isUserIdVisible && <span className="comment__user-id"> ({o.user.id})</span>
+            }
+
+            {
+              isAdmin && (
+                <span
+                  onClick={o.user.verified ? this.onUnverifyClick : this.onVerifyClick}
+                  aria-label="Toggle verification"
+                  title={o.user.verified ? 'Verified user' : 'Unverified user'}
+                  className={b('comment__verification', {}, { active: o.user.verified, clickable: true })}
+                />
+              )
+            }
+
+            {
+              !isAdmin && !!o.user.verified && (
+                <span
+                  title="Verified user"
+                  className={b('comment__verification', {}, { active: true })}
+                />
+              )
             }
 
             <a href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`} className="comment__time">{o.time}</a>
