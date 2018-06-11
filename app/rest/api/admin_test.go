@@ -265,7 +265,7 @@ func TestAdmin_ReadOnly(t *testing.T) {
 	assert.Nil(t, err)
 	assert.True(t, info.ReadOnly)
 
-	// resset post's read-only
+	// reset post's read-only
 	req, err = http.NewRequest(http.MethodPut,
 		fmt.Sprintf("%s/api/v1/admin/readonly?site=radio-t&url=https://radio-t.com/blah&ro=0", ts.URL), nil)
 	assert.Nil(t, err)
@@ -305,6 +305,15 @@ func TestAdmin_Verify(t *testing.T) {
 	verified = srv.DataService.IsVerified("radio-t", "user1")
 	assert.True(t, verified)
 
+	res, code := get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah&sort=+time")
+	assert.Equal(t, 200, code)
+	comments := []store.Comment{}
+	err = json.Unmarshal([]byte(res), &comments)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(comments), "should have 2 comments")
+	assert.Equal(t, "test test #1", comments[0].Text)
+	assert.True(t, comments[0].User.Verified)
+
 	req, err = http.NewRequest(http.MethodPut,
 		fmt.Sprintf("%s/api/v1/admin/verify/user1?site=radio-t&verified=0", ts.URL), nil)
 	assert.Nil(t, err)
@@ -313,6 +322,16 @@ func TestAdmin_Verify(t *testing.T) {
 	require.Nil(t, err)
 	verified = srv.DataService.IsVerified("radio-t", "user1")
 	assert.False(t, verified)
+
+	res, code = get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah&sort=+time")
+	assert.Equal(t, 200, code)
+	comments = []store.Comment{}
+	err = json.Unmarshal([]byte(res), &comments)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(comments), "should have 2 comments")
+	assert.Equal(t, "test test #1", comments[0].Text)
+	assert.False(t, comments[0].User.Verified)
+
 }
 
 func TestAdmin_ExportStream(t *testing.T) {
