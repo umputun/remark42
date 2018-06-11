@@ -12,7 +12,7 @@ pipeline:
 
   docker_master:
     image: plugins/docker
-    repo: umputun/remark
+    repo: umputun/remark42
     secrets: [ docker_username, docker_password ]
     tags: 
       - ${DRONE_COMMIT_BRANCH/\//-}
@@ -22,7 +22,7 @@ pipeline:
 
   docker_tag:
     image: plugins/docker
-    repo: umputun/remark
+    repo: umputun/remark42
     secrets: [ docker_username, docker_password ]
     tags: 
       - ${DRONE_TAG}
@@ -33,7 +33,7 @@ pipeline:
 
   docker_branch:
     image: plugins/docker
-    repo: umputun/remark
+    repo: umputun/remark42
     secrets: [ docker_username, docker_password ]
     tags: 
       - ${DRONE_COMMIT_BRANCH/\//-}

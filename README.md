@@ -79,7 +79,7 @@ version: '2'
 
 services:
     remark42:
-        image: umputun/remark:master
+        image: umputun/remark42:master
         restart: always
         container_name: "remark42"
         environment:
