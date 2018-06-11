@@ -72,6 +72,16 @@ export const unpin = ({ id, url }) => fetcher.put({
   withCredentials: true,
 });
 
+export const verify = ({ id }) => fetcher.put({
+  url: `/admin/verify/${id}?verified=1`,
+  withCredentials: true,
+});
+
+export const unverify = ({ id }) => fetcher.put({
+  url: `/admin/verify/${id}?verified=0`,
+  withCredentials: true,
+});
+
 export const remove = ({ id }) => fetcher.delete({
   url: `/admin/comment/${id}?url=${url}`,
   withCredentials: true,
@@ -107,6 +117,8 @@ export default {
 
   pin,
   unpin,
+  verify,
+  unverify,
   remove,
   blockUser,
   unblockUser,
