@@ -85,8 +85,11 @@ func main() {
 	if _, e := p.ParseArgs(os.Args[1:]); e != nil {
 		os.Exit(1)
 	}
+
+	setupLog(opts.Dbg)
 	log.Print("[INFO] started remark")
 	resetEnv("SECRET", "AUTH_GOOGLE_CSEC", "AUTH_GITHUB_CSEC", "AUTH_FACEBOOK_CSEC", "AUTH_YANDEX_CSEC")
+
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() { // catch signal and invoke graceful termination
 		stop := make(chan os.Signal, 1)
@@ -107,7 +110,6 @@ func main() {
 // New prepares application and return it with all active parts
 // doesn't start anything
 func New(opts Opts) (*Application, error) {
-	setupLog(opts.Dbg)
 
 	if err := makeDirs(opts.BoltPath, opts.BackupLocation, opts.AvatarStore); err != nil {
 		return nil, err
