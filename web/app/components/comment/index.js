@@ -28,6 +28,10 @@ require('./__time/comment__time.scss');
 require('./__user-id/comment__user-id.scss');
 require('./__username/comment__username.scss');
 
+require('./__verification/comment__verification.scss');
+require('./__verification/_active/comment__verification_active.scss');
+require('./__verification/_clickable/comment__verification_clickable.scss');
+
 require('./__vote/comment__vote.scss');
 require('./__vote/_disabled/comment__vote_disabled.scss');
 require('./__vote/_selected/comment__vote_selected.scss');

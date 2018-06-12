@@ -204,13 +204,19 @@ func (a *admin) alterComments(comments []store.Comment, r *http.Request) (res []
 
 	for i, c := range comments {
 
+		blocked := a.dataService.IsBlocked(c.Locator.SiteID, c.User.ID)
 		// process blocked users
-		if a.dataService.IsBlocked(c.Locator.SiteID, c.User.ID) {
+		if blocked {
 			if !isAdmin { // reset comment to deleted for non-admins
 				c.SetDeleted(store.SoftDelete)
 			}
 			c.User.Blocked = true
 			c.Deleted = true
+		}
+
+		// set verified status retroactively
+		if !blocked {
+			c.User.Verified = a.dataService.IsVerified(c.Locator.SiteID, c.User.ID)
 		}
 
 		// hide info from non-admins

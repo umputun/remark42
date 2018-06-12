@@ -132,13 +132,18 @@ func (s *Rest) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, res)
 }
 
-// GET /user - returns user info
+// GET /user?site=siteID - returns user info
 func (s *Rest) userInfoCtrl(w http.ResponseWriter, r *http.Request) {
 	user, err := rest.GetUserInfo(r)
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusUnauthorized, err, "can't get user info")
 		return
 	}
+
+	if siteID := r.URL.Query().Get("site"); siteID != "" {
+		user.Verified = s.DataService.IsVerified(siteID, user.ID)
+	}
+
 	render.JSON(w, r, user)
 }
 
