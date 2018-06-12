@@ -16,14 +16,14 @@ import (
 	"github.com/hashicorp/logutils"
 	"github.com/jessevdk/go-flags"
 	"github.com/pkg/errors"
-	"github.com/umputun/remark/app/store/engine"
-	"github.com/umputun/remark/app/store/service"
 
 	"github.com/umputun/remark/app/migrator"
 	"github.com/umputun/remark/app/rest/api"
 	"github.com/umputun/remark/app/rest/auth"
 	"github.com/umputun/remark/app/rest/cache"
 	"github.com/umputun/remark/app/rest/proxy"
+	"github.com/umputun/remark/app/store/engine"
+	"github.com/umputun/remark/app/store/service"
 )
 
 // Opts with command line flags and env
