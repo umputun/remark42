@@ -79,11 +79,11 @@ func (m *memoryCache) Flush(scopes ...string) {
 
 	// check if fullKey has matching scopes
 	inScope := func(fullKey string) bool {
+		_, keyScopes, err := ParseKey(fullKey)
+		if err != nil {
+			return false
+		}
 		for _, s := range scopes {
-			_, keyScopes, err := ParseKey(fullKey)
-			if err != nil {
-				return false
-			}
 			for _, ks := range keyScopes {
 				if ks == s {
 					return true
