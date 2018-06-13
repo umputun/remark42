@@ -93,17 +93,11 @@ func (m *memoryCache) Flush(scopes ...string) {
 		return false
 	}
 
-	// all matchedKeys should be collected first
-	// we can't delete it from locked section, it will lock on eviction callback
-	matchedKeys := []string{}
 	for _, k := range m.bytesCache.Keys() {
 		key := k.(string)
 		if inScope(key) {
-			matchedKeys = append(matchedKeys, key)
+			m.bytesCache.Remove(key) // Keys() returns copy of cache's key, safe to remove directly
 		}
-	}
-	for _, mkey := range matchedKeys {
-		m.bytesCache.Remove(mkey)
 	}
 
 	if m.postFlushFn != nil {
