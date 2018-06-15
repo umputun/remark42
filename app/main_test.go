@@ -49,7 +49,7 @@ func TestApplicationFailed(t *testing.T) {
 	p := flags.NewParser(&opts, flags.Default)
 
 	// RO bolt location
-	p.ParseArgs([]string{"--secret=123456", "--url=https://demo.remark42.com", "--bolt=/dev/null"})
+	p.ParseArgs([]string{"--secret=123456", "--url=https://demo.remark42.com", "--store.bolt.path=/dev/null"})
 	_, err := New(opts)
 	assert.EqualError(t, err, "can't initialize data store: failed to make boltdb for /dev/null/remark.db: "+
 		"open /dev/null/remark.db: not a directory")
@@ -57,16 +57,23 @@ func TestApplicationFailed(t *testing.T) {
 
 	// RO backup location
 	opts = Opts{}
-	p.ParseArgs([]string{"--secret=123456", "--url=https://demo.remark42.com", "--bolt=/tmp", "--backup=/dev/null/not-writable"})
+	p.ParseArgs([]string{"--secret=123456", "--url=https://demo.remark42.com", "--store.bolt.path=/tmp",
+		"--backup=/dev/null/not-writable"})
 	_, err = New(opts)
 	assert.EqualError(t, err, "can't check directory status for /dev/null/not-writable: stat /dev/null/not-writable: not a directory")
 	t.Log(err)
 
 	// invalid url
 	opts = Opts{}
-	p.ParseArgs([]string{"--secret=123456", "--url=demo.remark42.com", "--bolt=/tmp"})
+	p.ParseArgs([]string{"--secret=123456", "--url=demo.remark42.com", "----store.bolt.path=/tmp"})
 	_, err = New(opts)
 	assert.EqualError(t, err, "invalid remark42 url demo.remark42.com")
+	t.Log(err)
+
+	opts = Opts{}
+	p.ParseArgs([]string{"--secret=123456", "--url=https://demo.remark42.com", "--store.type=mongo"})
+	_, err = New(opts)
+	assert.EqualError(t, err, "unsupported store type mongo")
 	t.Log(err)
 }
 
@@ -79,7 +86,7 @@ func TestApplicationShutdown(t *testing.T) {
 }
 
 func TestApplicationMainSignal(t *testing.T) {
-	os.Args = []string{"test", "--secret=123456", "--bolt=/tmp/xyz", "--backup=/tmp", "--avatars=/tmp",
+	os.Args = []string{"test", "--secret=123456", "--store.bolt.path=/tmp/xyz", "--backup=/tmp", "--avatars=/tmp",
 		"--port=18100", "--url=https://demo.remark42.com"}
 
 	go func() {
@@ -97,14 +104,15 @@ func prepApp(t *testing.T, port int, duration time.Duration) (*Application, cont
 	p := flags.NewParser(&opts, flags.Default)
 	p.ParseArgs([]string{"--secret=123456", "--dev-passwd=password", "--url=https://demo.remark42.com"})
 	opts.AvatarStore, opts.BackupLocation = "/tmp", "/tmp"
-	opts.BoltPath = fmt.Sprintf("/tmp/%d", port)
+	opts.Store.Bolt.Path = fmt.Sprintf("/tmp/%d", port)
+	opts.Store.Bolt.Timeout = 10 * time.Second
 	opts.Auth.Github.CSEC, opts.Auth.Github.CID = "csec", "cid"
 	opts.Auth.Google.CSEC, opts.Auth.Google.CID = "csec", "cid"
 	opts.Auth.Facebook.CSEC, opts.Auth.Facebook.CID = "csec", "cid"
 	opts.Auth.Yandex.CSEC, opts.Auth.Yandex.CID = "csec", "cid"
 	opts.Port = port
 
-	os.Remove(opts.BoltPath + "/remark.db")
+	os.Remove(opts.Store.Bolt.Path + "/remark.db")
 
 	// create app
 	app, err := New(opts)
