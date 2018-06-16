@@ -79,27 +79,27 @@ func TestAdmin_DeleteUser(t *testing.T) {
 	// all 3 comments here, but for id2 they deleted
 	res, code := get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah&sort=+time")
 	assert.Equal(t, 200, code)
-	comments := []store.Comment{}
-	err = json.Unmarshal([]byte(res), &comments)
+	commentsWithInfo := commentsWithInfo{}
+	err = json.Unmarshal([]byte(res), &commentsWithInfo)
 	assert.Nil(t, err)
-	assert.Equal(t, 3, len(comments), "should have 3 comment")
+	assert.Equal(t, 3, len(commentsWithInfo.Comments), "should have 3 comment")
 
 	// id1 comment untouched
-	assert.Equal(t, id1, comments[0].ID)
-	assert.Equal(t, "o test test #1", comments[0].Orig)
-	assert.False(t, comments[0].Deleted)
-	t.Logf("%+v", comments[0].User)
+	assert.Equal(t, id1, commentsWithInfo.Comments[0].ID)
+	assert.Equal(t, "o test test #1", commentsWithInfo.Comments[0].Orig)
+	assert.False(t, commentsWithInfo.Comments[0].Deleted)
+	t.Logf("%+v", commentsWithInfo.Comments[0].User)
 
 	// id2 comments fully deleted
-	assert.Equal(t, "", comments[1].Text)
-	assert.Equal(t, "", comments[1].Orig)
-	assert.Equal(t, store.User{Name: "deleted", ID: "deleted", Picture: "", Admin: false, Blocked: false, IP: ""}, comments[1].User)
-	assert.True(t, comments[1].Deleted)
+	assert.Equal(t, "", commentsWithInfo.Comments[1].Text)
+	assert.Equal(t, "", commentsWithInfo.Comments[1].Orig)
+	assert.Equal(t, store.User{Name: "deleted", ID: "deleted", Picture: "", Admin: false, Blocked: false, IP: ""}, commentsWithInfo.Comments[1].User)
+	assert.True(t, commentsWithInfo.Comments[1].Deleted)
 
-	assert.Equal(t, "", comments[2].Text)
-	assert.Equal(t, "", comments[2].Orig)
-	assert.Equal(t, store.User{Name: "deleted", ID: "deleted", Picture: "", Admin: false, Blocked: false, IP: ""}, comments[1].User)
-	assert.True(t, comments[2].Deleted)
+	assert.Equal(t, "", commentsWithInfo.Comments[2].Text)
+	assert.Equal(t, "", commentsWithInfo.Comments[2].Orig)
+	assert.Equal(t, store.User{Name: "deleted", ID: "deleted", Picture: "", Admin: false, Blocked: false, IP: ""}, commentsWithInfo.Comments[1].User)
+	assert.True(t, commentsWithInfo.Comments[2].Deleted)
 }
 
 func TestAdmin_Pin(t *testing.T) {
@@ -186,12 +186,12 @@ func TestAdmin_Block(t *testing.T) {
 
 	res, code := get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah&sort=+time")
 	assert.Equal(t, 200, code)
-	comments := []store.Comment{}
+	comments := commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
 	assert.Nil(t, err)
-	assert.Equal(t, 2, len(comments), "should have 2 comments")
-	assert.Equal(t, "", comments[0].Text)
-	assert.True(t, comments[0].Deleted)
+	assert.Equal(t, 2, len(comments.Comments), "should have 2 comments")
+	assert.Equal(t, "", comments.Comments[0].Text)
+	assert.True(t, comments.Comments[0].Deleted)
 
 	code, body = block(-1)
 	require.Equal(t, 200, code)
@@ -351,12 +351,12 @@ func TestAdmin_Verify(t *testing.T) {
 
 	res, code := get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah&sort=+time")
 	assert.Equal(t, 200, code)
-	comments := []store.Comment{}
+	comments := commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
 	assert.Nil(t, err)
-	assert.Equal(t, 2, len(comments), "should have 2 comments")
-	assert.Equal(t, "test test #1", comments[0].Text)
-	assert.True(t, comments[0].User.Verified)
+	assert.Equal(t, 2, len(comments.Comments), "should have 2 comments")
+	assert.Equal(t, "test test #1", comments.Comments[0].Text)
+	assert.True(t, comments.Comments[0].User.Verified)
 
 	req, err = http.NewRequest(http.MethodPut,
 		fmt.Sprintf("%s/api/v1/admin/verify/user1?site=radio-t&verified=0", ts.URL), nil)
@@ -369,12 +369,12 @@ func TestAdmin_Verify(t *testing.T) {
 
 	res, code = get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah&sort=+time")
 	assert.Equal(t, 200, code)
-	comments = []store.Comment{}
+	comments = commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
 	assert.Nil(t, err)
-	assert.Equal(t, 2, len(comments), "should have 2 comments")
-	assert.Equal(t, "test test #1", comments[0].Text)
-	assert.False(t, comments[0].User.Verified)
+	assert.Equal(t, 2, len(comments.Comments), "should have 2 comments")
+	assert.Equal(t, "test test #1", comments.Comments[0].Text)
+	assert.False(t, comments.Comments[0].User.Verified)
 
 }
 

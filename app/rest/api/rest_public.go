@@ -42,7 +42,11 @@ func (s *Rest) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 			}
 			b, e = encodeJSONWithHTML(tree)
 		default:
-			b, e = encodeJSONWithHTML(maskedComments)
+			withInfo := commentsWithInfo{Comments: maskedComments}
+			if info, ee := s.DataService.Info(locator, s.ReadOnlyAge); ee == nil {
+				withInfo.Info = info
+			}
+			b, e = encodeJSONWithHTML(withInfo)
 		}
 		return b, e
 	})

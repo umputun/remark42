@@ -57,6 +57,11 @@ var mdExt = blackfriday.NoIntraEmphasis | blackfriday.Tables | blackfriday.Fence
 	blackfriday.Strikethrough | blackfriday.SpaceHeadings | blackfriday.HardLineBreak |
 	blackfriday.BackslashLineBreak | blackfriday.Autolink
 
+type commentsWithInfo struct {
+	Comments []store.Comment `json:"comments"`
+	Info     store.PostInfo  `json:"info,omitempty"`
+}
+
 // Run the lister and request's router, activate rest server
 func (s *Rest) Run(port int) {
 	log.Printf("[INFO] activate rest server on port %d", port)
