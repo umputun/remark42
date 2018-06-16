@@ -2,6 +2,7 @@ package api
 
 import (
 	"compress/gzip"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -25,6 +26,7 @@ type admin struct {
 	exporter      migrator.Exporter
 	cache         cache.LoadingCache
 	authenticator auth.Authenticator
+	readOnlyAge   int
 }
 
 func (a *admin) routes(middlewares ...func(http.Handler) http.Handler) chi.Router {
@@ -127,6 +129,19 @@ func (a *admin) blockedUsersCtrl(w http.ResponseWriter, r *http.Request) {
 func (a *admin) setReadOnlyCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	roStatus := r.URL.Query().Get("ro") == "1"
+
+	isRoByAge := func(info store.PostInfo) bool {
+		return a.readOnlyAge > 0 && !info.FirstTS.IsZero() &&
+			info.FirstTS.AddDate(0, 0, a.readOnlyAge).Before(time.Now())
+	}
+
+	// don't allow to reset ro for posts turned to ro by ReadOnlyAge
+	if !roStatus {
+		if info, e := a.dataService.Info(locator, a.readOnlyAge); e == nil && isRoByAge(info) {
+			rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"), "read-only due the age")
+			return
+		}
+	}
 
 	if err := a.dataService.SetReadOnly(locator, roStatus); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set readonly status")

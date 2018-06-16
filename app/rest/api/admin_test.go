@@ -259,8 +259,9 @@ func TestAdmin_ReadOnly(t *testing.T) {
 		fmt.Sprintf("%s/api/v1/admin/readonly?site=radio-t&url=https://radio-t.com/blah&ro=1", ts.URL), nil)
 	assert.Nil(t, err)
 	req.SetBasicAuth("dev", "password")
-	_, err = client.Do(req)
+	resp, err := client.Do(req)
 	require.Nil(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
 	info, err = srv.DataService.Info(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}, 0)
 	assert.Nil(t, err)
 	assert.True(t, info.ReadOnly)
@@ -270,13 +271,56 @@ func TestAdmin_ReadOnly(t *testing.T) {
 		fmt.Sprintf("%s/api/v1/admin/readonly?site=radio-t&url=https://radio-t.com/blah&ro=0", ts.URL), nil)
 	assert.Nil(t, err)
 	req.SetBasicAuth("dev", "password")
-	_, err = client.Do(req)
+	resp, err = client.Do(req)
+	assert.Equal(t, 200, resp.StatusCode)
 	require.Nil(t, err)
 	info, err = srv.DataService.Info(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}, 0)
 	assert.Nil(t, err)
 	assert.False(t, info.ReadOnly)
 }
 
+func TestAdmin_ReadOnlyWithAge(t *testing.T) {
+	srv, ts := prep(t)
+	assert.NotNil(t, srv)
+	defer cleanup(ts)
+
+	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
+		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"},
+		Timestamp: time.Date(2001, 1, 1, 1, 1, 1, 0, time.Local)}
+	_, err := srv.DataService.Create(c1)
+	assert.Nil(t, err)
+
+	info, err := srv.DataService.Info(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}, 10)
+	assert.Nil(t, err)
+	assert.True(t, info.ReadOnly, "ro by age")
+
+	client := http.Client{}
+
+	// set post to read-only
+	req, err := http.NewRequest(http.MethodPut,
+		fmt.Sprintf("%s/api/v1/admin/readonly?site=radio-t&url=https://radio-t.com/blah&ro=1", ts.URL), nil)
+	assert.Nil(t, err)
+	req.SetBasicAuth("dev", "password")
+	resp, err := client.Do(req)
+	require.Nil(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+	info, err = srv.DataService.Info(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}, 0)
+	assert.Nil(t, err)
+	assert.True(t, info.ReadOnly)
+
+	// reset post's read-only
+	req, err = http.NewRequest(http.MethodPut,
+		fmt.Sprintf("%s/api/v1/admin/readonly?site=radio-t&url=https://radio-t.com/blah&ro=0", ts.URL), nil)
+	assert.Nil(t, err)
+	req.SetBasicAuth("dev", "password")
+	resp, err = client.Do(req)
+	assert.Equal(t, 403, resp.StatusCode)
+	require.Nil(t, err)
+	info, err = srv.DataService.Info(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}, 0)
+	assert.Nil(t, err)
+	assert.True(t, info.ReadOnly)
+
+}
 func TestAdmin_Verify(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
