@@ -32,26 +32,26 @@ type Opts struct {
 	SecretKey string `long:"secret" env:"SECRET" required:"true" description:"secret key"`
 	RemarkURL string `long:"url" env:"REMARK_URL" required:"true" description:"url to remark"`
 
-	Store          StoreGroup `group:"store" namespace:"store" env-namespace:"STORE"`
-	Sites          []string   `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
-	Admins         []string   `long:"admin" env:"ADMIN" description:"admin(s) names" env-delim:","`
-	AdminEmail     string     `long:"admin-email" env:"ADMIN_EMAIL" default:"" description:"admin email"`
-	DevPasswd      string     `long:"dev-passwd" env:"DEV_PASSWD" default:"" description:"development mode password"`
-	BackupLocation string     `long:"backup" env:"BACKUP_PATH" default:"./var/backup" description:"backups location"`
-	MaxBackupFiles int        `long:"max-back" env:"MAX_BACKUP_FILES" default:"10" description:"max backups to keep"`
-	AvatarStore    string     `long:"avatars" env:"AVATAR_STORE" default:"./var/avatars" description:"avatars location"`
-	AvatarRszLmt   int        `long:"avatars-rsz-lmt" env:"AVATAR_RSZ_LMT" default:"0" description:"max image size for resizing avatars on save"`
-	ImageProxy     bool       `long:"img-proxy" env:"IMG_PROXY" description:"enable image proxy"`
-	MaxCommentSize int        `long:"max-comment" env:"MAX_COMMENT_SIZE" default:"2048" description:"max comment size"`
-	MaxCachedItems int        `long:"max-cache-items" env:"MAX_CACHE_ITEMS" default:"1000" description:"max cached items"`
-	MaxCachedValue int        `long:"max-cache-value" env:"MAX_CACHE_VALUE" default:"65536" description:"max size of cached value"`
-	MaxCacheSize   int        `long:"max-cache-size" env:"MAX_CACHE_SIZE" default:"50000000" description:"max size of total cache"`
-	LowScore       int        `long:"low-score" env:"LOW_SCORE" default:"-5" description:"low score threshold"`
-	CriticalScore  int        `long:"critical-score" env:"CRITICAL_SCORE" default:"-10" description:"critical score threshold"`
-	ReadOnlyAge    int        `long:"read-age" env:"READONLY_AGE" default:"0" description:"read-only age of comments"`
-	Port           int        `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
-	WebRoot        string     `long:"web-root" env:"REMARK_WEB_ROOT" default:"./web" description:"web root directory"`
-	Dbg            bool       `long:"dbg" env:"DEBUG" description:"debug mode"`
+	Store  StoreGroup  `group:"store" namespace:"store" env-namespace:"STORE"`
+	Avatar AvatarGroup `group:"avatar" namespace:"avatar" env-namespace:"AVATAR"`
+
+	Sites          []string `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
+	Admins         []string `long:"admin" env:"ADMIN" description:"admin(s) names" env-delim:","`
+	AdminEmail     string   `long:"admin-email" env:"ADMIN_EMAIL" default:"" description:"admin email"`
+	DevPasswd      string   `long:"dev-passwd" env:"DEV_PASSWD" default:"" description:"development mode password"`
+	BackupLocation string   `long:"backup" env:"BACKUP_PATH" default:"./var/backup" description:"backups location"`
+	MaxBackupFiles int      `long:"max-back" env:"MAX_BACKUP_FILES" default:"10" description:"max backups to keep"`
+	ImageProxy     bool     `long:"img-proxy" env:"IMG_PROXY" description:"enable image proxy"`
+	MaxCommentSize int      `long:"max-comment" env:"MAX_COMMENT_SIZE" default:"2048" description:"max comment size"`
+	MaxCachedItems int      `long:"max-cache-items" env:"MAX_CACHE_ITEMS" default:"1000" description:"max cached items"`
+	MaxCachedValue int      `long:"max-cache-value" env:"MAX_CACHE_VALUE" default:"65536" description:"max size of cached value"`
+	MaxCacheSize   int      `long:"max-cache-size" env:"MAX_CACHE_SIZE" default:"50000000" description:"max size of total cache"`
+	LowScore       int      `long:"low-score" env:"LOW_SCORE" default:"-5" description:"low score threshold"`
+	CriticalScore  int      `long:"critical-score" env:"CRITICAL_SCORE" default:"-10" description:"critical score threshold"`
+	ReadOnlyAge    int      `long:"read-age" env:"READONLY_AGE" default:"0" description:"read-only age of comments"`
+	Port           int      `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
+	WebRoot        string   `long:"web-root" env:"REMARK_WEB_ROOT" default:"./web" description:"web root directory"`
+	Dbg            bool     `long:"dbg" env:"DEBUG" description:"debug mode"`
 
 	Auth struct {
 		Google   AuthGroup `group:"google" namespace:"google" env-namespace:"GOOGLE" description:"Google OAuth"`
@@ -74,6 +74,15 @@ type StoreGroup struct {
 		Path    string        `long:"path" env:"PATH" default:"./var" description:"parent dir for bolt files"`
 		Timeout time.Duration `long:"timeout" env:"TIMEOUT" default:"30s" description:"bolt timeout"`
 	} `group:"bolt" namespace:"bolt" env-namespace:"BOLT"`
+}
+
+// AvatarGroup defines options group for avatar params
+type AvatarGroup struct {
+	Type string `long:"type" env:"TYPE" description:"type of avatar storage" choice:"fs" choice:"mongo" default:"fs"`
+	FS   struct {
+		Path string `long:"path" env:"PATH" default:"./var/avatars" description:"avatars location"`
+	} `group:"fs" namespace:"fs" env-namespace:"FS"`
+	RszLmt int `long:"rsz-lmt" env:"RSZ_LMT" default:"0" description:"max image size for resizing avatars on save"`
 }
 
 var revision = "unknown"
@@ -121,7 +130,7 @@ func main() {
 // doesn't start anything
 func New(opts Opts) (*Application, error) {
 
-	if err := makeDirs(opts.BackupLocation, opts.AvatarStore); err != nil {
+	if err := makeDirs(opts.BackupLocation); err != nil {
 		return nil, err
 	}
 
@@ -148,8 +157,12 @@ func New(opts Opts) (*Application, error) {
 
 	jwtService := auth.NewJWT(opts.SecretKey, strings.HasPrefix(opts.RemarkURL, "https://"), 7*24*time.Hour)
 
+	avatarStore, err := makeAvatarStore(opts.Avatar)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to make avatar store")
+	}
 	avatarProxy := &proxy.Avatar{
-		Store:     proxy.NewFSAvatarStore(opts.AvatarStore, opts.AvatarRszLmt),
+		Store:     avatarStore,
 		RoutePath: "/api/v1/avatar",
 		RemarkURL: strings.TrimSuffix(opts.RemarkURL, "/"),
 	}
@@ -251,6 +264,17 @@ func makeStore(group StoreGroup, siteNames []string) (result engine.Interface, e
 	}
 
 	return result, errors.Wrap(err, "can't initialize data store")
+}
+
+func makeAvatarStore(group AvatarGroup) (result proxy.AvatarStore, err error) {
+	switch group.Type {
+	case "fs":
+		if err = makeDirs(group.FS.Path); err != nil {
+			return nil, err
+		}
+		return proxy.NewFSAvatarStore(group.FS.Path, group.RszLmt), nil
+	}
+	return nil, errors.Errorf("unsupported avatart store type %s", group.Type)
 }
 
 // mkdir -p for all dirs

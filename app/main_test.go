@@ -86,7 +86,7 @@ func TestApplicationShutdown(t *testing.T) {
 }
 
 func TestApplicationMainSignal(t *testing.T) {
-	os.Args = []string{"test", "--secret=123456", "--store.bolt.path=/tmp/xyz", "--backup=/tmp", "--avatars=/tmp",
+	os.Args = []string{"test", "--secret=123456", "--store.bolt.path=/tmp/xyz", "--backup=/tmp", "--avatar.fs.path=/tmp",
 		"--port=18100", "--url=https://demo.remark42.com"}
 
 	go func() {
@@ -103,7 +103,7 @@ func prepApp(t *testing.T, port int, duration time.Duration) (*Application, cont
 	opts := Opts{}
 	p := flags.NewParser(&opts, flags.Default)
 	p.ParseArgs([]string{"--secret=123456", "--dev-passwd=password", "--url=https://demo.remark42.com"})
-	opts.AvatarStore, opts.BackupLocation = "/tmp", "/tmp"
+	opts.Avatar.FS.Path, opts.Avatar.Type, opts.BackupLocation = "/tmp", "fs", "/tmp"
 	opts.Store.Bolt.Path = fmt.Sprintf("/tmp/%d", port)
 	opts.Store.Bolt.Timeout = 10 * time.Second
 	opts.Auth.Github.CSEC, opts.Auth.Github.CID = "csec", "cid"
