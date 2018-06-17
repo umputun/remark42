@@ -40,6 +40,7 @@ type Opts struct {
 	BackupLocation string   `long:"backup" env:"BACKUP_PATH" default:"./var/backup" description:"backups location"`
 	MaxBackupFiles int      `long:"max-back" env:"MAX_BACKUP_FILES" default:"10" description:"max backups to keep"`
 	AvatarStore    string   `long:"avatars" env:"AVATAR_STORE" default:"./var/avatars" description:"avatars location"`
+	AvatarRszLmt   int      `long:"avatars-rsz-lmt" env:"AVATAR_RSZ_LMT" default:"0" description:"max image size for resizing avatars on save"`
 	ImageProxy     bool     `long:"img-proxy" env:"IMG_PROXY" description:"enable image proxy"`
 	MaxCommentSize int      `long:"max-comment" env:"MAX_COMMENT_SIZE" default:"2048" description:"max comment size"`
 	MaxCachedItems int      `long:"max-cache-items" env:"MAX_CACHE_ITEMS" default:"1000" description:"max cached items"`
@@ -139,7 +140,7 @@ func New(opts Opts) (*Application, error) {
 	jwtService := auth.NewJWT(opts.SecretKey, strings.HasPrefix(opts.RemarkURL, "https://"), 7*24*time.Hour)
 
 	avatarProxy := &proxy.Avatar{
-		Store:     proxy.NewFSAvatarStore(opts.AvatarStore),
+		Store:     proxy.NewFSAvatarStore(opts.AvatarStore, opts.AvatarRszLmt),
 		RoutePath: "/api/v1/avatar",
 		RemarkURL: strings.TrimSuffix(opts.RemarkURL, "/"),
 	}

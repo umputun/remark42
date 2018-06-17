@@ -30,7 +30,7 @@ func TestAvatar_Put(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	p := Avatar{RoutePath: "/avatar", RemarkURL: "http://localhost:8080", Store: NewFSAvatarStore("/tmp/avatars.test")}
+	p := Avatar{RoutePath: "/avatar", RemarkURL: "http://localhost:8080", Store: NewFSAvatarStore("/tmp/avatars.test", 300)}
 	os.MkdirAll("/tmp/avatars.test", 0700)
 	defer os.RemoveAll("/tmp/avatars.test")
 
@@ -59,7 +59,7 @@ func TestAvatar_PutFailed(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	p := Avatar{RoutePath: "/avatar", Store: NewFSAvatarStore("/tmp/avatars.test")}
+	p := Avatar{RoutePath: "/avatar", Store: NewFSAvatarStore("/tmp/avatars.test", 300)}
 
 	u := store.User{ID: "user1", Name: "user1 name"}
 	_, err := p.Put(u)
@@ -89,7 +89,7 @@ func TestAvatar_Routes(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	p := Avatar{RoutePath: "/avatar", Store: NewFSAvatarStore("/tmp/avatars.test")}
+	p := Avatar{RoutePath: "/avatar", Store: NewFSAvatarStore("/tmp/avatars.test", 300)}
 	os.MkdirAll("/tmp/avatars.test", 0700)
 	defer os.RemoveAll("/tmp/avatars.test")
 

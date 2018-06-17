@@ -13,3 +13,4 @@ debug.test
 *.prof
 *.test
 /rest-client.env.json
+.DS_Store
