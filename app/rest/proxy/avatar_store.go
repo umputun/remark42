@@ -7,7 +7,6 @@ import (
 	"image"
 	"image/png"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"path"
@@ -65,22 +64,15 @@ func (fs *FSAvatarStore) Put(userID string, reader io.Reader) (avatar string, er
 		}
 	}()
 
-	img, err := ioutil.ReadAll(reader)
-	if err != nil {
-		return "", errors.Wrapf(err, "can't read original avatar content %s", avFile)
-	}
-	// Trying to resize avatar, using original, if failing.
+	// Trying to resize avatar; using original image if failing.
 	if fs.resizeLimit > 0 {
-		resized, e := resize(img, fs.resizeLimit)
-		if e != nil {
-			log.Printf("[WARN] eor on resize avatar for user %s, %s", userID, e)
-		}
-		if resized != nil {
-			img = resized
+		reader, err = resize(reader, fs.resizeLimit)
+		if err != nil {
+			log.Printf("[WARN] eor on resize avatar for user %s, %s", userID, err)
 		}
 	}
 
-	if _, err = fh.Write(img); err != nil {
+	if _, err = io.Copy(fh, reader); err != nil {
 		return "", errors.Wrapf(err, "can't save file %s", avFile)
 	}
 	return id + imgSfx, nil
@@ -112,21 +104,23 @@ func (fs *FSAvatarStore) location(id string) string {
 
 // Resizes an image of supported format (PNG, JPG, GIF) to the size of "limit" px of the biggest side
 // (width or height) preserving aspect ratio.
-// Reruns nil if resizing is not needed.
-func resize(img []byte, limit int) ([]byte, error) {
+// Returns original reader if resizing is not needed or failed.
+func resize(reader io.Reader, limit int) (io.Reader, error) {
 	if limit <= 0 {
-		return nil, errors.New("limit should be greater than 0")
+		return reader, errors.New("limit should be greater than 0")
 	}
-	src, _, err := image.Decode(bytes.NewReader(img))
+
+	var teeBuf bytes.Buffer
+	tee := io.TeeReader(reader, &teeBuf)
+	src, _, err := image.Decode(tee)
 	if err != nil {
-		return nil, errors.Wrap(err, "can't decode avatar image")
+		return &teeBuf, errors.Wrap(err, "can't decode avatar image")
 	}
 
 	bounds := src.Bounds()
 	w, h := bounds.Dx(), bounds.Dy()
 	if w <= limit && h <= limit || w <= 0 || h <= 0 {
-		// If resizing image is smaller that the limit or has 0 size, return reader unchenged.
-		return nil, nil
+		return &teeBuf, errors.New("resizing image is smaller that the limit or has 0 size")
 	}
 	var newW, newH int
 	if w > h {
@@ -135,19 +129,13 @@ func resize(img []byte, limit int) ([]byte, error) {
 		newW, newH = w*limit/h, limit
 	}
 	m := image.NewRGBA(image.Rect(0, 0, newW, newH))
-	// draw.ApproxBiLinear.Scale(m, m.Bounds(), src, src.Bounds(), draw.Src, nil)
-	draw.BiLinear.Scale(m, m.Bounds(), src, src.Bounds(), draw.Src, nil) // Slower but better quality.
+	// Slower than `draw.ApproxBiLinear.Scale()` but better quality.
+	draw.BiLinear.Scale(m, m.Bounds(), src, src.Bounds(), draw.Src, nil)
 
 	var out bytes.Buffer
 	if err = png.Encode(&out, m); err != nil {
-		return nil, errors.Wrapf(err, "can't encode resized avatar buffer %s, id")
+		return &teeBuf, errors.Wrapf(err, "can't encode resized avatar to PNG")
 	}
 
-	// write new image to file
-	outBytes, err := ioutil.ReadAll(&out)
-	if err != nil {
-		return nil, errors.Wrap(err, "can't read resized avatar buffer")
-	}
-
-	return outBytes, nil
+	return &out, nil
 }

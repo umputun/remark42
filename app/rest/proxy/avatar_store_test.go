@@ -3,6 +3,7 @@ package proxy
 import (
 	"bytes"
 	"image"
+	"io"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -77,15 +78,25 @@ func TestAvatarStore_Location(t *testing.T) {
 }
 
 func TestAvatarStore_resize(t *testing.T) {
+	checkC := func(t *testing.T, r io.Reader, cExp []byte) {
+		content, err := ioutil.ReadAll(r)
+		require.NoError(t, err)
+		assert.Equal(t, cExp, content)
+	}
+
 	// Negative limit error.
-	resized, err := resize([]byte{}, -1)
-	assert.Nil(t, resized)
+	resizedR, err := resize(strings.NewReader("some picture bin data"), -1)
 	assert.EqualError(t, err, "limit should be greater than 0")
+	require.NotNil(t, resizedR)
+	checkC(t, resizedR, []byte("some picture bin data"))
+
 	// Decode error.
-	resized, err = resize([]byte{}, 100)
-	assert.Nil(t, resized)
+	resizedR, err = resize(strings.NewReader("invalid image content"), 100)
+	assert.NotNil(t, resizedR)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "can't decode avatar image")
+	checkC(t, resizedR, []byte("invalid image content"))
+
 	cases := []struct {
 		file   string
 		wr, hr int
@@ -99,16 +110,17 @@ func TestAvatarStore_resize(t *testing.T) {
 		require.Nil(t, err, "can't open test file %s", c.file)
 
 		// No need for resize, avatar dimentions are smaller than resize limit.
-		resized, err = resize(img, 800)
-		assert.Nilf(t, err, "file %s", c.file)
-		assert.Nilf(t, resized, "file %s", c.file)
+		resizedR, err = resize(bytes.NewReader(img), 800)
+		assert.NotNilf(t, err, "file %s", c.file)
+		assert.NotNilf(t, resizedR, "file %s", c.file)
+		checkC(t, resizedR, img)
 
-		// Resizing to half of width. Check resized avatar format PNG.
-		resized, err = resize(img, 400)
+		// Resizing to half of width. Check resizedR avatar format PNG.
+		resizedR, err = resize(bytes.NewReader(img), 400)
 		assert.Nilf(t, err, "file %s", c.file)
-		assert.NotNilf(t, resized, "file %s", c.file)
+		assert.NotNilf(t, resizedR, "file %s", c.file)
 
-		imgRz, format, err := image.Decode(bytes.NewReader(resized))
+		imgRz, format, err := image.Decode(resizedR)
 		assert.Nilf(t, err, "file %s", c.file)
 		assert.Equalf(t, "png", format, "file %s", c.file)
 		bounds := imgRz.Bounds()
