@@ -34,6 +34,7 @@ type Opts struct {
 
 	Store  StoreGroup  `group:"store" namespace:"store" env-namespace:"STORE"`
 	Avatar AvatarGroup `group:"avatar" namespace:"avatar" env-namespace:"AVATAR"`
+	Cache  CacheGroup  `group:"cache" namespace:"cache" env-namespace:"CACHE"`
 
 	Sites          []string `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
 	Admins         []string `long:"admin" env:"ADMIN" description:"admin(s) names" env-delim:","`
@@ -43,9 +44,6 @@ type Opts struct {
 	MaxBackupFiles int      `long:"max-back" env:"MAX_BACKUP_FILES" default:"10" description:"max backups to keep"`
 	ImageProxy     bool     `long:"img-proxy" env:"IMG_PROXY" description:"enable image proxy"`
 	MaxCommentSize int      `long:"max-comment" env:"MAX_COMMENT_SIZE" default:"2048" description:"max comment size"`
-	MaxCachedItems int      `long:"max-cache-items" env:"MAX_CACHE_ITEMS" default:"1000" description:"max cached items"`
-	MaxCachedValue int      `long:"max-cache-value" env:"MAX_CACHE_VALUE" default:"65536" description:"max size of cached value"`
-	MaxCacheSize   int      `long:"max-cache-size" env:"MAX_CACHE_SIZE" default:"50000000" description:"max size of total cache"`
 	LowScore       int      `long:"low-score" env:"LOW_SCORE" default:"-5" description:"low score threshold"`
 	CriticalScore  int      `long:"critical-score" env:"CRITICAL_SCORE" default:"-10" description:"critical score threshold"`
 	ReadOnlyAge    int      `long:"read-age" env:"READONLY_AGE" default:"0" description:"read-only age of comments"`
@@ -83,6 +81,16 @@ type AvatarGroup struct {
 		Path string `long:"path" env:"PATH" default:"./var/avatars" description:"avatars location"`
 	} `group:"fs" namespace:"fs" env-namespace:"FS"`
 	RszLmt int `long:"rsz-lmt" env:"RSZ_LMT" default:"0" description:"max image size for resizing avatars on save"`
+}
+
+// CacheGroup defines options group for cache params
+type CacheGroup struct {
+	Type string `long:"type" env:"TYPE" description:"type of cache" choice:"mem" choice:"redis" default:"mem"`
+	Max  struct {
+		Items int   `long:"items" env:"ITEMS" default:"1000" description:"max cached items"`
+		Value int   `long:"value" env:"VALUE" default:"65536" description:"max size of cached value"`
+		Size  int64 `long:"size" env:"SIZE" default:"50000000" description:"max size of total cache"`
+	} `group:"max" namespace:"max" env-namespace:"MAX"`
 }
 
 var revision = "unknown"
@@ -138,7 +146,7 @@ func New(opts Opts) (*Application, error) {
 		return nil, errors.Errorf("invalid remark42 url %s", opts.RemarkURL)
 	}
 
-	boltStore, err := makeStore(opts.Store, opts.Sites)
+	boltStore, err := makeDataStore(opts.Store, opts.Sites)
 	if err != nil {
 		return nil, err
 	}
@@ -149,8 +157,8 @@ func New(opts Opts) (*Application, error) {
 		MaxCommentSize: opts.MaxCommentSize,
 	}
 
-	loadingCache, err := cache.NewMemoryCache(cache.MaxValSize(opts.MaxCachedValue), cache.MaxKeys(opts.MaxCachedItems),
-		cache.PostFlushFn(postFlushFn(opts.Sites, opts.Port)))
+	loadingCache, err := cache.NewMemoryCache(cache.MaxCacheSize(opts.Cache.Max.Size), cache.MaxValSize(opts.Cache.Max.Value),
+		cache.MaxKeys(opts.Cache.Max.Items), cache.PostFlushFn(postFlushFn(opts.Sites, opts.Port)))
 	if err != nil {
 		return nil, err
 	}
@@ -247,8 +255,8 @@ func (a *Application) activateBackup(ctx context.Context) {
 	}
 }
 
-// makeStore creates store for all sites
-func makeStore(group StoreGroup, siteNames []string) (result engine.Interface, err error) {
+// makeDataStore creates store for all sites
+func makeDataStore(group StoreGroup, siteNames []string) (result engine.Interface, err error) {
 	switch group.Type {
 	case "bolt":
 		if err = makeDirs(group.Bolt.Path); err != nil {
