@@ -49,29 +49,33 @@ func TestApplicationFailed(t *testing.T) {
 	p := flags.NewParser(&opts, flags.Default)
 
 	// RO bolt location
-	p.ParseArgs([]string{"--secret=123456", "--url=https://demo.remark42.com", "--store.bolt.path=/dev/null"})
-	_, err := New(opts)
+	_, err := p.ParseArgs([]string{"--secret=123456", "--url=https://demo.remark42.com", "--store.bolt.path=/dev/null"})
+	assert.Nil(t, err)
+	_, err = New(opts)
 	assert.EqualError(t, err, "can't initialize data store: failed to make boltdb for /dev/null/remark.db: "+
 		"open /dev/null/remark.db: not a directory")
 	t.Log(err)
 
 	// RO backup location
 	opts = Opts{}
-	p.ParseArgs([]string{"--secret=123456", "--url=https://demo.remark42.com", "--store.bolt.path=/tmp",
+	_, err = p.ParseArgs([]string{"--secret=123456", "--url=https://demo.remark42.com", "--store.bolt.path=/tmp",
 		"--backup=/dev/null/not-writable"})
+	assert.Nil(t, err)
 	_, err = New(opts)
 	assert.EqualError(t, err, "can't check directory status for /dev/null/not-writable: stat /dev/null/not-writable: not a directory")
 	t.Log(err)
 
 	// invalid url
 	opts = Opts{}
-	p.ParseArgs([]string{"--secret=123456", "--url=demo.remark42.com", "----store.bolt.path=/tmp"})
+	_, err = p.ParseArgs([]string{"--secret=123456", "--url=demo.remark42.com", "----store.bolt.path=/tmp"})
+	assert.Nil(t, err)
 	_, err = New(opts)
 	assert.EqualError(t, err, "invalid remark42 url demo.remark42.com")
 	t.Log(err)
 
 	opts = Opts{}
-	p.ParseArgs([]string{"--secret=123456", "--url=https://demo.remark42.com", "--store.type=mongo"})
+	_, err = p.ParseArgs([]string{"--secret=123456", "--url=https://demo.remark42.com", "--store.type=mongo"})
+	assert.Nil(t, err)
 	_, err = New(opts)
 	assert.EqualError(t, err, "unsupported store type mongo")
 	t.Log(err)
@@ -102,7 +106,8 @@ func prepApp(t *testing.T, port int, duration time.Duration) (*Application, cont
 	// prepare options
 	opts := Opts{}
 	p := flags.NewParser(&opts, flags.Default)
-	p.ParseArgs([]string{"--secret=123456", "--dev-passwd=password", "--url=https://demo.remark42.com"})
+	_, err := p.ParseArgs([]string{"--secret=123456", "--dev-passwd=password", "--url=https://demo.remark42.com"})
+	require.Nil(t, err)
 	opts.Avatar.FS.Path, opts.Avatar.Type, opts.BackupLocation = "/tmp", "fs", "/tmp"
 	opts.Store.Bolt.Path = fmt.Sprintf("/tmp/%d", port)
 	opts.Store.Bolt.Timeout = 10 * time.Second
