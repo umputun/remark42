@@ -32,20 +32,18 @@ type Opts struct {
 	SecretKey string `long:"secret" env:"SECRET" required:"true" description:"secret key"`
 	RemarkURL string `long:"url" env:"REMARK_URL" required:"true" description:"url to remark"`
 
-	BoltPath       string   `long:"bolt" env:"BOLTDB_PATH" default:"./var" description:"parent dir for bolt files"`
+	Store  StoreGroup  `group:"store" namespace:"store" env-namespace:"STORE"`
+	Avatar AvatarGroup `group:"avatar" namespace:"avatar" env-namespace:"AVATAR"`
+	Cache  CacheGroup  `group:"cache" namespace:"cache" env-namespace:"CACHE"`
+
 	Sites          []string `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
 	Admins         []string `long:"admin" env:"ADMIN" description:"admin(s) names" env-delim:","`
 	AdminEmail     string   `long:"admin-email" env:"ADMIN_EMAIL" default:"" description:"admin email"`
 	DevPasswd      string   `long:"dev-passwd" env:"DEV_PASSWD" default:"" description:"development mode password"`
 	BackupLocation string   `long:"backup" env:"BACKUP_PATH" default:"./var/backup" description:"backups location"`
 	MaxBackupFiles int      `long:"max-back" env:"MAX_BACKUP_FILES" default:"10" description:"max backups to keep"`
-	AvatarStore    string   `long:"avatars" env:"AVATAR_STORE" default:"./var/avatars" description:"avatars location"`
-	AvatarRszLmt   int      `long:"avatars-rsz-lmt" env:"AVATAR_RSZ_LMT" default:"0" description:"max image size for resizing avatars on save"`
 	ImageProxy     bool     `long:"img-proxy" env:"IMG_PROXY" description:"enable image proxy"`
 	MaxCommentSize int      `long:"max-comment" env:"MAX_COMMENT_SIZE" default:"2048" description:"max comment size"`
-	MaxCachedItems int      `long:"max-cache-items" env:"MAX_CACHE_ITEMS" default:"1000" description:"max cached items"`
-	MaxCachedValue int      `long:"max-cache-value" env:"MAX_CACHE_VALUE" default:"65536" description:"max size of cached value"`
-	MaxCacheSize   int      `long:"max-cache-size" env:"MAX_CACHE_SIZE" default:"50000000" description:"max size of total cache"`
 	LowScore       int      `long:"low-score" env:"LOW_SCORE" default:"-5" description:"low score threshold"`
 	CriticalScore  int      `long:"critical-score" env:"CRITICAL_SCORE" default:"-10" description:"critical score threshold"`
 	ReadOnlyAge    int      `long:"read-age" env:"READONLY_AGE" default:"0" description:"read-only age of comments"`
@@ -65,6 +63,34 @@ type Opts struct {
 type AuthGroup struct {
 	CID  string `long:"cid" env:"CID" description:"OAuth client ID"`
 	CSEC string `long:"csec" env:"CSEC" description:"OAuth client secret"`
+}
+
+// StoreGroup defines options group for store params
+type StoreGroup struct {
+	Type string `long:"type" env:"TYPE" description:"type of storage" choice:"bolt" choice:"mongo" default:"bolt"`
+	Bolt struct {
+		Path    string        `long:"path" env:"PATH" default:"./var" description:"parent dir for bolt files"`
+		Timeout time.Duration `long:"timeout" env:"TIMEOUT" default:"30s" description:"bolt timeout"`
+	} `group:"bolt" namespace:"bolt" env-namespace:"BOLT"`
+}
+
+// AvatarGroup defines options group for avatar params
+type AvatarGroup struct {
+	Type string `long:"type" env:"TYPE" description:"type of avatar storage" choice:"fs" choice:"mongo" default:"fs"`
+	FS   struct {
+		Path string `long:"path" env:"PATH" default:"./var/avatars" description:"avatars location"`
+	} `group:"fs" namespace:"fs" env-namespace:"FS"`
+	RszLmt int `long:"rsz-lmt" env:"RSZ_LMT" default:"0" description:"max image size for resizing avatars on save"`
+}
+
+// CacheGroup defines options group for cache params
+type CacheGroup struct {
+	Type string `long:"type" env:"TYPE" description:"type of cache" choice:"mem" choice:"redis" default:"mem"`
+	Max  struct {
+		Items int   `long:"items" env:"ITEMS" default:"1000" description:"max cached items"`
+		Value int   `long:"value" env:"VALUE" default:"65536" description:"max size of cached value"`
+		Size  int64 `long:"size" env:"SIZE" default:"50000000" description:"max size of total cache"`
+	} `group:"max" namespace:"max" env-namespace:"MAX"`
 }
 
 var revision = "unknown"
@@ -112,7 +138,7 @@ func main() {
 // doesn't start anything
 func New(opts Opts) (*Application, error) {
 
-	if err := makeDirs(opts.BoltPath, opts.BackupLocation, opts.AvatarStore); err != nil {
+	if err := makeDirs(opts.BackupLocation); err != nil {
 		return nil, err
 	}
 
@@ -120,7 +146,7 @@ func New(opts Opts) (*Application, error) {
 		return nil, errors.Errorf("invalid remark42 url %s", opts.RemarkURL)
 	}
 
-	boltStore, err := makeBoltStore(opts.Sites, opts.BoltPath)
+	boltStore, err := makeDataStore(opts.Store, opts.Sites)
 	if err != nil {
 		return nil, err
 	}
@@ -131,16 +157,20 @@ func New(opts Opts) (*Application, error) {
 		MaxCommentSize: opts.MaxCommentSize,
 	}
 
-	loadingCache, err := cache.NewMemoryCache(cache.MaxValSize(opts.MaxCachedValue), cache.MaxKeys(opts.MaxCachedItems),
-		cache.PostFlushFn(postFlushFn(opts.Sites, opts.Port)))
+	loadingCache, err := cache.NewMemoryCache(cache.MaxCacheSize(opts.Cache.Max.Size), cache.MaxValSize(opts.Cache.Max.Value),
+		cache.MaxKeys(opts.Cache.Max.Items), cache.PostFlushFn(postFlushFn(opts.Sites, opts.Port)))
 	if err != nil {
 		return nil, err
 	}
 
 	jwtService := auth.NewJWT(opts.SecretKey, strings.HasPrefix(opts.RemarkURL, "https://"), 7*24*time.Hour)
 
+	avatarStore, err := makeAvatarStore(opts.Avatar)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to make avatar store")
+	}
 	avatarProxy := &proxy.Avatar{
-		Store:     proxy.NewFSAvatarStore(opts.AvatarStore, opts.AvatarRszLmt),
+		Store:     avatarStore,
 		RoutePath: "/api/v1/avatar",
 		RemarkURL: strings.TrimSuffix(opts.RemarkURL, "/"),
 	}
@@ -225,17 +255,34 @@ func (a *Application) activateBackup(ctx context.Context) {
 	}
 }
 
-// makeBoltStore creates store for all sites
-func makeBoltStore(siteNames []string, path string) (engine.Interface, error) {
-	sites := []engine.BoltSite{}
-	for _, site := range siteNames {
-		sites = append(sites, engine.BoltSite{SiteID: site, FileName: fmt.Sprintf("%s/%s.db", path, site)})
+// makeDataStore creates store for all sites
+func makeDataStore(group StoreGroup, siteNames []string) (result engine.Interface, err error) {
+	switch group.Type {
+	case "bolt":
+		if err = makeDirs(group.Bolt.Path); err != nil {
+			return nil, err
+		}
+		sites := []engine.BoltSite{}
+		for _, site := range siteNames {
+			sites = append(sites, engine.BoltSite{SiteID: site, FileName: fmt.Sprintf("%s/%s.db", group.Bolt.Path, site)})
+		}
+		result, err = engine.NewBoltDB(bolt.Options{Timeout: group.Bolt.Timeout}, sites...)
+	default:
+		return nil, errors.Errorf("unsupported store type %s", group.Type)
 	}
-	result, err := engine.NewBoltDB(bolt.Options{Timeout: 30 * time.Second}, sites...)
-	if err != nil {
-		return nil, errors.Wrap(err, "can't initialize data store")
+
+	return result, errors.Wrap(err, "can't initialize data store")
+}
+
+func makeAvatarStore(group AvatarGroup) (result proxy.AvatarStore, err error) {
+	switch group.Type {
+	case "fs":
+		if err = makeDirs(group.FS.Path); err != nil {
+			return nil, err
+		}
+		return proxy.NewFSAvatarStore(group.FS.Path, group.RszLmt), nil
 	}
-	return result, nil
+	return nil, errors.Errorf("unsupported avatart store type %s", group.Type)
 }
 
 // mkdir -p for all dirs
