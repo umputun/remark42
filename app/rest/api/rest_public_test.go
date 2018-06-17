@@ -88,21 +88,25 @@ func TestRest_Find(t *testing.T) {
 	// get sorted by +time
 	res, code := get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah1&sort=+time")
 	assert.Equal(t, 200, code)
-	comments := []store.Comment{}
+	comments := commentsWithInfo{}
 	err := json.Unmarshal([]byte(res), &comments)
 	assert.Nil(t, err)
-	assert.Equal(t, 2, len(comments), "should have 2 comments")
-	assert.Equal(t, id1, comments[0].ID)
-	assert.Equal(t, id2, comments[1].ID)
+	assert.Equal(t, 2, len(comments.Comments), "should have 2 comments")
+	assert.Equal(t, id1, comments.Comments[0].ID)
+	assert.Equal(t, id2, comments.Comments[1].ID)
+	assert.Equal(t, "https://radio-t.com/blah1", comments.Info.URL)
+	assert.Equal(t, 2, comments.Info.Count)
+	assert.Equal(t, false, comments.Info.ReadOnly)
+	assert.True(t, comments.Info.FirstTS.Before(comments.Info.LastTS))
 
 	// get sorted by -time
 	res, code = get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah1&sort=-time")
 	assert.Equal(t, 200, code)
 	err = json.Unmarshal([]byte(res), &comments)
 	assert.Nil(t, err)
-	assert.Equal(t, 2, len(comments), "should have 2 comments")
-	assert.Equal(t, id1, comments[1].ID)
-	assert.Equal(t, id2, comments[0].ID)
+	assert.Equal(t, 2, len(comments.Comments), "should have 2 comments")
+	assert.Equal(t, id1, comments.Comments[1].ID)
+	assert.Equal(t, id2, comments.Comments[0].ID)
 
 	// get in tree mode
 	tree := rest.Tree{}

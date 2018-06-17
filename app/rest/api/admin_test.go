@@ -79,27 +79,27 @@ func TestAdmin_DeleteUser(t *testing.T) {
 	// all 3 comments here, but for id2 they deleted
 	res, code := get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah&sort=+time")
 	assert.Equal(t, 200, code)
-	comments := []store.Comment{}
-	err = json.Unmarshal([]byte(res), &comments)
+	commentsWithInfo := commentsWithInfo{}
+	err = json.Unmarshal([]byte(res), &commentsWithInfo)
 	assert.Nil(t, err)
-	assert.Equal(t, 3, len(comments), "should have 3 comment")
+	assert.Equal(t, 3, len(commentsWithInfo.Comments), "should have 3 comment")
 
 	// id1 comment untouched
-	assert.Equal(t, id1, comments[0].ID)
-	assert.Equal(t, "o test test #1", comments[0].Orig)
-	assert.False(t, comments[0].Deleted)
-	t.Logf("%+v", comments[0].User)
+	assert.Equal(t, id1, commentsWithInfo.Comments[0].ID)
+	assert.Equal(t, "o test test #1", commentsWithInfo.Comments[0].Orig)
+	assert.False(t, commentsWithInfo.Comments[0].Deleted)
+	t.Logf("%+v", commentsWithInfo.Comments[0].User)
 
 	// id2 comments fully deleted
-	assert.Equal(t, "", comments[1].Text)
-	assert.Equal(t, "", comments[1].Orig)
-	assert.Equal(t, store.User{Name: "deleted", ID: "deleted", Picture: "", Admin: false, Blocked: false, IP: ""}, comments[1].User)
-	assert.True(t, comments[1].Deleted)
+	assert.Equal(t, "", commentsWithInfo.Comments[1].Text)
+	assert.Equal(t, "", commentsWithInfo.Comments[1].Orig)
+	assert.Equal(t, store.User{Name: "deleted", ID: "deleted", Picture: "", Admin: false, Blocked: false, IP: ""}, commentsWithInfo.Comments[1].User)
+	assert.True(t, commentsWithInfo.Comments[1].Deleted)
 
-	assert.Equal(t, "", comments[2].Text)
-	assert.Equal(t, "", comments[2].Orig)
-	assert.Equal(t, store.User{Name: "deleted", ID: "deleted", Picture: "", Admin: false, Blocked: false, IP: ""}, comments[1].User)
-	assert.True(t, comments[2].Deleted)
+	assert.Equal(t, "", commentsWithInfo.Comments[2].Text)
+	assert.Equal(t, "", commentsWithInfo.Comments[2].Orig)
+	assert.Equal(t, store.User{Name: "deleted", ID: "deleted", Picture: "", Admin: false, Blocked: false, IP: ""}, commentsWithInfo.Comments[1].User)
+	assert.True(t, commentsWithInfo.Comments[2].Deleted)
 }
 
 func TestAdmin_Pin(t *testing.T) {
@@ -186,12 +186,12 @@ func TestAdmin_Block(t *testing.T) {
 
 	res, code := get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah&sort=+time")
 	assert.Equal(t, 200, code)
-	comments := []store.Comment{}
+	comments := commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
 	assert.Nil(t, err)
-	assert.Equal(t, 2, len(comments), "should have 2 comments")
-	assert.Equal(t, "", comments[0].Text)
-	assert.True(t, comments[0].Deleted)
+	assert.Equal(t, 2, len(comments.Comments), "should have 2 comments")
+	assert.Equal(t, "", comments.Comments[0].Text)
+	assert.True(t, comments.Comments[0].Deleted)
 
 	code, body = block(-1)
 	require.Equal(t, 200, code)
@@ -259,8 +259,9 @@ func TestAdmin_ReadOnly(t *testing.T) {
 		fmt.Sprintf("%s/api/v1/admin/readonly?site=radio-t&url=https://radio-t.com/blah&ro=1", ts.URL), nil)
 	assert.Nil(t, err)
 	req.SetBasicAuth("dev", "password")
-	_, err = client.Do(req)
+	resp, err := client.Do(req)
 	require.Nil(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
 	info, err = srv.DataService.Info(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}, 0)
 	assert.Nil(t, err)
 	assert.True(t, info.ReadOnly)
@@ -270,13 +271,56 @@ func TestAdmin_ReadOnly(t *testing.T) {
 		fmt.Sprintf("%s/api/v1/admin/readonly?site=radio-t&url=https://radio-t.com/blah&ro=0", ts.URL), nil)
 	assert.Nil(t, err)
 	req.SetBasicAuth("dev", "password")
-	_, err = client.Do(req)
+	resp, err = client.Do(req)
+	assert.Equal(t, 200, resp.StatusCode)
 	require.Nil(t, err)
 	info, err = srv.DataService.Info(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}, 0)
 	assert.Nil(t, err)
 	assert.False(t, info.ReadOnly)
 }
 
+func TestAdmin_ReadOnlyWithAge(t *testing.T) {
+	srv, ts := prep(t)
+	assert.NotNil(t, srv)
+	defer cleanup(ts)
+
+	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
+		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"},
+		Timestamp: time.Date(2001, 1, 1, 1, 1, 1, 0, time.Local)}
+	_, err := srv.DataService.Create(c1)
+	assert.Nil(t, err)
+
+	info, err := srv.DataService.Info(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}, 10)
+	assert.Nil(t, err)
+	assert.True(t, info.ReadOnly, "ro by age")
+
+	client := http.Client{}
+
+	// set post to read-only
+	req, err := http.NewRequest(http.MethodPut,
+		fmt.Sprintf("%s/api/v1/admin/readonly?site=radio-t&url=https://radio-t.com/blah&ro=1", ts.URL), nil)
+	assert.Nil(t, err)
+	req.SetBasicAuth("dev", "password")
+	resp, err := client.Do(req)
+	require.Nil(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+	info, err = srv.DataService.Info(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}, 0)
+	assert.Nil(t, err)
+	assert.True(t, info.ReadOnly)
+
+	// reset post's read-only
+	req, err = http.NewRequest(http.MethodPut,
+		fmt.Sprintf("%s/api/v1/admin/readonly?site=radio-t&url=https://radio-t.com/blah&ro=0", ts.URL), nil)
+	assert.Nil(t, err)
+	req.SetBasicAuth("dev", "password")
+	resp, err = client.Do(req)
+	assert.Equal(t, 403, resp.StatusCode)
+	require.Nil(t, err)
+	info, err = srv.DataService.Info(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}, 0)
+	assert.Nil(t, err)
+	assert.True(t, info.ReadOnly)
+
+}
 func TestAdmin_Verify(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
@@ -307,12 +351,12 @@ func TestAdmin_Verify(t *testing.T) {
 
 	res, code := get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah&sort=+time")
 	assert.Equal(t, 200, code)
-	comments := []store.Comment{}
+	comments := commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
 	assert.Nil(t, err)
-	assert.Equal(t, 2, len(comments), "should have 2 comments")
-	assert.Equal(t, "test test #1", comments[0].Text)
-	assert.True(t, comments[0].User.Verified)
+	assert.Equal(t, 2, len(comments.Comments), "should have 2 comments")
+	assert.Equal(t, "test test #1", comments.Comments[0].Text)
+	assert.True(t, comments.Comments[0].User.Verified)
 
 	req, err = http.NewRequest(http.MethodPut,
 		fmt.Sprintf("%s/api/v1/admin/verify/user1?site=radio-t&verified=0", ts.URL), nil)
@@ -325,12 +369,12 @@ func TestAdmin_Verify(t *testing.T) {
 
 	res, code = get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah&sort=+time")
 	assert.Equal(t, 200, code)
-	comments = []store.Comment{}
+	comments = commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
 	assert.Nil(t, err)
-	assert.Equal(t, 2, len(comments), "should have 2 comments")
-	assert.Equal(t, "test test #1", comments[0].Text)
-	assert.False(t, comments[0].User.Verified)
+	assert.Equal(t, 2, len(comments.Comments), "should have 2 comments")
+	assert.Equal(t, "test test #1", comments.Comments[0].Text)
+	assert.False(t, comments.Comments[0].User.Verified)
 
 }
 

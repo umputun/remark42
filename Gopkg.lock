@@ -161,6 +161,15 @@
 
 [[projects]]
   branch = "master"
+  name = "golang.org/x/image"
+  packages = [
+    "draw",
+    "math/f64"
+  ]
+  revision = "af66defab954cb421ca110193eed9477c8541e2a"
+
+[[projects]]
+  branch = "master"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -223,6 +232,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "2c90909156f93c975489ffa0340d12a2f9ce4369166c93bbfc531fdbbf40efb6"
+  inputs-digest = "af8b7f1817ce6e82746722a745184bd50c341733bcc024311aa956ea32475796"
   solver-name = "gps-cdcl"
   solver-version = 1

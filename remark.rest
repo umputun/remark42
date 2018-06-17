@@ -68,7 +68,7 @@ GET {{host}}/api/v1/id/a2ddb8d2f65008ee1a1e3af8df0f26beb042309c?site=remark&url=
 GET {{host}}/api/v1/comments?site={{site}}&user=github_ef0f706a79cc24b17bbbb374cd234a691d034128&limit=5
 
 ### get comment by user id2
-GET {{host}}/api/v1/comments?site=remark&user=disqus_kpmy
+GET {{host}}/api/v1/comments?site=radiot&user=github_0a4349d868946d7841424c9bdd4415629df771e6
 
 ### get count
 GET {{host}}/api/v1/count?site=remark&url={{url}}
