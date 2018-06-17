@@ -18,7 +18,11 @@ func TestAvatarStore_Put(t *testing.T) {
 	os.MkdirAll("/tmp/avatars.test", 0700)
 	defer os.RemoveAll("/tmp/avatars.test")
 
-	avatar, err := p.Put("user1", strings.NewReader("some picture bin data"))
+	avatar, err := p.Put("user1", nil)
+	assert.Equal(t, "", avatar)
+	assert.EqualError(t, err, "avatar reader is nil")
+
+	avatar, err = p.Put("user1", strings.NewReader("some picture bin data"))
 	require.Nil(t, err)
 	assert.Equal(t, "b3daa77b4c04a9551b8781d03191fe098f325e67.image", avatar)
 	fi, err := os.Stat("/tmp/avatars.test/30/b3daa77b4c04a9551b8781d03191fe098f325e67.image")
@@ -84,17 +88,19 @@ func TestAvatarStore_resize(t *testing.T) {
 		assert.Equal(t, cExp, content)
 	}
 
+	// Reader is nil.
+	resizedR := resize(nil, 100)
+	// assert.EqualError(t, err, "limit should be greater than 0")
+	assert.Nil(t, resizedR)
+
 	// Negative limit error.
-	resizedR, err := resize(strings.NewReader("some picture bin data"), -1)
-	assert.EqualError(t, err, "limit should be greater than 0")
+	resizedR = resize(strings.NewReader("some picture bin data"), -1)
 	require.NotNil(t, resizedR)
 	checkC(t, resizedR, []byte("some picture bin data"))
 
 	// Decode error.
-	resizedR, err = resize(strings.NewReader("invalid image content"), 100)
+	resizedR = resize(strings.NewReader("invalid image content"), 100)
 	assert.NotNil(t, resizedR)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "can't decode avatar image")
 	checkC(t, resizedR, []byte("invalid image content"))
 
 	cases := []struct {
@@ -110,14 +116,12 @@ func TestAvatarStore_resize(t *testing.T) {
 		require.Nil(t, err, "can't open test file %s", c.file)
 
 		// No need for resize, avatar dimentions are smaller than resize limit.
-		resizedR, err = resize(bytes.NewReader(img), 800)
-		assert.NotNilf(t, err, "file %s", c.file)
+		resizedR = resize(bytes.NewReader(img), 800)
 		assert.NotNilf(t, resizedR, "file %s", c.file)
 		checkC(t, resizedR, img)
 
 		// Resizing to half of width. Check resizedR avatar format PNG.
-		resizedR, err = resize(bytes.NewReader(img), 400)
-		assert.Nilf(t, err, "file %s", c.file)
+		resizedR = resize(bytes.NewReader(img), 400)
 		assert.NotNilf(t, resizedR, "file %s", c.file)
 
 		imgRz, format, err := image.Decode(resizedR)
