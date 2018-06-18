@@ -11,7 +11,7 @@ export default class UserInfo extends Component {
 
     this.state = {
       comments: [],
-      isLoading: false,
+      isLoading: true,
     };
   }
 
