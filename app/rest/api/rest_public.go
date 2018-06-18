@@ -185,7 +185,7 @@ func (s *Rest) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 			return nil, e
 		}
 		comments = s.adminService.alterComments(comments, r)
-
+		comments = filterComments(comments, func(c store.Comment) bool { return !c.Deleted })
 		count, e := s.DataService.UserCount(siteID, userID)
 		if e != nil {
 			return nil, e

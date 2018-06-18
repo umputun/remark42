@@ -238,3 +238,12 @@ func renderJSONFromBytes(w http.ResponseWriter, r *http.Request, data []byte) {
 		log.Printf("[WARN] failed to send response to %s, %s", r.RemoteAddr, err)
 	}
 }
+
+func filterComments(comments []store.Comment, fn func(c store.Comment) bool) (filtered []store.Comment) {
+	for _, c := range comments {
+		if fn(c) {
+			filtered = append(filtered, c)
+		}
+	}
+	return filtered
+}
