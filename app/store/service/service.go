@@ -62,8 +62,7 @@ func (s *DataStore) SetPin(locator store.Locator, commentID string, status bool)
 func (s *DataStore) Vote(locator store.Locator, commentID string, userID string, val bool) (comment store.Comment, err error) {
 
 	cLock := s.getsScopedLocks(locator.URL) // get lock for URL scope
-
-	cLock.Lock()
+	cLock.Lock()                            // prevents race on voting
 	defer cLock.Unlock()
 
 	comment, err = s.Get(locator, commentID)

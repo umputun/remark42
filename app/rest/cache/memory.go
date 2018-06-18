@@ -27,7 +27,7 @@ func NewMemoryCache(options ...Option) (LoadingCache, error) {
 	}
 	for _, opt := range options {
 		if err := opt(&res); err != nil {
-			log.Printf("[WARN] failed to set cache option, %v", err)
+			return nil, errors.Wrap(err, "failed to set cache option")
 		}
 	}
 
@@ -42,7 +42,8 @@ func NewMemoryCache(options ...Option) (LoadingCache, error) {
 		return nil, errors.Wrap(err, "failed to make cache")
 	}
 
-	log.Printf("[DEBUG] create lru cache, maxKeys=%d, maxValueSize=%d", res.maxKeys, res.maxValueSize)
+	log.Printf("[DEBUG] create lru cache, maxKeys=%d, maxValueSize=%d, maxCacheSize=%d",
+		res.maxKeys, res.maxValueSize, res.maxCacheSize)
 	return &res, nil
 }
 

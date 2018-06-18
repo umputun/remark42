@@ -1,5 +1,7 @@
 package cache
 
+import "github.com/pkg/errors"
+
 // Option func type
 type Option func(lc *memoryCache) error
 
@@ -8,6 +10,9 @@ type Option func(lc *memoryCache) error
 func MaxValSize(max int) Option {
 	return func(lc *memoryCache) error {
 		lc.maxValueSize = max
+		if max <= 0 {
+			return errors.Errorf("negative size for MaxValSize, %d", max)
+		}
 		return nil
 	}
 }
@@ -17,6 +22,9 @@ func MaxValSize(max int) Option {
 func MaxKeys(max int) Option {
 	return func(lc *memoryCache) error {
 		lc.maxKeys = max
+		if max <= 0 {
+			return errors.Errorf("negative size for MaxKeys, %d", max)
+		}
 		return nil
 	}
 }
@@ -26,6 +34,9 @@ func MaxKeys(max int) Option {
 func MaxCacheSize(max int64) Option {
 	return func(lc *memoryCache) error {
 		lc.maxCacheSize = max
+		if max <= 0 {
+			return errors.Errorf("negative size or MaxCacheSize, %d", max)
+		}
 		return nil
 	}
 }

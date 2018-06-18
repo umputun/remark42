@@ -297,3 +297,14 @@ func TestMemoryCache_FlushFailed(t *testing.T) {
 	lc.Flush("invalid-composite")
 	assert.Equal(t, 1, lc.(*memoryCache).bytesCache.Len())
 }
+
+func TestMemoryCache_BadOptions(t *testing.T) {
+	_, err := NewMemoryCache(MaxCacheSize(-1))
+	assert.EqualError(t, err, "failed to set cache option: negative size or MaxCacheSize, -1")
+
+	_, err = NewMemoryCache(MaxKeys(-1))
+	assert.EqualError(t, err, "failed to set cache option: negative size for MaxKeys, -1")
+
+	_, err = NewMemoryCache(MaxValSize(-1))
+	assert.EqualError(t, err, "failed to set cache option: negative size for MaxValSize, -1")
+}
