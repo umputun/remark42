@@ -1,0 +1,10 @@
+.user-info__close {
+  font-size: 14px;
+  line-height: 18px;
+  cursor: pointer;
+  color: #888;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}

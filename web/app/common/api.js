@@ -22,6 +22,8 @@ export const counts = ({ urls, siteId }) => fetcher.post({
 
 export const getComment = ({ id }) => fetcher.get(`/id/${id}?url=${url}`);
 
+export const getUserComments = ({ user, limit }) => fetcher.get(`/comments?user=${user}&limit=${limit}`)
+
 export const vote = ({ id, url, value }) => fetcher.put({
   url: `/vote/${id}?url=${url}&vote=${value}`,
   withCredentials: true,
@@ -109,6 +111,7 @@ export default {
   last,
   counts,
   getComment,
+  getUserComments,
   vote,
   send,
   edit,

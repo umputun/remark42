@@ -10,7 +10,7 @@
 
   @media (hover: hover) {
     &:hover {
-      .comment__controls {
+      > .comment__body .comment__actions .comment__controls {
         opacity: 1;
       }
     }

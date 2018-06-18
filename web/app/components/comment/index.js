@@ -11,6 +11,7 @@ require('./__action/_type/_edit/comment__action_type_edit.scss');
 require('./__avatar/comment__avatar.scss');
 require('./__avatar/_default/comment__avatar_default.scss');
 
+require('./__body/comment__body.scss');
 require('./__control/comment__control.scss');
 require('./__controls/comment__controls.scss');
 require('./__info/comment__info.scss');
@@ -46,3 +47,4 @@ require('./_useless/comment_useless.scss');
 
 require('./_view/_admin/comment_view_admin.scss');
 require('./_view/_preview/comment_view_preview.scss');
+require('./_view/_user/comment_view_user.scss');

@@ -1,0 +1,11 @@
+.comment_view_user {
+  .comment__time {
+    margin-left: 0;
+  }
+
+  &.comment_collapsed {
+    .comment__text, .comment__actions {
+      display: block;
+    }
+  }
+}

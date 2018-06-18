@@ -6,6 +6,7 @@ import { url } from 'common/settings';
 import store from 'common/store';
 
 import Input from 'components/input';
+import UserInfo from 'components/user-info';
 
 export default class Comment extends Component {
   constructor(props) {
@@ -14,8 +15,8 @@ export default class Comment extends Component {
     this.state = {
       isReplying: false,
       isEditing: false,
-      isUserIdVisible: false,
       isUserVerified: false,
+      isUserInfoShown: false,
       editTimeLeft: null,
     };
 
@@ -28,7 +29,7 @@ export default class Comment extends Component {
     this.toggleEditing = this.toggleEditing.bind(this);
     this.toggleReplying = this.toggleReplying.bind(this);
     this.toggleCollapse = this.toggleCollapse.bind(this);
-    this.toggleUserIdVisibility = this.toggleUserIdVisibility.bind(this);
+    this.toggleUserInfoVisibility = this.toggleUserInfoVisibility.bind(this);
     this.scrollToParent = this.scrollToParent.bind(this);
     this.onEdit = this.onEdit.bind(this);
     this.onReply = this.onReply.bind(this);
@@ -126,8 +127,8 @@ export default class Comment extends Component {
     }
   }
 
-  toggleUserIdVisibility() {
-    this.setState({ isUserIdVisible: !this.state.isUserIdVisible });
+  toggleUserInfoVisibility() {
+    this.setState({ isUserInfoShown: !this.state.isUserInfoShown });
   }
 
   onPinClick() {
@@ -301,7 +302,6 @@ export default class Comment extends Component {
 
   render(props, {
     guest,
-    isUserIdVisible,
     userBlocked,
     pinned,
     score,
@@ -312,6 +312,7 @@ export default class Comment extends Component {
     isEditing,
     isUserVerified,
     editTimeLeft,
+    isUserInfoShown,
   }) {
     const { data, mods = {} } = props;
     const isAdmin = !guest && store.get('user').admin;
@@ -389,24 +390,28 @@ export default class Comment extends Component {
       <article className={b('comment', props, defaultMods)} id={mods.disabled ? null : `${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}>
         <div className="comment__body">
           <div className="comment__info">
-            <img
-              className={b('comment__avatar', {}, { default: o.user.isDefaultPicture })}
-              src={o.user.isDefaultPicture ? require('./__avatar/comment__avatar.svg') : o.user.picture}
-              alt=""
-            />
-
-            <span
-              className="comment__username"
-              title={o.user.id}
-              onClick={this.toggleUserIdVisibility}
-            >{o.user.name}</span>
-
             {
-              isUserIdVisible && <span className="comment__user-id"> ({o.user.id})</span>
+              mods.view !== 'user' && (
+                <img
+                  className={b('comment__avatar', {}, { default: o.user.isDefaultPicture })}
+                  src={o.user.isDefaultPicture ? require('./__avatar/comment__avatar.svg') : o.user.picture}
+                  alt=""
+                />
+              )
             }
 
             {
-              isAdmin && (
+              mods.view !== 'user' && (
+                <span
+                  className="comment__username"
+                  title={o.user.id}
+                  onClick={this.toggleUserInfoVisibility}
+                >{o.user.name}</span>
+              )
+            }
+
+            {
+              isAdmin && mods.view !== 'user' && (
                 <span
                   onClick={o.user.verified ? this.onUnverifyClick : this.onVerifyClick}
                   aria-label="Toggle verification"
@@ -417,7 +422,7 @@ export default class Comment extends Component {
             }
 
             {
-              !isAdmin && !!o.user.verified && (
+              !isAdmin && !!o.user.verified && mods.view !== 'user' && (
                 <span
                   title="Verified user"
                   className={b('comment__verification', {}, { active: true })}
@@ -428,7 +433,7 @@ export default class Comment extends Component {
             <a href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`} className="comment__time">{o.time}</a>
 
             {
-              mods.level > 0 && (
+              mods.level > 0 && mods.view !== 'user' && (
                 <a
                   className="comment__link-to-parent"
                   href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.pid}`}
@@ -440,7 +445,7 @@ export default class Comment extends Component {
             }
 
             {
-              isAdmin && userBlocked && (
+              isAdmin && userBlocked && mods.view !== 'user' && (
                 <span className="comment__status">Blocked</span>
               )
             }
@@ -452,7 +457,7 @@ export default class Comment extends Component {
             }
 
             {
-              !mods.disabled && (
+              !mods.disabled && mods.view !== 'user' && (
                 <span
                   className={b('comment__action', {}, { type: 'collapse', selected: mods.collapsed })}
                   tabIndex="0"
@@ -494,7 +499,7 @@ export default class Comment extends Component {
 
           <div className="comment__actions">
             {
-              !deleted && !mods.disabled && !isGuest && (
+              !deleted && !mods.disabled && !isGuest && mods.view !== 'user' && (
                 <span
                   className="comment__action"
                   role="button"
@@ -505,7 +510,7 @@ export default class Comment extends Component {
             }
 
             {
-              !deleted && !mods.disabled && !!o.orig && isCurrentUser && (!!editTimeLeft || isEditing) && (
+              !deleted && !mods.disabled && !!o.orig && isCurrentUser && (!!editTimeLeft || isEditing) && mods.view !== 'user' && (
                 <span
                   className="comment__action comment__action_type_edit"
                   role="button"
@@ -579,7 +584,13 @@ export default class Comment extends Component {
         </div>
 
         {
-          isReplying && (
+          isUserInfoShown && (
+            <UserInfo mix="comment__user-info" user={o.user} onClose={this.toggleUserInfoVisibility}/>
+          )
+        }
+
+        {
+          isReplying && mods.view !== 'user' && (
             <Input
               mix="comment__input"
               onSubmit={this.onReply}
@@ -591,7 +602,7 @@ export default class Comment extends Component {
         }
 
         {
-          isEditing && (
+          isEditing && mods.view !== 'user' && (
             <Input
               mix="comment__input"
               mods={{ mode: 'edit' }}
