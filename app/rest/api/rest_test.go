@@ -73,7 +73,8 @@ func prep(t *testing.T) (srv *Rest, ts *httptest.Server) {
 	}
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = -5, -10
 
-	ioutil.WriteFile(testHTML, []byte("some html"), 0700)
+	err = ioutil.WriteFile(testHTML, []byte("some html"), 0700)
+	assert.Nil(t, err)
 	ts = httptest.NewServer(srv.routes())
 	return srv, ts
 }

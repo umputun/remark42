@@ -152,7 +152,7 @@ func TestJWT_SetAndGetWithCookies(t *testing.T) {
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/valid" {
-			j.Set(w, claims, true)
+			assert.Nil(t, j.Set(w, claims, true))
 			w.WriteHeader(200)
 		}
 	}))
@@ -193,7 +193,7 @@ func TestJWT_SetAndGetWithXsrfMismatch(t *testing.T) {
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/valid" {
-			j.Set(w, claims, true)
+			assert.Nil(t, j.Set(w, claims, true))
 			w.WriteHeader(200)
 		}
 	}))
@@ -230,7 +230,7 @@ func TestJWT_SetAndGetWithCookiesExpired(t *testing.T) {
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/expired" {
-			j.Set(w, claims, true)
+			assert.Nil(t, j.Set(w, claims, true))
 			w.WriteHeader(200)
 		}
 	}))

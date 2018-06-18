@@ -84,7 +84,8 @@ func TestApplicationFailed(t *testing.T) {
 func TestApplicationShutdown(t *testing.T) {
 	app, ctx := prepApp(t, 18090, 500*time.Millisecond)
 	st := time.Now()
-	app.Run(ctx)
+	err := app.Run(ctx)
+	assert.Nil(t, err)
 	assert.True(t, time.Since(st).Seconds() < 1, "should take about 500msec")
 	app.Wait()
 }
@@ -95,7 +96,8 @@ func TestApplicationMainSignal(t *testing.T) {
 
 	go func() {
 		time.Sleep(100 * time.Millisecond)
-		syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
+		err := syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
+		require.Nil(t, err)
 	}()
 	st := time.Now()
 	main()

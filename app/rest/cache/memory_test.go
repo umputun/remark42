@@ -226,11 +226,11 @@ func TestMemoryCache_Scopes(t *testing.T) {
 	lc.Flush("s1")
 	assert.Equal(t, 1, lc.(*memoryCache).bytesCache.Len())
 
-	lc.Get(Key("key2", "s2"), func() ([]byte, error) {
+	_, err = lc.Get(Key("key2", "s2"), func() ([]byte, error) {
 		assert.Fail(t, "should stay")
 		return nil, nil
 	})
-
+	assert.Nil(t, err)
 	res, err = lc.Get(Key("key", "s1", "s2"), func() ([]byte, error) {
 		return []byte("value-upd"), nil
 	})

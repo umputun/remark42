@@ -231,7 +231,7 @@ Add this snippet to the bottom of web page:
 
   (function() {
     var d = document, s = d.createElement('script');
-    s.src = '/web/embed.js'; // prepend this address with domain where remark42 is placed
+    s.src = '/web/embed.js'; // prepends this address with domain where remark42 is placed
     (d.head || d.body).appendChild(s);
   })();
 </script>
@@ -259,7 +259,7 @@ Add this snippet to the bottom of web page:
 
   (function() {
     var d = document, s = d.createElement('script');
-    s.src = '/web/last-comments.js'; // prepend this address with domain where remark42 is placed
+    s.src = '/web/last-comments.js'; // prepends this address with domain where remark42 is placed
     (d.head || d.body).appendChild(s);
   })();
 </script>
@@ -287,7 +287,7 @@ Add this snippet to the bottom of web page:
 
   (function() {
     var d = document, s = d.createElement('script');
-    s.src = '/web/counter.js'; // prepend this address with domain where remark42 is placed
+    s.src = '/web/counter.js'; // prepends this address with domain where remark42 is placed
     (d.head || d.body).appendChild(s);
   })();
 </script>
