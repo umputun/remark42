@@ -173,8 +173,8 @@ func (s *Rest) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := struct {
-		Comments []store.Comment
-		Count    int
+		Comments []store.Comment `json:"comments,omitempty"`
+		Count    int             `json:"count,omitempty"`
 	}{}
 
 	log.Printf("[DEBUG] get comments for userID %s, %s", userID, siteID)
