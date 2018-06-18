@@ -255,6 +255,11 @@ func TestRest_FindUserComments(t *testing.T) {
 	addComment(t, c2, ts)
 	addComment(t, c2, ts)
 
+	// add one deleted
+	id := addComment(t, c2, ts)
+	err := srv.DataService.Delete(c2.Locator, id, store.SoftDelete)
+	assert.NoError(t, err)
+
 	_, code := get(t, ts.URL+"/api/v1/comments?site=radio-t&user=blah")
 	assert.Equal(t, 400, code, "noting for user blah")
 
@@ -266,10 +271,10 @@ func TestRest_FindUserComments(t *testing.T) {
 		Count    int
 	}{}
 
-	err := json.Unmarshal([]byte(res), &resp)
+	err = json.Unmarshal([]byte(res), &resp)
 	assert.Nil(t, err)
 	assert.Equal(t, 3, len(resp.Comments), "should have 3 comments")
-	assert.Equal(t, 3, resp.Count, "should have 3 count")
+	assert.Equal(t, 4, resp.Count, "should have 3 count")
 }
 
 func TestRest_UserInfo(t *testing.T) {
