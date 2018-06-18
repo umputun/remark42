@@ -326,6 +326,20 @@ func TestService_Counts(t *testing.T) {
 	}, res)
 }
 
+func TestService_IsVerifiedFn(t *testing.T) {
+	defer os.Remove(testDb)
+	b := DataStore{Interface: prepStoreEngine(t)}
+
+	fn := b.IsVerifiedFn()
+	verified := fn("radio-t", "user1")
+	assert.False(t, verified)
+
+	err := b.Interface.SetVerified("radio-t", "user1", true)
+	assert.Nil(t, err)
+	verified = fn("radio-t", "user1")
+	assert.True(t, verified)
+}
+
 // makes new boltdb, put two records
 func prepStoreEngine(t *testing.T) engine.Interface {
 	os.Remove(testDb)
