@@ -32,7 +32,7 @@ RUN if [ -z "$COVERALLS_TOKEN" ] ; then \
     else goveralls -coverprofile=.cover/cover.out -service=travis-ci -repotoken $COVERALLS_TOKEN; fi
 
 RUN \
-    version=$(/script/git-rev.sh) && \
+    version=$(git rev-parse --abbrev-ref HEAD)-$(git describe --abbrev=7 --always --tags)-$(date +%Y%m%d-%H:%M:%S) && \
     echo "version $version" && \  
     go build -o remark -ldflags "-X main.revision=${version} -s -w" ./app
 
