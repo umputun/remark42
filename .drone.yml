@@ -24,6 +24,9 @@ pipeline:
     image: plugins/docker
     repo: umputun/remark42
     secrets: [ docker_username, docker_password ]
+    build_args:
+      - DRONE_TAG=${DRONE_TAG}
+      - DRONE_COMMIT=${DRONE_COMMIT}
     tags: 
       - ${DRONE_TAG}
       - latest
