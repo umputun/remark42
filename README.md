@@ -479,7 +479,3 @@ _all admin calls require auth and admin privilege_
 * User ID hashed and prefixed by oauth provider name to avoid collisions and potential abuse.
 * All avatars cached locally to prevent rate limiters from google/github/facebook/yandex.
 * Docker build uses [publicly available](https://github.com/umputun/baseimage) base images.
-
-## Current status
-
-Remark42 is still under development and the first stable v1.0 is about to be released. API (v1) is stable and won't have any breaking changes. 
