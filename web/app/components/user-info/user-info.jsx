@@ -18,9 +18,8 @@ export default class UserInfo extends Component {
   componentWillMount() {
     const { user: { id } } = this.props;
 
-    // TODO: change Comments to comments
     api.getUserComments({ user: id, limit: 10 })
-      .then(({ Comments = [] }) => this.setState({ comments: Comments }))
+      .then(({ comments = [] }) => this.setState({ comments }))
       .finally(() => this.setState({ isLoading: false }));
   }
 
