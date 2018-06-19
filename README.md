@@ -465,17 +465,18 @@ _all admin calls require auth and admin privilege_
 
 ## Technical details
 
-* Data stored in [boltdb](https://github.com/coreos/bbolt) (embedded key/value database) files under `BOLTDB_PATH`
+* Data stored in [boltdb](https://github.com/coreos/bbolt) (embedded key/value database) files under `STORE_BOLT_PATH`
 * Each site stored in a separate boltbd file.
-* In order to migrate/move remark42 to another host boltbd files as well as avatars directory `AVATAR_STORE` should be transferred.
+* In order to migrate/move remark42 to another host boltbd files as well as avatars directory `AVATAR_FS_PATH` should be transferred.
 * Automatic backup process runs every 24h and exports all content in json-like format to `backup-remark-YYYYMMDD.gz`.
 * Authentication implemented with [jwt](https://github.com/dgrijalva/jwt-go) stored in a cookie. It uses HttpOnly, secure cookies.
-* All heavy REST calls cached internally in LRU cache limited by `MAX_CACHE_ITEMS` and `MAX_CACHE_SIZE`.
+* All heavy REST calls cached internally in LRU cache limited by `CACHE_MAX_ITEMS` and `CACHE_MAX_SIZE`.
 * User's activity throttled globally (up to 1000 simultaneous requests) and limited locally (per user, usually up to 10 req/sec)
 * Request timeout set to 60sec
 * Development mode (`--dev-password` set) allows to test remark42 without social login and with admin privileges. Adds basic-auth for username: `dev`, password: `${DEV_PASSWD}`. **should not be used in production deployment**
-* User can vote for the comment multiple times but only to change his/her vote. Double-voting not allowed.
+* User can vote for the comment multiple times but only to change the vote. Double-voting not allowed.
 * User can edit comments in 5 mins window after creation.
 * User ID hashed and prefixed by oauth provider name to avoid collisions and potential abuse.
-* All avatars cached locally to prevent rate limiters from google/github/facebook/yandex.
+* All avatars resized and cached locally to prevent rate limiters from google/github/facebook/yandex.
+* Images can be proxied (`IMG_PROXY=true`) to prevent mixed http/https.
 * Docker build uses [publicly available](https://github.com/umputun/baseimage) base images.
