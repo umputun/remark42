@@ -12,9 +12,11 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/oauth2"
 
+	"github.com/umputun/remark/app/rest/proxy"
 	"github.com/umputun/remark/app/store"
 )
 
@@ -49,7 +51,7 @@ func TestLogin(t *testing.T) {
 	u := store.User{}
 	err = json.Unmarshal(body, &u)
 	assert.Nil(t, err)
-	assert.Equal(t, store.User{Name: "blah", ID: "mock_myuser1", Picture: "http://exmple.com/pic1.png",
+	assert.Equal(t, store.User{Name: "blah", ID: "mock_myuser1", Picture: "/v1/avatar/23/pic1.png",
 		Admin: false, Blocked: false, IP: ""}, u)
 
 	// check admin user
@@ -60,7 +62,7 @@ func TestLogin(t *testing.T) {
 	assert.Nil(t, err)
 	err = json.Unmarshal(body, &u)
 	assert.Nil(t, err)
-	assert.Equal(t, store.User{Name: "blah", ID: "mock_myuser2", Picture: "http://exmple.com/pic1.png",
+	assert.Equal(t, store.User{Name: "blah", ID: "mock_myuser2", Picture: "/v1/avatar/23/pic1.png",
 		Admin: true, Blocked: false, IP: "", Verified: true}, u)
 }
 
@@ -158,8 +160,13 @@ func mockProvider(t *testing.T, loginPort, authPort int) (*http.Server, *http.Se
 			return userInfo
 		},
 	}
+
+	mockAvatarStore := proxy.MockAvatarStore{}
+	mockAvatarStore.On("Put", mock.Anything, mock.Anything).Return("23/pic1.png", nil)
+
 	params := Params{RemarkURL: "url", SecretKey: "123456", Cid: "cid", Csecret: "csecret",
 		JwtService: NewJWT("12345", false, time.Hour), Admins: []string{"mock_myuser2"},
+		AvatarProxy:  &proxy.Avatar{Store: &mockAvatarStore, RoutePath: "/v1/avatar"},
 		IsVerifiedFn: func(siteID, userID string) bool { return userID == "mock_myuser2" }}
 	provider = initProvider(params, provider)
 
@@ -189,7 +196,8 @@ func mockProvider(t *testing.T, loginPort, authPort int) (*http.Server, *http.Se
 					}`
 				w.Header().Set("Content-Type", "application/json; charset=utf-8")
 				w.WriteHeader(200)
-				w.Write([]byte(res))
+				_, err := w.Write([]byte(res))
+				assert.NoError(t, err)
 			case strings.HasPrefix(r.URL.Path, "/user"):
 				res := fmt.Sprintf(`{
 					"id": "%s",
@@ -199,15 +207,16 @@ func mockProvider(t *testing.T, loginPort, authPort int) (*http.Server, *http.Se
 				count++
 				w.Header().Set("Content-Type", "application/json; charset=utf-8")
 				w.WriteHeader(200)
-				w.Write([]byte(res))
+				_, err := w.Write([]byte(res))
+				assert.NoError(t, err)
 			default:
 				t.Fatalf("unexpected oauth request %s %s", r.Method, r.URL)
 			}
 		}),
 	}
 
-	go oauth.ListenAndServe()
-	go ts.ListenAndServe()
+	go func() { _ = oauth.ListenAndServe() }()
+	go func() { _ = ts.ListenAndServe() }()
 
 	time.Sleep(time.Millisecond * 100) // let them start
 	return ts, oauth

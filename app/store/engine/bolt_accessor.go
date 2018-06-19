@@ -55,7 +55,6 @@ func NewBoltDB(options bolt.Options, sites ...BoltSite) (*BoltDB, error) {
 	log.Printf("[INFO] bolt store for sites %+v", sites)
 	result := BoltDB{dbs: make(map[string]*bolt.DB)}
 	for _, site := range sites {
-
 		db, err := bolt.Open(site.FileName, 0600, &options) // bolt.Options{Timeout: 30 * time.Second}
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to make boltdb for %s", site.FileName)
@@ -349,7 +348,7 @@ func (b *BoltDB) User(siteID, userID string, limit, skip int) (comments []store.
 	return comments, err
 }
 
-// UserCount returns number of comments for user TODO: this can be slow, but userIDBkt just refs
+// UserCount returns number of comments for user
 func (b *BoltDB) UserCount(siteID, userID string) (int, error) {
 	bdb, err := b.db(siteID)
 	if err != nil {

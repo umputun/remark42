@@ -1,5 +1,7 @@
 package proxy
 
+//go:generate sh -c "mockery -inpkg -name AvatarStore -print > /tmp/mock.tmp && mv /tmp/mock.tmp avatar_store_mock.go"
+
 import (
 	"bytes"
 	"fmt"

@@ -116,7 +116,7 @@ func TestAvatarStore_resize(t *testing.T) {
 		img, err := ioutil.ReadFile(c.file)
 		require.Nil(t, err, "can't open test file %s", c.file)
 
-		// No need for resize, avatar dimentions are smaller than resize limit.
+		// No need for resize, avatar dimensions are smaller than resize limit.
 		resizedR = resize(bytes.NewReader(img), 800)
 		assert.NotNilf(t, resizedR, "file %s", c.file)
 		checkC(t, resizedR, img)

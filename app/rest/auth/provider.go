@@ -189,7 +189,7 @@ func (p Provider) authHandler(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, &u)
 }
 
-// alterUser sets fileds not handled by provider's MapUser, things like avatar, admin, verified
+// alterUser sets fields not handled by provider's MapUser, things like avatar, admin, verified
 func (p Provider) alterUser(u store.User, oauthClaims *CustomClaims) store.User {
 	if p.AvatarProxy != nil {
 		if avatarURL, e := p.AvatarProxy.Put(u); e == nil {
