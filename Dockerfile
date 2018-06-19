@@ -35,11 +35,11 @@ RUN if [ -z "$COVERALLS_TOKEN" ] ; then \
 
 RUN \
     version=$(git rev-parse --abbrev-ref HEAD)-$(git describe --abbrev=7 --always --tags)-$(date +%Y%m%d-%H:%M:%S) && \
+    echo "git version=$version" && \  
     if [ -z "$DRONE_TAG" ] ; then \
-    echo "runs outside of drone" \
-    else version=$DRONE_TAG-${DRONE_COMMIT:0:7}-$(date +%Y%m%d-%H:%M:%S); \ 
-    fi && \
-    echo "version $version" && \  
+    echo "runs outside of drone" ; \
+    else version=${DRONE_TAG}-${DRONE_COMMIT:0:7}-$(date +%Y%m%d-%H:%M:%S); fi && \
+    echo "final version=$version" && \  
     go build -o remark -ldflags "-X main.revision=${version} -s -w" ./app
 
 
