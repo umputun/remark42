@@ -28,7 +28,6 @@ pipeline:
       - ${DRONE_TAG}
       - latest
     when:
-      branch: [refs/tags/*]
       event: tag
 
   docker_branch:
