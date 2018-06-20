@@ -97,7 +97,8 @@ func TestAvatar_Routes(t *testing.T) {
 	_, err := p.Put(u)
 	assert.NoError(t, err)
 
-	req, err := http.NewRequest("GET", "/b3daa77b4c04a9551b8781d03191fe098f325e67.image", nil)
+	// status 400
+	req, err := http.NewRequest("GET", "/some_random_name.image", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,6 +106,19 @@ func TestAvatar_Routes(t *testing.T) {
 	rr := httptest.NewRecorder()
 	_, routes := p.Routes()
 	handler := http.Handler(routes)
+	handler.ServeHTTP(rr, req)
+
+	assert.Equal(t, http.StatusBadRequest, rr.Code)
+
+	// status 200
+	req, err = http.NewRequest("GET", "/b3daa77b4c04a9551b8781d03191fe098f325e67.image", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rr = httptest.NewRecorder()
+	_, routes = p.Routes()
+	handler = http.Handler(routes)
 	handler.ServeHTTP(rr, req)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
@@ -119,6 +133,21 @@ func TestAvatar_Routes(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int64(21), sz)
 	assert.Equal(t, "some picture bin data", bb.String())
+
+	// status 304
+	req, err = http.NewRequest("GET", "/some_random_name.image", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Add("If-None-Match", `"a008de0a2ccb3308b5d99ffff66436e15538f701"`) // hash of `some_random_name.image` since the file doesn't exist
+
+	rr = httptest.NewRecorder()
+	_, routes = p.Routes()
+	handler = http.Handler(routes)
+	handler.ServeHTTP(rr, req)
+
+	assert.Equal(t, http.StatusNotModified, rr.Code)
+	assert.Equal(t, []string{`"a008de0a2ccb3308b5d99ffff66436e15538f701"`}, rr.HeaderMap["Etag"])
 }
 
 func TestAvatar_Retry(t *testing.T) {

@@ -12,6 +12,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -29,6 +30,7 @@ import (
 type AvatarStore interface {
 	Put(userID string, reader io.Reader) (avatar string, err error)
 	Get(avatar string) (reader io.ReadCloser, size int, err error)
+	ID(avatar string) (id string)
 }
 
 // FSAvatarStore implements AvatarStore for local file system
@@ -83,12 +85,24 @@ func (fs *FSAvatarStore) Get(avatar string) (reader io.ReadCloser, size int, err
 	avFile := path.Join(location, avatar)
 	fh, err := os.Open(avFile)
 	if err != nil {
-		return nil, 0, errors.Wrapf(err, "can't load avatar %s, id")
+		return nil, 0, errors.Wrapf(err, "can't load avatar %s, id", avatar)
 	}
 	if fi, e := fh.Stat(); e == nil {
 		size = int(fi.Size())
 	}
 	return fh, size, nil
+}
+
+// ID returns a fingerprint of the avatar content.
+func (fs *FSAvatarStore) ID(avatar string) (id string) {
+	location := fs.location(strings.TrimSuffix(avatar, imgSfx))
+	avFile := path.Join(location, avatar)
+	fi, err := os.Stat(avFile)
+	if err != nil {
+		log.Printf("[DEBUG] can't get file info '%s', %s", avFile, err)
+		return store.EncodeID(avatar)
+	}
+	return store.EncodeID(avatar + strconv.FormatInt(fi.ModTime().Unix(), 10))
 }
 
 // get location (directory) for user id by adding partition to final path in order to keep files
