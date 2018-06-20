@@ -75,9 +75,9 @@ func (p *Avatar) Routes(middlewares ...func(http.Handler) http.Handler) (string,
 		avatar := chi.URLParam(r, "avatar")
 
 		// enforce client-side caching
-		etag := `"` + avatar + `"`
+		etag := `"` + p.Store.ID(avatar) + `"`
 		w.Header().Set("Etag", etag)
-		w.Header().Set("Cache-Control", "max-age=2592000") // 30 days
+		w.Header().Set("Cache-Control", "max-age=604800") // 7 days
 		if match := r.Header.Get("If-None-Match"); match != "" {
 			if strings.Contains(match, etag) {
 				w.WriteHeader(http.StatusNotModified)
