@@ -161,6 +161,12 @@ func (s *Rest) voteCtrl(w http.ResponseWriter, r *http.Request) {
 
 	vote := r.URL.Query().Get("vote") == "1"
 
+	// check if user blocked
+	if s.adminService.checkBlocked(locator.SiteID, user) {
+		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"), "user blocked")
+		return
+	}
+
 	comment, err := s.DataService.Vote(locator, id, user.ID, vote)
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't vote for comment")
