@@ -4,11 +4,13 @@
   "scripts": {
     "build": "NODE_ENV=production webpack --config ./webpack.config.js",
     "start": "webpack-dev-server --progress --hot --inline --config ./webpack.config.js",
-    "reinstall": "rm -rf ./node_modules/ && npm install"
+    "reinstall": "rm -rf ./node_modules/ && npm install",
+    "lint": "eslint --ext=.js,.jsx ."
   },
   "devDependencies": {
     "autoprefixer": "^7.1.1",
     "babel-core": "^6.24.1",
+    "babel-eslint": "^8.2.4",
     "babel-loader": "^7.0.0",
     "babel-plugin-transform-object-rest-spread": "^6.26.0",
     "babel-plugin-transform-react-jsx": "^6.24.1",
@@ -16,6 +18,8 @@
     "clean-webpack-plugin": "^0.1.16",
     "copy-webpack-plugin": "^4.5.1",
     "css-loader": "^0.28.0",
+    "eslint": "^4.19.1",
+    "eslint-plugin-react": "^7.9.1",
     "extract-text-webpack-plugin": "^3.0.0",
     "file-loader": "^0.11.1",
     "html-webpack-plugin": "^2.30.1",

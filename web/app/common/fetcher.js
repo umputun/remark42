@@ -44,7 +44,7 @@ methods.forEach(method => {
         .then(res => resolve(res.data))
         .catch(error => reject(error));
     });
-  }
+  };
 });
 
 export default fetcher;

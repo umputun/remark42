@@ -1,4 +1,4 @@
-import { COUNTER_NODE_CLASSNAME } from './common/constants'
+import { COUNTER_NODE_CLASSNAME } from './common/constants';
 
 import api from 'common/api';
 
@@ -17,7 +17,7 @@ function init() {
   }
 
   try {
-    remark_config = remark_config || {}
+    remark_config = remark_config || {};
   } catch (e) {
     console.error('Remark42: Config object is undefined.');
     return;

@@ -50,7 +50,7 @@ class Store {
       again = false;
 
       return root;
-    }
+    };
 
     const paste = (root, commentObj) => {
       if (!again) return root;
@@ -63,10 +63,9 @@ class Store {
         root.replies = root.replies.map(reply => {
           if (reply.comment.id === commentObj.comment.pid) {
             return concatReply(reply, commentObj);
-          } else {
-            return paste(reply, commentObj);
           }
-        })
+          return paste(reply, commentObj);
+        });
       }
 
       return root;

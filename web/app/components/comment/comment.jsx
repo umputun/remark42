@@ -331,8 +331,8 @@ export default class Comment extends Component {
               ? 'This user was blocked'
               : (
                 deleted
-                ? 'This comment was deleted'
-                : data.text
+                  ? 'This comment was deleted'
+                  : data.text
               )
           ),
       time: formatTime(new Date(data.time)),

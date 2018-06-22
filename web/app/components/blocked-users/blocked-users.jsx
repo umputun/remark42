@@ -1,6 +1,6 @@
 import { h, Component } from 'preact';
 
-import api from 'common/api'
+import api from 'common/api';
 
 export default class BlockedUsers extends Component {
   constructor(props) {
@@ -8,7 +8,7 @@ export default class BlockedUsers extends Component {
 
     this.state = {
       unblockedUsers: [],
-    }
+    };
   }
 
   block(user) {
@@ -73,7 +73,7 @@ export default class BlockedUsers extends Component {
                         )
                       }
                     </li>
-                  )
+                  );
                 })
               }
             </ul>
