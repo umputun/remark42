@@ -440,7 +440,8 @@ Sort can be `time`, `active` or `score`. Supported sort order with prefix -/+, i
 * `GET /api/v1/admin/export?site=side-id&mode=[stream|file]` - export all comments to json stream or gz file.
 * `POST /api/v1/admin/import?site=side-id` - import comments from the backup.
 * `PUT /api/v1/admin/pin/{id}?site=site-id&url=post-url&pin=1` - pin or unpin comment.
-* `DELETE /api/v1/admin/user/{userid}?site=site-id&block=1` - delete all user's comments.
+* `GET /api/v1/admin/user/{userid}?site=site-id` - get user's info.
+* `DELETE /api/v1/admin/user/{userid}?site=site-id` - delete all user's comments.
 * `PUT /api/v1/admin/readonly?site=site-id&url=post-url&ro=1` - set read-only status
 * `PUT /api/v1/admin/verify/{userid}?site=site-id&verified=1` - set verified status
 * `GET /api/v1/admin/deleteme?token=token` - process deleteme user's request
