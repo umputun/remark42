@@ -65,7 +65,7 @@ const (
 )
 
 // Maximum length for URL text shortening.
-const shortURLLen = 32
+const shortURLLen = 48
 
 // PrepareUntrusted pre-processes a comment received from untrusted source by clearing all
 // autogen fields and reset everything users not supposed to provide
@@ -101,7 +101,8 @@ func (c *Comment) SetDeleted(mode DeleteMode) {
 func (c *Comment) Sanitize() {
 	p := bluemonday.UGCPolicy()
 	p.AllowAttrs("class").Matching(regexp.MustCompile("^language-[a-zA-Z0-9]+$")).OnElements("code")
-	c.Text = shortenAutoLinks(p.Sanitize(c.Text), shortURLLen)
+	c.Text = p.Sanitize(c.Text)
+	c.Text = shortenAutoLinks(c.Text, shortURLLen)
 	c.Orig = p.Sanitize(c.Orig)
 	c.User.ID = template.HTMLEscapeString(c.User.ID)
 	c.User.Name = template.HTMLEscapeString(c.User.Name)

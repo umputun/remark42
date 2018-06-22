@@ -30,7 +30,7 @@ func TestComment_Sanitize(t *testing.T) {
 				User: User{ID: `<a href="http://blah.com">username</a>`},
 			},
 			out: Comment{
-				Text: `blah <a href="https://www.reddit.com/r/golang/comments/8jdo2l/remark42_is_a_selfhosted_lightweight_and_simple/" rel="nofollow">https://www.reddit.com/r/gola...</a>` + "\n\t",
+				Text: `blah <a href="https://www.reddit.com/r/golang/comments/8jdo2l/remark42_is_a_selfhosted_lightweight_and_simple/" rel="nofollow">https://www.reddit.com/r/golang/comments/8jdo...</a>` + "\n\t",
 				User: User{ID: `&lt;a href=&#34;http://blah.com&#34;&gt;username&lt;/a&gt;`},
 			},
 		},
