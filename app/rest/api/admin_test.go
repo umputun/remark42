@@ -537,5 +537,33 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 	resp, err = client.Do(req)
 	assert.Nil(t, err)
 	assert.Equal(t, 400, resp.StatusCode, resp.Status)
+}
 
+func TestAdmin_GetUserInfo(t *testing.T) {
+	srv, ts := prep(t)
+	assert.NotNil(t, srv)
+	defer cleanup(ts)
+
+	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
+		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"}}
+	c2 := store.Comment{Text: "test test #2", ParentID: "p1", Locator: store.Locator{SiteID: "radio-t",
+		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user2", ID: "user2"}}
+
+	_, err := srv.DataService.Create(c1)
+	assert.Nil(t, err)
+	_, err = srv.DataService.Create(c2)
+	assert.Nil(t, err)
+
+	body, code := getWithAuth(t, fmt.Sprintf("%s/api/v1/admin/user/user1?site=radio-t&url=https://radio-t.com/blah", ts.URL))
+	assert.Equal(t, 200, code)
+	u := store.User{}
+	err = json.Unmarshal([]byte(body), &u)
+	assert.Nil(t, err)
+	assert.Equal(t, store.User{Name: "user1 name", ID: "user1", Picture: "", IP: "", Admin: false, Blocked: false, Verified: false}, u)
+
+	_, code = get(t, fmt.Sprintf("%s/api/v1/admin/user/user1?site=radio-t&url=https://radio-t.com/blah", ts.URL))
+	assert.Equal(t, 401, code, "no auth")
+
+	_, code = getWithAuth(t, fmt.Sprintf("%s/api/v1/admin/user/userX?site=radio-t&url=https://radio-t.com/blah", ts.URL))
+	assert.Equal(t, 400, code, "no info about user")
 }

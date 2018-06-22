@@ -35,6 +35,7 @@ func (a *admin) routes(middlewares ...func(http.Handler) http.Handler) chi.Route
 	router.Delete("/comment/{id}", a.deleteCommentCtrl)
 	router.Put("/user/{userid}", a.setBlockCtrl)
 	router.Delete("/user/{userid}", a.deleteUserCtrl)
+	router.Get("/user/{userid}", a.getUserInfoCtrl)
 	router.Get("/deleteme", a.deleteMeRequestCtrl)
 	router.Put("/verify/{userid}", a.setVerifyCtrl)
 	router.Get("/export", a.exportCtrl)
@@ -75,6 +76,22 @@ func (a *admin) deleteUserCtrl(w http.ResponseWriter, r *http.Request) {
 	a.cache.Flush(siteID, userID)
 	render.Status(r, http.StatusOK)
 	render.JSON(w, r, JSON{"user_id": userID, "site_id": siteID})
+}
+
+// GET /user/{userid}?site=side-id - get user info for requested userid
+func (a *admin) getUserInfoCtrl(w http.ResponseWriter, r *http.Request) {
+
+	userID := chi.URLParam(r, "userid")
+	siteID := r.URL.Query().Get("site")
+	log.Printf("[INFO] get user info for %s, site %s", userID, siteID)
+
+	ucomments, err := a.dataService.User(siteID, userID, 1, 0)
+	if err != nil || len(ucomments) == 0 {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get user info")
+		return
+	}
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, ucomments[0].User)
 }
 
 // GET /deleteme?token=jwt - delete all user comments by user's request. Gets info about deleted used from provided token
