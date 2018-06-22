@@ -110,7 +110,7 @@ func (c *Comment) Sanitize() {
 }
 
 // Shortens all the automatic links in HTML: auto link has equal "href" and "text" attributes.
-func shortenAutoLinks(commentHTML string, max int) string {
+func shortenAutoLinks(commentHTML string, max int) (resHTML string) {
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(commentHTML))
 	if err != nil {
 		return commentHTML
@@ -136,9 +136,9 @@ func shortenAutoLinks(commentHTML string, max int) string {
 			s.SetText(short + "...")
 		}
 	})
-	if html, err := doc.Find("body").Html(); err == nil {
-		return html
+	resHTML, err = doc.Find("body").Html()
+	if err != nil {
+		return commentHTML
 	}
-
-	return commentHTML
+	return resHTML
 }
