@@ -2,9 +2,12 @@ package store
 
 import (
 	"html/template"
+	"net/url"
 	"regexp"
+	"strings"
 	"time"
 
+	"github.com/PuerkitoBio/goquery"
 	"github.com/microcosm-cc/bluemonday"
 )
 
@@ -61,6 +64,9 @@ const (
 	HardDelete DeleteMode = 1
 )
 
+// Maximum length for URL text shortening.
+const shortURLLen = 32
+
 // PrepareUntrusted pre-processes a comment received from untrusted source by clearing all
 // autogen fields and reset everything users not supposed to provide
 func (c *Comment) PrepareUntrusted() {
@@ -91,13 +97,47 @@ func (c *Comment) SetDeleted(mode DeleteMode) {
 	}
 }
 
-// Sanitize clean dangerous html/js from the comment
+// Sanitize clean dangerous html/js from the comment, shorten autolinks.
 func (c *Comment) Sanitize() {
 	p := bluemonday.UGCPolicy()
 	p.AllowAttrs("class").Matching(regexp.MustCompile("^language-[a-zA-Z0-9]+$")).OnElements("code")
-	c.Text = p.Sanitize(c.Text)
+	c.Text = shortenAutoLinks(p.Sanitize(c.Text), shortURLLen)
 	c.Orig = p.Sanitize(c.Orig)
 	c.User.ID = template.HTMLEscapeString(c.User.ID)
 	c.User.Name = template.HTMLEscapeString(c.User.Name)
 	c.User.Picture = p.Sanitize(c.User.Picture)
+}
+
+// Shortens all the automatic links in HTML: auto link has equal "href" and "text" attributes.
+func shortenAutoLinks(commentHTML string, max int) string {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(commentHTML))
+	if err != nil {
+		return commentHTML
+	}
+	doc.Find("a").Each(func(i int, s *goquery.Selection) {
+		if href, ok := s.Attr("href"); ok {
+			if href != s.Text() || len(href) < max+3 || max < 3 {
+				return
+			}
+			url, err := url.Parse(href)
+			if err != nil {
+				return
+			}
+			url.Path, url.RawQuery, url.Fragment = "", "", ""
+			host := url.String()
+			if host == "" {
+				return
+			}
+			short := href[:max-3]
+			if len(short) < len(host) {
+				short = host
+			}
+			s.SetText(short + "...")
+		}
+	})
+	if html, err := doc.Find("body").Html(); err == nil {
+		return html
+	}
+
+	return commentHTML
 }
