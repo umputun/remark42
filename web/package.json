@@ -5,7 +5,8 @@
     "build": "NODE_ENV=production webpack --config ./webpack.config.js",
     "start": "webpack-dev-server --progress --hot --inline --config ./webpack.config.js",
     "reinstall": "rm -rf ./node_modules/ && npm install",
-    "lint": "eslint --ext=.js,.jsx ."
+    "lint": "eslint --ext=.js,.jsx .",
+    "test": "jest"
   },
   "devDependencies": {
     "autoprefixer": "^7.1.1",
@@ -23,6 +24,7 @@
     "extract-text-webpack-plugin": "^3.0.0",
     "file-loader": "^0.11.1",
     "html-webpack-plugin": "^2.30.1",
+    "jest": "^23.1.0",
     "node-sass": "sass/node-sass#v5",
     "postcss-csso": "^2.0.0",
     "postcss-loader": "^2.0.5",
@@ -39,5 +41,14 @@
     "bem-react-helper": "^1.1.2",
     "preact": "^8.2.7",
     "promise-polyfill": "^7.0.0"
+  },
+  "jest": {
+    "transform": {
+      "^.+\\.jsx?$": "<rootDir>/fileTransformer.js"
+    },
+    "setupFiles": [
+      "<rootDir>/injectGlobalVariable.js"
+    ],
+    "moduleDirectories": ["node_modules", "<rootDir>/app"]
   }
 }

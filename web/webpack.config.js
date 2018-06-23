@@ -8,6 +8,7 @@ const Html = require('html-webpack-plugin');
 const Provide = webpack.ProvidePlugin;
 const Define = webpack.DefinePlugin;
 
+const babelOptions = require('./babelOptions');
 const { NODE_ID } = require('./app/common/constants');
 const publicFolder = path.resolve(__dirname, 'public');
 const env = process.env.NODE_ENV || 'dev';
@@ -59,15 +60,7 @@ module.exports = {
         exclude: /(node_modules|\.vendor\.js$)/,
         use: {
           loader: 'babel-loader',
-          options: {
-            presets: [
-              ['env', {
-                targets: ['> 1%', 'android >= 4.4.4', 'ios >= 9'],
-                useBuiltIns: true,
-              }],
-            ],
-            plugins: ['transform-object-rest-spread', ['transform-react-jsx', { 'pragma': 'h' }]],
-          }
+          options: babelOptions,
         }
       },
       {

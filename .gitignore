@@ -10,6 +10,7 @@ debug.test
 .idea/
 /web/node_modules/
 /web/public/
+/web/coverage
 *.prof
 *.test
 /rest-client.env.json
