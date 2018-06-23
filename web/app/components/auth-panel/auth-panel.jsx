@@ -24,9 +24,7 @@ export default class AuthPanel extends Component {
   toggleBlockedVisibility() {
     if (!this.state.isBlockedVisible) {
       if (this.props.onBlockedUsersShow) this.props.onBlockedUsersShow();
-    } else {
-      if (this.props.onBlockedUsersHide) this.props.onBlockedUsersHide();
-    }
+    } else if (this.props.onBlockedUsersHide) this.props.onBlockedUsersHide();
 
     this.setState({ isBlockedVisible: !this.state.isBlockedVisible });
   }
@@ -70,7 +68,7 @@ export default class AuthPanel extends Component {
                         onClick={() => props.onSignIn(provider)}
                       >{PROVIDER_NAMES[provider]}</span>
                     </span>
-                  )
+                  );
                 })
               }
               {'.'}

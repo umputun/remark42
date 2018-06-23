@@ -1,6 +1,6 @@
 import { h, render } from 'preact';
 
-import { BASE_URL, DEFAULT_LAST_COMMENTS_MAX, LAST_COMMENTS_NODE_CLASSNAME } from './common/constants'
+import { BASE_URL, DEFAULT_LAST_COMMENTS_MAX, LAST_COMMENTS_NODE_CLASSNAME } from './common/constants';
 
 import api from 'common/api';
 
@@ -21,7 +21,7 @@ function init() {
   }
 
   try {
-    remark_config = remark_config || {}
+    remark_config = remark_config || {};
   } catch (e) {
     console.error('Remark42: Config object is undefined.');
     return;
@@ -42,7 +42,7 @@ function init() {
     api.last({ max, siteId: remark_config.site_id })
       .then(comments => {
         try {
-          render(<ListComments comments={comments}/>, node)
+          render(<ListComments comments={comments}/>, node);
         } catch (e) {
           console.error('Remark42: Something went wrong with last comments rendering');
           console.error(e);

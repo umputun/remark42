@@ -1,6 +1,6 @@
 import { siteId, url } from './settings';
 
-import fetcher from './fetcher'
+import fetcher from './fetcher';
 
 // TODO: rename actions
 
@@ -22,7 +22,7 @@ export const counts = ({ urls, siteId }) => fetcher.post({
 
 export const getComment = ({ id }) => fetcher.get(`/id/${id}?url=${url}`);
 
-export const getUserComments = ({ user, limit }) => fetcher.get(`/comments?user=${user}&limit=${limit}`)
+export const getUserComments = ({ user, limit }) => fetcher.get(`/comments?user=${user}&limit=${limit}`);
 
 export const vote = ({ id, url, value }) => fetcher.put({
   url: `/vote/${id}?url=${url}&vote=${value}`,

@@ -15,7 +15,7 @@ function init() {
   }
 
   try {
-    remark_config = remark_config || {}
+    remark_config = remark_config || {};
   } catch (e) {
     console.error('Remark42: Config object is undefined.');
     return;

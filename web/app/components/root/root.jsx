@@ -22,7 +22,7 @@ export default class Root extends Component {
 
     try {
       sort = localStorage.getItem(LS_SORT_KEY) || DEFAULT_SORT;
-    } catch(e) {
+    } catch (e) {
       sort = DEFAULT_SORT;
     }
 
@@ -117,7 +117,7 @@ export default class Root extends Component {
             store.set('user', user);
             this.setState({ user });
           })
-          .catch(() => {}) // TODO: we need to handle it and write error to user
+          .catch(() => {}); // TODO: we need to handle it and write error to user
       }
     }, checkMsDelay);
   }
@@ -178,7 +178,7 @@ export default class Root extends Component {
     });
   }
 
-  render({}, { config = {}, comments = [], user, sort, isLoaded, isBlockedVisible, isCommentsListLoading, bannedUsers, commentsShown }) {
+  render(props, { config = {}, comments = [], user, sort, isLoaded, isBlockedVisible, isCommentsListLoading, bannedUsers, commentsShown }) {
     if (!isLoaded) {
       return (
         <div id={NODE_ID}>
