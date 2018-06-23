@@ -34,10 +34,11 @@ export default class AuthPanel extends Component {
 
     const sortArray = getSortArray(sort);
 
+    let loggedIn = !!user.id;
     return (
-      <div className={b('auth-panel', props, { loggedIn: !!user.id })}>
+      <div className={b('auth-panel', props, { loggedIn })}>
         {
-          !!user.id && (
+          loggedIn && (
             <div className="auth-panel__column">
               You signed in as
               {' '}
@@ -50,7 +51,7 @@ export default class AuthPanel extends Component {
         }
 
         {
-          !user.id && (
+          !loggedIn && (
             <div className="auth-panel__column">
               Sign in to comment using
               {' '}

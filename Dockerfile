@@ -48,7 +48,7 @@ ADD web /srv/web
 RUN apk add --no-cache --update git
 RUN \
     cd /srv/web && \
-    npm i && npm run lint && npm run build && \
+    npm i && npm run lint && npm run test && npm run build && \
     rm -rf ./node_modules
 
 
