@@ -7,7 +7,7 @@ pipeline:
   build:
     image: golang:1.10-alpine
     commands:
-      - cd app
+      - cd backend/app
       - go build -v ./...
 
   docker_master:
