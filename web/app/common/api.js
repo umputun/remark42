@@ -79,7 +79,7 @@ export const setVerifyStatus = ({ id }) => fetcher.put({
   withCredentials: true,
 });
 
-export const unverify = ({ id }) => fetcher.put({
+export const removeVerifyStatus = ({ id }) => fetcher.put({
   url: `/admin/verify/${id}?verified=0`,
   withCredentials: true,
 });
@@ -121,7 +121,7 @@ export default {
   pinComment,
   unpinComment,
   setVerifyStatus,
-  unverify,
+  removeVerifyStatus,
   remove,
   blockUser,
   unblockUser,

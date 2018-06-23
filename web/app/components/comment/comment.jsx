@@ -173,7 +173,7 @@ export default class Comment extends Component {
     if (confirm('Do you want to unverify this user?')) {
       this.setState({ isUserVerified: false });
 
-      api.unverify({ id: userId }).then(() => {
+      api.removeVerifyStatus({ id: userId }).then(() => {
         api.getComment({ id }).then(comment => store.replaceComment(comment));
       });
     }
