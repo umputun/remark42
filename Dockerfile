@@ -15,10 +15,9 @@ ARG TRAVIS_TAG
 ARG DRONE_TAG
 ARG DRONE_COMMIT
 
-WORKDIR /go/src/github.com/umputun/remark
+WORKDIR /go/src/github.com/umputun/remark/backend
 
-ADD app /go/src/github.com/umputun/remark/app
-ADD vendor /go/src/github.com/umputun/remark/vendor
+ADD backend /go/src/github.com/umputun/remark/backend
 ADD .git /go/src/github.com/umputun/remark/.git
 
 RUN cd app && go test ./...
@@ -66,7 +65,7 @@ ADD start.sh /srv/start.sh
 
 RUN chmod +x /srv/start.sh /srv/import-disqus.sh /srv/restore-backup.sh /srv/migrate-data.sh /srv/create-backup.sh
 
-COPY --from=build-backend /go/src/github.com/umputun/remark/remark /srv/
+COPY --from=build-backend /go/src/github.com/umputun/remark/backend/remark /srv/
 COPY --from=build-frontend /srv/web/public/ /srv/web
 RUN chown -R app:app /srv
 
