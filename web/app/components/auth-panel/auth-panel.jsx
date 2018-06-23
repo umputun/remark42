@@ -51,7 +51,7 @@ export default class AuthPanel extends Component {
         }
 
         {
-          loggedIn === false && (
+          !loggedIn && (
             <div className="auth-panel__column">
               Sign in to comment using
               {' '}
