@@ -1,6 +1,5 @@
-import 'babel-polyfill'; // TODO: remove it
+import 'babel-polyfill';
 import 'common/promises';
-import 'common/polyfills'; // TODO: check it
 
 import { h, render } from 'preact';
 import Root from './components/root';

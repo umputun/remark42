@@ -1,8 +1,6 @@
-@import 'common/variables';
-
 .root__pinned-comments {
   margin-top: 24px;
-  padding: ($offset / 3) ($offset / 2);
+  padding: 8px 12px;
   border-radius: 2px;
   background: #edf6f7;
 }

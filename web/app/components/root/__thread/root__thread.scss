@@ -1,7 +1,5 @@
-@import 'common/variables';
-
 .root__thread {
   &:last-child {
-    margin-bottom: -$offset;
+    margin-bottom: -24px;
   }
 }
