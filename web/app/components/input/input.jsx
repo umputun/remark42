@@ -94,7 +94,7 @@ export default class Input extends Component {
 
     const request = mods.mode === 'edit'
       ? api.edit({ text, id })
-      : api.send({ text, ...(pid ? { pid } : {}) });
+      : api.addComment({ text, ...(pid ? { pid } : {}) });
 
     request
       .then(comment => {

@@ -29,7 +29,7 @@ export const putCommentVote = ({ id, url, value }) => fetcher.put({
   withCredentials: true,
 });
 
-export const send = ({ text, pid }) => fetcher.post({
+export const addComment = ({ text, pid }) => fetcher.post({
   url: '/comment',
   body: {
     text,
@@ -112,8 +112,8 @@ export default {
   getCommentsCount,
   getComment,
   getUserComments,
-    putCommentVote,
-  send,
+  putCommentVote,
+  addComment,
   edit,
   getUser,
   getPreview,
