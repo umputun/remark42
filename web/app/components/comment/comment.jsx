@@ -137,7 +137,7 @@ export default class Comment extends Component {
     if (confirm('Do you want to pin this comment?')) {
       this.setState({ pinned: true });
 
-      api.pin({ id, url }).then(() => {
+      api.pinComment({ id, url }).then(() => {
         api.getComment({ id }).then(comment => store.replaceComment(comment));
       });
     }

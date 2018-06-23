@@ -64,7 +64,7 @@ export const getUser = () => fetcher.get({
 });
 
 /* admin */
-export const pin = ({ id, url }) => fetcher.put({
+export const pinComment = ({ id, url }) => fetcher.put({
   url: `/admin/pin/${id}?url=${url}&pin=1`,
   withCredentials: true,
 });
@@ -118,7 +118,7 @@ export default {
   getUser,
   getPreview,
 
-  pin,
+  pinComment,
   unpin,
   verify,
   unverify,
