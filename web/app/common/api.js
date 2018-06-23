@@ -24,7 +24,7 @@ export const getComment = ({ id }) => fetcher.get(`/id/${id}?url=${url}`);
 
 export const getUserComments = ({ user, limit }) => fetcher.get(`/comments?user=${user}&limit=${limit}`);
 
-export const vote = ({ id, url, value }) => fetcher.put({
+export const putCommentVote = ({ id, url, value }) => fetcher.put({
   url: `/vote/${id}?url=${url}&vote=${value}`,
   withCredentials: true,
 });
@@ -112,7 +112,7 @@ export default {
   getCommentsCount,
   getComment,
   getUserComments,
-  vote,
+    putCommentVote,
   send,
   edit,
   getUser,

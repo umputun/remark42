@@ -233,7 +233,7 @@ export default class Comment extends Component {
 
     this.votingPromise = this.votingPromise
       .then(() => {
-        return api.vote({ id, url, value: 1 })
+        return api.putCommentVote({ id, url, value: 1 })
           .then(() => {
             api.getComment({ id }).then(comment => store.replaceComment(comment));
           });
@@ -254,7 +254,7 @@ export default class Comment extends Component {
 
     this.votingPromise = this.votingPromise
       .then(() => {
-        return api.vote({ id, url, value: -1 })
+        return api.putCommentVote({ id, url, value: -1 })
           .then(() => {
             api.getComment({ id }).then(comment => store.replaceComment(comment));
           });
