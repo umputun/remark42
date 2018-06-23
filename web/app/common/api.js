@@ -15,7 +15,7 @@ export const getPostComments = ({ sort, url }) => fetcher.get(`/find?url=${url}&
 
 export const getLastComments = ({ siteId, max }) => fetcher.get(`/last/${max}?site=${siteId}`);
 
-export const counts = ({ urls, siteId }) => fetcher.post({
+export const getCommentsCount = ({ urls, siteId }) => fetcher.post({
   url: `/counts?site=${siteId}`,
   body: urls,
 });
@@ -109,7 +109,7 @@ export default {
   getConfig,
   getPostComments,
   getLastComments,
-  counts,
+  getCommentsCount,
   getComment,
   getUserComments,
   vote,
