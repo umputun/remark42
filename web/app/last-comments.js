@@ -5,7 +5,6 @@ import { BASE_URL, DEFAULT_LAST_COMMENTS_MAX, LAST_COMMENTS_NODE_CLASSNAME } fro
 import api from 'common/api';
 
 import ListComments from 'components/list-comments';
-import {getLastComments} from "./common/api";
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
