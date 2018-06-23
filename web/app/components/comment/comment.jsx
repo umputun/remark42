@@ -161,7 +161,7 @@ export default class Comment extends Component {
     if (confirm('Do you want to verify this user?')) {
       this.setState({ isUserVerified: true });
 
-      api.verify({ id: userId }).then(() => {
+      api.setVerifyStatus({ id: userId }).then(() => {
         api.getComment({ id }).then(comment => store.replaceComment(comment));
       });
     }
