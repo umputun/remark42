@@ -108,7 +108,7 @@ export default {
   logOut,
   getConfig,
   getPostComments,
-  last,
+  getLastComments,
   counts,
   getComment,
   getUserComments,
