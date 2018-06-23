@@ -9,7 +9,7 @@
 // the sys API in an architecture specific manner.
 //
 // mkpost is run after cgo -godefs; see README.md.
-package unix
+package main
 
 import (
 	"bytes"
