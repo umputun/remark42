@@ -213,7 +213,7 @@ export default class Comment extends Component {
         isReplying: false,
       });
 
-      api.remove({ id }).then(() => {
+      api.removeComment({ id }).then(() => {
         api.getComment({ id }).then(comment => store.replaceComment(comment));
       });
     }

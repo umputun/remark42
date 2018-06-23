@@ -84,7 +84,7 @@ export const removeVerifyStatus = ({ id }) => fetcher.put({
   withCredentials: true,
 });
 
-export const remove = ({ id }) => fetcher.delete({
+export const removeComment = ({ id }) => fetcher.delete({
   url: `/admin/comment/${id}?url=${url}`,
   withCredentials: true,
 });
@@ -122,7 +122,7 @@ export default {
   unpinComment,
   setVerifyStatus,
   removeVerifyStatus,
-  remove,
+  removeComment,
   blockUser,
   unblockUser,
   getBlocked,
