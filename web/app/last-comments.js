@@ -39,7 +39,7 @@ function init() {
 
   [].slice.call(nodes).forEach(node => {
     const max = node.dataset.max || remark_config.max_last_comments || DEFAULT_LAST_COMMENTS_MAX;
-    api.last({ max, siteId: remark_config.site_id })
+    api.getLastComments({ max, siteId: remark_config.site_id })
       .then(comments => {
         try {
           render(<ListComments comments={comments}/>, node);

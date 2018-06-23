@@ -62,7 +62,7 @@ export default class Root extends Component {
       api.getUser()
         .then(data => store.set('user', data))
         .catch(() => store.set('user', {})),
-      api.find({ sort, url })
+      api.getPostComments({ sort, url })
         .then(({ comments = [] } = {}) => store.set('comments', comments))
         .catch(() => store.set('comments', [])),
     ]).finally(() => {
@@ -133,7 +133,7 @@ export default class Root extends Component {
 
     // if someone was unblocked let's reload comments
     if (wasSomeoneUnblocked) {
-      api.find({ sort, url }).then(({ comments } = {}) => store.set('comments', comments));
+      api.getPostComments({ sort, url }).then(({ comments } = {}) => store.set('comments', comments));
     }
 
     this.setState({
@@ -153,7 +153,7 @@ export default class Root extends Component {
       // can't save; ignore it
     }
 
-    api.find({ sort, url })
+    api.getPostComments({ sort, url })
       .then(({ comments } = {}) => store.set('comments', comments))
       .finally(() => {
         this.setState({ isCommentsListLoading: false });

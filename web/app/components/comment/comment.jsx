@@ -137,7 +137,7 @@ export default class Comment extends Component {
     if (confirm('Do you want to pin this comment?')) {
       this.setState({ pinned: true });
 
-      api.pin({ id, url }).then(() => {
+      api.pinComment({ id, url }).then(() => {
         api.getComment({ id }).then(comment => store.replaceComment(comment));
       });
     }
@@ -149,7 +149,7 @@ export default class Comment extends Component {
     if (confirm('Do you want to unpin this comment?')) {
       this.setState({ pinned: false });
 
-      api.unpin({ id, url }).then(() => {
+      api.unpinComment({ id, url }).then(() => {
         api.getComment({ id }).then(comment => store.replaceComment(comment));
       });
     }
@@ -161,7 +161,7 @@ export default class Comment extends Component {
     if (confirm('Do you want to verify this user?')) {
       this.setState({ isUserVerified: true });
 
-      api.verify({ id: userId }).then(() => {
+      api.setVerifyStatus({ id: userId }).then(() => {
         api.getComment({ id }).then(comment => store.replaceComment(comment));
       });
     }
@@ -173,7 +173,7 @@ export default class Comment extends Component {
     if (confirm('Do you want to unverify this user?')) {
       this.setState({ isUserVerified: false });
 
-      api.unverify({ id: userId }).then(() => {
+      api.removeVerifyStatus({ id: userId }).then(() => {
         api.getComment({ id }).then(comment => store.replaceComment(comment));
       });
     }
@@ -213,7 +213,7 @@ export default class Comment extends Component {
         isReplying: false,
       });
 
-      api.remove({ id }).then(() => {
+      api.removeComment({ id }).then(() => {
         api.getComment({ id }).then(comment => store.replaceComment(comment));
       });
     }
@@ -233,7 +233,7 @@ export default class Comment extends Component {
 
     this.votingPromise = this.votingPromise
       .then(() => {
-        return api.vote({ id, url, value: 1 })
+        return api.putCommentVote({ id, url, value: 1 })
           .then(() => {
             api.getComment({ id }).then(comment => store.replaceComment(comment));
           });
@@ -254,7 +254,7 @@ export default class Comment extends Component {
 
     this.votingPromise = this.votingPromise
       .then(() => {
-        return api.vote({ id, url, value: -1 })
+        return api.putCommentVote({ id, url, value: -1 })
           .then(() => {
             api.getComment({ id }).then(comment => store.replaceComment(comment));
           });

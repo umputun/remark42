@@ -11,11 +11,11 @@ export const logOut = () => fetcher.get({ url: `/auth/logout`, overriddenApiBase
 export const getConfig = () => fetcher.get(`/config`);
 
 // TODO: looks like we can get url from settings here and below
-export const find = ({ sort, url }) => fetcher.get(`/find?url=${url}&sort=${sort}&format=tree`);
+export const getPostComments = ({ sort, url }) => fetcher.get(`/find?url=${url}&sort=${sort}&format=tree`);
 
-export const last = ({ siteId, max }) => fetcher.get(`/last/${max}?site=${siteId}`);
+export const getLastComments = ({ siteId, max }) => fetcher.get(`/last/${max}?site=${siteId}`);
 
-export const counts = ({ urls, siteId }) => fetcher.post({
+export const getCommentsCount = ({ urls, siteId }) => fetcher.post({
   url: `/counts?site=${siteId}`,
   body: urls,
 });
@@ -24,12 +24,12 @@ export const getComment = ({ id }) => fetcher.get(`/id/${id}?url=${url}`);
 
 export const getUserComments = ({ user, limit }) => fetcher.get(`/comments?user=${user}&limit=${limit}`);
 
-export const vote = ({ id, url, value }) => fetcher.put({
+export const putCommentVote = ({ id, url, value }) => fetcher.put({
   url: `/vote/${id}?url=${url}&vote=${value}`,
   withCredentials: true,
 });
 
-export const send = ({ text, pid }) => fetcher.post({
+export const addComment = ({ text, pid }) => fetcher.post({
   url: '/comment',
   body: {
     text,
@@ -42,7 +42,7 @@ export const send = ({ text, pid }) => fetcher.post({
   withCredentials: true,
 });
 
-export const edit = ({ text, id }) => fetcher.put({
+export const updateComment = ({ text, id }) => fetcher.put({
   url: `/comment/${id}?url=${url}`,
   body: {
     text,
@@ -64,27 +64,27 @@ export const getUser = () => fetcher.get({
 });
 
 /* admin */
-export const pin = ({ id, url }) => fetcher.put({
+export const pinComment = ({ id, url }) => fetcher.put({
   url: `/admin/pin/${id}?url=${url}&pin=1`,
   withCredentials: true,
 });
 
-export const unpin = ({ id, url }) => fetcher.put({
+export const unpinComment = ({ id, url }) => fetcher.put({
   url: `/admin/pin/${id}?url=${url}&pin=0`,
   withCredentials: true,
 });
 
-export const verify = ({ id }) => fetcher.put({
+export const setVerifyStatus = ({ id }) => fetcher.put({
   url: `/admin/verify/${id}?verified=1`,
   withCredentials: true,
 });
 
-export const unverify = ({ id }) => fetcher.put({
+export const removeVerifyStatus = ({ id }) => fetcher.put({
   url: `/admin/verify/${id}?verified=0`,
   withCredentials: true,
 });
 
-export const remove = ({ id }) => fetcher.delete({
+export const removeComment = ({ id }) => fetcher.delete({
   url: `/admin/comment/${id}?url=${url}`,
   withCredentials: true,
 });
@@ -107,22 +107,22 @@ export const getBlocked = () => fetcher.get({
 export default {
   logOut,
   getConfig,
-  find,
-  last,
-  counts,
+  getPostComments,
+  getLastComments,
+  getCommentsCount,
   getComment,
   getUserComments,
-  vote,
-  send,
-  edit,
+  putCommentVote,
+  addComment,
+  updateComment,
   getUser,
   getPreview,
 
-  pin,
-  unpin,
-  verify,
-  unverify,
-  remove,
+  pinComment,
+  unpinComment,
+  setVerifyStatus,
+  removeVerifyStatus,
+  removeComment,
   blockUser,
   unblockUser,
   getBlocked,
