@@ -149,7 +149,7 @@ export default class Comment extends Component {
     if (confirm('Do you want to unpin this comment?')) {
       this.setState({ pinned: false });
 
-      api.unpin({ id, url }).then(() => {
+      api.unpinComment({ id, url }).then(() => {
         api.getComment({ id }).then(comment => store.replaceComment(comment));
       });
     }

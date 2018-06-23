@@ -69,7 +69,7 @@ export const pinComment = ({ id, url }) => fetcher.put({
   withCredentials: true,
 });
 
-export const unpin = ({ id, url }) => fetcher.put({
+export const unpinComment = ({ id, url }) => fetcher.put({
   url: `/admin/pin/${id}?url=${url}&pin=0`,
   withCredentials: true,
 });
@@ -119,7 +119,7 @@ export default {
   getPreview,
 
   pinComment,
-  unpin,
+  unpinComment,
   verify,
   unverify,
   remove,
