@@ -11,9 +11,9 @@ export const logOut = () => fetcher.get({ url: `/auth/logout`, overriddenApiBase
 export const getConfig = () => fetcher.get(`/config`);
 
 // TODO: looks like we can get url from settings here and below
-export const find = ({ sort, url }) => fetcher.get(`/find?url=${url}&sort=${sort}&format=tree`);
+export const getPostComments = ({ sort, url }) => fetcher.get(`/find?url=${url}&sort=${sort}&format=tree`);
 
-export const last = ({ siteId, max }) => fetcher.get(`/last/${max}?site=${siteId}`);
+export const getLastComments = ({ siteId, max }) => fetcher.get(`/last/${max}?site=${siteId}`);
 
 export const counts = ({ urls, siteId }) => fetcher.post({
   url: `/counts?site=${siteId}`,
@@ -107,7 +107,7 @@ export const getBlocked = () => fetcher.get({
 export default {
   logOut,
   getConfig,
-  find,
+  getPostComments,
   last,
   counts,
   getComment,
