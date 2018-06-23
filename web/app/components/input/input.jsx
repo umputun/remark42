@@ -93,7 +93,7 @@ export default class Input extends Component {
     this.setState({ isDisabled: true, isErrorShown: false });
 
     const request = mods.mode === 'edit'
-      ? api.edit({ text, id })
+      ? api.updateComment({ text, id })
       : api.addComment({ text, ...(pid ? { pid } : {}) });
 
     request
