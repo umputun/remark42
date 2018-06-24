@@ -42,6 +42,7 @@
     "preact": "^8.2.7",
     "promise-polyfill": "^7.0.0"
   },
+  "eslintIgnore": ["public"],
   "jest": {
     "transform": {
       "^.+\\.jsx?$": "<rootDir>/fileTransformer.js"

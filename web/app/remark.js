@@ -1,8 +1,10 @@
+/* eslint-disable no-console */
 import 'babel-polyfill';
 import 'common/promises';
 
 import { h, render } from 'preact';
 import Root from './components/root';
+// eslint-disable-next-line no-unused-vars
 import ListComments from './components/list-comments'; // TODO: temp solution for extracting styles
 
 import { NODE_ID } from './common/constants';
