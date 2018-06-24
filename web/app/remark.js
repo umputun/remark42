@@ -1,6 +1,5 @@
 /* eslint-disable no-console */
-import 'babel-polyfill';
-import 'common/promises';
+import loadPolyfills from 'common/polyfills';
 
 import { h, render } from 'preact';
 import Root from './components/root';
@@ -9,11 +8,13 @@ import ListComments from './components/list-comments'; // TODO: temp solution fo
 
 import { NODE_ID } from './common/constants';
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
-} else {
-  init();
-}
+loadPolyfills().then(() => {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+});
 
 function init() {
   const node = document.getElementById(NODE_ID);

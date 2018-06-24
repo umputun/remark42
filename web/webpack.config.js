@@ -8,6 +8,7 @@ const Copy = require('copy-webpack-plugin');
 const Html = require('html-webpack-plugin');
 const Provide = webpack.ProvidePlugin;
 const Define = webpack.DefinePlugin;
+const BundleAnalyze = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 
 const babelOptions = require('./babelOptions');
 const { NODE_ID } = require('./app/common/constants');
@@ -48,7 +49,8 @@ module.exports = {
   },
   output: {
     path: publicFolder,
-    filename: `[name].js`
+    filename: `[name].js`,
+    chunkFilename: '[name].js'
   },
   resolve: {
     extensions: ['.jsx', '.js'],
@@ -123,6 +125,16 @@ module.exports = {
     }),
     new webpack.optimize.ModuleConcatenationPlugin(),
     ...(env === 'production' ? [new webpack.optimize.UglifyJsPlugin()] : []),
+    ...(process.env.CI === 'true' ? [] : [
+      new BundleAnalyze({
+        analyzerMode: 'static',
+        reportFilename: 'report.html',
+        defaultSizes: 'parsed',
+        generateStatsFile: false,
+        logLevel: 'info',
+        openAnalyzer: false
+      })
+    ]),
     new Copy(['./iframe.html']),
   ],
   watch: env === 'dev',
