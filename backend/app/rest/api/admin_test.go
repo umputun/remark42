@@ -161,10 +161,13 @@ func TestAdmin_Block(t *testing.T) {
 	_, err = srv.DataService.Create(c2)
 	assert.Nil(t, err)
 
-	block := func(val int) (code int, body []byte) {
+	block := func(val int, ttl string) (code int, body []byte) {
 		client := http.Client{}
-		req, e := http.NewRequest(http.MethodPut,
-			fmt.Sprintf("%s/api/v1/admin/user/%s?site=radio-t&block=%d", ts.URL, "user1", val), nil)
+		url := fmt.Sprintf("%s/api/v1/admin/user/%s?site=radio-t&block=%d", ts.URL, "user1", val)
+		if ttl != "" {
+			url = url + "&ttl=" + ttl
+		}
+		req, e := http.NewRequest(http.MethodPut, url, nil)
 		assert.Nil(t, e)
 		req.SetBasicAuth("dev", "password")
 		resp, e := client.Do(req)
@@ -175,7 +178,8 @@ func TestAdmin_Block(t *testing.T) {
 		return resp.StatusCode, body
 	}
 
-	code, body := block(1)
+	// block permanently
+	code, body := block(1, "")
 	require.Equal(t, 200, code)
 	j := JSON{}
 	err = json.Unmarshal(body, &j)
@@ -193,11 +197,34 @@ func TestAdmin_Block(t *testing.T) {
 	assert.Equal(t, "", comments.Comments[0].Text)
 	assert.True(t, comments.Comments[0].Deleted)
 
-	code, body = block(-1)
+	code, body = block(-1, "")
 	require.Equal(t, 200, code)
 	err = json.Unmarshal(body, &j)
 	assert.Nil(t, err)
 	assert.Equal(t, false, j["block"])
+
+	// block with ttl
+	code, _ = block(1, "10ms")
+	require.Equal(t, 200, code)
+
+	res, code = get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah&sort=+time")
+	assert.Equal(t, 200, code)
+	comments = commentsWithInfo{}
+	err = json.Unmarshal([]byte(res), &comments)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(comments.Comments), "should have 2 comments")
+	assert.Equal(t, "", comments.Comments[0].Text)
+	assert.True(t, comments.Comments[0].Deleted)
+
+	time.Sleep(11 * time.Millisecond)
+	res, code = get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah&sort=+time")
+	assert.Equal(t, 200, code)
+	comments = commentsWithInfo{}
+	err = json.Unmarshal([]byte(res), &comments)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(comments.Comments), "should have 2 comments")
+	assert.Equal(t, "test test #1", comments.Comments[0].Text)
+	assert.False(t, comments.Comments[0].Deleted)
 }
 
 func TestAdmin_BlockedList(t *testing.T) {
@@ -217,7 +244,7 @@ func TestAdmin_BlockedList(t *testing.T) {
 
 	// block user2
 	req, err = http.NewRequest(http.MethodPut,
-		fmt.Sprintf("%s/api/v1/admin/user/%s?site=radio-t&block=%d", ts.URL, "user2", 1), nil)
+		fmt.Sprintf("%s/api/v1/admin/user/%s?site=radio-t&block=%d&ttl=10ms", ts.URL, "user2", 1), nil)
 	assert.Nil(t, err)
 	req.SetBasicAuth("dev", "password")
 	_, err = client.Do(req)
@@ -231,6 +258,15 @@ func TestAdmin_BlockedList(t *testing.T) {
 	assert.Equal(t, 2, len(users), "two users blocked")
 	assert.Equal(t, "user1", users[0].ID)
 	assert.Equal(t, "user2", users[1].ID)
+
+	time.Sleep(11 * time.Millisecond)
+	res, code = getWithAuth(t, ts.URL+"/api/v1/admin/blocked?site=radio-t")
+	require.Equal(t, 200, code, res)
+	users = []store.BlockedUser{}
+	err = json.Unmarshal([]byte(res), &users)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(users), "one user left blocked")
+
 }
 
 func TestAdmin_ReadOnly(t *testing.T) {

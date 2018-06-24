@@ -428,13 +428,13 @@ Sort can be `time`, `active` or `score`. Supported sort order with prefix -/+, i
 ### Admin
 
 * `DELETE /api/v1/admin/comment/{id}?site=site-id&url=post-url` - delete comment by `id`.
-* `PUT /api/v1/admin/user/{userid}?site=site-id&block=1` - block or unblock user.
-* `GET api/v1/admin/blocked&site=site-id` - list of blocked user ids.
+* `PUT /api/v1/admin/user/{userid}?site=site-id&block=1&ttl=7d` - block or unblock user with optional ttl (default=permanent)
+* `GET api/v1/admin/blocked&site=site-id` - list of blocked user ids
   ```go
   type BlockedUser struct {
       ID        string    `json:"id"`
       Name      string    `json:"name"`
-      Timestamp time.Time `json:"time"`
+      Until     time.Time `json:"time"`
   }
   ```
 * `GET /api/v1/admin/export?site=side-id&mode=[stream|file]` - export all comments to json stream or gz file.

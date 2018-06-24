@@ -5,6 +5,7 @@ package engine
 import (
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/umputun/remark/backend/app/store"
 )
@@ -44,7 +45,7 @@ type Admin interface {
 	Delete(locator store.Locator, commentID string, mode store.DeleteMode) error // delete comment by id
 	DeleteAll(siteID string) error                                               // delete all data from site
 	DeleteUser(siteID string, userID string) error                               // remove all comments from user
-	SetBlock(siteID string, userID string, status bool) error                    // block or unblock  user
+	SetBlock(siteID string, userID string, status bool, ttl time.Duration) error // block or unblock user with TTL (0-permanent)
 	IsBlocked(siteID string, userID string) bool                                 // check if user blocked
 	Blocked(siteID string) ([]store.BlockedUser, error)                          // get list of blocked users
 	SetReadOnly(locator store.Locator, status bool) error                        // set/reset read-only flag

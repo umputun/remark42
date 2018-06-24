@@ -155,8 +155,9 @@ func (b *BoltDB) DeleteUser(siteID string, userID string) error {
 	return err
 }
 
-// SetBlock blocks/unblocks user for given site
-func (b *BoltDB) SetBlock(siteID string, userID string, status bool) error {
+// SetBlock blocks/unblocks user for given site. ttl defines for for how long, 0 - permanent
+// block uses blocksBucketName with key=userID and val=TTL+now
+func (b *BoltDB) SetBlock(siteID string, userID string, status bool, ttl time.Duration) error {
 
 	bdb, err := b.db(siteID)
 	if err != nil {
@@ -167,7 +168,11 @@ func (b *BoltDB) SetBlock(siteID string, userID string, status bool) error {
 		bucket := tx.Bucket([]byte(blocksBucketName))
 		switch status {
 		case true:
-			if e := bucket.Put([]byte(userID), []byte(time.Now().Format(tsNano))); e != nil {
+			val := time.Now().AddDate(100, 0, 0).Format(tsNano) // permanent is 50year
+			if ttl > 0 {
+				val = time.Now().Add(ttl).Format(tsNano)
+			}
+			if e := bucket.Put([]byte(userID), []byte(val)); e != nil {
 				return errors.Wrapf(e, "failed to put %s to %s", userID, blocksBucketName)
 			}
 		case false:
@@ -189,7 +194,18 @@ func (b *BoltDB) IsBlocked(siteID string, userID string) (blocked bool) {
 
 	_ = bdb.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(blocksBucketName))
-		blocked = bucket.Get([]byte(userID)) != nil
+		val := bucket.Get([]byte(userID))
+		if val == nil {
+			blocked = false
+			return nil
+		}
+
+		until, err := time.Parse(tsNano, string(val))
+		if err != nil {
+			blocked = false
+			return nil
+		}
+		blocked = time.Now().Before(until)
 		return nil
 	})
 	return blocked
@@ -211,14 +227,15 @@ func (b *BoltDB) Blocked(siteID string) (users []store.BlockedUser, err error) {
 			if e != nil {
 				return errors.Wrap(e, "can't parse block ts")
 			}
-
-			// get user name from comment user section
-			userName := ""
-			userComments, e := b.User(siteID, string(k), 1, 0)
-			if e == nil && len(userComments) > 0 {
-				userName = userComments[0].User.Name
+			if time.Now().Before(ts) {
+				// get user name from comment user section
+				userName := ""
+				userComments, e := b.User(siteID, string(k), 1, 0)
+				if e == nil && len(userComments) > 0 {
+					userName = userComments[0].User.Name
+				}
+				users = append(users, store.BlockedUser{ID: string(k), Name: userName, Until: ts})
 			}
-			users = append(users, store.BlockedUser{ID: string(k), Name: userName, Timestamp: ts})
 			return nil
 		})
 	})
