@@ -123,7 +123,7 @@ func (a *admin) setBlockCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	blockStatus := r.URL.Query().Get("block") == "1"
 
-	ttl := 0 * time.Nanosecond // unlimited duration by default
+	ttl := time.Duration(0) // unlimited duration by default
 	if ttlParam := r.URL.Query().Get("ttl"); ttlParam != "" {
 		if d, err := time.ParseDuration(ttlParam); err == nil {
 			ttl = d

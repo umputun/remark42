@@ -155,7 +155,8 @@ func (b *BoltDB) DeleteUser(siteID string, userID string) error {
 	return err
 }
 
-// SetBlock blocks/unblocks user for given site
+// SetBlock blocks/unblocks user for given site. ttl defines for for how long, 0 - permanent
+// block uses blocksBucketName with key=userID and val=TTL+now
 func (b *BoltDB) SetBlock(siteID string, userID string, status bool, ttl time.Duration) error {
 
 	bdb, err := b.db(siteID)
@@ -167,7 +168,7 @@ func (b *BoltDB) SetBlock(siteID string, userID string, status bool, ttl time.Du
 		bucket := tx.Bucket([]byte(blocksBucketName))
 		switch status {
 		case true:
-			val := time.Now().AddDate(100, 0, 0).Format(tsNano)
+			val := time.Now().AddDate(100, 0, 0).Format(tsNano) // permanent is 50year
 			if ttl > 0 {
 				val = time.Now().Add(ttl).Format(tsNano)
 			}
