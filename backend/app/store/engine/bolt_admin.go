@@ -3,6 +3,7 @@ package engine
 import (
 	"encoding/json"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/coreos/bbolt"
@@ -156,7 +157,7 @@ func (b *BoltDB) DeleteUser(siteID string, userID string) error {
 }
 
 // SetBlock blocks/unblocks user for given site
-func (b *BoltDB) SetBlock(siteID string, userID string, status bool) error {
+func (b *BoltDB) SetBlock(siteID string, userID string, status bool, ttl time.Duration) error {
 
 	bdb, err := b.db(siteID)
 	if err != nil {
@@ -167,7 +168,11 @@ func (b *BoltDB) SetBlock(siteID string, userID string, status bool) error {
 		bucket := tx.Bucket([]byte(blocksBucketName))
 		switch status {
 		case true:
-			if e := bucket.Put([]byte(userID), []byte(time.Now().Format(tsNano))); e != nil {
+			val := time.Now().AddDate(100, 0, 0).Format(tsNano)
+			if ttl > 0 {
+				val = time.Now().Add(ttl).Format(tsNano)
+			}
+			if e := bucket.Put([]byte(userID), []byte(val)); e != nil {
 				return errors.Wrapf(e, "failed to put %s to %s", userID, blocksBucketName)
 			}
 		case false:
@@ -189,7 +194,18 @@ func (b *BoltDB) IsBlocked(siteID string, userID string) (blocked bool) {
 
 	_ = bdb.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(blocksBucketName))
-		blocked = bucket.Get([]byte(userID)) != nil
+		val := bucket.Get([]byte(userID))
+		if val == nil {
+			blocked = false
+			return nil
+		}
+
+		until, err := time.Parse(tsNano, string(val))
+		if err != nil {
+			blocked = false
+			return nil
+		}
+		blocked = time.Now().Before(until)
 		return nil
 	})
 	return blocked
@@ -211,19 +227,36 @@ func (b *BoltDB) Blocked(siteID string) (users []store.BlockedUser, err error) {
 			if e != nil {
 				return errors.Wrap(e, "can't parse block ts")
 			}
-
-			// get user name from comment user section
-			userName := ""
-			userComments, e := b.User(siteID, string(k), 1, 0)
-			if e == nil && len(userComments) > 0 {
-				userName = userComments[0].User.Name
+			if time.Now().Before(ts) {
+				// get user name from comment user section
+				userName := ""
+				userComments, e := b.User(siteID, string(k), 1, 0)
+				if e == nil && len(userComments) > 0 {
+					userName = userComments[0].User.Name
+				}
+				users = append(users, store.BlockedUser{ID: string(k), Name: userName, Until: ts})
 			}
-			users = append(users, store.BlockedUser{ID: string(k), Name: userName, Timestamp: ts})
 			return nil
 		})
 	})
 
 	return users, err
+}
+
+func (b *BoltDB) parseBlockValue(val string) (from, to time.Time, err error) {
+	parts := strings.Split(string(val), "!!")
+	if from, err = time.Parse(tsNano, parts[0]); err != nil {
+		return time.Time{}, time.Time{}, errors.Wrapf(err, "can't parse from=%s", parts[0])
+	}
+
+	if len(parts) < 2 {
+		return from, time.Time{}, nil
+	}
+
+	if to, err = time.Parse(tsNano, parts[1]); err != nil {
+		return time.Time{}, time.Time{}, errors.Wrapf(err, "can't parse to=%s", parts[1])
+	}
+	return from, to, nil
 }
 
 // SetReadOnly makes post read-only or reset the ro flag
