@@ -3,7 +3,6 @@ package engine
 import (
 	"encoding/json"
 	"log"
-	"strings"
 	"time"
 
 	"github.com/coreos/bbolt"
@@ -241,22 +240,6 @@ func (b *BoltDB) Blocked(siteID string) (users []store.BlockedUser, err error) {
 	})
 
 	return users, err
-}
-
-func (b *BoltDB) parseBlockValue(val string) (from, to time.Time, err error) {
-	parts := strings.Split(string(val), "!!")
-	if from, err = time.Parse(tsNano, parts[0]); err != nil {
-		return time.Time{}, time.Time{}, errors.Wrapf(err, "can't parse from=%s", parts[0])
-	}
-
-	if len(parts) < 2 {
-		return from, time.Time{}, nil
-	}
-
-	if to, err = time.Parse(tsNano, parts[1]); err != nil {
-		return time.Time{}, time.Time{}, errors.Wrapf(err, "can't parse to=%s", parts[1])
-	}
-	return from, to, nil
 }
 
 // SetReadOnly makes post read-only or reset the ro flag
