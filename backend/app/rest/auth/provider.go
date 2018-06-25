@@ -35,14 +35,13 @@ type Provider struct {
 
 // Params to make initialized and ready to use provider
 type Params struct {
-	RemarkURL   string
-	AvatarProxy *proxy.Avatar
-	JwtService  *JWT
-	UserFlags   UserFlager
-	SecretKey   string
-	Admins      []string
-	Cid         string
-	Csecret     string
+	RemarkURL         string
+	AvatarProxy       *proxy.Avatar
+	JwtService        *JWT
+	PermissionChecker PermissionChecker
+	SecretKey         string
+	Cid               string
+	Csecret           string
 }
 
 type userData map[string]interface{}
@@ -190,7 +189,7 @@ func (p Provider) authHandler(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, &u)
 }
 
-// setAvatar saves avatart and puts proxied URL to u.Picture
+// setAvatar saves avatar and puts proxied URL to u.Picture
 func (p Provider) setAvatar(u store.User) store.User {
 	if p.AvatarProxy != nil {
 		if avatarURL, e := p.AvatarProxy.Put(u); e == nil {
@@ -204,10 +203,10 @@ func (p Provider) setAvatar(u store.User) store.User {
 
 // alterUser sets fields not handled by provider's MapUser, things like admin, verified and blocked
 func (p Provider) alterUser(u store.User, oauthClaims *CustomClaims) store.User {
-	u.Admin = isAdmin(u.ID, p.Admins)
-	if p.UserFlags != nil {
-		u.Verified = p.UserFlags.IsVerified(oauthClaims.SiteID, u.ID)
-		u.Blocked = p.UserFlags.IsBlocked(oauthClaims.SiteID, u.ID)
+	if p.PermissionChecker != nil {
+		u.Admin = p.PermissionChecker.IsAdmin(oauthClaims.SiteID, u.ID)
+		u.Verified = p.PermissionChecker.IsVerified(oauthClaims.SiteID, u.ID)
+		u.Blocked = p.PermissionChecker.IsBlocked(oauthClaims.SiteID, u.ID)
 	}
 	return u
 }

@@ -17,6 +17,7 @@ type DataStore struct {
 	EditDuration   time.Duration
 	Secret         string
 	MaxCommentSize int
+	Admins         []string
 
 	// granular locks
 	scopedLocks struct {
@@ -161,6 +162,16 @@ func (s *DataStore) ValidateComment(c *store.Comment) error {
 		return errors.Errorf("empty user info")
 	}
 	return nil
+}
+
+// IsAdmin checks if usesID in the list of admins
+func (s *DataStore) IsAdmin(userID string, siteID string) bool {
+	for _, admin := range s.Admins {
+		if admin == userID {
+			return true
+		}
+	}
+	return false
 }
 
 // getsScopedLocks pull lock from the map if found or create a new one

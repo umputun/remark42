@@ -13,12 +13,11 @@ import (
 
 // Authenticator is top level auth object providing middlewares
 type Authenticator struct {
-	JWTService *JWT
-	Providers  []Provider
-	Admins     []string
-	AdminEmail string
-	DevPasswd  string
-	UserFlags  UserFlager
+	JWTService        *JWT
+	Providers         []Provider
+	AdminEmail        string
+	DevPasswd         string
+	PermissionChecker PermissionChecker
 }
 
 var devUser = store.User{
@@ -28,10 +27,11 @@ var devUser = store.User{
 	Admin:   true,
 }
 
-// UserFlager defines interface to get user flags
-type UserFlager interface {
+// PermissionChecker defines interface to get user flags
+type PermissionChecker interface {
 	IsVerified(siteID, userID string) bool
 	IsBlocked(siteID, userID string) bool
+	IsAdmin(siteID, userID string) bool
 }
 
 // Auth middleware adds auth from session and populates user info
@@ -91,10 +91,10 @@ func (a *Authenticator) Auth(reqAuth bool) func(http.Handler) http.Handler {
 }
 
 func (a *Authenticator) refreshExpiredToken(w http.ResponseWriter, claims *CustomClaims) (*CustomClaims, error) {
-	claims.User.Admin = isAdmin(claims.User.ID, a.Admins)
-	if a.UserFlags != nil {
-		claims.User.Blocked = a.UserFlags.IsBlocked(claims.SiteID, claims.User.ID)
-		claims.User.Verified = a.UserFlags.IsVerified(claims.SiteID, claims.User.ID)
+	if a.PermissionChecker != nil {
+		claims.User.Admin = a.PermissionChecker.IsAdmin(claims.SiteID, claims.User.ID)
+		claims.User.Blocked = a.PermissionChecker.IsBlocked(claims.SiteID, claims.User.ID)
+		claims.User.Verified = a.PermissionChecker.IsVerified(claims.SiteID, claims.User.ID)
 	}
 	// refresh token
 	if err := a.JWTService.Set(w, claims, false); err != nil {
@@ -149,13 +149,4 @@ func (a *Authenticator) basicDevUser(w http.ResponseWriter, r *http.Request) boo
 	}
 
 	return true
-}
-
-func isAdmin(userID string, admins []string) bool {
-	for _, admin := range admins {
-		if admin == userID {
-			return true
-		}
-	}
-	return false
 }

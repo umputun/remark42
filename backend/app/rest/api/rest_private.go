@@ -10,11 +10,11 @@ import (
 	"strings"
 	"time"
 
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
-	multierror "github.com/hashicorp/go-multierror"
-	blackfriday "gopkg.in/russross/blackfriday.v2"
+	"github.com/hashicorp/go-multierror"
+	"gopkg.in/russross/blackfriday.v2"
 
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/rest/auth"

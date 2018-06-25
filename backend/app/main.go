@@ -155,6 +155,7 @@ func New(opts Opts) (*Application, error) {
 		EditDuration:   5 * time.Minute,
 		Secret:         opts.SecretKey,
 		MaxCommentSize: opts.MaxCommentSize,
+		Admins:         opts.Admins,
 	}
 
 	loadingCache, err := cache.NewMemoryCache(cache.MaxCacheSize(opts.Cache.Max.Size), cache.MaxValSize(opts.Cache.Max.Value),
@@ -163,7 +164,8 @@ func New(opts Opts) (*Application, error) {
 		return nil, err
 	}
 
-	jwtService := auth.NewJWT(opts.SecretKey, strings.HasPrefix(opts.RemarkURL, "https://"), 10*time.Minute, 31*24*time.Hour)
+	// token TTL is 5 minutes, inactivity interval 31 days
+	jwtService := auth.NewJWT(opts.SecretKey, strings.HasPrefix(opts.RemarkURL, "https://"), 5*time.Minute, 31*24*time.Hour)
 
 	avatarStore, err := makeAvatarStore(opts.Avatar)
 	if err != nil {
@@ -196,12 +198,11 @@ func New(opts Opts) (*Application, error) {
 		AvatarProxy: avatarProxy,
 		ReadOnlyAge: opts.ReadOnlyAge,
 		Authenticator: auth.Authenticator{
-			JWTService: jwtService,
-			Admins:     opts.Admins,
-			AdminEmail: opts.AdminEmail,
-			Providers:  makeAuthProviders(jwtService, avatarProxy, dataService, opts),
-			DevPasswd:  opts.DevPasswd,
-			UserFlags:  dataService,
+			JWTService:        jwtService,
+			AdminEmail:        opts.AdminEmail,
+			Providers:         makeAuthProviders(jwtService, avatarProxy, dataService, opts),
+			DevPasswd:         opts.DevPasswd,
+			PermissionChecker: dataService,
 		},
 		Cache: loadingCache,
 	}
@@ -319,14 +320,13 @@ func makeAuthProviders(jwtService *auth.JWT, avatarProxy *proxy.Avatar, ds *serv
 
 	makeParams := func(cid, secret string) auth.Params {
 		return auth.Params{
-			JwtService:  jwtService,
-			AvatarProxy: avatarProxy,
-			RemarkURL:   opts.RemarkURL,
-			Cid:         cid,
-			Csecret:     secret,
-			Admins:      opts.Admins,
-			SecretKey:   opts.SecretKey,
-			UserFlags:   ds,
+			JwtService:        jwtService,
+			AvatarProxy:       avatarProxy,
+			RemarkURL:         opts.RemarkURL,
+			Cid:               cid,
+			Csecret:           secret,
+			SecretKey:         opts.SecretKey,
+			PermissionChecker: ds,
 		}
 	}
 

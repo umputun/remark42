@@ -161,9 +161,9 @@ func mockProvider(t *testing.T, loginPort, authPort int) (*http.Server, *http.Se
 	}
 
 	params := Params{RemarkURL: "url", SecretKey: "123456", Cid: "cid", Csecret: "csecret",
-		JwtService: NewJWT("12345", false, time.Hour, time.Hour*24*31), Admins: []string{"mock_myuser2"},
+		JwtService: NewJWT("12345", false, time.Hour, time.Hour*24*31),
 		// AvatarProxy:  &proxy.Avatar{Store: &mockAvatarStore, RoutePath: "/v1/avatar"},
-		UserFlags: &mockUserFlager{},
+		PermissionChecker: &mockUserPermissons{},
 	}
 	provider = initProvider(params, provider)
 
@@ -219,7 +219,8 @@ func mockProvider(t *testing.T, loginPort, authPort int) (*http.Server, *http.Se
 	return ts, oauth
 }
 
-type mockUserFlager struct{}
+type mockUserPermissons struct{}
 
-func (m *mockUserFlager) IsVerified(siteID, userID string) bool { return userID == "mock_myuser2" }
-func (m *mockUserFlager) IsBlocked(siteID, userID string) bool  { return userID == "mock_myuser1" }
+func (m *mockUserPermissons) IsAdmin(siteID, userID string) bool    { return userID == "mock_myuser2" }
+func (m *mockUserPermissons) IsVerified(siteID, userID string) bool { return userID == "mock_myuser2" }
+func (m *mockUserPermissons) IsBlocked(siteID, userID string) bool  { return userID == "mock_myuser1" }

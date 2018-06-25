@@ -66,8 +66,8 @@ type commentsWithInfo struct {
 func (s *Rest) Run(port int) {
 	log.Printf("[INFO] activate rest server on port %d", port)
 
-	if len(s.Authenticator.Admins) > 0 {
-		log.Printf("[DEBUG] admins %+v", s.Authenticator.Admins)
+	if s.DataService != nil && len(s.DataService.Admins) > 0 {
+		log.Printf("[DEBUG] admins %+v", s.DataService.Admins)
 	}
 
 	router := s.routes()
