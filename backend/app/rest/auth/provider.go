@@ -39,6 +39,7 @@ type Params struct {
 	AvatarProxy  *proxy.Avatar
 	JwtService   *JWT
 	IsVerifiedFn func(siteID string, userID string) bool
+	IsBlockedFn  func(siteID string, userID string) bool
 	SecretKey    string
 	Admins       []string
 	Cid          string
@@ -202,6 +203,10 @@ func (p Provider) alterUser(u store.User, oauthClaims *CustomClaims) store.User 
 	if p.IsVerifiedFn != nil {
 		u.Verified = p.IsVerifiedFn(oauthClaims.SiteID, u.ID)
 	}
+	if p.IsBlockedFn != nil {
+		u.Blocked = p.IsBlockedFn(oauthClaims.SiteID, u.ID)
+	}
+	log.Printf("!! %+v", u)
 	return u
 }
 

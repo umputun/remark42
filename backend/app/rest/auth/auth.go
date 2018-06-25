@@ -60,7 +60,11 @@ func (a *Authenticator) Auth(reqAuth bool) func(http.Handler) http.Handler {
 
 			if claims.User != nil { // if uinfo in token populate it to context
 				user := *claims.User
-				user.Admin = isAdmin(user.ID, a.Admins) // dbl-check for admin to reset admin flag even if token has it
+				if user.Blocked {
+					log.Printf("[DEBUG] user %s/%s blocked", user.Name, user.ID)
+					http.Error(w, "Unauthorized", http.StatusUnauthorized)
+					return
+				}
 				// refresh token if it close to expiration
 				if _, err := a.JWTService.Refresh(w, r); err != nil {
 					log.Printf("[DEBUG] can't refresh jwt, %s", err)

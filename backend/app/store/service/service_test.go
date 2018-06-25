@@ -340,6 +340,20 @@ func TestService_IsVerifiedFn(t *testing.T) {
 	assert.True(t, verified)
 }
 
+func TestService_IsBlockedFn(t *testing.T) {
+	defer os.Remove(testDb)
+	b := DataStore{Interface: prepStoreEngine(t)}
+
+	fn := b.IsBlockedFn()
+	blocked := fn("radio-t", "user1")
+	assert.False(t, blocked)
+
+	err := b.Interface.SetBlock("radio-t", "user1", true, 0)
+	assert.Nil(t, err)
+	blocked = fn("radio-t", "user1")
+	assert.True(t, blocked)
+}
+
 // makes new boltdb, put two records
 func prepStoreEngine(t *testing.T) engine.Interface {
 	os.Remove(testDb)

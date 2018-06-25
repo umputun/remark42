@@ -173,6 +173,16 @@ func (s *DataStore) IsVerifiedFn() func(siteID string, userID string) bool {
 	}
 }
 
+// IsBlockedFn returns func to check if user blocked or not
+func (s *DataStore) IsBlockedFn() func(siteID string, userID string) bool {
+	return func(siteID string, userID string) bool {
+		if siteID == "" {
+			return false
+		}
+		return s.IsBlocked(siteID, userID)
+	}
+}
+
 // getsScopedLocks pull lock from the map if found or create a new one
 func (s *DataStore) getsScopedLocks(id string) (lock sync.Locker) {
 	s.scopedLocks.Do(func() { s.scopedLocks.locks = map[string]sync.Locker{} })

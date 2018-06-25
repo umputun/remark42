@@ -163,7 +163,7 @@ func New(opts Opts) (*Application, error) {
 		return nil, err
 	}
 
-	jwtService := auth.NewJWT(opts.SecretKey, strings.HasPrefix(opts.RemarkURL, "https://"), 7*24*time.Hour)
+	jwtService := auth.NewJWT(opts.SecretKey, strings.HasPrefix(opts.RemarkURL, "https://"), 10*time.Minute)
 
 	avatarStore, err := makeAvatarStore(opts.Avatar)
 	if err != nil {
@@ -326,6 +326,7 @@ func makeAuthProviders(jwtService *auth.JWT, avatarProxy *proxy.Avatar, ds *serv
 			Admins:       opts.Admins,
 			SecretKey:    opts.SecretKey,
 			IsVerifiedFn: ds.IsVerifiedFn(),
+			IsBlockedFn:  ds.IsBlockedFn(),
 		}
 	}
 

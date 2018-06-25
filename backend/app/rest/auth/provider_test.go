@@ -50,7 +50,7 @@ func TestLogin(t *testing.T) {
 	err = json.Unmarshal(body, &u)
 	assert.Nil(t, err)
 	assert.Equal(t, store.User{Name: "blah", ID: "mock_myuser1", Picture: "http://exmple.com/pic1.png",
-		Admin: false, Blocked: false, IP: ""}, u)
+		Admin: false, Blocked: true, IP: ""}, u)
 
 	// check admin user
 	resp, err = client.Get("http://localhost:8981/login?site=remark")
@@ -58,6 +58,7 @@ func TestLogin(t *testing.T) {
 	assert.Equal(t, 200, resp.StatusCode)
 	body, err = ioutil.ReadAll(resp.Body)
 	assert.Nil(t, err)
+	u = store.User{}
 	err = json.Unmarshal(body, &u)
 	assert.Nil(t, err)
 	assert.Equal(t, store.User{Name: "blah", ID: "mock_myuser2", Picture: "http://exmple.com/pic1.png",
@@ -162,13 +163,15 @@ func mockProvider(t *testing.T, loginPort, authPort int) (*http.Server, *http.Se
 	params := Params{RemarkURL: "url", SecretKey: "123456", Cid: "cid", Csecret: "csecret",
 		JwtService: NewJWT("12345", false, time.Hour), Admins: []string{"mock_myuser2"},
 		// AvatarProxy:  &proxy.Avatar{Store: &mockAvatarStore, RoutePath: "/v1/avatar"},
-		IsVerifiedFn: func(siteID, userID string) bool { return userID == "mock_myuser2" }}
+		IsBlockedFn:  func(siteID, userID string) bool { return userID == "mock_myuser1" }, // myuser1 blocked
+		IsVerifiedFn: func(siteID, userID string) bool { return userID == "mock_myuser2" }, // myuser2 verified
+	}
 	provider = initProvider(params, provider)
 
 	ts := &http.Server{Addr: fmt.Sprintf(":%d", loginPort), Handler: provider.Routes()}
 
 	count := 0
-	useIds := []string{"myuser1", "myuser2"}
+	useIds := []string{"myuser1", "myuser2"} // user for first ans second calls
 
 	oauth := &http.Server{
 		Addr: fmt.Sprintf(":%d", authPort),
