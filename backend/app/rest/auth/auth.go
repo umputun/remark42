@@ -68,6 +68,7 @@ func (a *Authenticator) Auth(reqAuth bool) func(http.Handler) http.Handler {
 			if claims.User != nil { // if uinfo in token populate it to context
 				if claims.User.Blocked {
 					log.Printf("[DEBUG] user %s/%s blocked", claims.User.Name, claims.User.ID)
+					a.JWTService.Reset(w)
 					http.Error(w, "Unauthorized", http.StatusUnauthorized)
 					return
 				}
