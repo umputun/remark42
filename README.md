@@ -48,6 +48,8 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 | avatar.path        | AVATAR_FS_PATH     | `./var/avatars`       | avatars location                               |
 | avatar.rsz-lmt     | AVATAR_RSZ_LMT     | 0                     | max image size for resizing avatars on save    |
 | max-comment        | MAX_COMMENT_SIZE   | 2048                  | comment's size limit                           |
+| auth.ttl.jwt       | AUTH_TTL_JWT       | 5m                    | jwt TTL                                        |
+| auth.ttl.cookie    | AUTH_TTL_COOKIE    | 200h                  | cookie TTL                                     |
 | auth.google.cid    | AUTH_GOOGLE_CID    |                       | Google OAuth client ID                         |
 | auth.google.csec   | AUTH_GOOGLE_CSEC   |                       | Google OAuth client secret                     |
 | auth.facebook.cid  | AUTH_FACEBOOK_CID  |                       | Facebook OAuth client ID                       |

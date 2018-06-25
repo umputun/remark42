@@ -52,6 +52,10 @@ type Opts struct {
 	Dbg            bool     `long:"dbg" env:"DEBUG" description:"debug mode"`
 
 	Auth struct {
+		TTL struct {
+			JWT    time.Duration `long:"jwt" env:"JWT" default:"5m" description:"jwt TTL"`
+			Cookie time.Duration `long:"cookie" env:"COOKIE" default:"200h" description:"auth cookie TTL"`
+		} `group:"ttl" namespace:"ttl" env-namespace:"TTL"`
 		Google   AuthGroup `group:"google" namespace:"google" env-namespace:"GOOGLE" description:"Google OAuth"`
 		Github   AuthGroup `group:"github" namespace:"github" env-namespace:"GITHUB" description:"Github OAuth"`
 		Facebook AuthGroup `group:"facebook" namespace:"facebook" env-namespace:"FACEBOOK" description:"Facebook OAuth"`
@@ -164,8 +168,9 @@ func New(opts Opts) (*Application, error) {
 		return nil, err
 	}
 
-	// token TTL is 5 minutes, inactivity interval 31 days
-	jwtService := auth.NewJWT(opts.SecretKey, strings.HasPrefix(opts.RemarkURL, "https://"), 5*time.Minute, 31*24*time.Hour)
+	// token TTL is 5 minutes, inactivity interval 7+ days by default
+	jwtService := auth.NewJWT(opts.SecretKey, strings.HasPrefix(opts.RemarkURL, "https://"),
+		opts.Auth.TTL.JWT, opts.Auth.TTL.Cookie)
 
 	avatarStore, err := makeAvatarStore(opts.Avatar)
 	if err != nil {
