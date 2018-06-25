@@ -14,7 +14,8 @@ import (
 )
 
 func TestAuthJWTCookie(t *testing.T) {
-	a := Authenticator{DevPasswd: "123456", JWTService: NewJWT("xyz 12345", false, time.Hour), UserFlags: &mockUserFlager{}}
+	a := Authenticator{DevPasswd: "123456", JWTService: NewJWT("xyz 12345", false, time.Hour, time.Hour),
+		UserFlags: &mockUserFlager{}}
 	router := chi.NewRouter()
 	router.With(a.Auth(true)).Get("/auth", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(201)
@@ -51,7 +52,7 @@ func TestAuthJWTCookie(t *testing.T) {
 }
 
 func TestAuthJWTHeader(t *testing.T) {
-	a := Authenticator{DevPasswd: "123456", JWTService: NewJWT("xyz 12345", false, time.Hour)}
+	a := Authenticator{DevPasswd: "123456", JWTService: NewJWT("xyz 12345", false, time.Hour, time.Hour)}
 	router := chi.NewRouter()
 	router.With(a.Auth(true)).Get("/auth", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(201)

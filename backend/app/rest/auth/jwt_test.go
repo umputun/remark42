@@ -30,8 +30,10 @@ var testJwtBadSign = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjI3ODkxOTE4M
 	"sImlzcyI6InJlbWFyazQyIiwibmJmIjoxNTI2ODg0MjIyLCJ1c2VyIjp7Im5hbWUiOiJuYW1lMSIsImlkIjoiaWQxIiwicGljdHVyZS" +
 	"I6IiIsImFkbWluIjpmYWxzZX0sInN0YXRlIjoiMTIzNDU2IiwiZnJvbSI6ImZyb20ifQ._loFgh3g45gr9TtGqvM3N584I_6EHEOJnYb6Py84st"
 
+var days31 = time.Hour * 24 * 31
+
 func TestJWT_Token(t *testing.T) {
-	j := NewJWT("xyz 12345", false, time.Hour)
+	j := NewJWT("xyz 12345", false, time.Hour, days31)
 
 	claims := &CustomClaims{
 		State: "123456",
@@ -54,7 +56,7 @@ func TestJWT_Token(t *testing.T) {
 }
 
 func TestJWT_Parse(t *testing.T) {
-	j := NewJWT("xyz 12345", false, time.Hour)
+	j := NewJWT("xyz 12345", false, time.Hour, days31)
 	claims, err := j.Parse(testJwtValid)
 	assert.NoError(t, err)
 	assert.False(t, j.IsExpired(claims))
@@ -72,7 +74,7 @@ func TestJWT_Parse(t *testing.T) {
 }
 
 func TestJWT_Set(t *testing.T) {
-	j := NewJWT("xyz 12345", false, time.Hour)
+	j := NewJWT("xyz 12345", false, time.Hour, days31)
 
 	claims := &CustomClaims{
 		State: "123456",
@@ -98,7 +100,7 @@ func TestJWT_Set(t *testing.T) {
 	require.Equal(t, 2, len(cookies))
 	assert.Equal(t, "JWT", cookies[0].Name)
 	assert.Equal(t, testJwtValid, cookies[0].Value)
-	assert.Equal(t, 31536000, cookies[0].MaxAge)
+	assert.Equal(t, 31*24*3600, cookies[0].MaxAge)
 	assert.Equal(t, "XSRF-TOKEN", cookies[1].Name)
 	assert.Equal(t, "random id", cookies[1].Value)
 
@@ -117,7 +119,7 @@ func TestJWT_Set(t *testing.T) {
 }
 
 func TestJWT_GetFromHeader(t *testing.T) {
-	j := NewJWT("xyz 12345", false, time.Hour)
+	j := NewJWT("xyz 12345", false, time.Hour, days31)
 
 	req := httptest.NewRequest("GET", "/", nil)
 	req.Header.Add(jwtHeaderKey, testJwtValid)
@@ -142,7 +144,7 @@ func TestJWT_GetFromHeader(t *testing.T) {
 }
 
 func TestJWT_SetAndGetWithCookies(t *testing.T) {
-	j := NewJWT("xyz 12345", false, time.Hour)
+	j := NewJWT("xyz 12345", false, time.Hour, days31)
 
 	claims := &CustomClaims{
 		State:       "123456",
@@ -184,7 +186,7 @@ func TestJWT_SetAndGetWithCookies(t *testing.T) {
 }
 
 func TestJWT_SetAndGetWithXsrfMismatch(t *testing.T) {
-	j := NewJWT("xyz 12345", false, time.Hour)
+	j := NewJWT("xyz 12345", false, time.Hour, days31)
 
 	claims := &CustomClaims{
 		State: "123456",
@@ -221,7 +223,7 @@ func TestJWT_SetAndGetWithXsrfMismatch(t *testing.T) {
 }
 
 func TestJWT_SetAndGetWithCookiesExpired(t *testing.T) {
-	j := NewJWT("xyz 12345", false, time.Hour)
+	j := NewJWT("xyz 12345", false, time.Hour, days31)
 
 	claims := &CustomClaims{
 		State: "123456",

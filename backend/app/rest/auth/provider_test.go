@@ -42,7 +42,7 @@ func TestLogin(t *testing.T) {
 	assert.Equal(t, 2, len(resp.Cookies()))
 	assert.Equal(t, "JWT", resp.Cookies()[0].Name)
 	assert.NotEqual(t, "", resp.Cookies()[0].Value, "jwt set")
-	assert.Equal(t, 31536000, resp.Cookies()[0].MaxAge)
+	assert.Equal(t, 2678400, resp.Cookies()[0].MaxAge)
 	assert.Equal(t, "XSRF-TOKEN", resp.Cookies()[1].Name)
 	assert.NotEqual(t, "", resp.Cookies()[1].Value, "xsrf cookie set")
 
@@ -94,7 +94,7 @@ func TestLoginSessionOnly(t *testing.T) {
 	req.AddCookie(resp.Cookies()[1])
 	req.Header.Add("X-XSRF-TOKEN", resp.Cookies()[1].Value)
 
-	jwtService := NewJWT("12345", false, time.Hour)
+	jwtService := NewJWT("12345", false, time.Hour, time.Hour)
 	res, err := jwtService.Get(req)
 	require.Nil(t, err)
 	assert.Equal(t, true, res.SessionOnly)
@@ -161,7 +161,7 @@ func mockProvider(t *testing.T, loginPort, authPort int) (*http.Server, *http.Se
 	}
 
 	params := Params{RemarkURL: "url", SecretKey: "123456", Cid: "cid", Csecret: "csecret",
-		JwtService: NewJWT("12345", false, time.Hour), Admins: []string{"mock_myuser2"},
+		JwtService: NewJWT("12345", false, time.Hour, time.Hour*24*31), Admins: []string{"mock_myuser2"},
 		// AvatarProxy:  &proxy.Avatar{Store: &mockAvatarStore, RoutePath: "/v1/avatar"},
 		UserFlags: &mockUserFlager{},
 	}

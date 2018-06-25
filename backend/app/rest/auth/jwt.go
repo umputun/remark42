@@ -13,9 +13,10 @@ import (
 // JWT wraps jwt operations
 // supports both header and cookie jwt
 type JWT struct {
-	secret        string
-	secureCookies bool
-	exp           time.Duration
+	secret         string
+	secureCookies  bool
+	tokenDuration  time.Duration
+	cookieDuration time.Duration
 }
 
 // CustomClaims stores user info for auth and state & from from login
@@ -36,11 +37,12 @@ const xsrfCookieName = "XSRF-TOKEN"
 const xsrfHeaderKey = "X-XSRF-TOKEN"
 
 // NewJWT makes JWT service
-func NewJWT(secret string, secureCookies bool, exp time.Duration) *JWT {
+func NewJWT(secret string, secureCookies bool, tokenDuration time.Duration, cookieDuration time.Duration) *JWT {
 	res := JWT{
-		secret:        secret,
-		secureCookies: secureCookies,
-		exp:           exp,
+		secret:         secret,
+		secureCookies:  secureCookies,
+		tokenDuration:  tokenDuration,
+		cookieDuration: cookieDuration,
 	}
 	return &res
 }
@@ -80,7 +82,7 @@ func (j *JWT) Parse(tokenString string) (*CustomClaims, error) {
 // accepts claims and sets expiration if none defined. permanent flag means long-living cookie, false makes it session only.
 func (j *JWT) Set(w http.ResponseWriter, claims *CustomClaims, sessionOnly bool) error {
 	if claims.ExpiresAt == 0 {
-		claims.ExpiresAt = time.Now().Add(j.exp).Unix()
+		claims.ExpiresAt = time.Now().Add(j.tokenDuration).Unix()
 	}
 
 	tokenString, err := j.Token(claims)
@@ -90,7 +92,7 @@ func (j *JWT) Set(w http.ResponseWriter, claims *CustomClaims, sessionOnly bool)
 
 	cookieExpiration := 0 // session cookie
 	if !sessionOnly {
-		cookieExpiration = 365 * 24 * 3600 // 1 year
+		cookieExpiration = int(j.cookieDuration.Seconds())
 	}
 
 	jwtCookie := http.Cookie{Name: jwtCookieName, Value: tokenString, HttpOnly: true, Path: "/",
