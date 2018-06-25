@@ -35,15 +35,14 @@ type Provider struct {
 
 // Params to make initialized and ready to use provider
 type Params struct {
-	RemarkURL    string
-	AvatarProxy  *proxy.Avatar
-	JwtService   *JWT
-	IsVerifiedFn func(siteID string, userID string) bool
-	IsBlockedFn  func(siteID string, userID string) bool
-	SecretKey    string
-	Admins       []string
-	Cid          string
-	Csecret      string
+	RemarkURL   string
+	AvatarProxy *proxy.Avatar
+	JwtService  *JWT
+	UserFlags   UserFlager
+	SecretKey   string
+	Admins      []string
+	Cid         string
+	Csecret     string
 }
 
 type userData map[string]interface{}
@@ -164,6 +163,7 @@ func (p Provider) authHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[DEBUG] got raw user info %+v", jData)
 
 	u := p.MapUser(jData, data)
+	u = p.setAvatar(u)
 	u = p.alterUser(u, oauthClaims)
 
 	authClaims := &CustomClaims{
@@ -190,8 +190,8 @@ func (p Provider) authHandler(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, &u)
 }
 
-// alterUser sets fields not handled by provider's MapUser, things like avatar, admin, verified
-func (p Provider) alterUser(u store.User, oauthClaims *CustomClaims) store.User {
+// setAvatar saves avatart and puts proxied URL to u.Picture
+func (p Provider) setAvatar(u store.User) store.User {
 	if p.AvatarProxy != nil {
 		if avatarURL, e := p.AvatarProxy.Put(u); e == nil {
 			u.Picture = avatarURL
@@ -199,14 +199,16 @@ func (p Provider) alterUser(u store.User, oauthClaims *CustomClaims) store.User 
 			log.Printf("[WARN] failed to proxy avatar, %s", e)
 		}
 	}
+	return u
+}
+
+// alterUser sets fields not handled by provider's MapUser, things like admin, verified and blocked
+func (p Provider) alterUser(u store.User, oauthClaims *CustomClaims) store.User {
 	u.Admin = isAdmin(u.ID, p.Admins)
-	if p.IsVerifiedFn != nil {
-		u.Verified = p.IsVerifiedFn(oauthClaims.SiteID, u.ID)
+	if p.UserFlags != nil {
+		u.Verified = p.UserFlags.IsVerified(oauthClaims.SiteID, u.ID)
+		u.Blocked = p.UserFlags.IsBlocked(oauthClaims.SiteID, u.ID)
 	}
-	if p.IsBlockedFn != nil {
-		u.Blocked = p.IsBlockedFn(oauthClaims.SiteID, u.ID)
-	}
-	log.Printf("!! %+v", u)
 	return u
 }
 

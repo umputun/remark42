@@ -201,6 +201,7 @@ func New(opts Opts) (*Application, error) {
 			AdminEmail: opts.AdminEmail,
 			Providers:  makeAuthProviders(jwtService, avatarProxy, dataService, opts),
 			DevPasswd:  opts.DevPasswd,
+			UserFlags:  dataService,
 		},
 		Cache: loadingCache,
 	}
@@ -318,15 +319,14 @@ func makeAuthProviders(jwtService *auth.JWT, avatarProxy *proxy.Avatar, ds *serv
 
 	makeParams := func(cid, secret string) auth.Params {
 		return auth.Params{
-			JwtService:   jwtService,
-			AvatarProxy:  avatarProxy,
-			RemarkURL:    opts.RemarkURL,
-			Cid:          cid,
-			Csecret:      secret,
-			Admins:       opts.Admins,
-			SecretKey:    opts.SecretKey,
-			IsVerifiedFn: ds.IsVerifiedFn(),
-			IsBlockedFn:  ds.IsBlockedFn(),
+			JwtService:  jwtService,
+			AvatarProxy: avatarProxy,
+			RemarkURL:   opts.RemarkURL,
+			Cid:         cid,
+			Csecret:     secret,
+			Admins:      opts.Admins,
+			SecretKey:   opts.SecretKey,
+			UserFlags:   ds,
 		}
 	}
 

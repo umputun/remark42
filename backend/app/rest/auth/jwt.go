@@ -55,9 +55,10 @@ func (j *JWT) Token(claims *CustomClaims) (string, error) {
 	return tokenString, nil
 }
 
-// Parse token string and verify
+// Parse token string and verify. Not checking for expiration
 func (j *JWT) Parse(tokenString string) (*CustomClaims, error) {
-	token, err := jwt.ParseWithClaims(tokenString, &CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
+	parser := jwt.Parser{SkipClaimsValidation: true} // allow parsing of expired tokens
+	token, err := parser.ParseWithClaims(tokenString, &CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
@@ -71,6 +72,7 @@ func (j *JWT) Parse(tokenString string) (*CustomClaims, error) {
 	if !ok || !token.Valid {
 		return nil, errors.New("invalid jwt")
 	}
+
 	return claims, nil
 }
 
@@ -139,19 +141,9 @@ func (j *JWT) Get(r *http.Request) (*CustomClaims, error) {
 	return claims, nil
 }
 
-// Refresh gets jwt from request, checks if it will be expiring soon (1/2 of expiration) and create the new onw
-func (j *JWT) Refresh(w http.ResponseWriter, r *http.Request) (*CustomClaims, error) {
-	claims, err := j.Get(r)
-	if err != nil {
-		return nil, err
-	}
-	untilExp := claims.ExpiresAt - time.Now().Unix()
-	if untilExp <= int64(j.exp.Seconds()/2) {
-		claims.ExpiresAt = time.Now().Add(j.exp).Unix()
-		e := j.Set(w, claims, claims.SessionOnly)
-		return claims, e
-	}
-	return claims, nil
+// IsExpired returns true if claims expired
+func (j *JWT) IsExpired(claims *CustomClaims) bool {
+	return !claims.VerifyExpiresAt(time.Now().Unix(), true)
 }
 
 // Reset token's cookies

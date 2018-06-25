@@ -18,6 +18,7 @@ type Authenticator struct {
 	Admins     []string
 	AdminEmail string
 	DevPasswd  string
+	UserFlags  UserFlager
 }
 
 var devUser = store.User{
@@ -25,6 +26,11 @@ var devUser = store.User{
 	Name:    "developer one",
 	Picture: "/api/v1/avatar/remark.image",
 	Admin:   true,
+}
+
+type UserFlager interface {
+	IsVerified(siteID, userID string) bool
+	IsBlocked(siteID, userID string) bool
 }
 
 // Auth middleware adds auth from session and populates user info
@@ -65,11 +71,22 @@ func (a *Authenticator) Auth(reqAuth bool) func(http.Handler) http.Handler {
 					http.Error(w, "Unauthorized", http.StatusUnauthorized)
 					return
 				}
-				// refresh token if it close to expiration
-				if _, err := a.JWTService.Refresh(w, r); err != nil {
-					log.Printf("[DEBUG] can't refresh jwt, %s", err)
+
+				if a.JWTService.IsExpired(claims) {
+					claims.User.Admin = isAdmin(claims.User.ID, a.Admins)
+					if a.UserFlags != nil {
+						claims.User.Blocked = a.UserFlags.IsBlocked(claims.SiteID, claims.User.ID)
+						claims.User.Verified = a.UserFlags.IsVerified(claims.SiteID, claims.User.ID)
+					}
+					// refresh token
+					if err := a.JWTService.Set(w, claims, false); err != nil {
+						log.Printf("[DEBUG] can't refresh jwt, %s", err)
+						http.Error(w, "Unauthorized", http.StatusUnauthorized)
+						return
+					}
+					log.Printf("[DEBUG] token refreshed for %+v", user)
 				}
-				r = rest.SetUserInfo(r, user)
+				r = rest.SetUserInfo(r, *claims.User) // populate user info to request context
 			}
 			h.ServeHTTP(w, r)
 		}

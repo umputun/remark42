@@ -14,7 +14,7 @@ import (
 )
 
 func TestAuthJWTCookie(t *testing.T) {
-	a := Authenticator{DevPasswd: "123456", JWTService: NewJWT("xyz 12345", false, time.Hour)}
+	a := Authenticator{DevPasswd: "123456", JWTService: NewJWT("xyz 12345", false, time.Hour), UserFlags: &mockUserFlager{}}
 	router := chi.NewRouter()
 	router.With(a.Auth(true)).Get("/auth", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(201)
@@ -47,7 +47,7 @@ func TestAuthJWTCookie(t *testing.T) {
 	req.Header.Add("X-XSRF-TOKEN", "random id")
 	resp, err = client.Do(req)
 	require.NoError(t, err)
-	assert.Equal(t, 401, resp.StatusCode, "token expired")
+	assert.Equal(t, 201, resp.StatusCode, "token expired and refreshed")
 }
 
 func TestAuthJWTHeader(t *testing.T) {
@@ -74,8 +74,9 @@ func TestAuthJWTHeader(t *testing.T) {
 	req.Header.Add("X-JWT", testJwtExpired)
 	resp, err = client.Do(req)
 	require.NoError(t, err)
-	assert.Equal(t, 401, resp.StatusCode, "invalid auth token")
+	assert.Equal(t, 201, resp.StatusCode, "token expired and refreshed")
 }
+
 func TestAuthRequired(t *testing.T) {
 	a := Authenticator{DevPasswd: "123456"}
 	router := chi.NewRouter()
@@ -164,6 +165,7 @@ func TestAdminRequired(t *testing.T) {
 	assert.Equal(t, 403, resp.StatusCode, "valid auth user, not admin")
 
 }
+
 func withBasicAuth(r *http.Request, username, password string) *http.Request {
 	auth := username + ":" + password
 	r.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(auth)))
