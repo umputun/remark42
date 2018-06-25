@@ -66,27 +66,18 @@ func (a *Authenticator) Auth(reqAuth bool) func(http.Handler) http.Handler {
 			}
 
 			if claims.User != nil { // if uinfo in token populate it to context
-				user := *claims.User
-				if user.Blocked {
-					log.Printf("[DEBUG] user %s/%s blocked", user.Name, user.ID)
+				if claims.User.Blocked {
+					log.Printf("[DEBUG] user %s/%s blocked", claims.User.Name, claims.User.ID)
 					http.Error(w, "Unauthorized", http.StatusUnauthorized)
 					return
 				}
 
 				if a.JWTService.IsExpired(claims) {
-					// expired token should update user's flag (admin, blocked, verified)
-					claims.User.Admin = isAdmin(claims.User.ID, a.Admins)
-					if a.UserFlags != nil {
-						claims.User.Blocked = a.UserFlags.IsBlocked(claims.SiteID, claims.User.ID)
-						claims.User.Verified = a.UserFlags.IsVerified(claims.SiteID, claims.User.ID)
-					}
-					// refresh token
-					if err := a.JWTService.Set(w, claims, false); err != nil {
+					if claims, err = a.refreshExpiredToken(w, claims); err != nil {
 						log.Printf("[DEBUG] can't refresh jwt, %s", err)
 						http.Error(w, "Unauthorized", http.StatusUnauthorized)
-						return
 					}
-					log.Printf("[DEBUG] token refreshed for %+v", user)
+					log.Printf("[DEBUG] token refreshed for %+v", claims.User)
 				}
 				r = rest.SetUserInfo(r, *claims.User) // populate user info to request context
 			}
@@ -96,6 +87,19 @@ func (a *Authenticator) Auth(reqAuth bool) func(http.Handler) http.Handler {
 		return http.HandlerFunc(fn)
 	}
 	return f
+}
+
+func (a *Authenticator) refreshExpiredToken(w http.ResponseWriter, claims *CustomClaims) (*CustomClaims, error) {
+	claims.User.Admin = isAdmin(claims.User.ID, a.Admins)
+	if a.UserFlags != nil {
+		claims.User.Blocked = a.UserFlags.IsBlocked(claims.SiteID, claims.User.ID)
+		claims.User.Verified = a.UserFlags.IsVerified(claims.SiteID, claims.User.ID)
+	}
+	// refresh token
+	if err := a.JWTService.Set(w, claims, false); err != nil {
+		return nil, err
+	}
+	return claims, nil
 }
 
 // AdminOnly allows access to admins
