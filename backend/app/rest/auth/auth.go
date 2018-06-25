@@ -28,6 +28,7 @@ var devUser = store.User{
 	Admin:   true,
 }
 
+// UserFlager defines interface to get user flags
 type UserFlager interface {
 	IsVerified(siteID, userID string) bool
 	IsBlocked(siteID, userID string) bool
@@ -73,6 +74,7 @@ func (a *Authenticator) Auth(reqAuth bool) func(http.Handler) http.Handler {
 				}
 
 				if a.JWTService.IsExpired(claims) {
+					// expired token should update user's flag (admin, blocked, verified)
 					claims.User.Admin = isAdmin(claims.User.ID, a.Admins)
 					if a.UserFlags != nil {
 						claims.User.Blocked = a.UserFlags.IsBlocked(claims.SiteID, claims.User.ID)
@@ -88,6 +90,7 @@ func (a *Authenticator) Auth(reqAuth bool) func(http.Handler) http.Handler {
 				}
 				r = rest.SetUserInfo(r, *claims.User) // populate user info to request context
 			}
+
 			h.ServeHTTP(w, r)
 		}
 		return http.HandlerFunc(fn)
