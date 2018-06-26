@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>remark42 user info</title>
+
+  <style>
+    body {
+      padding: 0;
+      margin: 0;
+    }
+
+    .container {
+      max-width: 400px;
+    }
+  </style>
+</head>
+<body>
+  <div id='remark42' class="container">
+    <div class="remark42__user-info" data-max="50"></div>
+  </div>
+
+  <script>
+    var remark_config = {
+      site_id: 'radiot',
+    };
+
+    (function() {
+      var d = document, s = d.createElement('script');
+      var baseurl = '';
+      s.src = baseurl + '/user-info.js';
+      s.type = 'text/javascript';
+      (d.head || d.body).appendChild(s);
+    })();
+  </script>
+  <noscript>
+    Please enable JavaScript to view the comments powered by Remark.
+  </noscript>
+</body>
+</html>
