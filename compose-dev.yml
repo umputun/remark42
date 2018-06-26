@@ -1,0 +1,33 @@
+version: '2'
+
+services:
+    remark:
+        build: .
+        image: umputun/remark42:dev
+        container_name: "remark42-dev"
+        hostname: "remark42-dev"
+
+        logging:
+          driver: json-file
+          options:
+              max-size: "10m"
+              max-file: "5"
+
+        # uncomment to expose directly (no proxy)
+        ports:
+         - "8080:8080"
+         - "8084:8084"
+
+        environment:
+            - USER
+            - REMARK_URL=http://127.0.0.1:8080
+            - SECRET=12345
+            - STORE_BOLT_PATH=/srv/var/db
+            - BACKUP_PATH=/srv/var/backup
+            - DEBUG=true
+            - DEV_PASSWD=password
+        volumes:
+            - ./var:/srv/var
+            #- ./web:/srv/web # uncomment to map web directory directly. It will propagate local changes to container without redeploy
+
+        command: /srv/start.sh

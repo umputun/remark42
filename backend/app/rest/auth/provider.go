@@ -115,7 +115,6 @@ func (p Provider) loginHandler(w http.ResponseWriter, r *http.Request) {
 // authHandler fills user info and redirects to "from" url. This is callback url redirected locally by browser
 // GET /callback
 func (p Provider) authHandler(w http.ResponseWriter, r *http.Request) {
-
 	oauthClaims, err := p.JwtService.Get(r)
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to get jwt")
@@ -204,7 +203,7 @@ func (p Provider) setAvatar(u store.User) store.User {
 // alterUser sets fields not handled by provider's MapUser, things like admin, verified and blocked
 func (p Provider) alterUser(u store.User, oauthClaims *CustomClaims) store.User {
 	if p.PermissionChecker != nil {
-		u.Admin = p.PermissionChecker.IsAdmin(oauthClaims.SiteID, u.ID)
+		u.Admin = p.PermissionChecker.IsAdmin(u.ID)
 		u.Verified = p.PermissionChecker.IsVerified(oauthClaims.SiteID, u.ID)
 		u.Blocked = p.PermissionChecker.IsBlocked(oauthClaims.SiteID, u.ID)
 	}

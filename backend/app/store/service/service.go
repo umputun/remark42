@@ -165,7 +165,7 @@ func (s *DataStore) ValidateComment(c *store.Comment) error {
 }
 
 // IsAdmin checks if usesID in the list of admins
-func (s *DataStore) IsAdmin(userID string, siteID string) bool {
+func (s *DataStore) IsAdmin(userID string) bool {
 	for _, admin := range s.Admins {
 		if admin == userID {
 			return true

@@ -17,7 +17,7 @@ var testJwtUserBlocked = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjI3ODkxO
 
 func TestAuthJWTCookie(t *testing.T) {
 	a := Authenticator{DevPasswd: "123456", JWTService: NewJWT("xyz 12345", false, time.Hour, time.Hour),
-		PermissionChecker: &mockUserPermissons{}}
+		PermissionChecker: &mockUserPermissions{}}
 	router := chi.NewRouter()
 	router.With(a.Auth(true)).Get("/auth", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(201)

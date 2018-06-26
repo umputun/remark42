@@ -60,6 +60,7 @@ type Opts struct {
 		Github   AuthGroup `group:"github" namespace:"github" env-namespace:"GITHUB" description:"Github OAuth"`
 		Facebook AuthGroup `group:"facebook" namespace:"facebook" env-namespace:"FACEBOOK" description:"Facebook OAuth"`
 		Yandex   AuthGroup `group:"yandex" namespace:"yandex" env-namespace:"YANDEX" description:"Yandex OAuth"`
+		Dev      bool      `long:"dev" env:"DEV" description:"enable dev (local) oauth2"`
 	} `group:"auth" namespace:"auth" env-namespace:"AUTH"`
 }
 
@@ -105,6 +106,7 @@ type Application struct {
 	restSrv     *api.Rest
 	migratorSrv *api.Migrator
 	exporter    migrator.Exporter
+	devAuth     *auth.DevAuthServer
 	terminated  chan struct{}
 }
 
@@ -154,6 +156,7 @@ func New(opts Opts) (*Application, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	dataService := &service.DataStore{
 		Interface:      boltStore,
 		EditDuration:   5 * time.Minute,
@@ -193,6 +196,8 @@ func New(opts Opts) (*Application, error) {
 		SecretKey:      opts.SecretKey,
 	}
 
+	authProviders := makeAuthProviders(jwtService, avatarProxy, dataService, opts)
+
 	srv := &api.Rest{
 		Version:     revision,
 		DataService: dataService,
@@ -205,7 +210,7 @@ func New(opts Opts) (*Application, error) {
 		Authenticator: auth.Authenticator{
 			JWTService:        jwtService,
 			AdminEmail:        opts.AdminEmail,
-			Providers:         makeAuthProviders(jwtService, avatarProxy, dataService, opts),
+			Providers:         authProviders,
 			DevPasswd:         opts.DevPasswd,
 			PermissionChecker: dataService,
 		},
@@ -220,8 +225,14 @@ func New(opts Opts) (*Application, error) {
 	}
 
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = opts.LowScore, opts.CriticalScore
+
+	var devAuth *auth.DevAuthServer
+	if opts.Auth.Dev {
+		devAuth = &auth.DevAuthServer{Provider: authProviders[len(authProviders)-1]}
+	}
+
 	tch := make(chan struct{})
-	return &Application{restSrv: srv, migratorSrv: migr, exporter: exporter, Opts: opts, terminated: tch}, nil
+	return &Application{restSrv: srv, migratorSrv: migr, exporter: exporter, devAuth: devAuth, Opts: opts, terminated: tch}, nil
 }
 
 // Run all application objects
@@ -235,9 +246,15 @@ func (a *Application) Run(ctx context.Context) error {
 		<-ctx.Done()
 		a.restSrv.Shutdown()
 		a.migratorSrv.Shutdown()
+		if a.devAuth != nil {
+			a.devAuth.Shutdown()
+		}
 	}()
 	a.activateBackup(ctx) // runs in goroutine for each site
 	go a.migratorSrv.Run(a.Port + 1)
+	if a.Auth.Dev {
+		go a.devAuth.Run()
+	}
 	a.restSrv.Run(a.Port)
 	close(a.terminated)
 	return nil
@@ -348,6 +365,10 @@ func makeAuthProviders(jwtService *auth.JWT, avatarProxy *proxy.Avatar, ds *serv
 	if opts.Auth.Yandex.CID != "" && opts.Auth.Yandex.CSEC != "" {
 		providers = append(providers, auth.NewYandex(makeParams(opts.Auth.Yandex.CID, opts.Auth.Yandex.CSEC)))
 	}
+	if opts.Auth.Dev {
+		providers = append(providers, auth.NewDev(makeParams("", "")))
+	}
+
 	if len(providers) == 0 {
 		log.Printf("[WARN] no auth providers defined")
 	}

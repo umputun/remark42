@@ -49,7 +49,8 @@ func TestApplicationFailed(t *testing.T) {
 	p := flags.NewParser(&opts, flags.Default)
 
 	// RO bolt location
-	_, err := p.ParseArgs([]string{"--secret=123456", "--url=https://demo.remark42.com", "--store.bolt.path=/dev/null"})
+	_, err := p.ParseArgs([]string{"--secret=123456", "--url=https://demo.remark42.com", "--backup=/tmp",
+		"--store.bolt.path=/dev/null"})
 	assert.Nil(t, err)
 	_, err = New(opts)
 	assert.EqualError(t, err, "can't initialize data store: failed to make boltdb for /dev/null/remark.db: "+
@@ -67,14 +68,14 @@ func TestApplicationFailed(t *testing.T) {
 
 	// invalid url
 	opts = Opts{}
-	_, err = p.ParseArgs([]string{"--secret=123456", "--url=demo.remark42.com", "----store.bolt.path=/tmp"})
+	_, err = p.ParseArgs([]string{"--secret=123456", "--url=demo.remark42.com", "--backup=/tmp", "----store.bolt.path=/tmp"})
 	assert.Nil(t, err)
 	_, err = New(opts)
 	assert.EqualError(t, err, "invalid remark42 url demo.remark42.com")
 	t.Log(err)
 
 	opts = Opts{}
-	_, err = p.ParseArgs([]string{"--secret=123456", "--url=https://demo.remark42.com", "--store.type=mongo"})
+	_, err = p.ParseArgs([]string{"--secret=123456", "--url=https://demo.remark42.com", "--backup=/tmp", "--store.type=mongo"})
 	assert.Nil(t, err)
 	_, err = New(opts)
 	assert.EqualError(t, err, "unsupported store type mongo")

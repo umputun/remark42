@@ -163,7 +163,7 @@ func mockProvider(t *testing.T, loginPort, authPort int) (*http.Server, *http.Se
 	params := Params{RemarkURL: "url", SecretKey: "123456", Cid: "cid", Csecret: "csecret",
 		JwtService: NewJWT("12345", false, time.Hour, time.Hour*24*31),
 		// AvatarProxy:  &proxy.Avatar{Store: &mockAvatarStore, RoutePath: "/v1/avatar"},
-		PermissionChecker: &mockUserPermissons{},
+		PermissionChecker: &mockUserPermissions{admin: "mock_myuser2", verified: "mock_myuser2", blocked: "mock_myuser1"},
 	}
 	provider = initProvider(params, provider)
 
@@ -219,8 +219,12 @@ func mockProvider(t *testing.T, loginPort, authPort int) (*http.Server, *http.Se
 	return ts, oauth
 }
 
-type mockUserPermissons struct{}
+type mockUserPermissions struct {
+	admin    string
+	verified string
+	blocked  string
+}
 
-func (m *mockUserPermissons) IsAdmin(siteID, userID string) bool    { return userID == "mock_myuser2" }
-func (m *mockUserPermissons) IsVerified(siteID, userID string) bool { return userID == "mock_myuser2" }
-func (m *mockUserPermissons) IsBlocked(siteID, userID string) bool  { return userID == "mock_myuser1" }
+func (m *mockUserPermissions) IsAdmin(userID string) bool            { return userID == m.admin }
+func (m *mockUserPermissions) IsVerified(siteID, userID string) bool { return userID == m.verified }
+func (m *mockUserPermissions) IsBlocked(siteID, userID string) bool  { return userID == m.blocked }
