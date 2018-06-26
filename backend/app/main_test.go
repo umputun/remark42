@@ -18,7 +18,11 @@ import (
 )
 
 func TestApplication(t *testing.T) {
-	app, ctx := prepApp(t, 18080, 500*time.Millisecond)
+	app, ctx := prepApp(t, 500*time.Millisecond, func(o Opts) Opts {
+		o.Port = 18080
+		return o
+	})
+
 	go func() { _ = app.Run(ctx) }()
 	time.Sleep(100 * time.Millisecond) // let server start
 
@@ -44,6 +48,30 @@ func TestApplication(t *testing.T) {
 	app.Wait()
 }
 
+func TestApplicationDevMode(t *testing.T) {
+	app, ctx := prepApp(t, 500*time.Millisecond, func(o Opts) Opts {
+		o.Port = 18085
+		o.DevPasswd = "password"
+		o.Auth.Dev = true
+		return o
+	})
+
+	go func() { _ = app.Run(ctx) }()
+	time.Sleep(100 * time.Millisecond) // let server start
+
+	assert.Equal(t, 4+1, len(app.restSrv.Authenticator.Providers), "extra auth provider")
+	assert.Equal(t, "dev", app.restSrv.Authenticator.Providers[4].Name, "dev auth provider")
+	// send ping
+	resp, err := http.Get("http://localhost:18085/api/v1/ping")
+	require.Nil(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, 200, resp.StatusCode)
+	body, err := ioutil.ReadAll(resp.Body)
+	assert.Nil(t, err)
+	assert.Equal(t, "pong", string(body))
+
+	app.Wait()
+}
 func TestApplicationFailed(t *testing.T) {
 	opts := Opts{}
 	p := flags.NewParser(&opts, flags.Default)
@@ -83,7 +111,10 @@ func TestApplicationFailed(t *testing.T) {
 }
 
 func TestApplicationShutdown(t *testing.T) {
-	app, ctx := prepApp(t, 18090, 500*time.Millisecond)
+	app, ctx := prepApp(t, 500*time.Millisecond, func(o Opts) Opts {
+		o.Port = 18090
+		return o
+	})
 	st := time.Now()
 	err := app.Run(ctx)
 	assert.Nil(t, err)
@@ -105,21 +136,21 @@ func TestApplicationMainSignal(t *testing.T) {
 	assert.True(t, time.Since(st).Seconds() < 1, "should take about 500msec")
 }
 
-func prepApp(t *testing.T, port int, duration time.Duration) (*Application, context.Context) {
-	// prepare options
+func prepApp(t *testing.T, duration time.Duration, fn func(o Opts) Opts) (*Application, context.Context) {
 	opts := Opts{}
+	// prepare options
 	p := flags.NewParser(&opts, flags.Default)
 	_, err := p.ParseArgs([]string{"--secret=123456", "--dev-passwd=password", "--url=https://demo.remark42.com"})
 	require.Nil(t, err)
 	opts.Avatar.FS.Path, opts.Avatar.Type, opts.BackupLocation = "/tmp", "fs", "/tmp"
-	opts.Store.Bolt.Path = fmt.Sprintf("/tmp/%d", port)
+	opts.Store.Bolt.Path = fmt.Sprintf("/tmp/%d", opts.Port)
 	opts.Store.Bolt.Timeout = 10 * time.Second
 	opts.Auth.Github.CSEC, opts.Auth.Github.CID = "csec", "cid"
 	opts.Auth.Google.CSEC, opts.Auth.Google.CID = "csec", "cid"
 	opts.Auth.Facebook.CSEC, opts.Auth.Facebook.CID = "csec", "cid"
 	opts.Auth.Yandex.CSEC, opts.Auth.Yandex.CID = "csec", "cid"
-	opts.Port = port
 	opts.BackupLocation = "/tmp"
+	opts = fn(opts)
 
 	os.Remove(opts.Store.Bolt.Path + "/remark.db")
 
