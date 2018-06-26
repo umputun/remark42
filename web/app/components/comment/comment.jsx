@@ -33,8 +33,7 @@ export default class Comment extends Component {
     this.scrollToParent = this.scrollToParent.bind(this);
     this.onEdit = this.onEdit.bind(this);
     this.onReply = this.onReply.bind(this);
-    this.onPinClick = this.onPinClick.bind(this);
-    this.onUnpinClick = this.onUnpinClick.bind(this);
+    this.togglePin = this.togglePin.bind(this);
     this.toggleVerify = this.toggleVerify.bind(this);
     this.toggleBlock = this.toggleBlock.bind(this);
     this.onDeleteClick = this.onDeleteClick.bind(this);
@@ -129,27 +128,16 @@ export default class Comment extends Component {
     this.setState({ isUserInfoShown: !this.state.isUserInfoShown });
   }
 
-  onPinClick() {
+  togglePin(isPinned) {
     const { id } = this.props.data;
+    const promptMessage = isPinned ? 'Do you want to pin this comment?' : 'Do you want to pin this comment?';
 
-    if (confirm('Do you want to pin this comment?')) {
-      this.setState({ pinned: true });
+    if (confirm(promptMessage)) {
+      this.setState({ pinned: !isPinned });
 
-      api.pinComment({ id, url }).then(() => {
-        api.getComment({ id }).then(comment => store.replaceComment(comment));
-      });
-    }
-  }
-
-  onUnpinClick() {
-    const { id } = this.props.data;
-
-    if (confirm('Do you want to unpin this comment?')) {
-      this.setState({ pinned: false });
-
-      api.unpinComment({ id, url }).then(() => {
-        api.getComment({ id }).then(comment => store.replaceComment(comment));
-      });
+      (isPinned ? api.unpinComment : api.pinComment)({ id, url })
+        .then(api.getComment({ id }))
+        .then(comment => store.replaceComment(comment));
     }
   }
 
@@ -499,36 +487,19 @@ export default class Comment extends Component {
             {
               !deleted && isAdmin && (
                 <span className="comment__controls">
-                  {
-                    !pinned && (
-                      <span
-                        className="comment__control"
-                        role="button"
-                        tabIndex="0"
-                        onClick={this.onPinClick}
-                      >Pin</span>
-                    )
-                  }
+                  <span
+                    className="comment__control"
+                    role="button"
+                    tabIndex="0"
+                    onClick={() => this.togglePin(pinned)}
+                  >{pinned ? 'Unpin' : 'Pin'}</span>
 
-                  {
-                    pinned && (
-                      <span
-                        className="comment__control"
-                        role="button"
-                        tabIndex="0"
-                        onClick={this.onUnpinClick}
-                      >Unpin</span>
-                    )
-                  }
-
-                  {
-                    <span
-                      className="comment__control"
-                      role="button"
-                      tabIndex="0"
-                      onClick={() => this.toggleBlock(userBlocked)}
-                    >Unblock</span>
-                  }
+                  <span
+                    className="comment__control"
+                    role="button"
+                    tabIndex="0"
+                    onClick={() => this.toggleBlock(userBlocked)}
+                  >{userBlocked ? 'Unblock' : 'Block'}</span>
 
                   {
                     !deleted && (
