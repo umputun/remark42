@@ -4,6 +4,7 @@ const NODE_ID = 'remark42';
 const COUNTER_NODE_CLASSNAME = 'remark42__counter';
 const COMMENT_NODE_CLASSNAME_PREFIX = 'remark42__comment-';
 const LAST_COMMENTS_NODE_CLASSNAME = 'remark42__last-comments';
+const USER_INFO_NODE_CLASSNAME = 'remark42__user-info';
 const DEFAULT_LAST_COMMENTS_MAX = 15;
 const DEFAULT_MAX_COMMENT_SIZE = 1000;
 const MAX_SHOWN_ROOT_COMMENTS = 10;
@@ -32,4 +33,5 @@ module.exports = {
   DEFAULT_SORT,
   LS_COLLAPSE_KEY,
   LS_SORT_KEY,
+  USER_INFO_NODE_CLASSNAME,
 };
