@@ -35,10 +35,8 @@ export default class Comment extends Component {
     this.onReply = this.onReply.bind(this);
     this.onPinClick = this.onPinClick.bind(this);
     this.onUnpinClick = this.onUnpinClick.bind(this);
-    this.onVerifyClick = this.onVerifyClick.bind(this);
-    this.onUnverifyClick = this.onUnverifyClick.bind(this);
-    this.onBlockClick = this.onBlockClick.bind(this);
-    this.onUnblockClick = this.onUnblockClick.bind(this);
+    this.toggleVerify = this.toggleVerify.bind(this);
+    this.toggleBlock = this.toggleBlock.bind(this);
     this.onDeleteClick = this.onDeleteClick.bind(this);
   }
 
@@ -155,51 +153,29 @@ export default class Comment extends Component {
     }
   }
 
-  onVerifyClick() {
+  toggleVerify(isVerified) {
     const { id, user: { id: userId } } = this.props.data;
+    const promptMessage = isVerified ? 'Do you want to verify this user?' : 'Do you want to verify this user?';
 
-    if (confirm('Do you want to verify this user?')) {
-      this.setState({ isUserVerified: true });
+    if (confirm(promptMessage)) {
+      this.setState({ isUserVerified: !isVerified });
 
-      api.setVerifyStatus({ id: userId }).then(() => {
-        api.getComment({ id }).then(comment => store.replaceComment(comment));
-      });
+      (isVerified ? api.removeVerifyStatus : api.setVerifyStatus)({ id: userId })
+        .then(api.getComment({ id }))
+        .then(comment => store.replaceComment(comment));
     }
   }
 
-  onUnverifyClick() {
+  toggleBlock(isBlocked) {
     const { id, user: { id: userId } } = this.props.data;
+    const promptMessage = isBlocked ? 'Do you want to unblock this user?' : 'Do you want to block this user?';
 
-    if (confirm('Do you want to unverify this user?')) {
-      this.setState({ isUserVerified: false });
+    if (confirm(promptMessage)) {
+      this.setState({ userBlocked: !isBlocked });
 
-      api.removeVerifyStatus({ id: userId }).then(() => {
-        api.getComment({ id }).then(comment => store.replaceComment(comment));
-      });
-    }
-  }
-
-  onBlockClick() {
-    const { id, user: { id: userId } } = this.props.data;
-
-    if (confirm('Do you want to block this user?')) {
-      this.setState({ userBlocked: true });
-
-      api.blockUser({ id: userId }).then(() => {
-        api.getComment({ id }).then(comment => store.replaceComment(comment));
-      });
-    }
-  }
-
-  onUnblockClick() {
-    const { id, user: { id: userId } } = this.props.data;
-
-    if (confirm('Do you want to unblock this user?')) {
-      this.setState({ userBlocked: false });
-
-      api.unblockUser({ id: userId }).then(() => {
-        api.getComment({ id }).then(comment => store.replaceComment(comment));
-      });
+      (isBlocked ? api.unblockUser : api.blockUser)({ id: userId })
+        .then(api.getComment({ id }))
+        .then(comment => store.replaceComment(comment));
     }
   }
 
@@ -413,7 +389,7 @@ export default class Comment extends Component {
             {
               isAdmin && mods.view !== 'user' && (
                 <span
-                  onClick={o.user.verified ? this.onUnverifyClick : this.onVerifyClick}
+                  onClick={() => this.toggleVerify(o.user.verified)}
                   aria-label="Toggle verification"
                   title={o.user.verified ? 'Verified user' : 'Unverified user'}
                   className={b('comment__verification', {}, { active: o.user.verified, clickable: true })}
@@ -546,25 +522,12 @@ export default class Comment extends Component {
                   }
 
                   {
-                    userBlocked && (
-                      <span
-                        className="comment__control"
-                        role="button"
-                        tabIndex="0"
-                        onClick={this.onUnblockClick}
-                      >Unblock</span>
-                    )
-                  }
-
-                  {
-                    !userBlocked && (
-                      <span
-                        className="comment__control"
-                        role="button"
-                        tabIndex="0"
-                        onClick={this.onBlockClick}
-                      >Block</span>
-                    )
+                    <span
+                      className="comment__control"
+                      role="button"
+                      tabIndex="0"
+                      onClick={() => this.toggleBlock(userBlocked)}
+                    >Unblock</span>
                   }
 
                   {
