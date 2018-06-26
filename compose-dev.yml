@@ -1,3 +1,5 @@
+# compose file for local development
+# starts backend with basic auth "dev:password" and Dev oauth2 provider
 version: '2'
 
 services:
@@ -15,8 +17,8 @@ services:
 
         # uncomment to expose directly (no proxy)
         ports:
-         - "8080:8080"
-         - "8084:8084"
+         - "8080:8080" # promary rest server
+         - "8084:8084" # local oauth2 server
 
         environment:
             - USER
@@ -26,6 +28,7 @@ services:
             - BACKUP_PATH=/srv/var/backup
             - DEBUG=true
             - DEV_PASSWD=password
+            - ADMINS=dev_user # set admin flag for local ouath2 
         volumes:
             - ./var:/srv/var
             #- ./web:/srv/web # uncomment to map web directory directly. It will propagate local changes to container without redeploy

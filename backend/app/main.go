@@ -36,20 +36,21 @@ type Opts struct {
 	Avatar AvatarGroup `group:"avatar" namespace:"avatar" env-namespace:"AVATAR"`
 	Cache  CacheGroup  `group:"cache" namespace:"cache" env-namespace:"CACHE"`
 
-	Sites          []string `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
-	Admins         []string `long:"admin" env:"ADMIN" description:"admin(s) names" env-delim:","`
-	AdminEmail     string   `long:"admin-email" env:"ADMIN_EMAIL" default:"" description:"admin email"`
-	DevPasswd      string   `long:"dev-passwd" env:"DEV_PASSWD" default:"" description:"development mode password"`
-	BackupLocation string   `long:"backup" env:"BACKUP_PATH" default:"./var/backup" description:"backups location"`
-	MaxBackupFiles int      `long:"max-back" env:"MAX_BACKUP_FILES" default:"10" description:"max backups to keep"`
-	ImageProxy     bool     `long:"img-proxy" env:"IMG_PROXY" description:"enable image proxy"`
-	MaxCommentSize int      `long:"max-comment" env:"MAX_COMMENT_SIZE" default:"2048" description:"max comment size"`
-	LowScore       int      `long:"low-score" env:"LOW_SCORE" default:"-5" description:"low score threshold"`
-	CriticalScore  int      `long:"critical-score" env:"CRITICAL_SCORE" default:"-10" description:"critical score threshold"`
-	ReadOnlyAge    int      `long:"read-age" env:"READONLY_AGE" default:"0" description:"read-only age of comments"`
-	Port           int      `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
-	WebRoot        string   `long:"web-root" env:"REMARK_WEB_ROOT" default:"./web" description:"web root directory"`
-	Dbg            bool     `long:"dbg" env:"DEBUG" description:"debug mode"`
+	Sites          []string      `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
+	Admins         []string      `long:"admin" env:"ADMIN" description:"admin(s) names" env-delim:","`
+	AdminEmail     string        `long:"admin-email" env:"ADMIN_EMAIL" default:"" description:"admin email"`
+	DevPasswd      string        `long:"dev-passwd" env:"DEV_PASSWD" default:"" description:"development mode password"`
+	BackupLocation string        `long:"backup" env:"BACKUP_PATH" default:"./var/backup" description:"backups location"`
+	MaxBackupFiles int           `long:"max-back" env:"MAX_BACKUP_FILES" default:"10" description:"max backups to keep"`
+	ImageProxy     bool          `long:"img-proxy" env:"IMG_PROXY" description:"enable image proxy"`
+	MaxCommentSize int           `long:"max-comment" env:"MAX_COMMENT_SIZE" default:"2048" description:"max comment size"`
+	LowScore       int           `long:"low-score" env:"LOW_SCORE" default:"-5" description:"low score threshold"`
+	CriticalScore  int           `long:"critical-score" env:"CRITICAL_SCORE" default:"-10" description:"critical score threshold"`
+	ReadOnlyAge    int           `long:"read-age" env:"READONLY_AGE" default:"0" description:"read-only age of comments"`
+	EditDuration   time.Duration `long:"edit-time" env:"EDIT_TIME" default:"5m" description:"edit window"`
+	Port           int           `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
+	WebRoot        string        `long:"web-root" env:"REMARK_WEB_ROOT" default:"./web" description:"web root directory"`
+	Dbg            bool          `long:"dbg" env:"DEBUG" description:"debug mode"`
 
 	Auth struct {
 		TTL struct {
@@ -159,7 +160,7 @@ func New(opts Opts) (*Application, error) {
 
 	dataService := &service.DataStore{
 		Interface:      boltStore,
-		EditDuration:   5 * time.Minute,
+		EditDuration:   opts.EditDuration,
 		Secret:         opts.SecretKey,
 		MaxCommentSize: opts.MaxCommentSize,
 		Admins:         opts.Admins,

@@ -58,9 +58,11 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 | auth.github.csec   | AUTH_GITHUB_CSEC   |                       | Github OAuth client secret                     |
 | auth.yandex.cid    | AUTH_YANDEX_CID    |                       | Yandex OAuth client ID                         |
 | auth.yandex.csec   | AUTH_YANDEX_CSEC   |                       | Yandex OAuth client secret                     |
-| low-score          | LOW_SCORE          | `-5`                  | Low score threshold                            |
-| critical-score     | CRITICAL_SCORE     | `-10`                 | Critical score threshold                       |
-| img-proxy          | IMG_PROXY          | `false`               | Enable http->https proxy for images            |
+| auth.dev           | AUTH_DEV           | false                 | local oauth2 server, development mode only     |
+| low-score          | LOW_SCORE          | `-5`                  | low score threshold                            |
+| critical-score     | CRITICAL_SCORE     | `-10`                 | critical score threshold                       |
+| edit-time          | EDIT_TIME          | `5m`                  | edit window                                    |
+| img-proxy          | IMG_PROXY          | `false`               | enable http->https proxy for images            |
 | dbg                | DEBUG              | `false`               | debug mode                                     |
 | dev-passwd         | DEV_PASSWD         |                       | password for `dev` user                        |
 
