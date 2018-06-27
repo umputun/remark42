@@ -1,5 +1,5 @@
 # compose file for local development
-# starts backend with basic auth "dev:password" and Dev oauth2 provider on port 8080
+# starts backend on 8080 with basic auth "dev:password" and Dev oauth2 provider on port 8084
 # UI on https://127.0.0.1:8080/web
 
 version: '2'
