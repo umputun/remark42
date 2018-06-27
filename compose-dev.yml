@@ -1,5 +1,7 @@
 # compose file for local development
-# starts backend with basic auth "dev:password" and Dev oauth2 provider
+# starts backend with basic auth "dev:password" and Dev oauth2 provider on port 8080
+# UI on https://127.0.0.1:8080/web
+
 version: '2'
 
 services:
@@ -15,7 +17,6 @@ services:
               max-size: "10m"
               max-file: "5"
 
-        # uncomment to expose directly (no proxy)
         ports:
          - "8080:8080" # promary rest server
          - "8084:8084" # local oauth2 server
