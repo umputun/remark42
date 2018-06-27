@@ -48,6 +48,8 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 | avatar.path        | AVATAR_FS_PATH     | `./var/avatars`       | avatars location                               |
 | avatar.rsz-lmt     | AVATAR_RSZ_LMT     | 0                     | max image size for resizing avatars on save    |
 | max-comment        | MAX_COMMENT_SIZE   | 2048                  | comment's size limit                           |
+| auth.ttl.jwt       | AUTH_TTL_JWT       | 5m                    | jwt TTL                                        |
+| auth.ttl.cookie    | AUTH_TTL_COOKIE    | 200h                  | cookie TTL                                     |
 | auth.google.cid    | AUTH_GOOGLE_CID    |                       | Google OAuth client ID                         |
 | auth.google.csec   | AUTH_GOOGLE_CSEC   |                       | Google OAuth client secret                     |
 | auth.facebook.cid  | AUTH_FACEBOOK_CID  |                       | Facebook OAuth client ID                       |
@@ -56,9 +58,11 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 | auth.github.csec   | AUTH_GITHUB_CSEC   |                       | Github OAuth client secret                     |
 | auth.yandex.cid    | AUTH_YANDEX_CID    |                       | Yandex OAuth client ID                         |
 | auth.yandex.csec   | AUTH_YANDEX_CSEC   |                       | Yandex OAuth client secret                     |
-| low-score          | LOW_SCORE          | `-5`                  | Low score threshold                            |
-| critical-score     | CRITICAL_SCORE     | `-10`                 | Critical score threshold                       |
-| img-proxy          | IMG_PROXY          | `false`               | Enable http->https proxy for images            |
+| auth.dev           | AUTH_DEV           | false                 | local oauth2 server, development mode only     |
+| low-score          | LOW_SCORE          | `-5`                  | low score threshold                            |
+| critical-score     | CRITICAL_SCORE     | `-10`                 | critical score threshold                       |
+| edit-time          | EDIT_TIME          | `5m`                  | edit window                                    |
+| img-proxy          | IMG_PROXY          | `false`               | enable http->https proxy for images            |
 | dbg                | DEBUG              | `false`               | debug mode                                     |
 | dev-passwd         | DEV_PASSWD         |                       | password for `dev` user                        |
 

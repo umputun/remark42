@@ -35,14 +35,13 @@ type Provider struct {
 
 // Params to make initialized and ready to use provider
 type Params struct {
-	RemarkURL    string
-	AvatarProxy  *proxy.Avatar
-	JwtService   *JWT
-	IsVerifiedFn func(siteID string, userID string) bool
-	SecretKey    string
-	Admins       []string
-	Cid          string
-	Csecret      string
+	RemarkURL         string
+	AvatarProxy       *proxy.Avatar
+	JwtService        *JWT
+	PermissionChecker PermissionChecker
+	SecretKey         string
+	Cid               string
+	Csecret           string
 }
 
 type userData map[string]interface{}
@@ -116,7 +115,6 @@ func (p Provider) loginHandler(w http.ResponseWriter, r *http.Request) {
 // authHandler fills user info and redirects to "from" url. This is callback url redirected locally by browser
 // GET /callback
 func (p Provider) authHandler(w http.ResponseWriter, r *http.Request) {
-
 	oauthClaims, err := p.JwtService.Get(r)
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to get jwt")
@@ -163,6 +161,7 @@ func (p Provider) authHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[DEBUG] got raw user info %+v", jData)
 
 	u := p.MapUser(jData, data)
+	u = p.setAvatar(u)
 	u = p.alterUser(u, oauthClaims)
 
 	authClaims := &CustomClaims{
@@ -189,8 +188,8 @@ func (p Provider) authHandler(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, &u)
 }
 
-// alterUser sets fields not handled by provider's MapUser, things like avatar, admin, verified
-func (p Provider) alterUser(u store.User, oauthClaims *CustomClaims) store.User {
+// setAvatar saves avatar and puts proxied URL to u.Picture
+func (p Provider) setAvatar(u store.User) store.User {
 	if p.AvatarProxy != nil {
 		if avatarURL, e := p.AvatarProxy.Put(u); e == nil {
 			u.Picture = avatarURL
@@ -198,9 +197,15 @@ func (p Provider) alterUser(u store.User, oauthClaims *CustomClaims) store.User 
 			log.Printf("[WARN] failed to proxy avatar, %s", e)
 		}
 	}
-	u.Admin = isAdmin(u.ID, p.Admins)
-	if p.IsVerifiedFn != nil {
-		u.Verified = p.IsVerifiedFn(oauthClaims.SiteID, u.ID)
+	return u
+}
+
+// alterUser sets fields not handled by provider's MapUser, things like admin, verified and blocked
+func (p Provider) alterUser(u store.User, oauthClaims *CustomClaims) store.User {
+	if p.PermissionChecker != nil {
+		u.Admin = p.PermissionChecker.IsAdmin(u.ID)
+		u.Verified = p.PermissionChecker.IsVerified(oauthClaims.SiteID, u.ID)
+		u.Blocked = p.PermissionChecker.IsBlocked(oauthClaims.SiteID, u.ID)
 	}
 	return u
 }

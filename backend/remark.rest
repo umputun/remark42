@@ -113,5 +113,8 @@ PUT {{host}}/api/v1/rss/site?site=remark
 ### get default avatar
 GET {{host}}/api/v1/avatar/blah
 
+### get config
+GET  {{host}}/api/v1/config?site=remark
+
 ### ping
 GET {{host}}/ping

@@ -10,7 +10,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
-	blackfriday "gopkg.in/russross/blackfriday.v2"
+	"gopkg.in/russross/blackfriday.v2"
 
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/rest/cache"
@@ -219,7 +219,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		Version:        s.Version,
 		EditDuration:   int(s.DataService.EditDuration.Seconds()),
 		MaxCommentSize: s.DataService.MaxCommentSize,
-		Admins:         s.Authenticator.Admins,
+		Admins:         s.DataService.Admins,
 		AdminEmail:     s.Authenticator.AdminEmail,
 		LowScore:       s.ScoreThresholds.Low,
 		CriticalScore:  s.ScoreThresholds.Critical,

@@ -13,6 +13,7 @@ const PROVIDER_NAMES = {
   facebook: 'Facebook',
   github: 'GitHub',
   yandex: 'Yandex',
+  dev: 'Dev',
 };
 const LS_COLLAPSE_KEY = '__remarkCollapsed';
 const LS_SORT_KEY = '__remarkSort';
