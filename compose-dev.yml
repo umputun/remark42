@@ -28,7 +28,8 @@ services:
             - BACKUP_PATH=/srv/var/backup
             - DEBUG=true
             - DEV_PASSWD=password
-            - ADMINS=dev_user # set admin flag for local ouath2 
+            - AUTH_DEV=true   # activate local oauth "dev"
+            - ADMIN=dev_user  # set admin flag for local ouath2 
         volumes:
             - ./var:/srv/var
             #- ./web:/srv/web # uncomment to map web directory directly. It will propagate local changes to container without redeploy
