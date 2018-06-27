@@ -161,8 +161,8 @@ func (p Provider) authHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[DEBUG] got raw user info %+v", jData)
 
 	u := p.MapUser(jData, data)
+	u = p.setPermissions(u, oauthClaims.SiteID)
 	u = p.setAvatar(u)
-	u = p.alterUser(u, oauthClaims)
 
 	authClaims := &CustomClaims{
 		User: &u,
@@ -200,13 +200,11 @@ func (p Provider) setAvatar(u store.User) store.User {
 	return u
 }
 
-// alterUser sets fields not handled by provider's MapUser, things like admin, verified and blocked
-func (p Provider) alterUser(u store.User, oauthClaims *CustomClaims) store.User {
-	if p.PermissionChecker != nil {
-		u.Admin = p.PermissionChecker.IsAdmin(u.ID)
-		u.Verified = p.PermissionChecker.IsVerified(oauthClaims.SiteID, u.ID)
-		u.Blocked = p.PermissionChecker.IsBlocked(oauthClaims.SiteID, u.ID)
-	}
+// setPermissions sets permission fields not handled by provider's MapUser, things like admin, verified and blocked
+func (p Provider) setPermissions(u store.User, siteID string) store.User {
+	u.Admin = p.PermissionChecker.IsAdmin(u.ID)
+	u.Verified = p.PermissionChecker.IsVerified(siteID, u.ID)
+	u.Blocked = p.PermissionChecker.IsBlocked(siteID, u.ID)
 	return u
 }
 
