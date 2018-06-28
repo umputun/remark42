@@ -37,13 +37,12 @@ func (d *DevAuthServer) Run() {
 			log.Printf("[DEBUG] dev oauth request %s %s %+v", r.Method, r.URL, r.Header)
 			switch {
 
-			case strings.HasPrefix(r.URL.Path, "/login/user"):
-				w.Write([]byte(devUserForm))
-
 			case strings.HasPrefix(r.URL.Path, "/login/oauth/authorize"):
 
 				if !d.nonInteractive && (r.ParseForm() != nil || r.Form.Get("username") == "") {
-					w.Write([]byte(fmt.Sprintf(devUserForm, r.URL.RawQuery)))
+					if _, err := w.Write([]byte(fmt.Sprintf(devUserForm, r.URL.RawQuery))); err != nil {
+						log.Printf("[WARN] can't write, %s", err)
+					}
 					return
 				}
 

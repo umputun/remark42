@@ -5,7 +5,7 @@
 version: '2'
 
 services:
-    remark:
+    remark42:
         build: .
         image: umputun/remark42:dev
         container_name: "remark42-dev"
