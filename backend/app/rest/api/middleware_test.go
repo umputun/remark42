@@ -27,6 +27,7 @@ func TestMiddleware_AppInfo(t *testing.T) {
 	resp, err := http.Get(ts.URL + "/blah")
 	require.Nil(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
+	defer resp.Body.Close()
 
 	b, err := ioutil.ReadAll(resp.Body)
 	assert.NoError(t, err)
