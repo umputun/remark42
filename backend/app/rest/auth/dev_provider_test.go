@@ -20,7 +20,7 @@ func TestDevProvider(t *testing.T) {
 		JwtService:        NewJWT("12345", false, time.Hour, time.Hour*24*31),
 		PermissionChecker: &mockUserPermissions{admin: "dev_user"},
 	}
-	srv := DevAuthServer{Provider: NewDev(params)}
+	srv := DevAuthServer{Provider: NewDev(params), nonInteractive: true, username: "dev_user"}
 
 	// auth routes for all providers
 	router := chi.NewRouter()
@@ -62,7 +62,7 @@ func TestDevProvider(t *testing.T) {
 	assert.Nil(t, err)
 
 	u := *claims.User
-	assert.Equal(t, store.User{Name: "developer", ID: "dev_user", Picture: "", IP: "",
+	assert.Equal(t, store.User{Name: "dev_user", ID: "dev_user", Picture: "", IP: "",
 		Admin: true, Blocked: false, Verified: false}, u)
 
 }

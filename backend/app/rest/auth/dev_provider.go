@@ -20,6 +20,9 @@ const devAuthPort = 8084
 type DevAuthServer struct {
 	Provider Provider
 
+	username       string // unsafe, but fine for dev
+	nonInteractive bool
+
 	httpServer *http.Server
 	lock       sync.Mutex
 }
@@ -34,7 +37,20 @@ func (d *DevAuthServer) Run() {
 			log.Printf("[DEBUG] dev oauth request %s %s %+v", r.Method, r.URL, r.Header)
 			switch {
 
+			case strings.HasPrefix(r.URL.Path, "/login/user"):
+				w.Write([]byte(devUserForm))
+
 			case strings.HasPrefix(r.URL.Path, "/login/oauth/authorize"):
+
+				if !d.nonInteractive && (r.ParseForm() != nil || r.Form.Get("username") == "") {
+					w.Write([]byte(fmt.Sprintf(devUserForm, r.URL.RawQuery)))
+					return
+				}
+
+				if !d.nonInteractive {
+					d.username = r.Form.Get("username")
+				}
+
 				state := r.URL.Query().Get("state")
 				callbackURL := fmt.Sprintf("%s?code=g0ZGZmNjVmOWI&state=%s", d.Provider.RedirectURL, state)
 				log.Printf("[DEBUG] callback url=%s", callbackURL)
@@ -57,10 +73,11 @@ func (d *DevAuthServer) Run() {
 				}
 
 			case strings.HasPrefix(r.URL.Path, "/user"):
-				res := `{
-					"id": "ignored",
-					"name":"ignored"
-					}`
+				res := fmt.Sprintf(`{
+					"id": "%s",
+					"name":"%s"
+					}`, d.username, d.username)
+
 				w.Header().Set("Content-Type", "application/json; charset=utf-8")
 				if _, err := w.Write([]byte(res)); err != nil {
 					w.WriteHeader(http.StatusInternalServerError)
@@ -106,11 +123,33 @@ func NewDev(p Params) Provider {
 		InfoURL:     fmt.Sprintf("http://127.0.0.1:%d/user", devAuthPort),
 		MapUser: func(data userData, _ []byte) store.User {
 			userInfo := store.User{
-				ID:      "dev_user",
-				Name:    "developer",
+				ID:      data.value("id"),
+				Name:    data.value("name"),
 				Picture: "",
 			}
 			return userInfo
 		},
 	})
 }
+
+var devUserForm = `
+<html>
+    <head>
+	<title>Remark42 Dev User</title>
+	<style>
+		form {
+			margin: 100 auto;
+			width: 300px;
+			padding: 1em;
+			border: 1px solid #CCC;
+		}
+	</style>
+    </head>
+	<body>
+		<form action="/login/oauth/authorize?%s" method="post">
+			username: <input type="text" name="username" value="dev_user">
+			<input type="submit" value="Login">
+		</form>
+    </body>
+</html>
+`
