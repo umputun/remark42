@@ -87,18 +87,22 @@ func (t *Tree) proc(comments []store.Comment, node *Node, rd *recurData, parentI
 
 	repComments := t.filter(comments, func(comment store.Comment) bool { return comment.ParentID == parentID })
 	for _, rc := range repComments {
-		if rc.Timestamp.After(rd.tsModified) {
+		if !rc.Timestamp.IsZero() && rc.Timestamp.After(rd.tsModified) {
 			rd.tsModified = rc.Timestamp
 		}
-		if rc.Timestamp.Before(rd.tsCreated) {
+		if !rc.Timestamp.IsZero() && rc.Timestamp.Before(rd.tsCreated) {
 			rd.tsCreated = rc.Timestamp
 		}
 		if !rc.Deleted {
-			rd.visible = true
+			rd.visible = true // indicates top-level should be visible
 		}
 		rnode := &Node{Comment: rc, Replies: []*Node{}}
 		node.Replies = append(node.Replies, rnode)
 		t.proc(comments, rnode, rd, rc.ID)
+		if !rd.visible {
+			// clean all-deleted subtree
+			node.Replies = node.Replies[:len(node.Replies)-1]
+		}
 	}
 	// replies always sorted by time
 	sort.Slice(node.Replies, func(i, j int) bool {
