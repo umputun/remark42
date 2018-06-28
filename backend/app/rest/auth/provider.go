@@ -107,7 +107,7 @@ func (p Provider) loginHandler(w http.ResponseWriter, r *http.Request) {
 
 	// return login url
 	loginURL := p.conf.AuthCodeURL(state)
-	log.Printf("[DEBUG] login url %s", loginURL)
+	log.Printf("[DEBUG] login url %s, claims=%+v", loginURL, claims)
 
 	http.Redirect(w, r, loginURL, http.StatusFound)
 }
@@ -164,7 +164,7 @@ func (p Provider) authHandler(w http.ResponseWriter, r *http.Request) {
 	u = p.setPermissions(u, oauthClaims.SiteID)
 	u = p.setAvatar(u)
 
-	authClaims := &CustomClaims{
+	claims := &CustomClaims{
 		User: &u,
 		StandardClaims: jwt.StandardClaims{
 			Issuer: "remark42",
@@ -173,7 +173,7 @@ func (p Provider) authHandler(w http.ResponseWriter, r *http.Request) {
 		SessionOnly: oauthClaims.SessionOnly,
 	}
 
-	if err = p.JwtService.Set(w, authClaims, oauthClaims.SessionOnly); err != nil {
+	if err = p.JwtService.Set(w, claims, oauthClaims.SessionOnly); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to save user info")
 		return
 	}
@@ -205,6 +205,7 @@ func (p Provider) setPermissions(u store.User, siteID string) store.User {
 	u.Admin = p.PermissionChecker.IsAdmin(u.ID)
 	u.Verified = p.PermissionChecker.IsVerified(siteID, u.ID)
 	u.Blocked = p.PermissionChecker.IsBlocked(siteID, u.ID)
+	log.Printf("[DEBUG] set permissions for user %s, site %s - %+v", u.ID, siteID, u)
 	return u
 }
 

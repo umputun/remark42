@@ -313,7 +313,7 @@ Also script can uses `url` property from `remark_config` object, or `window.loca
 
 ### Authorization
 
-* `GET /auth/{provider}/login?from=http://url&session=1` - perform "social" login with one of supported providers and redirect to `url`. Presence of `session` (any non-zero value) change the default cookie expiration and makes them session-only.
+* `GET /auth/{provider}/login?from=http://url&site=site_id&session=1` - perform "social" login with one of supported providers and redirect to `url`. Presence of `session` (any non-zero value) change the default cookie expiration and makes them session-only.
 * `GET /auth/logout` - logout
 
 ```go
