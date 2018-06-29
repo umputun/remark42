@@ -99,8 +99,7 @@ func (t *Tree) proc(comments []store.Comment, node *Node, rd *recurData, parentI
 		rnode := &Node{Comment: rc, Replies: []*Node{}}
 		node.Replies = append(node.Replies, rnode)
 		t.proc(comments, rnode, rd, rc.ID)
-		if !rd.visible {
-			// clean all-deleted subtree
+		if !rd.visible || (len(rnode.Replies) == 0 && rc.Deleted) { // clean all-deleted subtree
 			node.Replies = node.Replies[:len(node.Replies)-1]
 		}
 	}

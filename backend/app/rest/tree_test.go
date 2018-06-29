@@ -63,17 +63,22 @@ func TestMakeEmptySubtree(t *testing.T) {
 		{Locator: loc, ID: "1", Timestamp: ts(46, 1)},
 		{Locator: loc, ID: "11", ParentID: "1", Timestamp: ts(46, 11)},
 		{Locator: loc, ID: "111", ParentID: "11", Timestamp: ts(46, 12)},
-		{Locator: loc, ID: "112", ParentID: "11", Deleted: true},
-		{Locator: loc, ID: "12", ParentID: "12", Deleted: true},
+		{Locator: loc, ID: "112", ParentID: "11", Deleted: true}, // subtree deleted
+		{Locator: loc, ID: "1121", ParentID: "112", Deleted: true},
+		{Locator: loc, ID: "1122", ParentID: "112", Deleted: true},
+		{Locator: loc, ID: "12", ParentID: "12", Deleted: true}, // subcomment deleted
 
 		{Locator: loc, ID: "2", Timestamp: ts(47, 1)},
-		{Locator: loc, ID: "21", ParentID: "2", Deleted: true},
+		{Locator: loc, ID: "21", ParentID: "2", Deleted: true}, // subtree deleted
 		{Locator: loc, ID: "211", ParentID: "21", Deleted: true},
 		{Locator: loc, ID: "212", ParentID: "21", Deleted: true},
 		{Locator: loc, ID: "22", ParentID: "2", Timestamp: ts(47, 2)},
 		{Locator: loc, ID: "221", ParentID: "22", Timestamp: ts(47, 3)},
 		{Locator: loc, ID: "222", ParentID: "22", Timestamp: ts(47, 4)},
 		{Locator: loc, ID: "223", ParentID: "22", Deleted: true},
+		{Locator: loc, ID: "224", ParentID: "22", Deleted: true},
+		{Locator: loc, ID: "2241", ParentID: "223", Timestamp: ts(47, 5)},
+		{Locator: loc, ID: "3", Timestamp: ts(48, 1), Deleted: true}, // deleted top level
 	}
 
 	res := MakeTree(comments, "time", 0)
