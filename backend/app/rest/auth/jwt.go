@@ -24,7 +24,7 @@ type CustomClaims struct {
 	jwt.StandardClaims
 	User *store.User `json:"user,omitempty"`
 
-	// state and from used for oauth handshake
+	// used for oauth handshake
 	State       string `json:"state,omitempty"`
 	From        string `json:"from,omitempty"`
 	SiteID      string `json:"site_id,omitempty"`

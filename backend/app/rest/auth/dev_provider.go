@@ -17,6 +17,10 @@ import (
 const devAuthPort = 8084
 
 // DevAuthServer is a fake oauth server for development
+// it provides stand-alone server running on its own port and pretending to be the real oauth2. It also provides
+// Dev Provider the same way as normal providers di, i.e. github, google and others.
+// can run in interractive and non-interactive mode. In interactive mode login attempts will show login form to select
+// desired user name.
 type DevAuthServer struct {
 	Provider Provider
 
@@ -38,7 +42,7 @@ func (d *DevAuthServer) Run() {
 			switch {
 
 			case strings.HasPrefix(r.URL.Path, "/login/oauth/authorize"):
-
+				// first time it will be called without usernam and will ask for onw
 				if !d.nonInteractive && (r.ParseForm() != nil || r.Form.Get("username") == "") {
 					if _, err := w.Write([]byte(fmt.Sprintf(devUserForm, r.URL.RawQuery))); err != nil {
 						log.Printf("[WARN] can't write, %s", err)
