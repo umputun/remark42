@@ -231,9 +231,9 @@ docker-compose -f compose-dev.yml up
 It starts Remark42 on `localhost:8080` 
 and adds local OAuth2 provider “Dev”. To access UI demo page go to `localhost:8080/web`.
 
-That `compose-dev.yml` (you can find it in the root of the project)
-also defines if logged user admin or not. 
-By default, it will be the admin, and to switch it to regular user comment or remove `-ADMIN=dev_user` there.
+That `compose-dev.yml` (you can find it in the root of the project) also defines if default logged user admin or not. 
+By default, it will be the admin, and to switch it to regular user comment or remove `-ADMIN=dev_user` there. You can also select 
+any other user name from the login dialog.
 
 #### Usage
 
