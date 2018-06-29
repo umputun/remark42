@@ -1,17 +1,20 @@
-import 'babel-polyfill';
-import 'common/promises';
+/* eslint-disable no-console */
+import loadPolyfills from 'common/polyfills';
 
 import { h, render } from 'preact';
 import Root from './components/root';
+// eslint-disable-next-line no-unused-vars
 import ListComments from './components/list-comments'; // TODO: temp solution for extracting styles
 
 import { NODE_ID } from './common/constants';
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
-} else {
-  init();
-}
+loadPolyfills().then(() => {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+});
 
 function init() {
   const node = document.getElementById(NODE_ID);

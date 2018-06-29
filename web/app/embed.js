@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { BASE_URL, NODE_ID, COMMENT_NODE_CLASSNAME_PREFIX } from 'common/constants';
 
 if (document.readyState === 'loading') {
