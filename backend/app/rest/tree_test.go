@@ -164,6 +164,7 @@ func mustLoadJSONFile(t *testing.T, file string) []byte {
 	require.Nil(t, err)
 	expTree := Tree{}
 	err = json.Unmarshal(expJSON, &expTree)
+	require.Nil(t, err)
 	expJSON, err = json.Marshal(expTree)
 	require.Nil(t, err)
 	return expJSON
