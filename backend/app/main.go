@@ -86,7 +86,7 @@ type AvatarGroup struct {
 	FS   struct {
 		Path string `long:"path" env:"PATH" default:"./var/avatars" description:"avatars location"`
 	} `group:"fs" namespace:"fs" env-namespace:"FS"`
-	RszLmt int `long:"rsz-lmt" env:"RSZ_LMT" default:"0" description:"max image size for resizing avatars on save"`
+	RszLmt int `long:"rsz-lmt" env:"RESIZE" default:"0" description:"max image size for resizing avatars on save"`
 }
 
 // CacheGroup defines options group for cache params
