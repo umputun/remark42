@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-unused-vars
 import { h, Component } from 'preact';
 
 import { LS_COLLAPSE_KEY } from 'common/constants';
@@ -30,8 +31,9 @@ export default class Thread extends Component {
     this.lsCollapsedID = `${siteId}_${url}_${comment.id}`;
 
     this.state = {
-      collapsed: !this.state.isCollapsedChanged && score <= config.critical_score
-                 || getCollapsedComments().includes(this.lsCollapsedID),
+      collapsed:
+        (!this.state.isCollapsedChanged && score <= config.critical_score) ||
+        getCollapsedComments().includes(this.lsCollapsedID),
       isCollapsedChanged: true,
     };
   }
@@ -55,7 +57,10 @@ export default class Thread extends Component {
   }
 
   render(props, { collapsed }) {
-    const { data: { comment, replies = [] }, mods = {} } = props;
+    const {
+      data: { comment, replies = [] },
+      mods = {},
+    } = props;
 
     return (
       <div
@@ -71,8 +76,9 @@ export default class Thread extends Component {
           onCollapseToggle={this.onCollapseToggle}
         />
 
-        {
-          !collapsed && !!replies.length && replies.map(thread => (
+        {!collapsed &&
+          !!replies.length &&
+          replies.map(thread => (
             <Thread
               key={thread.comment.id}
               data={thread}
@@ -80,8 +86,7 @@ export default class Thread extends Component {
               onReply={props.onReply}
               onEdit={props.onEdit}
             />
-          ))
-        }
+          ))}
       </div>
     );
   }

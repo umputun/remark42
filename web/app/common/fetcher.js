@@ -8,12 +8,8 @@ const methods = ['get', 'post', 'put', 'patch', 'delete', 'head'];
 
 methods.forEach(method => {
   fetcher[method] = data => {
-    const {
-      url,
-      body = {},
-      withCredentials = false,
-      overriddenApiBase = API_BASE,
-    } = (typeof data === 'string' ? { url: data } : data);
+    const { url, body = {}, withCredentials = false, overriddenApiBase = API_BASE } =
+      typeof data === 'string' ? { url: data } : data;
     const basename = `${BASE_URL}${overriddenApiBase}`;
 
     return new Promise((resolve, reject) => {

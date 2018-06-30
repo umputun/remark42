@@ -1,6 +1,7 @@
 .comment_view_user {
   &.comment_collapsed {
-    .comment__text, .comment__actions {
+    .comment__text,
+    .comment__actions {
       display: block;
     }
   }

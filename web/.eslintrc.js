@@ -12,7 +12,7 @@ module.exports = {
     ecmaFeatures: {
       modules: true,
       jsx: true,
-    }
+    },
   },
   globals: {
     remark_config: true,

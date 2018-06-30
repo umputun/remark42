@@ -1,6 +1,6 @@
-/* eslint-disable no-console */
 import loadPolyfills from 'common/polyfills';
 
+// eslint-disable-next-line no-unused-vars
 import { h, render } from 'preact';
 import Root from './components/root';
 // eslint-disable-next-line no-unused-vars
@@ -20,9 +20,10 @@ function init() {
   const node = document.getElementById(NODE_ID);
 
   if (!node) {
-    console.error('Remark42: Can\'t find root node.');
+    // eslint-disable-next-line no-console
+    console.error("Remark42: Can't find root node.");
     return;
   }
 
-  render(<Root/>, node.parentElement, node);
+  render(<Root />, node.parentElement, node);
 }
