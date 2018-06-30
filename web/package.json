@@ -44,7 +44,9 @@
     "bem-react-helper": "^1.1.2",
     "preact": "^8.2.9"
   },
-  "eslintIgnore": ["public"],
+  "eslintIgnore": [
+    "public"
+  ],
   "jest": {
     "transform": {
       "^.+\\.jsx?$": "<rootDir>/fileTransformer.js"
