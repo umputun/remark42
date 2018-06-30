@@ -18,11 +18,11 @@ services:
               max-file: "5"
 
         ports:
-         - "8080:8080" # promary rest server
+         - "8080:8080" # primary rest server
          - "8084:8084" # local oauth2 server
 
         environment:
-            - USER            # preset enviroment, UID on the host machine, i.e `id -u` 
+            - USER            # preset environment, UID on the host machine, i.e `id -u`
             - REMARK_URL=http://127.0.0.1:8080
             - SECRET=12345
             - STORE_BOLT_PATH=/srv/var/db
@@ -30,7 +30,7 @@ services:
             - DEBUG=true
             - DEV_PASSWD=password
             - AUTH_DEV=true   # activate local oauth "dev"
-            - ADMIN=dev_user  # set admin flag for local ouath2 
+            - ADMIN=dev_user  # set admin flag for default user on local ouath2
         volumes:
             - ./var:/srv/var 
             #- ./web:/srv/web # uncomment to map web directory directly. It will propagate local changes to container without redeploy
