@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
@@ -167,7 +166,7 @@ func New(opts Opts) (*Application, error) {
 	}
 
 	loadingCache, err := cache.NewMemoryCache(cache.MaxCacheSize(opts.Cache.Max.Size), cache.MaxValSize(opts.Cache.Max.Value),
-		cache.MaxKeys(opts.Cache.Max.Items), cache.PostFlushFn(postFlushFn(opts.Sites, opts.Port)))
+		cache.MaxKeys(opts.Cache.Max.Items))
 	if err != nil {
 		return nil, err
 	}
@@ -251,10 +250,10 @@ func (a *Application) Run(ctx context.Context) error {
 			a.devAuth.Shutdown()
 		}
 	}()
-	a.activateBackup(ctx) // runs in goroutine for each site
-	go a.migratorSrv.Run(a.Port + 1)
+	a.activateBackup(ctx)            // runs in goroutine for each site
+	go a.migratorSrv.Run(a.Port + 1) // migrator server runs on +1, localhost only
 	if a.Auth.Dev {
-		go a.devAuth.Run()
+		go a.devAuth.Run() // dev oauth2 server on :8084
 	}
 	a.restSrv.Run(a.Port)
 	close(a.terminated)
@@ -307,7 +306,7 @@ func makeAvatarStore(group AvatarGroup) (result proxy.AvatarStore, err error) {
 		}
 		return proxy.NewFSAvatarStore(group.FS.Path, group.RszLmt), nil
 	}
-	return nil, errors.Errorf("unsupported avatart store type %s", group.Type)
+	return nil, errors.Errorf("unsupported avatar store type %s", group.Type)
 }
 
 // mkdir -p for all dirs
@@ -376,31 +375,7 @@ func makeAuthProviders(jwtService *auth.JWT, avatarProxy *proxy.Avatar, ds *serv
 	return providers
 }
 
-// post-flush callback invoked by cache after each flush in async way
-func postFlushFn(sites []string, port int) func() {
-
-	return func() {
-		// list of heavy urls for pre-heating on cache change
-		urls := []string{
-			"http://localhost:%d/api/v1/list?site=%s",
-			"http://localhost:%d/api/v1/last/50?site=%s",
-		}
-
-		for _, site := range sites {
-			for _, u := range urls {
-				resp, err := http.Get(fmt.Sprintf(u, port, site))
-				if err != nil {
-					log.Printf("[WARN] failed to refresh cached list for %s, %s", site, err)
-					return
-				}
-				if err = resp.Body.Close(); err != nil {
-					log.Printf("[WARN] failed to close response body, %s", err)
-				}
-			}
-		}
-	}
-}
-
+// resetEnv clears all sensitive env vars
 func resetEnv(envs ...string) {
 	for _, env := range envs {
 		if err := os.Unsetenv(env); err != nil {
