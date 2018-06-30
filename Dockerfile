@@ -56,14 +56,9 @@ FROM umputun/baseimage:app-latest
 
 WORKDIR /srv
 
-ADD backend/scripts/import-disqus.sh /srv/import-disqus.sh
-ADD backend/scripts/restore-backup.sh /srv/restore-backup.sh
-ADD backend/scripts/migrate-data.sh /srv/migrate-data.sh
-ADD backend/scripts/create-backup.sh /srv/create-backup.sh
-
+ADD backend/scripts/*.sh /srv/
 ADD start.sh /srv/start.sh
-
-RUN chmod +x /srv/start.sh /srv/import-disqus.sh /srv/restore-backup.sh /srv/migrate-data.sh /srv/create-backup.sh
+RUN chmod +x /srv/*.sh
 
 COPY --from=build-backend /go/src/github.com/umputun/remark/backend/remark /srv/
 COPY --from=build-frontend /srv/web/public/ /srv/web
