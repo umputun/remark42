@@ -29,7 +29,7 @@ RUN gometalinter --disable-all --deadline=300s --vendor --enable=vet --enable=ve
 RUN mkdir -p target && /script/coverage.sh
 RUN if [ -z "$COVERALLS_TOKEN" ] ; then \
     echo coverall not enabled ; \
-    else goveralls -coverprofile=.cover/cover.out -service=travis-ci -repotoken $COVERALLS_TOKEN; fi
+    else goveralls -coverprofile=.cover/cover.out -service=travis-ci -repotoken $COVERALLS_TOKEN || echo "coverall failed!"; fi
 
 # get revision from git. if DRONE_TAG presented use DRONE_* git env to make version
 RUN \
