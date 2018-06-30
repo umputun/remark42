@@ -56,10 +56,10 @@ FROM umputun/baseimage:app-latest
 
 WORKDIR /srv
 
-ADD scripts/import-disqus.sh /srv/import-disqus.sh
-ADD scripts/restore-backup.sh /srv/restore-backup.sh
-ADD scripts/migrate-data.sh /srv/migrate-data.sh
-ADD scripts/create-backup.sh /srv/create-backup.sh
+ADD backend/scripts/import-disqus.sh /srv/import-disqus.sh
+ADD backend/scripts/restore-backup.sh /srv/restore-backup.sh
+ADD backend/scripts/migrate-data.sh /srv/migrate-data.sh
+ADD backend/scripts/create-backup.sh /srv/create-backup.sh
 
 ADD start.sh /srv/start.sh
 
