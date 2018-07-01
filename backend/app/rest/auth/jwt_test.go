@@ -26,8 +26,14 @@ var testJwtExpired = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1MjY4ODc4M
 	"ImlzcyI6InJlbWFyazQyIiwibmJmIjoxNTI2ODg0MjIyLCJ1c2VyIjp7Im5hbWUiOiJuYW1lMSIsImlkIjoiaWQxIiwicGljdHVyZSI6IiI" +
 	"sImFkbWluIjpmYWxzZX0sInN0YXRlIjoiMTIzNDU2IiwiZnJvbSI6ImZyb20ifQ.4_dCrY9ihyfZIedz-kZwBTxmxU1a52V7IqeJrOqTzE4"
 
+var testJwtBadSign = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjI3ODkxOTE4MjIsImp0aSI6InJhbmRvbSBpZCI" +
+	"sImlzcyI6InJlbWFyazQyIiwibmJmIjoxNTI2ODg0MjIyLCJ1c2VyIjp7Im5hbWUiOiJuYW1lMSIsImlkIjoiaWQxIiwicGljdHVyZS" +
+	"I6IiIsImFkbWluIjpmYWxzZX0sInN0YXRlIjoiMTIzNDU2IiwiZnJvbSI6ImZyb20ifQ._loFgh3g45gr9TtGqvM3N584I_6EHEOJnYb6Py84st"
+
+var days31 = time.Hour * 24 * 31
+
 func TestJWT_Token(t *testing.T) {
-	j := NewJWT("xyz 12345", false, time.Hour)
+	j := NewJWT("xyz 12345", false, time.Hour, days31)
 
 	claims := &CustomClaims{
 		State: "123456",
@@ -50,20 +56,25 @@ func TestJWT_Token(t *testing.T) {
 }
 
 func TestJWT_Parse(t *testing.T) {
-	j := NewJWT("xyz 12345", false, time.Hour)
+	j := NewJWT("xyz 12345", false, time.Hour, days31)
 	claims, err := j.Parse(testJwtValid)
 	assert.NoError(t, err)
+	assert.False(t, j.IsExpired(claims))
 	assert.Equal(t, &store.User{Name: "name1", ID: "id1"}, claims.User)
 
-	_, err = j.Parse(testJwtExpired)
-	assert.NotNil(t, err, "expired token")
+	claims, err = j.Parse(testJwtExpired)
+	assert.NoError(t, err)
+	assert.True(t, j.IsExpired(claims))
 
 	_, err = j.Parse("bad")
 	assert.NotNil(t, err, "bad token")
+
+	_, err = j.Parse(testJwtBadSign)
+	assert.EqualError(t, err, "can't parse jwt: signature is invalid")
 }
 
 func TestJWT_Set(t *testing.T) {
-	j := NewJWT("xyz 12345", false, time.Hour)
+	j := NewJWT("xyz 12345", false, time.Hour, days31)
 
 	claims := &CustomClaims{
 		State: "123456",
@@ -89,7 +100,7 @@ func TestJWT_Set(t *testing.T) {
 	require.Equal(t, 2, len(cookies))
 	assert.Equal(t, "JWT", cookies[0].Name)
 	assert.Equal(t, testJwtValid, cookies[0].Value)
-	assert.Equal(t, 31536000, cookies[0].MaxAge)
+	assert.Equal(t, 31*24*3600, cookies[0].MaxAge)
 	assert.Equal(t, "XSRF-TOKEN", cookies[1].Name)
 	assert.Equal(t, "random id", cookies[1].Value)
 
@@ -108,20 +119,21 @@ func TestJWT_Set(t *testing.T) {
 }
 
 func TestJWT_GetFromHeader(t *testing.T) {
-	j := NewJWT("xyz 12345", false, time.Hour)
+	j := NewJWT("xyz 12345", false, time.Hour, days31)
 
 	req := httptest.NewRequest("GET", "/", nil)
 	req.Header.Add(jwtHeaderKey, testJwtValid)
 	claims, err := j.Get(req)
 	assert.Nil(t, err)
+	assert.False(t, j.IsExpired(claims))
 	assert.Equal(t, &store.User{Name: "name1", ID: "id1", Picture: "", Admin: false, Blocked: false, IP: ""}, claims.User)
 	assert.Equal(t, "remark42", claims.Issuer)
 
 	req = httptest.NewRequest("GET", "/", nil)
 	req.Header.Add(jwtHeaderKey, testJwtExpired)
-	_, err = j.Get(req)
-	assert.NotNil(t, err)
-	assert.True(t, strings.Contains(err.Error(), "can't parse jwt: token is expired by"), err.Error())
+	claims, err = j.Get(req)
+	assert.Nil(t, err)
+	assert.True(t, j.IsExpired(claims))
 
 	req = httptest.NewRequest("GET", "/", nil)
 	req.Header.Add(jwtHeaderKey, "bad bad token")
@@ -132,7 +144,7 @@ func TestJWT_GetFromHeader(t *testing.T) {
 }
 
 func TestJWT_SetAndGetWithCookies(t *testing.T) {
-	j := NewJWT("xyz 12345", false, time.Hour)
+	j := NewJWT("xyz 12345", false, time.Hour, days31)
 
 	claims := &CustomClaims{
 		State:       "123456",
@@ -174,7 +186,7 @@ func TestJWT_SetAndGetWithCookies(t *testing.T) {
 }
 
 func TestJWT_SetAndGetWithXsrfMismatch(t *testing.T) {
-	j := NewJWT("xyz 12345", false, time.Hour)
+	j := NewJWT("xyz 12345", false, time.Hour, days31)
 
 	claims := &CustomClaims{
 		State: "123456",
@@ -211,7 +223,7 @@ func TestJWT_SetAndGetWithXsrfMismatch(t *testing.T) {
 }
 
 func TestJWT_SetAndGetWithCookiesExpired(t *testing.T) {
-	j := NewJWT("xyz 12345", false, time.Hour)
+	j := NewJWT("xyz 12345", false, time.Hour, days31)
 
 	claims := &CustomClaims{
 		State: "123456",
@@ -243,45 +255,7 @@ func TestJWT_SetAndGetWithCookiesExpired(t *testing.T) {
 	req := httptest.NewRequest("GET", "/expired", nil)
 	req.AddCookie(resp.Cookies()[0])
 	req.Header.Add(xsrfHeaderKey, "random id")
-	_, err = j.Get(req)
-	assert.NotNil(t, err)
-	assert.True(t, strings.Contains(err.Error(), "can't parse jwt: token is expired by"), err.Error())
-}
-
-func TestJWT_Refresh(t *testing.T) {
-	j := NewJWT("xyz 12345", false, 2*time.Second)
-
-	claims := &CustomClaims{
-		State: "123456",
-		From:  "from",
-		User: &store.User{
-			ID:   "id1",
-			Name: "name1",
-		},
-		StandardClaims: jwt.StandardClaims{
-			Id:     "random id",
-			Issuer: "remark42",
-		},
-	}
-	// set token
-	rr := httptest.NewRecorder()
-	err := j.Set(rr, claims, true)
+	claims, err = j.Get(req)
 	assert.Nil(t, err)
-	cookies := rr.Result().Cookies()
-	require.Equal(t, 2, len(cookies))
-
-	req, err := http.NewRequest("GET", "http://example.com/blah", nil)
-	require.Nil(t, err)
-	req.AddCookie(cookies[0])
-	req.Header.Add(xsrfHeaderKey, "random id")
-
-	claims2, err := j.Refresh(rr, req)
-	require.Nil(t, err)
-	assert.Equal(t, claims.ExpiresAt, claims2.ExpiresAt, "no refresh yet")
-
-	time.Sleep(1 * time.Second)
-	claims2, err = j.Refresh(rr, req)
-	assert.Nil(t, err)
-	assert.True(t, claims.ExpiresAt < claims2.ExpiresAt, "refreshed")
-	t.Log(claims.ExpiresAt, claims2.ExpiresAt)
+	assert.True(t, j.IsExpired(claims))
 }

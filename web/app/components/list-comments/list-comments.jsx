@@ -5,7 +5,7 @@ import { NODE_ID } from 'common/constants';
 import Comment from 'components/comment';
 
 export default class ListComments extends Component {
-  render({ comments = [] }, state) {
+  render({ comments = [] }) {
     return (
       <div id={NODE_ID}>
         <div className="list-comments">

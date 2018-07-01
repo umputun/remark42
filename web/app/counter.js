@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { COUNTER_NODE_CLASSNAME } from './common/constants';
 
 import api from 'common/api';

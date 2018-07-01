@@ -35,14 +35,13 @@ type Provider struct {
 
 // Params to make initialized and ready to use provider
 type Params struct {
-	RemarkURL    string
-	AvatarProxy  *proxy.Avatar
-	JwtService   *JWT
-	IsVerifiedFn func(siteID string, userID string) bool
-	SecretKey    string
-	Admins       []string
-	Cid          string
-	Csecret      string
+	RemarkURL         string
+	AvatarProxy       *proxy.Avatar
+	JwtService        *JWT
+	PermissionChecker PermissionChecker
+	SecretKey         string
+	Cid               string
+	Csecret           string
 }
 
 type userData map[string]interface{}
@@ -108,7 +107,7 @@ func (p Provider) loginHandler(w http.ResponseWriter, r *http.Request) {
 
 	// return login url
 	loginURL := p.conf.AuthCodeURL(state)
-	log.Printf("[DEBUG] login url %s", loginURL)
+	log.Printf("[DEBUG] login url %s, claims=%+v", loginURL, claims)
 
 	http.Redirect(w, r, loginURL, http.StatusFound)
 }
@@ -116,7 +115,6 @@ func (p Provider) loginHandler(w http.ResponseWriter, r *http.Request) {
 // authHandler fills user info and redirects to "from" url. This is callback url redirected locally by browser
 // GET /callback
 func (p Provider) authHandler(w http.ResponseWriter, r *http.Request) {
-
 	oauthClaims, err := p.JwtService.Get(r)
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to get jwt")
@@ -163,9 +161,10 @@ func (p Provider) authHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[DEBUG] got raw user info %+v", jData)
 
 	u := p.MapUser(jData, data)
-	u = p.alterUser(u, oauthClaims)
+	u = p.setPermissions(u, oauthClaims.SiteID)
+	u = p.setAvatar(u)
 
-	authClaims := &CustomClaims{
+	claims := &CustomClaims{
 		User: &u,
 		StandardClaims: jwt.StandardClaims{
 			Issuer: "remark42",
@@ -174,7 +173,7 @@ func (p Provider) authHandler(w http.ResponseWriter, r *http.Request) {
 		SessionOnly: oauthClaims.SessionOnly,
 	}
 
-	if err = p.JwtService.Set(w, authClaims, oauthClaims.SessionOnly); err != nil {
+	if err = p.JwtService.Set(w, claims, oauthClaims.SessionOnly); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to save user info")
 		return
 	}
@@ -189,8 +188,8 @@ func (p Provider) authHandler(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, &u)
 }
 
-// alterUser sets fields not handled by provider's MapUser, things like avatar, admin, verified
-func (p Provider) alterUser(u store.User, oauthClaims *CustomClaims) store.User {
+// setAvatar saves avatar and puts proxied URL to u.Picture
+func (p Provider) setAvatar(u store.User) store.User {
 	if p.AvatarProxy != nil {
 		if avatarURL, e := p.AvatarProxy.Put(u); e == nil {
 			u.Picture = avatarURL
@@ -198,10 +197,15 @@ func (p Provider) alterUser(u store.User, oauthClaims *CustomClaims) store.User 
 			log.Printf("[WARN] failed to proxy avatar, %s", e)
 		}
 	}
-	u.Admin = isAdmin(u.ID, p.Admins)
-	if p.IsVerifiedFn != nil {
-		u.Verified = p.IsVerifiedFn(oauthClaims.SiteID, u.ID)
-	}
+	return u
+}
+
+// setPermissions sets permission fields not handled by provider's MapUser, things like admin, verified and blocked
+func (p Provider) setPermissions(u store.User, siteID string) store.User {
+	u.Admin = p.PermissionChecker.IsAdmin(u.ID)
+	u.Verified = p.PermissionChecker.IsVerified(siteID, u.ID)
+	u.Blocked = p.PermissionChecker.IsBlocked(siteID, u.ID)
+	log.Printf("[DEBUG] set permissions for user %s, site %s - %+v", u.ID, siteID, u)
 	return u
 }
 

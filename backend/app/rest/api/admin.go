@@ -117,13 +117,20 @@ func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, JSON{"user_id": claims.User.ID, "site_id": claims.SiteID})
 }
 
-// PUT /user/{userid}?site=side-id&block=1 - block or unblock user
+// PUT /user/{userid}?site=side-id&block=1&ttl=7d - block or unblock user
 func (a *admin) setBlockCtrl(w http.ResponseWriter, r *http.Request) {
 	userID := chi.URLParam(r, "userid")
 	siteID := r.URL.Query().Get("site")
 	blockStatus := r.URL.Query().Get("block") == "1"
 
-	if err := a.dataService.SetBlock(siteID, userID, blockStatus); err != nil {
+	ttl := time.Duration(0) // unlimited duration by default
+	if ttlParam := r.URL.Query().Get("ttl"); ttlParam != "" {
+		if d, err := time.ParseDuration(ttlParam); err == nil {
+			ttl = d
+		}
+	}
+
+	if err := a.dataService.SetBlock(siteID, userID, blockStatus, ttl); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set blocking status")
 		return
 	}
@@ -232,7 +239,7 @@ func (a *admin) alterComments(comments []store.Comment, r *http.Request) (res []
 	res = make([]store.Comment, len(comments))
 
 	user, err := rest.GetUserInfo(r)
-	isAdmin := err == nil && user.Admin // make separate cache key for admins
+	isAdmin := err == nil && user.Admin
 
 	for i, c := range comments {
 

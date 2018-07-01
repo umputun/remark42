@@ -13,9 +13,10 @@ import (
 // JWT wraps jwt operations
 // supports both header and cookie jwt
 type JWT struct {
-	secret        string
-	secureCookies bool
-	exp           time.Duration
+	secret         string
+	secureCookies  bool
+	tokenDuration  time.Duration
+	cookieDuration time.Duration
 }
 
 // CustomClaims stores user info for auth and state & from from login
@@ -23,7 +24,7 @@ type CustomClaims struct {
 	jwt.StandardClaims
 	User *store.User `json:"user,omitempty"`
 
-	// state and from used for oauth handshake
+	// used for oauth handshake
 	State       string `json:"state,omitempty"`
 	From        string `json:"from,omitempty"`
 	SiteID      string `json:"site_id,omitempty"`
@@ -36,11 +37,12 @@ const xsrfCookieName = "XSRF-TOKEN"
 const xsrfHeaderKey = "X-XSRF-TOKEN"
 
 // NewJWT makes JWT service
-func NewJWT(secret string, secureCookies bool, exp time.Duration) *JWT {
+func NewJWT(secret string, secureCookies bool, tokenDuration time.Duration, cookieDuration time.Duration) *JWT {
 	res := JWT{
-		secret:        secret,
-		secureCookies: secureCookies,
-		exp:           exp,
+		secret:         secret,
+		secureCookies:  secureCookies,
+		tokenDuration:  tokenDuration,
+		cookieDuration: cookieDuration,
 	}
 	return &res
 }
@@ -55,9 +57,10 @@ func (j *JWT) Token(claims *CustomClaims) (string, error) {
 	return tokenString, nil
 }
 
-// Parse token string and verify
+// Parse token string and verify. Not checking for expiration
 func (j *JWT) Parse(tokenString string) (*CustomClaims, error) {
-	token, err := jwt.ParseWithClaims(tokenString, &CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
+	parser := jwt.Parser{SkipClaimsValidation: true} // allow parsing of expired tokens
+	token, err := parser.ParseWithClaims(tokenString, &CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
@@ -71,6 +74,7 @@ func (j *JWT) Parse(tokenString string) (*CustomClaims, error) {
 	if !ok || !token.Valid {
 		return nil, errors.New("invalid jwt")
 	}
+
 	return claims, nil
 }
 
@@ -78,7 +82,7 @@ func (j *JWT) Parse(tokenString string) (*CustomClaims, error) {
 // accepts claims and sets expiration if none defined. permanent flag means long-living cookie, false makes it session only.
 func (j *JWT) Set(w http.ResponseWriter, claims *CustomClaims, sessionOnly bool) error {
 	if claims.ExpiresAt == 0 {
-		claims.ExpiresAt = time.Now().Add(j.exp).Unix()
+		claims.ExpiresAt = time.Now().Add(j.tokenDuration).Unix()
 	}
 
 	tokenString, err := j.Token(claims)
@@ -88,7 +92,7 @@ func (j *JWT) Set(w http.ResponseWriter, claims *CustomClaims, sessionOnly bool)
 
 	cookieExpiration := 0 // session cookie
 	if !sessionOnly {
-		cookieExpiration = 365 * 24 * 3600 // 1 year
+		cookieExpiration = int(j.cookieDuration.Seconds())
 	}
 
 	jwtCookie := http.Cookie{Name: jwtCookieName, Value: tokenString, HttpOnly: true, Path: "/",
@@ -139,19 +143,9 @@ func (j *JWT) Get(r *http.Request) (*CustomClaims, error) {
 	return claims, nil
 }
 
-// Refresh gets jwt from request, checks if it will be expiring soon (1/2 of expiration) and create the new onw
-func (j *JWT) Refresh(w http.ResponseWriter, r *http.Request) (*CustomClaims, error) {
-	claims, err := j.Get(r)
-	if err != nil {
-		return nil, err
-	}
-	untilExp := claims.ExpiresAt - time.Now().Unix()
-	if untilExp <= int64(j.exp.Seconds()/2) {
-		claims.ExpiresAt = time.Now().Add(j.exp).Unix()
-		e := j.Set(w, claims, claims.SessionOnly)
-		return claims, e
-	}
-	return claims, nil
+// IsExpired returns true if claims expired
+func (j *JWT) IsExpired(claims *CustomClaims) bool {
+	return !claims.VerifyExpiresAt(time.Now().Unix(), true)
 }
 
 // Reset token's cookies

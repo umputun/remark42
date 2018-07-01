@@ -13,11 +13,11 @@ import (
 
 // Authenticator is top level auth object providing middlewares
 type Authenticator struct {
-	JWTService *JWT
-	Providers  []Provider
-	Admins     []string
-	AdminEmail string
-	DevPasswd  string
+	JWTService        *JWT
+	Providers         []Provider
+	AdminEmail        string
+	DevPasswd         string
+	PermissionChecker PermissionChecker
 }
 
 var devUser = store.User{
@@ -25,6 +25,13 @@ var devUser = store.User{
 	Name:    "developer one",
 	Picture: "/api/v1/avatar/remark.image",
 	Admin:   true,
+}
+
+// PermissionChecker defines interface to get user flags
+type PermissionChecker interface {
+	IsVerified(siteID, userID string) bool
+	IsBlocked(siteID, userID string) bool
+	IsAdmin(userID string) bool
 }
 
 // Auth middleware adds auth from session and populates user info
@@ -59,19 +66,41 @@ func (a *Authenticator) Auth(reqAuth bool) func(http.Handler) http.Handler {
 			}
 
 			if claims.User != nil { // if uinfo in token populate it to context
-				user := *claims.User
-				user.Admin = isAdmin(user.ID, a.Admins) // dbl-check for admin to reset admin flag even if token has it
-				// refresh token if it close to expiration
-				if _, err := a.JWTService.Refresh(w, r); err != nil {
-					log.Printf("[DEBUG] can't refresh jwt, %s", err)
+				if claims.User.Blocked {
+					log.Printf("[DEBUG] user %s/%s blocked", claims.User.Name, claims.User.ID)
+					a.JWTService.Reset(w)
+					http.Error(w, "Unauthorized", http.StatusUnauthorized)
+					return
 				}
-				r = rest.SetUserInfo(r, user)
+
+				if a.JWTService.IsExpired(claims) {
+					if claims, err = a.refreshExpiredToken(w, claims); err != nil {
+						log.Printf("[DEBUG] can't refresh jwt, %s", err)
+						http.Error(w, "Unauthorized", http.StatusUnauthorized)
+					}
+					log.Printf("[DEBUG] token refreshed for %+v", claims.User)
+				}
+				r = rest.SetUserInfo(r, *claims.User) // populate user info to request context
 			}
+
 			h.ServeHTTP(w, r)
 		}
 		return http.HandlerFunc(fn)
 	}
 	return f
+}
+
+func (a *Authenticator) refreshExpiredToken(w http.ResponseWriter, claims *CustomClaims) (*CustomClaims, error) {
+	if a.PermissionChecker != nil {
+		claims.User.Admin = a.PermissionChecker.IsAdmin(claims.User.ID)
+		claims.User.Blocked = a.PermissionChecker.IsBlocked(claims.SiteID, claims.User.ID)
+		claims.User.Verified = a.PermissionChecker.IsVerified(claims.SiteID, claims.User.ID)
+	}
+	// refresh token
+	if err := a.JWTService.Set(w, claims, false); err != nil {
+		return nil, err
+	}
+	return claims, nil
 }
 
 // AdminOnly allows access to admins
@@ -120,13 +149,4 @@ func (a *Authenticator) basicDevUser(w http.ResponseWriter, r *http.Request) boo
 	}
 
 	return true
-}
-
-func isAdmin(userID string, admins []string) bool {
-	for _, admin := range admins {
-		if admin == userID {
-			return true
-		}
-	}
-	return false
 }

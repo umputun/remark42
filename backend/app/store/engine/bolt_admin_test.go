@@ -3,6 +3,7 @@ package engine
 import (
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -126,27 +127,37 @@ func TestBoltAdmin_BlockUser(t *testing.T) {
 
 	assert.False(t, b.IsBlocked("radio-t", "user1"), "nothing blocked")
 
-	assert.NoError(t, b.SetBlock("radio-t", "user1", true))
+	assert.NoError(t, b.SetBlock("radio-t", "user1", true, 0))
 	assert.True(t, b.IsBlocked("radio-t", "user1"), "user1 blocked")
 
 	assert.False(t, b.IsBlocked("radio-t", "user2"), "user2 still unblocked")
 
-	assert.NoError(t, b.SetBlock("radio-t", "user1", false))
+	assert.NoError(t, b.SetBlock("radio-t", "user1", false, 0))
 	assert.False(t, b.IsBlocked("radio-t", "user1"), "user1 unblocked")
 
-	assert.EqualError(t, b.SetBlock("bad", "user1", true), `site "bad" not found`)
-	assert.NoError(t, b.SetBlock("radio-t", "userX", false))
+	assert.EqualError(t, b.SetBlock("bad", "user1", true, 0), `site "bad" not found`)
+	assert.NoError(t, b.SetBlock("radio-t", "userX", false, 0))
 
 	assert.False(t, b.IsBlocked("radio-t-bad", "user1"), "nothing blocked on wrong site")
+}
+
+func TestBoltAdmin_BlockUserWithTTL(t *testing.T) {
+	defer os.Remove(testDb)
+	b := prep(t)
+	assert.False(t, b.IsBlocked("radio-t", "user1"), "nothing blocked")
+	assert.NoError(t, b.SetBlock("radio-t", "user1", true, 10*time.Millisecond))
+	assert.True(t, b.IsBlocked("radio-t", "user1"), "user1 blocked")
+	time.Sleep(11 * time.Millisecond)
+	assert.False(t, b.IsBlocked("radio-t", "user1"), "user1 un-blocked automatically")
 }
 
 func TestBoltAdmin_BlockList(t *testing.T) {
 	defer os.Remove(testDb)
 	b := prep(t)
 
-	assert.NoError(t, b.SetBlock("radio-t", "user1", true))
-	assert.NoError(t, b.SetBlock("radio-t", "user2", true))
-	assert.NoError(t, b.SetBlock("radio-t", "user3", false))
+	assert.NoError(t, b.SetBlock("radio-t", "user1", true, 0))
+	assert.NoError(t, b.SetBlock("radio-t", "user2", true, 10*time.Millisecond))
+	assert.NoError(t, b.SetBlock("radio-t", "user3", false, 0))
 
 	ids, err := b.Blocked("radio-t")
 	assert.NoError(t, err)
@@ -155,6 +166,12 @@ func TestBoltAdmin_BlockList(t *testing.T) {
 	assert.Equal(t, "user1", ids[0].ID)
 	assert.Equal(t, "user2", ids[1].ID)
 	t.Logf("%+v", ids)
+
+	time.Sleep(11 * time.Millisecond)
+	ids, err = b.Blocked("radio-t")
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(ids))
+	assert.Equal(t, "user1", ids[0].ID)
 
 	_, err = b.Blocked("bad")
 	assert.EqualError(t, err, `site "bad" not found`)
