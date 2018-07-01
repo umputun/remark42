@@ -145,9 +145,9 @@ func TestBoltAdmin_BlockUserWithTTL(t *testing.T) {
 	defer os.Remove(testDb)
 	b := prep(t)
 	assert.False(t, b.IsBlocked("radio-t", "user1"), "nothing blocked")
-	assert.NoError(t, b.SetBlock("radio-t", "user1", true, 10*time.Millisecond))
+	assert.NoError(t, b.SetBlock("radio-t", "user1", true, 50*time.Millisecond))
 	assert.True(t, b.IsBlocked("radio-t", "user1"), "user1 blocked")
-	time.Sleep(11 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	assert.False(t, b.IsBlocked("radio-t", "user1"), "user1 un-blocked automatically")
 }
 
@@ -156,7 +156,7 @@ func TestBoltAdmin_BlockList(t *testing.T) {
 	b := prep(t)
 
 	assert.NoError(t, b.SetBlock("radio-t", "user1", true, 0))
-	assert.NoError(t, b.SetBlock("radio-t", "user2", true, 10*time.Millisecond))
+	assert.NoError(t, b.SetBlock("radio-t", "user2", true, 50*time.Millisecond))
 	assert.NoError(t, b.SetBlock("radio-t", "user3", false, 0))
 
 	ids, err := b.Blocked("radio-t")
@@ -167,7 +167,7 @@ func TestBoltAdmin_BlockList(t *testing.T) {
 	assert.Equal(t, "user2", ids[1].ID)
 	t.Logf("%+v", ids)
 
-	time.Sleep(11 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	ids, err = b.Blocked("radio-t")
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(ids))
