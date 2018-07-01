@@ -8,7 +8,7 @@ sed -i "s|var baseurl = '[^']*';|var baseurl = '${REMARK_URL}';|g" /srv/web/*.ht
 
 echo "start remark42 server"
 
-if [ -z "USER" ] ; then \
+if [ -z "$USER" ] ; then \
     echo "No USER defined, runs under root!"
     exec /srv/remark
 
