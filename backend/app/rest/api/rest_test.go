@@ -25,6 +25,7 @@ import (
 
 var testDb = "/tmp/test-remark.db"
 var testHTML = "/tmp/test-remark.html"
+var getStartedHTML = "/tmp/getstarted.html"
 
 func TestRest_FileServer(t *testing.T) {
 	srv, ts := prep(t)
@@ -34,6 +35,24 @@ func TestRest_FileServer(t *testing.T) {
 	body, code := get(t, ts.URL+"/web/test-remark.html")
 	assert.Equal(t, 200, code)
 	assert.Equal(t, "some html", body)
+}
+
+func TestRest_GetStarted(t *testing.T) {
+	srv, ts := prep(t)
+	assert.NotNil(t, srv)
+	defer cleanup(ts)
+
+	err := ioutil.WriteFile(getStartedHTML, []byte("some html blah"), 0700)
+	assert.Nil(t, err)
+
+	body, code := get(t, ts.URL+"/index.html")
+	assert.Equal(t, 200, code)
+	assert.Equal(t, "some html blah", body)
+
+	os.Remove(getStartedHTML)
+	_, code = get(t, ts.URL+"/index.html")
+	assert.Equal(t, 404, code)
+
 }
 
 func TestRest_Shutdown(t *testing.T) {
