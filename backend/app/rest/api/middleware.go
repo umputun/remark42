@@ -20,8 +20,6 @@ import (
 // JSON is a map alias, just for convenience
 type JSON map[string]interface{}
 
-type contextKey string
-
 // AppInfo adds custom app-info to the response header
 func AppInfo(app string, version string) func(http.Handler) http.Handler {
 	f := func(h http.Handler) http.Handler {
