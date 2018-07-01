@@ -12,6 +12,7 @@ import (
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/rest/cache"
 	"github.com/umputun/remark/backend/app/store"
+	"github.com/umputun/remark/backend/app/store/engine"
 )
 
 const maxRssItems = 20
@@ -23,6 +24,7 @@ func (s *Rest) rssRoutes() chi.Router {
 	router := chi.NewRouter()
 	router.Get("/post", s.rssPostCommentsCtrl)
 	router.Get("/site", s.rssSiteCommentsCtrl)
+	router.Get("/reply", s.rssRepliesCtrl)
 	return router
 }
 
@@ -88,6 +90,48 @@ func (s *Rest) rssSiteCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// GET /rss/reply?id=123&site=siteID&url=post-url
+func (s *Rest) rssRepliesCtrl(w http.ResponseWriter, r *http.Request) {
+	id := r.URL.Query().Get("id")
+	siteID := r.URL.Query().Get("site")
+	url := r.URL.Query().Get("url")
+	locator := store.Locator{SiteID: siteID, URL: url}
+	log.Printf("[DEBUG] get rss replies for comment %s and post %+v", id, locator)
+
+	data, err := s.Cache.Get(cache.Key(cache.URLKey(r), locator.SiteID, locator.URL), func() ([]byte, error) {
+		// do nothing if comment not found
+		_, e := s.DataService.Get(locator, id)
+		if e != nil {
+			return nil, e
+		}
+
+		comments, e := s.DataService.Find(locator, "any")
+		if e != nil {
+			return nil, e
+		}
+		comments = s.adminService.alterComments(comments, r)
+
+		replies := findReplies(comments, id)
+		replies = engine.SortComments(replies, "-time")
+		rss, e := s.toRssFeed(url, replies)
+		if e != nil {
+			return nil, e
+		}
+		return []byte(rss), e
+	})
+
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't find replies")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/xml; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	if _, err := w.Write([]byte(data)); err != nil {
+		log.Printf("[WARN] failed to send reponse to %s, %s", r.RemoteAddr, err)
+	}
+}
+
 func (s *Rest) toRssFeed(url string, comments []store.Comment) (string, error) {
 
 	lastCommentTS := time.Unix(0, 0)
@@ -126,4 +170,19 @@ func (s *Rest) toRssFeed(url string, comments []store.Comment) (string, error) {
 		}
 	}
 	return feed.ToRss()
+}
+
+// findReplies find all replies for comment recursively. Skip deleted comments.
+func findReplies(comments []store.Comment, parentID string) []store.Comment {
+	res := []store.Comment{}
+	for _, c := range comments {
+		if c.ParentID == parentID {
+			if !c.Deleted {
+				res = append(res, c)
+			}
+			rs := findReplies(comments, c.ID)
+			res = append(res, rs...)
+		}
+	}
+	return res
 }
