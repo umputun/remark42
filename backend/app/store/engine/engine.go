@@ -54,8 +54,8 @@ type Admin interface {
 	IsVerified(siteID string, userID string) bool                                // check verified status
 }
 
-// sortComments is for engines can't sort data internally
-func sortComments(comments []store.Comment, sortFld string) []store.Comment {
+// SortComments is for engines can't sort data internally
+func SortComments(comments []store.Comment, sortFld string) []store.Comment {
 	sort.Slice(comments, func(i, j int) bool {
 		switch sortFld {
 		case "+time", "-time", "time", "+active", "-active", "active":
