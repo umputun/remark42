@@ -54,6 +54,12 @@ type Admin interface {
 	IsVerified(siteID string, userID string) bool                                // check verified status
 }
 
+const (
+	// limits
+	lastLimit = 1000
+	userLimit = 500
+)
+
 // sortComments is for engines can't sort data internally
 func sortComments(comments []store.Comment, sortFld string) []store.Comment {
 	sort.Slice(comments, func(i, j int) bool {

@@ -37,12 +37,8 @@ const (
 	readonlyBucketName = "readonly"
 	verifiedBucketName = "verified"
 
-	// limits
-	lastLimit = 1000
-	userLimit = 500
+	tsNano = "2006-01-02T15:04:05.000000000Z07:00"
 )
-
-const tsNano = "2006-01-02T15:04:05.000000000Z07:00"
 
 // BoltSite defines single site param
 type BoltSite struct {
