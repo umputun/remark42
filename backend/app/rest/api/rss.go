@@ -127,7 +127,7 @@ func (s *Rest) rssRepliesCtrl(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/xml; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	if _, err := w.Write([]byte(data)); err != nil {
+	if _, err := w.Write(data); err != nil {
 		log.Printf("[WARN] failed to send reponse to %s, %s", r.RemoteAddr, err)
 	}
 }
