@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/coreos/bbolt"
+	"github.com/globalsign/mgo"
 	"github.com/hashicorp/logutils"
 	"github.com/jessevdk/go-flags"
 	"github.com/pkg/errors"
@@ -22,6 +23,7 @@ import (
 	"github.com/umputun/remark/backend/app/rest/cache"
 	"github.com/umputun/remark/backend/app/rest/proxy"
 	"github.com/umputun/remark/backend/app/store/engine"
+	"github.com/umputun/remark/backend/app/store/engine/mongo"
 	"github.com/umputun/remark/backend/app/store/service"
 )
 
@@ -77,6 +79,11 @@ type StoreGroup struct {
 		Path    string        `long:"path" env:"PATH" default:"./var" description:"parent dir for bolt files"`
 		Timeout time.Duration `long:"timeout" env:"TIMEOUT" default:"30s" description:"bolt timeout"`
 	} `group:"bolt" namespace:"bolt" env-namespace:"BOLT"`
+	Mongo struct {
+		Server []string `long:"server" env:"SERVER" description:"mongo host:port" env-delim:","`
+		User   string   `long:"user" env:"USER" default:"" description:"mongo user"`
+		Passwd string   `long:"password" env:"PASSWD" default:"" description:"mongo pssword"`
+	} `group:"mongo" namespace:"mongo" env-namespace:"MONGO"`
 }
 
 // AvatarGroup defines options group for avatar params
@@ -291,6 +298,14 @@ func makeDataStore(group StoreGroup, siteNames []string) (result engine.Interfac
 			sites = append(sites, engine.BoltSite{SiteID: site, FileName: fmt.Sprintf("%s/%s.db", group.Bolt.Path, site)})
 		}
 		result, err = engine.NewBoltDB(bolt.Options{Timeout: group.Bolt.Timeout}, sites...)
+	case "mongo":
+		mgServer, err := mongo.NewServer(mgo.DialInfo{Addrs: group.Mongo.Server, Database: "remark42"},
+			mongo.ServerParams{Credential: &mgo.Credential{Username: group.Mongo.User, Password: group.Mongo.Passwd}})
+		if err != nil {
+			return result, errors.Wrap(err, "failed to create mongo server")
+		}
+		conn := mongo.Connection{Server: mgServer}
+		return &engine.Mongo{Connection: &conn}, nil
 	default:
 		return nil, errors.Errorf("unsupported store type %s", group.Type)
 	}

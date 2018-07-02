@@ -64,7 +64,7 @@ func NewServer(dial mgo.DialInfo, params ServerParams) (res *Server, err error) 
 	}
 	session.SetMode(params.ConsistencyMode, true)
 
-	if params.Credential != nil {
+	if params.Credential != nil && params.Credential.Username != "" && params.Credential.Password != "" {
 		log.Printf("[INFO] login to mongo, user %s", params.Credential.Username)
 		if err = session.Login(params.Credential); err != nil {
 			log.Printf("[ERROR] can't login to mongo, %v", err)

@@ -22,8 +22,8 @@ type Comment struct {
 	Score     int             `json:"score"`
 	Votes     map[string]bool `json:"votes"`
 	Timestamp time.Time       `json:"time" bson:"time"`
-	Edit      *Edit           `json:"edit,omitempty"` // pointer to have empty default in json response
-	Pin       bool            `json:"pin,omitempty"`
+	Edit      *Edit           `json:"edit,omitempty" bson:"edit,omitempty"` // pointer to have empty default in json response
+	Pin       bool            `json:"pin,omitempty" bson:"pin,omitempty"`
 	Deleted   bool            `json:"delete,omitempty" bson:"delete"`
 }
 
@@ -43,9 +43,9 @@ type Edit struct {
 type PostInfo struct {
 	URL      string    `json:"url"`
 	Count    int       `json:"count"`
-	ReadOnly bool      `json:"read_only,omitempty" bson:"read_only"`
-	FirstTS  time.Time `json:"first_time,omitempty" bson:"first_time"`
-	LastTS   time.Time `json:"last_time,omitempty" bson:"last_time"`
+	ReadOnly bool      `json:"read_only,omitempty" bson:"read_only,omitempty"`
+	FirstTS  time.Time `json:"first_time,omitempty" bson:"first_time,omitempty"`
+	LastTS   time.Time `json:"last_time,omitempty" bson:"last_time,omitempty"`
 }
 
 // BlockedUser holds id and ts for blocked user

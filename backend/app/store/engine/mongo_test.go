@@ -14,7 +14,8 @@ import (
 )
 
 func TestMongo_CreateAndFind(t *testing.T) {
-	m := prepMongo(t, true) // adds two comments
+	var m Interface
+	m = prepMongo(t, true) // adds two comments
 
 	res, err := m.Find(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "time")
 	assert.Nil(t, err)
