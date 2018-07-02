@@ -1,15 +1,14 @@
 package rest
 
 import (
-	"bytes"
 	"encoding/json"
 	"io/ioutil"
-	"regexp"
-	"strings"
+	"log"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/umputun/remark/backend/app/store"
 )
@@ -41,14 +40,11 @@ func TestMakeTree(t *testing.T) {
 	}
 
 	res := MakeTree(comments, "time", 0)
+	resJSON, err := json.Marshal(&res)
+	require.Nil(t, err)
 
-	buf := &bytes.Buffer{}
-	enc := json.NewEncoder(buf)
-	enc.SetIndent("", "  ")
-	err := enc.Encode(res)
-	assert.Nil(t, err)
-	expected, actual := cleanFormatting(expJSON, buf.String())
-	assert.Equal(t, expected, actual)
+	expJSON := mustLoadJSONFile(t, "testdata/tree.json")
+	assert.Equal(t, expJSON, resJSON)
 	assert.Equal(t, store.PostInfo{URL: "url", Count: 12, FirstTS: ts(46, 1), LastTS: ts(47, 22)}, res.Info)
 
 	res = MakeTree([]store.Comment{}, "time", 0)
@@ -56,6 +52,43 @@ func TestMakeTree(t *testing.T) {
 
 	res = MakeTree(comments, "time", 10)
 	assert.Equal(t, store.PostInfo{URL: "url", Count: 12, FirstTS: ts(46, 1), LastTS: ts(47, 22), ReadOnly: true}, res.Info)
+}
+
+func TestMakeEmptySubtree(t *testing.T) {
+	loc := store.Locator{URL: "url", SiteID: "site"}
+	ts := func(min int, sec int) time.Time { return time.Date(2017, 12, 25, 19, min, sec, 0, time.UTC) }
+
+	// unsorted by purpose
+	comments := []store.Comment{
+		{Locator: loc, ID: "1", Timestamp: ts(46, 1)},
+		{Locator: loc, ID: "11", ParentID: "1", Timestamp: ts(46, 11)},
+		{Locator: loc, ID: "111", ParentID: "11", Timestamp: ts(46, 12)},
+		{Locator: loc, ID: "112", ParentID: "11", Deleted: true}, // subtree deleted
+		{Locator: loc, ID: "1121", ParentID: "112", Deleted: true},
+		{Locator: loc, ID: "1122", ParentID: "112", Deleted: true},
+		{Locator: loc, ID: "12", ParentID: "12", Deleted: true}, // subcomment deleted
+
+		{Locator: loc, ID: "2", Timestamp: ts(47, 1)},
+		{Locator: loc, ID: "21", ParentID: "2", Deleted: true}, // subtree deleted
+		{Locator: loc, ID: "211", ParentID: "21", Deleted: true},
+		{Locator: loc, ID: "212", ParentID: "21", Deleted: true},
+		{Locator: loc, ID: "22", ParentID: "2", Timestamp: ts(47, 2)},
+		{Locator: loc, ID: "221", ParentID: "22", Timestamp: ts(47, 3)},
+		{Locator: loc, ID: "222", ParentID: "22", Timestamp: ts(47, 4)},
+		{Locator: loc, ID: "223", ParentID: "22", Deleted: true},
+		{Locator: loc, ID: "224", ParentID: "22", Deleted: true},
+		{Locator: loc, ID: "2241", ParentID: "223", Timestamp: ts(47, 5)},
+		{Locator: loc, ID: "3", Timestamp: ts(48, 1), Deleted: true}, // deleted top level
+	}
+
+	res := MakeTree(comments, "time", 0)
+	resJSON, err := json.Marshal(&res)
+	require.Nil(t, err)
+	log.Print(string(resJSON))
+
+	expJSON := mustLoadJSONFile(t, "testdata/tree_del.json")
+	assert.Equal(t, string(expJSON), string(resJSON))
+
 }
 
 func TestTreeSortNodes(t *testing.T) {
@@ -114,7 +147,7 @@ func TestTreeSortNodes(t *testing.T) {
 
 func BenchmarkTree(b *testing.B) {
 	comments := []store.Comment{}
-	data, err := ioutil.ReadFile("testfile.json")
+	data, err := ioutil.ReadFile("testdata/tree_bench.json")
 	assert.Nil(b, err)
 	err = json.Unmarshal(data, &comments)
 	assert.Nil(b, err)
@@ -125,272 +158,14 @@ func BenchmarkTree(b *testing.B) {
 	}
 }
 
-const expJSON = `{
-  "comments": [
-    {
-      "comment": {
-        "id": "1",
-        "pid": "",
-        "text": "",
-        "user": {
-          "name": "",
-          "id": "",
-          "picture": "",
-          "admin": false
-        },
-        "locator": { 
-          "site": "site",
-          "url": "url"
-        },
-        "score": 0,
-        "votes": null,
-        "time": "2017-12-25T19:46:01Z"
-      },
-      "replies": [
-        {
-          "comment": {
-            "id": "11",
-            "pid": "1",
-            "text": "",
-            "user": {
-              "name": "",
-              "id": "",
-              "picture": "",
-              "admin": false
-            },
-            "locator": {
-              "site": "site",
-          	  "url": "url"
-            },
-            "score": 0,
-            "votes": null,
-            "time": "2017-12-25T19:46:11Z"
-          }
-        },
-        {
-          "comment": {
-            "id": "12",
-            "pid": "1",
-            "text": "",
-            "user": {
-              "name": "",
-              "id": "",
-              "picture": "",
-              "admin": false
-            },
-            "locator": {
-              "site": "site",
-              "url": "url"
-            },
-            "score": 0,
-            "votes": null,
-            "time": "2017-12-25T19:46:12Z"
-          }
-        },
-        {
-          "comment": {
-            "id": "13",
-            "pid": "1",
-            "text": "",
-            "user": {
-              "name": "",
-              "id": "",
-              "picture": "",
-              "admin": false
-            },
-            "locator": {
-              "site": "site",
-              "url": "url"
-            },
-            "score": 0,
-            "votes": null,
-            "time": "2017-12-25T19:46:13Z"
-          },
-          "replies": [
-            {
-              "comment": {
-                "id": "131",
-                "pid": "13",
-                "text": "",
-                "user": {
-                  "name": "",
-                  "id": "",
-                  "picture": "",
-                  "admin": false
-                },
-                "locator": {
-                  "site": "site",
-                  "url": "url"
-                },
-                "score": 0,
-                "votes": null,
-                "time": "2017-12-25T19:46:31Z"
-              }
-            },
-            {
-              "comment": {
-                "id": "132",
-                "pid": "13",
-                "text": "",
-                "user": {
-                  "name": "",
-                  "id": "",
-                  "picture": "",
-                  "admin": false
-                },
-                "locator": {
-                  "site": "site",
-                  "url": "url"
-                },
-                "score": 0,
-                "votes": null,
-                "time": "2017-12-25T19:46:32Z"
-              }
-            }
-          ]
-        },
-        {
-          "comment": {
-            "id": "14",
-            "pid": "1",
-            "text": "",
-            "user": {
-              "name": "",
-              "id": "",
-              "picture": "",
-              "admin": false
-            },
-            "locator": {
-              "site": "site",
-              "url": "url"
-            },
-            "score": 0,
-            "votes": null,
-            "time": "2017-12-25T19:46:14Z"
-          }
-        }
-      ]
-    },
-    {
-      "comment": {
-        "id": "2",
-        "pid": "",
-        "text": "",
-        "user": {
-          "name": "",
-          "id": "",
-          "picture": "",
-          "admin": false
-        },
-        "locator": {
-          "site": "site",
-          "url": "url"
-        },
-        "score": 0,
-        "votes": null,
-        "time": "2017-12-25T19:47:02Z"
-      },
-      "replies": [
-        {
-          "comment": {
-            "id": "21",
-            "pid": "2",
-            "text": "",
-            "user": {
-              "name": "",
-              "id": "",
-              "picture": "",
-              "admin": false
-            },
-            "locator": {
-              "site": "site",
-              "url": "url"
-            },
-            "score": 0,
-            "votes": null,
-            "time": "2017-12-25T19:47:21Z"
-          }
-        },
-        {
-          "comment": {
-            "id": "22",
-            "pid": "2",
-            "text": "",
-            "user": {
-              "name": "",
-              "id": "",
-              "picture": "",
-              "admin": false
-            },
-            "locator": {
-              "site": "site",
-              "url": "url"
-            },
-            "score": 0,
-            "votes": null,
-            "time": "2017-12-25T19:47:22Z"
-          }
-        }
-      ]
-    },
-    {
-      "comment": {
-        "id": "4",
-        "pid": "",
-        "text": "",
-        "user": {
-          "name": "",
-          "id": "",
-          "picture": "",
-          "admin": false
-        },
-        "locator": {
-          "site": "site",
-          "url": "url"
-        },
-        "score": 0,
-        "votes": null,
-        "time": "2017-12-25T19:47:22Z"
-      }
-    },
-    {
-      "comment": {
-        "id": "3",
-        "pid": "",
-        "text": "",
-        "user": {
-          "name": "",
-          "id": "",
-          "picture": "",
-          "admin": false
-        },
-        "locator": {
-          "site": "site",
-          "url": "url"
-        },
-        "score": 0,
-        "votes": null,
-        "time": "2017-12-25T19:47:22Z"
-      }
-    }
-  ],
-  "info": {
-	 "url": "url",
-	 "count": 12,
-     "first_time": "2017-12-25T19:46:01Z",
-     "last_time": "2017-12-25T19:47:22Z"
-   }
-}
-`
-
-func cleanFormatting(expected, actual string) (string, string) {
-	reSpaces := regexp.MustCompile(`[\s\p{Zs}]{2,}`)
-
-	expected = strings.Replace(expected, "\n", " ", -1)
-	expected = strings.Replace(expected, "\t", " ", -1)
-	expected = reSpaces.ReplaceAllString(expected, " ")
-
-	actual = strings.Replace(actual, "\n", " ", -1)
-	actual = reSpaces.ReplaceAllString(actual, " ")
-	return expected, actual
+// loadJsonFile read fixtrue file and clear any custom json formatting
+func mustLoadJSONFile(t *testing.T, file string) []byte {
+	expJSON, err := ioutil.ReadFile(file)
+	require.Nil(t, err)
+	expTree := Tree{}
+	err = json.Unmarshal(expJSON, &expTree)
+	require.Nil(t, err)
+	expJSON, err = json.Marshal(expTree)
+	require.Nil(t, err)
+	return expJSON
 }

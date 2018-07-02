@@ -1,0 +1,38 @@
+# compose file for local development
+# starts backend on 8080 with basic auth "dev:password" and Dev oauth2 provider on port 8084
+# UI on https://127.0.0.1:8080/web
+
+version: '2'
+
+services:
+    remark42:
+        build: .
+        image: umputun/remark42:dev
+        container_name: "remark42-dev"
+        hostname: "remark42-dev"
+
+        logging:
+          driver: json-file
+          options:
+              max-size: "10m"
+              max-file: "5"
+
+        ports:
+         - "8080:8080" # primary rest server
+         - "8084:8084" # local oauth2 server
+
+        environment:
+            - USER            # preset environment, UID on the host machine, i.e `id -u`
+            - REMARK_URL=http://127.0.0.1:8080
+            - SECRET=12345
+            - STORE_BOLT_PATH=/srv/var/db
+            - BACKUP_PATH=/srv/var/backup
+            - DEBUG=true
+            - DEV_PASSWD=password
+            - AUTH_DEV=true   # activate local oauth "dev"
+            - ADMIN=dev_user  # set admin flag for default user on local ouath2
+        volumes:
+            - ./var:/srv/var 
+            #- ./web:/srv/web # uncomment to map web directory directly. It will propagate local changes to container without redeploy
+
+        command: /srv/start.sh

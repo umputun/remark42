@@ -2,46 +2,51 @@
   "name": "remark-ui",
   "version": "0.1.0",
   "scripts": {
-    "build": "NODE_ENV=production webpack --config ./webpack.config.js",
+    "build": "cross-env NODE_ENV=production webpack --config ./webpack.config.js",
     "start": "webpack-dev-server --progress --hot --inline --config ./webpack.config.js",
     "reinstall": "rm -rf ./node_modules/ && npm install",
     "lint": "eslint --ext=.js,.jsx .",
     "test": "jest"
   },
   "devDependencies": {
-    "autoprefixer": "^7.1.1",
-    "babel-core": "^6.24.1",
-    "babel-eslint": "^8.2.4",
-    "babel-loader": "^7.0.0",
+    "autoprefixer": "^7.2.6",
+    "babel-core": "^6.26.3",
+    "babel-eslint": "^8.2.5",
+    "babel-loader": "^7.1.4",
+    "babel-plugin-syntax-dynamic-import": "^6.18.0",
     "babel-plugin-transform-object-rest-spread": "^6.26.0",
     "babel-plugin-transform-react-jsx": "^6.24.1",
-    "babel-preset-env": "^1.5.1",
-    "clean-webpack-plugin": "^0.1.16",
+    "babel-preset-env": "^1.7.0",
+    "clean-webpack-plugin": "^0.1.19",
     "copy-webpack-plugin": "^4.5.1",
-    "css-loader": "^0.28.0",
+    "core-js": "^2.5.7",
+    "cross-env": "^5.2.0",
+    "css-loader": "^0.28.11",
     "eslint": "^4.19.1",
     "eslint-plugin-react": "^7.9.1",
-    "extract-text-webpack-plugin": "^3.0.0",
+    "extract-text-webpack-plugin": "^3.0.2",
     "file-loader": "^0.11.1",
     "html-webpack-plugin": "^2.30.1",
     "jest": "^23.1.0",
     "node-sass": "sass/node-sass#v5",
     "postcss-csso": "^2.0.0",
-    "postcss-loader": "^2.0.5",
-    "postcss-url": "^6.1.0",
+    "postcss-loader": "^2.1.5",
+    "postcss-url": "^6.3.1",
     "postcss-wrap": "0.0.4",
-    "sass-loader": "^6.0.6",
+    "sass-loader": "^6.0.7",
     "style-loader": "^0.19.1",
-    "webpack": "^3.3.0",
+    "webpack": "^3.12.0",
+    "webpack-bundle-analyzer": "^2.13.1",
     "webpack-dev-server": "^2.7.1"
   },
   "dependencies": {
-    "axios": "^0.17.1",
-    "babel-polyfill": "^6.23.0",
+    "axios": "^0.18.0",
     "bem-react-helper": "^1.1.2",
-    "preact": "^8.2.7",
-    "promise-polyfill": "^7.0.0"
+    "preact": "^8.2.9"
   },
+  "eslintIgnore": [
+    "public"
+  ],
   "jest": {
     "transform": {
       "^.+\\.jsx?$": "<rootDir>/fileTransformer.js"
@@ -49,6 +54,9 @@
     "setupFiles": [
       "<rootDir>/injectGlobalVariable.js"
     ],
-    "moduleDirectories": ["node_modules", "<rootDir>/app"]
+    "moduleDirectories": [
+      "node_modules",
+      "<rootDir>/app"
+    ]
   }
 }

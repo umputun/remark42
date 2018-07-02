@@ -2,7 +2,7 @@ import { h, Component } from 'preact';
 import api from 'common/api';
 
 import { BASE_URL, NODE_ID, COMMENT_NODE_CLASSNAME_PREFIX, DEFAULT_SORT, LS_SORT_KEY, MAX_SHOWN_ROOT_COMMENTS } from 'common/constants';
-import { url, maxShownComments } from 'common/settings';
+import { siteId, url, maxShownComments } from 'common/settings';
 import store from 'common/store';
 
 import AuthPanel from 'components/auth-panel';
@@ -100,7 +100,7 @@ export default class Root extends Component {
   }
 
   onSignIn(provider) {
-    const newWindow = window.open(`${BASE_URL}/auth/${provider}/login?from=${encodeURIComponent(location.href)}`);
+    const newWindow = window.open(`${BASE_URL}/auth/${provider}/login?from=${encodeURIComponent(location.href)}&site=${siteId}`);
 
     let secondsPass = 0;
     const checkMsDelay = 100;

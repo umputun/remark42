@@ -120,8 +120,8 @@ func shortenAutoLinks(commentHTML string, max int) (resHTML string) {
 			if href != s.Text() || len(href) < max+3 || max < 3 {
 				return
 			}
-			url, err := url.Parse(href)
-			if err != nil {
+			url, e := url.Parse(href)
+			if e != nil {
 				return
 			}
 			url.Path, url.RawQuery, url.Fragment = "", "", ""

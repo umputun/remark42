@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
@@ -36,26 +35,32 @@ type Opts struct {
 	Avatar AvatarGroup `group:"avatar" namespace:"avatar" env-namespace:"AVATAR"`
 	Cache  CacheGroup  `group:"cache" namespace:"cache" env-namespace:"CACHE"`
 
-	Sites          []string `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
-	Admins         []string `long:"admin" env:"ADMIN" description:"admin(s) names" env-delim:","`
-	AdminEmail     string   `long:"admin-email" env:"ADMIN_EMAIL" default:"" description:"admin email"`
-	DevPasswd      string   `long:"dev-passwd" env:"DEV_PASSWD" default:"" description:"development mode password"`
-	BackupLocation string   `long:"backup" env:"BACKUP_PATH" default:"./var/backup" description:"backups location"`
-	MaxBackupFiles int      `long:"max-back" env:"MAX_BACKUP_FILES" default:"10" description:"max backups to keep"`
-	ImageProxy     bool     `long:"img-proxy" env:"IMG_PROXY" description:"enable image proxy"`
-	MaxCommentSize int      `long:"max-comment" env:"MAX_COMMENT_SIZE" default:"2048" description:"max comment size"`
-	LowScore       int      `long:"low-score" env:"LOW_SCORE" default:"-5" description:"low score threshold"`
-	CriticalScore  int      `long:"critical-score" env:"CRITICAL_SCORE" default:"-10" description:"critical score threshold"`
-	ReadOnlyAge    int      `long:"read-age" env:"READONLY_AGE" default:"0" description:"read-only age of comments"`
-	Port           int      `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
-	WebRoot        string   `long:"web-root" env:"REMARK_WEB_ROOT" default:"./web" description:"web root directory"`
-	Dbg            bool     `long:"dbg" env:"DEBUG" description:"debug mode"`
+	Sites          []string      `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
+	Admins         []string      `long:"admin" env:"ADMIN" description:"admin(s) names" env-delim:","`
+	AdminEmail     string        `long:"admin-email" env:"ADMIN_EMAIL" default:"" description:"admin email"`
+	DevPasswd      string        `long:"dev-passwd" env:"DEV_PASSWD" default:"" description:"development mode password"`
+	BackupLocation string        `long:"backup" env:"BACKUP_PATH" default:"./var/backup" description:"backups location"`
+	MaxBackupFiles int           `long:"max-back" env:"MAX_BACKUP_FILES" default:"10" description:"max backups to keep"`
+	ImageProxy     bool          `long:"img-proxy" env:"IMG_PROXY" description:"enable image proxy"`
+	MaxCommentSize int           `long:"max-comment" env:"MAX_COMMENT_SIZE" default:"2048" description:"max comment size"`
+	LowScore       int           `long:"low-score" env:"LOW_SCORE" default:"-5" description:"low score threshold"`
+	CriticalScore  int           `long:"critical-score" env:"CRITICAL_SCORE" default:"-10" description:"critical score threshold"`
+	ReadOnlyAge    int           `long:"read-age" env:"READONLY_AGE" default:"0" description:"read-only age of comments"`
+	EditDuration   time.Duration `long:"edit-time" env:"EDIT_TIME" default:"5m" description:"edit window"`
+	Port           int           `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
+	WebRoot        string        `long:"web-root" env:"REMARK_WEB_ROOT" default:"./web" description:"web root directory"`
+	Dbg            bool          `long:"dbg" env:"DEBUG" description:"debug mode"`
 
 	Auth struct {
+		TTL struct {
+			JWT    time.Duration `long:"jwt" env:"JWT" default:"5m" description:"jwt TTL"`
+			Cookie time.Duration `long:"cookie" env:"COOKIE" default:"200h" description:"auth cookie TTL"`
+		} `group:"ttl" namespace:"ttl" env-namespace:"TTL"`
 		Google   AuthGroup `group:"google" namespace:"google" env-namespace:"GOOGLE" description:"Google OAuth"`
 		Github   AuthGroup `group:"github" namespace:"github" env-namespace:"GITHUB" description:"Github OAuth"`
 		Facebook AuthGroup `group:"facebook" namespace:"facebook" env-namespace:"FACEBOOK" description:"Facebook OAuth"`
 		Yandex   AuthGroup `group:"yandex" namespace:"yandex" env-namespace:"YANDEX" description:"Yandex OAuth"`
+		Dev      bool      `long:"dev" env:"DEV" description:"enable dev (local) oauth2"`
 	} `group:"auth" namespace:"auth" env-namespace:"AUTH"`
 }
 
@@ -80,7 +85,7 @@ type AvatarGroup struct {
 	FS   struct {
 		Path string `long:"path" env:"PATH" default:"./var/avatars" description:"avatars location"`
 	} `group:"fs" namespace:"fs" env-namespace:"FS"`
-	RszLmt int `long:"rsz-lmt" env:"RSZ_LMT" default:"0" description:"max image size for resizing avatars on save"`
+	RszLmt int `long:"rsz-lmt" env:"RESIZE" default:"0" description:"max image size for resizing avatars on save"`
 }
 
 // CacheGroup defines options group for cache params
@@ -101,6 +106,7 @@ type Application struct {
 	restSrv     *api.Rest
 	migratorSrv *api.Migrator
 	exporter    migrator.Exporter
+	devAuth     *auth.DevAuthServer
 	terminated  chan struct{}
 }
 
@@ -150,20 +156,24 @@ func New(opts Opts) (*Application, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	dataService := &service.DataStore{
 		Interface:      boltStore,
-		EditDuration:   5 * time.Minute,
+		EditDuration:   opts.EditDuration,
 		Secret:         opts.SecretKey,
 		MaxCommentSize: opts.MaxCommentSize,
+		Admins:         opts.Admins,
 	}
 
 	loadingCache, err := cache.NewMemoryCache(cache.MaxCacheSize(opts.Cache.Max.Size), cache.MaxValSize(opts.Cache.Max.Value),
-		cache.MaxKeys(opts.Cache.Max.Items), cache.PostFlushFn(postFlushFn(opts.Sites, opts.Port)))
+		cache.MaxKeys(opts.Cache.Max.Items))
 	if err != nil {
 		return nil, err
 	}
 
-	jwtService := auth.NewJWT(opts.SecretKey, strings.HasPrefix(opts.RemarkURL, "https://"), 7*24*time.Hour)
+	// token TTL is 5 minutes, inactivity interval 7+ days by default
+	jwtService := auth.NewJWT(opts.SecretKey, strings.HasPrefix(opts.RemarkURL, "https://"),
+		opts.Auth.TTL.JWT, opts.Auth.TTL.Cookie)
 
 	avatarStore, err := makeAvatarStore(opts.Avatar)
 	if err != nil {
@@ -186,6 +196,8 @@ func New(opts Opts) (*Application, error) {
 		SecretKey:      opts.SecretKey,
 	}
 
+	authProviders := makeAuthProviders(jwtService, avatarProxy, dataService, opts)
+
 	srv := &api.Rest{
 		Version:     revision,
 		DataService: dataService,
@@ -196,11 +208,11 @@ func New(opts Opts) (*Application, error) {
 		AvatarProxy: avatarProxy,
 		ReadOnlyAge: opts.ReadOnlyAge,
 		Authenticator: auth.Authenticator{
-			JWTService: jwtService,
-			Admins:     opts.Admins,
-			AdminEmail: opts.AdminEmail,
-			Providers:  makeAuthProviders(jwtService, avatarProxy, dataService, opts),
-			DevPasswd:  opts.DevPasswd,
+			JWTService:        jwtService,
+			AdminEmail:        opts.AdminEmail,
+			Providers:         authProviders,
+			DevPasswd:         opts.DevPasswd,
+			PermissionChecker: dataService,
 		},
 		Cache: loadingCache,
 	}
@@ -213,8 +225,14 @@ func New(opts Opts) (*Application, error) {
 	}
 
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = opts.LowScore, opts.CriticalScore
+
+	var devAuth *auth.DevAuthServer
+	if opts.Auth.Dev {
+		devAuth = &auth.DevAuthServer{Provider: authProviders[len(authProviders)-1]}
+	}
+
 	tch := make(chan struct{})
-	return &Application{restSrv: srv, migratorSrv: migr, exporter: exporter, Opts: opts, terminated: tch}, nil
+	return &Application{restSrv: srv, migratorSrv: migr, exporter: exporter, devAuth: devAuth, Opts: opts, terminated: tch}, nil
 }
 
 // Run all application objects
@@ -228,9 +246,15 @@ func (a *Application) Run(ctx context.Context) error {
 		<-ctx.Done()
 		a.restSrv.Shutdown()
 		a.migratorSrv.Shutdown()
+		if a.devAuth != nil {
+			a.devAuth.Shutdown()
+		}
 	}()
-	a.activateBackup(ctx) // runs in goroutine for each site
-	go a.migratorSrv.Run(a.Port + 1)
+	a.activateBackup(ctx)            // runs in goroutine for each site
+	go a.migratorSrv.Run(a.Port + 1) // migrator server runs on +1, localhost only
+	if a.Auth.Dev {
+		go a.devAuth.Run() // dev oauth2 server on :8084
+	}
 	a.restSrv.Run(a.Port)
 	close(a.terminated)
 	return nil
@@ -282,7 +306,7 @@ func makeAvatarStore(group AvatarGroup) (result proxy.AvatarStore, err error) {
 		}
 		return proxy.NewFSAvatarStore(group.FS.Path, group.RszLmt), nil
 	}
-	return nil, errors.Errorf("unsupported avatart store type %s", group.Type)
+	return nil, errors.Errorf("unsupported avatar store type %s", group.Type)
 }
 
 // mkdir -p for all dirs
@@ -318,14 +342,13 @@ func makeAuthProviders(jwtService *auth.JWT, avatarProxy *proxy.Avatar, ds *serv
 
 	makeParams := func(cid, secret string) auth.Params {
 		return auth.Params{
-			JwtService:   jwtService,
-			AvatarProxy:  avatarProxy,
-			RemarkURL:    opts.RemarkURL,
-			Cid:          cid,
-			Csecret:      secret,
-			Admins:       opts.Admins,
-			SecretKey:    opts.SecretKey,
-			IsVerifiedFn: ds.IsVerifiedFn(),
+			JwtService:        jwtService,
+			AvatarProxy:       avatarProxy,
+			RemarkURL:         opts.RemarkURL,
+			Cid:               cid,
+			Csecret:           secret,
+			SecretKey:         opts.SecretKey,
+			PermissionChecker: ds,
 		}
 	}
 
@@ -342,37 +365,17 @@ func makeAuthProviders(jwtService *auth.JWT, avatarProxy *proxy.Avatar, ds *serv
 	if opts.Auth.Yandex.CID != "" && opts.Auth.Yandex.CSEC != "" {
 		providers = append(providers, auth.NewYandex(makeParams(opts.Auth.Yandex.CID, opts.Auth.Yandex.CSEC)))
 	}
+	if opts.Auth.Dev {
+		providers = append(providers, auth.NewDev(makeParams("", "")))
+	}
+
 	if len(providers) == 0 {
 		log.Printf("[WARN] no auth providers defined")
 	}
 	return providers
 }
 
-// post-flush callback invoked by cache after each flush in async way
-func postFlushFn(sites []string, port int) func() {
-
-	return func() {
-		// list of heavy urls for pre-heating on cache change
-		urls := []string{
-			"http://localhost:%d/api/v1/list?site=%s",
-			"http://localhost:%d/api/v1/last/50?site=%s",
-		}
-
-		for _, site := range sites {
-			for _, u := range urls {
-				resp, err := http.Get(fmt.Sprintf(u, port, site))
-				if err != nil {
-					log.Printf("[WARN] failed to refresh cached list for %s, %s", site, err)
-					return
-				}
-				if err = resp.Body.Close(); err != nil {
-					log.Printf("[WARN] failed to close response body, %s", err)
-				}
-			}
-		}
-	}
-}
-
+// resetEnv clears all sensitive env vars
 func resetEnv(envs ...string) {
 	for _, env := range envs {
 		if err := os.Unsetenv(env); err != nil {

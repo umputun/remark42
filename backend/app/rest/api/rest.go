@@ -5,8 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"path"
 	"strings"
 	"sync"
 	"time"
@@ -66,8 +68,8 @@ type commentsWithInfo struct {
 func (s *Rest) Run(port int) {
 	log.Printf("[INFO] activate rest server on port %d", port)
 
-	if len(s.Authenticator.Admins) > 0 {
-		log.Printf("[DEBUG] admins %+v", s.Authenticator.Admins)
+	if s.DataService != nil && len(s.DataService.Admins) > 0 {
+		log.Printf("[DEBUG] admins %+v", s.DataService.Admins)
 	}
 
 	router := s.routes()
@@ -174,6 +176,7 @@ func (s *Rest) routes() chi.Router {
 		})
 	})
 
+	// respond to /robots.tx with the list of allowed paths
 	router.With(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(50, nil))).
 		Get("/robots.txt", func(w http.ResponseWriter, r *http.Request) {
 			allowed := []string{"/find", "/last", "/id", "/count", "/counts", "/list", "/config", "/img", "/avatar"}
@@ -181,6 +184,17 @@ func (s *Rest) routes() chi.Router {
 				allowed[i] = "Allow: /api/v1" + allowed[i]
 			}
 			render.PlainText(w, r, "User-agent: *\nDisallow: /auth/\nDisallow: /api/\n"+strings.Join(allowed, "\n")+"\n")
+		})
+
+	// respond to /index.html with the content of getstarted.html under /web root
+	router.With(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(50, nil))).
+		Get("/index.html", func(w http.ResponseWriter, r *http.Request) {
+			data, err := ioutil.ReadFile(path.Join(s.WebRoot, "getstarted.html"))
+			if err != nil {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+			render.HTML(w, r, string(data))
 		})
 
 	// file server for static content from /web
