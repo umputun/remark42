@@ -7,6 +7,7 @@ import store from 'common/store';
 
 import Input from 'components/input';
 import UserInfo from 'components/user-info';
+import Avatar from './__avatar/comment__avatar';
 
 export default class Comment extends Component {
   constructor(props) {
@@ -318,7 +319,6 @@ export default class Comment extends Component {
       user: {
         ...data.user,
         picture: data.user.picture.indexOf(API_BASE) === 0 ? `${BASE_URL}${data.user.picture}` : data.user.picture,
-        isDefaultPicture: !data.user.picture.length,
         verified: data.user.verified || isUserVerified,
       },
     };
@@ -354,15 +354,7 @@ export default class Comment extends Component {
       <article className={b('comment', props, defaultMods)} id={mods.disabled ? null : `${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}>
         <div className="comment__body">
           <div className="comment__info">
-            {
-              mods.view !== 'user' && (
-                <img
-                  className={b('comment__avatar', {}, { default: o.user.isDefaultPicture })}
-                  src={o.user.isDefaultPicture ? require('./__avatar/comment__avatar.svg') : o.user.picture}
-                  alt=""
-                />
-              )
-            }
+            { mods.view !== 'user' && <Avatar picture={o.user.picture}/> }
 
             {
               mods.view !== 'user' && (
