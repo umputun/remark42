@@ -2,6 +2,8 @@ install:
   - docker --version
   - docker-compose --version
 
+services: mongodb
+
 script:
   - docker build
       --build-arg COVERALLS_TOKEN=$COVERALLS_TOKEN

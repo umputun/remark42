@@ -78,3 +78,9 @@ pipeline:
     secrets: [ email_username, email_password ]
     when:
       status: [ changed, failure ]
+
+services:
+  mongo:
+    image: mongo:3.6
+    command: [ --smallfiles ]
+

@@ -20,7 +20,10 @@ WORKDIR /go/src/github.com/umputun/remark/backend
 ADD backend /go/src/github.com/umputun/remark/backend
 ADD .git /go/src/github.com/umputun/remark/.git
 
-RUN cd app && go test ./...
+# run mongo tests in CI enviroment only
+RUN cd app && \
+    if [ -z "$CI" ] ; then go test -race ./... ; \
+    else go test -race -tags=mongo ./... ; fi
 
 RUN gometalinter --disable-all --deadline=300s --vendor --enable=vet --enable=vetshadow --enable=golint \
     --enable=staticcheck --enable=ineffassign --enable=goconst --enable=errcheck --enable=unconvert \
