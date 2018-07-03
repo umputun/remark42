@@ -131,27 +131,29 @@ export default class Comment extends Component {
 
   togglePin(isPinned) {
     const { id } = this.props.data;
-    const promptMessage = isPinned ? 'Do you want to pin this comment?' : 'Do you want to pin this comment?';
+    const promptMessage = isPinned ? 'Do you want to unpin this comment?' : 'Do you want to pin this comment?';
 
     if (confirm(promptMessage)) {
       this.setState({ pinned: !isPinned });
 
       (isPinned ? api.unpinComment : api.pinComment)({ id, url })
-        .then(api.getComment({ id }))
-        .then(comment => store.replaceComment(comment));
+        .then(() => {
+          api.getComment({ id }).then(comment => store.replaceComment(comment));
+        });
     }
   }
 
   toggleVerify(isVerified) {
     const { id, user: { id: userId } } = this.props.data;
-    const promptMessage = isVerified ? 'Do you want to verify this user?' : 'Do you want to verify this user?';
+    const promptMessage = isVerified ? 'Do you want to unverify this user?' : 'Do you want to verify this user?';
 
     if (confirm(promptMessage)) {
       this.setState({ isUserVerified: !isVerified });
 
       (isVerified ? api.removeVerifyStatus : api.setVerifyStatus)({ id: userId })
-        .then(api.getComment({ id }))
-        .then(comment => store.replaceComment(comment));
+        .then(() => {
+          api.getComment({ id }).then(comment => store.replaceComment(comment));
+        });
     }
   }
 
