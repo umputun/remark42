@@ -49,5 +49,5 @@ func (t Testing) Get() (*Connection, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Connection{Server: srv, Collection: t.collection, DB: "test"}, nil
+	return NewConnection(srv, "test", t.collection), nil
 }

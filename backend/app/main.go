@@ -81,6 +81,7 @@ type StoreGroup struct {
 	} `group:"bolt" namespace:"bolt" env-namespace:"BOLT"`
 	Mongo struct {
 		Server []string `long:"server" env:"SERVER" description:"mongo host:port" env-delim:","`
+		DB     string   `long:"db" env:"DB" default:"remark42" description:"mongo database"`
 		User   string   `long:"user" env:"USER" default:"" description:"mongo user"`
 		Passwd string   `long:"password" env:"PASSWD" default:"" description:"mongo pssword"`
 	} `group:"mongo" namespace:"mongo" env-namespace:"MONGO"`
@@ -299,13 +300,13 @@ func makeDataStore(group StoreGroup, siteNames []string) (result engine.Interfac
 		}
 		result, err = engine.NewBoltDB(bolt.Options{Timeout: group.Bolt.Timeout}, sites...)
 	case "mongo":
-		mgServer, err := mongo.NewServer(mgo.DialInfo{Addrs: group.Mongo.Server, Database: "remark42"},
+		mgServer, err := mongo.NewServer(mgo.DialInfo{Addrs: group.Mongo.Server, Database: group.Mongo.DB},
 			mongo.ServerParams{Credential: &mgo.Credential{Username: group.Mongo.User, Password: group.Mongo.Passwd}})
 		if err != nil {
 			return result, errors.Wrap(err, "failed to create mongo server")
 		}
-		conn := mongo.Connection{Server: mgServer}
-		return &engine.Mongo{Connection: &conn}, nil
+		conn := mongo.NewConnection(mgServer, group.Mongo.DB, "")
+		return &engine.Mongo{Connection: conn}, nil
 	default:
 		return nil, errors.Errorf("unsupported store type %s", group.Type)
 	}

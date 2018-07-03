@@ -21,7 +21,7 @@ func TestWithCollection(t *testing.T) {
 	srv, err := NewServer(mgo.DialInfo{Addrs: []string{"mongo"}}, ServerParams{})
 	assert.Nil(t, err)
 
-	c := Connection{Server: srv, DB: "test", Collection: "connection"}
+	c := NewConnection(srv, "test", "connection")
 	err = c.WithCollection(func(coll *mgo.Collection) error {
 		return coll.Find(nil).All(&res)
 	})
@@ -40,7 +40,7 @@ func TestWithCollection(t *testing.T) {
 	})
 	assert.Equal(t, mgo.ErrNotFound, err)
 
-	c = Connection{Server: srv, DB: "test", Collection: "bbbbbbbaaad"}
+	c = NewConnection(srv, "test", "bbbbbbbaaad")
 	err = c.WithCollection(func(coll *mgo.Collection) error {
 		return coll.Find(bson.M{"symbol": "blah"}).One(&r1)
 	})
@@ -53,7 +53,7 @@ func TestWithCollectionNoDB(t *testing.T) {
 	var res []testRecord
 	srv, err := NewServer(mgo.DialInfo{Addrs: []string{"mongo"}, Database: "test"}, ServerParams{})
 	assert.Nil(t, err)
-	c := Connection{Server: srv, Collection: "connection"}
+	c := NewConnection(srv, "", "connection")
 	err = c.WithCollection(func(coll *mgo.Collection) error {
 		return coll.Find(nil).All(&res)
 	})
@@ -67,7 +67,7 @@ func TestWithDB(t *testing.T) {
 	var res []testRecord
 	srv, err := NewServer(mgo.DialInfo{Addrs: []string{"mongo"}, Database: "test"}, ServerParams{})
 	assert.Nil(t, err)
-	c := Connection{Server: srv}
+	c := Connection{srv, "", ""}
 	err = c.WithCustomDB("test", func(dbase *mgo.Database) error {
 		return dbase.C("connection").Find(nil).All(&res)
 	})
