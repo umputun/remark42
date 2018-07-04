@@ -3,9 +3,11 @@
 package mongo
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"strings"
 	"time"
@@ -22,10 +24,11 @@ type Server struct {
 
 // ServerParams optional set of parameters
 type ServerParams struct {
-	Delay           int  // initial delay. needs to give mongo server some time to start, in case if mongo part of the same compose
+	Delay           int  // initial delay to give mongo server some time to start, in case if mongo part of the same compose
 	Debug           bool // turn on mgo debug mode
 	Credential      *mgo.Credential
 	ConsistencyMode mgo.Mode
+	SSL             bool
 }
 
 // NewDefaultServer makes a server with default extra params.
@@ -54,7 +57,15 @@ func NewServer(dial mgo.DialInfo, params ServerParams) (res *Server, err error) 
 		time.Sleep(time.Duration(params.Delay) * time.Second)
 	}
 
-	log.Printf("[DEBUG] dial mongo %s", dial.Addrs)
+	log.Printf("[DEBUG] dial mongo %s, ssl=%v", dial.Addrs, params.SSL)
+
+	if params.SSL {
+		tlsConfig := &tls.Config{}
+		dial.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
+			conn, err := tls.Dial("tcp", addr.String(), tlsConfig)
+			return conn, err
+		}
+	}
 
 	session, err := mgo.DialWithInfo(&dial)
 	if err != nil {

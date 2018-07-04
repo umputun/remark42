@@ -92,7 +92,7 @@ func (m *Migrator) importCtrl(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Query().Get("provider") == "disqus" {
 		importer = m.DisqusImporter
 	}
-
+	log.Printf("[DEBUG] import request for site=%s", siteID)
 	size, err := importer.Import(r.Body, siteID)
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "import failed")
@@ -116,8 +116,9 @@ func (m *Migrator) exportCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	siteID := r.URL.Query().Get("site")
-
 	exportFile := fmt.Sprintf("%s-%s.json.gz", siteID, time.Now().Format("20060102"))
+	log.Printf("[DEBUG] import request for site=%s to %s", siteID, exportFile)
+
 	w.Header().Set("Content-Type", "application/gzip")
 	w.Header().Set("Content-Disposition", "attachment;filename="+exportFile)
 	w.WriteHeader(http.StatusOK)

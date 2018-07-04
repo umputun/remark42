@@ -80,10 +80,13 @@ type StoreGroup struct {
 		Timeout time.Duration `long:"timeout" env:"TIMEOUT" default:"30s" description:"bolt timeout"`
 	} `group:"bolt" namespace:"bolt" env-namespace:"BOLT"`
 	Mongo struct {
+		URL    string   `long:"url" env:"URL" description:"mongo url"`
 		Server []string `long:"server" env:"SERVER" description:"mongo host:port" env-delim:","`
 		DB     string   `long:"db" env:"DB" default:"remark42" description:"mongo database"`
 		User   string   `long:"user" env:"USER" default:"" description:"mongo user"`
 		Passwd string   `long:"password" env:"PASSWD" default:"" description:"mongo pssword"`
+		SSL    bool     `long:"ssl" env:"SSL" description:"connect to mongo with ssl"`
+		Dbg    bool     `long:"dbg" env:"DEBUG" description:"enable mongo debug"`
 	} `group:"mongo" namespace:"mongo" env-namespace:"MONGO"`
 }
 
@@ -292,7 +295,7 @@ func makeDataStore(group StoreGroup, siteNames []string) (result engine.Interfac
 	switch group.Type {
 	case "bolt":
 		if err = makeDirs(group.Bolt.Path); err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "failed to create bolt store")
 		}
 		sites := []engine.BoltSite{}
 		for _, site := range siteNames {
@@ -300,17 +303,28 @@ func makeDataStore(group StoreGroup, siteNames []string) (result engine.Interfac
 		}
 		result, err = engine.NewBoltDB(bolt.Options{Timeout: group.Bolt.Timeout}, sites...)
 	case "mongo":
-		mgServer, err := mongo.NewServer(mgo.DialInfo{Addrs: group.Mongo.Server, Database: group.Mongo.DB},
-			mongo.ServerParams{Credential: &mgo.Credential{Username: group.Mongo.User, Password: group.Mongo.Passwd}})
+		dial := &mgo.DialInfo{Addrs: group.Mongo.Server, Database: group.Mongo.DB} // default with addrs
+		if group.Mongo.URL != "" {                                                 // use full mongo uri if defined
+			var dialError error
+			if dial, dialError = mgo.ParseURL(group.Mongo.URL); dialError != nil {
+				return result, errors.Wrapf(err, "failed to create mongo server with url %s", group.Mongo.URL)
+			}
+			log.Printf("[DEBUG] dial %+v", dial)
+		}
+		dial.Timeout = 3 * time.Second
+		mgServer, err := mongo.NewServer(*dial, mongo.ServerParams{
+			Debug:      group.Mongo.Dbg,
+			SSL:        group.Mongo.SSL,
+			Credential: &mgo.Credential{Username: group.Mongo.User, Password: group.Mongo.Passwd, Source: "admin"},
+		})
 		if err != nil {
 			return result, errors.Wrap(err, "failed to create mongo server")
 		}
 		conn := mongo.NewConnection(mgServer, group.Mongo.DB, "")
-		return &engine.Mongo{Connection: conn}, nil
+		result, err = engine.NewMongo(conn)
 	default:
 		return nil, errors.Errorf("unsupported store type %s", group.Type)
 	}
-
 	return result, errors.Wrap(err, "can't initialize data store")
 }
 

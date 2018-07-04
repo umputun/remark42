@@ -37,6 +37,13 @@ type metaUser struct {
 	BlockedUntil time.Time `bson:"blocked_until"`
 }
 
+// NewMongo makes mongo engine
+func NewMongo(conn *mongo.Connection) (*Mongo, error) {
+	result := Mongo{Connection: conn}
+	err := result.prepare()
+	return &result, errors.Wrap(err, "failed to prepare mongo")
+}
+
 // Create new comment
 func (m *Mongo) Create(comment store.Comment) (commentID string, err error) {
 	err = m.WithCustomCollection(mongoPosts, func(coll *mgo.Collection) error {
