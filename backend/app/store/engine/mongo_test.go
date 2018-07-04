@@ -142,7 +142,7 @@ func TestMongo_List(t *testing.T) {
 
 	res, err = m.List("bad", 1, 1)
 	assert.Nil(t, err)
-	assert.Nil(t, res)
+	assert.Equal(t, []store.PostInfo{}, res)
 }
 
 func TestMongo_Info(t *testing.T) {

@@ -58,6 +58,7 @@ func (m *Mongo) Create(comment store.Comment) (commentID string, err error) {
 
 // Find returns all comments for post and sorts results
 func (m *Mongo) Find(locator store.Locator, sortFld string) (comments []store.Comment, err error) {
+	comments = []store.Comment{}
 	err = m.conn.WithCustomCollection(mongoPosts, func(coll *mgo.Collection) error {
 		query := bson.M{"locator.site": locator.SiteID, "locator.url": locator.URL}
 		return coll.Find(query).Sort(sortFld).All(&comments)
@@ -91,6 +92,7 @@ func (m *Mongo) Put(locator store.Locator, comment store.Comment) error {
 
 // Last returns up to max last comments for given siteID
 func (m *Mongo) Last(siteID string, max int) (comments []store.Comment, err error) {
+	comments = []store.Comment{}
 	if max > lastLimit || max == 0 {
 		max = lastLimit
 	}
@@ -114,6 +116,7 @@ func (m *Mongo) Count(locator store.Locator) (count int, err error) {
 
 // List returns list of all commented posts with counters
 func (m *Mongo) List(siteID string, limit, skip int) (list []store.PostInfo, err error) {
+	list = []store.PostInfo{}
 
 	if limit <= 0 {
 		limit = 1000
@@ -168,6 +171,7 @@ func (m *Mongo) Info(locator store.Locator, readOnlyAge int) (info store.PostInf
 
 // User extracts all comments for given site and given userID
 func (m *Mongo) User(siteID, userID string, limit, skip int) (comments []store.Comment, err error) {
+	comments = []store.Comment{}
 	err = m.conn.WithCustomCollection(mongoPosts, func(coll *mgo.Collection) error {
 		query := bson.M{"locator.site": siteID, "user.id": userID}
 		return m.setLimitAndSkip(coll.Find(query).Sort("-time"), limit, skip).All(&comments)
@@ -248,6 +252,7 @@ func (m *Mongo) IsBlocked(siteID string, userID string) (blocked bool) {
 
 // Blocked get lists of blocked users for given site
 func (m *Mongo) Blocked(siteID string) (users []store.BlockedUser, err error) {
+	users = []store.BlockedUser{}
 	metas := []metaUser{}
 	err = m.conn.WithCustomCollection(mongoMetaUsers, func(coll *mgo.Collection) error {
 		return coll.Find(bson.M{"site": siteID,
