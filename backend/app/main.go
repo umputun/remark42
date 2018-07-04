@@ -321,7 +321,7 @@ func makeDataStore(group StoreGroup, siteNames []string) (result engine.Interfac
 			return result, errors.Wrap(err, "failed to create mongo server")
 		}
 		conn := mongo.NewConnection(mgServer, group.Mongo.DB, "")
-		result, err = engine.NewMongo(conn)
+		result, err = engine.NewMongo(conn, 500, 100*time.Millisecond)
 	default:
 		return nil, errors.Errorf("unsupported store type %s", group.Type)
 	}

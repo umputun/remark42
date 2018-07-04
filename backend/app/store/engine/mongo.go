@@ -14,7 +14,8 @@ import (
 
 // Mongo implements engine interface
 type Mongo struct {
-	*mongo.Connection
+	conn       *mongo.Connection
+	postWriter mongo.BufferedWriter
 }
 
 const (
@@ -38,23 +39,26 @@ type metaUser struct {
 }
 
 // NewMongo makes mongo engine
-func NewMongo(conn *mongo.Connection) (*Mongo, error) {
-	result := Mongo{Connection: conn}
+func NewMongo(conn *mongo.Connection, bufferSize int, flushDuration time.Duration) (*Mongo, error) {
+	writer := mongo.NewBufferedWriter(bufferSize, conn).WithCollection(mongoPosts).WithAutoFlush(flushDuration)
+	result := Mongo{conn: conn, postWriter: writer}
 	err := result.prepare()
 	return &result, errors.Wrap(err, "failed to prepare mongo")
 }
 
 // Create new comment
 func (m *Mongo) Create(comment store.Comment) (commentID string, err error) {
-	err = m.WithCustomCollection(mongoPosts, func(coll *mgo.Collection) error {
-		return coll.Insert(comment)
-	})
+	err = m.postWriter.Write(comment)
 	return comment.ID, err
+
+	// err = m.conn.WithCustomCollection(mongoPosts, func(coll *mgo.Collection) error {
+	// 	return coll.Insert(comment)
+	// })
 }
 
 // Find returns all comments for post and sorts results
 func (m *Mongo) Find(locator store.Locator, sortFld string) (comments []store.Comment, err error) {
-	err = m.WithCustomCollection(mongoPosts, func(coll *mgo.Collection) error {
+	err = m.conn.WithCustomCollection(mongoPosts, func(coll *mgo.Collection) error {
 		query := bson.M{"locator.site": locator.SiteID, "locator.url": locator.URL}
 		return coll.Find(query).Sort(sortFld).All(&comments)
 	})
@@ -63,7 +67,7 @@ func (m *Mongo) Find(locator store.Locator, sortFld string) (comments []store.Co
 
 // Get returns comment for locator.URL and commentID string
 func (m *Mongo) Get(locator store.Locator, commentID string) (comment store.Comment, err error) {
-	err = m.WithCustomCollection(mongoPosts, func(coll *mgo.Collection) error {
+	err = m.conn.WithCustomCollection(mongoPosts, func(coll *mgo.Collection) error {
 		query := bson.M{"_id": commentID, "locator.site": locator.SiteID, "locator.url": locator.URL}
 		return coll.Find(query).One(&comment)
 	})
@@ -72,7 +76,7 @@ func (m *Mongo) Get(locator store.Locator, commentID string) (comment store.Comm
 
 // Put updates comment for locator.URL with mutable part of comment
 func (m *Mongo) Put(locator store.Locator, comment store.Comment) error {
-	return m.WithCustomCollection(mongoPosts, func(coll *mgo.Collection) error {
+	return m.conn.WithCustomCollection(mongoPosts, func(coll *mgo.Collection) error {
 		return coll.Update(bson.M{"_id": comment.ID, "locator.site": locator.SiteID, "locator.url": locator.URL},
 			bson.M{"$set": bson.M{
 				"text":    comment.Text,
@@ -90,7 +94,7 @@ func (m *Mongo) Last(siteID string, max int) (comments []store.Comment, err erro
 	if max > lastLimit || max == 0 {
 		max = lastLimit
 	}
-	err = m.WithCustomCollection(mongoPosts, func(coll *mgo.Collection) error {
+	err = m.conn.WithCustomCollection(mongoPosts, func(coll *mgo.Collection) error {
 		query := bson.M{"locator.site": siteID, "delete": false}
 		return coll.Find(query).Sort("-time").Limit(max).All(&comments)
 	})
@@ -100,7 +104,7 @@ func (m *Mongo) Last(siteID string, max int) (comments []store.Comment, err erro
 // Count returns number of comments for locator
 func (m *Mongo) Count(locator store.Locator) (count int, err error) {
 
-	e := m.WithCustomCollection(mongoPosts, func(coll *mgo.Collection) error {
+	e := m.conn.WithCustomCollection(mongoPosts, func(coll *mgo.Collection) error {
 		query := bson.M{"locator.site": locator.SiteID, "locator.url": locator.URL, "delete": false}
 		count, err = coll.Find(query).Count()
 		return err
@@ -118,7 +122,7 @@ func (m *Mongo) List(siteID string, limit, skip int) (list []store.PostInfo, err
 		skip = 0
 	}
 
-	err = m.WithCustomCollection(mongoPosts, func(coll *mgo.Collection) error {
+	err = m.conn.WithCustomCollection(mongoPosts, func(coll *mgo.Collection) error {
 		pipeline := coll.Pipe([]bson.M{
 			{"$match": bson.M{"locator.site": siteID}},
 			{"$project": bson.M{"locator.site": 1, "locator.url": 1, "time": 1}},
@@ -138,7 +142,7 @@ func (m *Mongo) List(siteID string, limit, skip int) (list []store.PostInfo, err
 // Info returns time range and count for locator
 func (m *Mongo) Info(locator store.Locator, readOnlyAge int) (info store.PostInfo, err error) {
 	list := []store.PostInfo{}
-	err = m.WithCustomCollection(mongoPosts, func(coll *mgo.Collection) error {
+	err = m.conn.WithCustomCollection(mongoPosts, func(coll *mgo.Collection) error {
 		pipeline := coll.Pipe([]bson.M{
 			{"$match": bson.M{"locator.site": locator.SiteID, "locator.url": locator.URL}},
 			{"$project": bson.M{"locator.site": 1, "locator.url": 1, "time": 1}},
@@ -164,7 +168,7 @@ func (m *Mongo) Info(locator store.Locator, readOnlyAge int) (info store.PostInf
 
 // User extracts all comments for given site and given userID
 func (m *Mongo) User(siteID, userID string, limit, skip int) (comments []store.Comment, err error) {
-	err = m.WithCustomCollection(mongoPosts, func(coll *mgo.Collection) error {
+	err = m.conn.WithCustomCollection(mongoPosts, func(coll *mgo.Collection) error {
 		query := bson.M{"locator.site": siteID, "user.id": userID}
 		return m.setLimitAndSkip(coll.Find(query).Sort("-time"), limit, skip).All(&comments)
 	})
@@ -173,7 +177,7 @@ func (m *Mongo) User(siteID, userID string, limit, skip int) (comments []store.C
 
 // UserCount returns number of comments for user
 func (m *Mongo) UserCount(siteID, userID string) (count int, err error) {
-	err = m.WithCustomCollection(mongoPosts, func(coll *mgo.Collection) error {
+	err = m.conn.WithCustomCollection(mongoPosts, func(coll *mgo.Collection) error {
 		var e error
 		count, e = coll.Find(bson.M{"locator.site": siteID, "user.id": userID}).Count()
 		return e
@@ -183,7 +187,7 @@ func (m *Mongo) UserCount(siteID, userID string) (count int, err error) {
 
 // SetReadOnly makes post read-only or reset the ro flag
 func (m *Mongo) SetReadOnly(locator store.Locator, status bool) (err error) {
-	return m.WithCustomCollection(mongoMetaPosts, func(coll *mgo.Collection) error {
+	return m.conn.WithCustomCollection(mongoMetaPosts, func(coll *mgo.Collection) error {
 		_, e := coll.Upsert(bson.M{"_id": locator.URL, "site": locator.SiteID}, bson.M{"$set": bson.M{"read_only": status}})
 		return e
 	})
@@ -192,7 +196,7 @@ func (m *Mongo) SetReadOnly(locator store.Locator, status bool) (err error) {
 // IsReadOnly checks if post in RO
 func (m *Mongo) IsReadOnly(locator store.Locator) (ro bool) {
 	meta := metaPost{}
-	err := m.WithCustomCollection(mongoMetaPosts, func(coll *mgo.Collection) error {
+	err := m.conn.WithCustomCollection(mongoMetaPosts, func(coll *mgo.Collection) error {
 		return coll.Find(bson.M{"_id": locator.URL, "site": locator.SiteID}).One(&meta)
 	})
 	return err == nil && meta.ReadOnly
@@ -200,7 +204,7 @@ func (m *Mongo) IsReadOnly(locator store.Locator) (ro bool) {
 
 // SetVerified makes user verified or reset the flag
 func (m *Mongo) SetVerified(siteID string, userID string, status bool) error {
-	return m.WithCustomCollection(mongoMetaUsers, func(coll *mgo.Collection) error {
+	return m.conn.WithCustomCollection(mongoMetaUsers, func(coll *mgo.Collection) error {
 		_, e := coll.Upsert(bson.M{"_id": userID, "site": siteID}, bson.M{"$set": bson.M{"verified": status}})
 		return e
 	})
@@ -209,7 +213,7 @@ func (m *Mongo) SetVerified(siteID string, userID string, status bool) error {
 // IsVerified checks if user verified
 func (m *Mongo) IsVerified(siteID string, userID string) (verified bool) {
 	meta := metaUser{}
-	err := m.WithCustomCollection(mongoMetaUsers, func(coll *mgo.Collection) error {
+	err := m.conn.WithCustomCollection(mongoMetaUsers, func(coll *mgo.Collection) error {
 		return coll.Find(bson.M{"_id": userID, "site": siteID}).One(&meta)
 	})
 	return err == nil && meta.Verified
@@ -226,7 +230,7 @@ func (m *Mongo) SetBlock(siteID string, userID string, status bool, ttl time.Dur
 			until = time.Now().Add(ttl)
 		}
 	}
-	return m.WithCustomCollection(mongoMetaUsers, func(coll *mgo.Collection) error {
+	return m.conn.WithCustomCollection(mongoMetaUsers, func(coll *mgo.Collection) error {
 		_, e := coll.Upsert(bson.M{"_id": userID, "site": siteID},
 			bson.M{"$set": bson.M{"blocked": status, "blocked_until": until}})
 		return errors.Wrapf(e, "failed to set block for %s", userID)
@@ -236,7 +240,7 @@ func (m *Mongo) SetBlock(siteID string, userID string, status bool, ttl time.Dur
 // IsBlocked checks if user blocked
 func (m *Mongo) IsBlocked(siteID string, userID string) (blocked bool) {
 	meta := metaUser{}
-	err := m.WithCustomCollection(mongoMetaUsers, func(coll *mgo.Collection) error {
+	err := m.conn.WithCustomCollection(mongoMetaUsers, func(coll *mgo.Collection) error {
 		return coll.Find(bson.M{"_id": userID, "site": siteID}).One(&meta)
 	})
 	return err == nil && meta.Blocked && meta.BlockedUntil.After(time.Now())
@@ -245,7 +249,7 @@ func (m *Mongo) IsBlocked(siteID string, userID string) (blocked bool) {
 // Blocked get lists of blocked users for given site
 func (m *Mongo) Blocked(siteID string) (users []store.BlockedUser, err error) {
 	metas := []metaUser{}
-	err = m.WithCustomCollection(mongoMetaUsers, func(coll *mgo.Collection) error {
+	err = m.conn.WithCustomCollection(mongoMetaUsers, func(coll *mgo.Collection) error {
 		return coll.Find(bson.M{"site": siteID,
 			"blocked": true, "blocked_until": bson.M{"$gt": time.Now()}}).All(&metas)
 	})
@@ -267,7 +271,7 @@ func (m *Mongo) Blocked(siteID string) (users []store.BlockedUser, err error) {
 // Posts collection only sets status to deleted and clear fields in order to prevent breaking trees of replies.
 func (m *Mongo) Delete(locator store.Locator, commentID string, mode store.DeleteMode) error {
 	comment := store.Comment{}
-	err := m.WithCustomCollection(mongoPosts, func(coll *mgo.Collection) error {
+	err := m.conn.WithCustomCollection(mongoPosts, func(coll *mgo.Collection) error {
 		e := coll.Find(bson.M{"locator.site": locator.SiteID, "locator.url": locator.URL, "_id": commentID}).One(&comment)
 		if e != nil {
 			return e
@@ -280,7 +284,7 @@ func (m *Mongo) Delete(locator store.Locator, commentID string, mode store.Delet
 
 // DeleteAll removes all info about siteID
 func (m *Mongo) DeleteAll(siteID string) error {
-	err := m.WithCustomCollection(mongoPosts, func(coll *mgo.Collection) error {
+	err := m.conn.WithCustomCollection(mongoPosts, func(coll *mgo.Collection) error {
 		_, e := coll.RemoveAll(bson.M{"locator.site": siteID})
 		return e
 	})
@@ -291,7 +295,7 @@ func (m *Mongo) DeleteAll(siteID string) error {
 // and user name and userID will be changed to "deleted".
 func (m *Mongo) DeleteUser(siteID string, userID string) error {
 	comments := []store.Comment{}
-	return m.WithCustomCollection(mongoPosts, func(coll *mgo.Collection) error {
+	return m.conn.WithCustomCollection(mongoPosts, func(coll *mgo.Collection) error {
 		e := coll.Find(bson.M{"locator.site": siteID, "user.id": userID}).All(&comments)
 		if e != nil {
 			return e
@@ -307,7 +311,7 @@ func (m *Mongo) DeleteUser(siteID string, userID string) error {
 
 func (m *Mongo) prepare() error {
 	errs := new(multierror.Error)
-	e := m.WithCustomCollection(mongoPosts, func(coll *mgo.Collection) error {
+	e := m.conn.WithCustomCollection(mongoPosts, func(coll *mgo.Collection) error {
 		errs = multierror.Append(errs, coll.EnsureIndexKey("user.id", "locator.site", "time"))
 		errs = multierror.Append(errs, coll.EnsureIndexKey("locator.url", "locator.site", "time"))
 		errs = multierror.Append(errs, coll.EnsureIndexKey("locator.site", "time"))
@@ -317,9 +321,20 @@ func (m *Mongo) prepare() error {
 		return e
 	}
 
-	return m.WithCustomCollection(mongoMetaPosts, func(coll *mgo.Collection) error {
+	e = m.conn.WithCustomCollection(mongoMetaPosts, func(coll *mgo.Collection) error {
+		errs = multierror.Append(errs, coll.EnsureIndexKey("_id", "site"))
 		errs = multierror.Append(errs, coll.EnsureIndexKey("site", "read_only"))
 		return errors.Wrapf(errs.ErrorOrNil(), "can't create index for %s", mongoMetaPosts)
+	})
+	if e != nil {
+		return e
+	}
+
+	return m.conn.WithCustomCollection(mongoMetaUsers, func(coll *mgo.Collection) error {
+		errs = multierror.Append(errs, coll.EnsureIndexKey("_id", "site"))
+		errs = multierror.Append(errs, coll.EnsureIndexKey("site", "blocked"))
+		errs = multierror.Append(errs, coll.EnsureIndexKey("site", "verified"))
+		return errors.Wrapf(errs.ErrorOrNil(), "can't create index for %s", mongoMetaUsers)
 	})
 }
 

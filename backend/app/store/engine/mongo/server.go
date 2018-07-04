@@ -47,9 +47,7 @@ func NewServer(dial mgo.DialInfo, params ServerParams) (res *Server, err error) 
 	}
 
 	if len(dial.Addrs) == 0 {
-		err = errors.New("missing mongo address")
-		log.Printf("[ERROR] %v", err)
-		return nil, err
+		return nil, errors.New("missing mongo address")
 	}
 
 	if params.Delay > 0 {
@@ -76,7 +74,7 @@ func NewServer(dial mgo.DialInfo, params ServerParams) (res *Server, err error) 
 	session.SetMode(params.ConsistencyMode, true)
 
 	if params.Credential != nil && params.Credential.Username != "" && params.Credential.Password != "" {
-		log.Printf("[INFO] login to mongo, user %s", params.Credential.Username)
+		log.Printf("[DEBUG] login to mongo, user=%s, db=%s", params.Credential.Username, params.Credential.Source)
 		if err = session.Login(params.Credential); err != nil {
 			log.Printf("[ERROR] can't login to mongo, %v", err)
 			return nil, err

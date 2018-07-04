@@ -14,7 +14,7 @@ import (
 
 func TestWriter(t *testing.T) {
 
-	count := func(conn Connection) (res int) {
+	count := func(conn *Connection) (res int) {
 		_ = conn.WithCollection(func(coll *mgo.Collection) error {
 			var err error
 			res, err = coll.Find(nil).Count()
@@ -48,8 +48,9 @@ func TestWriter(t *testing.T) {
 func TestWriterParallel(t *testing.T) {
 	conn := makeConnection(t)
 	var wg sync.WaitGroup
+	wr := NewBufferedWriter(75, conn).WithCollection("writer_test")
 
-	fn := func(wr BufferedWriter) {
+	writeMany := func() {
 		for i := 0; i < 1000; i++ {
 			wr.Write(bson.M{"key1": 1, "key2": 2})
 		}
@@ -59,7 +60,7 @@ func TestWriterParallel(t *testing.T) {
 
 	for i := 0; i < 16; i++ {
 		wg.Add(1)
-		go fn(NewBufferedWriter(75, conn).WithCollection("writer_test"))
+		go writeMany()
 	}
 
 	wg.Wait()
@@ -74,7 +75,7 @@ func TestWriterParallel(t *testing.T) {
 
 func TestWriterWithAuthFlush(t *testing.T) {
 
-	count := func(conn Connection) (res int) {
+	count := func(conn *Connection) (res int) {
 		_ = conn.WithCollection(func(coll *mgo.Collection) error {
 			var err error
 			res, err = coll.Find(nil).Count()
@@ -112,8 +113,9 @@ func TestWriterWithAuthFlush(t *testing.T) {
 func TestWriterParallelWithAutoFlush(t *testing.T) {
 	conn := makeConnection(t)
 	var wg sync.WaitGroup
+	wr := NewBufferedWriter(75, conn).WithCollection("writer_test").WithAutoFlush(time.Millisecond)
 
-	fn := func(wr BufferedWriter) {
+	writeMany := func() {
 		for i := 0; i < 100; i++ {
 			wr.Write(bson.M{"key1": 1, "key2": 2})
 			time.Sleep(time.Millisecond * 3)
@@ -124,7 +126,7 @@ func TestWriterParallelWithAutoFlush(t *testing.T) {
 
 	for i := 0; i < 16; i++ {
 		wg.Add(1)
-		go fn(NewBufferedWriter(75, conn).WithCollection("writer_test").WithAutoFlush(time.Millisecond))
+		go writeMany()
 	}
 
 	wg.Wait()
@@ -137,12 +139,12 @@ func TestWriterParallelWithAutoFlush(t *testing.T) {
 	})
 }
 
-func makeConnection(t *testing.T) Connection {
+func makeConnection(t *testing.T) *Connection {
 	srv, err := NewServer(mgo.DialInfo{Addrs: []string{"mongo"}}, ServerParams{})
 	assert.Nil(t, err, "failed to dial")
 	res := NewConnection(srv, "test", "writer_test")
 	_ = res.WithCollection(func(coll *mgo.Collection) error {
 		return coll.DropCollection()
 	})
-	return *res
+	return res
 }

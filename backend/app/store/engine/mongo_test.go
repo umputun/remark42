@@ -470,11 +470,12 @@ func prepMongo(t *testing.T, writeRecs bool) *Mongo {
 	mg.DropCollection()
 	conn, err := mg.Get()
 	require.Nil(t, err)
-	m := &Mongo{Connection: conn}
-	_ = m.WithCustomCollection(mongoMetaPosts, func(coll *mgo.Collection) error {
+	m, err := NewMongo(conn, 1, 0*time.Microsecond)
+	require.Nil(t, err)
+	_ = m.conn.WithCustomCollection(mongoMetaPosts, func(coll *mgo.Collection) error {
 		return coll.DropCollection()
 	})
-	_ = m.WithCustomCollection(mongoMetaUsers, func(coll *mgo.Collection) error {
+	_ = m.conn.WithCustomCollection(mongoMetaUsers, func(coll *mgo.Collection) error {
 		return coll.DropCollection()
 	})
 

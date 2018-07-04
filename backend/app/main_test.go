@@ -72,6 +72,7 @@ func TestApplicationDevMode(t *testing.T) {
 
 	app.Wait()
 }
+
 func TestApplicationFailed(t *testing.T) {
 	opts := Opts{}
 	p := flags.NewParser(&opts, flags.Default)
@@ -103,10 +104,12 @@ func TestApplicationFailed(t *testing.T) {
 	t.Log(err)
 
 	opts = Opts{}
-	_, err = p.ParseArgs([]string{"--secret=123456", "--url=https://demo.remark42.com", "--backup=/tmp", "--store.type=mongo"})
-	assert.Nil(t, err)
+	_, err = p.ParseArgs([]string{"--secret=123456", "--url=https://demo.remark42.com", "--backup=/tmp", "--store.type=blah"})
+	assert.NotNil(t, err, "blah is invalid type")
+
+	opts.Store.Type = "blah"
 	_, err = New(opts)
-	assert.EqualError(t, err, "unsupported store type mongo")
+	assert.EqualError(t, err, "unsupported store type blah")
 	t.Log(err)
 }
 

@@ -18,7 +18,7 @@ type BufferedWriter interface {
 // by default using both DB and collection from provided connection.
 // Collection can be customized by WithCollection method. Optional flush duration to save on interval
 type BufferedWriterMgo struct {
-	connection    Connection
+	connection    *Connection
 	bufferSize    int
 	collection    string
 	flushDuration time.Duration
@@ -30,7 +30,7 @@ type BufferedWriterMgo struct {
 }
 
 // NewBufferedWriter makes batch writer for given size and connection
-func NewBufferedWriter(size int, connection Connection) *BufferedWriterMgo {
+func NewBufferedWriter(size int, connection *Connection) *BufferedWriterMgo {
 	if size == 0 {
 		size = 1
 	}
@@ -50,15 +50,9 @@ func (bw *BufferedWriterMgo) WithCollection(collection string) *BufferedWriterMg
 // WithAutoFlush sets auto flush duration
 func (bw *BufferedWriterMgo) WithAutoFlush(duration time.Duration) *BufferedWriterMgo {
 	bw.flushDuration = duration
-	return bw
-}
-
-// Write to buffer and, as filled, to mongo. If flushDuration defined check for automatic flush
-func (bw *BufferedWriterMgo) Write(rec interface{}) error {
-
-	bw.once.Do(func() {
-		if bw.flushDuration > 0 {
-			ticker := time.NewTicker(bw.flushDuration)
+	if duration > 0 { // activate background auto-flush
+		bw.once.Do(func() {
+			ticker := time.NewTicker(duration)
 			go func() {
 				for range ticker.C {
 					shouldFlush := false
@@ -70,9 +64,13 @@ func (bw *BufferedWriterMgo) Write(rec interface{}) error {
 					}
 				}
 			}()
-		}
-	})
+		})
+	}
+	return bw
+}
 
+// Write to buffer and, as filled, to mongo. If flushDuration defined check for automatic flush
+func (bw *BufferedWriterMgo) Write(rec interface{}) error {
 	bw.lock.Lock()
 	defer bw.lock.Unlock()
 

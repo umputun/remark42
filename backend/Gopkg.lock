@@ -55,6 +55,18 @@
   revision = "6ab5f3083f3d925e1944d58cdaebf43bbbff9238"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/globalsign/mgo"
+  packages = [
+    ".",
+    "bson",
+    "internal/json",
+    "internal/sasl",
+    "internal/scram"
+  ]
+  revision = "113d3961e7311526535a1ef7042196563d442761"
+
+[[projects]]
   name = "github.com/go-chi/chi"
   packages = [
     ".",
@@ -232,6 +244,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "af8b7f1817ce6e82746722a745184bd50c341733bcc024311aa956ea32475796"
+  inputs-digest = "047a33490c46c94c95bb17f1f50f493e78f718b3bd96b3a777c233bce8c0af17"
   solver-name = "gps-cdcl"
   solver-version = 1
