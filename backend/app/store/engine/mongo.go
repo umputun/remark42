@@ -320,6 +320,7 @@ func (m *Mongo) prepare() error {
 		errs = multierror.Append(errs, coll.EnsureIndexKey("user.id", "locator.site", "time"))
 		errs = multierror.Append(errs, coll.EnsureIndexKey("locator.url", "locator.site", "time"))
 		errs = multierror.Append(errs, coll.EnsureIndexKey("locator.site", "time"))
+		errs = multierror.Append(errs, coll.EnsureIndexKey("locator.url", "locator.site", "score"))
 		return errors.Wrapf(errs.ErrorOrNil(), "can't create index for %s", mongoPosts)
 	})
 	if e != nil {
