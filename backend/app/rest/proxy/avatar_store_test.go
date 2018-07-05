@@ -12,9 +12,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/umputun/remark/backend/app/store/engine/mongo"
 )
 
-func TestAvatarStore_Put(t *testing.T) {
+func TestAvatarStoreFS_Put(t *testing.T) {
 	p := NewFSAvatarStore("/tmp/avatars.test", 300)
 	err := os.MkdirAll("/tmp/avatars.test", 0700)
 	require.NoError(t, err)
@@ -53,7 +55,7 @@ func TestAvatarStore_Put(t *testing.T) {
 	assert.EqualError(t, err, "can't create file /dev/null/30/b3daa77b4c04a9551b8781d03191fe098f325e67.image: open /dev/null/30/b3daa77b4c04a9551b8781d03191fe098f325e67.image: not a directory")
 }
 
-func TestAvatarStore_Get(t *testing.T) {
+func TestAvatarStoreFS_Get(t *testing.T) {
 	p := NewFSAvatarStore("/tmp/avatars.test", 300)
 	err := os.MkdirAll("/tmp/avatars.test/30", 0700)
 	require.NoError(t, err)
@@ -77,7 +79,7 @@ func TestAvatarStore_Get(t *testing.T) {
 	assert.Equal(t, "something", string(data))
 }
 
-func TestAvatarStore_Location(t *testing.T) {
+func TestAvatarStoreFS_Location(t *testing.T) {
 	p := NewFSAvatarStore("/tmp/avatars.test", 300)
 
 	tbl := []struct {
@@ -146,7 +148,7 @@ func TestAvatarStore_resize(t *testing.T) {
 	}
 }
 
-func TestAvatarStore_ID(t *testing.T) {
+func TestAvatarStoreFS_ID(t *testing.T) {
 	p := NewFSAvatarStore("/tmp/avatars.test", 300)
 	err := os.MkdirAll("/tmp/avatars.test/30", 0700)
 	require.NoError(t, err)
@@ -164,7 +166,8 @@ func TestAvatarStore_ID(t *testing.T) {
 	id = p.ID("b3daa77b4c04a9551b8781d03191fe098f325e67.image")
 	assert.Equal(t, "325d5b451f32c2f8e7f30a9fd65bff6a42954d9a", id) // store.EncodeID("b3daa77b4c04a9551b8781d03191fe098f325e67.image1500000000")
 }
-func BenchmarkAvatarStore_ID(b *testing.B) {
+
+func BenchmarkAvatarStoreFS_ID(b *testing.B) {
 	p := NewFSAvatarStore("/tmp/avatars.test", 300)
 	os.MkdirAll("/tmp/avatars.test/30", 0700)
 	defer os.RemoveAll("/tmp/avatars.test")
@@ -175,4 +178,25 @@ func BenchmarkAvatarStore_ID(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		p.ID("b3daa77b4c04a9551b8781d03191fe098f325e67.image")
 	}
+}
+
+func TestAvatarStoreGF(t *testing.T) {
+	mg := mongo.NewTesting("fs")
+	mg.DropCollection()
+	conn, err := mg.Get()
+	require.Nil(t, err)
+
+	p := NewGridFSAvatarStore(conn, 0)
+	avatar, err := p.Put("user1", strings.NewReader("some picture bin data"))
+	require.Nil(t, err)
+	assert.Equal(t, "b3daa77b4c04a9551b8781d03191fe098f325e67.image", avatar)
+
+	rd, size, err := p.Get(avatar)
+	require.Nil(t, err)
+	assert.Equal(t, 21, size)
+	data, err := ioutil.ReadAll(rd)
+	require.Nil(t, err)
+	assert.Equal(t, "some picture bin data", string(data))
+
+	assert.Equal(t, "8ce5568f7f9a1c9da5b897bc8642e397", p.ID(avatar))
 }

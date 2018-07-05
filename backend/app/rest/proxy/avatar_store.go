@@ -20,10 +20,13 @@ import (
 	_ "image/gif"
 	_ "image/jpeg"
 
+	"github.com/globalsign/mgo"
 	"github.com/pkg/errors"
 	"golang.org/x/image/draw"
 
 	"github.com/umputun/remark/backend/app/store"
+	"github.com/umputun/remark/backend/app/store/engine/mongo"
+	"io/ioutil"
 )
 
 // AvatarStore defines interface to store and serve avatars
@@ -115,7 +118,7 @@ func (fs *FSAvatarStore) location(id string) string {
 	return path.Join(fs.storePath, fmt.Sprintf("%02d", partition))
 }
 
-// Resizes an image of supported format (PNG, JPG, GIF) to the size of "limit" px of the biggest side
+// resize an image of supported format (PNG, JPG, GIF) to the size of "limit" px of the biggest side
 // (width or height) preserving aspect ratio.
 // Returns original reader if resizing is not needed or failed.
 func resize(reader io.Reader, limit int) io.Reader {
@@ -156,4 +159,80 @@ func resize(reader io.Reader, limit int) io.Reader {
 		return &teeBuf
 	}
 	return &out
+}
+
+// NewFSAvatarStore makes file-system avatar store
+func NewGridFSAvatarStore(conn *mongo.Connection, resizeLimit int) *GridFSAvatarStore {
+	return &GridFSAvatarStore{Connection: conn, resizeLimit: resizeLimit}
+}
+
+// GridFSAvatarStore implements AvatarStore for GridFS
+type GridFSAvatarStore struct {
+	Connection  *mongo.Connection
+	resizeLimit int
+}
+
+func (gf *GridFSAvatarStore) Put(userID string, reader io.Reader) (avatar string, err error) {
+	id := store.EncodeID(userID)
+	err = gf.Connection.WithDB(func(dbase *mgo.Database) error {
+		fh, e := dbase.GridFS("fs").Create(id + imgSfx)
+		if e != nil {
+			return e
+		}
+		defer func() {
+			if e := fh.Close(); e != nil {
+				log.Printf("[WARN] can't close avatar file %v, %s", fh, e)
+			}
+		}()
+
+		// Trying to resize avatar.
+		if reader = resize(reader, gf.resizeLimit); reader == nil {
+			return errors.New("avatar reader is nil")
+		}
+		_, e = io.Copy(fh, reader)
+		return e
+	})
+	return id + imgSfx, err
+}
+
+// Get avatar reader for avatar id.image
+func (gf *GridFSAvatarStore) Get(avatar string) (reader io.ReadCloser, size int, err error) {
+	tmp, err := ioutil.TempFile("/tmp", "remark42")
+	if err != nil {
+		return nil, 0, errors.Wrapf(err, "can't make temp avatar file for %s", avatar)
+	}
+
+	err = gf.Connection.WithDB(func(dbase *mgo.Database) error {
+		fh, e := dbase.GridFS("fs").Open(avatar)
+		if e != nil {
+			return errors.Wrapf(e, "can't load avatar %s", avatar)
+		}
+		if _, e = io.Copy(tmp, fh); e != nil {
+			return errors.Wrapf(e, "can't copy avatar %s", avatar)
+		}
+		tmp.Close()
+		size = int(fh.Size())
+		fh.Close()
+		return nil
+	})
+
+	reader, _ = os.Open(tmp.Name())
+	return reader, size, err
+}
+
+// ID returns a fingerprint of the avatar content.
+func (gf *GridFSAvatarStore) ID(avatar string) (id string) {
+	err := gf.Connection.WithDB(func(dbase *mgo.Database) error {
+		fh, e := dbase.GridFS("fs").Open(avatar)
+		if e != nil {
+			return errors.Wrapf(e, "can't open avatar %s, id", avatar)
+		}
+		id = fh.MD5()
+		return nil
+	})
+	if err != nil {
+		log.Printf("[DEBUG] can't get file info '%s', %s", avatar, err)
+		return store.EncodeID(avatar)
+	}
+	return id
 }
