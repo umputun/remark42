@@ -24,15 +24,10 @@ export default class UserInfo extends Component {
   }
 
   render(props, { comments, isLoading }) {
-    const { user: { name, id, isDefaultPicture, picture }, onClose } = props;
+    const { user: { name, id }, onClose } = props;
 
     return (
-      <div className={b('user-info', props, { iframe: true })}>
-        <img
-          className={b('user-info__avatar', {}, { default: !!isDefaultPicture })}
-          src={isDefaultPicture ? require('./__avatar/user-info__avatar.svg') : picture}
-          alt=""
-        />
+      <div className={b('user-info', props)}>
         <p className="user-info__title">Last comments by {name}</p>
         <p className="user-info__id">{id}</p>
 
@@ -57,7 +52,7 @@ export default class UserInfo extends Component {
           )
         }
 
-        <span className="user-info__close" onClick={onClose}>&#10006;</span>
+        <div><span className="user-info__close" onClick={onClose}>Close</span></div>
       </div>
     );
   }

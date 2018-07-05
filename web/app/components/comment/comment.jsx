@@ -6,6 +6,7 @@ import { url } from 'common/settings';
 import store from 'common/store';
 
 import Input from 'components/input';
+import UserInfo from 'components/user-info';
 
 export default class Comment extends Component {
   constructor(props) {
@@ -15,6 +16,7 @@ export default class Comment extends Component {
       isReplying: false,
       isEditing: false,
       isUserVerified: false,
+      isUserInfoShown: false,
       editTimeLeft: null,
     };
 
@@ -126,11 +128,7 @@ export default class Comment extends Component {
   }
 
   toggleUserInfoVisibility() {
-    if (window.parent) {
-      const { user } = this.props.data;
-      const data = JSON.stringify({ isUserInfoShown: true, user });
-      window.parent.postMessage(data, '*');
-    }
+    this.setState({ isUserInfoShown: !this.state.isUserInfoShown });
   }
 
   onPinClick() {
@@ -313,7 +311,8 @@ export default class Comment extends Component {
     isReplying,
     isEditing,
     isUserVerified,
-    editTimeLeft
+    editTimeLeft,
+    isUserInfoShown,
   }) {
     const { data, mods = {} } = props;
     const isAdmin = !guest && store.get('user').admin;
@@ -583,6 +582,12 @@ export default class Comment extends Component {
             }
           </div>
         </div>
+
+        {
+          isUserInfoShown && (
+            <UserInfo mix="comment__user-info" user={o.user} onClose={this.toggleUserInfoVisibility}/>
+          )
+        }
 
         {
           isReplying && mods.view !== 'user' && (
