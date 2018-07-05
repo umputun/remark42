@@ -46,7 +46,6 @@ module.exports = {
     counter: './app/counter',
     'last-comments': './app/last-comments',
     remark: './app/remark',
-    'user-info': './app/user-info'
   },
   output: {
     path: publicFolder,
@@ -114,11 +113,6 @@ module.exports = {
       template: path.resolve(__dirname, 'last-comments.ejs'),
       filename: 'last-comments.html',
       inject: false,
-    }),
-    new Html({
-      template: path.resolve(__dirname, 'user-info.ejs'),
-      filename: 'user-info.html',
-      inject: false
     }),
     ...(env === 'production' ? [] : [new Html({
       template: path.resolve(__dirname, 'dev.ejs'),
