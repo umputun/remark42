@@ -38,7 +38,9 @@ type metaUser struct {
 	BlockedUntil time.Time `bson:"blocked_until"`
 }
 
-// NewMongo makes mongo engine
+// NewMongo makes mongo engine. bufferSize denies how many records will be buffered, 0 turns buffering off.
+// flushDuration triggers automatic flus (write from buffer), 0 disables it and will flush as buffer size reached.
+// important! don't use flushDuration=0 for production use as it can leave records in-fly state for long or even unlimited time.
 func NewMongo(conn *mongo.Connection, bufferSize int, flushDuration time.Duration) (*Mongo, error) {
 	writer := mongo.NewBufferedWriter(bufferSize, conn).WithCollection(mongoPosts).WithAutoFlush(flushDuration)
 	result := Mongo{conn: conn, postWriter: writer}
@@ -46,14 +48,10 @@ func NewMongo(conn *mongo.Connection, bufferSize int, flushDuration time.Duratio
 	return &result, errors.Wrap(err, "failed to prepare mongo")
 }
 
-// Create new comment
+// Create new comment, write can be buffered and delayed.
 func (m *Mongo) Create(comment store.Comment) (commentID string, err error) {
 	err = m.postWriter.Write(comment)
 	return comment.ID, err
-
-	// err = m.conn.WithCustomCollection(mongoPosts, func(coll *mgo.Collection) error {
-	// 	return coll.Insert(comment)
-	// })
 }
 
 // Find returns all comments for post and sorts results
@@ -136,10 +134,7 @@ func (m *Mongo) List(siteID string, limit, skip int) (list []store.PostInfo, err
 		})
 		return errors.Wrap(pipeline.AllowDiskUse().All(&list), "list pipeline failed")
 	})
-	if err != nil {
-		return list, err
-	}
-	return list, nil
+	return list, errors.Wrap(err, "can't get list")
 }
 
 // Info returns time range and count for locator
@@ -314,6 +309,15 @@ func (m *Mongo) DeleteUser(siteID string, userID string) error {
 	})
 }
 
+// Close boltdb store
+func (m *Mongo) Close() error {
+	if m.postWriter != nil {
+		return m.postWriter.Close()
+	}
+	return nil
+}
+
+// prepare collections with all indexes
 func (m *Mongo) prepare() error {
 	errs := new(multierror.Error)
 	e := m.conn.WithCustomCollection(mongoPosts, func(coll *mgo.Collection) error {

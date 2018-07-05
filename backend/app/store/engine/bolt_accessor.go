@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
+
 	"github.com/coreos/bbolt"
 	"github.com/pkg/errors"
 
@@ -405,6 +407,16 @@ func (b *BoltDB) Put(locator store.Locator, comment store.Comment) error {
 		}
 		return b.save(bucket, []byte(comment.ID), comment)
 	})
+}
+
+// Close boltdb store
+func (b *BoltDB) Close() error {
+	errs := new(multierror.Error)
+	for site, db := range b.dbs {
+		err := errors.Wrapf(db.Close(), "can't close site %s", site)
+		errs = multierror.Append(errs, err)
+	}
+	return errs.ErrorOrNil()
 }
 
 // getPostBucket return bucket with all comments for postURL

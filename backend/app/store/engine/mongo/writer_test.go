@@ -43,6 +43,8 @@ func TestWriter(t *testing.T) {
 
 	assert.Nil(t, wr.Flush())
 	assert.Equal(t, 4, count(conn), "still 4 records, nothing left to flush")
+
+	assert.Nil(t, wr.Close())
 }
 
 func TestWriterParallel(t *testing.T) {
@@ -71,6 +73,7 @@ func TestWriterParallel(t *testing.T) {
 		assert.Equal(t, 1000*16, res)
 		return nil
 	})
+	assert.Nil(t, wr.Close())
 }
 
 func TestWriterWithAuthFlush(t *testing.T) {
@@ -108,6 +111,7 @@ func TestWriterWithAuthFlush(t *testing.T) {
 
 	assert.Nil(t, wr.Flush())
 	assert.Equal(t, 7, count(conn), "still 7 records, nothing left to flush")
+	assert.Nil(t, wr.Close())
 }
 
 func TestWriterParallelWithAutoFlush(t *testing.T) {
@@ -137,6 +141,7 @@ func TestWriterParallelWithAutoFlush(t *testing.T) {
 		assert.Equal(t, 100*16, res)
 		return nil
 	})
+	assert.Nil(t, wr.Close())
 }
 
 func makeConnection(t *testing.T) *Connection {

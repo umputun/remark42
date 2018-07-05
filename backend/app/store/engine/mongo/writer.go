@@ -1,6 +1,8 @@
 package mongo
 
 import (
+	"context"
+	"log"
 	"sync"
 	"time"
 
@@ -12,6 +14,7 @@ import (
 type BufferedWriter interface {
 	Write(rec interface{}) error
 	Flush() error
+	Close() error
 }
 
 // BufferedWriterMgo collects records in local buffer and flushes them as filled. Thread safe
@@ -23,6 +26,7 @@ type BufferedWriterMgo struct {
 	collection    string
 	flushDuration time.Duration
 
+	ctx           context.Context
 	buffer        []interface{}
 	lock          sync.Mutex
 	lastWriteTime time.Time
@@ -52,16 +56,26 @@ func (bw *BufferedWriterMgo) WithAutoFlush(duration time.Duration) *BufferedWrit
 	bw.flushDuration = duration
 	if duration > 0 { // activate background auto-flush
 		bw.once.Do(func() {
+			bw.ctx = context.Background()
 			ticker := time.NewTicker(duration)
 			go func() {
-				for range ticker.C {
-					shouldFlush := false
-					bw.synced(func() {
-						shouldFlush = bw.lastWriteTime.Before(time.Now().Add(-1*bw.flushDuration)) && len(bw.buffer) > 0
-					})
-					if shouldFlush {
-						bw.Flush()
+				for {
+					select {
+					case <-ticker.C:
+						shouldFlush := false
+						bw.synced(func() {
+							shouldFlush = bw.lastWriteTime.Before(time.Now().Add(-1*bw.flushDuration)) && len(bw.buffer) > 0
+						})
+						if shouldFlush {
+							if err := bw.Flush(); err != nil {
+								log.Printf("[WARN] flush failed, %s", err)
+							}
+						}
+					case <-bw.ctx.Done():
+						log.Printf("[DEBUG] mongo writer flusher terminated")
+						return
 					}
+
 				}
 			}()
 		})
@@ -95,6 +109,18 @@ func (bw *BufferedWriterMgo) Flush() error {
 		return errors.Wrapf(err, "failed to flush to %s", bw.connection)
 	}
 	return nil
+}
+
+// Close flushes all in-fly records and terminates background auto-flusher
+func (bw *BufferedWriterMgo) Close() error {
+	err := bw.Flush()
+	if bw.flushDuration > 0 {
+		ctx, cancel := context.WithCancel(bw.ctx)
+		cancel()
+		<-ctx.Done()
+		log.Printf("[DEBUG] mongo flusher terminated")
+	}
+	return err
 }
 
 // writeBuffer sends all collected records to mongo

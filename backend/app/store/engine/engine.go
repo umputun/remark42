@@ -38,6 +38,7 @@ type Accessor interface {
 	Count(locator store.Locator) (int, error)                             // number of comments for the post
 	List(siteID string, limit int, skip int) ([]store.PostInfo, error)    // list of commented posts
 	Info(locator store.Locator, readonlyAge int) (store.PostInfo, error)  // get post info
+	Close() error                                                         // close/stop engine
 }
 
 // Admin defines all store ops avail for admin only

@@ -35,6 +35,8 @@ func TestMongo_CreateAndFind(t *testing.T) {
 	res, err = m.Find(store.Locator{URL: "https://radio-t2.com", SiteID: "radio-t2"}, "time")
 	assert.Nil(t, err)
 	require.Equal(t, 1, len(res))
+
+	assert.NoError(t, m.Close())
 }
 
 func TestMongo_Get(t *testing.T) {

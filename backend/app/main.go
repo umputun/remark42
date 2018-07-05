@@ -118,6 +118,7 @@ type Application struct {
 	migratorSrv *api.Migrator
 	exporter    migrator.Exporter
 	devAuth     *auth.DevAuthServer
+	dataService *service.DataStore
 	terminated  chan struct{}
 }
 
@@ -163,13 +164,13 @@ func New(opts Opts) (*Application, error) {
 		return nil, errors.Errorf("invalid remark42 url %s", opts.RemarkURL)
 	}
 
-	boltStore, err := makeDataStore(opts.Store, opts.Sites)
+	storeEngine, err := makeDataStore(opts.Store, opts.Sites)
 	if err != nil {
 		return nil, err
 	}
 
 	dataService := &service.DataStore{
-		Interface:      boltStore,
+		Interface:      storeEngine,
 		EditDuration:   opts.EditDuration,
 		Secret:         opts.SecretKey,
 		MaxCommentSize: opts.MaxCommentSize,
@@ -243,7 +244,8 @@ func New(opts Opts) (*Application, error) {
 	}
 
 	tch := make(chan struct{})
-	return &Application{restSrv: srv, migratorSrv: migr, exporter: exporter, devAuth: devAuth, Opts: opts, terminated: tch}, nil
+	return &Application{restSrv: srv, migratorSrv: migr, exporter: exporter, devAuth: devAuth, dataService: dataService,
+		Opts: opts, terminated: tch}, nil
 }
 
 // Run all application objects
@@ -260,6 +262,10 @@ func (a *Application) Run(ctx context.Context) error {
 		if a.devAuth != nil {
 			a.devAuth.Shutdown()
 		}
+		if e := a.dataService.Close(); e != nil {
+			log.Printf("[WARN] failed to close store, %s", e)
+		}
+
 	}()
 	a.activateBackup(ctx)            // runs in goroutine for each site
 	go a.migratorSrv.Run(a.Port + 1) // migrator server runs on +1, localhost only
@@ -312,12 +318,12 @@ func makeDataStore(group StoreGroup, siteNames []string) (result engine.Interfac
 			log.Printf("[DEBUG] dial %+v", dial)
 		}
 		dial.Timeout = 3 * time.Second
-		mgServer, err := mongo.NewServer(*dial, mongo.ServerParams{
+		mgServer, e := mongo.NewServer(*dial, mongo.ServerParams{
 			Debug:      group.Mongo.Dbg,
 			SSL:        group.Mongo.SSL,
 			Credential: &mgo.Credential{Username: group.Mongo.User, Password: group.Mongo.Passwd, Source: "admin"},
 		})
-		if err != nil {
+		if e != nil {
 			return result, errors.Wrap(err, "failed to create mongo server")
 		}
 		conn := mongo.NewConnection(mgServer, group.Mongo.DB, "")

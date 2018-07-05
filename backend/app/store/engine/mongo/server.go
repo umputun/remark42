@@ -60,8 +60,8 @@ func NewServer(dial mgo.DialInfo, params ServerParams) (res *Server, err error) 
 	if params.SSL {
 		tlsConfig := &tls.Config{}
 		dial.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
-			conn, err := tls.Dial("tcp", addr.String(), tlsConfig)
-			return conn, err
+			conn, e := tls.Dial("tcp", addr.String(), tlsConfig)
+			return conn, e
 		}
 	}
 
