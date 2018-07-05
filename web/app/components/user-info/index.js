@@ -6,6 +6,3 @@ require('./__close/user-info__close.scss');
 require('./__id/user-info__id.scss');
 require('./__preloader/user-info__preloader.scss');
 require('./__title/user-info__title.scss');
-require('./__avatar/user-info__avatar.scss');
-require('./__avatar/_default/user-info__avatar_default.scss');
-require('./_iframe/user-info_iframe.scss');
