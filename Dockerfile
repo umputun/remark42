@@ -26,6 +26,7 @@ RUN gometalinter --disable-all --deadline=300s --vendor --enable=vet --enable=ve
     --enable=staticcheck --enable=ineffassign --enable=goconst --enable=errcheck --enable=unconvert \
     --enable=deadcode  --enable=gosimple --enable=gas --exclude=test --exclude=mock --exclude=vendor ./...
 
+# coverage test, submit to coverals if COVERALLS_TOKEN in env
 RUN mkdir -p target && /script/coverage.sh
 RUN if [ -z "$COVERALLS_TOKEN" ] ; then \
     echo coverall not enabled ; \
@@ -33,7 +34,7 @@ RUN if [ -z "$COVERALLS_TOKEN" ] ; then \
 
 # get revision from git. if DRONE_TAG presented use DRONE_* git env to make version
 RUN \
-    version=$(git rev-parse --abbrev-ref HEAD)-$(git describe --abbrev=7 --always --tags)-$(date +%Y%m%d-%H:%M:%S) && \
+    cd /go/src/github.com/umputun/remark && version=$(/script/git-rev.sh) && cd backend \
     echo "git version=$version" && \  
     if [ -z "$DRONE_TAG" ] ; then \
     echo "runs outside of drone" ; \
