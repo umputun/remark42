@@ -19,7 +19,6 @@ class Store {
     this.listeners[key].push(cb);
   }
 
-
   set(key, obj) {
     this.data[key] = obj;
 
