@@ -1,7 +1,7 @@
 import { h, Component } from 'preact';
 
 import api from 'common/api';
-import { A11yButton } from 'common/accessibility';
+import { getHandleClickProps } from 'common/accessibility';
 import { API_BASE, BASE_URL, COMMENT_NODE_CLASSNAME_PREFIX } from 'common/constants';
 import { url } from 'common/settings';
 import store from 'common/store';
@@ -403,25 +403,22 @@ export default class Comment extends Component {
 
             {
               mods.view !== 'user' && (
-                <A11yButton onClick={this.toggleUserInfoVisibility}>
-                  <span
-                    className="comment__username"
-                    title={o.user.id}
-                  >{o.user.name}</span>
-                </A11yButton>
-                
+                <span
+                  {...getHandleClickProps(this.toggleUserInfoVisibility)}
+                  className="comment__username"
+                  title={o.user.id}
+                >{o.user.name}</span>
               )
             }
 
             {
               isAdmin && mods.view !== 'user' && (
-                <A11yButton onClick={o.user.verified ? this.onUnverifyClick : this.onVerifyClick}>
-                  <span
-                    aria-label="Toggle verification"
-                    title={o.user.verified ? 'Verified user' : 'Unverified user'}
-                    className={b('comment__verification', {}, { active: o.user.verified, clickable: true })}
-                  />
-                </A11yButton>
+                <span
+                  {...getHandleClickProps(o.user.verified ? this.onUnverifyClick : this.onVerifyClick)}
+                  aria-label="Toggle verification"
+                  title={o.user.verified ? 'Verified user' : 'Unverified user'}
+                  className={b('comment__verification', {}, { active: o.user.verified, clickable: true })}
+                />
               )
             }
 
@@ -462,34 +459,31 @@ export default class Comment extends Component {
 
             {
               !mods.disabled && mods.view !== 'user' && (
-                <A11yButton onClick={this.toggleCollapse}>
-                  <span
-                    className={b('comment__action', {}, { type: 'collapse', selected: mods.collapsed })}
-                  >{mods.collapsed ? '+' : '−'}</span>
-                </A11yButton>
+                <span
+                  {...getHandleClickProps(this.toggleCollapse)}
+                  className={b('comment__action', {}, { type: 'collapse', selected: mods.collapsed })}
+                >{mods.collapsed ? '+' : '−'}</span>
               )
             }
 
             <span className={b('comment__score', {}, { view: o.score.view })}>
-              <A11yButton onClick={isGuest || isCurrentUser ? null : this.increaseScore}>
-                <span
-                  className={b('comment__vote', {}, { type: 'up', selected: scoreIncreased, disabled: isGuest || isCurrentUser })}
-                  aria-disabled={isGuest || isCurrentUser}
-                  title={isGuest ? 'Only authorized users are allowed to vote' : (isCurrentUser ? 'You can\'t vote for your own comment' : null)}
-                >Vote up</span>
-              </A11yButton>
+              <span
+                {...getHandleClickProps(isGuest || isCurrentUser ? null : this.increaseScore)}
+                className={b('comment__vote', {}, { type: 'up', selected: scoreIncreased, disabled: isGuest || isCurrentUser })}
+                aria-disabled={isGuest || isCurrentUser}
+                title={isGuest ? 'Only authorized users are allowed to vote' : (isCurrentUser ? 'You can\'t vote for your own comment' : null)}
+              >Vote up</span>
 
               <span className="comment__score-value">
                 {o.score.sign}{o.score.value}
               </span>
 
-              <A11yButton onClick={isGuest || isCurrentUser ? null : this.decreaseScore}>
-                <span
-                  className={b('comment__vote', {}, { type: 'down', selected: scoreDecreased, disabled: isGuest || isCurrentUser })}
-                  aria-disabled={isGuest || isCurrentUser ? 'true' : 'false'}
-                  title={isGuest ? 'Only authorized users are allowed to vote' : (isCurrentUser ? 'You can\'t vote for your own comment' : null)}
-                >Vote down</span>
-              </A11yButton>
+              <span
+                {...getHandleClickProps(isGuest || isCurrentUser ? null : this.decreaseScore)}
+                className={b('comment__vote', {}, { type: 'down', selected: scoreDecreased, disabled: isGuest || isCurrentUser })}
+                aria-disabled={isGuest || isCurrentUser ? 'true' : 'false'}
+                title={isGuest ? 'Only authorized users are allowed to vote' : (isCurrentUser ? 'You can\'t vote for your own comment' : null)}
+              >Vote down</span>
             </span>
           </div>
 
@@ -501,21 +495,20 @@ export default class Comment extends Component {
           <div className="comment__actions">
             {
               !deleted && !mods.disabled && !isGuest && mods.view !== 'user' && (
-                <A11yButton onClick={this.toggleReplying}>
-                  <span
-                    className="comment__action"
-                  >{isReplying ? 'Cancel' : 'Reply'}</span>
-                </A11yButton>
+                <span
+                  {...getHandleClickProps(this.toggleReplying)}
+                  className="comment__action"
+                >{isReplying ? 'Cancel' : 'Reply'}</span>
               )
             }
 
             {
               !deleted && !mods.disabled && !!o.orig && isCurrentUser && (!!editTimeLeft || isEditing) && mods.view !== 'user' && (
-                <A11yButton onClick={this.toggleEditing}>
-                  <span
-                    className="comment__action comment__action_type_edit"
-                  >{isEditing ? 'Cancel' : 'Edit'}{editTimeLeft && ` (${editTimeLeft})`}</span>
-                </A11yButton>
+                <span
+                  {...getHandleClickProps(this.toggleEditing)}
+                  className="comment__action comment__action_type_edit"
+                >{isEditing ? 'Cancel' : 'Edit'}{editTimeLeft && ` (${editTimeLeft})`}</span>
+                
               )
             }
 
@@ -524,51 +517,46 @@ export default class Comment extends Component {
                 <span className="comment__controls">
                   {
                     !pinned && (
-                      <A11yButton onClick={this.onPinClick}>
-                        <span
-                          className="comment__control"
-                        >Pin</span>
-                      </A11yButton>
+                      <span
+                        {...getHandleClickProps(this.onPinClick)}
+                        className="comment__control"
+                      >Pin</span>
                     )
                   }
 
                   {
                     pinned && (
-                      <A11yButton onClick={this.onUnpinClick}>
-                        <span
-                          className="comment__control"
-                        >Unpin</span>
-                      </A11yButton>
+                      <span
+                        {...getHandleClickProps(this.onUnpinClick)}
+                        className="comment__control"
+                      >Unpin</span>
                     )
                   }
 
                   {
                     userBlocked && (
-                      <A11yButton onClick={this.onUnblockClick}>
-                        <span
-                          className="comment__control"
-                        >Unblock</span>
-                      </A11yButton>
+                      <span
+                        {...getHandleClickProps(this.onUnblockClick)}
+                        className="comment__control"
+                      >Unblock</span>
                     )
                   }
 
                   {
                     !userBlocked && (
-                      <A11yButton onClick={this.onBlockClick}>
-                        <span
-                          className="comment__control"
-                        >Block</span>
-                      </A11yButton>
+                      <span
+                        {...getHandleClickProps(this.onBlockClick)}
+                        className="comment__control"
+                      >Block</span>
                     )
                   }
 
                   {
                     !deleted && (
-                      <A11yButton onClick={this.onDeleteClick}>
-                        <span
-                          className="comment__control"
-                        >Delete</span>
-                      </A11yButton>
+                      <span
+                        {...getHandleClickProps(this.onDeleteClick)}
+                        className="comment__control"
+                      >Delete</span>
                     )
                   }
                 </span>

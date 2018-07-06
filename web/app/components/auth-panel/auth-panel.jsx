@@ -1,7 +1,7 @@
 import { h, Component } from 'preact';
 
 import { PROVIDER_NAMES } from 'common/constants';
-import { A11yButton } from 'common/accessibility';
+import { getHandleClickProps } from 'common/accessibility';
 
 export default class AuthPanel extends Component {
   constructor(props) {
@@ -43,14 +43,10 @@ export default class AuthPanel extends Component {
             <div className="auth-panel__column">
               You signed in as
               {' '}
-              <A11yButton onClick={this.toggleUserId}>
-                <strong className="auth-panel__username">{user.name}</strong>
-              </A11yButton>
+              <strong {...getHandleClickProps(this.toggleUserId)} className="auth-panel__username">{user.name}</strong>
               {isUserIdVisible && <span className="auth-panel__user-id"> ({user.id})</span>}.
               {' '}
-              <A11yButton role="link" onClick={props.onSignOut}>
-                <span className="auth-panel__pseudo-link">Sign out?</span>
-              </A11yButton>
+              <span {...getHandleClickProps(props.onSignOut)} className="auth-panel__pseudo-link">Sign out?</span>
             </div>
           )
         }
@@ -67,11 +63,12 @@ export default class AuthPanel extends Component {
                   return (
                     <span>
                       {comma}
-                      <A11yButton role="link" onClick={() => props.onSignIn(provider)}>
-                        <span className="auth-panel__pseudo-link">
-                          {PROVIDER_NAMES[provider]}
-                        </span>
-                      </A11yButton>
+                      <span
+                        {...getHandleClickProps(() => props.onSignIn(provider))}
+                        role="link"
+                        className="auth-panel__pseudo-link">
+                        {PROVIDER_NAMES[provider]}
+                      </span>
                     </span>
                   );
                 })
@@ -84,11 +81,12 @@ export default class AuthPanel extends Component {
         <div className="auth-panel__column">
           {
             user.admin && (
-              <A11yButton role="link" onClick={this.toggleBlockedVisibility}>
-                <span className="auth-panel__pseudo-link auth-panel__admin-action">
-                  {isBlockedVisible ? 'Hide' : 'Show'} blocked
-                </span>
-              </A11yButton>
+              <span
+                {...getHandleClickProps(this.toggleBlockedVisibility)}
+                role="link"
+                className="auth-panel__pseudo-link auth-panel__admin-action">
+                {isBlockedVisible ? 'Hide' : 'Show'} blocked
+              </span>
             )
           }
 
