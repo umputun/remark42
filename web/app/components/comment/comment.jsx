@@ -417,23 +417,17 @@ export default class Comment extends Component {
             )}
 
             {mods.view !== 'user' && (
-              <span className="comment__username" title={o.user.id} onClick={this.toggleUserInfoVisibility}>
+              <span
+                {...getHandleClickProps(this.toggleUserInfoVisibility)}
+                className="comment__username"
+                title={o.user.id}
+              >
                 {o.user.name}
               </span>
             )}
 
             {isAdmin &&
               mods.view !== 'user' && (
-                <span
-                  {...getHandleClickProps(this.toggleUserInfoVisibility)}
-                  className="comment__username"
-                  title={o.user.id}
-                >{o.user.name}</span>
-              )
-            }
-
-            {
-              isAdmin && mods.view !== 'user' && (
                 <span
                   {...getHandleClickProps(o.user.verified ? this.onUnverifyClick : this.onVerifyClick)}
                   aria-label="Toggle verification"
@@ -460,7 +454,9 @@ export default class Comment extends Component {
                   aria-label="Go to parent comment"
                   title="Go to parent comment"
                   onClick={this.scrollToParent}
-                > </a>
+                >
+                  {' '}
+                </a>
               )}
 
             {isAdmin && userBlocked && mods.view !== 'user' && <span className="comment__status">Blocked</span>}
@@ -472,11 +468,11 @@ export default class Comment extends Component {
                 <span
                   {...getHandleClickProps(this.toggleCollapse)}
                   className={b('comment__action', {}, { type: 'collapse', selected: mods.collapsed })}
-                >{mods.collapsed ? '+' : '−'}</span>
-              )
-            }
+                >
+                  {mods.collapsed ? '+' : '−'}
+                </span>
+              )}
 
-            <span className={b('comment__score', {}, { view: o.score.view })}>
             <span className={b('comment__score', {}, { view: o.score.view })}>
               <span
                 className={b(
@@ -543,7 +539,8 @@ export default class Comment extends Component {
               mods.view !== 'user' && (
                 <span
                   {...getHandleClickProps(this.toggleEditing)}
-                  className="comment__action comment__action_type_edit">
+                  className="comment__action comment__action_type_edit"
+                >
                   {isEditing ? 'Cancel' : 'Edit'}
                   {editTimeLeft && ` (${editTimeLeft})`}
                 </span>
@@ -552,45 +549,35 @@ export default class Comment extends Component {
             {!deleted &&
               isAdmin && (
                 <span className="comment__controls">
-                  {
-                    !pinned && (
-                      <span {...getHandleClickProps(this.onPinClick)} className="comment__control">
-                        Pin
-                      </span>
-                    )
-                  }
+                  {!pinned && (
+                    <span {...getHandleClickProps(this.onPinClick)} className="comment__control">
+                      Pin
+                    </span>
+                  )}
 
-                  {
-                    pinned && (
-                      <span {...getHandleClickProps(this.onUnpinClick)} className="comment__control">
-                        Unpin
-                      </span>
-                    )
-                  }
+                  {pinned && (
+                    <span {...getHandleClickProps(this.onUnpinClick)} className="comment__control">
+                      Unpin
+                    </span>
+                  )}
 
-                  {
-                    userBlocked && (
-                      <span {...getHandleClickProps(this.onUnblockClick)} className="comment__control">
-                        Unblock
-                      </span>
-                    )
-                  }
+                  {userBlocked && (
+                    <span {...getHandleClickProps(this.onUnblockClick)} className="comment__control">
+                      Unblock
+                    </span>
+                  )}
 
-                  {
-                    !userBlocked && (
-                      <span {...getHandleClickProps(this.onBlockClick)} className="comment__control">
-                        Block
-                      </span>
-                    )
-                  }
+                  {!userBlocked && (
+                    <span {...getHandleClickProps(this.onBlockClick)} className="comment__control">
+                      Block
+                    </span>
+                  )}
 
-                  {
-                    !deleted && (
-                      <span {...getHandleClickProps(this.onDeleteClick)} className="comment__control">
-                        Delete
-                      </span>
-                    )
-                  }
+                  {!deleted && (
+                    <span {...getHandleClickProps(this.onDeleteClick)} className="comment__control">
+                      Delete
+                    </span>
+                  )}
                 </span>
               )}
           </div>
