@@ -11,7 +11,7 @@ function init() {
   const node = document.getElementById(NODE_ID);
 
   if (!node) {
-    console.error('Remark42: Can\'t find root node.');
+    console.error("Remark42: Can't find root node.");
     return;
   }
 
@@ -79,4 +79,3 @@ function init() {
     }
   }
 }
-

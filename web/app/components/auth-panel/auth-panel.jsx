@@ -46,7 +46,7 @@ export default class AuthPanel extends Component {
               {user.name}
             </strong>
             {isUserIdVisible && <span className="auth-panel__user-id"> ({user.id})</span>}.{' '}
-            <span {...getHandleClickProps(props.onSignOut)} className="auth-panel__pseudo-link" role="link" >
+            <span {...getHandleClickProps(props.onSignOut)} className="auth-panel__pseudo-link" role="link">
               Sign out?
             </span>
           </div>
@@ -79,7 +79,7 @@ export default class AuthPanel extends Component {
           {user.admin && (
             <span
               className="auth-panel__pseudo-link auth-panel__admin-action"
-               {...getHandleClickProps(this.toggleBlockedVisibility)}
+              {...getHandleClickProps(this.toggleBlockedVisibility)}
               role="link"
             >
               {isBlockedVisible ? 'Hide' : 'Show'} blocked

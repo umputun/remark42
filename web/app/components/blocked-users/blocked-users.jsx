@@ -52,16 +52,12 @@ export default class BlockedUsers extends Component {
                   <span className="blocked-users__username">{user.name}</span>{' '}
                   <span className="blocked-users__user-id">({user.id})</span>
                   {isUserUnblocked && (
-                    <span
-                      {...getHandleClickProps(() => this.block(user))}
-                      className="blocked-users__action">
+                    <span {...getHandleClickProps(() => this.block(user))} className="blocked-users__action">
                       block
                     </span>
                   )}
                   {!isUserUnblocked && (
-                    <span
-                      {...getHandleClickProps(() => this.unblock(user))}
-                      className="blocked-users__action">
+                    <span {...getHandleClickProps(() => this.unblock(user))} className="blocked-users__action">
                       unblock
                     </span>
                   )}
