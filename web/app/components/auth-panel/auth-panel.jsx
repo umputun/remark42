@@ -2,6 +2,7 @@
 import { h, Component } from 'preact';
 
 import { PROVIDER_NAMES } from 'common/constants';
+import { getHandleClickProps } from 'common/accessibility';
 
 export default class AuthPanel extends Component {
   constructor(props) {
@@ -41,11 +42,11 @@ export default class AuthPanel extends Component {
         {loggedIn && (
           <div className="auth-panel__column">
             You signed in as{' '}
-            <strong className="auth-panel__username" onClick={this.toggleUserId}>
+            <strong {...getHandleClickProps(this.toggleUserId)} className="auth-panel__username">
               {user.name}
             </strong>
             {isUserIdVisible && <span className="auth-panel__user-id"> ({user.id})</span>}.{' '}
-            <span className="auth-panel__pseudo-link" role="link" tabIndex="0" onClick={props.onSignOut}>
+            <span {...getHandleClickProps(props.onSignOut)} className="auth-panel__pseudo-link" role="link" >
               Sign out?
             </span>
           </div>
@@ -62,9 +63,8 @@ export default class AuthPanel extends Component {
                   {comma}
                   <span
                     className="auth-panel__pseudo-link"
+                    {...getHandleClickProps(() => props.onSignIn(provider))}
                     role="link"
-                    tabIndex="0"
-                    onClick={() => props.onSignIn(provider)}
                   >
                     {PROVIDER_NAMES[provider]}
                   </span>
@@ -79,9 +79,8 @@ export default class AuthPanel extends Component {
           {user.admin && (
             <span
               className="auth-panel__pseudo-link auth-panel__admin-action"
+               {...getHandleClickProps(this.toggleBlockedVisibility)}
               role="link"
-              tabIndex="0"
-              onClick={this.toggleBlockedVisibility}
             >
               {isBlockedVisible ? 'Hide' : 'Show'} blocked
             </span>
@@ -91,16 +90,16 @@ export default class AuthPanel extends Component {
 
           <span className="auth-panel__sort">
             Sort by{' '}
-            <label className="auth-panel__select-label">
+            <span className="auth-panel__select-label">
               {sortArray.find(x => x.selected).label}
-              <select className="auth-panel__select" onChange={this.onSortChange}>
+              <select className="auth-panel__select" onChange={this.onSortChange} onBlur={this.onSortChange}>
                 {sortArray.map(sort => (
                   <option value={sort.value} selected={sort.selected}>
                     {sort.label}
                   </option>
                 ))}
               </select>
-            </label>
+            </span>
           </span>
         </div>
       </div>

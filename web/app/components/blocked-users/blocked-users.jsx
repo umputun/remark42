@@ -2,6 +2,7 @@
 import { h, Component } from 'preact';
 
 import api from 'common/api';
+import { getHandleClickProps } from 'common/accessibility';
 
 export default class BlockedUsers extends Component {
   constructor(props) {
@@ -51,12 +52,16 @@ export default class BlockedUsers extends Component {
                   <span className="blocked-users__username">{user.name}</span>{' '}
                   <span className="blocked-users__user-id">({user.id})</span>
                   {isUserUnblocked && (
-                    <span className="blocked-users__action" onClick={() => this.block(user)}>
+                    <span
+                      {...getHandleClickProps(() => this.block(user))}
+                      className="blocked-users__action">
                       block
                     </span>
                   )}
                   {!isUserUnblocked && (
-                    <span className="blocked-users__action" onClick={() => this.unblock(user)}>
+                    <span
+                      {...getHandleClickProps(() => this.unblock(user))}
+                      className="blocked-users__action">
                       unblock
                     </span>
                   )}

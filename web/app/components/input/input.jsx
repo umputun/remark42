@@ -134,7 +134,7 @@ export default class Input extends Component {
     const { mods = {}, value = null, errorMessage } = props;
 
     return (
-      <form className={b('input', props)} onSubmit={this.send} role="form" aria-label="New comment">
+      <form className={b('input', props)} onSubmit={this.send} aria-label="New comment">
         <div className="input__field-wrapper">
           <textarea
             className="input__field"
