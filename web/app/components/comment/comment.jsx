@@ -417,8 +417,6 @@ export default class Comment extends Component {
               isAdmin && mods.view !== 'user' && (
                 <A11yButton onClick={o.user.verified ? this.onUnverifyClick : this.onVerifyClick}>
                   <span
-                    role="button"
-                    tabIndex={0}
                     aria-label="Toggle verification"
                     title={o.user.verified ? 'Verified user' : 'Unverified user'}
                     className={b('comment__verification', {}, { active: o.user.verified, clickable: true })}

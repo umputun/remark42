@@ -48,8 +48,8 @@ export default class AuthPanel extends Component {
               </A11yButton>
               {isUserIdVisible && <span className="auth-panel__user-id"> ({user.id})</span>}.
               {' '}
-              <A11yButton onClick={props.onSignOut}>
-                <span className="auth-panel__pseudo-link" role="link">Sign out?</span>
+              <A11yButton role="link" onClick={props.onSignOut}>
+                <span className="auth-panel__pseudo-link">Sign out?</span>
               </A11yButton>
             </div>
           )
@@ -67,11 +67,10 @@ export default class AuthPanel extends Component {
                   return (
                     <span>
                       {comma}
-                      <A11yButton onClick={() => props.onSignIn(provider)}>
-                        <span
-                          className="auth-panel__pseudo-link"
-                          role="link"
-                        >{PROVIDER_NAMES[provider]}</span>
+                      <A11yButton role="link" onClick={() => props.onSignIn(provider)}>
+                        <span className="auth-panel__pseudo-link">
+                          {PROVIDER_NAMES[provider]}
+                        </span>
                       </A11yButton>
                     </span>
                   );
@@ -85,11 +84,10 @@ export default class AuthPanel extends Component {
         <div className="auth-panel__column">
           {
             user.admin && (
-              <A11yButton onClick={this.toggleBlockedVisibility}>
-                <span
-                  className="auth-panel__pseudo-link auth-panel__admin-action"
-                  role="link"
-                >{isBlockedVisible ? 'Hide' : 'Show'} blocked</span>
+              <A11yButton role="link" onClick={this.toggleBlockedVisibility}>
+                <span className="auth-panel__pseudo-link auth-panel__admin-action">
+                  {isBlockedVisible ? 'Hide' : 'Show'} blocked
+                </span>
               </A11yButton>
             )
           }
