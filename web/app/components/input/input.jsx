@@ -1,3 +1,4 @@
+/** @jsx h */
 import { h, Component } from 'preact';
 
 import { BASE_URL, API_BASE, DEFAULT_MAX_COMMENT_SIZE } from 'common/constants';
@@ -44,7 +45,7 @@ export default class Input extends Component {
     }
 
     store.onUpdate('config', config => {
-      this.setState({ maxLength: config && config.max_comment_size || DEFAULT_MAX_COMMENT_SIZE });
+      this.setState({ maxLength: (config && config.max_comment_size) || DEFAULT_MAX_COMMENT_SIZE });
     });
   }
 
@@ -53,11 +54,13 @@ export default class Input extends Component {
   }
 
   shouldComponentUpdate(nextProps, nextState) {
-    return nextProps.id !== this.props.id
-      || nextProps.pid !== this.props.pid
-      || nextProps.value !== this.props.value
-      || nextProps.errorMessage !== this.props.errorMessage
-      || nextState !== this.state;
+    return (
+      nextProps.id !== this.props.id ||
+      nextProps.pid !== this.props.pid ||
+      nextProps.value !== this.props.value ||
+      nextProps.errorMessage !== this.props.errorMessage ||
+      nextState !== this.state
+    );
   }
 
   onKeyDown(e) {
@@ -92,9 +95,8 @@ export default class Input extends Component {
 
     this.setState({ isDisabled: true, isErrorShown: false });
 
-    const request = mods.mode === 'edit'
-      ? api.updateComment({ text, id })
-      : api.addComment({ text, ...(pid ? { pid } : {}) });
+    const request =
+      mods.mode === 'edit' ? api.updateComment({ text, id }) : api.addComment({ text, ...(pid ? { pid } : {}) });
 
     request
       .then(comment => {
@@ -119,7 +121,8 @@ export default class Input extends Component {
 
     this.setState({ isErrorShown: false });
 
-    api.getPreview({ text })
+    api
+      .getPreview({ text })
       .then(preview => this.setState({ preview }))
       .catch(() => {
         this.setState({ isErrorShown: true });
@@ -144,20 +147,14 @@ export default class Input extends Component {
             disabled={isDisabled}
           />
 
-          {
-            (charactersLeft < 100) && (
-              <span className="input__counter">{charactersLeft}</span>
-            )
-          }
+          {charactersLeft < 100 && <span className="input__counter">{charactersLeft}</span>}
         </div>
 
-        {
-          (isErrorShown || !!errorMessage) && (
-            <p className="input__error" role="alert">
-              {errorMessage || 'Something went wrong. Please try again a bit later.'}
-            </p>
-          )
-        }
+        {(isErrorShown || !!errorMessage) && (
+          <p className="input__error" role="alert">
+            {errorMessage || 'Something went wrong. Please try again a bit later.'}
+          </p>
+        )}
 
         <div className="input__actions">
           <button
@@ -165,42 +162,39 @@ export default class Input extends Component {
             type="button"
             disabled={isDisabled}
             onClick={this.getPreview}
-          >Preview</button>
+          >
+            Preview
+          </button>
 
-          <button
-            className={b('input__button', {}, { type: 'send' })}
-            type="submit"
-            disabled={isDisabled}
-          >Send</button>
+          <button className={b('input__button', {}, { type: 'send' })} type="submit" disabled={isDisabled}>
+            Send
+          </button>
 
-          {
-            mods.type === 'main' && (
-              <div className="input__rss">
-                Subscribe to&nbsp;this
-                {' '}
-                <a className="input__rss-link" href={RSS_THREAD_URL} target="_blank">Thread</a>
-                {' '}
-                or&nbsp;
-                <a className="input__rss-link" href={RSS_SITE_URL} target="_blank">Site</a>
-                {' '}
-                by&nbsp;RSS
-              </div>
-            )
-          }
+          {mods.type === 'main' && (
+            <div className="input__rss">
+              Subscribe to&nbsp;this{' '}
+              <a className="input__rss-link" href={RSS_THREAD_URL} target="_blank">
+                Thread
+              </a>{' '}
+              or&nbsp;
+              <a className="input__rss-link" href={RSS_SITE_URL} target="_blank">
+                Site
+              </a>{' '}
+              by&nbsp;RSS
+            </div>
+          )}
         </div>
 
-        {
-          // TODO: it can be more elegant;
-          // for example it can render full comment component here (or above textarea on mobile)
-          !!preview && (
-            <div className="input__preview-wrapper">
-              <div
-                className={b('input__preview', { mix: 'raw-content' })}
-                dangerouslySetInnerHTML={{ __html: preview }}
-              />
-            </div>
-          )
-        }
+        {// TODO: it can be more elegant;
+        // for example it can render full comment component here (or above textarea on mobile)
+        !!preview && (
+          <div className="input__preview-wrapper">
+            <div
+              className={b('input__preview', { mix: 'raw-content' })}
+              dangerouslySetInnerHTML={{ __html: preview }}
+            />
+          </div>
+        )}
       </form>
     );
   }

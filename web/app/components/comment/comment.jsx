@@ -1,3 +1,4 @@
+/** @jsx h */
 import { h, Component } from 'preact';
 
 import api from 'common/api';
@@ -48,10 +49,17 @@ export default class Comment extends Component {
   }
 
   updateState(props) {
-    const { data, data: { user: { block, id: commentUserId }, pin }, mods: { guest } = {} } = props;
+    const {
+      data,
+      data: {
+        user: { block, id: commentUserId },
+        pin,
+      },
+      mods: { guest } = {},
+    } = props;
 
-    const votes = data && data.votes || [];
-    const score = data && data.score || 0;
+    const votes = (data && data.votes) || [];
+    const score = (data && data.score) || 0;
 
     if (this.editTimerInterval) {
       clearInterval(this.editTimerInterval);
@@ -157,7 +165,10 @@ export default class Comment extends Component {
   }
 
   onVerifyClick() {
-    const { id, user: { id: userId } } = this.props.data;
+    const {
+      id,
+      user: { id: userId },
+    } = this.props.data;
 
     if (confirm('Do you want to verify this user?')) {
       this.setState({ isUserVerified: true });
@@ -169,7 +180,10 @@ export default class Comment extends Component {
   }
 
   onUnverifyClick() {
-    const { id, user: { id: userId } } = this.props.data;
+    const {
+      id,
+      user: { id: userId },
+    } = this.props.data;
 
     if (confirm('Do you want to unverify this user?')) {
       this.setState({ isUserVerified: false });
@@ -181,7 +195,10 @@ export default class Comment extends Component {
   }
 
   onBlockClick() {
-    const { id, user: { id: userId } } = this.props.data;
+    const {
+      id,
+      user: { id: userId },
+    } = this.props.data;
 
     if (confirm('Do you want to block this user?')) {
       this.setState({ userBlocked: true });
@@ -193,7 +210,10 @@ export default class Comment extends Component {
   }
 
   onUnblockClick() {
-    const { id, user: { id: userId } } = this.props.data;
+    const {
+      id,
+      user: { id: userId },
+    } = this.props.data;
 
     if (confirm('Do you want to unblock this user?')) {
       this.setState({ userBlocked: false });
@@ -232,13 +252,11 @@ export default class Comment extends Component {
       score: score + 1,
     });
 
-    this.votingPromise = this.votingPromise
-      .then(() => {
-        return api.putCommentVote({ id, url, value: 1 })
-          .then(() => {
-            api.getComment({ id }).then(comment => store.replaceComment(comment));
-          });
+    this.votingPromise = this.votingPromise.then(() => {
+      return api.putCommentVote({ id, url, value: 1 }).then(() => {
+        api.getComment({ id }).then(comment => store.replaceComment(comment));
       });
+    });
   }
 
   decreaseScore() {
@@ -253,13 +271,11 @@ export default class Comment extends Component {
       score: score - 1,
     });
 
-    this.votingPromise = this.votingPromise
-      .then(() => {
-        return api.putCommentVote({ id, url, value: -1 })
-          .then(() => {
-            api.getComment({ id }).then(comment => store.replaceComment(comment));
-          });
+    this.votingPromise = this.votingPromise.then(() => {
+      return api.putCommentVote({ id, url, value: -1 }).then(() => {
+        api.getComment({ id }).then(comment => store.replaceComment(comment));
       });
+    });
   }
 
   onReply(...rest) {
@@ -279,7 +295,9 @@ export default class Comment extends Component {
   }
 
   scrollToParent(e) {
-    const { data: { pid } } = this.props;
+    const {
+      data: { pid },
+    } = this.props;
 
     e.preventDefault();
 
@@ -301,20 +319,23 @@ export default class Comment extends Component {
     }
   }
 
-  render(props, {
-    guest,
-    userBlocked,
-    pinned,
-    score,
-    scoreIncreased,
-    scoreDecreased,
-    deleted,
-    isReplying,
-    isEditing,
-    isUserVerified,
-    editTimeLeft,
-    isUserInfoShown,
-  }) {
+  render(
+    props,
+    {
+      guest,
+      userBlocked,
+      pinned,
+      score,
+      scoreIncreased,
+      scoreDecreased,
+      deleted,
+      isReplying,
+      isEditing,
+      isUserVerified,
+      editTimeLeft,
+      isUserInfoShown,
+    }
+  ) {
     const { data, mods = {} } = props;
     const isAdmin = !guest && store.get('user').admin;
     const isGuest = guest || !Object.keys(store.get('user')).length;
@@ -324,33 +345,28 @@ export default class Comment extends Component {
 
     const o = {
       ...data,
-      text:
-        data.text.length
-          ? (mods.view === 'preview' ? getTextSnippet(data.text) : data.text)
-          : (
-            userBlocked
-              ? 'This user was blocked'
-              : (
-                deleted
-                  ? 'This comment was deleted'
-                  : data.text
-              )
-          ),
+      text: data.text.length
+        ? mods.view === 'preview'
+          ? getTextSnippet(data.text)
+          : data.text
+        : userBlocked
+          ? 'This user was blocked'
+          : deleted
+            ? 'This comment was deleted'
+            : data.text,
       time: formatTime(new Date(data.time)),
       orig: isEditing
-        ? (
-          data.orig && data.orig
-            .replace(/&[#A-Za-z0-9]+;/gi, entity => {
-              const span = document.createElement('span');
-              span.innerHTML = entity;
-              return span.innerText;
-            })
-        )
+        ? data.orig &&
+          data.orig.replace(/&[#A-Za-z0-9]+;/gi, entity => {
+            const span = document.createElement('span');
+            span.innerHTML = entity;
+            return span.innerText;
+          })
         : data.orig,
       score: {
         value: Math.abs(score),
-        sign: score > 0 ? '+' : (score < 0 ? '−' : null),
-        view: score > 0 ? 'positive' : (score < 0 ? 'negative' : null),
+        sign: score > 0 ? '+' : score < 0 ? '−' : null,
+        view: score > 0 ? 'positive' : score < 0 ? 'negative' : null,
       },
       user: {
         ...data.user,
@@ -375,33 +391,38 @@ export default class Comment extends Component {
         <article className={b('comment', props, defaultMods)}>
           <div className="comment__body">
             <div className="comment__info">
-              <a href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`} className="comment__username">{o.user.name}</a>
-            </div>
-            {' '}
-            <div
-              className={b('comment__text', { mix: 'raw-content' })}
-              dangerouslySetInnerHTML={{ __html: o.text }}
-            />
+              <a href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`} className="comment__username">
+                {o.user.name}
+              </a>
+            </div>{' '}
+            <div className={b('comment__text', { mix: 'raw-content' })} dangerouslySetInnerHTML={{ __html: o.text }} />
           </div>
         </article>
       );
     }
 
     return (
-      <article className={b('comment', props, defaultMods)} id={mods.disabled ? null : `${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}>
+      <article
+        className={b('comment', props, defaultMods)}
+        id={mods.disabled ? null : `${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}
+      >
         <div className="comment__body">
           <div className="comment__info">
-            {
-              mods.view !== 'user' && (
-                <img
-                  className={b('comment__avatar', {}, { default: o.user.isDefaultPicture })}
-                  src={o.user.isDefaultPicture ? require('./__avatar/comment__avatar.svg') : o.user.picture}
-                  alt=""
-                />
-              )
-            }
+            {mods.view !== 'user' && (
+              <img
+                className={b('comment__avatar', {}, { default: o.user.isDefaultPicture })}
+                src={o.user.isDefaultPicture ? require('./__avatar/comment__avatar.svg') : o.user.picture}
+                alt=""
+              />
+            )}
 
-            {
+            {mods.view !== 'user' && (
+              <span className="comment__username" title={o.user.id} onClick={this.toggleUserInfoVisibility}>
+                {o.user.name}
+              </span>
+            )}
+
+            {isAdmin &&
               mods.view !== 'user' && (
                 <span
                   {...getHandleClickProps(this.toggleUserInfoVisibility)}
@@ -419,22 +440,20 @@ export default class Comment extends Component {
                   title={o.user.verified ? 'Verified user' : 'Unverified user'}
                   className={b('comment__verification', {}, { active: o.user.verified, clickable: true })}
                 />
-              )
-            }
+              )}
 
-            {
-              !isAdmin && !!o.user.verified && mods.view !== 'user' && (
-                <span
-                  title="Verified user"
-                  className={b('comment__verification', {}, { active: true })}
-                />
-              )
-            }
+            {!isAdmin &&
+              !!o.user.verified &&
+              mods.view !== 'user' && (
+                <span title="Verified user" className={b('comment__verification', {}, { active: true })} />
+              )}
 
-            <a href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`} className="comment__time">{o.time}</a>
+            <a href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`} className="comment__time">
+              {o.time}
+            </a>
 
-            {
-              mods.level > 0 && mods.view !== 'user' && (
+            {mods.level > 0 &&
+              mods.view !== 'user' && (
                 <a
                   className="comment__link-to-parent"
                   href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.pid}`}
@@ -442,23 +461,14 @@ export default class Comment extends Component {
                   title="Go to parent comment"
                   onClick={this.scrollToParent}
                 > </a>
-              )
-            }
+              )}
 
-            {
-              isAdmin && userBlocked && mods.view !== 'user' && (
-                <span className="comment__status">Blocked</span>
-              )
-            }
+            {isAdmin && userBlocked && mods.view !== 'user' && <span className="comment__status">Blocked</span>}
 
-            {
-              isAdmin && !userBlocked && deleted && (
-                <span className="comment__status">Deleted</span>
-              )
-            }
+            {isAdmin && !userBlocked && deleted && <span className="comment__status">Deleted</span>}
 
-            {
-              !mods.disabled && mods.view !== 'user' && (
+            {!mods.disabled &&
+              mods.view !== 'user' && (
                 <span
                   {...getHandleClickProps(this.toggleCollapse)}
                   className={b('comment__action', {}, { type: 'collapse', selected: mods.collapsed })}
@@ -467,123 +477,134 @@ export default class Comment extends Component {
             }
 
             <span className={b('comment__score', {}, { view: o.score.view })}>
+            <span className={b('comment__score', {}, { view: o.score.view })}>
               <span
-                {...getHandleClickProps(isGuest || isCurrentUser ? null : this.increaseScore)}
-                className={b('comment__vote', {}, { type: 'up', selected: scoreIncreased, disabled: isGuest || isCurrentUser })}
+                className={b(
+                  'comment__vote',
+                  {},
+                  { type: 'up', selected: scoreIncreased, disabled: isGuest || isCurrentUser }
+                )}
                 aria-disabled={isGuest || isCurrentUser}
-                title={isGuest ? 'Only authorized users are allowed to vote' : (isCurrentUser ? 'You can\'t vote for your own comment' : null)}
-              >Vote up</span>
+                {...getHandleClickProps(isGuest || isCurrentUser ? null : this.increaseScore)}
+                title={
+                  isGuest
+                    ? 'Only authorized users are allowed to vote'
+                    : isCurrentUser
+                      ? "You can't vote for your own comment"
+                      : null
+                }
+              >
+                Vote up
+              </span>
 
               <span className="comment__score-value">
-                {o.score.sign}{o.score.value}
+                {o.score.sign}
+                {o.score.value}
               </span>
 
               <span
                 {...getHandleClickProps(isGuest || isCurrentUser ? null : this.decreaseScore)}
-                className={b('comment__vote', {}, { type: 'down', selected: scoreDecreased, disabled: isGuest || isCurrentUser })}
+                className={b(
+                  'comment__vote',
+                  {},
+                  { type: 'down', selected: scoreDecreased, disabled: isGuest || isCurrentUser }
+                )}
                 aria-disabled={isGuest || isCurrentUser ? 'true' : 'false'}
-                title={isGuest ? 'Only authorized users are allowed to vote' : (isCurrentUser ? 'You can\'t vote for your own comment' : null)}
-              >Vote down</span>
+                title={
+                  isGuest
+                    ? 'Only authorized users are allowed to vote'
+                    : isCurrentUser
+                      ? "You can't vote for your own comment"
+                      : null
+                }
+              >
+                Vote down
+              </span>
             </span>
           </div>
 
-          <div
-            className={b('comment__text', { mix: 'raw-content' })}
-            dangerouslySetInnerHTML={{ __html: o.text }}
-          />
+          <div className={b('comment__text', { mix: 'raw-content' })} dangerouslySetInnerHTML={{ __html: o.text }} />
 
           <div className="comment__actions">
-            {
-              !deleted && !mods.disabled && !isGuest && mods.view !== 'user' && (
-                <span
-                  {...getHandleClickProps(this.toggleReplying)}
-                  className="comment__action"
-                >{isReplying ? 'Cancel' : 'Reply'}</span>
-              )
-            }
+            {!deleted &&
+              !mods.disabled &&
+              !isGuest &&
+              mods.view !== 'user' && (
+                <span {...getHandleClickProps(this.toggleReplying)} className="comment__action">
+                  {isReplying ? 'Cancel' : 'Reply'}
+                </span>
+              )}
 
-            {
-              !deleted && !mods.disabled && !!o.orig && isCurrentUser && (!!editTimeLeft || isEditing) && mods.view !== 'user' && (
+            {!deleted &&
+              !mods.disabled &&
+              !!o.orig &&
+              isCurrentUser &&
+              (!!editTimeLeft || isEditing) &&
+              mods.view !== 'user' && (
                 <span
                   {...getHandleClickProps(this.toggleEditing)}
-                  className="comment__action comment__action_type_edit"
-                >{isEditing ? 'Cancel' : 'Edit'}{editTimeLeft && ` (${editTimeLeft})`}</span>
-                
-              )
-            }
+                  className="comment__action comment__action_type_edit">
+                  {isEditing ? 'Cancel' : 'Edit'}
+                  {editTimeLeft && ` (${editTimeLeft})`}
+                </span>
+              )}
 
-            {
-              !deleted && isAdmin && (
+            {!deleted &&
+              isAdmin && (
                 <span className="comment__controls">
                   {
                     !pinned && (
-                      <span
-                        {...getHandleClickProps(this.onPinClick)}
-                        className="comment__control"
-                      >Pin</span>
+                      <span {...getHandleClickProps(this.onPinClick)} className="comment__control">
+                        Pin
+                      </span>
                     )
                   }
 
                   {
                     pinned && (
-                      <span
-                        {...getHandleClickProps(this.onUnpinClick)}
-                        className="comment__control"
-                      >Unpin</span>
+                      <span {...getHandleClickProps(this.onUnpinClick)} className="comment__control">
+                        Unpin
+                      </span>
                     )
                   }
 
                   {
                     userBlocked && (
-                      <span
-                        {...getHandleClickProps(this.onUnblockClick)}
-                        className="comment__control"
-                      >Unblock</span>
+                      <span {...getHandleClickProps(this.onUnblockClick)} className="comment__control">
+                        Unblock
+                      </span>
                     )
                   }
 
                   {
                     !userBlocked && (
-                      <span
-                        {...getHandleClickProps(this.onBlockClick)}
-                        className="comment__control"
-                      >Block</span>
+                      <span {...getHandleClickProps(this.onBlockClick)} className="comment__control">
+                        Block
+                      </span>
                     )
                   }
 
                   {
                     !deleted && (
-                      <span
-                        {...getHandleClickProps(this.onDeleteClick)}
-                        className="comment__control"
-                      >Delete</span>
+                      <span {...getHandleClickProps(this.onDeleteClick)} className="comment__control">
+                        Delete
+                      </span>
                     )
                   }
                 </span>
-              )
-            }
+              )}
           </div>
         </div>
 
-        {
-          isUserInfoShown && (
-            <UserInfo mix="comment__user-info" user={o.user} onClose={this.toggleUserInfoVisibility}/>
-          )
-        }
+        {isUserInfoShown && <UserInfo mix="comment__user-info" user={o.user} onClose={this.toggleUserInfoVisibility} />}
 
-        {
-          isReplying && mods.view !== 'user' && (
-            <Input
-              mix="comment__input"
-              onSubmit={this.onReply}
-              onCancel={this.toggleReplying}
-              pid={o.id}
-            />
-          )
-        }
+        {isReplying &&
+          mods.view !== 'user' && (
+            <Input mix="comment__input" onSubmit={this.onReply} onCancel={this.toggleReplying} pid={o.id} />
+          )}
 
-        {
-          isEditing && mods.view !== 'user' && (
+        {isEditing &&
+          mods.view !== 'user' && (
             <Input
               mix="comment__input"
               mods={{ mode: 'edit' }}
@@ -593,8 +614,7 @@ export default class Comment extends Component {
               value={o.orig}
               errorMessage={!editTimeLeft && 'Editing time has expired.'}
             />
-          )
-        }
+          )}
       </article>
     );
   }
@@ -608,7 +628,7 @@ function getTextSnippet(html) {
   const result = tmp.innerText || '';
   const snippet = result.substr(0, LENGTH);
 
-  return (snippet.length === LENGTH && result.length !== LENGTH) ? `${snippet}...` : snippet;
+  return snippet.length === LENGTH && result.length !== LENGTH ? `${snippet}...` : snippet;
 }
 
 function formatTime(time) {
