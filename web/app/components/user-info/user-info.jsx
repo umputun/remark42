@@ -4,10 +4,9 @@ import { h, Component } from 'preact';
 import api from 'common/api';
 import { getHandleClickProps } from 'common/accessibility';
 
-import Comment from 'components/comment';
-import Preloader from 'components/preloader';
+import LastCommentsList from './last-comments-list';
 
-export default class UserInfo extends Component {
+class UserInfo extends Component {
   constructor(props) {
     super(props);
 
@@ -39,18 +38,14 @@ export default class UserInfo extends Component {
         <p className="user-info__title">Last comments by {name}</p>
         <p className="user-info__id">{id}</p>
 
-        {isLoading && <Preloader mix="user-info__preloader" />}
+        <LastCommentsList isLoading={isLoading} comments={comments} />
 
-        {!isLoading && (
-          <div>{comments.map(comment => <Comment data={comment} mods={{ level: 0, view: 'user' }} />)}</div>
-        )}
-
-        <div>
-          <span {...getHandleClickProps(onClose)} className="user-info__close">
-            Close
-          </span>
-        </div>
+        <span {...getHandleClickProps(onClose)} className="user-info__close">
+          Close
+        </span>
       </div>
     );
   }
 }
+
+export default UserInfo;
