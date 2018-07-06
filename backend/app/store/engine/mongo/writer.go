@@ -26,7 +26,9 @@ type BufferedWriterMgo struct {
 	collection    string
 	flushDuration time.Duration
 
-	ctx           context.Context
+	ctx    context.Context
+	cancel context.CancelFunc
+
 	buffer        []interface{}
 	lock          sync.Mutex
 	lastWriteTime time.Time
@@ -56,15 +58,17 @@ func (bw *BufferedWriterMgo) WithAutoFlush(duration time.Duration) *BufferedWrit
 	bw.flushDuration = duration
 	if duration > 0 { // activate background auto-flush
 		bw.once.Do(func() {
-			bw.ctx = context.Background()
+			bw.ctx, bw.cancel = context.WithCancel(context.Background())
 			ticker := time.NewTicker(duration)
 			go func() {
+				defer bw.cancel()
 				for {
 					select {
 					case <-ticker.C:
-						shouldFlush := false
-						bw.synced(func() {
-							shouldFlush = bw.lastWriteTime.Before(time.Now().Add(-1*bw.flushDuration)) && len(bw.buffer) > 0
+						var shouldFlush bool
+						_ = bw.synced(func() error {
+							shouldFlush = time.Now().After(bw.lastWriteTime.Add(bw.flushDuration)) && len(bw.buffer) > 0
+							return nil
 						})
 						if shouldFlush {
 							if err := bw.Flush(); err != nil {
@@ -75,7 +79,6 @@ func (bw *BufferedWriterMgo) WithAutoFlush(duration time.Duration) *BufferedWrit
 						log.Printf("[DEBUG] mongo writer flusher terminated")
 						return
 					}
-
 				}
 			}()
 		})
@@ -85,46 +88,46 @@ func (bw *BufferedWriterMgo) WithAutoFlush(duration time.Duration) *BufferedWrit
 
 // Write to buffer and, as filled, to mongo. If flushDuration defined check for automatic flush
 func (bw *BufferedWriterMgo) Write(rec interface{}) error {
-	bw.lock.Lock()
-	defer bw.lock.Unlock()
-
-	bw.lastWriteTime = time.Now()
-	bw.buffer = append(bw.buffer, rec)
-	if len(bw.buffer) >= bw.bufferSize {
-		err := bw.writeBuffer()
-		bw.buffer = bw.buffer[0:0]
-		return errors.Wrapf(err, "failed to write to %s", bw.connection)
-	}
-	return nil
+	return bw.synced(func() error {
+		bw.lastWriteTime = time.Now()
+		bw.buffer = append(bw.buffer, rec)
+		if len(bw.buffer) >= bw.bufferSize {
+			err := bw.writeBuffer()
+			bw.buffer = bw.buffer[0:0]
+			return errors.Wrapf(err, "failed to write to %s", bw.connection)
+		}
+		return nil
+	})
 }
 
 // Flush writes everything left in buffer to mongo
 func (bw *BufferedWriterMgo) Flush() error {
-	bw.lock.Lock()
-	defer bw.lock.Unlock()
-
-	if len(bw.buffer) > 0 {
+	return bw.synced(func() error {
 		err := bw.writeBuffer()
 		bw.buffer = bw.buffer[0:0]
 		return errors.Wrapf(err, "failed to flush to %s", bw.connection)
-	}
-	return nil
+	})
 }
 
 // Close flushes all in-fly records and terminates background auto-flusher
-func (bw *BufferedWriterMgo) Close() error {
-	err := bw.Flush()
-	if bw.flushDuration > 0 {
-		ctx, cancel := context.WithCancel(bw.ctx)
-		cancel()
-		<-ctx.Done()
-		log.Printf("[DEBUG] mongo flusher terminated")
-	}
-	return err
+func (bw *BufferedWriterMgo) Close() (err error) {
+	return bw.synced(func() error {
+		err = bw.writeBuffer()
+		if bw.flushDuration > 0 {
+			bw.cancel()
+			<-bw.ctx.Done()
+			log.Printf("[DEBUG] mongo buffered writer closed")
+		}
+		return err
+	})
 }
 
 // writeBuffer sends all collected records to mongo
 func (bw *BufferedWriterMgo) writeBuffer() (err error) {
+
+	if len(bw.buffer) == 0 {
+		return nil
+	}
 
 	if bw.collection == "" { // no custom collection
 		err = bw.connection.WithCollection(func(coll *mgo.Collection) error {
@@ -141,8 +144,8 @@ func (bw *BufferedWriterMgo) writeBuffer() (err error) {
 	return err
 }
 
-func (bw *BufferedWriterMgo) synced(fn func()) {
+func (bw *BufferedWriterMgo) synced(fn func() error) error {
 	bw.lock.Lock()
-	fn()
-	bw.lock.Unlock()
+	defer bw.lock.Unlock()
+	return fn()
 }

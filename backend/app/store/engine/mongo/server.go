@@ -72,6 +72,8 @@ func NewServer(dial mgo.DialInfo, params ServerParams) (res *Server, err error) 
 		return nil, err
 	}
 	session.SetMode(params.ConsistencyMode, true)
+	session.SetSyncTimeout(30 * time.Second)
+	session.SetSocketTimeout(dial.Timeout)
 
 	if params.Credential != nil && params.Credential.Username != "" && params.Credential.Password != "" {
 		log.Printf("[DEBUG] login to mongo, user=%s, db=%s", params.Credential.Username, params.Credential.Source)
@@ -87,10 +89,7 @@ func NewServer(dial mgo.DialInfo, params ServerParams) (res *Server, err error) 
 
 // SessionCopy returns copy of main session. Client should close it
 func (m Server) SessionCopy() *mgo.Session {
-	r := m.sess.Copy()
-	r.SetSyncTimeout(30 * time.Second)
-	r.SetSocketTimeout(m.dial.Timeout)
-	return r
+	return m.sess.Copy()
 }
 
 func (m Server) String() string {

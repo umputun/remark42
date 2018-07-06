@@ -4,6 +4,7 @@ package engine
 
 import (
 	"fmt"
+	"math/rand"
 	"testing"
 	"time"
 
@@ -467,6 +468,28 @@ func TestMongo_DeleteUser(t *testing.T) {
 	assert.Equal(t, 0, len(comments), "nothing left")
 }
 
+func TestMongo_Parallel(t *testing.T) {
+	var m Interface
+	m = prepMongoBuffered(t) // buffered engine, no comments
+
+	go func() {
+		for i := 0; i < 100; i++ {
+			_, err := m.Create(store.Comment{
+				ID: fmt.Sprintf("id-%d", i), Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}})
+			require.Nil(t, err)
+			time.Sleep(time.Duration(rand.Intn(5)) * time.Millisecond)
+		}
+	}()
+
+	for {
+		res, err := m.Find(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "time")
+		assert.Nil(t, err)
+		if len(res) == 100 {
+			break
+		}
+	}
+}
+
 func prepMongo(t *testing.T, writeRecs bool) *Mongo {
 	mg := mongo.NewTesting(mongoPosts)
 	mg.DropCollection()
@@ -505,5 +528,21 @@ func prepMongo(t *testing.T, writeRecs bool) *Mongo {
 		assert.Nil(t, err)
 	}
 
+	return m
+}
+
+func prepMongoBuffered(t *testing.T) *Mongo {
+	mg := mongo.NewTesting(mongoPosts)
+	mg.DropCollection()
+	conn, err := mg.Get()
+	require.Nil(t, err)
+	m, err := NewMongo(conn, 10, 10*time.Millisecond)
+	require.Nil(t, err)
+	_ = m.conn.WithCustomCollection(mongoMetaPosts, func(coll *mgo.Collection) error {
+		return coll.DropCollection()
+	})
+	_ = m.conn.WithCustomCollection(mongoMetaUsers, func(coll *mgo.Collection) error {
+		return coll.DropCollection()
+	})
 	return m
 }

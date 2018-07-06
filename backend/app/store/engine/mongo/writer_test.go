@@ -26,7 +26,6 @@ func TestWriter(t *testing.T) {
 
 	conn := makeConnection(t)
 	var wr BufferedWriter = NewBufferedWriter(3, conn)
-
 	assert.Nil(t, wr.Write(bson.M{"key1": "val1"}), "write rec #1")
 	assert.Nil(t, wr.Write(bson.M{"key2": "val2"}), "write rec #2")
 
@@ -45,6 +44,7 @@ func TestWriter(t *testing.T) {
 	assert.Equal(t, 4, count(conn), "still 4 records, nothing left to flush")
 
 	assert.Nil(t, wr.Close())
+
 }
 
 func TestWriterParallel(t *testing.T) {
@@ -78,7 +78,9 @@ func TestWriterParallel(t *testing.T) {
 
 func TestWriterWithAuthFlush(t *testing.T) {
 
-	count := func(conn *Connection) (res int) {
+	conn := makeConnection(t)
+	var wr BufferedWriter = NewBufferedWriter(3, conn).WithAutoFlush(50 * time.Millisecond)
+	count := func() (res int) {
 		_ = conn.WithCollection(func(coll *mgo.Collection) error {
 			var err error
 			res, err = coll.Find(nil).Count()
@@ -88,29 +90,26 @@ func TestWriterWithAuthFlush(t *testing.T) {
 		return res
 	}
 
-	conn := makeConnection(t)
-	var wr BufferedWriter = NewBufferedWriter(3, conn).WithAutoFlush(10 * time.Millisecond)
-
 	assert.Nil(t, wr.Write(bson.M{"key1": "val1"}), "write rec #1")
 	assert.Nil(t, wr.Write(bson.M{"key2": "val2"}), "write rec #2")
-	assert.Equal(t, 0, count(conn), "nothing yet")
-	time.Sleep(30 * time.Millisecond)
-	assert.Equal(t, 2, count(conn), "2 records flushed")
+	assert.Equal(t, 0, count(), "nothing yet")
+	time.Sleep(80 * time.Millisecond)
+	assert.Equal(t, 2, count(), "2 records flushed")
 
 	assert.Nil(t, wr.Write(bson.M{"key3": "val3"}), "write rec #3")
 	assert.Nil(t, wr.Write(bson.M{"key4": "val4"}), "write rec #4")
 	assert.Nil(t, wr.Write(bson.M{"key5": "val5"}), "write rec #5")
-	assert.Equal(t, 5, count(conn), "5 records, flushed by size, not duration")
+	assert.Equal(t, 5, count(), "5 records, flushed by size, not duration")
 
 	assert.Nil(t, wr.Write(bson.M{"key6": "val6"}), "write rec #6")
 	assert.Nil(t, wr.Write(bson.M{"key7": "val7"}), "write rec #7")
-	assert.Equal(t, 5, count(conn), "still 5 records")
+	assert.Equal(t, 5, count(), "still 5 records")
 
 	assert.Nil(t, wr.Flush())
-	assert.Equal(t, 7, count(conn), "all 7 records")
+	assert.Equal(t, 7, count(), "all 7 records")
 
 	assert.Nil(t, wr.Flush())
-	assert.Equal(t, 7, count(conn), "still 7 records, nothing left to flush")
+	assert.Equal(t, 7, count(), "still 7 records, nothing left to flush")
 	assert.Nil(t, wr.Close())
 }
 
