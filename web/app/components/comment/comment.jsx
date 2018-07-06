@@ -1,6 +1,7 @@
 import { h, Component } from 'preact';
 
 import api from 'common/api';
+import { A11yButton } from 'common/accessibility';
 import { API_BASE, BASE_URL, COMMENT_NODE_CLASSNAME_PREFIX } from 'common/constants';
 import { url } from 'common/settings';
 import store from 'common/store';
@@ -402,22 +403,27 @@ export default class Comment extends Component {
 
             {
               mods.view !== 'user' && (
-                <span
-                  className="comment__username"
-                  title={o.user.id}
-                  onClick={this.toggleUserInfoVisibility}
-                >{o.user.name}</span>
+                <A11yButton onClick={this.toggleUserInfoVisibility}>
+                  <span
+                    className="comment__username"
+                    title={o.user.id}
+                  >{o.user.name}</span>
+                </A11yButton>
+                
               )
             }
 
             {
               isAdmin && mods.view !== 'user' && (
-                <span
-                  onClick={o.user.verified ? this.onUnverifyClick : this.onVerifyClick}
-                  aria-label="Toggle verification"
-                  title={o.user.verified ? 'Verified user' : 'Unverified user'}
-                  className={b('comment__verification', {}, { active: o.user.verified, clickable: true })}
-                />
+                <A11yButton onClick={o.user.verified ? this.onUnverifyClick : this.onVerifyClick}>
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    aria-label="Toggle verification"
+                    title={o.user.verified ? 'Verified user' : 'Unverified user'}
+                    className={b('comment__verification', {}, { active: o.user.verified, clickable: true })}
+                  />
+                </A11yButton>
               )
             }
 
@@ -440,7 +446,7 @@ export default class Comment extends Component {
                   aria-label="Go to parent comment"
                   title="Go to parent comment"
                   onClick={this.scrollToParent}
-                />
+                > </a>
               )
             }
 
@@ -458,37 +464,34 @@ export default class Comment extends Component {
 
             {
               !mods.disabled && mods.view !== 'user' && (
-                <span
-                  className={b('comment__action', {}, { type: 'collapse', selected: mods.collapsed })}
-                  tabIndex="0"
-                  onClick={this.toggleCollapse}
-                >{mods.collapsed ? '+' : '−'}</span>
+                <A11yButton onClick={this.toggleCollapse}>
+                  <span
+                    className={b('comment__action', {}, { type: 'collapse', selected: mods.collapsed })}
+                  >{mods.collapsed ? '+' : '−'}</span>
+                </A11yButton>
               )
             }
 
             <span className={b('comment__score', {}, { view: o.score.view })}>
-              <span
-                className={b('comment__vote', {}, { type: 'up', selected: scoreIncreased, disabled: isGuest || isCurrentUser })}
-                role="button"
-                aria-disabled={isGuest || isCurrentUser}
-                tabIndex="0"
-                onClick={isGuest || isCurrentUser ? null : this.increaseScore}
-                title={isGuest ? 'Only authorized users are allowed to vote' : (isCurrentUser ? 'You can\'t vote for your own comment' : null)}
-              >Vote up</span>
+              <A11yButton onClick={isGuest || isCurrentUser ? null : this.increaseScore}>
+                <span
+                  className={b('comment__vote', {}, { type: 'up', selected: scoreIncreased, disabled: isGuest || isCurrentUser })}
+                  aria-disabled={isGuest || isCurrentUser}
+                  title={isGuest ? 'Only authorized users are allowed to vote' : (isCurrentUser ? 'You can\'t vote for your own comment' : null)}
+                >Vote up</span>
+              </A11yButton>
 
               <span className="comment__score-value">
                 {o.score.sign}{o.score.value}
               </span>
 
-
-              <span
-                className={b('comment__vote', {}, { type: 'down', selected: scoreDecreased, disabled: isGuest || isCurrentUser })}
-                role="button"
-                aria-disabled={isGuest || isCurrentUser ? 'true' : 'false'}
-                tabIndex="0"
-                onClick={isGuest || isCurrentUser ? null : this.decreaseScore}
-                title={isGuest ? 'Only authorized users are allowed to vote' : (isCurrentUser ? 'You can\'t vote for your own comment' : null)}
-              >Vote down</span>
+              <A11yButton onClick={isGuest || isCurrentUser ? null : this.decreaseScore}>
+                <span
+                  className={b('comment__vote', {}, { type: 'down', selected: scoreDecreased, disabled: isGuest || isCurrentUser })}
+                  aria-disabled={isGuest || isCurrentUser ? 'true' : 'false'}
+                  title={isGuest ? 'Only authorized users are allowed to vote' : (isCurrentUser ? 'You can\'t vote for your own comment' : null)}
+                >Vote down</span>
+              </A11yButton>
             </span>
           </div>
 
@@ -500,23 +503,21 @@ export default class Comment extends Component {
           <div className="comment__actions">
             {
               !deleted && !mods.disabled && !isGuest && mods.view !== 'user' && (
-                <span
-                  className="comment__action"
-                  role="button"
-                  tabIndex="0"
-                  onClick={this.toggleReplying}
-                >{isReplying ? 'Cancel' : 'Reply'}</span>
+                <A11yButton onClick={this.toggleReplying}>
+                  <span
+                    className="comment__action"
+                  >{isReplying ? 'Cancel' : 'Reply'}</span>
+                </A11yButton>
               )
             }
 
             {
               !deleted && !mods.disabled && !!o.orig && isCurrentUser && (!!editTimeLeft || isEditing) && mods.view !== 'user' && (
-                <span
-                  className="comment__action comment__action_type_edit"
-                  role="button"
-                  tabIndex="0"
-                  onClick={this.toggleEditing}
-                >{isEditing ? 'Cancel' : 'Edit'}{editTimeLeft && ` (${editTimeLeft})`}</span>
+                <A11yButton onClick={this.toggleEditing}>
+                  <span
+                    className="comment__action comment__action_type_edit"
+                  >{isEditing ? 'Cancel' : 'Edit'}{editTimeLeft && ` (${editTimeLeft})`}</span>
+                </A11yButton>
               )
             }
 
@@ -525,56 +526,51 @@ export default class Comment extends Component {
                 <span className="comment__controls">
                   {
                     !pinned && (
-                      <span
-                        className="comment__control"
-                        role="button"
-                        tabIndex="0"
-                        onClick={this.onPinClick}
-                      >Pin</span>
+                      <A11yButton onClick={this.onPinClick}>
+                        <span
+                          className="comment__control"
+                        >Pin</span>
+                      </A11yButton>
                     )
                   }
 
                   {
                     pinned && (
-                      <span
-                        className="comment__control"
-                        role="button"
-                        tabIndex="0"
-                        onClick={this.onUnpinClick}
-                      >Unpin</span>
+                      <A11yButton onClick={this.onUnpinClick}>
+                        <span
+                          className="comment__control"
+                        >Unpin</span>
+                      </A11yButton>
                     )
                   }
 
                   {
                     userBlocked && (
-                      <span
-                        className="comment__control"
-                        role="button"
-                        tabIndex="0"
-                        onClick={this.onUnblockClick}
-                      >Unblock</span>
+                      <A11yButton onClick={this.onUnblockClick}>
+                        <span
+                          className="comment__control"
+                        >Unblock</span>
+                      </A11yButton>
                     )
                   }
 
                   {
                     !userBlocked && (
-                      <span
-                        className="comment__control"
-                        role="button"
-                        tabIndex="0"
-                        onClick={this.onBlockClick}
-                      >Block</span>
+                      <A11yButton onClick={this.onBlockClick}>
+                        <span
+                          className="comment__control"
+                        >Block</span>
+                      </A11yButton>
                     )
                   }
 
                   {
                     !deleted && (
-                      <span
-                        className="comment__control"
-                        role="button"
-                        tabIndex="0"
-                        onClick={this.onDeleteClick}
-                      >Delete</span>
+                      <A11yButton onClick={this.onDeleteClick}>
+                        <span
+                          className="comment__control"
+                        >Delete</span>
+                      </A11yButton>
                     )
                   }
                 </span>
@@ -596,7 +592,6 @@ export default class Comment extends Component {
               onSubmit={this.onReply}
               onCancel={this.toggleReplying}
               pid={o.id}
-              autoFocus
             />
           )
         }
@@ -611,7 +606,6 @@ export default class Comment extends Component {
               id={o.id}
               value={o.orig}
               errorMessage={!editTimeLeft && 'Editing time has expired.'}
-              autoFocus
             />
           )
         }

@@ -1,6 +1,7 @@
 import { h, Component } from 'preact';
 
 import api from 'common/api';
+import { A11yButton } from 'common/accessibility';
 
 export default class BlockedUsers extends Component {
   constructor(props) {
@@ -63,13 +64,17 @@ export default class BlockedUsers extends Component {
 
                       {
                         isUserUnblocked && (
-                          <span className="blocked-users__action" onClick={() => this.block(user)}>block</span>
+                          <A11yButton onClick={() => this.block(user)}>
+                            <span className="blocked-users__action">block</span>
+                          </A11yButton>
                         )
                       }
 
                       {
                         !isUserUnblocked && (
-                          <span className="blocked-users__action" onClick={() => this.unblock(user)}>unblock</span>
+                          <A11yButton onClick={() => this.unblock(user)}>
+                            <span className="blocked-users__action">unblock</span>
+                          </A11yButton>
                         )
                       }
                     </li>

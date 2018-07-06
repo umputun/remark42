@@ -1,6 +1,7 @@
 import { h, Component } from 'preact';
 
 import api from 'common/api';
+import { A11yButton } from 'common/accessibility';
 
 import Comment from 'components/comment';
 import Preloader from 'components/preloader';
@@ -52,7 +53,11 @@ export default class UserInfo extends Component {
           )
         }
 
-        <div><span className="user-info__close" onClick={onClose}>Close</span></div>
+        <div>
+          <A11yButton onClick={onClose}>
+            <span className="user-info__close">Close</span>
+          </A11yButton>
+        </div>
       </div>
     );
   }

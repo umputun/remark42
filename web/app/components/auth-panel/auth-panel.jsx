@@ -1,6 +1,7 @@
 import { h, Component } from 'preact';
 
 import { PROVIDER_NAMES } from 'common/constants';
+import { A11yButton } from 'common/accessibility';
 
 export default class AuthPanel extends Component {
   constructor(props) {
@@ -42,10 +43,14 @@ export default class AuthPanel extends Component {
             <div className="auth-panel__column">
               You signed in as
               {' '}
-              <strong className="auth-panel__username" onClick={this.toggleUserId}>{user.name}</strong>
+              <A11yButton onClick={this.toggleUserId}>
+                <strong className="auth-panel__username">{user.name}</strong>
+              </A11yButton>
               {isUserIdVisible && <span className="auth-panel__user-id"> ({user.id})</span>}.
               {' '}
-              <span className="auth-panel__pseudo-link" role="link" tabIndex="0" onClick={props.onSignOut}>Sign out?</span>
+              <A11yButton onClick={props.onSignOut}>
+                <span className="auth-panel__pseudo-link" role="link">Sign out?</span>
+              </A11yButton>
             </div>
           )
         }
@@ -62,12 +67,12 @@ export default class AuthPanel extends Component {
                   return (
                     <span>
                       {comma}
-                      <span
-                        className="auth-panel__pseudo-link"
-                        role="link"
-                        tabIndex="0"
-                        onClick={() => props.onSignIn(provider)}
-                      >{PROVIDER_NAMES[provider]}</span>
+                      <A11yButton onClick={() => props.onSignIn(provider)}>
+                        <span
+                          className="auth-panel__pseudo-link"
+                          role="link"
+                        >{PROVIDER_NAMES[provider]}</span>
+                      </A11yButton>
                     </span>
                   );
                 })
@@ -80,12 +85,12 @@ export default class AuthPanel extends Component {
         <div className="auth-panel__column">
           {
             user.admin && (
-              <span
-                className="auth-panel__pseudo-link auth-panel__admin-action"
-                role="link"
-                tabIndex="0"
-                onClick={this.toggleBlockedVisibility}
-              >{isBlockedVisible ? 'Hide' : 'Show'} blocked</span>
+              <A11yButton onClick={this.toggleBlockedVisibility}>
+                <span
+                  className="auth-panel__pseudo-link auth-panel__admin-action"
+                  role="link"
+                >{isBlockedVisible ? 'Hide' : 'Show'} blocked</span>
+              </A11yButton>
             )
           }
 
@@ -94,16 +99,19 @@ export default class AuthPanel extends Component {
           <span className="auth-panel__sort">
             Sort by
             {' '}
-            <label className="auth-panel__select-label">
+            <span className="auth-panel__select-label">
               {sortArray.find(x => x.selected).label}
-              <select className="auth-panel__select" onChange={this.onSortChange}>
+              <select
+                onBlur={this.onSortChange}
+                onChange={this.onSortChange}
+                className="auth-panel__select">
                 {
                   sortArray.map(sort => (
                     <option value={sort.value} selected={sort.selected}>{sort.label}</option>
                   ))
                 }
               </select>
-            </label>
+            </span>
           </span>
         </div>
       </div>
