@@ -1,12 +1,13 @@
+/** @jsx h */
 import { h, render } from 'preact';
 import AuthPanel from '../auth-panel';
-import {createDomContainer} from 'testUtils';
+import { createDomContainer } from 'testUtils';
 
 describe('<AuthPanel />', () => {
   describe('For not authorized user', () => {
     let container;
 
-    createDomContainer(({domContainer}) => {
+    createDomContainer(({ domContainer }) => {
       container = domContainer;
     });
 
@@ -21,8 +22,7 @@ describe('<AuthPanel />', () => {
 
       const authForm = authPanelColumn[0];
 
-      expect(authForm.textContent)
-        .toEqual(expect.stringContaining('Sign in to comment using'));
+      expect(authForm.textContent).toEqual(expect.stringContaining('Sign in to comment using'));
 
       const providerLinks = authForm.querySelectorAll('.auth-panel__pseudo-link');
 
@@ -33,12 +33,12 @@ describe('<AuthPanel />', () => {
   describe('For authorized user', () => {
     let container;
 
-    createDomContainer(({domContainer}) => {
+    createDomContainer(({ domContainer }) => {
       container = domContainer;
     });
 
     it('should render info about current user', () => {
-      const element = <AuthPanel user={{id: `test`, name: 'John'}} sort="-score" providers={[`google`, `github`]} />;
+      const element = <AuthPanel user={{ id: `test`, name: 'John' }} sort="-score" providers={[`google`, `github`]} />;
 
       render(element, container);
 
@@ -48,26 +48,26 @@ describe('<AuthPanel />', () => {
 
       const userInfo = authPanelColumn[0];
 
-      expect(userInfo.textContent)
-        .toEqual(expect.stringContaining('You signed in as John. Sign out?'));
+      expect(userInfo.textContent).toEqual(expect.stringContaining('You signed in as John. Sign out?'));
     });
   });
   describe('For admin user', () => {
     let container;
 
-    createDomContainer(({domContainer}) => {
+    createDomContainer(({ domContainer }) => {
       container = domContainer;
     });
 
     it('should render admin action', () => {
-      const element = <AuthPanel user={{id: `test`, admin: true, name: 'John'}} sort="-score" providers={[`google`, `github`]} />;
+      const element = (
+        <AuthPanel user={{ id: `test`, admin: true, name: 'John' }} sort="-score" providers={[`google`, `github`]} />
+      );
 
       render(element, container);
 
       const adminAction = container.querySelector('.auth-panel__admin-action');
 
-      expect(adminAction.textContent)
-        .toEqual('Show blocked');
+      expect(adminAction.textContent).toEqual('Show blocked');
     });
   });
 });

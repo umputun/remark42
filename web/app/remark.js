@@ -1,4 +1,5 @@
 /* eslint-disable no-console */
+/** @jsx h */
 import loadPolyfills from 'common/polyfills';
 
 import { h, render } from 'preact';
@@ -20,9 +21,9 @@ function init() {
   const node = document.getElementById(NODE_ID);
 
   if (!node) {
-    console.error('Remark42: Can\'t find root node.');
+    console.error("Remark42: Can't find root node.");
     return;
   }
 
-  render(<Root/>, node.parentElement, node);
+  render(<Root />, node.parentElement, node);
 }
