@@ -4,19 +4,17 @@
   "scripts": {
     "build": "cross-env NODE_ENV=production webpack --config ./webpack.config.js",
     "start": "webpack-dev-server --progress --hot --inline --config ./webpack.config.js",
-    "reinstall": "rm -rf ./node_modules/ && npm install",
     "lint": "eslint --ext=.js,.jsx .",
     "test": "jest",
     "prettier": "prettier --write \"./**/*.{js,jsx,scss}\"",
     "precommit": "./node_modules/.bin/lint-staged"
   },
   "lint-staged": {
-    "./app/**/*.{js,jsx}": [
-      "prettier --write",
-      "git add",
-      "eslint --fix"
+    "./**/*.{js,jsx}": [
+      "eslint --fix",
+      "git add"
     ],
-    "./app/**/*.scss": [
+    "./**/*.scss": [
       "prettier --write",
       "git add"
     ]

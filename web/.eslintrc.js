@@ -1,15 +1,7 @@
 module.exports = {
   parser: 'babel-eslint',
-  extends: [
-    'eslint:recommended',
-    'plugin:jsx-a11y/recommended',
-    'plugin:prettier/recommended',
-  ],
-  plugins: [
-    'react',
-    'jsx-a11y',
-    'prettier',
-  ],
+  extends: ['eslint:recommended', 'plugin:jsx-a11y/recommended', 'plugin:prettier/recommended'],
+  plugins: ['react', 'jsx-a11y', 'prettier'],
   env: {
     browser: true,
     node: true,
@@ -20,7 +12,7 @@ module.exports = {
     ecmaFeatures: {
       modules: true,
       jsx: true,
-    }
+    },
   },
   globals: {
     remark_config: true,
@@ -61,6 +53,6 @@ module.exports = {
     'no-var': 2,
     'object-shorthand': 2,
     'prefer-arrow-callback': 2,
-    'prettier/prettier': 1,
+    'prettier/prettier': 2,
   },
 };
