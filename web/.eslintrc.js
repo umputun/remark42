@@ -1,8 +1,12 @@
 module.exports = {
   parser: 'babel-eslint',
-  extends: 'eslint:recommended',
+  extends: [
+    'eslint:recommended',
+    'plugin:jsx-a11y/recommended',
+  ],
   plugins: [
     'react',
+    'jsx-a11y',
   ],
   env: {
     browser: true,
