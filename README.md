@@ -203,6 +203,7 @@ Frontend part is building automatically along with backend if you use `docker-co
 For manual building:
 
 * install [Node.js 8](https://nodejs.org/en/) or higher;
+* install [NPM 6.1.0](https://www.npmjs.com/package/npm) or higher;
 * run `npm install` inside `./web`;
 * run `npm run build` there;
 * result files will be saved in `./web/public`.
