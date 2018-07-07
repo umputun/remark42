@@ -42,7 +42,7 @@ func TestLogin(t *testing.T) {
 	assert.Equal(t, 2, len(resp.Cookies()))
 	assert.Equal(t, "JWT", resp.Cookies()[0].Name)
 	assert.NotEqual(t, "", resp.Cookies()[0].Value, "jwt set")
-	assert.Equal(t, 31536000, resp.Cookies()[0].MaxAge)
+	assert.Equal(t, 2678400, resp.Cookies()[0].MaxAge)
 	assert.Equal(t, "XSRF-TOKEN", resp.Cookies()[1].Name)
 	assert.NotEqual(t, "", resp.Cookies()[1].Value, "xsrf cookie set")
 
@@ -50,7 +50,7 @@ func TestLogin(t *testing.T) {
 	err = json.Unmarshal(body, &u)
 	assert.Nil(t, err)
 	assert.Equal(t, store.User{Name: "blah", ID: "mock_myuser1", Picture: "http://exmple.com/pic1.png",
-		Admin: false, Blocked: false, IP: ""}, u)
+		Admin: false, Blocked: true, IP: ""}, u)
 
 	// check admin user
 	resp, err = client.Get("http://localhost:8981/login?site=remark")
@@ -58,6 +58,7 @@ func TestLogin(t *testing.T) {
 	assert.Equal(t, 200, resp.StatusCode)
 	body, err = ioutil.ReadAll(resp.Body)
 	assert.Nil(t, err)
+	u = store.User{}
 	err = json.Unmarshal(body, &u)
 	assert.Nil(t, err)
 	assert.Equal(t, store.User{Name: "blah", ID: "mock_myuser2", Picture: "http://exmple.com/pic1.png",
@@ -93,7 +94,7 @@ func TestLoginSessionOnly(t *testing.T) {
 	req.AddCookie(resp.Cookies()[1])
 	req.Header.Add("X-XSRF-TOKEN", resp.Cookies()[1].Value)
 
-	jwtService := NewJWT("12345", false, time.Hour)
+	jwtService := NewJWT("12345", false, time.Hour, time.Hour)
 	res, err := jwtService.Get(req)
 	require.Nil(t, err)
 	assert.Equal(t, true, res.SessionOnly)
@@ -160,15 +161,16 @@ func mockProvider(t *testing.T, loginPort, authPort int) (*http.Server, *http.Se
 	}
 
 	params := Params{RemarkURL: "url", SecretKey: "123456", Cid: "cid", Csecret: "csecret",
-		JwtService: NewJWT("12345", false, time.Hour), Admins: []string{"mock_myuser2"},
+		JwtService: NewJWT("12345", false, time.Hour, time.Hour*24*31),
 		// AvatarProxy:  &proxy.Avatar{Store: &mockAvatarStore, RoutePath: "/v1/avatar"},
-		IsVerifiedFn: func(siteID, userID string) bool { return userID == "mock_myuser2" }}
+		PermissionChecker: &mockUserPermissions{admin: "mock_myuser2", verified: "mock_myuser2", blocked: "mock_myuser1"},
+	}
 	provider = initProvider(params, provider)
 
 	ts := &http.Server{Addr: fmt.Sprintf(":%d", loginPort), Handler: provider.Routes()}
 
 	count := 0
-	useIds := []string{"myuser1", "myuser2"}
+	useIds := []string{"myuser1", "myuser2"} // user for first ans second calls
 
 	oauth := &http.Server{
 		Addr: fmt.Sprintf(":%d", authPort),
@@ -216,3 +218,13 @@ func mockProvider(t *testing.T, loginPort, authPort int) (*http.Server, *http.Se
 	time.Sleep(time.Millisecond * 100) // let them start
 	return ts, oauth
 }
+
+type mockUserPermissions struct {
+	admin    string
+	verified string
+	blocked  string
+}
+
+func (m *mockUserPermissions) IsAdmin(userID string) bool            { return userID == m.admin }
+func (m *mockUserPermissions) IsVerified(siteID, userID string) bool { return userID == m.verified }
+func (m *mockUserPermissions) IsBlocked(siteID, userID string) bool  { return userID == m.blocked }

@@ -244,7 +244,7 @@ func TestAdmin_BlockedList(t *testing.T) {
 
 	// block user2
 	req, err = http.NewRequest(http.MethodPut,
-		fmt.Sprintf("%s/api/v1/admin/user/%s?site=radio-t&block=%d&ttl=10ms", ts.URL, "user2", 1), nil)
+		fmt.Sprintf("%s/api/v1/admin/user/%s?site=radio-t&block=%d&ttl=50ms", ts.URL, "user2", 1), nil)
 	assert.Nil(t, err)
 	req.SetBasicAuth("dev", "password")
 	_, err = client.Do(req)
@@ -259,7 +259,7 @@ func TestAdmin_BlockedList(t *testing.T) {
 	assert.Equal(t, "user1", users[0].ID)
 	assert.Equal(t, "user2", users[1].ID)
 
-	time.Sleep(11 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	res, code = getWithAuth(t, ts.URL+"/api/v1/admin/blocked?site=radio-t")
 	require.Equal(t, 200, code, res)
 	users = []store.BlockedUser{}

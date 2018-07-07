@@ -1,9 +1,7 @@
 module.exports = {
   parser: 'babel-eslint',
-  extends: 'eslint:recommended',
-  plugins: [
-    'react',
-  ],
+  extends: ['eslint:recommended', 'plugin:jsx-a11y/recommended', 'plugin:prettier/recommended'],
+  plugins: ['react', 'jsx-a11y', 'prettier'],
   env: {
     browser: true,
     node: true,
@@ -14,7 +12,7 @@ module.exports = {
     ecmaFeatures: {
       modules: true,
       jsx: true,
-    }
+    },
   },
   globals: {
     remark_config: true,
@@ -23,16 +21,11 @@ module.exports = {
   rules: {
     'react/jsx-uses-react': 2,
     'react/jsx-uses-vars': 2,
-    'no-unused-vars': [1, {varsIgnorePattern: '^h$'}],
     'no-cond-assign': 1,
     'no-empty': 0,
     'no-console': 1,
-    semi: 2,
     camelcase: 0,
     'comma-style': 2,
-    indent: [2, 2, {SwitchCase: 1}],
-    'no-mixed-spaces-and-tabs': [2, 'smart-tabs'],
-    'no-trailing-spaces': [2, {skipBlankLines: true}],
     'max-nested-callbacks': [2, 3],
     'no-eval': 2,
     'no-implied-eval': 2,
@@ -51,7 +44,6 @@ module.exports = {
     'no-shadow-restricted-names': 2,
     'handle-callback-err': 0,
     'no-lonely-if': 2,
-    'keyword-spacing': 2,
     'constructor-super': 2,
     'no-this-before-super': 2,
     'no-dupe-class-members': 2,
@@ -61,5 +53,6 @@ module.exports = {
     'no-var': 2,
     'object-shorthand': 2,
     'prefer-arrow-callback': 2,
+    'prettier/prettier': 2,
   },
 };

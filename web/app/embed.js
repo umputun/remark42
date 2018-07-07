@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { BASE_URL, NODE_ID, COMMENT_NODE_CLASSNAME_PREFIX } from 'common/constants';
 
 if (document.readyState === 'loading') {
@@ -10,7 +11,7 @@ function init() {
   const node = document.getElementById(NODE_ID);
 
   if (!node) {
-    console.error('Remark42: Can\'t find root node.');
+    console.error("Remark42: Can't find root node.");
     return;
   }
 
@@ -78,4 +79,3 @@ function init() {
     }
   }
 }
-

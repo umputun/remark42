@@ -1,3 +1,5 @@
+/* eslint-disable no-console */
+/** @jsx h */
 import { h, render } from 'preact';
 
 import { BASE_URL, DEFAULT_LAST_COMMENTS_MAX, LAST_COMMENTS_NODE_CLASSNAME } from './common/constants';
@@ -16,7 +18,7 @@ function init() {
   const nodes = document.getElementsByClassName(LAST_COMMENTS_NODE_CLASSNAME);
 
   if (!nodes) {
-    console.error('Remark42: Can\'t find last comments nodes.');
+    console.error("Remark42: Can't find last comments nodes.");
     return;
   }
 
@@ -39,15 +41,13 @@ function init() {
 
   [].slice.call(nodes).forEach(node => {
     const max = node.dataset.max || remark_config.max_last_comments || DEFAULT_LAST_COMMENTS_MAX;
-    api.getLastComments({ max, siteId: remark_config.site_id })
-      .then(comments => {
-        try {
-          render(<ListComments comments={comments}/>, node);
-        } catch (e) {
-          console.error('Remark42: Something went wrong with last comments rendering');
-          console.error(e);
-        }
-      });
+    api.getLastComments({ max, siteId: remark_config.site_id }).then(comments => {
+      try {
+        render(<ListComments comments={comments} />, node);
+      } catch (e) {
+        console.error('Remark42: Something went wrong with last comments rendering');
+        console.error(e);
+      }
+    });
   });
 }
-

@@ -239,7 +239,7 @@ func (a *admin) alterComments(comments []store.Comment, r *http.Request) (res []
 	res = make([]store.Comment, len(comments))
 
 	user, err := rest.GetUserInfo(r)
-	isAdmin := err == nil && user.Admin // make separate cache key for admins
+	isAdmin := err == nil && user.Admin
 
 	for i, c := range comments {
 

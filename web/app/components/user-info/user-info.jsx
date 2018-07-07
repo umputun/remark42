@@ -1,11 +1,12 @@
+/** @jsx h */
 import { h, Component } from 'preact';
 
 import api from 'common/api';
+import { getHandleClickProps } from 'common/accessibility';
 
-import Comment from 'components/comment';
-import Preloader from 'components/preloader';
+import LastCommentsList from './last-comments-list';
 
-export default class UserInfo extends Component {
+class UserInfo extends Component {
   constructor(props) {
     super(props);
 
@@ -16,44 +17,35 @@ export default class UserInfo extends Component {
   }
 
   componentWillMount() {
-    const { user: { id } } = this.props;
+    const {
+      user: { id },
+    } = this.props;
 
-    api.getUserComments({ user: id, limit: 10 })
+    api
+      .getUserComments({ user: id, limit: 10 })
       .then(({ comments = [] }) => this.setState({ comments }))
       .finally(() => this.setState({ isLoading: false }));
   }
 
   render(props, { comments, isLoading }) {
-    const { user: { name, id }, onClose } = props;
+    const {
+      user: { name, id },
+      onClose,
+    } = props;
 
     return (
       <div className={b('user-info', props)}>
         <p className="user-info__title">Last comments by {name}</p>
         <p className="user-info__id">{id}</p>
 
-        {
-          isLoading && (
-            <Preloader mix="user-info__preloader"/>
-          )
-        }
+        <LastCommentsList isLoading={isLoading} comments={comments} />
 
-        {
-          !isLoading && (
-            <div>
-              {
-                comments.map(comment => (
-                  <Comment
-                    data={comment}
-                    mods={{ level: 0, view: 'user' }}
-                  />
-                ))
-              }
-            </div>
-          )
-        }
-
-        <div><span className="user-info__close" onClick={onClose}>Close</span></div>
+        <span {...getHandleClickProps(onClose)} className="user-info__close">
+          Close
+        </span>
       </div>
     );
   }
 }
+
+export default UserInfo;

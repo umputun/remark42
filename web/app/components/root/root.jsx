@@ -1,8 +1,16 @@
+/** @jsx h */
 import { h, Component } from 'preact';
 import api from 'common/api';
 
-import { BASE_URL, NODE_ID, COMMENT_NODE_CLASSNAME_PREFIX, DEFAULT_SORT, LS_SORT_KEY, MAX_SHOWN_ROOT_COMMENTS } from 'common/constants';
-import { url, maxShownComments } from 'common/settings';
+import {
+  BASE_URL,
+  NODE_ID,
+  COMMENT_NODE_CLASSNAME_PREFIX,
+  DEFAULT_SORT,
+  LS_SORT_KEY,
+  MAX_SHOWN_ROOT_COMMENTS,
+} from 'common/constants';
+import { siteId, url, maxShownComments } from 'common/settings';
 import store from 'common/store';
 
 import AuthPanel from 'components/auth-panel';
@@ -59,10 +67,12 @@ export default class Root extends Component {
     });
 
     Promise.all([
-      api.getUser()
+      api
+        .getUser()
         .then(data => store.set('user', data))
         .catch(() => store.set('user', {})),
-      api.getPostComments({ sort, url })
+      api
+        .getPostComments({ sort, url })
         .then(({ comments = [] } = {}) => store.set('comments', comments))
         .catch(() => store.set('comments', [])),
     ]).finally(() => {
@@ -100,7 +110,9 @@ export default class Root extends Component {
   }
 
   onSignIn(provider) {
-    const newWindow = window.open(`${BASE_URL}/auth/${provider}/login?from=${encodeURIComponent(location.href)}`);
+    const newWindow = window.open(
+      `${BASE_URL}/auth/${provider}/login?from=${encodeURIComponent(location.href)}&site=${siteId}`
+    );
 
     let secondsPass = 0;
     const checkMsDelay = 100;
@@ -112,7 +124,8 @@ export default class Root extends Component {
         secondsPass = 0;
         newWindow.close();
 
-        api.getUser()
+        api
+          .getUser()
           .then(user => {
             store.set('user', user);
             this.setState({ user });
@@ -153,7 +166,8 @@ export default class Root extends Component {
       // can't save; ignore it
     }
 
-    api.getPostComments({ sort, url })
+    api
+      .getPostComments({ sort, url })
       .then(({ comments } = {}) => store.set('comments', comments))
       .finally(() => {
         this.setState({ isCommentsListLoading: false });
@@ -178,12 +192,25 @@ export default class Root extends Component {
     });
   }
 
-  render(props, { config = {}, comments = [], user, sort, isLoaded, isBlockedVisible, isCommentsListLoading, bannedUsers, commentsShown }) {
+  render(
+    props,
+    {
+      config = {},
+      comments = [],
+      user,
+      sort,
+      isLoaded,
+      isBlockedVisible,
+      isCommentsListLoading,
+      bannedUsers,
+      commentsShown,
+    }
+  ) {
     if (!isLoaded) {
       return (
         <div id={NODE_ID}>
           <div className="root">
-            <Preloader mix="root__preloader"/>
+            <Preloader mix="root__preloader" />
           </div>
         </div>
       );
@@ -207,84 +234,60 @@ export default class Root extends Component {
             onSortChange={this.onSortChange}
           />
 
-          {
-            !isBlockedVisible && (
-              <div className="root__main">
-                {
-                  !isGuest && (
-                    <Input
-                      mix="root__input"
-                      mods={{ type: 'main' }}
-                      onSubmit={this.addComment}
-                    />
-                  )
-                }
+          {!isBlockedVisible && (
+            <div className="root__main">
+              {!isGuest && <Input mix="root__input" mods={{ type: 'main' }} onSubmit={this.addComment} />}
 
-                {
-                  !!pinnedComments.length && (
-                    <div className="root__pinned-comments" role="region" aria-label="Pinned comments">
-                      {
-                        pinnedComments.map(comment => (
-                          <Comment
-                            data={comment}
-                            mods={{ level: 0, disabled: true }}
-                            mix="root__pinned-comment"
-                          />
-                        ))
-                      }
-                    </div>
-                  )
-                }
+              {!!pinnedComments.length && (
+                <div className="root__pinned-comments" role="region" aria-label="Pinned comments">
+                  {pinnedComments.map(comment => (
+                    <Comment data={comment} mods={{ level: 0, disabled: true }} mix="root__pinned-comment" />
+                  ))}
+                </div>
+              )}
 
-                {
-                  !!comments.length && !isCommentsListLoading && (
-                    <div className="root__threads" role="list">
-                      {
-                        (IS_MOBILE ? comments.slice(0, commentsShown) : comments).map(thread => (
-                          <Thread
-                            key={thread.comment.id}
-                            mix="root__thread"
-                            mods={{ level: 0 }}
-                            data={thread}
-                            onReply={this.addComment}
-                            onEdit={this.replaceComment}
-                          />
-                        ))
-                      }
+              {!!comments.length &&
+                !isCommentsListLoading && (
+                  <div className="root__threads" role="list">
+                    {(IS_MOBILE ? comments.slice(0, commentsShown) : comments).map(thread => (
+                      <Thread
+                        key={thread.comment.id}
+                        mix="root__thread"
+                        mods={{ level: 0 }}
+                        data={thread}
+                        onReply={this.addComment}
+                        onEdit={this.replaceComment}
+                      />
+                    ))}
 
-                      {
-                        commentsShown < comments.length && IS_MOBILE && (
-                          <button
-                            className="root__show-more"
-                            onClick={this.showMore}
-                          >Show more</button>
-                        )
-                      }
-                    </div>
-                  )
-                }
+                    {commentsShown < comments.length &&
+                      IS_MOBILE && (
+                        <button className="root__show-more" onClick={this.showMore}>
+                          Show more
+                        </button>
+                      )}
+                  </div>
+                )}
 
-                {
-                  isCommentsListLoading && (
-                    <div className="root__threads" role="list">
-                      <Preloader mix="root__preloader"/>
-                    </div>
-                  )
-                }
-              </div>
-            )
-          }
+              {isCommentsListLoading && (
+                <div className="root__threads" role="list">
+                  <Preloader mix="root__preloader" />
+                </div>
+              )}
+            </div>
+          )}
 
-          {
-            isBlockedVisible && (
-              <div className="root__main">
-                <BlockedUsers users={bannedUsers} onUnblock={this.onUnblockSomeone}/>
-              </div>
-            )
-          }
+          {isBlockedVisible && (
+            <div className="root__main">
+              <BlockedUsers users={bannedUsers} onUnblock={this.onUnblockSomeone} />
+            </div>
+          )}
 
           <p className="root__copyright" role="contentinfo">
-            Powered by <a href="https://remark42.com/" className="root__copyright-link">Remark42</a>
+            Powered by{' '}
+            <a href="https://remark42.com/" className="root__copyright-link">
+              Remark42
+            </a>
           </p>
         </div>
       </div>

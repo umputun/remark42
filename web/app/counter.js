@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { COUNTER_NODE_CLASSNAME } from './common/constants';
 
 import api from 'common/api';
@@ -12,7 +13,7 @@ function init() {
   const nodes = [].slice.call(document.getElementsByClassName(COUNTER_NODE_CLASSNAME));
 
   if (!nodes) {
-    console.error('Remark42: Can\'t find counter nodes.');
+    console.error("Remark42: Can't find counter nodes.");
     return;
   }
 
@@ -33,9 +34,7 @@ function init() {
     return acc;
   }, {});
 
-  api.getCommentsCount({ urls: Object.keys(map), siteId: remark_config.site_id })
-    .then(res => {
-      res.forEach(item => (map[item.url].innerHTML = item.count));
-    });
+  api.getCommentsCount({ urls: Object.keys(map), siteId: remark_config.site_id }).then(res => {
+    res.forEach(item => (map[item.url].innerHTML = item.count));
+  });
 }
-

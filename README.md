@@ -48,6 +48,8 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 | avatar.path        | AVATAR_FS_PATH     | `./var/avatars`       | avatars location                               |
 | avatar.rsz-lmt     | AVATAR_RSZ_LMT     | 0                     | max image size for resizing avatars on save    |
 | max-comment        | MAX_COMMENT_SIZE   | 2048                  | comment's size limit                           |
+| auth.ttl.jwt       | AUTH_TTL_JWT       | 5m                    | jwt TTL                                        |
+| auth.ttl.cookie    | AUTH_TTL_COOKIE    | 200h                  | cookie TTL                                     |
 | auth.google.cid    | AUTH_GOOGLE_CID    |                       | Google OAuth client ID                         |
 | auth.google.csec   | AUTH_GOOGLE_CSEC   |                       | Google OAuth client secret                     |
 | auth.facebook.cid  | AUTH_FACEBOOK_CID  |                       | Facebook OAuth client ID                       |
@@ -56,9 +58,11 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 | auth.github.csec   | AUTH_GITHUB_CSEC   |                       | Github OAuth client secret                     |
 | auth.yandex.cid    | AUTH_YANDEX_CID    |                       | Yandex OAuth client ID                         |
 | auth.yandex.csec   | AUTH_YANDEX_CSEC   |                       | Yandex OAuth client secret                     |
-| low-score          | LOW_SCORE          | `-5`                  | Low score threshold                            |
-| critical-score     | CRITICAL_SCORE     | `-10`                 | Critical score threshold                       |
-| img-proxy          | IMG_PROXY          | `false`               | Enable http->https proxy for images            |
+| auth.dev           | AUTH_DEV           | false                 | local oauth2 server, development mode only     |
+| low-score          | LOW_SCORE          | `-5`                  | low score threshold                            |
+| critical-score     | CRITICAL_SCORE     | `-10`                 | critical score threshold                       |
+| edit-time          | EDIT_TIME          | `5m`                  | edit window                                    |
+| img-proxy          | IMG_PROXY          | `false`               | enable http->https proxy for images            |
 | dbg                | DEBUG              | `false`               | debug mode                                     |
 | dev-passwd         | DEV_PASSWD         |                       | password for `dev` user                        |
 
@@ -213,6 +217,24 @@ URLs for development:
 * `localhost:8080/last-comments.html` — page with embedded script for last comments;
 * `localhost:8080/counter.html` — page with embedded script for counter with examples.
 
+#### Testing
+
+Also you can use fully functional local version to develop and test both frontend & backend.
+
+To bring it up run:
+
+```bash
+docker-compose -f compose-dev.yml build
+docker-compose -f compose-dev.yml up
+```
+
+It starts Remark42 on `localhost:8080` 
+and adds local OAuth2 provider “Dev”. To access UI demo page go to `localhost:8080/web`.
+
+That `compose-dev.yml` (you can find it in the root of the project) also defines if default logged user admin or not. 
+By default, it will be the admin, and to switch it to regular user comment or remove `-ADMIN=dev_user` there. You can also select 
+any other user name from the login dialog.
+
 #### Usage
 
 ##### Comments
@@ -309,7 +331,7 @@ Also script can uses `url` property from `remark_config` object, or `window.loca
 
 ### Authorization
 
-* `GET /auth/{provider}/login?from=http://url&session=1` - perform "social" login with one of supported providers and redirect to `url`. Presence of `session` (any non-zero value) change the default cookie expiration and makes them session-only.
+* `GET /auth/{provider}/login?from=http://url&site=site_id&session=1` - perform "social" login with one of supported providers and redirect to `url`. Presence of `session` (any non-zero value) change the default cookie expiration and makes them session-only.
 * `GET /auth/logout` - logout
 
 ```go
