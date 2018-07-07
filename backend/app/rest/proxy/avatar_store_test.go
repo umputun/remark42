@@ -12,8 +12,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/umputun/remark/backend/app/store/engine/mongo"
 )
 
 func TestAvatarStoreFS_Put(t *testing.T) {
@@ -178,25 +176,4 @@ func BenchmarkAvatarStoreFS_ID(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		p.ID("b3daa77b4c04a9551b8781d03191fe098f325e67.image")
 	}
-}
-
-func TestAvatarStoreGF(t *testing.T) {
-	mg := mongo.NewTesting("fs")
-	mg.DropCollection()
-	conn, err := mg.Get()
-	require.Nil(t, err)
-
-	p := NewGridFSAvatarStore(conn, 0)
-	avatar, err := p.Put("user1", strings.NewReader("some picture bin data"))
-	require.Nil(t, err)
-	assert.Equal(t, "b3daa77b4c04a9551b8781d03191fe098f325e67.image", avatar)
-
-	rd, size, err := p.Get(avatar)
-	require.Nil(t, err)
-	assert.Equal(t, 21, size)
-	data, err := ioutil.ReadAll(rd)
-	require.Nil(t, err)
-	assert.Equal(t, "some picture bin data", string(data))
-
-	assert.Equal(t, "8ce5568f7f9a1c9da5b897bc8642e397", p.ID(avatar))
 }
