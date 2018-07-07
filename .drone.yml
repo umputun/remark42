@@ -14,7 +14,13 @@ pipeline:
     image: plugins/docker
     repo: umputun/remark42
     secrets: [ docker_username, docker_password ]
-    tags: 
+    build_args:
+      - DRONE=${DRONE}
+      - DRONE_TAG=${DRONE_TAG}
+      - DRONE_COMMIT=${DRONE_COMMIT}
+      - DRONE_BRANCH=${DRONE_BRANCH}
+      - DRONE_PULL_REQUEST=${DRONE_PULL_REQUEST}
+    tags:
       - ${DRONE_COMMIT_BRANCH/\//-}
     when:
       branch: [master, release/*]
@@ -25,6 +31,7 @@ pipeline:
     repo: umputun/remark42
     secrets: [ docker_username, docker_password ]
     build_args:
+      - DRONE=${DRONE}
       - DRONE_TAG=${DRONE_TAG}
       - DRONE_COMMIT=${DRONE_COMMIT}
     tags: 
@@ -37,7 +44,11 @@ pipeline:
     image: plugins/docker
     repo: umputun/remark42
     secrets: [ docker_username, docker_password ]
-    tags: 
+    build_args:
+      - DRONE=${DRONE}
+      - DRONE_COMMIT=${DRONE_COMMIT}
+      - DRONE_BRANCH=${DRONE_BRANCH}
+    tags:
       - ${DRONE_COMMIT_BRANCH/\//-}
     when:
       branch:
