@@ -20,9 +20,7 @@ ARG DRONE_BRANCH
 ARG DRONE_PULL_REQUEST
 
 WORKDIR /go/src/github.com/umputun/remark/backend
-
 ADD backend /go/src/github.com/umputun/remark/backend
-ADD .git /go/src/github.com/umputun/remark/.git
 
 RUN cd app && go test ./...
 
@@ -38,12 +36,10 @@ RUN if [ -z "$COVERALLS_TOKEN" ] ; then \
 
 # get revision from git. if DRONE presented use DRONE_* git env to make version
 RUN \
-    cd /go/src/github.com/umputun/remark && version=$(/script/git-rev.sh) && cd backend \
-    echo "git version=$version" && \  
     if [ -z "$DRONE" ] ; then \
-    echo "runs outside of drone" ; \
+    echo "runs outside of drone" && version="local"; \
     else version=${DRONE_TAG}${DRONE_BRANCH}${DRONE_PULL_REQUEST}-${DRONE_COMMIT:0:7}-$(date +%Y%m%d-%H:%M:%S); fi && \
-    echo "final version=$version" && \  
+    echo "version=$version" && \
     go build -o remark -ldflags "-X main.revision=${version} -s -w" ./app
 
 
