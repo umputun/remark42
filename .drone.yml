@@ -19,7 +19,6 @@ pipeline:
       - DRONE_TAG=${DRONE_TAG}
       - DRONE_COMMIT=${DRONE_COMMIT}
       - DRONE_BRANCH=${DRONE_BRANCH}
-      - DRONE_PULL_REQUEST=${DRONE_PULL_REQUEST}
     tags:
       - ${DRONE_COMMIT_BRANCH/\//-}
     when:
