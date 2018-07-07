@@ -1,4 +1,4 @@
-package proxy
+package avatar
 
 import (
 	"bytes"
@@ -7,26 +7,27 @@ import (
 
 	"github.com/globalsign/mgo"
 	"github.com/pkg/errors"
+
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/engine/mongo"
 )
 
-// NewGridFSAvatarStore makes gridfs (mongo) avatar store
-func NewGridFSAvatarStore(conn *mongo.Connection, resizeLimit int) *GridFSAvatarStore {
-	return &GridFSAvatarStore{Connection: conn, resizeLimit: resizeLimit}
+// NewGridFS makes gridfs (mongo) avatar store
+func NewGridFS(conn *mongo.Connection, resizeLimit int) *GridFS {
+	return &GridFS{Connection: conn, resizeLimit: resizeLimit}
 }
 
-// GridFSAvatarStore implements AvatarStore for GridFS
-type GridFSAvatarStore struct {
+// GridFS implements AvatarStore for GridFS
+type GridFS struct {
 	Connection  *mongo.Connection
 	resizeLimit int
 }
 
 // Put avatear to gridfs object
-func (gf *GridFSAvatarStore) Put(userID string, reader io.Reader) (avatar string, err error) {
+func (gf *GridFS) Put(userID string, reader io.Reader) (avatar string, err error) {
 	id := store.EncodeID(userID)
 	err = gf.Connection.WithDB(func(dbase *mgo.Database) error {
-		fh, e := dbase.GridFS("fs").Create(id + imgSfx)
+		fh, e := dbase.GridFS("fs").Create(id + ImgSfx)
 		if e != nil {
 			return e
 		}
@@ -43,11 +44,11 @@ func (gf *GridFSAvatarStore) Put(userID string, reader io.Reader) (avatar string
 		_, e = io.Copy(fh, reader)
 		return e
 	})
-	return id + imgSfx, err
+	return id + ImgSfx, err
 }
 
 // Get avatar reader for avatar id.image
-func (gf *GridFSAvatarStore) Get(avatar string) (reader io.ReadCloser, size int, err error) {
+func (gf *GridFS) Get(avatar string) (reader io.ReadCloser, size int, err error) {
 	buf := &buffReaderCloser{}
 	err = gf.Connection.WithDB(func(dbase *mgo.Database) error {
 		fh, e := dbase.GridFS("fs").Open(avatar)
@@ -65,7 +66,7 @@ func (gf *GridFSAvatarStore) Get(avatar string) (reader io.ReadCloser, size int,
 }
 
 // ID returns a fingerprint of the avatar content. Uses MD5 because gridfs provides it directly
-func (gf *GridFSAvatarStore) ID(avatar string) (id string) {
+func (gf *GridFS) ID(avatar string) (id string) {
 	err := gf.Connection.WithDB(func(dbase *mgo.Database) error {
 		fh, e := dbase.GridFS("fs").Open(avatar)
 		if e != nil {

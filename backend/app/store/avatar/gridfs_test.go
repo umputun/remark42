@@ -1,6 +1,6 @@
 // +build mongo
 
-package proxy
+package avatar
 
 import (
 	"io/ioutil"
@@ -14,7 +14,7 @@ import (
 	"github.com/umputun/remark/backend/app/store/engine/mongo"
 )
 
-func TestAvatarStoreGFPutAndGet(t *testing.T) {
+func TestGridFS_PutAndGet(t *testing.T) {
 	p := prepGFStore(t)
 
 	avatar, err := p.Put("user1", strings.NewReader("some picture bin data"))
@@ -35,7 +35,7 @@ func TestAvatarStoreGFPutAndGet(t *testing.T) {
 	assert.Equal(t, "70c881d4a26984ddce795f6f71817c9cf4480e79", p.ID("aaaa"), "no data, encode avatar id")
 }
 
-func prepGFStore(t *testing.T) AvatarStore {
+func prepGFStore(t *testing.T) Store {
 	mg := mongo.NewTesting("fs")
 	conn, err := mg.Get()
 	require.Nil(t, err)
@@ -46,5 +46,5 @@ func prepGFStore(t *testing.T) AvatarStore {
 	_ = conn.WithCustomCollection("fs.files", func(coll *mgo.Collection) error {
 		return coll.DropCollection()
 	})
-	return NewGridFSAvatarStore(conn, 0)
+	return NewGridFS(conn, 0)
 }

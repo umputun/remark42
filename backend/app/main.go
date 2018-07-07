@@ -11,6 +11,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/umputun/remark/backend/app/store/avatar"
+
 	"github.com/coreos/bbolt"
 	"github.com/globalsign/mgo"
 	"github.com/hashicorp/logutils"
@@ -79,15 +81,7 @@ type StoreGroup struct {
 		Path    string        `long:"path" env:"PATH" default:"./var" description:"parent dir for bolt files"`
 		Timeout time.Duration `long:"timeout" env:"TIMEOUT" default:"30s" description:"bolt timeout"`
 	} `group:"bolt" namespace:"bolt" env-namespace:"BOLT"`
-	Mongo struct {
-		URL    string   `long:"url" env:"URL" description:"mongo url"`
-		Server []string `long:"server" env:"SERVER" description:"mongo host:port" env-delim:","`
-		DB     string   `long:"db" env:"DB" default:"remark42" description:"mongo database"`
-		User   string   `long:"user" env:"USER" default:"" description:"mongo user"`
-		Passwd string   `long:"password" env:"PASSWD" default:"" description:"mongo pssword"`
-		SSL    bool     `long:"ssl" env:"SSL" description:"connect to mongo with ssl"`
-		Dbg    bool     `long:"dbg" env:"DEBUG" description:"enable mongo debug"`
-	} `group:"mongo" namespace:"mongo" env-namespace:"MONGO"`
+	Mongo MongoOpts `group:"mongo" namespace:"mongo" env-namespace:"MONGO"`
 }
 
 // AvatarGroup defines options group for avatar params
@@ -96,7 +90,8 @@ type AvatarGroup struct {
 	FS   struct {
 		Path string `long:"path" env:"PATH" default:"./var/avatars" description:"avatars location"`
 	} `group:"fs" namespace:"fs" env-namespace:"FS"`
-	RszLmt int `long:"rsz-lmt" env:"RESIZE" default:"0" description:"max image size for resizing avatars on save"`
+	Mongo  MongoOpts `group:"mongo" namespace:"mongo" env-namespace:"MONGO"`
+	RszLmt int       `long:"rsz-lmt" env:"RESIZE" default:"0" description:"max image size for resizing avatars on save"`
 }
 
 // CacheGroup defines options group for cache params
@@ -107,6 +102,17 @@ type CacheGroup struct {
 		Value int   `long:"value" env:"VALUE" default:"65536" description:"max size of cached value"`
 		Size  int64 `long:"size" env:"SIZE" default:"50000000" description:"max size of total cache"`
 	} `group:"max" namespace:"max" env-namespace:"MAX"`
+}
+
+// MongoOpts holds all mongo params
+type MongoOpts struct {
+	URL    string   `long:"url" env:"URL" description:"mongo url"`
+	Server []string `long:"server" env:"SERVER" description:"mongo host:port" env-delim:","`
+	DB     string   `long:"db" env:"DB" default:"remark42" description:"mongo database"`
+	User   string   `long:"user" env:"USER" default:"" description:"mongo user"`
+	Passwd string   `long:"password" env:"PASSWD" default:"" description:"mongo pssword"`
+	SSL    bool     `long:"ssl" env:"SSL" description:"connect to mongo with ssl"`
+	Dbg    bool     `long:"dbg" env:"DEBUG" description:"enable mongo debug"`
 }
 
 var revision = "unknown"
@@ -309,20 +315,7 @@ func makeDataStore(group StoreGroup, siteNames []string) (result engine.Interfac
 		}
 		result, err = engine.NewBoltDB(bolt.Options{Timeout: group.Bolt.Timeout}, sites...)
 	case "mongo":
-		dial := &mgo.DialInfo{Addrs: group.Mongo.Server, Database: group.Mongo.DB} // default with addrs
-		if group.Mongo.URL != "" {                                                 // use full mongo uri if defined
-			var dialError error
-			if dial, dialError = mgo.ParseURL(group.Mongo.URL); dialError != nil {
-				return result, errors.Wrapf(err, "failed to create mongo server with url %s", group.Mongo.URL)
-			}
-			log.Printf("[DEBUG] dial %+v", dial)
-		}
-		dial.Timeout = 3 * time.Second
-		mgServer, e := mongo.NewServer(*dial, mongo.ServerParams{
-			Debug:      group.Mongo.Dbg,
-			SSL:        group.Mongo.SSL,
-			Credential: &mgo.Credential{Username: group.Mongo.User, Password: group.Mongo.Passwd, Source: "admin"},
-		})
+		mgServer, e := makeMongo(group.Mongo)
 		if e != nil {
 			return result, errors.Wrap(err, "failed to create mongo server")
 		}
@@ -334,13 +327,20 @@ func makeDataStore(group StoreGroup, siteNames []string) (result engine.Interfac
 	return result, errors.Wrap(err, "can't initialize data store")
 }
 
-func makeAvatarStore(group AvatarGroup) (result proxy.AvatarStore, err error) {
+func makeAvatarStore(group AvatarGroup) (avatar.Store, error) {
 	switch group.Type {
 	case "fs":
-		if err = makeDirs(group.FS.Path); err != nil {
+		if err := makeDirs(group.FS.Path); err != nil {
 			return nil, err
 		}
-		return proxy.NewFSAvatarStore(group.FS.Path, group.RszLmt), nil
+		return avatar.NewLocalFS(group.FS.Path, group.RszLmt), nil
+	case "mongo":
+		mgServer, err := makeMongo(group.Mongo)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create mongo server")
+		}
+		conn := mongo.NewConnection(mgServer, group.Mongo.DB, "")
+		return avatar.NewGridFS(conn, group.RszLmt), nil
 	}
 	return nil, errors.Errorf("unsupported avatar store type %s", group.Type)
 }
@@ -372,6 +372,23 @@ func makeDirs(dirs ...string) error {
 		}
 	}
 	return nil
+}
+
+func makeMongo(mopts MongoOpts) (result *mongo.Server, err error) {
+	dial := &mgo.DialInfo{Addrs: mopts.Server, Database: mopts.DB} // default with addrs
+	if mopts.URL != "" {                                           // use full mongo uri if defined
+		var dialError error
+		if dial, dialError = mgo.ParseURL(mopts.URL); dialError != nil {
+			return result, errors.Wrapf(err, "failed to create mongo server with url %s", mopts.URL)
+		}
+		log.Printf("[DEBUG] dial %+v", dial)
+	}
+	dial.Timeout = 3 * time.Second
+	return mongo.NewServer(*dial, mongo.ServerParams{
+		Debug:      mopts.Dbg,
+		SSL:        mopts.SSL,
+		Credential: &mgo.Credential{Username: mopts.User, Password: mopts.Passwd, Source: "admin"},
+	})
 }
 
 func makeAuthProviders(jwtService *auth.JWT, avatarProxy *proxy.Avatar, ds *service.DataStore, opts Opts) []auth.Provider {
