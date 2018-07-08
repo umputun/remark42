@@ -6,8 +6,8 @@ describe('Store', () => {
 
     store.set('comments', []);
     store.onUpdate('comments', listener);
-    store.addComment({id:`new`});
+    store.addComment({ id: `new` });
 
-    expect(listener).toBeCalledWith([{"comment": {"id": "new"}}]);
+    expect(listener).toBeCalledWith([{ comment: { id: 'new' } }]);
   });
 });

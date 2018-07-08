@@ -5,7 +5,7 @@
   height: 36px;
   margin: 20px auto;
   padding: 0;
-  background: #259C9A;
+  background: #259c9a;
   border-radius: 4px;
   border: 0;
   font-size: 14px;
@@ -14,7 +14,8 @@
   color: #fff;
   cursor: pointer;
 
-  &:hover, &:focus {
+  &:hover,
+  &:focus {
     background: #0aa;
   }
 
