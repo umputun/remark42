@@ -3,7 +3,7 @@
   $fontSize: 16px;
   $paddingVrt: 10px;
   $lines: 3;
-  $height: $fontSize * $lineHeight * $lines + $paddingVrt * 2;
+  $height: calc($fontSize * $lineHeight * $lines+$paddingVrt * 2);
 
   box-sizing: border-box;
   width: 100%;
@@ -17,8 +17,8 @@
   background: #fff;
   border: 0;
   resize: none;
-  backface-visibility: hidden; // let's try to fix blinking in Safari
-  transform: translateZ(0); // let's try to fix blinking in Safari, again
+  backface-visibility: hidden; /* let's try to fix blinking in Safari */
+  transform: translateZ(0); /* let's try to fix blinking in Safari, again */
 
   &:focus {
     box-shadow: inset 0 0 0 2px #259c9a;

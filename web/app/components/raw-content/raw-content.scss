@@ -8,7 +8,7 @@
       margin-top: 8px;
     }
 
-    // imported comments have br instead of p
+    /* imported comments have br instead of p */
     br {
       content: '';
       display: block;
@@ -125,7 +125,7 @@
   sub {
     sup,
     sub {
-      vertical-align: middle; // to prevent some visual cheats
+      vertical-align: middle; /* to prevent some visual cheats */
     }
   }
 }
