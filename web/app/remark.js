@@ -4,6 +4,9 @@ import loadPolyfills from 'common/polyfills';
 
 import { h, render } from 'preact';
 import Root from './components/root';
+import UserInfo from 'components/user-info';
+import store from 'common/store';
+
 // eslint-disable-next-line no-unused-vars
 import ListComments from './components/list-comments'; // TODO: temp solution for extracting styles
 
@@ -25,5 +28,40 @@ function init() {
     return;
   }
 
-  render(<Root />, node.parentElement, node);
+  const params = window.location.search
+    .replace(/^\?/, '')
+    .split('&')
+    .reduce((memo, value) => {
+      const vals = value.split('=');
+      if (vals.length === 2) {
+        memo[vals[0]] = vals[1];
+      }
+      return memo;
+    }, {});
+
+  if (params.page === 'user-info') {
+    const user = {
+      id: params.id,
+      name: params.name || '',
+      isDefaultPicture: params.isDefaultPicture,
+      picture: params.picture,
+    };
+    store.set('user', user);
+    const onClose = () => {
+      if (window.parent) {
+        window.parent.postMessage(JSON.stringify({ isUserInfoShown: false }), '*');
+      }
+    };
+    render(
+      <div id={NODE_ID}>
+        <div className="root root_user-info">
+          <UserInfo user={user} onClose={onClose} />
+        </div>
+      </div>,
+      node.parentElement,
+      node
+    );
+  } else {
+    render(<Root />, node.parentElement, node);
+  }
 }
