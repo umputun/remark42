@@ -224,8 +224,8 @@ Also you can use fully functional local version to develop and test both fronten
 To bring it up run:
 
 ```bash
-docker-compose -f compose-dev.yml build
-docker-compose -f compose-dev.yml up
+docker-compose -f compose-dev-frontend.yml build
+docker-compose -f compose-dev-frontend.yml up
 ```
 
 It starts Remark42 on `localhost:8080` 
