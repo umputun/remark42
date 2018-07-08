@@ -13,7 +13,8 @@ require('./__avatar/_default/comment__avatar_default.scss');
 
 require('./__body/comment__body.scss');
 require('./__control/comment__control.scss');
-require('./__control/_block/comment__control_block.scss');
+require('./__control/_select/comment__control_select.scss');
+require('./__control/_select-label/comment__control_select-label.scss');
 require('./__controls/comment__controls.scss');
 require('./__info/comment__info.scss');
 require('./__input/comment__input.scss');

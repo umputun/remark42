@@ -173,7 +173,7 @@ export default class Comment extends Component {
     } = this.props.data;
 
     const ttl = e.target.value;
-    const duration = getBlockArray().filter(el => el.value === ttl)[0].label;
+    const duration = blockingDurations.find(el => el.value === ttl).label;
     const promptMessage = ttl === 'permanently'
       ? 'Do you want to permanently block this user?'
       : `Do you want to block this user (${duration.toLowerCase()})?`;
@@ -321,7 +321,8 @@ export default class Comment extends Component {
     const isCurrentUser = (data.user && data.user.id) === (store.get('user') && store.get('user').id);
     const config = store.get('config') || {};
     const lowCommentScore = config.low_score;
-    const blockArray = getBlockArray();
+
+    const blockingOptions = blockingDurations;
 
     const o = {
       ...data,
@@ -533,12 +534,12 @@ export default class Comment extends Component {
                   )}
 
                   {!userBlocked && (
-                    <span className="comment__control comment__control_block">
+                    <span className="comment__control comment__control_select-label">
                       Block
-                      <select className="comment__control_block__select"
+                      <select className="comment__control_select"
                         onChange={this.onBlockUserClick}>
                           <option disabled selected value> Blocking period </option>
-                        {blockArray.map(block => (
+                        {blockingOptions.map(block => (
                           <option value={block.value}
                             selected={block.selected}>
                           {block.label}
@@ -604,25 +605,21 @@ function formatTime(time) {
   return `${date} at ${hours}:${mins}`;
 }
 
-function getBlockArray() {
-  const blockArray = [
-    {
-      label: 'Permanently',
-      value: 'permanently',
-    },
-    {
-      label: 'For a month',
-      value: `${30 * 60 * 24}m`,
-    },
-    {
-      label: 'For a week',
-      value: `${7 * 60 * 24}m`,
-    },
-    {
-      label: 'For a day',
-      value: `${60 * 24}m`,
-    },
-  ];
-
-  return blockArray;
-}
+const blockingDurations = [
+  {
+    label: 'Permanently',
+    value: 'permanently',
+  },
+  {
+    label: 'For a month',
+    value: `${30 * 60 * 24}m`,
+  },
+  {
+    label: 'For a week',
+    value: `${7 * 60 * 24}m`,
+  },
+  {
+    label: 'For a day',
+    value: `${60 * 24}m`,
+  },
+];
