@@ -12,13 +12,15 @@ ARG TRAVIS_PULL_REQUEST
 ARG TRAVIS_PULL_REQUEST_SHA
 ARG TRAVIS_REPO_SLUG
 ARG TRAVIS_TAG
+
+ARG DRONE
 ARG DRONE_TAG
 ARG DRONE_COMMIT
+ARG DRONE_BRANCH
+ARG DRONE_PULL_REQUEST
 
 WORKDIR /go/src/github.com/umputun/remark/backend
-
 ADD backend /go/src/github.com/umputun/remark/backend
-ADD .git /go/src/github.com/umputun/remark/.git
 
 RUN cd app && go test ./...
 
@@ -26,19 +28,18 @@ RUN gometalinter --disable-all --deadline=300s --vendor --enable=vet --enable=ve
     --enable=staticcheck --enable=ineffassign --enable=goconst --enable=errcheck --enable=unconvert \
     --enable=deadcode  --enable=gosimple --enable=gas --exclude=test --exclude=mock --exclude=vendor ./...
 
+# coverage test, submit to coverals if COVERALLS_TOKEN in env
 RUN mkdir -p target && /script/coverage.sh
 RUN if [ -z "$COVERALLS_TOKEN" ] ; then \
     echo coverall not enabled ; \
     else goveralls -coverprofile=.cover/cover.out -service=travis-ci -repotoken $COVERALLS_TOKEN || echo "coverall failed!"; fi
 
-# get revision from git. if DRONE_TAG presented use DRONE_* git env to make version
+# get revision from git. if DRONE presented use DRONE_* git env to make version
 RUN \
-    version=$(git rev-parse --abbrev-ref HEAD)-$(git describe --abbrev=7 --always --tags)-$(date +%Y%m%d-%H:%M:%S) && \
-    echo "git version=$version" && \  
-    if [ -z "$DRONE_TAG" ] ; then \
-    echo "runs outside of drone" ; \
-    else version=${DRONE_TAG}-${DRONE_COMMIT:0:7}-$(date +%Y%m%d-%H:%M:%S); fi && \
-    echo "final version=$version" && \  
+    if [ -z "$DRONE" ] ; then \
+    echo "runs outside of drone" && version="local"; \
+    else version=${DRONE_TAG}${DRONE_BRANCH}${DRONE_PULL_REQUEST}-${DRONE_COMMIT:0:7}-$(date +%Y%m%d-%H:%M:%S); fi && \
+    echo "version=$version" && \
     go build -o remark -ldflags "-X main.revision=${version} -s -w" ./app
 
 

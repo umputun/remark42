@@ -5,8 +5,8 @@ Promise.prototype.finally = function finallyFn(callback) {
   const constructor = this.constructor;
 
   return this.then(
-    (value) => constructor.resolve(callback()).then(() => value),
-    (reason) => constructor.resolve(callback()).then(() => reason)
+    value => constructor.resolve(callback()).then(() => value),
+    reason => constructor.resolve(callback()).then(() => reason)
   );
 };
 
@@ -20,7 +20,8 @@ export default function loadPolyfills() {
       'includes' in Array.prototype &&
       'assign' in Object &&
       'keys' in Object
-    ) return Promise.resolve();
+    )
+      return Promise.resolve();
 
     return import(/* webpackChunkName: "polyfills" */ 'core-js');
   };

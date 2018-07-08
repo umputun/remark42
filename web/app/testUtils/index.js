@@ -3,7 +3,7 @@ export function createDomContainer(setup) {
   beforeAll(() => {
     domContainer = document.createElement('div');
     (document.body || document.documentElement).appendChild(domContainer);
-    setup({domContainer});
+    setup({ domContainer });
   });
 
   beforeEach(() => {

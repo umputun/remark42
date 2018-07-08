@@ -30,7 +30,12 @@
     max-height: 300px;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     &:first-child {
       margin-top: 0;
     }
@@ -58,7 +63,8 @@
       font-weight: 600;
     }
 
-    th, td {
+    th,
+    td {
       padding: 6px 13px;
       border: 1px solid #dfe2e5;
     }
@@ -77,7 +83,7 @@
     padding: 0.2em 0.4em;
     margin: 0;
     font-size: 85%;
-    background-color: rgba(#1b1f23, .05);
+    background-color: rgba(#1b1f23, 0.05);
     border-radius: 3px;
   }
 
@@ -115,8 +121,10 @@
     }
   }
 
-  sup, sub {
-    sup, sub {
+  sup,
+  sub {
+    sup,
+    sub {
       vertical-align: middle; // to prevent some visual cheats
     }
   }
