@@ -1,5 +1,5 @@
+/** @jsx h */
 import { h, Component } from 'preact';
-
 
 export default class Avatar extends Component {
   render() {
