@@ -174,13 +174,15 @@ export default class Comment extends Component {
 
     const ttl = e.target.value;
     const duration = blockingDurations.find(el => el.value === ttl).label;
-    const promptMessage = ttl === 'permanently'
-      ? 'Do you want to permanently block this user?'
-      : `Do you want to block this user (${duration.toLowerCase()})?`;
+    const promptMessage =
+      ttl === 'permanently'
+        ? 'Do you want to permanently block this user?'
+        : `Do you want to block this user (${duration.toLowerCase()})?`;
     if (confirm(promptMessage)) {
       this.setState({ userBlocked: true });
 
-      api.blockUser({ id: userId, ttl })
+      api
+        .blockUser({ id: userId, ttl })
         .then(api.getComment({ id }))
         .then(comment => store.replaceComment(comment));
     }
@@ -197,7 +199,8 @@ export default class Comment extends Component {
     if (confirm(promptMessage)) {
       this.setState({ userBlocked: false });
 
-      api.unblockUser({ id: userId })
+      api
+        .unblockUser({ id: userId })
         .then(api.getComment({ id }))
         .then(comment => store.replaceComment(comment));
     }
@@ -536,13 +539,14 @@ export default class Comment extends Component {
                   {!userBlocked && (
                     <span className="comment__control comment__control_select-label">
                       Block
-                      <select className="comment__control_select"
-                        onChange={this.onBlockUserClick}>
-                          <option disabled selected value> Blocking period </option>
+                      <select className="comment__control_select" onChange={this.onBlockUserClick}>
+                        <option disabled selected value>
+                          {' '}
+                          Blocking period{' '}
+                        </option>
                         {blockingOptions.map(block => (
-                          <option value={block.value}
-                            selected={block.selected}>
-                          {block.label}
+                          <option value={block.value} selected={block.selected}>
+                            {block.label}
                           </option>
                         ))}
                       </select>

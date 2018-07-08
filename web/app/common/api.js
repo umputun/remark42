@@ -102,9 +102,7 @@ export const removeComment = ({ id }) =>
 
 export const blockUser = ({ id, ttl }) =>
   fetcher.put({
-    url: ttl === 'permanently'
-      ? `/admin/user/${id}?block=1`
-      : `/admin/user/${id}?block=1&ttl=${ttl}`,
+    url: ttl === 'permanently' ? `/admin/user/${id}?block=1` : `/admin/user/${id}?block=1&ttl=${ttl}`,
     withCredentials: true,
   });
 
