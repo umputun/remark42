@@ -17,17 +17,17 @@ func NewGridFS(conn *mongo.Connection, resizeLimit int) *GridFS {
 	return &GridFS{Connection: conn, resizeLimit: resizeLimit}
 }
 
-// GridFS implements AvatarStore for GridFS
+// GridFS implements Store for GridFS
 type GridFS struct {
 	Connection  *mongo.Connection
 	resizeLimit int
 }
 
-// Put avatear to gridfs object
+// Put avatear to gridfs object, try to resize
 func (gf *GridFS) Put(userID string, reader io.Reader) (avatar string, err error) {
 	id := store.EncodeID(userID)
 	err = gf.Connection.WithDB(func(dbase *mgo.Database) error {
-		fh, e := dbase.GridFS("fs").Create(id + ImgSfx)
+		fh, e := dbase.GridFS("fs").Create(id + imgSfx)
 		if e != nil {
 			return e
 		}
@@ -44,7 +44,7 @@ func (gf *GridFS) Put(userID string, reader io.Reader) (avatar string, err error
 		_, e = io.Copy(fh, reader)
 		return e
 	})
-	return id + ImgSfx, err
+	return id + imgSfx, err
 }
 
 // Get avatar reader for avatar id.image

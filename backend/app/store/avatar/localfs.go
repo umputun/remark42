@@ -1,7 +1,5 @@
 package avatar
 
-//go:generate sh -c "mockery -inpkg -name AvatarStore -print > /tmp/mock.tmp && mv /tmp/mock.tmp avatar_store_mock.go"
-
 import (
 	"fmt"
 	"hash/crc64"
@@ -18,7 +16,7 @@ import (
 	"github.com/umputun/remark/backend/app/store"
 )
 
-// LocalFS implements AvatarStore for local file system
+// LocalFS implements Store for local file system
 type LocalFS struct {
 	storePath   string
 	resizeLimit int
@@ -42,7 +40,7 @@ func (fs *LocalFS) Put(userID string, reader io.Reader) (avatar string, err erro
 		}
 	}
 
-	avFile := path.Join(location, id+ImgSfx)
+	avFile := path.Join(location, id+imgSfx)
 	fh, err := os.Create(avFile)
 	if err != nil {
 		return "", errors.Wrapf(err, "can't create file %s", avFile)
@@ -61,12 +59,12 @@ func (fs *LocalFS) Put(userID string, reader io.Reader) (avatar string, err erro
 	if _, err = io.Copy(fh, reader); err != nil {
 		return "", errors.Wrapf(err, "can't save file %s", avFile)
 	}
-	return id + ImgSfx, nil
+	return id + imgSfx, nil
 }
 
 // Get avatar reader for avatar id.image
 func (fs *LocalFS) Get(avatar string) (reader io.ReadCloser, size int, err error) {
-	location := fs.location(strings.TrimSuffix(avatar, ImgSfx))
+	location := fs.location(strings.TrimSuffix(avatar, imgSfx))
 	avFile := path.Join(location, avatar)
 	fh, err := os.Open(avFile)
 	if err != nil {
@@ -80,7 +78,7 @@ func (fs *LocalFS) Get(avatar string) (reader io.ReadCloser, size int, err error
 
 // ID returns a fingerprint of the avatar content.
 func (fs *LocalFS) ID(avatar string) (id string) {
-	location := fs.location(strings.TrimSuffix(avatar, ImgSfx))
+	location := fs.location(strings.TrimSuffix(avatar, imgSfx))
 	avFile := path.Join(location, avatar)
 	fi, err := os.Stat(avFile)
 	if err != nil {

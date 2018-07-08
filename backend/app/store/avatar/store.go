@@ -1,4 +1,7 @@
+// Package avatar defines store interface and implements local (fs) and gridfs (mongo) stores.
 package avatar
+
+//go:generate sh -c "mockery -inpkg -name Store -print > /tmp/mock.tmp && mv /tmp/mock.tmp store_mock.go"
 
 import (
 	"bytes"
@@ -14,8 +17,8 @@ import (
 	"golang.org/x/image/draw"
 )
 
-// ImgSfx for avatars
-const ImgSfx = ".image"
+// imgSfx for avatars
+const imgSfx = ".image"
 
 // Store defines interface to store and and load avatars
 type Store interface {
