@@ -56,7 +56,6 @@ module.exports = {
     extensions: ['.jsx', '.js'],
     modules: [path.resolve(__dirname, 'app'), path.resolve(__dirname, 'node_modules')],
   },
-  devtool: 'source-map',
   module: {
     rules: [
       {
