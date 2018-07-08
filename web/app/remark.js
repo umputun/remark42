@@ -3,9 +3,11 @@
 import loadPolyfills from 'common/polyfills';
 
 import { h, render } from 'preact';
+import { Provider } from 'preact-redux';
 import Root from './components/root';
 import UserInfo from 'components/user-info';
 import store from 'common/store';
+import reduxStore from './store';
 
 // eslint-disable-next-line no-unused-vars
 import ListComments from './components/list-comments'; // TODO: temp solution for extracting styles
@@ -19,6 +21,12 @@ loadPolyfills().then(() => {
     init();
   }
 });
+
+const Main = () => (
+  <Provider store={reduxStore}>
+    <Root />
+  </Provider>
+);
 
 function init() {
   const node = document.getElementById(NODE_ID);
@@ -62,6 +70,6 @@ function init() {
       node
     );
   } else {
-    render(<Root />, node.parentElement, node);
+    render(<Main />, node.parentElement, node);
   }
 }
