@@ -75,5 +75,8 @@
       "node_modules",
       "<rootDir>/app"
     ]
+  },
+  "engines": {
+    "node": ">=8"
   }
 }

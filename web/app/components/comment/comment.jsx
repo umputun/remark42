@@ -9,6 +9,7 @@ import store from 'common/store';
 
 import Input from 'components/input';
 import UserInfo from 'components/user-info';
+import Avatar from './__avatar/comment__avatar';
 
 export default class Comment extends Component {
   constructor(props) {
@@ -35,12 +36,6 @@ export default class Comment extends Component {
     this.scrollToParent = this.scrollToParent.bind(this);
     this.onEdit = this.onEdit.bind(this);
     this.onReply = this.onReply.bind(this);
-    this.onPinClick = this.onPinClick.bind(this);
-    this.onUnpinClick = this.onUnpinClick.bind(this);
-    this.onVerifyClick = this.onVerifyClick.bind(this);
-    this.onUnverifyClick = this.onUnverifyClick.bind(this);
-    this.onBlockClick = this.onBlockClick.bind(this);
-    this.onUnblockClick = this.onUnblockClick.bind(this);
     this.onDeleteClick = this.onDeleteClick.bind(this);
   }
 
@@ -140,87 +135,48 @@ export default class Comment extends Component {
     this.setState({ isUserInfoShown: !this.state.isUserInfoShown });
   }
 
-  onPinClick() {
+  togglePin(isPinned) {
     const { id } = this.props.data;
+    const promptMessage = `Do you want to ${isPinned ? 'unpin' : 'pin'} this user?`;
 
-    if (confirm('Do you want to pin this comment?')) {
-      this.setState({ pinned: true });
+    if (confirm(promptMessage)) {
+      this.setState({ pinned: !isPinned });
 
-      api.pinComment({ id, url }).then(() => {
+      (isPinned ? api.unpinComment : api.pinComment)({ id, url }).then(() => {
         api.getComment({ id }).then(comment => store.replaceComment(comment));
       });
     }
   }
 
-  onUnpinClick() {
-    const { id } = this.props.data;
-
-    if (confirm('Do you want to unpin this comment?')) {
-      this.setState({ pinned: false });
-
-      api.unpinComment({ id, url }).then(() => {
-        api.getComment({ id }).then(comment => store.replaceComment(comment));
-      });
-    }
-  }
-
-  onVerifyClick() {
+  toggleVerify(isVerified) {
     const {
       id,
       user: { id: userId },
     } = this.props.data;
+    const promptMessage = `Do you want to ${isVerified ? 'unverify' : 'verify'} this user?`;
 
-    if (confirm('Do you want to verify this user?')) {
-      this.setState({ isUserVerified: true });
+    if (confirm(promptMessage)) {
+      this.setState({ isUserVerified: !isVerified });
 
-      api.setVerifyStatus({ id: userId }).then(() => {
+      (isVerified ? api.removeVerifyStatus : api.setVerifyStatus)({ id: userId }).then(() => {
         api.getComment({ id }).then(comment => store.replaceComment(comment));
       });
     }
   }
 
-  onUnverifyClick() {
+  toggleBlock(isBlocked) {
     const {
       id,
       user: { id: userId },
     } = this.props.data;
+    const promptMessage = `Do you want to ${isBlocked ? 'unblock' : 'block'} this user?`;
 
-    if (confirm('Do you want to unverify this user?')) {
-      this.setState({ isUserVerified: false });
+    if (confirm(promptMessage)) {
+      this.setState({ userBlocked: !isBlocked });
 
-      api.removeVerifyStatus({ id: userId }).then(() => {
-        api.getComment({ id }).then(comment => store.replaceComment(comment));
-      });
-    }
-  }
-
-  onBlockClick() {
-    const {
-      id,
-      user: { id: userId },
-    } = this.props.data;
-
-    if (confirm('Do you want to block this user?')) {
-      this.setState({ userBlocked: true });
-
-      api.blockUser({ id: userId }).then(() => {
-        api.getComment({ id }).then(comment => store.replaceComment(comment));
-      });
-    }
-  }
-
-  onUnblockClick() {
-    const {
-      id,
-      user: { id: userId },
-    } = this.props.data;
-
-    if (confirm('Do you want to unblock this user?')) {
-      this.setState({ userBlocked: false });
-
-      api.unblockUser({ id: userId }).then(() => {
-        api.getComment({ id }).then(comment => store.replaceComment(comment));
-      });
+      (isBlocked ? api.unblockUser : api.blockUser)({ id: userId })
+        .then(api.getComment({ id }))
+        .then(comment => store.replaceComment(comment));
     }
   }
 
@@ -371,7 +327,6 @@ export default class Comment extends Component {
       user: {
         ...data.user,
         picture: data.user.picture.indexOf(API_BASE) === 0 ? `${BASE_URL}${data.user.picture}` : data.user.picture,
-        isDefaultPicture: !data.user.picture.length,
         verified: data.user.verified || isUserVerified,
       },
     };
@@ -408,13 +363,7 @@ export default class Comment extends Component {
       >
         <div className="comment__body">
           <div className="comment__info">
-            {mods.view !== 'user' && (
-              <img
-                className={b('comment__avatar', {}, { default: o.user.isDefaultPicture })}
-                src={o.user.isDefaultPicture ? require('./__avatar/comment__avatar.svg') : o.user.picture}
-                alt=""
-              />
-            )}
+            {mods.view !== 'user' && <Avatar picture={o.user.picture} />}
 
             {mods.view !== 'user' && (
               <span
@@ -429,7 +378,7 @@ export default class Comment extends Component {
             {isAdmin &&
               mods.view !== 'user' && (
                 <span
-                  {...getHandleClickProps(o.user.verified ? this.onUnverifyClick : this.onVerifyClick)}
+                  {...getHandleClickProps(() => this.toggleVerify(o.user.verified))}
                   aria-label="Toggle verification"
                   title={o.user.verified ? 'Verified user' : 'Unverified user'}
                   className={b('comment__verification', {}, { active: o.user.verified, clickable: true })}
@@ -549,29 +498,12 @@ export default class Comment extends Component {
             {!deleted &&
               isAdmin && (
                 <span className="comment__controls">
-                  {!pinned && (
-                    <span {...getHandleClickProps(this.onPinClick)} className="comment__control">
-                      Pin
-                    </span>
-                  )}
-
-                  {pinned && (
-                    <span {...getHandleClickProps(this.onUnpinClick)} className="comment__control">
-                      Unpin
-                    </span>
-                  )}
-
-                  {userBlocked && (
-                    <span {...getHandleClickProps(this.onUnblockClick)} className="comment__control">
-                      Unblock
-                    </span>
-                  )}
-
-                  {!userBlocked && (
-                    <span {...getHandleClickProps(this.onBlockClick)} className="comment__control">
-                      Block
-                    </span>
-                  )}
+                  <span {...getHandleClickProps(() => this.togglePin(pinned))} className="comment__control">
+                    {pinned ? 'Unpin' : 'Pin'}
+                  </span>
+                  <span {...getHandleClickProps(() => this.toggleBlock(userBlocked))} className="comment__control">
+                    {userBlocked ? 'Unblock' : 'Block'}
+                  </span>
 
                   {!deleted && (
                     <span {...getHandleClickProps(this.onDeleteClick)} className="comment__control">
