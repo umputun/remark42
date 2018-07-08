@@ -1,15 +1,12 @@
 /** @jsx h */
-import { h, Component } from 'preact';
+import { h } from 'preact';
 
-export default class Avatar extends Component {
-  render() {
-    const { picture } = this.props;
-    return (
-      <img
-        className={b('comment__avatar', {}, { default: !picture })}
-        src={picture || require('./comment__avatar.svg')}
-        alt=""
-      />
-    );
-  }
+export default function Avatar({ picture }) {
+  return (
+    <img
+      className={b('comment__avatar', {}, { default: !picture })}
+      src={picture || require('./comment__avatar.svg')}
+      alt=""
+    />
+  );
 }

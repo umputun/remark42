@@ -137,7 +137,7 @@ export default class Comment extends Component {
 
   togglePin(isPinned) {
     const { id } = this.props.data;
-    const promptMessage = isPinned ? 'Do you want to unpin this comment?' : 'Do you want to pin this comment?';
+    const promptMessage = `Do you want to ${isPinned ? 'unpin' : 'pin'} this user?`;
 
     if (confirm(promptMessage)) {
       this.setState({ pinned: !isPinned });
@@ -153,7 +153,7 @@ export default class Comment extends Component {
       id,
       user: { id: userId },
     } = this.props.data;
-    const promptMessage = isVerified ? 'Do you want to unverify this user?' : 'Do you want to verify this user?';
+    const promptMessage = `Do you want to ${isVerified ? 'unverify' : 'verify'} this user?`;
 
     if (confirm(promptMessage)) {
       this.setState({ isUserVerified: !isVerified });
@@ -169,7 +169,7 @@ export default class Comment extends Component {
       id,
       user: { id: userId },
     } = this.props.data;
-    const promptMessage = isBlocked ? 'Do you want to unblock this user?' : 'Do you want to block this user?';
+    const promptMessage = `Do you want to ${isBlocked ? 'unblock' : 'block'} this user?`;
 
     if (confirm(promptMessage)) {
       this.setState({ userBlocked: !isBlocked });
