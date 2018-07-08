@@ -53,7 +53,7 @@ FROM node:9.4-alpine as build-frontend
 
 ARG CI
 ARG SKIP_FRONTEND_TEST
-rt 
+
 ADD web /srv/web
 RUN apk add --no-cache --update git
 RUN \
