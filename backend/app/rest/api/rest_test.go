@@ -31,7 +31,7 @@ var getStartedHTML = "/tmp/getstarted.html"
 func TestRest_FileServer(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	body, code := get(t, ts.URL+"/web/test-remark.html")
 	assert.Equal(t, 200, code)
@@ -41,7 +41,7 @@ func TestRest_FileServer(t *testing.T) {
 func TestRest_GetStarted(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	err := ioutil.WriteFile(getStartedHTML, []byte("some html blah"), 0700)
 	assert.Nil(t, err)
@@ -157,8 +157,9 @@ func addComment(t *testing.T, c store.Comment, ts *httptest.Server) string {
 	return crResp["id"].(string)
 }
 
-func cleanup(ts *httptest.Server) {
+func cleanup(ts *httptest.Server, srv *Rest) {
 	ts.Close()
+	srv.DataService.Close()
 	os.Remove(testDb)
 	os.Remove(testHTML)
 }

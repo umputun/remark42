@@ -19,23 +19,23 @@ ARG DRONE_BRANCH
 ARG DRONE_PULL_REQUEST
 
 ARG SKIP_BACKEND_TEST
-ARG MONGO_REMARK_TEST
+ARG MONGO_TEST
 
 WORKDIR /go/src/github.com/umputun/remark/backend
 ADD backend /go/src/github.com/umputun/remark/backend
 
 # run tests
 RUN \
-    if [ -f .mongo ] ; then export MONGO_REMARK_TEST=$(cat .mongo) ; fi && \
+    if [ -f .mongo ] ; then export MONGO_TEST=$(cat .mongo) ; fi && \
     cd app && \
     if [ -z "$SKIP_BACKEND_TEST" ] ; then go test ./... ; \
     else echo "skip backend test" ; fi
 
-RUN echo "mongo=${MONGO_REMARK_TEST}" >> /etc/hosts
+RUN echo "mongo=${MONGO_TEST}" >> /etc/hosts
 
 # linters
 RUN if [ -z "$SKIP_BACKEND_TEST" ] ; then \
-    if [ -f .mongo ] ; then export MONGO_REMARK_TEST=$(cat .mongo) ; fi && \
+    if [ -f .mongo ] ; then export MONGO_TEST=$(cat .mongo) ; fi && \
     gometalinter --disable-all --deadline=300s --vendor --enable=vet --enable=vetshadow --enable=golint \
     --enable=staticcheck --enable=ineffassign --enable=goconst --enable=errcheck --enable=unconvert \
     --enable=deadcode  --enable=gosimple --enable=gas --exclude=test --exclude=mock --exclude=vendor ./... ; \
@@ -43,6 +43,7 @@ RUN if [ -z "$SKIP_BACKEND_TEST" ] ; then \
 
 # coverage report
 RUN if [ -z "$SKIP_BACKEND_TEST" ] ; then \
+    if [ -f .mongo ] ; then export MONGO_TEST=$(cat .mongo) ; fi && \
     mkdir -p target && /script/coverage.sh ; \
     else echo "skip backend coverage" ; fi
 
@@ -73,10 +74,9 @@ FROM node:10.6-alpine as build-frontend
 
 ARG CI
 ARG SKIP_FRONTEND_TEST
-ARG NODE_ENV=production
 
-COPY --from=build-frontend-deps /srv/web/node_modules /srv/web/node_modules
 ADD web /srv/web
+COPY --from=build-frontend-deps /srv/web/node_modules /srv/web/node_modules
 RUN cd /srv/web && \
     if [ -z "$SKIP_FRONTEND_TEST" ] ; then npx run-p lint test build ; \
     else echo "skip frontend tests and lint" ; npm run build ; fi && \ 

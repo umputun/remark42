@@ -69,6 +69,18 @@ export const getUser = () =>
     withCredentials: true,
   });
 
+/* GDPR */
+
+export const deleteMe = () =>
+  fetcher.post({
+    url: `/deleteme?site=${siteId}`,
+  });
+
+export const approveDeleteMe = token =>
+  fetcher.get({
+    url: `/admin/deleteme?token=${token}`,
+  });
+
 /* admin */
 export const pinComment = ({ id, url }) =>
   fetcher.put({

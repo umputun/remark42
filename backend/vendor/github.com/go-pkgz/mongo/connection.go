@@ -6,7 +6,7 @@ import (
 	"github.com/globalsign/mgo"
 )
 
-// sessionFn is a function for all With calls, terminator not supported
+// sessionFn is a function for all With*Collection calls
 type sessionFn func(coll *mgo.Collection) error
 
 // Connection allows to run request in separate session, closing automatically

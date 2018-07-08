@@ -31,11 +31,7 @@ func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := rest.GetUserInfo(r)
-	if err != nil { // this not suppose to happen (handled by Auth), just dbl-check
-		rest.SendErrorJSON(w, r, http.StatusUnauthorized, err, "can't get user info")
-		return
-	}
+	user := rest.MustGetUserInfo(r)
 	log.Printf("[DEBUG] create comment %+v", comment)
 
 	comment.PrepareUntrusted() // clean all fields user not supposed to set
@@ -43,7 +39,7 @@ func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	comment.User.IP = strings.Split(r.RemoteAddr, ":")[0]
 
 	comment.Orig = comment.Text // original comment text, prior to md render
-	if err = s.DataService.ValidateComment(&comment); err != nil {
+	if err := s.DataService.ValidateComment(&comment); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment")
 		return
 	}
@@ -93,17 +89,14 @@ func (s *Rest) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := rest.GetUserInfo(r)
-	if err != nil { // this not suppose to happen (handled by Auth), just dbl-check
-		rest.SendErrorJSON(w, r, http.StatusUnauthorized, err, "can't get user info")
-		return
-	}
+	user := rest.MustGetUserInfo(r)
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	id := chi.URLParam(r, "id")
 
 	log.Printf("[DEBUG] update comment %s", id)
 
 	var currComment store.Comment
+	var err error
 	if currComment, err = s.DataService.Get(locator, id); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't find comment")
 		return
@@ -134,12 +127,7 @@ func (s *Rest) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 // GET /user?site=siteID - returns user info
 func (s *Rest) userInfoCtrl(w http.ResponseWriter, r *http.Request) {
-	user, err := rest.GetUserInfo(r)
-	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusUnauthorized, err, "can't get user info")
-		return
-	}
-
+	user := rest.MustGetUserInfo(r)
 	if siteID := r.URL.Query().Get("site"); siteID != "" {
 		user.Verified = s.DataService.IsVerified(siteID, user.ID)
 	}
@@ -149,12 +137,7 @@ func (s *Rest) userInfoCtrl(w http.ResponseWriter, r *http.Request) {
 
 // PUT /vote/{id}?site=siteID&url=post-url&vote=1 - vote for/against comment
 func (s *Rest) voteCtrl(w http.ResponseWriter, r *http.Request) {
-
-	user, err := rest.GetUserInfo(r)
-	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusUnauthorized, err, "can't get user info")
-		return
-	}
+	user := rest.MustGetUserInfo(r)
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	id := chi.URLParam(r, "id")
 	log.Printf("[DEBUG] vote for comment %s", id)
@@ -179,11 +162,7 @@ func (s *Rest) voteCtrl(w http.ResponseWriter, r *http.Request) {
 // GET /userdata?site=siteID - exports all data about the user as a json with user info and list of all comments
 func (s *Rest) userAllDataCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
-	user, err := rest.GetUserInfo(r)
-	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusUnauthorized, err, "can't get user info")
-		return
-	}
+	user := rest.MustGetUserInfo(r)
 	userB, err := json.Marshal(&user)
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't marshal user info")
@@ -241,11 +220,7 @@ func (s *Rest) userAllDataCtrl(w http.ResponseWriter, r *http.Request) {
 // POST /deleteme?site_id=site - requesting delete of all user info
 // makes jwt with user info and sends it back as a part of json response
 func (s *Rest) deleteMeCtrl(w http.ResponseWriter, r *http.Request) {
-	user, err := rest.GetUserInfo(r)
-	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusUnauthorized, err, "can't get user info")
-		return
-	}
+	user := rest.MustGetUserInfo(r)
 	siteID := r.URL.Query().Get("site")
 
 	claims := auth.CustomClaims{
@@ -257,12 +232,14 @@ func (s *Rest) deleteMeCtrl(w http.ResponseWriter, r *http.Request) {
 		},
 		User: &user,
 	}
+	claims.Flags.DeleteMe = true // prevent this token from being used for login
 
 	tokenStr, err := s.Authenticator.JWTService.Token(&claims)
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't make token")
 		return
 	}
+
 	link := fmt.Sprintf("%s/web/deleteme.html?token=%s", s.RemarkURL, tokenStr)
 	render.JSON(w, r, JSON{"site": siteID, "user_id": user.ID, "token": tokenStr, "link": link})
 }

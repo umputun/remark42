@@ -1,9 +1,10 @@
 // Package mongo wraps mgo to provide easier way to construct mongo server (with auth).
-// Connection provides With* func warapers to run query with session copy
+// Connection provides With* func wrappers to run query with session copy
 package mongo
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -12,7 +13,6 @@ import (
 	"time"
 
 	"github.com/globalsign/mgo"
-	"github.com/pkg/errors"
 )
 
 // Server represents mongo instance and provides session accessor
@@ -24,9 +24,9 @@ type Server struct {
 
 // ServerParams optional set of parameters
 type ServerParams struct {
+	ConsistencyMode mgo.Mode
 	Delay           int  // initial delay to give mongo server some time to start, in case if mongo part of the same compose
 	Debug           bool // turn on mgo debug mode
-	ConsistencyMode mgo.Mode
 	SSL             bool
 }
 
@@ -35,14 +35,13 @@ type ServerParams struct {
 func NewServerWithURL(url string, timeout time.Duration) (res *Server, err error) {
 	dial, params, err := parseURL(url, timeout)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to create mongo server from url %s", url)
+		return nil, fmt.Errorf("failed to create mongo server from url %s, %s", url, err)
 	}
 	return NewServer(dial, params)
 }
 
 // NewServer doing auth if passwd != "" and can delay to make sure local mongo is up
 func NewServer(dial mgo.DialInfo, params ServerParams) (res *Server, err error) {
-	log.Printf("[INFO] make new mongo server %v with %+v", dial.Addrs, params)
 	result := Server{dial: dial, params: params}
 
 	if params.Debug {
@@ -71,9 +70,7 @@ func NewServer(dial mgo.DialInfo, params ServerParams) (res *Server, err error) 
 
 	session, err := mgo.DialWithInfo(&dial)
 	if err != nil {
-		err = fmt.Errorf("can't connect to mongo, %v", err)
-		log.Printf("[ERROR] %v", err)
-		return nil, err
+		return nil, fmt.Errorf("can't connect to mongo, %v", err)
 	}
 	session.SetMode(params.ConsistencyMode, true)
 	session.SetSyncTimeout(30 * time.Second)
@@ -83,8 +80,7 @@ func NewServer(dial mgo.DialInfo, params ServerParams) (res *Server, err error) 
 		creds := &mgo.Credential{Username: dial.Username, Password: dial.Password, Source: dial.Source}
 		log.Printf("[DEBUG] login to mongo, user=%s, db=%s", creds.Username, creds.Source)
 		if err = session.Login(creds); err != nil {
-			log.Printf("[ERROR] can't login to mongo, %v", err)
-			return nil, err
+			return nil, fmt.Errorf("can't login to mongo, %v", err)
 		}
 	}
 
@@ -114,7 +110,7 @@ func parseURL(mongoURL string, connectTimeout time.Duration) (mgo.DialInfo, Serv
 
 	dial, err := mgo.ParseURL(mongoURL)
 	if err != nil {
-		return mgo.DialInfo{}, ServerParams{}, errors.Wrapf(err, "failed to pars mongo url %s", mongoURL)
+		return mgo.DialInfo{}, ServerParams{}, fmt.Errorf("failed to pars mongo url %s, %s", mongoURL, err)
 	}
 	dial.Timeout = connectTimeout
 	return *dial, params, nil

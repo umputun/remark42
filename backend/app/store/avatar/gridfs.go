@@ -7,10 +7,10 @@ import (
 	"log"
 
 	"github.com/globalsign/mgo"
+	"github.com/go-pkgz/mongo"
 	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/backend/app/store"
-	"github.com/umputun/remark/backend/app/store/engine/mongo"
 )
 
 // NewGridFS makes gridfs (mongo) avatar store

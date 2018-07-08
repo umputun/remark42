@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-pkgz/mongo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/umputun/remark/backend/app/store"
-	"github.com/umputun/remark/backend/app/store/engine/mongo"
 )
 
 func TestMongo_CreateAndFind(t *testing.T) {

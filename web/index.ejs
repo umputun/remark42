@@ -19,13 +19,6 @@
 </head>
 <body>
   <div class="container">
-    <h1>Demo page</h1>
-    <p>To install widgets on your website, follow the <a href="https://github.com/umputun/remark#setup-on-your-website">instructions</a>.</p>
-    <p>See also</p>
-    <ul>
-      <li><a href="/web/last-comments.html">Last comments widget</a></li>
-      <li><a href="/web/counter.html">Counter widget</a></li>
-    </ul>
     <div id="remark42"></div>
   </div>
 
@@ -37,7 +30,8 @@
 
     (function() {
       var d = document, s = d.createElement('script');
-      s.src = '/web/embed.js';
+      var baseurl = 'https://demo.remark42.com/';
+      s.src = baseurl + '/web/embed.js';
       s.type = 'text/javascript';
       (d.head || d.body).appendChild(s);
     })();

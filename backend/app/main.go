@@ -11,9 +11,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/umputun/remark/backend/app/store/avatar"
-
 	"github.com/coreos/bbolt"
+	"github.com/go-pkgz/mongo"
 	"github.com/hashicorp/logutils"
 	"github.com/jessevdk/go-flags"
 	"github.com/pkg/errors"
@@ -23,8 +22,8 @@ import (
 	"github.com/umputun/remark/backend/app/rest/auth"
 	"github.com/umputun/remark/backend/app/rest/cache"
 	"github.com/umputun/remark/backend/app/rest/proxy"
+	"github.com/umputun/remark/backend/app/store/avatar"
 	"github.com/umputun/remark/backend/app/store/engine"
-	"github.com/umputun/remark/backend/app/store/engine/mongo"
 	"github.com/umputun/remark/backend/app/store/service"
 )
 

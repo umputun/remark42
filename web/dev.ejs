@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>remark42</title>
+
+  <style>
+    body {
+      padding: 0;
+      margin: 0;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 5px;
+    }
+
+    @media (min-width: 768px) {
+      .container {
+        margin: 40px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="remark42"></div>
+  </div>
+
+  <script>
+    var remark_config = {
+      site_id: 'radiot',
+      url: 'https://radio-t.com/p/2017/12/16/podcast-576/',
+    };
+
+    (function() {
+      var d = document, s = d.createElement('script');
+      s.src = '/embed.js';
+      (d.head || d.body).appendChild(s);
+    })();
+  </script>
+</body>
+</html>

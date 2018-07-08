@@ -2,12 +2,12 @@ package mongo
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"sync"
 	"time"
 
 	"github.com/globalsign/mgo"
-	"github.com/pkg/errors"
 )
 
 // BufferedWriter defines interface for writes and flush
@@ -76,7 +76,6 @@ func (bw *BufferedWriterMgo) WithAutoFlush(duration time.Duration) *BufferedWrit
 							}
 						}
 					case <-bw.ctx.Done():
-						log.Printf("[DEBUG] mongo writer flusher terminated")
 						return
 					}
 				}
@@ -92,9 +91,10 @@ func (bw *BufferedWriterMgo) Write(rec interface{}) error {
 		bw.lastWriteTime = time.Now()
 		bw.buffer = append(bw.buffer, rec)
 		if len(bw.buffer) >= bw.bufferSize {
-			err := bw.writeBuffer()
+			if err := bw.writeBuffer(); err != nil {
+				return fmt.Errorf("failed to write to %s, %s", bw.connection, err)
+			}
 			bw.buffer = bw.buffer[0:0]
-			return errors.Wrapf(err, "failed to write to %s", bw.connection)
 		}
 		return nil
 	})
@@ -102,11 +102,15 @@ func (bw *BufferedWriterMgo) Write(rec interface{}) error {
 
 // Flush writes everything left in buffer to mongo
 func (bw *BufferedWriterMgo) Flush() error {
-	return bw.synced(func() error {
+	err := bw.synced(func() error {
 		err := bw.writeBuffer()
 		bw.buffer = bw.buffer[0:0]
-		return errors.Wrapf(err, "failed to flush to %s", bw.connection)
+		return err
 	})
+	if err != nil {
+		return fmt.Errorf("failed to flush to %s, %s", bw.connection, err)
+	}
+	return nil
 }
 
 // Close flushes all in-fly records and terminates background auto-flusher
@@ -116,7 +120,6 @@ func (bw *BufferedWriterMgo) Close() (err error) {
 		if bw.flushDuration > 0 {
 			bw.cancel()
 			<-bw.ctx.Done()
-			log.Printf("[DEBUG] mongo buffered writer closed")
 		}
 		return err
 	})

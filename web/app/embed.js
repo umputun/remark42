@@ -35,7 +35,7 @@ function init() {
 
   node.innerHTML = `
     <iframe
-      src="${BASE_URL}/web/iframe.html?${query}"
+      src="${process.env.NODE_ENV === 'production' ? `${BASE_URL}/web` : ''}/iframe.html?${query}"
       width="100%"
       frameborder="0"
       allowtransparency="true"
@@ -51,9 +51,8 @@ function init() {
   const iframe = node.getElementsByTagName('iframe')[0];
 
   window.addEventListener('message', receiveMessages);
-
   window.addEventListener('hashchange', postHashToIframe);
-
+  document.addEventListener('click', postClickOutsideToIframe);
   setTimeout(postHashToIframe, 1000);
 
   const remarkRootId = 'remark-km423lmfdslkm34';
@@ -140,7 +139,7 @@ function init() {
         `&id=${user.id}&name=${user.name}&picture=${user.picture || ''}&isDefaultPicture=${user.isDefaultPicture || 0}`;
       this.node.innerHTML = `
       <iframe
-        src="${BASE_URL}/web/iframe.html?${queryUserInfo}"
+        src="${process.env.NODE_ENV === 'production' ? `${BASE_URL}/web` : ''}/iframe.html?${queryUserInfo}"
         width="100%"
         height="100%"
         frameborder="0"
@@ -228,6 +227,12 @@ function init() {
       if (e) e.preventDefault();
 
       iframe.contentWindow.postMessage(JSON.stringify({ hash }), '*');
+    }
+  }
+
+  function postClickOutsideToIframe(e) {
+    if (!iframe.contains(e.target)) {
+      iframe.contentWindow.postMessage(JSON.stringify({ clickOutside: true }), '*');
     }
   }
 }

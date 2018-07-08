@@ -14,13 +14,9 @@ import (
 	"github.com/umputun/remark/backend/app/store"
 )
 
-var testJwtValid = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjI3ODkxOTE4MjIsImp0aSI6InJhbmRvbSBpZCI" +
-	"sImlzcyI6InJlbWFyazQyIiwibmJmIjoxNTI2ODg0MjIyLCJ1c2VyIjp7Im5hbWUiOiJuYW1lMSIsImlkIjoiaWQxIiwicGljdHVyZS" +
-	"I6IiIsImFkbWluIjpmYWxzZX0sInN0YXRlIjoiMTIzNDU2IiwiZnJvbSI6ImZyb20ifQ._loFgh3g45gr9TtGqvM3N584I_6EHEOJnYb6Py84stQ"
+var testJwtValid = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjI3ODkxOTE4MjIsImp0aSI6InJhbmRvbSBpZCIsImlzcyI6InJlb" + "WFyazQyIiwibmJmIjoxNTI2ODg0MjIyLCJ1c2VyIjp7Im5hbWUiOiJuYW1lMSIsImlkIjoiaWQxIiwicGljdHVyZSI6IiIsImFkbWluIjpmYWxzZX0" + "sInN0YXRlIjoiMTIzNDU2IiwiZnJvbSI6ImZyb20iLCJmbGFncyI6e319.E2Blxqo1wsY855q258c0obxFJ1lgJciv1av1ewzlJBs"
 
-var testJwtValidSess = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjI3ODkxOTE4MjIsImp0aSI6InJhbmRvbSBpZCIsImlzcyI6In" +
-	"JlbWFyazQyIiwibmJmIjoxNTI2ODg0MjIyLCJ1c2VyIjp7Im5hbWUiOiJuYW1lMSIsImlkIjoiaWQxIiwicGljdHVyZSI6IiIsIm" +
-	"FkbWluIjpmYWxzZX0sInN0YXRlIjoiMTIzNDU2IiwiZnJvbSI6ImZyb20iLCJzZXNzX29ubHkiOnRydWV9.p6w0sM_NYaRuyhyA9jqfWlB5cx1vZPGhXGC5geSX7nA"
+var testJwtValidSess = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjI3ODkxOTE4MjIsImp0aSI6InJhbmRvbSBpZCIs" + "ImlzcyI6InJlbWFyazQyIiwibmJmIjoxNTI2ODg0MjIyLCJ1c2VyIjp7Im5hbWUiOiJuYW1lMSIsImlkIjoiaWQxIiwicGljdHVyZSI6IiIsImFk" + "bWluIjpmYWxzZX0sInN0YXRlIjoiMTIzNDU2IiwiZnJvbSI6ImZyb20iLCJzZXNzX29ubHkiOnRydWUsImZsYWdzIjp7fX0." + "nKhehF1Xiome1yK1ewfOiIsrATvq7Tx7p1BCSJqKHuo"
 
 var testJwtExpired = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1MjY4ODc4MjIsImp0aSI6InJhbmRvbSBpZCIs" +
 	"ImlzcyI6InJlbWFyazQyIiwibmJmIjoxNTI2ODg0MjIyLCJ1c2VyIjp7Im5hbWUiOiJuYW1lMSIsImlkIjoiaWQxIiwicGljdHVyZSI6IiI" +
@@ -89,9 +85,9 @@ func TestJWT_Set(t *testing.T) {
 			ExpiresAt: time.Date(2058, 5, 21, 1, 30, 22, 0, time.Local).Unix(),
 			NotBefore: time.Date(2018, 5, 21, 1, 30, 22, 0, time.Local).Unix(),
 		},
+		SessionOnly: false,
 	}
 
-	claims.SessionOnly = false
 	rr := httptest.NewRecorder()
 	err := j.Set(rr, claims, claims.SessionOnly)
 	assert.Nil(t, err)
