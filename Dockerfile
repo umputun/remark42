@@ -23,7 +23,6 @@ ARG SKIP_BACKEND_TEST
 WORKDIR /go/src/github.com/umputun/remark/backend
 ADD backend /go/src/github.com/umputun/remark/backend
 
-# run mongo tests in CI enviroment only
 RUN cd app && \
     if [ -z "$SKIP_BACKEND_TEST" ] ; then go test ./... ; \
     else echo "skip backend test" ; fi
@@ -52,7 +51,9 @@ RUN \
 
 FROM node:9.4-alpine as build-frontend
 
+ARG CI
 ARG SKIP_FRONTEND_TEST
+rt 
 ADD web /srv/web
 RUN apk add --no-cache --update git
 RUN \
