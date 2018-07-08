@@ -37,6 +37,8 @@ export default class Comment extends Component {
     this.onEdit = this.onEdit.bind(this);
     this.onReply = this.onReply.bind(this);
     this.onDeleteClick = this.onDeleteClick.bind(this);
+    this.onBlockUserClick = this.onBlockUserClick.bind(this);
+    this.onUnblockUserClick = this.onUnblockUserClick.bind(this);
   }
 
   componentWillReceiveProps(nextProps) {
@@ -164,17 +166,38 @@ export default class Comment extends Component {
     }
   }
 
-  toggleBlock(isBlocked) {
+  onBlockUserClick(e) {
     const {
       id,
       user: { id: userId },
     } = this.props.data;
-    const promptMessage = `Do you want to ${isBlocked ? 'unblock' : 'block'} this user?`;
+
+    const ttl = e.target.value;
+    const duration = getBlockArray().filter(el => el.value === ttl)[0].label;
+    const promptMessage = ttl === 'permanently'
+      ? 'Do you want to permanently block this user?'
+      : `Do you want to block this user (${duration.toLowerCase()})?`;
+    if (confirm(promptMessage)) {
+      this.setState({ userBlocked: true });
+
+      api.blockUser({ id: userId, ttl })
+        .then(api.getComment({ id }))
+        .then(comment => store.replaceComment(comment));
+    }
+  }
+
+  onUnblockUserClick() {
+    const {
+      id,
+      user: { id: userId },
+    } = this.props.data;
+
+    const promptMessage = `Do you want to unblock this user?`;
 
     if (confirm(promptMessage)) {
-      this.setState({ userBlocked: !isBlocked });
+      this.setState({ userBlocked: false });
 
-      (isBlocked ? api.unblockUser : api.blockUser)({ id: userId })
+      api.unblockUser({ id: userId })
         .then(api.getComment({ id }))
         .then(comment => store.replaceComment(comment));
     }
@@ -298,6 +321,7 @@ export default class Comment extends Component {
     const isCurrentUser = (data.user && data.user.id) === (store.get('user') && store.get('user').id);
     const config = store.get('config') || {};
     const lowCommentScore = config.low_score;
+    const blockArray = getBlockArray();
 
     const o = {
       ...data,
@@ -501,9 +525,28 @@ export default class Comment extends Component {
                   <span {...getHandleClickProps(() => this.togglePin(pinned))} className="comment__control">
                     {pinned ? 'Unpin' : 'Pin'}
                   </span>
-                  <span {...getHandleClickProps(() => this.toggleBlock(userBlocked))} className="comment__control">
-                    {userBlocked ? 'Unblock' : 'Block'}
-                  </span>
+
+                  {userBlocked && (
+                    <span {...getHandleClickProps(() => this.onUnblockUserClick())} className="comment__control">
+                      Unblock
+                    </span>
+                  )}
+
+                  {!userBlocked && (
+                    <span className="comment__control comment__control_block">
+                      Block
+                      <select className="comment__control_block__select"
+                        onChange={this.onBlockUserClick}>
+                          <option disabled selected value> Blocking period </option>
+                        {blockArray.map(block => (
+                          <option value={block.value}
+                            selected={block.selected}>
+                          {block.label}
+                          </option>
+                        ))}
+                      </select>
+                    </span>
+                  )}
 
                   {!deleted && (
                     <span {...getHandleClickProps(this.onDeleteClick)} className="comment__control">
@@ -559,4 +602,27 @@ function formatTime(time) {
   const mins = `0${time.getMinutes()}`.slice(-2);
 
   return `${date} at ${hours}:${mins}`;
+}
+
+function getBlockArray() {
+  const blockArray = [
+    {
+      label: 'Permanently',
+      value: 'permanently',
+    },
+    {
+      label: 'For a month',
+      value: `${30 * 60 * 24}m`,
+    },
+    {
+      label: 'For a week',
+      value: `${7 * 60 * 24}m`,
+    },
+    {
+      label: 'For a day',
+      value: `${60 * 24}m`,
+    },
+  ];
+
+  return blockArray;
 }
