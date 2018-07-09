@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/gorilla/feeds"
+	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/rest/cache"
@@ -15,8 +16,8 @@ import (
 )
 
 const maxRssItems = 20
-const maxLastForReply = 100
-const maxReplyMins = 30 * time.Minute
+const maxLastCommentsReply = 100
+const maxReplyDuration = 30 * time.Minute
 
 // ui uses links like <post-url>#remark42__comment-<comment-id>
 const uiNav = "#remark42__comment-"
@@ -97,22 +98,22 @@ func (s *Rest) rssRepliesCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	log.Printf("[DEBUG] get rss replies to user %s for site %s", userID, siteID)
 
-	data, err := s.Cache.Get(cache.Key(cache.URLKey(r), siteID, userID), func() ([]byte, error) {
-		comments, e := s.DataService.Last(siteID, maxLastForReply)
+	data, err := s.Cache.Get(cache.Key(cache.URLKey(r), siteID, userID), func() (res []byte, e error) {
+		comments, e := s.DataService.Last(siteID, maxLastCommentsReply)
 		if e != nil {
-			return nil, e
+			return nil, errors.Wrap(e, "can't get last comments")
 		}
 		comments = s.adminService.alterComments(comments, r)
 
 		replies := []store.Comment{}
 		for _, c := range comments {
-			if len(replies) > maxRssItems || c.Timestamp.Add(maxReplyMins).Before(time.Now()) {
+			if len(replies) > maxRssItems || c.Timestamp.Add(maxReplyDuration).Before(time.Now()) {
 				break
 			}
 			if c.ParentID != "" && !c.Deleted && c.User.ID != userID { // not interested replies to yourself
-				pc, errP := s.DataService.Get(c.Locator, c.ParentID)
-				if errP != nil {
-					return nil, errP
+				var pc store.Comment
+				if pc, e = s.DataService.Get(c.Locator, c.ParentID); e != nil {
+					return nil, errors.Wrap(e, "can't get parent comment")
 				}
 				if pc.User.ID == userID {
 					replies = append(replies, c)
