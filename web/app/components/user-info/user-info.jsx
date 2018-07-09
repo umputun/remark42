@@ -5,6 +5,7 @@ import api from 'common/api';
 import { getHandleClickProps } from 'common/accessibility';
 
 import LastCommentsList from './last-comments-list';
+import Avatar from 'components/avatar-icon';
 
 class UserInfo extends Component {
   constructor(props) {
@@ -29,19 +30,20 @@ class UserInfo extends Component {
 
   render(props, { comments, isLoading }) {
     const {
-      user: { name, id },
+      user: { name, id, isDefaultPicture, picture },
       onClose,
     } = props;
 
     return (
       <div className={b('user-info', props)}>
+        <Avatar className="user-info__avatar" picture={isDefaultPicture ? null : picture} />
         <p className="user-info__title">Last comments by {name}</p>
         <p className="user-info__id">{id}</p>
 
         <LastCommentsList isLoading={isLoading} comments={comments} />
 
         <span {...getHandleClickProps(onClose)} className="user-info__close">
-          Close
+          Close &#10006;
         </span>
       </div>
     );
