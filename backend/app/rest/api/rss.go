@@ -15,6 +15,8 @@ import (
 )
 
 const maxRssItems = 20
+const maxLastForReply = 100
+const maxReplyMins = 30 * time.Minute
 
 // ui uses links like <post-url>#remark42__comment-<comment-id>
 const uiNav = "#remark42__comment-"
@@ -23,6 +25,7 @@ func (s *Rest) rssRoutes() chi.Router {
 	router := chi.NewRouter()
 	router.Get("/post", s.rssPostCommentsCtrl)
 	router.Get("/site", s.rssSiteCommentsCtrl)
+	router.Get("/reply", s.rssRepliesCtrl)
 	return router
 }
 
@@ -78,6 +81,54 @@ func (s *Rest) rssSiteCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get last comments")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/xml; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	if _, err := w.Write(data); err != nil {
+		log.Printf("[WARN] failed to send response to %s, %s", r.RemoteAddr, err)
+	}
+}
+
+// GET /rss/reply?user=userID&site=siteID
+func (s *Rest) rssRepliesCtrl(w http.ResponseWriter, r *http.Request) {
+	userID := r.URL.Query().Get("user")
+	siteID := r.URL.Query().Get("site")
+	log.Printf("[DEBUG] get rss replies to user %s for site %s", userID, siteID)
+
+	data, err := s.Cache.Get(cache.Key(cache.URLKey(r), siteID, userID), func() ([]byte, error) {
+		comments, e := s.DataService.Last(siteID, maxLastForReply)
+		if e != nil {
+			return nil, e
+		}
+		comments = s.adminService.alterComments(comments, r)
+
+		replies := []store.Comment{}
+		for _, c := range comments {
+			if len(replies) > maxRssItems || c.Timestamp.Add(maxReplyMins).Before(time.Now()) {
+				break
+			}
+			if c.ParentID != "" && !c.Deleted && c.User.ID != userID { // not interested replies to yourself
+				pc, errP := s.DataService.Get(c.Locator, c.ParentID)
+				if errP != nil {
+					return nil, errP
+				}
+				if pc.User.ID == userID {
+					replies = append(replies, c)
+				}
+			}
+		}
+
+		rss, e := s.toRssFeed(siteID, replies)
+		if e != nil {
+			return nil, e
+		}
+		return []byte(rss), e
+	})
+
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get replies")
 		return
 	}
 
