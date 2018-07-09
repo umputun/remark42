@@ -537,6 +537,7 @@ export default class Comment extends Component {
                   {!userBlocked && (
                     <span className="comment__control comment__control_select-label">
                       Block
+                      {/* eslint-disable jsx-a11y/no-onchange */}
                       <select className="comment__control_select" onChange={this.onBlockUserClick}>
                         <option disabled selected value>
                           {' '}
