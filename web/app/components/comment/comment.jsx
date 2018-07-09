@@ -545,7 +545,7 @@ export default class Comment extends Component {
                           Blocking period{' '}
                         </option>
                         {blockingOptions.map(block => (
-                          <option value={block.value} selected={block.selected}>
+                          <option value={block.value}>
                             {block.label}
                           </option>
                         ))}
