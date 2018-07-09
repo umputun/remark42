@@ -3,7 +3,7 @@ import { h, Component } from 'preact';
 
 import api from 'common/api';
 import { getHandleClickProps } from 'common/accessibility';
-import { API_BASE, BASE_URL, COMMENT_NODE_CLASSNAME_PREFIX } from 'common/constants';
+import { API_BASE, BASE_URL, COMMENT_NODE_CLASSNAME_PREFIX, BLOCKING_DURATIONS } from 'common/constants';
 import { url } from 'common/settings';
 import store from 'common/store';
 
@@ -173,7 +173,7 @@ export default class Comment extends Component {
     } = this.props.data;
 
     const ttl = e.target.value;
-    const duration = blockingDurations.find(el => el.value === ttl).label;
+    const duration = BLOCKING_DURATIONS.find(el => el.value === ttl).label;
     const promptMessage =
       ttl === 'permanently'
         ? 'Do you want to permanently block this user?'
@@ -324,8 +324,6 @@ export default class Comment extends Component {
     const isCurrentUser = (data.user && data.user.id) === (store.get('user') && store.get('user').id);
     const config = store.get('config') || {};
     const lowCommentScore = config.low_score;
-
-    const blockingOptions = blockingDurations;
 
     const o = {
       ...data,
@@ -544,11 +542,7 @@ export default class Comment extends Component {
                           {' '}
                           Blocking period{' '}
                         </option>
-                        {blockingOptions.map(block => (
-                          <option value={block.value}>
-                            {block.label}
-                          </option>
-                        ))}
+                        {BLOCKING_DURATIONS.map(block => <option value={block.value}>{block.label}</option>)}
                       </select>
                     </span>
                   )}
@@ -608,22 +602,3 @@ function formatTime(time) {
 
   return `${date} at ${hours}:${mins}`;
 }
-
-const blockingDurations = [
-  {
-    label: 'Permanently',
-    value: 'permanently',
-  },
-  {
-    label: 'For a month',
-    value: `${30 * 60 * 24}m`,
-  },
-  {
-    label: 'For a week',
-    value: `${7 * 60 * 24}m`,
-  },
-  {
-    label: 'For a day',
-    value: `${60 * 24}m`,
-  },
-];

@@ -18,6 +18,25 @@ const PROVIDER_NAMES = {
 const LS_COLLAPSE_KEY = '__remarkCollapsed';
 const LS_SORT_KEY = '__remarkSort';
 
+const BLOCKING_DURATIONS = [
+  {
+    label: 'Permanently',
+    value: 'permanently',
+  },
+  {
+    label: 'For a month',
+    value: `${30 * 60 * 24}m`,
+  },
+  {
+    label: 'For a week',
+    value: `${7 * 60 * 24}m`,
+  },
+  {
+    label: 'For a day',
+    value: `${60 * 24}m`,
+  },
+];
+
 module.exports = {
   BASE_URL,
   API_BASE,
@@ -32,4 +51,5 @@ module.exports = {
   DEFAULT_SORT,
   LS_COLLAPSE_KEY,
   LS_SORT_KEY,
+  BLOCKING_DURATIONS,
 };
