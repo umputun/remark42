@@ -1,0 +1,9 @@
+.comment__control_select-label {
+  position: relative;
+  white-space: nowrap;
+  font-weight: 700;
+  &::after {
+    content: '▾';
+    margin-left: 2px;
+  }
+}

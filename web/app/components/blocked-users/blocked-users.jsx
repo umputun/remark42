@@ -51,6 +51,7 @@ export default class BlockedUsers extends Component {
                 <li className={b('blocked-users__list-item', {}, { view: isUserUnblocked ? 'invisible' : null })}>
                   <span className="blocked-users__username">{user.name}</span>{' '}
                   <span className="blocked-users__user-id">({user.id})</span>
+                  <span className="blocked-users__user-block-ttl"> until {formatTime(new Date(user.time))}</span>
                   {isUserUnblocked && (
                     <span {...getHandleClickProps(() => this.block(user))} className="blocked-users__action">
                       block
@@ -69,4 +70,15 @@ export default class BlockedUsers extends Component {
       </div>
     );
   }
+}
+
+function formatTime(time) {
+  // 'ru-RU' adds a dot as a separator
+  const date = time.toLocaleDateString(['ru-RU'], { day: '2-digit', month: '2-digit', year: '2-digit' });
+
+  // do it manually because Intl API doesn't add leading zeros to hours; idk why
+  const hours = `0${time.getHours()}`.slice(-2);
+  const mins = `0${time.getMinutes()}`.slice(-2);
+
+  return `${date} at ${hours}:${mins}`;
 }
