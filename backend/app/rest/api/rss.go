@@ -15,6 +15,8 @@ import (
 )
 
 const maxRssItems = 20
+const maxLastForReply = 100
+const maxReplyMins = 30 * time.Minute
 
 // ui uses links like <post-url>#remark42__comment-<comment-id>
 const uiNav = "#remark42__comment-"
@@ -96,7 +98,7 @@ func (s *Rest) rssRepliesCtrl(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[DEBUG] get rss replies to user %s for site %s", userID, siteID)
 
 	data, err := s.Cache.Get(cache.Key(cache.URLKey(r), siteID, userID), func() ([]byte, error) {
-		comments, e := s.DataService.Last(siteID, 100)
+		comments, e := s.DataService.Last(siteID, maxLastForReply)
 		if e != nil {
 			return nil, e
 		}
@@ -104,13 +106,13 @@ func (s *Rest) rssRepliesCtrl(w http.ResponseWriter, r *http.Request) {
 
 		replies := []store.Comment{}
 		for _, c := range comments {
-			if len(replies) > maxRssItems || c.Timestamp.Add(30*time.Minute).Before(time.Now()) {
+			if len(replies) > maxRssItems || c.Timestamp.Add(maxReplyMins).Before(time.Now()) {
 				break
 			}
 			if c.ParentID != "" && !c.Deleted && c.User.ID != userID { // not interested replies to yourself
-				pc, e := s.DataService.Get(c.Locator, c.ParentID)
-				if e != nil {
-					return nil, e
+				pc, errP := s.DataService.Get(c.Locator, c.ParentID)
+				if errP != nil {
+					return nil, errP
 				}
 				if pc.User.ID == userID {
 					replies = append(replies, c)
