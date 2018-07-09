@@ -9,7 +9,7 @@ import store from 'common/store';
 
 import Input from 'components/input';
 
-import Avatar from './__avatar/comment__avatar';
+import Avatar from 'components/avatar-icon';
 
 export default class Comment extends Component {
   constructor(props) {

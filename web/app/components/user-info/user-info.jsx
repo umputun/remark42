@@ -5,7 +5,7 @@ import api from 'common/api';
 import { getHandleClickProps } from 'common/accessibility';
 
 import LastCommentsList from './last-comments-list';
-const CommentAvatarSrc = require('../comment/__avatar/comment__avatar.svg');
+import Avatar from 'components/avatar-icon';
 
 class UserInfo extends Component {
   constructor(props) {
@@ -36,23 +36,13 @@ class UserInfo extends Component {
 
     return (
       <div className={b('user-info', props)}>
-        <img
-          className={b('user-info__avatar', {}, { default: !!isDefaultPicture })}
-          src={isDefaultPicture ? CommentAvatarSrc : picture}
-          alt=""
-        />
+        <Avatar className="user-info__avatar" picture={isDefaultPicture ? null : picture} />
         <p className="user-info__title">Last comments by {name}</p>
         <p className="user-info__id">{id}</p>
 
         <LastCommentsList isLoading={isLoading} comments={comments} />
 
-        <span
-          {...getHandleClickProps(onClose)}
-          className="user-info__close"
-          onKeyDown={onClose}
-          role="button"
-          tabIndex="-1"
-        >
+        <span {...getHandleClickProps(onClose)} className="user-info__close">
           Close &#10006;
         </span>
       </div>
