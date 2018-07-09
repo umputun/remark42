@@ -224,8 +224,8 @@ Also you can use fully functional local version to develop and test both fronten
 To bring it up run:
 
 ```bash
-docker-compose -f compose-dev.yml build
-docker-compose -f compose-dev.yml up
+docker-compose -f compose-dev-frontend.yml build
+docker-compose -f compose-dev-frontend.yml up
 ```
 
 It starts Remark42 on `localhost:8080` 
@@ -446,6 +446,7 @@ Sort can be `time`, `active` or `score`. Supported sort order with prefix -/+, i
   
 * `GET /api/v1/rss/post?site=site-id&url=post-url` - rss feed for a post
 * `GET /api/v1/rss/site?site=site-id` - rss feed for given site
+* `GET /api/v1/rss/reply?site=site-id&user=user-id` - rss feed for replies to user's comments
 
 ### Admin
 

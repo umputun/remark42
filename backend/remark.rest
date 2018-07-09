@@ -99,7 +99,7 @@ PUT {{host}}/api/v1/admin/user/disqus_grigorybakunov?site={{site}}&block=0
 GET {{host}}/api/v1/admin/blocked?site={{site}}
 
 ### delete comment by id
-DELETE {{host}}/api/v1/admin/comment/3665976683?site=remark&url={{url}}
+DELETE {{host}}/api/v1/admin/comment/3665976683?site={{site}}&url={{url}}
 
 ### get post info
 GET {{host}}/api/v1/info?site={{site}}&url=https://radio-t.com/p/2018/05/08/prep-597/

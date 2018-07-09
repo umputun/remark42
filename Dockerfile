@@ -12,30 +12,33 @@ ARG TRAVIS_PULL_REQUEST
 ARG TRAVIS_PULL_REQUEST_SHA
 ARG TRAVIS_REPO_SLUG
 ARG TRAVIS_TAG
-
 ARG DRONE
 ARG DRONE_TAG
 ARG DRONE_COMMIT
 ARG DRONE_BRANCH
 ARG DRONE_PULL_REQUEST
 
+ARG SKIP_BACKEND_TEST
+
 WORKDIR /go/src/github.com/umputun/remark/backend
 ADD backend /go/src/github.com/umputun/remark/backend
 
-# run mongo tests in CI enviroment only
 RUN cd app && \
-    if [ -z "$CI" ] ; then go test -race ./... ; \
-    else go test -race -tags=mongo ./... ; fi
+    if [ -z "$SKIP_BACKEND_TEST" ] ; then go test ./... ; \
+    else echo "skip backend test" ; fi
 
-RUN gometalinter --disable-all --deadline=300s --vendor --enable=vet --enable=vetshadow --enable=golint \
+RUN if [ -z "$SKIP_BACKEND_TEST" ] ; then \
+    gometalinter --disable-all --deadline=300s --vendor --enable=vet --enable=vetshadow --enable=golint \
     --enable=staticcheck --enable=ineffassign --enable=goconst --enable=errcheck --enable=unconvert \
-    --enable=deadcode  --enable=gosimple --enable=gas --exclude=test --exclude=mock --exclude=vendor ./...
+    --enable=deadcode  --enable=gosimple --enable=gas --exclude=test --exclude=mock --exclude=vendor ./... ; \
+    else echo "skip backend linters" ; fi
 
 # coverage test, submit to coverals if COVERALLS_TOKEN in env
-RUN mkdir -p target && /script/coverage.sh
 RUN if [ -z "$COVERALLS_TOKEN" ] ; then \
     echo coverall not enabled ; \
-    else goveralls -coverprofile=.cover/cover.out -service=travis-ci -repotoken $COVERALLS_TOKEN || echo "coverall failed!"; fi
+    else \ 
+    mkdir -p target && /script/coverage.sh && \
+    goveralls -coverprofile=.cover/cover.out -service=travis-ci -repotoken $COVERALLS_TOKEN || echo "coverall failed!"; fi
 
 # get revision from git. if DRONE presented use DRONE_* git env to make version
 RUN \
@@ -48,12 +51,16 @@ RUN \
 
 FROM node:9.4-alpine as build-frontend
 
+ARG CI
+ARG SKIP_FRONTEND_TEST
+
 ADD web /srv/web
 RUN apk add --no-cache --update git
 RUN \
-    cd /srv/web && \
-    npm i && npm run lint && npm run test && npm run build && \
-    rm -rf ./node_modules
+    cd /srv/web && npm i && \
+    if [ -z "$SKIP_FRONTEND_TEST" ] ; then npm run lint && npm run test ; \
+    else echo "skip frontend tests and lint" ; fi && \ 
+    npm run build && rm -rf ./node_modules
 
 
 FROM umputun/baseimage:app-latest

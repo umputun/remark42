@@ -158,6 +158,83 @@ func TestServer_RssWithReply(t *testing.T) {
 	assert.Equal(t, expected, res)
 }
 
+func TestServer_RssReplies(t *testing.T) {
+	srv, ts := prep(t)
+	assert.NotNil(t, srv)
+	defer cleanup(ts)
+
+	waitOnSecChange()
+
+	pubDate := time.Now().Format(time.RFC1123Z)
+
+	c1 := store.Comment{
+		Text:    "c1",
+		Locator: store.Locator{URL: "https://radio-t.com/blah1", SiteID: "radio-t"},
+		User:    store.User{ID: "user1", Name: "user1"},
+	}
+	id1, err := srv.DataService.Create(c1)
+	assert.Nil(t, err)
+	c2 := store.Comment{
+		Text:     "reply to c1 from user2",
+		ParentID: id1,
+		Locator:  store.Locator{URL: "https://radio-t.com/blah1", SiteID: "radio-t"},
+		User:     store.User{ID: "user2", Name: "user2"},
+	}
+	id2, err := srv.DataService.Create(c2)
+	assert.Nil(t, err)
+	c3 := store.Comment{
+		Text:     "reply to c1 from user3",
+		ParentID: id1,
+		Locator:  store.Locator{URL: "https://radio-t.com/blah1", SiteID: "radio-t"},
+		User:     store.User{ID: "user3", Name: "user3"},
+	}
+	id3, err := srv.DataService.Create(c3)
+	assert.Nil(t, err)
+	c4 := store.Comment{
+		Text:     "reply to c2 from developer one",
+		ParentID: id2,
+		Locator:  store.Locator{URL: "https://radio-t.com/blah1", SiteID: "radio-t"},
+	}
+	addComment(t, c4, ts)
+	c5 := store.Comment{
+		Text:    "developer one",
+		Locator: store.Locator{URL: "https://radio-t.com/blah1", SiteID: "radio-t"},
+	}
+	addComment(t, c5, ts)
+
+	// replies to c1 (user1). Must be [c3, c2]
+	res, code := get(t, ts.URL+"/api/v1/rss/reply?user=user1&site=radio-t")
+	assert.Equal(t, 200, code)
+	t.Log(res)
+	expected := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+	    <channel>
+	        <title>Remark42 comments</title>
+	        <link>radio-t</link>
+	        <description>comment updates</description>
+	        <pubDate>%s</pubDate>
+	        <item>
+		      <title>user3 &gt; user1</title>
+		      <link>https://radio-t.com/blah1#remark42__comment-%s</link>
+		      <description>reply to c1 from user3</description>
+		      <author>user3</author>
+		      <pubDate>%s</pubDate>
+			</item>
+			<item>
+		      <title>user2 &gt; user1</title>
+		      <link>https://radio-t.com/blah1#remark42__comment-%s</link>
+		      <description>reply to c1 from user2</description>
+		      <author>user2</author>
+		      <pubDate>%s</pubDate>
+			</item>
+	     </channel>
+	</rss>`, pubDate, id3, pubDate, id2, pubDate)
+	expected, res = cleanRssFormatting(expected, res)
+	assert.Equal(t, expected, res)
+
+	_, code = get(t, ts.URL+"/api/v1/rss/reply?user=user1&site=radio-t-bad")
+	assert.Equal(t, 400, code)
+}
+
 func waitOnSecChange() {
 	for {
 		if time.Now().Nanosecond() < 100000000 {
