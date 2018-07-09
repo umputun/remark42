@@ -446,6 +446,7 @@ Sort can be `time`, `active` or `score`. Supported sort order with prefix -/+, i
   
 * `GET /api/v1/rss/post?site=site-id&url=post-url` - rss feed for a post
 * `GET /api/v1/rss/site?site=site-id` - rss feed for given site
+* `GET /api/v1/rss/reply?site=site-id&user=user-id` - rss feed for replies to user's comments
 
 ### Admin
 

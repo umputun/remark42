@@ -16,7 +16,7 @@ import (
 )
 
 const maxRssItems = 20
-const maxLastCommentsReply = 100
+const maxLastCommentsReply = 1000
 const maxReplyDuration = 30 * time.Minute
 
 // ui uses links like <post-url>#remark42__comment-<comment-id>
@@ -104,7 +104,6 @@ func (s *Rest) rssRepliesCtrl(w http.ResponseWriter, r *http.Request) {
 			return nil, errors.Wrap(e, "can't get last comments")
 		}
 		comments = s.adminService.alterComments(comments, r)
-
 		replies := []store.Comment{}
 		for _, c := range comments {
 			if len(replies) > maxRssItems || c.Timestamp.Add(maxReplyDuration).Before(time.Now()) {
