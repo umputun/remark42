@@ -3,6 +3,7 @@ package avatar
 import (
 	"bytes"
 	"io"
+	"io/ioutil"
 	"log"
 
 	"github.com/globalsign/mgo"
@@ -49,7 +50,7 @@ func (gf *GridFS) Put(userID string, reader io.Reader) (avatar string, err error
 
 // Get avatar reader for avatar id.image
 func (gf *GridFS) Get(avatar string) (reader io.ReadCloser, size int, err error) {
-	buf := &buffReaderCloser{}
+	buf := &bytes.Buffer{}
 	err = gf.Connection.WithDB(func(dbase *mgo.Database) error {
 		fh, e := dbase.GridFS("fs").Open(avatar)
 		if e != nil {
@@ -62,7 +63,7 @@ func (gf *GridFS) Get(avatar string) (reader io.ReadCloser, size int, err error)
 		fh.Close()
 		return nil
 	})
-	return buf, size, err
+	return ioutil.NopCloser(buf), size, err
 }
 
 // ID returns a fingerprint of the avatar content. Uses MD5 because gridfs provides it directly
@@ -81,11 +82,3 @@ func (gf *GridFS) ID(avatar string) (id string) {
 	}
 	return id
 }
-
-// BuffReaderCloser implements Closer for bytes.Buffer
-type buffReaderCloser struct {
-	bytes.Buffer
-}
-
-// Close to satisfy fake
-func (b *buffReaderCloser) Close() error { return nil }

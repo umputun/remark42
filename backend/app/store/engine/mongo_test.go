@@ -1,5 +1,3 @@
-// +build mongo
-
 package engine
 
 import (
