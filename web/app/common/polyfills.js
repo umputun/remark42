@@ -1,16 +1,4 @@
-import 'core-js/es6/promise';
-
-// default promise polyfill doesn't include finally
-Promise.prototype.finally = function finallyFn(callback) {
-  const constructor = this.constructor;
-
-  return this.then(
-    value => constructor.resolve(callback()).then(() => value),
-    reason => constructor.resolve(callback()).then(() => reason)
-  );
-};
-
-window.Promise = Promise;
+import 'core-js/es7/promise';
 
 export default function loadPolyfills() {
   const fillCoreJs = () => {
