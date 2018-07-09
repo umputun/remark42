@@ -98,7 +98,7 @@ func (s *Rest) rssRepliesCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	log.Printf("[DEBUG] get rss replies to user %s for site %s", userID, siteID)
 
-	data, err := s.Cache.Get(cache.Key(cache.URLKey(r), siteID, userID), func() (res []byte, e error) {
+	data, err := s.Cache.Get(cache.Key(cache.URLKey(r), siteID), func() (res []byte, e error) {
 		comments, e := s.DataService.Last(siteID, maxLastCommentsReply)
 		if e != nil {
 			return nil, errors.Wrap(e, "can't get last comments")
