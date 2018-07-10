@@ -62,7 +62,15 @@ func TestDevProvider(t *testing.T) {
 	assert.Nil(t, err)
 
 	u := *claims.User
-	assert.Equal(t, store.User{Name: "dev_user", ID: "dev_user", Picture: "", IP: "",
+	assert.Equal(t, store.User{Name: "dev_user", ID: "dev_user", Picture: "http://127.0.0.1:8084/avatar?user=dev_user", IP: "",
 		Admin: true, Blocked: false, Verified: false}, u)
 
+	// check avatar
+	resp, err = client.Get("http://127.0.0.1:8084/avatar?user=dev_user")
+	require.Nil(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+	body, err = ioutil.ReadAll(resp.Body)
+	assert.Nil(t, err)
+	assert.Equal(t, 985, len(body))
+	t.Logf("headers: %+v", resp.Header)
 }
