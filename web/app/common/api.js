@@ -118,6 +118,18 @@ export const getBlocked = () =>
     withCredentials: true,
   });
 
+export const disableComments = () =>
+  fetcher.put({
+    url: `/admin/readonly?site=${siteId}&url=${url}&ro=1`,
+    withCredentials: true,
+  });
+
+export const enableComments = () =>
+  fetcher.put({
+    url: `/admin/readonly?site=${siteId}&url=${url}&ro=0`,
+    withCredentials: true,
+  });
+
 export default {
   logOut,
   getConfig,
@@ -140,4 +152,6 @@ export default {
   blockUser,
   unblockUser,
   getBlocked,
+  disableComments,
+  enableComments,
 };

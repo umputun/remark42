@@ -21,6 +21,7 @@ class Thread extends Component {
       collapsed,
       data: { comment, replies = [] },
       mods = {},
+      isCommentsDisabled,
     } = props;
 
     return (
@@ -31,6 +32,7 @@ class Thread extends Component {
       >
         <Comment
           data={comment}
+          isCommentsDisabled={isCommentsDisabled}
           mods={{ level: mods.level, collapsed }}
           onReply={props.onReply}
           onEdit={props.onEdit}
@@ -43,6 +45,7 @@ class Thread extends Component {
             <ConnectedThread
               key={thread.comment.id}
               data={thread}
+              isCommentsDisabled={isCommentsDisabled}
               mods={{ level: mods.level < 5 ? mods.level + 1 : mods.level }}
               onReply={props.onReply}
               onEdit={props.onEdit}
