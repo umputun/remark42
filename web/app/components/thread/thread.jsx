@@ -1,63 +1,24 @@
 /** @jsx h */
 import { h, Component } from 'preact';
-
-import { LS_COLLAPSE_KEY } from 'common/constants';
-import { siteId, url } from 'common/settings';
-import store from 'common/store';
+import { connect } from 'preact-redux';
 
 import Comment from 'components/comment';
+import { setCollapse } from './thread.actions';
+import { getThreadIsCollapsed } from './thread.getters';
 
-export default class Thread extends Component {
+class Thread extends Component {
   constructor(props) {
     super(props);
-
-    if (this.props.data && this.props.data.comment) {
-      this.updateCollapsedState(this.props.data.comment);
-    }
-
     this.onCollapseToggle = this.onCollapseToggle.bind(this);
   }
 
-  componentWillReceiveProps(nextProps) {
-    if (nextProps.data && nextProps.data.comment) {
-      this.updateCollapsedState(nextProps.data.comment);
-    }
-  }
-
-  updateCollapsedState(comment) {
-    const config = store.get('config') || {};
-    const score = comment.score || 0;
-
-    this.lsCollapsedID = `${siteId}_${url}_${comment.id}`;
-
-    this.state = {
-      collapsed:
-        (!this.state.isCollapsedChanged && score <= config.critical_score) ||
-        getCollapsedComments().includes(this.lsCollapsedID),
-      isCollapsedChanged: true,
-    };
-  }
-
   onCollapseToggle() {
-    const collapsed = !this.state.collapsed;
-
-    this.setState({ collapsed: !this.state.collapsed });
-
-    let collapsedComments = getCollapsedComments();
-
-    if (collapsed) {
-      if (!collapsedComments.includes(this.lsCollapsedID)) {
-        collapsedComments = collapsedComments.concat(this.lsCollapsedID);
-      }
-    } else {
-      collapsedComments = collapsedComments.filter(id => id !== this.lsCollapsedID);
-    }
-
-    saveCollapsedComments(collapsedComments);
+    this.props.setCollapse(this.props.data.comment, !this.props.collapsed);
   }
 
-  render(props, { collapsed }) {
+  render(props) {
     const {
+      collapsed,
       data: { comment, replies = [] },
       mods = {},
     } = props;
@@ -79,7 +40,7 @@ export default class Thread extends Component {
         {!collapsed &&
           !!replies.length &&
           replies.map(thread => (
-            <Thread
+            <ConnectedThread
               key={thread.comment.id}
               data={thread}
               mods={{ level: mods.level < 5 ? mods.level + 1 : mods.level }}
@@ -92,10 +53,9 @@ export default class Thread extends Component {
   }
 }
 
-function getCollapsedComments() {
-  return JSON.parse(localStorage.getItem(LS_COLLAPSE_KEY) || '[]');
-}
+const ConnectedThread = connect(
+  (state, props) => ({ collapsed: getThreadIsCollapsed(state, props.data.comment) }),
+  { setCollapse }
+)(Thread);
 
-function saveCollapsedComments(comments) {
-  localStorage.setItem(LS_COLLAPSE_KEY, JSON.stringify(comments));
-}
+export default ConnectedThread;

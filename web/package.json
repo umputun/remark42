@@ -34,8 +34,8 @@
     "cross-env": "^5.2.0",
     "css-loader": "^0.28.11",
     "eslint": "^4.19.1",
-    "eslint-plugin-jsx-a11y": "^6.1.0",
     "eslint-config-prettier": "^2.9.0",
+    "eslint-plugin-jsx-a11y": "^6.1.0",
     "eslint-plugin-prettier": "^2.6.1",
     "eslint-plugin-react": "^7.10.0",
     "extract-text-webpack-plugin": "^3.0.2",
@@ -43,14 +43,20 @@
     "html-webpack-plugin": "^2.30.1",
     "husky": "^0.14.3",
     "jest": "^23.1.0",
+    "jest-localstorage-mock": "^2.2.0",
     "lint-staged": "^7.2.0",
-    "node-sass": "sass/node-sass#v5",
+    "npm-run-all": "^4.1.3",
+    "postcss-calc": "^6.0.1",
     "postcss-csso": "^2.0.0",
+    "postcss-for": "^2.1.1",
     "postcss-loader": "^2.1.5",
+    "postcss-nested": "^3.0.0",
+    "postcss-simple-vars": "^4.1.0",
     "postcss-url": "^6.3.1",
     "postcss-wrap": "0.0.4",
+    "preact-redux": "^2.0.3",
     "prettier": "^1.13.7",
-    "sass-loader": "^6.0.7",
+    "redux": "^4.0.0",
     "style-loader": "^0.19.1",
     "webpack": "^3.12.0",
     "webpack-bundle-analyzer": "^2.13.1",
@@ -69,11 +75,15 @@
       "^.+\\.jsx?$": "<rootDir>/fileTransformer.js"
     },
     "setupFiles": [
-      "<rootDir>/injectGlobalVariable.js"
+      "<rootDir>/injectGlobalVariable.js",
+      "jest-localstorage-mock"
     ],
     "moduleDirectories": [
       "node_modules",
       "<rootDir>/app"
+    ],
+    "testMatch": [
+      "<rootDir>/**/*.test.js"
     ]
   },
   "engines": {

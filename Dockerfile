@@ -12,27 +12,33 @@ ARG TRAVIS_PULL_REQUEST
 ARG TRAVIS_PULL_REQUEST_SHA
 ARG TRAVIS_REPO_SLUG
 ARG TRAVIS_TAG
-
 ARG DRONE
 ARG DRONE_TAG
 ARG DRONE_COMMIT
 ARG DRONE_BRANCH
 ARG DRONE_PULL_REQUEST
 
+ARG SKIP_BACKEND_TEST
+
 WORKDIR /go/src/github.com/umputun/remark/backend
 ADD backend /go/src/github.com/umputun/remark/backend
 
-RUN cd app && go test ./...
+RUN cd app && \
+    if [ -z "$SKIP_BACKEND_TEST" ] ; then go test ./... ; \
+    else echo "skip backend test" ; fi
 
-RUN gometalinter --disable-all --deadline=300s --vendor --enable=vet --enable=vetshadow --enable=golint \
+RUN if [ -z "$SKIP_BACKEND_TEST" ] ; then \
+    gometalinter --disable-all --deadline=300s --vendor --enable=vet --enable=vetshadow --enable=golint \
     --enable=staticcheck --enable=ineffassign --enable=goconst --enable=errcheck --enable=unconvert \
-    --enable=deadcode  --enable=gosimple --enable=gas --exclude=test --exclude=mock --exclude=vendor ./...
+    --enable=deadcode  --enable=gosimple --enable=gas --exclude=test --exclude=mock --exclude=vendor ./... ; \
+    else echo "skip backend linters" ; fi
 
 # coverage test, submit to coverals if COVERALLS_TOKEN in env
-RUN mkdir -p target && /script/coverage.sh
 RUN if [ -z "$COVERALLS_TOKEN" ] ; then \
     echo coverall not enabled ; \
-    else goveralls -coverprofile=.cover/cover.out -service=travis-ci -repotoken $COVERALLS_TOKEN || echo "coverall failed!"; fi
+    else \ 
+    mkdir -p target && /script/coverage.sh && \
+    goveralls -coverprofile=.cover/cover.out -service=travis-ci -repotoken $COVERALLS_TOKEN || echo "coverall failed!"; fi
 
 # get revision from git. if DRONE presented use DRONE_* git env to make version
 RUN \
@@ -43,13 +49,25 @@ RUN \
     go build -o remark -ldflags "-X main.revision=${version} -s -w" ./app
 
 
-FROM node:9.4-alpine as build-frontend
+FROM node:10.6-alpine as build-frontend-deps
+
+ARG CI
+
+RUN apk add --no-cache --update git
+ADD web/package.json /srv/web/package.json 
+ADD web/package-lock.json /srv/web/package-lock.json
+RUN cd /srv/web && npm ci
+
+FROM node:10.6-alpine as build-frontend
+
+ARG CI
+ARG SKIP_FRONTEND_TEST
 
 ADD web /srv/web
-RUN apk add --no-cache --update git
-RUN \
-    cd /srv/web && \
-    npm i && npm run lint && npm run test && npm run build && \
+COPY --from=build-frontend-deps /srv/web/node_modules /srv/web/node_modules
+RUN cd /srv/web && \
+    if [ -z "$SKIP_FRONTEND_TEST" ] ; then npx run-p lint test build ; \
+    else echo "skip frontend tests and lint" ; npm run build ; fi && \ 
     rm -rf ./node_modules
 
 

@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"log"
@@ -9,6 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/nullrocks/identicon"
+	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
 
 	"github.com/umputun/remark/backend/app/store"
@@ -19,22 +22,28 @@ const devAuthPort = 8084
 // DevAuthServer is a fake oauth server for development
 // it provides stand-alone server running on its own port and pretending to be the real oauth2. It also provides
 // Dev Provider the same way as normal providers di, i.e. github, google and others.
-// can run in interractive and non-interactive mode. In interactive mode login attempts will show login form to select
+// can run in interactive and non-interactive mode. In interactive mode login attempts will show login form to select
 // desired user name.
 type DevAuthServer struct {
 	Provider Provider
 
 	username       string // unsafe, but fine for dev
 	nonInteractive bool
-
-	httpServer *http.Server
-	lock       sync.Mutex
+	iconGen        *identicon.Generator
+	httpServer     *http.Server
+	lock           sync.Mutex
 }
 
 // Run oauth2 dev server on port devAuthPort
 func (d *DevAuthServer) Run() {
 	log.Printf("[INFO] run local oauth2 dev server on %d", devAuthPort)
 	d.lock.Lock()
+	var err error
+	d.iconGen, err = identicon.New("github", 5, 3)
+	if err != nil {
+		log.Printf("[WARN] can't create identicon, %s", err)
+	}
+
 	d.httpServer = &http.Server{
 		Addr: fmt.Sprintf(":%d", devAuthPort),
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -42,9 +51,9 @@ func (d *DevAuthServer) Run() {
 			switch {
 
 			case strings.HasPrefix(r.URL.Path, "/login/oauth/authorize"):
-				// first time it will be called without usernam and will ask for onw
+				// first time it will be called without username and will ask for onw
 				if !d.nonInteractive && (r.ParseForm() != nil || r.Form.Get("username") == "") {
-					if _, err := w.Write([]byte(fmt.Sprintf(devUserForm, r.URL.RawQuery))); err != nil {
+					if _, err = w.Write([]byte(fmt.Sprintf(devUserForm, r.URL.RawQuery))); err != nil {
 						log.Printf("[WARN] can't write, %s", err)
 					}
 					return
@@ -70,19 +79,33 @@ func (d *DevAuthServer) Run() {
 					"state":"12345678"
 					}`
 				w.Header().Set("Content-Type", "application/json; charset=utf-8")
-				if _, err := w.Write([]byte(res)); err != nil {
+				if _, err = w.Write([]byte(res)); err != nil {
 					w.WriteHeader(http.StatusInternalServerError)
 					return
 				}
 
 			case strings.HasPrefix(r.URL.Path, "/user"):
+				ava := fmt.Sprintf("http://127.0.0.1:%d/avatar?user=%s", devAuthPort, d.username)
 				res := fmt.Sprintf(`{
 					"id": "%s",
-					"name":"%s"
-					}`, d.username, d.username)
+					"name":"%s",
+					"picture":"%s"
+					}`, d.username, d.username, ava)
 
 				w.Header().Set("Content-Type", "application/json; charset=utf-8")
-				if _, err := w.Write([]byte(res)); err != nil {
+				if _, err = w.Write([]byte(res)); err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+					return
+				}
+
+			case strings.HasPrefix(r.URL.Path, "/avatar"):
+				user := r.URL.Query().Get("user")
+				b, e := d.genAvatar(user)
+				if e != nil {
+					w.WriteHeader(http.StatusNotFound)
+					return
+				}
+				if _, err = w.Write(b); err != nil {
 					w.WriteHeader(http.StatusInternalServerError)
 					return
 				}
@@ -94,7 +117,7 @@ func (d *DevAuthServer) Run() {
 	}
 	d.lock.Unlock()
 
-	err := d.httpServer.ListenAndServe()
+	err = d.httpServer.ListenAndServe()
 	log.Printf("[WARN] dev oauth2 server terminated, %s", err)
 }
 
@@ -128,11 +151,26 @@ func NewDev(p Params) Provider {
 			userInfo := store.User{
 				ID:      data.value("id"),
 				Name:    data.value("name"),
-				Picture: "",
+				Picture: data.value("picture"),
 			}
 			return userInfo
 		},
 	})
+}
+
+func (d *DevAuthServer) genAvatar(user string) ([]byte, error) {
+	if d.iconGen == nil {
+		return nil, errors.Errorf("no iconGen, skip avatar generation for %s", user)
+	}
+
+	ii, err := d.iconGen.Draw(user) // Generate an IdentIcon
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to draqw avatar for %s", user)
+	}
+
+	buf := &bytes.Buffer{}
+	err = ii.Png(300, buf)
+	return buf.Bytes(), err
 }
 
 var devUserForm = `

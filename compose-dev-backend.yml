@@ -6,7 +6,12 @@ version: '2'
 
 services:
     remark42:
-        build: .
+        build: 
+            context: .
+            dockerfile: Dockerfile
+            args:
+                - SKIP_FRONTEND_TEST=true
+
         image: umputun/remark42:dev
         container_name: "remark42-dev"
         hostname: "remark42-dev"
@@ -33,6 +38,5 @@ services:
             - ADMIN=dev_user  # set admin flag for default user on local ouath2
         volumes:
             - ./var:/srv/var 
-            #- ./web:/srv/web # uncomment to map web directory directly. It will propagate local changes to container without redeploy
 
         command: /srv/start.sh

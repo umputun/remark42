@@ -203,6 +203,7 @@ Frontend part is building automatically along with backend if you use `docker-co
 For manual building:
 
 * install [Node.js 8](https://nodejs.org/en/) or higher;
+* install [NPM 6.1.0](https://www.npmjs.com/package/npm) or higher;
 * run `npm install` inside `./web`;
 * run `npm run build` there;
 * result files will be saved in `./web/public`.
@@ -224,8 +225,8 @@ Also you can use fully functional local version to develop and test both fronten
 To bring it up run:
 
 ```bash
-docker-compose -f compose-dev.yml build
-docker-compose -f compose-dev.yml up
+docker-compose -f compose-dev-frontend.yml build
+docker-compose -f compose-dev-frontend.yml up
 ```
 
 It starts Remark42 on `localhost:8080` 
@@ -446,6 +447,7 @@ Sort can be `time`, `active` or `score`. Supported sort order with prefix -/+, i
   
 * `GET /api/v1/rss/post?site=site-id&url=post-url` - rss feed for a post
 * `GET /api/v1/rss/site?site=site-id` - rss feed for given site
+* `GET /api/v1/rss/reply?site=site-id&user=user-id` - rss feed for replies to user's comments
 
 ### Admin
 

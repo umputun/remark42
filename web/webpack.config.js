@@ -24,17 +24,15 @@ const commonStyleLoaders = [
     loader: 'postcss-loader',
     options: {
       plugins: [
+        require('postcss-for'),
+        require('postcss-simple-vars'),
+        require('postcss-nested'),
+        require('postcss-calc'),
         require('autoprefixer')({ browsers: ['> 1%'] }),
         require('postcss-url')({ url: 'inline', maxSize: 5 }),
         require('postcss-wrap')({ selector: `#${NODE_ID}` }),
         require('postcss-csso'),
       ],
-    },
-  },
-  {
-    loader: 'sass-loader',
-    options: {
-      includePaths: [path.resolve(__dirname, 'app')],
     },
   },
 ];
