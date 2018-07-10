@@ -33,8 +33,8 @@ func (gf *GridFS) Put(userID string, reader io.Reader) (avatar string, err error
 			return e
 		}
 		defer func() {
-			if e := fh.Close(); e != nil {
-				log.Printf("[WARN] can't close avatar file %v, %s", fh, e)
+			if err = fh.Close(); err != nil {
+				log.Printf("[WARN] can't close avatar file %v, %s", fh, err)
 			}
 		}()
 
@@ -60,8 +60,7 @@ func (gf *GridFS) Get(avatar string) (reader io.ReadCloser, size int, err error)
 			return errors.Wrapf(e, "can't copy avatar %s", avatar)
 		}
 		size = int(fh.Size())
-		fh.Close()
-		return nil
+		return fh.Close()
 	})
 	return ioutil.NopCloser(buf), size, err
 }

@@ -19,28 +19,36 @@ ARG DRONE_BRANCH
 ARG DRONE_PULL_REQUEST
 
 ARG SKIP_BACKEND_TEST
+ARG MONGO
 
 WORKDIR /go/src/github.com/umputun/remark/backend
 ADD backend /go/src/github.com/umputun/remark/backend
 
+# run tests
 RUN cd app && \
+    echo "$MONGO mongo" >> /etc/hosts && \
     if [ -z "$SKIP_BACKEND_TEST" ] ; then go test ./... ; \
     else echo "skip backend test" ; fi
 
+# linters
 RUN if [ -z "$SKIP_BACKEND_TEST" ] ; then \
     gometalinter --disable-all --deadline=300s --vendor --enable=vet --enable=vetshadow --enable=golint \
     --enable=staticcheck --enable=ineffassign --enable=goconst --enable=errcheck --enable=unconvert \
     --enable=deadcode  --enable=gosimple --enable=gas --exclude=test --exclude=mock --exclude=vendor ./... ; \
     else echo "skip backend linters" ; fi
 
-# coverage test, submit to coverals if COVERALLS_TOKEN in env
-RUN if [ -z "$COVERALLS_TOKEN" ] ; then \
-    echo coverall not enabled ; \
-    else \ 
-    mkdir -p target && /script/coverage.sh && \
-    goveralls -coverprofile=.cover/cover.out -service=travis-ci -repotoken $COVERALLS_TOKEN || echo "coverall failed!"; fi
+# coverage report
+RUN if [ -z "$SKIP_BACKEND_TEST" ] ; then \
+    echo "$MONGO mongo" >> /etc/hosts && \
+    mkdir -p target && /script/coverage.sh ; \
+    else echo "skip backend coverage" ; fi
 
-# get revision from git. if DRONE presented use DRONE_* git env to make version
+# submit coverage to coverals if COVERALLS_TOKEN in env
+RUN if [ -z "$COVERALLS_TOKEN" ] ; then \
+    echo "coverall not enabled" ; \
+    else goveralls -coverprofile=.cover/cover.out -service=travis-ci -repotoken $COVERALLS_TOKEN || echo "coverall failed!"; fi
+
+# if DRONE presented use DRONE_* git env to make version
 RUN \
     if [ -z "$DRONE" ] ; then \
     echo "runs outside of drone" && version="local"; \
