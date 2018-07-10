@@ -56,7 +56,7 @@ ARG CI
 RUN apk add --no-cache --update git
 ADD web/package.json /srv/web/package.json 
 ADD web/package-lock.json /srv/web/package-lock.json
-RUN cd /srv/web && npm ci
+RUN cd /srv/web && CI=true npm ci
 
 FROM node:10.6-alpine as build-frontend
 
