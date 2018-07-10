@@ -1,0 +1,128 @@
+Arguments: 
+  /Users/dmitrytsepelev/.nvm/versions/node/v9.2.0/bin/node /Users/dmitrytsepelev/.nvm/versions/node/v9.2.0/bin/yarn start
+
+PATH: 
+  /anaconda2/bin:/Users/dmitrytsepelev/.rvm/gems/ruby-2.5.1/bin:/Users/dmitrytsepelev/.rvm/gems/ruby-2.5.1@global/bin:/Users/dmitrytsepelev/.rvm/rubies/ruby-2.5.1/bin:/usr/local/heroku/bin:/Users/dmitrytsepelev/.nvm/versions/node/v9.2.0/bin:./bin:bin:/Users/dmitrytsepelev/bin:/usr/local/bin:/usr/local/sbin:/usr/local/share/npm/bin:/usr/bin:/bin:/usr/sbin:/sbin::/Users/dmitrytsepelev/.rvm/bin:/usr/local/go/bin:/Users/dmitrytsepelev/go/bin:/Users/dmitrytsepelev/Library/Android/sdk/tools:/Users/dmitrytsepelev/Library/Android/sdk/platform-tools:/Users/dmitrytsepelev/Library/Android/sdk/tools/proguard/bin
+
+Yarn version: 
+  1.5.1
+
+Node version: 
+  9.2.0
+
+Platform: 
+  darwin x64
+
+npm manifest: 
+  {
+    "name": "remark-ui",
+    "version": "0.1.0",
+    "scripts": {
+      "build": "cross-env NODE_ENV=production webpack --config ./webpack.config.js",
+      "start": "webpack-dev-server --progress --hot --inline --config ./webpack.config.js",
+      "lint": "eslint --ext=.js,.jsx .",
+      "test": "jest",
+      "prettier": "prettier --write \"./**/*.{js,jsx,scss}\"",
+      "precommit": "./node_modules/.bin/lint-staged"
+    },
+    "lint-staged": {
+      "./**/*.{js,jsx}": [
+        "eslint --fix",
+        "git add"
+      ],
+      "./**/*.scss": [
+        "prettier --write",
+        "git add"
+      ]
+    },
+    "devDependencies": {
+      "autoprefixer": "^7.2.6",
+      "babel-core": "^6.26.3",
+      "babel-eslint": "^8.2.5",
+      "babel-loader": "^7.1.4",
+      "babel-plugin-syntax-dynamic-import": "^6.18.0",
+      "babel-plugin-transform-object-rest-spread": "^6.26.0",
+      "babel-plugin-transform-react-jsx": "^6.24.1",
+      "babel-preset-env": "^1.7.0",
+      "clean-webpack-plugin": "^0.1.19",
+      "copy-webpack-plugin": "^4.5.1",
+      "core-js": "^2.5.7",
+      "cross-env": "^5.2.0",
+      "css-loader": "^0.28.11",
+      "eslint": "^4.19.1",
+      "eslint-config-prettier": "^2.9.0",
+      "eslint-plugin-jsx-a11y": "^6.1.0",
+      "eslint-plugin-prettier": "^2.6.1",
+      "eslint-plugin-react": "^7.10.0",
+      "extract-text-webpack-plugin": "^3.0.2",
+      "file-loader": "^0.11.1",
+      "html-webpack-plugin": "^2.30.1",
+      "husky": "^0.14.3",
+      "jest": "^23.1.0",
+      "jest-localstorage-mock": "^2.2.0",
+      "lint-staged": "^7.2.0",
+      "postcss-calc": "^6.0.1",
+      "postcss-csso": "^2.0.0",
+      "postcss-for": "^2.1.1",
+      "postcss-loader": "^2.1.5",
+      "postcss-nested": "^3.0.0",
+      "postcss-simple-vars": "^4.1.0",
+      "postcss-url": "^6.3.1",
+      "postcss-wrap": "0.0.4",
+      "preact-redux": "^2.0.3",
+      "prettier": "^1.13.7",
+      "redux": "^4.0.0",
+      "style-loader": "^0.19.1",
+      "webpack": "^3.12.0",
+      "webpack-bundle-analyzer": "^2.13.1",
+      "webpack-dev-server": "^2.7.1"
+    },
+    "dependencies": {
+      "axios": "^0.18.0",
+      "bem-react-helper": "^1.1.2",
+      "preact": "^8.2.9"
+    },
+    "eslintIgnore": [
+      "public"
+    ],
+    "jest": {
+      "transform": {
+        "^.+\\.jsx?$": "<rootDir>/fileTransformer.js"
+      },
+      "setupFiles": [
+        "<rootDir>/injectGlobalVariable.js",
+        "jest-localstorage-mock"
+      ],
+      "moduleDirectories": [
+        "node_modules",
+        "<rootDir>/app"
+      ],
+      "testMatch": [
+        "<rootDir>/**/*.test.js"
+      ]
+    },
+    "engines": {
+      "node": ">=8"
+    }
+  }
+
+yarn manifest: 
+  No manifest
+
+Lockfile: 
+  No lockfile
+
+Trace: 
+  Error: Command failed.
+  Exit code: 1
+  Command: sh
+  Arguments: -c webpack-dev-server --progress --hot --inline --config ./webpack.config.js
+  Directory: /Users/dmitrytsepelev/dev/remark/web
+  Output:
+  
+      at ProcessTermError.MessageError (/Users/dmitrytsepelev/.nvm/versions/node/v9.2.0/lib/node_modules/yarn/lib/cli.js:186:110)
+      at new ProcessTermError (/Users/dmitrytsepelev/.nvm/versions/node/v9.2.0/lib/node_modules/yarn/lib/cli.js:226:113)
+      at ChildProcess.<anonymous> (/Users/dmitrytsepelev/.nvm/versions/node/v9.2.0/lib/node_modules/yarn/lib/cli.js:30281:17)
+      at ChildProcess.emit (events.js:159:13)
+      at maybeClose (internal/child_process.js:943:16)
+      at Process.ChildProcess._handle.onexit (internal/child_process.js:220:5)
