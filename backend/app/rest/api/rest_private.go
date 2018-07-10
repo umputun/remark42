@@ -172,7 +172,7 @@ func (s *Rest) voteCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't vote for comment")
 		return
 	}
-	s.Cache.Flush(locator.URL)
+	s.Cache.Flush(locator.URL, comment.User.ID)
 	render.JSON(w, r, JSON{"id": comment.ID, "score": comment.Score})
 }
 
