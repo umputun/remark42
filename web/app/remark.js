@@ -50,20 +50,15 @@ function init() {
   if (params.page === 'user-info') {
     const user = {
       id: params.id,
-      name: params.name || '',
-      isDefaultPicture: params.isDefaultPicture,
+      name: decodeURIComponent(params.name) || '',
+      isDefaultPicture: params.isDefaultPicture != 0,
       picture: params.picture,
     };
     store.set('user', user);
-    const onClose = () => {
-      if (window.parent) {
-        window.parent.postMessage(JSON.stringify({ isUserInfoShown: false }), '*');
-      }
-    };
     render(
       <div id={NODE_ID}>
         <div className="root root_user-info">
-          <UserInfo user={user} onClose={onClose} />
+          <UserInfo user={user} />
         </div>
       </div>,
       node.parentElement,

@@ -41,10 +41,11 @@ class UserInfo extends Component {
         <p className="user-info__id">{id}</p>
 
         <LastCommentsList isLoading={isLoading} comments={comments} />
-
-        <span {...getHandleClickProps(onClose)} className="user-info__close">
-          Close &#10006;
-        </span>
+        {!onClose ? null : (
+          <span {...getHandleClickProps(onClose)} className="user-info__close">
+            &#10006;
+          </span>
+        )}
       </div>
     );
   }
