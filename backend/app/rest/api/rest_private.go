@@ -172,7 +172,7 @@ func (s *Rest) voteCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't vote for comment")
 		return
 	}
-	s.Cache.Flush(locator.URL)
+	s.Cache.Flush(locator.URL, comment.User.ID)
 	render.JSON(w, r, JSON{"id": comment.ID, "score": comment.Score})
 }
 
@@ -263,6 +263,6 @@ func (s *Rest) deleteMeCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't make token")
 		return
 	}
-	link := fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", s.RemarkURL, tokenStr)
+	link := fmt.Sprintf("%s/web/deleteme.html?token=%s", s.RemarkURL, tokenStr)
 	render.JSON(w, r, JSON{"site": siteID, "user_id": user.ID, "token": tokenStr, "link": link})
 }

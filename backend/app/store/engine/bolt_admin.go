@@ -168,7 +168,7 @@ func (b *BoltDB) SetBlock(siteID string, userID string, status bool, ttl time.Du
 		bucket := tx.Bucket([]byte(blocksBucketName))
 		switch status {
 		case true:
-			val := time.Now().AddDate(100, 0, 0).Format(tsNano) // permanent is 50year
+			val := time.Now().AddDate(100, 0, 0).Format(tsNano) // permanent is 100 year
 			if ttl > 0 {
 				val = time.Now().Add(ttl).Format(tsNano)
 			}

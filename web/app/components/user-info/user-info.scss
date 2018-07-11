@@ -1,7 +1,16 @@
 .user-info {
-  padding: 10px 20px;
-  overflow: hidden;
-  background: #fafafa;
   border: 1px solid #efefef;
   border-radius: 2px;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 100%;
+  background: white;
+  padding: 10px;
+  box-sizing: border-box;
+
+  overflow: inherit;
+  overflow-x: hidden;
+  overflow-y: auto;
 }

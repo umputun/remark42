@@ -111,18 +111,22 @@ export default class Root extends Component {
 
   onSignIn(provider) {
     const newWindow = window.open(
-      `${BASE_URL}/auth/${provider}/login?from=${encodeURIComponent(location.href)}&site=${siteId}`
+      `${BASE_URL}/auth/${provider}/login?from=${encodeURIComponent(
+        location.origin + location.pathname + '?selfClose'
+      )}&site=${siteId}`
     );
 
     let secondsPass = 0;
-    const checkMsDelay = 100;
+    const checkMsDelay = 300;
     const checkInterval = setInterval(() => {
+      let shouldProceed;
       secondsPass += checkMsDelay;
+      try {
+        shouldProceed = newWindow.closed || secondsPass > 30000;
+      } catch (e) {}
 
-      if (newWindow.location.origin === location.origin || secondsPass > 30000) {
+      if (shouldProceed) {
         clearInterval(checkInterval);
-        secondsPass = 0;
-        newWindow.close();
 
         api
           .getUser()

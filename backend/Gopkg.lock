@@ -139,6 +139,12 @@
   revision = "542fd4642604d0d0c26112396ce5b1a9d01eee0b"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/nullrocks/identicon"
+  packages = ["."]
+  revision = "7875f45b0022edded6377e40639d8aa620193a62"
+
+[[projects]]
   name = "github.com/patrickmn/go-cache"
   packages = ["."]
   revision = "a3647f8e31d79543b2d0f0ae2fe5c379d72cedc0"
@@ -244,6 +250,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "047a33490c46c94c95bb17f1f50f493e78f718b3bd96b3a777c233bce8c0af17"
+  inputs-digest = "38280a8f373ce1799e64ac1709e9748ae8cf6cca30dfeabca807d2db9fe34ab8"
   solver-name = "gps-cdcl"
   solver-version = 1

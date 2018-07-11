@@ -3,13 +3,13 @@ import { h, Component } from 'preact';
 
 import api from 'common/api';
 import { getHandleClickProps } from 'common/accessibility';
-import { API_BASE, BASE_URL, COMMENT_NODE_CLASSNAME_PREFIX } from 'common/constants';
+import { API_BASE, BASE_URL, COMMENT_NODE_CLASSNAME_PREFIX, BLOCKING_DURATIONS } from 'common/constants';
 import { url } from 'common/settings';
 import store from 'common/store';
 
 import Input from 'components/input';
-import UserInfo from 'components/user-info';
-import Avatar from './__avatar/comment__avatar';
+
+import Avatar from 'components/avatar-icon';
 
 export default class Comment extends Component {
   constructor(props) {
@@ -19,7 +19,6 @@ export default class Comment extends Component {
       isReplying: false,
       isEditing: false,
       isUserVerified: false,
-      isUserInfoShown: false,
       editTimeLeft: null,
     };
 
@@ -37,6 +36,8 @@ export default class Comment extends Component {
     this.onEdit = this.onEdit.bind(this);
     this.onReply = this.onReply.bind(this);
     this.onDeleteClick = this.onDeleteClick.bind(this);
+    this.onBlockUserClick = this.onBlockUserClick.bind(this);
+    this.onUnblockUserClick = this.onUnblockUserClick.bind(this);
   }
 
   componentWillReceiveProps(nextProps) {
@@ -132,7 +133,11 @@ export default class Comment extends Component {
   }
 
   toggleUserInfoVisibility() {
-    this.setState({ isUserInfoShown: !this.state.isUserInfoShown });
+    if (window.parent) {
+      const { user } = this.props.data;
+      const data = JSON.stringify({ isUserInfoShown: true, user });
+      window.parent.postMessage(data, '*');
+    }
   }
 
   togglePin(isPinned) {
@@ -164,17 +169,41 @@ export default class Comment extends Component {
     }
   }
 
-  toggleBlock(isBlocked) {
+  onBlockUserClick(e) {
     const {
       id,
       user: { id: userId },
     } = this.props.data;
-    const promptMessage = `Do you want to ${isBlocked ? 'unblock' : 'block'} this user?`;
+
+    const ttl = e.target.value;
+    const duration = BLOCKING_DURATIONS.find(el => el.value === ttl).label;
+    const promptMessage =
+      ttl === 'permanently'
+        ? 'Do you want to permanently block this user?'
+        : `Do you want to block this user (${duration.toLowerCase()})?`;
+    if (confirm(promptMessage)) {
+      this.setState({ userBlocked: true });
+
+      api
+        .blockUser({ id: userId, ttl })
+        .then(api.getComment({ id }))
+        .then(comment => store.replaceComment(comment));
+    }
+  }
+
+  onUnblockUserClick() {
+    const {
+      id,
+      user: { id: userId },
+    } = this.props.data;
+
+    const promptMessage = `Do you want to unblock this user?`;
 
     if (confirm(promptMessage)) {
-      this.setState({ userBlocked: !isBlocked });
+      this.setState({ userBlocked: false });
 
-      (isBlocked ? api.unblockUser : api.blockUser)({ id: userId })
+      api
+        .unblockUser({ id: userId })
         .then(api.getComment({ id }))
         .then(comment => store.replaceComment(comment));
     }
@@ -289,7 +318,6 @@ export default class Comment extends Component {
       isEditing,
       isUserVerified,
       editTimeLeft,
-      isUserInfoShown,
     }
   ) {
     const { data, mods = {} } = props;
@@ -501,9 +529,26 @@ export default class Comment extends Component {
                   <span {...getHandleClickProps(() => this.togglePin(pinned))} className="comment__control">
                     {pinned ? 'Unpin' : 'Pin'}
                   </span>
-                  <span {...getHandleClickProps(() => this.toggleBlock(userBlocked))} className="comment__control">
-                    {userBlocked ? 'Unblock' : 'Block'}
-                  </span>
+
+                  {userBlocked && (
+                    <span {...getHandleClickProps(() => this.onUnblockUserClick())} className="comment__control">
+                      Unblock
+                    </span>
+                  )}
+
+                  {!userBlocked && (
+                    <span className="comment__control comment__control_select-label">
+                      Block
+                      {/* eslint-disable jsx-a11y/no-onchange */}
+                      <select className="comment__control_select" onChange={this.onBlockUserClick}>
+                        <option disabled selected value>
+                          {' '}
+                          Blocking period{' '}
+                        </option>
+                        {BLOCKING_DURATIONS.map(block => <option value={block.value}>{block.label}</option>)}
+                      </select>
+                    </span>
+                  )}
 
                   {!deleted && (
                     <span {...getHandleClickProps(this.onDeleteClick)} className="comment__control">
@@ -514,8 +559,6 @@ export default class Comment extends Component {
               )}
           </div>
         </div>
-
-        {isUserInfoShown && <UserInfo mix="comment__user-info" user={o.user} onClose={this.toggleUserInfoVisibility} />}
 
         {isReplying &&
           mods.view !== 'user' && (

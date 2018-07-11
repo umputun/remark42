@@ -125,7 +125,7 @@ module.exports = {
     }),
     new webpack.optimize.ModuleConcatenationPlugin(),
     ...(env === 'production' ? [new webpack.optimize.UglifyJsPlugin()] : []),
-    ...(process.env.CI === 'true'
+    ...(process.env.CI
       ? []
       : [
           new BundleAnalyze({
