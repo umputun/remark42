@@ -97,7 +97,7 @@ func TestWriterWithAuthFlush(t *testing.T) {
 	assert.Nil(t, wr.Write(bson.M{"key1": "val1"}), "write rec #1")
 	assert.Nil(t, wr.Write(bson.M{"key2": "val2"}), "write rec #2")
 	assert.Equal(t, 0, count(), "nothing yet")
-	time.Sleep(501 * time.Millisecond)
+	time.Sleep(600 * time.Millisecond)
 	assert.Equal(t, 2, count(), "2 records flushed")
 
 	assert.Nil(t, wr.Write(bson.M{"key3": "val3"}), "write rec #3")
