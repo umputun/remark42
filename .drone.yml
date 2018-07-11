@@ -7,7 +7,9 @@ pipeline:
   build:
     image: golang:1.10-alpine
     commands:
+      - sleep 5
       - export
+      - cat /etc/hosts
       - nslookup mongo
       - cd backend/app
       - go build -v ./...
