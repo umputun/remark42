@@ -20,7 +20,7 @@ func TestServer_NewServerGood(t *testing.T) {
 	m, err := NewServerWithURL(mongoURL, 3*time.Second)
 	assert.Nil(t, err)
 	assert.NotNil(t, m)
-	assert.True(t, strings.HasSuffix(m.String(), "test"))
+	assert.True(t, strings.HasSuffix(m.String(), "test"), m.String())
 }
 
 func TestServer_NewServerBad(t *testing.T) {
