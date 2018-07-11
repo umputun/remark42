@@ -33,6 +33,7 @@ pipeline:
       - DRONE=${DRONE}
       - DRONE_TAG=${DRONE_TAG}
       - DRONE_COMMIT=${DRONE_COMMIT}
+      - MONGO_REMARK_TEST=${MONGO_REMARK_TEST}
     tags: 
       - ${DRONE_TAG}
       - latest
