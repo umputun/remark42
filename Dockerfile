@@ -29,6 +29,8 @@ RUN cd app && \
     if [ -z "$SKIP_BACKEND_TEST" ] ; then go test ./... ; \
     else echo "skip backend test" ; fi
 
+RUN echo "mongo=${MONGO_REMARK_TEST}" >> /etc/hosts
+
 # linters
 RUN if [ -z "$SKIP_BACKEND_TEST" ] ; then \
     gometalinter --disable-all --deadline=300s --vendor --enable=vet --enable=vetshadow --enable=golint \
