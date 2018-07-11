@@ -25,7 +25,9 @@ WORKDIR /go/src/github.com/umputun/remark/backend
 ADD backend /go/src/github.com/umputun/remark/backend
 
 # run tests
-RUN cd app && \
+RUN \
+    if [ -f .mongo ] ; then export MONGO_REMARK_TEST=$(cat .mongo) ; fi && \
+    cd app && \
     if [ -z "$SKIP_BACKEND_TEST" ] ; then go test ./... ; \
     else echo "skip backend test" ; fi
 
