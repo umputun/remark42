@@ -24,9 +24,10 @@ ARG MONGO_REMARK_TEST
 WORKDIR /go/src/github.com/umputun/remark/backend
 ADD backend /go/src/github.com/umputun/remark/backend
 
+ENV MONGO_REMARK_TEST=$MONGO_REMARK_TEST
+
 # run tests
 RUN cd app && \
-    echo "$MONGO mongo" >> /etc/hosts && \
     if [ -z "$SKIP_BACKEND_TEST" ] ; then go test ./... ; \
     else echo "skip backend test" ; fi
 
