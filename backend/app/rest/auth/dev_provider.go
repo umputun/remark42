@@ -144,7 +144,7 @@ func NewDev(p Params) Provider {
 			AuthURL:  fmt.Sprintf("http://127.0.0.1:%d/login/oauth/authorize", devAuthPort),
 			TokenURL: fmt.Sprintf("http://127.0.0.1:%d/login/oauth/access_token", devAuthPort),
 		},
-		RedirectURL: "http://127.0.0.1:8080/auth/dev/callback",
+		RedirectURL: p.RemarkURL + "/auth/dev/callback",
 		Scopes:      []string{"user:email"},
 		InfoURL:     fmt.Sprintf("http://127.0.0.1:%d/user", devAuthPort),
 		MapUser: func(data userData, _ []byte) store.User {
@@ -165,7 +165,7 @@ func (d *DevAuthServer) genAvatar(user string) ([]byte, error) {
 
 	ii, err := d.iconGen.Draw(user) // Generate an IdentIcon
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to draqw avatar for %s", user)
+		return nil, errors.Wrapf(err, "failed to draw avatar for %s", user)
 	}
 
 	buf := &bytes.Buffer{}
