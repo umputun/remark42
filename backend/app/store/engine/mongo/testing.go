@@ -22,7 +22,10 @@ func MakeTestConnection(t *testing.T) *Connection {
 	once.Do(func() {
 		log.Print("[DEBUG] connect to mongo test instance")
 		mongoURL := os.Getenv("MONGO_REMARK_TEST")
-		require.True(t, mongoURL != "", "no MONGO_REMARK_TEST in env")
+		if mongoURL == "" {
+			mongoURL = "mongodb://mongo:27017"
+			log.Printf("[WARN] no MONGO_REMARK_TEST in env")
+		}
 		srv, err := NewServerWithURL(mongoURL, 10*time.Second)
 		assert.Nil(t, err, "failed to dial")
 		collName := fmt.Sprintf("remark42_test_%d", time.Now().Nanosecond())

@@ -66,6 +66,12 @@ func TestWithDB(t *testing.T) {
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, 100, len(res))
+
+	err = c.WithDB(func(dbase *mgo.Database) error {
+		return dbase.C(c.collection).Find(nil).All(&res)
+	})
+	assert.Nil(t, err)
+	assert.Equal(t, 100, len(res))
 }
 
 func write(t *testing.T) *Connection {

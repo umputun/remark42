@@ -1,18 +1,21 @@
 package mongo
 
 import (
+	"log"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/globalsign/mgo"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestServer_NewServerGood(t *testing.T) {
 	mongoURL := os.Getenv("MONGO_REMARK_TEST")
-	require.True(t, mongoURL != "", "no MONGO_REMARK_TEST in env")
+	if mongoURL == "" {
+		mongoURL = "mongodb://mongo:27017"
+		log.Printf("[WARN] no MONGO_REMARK_TEST in env")
+	}
 	m, err := NewServerWithURL(mongoURL, 3*time.Second)
 	assert.Nil(t, err)
 	assert.NotNil(t, m)

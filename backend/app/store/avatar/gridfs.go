@@ -24,7 +24,7 @@ type GridFS struct {
 	resizeLimit int
 }
 
-// Put avatear to gridfs object, try to resize
+// Put avatar to gridfs object, try to resize
 func (gf *GridFS) Put(userID string, reader io.Reader) (avatar string, err error) {
 	id := store.EncodeID(userID)
 	err = gf.Connection.WithDB(func(dbase *mgo.Database) error {

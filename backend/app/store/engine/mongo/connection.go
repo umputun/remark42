@@ -1,10 +1,7 @@
 package mongo
 
 import (
-	"crypto/rand"
-	"crypto/sha1"
 	"fmt"
-	"log"
 
 	"github.com/globalsign/mgo"
 )
@@ -63,19 +60,6 @@ func (c *Connection) WithCustomDB(db string, fun func(dbase *mgo.Database) error
 	session := c.server.SessionCopy()
 	defer session.Close()
 	return fun(session.DB(db))
-}
-
-// MakeRandomID generates sha1(random) string
-func MakeRandomID() string {
-	b := make([]byte, 64)
-	if _, err := rand.Read(b); err != nil {
-		log.Fatalf("[ERROR] can't get randoms, %s", err)
-	}
-	s := sha1.New()
-	if _, err := s.Write(b); err != nil {
-		log.Fatalf("[ERROR] can't make sha1 for random, %s", err)
-	}
-	return fmt.Sprintf("%x", s.Sum(nil))
 }
 
 func (c *Connection) String() string {
