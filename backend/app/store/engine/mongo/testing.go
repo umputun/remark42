@@ -2,6 +2,7 @@ package mongo
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"sync"
 	"testing"
@@ -19,9 +20,10 @@ var once sync.Once
 // collection name randomized on each call
 func MakeTestConnection(t *testing.T) *Connection {
 	once.Do(func() {
+		log.Print("[DEBUG] connect to mongo test instance")
 		mongoURL := os.Getenv("MONGO_REMARK_TEST")
 		require.True(t, mongoURL != "", "no MONGO_REMARK_TEST in env")
-		srv, err := NewServerWithURL(mongoURL, 3*time.Second)
+		srv, err := NewServerWithURL(mongoURL, 10*time.Second)
 		assert.Nil(t, err, "failed to dial")
 		collName := fmt.Sprintf("remark42_test_%d", time.Now().Nanosecond())
 		conn = NewConnection(srv, "test", collName)
@@ -32,6 +34,7 @@ func MakeTestConnection(t *testing.T) *Connection {
 
 // RemoveTestCollection removes all records and drop collection from connection
 func RemoveTestCollection(t *testing.T, c *Connection) {
+	log.Printf("[DEBUG] clean test collection %+v", c.collection)
 	_ = c.WithCollection(func(coll *mgo.Collection) error {
 		_, e := coll.RemoveAll(nil)
 		require.Nil(t, e, "failed to remove records, %s", e)
@@ -45,6 +48,7 @@ func RemoveTestCollection(t *testing.T, c *Connection) {
 
 // RemoveTestCollections clears colls
 func RemoveTestCollections(t *testing.T, c *Connection, colls ...string) {
+	log.Printf("[DEBUG] clean test collections %+v", colls)
 	for _, collection := range colls {
 		c.WithCustomCollection(collection, func(coll *mgo.Collection) error {
 			_, e := coll.RemoveAll(nil)

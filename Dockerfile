@@ -24,8 +24,6 @@ ARG MONGO_REMARK_TEST
 WORKDIR /go/src/github.com/umputun/remark/backend
 ADD backend /go/src/github.com/umputun/remark/backend
 
-ENV MONGO_REMARK_TEST=$MONGO_REMARK_TEST
-
 # run tests
 RUN cd app && \
     if [ -z "$SKIP_BACKEND_TEST" ] ; then go test ./... ; \
@@ -40,7 +38,6 @@ RUN if [ -z "$SKIP_BACKEND_TEST" ] ; then \
 
 # coverage report
 RUN if [ -z "$SKIP_BACKEND_TEST" ] ; then \
-    echo "$MONGO mongo" >> /etc/hosts && \
     mkdir -p target && /script/coverage.sh ; \
     else echo "skip backend coverage" ; fi
 
