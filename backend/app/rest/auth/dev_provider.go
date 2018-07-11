@@ -21,9 +21,9 @@ const devAuthPort = 8084
 
 // DevAuthServer is a fake oauth server for development
 // it provides stand-alone server running on its own port and pretending to be the real oauth2. It also provides
-// Dev Provider the same way as normal providers di, i.e. github, google and others.
+// Dev Provider the same way as normal providers do, i.e. like github, google and others.
 // can run in interactive and non-interactive mode. In interactive mode login attempts will show login form to select
-// desired user name.
+// desired user name, this is the mode used for development. Non-interactive mode for tests only.
 type DevAuthServer struct {
 	Provider Provider
 
