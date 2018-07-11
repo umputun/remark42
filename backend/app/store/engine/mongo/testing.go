@@ -16,7 +16,7 @@ import (
 var conn *Connection
 var once sync.Once
 
-// MakeTestConnection connects to MONGO_REMARK_TEST url and returns new connection
+// MakeTestConnection connects to MONGO_REMARK_TEST url or "mongo" host (in no env) and returns new connection.
 // collection name randomized on each call
 func MakeTestConnection(t *testing.T) *Connection {
 	once.Do(func() {

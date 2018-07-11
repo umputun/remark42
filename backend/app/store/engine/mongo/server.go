@@ -125,6 +125,7 @@ func ParseMode(m string) mgo.Mode {
 	return mgo.PrimaryPreferred
 }
 
+// parseURL extends mgo with debug option and extracts ssl flag to make ServerParams
 func parseURL(mongoURL string, connectTimeout time.Duration) (mgo.DialInfo, ServerParams, error) {
 	params := ServerParams{
 		ConsistencyMode: mgo.Monotonic,

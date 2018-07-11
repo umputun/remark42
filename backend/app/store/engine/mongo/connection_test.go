@@ -14,7 +14,7 @@ type testRecord struct {
 	Num    int
 }
 
-func TestWithCollection(t *testing.T) {
+func TestConnection_WithCollection(t *testing.T) {
 	c := write(t)
 	defer RemoveTestCollection(t, c)
 
@@ -44,7 +44,7 @@ func TestWithCollection(t *testing.T) {
 	assert.Equal(t, mgo.ErrNotFound, err)
 }
 
-func TestWithCollectionNoDB(t *testing.T) {
+func TestConnection_WithCollectionNoDB(t *testing.T) {
 	c := write(t)
 	defer RemoveTestCollection(t, c)
 
@@ -56,7 +56,7 @@ func TestWithCollectionNoDB(t *testing.T) {
 	assert.Equal(t, 100, len(res))
 }
 
-func TestWithDB(t *testing.T) {
+func TestConnection_WithDB(t *testing.T) {
 	c := write(t)
 	defer RemoveTestCollection(t, c)
 
@@ -72,6 +72,24 @@ func TestWithDB(t *testing.T) {
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, 100, len(res))
+}
+
+func TestCleanup(t *testing.T) {
+	c := write(t)
+
+	var res []testRecord
+	err := c.WithCustomDB("test", func(dbase *mgo.Database) error {
+		return dbase.C(c.collection).Find(nil).All(&res)
+	})
+	assert.Nil(t, err)
+	assert.Equal(t, 100, len(res))
+
+	RemoveTestCollections(t, c, c.collection)
+	err = c.WithCustomDB("test", func(dbase *mgo.Database) error {
+		return dbase.C(c.collection).Find(nil).All(&res)
+	})
+	assert.Nil(t, err)
+	assert.Equal(t, 0, len(res))
 }
 
 func write(t *testing.T) *Connection {

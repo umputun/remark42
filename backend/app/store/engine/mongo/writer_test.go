@@ -47,7 +47,7 @@ func TestWriter(t *testing.T) {
 
 }
 
-func TestWriterParallel(t *testing.T) {
+func TestWriter_Parallel(t *testing.T) {
 	conn := MakeTestConnection(t)
 	defer RemoveTestCollection(t, conn)
 
@@ -78,7 +78,7 @@ func TestWriterParallel(t *testing.T) {
 	assert.Nil(t, wr.Close())
 }
 
-func TestWriterWithAuthFlush(t *testing.T) {
+func TestWriter_WithAuthFlush(t *testing.T) {
 
 	conn := MakeTestConnection(t)
 	defer RemoveTestCollection(t, conn)
@@ -117,7 +117,7 @@ func TestWriterWithAuthFlush(t *testing.T) {
 	assert.Nil(t, wr.Close())
 }
 
-func TestWriterParallelWithAutoFlush(t *testing.T) {
+func TestWriter_ParallelWithAutoFlush(t *testing.T) {
 	conn := MakeTestConnection(t)
 	defer RemoveTestCollection(t, conn)
 
