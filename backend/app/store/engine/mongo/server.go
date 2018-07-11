@@ -84,7 +84,6 @@ func NewServer(dial mgo.DialInfo, params ServerParams) (res *Server, err error) 
 	session.SetSyncTimeout(30 * time.Second)
 	session.SetSocketTimeout(dial.Timeout)
 
-	// login from credentials
 	if dial.Username != "" && dial.Password != "" {
 		creds := &mgo.Credential{Username: dial.Username, Password: dial.Password, Source: dial.Source}
 		log.Printf("[DEBUG] login to mongo, user=%s, db=%s", creds.Username, creds.Source)

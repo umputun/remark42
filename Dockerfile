@@ -19,7 +19,7 @@ ARG DRONE_BRANCH
 ARG DRONE_PULL_REQUEST
 
 ARG SKIP_BACKEND_TEST
-ARG MONGO
+ARG MONGO_REMARK_TEST
 
 WORKDIR /go/src/github.com/umputun/remark/backend
 ADD backend /go/src/github.com/umputun/remark/backend
