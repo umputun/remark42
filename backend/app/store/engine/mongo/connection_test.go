@@ -15,14 +15,11 @@ type testRecord struct {
 }
 
 func TestWithCollection(t *testing.T) {
-	write(t)
+	c := write(t)
+	defer RemoveTestCollection(t, c)
 
 	var res []testRecord
-	srv, err := NewServer(mgo.DialInfo{Addrs: []string{"mongo"}}, ServerParams{})
-	assert.Nil(t, err)
-
-	c := NewConnection(srv, "test", "connection")
-	err = c.WithCollection(func(coll *mgo.Collection) error {
+	err := c.WithCollection(func(coll *mgo.Collection) error {
 		return coll.Find(nil).All(&res)
 	})
 	assert.Nil(t, err)
@@ -40,7 +37,7 @@ func TestWithCollection(t *testing.T) {
 	})
 	assert.Equal(t, mgo.ErrNotFound, err)
 
-	c = NewConnection(srv, "test", "bbbbbbbaaad")
+	c = NewConnection(c.server, "test", "bbbbbbbaaad")
 	err = c.WithCollection(func(coll *mgo.Collection) error {
 		return coll.Find(bson.M{"symbol": "blah"}).One(&r1)
 	})
@@ -48,13 +45,11 @@ func TestWithCollection(t *testing.T) {
 }
 
 func TestWithCollectionNoDB(t *testing.T) {
-	write(t)
+	c := write(t)
+	defer RemoveTestCollection(t, c)
 
 	var res []testRecord
-	srv, err := NewServer(mgo.DialInfo{Addrs: []string{"mongo"}, Database: "test"}, ServerParams{})
-	assert.Nil(t, err)
-	c := NewConnection(srv, "", "connection")
-	err = c.WithCollection(func(coll *mgo.Collection) error {
+	err := c.WithCollection(func(coll *mgo.Collection) error {
 		return coll.Find(nil).All(&res)
 	})
 	assert.Nil(t, err)
@@ -62,30 +57,28 @@ func TestWithCollectionNoDB(t *testing.T) {
 }
 
 func TestWithDB(t *testing.T) {
-	write(t)
+	c := write(t)
+	defer RemoveTestCollection(t, c)
 
 	var res []testRecord
-	srv, err := NewServer(mgo.DialInfo{Addrs: []string{"mongo"}, Database: "test"}, ServerParams{})
-	assert.Nil(t, err)
-	c := Connection{srv, "", ""}
-	err = c.WithCustomDB("test", func(dbase *mgo.Database) error {
-		return dbase.C("connection").Find(nil).All(&res)
+	err := c.WithCustomDB("test", func(dbase *mgo.Database) error {
+		return dbase.C(c.collection).Find(nil).All(&res)
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, 100, len(res))
 }
 
-func write(t *testing.T) {
-	mongo, err := mgo.Dial("mongo")
-	assert.Nil(t, err, "connect to mongo")
-	coll := mongo.DB("test").C("connection")
-	_ = coll.DropCollection()
-
-	for i := 0; i < 100; i++ {
-		r := testRecord{
-			Symbol: fmt.Sprintf("symb-%02d", i%5),
-			Num:    i,
+func write(t *testing.T) *Connection {
+	c := MakeTestConnection(t)
+	c.WithCollection(func(coll *mgo.Collection) error {
+		for i := 0; i < 100; i++ {
+			r := testRecord{
+				Symbol: fmt.Sprintf("symb-%02d", i%5),
+				Num:    i,
+			}
+			assert.Nil(t, coll.Insert(r), fmt.Sprintf("insert %+v", r))
 		}
-		assert.Nil(t, coll.Insert(r), fmt.Sprintf("insert %+v", r))
-	}
+		return nil
+	})
+	return c
 }

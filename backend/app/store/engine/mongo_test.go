@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/globalsign/mgo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -320,9 +319,9 @@ func TestMongo_BlockUserWithTTL(t *testing.T) {
 	m := prepMongo(t, true) // adds two comments
 
 	assert.False(t, m.IsBlocked("radio-t", "user1"), "nothing blocked")
-	assert.NoError(t, m.SetBlock("radio-t", "user1", true, 50*time.Millisecond))
+	assert.NoError(t, m.SetBlock("radio-t", "user1", true, 500*time.Millisecond))
 	assert.True(t, m.IsBlocked("radio-t", "user1"), "user1 blocked")
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 	assert.False(t, m.IsBlocked("radio-t", "user1"), "user1 un-blocked automatically")
 }
 
@@ -342,7 +341,7 @@ func TestMongo_BlockList(t *testing.T) {
 	m := prepMongo(t, true) // adds two comments
 
 	assert.NoError(t, m.SetBlock("radio-t", "user1", true, 0))
-	assert.NoError(t, m.SetBlock("radio-t", "user2", true, 50*time.Millisecond))
+	assert.NoError(t, m.SetBlock("radio-t", "user2", true, 500*time.Millisecond))
 	assert.NoError(t, m.SetBlock("radio-t", "user3", false, 0))
 
 	ids, err := m.Blocked("radio-t")
@@ -353,7 +352,7 @@ func TestMongo_BlockList(t *testing.T) {
 	assert.Equal(t, "user2", ids[1].ID)
 	t.Logf("%+v", ids)
 
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 	ids, err = m.Blocked("radio-t")
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(ids))
@@ -480,6 +479,7 @@ func TestMongo_Parallel(t *testing.T) {
 	}()
 
 	for {
+		time.Sleep(10 * time.Millisecond)
 		res, err := m.Find(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "time")
 		assert.Nil(t, err)
 		if len(res) == 100 {
@@ -489,19 +489,13 @@ func TestMongo_Parallel(t *testing.T) {
 }
 
 func prepMongo(t *testing.T, writeRecs bool) *Mongo {
-	mg := mongo.NewTesting(mongoPosts)
-	mg.DropCollection()
-	conn, err := mg.Get()
-	require.Nil(t, err)
+	conn := mongo.MakeTestConnection(t)
+	mongo.RemoveTestCollection(t, conn)
+
 	m, err := NewMongo(conn, 1, 0*time.Microsecond)
 	require.Nil(t, err)
-	_ = m.conn.WithCustomCollection(mongoMetaPosts, func(coll *mgo.Collection) error {
-		return coll.DropCollection()
-	})
-	_ = m.conn.WithCustomCollection(mongoMetaUsers, func(coll *mgo.Collection) error {
-		return coll.DropCollection()
-	})
 
+	mongo.RemoveTestCollections(t, conn, mongoPosts, mongoMetaPosts, mongoMetaUsers)
 	comment := store.Comment{
 		ID:        "id-1",
 		Text:      `some text, <a href="http://radio-t.com">link</a>`,
@@ -530,17 +524,12 @@ func prepMongo(t *testing.T, writeRecs bool) *Mongo {
 }
 
 func prepMongoBuffered(t *testing.T) *Mongo {
-	mg := mongo.NewTesting(mongoPosts)
-	mg.DropCollection()
-	conn, err := mg.Get()
-	require.Nil(t, err)
+	conn := mongo.MakeTestConnection(t)
+	mongo.RemoveTestCollection(t, conn)
+
 	m, err := NewMongo(conn, 10, 10*time.Millisecond)
+	mongo.RemoveTestCollections(t, conn, mongoPosts, mongoMetaPosts, mongoMetaUsers)
+
 	require.Nil(t, err)
-	_ = m.conn.WithCustomCollection(mongoMetaPosts, func(coll *mgo.Collection) error {
-		return coll.DropCollection()
-	})
-	_ = m.conn.WithCustomCollection(mongoMetaUsers, func(coll *mgo.Collection) error {
-		return coll.DropCollection()
-	})
 	return m
 }

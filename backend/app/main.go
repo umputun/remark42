@@ -317,7 +317,7 @@ func makeDataStore(group StoreGroup, siteNames []string) (result engine.Interfac
 	case "mongo":
 		mgServer, e := makeMongo(group.Mongo)
 		if e != nil {
-			return result, errors.Wrap(err, "failed to create mongo server")
+			return result, errors.Wrap(e, "failed to create mongo server")
 		}
 		conn := mongo.NewConnection(mgServer, group.Mongo.DB, "")
 		result, err = engine.NewMongo(conn, 500, 100*time.Millisecond)
@@ -375,19 +375,22 @@ func makeDirs(dirs ...string) error {
 }
 
 func makeMongo(mopts MongoOpts) (result *mongo.Server, err error) {
-	dial := &mgo.DialInfo{Addrs: mopts.Server, Database: mopts.DB} // default with addrs
-	if mopts.URL != "" {                                           // use full mongo uri if defined
-		var dialError error
-		if dial, dialError = mgo.ParseURL(mopts.URL); dialError != nil {
-			return result, errors.Wrapf(err, "failed to create mongo server with url %s", mopts.URL)
-		}
-		log.Printf("[DEBUG] dial %+v", dial)
+	if mopts.URL != "" {
+		log.Print("[DEBUG] mongo url provided")
+		return mongo.NewServerWithURL(mopts.URL, 10*time.Second)
 	}
-	dial.Timeout = 3 * time.Second
-	return mongo.NewServer(*dial, mongo.ServerParams{
-		Debug:      mopts.Dbg,
-		SSL:        mopts.SSL,
-		Credential: &mgo.Credential{Username: mopts.User, Password: mopts.Passwd, Source: "admin"},
+	dial := mgo.DialInfo{
+		Addrs:    mopts.Server,
+		Database: mopts.DB,
+		Timeout:  10 * time.Second,
+		Username: mopts.User,
+		Password: mopts.Passwd,
+		Source:   "admin",
+	}
+
+	return mongo.NewServer(dial, mongo.ServerParams{
+		Debug: mopts.Dbg,
+		SSL:   mopts.SSL,
 	})
 }
 

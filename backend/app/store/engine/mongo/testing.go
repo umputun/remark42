@@ -1,53 +1,60 @@
 package mongo
 
 import (
-	"log"
+	"fmt"
+	"os"
+	"sync"
+	"testing"
+	"time"
 
 	"github.com/globalsign/mgo"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-// Testing represents basic operations needed in usual mongo-related tests. Enforces test db, "mongo" host
-type Testing struct {
-	collection string
+var conn *Connection
+var once sync.Once
+
+// MakeTestConnection connects to MONGO_REMARK_TEST url and returns new connection
+// collection name randomized on each call
+func MakeTestConnection(t *testing.T) *Connection {
+	once.Do(func() {
+		mongoURL := os.Getenv("MONGO_REMARK_TEST")
+		require.True(t, mongoURL != "", "no MONGO_REMARK_TEST in env")
+		srv, err := NewServerWithURL(mongoURL, 3*time.Second)
+		assert.Nil(t, err, "failed to dial")
+		collName := fmt.Sprintf("remark42_test_%d", time.Now().Nanosecond())
+		conn = NewConnection(srv, "test", collName)
+	})
+	RemoveTestCollection(t, conn)
+	return conn
 }
 
-// NewTesting makes new testingMongo for given collection
-func NewTesting(collection string) *Testing {
-	return &Testing{collection: collection}
-}
-
-// WriteRecords makes fresh collection and write records
-func (t Testing) WriteRecords(records ...interface{}) {
-
-	session, err := mgo.Dial("mongo")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer session.Close()
-	_ = session.DB("test").C(t.collection).DropCollection()
-	c := session.DB("test").C(t.collection)
-	for i, r := range records {
-		if err := c.Insert(r); err != nil {
-			log.Fatalf("failed to insert #%d, %v", i, err)
+// RemoveTestCollection removes all records and drop collection from connection
+func RemoveTestCollection(t *testing.T, c *Connection) {
+	_ = c.WithCollection(func(coll *mgo.Collection) error {
+		_, e := coll.RemoveAll(nil)
+		require.Nil(t, e, "failed to remove records, %s", e)
+		e = coll.DropCollection()
+		if e != nil && e.Error() != "ns not found" {
+			require.Nil(t, e, "failed to drop collection, %s", e)
 		}
-	}
+		return e
+	})
 }
 
-// DropCollection removed collection from "test" db
-func (t Testing) DropCollection() error {
-	session, err := mgo.Dial("mongo")
-	if err != nil {
-		log.Fatal(err)
+// RemoveTestCollections clears colls
+func RemoveTestCollections(t *testing.T, c *Connection, colls ...string) {
+	for _, collection := range colls {
+		c.WithCustomCollection(collection, func(coll *mgo.Collection) error {
+			_, e := coll.RemoveAll(nil)
+			require.Nil(t, e, "failed to remove records, %s", e)
+			e = coll.DropCollection()
+			if e != nil && e.Error() != "ns not found" {
+				require.Nil(t, e, "failed to drop collection, %s", e)
+			}
+			return e
+		})
 	}
-	defer session.Close()
-	return session.DB("test").C(t.collection).DropCollection()
-}
 
-// Get testing connection
-func (t Testing) Get() (*Connection, error) {
-	srv, err := NewDefaultServer(mgo.DialInfo{Addrs: []string{"mongo"}, Database: "test"})
-	if err != nil {
-		return nil, err
-	}
-	return NewConnection(srv, "test", t.collection), nil
 }

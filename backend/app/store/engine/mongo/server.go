@@ -4,7 +4,6 @@ package mongo
 
 import (
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -13,6 +12,7 @@ import (
 	"time"
 
 	"github.com/globalsign/mgo"
+	"github.com/pkg/errors"
 )
 
 // Server represents mongo instance and provides session accessor
@@ -26,7 +26,6 @@ type Server struct {
 type ServerParams struct {
 	Delay           int  // initial delay to give mongo server some time to start, in case if mongo part of the same compose
 	Debug           bool // turn on mgo debug mode
-	Credential      *mgo.Credential
 	ConsistencyMode mgo.Mode
 	SSL             bool
 }
@@ -34,6 +33,16 @@ type ServerParams struct {
 // NewDefaultServer makes a server with default extra params.
 func NewDefaultServer(dial mgo.DialInfo) (res *Server, err error) {
 	return NewServer(dial, ServerParams{ConsistencyMode: mgo.Monotonic})
+}
+
+// NewServerWithURL makes mongo server from url like
+// mongodb://remark42:password@127.0.0.1t:27017/test?ssl=true&replicaSet=Cluster0-shard-0&authSource=admin
+func NewServerWithURL(url string, timeout time.Duration) (res *Server, err error) {
+	dial, params, err := parseURL(url, timeout)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to create mongo server from url %s", url)
+	}
+	return NewServer(dial, params)
 }
 
 // NewServer doing auth if passwd != "" and can delay to make sure local mongo is up
@@ -75,9 +84,11 @@ func NewServer(dial mgo.DialInfo, params ServerParams) (res *Server, err error) 
 	session.SetSyncTimeout(30 * time.Second)
 	session.SetSocketTimeout(dial.Timeout)
 
-	if params.Credential != nil && params.Credential.Username != "" && params.Credential.Password != "" {
-		log.Printf("[DEBUG] login to mongo, user=%s, db=%s", params.Credential.Username, params.Credential.Source)
-		if err = session.Login(params.Credential); err != nil {
+	// login from credentials
+	if dial.Username != "" && dial.Password != "" {
+		creds := &mgo.Credential{Username: dial.Username, Password: dial.Password, Source: dial.Source}
+		log.Printf("[DEBUG] login to mongo, user=%s, db=%s", creds.Username, creds.Source)
+		if err = session.Login(creds); err != nil {
 			log.Printf("[ERROR] can't login to mongo, %v", err)
 			return nil, err
 		}
@@ -113,4 +124,19 @@ func ParseMode(m string) mgo.Mode {
 		return mgo.Monotonic
 	}
 	return mgo.PrimaryPreferred
+}
+
+func parseURL(mongoURL string, connectTimeout time.Duration) (mgo.DialInfo, ServerParams, error) {
+	params := ServerParams{
+		ConsistencyMode: mgo.Monotonic,
+		SSL:             strings.Contains(mongoURL, "ssl=true"),
+		Debug:           strings.Contains(mongoURL, "debug=true"),
+	}
+	mongoURL = strings.Replace(mongoURL, "&debug=true", "", 1)
+	dial, err := mgo.ParseURL(mongoURL)
+	if err != nil {
+		return mgo.DialInfo{}, ServerParams{}, errors.Wrapf(err, "failed to pars mongo url %s", mongoURL)
+	}
+	dial.Timeout = connectTimeout
+	return *dial, params, nil
 }

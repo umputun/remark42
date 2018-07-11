@@ -22,7 +22,9 @@ func TestWriter(t *testing.T) {
 		return res
 	}
 
-	conn := makeConnection(t)
+	conn := MakeTestConnection(t)
+	defer RemoveTestCollection(t, conn)
+
 	var wr BufferedWriter = NewBufferedWriter(3, conn)
 	assert.Nil(t, wr.Write(bson.M{"key1": "val1"}), "write rec #1")
 	assert.Nil(t, wr.Write(bson.M{"key2": "val2"}), "write rec #2")
@@ -46,12 +48,14 @@ func TestWriter(t *testing.T) {
 }
 
 func TestWriterParallel(t *testing.T) {
-	conn := makeConnection(t)
+	conn := MakeTestConnection(t)
+	defer RemoveTestCollection(t, conn)
+
 	var wg sync.WaitGroup
-	wr := NewBufferedWriter(75, conn).WithCollection("writer_test")
+	wr := NewBufferedWriter(75, conn)
 
 	writeMany := func() {
-		for i := 0; i < 1000; i++ {
+		for i := 0; i < 100; i++ {
 			wr.Write(bson.M{"key1": 1, "key2": 2})
 		}
 		wr.Flush()
@@ -68,7 +72,7 @@ func TestWriterParallel(t *testing.T) {
 	_ = conn.WithCollection(func(coll *mgo.Collection) error {
 		res, err := coll.Find(nil).Count()
 		assert.Nil(t, err)
-		assert.Equal(t, 1000*16, res)
+		assert.Equal(t, 100*16, res)
 		return nil
 	})
 	assert.Nil(t, wr.Close())
@@ -76,8 +80,10 @@ func TestWriterParallel(t *testing.T) {
 
 func TestWriterWithAuthFlush(t *testing.T) {
 
-	conn := makeConnection(t)
-	var wr BufferedWriter = NewBufferedWriter(3, conn).WithAutoFlush(50 * time.Millisecond)
+	conn := MakeTestConnection(t)
+	defer RemoveTestCollection(t, conn)
+
+	var wr BufferedWriter = NewBufferedWriter(3, conn).WithAutoFlush(500 * time.Millisecond)
 	count := func() (res int) {
 		_ = conn.WithCollection(func(coll *mgo.Collection) error {
 			var err error
@@ -91,7 +97,7 @@ func TestWriterWithAuthFlush(t *testing.T) {
 	assert.Nil(t, wr.Write(bson.M{"key1": "val1"}), "write rec #1")
 	assert.Nil(t, wr.Write(bson.M{"key2": "val2"}), "write rec #2")
 	assert.Equal(t, 0, count(), "nothing yet")
-	time.Sleep(80 * time.Millisecond)
+	time.Sleep(501 * time.Millisecond)
 	assert.Equal(t, 2, count(), "2 records flushed")
 
 	assert.Nil(t, wr.Write(bson.M{"key3": "val3"}), "write rec #3")
@@ -112,9 +118,11 @@ func TestWriterWithAuthFlush(t *testing.T) {
 }
 
 func TestWriterParallelWithAutoFlush(t *testing.T) {
-	conn := makeConnection(t)
+	conn := MakeTestConnection(t)
+	defer RemoveTestCollection(t, conn)
+
 	var wg sync.WaitGroup
-	wr := NewBufferedWriter(75, conn).WithCollection("writer_test").WithAutoFlush(time.Millisecond)
+	wr := NewBufferedWriter(75, conn).WithAutoFlush(time.Millisecond)
 
 	writeMany := func() {
 		for i := 0; i < 100; i++ {
@@ -139,14 +147,4 @@ func TestWriterParallelWithAutoFlush(t *testing.T) {
 		return nil
 	})
 	assert.Nil(t, wr.Close())
-}
-
-func makeConnection(t *testing.T) *Connection {
-	srv, err := NewServer(mgo.DialInfo{Addrs: []string{"mongo"}}, ServerParams{})
-	assert.Nil(t, err, "failed to dial")
-	res := NewConnection(srv, "test", "writer_test")
-	_ = res.WithCollection(func(coll *mgo.Collection) error {
-		return coll.DropCollection()
-	})
-	return res
 }

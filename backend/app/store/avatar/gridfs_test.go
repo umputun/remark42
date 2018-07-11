@@ -34,9 +34,7 @@ func TestGridFS_PutAndGet(t *testing.T) {
 }
 
 func prepGFStore(t *testing.T) Store {
-	mg := mongo.NewTesting("fs")
-	conn, err := mg.Get()
-	require.Nil(t, err)
+	conn := mongo.MakeTestConnection(t)
 
 	_ = conn.WithCustomCollection("fs.chunks", func(coll *mgo.Collection) error {
 		return coll.DropCollection()
