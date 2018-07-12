@@ -1,7 +1,15 @@
 # compose file for local development
-# starts backend on 8080 with basic auth "dev:password" and Dev oauth2 provider on port 8084
-# UI on https://127.0.0.1:8080/web
-
+# starts backend on 8080 with basic auth "dev:password" and Dev oauth2 provider on port 8084, UI on https://127.0.0.1:8080/web
+# 
+# needs mongo container to run backend test - docker run -d -name=mongo mongo:3.6 --smallfiles
+#
+# start build with backend tests:
+# MONGO_REMARK_TEST=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' mongo) \
+#  docker-compose -f compose-dev-backend.yml build
+#
+# to skip mongo test set MONGO_REMARK_TEST=skip
+#
+# start remark42 service - docker-compose -f compose-dev-backend.yml up
 version: '2'
 
 services:
@@ -11,6 +19,7 @@ services:
             dockerfile: Dockerfile
             args:
                 - SKIP_FRONTEND_TEST=true
+                - MONGO_REMARK_TEST
 
         image: umputun/remark42:dev
         container_name: "remark42-dev"

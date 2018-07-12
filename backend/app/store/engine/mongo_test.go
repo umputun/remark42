@@ -15,8 +15,10 @@ import (
 
 func TestMongo_CreateAndFind(t *testing.T) {
 	var m Interface
-	m = prepMongo(t, true) // adds two comments
-
+	m, skip := prepMongo(t, true) // adds two comments
+	if skip {
+		return
+	}
 	res, err := m.Find(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "time")
 	assert.Nil(t, err)
 	require.Equal(t, 2, len(res))
@@ -38,8 +40,10 @@ func TestMongo_CreateAndFind(t *testing.T) {
 }
 
 func TestMongo_Get(t *testing.T) {
-	m := prepMongo(t, true) // adds two comments
-
+	m, skip := prepMongo(t, true) // adds two comments
+	if skip {
+		return
+	}
 	res, err := m.Find(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "time")
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(res))
@@ -53,8 +57,10 @@ func TestMongo_Get(t *testing.T) {
 }
 
 func TestMongo_Put(t *testing.T) {
-	m := prepMongo(t, true) // adds two comments
-
+	m, skip := prepMongo(t, true) // adds two comments
+	if skip {
+		return
+	}
 	loc := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
 	res, err := m.Find(loc, "time")
 	assert.Nil(t, err)
@@ -80,8 +86,10 @@ func TestMongo_Put(t *testing.T) {
 }
 
 func TestMongo_Last(t *testing.T) {
-	m := prepMongo(t, true) // adds two comments
-
+	m, skip := prepMongo(t, true) // adds two comments
+	if skip {
+		return
+	}
 	res, err := m.Last("radio-t", 0)
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(res))
@@ -94,8 +102,10 @@ func TestMongo_Last(t *testing.T) {
 }
 
 func TestMongo_Count(t *testing.T) {
-	m := prepMongo(t, true) // adds two comments
-
+	m, skip := prepMongo(t, true) // adds two comments
+	if skip {
+		return
+	}
 	c, err := m.Count(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"})
 	assert.Nil(t, err)
 	assert.Equal(t, 2, c)
@@ -106,8 +116,10 @@ func TestMongo_Count(t *testing.T) {
 }
 
 func TestMongo_List(t *testing.T) {
-	m := prepMongo(t, true) // adds two comments
-
+	m, skip := prepMongo(t, true) // adds two comments
+	if skip {
+		return
+	}
 	// add one more for https://radio-t.com/2
 	comment := store.Comment{
 		ID:        "12345",
@@ -146,8 +158,10 @@ func TestMongo_List(t *testing.T) {
 }
 
 func TestMongo_Info(t *testing.T) {
-	m := prepMongo(t, true) // adds two comments
-
+	m, skip := prepMongo(t, true) // adds two comments
+	if skip {
+		return
+	}
 	ts := func(min int) time.Time { return time.Date(2017, 12, 20, 15, 18, min, 0, time.Local).In(time.UTC) }
 
 	// add one more for https://radio-t.com/2
@@ -187,8 +201,10 @@ func TestMongo_Info(t *testing.T) {
 }
 
 func TestMongo_ReadOnly(t *testing.T) {
-	m := prepMongo(t, true) // adds two comments
-
+	m, skip := prepMongo(t, true) // adds two comments
+	if skip {
+		return
+	}
 	assert.False(t, m.IsReadOnly(store.Locator{SiteID: "radio-t", URL: "url-1"}), "nothing ro")
 
 	assert.NoError(t, m.SetReadOnly(store.Locator{SiteID: "radio-t", URL: "url-1"}, true))
@@ -206,8 +222,10 @@ func TestMongo_ReadOnly(t *testing.T) {
 }
 
 func TestMongo_Verified(t *testing.T) {
-	m := prepMongo(t, true) // adds two comments
-
+	m, skip := prepMongo(t, true) // adds two comments
+	if skip {
+		return
+	}
 	assert.False(t, m.IsVerified("radio-t", "u1"), "nothing verified")
 
 	assert.NoError(t, m.SetVerified("radio-t", "u1", true))
@@ -224,8 +242,10 @@ func TestMongo_Verified(t *testing.T) {
 }
 
 func TestMongo_GetForUser(t *testing.T) {
-	m := prepMongo(t, true) // adds two comments
-
+	m, skip := prepMongo(t, true) // adds two comments
+	if skip {
+		return
+	}
 	res, err := m.User("radio-t", "user1", 5, 0)
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(res))
@@ -247,8 +267,10 @@ func TestMongo_GetForUser(t *testing.T) {
 }
 
 func TestMongo_GetForUserPagination(t *testing.T) {
-	m := prepMongo(t, false)
-
+	m, skip := prepMongo(t, false)
+	if skip {
+		return
+	}
 	c := store.Comment{
 		Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
 		User:    store.User{ID: "user1", Name: "user name"},
@@ -297,8 +319,10 @@ func TestMongo_GetForUserPagination(t *testing.T) {
 }
 
 func TestMongo_BlockUser(t *testing.T) {
-	m := prepMongo(t, true) // adds two comments
-
+	m, skip := prepMongo(t, true) // adds two comments
+	if skip {
+		return
+	}
 	assert.False(t, m.IsBlocked("radio-t", "user1"), "nothing blocked")
 
 	assert.NoError(t, m.SetBlock("radio-t", "user1", true, 0))
@@ -316,8 +340,10 @@ func TestMongo_BlockUser(t *testing.T) {
 }
 
 func TestMongo_BlockUserWithTTL(t *testing.T) {
-	m := prepMongo(t, true) // adds two comments
-
+	m, skip := prepMongo(t, true) // adds two comments
+	if skip {
+		return
+	}
 	assert.False(t, m.IsBlocked("radio-t", "user1"), "nothing blocked")
 	assert.NoError(t, m.SetBlock("radio-t", "user1", true, 500*time.Millisecond))
 	assert.True(t, m.IsBlocked("radio-t", "user1"), "user1 blocked")
@@ -326,8 +352,10 @@ func TestMongo_BlockUserWithTTL(t *testing.T) {
 }
 
 func TestMongo_GetForUserCounter(t *testing.T) {
-	m := prepMongo(t, true) // adds two comments
-
+	m, skip := prepMongo(t, true) // adds two comments
+	if skip {
+		return
+	}
 	count, err := m.UserCount("radio-t", "user1")
 	assert.Nil(t, err)
 	assert.Equal(t, 2, count)
@@ -338,8 +366,10 @@ func TestMongo_GetForUserCounter(t *testing.T) {
 }
 
 func TestMongo_BlockList(t *testing.T) {
-	m := prepMongo(t, true) // adds two comments
-
+	m, skip := prepMongo(t, true) // adds two comments
+	if skip {
+		return
+	}
 	assert.NoError(t, m.SetBlock("radio-t", "user1", true, 0))
 	assert.NoError(t, m.SetBlock("radio-t", "user2", true, 500*time.Millisecond))
 	assert.NoError(t, m.SetBlock("radio-t", "user3", false, 0))
@@ -364,8 +394,10 @@ func TestMongo_BlockList(t *testing.T) {
 }
 
 func TestMongo_Delete(t *testing.T) {
-	m := prepMongo(t, true) // adds two comments
-
+	m, skip := prepMongo(t, true) // adds two comments
+	if skip {
+		return
+	}
 	loc := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
 	res, err := m.Find(loc, "time")
 	assert.Nil(t, err)
@@ -401,8 +433,10 @@ func TestMongo_Delete(t *testing.T) {
 }
 
 func TestMongo_DeleteHard(t *testing.T) {
-	m := prepMongo(t, true) // adds two comments
-
+	m, skip := prepMongo(t, true) // adds two comments
+	if skip {
+		return
+	}
 	loc := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
 	res, err := m.Find(loc, "time")
 	assert.Nil(t, err)
@@ -420,8 +454,10 @@ func TestMongo_DeleteHard(t *testing.T) {
 }
 
 func TestMongo_DeleteAll(t *testing.T) {
-	m := prepMongo(t, true) // adds two comments
-
+	m, skip := prepMongo(t, true) // adds two comments
+	if skip {
+		return
+	}
 	loc := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
 	res, err := m.Find(loc, "time")
 	assert.Nil(t, err)
@@ -440,8 +476,10 @@ func TestMongo_DeleteAll(t *testing.T) {
 }
 
 func TestMongo_DeleteUser(t *testing.T) {
-	m := prepMongo(t, true) // adds two comments
-
+	m, skip := prepMongo(t, true) // adds two comments
+	if skip {
+		return
+	}
 	err := m.DeleteUser("radio-t", "user1")
 	require.NoError(t, err)
 
@@ -467,8 +505,11 @@ func TestMongo_DeleteUser(t *testing.T) {
 
 func TestMongo_Parallel(t *testing.T) {
 	var m Interface
-	m = prepMongoBuffered(t) // buffered engine, no comments
-
+	var skip bool
+	m, skip = prepMongoBuffered(t) // buffered engine, no comments
+	if skip {
+		return
+	}
 	go func() {
 		for i := 0; i < 100; i++ {
 			_, err := m.Create(store.Comment{
@@ -488,8 +529,11 @@ func TestMongo_Parallel(t *testing.T) {
 	}
 }
 
-func prepMongo(t *testing.T, writeRecs bool) *Mongo {
-	conn := mongo.MakeTestConnection(t)
+func prepMongo(t *testing.T, writeRecs bool) (*Mongo, bool) {
+	conn, err := mongo.MakeTestConnection(t)
+	if err != nil {
+		return nil, true
+	}
 	mongo.RemoveTestCollection(t, conn)
 
 	m, err := NewMongo(conn, 1, 0*time.Microsecond)
@@ -520,16 +564,19 @@ func prepMongo(t *testing.T, writeRecs bool) *Mongo {
 		assert.Nil(t, err)
 	}
 
-	return m
+	return m, false
 }
 
-func prepMongoBuffered(t *testing.T) *Mongo {
-	conn := mongo.MakeTestConnection(t)
+func prepMongoBuffered(t *testing.T) (*Mongo, bool) {
+	conn, err := mongo.MakeTestConnection(t)
+	if err != nil {
+		return nil, true
+	}
 	mongo.RemoveTestCollection(t, conn)
 
 	m, err := NewMongo(conn, 10, 10*time.Millisecond)
 	mongo.RemoveTestCollections(t, conn, mongoPosts, mongoMetaPosts, mongoMetaUsers)
 
 	require.Nil(t, err)
-	return m
+	return m, false
 }

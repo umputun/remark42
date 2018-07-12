@@ -1,6 +1,7 @@
 package mongo
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -18,21 +19,26 @@ var once sync.Once
 
 // MakeTestConnection connects to MONGO_REMARK_TEST url or "mongo" host (in no env) and returns new connection.
 // collection name randomized on each call
-func MakeTestConnection(t *testing.T) *Connection {
+func MakeTestConnection(t *testing.T) (*Connection, error) {
+	mongoURL := os.Getenv("MONGO_REMARK_TEST")
+	if mongoURL == "" {
+		mongoURL = "mongodb://mongo:27017"
+		log.Printf("[WARN] no MONGO_REMARK_TEST in env")
+	}
+	if mongoURL == "skip" {
+		log.Print("skip mongo test")
+		return nil, errors.New("skip")
+	}
+
 	once.Do(func() {
 		log.Print("[DEBUG] connect to mongo test instance")
-		mongoURL := os.Getenv("MONGO_REMARK_TEST")
-		if mongoURL == "" {
-			mongoURL = "mongodb://mongo:27017"
-			log.Printf("[WARN] no MONGO_REMARK_TEST in env")
-		}
 		srv, err := NewServerWithURL(mongoURL, 10*time.Second)
 		assert.Nil(t, err, "failed to dial")
 		collName := fmt.Sprintf("remark42_test_%d", time.Now().Nanosecond())
 		conn = NewConnection(srv, "test", collName)
 	})
 	RemoveTestCollection(t, conn)
-	return conn
+	return conn, nil
 }
 
 // RemoveTestCollection removes all records and drop collection from connection

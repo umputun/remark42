@@ -15,11 +15,14 @@ type testRecord struct {
 }
 
 func TestConnection_WithCollection(t *testing.T) {
-	c := write(t)
+	c, err := write(t)
+	if err != nil {
+		return
+	}
 	defer RemoveTestCollection(t, c)
 
 	var res []testRecord
-	err := c.WithCollection(func(coll *mgo.Collection) error {
+	err = c.WithCollection(func(coll *mgo.Collection) error {
 		return coll.Find(nil).All(&res)
 	})
 	assert.Nil(t, err)
@@ -45,11 +48,14 @@ func TestConnection_WithCollection(t *testing.T) {
 }
 
 func TestConnection_WithCollectionNoDB(t *testing.T) {
-	c := write(t)
+	c, err := write(t)
+	if err != nil {
+		return
+	}
 	defer RemoveTestCollection(t, c)
 
 	var res []testRecord
-	err := c.WithCollection(func(coll *mgo.Collection) error {
+	err = c.WithCollection(func(coll *mgo.Collection) error {
 		return coll.Find(nil).All(&res)
 	})
 	assert.Nil(t, err)
@@ -57,11 +63,14 @@ func TestConnection_WithCollectionNoDB(t *testing.T) {
 }
 
 func TestConnection_WithDB(t *testing.T) {
-	c := write(t)
+	c, err := write(t)
+	if err != nil {
+		return
+	}
 	defer RemoveTestCollection(t, c)
 
 	var res []testRecord
-	err := c.WithCustomDB("test", func(dbase *mgo.Database) error {
+	err = c.WithCustomDB("test", func(dbase *mgo.Database) error {
 		return dbase.C(c.collection).Find(nil).All(&res)
 	})
 	assert.Nil(t, err)
@@ -75,10 +84,12 @@ func TestConnection_WithDB(t *testing.T) {
 }
 
 func TestCleanup(t *testing.T) {
-	c := write(t)
-
+	c, err := write(t)
+	if err != nil {
+		return
+	}
 	var res []testRecord
-	err := c.WithCustomDB("test", func(dbase *mgo.Database) error {
+	err = c.WithCustomDB("test", func(dbase *mgo.Database) error {
 		return dbase.C(c.collection).Find(nil).All(&res)
 	})
 	assert.Nil(t, err)
@@ -92,8 +103,11 @@ func TestCleanup(t *testing.T) {
 	assert.Equal(t, 0, len(res))
 }
 
-func write(t *testing.T) *Connection {
-	c := MakeTestConnection(t)
+func write(t *testing.T) (*Connection, error) {
+	c, err := MakeTestConnection(t)
+	if err != nil {
+		return nil, err
+	}
 	c.WithCollection(func(coll *mgo.Collection) error {
 		for i := 0; i < 100; i++ {
 			r := testRecord{
@@ -104,5 +118,5 @@ func write(t *testing.T) *Connection {
 		}
 		return nil
 	})
-	return c
+	return c, nil
 }

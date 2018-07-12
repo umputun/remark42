@@ -16,6 +16,9 @@ func TestServer_NewServerGood(t *testing.T) {
 		mongoURL = "mongodb://mongo:27017"
 		log.Printf("[WARN] no MONGO_REMARK_TEST in env")
 	}
+	if mongoURL == "skip" {
+		return
+	}
 	m, err := NewServerWithURL(mongoURL, 3*time.Second)
 	assert.Nil(t, err)
 	assert.NotNil(t, m)

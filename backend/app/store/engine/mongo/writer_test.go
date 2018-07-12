@@ -22,7 +22,10 @@ func TestWriter(t *testing.T) {
 		return res
 	}
 
-	conn := MakeTestConnection(t)
+	conn, err := MakeTestConnection(t)
+	if err != nil {
+		return
+	}
 	defer RemoveTestCollection(t, conn)
 
 	var wr BufferedWriter = NewBufferedWriter(3, conn)
@@ -48,7 +51,10 @@ func TestWriter(t *testing.T) {
 }
 
 func TestWriter_Parallel(t *testing.T) {
-	conn := MakeTestConnection(t)
+	conn, err := MakeTestConnection(t)
+	if err != nil {
+		return
+	}
 	defer RemoveTestCollection(t, conn)
 
 	var wg sync.WaitGroup
@@ -79,8 +85,10 @@ func TestWriter_Parallel(t *testing.T) {
 }
 
 func TestWriter_WithAuthFlush(t *testing.T) {
-
-	conn := MakeTestConnection(t)
+	conn, err := MakeTestConnection(t)
+	if err != nil {
+		return
+	}
 	defer RemoveTestCollection(t, conn)
 
 	var wr BufferedWriter = NewBufferedWriter(3, conn).WithAutoFlush(500 * time.Millisecond)
@@ -118,7 +126,10 @@ func TestWriter_WithAuthFlush(t *testing.T) {
 }
 
 func TestWriter_ParallelWithAutoFlush(t *testing.T) {
-	conn := MakeTestConnection(t)
+	conn, err := MakeTestConnection(t)
+	if err != nil {
+		return
+	}
 	defer RemoveTestCollection(t, conn)
 
 	var wg sync.WaitGroup
