@@ -21,9 +21,9 @@ const devAuthPort = 8084
 
 // DevAuthServer is a fake oauth server for development
 // it provides stand-alone server running on its own port and pretending to be the real oauth2. It also provides
-// Dev Provider the same way as normal providers di, i.e. github, google and others.
+// Dev Provider the same way as normal providers do, i.e. like github, google and others.
 // can run in interactive and non-interactive mode. In interactive mode login attempts will show login form to select
-// desired user name.
+// desired user name, this is the mode used for development. Non-interactive mode for tests only.
 type DevAuthServer struct {
 	Provider Provider
 
@@ -144,7 +144,7 @@ func NewDev(p Params) Provider {
 			AuthURL:  fmt.Sprintf("http://127.0.0.1:%d/login/oauth/authorize", devAuthPort),
 			TokenURL: fmt.Sprintf("http://127.0.0.1:%d/login/oauth/access_token", devAuthPort),
 		},
-		RedirectURL: "http://127.0.0.1:8080/auth/dev/callback",
+		RedirectURL: p.RemarkURL + "/auth/dev/callback",
 		Scopes:      []string{"user:email"},
 		InfoURL:     fmt.Sprintf("http://127.0.0.1:%d/user", devAuthPort),
 		MapUser: func(data userData, _ []byte) store.User {
@@ -165,7 +165,7 @@ func (d *DevAuthServer) genAvatar(user string) ([]byte, error) {
 
 	ii, err := d.iconGen.Draw(user) // Generate an IdentIcon
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to draqw avatar for %s", user)
+		return nil, errors.Wrapf(err, "failed to draw avatar for %s", user)
 	}
 
 	buf := &bytes.Buffer{}
