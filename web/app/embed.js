@@ -35,7 +35,7 @@ function init() {
 
   node.innerHTML = `
     <iframe
-      src="${BASE_URL}/web/iframe.html?${query}"
+      src="${process.env.NODE_ENV === 'production' ? `${BASE_URL}/web` : ''}/iframe.html?${query}"
       width="100%"
       frameborder="0"
       allowtransparency="true"
@@ -75,7 +75,7 @@ function init() {
         `&id=${user.id}&name=${user.name}&picture=${user.picture || ''}&isDefaultPicture=${user.isDefaultPicture || 0}`;
       this.node.innerHTML = `
       <iframe
-        src="${BASE_URL}/web/iframe.html?${queryUserInfo}"
+        src="${process.env.NODE_ENV === 'production' ? `${BASE_URL}/web` : ''}/iframe.html?${queryUserInfo}"
         width="100%"
         height="100%"
         frameborder="0"

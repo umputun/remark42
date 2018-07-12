@@ -2,10 +2,9 @@
 
 echo "prepare environment"
 
-# replace BASE_URL constant by REMARK_URL
-sed -i "s|https://demo.remark42.com|${REMARK_URL}|g" /srv/web/*.js
-# remove devtools attach helper. TODO: move to webpack loader
-sed -i "/REMOVE-START/,/REMOVE-END/d" /srv/web/iframe.html
+# replace base url by REMARK_URL
+sed -i "s|BASE_URL:\"[^\"]*\"|BASE_URL:\"${REMARK_URL}\"|g" /srv/web/*.js
+sed -i "s|var baseurl = '[^']*';|var baseurl = '${REMARK_URL}';|g" /srv/web/*.html
 
 echo "start remark42 server"
 

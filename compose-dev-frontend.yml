@@ -11,7 +11,6 @@ services:
             dockerfile: Dockerfile
             args:
                 - SKIP_BACKEND_TEST=true
-                # - NODE_ENV=development
 
         image: umputun/remark42:dev
         container_name: "remark42-dev"
@@ -39,5 +38,6 @@ services:
             - ADMIN=dev_user  # set admin flag for default user on local ouath2
         volumes:
             - ./var:/srv/var 
+            # - ./web/public:/srv/web # uncomment to allow direct deployment of web parts
 
         command: /srv/start.sh

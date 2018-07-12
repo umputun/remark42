@@ -13,7 +13,13 @@
 
     .container {
       max-width: 800px;
-      margin: 40px;
+      margin: 5px;
+    }
+
+    @media (min-width: 768px) {
+      .container {
+        margin: 40px;
+      }
     }
   </style>
 </head>
@@ -24,20 +30,15 @@
 
   <script>
     var remark_config = {
-      site_id: 'remark',
-      url: 'https://remark42.com/demo/',
+      site_id: 'radiot',
+      url: 'https://radio-t.com/p/2017/12/16/podcast-576/',
     };
 
     (function() {
       var d = document, s = d.createElement('script');
-      var baseurl = 'https://demo.remark42.com/';
-      s.src = baseurl + '/web/embed.js';
-      s.type = 'text/javascript';
+      s.src = '/embed.js';
       (d.head || d.body).appendChild(s);
     })();
   </script>
-  <noscript>
-    Please enable JavaScript to view the comments powered by Remark.
-  </noscript>
 </body>
 </html>

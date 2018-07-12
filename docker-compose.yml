@@ -36,5 +36,6 @@ services:
             # - DEV_PASSWD=password # development mode, be careful!
         volumes:
             - ./var:/srv/var
+            #- ./web:/srv/web # uncomment to map web directory directly. It will propagate local changes to container without redeploy
 
         command: /srv/start.sh

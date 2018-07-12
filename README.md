@@ -195,9 +195,50 @@ Admins/moderators should be defined in `docker-compose.yml` as a list of user ID
 To get user id just login and click on your username or any other user you want to promote to admins. 
 It will expand login info and show full user ID.
 
-### Setup on your website
 
-#### Comments
+### Frontend
+
+Frontend part is building automatically along with backend if you use `docker-compose`.
+
+For manual building:
+
+* install [Node.js 8](https://nodejs.org/en/) or higher;
+* install [NPM 6.1.0](https://www.npmjs.com/package/npm) or higher;
+* run `npm install` inside `./web`;
+* run `npm run build` there;
+* result files will be saved in `./web/public`.
+
+For development mode use `npm start` instead of `npm run build`.
+In this case `webpack` will serve files using `webpack-dev-server` on `localhost:8080`.
+
+URLs for development:
+
+* `localhost:8080` — page with embedded script from `REMARK_URL` (default: `https://demo.remark42.com`);
+* `localhost:8080/dev.html` — page with embedded script from local folder;
+* `localhost:8080/last-comments.html` — page with embedded script for last comments;
+* `localhost:8080/counter.html` — page with embedded script for counter with examples.
+
+#### Testing
+
+Also you can use fully functional local version to develop and test both frontend & backend.
+
+To bring it up run:
+
+```bash
+docker-compose -f compose-dev-frontend.yml build
+docker-compose -f compose-dev-frontend.yml up
+```
+
+It starts Remark42 on `localhost:8080` 
+and adds local OAuth2 provider “Dev”. To access UI demo page go to `localhost:8080/web`.
+
+That `compose-dev.yml` (you can find it in the root of the project) also defines if default logged user admin or not. 
+By default, it will be the admin, and to switch it to regular user comment or remove `-ADMIN=dev_user` there. You can also select 
+any other user name from the login dialog.
+
+#### Usage
+
+##### Comments
 
 It's a main widget which renders list of comments. 
 
@@ -264,7 +305,7 @@ Add this snippet to the bottom of web page:
 ```html
 <script>
   var remark_config = {
-    site_id: 'YOUR_SITE_ID',
+    site_id: 'YOUR_SITE_ID', 
   };
 
   (function() {
@@ -286,62 +327,6 @@ The script will found all them by the class `remark__counter`,
 and it will use `data-url` attribute to define the page with comments.
 
 Also script can uses `url` property from `remark_config` object, or `window.location.href` if nothing else is defined. 
-
-## Development
-
-You can use fully functional local version to develop and test both frontend & backend.
-
-To bring it up run:
-
-```bash
-# if you mainly work on backend
-docker-compose -f compose-dev-backend.yml build
-docker-compose -f compose-dev-backend.yml up
-# if you mainly work on frontend
-docker-compose -f compose-dev-frontend.yml build
-docker-compose -f compose-dev-frontend.yml up
-```
-
-It starts Remark42 on `127.0.0.1:8080` and adds local OAuth2 provider “Dev”.
-To access UI demo page go to `127.0.0.1:8080/web`.
-By default, you would be logged in as `dev_user` which defined as admin. 
-You can tweak any of [supported parameters](#Parameters) in corresponded yml file.
-
-Backend docker compose config by default skips running frontend related tests. 
-Frontend docker compose config by default skips running backend related tests and sets `NODE_ENV=development` for frontend build. 
-
-### Backend
-
-Maybe instructions for local build here?
-
-### Frontend
-
-#### Build
-
-* install [Node.js 8](https://nodejs.org/en/) or higher;
-* install [NPM 6.1.0](https://www.npmjs.com/package/npm);
-* run `npm install` inside `./web`;
-* run `npm run build` there;
-* result files will be saved in `./web/public`.
-
-**Note** Running `npm install` will set up precommit hooks into your git repository.
-It used to reformat your frontend code using `prettier` and lint with `eslint` before every commit.
-
-#### Devserver
-
-For local development mode with Hot Reloading use `npm start` instead of `npm run build`.
-In this case `webpack` will serve files using `webpack-dev-server` on `localhost:9000`.
-By visiting `127.0.0.1:9000/web` you will get a page with main comments widget.
-communicating with demo server backend running on `https://demo.remark42.com`.
-But you will not be able to login with any oauth providers due to security reasons.
-
-You can attach to locally running backend by providing `REMARK_URL` environment variable.
-```sh
-npx cross-env REMARK_URL=http://127.0.0.1:8080 npm start
-```
-
-Developer build running by `webpack-dev-server` supports devtools for [React](https://github.com/facebook/react-devtools) and
-[Redux](https://github.com/zalmoxisus/redux-devtools-extension).
 
 ## API
 
@@ -487,6 +472,7 @@ Sort can be `time`, `active` or `score`. Supported sort order with prefix -/+, i
 
 _all admin calls require auth and admin privilege_
 
+
 ## Privacy 
 
 * Remark42 is trying to be very sensitive to any private or semi-private information.
@@ -501,6 +487,7 @@ _all admin calls require auth and admin privilege_
 * Cookie lifespan can be restricted to session-only. 
 * All potentially sensitive data stored by remark42 hashed and encrypted.
 
+
 ## Technical details
 
 * Data stored in [boltdb](https://github.com/coreos/bbolt) (embedded key/value database) files under `STORE_BOLT_PATH`
@@ -513,8 +500,8 @@ _all admin calls require auth and admin privilege_
 * Request timeout set to 60sec
 * Development mode (`--dev-password` set) allows to test remark42 without social login and with admin privileges. Adds basic-auth for username: `dev`, password: `${DEV_PASSWD}`. **should not be used in production deployment**
 * User can vote for the comment multiple times but only to change the vote. Double-voting not allowed.
-* User can edit comments in 5 mins (configurable) window after creation.
+* User can edit comments in 5 mins window after creation.
 * User ID hashed and prefixed by oauth provider name to avoid collisions and potential abuse.
-* All avatars resized and cached locally to prevent rate limiters from oauth providers.
+* All avatars resized and cached locally to prevent rate limiters from google/github/facebook/yandex.
 * Images can be proxied (`IMG_PROXY=true`) to prevent mixed http/https.
 * Docker build uses [publicly available](https://github.com/umputun/baseimage) base images.
