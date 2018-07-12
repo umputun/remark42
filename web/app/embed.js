@@ -105,6 +105,10 @@ function init() {
             font-size: 25px;
             cursor: pointer;
             color: white;
+            border-color: transparent;
+            border-width: 0;
+            padding: 0;
+            background-color: transparent;
           }
           @media all and (max-width: 430px) {
             #${remarkRootId}-close {
@@ -125,7 +129,7 @@ function init() {
         this.back.onclick = () => this.close();
       }
       if (!this.closeEl) {
-        this.closeEl = document.createElement('div');
+        this.closeEl = document.createElement('button');
         this.closeEl.id = remarkRootId + '-close';
         this.closeEl.innerHTML = '&#10006;';
         this.closeEl.onclick = () => this.close();
@@ -154,6 +158,7 @@ function init() {
       setTimeout(() => {
         this.back.setAttribute('data-animation', '');
         this.node.setAttribute('data-animation', '');
+        this.closeEl.focus();
       }, 400);
     },
     close() {
