@@ -34,8 +34,14 @@ export default class AuthPanel extends Component {
 
   toggleCommentsAvailability() {
     if (this.props.isCommentsDisabled) {
-      if (this.props.onCommentsEnable) this.props.onCommentsEnable();
-    } else if (this.props.onCommentsDisable) this.props.onCommentsDisable();
+      if (this.props.onCommentsEnable) {
+        this.props.onCommentsEnable();
+      }
+    } else {
+      if (this.props.onCommentsDisable) {
+        this.props.onCommentsDisable();
+      }
+    }
   }
 
   render(props, { isUserIdVisible, isBlockedVisible }) {
