@@ -1,8 +1,7 @@
 # compose file for local development
 # starts backend on 8080 with basic auth "dev:password" and Dev oauth2 provider on port 8084, UI on https://127.0.0.1:8080/web
 # 
-# needs mongo container to run backend test - docker run -d -name=mongo mongo:3.6 --smallfiles
-#
+# mongo-related tests needs mongodb container running - docker run -d -name=mongo mongo:3.6 --smallfiles
 # start build with backend tests:
 # MONGO_REMARK_TEST=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' mongo) \
 #  docker-compose -f compose-dev-backend.yml build
@@ -19,7 +18,7 @@ services:
             dockerfile: Dockerfile
             args:
                 - SKIP_FRONTEND_TEST=true
-                - MONGO_REMARK_TEST
+                - MONGO_REMARK_TEST=skip # disable mongo tests on build by default. To allow remove =skip part and see above
 
         image: umputun/remark42:dev
         container_name: "remark42-dev"
