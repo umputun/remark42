@@ -14,7 +14,6 @@ import (
 	"github.com/umputun/remark/backend/app/store/avatar"
 
 	"github.com/coreos/bbolt"
-	"github.com/globalsign/mgo"
 	"github.com/hashicorp/logutils"
 	"github.com/jessevdk/go-flags"
 	"github.com/pkg/errors"
@@ -106,13 +105,8 @@ type CacheGroup struct {
 
 // MongoOpts holds all mongo params
 type MongoOpts struct {
-	URL    string   `long:"url" env:"URL" description:"mongo url"`
-	Server []string `long:"server" env:"SERVER" description:"mongo host:port" env-delim:","`
-	DB     string   `long:"db" env:"DB" default:"remark42" description:"mongo database"`
-	User   string   `long:"user" env:"USER" default:"" description:"mongo user"`
-	Passwd string   `long:"password" env:"PASSWD" default:"" description:"mongo pssword"`
-	SSL    bool     `long:"ssl" env:"SSL" description:"connect to mongo with ssl"`
-	Dbg    bool     `long:"dbg" env:"DEBUG" description:"enable mongo debug"`
+	URL string `long:"url" env:"URL" description:"mongo url"`
+	DB  string `long:"db" env:"DB" default:"remark42" description:"mongo database"`
 }
 
 var revision = "unknown"
@@ -375,23 +369,10 @@ func makeDirs(dirs ...string) error {
 }
 
 func makeMongo(mopts MongoOpts) (result *mongo.Server, err error) {
-	if mopts.URL != "" {
-		log.Print("[DEBUG] mongo url provided")
-		return mongo.NewServerWithURL(mopts.URL, 10*time.Second)
+	if mopts.URL == "" {
+		return nil, errors.New("no mongo URL provided")
 	}
-	dial := mgo.DialInfo{
-		Addrs:    mopts.Server,
-		Database: mopts.DB,
-		Timeout:  10 * time.Second,
-		Username: mopts.User,
-		Password: mopts.Passwd,
-		Source:   "admin",
-	}
-
-	return mongo.NewServer(dial, mongo.ServerParams{
-		Debug: mopts.Dbg,
-		SSL:   mopts.SSL,
-	})
+	return mongo.NewServerWithURL(mopts.URL, 10*time.Second)
 }
 
 func makeAuthProviders(jwtService *auth.JWT, avatarProxy *proxy.Avatar, ds *service.DataStore, opts Opts) []auth.Provider {
