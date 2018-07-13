@@ -10,6 +10,7 @@ export default class AuthPanel extends Component {
 
     this.toggleUserId = this.toggleUserId.bind(this);
     this.toggleBlockedVisibility = this.toggleBlockedVisibility.bind(this);
+    this.toggleCommentsAvailability = this.toggleCommentsAvailability.bind(this);
     this.onSortChange = this.onSortChange.bind(this);
   }
 
@@ -31,8 +32,20 @@ export default class AuthPanel extends Component {
     this.setState({ isBlockedVisible: !this.state.isBlockedVisible });
   }
 
+  toggleCommentsAvailability() {
+    if (this.props.isCommentsDisabled) {
+      if (this.props.onCommentsEnable) {
+        this.props.onCommentsEnable();
+      }
+    } else {
+      if (this.props.onCommentsDisable) {
+        this.props.onCommentsDisable();
+      }
+    }
+  }
+
   render(props, { isUserIdVisible, isBlockedVisible }) {
-    const { user, providers = [], sort } = props;
+    const { user, providers = [], sort, isCommentsDisabled } = props;
 
     const sortArray = getSortArray(sort);
 
@@ -82,7 +95,19 @@ export default class AuthPanel extends Component {
               {...getHandleClickProps(this.toggleBlockedVisibility)}
               role="link"
             >
-              {isBlockedVisible ? 'Hide' : 'Show'} blocked
+              {isBlockedVisible ? 'Hide' : 'Show'} blocked users
+            </span>
+          )}
+
+          {user.admin && ' • '}
+
+          {user.admin && (
+            <span
+              className="auth-panel__pseudo-link auth-panel__admin-action"
+              {...getHandleClickProps(this.toggleCommentsAvailability)}
+              role="link"
+            >
+              {isCommentsDisabled ? 'Enable' : 'Disable'} comments
             </span>
           )}
 
