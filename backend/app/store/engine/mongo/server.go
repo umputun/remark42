@@ -30,11 +30,6 @@ type ServerParams struct {
 	SSL             bool
 }
 
-// NewDefaultServer makes a server with default extra params.
-func NewDefaultServer(dial mgo.DialInfo) (res *Server, err error) {
-	return NewServer(dial, ServerParams{ConsistencyMode: mgo.Monotonic})
-}
-
 // NewServerWithURL makes mongo server from url like
 // mongodb://remark42:password@127.0.0.1t:27017/test?ssl=true&replicaSet=Cluster0-shard-0&authSource=admin
 func NewServerWithURL(url string, timeout time.Duration) (res *Server, err error) {
@@ -106,25 +101,6 @@ func (m Server) String() string {
 	return fmt.Sprintf("%v%s", m.dial.Addrs, m.dial.Database)
 }
 
-// ParseMode translate reading mode string (case insensitive) to mgo.Mode
-func ParseMode(m string) mgo.Mode {
-	switch strings.ToLower(m) {
-	case "primary", "strong":
-		return mgo.Primary
-	case "primary_pref":
-		return mgo.PrimaryPreferred
-	case "secondary":
-		return mgo.Secondary
-	case "secondary_pref":
-		return mgo.SecondaryPreferred
-	case "eventual":
-		return mgo.Eventual
-	case "monotonic":
-		return mgo.Monotonic
-	}
-	return mgo.PrimaryPreferred
-}
-
 // parseURL extends mgo with debug option and extracts ssl flag to make ServerParams
 func parseURL(mongoURL string, connectTimeout time.Duration) (mgo.DialInfo, ServerParams, error) {
 	params := ServerParams{
@@ -132,7 +108,10 @@ func parseURL(mongoURL string, connectTimeout time.Duration) (mgo.DialInfo, Serv
 		SSL:             strings.Contains(mongoURL, "ssl=true"),
 		Debug:           strings.Contains(mongoURL, "debug=true"),
 	}
+
 	mongoURL = strings.Replace(mongoURL, "&debug=true", "", 1)
+	mongoURL = strings.Replace(mongoURL, "?debug=true", "", 1)
+
 	dial, err := mgo.ParseURL(mongoURL)
 	if err != nil {
 		return mgo.DialInfo{}, ServerParams{}, errors.Wrapf(err, "failed to pars mongo url %s", mongoURL)

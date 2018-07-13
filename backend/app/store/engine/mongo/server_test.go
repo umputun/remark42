@@ -13,7 +13,7 @@ import (
 func TestServer_NewServerGood(t *testing.T) {
 	mongoURL := os.Getenv("MONGO_REMARK_TEST")
 	if mongoURL == "" {
-		mongoURL = "mongodb://mongo:27017"
+		mongoURL = "mongodb://mongo:27017/test?debug=true"
 		log.Printf("[WARN] no MONGO_REMARK_TEST in env")
 	}
 	if mongoURL == "skip" {
@@ -35,6 +35,10 @@ func TestServer_NewServerBad(t *testing.T) {
 
 	_, err = NewServer(mgo.DialInfo{}, ServerParams{})
 	assert.NotNil(t, err)
+
+	_, err = NewServerWithURL("mongodb://mongo:27017/test?blah=xxx", 100*time.Millisecond)
+	assert.NotNil(t, err)
+	t.Log(err)
 }
 
 func TestServer_parse(t *testing.T) {
