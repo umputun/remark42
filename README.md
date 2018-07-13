@@ -35,9 +35,12 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 | ------------------ | ------------------ | --------------------- | ---------------------------------------------- |
 | url                | REMARK_URL         |                       | url to remark42 server, _required_             |
 | secret             | SECRET             |                       | secret key, _required_                         |
+| site               | SITE               | `remark`              | site name(s), _multi_                          |
+| store.type         | STORE_TYPE         | `bolt`                | type of storage, `bolt` or `mongo`             |
 | store.bolt.path    | STORE_BOLT_PATH    | `./var`               | path to data directory                         |
 | store.bolt.timeout | STORE_BOLT_TIMEOUT | `30s`                 | boltdb access timeout                          |
-| site               | SITE               | `remark`              | site name(s), _multi_                          |
+| store.mongo.url    | STORE_MONGO_URL    |                       | mongo url for data store                       |
+| store.mongo.db     | STORE_MONGO_DB     |                       | mongo db for data store                        |
 | admin              | ADMIN              |                       | admin names (list of user ids), _multi_        |
 | admin-email        | ADMIN_EMAIL        | `admin@${REMARK_URL}` | admin email                                    |
 | backup             | BACKUP_PATH        | `./var/backup`        | backups location                               |
@@ -45,7 +48,10 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 | cache.max.items    | CACHE_MAX_ITEMS    | `1000`                | max number of cached items, `0` - unlimited    |
 | cache.max.value    | CACHE_MAX_VALUE    | `65536`               | max size of cached value, `0` - unlimited      |
 | cache.max.size     | CACHE_MAX_SIZE     | `50000000`            | max size of all cached values, `0` - unlimited |
-| avatar.path        | AVATAR_FS_PATH     | `./var/avatars`       | avatars location                               |
+| avatar.type        | AVATAR_TYPE        | `fs`                  | type of avatar storage, `fs` or `mongo`        |
+| avatar.fs.path     | AVATAR_FS_PATH     | `./var/avatars`       | avatars location for `fs` store                |
+| avatar.mongo.url   | AVATAR_MONGO_URL   |                       | mongo url for avatar store                     |
+| avatar.mongo.db    | AVATAR_MONGO_DB    |                       | mongo db for avatar store                      |
 | avatar.rsz-lmt     | AVATAR_RSZ_LMT     | 0                     | max image size for resizing avatars on save    |
 | max-comment        | MAX_COMMENT_SIZE   | 2048                  | comment's size limit                           |
 | auth.ttl.jwt       | AUTH_TTL_JWT       | 5m                    | jwt TTL                                        |
@@ -75,8 +81,8 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 Most of the parameters have sane defaults and don't require customization. There are only a few parameters user has to define:  
 
 1. `SECRET` - secret key, can be any long and hard-to-guess string.
-1. `REMARK_URL` - url pointing to your remark42 server, i.e. `https://demo.reamark42.com`
-2. At least one pair of `AUTH_<PROVIDER>_CID` and `AUTH_<PROVIDER>_CSEC` defining oauth2 provider(s)
+2. `REMARK_URL` - url pointing to your remark42 server, i.e. `https://demo.reamark42.com`
+3. At least one pair of `AUTH_<PROVIDER>_CID` and `AUTH_<PROVIDER>_CSEC` defining oauth2 provider(s)
 
 The minimal `docker-compose.yml` has to include all required parameters:
 
