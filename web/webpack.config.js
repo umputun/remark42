@@ -11,12 +11,13 @@ const Define = webpack.DefinePlugin;
 const BundleAnalyze = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 
 const babelOptions = require('./babelOptions');
-const { NODE_ID } = require('./app/common/constants');
 const publicFolder = path.resolve(__dirname, 'public');
-const env = process.env.NODE_ENV || 'dev';
-
+const env = process.env.NODE_ENV || 'development';
+const remarkUrl = process.env.REMARK_URL || 'https://demo.remark42.com';
+const NODE_ID = 'remark42';
 // let's log some env variables because we can
 console.log(`NODE_ENV = ${env}`);
+console.log(`REMARK_ENV = ${process.env.REMARK_URL}`);
 
 const commonStyleLoaders = [
   'css-loader',
@@ -39,6 +40,7 @@ const commonStyleLoaders = [
 
 module.exports = {
   context: __dirname,
+  devtool: env === 'development' ? 'source-map' : false,
   entry: {
     embed: './app/embed',
     counter: './app/counter',
@@ -66,13 +68,10 @@ module.exports = {
       },
       {
         test: /\.scss$/,
-        use:
-          env === 'production'
-            ? ExtractText.extract({
-                fallback: 'style-loader',
-                use: commonStyleLoaders,
-              })
-            : ['style-loader', ...commonStyleLoaders],
+        use: ExtractText.extract({
+          fallback: 'style-loader',
+          use: commonStyleLoaders,
+        }),
       },
       {
         test: /\.(png|jpg|jpeg|gif|svg)$/,
@@ -91,7 +90,9 @@ module.exports = {
       b: 'bem-react-helper',
     }),
     new Define({
-      'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),
+      'process.env.NODE_ENV': JSON.stringify(env),
+      'process.env.REMARK_NODE': JSON.stringify(NODE_ID),
+      'process.env.REMARK_URL': env === 'production' ? JSON.stringify(remarkUrl) : 'window.location.origin',
     }),
     // TODO: we should add it only on demo serv
     new Html({
@@ -110,15 +111,6 @@ module.exports = {
       filename: 'last-comments.html',
       inject: false,
     }),
-    ...(env === 'production'
-      ? []
-      : [
-          new Html({
-            template: path.resolve(__dirname, 'dev.ejs'),
-            filename: 'dev.html',
-            inject: false,
-          }),
-        ]),
     new ExtractText({
       filename: `remark.css`,
       allChunks: true,
@@ -139,13 +131,25 @@ module.exports = {
         ]),
     new Copy(['./iframe.html']),
   ],
-  watch: env === 'dev',
   watchOptions: {
     ignored: /(node_modules|\.vendor\.js$)/,
   },
   devServer: {
-    host: '0.0.0.0',
-    port: 8080,
+    host: 'localhost',
+    port: 9000,
     contentBase: publicFolder,
+    publicPath: '/web',
+    proxy: {
+      '/api': {
+        target: remarkUrl,
+        logLevel: 'debug',
+        changeOrigin: true,
+      },
+      '/auth': {
+        target: remarkUrl,
+        logLevel: 'debug',
+        changeOrigin: true,
+      },
+    },
   },
 };

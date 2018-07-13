@@ -43,7 +43,7 @@ module.exports = {
     'no-undef-init': 2,
     'no-shadow-restricted-names': 2,
     'handle-callback-err': 0,
-    'no-lonely-if': 2,
+    'no-lonely-if': 0,
     'constructor-super': 2,
     'no-this-before-super': 2,
     'no-dupe-class-members': 2,

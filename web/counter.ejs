@@ -21,14 +21,14 @@
   <div class="container">
     <p>
       First counter with url from data-attribute:
-      <span class="remark42__counter" data-url="https://radio-t.com/p/2017/11/11/podcast-571/"></span>
-      (<a href="https://radio-t.com/p/2017/11/11/podcast-571/" target="_blank">note</a>)
+      <span class="remark42__counter" data-url="http://127.0.0.1:8080/web/"></span>
+      (<a href="http://127.0.0.1:8080/web/" target="_blank">note</a>)
     </p>
 
     <p>
       Second counter with url from global remark config:
       <span class="remark42__counter"></span>
-      (<a href="https://radio-t.com/p/2017/12/16/podcast-576/" target="_blank">note</a>)
+      (<a href="http://127.0.0.1:8080/web/" target="_blank">note</a>)
     </p>
 
     <p>
@@ -38,14 +38,12 @@
 
   <script>
     var remark_config = {
-      site_id: 'radiot',
-      url: 'https://radio-t.com/p/2017/12/16/podcast-576/'
+      site_id: 'remark',
     };
 
     (function() {
       var d = document, s = d.createElement('script');
-      var baseurl = '';
-      s.src = baseurl + '/web/counter.js';
+      s.src = '/web/counter.js';
       s.type = 'text/javascript';
       (d.head || d.body).appendChild(s);
     })();

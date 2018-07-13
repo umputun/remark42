@@ -67,7 +67,7 @@ describe('<AuthPanel />', () => {
 
       const adminAction = container.querySelector('.auth-panel__admin-action');
 
-      expect(adminAction.textContent).toEqual('Show blocked');
+      expect(adminAction.textContent).toEqual('Show blocked users');
     });
   });
 });

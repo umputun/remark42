@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
 /** @jsx h */
 import { h, render } from 'preact';
+import 'preact/debug';
 
 import { BASE_URL, DEFAULT_LAST_COMMENTS_MAX, LAST_COMMENTS_NODE_CLASSNAME } from './common/constants';
 
