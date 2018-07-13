@@ -32,6 +32,8 @@ func TestBoltDB_CreateAndFind(t *testing.T) {
 
 	_, err = b.Find(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t-bad"}, "time")
 	assert.EqualError(t, err, `site "radio-t-bad" not found`)
+
+	assert.NoError(t, b.Close())
 }
 
 func TestBoltDB_CreateReadOnly(t *testing.T) {

@@ -24,13 +24,21 @@ required = ["github.com/patrickmn/go-cache"]
   name = "gopkg.in/russross/blackfriday.v2"
   version = "2.0.0"
 
+[[constraint]]
+  name = "github.com/patrickmn/go-cache"
+  version = "2.1.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/jessevdk/go-flags"
+
+[[constraint]]
+  name = "github.com/globalsign/mgo"
+  version = "r2018.06.15"
+
 [prune]
   go-tests = true
   unused-packages = true
 
-[[constraint]]
-  name = "github.com/patrickmn/go-cache"
-  version = "2.1.0"
-[[constraint]]
-  branch = "master"
-  name = "github.com/jessevdk/go-flags"
+
+

@@ -13,7 +13,7 @@ import (
 
 // Comment represents a single comment with optional reference to its parent
 type Comment struct {
-	ID        string          `json:"id"`
+	ID        string          `json:"id" bson:"_id"`
 	ParentID  string          `json:"pid"`
 	Text      string          `json:"text"`
 	Orig      string          `json:"orig,omitempty"`
@@ -21,21 +21,21 @@ type Comment struct {
 	Locator   Locator         `json:"locator"`
 	Score     int             `json:"score"`
 	Votes     map[string]bool `json:"votes"`
-	Timestamp time.Time       `json:"time"`
-	Edit      *Edit           `json:"edit,omitempty"` // pointer to have empty default in json response
-	Pin       bool            `json:"pin,omitempty"`
-	Deleted   bool            `json:"delete,omitempty"`
+	Timestamp time.Time       `json:"time" bson:"time"`
+	Edit      *Edit           `json:"edit,omitempty" bson:"edit,omitempty"` // pointer to have empty default in json response
+	Pin       bool            `json:"pin,omitempty" bson:"pin,omitempty"`
+	Deleted   bool            `json:"delete,omitempty" bson:"delete"`
 }
 
 // Locator keeps site and url of the post
 type Locator struct {
-	SiteID string `json:"site,omitempty"`
+	SiteID string `json:"site,omitempty" bson:"site"`
 	URL    string `json:"url"`
 }
 
 // Edit indication
 type Edit struct {
-	Timestamp time.Time `json:"time"`
+	Timestamp time.Time `json:"time" bson:"time"`
 	Summary   string    `json:"summary"`
 }
 
@@ -43,9 +43,9 @@ type Edit struct {
 type PostInfo struct {
 	URL      string    `json:"url"`
 	Count    int       `json:"count"`
-	ReadOnly bool      `json:"read_only,omitempty"`
-	FirstTS  time.Time `json:"first_time,omitempty"`
-	LastTS   time.Time `json:"last_time,omitempty"`
+	ReadOnly bool      `json:"read_only,omitempty" bson:"read_only,omitempty"`
+	FirstTS  time.Time `json:"first_time,omitempty" bson:"first_time,omitempty"`
+	LastTS   time.Time `json:"last_time,omitempty" bson:"last_time,omitempty"`
 }
 
 // BlockedUser holds id and ts for blocked user

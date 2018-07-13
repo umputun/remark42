@@ -1,9 +1,6 @@
-package proxy
+package avatar
 
 import (
-	"bytes"
-	"image"
-	"io"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -14,8 +11,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAvatarStore_Put(t *testing.T) {
-	p := NewFSAvatarStore("/tmp/avatars.test", 300)
+func TestAvatarStoreFS_Put(t *testing.T) {
+	p := NewLocalFS("/tmp/avatars.test", 300)
 	err := os.MkdirAll("/tmp/avatars.test", 0700)
 	require.NoError(t, err)
 	defer os.RemoveAll("/tmp/avatars.test")
@@ -48,13 +45,13 @@ func TestAvatarStore_Put(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int64(6986), fi.Size())
 
-	p = NewFSAvatarStore("/dev/null", 300)
+	p = NewLocalFS("/dev/null", 300)
 	_, err = p.Put("user1", strings.NewReader("some picture bin data"))
 	assert.EqualError(t, err, "can't create file /dev/null/30/b3daa77b4c04a9551b8781d03191fe098f325e67.image: open /dev/null/30/b3daa77b4c04a9551b8781d03191fe098f325e67.image: not a directory")
 }
 
-func TestAvatarStore_Get(t *testing.T) {
-	p := NewFSAvatarStore("/tmp/avatars.test", 300)
+func TestAvatarStoreFS_Get(t *testing.T) {
+	p := NewLocalFS("/tmp/avatars.test", 300)
 	err := os.MkdirAll("/tmp/avatars.test/30", 0700)
 	require.NoError(t, err)
 	defer os.RemoveAll("/tmp/avatars.test")
@@ -77,8 +74,8 @@ func TestAvatarStore_Get(t *testing.T) {
 	assert.Equal(t, "something", string(data))
 }
 
-func TestAvatarStore_Location(t *testing.T) {
-	p := NewFSAvatarStore("/tmp/avatars.test", 300)
+func TestAvatarStoreFS_Location(t *testing.T) {
+	p := NewLocalFS("/tmp/avatars.test", 300)
 
 	tbl := []struct {
 		id  string
@@ -94,60 +91,8 @@ func TestAvatarStore_Location(t *testing.T) {
 	}
 }
 
-func TestAvatarStore_resize(t *testing.T) {
-	checkC := func(t *testing.T, r io.Reader, cExp []byte) {
-		content, err := ioutil.ReadAll(r)
-		require.NoError(t, err)
-		assert.Equal(t, cExp, content)
-	}
-
-	// Reader is nil.
-	resizedR := resize(nil, 100)
-	// assert.EqualError(t, err, "limit should be greater than 0")
-	assert.Nil(t, resizedR)
-
-	// Negative limit error.
-	resizedR = resize(strings.NewReader("some picture bin data"), -1)
-	require.NotNil(t, resizedR)
-	checkC(t, resizedR, []byte("some picture bin data"))
-
-	// Decode error.
-	resizedR = resize(strings.NewReader("invalid image content"), 100)
-	assert.NotNil(t, resizedR)
-	checkC(t, resizedR, []byte("invalid image content"))
-
-	cases := []struct {
-		file   string
-		wr, hr int
-	}{
-		{"testdata/circles.png", 400, 300}, // full size: 800x600 px
-		{"testdata/circles.jpg", 300, 400}, // full size: 600x800 px
-	}
-
-	for _, c := range cases {
-		img, err := ioutil.ReadFile(c.file)
-		require.Nil(t, err, "can't open test file %s", c.file)
-
-		// No need for resize, avatar dimensions are smaller than resize limit.
-		resizedR = resize(bytes.NewReader(img), 800)
-		assert.NotNilf(t, resizedR, "file %s", c.file)
-		checkC(t, resizedR, img)
-
-		// Resizing to half of width. Check resizedR avatar format PNG.
-		resizedR = resize(bytes.NewReader(img), 400)
-		assert.NotNilf(t, resizedR, "file %s", c.file)
-
-		imgRz, format, err := image.Decode(resizedR)
-		assert.Nilf(t, err, "file %s", c.file)
-		assert.Equalf(t, "png", format, "file %s", c.file)
-		bounds := imgRz.Bounds()
-		assert.Equalf(t, c.wr, bounds.Dx(), "file %s", c.file)
-		assert.Equalf(t, c.hr, bounds.Dy(), "file %s", c.file)
-	}
-}
-
-func TestAvatarStore_ID(t *testing.T) {
-	p := NewFSAvatarStore("/tmp/avatars.test", 300)
+func TestAvatarStoreFS_ID(t *testing.T) {
+	p := NewLocalFS("/tmp/avatars.test", 300)
 	err := os.MkdirAll("/tmp/avatars.test/30", 0700)
 	require.NoError(t, err)
 	defer os.RemoveAll("/tmp/avatars.test")
@@ -164,8 +109,9 @@ func TestAvatarStore_ID(t *testing.T) {
 	id = p.ID("b3daa77b4c04a9551b8781d03191fe098f325e67.image")
 	assert.Equal(t, "325d5b451f32c2f8e7f30a9fd65bff6a42954d9a", id) // store.EncodeID("b3daa77b4c04a9551b8781d03191fe098f325e67.image1500000000")
 }
-func BenchmarkAvatarStore_ID(b *testing.B) {
-	p := NewFSAvatarStore("/tmp/avatars.test", 300)
+
+func BenchmarkAvatarStoreFS_ID(b *testing.B) {
+	p := NewLocalFS("/tmp/avatars.test", 300)
 	os.MkdirAll("/tmp/avatars.test/30", 0700)
 	defer os.RemoveAll("/tmp/avatars.test")
 	err := ioutil.WriteFile("/tmp/avatars.test/30/b3daa77b4c04a9551b8781d03191fe098f325e67.image", []byte("something"), 0666)
