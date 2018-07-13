@@ -92,18 +92,62 @@ export default class Root extends Component {
     });
   }
 
+  findComment(comments, commentId) {
+    let comment;
+    for (let i = 0; i < comments.length; i += 1) {
+      comment = comments[i];
+      if (comment.comment.id === commentId) {
+        return comment;
+      }
+      if (comment.replies != null && comment.replies.length > 0) {
+        comment = this.findComment(comment.replies, commentId);
+        if (comment) {
+          return comment;
+        }
+      }
+    }
+  }
+
   checkUrlHash(e) {
     const hash = e ? `#${e.newURL.split('#')[1]}` : window.location.hash;
 
     if (hash.indexOf(`#${COMMENT_NODE_CLASSNAME_PREFIX}`) === 0) {
-      if (e) e.preventDefault();
+      if (e) {
+        e.preventDefault();
+      }
 
-      const comment = document.querySelector(hash);
-
-      if (comment) {
+      const commentEl = document.querySelector(hash);
+      if (commentEl) {
         setTimeout(() => {
-          window.parent.postMessage(JSON.stringify({ scrollTo: comment.getBoundingClientRect().top }), '*');
+          window.parent.postMessage(JSON.stringify({ scrollTo: commentEl.getBoundingClientRect().top }), '*');
         }, 500);
+
+        return;
+      }
+
+      if (IS_MOBILE) {
+        const commentId = hash.replace(`#${COMMENT_NODE_CLASSNAME_PREFIX}`, '');
+        let comment = this.findComment(this.state.comments, commentId);
+        if (comment == null) {
+          return;
+        }
+
+        while (comment.comment.pid.length !== 0) {
+          comment = this.findComment(this.state.comments, comment.comment.pid);
+        }
+
+        const commentPos = this.state.comments.indexOf(comment) + 1;
+        if (commentPos > this.state.commentsShown) {
+          this.setState({
+            commentsShown: commentPos,
+          });
+
+          setTimeout(() => {
+            this.checkUrlHash(e);
+          }, 100);
+
+          return;
+        }
       }
     }
   }
