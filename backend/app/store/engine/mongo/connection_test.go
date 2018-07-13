@@ -6,6 +6,7 @@ import (
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
+	"github.com/hashicorp/go-multierror"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -108,15 +109,18 @@ func write(t *testing.T) (*Connection, error) {
 	if err != nil {
 		return nil, err
 	}
-	c.WithCollection(func(coll *mgo.Collection) error {
+	err = c.WithCollection(func(coll *mgo.Collection) error {
+		errs := new(multierror.Error)
 		for i := 0; i < 100; i++ {
 			r := testRecord{
 				Symbol: fmt.Sprintf("symb-%02d", i%5),
 				Num:    i,
 			}
-			assert.Nil(t, coll.Insert(r), fmt.Sprintf("insert %+v", r))
+			insertErr := coll.Insert(r)
+			assert.Nil(t, insertErr, fmt.Sprintf("insert %+v", r))
+			errs = multierror.Append(errs, insertErr)
 		}
-		return nil
+		return errs.ErrorOrNil()
 	})
-	return c, nil
+	return c, err
 }

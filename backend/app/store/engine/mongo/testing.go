@@ -59,7 +59,7 @@ func RemoveTestCollection(t *testing.T, c *Connection) {
 func RemoveTestCollections(t *testing.T, c *Connection, collections ...string) {
 	log.Printf("[DEBUG] clean test collections %+v", collections)
 	for _, collection := range collections {
-		c.WithCustomCollection(collection, func(coll *mgo.Collection) error {
+		_ = c.WithCustomCollection(collection, func(coll *mgo.Collection) error {
 			_, e := coll.RemoveAll(nil)
 			require.Nil(t, e, "failed to remove records, %s", e)
 			e = coll.DropCollection()

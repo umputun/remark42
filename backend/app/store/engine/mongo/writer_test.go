@@ -8,6 +8,7 @@ import (
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestWriter(t *testing.T) {
@@ -62,7 +63,7 @@ func TestWriter_Parallel(t *testing.T) {
 
 	writeMany := func() {
 		for i := 0; i < 100; i++ {
-			wr.Write(bson.M{"key1": 1, "key2": 2})
+			require.NoError(t, wr.Write(bson.M{"key1": 1, "key2": 2}))
 		}
 		wr.Flush()
 		wg.Done()
@@ -137,7 +138,7 @@ func TestWriter_ParallelWithAutoFlush(t *testing.T) {
 
 	writeMany := func() {
 		for i := 0; i < 100; i++ {
-			wr.Write(bson.M{"key1": 1, "key2": 2})
+			require.NoError(t, wr.Write(bson.M{"key1": 1, "key2": 2}))
 			time.Sleep(time.Millisecond * 3)
 		}
 		wr.Flush()
