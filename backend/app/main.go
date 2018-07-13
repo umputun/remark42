@@ -11,7 +11,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/umputun/remark/backend/app/store/avatar"
+
 	"github.com/coreos/bbolt"
+	"github.com/globalsign/mgo"
 	"github.com/hashicorp/logutils"
 	"github.com/jessevdk/go-flags"
 	"github.com/pkg/errors"
@@ -22,6 +25,7 @@ import (
 	"github.com/umputun/remark/backend/app/rest/cache"
 	"github.com/umputun/remark/backend/app/rest/proxy"
 	"github.com/umputun/remark/backend/app/store/engine"
+	"github.com/umputun/remark/backend/app/store/engine/mongo"
 	"github.com/umputun/remark/backend/app/store/service"
 )
 
@@ -77,6 +81,7 @@ type StoreGroup struct {
 		Path    string        `long:"path" env:"PATH" default:"./var" description:"parent dir for bolt files"`
 		Timeout time.Duration `long:"timeout" env:"TIMEOUT" default:"30s" description:"bolt timeout"`
 	} `group:"bolt" namespace:"bolt" env-namespace:"BOLT"`
+	Mongo MongoOpts `group:"mongo" namespace:"mongo" env-namespace:"MONGO"`
 }
 
 // AvatarGroup defines options group for avatar params
@@ -85,7 +90,8 @@ type AvatarGroup struct {
 	FS   struct {
 		Path string `long:"path" env:"PATH" default:"./var/avatars" description:"avatars location"`
 	} `group:"fs" namespace:"fs" env-namespace:"FS"`
-	RszLmt int `long:"rsz-lmt" env:"RESIZE" default:"0" description:"max image size for resizing avatars on save"`
+	Mongo  MongoOpts `group:"mongo" namespace:"mongo" env-namespace:"MONGO"`
+	RszLmt int       `long:"rsz-lmt" env:"RESIZE" default:"0" description:"max image size for resizing avatars on save"`
 }
 
 // CacheGroup defines options group for cache params
@@ -98,6 +104,17 @@ type CacheGroup struct {
 	} `group:"max" namespace:"max" env-namespace:"MAX"`
 }
 
+// MongoOpts holds all mongo params
+type MongoOpts struct {
+	URL    string   `long:"url" env:"URL" description:"mongo url"`
+	Server []string `long:"server" env:"SERVER" description:"mongo host:port" env-delim:","`
+	DB     string   `long:"db" env:"DB" default:"remark42" description:"mongo database"`
+	User   string   `long:"user" env:"USER" default:"" description:"mongo user"`
+	Passwd string   `long:"password" env:"PASSWD" default:"" description:"mongo pssword"`
+	SSL    bool     `long:"ssl" env:"SSL" description:"connect to mongo with ssl"`
+	Dbg    bool     `long:"dbg" env:"DEBUG" description:"enable mongo debug"`
+}
+
 var revision = "unknown"
 
 // Application holds all active objects
@@ -107,6 +124,7 @@ type Application struct {
 	migratorSrv *api.Migrator
 	exporter    migrator.Exporter
 	devAuth     *auth.DevAuthServer
+	dataService *service.DataStore
 	terminated  chan struct{}
 }
 
@@ -152,13 +170,13 @@ func New(opts Opts) (*Application, error) {
 		return nil, errors.Errorf("invalid remark42 url %s", opts.RemarkURL)
 	}
 
-	boltStore, err := makeDataStore(opts.Store, opts.Sites)
+	storeEngine, err := makeDataStore(opts.Store, opts.Sites)
 	if err != nil {
 		return nil, err
 	}
 
 	dataService := &service.DataStore{
-		Interface:      boltStore,
+		Interface:      storeEngine,
 		EditDuration:   opts.EditDuration,
 		Secret:         opts.SecretKey,
 		MaxCommentSize: opts.MaxCommentSize,
@@ -232,7 +250,8 @@ func New(opts Opts) (*Application, error) {
 	}
 
 	tch := make(chan struct{})
-	return &Application{restSrv: srv, migratorSrv: migr, exporter: exporter, devAuth: devAuth, Opts: opts, terminated: tch}, nil
+	return &Application{restSrv: srv, migratorSrv: migr, exporter: exporter, devAuth: devAuth, dataService: dataService,
+		Opts: opts, terminated: tch}, nil
 }
 
 // Run all application objects
@@ -249,6 +268,10 @@ func (a *Application) Run(ctx context.Context) error {
 		if a.devAuth != nil {
 			a.devAuth.Shutdown()
 		}
+		if e := a.dataService.Close(); e != nil {
+			log.Printf("[WARN] failed to close store, %s", e)
+		}
+
 	}()
 	a.activateBackup(ctx)            // runs in goroutine for each site
 	go a.migratorSrv.Run(a.Port + 1) // migrator server runs on +1, localhost only
@@ -284,27 +307,40 @@ func makeDataStore(group StoreGroup, siteNames []string) (result engine.Interfac
 	switch group.Type {
 	case "bolt":
 		if err = makeDirs(group.Bolt.Path); err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "failed to create bolt store")
 		}
 		sites := []engine.BoltSite{}
 		for _, site := range siteNames {
 			sites = append(sites, engine.BoltSite{SiteID: site, FileName: fmt.Sprintf("%s/%s.db", group.Bolt.Path, site)})
 		}
 		result, err = engine.NewBoltDB(bolt.Options{Timeout: group.Bolt.Timeout}, sites...)
+	case "mongo":
+		mgServer, e := makeMongo(group.Mongo)
+		if e != nil {
+			return result, errors.Wrap(e, "failed to create mongo server")
+		}
+		conn := mongo.NewConnection(mgServer, group.Mongo.DB, "")
+		result, err = engine.NewMongo(conn, 500, 100*time.Millisecond)
 	default:
 		return nil, errors.Errorf("unsupported store type %s", group.Type)
 	}
-
 	return result, errors.Wrap(err, "can't initialize data store")
 }
 
-func makeAvatarStore(group AvatarGroup) (result proxy.AvatarStore, err error) {
+func makeAvatarStore(group AvatarGroup) (avatar.Store, error) {
 	switch group.Type {
 	case "fs":
-		if err = makeDirs(group.FS.Path); err != nil {
+		if err := makeDirs(group.FS.Path); err != nil {
 			return nil, err
 		}
-		return proxy.NewFSAvatarStore(group.FS.Path, group.RszLmt), nil
+		return avatar.NewLocalFS(group.FS.Path, group.RszLmt), nil
+	case "mongo":
+		mgServer, err := makeMongo(group.Mongo)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create mongo server")
+		}
+		conn := mongo.NewConnection(mgServer, group.Mongo.DB, "")
+		return avatar.NewGridFS(conn, group.RszLmt), nil
 	}
 	return nil, errors.Errorf("unsupported avatar store type %s", group.Type)
 }
@@ -336,6 +372,26 @@ func makeDirs(dirs ...string) error {
 		}
 	}
 	return nil
+}
+
+func makeMongo(mopts MongoOpts) (result *mongo.Server, err error) {
+	if mopts.URL != "" {
+		log.Print("[DEBUG] mongo url provided")
+		return mongo.NewServerWithURL(mopts.URL, 10*time.Second)
+	}
+	dial := mgo.DialInfo{
+		Addrs:    mopts.Server,
+		Database: mopts.DB,
+		Timeout:  10 * time.Second,
+		Username: mopts.User,
+		Password: mopts.Passwd,
+		Source:   "admin",
+	}
+
+	return mongo.NewServer(dial, mongo.ServerParams{
+		Debug: mopts.Dbg,
+		SSL:   mopts.SSL,
+	})
 }
 
 func makeAuthProviders(jwtService *auth.JWT, avatarProxy *proxy.Avatar, ds *service.DataStore, opts Opts) []auth.Provider {

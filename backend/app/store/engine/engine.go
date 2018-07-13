@@ -3,6 +3,7 @@
 package engine
 
 import (
+	"io"
 	"sort"
 	"strings"
 	"time"
@@ -38,6 +39,7 @@ type Accessor interface {
 	Count(locator store.Locator) (int, error)                             // number of comments for the post
 	List(siteID string, limit int, skip int) ([]store.PostInfo, error)    // list of commented posts
 	Info(locator store.Locator, readonlyAge int) (store.PostInfo, error)  // get post info
+	Close() error                                                         // close/stop engine
 }
 
 // Admin defines all store ops avail for admin only
@@ -53,6 +55,19 @@ type Admin interface {
 	SetVerified(siteID string, userID string, status bool) error                 // set/reset verified flag
 	IsVerified(siteID string, userID string) bool                                // check verified status
 }
+
+// Avatar defines interface for avatar store
+type Avatar interface {
+	Put(userID string, reader io.Reader) (avatar string, err error)
+	Get(avatar string) (reader io.ReadCloser, size int, err error)
+	ID(avatar string) (id string)
+}
+
+const (
+	// limits
+	lastLimit = 1000
+	userLimit = 500
+)
 
 // sortComments is for engines can't sort data internally
 func sortComments(comments []store.Comment, sortFld string) []store.Comment {

@@ -19,6 +19,7 @@ import (
 	"github.com/umputun/remark/backend/app/rest/auth"
 	"github.com/umputun/remark/backend/app/rest/proxy"
 	"github.com/umputun/remark/backend/app/store"
+	"github.com/umputun/remark/backend/app/store/avatar"
 	"github.com/umputun/remark/backend/app/store/engine"
 	"github.com/umputun/remark/backend/app/store/service"
 )
@@ -56,7 +57,7 @@ func TestRest_GetStarted(t *testing.T) {
 }
 
 func TestRest_Shutdown(t *testing.T) {
-	srv := Rest{Authenticator: auth.Authenticator{}, AvatarProxy: &proxy.Avatar{Store: proxy.NewFSAvatarStore("/tmp", 300),
+	srv := Rest{Authenticator: auth.Authenticator{}, AvatarProxy: &proxy.Avatar{Store: avatar.NewLocalFS("/tmp", 300),
 		RoutePath: "/api/v1/avatar"}, ImageProxy: &proxy.Image{}}
 
 	go func() {
@@ -92,7 +93,7 @@ func prep(t *testing.T) (srv *Rest, ts *httptest.Server) {
 		Cache:       &mockCache{},
 		WebRoot:     "/tmp",
 		RemarkURL:   "https://demo.remark42.com",
-		AvatarProxy: &proxy.Avatar{Store: proxy.NewFSAvatarStore("/tmp", 300), RoutePath: "/api/v1/avatar"},
+		AvatarProxy: &proxy.Avatar{Store: avatar.NewLocalFS("/tmp", 300), RoutePath: "/api/v1/avatar"},
 		ImageProxy:  &proxy.Image{},
 		ReadOnlyAge: 10,
 	}

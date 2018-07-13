@@ -13,17 +13,16 @@ import (
 
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/store"
+	"github.com/umputun/remark/backend/app/store/avatar"
 )
 
 // Avatar provides file-system store and http handler for avatars
 // On user login auth will call Put and it will retrieve and save picture locally.
 type Avatar struct {
-	Store     AvatarStore
+	Store     avatar.Store
 	RoutePath string
 	RemarkURL string
 }
-
-const imgSfx = ".image"
 
 // Put stores retrieved avatar to StorePath. Gets image from user info. Returns proxied url
 func (p *Avatar) Put(u store.User) (avatarURL string, err error) {
