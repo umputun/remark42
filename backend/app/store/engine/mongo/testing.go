@@ -22,11 +22,11 @@ var once sync.Once
 func MakeTestConnection(t *testing.T) (*Connection, error) {
 	mongoURL := os.Getenv("MONGO_REMARK_TEST")
 	if mongoURL == "" {
-		mongoURL = "mongodb://mongo:27017"
-		log.Printf("[WARN] no MONGO_REMARK_TEST in env")
+		t.Skip("no MONGO_REMARK_TEST in env")
+		return nil, errors.New("skip")
 	}
 	if mongoURL == "skip" {
-		log.Print("skip mongo test")
+		t.Skip("skip mongo test")
 		return nil, errors.New("skip")
 	}
 
