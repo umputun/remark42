@@ -76,6 +76,12 @@
   version = "v3.3.2"
 
 [[projects]]
+  name = "github.com/go-chi/cors"
+  packages = ["."]
+  revision = "dba6525398619dead495962a916728e7ee2ca322"
+  version = "v1.0.0"
+
+[[projects]]
   name = "github.com/go-chi/render"
   packages = ["."]
   revision = "9f855fadd4b8cde7773f9ef51f6b2705af239519"
@@ -250,6 +256,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "b6dd6c99dd3a4f5135f8b869063a2b24044494b2ed77442bfd50a45d096e414a"
+  inputs-digest = "654ae83bc88fd636fd7d7d55396b1b4546592eddf8c78d64989cea1cf9e1b842"
   solver-name = "gps-cdcl"
   solver-version = 1
