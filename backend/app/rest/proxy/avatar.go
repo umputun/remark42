@@ -16,7 +16,7 @@ import (
 	"github.com/umputun/remark/backend/app/store/avatar"
 )
 
-// Avatar provides file-system store and http handler for avatars
+// Avatar provides http handler for avatars from avatar.Store
 // On user login auth will call Put and it will retrieve and save picture locally.
 type Avatar struct {
 	Store     avatar.Store
@@ -24,7 +24,7 @@ type Avatar struct {
 	RemarkURL string
 }
 
-// Put stores retrieved avatar to StorePath. Gets image from user info. Returns proxied url
+// Put stores retrieved avatar to avatar.Store. Gets image from user info. Returns proxied url
 func (p *Avatar) Put(u store.User) (avatarURL string, err error) {
 
 	// no picture for user, try default avatar
@@ -54,13 +54,13 @@ func (p *Avatar) Put(u store.User) (avatarURL string, err error) {
 		return "", errors.Errorf("failed to get avatar from the orig, status %s", resp.Status)
 	}
 
-	avatar, err := p.Store.Put(u.ID, resp.Body)
+	avatarID, err := p.Store.Put(u.ID, resp.Body) // put returns avatar base name, like 123456.image
 	if err != nil {
 		return "", err
 	}
 
-	log.Printf("[DEBUG] saved avatar from %s to %s, user %q", u.Picture, avatar, u.Name)
-	return p.RemarkURL + p.RoutePath + "/" + avatar, nil
+	log.Printf("[DEBUG] saved avatar from %s to %s, user %q", u.Picture, avatarID, u.Name)
+	return p.RemarkURL + p.RoutePath + "/" + avatarID, nil
 }
 
 // Routes returns auth routes for given provider
@@ -71,10 +71,10 @@ func (p *Avatar) Routes(middlewares ...func(http.Handler) http.Handler) (string,
 	// GET /123456789.image
 	router.Get("/{avatar}", func(w http.ResponseWriter, r *http.Request) {
 
-		avatar := chi.URLParam(r, "avatar")
+		avatarID := chi.URLParam(r, "avatar")
 
 		// enforce client-side caching
-		etag := `"` + p.Store.ID(avatar) + `"`
+		etag := `"` + p.Store.ID(avatarID) + `"`
 		w.Header().Set("Etag", etag)
 		w.Header().Set("Cache-Control", "max-age=604800") // 7 days
 		if match := r.Header.Get("If-None-Match"); match != "" {
@@ -84,7 +84,7 @@ func (p *Avatar) Routes(middlewares ...func(http.Handler) http.Handler) (string,
 			}
 		}
 
-		avReader, size, err := p.Store.Get(avatar)
+		avReader, size, err := p.Store.Get(avatarID)
 		if err != nil {
 			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't load avatar")
 			return
@@ -92,7 +92,7 @@ func (p *Avatar) Routes(middlewares ...func(http.Handler) http.Handler) (string,
 
 		defer func() {
 			if e := avReader.Close(); e != nil {
-				log.Printf("[WARN] can't close avatar reader for %s, %s", avatar, e)
+				log.Printf("[WARN] can't close avatar reader for %s, %s", avatarID, e)
 			}
 		}()
 
