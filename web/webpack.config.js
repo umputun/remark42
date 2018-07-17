@@ -46,6 +46,7 @@ module.exports = {
     counter: './app/counter',
     'last-comments': './app/last-comments',
     remark: './app/remark',
+    deleteme: './app/deleteme',
   },
   output: {
     path: publicFolder,
@@ -129,7 +130,7 @@ module.exports = {
             openAnalyzer: false,
           }),
         ]),
-    new Copy(['./iframe.html']),
+    new Copy(['./iframe.html', './deleteme.html']),
   ],
   watchOptions: {
     ignored: /(node_modules|\.vendor\.js$)/,

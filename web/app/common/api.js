@@ -76,6 +76,11 @@ export const deleteMe = () =>
     url: `/deleteme?site=${siteId}`,
   });
 
+export const approveDeleteMe = token =>
+  fetcher.get({
+    url: `/admin/deleteme?token=${token}`,
+  });
+
 /* admin */
 export const pinComment = ({ id, url }) =>
   fetcher.put({
