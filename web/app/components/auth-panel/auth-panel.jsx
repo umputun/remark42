@@ -65,7 +65,7 @@ export default class AuthPanel extends Component {
               </DropdownItem>
 
               <DropdownItem>
-                <Button mods={{ kind: 'link' }} onClick={requestDeletion}>
+                <Button mods={{ kind: 'link' }} onClick={() => requestDeletion().then(props.onSignOut)}>
                   Request my data removal
                 </Button>
               </DropdownItem>

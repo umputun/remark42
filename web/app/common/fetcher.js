@@ -30,7 +30,7 @@ methods.forEach(method => {
 
       parameters.url = `${basename}${url}`;
 
-      if (method !== 'post' && !parameters.url.includes('?site=') && !parameters.url.includes('&site=')) {
+      if (siteId && method !== 'post' && !parameters.url.includes('?site=') && !parameters.url.includes('&site=')) {
         parameters.url += (parameters.url.includes('?') ? '&' : '?') + `site=${siteId}`;
       }
 
