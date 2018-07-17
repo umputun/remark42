@@ -27,7 +27,7 @@ link: ${link}
 }
 
 export function requestDeletion() {
-  deleteMe().then(data => {
+  return deleteMe().then(data => {
     const email = store.get('config').admin_email;
     const { subject, message } = getDeleteInformationMessage(data.user_id, siteId, data.link);
     window.location = `mailto:${email}?subject=${subject}&body=${message}`;
