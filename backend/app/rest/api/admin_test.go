@@ -204,7 +204,7 @@ func TestAdmin_Block(t *testing.T) {
 	assert.Equal(t, false, j["block"])
 
 	// block with ttl
-	code, _ = block(1, "10ms")
+	code, _ = block(1, "50ms")
 	require.Equal(t, 200, code)
 
 	res, code = get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah&sort=+time")
@@ -216,7 +216,7 @@ func TestAdmin_Block(t *testing.T) {
 	assert.Equal(t, "", comments.Comments[0].Text)
 	assert.True(t, comments.Comments[0].Deleted)
 
-	time.Sleep(11 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	res, code = get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah&sort=+time")
 	assert.Equal(t, 200, code)
 	comments = commentsWithInfo{}
