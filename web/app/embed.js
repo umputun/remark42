@@ -51,9 +51,8 @@ function init() {
   const iframe = node.getElementsByTagName('iframe')[0];
 
   window.addEventListener('message', receiveMessages);
-
   window.addEventListener('hashchange', postHashToIframe);
-
+  document.addEventListener('click', postClickOutsideToIframe);
   setTimeout(postHashToIframe, 1000);
 
   const remarkRootId = 'remark-km423lmfdslkm34';
@@ -228,6 +227,12 @@ function init() {
       if (e) e.preventDefault();
 
       iframe.contentWindow.postMessage(JSON.stringify({ hash }), '*');
+    }
+  }
+
+  function postClickOutsideToIframe(e) {
+    if (!iframe.contains(e.target)) {
+      iframe.contentWindow.postMessage(JSON.stringify({ clickOutside: true }), '*');
     }
   }
 }

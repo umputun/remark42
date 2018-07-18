@@ -13,6 +13,7 @@ export default class Dropdown extends Component {
 
     this.onTitleClick = this.onTitleClick.bind(this);
     this.onOutsideClick = this.onOutsideClick.bind(this);
+    this.receiveMessage = this.receiveMessage.bind(this);
   }
 
   onTitleClick() {
@@ -23,6 +24,20 @@ export default class Dropdown extends Component {
     if (this.props.onTitleClick) {
       this.props.onTitleClick();
     }
+  }
+
+  receiveMessage(e) {
+    try {
+      const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+
+      if (data.clickOutside) {
+        if (this.state.isActive) {
+          this.setState({
+            isActive: false,
+          });
+        }
+      }
+    } catch (e) {}
   }
 
   onOutsideClick(e) {
@@ -38,17 +53,13 @@ export default class Dropdown extends Component {
   componentDidMount() {
     document.addEventListener('click', this.onOutsideClick);
 
-    if (parent) {
-      parent.document.addEventListener('click', this.onOutsideClick);
-    }
+    window.addEventListener('message', this.receiveMessage);
   }
 
   componentWillUnmount() {
     document.removeEventListener('click', this.onOutsideClick);
 
-    if (parent) {
-      parent.document.removeEventListener('click', this.onOutsideClick);
-    }
+    window.removeEventListener('message', this.receiveMessage);
   }
 
   render(props, { isActive }) {
