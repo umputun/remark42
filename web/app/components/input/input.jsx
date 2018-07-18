@@ -104,8 +104,8 @@ export default class Input extends Component {
       });
   }
 
-  render(props, { isDisabled, isErrorShown, preview, maxLength, commentLength }) {
-    const charactersLeft = maxLength - commentLength;
+  render(props, { isDisabled, isErrorShown, preview, maxLength, text }) {
+    const charactersLeft = maxLength - text.length;
     const { mods = {}, errorMessage } = props;
 
     return (
@@ -114,7 +114,7 @@ export default class Input extends Component {
           <TextareaAutosize
             className="input__field"
             placeholder="Your comment here"
-            value={this.state.text}
+            value={text}
             maxLength={maxLength}
             onInput={this.onInput}
             onKeyDown={this.onKeyDown}
