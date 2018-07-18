@@ -6,6 +6,7 @@ import { siteId, url } from 'common/settings';
 
 import api from 'common/api';
 import store from 'common/store';
+import TextareaAutosize from 'components/input/textarea-autosize';
 
 const RSS_THREAD_URL = `${BASE_URL}${API_BASE}/rss/post?site=${siteId}&url=${url}`;
 const RSS_SITE_URL = `${BASE_URL}${API_BASE}/rss/site?site=${siteId}`;
@@ -31,12 +32,6 @@ export default class Input extends Component {
   }
 
   componentDidMount() {
-    if (this.props.autoFocus) {
-      this.fieldNode.focus();
-    }
-
-    this.autoResize();
-
     store.onUpdate('config', config => {
       this.setState({ maxLength: (config && config.max_comment_size) || DEFAULT_MAX_COMMENT_SIZE });
     });
@@ -60,18 +55,11 @@ export default class Input extends Component {
   }
 
   onInput(e) {
-    this.autoResize();
-
     this.setState({
       preview: null,
       isErrorShown: false,
       text: e.target.value,
     });
-  }
-
-  autoResize() {
-    this.fieldNode.style.height = '';
-    this.fieldNode.style.height = `${this.fieldNode.scrollHeight}px`;
   }
 
   send(e) {
@@ -93,7 +81,6 @@ export default class Input extends Component {
           this.props.onSubmit(comment);
         }
 
-        this.fieldNode.style.height = '';
         this.setState({ preview: null, text: '' });
       })
       .catch(() => {
@@ -124,18 +111,15 @@ export default class Input extends Component {
     return (
       <form className={b('input', props)} onSubmit={this.send} aria-label="New comment">
         <div className="input__field-wrapper">
-          <textarea
+          <TextareaAutosize
             className="input__field"
             placeholder="Your comment here"
             value={this.state.text}
             maxLength={maxLength}
             onInput={this.onInput}
             onKeyDown={this.onKeyDown}
-            ref={r => (this.fieldNode = r)}
             disabled={isDisabled}
-          >
-            {this.state.text}
-          </textarea>
+          />
 
           {charactersLeft < 100 && <span className="input__counter">{charactersLeft}</span>}
         </div>
