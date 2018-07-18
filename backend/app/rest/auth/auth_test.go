@@ -15,6 +15,8 @@ import (
 
 var testJwtUserBlocked = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjI3ODkxOTE4MjIsImp0aSI6InJhbmRvbSBpZCIsImlzcyI6InJlbWFyazQyIiwibmJmIjoxNTI2ODg0MjIyLCJ1c2VyIjp7Im5hbWUiOiJuYW1lMSIsImlkIjoiaWQxIiwicGljdHVyZSI6IiIsImFkbWluIjpmYWxzZSwiYmxvY2siOnRydWV9LCJzdGF0ZSI6IjEyMzQ1NiIsImZyb20iOiJmcm9tIn0.6P_OwGf8CUJRtvNSlW20GmaMb5pFvCNemP94fHCqb5Q"
 
+var testJwtDeleteMe = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjI3ODkxOTE4MjIsImp0aSI6InJhbmRvbSBpZCIsImlzcyI6InJlbWFyazQyIiwibmJmIjoxNTI2ODg0MjIyLCJ1c2VyIjp7Im5hbWUiOiJuYW1lMSIsImlkIjoiaWQxIiwicGljdHVyZSI6IiIsImFkbWluIjpmYWxzZSwiYmxvY2siOmZhbHNlfSwiZGVsZXRlbWUiOnRydWV9.3wiT5fqDv_bzPky6-3IilU8ExfzCyvLpKDMPYOAFWEo"
+
 func TestAuthJWTCookie(t *testing.T) {
 	a := Authenticator{DevPasswd: "123456", JWTService: NewJWT("xyz 12345", false, time.Hour, time.Hour),
 		PermissionChecker: &mockUserPermissions{}}
@@ -95,6 +97,26 @@ func TestAuthJWtBlocked(t *testing.T) {
 	req, err := http.NewRequest("GET", server.URL+"/auth", nil)
 	require.Nil(t, err)
 	req.Header.Add("X-JWT", testJwtUserBlocked)
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	assert.Equal(t, 401, resp.StatusCode, "blocked user")
+}
+
+func TestAuthJWtFlags(t *testing.T) {
+	a := Authenticator{DevPasswd: "123456", JWTService: NewJWT("xyz 12345", false, time.Hour, time.Hour)}
+	router := chi.NewRouter()
+	router.With(a.Auth(true)).Get("/auth", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(201)
+	})
+	server := httptest.NewServer(router)
+	defer server.Close()
+
+	jar, err := cookiejar.New(nil)
+	require.Nil(t, err)
+	client := &http.Client{Jar: jar, Timeout: 5 * time.Second}
+	req, err := http.NewRequest("GET", server.URL+"/auth", nil)
+	require.Nil(t, err)
+	req.Header.Add("X-JWT", testJwtDeleteMe)
 	resp, err := client.Do(req)
 	require.NoError(t, err)
 	assert.Equal(t, 401, resp.StatusCode, "blocked user")

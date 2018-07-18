@@ -73,6 +73,12 @@ func (a *Authenticator) Auth(reqAuth bool) func(http.Handler) http.Handler {
 					return
 				}
 
+				if claims.DeleteMe {
+					log.Printf("[DEBUG] invalid token flags for %s/%s", claims.User.Name, claims.User.ID)
+					http.Error(w, "Unauthorized", http.StatusUnauthorized)
+					return
+				}
+
 				if a.JWTService.IsExpired(claims) {
 					if claims, err = a.refreshExpiredToken(w, claims); err != nil {
 						log.Printf("[DEBUG] can't refresh jwt, %s", err)

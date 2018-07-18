@@ -255,7 +255,8 @@ func (s *Rest) deleteMeCtrl(w http.ResponseWriter, r *http.Request) {
 			ExpiresAt: time.Now().AddDate(0, 3, 0).Unix(),
 			NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
 		},
-		User: &user,
+		User:     &user,
+		DeleteMe: true, // prevent this token from being used for login
 	}
 
 	tokenStr, err := s.Authenticator.JWTService.Token(&claims)
@@ -263,6 +264,7 @@ func (s *Rest) deleteMeCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't make token")
 		return
 	}
+
 	link := fmt.Sprintf("%s/web/deleteme.html?token=%s", s.RemarkURL, tokenStr)
 	render.JSON(w, r, JSON{"site": siteID, "user_id": user.ID, "token": tokenStr, "link": link})
 }

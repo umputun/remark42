@@ -108,6 +108,11 @@ func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[INFO] delete all user comments by request for %s, site %s", claims.User.ID, claims.SiteID)
 
+	if !claims.DeleteMe { // deletme set by deleteMeCtrl, this check just to make sure we not trying to delete with leaked token
+		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("forbidden"), "can't use provided token")
+		return
+	}
+
 	if err := a.dataService.DeleteUser(claims.SiteID, claims.User.ID); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete user")
 		return

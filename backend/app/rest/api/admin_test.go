@@ -497,6 +497,7 @@ func TestAdmin_DeleteMeRequest(t *testing.T) {
 		User: &store.User{
 			ID: "user1",
 		},
+		DeleteMe: true,
 	}
 
 	token, err := srv.Authenticator.JWTService.Token(&claims)
@@ -551,6 +552,7 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 		User: &store.User{
 			ID: "user1",
 		},
+		DeleteMe: true,
 	}
 
 	token, err := srv.Authenticator.JWTService.Token(&claims)
@@ -573,6 +575,21 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 	resp, err = client.Do(req)
 	assert.Nil(t, err)
 	assert.Equal(t, 400, resp.StatusCode, resp.Status)
+
+	// try without deleteme flag
+	badClaims2 := claims
+	badClaims2.DeleteMe = false
+	token, err = srv.Authenticator.JWTService.Token(&badClaims2)
+	assert.Nil(t, err)
+	req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, token), nil)
+	assert.Nil(t, err)
+	req.SetBasicAuth("dev", "password")
+	resp, err = client.Do(req)
+	assert.Nil(t, err)
+	assert.Equal(t, 403, resp.StatusCode)
+	b, err := ioutil.ReadAll(resp.Body)
+	assert.Nil(t, err)
+	assert.True(t, strings.Contains(string(b), "can't use provided token"))
 }
 
 func TestAdmin_GetUserInfo(t *testing.T) {

@@ -29,6 +29,9 @@ type CustomClaims struct {
 	From        string `json:"from,omitempty"`
 	SiteID      string `json:"site_id,omitempty"`
 	SessionOnly bool   `json:"sess_only,omitempty"`
+
+	// flags indicate different uses
+	DeleteMe bool `json:"deleteme,omitempty"`
 }
 
 const jwtCookieName = "JWT"
