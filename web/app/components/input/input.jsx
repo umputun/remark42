@@ -21,7 +21,7 @@ export default class Input extends Component {
       isErrorShown: false,
       isDisabled: false,
       maxLength: config.max_comment_size || DEFAULT_MAX_COMMENT_SIZE,
-      commentLength: 0,
+      text: props.value || '',
     };
 
     this.send = this.send.bind(this);
@@ -31,26 +31,15 @@ export default class Input extends Component {
   }
 
   componentDidMount() {
-    const { mods = {}, value } = this.props;
-
     if (this.props.autoFocus) {
       this.fieldNode.focus();
     }
 
-    if (mods.mode !== 'edit') {
-      this.fieldNode.value = '';
-    } else {
-      this.fieldNode.value = value;
-      this.autoResize();
-    }
+    this.autoResize();
 
     store.onUpdate('config', config => {
       this.setState({ maxLength: (config && config.max_comment_size) || DEFAULT_MAX_COMMENT_SIZE });
     });
-  }
-
-  componentWillUnmount() {
-    this.fieldNode.value = '';
   }
 
   shouldComponentUpdate(nextProps, nextState) {
@@ -70,13 +59,13 @@ export default class Input extends Component {
     }
   }
 
-  onInput() {
+  onInput(e) {
     this.autoResize();
 
     this.setState({
       preview: null,
       isErrorShown: false,
-      commentLength: this.fieldNode.value.length,
+      text: e.target.value,
     });
   }
 
@@ -86,7 +75,7 @@ export default class Input extends Component {
   }
 
   send(e) {
-    const text = this.fieldNode.value;
+    const text = this.state.text;
     const { mods = {}, pid, id } = this.props;
 
     if (e) e.preventDefault();
@@ -104,9 +93,8 @@ export default class Input extends Component {
           this.props.onSubmit(comment);
         }
 
-        this.fieldNode.value = '';
         this.fieldNode.style.height = '';
-        this.setState({ preview: null });
+        this.setState({ preview: null, text: '' });
       })
       .catch(() => {
         this.setState({ isErrorShown: true });
@@ -115,7 +103,7 @@ export default class Input extends Component {
   }
 
   getPreview() {
-    const text = this.fieldNode.value;
+    const text = this.state.text;
 
     if (!text || !text.trim()) return;
 
@@ -131,7 +119,7 @@ export default class Input extends Component {
 
   render(props, { isDisabled, isErrorShown, preview, maxLength, commentLength }) {
     const charactersLeft = maxLength - commentLength;
-    const { mods = {}, value = null, errorMessage } = props;
+    const { mods = {}, errorMessage } = props;
 
     return (
       <form className={b('input', props)} onSubmit={this.send} aria-label="New comment">
@@ -139,13 +127,15 @@ export default class Input extends Component {
           <textarea
             className="input__field"
             placeholder="Your comment here"
-            defaultValue={value}
+            value={this.state.text}
             maxLength={maxLength}
             onInput={this.onInput}
             onKeyDown={this.onKeyDown}
             ref={r => (this.fieldNode = r)}
             disabled={isDisabled}
-          />
+          >
+            {this.state.text}
+          </textarea>
 
           {charactersLeft < 100 && <span className="input__counter">{charactersLeft}</span>}
         </div>
