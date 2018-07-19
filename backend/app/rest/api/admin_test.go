@@ -20,7 +20,7 @@ import (
 func TestAdmin_Delete(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	c1 := store.Comment{Text: "test test #1", User: store.User{ID: "id", Name: "name"},
 		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}}
@@ -51,7 +51,7 @@ func TestAdmin_Delete(t *testing.T) {
 func TestAdmin_DeleteUser(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	c1 := store.Comment{Text: "test test #1", Orig: "o test test #1", User: store.User{ID: "id1", Name: "name"},
 		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}}
@@ -105,7 +105,7 @@ func TestAdmin_DeleteUser(t *testing.T) {
 func TestAdmin_Pin(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}}
@@ -149,7 +149,7 @@ func TestAdmin_Pin(t *testing.T) {
 func TestAdmin_Block(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
 		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"}}
@@ -230,7 +230,7 @@ func TestAdmin_Block(t *testing.T) {
 func TestAdmin_BlockedList(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	client := http.Client{}
 
@@ -272,7 +272,7 @@ func TestAdmin_BlockedList(t *testing.T) {
 func TestAdmin_ReadOnly(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
 		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"}}
@@ -318,7 +318,7 @@ func TestAdmin_ReadOnly(t *testing.T) {
 func TestAdmin_ReadOnlyWithAge(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
 		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"},
@@ -360,7 +360,7 @@ func TestAdmin_ReadOnlyWithAge(t *testing.T) {
 func TestAdmin_Verify(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
 		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"}}
@@ -417,7 +417,7 @@ func TestAdmin_Verify(t *testing.T) {
 func TestAdmin_ExportStream(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}}
@@ -437,7 +437,7 @@ func TestAdmin_ExportStream(t *testing.T) {
 func TestAdmin_ExportFile(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}}
@@ -469,7 +469,7 @@ func TestAdmin_ExportFile(t *testing.T) {
 func TestAdmin_DeleteMeRequest(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
 		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"}}
@@ -518,7 +518,7 @@ func TestAdmin_DeleteMeRequest(t *testing.T) {
 func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
 		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"}}
@@ -595,7 +595,7 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 func TestAdmin_GetUserInfo(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
 		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"}}
