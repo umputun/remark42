@@ -3,7 +3,6 @@ package rest
 import (
 	"context"
 	"errors"
-	"log"
 	"net/http"
 
 	"github.com/umputun/remark/backend/app/store"
@@ -16,7 +15,7 @@ type contextKey string
 func MustGetUserInfo(r *http.Request) store.User {
 	user, err := GetUserInfo(r)
 	if err != nil {
-		log.Fatalf("[ERROR] %s", err)
+		panic(err)
 	}
 	return user
 }
