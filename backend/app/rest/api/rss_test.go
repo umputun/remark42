@@ -14,7 +14,7 @@ import (
 func TestServer_RssPost(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	waitOnSecChange()
 
@@ -55,7 +55,7 @@ func TestServer_RssPost(t *testing.T) {
 func TestServer_RssSite(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	waitOnSecChange()
 
@@ -109,7 +109,7 @@ func TestServer_RssSite(t *testing.T) {
 func TestServer_RssWithReply(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	waitOnSecChange()
 
@@ -161,7 +161,7 @@ func TestServer_RssWithReply(t *testing.T) {
 func TestServer_RssReplies(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	waitOnSecChange()
 
