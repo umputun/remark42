@@ -255,9 +255,9 @@ func (s *Rest) deleteMeCtrl(w http.ResponseWriter, r *http.Request) {
 			ExpiresAt: time.Now().AddDate(0, 3, 0).Unix(),
 			NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
 		},
-		User:     &user,
-		DeleteMe: true, // prevent this token from being used for login
+		User: &user,
 	}
+	claims.Flags.DeleteMe = true // prevent this token from being used for login
 
 	tokenStr, err := s.Authenticator.JWTService.Token(&claims)
 	if err != nil {

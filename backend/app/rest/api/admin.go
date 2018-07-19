@@ -108,7 +108,8 @@ func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[INFO] delete all user comments by request for %s, site %s", claims.User.ID, claims.SiteID)
 
-	if !claims.DeleteMe { // deletme set by deleteMeCtrl, this check just to make sure we not trying to delete with leaked token
+	// deleteme set by deleteMeCtrl, this check just to make sure we not trying to delete with leaked token
+	if !claims.Flags.DeleteMe {
 		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("forbidden"), "can't use provided token")
 		return
 	}

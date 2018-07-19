@@ -497,8 +497,8 @@ func TestAdmin_DeleteMeRequest(t *testing.T) {
 		User: &store.User{
 			ID: "user1",
 		},
-		DeleteMe: true,
 	}
+	claims.Flags.DeleteMe = true
 
 	token, err := srv.Authenticator.JWTService.Token(&claims)
 	assert.Nil(t, err)
@@ -552,8 +552,8 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 		User: &store.User{
 			ID: "user1",
 		},
-		DeleteMe: true,
 	}
+	claims.Flags.DeleteMe = true
 
 	token, err := srv.Authenticator.JWTService.Token(&claims)
 	assert.Nil(t, err)
@@ -578,7 +578,7 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 
 	// try without deleteme flag
 	badClaims2 := claims
-	badClaims2.DeleteMe = false
+	badClaims2.Flags.DeleteMe = false
 	token, err = srv.Authenticator.JWTService.Token(&badClaims2)
 	assert.Nil(t, err)
 	req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, token), nil)
