@@ -3,6 +3,7 @@ import { h, Component } from 'preact';
 
 import { BASE_URL, API_BASE, DEFAULT_MAX_COMMENT_SIZE } from 'common/constants';
 import { siteId, url } from 'common/settings';
+import { saveTimeDiff } from 'common/comments';
 
 import api from 'common/api';
 import store from 'common/store';
@@ -79,6 +80,14 @@ export default class Input extends Component {
       .then(comment => {
         if (this.props.onSubmit) {
           this.props.onSubmit(comment);
+        }
+
+        // save time defferese between client & server
+        const timeDiff =
+          comment.dateHeader && comment.dateHeader.length > 0 ? (new Date() - new Date(comment.dateHeader)) / 1000 : 0;
+        comment.timeDiff = timeDiff;
+        if (comment.replies) {
+          saveTimeDiff(comment.replies, timeDiff);
         }
 
         this.setState({ preview: null, text: '' });
