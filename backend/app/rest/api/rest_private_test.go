@@ -19,7 +19,7 @@ import (
 func TestRest_Create(t *testing.T) {
 	srv, ts := prep(t)
 	require.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	resp, err := post(t, ts.URL+"/api/v1/comment",
 		`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
@@ -40,7 +40,7 @@ func TestRest_Create(t *testing.T) {
 func TestRest_CreateOldPost(t *testing.T) {
 	srv, ts := prep(t)
 	require.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	// make old, but not too old comment
 	old := store.Comment{Text: "test test old", ParentID: "", Timestamp: time.Now().AddDate(0, 0, -5),
@@ -74,7 +74,7 @@ func TestRest_CreateOldPost(t *testing.T) {
 func TestRest_CreateTooBig(t *testing.T) {
 	srv, ts := prep(t)
 	require.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	longComment := fmt.Sprintf(`{"text": "%4001s", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, "Щ")
 
@@ -106,7 +106,7 @@ func TestRest_CreateRejected(t *testing.T) {
 
 	srv, ts := prep(t)
 	require.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 	body := `{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`
 
 	// try to create without auth
@@ -117,7 +117,7 @@ func TestRest_CreateRejected(t *testing.T) {
 func TestRest_CreateAndGet(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	// create comment
 	resp, err := post(t, ts.URL+"/api/v1/comment",
@@ -149,7 +149,7 @@ func TestRest_CreateAndGet(t *testing.T) {
 func TestRest_Update(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	c1 := store.Comment{Text: "test test #1", ParentID: "p1",
 		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}}
@@ -188,7 +188,7 @@ func TestRest_Update(t *testing.T) {
 func TestRest_UpdateNotOwner(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	c1 := store.Comment{Text: "test test #1", ParentID: "p1",
 		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}, User: store.User{ID: "xyz"}}
@@ -220,7 +220,7 @@ func TestRest_UpdateNotOwner(t *testing.T) {
 func TestRest_Vote(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}}
@@ -264,7 +264,7 @@ func TestRest_Vote(t *testing.T) {
 func TestRest_UserAllData(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	// write 3 comments
 	user := store.User{ID: "dev", Name: "user name 1"}
@@ -319,7 +319,7 @@ func TestRest_UserAllData(t *testing.T) {
 func TestRest_UserAllDataManyComments(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	user := store.User{ID: "dev", Name: "user name 1"}
 	c := store.Comment{User: user, Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
@@ -353,7 +353,7 @@ func TestRest_UserAllDataManyComments(t *testing.T) {
 func TestRest_DeleteMe(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	client := http.Client{}
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/api/v1/deleteme?site=radio-t", ts.URL), nil)

@@ -17,7 +17,7 @@ const remarkUrl = process.env.REMARK_URL || 'https://demo.remark42.com';
 const NODE_ID = 'remark42';
 // let's log some env variables because we can
 console.log(`NODE_ENV = ${env}`);
-console.log(`REMARK_ENV = ${process.env.REMARK_URL}`);
+console.log(`REMARK_ENV = ${remarkUrl}`);
 
 const commonStyleLoaders = [
   'css-loader',
@@ -46,6 +46,7 @@ module.exports = {
     counter: './app/counter',
     'last-comments': './app/last-comments',
     remark: './app/remark',
+    deleteme: './app/deleteme',
   },
   output: {
     path: publicFolder,
@@ -129,7 +130,7 @@ module.exports = {
             openAnalyzer: false,
           }),
         ]),
-    new Copy(['./iframe.html']),
+    new Copy(['./iframe.html', './deleteme.html']),
   ],
   watchOptions: {
     ignored: /(node_modules|\.vendor\.js$)/,

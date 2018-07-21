@@ -1,0 +1,12 @@
+.dropdown__title {
+  border: none;
+  background: none;
+  font-weight: bold;
+  padding: 0;
+  margin: 0;
+
+  &::after {
+    content: '\25BE';
+    margin-left: 2px;
+  }
+}

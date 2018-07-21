@@ -99,6 +99,7 @@ func (p Provider) loginHandler(w http.ResponseWriter, r *http.Request) {
 			NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
 		},
 	}
+	claims.Flags.Login = true
 
 	if err := p.JwtService.Set(w, &claims, false); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to set jwt")

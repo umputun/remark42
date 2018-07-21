@@ -7,7 +7,8 @@ require('./__pseudo-link/auth-panel__pseudo-link.scss');
 require('./__select/auth-panel__select.scss');
 require('./__select-label/auth-panel__select-label.scss');
 require('./__sort/auth-panel__sort.scss');
-require('./__username/auth-panel__username.scss');
+
 require('./__user-id/auth-panel__user-id.scss');
+require('./__sign-out/auth-panel__sign-out.scss');
 
 require('./_logged-in/auth-panel_logged-in.scss');
