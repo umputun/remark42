@@ -11,6 +11,7 @@ import {
   MAX_SHOWN_ROOT_COMMENTS,
 } from 'common/constants';
 import { siteId, url, maxShownComments } from 'common/settings';
+import { saveTimeDiff } from 'common/comments';
 import store from 'common/store';
 
 import AuthPanel from 'components/auth-panel';
@@ -76,7 +77,11 @@ export default class Root extends Component {
         .catch(() => store.set('user', {})),
       api
         .getPostComments({ sort, url })
-        .then(({ comments = [], info = {} } = {}) => {
+        .then(({ comments = [], info = {}, dateHeader = '' } = {}) => {
+          // save time defferese between client & server
+          const timeDiff = dateHeader && dateHeader.length > 0 ? (new Date() - new Date(dateHeader)) / 1000 : 0;
+          saveTimeDiff(comments, timeDiff);
+
           store.set('comments', comments);
           store.set('info', info);
         })

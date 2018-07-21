@@ -83,7 +83,8 @@ export default class Comment extends Component {
 
       if (userId === commentUserId) {
         const editDuration = store.get('config') && store.get('config').edit_duration;
-        const getEditTimeLeft = () => Math.floor(editDuration - (new Date() - new Date(data.time)) / 1000);
+        const getEditTimeLeft = () =>
+          Math.floor(editDuration - ((new Date() - new Date(data.time)) / 1000 - (data.timeDiff || 0)));
 
         if (getEditTimeLeft() > 0) {
           this.editTimerInterval = setInterval(() => {

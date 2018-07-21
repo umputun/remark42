@@ -35,7 +35,10 @@ methods.forEach(method => {
       }
 
       axios(parameters)
-        .then(res => resolve(res.data))
+        .then(res => {
+          res.data['dateHeader'] = ('date' in res.headers && res.headers.date) || '';
+          resolve(res.data);
+        })
         .catch(error => reject(error));
     });
   };
