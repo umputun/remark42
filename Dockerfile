@@ -43,6 +43,7 @@ RUN if [ -z "$SKIP_BACKEND_TEST" ] ; then \
 
 # coverage report
 RUN if [ -z "$SKIP_BACKEND_TEST" ] ; then \
+    if [ -f .mongo ] ; then export MONGO_TEST=$(cat .mongo) ; fi && \
     mkdir -p target && /script/coverage.sh ; \
     else echo "skip backend coverage" ; fi
 
