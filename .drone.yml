@@ -16,13 +16,12 @@ pipeline:
   docker_master:
     image: plugins/docker
     repo: umputun/remark42
-    secrets: [ docker_username, docker_password, mongo_remark_test ]
+    secrets: [ docker_username, docker_password]
     build_args:
       - DRONE=${DRONE}
       - DRONE_TAG=${DRONE_TAG}
       - DRONE_COMMIT=${DRONE_COMMIT}
       - DRONE_BRANCH=${DRONE_BRANCH}
-    build_args_from_env: [mongo_remark_test]  
     tags:
       - ${DRONE_COMMIT_BRANCH/\//-}
     when:
@@ -46,12 +45,11 @@ pipeline:
   docker_branch:
     image: plugins/docker
     repo: umputun/remark42
-    secrets: [ docker_username, docker_password, mongo_remark_test ]
+    secrets: [ docker_username, docker_password ]
     build_args:
       - DRONE=${DRONE}
       - DRONE_COMMIT=${DRONE_COMMIT}
       - DRONE_BRANCH=${DRONE_BRANCH}
-    build_args_from_env: [mongo_remark_test]
     tags:
       - ${DRONE_COMMIT_BRANCH/\//-}
     when:
