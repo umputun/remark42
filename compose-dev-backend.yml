@@ -18,7 +18,7 @@ services:
             dockerfile: Dockerfile
             args:
                 - SKIP_FRONTEND_TEST=true
-                - MONGO_REMARK_TEST=skip # disable mongo tests on build by default. To allow remove =skip part and see above
+                - MONGO_TEST=skip # disable mongo tests on build by default. To allow remove =skip part and see above
 
         image: umputun/remark42:dev
         container_name: "remark42-dev"
