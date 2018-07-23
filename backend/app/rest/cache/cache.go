@@ -10,7 +10,7 @@ import (
 
 // LoadingCache defines interface for caching
 type LoadingCache interface {
-	Get(key string, fn func() ([]byte, error)) (data []byte, err error)
+	Get(key string, siteID string, fn func() ([]byte, error)) (data []byte, err error)
 	Flush(scopes ...string)
 }
 

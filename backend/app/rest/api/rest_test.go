@@ -166,7 +166,7 @@ func cleanup(ts *httptest.Server, srv *Rest) {
 
 type mockCache struct{}
 
-func (mc *mockCache) Get(key string, fn func() ([]byte, error)) (data []byte, err error) {
+func (mc *mockCache) Get(key string, site string, fn func() ([]byte, error)) (data []byte, err error) {
 	return fn()
 }
 
