@@ -16,5 +16,5 @@ script:
       --build-arg TRAVIS_PULL_REQUEST_SHA=$TRAVIS_PULL_REQUEST_SHA
       --build-arg TRAVIS_REPO_SLUG=$TRAVIS_REPO_SLUG
       --build-arg TRAVIS_TAG=$TRAVIS_TAG
-      --build-arg MONGO_REMARK_TEST=$MONGO_REMARK_TEST
+      --build-arg MONGO_TEST=$MONGO_REMARK_TEST
       .

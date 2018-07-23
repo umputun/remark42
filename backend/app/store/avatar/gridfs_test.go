@@ -6,10 +6,9 @@ import (
 	"testing"
 
 	"github.com/globalsign/mgo"
+	"github.com/go-pkgz/mongo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/umputun/remark/backend/app/store/engine/mongo"
 )
 
 func TestGridFS_PutAndGet(t *testing.T) {
