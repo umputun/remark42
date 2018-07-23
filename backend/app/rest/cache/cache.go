@@ -14,6 +14,14 @@ type LoadingCache interface {
 	Flush(scopes ...string)
 }
 
+type cacheWithOpts interface {
+	LoadingCache
+	setMaxValSize(max int) error
+	setMaxKeys(max int) error
+	setMaxCacheSize(max int64) error
+	setPostFlushFn(postFlushFn func()) error
+}
+
 // Key makes full key from primary key and scopes
 func Key(key string, scopes ...string) string {
 	return strings.Join(scopes, "$$") + "@@" + key

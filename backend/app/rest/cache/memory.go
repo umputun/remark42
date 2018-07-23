@@ -112,3 +112,32 @@ func (m *memoryCache) allowed(data []byte) bool {
 	}
 	return true
 }
+
+func (m *memoryCache) setMaxValSize(max int) error {
+	m.maxValueSize = max
+	if max <= 0 {
+		return errors.Errorf("negative size for MaxValSize, %d", max)
+	}
+	return nil
+}
+
+func (m *memoryCache) setMaxKeys(max int) error {
+	m.maxKeys = max
+	if max <= 0 {
+		return errors.Errorf("negative size for MaxKeys, %d", max)
+	}
+	return nil
+}
+
+func (m *memoryCache) setMaxCacheSize(max int64) error {
+	m.maxCacheSize = max
+	if max <= 0 {
+		return errors.Errorf("negative size or MaxCacheSize, %d", max)
+	}
+	return nil
+}
+
+func (m *memoryCache) setPostFlushFn(postFlushFn func()) error {
+	m.postFlushFn = postFlushFn
+	return nil
+}
