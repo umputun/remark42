@@ -3,6 +3,8 @@ package cache
 import (
 	"fmt"
 	"log"
+	"os"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -167,7 +169,6 @@ func TestMongoCache_Flush(t *testing.T) {
 		})
 		require.Nil(t, err)
 		require.Equal(t, "value"+id, string(res))
-		log.Printf("add %s", id)
 	}
 
 	cacheSize := func() (count int) {
@@ -210,5 +211,34 @@ func TestMongoCache_Flush(t *testing.T) {
 		init()
 		lc.Flush(Flusher("site").Scopes(tt.scopes...))
 		assert.Equal(t, tt.left, cacheSize(), "keys size, %s #%d", tt.msg, i)
+	}
+}
+
+func BenchmarkMongoCache(b *testing.B) {
+	log.Print("[DEBUG] connect to mongo test instance")
+	srv, err := mongo.NewServerWithURL(os.Getenv("MONGO_TEST"), 10*time.Second)
+	assert.Nil(b, err, "failed to dial")
+	collName := fmt.Sprintf("test_%d", time.Now().Nanosecond())
+	conn := mongo.NewConnection(srv, "test", collName)
+
+	data := ""
+	for i := 0; i < 1000; i++ {
+		data += "x"
+	}
+	lc, err := NewMongoCache(conn)
+	require.Nil(b, err)
+	res, err := lc.Get(NewKey("site").ID("key").Scopes("s1", "s2"), func() ([]byte, error) {
+		return []byte(data), nil
+	})
+	require.Nil(b, err)
+	require.True(b, strings.HasPrefix(string(res), "xxxx"), string(res))
+
+	key := NewKey("site").ID("key").Scopes("s1", "s2")
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		lc.Get(key, func() ([]byte, error) {
+			b.Fail()
+			return nil, nil
+		})
 	}
 }
