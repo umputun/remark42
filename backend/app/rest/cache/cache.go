@@ -104,9 +104,9 @@ func URLKey(r *http.Request) string {
 type Nop struct{}
 
 // Get calls fn, no actual caching
-func (n *Nop) Get(key *Key, fn func() ([]byte, error)) (data []byte, err error) {
+func (n *Nop) Get(key Key, fn func() ([]byte, error)) (data []byte, err error) {
 	return fn()
 }
 
 // Flush does nothing for NoopCache
-func (n *Nop) Flush(req *FlusherRequest) {}
+func (n *Nop) Flush(req FlusherRequest) {}
