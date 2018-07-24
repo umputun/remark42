@@ -5,10 +5,11 @@ install:
 services: mongodb
 
 before_script:
+  - docker up -d -name=mongo mongo:3.6
   - nslookup mongo
-  - nslookup mongo | grep "Server:" | awk '{print $2}' > backend/.mongo
-  - cat backend/.mongo
-
+  - nslookup mongo | grep Address | awk '{print $3}' > backend/.mongo
+  - export MONGO_REMARK_TEST=mongo
+  
 script:
   - docker build
       --build-arg COVERALLS_TOKEN=$COVERALLS_TOKEN
@@ -23,5 +24,5 @@ script:
       --build-arg TRAVIS_PULL_REQUEST_SHA=$TRAVIS_PULL_REQUEST_SHA
       --build-arg TRAVIS_REPO_SLUG=$TRAVIS_REPO_SLUG
       --build-arg TRAVIS_TAG=$TRAVIS_TAG
-      --build-arg MONGO_TEST=$MONGO_REMARK_TEST
+      --build-arg MONGO_REMARK_TEST=$MONGO_REMARK_TEST
       .
