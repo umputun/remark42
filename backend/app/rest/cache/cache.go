@@ -5,13 +5,14 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+
 	"github.com/umputun/remark/backend/app/rest"
 )
 
 // LoadingCache defines interface for caching
 type LoadingCache interface {
-	Get(key string, siteID string, fn func() ([]byte, error)) (data []byte, err error)
-	Flush(scopes ...string)
+	Get(key *Key, fn func() ([]byte, error)) (data []byte, err error)
+	Flush(req *FlusherRequest)
 }
 
 type cacheWithOpts interface {
@@ -22,23 +23,67 @@ type cacheWithOpts interface {
 	setPostFlushFn(postFlushFn func()) error
 }
 
-// Key makes full key from primary key and scopes
-func Key(key string, scopes ...string) string {
-	return strings.Join(scopes, "$$") + "@@" + key
+// Key for cache
+type Key struct {
+	id     string
+	siteID string
+	scopes []string
+}
+
+func NewKey(site string) *Key {
+	res := Key{siteID: site}
+	return &res
+}
+
+func (k *Key) ID(id string) *Key {
+	k.id = id
+	return k
+}
+
+func (k *Key) Scopes(scopes ...string) *Key {
+	k.scopes = scopes
+	return k
+}
+
+// Merge makes full string key from primary key and scopes
+func (k *Key) Merge() string {
+	return strings.Join(k.scopes, "$$") + "@@" + k.id + "@@" + k.siteID
 }
 
 // ParseKey gets compound key created by Key func and split it to the actual key and scopes
-func ParseKey(fullKey string) (key string, scopes []string, err error) {
+func ParseKey(fullKey string) (*Key, error) {
 	elems := strings.Split(fullKey, "@@")
-	if len(elems) != 2 {
-		return "", nil, errors.Errorf("can't parse cache key %s", key)
+	if len(elems) != 3 {
+		return nil, errors.Errorf("can't parse cache key %s", fullKey)
 	}
-	scopes = strings.Split(elems[0], "$$")
+	scopes := strings.Split(elems[0], "$$")
 	if len(scopes) == 1 && scopes[0] == "" {
 		scopes = []string{}
 	}
-	key = elems[1]
-	return key, scopes, nil
+	key := Key{
+		scopes: scopes,
+		id:     elems[1],
+		siteID: elems[2],
+	}
+	return &key, nil
+}
+
+// FlusherRequest used as input for cache.Flush
+type FlusherRequest struct {
+	siteID string
+	scopes []string
+}
+
+// Flusher makes new FlusherRequest with empty scopes
+func Flusher(siteID string) *FlusherRequest {
+	res := FlusherRequest{siteID: siteID}
+	return &res
+}
+
+// Scopes adds scopes to FlusherRequest
+func (f *FlusherRequest) Scopes(scopes ...string) *FlusherRequest {
+	f.scopes = scopes
+	return f
 }
 
 // URLKey gets url from request to use it as cache key
@@ -51,3 +96,14 @@ func URLKey(r *http.Request) string {
 	}
 	return key
 }
+
+// Nop does nothing for caching, passing fn call only
+type Nop struct{}
+
+// Get calls fn, no actual caching
+func (n *Nop) Get(key *Key, fn func() ([]byte, error)) (data []byte, err error) {
+	return fn()
+}
+
+// Flush does nothing for NoopCache
+func (n *Nop) Flush(req *FlusherRequest) {}

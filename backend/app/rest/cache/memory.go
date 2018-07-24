@@ -48,8 +48,9 @@ func NewMemoryCache(options ...Option) (LoadingCache, error) {
 }
 
 // Get is loading cache method to get value by key or load via fn if not found
-func (m *memoryCache) Get(key string, _ string, fn func() ([]byte, error)) (data []byte, err error) {
-	if b, ok := m.bytesCache.Get(key); ok {
+func (m *memoryCache) Get(key *Key, fn func() ([]byte, error)) (data []byte, err error) {
+	mkey := key.Merge()
+	if b, ok := m.bytesCache.Get(mkey); ok {
 		return b.([]byte), nil
 	}
 
@@ -57,7 +58,7 @@ func (m *memoryCache) Get(key string, _ string, fn func() ([]byte, error)) (data
 		return data, err
 	}
 	if m.allowed(data) {
-		m.bytesCache.Add(key, data)
+		m.bytesCache.Add(mkey, data)
 		atomic.AddInt64(&m.currentSize, int64(len(data)))
 
 		if m.maxCacheSize > 0 && atomic.LoadInt64(&m.currentSize) > m.maxCacheSize {
@@ -70,9 +71,9 @@ func (m *memoryCache) Get(key string, _ string, fn func() ([]byte, error)) (data
 }
 
 // Flush clears cache and calls postFlushFn async
-func (m *memoryCache) Flush(scopes ...string) {
+func (m *memoryCache) Flush(req *FlusherRequest) {
 
-	if len(scopes) == 0 {
+	if len(req.scopes) == 0 {
 		m.bytesCache.Purge()
 		go m.postFlushFn()
 		return
@@ -80,12 +81,12 @@ func (m *memoryCache) Flush(scopes ...string) {
 
 	// check if fullKey has matching scopes
 	inScope := func(fullKey string) bool {
-		_, keyScopes, err := ParseKey(fullKey)
+		key, err := ParseKey(fullKey)
 		if err != nil {
 			return false
 		}
-		for _, s := range scopes {
-			for _, ks := range keyScopes {
+		for _, s := range req.scopes {
+			for _, ks := range key.scopes {
 				if ks == s {
 					return true
 				}

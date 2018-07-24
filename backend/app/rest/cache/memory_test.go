@@ -17,7 +17,7 @@ func TestMemoryCache_Get(t *testing.T) {
 	var postFnCall, coldCalls int32
 	lc, err := NewMemoryCache(PostFlushFn(func() { atomic.AddInt32(&postFnCall, 1) }))
 	require.Nil(t, err)
-	res, err := lc.Get("key", "site", func() ([]byte, error) {
+	res, err := lc.Get(NewKey("site").ID("key"), func() ([]byte, error) {
 		atomic.AddInt32(&coldCalls, 1)
 		return []byte("result"), nil
 	})
@@ -26,7 +26,7 @@ func TestMemoryCache_Get(t *testing.T) {
 	assert.Equal(t, int32(1), atomic.LoadInt32(&coldCalls))
 	assert.Equal(t, int32(0), atomic.LoadInt32(&postFnCall))
 
-	res, err = lc.Get("key", "site", func() ([]byte, error) {
+	res, err = lc.Get(NewKey("site").ID("key"), func() ([]byte, error) {
 		atomic.AddInt32(&coldCalls, 1)
 		return []byte("result"), nil
 	})
@@ -35,11 +35,11 @@ func TestMemoryCache_Get(t *testing.T) {
 	assert.Equal(t, int32(1), atomic.LoadInt32(&coldCalls))
 	assert.Equal(t, int32(0), atomic.LoadInt32(&postFnCall))
 
-	lc.Flush()
+	lc.Flush(Flusher("site"))
 	time.Sleep(100 * time.Millisecond) // let postFn to do its thing
 	assert.Equal(t, int32(1), atomic.LoadInt32(&postFnCall))
 
-	_, err = lc.Get("key", "site", func() ([]byte, error) {
+	_, err = lc.Get(NewKey("site").ID("key"), func() ([]byte, error) {
 		return nil, errors.New("err")
 	})
 	assert.NotNil(t, err)
@@ -53,7 +53,7 @@ func TestMemoryCache_MaxKeys(t *testing.T) {
 
 	// put 5 keys to cache
 	for i := 0; i < 5; i++ {
-		res, e := lc.Get(fmt.Sprintf("key-%d", i), "site", func() ([]byte, error) {
+		res, e := lc.Get(NewKey("site").ID(fmt.Sprintf("key-%d", i)), func() ([]byte, error) {
 			atomic.AddInt32(&coldCalls, 1)
 			return []byte(fmt.Sprintf("result-%d", i)), nil
 		})
@@ -64,14 +64,14 @@ func TestMemoryCache_MaxKeys(t *testing.T) {
 	}
 
 	// check if really cached
-	res, err := lc.Get("key-3", "site", func() ([]byte, error) {
+	res, err := lc.Get(NewKey("site").ID("key-3"), func() ([]byte, error) {
 		return []byte("result-blah"), nil
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, "result-3", string(res), "should be cached")
 
 	// try to cache after maxKeys reached
-	res, err = lc.Get("key-X", "site", func() ([]byte, error) {
+	res, err = lc.Get(NewKey("site").ID("key-X"), func() ([]byte, error) {
 		return []byte("result-X"), nil
 	})
 	assert.Nil(t, err)
@@ -80,13 +80,13 @@ func TestMemoryCache_MaxKeys(t *testing.T) {
 	assert.Equal(t, 5, lc.(*memoryCache).bytesCache.Len())
 
 	// put to cache and make sure it cached
-	res, err = lc.Get("key-Z", "site", func() ([]byte, error) {
+	res, err = lc.Get(NewKey("site").ID("key-Z"), func() ([]byte, error) {
 		return []byte("result-Z"), nil
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, "result-Z", string(res))
 
-	res, err = lc.Get("key-Z", "site", func() ([]byte, error) {
+	res, err = lc.Get(NewKey("site").ID("key-Z"), func() ([]byte, error) {
 		return []byte("result-Zzzz"), nil
 	})
 	assert.Nil(t, err)
@@ -98,26 +98,26 @@ func TestMemoryCache_MaxValueSize(t *testing.T) {
 	lc, err := NewMemoryCache(MaxKeys(5), MaxValSize(10))
 	require.Nil(t, err)
 	// put good size value to cache and make sure it cached
-	res, err := lc.Get("key-Z", "site", func() ([]byte, error) {
+	res, err := lc.Get(NewKey("site").ID("key-Z"), func() ([]byte, error) {
 		return []byte("result-Z"), nil
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, "result-Z", string(res))
 
-	res, err = lc.Get("key-Z", "site", func() ([]byte, error) {
+	res, err = lc.Get(NewKey("site").ID("key-Z"), func() ([]byte, error) {
 		return []byte("result-Zzzz"), nil
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, "result-Z", string(res), "got cached value")
 
 	// put too big value to cache and make sure it is not cached
-	res, err = lc.Get("key-Big", "site", func() ([]byte, error) {
+	res, err = lc.Get(NewKey("site").ID("key-Big"), func() ([]byte, error) {
 		return []byte("1234567890"), nil
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, "1234567890", string(res))
 
-	res, err = lc.Get("key-Big", "site", func() ([]byte, error) {
+	res, err = lc.Get(NewKey("site").ID("key-Big"), func() ([]byte, error) {
 		return []byte("result-big"), nil
 	})
 	assert.Nil(t, err)
@@ -129,21 +129,21 @@ func TestMemoryCache_MaxCacheSize(t *testing.T) {
 	require.Nil(t, err)
 
 	// put good size value to cache and make sure it cached
-	res, err := lc.Get("key-Z", "site", func() ([]byte, error) {
+	res, err := lc.Get(NewKey("site").ID("key-Z"), func() ([]byte, error) {
 		return []byte("result-Z"), nil
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, "result-Z", string(res))
 	assert.Equal(t, int64(8), lc.(*memoryCache).currentSize)
 
-	_, err = lc.Get("key-Z2", "site", func() ([]byte, error) {
+	_, err = lc.Get(NewKey("site").ID("key-Z2"), func() ([]byte, error) {
 		return []byte("result-Z"), nil
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, int64(16), lc.(*memoryCache).currentSize)
 
 	// this will cause removal
-	_, err = lc.Get("key-Z3", "site", func() ([]byte, error) {
+	_, err = lc.Get(NewKey("site").ID("key-Z3"), func() ([]byte, error) {
 		return []byte("result-Z"), nil
 	})
 	assert.Nil(t, err)
@@ -163,7 +163,7 @@ func TestMemoryCache_MaxCacheSizeParallel(t *testing.T) {
 		go func() {
 			time.Sleep(time.Duration(rand.Intn(100)) * time.Nanosecond)
 			defer wg.Done()
-			res, err := lc.Get(fmt.Sprintf("key-%d", i), "site", func() ([]byte, error) {
+			res, err := lc.Get(NewKey("site").ID(fmt.Sprintf("key-%d", i)), func() ([]byte, error) {
 				return []byte(fmt.Sprintf("result-%d", i)), nil
 			})
 			require.Nil(t, err)
@@ -182,7 +182,7 @@ func TestMemoryCache_Parallel(t *testing.T) {
 	lc, err := NewMemoryCache()
 	require.Nil(t, err)
 
-	res, err := lc.Get("key", "site", func() ([]byte, error) {
+	res, err := lc.Get(NewKey("site").ID("key"), func() ([]byte, error) {
 		return []byte("value"), nil
 	})
 	assert.Nil(t, err)
@@ -194,7 +194,7 @@ func TestMemoryCache_Parallel(t *testing.T) {
 		i := i
 		go func() {
 			defer wg.Done()
-			res, err := lc.Get("key", "site", func() ([]byte, error) {
+			res, err := lc.Get(NewKey("site").ID("key"), func() ([]byte, error) {
 				atomic.AddInt32(&coldCalls, 1)
 				return []byte(fmt.Sprintf("result-%d", i)), nil
 			})
@@ -210,28 +210,28 @@ func TestMemoryCache_Scopes(t *testing.T) {
 	lc, err := NewMemoryCache()
 	require.Nil(t, err)
 
-	res, err := lc.Get(Key("key", "s1", "s2"), "site", func() ([]byte, error) {
+	res, err := lc.Get(NewKey("site").ID("key").Scopes("s1", "s2"), func() ([]byte, error) {
 		return []byte("value"), nil
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, "value", string(res))
 
-	res, err = lc.Get(Key("key2", "s2"), "site", func() ([]byte, error) {
+	res, err = lc.Get(NewKey("site").ID("key2").Scopes("s2"), func() ([]byte, error) {
 		return []byte("value2"), nil
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, "value2", string(res))
 
 	assert.Equal(t, 2, lc.(*memoryCache).bytesCache.Len())
-	lc.Flush("s1")
+	lc.Flush(Flusher("site").Scopes("s1"))
 	assert.Equal(t, 1, lc.(*memoryCache).bytesCache.Len())
 
-	_, err = lc.Get(Key("key2", "s2"), "site", func() ([]byte, error) {
+	_, err = lc.Get(NewKey("site").ID("key2").Scopes("s2"), func() ([]byte, error) {
 		assert.Fail(t, "should stay")
 		return nil, nil
 	})
 	assert.Nil(t, err)
-	res, err = lc.Get(Key("key", "s1", "s2"), "site", func() ([]byte, error) {
+	res, err = lc.Get(NewKey("site").ID("key").Scopes("s1", "s2"), func() ([]byte, error) {
 		return []byte("value-upd"), nil
 	})
 	assert.Nil(t, err)
@@ -242,23 +242,23 @@ func TestMemoryCache_Flush(t *testing.T) {
 	lc, err := NewMemoryCache()
 	require.Nil(t, err)
 
-	addToCache := func(key string, scopes ...string) {
-		res, err := lc.Get(key, "site", func() ([]byte, error) {
-			return []byte("value" + key), nil
+	addToCache := func(id string, scopes ...string) {
+		res, err := lc.Get(NewKey("site").ID(id).Scopes(scopes...), func() ([]byte, error) {
+			return []byte("value" + id), nil
 		})
 		require.Nil(t, err)
-		require.Equal(t, "value"+key, string(res))
+		require.Equal(t, "value"+id, string(res))
 	}
 
 	init := func() {
-		lc.Flush()
-		addToCache(Key("key1", "s1", "s2"))
-		addToCache(Key("key2", "s1", "s2", "s3"))
-		addToCache(Key("key3", "s1", "s2", "s3"))
-		addToCache(Key("key4", "s2", "s3"))
-		addToCache(Key("key5", "s2"))
-		addToCache(Key("key6"))
-		addToCache(Key("key7", "s4", "s3"))
+		lc.Flush(Flusher("site"))
+		addToCache("key1", "s1", "s2")
+		addToCache("key2", "s1", "s2", "s3")
+		addToCache("key3", "s1", "s2", "s3")
+		addToCache("key4", "s2", "s3")
+		addToCache("key5", "s2")
+		addToCache("key6")
+		addToCache("key7", "s4", "s3")
 		require.Equal(t, 7, lc.(*memoryCache).bytesCache.Len(), "cache init")
 	}
 
@@ -279,7 +279,7 @@ func TestMemoryCache_Flush(t *testing.T) {
 
 	for i, tt := range tbl {
 		init()
-		lc.Flush(tt.scopes...)
+		lc.Flush(Flusher("site").Scopes(tt.scopes...))
 		assert.Equal(t, tt.left, lc.(*memoryCache).bytesCache.Len(), "keys size, %s #%d", tt.msg, i)
 	}
 }
@@ -287,14 +287,14 @@ func TestMemoryCache_Flush(t *testing.T) {
 func TestMemoryCache_FlushFailed(t *testing.T) {
 	lc, err := NewMemoryCache()
 	require.Nil(t, err)
-	val, err := lc.Get("invalid-composite", "site", func() ([]byte, error) {
+	val, err := lc.Get(NewKey("site").ID("invalid-composite"), func() ([]byte, error) {
 		return []byte("value"), nil
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, "value", string(val))
 	assert.Equal(t, 1, lc.(*memoryCache).bytesCache.Len())
 
-	lc.Flush("invalid-composite")
+	lc.Flush(Flusher("site").Scopes("invalid-composite"))
 	assert.Equal(t, 1, lc.(*memoryCache).bytesCache.Len())
 }
 
