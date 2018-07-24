@@ -28,7 +28,6 @@ import (
 )
 
 // Opts with command line flags and env
-// nolint:maligned
 type Opts struct {
 	SecretKey string `long:"secret" env:"SECRET" required:"true" description:"secret key"`
 	RemarkURL string `long:"url" env:"REMARK_URL" required:"true" description:"url to remark"`
@@ -36,6 +35,7 @@ type Opts struct {
 	Store  StoreGroup  `group:"store" namespace:"store" env-namespace:"STORE"`
 	Avatar AvatarGroup `group:"avatar" namespace:"avatar" env-namespace:"AVATAR"`
 	Cache  CacheGroup  `group:"cache" namespace:"cache" env-namespace:"CACHE"`
+	Mongo  MongoGroup  `group:"mongo" namespace:"mongo" env-namespace:"MONGO"`
 
 	Sites          []string      `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
 	Admins         []string      `long:"admin" env:"ADMIN" description:"admin(s) names" env-delim:","`
@@ -79,7 +79,6 @@ type StoreGroup struct {
 		Path    string        `long:"path" env:"PATH" default:"./var" description:"parent dir for bolt files"`
 		Timeout time.Duration `long:"timeout" env:"TIMEOUT" default:"30s" description:"bolt timeout"`
 	} `group:"bolt" namespace:"bolt" env-namespace:"BOLT"`
-	Mongo MongoOpts `group:"mongo" namespace:"mongo" env-namespace:"MONGO"`
 }
 
 // AvatarGroup defines options group for avatar params
@@ -88,13 +87,12 @@ type AvatarGroup struct {
 	FS   struct {
 		Path string `long:"path" env:"PATH" default:"./var/avatars" description:"avatars location"`
 	} `group:"fs" namespace:"fs" env-namespace:"FS"`
-	Mongo  MongoOpts `group:"mongo" namespace:"mongo" env-namespace:"MONGO"`
-	RszLmt int       `long:"rsz-lmt" env:"RESIZE" default:"0" description:"max image size for resizing avatars on save"`
+	RszLmt int `long:"rsz-lmt" env:"RESIZE" default:"0" description:"max image size for resizing avatars on save"`
 }
 
 // CacheGroup defines options group for cache params
 type CacheGroup struct {
-	Type string `long:"type" env:"TYPE" description:"type of cache" choice:"mem" choice:"redis" default:"mem"`
+	Type string `long:"type" env:"TYPE" description:"type of cache" choice:"mem" choice:"mongo" default:"mem"`
 	Max  struct {
 		Items int   `long:"items" env:"ITEMS" default:"1000" description:"max cached items"`
 		Value int   `long:"value" env:"VALUE" default:"65536" description:"max size of cached value"`
@@ -102,8 +100,8 @@ type CacheGroup struct {
 	} `group:"max" namespace:"max" env-namespace:"MAX"`
 }
 
-// MongoOpts holds all mongo params
-type MongoOpts struct {
+// MongoGroup holds all mongo params, used by store, avatar and cache
+type MongoGroup struct {
 	URL string `long:"url" env:"URL" description:"mongo url"`
 	DB  string `long:"db" env:"DB" default:"remark42" description:"mongo database"`
 }
@@ -163,7 +161,7 @@ func New(opts Opts) (*Application, error) {
 		return nil, errors.Errorf("invalid remark42 url %s", opts.RemarkURL)
 	}
 
-	storeEngine, err := makeDataStore(opts.Store, opts.Sites)
+	storeEngine, err := makeDataStore(opts.Store, opts.Mongo, opts.Sites)
 	if err != nil {
 		return nil, err
 	}
@@ -176,8 +174,7 @@ func New(opts Opts) (*Application, error) {
 		Admins:         opts.Admins,
 	}
 
-	loadingCache, err := cache.NewMemoryCache(cache.MaxCacheSize(opts.Cache.Max.Size), cache.MaxValSize(opts.Cache.Max.Value),
-		cache.MaxKeys(opts.Cache.Max.Items))
+	loadingCache, err := makeCache(opts.Cache, opts.Mongo)
 	if err != nil {
 		return nil, err
 	}
@@ -186,7 +183,7 @@ func New(opts Opts) (*Application, error) {
 	jwtService := auth.NewJWT(opts.SecretKey, strings.HasPrefix(opts.RemarkURL, "https://"),
 		opts.Auth.TTL.JWT, opts.Auth.TTL.Cookie)
 
-	avatarStore, err := makeAvatarStore(opts.Avatar)
+	avatarStore, err := makeAvatarStore(opts.Avatar, opts.Mongo)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to make avatar store")
 	}
@@ -296,7 +293,7 @@ func (a *Application) activateBackup(ctx context.Context) {
 }
 
 // makeDataStore creates store for all sites
-func makeDataStore(group StoreGroup, siteNames []string) (result engine.Interface, err error) {
+func makeDataStore(group StoreGroup, mg MongoGroup, siteNames []string) (result engine.Interface, err error) {
 	switch group.Type {
 	case "bolt":
 		if err = makeDirs(group.Bolt.Path); err != nil {
@@ -308,11 +305,11 @@ func makeDataStore(group StoreGroup, siteNames []string) (result engine.Interfac
 		}
 		result, err = engine.NewBoltDB(bolt.Options{Timeout: group.Bolt.Timeout}, sites...)
 	case "mongo":
-		mgServer, e := makeMongo(group.Mongo)
+		mgServer, e := makeMongo(mg)
 		if e != nil {
 			return result, errors.Wrap(e, "failed to create mongo server")
 		}
-		conn := mongo.NewConnection(mgServer, group.Mongo.DB, "")
+		conn := mongo.NewConnection(mgServer, mg.DB, "")
 		result, err = engine.NewMongo(conn, 500, 100*time.Millisecond)
 	default:
 		return nil, errors.Errorf("unsupported store type %s", group.Type)
@@ -320,7 +317,7 @@ func makeDataStore(group StoreGroup, siteNames []string) (result engine.Interfac
 	return result, errors.Wrap(err, "can't initialize data store")
 }
 
-func makeAvatarStore(group AvatarGroup) (avatar.Store, error) {
+func makeAvatarStore(group AvatarGroup, mg MongoGroup) (avatar.Store, error) {
 	switch group.Type {
 	case "fs":
 		if err := makeDirs(group.FS.Path); err != nil {
@@ -328,14 +325,31 @@ func makeAvatarStore(group AvatarGroup) (avatar.Store, error) {
 		}
 		return avatar.NewLocalFS(group.FS.Path, group.RszLmt), nil
 	case "mongo":
-		mgServer, err := makeMongo(group.Mongo)
+		mgServer, err := makeMongo(mg)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to create mongo server")
 		}
-		conn := mongo.NewConnection(mgServer, group.Mongo.DB, "")
+		conn := mongo.NewConnection(mgServer, mg.DB, "")
 		return avatar.NewGridFS(conn, group.RszLmt), nil
 	}
 	return nil, errors.Errorf("unsupported avatar store type %s", group.Type)
+}
+
+func makeCache(group CacheGroup, mg MongoGroup) (cache.LoadingCache, error) {
+	switch group.Type {
+	case "mem":
+		return cache.NewMemoryCache(cache.MaxCacheSize(group.Max.Size), cache.MaxValSize(group.Max.Value),
+			cache.MaxKeys(group.Max.Items))
+	case "mongo":
+		mgServer, err := makeMongo(mg)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create mongo server")
+		}
+		conn := mongo.NewConnection(mgServer, mg.DB, "cache")
+		return cache.NewMongoCache(conn, cache.MaxCacheSize(group.Max.Size), cache.MaxValSize(group.Max.Value),
+			cache.MaxKeys(group.Max.Items))
+	}
+	return nil, errors.Errorf("unsupported cache type %s", group.Type)
 }
 
 // mkdir -p for all dirs
@@ -367,11 +381,11 @@ func makeDirs(dirs ...string) error {
 	return nil
 }
 
-func makeMongo(mopts MongoOpts) (result *mongo.Server, err error) {
-	if mopts.URL == "" {
+func makeMongo(mg MongoGroup) (result *mongo.Server, err error) {
+	if mg.URL == "" {
 		return nil, errors.New("no mongo URL provided")
 	}
-	return mongo.NewServerWithURL(mopts.URL, 10*time.Second)
+	return mongo.NewServerWithURL(mg.URL, 10*time.Second)
 }
 
 func makeAuthProviders(jwtService *auth.JWT, avatarProxy *proxy.Avatar, ds *service.DataStore, opts Opts) []auth.Provider {

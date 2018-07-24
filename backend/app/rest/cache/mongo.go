@@ -32,6 +32,7 @@ type mongoDoc struct {
 
 // NewMongoCache makes mongoCache implementation
 func NewMongoCache(connection *mongo.Connection, options ...Option) (LoadingCache, error) {
+	log.Printf("[INFO] make mongo cache with %s", connection)
 	res := &mongoCache{
 		connection:   connection,
 		postFlushFn:  func() {},

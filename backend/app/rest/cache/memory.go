@@ -20,6 +20,8 @@ type memoryCache struct {
 
 // NewMemoryCache makes memoryCache implementation
 func NewMemoryCache(options ...Option) (LoadingCache, error) {
+	log.Print("[INFO] make memory cache")
+
 	res := memoryCache{
 		postFlushFn:  func() {},
 		maxKeys:      1000,
