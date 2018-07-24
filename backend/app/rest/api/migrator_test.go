@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/umputun/remark/backend/app/migrator"
+	"github.com/umputun/remark/backend/app/rest/cache"
 	"github.com/umputun/remark/backend/app/store/engine"
 	"github.com/umputun/remark/backend/app/store/service"
 )
@@ -111,7 +112,7 @@ func prepImportSrv(t *testing.T) (svc *Migrator, ts *httptest.Server) {
 		DisqusImporter: &migrator.Disqus{DataStore: dataStore},
 		NativeImporter: &migrator.Remark{DataStore: dataStore},
 		NativeExported: &migrator.Remark{DataStore: dataStore},
-		Cache:          &mockCache{},
+		Cache:          &cache.Nop{},
 		SecretKey:      "123456",
 	}
 

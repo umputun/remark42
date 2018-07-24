@@ -27,7 +27,8 @@ func (s *Rest) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("[DEBUG] get comments for %+v, sort %s, format %s", locator, sort, r.URL.Query().Get("format"))
 
-	data, err := s.Cache.Get(cache.Key(cache.URLKey(r), locator.SiteID, locator.URL), func() ([]byte, error) {
+	key := cache.NewKey(locator.SiteID).ID(cache.URLKey(r)).Scopes(locator.SiteID, locator.URL)
+	data, err := s.Cache.Get(key, func() ([]byte, error) {
 		comments, e := s.DataService.Find(locator, sort)
 		if e != nil {
 			return nil, e
@@ -90,7 +91,8 @@ func (s *Rest) previewCommentCtrl(w http.ResponseWriter, r *http.Request) {
 func (s *Rest) infoCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 
-	data, err := s.Cache.Get(cache.Key(cache.URLKey(r), locator.SiteID, locator.URL), func() ([]byte, error) {
+	key := cache.NewKey(locator.SiteID).ID(cache.URLKey(r)).Scopes(locator.SiteID, locator.URL)
+	data, err := s.Cache.Get(key, func() ([]byte, error) {
 		info, e := s.DataService.Info(locator, s.ReadOnlyAge)
 		if e != nil {
 			return nil, e
@@ -116,7 +118,8 @@ func (s *Rest) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		limit = 0
 	}
 
-	data, err := s.Cache.Get(cache.Key(cache.URLKey(r), "last", siteID), func() ([]byte, error) {
+	key := cache.NewKey(siteID).ID(cache.URLKey(r)).Scopes("last")
+	data, err := s.Cache.Get(key, func() ([]byte, error) {
 		comments, e := s.DataService.Last(siteID, limit)
 		if e != nil {
 			return nil, e
@@ -179,7 +182,8 @@ func (s *Rest) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[DEBUG] get comments for userID %s, %s", userID, siteID)
 
-	data, err := s.Cache.Get(cache.Key(cache.URLKey(r), userID, siteID), func() ([]byte, error) {
+	key := cache.NewKey(siteID).ID(cache.URLKey(r)).Scopes(userID, siteID)
+	data, err := s.Cache.Get(key, func() ([]byte, error) {
 		comments, e := s.DataService.User(siteID, userID, limit, 0)
 		if e != nil {
 			return nil, e
@@ -259,15 +263,15 @@ func (s *Rest) countMultiCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// key could be long for multiple posts, make it sha1
-	key := cache.URLKey(r) + strings.Join(posts, ",")
+	k := cache.URLKey(r) + strings.Join(posts, ",")
 	hasher := sha1.New()
-	if _, err := hasher.Write([]byte(key)); err != nil {
+	if _, err := hasher.Write([]byte(k)); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't make sha1 for list of urls")
 		return
 	}
 	sha := base64.URLEncoding.EncodeToString(hasher.Sum(nil))
-
-	data, err := s.Cache.Get(cache.Key(sha, siteID), func() ([]byte, error) {
+	key := cache.NewKey(siteID).ID(sha).Scopes(siteID)
+	data, err := s.Cache.Get(key, func() ([]byte, error) {
 		counts, e := s.DataService.Counts(siteID, posts)
 		if e != nil {
 			return nil, e
@@ -295,7 +299,8 @@ func (s *Rest) listCtrl(w http.ResponseWriter, r *http.Request) {
 		skip = v
 	}
 
-	data, err := s.Cache.Get(cache.Key(cache.URLKey(r), siteID), func() ([]byte, error) {
+	key := cache.NewKey(siteID).ID(cache.URLKey(r)).Scopes(siteID)
+	data, err := s.Cache.Get(key, func() ([]byte, error) {
 		posts, e := s.DataService.List(siteID, limit, skip)
 		if e != nil {
 			return nil, e

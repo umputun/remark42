@@ -18,6 +18,7 @@ import (
 
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/rest/auth"
+	"github.com/umputun/remark/backend/app/rest/cache"
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/service"
 )
@@ -70,7 +71,8 @@ func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't load created comment")
 		return
 	}
-	s.Cache.Flush(comment.Locator.URL, "last", comment.User.ID, comment.Locator.SiteID)
+	s.Cache.Flush(cache.Flusher(comment.Locator.SiteID).
+		Scopes(comment.Locator.URL, "last", comment.User.ID, comment.Locator.SiteID))
 
 	render.Status(r, http.StatusCreated)
 	render.JSON(w, r, &finalComment)
@@ -121,7 +123,7 @@ func (s *Rest) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.Cache.Flush(locator.URL, "last", user.ID)
+	s.Cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL, "last", user.ID))
 	render.JSON(w, r, res)
 }
 
@@ -155,7 +157,7 @@ func (s *Rest) voteCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't vote for comment")
 		return
 	}
-	s.Cache.Flush(locator.URL, comment.User.ID)
+	s.Cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL, comment.User.ID))
 	render.JSON(w, r, JSON{"id": comment.ID, "score": comment.Score})
 }
 

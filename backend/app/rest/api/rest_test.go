@@ -17,6 +17,7 @@ import (
 
 	"github.com/umputun/remark/backend/app/migrator"
 	"github.com/umputun/remark/backend/app/rest/auth"
+	"github.com/umputun/remark/backend/app/rest/cache"
 	"github.com/umputun/remark/backend/app/rest/proxy"
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/avatar"
@@ -90,7 +91,7 @@ func prep(t *testing.T) (srv *Rest, ts *httptest.Server) {
 			JWTService: auth.NewJWT("12345", false, time.Minute, time.Hour),
 		},
 		Exporter:    &migrator.Remark{DataStore: dataStore},
-		Cache:       &mockCache{},
+		Cache:       &cache.Nop{},
 		WebRoot:     "/tmp",
 		RemarkURL:   "https://demo.remark42.com",
 		AvatarProxy: &proxy.Avatar{Store: avatar.NewLocalFS("/tmp", 300), RoutePath: "/api/v1/avatar"},
@@ -163,11 +164,3 @@ func cleanup(ts *httptest.Server, srv *Rest) {
 	os.Remove(testDb)
 	os.Remove(testHTML)
 }
-
-type mockCache struct{}
-
-func (mc *mockCache) Get(key string, fn func() ([]byte, error)) (data []byte, err error) {
-	return fn()
-}
-
-func (mc *mockCache) Flush(scopes ...string) {}
