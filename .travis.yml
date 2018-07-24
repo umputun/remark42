@@ -3,14 +3,10 @@ install:
   - docker-compose --version
 
 services: mongodb
-
-before_script:
-  - docker run -d --name=mongo mongo:3.6
-  - nslookup mongo
-  - nslookup mongo | grep Address | awk '{print $3}' > backend/.mongo
-  - export MONGO_REMARK_TEST=mongo
   
 script:
+  - docker run -d --name=mongo mongo:3.6
+  - export MONGO_REMARK_TEST=mongo
   - docker build
       --build-arg COVERALLS_TOKEN=$COVERALLS_TOKEN
       --build-arg CI=$CI
