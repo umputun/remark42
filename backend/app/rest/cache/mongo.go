@@ -1,6 +1,11 @@
 package cache
 
 import (
+	"log"
+	"time"
+
+	"github.com/go-pkgz/repeater"
+
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/go-pkgz/mongo"
@@ -45,19 +50,30 @@ func NewMongoCache(connection *mongo.Connection, options ...Option) (LoadingCach
 }
 
 // Get is loading cache method to get value by key or load via fn if not found
-func (m *mongoCache) Get(key *Key, fn func() ([]byte, error)) (data []byte, err error) {
+func (m *mongoCache) Get(key Key, fn func() ([]byte, error)) (data []byte, err error) {
 
 	d := mongoDoc{}
-	err = m.connection.WithCustomCollection(cacheCollection, func(coll *mgo.Collection) error {
-		return coll.Find(bson.M{"site": key.siteID, "key": key.id}).One(&d)
+
+	// repeat find from cache with small delay to avoid mgo random error
+	rep := repeater.NewDefault(5, 10*time.Millisecond)
+	mgErr := rep.Do(func() error {
+		return m.connection.WithCustomCollection(cacheCollection, func(coll *mgo.Collection) error {
+			return coll.Find(bson.M{"site": key.siteID, "key": key.id}).One(&d)
+		})
 	})
-	if err == nil {
+	if mgErr == nil { // cached result found
 		return d.Data, nil
 	}
 
 	if data, err = fn(); err != nil {
 		return data, err
 	}
+
+	if mgErr != mgo.ErrNotFound { // some other error in mgo query, don't try to update cache
+		log.Printf("[WARN] unexpected mgo error %+v", mgErr)
+		return data, err
+	}
+
 	if !m.allowed(data) {
 		return data, nil
 	}
@@ -69,24 +85,32 @@ func (m *mongoCache) Get(key *Key, fn func() ([]byte, error)) (data []byte, err 
 		Scopes: key.scopes,
 	}
 	err = m.connection.WithCustomCollection(cacheCollection, func(coll *mgo.Collection) error {
-		_, e := coll.Upsert(bson.M{"site": key.siteID, "key": key.id}, bson.M{"$set": &d})
+		_, e := coll.Upsert(bson.M{"site": key.siteID, "key": key.id}, bson.M{"$set": d})
 		return e
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "can't set cached value for %+v", key)
 	}
 
+	if m.maxKeys > 0 {
+		err = m.cleanup(key.siteID)
+	}
+
+	return data, errors.Wrap(err, "failed to cleanup cached records")
+}
+
+func (m *mongoCache) cleanup(siteID string) (err error) {
 	ids := []struct {
 		ID bson.ObjectId `bson:"_id"`
 	}{}
 
 	err = m.connection.WithCustomCollection(cacheCollection, func(coll *mgo.Collection) error {
-		n, countErr := coll.Find(bson.M{"site": key.siteID}).Count()
+		n, countErr := coll.Find(bson.M{"site": siteID}).Count()
 		if countErr != nil {
 			return countErr
 		}
 		if countErr == nil && n > m.maxKeys {
-			if findErr := coll.Find(bson.M{"site": key.siteID}).Sort("+id").Limit(n - m.maxKeys).All(&ids); findErr == nil {
+			if findErr := coll.Find(bson.M{"site": siteID}).Sort("+id").Limit(n - m.maxKeys).All(&ids); findErr == nil {
 				bsonIDs := []bson.ObjectId{}
 				for _, id := range ids {
 					bsonIDs = append(bsonIDs, id.ID)
@@ -97,12 +121,11 @@ func (m *mongoCache) Get(key *Key, fn func() ([]byte, error)) (data []byte, err 
 		}
 		return nil
 	})
-
-	return data, errors.Wrap(err, "failed to cleanup cached records")
+	return err
 }
 
 // Flush clears cache and calls postFlushFn async
-func (m *mongoCache) Flush(req *FlusherRequest) {
+func (m *mongoCache) Flush(req FlusherRequest) {
 	err := m.connection.WithCustomCollection(cacheCollection, func(coll *mgo.Collection) error {
 		q := bson.M{"site": req.siteID}
 		if len(req.scopes) > 0 {

@@ -2,6 +2,7 @@ package cache
 
 import (
 	"fmt"
+	"log"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -148,7 +149,6 @@ func TestMongoCache_Parallel(t *testing.T) {
 			v := string(r)
 			assert.Equal(t, "value", v, "th=%d", i)
 		}()
-		time.Sleep(1 * time.Millisecond)
 	}
 	wg.Wait()
 	assert.Equal(t, int32(0), atomic.LoadInt32(&coldCalls))
@@ -167,14 +167,14 @@ func TestMongoCache_Flush(t *testing.T) {
 		})
 		require.Nil(t, err)
 		require.Equal(t, "value"+id, string(res))
+		log.Printf("add %s", id)
 	}
 
 	cacheSize := func() (count int) {
-		conn.WithCustomCollection("cache", func(coll *mgo.Collection) error {
-			n, e := coll.Find(bson.M{"site": "site"}).Count()
+		conn.WithCustomCollection("cache", func(coll *mgo.Collection) (e error) {
+			count, e = coll.Find(bson.M{"site": "site"}).Count()
 			require.NoError(t, e)
-			count = n
-			return nil
+			return e
 		})
 		return count
 	}

@@ -11,8 +11,8 @@ import (
 
 // LoadingCache defines interface for caching
 type LoadingCache interface {
-	Get(key *Key, fn func() ([]byte, error)) (data []byte, err error)
-	Flush(req *FlusherRequest)
+	Get(key Key, fn func() ([]byte, error)) (data []byte, err error)
+	Flush(req FlusherRequest)
 }
 
 type cacheWithOpts interface {
@@ -31,33 +31,33 @@ type Key struct {
 }
 
 // NewKey makes keys for site
-func NewKey(site string) *Key {
+func NewKey(site string) Key {
 	res := Key{siteID: site}
-	return &res
+	return res
 }
 
 // ID sets key id
-func (k *Key) ID(id string) *Key {
+func (k Key) ID(id string) Key {
 	k.id = id
 	return k
 }
 
 // Scopes of the key
-func (k *Key) Scopes(scopes ...string) *Key {
+func (k Key) Scopes(scopes ...string) Key {
 	k.scopes = scopes
 	return k
 }
 
 // Merge makes full string key from primary key and scopes
-func (k *Key) Merge() string {
+func (k Key) Merge() string {
 	return strings.Join(k.scopes, "$$") + "@@" + k.id + "@@" + k.siteID
 }
 
 // ParseKey gets compound key created by Key func and split it to the actual key and scopes
-func ParseKey(fullKey string) (*Key, error) {
+func ParseKey(fullKey string) (Key, error) {
 	elems := strings.Split(fullKey, "@@")
 	if len(elems) != 3 {
-		return nil, errors.Errorf("can't parse cache key %s", fullKey)
+		return Key{}, errors.Errorf("can't parse cache key %s", fullKey)
 	}
 	scopes := strings.Split(elems[0], "$$")
 	if len(scopes) == 1 && scopes[0] == "" {
@@ -68,7 +68,7 @@ func ParseKey(fullKey string) (*Key, error) {
 		id:     elems[1],
 		siteID: elems[2],
 	}
-	return &key, nil
+	return key, nil
 }
 
 // FlusherRequest used as input for cache.Flush
@@ -78,13 +78,13 @@ type FlusherRequest struct {
 }
 
 // Flusher makes new FlusherRequest with empty scopes
-func Flusher(siteID string) *FlusherRequest {
+func Flusher(siteID string) FlusherRequest {
 	res := FlusherRequest{siteID: siteID}
-	return &res
+	return res
 }
 
 // Scopes adds scopes to FlusherRequest
-func (f *FlusherRequest) Scopes(scopes ...string) *FlusherRequest {
+func (f FlusherRequest) Scopes(scopes ...string) FlusherRequest {
 	f.scopes = scopes
 	return f
 }

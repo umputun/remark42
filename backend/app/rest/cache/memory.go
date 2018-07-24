@@ -48,7 +48,7 @@ func NewMemoryCache(options ...Option) (LoadingCache, error) {
 }
 
 // Get is loading cache method to get value by key or load via fn if not found
-func (m *memoryCache) Get(key *Key, fn func() ([]byte, error)) (data []byte, err error) {
+func (m *memoryCache) Get(key Key, fn func() ([]byte, error)) (data []byte, err error) {
 	mkey := key.Merge()
 	if b, ok := m.bytesCache.Get(mkey); ok {
 		return b.([]byte), nil
@@ -71,7 +71,7 @@ func (m *memoryCache) Get(key *Key, fn func() ([]byte, error)) (data []byte, err
 }
 
 // Flush clears cache and calls postFlushFn async
-func (m *memoryCache) Flush(req *FlusherRequest) {
+func (m *memoryCache) Flush(req FlusherRequest) {
 
 	if len(req.scopes) == 0 {
 		m.bytesCache.Purge()
