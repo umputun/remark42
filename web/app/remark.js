@@ -3,7 +3,6 @@
 import loadPolyfills from 'common/polyfills';
 
 import { h, render } from 'preact';
-import 'preact/debug';
 import { Provider } from 'preact-redux';
 import Root from './components/root';
 import UserInfo from 'components/user-info';

@@ -74,10 +74,9 @@ FROM node:10.6-alpine as build-frontend
 
 ARG CI
 ARG SKIP_FRONTEND_TEST
-ARG NODE_ENV=production
 
-COPY --from=build-frontend-deps /srv/web/node_modules /srv/web/node_modules
 ADD web /srv/web
+COPY --from=build-frontend-deps /srv/web/node_modules /srv/web/node_modules
 RUN cd /srv/web && \
     if [ -z "$SKIP_FRONTEND_TEST" ] ; then npx run-p lint test build ; \
     else echo "skip frontend tests and lint" ; npm run build ; fi && \ 
