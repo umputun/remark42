@@ -69,7 +69,7 @@ func (m *mongoCache) Get(key *Key, fn func() ([]byte, error)) (data []byte, err 
 		Scopes: key.scopes,
 	}
 	err = m.connection.WithCustomCollection(cacheCollection, func(coll *mgo.Collection) error {
-		_, e := coll.Upsert(bson.M{"site": key.siteID, "key": key.id}, &d)
+		_, e := coll.Upsert(bson.M{"site": key.siteID, "key": key.id}, bson.M{"$set": &d})
 		return e
 	})
 	if err != nil {

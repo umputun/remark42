@@ -129,25 +129,26 @@ func TestMongoCache_Parallel(t *testing.T) {
 	lc, err := NewMongoCache(conn)
 	require.Nil(t, err)
 
-	res, err := lc.Get(NewKey("site").ID("key"), func() ([]byte, error) {
+	res, err := lc.Get(NewKey("site").ID("key").Scopes("s1", "s2"), func() ([]byte, error) {
 		return []byte("value"), nil
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, "value", string(res))
-
 	wg := sync.WaitGroup{}
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < 100; i++ {
 		wg.Add(1)
 		i := i
 		go func() {
 			defer wg.Done()
-			res, err := lc.Get(NewKey("site").ID("key"), func() ([]byte, error) {
+			r, err := lc.Get(NewKey("site").ID("key").Scopes("s1", "s2"), func() ([]byte, error) {
 				atomic.AddInt32(&coldCalls, 1)
 				return []byte(fmt.Sprintf("result-%d", i)), nil
 			})
 			require.Nil(t, err)
-			require.Equal(t, "value", string(res))
+			v := string(r)
+			assert.Equal(t, "value", v, "th=%d", i)
 		}()
+		time.Sleep(1 * time.Millisecond)
 	}
 	wg.Wait()
 	assert.Equal(t, int32(0), atomic.LoadInt32(&coldCalls))
