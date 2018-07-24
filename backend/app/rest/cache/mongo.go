@@ -61,7 +61,7 @@ func (m *mongoCache) Get(key Key, fn func() ([]byte, error)) (data []byte, err e
 		return m.connection.WithCustomCollection(cacheCollection, func(coll *mgo.Collection) error {
 			return coll.Find(bson.M{"site": key.siteID, "key": key.id}).One(&d)
 		})
-	})
+	}, mgo.ErrNotFound)
 	if mgErr == nil { // cached result found
 		return d.Data, nil
 	}
