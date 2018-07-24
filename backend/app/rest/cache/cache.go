@@ -30,16 +30,19 @@ type Key struct {
 	scopes []string
 }
 
+// NewKey makes keys for site
 func NewKey(site string) *Key {
 	res := Key{siteID: site}
 	return &res
 }
 
+// ID sets key id
 func (k *Key) ID(id string) *Key {
 	k.id = id
 	return k
 }
 
+// Scopes of the key
 func (k *Key) Scopes(scopes ...string) *Key {
 	k.scopes = scopes
 	return k

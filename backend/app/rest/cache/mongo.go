@@ -72,6 +72,9 @@ func (m *mongoCache) Get(key *Key, fn func() ([]byte, error)) (data []byte, err 
 		_, e := coll.Upsert(bson.M{"site": key.siteID, "key": key.id}, &d)
 		return e
 	})
+	if err != nil {
+		return nil, errors.Wrapf(err, "can't set cached value for %+v", key)
+	}
 
 	ids := []struct {
 		ID bson.ObjectId `bson:"_id"`
@@ -95,7 +98,7 @@ func (m *mongoCache) Get(key *Key, fn func() ([]byte, error)) (data []byte, err 
 		return nil
 	})
 
-	return data, err
+	return data, errors.Wrap(err, "failed to cleanup cached records")
 }
 
 // Flush clears cache and calls postFlushFn async
