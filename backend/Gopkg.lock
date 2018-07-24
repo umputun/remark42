@@ -88,6 +88,15 @@
   version = "v1.0.0"
 
 [[projects]]
+  name = "github.com/go-pkgz/repeater"
+  packages = [
+    ".",
+    "strategy"
+  ]
+  revision = "f2a67dcf050cab24d57132a7d8b45553ceab817b"
+  version = "v1.0.0"
+
+[[projects]]
   name = "github.com/golang/protobuf"
   packages = ["proto"]
   revision = "925541529c1fa6821df4e44ce2723319eb2be768"
@@ -256,6 +265,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "e933250b2582d1ff7d2b165c4a8a934762677a2ebaaea743fb3c485868c6d793"
+  inputs-digest = "da9242a76135f9ee04287bf437ffa42708fc36ec54f39c74127f41a3473f24ac"
   solver-name = "gps-cdcl"
   solver-version = 1
