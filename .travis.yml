@@ -2,6 +2,12 @@ install:
   - docker --version
   - docker-compose --version
 
+services: mongodb
+
+before_script:
+  - nslookup mongo
+  - nslookup mongo | grep Address | awk '{print $3}' > backend/.mongo
+  
 script:
   - docker build
       --build-arg COVERALLS_TOKEN=$COVERALLS_TOKEN
