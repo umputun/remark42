@@ -57,7 +57,7 @@ func (a *admin) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete comment")
 		return
 	}
-	a.cache.Flush(locator.SiteID, locator.URL)
+	a.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL, "last"))
 	render.Status(r, http.StatusOK)
 	render.JSON(w, r, JSON{"id": id, "locator": locator})
 }
@@ -73,7 +73,7 @@ func (a *admin) deleteUserCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete user")
 		return
 	}
-	a.cache.Flush(siteID, userID)
+	a.cache.Flush(cache.Flusher(siteID).Scopes(userID, siteID))
 	render.Status(r, http.StatusOK)
 	render.JSON(w, r, JSON{"user_id": userID, "site_id": siteID})
 }
@@ -118,7 +118,7 @@ func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete user")
 		return
 	}
-	a.cache.Flush(claims.SiteID, claims.User.ID)
+	a.cache.Flush(cache.Flusher(claims.SiteID).Scopes(claims.SiteID, claims.User.ID, "last"))
 	render.Status(r, http.StatusOK)
 	render.JSON(w, r, JSON{"user_id": claims.User.ID, "site_id": claims.SiteID})
 }
@@ -140,7 +140,7 @@ func (a *admin) setBlockCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set blocking status")
 		return
 	}
-	a.cache.Flush(siteID, userID)
+	a.cache.Flush(cache.Flusher(siteID).Scopes(userID, siteID))
 	render.JSON(w, r, JSON{"user_id": userID, "site_id": siteID, "block": blockStatus})
 }
 
@@ -177,7 +177,7 @@ func (a *admin) setReadOnlyCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set readonly status")
 		return
 	}
-	a.cache.Flush(locator.SiteID)
+	a.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL, locator.SiteID))
 	render.JSON(w, r, JSON{"locator": locator, "read-only": roStatus})
 }
 
@@ -191,7 +191,7 @@ func (a *admin) setVerifyCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set verify status")
 		return
 	}
-	a.cache.Flush(siteID, userID)
+	a.cache.Flush(cache.Flusher(siteID).Scopes(siteID, userID))
 	render.JSON(w, r, JSON{"user": userID, "verified": verifyStatus})
 }
 
@@ -206,7 +206,7 @@ func (a *admin) setPinCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set pin status")
 		return
 	}
-	a.cache.Flush(locator.URL)
+	a.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL))
 	render.JSON(w, r, JSON{"id": commentID, "locator": locator, "pin": pinStatus})
 }
 
