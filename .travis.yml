@@ -6,8 +6,9 @@ services: mongodb
 
 before_script:
   - nslookup mongo
-  - nslookup mongo | grep Address | awk '{print $3}' > backend/.mongo
-  
+  - nslookup mongo | grep "Server:" | awk '{print $2}' > backend/.mongo
+  - cat backend/.mongo
+
 script:
   - docker build
       --build-arg COVERALLS_TOKEN=$COVERALLS_TOKEN
