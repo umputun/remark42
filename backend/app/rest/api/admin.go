@@ -7,11 +7,13 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"path"
 	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
 	"github.com/umputun/remark/backend/app/rest/auth"
+	"github.com/umputun/remark/backend/app/rest/proxy"
 
 	"github.com/umputun/remark/backend/app/migrator"
 	"github.com/umputun/remark/backend/app/rest"
@@ -27,6 +29,7 @@ type admin struct {
 	cache         cache.LoadingCache
 	authenticator auth.Authenticator
 	readOnlyAge   int
+	avatarProxy   *proxy.Avatar
 }
 
 func (a *admin) routes(middlewares ...func(http.Handler) http.Handler) chi.Router {
@@ -118,6 +121,14 @@ func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete user")
 		return
 	}
+
+	if claims.User.Picture != "" {
+		if err := a.avatarProxy.Store.Remove(path.Base(claims.User.Picture)); err != nil {
+			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete user's avatar")
+			return
+		}
+	}
+
 	a.cache.Flush(cache.Flusher(claims.SiteID).Scopes(claims.SiteID, claims.User.ID, "last"))
 	render.Status(r, http.StatusOK)
 	render.JSON(w, r, JSON{"user_id": claims.User.ID, "site_id": claims.SiteID})

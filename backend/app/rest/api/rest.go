@@ -115,6 +115,7 @@ func (s *Rest) routes() chi.Router {
 		cache:         s.Cache,
 		authenticator: s.Authenticator,
 		readOnlyAge:   s.ReadOnlyAge,
+		avatarProxy:   s.AvatarProxy,
 	}
 
 	ipFn := func(ip string) string { return store.HashValue(ip, s.DataService.Secret)[:12] } // logger uses it for anonymization

@@ -88,6 +88,13 @@ func (fs *LocalFS) ID(avatar string) (id string) {
 	return store.EncodeID(avatar + strconv.FormatInt(fi.ModTime().Unix(), 10))
 }
 
+// Remove avatar file
+func (fs *LocalFS) Remove(avatar string) error {
+	location := fs.location(strings.TrimSuffix(avatar, imgSfx))
+	avFile := path.Join(location, avatar)
+	return os.Remove(avFile)
+}
+
 // get location (directory) for user id by adding partition to final path in order to keep files
 // in different subdirectories and avoid too many files in a single place.
 // the end result is a full path like this - /tmp/avatars.test/92

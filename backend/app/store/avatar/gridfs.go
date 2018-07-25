@@ -73,11 +73,23 @@ func (gf *GridFS) ID(avatar string) (id string) {
 			return errors.Wrapf(e, "can't open avatar %s", avatar)
 		}
 		id = fh.MD5()
-		return nil
+		return errors.Wrapf(fh.Close(), "can't close avatar")
 	})
 	if err != nil {
 		log.Printf("[DEBUG] can't get file info '%s', %s", avatar, err)
 		return store.EncodeID(avatar)
 	}
 	return id
+}
+
+// Remove avatar from gridfs
+func (gf *GridFS) Remove(avatar string) error {
+	return gf.Connection.WithDB(func(dbase *mgo.Database) error {
+		fh, e := dbase.GridFS("fs").Open(avatar)
+		if e != nil {
+			return errors.Wrapf(e, "can't get avatar %s", avatar)
+		}
+		_ = fh.Close()
+		return dbase.GridFS("fs").Remove(avatar)
+	})
 }
