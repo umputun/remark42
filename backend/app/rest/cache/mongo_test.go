@@ -124,6 +124,39 @@ func TestMongoCache_MaxKeys(t *testing.T) {
 	})
 }
 
+func TestMongoCache_MaxValueSize(t *testing.T) {
+	conn, err := mongo.MakeTestConnection(t)
+	assert.NoError(t, err)
+	defer mongo.RemoveTestCollections(t, conn, "cache")
+	lc, err := NewMongoCache(conn, MaxKeys(5), MaxValSize(10))
+	require.Nil(t, err)
+
+	// put good size value to cache and make sure it cached
+	res, err := lc.Get(NewKey("site").ID("key-Z"), func() ([]byte, error) {
+		return []byte("result-Z"), nil
+	})
+	assert.Nil(t, err)
+	assert.Equal(t, "result-Z", string(res))
+
+	res, err = lc.Get(NewKey("site").ID("key-Z"), func() ([]byte, error) {
+		return []byte("result-Zzzz"), nil
+	})
+	assert.Nil(t, err)
+	assert.Equal(t, "result-Z", string(res), "got cached value")
+
+	// put too big value to cache and make sure it is not cached
+	res, err = lc.Get(NewKey("site").ID("key-Big"), func() ([]byte, error) {
+		return []byte("1234567890"), nil
+	})
+	assert.Nil(t, err)
+	assert.Equal(t, "1234567890", string(res))
+
+	res, err = lc.Get(NewKey("site").ID("key-Big"), func() ([]byte, error) {
+		return []byte("result-big"), nil
+	})
+	assert.Nil(t, err)
+	assert.Equal(t, "result-big", string(res), "got not cached value")
+}
 func TestMongoCache_Parallel(t *testing.T) {
 	var coldCalls int32
 	conn, err := mongo.MakeTestConnection(t)
@@ -171,15 +204,6 @@ func TestMongoCache_Flush(t *testing.T) {
 		require.Equal(t, "value"+id, string(res))
 	}
 
-	cacheSize := func() (count int) {
-		conn.WithCustomCollection("cache", func(coll *mgo.Collection) (e error) {
-			count, e = coll.Find(bson.M{"site": "site"}).Count()
-			require.NoError(t, e)
-			return e
-		})
-		return count
-	}
-
 	init := func() {
 		lc.Flush(Flusher("site"))
 		addToCache("key1", "s1", "s2")
@@ -189,7 +213,7 @@ func TestMongoCache_Flush(t *testing.T) {
 		addToCache("key5", "s2")
 		addToCache("key6")
 		addToCache("key7", "s4", "s3")
-		require.Equal(t, 7, cacheSize(), "cache init")
+		require.Equal(t, 7, mongoCacheSize(t, conn), "cache init")
 	}
 
 	tbl := []struct {
@@ -210,8 +234,43 @@ func TestMongoCache_Flush(t *testing.T) {
 	for i, tt := range tbl {
 		init()
 		lc.Flush(Flusher("site").Scopes(tt.scopes...))
-		assert.Equal(t, tt.left, cacheSize(), "keys size, %s #%d", tt.msg, i)
+		assert.Equal(t, tt.left, mongoCacheSize(t, conn), "keys size, %s #%d", tt.msg, i)
 	}
+}
+
+func TestMongoCache_Scopes(t *testing.T) {
+	conn, err := mongo.MakeTestConnection(t)
+	assert.NoError(t, err)
+	defer mongo.RemoveTestCollections(t, conn, "cache")
+	lc, err := NewMongoCache(conn)
+	require.Nil(t, err)
+
+	res, err := lc.Get(NewKey("site").ID("key").Scopes("s1", "s2"), func() ([]byte, error) {
+		return []byte("value"), nil
+	})
+	assert.Nil(t, err)
+	assert.Equal(t, "value", string(res))
+
+	res, err = lc.Get(NewKey("site").ID("key2").Scopes("s2"), func() ([]byte, error) {
+		return []byte("value2"), nil
+	})
+	assert.Nil(t, err)
+	assert.Equal(t, "value2", string(res))
+
+	assert.Equal(t, 2, mongoCacheSize(t, conn))
+	lc.Flush(Flusher("site").Scopes("s1"))
+	assert.Equal(t, 1, mongoCacheSize(t, conn))
+
+	_, err = lc.Get(NewKey("site").ID("key2").Scopes("s2"), func() ([]byte, error) {
+		assert.Fail(t, "should stay")
+		return nil, nil
+	})
+	assert.Nil(t, err)
+	res, err = lc.Get(NewKey("site").ID("key").Scopes("s1", "s2"), func() ([]byte, error) {
+		return []byte("value-upd"), nil
+	})
+	assert.Nil(t, err)
+	assert.Equal(t, "value-upd", string(res), "was deleted, update")
 }
 
 func BenchmarkMongoCache(b *testing.B) {
@@ -241,4 +300,13 @@ func BenchmarkMongoCache(b *testing.B) {
 			return nil, nil
 		})
 	}
+}
+
+func mongoCacheSize(t *testing.T, conn *mongo.Connection) (count int) {
+	conn.WithCustomCollection("cache", func(coll *mgo.Collection) (e error) {
+		count, e = coll.Find(bson.M{"site": "site"}).Count()
+		require.NoError(t, e)
+		return e
+	})
+	return count
 }
