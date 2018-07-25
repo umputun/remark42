@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"github.com/umputun/remark/backend/app/rest/auth"
 	"github.com/umputun/remark/backend/app/store"
 )
@@ -495,10 +497,15 @@ func TestAdmin_DeleteMeRequest(t *testing.T) {
 			ExpiresAt: time.Now().Add(30 * time.Minute).Unix(),
 		},
 		User: &store.User{
-			ID: "user1",
+			ID:      "user1",
+			Picture: "pic.image",
 		},
 	}
 	claims.Flags.DeleteMe = true
+
+	_ = os.MkdirAll("/tmp/42", 0700)
+	defer os.RemoveAll("/tmp/42")
+	ioutil.WriteFile("/tmp/42/pic.image", []byte("some image data"), 0600)
 
 	token, err := srv.Authenticator.JWTService.Token(&claims)
 	assert.Nil(t, err)
