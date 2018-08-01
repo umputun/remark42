@@ -73,7 +73,7 @@ func (d *Disqus) Import(r io.Reader, siteID string) (size int, err error) {
 
 	log.Printf("[DEBUG] imported %d comments to site %s", passed, siteID)
 
-	if failed > 0 && passed == 0 {
+	if passed == 0 {
 		err = errors.New("import failed")
 	}
 	return passed, err
@@ -133,7 +133,7 @@ func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 							Name: comment.AuthorName,
 							IP:   comment.IP,
 						},
-						Text:      d.cleanText(comment.Message),
+						Text:      cleanText(comment.Message),
 						Timestamp: comment.CreatedAt,
 						ParentID:  comment.Pid.Val,
 					}
@@ -158,7 +158,7 @@ func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 	return commentsCh
 }
 
-func (d *Disqus) cleanText(text string) string {
+func cleanText(text string) string {
 	text = strings.Replace(text, "\n", "", -1)
 	text = strings.Replace(text, "\t", "", -1)
 	return text
