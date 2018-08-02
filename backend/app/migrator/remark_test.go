@@ -18,6 +18,7 @@ import (
 var testDb = "/tmp/test-remark.db"
 
 func TestRemark_Export(t *testing.T) {
+	defer os.Remove(testDb)
 	b := prep(t)
 	r := Remark{DataStore: b}
 
@@ -34,6 +35,8 @@ func TestRemark_Export(t *testing.T) {
 }
 
 func TestRemark_Import(t *testing.T) {
+	defer os.Remove(testDb)
+
 	r1 := `{"id":"efbc17f177ee1a1c0ee6e1e025749966ec071adc","pid":"","text":"some text, <a href=\"http://radio-t.com\" rel=\"nofollow\">link</a>","user":{"name":"user name","id":"user1","picture":"","profile":"","admin":false},"locator":{"site":"radio-t","url":"https://radio-t.com"},"score":0,"votes":{},"time":"2017-12-20T15:18:22-06:00"}` + "\n"
 
 	r2 := `{"id":"afbc17f177ee1a1c0ee6e1e025749966ec071adc","pid":"efbc17f177ee1a1c0ee6e1e025749966ec071adc","text":"some text2, <a href=\"http://radio-t.com\" rel=\"nofollow\">link</a>","user":{"name":"user name","id":"user1","picture":"","profile":"","admin":false},"locator":{"site":"radio-t","url":"https://radio-t.com"},"score":0,"votes":{},"time":"2017-12-20T15:18:23-06:00"}` + "\n"
@@ -60,6 +63,8 @@ func TestRemark_Import(t *testing.T) {
 }
 
 func TestRemark_ImportManyWithError(t *testing.T) {
+	defer os.Remove(testDb)
+
 	goodRec := `{"id":"%d","pid":"","text":"some text, <a href=\"http://radio-t.com\" rel=\"nofollow\">link</a>","user":{"name":"user name","id":"user1","picture":"","profile":"","admin":false},"locator":{"site":"radio-t","url":"https://radio-t.com"},"score":0,"votes":{},"time":"2017-12-20T15:18:22-06:00"}` + "\n"
 
 	buf := &bytes.Buffer{}
