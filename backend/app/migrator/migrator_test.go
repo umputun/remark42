@@ -19,7 +19,7 @@ func TestMigrator_ImportDisqus(t *testing.T) {
 		os.Remove("/tmp/disqus-test.xml")
 	}()
 
-	err := ioutil.WriteFile("/tmp/disqus-test.xml", []byte(xmlTest), 0600)
+	err := ioutil.WriteFile("/tmp/disqus-test.xml", []byte(xmlTestDisqus), 0600)
 	require.Nil(t, err)
 
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "test"})
@@ -30,6 +30,32 @@ func TestMigrator_ImportDisqus(t *testing.T) {
 		InputFile: "/tmp/disqus-test.xml",
 		SiteID:    "test",
 		Provider:  "disqus",
+	})
+	assert.Nil(t, err)
+	assert.Equal(t, 3, size)
+
+	last, err := dataStore.Last("test", 10)
+	assert.Nil(t, err)
+	assert.Equal(t, 3, len(last), "3 comments imported")
+}
+
+func TestMigrator_ImportWordPress(t *testing.T) {
+	defer func() {
+		os.Remove("/tmp/remark-test.db")
+		os.Remove("/tmp/wordpress-test.xml")
+	}()
+
+	err := ioutil.WriteFile("/tmp/wordpress-test.xml", []byte(xmlTestWP), 0600)
+	require.Nil(t, err)
+
+	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "test"})
+	require.Nil(t, err, "create store")
+	dataStore := &service.DataStore{Interface: b}
+	size, err := ImportComments(ImportParams{
+		DataStore: dataStore,
+		InputFile: "/tmp/wordpress-test.xml",
+		SiteID:    "test",
+		Provider:  "wordpress",
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, 3, size)

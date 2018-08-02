@@ -2,6 +2,7 @@ package migrator
 
 import (
 	"encoding/xml"
+	"html"
 	"io"
 	"log"
 	"time"
@@ -127,7 +128,7 @@ func (w *WordPress) convert(r io.Reader, siteID string) chan store.Comment {
 									Name: comment.Author,
 									IP:   comment.AuthorIP,
 								},
-								Text:      cleanText(comment.Content),
+								Text:      w.cleanUnescapeText(comment.Content), // sanitize remains on comment create
 								Timestamp: comment.Date.time,
 								ParentID:  comment.PID,
 							}
@@ -142,7 +143,13 @@ func (w *WordPress) convert(r io.Reader, siteID string) chan store.Comment {
 			}
 		}
 		close(commentsCh)
-		log.Printf("[INFO] converted %d items (posts), %+v", stats.inpItems-stats.failedItems, stats)
+		log.Printf("[INFO] converted %d comments, %+v", stats.inpComments-stats.failedComments, stats)
 	}()
 	return commentsCh
+}
+
+func (w *WordPress) cleanUnescapeText(text string) string {
+	text = cleanText(text)
+	text = html.UnescapeString(text)
+	return text
 }

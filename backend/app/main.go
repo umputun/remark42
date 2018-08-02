@@ -196,12 +196,13 @@ func New(opts Opts) (*Application, error) {
 	exporter := &migrator.Remark{DataStore: dataService}
 
 	migr := &api.Migrator{
-		Version:        revision,
-		Cache:          loadingCache,
-		NativeImporter: &migrator.Remark{DataStore: dataService},
-		DisqusImporter: &migrator.Disqus{DataStore: dataService},
-		NativeExported: &migrator.Remark{DataStore: dataService},
-		SecretKey:      opts.SecretKey,
+		Version:           revision,
+		Cache:             loadingCache,
+		NativeImporter:    &migrator.Remark{DataStore: dataService},
+		DisqusImporter:    &migrator.Disqus{DataStore: dataService},
+		WordPressImporter: &migrator.WordPress{DataStore: dataService},
+		NativeExported:    &migrator.Remark{DataStore: dataService},
+		SecretKey:         opts.SecretKey,
 	}
 
 	authProviders := makeAuthProviders(jwtService, avatarProxy, dataService, opts)

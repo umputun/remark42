@@ -19,6 +19,7 @@ func TestWordPress_Import(t *testing.T) {
 	defer os.Remove("/tmp/remark-test.db")
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: siteID})
 	assert.Nil(t, err, "create store")
+
 	dataStore := service.DataStore{Interface: b}
 	wp := WordPress{DataStore: &dataStore}
 	size, err := wp.Import(strings.NewReader(xmlTestWP), siteID)
@@ -67,7 +68,7 @@ func TestWordPress_Convert(t *testing.T) {
 			SiteID: "testWP",
 			URL:    "https://realmenweardress.es/2010/07/do-you-rp/",
 		},
-		Text: `[...] I know I&#8217;m a bit loony with my attachment to my bankers.  I&#8217;m glad I&#8217;m not the only one. [...]`,
+		Text: `[...] I know I’m a bit loony with my attachment to my bankers.  I’m glad I’m not the only one. [...]`,
 		User: store.User{
 			Name: "Wednesday Reading &laquo; Cynwise&#039;s Battlefield Manual",
 			ID:   "wordpress_" + store.EncodeID("Wednesday Reading &laquo; Cynwise&#039;s Battlefield Manual"),
