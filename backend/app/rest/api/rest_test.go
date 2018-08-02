@@ -17,6 +17,7 @@ import (
 
 	"github.com/umputun/remark/backend/app/migrator"
 	"github.com/umputun/remark/backend/app/rest/auth"
+	"github.com/umputun/remark/backend/app/rest/cache"
 	"github.com/umputun/remark/backend/app/rest/proxy"
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/avatar"
@@ -31,7 +32,7 @@ var getStartedHTML = "/tmp/getstarted.html"
 func TestRest_FileServer(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	body, code := get(t, ts.URL+"/web/test-remark.html")
 	assert.Equal(t, 200, code)
@@ -41,7 +42,7 @@ func TestRest_FileServer(t *testing.T) {
 func TestRest_GetStarted(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	err := ioutil.WriteFile(getStartedHTML, []byte("some html blah"), 0700)
 	assert.Nil(t, err)
@@ -90,7 +91,7 @@ func prep(t *testing.T) (srv *Rest, ts *httptest.Server) {
 			JWTService: auth.NewJWT("12345", false, time.Minute, time.Hour),
 		},
 		Exporter:    &migrator.Remark{DataStore: dataStore},
-		Cache:       &mockCache{},
+		Cache:       &cache.Nop{},
 		WebRoot:     "/tmp",
 		RemarkURL:   "https://demo.remark42.com",
 		AvatarProxy: &proxy.Avatar{Store: avatar.NewLocalFS("/tmp", 300), RoutePath: "/api/v1/avatar"},
@@ -157,16 +158,9 @@ func addComment(t *testing.T, c store.Comment, ts *httptest.Server) string {
 	return crResp["id"].(string)
 }
 
-func cleanup(ts *httptest.Server) {
+func cleanup(ts *httptest.Server, srv *Rest) {
 	ts.Close()
+	srv.DataService.Close()
 	os.Remove(testDb)
 	os.Remove(testHTML)
 }
-
-type mockCache struct{}
-
-func (mc *mockCache) Get(key string, fn func() ([]byte, error)) (data []byte, err error) {
-	return fn()
-}
-
-func (mc *mockCache) Flush(scopes ...string) {}

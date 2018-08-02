@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/globalsign/mgo"
+	"github.com/go-pkgz/mongo"
 	"github.com/jessevdk/go-flags"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -63,6 +65,60 @@ func TestApplicationDevMode(t *testing.T) {
 	assert.Equal(t, "dev", app.restSrv.Authenticator.Providers[4].Name, "dev auth provider")
 	// send ping
 	resp, err := http.Get("http://localhost:18085/api/v1/ping")
+	require.Nil(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, 200, resp.StatusCode)
+	body, err := ioutil.ReadAll(resp.Body)
+	assert.Nil(t, err)
+	assert.Equal(t, "pong", string(body))
+
+	app.Wait()
+}
+
+func TestApplicationWithMongo(t *testing.T) {
+
+	mongoURL := os.Getenv("MONGO_TEST")
+	if mongoURL == "" {
+		mongoURL = "mongodb://localhost:27017/test"
+	}
+	if mongoURL == "skip" {
+		t.Skip("skip mongo app test")
+	}
+
+	opts := Opts{}
+	// prepare options
+	p := flags.NewParser(&opts, flags.Default)
+	_, err := p.ParseArgs([]string{"--secret=123456", "--dev-passwd=password", "--url=https://demo.remark42.com",
+		"--cache.type=mongo", "--store.type=mongo", "--avatar.type=mongo", "--mongo.url=" + mongoURL, "--mongo.db=test_remark", "--port=12345"})
+	require.Nil(t, err)
+	opts.Auth.Github.CSEC, opts.Auth.Github.CID = "csec", "cid"
+	opts.BackupLocation = "/tmp"
+
+	// create app
+	app, err := New(opts)
+	require.Nil(t, err)
+
+	defer func() {
+		s, err := mongo.NewServerWithURL(mongoURL, 10*time.Second)
+		assert.NoError(t, err)
+		conn := mongo.NewConnection(s, "test_remark", "")
+		_ = conn.WithDB(func(dbase *mgo.Database) error {
+			assert.NoError(t, dbase.DropDatabase())
+			return nil
+		})
+	}()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		time.Sleep(5 * time.Second)
+		log.Print("[TEST] terminate app")
+		cancel()
+	}()
+	go func() { _ = app.Run(ctx) }()
+	time.Sleep(100 * time.Millisecond) // let server start
+
+	// send ping
+	resp, err := http.Get("http://localhost:12345/api/v1/ping")
 	require.Nil(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 200, resp.StatusCode)

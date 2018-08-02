@@ -22,9 +22,11 @@ const imgSfx = ".image"
 
 // Store defines interface to store and and load avatars
 type Store interface {
-	Put(userID string, reader io.Reader) (avatarID string, err error) // save avatar data from the given reader and return base name
+	Put(userID string, reader io.Reader) (avatarID string, err error) // save avatar data from the reader and return base name
 	Get(avatarID string) (reader io.ReadCloser, size int, err error)  // load avatar via reader
 	ID(avatarID string) (id string)                                   // unique id of stored avatar's data
+	Remove(avatarID string) error                                     // remove avatar data
+
 }
 
 // resize an image of supported format (PNG, JPG, GIF) to the size of "limit" px of the biggest side

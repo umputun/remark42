@@ -5,6 +5,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
+	"hash"
 	"hash/crc64"
 	"io"
 	"log"
@@ -36,12 +37,7 @@ func HashValue(val string, secret string) string {
 	}
 	key := []byte(secret)
 	h := hmac.New(sha1.New, key)
-	if _, err := io.WriteString(h, val); err != nil {
-		// fail back to crc64
-		log.Printf("[WARN] can't hash ip, %s", err)
-		return fmt.Sprintf("%x", crc64.Checksum([]byte(val), crc64.MakeTable(crc64.ECMA)))
-	}
-	return hex.EncodeToString(h.Sum(nil))
+	return hashWithFailback(h, val)
 }
 
 // EncodeID hashes id to sha1. The function intentionally left outside of User struct because in some cases
@@ -51,10 +47,15 @@ func EncodeID(id string) string {
 		return id // already hashed or empty
 	}
 	h := sha1.New()
-	if _, err := io.WriteString(h, id); err != nil {
+	return hashWithFailback(h, id)
+}
+
+// hashWithFailback tries to has val with hash.Hash and failback to crc if needed
+func hashWithFailback(h hash.Hash, val string) string {
+	if _, err := io.WriteString(h, val); err != nil {
 		// fail back to crc64
-		log.Printf("[WARN] can't hash id %s, %s", id, err)
-		return fmt.Sprintf("%x", crc64.Checksum([]byte(id), crc64.MakeTable(crc64.ECMA)))
+		log.Printf("[WARN] can't hash id %s, %s", val, err)
+		return fmt.Sprintf("%x", crc64.Checksum([]byte(val), crc64.MakeTable(crc64.ECMA)))
 	}
 	return hex.EncodeToString(h.Sum(nil))
 }

@@ -3,6 +3,9 @@ install:
   - docker-compose --version
 
 script:
+  - docker run -d --name=mongo mongo:3.6 && sleep 3
+  - export MONGO_TEST=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' mongo)
+  - echo "running mongo on $MONGO_TEST"
   - docker build
       --build-arg COVERALLS_TOKEN=$COVERALLS_TOKEN
       --build-arg CI=$CI
@@ -16,5 +19,7 @@ script:
       --build-arg TRAVIS_PULL_REQUEST_SHA=$TRAVIS_PULL_REQUEST_SHA
       --build-arg TRAVIS_REPO_SLUG=$TRAVIS_REPO_SLUG
       --build-arg TRAVIS_TAG=$TRAVIS_TAG
-      --build-arg MONGO_REMARK_TEST=$MONGO_REMARK_TEST
+      --build-arg MONGO_TEST=$MONGO_TEST
       .
+  - docker rm -f mongo
+  

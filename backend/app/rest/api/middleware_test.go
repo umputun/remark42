@@ -9,10 +9,10 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/store"
-
-	"github.com/stretchr/testify/require"
 )
 
 func TestMiddleware_AppInfo(t *testing.T) {

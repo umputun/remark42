@@ -116,6 +116,7 @@ func (s *Rest) routes() chi.Router {
 		cache:         s.Cache,
 		authenticator: s.Authenticator,
 		readOnlyAge:   s.ReadOnlyAge,
+		avatarProxy:   s.AvatarProxy,
 	}
 
 	corsMiddleware := cors.New(cors.Options{

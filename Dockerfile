@@ -19,30 +19,31 @@ ARG DRONE_BRANCH
 ARG DRONE_PULL_REQUEST
 
 ARG SKIP_BACKEND_TEST
-ARG MONGO_REMARK_TEST
+ARG MONGO_TEST
 
 WORKDIR /go/src/github.com/umputun/remark/backend
 ADD backend /go/src/github.com/umputun/remark/backend
 
 # run tests
 RUN \
-    if [ -f .mongo ] ; then export MONGO_REMARK_TEST=$(cat .mongo) ; fi && \
+    if [ -f .mongo ] ; then export MONGO_TEST=$(cat .mongo) ; fi && \
     cd app && \
     if [ -z "$SKIP_BACKEND_TEST" ] ; then go test ./... ; \
     else echo "skip backend test" ; fi
 
-RUN echo "mongo=${MONGO_REMARK_TEST}" >> /etc/hosts
+RUN echo "mongo=${MONGO_TEST}" >> /etc/hosts
 
 # linters
 RUN if [ -z "$SKIP_BACKEND_TEST" ] ; then \
-    if [ -f .mongo ] ; then export MONGO_REMARK_TEST=$(cat .mongo) ; fi && \
+    if [ -f .mongo ] ; then export MONGO_TEST=$(cat .mongo) ; fi && \
     gometalinter --disable-all --deadline=300s --vendor --enable=vet --enable=vetshadow --enable=golint \
-    --enable=staticcheck --enable=ineffassign --enable=goconst --enable=errcheck --enable=unconvert \
+    --enable=staticcheck --enable=ineffassign --enable=errcheck --enable=unconvert \
     --enable=deadcode  --enable=gosimple --enable=gas --exclude=test --exclude=mock --exclude=vendor ./... ; \
     else echo "skip backend linters" ; fi
 
 # coverage report
 RUN if [ -z "$SKIP_BACKEND_TEST" ] ; then \
+    if [ -f .mongo ] ; then export MONGO_TEST=$(cat .mongo) ; fi && \
     mkdir -p target && /script/coverage.sh ; \
     else echo "skip backend coverage" ; fi
 

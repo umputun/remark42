@@ -110,6 +110,22 @@ func TestAvatarStoreFS_ID(t *testing.T) {
 	assert.Equal(t, "325d5b451f32c2f8e7f30a9fd65bff6a42954d9a", id) // store.EncodeID("b3daa77b4c04a9551b8781d03191fe098f325e67.image1500000000")
 }
 
+func TestAvatarStoreFS_Remove(t *testing.T) {
+	p := NewLocalFS("/tmp/avatars.test", 300)
+	err := os.MkdirAll("/tmp/avatars.test/30", 0700)
+	require.NoError(t, err)
+	defer os.RemoveAll("/tmp/avatars.test")
+
+	assert.NotNil(t, p.Remove("no-such-avatar"), "remove non-existing avatar")
+	err = ioutil.WriteFile("/tmp/avatars.test/30/b3daa77b4c04a9551b8781d03191fe098f325e67.image", []byte("something"), 0666)
+	require.NoError(t, err)
+
+	assert.NoError(t, p.Remove("b3daa77b4c04a9551b8781d03191fe098f325e67.image"))
+	_, err = os.Stat("/tmp/avatars.test/30/b3daa77b4c04a9551b8781d03191fe098f325e67.image")
+	assert.NotNil(t, err, "removed for real")
+	t.Log(err)
+}
+
 func BenchmarkAvatarStoreFS_ID(b *testing.B) {
 	p := NewLocalFS("/tmp/avatars.test", 300)
 	os.MkdirAll("/tmp/avatars.test/30", 0700)

@@ -83,7 +83,10 @@
     ],
     "testMatch": [
       "<rootDir>/**/*.test.js"
-    ]
+    ],
+    "moduleNameMapper": {
+      "\\.scss$": "<rootDir>/app/testUtils/mockStyles.js"
+    }
   },
   "engines": {
     "node": ">=8"

@@ -29,6 +29,12 @@ type CustomClaims struct {
 	From        string `json:"from,omitempty"`
 	SiteID      string `json:"site_id,omitempty"`
 	SessionOnly bool   `json:"sess_only,omitempty"`
+
+	// flags indicate different uses
+	Flags struct {
+		Login    bool `json:"login,omitempty"`
+		DeleteMe bool `json:"deleteme,omitempty"`
+	} `json:"flags,omitempty"`
 }
 
 const jwtCookieName = "JWT"
@@ -55,6 +61,11 @@ func (j *JWT) Token(claims *CustomClaims) (string, error) {
 		return "", errors.Wrap(err, "can't sign jwt token")
 	}
 	return tokenString, nil
+}
+
+// HasFlags indicates presense of special flags
+func (j *JWT) HasFlags(claims *CustomClaims) bool {
+	return claims.Flags.DeleteMe || claims.Flags.Login
 }
 
 // Parse token string and verify. Not checking for expiration
