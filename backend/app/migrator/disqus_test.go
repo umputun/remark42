@@ -21,7 +21,7 @@ func TestDisqus_Import(t *testing.T) {
 	require.Nil(t, err, "create store")
 	dataStore := service.DataStore{Interface: b}
 	d := Disqus{DataStore: &dataStore}
-	size, err := d.Import(strings.NewReader(xmlTest), "test")
+	size, err := d.Import(strings.NewReader(xmlTestDisqus), "test")
 	assert.Nil(t, err)
 	assert.Equal(t, 3, size)
 
@@ -49,7 +49,7 @@ func TestDisqus_Import(t *testing.T) {
 
 func TestDisqus_Convert(t *testing.T) {
 	d := Disqus{}
-	ch := d.convert(strings.NewReader(xmlTest), "test")
+	ch := d.convert(strings.NewReader(xmlTestDisqus), "test")
 
 	res := []store.Comment{}
 	for comment := range ch {
@@ -74,7 +74,7 @@ func TestDisqus_Convert(t *testing.T) {
 	assert.Equal(t, exp0, res[0])
 }
 
-var xmlTest = `<?xml version="1.0" encoding="utf-8"?>
+var xmlTestDisqus = `<?xml version="1.0" encoding="utf-8"?>
 <disqus xmlns="http://disqus.com" xmlns:dsq="http://disqus.com/disqus-internals" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://disqus.com/api/schemas/1.0/disqus.xsd http://disqus.com/api/schemas/1.0/disqus-internals.xsd">
 
 	<category dsq:id="707279">

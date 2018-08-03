@@ -1,10 +1,6 @@
-package api
+package migrator
 
 import (
-	"compress/gzip"
-	"io/ioutil"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
@@ -12,139 +8,75 @@ import (
 
 	"github.com/coreos/bbolt"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
-	"github.com/umputun/remark/backend/app/migrator"
-	"github.com/umputun/remark/backend/app/rest/cache"
+	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/engine"
 	"github.com/umputun/remark/backend/app/store/service"
 )
 
-func TestMigrator_Import(t *testing.T) {
-	srv, ts := prepImportSrv(t)
-	assert.NotNil(t, srv)
-	defer cleanupImportSrv(srv, ts)
+func TestWordPress_Import(t *testing.T) {
+	siteID := "testWP"
+	defer os.Remove("/tmp/remark-test.db")
+	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: siteID})
+	assert.Nil(t, err, "create store")
 
-	r := strings.NewReader(`{"id":"2aa0478c-df1b-46b1-b561-03d507cf482c","pid":"","text":"<p>test test #1</p>","user":{"name":"developer one","id":"dev","picture":"/api/v1/avatar/remark.image","profile":"https://remark42.com","admin":true,"ip":"ae12fe3b5f129b5cc4cdd2b136b7b7947c4d2741"},"locator":{"site":"radio-t","url":"https://radio-t.com/blah1"},"score":0,"votes":{},"time":"2018-04-30T01:37:00.849053725-05:00"}
-	{"id":"83fd97fd-ff64-48d1-9fb7-ca7769c77037","pid":"p1","text":"<p>test test #2</p>","user":{"name":"developer one","id":"dev","picture":"/api/v1/avatar/remark.image","profile":"https://remark42.com","admin":true,"ip":"ae12fe3b5f129b5cc4cdd2b136b7b7947c4d2741"},"locator":{"site":"radio-t","url":"https://radio-t.com/blah2"},"score":0,"votes":{},"time":"2018-04-30T01:37:00.861387771-05:00"}`)
+	dataStore := service.DataStore{Interface: b}
+	wp := WordPress{DataStore: &dataStore}
+	size, err := wp.Import(strings.NewReader(xmlTestWP), siteID)
+	assert.Nil(t, err)
+	assert.Equal(t, 3, size)
 
-	client := &http.Client{Timeout: 1 * time.Second}
-	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=radio-t&provider=native&secret=123456", r)
+	last, err := dataStore.Last(siteID, 10)
 	assert.Nil(t, err)
-	resp, err := client.Do(req)
-	assert.Nil(t, err)
-	assert.Equal(t, http.StatusCreated, resp.StatusCode)
+	assert.Equal(t, 3, len(last), "3 comments imported")
 
-	b, err := ioutil.ReadAll(resp.Body)
+	c := last[0]
+	assert.Equal(t, "14", c.ID)
+	assert.Equal(t, store.Locator{URL: "https://realmenweardress.es/2010/07/do-you-rp/", SiteID: siteID}, c.Locator)
+	assert.Equal(t, "wordpress_75b2b81081f82495d7af26759e67af6554ffda4a", c.User.ID)
+	assert.Equal(t, "SuperUser3", c.User.Name)
+	assert.Equal(t, "b646e160768fbc1414d3b2c8f88a767bfbb00871", c.User.IP)
+	ts, _ := time.Parse(wpTimeLayout, "2010-08-18 15:19:14")
+	assert.Equal(t, ts, c.Timestamp)
+	assert.Equal(t, c.Text, "Mekkatorque was over in that tent up to the right")
+
+	posts, err := dataStore.List(siteID, 0, 0)
 	assert.Nil(t, err)
-	assert.Equal(t, `{"size":2,"status":"ok"}`+"\n", string(b))
+	assert.Equal(t, 1, len(posts))
+
+	p := posts[0]
+	assert.Equal(t, "https://realmenweardress.es/2010/07/do-you-rp/", p.URL)
+
+	count, err := dataStore.Count(store.Locator{URL: "https://realmenweardress.es/2010/07/do-you-rp/", SiteID: siteID})
+	assert.Nil(t, err)
+	assert.Equal(t, 3, count)
 }
 
-func TestMigrator_ImportFromWP(t *testing.T) {
-	srv, ts := prepImportSrv(t)
-	assert.NotNil(t, srv)
-	defer cleanupImportSrv(srv, ts)
+func TestWordPress_Convert(t *testing.T) {
+	wp := WordPress{}
+	ch := wp.convert(strings.NewReader(xmlTestWP), "testWP")
 
-	r := strings.NewReader(xmlTestWP)
-
-	client := &http.Client{Timeout: 1 * time.Second}
-	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=radio-t&provider=wordpress&secret=123456", r)
-	assert.Nil(t, err)
-	req.Header.Add("Content-Type", "application/xml; charset=utf-8")
-	resp, err := client.Do(req)
-	assert.Nil(t, err)
-	assert.Equal(t, http.StatusCreated, resp.StatusCode)
-
-	b, err := ioutil.ReadAll(resp.Body)
-	assert.Nil(t, err)
-	assert.Equal(t, `{"size":3,"status":"ok"}`+"\n", string(b))
-}
-
-func TestMigrator_ImportRejected(t *testing.T) {
-	srv, ts := prepImportSrv(t)
-	assert.NotNil(t, srv)
-	defer cleanupImportSrv(srv, ts)
-
-	r := strings.NewReader(`{"id":"2aa0478c-df1b-46b1-b561-03d507cf482c","pid":"","text":"<p>test test #1</p>","user":{"name":"developer one","id":"dev","picture":"/api/v1/avatar/remark.image","profile":"https://remark42.com","admin":true,"ip":"ae12fe3b5f129b5cc4cdd2b136b7b7947c4d2741"},"locator":{"site":"radio-t","url":"https://radio-t.com/blah1"},"score":0,"votes":{},"time":"2018-04-30T01:37:00.849053725-05:00"}
-	{"id":"83fd97fd-ff64-48d1-9fb7-ca7769c77037","pid":"p1","text":"<p>test test #2</p>","user":{"name":"developer one","id":"dev","picture":"/api/v1/avatar/remark.image","profile":"https://remark42.com","admin":true,"ip":"ae12fe3b5f129b5cc4cdd2b136b7b7947c4d2741"},"locator":{"site":"radio-t","url":"https://radio-t.com/blah2"},"score":0,"votes":{},"time":"2018-04-30T01:37:00.861387771-05:00"}`)
-
-	client := &http.Client{Timeout: 1 * time.Second}
-	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=radio-t&provider=native&secret=XYZ", r)
-	assert.Nil(t, err)
-	resp, err := client.Do(req)
-	assert.Nil(t, err)
-	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
-}
-
-func TestMigrator_Export(t *testing.T) {
-	srv, ts := prepImportSrv(t)
-	assert.NotNil(t, srv)
-	defer cleanupImportSrv(srv, ts)
-
-	r := strings.NewReader(`{"id":"2aa0478c-df1b-46b1-b561-03d507cf482c","pid":"","text":"<p>test test #1</p>","user":{"name":"developer one","id":"dev","picture":"/api/v1/avatar/remark.image","profile":"https://remark42.com","admin":true,"ip":"ae12fe3b5f129b5cc4cdd2b136b7b7947c4d2741"},"locator":{"site":"radio-t","url":"https://radio-t.com/blah1"},"score":0,"votes":{},"time":"2018-04-30T01:37:00.849053725-05:00"}
-	{"id":"83fd97fd-ff64-48d1-9fb7-ca7769c77037","pid":"p1","text":"<p>test test #2</p>","user":{"name":"developer one","id":"dev","picture":"/api/v1/avatar/remark.image","profile":"https://remark42.com","admin":true,"ip":"ae12fe3b5f129b5cc4cdd2b136b7b7947c4d2741"},"locator":{"site":"radio-t","url":"https://radio-t.com/blah2"},"score":0,"votes":{},"time":"2018-04-30T01:37:00.861387771-05:00"}`)
-
-	client := &http.Client{Timeout: 1 * time.Second}
-	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=radio-t&provider=native&secret=123456", r)
-	require.Nil(t, err)
-	resp, err := client.Do(req)
-	require.Nil(t, err)
-	require.Equal(t, http.StatusCreated, resp.StatusCode)
-
-	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/export?site=radio-t&secret=123456", nil)
-	require.Nil(t, err)
-	resp, err = client.Do(req)
-	require.Nil(t, err)
-	require.Equal(t, 200, resp.StatusCode)
-	require.Equal(t, "application/gzip", resp.Header.Get("Content-Type"))
-
-	ungzReader, err := gzip.NewReader(resp.Body)
-	assert.NoError(t, err)
-	ungzBody, err := ioutil.ReadAll(ungzReader)
-	assert.NoError(t, err)
-	assert.Equal(t, 2, strings.Count(string(ungzBody), "\n"))
-	assert.Equal(t, 2, strings.Count(string(ungzBody), "\"text\""))
-	t.Logf("%s", string(ungzBody))
-
-	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/export?site=radio-t&secret=bad", nil)
-	require.Nil(t, err)
-	resp, err = client.Do(req)
-	require.Nil(t, err)
-	require.Equal(t, 403, resp.StatusCode)
-}
-
-func TestMigrator_Shutdown(t *testing.T) {
-	srv := Migrator{}
-	go func() {
-		time.Sleep(100 * time.Millisecond)
-		srv.Shutdown()
-	}()
-	st := time.Now()
-	srv.Run(0)
-	assert.True(t, time.Since(st).Seconds() < 1, "should take about 100ms")
-}
-
-func prepImportSrv(t *testing.T) (svc *Migrator, ts *httptest.Server) {
-	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDb, SiteID: "radio-t"})
-	require.Nil(t, err)
-	dataStore := &service.DataStore{Interface: b}
-	svc = &Migrator{
-		DisqusImporter:    &migrator.Disqus{DataStore: dataStore},
-		WordPressImporter: &migrator.WordPress{DataStore: dataStore},
-		NativeImporter:    &migrator.Remark{DataStore: dataStore},
-		NativeExported:    &migrator.Remark{DataStore: dataStore},
-		Cache:             &cache.Nop{},
-		SecretKey:         "123456",
+	comments := []store.Comment{}
+	for c := range ch {
+		comments = append(comments, c)
 	}
+	assert.Equal(t, 3, len(comments), "3 comments exported, 1 excluded")
 
-	routes := svc.routes()
-	ts = httptest.NewServer(routes)
-	return svc, ts
-}
-
-func cleanupImportSrv(srv *Migrator, ts *httptest.Server) {
-	ts.Close()
-	os.Remove(testDb)
+	exp1 := store.Comment{
+		ID: "13",
+		Locator: store.Locator{
+			SiteID: "testWP",
+			URL:    "https://realmenweardress.es/2010/07/do-you-rp/",
+		},
+		Text: `[...] I know I’m a bit loony with my attachment to my bankers.  I’m glad I’m not the only one. [...]`,
+		User: store.User{
+			Name: "Wednesday Reading &laquo; Cynwise&#039;s Battlefield Manual",
+			ID:   "wordpress_" + store.EncodeID("Wednesday Reading &laquo; Cynwise&#039;s Battlefield Manual"),
+			IP:   "74.200.244.101",
+		},
+	}
+	exp1.Timestamp, _ = time.Parse(wpTimeLayout, "2010-07-21 14:02:08")
+	assert.Equal(t, exp1, comments[1])
 }
 
 var xmlTestWP = `

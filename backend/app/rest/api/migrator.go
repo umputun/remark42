@@ -23,12 +23,13 @@ import (
 
 // Migrator rest runs on unexposed port and available for local requests only
 type Migrator struct {
-	Version        string
-	Cache          cache.LoadingCache
-	NativeImporter migrator.Importer
-	DisqusImporter migrator.Importer
-	NativeExported migrator.Exporter
-	SecretKey      string
+	Version           string
+	Cache             cache.LoadingCache
+	NativeImporter    migrator.Importer
+	DisqusImporter    migrator.Importer
+	WordPressImporter migrator.Importer
+	NativeExported    migrator.Exporter
+	SecretKey         string
 
 	httpServer *http.Server
 	lock       sync.Mutex
@@ -76,7 +77,7 @@ func (m *Migrator) routes() chi.Router {
 	return router
 }
 
-// POST /import?secret=key&site=site-id&provider=disqus|remark
+// POST /import?secret=key&site=site-id&provider=disqus|remark|wordpress
 // imports comments from post body.
 func (m *Migrator) importCtrl(w http.ResponseWriter, r *http.Request) {
 
@@ -88,10 +89,17 @@ func (m *Migrator) importCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	siteID := r.URL.Query().Get("site")
-	importer := m.NativeImporter
-	if r.URL.Query().Get("provider") == "disqus" {
+
+	var importer migrator.Importer
+	switch r.URL.Query().Get("provider") {
+	case "disqus":
 		importer = m.DisqusImporter
+	case "wordpress":
+		importer = m.WordPressImporter
+	default:
+		importer = m.NativeImporter
 	}
+
 	log.Printf("[DEBUG] import request for site=%s", siteID)
 	size, err := importer.Import(r.Body, siteID)
 	if err != nil {

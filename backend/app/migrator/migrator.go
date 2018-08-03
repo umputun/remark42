@@ -46,6 +46,8 @@ func ImportComments(p ImportParams) (int, error) {
 	switch p.Provider {
 	case "disqus":
 		importer = &Disqus{DataStore: p.DataStore}
+	case "wordpress":
+		importer = &WordPress{DataStore: p.DataStore}
 	case "native":
 		importer = &Remark{DataStore: p.DataStore}
 	default:
