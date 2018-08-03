@@ -70,14 +70,13 @@ func (w *WordPress) Import(r io.Reader, siteID string) (size int, err error) {
 	}
 
 	if failed > 0 {
-		return passed, errors.Errorf("failed to save %d comments", failed)
+		err = errors.Errorf("failed to save %d comments", failed)
+		if passed == 0 {
+			err = errors.New("import failed")
+		}
 	}
 
 	log.Printf("[DEBUG] imported %d comments to site %s", passed, siteID)
-
-	if passed == 0 {
-		err = errors.New("import failed")
-	}
 
 	return passed, err
 }

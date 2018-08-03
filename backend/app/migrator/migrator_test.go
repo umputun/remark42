@@ -96,7 +96,7 @@ func TestMigrator_ImportRemark(t *testing.T) {
 }
 
 func TestMigrator_ImportFailed(t *testing.T) {
-
+	defer os.Remove("/tmp/remark-test.db")
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "test"})
 	require.Nil(t, err, "create store")
 	dataStore := &service.DataStore{Interface: b}

@@ -4,7 +4,7 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 
 * Social login via Google, Facebook, Github and Yandex
 * Multi-level nested comments with both tree and plain presentations
-* Import from disqus
+* Import from disqus, wordpress
 * Markdown support
 * Moderator can remove comments and block users
 * Voting, pinning and verification system
@@ -161,6 +161,12 @@ For more details refer to [Yandex OAuth](https://tech.yandex.com/oauth/doc/dg/co
 1.  Disqus provides an export of all comments on your site in a g-zipped file. This is found in your Moderation panel at Disqus Admin > Setup > Export. The export will be sent into a queue and then emailed to the address associated with your account once it's ready. Direct link to export will be something like `https://<siteud>.disqus.com/admin/discussions/export/`. See [importing-exporting](https://help.disqus.com/customer/portal/articles/1104797-importing-exporting) for more details.
 2.  Move this file to your remark42 host within `./var` and unzip, i.e. `gunzip <disqus-export-name>.xml.gz`.
 3.  Run import command - `docker-compose exec remark42 /srv/import-disqus.sh <disqus-export-name>.xml <your site id>`
+
+#### Initial import from WordPress
+
+1. Install WordPress [plugin](https://wordpress.org/plugins/wp-exporter/) to export comments and follow it instructions. The plugin should produce a xml-based file with site content including comments. 
+2. Move this file to your remark42 host within `./var`
+3. Run import command - `docker-compose exec remark42 /srv/import-wordpress.sh <wordpress-export-name>.xml <your site id>`
 
 #### Backup and restore
 
