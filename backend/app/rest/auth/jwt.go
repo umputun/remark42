@@ -94,7 +94,7 @@ func (j *JWT) Parse(tokenString string) (*CustomClaims, error) {
 	}
 
 	token, err := parser.ParseWithClaims(tokenString, &CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+		if _, ok = token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 		return []byte(secret), nil

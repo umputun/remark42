@@ -18,6 +18,7 @@ func NewStaticStore(key string) *StaticStore {
 	return &StaticStore{key: key}
 }
 
+// Get returns static key for all sites, allows empty site
 func (s *StaticStore) Get(siteID string) (key string, err error) {
 	if s.key == "" {
 		return "", errors.New("empty key for static key store")
