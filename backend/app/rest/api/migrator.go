@@ -15,6 +15,7 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/render"
+	"github.com/umputun/remark/backend/app/store/keys"
 
 	"github.com/umputun/remark/backend/app/migrator"
 	"github.com/umputun/remark/backend/app/rest"
@@ -29,7 +30,7 @@ type Migrator struct {
 	DisqusImporter    migrator.Importer
 	WordPressImporter migrator.Importer
 	NativeExported    migrator.Exporter
-	SecretKey         string
+	KeyStore          keys.Store
 
 	httpServer *http.Server
 	lock       sync.Mutex
@@ -81,14 +82,21 @@ func (m *Migrator) routes() chi.Router {
 // imports comments from post body.
 func (m *Migrator) importCtrl(w http.ResponseWriter, r *http.Request) {
 
+	siteID := r.URL.Query().Get("site")
 	secret := r.URL.Query().Get("secret")
-	if strings.TrimSpace(secret) == "" || secret != m.SecretKey {
+
+	skey, err := m.KeyStore.Get(siteID)
+	if err != nil {
+		render.Status(r, http.StatusForbidden)
+		render.JSON(w, r, JSON{"status": "error", "details": "secret key store"})
+		return
+	}
+
+	if strings.TrimSpace(secret) == "" || secret != skey {
 		render.Status(r, http.StatusForbidden)
 		render.JSON(w, r, JSON{"status": "error", "details": "secret key"})
 		return
 	}
-
-	siteID := r.URL.Query().Get("site")
 
 	var importer migrator.Importer
 	switch r.URL.Query().Get("provider") {
@@ -116,14 +124,22 @@ func (m *Migrator) importCtrl(w http.ResponseWriter, r *http.Request) {
 // exports all comments for siteID as gz file
 func (m *Migrator) exportCtrl(w http.ResponseWriter, r *http.Request) {
 
+	siteID := r.URL.Query().Get("site")
 	secret := r.URL.Query().Get("secret")
-	if strings.TrimSpace(secret) == "" || secret != m.SecretKey {
+
+	skey, err := m.KeyStore.Get(siteID)
+	if err != nil {
+		render.Status(r, http.StatusForbidden)
+		render.JSON(w, r, JSON{"status": "error", "details": "secret key store"})
+		return
+	}
+
+	if strings.TrimSpace(secret) == "" || secret != skey {
 		render.Status(r, http.StatusForbidden)
 		render.JSON(w, r, JSON{"status": "error", "details": "secret key"})
 		return
 	}
 
-	siteID := r.URL.Query().Get("site")
 	exportFile := fmt.Sprintf("%s-%s.json.gz", siteID, time.Now().Format("20060102"))
 	log.Printf("[DEBUG] import request for site=%s to %s", siteID, exportFile)
 

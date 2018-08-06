@@ -8,6 +8,7 @@ import (
 
 	"github.com/coreos/bbolt"
 	"github.com/stretchr/testify/assert"
+	"github.com/umputun/remark/backend/app/store/keys"
 
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/engine"
@@ -20,7 +21,7 @@ func TestWordPress_Import(t *testing.T) {
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: siteID})
 	assert.Nil(t, err, "create store")
 
-	dataStore := service.DataStore{Interface: b}
+	dataStore := service.DataStore{Interface: b, KeyStore: keys.NewStaticStore("12345")}
 	wp := WordPress{DataStore: &dataStore}
 	size, err := wp.Import(strings.NewReader(xmlTestWP), siteID)
 	assert.Nil(t, err)
@@ -35,7 +36,7 @@ func TestWordPress_Import(t *testing.T) {
 	assert.Equal(t, store.Locator{URL: "https://realmenweardress.es/2010/07/do-you-rp/", SiteID: siteID}, c.Locator)
 	assert.Equal(t, "wordpress_75b2b81081f82495d7af26759e67af6554ffda4a", c.User.ID)
 	assert.Equal(t, "SuperUser3", c.User.Name)
-	assert.Equal(t, "b646e160768fbc1414d3b2c8f88a767bfbb00871", c.User.IP)
+	assert.Equal(t, "e8b1e92bbcf5b9bb88472f9bdb82d1b8c7ed39d6", c.User.IP)
 	ts, _ := time.Parse(wpTimeLayout, "2010-08-18 15:19:14")
 	assert.Equal(t, ts, c.Timestamp)
 	assert.Equal(t, c.Text, "Mekkatorque was over in that tent up to the right")

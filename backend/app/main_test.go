@@ -208,6 +208,7 @@ func prepApp(t *testing.T, duration time.Duration, fn func(o Opts) Opts) (*Appli
 	opts.Auth.Google.CSEC, opts.Auth.Google.CID = "csec", "cid"
 	opts.Auth.Facebook.CSEC, opts.Auth.Facebook.CID = "csec", "cid"
 	opts.Auth.Yandex.CSEC, opts.Auth.Yandex.CID = "csec", "cid"
+	opts.Key.Type, opts.Key.Secret = "static", "123456"
 	opts.BackupLocation = "/tmp"
 	opts = fn(opts)
 

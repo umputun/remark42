@@ -43,6 +43,7 @@ type Rest struct {
 	WebRoot         string
 	RemarkURL       string
 	ReadOnlyAge     int
+	SharedSecret    string
 	ScoreThresholds struct {
 		Low      int
 		Critical int
@@ -129,7 +130,7 @@ func (s *Rest) routes() chi.Router {
 	})
 	router.Use(corsMiddleware.Handler)
 
-	ipFn := func(ip string) string { return store.HashValue(ip, s.DataService.Secret)[:12] } // logger uses it for anonymization
+	ipFn := func(ip string) string { return store.HashValue(ip, s.SharedSecret)[:12] } // logger uses it for anonymization
 
 	// auth routes for all providers
 	router.Route("/auth", func(r chi.Router) {

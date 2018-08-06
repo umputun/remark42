@@ -14,6 +14,7 @@ import (
 	"github.com/coreos/bbolt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/umputun/remark/backend/app/store/keys"
 
 	"github.com/umputun/remark/backend/app/migrator"
 	"github.com/umputun/remark/backend/app/rest/auth"
@@ -78,7 +79,7 @@ func prep(t *testing.T) (srv *Rest, ts *httptest.Server) {
 		Interface:      b,
 		EditDuration:   5 * time.Minute,
 		MaxCommentSize: 4000,
-		Secret:         "123456",
+		KeyStore:       keys.NewStaticStore("123456"),
 		Admins:         []string{"a1", "a2"},
 	}
 	srv = &Rest{
@@ -88,7 +89,7 @@ func prep(t *testing.T) (srv *Rest, ts *httptest.Server) {
 			Providers: nil,
 
 			AdminEmail: "admin@remark-42.com",
-			JWTService: auth.NewJWT("12345", false, time.Minute, time.Hour),
+			JWTService: auth.NewJWT(keys.NewStaticStore("123456"), false, time.Minute, time.Hour),
 		},
 		Exporter:    &migrator.Remark{DataStore: dataStore},
 		Cache:       &cache.Nop{},

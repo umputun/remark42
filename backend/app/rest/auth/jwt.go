@@ -4,8 +4,9 @@ import (
 	"net/http"
 	"time"
 
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/pkg/errors"
+	"github.com/umputun/remark/backend/app/store/keys"
 
 	"github.com/umputun/remark/backend/app/store"
 )
@@ -13,7 +14,7 @@ import (
 // JWT wraps jwt operations
 // supports both header and cookie jwt
 type JWT struct {
-	secret         string
+	keyStore       keys.Store
 	secureCookies  bool
 	tokenDuration  time.Duration
 	cookieDuration time.Duration
@@ -43,9 +44,9 @@ const xsrfCookieName = "XSRF-TOKEN"
 const xsrfHeaderKey = "X-XSRF-TOKEN"
 
 // NewJWT makes JWT service
-func NewJWT(secret string, secureCookies bool, tokenDuration time.Duration, cookieDuration time.Duration) *JWT {
+func NewJWT(keyStore keys.Store, secureCookies bool, tokenDuration time.Duration, cookieDuration time.Duration) *JWT {
 	res := JWT{
-		secret:         secret,
+		keyStore:       keyStore,
 		secureCookies:  secureCookies,
 		tokenDuration:  tokenDuration,
 		cookieDuration: cookieDuration,
@@ -56,7 +57,13 @@ func NewJWT(secret string, secureCookies bool, tokenDuration time.Duration, cook
 // Token makes jwt with claims
 func (j *JWT) Token(claims *CustomClaims) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString([]byte(j.secret))
+
+	secret, err := j.keyStore.Get(claims.SiteID)
+	if err != nil {
+		return "", errors.Wrap(err, "can't get secret")
+	}
+
+	tokenString, err := token.SignedString([]byte(secret))
 	if err != nil {
 		return "", errors.Wrap(err, "can't sign jwt token")
 	}
@@ -71,11 +78,26 @@ func (j *JWT) HasFlags(claims *CustomClaims) bool {
 // Parse token string and verify. Not checking for expiration
 func (j *JWT) Parse(tokenString string) (*CustomClaims, error) {
 	parser := jwt.Parser{SkipClaimsValidation: true} // allow parsing of expired tokens
+
+	preToken, _, err := parser.ParseUnverified(tokenString, &CustomClaims{})
+	if err != nil {
+		return nil, errors.Wrap(err, "can't pre-parse jwt")
+	}
+	preClaims, ok := preToken.Claims.(*CustomClaims)
+	if !ok {
+		return nil, errors.New("invalid jwt")
+	}
+
+	secret, err := j.keyStore.Get(preClaims.SiteID)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get secret")
+	}
+
 	token, err := parser.ParseWithClaims(tokenString, &CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return []byte(j.secret), nil
+		return []byte(secret), nil
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "can't parse jwt")
