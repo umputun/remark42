@@ -96,6 +96,7 @@ services:
         container_name: "remark42"
         environment:
             - REMARK_URL=https://demo.remark42.com  # url pointing to your remark42 server
+            - SITE=my-site                          # site ID, same as used for `site_id`, see [Setup on your website](https://github.com/umputun/remark#setup-on-your-website)
             - SECRET=abcd-123456-xyz-$%^&           # secret key
             - AUTH_GITHUB_CID=12345667890           # oauth2 client ID
             - AUTH_GITHUB_CSEC=abcdefg12345678      # oauth2 client secret
