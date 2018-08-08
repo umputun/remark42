@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	"github.com/umputun/remark/backend/app/store/keys"
 
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/engine"
@@ -15,7 +16,7 @@ import (
 type DataStore struct {
 	engine.Interface
 	EditDuration   time.Duration
-	Secret         string
+	KeyStore       keys.Store
 	MaxCommentSize int
 	Admins         []string
 
@@ -43,8 +44,13 @@ func (s *DataStore) Create(comment store.Comment) (commentID string, err error) 
 		comment.Votes = make(map[string]bool)
 	}
 
-	comment.Sanitize()            // clear potentially dangerous js from all parts of comment
-	comment.User.HashIP(s.Secret) // replace ip by hash
+	comment.Sanitize() // clear potentially dangerous js from all parts of comment
+
+	secret, err := s.KeyStore.Get(comment.Locator.SiteID)
+	if err != nil {
+		return "", errors.Wrapf(err, "can't get secret for site %s", comment.Locator.SiteID)
+	}
+	comment.User.HashIP(secret) // replace ip by hash
 
 	return s.Interface.Create(comment)
 }

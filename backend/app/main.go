@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/logutils"
 	"github.com/jessevdk/go-flags"
 	"github.com/pkg/errors"
+	"github.com/umputun/remark/backend/app/store/keys"
 
 	"github.com/umputun/remark/backend/app/migrator"
 	"github.com/umputun/remark/backend/app/rest/api"
@@ -29,13 +30,14 @@ import (
 
 // Opts with command line flags and env
 type Opts struct {
-	SecretKey string `long:"secret" env:"SECRET" required:"true" description:"secret key"`
-	RemarkURL string `long:"url" env:"REMARK_URL" required:"true" description:"url to remark"`
+	RemarkURL    string `long:"url" env:"REMARK_URL" required:"true" description:"url to remark"`
+	SharedSecret string `long:"secret" env:"SECRET" required:"true" description:"shared secret key"`
 
 	Store  StoreGroup  `group:"store" namespace:"store" env-namespace:"STORE"`
 	Avatar AvatarGroup `group:"avatar" namespace:"avatar" env-namespace:"AVATAR"`
 	Cache  CacheGroup  `group:"cache" namespace:"cache" env-namespace:"CACHE"`
 	Mongo  MongoGroup  `group:"mongo" namespace:"mongo" env-namespace:"MONGO"`
+	Key    KeyGroup    `group:"key" namespace:"key" env-namespace:"KEY"`
 
 	Sites          []string      `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
 	Admins         []string      `long:"admin" env:"ADMIN" description:"admin(s) names" env-delim:","`
@@ -106,6 +108,11 @@ type MongoGroup struct {
 	DB  string `long:"db" env:"DB" default:"remark42" description:"mongo database"`
 }
 
+// KeyGroup defines options group for key params
+type KeyGroup struct {
+	Type string `long:"type" env:"TYPE" description:"type of key store" choice:"shared" choice:"mongo" default:"shared"`
+}
+
 var revision = "unknown"
 
 // Application holds all active objects
@@ -166,10 +173,15 @@ func New(opts Opts) (*Application, error) {
 		return nil, err
 	}
 
+	keyStore, err := makeKeyStore(opts.Key, opts.SharedSecret)
+	if err != nil {
+		return nil, err
+	}
+
 	dataService := &service.DataStore{
 		Interface:      storeEngine,
 		EditDuration:   opts.EditDuration,
-		Secret:         opts.SecretKey,
+		KeyStore:       keyStore,
 		MaxCommentSize: opts.MaxCommentSize,
 		Admins:         opts.Admins,
 	}
@@ -180,8 +192,7 @@ func New(opts Opts) (*Application, error) {
 	}
 
 	// token TTL is 5 minutes, inactivity interval 7+ days by default
-	jwtService := auth.NewJWT(opts.SecretKey, strings.HasPrefix(opts.RemarkURL, "https://"),
-		opts.Auth.TTL.JWT, opts.Auth.TTL.Cookie)
+	jwtService := auth.NewJWT(keyStore, strings.HasPrefix(opts.RemarkURL, "https://"), opts.Auth.TTL.JWT, opts.Auth.TTL.Cookie)
 
 	avatarStore, err := makeAvatarStore(opts.Avatar, opts.Mongo)
 	if err != nil {
@@ -202,20 +213,21 @@ func New(opts Opts) (*Application, error) {
 		DisqusImporter:    &migrator.Disqus{DataStore: dataService},
 		WordPressImporter: &migrator.WordPress{DataStore: dataService},
 		NativeExported:    &migrator.Remark{DataStore: dataService},
-		SecretKey:         opts.SecretKey,
+		KeyStore:          keyStore,
 	}
 
 	authProviders := makeAuthProviders(jwtService, avatarProxy, dataService, opts)
 
 	srv := &api.Rest{
-		Version:     revision,
-		DataService: dataService,
-		Exporter:    exporter,
-		WebRoot:     opts.WebRoot,
-		RemarkURL:   opts.RemarkURL,
-		ImageProxy:  &proxy.Image{Enabled: opts.ImageProxy, RoutePath: "/api/v1/img", RemarkURL: opts.RemarkURL},
-		AvatarProxy: avatarProxy,
-		ReadOnlyAge: opts.ReadOnlyAge,
+		Version:      revision,
+		DataService:  dataService,
+		Exporter:     exporter,
+		WebRoot:      opts.WebRoot,
+		RemarkURL:    opts.RemarkURL,
+		ImageProxy:   &proxy.Image{Enabled: opts.ImageProxy, RoutePath: "/api/v1/img", RemarkURL: opts.RemarkURL},
+		AvatarProxy:  avatarProxy,
+		ReadOnlyAge:  opts.ReadOnlyAge,
+		SharedSecret: opts.SharedSecret,
 		Authenticator: auth.Authenticator{
 			JWTService:        jwtService,
 			AdminEmail:        opts.AdminEmail,
@@ -336,6 +348,15 @@ func makeAvatarStore(group AvatarGroup, mg MongoGroup) (avatar.Store, error) {
 	return nil, errors.Errorf("unsupported avatar store type %s", group.Type)
 }
 
+func makeKeyStore(group KeyGroup, sharedSecret string) (keys.Store, error) {
+	switch group.Type {
+	case "shared":
+		return keys.NewStaticStore(sharedSecret), nil
+	default:
+		return nil, errors.Errorf("unsupported key store type %s", group.Type)
+	}
+}
+
 func makeCache(group CacheGroup, mg MongoGroup) (cache.LoadingCache, error) {
 	switch group.Type {
 	case "mem":
@@ -398,7 +419,6 @@ func makeAuthProviders(jwtService *auth.JWT, avatarProxy *proxy.Avatar, ds *serv
 			RemarkURL:         opts.RemarkURL,
 			Cid:               cid,
 			Csecret:           secret,
-			SecretKey:         opts.SecretKey,
 			PermissionChecker: ds,
 		}
 	}

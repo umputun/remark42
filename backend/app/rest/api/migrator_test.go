@@ -13,6 +13,7 @@ import (
 	"github.com/coreos/bbolt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/umputun/remark/backend/app/store/keys"
 
 	"github.com/umputun/remark/backend/app/migrator"
 	"github.com/umputun/remark/backend/app/rest/cache"
@@ -127,14 +128,14 @@ func TestMigrator_Shutdown(t *testing.T) {
 func prepImportSrv(t *testing.T) (svc *Migrator, ts *httptest.Server) {
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDb, SiteID: "radio-t"})
 	require.Nil(t, err)
-	dataStore := &service.DataStore{Interface: b}
+	dataStore := &service.DataStore{Interface: b, KeyStore: keys.NewStaticStore("123456")}
 	svc = &Migrator{
 		DisqusImporter:    &migrator.Disqus{DataStore: dataStore},
 		WordPressImporter: &migrator.WordPress{DataStore: dataStore},
 		NativeImporter:    &migrator.Remark{DataStore: dataStore},
 		NativeExported:    &migrator.Remark{DataStore: dataStore},
 		Cache:             &cache.Nop{},
-		SecretKey:         "123456",
+		KeyStore:          keys.NewStaticStore("123456"),
 	}
 
 	routes := svc.routes()
@@ -142,7 +143,7 @@ func prepImportSrv(t *testing.T) (svc *Migrator, ts *httptest.Server) {
 	return svc, ts
 }
 
-func cleanupImportSrv(srv *Migrator, ts *httptest.Server) {
+func cleanupImportSrv(_ *Migrator, ts *httptest.Server) {
 	ts.Close()
 	os.Remove(testDb)
 }

@@ -13,11 +13,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/umputun/remark/backend/app/store"
+	"github.com/umputun/remark/backend/app/store/keys"
 )
 
 func TestDevProvider(t *testing.T) {
-	params := Params{RemarkURL: "http://127.0.0.1:8080", SecretKey: "123456", Cid: "cid", Csecret: "csecret",
-		JwtService:        NewJWT("12345", false, time.Hour, time.Hour*24*31),
+	params := Params{RemarkURL: "http://127.0.0.1:8080", Cid: "cid", Csecret: "csecret",
+		JwtService:        NewJWT(keys.NewStaticStore("12345"), false, time.Hour, time.Hour*24*31),
 		PermissionChecker: &mockUserPermissions{admin: "dev_user"},
 	}
 	srv := DevAuthServer{Provider: NewDev(params), nonInteractive: true, username: "dev_user"}
