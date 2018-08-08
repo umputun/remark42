@@ -110,8 +110,7 @@ type MongoGroup struct {
 
 // KeyGroup defines options group for key params
 type KeyGroup struct {
-	Type   string `long:"type" env:"TYPE" description:"type of key" choice:"static" choice:"mongo" default:"static"`
-	Secret string `long:"secret" env:"SECRET" description:"secret key for static key type"`
+	Type string `long:"type" env:"TYPE" description:"type of key store" choice:"shared" choice:"mongo" default:"shared"`
 }
 
 var revision = "unknown"
@@ -351,11 +350,8 @@ func makeAvatarStore(group AvatarGroup, mg MongoGroup) (avatar.Store, error) {
 
 func makeKeyStore(group KeyGroup, sharedSecret string) (keys.Store, error) {
 	switch group.Type {
-	case "static":
-		if group.Secret == "" {
-			return keys.NewStaticStore(sharedSecret), nil
-		}
-		return keys.NewStaticStore(group.Secret), nil
+	case "shared":
+		return keys.NewStaticStore(sharedSecret), nil
 	default:
 		return nil, errors.Errorf("unsupported key store type %s", group.Type)
 	}
