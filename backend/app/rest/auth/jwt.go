@@ -70,7 +70,7 @@ func (j *JWT) Token(claims *CustomClaims) (string, error) {
 	return tokenString, nil
 }
 
-// HasFlags indicates presense of special flags
+// HasFlags indicates presence of special flags
 func (j *JWT) HasFlags(claims *CustomClaims) bool {
 	return claims.Flags.DeleteMe || claims.Flags.Login
 }
@@ -79,22 +79,30 @@ func (j *JWT) HasFlags(claims *CustomClaims) bool {
 func (j *JWT) Parse(tokenString string) (*CustomClaims, error) {
 	parser := jwt.Parser{SkipClaimsValidation: true} // allow parsing of expired tokens
 
-	preToken, _, err := parser.ParseUnverified(tokenString, &CustomClaims{})
-	if err != nil {
-		return nil, errors.Wrap(err, "can't pre-parse jwt")
-	}
-	preClaims, ok := preToken.Claims.(*CustomClaims)
-	if !ok {
-		return nil, errors.New("invalid jwt")
+	getSiteID := func() (siteID string, err error) { // parse token without signature check to get siteID
+		preToken, _, err := parser.ParseUnverified(tokenString, &CustomClaims{})
+		if err != nil {
+			return "", errors.Wrap(err, "can't pre-parse jwt")
+		}
+		preClaims, ok := preToken.Claims.(*CustomClaims)
+		if !ok {
+			return "", errors.New("invalid jwt")
+		}
+		return preClaims.SiteID, nil
 	}
 
-	secret, err := j.keyStore.Get(preClaims.SiteID)
+	siteID, err := getSiteID()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get siteID from jwt token")
+	}
+
+	secret, err := j.keyStore.Get(siteID)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get secret")
 	}
 
 	token, err := parser.ParseWithClaims(tokenString, &CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
-		if _, ok = token.Method.(*jwt.SigningMethodHMAC); !ok {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 		return []byte(secret), nil
