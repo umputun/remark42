@@ -7,8 +7,7 @@ import (
 )
 
 func TestStaticStore_Get(t *testing.T) {
-	var ks Store
-	ks = NewStaticStore("key123")
+	var ks Store = NewStaticStore("key123")
 
 	k, err := ks.Get("any")
 	assert.NoError(t, err, "valid store")
