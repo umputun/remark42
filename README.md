@@ -21,7 +21,6 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 
 ----
 
-- [remark42 ![Build Status](https://travis-ci.org/umputun/remark) ![Go Report Card](https://goreportcard.com/report/github.com/umputun/remark) ![Coverage Status](https://coveralls.io/github/umputun/remark?branch=master)](#remark42-build-statushttpstravis-ciorgumputunremark-go-report-cardhttpsgoreportcardcomreportgithubcomumputunremark-coverage-statushttpscoverallsiogithubumputunremarkbranchmaster)
   - [Install](#install)
     - [Backend](#backend)
       - [Parameters](#parameters)
