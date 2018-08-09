@@ -8,6 +8,7 @@ import (
 	"github.com/coreos/bbolt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/umputun/remark/backend/app/store/keys"
 	"github.com/umputun/remark/backend/app/store/service"
 
 	"github.com/umputun/remark/backend/app/store/engine"
@@ -24,7 +25,7 @@ func TestMigrator_ImportDisqus(t *testing.T) {
 
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "test"})
 	require.Nil(t, err, "create store")
-	dataStore := &service.DataStore{Interface: b}
+	dataStore := &service.DataStore{Interface: b, KeyStore: keys.NewStaticStore("12345")}
 	size, err := ImportComments(ImportParams{
 		DataStore: dataStore,
 		InputFile: "/tmp/disqus-test.xml",
@@ -50,7 +51,7 @@ func TestMigrator_ImportWordPress(t *testing.T) {
 
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "test"})
 	require.Nil(t, err, "create store")
-	dataStore := &service.DataStore{Interface: b}
+	dataStore := &service.DataStore{Interface: b, KeyStore: keys.NewStaticStore("12345")}
 	size, err := ImportComments(ImportParams{
 		DataStore: dataStore,
 		InputFile: "/tmp/wordpress-test.xml",
@@ -79,7 +80,7 @@ func TestMigrator_ImportRemark(t *testing.T) {
 
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "radio-t"})
 	require.Nil(t, err, "create store")
-	dataStore := &service.DataStore{Interface: b}
+	dataStore := &service.DataStore{Interface: b, KeyStore: keys.NewStaticStore("12345")}
 
 	size, err := ImportComments(ImportParams{
 		DataStore: dataStore,

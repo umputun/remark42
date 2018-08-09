@@ -39,7 +39,6 @@ type Params struct {
 	AvatarProxy       *proxy.Avatar
 	JwtService        *JWT
 	PermissionChecker PermissionChecker
-	SecretKey         string
 	Cid               string
 	Csecret           string
 }
@@ -171,6 +170,7 @@ func (p Provider) authHandler(w http.ResponseWriter, r *http.Request) {
 			Issuer: "remark42",
 			Id:     p.randToken(),
 		},
+		SiteID:      oauthClaims.SiteID,
 		SessionOnly: oauthClaims.SessionOnly,
 	}
 
