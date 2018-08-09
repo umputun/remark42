@@ -19,6 +19,44 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 * Integration with automatic ssl via [nginx-le](https://github.com/umputun/nginx-le)
 * [Privacy focused](#privacy)
 
+----
+
+- [remark42 ![Build Status](https://travis-ci.org/umputun/remark) ![Go Report Card](https://goreportcard.com/report/github.com/umputun/remark) ![Coverage Status](https://coveralls.io/github/umputun/remark?branch=master)](#remark42-build-statushttpstravis-ciorgumputunremark-go-report-cardhttpsgoreportcardcomreportgithubcomumputunremark-coverage-statushttpscoverallsiogithubumputunremarkbranchmaster)
+  - [Install](#install)
+    - [Backend](#backend)
+      - [Parameters](#parameters)
+        - [Required parameters](#required-parameters)
+      - [Register oauth2 providers](#register-oauth2-providers)
+        - [Google Auth Provider](#google-auth-provider)
+        - [GitHub Auth Provider](#github-auth-provider)
+        - [Facebook Auth Provider](#facebook-auth-provider)
+        - [Yandex Auth Provider](#yandex-auth-provider)
+      - [Initial import from Disqus](#initial-import-from-disqus)
+      - [Initial import from WordPress](#initial-import-from-wordpress)
+      - [Backup and restore](#backup-and-restore)
+        - [Automatic backups](#automatic-backups)
+        - [Schema migration](#schema-migration)
+        - [Manual backup](#manual-backup)
+        - [Backup format](#backup-format)
+      - [Admin users](#admin-users)
+    - [Setup on your website](#setup-on-your-website)
+      - [Comments](#comments)
+      - [Last comments](#last-comments)
+      - [Counter](#counter)
+  - [Development](#development)
+    - [Backend development](#backend-development)
+    - [Frontend development](#frontend-development)
+      - [Build](#build)
+      - [Devserver](#devserver)
+  - [API](#api)
+    - [Authorization](#authorization)
+    - [Commenting](#commenting)
+    - [RSS feeds](#rss-feeds)
+    - [Admin](#admin)
+  - [Privacy](#privacy)
+  - [Technical details](#technical-details)
+----
+
 ## Install
 
 ### Backend
@@ -240,7 +278,7 @@ And then add this node in the place where you want to see Remark42 widget:
 
 After that widget will be rendered inside this node.
 
-##### Last comments
+#### Last comments
 
 It's a widget which renders list of last comments from your site.
 
@@ -268,7 +306,7 @@ And then add this node in the place where you want to see last comments widget:
 
 `data-max` sets the max amount of comments (default: `15`).
 
-##### Counter
+#### Counter
 
 It's a widget which renders a number of comments for the specified page.
 
@@ -323,7 +361,7 @@ You can tweak any of [supported parameters](#Parameters) in corresponded yml fil
 Backend docker compose config by default skips running frontend related tests. 
 Frontend docker compose config by default skips running backend related tests and sets `NODE_ENV=development` for frontend build. 
 
-### Backend
+### Backend development
 
 In order to run backend locally (development mode, without docker) you have to have latest stable `go` toolchain [installed](https://golang.org/doc/install).
 
@@ -335,7 +373,7 @@ It stars backend service with embedded bolt store on port `8080` with basic auth
 To run backend with mongodb store mongo container should be started first - `docker run -d -p 27017:27017 -name=mongo mongo:3.6 --smallfiles` and then
 `go run backend/app/main.go --dbg --secret=12345 --dev-passwd=password --site=remark --url=http://127.0.0.1:8080 --store.type=mongo --store.mongo.url=localhost`
 
-### Frontend
+### Frontend development
 
 #### Build
 
