@@ -43,7 +43,6 @@ func (s *DataStore) Create(comment store.Comment) (commentID string, err error) 
 	if comment.Votes == nil {
 		comment.Votes = make(map[string]bool)
 	}
-
 	comment.Sanitize() // clear potentially dangerous js from all parts of comment
 
 	secret, err := s.KeyStore.Get(comment.Locator.SiteID)

@@ -14,7 +14,6 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
 	"github.com/hashicorp/go-multierror"
-	"gopkg.in/russross/blackfriday.v2"
 
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/rest/auth"
@@ -44,8 +43,8 @@ func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment")
 		return
 	}
-	comment.Text = string(blackfriday.Run([]byte(comment.Text), blackfriday.WithExtensions(mdExt)))
-	comment.Text = s.ImageProxy.Convert(comment.Text)
+	comment = s.CommentFormater.Format(comment)
+
 	// check if user blocked
 	if s.adminService.checkBlocked(comment.Locator.SiteID, comment.User) {
 		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"), "user blocked")
@@ -109,10 +108,8 @@ func (s *Rest) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	text := string(blackfriday.Run([]byte(edit.Text), blackfriday.WithExtensions(mdExt))) // render markdown
-	text = s.ImageProxy.Convert(text)
 	editReq := service.EditRequest{
-		Text:    text,
+		Text:    s.CommentFormater.FormatText(edit.Text),
 		Orig:    edit.Text,
 		Summary: edit.Summary,
 	}

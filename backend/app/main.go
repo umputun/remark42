@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/logutils"
 	"github.com/jessevdk/go-flags"
 	"github.com/pkg/errors"
+	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/keys"
 
 	"github.com/umputun/remark/backend/app/migrator"
@@ -217,17 +218,20 @@ func New(opts Opts) (*Application, error) {
 	}
 
 	authProviders := makeAuthProviders(jwtService, avatarProxy, dataService, opts)
+	imgProxy := &proxy.Image{Enabled: opts.ImageProxy, RoutePath: "/api/v1/img", RemarkURL: opts.RemarkURL}
+	commentFormater := store.NewCommentFormater(imgProxy)
 
 	srv := &api.Rest{
-		Version:      revision,
-		DataService:  dataService,
-		Exporter:     exporter,
-		WebRoot:      opts.WebRoot,
-		RemarkURL:    opts.RemarkURL,
-		ImageProxy:   &proxy.Image{Enabled: opts.ImageProxy, RoutePath: "/api/v1/img", RemarkURL: opts.RemarkURL},
-		AvatarProxy:  avatarProxy,
-		ReadOnlyAge:  opts.ReadOnlyAge,
-		SharedSecret: opts.SharedSecret,
+		Version:         revision,
+		DataService:     dataService,
+		Exporter:        exporter,
+		WebRoot:         opts.WebRoot,
+		RemarkURL:       opts.RemarkURL,
+		ImageProxy:      imgProxy,
+		CommentFormater: commentFormater,
+		AvatarProxy:     avatarProxy,
+		ReadOnlyAge:     opts.ReadOnlyAge,
+		SharedSecret:    opts.SharedSecret,
 		Authenticator: auth.Authenticator{
 			JWTService:        jwtService,
 			AdminEmail:        opts.AdminEmail,
