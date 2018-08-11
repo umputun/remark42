@@ -9,7 +9,7 @@ import (
 
 type mockConvertor struct{}
 
-func (m mockConvertor) Convert(commentHTML string) string { return commentHTML + "!converted" }
+func (m mockConvertor) Convert(text string) string { return text + "!converted" }
 
 func TestFormater_FormatText(t *testing.T) {
 	tbl := []struct {
@@ -29,7 +29,7 @@ func TestFormater_FormatText(t *testing.T) {
 }
 
 func TestFormater_FormatTextNoConvertor(t *testing.T) {
-	f := NewCommentFormater(nil)
+	f := NewCommentFormater()
 	assert.Equal(t, "<p>12345</p>\n", f.FormatText("12345"))
 }
 

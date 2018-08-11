@@ -10,18 +10,18 @@ import (
 
 // CommentFormater implements all generic formatings ops on comment
 type CommentFormater struct {
-	converter CommentConverter
+	converters []CommentConverter
 }
 
 // CommentConverter defines interface to convert some parts of commentHTML
 // Passed at creation time and does client-defined convertions, like image proxy link change
 type CommentConverter interface {
-	Convert(commentHTML string) string
+	Convert(text string) string
 }
 
 // NewCommentFormater makes CommentFormater
-func NewCommentFormater(converter CommentConverter) *CommentFormater {
-	return &CommentFormater{converter: converter}
+func NewCommentFormater(converters ...CommentConverter) *CommentFormater {
+	return &CommentFormater{converters: converters}
 }
 
 // Format comment fields
@@ -36,8 +36,9 @@ func (f *CommentFormater) FormatText(txt string) (res string) {
 		blackfriday.Strikethrough | blackfriday.SpaceHeadings | blackfriday.HardLineBreak |
 		blackfriday.BackslashLineBreak | blackfriday.Autolink
 	res = string(blackfriday.Run([]byte(txt), blackfriday.WithExtensions(mdExt)))
-	if f.converter != nil {
-		res = f.converter.Convert(res)
+	for _, conv := range f.converters {
+		res = conv.Convert(res)
+
 	}
 	res = f.shortenAutoLinks(res, shortURLLen)
 	return res
