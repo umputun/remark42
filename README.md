@@ -4,7 +4,7 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 
 * Social login via Google, Facebook, Github and Yandex
 * Multi-level nested comments with both tree and plain presentations
-* Import from disqus, wordpress
+* Import from disqus and wordpress
 * Markdown support
 * Moderator can remove comments and block users
 * Voting, pinning and verification system
@@ -19,7 +19,7 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 * Integration with automatic ssl via [nginx-le](https://github.com/umputun/nginx-le)
 * [Privacy focused](#privacy)
 
-----
+#
 
   - [Install](#install)
     - [Backend](#backend)
@@ -54,7 +54,7 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
     - [Admin](#admin)
   - [Privacy](#privacy)
   - [Technical details](#technical-details)
-----
+
 
 ## Install
 
@@ -548,14 +548,14 @@ _all admin calls require auth and admin privilege_
 ## Privacy 
 
 * Remark42 is trying to be very sensitive to any private or semi-private information.
-* Authentication requesting the lowest (minimal) possible scope from providers. All extra information returned by them dropped immediately and not stored in any form.
-* Generally remark42 keeps user id, username and avatar link only. None of these fields exposed directly - id and name hashed, avatar proxied.
+* Authentication requesting the minimal possible scope from authentication providers. All extra information returned by them dropped immediately and not stored in any form.
+* Generally, remark42 keeps user id, username and avatar link only. None of these fields exposed directly - id and name hashed, avatar proxied.
 * There is no tracking of any sort.
-* Login mechanic uses JWT stored in a cookie (httpOnly, secured). The second cookie (XSRF_TOKEN) is a random id preventing Cross-Site Request Forgery
+* Login mechanic uses JWT stored in a cookie (httpOnly, secured). The second cookie (XSRF_TOKEN) is a random id preventing CSRF.
 * There is no cross-site login, i.e., user's behavior can't be analyzed across independent sites running remark42.
 * There are no third-party analytic services involved.
 * User can request all information remark42 knows about and export to gz file.
-* Supported complete cleanup of all information related to user activity on demand.
+* Supported complete cleanup of all information related to user's activity.
 * Cookie lifespan can be restricted to session-only. 
 * All potentially sensitive data stored by remark42 hashed and encrypted.
 
