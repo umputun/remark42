@@ -91,14 +91,14 @@ func prep(t *testing.T) (srv *Rest, ts *httptest.Server) {
 			AdminEmail: "admin@remark-42.com",
 			JWTService: auth.NewJWT(keys.NewStaticStore("123456"), false, time.Minute, time.Hour),
 		},
-		Exporter:        &migrator.Remark{DataStore: dataStore},
-		Cache:           &cache.Nop{},
-		WebRoot:         "/tmp",
-		RemarkURL:       "https://demo.remark42.com",
-		AvatarProxy:     &proxy.Avatar{Store: avatar.NewLocalFS("/tmp", 300), RoutePath: "/api/v1/avatar"},
-		ImageProxy:      &proxy.Image{},
-		ReadOnlyAge:     10,
-		CommentFormater: store.NewCommentFormater(&proxy.Image{}),
+		Exporter:         &migrator.Remark{DataStore: dataStore},
+		Cache:            &cache.Nop{},
+		WebRoot:          "/tmp",
+		RemarkURL:        "https://demo.remark42.com",
+		AvatarProxy:      &proxy.Avatar{Store: avatar.NewLocalFS("/tmp", 300), RoutePath: "/api/v1/avatar"},
+		ImageProxy:       &proxy.Image{},
+		ReadOnlyAge:      10,
+		CommentFormatter: store.NewCommentFormatter(&proxy.Image{}),
 	}
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = -5, -10
 

@@ -219,19 +219,19 @@ func New(opts Opts) (*Application, error) {
 
 	authProviders := makeAuthProviders(jwtService, avatarProxy, dataService, opts)
 	imgProxy := &proxy.Image{Enabled: opts.ImageProxy, RoutePath: "/api/v1/img", RemarkURL: opts.RemarkURL}
-	commentFormater := store.NewCommentFormater(imgProxy)
+	commentFormatter := store.NewCommentFormatter(imgProxy)
 
 	srv := &api.Rest{
-		Version:         revision,
-		DataService:     dataService,
-		Exporter:        exporter,
-		WebRoot:         opts.WebRoot,
-		RemarkURL:       opts.RemarkURL,
-		ImageProxy:      imgProxy,
-		CommentFormater: commentFormater,
-		AvatarProxy:     avatarProxy,
-		ReadOnlyAge:     opts.ReadOnlyAge,
-		SharedSecret:    opts.SharedSecret,
+		Version:          revision,
+		DataService:      dataService,
+		Exporter:         exporter,
+		WebRoot:          opts.WebRoot,
+		RemarkURL:        opts.RemarkURL,
+		ImageProxy:       imgProxy,
+		CommentFormatter: commentFormatter,
+		AvatarProxy:      avatarProxy,
+		ReadOnlyAge:      opts.ReadOnlyAge,
+		SharedSecret:     opts.SharedSecret,
 		Authenticator: auth.Authenticator{
 			JWTService:        jwtService,
 			AdminEmail:        opts.AdminEmail,

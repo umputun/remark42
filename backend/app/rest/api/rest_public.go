@@ -78,7 +78,7 @@ func (s *Rest) previewCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	comment = s.CommentFormater.Format(comment)
+	comment = s.CommentFormatter.Format(comment)
 	comment.Sanitize()
 	render.HTML(w, r, comment.Text)
 }

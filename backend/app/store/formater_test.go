@@ -7,11 +7,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type mockConvertor struct{}
+type mockConverter struct{}
 
-func (m mockConvertor) Convert(text string) string { return text + "!converted" }
+func (m mockConverter) Convert(text string) string { return text + "!converted" }
 
-func TestFormater_FormatText(t *testing.T) {
+func TestFormatter_FormatText(t *testing.T) {
 	tbl := []struct {
 		in, out string
 	}{
@@ -22,18 +22,18 @@ func TestFormater_FormatText(t *testing.T) {
 			"http://127.0.0.1/some-long-link/12345/678901234567890", "<p><a href=\"http://127.0.0.1/some-long-link/12345/678901234567890\">http://127.0.0.1/some-long-link/12345/6789012...</a></p>\n!converted",
 		},
 	}
-	f := NewCommentFormater(mockConvertor{})
+	f := NewCommentFormatter(mockConverter{})
 	for n, tt := range tbl {
 		assert.Equal(t, tt.out, f.FormatText(tt.in), "check #%d", n)
 	}
 }
 
-func TestFormater_FormatTextNoConvertor(t *testing.T) {
-	f := NewCommentFormater()
+func TestFormatter_FormatTextNoConvertor(t *testing.T) {
+	f := NewCommentFormatter()
 	assert.Equal(t, "<p>12345</p>\n", f.FormatText("12345"))
 }
 
-func TestFormater_FormatComment(t *testing.T) {
+func TestFormatter_FormatComment(t *testing.T) {
 	comment := Comment{
 		Text:      `blah`,
 		User:      User{ID: "username"},
@@ -47,14 +47,14 @@ func TestFormater_FormatComment(t *testing.T) {
 		Votes:     map[string]bool{"uu": true},
 	}
 
-	f := NewCommentFormater(mockConvertor{})
+	f := NewCommentFormatter(mockConverter{})
 	exp := comment
 	exp.Text = "<p>blah</p>\n!converted"
 	assert.Equal(t, exp, f.Format(comment))
 }
 
-func TestFormater_ShortenAutoLinks(t *testing.T) {
-	f := NewCommentFormater(nil)
+func TestFormatter_ShortenAutoLinks(t *testing.T) {
+	f := NewCommentFormatter(nil)
 	tbl := []struct {
 		max     int
 		in, out string

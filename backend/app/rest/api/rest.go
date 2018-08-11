@@ -34,13 +34,13 @@ import (
 type Rest struct {
 	Version string
 
-	DataService     *service.DataStore
-	Authenticator   auth.Authenticator
-	Exporter        migrator.Exporter
-	Cache           cache.LoadingCache
-	AvatarProxy     *proxy.Avatar
-	ImageProxy      *proxy.Image
-	CommentFormater *store.CommentFormater
+	DataService      *service.DataStore
+	Authenticator    auth.Authenticator
+	Exporter         migrator.Exporter
+	Cache            cache.LoadingCache
+	AvatarProxy      *proxy.Avatar
+	ImageProxy       *proxy.Image
+	CommentFormatter *store.CommentFormatter
 
 	WebRoot         string
 	RemarkURL       string

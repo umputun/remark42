@@ -43,7 +43,7 @@ func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment")
 		return
 	}
-	comment = s.CommentFormater.Format(comment)
+	comment = s.CommentFormatter.Format(comment)
 
 	// check if user blocked
 	if s.adminService.checkBlocked(comment.Locator.SiteID, comment.User) {
@@ -109,7 +109,7 @@ func (s *Rest) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	editReq := service.EditRequest{
-		Text:    s.CommentFormater.FormatText(edit.Text),
+		Text:    s.CommentFormatter.FormatText(edit.Text),
 		Orig:    edit.Text,
 		Summary: edit.Summary,
 	}
