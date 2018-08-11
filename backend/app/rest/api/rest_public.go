@@ -10,7 +10,6 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
-	"gopkg.in/russross/blackfriday.v2"
 
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/rest/cache"
@@ -79,10 +78,7 @@ func (s *Rest) previewCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//comment.Text = string(blackfriday.Run([]byte(comment.Text),
-	//	blackfriday.WithRenderer(bfchroma.NewRenderer(bfchroma.WithoutAutodetect()))))
-	comment.Text = string(blackfriday.Run([]byte(comment.Text), blackfriday.WithExtensions(mdExt)))
-	comment.Text = s.ImageProxy.Convert(comment.Text)
+	comment = s.CommentFormater.Format(comment)
 	comment.Sanitize()
 	render.HTML(w, r, comment.Text)
 }

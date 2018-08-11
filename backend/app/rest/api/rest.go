@@ -20,7 +20,6 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/go-chi/render"
 	"github.com/pkg/errors"
-	"gopkg.in/russross/blackfriday.v2"
 
 	"github.com/umputun/remark/backend/app/migrator"
 	"github.com/umputun/remark/backend/app/rest"
@@ -33,13 +32,16 @@ import (
 
 // Rest is a rest access server
 type Rest struct {
-	Version         string
+	Version string
+
 	DataService     *service.DataStore
 	Authenticator   auth.Authenticator
 	Exporter        migrator.Exporter
 	Cache           cache.LoadingCache
 	AvatarProxy     *proxy.Avatar
 	ImageProxy      *proxy.Image
+	CommentFormater *store.CommentFormater
+
 	WebRoot         string
 	RemarkURL       string
 	ReadOnlyAge     int
@@ -56,10 +58,6 @@ type Rest struct {
 }
 
 const hardBodyLimit = 1024 * 64 // limit size of body
-
-var mdExt = blackfriday.NoIntraEmphasis | blackfriday.Tables | blackfriday.FencedCode |
-	blackfriday.Strikethrough | blackfriday.SpaceHeadings | blackfriday.HardLineBreak |
-	blackfriday.BackslashLineBreak | blackfriday.Autolink
 
 type commentsWithInfo struct {
 	Comments []store.Comment `json:"comments"`
