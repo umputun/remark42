@@ -52,6 +52,13 @@ func (w *wpTime) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	return err
 }
 
+// wpCommentConverter implements store.CommentConverter
+type wpCommentConverter struct{}
+
+func (wpCommentConverter) Convert(text string) string {
+	return html.UnescapeString(text) // sanitize remains on comment create
+}
+
 // Import comments from WP and save to store
 func (w *WordPress) Import(r io.Reader, siteID string) (size int, err error) {
 
@@ -92,6 +99,9 @@ func (w *WordPress) convert(r io.Reader, siteID string) chan store.Comment {
 		rejectedComments            int // not approved
 	}{}
 
+	commentConverter := new(wpCommentConverter)
+	commentFormater := store.NewCommentFormater(commentConverter)
+
 	go func() {
 		for {
 			t, err := decoder.Token()
@@ -119,6 +129,9 @@ func (w *WordPress) convert(r io.Reader, siteID string) chan store.Comment {
 							if comment.PID == "0" {
 								comment.PID = ""
 							}
+
+							log.Println("ParsedS")
+							log.Println(comment.Content)
 							c := store.Comment{
 								ID:      comment.ID,
 								Locator: store.Locator{URL: item.Link, SiteID: siteID},
@@ -127,11 +140,11 @@ func (w *WordPress) convert(r io.Reader, siteID string) chan store.Comment {
 									Name: comment.Author,
 									IP:   comment.AuthorIP,
 								},
-								Text:      w.cleanUnescapeText(comment.Content), // sanitize remains on comment create
+								Text:      comment.Content,
 								Timestamp: comment.Date.time,
 								ParentID:  comment.PID,
 							}
-							commentsCh <- c
+							commentsCh <- commentFormater.Format(c)
 							stats.inpComments++
 							if stats.inpComments%1000 == 0 {
 								log.Printf("[DEBUG] proccessed %d comments", stats.inpComments)
@@ -145,10 +158,4 @@ func (w *WordPress) convert(r io.Reader, siteID string) chan store.Comment {
 		log.Printf("[INFO] converted %d comments, %+v", stats.inpComments-stats.failedComments, stats)
 	}()
 	return commentsCh
-}
-
-func (w *WordPress) cleanUnescapeText(text string) string {
-	text = cleanText(text)
-	text = html.UnescapeString(text)
-	return text
 }

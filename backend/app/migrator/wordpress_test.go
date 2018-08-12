@@ -39,7 +39,7 @@ func TestWordPress_Import(t *testing.T) {
 	assert.Equal(t, "e8b1e92bbcf5b9bb88472f9bdb82d1b8c7ed39d6", c.User.IP)
 	ts, _ := time.Parse(wpTimeLayout, "2010-08-18 15:19:14")
 	assert.Equal(t, ts, c.Timestamp)
-	assert.Equal(t, c.Text, "Mekkatorque was over in that tent up to the right")
+	assert.Equal(t, c.Text, "<p>Mekkatorque was over in that tent up to the right</p>\n")
 
 	posts, err := dataStore.List(siteID, 0, 0)
 	assert.Nil(t, err)
@@ -69,7 +69,7 @@ func TestWordPress_Convert(t *testing.T) {
 			SiteID: "testWP",
 			URL:    "https://realmenweardress.es/2010/07/do-you-rp/",
 		},
-		Text: `[...] I know I’m a bit loony with my attachment to my bankers.  I’m glad I’m not the only one. [...]`,
+		Text: `<p>[…] I know I’m a bit loony with my attachment to my bankers.  I’m glad I’m not the only one. […]</p>` + "\n",
 		User: store.User{
 			Name: "Wednesday Reading &laquo; Cynwise&#039;s Battlefield Manual",
 			ID:   "wordpress_" + store.EncodeID("Wednesday Reading &laquo; Cynwise&#039;s Battlefield Manual"),
@@ -78,6 +78,25 @@ func TestWordPress_Convert(t *testing.T) {
 	}
 	exp1.Timestamp, _ = time.Parse(wpTimeLayout, "2010-07-21 14:02:08")
 	assert.Equal(t, exp1, comments[1])
+}
+
+func TestWP_Convert_MD(t *testing.T) {
+	wp := WordPress{}
+	ch := wp.convert(strings.NewReader(xmlTestWPmd), "siteID")
+
+	comments := []store.Comment{}
+	for c := range ch {
+		comments = append(comments, c)
+	}
+	assert.Equal(t, 3, len(comments), "3 comments exported")
+
+	assert.Equal(t, "<p>Row1<br/>\nRow2</p>\n\n<p>Row4</p>\n", comments[0].Text)
+
+	assert.Equal(t, "<p>markdown <code>text</code></p>\n", comments[1].Text)
+
+	expText := `<p>Row1 Link <a href="http://releases.rancher.com/os/latest">http://releases.rancher.com/os/latest</a> markdown <code>text</code> blah</p>`
+	expText += "\n\n<p>Row3 markdown<code>md block</code></p>\n"
+	assert.Equal(t, expText, comments[2].Text)
 }
 
 var xmlTestWP = `
@@ -232,5 +251,72 @@ var xmlTestWP = `
 		</wp:comment>
 	</item>
 	</channel>
+</rss>
+`
+
+// parts of unused xml tags are omitted
+var xmlTestWPmd = `
+<?xml version="1.0" encoding="UTF-8" ?>
+<channel>
+	<item>
+		<title>Deploying RancherOS on Vultr instances</title>
+		<link>https://realmenweardress.es/2016/07/deploying-rancheros-on-vultr-instances/</link>
+
+		<wp:comment>
+			<wp:comment_id>1</wp:comment_id>
+			<wp:comment_author><![CDATA[user1]]></wp:comment_author>
+			<wp:comment_author_email><![CDATA[eric@gmail.com]]></wp:comment_author_email>
+			<wp:comment_author_url>https://eric.com</wp:comment_author_url>
+			<wp:comment_author_IP><![CDATA[96.54.240.57]]></wp:comment_author_IP>
+			<wp:comment_date><![CDATA[2017-12-11 00:08:56]]></wp:comment_date>
+			<wp:comment_date_gmt><![CDATA[2017-12-11 00:08:56]]></wp:comment_date_gmt>
+			<wp:comment_content><![CDATA[Row1
+Row2
+
+Row4]]></wp:comment_content>
+			<wp:comment_approved><![CDATA[1]]></wp:comment_approved>
+			<wp:comment_type><![CDATA[]]></wp:comment_type>
+			<wp:comment_parent>0</wp:comment_parent>
+			<wp:comment_user_id>0</wp:comment_user_id>
+		</wp:comment>
+
+		<wp:comment>
+			<wp:comment_id>2</wp:comment_id>
+			<wp:comment_author><![CDATA[user1]]></wp:comment_author>
+			<wp:comment_author_email><![CDATA[eric@gmail.com]]></wp:comment_author_email>
+			<wp:comment_author_url>https://eric.com</wp:comment_author_url>
+			<wp:comment_author_IP><![CDATA[96.54.240.57]]></wp:comment_author_IP>
+			<wp:comment_date><![CDATA[2017-12-11 00:08:56]]></wp:comment_date>
+			<wp:comment_date_gmt><![CDATA[2017-12-11 00:08:56]]></wp:comment_date_gmt>
+			<wp:comment_content><![CDATA[markdown ` + "`" + "text" + "`" + `]]></wp:comment_content>
+			<wp:comment_approved><![CDATA[1]]></wp:comment_approved>
+			<wp:comment_type><![CDATA[]]></wp:comment_type>
+			<wp:comment_parent>0</wp:comment_parent>
+			<wp:comment_user_id>0</wp:comment_user_id>
+		</wp:comment>
+
+		<wp:comment>
+			<wp:comment_id>2</wp:comment_id>
+			<wp:comment_author><![CDATA[user1]]></wp:comment_author>
+			<wp:comment_author_email><![CDATA[eric@gmail.com]]></wp:comment_author_email>
+			<wp:comment_author_url>https://eric.com</wp:comment_author_url>
+			<wp:comment_author_IP><![CDATA[96.54.240.57]]></wp:comment_author_IP>
+			<wp:comment_date><![CDATA[2017-12-11 00:08:56]]></wp:comment_date>
+			<wp:comment_date_gmt><![CDATA[2017-12-11 00:08:56]]></wp:comment_date_gmt>
+			<wp:comment_content><![CDATA[Row1 Link http://releases.rancher.com/os/latest markdown ` + "`" + "text" + "`" + ` blah
+
+Row3 markdown` +
+	"```" +
+	"md block" +
+	"```" +
+	`]]></wp:comment_content>
+			<wp:comment_approved><![CDATA[1]]></wp:comment_approved>
+			<wp:comment_type><![CDATA[]]></wp:comment_type>
+			<wp:comment_parent>0</wp:comment_parent>
+			<wp:comment_user_id>0</wp:comment_user_id>
+		</wp:comment>
+
+	</item>
+</channel>
 </rss>
 `
