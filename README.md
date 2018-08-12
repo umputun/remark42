@@ -14,6 +14,7 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 * Export data to json with automatic backups
 * No external databases, everything embedded in a single data file
 * Fully dockerized and can be deployed in a single command
+* Self-contained executable can be deployed directly to Linux, Windows and MacOS
 * Clean, lightweight and fully customizable UI
 * Multi-site mode from a single instance
 * Integration with automatic ssl via [nginx-le](https://github.com/umputun/nginx-le)
@@ -42,6 +43,7 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
       - [Comments](#comments)
       - [Last comments](#last-comments)
       - [Counter](#counter)
+  - [Build from the source](#build-from-the-source)
   - [Development](#development)
     - [Backend development](#backend-development)
     - [Frontend development](#frontend-development)
@@ -337,6 +339,12 @@ and it will use `data-url` attribute to define the page with comments.
 
 Also script can uses `url` property from `remark_config` object, or `window.location.href` if nothing else is defined. 
 
+## Build from the source
+
+- to build docker container - `make docker`. This command will produce container `umputun/remark42`.
+- to build a single binary for direct execution - `make OS=<linux|windows|darwin> ARCH=<amd64|386>`. This step will produce executable 
+ `remark42` file with everything embedded.
+ 
 ## Development
 
 You can use fully functional local version to develop and test both frontend & backend.
