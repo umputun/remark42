@@ -130,8 +130,6 @@ func (w *WordPress) convert(r io.Reader, siteID string) chan store.Comment {
 								comment.PID = ""
 							}
 
-							log.Println("ParsedS")
-							log.Println(comment.Content)
 							c := store.Comment{
 								ID:      comment.ID,
 								Locator: store.Locator{URL: item.Link, SiteID: siteID},
