@@ -1,0 +1,87 @@
+FROM node:10.6-alpine as build-frontend-deps
+
+ARG CI
+ENV SKIP_FRONTEND_TEST=true
+
+RUN apk add --no-cache --update git
+ADD web/package.json /srv/web/package.json
+ADD web/package-lock.json /srv/web/package-lock.json
+RUN cd /srv/web && CI=true npm ci
+
+FROM node:10.6-alpine as build-frontend
+
+ARG CI
+ARG NODE_ENV=production
+ENV SKIP_FRONTEND_TEST=true
+
+COPY --from=build-frontend-deps /srv/web/node_modules /srv/web/node_modules
+ADD web /srv/web
+RUN cd /srv/web && \
+    npm run build && \
+    rm -rf ./node_modules
+
+
+FROM umputun/baseimage:buildgo-latest as build-backend
+
+ARG GITHUB_TOKEN
+ENV SKIP_BACKEND_TEST=true
+
+WORKDIR /go/src/github.com/umputun/remark/backend
+ADD backend /go/src/github.com/umputun/remark/backend
+ADD README.md /go/src/github.com/umputun/remark/
+ADD LICENSE /go/src/github.com/umputun/remark/
+
+COPY --from=build-frontend /srv/web web
+
+RUN \
+    go get -v github.com/rakyll/statik && \
+    statik --src=/go/src/github.com/umputun/remark/backend/web --dest=/go/src/github.com/umputun/remark/backend/app/rest -p api -f && \
+    ls -la /go/src/github.com/umputun/remark/backend/app/rest/api/statik.go
+
+# if DRONE presented use DRONE_* git env to make version
+RUN \
+    if [ -z "$DRONE" ] ; then \
+    echo "runs outside of drone" && version="local"; \
+    else version=${DRONE_TAG}${DRONE_BRANCH}${DRONE_PULL_REQUEST}-${DRONE_COMMIT:0:7}-$(date +%Y%m%d-%H:%M:%S); fi && \
+    echo "version=$version" && \
+    GOOS=linux GOARCH=amd64 go build -o remark42.linux-amd64 -ldflags "-X main.revision=${version} -s -w" ./app && \
+    GOOS=linux GOARCH=386 go build -o remark42.linux-386 -ldflags "-X main.revision=${version} -s -w" ./app && \
+    GOOS=linux GOARCH=arm64 go build -o remark42.linux-arm64 -ldflags "-X main.revision=${version} -s -w" ./app && \
+    GOOS=windows GOARCH=amd64 go build -o remark42.windows-amd64.exe -ldflags "-X main.revision=${version} -s -w" ./app && \
+    GOOS=darwin GOARCH=amd64 go build -o remark42.darwin-amd64 -ldflags "-X main.revision=${version} -s -w" ./app
+
+RUN \
+    if [ -z "$DRONE_TAG" ] ; then \
+    echo "runs outside of drone" && tag=""; \
+    else tag=_${DRONE_TAG}; fi && \
+    apk add --no-cache --update zip && \
+    tar cvzf remark42${tag}.linux-amd64.tar.gz remark42.linux-amd64 ../LICENSE ../README.md && \
+    tar cvzf remark42${tag}.linux-386.tar.gz remark42.linux-386 ../LICENSE ../README.md && \
+    tar cvzf remark42${tag}.linux-arm64.tar.gz remark42.linux-arm64 ../LICENSE ../README.md && \
+    tar cvzf remark42${tag}.darwin-amd64.tar.gz remark42.darwin-amd64 ../LICENSE ../README.md && \
+    zip remark${tag}.windows-amd64.zip remark42.windows-amd64.exe ../LICENSE ../README.md
+
+# upload to github
+RUN \
+    if [ -z "$DRONE_TAG" ] ; then \
+    echo "skip upload to github" ; \
+    else \
+    curl -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/vnd.github.manifold-preview" \
+    -H "Content-Type: application/gzip" --data-binary @remark42_${DRONE_TAG}.linux-amd64.tar.gz \
+    "https://uploads.github.com/repos/umputun/remark/releases/${DRONE_TAG}/assets?name=remark_${DRONE_TAG}.linux-amd64.tar.gz" && \
+    curl -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/vnd.github.manifold-preview" \
+    -H "Content-Type: application/gzip" --data-binary @remark42_${DRONE_TAG}.linux-386.tar.gz \
+    "https://uploads.github.com/repos/umputun/remark/releases/${DRONE_TAG}/assets?name=remark_${DRONE_TAG}.linux-386.tar.gz" && \
+    curl -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/vnd.github.manifold-preview" \
+    -H "Content-Type: application/gzip" --data-binary @remark42_${DRONE_TAG}.linux-arm64.tar.gz \
+    "https://uploads.github.com/repos/umputun/remark/releases/${DRONE_TAG}/assets?name=remark_${DRONE_TAG}.linux-arm64.tar.gz" && \
+    curl -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/vnd.github.manifold-preview" \
+    -H "Content-Type: application/gzip" --data-binary @remark42_${DRONE_TAG}.darwin-amd64.tar.gz \
+    "https://uploads.github.com/repos/umputun/remark/releases/${DRONE_TAG}/assets?name=remark_${DRONE_TAG}.darwin-amd64.tar.gz" && \
+    curl -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/vnd.github.manifold-preview" \
+    -H "Content-Type: application/zip" --data-binary @remark42_${DRONE_TAG}.windows-amd64.zip \
+    "https://uploads.github.com/repos/umputun/remark/releases/${DRONE_TAG}/assets?name=remark_${DRONE_TAG}.windows-amd64.zip"; fi
+
+FROM alpine
+COPY --from=build-backend /go/src/github.com/umputun/remark/backend/remark42.* /artifacts/
+CMD ["sleep", "100"]

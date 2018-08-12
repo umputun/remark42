@@ -42,6 +42,17 @@ pipeline:
     when:
       event: tag
 
+  artifacts_tag:
+    image: plugins/docker
+    dockerfile: Dockerfile.artifacts
+    build_args:
+      - DRONE=${DRONE}
+      - DRONE_TAG=${DRONE_TAG}
+      - DRONE_COMMIT=${DRONE_COMMIT}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+    when:
+      event: tag
+
   docker_branch:
     image: plugins/docker
     repo: umputun/remark42

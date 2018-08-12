@@ -24,10 +24,10 @@ func TestRest_Create(t *testing.T) {
 	resp, err := post(t, ts.URL+"/api/v1/comment",
 		`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
 	assert.Nil(t, err)
-	require.Equal(t, http.StatusCreated, resp.StatusCode)
-
 	b, err := ioutil.ReadAll(resp.Body)
 	assert.Nil(t, err)
+	require.Equal(t, http.StatusCreated, resp.StatusCode, string(b))
+
 	c := JSON{}
 	err = json.Unmarshal(b, &c)
 	assert.Nil(t, err)
@@ -114,6 +114,7 @@ func TestRest_CreateRejected(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 401, resp.StatusCode)
 }
+
 func TestRest_CreateAndGet(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
@@ -121,7 +122,7 @@ func TestRest_CreateAndGet(t *testing.T) {
 
 	// create comment
 	resp, err := post(t, ts.URL+"/api/v1/comment",
-		`{"text": "**test** *123* http://radio-t.com", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
+		`{"text": "**test** *123*\n\n http://radio-t.com", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
 	require.Nil(t, err)
 	require.Equal(t, http.StatusCreated, resp.StatusCode)
 	b, err := ioutil.ReadAll(resp.Body)
@@ -138,8 +139,8 @@ func TestRest_CreateAndGet(t *testing.T) {
 	comment := store.Comment{}
 	err = json.Unmarshal([]byte(res), &comment)
 	assert.Nil(t, err)
-	assert.Equal(t, `<p><strong>test</strong> <em>123</em> <a href="http://radio-t.com" rel="nofollow">http://radio-t.com</a></p>`+"\n", comment.Text)
-	assert.Equal(t, "**test** *123* http://radio-t.com", comment.Orig)
+	assert.Equal(t, "<p><strong>test</strong> <em>123</em></p>\n\n<p><a href=\"http://radio-t.com\" rel=\"nofollow\">http://radio-t.com</a></p>\n", comment.Text)
+	assert.Equal(t, "**test** *123*\n\n http://radio-t.com", comment.Orig)
 	assert.Equal(t, store.User{Name: "developer one", ID: "dev",
 		Picture: "/api/v1/avatar/remark.image", Admin: true, Blocked: false, IP: "dbc7c999343f003f189f70aaf52cc04443f90790"},
 		comment.User)
