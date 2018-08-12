@@ -8,4 +8,4 @@ bin:
 	docker rm -f remark42.bin
 
 docker:
-	docker build -t remark42 --build-arg SKIP_FRONTEND_TEST=true --build-arg SKIP_BACKEND_TEST=true .
+	docker build -t umputun/remark42 --build-arg SKIP_FRONTEND_TEST=true --build-arg SKIP_BACKEND_TEST=true .
