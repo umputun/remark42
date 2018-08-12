@@ -35,7 +35,7 @@ func TestFormatter_FormatTextNoConvertor(t *testing.T) {
 
 func TestFormatter_FormatComment(t *testing.T) {
 	comment := Comment{
-		Text:      `blah`,
+		Text:      "blah\n\nxyz",
 		User:      User{ID: "username"},
 		ParentID:  "p123",
 		ID:        "123",
@@ -49,7 +49,7 @@ func TestFormatter_FormatComment(t *testing.T) {
 
 	f := NewCommentFormatter(mockConverter{})
 	exp := comment
-	exp.Text = "<p>blah</p>\n!converted"
+	exp.Text = "<p>blah</p>\n\n<p>xyz</p>\n!converted"
 	assert.Equal(t, exp, f.Format(comment))
 }
 
