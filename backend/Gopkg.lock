@@ -238,6 +238,14 @@
   version = "v1.0.0"
 
 [[projects]]
+  digest = "1:bc91590d3e20673d5e33267fc140e7dadddde0b84f2e9030547ba86859d2d13e"
+  name = "github.com/rakyll/statik"
+  packages = ["fs"]
+  pruneopts = "UT"
+  revision = "19b88da8fc15428620782ba18f68423130e7ac7d"
+  version = "v0.1.3"
+
+[[projects]]
   branch = "master"
   digest = "1:def689e73e9252f6f7fe66834a76751a41b767e03daab299e607e7226c58a855"
   name = "github.com/shurcooL/sanitized_anchor_name"
@@ -367,6 +375,7 @@
     "github.com/nullrocks/identicon",
     "github.com/patrickmn/go-cache",
     "github.com/pkg/errors",
+    "github.com/rakyll/statik/fs",
     "github.com/stretchr/testify/assert",
     "github.com/stretchr/testify/require",
     "golang.org/x/image/draw",

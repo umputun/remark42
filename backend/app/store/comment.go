@@ -94,7 +94,7 @@ func (c *Comment) SetDeleted(mode DeleteMode) {
 	}
 }
 
-// Sanitize clean dangerous html/js from the comment, shorten autolinks.
+// Sanitize clean dangerous html/js from the comment
 func (c *Comment) Sanitize() {
 	p := bluemonday.UGCPolicy()
 	p.AllowAttrs("class").Matching(regexp.MustCompile("^language-[a-zA-Z0-9]+$")).OnElements("code")

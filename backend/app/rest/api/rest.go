@@ -20,6 +20,7 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/go-chi/render"
 	"github.com/pkg/errors"
+	"github.com/rakyll/statik/fs"
 
 	"github.com/umputun/remark/backend/app/migrator"
 	"github.com/umputun/remark/backend/app/rest"
@@ -213,11 +214,24 @@ func (s *Rest) routes() chi.Router {
 	return router
 }
 
-// serves static files from /web
+// serves static files from /web or embedded by statik
 func addFileServer(r chi.Router, path string, root http.FileSystem) {
-	log.Printf("[INFO] run file server for %s, path %s", root, path)
+
+	var webFS http.Handler
+
+	statikFS, err := fs.New()
+	if err == nil {
+		log.Printf("[INFO] run file server for %s, embedded", root)
+		webFS = http.FileServer(statikFS)
+	}
+	if err != nil {
+		log.Printf("[DEBUG] no embedded assets loaded, %s", err)
+		log.Printf("[INFO] run file server for %s, path %s", root, path)
+		webFS = http.FileServer(root)
+	}
+
 	origPath := path
-	fs := http.StripPrefix(path, http.FileServer(root))
+	webFS = http.StripPrefix(path, webFS)
 	if path != "/" && path[len(path)-1] != '/' {
 		r.Get(path, http.RedirectHandler(path+"/", 301).ServeHTTP)
 		path += "/"
@@ -231,7 +245,7 @@ func addFileServer(r chi.Router, path string, root http.FileSystem) {
 				http.NotFound(w, r)
 				return
 			}
-			fs.ServeHTTP(w, r)
+			webFS.ServeHTTP(w, r)
 		}))
 }
 
