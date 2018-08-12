@@ -1,0 +1,49 @@
+FROM node:10.6-alpine as build-frontend-deps
+
+ARG CI
+ENV SKIP_FRONTEND_TEST=true
+
+RUN apk add --no-cache --update git
+ADD web/package.json /srv/web/package.json
+ADD web/package-lock.json /srv/web/package-lock.json
+RUN cd /srv/web && CI=true npm ci
+
+FROM node:10.6-alpine as build-frontend
+
+ARG CI
+ARG NODE_ENV=production
+ENV SKIP_FRONTEND_TEST=true
+
+COPY --from=build-frontend-deps /srv/web/node_modules /srv/web/node_modules
+ADD web /srv/web
+RUN cd /srv/web && \
+    npm run build && \
+    rm -rf ./node_modules
+
+
+FROM umputun/baseimage:buildgo-latest as build-backend
+
+ENV SKIP_BACKEND_TEST=true
+
+WORKDIR /go/src/github.com/umputun/remark/backend
+ADD backend /go/src/github.com/umputun/remark/backend
+
+COPY --from=build-frontend /srv/web web
+
+RUN \
+ go get -v github.com/rakyll/statik && \
+ cd app && statik -src=/go/src/github.com/umputun/remark/backend/web -f --dest=/go/src/github.com/umputun/remark/backend/app/rest/api
+
+# if DRONE presented use DRONE_* git env to make version
+RUN \
+    if [ -z "$DRONE" ] ; then \
+    echo "runs outside of drone" && version="local"; \
+    else version=${DRONE_TAG}${DRONE_BRANCH}${DRONE_PULL_REQUEST}-${DRONE_COMMIT:0:7}-$(date +%Y%m%d-%H:%M:%S); fi && \
+    echo "version=$version" && \
+    GOOS=linux GOARCH=amd64 go build -o remark.linux-amd64 -ldflags "-X main.revision=${version} -s -w" ./app && \
+    GOOS=linux GOARCH=386 go build -o remark.linux-386 -ldflags "-X main.revision=${version} -s -w" ./app && \
+    GOOS=linux GOARCH=arm64 go build -o remark.linux-arm64 -ldflags "-X main.revision=${version} -s -w" ./app && \
+    GOOS=windows GOARCH=amd64 go build -o remark.windows-amd64 -ldflags "-X main.revision=${version} -s -w" ./app && \
+    GOOS=windows GOARCH=386 go build -o remark.windows-386 -ldflags "-X main.revision=${version} -s -w" ./app && \
+    GOOS=darwin GOARCH=amd64 go build -o remark.darwin-amd64 -ldflags "-X main.revision=${version} -s -w" ./app
+
