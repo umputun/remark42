@@ -52,10 +52,8 @@ func (w *wpTime) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	return err
 }
 
-// wpCommentConverter implements store.CommentConverter
-type wpCommentConverter struct{}
-
-func (wpCommentConverter) Convert(text string) string {
+// Convert satisfies formatter.CommentConverter
+func (w *WordPress) Convert(text string) string {
 	return html.UnescapeString(text) // sanitize remains on comment create
 }
 
@@ -99,8 +97,7 @@ func (w *WordPress) convert(r io.Reader, siteID string) chan store.Comment {
 		rejectedComments            int // not approved
 	}{}
 
-	commentConverter := new(wpCommentConverter)
-	commentFormatter := store.NewCommentFormatter(commentConverter)
+	commentFormatter := store.NewCommentFormatter(w)
 
 	go func() {
 		for {
