@@ -133,7 +133,7 @@ func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 							Name: comment.AuthorName,
 							IP:   comment.IP,
 						},
-						Text:      cleanText(comment.Message),
+						Text:      d.cleanText(comment.Message),
 						Timestamp: comment.CreatedAt,
 						ParentID:  comment.Pid.Val,
 					}
@@ -158,7 +158,7 @@ func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 	return commentsCh
 }
 
-func cleanText(text string) string {
+func (*Disqus) cleanText(text string) string {
 	text = strings.Replace(text, "\n", "", -1)
 	text = strings.Replace(text, "\t", "", -1)
 	return text
