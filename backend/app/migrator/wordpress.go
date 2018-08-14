@@ -100,7 +100,7 @@ func (w *WordPress) convert(r io.Reader, siteID string) chan store.Comment {
 	}{}
 
 	commentConverter := new(wpCommentConverter)
-	commentFormater := store.NewCommentFormater(commentConverter)
+	commentFormatter := store.NewCommentFormatter(commentConverter)
 
 	go func() {
 		for {
@@ -142,7 +142,7 @@ func (w *WordPress) convert(r io.Reader, siteID string) chan store.Comment {
 								Timestamp: comment.Date.time,
 								ParentID:  comment.PID,
 							}
-							commentsCh <- commentFormater.Format(c)
+							commentsCh <- commentFormatter.Format(c)
 							stats.inpComments++
 							if stats.inpComments%1000 == 0 {
 								log.Printf("[DEBUG] proccessed %d comments", stats.inpComments)
