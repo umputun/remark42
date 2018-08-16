@@ -155,14 +155,14 @@ func prepImportSrv(t *testing.T) (svc *Migrator, ds *service.DataStore, ts *http
 		Cache:             &cache.Nop{},
 		KeyStore:          keys.NewStaticStore("123456"),
 	}
-
 	routes := svc.routes()
 	ts = httptest.NewServer(routes)
 	return svc, dataStore, ts
 }
 
-func cleanupImportSrv(_ *Migrator, ts *httptest.Server) {
+func cleanupImportSrv(m *Migrator, ts *httptest.Server) {
 	ts.Close()
+	m.Shutdown()
 	os.Remove(testDb)
 }
 
