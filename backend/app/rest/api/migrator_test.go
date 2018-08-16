@@ -14,12 +14,12 @@ import (
 	"github.com/coreos/bbolt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/umputun/remark/backend/app/store"
-	"github.com/umputun/remark/backend/app/store/keys"
 
 	"github.com/umputun/remark/backend/app/migrator"
 	"github.com/umputun/remark/backend/app/rest/cache"
+	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/engine"
+	"github.com/umputun/remark/backend/app/store/keys"
 	"github.com/umputun/remark/backend/app/store/service"
 )
 
@@ -310,7 +310,7 @@ var xmlTestWP = `
 			<wp:comment_author_IP><![CDATA[128.243.253.117]]></wp:comment_author_IP>
 			<wp:comment_date><![CDATA[2010-08-18 15:19:14]]></wp:comment_date>
 			<wp:comment_date_gmt><![CDATA[2010-08-18 15:19:14]]></wp:comment_date_gmt>
-			<wp:comment_content><![CDATA[Looks like http://releases.rancher.com/os/latest is no longer hosted - installs using this '''base-url''' are failing.
+			<wp:comment_content><![CDATA[Looks like http://releases.rancher.com/os/latest is no longer hosted - installs using this 'base-url' are failing.
 
 I switched to Github with success:
 
