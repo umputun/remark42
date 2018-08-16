@@ -15,11 +15,11 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/render"
-	"github.com/umputun/remark/backend/app/store/keys"
 
 	"github.com/umputun/remark/backend/app/migrator"
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/rest/cache"
+	"github.com/umputun/remark/backend/app/store/keys"
 )
 
 // Migrator rest runs on unexposed port and available for local requests only

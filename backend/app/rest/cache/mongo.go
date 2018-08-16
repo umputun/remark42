@@ -4,11 +4,10 @@ import (
 	"log"
 	"time"
 
-	"github.com/go-pkgz/repeater"
-
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/go-pkgz/mongo"
+	"github.com/go-pkgz/repeater"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 )
