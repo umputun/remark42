@@ -2,6 +2,7 @@ package api
 
 import (
 	"compress/gzip"
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +14,7 @@ import (
 	"github.com/coreos/bbolt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/keys"
 
 	"github.com/umputun/remark/backend/app/migrator"
@@ -22,7 +24,7 @@ import (
 )
 
 func TestMigrator_Import(t *testing.T) {
-	srv, ts := prepImportSrv(t)
+	srv, _, ts := prepImportSrv(t)
 	assert.NotNil(t, srv)
 	defer cleanupImportSrv(srv, ts)
 
@@ -42,11 +44,11 @@ func TestMigrator_Import(t *testing.T) {
 }
 
 func TestMigrator_ImportFromWP(t *testing.T) {
-	srv, ts := prepImportSrv(t)
+	srv, ds, ts := prepImportSrv(t)
 	assert.NotNil(t, srv)
 	defer cleanupImportSrv(srv, ts)
 
-	r := strings.NewReader(xmlTestWP)
+	r := strings.NewReader(strings.Replace(xmlTestWP, "'", "`", -1))
 
 	client := &http.Client{Timeout: 1 * time.Second}
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=radio-t&provider=wordpress&secret=123456", r)
@@ -59,10 +61,26 @@ func TestMigrator_ImportFromWP(t *testing.T) {
 	b, err := ioutil.ReadAll(resp.Body)
 	assert.Nil(t, err)
 	assert.Equal(t, `{"size":3,"status":"ok"}`+"\n", string(b))
+
+	assert.NoError(t, ds.Interface.Close())
+
+	srvAccess, tsAccess := prep(t)
+	require.NotNil(t, srvAccess)
+	defer cleanup(ts, srvAccess)
+
+	res, code := get(t, tsAccess.URL+"/api/v1/last/10?site=radio-t")
+	require.Equal(t, 200, code)
+	comments := []store.Comment{}
+	err = json.Unmarshal([]byte(res), &comments)
+	assert.Nil(t, err)
+	assert.Equal(t, 3, len(comments), "should have 3 comments")
+	t.Logf("%+v", comments)
+	assert.Equal(t, "<p>Looks like <a href=\"http://releases.rancher.com/os/latest\" rel=\"nofollow\">http://releases.rancher.com/os/latest</a> is no longer hosted - installs using this <code>base-url</code> are failing.</p>\n\n<p>I switched to Github with success:</p>\n\n<pre><code>set base-url https://github.com/rancher/os/releases/download/v1.1.1-rc1\n</code></pre>\n\n<p>Thanks for the article!</p>\n",
+		comments[0].Text)
 }
 
 func TestMigrator_ImportRejected(t *testing.T) {
-	srv, ts := prepImportSrv(t)
+	srv, _, ts := prepImportSrv(t)
 	assert.NotNil(t, srv)
 	defer cleanupImportSrv(srv, ts)
 
@@ -78,7 +96,7 @@ func TestMigrator_ImportRejected(t *testing.T) {
 }
 
 func TestMigrator_Export(t *testing.T) {
-	srv, ts := prepImportSrv(t)
+	srv, _, ts := prepImportSrv(t)
 	assert.NotNil(t, srv)
 	defer cleanupImportSrv(srv, ts)
 
@@ -125,7 +143,7 @@ func TestMigrator_Shutdown(t *testing.T) {
 	assert.True(t, time.Since(st).Seconds() < 1, "should take about 100ms")
 }
 
-func prepImportSrv(t *testing.T) (svc *Migrator, ts *httptest.Server) {
+func prepImportSrv(t *testing.T) (svc *Migrator, ds *service.DataStore, ts *httptest.Server) {
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDb, SiteID: "radio-t"})
 	require.Nil(t, err)
 	dataStore := &service.DataStore{Interface: b, KeyStore: keys.NewStaticStore("123456")}
@@ -140,7 +158,7 @@ func prepImportSrv(t *testing.T) (svc *Migrator, ts *httptest.Server) {
 
 	routes := svc.routes()
 	ts = httptest.NewServer(routes)
-	return svc, ts
+	return svc, dataStore, ts
 }
 
 func cleanupImportSrv(_ *Migrator, ts *httptest.Server) {
@@ -292,7 +310,15 @@ var xmlTestWP = `
 			<wp:comment_author_IP><![CDATA[128.243.253.117]]></wp:comment_author_IP>
 			<wp:comment_date><![CDATA[2010-08-18 15:19:14]]></wp:comment_date>
 			<wp:comment_date_gmt><![CDATA[2010-08-18 15:19:14]]></wp:comment_date_gmt>
-			<wp:comment_content><![CDATA[Mekkatorque was over in that tent up to the right]]></wp:comment_content>
+			<wp:comment_content><![CDATA[Looks like http://releases.rancher.com/os/latest is no longer hosted - installs using this '''base-url''' are failing.
+
+I switched to Github with success:
+
+'''
+set base-url https://github.com/rancher/os/releases/download/v1.1.1-rc1
+'''
+
+Thanks for the article!]]></wp:comment_content>
 			<wp:comment_approved><![CDATA[1]]></wp:comment_approved>
 			<wp:comment_type><![CDATA[]]></wp:comment_type>
 			<wp:comment_parent>13</wp:comment_parent>
