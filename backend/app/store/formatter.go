@@ -19,6 +19,14 @@ type CommentConverter interface {
 	Convert(text string) string
 }
 
+// CommentConverterFunc functional struct implementing CommentConverter
+type CommentConverterFunc func(text string) string
+
+// Convert calls func for given text
+func (f CommentConverterFunc) Convert(text string) string {
+	return f(text)
+}
+
 // NewCommentFormatter makes CommentFormatter
 func NewCommentFormatter(converters ...CommentConverter) *CommentFormatter {
 	return &CommentFormatter{converters: converters}
