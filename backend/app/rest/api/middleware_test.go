@@ -39,12 +39,16 @@ func TestMiddleware_AppInfo(t *testing.T) {
 }
 
 func TestMiddleware_GetBodyAndUser(t *testing.T) {
-	req, err := http.NewRequest("GET", "http://example.com/request", strings.NewReader("body"))
+	req, err := http.NewRequest("GET", "http://example.com/request", strings.NewReader("body1\nbody2"))
 	require.Nil(t, err)
 
 	body, user := getBodyAndUser(req, []LoggerFlag{LogAll})
-	assert.Equal(t, "body", body)
+	assert.Equal(t, "body1 body2", body)
 	assert.Equal(t, "", user, "no user")
+
+	b, err := ioutil.ReadAll(req.Body)
+	assert.NoError(t, err)
+	assert.Equal(t, "body1\nbody2", string(b))
 
 	req = rest.SetUserInfo(req, store.User{ID: "id1", Name: "user1"})
 	_, user = getBodyAndUser(req, []LoggerFlag{LogAll})
