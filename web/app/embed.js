@@ -97,8 +97,6 @@ function init() {
           #${remarkRootId}-close {
             top: 0px;
             right: 400px;
-            width: 30px;
-            height: 30px;
             position: absolute;
             text-align: center;
             font-size: 25px;
@@ -107,6 +105,7 @@ function init() {
             border-color: transparent;
             border-width: 0;
             padding: 0;
+            margin-right: 4px;
             background-color: transparent;
           }
           @media all and (max-width: 430px) {
