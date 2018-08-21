@@ -162,7 +162,7 @@ function init() {
       setTimeout(() => {
         this.back.setAttribute('data-animation', '');
         this.node.setAttribute('data-animation', '');
-        this.closeEl.focus();
+        this.iframe.focus();
       }, 400);
     },
     close() {
