@@ -19,6 +19,7 @@ type ImportCommand struct {
 	Site         string        `long:"site" env:"SITE" default:"remark" description:"site name"`
 	SharedSecret string        `long:"secret" env:"SECRET" description:"shared secret key" required:"true"`
 	Timeout      time.Duration `long:"timeout" default:"15m" description:"import timeout"`
+	URL          string        `long:"url" default:"http://127.0.0.1:8081" description:"migrator base url"`
 }
 
 // Execute runs import with ImportCommand parameters, entry point for "import" command
@@ -29,11 +30,11 @@ func (ic *ImportCommand) Execute(args []string) error {
 	if err != nil {
 		return errors.Wrapf(err, "import failed, can't open %s", ic.InputFile)
 	}
-	defer inpFile.Close()
+	defer func() { _ = inpFile.Close() }()
 
 	client := http.Client{}
-	importURL := fmt.Sprintf("http://127.0.0.1:8081/api/v1/admin/import?site=%s&provider=%s&secret=%s",
-		ic.Site, ic.Provider, ic.SharedSecret)
+	importURL := fmt.Sprintf("%s/api/v1/admin/import?site=%s&provider=%s&secret=%s",
+		ic.URL, ic.Site, ic.Provider, ic.SharedSecret)
 	req, err := http.NewRequest(http.MethodPost, importURL, inpFile)
 	if err != nil {
 		return errors.Wrapf(err, "can't make import request for %s", importURL)
@@ -46,7 +47,10 @@ func (ic *ImportCommand) Execute(args []string) error {
 	if err != nil {
 		return errors.Wrapf(err, "request failed for %s", importURL)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != 200 {
+		return errors.Wrapf(err, "error response %s (%d)", resp.Status, resp.StatusCode)
+	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
