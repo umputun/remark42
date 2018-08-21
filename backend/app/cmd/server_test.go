@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"context"
@@ -19,13 +19,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestApplication(t *testing.T) {
-	app, ctx := prepApp(t, 500*time.Millisecond, func(o Opts) Opts {
+func TestServerApp(t *testing.T) {
+	app, ctx := prepServerApp(t, 500*time.Millisecond, func(o ServerOpts) ServerOpts {
 		o.Port = 18080
 		return o
 	})
 
-	go func() { _ = app.Run(ctx) }()
+	go func() { _ = app.run(ctx) }()
 	time.Sleep(100 * time.Millisecond) // let server start
 
 	// send ping
@@ -50,15 +50,15 @@ func TestApplication(t *testing.T) {
 	app.Wait()
 }
 
-func TestApplicationDevMode(t *testing.T) {
-	app, ctx := prepApp(t, 500*time.Millisecond, func(o Opts) Opts {
+func TestServerApp_DevMode(t *testing.T) {
+	app, ctx := prepServerApp(t, 500*time.Millisecond, func(o ServerOpts) ServerOpts {
 		o.Port = 18085
 		o.DevPasswd = "password"
 		o.Auth.Dev = true
 		return o
 	})
 
-	go func() { _ = app.Run(ctx) }()
+	go func() { _ = app.run(ctx) }()
 	time.Sleep(100 * time.Millisecond) // let server start
 
 	assert.Equal(t, 4+1, len(app.restSrv.Authenticator.Providers), "extra auth provider")
@@ -75,7 +75,7 @@ func TestApplicationDevMode(t *testing.T) {
 	app.Wait()
 }
 
-func TestApplicationWithMongo(t *testing.T) {
+func TestServerApp_WithMongo(t *testing.T) {
 
 	mongoURL := os.Getenv("MONGO_TEST")
 	if mongoURL == "" {
@@ -85,7 +85,7 @@ func TestApplicationWithMongo(t *testing.T) {
 		t.Skip("skip mongo app test")
 	}
 
-	opts := Opts{}
+	opts := ServerOpts{}
 	// prepare options
 	p := flags.NewParser(&opts, flags.Default)
 	_, err := p.ParseArgs([]string{"--secret=123456", "--dev-passwd=password", "--url=https://demo.remark42.com",
@@ -95,7 +95,7 @@ func TestApplicationWithMongo(t *testing.T) {
 	opts.BackupLocation = "/tmp"
 
 	// create app
-	app, err := New(opts)
+	app, err := newServerApp(&opts)
 	require.Nil(t, err)
 
 	defer func() {
@@ -114,7 +114,7 @@ func TestApplicationWithMongo(t *testing.T) {
 		log.Print("[TEST] terminate app")
 		cancel()
 	}()
-	go func() { _ = app.Run(ctx) }()
+	go func() { _ = app.run(ctx) }()
 	time.Sleep(100 * time.Millisecond) // let server start
 
 	// send ping
@@ -129,61 +129,59 @@ func TestApplicationWithMongo(t *testing.T) {
 	app.Wait()
 }
 
-func TestApplicationFailed(t *testing.T) {
-	opts := Opts{}
+func TestServerApp_Failed(t *testing.T) {
+	opts := ServerOpts{}
 	p := flags.NewParser(&opts, flags.Default)
 
 	// RO bolt location
 	_, err := p.ParseArgs([]string{"--secret=123456", "--url=https://demo.remark42.com", "--backup=/tmp",
 		"--store.bolt.path=/dev/null"})
 	assert.Nil(t, err)
-	_, err = New(opts)
+	_, err = newServerApp(&opts)
 	assert.EqualError(t, err, "can't initialize data store: failed to make boltdb for /dev/null/remark.db: "+
 		"open /dev/null/remark.db: not a directory")
 	t.Log(err)
 
 	// RO backup location
-	opts = Opts{}
+	opts = ServerOpts{}
 	_, err = p.ParseArgs([]string{"--secret=123456", "--url=https://demo.remark42.com", "--store.bolt.path=/tmp",
 		"--backup=/dev/null/not-writable"})
 	assert.Nil(t, err)
-	_, err = New(opts)
+	_, err = newServerApp(&opts)
 	assert.EqualError(t, err, "can't check directory status for /dev/null/not-writable: stat /dev/null/not-writable: not a directory")
 	t.Log(err)
 
 	// invalid url
-	opts = Opts{}
+	opts = ServerOpts{}
 	_, err = p.ParseArgs([]string{"--secret=123456", "--url=demo.remark42.com", "--backup=/tmp", "----store.bolt.path=/tmp"})
 	assert.Nil(t, err)
-	_, err = New(opts)
+	_, err = newServerApp(&opts)
 	assert.EqualError(t, err, "invalid remark42 url demo.remark42.com")
 	t.Log(err)
 
-	opts = Opts{}
+	opts = ServerOpts{}
 	_, err = p.ParseArgs([]string{"--secret=123456", "--url=https://demo.remark42.com", "--backup=/tmp", "--store.type=blah"})
 	assert.NotNil(t, err, "blah is invalid type")
 
 	opts.Store.Type = "blah"
-	_, err = New(opts)
+	_, err = newServerApp(&opts)
 	assert.EqualError(t, err, "unsupported store type blah")
 	t.Log(err)
 }
 
-func TestApplicationShutdown(t *testing.T) {
-	app, ctx := prepApp(t, 500*time.Millisecond, func(o Opts) Opts {
+func TestServerApp_Shutdown(t *testing.T) {
+	app, ctx := prepServerApp(t, 500*time.Millisecond, func(o ServerOpts) ServerOpts {
 		o.Port = 18090
 		return o
 	})
 	st := time.Now()
-	err := app.Run(ctx)
+	err := app.run(ctx)
 	assert.Nil(t, err)
 	assert.True(t, time.Since(st).Seconds() < 1, "should take about 500msec")
 	app.Wait()
 }
 
-func TestApplicationMainSignal(t *testing.T) {
-	os.Args = []string{"test", "--secret=123456", "--store.bolt.path=/tmp/xyz", "--backup=/tmp", "--avatar.fs.path=/tmp",
-		"--port=18100", "--url=https://demo.remark42.com"}
+func TestServerApp_MainSignal(t *testing.T) {
 
 	go func() {
 		time.Sleep(100 * time.Millisecond)
@@ -191,12 +189,19 @@ func TestApplicationMainSignal(t *testing.T) {
 		require.Nil(t, err)
 	}()
 	st := time.Now()
-	main()
+
+	s := ServerOpts{}
+	p := flags.NewParser(&s, flags.Default)
+	args := []string{"test", "--secret=123456", "--store.bolt.path=/tmp/xyz", "--backup=/tmp", "--avatar.fs.path=/tmp",
+		"--port=18100", "--url=https://demo.remark42.com"}
+	_, err := p.ParseArgs(args)
+	require.Nil(t, err)
+	s.Execute(args)
 	assert.True(t, time.Since(st).Seconds() < 1, "should take about 500msec")
 }
 
-func prepApp(t *testing.T, duration time.Duration, fn func(o Opts) Opts) (*Application, context.Context) {
-	opts := Opts{}
+func prepServerApp(t *testing.T, duration time.Duration, fn func(o ServerOpts) ServerOpts) (*serverApp, context.Context) {
+	opts := ServerOpts{}
 	// prepare options
 	p := flags.NewParser(&opts, flags.Default)
 	_, err := p.ParseArgs([]string{"--secret=123456", "--dev-passwd=password", "--url=https://demo.remark42.com"})
@@ -214,7 +219,7 @@ func prepApp(t *testing.T, duration time.Duration, fn func(o Opts) Opts) (*Appli
 	os.Remove(opts.Store.Bolt.Path + "/remark.db")
 
 	// create app
-	app, err := New(opts)
+	app, err := newServerApp(&opts)
 	require.Nil(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())

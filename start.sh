@@ -11,9 +11,9 @@ echo "start remark42 server"
 
 if [ -z "$USER" ] ; then \
     echo "No USER defined, runs under root!"
-    exec /srv/remark
+    exec /srv/remark server
 
 else
     echo "runs under ${USER}"
-    /sbin/su-exec ${USER} /srv/remark
+    /sbin/su-exec ${USER} /srv/remark server
 fi
