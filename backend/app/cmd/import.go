@@ -7,16 +7,18 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/pkg/errors"
 )
 
 // ImportCommand set of flags and command for import
 type ImportCommand struct {
-	InputFile    string `short:"f" long:"file" description:"input file name" required:"true"`
-	Provider     string `short:"p" long:"provider" default:"disqus" choice:"disqus" choice:"wordpress" description:"import format"`
-	Site         string `long:"site" env:"SITE" default:"remark" description:"site name"`
-	SharedSecret string `long:"secret" env:"SECRET" description:"shared secret key"`
+	InputFile    string        `short:"f" long:"file" description:"input file name" required:"true"`
+	Provider     string        `short:"p" long:"provider" default:"disqus" choice:"disqus" choice:"wordpress" description:"import format"`
+	Site         string        `long:"site" env:"SITE" default:"remark" description:"site name"`
+	SharedSecret string        `long:"secret" env:"SECRET" description:"shared secret key" required:"true"`
+	Timeout      time.Duration `long:"timeout" default:"15m" description:"import timeout"`
 }
 
 // Execute runs import with ImportCommand parameters, entry point for "import" command
@@ -36,7 +38,10 @@ func (ic *ImportCommand) Execute(args []string) error {
 	if err != nil {
 		return errors.Wrapf(err, "can't make import request for %s", importURL)
 	}
-	req = req.WithContext(context.TODO())
+
+	ctx, cancel := context.WithTimeout(context.Background(), ic.Timeout)
+	defer cancel()
+	req = req.WithContext(ctx)
 	resp, err := client.Do(req)
 	if err != nil {
 		return errors.Wrapf(err, "request failed for %s", importURL)
