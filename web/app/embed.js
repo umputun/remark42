@@ -60,6 +60,7 @@ function init() {
     node: null,
     back: null,
     closeEl: null,
+    iframe: null,
     style: null,
     init(user) {
       this.animationStop();
@@ -149,10 +150,15 @@ function init() {
         verticalscrolling="no"
         horizontalscrolling="no"
       />`;
+      this.iframe = this.node.querySelector('iframe');
+      this.iframe.onload = () => {
+        this.iframe.contentDocument.addEventListener('keydown', this.onKeyDown);
+      };
       this.node.appendChild(this.closeEl);
       document.body.appendChild(this.style);
       document.body.appendChild(this.back);
       document.body.appendChild(this.node);
+      document.addEventListener('keydown', this.onKeyDown);
       setTimeout(() => {
         this.back.setAttribute('data-animation', '');
         this.node.setAttribute('data-animation', '');
@@ -167,6 +173,7 @@ function init() {
       if (this.back) {
         this.back.removeAttribute('data-animation');
       }
+      document.removeEventListener('keydown', this.onKeyDown);
     },
     delay: null,
     events: ['', 'webkit', 'moz', 'MS', 'o'].map(prefix => (prefix ? `${prefix}TransitionEnd` : 'transitionend')),
@@ -177,6 +184,12 @@ function init() {
       }
       this.delay = setTimeout(this.animationStop, 1000);
       this.events.forEach(event => el.addEventListener(event, this.animationStop, false));
+    },
+    onKeyDown(e) {
+      // ESCAPE key pressed
+      if (e.keyCode == 27) {
+        userInfo.close();
+      }
     },
     animationStop() {
       const t = userInfo;
