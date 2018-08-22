@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestImportApp(t *testing.T) {
+func TestImport_Execute(t *testing.T) {
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, r.URL.Path, "/api/v1/admin/import")
@@ -43,7 +43,7 @@ func TestImportApp(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestImport_AppFailed(t *testing.T) {
+func TestImport_ExecuteFailed(t *testing.T) {
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, r.URL.Path, "/api/v1/admin/import")

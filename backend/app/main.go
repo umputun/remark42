@@ -13,9 +13,10 @@ import (
 
 // Opts has all commands
 type Opts struct {
-	ServerCmd cmd.ServerOpts    `command:"server"`
-	ImportCmd cmd.ImportCommand `command:"import"`
-	ExportCmd cmd.ExportCommand `command:"export"`
+	ServerCmd  cmd.ServerOpts     `command:"server"`
+	ImportCmd  cmd.ImportCommand  `command:"import"`
+	BackupCmd  cmd.BackupCommand  `command:"backup"`
+	RestoreCmd cmd.RestoreCommand `command:"restore"`
 
 	Dbg bool `long:"dbg" env:"DEBUG" description:"debug mode"`
 }

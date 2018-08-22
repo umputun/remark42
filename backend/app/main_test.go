@@ -16,7 +16,7 @@ import (
 func TestMain(t *testing.T) {
 
 	os.Args = []string{"test", "server", "--secret=123456", "--store.bolt.path=/tmp/xyz", "--backup=/tmp",
-		"--avatar.fs.path=/tmp", "--port=18202", "--url=https://demo.remark42.com"}
+		"--avatar.fs.path=/tmp", "--port=18202", "--url=https://demo.remark42.com", "--dbg"}
 
 	go func() {
 		time.Sleep(500 * time.Millisecond)

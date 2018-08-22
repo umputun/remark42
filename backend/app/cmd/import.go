@@ -29,22 +29,9 @@ type ImportCommand struct {
 func (ic *ImportCommand) Execute(args []string) error {
 	log.Printf("[INFO] import %s (%s), site %s", ic.InputFile, ic.Provider, ic.Site)
 
-	var reader io.Reader
-	inpFile, err := os.Open(ic.InputFile)
+	reader, err := ic.openReader(ic.InputFile)
 	if err != nil {
-		return errors.Wrapf(err, "import failed, can't open %s", ic.InputFile)
-	}
-	defer func() {
-		if err = inpFile.Close(); err != nil {
-			log.Printf("[WARN] failed to close file %s, %s", inpFile.Name(), err)
-		}
-	}()
-
-	reader = inpFile
-	if strings.HasSuffix(ic.InputFile, ".gz") {
-		if reader, err = gzip.NewReader(inpFile); err != nil {
-			return errors.Wrap(err, "can't make gz reader")
-		}
+		return errors.Wrapf(err, "can't open import file %s", ic.InputFile)
 	}
 
 	client := http.Client{}
@@ -58,7 +45,7 @@ func (ic *ImportCommand) Execute(args []string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), ic.Timeout)
 	defer cancel()
 	req = req.WithContext(ctx)
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) // closes reader
 	if err != nil {
 		return errors.Wrapf(err, "request failed for %s", importURL)
 	}
@@ -78,4 +65,20 @@ func (ic *ImportCommand) Execute(args []string) error {
 
 	log.Printf("[INFO] import completed, status=%d, %s", resp.StatusCode, string(body))
 	return nil
+}
+
+// openReader returns reader and close func. For .gz files wraps with gzipper
+func (ic *ImportCommand) openReader(inp string) (reader io.Reader, err error) {
+	inpFile, err := os.Open(inp)
+	if err != nil {
+		return nil, errors.Wrapf(err, "import failed, can't open %s", inp)
+	}
+
+	reader = inpFile
+	if strings.HasSuffix(ic.InputFile, ".gz") {
+		if reader, err = gzip.NewReader(inpFile); err != nil {
+			return nil, errors.Wrap(err, "can't make gz reader")
+		}
+	}
+	return reader, nil
 }
