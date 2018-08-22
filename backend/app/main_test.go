@@ -16,7 +16,7 @@ import (
 func TestMain(t *testing.T) {
 
 	os.Args = []string{"test", "server", "--secret=123456", "--store.bolt.path=/tmp/xyz", "--backup=/tmp",
-		"--avatar.fs.path=/tmp", "--port=18200", "--url=https://demo.remark42.com"}
+		"--avatar.fs.path=/tmp", "--port=18202", "--url=https://demo.remark42.com"}
 
 	go func() {
 		time.Sleep(500 * time.Millisecond)
@@ -33,8 +33,10 @@ func TestMain(t *testing.T) {
 		wg.Done()
 	}()
 
+	time.Sleep(50 * time.Millisecond) // let server start
+
 	// send ping
-	resp, err := http.Get("http://localhost:18200/api/v1/ping")
+	resp, err := http.Get("http://localhost:18202/api/v1/ping")
 	require.Nil(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 200, resp.StatusCode)
