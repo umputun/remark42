@@ -19,7 +19,7 @@ func TestMain(t *testing.T) {
 		"--avatar.fs.path=/tmp", "--port=18200", "--url=https://demo.remark42.com"}
 
 	go func() {
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(500 * time.Millisecond)
 		err := syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
 		require.Nil(t, err)
 	}()
