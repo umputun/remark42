@@ -9,13 +9,15 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
+	"text/template"
 	"time"
 
-	"github.com/alecthomas/template"
 	"github.com/pkg/errors"
 )
 
 // ExportCommand set of flags and command for export
+// ExportPath used as a separate element to leverage BACKUP_PATH. If ExportFile has a path (i.e. /) BACKUP_PATH ignored.
 type ExportCommand struct {
 	ExportPath   string        `short:"p" long:"path" env:"BACKUP_PATH" default:"./var/backup" description:"export path"`
 	ExportFile   string        `short:"f" long:"file" default:"userbackup-{{.site}}-{{.YYYYMMDD}}.gz" description:"file name"`
@@ -49,13 +51,21 @@ func (ec *ExportCommand) Execute(args []string) error {
 	if err != nil {
 		return errors.Wrapf(err, "request failed for %s", exportURL)
 	}
-	defer func() { _ = resp.Body.Close() }()
+	defer func() {
+		if err = resp.Body.Close(); err != nil {
+			log.Printf("[WARN] failed to close response, %s", err)
+		}
+	}()
 
 	fh, err := os.Create(fname)
 	if err != nil {
 		return errors.Wrapf(err, "can't create backup file %s", fname)
 	}
-	defer func() { _ = fh.Close() }()
+	defer func() {
+		if err = fh.Close(); err != nil {
+			log.Printf("[WARN] failed to close file %s, %s", fh.Name(), err)
+		}
+	}()
 
 	if _, err = io.Copy(fh, resp.Body); err != nil {
 		return errors.Wrapf(err, "failed to write backup file %s", fname)
@@ -85,7 +95,11 @@ func (ec *ExportCommand) parseFileName(now time.Time) (string, error) {
 	}
 
 	bb := bytes.Buffer{}
-	fname := filepath.Join(ec.ExportPath, ec.ExportFile)
+	fname := ec.ExportFile
+	if !strings.Contains(ec.ExportFile, string(filepath.Separator)) {
+		fname = filepath.Join(ec.ExportPath, ec.ExportFile)
+	}
+
 	if err := template.Must(template.New("bb").Parse(fname)).Execute(&bb, fileTemplate); err != nil {
 		return "", errors.Wrapf(err, "failed to parse %q", fname)
 	}

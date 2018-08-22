@@ -48,6 +48,8 @@ func TestExport_ParseFileName(t *testing.T) {
 			"/tmp/blah/fname-remark-20180821.gz", false},
 		{ExportCommand{Site: "remark", ExportPath: "/tmp/blah", ExportFile: "fname-{{.SITE}}-{{.YYYY}}-{{.MM}}.gz"},
 			"/tmp/blah/fname-remark-2018-08.gz", false},
+		{ExportCommand{Site: "remark", ExportPath: "/tmp/blah", ExportFile: "/tmp/fname-{{.SITE}}-{{.YYYY}}-{{.MM}}.gz"},
+			"/tmp/fname-remark-2018-08.gz", false},
 		{ExportCommand{Site: "remark", ExportPath: "/tmp/blah", ExportFile: "fname-{{.XXX}}-{{.YYYY}}-{{.MM}}.gz"},
 			"", true},
 	}

@@ -34,11 +34,17 @@ func (ic *ImportCommand) Execute(args []string) error {
 	if err != nil {
 		return errors.Wrapf(err, "import failed, can't open %s", ic.InputFile)
 	}
-	defer func() { _ = inpFile.Close() }()
+	defer func() {
+		if err = inpFile.Close(); err != nil {
+			log.Printf("[WARN] failed to close file %s, %s", inpFile.Name(), err)
+		}
+	}()
 
 	reader = inpFile
 	if strings.HasSuffix(ic.InputFile, ".gz") {
-		reader, err = gzip.NewReader(inpFile)
+		if reader, err = gzip.NewReader(inpFile); err != nil {
+			return errors.Wrap(err, "can't make gz reader")
+		}
 	}
 
 	client := http.Client{}
@@ -56,7 +62,11 @@ func (ic *ImportCommand) Execute(args []string) error {
 	if err != nil {
 		return errors.Wrapf(err, "request failed for %s", importURL)
 	}
-	defer func() { _ = resp.Body.Close() }()
+	defer func() {
+		if err = resp.Body.Close(); err != nil {
+			log.Printf("[WARN] failed to close response, %s", err)
+		}
+	}()
 	if resp.StatusCode != 200 {
 		return errors.Errorf("error response %s (%d)", resp.Status, resp.StatusCode)
 	}
