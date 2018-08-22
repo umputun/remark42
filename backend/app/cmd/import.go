@@ -54,7 +54,7 @@ func (ic *ImportCommand) Execute(args []string) error {
 			log.Printf("[WARN] failed to close response, %s", err)
 		}
 	}()
-	if resp.StatusCode != 200 {
+	if resp.StatusCode >= 300 {
 		return errors.Errorf("error response %s (%d)", resp.Status, resp.StatusCode)
 	}
 
