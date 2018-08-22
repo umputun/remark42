@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -16,7 +17,7 @@ import (
 // ExportPath used as a separate element to leverage BACKUP_PATH. If ExportFile has a path (i.e. /) BACKUP_PATH ignored.
 type BackupCommand struct {
 	ExportPath   string        `short:"p" long:"path" env:"BACKUP_PATH" default:"./var/backup" description:"export path"`
-	ExportFile   string        `short:"f" long:"file" default:"userbackup-{{.site}}-{{.YYYYMMDD}}.gz" description:"file name"`
+	ExportFile   string        `short:"f" long:"file" default:"userbackup-{{.SITE}}-{{.YYYYMMDD}}.gz" description:"file name"`
 	Site         string        `long:"site" env:"SITE" default:"remark" description:"site name"`
 	SharedSecret string        `long:"secret" env:"SECRET" description:"shared secret key" required:"true"`
 	Timeout      time.Duration `long:"timeout" default:"15m" description:"import timeout"`
@@ -26,13 +27,15 @@ type BackupCommand struct {
 // Execute runs export with ExportCommand parameters, entry point for "export" command
 func (ec *BackupCommand) Execute(args []string) error {
 	log.Printf("[INFO] export to %s, site %s", ec.ExportPath, ec.Site)
+	resetEnv("SECRET")
+
 	fp := fileParser{site: ec.Site, path: ec.ExportPath, file: ec.ExportFile}
 	fname, err := fp.parse(time.Now())
 	if err != nil {
 		return err
 	}
 
-	log.Printf("[INFO] export file %s", fname)
+	log.Printf("[DEBUG] export file %s", fname)
 
 	client := http.Client{}
 	exportURL := fmt.Sprintf("%s/api/v1/admin/export?site=%s&secret=%s", ec.URL, ec.Site, ec.SharedSecret)
@@ -54,6 +57,14 @@ func (ec *BackupCommand) Execute(args []string) error {
 		}
 	}()
 
+	if resp.StatusCode >= 300 {
+		body, e := ioutil.ReadAll(resp.Body)
+		if e != nil {
+			body = []byte("")
+		}
+		return errors.Errorf("error response %q, %s", resp.Status, body)
+	}
+
 	fh, err := os.Create(fname)
 	if err != nil {
 		return errors.Wrapf(err, "can't create backup file %s", fname)
@@ -68,5 +79,6 @@ func (ec *BackupCommand) Execute(args []string) error {
 		return errors.Wrapf(err, "failed to write backup file %s", fname)
 	}
 
+	log.Printf("[INFO] export completed, file %s", fname)
 	return nil
 }

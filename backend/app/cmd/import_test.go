@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	flags "github.com/jessevdk/go-flags"
 	"github.com/stretchr/testify/assert"
@@ -84,4 +85,28 @@ func TestImport_ExecuteFailed(t *testing.T) {
 	err = cmd.Execute(nil)
 	t.Log(err)
 	assert.NotNil(t, err)
+}
+
+func TestImport_ExecuteTimeout(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, r.URL.Path, "/api/v1/admin/import")
+		assert.Equal(t, "POST", r.Method)
+		body, err := ioutil.ReadAll(r.Body)
+		assert.Nil(t, err)
+		assert.Equal(t, "blah\nblah2\n12345678\n", string(body))
+		time.Sleep(500 * time.Millisecond)
+		fmt.Fprintln(w, "some response")
+		fmt.Fprintln(w, string(body))
+
+	}))
+	defer ts.Close()
+
+	cmd := ImportCommand{}
+	p := flags.NewParser(&cmd, flags.Default)
+	_, err := p.ParseArgs([]string{"--secret=123456", "--site=remark", "--file=testdata/import.txt",
+		"--url=" + ts.URL, "--timeout=300ms"})
+	require.Nil(t, err)
+	err = cmd.Execute(nil)
+	assert.NotNil(t, err)
+	assert.True(t, strings.Contains(err.Error(), "deadline exceeded"))
 }

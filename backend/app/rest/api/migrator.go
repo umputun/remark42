@@ -145,7 +145,6 @@ func (m *Migrator) exportCtrl(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/gzip")
 	w.Header().Set("Content-Disposition", "attachment;filename="+exportFile)
-	w.WriteHeader(http.StatusOK)
 	gzWriter := gzip.NewWriter(w)
 	defer func() {
 		if e := gzWriter.Close(); e != nil {
@@ -154,6 +153,7 @@ func (m *Migrator) exportCtrl(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	if _, err := m.NativeExported.Export(gzWriter, siteID); err != nil {
+		log.Printf("[WARN] can't export, %+v", err)
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "export failed")
 		return
 	}

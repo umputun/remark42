@@ -8,7 +8,7 @@ import (
 // RestoreCommand set of flags and command for restore from backup
 type RestoreCommand struct {
 	ImportPath string `short:"p" long:"path" env:"BACKUP_PATH" default:"./var/backup" description:"export path"`
-	ImportFile string `short:"f" long:"file" default:"userbackup-{{.site}}-{{.YYYYMMDD}}.gz" description:"file name"`
+	ImportFile string `short:"f" long:"file" default:"userbackup-{{.SITE}}-{{.YYYYMMDD}}.gz" description:"file name" required:"true"`
 
 	Site         string        `long:"site" env:"SITE" default:"remark" description:"site name"`
 	SharedSecret string        `long:"secret" env:"SECRET" description:"shared secret key" required:"true"`
@@ -20,6 +20,7 @@ type RestoreCommand struct {
 // uses ImportCommand with constructed full file name
 func (rc *RestoreCommand) Execute(args []string) error {
 	log.Printf("[INFO] restore %s, site %s", rc.ImportFile, rc.Site)
+	resetEnv("SECRET")
 
 	fp := fileParser{site: rc.Site, path: rc.ImportPath, file: rc.ImportFile}
 	fname, err := fp.parse(time.Now())

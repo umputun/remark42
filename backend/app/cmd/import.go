@@ -28,15 +28,15 @@ type ImportCommand struct {
 // Execute runs import with ImportCommand parameters, entry point for "import" command
 func (ic *ImportCommand) Execute(args []string) error {
 	log.Printf("[INFO] import %s (%s), site %s", ic.InputFile, ic.Provider, ic.Site)
+	resetEnv("SECRET")
 
-	reader, err := ic.openReader(ic.InputFile)
+	reader, err := ic.reader(ic.InputFile)
 	if err != nil {
 		return errors.Wrapf(err, "can't open import file %s", ic.InputFile)
 	}
 
 	client := http.Client{}
-	importURL := fmt.Sprintf("%s/api/v1/admin/import?site=%s&provider=%s&secret=%s",
-		ic.URL, ic.Site, ic.Provider, ic.SharedSecret)
+	importURL := fmt.Sprintf("%s/api/v1/admin/import?site=%s&provider=%s&secret=%s", ic.URL, ic.Site, ic.Provider, ic.SharedSecret)
 	req, err := http.NewRequest(http.MethodPost, importURL, reader)
 	if err != nil {
 		return errors.Wrapf(err, "can't make import request for %s", importURL)
@@ -44,8 +44,8 @@ func (ic *ImportCommand) Execute(args []string) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), ic.Timeout)
 	defer cancel()
-	req = req.WithContext(ctx)
-	resp, err := client.Do(req) // closes reader
+
+	resp, err := client.Do(req.WithContext(ctx)) // closes reader
 	if err != nil {
 		return errors.Wrapf(err, "request failed for %s", importURL)
 	}
@@ -67,8 +67,8 @@ func (ic *ImportCommand) Execute(args []string) error {
 	return nil
 }
 
-// openReader returns reader and close func. For .gz files wraps with gzipper
-func (ic *ImportCommand) openReader(inp string) (reader io.Reader, err error) {
+// reader returns reader for file. For .gz file wraps with gunzip
+func (ic *ImportCommand) reader(inp string) (reader io.Reader, err error) {
 	inpFile, err := os.Open(inp)
 	if err != nil {
 		return nil, errors.Wrapf(err, "import failed, can't open %s", inp)

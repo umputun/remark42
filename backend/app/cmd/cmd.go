@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"bytes"
+	"log"
+	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
@@ -46,4 +48,13 @@ func (p *fileParser) parse(now time.Time) (string, error) {
 		return "", errors.Wrapf(err, "failed to parse %q", fname)
 	}
 	return bb.String(), nil
+}
+
+// resetEnv clears all sensitive env vars
+func resetEnv(envs ...string) {
+	for _, env := range envs {
+		if err := os.Unsetenv(env); err != nil {
+			log.Printf("[WARN] can't unset env %s, %s", env, err)
+		}
+	}
 }

@@ -11,7 +11,7 @@ import (
 	"syscall"
 	"time"
 
-	bolt "github.com/coreos/bbolt"
+	"github.com/coreos/bbolt"
 	"github.com/go-pkgz/mongo"
 	"github.com/pkg/errors"
 
@@ -126,9 +126,8 @@ type serverApp struct {
 	terminated  chan struct{}
 }
 
-// Execute is the entry point for "server" command
+// Execute is the entry point for "server" command, called by flag parser
 func (s *ServerOpts) Execute(args []string) error {
-	// setupLog(s.Dbg)
 	log.Print("[INFO] start remark42 server")
 	resetEnv("SECRET", "AUTH_GOOGLE_CSEC", "AUTH_GITHUB_CSEC", "AUTH_FACEBOOK_CSEC", "AUTH_YANDEX_CSEC")
 
@@ -441,13 +440,4 @@ func makeAuthProviders(jwtService *auth.JWT, avatarProxy *proxy.Avatar, ds *serv
 		log.Printf("[WARN] no auth providers defined")
 	}
 	return providers
-}
-
-// resetEnv clears all sensitive env vars
-func resetEnv(envs ...string) {
-	for _, env := range envs {
-		if err := os.Unsetenv(env); err != nil {
-			log.Printf("[WARN] can't unset env %s, %s", env, err)
-		}
-	}
 }
