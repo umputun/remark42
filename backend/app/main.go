@@ -15,6 +15,7 @@ import (
 type Opts struct {
 	ServerCmd cmd.ServerOpts    `command:"server"`
 	ImportCmd cmd.ImportCommand `command:"import"`
+	ExportCmd cmd.ExportCommand `command:"export"`
 
 	Dbg bool `long:"dbg" env:"DEBUG" description:"debug mode"`
 }

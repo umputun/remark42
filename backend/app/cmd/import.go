@@ -1,12 +1,15 @@
 package cmd
 
 import (
+	"compress/gzip"
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -26,16 +29,22 @@ type ImportCommand struct {
 func (ic *ImportCommand) Execute(args []string) error {
 	log.Printf("[INFO] import %s (%s), site %s", ic.InputFile, ic.Provider, ic.Site)
 
+	var reader io.Reader
 	inpFile, err := os.Open(ic.InputFile)
 	if err != nil {
 		return errors.Wrapf(err, "import failed, can't open %s", ic.InputFile)
 	}
 	defer func() { _ = inpFile.Close() }()
 
+	reader = inpFile
+	if strings.HasSuffix(ic.InputFile, ".gz") {
+		reader, err = gzip.NewReader(inpFile)
+	}
+
 	client := http.Client{}
 	importURL := fmt.Sprintf("%s/api/v1/admin/import?site=%s&provider=%s&secret=%s",
 		ic.URL, ic.Site, ic.Provider, ic.SharedSecret)
-	req, err := http.NewRequest(http.MethodPost, importURL, inpFile)
+	req, err := http.NewRequest(http.MethodPost, importURL, reader)
 	if err != nil {
 		return errors.Wrapf(err, "can't make import request for %s", importURL)
 	}
@@ -49,7 +58,7 @@ func (ic *ImportCommand) Execute(args []string) error {
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != 200 {
-		return errors.Wrapf(err, "error response %s (%d)", resp.Status, resp.StatusCode)
+		return errors.Errorf("error response %s (%d)", resp.Status, resp.StatusCode)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
