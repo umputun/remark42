@@ -7,10 +7,6 @@
   border-radius: 2px;
   cursor: pointer;
 
-  &:focus {
-    outline: none;
-  }
-
   &:disabled {
     opacity: 0.5;
     pointer-events: none;

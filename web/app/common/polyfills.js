@@ -1,4 +1,5 @@
 import 'core-js/es7/promise';
+import 'focus-visible';
 
 export default function loadPolyfills() {
   const fillCoreJs = () => {
