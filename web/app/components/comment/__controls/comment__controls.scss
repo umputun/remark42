@@ -4,9 +4,10 @@
   user-select: none;
   font-size: 14px;
   font-weight: 700;
+  opacity: 0;
 
-  @media (hover: hover) {
-    font-weight: 700;
-    opacity: 0;
+  &:hover,
+  &:focus-within {
+    opacity: 1;
   }
 }

@@ -8,7 +8,6 @@
   background: url('comment__vote.svg') center no-repeat;
   background-size: contain;
   cursor: pointer;
-  outline: none;
 
   &:hover {
     background-image: url('_selected/comment__vote_selected.svg');
