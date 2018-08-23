@@ -17,3 +17,4 @@ debug.test
 .DS_Store
 .mongo
 remark42
+/bin/
