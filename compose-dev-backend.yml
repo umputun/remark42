@@ -35,7 +35,6 @@ services:
          - "8084:8084" # local oauth2 server
 
         environment:
-            - USER            # preset environment, UID on the host machine, i.e `id -u`
             - REMARK_URL=http://127.0.0.1:8080
             - SECRET=12345
             - STORE_BOLT_PATH=/srv/var/db

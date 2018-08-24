@@ -62,11 +62,19 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 
 ### Backend
 
+#### With Docker (recommended)
+
 * copy provided `docker-compose.yml` and customize for your needs
-* prepare user id for container `` export USER=`id -u $USER` ``
 * make sure you **don't keep** `DEV_PASSWD=something...` for any non-development deployments
-* pull prepared images from docker hub and start - `docker-compose pull && docker-compose up -d`
-* alternatively compile from sources - `docker-compose build && docker-compose up -d`
+* pull prepared images from the docker hub and start - `docker-compose pull && docker-compose up -d`
+* alternatively compile from the sources - `docker-compose build && docker-compose up -d`
+
+#### Without docker
+
+* download archive for [stable release](https://github.com/umputun/remark/releases) or [development version](https://remark42.com/downloads)
+* unpack with `gunzip` (linux, mac os) or with `zip` (windows) 
+* run as `remark42.linux-amd64 server {parameters...}`
+* alternatively compile from the sources - `make OS=[linux|darwin|windows] ARCH=[amd64,386,arm64,arm32]`
 
 #### Parameters
 

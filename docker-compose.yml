@@ -19,7 +19,6 @@ services:
         #  - "80:8080"
 
         environment:
-            - USER
             - REMARK_URL
             - SECRET
             - STORE_BOLT_PATH=/srv/var/db

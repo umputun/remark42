@@ -144,9 +144,12 @@ func (s *ServerOpts) Execute(args []string) error {
 	if err != nil {
 		log.Fatalf("[ERROR] failed to setup application, %+v", err)
 	}
-	err = app.run(ctx)
-	log.Printf("[INFO] remark terminated %s", err)
-	return err
+	if err = app.run(ctx); err != nil {
+		log.Printf("[INFO] remark terminated with error %+v", err)
+		return err
+	}
+	log.Printf("[INFO] remark terminated")
+	return nil
 }
 
 // newServerApp prepares application and return it with all active parts
