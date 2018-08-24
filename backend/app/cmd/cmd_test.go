@@ -21,6 +21,8 @@ func TestExport_ParseFileName(t *testing.T) {
 			"/tmp/blah/fname-remark-2018-08.gz", false},
 		{fileParser{site: "remark", path: "/tmp/blah", file: "/tmp/fname-{{.SITE}}-{{.YYYY}}-{{.MM}}.gz"},
 			"/tmp/fname-remark-2018-08.gz", false},
+		{fileParser{site: "remark", path: "/tmp/blah", file: "/tmp/fname-{{.SITE}}-{{.TS}}.gz"},
+			"/tmp/fname-remark-20180821T212615.gz", false},
 		{fileParser{site: "remark", path: "/tmp/blah", file: "fname-{{.XXX}}-{{.YYYY}}-{{.MM}}.gz"},
 			"", true},
 	}

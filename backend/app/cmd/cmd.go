@@ -1,3 +1,5 @@
+// Package cmd has all top-level commands dispatched by main's flag.Parse
+// The entry point of each command is Execute function
 package cmd
 
 import (
@@ -12,12 +14,14 @@ import (
 	"github.com/pkg/errors"
 )
 
+// fileParser used to convert template strings like blah-{{.SITE}}-{{.YYYYMMDD}} the final format
 type fileParser struct {
 	site string
 	file string
 	path string
 }
 
+// parse apply template and also concat path and file. In case if file contains path separator path will be ignored
 func (p *fileParser) parse(now time.Time) (string, error) {
 
 	fileTemplate := struct {
@@ -26,6 +30,7 @@ func (p *fileParser) parse(now time.Time) (string, error) {
 		YYYYMM   string
 		MM       string
 		DD       string
+		TS       string
 		UNIX     int64
 		SITE     string
 	}{
@@ -36,6 +41,7 @@ func (p *fileParser) parse(now time.Time) (string, error) {
 		DD:       now.Format("02"),
 		UNIX:     now.Unix(),
 		SITE:     p.site,
+		TS:       now.Format("20060102T150405"),
 	}
 
 	bb := bytes.Buffer{}
@@ -50,7 +56,7 @@ func (p *fileParser) parse(now time.Time) (string, error) {
 	return bb.String(), nil
 }
 
-// resetEnv clears all sensitive env vars
+// resetEnv clears sensitive env vars
 func resetEnv(envs ...string) {
 	for _, env := range envs {
 		if err := os.Unsetenv(env); err != nil {

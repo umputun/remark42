@@ -88,9 +88,11 @@ FROM umputun/baseimage:app-latest
 
 WORKDIR /srv
 
-ADD backend/scripts/*.sh /srv/
-ADD start.sh /srv/start.sh
-RUN chmod +x /srv/*.sh
+ADD entrypoint.sh /entrypoint.sh
+ADD backend/scripts/backup.sh /usr/local/bin/backup
+ADD backend/scripts/restore.sh /usr/local/bin/restore
+ADD backend/scripts/import.sh /usr/local/bin/import
+RUN chmod +x /entrypoint.sh /usr/local/bin/backup /usr/local/bin/restore /usr/local/bin/import
 
 COPY --from=build-backend /go/src/github.com/umputun/remark/backend/remark42 /srv/remark42
 COPY --from=build-frontend /srv/web/public/ /srv/web
@@ -100,5 +102,5 @@ RUN ln -s /srv/remark42 /usr/bin/remark42
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s CMD curl --fail http://localhost:8080/ping || exit 1
 
-CMD ["/srv/start.sh"]
-ENTRYPOINT ["/init.sh"]
+CMD ["server"]
+ENTRYPOINT ["/entrypoint.sh"]

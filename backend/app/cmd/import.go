@@ -17,12 +17,13 @@ import (
 
 // ImportCommand set of flags and command for import
 type ImportCommand struct {
-	InputFile    string        `short:"f" long:"file" description:"input file name" required:"true"`
-	Provider     string        `short:"p" long:"provider" default:"disqus" choice:"disqus" choice:"wordpress" description:"import format"`
-	Site         string        `long:"site" env:"SITE" default:"remark" description:"site name"`
-	SharedSecret string        `long:"secret" env:"SECRET" description:"shared secret key" required:"true"`
-	Timeout      time.Duration `long:"timeout" default:"15m" description:"import timeout"`
-	URL          string        `long:"url" default:"http://127.0.0.1:8081" description:"migrator base url"`
+	InputFile    string `short:"f" long:"file" description:"input file name" required:"true"`
+	Provider     string `short:"p" long:"provider" default:"disqus" choice:"disqus" choice:"wordpress" description:"import format"`
+	Site         string `short:"s" long:"site" env:"SITE" default:"remark" description:"site name"`
+	SharedSecret string `long:"secret" env:"SECRET" description:"shared secret key" required:"true"`
+
+	Timeout time.Duration `long:"timeout" default:"15m" description:"import timeout"`
+	URL     string        `long:"url" default:"http://127.0.0.1:8081" description:"migrator base url"`
 }
 
 // Execute runs import with ImportCommand parameters, entry point for "import" command

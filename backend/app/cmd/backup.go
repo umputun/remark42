@@ -17,7 +17,7 @@ import (
 // ExportPath used as a separate element to leverage BACKUP_PATH. If ExportFile has a path (i.e. /) BACKUP_PATH ignored.
 type BackupCommand struct {
 	ExportPath   string        `short:"p" long:"path" env:"BACKUP_PATH" default:"./var/backup" description:"export path"`
-	ExportFile   string        `short:"f" long:"file" default:"userbackup-{{.SITE}}-{{.YYYYMMDD}}.gz" description:"file name"`
+	ExportFile   string        `short:"f" long:"file" default:"userbackup-{{.SITE}}-{{.TS}}.gz" description:"file name"`
 	Site         string        `long:"site" env:"SITE" default:"remark" description:"site name"`
 	SharedSecret string        `long:"secret" env:"SECRET" description:"shared secret key" required:"true"`
 	Timeout      time.Duration `long:"timeout" default:"15m" description:"import timeout"`
@@ -37,17 +37,18 @@ func (ec *BackupCommand) Execute(args []string) error {
 
 	log.Printf("[DEBUG] export file %s", fname)
 
+	// prepare http client
 	client := http.Client{}
 	exportURL := fmt.Sprintf("%s/api/v1/admin/export?site=%s&secret=%s", ec.URL, ec.Site, ec.SharedSecret)
 	req, err := http.NewRequest(http.MethodGet, exportURL, nil)
 	if err != nil {
 		return errors.Wrapf(err, "can't make export request for %s", exportURL)
 	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), ec.Timeout)
 	defer cancel()
-	req = req.WithContext(ctx)
-	resp, err := client.Do(req)
+
+	// get with timeout
+	resp, err := client.Do(req.WithContext(ctx))
 	if err != nil {
 		return errors.Wrapf(err, "request failed for %s", exportURL)
 	}

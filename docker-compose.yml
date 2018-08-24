@@ -36,5 +36,3 @@ services:
             # - DEV_PASSWD=password # development mode, be careful!
         volumes:
             - ./var:/srv/var
-
-        command: /srv/start.sh
