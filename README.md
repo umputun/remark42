@@ -24,6 +24,8 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 
   - [Install](#install)
     - [Backend](#backend)
+      - [With Docker](#with-docker) 
+      - [Without docker](#without-docker) 
       - [Parameters](#parameters)
         - [Required parameters](#required-parameters)
       - [Register oauth2 providers](#register-oauth2-providers)
@@ -35,8 +37,8 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
       - [Initial import from WordPress](#initial-import-from-wordpress)
       - [Backup and restore](#backup-and-restore)
         - [Automatic backups](#automatic-backups)
-        - [Schema migration](#schema-migration)
         - [Manual backup](#manual-backup)
+        - [Restore from backup](#restore-from-backup)
         - [Backup format](#backup-format)
       - [Admin users](#admin-users)
     - [Setup on your website](#setup-on-your-website)
@@ -62,7 +64,9 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 
 ### Backend
 
-#### With Docker (recommended)
+#### With Docker
+
+_this is the recommended way to run remark42_
 
 * copy provided `docker-compose.yml` and customize for your needs
 * make sure you **don't keep** `DEV_PASSWD=something...` for any non-development deployments
@@ -73,7 +77,7 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 
 * download archive for [stable release](https://github.com/umputun/remark/releases) or [development version](https://remark42.com/downloads)
 * unpack with `gunzip` (linux, mac os) or with `zip` (windows) 
-* run as `remark42.linux-amd64 server {parameters...}`
+* run as `remark42.{os}-{arch} server {parameters...}`, i.e. `remark42.linux-amd64 server --secret=12345 --url=http://127.0.0.1:8080`
 * alternatively compile from the sources - `make OS=[linux|darwin|windows] ARCH=[amd64,386,arm64,arm32]`
 
 #### Parameters
@@ -147,7 +151,6 @@ services:
             - SECRET=abcd-123456-xyz-$%^&           # secret key
             - AUTH_GITHUB_CID=12345667890           # oauth2 client ID
             - AUTH_GITHUB_CSEC=abcdefg12345678      # oauth2 client secret
-            - USER=1001                             # UID on the host machine, i.e `id -u`
         volumes:
             - ./var:/srv/var                        # persistent volume to store all remark42 data 
 ```
@@ -230,6 +233,12 @@ For safety and security reasons restore functionality not exposed outside of you
 In addition to automatic backups user can make a backup manually. This command makes `userbackup-{site id}-{timestamp}.gz` by default.
 
 `docker exec -it remark42 backup -s {your site id}`
+
+##### Restore from backup
+
+Restore will clean all comments first and then will processed with complete import from a given file.
+
+`docker exec -it remark42 restore -f {backup file name} -s {your site id}`
 
 ##### Backup format
 
