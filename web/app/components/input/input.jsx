@@ -146,6 +146,13 @@ export default class Input extends Component {
 
           {mods.type === 'main' && (
             <div className="input__rss">
+              <div class="input__markdown">
+                Styling with{' '}
+                <a className="input__markdown-link" target="_blank" href="markdown-help.html" target="_blank">
+                  Markdown
+                </a>{' '}
+                is supported
+              </div>
               Subscribe to&nbsp;this{' '}
               <a className="input__rss-link" href={RSS_THREAD_URL} target="_blank">
                 Thread
