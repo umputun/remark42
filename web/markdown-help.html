@@ -1,0 +1,548 @@
+<!doctype html>
+<html class="no-js" lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <title>Remark &amp; Markdown</title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        html {
+            color: #222;
+            font-size: 1em;
+            line-height: 1.4;
+        }
+        hr {
+            display: block;
+            height: 1px;
+            border: 0;
+            border-top: 1px solid #ccc;
+            margin: 1em 0;
+            padding: 0;
+        }
+
+        audio,
+        canvas,
+        iframe,
+        img,
+        svg,
+        video {
+            vertical-align: middle;
+        }
+
+        fieldset {
+            border: 0;
+            margin: 0;
+            padding: 0;
+        }
+
+        textarea {
+            resize: vertical;
+        }
+
+        .browserupgrade {
+            margin: 0.2em 0;
+            background: #eee;
+            color: #000;
+            padding: 0.2em 0;
+        }
+
+
+        body {
+            font: 16px/26px Helvetica, Helvetica Neue, Arial;
+        }
+
+        .wrapper {
+            width: 90%;
+            margin: 0 5%;
+        }
+
+        .title {
+            color: #222;
+        }
+
+        nav ul {
+            margin: 0;
+            padding: 0;
+            list-style-type: none;
+        }
+
+        nav a {
+            display: block;
+            margin-bottom: 10px;
+            padding: 15px 0;
+
+            text-align: center;
+            text-decoration: none;
+            font-weight: bold;
+
+            color: #222;
+        }
+
+        nav a:hover,
+        nav a:visited {
+            color: #222;
+        }
+
+        nav a:hover {
+            text-decoration: underline;
+        }
+
+        .main {
+            padding: 30px 0;
+        }
+
+        .main article h1 {
+            font-size: 2em;
+        }
+
+        .main aside {
+            color: #222;
+            padding: 0px 5% 10px;
+        }
+
+        .footer-container footer {
+            color: #222;
+            padding: 20px 0;
+        }
+
+        .ie7 .title {
+            padding-top: 20px;
+        }
+
+        @media only screen and (min-width: 480px) {
+
+            nav a {
+                float: left;
+                width: 27%;
+                margin: 0 1.7%;
+                padding: 25px 2%;
+                margin-bottom: 0;
+            }
+
+            nav li:first-child a {
+                margin-left: 0;
+            }
+
+            nav li:last-child a {
+                margin-right: 0;
+            }
+
+            nav ul li {
+                display: inline;
+            }
+
+            .oldie nav a {
+                margin: 0 0.7%;
+            }
+        }
+
+        @media only screen and (min-width: 768px) {
+
+            .main aside {
+                background: #eee;
+            }
+
+            .title {
+                float: left;
+            }
+
+            nav {
+                float: right;
+                width: 38%;
+            }
+
+            .main article {
+                float: left;
+                width: 57%;
+            }
+
+            .main aside {
+                float: right;
+                width: 28%;
+            }
+        }
+
+        @media only screen and (min-width: 1140px) {
+
+            .wrapper {
+                width: 1026px;
+                /* 1140px - 10% for margins */
+                margin: 0 auto;
+            }
+        }
+
+        .hidden {
+            display: none !important;
+            visibility: hidden;
+        }
+
+        .visuallyhidden {
+            border: 0;
+            clip: rect(0 0 0 0);
+            height: 1px;
+            margin: -1px;
+            overflow: hidden;
+            padding: 0;
+            position: absolute;
+            width: 1px;
+        }
+
+        .visuallyhidden.focusable:active,
+        .visuallyhidden.focusable:focus {
+            clip: auto;
+            height: auto;
+            margin: 0;
+            overflow: visible;
+            position: static;
+            width: auto;
+        }
+
+        .invisible {
+            visibility: hidden;
+        }
+
+        .clearfix:before,
+        .clearfix:after {
+            content: " ";
+            display: table;
+        }
+
+        .clearfix:after {
+            clear: both;
+        }
+
+        .clearfix {
+            *zoom: 1;
+        }
+
+        @media print {
+            *,
+            *:before,
+            *:after {
+                background: transparent !important;
+                color: #000 !important;
+                box-shadow: none !important;
+                text-shadow: none !important;
+            }
+
+            aside {
+                display: none;
+            }
+
+            a,
+            a:visited {
+                text-decoration: underline;
+            }
+
+            a[href]:after {
+                content: " (" attr(href) ")";
+            }
+
+            abbr[title]:after {
+                content: " (" attr(title) ")";
+            }
+
+            a[href^="#"]:after,
+            a[href^="javascript:"]:after {
+                content: "";
+            }
+
+            pre,
+            blockquote {
+                border: 1px solid #999;
+                page-break-inside: avoid;
+            }
+
+            thead {
+                display: table-header-group;
+            }
+
+            tr,
+            img {
+                page-break-inside: avoid;
+            }
+
+            img {
+                max-width: 100% !important;
+            }
+
+            p,
+            h2,
+            h3 {
+                orphans: 3;
+                widows: 3;
+            }
+
+            h2,
+            h3 {
+                page-break-after: avoid;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header-container">
+        <header class="wrapper clearfix">
+            <h1 class="title">Remark &amp; Markdown</h1>
+        </header>
+    </div>
+
+    <div class="main-container">
+        <div class="main wrapper clearfix">
+
+            <article>
+                <p>This page offers a brief overview of what it’s like to use Markdown.<br><br>
+                    <h2 id="Paragraphs-Headers-Blockquotes"><a id="Paragraphs_Headers_Blockquotes_34"></a>Paragraphs, Headers, Blockquotes</h2>
+                    <p>A paragraph is simply one or more consecutive lines of text, separated<br> by one or more blank lines.
+                        (A blank line is any line that looks like a<br> blank line – a line containing nothing spaces or
+                        tabs is considered<br> blank.) Normal paragraphs should not be intended with spaces or tabs.</p>
+                    <p>Markdown offers two styles of headers: <em>Setext</em> and <em>atx</em>.<br> Setext-style headers
+                        for <code>&lt;h1&gt;</code> and <code>&lt;h2&gt;</code> are created by<br> “underlining” with equal
+                        signs (<code>=</code>) and hyphens (<code>-</code>), respectively.<br> To create an atx-style header,
+                        you put 1-6 hash marks (<code>#</code>) at the<br> beginning of the line – the number of hashes equals
+                        the resulting<br> HTML header level.</p>
+                    <p>Blockquotes are indicated using email-style ’<code>&gt;</code>’ angle brackets.</p>
+                    <p>Markdown:</p>
+                    <pre><code>A First Level Header
+====================
+
+A Second Level Header
+---------------------
+
+Now is the time for all good men to come to
+the aid of their country. This is just a
+regular paragraph.
+
+The quick brown fox jumped over the lazy
+dog's back.
+
+### Header 3
+
+&gt; This is a blockquote.
+&gt; 
+&gt; This is the second paragraph in the blockquote.
+&gt;
+&gt; ## This is an H2 in a blockquote
+</code></pre>
+                    <p>Output:</p>
+                    <pre><code>&lt;h1&gt;A First Level Header&lt;/h1&gt;
+
+&lt;h2&gt;A Second Level Header&lt;/h2&gt;
+
+&lt;p&gt;Now is the time for all good men to come to
+the aid of their country. This is just a
+regular paragraph.&lt;/p&gt;
+
+&lt;p&gt;The quick brown fox jumped over the lazy
+dog's back.&lt;/p&gt;
+
+&lt;h3&gt;Header 3&lt;/h3&gt;
+
+&lt;blockquote&gt;
+    &lt;p&gt;This is a blockquote.&lt;/p&gt;
+    
+    &lt;p&gt;This is the second paragraph in the blockquote.&lt;/p&gt;
+    
+    &lt;h2&gt;This is an H2 in a blockquote&lt;/h2&gt;
+&lt;/blockquote&gt;
+</code></pre>
+                    <h3><a id="Phrase-Emphasis"></a>Phrase Emphasis</h3>
+                    <p>Markdown uses asterisks and underscores to indicate spans of emphasis.</p>
+                    <p>Markdown:</p>
+                    <pre><code>Some of these words *are emphasized*.
+Some of these words _are emphasized also_.
+
+Use two asterisks for **strong emphasis**.
+Or, if you prefer, __use two underscores instead__.
+</code></pre>
+                    <p>Output:</p>
+                    <pre><code>&lt;p&gt;Some of these words &lt;em&gt;are emphasized&lt;/em&gt;.
+Some of these words &lt;em&gt;are emphasized also&lt;/em&gt;.&lt;/p&gt;
+
+&lt;p&gt;Use two asterisks for &lt;strong&gt;strong emphasis&lt;/strong&gt;.
+Or, if you prefer, &lt;strong&gt;use two underscores instead&lt;/strong&gt;.&lt;/p&gt;
+</code></pre>
+                    <h2 id="Lists"><a id="Lists_121"></a>Lists</h2>
+                    <p>Unordered (bulleted) lists use asterisks, pluses, and hyphens (<code>*</code>,<br>
+                        <code>+</code>, and <code>-</code>) as list markers. These three markers are<br> interchangable;
+                        this:</p>
+                    <pre><code>*   Candy.
+*   Gum.
+*   Booze.
+</code></pre>
+                    <p>this:</p>
+                    <pre><code>+   Candy.
++   Gum.
++   Booze.
+</code></pre>
+                    <p>and this:</p>
+                    <pre><code>-   Candy.
+-   Gum.
+-   Booze.
+</code></pre>
+                    <p>all produce the same output:</p>
+                    <pre><code>&lt;ul&gt;
+&lt;li&gt;Candy.&lt;/li&gt;
+&lt;li&gt;Gum.&lt;/li&gt;
+&lt;li&gt;Booze.&lt;/li&gt;
+&lt;/ul&gt;
+</code></pre>
+                    <p>Ordered (numbered) lists use regular numbers, followed by periods, as<br> list markers:</p>
+                    <pre><code>1.  Red
+2.  Green
+3.  Blue
+</code></pre>
+                    <p>Output:</p>
+                    <pre><code>&lt;ol&gt;
+&lt;li&gt;Red&lt;/li&gt;
+&lt;li&gt;Green&lt;/li&gt;
+&lt;li&gt;Blue&lt;/li&gt;
+&lt;/ol&gt;
+</code></pre>
+                    <p>If you put blank lines between items, you’ll get <code>&lt;p&gt;</code> tags for the<br> list item
+                        text. You can create multi-paragraph list items by indenting<br> the paragraphs by 4 spaces or 1
+                        tab:</p>
+                    <pre><code>*   A list item.
+
+    With multiple paragraphs.
+
+*   Another item in the list.
+</code></pre>
+                    <p>Output:</p>
+                    <pre><code>&lt;ul&gt;
+&lt;li&gt;&lt;p&gt;A list item.&lt;/p&gt;
+&lt;p&gt;With multiple paragraphs.&lt;/p&gt;&lt;/li&gt;
+&lt;li&gt;&lt;p&gt;Another item in the list.&lt;/p&gt;&lt;/li&gt;
+&lt;/ul&gt;
+</code></pre>
+                    <h3 id="Links"><a id="Links_186"></a>Links</h3>
+                    <p>Markdown supports two styles for creating links: <em>inline</em> and<br>
+                        <em>reference</em>. With both styles, you use square brackets to delimit the<br> text you want to
+                        turn into a link.</p>
+                    <p>Inline-style links use parentheses immediately after the link text.<br> For example:</p>
+                    <pre><code>This is an [example link](http://example.com/).
+</code></pre>
+                    <p>Output:</p>
+                    <pre><code>&lt;p&gt;This is an &lt;a href=&quot;http://example.com/&quot;&gt;
+example link&lt;/a&gt;.&lt;/p&gt;
+</code></pre>
+                    <p>Optionally, you may include a title attribute in the parentheses:</p>
+                    <pre><code>This is an [example link](http://example.com/ &quot;With a Title&quot;).
+</code></pre>
+                    <p>Output:</p>
+                    <pre><code>&lt;p&gt;This is an &lt;a href=&quot;http://example.com/&quot; title=&quot;With a Title&quot;&gt;
+example link&lt;/a&gt;.&lt;/p&gt;
+</code></pre>
+                    <p>Reference-style links allow you to refer to your links by names, which<br> you define elsewhere in
+                        your document:</p>
+                    <pre><code>I get 10 times more traffic from [Google][1] than from
+[Yahoo][2] or [MSN][3].
+
+[1]: http://google.com/        &quot;Google&quot;
+[2]: http://search.yahoo.com/  &quot;Yahoo Search&quot;
+[3]: http://search.msn.com/    &quot;MSN Search&quot;
+</code></pre>
+                    <p>Output:</p>
+                    <pre><code>&lt;p&gt;I get 10 times more traffic from &lt;a href=&quot;http://google.com/&quot;
+title=&quot;Google&quot;&gt;Google&lt;/a&gt; than from &lt;a href=&quot;http://search.yahoo.com/&quot;
+title=&quot;Yahoo Search&quot;&gt;Yahoo&lt;/a&gt; or &lt;a href=&quot;http://search.msn.com/&quot;
+title=&quot;MSN Search&quot;&gt;MSN&lt;/a&gt;.&lt;/p&gt;
+</code></pre>
+                    <p>The title attribute is optional. Link names may contain letters,<br> numbers and spaces, but are <em>not</em>
+                        case sensitive:</p>
+                    <pre><code>I start my morning with a cup of coffee and
+[The New York Times][NY Times].
+
+[ny times]: http://www.nytimes.com/
+</code></pre>
+                    <p>Output:</p>
+                    <pre><code>&lt;p&gt;I start my morning with a cup of coffee and
+&lt;a href=&quot;http://www.nytimes.com/&quot;&gt;The New York Times&lt;/a&gt;.&lt;/p&gt;
+</code></pre>
+                    <h3 id="Images"><a id="Images_242"></a>Images</h3>
+                    <p>Image syntax is very much like link syntax.</p>
+                    <p>Inline (titles are optional):</p>
+                    <pre><code>![alt text](/path/to/img.jpg &quot;Title&quot;)
+</code></pre>
+                    <p>Reference-style:</p>
+                    <pre><code>![alt text][id]
+
+[id]: /path/to/img.jpg &quot;Title&quot;
+</code></pre>
+                    <p>Both of the above examples produce the same output:</p>
+                    <pre><code>&lt;img src=&quot;/path/to/img.jpg&quot; alt=&quot;alt text&quot; title=&quot;Title&quot; /&gt;
+</code></pre>
+                    <h3><a id="Code"></a>Code</h3>
+                    <p>In a regular paragraph, you can create code span by wrapping text in<br> backtick quotes. Any ampersands
+                        (<code>&amp;</code>) and angle brackets (<code>&lt;</code> or<br>
+                        <code>&gt;</code>) will automatically be translated into HTML entities. This makes<br> it easy to
+                        use Markdown to write about HTML example code:</p>
+                    <pre><code>I strongly recommend against using any `&lt;blink&gt;` tags.
+
+I wish SmartyPants used named entities like `&amp;mdash;`
+instead of decimal-encoded entites like `&amp;#8212;`.
+</code></pre>
+                    <p>Output:</p>
+                    <pre><code>&lt;p&gt;I strongly recommend against using any
+&lt;code&gt;&amp;lt;blink&amp;gt;&lt;/code&gt; tags.&lt;/p&gt;
+
+&lt;p&gt;I wish SmartyPants used named entities like
+&lt;code&gt;&amp;amp;mdash;&lt;/code&gt; instead of decimal-encoded
+entites like &lt;code&gt;&amp;amp;#8212;&lt;/code&gt;.&lt;/p&gt;
+</code></pre>
+                    <p>To specify an entire block of pre-formatted code, indent every line of<br> the block by 4 spaces or
+                        1 tab. Just like with code spans, <code>&amp;</code>, <code>&lt;</code>,<br> and <code>&gt;</code>                        characters
+                        will be escaped automatically.</p>
+                    <p>Markdown:</p>
+                    <pre><code>If you want your page to validate under XHTML 1.0 Strict,
+you've got to put paragraph tags in your blockquotes:
+
+    &lt;blockquote&gt;
+        &lt;p&gt;For example.&lt;/p&gt;
+    &lt;/blockquote&gt;
+</code></pre>
+                    <p>Output:</p>
+                    <pre><code>&lt;p&gt;If you want your page to validate under XHTML 1.0 Strict,
+you've got to put paragraph tags in your blockquotes:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;&amp;lt;blockquote&amp;gt;
+    &amp;lt;p&amp;gt;For example.&amp;lt;/p&amp;gt;
+&amp;lt;/blockquote&amp;gt;
+&lt;/code&gt;&lt;/pre&gt;</code></pre>
+
+<br>
+This text is <a href="https://github.com/russross/blackfriday">originally belongs</a> to 
+the Blackfriday project (a Markdown processor implemented in Go). 
+            </article>
+
+            <aside>
+                <h3>Contents</h3>
+                <p>
+                    <a href="#Paragraphs-Headers-Blockquotes">Paragraphs, Headers, Blockquotes</a>
+                </p>
+                <p>
+                    <a href="#Phrase-Emphasis">Phrase Emphasis</a>
+                </p>
+                <p>
+                    <a href="#Lists">Lists</a>
+                </p>
+                <p>
+                    <a href="#Links">Links</a>
+                </p>
+                <p>
+                    <a href="#Images">Images</a>
+                </p>
+                <p>
+                    <a href="#Code">Code</a>
+                </p>
+            </aside>
+
+        </div>
+    </div>
+</body>
+
+</html>
