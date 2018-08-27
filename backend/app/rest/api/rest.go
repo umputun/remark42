@@ -60,6 +60,8 @@ type Rest struct {
 
 const hardBodyLimit = 1024 * 64 // limit size of body
 
+const lastCommentsScope = "last"
+
 type commentsWithInfo struct {
 	Comments []store.Comment `json:"comments"`
 	Info     store.PostInfo  `json:"info,omitempty"`

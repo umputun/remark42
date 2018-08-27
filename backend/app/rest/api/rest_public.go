@@ -114,7 +114,7 @@ func (s *Rest) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		limit = 0
 	}
 
-	key := cache.NewKey(siteID).ID(cache.URLKey(r)).Scopes("last")
+	key := cache.NewKey(siteID).ID(cache.URLKey(r)).Scopes(lastCommentsScope)
 	data, err := s.Cache.Get(key, func() ([]byte, error) {
 		comments, e := s.DataService.Last(siteID, limit)
 		if e != nil {
