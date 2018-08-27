@@ -196,7 +196,8 @@ func TestServerApp_MainSignal(t *testing.T) {
 		"--port=18100", "--url=https://demo.remark42.com"}
 	_, err := p.ParseArgs(args)
 	require.Nil(t, err)
-	s.Execute(args)
+	err = s.Execute(args)
+	assert.NoError(t, err, "execute failed")
 	assert.True(t, time.Since(st).Seconds() < 1, "should take about 500msec")
 }
 
