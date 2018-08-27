@@ -24,6 +24,8 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 
   - [Install](#install)
     - [Backend](#backend)
+      - [With Docker](#with-docker) 
+      - [Without docker](#without-docker) 
       - [Parameters](#parameters)
         - [Required parameters](#required-parameters)
       - [Register oauth2 providers](#register-oauth2-providers)
@@ -35,8 +37,8 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
       - [Initial import from WordPress](#initial-import-from-wordpress)
       - [Backup and restore](#backup-and-restore)
         - [Automatic backups](#automatic-backups)
-        - [Schema migration](#schema-migration)
         - [Manual backup](#manual-backup)
+        - [Restore from backup](#restore-from-backup)
         - [Backup format](#backup-format)
       - [Admin users](#admin-users)
     - [Setup on your website](#setup-on-your-website)
@@ -62,11 +64,21 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 
 ### Backend
 
+#### With Docker
+
+_this is the recommended way to run remark42_
+
 * copy provided `docker-compose.yml` and customize for your needs
-* prepare user id for container `` export USER=`id -u $USER` ``
 * make sure you **don't keep** `DEV_PASSWD=something...` for any non-development deployments
-* pull prepared images from docker hub and start - `docker-compose pull && docker-compose up -d`
-* alternatively compile from sources - `docker-compose build && docker-compose up -d`
+* pull prepared images from the docker hub and start - `docker-compose pull && docker-compose up -d`
+* alternatively compile from the sources - `docker-compose build && docker-compose up -d`
+
+#### Without docker
+
+* download archive for [stable release](https://github.com/umputun/remark/releases) or [development version](https://remark42.com/downloads)
+* unpack with `gunzip` (linux, mac os) or with `zip` (windows) 
+* run as `remark42.{os}-{arch} server {parameters...}`, i.e. `remark42.linux-amd64 server --secret=12345 --url=http://127.0.0.1:8080`
+* alternatively compile from the sources - `make OS=[linux|darwin|windows] ARCH=[amd64,386,arm64,arm32]`
 
 #### Parameters
 
@@ -139,7 +151,6 @@ services:
             - SECRET=abcd-123456-xyz-$%^&           # secret key
             - AUTH_GITHUB_CID=12345667890           # oauth2 client ID
             - AUTH_GITHUB_CSEC=abcdefg12345678      # oauth2 client secret
-            - USER=1001                             # UID on the host machine, i.e `id -u`
         volumes:
             - ./var:/srv/var                        # persistent volume to store all remark42 data 
 ```
@@ -200,13 +211,13 @@ For more details refer to [Yandex OAuth](https://tech.yandex.com/oauth/doc/dg/co
 
 1.  Disqus provides an export of all comments on your site in a g-zipped file. This is found in your Moderation panel at Disqus Admin > Setup > Export. The export will be sent into a queue and then emailed to the address associated with your account once it's ready. Direct link to export will be something like `https://<siteud>.disqus.com/admin/discussions/export/`. See [importing-exporting](https://help.disqus.com/customer/portal/articles/1104797-importing-exporting) for more details.
 2.  Move this file to your remark42 host within `./var` and unzip, i.e. `gunzip <disqus-export-name>.xml.gz`.
-3.  Run import command - `docker-compose exec remark42 /srv/import-disqus.sh <disqus-export-name>.xml <your site id>`
+3.  Run import command - `docker exec -it remark42 import -p disqus -f {disqus-export-name}.xml -s {your site id}`
 
 #### Initial import from WordPress
 
 1. Install WordPress [plugin](https://wordpress.org/plugins/wp-exporter/) to export comments and follow it instructions. The plugin should produce a xml-based file with site content including comments. 
 2. Move this file to your remark42 host within `./var`
-3. Run import command - `docker-compose exec remark42 /srv/import-wordpress.sh <wordpress-export-name>.xml <your site id>`
+3. Run import command - `docker exec -it remark42 import -p wordpress -f {wordpress-export-name}.xml -s {your site id}`
 
 #### Backup and restore
 
@@ -215,20 +226,19 @@ Remark42 by default makes daily backup files under `${BACKUP_PATH}` (default `./
 
 For safety and security reasons restore functionality not exposed outside of your server by default. The recommended way to restore from the backup is to use provided `scripts/restore-backup.sh`. It can run inside the container:
 
-`docker-compose exec remark42 /srv/restore-backup.sh {backup-filename.gz} {your site id}`
-
-##### Schema migration
-
-One special case for backup/restore is schema migration. Some versions or remark42 may extend or change the schema 
-and for such upgrades migration required. Provided migration script `scripts/migrate-data.sh` makes a fresh backup and then loads it back to your remark42 instance.
-
-`docker-compose exec remark42 /srv/migrate-data.sh {your site id}`
+`docker exec -it remark42 restore -f {backup-filename.gz} -s {your site id}`
 
 ##### Manual backup
 
-In addition to automatic backups user can make a backup manually. This command makes `userbackup-{site id}-{timestamp}.gz`
+In addition to automatic backups user can make a backup manually. This command makes `userbackup-{site id}-{timestamp}.gz` by default.
 
-`docker-compose exec remark42 /srv/create-backup.sh {your site id}`
+`docker exec -it remark42 backup -s {your site id}`
+
+##### Restore from backup
+
+Restore will clean all comments first and then will processed with complete import from a given file.
+
+`docker exec -it remark42 restore -f {backup file name} -s {your site id}`
 
 ##### Backup format
 
