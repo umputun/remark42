@@ -19,3 +19,5 @@ debug
 debug.test
 *.prof
 *.test
+/bin/
+remark42

@@ -72,6 +72,21 @@ func TestRest_Shutdown(t *testing.T) {
 	assert.True(t, time.Since(st).Seconds() < 1, "should take about 100ms")
 }
 
+func TestRest_filterComments(t *testing.T) {
+	user := store.User{ID: "user1", Name: "user name 1"}
+	c1 := store.Comment{User: user, Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
+		URL: "https://radio-t.com/blah1"}, Timestamp: time.Date(2018, 05, 27, 1, 14, 10, 0, time.Local)}
+	c2 := store.Comment{User: user, Text: "test test #2", ParentID: "p1", Locator: store.Locator{SiteID: "radio-t",
+		URL: "https://radio-t.com/blah1"}, Timestamp: time.Date(2018, 05, 27, 1, 14, 20, 0, time.Local)}
+	c3 := store.Comment{User: user, Text: "test test #3", ParentID: "p1", Locator: store.Locator{SiteID: "radio-t",
+		URL: "https://radio-t.com/blah1"}, Timestamp: time.Date(2018, 05, 27, 1, 14, 25, 0, time.Local)}
+
+	r := filterComments([]store.Comment{c1, c2, c3}, func(c store.Comment) bool {
+		return c.Text == "test test #1" || c.Text == "test test #3"
+	})
+	assert.Equal(t, 2, len(r), "one comment filtered")
+}
+
 func prep(t *testing.T) (srv *Rest, ts *httptest.Server) {
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDb, SiteID: "radio-t"})
 	require.Nil(t, err)

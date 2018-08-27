@@ -135,22 +135,27 @@ func (a *Authenticator) basicDevUser(w http.ResponseWriter, r *http.Request) boo
 		return false
 	}
 
+	log.Printf("[DEBUG] dev user auth")
 	s := strings.SplitN(r.Header.Get("Authorization"), " ", 2)
 	if len(s) != 2 {
+		log.Printf("[WARN] dev user auth failed, incorrect auth header %s", r.Header.Get("Authorization"))
 		return false
 	}
 
 	b, err := base64.StdEncoding.DecodeString(s[1])
 	if err != nil {
+		log.Printf("[WARN] dev user auth failed, failed to decode %s, %s", s[1], err)
 		return false
 	}
 
 	pair := strings.SplitN(string(b), ":", 2)
 	if len(pair) != 2 {
+		log.Printf("[WARN] dev user auth failed, failed to split %s", string(b))
 		return false
 	}
 
 	if pair[0] != "dev" || pair[1] != a.DevPasswd {
+		log.Printf("[WARN] dev user auth failed, user/passwd mismatch %+v", pair)
 		return false
 	}
 
