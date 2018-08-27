@@ -66,3 +66,19 @@ func TestMiddleware_GetBodyAndUser(t *testing.T) {
 	assert.Equal(t, "", body)
 	assert.Equal(t, ` - id1 "user1"`, user, "no user")
 }
+
+func TestMiddleware_sanitizeReqURL(t *testing.T) {
+	tbl := []struct {
+		in  string
+		out string
+	}{
+		{"", ""},
+		{"/aa/bb?xyz=123", "/aa/bb?xyz=123"},
+		{"/aa/bb?xyz=123&secret=asdfghjk", "/aa/bb?xyz=123&secret=********"},
+		{"/aa/bb?xyz=123&secret=asdfghjk&key=val", "/aa/bb?xyz=123&secret=********&key=val"},
+		{"/aa/bb?xyz=123&secret=asdfghjk&key=val&password=1234", "/aa/bb?xyz=123&secret=********&key=val&password=****"},
+	}
+	for i, tt := range tbl {
+		assert.Equal(t, tt.out, sanitizeQuery(tt.in), "check #%d, %s", i, tt.in)
+	}
+}

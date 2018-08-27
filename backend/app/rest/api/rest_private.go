@@ -71,7 +71,7 @@ func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.Cache.Flush(cache.Flusher(comment.Locator.SiteID).
-		Scopes(comment.Locator.URL, "last", comment.User.ID, comment.Locator.SiteID))
+		Scopes(comment.Locator.URL, lastCommentsScope, comment.User.ID, comment.Locator.SiteID))
 
 	render.Status(r, http.StatusCreated)
 	render.JSON(w, r, &finalComment)
@@ -120,7 +120,7 @@ func (s *Rest) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.Cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL, "last", user.ID))
+	s.Cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL, lastCommentsScope, user.ID))
 	render.JSON(w, r, res)
 }
 

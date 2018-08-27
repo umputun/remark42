@@ -59,7 +59,7 @@ RUN \
     tar cvzf remark42${tag}.linux-386.tar.gz remark42.linux-386 ../LICENSE ../README.md && \
     tar cvzf remark42${tag}.linux-arm64.tar.gz remark42.linux-arm64 ../LICENSE ../README.md && \
     tar cvzf remark42${tag}.darwin-amd64.tar.gz remark42.darwin-amd64 ../LICENSE ../README.md && \
-    zip remark${tag}.windows-amd64.zip remark42.windows-amd64.exe ../LICENSE ../README.md
+    zip remark42${tag}.windows-amd64.zip remark42.windows-amd64.exe ../LICENSE ../README.md
 
 # upload to github
 RUN \
@@ -84,4 +84,5 @@ RUN \
 
 FROM alpine
 COPY --from=build-backend /go/src/github.com/umputun/remark/backend/remark42.* /artifacts/
+RUN ls -la /artifacts/*
 CMD ["sleep", "100"]

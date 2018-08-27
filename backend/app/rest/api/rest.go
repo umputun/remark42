@@ -60,6 +60,8 @@ type Rest struct {
 
 const hardBodyLimit = 1024 * 64 // limit size of body
 
+const lastCommentsScope = "last"
+
 type commentsWithInfo struct {
 	Comments []store.Comment `json:"comments"`
 	Info     store.PostInfo  `json:"info,omitempty"`
@@ -123,7 +125,7 @@ func (s *Rest) routes() chi.Router {
 		AllowedOrigins:   []string{"*"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-XSRF-Token", "X-JWT"},
-		ExposedHeaders:   []string{"Link"},
+		ExposedHeaders:   []string{"Authorization"},
 		AllowCredentials: true,
 		MaxAge:           300,
 	})

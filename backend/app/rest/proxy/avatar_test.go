@@ -66,7 +66,7 @@ func TestAvatar_PutFailed(t *testing.T) {
 	_, err := p.Put(u)
 	assert.EqualError(t, err, "no picture for user1")
 
-	u = store.User{ID: "user1", Name: "user1 name", Picture: "http://127.0.0.1:12345/avater/pic"}
+	u = store.User{ID: "user1", Name: "user1 name", Picture: "http://127.0.0.1:22345/avater/pic"}
 	_, err = p.Put(u)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "connect: connection refused")

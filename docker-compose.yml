@@ -19,7 +19,6 @@ services:
         #  - "80:8080"
 
         environment:
-            - USER
             - REMARK_URL
             - SECRET
             - STORE_BOLT_PATH=/srv/var/db
@@ -36,5 +35,3 @@ services:
             # - DEV_PASSWD=password # development mode, be careful!
         volumes:
             - ./var:/srv/var
-
-        command: /srv/start.sh

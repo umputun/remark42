@@ -114,23 +114,15 @@ func (s *Rest) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		limit = 0
 	}
 
-	key := cache.NewKey(siteID).ID(cache.URLKey(r)).Scopes("last")
+	key := cache.NewKey(siteID).ID(cache.URLKey(r)).Scopes(lastCommentsScope)
 	data, err := s.Cache.Get(key, func() ([]byte, error) {
 		comments, e := s.DataService.Last(siteID, limit)
 		if e != nil {
 			return nil, e
 		}
 		comments = s.adminService.alterComments(comments, r)
-
 		// filter deleted from last comments view. Blocked marked as deleted and will sneak in without
-		filterDeleted := []store.Comment{}
-		for _, c := range comments {
-			if c.Deleted {
-				continue
-			}
-			filterDeleted = append(filterDeleted, c)
-		}
-
+		filterDeleted := filterComments(comments, func(c store.Comment) bool { return !c.Deleted })
 		return encodeJSONWithHTML(filterDeleted)
 	})
 

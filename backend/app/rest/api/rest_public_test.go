@@ -238,6 +238,7 @@ func TestRest_Last(t *testing.T) {
 	err = json.Unmarshal([]byte(res), &comments)
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(comments), "should have 2 comments")
+	t.Logf("%+v", comments)
 }
 
 func TestRest_FindUserComments(t *testing.T) {
