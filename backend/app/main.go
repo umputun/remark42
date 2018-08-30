@@ -13,7 +13,7 @@ import (
 
 // Opts has all commands
 type Opts struct {
-	ServerCmd  cmd.ServerOpts     `command:"server"`
+	ServerCmd  cmd.ServerCommand  `command:"server"`
 	ImportCmd  cmd.ImportCommand  `command:"import"`
 	BackupCmd  cmd.BackupCommand  `command:"backup"`
 	RestoreCmd cmd.RestoreCommand `command:"restore"`

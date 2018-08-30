@@ -37,16 +37,15 @@ func (ic *ImportCommand) Execute(args []string) error {
 	}
 
 	client := http.Client{}
+	ctx, cancel := context.WithTimeout(context.Background(), ic.Timeout)
+	defer cancel()
 	importURL := fmt.Sprintf("%s/api/v1/admin/import?site=%s&provider=%s&secret=%s", ic.URL, ic.Site, ic.Provider, ic.SharedSecret)
 	req, err := http.NewRequest(http.MethodPost, importURL, reader)
 	if err != nil {
 		return errors.Wrapf(err, "can't make import request for %s", importURL)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), ic.Timeout)
-	defer cancel()
-
-	resp, err := client.Do(req.WithContext(ctx)) // closes reader
+	resp, err := client.Do(req.WithContext(ctx)) // closes request's reader
 	if err != nil {
 		return errors.Wrapf(err, "request failed for %s", importURL)
 	}
@@ -56,7 +55,7 @@ func (ic *ImportCommand) Execute(args []string) error {
 		}
 	}()
 	if resp.StatusCode >= 300 {
-		return errors.Errorf("error response %s (%d)", resp.Status, resp.StatusCode)
+		return responseError(resp)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)

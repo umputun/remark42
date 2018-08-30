@@ -4,7 +4,9 @@ package cmd
 
 import (
 	"bytes"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -63,4 +65,13 @@ func resetEnv(envs ...string) {
 			log.Printf("[WARN] can't unset env %s, %s", env, err)
 		}
 	}
+}
+
+// responseError returns error with status and response body
+func responseError(resp *http.Response) error {
+	body, e := ioutil.ReadAll(resp.Body)
+	if e != nil {
+		body = []byte("")
+	}
+	return errors.Errorf("error response %q, %s", resp.Status, body)
 }
