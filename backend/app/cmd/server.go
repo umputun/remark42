@@ -27,8 +27,8 @@ import (
 	"github.com/umputun/remark/backend/app/store/service"
 )
 
-// ServerOpts with command line flags and env
-type ServerOpts struct {
+// ServerCommand with command line flags and env
+type ServerCommand struct {
 	RemarkURL    string `long:"url" env:"REMARK_URL" required:"true" description:"url to remark"`
 	SharedSecret string `long:"secret" env:"SECRET" required:"true" description:"shared secret key"`
 
@@ -117,7 +117,7 @@ var Revision = "unknown"
 
 // serverApp holds all active objects
 type serverApp struct {
-	*ServerOpts
+	*ServerCommand
 	restSrv     *api.Rest
 	migratorSrv *api.Migrator
 	exporter    migrator.Exporter
@@ -127,7 +127,7 @@ type serverApp struct {
 }
 
 // Execute is the entry point for "server" command, called by flag parser
-func (s *ServerOpts) Execute(args []string) error {
+func (s *ServerCommand) Execute(args []string) error {
 	log.Print("[INFO] start remark42 server")
 	resetEnv("SECRET", "AUTH_GOOGLE_CSEC", "AUTH_GITHUB_CSEC", "AUTH_FACEBOOK_CSEC", "AUTH_YANDEX_CSEC")
 
@@ -140,7 +140,7 @@ func (s *ServerOpts) Execute(args []string) error {
 		cancel()
 	}()
 
-	app, err := newServerApp(s)
+	app, err := s.newServerApp()
 	if err != nil {
 		log.Fatalf("[ERROR] failed to setup application, %+v", err)
 	}
@@ -154,50 +154,50 @@ func (s *ServerOpts) Execute(args []string) error {
 
 // newServerApp prepares application and return it with all active parts
 // doesn't start anything
-func newServerApp(opts *ServerOpts) (*serverApp, error) {
+func (s *ServerCommand) newServerApp() (*serverApp, error) {
 
-	if err := makeDirs(opts.BackupLocation); err != nil {
+	if err := s.makeDirs(s.BackupLocation); err != nil {
 		return nil, err
 	}
 
-	if !strings.HasPrefix(opts.RemarkURL, "http://") && !strings.HasPrefix(opts.RemarkURL, "https://") {
-		return nil, errors.Errorf("invalid remark42 url %s", opts.RemarkURL)
+	if !strings.HasPrefix(s.RemarkURL, "http://") && !strings.HasPrefix(s.RemarkURL, "https://") {
+		return nil, errors.Errorf("invalid remark42 url %s", s.RemarkURL)
 	}
 
-	storeEngine, err := makeDataStore(opts.Store, opts.Mongo, opts.Sites)
+	storeEngine, err := s.makeDataStore()
 	if err != nil {
 		return nil, err
 	}
 
-	keyStore, err := makeKeyStore(opts.Key, opts.SharedSecret)
+	keyStore, err := s.makeKeyStore()
 	if err != nil {
 		return nil, err
 	}
 
 	dataService := &service.DataStore{
 		Interface:      storeEngine,
-		EditDuration:   opts.EditDuration,
+		EditDuration:   s.EditDuration,
 		KeyStore:       keyStore,
-		MaxCommentSize: opts.MaxCommentSize,
-		Admins:         opts.Admins,
+		MaxCommentSize: s.MaxCommentSize,
+		Admins:         s.Admins,
 	}
 
-	loadingCache, err := makeCache(opts.Cache, opts.Mongo)
+	loadingCache, err := s.makeCache()
 	if err != nil {
 		return nil, err
 	}
 
 	// token TTL is 5 minutes, inactivity interval 7+ days by default
-	jwtService := auth.NewJWT(keyStore, strings.HasPrefix(opts.RemarkURL, "https://"), opts.Auth.TTL.JWT, opts.Auth.TTL.Cookie)
+	jwtService := auth.NewJWT(keyStore, strings.HasPrefix(s.RemarkURL, "https://"), s.Auth.TTL.JWT, s.Auth.TTL.Cookie)
 
-	avatarStore, err := makeAvatarStore(opts.Avatar, opts.Mongo)
+	avatarStore, err := s.makeAvatarStore()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to make avatar store")
 	}
 	avatarProxy := &proxy.Avatar{
 		Store:     avatarStore,
 		RoutePath: "/api/v1/avatar",
-		RemarkURL: strings.TrimSuffix(opts.RemarkURL, "/"),
+		RemarkURL: strings.TrimSuffix(s.RemarkURL, "/"),
 	}
 
 	exporter := &migrator.Remark{DataStore: dataService}
@@ -212,26 +212,26 @@ func newServerApp(opts *ServerOpts) (*serverApp, error) {
 		KeyStore:          keyStore,
 	}
 
-	authProviders := makeAuthProviders(jwtService, avatarProxy, dataService, opts)
-	imgProxy := &proxy.Image{Enabled: opts.ImageProxy, RoutePath: "/api/v1/img", RemarkURL: opts.RemarkURL}
+	authProviders := s.makeAuthProviders(jwtService, avatarProxy, dataService)
+	imgProxy := &proxy.Image{Enabled: s.ImageProxy, RoutePath: "/api/v1/img", RemarkURL: s.RemarkURL}
 	commentFormatter := store.NewCommentFormatter(imgProxy)
 
 	srv := &api.Rest{
 		Version:          Revision,
 		DataService:      dataService,
 		Exporter:         exporter,
-		WebRoot:          opts.WebRoot,
-		RemarkURL:        opts.RemarkURL,
+		WebRoot:          s.WebRoot,
+		RemarkURL:        s.RemarkURL,
 		ImageProxy:       imgProxy,
 		CommentFormatter: commentFormatter,
 		AvatarProxy:      avatarProxy,
-		ReadOnlyAge:      opts.ReadOnlyAge,
-		SharedSecret:     opts.SharedSecret,
+		ReadOnlyAge:      s.ReadOnlyAge,
+		SharedSecret:     s.SharedSecret,
 		Authenticator: auth.Authenticator{
 			JWTService:        jwtService,
-			AdminEmail:        opts.AdminEmail,
+			AdminEmail:        s.AdminEmail,
 			Providers:         authProviders,
-			DevPasswd:         opts.DevPasswd,
+			DevPasswd:         s.DevPasswd,
 			PermissionChecker: dataService,
 		},
 		Cache: loadingCache,
@@ -239,25 +239,32 @@ func newServerApp(opts *ServerOpts) (*serverApp, error) {
 
 	// no admin email, use admin@domain
 	if srv.Authenticator.AdminEmail == "" {
-		if u, err := url.Parse(opts.RemarkURL); err == nil {
+		if u, err := url.Parse(s.RemarkURL); err == nil {
 			srv.Authenticator.AdminEmail = "admin@" + u.Host
 		}
 	}
 
-	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = opts.LowScore, opts.CriticalScore
+	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = s.LowScore, s.CriticalScore
 
 	var devAuth *auth.DevAuthServer
-	if opts.Auth.Dev {
+	if s.Auth.Dev {
 		devAuth = &auth.DevAuthServer{Provider: authProviders[len(authProviders)-1]}
 	}
 
-	tch := make(chan struct{})
-	return &serverApp{restSrv: srv, migratorSrv: migr, exporter: exporter, devAuth: devAuth, dataService: dataService,
-		ServerOpts: opts, terminated: tch}, nil
+	return &serverApp{
+		ServerCommand: s,
+		restSrv:       srv,
+		migratorSrv:   migr,
+		exporter:      exporter,
+		devAuth:       devAuth,
+		dataService:   dataService,
+		terminated:    make(chan struct{}),
+	}, nil
 }
 
 // Run all application objects
 func (a *serverApp) run(ctx context.Context) error {
+	log.Printf("%+v", a)
 	if a.DevPasswd != "" {
 		log.Printf("[WARN] running in dev mode")
 	}
@@ -305,76 +312,119 @@ func (a *serverApp) activateBackup(ctx context.Context) {
 }
 
 // makeDataStore creates store for all sites
-func makeDataStore(group StoreGroup, mg MongoGroup, siteNames []string) (result engine.Interface, err error) {
-	switch group.Type {
+func (s *ServerCommand) makeDataStore() (result engine.Interface, err error) {
+	switch s.Store.Type {
 	case "bolt":
-		if err = makeDirs(group.Bolt.Path); err != nil {
+		if err = s.makeDirs(s.Store.Bolt.Path); err != nil {
 			return nil, errors.Wrap(err, "failed to create bolt store")
 		}
 		sites := []engine.BoltSite{}
-		for _, site := range siteNames {
-			sites = append(sites, engine.BoltSite{SiteID: site, FileName: fmt.Sprintf("%s/%s.db", group.Bolt.Path, site)})
+		for _, site := range s.Sites {
+			sites = append(sites, engine.BoltSite{SiteID: site, FileName: fmt.Sprintf("%s/%s.db", s.Store.Bolt.Path, site)})
 		}
-		result, err = engine.NewBoltDB(bolt.Options{Timeout: group.Bolt.Timeout}, sites...)
+		result, err = engine.NewBoltDB(bolt.Options{Timeout: s.Store.Bolt.Timeout}, sites...)
 	case "mongo":
-		mgServer, e := makeMongo(mg)
+		mgServer, e := s.makeMongo()
 		if e != nil {
 			return result, errors.Wrap(e, "failed to create mongo server")
 		}
-		conn := mongo.NewConnection(mgServer, mg.DB, "")
+		conn := mongo.NewConnection(mgServer, s.Mongo.DB, "")
 		result, err = engine.NewMongo(conn, 500, 100*time.Millisecond)
 	default:
-		return nil, errors.Errorf("unsupported store type %s", group.Type)
+		return nil, errors.Errorf("unsupported store type %s", s.Store.Type)
 	}
 	return result, errors.Wrap(err, "can't initialize data store")
 }
 
-func makeAvatarStore(group AvatarGroup, mg MongoGroup) (avatar.Store, error) {
-	switch group.Type {
+func (s *ServerCommand) makeAvatarStore() (avatar.Store, error) {
+	switch s.Avatar.Type {
 	case "fs":
-		if err := makeDirs(group.FS.Path); err != nil {
+		if err := s.makeDirs(s.Avatar.FS.Path); err != nil {
 			return nil, err
 		}
-		return avatar.NewLocalFS(group.FS.Path, group.RszLmt), nil
+		return avatar.NewLocalFS(s.Avatar.FS.Path, s.Avatar.RszLmt), nil
 	case "mongo":
-		mgServer, err := makeMongo(mg)
+		mgServer, err := s.makeMongo()
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to create mongo server")
 		}
-		conn := mongo.NewConnection(mgServer, mg.DB, "")
-		return avatar.NewGridFS(conn, group.RszLmt), nil
+		conn := mongo.NewConnection(mgServer, s.Mongo.DB, "")
+		return avatar.NewGridFS(conn, s.Avatar.RszLmt), nil
 	}
-	return nil, errors.Errorf("unsupported avatar store type %s", group.Type)
+	return nil, errors.Errorf("unsupported avatar store type %s", s.Avatar.Type)
 }
 
-func makeKeyStore(group KeyGroup, sharedSecret string) (keys.Store, error) {
-	switch group.Type {
+func (s *ServerCommand) makeKeyStore() (keys.Store, error) {
+	switch s.Key.Type {
 	case "shared":
-		return keys.NewStaticStore(sharedSecret), nil
+		return keys.NewStaticStore(s.SharedSecret), nil
 	default:
-		return nil, errors.Errorf("unsupported key store type %s", group.Type)
+		return nil, errors.Errorf("unsupported key store type %s", s.Key.Type)
 	}
 }
 
-func makeCache(group CacheGroup, mg MongoGroup) (cache.LoadingCache, error) {
-	switch group.Type {
+func (s *ServerCommand) makeCache() (cache.LoadingCache, error) {
+	switch s.Cache.Type {
 	case "mem":
-		return cache.NewMemoryCache(cache.MaxCacheSize(group.Max.Size), cache.MaxValSize(group.Max.Value),
-			cache.MaxKeys(group.Max.Items))
+		return cache.NewMemoryCache(cache.MaxCacheSize(s.Cache.Max.Size), cache.MaxValSize(s.Cache.Max.Value),
+			cache.MaxKeys(s.Cache.Max.Items))
 	case "mongo":
-		mgServer, err := makeMongo(mg)
+		mgServer, err := s.makeMongo()
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to create mongo server")
 		}
-		conn := mongo.NewConnection(mgServer, mg.DB, "cache")
-		return cache.NewMongoCache(conn, cache.MaxCacheSize(group.Max.Size), cache.MaxValSize(group.Max.Value),
-			cache.MaxKeys(group.Max.Items))
+		conn := mongo.NewConnection(mgServer, s.Mongo.DB, "cache")
+		return cache.NewMongoCache(conn, cache.MaxCacheSize(s.Cache.Max.Size), cache.MaxValSize(s.Cache.Max.Value),
+			cache.MaxKeys(s.Cache.Max.Items))
 	}
-	return nil, errors.Errorf("unsupported cache type %s", group.Type)
+	return nil, errors.Errorf("unsupported cache type %s", s.Cache.Type)
+}
+
+func (s *ServerCommand) makeMongo() (result *mongo.Server, err error) {
+	if s.Mongo.URL == "" {
+		return nil, errors.New("no mongo URL provided")
+	}
+	return mongo.NewServerWithURL(s.Mongo.URL, 10*time.Second)
+}
+
+func (s *ServerCommand) makeAuthProviders(jwtService *auth.JWT, avatarProxy *proxy.Avatar, ds *service.DataStore) []auth.Provider {
+
+	makeParams := func(cid, secret string) auth.Params {
+		return auth.Params{
+			JwtService:        jwtService,
+			AvatarProxy:       avatarProxy,
+			RemarkURL:         s.RemarkURL,
+			Cid:               cid,
+			Csecret:           secret,
+			PermissionChecker: ds,
+		}
+	}
+
+	providers := []auth.Provider{}
+	if s.Auth.Google.CID != "" && s.Auth.Google.CSEC != "" {
+		providers = append(providers, auth.NewGoogle(makeParams(s.Auth.Google.CID, s.Auth.Google.CSEC)))
+	}
+	if s.Auth.Github.CID != "" && s.Auth.Github.CSEC != "" {
+		providers = append(providers, auth.NewGithub(makeParams(s.Auth.Github.CID, s.Auth.Github.CSEC)))
+	}
+	if s.Auth.Facebook.CID != "" && s.Auth.Facebook.CSEC != "" {
+		providers = append(providers, auth.NewFacebook(makeParams(s.Auth.Facebook.CID, s.Auth.Facebook.CSEC)))
+	}
+	if s.Auth.Yandex.CID != "" && s.Auth.Yandex.CSEC != "" {
+		providers = append(providers, auth.NewYandex(makeParams(s.Auth.Yandex.CID, s.Auth.Yandex.CSEC)))
+	}
+	if s.Auth.Dev {
+		providers = append(providers, auth.NewDev(makeParams("", "")))
+	}
+
+	if len(providers) == 0 {
+		log.Printf("[WARN] no auth providers defined")
+	}
+	return providers
 }
 
 // mkdir -p for all dirs
-func makeDirs(dirs ...string) error {
+func (s *ServerCommand) makeDirs(dirs ...string) error {
 
 	// exists returns whether the given file or directory exists or not
 	exists := func(path string) (bool, error) {
@@ -400,47 +450,4 @@ func makeDirs(dirs ...string) error {
 		}
 	}
 	return nil
-}
-
-func makeMongo(mg MongoGroup) (result *mongo.Server, err error) {
-	if mg.URL == "" {
-		return nil, errors.New("no mongo URL provided")
-	}
-	return mongo.NewServerWithURL(mg.URL, 10*time.Second)
-}
-
-func makeAuthProviders(jwtService *auth.JWT, avatarProxy *proxy.Avatar, ds *service.DataStore, opts *ServerOpts) []auth.Provider {
-
-	makeParams := func(cid, secret string) auth.Params {
-		return auth.Params{
-			JwtService:        jwtService,
-			AvatarProxy:       avatarProxy,
-			RemarkURL:         opts.RemarkURL,
-			Cid:               cid,
-			Csecret:           secret,
-			PermissionChecker: ds,
-		}
-	}
-
-	providers := []auth.Provider{}
-	if opts.Auth.Google.CID != "" && opts.Auth.Google.CSEC != "" {
-		providers = append(providers, auth.NewGoogle(makeParams(opts.Auth.Google.CID, opts.Auth.Google.CSEC)))
-	}
-	if opts.Auth.Github.CID != "" && opts.Auth.Github.CSEC != "" {
-		providers = append(providers, auth.NewGithub(makeParams(opts.Auth.Github.CID, opts.Auth.Github.CSEC)))
-	}
-	if opts.Auth.Facebook.CID != "" && opts.Auth.Facebook.CSEC != "" {
-		providers = append(providers, auth.NewFacebook(makeParams(opts.Auth.Facebook.CID, opts.Auth.Facebook.CSEC)))
-	}
-	if opts.Auth.Yandex.CID != "" && opts.Auth.Yandex.CSEC != "" {
-		providers = append(providers, auth.NewYandex(makeParams(opts.Auth.Yandex.CID, opts.Auth.Yandex.CSEC)))
-	}
-	if opts.Auth.Dev {
-		providers = append(providers, auth.NewDev(makeParams("", "")))
-	}
-
-	if len(providers) == 0 {
-		log.Printf("[WARN] no auth providers defined")
-	}
-	return providers
 }
