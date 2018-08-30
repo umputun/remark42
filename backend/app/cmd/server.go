@@ -264,7 +264,6 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 
 // Run all application objects
 func (a *serverApp) run(ctx context.Context) error {
-	log.Printf("%+v", a)
 	if a.DevPasswd != "" {
 		log.Printf("[WARN] running in dev mode")
 	}
