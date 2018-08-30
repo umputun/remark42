@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -37,15 +36,15 @@ func (ec *BackupCommand) Execute(args []string) error {
 
 	log.Printf("[DEBUG] export file %s", fname)
 
-	// prepare http client
+	// prepare http client and request
 	client := http.Client{}
+	ctx, cancel := context.WithTimeout(context.Background(), ec.Timeout)
+	defer cancel()
 	exportURL := fmt.Sprintf("%s/api/v1/admin/export?site=%s&secret=%s", ec.URL, ec.Site, ec.SharedSecret)
 	req, err := http.NewRequest(http.MethodGet, exportURL, nil)
 	if err != nil {
 		return errors.Wrapf(err, "can't make export request for %s", exportURL)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), ec.Timeout)
-	defer cancel()
 
 	// get with timeout
 	resp, err := client.Do(req.WithContext(ctx))
@@ -59,11 +58,7 @@ func (ec *BackupCommand) Execute(args []string) error {
 	}()
 
 	if resp.StatusCode >= 300 {
-		body, e := ioutil.ReadAll(resp.Body)
-		if e != nil {
-			body = []byte("")
-		}
-		return errors.Errorf("error response %q, %s", resp.Status, body)
+		return responseError(resp)
 	}
 
 	fh, err := os.Create(fname)
