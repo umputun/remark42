@@ -111,6 +111,7 @@ type KeyGroup struct {
 	Type string `long:"type" env:"TYPE" description:"type of key store" choice:"shared" choice:"mongo" default:"shared"`
 }
 
+// AdminGroup defines options group for admin params
 type AdminGroup struct {
 	Type       string   `long:"type" env:"TYPE" description:"type of admin store" choice:"shared" choice:"mongo" default:"shared"`
 	Admins     []string `long:"id" env:"ID" description:"admin(s) ids" env-delim:","`
