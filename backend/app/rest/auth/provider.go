@@ -203,7 +203,7 @@ func (p Provider) setAvatar(u store.User) store.User {
 
 // setPermissions sets permission fields not handled by provider's MapUser, things like admin, verified and blocked
 func (p Provider) setPermissions(u store.User, siteID string) store.User {
-	u.Admin = p.PermissionChecker.IsAdmin(u.ID)
+	u.Admin = p.PermissionChecker.IsAdmin(siteID, u.ID)
 	u.Verified = p.PermissionChecker.IsVerified(siteID, u.ID)
 	u.Blocked = p.PermissionChecker.IsBlocked(siteID, u.ID)
 	log.Printf("[DEBUG] set permissions for user %s, site %s - %+v", u.ID, siteID, u)

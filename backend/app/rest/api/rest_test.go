@@ -14,15 +14,16 @@ import (
 	"github.com/coreos/bbolt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/umputun/remark/backend/app/store/keys"
 
 	"github.com/umputun/remark/backend/app/migrator"
 	"github.com/umputun/remark/backend/app/rest/auth"
 	"github.com/umputun/remark/backend/app/rest/cache"
 	"github.com/umputun/remark/backend/app/rest/proxy"
 	"github.com/umputun/remark/backend/app/store"
+	adminstore "github.com/umputun/remark/backend/app/store/admin"
 	"github.com/umputun/remark/backend/app/store/avatar"
 	"github.com/umputun/remark/backend/app/store/engine"
+	"github.com/umputun/remark/backend/app/store/keys"
 	"github.com/umputun/remark/backend/app/store/service"
 )
 
@@ -90,20 +91,22 @@ func TestRest_filterComments(t *testing.T) {
 func prep(t *testing.T) (srv *Rest, ts *httptest.Server) {
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDb, SiteID: "radio-t"})
 	require.Nil(t, err)
+
+	adminStore := adminstore.NewStaticStore([]string{"a1", "a2"}, "admin@remark-42.com")
+
 	dataStore := &service.DataStore{
 		Interface:      b,
 		EditDuration:   5 * time.Minute,
 		MaxCommentSize: 4000,
 		KeyStore:       keys.NewStaticStore("123456"),
-		Admins:         []string{"a1", "a2"},
+		AdminStore:     adminStore,
 	}
 	srv = &Rest{
 		DataService: dataStore,
 		Authenticator: auth.Authenticator{
-			DevPasswd: "password",
-			Providers: nil,
-
-			AdminEmail: "admin@remark-42.com",
+			DevPasswd:  "password",
+			Providers:  nil,
+			AdminStore: adminStore,
 			JWTService: auth.NewJWT(keys.NewStaticStore("123456"), false, time.Minute, time.Hour),
 		},
 		Exporter:         &migrator.Remark{DataStore: dataStore},
