@@ -195,6 +195,8 @@ func (s *Rest) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 // GET /config?site=siteID - returns configuration
 func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
+	siteID := r.URL.Query().Get("site")
+
 	type config struct {
 		Version        string   `json:"version"`
 		EditDuration   int      `json:"edit_duration"`
@@ -211,8 +213,8 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		Version:        s.Version,
 		EditDuration:   int(s.DataService.EditDuration.Seconds()),
 		MaxCommentSize: s.DataService.MaxCommentSize,
-		Admins:         s.DataService.Admins,
-		AdminEmail:     s.Authenticator.AdminEmail,
+		Admins:         s.DataService.AdminStore.Admins(siteID),
+		AdminEmail:     s.DataService.AdminStore.Email(siteID),
 		LowScore:       s.ScoreThresholds.Low,
 		CriticalScore:  s.ScoreThresholds.Critical,
 		ReadOnlyAge:    s.ReadOnlyAge,

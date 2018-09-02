@@ -14,6 +14,7 @@ import (
 	"github.com/coreos/bbolt"
 	"github.com/go-pkgz/mongo"
 	"github.com/pkg/errors"
+	"github.com/umputun/remark/backend/app/store/admin"
 
 	"github.com/umputun/remark/backend/app/migrator"
 	"github.com/umputun/remark/backend/app/rest/api"
@@ -37,10 +38,9 @@ type ServerCommand struct {
 	Cache  CacheGroup  `group:"cache" namespace:"cache" env-namespace:"CACHE"`
 	Mongo  MongoGroup  `group:"mongo" namespace:"mongo" env-namespace:"MONGO"`
 	Key    KeyGroup    `group:"key" namespace:"key" env-namespace:"KEY"`
+	Admin  AdminGroup  `group:"admin" namespace:"admin" env-namespace:"ADMIN"`
 
 	Sites          []string      `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
-	Admins         []string      `long:"admin" env:"ADMIN" description:"admin(s) names" env-delim:","`
-	AdminEmail     string        `long:"admin-email" env:"ADMIN_EMAIL" default:"" description:"admin email"`
 	DevPasswd      string        `long:"dev-passwd" env:"DEV_PASSWD" default:"" description:"development mode password"`
 	BackupLocation string        `long:"backup" env:"BACKUP_PATH" default:"./var/backup" description:"backups location"`
 	MaxBackupFiles int           `long:"max-back" env:"MAX_BACKUP_FILES" default:"10" description:"max backups to keep"`
@@ -52,7 +52,6 @@ type ServerCommand struct {
 	EditDuration   time.Duration `long:"edit-time" env:"EDIT_TIME" default:"5m" description:"edit window"`
 	Port           int           `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
 	WebRoot        string        `long:"web-root" env:"REMARK_WEB_ROOT" default:"./web" description:"web root directory"`
-	// Dbg            bool          `long:"dbg" env:"DEBUG" description:"debug mode"`
 
 	Auth struct {
 		TTL struct {
@@ -112,8 +111,14 @@ type KeyGroup struct {
 	Type string `long:"type" env:"TYPE" description:"type of key store" choice:"shared" choice:"mongo" default:"shared"`
 }
 
-// Revision sets from main
-var Revision = "unknown"
+// AdminGroup defines options group for admin params
+type AdminGroup struct {
+	Type   string `long:"type" env:"TYPE" description:"type of admin store" choice:"shared" choice:"mongo" default:"shared"`
+	Shared struct {
+		Admins []string `long:"id" env:"ID" description:"admin(s) ids" env-delim:","`
+		Email  string   `long:"email" env:"EMAIL" default:"" description:"admin email"`
+	} `group:"shared" namespace:"shared" env-namespace:"SHARED"`
+}
 
 // serverApp holds all active objects
 type serverApp struct {
@@ -174,12 +179,17 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		return nil, err
 	}
 
+	adminStore, err := s.makeAdminStore()
+	if err != nil {
+		return nil, err
+	}
+
 	dataService := &service.DataStore{
 		Interface:      storeEngine,
 		EditDuration:   s.EditDuration,
 		KeyStore:       keyStore,
+		AdminStore:     adminStore,
 		MaxCommentSize: s.MaxCommentSize,
-		Admins:         s.Admins,
 	}
 
 	loadingCache, err := s.makeCache()
@@ -229,19 +239,12 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		SharedSecret:     s.SharedSecret,
 		Authenticator: auth.Authenticator{
 			JWTService:        jwtService,
-			AdminEmail:        s.AdminEmail,
+			AdminStore:        adminStore,
 			Providers:         authProviders,
 			DevPasswd:         s.DevPasswd,
 			PermissionChecker: dataService,
 		},
 		Cache: loadingCache,
-	}
-
-	// no admin email, use admin@domain
-	if srv.Authenticator.AdminEmail == "" {
-		if u, err := url.Parse(s.RemarkURL); err == nil {
-			srv.Authenticator.AdminEmail = "admin@" + u.Host
-		}
 	}
 
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = s.LowScore, s.CriticalScore
@@ -359,6 +362,20 @@ func (s *ServerCommand) makeKeyStore() (keys.Store, error) {
 		return keys.NewStaticStore(s.SharedSecret), nil
 	default:
 		return nil, errors.Errorf("unsupported key store type %s", s.Key.Type)
+	}
+}
+
+func (s *ServerCommand) makeAdminStore() (admin.Store, error) {
+	switch s.Admin.Type {
+	case "shared":
+		if s.Admin.Shared.Email == "" { // no admin email, use admin@domain
+			if u, err := url.Parse(s.RemarkURL); err == nil {
+				s.Admin.Shared.Email = "admin@" + u.Host
+			}
+		}
+		return admin.NewStaticStore(s.Admin.Shared.Admins, s.Admin.Shared.Email), nil
+	default:
+		return nil, errors.Errorf("unsupported admin store type %s", s.Key.Type)
 	}
 }
 
