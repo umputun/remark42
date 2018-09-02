@@ -11,7 +11,7 @@ import (
 	"github.com/umputun/remark/backend/app/cmd"
 )
 
-// Opts has all commands
+// Opts with all cli commands and flags
 type Opts struct {
 	ServerCmd  cmd.ServerCommand  `command:"server"`
 	ImportCmd  cmd.ImportCommand  `command:"import"`
