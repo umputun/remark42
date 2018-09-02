@@ -113,9 +113,11 @@ type KeyGroup struct {
 
 // AdminGroup defines options group for admin params
 type AdminGroup struct {
-	Type       string   `long:"type" env:"TYPE" description:"type of admin store" choice:"shared" choice:"mongo" default:"shared"`
-	Admins     []string `long:"id" env:"ID" description:"admin(s) ids" env-delim:","`
-	AdminEmail string   `long:"email" env:"EMAIL" default:"" description:"admin email"`
+	Type   string `long:"type" env:"TYPE" description:"type of admin store" choice:"shared" choice:"mongo" default:"shared"`
+	Shared struct {
+		Admins []string `long:"id" env:"ID" description:"admin(s) ids" env-delim:","`
+		Email  string   `long:"email" env:"EMAIL" default:"" description:"admin email"`
+	} `group:"shared" namespace:"shared" env-namespace:"SHARED"`
 }
 
 // serverApp holds all active objects
@@ -366,13 +368,12 @@ func (s *ServerCommand) makeKeyStore() (keys.Store, error) {
 func (s *ServerCommand) makeAdminStore() (admin.Store, error) {
 	switch s.Admin.Type {
 	case "shared":
-		// no admin email, use admin@domain
-		if s.Admin.AdminEmail == "" {
+		if s.Admin.Shared.Email == "" { // no admin email, use admin@domain
 			if u, err := url.Parse(s.RemarkURL); err == nil {
-				s.Admin.AdminEmail = "admin@" + u.Host
+				s.Admin.Shared.Email = "admin@" + u.Host
 			}
 		}
-		return admin.NewStaticStore(s.Admin.Admins, s.Admin.AdminEmail), nil
+		return admin.NewStaticStore(s.Admin.Shared.Admins, s.Admin.Shared.Email), nil
 	default:
 		return nil, errors.Errorf("unsupported admin store type %s", s.Key.Type)
 	}

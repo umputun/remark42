@@ -92,8 +92,8 @@ _this is the recommended way to run remark42_
 | store.bolt.timeout | STORE_BOLT_TIMEOUT | `30s`                 | boltdb access timeout                          |
 | store.mongo.url    | STORE_MONGO_URL    |                       | mongo url for data store                       |
 | store.mongo.db     | STORE_MONGO_DB     |                       | mongo db for data store                        |
-| admin              | ADMIN              |                       | admin names (list of user ids), _multi_        |
-| admin-email        | ADMIN_EMAIL        | `admin@${REMARK_URL}` | admin email                                    |
+| admin.shared.id    | ADMIN_SHARED_ID    |                       | admin names (list of user ids), _multi_        |
+| admin.shared.email | ADMIN_SHARED_EMAIL | `admin@${REMARK_URL}` | admin email                                    |
 | backup             | BACKUP_PATH        | `./var/backup`        | backups location                               |
 | max-back           | MAX_BACKUP_FILES   | `10`                  | max backup files to keep                       |
 | cache.max.items    | CACHE_MAX_ITEMS    | `1000`                | max number of cached items, `0` - unlimited    |
