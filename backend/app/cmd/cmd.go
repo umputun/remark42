@@ -16,6 +16,9 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Revision sets from main
+var Revision = "unknown"
+
 // fileParser used to convert template strings like blah-{{.SITE}}-{{.YYYYMMDD}} the final format
 type fileParser struct {
 	site string

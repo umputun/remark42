@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	"github.com/umputun/remark/backend/app/store/admin"
 
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/engine"
@@ -17,8 +18,8 @@ type DataStore struct {
 	engine.Interface
 	EditDuration   time.Duration
 	KeyStore       keys.Store
+	AdminStore     admin.Store
 	MaxCommentSize int
-	Admins         []string
 
 	// granular locks
 	scopedLocks struct {
@@ -32,6 +33,16 @@ const defaultCommentMaxSize = 2000
 
 // Create prepares comment and forward to Interface.Create
 func (s *DataStore) Create(comment store.Comment) (commentID string, err error) {
+
+	if comment, err = s.prepareNewComment(comment); err != nil {
+		return "", errors.Wrap(err, "failed to prepare comment")
+	}
+
+	return s.Interface.Create(comment)
+}
+
+// prepareNewComment sets new comment fields, hashing and sanitizing data
+func (s *DataStore) prepareNewComment(comment store.Comment) (store.Comment, error) {
 	// fill ID and time if empty
 	if comment.ID == "" {
 		comment.ID = uuid.New().String()
@@ -47,11 +58,10 @@ func (s *DataStore) Create(comment store.Comment) (commentID string, err error) 
 
 	secret, err := s.KeyStore.Get(comment.Locator.SiteID)
 	if err != nil {
-		return "", errors.Wrapf(err, "can't get secret for site %s", comment.Locator.SiteID)
+		return store.Comment{}, errors.Wrapf(err, "can't get secret for site %s", comment.Locator.SiteID)
 	}
 	comment.User.HashIP(secret) // replace ip by hash
-
-	return s.Interface.Create(comment)
+	return comment, nil
 }
 
 // SetPin pin/un-pin comment as special
@@ -170,9 +180,9 @@ func (s *DataStore) ValidateComment(c *store.Comment) error {
 }
 
 // IsAdmin checks if usesID in the list of admins
-func (s *DataStore) IsAdmin(userID string) bool {
-	for _, admin := range s.Admins {
-		if admin == userID {
+func (s *DataStore) IsAdmin(siteID string, userID string) bool {
+	for _, a := range s.AdminStore.Admins(siteID) {
+		if a == userID {
 			return true
 		}
 	}

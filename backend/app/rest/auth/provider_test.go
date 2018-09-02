@@ -233,6 +233,6 @@ type mockUserPermissions struct {
 	blocked  string
 }
 
-func (m *mockUserPermissions) IsAdmin(userID string) bool            { return userID == m.admin }
+func (m *mockUserPermissions) IsAdmin(siteID, userID string) bool    { return userID == m.admin }
 func (m *mockUserPermissions) IsVerified(siteID, userID string) bool { return userID == m.verified }
 func (m *mockUserPermissions) IsBlocked(siteID, userID string) bool  { return userID == m.blocked }

@@ -9,13 +9,14 @@ import (
 
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/store"
+	"github.com/umputun/remark/backend/app/store/admin"
 )
 
 // Authenticator is top level auth object providing middlewares
 type Authenticator struct {
 	JWTService        *JWT
 	Providers         []Provider
-	AdminEmail        string
+	AdminStore        admin.Store
 	DevPasswd         string
 	PermissionChecker PermissionChecker
 }
@@ -31,7 +32,7 @@ var devUser = store.User{
 type PermissionChecker interface {
 	IsVerified(siteID, userID string) bool
 	IsBlocked(siteID, userID string) bool
-	IsAdmin(userID string) bool
+	IsAdmin(siteID, userID string) bool
 }
 
 // Auth middleware adds auth from session and populates user info
@@ -98,7 +99,7 @@ func (a *Authenticator) Auth(reqAuth bool) func(http.Handler) http.Handler {
 
 func (a *Authenticator) refreshExpiredToken(w http.ResponseWriter, claims *CustomClaims) (*CustomClaims, error) {
 	if a.PermissionChecker != nil {
-		claims.User.Admin = a.PermissionChecker.IsAdmin(claims.User.ID)
+		claims.User.Admin = a.PermissionChecker.IsAdmin(claims.SiteID, claims.User.ID)
 		claims.User.Blocked = a.PermissionChecker.IsBlocked(claims.SiteID, claims.User.ID)
 		claims.User.Verified = a.PermissionChecker.IsVerified(claims.SiteID, claims.User.ID)
 	}
