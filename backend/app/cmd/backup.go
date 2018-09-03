@@ -13,7 +13,7 @@ import (
 )
 
 // BackupCommand set of flags and command for export
-// ExportPath used as a separate element to leverage BACKUP_PATH. If ExportFile has a path (i.e. /) BACKUP_PATH ignored.
+// ExportPath used as a separate element to leverage BACKUP_PATH. If ExportFile has a path (i.e. with /) BACKUP_PATH ignored.
 type BackupCommand struct {
 	ExportPath   string        `short:"p" long:"path" env:"BACKUP_PATH" default:"./var/backup" description:"export path"`
 	ExportFile   string        `short:"f" long:"file" default:"userbackup-{{.SITE}}-{{.TS}}.gz" description:"file name"`
