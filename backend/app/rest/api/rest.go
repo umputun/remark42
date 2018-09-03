@@ -186,7 +186,7 @@ func (s *Rest) routes() chi.Router {
 			rauth.Post("/deleteme", s.deleteMeCtrl)
 
 			// admin routes, admin users only
-			rauth.Mount("/admin", s.adminService.routes(s.Authenticator.AdminOnly, Logger(nil, LogAll)))
+			rauth.Mount("/admin", s.adminService.routes(s.Authenticator.AdminOnly))
 		})
 	})
 

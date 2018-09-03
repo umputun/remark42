@@ -43,8 +43,7 @@ func (a *admin) routes(middlewares ...func(http.Handler) http.Handler) chi.Route
 	router.Get("/blocked", a.blockedUsersCtrl)
 	router.Put("/readonly", a.setReadOnlyCtrl)
 
-	router.Get("/export", a.migrator.exportCtrl)
-	router.Post("/import", a.migrator.importCtrl)
+	a.migrator.withRoutes(router) // set migrator routes, i.e. /export and /import
 
 	return router
 }
