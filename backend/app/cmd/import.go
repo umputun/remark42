@@ -23,7 +23,7 @@ type ImportCommand struct {
 	SharedSecret string `long:"secret" env:"SECRET" description:"shared secret key" required:"true"`
 
 	Timeout time.Duration `long:"timeout" default:"15m" description:"import timeout"`
-	URL     string        `long:"url" default:"http://127.0.0.1:8081" description:"migrator base url"`
+	URL     string        `long:"url" default:"http://127.0.0.1:8080" description:"migrator base url"`
 }
 
 // Execute runs import with ImportCommand parameters, entry point for "import" command

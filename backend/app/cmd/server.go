@@ -213,7 +213,6 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 	exporter := &migrator.Remark{DataStore: dataService}
 
 	migr := &api.Migrator{
-		Version:           Revision,
 		Cache:             loadingCache,
 		NativeImporter:    &migrator.Remark{DataStore: dataService},
 		DisqusImporter:    &migrator.Disqus{DataStore: dataService},
@@ -229,12 +228,12 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 	srv := &api.Rest{
 		Version:          Revision,
 		DataService:      dataService,
-		Exporter:         exporter,
 		WebRoot:          s.WebRoot,
 		RemarkURL:        s.RemarkURL,
 		ImageProxy:       imgProxy,
 		CommentFormatter: commentFormatter,
 		AvatarProxy:      avatarProxy,
+		Migrator:         migr,
 		ReadOnlyAge:      s.ReadOnlyAge,
 		SharedSecret:     s.SharedSecret,
 		Authenticator: auth.Authenticator{
@@ -276,7 +275,6 @@ func (a *serverApp) run(ctx context.Context) error {
 		// shutdown on context cancellation
 		<-ctx.Done()
 		a.restSrv.Shutdown()
-		a.migratorSrv.Shutdown()
 		if a.devAuth != nil {
 			a.devAuth.Shutdown()
 		}
@@ -285,8 +283,7 @@ func (a *serverApp) run(ctx context.Context) error {
 		}
 
 	}()
-	a.activateBackup(ctx)            // runs in goroutine for each site
-	go a.migratorSrv.Run(a.Port + 1) // migrator server runs on +1, localhost only
+	a.activateBackup(ctx) // runs in goroutine for each site
 	if a.Auth.Dev {
 		go a.devAuth.Run() // dev oauth2 server on :8084
 	}
