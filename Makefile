@@ -23,4 +23,4 @@ deploy:
 	docker cp remark42.bin:/artifacts/remark42.windows-amd64.zip bin/remark42.windows-amd64.zip
 	docker rm -f remark42.bin
 
-
+.PHONY: bin
