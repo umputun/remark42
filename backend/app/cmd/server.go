@@ -243,6 +243,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 			Providers:         authProviders,
 			DevPasswd:         s.DevPasswd,
 			PermissionChecker: dataService,
+			KeyStore:          keyStore,
 		},
 		Cache: loadingCache,
 	}
