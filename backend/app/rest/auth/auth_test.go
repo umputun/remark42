@@ -212,6 +212,24 @@ func TestAdminRequired(t *testing.T) {
 
 }
 
+func TestAuthWithSecret(t *testing.T) {
+	a := Authenticator{DevPasswd: "123456", KeyStore: keys.NewStaticStore("secretkey")}
+	router := chi.NewRouter()
+	router.With(a.Auth(true), a.AdminOnly).Get("/auth", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(201)
+	})
+	server := httptest.NewServer(router)
+	defer server.Close()
+
+	resp, err := http.Get(server.URL + "/auth?secret=secretkey")
+	require.NoError(t, err)
+	assert.Equal(t, 201, resp.StatusCode, "valid auth user with secret, admin")
+
+	resp, err = http.Get(server.URL + "/auth?secret=badsecret")
+	require.NoError(t, err)
+	assert.Equal(t, 401, resp.StatusCode, "invalid auth with bad secret")
+}
+
 func withBasicAuth(r *http.Request, username, password string) *http.Request {
 	auth := username + ":" + password
 	r.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(auth)))

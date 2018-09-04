@@ -413,7 +413,6 @@ func TestAdmin_Verify(t *testing.T) {
 	assert.Equal(t, 2, len(comments.Comments), "should have 2 comments")
 	assert.Equal(t, "test test #1", comments.Comments[0].Text)
 	assert.False(t, comments.Comments[0].User.Verified)
-
 }
 
 func TestAdmin_ExportStream(t *testing.T) {
