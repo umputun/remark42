@@ -1,10 +1,7 @@
 package api
 
 import (
-	"compress/gzip"
 	"errors"
-	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"path"
@@ -30,6 +27,7 @@ type admin struct {
 	authenticator auth.Authenticator
 	readOnlyAge   int
 	avatarProxy   *proxy.Avatar
+	migrator      *Migrator
 }
 
 func (a *admin) routes(middlewares ...func(http.Handler) http.Handler) chi.Router {
@@ -41,10 +39,12 @@ func (a *admin) routes(middlewares ...func(http.Handler) http.Handler) chi.Route
 	router.Get("/user/{userid}", a.getUserInfoCtrl)
 	router.Get("/deleteme", a.deleteMeRequestCtrl)
 	router.Put("/verify/{userid}", a.setVerifyCtrl)
-	router.Get("/export", a.exportCtrl)
 	router.Put("/pin/{id}", a.setPinCtrl)
 	router.Get("/blocked", a.blockedUsersCtrl)
 	router.Put("/readonly", a.setReadOnlyCtrl)
+
+	a.migrator.withRoutes(router) // set migrator routes, i.e. /export and /import
+
 	return router
 }
 
@@ -219,31 +219,6 @@ func (a *admin) setPinCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	a.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL))
 	render.JSON(w, r, JSON{"id": commentID, "locator": locator, "pin": pinStatus})
-}
-
-// GET /export?site=site-id?mode=file|stream
-// exports all comments for siteID as json stream or gz file
-func (a *admin) exportCtrl(w http.ResponseWriter, r *http.Request) {
-	siteID := r.URL.Query().Get("site")
-	var writer io.Writer = w
-	if r.URL.Query().Get("mode") == "file" {
-		exportFile := fmt.Sprintf("%s-%s.json.gz", siteID, time.Now().Format("20060102"))
-		w.Header().Set("Content-Type", "application/gzip")
-		w.Header().Set("Content-Disposition", "attachment;filename="+exportFile)
-		w.WriteHeader(http.StatusOK)
-		gzWriter := gzip.NewWriter(w)
-		defer func() {
-			if e := gzWriter.Close(); e != nil {
-				log.Printf("[WARN] can't close gzip writer, %s", e)
-			}
-		}()
-		writer = gzWriter
-	}
-
-	if _, err := a.exporter.Export(writer, siteID); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "export failed")
-		return
-	}
 }
 
 func (a *admin) checkBlocked(siteID string, user store.User) bool {

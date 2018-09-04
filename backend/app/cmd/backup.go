@@ -20,7 +20,7 @@ type BackupCommand struct {
 	Site         string        `long:"site" env:"SITE" default:"remark" description:"site name"`
 	SharedSecret string        `long:"secret" env:"SECRET" description:"shared secret key" required:"true"`
 	Timeout      time.Duration `long:"timeout" default:"15m" description:"import timeout"`
-	URL          string        `long:"url" default:"http://127.0.0.1:8081" description:"migrator base url"`
+	URL          string        `long:"url" default:"http://127.0.0.1:8080" description:"base url"`
 }
 
 // Execute runs export with ExportCommand parameters, entry point for "export" command
@@ -40,7 +40,7 @@ func (ec *BackupCommand) Execute(args []string) error {
 	client := http.Client{}
 	ctx, cancel := context.WithTimeout(context.Background(), ec.Timeout)
 	defer cancel()
-	exportURL := fmt.Sprintf("%s/api/v1/admin/export?site=%s&secret=%s", ec.URL, ec.Site, ec.SharedSecret)
+	exportURL := fmt.Sprintf("%s/api/v1/admin/export?mode=file&site=%s&secret=%s", ec.URL, ec.Site, ec.SharedSecret)
 	req, err := http.NewRequest(http.MethodGet, exportURL, nil)
 	if err != nil {
 		return errors.Wrapf(err, "can't make export request for %s", exportURL)

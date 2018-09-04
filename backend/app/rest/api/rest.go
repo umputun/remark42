@@ -22,7 +22,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rakyll/statik/fs"
 
-	"github.com/umputun/remark/backend/app/migrator"
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/rest/auth"
 	"github.com/umputun/remark/backend/app/rest/cache"
@@ -37,11 +36,11 @@ type Rest struct {
 
 	DataService      *service.DataStore
 	Authenticator    auth.Authenticator
-	Exporter         migrator.Exporter
 	Cache            cache.LoadingCache
 	AvatarProxy      *proxy.Avatar
 	ImageProxy       *proxy.Image
 	CommentFormatter *store.CommentFormatter
+	Migrator         *Migrator
 
 	WebRoot         string
 	RemarkURL       string
@@ -115,7 +114,7 @@ func (s *Rest) routes() chi.Router {
 
 	s.adminService = admin{
 		dataService:   s.DataService,
-		exporter:      s.Exporter,
+		migrator:      s.Migrator,
 		cache:         s.Cache,
 		authenticator: s.Authenticator,
 		readOnlyAge:   s.ReadOnlyAge,
@@ -187,7 +186,7 @@ func (s *Rest) routes() chi.Router {
 			rauth.Post("/deleteme", s.deleteMeCtrl)
 
 			// admin routes, admin users only
-			rauth.Mount("/admin", s.adminService.routes(s.Authenticator.AdminOnly, Logger(nil, LogAll)))
+			rauth.Mount("/admin", s.adminService.routes(s.Authenticator.AdminOnly))
 		})
 	})
 

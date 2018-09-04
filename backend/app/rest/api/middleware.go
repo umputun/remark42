@@ -172,7 +172,6 @@ func sanitizeQuery(u string) string {
 			} else {
 				fnPos = stPos + fnPos
 			}
-			log.Print(stPos, fnPos)
 			for i := stPos; i < fnPos; i++ {
 				out[i] = rune('*')
 			}

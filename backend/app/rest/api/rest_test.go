@@ -109,7 +109,6 @@ func prep(t *testing.T) (srv *Rest, ts *httptest.Server) {
 			AdminStore: adminStore,
 			JWTService: auth.NewJWT(keys.NewStaticStore("123456"), false, time.Minute, time.Hour),
 		},
-		Exporter:         &migrator.Remark{DataStore: dataStore},
 		Cache:            &cache.Nop{},
 		WebRoot:          "/tmp",
 		RemarkURL:        "https://demo.remark42.com",
@@ -117,6 +116,14 @@ func prep(t *testing.T) (srv *Rest, ts *httptest.Server) {
 		ImageProxy:       &proxy.Image{},
 		ReadOnlyAge:      10,
 		CommentFormatter: store.NewCommentFormatter(&proxy.Image{}),
+		Migrator: &Migrator{
+			DisqusImporter:    &migrator.Disqus{DataStore: dataStore},
+			WordPressImporter: &migrator.WordPress{DataStore: dataStore},
+			NativeImporter:    &migrator.Remark{DataStore: dataStore},
+			NativeExported:    &migrator.Remark{DataStore: dataStore},
+			Cache:             &cache.Nop{},
+			KeyStore:          keys.NewStaticStore("123456"),
+		},
 	}
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = -5, -10
 
