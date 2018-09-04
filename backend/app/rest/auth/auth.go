@@ -10,6 +10,7 @@ import (
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/admin"
+	"github.com/umputun/remark/backend/app/store/keys"
 )
 
 // Authenticator is top level auth object providing middlewares
@@ -17,6 +18,7 @@ type Authenticator struct {
 	JWTService        *JWT
 	Providers         []Provider
 	AdminStore        admin.Store
+	KeyStore          keys.Store
 	DevPasswd         string
 	PermissionChecker PermissionChecker
 }
@@ -24,6 +26,13 @@ type Authenticator struct {
 var devUser = store.User{
 	ID:      "dev",
 	Name:    "developer one",
+	Picture: "/api/v1/avatar/remark.image",
+	Admin:   true,
+}
+
+var adminUser = store.User{
+	ID:      "admin",
+	Name:    "admin",
 	Picture: "/api/v1/avatar/remark.image",
 	Admin:   true,
 }
@@ -41,9 +50,15 @@ func (a *Authenticator) Auth(reqAuth bool) func(http.Handler) http.Handler {
 	f := func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 
+			// if secret key matches and site in request return admin
+			if a.checkSecretKey(r) {
+				r = rest.SetUserInfo(r, adminUser)
+				h.ServeHTTP(w, r)
+				return
+			}
+
 			if a.basicDevUser(w, r) { // use dev user basic auth if enabled
-				user := devUser
-				r = rest.SetUserInfo(r, user)
+				r = rest.SetUserInfo(r, devUser)
 				h.ServeHTTP(w, r)
 				return
 			}
@@ -95,6 +110,25 @@ func (a *Authenticator) Auth(reqAuth bool) func(http.Handler) http.Handler {
 		return http.HandlerFunc(fn)
 	}
 	return f
+}
+
+func (a *Authenticator) checkSecretKey(r *http.Request) bool {
+	if a.KeyStore == nil {
+		return false
+	}
+
+	siteID := r.URL.Query().Get("site")
+	secret := r.URL.Query().Get("secret")
+
+	skey, err := a.KeyStore.Get(siteID)
+	if err != nil {
+		return false
+	}
+
+	if strings.TrimSpace(secret) == "" || secret != skey {
+		return false
+	}
+	return true
 }
 
 // refreshExpiredToken makes new token with passed claims, but only if permission allowed
