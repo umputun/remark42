@@ -1,5 +1,7 @@
 package admin
 
+import "log"
+
 // Store defines interface returning admins info for given site
 type Store interface {
 	Admins(siteID string) (ids []string)
@@ -14,6 +16,7 @@ type StaticStore struct {
 
 // NewStaticStore makes StaticStore instance with given key
 func NewStaticStore(admins []string, email string) *StaticStore {
+	log.Printf("[DEBUG] admin users %+v, email %s", admins, email)
 	return &StaticStore{admins: admins, email: email}
 }
 

@@ -18,10 +18,18 @@ type Opts struct {
 	BackupCmd  cmd.BackupCommand  `command:"backup"`
 	RestoreCmd cmd.RestoreCommand `command:"restore"`
 
+	RemarkURL    string `long:"url" env:"REMARK_URL" required:"true" description:"url to remark"`
+	SharedSecret string `long:"secret" env:"SECRET" required:"true" description:"shared secret key"`
+
 	Dbg bool `long:"dbg" env:"DEBUG" description:"debug mode"`
 }
 
 var revision = "unknown"
+
+type CommonOptionsCommander interface {
+	SetCommon(commonOpts cmd.CommonOpts)
+	Execute(args []string) error
+}
 
 func main() {
 	fmt.Printf("remark42 %s\n", revision)
@@ -31,7 +39,10 @@ func main() {
 	p := flags.NewParser(&opts, flags.Default)
 	p.CommandHandler = func(command flags.Commander, args []string) error {
 		setupLog(opts.Dbg)
-		err := command.Execute(args)
+		commonOpts := cmd.CommonOpts{RemarkURL: opts.RemarkURL, SharedSecret: opts.SharedSecret}
+		c := command.(CommonOptionsCommander)
+		c.SetCommon(commonOpts)
+		err := c.Execute(args)
 		if err != nil {
 			log.Printf("[ERROR] failed with %+v", err)
 		}
