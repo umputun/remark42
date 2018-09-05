@@ -15,11 +15,6 @@ type RestoreCommand struct {
 	CommonOpts
 }
 
-// SetCommon satisfies main.CommonOptionsCommander interface and sets common options
-func (rc *RestoreCommand) SetCommon(commonOpts CommonOpts) {
-	rc.CommonOpts = commonOpts
-}
-
 // Execute runs import with RestoreCommand parameters, entry point for "restore" command
 // uses ImportCommand with constructed full file name
 func (rc *RestoreCommand) Execute(args []string) error {

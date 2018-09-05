@@ -26,13 +26,6 @@ type Opts struct {
 
 var revision = "unknown"
 
-// CommonOptionsCommander extends flags.Commander with SetCommon
-// All commands should implement this interfaces
-type CommonOptionsCommander interface {
-	SetCommon(commonOpts cmd.CommonOpts)
-	Execute(args []string) error
-}
-
 func main() {
 	fmt.Printf("remark42 %s\n", revision)
 	cmd.Revision = revision
@@ -42,7 +35,7 @@ func main() {
 	p.CommandHandler = func(command flags.Commander, args []string) error {
 		setupLog(opts.Dbg)
 		commonOpts := cmd.CommonOpts{RemarkURL: opts.RemarkURL, SharedSecret: opts.SharedSecret}
-		c := command.(CommonOptionsCommander)
+		c := command.(cmd.CommonOptionsCommander)
 		c.SetCommon(commonOpts)
 		err := c.Execute(args)
 		if err != nil {
