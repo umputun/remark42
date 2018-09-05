@@ -24,11 +24,6 @@ type ImportCommand struct {
 	CommonOpts
 }
 
-// SetCommon satisfies main.CommonOptionsCommander interface and sets common options
-func (ic *ImportCommand) SetCommon(commonOpts CommonOpts) {
-	ic.CommonOpts = commonOpts
-}
-
 // Execute runs import with ImportCommand parameters, entry point for "import" command
 func (ic *ImportCommand) Execute(args []string) error {
 	log.Printf("[INFO] import %s (%s), site %s", ic.InputFile, ic.Provider, ic.Site)
