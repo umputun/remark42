@@ -26,6 +26,8 @@ type Opts struct {
 
 var revision = "unknown"
 
+// CommonOptionsCommander extends flags.Commander with SetCommon
+// All commands should implement this interfaces
 type CommonOptionsCommander interface {
 	SetCommon(commonOpts cmd.CommonOpts)
 	Execute(args []string) error
