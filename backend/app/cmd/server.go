@@ -130,11 +130,6 @@ type serverApp struct {
 	terminated  chan struct{}
 }
 
-// SetCommon satisfies CommonOptionsCommander interface and sets common options
-func (s *ServerCommand) SetCommon(commonOpts CommonOpts) {
-	s.CommonOpts = commonOpts
-}
-
 // Execute is the entry point for "server" command, called by flag parser
 func (s *ServerCommand) Execute(args []string) error {
 	log.Printf("[INFO] start server on port %d", s.Port)

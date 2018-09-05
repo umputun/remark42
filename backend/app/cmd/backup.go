@@ -22,11 +22,6 @@ type BackupCommand struct {
 	CommonOpts
 }
 
-// SetCommon satisfies main.CommonOptionsCommander interface and sets common options
-func (ec *BackupCommand) SetCommon(commonOpts CommonOpts) {
-	ec.CommonOpts = commonOpts
-}
-
 // Execute runs export with ExportCommand parameters, entry point for "export" command
 func (ec *BackupCommand) Execute(args []string) error {
 	log.Printf("[INFO] export to %s, site %s", ec.ExportPath, ec.Site)
