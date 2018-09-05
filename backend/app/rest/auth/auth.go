@@ -50,14 +50,15 @@ func (a *Authenticator) Auth(reqAuth bool) func(http.Handler) http.Handler {
 	f := func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 
-			// if secret key matches and site in request return admin
+			// if secret key matches for given site (from request) return admin user
 			if a.checkSecretKey(r) {
 				r = rest.SetUserInfo(r, adminUser)
 				h.ServeHTTP(w, r)
 				return
 			}
 
-			if a.basicDevUser(w, r) { // use dev user basic auth if enabled
+			// use dev user basic auth if enabled
+			if a.basicDevUser(w, r) {
 				r = rest.SetUserInfo(r, devUser)
 				h.ServeHTTP(w, r)
 				return
@@ -70,7 +71,7 @@ func (a *Authenticator) Auth(reqAuth bool) func(http.Handler) http.Handler {
 					http.Error(w, "Unauthorized", http.StatusUnauthorized)
 					return
 				}
-				// in anonymous mode just pass it to the next handler
+				// if !reqAuth just pass it to the next handler, used for information only, like logs
 				h.ServeHTTP(w, r)
 				return
 			}

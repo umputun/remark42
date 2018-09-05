@@ -15,12 +15,16 @@ import (
 // BackupCommand set of flags and command for export
 // ExportPath used as a separate element to leverage BACKUP_PATH. If ExportFile has a path (i.e. with /) BACKUP_PATH ignored.
 type BackupCommand struct {
-	ExportPath   string        `short:"p" long:"path" env:"BACKUP_PATH" default:"./var/backup" description:"export path"`
-	ExportFile   string        `short:"f" long:"file" default:"userbackup-{{.SITE}}-{{.TS}}.gz" description:"file name"`
-	Site         string        `long:"site" env:"SITE" default:"remark" description:"site name"`
-	SharedSecret string        `long:"secret" env:"SECRET" description:"shared secret key" required:"true"`
-	Timeout      time.Duration `long:"timeout" default:"15m" description:"import timeout"`
-	URL          string        `long:"url" default:"http://127.0.0.1:8080" description:"base url"`
+	ExportPath string        `short:"p" long:"path" env:"BACKUP_PATH" default:"./var/backup" description:"export path"`
+	ExportFile string        `short:"f" long:"file" default:"userbackup-{{.SITE}}-{{.TS}}.gz" description:"file name"`
+	Site       string        `long:"site" env:"SITE" default:"remark" description:"site name"`
+	Timeout    time.Duration `long:"timeout" default:"15m" description:"import timeout"`
+	CommonOpts
+}
+
+// SetCommon satisfies main.CommonOptionsCommander interface and sets common options
+func (ec *BackupCommand) SetCommon(commonOpts CommonOpts) {
+	ec.CommonOpts = commonOpts
 }
 
 // Execute runs export with ExportCommand parameters, entry point for "export" command
@@ -40,7 +44,7 @@ func (ec *BackupCommand) Execute(args []string) error {
 	client := http.Client{}
 	ctx, cancel := context.WithTimeout(context.Background(), ec.Timeout)
 	defer cancel()
-	exportURL := fmt.Sprintf("%s/api/v1/admin/export?mode=file&site=%s&secret=%s", ec.URL, ec.Site, ec.SharedSecret)
+	exportURL := fmt.Sprintf("%s/api/v1/admin/export?mode=file&site=%s&secret=%s", ec.RemarkURL, ec.Site, ec.SharedSecret)
 	req, err := http.NewRequest(http.MethodGet, exportURL, nil)
 	if err != nil {
 		return errors.Wrapf(err, "can't make export request for %s", exportURL)

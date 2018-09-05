@@ -30,9 +30,6 @@ import (
 
 // ServerCommand with command line flags and env
 type ServerCommand struct {
-	RemarkURL    string `long:"url" env:"REMARK_URL" required:"true" description:"url to remark"`
-	SharedSecret string `long:"secret" env:"SECRET" required:"true" description:"shared secret key"`
-
 	Store  StoreGroup  `group:"store" namespace:"store" env-namespace:"STORE"`
 	Avatar AvatarGroup `group:"avatar" namespace:"avatar" env-namespace:"AVATAR"`
 	Cache  CacheGroup  `group:"cache" namespace:"cache" env-namespace:"CACHE"`
@@ -64,6 +61,8 @@ type ServerCommand struct {
 		Yandex   AuthGroup `group:"yandex" namespace:"yandex" env-namespace:"YANDEX" description:"Yandex OAuth"`
 		Dev      bool      `long:"dev" env:"DEV" description:"enable dev (local) oauth2"`
 	} `group:"auth" namespace:"auth" env-namespace:"AUTH"`
+
+	CommonOpts
 }
 
 // AuthGroup defines options group for auth params
@@ -131,9 +130,14 @@ type serverApp struct {
 	terminated  chan struct{}
 }
 
+// SetCommon satisfies CommonOptionsCommander interface and sets common options
+func (s *ServerCommand) SetCommon(commonOpts CommonOpts) {
+	s.CommonOpts = commonOpts
+}
+
 // Execute is the entry point for "server" command, called by flag parser
 func (s *ServerCommand) Execute(args []string) error {
-	log.Print("[INFO] start remark42 server")
+	log.Printf("[INFO] start server on port %d", s.Port)
 	resetEnv("SECRET", "AUTH_GOOGLE_CSEC", "AUTH_GITHUB_CSEC", "AUTH_FACEBOOK_CSEC", "AUTH_YANDEX_CSEC")
 
 	ctx, cancel := context.WithCancel(context.Background())

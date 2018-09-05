@@ -17,13 +17,16 @@ import (
 
 // ImportCommand set of flags and command for import
 type ImportCommand struct {
-	InputFile    string `short:"f" long:"file" description:"input file name" required:"true"`
-	Provider     string `short:"p" long:"provider" default:"disqus" choice:"disqus" choice:"wordpress" description:"import format"`
-	Site         string `short:"s" long:"site" env:"SITE" default:"remark" description:"site name"`
-	SharedSecret string `long:"secret" env:"SECRET" description:"shared secret key" required:"true"`
+	InputFile string        `short:"f" long:"file" description:"input file name" required:"true"`
+	Provider  string        `short:"p" long:"provider" default:"disqus" choice:"disqus" choice:"wordpress" description:"import format"`
+	Site      string        `short:"s" long:"site" env:"SITE" default:"remark" description:"site name"`
+	Timeout   time.Duration `long:"timeout" default:"15m" description:"import timeout"`
+	CommonOpts
+}
 
-	Timeout time.Duration `long:"timeout" default:"15m" description:"import timeout"`
-	URL     string        `long:"url" default:"http://127.0.0.1:8080" description:"migrator base url"`
+// SetCommon satisfies main.CommonOptionsCommander interface and sets common options
+func (ic *ImportCommand) SetCommon(commonOpts CommonOpts) {
+	ic.CommonOpts = commonOpts
 }
 
 // Execute runs import with ImportCommand parameters, entry point for "import" command
@@ -39,7 +42,8 @@ func (ic *ImportCommand) Execute(args []string) error {
 	client := http.Client{}
 	ctx, cancel := context.WithTimeout(context.Background(), ic.Timeout)
 	defer cancel()
-	importURL := fmt.Sprintf("%s/api/v1/admin/import?site=%s&provider=%s&secret=%s", ic.URL, ic.Site, ic.Provider, ic.SharedSecret)
+	importURL := fmt.Sprintf("%s/api/v1/admin/import?site=%s&provider=%s&secret=%s",
+		ic.RemarkURL, ic.Site, ic.Provider, ic.SharedSecret)
 	req, err := http.NewRequest(http.MethodPost, importURL, reader)
 	if err != nil {
 		return errors.Wrapf(err, "can't make import request for %s", importURL)
