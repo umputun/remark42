@@ -19,6 +19,12 @@ import (
 // Revision sets from main
 var Revision = "unknown"
 
+// CommonOpts sets externally from main, shared across all commands
+type CommonOpts struct {
+	RemarkURL    string
+	SharedSecret string
+}
+
 // fileParser used to convert template strings like blah-{{.SITE}}-{{.YYYYMMDD}} the final format
 type fileParser struct {
 	site string

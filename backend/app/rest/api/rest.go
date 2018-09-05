@@ -70,11 +70,6 @@ type commentsWithInfo struct {
 func (s *Rest) Run(port int) {
 	log.Printf("[INFO] activate rest server on port %d", port)
 
-	// TODO: restore admin info dbg
-	//if s.DataService != nil && len(s.DataService.AdminStore.Admins()) > 0 {
-	//	log.Printf("[DEBUG] admins %+v", s.DataService.Admins)
-	//}
-
 	router := s.routes()
 
 	s.lock.Lock()

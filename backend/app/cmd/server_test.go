@@ -86,10 +86,12 @@ func TestServerApp_WithMongo(t *testing.T) {
 	}
 
 	opts := ServerCommand{}
+	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+
 	// prepare options
 	p := flags.NewParser(&opts, flags.Default)
-	_, err := p.ParseArgs([]string{"--secret=123456", "--dev-passwd=password", "--url=https://demo.remark42.com",
-		"--cache.type=mongo", "--store.type=mongo", "--avatar.type=mongo", "--mongo.url=" + mongoURL, "--mongo.db=test_remark", "--port=12345"})
+	_, err := p.ParseArgs([]string{"--dev-passwd=password", "--cache.type=mongo", "--store.type=mongo",
+		"--avatar.type=mongo", "--mongo.url=" + mongoURL, "--mongo.db=test_remark", "--port=12345"})
 	require.Nil(t, err)
 	opts.Auth.Github.CSEC, opts.Auth.Github.CID = "csec", "cid"
 	opts.BackupLocation = "/tmp"
@@ -131,11 +133,12 @@ func TestServerApp_WithMongo(t *testing.T) {
 
 func TestServerApp_Failed(t *testing.T) {
 	opts := ServerCommand{}
+	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+
 	p := flags.NewParser(&opts, flags.Default)
 
 	// RO bolt location
-	_, err := p.ParseArgs([]string{"--secret=123456", "--url=https://demo.remark42.com", "--backup=/tmp",
-		"--store.bolt.path=/dev/null"})
+	_, err := p.ParseArgs([]string{"--backup=/tmp", "--store.bolt.path=/dev/null"})
 	assert.Nil(t, err)
 	_, err = opts.newServerApp()
 	assert.EqualError(t, err, "can't initialize data store: failed to make boltdb for /dev/null/remark.db: "+
@@ -144,8 +147,9 @@ func TestServerApp_Failed(t *testing.T) {
 
 	// RO backup location
 	opts = ServerCommand{}
-	_, err = p.ParseArgs([]string{"--secret=123456", "--url=https://demo.remark42.com", "--store.bolt.path=/tmp",
-		"--backup=/dev/null/not-writable"})
+	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+
+	_, err = p.ParseArgs([]string{"--store.bolt.path=/tmp", "--backup=/dev/null/not-writable"})
 	assert.Nil(t, err)
 	_, err = opts.newServerApp()
 	assert.EqualError(t, err, "can't check directory status for /dev/null/not-writable: stat /dev/null/not-writable: not a directory")
@@ -153,14 +157,18 @@ func TestServerApp_Failed(t *testing.T) {
 
 	// invalid url
 	opts = ServerCommand{}
-	_, err = p.ParseArgs([]string{"--secret=123456", "--url=demo.remark42.com", "--backup=/tmp", "----store.bolt.path=/tmp"})
+	opts.SetCommon(CommonOpts{RemarkURL: "demo.remark42.com", SharedSecret: "123456"})
+
+	_, err = p.ParseArgs([]string{"--backup=/tmp", "----store.bolt.path=/tmp"})
 	assert.Nil(t, err)
 	_, err = opts.newServerApp()
 	assert.EqualError(t, err, "invalid remark42 url demo.remark42.com")
 	t.Log(err)
 
 	opts = ServerCommand{}
-	_, err = p.ParseArgs([]string{"--secret=123456", "--url=https://demo.remark42.com", "--backup=/tmp", "--store.type=blah"})
+	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+
+	_, err = p.ParseArgs([]string{"--backup=/tmp", "--store.type=blah"})
 	assert.NotNil(t, err, "blah is invalid type")
 
 	opts.Store.Type = "blah"
@@ -191,9 +199,10 @@ func TestServerApp_MainSignal(t *testing.T) {
 	st := time.Now()
 
 	s := ServerCommand{}
+	s.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+
 	p := flags.NewParser(&s, flags.Default)
-	args := []string{"test", "--secret=123456", "--store.bolt.path=/tmp/xyz", "--backup=/tmp", "--avatar.fs.path=/tmp",
-		"--port=18100", "--url=https://demo.remark42.com"}
+	args := []string{"test", "--store.bolt.path=/tmp/xyz", "--backup=/tmp", "--avatar.fs.path=/tmp", "--port=18100"}
 	_, err := p.ParseArgs(args)
 	require.Nil(t, err)
 	err = s.Execute(args)
@@ -202,25 +211,27 @@ func TestServerApp_MainSignal(t *testing.T) {
 }
 
 func prepServerApp(t *testing.T, duration time.Duration, fn func(o ServerCommand) ServerCommand) (*serverApp, context.Context) {
-	opts := ServerCommand{}
-	// prepare options
-	p := flags.NewParser(&opts, flags.Default)
-	_, err := p.ParseArgs([]string{"--secret=123456", "--dev-passwd=password", "--url=https://demo.remark42.com"})
-	require.Nil(t, err)
-	opts.Avatar.FS.Path, opts.Avatar.Type, opts.BackupLocation = "/tmp", "fs", "/tmp"
-	opts.Store.Bolt.Path = fmt.Sprintf("/tmp/%d", opts.Port)
-	opts.Store.Bolt.Timeout = 10 * time.Second
-	opts.Auth.Github.CSEC, opts.Auth.Github.CID = "csec", "cid"
-	opts.Auth.Google.CSEC, opts.Auth.Google.CID = "csec", "cid"
-	opts.Auth.Facebook.CSEC, opts.Auth.Facebook.CID = "csec", "cid"
-	opts.Auth.Yandex.CSEC, opts.Auth.Yandex.CID = "csec", "cid"
-	opts.BackupLocation = "/tmp"
-	opts = fn(opts)
+	cmd := ServerCommand{}
+	cmd.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
 
-	os.Remove(opts.Store.Bolt.Path + "/remark.db")
+	// prepare options
+	p := flags.NewParser(&cmd, flags.Default)
+	_, err := p.ParseArgs([]string{"--dev-passwd=password"})
+	require.Nil(t, err)
+	cmd.Avatar.FS.Path, cmd.Avatar.Type, cmd.BackupLocation = "/tmp", "fs", "/tmp"
+	cmd.Store.Bolt.Path = fmt.Sprintf("/tmp/%d", cmd.Port)
+	cmd.Store.Bolt.Timeout = 10 * time.Second
+	cmd.Auth.Github.CSEC, cmd.Auth.Github.CID = "csec", "cid"
+	cmd.Auth.Google.CSEC, cmd.Auth.Google.CID = "csec", "cid"
+	cmd.Auth.Facebook.CSEC, cmd.Auth.Facebook.CID = "csec", "cid"
+	cmd.Auth.Yandex.CSEC, cmd.Auth.Yandex.CID = "csec", "cid"
+	cmd.BackupLocation = "/tmp"
+	cmd = fn(cmd)
+
+	os.Remove(cmd.Store.Bolt.Path + "/remark.db")
 
 	// create app
-	app, err := opts.newServerApp()
+	app, err := cmd.newServerApp()
 	require.Nil(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
