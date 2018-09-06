@@ -186,6 +186,45 @@ func TestRest_Update(t *testing.T) {
 	assert.Equal(t, c2, c3, "same as response from update")
 }
 
+func TestRest_UpdateDelete(t *testing.T) {
+	srv, ts := prep(t)
+	assert.NotNil(t, srv)
+	defer cleanup(ts, srv)
+
+	c1 := store.Comment{Text: "test test #1", ParentID: "p1",
+		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}}
+	id := addComment(t, c1, ts)
+
+	client := http.Client{}
+	req, err := http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/"+id+"?site=radio-t&url=https://radio-t.com/blah1",
+		strings.NewReader(`{"delete": true, "summary":"removed by user"}`))
+	assert.Nil(t, err)
+	req.SetBasicAuth("dev", "password")
+	b, err := client.Do(req)
+	assert.Nil(t, err)
+	body, err := ioutil.ReadAll(b.Body)
+	assert.Nil(t, err)
+	assert.Equal(t, 200, b.StatusCode, string(body))
+
+	// comments returned by update
+	c2 := store.Comment{}
+	err = json.Unmarshal(body, &c2)
+	assert.Nil(t, err)
+	assert.Equal(t, id, c2.ID)
+	assert.True(t, c2.Deleted)
+
+	// read updated comment
+	res, code := getWithAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=radio-t&url=https://radio-t.com/blah1", ts.URL, id))
+	assert.Equal(t, 200, code)
+	c3 := store.Comment{}
+	err = json.Unmarshal([]byte(res), &c3)
+	assert.Nil(t, err)
+	assert.Equal(t, "", c3.Text)
+	assert.Equal(t, "", c3.Orig)
+	assert.True(t, c3.Deleted)
+
+}
+
 func TestRest_UpdateNotOwner(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)

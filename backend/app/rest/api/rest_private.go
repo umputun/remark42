@@ -83,6 +83,7 @@ func (s *Rest) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	edit := struct {
 		Text    string
 		Summary string
+		Delete  bool
 	}{}
 
 	if err := render.DecodeJSON(http.MaxBytesReader(w, r.Body, hardBodyLimit), &edit); err != nil {
@@ -112,6 +113,7 @@ func (s *Rest) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		Text:    s.CommentFormatter.FormatText(edit.Text),
 		Orig:    edit.Text,
 		Summary: edit.Summary,
+		Delete:  edit.Delete,
 	}
 
 	res, err := s.DataService.EditComment(locator, id, editReq)
