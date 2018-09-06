@@ -151,9 +151,6 @@ function init() {
         horizontalscrolling="no"
       />`;
       this.iframe = this.node.querySelector('iframe');
-      this.iframe.onload = () => {
-        this.iframe.contentDocument.addEventListener('keydown', this.onKeyDown);
-      };
       this.node.appendChild(this.closeEl);
       document.body.appendChild(this.style);
       document.body.appendChild(this.back);

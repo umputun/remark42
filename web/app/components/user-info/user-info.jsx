@@ -24,6 +24,20 @@ class UserInfo extends Component {
       .getUserComments({ user: id, limit: 10 })
       .then(({ comments = [] }) => this.setState({ comments }))
       .finally(() => this.setState({ isLoading: false }));
+
+    document.addEventListener('keydown', this.globalOnKeyDown);
+  }
+
+  componentWillUnmount() {
+    document.removeEventListener('keydown', this.globalOnKeyDown);
+  }
+
+  globalOnKeyDown(e) {
+    // ESCAPE key pressed
+    if (e.keyCode == 27) {
+      const data = JSON.stringify({ isUserInfoShown: false });
+      window.parent.postMessage(data, '*');
+    }
   }
 
   render(props, { comments, isLoading }) {
