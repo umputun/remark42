@@ -485,15 +485,14 @@ type Node struct {
 
 Sort can be `time`, `active` or `score`. Supported sort order with prefix -/+, i.e. `-time`. For `tree` mode sort will be applied to top-level comments only and all replies always sorted by time.
 
-* `PUT /api/v1/comment/{id}?site=site-id&url=post-url` - edit comment, allowed once in 5min since creation
+* `PUT /api/v1/comment/{id}?site=site-id&url=post-url` - edit comment, allowed once in `EDIT_TIME` minutes since creation.  Body is `EditRequest` json
 
-```json
-  Content-Type: application/json
-
-  {
-    "text": "edit comment blah http://radio-t.com 12345",
-    "summary": "fix blah"
-  }
+```go
+ 	type EditRequest struct {
+ 		Text    string `json:"text"`    // updated text
+ 		Summary string `json:"summary"` // optional, summary of the edit
+ 		Delete  bool   `json:"delete"`  // delete flag 
+ 	}{}
 ```
 
 * `GET /api/v1/last/{max}?site=site-id` - get up to `{max}` last comments

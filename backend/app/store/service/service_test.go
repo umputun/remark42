@@ -258,6 +258,25 @@ func TestService_EditComment(t *testing.T) {
 	assert.Nil(t, err, "allow second edit")
 }
 
+func TestService_DeleteComment(t *testing.T) {
+	defer os.Remove(testDb)
+	b := DataStore{Interface: prepStoreEngine(t), KeyStore: keys.NewStaticStore("secret 123")}
+
+	res, err := b.Last("radio-t", 0)
+	t.Logf("%+v", res[0])
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(res))
+	assert.Nil(t, res[0].Edit)
+
+	_, err = b.EditComment(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, EditRequest{Delete: true})
+	assert.Nil(t, err)
+
+	c, err := b.Get(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID)
+	assert.Nil(t, err)
+	assert.True(t, c.Deleted)
+	t.Logf("%+v", c)
+}
+
 func TestService_EditCommentDurationFailed(t *testing.T) {
 	defer os.Remove(testDb)
 	b := DataStore{Interface: prepStoreEngine(t), EditDuration: 100 * time.Millisecond, KeyStore: keys.NewStaticStore("secret 123")}
