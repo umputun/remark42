@@ -10,7 +10,6 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
 
-	"github.com/umputun/remark/backend/app/migrator"
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/rest/auth"
 	"github.com/umputun/remark/backend/app/rest/cache"
@@ -22,7 +21,6 @@ import (
 // admin provides router for all requests available for admin users only
 type admin struct {
 	dataService   *service.DataStore
-	exporter      migrator.Exporter
 	cache         cache.LoadingCache
 	authenticator auth.Authenticator
 	readOnlyAge   int
