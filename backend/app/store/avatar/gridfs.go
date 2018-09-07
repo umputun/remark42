@@ -89,7 +89,9 @@ func (gf *GridFS) Remove(avatar string) error {
 		if e != nil {
 			return errors.Wrapf(e, "can't get avatar %s", avatar)
 		}
-		_ = fh.Close()
+		if e = fh.Close(); e != nil {
+			log.Printf("[WARN] can't close avatar %s, %s", avatar, e)
+		}
 		return dbase.GridFS("fs").Remove(avatar)
 	})
 }

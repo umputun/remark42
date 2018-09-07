@@ -58,7 +58,7 @@ func (a *Authenticator) Auth(reqAuth bool) func(http.Handler) http.Handler {
 			}
 
 			// use dev user basic auth if enabled
-			if a.basicDevUser(w, r) {
+			if a.basicDevUser(r) {
 				r = rest.SetUserInfo(r, devUser)
 				h.ServeHTTP(w, r)
 				return
@@ -166,7 +166,7 @@ func (a *Authenticator) AdminOnly(next http.Handler) http.Handler {
 	return http.HandlerFunc(fn)
 }
 
-func (a *Authenticator) basicDevUser(w http.ResponseWriter, r *http.Request) bool {
+func (a *Authenticator) basicDevUser(r *http.Request) bool {
 
 	if a.DevPasswd == "" {
 		return false
