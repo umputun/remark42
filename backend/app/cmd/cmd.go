@@ -48,7 +48,7 @@ type fileParser struct {
 // parse apply template and also concat path and file. In case if file contains path separator path will be ignored
 func (p *fileParser) parse(now time.Time) (string, error) {
 
-	// file/location paramaters my have template masks
+	// file/location parameters my have template masks
 	fileTemplate := struct {
 		YYYYMMDD string
 		YYYY     string
