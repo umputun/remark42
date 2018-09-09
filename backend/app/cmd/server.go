@@ -370,6 +370,7 @@ func (s *ServerCommand) makeKeyStore() (keys.Store, error) {
 }
 
 func (s *ServerCommand) makeAdminStore() (admin.Store, error) {
+
 	switch s.Admin.Type {
 	case "shared":
 		if s.Admin.Shared.Email == "" { // no admin email, use admin@domain

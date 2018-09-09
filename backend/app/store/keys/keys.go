@@ -31,7 +31,7 @@ func (s *StaticStore) Get(siteID string) (key string, err error) {
 	return s.key, nil
 }
 
-// type MongoStore implements keys.Store with mongo backend
+// MongoStore implements keys.Store with mongo backend
 type MongoStore struct {
 	connection *mongo.Connection
 }
