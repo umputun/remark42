@@ -1,6 +1,8 @@
 package store
 
 import (
+	"crypto/sha1"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -43,3 +45,23 @@ func TestUser_HashIP(t *testing.T) {
 		assert.Equal(t, tt.hash2, u.IP, "case #%d", i)
 	}
 }
+
+func TestUser_HashFailed(t *testing.T) {
+	r := hashWithFallback(mockHash{}, "123456789")
+	assert.Equal(t, "995dc9bbdf1939fa", r)
+
+	r = hashWithFallback(mockHash{}, "995dc9bbdf1939fa")
+	assert.Equal(t, "995dc9bbdf1939fa", r)
+
+	r = hashWithFallback(sha1.New(), "123456789")
+	assert.Equal(t, "f7c3bc1d808e04732adf679965ccc34ca7ae3441", r)
+
+}
+
+type mockHash struct{}
+
+func (mock mockHash) Sum(b []byte) []byte               { return nil }
+func (mock mockHash) Reset()                            {}
+func (mock mockHash) Size() int                         { return 0 }
+func (mock mockHash) BlockSize() int                    { return 0 }
+func (mock mockHash) Write(p []byte) (n int, err error) { return 0, errors.New("error") }

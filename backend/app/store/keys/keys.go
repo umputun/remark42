@@ -1,6 +1,8 @@
 package keys
 
 import (
+	"log"
+
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/go-pkgz/mongo"
@@ -38,6 +40,7 @@ type MongoStore struct {
 
 // NewMongoStore makes keys Store for mongo's connection
 func NewMongoStore(conn *mongo.Connection) *MongoStore {
+	log.Printf("[DEBUG] make mongo keys store with %+v", conn)
 	return &MongoStore{connection: conn}
 }
 

@@ -43,6 +43,7 @@ type MongoStore struct {
 
 // NewMongoStore makes admin Store for mongo's connection
 func NewMongoStore(conn *mongo.Connection) *MongoStore {
+	log.Printf("[DEBUG] make mongo admin store with %+v", conn)
 	return &MongoStore{connection: conn}
 }
 
