@@ -40,7 +40,7 @@ func (gf *GridFS) Put(userID string, reader io.Reader) (avatar string, err error
 
 		// Trying to resize avatar.
 		if reader = resize(reader, gf.resizeLimit); reader == nil {
-			return errors.New("avatar reader is nil")
+			return errors.New("avatar resize reader is nil")
 		}
 		_, e = io.Copy(fh, reader)
 		return e

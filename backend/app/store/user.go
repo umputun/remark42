@@ -36,8 +36,7 @@ func HashValue(val string, secret string) string {
 		return val // already hashed or empty
 	}
 	key := []byte(secret)
-	h := hmac.New(sha1.New, key)
-	return hashWithFallback(h, val)
+	return hashWithFallback(hmac.New(sha1.New, key), val)
 }
 
 // EncodeID hashes id to sha1. The function intentionally left outside of User struct because in some cases
@@ -46,11 +45,10 @@ func EncodeID(id string) string {
 	if reValidSha.MatchString(id) {
 		return id // already hashed or empty
 	}
-	h := sha1.New()
-	return hashWithFallback(h, id)
+	return hashWithFallback(sha1.New(), id)
 }
 
-// hashWithFallback tries to has val with hash.Hash and failback to crc if needed
+// hashWithFallback tries to has val with hash.Hash and fallback to crc if needed
 func hashWithFallback(h hash.Hash, val string) string {
 	if _, err := io.WriteString(h, val); err != nil {
 		// fail back to crc64
