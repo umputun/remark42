@@ -53,6 +53,6 @@ func TestMongoStore_Get(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "secret2", r)
 
-	r, err = ms.Get("no-site-in-db")
+	_, err = ms.Get("no-site-in-db")
 	assert.Error(t, err, "can't get secret for site no-site-in-db")
 }
