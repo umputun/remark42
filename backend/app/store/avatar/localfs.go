@@ -53,7 +53,7 @@ func (fs *LocalFS) Put(userID string, reader io.Reader) (avatar string, err erro
 
 	// Trying to resize avatar.
 	if reader = resize(reader, fs.resizeLimit); reader == nil {
-		return "", errors.New("avatar reader is nil")
+		return "", errors.New("avatar resize reader is nil")
 	}
 
 	if _, err = io.Copy(fh, reader); err != nil {
