@@ -357,6 +357,13 @@ func (s *ServerCommand) makeKeyStore() (keys.Store, error) {
 	switch s.Key.Type {
 	case "shared":
 		return keys.NewStaticStore(s.SharedSecret), nil
+	case "mongo":
+		mgServer, e := s.makeMongo()
+		if e != nil {
+			return nil, errors.Wrap(e, "failed to create mongo server")
+		}
+		conn := mongo.NewConnection(mgServer, s.Mongo.DB, "admin")
+		return keys.NewMongoStore(conn), nil
 	default:
 		return nil, errors.Errorf("unsupported key store type %s", s.Key.Type)
 	}
@@ -371,6 +378,13 @@ func (s *ServerCommand) makeAdminStore() (admin.Store, error) {
 			}
 		}
 		return admin.NewStaticStore(s.Admin.Shared.Admins, s.Admin.Shared.Email), nil
+	case "mongo":
+		mgServer, e := s.makeMongo()
+		if e != nil {
+			return nil, errors.Wrap(e, "failed to create mongo server")
+		}
+		conn := mongo.NewConnection(mgServer, s.Mongo.DB, "admin")
+		return admin.NewMongoStore(conn), nil
 	default:
 		return nil, errors.Errorf("unsupported admin store type %s", s.Key.Type)
 	}

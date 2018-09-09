@@ -36,7 +36,7 @@ func (s *StaticStore) Email(string) (email string) {
 	return s.email
 }
 
-// type MongoStore implements admin.Store with mongo backend
+// MongoStore implements admin.Store with mongo backend
 type MongoStore struct {
 	connection *mongo.Connection
 }
