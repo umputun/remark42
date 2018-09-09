@@ -618,7 +618,8 @@ func TestAdmin_GetUserInfo(t *testing.T) {
 	u := store.User{}
 	err = json.Unmarshal([]byte(body), &u)
 	assert.Nil(t, err)
-	assert.Equal(t, store.User{Name: "user1 name", ID: "user1", Picture: "", IP: "", Admin: false, Blocked: false, Verified: false}, u)
+	assert.Equal(t, store.User{Name: "user1 name", ID: "user1", Picture: "", IP: "823688dafca7393d24c871a2da98a84d8732e927",
+		Admin: false, Blocked: false, Verified: false}, u)
 
 	_, code = get(t, fmt.Sprintf("%s/api/v1/admin/user/user1?site=radio-t&url=https://radio-t.com/blah", ts.URL))
 	assert.Equal(t, 401, code, "no auth")

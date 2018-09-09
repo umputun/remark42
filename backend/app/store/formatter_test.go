@@ -28,12 +28,12 @@ func TestFormatter_FormatText(t *testing.T) {
 	}
 }
 
-func TestFormatter_FormatTextNoConvertor(t *testing.T) {
+func TestFormatter_FormatTextNoConverter(t *testing.T) {
 	f := NewCommentFormatter()
 	assert.Equal(t, "<p>12345</p>\n", f.FormatText("12345"))
 }
 
-func TestFormatter_FormatTextConvertorFunc(t *testing.T) {
+func TestFormatter_FormatTextConverterFunc(t *testing.T) {
 	fn := CommentConverterFunc(func(text string) string { return "zz!" + text })
 	f := NewCommentFormatter(fn)
 	assert.Equal(t, "zz!<p>12345</p>\n", f.FormatText("12345"))

@@ -38,7 +38,7 @@ func (f *CommentFormatter) Format(c Comment) Comment {
 	return c
 }
 
-// FormatText formatting line
+// FormatText converts text with markdown processor, applies external converters and shortens links
 func (f *CommentFormatter) FormatText(txt string) (res string) {
 	mdExt := blackfriday.NoIntraEmphasis | blackfriday.Tables | blackfriday.FencedCode |
 		blackfriday.Strikethrough | blackfriday.SpaceHeadings | blackfriday.HardLineBreak |
