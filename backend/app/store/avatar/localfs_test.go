@@ -19,7 +19,7 @@ func TestAvatarStoreFS_Put(t *testing.T) {
 
 	avatar, err := p.Put("user1", nil)
 	assert.Equal(t, "", avatar)
-	assert.EqualError(t, err, "avatar reader is nil")
+	assert.EqualError(t, err, "avatar resize reader is nil")
 
 	avatar, err = p.Put("user1", strings.NewReader("some picture bin data"))
 	require.Nil(t, err)
