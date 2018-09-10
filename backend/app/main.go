@@ -28,15 +28,18 @@ var revision = "unknown"
 
 func main() {
 	fmt.Printf("remark42 %s\n", revision)
-	cmd.Revision = revision
 
 	var opts Opts
 	p := flags.NewParser(&opts, flags.Default)
 	p.CommandHandler = func(command flags.Commander, args []string) error {
 		setupLog(opts.Dbg)
-		commonOpts := cmd.CommonOpts{RemarkURL: opts.RemarkURL, SharedSecret: opts.SharedSecret}
+		// commands implements CommonOptionsCommander to allow passing set of extra options defined for all commands
 		c := command.(cmd.CommonOptionsCommander)
-		c.SetCommon(commonOpts)
+		c.SetCommon(cmd.CommonOpts{
+			RemarkURL:    opts.RemarkURL,
+			SharedSecret: opts.SharedSecret,
+			Revision:     revision,
+		})
 		err := c.Execute(args)
 		if err != nil {
 			log.Printf("[ERROR] failed with %+v", err)

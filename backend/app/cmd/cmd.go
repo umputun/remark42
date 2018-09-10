@@ -16,9 +16,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Revision sets from main
-var Revision = "unknown"
-
 // CommonOptionsCommander extends flags.Commander with SetCommon
 // All commands should implement this interfaces
 type CommonOptionsCommander interface {
@@ -30,12 +27,15 @@ type CommonOptionsCommander interface {
 type CommonOpts struct {
 	RemarkURL    string
 	SharedSecret string
+	Revision     string
 }
 
 // SetCommon satisfies CommonOptionsCommander interface and sets common option fields
+// The method called by main for each command
 func (c *CommonOpts) SetCommon(commonOpts CommonOpts) {
 	c.RemarkURL = commonOpts.RemarkURL
 	c.SharedSecret = commonOpts.SharedSecret
+	c.Revision = commonOpts.Revision
 }
 
 // fileParser used to convert template strings like blah-{{.SITE}}-{{.YYYYMMDD}} the final format
