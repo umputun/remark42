@@ -6,19 +6,24 @@ package avatar
 import (
 	"bytes"
 	"image"
-	"image/png"
-	"io"
-	"log"
+	"strings"
 
 	// Initializing packages for supporting GIF and JPEG formats.
 	_ "image/gif"
 	_ "image/jpeg"
+	"image/png"
+	"io"
+	"log"
+	"regexp"
 
+	"github.com/umputun/remark/backend/app/store"
 	"golang.org/x/image/draw"
 )
 
 // imgSfx for avatars
 const imgSfx = ".image"
+
+var reValidAvatarID = regexp.MustCompile(`^[a-fA-F0-9]{40}\.image$`)
 
 // Store defines interface to store and and load avatars
 type Store interface {
@@ -26,6 +31,7 @@ type Store interface {
 	Get(avatarID string) (reader io.ReadCloser, size int, err error)  // load avatar via reader
 	ID(avatarID string) (id string)                                   // unique id of stored avatar's data
 	Remove(avatarID string) error                                     // remove avatar data
+	List() (ids []string, err error)                                  // list all avatar ids
 
 }
 
@@ -70,4 +76,12 @@ func resize(reader io.Reader, limit int) io.Reader {
 		return &teeBuf
 	}
 	return &out
+}
+
+// encodeID converts string to encoded id unless already encoded and valid avatar id (with .image) passed
+func encodeID(val string) string {
+	if reValidAvatarID.MatchString(val) {
+		return strings.TrimSuffix(val, imgSfx) // already encoded, strip .image
+	}
+	return store.EncodeID(val)
 }
