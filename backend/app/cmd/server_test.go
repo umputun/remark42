@@ -142,7 +142,7 @@ func TestServerApp_Failed(t *testing.T) {
 	_, err := p.ParseArgs([]string{"--backup=/tmp", "--store.bolt.path=/dev/null"})
 	assert.Nil(t, err)
 	_, err = opts.newServerApp()
-	assert.EqualError(t, err, "can't initialize data store: failed to make boltdb for /dev/null/remark.db: "+
+	assert.EqualError(t, err, "failed to make data store engine: can't initialize data store: failed to make boltdb for /dev/null/remark.db: "+
 		"open /dev/null/remark.db: not a directory")
 	t.Log(err)
 
@@ -174,7 +174,7 @@ func TestServerApp_Failed(t *testing.T) {
 
 	opts.Store.Type = "blah"
 	_, err = opts.newServerApp()
-	assert.EqualError(t, err, "unsupported store type blah")
+	assert.EqualError(t, err, "failed to make data store engine: unsupported store type blah")
 	t.Log(err)
 }
 

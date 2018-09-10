@@ -149,7 +149,7 @@ func (s *ServerCommand) Execute(args []string) error {
 		log.Fatalf("[ERROR] failed to setup application, %+v", err)
 	}
 	if err = app.run(ctx); err != nil {
-		log.Printf("[INFO] remark terminated with error %+v", err)
+		log.Printf("[WARN] remark terminated with error %+v", err)
 		return err
 	}
 	log.Printf("[INFO] remark terminated")
@@ -170,17 +170,18 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 
 	storeEngine, err := s.makeDataStore()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to make data store engine")
 	}
 
 	keyStore, err := s.makeKeyStore()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to make key store")
+
 	}
 
 	adminStore, err := s.makeAdminStore()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to make admin store")
 	}
 
 	dataService := &service.DataStore{
@@ -193,7 +194,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 
 	loadingCache, err := s.makeCache()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to make cache")
 	}
 
 	// token TTL is 5 minutes, inactivity interval 7+ days by default
@@ -225,7 +226,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 	commentFormatter := store.NewCommentFormatter(imgProxy)
 
 	srv := &api.Rest{
-		Version:          Revision,
+		Version:          s.Revision,
 		DataService:      dataService,
 		WebRoot:          s.WebRoot,
 		RemarkURL:        s.RemarkURL,
