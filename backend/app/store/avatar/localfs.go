@@ -97,6 +97,8 @@ func (fs *LocalFS) Remove(avatar string) error {
 	return os.Remove(avFile)
 }
 
+// List all avatars (ids) on local file system
+// note: id includes .image suffix
 func (fs *LocalFS) List() (ids []string, err error) {
 	err = filepath.Walk(fs.storePath,
 		func(path string, info os.FileInfo, err error) error {

@@ -35,6 +35,28 @@ type Store interface {
 
 }
 
+// Migrate avatars between stores
+func Migrate(dst Store, src Store) (int, error) {
+	ids, err := src.List()
+	if err != nil {
+		return 0, err
+	}
+	for _, id := range ids {
+		srcReader, _, err := src.Get(id)
+		if err != nil {
+			log.Printf("[WARN] can't get reader for avatar %s", id)
+			continue
+		}
+		if _, err = dst.Put(id, srcReader); err != nil {
+			log.Printf("[WARN] can't put avatar %s", id)
+		}
+		if err = srcReader.Close(); err != nil {
+			log.Printf("[WARN] failed to close avatar %s", id)
+		}
+	}
+	return len(ids), nil
+}
+
 // resize an image of supported format (PNG, JPG, GIF) to the size of "limit" px of the biggest side
 // (width or height) preserving aspect ratio.
 // Returns original reader if resizing is not needed or failed.

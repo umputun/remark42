@@ -97,6 +97,8 @@ func (gf *GridFS) Remove(avatar string) error {
 	})
 }
 
+// List all avatars (ids) on gfs
+// note: id includes .image suffix
 func (gf *GridFS) List() (ids []string, err error) {
 
 	type gfsFile struct {
