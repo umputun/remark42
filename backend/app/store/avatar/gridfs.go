@@ -102,10 +102,8 @@ func (gf *GridFS) Remove(avatar string) error {
 func (gf *GridFS) List() (ids []string, err error) {
 
 	type gfsFile struct {
-		Id         interface{} `bson:"_id"`
-		ChunkSize  int         `bson:"chunkSize"`
-		UploadDate time.Time   `bson:"uploadDate"`
-		Length     int64       `bson:",minsize"`
+		UploadDate time.Time `bson:"uploadDate"`
+		Length     int64     `bson:",minsize"`
 		MD5        string
 		Filename   string `bson:",omitempty"`
 	}
