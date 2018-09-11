@@ -172,10 +172,8 @@ func (a *Authenticator) basicDevUser(r *http.Request) bool {
 		return false
 	}
 
-	log.Printf("[DEBUG] dev user auth")
 	s := strings.SplitN(r.Header.Get("Authorization"), " ", 2)
 	if len(s) != 2 {
-		log.Printf("[WARN] dev user auth failed, incorrect auth header %s", r.Header.Get("Authorization"))
 		return false
 	}
 
