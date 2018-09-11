@@ -167,6 +167,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 	if !strings.HasPrefix(s.RemarkURL, "http://") && !strings.HasPrefix(s.RemarkURL, "https://") {
 		return nil, errors.Errorf("invalid remark42 url %s", s.RemarkURL)
 	}
+	log.Printf("[DEBUG] remark42 url=%s", s.RemarkURL)
 
 	storeEngine, err := s.makeDataStore()
 	if err != nil {
@@ -313,6 +314,8 @@ func (a *serverApp) activateBackup(ctx context.Context) {
 
 // makeDataStore creates store for all sites
 func (s *ServerCommand) makeDataStore() (result engine.Interface, err error) {
+	log.Printf("[INFO] make data store, type %s", s.Store.Type)
+
 	switch s.Store.Type {
 	case "bolt":
 		if err = makeDirs(s.Store.Bolt.Path); err != nil {
@@ -337,6 +340,8 @@ func (s *ServerCommand) makeDataStore() (result engine.Interface, err error) {
 }
 
 func (s *ServerCommand) makeAvatarStore() (avatar.Store, error) {
+	log.Printf("[INFO] make avatar store, type=%s", s.Avatar.Type)
+
 	switch s.Avatar.Type {
 	case "fs":
 		if err := makeDirs(s.Avatar.FS.Path); err != nil {
@@ -355,6 +360,8 @@ func (s *ServerCommand) makeAvatarStore() (avatar.Store, error) {
 }
 
 func (s *ServerCommand) makeKeyStore() (keys.Store, error) {
+	log.Printf("[INFO] make key store, type=%s", s.Admin.Type)
+
 	switch s.Key.Type {
 	case "shared":
 		return keys.NewStaticStore(s.SharedSecret), nil
@@ -371,6 +378,7 @@ func (s *ServerCommand) makeKeyStore() (keys.Store, error) {
 }
 
 func (s *ServerCommand) makeAdminStore() (admin.Store, error) {
+	log.Printf("[INFO] make admin store, type=%s", s.Admin.Type)
 
 	switch s.Admin.Type {
 	case "shared":
@@ -393,6 +401,7 @@ func (s *ServerCommand) makeAdminStore() (admin.Store, error) {
 }
 
 func (s *ServerCommand) makeCache() (cache.LoadingCache, error) {
+	log.Printf("[INFO] make cache, type=%s", s.Cache.Type)
 	switch s.Cache.Type {
 	case "mem":
 		return cache.NewMemoryCache(cache.MaxCacheSize(s.Cache.Max.Size), cache.MaxValSize(s.Cache.Max.Value),
@@ -416,12 +425,12 @@ func (s *ServerCommand) makeMongo() (result *mongo.Server, err error) {
 	return mongo.NewServerWithURL(s.Mongo.URL, 10*time.Second)
 }
 
-func (s *ServerCommand) makeAuthProviders(jwtService *auth.JWT, avatarProxy *proxy.Avatar, ds *service.DataStore) []auth.Provider {
+func (s *ServerCommand) makeAuthProviders(jwt *auth.JWT, ap *proxy.Avatar, ds *service.DataStore) []auth.Provider {
 
 	makeParams := func(cid, secret string) auth.Params {
 		return auth.Params{
-			JwtService:        jwtService,
-			AvatarProxy:       avatarProxy,
+			JwtService:        jwt,
+			AvatarProxy:       ap,
 			RemarkURL:         s.RemarkURL,
 			Cid:               cid,
 			Csecret:           secret,
