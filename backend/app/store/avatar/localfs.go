@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -30,8 +31,9 @@ func NewLocalFS(storePath string, resizeLimit int) *LocalFS {
 }
 
 // Put avatar for userID to file and return avatar's file name (base), like 12345678.image
+// userID can be avatarID as well, in this case encoding just strip .image prefix
 func (fs *LocalFS) Put(userID string, reader io.Reader) (avatar string, err error) {
-	id := store.EncodeID(userID)
+	id := encodeID(userID)
 	location := fs.location(id) // location adds partition to path
 
 	if _, err = os.Stat(location); os.IsNotExist(err) {
@@ -93,6 +95,22 @@ func (fs *LocalFS) Remove(avatar string) error {
 	location := fs.location(strings.TrimSuffix(avatar, imgSfx))
 	avFile := path.Join(location, avatar)
 	return os.Remove(avFile)
+}
+
+// List all avatars (ids) on local file system
+// note: id includes .image suffix
+func (fs *LocalFS) List() (ids []string, err error) {
+	err = filepath.Walk(fs.storePath,
+		func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if !info.IsDir() && strings.HasSuffix(info.Name(), imgSfx) {
+				ids = append(ids, info.Name())
+			}
+			return nil
+		})
+	return ids, errors.Wrap(err, "can't list avatars")
 }
 
 // get location (directory) for user id by adding partition to final path in order to keep files

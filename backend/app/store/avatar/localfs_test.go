@@ -3,6 +3,7 @@ package avatar
 import (
 	"io/ioutil"
 	"os"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -32,6 +33,14 @@ func TestAvatarStoreFS_Put(t *testing.T) {
 	require.Nil(t, err)
 	assert.Equal(t, "a1881c06eec96db9901c7bbfe41c42a3f08e9cb4.image", avatar)
 	fi, err = os.Stat("/tmp/avatars.test/84/a1881c06eec96db9901c7bbfe41c42a3f08e9cb4.image")
+	assert.NoError(t, err)
+	assert.Equal(t, int64(25), fi.Size())
+
+	// with encoded id
+	avatar, err = p.Put("f1881c06eec96db9901c7bbfe41c42a3f08e9cb8.image", strings.NewReader("some picture bin data 123"))
+	require.Nil(t, err)
+	assert.Equal(t, "f1881c06eec96db9901c7bbfe41c42a3f08e9cb8.image", avatar)
+	fi, err = os.Stat("/tmp/avatars.test/56/f1881c06eec96db9901c7bbfe41c42a3f08e9cb8.image")
 	assert.NoError(t, err)
 	assert.Equal(t, int64(25), fi.Size())
 
@@ -84,6 +93,7 @@ func TestAvatarStoreFS_Location(t *testing.T) {
 		{"abc", "/tmp/avatars.test/35"},
 		{"xyz", "/tmp/avatars.test/69"},
 		{"blah blah", "/tmp/avatars.test/29"},
+		{"f1881c06eec96db9901c7bbfe41c42a3f08e9cb8", "/tmp/avatars.test/56"},
 	}
 
 	for i, tt := range tbl {
@@ -124,6 +134,34 @@ func TestAvatarStoreFS_Remove(t *testing.T) {
 	_, err = os.Stat("/tmp/avatars.test/30/b3daa77b4c04a9551b8781d03191fe098f325e67.image")
 	assert.NotNil(t, err, "removed for real")
 	t.Log(err)
+}
+
+func TestAvatarStoreFS_List(t *testing.T) {
+	p := NewLocalFS("/tmp/avatars.test", 300)
+	err := os.MkdirAll("/tmp/avatars.test", 0700)
+	require.NoError(t, err)
+	defer os.RemoveAll("/tmp/avatars.test")
+
+	// write some avatars
+	_, err = p.Put("user1", strings.NewReader("some picture bin data 1"))
+	require.Nil(t, err)
+	_, err = p.Put("user2", strings.NewReader("some picture bin data 2"))
+	require.Nil(t, err)
+	_, err = p.Put("user3", strings.NewReader("some picture bin data 3"))
+	require.Nil(t, err)
+
+	l, err := p.List()
+	assert.NoError(t, err)
+	assert.Equal(t, 3, len(l), "3 avatars listed")
+	sort.Strings(l)
+	assert.Equal(t, []string{"0b7f849446d3383546d15a480966084442cd2193.image", "a1881c06eec96db9901c7bbfe41c42a3f08e9cb4.image", "b3daa77b4c04a9551b8781d03191fe098f325e67.image"}, l)
+
+	r, size, err := p.Get("0b7f849446d3383546d15a480966084442cd2193.image")
+	assert.Nil(t, err)
+	assert.Equal(t, 23, size)
+	data, err := ioutil.ReadAll(r)
+	assert.Nil(t, err)
+	assert.Equal(t, "some picture bin data 3", string(data))
 }
 
 func BenchmarkAvatarStoreFS_ID(b *testing.B) {

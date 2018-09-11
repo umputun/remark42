@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"time"
 
 	"github.com/globalsign/mgo"
 	"github.com/go-pkgz/mongo"
@@ -26,7 +27,7 @@ type GridFS struct {
 
 // Put avatar to gridfs object, try to resize
 func (gf *GridFS) Put(userID string, reader io.Reader) (avatar string, err error) {
-	id := store.EncodeID(userID)
+	id := encodeID(userID)
 	err = gf.Connection.WithDB(func(dbase *mgo.Database) error {
 		fh, e := dbase.GridFS("fs").Create(id + imgSfx)
 		if e != nil {
@@ -94,4 +95,26 @@ func (gf *GridFS) Remove(avatar string) error {
 		}
 		return dbase.GridFS("fs").Remove(avatar)
 	})
+}
+
+// List all avatars (ids) on gfs
+// note: id includes .image suffix
+func (gf *GridFS) List() (ids []string, err error) {
+
+	type gfsFile struct {
+		UploadDate time.Time `bson:"uploadDate"`
+		Length     int64     `bson:",minsize"`
+		MD5        string
+		Filename   string `bson:",omitempty"`
+	}
+
+	files := []gfsFile{}
+	err = gf.Connection.WithDB(func(dbase *mgo.Database) error {
+		return dbase.GridFS("fs").Find(nil).All(&files)
+	})
+
+	for _, f := range files {
+		ids = append(ids, f.Filename)
+	}
+	return ids, errors.Wrap(err, "can't list avatars")
 }

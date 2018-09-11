@@ -17,6 +17,7 @@ type Opts struct {
 	ImportCmd  cmd.ImportCommand  `command:"import"`
 	BackupCmd  cmd.BackupCommand  `command:"backup"`
 	RestoreCmd cmd.RestoreCommand `command:"restore"`
+	AvatarCmd  cmd.AvatarCommand  `command:"avatar"`
 
 	RemarkURL    string `long:"url" env:"REMARK_URL" required:"true" description:"url to remark"`
 	SharedSecret string `long:"secret" env:"SECRET" required:"true" description:"shared secret key"`

@@ -23,7 +23,6 @@ import (
 	adminstore "github.com/umputun/remark/backend/app/store/admin"
 	"github.com/umputun/remark/backend/app/store/avatar"
 	"github.com/umputun/remark/backend/app/store/engine"
-	"github.com/umputun/remark/backend/app/store/keys"
 	"github.com/umputun/remark/backend/app/store/service"
 )
 
@@ -92,13 +91,12 @@ func prep(t *testing.T) (srv *Rest, ts *httptest.Server) {
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDb, SiteID: "radio-t"})
 	require.Nil(t, err)
 
-	adminStore := adminstore.NewStaticStore([]string{"a1", "a2"}, "admin@remark-42.com")
+	adminStore := adminstore.NewStaticStore("123456", []string{"a1", "a2"}, "admin@remark-42.com")
 
 	dataStore := &service.DataStore{
 		Interface:      b,
 		EditDuration:   5 * time.Minute,
 		MaxCommentSize: 4000,
-		KeyStore:       keys.NewStaticStore("123456"),
 		AdminStore:     adminStore,
 	}
 	srv = &Rest{
@@ -107,7 +105,7 @@ func prep(t *testing.T) (srv *Rest, ts *httptest.Server) {
 			DevPasswd:  "password",
 			Providers:  nil,
 			AdminStore: adminStore,
-			JWTService: auth.NewJWT(keys.NewStaticStore("123456"), false, time.Minute, time.Hour),
+			JWTService: auth.NewJWT(adminStore, false, time.Minute, time.Hour),
 		},
 		Cache:            &cache.Nop{},
 		WebRoot:          "/tmp",
@@ -122,7 +120,7 @@ func prep(t *testing.T) (srv *Rest, ts *httptest.Server) {
 			NativeImporter:    &migrator.Remark{DataStore: dataStore},
 			NativeExported:    &migrator.Remark{DataStore: dataStore},
 			Cache:             &cache.Nop{},
-			KeyStore:          keys.NewStaticStore("123456"),
+			KeyStore:          adminStore,
 		},
 	}
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = -5, -10

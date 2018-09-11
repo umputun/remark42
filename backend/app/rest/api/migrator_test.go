@@ -22,7 +22,6 @@ import (
 	"github.com/umputun/remark/backend/app/store"
 	adminstore "github.com/umputun/remark/backend/app/store/admin"
 	"github.com/umputun/remark/backend/app/store/engine"
-	"github.com/umputun/remark/backend/app/store/keys"
 	"github.com/umputun/remark/backend/app/store/service"
 )
 
@@ -153,29 +152,28 @@ func TestMigrator_Export(t *testing.T) {
 func prepImportSrv(t *testing.T) (svc *Migrator, ds *service.DataStore, ts *httptest.Server) {
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDb, SiteID: "radio-t"})
 	require.Nil(t, err)
-	ks := keys.NewStaticStore("123456")
-	dataStore := &service.DataStore{Interface: b, KeyStore: ks}
+	adminStore := adminstore.NewStaticStore("123456", []string{"a1", "a2"}, "admin@remark-42.com")
+	dataStore := &service.DataStore{Interface: b, AdminStore: adminStore}
 	svc = &Migrator{
 		DisqusImporter:    &migrator.Disqus{DataStore: dataStore},
 		WordPressImporter: &migrator.WordPress{DataStore: dataStore},
 		NativeImporter:    &migrator.Remark{DataStore: dataStore},
 		NativeExported:    &migrator.Remark{DataStore: dataStore},
 		Cache:             &cache.Nop{},
-		KeyStore:          ks,
+		KeyStore:          adminStore,
 	}
 	a := auth.Authenticator{
 		DevPasswd:  "password",
 		Providers:  nil,
-		AdminStore: adminstore.NewStaticStore([]string{"a1", "a2"}, "admin@remark-42.com"),
-		JWTService: auth.NewJWT(keys.NewStaticStore("123456"), false, time.Minute, time.Hour),
-		KeyStore:   ks,
+		AdminStore: adminStore,
+		JWTService: auth.NewJWT(adminStore, false, time.Minute, time.Hour),
 	}
 	routes := svc.withRoutes(chi.NewRouter().With(a.Auth(true)).With(a.AdminOnly))
 	ts = httptest.NewServer(routes)
 	return svc, dataStore, ts
 }
 
-func cleanupImportSrv(m *Migrator, ts *httptest.Server) {
+func cleanupImportSrv(_ *Migrator, ts *httptest.Server) {
 	ts.Close()
 	os.Remove(testDb)
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/admin"
-	"github.com/umputun/remark/backend/app/store/keys"
 )
 
 // Authenticator is top level auth object providing middlewares
@@ -18,7 +17,6 @@ type Authenticator struct {
 	JWTService        *JWT
 	Providers         []Provider
 	AdminStore        admin.Store
-	KeyStore          keys.Store
 	DevPasswd         string
 	PermissionChecker PermissionChecker
 }
@@ -114,14 +112,14 @@ func (a *Authenticator) Auth(reqAuth bool) func(http.Handler) http.Handler {
 }
 
 func (a *Authenticator) checkSecretKey(r *http.Request) bool {
-	if a.KeyStore == nil {
+	if a.AdminStore == nil {
 		return false
 	}
 
 	siteID := r.URL.Query().Get("site")
 	secret := r.URL.Query().Get("secret")
 
-	skey, err := a.KeyStore.Get(siteID)
+	skey, err := a.AdminStore.Key(siteID)
 	if err != nil {
 		return false
 	}
@@ -172,10 +170,8 @@ func (a *Authenticator) basicDevUser(r *http.Request) bool {
 		return false
 	}
 
-	log.Printf("[DEBUG] dev user auth")
 	s := strings.SplitN(r.Header.Get("Authorization"), " ", 2)
 	if len(s) != 2 {
-		log.Printf("[WARN] dev user auth failed, incorrect auth header %s", r.Header.Get("Authorization"))
 		return false
 	}
 

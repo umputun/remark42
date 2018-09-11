@@ -10,9 +10,10 @@ import (
 
 	"github.com/coreos/bbolt"
 	"github.com/stretchr/testify/assert"
+
 	"github.com/umputun/remark/backend/app/store"
+	"github.com/umputun/remark/backend/app/store/admin"
 	"github.com/umputun/remark/backend/app/store/engine"
-	"github.com/umputun/remark/backend/app/store/keys"
 	"github.com/umputun/remark/backend/app/store/service"
 )
 
@@ -50,7 +51,7 @@ func TestRemark_Import(t *testing.T) {
 	os.Remove(testDb)
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{SiteID: "radio-t", FileName: testDb})
 	assert.Nil(t, err)
-	r := Remark{DataStore: &service.DataStore{Interface: b, KeyStore: keys.NewStaticStore("12345")}}
+	r := Remark{DataStore: &service.DataStore{Interface: b, AdminStore: admin.NewStaticStore("12345", []string{}, "")}}
 	size, err := r.Import(buf, "radio-t")
 	assert.Nil(t, err)
 	assert.Equal(t, 2, size)
@@ -78,7 +79,7 @@ func TestRemark_ImportManyWithError(t *testing.T) {
 	os.Remove(testDb)
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{SiteID: "radio-t", FileName: testDb})
 	assert.Nil(t, err)
-	r := Remark{DataStore: &service.DataStore{Interface: b, KeyStore: keys.NewStaticStore("12345")}}
+	r := Remark{DataStore: &service.DataStore{Interface: b, AdminStore: admin.NewStaticStore("12345", []string{}, "")}}
 	n, err := r.Import(buf, "radio-t")
 	assert.EqualError(t, err, "failed to save 2 comments")
 	assert.Equal(t, 1200, n)
@@ -94,7 +95,7 @@ func prep(t *testing.T) *service.DataStore {
 	boltStore, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{SiteID: "radio-t", FileName: testDb})
 	assert.Nil(t, err)
 
-	b := &service.DataStore{Interface: boltStore, KeyStore: keys.NewStaticStore("12345")}
+	b := &service.DataStore{Interface: boltStore, AdminStore: admin.NewStaticStore("12345", []string{}, "")}
 
 	comment := store.Comment{
 		ID:        "efbc17f177ee1a1c0ee6e1e025749966ec071adc",

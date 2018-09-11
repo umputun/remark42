@@ -24,7 +24,6 @@ import (
 	"github.com/umputun/remark/backend/app/store/admin"
 	"github.com/umputun/remark/backend/app/store/avatar"
 	"github.com/umputun/remark/backend/app/store/engine"
-	"github.com/umputun/remark/backend/app/store/keys"
 	"github.com/umputun/remark/backend/app/store/service"
 )
 
@@ -34,7 +33,6 @@ type ServerCommand struct {
 	Avatar AvatarGroup `group:"avatar" namespace:"avatar" env-namespace:"AVATAR"`
 	Cache  CacheGroup  `group:"cache" namespace:"cache" env-namespace:"CACHE"`
 	Mongo  MongoGroup  `group:"mongo" namespace:"mongo" env-namespace:"MONGO"`
-	Key    KeyGroup    `group:"key" namespace:"key" env-namespace:"KEY"`
 	Admin  AdminGroup  `group:"admin" namespace:"admin" env-namespace:"ADMIN"`
 
 	Sites          []string      `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
@@ -105,11 +103,6 @@ type MongoGroup struct {
 	DB  string `long:"db" env:"DB" default:"remark42" description:"mongo database"`
 }
 
-// KeyGroup defines options group for key params
-type KeyGroup struct {
-	Type string `long:"type" env:"TYPE" description:"type of key store" choice:"shared" choice:"mongo" default:"shared"`
-}
-
 // AdminGroup defines options group for admin params
 type AdminGroup struct {
 	Type   string `long:"type" env:"TYPE" description:"type of admin store" choice:"shared" choice:"mongo" default:"shared"`
@@ -160,23 +153,18 @@ func (s *ServerCommand) Execute(args []string) error {
 // doesn't start anything
 func (s *ServerCommand) newServerApp() (*serverApp, error) {
 
-	if err := s.makeDirs(s.BackupLocation); err != nil {
+	if err := makeDirs(s.BackupLocation); err != nil {
 		return nil, err
 	}
 
 	if !strings.HasPrefix(s.RemarkURL, "http://") && !strings.HasPrefix(s.RemarkURL, "https://") {
 		return nil, errors.Errorf("invalid remark42 url %s", s.RemarkURL)
 	}
+	log.Printf("[INFO] root url=%s", s.RemarkURL)
 
 	storeEngine, err := s.makeDataStore()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to make data store engine")
-	}
-
-	keyStore, err := s.makeKeyStore()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to make key store")
-
 	}
 
 	adminStore, err := s.makeAdminStore()
@@ -187,7 +175,6 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 	dataService := &service.DataStore{
 		Interface:      storeEngine,
 		EditDuration:   s.EditDuration,
-		KeyStore:       keyStore,
 		AdminStore:     adminStore,
 		MaxCommentSize: s.MaxCommentSize,
 	}
@@ -198,7 +185,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 	}
 
 	// token TTL is 5 minutes, inactivity interval 7+ days by default
-	jwtService := auth.NewJWT(keyStore, strings.HasPrefix(s.RemarkURL, "https://"), s.Auth.TTL.JWT, s.Auth.TTL.Cookie)
+	jwtService := auth.NewJWT(adminStore, strings.HasPrefix(s.RemarkURL, "https://"), s.Auth.TTL.JWT, s.Auth.TTL.Cookie)
 
 	avatarStore, err := s.makeAvatarStore()
 	if err != nil {
@@ -218,7 +205,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		DisqusImporter:    &migrator.Disqus{DataStore: dataService},
 		WordPressImporter: &migrator.WordPress{DataStore: dataService},
 		NativeExported:    &migrator.Remark{DataStore: dataService},
-		KeyStore:          keyStore,
+		KeyStore:          adminStore,
 	}
 
 	authProviders := s.makeAuthProviders(jwtService, avatarProxy, dataService)
@@ -242,7 +229,6 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 			Providers:         authProviders,
 			DevPasswd:         s.DevPasswd,
 			PermissionChecker: dataService,
-			KeyStore:          keyStore,
 		},
 		Cache: loadingCache,
 	}
@@ -313,9 +299,11 @@ func (a *serverApp) activateBackup(ctx context.Context) {
 
 // makeDataStore creates store for all sites
 func (s *ServerCommand) makeDataStore() (result engine.Interface, err error) {
+	log.Printf("[INFO] make data store, type=%s", s.Store.Type)
+
 	switch s.Store.Type {
 	case "bolt":
-		if err = s.makeDirs(s.Store.Bolt.Path); err != nil {
+		if err = makeDirs(s.Store.Bolt.Path); err != nil {
 			return nil, errors.Wrap(err, "failed to create bolt store")
 		}
 		sites := []engine.BoltSite{}
@@ -337,9 +325,11 @@ func (s *ServerCommand) makeDataStore() (result engine.Interface, err error) {
 }
 
 func (s *ServerCommand) makeAvatarStore() (avatar.Store, error) {
+	log.Printf("[INFO] make avatar store, type=%s", s.Avatar.Type)
+
 	switch s.Avatar.Type {
 	case "fs":
-		if err := s.makeDirs(s.Avatar.FS.Path); err != nil {
+		if err := makeDirs(s.Avatar.FS.Path); err != nil {
 			return nil, err
 		}
 		return avatar.NewLocalFS(s.Avatar.FS.Path, s.Avatar.RszLmt), nil
@@ -354,23 +344,8 @@ func (s *ServerCommand) makeAvatarStore() (avatar.Store, error) {
 	return nil, errors.Errorf("unsupported avatar store type %s", s.Avatar.Type)
 }
 
-func (s *ServerCommand) makeKeyStore() (keys.Store, error) {
-	switch s.Key.Type {
-	case "shared":
-		return keys.NewStaticStore(s.SharedSecret), nil
-	case "mongo":
-		mgServer, e := s.makeMongo()
-		if e != nil {
-			return nil, errors.Wrap(e, "failed to create mongo server")
-		}
-		conn := mongo.NewConnection(mgServer, s.Mongo.DB, "admin")
-		return keys.NewMongoStore(conn), nil
-	default:
-		return nil, errors.Errorf("unsupported key store type %s", s.Key.Type)
-	}
-}
-
 func (s *ServerCommand) makeAdminStore() (admin.Store, error) {
+	log.Printf("[INFO] make admin store, type=%s", s.Admin.Type)
 
 	switch s.Admin.Type {
 	case "shared":
@@ -379,7 +354,7 @@ func (s *ServerCommand) makeAdminStore() (admin.Store, error) {
 				s.Admin.Shared.Email = "admin@" + u.Host
 			}
 		}
-		return admin.NewStaticStore(s.Admin.Shared.Admins, s.Admin.Shared.Email), nil
+		return admin.NewStaticStore(s.SharedSecret, s.Admin.Shared.Admins, s.Admin.Shared.Email), nil
 	case "mongo":
 		mgServer, e := s.makeMongo()
 		if e != nil {
@@ -388,11 +363,12 @@ func (s *ServerCommand) makeAdminStore() (admin.Store, error) {
 		conn := mongo.NewConnection(mgServer, s.Mongo.DB, "admin")
 		return admin.NewMongoStore(conn), nil
 	default:
-		return nil, errors.Errorf("unsupported admin store type %s", s.Key.Type)
+		return nil, errors.Errorf("unsupported admin store type %s", s.Admin.Type)
 	}
 }
 
 func (s *ServerCommand) makeCache() (cache.LoadingCache, error) {
+	log.Printf("[INFO] make cache, type=%s", s.Cache.Type)
 	switch s.Cache.Type {
 	case "mem":
 		return cache.NewMemoryCache(cache.MaxCacheSize(s.Cache.Max.Size), cache.MaxValSize(s.Cache.Max.Value),
@@ -416,12 +392,12 @@ func (s *ServerCommand) makeMongo() (result *mongo.Server, err error) {
 	return mongo.NewServerWithURL(s.Mongo.URL, 10*time.Second)
 }
 
-func (s *ServerCommand) makeAuthProviders(jwtService *auth.JWT, avatarProxy *proxy.Avatar, ds *service.DataStore) []auth.Provider {
+func (s *ServerCommand) makeAuthProviders(jwt *auth.JWT, ap *proxy.Avatar, ds *service.DataStore) []auth.Provider {
 
 	makeParams := func(cid, secret string) auth.Params {
 		return auth.Params{
-			JwtService:        jwtService,
-			AvatarProxy:       avatarProxy,
+			JwtService:        jwt,
+			AvatarProxy:       ap,
 			RemarkURL:         s.RemarkURL,
 			Cid:               cid,
 			Csecret:           secret,
@@ -450,33 +426,4 @@ func (s *ServerCommand) makeAuthProviders(jwtService *auth.JWT, avatarProxy *pro
 		log.Printf("[WARN] no auth providers defined")
 	}
 	return providers
-}
-
-// mkdir -p for all dirs
-func (s *ServerCommand) makeDirs(dirs ...string) error {
-
-	// exists returns whether the given file or directory exists or not
-	exists := func(path string) (bool, error) {
-		_, err := os.Stat(path)
-		if err == nil {
-			return true, nil
-		}
-		if os.IsNotExist(err) {
-			return false, nil
-		}
-		return true, err
-	}
-
-	for _, dir := range dirs {
-		ex, err := exists(dir)
-		if err != nil {
-			return errors.Wrapf(err, "can't check directory status for %s", dir)
-		}
-		if !ex {
-			if e := os.MkdirAll(dir, 0700); e != nil {
-				return errors.Wrapf(err, "can't make directory %s", dir)
-			}
-		}
-	}
-	return nil
 }

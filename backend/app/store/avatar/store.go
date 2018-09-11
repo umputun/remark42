@@ -6,19 +6,24 @@ package avatar
 import (
 	"bytes"
 	"image"
-	"image/png"
-	"io"
-	"log"
+	"strings"
 
 	// Initializing packages for supporting GIF and JPEG formats.
 	_ "image/gif"
 	_ "image/jpeg"
+	"image/png"
+	"io"
+	"log"
+	"regexp"
 
+	"github.com/umputun/remark/backend/app/store"
 	"golang.org/x/image/draw"
 )
 
 // imgSfx for avatars
 const imgSfx = ".image"
+
+var reValidAvatarID = regexp.MustCompile(`^[a-fA-F0-9]{40}\.image$`)
 
 // Store defines interface to store and and load avatars
 type Store interface {
@@ -26,7 +31,30 @@ type Store interface {
 	Get(avatarID string) (reader io.ReadCloser, size int, err error)  // load avatar via reader
 	ID(avatarID string) (id string)                                   // unique id of stored avatar's data
 	Remove(avatarID string) error                                     // remove avatar data
+	List() (ids []string, err error)                                  // list all avatar ids
 
+}
+
+// Migrate avatars between stores
+func Migrate(dst Store, src Store) (int, error) {
+	ids, err := src.List()
+	if err != nil {
+		return 0, err
+	}
+	for _, id := range ids {
+		srcReader, _, err := src.Get(id)
+		if err != nil {
+			log.Printf("[WARN] can't get reader for avatar %s", id)
+			continue
+		}
+		if _, err = dst.Put(id, srcReader); err != nil {
+			log.Printf("[WARN] can't put avatar %s", id)
+		}
+		if err = srcReader.Close(); err != nil {
+			log.Printf("[WARN] failed to close avatar %s", id)
+		}
+	}
+	return len(ids), nil
 }
 
 // resize an image of supported format (PNG, JPG, GIF) to the size of "limit" px of the biggest side
@@ -70,4 +98,12 @@ func resize(reader io.Reader, limit int) io.Reader {
 		return &teeBuf
 	}
 	return &out
+}
+
+// encodeID converts string to encoded id unless already encoded and valid avatar id (with .image) passed
+func encodeID(val string) string {
+	if reValidAvatarID.MatchString(val) {
+		return strings.TrimSuffix(val, imgSfx) // already encoded, strip .image
+	}
+	return store.EncodeID(val)
 }
