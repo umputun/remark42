@@ -8,13 +8,12 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/backend/app/store"
-	"github.com/umputun/remark/backend/app/store/keys"
 )
 
 // JWT wraps jwt operations
 // supports both header and cookie jwt
 type JWT struct {
-	keyStore       keys.Store
+	keyStore       KeyStore
 	secureCookies  bool
 	tokenDuration  time.Duration
 	cookieDuration time.Duration
@@ -43,8 +42,13 @@ const jwtHeaderKey = "X-JWT"
 const xsrfCookieName = "XSRF-TOKEN"
 const xsrfHeaderKey = "X-XSRF-TOKEN"
 
+// KeyStore defines sub-interface for consumers needed just a key
+type KeyStore interface {
+	Key(siteID string) (key string, err error)
+}
+
 // NewJWT makes JWT service
-func NewJWT(keyStore keys.Store, secureCookies bool, tokenDuration time.Duration, cookieDuration time.Duration) *JWT {
+func NewJWT(keyStore KeyStore, secureCookies bool, tokenDuration time.Duration, cookieDuration time.Duration) *JWT {
 	res := JWT{
 		keyStore:       keyStore,
 		secureCookies:  secureCookies,
@@ -58,7 +62,7 @@ func NewJWT(keyStore keys.Store, secureCookies bool, tokenDuration time.Duration
 func (j *JWT) Token(claims *CustomClaims) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	secret, err := j.keyStore.Get(claims.SiteID)
+	secret, err := j.keyStore.Key(claims.SiteID)
 	if err != nil {
 		return "", errors.Wrap(err, "can't get secret")
 	}
@@ -96,7 +100,7 @@ func (j *JWT) Parse(tokenString string) (*CustomClaims, error) {
 		return nil, errors.Wrap(err, "failed to get siteID from jwt token")
 	}
 
-	secret, err := j.keyStore.Get(siteID)
+	secret, err := j.keyStore.Key(siteID)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get secret")
 	}

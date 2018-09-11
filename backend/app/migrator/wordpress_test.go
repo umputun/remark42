@@ -8,9 +8,9 @@ import (
 
 	"github.com/coreos/bbolt"
 	"github.com/stretchr/testify/assert"
-	"github.com/umputun/remark/backend/app/store/keys"
 
 	"github.com/umputun/remark/backend/app/store"
+	"github.com/umputun/remark/backend/app/store/admin"
 	"github.com/umputun/remark/backend/app/store/engine"
 	"github.com/umputun/remark/backend/app/store/service"
 )
@@ -21,7 +21,7 @@ func TestWordPress_Import(t *testing.T) {
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: siteID})
 	assert.Nil(t, err, "create store")
 
-	dataStore := service.DataStore{Interface: b, KeyStore: keys.NewStaticStore("12345")}
+	dataStore := service.DataStore{Interface: b, AdminStore: admin.NewStaticStore("12345", []string{}, "")}
 	wp := WordPress{DataStore: &dataStore}
 	size, err := wp.Import(strings.NewReader(xmlTestWP), siteID)
 	assert.Nil(t, err)
