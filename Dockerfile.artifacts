@@ -30,13 +30,15 @@ WORKDIR /go/src/github.com/umputun/remark/backend
 ADD backend /go/src/github.com/umputun/remark/backend
 ADD README.md /go/src/github.com/umputun/remark/
 ADD LICENSE /go/src/github.com/umputun/remark/
+COPY --from=build-frontend /srv/web/public/ web
 
-COPY --from=build-frontend /srv/web web
-
-RUN \
+RUN \ 
+    sed -i "s|https://demo.remark42.com|http://127.0.0.1:8080|g" /go/src/github.com/umputun/remark/backend/web/*.js && \
+    sed -i "/REMOVE-START/,/REMOVE-END/d" ./web/iframe.html && \
     go get -v github.com/rakyll/statik && \
     statik --src=/go/src/github.com/umputun/remark/backend/web --dest=/go/src/github.com/umputun/remark/backend/app/rest -p api -f && \
-    ls -la /go/src/github.com/umputun/remark/backend/app/rest/api/statik.go
+    ls -la /go/src/github.com/umputun/remark/backend/app/rest/api/statik.go && \
+    ls -la /go/src/github.com/umputun/remark/backend/web/
 
 # if DRONE presented use DRONE_* git env to make version
 RUN \
