@@ -167,7 +167,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 	if !strings.HasPrefix(s.RemarkURL, "http://") && !strings.HasPrefix(s.RemarkURL, "https://") {
 		return nil, errors.Errorf("invalid remark42 url %s", s.RemarkURL)
 	}
-	log.Printf("[DEBUG] remark42 url=%s", s.RemarkURL)
+	log.Printf("[INFO] root url=%s", s.RemarkURL)
 
 	storeEngine, err := s.makeDataStore()
 	if err != nil {
@@ -314,7 +314,7 @@ func (a *serverApp) activateBackup(ctx context.Context) {
 
 // makeDataStore creates store for all sites
 func (s *ServerCommand) makeDataStore() (result engine.Interface, err error) {
-	log.Printf("[INFO] make data store, type %s", s.Store.Type)
+	log.Printf("[INFO] make data store, type=%s", s.Store.Type)
 
 	switch s.Store.Type {
 	case "bolt":
