@@ -6,18 +6,16 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
-	"github.com/umputun/remark/backend/app/store/admin"
 
 	"github.com/umputun/remark/backend/app/store"
+	"github.com/umputun/remark/backend/app/store/admin"
 	"github.com/umputun/remark/backend/app/store/engine"
-	"github.com/umputun/remark/backend/app/store/keys"
 )
 
 // DataStore wraps store.Interface with additional methods
 type DataStore struct {
 	engine.Interface
 	EditDuration   time.Duration
-	KeyStore       keys.Store
 	AdminStore     admin.Store
 	MaxCommentSize int
 
@@ -56,7 +54,7 @@ func (s *DataStore) prepareNewComment(comment store.Comment) (store.Comment, err
 	}
 	comment.Sanitize() // clear potentially dangerous js from all parts of comment
 
-	secret, err := s.KeyStore.Get(comment.Locator.SiteID)
+	secret, err := s.AdminStore.Key(comment.Locator.SiteID)
 	if err != nil {
 		return store.Comment{}, errors.Wrapf(err, "can't get secret for site %s", comment.Locator.SiteID)
 	}

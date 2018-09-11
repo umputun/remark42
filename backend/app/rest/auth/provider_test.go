@@ -13,10 +13,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/umputun/remark/backend/app/store/keys"
 	"golang.org/x/oauth2"
 
 	"github.com/umputun/remark/backend/app/store"
+	"github.com/umputun/remark/backend/app/store/admin"
 )
 
 func TestLogin(t *testing.T) {
@@ -54,7 +54,7 @@ func TestLogin(t *testing.T) {
 		Admin: false, Blocked: true, IP: ""}, u)
 
 	token := resp.Cookies()[0].Value
-	jwtSvc := NewJWT(keys.NewStaticStore("12345"), false, time.Hour, time.Hour*24*31)
+	jwtSvc := NewJWT(admin.NewStaticKeyStore("12345"), false, time.Hour, time.Hour*24*31)
 
 	claims, err := jwtSvc.Parse(token)
 	require.NoError(t, err)
@@ -103,7 +103,7 @@ func TestLoginSessionOnly(t *testing.T) {
 	req.AddCookie(resp.Cookies()[1])
 	req.Header.Add("X-XSRF-TOKEN", resp.Cookies()[1].Value)
 
-	jwtService := NewJWT(keys.NewStaticStore("12345"), false, time.Hour, time.Hour)
+	jwtService := NewJWT(admin.NewStaticKeyStore("12345"), false, time.Hour, time.Hour)
 	res, err := jwtService.Get(req)
 	require.Nil(t, err)
 	assert.Equal(t, true, res.SessionOnly)
@@ -169,7 +169,7 @@ func mockProvider(t *testing.T, loginPort, authPort int) (*http.Server, *http.Se
 	}
 
 	params := Params{RemarkURL: "url", Cid: "cid", Csecret: "csecret",
-		JwtService: NewJWT(keys.NewStaticStore("12345"), false, time.Hour, time.Hour*24*31),
+		JwtService: NewJWT(admin.NewStaticKeyStore("12345"), false, time.Hour, time.Hour*24*31),
 		// AvatarProxy:  &proxy.Avatar{Store: &mockAvatarStore, RoutePath: "/v1/avatar"},
 		PermissionChecker: &mockUserPermissions{admin: "mock_myuser2", verified: "mock_myuser2", blocked: "mock_myuser1"},
 	}

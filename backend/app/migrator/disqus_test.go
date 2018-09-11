@@ -9,8 +9,8 @@ import (
 	"github.com/coreos/bbolt"
 	"github.com/stretchr/testify/require"
 	"github.com/umputun/remark/backend/app/store"
+	"github.com/umputun/remark/backend/app/store/admin"
 	"github.com/umputun/remark/backend/app/store/engine"
-	"github.com/umputun/remark/backend/app/store/keys"
 	"github.com/umputun/remark/backend/app/store/service"
 
 	"github.com/stretchr/testify/assert"
@@ -20,7 +20,7 @@ func TestDisqus_Import(t *testing.T) {
 	defer os.Remove("/tmp/remark-test.db")
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "test"})
 	require.Nil(t, err, "create store")
-	dataStore := service.DataStore{Interface: b, KeyStore: keys.NewStaticStore("12345")}
+	dataStore := service.DataStore{Interface: b, AdminStore: admin.NewStaticStore("12345", []string{}, "")}
 	d := Disqus{DataStore: &dataStore}
 	size, err := d.Import(strings.NewReader(xmlTestDisqus), "test")
 	assert.Nil(t, err)
