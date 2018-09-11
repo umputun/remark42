@@ -160,7 +160,7 @@ func (s *ServerCommand) Execute(args []string) error {
 // doesn't start anything
 func (s *ServerCommand) newServerApp() (*serverApp, error) {
 
-	if err := s.makeDirs(s.BackupLocation); err != nil {
+	if err := makeDirs(s.BackupLocation); err != nil {
 		return nil, err
 	}
 
@@ -315,7 +315,7 @@ func (a *serverApp) activateBackup(ctx context.Context) {
 func (s *ServerCommand) makeDataStore() (result engine.Interface, err error) {
 	switch s.Store.Type {
 	case "bolt":
-		if err = s.makeDirs(s.Store.Bolt.Path); err != nil {
+		if err = makeDirs(s.Store.Bolt.Path); err != nil {
 			return nil, errors.Wrap(err, "failed to create bolt store")
 		}
 		sites := []engine.BoltSite{}
@@ -339,7 +339,7 @@ func (s *ServerCommand) makeDataStore() (result engine.Interface, err error) {
 func (s *ServerCommand) makeAvatarStore() (avatar.Store, error) {
 	switch s.Avatar.Type {
 	case "fs":
-		if err := s.makeDirs(s.Avatar.FS.Path); err != nil {
+		if err := makeDirs(s.Avatar.FS.Path); err != nil {
 			return nil, err
 		}
 		return avatar.NewLocalFS(s.Avatar.FS.Path, s.Avatar.RszLmt), nil
@@ -450,33 +450,4 @@ func (s *ServerCommand) makeAuthProviders(jwtService *auth.JWT, avatarProxy *pro
 		log.Printf("[WARN] no auth providers defined")
 	}
 	return providers
-}
-
-// mkdir -p for all dirs
-func (s *ServerCommand) makeDirs(dirs ...string) error {
-
-	// exists returns whether the given file or directory exists or not
-	exists := func(path string) (bool, error) {
-		_, err := os.Stat(path)
-		if err == nil {
-			return true, nil
-		}
-		if os.IsNotExist(err) {
-			return false, nil
-		}
-		return true, err
-	}
-
-	for _, dir := range dirs {
-		ex, err := exists(dir)
-		if err != nil {
-			return errors.Wrapf(err, "can't check directory status for %s", dir)
-		}
-		if !ex {
-			if e := os.MkdirAll(dir, 0700); e != nil {
-				return errors.Wrapf(err, "can't make directory %s", dir)
-			}
-		}
-	}
-	return nil
 }
