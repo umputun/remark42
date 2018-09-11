@@ -18,6 +18,8 @@ var testJwtUserBlocked = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjI3ODkxO
 
 var testJwtDeleteMe = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjI3ODkxOTE4MjIsImp0aSI6InJhbmRvbSBpZCIsImlzcyI6InJlbWFyazQyIiwibmJmIjoxNTI2ODg0MjIyLCJ1c2VyIjp7Im5hbWUiOiJuYW1lMSIsImlkIjoiaWQxIiwicGljdHVyZSI6IiIsImFkbWluIjpmYWxzZSwiYmxvY2siOmZhbHNlfSwiZmxhZ3MiOnsiZGVsZXRlbWUiOnRydWV9fQ.SLh1QpFytWZqcT99VgcdAOtgFKhvpKCcZwqWTvAd63g"
 
+var testJwtNoUser = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjI3ODkxOTE4MjIsImp0aSI6InJhbmRvbSBpZCIsImlzcyI6InJlbWFyazQyIiwibmJmIjoxNTI2ODg0MjIyfQ.sBpblkbBRzZsBSPPNrTWqA5h7h54solrw5L4IypJT_o"
+
 func TestAuthJWTCookie(t *testing.T) {
 	a := Authenticator{DevPasswd: "123456", JWTService: NewJWT(admin.NewStaticKeyStore("xyz 12345"), false, time.Hour, time.Hour),
 		PermissionChecker: &mockUserPermissions{}}
@@ -54,6 +56,14 @@ func TestAuthJWTCookie(t *testing.T) {
 	resp, err = client.Do(req)
 	require.NoError(t, err)
 	assert.Equal(t, 201, resp.StatusCode, "token expired and refreshed")
+
+	req, err = http.NewRequest("GET", server.URL+"/auth", nil)
+	require.Nil(t, err)
+	req.AddCookie(&http.Cookie{Name: "JWT", Value: testJwtNoUser, HttpOnly: true, Path: "/", MaxAge: expiration, Secure: false})
+	req.Header.Add("X-XSRF-TOKEN", "random id")
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	assert.Equal(t, 401, resp.StatusCode, "no user info in the token")
 }
 
 func TestAuthJWTHeader(t *testing.T) {
