@@ -24,7 +24,6 @@ import (
 	"github.com/umputun/remark/backend/app/store/admin"
 	"github.com/umputun/remark/backend/app/store/avatar"
 	"github.com/umputun/remark/backend/app/store/engine"
-	"github.com/umputun/remark/backend/app/store/keys"
 	"github.com/umputun/remark/backend/app/store/service"
 )
 
@@ -34,7 +33,6 @@ type ServerCommand struct {
 	Avatar AvatarGroup `group:"avatar" namespace:"avatar" env-namespace:"AVATAR"`
 	Cache  CacheGroup  `group:"cache" namespace:"cache" env-namespace:"CACHE"`
 	Mongo  MongoGroup  `group:"mongo" namespace:"mongo" env-namespace:"MONGO"`
-	Key    KeyGroup    `group:"key" namespace:"key" env-namespace:"KEY"`
 	Admin  AdminGroup  `group:"admin" namespace:"admin" env-namespace:"ADMIN"`
 
 	Sites          []string      `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
@@ -105,11 +103,6 @@ type MongoGroup struct {
 	DB  string `long:"db" env:"DB" default:"remark42" description:"mongo database"`
 }
 
-// KeyGroup defines options group for key params
-type KeyGroup struct {
-	Type string `long:"type" env:"TYPE" description:"type of key store" choice:"shared" choice:"mongo" default:"shared"`
-}
-
 // AdminGroup defines options group for admin params
 type AdminGroup struct {
 	Type   string `long:"type" env:"TYPE" description:"type of admin store" choice:"shared" choice:"mongo" default:"shared"`
@@ -174,12 +167,6 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		return nil, errors.Wrap(err, "failed to make data store engine")
 	}
 
-	keyStore, err := s.makeKeyStore()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to make key store")
-
-	}
-
 	adminStore, err := s.makeAdminStore()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to make admin store")
@@ -188,7 +175,6 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 	dataService := &service.DataStore{
 		Interface:      storeEngine,
 		EditDuration:   s.EditDuration,
-		KeyStore:       keyStore,
 		AdminStore:     adminStore,
 		MaxCommentSize: s.MaxCommentSize,
 	}
@@ -199,7 +185,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 	}
 
 	// token TTL is 5 minutes, inactivity interval 7+ days by default
-	jwtService := auth.NewJWT(keyStore, strings.HasPrefix(s.RemarkURL, "https://"), s.Auth.TTL.JWT, s.Auth.TTL.Cookie)
+	jwtService := auth.NewJWT(adminStore, strings.HasPrefix(s.RemarkURL, "https://"), s.Auth.TTL.JWT, s.Auth.TTL.Cookie)
 
 	avatarStore, err := s.makeAvatarStore()
 	if err != nil {
@@ -219,7 +205,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		DisqusImporter:    &migrator.Disqus{DataStore: dataService},
 		WordPressImporter: &migrator.WordPress{DataStore: dataService},
 		NativeExported:    &migrator.Remark{DataStore: dataService},
-		KeyStore:          keyStore,
+		KeyStore:          adminStore,
 	}
 
 	authProviders := s.makeAuthProviders(jwtService, avatarProxy, dataService)
@@ -243,7 +229,6 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 			Providers:         authProviders,
 			DevPasswd:         s.DevPasswd,
 			PermissionChecker: dataService,
-			KeyStore:          keyStore,
 		},
 		Cache: loadingCache,
 	}
@@ -359,24 +344,6 @@ func (s *ServerCommand) makeAvatarStore() (avatar.Store, error) {
 	return nil, errors.Errorf("unsupported avatar store type %s", s.Avatar.Type)
 }
 
-func (s *ServerCommand) makeKeyStore() (keys.Store, error) {
-	log.Printf("[INFO] make key store, type=%s", s.Admin.Type)
-
-	switch s.Key.Type {
-	case "shared":
-		return keys.NewStaticStore(s.SharedSecret), nil
-	case "mongo":
-		mgServer, e := s.makeMongo()
-		if e != nil {
-			return nil, errors.Wrap(e, "failed to create mongo server")
-		}
-		conn := mongo.NewConnection(mgServer, s.Mongo.DB, "admin")
-		return keys.NewMongoStore(conn), nil
-	default:
-		return nil, errors.Errorf("unsupported key store type %s", s.Key.Type)
-	}
-}
-
 func (s *ServerCommand) makeAdminStore() (admin.Store, error) {
 	log.Printf("[INFO] make admin store, type=%s", s.Admin.Type)
 
@@ -387,7 +354,7 @@ func (s *ServerCommand) makeAdminStore() (admin.Store, error) {
 				s.Admin.Shared.Email = "admin@" + u.Host
 			}
 		}
-		return admin.NewStaticStore(s.Admin.Shared.Admins, s.Admin.Shared.Email), nil
+		return admin.NewStaticStore(s.SharedSecret, s.Admin.Shared.Admins, s.Admin.Shared.Email), nil
 	case "mongo":
 		mgServer, e := s.makeMongo()
 		if e != nil {
@@ -396,7 +363,7 @@ func (s *ServerCommand) makeAdminStore() (admin.Store, error) {
 		conn := mongo.NewConnection(mgServer, s.Mongo.DB, "admin")
 		return admin.NewMongoStore(conn), nil
 	default:
-		return nil, errors.Errorf("unsupported admin store type %s", s.Key.Type)
+		return nil, errors.Errorf("unsupported admin store type %s", s.Admin.Type)
 	}
 }
 

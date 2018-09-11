@@ -10,7 +10,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/umputun/remark/backend/app/store/keys"
+	"github.com/umputun/remark/backend/app/store/admin"
 
 	"github.com/umputun/remark/backend/app/store"
 )
@@ -30,7 +30,7 @@ var testJwtBadSign = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjI3ODkxOTE4M
 var days31 = time.Hour * 24 * 31
 
 func TestJWT_Token(t *testing.T) {
-	j := NewJWT(keys.NewStaticStore("xyz 12345"), false, time.Hour, days31)
+	j := NewJWT(admin.NewStaticKeyStore("xyz 12345"), false, time.Hour, days31)
 
 	claims := &CustomClaims{
 		State: "123456",
@@ -53,7 +53,7 @@ func TestJWT_Token(t *testing.T) {
 }
 
 func TestJWT_Parse(t *testing.T) {
-	j := NewJWT(keys.NewStaticStore("xyz 12345"), false, time.Hour, days31)
+	j := NewJWT(admin.NewStaticKeyStore("xyz 12345"), false, time.Hour, days31)
 	claims, err := j.Parse(testJwtValid)
 	assert.NoError(t, err)
 	assert.False(t, j.IsExpired(claims))
@@ -71,7 +71,7 @@ func TestJWT_Parse(t *testing.T) {
 }
 
 func TestJWT_Set(t *testing.T) {
-	j := NewJWT(keys.NewStaticStore("xyz 12345"), false, time.Hour, days31)
+	j := NewJWT(admin.NewStaticKeyStore("xyz 12345"), false, time.Hour, days31)
 
 	claims := &CustomClaims{
 		State: "123456",
@@ -116,7 +116,7 @@ func TestJWT_Set(t *testing.T) {
 }
 
 func TestJWT_GetFromHeader(t *testing.T) {
-	j := NewJWT(keys.NewStaticStore("xyz 12345"), false, time.Hour, days31)
+	j := NewJWT(admin.NewStaticKeyStore("xyz 12345"), false, time.Hour, days31)
 
 	req := httptest.NewRequest("GET", "/", nil)
 	req.Header.Add(jwtHeaderKey, testJwtValid)
@@ -141,7 +141,7 @@ func TestJWT_GetFromHeader(t *testing.T) {
 }
 
 func TestJWT_SetAndGetWithCookies(t *testing.T) {
-	j := NewJWT(keys.NewStaticStore("xyz 12345"), false, time.Hour, days31)
+	j := NewJWT(admin.NewStaticKeyStore("xyz 12345"), false, time.Hour, days31)
 
 	claims := &CustomClaims{
 		State:       "123456",
@@ -183,7 +183,7 @@ func TestJWT_SetAndGetWithCookies(t *testing.T) {
 }
 
 func TestJWT_SetAndGetWithXsrfMismatch(t *testing.T) {
-	j := NewJWT(keys.NewStaticStore("xyz 12345"), false, time.Hour, days31)
+	j := NewJWT(admin.NewStaticKeyStore("xyz 12345"), false, time.Hour, days31)
 
 	claims := &CustomClaims{
 		State: "123456",
@@ -220,7 +220,7 @@ func TestJWT_SetAndGetWithXsrfMismatch(t *testing.T) {
 }
 
 func TestJWT_SetAndGetWithCookiesExpired(t *testing.T) {
-	j := NewJWT(keys.NewStaticStore("xyz 12345"), false, time.Hour, days31)
+	j := NewJWT(admin.NewStaticKeyStore("xyz 12345"), false, time.Hour, days31)
 
 	claims := &CustomClaims{
 		State: "123456",

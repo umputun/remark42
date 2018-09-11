@@ -91,8 +91,7 @@ func TestServerApp_WithMongo(t *testing.T) {
 	// prepare options
 	p := flags.NewParser(&opts, flags.Default)
 	_, err := p.ParseArgs([]string{"--dev-passwd=password", "--cache.type=mongo", "--store.type=mongo",
-		"--avatar.type=mongo", "--mongo.url=" + mongoURL, "--mongo.db=test_remark", "--port=12345",
-		"--key.type=mongo", "--admin.type=mongo"})
+		"--avatar.type=mongo", "--mongo.url=" + mongoURL, "--mongo.db=test_remark", "--port=12345", "--admin.type=mongo"})
 	require.Nil(t, err)
 	opts.Auth.Github.CSEC, opts.Auth.Github.CID = "csec", "cid"
 	opts.BackupLocation = "/tmp"

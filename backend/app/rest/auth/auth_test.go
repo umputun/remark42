@@ -11,7 +11,7 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/umputun/remark/backend/app/store/keys"
+	"github.com/umputun/remark/backend/app/store/admin"
 )
 
 var testJwtUserBlocked = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjI3ODkxOTE4MjIsImp0aSI6InJhbmRvbSBpZCIsImlzcyI6InJlbWFyazQyIiwibmJmIjoxNTI2ODg0MjIyLCJ1c2VyIjp7Im5hbWUiOiJuYW1lMSIsImlkIjoiaWQxIiwicGljdHVyZSI6IiIsImFkbWluIjpmYWxzZSwiYmxvY2siOnRydWV9LCJzdGF0ZSI6IjEyMzQ1NiIsImZyb20iOiJmcm9tIn0.6P_OwGf8CUJRtvNSlW20GmaMb5pFvCNemP94fHCqb5Q"
@@ -19,7 +19,7 @@ var testJwtUserBlocked = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjI3ODkxO
 var testJwtDeleteMe = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjI3ODkxOTE4MjIsImp0aSI6InJhbmRvbSBpZCIsImlzcyI6InJlbWFyazQyIiwibmJmIjoxNTI2ODg0MjIyLCJ1c2VyIjp7Im5hbWUiOiJuYW1lMSIsImlkIjoiaWQxIiwicGljdHVyZSI6IiIsImFkbWluIjpmYWxzZSwiYmxvY2siOmZhbHNlfSwiZmxhZ3MiOnsiZGVsZXRlbWUiOnRydWV9fQ.SLh1QpFytWZqcT99VgcdAOtgFKhvpKCcZwqWTvAd63g"
 
 func TestAuthJWTCookie(t *testing.T) {
-	a := Authenticator{DevPasswd: "123456", JWTService: NewJWT(keys.NewStaticStore("xyz 12345"), false, time.Hour, time.Hour),
+	a := Authenticator{DevPasswd: "123456", JWTService: NewJWT(admin.NewStaticKeyStore("xyz 12345"), false, time.Hour, time.Hour),
 		PermissionChecker: &mockUserPermissions{}}
 	router := chi.NewRouter()
 	router.With(a.Auth(true)).Get("/auth", func(w http.ResponseWriter, r *http.Request) {
@@ -57,7 +57,7 @@ func TestAuthJWTCookie(t *testing.T) {
 }
 
 func TestAuthJWTHeader(t *testing.T) {
-	a := Authenticator{DevPasswd: "123456", JWTService: NewJWT(keys.NewStaticStore("xyz 12345"), false, time.Hour, time.Hour)}
+	a := Authenticator{DevPasswd: "123456", JWTService: NewJWT(admin.NewStaticKeyStore("xyz 12345"), false, time.Hour, time.Hour)}
 	router := chi.NewRouter()
 	router.With(a.Auth(true)).Get("/auth", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(201)
@@ -84,7 +84,7 @@ func TestAuthJWTHeader(t *testing.T) {
 }
 
 func TestAuthJWtBlocked(t *testing.T) {
-	a := Authenticator{DevPasswd: "123456", JWTService: NewJWT(keys.NewStaticStore("xyz 12345"), false, time.Hour, time.Hour)}
+	a := Authenticator{DevPasswd: "123456", JWTService: NewJWT(admin.NewStaticKeyStore("xyz 12345"), false, time.Hour, time.Hour)}
 	router := chi.NewRouter()
 	router.With(a.Auth(true)).Get("/auth", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(201)
@@ -104,7 +104,7 @@ func TestAuthJWtBlocked(t *testing.T) {
 }
 
 func TestAuthJWtFlags(t *testing.T) {
-	a := Authenticator{DevPasswd: "123456", JWTService: NewJWT(keys.NewStaticStore("xyz 12345"), false, time.Hour, time.Hour)}
+	a := Authenticator{DevPasswd: "123456", JWTService: NewJWT(admin.NewStaticKeyStore("xyz 12345"), false, time.Hour, time.Hour)}
 	router := chi.NewRouter()
 	router.With(a.Auth(true)).Get("/auth", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(201)
@@ -213,7 +213,7 @@ func TestAdminRequired(t *testing.T) {
 }
 
 func TestAuthWithSecret(t *testing.T) {
-	a := Authenticator{DevPasswd: "123456", KeyStore: keys.NewStaticStore("secretkey")}
+	a := Authenticator{DevPasswd: "123456", AdminStore: admin.NewStaticKeyStore("secretkey")}
 	router := chi.NewRouter()
 	router.With(a.Auth(true), a.AdminOnly).Get("/auth", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(201)
