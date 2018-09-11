@@ -1,5 +1,4 @@
 // Package admin defines and implements store for admin-level data like secret key, list of admins and so on
-
 package admin
 
 import (
