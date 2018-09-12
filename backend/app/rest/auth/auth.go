@@ -15,7 +15,7 @@ import (
 type Authenticator struct {
 	JWTService        *JWT
 	Providers         []Provider
-	KeysStore         KeyStore
+	KeyStore          KeyStore
 	DevPasswd         string
 	PermissionChecker PermissionChecker
 }
@@ -116,14 +116,14 @@ func (a *Authenticator) Auth(reqAuth bool) func(http.Handler) http.Handler {
 }
 
 func (a *Authenticator) checkSecretKey(r *http.Request) bool {
-	if a.KeysStore == nil {
+	if a.KeyStore == nil {
 		return false
 	}
 
 	siteID := r.URL.Query().Get("site")
 	secret := r.URL.Query().Get("secret")
 
-	skey, err := a.KeysStore.Key(siteID)
+	skey, err := a.KeyStore.Key(siteID)
 	if err != nil {
 		return false
 	}

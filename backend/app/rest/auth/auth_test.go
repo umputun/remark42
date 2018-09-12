@@ -223,7 +223,7 @@ func TestAdminRequired(t *testing.T) {
 }
 
 func TestAuthWithSecret(t *testing.T) {
-	a := Authenticator{DevPasswd: "123456", KeysStore: admin.NewStaticKeyStore("secretkey")}
+	a := Authenticator{DevPasswd: "123456", KeyStore: admin.NewStaticKeyStore("secretkey")}
 	router := chi.NewRouter()
 	router.With(a.Auth(true), a.AdminOnly).Get("/auth", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(201)

@@ -45,7 +45,7 @@ func TestServerApp(t *testing.T) {
 	body, _ = ioutil.ReadAll(resp.Body)
 	t.Log(string(body))
 
-	assert.Equal(t, "admin@demo.remark42.com", app.restSrv.Authenticator.AdminStore.Email(""), "default admin email")
+	assert.Equal(t, "admin@demo.remark42.com", app.dataService.AdminStore.Email(""), "default admin email")
 
 	app.Wait()
 }
