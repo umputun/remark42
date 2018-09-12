@@ -165,7 +165,7 @@ func prepImportSrv(t *testing.T) (svc *Migrator, ds *service.DataStore, ts *http
 	a := auth.Authenticator{
 		DevPasswd:  "password",
 		Providers:  nil,
-		AdminStore: adminStore,
+		KeyStore:   adminStore,
 		JWTService: auth.NewJWT(adminStore, false, time.Minute, time.Hour),
 	}
 	routes := svc.withRoutes(chi.NewRouter().With(a.Auth(true)).With(a.AdminOnly))

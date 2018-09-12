@@ -104,7 +104,7 @@ func prep(t *testing.T) (srv *Rest, ts *httptest.Server) {
 		Authenticator: auth.Authenticator{
 			DevPasswd:  "password",
 			Providers:  nil,
-			AdminStore: adminStore,
+			KeyStore:   adminStore,
 			JWTService: auth.NewJWT(adminStore, false, time.Minute, time.Hour),
 		},
 		Cache:            &cache.Nop{},
