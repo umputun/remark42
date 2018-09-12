@@ -42,11 +42,6 @@ const jwtHeaderKey = "X-JWT"
 const xsrfCookieName = "XSRF-TOKEN"
 const xsrfHeaderKey = "X-XSRF-TOKEN"
 
-// KeyStore defines sub-interface for consumers needed just a key
-type KeyStore interface {
-	Key(siteID string) (key string, err error)
-}
-
 // NewJWT makes JWT service
 func NewJWT(keyStore KeyStore, secureCookies bool, tokenDuration time.Duration, cookieDuration time.Duration) *JWT {
 	res := JWT{

@@ -9,16 +9,20 @@ import (
 
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/store"
-	"github.com/umputun/remark/backend/app/store/admin"
 )
 
 // Authenticator is top level auth object providing middlewares
 type Authenticator struct {
 	JWTService        *JWT
 	Providers         []Provider
-	AdminStore        admin.Store
+	KeysStore         KeyStore
 	DevPasswd         string
 	PermissionChecker PermissionChecker
+}
+
+// KeyStore defines sub-interface for consumers needed just a key
+type KeyStore interface {
+	Key(siteID string) (key string, err error)
 }
 
 var devUser = store.User{
@@ -112,14 +116,14 @@ func (a *Authenticator) Auth(reqAuth bool) func(http.Handler) http.Handler {
 }
 
 func (a *Authenticator) checkSecretKey(r *http.Request) bool {
-	if a.AdminStore == nil {
+	if a.KeysStore == nil {
 		return false
 	}
 
 	siteID := r.URL.Query().Get("site")
 	secret := r.URL.Query().Get("secret")
 
-	skey, err := a.AdminStore.Key(siteID)
+	skey, err := a.KeysStore.Key(siteID)
 	if err != nil {
 		return false
 	}
