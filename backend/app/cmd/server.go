@@ -225,7 +225,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		SharedSecret:     s.SharedSecret,
 		Authenticator: auth.Authenticator{
 			JWTService:        jwtService,
-			AdminStore:        adminStore,
+			KeyStore:          adminStore,
 			Providers:         authProviders,
 			DevPasswd:         s.DevPasswd,
 			PermissionChecker: dataService,
