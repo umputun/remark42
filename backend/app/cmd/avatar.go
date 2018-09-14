@@ -2,8 +2,10 @@ package cmd
 
 import (
 	"log"
+	"path"
 	"time"
 
+	"github.com/coreos/bbolt"
 	"github.com/go-pkgz/mongo"
 	"github.com/pkg/errors"
 
@@ -59,6 +61,7 @@ func (ac *AvatarCommand) Execute(args []string) error {
 }
 
 func (ac *AvatarCommand) makeAvatarStore(gr AvatarGroup) (avatar.Store, error) {
+	log.Printf("[DEBUG] make avatar store, type=%s", gr.Type)
 	switch gr.Type {
 	case "fs":
 		if err := makeDirs(gr.FS.Path); err != nil {
@@ -72,6 +75,11 @@ func (ac *AvatarCommand) makeAvatarStore(gr AvatarGroup) (avatar.Store, error) {
 		}
 		conn := mongo.NewConnection(mgServer, ac.Mongo.DB, "")
 		return avatar.NewGridFS(conn, gr.RszLmt), nil
+	case "bolt":
+		if err := makeDirs(path.Dir(gr.Bolt.File)); err != nil {
+			return nil, err
+		}
+		return avatar.NewBoltDB(gr.Bolt.File, bolt.Options{}, gr.RszLmt)
 	}
 	return nil, errors.Errorf("unsupported avatar store type %s", gr.Type)
 }

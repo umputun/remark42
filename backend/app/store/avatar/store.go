@@ -32,7 +32,6 @@ type Store interface {
 	ID(avatarID string) (id string)                                   // unique id of stored avatar's data
 	Remove(avatarID string) error                                     // remove avatar data
 	List() (ids []string, err error)                                  // list all avatar ids
-
 }
 
 // Migrate avatars between stores
