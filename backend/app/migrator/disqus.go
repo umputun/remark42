@@ -100,54 +100,55 @@ func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 				break
 			}
 
-			switch se := t.(type) {
-			case xml.StartElement:
-				if se.Name.Local == "thread" {
-					stats.inpThreads++
-					thread := disqusThread{}
-					if err := decoder.DecodeElement(&thread, &se); err != nil {
-						log.Printf("[WARN] can't decode disqus thread, %s", err)
-						stats.failedThreads++
-						continue
-					}
-					postsMap[thread.UID] = thread.Link
+			se, ok := t.(xml.StartElement)
+			if !ok {
+				continue
+			}
+			if se.Name.Local == "thread" {
+				stats.inpThreads++
+				thread := disqusThread{}
+				if err := decoder.DecodeElement(&thread, &se); err != nil {
+					log.Printf("[WARN] can't decode disqus thread, %s", err)
+					stats.failedThreads++
 					continue
 				}
-				if se.Name.Local == "post" {
-					stats.inpComments++
-					comment := disqusComment{}
-					if err := decoder.DecodeElement(&comment, &se); err != nil {
-						log.Printf("[WARN] can't decode disqus comment, %s", err)
-						stats.failedPosts++
-						continue
-					}
-					if comment.IsSpam {
-						stats.spamComments++
-						continue
-					}
-					c := store.Comment{
-						ID:      comment.UID,
-						Locator: store.Locator{URL: postsMap[comment.Tid.Val], SiteID: siteID},
-						User: store.User{
-							ID:   "disqus_" + store.EncodeID(comment.AuthorUserName),
-							Name: comment.AuthorName,
-							IP:   comment.IP,
-						},
-						Text:      d.cleanText(comment.Message),
-						Timestamp: comment.CreatedAt,
-						ParentID:  comment.Pid.Val,
-					}
-					if c.User.ID == "disqus_" { // empty comment.AuthorUserName from disqus
-						c.User.ID = "disqus_" + c.User.Name
-					}
-					if c.ID == "" { // no comment.UID
-						c.ID = comment.ID
-					}
-					commentsCh <- c
-					stats.commentsCount++
-					if stats.commentsCount%1000 == 0 {
-						log.Printf("[DEBUG] processed %d comments", stats.commentsCount)
-					}
+				postsMap[thread.UID] = thread.Link
+				continue
+			}
+			if se.Name.Local == "post" {
+				stats.inpComments++
+				comment := disqusComment{}
+				if err := decoder.DecodeElement(&comment, &se); err != nil {
+					log.Printf("[WARN] can't decode disqus comment, %s", err)
+					stats.failedPosts++
+					continue
+				}
+				if comment.IsSpam {
+					stats.spamComments++
+					continue
+				}
+				c := store.Comment{
+					ID:      comment.UID,
+					Locator: store.Locator{URL: postsMap[comment.Tid.Val], SiteID: siteID},
+					User: store.User{
+						ID:   "disqus_" + store.EncodeID(comment.AuthorUserName),
+						Name: comment.AuthorName,
+						IP:   comment.IP,
+					},
+					Text:      d.cleanText(comment.Message),
+					Timestamp: comment.CreatedAt,
+					ParentID:  comment.Pid.Val,
+				}
+				if c.User.ID == "disqus_" { // empty comment.AuthorUserName from disqus
+					c.User.ID = "disqus_" + c.User.Name
+				}
+				if c.ID == "" { // no comment.UID
+					c.ID = comment.ID
+				}
+				commentsCh <- c
+				stats.commentsCount++
+				if stats.commentsCount%1000 == 0 {
+					log.Printf("[DEBUG] processed %d comments", stats.commentsCount)
 				}
 			}
 		}
