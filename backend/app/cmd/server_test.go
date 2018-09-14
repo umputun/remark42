@@ -202,7 +202,9 @@ func TestServerApp_MainSignal(t *testing.T) {
 	s.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
 
 	p := flags.NewParser(&s, flags.Default)
-	args := []string{"test", "--store.bolt.path=/tmp/xyz", "--backup=/tmp", "--avatar.fs.path=/tmp", "--port=18100"}
+	args := []string{"test", "--store.bolt.path=/tmp/xyz", "--backup=/tmp", "--avatar.type=bolt",
+		"--avatar.bolt.file=/tmp/ava-test.db", "--port=18100"}
+	defer os.Remove("/tmp/ava-test.db")
 	_, err := p.ParseArgs(args)
 	require.Nil(t, err)
 	err = s.Execute(args)
