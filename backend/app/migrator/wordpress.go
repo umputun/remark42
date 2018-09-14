@@ -106,44 +106,45 @@ func (w *WordPress) convert(r io.Reader, siteID string) chan store.Comment {
 				break
 			}
 
-			switch el := t.(type) {
-			case xml.StartElement:
-				if el.Name.Local == "item" {
-					stats.inpItems++
-					item := wpItem{}
-					if err := decoder.DecodeElement(&item, &el); err != nil {
-						log.Printf("[WARN] Can't decode item, %s", err)
-						stats.failedItems++
-						continue
-					}
-					if item.Comments != nil {
-						for _, comment := range item.Comments {
-							if comment.Approved != "1" {
-								stats.rejectedComments++
-								continue
-							}
+			el, ok := t.(xml.StartElement)
+			if !ok {
+				continue
+			}
+			if el.Name.Local == "item" {
+				stats.inpItems++
+				item := wpItem{}
+				if err := decoder.DecodeElement(&item, &el); err != nil {
+					log.Printf("[WARN] Can't decode item, %s", err)
+					stats.failedItems++
+					continue
+				}
+				if item.Comments != nil {
+					for _, comment := range item.Comments {
+						if comment.Approved != "1" {
+							stats.rejectedComments++
+							continue
+						}
 
-							if comment.PID == "0" {
-								comment.PID = ""
-							}
+						if comment.PID == "0" {
+							comment.PID = ""
+						}
 
-							c := store.Comment{
-								ID:      comment.ID,
-								Locator: store.Locator{URL: item.Link, SiteID: siteID},
-								User: store.User{
-									ID:   "wordpress_" + store.EncodeID(comment.Author),
-									Name: comment.Author,
-									IP:   comment.AuthorIP,
-								},
-								Text:      comment.Content,
-								Timestamp: comment.Date.time,
-								ParentID:  comment.PID,
-							}
-							commentsCh <- commentFormatter.Format(c)
-							stats.inpComments++
-							if stats.inpComments%1000 == 0 {
-								log.Printf("[DEBUG] proccessed %d comments", stats.inpComments)
-							}
+						c := store.Comment{
+							ID:      comment.ID,
+							Locator: store.Locator{URL: item.Link, SiteID: siteID},
+							User: store.User{
+								ID:   "wordpress_" + store.EncodeID(comment.Author),
+								Name: comment.Author,
+								IP:   comment.AuthorIP,
+							},
+							Text:      comment.Content,
+							Timestamp: comment.Date.time,
+							ParentID:  comment.PID,
+						}
+						commentsCh <- commentFormatter.Format(c)
+						stats.inpComments++
+						if stats.inpComments%1000 == 0 {
+							log.Printf("[DEBUG] proccessed %d comments", stats.inpComments)
 						}
 					}
 				}
