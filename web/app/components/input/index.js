@@ -18,3 +18,5 @@ require('./__preview/input__preview.scss');
 require('./__preview-wrapper/input__preview-wrapper.scss');
 require('./__rss/input__rss.scss');
 require('./__rss-link/input__rss-link.scss');
+require('./__markdown/input__markdown.scss');
+require('./__markdown-link/input__markdown-link.scss');

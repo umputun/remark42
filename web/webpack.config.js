@@ -130,7 +130,7 @@ module.exports = {
             openAnalyzer: false,
           }),
         ]),
-    new Copy(['./iframe.html', './deleteme.html']),
+    new Copy(['./iframe.html', './deleteme.html', './markdown-help.html']),
   ],
   watchOptions: {
     ignored: /(node_modules|\.vendor\.js$)/,
