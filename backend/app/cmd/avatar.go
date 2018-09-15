@@ -56,6 +56,15 @@ func (ac *AvatarCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
+
+	if err = dst.Close(); err != nil {
+		log.Printf("[WARN] failed to close dst store %s", ac.AvatarDst.Type)
+	}
+	if err = src.Close(); err != nil {
+		log.Printf("[WARN] failed to close src store %s", ac.AvatarSrc.Type)
+	}
+
+	src.Close()
 	log.Printf("[INFO] completed, migrated avatars = %d", count)
 	return nil
 }

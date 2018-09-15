@@ -127,6 +127,11 @@ func (b *BoltDB) List() (ids []string, err error) {
 	return ids, errors.Wrap(err, "failed to list")
 }
 
+// Close bolt store
+func (b *BoltDB) Close() error {
+	return errors.Wrapf(b.db.Close(), "failed to close %s", b.fileName)
+}
+
 func (b *BoltDB) sha1(data []byte, avatarID string) (id string) {
 	h := sha1.New()
 	if _, err := h.Write(data); err != nil {

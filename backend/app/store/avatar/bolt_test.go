@@ -16,7 +16,10 @@ var testDb = "/tmp/test-remark-avatars.db"
 
 func TestBoltDB_PutAndGet(t *testing.T) {
 	var b Store = prepBoltStore(t)
-	defer os.Remove(testDb)
+	defer func() {
+		assert.Nil(t, b.Close())
+		os.Remove(testDb)
+	}()
 
 	avatar, err := b.Put("user1", strings.NewReader("some picture bin data"))
 	require.Nil(t, err)
@@ -43,7 +46,10 @@ func TestBoltDB_PutAndGet(t *testing.T) {
 
 func TestBoltDB_Remove(t *testing.T) {
 	b := prepBoltStore(t)
-	defer os.Remove(testDb)
+	defer func() {
+		assert.Nil(t, b.Close())
+		os.Remove(testDb)
+	}()
 
 	assert.NotNil(t, b.Remove("no-such-thing.image"))
 
@@ -56,7 +62,10 @@ func TestBoltDB_Remove(t *testing.T) {
 
 func TestBoltDB_List(t *testing.T) {
 	b := prepBoltStore(t)
-	defer os.Remove(testDb)
+	defer func() {
+		assert.Nil(t, b.Close())
+		os.Remove(testDb)
+	}()
 
 	// write some avatars
 	_, err := b.Put("user1", strings.NewReader("some picture bin data 1"))

@@ -124,6 +124,7 @@ type serverApp struct {
 	exporter    migrator.Exporter
 	devAuth     *auth.DevAuthServer
 	dataService *service.DataStore
+	avatarStore avatar.Store
 	terminated  chan struct{}
 }
 
@@ -251,6 +252,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		exporter:      exporter,
 		devAuth:       devAuth,
 		dataService:   dataService,
+		avatarStore:   avatarStore,
 		terminated:    make(chan struct{}),
 	}, nil
 }
@@ -269,7 +271,10 @@ func (a *serverApp) run(ctx context.Context) error {
 			a.devAuth.Shutdown()
 		}
 		if e := a.dataService.Close(); e != nil {
-			log.Printf("[WARN] failed to close store, %s", e)
+			log.Printf("[WARN] failed to close data store, %s", e)
+		}
+		if e := a.avatarStore.Close(); e != nil {
+			log.Printf("[WARN] failed to close avatar store, %s", e)
 		}
 
 	}()
