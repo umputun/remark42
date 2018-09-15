@@ -15,7 +15,8 @@ import (
 )
 
 // BoltDB implements avatar store with bolt
-// using separate db (file) with top-level keys by avatarID
+// using separate db (file) with "avatars" bucket to keep image bin and "metas" bucket to keep sha1
+// avatarID (base file name) used as a key
 type BoltDB struct {
 	fileName    string // full path to boltdb
 	resizeLimit int
@@ -114,7 +115,7 @@ func (b *BoltDB) Remove(avatarID string) (err error) {
 	})
 }
 
-// List all avatars (ids) from avatars bucket
+// List all avatars (ids) from metas bucket
 // note: id includes .image suffix
 func (b *BoltDB) List() (ids []string, err error) {
 	err = b.db.View(func(tx *bolt.Tx) error {
