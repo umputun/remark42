@@ -64,7 +64,6 @@ func (ac *AvatarCommand) Execute(args []string) error {
 		log.Printf("[WARN] failed to close src store %s", ac.AvatarSrc.Type)
 	}
 
-	src.Close()
 	log.Printf("[INFO] completed, migrated avatars = %d", count)
 	return nil
 }
