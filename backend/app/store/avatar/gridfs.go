@@ -118,3 +118,8 @@ func (gf *GridFS) List() (ids []string, err error) {
 	}
 	return ids, errors.Wrap(err, "can't list avatars")
 }
+
+// Close gridfs does nothing but satisfies interface
+func (gf *GridFS) Close() error {
+	return nil
+}

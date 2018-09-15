@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"path"
 	"strings"
 	"syscall"
 	"time"
@@ -80,10 +81,13 @@ type StoreGroup struct {
 
 // AvatarGroup defines options group for avatar params
 type AvatarGroup struct {
-	Type string `long:"type" env:"TYPE" description:"type of avatar storage" choice:"fs" choice:"mongo" default:"fs"`
+	Type string `long:"type" env:"TYPE" description:"type of avatar storage" choice:"fs" choice:"bolt" choice:"mongo" default:"fs"`
 	FS   struct {
 		Path string `long:"path" env:"PATH" default:"./var/avatars" description:"avatars location"`
 	} `group:"fs" namespace:"fs" env-namespace:"FS"`
+	Bolt struct {
+		File string `long:"file" env:"FILE" default:"./var/avatars.db" description:"avatars bolt file location"`
+	} `group:"bolt" namespace:"bolt" env-namespace:"bolt"`
 	RszLmt int `long:"rsz-lmt" env:"RESIZE" default:"0" description:"max image size for resizing avatars on save"`
 }
 
@@ -120,6 +124,7 @@ type serverApp struct {
 	exporter    migrator.Exporter
 	devAuth     *auth.DevAuthServer
 	dataService *service.DataStore
+	avatarStore avatar.Store
 	terminated  chan struct{}
 }
 
@@ -247,6 +252,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		exporter:      exporter,
 		devAuth:       devAuth,
 		dataService:   dataService,
+		avatarStore:   avatarStore,
 		terminated:    make(chan struct{}),
 	}, nil
 }
@@ -265,7 +271,10 @@ func (a *serverApp) run(ctx context.Context) error {
 			a.devAuth.Shutdown()
 		}
 		if e := a.dataService.Close(); e != nil {
-			log.Printf("[WARN] failed to close store, %s", e)
+			log.Printf("[WARN] failed to close data store, %s", e)
+		}
+		if e := a.avatarStore.Close(); e != nil {
+			log.Printf("[WARN] failed to close avatar store, %s", e)
 		}
 
 	}()
@@ -340,6 +349,11 @@ func (s *ServerCommand) makeAvatarStore() (avatar.Store, error) {
 		}
 		conn := mongo.NewConnection(mgServer, s.Mongo.DB, "")
 		return avatar.NewGridFS(conn, s.Avatar.RszLmt), nil
+	case "bolt":
+		if err := makeDirs(path.Dir(s.Avatar.Bolt.File)); err != nil {
+			return nil, err
+		}
+		return avatar.NewBoltDB(s.Avatar.Bolt.File, bolt.Options{}, s.Avatar.RszLmt)
 	}
 	return nil, errors.Errorf("unsupported avatar store type %s", s.Avatar.Type)
 }
