@@ -1,4 +1,5 @@
-// Package avatar defines store interface and implements local (fs) and gridfs (mongo) stores.
+// Package avatar defines store interface and implements local (fs), gridfs (mongo) and boltdb stores.
+//
 package avatar
 
 //go:generate sh -c "mockery -inpkg -name Store -print > /tmp/mock.tmp && mv /tmp/mock.tmp store_mock.go"
@@ -32,7 +33,7 @@ type Store interface {
 	ID(avatarID string) (id string)                                   // unique id of stored avatar's data
 	Remove(avatarID string) error                                     // remove avatar data
 	List() (ids []string, err error)                                  // list all avatar ids
-	Close() error
+	Close() error                                                     // close store
 }
 
 // Migrate avatars between stores
