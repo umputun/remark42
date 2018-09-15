@@ -15,8 +15,8 @@ import (
 )
 
 // BoltDB implements avatar store with bolt
-// using separate db (file) with "avatars" bucket to keep image bin and "metas" bucket to keep sha1
-// avatarID (base file name) used as a key
+// using separate db (file) with "avatars" bucket to keep image bin and "metas" bucket
+// to keep sha1 of picture. avatarID (base file name) used as a key for both.
 type BoltDB struct {
 	fileName    string // full path to boltdb
 	resizeLimit int
@@ -45,7 +45,7 @@ func NewBoltDB(fileName string, options bolt.Options, resizeLimit int) (*BoltDB,
 	return &BoltDB{db: db, fileName: fileName, resizeLimit: resizeLimit}, nil
 }
 
-// Put avatar to bolt, key by avatarID
+// Put avatar to bolt, key by avatarID. Trying to resize image and lso calculates sha1 of the file for ID func
 func (b *BoltDB) Put(userID string, reader io.Reader) (avatar string, err error) {
 	id := encodeID(userID)
 
@@ -64,7 +64,8 @@ func (b *BoltDB) Put(userID string, reader io.Reader) (avatar string, err error)
 		if err = tx.Bucket([]byte(avatarsBktName)).Put([]byte(avatarID), buf.Bytes()); err != nil {
 			return errors.Wrapf(err, "can't put to bucket with %s", avatarID)
 		}
-		return tx.Bucket([]byte(metasBktName)).Put([]byte(avatarID), []byte(b.sha1(buf.Bytes(), id)))
+		// store sha1 of the image
+		return tx.Bucket([]byte(metasBktName)).Put([]byte(avatarID), []byte(b.sha1(buf.Bytes(), avatarID)))
 	})
 	return avatarID, err
 }
@@ -87,16 +88,17 @@ func (b *BoltDB) Get(avatarID string) (reader io.ReadCloser, size int, err error
 func (b *BoltDB) ID(avatarID string) (id string) {
 	data := []byte{}
 	err := b.db.View(func(tx *bolt.Tx) error {
-		data = tx.Bucket([]byte(metasBktName)).Get([]byte(avatarID))
-		if data == nil {
+		if data = tx.Bucket([]byte(metasBktName)).Get([]byte(avatarID)); data == nil {
 			return errors.Errorf("can't load avatar's id for %s", avatarID)
 		}
 		return nil
 	})
-	if err != nil {
+
+	if err != nil { // failed to get ID, use encoded avatarID
 		log.Printf("[DEBUG] can't get avatar info '%s', %s", avatarID, err)
 		return store.EncodeID(avatarID)
 	}
+
 	return string(data)
 }
 

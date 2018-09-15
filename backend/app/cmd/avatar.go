@@ -13,7 +13,8 @@ import (
 )
 
 // AvatarCommand set of flags and command for avatar migration
-// it converts all avatarts from src.type to dst.type
+// it converts all avatars from src.type to dst.type.
+// Note: it is possible to run migration for the same types (src = dst) in order to resize all avatars.
 type AvatarCommand struct {
 	AvatarSrc AvatarGroup `group:"src" namespace:"src"`
 	AvatarDst AvatarGroup `group:"dst" namespace:"dst"`

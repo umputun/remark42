@@ -35,8 +35,9 @@ func TestBoltDB_PutAndGet(t *testing.T) {
 	_, _, err = b.Get("bad avatar")
 	assert.NotNil(t, err)
 
+	// check IDs
 	assert.Equal(t, "fddae9ce556712a6ece0e8951a6e7a05c51ed6bf", b.ID(avatar))
-	assert.Equal(t, "70c881d4a26984ddce795f6f71817c9cf4480e79", b.ID("aaaa"), "no data, encode avatar id")
+	assert.Equal(t, "70c881d4a26984ddce795f6f71817c9cf4480e79", b.ID("aaaa"), "no data, encoded avatar id")
 
 	l, err := b.List()
 	require.Nil(t, err)
