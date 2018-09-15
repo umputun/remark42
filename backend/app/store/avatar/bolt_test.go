@@ -15,8 +15,7 @@ import (
 var testDb = "/tmp/test-remark-avatars.db"
 
 func TestBoltDB_PutAndGet(t *testing.T) {
-	var b Store
-	b = prepBoltStore(t)
+	var b Store = prepBoltStore(t)
 	defer os.Remove(testDb)
 
 	avatar, err := b.Put("user1", strings.NewReader("some picture bin data"))
