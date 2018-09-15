@@ -40,10 +40,7 @@ func TestMongoStore_Get(t *testing.T) {
 		if e1 := coll.Insert(recs[0]); e1 != nil {
 			return e1
 		}
-		if e2 := coll.Insert(recs[1]); e2 != nil {
-			return e2
-		}
-		return nil
+		return coll.Insert(recs[1])
 	})
 	require.NoError(t, err)
 

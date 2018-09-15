@@ -51,7 +51,7 @@ func (d *DevAuthServer) Run() {
 			switch {
 
 			case strings.HasPrefix(r.URL.Path, "/login/oauth/authorize"):
-				// first time it will be called without username and will ask for onw
+				// first time it will be called without username and will ask for one
 				if !d.nonInteractive && (r.ParseForm() != nil || r.Form.Get("username") == "") {
 					if _, err = w.Write([]byte(fmt.Sprintf(devUserForm, r.URL.RawQuery))); err != nil {
 						log.Printf("[WARN] can't write, %s", err)
