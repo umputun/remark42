@@ -113,6 +113,11 @@ func (fs *LocalFS) List() (ids []string, err error) {
 	return ids, errors.Wrap(err, "can't list avatars")
 }
 
+// Close gridfs does nothing but satisfies interface
+func (fs *LocalFS) Close() error {
+	return nil
+}
+
 // get location (directory) for user id by adding partition to final path in order to keep files
 // in different subdirectories and avoid too many files in a single place.
 // the end result is a full path like this - /tmp/avatars.test/92
