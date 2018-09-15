@@ -23,7 +23,6 @@ func TestAvatarStore_resize(t *testing.T) {
 
 	// Reader is nil.
 	resizedR := resize(nil, 100)
-	// assert.EqualError(t, err, "limit should be greater than 0")
 	assert.Nil(t, resizedR)
 
 	// Negative limit error.

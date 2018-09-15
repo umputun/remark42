@@ -50,7 +50,6 @@ func NewMongo(conn *mongo.Connection, bufferSize int, flushDuration time.Duratio
 
 // Create new comment, write can be buffered and delayed.
 func (m *Mongo) Create(comment store.Comment) (commentID string, err error) {
-	// err = m.postWriter.Write(comment)
 	err = m.conn.WithCustomCollection(mongoPosts, func(coll *mgo.Collection) error {
 		return coll.Insert(&comment)
 	})
