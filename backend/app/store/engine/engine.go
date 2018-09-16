@@ -3,7 +3,6 @@
 package engine
 
 import (
-	"io"
 	"sort"
 	"strings"
 	"time"
@@ -54,13 +53,6 @@ type Admin interface {
 	IsReadOnly(locator store.Locator) bool                                       // check if post read-only
 	SetVerified(siteID string, userID string, status bool) error                 // set/reset verified flag
 	IsVerified(siteID string, userID string) bool                                // check verified status
-}
-
-// Avatar defines interface for avatar store
-type Avatar interface {
-	Put(userID string, reader io.Reader) (avatar string, err error)
-	Get(avatar string) (reader io.ReadCloser, size int, err error)
-	ID(avatar string) (id string)
 }
 
 const (
