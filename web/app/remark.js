@@ -50,6 +50,11 @@ function init() {
       picture: params.picture,
     };
     store.set('user', user);
+    const onClose = () => {
+      if (window.parent) {
+        window.parent.postMessage(JSON.stringify({ isUserInfoShown: false }), '*');
+      }
+    };
     render(
       <div id={NODE_ID}>
         <div className="root root_user-info">

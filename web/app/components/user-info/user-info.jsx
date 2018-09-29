@@ -4,6 +4,7 @@ import { connect } from 'preact-redux';
 
 import api from 'common/api';
 import LastCommentsList from './last-comments-list';
+import { getHandleClickProps } from 'common/accessibility';
 import Avatar from 'components/avatar-icon';
 import { fetchComments, completeFetchComments } from './user-info.actions';
 import { getUserComments, getIsLoadingUserComments } from './user-info.getters';
