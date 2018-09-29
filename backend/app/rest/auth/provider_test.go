@@ -16,6 +16,7 @@ import (
 	"golang.org/x/oauth2"
 
 	"github.com/umputun/remark/backend/app/store"
+	"github.com/umputun/remark/backend/app/store/admin"
 )
 
 func TestLogin(t *testing.T) {
@@ -51,6 +52,14 @@ func TestLogin(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, store.User{Name: "blah", ID: "mock_myuser1", Picture: "http://exmple.com/pic1.png",
 		Admin: false, Blocked: true, IP: ""}, u)
+
+	token := resp.Cookies()[0].Value
+	jwtSvc := NewJWT(admin.NewStaticKeyStore("12345"), false, time.Hour, time.Hour*24*31)
+
+	claims, err := jwtSvc.Parse(token)
+	require.NoError(t, err)
+	assert.Equal(t, "remark42", claims.Issuer)
+	assert.Equal(t, "remark", claims.SiteID)
 
 	// check admin user
 	resp, err = client.Get("http://localhost:8981/login?site=remark")
@@ -94,7 +103,7 @@ func TestLoginSessionOnly(t *testing.T) {
 	req.AddCookie(resp.Cookies()[1])
 	req.Header.Add("X-XSRF-TOKEN", resp.Cookies()[1].Value)
 
-	jwtService := NewJWT("12345", false, time.Hour, time.Hour)
+	jwtService := NewJWT(admin.NewStaticKeyStore("12345"), false, time.Hour, time.Hour)
 	res, err := jwtService.Get(req)
 	require.Nil(t, err)
 	assert.Equal(t, true, res.SessionOnly)
@@ -129,13 +138,12 @@ func TestLogout(t *testing.T) {
 }
 
 func TestInitProvider(t *testing.T) {
-	params := Params{RemarkURL: "url", SecretKey: "123456", Cid: "cid", Csecret: "csecret"}
+	params := Params{RemarkURL: "url", Cid: "cid", Csecret: "csecret"}
 	provider := Provider{Name: "test", RedirectURL: "redir"}
 	res := initProvider(params, provider)
 	assert.Equal(t, "cid", res.conf.ClientID)
 	assert.Equal(t, "csecret", res.conf.ClientSecret)
 	assert.Equal(t, "redir", res.RedirectURL)
-	assert.Equal(t, "123456", res.SecretKey)
 	assert.Equal(t, "test", res.Name)
 }
 
@@ -160,8 +168,8 @@ func mockProvider(t *testing.T, loginPort, authPort int) (*http.Server, *http.Se
 		},
 	}
 
-	params := Params{RemarkURL: "url", SecretKey: "123456", Cid: "cid", Csecret: "csecret",
-		JwtService: NewJWT("12345", false, time.Hour, time.Hour*24*31),
+	params := Params{RemarkURL: "url", Cid: "cid", Csecret: "csecret",
+		JwtService: NewJWT(admin.NewStaticKeyStore("12345"), false, time.Hour, time.Hour*24*31),
 		// AvatarProxy:  &proxy.Avatar{Store: &mockAvatarStore, RoutePath: "/v1/avatar"},
 		PermissionChecker: &mockUserPermissions{admin: "mock_myuser2", verified: "mock_myuser2", blocked: "mock_myuser1"},
 	}
@@ -225,6 +233,6 @@ type mockUserPermissions struct {
 	blocked  string
 }
 
-func (m *mockUserPermissions) IsAdmin(userID string) bool            { return userID == m.admin }
+func (m *mockUserPermissions) IsAdmin(siteID, userID string) bool    { return userID == m.admin }
 func (m *mockUserPermissions) IsVerified(siteID, userID string) bool { return userID == m.verified }
 func (m *mockUserPermissions) IsBlocked(siteID, userID string) bool  { return userID == m.blocked }

@@ -9,6 +9,7 @@ import (
 	"github.com/coreos/bbolt"
 	"github.com/stretchr/testify/require"
 	"github.com/umputun/remark/backend/app/store"
+	"github.com/umputun/remark/backend/app/store/admin"
 	"github.com/umputun/remark/backend/app/store/engine"
 	"github.com/umputun/remark/backend/app/store/service"
 
@@ -19,9 +20,9 @@ func TestDisqus_Import(t *testing.T) {
 	defer os.Remove("/tmp/remark-test.db")
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "test"})
 	require.Nil(t, err, "create store")
-	dataStore := service.DataStore{Interface: b}
+	dataStore := service.DataStore{Interface: b, AdminStore: admin.NewStaticStore("12345", []string{}, "")}
 	d := Disqus{DataStore: &dataStore}
-	size, err := d.Import(strings.NewReader(xmlTest), "test")
+	size, err := d.Import(strings.NewReader(xmlTestDisqus), "test")
 	assert.Nil(t, err)
 	assert.Equal(t, 3, size)
 
@@ -36,7 +37,7 @@ func TestDisqus_Import(t *testing.T) {
 	assert.Equal(t, store.Locator{SiteID: "test", URL: "http://radio-t.umputun.com/2011/03/229_8880.html"}, c.Locator)
 	assert.Equal(t, "Dmitry Noname", c.User.Name)
 	assert.Equal(t, "disqus_8799342cdf328253e03313958ffc6a433659d7ff", c.User.ID)
-	assert.Equal(t, "96243f024cf6ad42b66f0c72709ae20b5d10ec14", c.User.IP)
+	assert.Equal(t, "7001968ea3f6c9013a9f0a3650f200c10c927638", c.User.IP)
 
 	posts, err := dataStore.List("test", 0, 0)
 	assert.Nil(t, err)
@@ -49,7 +50,7 @@ func TestDisqus_Import(t *testing.T) {
 
 func TestDisqus_Convert(t *testing.T) {
 	d := Disqus{}
-	ch := d.convert(strings.NewReader(xmlTest), "test")
+	ch := d.convert(strings.NewReader(xmlTestDisqus), "test")
 
 	res := []store.Comment{}
 	for comment := range ch {
@@ -74,7 +75,7 @@ func TestDisqus_Convert(t *testing.T) {
 	assert.Equal(t, exp0, res[0])
 }
 
-var xmlTest = `<?xml version="1.0" encoding="utf-8"?>
+var xmlTestDisqus = `<?xml version="1.0" encoding="utf-8"?>
 <disqus xmlns="http://disqus.com" xmlns:dsq="http://disqus.com/disqus-internals" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://disqus.com/api/schemas/1.0/disqus.xsd http://disqus.com/api/schemas/1.0/disqus-internals.xsd">
 
 	<category dsq:id="707279">

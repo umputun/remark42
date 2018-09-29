@@ -48,6 +48,8 @@ export default class Root extends Component {
     this.onSignOut = this.onSignOut.bind(this);
     this.onBlockedUsersShow = this.onBlockedUsersShow.bind(this);
     this.onBlockedUsersHide = this.onBlockedUsersHide.bind(this);
+    this.onCommentsDisable = this.onCommentsDisable.bind(this);
+    this.onCommentsEnable = this.onCommentsEnable.bind(this);
     this.onSortChange = this.onSortChange.bind(this);
     this.onUnblockSomeone = this.onUnblockSomeone.bind(this);
     this.checkUrlHash = this.checkUrlHash.bind(this);
@@ -56,6 +58,7 @@ export default class Root extends Component {
 
   componentWillMount() {
     store.onUpdate('comments', comments => this.setState({ comments }));
+    store.onUpdate('info', info => this.setState({ info }));
   }
 
   componentDidMount() {
@@ -73,7 +76,10 @@ export default class Root extends Component {
         .catch(() => store.set('user', {})),
       api
         .getPostComments({ sort, url })
-        .then(({ comments = [] } = {}) => store.set('comments', comments))
+        .then(({ comments = [], info = {} } = {}) => {
+          store.set('comments', comments);
+          store.set('info', info);
+        })
         .catch(() => store.set('comments', [])),
     ]).finally(() => {
       this.setState({
@@ -111,18 +117,22 @@ export default class Root extends Component {
 
   onSignIn(provider) {
     const newWindow = window.open(
-      `${BASE_URL}/auth/${provider}/login?from=${encodeURIComponent(location.href)}&site=${siteId}`
+      `${BASE_URL}/auth/${provider}/login?from=${encodeURIComponent(
+        location.origin + location.pathname + '?selfClose'
+      )}&site=${siteId}`
     );
 
     let secondsPass = 0;
-    const checkMsDelay = 100;
+    const checkMsDelay = 300;
     const checkInterval = setInterval(() => {
+      let shouldProceed;
       secondsPass += checkMsDelay;
+      try {
+        shouldProceed = newWindow.closed || secondsPass > 30000;
+      } catch (e) {}
 
-      if (newWindow.location.origin === location.origin || secondsPass > 30000) {
+      if (shouldProceed) {
         clearInterval(checkInterval);
-        secondsPass = 0;
-        newWindow.close();
 
         api
           .getUser()
@@ -141,12 +151,31 @@ export default class Root extends Component {
     });
   }
 
+  onCommentsEnable() {
+    api.enableComments(siteId, url).then(() => {
+      const info = store.get('info');
+      info.read_only = false;
+      this.setState({ info });
+    });
+  }
+
+  onCommentsDisable() {
+    api.disableComments(siteId, url).then(() => {
+      const info = store.get('info');
+      info.read_only = true;
+      this.setState({ info });
+    });
+  }
+
   onBlockedUsersHide() {
     const { wasSomeoneUnblocked, sort } = this.state;
 
     // if someone was unblocked let's reload comments
     if (wasSomeoneUnblocked) {
-      api.getPostComments({ sort, url }).then(({ comments } = {}) => store.set('comments', comments));
+      api.getPostComments({ sort, url }).then(({ comments, info } = {}) => {
+        store.set('comments', comments);
+        store.set('info', info);
+      });
     }
 
     this.setState({
@@ -168,7 +197,10 @@ export default class Root extends Component {
 
     api
       .getPostComments({ sort, url })
-      .then(({ comments } = {}) => store.set('comments', comments))
+      .then(({ comments, info } = {}) => {
+        store.set('comments', comments);
+        store.set('info', info);
+      })
       .finally(() => {
         this.setState({ isCommentsListLoading: false });
       });
@@ -197,6 +229,7 @@ export default class Root extends Component {
     {
       config = {},
       comments = [],
+      info = {},
       user,
       sort,
       isLoaded,
@@ -219,6 +252,7 @@ export default class Root extends Component {
     // TODO: i think we should do it on backend
     const pinnedComments = store.getPinnedComments();
     const isGuest = !Object.keys(user).length;
+    const isCommentsDisabled = info != null && info.read_only === true;
 
     return (
       <div id={NODE_ID}>
@@ -227,16 +261,20 @@ export default class Root extends Component {
             user={user}
             sort={sort}
             providers={config.auth_providers}
+            isCommentsDisabled={isCommentsDisabled}
             onSignIn={this.onSignIn}
             onSignOut={this.onSignOut}
             onBlockedUsersShow={this.onBlockedUsersShow}
             onBlockedUsersHide={this.onBlockedUsersHide}
+            onCommentsEnable={this.onCommentsEnable}
+            onCommentsDisable={this.onCommentsDisable}
             onSortChange={this.onSortChange}
           />
 
           {!isBlockedVisible && (
             <div className="root__main">
-              {!isGuest && <Input mix="root__input" mods={{ type: 'main' }} onSubmit={this.addComment} />}
+              {!isGuest &&
+                !isCommentsDisabled && <Input mix="root__input" mods={{ type: 'main' }} onSubmit={this.addComment} />}
 
               {!!pinnedComments.length && (
                 <div className="root__pinned-comments" role="region" aria-label="Pinned comments">
@@ -255,6 +293,7 @@ export default class Root extends Component {
                         mix="root__thread"
                         mods={{ level: 0 }}
                         data={thread}
+                        isCommentsDisabled={isCommentsDisabled}
                         onReply={this.addComment}
                         onEdit={this.replaceComment}
                       />

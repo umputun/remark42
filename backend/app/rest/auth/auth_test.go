@@ -11,12 +11,17 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/umputun/remark/backend/app/store/admin"
 )
 
 var testJwtUserBlocked = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjI3ODkxOTE4MjIsImp0aSI6InJhbmRvbSBpZCIsImlzcyI6InJlbWFyazQyIiwibmJmIjoxNTI2ODg0MjIyLCJ1c2VyIjp7Im5hbWUiOiJuYW1lMSIsImlkIjoiaWQxIiwicGljdHVyZSI6IiIsImFkbWluIjpmYWxzZSwiYmxvY2siOnRydWV9LCJzdGF0ZSI6IjEyMzQ1NiIsImZyb20iOiJmcm9tIn0.6P_OwGf8CUJRtvNSlW20GmaMb5pFvCNemP94fHCqb5Q"
 
+var testJwtDeleteMe = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjI3ODkxOTE4MjIsImp0aSI6InJhbmRvbSBpZCIsImlzcyI6InJlbWFyazQyIiwibmJmIjoxNTI2ODg0MjIyLCJ1c2VyIjp7Im5hbWUiOiJuYW1lMSIsImlkIjoiaWQxIiwicGljdHVyZSI6IiIsImFkbWluIjpmYWxzZSwiYmxvY2siOmZhbHNlfSwiZmxhZ3MiOnsiZGVsZXRlbWUiOnRydWV9fQ.SLh1QpFytWZqcT99VgcdAOtgFKhvpKCcZwqWTvAd63g"
+
+var testJwtNoUser = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjI3ODkxOTE4MjIsImp0aSI6InJhbmRvbSBpZCIsImlzcyI6InJlbWFyazQyIiwibmJmIjoxNTI2ODg0MjIyfQ.sBpblkbBRzZsBSPPNrTWqA5h7h54solrw5L4IypJT_o"
+
 func TestAuthJWTCookie(t *testing.T) {
-	a := Authenticator{DevPasswd: "123456", JWTService: NewJWT("xyz 12345", false, time.Hour, time.Hour),
+	a := Authenticator{DevPasswd: "123456", JWTService: NewJWT(admin.NewStaticKeyStore("xyz 12345"), false, time.Hour, time.Hour),
 		PermissionChecker: &mockUserPermissions{}}
 	router := chi.NewRouter()
 	router.With(a.Auth(true)).Get("/auth", func(w http.ResponseWriter, r *http.Request) {
@@ -51,10 +56,18 @@ func TestAuthJWTCookie(t *testing.T) {
 	resp, err = client.Do(req)
 	require.NoError(t, err)
 	assert.Equal(t, 201, resp.StatusCode, "token expired and refreshed")
+
+	req, err = http.NewRequest("GET", server.URL+"/auth", nil)
+	require.Nil(t, err)
+	req.AddCookie(&http.Cookie{Name: "JWT", Value: testJwtNoUser, HttpOnly: true, Path: "/", MaxAge: expiration, Secure: false})
+	req.Header.Add("X-XSRF-TOKEN", "random id")
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	assert.Equal(t, 401, resp.StatusCode, "no user info in the token")
 }
 
 func TestAuthJWTHeader(t *testing.T) {
-	a := Authenticator{DevPasswd: "123456", JWTService: NewJWT("xyz 12345", false, time.Hour, time.Hour)}
+	a := Authenticator{DevPasswd: "123456", JWTService: NewJWT(admin.NewStaticKeyStore("xyz 12345"), false, time.Hour, time.Hour)}
 	router := chi.NewRouter()
 	router.With(a.Auth(true)).Get("/auth", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(201)
@@ -81,7 +94,7 @@ func TestAuthJWTHeader(t *testing.T) {
 }
 
 func TestAuthJWtBlocked(t *testing.T) {
-	a := Authenticator{DevPasswd: "123456", JWTService: NewJWT("xyz 12345", false, time.Hour, time.Hour)}
+	a := Authenticator{DevPasswd: "123456", JWTService: NewJWT(admin.NewStaticKeyStore("xyz 12345"), false, time.Hour, time.Hour)}
 	router := chi.NewRouter()
 	router.With(a.Auth(true)).Get("/auth", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(201)
@@ -95,6 +108,26 @@ func TestAuthJWtBlocked(t *testing.T) {
 	req, err := http.NewRequest("GET", server.URL+"/auth", nil)
 	require.Nil(t, err)
 	req.Header.Add("X-JWT", testJwtUserBlocked)
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	assert.Equal(t, 401, resp.StatusCode, "blocked user")
+}
+
+func TestAuthJWtFlags(t *testing.T) {
+	a := Authenticator{DevPasswd: "123456", JWTService: NewJWT(admin.NewStaticKeyStore("xyz 12345"), false, time.Hour, time.Hour)}
+	router := chi.NewRouter()
+	router.With(a.Auth(true)).Get("/auth", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(201)
+	})
+	server := httptest.NewServer(router)
+	defer server.Close()
+
+	jar, err := cookiejar.New(nil)
+	require.Nil(t, err)
+	client := &http.Client{Jar: jar, Timeout: 5 * time.Second}
+	req, err := http.NewRequest("GET", server.URL+"/auth", nil)
+	require.Nil(t, err)
+	req.Header.Add("X-JWT", testJwtDeleteMe)
 	resp, err := client.Do(req)
 	require.NoError(t, err)
 	assert.Equal(t, 401, resp.StatusCode, "blocked user")
@@ -187,6 +220,24 @@ func TestAdminRequired(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 403, resp.StatusCode, "valid auth user, not admin")
 
+}
+
+func TestAuthWithSecret(t *testing.T) {
+	a := Authenticator{DevPasswd: "123456", KeyStore: admin.NewStaticKeyStore("secretkey")}
+	router := chi.NewRouter()
+	router.With(a.Auth(true), a.AdminOnly).Get("/auth", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(201)
+	})
+	server := httptest.NewServer(router)
+	defer server.Close()
+
+	resp, err := http.Get(server.URL + "/auth?secret=secretkey")
+	require.NoError(t, err)
+	assert.Equal(t, 201, resp.StatusCode, "valid auth user with secret, admin")
+
+	resp, err = http.Get(server.URL + "/auth?secret=badsecret")
+	require.NoError(t, err)
+	assert.Equal(t, 401, resp.StatusCode, "invalid auth with bad secret")
 }
 
 func withBasicAuth(r *http.Request, username, password string) *http.Request {

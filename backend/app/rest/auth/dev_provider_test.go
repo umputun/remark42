@@ -13,11 +13,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/umputun/remark/backend/app/store"
+	"github.com/umputun/remark/backend/app/store/admin"
 )
 
 func TestDevProvider(t *testing.T) {
-	params := Params{RemarkURL: "http://127.0.0.1:8080", SecretKey: "123456", Cid: "cid", Csecret: "csecret",
-		JwtService:        NewJWT("12345", false, time.Hour, time.Hour*24*31),
+	params := Params{RemarkURL: "http://127.0.0.1:8080", Cid: "cid", Csecret: "csecret",
+		JwtService:        NewJWT(admin.NewStaticKeyStore("12345"), false, time.Hour, time.Hour*24*31),
 		PermissionChecker: &mockUserPermissions{admin: "dev_user"},
 	}
 	srv := DevAuthServer{Provider: NewDev(params), nonInteractive: true, username: "dev_user"}
@@ -62,7 +63,15 @@ func TestDevProvider(t *testing.T) {
 	assert.Nil(t, err)
 
 	u := *claims.User
-	assert.Equal(t, store.User{Name: "dev_user", ID: "dev_user", Picture: "", IP: "",
+	assert.Equal(t, store.User{Name: "dev_user", ID: "dev_user", Picture: "http://127.0.0.1:8084/avatar?user=dev_user", IP: "",
 		Admin: true, Blocked: false, Verified: false}, u)
 
+	// check avatar
+	resp, err = client.Get("http://127.0.0.1:8084/avatar?user=dev_user")
+	require.Nil(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+	body, err = ioutil.ReadAll(resp.Body)
+	assert.Nil(t, err)
+	assert.Equal(t, 985, len(body))
+	t.Logf("headers: %+v", resp.Header)
 }

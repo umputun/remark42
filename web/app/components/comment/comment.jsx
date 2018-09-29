@@ -83,7 +83,8 @@ export default class Comment extends Component {
 
       if (userId === commentUserId) {
         const editDuration = store.get('config') && store.get('config').edit_duration;
-        const getEditTimeLeft = () => Math.floor(editDuration - (new Date() - new Date(data.time)) / 1000);
+        const timeDiff = store.get('serverClientTimeDiff') || 0;
+        const getEditTimeLeft = () => Math.floor(editDuration - ((new Date() - new Date(data.time)) / 1000 - timeDiff));
 
         if (getEditTimeLeft() > 0) {
           this.editTimerInterval = setInterval(() => {
@@ -320,7 +321,7 @@ export default class Comment extends Component {
       editTimeLeft,
     }
   ) {
-    const { data, mods = {} } = props;
+    const { data, mods = {}, isCommentsDisabled } = props;
     const isAdmin = !guest && store.get('user').admin;
     const isGuest = guest || !Object.keys(store.get('user')).length;
     const isCurrentUser = (data.user && data.user.id) === (store.get('user') && store.get('user').id);
@@ -500,6 +501,7 @@ export default class Comment extends Component {
 
           <div className="comment__actions">
             {!deleted &&
+              !isCommentsDisabled &&
               !mods.disabled &&
               !isGuest &&
               mods.view !== 'user' && (

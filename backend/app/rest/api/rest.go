@@ -17,11 +17,11 @@ import (
 	"github.com/didip/tollbooth_chi"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+	"github.com/go-chi/cors"
 	"github.com/go-chi/render"
 	"github.com/pkg/errors"
-	"gopkg.in/russross/blackfriday.v2"
+	"github.com/rakyll/statik/fs"
 
-	"github.com/umputun/remark/backend/app/migrator"
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/rest/auth"
 	"github.com/umputun/remark/backend/app/rest/cache"
@@ -32,16 +32,20 @@ import (
 
 // Rest is a rest access server
 type Rest struct {
-	Version         string
-	DataService     *service.DataStore
-	Authenticator   auth.Authenticator
-	Exporter        migrator.Exporter
-	Cache           cache.LoadingCache
-	AvatarProxy     *proxy.Avatar
-	ImageProxy      *proxy.Image
+	Version string
+
+	DataService      *service.DataStore
+	Authenticator    auth.Authenticator
+	Cache            cache.LoadingCache
+	AvatarProxy      *proxy.Avatar
+	ImageProxy       *proxy.Image
+	CommentFormatter *store.CommentFormatter
+	Migrator         *Migrator
+
 	WebRoot         string
 	RemarkURL       string
 	ReadOnlyAge     int
+	SharedSecret    string
 	ScoreThresholds struct {
 		Low      int
 		Critical int
@@ -55,9 +59,7 @@ type Rest struct {
 
 const hardBodyLimit = 1024 * 64 // limit size of body
 
-var mdExt = blackfriday.NoIntraEmphasis | blackfriday.Tables | blackfriday.FencedCode |
-	blackfriday.Strikethrough | blackfriday.SpaceHeadings | blackfriday.HardLineBreak |
-	blackfriday.BackslashLineBreak | blackfriday.Autolink
+const lastCommentsScope = "last"
 
 type commentsWithInfo struct {
 	Comments []store.Comment `json:"comments"`
@@ -67,10 +69,6 @@ type commentsWithInfo struct {
 // Run the lister and request's router, activate rest server
 func (s *Rest) Run(port int) {
 	log.Printf("[INFO] activate rest server on port %d", port)
-
-	if s.DataService != nil && len(s.DataService.Admins) > 0 {
-		log.Printf("[DEBUG] admins %+v", s.DataService.Admins)
-	}
 
 	router := s.routes()
 
@@ -111,13 +109,24 @@ func (s *Rest) routes() chi.Router {
 
 	s.adminService = admin{
 		dataService:   s.DataService,
-		exporter:      s.Exporter,
+		migrator:      s.Migrator,
 		cache:         s.Cache,
 		authenticator: s.Authenticator,
 		readOnlyAge:   s.ReadOnlyAge,
+		avatarProxy:   s.AvatarProxy,
 	}
 
-	ipFn := func(ip string) string { return store.HashValue(ip, s.DataService.Secret)[:12] } // logger uses it for anonymization
+	corsMiddleware := cors.New(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-XSRF-Token", "X-JWT"},
+		ExposedHeaders:   []string{"Authorization"},
+		AllowCredentials: true,
+		MaxAge:           300,
+	})
+	router.Use(corsMiddleware.Handler)
+
+	ipFn := func(ip string) string { return store.HashValue(ip, s.SharedSecret)[:12] } // logger uses it for anonymization
 
 	// auth routes for all providers
 	router.Route("/auth", func(r chi.Router) {
@@ -172,7 +181,7 @@ func (s *Rest) routes() chi.Router {
 			rauth.Post("/deleteme", s.deleteMeCtrl)
 
 			// admin routes, admin users only
-			rauth.Mount("/admin", s.adminService.routes(s.Authenticator.AdminOnly, Logger(nil, LogAll)))
+			rauth.Mount("/admin", s.adminService.routes(s.Authenticator.AdminOnly))
 		})
 	})
 
@@ -202,11 +211,24 @@ func (s *Rest) routes() chi.Router {
 	return router
 }
 
-// serves static files from /web
+// serves static files from /web or embedded by statik
 func addFileServer(r chi.Router, path string, root http.FileSystem) {
-	log.Printf("[INFO] run file server for %s, path %s", root, path)
+
+	var webFS http.Handler
+
+	statikFS, err := fs.New()
+	if err == nil {
+		log.Printf("[INFO] run file server for %s, embedded", root)
+		webFS = http.FileServer(statikFS)
+	}
+	if err != nil {
+		log.Printf("[DEBUG] no embedded assets loaded, %s", err)
+		log.Printf("[INFO] run file server for %s, path %s", root, path)
+		webFS = http.FileServer(root)
+	}
+
 	origPath := path
-	fs := http.StripPrefix(path, http.FileServer(root))
+	webFS = http.StripPrefix(path, webFS)
 	if path != "/" && path[len(path)-1] != '/' {
 		r.Get(path, http.RedirectHandler(path+"/", 301).ServeHTTP)
 		path += "/"
@@ -220,7 +242,7 @@ func addFileServer(r chi.Router, path string, root http.FileSystem) {
 				http.NotFound(w, r)
 				return
 			}
-			fs.ServeHTTP(w, r)
+			webFS.ServeHTTP(w, r)
 		}))
 }
 

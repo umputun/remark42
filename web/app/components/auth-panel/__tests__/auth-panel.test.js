@@ -48,7 +48,7 @@ describe('<AuthPanel />', () => {
 
       const userInfo = authPanelColumn[0];
 
-      expect(userInfo.textContent).toEqual(expect.stringContaining('You signed in as John. Sign out?'));
+      expect(userInfo.textContent).toEqual(expect.stringContaining('You signed in as John'));
     });
   });
   describe('For admin user', () => {
@@ -67,7 +67,7 @@ describe('<AuthPanel />', () => {
 
       const adminAction = container.querySelector('.auth-panel__admin-action');
 
-      expect(adminAction.textContent).toEqual('Show blocked');
+      expect(adminAction.textContent).toEqual('Show blocked users');
     });
   });
 });

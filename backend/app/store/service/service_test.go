@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/umputun/remark/backend/app/store/admin"
 
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/engine"
@@ -22,7 +23,8 @@ var testDb = "/tmp/test-remark.db"
 
 func TestService_CreateFromEmpty(t *testing.T) {
 	defer os.Remove(testDb)
-	b := DataStore{Interface: prepStoreEngine(t), Secret: "secret 123"}
+	ks := admin.NewStaticKeyStore("secret 123")
+	b := DataStore{Interface: prepStoreEngine(t), AdminStore: ks}
 	comment := store.Comment{
 		Text:    "text",
 		User:    store.User{IP: "192.168.1.1", ID: "user", Name: "name"},
@@ -45,7 +47,8 @@ func TestService_CreateFromEmpty(t *testing.T) {
 
 func TestService_CreateFromPartial(t *testing.T) {
 	defer os.Remove(testDb)
-	b := DataStore{Interface: prepStoreEngine(t), Secret: "secret 123"}
+	ks := admin.NewStaticKeyStore("secret 123")
+	b := DataStore{Interface: prepStoreEngine(t), AdminStore: ks}
 	comment := store.Comment{
 		Text:      "text",
 		Timestamp: time.Date(2018, 3, 25, 16, 34, 33, 0, time.UTC),
@@ -70,7 +73,7 @@ func TestService_CreateFromPartial(t *testing.T) {
 
 func TestService_Vote(t *testing.T) {
 	defer os.Remove(testDb)
-	b := DataStore{Interface: prepStoreEngine(t)}
+	b := DataStore{Interface: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123")}
 
 	comment := store.Comment{
 		Text:    "text",
@@ -115,7 +118,7 @@ func TestService_Vote(t *testing.T) {
 
 func TestService_VoteAggressive(t *testing.T) {
 	defer os.Remove(testDb)
-	b := DataStore{Interface: prepStoreEngine(t)}
+	b := DataStore{Interface: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123")}
 
 	comment := store.Comment{
 		Text:    "text",
@@ -175,7 +178,7 @@ func TestService_VoteAggressive(t *testing.T) {
 func TestService_VoteConcurrent(t *testing.T) {
 
 	defer os.Remove(testDb)
-	b := DataStore{Interface: prepStoreEngine(t)}
+	b := DataStore{Interface: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123")}
 
 	comment := store.Comment{
 		Text:    "text",
@@ -206,7 +209,7 @@ func TestService_VoteConcurrent(t *testing.T) {
 
 func TestService_Pin(t *testing.T) {
 	defer os.Remove(testDb)
-	b := DataStore{Interface: prepStoreEngine(t)}
+	b := DataStore{Interface: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123")}
 
 	res, err := b.Last("radio-t", 0)
 	t.Logf("%+v", res[0])
@@ -230,7 +233,7 @@ func TestService_Pin(t *testing.T) {
 
 func TestService_EditComment(t *testing.T) {
 	defer os.Remove(testDb)
-	b := DataStore{Interface: prepStoreEngine(t)}
+	b := DataStore{Interface: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123")}
 
 	res, err := b.Last("radio-t", 0)
 	t.Logf("%+v", res[0])
@@ -255,9 +258,28 @@ func TestService_EditComment(t *testing.T) {
 	assert.Nil(t, err, "allow second edit")
 }
 
+func TestService_DeleteComment(t *testing.T) {
+	defer os.Remove(testDb)
+	b := DataStore{Interface: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123")}
+
+	res, err := b.Last("radio-t", 0)
+	t.Logf("%+v", res[0])
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(res))
+	assert.Nil(t, res[0].Edit)
+
+	_, err = b.EditComment(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, EditRequest{Delete: true})
+	assert.Nil(t, err)
+
+	c, err := b.Get(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID)
+	assert.Nil(t, err)
+	assert.True(t, c.Deleted)
+	t.Logf("%+v", c)
+}
+
 func TestService_EditCommentDurationFailed(t *testing.T) {
 	defer os.Remove(testDb)
-	b := DataStore{Interface: prepStoreEngine(t), EditDuration: 100 * time.Millisecond}
+	b := DataStore{Interface: prepStoreEngine(t), EditDuration: 100 * time.Millisecond, AdminStore: admin.NewStaticKeyStore("secret 123")}
 
 	res, err := b.Last("radio-t", 0)
 	t.Logf("%+v", res[0])
@@ -274,7 +296,7 @@ func TestService_EditCommentDurationFailed(t *testing.T) {
 
 func TestService_ValidateComment(t *testing.T) {
 
-	b := DataStore{MaxCommentSize: 2000}
+	b := DataStore{MaxCommentSize: 2000, AdminStore: admin.NewStaticKeyStore("secret 123")}
 	longText := fmt.Sprintf("%4000s", "X")
 
 	tbl := []struct {

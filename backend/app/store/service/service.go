@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/backend/app/store"
+	"github.com/umputun/remark/backend/app/store/admin"
 	"github.com/umputun/remark/backend/app/store/engine"
 )
 
@@ -15,9 +16,8 @@ import (
 type DataStore struct {
 	engine.Interface
 	EditDuration   time.Duration
-	Secret         string
+	AdminStore     admin.Store
 	MaxCommentSize int
-	Admins         []string
 
 	// granular locks
 	scopedLocks struct {
@@ -31,6 +31,16 @@ const defaultCommentMaxSize = 2000
 
 // Create prepares comment and forward to Interface.Create
 func (s *DataStore) Create(comment store.Comment) (commentID string, err error) {
+
+	if comment, err = s.prepareNewComment(comment); err != nil {
+		return "", errors.Wrap(err, "failed to prepare comment")
+	}
+
+	return s.Interface.Create(comment)
+}
+
+// prepareNewComment sets new comment fields, hashing and sanitizing data
+func (s *DataStore) prepareNewComment(comment store.Comment) (store.Comment, error) {
 	// fill ID and time if empty
 	if comment.ID == "" {
 		comment.ID = uuid.New().String()
@@ -42,11 +52,14 @@ func (s *DataStore) Create(comment store.Comment) (commentID string, err error) 
 	if comment.Votes == nil {
 		comment.Votes = make(map[string]bool)
 	}
+	comment.Sanitize() // clear potentially dangerous js from all parts of comment
 
-	comment.Sanitize()            // clear potentially dangerous js from all parts of comment
-	comment.User.HashIP(s.Secret) // replace ip by hash
-
-	return s.Interface.Create(comment)
+	secret, err := s.AdminStore.Key(comment.Locator.SiteID)
+	if err != nil {
+		return store.Comment{}, errors.Wrapf(err, "can't get secret for site %s", comment.Locator.SiteID)
+	}
+	comment.User.HashIP(secret) // replace ip by hash
+	return comment, nil
 }
 
 // SetPin pin/un-pin comment as special
@@ -109,6 +122,7 @@ type EditRequest struct {
 	Text    string
 	Orig    string
 	Summary string
+	Delete  bool
 }
 
 // EditComment to edit text and update Edit info
@@ -121,6 +135,11 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 	// edit allowed in editDuration window only
 	if s.EditDuration > 0 && time.Now().After(comment.Timestamp.Add(s.EditDuration)) {
 		return comment, errors.Errorf("too late to edit %s", commentID)
+	}
+
+	if req.Delete { // delete request
+		comment.Deleted = true
+		return comment, s.Delete(locator, commentID, store.SoftDelete)
 	}
 
 	comment.Text = req.Text
@@ -165,9 +184,9 @@ func (s *DataStore) ValidateComment(c *store.Comment) error {
 }
 
 // IsAdmin checks if usesID in the list of admins
-func (s *DataStore) IsAdmin(userID string) bool {
-	for _, admin := range s.Admins {
-		if admin == userID {
+func (s *DataStore) IsAdmin(siteID string, userID string) bool {
+	for _, a := range s.AdminStore.Admins(siteID) {
+		if a == userID {
 			return true
 		}
 	}

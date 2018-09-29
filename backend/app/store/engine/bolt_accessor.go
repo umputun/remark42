@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/coreos/bbolt"
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/backend/app/store"
@@ -37,12 +38,8 @@ const (
 	readonlyBucketName = "readonly"
 	verifiedBucketName = "verified"
 
-	// limits
-	lastLimit = 1000
-	userLimit = 500
+	tsNano = "2006-01-02T15:04:05.000000000Z07:00"
 )
-
-const tsNano = "2006-01-02T15:04:05.000000000Z07:00"
 
 // BoltSite defines single site param
 type BoltSite struct {
@@ -409,6 +406,16 @@ func (b *BoltDB) Put(locator store.Locator, comment store.Comment) error {
 		}
 		return b.save(bucket, []byte(comment.ID), comment)
 	})
+}
+
+// Close boltdb store
+func (b *BoltDB) Close() error {
+	errs := new(multierror.Error)
+	for site, db := range b.dbs {
+		err := errors.Wrapf(db.Close(), "can't close site %s", site)
+		errs = multierror.Append(errs, err)
+	}
+	return errs.ErrorOrNil()
 }
 
 // getPostBucket return bucket with all comments for postURL

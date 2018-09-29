@@ -1,0 +1,14 @@
+.dropdown__content {
+  position: absolute;
+  z-index: 20;
+  outline-width: 0;
+  display: none;
+  top: 100%;
+  left: 50%;
+  transform: translate(-50%, 5px);
+  width: 170px;
+  background-color: #fff;
+  border: 2px solid #259c9a;
+  border-radius: 3px;
+  padding: 0 0 5px;
+}

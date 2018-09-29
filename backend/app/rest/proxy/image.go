@@ -11,6 +11,7 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/go-chi/chi"
 	"github.com/pkg/errors"
+
 	"github.com/umputun/remark/backend/app/rest"
 )
 
@@ -113,7 +114,7 @@ func (p Image) extract(commentHTML string) ([]string, error) {
 	return result, nil
 }
 
-// replace img links in commentHTML with route to proxy with base64 encoded original link
+// replace img links in commentHTML with route to proxy, base64 encoded original link
 func (p Image) replace(commentHTML string, imgs []string) string {
 
 	for _, img := range imgs {

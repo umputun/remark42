@@ -39,7 +39,6 @@ type Params struct {
 	AvatarProxy       *proxy.Avatar
 	JwtService        *JWT
 	PermissionChecker PermissionChecker
-	SecretKey         string
 	Cid               string
 	Csecret           string
 }
@@ -99,6 +98,7 @@ func (p Provider) loginHandler(w http.ResponseWriter, r *http.Request) {
 			NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
 		},
 	}
+	claims.Flags.Login = true
 
 	if err := p.JwtService.Set(w, &claims, false); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to set jwt")
@@ -170,6 +170,7 @@ func (p Provider) authHandler(w http.ResponseWriter, r *http.Request) {
 			Issuer: "remark42",
 			Id:     p.randToken(),
 		},
+		SiteID:      oauthClaims.SiteID,
 		SessionOnly: oauthClaims.SessionOnly,
 	}
 
@@ -202,7 +203,7 @@ func (p Provider) setAvatar(u store.User) store.User {
 
 // setPermissions sets permission fields not handled by provider's MapUser, things like admin, verified and blocked
 func (p Provider) setPermissions(u store.User, siteID string) store.User {
-	u.Admin = p.PermissionChecker.IsAdmin(u.ID)
+	u.Admin = p.PermissionChecker.IsAdmin(siteID, u.ID)
 	u.Verified = p.PermissionChecker.IsVerified(siteID, u.ID)
 	u.Blocked = p.PermissionChecker.IsBlocked(siteID, u.ID)
 	log.Printf("[DEBUG] set permissions for user %s, site %s - %+v", u.ID, siteID, u)

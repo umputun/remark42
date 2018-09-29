@@ -65,16 +65,16 @@ GET {{host}}/api/v1/id/3665976683?site=remark&url={{url}}
 GET {{host}}/api/v1/id/a2ddb8d2f65008ee1a1e3af8df0f26beb042309c?site=remark&url=https://radio-t.com/blah1
 
 ### get comment by user id
-GET {{host}}/api/v1/comments?site={{site}}&user=github_ef0f706a79cc24b17bbbb374cd234a691d034128&limit=5
+GET {{host}}/api/v1/comments?site={{site}}&user=github_f1fda731dd18fbb388c943599fcae5a213315add&limit=5
 
 ### get comment by user id2
-GET {{host}}/api/v1/comments?site=radiot&user=github_0a4349d868946d7841424c9bdd4415629df771e6
+GET {{host}}/api/v1/comments?site={{site}}&user=github_0a4349d868946d7841424c9bdd4415629df771e6
 
 ### get count
-GET {{host}}/api/v1/count?site=remark&url={{url}}
+GET {{host}}/api/v1/count?site={{site}}&url={{url}}
 
 ### get counts for many
-POST {{host}}/api/v1/counts?site=remark
+POST {{host}}/api/v1/counts?site={{site}}
 Content-Type: application/json
 
 [
@@ -86,14 +86,11 @@ Content-Type: application/json
 ### list commented posts
 GET {{host}}/api/v1/list?site={{site}}&limit=10&skip=5
 
-### get config
-GET {{host}}/api/v1/config
-
 ### block user
-PUT {{host}}/api/v1/admin/user/disqus_grigorybakunov?site=remark&block=1
+PUT {{host}}/api/v1/admin/user/disqus_grigorybakunov?site={{site}}&block=1
 
 ### unblock user
-PUT {{host}}/api/v1/admin/user/disqus_grigorybakunov?site=remark&block=0
+PUT {{host}}/api/v1/admin/user/disqus_grigorybakunov?site={{site}}&block=0
 
 ### list blocked user
 GET {{host}}/api/v1/admin/blocked?site={{site}}
@@ -105,19 +102,16 @@ DELETE {{host}}/api/v1/admin/comment/3665976683?site={{site}}&url={{url}}
 GET {{host}}/api/v1/info?site={{site}}&url=https://radio-t.com/p/2018/05/08/prep-597/
 
 ### post rss
-GET {{host}}/api/v1/rss/post?site=={{site}}&url={{url}}
-
-### reply rss
-GET {{host}}/api/v1/rss/reply?site=radiot&user=github_ef0f706a79cc24b17bbbb374cd234a691d034128
+GET {{host}}/api/v1/rss/post?site={{site}}&url={{url}}
 
 ### site rss
-PUT {{host}}/api/v1/rss/site?site=remark
+GET {{host}}/api/v1/rss/site?site={{site}}
 
 ### get default avatar
 GET {{host}}/api/v1/avatar/blah
 
 ### get config
-GET  {{host}}/api/v1/config?site=remark
+GET  {{host}}/api/v1/config?site={{site}}
 
 ### ping
 GET {{host}}/ping

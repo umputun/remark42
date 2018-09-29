@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"github.com/umputun/remark/backend/app/rest/auth"
 	"github.com/umputun/remark/backend/app/store"
 )
@@ -20,7 +22,7 @@ import (
 func TestAdmin_Delete(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	c1 := store.Comment{Text: "test test #1", User: store.User{ID: "id", Name: "name"},
 		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}}
@@ -51,7 +53,7 @@ func TestAdmin_Delete(t *testing.T) {
 func TestAdmin_DeleteUser(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	c1 := store.Comment{Text: "test test #1", Orig: "o test test #1", User: store.User{ID: "id1", Name: "name"},
 		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}}
@@ -105,7 +107,7 @@ func TestAdmin_DeleteUser(t *testing.T) {
 func TestAdmin_Pin(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}}
@@ -149,7 +151,7 @@ func TestAdmin_Pin(t *testing.T) {
 func TestAdmin_Block(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
 		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"}}
@@ -204,7 +206,7 @@ func TestAdmin_Block(t *testing.T) {
 	assert.Equal(t, false, j["block"])
 
 	// block with ttl
-	code, _ = block(1, "10ms")
+	code, _ = block(1, "50ms")
 	require.Equal(t, 200, code)
 
 	res, code = get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah&sort=+time")
@@ -216,7 +218,7 @@ func TestAdmin_Block(t *testing.T) {
 	assert.Equal(t, "", comments.Comments[0].Text)
 	assert.True(t, comments.Comments[0].Deleted)
 
-	time.Sleep(11 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	res, code = get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah&sort=+time")
 	assert.Equal(t, 200, code)
 	comments = commentsWithInfo{}
@@ -230,7 +232,7 @@ func TestAdmin_Block(t *testing.T) {
 func TestAdmin_BlockedList(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	client := http.Client{}
 
@@ -272,7 +274,7 @@ func TestAdmin_BlockedList(t *testing.T) {
 func TestAdmin_ReadOnly(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
 		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"}}
@@ -318,7 +320,7 @@ func TestAdmin_ReadOnly(t *testing.T) {
 func TestAdmin_ReadOnlyWithAge(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
 		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"},
@@ -360,7 +362,7 @@ func TestAdmin_ReadOnlyWithAge(t *testing.T) {
 func TestAdmin_Verify(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
 		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"}}
@@ -411,13 +413,12 @@ func TestAdmin_Verify(t *testing.T) {
 	assert.Equal(t, 2, len(comments.Comments), "should have 2 comments")
 	assert.Equal(t, "test test #1", comments.Comments[0].Text)
 	assert.False(t, comments.Comments[0].User.Verified)
-
 }
 
 func TestAdmin_ExportStream(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}}
@@ -437,7 +438,7 @@ func TestAdmin_ExportStream(t *testing.T) {
 func TestAdmin_ExportFile(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}}
@@ -469,7 +470,7 @@ func TestAdmin_ExportFile(t *testing.T) {
 func TestAdmin_DeleteMeRequest(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
 		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"}}
@@ -495,9 +496,15 @@ func TestAdmin_DeleteMeRequest(t *testing.T) {
 			ExpiresAt: time.Now().Add(30 * time.Minute).Unix(),
 		},
 		User: &store.User{
-			ID: "user1",
+			ID:      "user1",
+			Picture: "pic.image",
 		},
 	}
+	claims.Flags.DeleteMe = true
+
+	_ = os.MkdirAll("/tmp/42", 0700)
+	defer os.RemoveAll("/tmp/42")
+	ioutil.WriteFile("/tmp/42/pic.image", []byte("some image data"), 0600)
 
 	token, err := srv.Authenticator.JWTService.Token(&claims)
 	assert.Nil(t, err)
@@ -517,7 +524,7 @@ func TestAdmin_DeleteMeRequest(t *testing.T) {
 func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
 		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"}}
@@ -552,6 +559,7 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 			ID: "user1",
 		},
 	}
+	claims.Flags.DeleteMe = true
 
 	token, err := srv.Authenticator.JWTService.Token(&claims)
 	assert.Nil(t, err)
@@ -573,12 +581,27 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 	resp, err = client.Do(req)
 	assert.Nil(t, err)
 	assert.Equal(t, 400, resp.StatusCode, resp.Status)
+
+	// try without deleteme flag
+	badClaims2 := claims
+	badClaims2.Flags.DeleteMe = false
+	token, err = srv.Authenticator.JWTService.Token(&badClaims2)
+	assert.Nil(t, err)
+	req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, token), nil)
+	assert.Nil(t, err)
+	req.SetBasicAuth("dev", "password")
+	resp, err = client.Do(req)
+	assert.Nil(t, err)
+	assert.Equal(t, 403, resp.StatusCode)
+	b, err := ioutil.ReadAll(resp.Body)
+	assert.Nil(t, err)
+	assert.True(t, strings.Contains(string(b), "can't use provided token"))
 }
 
 func TestAdmin_GetUserInfo(t *testing.T) {
 	srv, ts := prep(t)
 	assert.NotNil(t, srv)
-	defer cleanup(ts)
+	defer cleanup(ts, srv)
 
 	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
 		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"}}
@@ -595,7 +618,8 @@ func TestAdmin_GetUserInfo(t *testing.T) {
 	u := store.User{}
 	err = json.Unmarshal([]byte(body), &u)
 	assert.Nil(t, err)
-	assert.Equal(t, store.User{Name: "user1 name", ID: "user1", Picture: "", IP: "", Admin: false, Blocked: false, Verified: false}, u)
+	assert.Equal(t, store.User{Name: "user1 name", ID: "user1", Picture: "", IP: "823688dafca7393d24c871a2da98a84d8732e927",
+		Admin: false, Blocked: false, Verified: false}, u)
 
 	_, code = get(t, fmt.Sprintf("%s/api/v1/admin/user/user1?site=radio-t&url=https://radio-t.com/blah", ts.URL))
 	assert.Equal(t, 401, code, "no auth")

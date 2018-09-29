@@ -266,7 +266,7 @@ func (b *BoltDB) SetReadOnly(locator store.Locator, status bool) error {
 	})
 }
 
-// IsReadOnly checks if user blocked
+// IsReadOnly checks if post in RO mode
 func (b *BoltDB) IsReadOnly(locator store.Locator) (ro bool) {
 
 	bdb, err := b.db(locator.SiteID)

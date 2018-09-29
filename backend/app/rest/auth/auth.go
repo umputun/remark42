@@ -15,9 +15,14 @@ import (
 type Authenticator struct {
 	JWTService        *JWT
 	Providers         []Provider
-	AdminEmail        string
+	KeyStore          KeyStore
 	DevPasswd         string
 	PermissionChecker PermissionChecker
+}
+
+// KeyStore defines sub-interface for consumers needed just a key
+type KeyStore interface {
+	Key(siteID string) (key string, err error)
 }
 
 var devUser = store.User{
@@ -27,11 +32,18 @@ var devUser = store.User{
 	Admin:   true,
 }
 
-// PermissionChecker defines interface to get user flags
+var adminUser = store.User{
+	ID:      "admin",
+	Name:    "admin",
+	Picture: "/api/v1/avatar/remark.image",
+	Admin:   true,
+}
+
+// PermissionChecker defines interface to check user flags
 type PermissionChecker interface {
 	IsVerified(siteID, userID string) bool
 	IsBlocked(siteID, userID string) bool
-	IsAdmin(userID string) bool
+	IsAdmin(siteID, userID string) bool
 }
 
 // Auth middleware adds auth from session and populates user info
@@ -40,21 +52,28 @@ func (a *Authenticator) Auth(reqAuth bool) func(http.Handler) http.Handler {
 	f := func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 
-			if a.basicDevUser(w, r) { // fail-back to dev user if enabled
-				user := devUser
-				r = rest.SetUserInfo(r, user)
+			// if secret key matches for given site (from request) return admin user
+			if a.checkSecretKey(r) {
+				r = rest.SetUserInfo(r, adminUser)
+				h.ServeHTTP(w, r)
+				return
+			}
+
+			// use dev user basic auth if enabled
+			if a.basicDevUser(r) {
+				r = rest.SetUserInfo(r, devUser)
 				h.ServeHTTP(w, r)
 				return
 			}
 
 			claims, err := a.JWTService.Get(r)
-			if err != nil && reqAuth { // in full auth lack of session causes Unauthorized
-				log.Printf("[DEBUG] failed auth, %s", err)
-				http.Error(w, "Unauthorized", http.StatusUnauthorized)
-				return
-			}
-
-			if err != nil { // in anonymous mode just pass it to the next handler
+			if err != nil {
+				if reqAuth { // in full auth lack of token causes Unauthorized
+					log.Printf("[DEBUG] failed auth, %s", err)
+					http.Error(w, "Unauthorized", http.StatusUnauthorized)
+					return
+				}
+				// if !reqAuth just pass it to the next handler, used for information only, like logs
 				h.ServeHTTP(w, r)
 				return
 			}
@@ -69,6 +88,12 @@ func (a *Authenticator) Auth(reqAuth bool) func(http.Handler) http.Handler {
 				if claims.User.Blocked {
 					log.Printf("[DEBUG] user %s/%s blocked", claims.User.Name, claims.User.ID)
 					a.JWTService.Reset(w)
+					http.Error(w, "Unauthorized", http.StatusUnauthorized)
+					return
+				}
+
+				if a.JWTService.HasFlags(claims) { // flags in token indicate special use cases, not for login
+					log.Printf("[DEBUG] invalid token flags for %s/%s", claims.User.Name, claims.User.ID)
 					http.Error(w, "Unauthorized", http.StatusUnauthorized)
 					return
 				}
@@ -90,9 +115,29 @@ func (a *Authenticator) Auth(reqAuth bool) func(http.Handler) http.Handler {
 	return f
 }
 
+func (a *Authenticator) checkSecretKey(r *http.Request) bool {
+	if a.KeyStore == nil {
+		return false
+	}
+
+	siteID := r.URL.Query().Get("site")
+	secret := r.URL.Query().Get("secret")
+
+	skey, err := a.KeyStore.Key(siteID)
+	if err != nil {
+		return false
+	}
+
+	if strings.TrimSpace(secret) == "" || secret != skey {
+		return false
+	}
+	return true
+}
+
+// refreshExpiredToken makes new token with passed claims, but only if permission allowed
 func (a *Authenticator) refreshExpiredToken(w http.ResponseWriter, claims *CustomClaims) (*CustomClaims, error) {
 	if a.PermissionChecker != nil {
-		claims.User.Admin = a.PermissionChecker.IsAdmin(claims.User.ID)
+		claims.User.Admin = a.PermissionChecker.IsAdmin(claims.SiteID, claims.User.ID)
 		claims.User.Blocked = a.PermissionChecker.IsBlocked(claims.SiteID, claims.User.ID)
 		claims.User.Verified = a.PermissionChecker.IsVerified(claims.SiteID, claims.User.ID)
 	}
@@ -103,7 +148,7 @@ func (a *Authenticator) refreshExpiredToken(w http.ResponseWriter, claims *Custo
 	return claims, nil
 }
 
-// AdminOnly allows access to admins
+// AdminOnly middleware allows access for admins only
 func (a *Authenticator) AdminOnly(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 
@@ -123,7 +168,7 @@ func (a *Authenticator) AdminOnly(next http.Handler) http.Handler {
 	return http.HandlerFunc(fn)
 }
 
-func (a *Authenticator) basicDevUser(w http.ResponseWriter, r *http.Request) bool {
+func (a *Authenticator) basicDevUser(r *http.Request) bool {
 
 	if a.DevPasswd == "" {
 		return false
@@ -136,15 +181,18 @@ func (a *Authenticator) basicDevUser(w http.ResponseWriter, r *http.Request) boo
 
 	b, err := base64.StdEncoding.DecodeString(s[1])
 	if err != nil {
+		log.Printf("[WARN] dev user auth failed, failed to decode %s, %s", s[1], err)
 		return false
 	}
 
 	pair := strings.SplitN(string(b), ":", 2)
 	if len(pair) != 2 {
+		log.Printf("[WARN] dev user auth failed, failed to split %s", string(b))
 		return false
 	}
 
 	if pair[0] != "dev" || pair[1] != a.DevPasswd {
+		log.Printf("[WARN] dev user auth failed, user/passwd mismatch %+v", pair)
 		return false
 	}
 

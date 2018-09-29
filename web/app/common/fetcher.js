@@ -2,6 +2,7 @@ import axios from 'axios';
 
 import { BASE_URL, API_BASE } from './constants';
 import { siteId } from './settings';
+import store from './store';
 
 const fetcher = {};
 const methods = ['get', 'post', 'put', 'patch', 'delete', 'head'];
@@ -30,12 +31,19 @@ methods.forEach(method => {
 
       parameters.url = `${basename}${url}`;
 
-      if (method !== 'post' && !parameters.url.includes('?site=') && !parameters.url.includes('&site=')) {
+      if (siteId && method !== 'post' && !parameters.url.includes('?site=') && !parameters.url.includes('&site=')) {
         parameters.url += (parameters.url.includes('?') ? '&' : '?') + `site=${siteId}`;
       }
 
       axios(parameters)
-        .then(res => resolve(res.data))
+        .then(res => {
+          const date = ('date' in res.headers && res.headers.date) || '';
+          const timestamp = isNaN(Date.parse(date)) ? 0 : Date.parse(date);
+          const timeDiff = (new Date() - timestamp) / 1000;
+          store.set('serverClientTimeDiff', timeDiff);
+
+          resolve(res.data);
+        })
         .catch(error => reject(error));
     });
   };

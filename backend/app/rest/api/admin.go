@@ -1,21 +1,19 @@
 package api
 
 import (
-	"compress/gzip"
 	"errors"
-	"fmt"
-	"io"
 	"log"
 	"net/http"
+	"path"
 	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
-	"github.com/umputun/remark/backend/app/rest/auth"
 
-	"github.com/umputun/remark/backend/app/migrator"
 	"github.com/umputun/remark/backend/app/rest"
+	"github.com/umputun/remark/backend/app/rest/auth"
 	"github.com/umputun/remark/backend/app/rest/cache"
+	"github.com/umputun/remark/backend/app/rest/proxy"
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/service"
 )
@@ -23,10 +21,11 @@ import (
 // admin provides router for all requests available for admin users only
 type admin struct {
 	dataService   *service.DataStore
-	exporter      migrator.Exporter
 	cache         cache.LoadingCache
 	authenticator auth.Authenticator
 	readOnlyAge   int
+	avatarProxy   *proxy.Avatar
+	migrator      *Migrator
 }
 
 func (a *admin) routes(middlewares ...func(http.Handler) http.Handler) chi.Router {
@@ -38,10 +37,12 @@ func (a *admin) routes(middlewares ...func(http.Handler) http.Handler) chi.Route
 	router.Get("/user/{userid}", a.getUserInfoCtrl)
 	router.Get("/deleteme", a.deleteMeRequestCtrl)
 	router.Put("/verify/{userid}", a.setVerifyCtrl)
-	router.Get("/export", a.exportCtrl)
 	router.Put("/pin/{id}", a.setPinCtrl)
 	router.Get("/blocked", a.blockedUsersCtrl)
 	router.Put("/readonly", a.setReadOnlyCtrl)
+
+	a.migrator.withRoutes(router) // set migrator routes, i.e. /export and /import
+
 	return router
 }
 
@@ -57,7 +58,7 @@ func (a *admin) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete comment")
 		return
 	}
-	a.cache.Flush(locator.SiteID, locator.URL)
+	a.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL, lastCommentsScope))
 	render.Status(r, http.StatusOK)
 	render.JSON(w, r, JSON{"id": id, "locator": locator})
 }
@@ -73,7 +74,7 @@ func (a *admin) deleteUserCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete user")
 		return
 	}
-	a.cache.Flush(siteID, userID)
+	a.cache.Flush(cache.Flusher(siteID).Scopes(userID, siteID))
 	render.Status(r, http.StatusOK)
 	render.JSON(w, r, JSON{"user_id": userID, "site_id": siteID})
 }
@@ -108,11 +109,25 @@ func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[INFO] delete all user comments by request for %s, site %s", claims.User.ID, claims.SiteID)
 
+	// deleteme set by deleteMeCtrl, this check just to make sure we not trying to delete with leaked token
+	if !claims.Flags.DeleteMe {
+		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("forbidden"), "can't use provided token")
+		return
+	}
+
 	if err := a.dataService.DeleteUser(claims.SiteID, claims.User.ID); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete user")
 		return
 	}
-	a.cache.Flush(claims.SiteID, claims.User.ID)
+
+	if claims.User.Picture != "" {
+		if err := a.avatarProxy.Store.Remove(path.Base(claims.User.Picture)); err != nil {
+			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete user's avatar")
+			return
+		}
+	}
+
+	a.cache.Flush(cache.Flusher(claims.SiteID).Scopes(claims.SiteID, claims.User.ID, lastCommentsScope))
 	render.Status(r, http.StatusOK)
 	render.JSON(w, r, JSON{"user_id": claims.User.ID, "site_id": claims.SiteID})
 }
@@ -134,7 +149,7 @@ func (a *admin) setBlockCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set blocking status")
 		return
 	}
-	a.cache.Flush(siteID, userID)
+	a.cache.Flush(cache.Flusher(siteID).Scopes(userID, siteID))
 	render.JSON(w, r, JSON{"user_id": userID, "site_id": siteID, "block": blockStatus})
 }
 
@@ -171,7 +186,7 @@ func (a *admin) setReadOnlyCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set readonly status")
 		return
 	}
-	a.cache.Flush(locator.SiteID)
+	a.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL, locator.SiteID))
 	render.JSON(w, r, JSON{"locator": locator, "read-only": roStatus})
 }
 
@@ -185,7 +200,7 @@ func (a *admin) setVerifyCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set verify status")
 		return
 	}
-	a.cache.Flush(siteID, userID)
+	a.cache.Flush(cache.Flusher(siteID).Scopes(siteID, userID))
 	render.JSON(w, r, JSON{"user": userID, "verified": verifyStatus})
 }
 
@@ -200,33 +215,8 @@ func (a *admin) setPinCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set pin status")
 		return
 	}
-	a.cache.Flush(locator.URL)
+	a.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL))
 	render.JSON(w, r, JSON{"id": commentID, "locator": locator, "pin": pinStatus})
-}
-
-// GET /export?site=site-id?mode=file|stream
-// exports all comments for siteID as json stream or gz file
-func (a *admin) exportCtrl(w http.ResponseWriter, r *http.Request) {
-	siteID := r.URL.Query().Get("site")
-	var writer io.Writer = w
-	if r.URL.Query().Get("mode") == "file" {
-		exportFile := fmt.Sprintf("%s-%s.json.gz", siteID, time.Now().Format("20060102"))
-		w.Header().Set("Content-Type", "application/gzip")
-		w.Header().Set("Content-Disposition", "attachment;filename="+exportFile)
-		w.WriteHeader(http.StatusOK)
-		gzWriter := gzip.NewWriter(w)
-		defer func() {
-			if e := gzWriter.Close(); e != nil {
-				log.Printf("[WARN] can't close gzip writer, %s", e)
-			}
-		}()
-		writer = gzWriter
-	}
-
-	if _, err := a.exporter.Export(writer, siteID); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "export failed")
-		return
-	}
 }
 
 func (a *admin) checkBlocked(siteID string, user store.User) bool {

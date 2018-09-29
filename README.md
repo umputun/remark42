@@ -4,7 +4,7 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 
 * Social login via Google, Facebook, Github and Yandex
 * Multi-level nested comments with both tree and plain presentations
-* Import from disqus
+* Import from disqus and wordpress
 * Markdown support
 * Moderator can remove comments and block users
 * Voting, pinning and verification system
@@ -14,57 +14,113 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 * Export data to json with automatic backups
 * No external databases, everything embedded in a single data file
 * Fully dockerized and can be deployed in a single command
+* Self-contained executable can be deployed directly to Linux, Windows and MacOS
 * Clean, lightweight and fully customizable UI
 * Multi-site mode from a single instance
 * Integration with automatic ssl via [nginx-le](https://github.com/umputun/nginx-le)
 * [Privacy focused](#privacy)
 
+#
+
+  - [Install](#install)
+    - [Backend](#backend)
+      - [With Docker](#with-docker) 
+      - [Without docker](#without-docker) 
+      - [Parameters](#parameters)
+        - [Required parameters](#required-parameters)
+      - [Register oauth2 providers](#register-oauth2-providers)
+        - [Google Auth Provider](#google-auth-provider)
+        - [GitHub Auth Provider](#github-auth-provider)
+        - [Facebook Auth Provider](#facebook-auth-provider)
+        - [Yandex Auth Provider](#yandex-auth-provider)
+      - [Initial import from Disqus](#initial-import-from-disqus)
+      - [Initial import from WordPress](#initial-import-from-wordpress)
+      - [Backup and restore](#backup-and-restore)
+        - [Automatic backups](#automatic-backups)
+        - [Manual backup](#manual-backup)
+        - [Restore from backup](#restore-from-backup)
+        - [Backup format](#backup-format)
+      - [Admin users](#admin-users)
+    - [Setup on your website](#setup-on-your-website)
+      - [Comments](#comments)
+      - [Last comments](#last-comments)
+      - [Counter](#counter)
+  - [Build from the source](#build-from-the-source)
+  - [Development](#development)
+    - [Backend development](#backend-development)
+    - [Frontend development](#frontend-development)
+      - [Build](#build)
+      - [Devserver](#devserver)
+  - [API](#api)
+    - [Authorization](#authorization)
+    - [Commenting](#commenting)
+    - [RSS feeds](#rss-feeds)
+    - [Admin](#admin)
+  - [Privacy](#privacy)
+  - [Technical details](#technical-details)
+
+
 ## Install
 
 ### Backend
 
+#### With Docker
+
+_this is the recommended way to run remark42_
+
 * copy provided `docker-compose.yml` and customize for your needs
-* prepare user id for container `` export USER=`id -u $USER` ``
 * make sure you **don't keep** `DEV_PASSWD=something...` for any non-development deployments
-* pull prepared images from docker hub and start - `docker-compose pull && docker-compose up -d`
-* alternatively compile from sources - `docker-compose build && docker-compose up -d`
+* pull prepared images from the docker hub and start - `docker-compose pull && docker-compose up -d`
+* alternatively compile from the sources - `docker-compose build && docker-compose up -d`
+
+#### Without docker
+
+* download archive for [stable release](https://github.com/umputun/remark/releases) or [development version](https://remark42.com/downloads)
+* unpack with `gunzip` (linux, mac os) or with `zip` (windows) 
+* run as `remark42.{os}-{arch} server {parameters...}`, i.e. `remark42.linux-amd64 server --secret=12345 --url=http://127.0.0.1:8080`
+* alternatively compile from the sources - `make OS=[linux|darwin|windows] ARCH=[amd64,386,arm64,arm32]`
 
 #### Parameters
 
-| Command line       | Environment        | Default               | Description                                    |
-| ------------------ | ------------------ | --------------------- | ---------------------------------------------- |
-| url                | REMARK_URL         |                       | url to remark42 server, _required_             |
-| secret             | SECRET             |                       | secret key, _required_                         |
-| store.bolt.path    | STORE_BOLT_PATH    | `./var`               | path to data directory                         |
-| store.bolt.timeout | STORE_BOLT_TIMEOUT | `30s`                 | boltdb access timeout                          |
-| site               | SITE               | `remark`              | site name(s), _multi_                          |
-| admin              | ADMIN              |                       | admin names (list of user ids), _multi_        |
-| admin-email        | ADMIN_EMAIL        | `admin@${REMARK_URL}` | admin email                                    |
-| backup             | BACKUP_PATH        | `./var/backup`        | backups location                               |
-| max-back           | MAX_BACKUP_FILES   | `10`                  | max backup files to keep                       |
-| cache.max.items    | CACHE_MAX_ITEMS    | `1000`                | max number of cached items, `0` - unlimited    |
-| cache.max.value    | CACHE_MAX_VALUE    | `65536`               | max size of cached value, `0` - unlimited      |
-| cache.max.size     | CACHE_MAX_SIZE     | `50000000`            | max size of all cached values, `0` - unlimited |
-| avatar.path        | AVATAR_FS_PATH     | `./var/avatars`       | avatars location                               |
-| avatar.rsz-lmt     | AVATAR_RSZ_LMT     | 0                     | max image size for resizing avatars on save    |
-| max-comment        | MAX_COMMENT_SIZE   | 2048                  | comment's size limit                           |
-| auth.ttl.jwt       | AUTH_TTL_JWT       | 5m                    | jwt TTL                                        |
-| auth.ttl.cookie    | AUTH_TTL_COOKIE    | 200h                  | cookie TTL                                     |
-| auth.google.cid    | AUTH_GOOGLE_CID    |                       | Google OAuth client ID                         |
-| auth.google.csec   | AUTH_GOOGLE_CSEC   |                       | Google OAuth client secret                     |
-| auth.facebook.cid  | AUTH_FACEBOOK_CID  |                       | Facebook OAuth client ID                       |
-| auth.facebook.csec | AUTH_FACEBOOK_CSEC |                       | Facebook OAuth client secret                   |
-| auth.github.cid    | AUTH_GITHUB_CID    |                       | Github OAuth client ID                         |
-| auth.github.csec   | AUTH_GITHUB_CSEC   |                       | Github OAuth client secret                     |
-| auth.yandex.cid    | AUTH_YANDEX_CID    |                       | Yandex OAuth client ID                         |
-| auth.yandex.csec   | AUTH_YANDEX_CSEC   |                       | Yandex OAuth client secret                     |
-| auth.dev           | AUTH_DEV           | false                 | local oauth2 server, development mode only     |
-| low-score          | LOW_SCORE          | `-5`                  | low score threshold                            |
-| critical-score     | CRITICAL_SCORE     | `-10`                 | critical score threshold                       |
-| edit-time          | EDIT_TIME          | `5m`                  | edit window                                    |
-| img-proxy          | IMG_PROXY          | `false`               | enable http->https proxy for images            |
-| dbg                | DEBUG              | `false`               | debug mode                                     |
-| dev-passwd         | DEV_PASSWD         |                       | password for `dev` user                        |
+| Command line       | Environment        | Default               | Description                                      |
+| ------------------ | ------------------ | --------------------- | ------------------------------------------------ |
+| url                | REMARK_URL         |                       | url to remark42 server, _required_               |
+| secret             | SECRET             |                       | secret key, _required_                           |
+| site               | SITE               | `remark`              | site name(s), _multi_                            |
+| store.type         | STORE_TYPE         | `bolt`                | type of storage, `bolt` or `mongo`               |
+| store.bolt.path    | STORE_BOLT_PATH    | `./var`               | path to data directory                           |
+| store.bolt.timeout | STORE_BOLT_TIMEOUT | `30s`                 | boltdb access timeout                            |
+| mongo.url          | MONGO_URL          |                       | mongo url for all stores using mongodb           |
+| mongo.db           | MONGO_DB           |                       | mongo database                                   |
+| admin.shared.id    | ADMIN_SHARED_ID    |                       | admin names (list of user ids), _multi_          |
+| admin.shared.email | ADMIN_SHARED_EMAIL | `admin@${REMARK_URL}` | admin email                                      |
+| backup             | BACKUP_PATH        | `./var/backup`        | backups location                                 |
+| max-back           | MAX_BACKUP_FILES   | `10`                  | max backup files to keep                         |
+| cache.max.items    | CACHE_MAX_ITEMS    | `1000`                | max number of cached items, `0` - unlimited      |
+| cache.max.value    | CACHE_MAX_VALUE    | `65536`               | max size of cached value, `0` - unlimited        |
+| cache.max.size     | CACHE_MAX_SIZE     | `50000000`            | max size of all cached values, `0` - unlimited   |
+| avatar.type        | AVATAR_TYPE        | `fs`                  | type of avatar storage, `fs`, 'bolt`, or `mongo` |
+| avatar.fs.path     | AVATAR_FS_PATH     | `./var/avatars`       | avatars location for `fs` store                  |
+| avatar.bolt.file   | AVATAR_BOLT_FILE   | `./var/avatars.db`    | file name for  `bolt` store                      |
+| avatar.rsz-lmt     | AVATAR_RSZ_LMT     | 0                     | max image size for resizing avatars on save      |
+| auth.ttl.jwt       | AUTH_TTL_JWT       | 5m                    | jwt TTL                                          |
+| auth.ttl.cookie    | AUTH_TTL_COOKIE    | 200h                  | cookie TTL                                       |
+| auth.google.cid    | AUTH_GOOGLE_CID    |                       | Google OAuth client ID                           |
+| auth.google.csec   | AUTH_GOOGLE_CSEC   |                       | Google OAuth client secret                       |
+| auth.facebook.cid  | AUTH_FACEBOOK_CID  |                       | Facebook OAuth client ID                         |
+| auth.facebook.csec | AUTH_FACEBOOK_CSEC |                       | Facebook OAuth client secret                     |
+| auth.github.cid    | AUTH_GITHUB_CID    |                       | Github OAuth client ID                           |
+| auth.github.csec   | AUTH_GITHUB_CSEC   |                       | Github OAuth client secret                       |
+| auth.yandex.cid    | AUTH_YANDEX_CID    |                       | Yandex OAuth client ID                           |
+| auth.yandex.csec   | AUTH_YANDEX_CSEC   |                       | Yandex OAuth client secret                       |
+| auth.dev           | AUTH_DEV           | false                 | local oauth2 server, development mode only       |
+| max-comment        | MAX_COMMENT_SIZE   | 2048                  | comment's size limit                             |
+| low-score          | LOW_SCORE          | `-5`                  | low score threshold                              |
+| critical-score     | CRITICAL_SCORE     | `-10`                 | critical score threshold                         |
+| edit-time          | EDIT_TIME          | `5m`                  | edit window                                      |
+| img-proxy          | IMG_PROXY          | `false`               | enable http->https proxy for images              |
+| dbg                | DEBUG              | `false`               | debug mode                                       |
+| dev-passwd         | DEV_PASSWD         |                       | password for `dev` user                          |
 
 * command line parameters are long form `--<key>=value`, i.e. `--site=https://demo.remark42.com`
 * _multi_ parameters separated by `,` in the environment or repeated with command line key, like `--site=s1 --site=s2 ...`
@@ -75,8 +131,8 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 Most of the parameters have sane defaults and don't require customization. There are only a few parameters user has to define:  
 
 1. `SECRET` - secret key, can be any long and hard-to-guess string.
-1. `REMARK_URL` - url pointing to your remark42 server, i.e. `https://demo.reamark42.com`
-2. At least one pair of `AUTH_<PROVIDER>_CID` and `AUTH_<PROVIDER>_CSEC` defining oauth2 provider(s)
+2. `REMARK_URL` - url pointing to your remark42 server, i.e. `https://demo.reamark42.com`
+3. At least one pair of `AUTH_<PROVIDER>_CID` and `AUTH_<PROVIDER>_CSEC` defining oauth2 provider(s)
 
 The minimal `docker-compose.yml` has to include all required parameters:
 
@@ -90,10 +146,10 @@ services:
         container_name: "remark42"
         environment:
             - REMARK_URL=https://demo.remark42.com  # url pointing to your remark42 server
+            - SITE=YOUR_SITE_ID                     # site ID, same as used for `site_id`, see "Setup on your website"
             - SECRET=abcd-123456-xyz-$%^&           # secret key
             - AUTH_GITHUB_CID=12345667890           # oauth2 client ID
             - AUTH_GITHUB_CSEC=abcdefg12345678      # oauth2 client secret
-            - USER=1001                             # UID on the host machine, i.e `id -u`
         volumes:
             - ./var:/srv/var                        # persistent volume to store all remark42 data 
 ```
@@ -154,7 +210,13 @@ For more details refer to [Yandex OAuth](https://tech.yandex.com/oauth/doc/dg/co
 
 1.  Disqus provides an export of all comments on your site in a g-zipped file. This is found in your Moderation panel at Disqus Admin > Setup > Export. The export will be sent into a queue and then emailed to the address associated with your account once it's ready. Direct link to export will be something like `https://<siteud>.disqus.com/admin/discussions/export/`. See [importing-exporting](https://help.disqus.com/customer/portal/articles/1104797-importing-exporting) for more details.
 2.  Move this file to your remark42 host within `./var` and unzip, i.e. `gunzip <disqus-export-name>.xml.gz`.
-3.  Run import command - `docker-compose exec remark42 /srv/import-disqus.sh <disqus-export-name>.xml <your site id>`
+3.  Run import command - `docker exec -it remark42 import -p disqus -f {disqus-export-name}.xml -s {your site id}`
+
+#### Initial import from WordPress
+
+1. Install WordPress [plugin](https://wordpress.org/plugins/wp-exporter/) to export comments and follow it instructions. The plugin should produce a xml-based file with site content including comments. 
+2. Move this file to your remark42 host within `./var`
+3. Run import command - `docker exec -it remark42 import -p wordpress -f {wordpress-export-name}.xml -s {your site id}`
 
 #### Backup and restore
 
@@ -163,20 +225,19 @@ Remark42 by default makes daily backup files under `${BACKUP_PATH}` (default `./
 
 For safety and security reasons restore functionality not exposed outside of your server by default. The recommended way to restore from the backup is to use provided `scripts/restore-backup.sh`. It can run inside the container:
 
-`docker-compose exec remark42 /srv/restore-backup.sh {backup-filename.gz} {your site id}`
-
-##### Schema migration
-
-One special case for backup/restore is schema migration. Some versions or remark42 may extend or change the schema 
-and for such upgrades migration required. Provided migration script `scripts/migrate-data.sh` makes a fresh backup and then loads it back to your remark42 instance.
-
-`docker-compose exec remark42 /srv/migrate-data.sh {your site id}`
+`docker exec -it remark42 restore -f {backup-filename.gz} -s {your site id}`
 
 ##### Manual backup
 
-In addition to automatic backups user can make a backup manually. This command makes `userbackup-{site id}-{timestamp}.gz`
+In addition to automatic backups user can make a backup manually. This command makes `userbackup-{site id}-{timestamp}.gz` by default.
 
-`docker-compose exec remark42 /srv/create-backup.sh {your site id}`
+`docker exec -it remark42 backup -s {your site id}`
+
+##### Restore from backup
+
+Restore will clean all comments first and then will processed with complete import from a given file.
+
+`docker exec -it remark42 restore -f {backup file name} -s {your site id}`
 
 ##### Backup format
 
@@ -195,50 +256,9 @@ Admins/moderators should be defined in `docker-compose.yml` as a list of user ID
 To get user id just login and click on your username or any other user you want to promote to admins. 
 It will expand login info and show full user ID.
 
+### Setup on your website
 
-### Frontend
-
-Frontend part is building automatically along with backend if you use `docker-compose`.
-
-For manual building:
-
-* install [Node.js 8](https://nodejs.org/en/) or higher;
-* install [NPM 6.1.0](https://www.npmjs.com/package/npm) or higher;
-* run `npm install` inside `./web`;
-* run `npm run build` there;
-* result files will be saved in `./web/public`.
-
-For development mode use `npm start` instead of `npm run build`.
-In this case `webpack` will serve files using `webpack-dev-server` on `localhost:8080`.
-
-URLs for development:
-
-* `localhost:8080` — page with embedded script from `REMARK_URL` (default: `https://demo.remark42.com`);
-* `localhost:8080/dev.html` — page with embedded script from local folder;
-* `localhost:8080/last-comments.html` — page with embedded script for last comments;
-* `localhost:8080/counter.html` — page with embedded script for counter with examples.
-
-#### Testing
-
-Also you can use fully functional local version to develop and test both frontend & backend.
-
-To bring it up run:
-
-```bash
-docker-compose -f compose-dev-frontend.yml build
-docker-compose -f compose-dev-frontend.yml up
-```
-
-It starts Remark42 on `localhost:8080` 
-and adds local OAuth2 provider “Dev”. To access UI demo page go to `localhost:8080/web`.
-
-That `compose-dev.yml` (you can find it in the root of the project) also defines if default logged user admin or not. 
-By default, it will be the admin, and to switch it to regular user comment or remove `-ADMIN=dev_user` there. You can also select 
-any other user name from the login dialog.
-
-#### Usage
-
-##### Comments
+#### Comments
 
 It's a main widget which renders list of comments. 
 
@@ -268,7 +288,7 @@ And then add this node in the place where you want to see Remark42 widget:
 
 After that widget will be rendered inside this node.
 
-##### Last comments
+#### Last comments
 
 It's a widget which renders list of last comments from your site.
 
@@ -296,7 +316,7 @@ And then add this node in the place where you want to see last comments widget:
 
 `data-max` sets the max amount of comments (default: `15`).
 
-##### Counter
+#### Counter
 
 It's a widget which renders a number of comments for the specified page.
 
@@ -305,7 +325,7 @@ Add this snippet to the bottom of web page:
 ```html
 <script>
   var remark_config = {
-    site_id: 'YOUR_SITE_ID', 
+    site_id: 'YOUR_SITE_ID',
   };
 
   (function() {
@@ -327,6 +347,76 @@ The script will found all them by the class `remark__counter`,
 and it will use `data-url` attribute to define the page with comments.
 
 Also script can uses `url` property from `remark_config` object, or `window.location.href` if nothing else is defined. 
+
+## Build from the source
+
+- to build docker container - `make docker`. This command will produce container `umputun/remark42`.
+- to build a single binary for direct execution - `make OS=<linux|windows|darwin> ARCH=<amd64|386>`. This step will produce executable 
+ `remark42` file with everything embedded.
+ 
+## Development
+
+You can use fully functional local version to develop and test both frontend & backend.
+
+To bring it up run:
+
+```bash
+# if you mainly work on backend
+docker-compose -f compose-dev-backend.yml build
+docker-compose -f compose-dev-backend.yml up
+# if you mainly work on frontend
+docker-compose -f compose-dev-frontend.yml build
+docker-compose -f compose-dev-frontend.yml up
+```
+
+It starts Remark42 on `127.0.0.1:8080` and adds local OAuth2 provider “Dev”.
+To access UI demo page go to `127.0.0.1:8080/web`.
+By default, you would be logged in as `dev_user` which defined as admin. 
+You can tweak any of [supported parameters](#Parameters) in corresponded yml file.
+
+Backend docker compose config by default skips running frontend related tests. 
+Frontend docker compose config by default skips running backend related tests and sets `NODE_ENV=development` for frontend build. 
+
+### Backend development
+
+In order to run backend locally (development mode, without docker) you have to have latest stable `go` toolchain [installed](https://golang.org/doc/install).
+
+
+To run backend - `go run backend/app/main.go --dbg --secret=12345 --dev-passwd=password --site=remark --url=http://127.0.0.1:8080`
+It stars backend service with embedded bolt store on port `8080` with basic auth, allowing to authenticate and run requests directly, like this:
+`HTTP http://dev:password@127.0.0.1:8080/api/v1/find?site=remark&sort=-active&format=tree&url=http://127.0.0.1:8080`
+
+To run backend with mongodb store mongo container should be started first - `docker run -d -p 27017:27017 -name=mongo mongo:3.6 --smallfiles` and then
+`go run backend/app/main.go --dbg --secret=12345 --dev-passwd=password --site=remark --url=http://127.0.0.1:8080 --store.type=mongo --store.mongo.url=localhost`
+
+### Frontend development
+
+#### Build
+
+* install [Node.js 8](https://nodejs.org/en/) or higher;
+* install [NPM 6.1.0](https://www.npmjs.com/package/npm);
+* run `npm install` inside `./web`;
+* run `npm run build` there;
+* result files will be saved in `./web/public`.
+
+**Note** Running `npm install` will set up precommit hooks into your git repository.
+It used to reformat your frontend code using `prettier` and lint with `eslint` before every commit.
+
+#### Devserver
+
+For local development mode with Hot Reloading use `npm start` instead of `npm run build`.
+In this case `webpack` will serve files using `webpack-dev-server` on `localhost:9000`.
+By visiting `127.0.0.1:9000/web` you will get a page with main comments widget.
+communicating with demo server backend running on `https://demo.remark42.com`.
+But you will not be able to login with any oauth providers due to security reasons.
+
+You can attach to locally running backend by providing `REMARK_URL` environment variable.
+```sh
+npx cross-env REMARK_URL=http://127.0.0.1:8080 npm start
+```
+
+Developer build running by `webpack-dev-server` supports devtools for [React](https://github.com/facebook/react-devtools) and
+[Redux](https://github.com/zalmoxisus/redux-devtools-extension).
 
 ## API
 
@@ -394,15 +484,14 @@ type Node struct {
 
 Sort can be `time`, `active` or `score`. Supported sort order with prefix -/+, i.e. `-time`. For `tree` mode sort will be applied to top-level comments only and all replies always sorted by time.
 
-* `PUT /api/v1/comment/{id}?site=site-id&url=post-url` - edit comment, allowed once in 5min since creation
+* `PUT /api/v1/comment/{id}?site=site-id&url=post-url` - edit comment, allowed once in `EDIT_TIME` minutes since creation.  Body is `EditRequest` json
 
-```json
-  Content-Type: application/json
-
-  {
-    "text": "edit comment blah http://radio-t.com 12345",
-    "summary": "fix blah"
-  }
+```go
+ 	type EditRequest struct {
+ 		Text    string `json:"text"`    // updated text
+ 		Summary string `json:"summary"` // optional, summary of the edit
+ 		Delete  bool   `json:"delete"`  // delete flag 
+ 	}{}
 ```
 
 * `GET /api/v1/last/{max}?site=site-id` - get up to `{max}` last comments
@@ -472,21 +561,19 @@ Sort can be `time`, `active` or `score`. Supported sort order with prefix -/+, i
 
 _all admin calls require auth and admin privilege_
 
-
 ## Privacy 
 
 * Remark42 is trying to be very sensitive to any private or semi-private information.
-* Authentication requesting the lowest (minimal) possible scope from providers. All extra information returned by them dropped immediately and not stored in any form.
-* Generally remark42 keeps user id, username and avatar link only. None of these fields exposed directly - id and name hashed, avatar proxied.
+* Authentication requesting the minimal possible scope from authentication providers. All extra information returned by them dropped immediately and not stored in any form.
+* Generally, remark42 keeps user id, username and avatar link only. None of these fields exposed directly - id and name hashed, avatar proxied.
 * There is no tracking of any sort.
-* Login mechanic uses JWT stored in a cookie (httpOnly, secured). The second cookie (XSRF_TOKEN) is a random id preventing Cross-Site Request Forgery
+* Login mechanic uses JWT stored in a cookie (httpOnly, secured). The second cookie (XSRF_TOKEN) is a random id preventing CSRF.
 * There is no cross-site login, i.e., user's behavior can't be analyzed across independent sites running remark42.
 * There are no third-party analytic services involved.
 * User can request all information remark42 knows about and export to gz file.
-* Supported complete cleanup of all information related to user activity on demand.
+* Supported complete cleanup of all information related to user's activity.
 * Cookie lifespan can be restricted to session-only. 
 * All potentially sensitive data stored by remark42 hashed and encrypted.
-
 
 ## Technical details
 
@@ -500,8 +587,8 @@ _all admin calls require auth and admin privilege_
 * Request timeout set to 60sec
 * Development mode (`--dev-password` set) allows to test remark42 without social login and with admin privileges. Adds basic-auth for username: `dev`, password: `${DEV_PASSWD}`. **should not be used in production deployment**
 * User can vote for the comment multiple times but only to change the vote. Double-voting not allowed.
-* User can edit comments in 5 mins window after creation.
+* User can edit comments in 5 mins (configurable) window after creation.
 * User ID hashed and prefixed by oauth provider name to avoid collisions and potential abuse.
-* All avatars resized and cached locally to prevent rate limiters from google/github/facebook/yandex.
+* All avatars resized and cached locally to prevent rate limiters from oauth providers.
 * Images can be proxied (`IMG_PROXY=true`) to prevent mixed http/https.
 * Docker build uses [publicly available](https://github.com/umputun/baseimage) base images.

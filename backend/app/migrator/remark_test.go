@@ -10,7 +10,9 @@ import (
 
 	"github.com/coreos/bbolt"
 	"github.com/stretchr/testify/assert"
+
 	"github.com/umputun/remark/backend/app/store"
+	"github.com/umputun/remark/backend/app/store/admin"
 	"github.com/umputun/remark/backend/app/store/engine"
 	"github.com/umputun/remark/backend/app/store/service"
 )
@@ -18,6 +20,7 @@ import (
 var testDb = "/tmp/test-remark.db"
 
 func TestRemark_Export(t *testing.T) {
+	defer os.Remove(testDb)
 	b := prep(t)
 	r := Remark{DataStore: b}
 
@@ -29,11 +32,13 @@ func TestRemark_Export(t *testing.T) {
 	c1, err := buf.ReadString('\n')
 	assert.Nil(t, err)
 	log.Print(c1)
-	exp := `{"id":"efbc17f177ee1a1c0ee6e1e025749966ec071adc","pid":"","text":"some text, <a href=\"http://radio-t.com\" rel=\"nofollow\">link</a>","user":{"name":"user name","id":"user1","picture":"","admin":false},"locator":{"site":"radio-t","url":"https://radio-t.com"},"score":0,"votes":{},"time":"2017-12-20T15:18:22-06:00"}` + "\n"
+	exp := `{"id":"efbc17f177ee1a1c0ee6e1e025749966ec071adc","pid":"","text":"some text, <a href=\"http://radio-t.com\" rel=\"nofollow\">link</a>","user":{"name":"user name","id":"user1","picture":"","ip":"293ec5b0cf154855258824ec7fac5dc63d176915","admin":false},"locator":{"site":"radio-t","url":"https://radio-t.com"},"score":0,"votes":{},"time":"2017-12-20T15:18:22-06:00"}` + "\n"
 	assert.Equal(t, exp, c1)
 }
 
 func TestRemark_Import(t *testing.T) {
+	defer os.Remove(testDb)
+
 	r1 := `{"id":"efbc17f177ee1a1c0ee6e1e025749966ec071adc","pid":"","text":"some text, <a href=\"http://radio-t.com\" rel=\"nofollow\">link</a>","user":{"name":"user name","id":"user1","picture":"","profile":"","admin":false},"locator":{"site":"radio-t","url":"https://radio-t.com"},"score":0,"votes":{},"time":"2017-12-20T15:18:22-06:00"}` + "\n"
 
 	r2 := `{"id":"afbc17f177ee1a1c0ee6e1e025749966ec071adc","pid":"efbc17f177ee1a1c0ee6e1e025749966ec071adc","text":"some text2, <a href=\"http://radio-t.com\" rel=\"nofollow\">link</a>","user":{"name":"user name","id":"user1","picture":"","profile":"","admin":false},"locator":{"site":"radio-t","url":"https://radio-t.com"},"score":0,"votes":{},"time":"2017-12-20T15:18:23-06:00"}` + "\n"
@@ -46,7 +51,7 @@ func TestRemark_Import(t *testing.T) {
 	os.Remove(testDb)
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{SiteID: "radio-t", FileName: testDb})
 	assert.Nil(t, err)
-	r := Remark{DataStore: &service.DataStore{Interface: b}}
+	r := Remark{DataStore: &service.DataStore{Interface: b, AdminStore: admin.NewStaticStore("12345", []string{}, "")}}
 	size, err := r.Import(buf, "radio-t")
 	assert.Nil(t, err)
 	assert.Equal(t, 2, size)
@@ -60,6 +65,8 @@ func TestRemark_Import(t *testing.T) {
 }
 
 func TestRemark_ImportManyWithError(t *testing.T) {
+	defer os.Remove(testDb)
+
 	goodRec := `{"id":"%d","pid":"","text":"some text, <a href=\"http://radio-t.com\" rel=\"nofollow\">link</a>","user":{"name":"user name","id":"user1","picture":"","profile":"","admin":false},"locator":{"site":"radio-t","url":"https://radio-t.com"},"score":0,"votes":{},"time":"2017-12-20T15:18:22-06:00"}` + "\n"
 
 	buf := &bytes.Buffer{}
@@ -72,7 +79,7 @@ func TestRemark_ImportManyWithError(t *testing.T) {
 	os.Remove(testDb)
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{SiteID: "radio-t", FileName: testDb})
 	assert.Nil(t, err)
-	r := Remark{DataStore: &service.DataStore{Interface: b}}
+	r := Remark{DataStore: &service.DataStore{Interface: b, AdminStore: admin.NewStaticStore("12345", []string{}, "")}}
 	n, err := r.Import(buf, "radio-t")
 	assert.EqualError(t, err, "failed to save 2 comments")
 	assert.Equal(t, 1200, n)
@@ -88,7 +95,7 @@ func prep(t *testing.T) *service.DataStore {
 	boltStore, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{SiteID: "radio-t", FileName: testDb})
 	assert.Nil(t, err)
 
-	b := &service.DataStore{Interface: boltStore}
+	b := &service.DataStore{Interface: boltStore, AdminStore: admin.NewStaticStore("12345", []string{}, "")}
 
 	comment := store.Comment{
 		ID:        "efbc17f177ee1a1c0ee6e1e025749966ec071adc",

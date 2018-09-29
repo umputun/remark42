@@ -11,3 +11,4 @@ const querySettings =
 export const siteId = querySettings['site_id'];
 export const url = querySettings['url'];
 export const maxShownComments = querySettings['max_shown_comments'];
+export const token = querySettings['token'];

@@ -69,6 +69,18 @@ export const getUser = () =>
     withCredentials: true,
   });
 
+/* GDPR */
+
+export const deleteMe = () =>
+  fetcher.post({
+    url: `/deleteme?site=${siteId}`,
+  });
+
+export const approveDeleteMe = token =>
+  fetcher.get({
+    url: `/admin/deleteme?token=${token}`,
+  });
+
 /* admin */
 export const pinComment = ({ id, url }) =>
   fetcher.put({
@@ -118,6 +130,18 @@ export const getBlocked = () =>
     withCredentials: true,
   });
 
+export const disableComments = () =>
+  fetcher.put({
+    url: `/admin/readonly?site=${siteId}&url=${url}&ro=1`,
+    withCredentials: true,
+  });
+
+export const enableComments = () =>
+  fetcher.put({
+    url: `/admin/readonly?site=${siteId}&url=${url}&ro=0`,
+    withCredentials: true,
+  });
+
 export default {
   logOut,
   getConfig,
@@ -140,4 +164,6 @@ export default {
   blockUser,
   unblockUser,
   getBlocked,
+  disableComments,
+  enableComments,
 };

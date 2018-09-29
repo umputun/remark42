@@ -10,6 +10,16 @@ import (
 
 type contextKey string
 
+// MustGetUserInfo fails if can't extract user data from the request.
+// should be called from authed controllers only
+func MustGetUserInfo(r *http.Request) store.User {
+	user, err := GetUserInfo(r)
+	if err != nil {
+		panic(err)
+	}
+	return user
+}
+
 // GetUserInfo returns user from request context
 func GetUserInfo(r *http.Request) (user store.User, err error) {
 

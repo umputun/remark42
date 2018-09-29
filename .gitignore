@@ -15,3 +15,6 @@ debug.test
 *.test
 /rest-client.env.json
 .DS_Store
+.mongo
+remark42
+/bin/

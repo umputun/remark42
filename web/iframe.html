@@ -1,10 +1,15 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>remark42</title>
   <base target="_blank">
+  <script>
+    if (window.location.search === '?selfClose') {
+      window.close();
+    }
+  </script>
   <link rel="stylesheet" href="remark.css">
   <style>
     html, body {
@@ -59,6 +64,10 @@
         transform: scale(0);
       }
     }
+
+    :focus:not(.focus-visible):not(.button) {
+      outline: none;
+    }
   </style>
 </head>
 <body>
@@ -70,6 +79,13 @@
     </div>
   </div>
   <script>
+    /* REMOVE-START */
+    if (window.parent !== window) {
+      try {
+        window.__REACT_DEVTOOLS_GLOBAL_HOOK__ = window.parent.__REACT_DEVTOOLS_GLOBAL_HOOK__;
+      } catch (e){}
+    }
+    /* REMOVE-END */
     var lastHeight = 0;
     setInterval(function() {
       if (document.body.offsetHeight !== lastHeight) {

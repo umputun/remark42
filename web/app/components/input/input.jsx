@@ -6,6 +6,7 @@ import { siteId, url } from 'common/settings';
 
 import api from 'common/api';
 import store from 'common/store';
+import TextareaAutosize from 'components/input/textarea-autosize';
 
 const RSS_THREAD_URL = `${BASE_URL}${API_BASE}/rss/post?site=${siteId}&url=${url}`;
 const RSS_SITE_URL = `${BASE_URL}${API_BASE}/rss/site?site=${siteId}`;
@@ -21,7 +22,7 @@ export default class Input extends Component {
       isErrorShown: false,
       isDisabled: false,
       maxLength: config.max_comment_size || DEFAULT_MAX_COMMENT_SIZE,
-      commentLength: 0,
+      text: props.value || '',
     };
 
     this.send = this.send.bind(this);
@@ -31,26 +32,9 @@ export default class Input extends Component {
   }
 
   componentDidMount() {
-    const { mods = {}, value } = this.props;
-
-    if (this.props.autoFocus) {
-      this.fieldNode.focus();
-    }
-
-    if (mods.mode !== 'edit') {
-      this.fieldNode.value = '';
-    } else {
-      this.fieldNode.value = value;
-      this.autoResize();
-    }
-
     store.onUpdate('config', config => {
       this.setState({ maxLength: (config && config.max_comment_size) || DEFAULT_MAX_COMMENT_SIZE });
     });
-  }
-
-  componentWillUnmount() {
-    this.fieldNode.value = '';
   }
 
   shouldComponentUpdate(nextProps, nextState) {
@@ -70,23 +54,16 @@ export default class Input extends Component {
     }
   }
 
-  onInput() {
-    this.autoResize();
-
+  onInput(e) {
     this.setState({
       preview: null,
       isErrorShown: false,
-      commentLength: this.fieldNode.value.length,
+      text: e.target.value,
     });
   }
 
-  autoResize() {
-    this.fieldNode.style.height = '';
-    this.fieldNode.style.height = `${this.fieldNode.scrollHeight}px`;
-  }
-
   send(e) {
-    const text = this.fieldNode.value;
+    const text = this.state.text;
     const { mods = {}, pid, id } = this.props;
 
     if (e) e.preventDefault();
@@ -104,9 +81,7 @@ export default class Input extends Component {
           this.props.onSubmit(comment);
         }
 
-        this.fieldNode.value = '';
-        this.fieldNode.style.height = '';
-        this.setState({ preview: null });
+        this.setState({ preview: null, text: '' });
       })
       .catch(() => {
         this.setState({ isErrorShown: true });
@@ -115,7 +90,7 @@ export default class Input extends Component {
   }
 
   getPreview() {
-    const text = this.fieldNode.value;
+    const text = this.state.text;
 
     if (!text || !text.trim()) return;
 
@@ -129,21 +104,20 @@ export default class Input extends Component {
       });
   }
 
-  render(props, { isDisabled, isErrorShown, preview, maxLength, commentLength }) {
-    const charactersLeft = maxLength - commentLength;
-    const { mods = {}, value = null, errorMessage } = props;
+  render(props, { isDisabled, isErrorShown, preview, maxLength, text }) {
+    const charactersLeft = maxLength - text.length;
+    const { mods = {}, errorMessage } = props;
 
     return (
       <form className={b('input', props)} onSubmit={this.send} aria-label="New comment">
         <div className="input__field-wrapper">
-          <textarea
+          <TextareaAutosize
             className="input__field"
             placeholder="Your comment here"
-            defaultValue={value}
+            value={text}
             maxLength={maxLength}
             onInput={this.onInput}
             onKeyDown={this.onKeyDown}
-            ref={r => (this.fieldNode = r)}
             disabled={isDisabled}
           />
 

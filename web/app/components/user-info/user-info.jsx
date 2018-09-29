@@ -3,8 +3,6 @@ import { h, Component } from 'preact';
 import { connect } from 'preact-redux';
 
 import api from 'common/api';
-import { getHandleClickProps } from 'common/accessibility';
-
 import LastCommentsList from './last-comments-list';
 import Avatar from 'components/avatar-icon';
 import { fetchComments, completeFetchComments } from './user-info.actions';
@@ -27,6 +25,20 @@ class UserInfo extends Component {
         .getUserComments({ user: id, limit: 10 })
         .then(({ comments }) => completeFetchComments(id, comments))
         .catch(() => completeFetchComments(id, []));
+    }
+
+    document.addEventListener('keydown', this.globalOnKeyDown);
+  }
+
+  componentWillUnmount() {
+    document.removeEventListener('keydown', this.globalOnKeyDown);
+  }
+
+  globalOnKeyDown(e) {
+    // ESCAPE key pressed
+    if (e.keyCode == 27) {
+      const data = JSON.stringify({ isUserInfoShown: false });
+      window.parent.postMessage(data, '*');
     }
   }
 

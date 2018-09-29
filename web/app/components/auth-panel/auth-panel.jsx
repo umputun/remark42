@@ -1,15 +1,19 @@
 /** @jsx h */
 import { h, Component } from 'preact';
 
+import UserId from './__user-id/auth-panel__user-id';
+import Dropdown, { DropdownItem } from 'components/dropdown';
+import Button from 'components/button';
 import { PROVIDER_NAMES } from 'common/constants';
+import { requestDeletion } from 'utils/email';
 import { getHandleClickProps } from 'common/accessibility';
 
 export default class AuthPanel extends Component {
   constructor(props) {
     super(props);
 
-    this.toggleUserId = this.toggleUserId.bind(this);
     this.toggleBlockedVisibility = this.toggleBlockedVisibility.bind(this);
+    this.toggleCommentsAvailability = this.toggleCommentsAvailability.bind(this);
     this.onSortChange = this.onSortChange.bind(this);
   }
 
@@ -17,10 +21,6 @@ export default class AuthPanel extends Component {
     if (this.props.onSortChange) {
       this.props.onSortChange(e.target.value);
     }
-  }
-
-  toggleUserId() {
-    this.setState({ isUserIdVisible: !this.state.isUserIdVisible });
   }
 
   toggleBlockedVisibility() {
@@ -31,8 +31,25 @@ export default class AuthPanel extends Component {
     this.setState({ isBlockedVisible: !this.state.isBlockedVisible });
   }
 
-  render(props, { isUserIdVisible, isBlockedVisible }) {
-    const { user, providers = [], sort } = props;
+  toggleCommentsAvailability() {
+    if (this.props.isCommentsDisabled) {
+      if (this.props.onCommentsEnable) {
+        this.props.onCommentsEnable();
+      }
+    } else {
+      if (this.props.onCommentsDisable) {
+        this.props.onCommentsDisable();
+      }
+    }
+  }
+
+  getUserTitle() {
+    const { user } = this.props;
+    return <span className="auth-panel__username">{user.name}</span>;
+  }
+
+  render(props, { isBlockedVisible }) {
+    const { user, providers = [], sort, isCommentsDisabled } = props;
 
     const sortArray = getSortArray(sort);
 
@@ -42,13 +59,20 @@ export default class AuthPanel extends Component {
         {loggedIn && (
           <div className="auth-panel__column">
             You signed in as{' '}
-            <strong {...getHandleClickProps(this.toggleUserId)} className="auth-panel__username">
-              {user.name}
-            </strong>
-            {isUserIdVisible && <span className="auth-panel__user-id"> ({user.id})</span>}.{' '}
-            <span {...getHandleClickProps(props.onSignOut)} className="auth-panel__pseudo-link" role="link">
+            <Dropdown title={user.name}>
+              <DropdownItem separator>
+                <UserId id={user.id} />
+              </DropdownItem>
+
+              <DropdownItem>
+                <Button mods={{ kind: 'link' }} onClick={() => requestDeletion().then(props.onSignOut)}>
+                  Request my data removal
+                </Button>
+              </DropdownItem>
+            </Dropdown>{' '}
+            <Button className="auth-panel__sign-out" mods={{ kind: 'link' }} onClick={props.onSignOut}>
               Sign out?
-            </span>
+            </Button>
           </div>
         )}
 
@@ -82,7 +106,19 @@ export default class AuthPanel extends Component {
               {...getHandleClickProps(this.toggleBlockedVisibility)}
               role="link"
             >
-              {isBlockedVisible ? 'Hide' : 'Show'} blocked
+              {isBlockedVisible ? 'Hide' : 'Show'} blocked users
+            </span>
+          )}
+
+          {user.admin && ' • '}
+
+          {user.admin && (
+            <span
+              className="auth-panel__pseudo-link auth-panel__admin-action"
+              {...getHandleClickProps(this.toggleCommentsAvailability)}
+              role="link"
+            >
+              {isCommentsDisabled ? 'Enable' : 'Disable'} comments
             </span>
           )}
 

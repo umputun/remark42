@@ -7,13 +7,16 @@ pipeline:
   build:
     image: golang:1.10-alpine
     commands:
+      - sleep 5
+      - nslookup mongo
+      - nslookup mongo | grep Address | awk '{print $3}' > backend/.mongo
       - cd backend/app
       - go build -v ./...
 
   docker_master:
     image: plugins/docker
     repo: umputun/remark42
-    secrets: [ docker_username, docker_password ]
+    secrets: [ docker_username, docker_password]
     build_args:
       - DRONE=${DRONE}
       - DRONE_TAG=${DRONE_TAG}
@@ -36,6 +39,17 @@ pipeline:
     tags: 
       - ${DRONE_TAG}
       - latest
+    when:
+      event: tag
+
+  artifacts_tag:
+    image: plugins/docker
+    dockerfile: Dockerfile.artifacts
+    build_args:
+      - DRONE=${DRONE}
+      - DRONE_TAG=${DRONE_TAG}
+      - DRONE_COMMIT=${DRONE_COMMIT}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
     when:
       event: tag
 
@@ -79,3 +93,9 @@ pipeline:
     secrets: [ email_username, email_password ]
     when:
       status: [ changed, failure ]
+
+services:
+  mongo:
+    image: mongo:3.6
+    command: [ --smallfiles ]
+

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/middleware"
+
 	"github.com/umputun/remark/backend/app/rest"
 )
 
@@ -105,6 +106,7 @@ func Logger(ipFn func(ip string) string, flags ...LoggerFlag) func(http.Handler)
 				if qun, err := url.QueryUnescape(q); err == nil {
 					q = qun
 				}
+				q = sanitizeQuery(q)
 
 				remoteIP := strings.Split(r.RemoteAddr, ":")[0]
 				if strings.HasPrefix(r.RemoteAddr, "[") {
@@ -156,6 +158,26 @@ func getBodyAndUser(r *http.Request, flags []LoggerFlag) (body string, user stri
 	}
 
 	return body, user
+}
+
+func sanitizeQuery(u string) string {
+	out := []rune(u)
+	hide := []string{"password", "passwd", "secret", "credentials"}
+	for _, h := range hide {
+		if strings.Contains(strings.ToLower(u), h+"=") {
+			stPos := strings.Index(strings.ToLower(u), h+"=") + len(h) + 1
+			fnPos := strings.Index(u[stPos:], "&")
+			if fnPos == -1 {
+				fnPos = len(u)
+			} else {
+				fnPos = stPos + fnPos
+			}
+			for i := stPos; i < fnPos; i++ {
+				out[i] = rune('*')
+			}
+		}
+	}
+	return string(out)
 }
 
 func inLogFlags(f LoggerFlag, flags []LoggerFlag) bool {

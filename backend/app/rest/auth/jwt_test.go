@@ -10,17 +10,14 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/umputun/remark/backend/app/store/admin"
 
 	"github.com/umputun/remark/backend/app/store"
 )
 
-var testJwtValid = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjI3ODkxOTE4MjIsImp0aSI6InJhbmRvbSBpZCI" +
-	"sImlzcyI6InJlbWFyazQyIiwibmJmIjoxNTI2ODg0MjIyLCJ1c2VyIjp7Im5hbWUiOiJuYW1lMSIsImlkIjoiaWQxIiwicGljdHVyZS" +
-	"I6IiIsImFkbWluIjpmYWxzZX0sInN0YXRlIjoiMTIzNDU2IiwiZnJvbSI6ImZyb20ifQ._loFgh3g45gr9TtGqvM3N584I_6EHEOJnYb6Py84stQ"
+var testJwtValid = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjI3ODkxOTE4MjIsImp0aSI6InJhbmRvbSBpZCIsImlzcyI6InJlb" + "WFyazQyIiwibmJmIjoxNTI2ODg0MjIyLCJ1c2VyIjp7Im5hbWUiOiJuYW1lMSIsImlkIjoiaWQxIiwicGljdHVyZSI6IiIsImFkbWluIjpmYWxzZX0" + "sInN0YXRlIjoiMTIzNDU2IiwiZnJvbSI6ImZyb20iLCJmbGFncyI6e319.E2Blxqo1wsY855q258c0obxFJ1lgJciv1av1ewzlJBs"
 
-var testJwtValidSess = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjI3ODkxOTE4MjIsImp0aSI6InJhbmRvbSBpZCIsImlzcyI6In" +
-	"JlbWFyazQyIiwibmJmIjoxNTI2ODg0MjIyLCJ1c2VyIjp7Im5hbWUiOiJuYW1lMSIsImlkIjoiaWQxIiwicGljdHVyZSI6IiIsIm" +
-	"FkbWluIjpmYWxzZX0sInN0YXRlIjoiMTIzNDU2IiwiZnJvbSI6ImZyb20iLCJzZXNzX29ubHkiOnRydWV9.p6w0sM_NYaRuyhyA9jqfWlB5cx1vZPGhXGC5geSX7nA"
+var testJwtValidSess = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjI3ODkxOTE4MjIsImp0aSI6InJhbmRvbSBpZCIs" + "ImlzcyI6InJlbWFyazQyIiwibmJmIjoxNTI2ODg0MjIyLCJ1c2VyIjp7Im5hbWUiOiJuYW1lMSIsImlkIjoiaWQxIiwicGljdHVyZSI6IiIsImFk" + "bWluIjpmYWxzZX0sInN0YXRlIjoiMTIzNDU2IiwiZnJvbSI6ImZyb20iLCJzZXNzX29ubHkiOnRydWUsImZsYWdzIjp7fX0." + "nKhehF1Xiome1yK1ewfOiIsrATvq7Tx7p1BCSJqKHuo"
 
 var testJwtExpired = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1MjY4ODc4MjIsImp0aSI6InJhbmRvbSBpZCIs" +
 	"ImlzcyI6InJlbWFyazQyIiwibmJmIjoxNTI2ODg0MjIyLCJ1c2VyIjp7Im5hbWUiOiJuYW1lMSIsImlkIjoiaWQxIiwicGljdHVyZSI6IiI" +
@@ -33,7 +30,7 @@ var testJwtBadSign = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjI3ODkxOTE4M
 var days31 = time.Hour * 24 * 31
 
 func TestJWT_Token(t *testing.T) {
-	j := NewJWT("xyz 12345", false, time.Hour, days31)
+	j := NewJWT(admin.NewStaticKeyStore("xyz 12345"), false, time.Hour, days31)
 
 	claims := &CustomClaims{
 		State: "123456",
@@ -56,7 +53,7 @@ func TestJWT_Token(t *testing.T) {
 }
 
 func TestJWT_Parse(t *testing.T) {
-	j := NewJWT("xyz 12345", false, time.Hour, days31)
+	j := NewJWT(admin.NewStaticKeyStore("xyz 12345"), false, time.Hour, days31)
 	claims, err := j.Parse(testJwtValid)
 	assert.NoError(t, err)
 	assert.False(t, j.IsExpired(claims))
@@ -74,7 +71,7 @@ func TestJWT_Parse(t *testing.T) {
 }
 
 func TestJWT_Set(t *testing.T) {
-	j := NewJWT("xyz 12345", false, time.Hour, days31)
+	j := NewJWT(admin.NewStaticKeyStore("xyz 12345"), false, time.Hour, days31)
 
 	claims := &CustomClaims{
 		State: "123456",
@@ -89,9 +86,9 @@ func TestJWT_Set(t *testing.T) {
 			ExpiresAt: time.Date(2058, 5, 21, 1, 30, 22, 0, time.Local).Unix(),
 			NotBefore: time.Date(2018, 5, 21, 1, 30, 22, 0, time.Local).Unix(),
 		},
+		SessionOnly: false,
 	}
 
-	claims.SessionOnly = false
 	rr := httptest.NewRecorder()
 	err := j.Set(rr, claims, claims.SessionOnly)
 	assert.Nil(t, err)
@@ -119,7 +116,7 @@ func TestJWT_Set(t *testing.T) {
 }
 
 func TestJWT_GetFromHeader(t *testing.T) {
-	j := NewJWT("xyz 12345", false, time.Hour, days31)
+	j := NewJWT(admin.NewStaticKeyStore("xyz 12345"), false, time.Hour, days31)
 
 	req := httptest.NewRequest("GET", "/", nil)
 	req.Header.Add(jwtHeaderKey, testJwtValid)
@@ -138,13 +135,13 @@ func TestJWT_GetFromHeader(t *testing.T) {
 	req = httptest.NewRequest("GET", "/", nil)
 	req.Header.Add(jwtHeaderKey, "bad bad token")
 	_, err = j.Get(req)
-	assert.NotNil(t, err)
-	assert.True(t, strings.Contains(err.Error(), "can't parse jwt: token contains an invalid number of segments"), err.Error())
+	require.NotNil(t, err)
+	assert.True(t, strings.Contains(err.Error(), "can't pre-parse jwt: token contains an invalid number of segments"), err.Error())
 
 }
 
 func TestJWT_SetAndGetWithCookies(t *testing.T) {
-	j := NewJWT("xyz 12345", false, time.Hour, days31)
+	j := NewJWT(admin.NewStaticKeyStore("xyz 12345"), false, time.Hour, days31)
 
 	claims := &CustomClaims{
 		State:       "123456",
@@ -186,7 +183,7 @@ func TestJWT_SetAndGetWithCookies(t *testing.T) {
 }
 
 func TestJWT_SetAndGetWithXsrfMismatch(t *testing.T) {
-	j := NewJWT("xyz 12345", false, time.Hour, days31)
+	j := NewJWT(admin.NewStaticKeyStore("xyz 12345"), false, time.Hour, days31)
 
 	claims := &CustomClaims{
 		State: "123456",
@@ -223,7 +220,7 @@ func TestJWT_SetAndGetWithXsrfMismatch(t *testing.T) {
 }
 
 func TestJWT_SetAndGetWithCookiesExpired(t *testing.T) {
-	j := NewJWT("xyz 12345", false, time.Hour, days31)
+	j := NewJWT(admin.NewStaticKeyStore("xyz 12345"), false, time.Hour, days31)
 
 	claims := &CustomClaims{
 		State: "123456",
