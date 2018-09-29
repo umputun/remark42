@@ -6,6 +6,7 @@
     "start": "webpack-dev-server --progress --hot --inline --config ./webpack.config.js",
     "lint": "eslint --ext=.js,.jsx .",
     "test": "jest",
+    "test:coverage": "jest --coverage",
     "prettier": "prettier --write \"./**/*.{js,jsx,scss}\"",
     "precommit": "./node_modules/.bin/lint-staged"
   },

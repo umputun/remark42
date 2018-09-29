@@ -23,12 +23,6 @@ loadPolyfills().then(() => {
   }
 });
 
-const Main = () => (
-  <Provider store={reduxStore}>
-    <Root />
-  </Provider>
-);
-
 function init() {
   const node = document.getElementById(NODE_ID);
 
@@ -59,13 +53,21 @@ function init() {
     render(
       <div id={NODE_ID}>
         <div className="root root_user-info">
-          <UserInfo user={user} />
+          <Provider store={reduxStore}>
+            <UserInfo user={user} onClose={onClose} />
+          </Provider>
         </div>
       </div>,
       node.parentElement,
       node
     );
   } else {
-    render(<Main />, node.parentElement, node);
+    render(
+      <Provider store={reduxStore}>
+        <Root />
+      </Provider>,
+      node.parentElement,
+      node
+    );
   }
 }

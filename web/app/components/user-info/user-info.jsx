@@ -1,29 +1,31 @@
 /** @jsx h */
 import { h, Component } from 'preact';
+import { connect } from 'preact-redux';
 
 import api from 'common/api';
 import LastCommentsList from './last-comments-list';
 import Avatar from 'components/avatar-icon';
+import { fetchComments, completeFetchComments } from './user-info.actions';
+import { getUserComments, getIsLoadingUserComments } from './user-info.getters';
 
 class UserInfo extends Component {
-  constructor(props) {
-    super(props);
-
-    this.state = {
-      comments: [],
-      isLoading: true,
-    };
-  }
-
   componentWillMount() {
     const {
       user: { id },
+      comments,
+      isLoading,
+      fetchComments,
+      completeFetchComments,
     } = this.props;
 
-    api
-      .getUserComments({ user: id, limit: 10 })
-      .then(({ comments = [] }) => this.setState({ comments }))
-      .finally(() => this.setState({ isLoading: false }));
+    if (!comments && !isLoading) {
+      fetchComments(id);
+
+      api
+        .getUserComments({ user: id, limit: 10 })
+        .then(({ comments }) => completeFetchComments(id, comments))
+        .catch(() => completeFetchComments(id, []));
+    }
 
     document.addEventListener('keydown', this.globalOnKeyDown);
   }
@@ -40,9 +42,12 @@ class UserInfo extends Component {
     }
   }
 
-  render(props, { comments, isLoading }) {
+  render(props) {
     const {
       user: { name, id, isDefaultPicture, picture },
+      comments = [],
+      isLoading,
+      onClose,
     } = props;
 
     return (
@@ -51,10 +56,20 @@ class UserInfo extends Component {
         <p className="user-info__title">Last comments by {name}</p>
         <p className="user-info__id">{id}</p>
 
-        <LastCommentsList isLoading={isLoading} comments={comments} />
+        {!!comments && <LastCommentsList isLoading={isLoading} comments={comments} />}
+
+        <span {...getHandleClickProps(onClose)} className="user-info__close">
+          Close &#10006;
+        </span>
       </div>
     );
   }
 }
 
-export default UserInfo;
+export default connect(
+  (state, props) => ({
+    comments: getUserComments(state, props.user.id),
+    isLoading: getIsLoadingUserComments(state, props.user.id),
+  }),
+  { fetchComments, completeFetchComments }
+)(UserInfo);

@@ -1,3 +1,7 @@
+import { userComments, isLoadingUserComments } from './user-info.reducers';
+
+export const userInfoReducers = { userComments, isLoadingUserComments };
+
 export { default } from './user-info';
 
 require('./user-info.scss');
