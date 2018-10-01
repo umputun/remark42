@@ -4,7 +4,6 @@ import { connect } from 'preact-redux';
 
 import api from 'common/api';
 import LastCommentsList from './last-comments-list';
-import { getHandleClickProps } from 'common/accessibility';
 import Avatar from 'components/avatar-icon';
 import { fetchComments, completeFetchComments } from './user-info.actions';
 import { getUserComments, getIsLoadingUserComments } from './user-info.getters';
@@ -48,7 +47,6 @@ class UserInfo extends Component {
       user: { name, id, isDefaultPicture, picture },
       comments = [],
       isLoading,
-      onClose,
     } = props;
 
     return (
@@ -58,10 +56,6 @@ class UserInfo extends Component {
         <p className="user-info__id">{id}</p>
 
         {!!comments && <LastCommentsList isLoading={isLoading} comments={comments} />}
-
-        <span {...getHandleClickProps(onClose)} className="user-info__close">
-          Close &#10006;
-        </span>
       </div>
     );
   }
