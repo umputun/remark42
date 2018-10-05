@@ -93,7 +93,7 @@ type AvatarGroup struct {
 
 // CacheGroup defines options group for cache params
 type CacheGroup struct {
-	Type string `long:"type" env:"TYPE" description:"type of cache" choice:"mem" choice:"mongo" default:"mem"`
+	Type string `long:"type" env:"TYPE" description:"type of cache" choice:"mem" choice:"mongo" choice:"nop" default:"mem"`
 	Max  struct {
 		Items int   `long:"items" env:"ITEMS" default:"1000" description:"max cached items"`
 		Value int   `long:"value" env:"VALUE" default:"65536" description:"max size of cached value"`
@@ -395,6 +395,8 @@ func (s *ServerCommand) makeCache() (cache.LoadingCache, error) {
 		conn := mongo.NewConnection(mgServer, s.Mongo.DB, "cache")
 		return cache.NewMongoCache(conn, cache.MaxCacheSize(s.Cache.Max.Size), cache.MaxValSize(s.Cache.Max.Value),
 			cache.MaxKeys(s.Cache.Max.Items))
+	case "nop":
+		return &cache.Nop{}, nil
 	}
 	return nil, errors.Errorf("unsupported cache type %s", s.Cache.Type)
 }
