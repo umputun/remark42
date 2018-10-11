@@ -35,6 +35,6 @@ services:
             - DEBUG=true
             - DEV_PASSWD=password
             - AUTH_DEV=true   # activate local oauth "dev"
-            - ADMIN=dev_user  # set admin flag for default user on local ouath2
+            - ADMIN_SHARED_ID=dev_user  # set admin flag for default user on local ouath2
         volumes:
             - ./var:/srv/var 
