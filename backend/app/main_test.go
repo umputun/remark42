@@ -33,7 +33,7 @@ func TestMain(t *testing.T) {
 		wg.Done()
 	}()
 
-	time.Sleep(50 * time.Millisecond) // let server start
+	time.Sleep(200 * time.Millisecond) // let server start
 
 	// send ping
 	resp, err := http.Get("http://localhost:18202/api/v1/ping")
