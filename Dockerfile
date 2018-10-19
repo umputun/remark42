@@ -38,7 +38,7 @@ RUN if [ -z "$SKIP_BACKEND_TEST" ] ; then \
     if [ -f .mongo ] ; then export MONGO_TEST=$(cat .mongo) ; fi && \
     gometalinter --disable-all --deadline=300s --vendor --enable=vet --enable=vetshadow --enable=golint \
     --enable=staticcheck --enable=ineffassign --enable=errcheck --enable=unconvert \
-    --enable=deadcode  --enable=gosimple --enable=gas --exclude=test --exclude=mock --exclude=vendor ./... ; \
+    --enable=deadcode  --enable=gosimple --exclude=test --exclude=mock --exclude=vendor ./... ; \
     else echo "skip backend linters" ; fi
 
 # coverage report
