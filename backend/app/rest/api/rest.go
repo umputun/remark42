@@ -35,9 +35,14 @@ import (
 type sslMode int8
 
 const (
-	None   sslMode = iota // http server only
-	Static                // both https and http server. Redirect http to https
-	Auto                  // both https and http server. Redirect http to https. Https server with autocert support
+	// None defines to run http server only
+	None sslMode = iota
+
+	// Static defines to run both https and http server. Redirect http to https
+	Static
+
+	// Auto defines to run both https and http server. Redirect http to https. Https server with autocert support
+	Auto
 )
 
 // SSLConfig holds all params for ssl server mode
@@ -104,7 +109,7 @@ func (s *Rest) Run(port int) {
 
 		s.lock.Lock()
 		s.httpsServer = s.makeHTTPServer(s.SSLConfig.Port, s.routes())
-		s.httpServer = s.makeHTTPServer(port, s.httpToHttpsRouter())
+		s.httpServer = s.makeHTTPServer(port, s.httpToHTTPSRouter())
 		s.lock.Unlock()
 
 		go func() {
@@ -155,7 +160,7 @@ func (s *Rest) makeHTTPServer(port int, router chi.Router) *http.Server {
 	}
 }
 
-func (s *Rest) httpToHttpsRouter() chi.Router {
+func (s *Rest) httpToHTTPSRouter() chi.Router {
 	router := chi.NewRouter()
 	router.Use(middleware.RealIP, Recoverer)
 	router.Use(middleware.Throttle(1000), middleware.Timeout(60*time.Second))
