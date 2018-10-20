@@ -30,11 +30,12 @@ import (
 
 // ServerCommand with command line flags and env
 type ServerCommand struct {
-	Store  StoreGroup  `group:"store" namespace:"store" env-namespace:"STORE"`
-	Avatar AvatarGroup `group:"avatar" namespace:"avatar" env-namespace:"AVATAR"`
-	Cache  CacheGroup  `group:"cache" namespace:"cache" env-namespace:"CACHE"`
-	Mongo  MongoGroup  `group:"mongo" namespace:"mongo" env-namespace:"MONGO"`
-	Admin  AdminGroup  `group:"admin" namespace:"admin" env-namespace:"ADMIN"`
+	Store    StoreGroup  `group:"store" namespace:"store" env-namespace:"STORE"`
+	Avatar   AvatarGroup `group:"avatar" namespace:"avatar" env-namespace:"AVATAR"`
+	Cache    CacheGroup  `group:"cache" namespace:"cache" env-namespace:"CACHE"`
+	Mongo    MongoGroup  `group:"mongo" namespace:"mongo" env-namespace:"MONGO"`
+	Admin    AdminGroup  `group:"admin" namespace:"admin" env-namespace:"ADMIN"`
+	SSLGroup SSLGroup    `group:"ssl" namespace:"ssl" env-namespace:"SSL"`
 
 	Sites          []string      `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
 	DevPasswd      string        `long:"dev-passwd" env:"DEV_PASSWD" default:"" description:"development mode password"`
@@ -116,6 +117,14 @@ type AdminGroup struct {
 	} `group:"shared" namespace:"shared" env-namespace:"SHARED"`
 }
 
+// SSLGroup defines options group for server ssl params
+type SSLGroup struct {
+	Mode string `long:"mode" env:"MODE" description:"ssl (auto)support" choice:"none" choice:"static" choice:"auto" default:"none"`
+	Port int    `long:"port" env:"PORT" description:"port number for https server" default:"8443"`
+	Cert string `long:"cert" env:"CERT" description:"path to cert.pem file"`
+	Key  string `long:"key" env:"KEY" description:"path to key.pem file"`
+}
+
 // serverApp holds all active objects
 type serverApp struct {
 	*ServerCommand
@@ -130,7 +139,7 @@ type serverApp struct {
 
 // Execute is the entry point for "server" command, called by flag parser
 func (s *ServerCommand) Execute(args []string) error {
-	log.Printf("[INFO] start server on port %d", s.Port)
+	log.Printf("[INFO] start rest server in '%s' mode", s.SSLGroup.Mode)
 	resetEnv("SECRET", "AUTH_GOOGLE_CSEC", "AUTH_GITHUB_CSEC", "AUTH_FACEBOOK_CSEC", "AUTH_YANDEX_CSEC")
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -217,6 +226,11 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 	imgProxy := &proxy.Image{Enabled: s.ImageProxy, RoutePath: "/api/v1/img", RemarkURL: s.RemarkURL}
 	commentFormatter := store.NewCommentFormatter(imgProxy)
 
+	sslConfig, err := s.makeSSLConfig()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to make config of ssl server params")
+	}
+
 	srv := &api.Rest{
 		Version:          s.Revision,
 		DataService:      dataService,
@@ -235,7 +249,8 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 			DevPasswd:         s.DevPasswd,
 			PermissionChecker: dataService,
 		},
-		Cache: loadingCache,
+		Cache:     loadingCache,
+		SSLConfig: sslConfig,
 	}
 
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = s.LowScore, s.CriticalScore
@@ -442,4 +457,27 @@ func (s *ServerCommand) makeAuthProviders(jwt *auth.JWT, ap *proxy.Avatar, ds *s
 		log.Printf("[WARN] no auth providers defined")
 	}
 	return providers
+}
+
+func (s *ServerCommand) makeSSLConfig() (group api.SSLConfig, err error) {
+	switch s.SSLGroup.Mode {
+	case "none":
+		group.SSLMode = api.None
+	case "static":
+		if s.SSLGroup.Cert == "" {
+			return group, errors.New("path to cert.pem is required")
+		}
+		if s.SSLGroup.Key == "" {
+			return group, errors.New("path to key.pem is required")
+		}
+		group.SSLMode = api.Static
+		group.Port = s.SSLGroup.Port
+		group.Cert = s.SSLGroup.Cert
+		group.Key = s.SSLGroup.Key
+	case "auto":
+		group.SSLMode = api.Auto
+		group.Port = s.SSLGroup.Port
+		return group, errors.New("not implemented yet")
+	}
+	return group, err
 }
