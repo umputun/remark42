@@ -7,17 +7,24 @@ import (
 	"sync"
 
 	"github.com/umputun/remark/backend/app/store"
+	"github.com/umputun/remark/backend/app/store/service"
 )
+
+type Request struct {
+	comment store.Comment
+	parent  store.Comment
+}
 
 // Destination defines interface for a given destination service, like telegram, email and so on
 type Destination interface {
-	Send(ctx context.Context, comment store.Comment)
+	Send(ctx context.Context, req Request)
 }
 
 // Service delivers notifications to multiple destinations
 type Service struct {
+	dataService  *service.DataStore
 	destinations []Destination
-	queue        chan store.Comment
+	queue        chan Request
 
 	closed bool
 	ctx    context.Context
@@ -27,12 +34,18 @@ type Service struct {
 const defaultQueueSize = 100
 
 // NewService makes notification service routing comments to all destinations.
-func NewService(size int, destinations ...Destination) *Service {
+func NewService(dataService *service.DataStore, size int, destinations ...Destination) *Service {
 	if size <= 0 {
 		size = defaultQueueSize
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	res := Service{queue: make(chan store.Comment, size), destinations: destinations, ctx: ctx, cancel: cancel}
+	res := Service{
+		dataService:  dataService,
+		queue:        make(chan Request, size),
+		destinations: destinations,
+		ctx:          ctx,
+		cancel:       cancel,
+	}
 	if len(destinations) > 0 {
 		go res.do()
 	}
@@ -44,8 +57,14 @@ func (s *Service) Submit(comment store.Comment) {
 	if len(s.destinations) == 0 || s.closed {
 		return
 	}
+	parentComment := store.Comment{}
+	if s.dataService != nil {
+		if p, err := s.dataService.Get(comment.Locator, comment.ParentID); err == nil {
+			parentComment = p
+		}
+	}
 	select {
-	case s.queue <- comment:
+	case s.queue <- Request{comment: comment, parent: parentComment}:
 	default:
 		log.Printf("[WARN] can't send comment notification to queue, %+v", comment)
 	}

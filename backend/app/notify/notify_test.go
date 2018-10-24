@@ -13,7 +13,7 @@ import (
 )
 
 func TestService_NoDestinations(t *testing.T) {
-	s := NewService(1)
+	s := NewService(nil, 1)
 	assert.NotNil(t, s)
 	s.Submit(store.Comment{ID: "123"})
 	s.Submit(store.Comment{ID: "123"})
@@ -23,7 +23,7 @@ func TestService_NoDestinations(t *testing.T) {
 
 func TestService_WithDestinations(t *testing.T) {
 	d1, d2 := &mockDest{id: 1}, &mockDest{id: 2}
-	s := NewService(1, d1, d2)
+	s := NewService(nil, 1, d1, d2)
 	assert.NotNil(t, s)
 
 	s.Submit(store.Comment{ID: "100"})
@@ -44,7 +44,7 @@ func TestService_WithDestinations(t *testing.T) {
 
 func TestService_WithDrops(t *testing.T) {
 	d1, d2 := &mockDest{id: 1}, &mockDest{id: 2}
-	s := NewService(1, d1, d2)
+	s := NewService(nil, 1, d1, d2)
 	assert.NotNil(t, s)
 
 	s.Submit(store.Comment{ID: "100"})
@@ -62,7 +62,7 @@ func TestService_WithDrops(t *testing.T) {
 
 func TestService_Many(t *testing.T) {
 	d1, d2 := &mockDest{id: 1}, &mockDest{id: 2}
-	s := NewService(5, d1, d2)
+	s := NewService(nil, 5, d1, d2)
 	assert.NotNil(t, s)
 
 	for i := 0; i < 10; i++ {
@@ -85,11 +85,11 @@ type mockDest struct {
 	closed bool
 }
 
-func (m *mockDest) Send(ctx context.Context, comment store.Comment) {
+func (m *mockDest) Send(ctx context.Context, r Request) {
 	select {
 	case <-time.After(100 * time.Millisecond):
-		m.data = append(m.data, comment)
-		log.Printf("sent %s -> %d", comment.ID, m.id)
+		m.data = append(m.data, r.comment)
+		log.Printf("sent %s -> %d", r.comment.ID, m.id)
 	case <-ctx.Done():
 		log.Printf("ctx closed %d", m.id)
 		m.closed = true
