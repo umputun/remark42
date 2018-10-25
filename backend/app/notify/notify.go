@@ -3,6 +3,7 @@ package notify
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"sync"
 
@@ -10,21 +11,22 @@ import (
 	"github.com/umputun/remark/backend/app/store/service"
 )
 
-type Request struct {
+type request struct {
 	comment store.Comment
 	parent  store.Comment
 }
 
 // Destination defines interface for a given destination service, like telegram, email and so on
 type Destination interface {
-	Send(ctx context.Context, req Request)
+	fmt.Stringer
+	Send(ctx context.Context, req request) error
 }
 
 // Service delivers notifications to multiple destinations
 type Service struct {
 	dataService  *service.DataStore
 	destinations []Destination
-	queue        chan Request
+	queue        chan request
 
 	closed bool
 	ctx    context.Context
@@ -32,6 +34,7 @@ type Service struct {
 }
 
 const defaultQueueSize = 100
+const uiNav = "#remark42__comment-"
 
 // NewService makes notification service routing comments to all destinations.
 func NewService(dataService *service.DataStore, size int, destinations ...Destination) *Service {
@@ -41,7 +44,7 @@ func NewService(dataService *service.DataStore, size int, destinations ...Destin
 	ctx, cancel := context.WithCancel(context.Background())
 	res := Service{
 		dataService:  dataService,
-		queue:        make(chan Request, size),
+		queue:        make(chan request, size),
 		destinations: destinations,
 		ctx:          ctx,
 		cancel:       cancel,
@@ -64,7 +67,7 @@ func (s *Service) Submit(comment store.Comment) {
 		}
 	}
 	select {
-	case s.queue <- Request{comment: comment, parent: parentComment}:
+	case s.queue <- request{comment: comment, parent: parentComment}:
 	default:
 		log.Printf("[WARN] can't send comment notification to queue, %+v", comment)
 	}
@@ -84,7 +87,9 @@ func (s *Service) do() {
 		for _, dest := range s.destinations {
 			wg.Add(1)
 			go func(d Destination) {
-				d.Send(s.ctx, c)
+				if err := d.Send(s.ctx, c); err != nil {
+					log.Printf("[WARN] failed to send to %s", d)
+				}
 				wg.Done()
 			}(dest)
 		}

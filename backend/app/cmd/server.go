@@ -15,6 +15,7 @@ import (
 	"github.com/coreos/bbolt"
 	"github.com/go-pkgz/mongo"
 	"github.com/pkg/errors"
+	"github.com/umputun/remark/backend/app/notify"
 
 	"github.com/umputun/remark/backend/app/migrator"
 	"github.com/umputun/remark/backend/app/rest/api"
@@ -35,6 +36,7 @@ type ServerCommand struct {
 	Cache  CacheGroup  `group:"cache" namespace:"cache" env-namespace:"CACHE"`
 	Mongo  MongoGroup  `group:"mongo" namespace:"mongo" env-namespace:"MONGO"`
 	Admin  AdminGroup  `group:"admin" namespace:"admin" env-namespace:"ADMIN"`
+	Notify NotifyGroup `group:"notify" namespace:"notify" env-namespace:"NOTIFY"`
 
 	Sites          []string      `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
 	DevPasswd      string        `long:"dev-passwd" env:"DEV_PASSWD" default:"" description:"development mode password"`
@@ -114,6 +116,16 @@ type AdminGroup struct {
 		Admins []string `long:"id" env:"ID" description:"admin(s) ids" env-delim:","`
 		Email  string   `long:"email" env:"EMAIL" default:"" description:"admin email"`
 	} `group:"shared" namespace:"shared" env-namespace:"SHARED"`
+}
+
+// NotifyGroup defines options for notification
+type NotifyGroup struct {
+	Type      string `long:"type" env:"TYPE" description:"type of notification" choice:"none" choice:"telegram" default:"none"`
+	QueueSize int    `long:"queue" env:"QUEUE" description:"size of notification queue" default:"100"`
+	Telegram  struct {
+		Token   string `long:"token" env:"TOKEN" description:"telegram token"`
+		Channel string `long:"chan" env:"CHAN" description:"telegram channel"`
+	}
 }
 
 // serverApp holds all active objects
@@ -213,6 +225,11 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		KeyStore:          adminStore,
 	}
 
+	notifyService, err := s.makeNotify(dataService)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to make notify service")
+	}
+
 	authProviders := s.makeAuthProviders(jwtService, avatarProxy, dataService)
 	imgProxy := &proxy.Image{Enabled: s.ImageProxy, RoutePath: "/api/v1/img", RemarkURL: s.RemarkURL}
 	commentFormatter := store.NewCommentFormatter(imgProxy)
@@ -235,7 +252,8 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 			DevPasswd:         s.DevPasswd,
 			PermissionChecker: dataService,
 		},
-		Cache: loadingCache,
+		Cache:         loadingCache,
+		NotifyService: notifyService,
 	}
 
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = s.LowScore, s.CriticalScore
@@ -442,4 +460,21 @@ func (s *ServerCommand) makeAuthProviders(jwt *auth.JWT, ap *proxy.Avatar, ds *s
 		log.Printf("[WARN] no auth providers defined")
 	}
 	return providers
+}
+
+func (s *ServerCommand) makeNotify(dataStore *service.DataStore) (*notify.Service, error) {
+	log.Printf("[INFO] make notify, type=%s", s.Notify.Type)
+	switch s.Cache.Type {
+	case "telegram":
+		tg, err := notify.NewTelegram(s.Notify.Telegram.Token, s.Notify.Telegram.Channel, "")
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create telegram notification destination")
+		}
+		return notify.NewService(dataStore, s.Notify.QueueSize, tg), nil
+		cache.NewMemoryCache(cache.MaxCacheSize(s.Cache.Max.Size), cache.MaxValSize(s.Cache.Max.Value),
+			cache.MaxKeys(s.Cache.Max.Items))
+	case "none":
+		return notify.NewService(dataStore, s.Notify.QueueSize), nil
+	}
+	return nil, errors.Errorf("unsupported notification type %s", s.Notify.Type)
 }

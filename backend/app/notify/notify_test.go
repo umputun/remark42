@@ -85,7 +85,7 @@ type mockDest struct {
 	closed bool
 }
 
-func (m *mockDest) Send(ctx context.Context, r Request) {
+func (m *mockDest) Send(ctx context.Context, r request) error {
 	select {
 	case <-time.After(100 * time.Millisecond):
 		m.data = append(m.data, r.comment)
@@ -93,6 +93,8 @@ func (m *mockDest) Send(ctx context.Context, r Request) {
 	case <-ctx.Done():
 		log.Printf("ctx closed %d", m.id)
 		m.closed = true
-		return
 	}
+	return nil
 }
+
+func (m *mockDest) String() string { return fmt.Sprintf("mock id=%d, closed=%v", m.id, m.closed) }
