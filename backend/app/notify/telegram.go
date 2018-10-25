@@ -81,7 +81,7 @@ func (t *Telegram) Send(ctx context.Context, req request) error {
 	}
 	from = "<strong>" + from + "</strong>"
 	link := fmt.Sprintf(`<a href="%s">comment</a>`, req.comment.Locator.URL+uiNav+req.comment.ID)
-	msg := fmt.Sprintf("%s<br/>%s<br/>%s", from, req.comment.Text, link)
+	msg := fmt.Sprintf("%s<br>%s<br>%s", from, req.comment.Text, link)
 
 	u := fmt.Sprintf("%s%s/sendMessage?chat_id=@%s&text=%s&parse_mode=HTML&disable_web_page_preview=true",
 		t.apiPrefix, t.token, t.channelName, url.QueryEscape(msg))
