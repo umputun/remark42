@@ -116,5 +116,5 @@ func (t *Telegram) Send(ctx context.Context, req request) error {
 }
 
 func (t *Telegram) String() string {
-	return "telegram-" + t.channelName
+	return "telegram: " + t.channelName
 }

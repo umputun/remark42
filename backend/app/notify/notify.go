@@ -89,7 +89,7 @@ func (s *Service) do() {
 			wg.Add(1)
 			go func(d Destination) {
 				if err := d.Send(s.ctx, c); err != nil {
-					log.Printf("[WARN] failed to send to %s", d)
+					log.Printf("[WARN] failed to send to %s, %s", d, err)
 				}
 				wg.Done()
 			}(dest)
