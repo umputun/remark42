@@ -73,7 +73,9 @@ func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	s.Cache.Flush(cache.Flusher(comment.Locator.SiteID).
 		Scopes(comment.Locator.URL, lastCommentsScope, comment.User.ID, comment.Locator.SiteID))
 
-	s.NotifyService.Submit(finalComment)
+	if s.NotifyService != nil {
+		s.NotifyService.Submit(finalComment)
+	}
 
 	render.Status(r, http.StatusCreated)
 	render.JSON(w, r, &finalComment)

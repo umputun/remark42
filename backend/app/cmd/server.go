@@ -464,7 +464,7 @@ func (s *ServerCommand) makeAuthProviders(jwt *auth.JWT, ap *proxy.Avatar, ds *s
 
 func (s *ServerCommand) makeNotify(dataStore *service.DataStore) (*notify.Service, error) {
 	log.Printf("[INFO] make notify, type=%s", s.Notify.Type)
-	switch s.Cache.Type {
+	switch s.Notify.Type {
 	case "telegram":
 		tg, err := notify.NewTelegram(s.Notify.Telegram.Token, s.Notify.Telegram.Channel, "")
 		if err != nil {
@@ -474,5 +474,5 @@ func (s *ServerCommand) makeNotify(dataStore *service.DataStore) (*notify.Servic
 	case "none":
 		return notify.NewService(dataStore, s.Notify.QueueSize), nil
 	}
-	return nil, errors.Errorf("unsupported notification type %s", s.Notify.Type)
+	return nil, errors.Errorf("unsupported notification type %q", s.Notify.Type)
 }
