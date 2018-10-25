@@ -21,10 +21,10 @@ func TestTelegram_New(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, tb)
 
-	tb, err = NewTelegram("bad-resp", "remark_test", 2*time.Second, ts.URL+"/")
+	_, err = NewTelegram("bad-resp", "remark_test", 2*time.Second, ts.URL+"/")
 	assert.NotNil(t, err)
 
-	tb, err = NewTelegram("404", "remark_test", 2*time.Second, ts.URL+"/")
+	_, err = NewTelegram("404", "remark_test", 2*time.Second, ts.URL+"/")
 	assert.NotNil(t, err)
 }
 
