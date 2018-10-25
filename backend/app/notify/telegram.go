@@ -74,7 +74,7 @@ func NewTelegram(token string, channelName string, timeout time.Duration, api st
 // Send to telegram channel
 func (t *Telegram) Send(ctx context.Context, req request) error {
 	client := http.Client{Timeout: telegramTimeOut}
-
+	log.Printf("[DEBUG] send telegram notification to %s, comment id %s", t.channelName, req.comment.ID)
 	from := req.comment.User.Name
 	if req.comment.ParentID != "" {
 		from += " -> " + req.parent.User.Name
@@ -102,7 +102,7 @@ func (t *Telegram) Send(ctx context.Context, req request) error {
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return errors.Errorf("unexpected telegram status code %d", resp.StatusCode)
+		return errors.Errorf("unexpected telegram status code %d for url %q", resp.StatusCode, u)
 	}
 
 	tgResp := struct {
