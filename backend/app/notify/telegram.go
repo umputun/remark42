@@ -79,11 +79,11 @@ func (t *Telegram) Send(ctx context.Context, req request) error {
 	if req.comment.ParentID != "" {
 		from += " -> " + req.parent.User.Name
 	}
-	from = "<strong>" + from + "</strong>"
-	link := fmt.Sprintf(`<a href="%s">comment</a>`, req.comment.Locator.URL+uiNav+req.comment.ID)
-	msg := fmt.Sprintf("%s\n%s\n%s", from, req.comment.Text, link)
-
-	u := fmt.Sprintf("%s%s/sendMessage?chat_id=@%s&text=%s&parse_mode=HTML&disable_web_page_preview=true",
+	from = "*" + from + "*"
+	link := fmt.Sprintf("[comment](%s)", req.comment.Locator.URL+uiNav+req.comment.ID)
+	msg := fmt.Sprintf("%s\n\n%s\n\n%s", from, req.comment.Orig, link)
+	msg = strings.Replace(msg, `”`, `"`, -1) // telegram doesn't like quotes ” and shows them as &#34;
+	u := fmt.Sprintf("%s%s/sendMessage?chat_id=@%s&text=%s&parse_mode=Markdown&disable_web_page_preview=true",
 		t.apiPrefix, t.token, t.channelName, url.QueryEscape(msg))
 	r, err := http.NewRequest("GET", u, nil)
 	if err != nil {
