@@ -49,7 +49,7 @@ func mockTelegramServer() *httptest.Server {
 					"is_bot": true,
 					"username": "remark42_test_bot"
 				}}`
-		w.Write([]byte(s))
+		_, _ = w.Write([]byte(s))
 	})
 	router.Get("/bad-resp/getMe", func(w http.ResponseWriter, r *http.Request) {
 		s := `{"ok": false,
@@ -59,7 +59,7 @@ func mockTelegramServer() *httptest.Server {
 					"is_bot": false,
 					"username": "remark42_test_bot"
 				}}`
-		w.Write([]byte(s))
+		_, _ = w.Write([]byte(s))
 	})
 	router.Get("/404/getMe", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(404)
