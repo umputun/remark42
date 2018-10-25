@@ -126,7 +126,7 @@ type NotifyGroup struct {
 		Token   string        `long:"token" env:"TOKEN" description:"telegram token"`
 		Channel string        `long:"chan" env:"CHAN" description:"telegram channel"`
 		Timeout time.Duration `long:"timeout" env:"TIMEOUT" description:"telegram timeout"`
-	}
+	} `group:"telegram" namespace:"telegram" env-namespace:"TELEGRAM"`
 }
 
 // serverApp holds all active objects

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"sync"
 	"testing"
 	"time"
 
@@ -34,12 +35,12 @@ func TestService_WithDestinations(t *testing.T) {
 	time.Sleep(time.Millisecond * 110)
 	s.Close()
 
-	assert.Equal(t, 3, len(d1.data), "got all comments to d1")
-	assert.Equal(t, 3, len(d2.data), "got all comments to d2")
+	assert.Equal(t, 3, len(d1.get()), "got all comments to d1")
+	assert.Equal(t, 3, len(d2.get()), "got all comments to d2")
 
-	assert.Equal(t, "100", d1.data[0].ID)
-	assert.Equal(t, "101", d1.data[1].ID)
-	assert.Equal(t, "102", d1.data[2].ID)
+	assert.Equal(t, "100", d1.get()[0].ID)
+	assert.Equal(t, "101", d1.get()[1].ID)
+	assert.Equal(t, "102", d1.get()[2].ID)
 }
 
 func TestService_WithDrops(t *testing.T) {
@@ -56,8 +57,8 @@ func TestService_WithDrops(t *testing.T) {
 
 	s.Submit(store.Comment{ID: "111"}) // safe to send after close
 
-	assert.Equal(t, 2, len(d1.data), "one comment dropped from d1")
-	assert.Equal(t, 2, len(d2.data), "one comment dropped from d2")
+	assert.Equal(t, 2, len(d1.get()), "one comment dropped from d1")
+	assert.Equal(t, 2, len(d2.get()), "one comment dropped from d2")
 }
 
 func TestService_Many(t *testing.T) {
@@ -72,8 +73,8 @@ func TestService_Many(t *testing.T) {
 	s.Close()
 	time.Sleep(time.Millisecond * 10)
 
-	assert.NotEqual(t, 10, len(d1.data), "some comments dropped from d1")
-	assert.NotEqual(t, 10, len(d2.data), "some comments dropped from d2")
+	assert.NotEqual(t, 10, len(d1.get()), "some comments dropped from d1")
+	assert.NotEqual(t, 10, len(d2.get()), "some comments dropped from d2")
 
 	assert.True(t, d1.closed)
 	assert.True(t, d2.closed)
@@ -83,9 +84,12 @@ type mockDest struct {
 	data   []store.Comment
 	id     int
 	closed bool
+	lock   sync.Mutex
 }
 
 func (m *mockDest) Send(ctx context.Context, r request) error {
+	m.lock.Lock()
+	defer m.lock.Unlock()
 	select {
 	case <-time.After(100 * time.Millisecond):
 		m.data = append(m.data, r.comment)
@@ -97,4 +101,11 @@ func (m *mockDest) Send(ctx context.Context, r request) error {
 	return nil
 }
 
+func (m *mockDest) get() []store.Comment {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	res := make([]store.Comment, len(m.data))
+	copy(res, m.data)
+	return res
+}
 func (m *mockDest) String() string { return fmt.Sprintf("mock id=%d, closed=%v", m.id, m.closed) }

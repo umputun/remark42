@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/assert"
@@ -16,14 +17,14 @@ func TestTelegram_New(t *testing.T) {
 	ts := mockTelegramServer()
 	defer ts.Close()
 
-	tb, err := NewTelegram("good-token", "remark_test", ts.URL+"/")
+	tb, err := NewTelegram("good-token", "remark_test", 2*time.Second, ts.URL+"/")
 	assert.NoError(t, err)
 	assert.NotNil(t, tb)
 
-	tb, err = NewTelegram("bad-resp", "remark_test", ts.URL+"/")
+	tb, err = NewTelegram("bad-resp", "remark_test", 2*time.Second, ts.URL+"/")
 	assert.NotNil(t, err)
 
-	tb, err = NewTelegram("404", "remark_test", ts.URL+"/")
+	tb, err = NewTelegram("404", "remark_test", 2*time.Second, ts.URL+"/")
 	assert.NotNil(t, err)
 }
 
@@ -31,7 +32,7 @@ func TestTelegram_Send(t *testing.T) {
 	ts := mockTelegramServer()
 	defer ts.Close()
 
-	tb, err := NewTelegram("good-token", "remark_test", ts.URL+"/")
+	tb, err := NewTelegram("good-token", "remark_test", 2*time.Second, ts.URL+"/")
 	assert.NoError(t, err)
 	assert.NotNil(t, tb)
 	tb.Send(context.TODO(), request{comment: store.Comment{Text: "some text"}})
