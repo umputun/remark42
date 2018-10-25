@@ -123,8 +123,9 @@ type NotifyGroup struct {
 	Type      string `long:"type" env:"TYPE" description:"type of notification" choice:"none" choice:"telegram" default:"none"`
 	QueueSize int    `long:"queue" env:"QUEUE" description:"size of notification queue" default:"100"`
 	Telegram  struct {
-		Token   string `long:"token" env:"TOKEN" description:"telegram token"`
-		Channel string `long:"chan" env:"CHAN" description:"telegram channel"`
+		Token   string        `long:"token" env:"TOKEN" description:"telegram token"`
+		Channel string        `long:"chan" env:"CHAN" description:"telegram channel"`
+		Timeout time.Duration `long:"timeout" env:"TIMEOUT" description:"telegram timeout"`
 	}
 }
 
@@ -466,7 +467,7 @@ func (s *ServerCommand) makeNotify(dataStore *service.DataStore) (*notify.Servic
 	log.Printf("[INFO] make notify, type=%s", s.Notify.Type)
 	switch s.Notify.Type {
 	case "telegram":
-		tg, err := notify.NewTelegram(s.Notify.Telegram.Token, s.Notify.Telegram.Channel, "")
+		tg, err := notify.NewTelegram(s.Notify.Telegram.Token, s.Notify.Telegram.Channel, s.Notify.Telegram.Timeout, "")
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to create telegram notification destination")
 		}

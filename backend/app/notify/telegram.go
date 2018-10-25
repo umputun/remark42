@@ -18,17 +18,22 @@ type Telegram struct {
 	channelName string
 	token       string
 	apiPrefix   string
+	timeout     time.Duration
 }
 
 const telegramTimeOut = 2500 * time.Millisecond
 const telegramAPIPrefix = "https://api.telegram.org/bot"
 
 // NewTelegram makes telegram bot for notifications
-func NewTelegram(token string, channelName string, api string) (*Telegram, error) {
-	res := Telegram{channelName: channelName, token: token, apiPrefix: api}
+func NewTelegram(token string, channelName string, timeout time.Duration, api string) (*Telegram, error) {
+	log.Printf("[DEBUG] create new telegram notifier for cham %s, timeout=%s, api=%s", channelName, timeout, api)
+	res := Telegram{channelName: channelName, token: token, apiPrefix: api, timeout: timeout}
 	res.channelName = strings.TrimPrefix(res.channelName, "@")
 	if res.apiPrefix == "" {
 		res.apiPrefix = telegramAPIPrefix
+	}
+	if res.timeout == 0 {
+		res.timeout = telegramTimeOut
 	}
 	client := http.Client{Timeout: telegramTimeOut}
 	resp, err := client.Get(fmt.Sprintf("%s%s/getMe", res.apiPrefix, token))

@@ -52,6 +52,7 @@ func NewService(dataService *service.DataStore, size int, destinations ...Destin
 	if len(destinations) > 0 {
 		go res.do()
 	}
+	log.Print("[INFO] create notifier service, queue size=%d", size)
 	return &res
 }
 
