@@ -228,7 +228,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 
 	notifyService, err := s.makeNotify(dataService)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to make notify service")
+		log.Printf("[WARN] failed to make notify service, %s", err)
 	}
 
 	authProviders := s.makeAuthProviders(jwtService, avatarProxy, dataService)
