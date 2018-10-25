@@ -81,10 +81,11 @@ func (t *Telegram) Send(ctx context.Context, req request) error {
 	}
 	from = "*" + from + "*"
 	link := fmt.Sprintf("[comment](%s)", req.comment.Locator.URL+uiNav+req.comment.ID)
-	msg := fmt.Sprintf("%s\n\n%s\n\n%s", from, req.comment.Text, link)
+	msg := fmt.Sprintf("%s\n\n%s\n\n%s", from, req.comment.Orig, link)
 
-	r, err := http.NewRequest("GET", fmt.Sprintf("%s%s/sendMessage?chat_id=@%s&text=%s&parse_mode=Markdown",
-		t.apiPrefix, t.token, t.channelName, url.QueryEscape(msg)), nil)
+	u := fmt.Sprintf("%s%s/sendMessage?chat_id=@%s&text=%s&parse_mode=Markdown&disable_web_page_preview=false",
+		t.apiPrefix, t.token, t.channelName, url.QueryEscape(msg))
+	r, err := http.NewRequest("GET", u, nil)
 	if err != nil {
 		return errors.Wrap(err, "failed to make telegram request")
 	}
