@@ -35,7 +35,8 @@ func TestTelegram_Send(t *testing.T) {
 	tb, err := NewTelegram("good-token", "remark_test", 2*time.Second, ts.URL+"/")
 	assert.NoError(t, err)
 	assert.NotNil(t, tb)
-	tb.Send(context.TODO(), request{comment: store.Comment{Text: "some text"}})
+	err = tb.Send(context.TODO(), request{comment: store.Comment{Text: "some text"}})
+	assert.NoError(t, err)
 }
 
 func mockTelegramServer() *httptest.Server {
