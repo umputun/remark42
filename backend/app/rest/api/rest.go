@@ -21,6 +21,7 @@ import (
 	"github.com/go-chi/render"
 	"github.com/pkg/errors"
 	"github.com/rakyll/statik/fs"
+	"github.com/umputun/remark/backend/app/notify"
 
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/rest/auth"
@@ -41,6 +42,7 @@ type Rest struct {
 	ImageProxy       *proxy.Image
 	CommentFormatter *store.CommentFormatter
 	Migrator         *Migrator
+	NotifyService    *notify.Service
 
 	WebRoot         string
 	RemarkURL       string
