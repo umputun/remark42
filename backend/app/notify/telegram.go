@@ -77,10 +77,10 @@ func (t *Telegram) Send(ctx context.Context, req request) error {
 	log.Printf("[DEBUG] send telegram notification to %s, comment id %s", t.channelName, req.comment.ID)
 	from := req.comment.User.Name
 	if req.comment.ParentID != "" {
-		from += " -> " + req.parent.User.Name
+		from += " ➜ " + req.parent.User.Name
 	}
 	from = "*" + from + "*"
-	link := fmt.Sprintf("[comment](%s)", req.comment.Locator.URL+uiNav+req.comment.ID)
+	link := fmt.Sprintf("    [orginal comment](%s)", req.comment.Locator.URL+uiNav+req.comment.ID)
 	msg := fmt.Sprintf("%s\n\n%s\n\n%s", from, req.comment.Orig, link)
 	msg = strings.Replace(msg, `”`, `"`, -1) // telegram doesn't like quotes ” and shows them as &#34;
 	u := fmt.Sprintf("%s%s/sendMessage?chat_id=@%s&text=%s&parse_mode=Markdown&disable_web_page_preview=true",
