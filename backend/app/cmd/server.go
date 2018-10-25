@@ -125,7 +125,7 @@ type NotifyGroup struct {
 	Telegram  struct {
 		Token   string        `long:"token" env:"TOKEN" description:"telegram token"`
 		Channel string        `long:"chan" env:"CHAN" description:"telegram channel"`
-		Timeout time.Duration `long:"timeout" env:"TIMEOUT" description:"telegram timeout"`
+		Timeout time.Duration `long:"timeout" env:"TIMEOUT" default:"5s" description:"telegram timeout"`
 	} `group:"telegram" namespace:"telegram" env-namespace:"TELEGRAM"`
 }
 

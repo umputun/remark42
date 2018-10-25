@@ -114,11 +114,11 @@ _this is the recommended way to run remark42_
 | auth.yandex.cid         | AUTH_YANDEX_CID         |                       | Yandex OAuth client ID                           |
 | auth.yandex.csec        | AUTH_YANDEX_CSEC        |                       | Yandex OAuth client secret                       |
 | auth.dev                | AUTH_DEV                | false                 | local oauth2 server, development mode only       |
-| notify.type             | NOTIFY_TYPE             | none                  | type of notification                             |
+| notify.type             | NOTIFY_TYPE             | none                  | type of notification (none or telegram)          |
 | notify.queue            | NOTIFY_QUEUE            | 100                   | size of notification queue                       |
 | notify.telegram.token   | NOTIFY_TELEGRAM_TOKEN   |                       | telegram token                                   |
 | notify.telegram.chan    | NOTIFY_TELEGRAM_CHAN    |                       | telegram channel                                 |
-| notify.telegram.timeout | NOTIFY_TELEGRAM_TIMEOUT |                       | telegram channel                                 |
+| notify.telegram.timeout | NOTIFY_TELEGRAM_TIMEOUT |                       | telegram timeout                                 |
 | max-comment             | MAX_COMMENT_SIZE        | 2048                  | comment's size limit                             |
 | low-score               | LOW_SCORE               | `-5`                  | low score threshold                              |
 | critical-score          | CRITICAL_SCORE          | `-10`                 | critical score threshold                         |
