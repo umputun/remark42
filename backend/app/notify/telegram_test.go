@@ -66,7 +66,7 @@ func mockTelegramServer() *httptest.Server {
 	})
 
 	router.Get("/good-token/sendMessage", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`{"ok": true}`))
+		_, _ = w.Write([]byte(`{"ok": true}`))
 	})
 
 	return httptest.NewServer(router)
