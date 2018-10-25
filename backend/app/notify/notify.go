@@ -1,4 +1,4 @@
-// Package migrator provides notification functionality.
+// Package notify provides notification functionality.
 package notify
 
 import (

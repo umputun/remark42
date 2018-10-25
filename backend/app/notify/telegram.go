@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -20,23 +21,25 @@ type Telegram struct {
 }
 
 const telegramTimeOut = 2500 * time.Millisecond
-const telegramApiPrefix = "https://api.telegram.org/bot"
+const telegramAPIPrefix = "https://api.telegram.org/bot"
 
 // NewTelegram makes telegram bot for notifications
 func NewTelegram(token string, channelName string, api string) (*Telegram, error) {
 	res := Telegram{channelName: channelName, token: token, apiPrefix: api}
-	if strings.HasPrefix(res.channelName, "@") {
-		res.channelName = res.channelName[1:]
-	}
+	res.channelName = strings.TrimPrefix(res.channelName, "@")
 	if res.apiPrefix == "" {
-		res.apiPrefix = telegramApiPrefix
+		res.apiPrefix = telegramAPIPrefix
 	}
 	client := http.Client{Timeout: telegramTimeOut}
 	resp, err := client.Get(fmt.Sprintf("%s%s/getMe", res.apiPrefix, token))
 	if err != nil {
 		return nil, errors.Wrap(err, "can't initialize telegram notifications")
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err = resp.Body.Close(); err != nil {
+			log.Printf("[WARN] can't close request body, %s", err)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, errors.Errorf("unexpected telegram status code %d", resp.StatusCode)
@@ -63,6 +66,7 @@ func NewTelegram(token string, channelName string, api string) (*Telegram, error
 	return &res, nil
 }
 
+// Send to telegram channel
 func (t *Telegram) Send(ctx context.Context, req request) error {
 	client := http.Client{Timeout: telegramTimeOut}
 
@@ -85,7 +89,11 @@ func (t *Telegram) Send(ctx context.Context, req request) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to get telegram response")
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err = resp.Body.Close(); err != nil {
+			log.Printf("[WARN] can't close request body, %s", err)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return errors.Errorf("unexpected telegram status code %d", resp.StatusCode)

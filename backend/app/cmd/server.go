@@ -471,8 +471,6 @@ func (s *ServerCommand) makeNotify(dataStore *service.DataStore) (*notify.Servic
 			return nil, errors.Wrap(err, "failed to create telegram notification destination")
 		}
 		return notify.NewService(dataStore, s.Notify.QueueSize, tg), nil
-		cache.NewMemoryCache(cache.MaxCacheSize(s.Cache.Max.Size), cache.MaxValSize(s.Cache.Max.Value),
-			cache.MaxKeys(s.Cache.Max.Items))
 	case "none":
 		return notify.NewService(dataStore, s.Notify.QueueSize), nil
 	}
