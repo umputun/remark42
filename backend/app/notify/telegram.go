@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"html"
 	"log"
 	"net/http"
 	"strings"
@@ -81,6 +82,7 @@ func (t *Telegram) Send(ctx context.Context, req request) error {
 	from = "*" + from + "*"
 	link := fmt.Sprintf("↦ [original comment](%s)", req.comment.Locator.URL+uiNav+req.comment.ID)
 	msg := fmt.Sprintf("%s\n\n%s\n\n%s", from, req.comment.Orig, link)
+	msg = html.UnescapeString(msg)
 	u := fmt.Sprintf("%s%s/sendMessage?chat_id=@%s&parse_mode=Markdown&disable_web_page_preview=true",
 		t.apiPrefix, t.token, t.channelName)
 
