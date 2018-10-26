@@ -61,7 +61,7 @@ func NewTelegram(token string, channelName string, timeout time.Duration, api st
 	}{}
 
 	if err = json.NewDecoder(resp.Body).Decode(&tgResp); err != nil {
-		return nil, errors.Wrap(err, "can't authorize to telegram")
+		return nil, errors.Wrap(err, "can't decode response")
 	}
 
 	if !tgResp.OK || !tgResp.Result.IsBot {
