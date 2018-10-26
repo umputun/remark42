@@ -31,8 +31,8 @@ func TestTelegram_New(t *testing.T) {
 	_, err = NewTelegram("404", "remark_test", 2*time.Second, ts.URL+"/")
 	assert.EqualError(t, err, "unexpected telegram status code 404")
 
-	_, err = NewTelegram("no-such-thing", "remark_test", 2*time.Second, "http://127.0.0.1:12345/")
-	assert.EqualError(t, err, "can't initialize telegram notifications: Get http://127.0.0.1:12345/no-such-thing/getMe: dial tcp 127.0.0.1:12345: connect: connection refused")
+	_, err = NewTelegram("no-such-thing", "remark_test", 2*time.Second, "http://127.0.0.1:4321/")
+	assert.EqualError(t, err, "can't initialize telegram notifications: Get http://127.0.0.1:4321/no-such-thing/getMe: dial tcp 127.0.0.1:4321: connect: connection refused")
 }
 
 func TestTelegram_Send(t *testing.T) {
