@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -82,10 +81,11 @@ func (t *Telegram) Send(ctx context.Context, req request) error {
 	from = "*" + from + "*"
 	link := fmt.Sprintf("↦ [original comment](%s)", req.comment.Locator.URL+uiNav+req.comment.ID)
 	msg := fmt.Sprintf("%s\n\n%s\n\n%s", from, req.comment.Orig, link)
-	msg = strings.Replace(msg, `”`, `"`, -1) // telegram doesn't like quotes ” and shows them as &#34;
-	u := fmt.Sprintf("%s%s/sendMessage?chat_id=@%s&text=%s&parse_mode=Markdown&disable_web_page_preview=true",
-		t.apiPrefix, t.token, t.channelName, url.QueryEscape(msg))
-	r, err := http.NewRequest("GET", u, nil)
+	u := fmt.Sprintf("%s%s/sendMessage?chat_id=@%s&parse_mode=Markdown&disable_web_page_preview=true",
+		t.apiPrefix, t.token, t.channelName)
+
+	r, err := http.NewRequest("POST", u, strings.NewReader(`{"text": "`+msg+`"}`))
+	r.Header.Set("Content-Type", "application/json; charset=utf-8")
 	if err != nil {
 		return errors.Wrap(err, "failed to make telegram request")
 	}
