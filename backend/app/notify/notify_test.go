@@ -80,6 +80,13 @@ func TestService_Many(t *testing.T) {
 	assert.True(t, d2.closed)
 }
 
+func TestService_Nop(t *testing.T) {
+	s := NopService
+	s.Submit(store.Comment{})
+	s.Close()
+	assert.True(t, s.closed)
+}
+
 type mockDest struct {
 	data   []store.Comment
 	id     int

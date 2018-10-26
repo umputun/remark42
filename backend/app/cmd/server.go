@@ -229,7 +229,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 	notifyService, err := s.makeNotify(dataService)
 	if err != nil {
 		log.Printf("[WARN] failed to make notify service, %s", err)
-		notifyService = nil // disable notifier
+		notifyService = notify.NopService // disable notifier
 	}
 
 	authProviders := s.makeAuthProviders(jwtService, avatarProxy, dataService)
@@ -474,7 +474,7 @@ func (s *ServerCommand) makeNotify(dataStore *service.DataStore) (*notify.Servic
 		}
 		return notify.NewService(dataStore, s.Notify.QueueSize, tg), nil
 	case "none":
-		return notify.NewService(dataStore, s.Notify.QueueSize), nil
+		return notify.NopService, nil
 	}
 	return nil, errors.Errorf("unsupported notification type %q", s.Notify.Type)
 }

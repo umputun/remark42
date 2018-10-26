@@ -76,9 +76,11 @@ func (s *Service) Submit(comment store.Comment) {
 
 // Close queue channel and wait for completion
 func (s *Service) Close() {
-	close(s.queue)
-	s.cancel()
-	<-s.ctx.Done()
+	if s.queue != nil {
+		close(s.queue)
+		s.cancel()
+		<-s.ctx.Done()
+	}
 	s.closed = true
 }
 
@@ -97,3 +99,6 @@ func (s *Service) do() {
 		wg.Wait()
 	}
 }
+
+// NopService is do-nothing notifier, without destinations
+var NopService = &Service{}
