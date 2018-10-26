@@ -1,6 +1,7 @@
 package notify
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -75,18 +76,28 @@ func NewTelegram(token string, channelName string, timeout time.Duration, api st
 func (t *Telegram) Send(ctx context.Context, req request) error {
 	client := http.Client{Timeout: telegramTimeOut}
 	log.Printf("[DEBUG] send telegram notification to %s, comment id %s", t.channelName, req.comment.ID)
+
 	from := req.comment.User.Name
 	if req.comment.ParentID != "" {
 		from += " → " + req.parent.User.Name
 	}
 	from = "*" + from + "*"
 	link := fmt.Sprintf("↦ [original comment](%s)", req.comment.Locator.URL+uiNav+req.comment.ID)
-	msg := fmt.Sprintf("%s\n\n%s\n\n%s", from, req.comment.Orig, link)
-	msg = html.UnescapeString(msg)
 	u := fmt.Sprintf("%s%s/sendMessage?chat_id=@%s&parse_mode=Markdown&disable_web_page_preview=true",
 		t.apiPrefix, t.token, t.channelName)
 
-	r, err := http.NewRequest("POST", u, strings.NewReader(`{"text": "`+msg+`"}`))
+	msg := fmt.Sprintf("%s\n\n%s\n\n%s", from, req.comment.Orig, link)
+	msg = html.UnescapeString(msg)
+	body := struct {
+		Text string `json:"text"`
+	}{Text: msg}
+
+	b, err := json.Marshal(body)
+	if err != nil {
+		return errors.Wrap(err, "failed to make telegram body")
+	}
+
+	r, err := http.NewRequest("POST", u, bytes.NewReader(b))
 	r.Header.Set("Content-Type", "application/json; charset=utf-8")
 	if err != nil {
 		return errors.Wrap(err, "failed to make telegram request")
