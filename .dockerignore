@@ -5,7 +5,7 @@
 /web/public/
 /.vscode/
 /.idea/
-/.git/
+#/.git/
 
 # source files
 docker-compose.yml

@@ -23,6 +23,7 @@ ARG MONGO_TEST
 
 WORKDIR /go/src/github.com/umputun/remark/backend
 ADD backend /go/src/github.com/umputun/remark/backend
+ADD .git /go/src/github.com/umputun/remark/.git
 
 # run tests
 RUN \
