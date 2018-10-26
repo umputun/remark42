@@ -89,7 +89,7 @@ func mockTelegramServer() *httptest.Server {
 		w.WriteHeader(404)
 	})
 
-	router.Get("/good-token/sendMessage", func(w http.ResponseWriter, r *http.Request) {
+	router.Post("/good-token/sendMessage", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"ok": true}`))
 	})
 
