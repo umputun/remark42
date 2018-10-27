@@ -74,7 +74,7 @@ func (a *admin) deleteUserCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete user")
 		return
 	}
-	a.cache.Flush(cache.Flusher(siteID).Scopes(userID, siteID))
+	a.cache.Flush(cache.Flusher(siteID).Scopes(userID, siteID, lastCommentsScope))
 	render.Status(r, http.StatusOK)
 	render.JSON(w, r, JSON{"user_id": userID, "site_id": siteID})
 }
@@ -149,7 +149,7 @@ func (a *admin) setBlockCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set blocking status")
 		return
 	}
-	a.cache.Flush(cache.Flusher(siteID).Scopes(userID, siteID))
+	a.cache.Flush(cache.Flusher(siteID).Scopes(userID, siteID, lastCommentsScope))
 	render.JSON(w, r, JSON{"user_id": userID, "site_id": siteID, "block": blockStatus})
 }
 
