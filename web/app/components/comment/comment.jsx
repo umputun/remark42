@@ -539,12 +539,14 @@ export default class Comment extends Component {
                 >
                   {isEditing ? 'Cancel' : 'Edit'}
                 </span>,
-                <span
-                  {...getHandleClickProps(this.onOwnCommentDeleteClick)}
-                  className="comment__action comment__action_type_delete"
-                >
-                  Delete
-                </span>,
+                !isAdmin && (
+                  <span
+                    {...getHandleClickProps(this.onOwnCommentDeleteClick)}
+                    className="comment__action comment__action_type_delete"
+                  >
+                    Delete
+                  </span>
+                ),
                 <span class="comment__edit-timer">{editTimeLeft && `${editTimeLeft}`}</span>,
               ]}
 
