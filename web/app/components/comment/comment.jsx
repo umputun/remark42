@@ -36,6 +36,7 @@ export default class Comment extends Component {
     this.onEdit = this.onEdit.bind(this);
     this.onReply = this.onReply.bind(this);
     this.onDeleteClick = this.onDeleteClick.bind(this);
+    this.onOwnCommentDeleteClick = this.onOwnCommentDeleteClick.bind(this);
     this.onBlockUserClick = this.onBlockUserClick.bind(this);
     this.onUnblockUserClick = this.onUnblockUserClick.bind(this);
   }
@@ -221,6 +222,22 @@ export default class Comment extends Component {
       });
 
       api.removeComment({ id }).then(() => {
+        api.getComment({ id }).then(comment => store.replaceComment(comment));
+      });
+    }
+  }
+
+  onOwnCommentDeleteClick() {
+    const { id } = this.props.data;
+
+    if (confirm('Do you want to delete this comment?')) {
+      this.setState({
+        deleted: true,
+        isEditing: false,
+        isReplying: false,
+      });
+
+      api.removeMyComment({ id }).then(() => {
         api.getComment({ id }).then(comment => store.replaceComment(comment));
       });
     }
@@ -515,15 +532,21 @@ export default class Comment extends Component {
               !!o.orig &&
               isCurrentUser &&
               (!!editTimeLeft || isEditing) &&
-              mods.view !== 'user' && (
+              mods.view !== 'user' && [
                 <span
                   {...getHandleClickProps(this.toggleEditing)}
                   className="comment__action comment__action_type_edit"
                 >
                   {isEditing ? 'Cancel' : 'Edit'}
-                  {editTimeLeft && ` (${editTimeLeft})`}
-                </span>
-              )}
+                </span>,
+                <span
+                  {...getHandleClickProps(this.onOwnCommentDeleteClick)}
+                  className="comment__action comment__action_type_delete"
+                >
+                  Delete
+                </span>,
+                <span class="comment__edit-timer">{editTimeLeft && `${editTimeLeft}`}</span>,
+              ]}
 
             {!deleted &&
               isAdmin && (
