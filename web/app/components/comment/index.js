@@ -7,6 +7,9 @@ require('./comment.scss');
 require('./__action/comment__action.scss');
 require('./__action/_type/_collapse/comment__action_type_collapse.scss');
 require('./__action/_type/_edit/comment__action_type_edit.scss');
+require('./__action/_type/_delete/comment__action_type_delete.scss');
+
+require('./__edit-timer/comment__edit-timer.scss');
 
 require('./__body/comment__body.scss');
 require('./__control/comment__control.scss');

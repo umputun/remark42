@@ -54,6 +54,15 @@ export const updateComment = ({ text, id }) =>
     withCredentials: true,
   });
 
+export const removeMyComment = ({ id }) =>
+  fetcher.put({
+    url: `/comment/${id}?url=${url}`,
+    body: {
+      delete: true,
+    },
+    withCredentials: true,
+  });
+
 export const getPreview = ({ text }) =>
   fetcher.post({
     url: '/preview',
@@ -153,6 +162,7 @@ export default {
   putCommentVote,
   addComment,
   updateComment,
+  removeMyComment,
   getUser,
   getPreview,
 
