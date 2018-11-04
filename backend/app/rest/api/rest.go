@@ -31,28 +31,6 @@ import (
 	"github.com/umputun/remark/backend/app/store/service"
 )
 
-// sslMode defines rest server mode (http or https)
-type sslMode int8
-
-const (
-	// None defines to run http server only
-	None sslMode = iota
-
-	// Static defines to run both https and http server. Redirect http to https
-	Static
-
-	// Auto defines to run both https and http server. Redirect http to https. Https server with autocert support
-	Auto
-)
-
-// SSLConfig holds all params for ssl server mode
-type SSLConfig struct {
-	SSLMode sslMode
-	Cert    string
-	Key     string
-	Port    int
-}
-
 // Rest is a rest access server
 type Rest struct {
 	Version string
@@ -158,21 +136,6 @@ func (s *Rest) makeHTTPServer(port int, router chi.Router) *http.Server {
 		WriteTimeout:      5 * time.Second,
 		IdleTimeout:       30 * time.Second,
 	}
-}
-
-func (s *Rest) httpToHTTPSRouter() chi.Router {
-	router := chi.NewRouter()
-	router.Use(middleware.RealIP, Recoverer)
-	router.Use(middleware.Throttle(1000), middleware.Timeout(60*time.Second))
-
-	router.HandleFunc("/*", func(w http.ResponseWriter, r *http.Request) {
-		newURL := fmt.Sprintf("%s:%d", s.RemarkURL, s.SSLConfig.Port) + r.URL.Path
-		if r.URL.RawQuery != "" {
-			newURL += "?" + r.URL.RawQuery
-		}
-		http.Redirect(w, r, newURL, http.StatusTemporaryRedirect)
-	})
-	return router
 }
 
 func (s *Rest) routes() chi.Router {

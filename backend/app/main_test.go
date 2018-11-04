@@ -50,8 +50,8 @@ func TestMain(t *testing.T) {
 
 func TestMain_SSLStaticMode(t *testing.T) {
 	os.Args = []string{"test", "server", "--secret=123456", "--store.bolt.path=/tmp/xyz", "--backup=/tmp",
-		"--avatar.fs.path=/tmp", "--port=18080", "--url=https://localhost", "--dbg",
-		"--ssl.mode=static", "--ssl.cert=testdata/cert.pem", "--ssl.key=testdata/key.pem", "--ssl.port=18443"}
+		"--avatar.fs.path=/tmp", "--port=18080", "--url=https://localhost:18443", "--dbg",
+		"--ssl.type=static", "--ssl.cert=testdata/cert.pem", "--ssl.key=testdata/key.pem", "--ssl.port=18443"}
 
 	go func() {
 		time.Sleep(500 * time.Millisecond)

@@ -132,7 +132,7 @@ type NotifyGroup struct {
 
 // SSLGroup defines options group for server ssl params
 type SSLGroup struct {
-	Mode string `long:"mode" env:"MODE" description:"ssl (auto)support" choice:"none" choice:"static" choice:"auto" default:"none"`
+	Type string `long:"type" env:"TYPE" description:"ssl (auto)support" choice:"none" choice:"static" choice:"auto" default:"none"`
 	Port int    `long:"port" env:"PORT" description:"port number for https server" default:"8443"`
 	Cert string `long:"cert" env:"CERT" description:"path to cert.pem file"`
 	Key  string `long:"key" env:"KEY" description:"path to key.pem file"`
@@ -152,7 +152,7 @@ type serverApp struct {
 
 // Execute is the entry point for "server" command, called by flag parser
 func (s *ServerCommand) Execute(args []string) error {
-	log.Printf("[INFO] start rest server in '%s' mode", s.SSL.Mode)
+	log.Printf("[INFO] start server on port %d", s.Port)
 	resetEnv("SECRET", "AUTH_GOOGLE_CSEC", "AUTH_GITHUB_CSEC", "AUTH_FACEBOOK_CSEC", "AUTH_YANDEX_CSEC")
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -270,7 +270,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		},
 		Cache:         loadingCache,
 		NotifyService: notifyService,
-		SSLConfig: sslConfig,
+		SSLConfig:     sslConfig,
 	}
 
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = s.LowScore, s.CriticalScore
@@ -495,7 +495,7 @@ func (s *ServerCommand) makeNotify(dataStore *service.DataStore) (*notify.Servic
 }
 
 func (s *ServerCommand) makeSSLConfig() (group api.SSLConfig, err error) {
-	switch s.SSL.Mode {
+	switch s.SSL.Type {
 	case "none":
 		group.SSLMode = api.None
 	case "static":
