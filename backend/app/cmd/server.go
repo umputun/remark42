@@ -141,13 +141,14 @@ type SSLGroup struct {
 // serverApp holds all active objects
 type serverApp struct {
 	*ServerCommand
-	restSrv     *api.Rest
-	migratorSrv *api.Migrator
-	exporter    migrator.Exporter
-	devAuth     *auth.DevAuthServer
-	dataService *service.DataStore
-	avatarStore avatar.Store
-	terminated  chan struct{}
+	restSrv       *api.Rest
+	migratorSrv   *api.Migrator
+	exporter      migrator.Exporter
+	devAuth       *auth.DevAuthServer
+	dataService   *service.DataStore
+	avatarStore   avatar.Store
+	notifyService *notify.Service
+	terminated    chan struct{}
 }
 
 // Execute is the entry point for "server" command, called by flag parser
@@ -288,6 +289,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		devAuth:       devAuth,
 		dataService:   dataService,
 		avatarStore:   avatarStore,
+		notifyService: notifyService,
 		terminated:    make(chan struct{}),
 	}, nil
 }
@@ -301,6 +303,7 @@ func (a *serverApp) run(ctx context.Context) error {
 	go func() {
 		// shutdown on context cancellation
 		<-ctx.Done()
+		log.Print("[INFO] shutdown initiated")
 		a.restSrv.Shutdown()
 		if a.devAuth != nil {
 			a.devAuth.Shutdown()
@@ -311,7 +314,8 @@ func (a *serverApp) run(ctx context.Context) error {
 		if e := a.avatarStore.Close(); e != nil {
 			log.Printf("[WARN] failed to close avatar store, %s", e)
 		}
-
+		a.notifyService.Close()
+		log.Print("[INFO] shutdown completed")
 	}()
 	a.activateBackup(ctx) // runs in goroutine for each site
 	if a.Auth.Dev {

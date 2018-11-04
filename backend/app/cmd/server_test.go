@@ -192,7 +192,7 @@ func TestServerApp_Shutdown(t *testing.T) {
 func TestServerApp_MainSignal(t *testing.T) {
 
 	go func() {
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(200 * time.Millisecond)
 		err := syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
 		require.Nil(t, err)
 	}()
@@ -203,7 +203,7 @@ func TestServerApp_MainSignal(t *testing.T) {
 
 	p := flags.NewParser(&s, flags.Default)
 	args := []string{"test", "--store.bolt.path=/tmp/xyz", "--backup=/tmp", "--avatar.type=bolt",
-		"--avatar.bolt.file=/tmp/ava-test.db", "--port=18100"}
+		"--avatar.bolt.file=/tmp/ava-test.db", "--port=18100", "--notify.type=none"}
 	defer os.Remove("/tmp/ava-test.db")
 	_, err := p.ParseArgs(args)
 	require.Nil(t, err)

@@ -17,7 +17,7 @@ import (
 func TestMain(t *testing.T) {
 
 	os.Args = []string{"test", "server", "--secret=123456", "--store.bolt.path=/tmp/xyz", "--backup=/tmp",
-		"--avatar.fs.path=/tmp", "--port=18202", "--url=https://demo.remark42.com", "--dbg"}
+		"--avatar.fs.path=/tmp", "--port=18202", "--url=https://demo.remark42.com", "--dbg", "--notify.type=none"}
 
 	go func() {
 		time.Sleep(500 * time.Millisecond)
@@ -50,7 +50,7 @@ func TestMain(t *testing.T) {
 
 func TestMain_SSLStaticMode(t *testing.T) {
 	os.Args = []string{"test", "server", "--secret=123456", "--store.bolt.path=/tmp/xyz", "--backup=/tmp",
-		"--avatar.fs.path=/tmp", "--port=18080", "--url=https://localhost:18443", "--dbg",
+		"--avatar.fs.path=/tmp", "--port=18080", "--url=https://localhost:18443", "--dbg", "--notify.type=none",
 		"--ssl.type=static", "--ssl.cert=testdata/cert.pem", "--ssl.key=testdata/key.pem", "--ssl.port=18443"}
 
 	go func() {
