@@ -148,7 +148,7 @@ func TestServerApp_WithSSL(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
-		time.Sleep(5 * time.Second)
+		time.Sleep(1 * time.Second)
 		log.Print("[TEST] terminate app")
 		cancel()
 	}()
@@ -182,6 +182,8 @@ func TestServerApp_WithSSL(t *testing.T) {
 	body, err := ioutil.ReadAll(resp.Body)
 	assert.Nil(t, err)
 	assert.Equal(t, "pong", string(body))
+
+	app.Wait()
 }
 
 func TestServerApp_Failed(t *testing.T) {
@@ -245,7 +247,7 @@ func TestServerApp_Shutdown(t *testing.T) {
 func TestServerApp_MainSignal(t *testing.T) {
 
 	go func() {
-		time.Sleep(200 * time.Millisecond)
+		time.Sleep(250 * time.Millisecond)
 		err := syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
 		require.Nil(t, err)
 	}()
