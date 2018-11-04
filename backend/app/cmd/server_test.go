@@ -283,6 +283,9 @@ func prepServerApp(t *testing.T, duration time.Duration, fn func(o ServerCommand
 	cmd.Auth.Facebook.CSEC, cmd.Auth.Facebook.CID = "csec", "cid"
 	cmd.Auth.Yandex.CSEC, cmd.Auth.Yandex.CID = "csec", "cid"
 	cmd.BackupLocation = "/tmp"
+	cmd.Notify.Type = "telegram"
+	cmd.Notify.Telegram.API = "http://127.0.0.1:12340/"
+	cmd.Notify.Telegram.Token = "blah"
 	cmd = fn(cmd)
 
 	os.Remove(cmd.Store.Bolt.Path + "/remark.db")

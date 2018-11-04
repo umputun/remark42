@@ -127,6 +127,7 @@ type NotifyGroup struct {
 		Token   string        `long:"token" env:"TOKEN" description:"telegram token"`
 		Channel string        `long:"chan" env:"CHAN" description:"telegram channel"`
 		Timeout time.Duration `long:"timeout" env:"TIMEOUT" default:"5s" description:"telegram timeout"`
+		API     string        `long:"api" env:"API" default:"https://api.telegram.org/bot" description:"telegram api prefix"`
 	} `group:"telegram" namespace:"telegram" env-namespace:"TELEGRAM"`
 }
 
@@ -487,7 +488,8 @@ func (s *ServerCommand) makeNotify(dataStore *service.DataStore) (*notify.Servic
 	log.Printf("[INFO] make notify, type=%s", s.Notify.Type)
 	switch s.Notify.Type {
 	case "telegram":
-		tg, err := notify.NewTelegram(s.Notify.Telegram.Token, s.Notify.Telegram.Channel, s.Notify.Telegram.Timeout, "")
+		tg, err := notify.NewTelegram(s.Notify.Telegram.Token, s.Notify.Telegram.Channel,
+			s.Notify.Telegram.Timeout, s.Notify.Telegram.API)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to create telegram notification destination")
 		}
