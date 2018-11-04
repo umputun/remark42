@@ -53,8 +53,10 @@ type Rest struct {
 		Critical int
 	}
 
-	httpServer *http.Server
-	lock       sync.Mutex
+	SSLConfig   SSLConfig
+	httpsServer *http.Server
+	httpServer  *http.Server
+	lock        sync.Mutex
 
 	adminService admin
 }
@@ -70,22 +72,37 @@ type commentsWithInfo struct {
 
 // Run the lister and request's router, activate rest server
 func (s *Rest) Run(port int) {
-	log.Printf("[INFO] activate rest server on port %d", port)
+	switch s.SSLConfig.SSLMode {
+	case None:
+		log.Printf("[INFO] activate http rest server on port %d", port)
 
-	router := s.routes()
+		s.lock.Lock()
+		s.httpServer = s.makeHTTPServer(port, s.routes())
+		s.lock.Unlock()
 
-	s.lock.Lock()
-	s.httpServer = &http.Server{
-		Addr:              fmt.Sprintf(":%d", port),
-		Handler:           router,
-		ReadHeaderTimeout: 5 * time.Second,
-		WriteTimeout:      5 * time.Second,
-		IdleTimeout:       30 * time.Second,
+		err := s.httpServer.ListenAndServe()
+		log.Printf("[WARN] http server terminated, %s", err)
+	case Static:
+		log.Printf("[INFO] activate rest https server in 'static' mode on port %d", s.SSLConfig.Port)
+
+		s.lock.Lock()
+		s.httpsServer = s.makeHTTPServer(s.SSLConfig.Port, s.routes())
+		s.httpServer = s.makeHTTPServer(port, s.httpToHTTPSRouter())
+		s.lock.Unlock()
+
+		go func() {
+			log.Printf("[INFO] activate http redirect server on port %d", port)
+
+			err := s.httpServer.ListenAndServe()
+			log.Printf("[WARN] http redirect server terminated, %s", err)
+		}()
+
+		err := s.httpsServer.ListenAndServeTLS(s.SSLConfig.Cert, s.SSLConfig.Key)
+		log.Printf("[WARN] https server terminated, %s", err)
+	case Auto:
+		log.Printf("[WARN] Autocert mode is not implemented yet")
 	}
-	s.lock.Unlock()
 
-	err := s.httpServer.ListenAndServe()
-	log.Printf("[WARN] http server terminated, %s", err)
 }
 
 // Shutdown rest http server
@@ -96,11 +113,29 @@ func (s *Rest) Shutdown() {
 	s.lock.Lock()
 	if s.httpServer != nil {
 		if err := s.httpServer.Shutdown(ctx); err != nil {
-			log.Printf("[DEBUG] rest shutdown error, %s", err)
+			log.Printf("[DEBUG] http shutdown error, %s", err)
 		}
+		log.Print("[DEBUG] shutdown http server completed")
 	}
-	log.Print("[DEBUG] shutdown rest server completed")
+
+	if s.httpsServer != nil {
+		log.Print("[WARN] shutdown https server")
+		if err := s.httpsServer.Shutdown(ctx); err != nil {
+			log.Printf("[DEBUG] https shutdown error, %s", err)
+		}
+		log.Print("[DEBUG] shutdown https server completed")
+	}
 	s.lock.Unlock()
+}
+
+func (s *Rest) makeHTTPServer(port int, router chi.Router) *http.Server {
+	return &http.Server{
+		Addr:              fmt.Sprintf(":%d", port),
+		Handler:           router,
+		ReadHeaderTimeout: 5 * time.Second,
+		WriteTimeout:      5 * time.Second,
+		IdleTimeout:       30 * time.Second,
+	}
 }
 
 func (s *Rest) routes() chi.Router {

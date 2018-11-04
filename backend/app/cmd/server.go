@@ -37,6 +37,7 @@ type ServerCommand struct {
 	Mongo  MongoGroup  `group:"mongo" namespace:"mongo" env-namespace:"MONGO"`
 	Admin  AdminGroup  `group:"admin" namespace:"admin" env-namespace:"ADMIN"`
 	Notify NotifyGroup `group:"notify" namespace:"notify" env-namespace:"NOTIFY"`
+	SSL    SSLGroup    `group:"ssl" namespace:"ssl" env-namespace:"SSL"`
 
 	Sites          []string      `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
 	DevPasswd      string        `long:"dev-passwd" env:"DEV_PASSWD" default:"" description:"development mode password"`
@@ -127,6 +128,14 @@ type NotifyGroup struct {
 		Channel string        `long:"chan" env:"CHAN" description:"telegram channel"`
 		Timeout time.Duration `long:"timeout" env:"TIMEOUT" default:"5s" description:"telegram timeout"`
 	} `group:"telegram" namespace:"telegram" env-namespace:"TELEGRAM"`
+}
+
+// SSLGroup defines options group for server ssl params
+type SSLGroup struct {
+	Type string `long:"type" env:"TYPE" description:"ssl (auto)support" choice:"none" choice:"static" choice:"auto" default:"none"`
+	Port int    `long:"port" env:"PORT" description:"port number for https server" default:"8443"`
+	Cert string `long:"cert" env:"CERT" description:"path to cert.pem file"`
+	Key  string `long:"key" env:"KEY" description:"path to key.pem file"`
 }
 
 // serverApp holds all active objects
@@ -236,6 +245,11 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 	imgProxy := &proxy.Image{Enabled: s.ImageProxy, RoutePath: "/api/v1/img", RemarkURL: s.RemarkURL}
 	commentFormatter := store.NewCommentFormatter(imgProxy)
 
+	sslConfig, err := s.makeSSLConfig()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to make config of ssl server params")
+	}
+
 	srv := &api.Rest{
 		Version:          s.Revision,
 		DataService:      dataService,
@@ -256,6 +270,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		},
 		Cache:         loadingCache,
 		NotifyService: notifyService,
+		SSLConfig:     sslConfig,
 	}
 
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = s.LowScore, s.CriticalScore
@@ -477,4 +492,27 @@ func (s *ServerCommand) makeNotify(dataStore *service.DataStore) (*notify.Servic
 		return notify.NopService, nil
 	}
 	return nil, errors.Errorf("unsupported notification type %q", s.Notify.Type)
+}
+
+func (s *ServerCommand) makeSSLConfig() (group api.SSLConfig, err error) {
+	switch s.SSL.Type {
+	case "none":
+		group.SSLMode = api.None
+	case "static":
+		if s.SSL.Cert == "" {
+			return group, errors.New("path to cert.pem is required")
+		}
+		if s.SSL.Key == "" {
+			return group, errors.New("path to key.pem is required")
+		}
+		group.SSLMode = api.Static
+		group.Port = s.SSL.Port
+		group.Cert = s.SSL.Cert
+		group.Key = s.SSL.Key
+	case "auto":
+		group.SSLMode = api.Auto
+		group.Port = s.SSL.Port
+		return group, errors.New("not implemented yet")
+	}
+	return group, err
 }
