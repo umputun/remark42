@@ -83,7 +83,7 @@ func (s *Rest) Run(port int) {
 		err := s.httpServer.ListenAndServe()
 		log.Printf("[WARN] http server terminated, %s", err)
 	case Static:
-		log.Printf("[INFO] activate rest https server in 'static' mode on port %d", s.SSLConfig.Port)
+		log.Printf("[INFO] activate https server in 'static' mode on port %d", s.SSLConfig.Port)
 
 		s.lock.Lock()
 		s.httpsServer = s.makeHTTPServer(s.SSLConfig.Port, s.routes())
@@ -92,7 +92,6 @@ func (s *Rest) Run(port int) {
 
 		go func() {
 			log.Printf("[INFO] activate http redirect server on port %d", port)
-
 			err := s.httpServer.ListenAndServe()
 			log.Printf("[WARN] http redirect server terminated, %s", err)
 		}()
@@ -100,7 +99,7 @@ func (s *Rest) Run(port int) {
 		err := s.httpsServer.ListenAndServeTLS(s.SSLConfig.Cert, s.SSLConfig.Key)
 		log.Printf("[WARN] https server terminated, %s", err)
 	case Auto:
-		log.Printf("[WARN] Autocert mode is not implemented yet")
+		log.Printf("[WARN] autocert mode is not implemented yet")
 	}
 
 }

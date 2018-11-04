@@ -1,6 +1,7 @@
 package api
 
 import (
+	"log"
 	"net/http"
 	"time"
 
@@ -32,6 +33,7 @@ type SSLConfig struct {
 
 // httpToHTTPSRouter creates new router which does redirect from http to https server
 func (s *Rest) httpToHTTPSRouter() chi.Router {
+	log.Printf("[DEBUG] create https-to-http redirect routes")
 	router := chi.NewRouter()
 	router.Use(middleware.RealIP, Recoverer)
 	router.Use(middleware.Throttle(1000), middleware.Timeout(60*time.Second))
