@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -129,6 +130,58 @@ func TestServerApp_WithMongo(t *testing.T) {
 	assert.Equal(t, "pong", string(body))
 
 	app.Wait()
+}
+
+func TestServerApp_WithSSL(t *testing.T) {
+	opts := ServerCommand{}
+	opts.SetCommon(CommonOpts{RemarkURL: "https://localhost:18443", SharedSecret: "123456"})
+
+	// prepare options
+	p := flags.NewParser(&opts, flags.Default)
+	_, err := p.ParseArgs([]string{"--dev-passwd=password", "--port=18080", "--store.bolt.path=/tmp/xyz", "--backup=/tmp", "--avatar.type=bolt", "--avatar.bolt.file=/tmp/ava-test.db", "--notify.type=none",
+		"--ssl.type=static", "--ssl.cert=testdata/cert.pem", "--ssl.key=testdata/key.pem", "--ssl.port=18443"})
+	require.Nil(t, err)
+
+	// create app
+	app, err := opts.newServerApp()
+	require.Nil(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		time.Sleep(5 * time.Second)
+		log.Print("[TEST] terminate app")
+		cancel()
+	}()
+	go func() { _ = app.run(ctx) }()
+	time.Sleep(100 * time.Millisecond) // let server start
+
+	client := http.Client{
+		// prevent http redirect
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+
+		// allow self-signed certificate
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	}
+
+	// check http to https redirect response
+	resp, err := client.Get("http://localhost:18080/blah?param=1")
+	require.Nil(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, 307, resp.StatusCode)
+	assert.Equal(t, "https://localhost:18443/blah?param=1", resp.Header.Get("Location"))
+
+	// check https server
+	resp, err = client.Get("https://localhost:18443/ping")
+	require.Nil(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, 200, resp.StatusCode)
+	body, err := ioutil.ReadAll(resp.Body)
+	assert.Nil(t, err)
+	assert.Equal(t, "pong", string(body))
 }
 
 func TestServerApp_Failed(t *testing.T) {
