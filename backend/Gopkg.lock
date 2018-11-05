@@ -266,6 +266,17 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:674a2405f77863f4f362e3e45078fd9caa647dc1c0e8b022e3b9dc1ae89fbc8f"
+  name = "golang.org/x/crypto"
+  packages = [
+    "acme",
+    "acme/autocert",
+  ]
+  pruneopts = "UT"
+  revision = "4d3f4d9ffa16a13f451c3b2999e9c49e9750bf06"
+
+[[projects]]
+  branch = "master"
   digest = "1:b34062e39d8f3172fdd0c5c22ca1a3badeb2ddde295a997b0b63441e96d916f7"
   name = "golang.org/x/image"
   packages = [
@@ -378,6 +389,7 @@
     "github.com/rakyll/statik/fs",
     "github.com/stretchr/testify/assert",
     "github.com/stretchr/testify/require",
+    "golang.org/x/crypto/acme/autocert",
     "golang.org/x/image/draw",
     "golang.org/x/oauth2",
     "golang.org/x/oauth2/facebook",

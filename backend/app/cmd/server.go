@@ -133,10 +133,11 @@ type NotifyGroup struct {
 
 // SSLGroup defines options group for server ssl params
 type SSLGroup struct {
-	Type string `long:"type" env:"TYPE" description:"ssl (auto)support" choice:"none" choice:"static" choice:"auto" default:"none"`
-	Port int    `long:"port" env:"PORT" description:"port number for https server" default:"8443"`
-	Cert string `long:"cert" env:"CERT" description:"path to cert.pem file"`
-	Key  string `long:"key" env:"KEY" description:"path to key.pem file"`
+	Type  string `long:"type" env:"TYPE" description:"ssl (auto)support" choice:"none" choice:"static" choice:"auto" default:"none"`
+	Port  int    `long:"port" env:"PORT" description:"port number for https server" default:"8443"`
+	Cert  string `long:"cert" env:"CERT" description:"path to cert.pem file"`
+	Key   string `long:"key" env:"KEY" description:"path to key.pem file"`
+	Cache string `long:"cache" env:"CACHE" description:"dir where certificates will be stored by autocert manager" default:"./var/certs"`
 }
 
 // serverApp holds all active objects
@@ -500,25 +501,25 @@ func (s *ServerCommand) makeNotify(dataStore *service.DataStore) (*notify.Servic
 	return nil, errors.Errorf("unsupported notification type %q", s.Notify.Type)
 }
 
-func (s *ServerCommand) makeSSLConfig() (group api.SSLConfig, err error) {
+func (s *ServerCommand) makeSSLConfig() (config api.SSLConfig, err error) {
 	switch s.SSL.Type {
 	case "none":
-		group.SSLMode = api.None
+		config.SSLMode = api.None
 	case "static":
 		if s.SSL.Cert == "" {
-			return group, errors.New("path to cert.pem is required")
+			return config, errors.New("path to cert.pem is required")
 		}
 		if s.SSL.Key == "" {
-			return group, errors.New("path to key.pem is required")
+			return config, errors.New("path to key.pem is required")
 		}
-		group.SSLMode = api.Static
-		group.Port = s.SSL.Port
-		group.Cert = s.SSL.Cert
-		group.Key = s.SSL.Key
+		config.SSLMode = api.Static
+		config.Port = s.SSL.Port
+		config.Cert = s.SSL.Cert
+		config.Key = s.SSL.Key
 	case "auto":
-		group.SSLMode = api.Auto
-		group.Port = s.SSL.Port
-		return group, errors.New("not implemented yet")
+		config.SSLMode = api.Auto
+		config.Port = s.SSL.Port
+		config.Cache = s.SSL.Cache
 	}
-	return group, err
+	return config, err
 }
