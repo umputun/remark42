@@ -52,6 +52,7 @@ func (s *Rest) httpToHTTPSRouter() chi.Router {
 // If it receives not a acme challenge it performs redirect to https server.
 // Used in 'auto' ssl mode.
 func (s *Rest) httpChallengeRouter(m *autocert.Manager) chi.Router {
+	log.Printf("[DEBUG] create http-challenge routes")
 	router := chi.NewRouter()
 	router.Use(middleware.RealIP, Recoverer)
 	router.Use(middleware.Throttle(1000), middleware.Timeout(60*time.Second))

@@ -99,7 +99,7 @@ func (s *Rest) Run(port int) {
 		err := s.httpsServer.ListenAndServeTLS(s.SSLConfig.Cert, s.SSLConfig.Key)
 		log.Printf("[WARN] https server terminated, %s", err)
 	case Auto:
-		log.Printf("[INFO] activate rest https server in 'auto' mode on port %d", s.SSLConfig.Port)
+		log.Printf("[INFO] activate https server in 'auto' mode on port %d", s.SSLConfig.Port)
 
 		m := s.makeAutocertManager()
 		s.lock.Lock()
