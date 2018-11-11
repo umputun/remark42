@@ -117,57 +117,33 @@ export default class Root extends Component {
   }
 
   onSignIn(provider) {
-    if (document.hasStorageAccess) {
-      // user's browser is safari and we need to request access
-      document
-        .hasStorageAccess()
-        .then(() => {
-          signIn();
-        })
-        .catch(() => {
-          // if there is an error it means that we don't have access
-          document
-            .requestStorageAccess()
-            .then(() => {
-              signIn();
-            })
-            .catch(() => {
-              alert(`We can't login you without access to your browser's storage.`);
-            });
-        });
-    } else {
-      signIn();
-    }
+    const newWindow = window.open(
+      `${BASE_URL}/auth/${provider}/login?from=${encodeURIComponent(
+        location.origin + location.pathname + '?selfClose'
+      )}&site=${siteId}`
+    );
 
-    function signIn() {
-      const newWindow = window.open(
-        `${BASE_URL}/auth/${provider}/login?from=${encodeURIComponent(
-          location.origin + location.pathname + '?selfClose'
-        )}&site=${siteId}`
-      );
+    let secondsPass = 0;
+    const checkMsDelay = 300;
+    const checkInterval = setInterval(() => {
+      let shouldProceed;
+      secondsPass += checkMsDelay;
+      try {
+        shouldProceed = newWindow.closed || secondsPass > 30000;
+      } catch (e) {}
 
-      let secondsPass = 0;
-      const checkMsDelay = 300;
-      const checkInterval = setInterval(() => {
-        let shouldProceed;
-        secondsPass += checkMsDelay;
-        try {
-          shouldProceed = newWindow.closed || secondsPass > 30000;
-        } catch (e) {}
+      if (shouldProceed) {
+        clearInterval(checkInterval);
 
-        if (shouldProceed) {
-          clearInterval(checkInterval);
-
-          api
-            .getUser()
-            .then(user => {
-              store.set('user', user);
-              this.setState({ user });
-            })
-            .catch(() => {}); // TODO: we need to handle it and write error to user
-        }
-      }, checkMsDelay);
-    }
+        api
+          .getUser()
+          .then(user => {
+            store.set('user', user);
+            this.setState({ user });
+          })
+          .catch(() => {}); // TODO: we need to handle it and write error to user
+      }
+    }, checkMsDelay);
   }
 
   onBlockedUsersShow() {
