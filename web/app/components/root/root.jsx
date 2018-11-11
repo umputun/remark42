@@ -7,9 +7,10 @@ import {
   NODE_ID,
   COMMENT_NODE_CLASSNAME_PREFIX,
   DEFAULT_SORT,
-  LS_SORT_KEY,
+  COOKIE_SORT_KEY,
   MAX_SHOWN_ROOT_COMMENTS,
 } from 'common/constants';
+import { getCookie, setCookie } from 'common/cookies';
 import { siteId, url, maxShownComments } from 'common/settings';
 import store from 'common/store';
 
@@ -29,7 +30,7 @@ export default class Root extends Component {
     let sort;
 
     try {
-      sort = localStorage.getItem(LS_SORT_KEY) || DEFAULT_SORT;
+      sort = getCookie(COOKIE_SORT_KEY) || DEFAULT_SORT;
     } catch (e) {
       sort = DEFAULT_SORT;
     }
@@ -190,7 +191,7 @@ export default class Root extends Component {
     this.setState({ sort, isCommentsListLoading: true });
 
     try {
-      localStorage.setItem(LS_SORT_KEY, sort);
+      setCookie(COOKIE_SORT_KEY, sort, { expires: 60 * 60 * 24 * 365 }); // save sorting for a year
     } catch (e) {
       // can't save; ignore it
     }

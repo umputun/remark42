@@ -15,8 +15,10 @@ export const PROVIDER_NAMES = {
   yandex: 'Yandex',
   dev: 'Dev',
 };
+
 export const LS_COLLAPSE_KEY = '__remarkCollapsed';
-export const LS_SORT_KEY = '__remarkSort';
+
+export const COOKIE_SORT_KEY = 'remarkSort';
 
 export const BLOCKING_DURATIONS = [
   {
