@@ -11,14 +11,17 @@
     "precommit": "./node_modules/.bin/lint-staged"
   },
   "lint-staged": {
-    "./**/*.{js,jsx}": [
-      "eslint --fix",
-      "git add"
-    ],
-    "./**/*.scss": [
-      "prettier --write",
-      "git add"
-    ]
+    "linters": {
+      "./**/*.{js,jsx}": [
+        "eslint --fix",
+        "git add"
+      ],
+      "./**/*.scss": [
+        "prettier --write",
+        "git add"
+      ]
+    },
+    "renderer": "silent"
   },
   "devDependencies": {
     "autoprefixer": "^7.2.6",
