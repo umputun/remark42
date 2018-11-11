@@ -133,11 +133,11 @@ type NotifyGroup struct {
 
 // SSLGroup defines options group for server ssl params
 type SSLGroup struct {
-	Type  string `long:"type" env:"TYPE" description:"ssl (auto)support" choice:"none" choice:"static" choice:"auto" default:"none"`
-	Port  int    `long:"port" env:"PORT" description:"port number for https server" default:"8443"`
-	Cert  string `long:"cert" env:"CERT" description:"path to cert.pem file"`
-	Key   string `long:"key" env:"KEY" description:"path to key.pem file"`
-	Cache string `long:"cache" env:"CACHE" description:"dir where certificates will be stored by autocert manager" default:"./var/certs"`
+	Type         string `long:"type" env:"TYPE" description:"ssl (auto)support" choice:"none" choice:"static" choice:"auto" default:"none"`
+	Port         int    `long:"port" env:"PORT" description:"port number for https server" default:"8443"`
+	Cert         string `long:"cert" env:"CERT" description:"path to cert.pem file"`
+	Key          string `long:"key" env:"KEY" description:"path to key.pem file"`
+	ACMELocation string `long:"acme-location" env:"ACME_LOCATION" description:"dir where certificates will be stored by autocert manager" default:"./var/acme"`
 }
 
 // serverApp holds all active objects
@@ -519,7 +519,7 @@ func (s *ServerCommand) makeSSLConfig() (config api.SSLConfig, err error) {
 	case "auto":
 		config.SSLMode = api.Auto
 		config.Port = s.SSL.Port
-		config.Cache = s.SSL.Cache
+		config.ACMELocation = s.SSL.ACMELocation
 	}
 	return config, err
 }

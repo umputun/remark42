@@ -28,11 +28,11 @@ const (
 
 // SSLConfig holds all ssl params for rest server
 type SSLConfig struct {
-	SSLMode sslMode
-	Cert    string
-	Key     string
-	Port    int
-	Cache   string
+	SSLMode      sslMode
+	Cert         string
+	Key          string
+	Port         int
+	ACMELocation string
 }
 
 // httpToHTTPSRouter creates new router which does redirect from http to https server
@@ -74,7 +74,7 @@ func (s *Rest) redirectHandler() http.Handler {
 func (s *Rest) makeAutocertManager() *autocert.Manager {
 	return &autocert.Manager{
 		Prompt:     autocert.AcceptTOS,
-		Cache:      autocert.DirCache(s.SSLConfig.Cache),
+		Cache:      autocert.DirCache(s.SSLConfig.ACMELocation),
 		HostPolicy: autocert.HostWhitelist(s.getRemarkHost()),
 		Email:      s.DataService.AdminStore.Email(""),
 	}

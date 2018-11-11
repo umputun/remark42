@@ -123,7 +123,7 @@ _this is the recommended way to run remark42_
 | ssl.port                | SSL_PORT                | 8443                  | port for https server                            |
 | ssl.cert                | SSL_CERT                |                       | path to cert.pem file                            |
 | ssl.key                 | SSL_KEY                 |                       | path to key.pem file                             |
-| ssl.cache               | SSL_CACHE               | `./var/certs`         | dir where obtained le-certs will be stored       |
+| ssl.acme-location       | SSL_ACME_LOCATION       | `./var/acme`          | dir where obtained le-certs will be stored       |
 | max-comment             | MAX_COMMENT_SIZE        | 2048                  | comment's size limit                             |
 | low-score               | LOW_SCORE               | `-5`                  | low score threshold                              |
 | critical-score          | CRITICAL_SCORE          | `-10`                 | critical score threshold                         |
