@@ -76,7 +76,7 @@ _this is the recommended way to run remark42_
 #### Without docker
 
 * download archive for [stable release](https://github.com/umputun/remark/releases) or [development version](https://remark42.com/downloads)
-* unpack with `gunzip` (linux, mac os) or with `zip` (windows) 
+* unpack with `gunzip` (Linux, macOS) or with `zip` (Windows) 
 * run as `remark42.{os}-{arch} server {parameters...}`, i.e. `remark42.linux-amd64 server --secret=12345 --url=http://127.0.0.1:8080`
 * alternatively compile from the sources - `make OS=[linux|darwin|windows] ARCH=[amd64,386,arm64,arm32]`
 
@@ -390,7 +390,6 @@ Frontend docker compose config by default skips running backend related tests an
 
 In order to run backend locally (development mode, without docker) you have to have latest stable `go` toolchain [installed](https://golang.org/doc/install).
 
-
 To run backend - `go run backend/app/main.go --dbg --secret=12345 --dev-passwd=password --site=remark --url=http://127.0.0.1:8080`
 It stars backend service with embedded bolt store on port `8080` with basic auth, allowing to authenticate and run requests directly, like this:
 `HTTP http://dev:password@127.0.0.1:8080/api/v1/find?site=remark&sort=-active&format=tree&url=http://127.0.0.1:8080`
@@ -415,7 +414,7 @@ It used to reformat your frontend code using `prettier` and lint with `eslint` b
 
 For local development mode with Hot Reloading use `npm start` instead of `npm run build`.
 In this case `webpack` will serve files using `webpack-dev-server` on `localhost:9000`.
-By visiting `127.0.0.1:9000/web` you will get a page with main comments widget.
+By visiting `127.0.0.1:9000/web` you will get a page with main comments widget
 communicating with demo server backend running on `https://demo.remark42.com`.
 But you will not be able to login with any oauth providers due to security reasons.
 

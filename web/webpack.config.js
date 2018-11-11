@@ -1,4 +1,5 @@
 /* eslint-disable no-console */
+
 const path = require('path');
 
 const webpack = require('webpack');
@@ -15,6 +16,7 @@ const publicFolder = path.resolve(__dirname, 'public');
 const env = process.env.NODE_ENV || 'development';
 const remarkUrl = process.env.REMARK_URL || 'https://demo.remark42.com';
 const NODE_ID = 'remark42';
+
 // let's log some env variables because we can
 console.log(`NODE_ENV = ${env}`);
 console.log(`REMARK_ENV = ${remarkUrl}`);
