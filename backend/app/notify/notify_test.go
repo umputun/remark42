@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/rand"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -84,7 +85,7 @@ func TestService_Nop(t *testing.T) {
 	s := NopService
 	s.Submit(store.Comment{})
 	s.Close()
-	assert.True(t, s.closed)
+	assert.Equal(t, uint32(1), atomic.LoadUint32(&s.closed))
 }
 
 type mockDest struct {
