@@ -89,11 +89,11 @@ func (s *Service) Close() {
 }
 
 func (s *Service) do() {
-	rpt := repeater.New(strategy.NewBackoff(5, 1.5, true))
 	for c := range s.queue {
 		var wg sync.WaitGroup
 		for _, dest := range s.destinations {
 			wg.Add(1)
+			rpt := repeater.New(strategy.NewBackoff(5, 1.5, true))
 			go func(d Destination) {
 				err := rpt.Do(func() error {
 					return d.Send(s.ctx, c)
