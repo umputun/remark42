@@ -130,9 +130,10 @@ export default class Root extends Component {
           // Now we have first-party storage access!
           signIn();
         })
-        .catch(() => {
+        .catch(e => {
           // error obtaining storage access.
           console.log('cant get storage access'); // eslint-disable-line no-console
+          console.error(e);
         });
     } else {
       signIn();
