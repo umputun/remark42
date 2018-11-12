@@ -121,8 +121,7 @@ export default class Root extends Component {
       `${BASE_URL}/auth/${provider}/login?from=${encodeURIComponent(
         location.origin + location.pathname + '?selfClose'
       )}&site=${siteId}`,
-      '_blank',
-      'height=300,width=300'
+      '_blank'
     );
 
     let secondsPass = 0;
