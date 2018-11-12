@@ -1,3 +1,5 @@
+/* eslint-disable */
+
 const querySettings =
   window.location.search
     .substr(1)
