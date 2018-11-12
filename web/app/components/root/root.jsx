@@ -117,58 +117,35 @@ export default class Root extends Component {
   }
 
   onSignIn(provider) {
-    if (document.hasStorageAccess) {
-      document
-        .hasStorageAccess()
-        .then(hasAccess => {
-          if (!hasAccess) {
-            return document.requestStorageAccess();
-          }
-          console.log('already has storage access'); // eslint-disable-line no-console
-        })
-        .then(() => {
-          // Now we have first-party storage access!
-          signIn();
-        })
-        .catch(e => {
-          // error obtaining storage access.
-          console.log('cant get storage access'); // eslint-disable-line no-console
-          console.error(e);
-        });
-    } else {
-      signIn();
-    }
+    const newWindow = window.open(
+      `${BASE_URL}/auth/${provider}/login?from=${encodeURIComponent(
+        location.origin + location.pathname + '?selfClose'
+      )}&site=${siteId}`,
+      '_blank',
+      'height=300,width=300'
+    );
 
-    function signIn() {
-      const newWindow = window.open(
-        `${BASE_URL}/auth/${provider}/login?from=${encodeURIComponent(
-          location.origin + location.pathname + '?selfClose'
-        )}&site=${siteId}`,
-        '_blank'
-      );
+    let secondsPass = 0;
+    const checkMsDelay = 300;
+    const checkInterval = setInterval(() => {
+      let shouldProceed;
+      secondsPass += checkMsDelay;
+      try {
+        shouldProceed = newWindow.closed || secondsPass > 30000;
+      } catch (e) {}
 
-      let secondsPass = 0;
-      const checkMsDelay = 300;
-      const checkInterval = setInterval(() => {
-        let shouldProceed;
-        secondsPass += checkMsDelay;
-        try {
-          shouldProceed = newWindow.closed || secondsPass > 30000;
-        } catch (e) {}
+      if (shouldProceed) {
+        clearInterval(checkInterval);
 
-        if (shouldProceed) {
-          clearInterval(checkInterval);
-
-          api
-            .getUser()
-            .then(user => {
-              store.set('user', user);
-              this.setState({ user });
-            })
-            .catch(() => {}); // TODO: we need to handle it and write error to user
-        }
-      }, checkMsDelay);
-    }
+        api
+          .getUser()
+          .then(user => {
+            store.set('user', user);
+            this.setState({ user });
+          })
+          .catch(() => {}); // TODO: we need to handle it and write error to user
+      }
+    }, checkMsDelay);
   }
 
   onBlockedUsersShow() {
