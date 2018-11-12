@@ -6,6 +6,7 @@ import { getHandleClickProps } from 'common/accessibility';
 import { API_BASE, BASE_URL, COMMENT_NODE_CLASSNAME_PREFIX, BLOCKING_DURATIONS } from 'common/constants';
 import { url } from 'common/settings';
 import store from 'common/store';
+import copy from 'common/copy';
 
 import Input from 'components/input';
 
@@ -16,6 +17,7 @@ export default class Comment extends Component {
     super(props);
 
     this.state = {
+      isCopied: false,
       isReplying: false,
       isEditing: false,
       isUserVerified: false,
@@ -26,6 +28,7 @@ export default class Comment extends Component {
 
     this.updateState(props);
 
+    this.copyComment = this.copyComment.bind(this);
     this.decreaseScore = this.decreaseScore.bind(this);
     this.increaseScore = this.increaseScore.bind(this);
     this.toggleEditing = this.toggleEditing.bind(this);
@@ -322,6 +325,16 @@ export default class Comment extends Component {
     }
   }
 
+  copyComment({ username, time }) {
+    const text = this.textNode.textContent;
+
+    copy(username + '\n' + time + '\n' + text);
+
+    this.setState({ isCopied: true }, () => {
+      setTimeout(() => this.setState({ isCopied: false }), 3000);
+    });
+  }
+
   render(
     props,
     {
@@ -332,6 +345,7 @@ export default class Comment extends Component {
       scoreIncreased,
       scoreDecreased,
       deleted,
+      isCopied,
       isReplying,
       isEditing,
       isUserVerified,
@@ -514,7 +528,11 @@ export default class Comment extends Component {
             </span>
           </div>
 
-          <div className={b('comment__text', { mix: 'raw-content' })} dangerouslySetInnerHTML={{ __html: o.text }} />
+          <div
+            className={b('comment__text', { mix: 'raw-content' })}
+            ref={r => (this.textNode = r)}
+            dangerouslySetInnerHTML={{ __html: o.text }}
+          />
 
           <div className="comment__actions">
             {!deleted &&
@@ -547,12 +565,23 @@ export default class Comment extends Component {
                     Delete
                   </span>
                 ),
-                <span class="comment__edit-timer">{editTimeLeft && `${editTimeLeft}`}</span>,
+                <span className="comment__edit-timer">{editTimeLeft && `${editTimeLeft}`}</span>,
               ]}
 
             {!deleted &&
               isAdmin && (
                 <span className="comment__controls">
+                  {!isCopied && (
+                    <span
+                      {...getHandleClickProps(() => this.copyComment({ username: o.username, time: o.time }))}
+                      className="comment__control"
+                    >
+                      Copy
+                    </span>
+                  )}
+
+                  {isCopied && <span className="comment__control comment__control_view_inactive">Copied!</span>}
+
                   <span {...getHandleClickProps(() => this.togglePin(pinned))} className="comment__control">
                     {pinned ? 'Unpin' : 'Pin'}
                   </span>
