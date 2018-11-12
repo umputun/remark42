@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"sync/atomic"
 
 	"github.com/go-pkgz/repeater"
 	"github.com/go-pkgz/repeater/strategy"
@@ -13,11 +14,6 @@ import (
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/service"
 )
-
-type request struct {
-	comment store.Comment
-	parent  store.Comment
-}
 
 // Destination defines interface for a given destination service, like telegram, email and so on
 type Destination interface {
@@ -31,9 +27,14 @@ type Service struct {
 	destinations []Destination
 	queue        chan request
 
-	closed bool
+	closed uint32 // non-zero means closed. uses uint instead of bool for atomic
 	ctx    context.Context
 	cancel context.CancelFunc
+}
+
+type request struct {
+	comment store.Comment
+	parent  store.Comment
 }
 
 const defaultQueueSize = 100
@@ -55,13 +56,13 @@ func NewService(dataService *service.DataStore, size int, destinations ...Destin
 	if len(destinations) > 0 {
 		go res.do()
 	}
-	log.Printf("[INFO] create notifier service, queue size=%d", size)
+	log.Printf("[INFO] create notifier service, queue size=%d, destinations=%d", size, len(destinations))
 	return &res
 }
 
 // Submit comment to internal channel if not busy, drop if can't send
 func (s *Service) Submit(comment store.Comment) {
-	if len(s.destinations) == 0 || s.closed {
+	if len(s.destinations) == 0 || atomic.LoadUint32(&s.closed) != 0 {
 		return
 	}
 	parentComment := store.Comment{}
@@ -85,7 +86,7 @@ func (s *Service) Close() {
 		s.cancel()
 		<-s.ctx.Done()
 	}
-	s.closed = true
+	atomic.StoreUint32(&s.closed, 1)
 }
 
 func (s *Service) do() {
