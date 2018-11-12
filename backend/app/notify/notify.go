@@ -7,6 +7,9 @@ import (
 	"log"
 	"sync"
 
+	"github.com/go-pkgz/repeater"
+	"github.com/go-pkgz/repeater/strategy"
+
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/service"
 )
@@ -86,12 +89,16 @@ func (s *Service) Close() {
 }
 
 func (s *Service) do() {
+	rpt := repeater.New(strategy.NewBackoff(5, 1.5, true))
 	for c := range s.queue {
 		var wg sync.WaitGroup
 		for _, dest := range s.destinations {
 			wg.Add(1)
 			go func(d Destination) {
-				if err := d.Send(s.ctx, c); err != nil {
+				err := rpt.Do(func() error {
+					return d.Send(s.ctx, c)
+				})
+				if err != nil {
 					log.Printf("[WARN] failed to send to %s, %s", d, err)
 				}
 				wg.Done()
