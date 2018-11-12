@@ -120,8 +120,7 @@ export default class Root extends Component {
     const newWindow = window.open(
       `${BASE_URL}/auth/${provider}/login?from=${encodeURIComponent(
         location.origin + location.pathname + '?selfClose'
-      )}&site=${siteId}`,
-      '_blank'
+      )}&site=${siteId}`
     );
 
     let secondsPass = 0;
