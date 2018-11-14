@@ -4,7 +4,7 @@ import { h, Component } from 'preact';
 import UserId from './__user-id/auth-panel__user-id';
 import Dropdown, { DropdownItem } from 'components/dropdown';
 import Button from 'components/button';
-import { PROVIDER_NAMES } from 'common/constants';
+import { PROVIDER_NAMES, STORAGE_AVAILABLE, IS_THIRD_PARTY } from 'common/constants';
 import { requestDeletion } from 'utils/email';
 import { getHandleClickProps } from 'common/accessibility';
 
@@ -76,28 +76,46 @@ export default class AuthPanel extends Component {
           </div>
         )}
 
-        {!loggedIn && (
-          <div className="auth-panel__column">
-            Sign in to comment using{' '}
-            {providers.map((provider, i) => {
-              const comma = i === 0 ? '' : i === providers.length - 1 ? ' or ' : ', ';
+        {STORAGE_AVAILABLE &&
+          !loggedIn && (
+            <div className="auth-panel__column">
+              Sign in to comment using{' '}
+              {providers.map((provider, i) => {
+                const comma = i === 0 ? '' : i === providers.length - 1 ? ' or ' : ', ';
 
-              return (
-                <span>
-                  {comma}
-                  <span
-                    className="auth-panel__pseudo-link"
-                    {...getHandleClickProps(() => props.onSignIn(provider))}
-                    role="link"
-                  >
-                    {PROVIDER_NAMES[provider]}
+                return (
+                  <span>
+                    {comma}
+                    <span
+                      className="auth-panel__pseudo-link"
+                      {...getHandleClickProps(() => props.onSignIn(provider))}
+                      role="link"
+                    >
+                      {PROVIDER_NAMES[provider]}
+                    </span>
                   </span>
-                </span>
-              );
-            })}
-            {'.'}
-          </div>
-        )}
+                );
+              })}
+              {'.'}
+            </div>
+          )}
+
+        {!STORAGE_AVAILABLE &&
+          IS_THIRD_PARTY && (
+            <div className="auth-panel__column">
+              Disable third-party cookies blocking to sign in or open comments in{' '}
+              <a
+                class="auth-panel__pseudo-link"
+                href={`${window.location.origin}/web/comments.html${window.location.search}`}
+                target="_blank"
+              >
+                new page
+              </a>
+            </div>
+          )}
+
+        {!STORAGE_AVAILABLE &&
+          !IS_THIRD_PARTY && <div className="auth-panel__column">Allow cookies to sign in and comment</div>}
 
         <div className="auth-panel__column">
           {user.admin && (

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>remark42</title>
+
+  <style>
+    body {
+      padding: 0;
+      margin: 0;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 40px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+	<div id="title"></div>
+    <div id="remark42"></div>
+  </div>
+
+  <script>
+    var query = (function () {
+      if (window.location.search.length === 0) return {};
+      return window.location.search.substr(1).split("&").map(function (item) {
+        return item.split("=");
+      }).reduce(function (carry, item) {
+        carry[item[0]] = decodeURIComponent(item[1]);
+        return carry;
+      }, {});
+    })()
+
+    if (query.site_id && query.url) {
+	  var titleElement = document.getElementById("title");
+	  titleElement.innerHTML = '<h1>Comments for <a href="'+query.url+'">'+query.url+'</a></h1>'
+
+      var remark_config = {
+        site_id: 'remark',
+        url: 'https://remark42.com/demo/',
+      };
+
+      (function () {
+        var d = document, s = d.createElement('script');
+        s.src = '/web/embed.js';
+        s.type = 'text/javascript';
+        (d.head || d.body).appendChild(s);
+      })();
+    }
+  </script>
+  <noscript>
+    Please enable JavaScript to view the comments powered by Remark.
+  </noscript>
+</body>
+</html>

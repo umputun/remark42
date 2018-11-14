@@ -114,6 +114,11 @@ module.exports = {
       filename: 'last-comments.html',
       inject: false,
     }),
+    new Html({
+      template: path.resolve(__dirname, 'comments.ejs'),
+      filename: 'comments.html',
+      inject: false,
+    }),
     new ExtractText({
       filename: `remark.css`,
       allChunks: true,
