@@ -43,7 +43,7 @@ export const BLOCKING_DURATIONS = [
  * Defines if browser storage features (cookies, localsrotage)
  * are available or blocked via browser preferences
  */
-export const STORAGE_AVAILABLE = (() => {
+export const IS_STORAGE_AVAILABLE = (() => {
   try {
     localStorage.setItem('localstorage_availability_test', null);
     localStorage.removeItem('localstorage_availability_test');

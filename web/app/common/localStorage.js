@@ -1,12 +1,4 @@
-export const isAvailable = (() => {
-  try {
-    localStorage.setItem('localstorage_availability_test', null);
-    localStorage.removeItem('localstorage_availability_test');
-  } catch (e) {
-    return false;
-  }
-  return true;
-})();
+import { isAvailable } from 'common/constants';
 
 const failMessage = 'remark42: localStorage access denied, check browser preferences';
 

@@ -4,7 +4,7 @@ import { h, Component } from 'preact';
 import UserId from './__user-id/auth-panel__user-id';
 import Dropdown, { DropdownItem } from 'components/dropdown';
 import Button from 'components/button';
-import { PROVIDER_NAMES, STORAGE_AVAILABLE, IS_THIRD_PARTY } from 'common/constants';
+import { PROVIDER_NAMES, IS_STORAGE_AVAILABLE, IS_THIRD_PARTY } from 'common/constants';
 import { requestDeletion } from 'utils/email';
 import { getHandleClickProps } from 'common/accessibility';
 
@@ -76,7 +76,7 @@ export default class AuthPanel extends Component {
           </div>
         )}
 
-        {STORAGE_AVAILABLE &&
+        {IS_STORAGE_AVAILABLE &&
           !loggedIn && (
             <div className="auth-panel__column">
               Sign in to comment using{' '}
@@ -100,7 +100,7 @@ export default class AuthPanel extends Component {
             </div>
           )}
 
-        {!STORAGE_AVAILABLE &&
+        {!IS_STORAGE_AVAILABLE &&
           IS_THIRD_PARTY && (
             <div className="auth-panel__column">
               Disable third-party cookies blocking to sign in or open comments in{' '}
@@ -114,7 +114,7 @@ export default class AuthPanel extends Component {
             </div>
           )}
 
-        {!STORAGE_AVAILABLE &&
+        {!IS_STORAGE_AVAILABLE &&
           !IS_THIRD_PARTY && <div className="auth-panel__column">Allow cookies to sign in and comment</div>}
 
         <div className="auth-panel__column">
