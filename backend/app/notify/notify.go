@@ -8,9 +8,6 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/go-pkgz/repeater"
-	"github.com/go-pkgz/repeater/strategy"
-
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/service"
 )
@@ -94,16 +91,10 @@ func (s *Service) do() {
 		var wg sync.WaitGroup
 		for _, dest := range s.destinations {
 			wg.Add(1)
-			rpt := repeater.New(strategy.NewBackoff(5, 1.5, true))
-			go func(d Destination) {
-				err := rpt.Do(func() error {
-					return d.Send(s.ctx, c)
-				})
-				if err != nil {
-					log.Printf("[WARN] failed to send to %s, %s", d, err)
-				}
-				wg.Done()
-			}(dest)
+			if err := dest.Send(s.ctx, c); err != nil {
+				log.Printf("[WARN] failed to send to %s, %s", dest, err)
+			}
+			wg.Done()
 		}
 		wg.Wait()
 	}
