@@ -59,7 +59,7 @@ export const STORAGE_AVAILABLE = (() => {
  */
 export const IS_THIRD_PARTY = (() => {
   try {
-    return window.parent.document.location.host !== window.location.host;
+    return window.parent.location.host !== window.location.host;
   } catch (e) {
     return true;
   }
