@@ -89,12 +89,14 @@ func (s *Service) Close() {
 func (s *Service) do() {
 	for c := range s.queue {
 		var wg sync.WaitGroup
+		wg.Add(len(s.destinations))
 		for _, dest := range s.destinations {
-			wg.Add(1)
-			if err := dest.Send(s.ctx, c); err != nil {
-				log.Printf("[WARN] failed to send to %s, %s", dest, err)
-			}
-			wg.Done()
+			go func(d Destination) {
+				if err := d.Send(s.ctx, c); err != nil {
+					log.Printf("[WARN] failed to send to %s, %s", d, err)
+				}
+				wg.Done()
+			}(dest)
 		}
 		wg.Wait()
 	}
