@@ -38,3 +38,29 @@ export const BLOCKING_DURATIONS = [
     value: `${60 * 24}m`,
   },
 ];
+
+/**
+ * Defines if browser storage features (cookies, localsrotage)
+ * are available or blocked via browser preferences
+ */
+export const IS_STORAGE_AVAILABLE = (() => {
+  try {
+    localStorage.setItem('localstorage_availability_test', null);
+    localStorage.removeItem('localstorage_availability_test');
+  } catch (e) {
+    return false;
+  }
+  return true;
+})();
+
+/**
+ * Defines whether iframe loaded in cross origin environment
+ * Usefull for checking if some privacy restriction may be applied
+ */
+export const IS_THIRD_PARTY = (() => {
+  try {
+    return window.parent.location.host !== window.location.host;
+  } catch (e) {
+    return true;
+  }
+})();
