@@ -573,7 +573,7 @@ export default class Comment extends Component {
                 <span className="comment__controls">
                   {!isCopied && (
                     <span
-                      {...getHandleClickProps(() => this.copyComment({ username: o.username, time: o.time }))}
+                      {...getHandleClickProps(() => this.copyComment({ username: o.user.name, time: o.time }))}
                       className="comment__control"
                     >
                       Copy
