@@ -7,206 +7,154 @@ if (document.readyState === 'loading') {
   init();
 }
 
-function init() {
-  const node = document.getElementById(NODE_ID);
+function showUserInfo(siteID, user) {
+  const remarkRootId = 'remark-km423lmfdslkm34';
 
-  if (!node) {
-    console.error("Remark42: Can't find root node.");
-    return;
+  const style = document.createElement('style');
+  style.setAttribute('rel', 'stylesheet');
+  style.setAttribute('type', 'text/css');
+  style.innerHTML = `
+		#${remarkRootId}-node {
+			position: fixed;
+			top: 0;
+			right: 0;
+			bottom: 0;
+			width: 400px;
+			transition: transform 0.4s ease-out;
+			max-width: 100%;
+			transform: translate(400px, 0);
+			z-index: 999;
+		}
+		#${remarkRootId}-node[data-animation] {
+			transform: translate(0, 0);
+		}
+		#${remarkRootId}-back {
+			position: fixed;
+			top: 0;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			background: rgba(0,0,0,0.7);
+			opacity: 0;
+			transition: opacity 0.4s ease-out;
+		}
+		#${remarkRootId}-back[data-animation] {
+			opacity: 1;
+		}
+		#${remarkRootId}-close {
+			top: 0px;
+			right: 400px;
+			position: absolute;
+			text-align: center;
+			font-size: 25px;
+			cursor: pointer;
+			color: white;
+			border-color: transparent;
+			border-width: 0;
+			padding: 0;
+			margin-right: 4px;
+			background-color: transparent;
+		}
+		@media all and (max-width: 430px) {
+			#${remarkRootId}-close {
+				right: 0px;
+				font-size: 20px;
+				color: black;
+			}
+		}
+	`;
+  document.head.appendChild(style);
+
+  // semitransparent overlay
+  const back = document.createElement('div');
+  back.id = remarkRootId + '-back';
+  back.onclick = () => destroy();
+  document.body.appendChild(back);
+
+  const node = document.createElement('div');
+  node.id = remarkRootId + '-node';
+
+  // close button
+  const closeEl = document.createElement('button');
+  closeEl.id = remarkRootId + '-close';
+  closeEl.innerHTML = '&#10006;';
+  closeEl.onclick = () => destroy();
+  node.appendChild(closeEl);
+
+  const queryUserInfo =
+    `site_id=${encodeURIComponent(siteID)}` +
+    '&page=user-info&' +
+    `&id=${user.id}&name=${user.name}&picture=${user.picture || ''}&isDefaultPicture=${user.isDefaultPicture || 0}`;
+  const iframe = document.createElement('iframe');
+  iframe.src = `${BASE_URL}/web/iframe.html?${queryUserInfo}`;
+  iframe.width = '100%';
+  iframe.height = '100%';
+  iframe.frameBorder = '0';
+  iframe.setAttribute('allowtransparency', 'true');
+  iframe.setAttribute('scrolling', 'no');
+  iframe.setAttribute('horizontalscrolling', 'no');
+  iframe.setAttribute('verticalscrolling', 'no');
+  iframe.tabIndex = 0;
+  iframe.title = 'Remark42';
+  node.appendChild(iframe);
+
+  document.body.appendChild(node);
+
+  document.addEventListener('keydown', onKeyDown);
+  setTimeout(() => {
+    back.setAttribute('data-animation', '');
+    node.setAttribute('data-animation', '');
+    iframe.focus();
+  }, 400);
+
+  function onKeyDown(e) {
+    const escapeKeyCode = 27;
+    if (e.keyCode == escapeKeyCode) destroy();
   }
 
-  try {
-    remark_config = remark_config || {};
-  } catch (e) {
-    console.error('Remark42: Config object is undefined.');
-    return;
+  function destroy() {
+    document.removeEventListener('keydown', onKeyDown);
+
+    back.removeAttribute('data-animation');
+    node.removeAttribute('data-animation');
+    setTimeout(() => {
+      node.remove();
+      back.remove();
+      style.remove();
+    }, 1000);
+  }
+}
+
+function initNode(node, remark_config) {
+  const config = {
+    url: (node.dataset.url || remark_config.url || window.location.href).split('#')[0],
+    site_id: node.dataset.siteId || remark_config.site_id,
+  };
+
+  if (node.dataset.maxShownComments) {
+    config.max_shown_comments = node.dataset.maxShownComments;
+  } else if (remark_config.max_shown_comments) {
+    config.max_shown_comments = remark_config.max_shown_comments;
   }
 
-  if (!remark_config.site_id) {
-    console.error('Remark42: Site ID is undefined.');
-    return;
-  }
-
-  remark_config.url = (remark_config.url || window.location.href).split('#')[0];
-
-  const query = Object.keys(remark_config)
-    .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(remark_config[key])}`)
+  const query = Object.keys(config)
+    .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(config[key])}`)
     .join('&');
 
-  node.innerHTML = `
-    <iframe
-      src="${BASE_URL}/web/iframe.html?${query}"
-      width="100%"
-      frameborder="0"
-      allowtransparency="true"
-      scrolling="no"
-      tabindex="0"
-      title="Remark42"
-      style="width: 1px !important; min-width: 100% !important; border: none !important; overflow: hidden !important;"
-      horizontalscrolling="no"
-      verticalscrolling="no"
-    ></iframe>
-  `;
+  const iframe = document.createElement('iframe');
+  iframe.src = `${BASE_URL}/web/iframe.html?${query}`;
+  iframe.width = '100%';
+  iframe.frameBorder = '0';
+  iframe.setAttribute('allowtransparency', 'true');
+  iframe.setAttribute('scrolling', 'no');
+  iframe.setAttribute('horizontalscrolling', 'no');
+  iframe.setAttribute('verticalscrolling', 'no');
+  iframe.tabIndex = 0;
+  iframe.title = 'Remark42';
+  iframe.style =
+    'width:1px !important; min-width: 100% !important; border: none !important; overflow: hidden !important';
 
-  const iframe = node.getElementsByTagName('iframe')[0];
-
-  window.addEventListener('message', receiveMessages);
-  window.addEventListener('hashchange', postHashToIframe);
-  document.addEventListener('click', postClickOutsideToIframe);
-  setTimeout(postHashToIframe, 1000);
-
-  const remarkRootId = 'remark-km423lmfdslkm34';
-  const userInfo = {
-    node: null,
-    back: null,
-    closeEl: null,
-    iframe: null,
-    style: null,
-    init(user) {
-      this.animationStop();
-      if (!this.style) {
-        this.style = document.createElement('style');
-        this.style.setAttribute('rel', 'stylesheet');
-        this.style.setAttribute('type', 'text/css');
-        this.style.innerHTML = `
-          #${remarkRootId}-node {
-            position: fixed;
-            top: 0;
-            right: 0;
-            bottom: 0;
-            width: 400px;
-            transition: transform 0.4s ease-out;
-            max-width: 100%;
-            transform: translate(400px, 0);
-          }
-          #${remarkRootId}-node[data-animation] {
-            transform: translate(0, 0);
-          }
-          #${remarkRootId}-back {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.7);
-            opacity: 0;
-            transition: opacity 0.4s ease-out;
-          }
-          #${remarkRootId}-back[data-animation] {
-            opacity: 1;
-          }
-          #${remarkRootId}-close {
-            top: 0px;
-            right: 400px;
-            position: absolute;
-            text-align: center;
-            font-size: 25px;
-            cursor: pointer;
-            color: white;
-            border-color: transparent;
-            border-width: 0;
-            padding: 0;
-            margin-right: 4px;
-            background-color: transparent;
-          }
-          @media all and (max-width: 430px) {
-            #${remarkRootId}-close {
-              right: 0px;
-              font-size: 20px;
-              color: black;
-            }
-          }
-        `;
-      }
-      if (!this.node) {
-        this.node = document.createElement('div');
-        this.node.id = remarkRootId + '-node';
-      }
-      if (!this.back) {
-        this.back = document.createElement('div');
-        this.back.id = remarkRootId + '-back';
-        this.back.onclick = () => this.close();
-      }
-      if (!this.closeEl) {
-        this.closeEl = document.createElement('button');
-        this.closeEl.id = remarkRootId + '-close';
-        this.closeEl.innerHTML = '&#10006;';
-        this.closeEl.onclick = () => this.close();
-      }
-      const queryUserInfo =
-        query +
-        '&page=user-info&' +
-        `&id=${user.id}&name=${user.name}&picture=${user.picture || ''}&isDefaultPicture=${user.isDefaultPicture || 0}`;
-      this.node.innerHTML = `
-      <iframe
-        src="${BASE_URL}/web/iframe.html?${queryUserInfo}"
-        width="100%"
-        height="100%"
-        frameborder="0"
-        allowtransparency="true"
-        scrolling="no"
-        tabindex="0"
-        title="Remark42"
-        verticalscrolling="no"
-        horizontalscrolling="no"
-      />`;
-      this.iframe = this.node.querySelector('iframe');
-      this.node.appendChild(this.closeEl);
-      document.body.appendChild(this.style);
-      document.body.appendChild(this.back);
-      document.body.appendChild(this.node);
-      document.addEventListener('keydown', this.onKeyDown);
-      setTimeout(() => {
-        this.back.setAttribute('data-animation', '');
-        this.node.setAttribute('data-animation', '');
-        this.iframe.focus();
-      }, 400);
-    },
-    close() {
-      if (this.node) {
-        this.onAnimationClose();
-        this.node.removeAttribute('data-animation');
-      }
-      if (this.back) {
-        this.back.removeAttribute('data-animation');
-      }
-      document.removeEventListener('keydown', this.onKeyDown);
-    },
-    delay: null,
-    events: ['', 'webkit', 'moz', 'MS', 'o'].map(prefix => (prefix ? `${prefix}TransitionEnd` : 'transitionend')),
-    onAnimationClose() {
-      const el = this.node;
-      if (!this.node) {
-        return;
-      }
-      this.delay = setTimeout(this.animationStop, 1000);
-      this.events.forEach(event => el.addEventListener(event, this.animationStop, false));
-    },
-    onKeyDown(e) {
-      // ESCAPE key pressed
-      if (e.keyCode == 27) {
-        userInfo.close();
-      }
-    },
-    animationStop() {
-      const t = userInfo;
-      if (!t.node) {
-        return;
-      }
-      if (t.delay) {
-        clearTimeout(t.delay);
-        t.delay = null;
-      }
-      t.events.forEach(event => t.node.removeEventListener(event, t.animationStop, false));
-      return t.remove();
-    },
-    remove() {
-      const t = userInfo;
-      t.node && t.node.remove();
-      t.back && t.back.remove();
-      t.style && t.style.remove();
-    },
-  };
+  node.appendChild(iframe);
 
   function receiveMessages(event) {
     try {
@@ -219,14 +167,12 @@ function init() {
         window.scrollTo(window.pageXOffset, data.scrollTo + iframe.getBoundingClientRect().top + window.pageYOffset);
       }
 
-      if (data.hasOwnProperty('isUserInfoShown')) {
-        if (data.isUserInfoShown) {
-          userInfo.init(data.user || {});
-        } else {
-          userInfo.close();
-        }
+      if (data.hasOwnProperty('isUserInfoShown') && data.isUserInfoShown) {
+        showUserInfo(config.site_id, data.user || {});
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error(e);
+    }
   }
 
   function postHashToIframe(e) {
@@ -243,5 +189,97 @@ function init() {
     if (!iframe.contains(e.target)) {
       iframe.contentWindow.postMessage(JSON.stringify({ clickOutside: true }), '*');
     }
+  }
+
+  function destroy() {
+    node.innerHTML = '';
+    window.removeEventListener('message', receiveMessages);
+    window.removeEventListener('hashchange', postHashToIframe);
+    document.removeEventListener('click', postClickOutsideToIframe);
+  }
+
+  window.addEventListener('message', receiveMessages);
+  window.addEventListener('hashchange', postHashToIframe);
+  document.addEventListener('click', postClickOutsideToIframe);
+
+  setTimeout(postHashToIframe, 1000);
+
+  return {
+    node,
+    receiveMessages,
+    postHashToIframe,
+    postClickOutsideToIframe,
+    destroy,
+  };
+}
+
+function init() {
+  try {
+    remark_config = remark_config || {};
+  } catch (e) {
+    console.error('Remark42: Config object is undefined.');
+    return;
+  }
+
+  if (!remark_config.site_id) {
+    console.error('Remark42: Site ID is undefined.');
+    return;
+  }
+
+  if (!remark_config.selector) {
+    remark_config.selector = '#' + NODE_ID;
+  }
+
+  let nodesInfo = [];
+
+  if (typeof remark_config.selector === 'string') {
+    const nodes = document.querySelectorAll(remark_config.selector);
+    for (let node of nodes) {
+      const info = initNode(node, remark_config);
+      nodesInfo.push(info);
+    }
+  } else if (remark_config.selector instanceof HTMLElement) {
+    const info = initNode(remark_config.selector, remark_config);
+    nodesInfo.push(info);
+  } else {
+    console.error('TypeError: remark_config.selector should be either selector string or HTMLElement');
+    return;
+  }
+
+  if (typeof remark_config.selector === 'string' && window.MutationObserver) {
+    const observer = new MutationObserver(mutationList => {
+      for (let record of mutationList) {
+        for (let node of record.addedNodes) {
+          if (node.nodeType !== 1) continue;
+          let targets = [];
+          if (node.matches(remark_config.selector)) targets.push(node);
+          targets = targets.concat(Array.from(node.querySelectorAll(remark_config.selector)));
+
+          for (let node of targets) {
+            const info = initNode(node, remark_config);
+            nodesInfo.push(info);
+          }
+        }
+
+        for (let node of record.removedNodes) {
+          if (node.nodeType !== 1) continue;
+          let targets = [];
+          if (node.matches(remark_config.selector)) targets.push(node);
+          targets = targets.concat(Array.from(node.querySelectorAll(remark_config.selector)));
+
+          for (let node of targets) {
+            for (let info of nodesInfo) {
+              if (node === info.node) {
+                info.destroy();
+                nodesInfo.splice(nodesInfo.indexOf(info), 1);
+                break;
+              }
+            }
+          }
+        }
+      }
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
   }
 }

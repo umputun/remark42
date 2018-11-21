@@ -277,6 +277,7 @@ Add this snippet to the bottom of web page:
 <script>
   var remark_config = {
     site_id: 'YOUR_SITE_ID',
+	selector: "#remark42" // optional param; string|HTMLElement; Selector by which remark should mount comments iframe
     url: 'PAGE_URL', // optional param; if it isn't defined window.location.href will be used
     max_shown_comments: 10, // optional param; if it isn't defined default value (15) will be used
   };
@@ -296,6 +297,14 @@ And then add this node in the place where you want to see Remark42 widget:
 ```
 
 After that widget will be rendered inside this node.
+
+The node also supports overriding remark's config with `data` attributes, like:
+
+```
+<div id="remark42" data-url="https://example.com"></div>
+```
+
+Available attributes are `data-site-id`, `data-url`, `data-max-shown-comments`
 
 #### Last comments
 
