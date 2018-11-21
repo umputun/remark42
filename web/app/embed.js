@@ -246,7 +246,7 @@ function init() {
     return;
   }
 
-  if (typeof remark_config.selector === 'string' && window.MutationObserver) {
+  if (remark_config.dynamic && typeof remark_config.selector === 'string' && window.MutationObserver) {
     const observer = new MutationObserver(mutationList => {
       for (let record of mutationList) {
         for (let node of record.addedNodes) {
