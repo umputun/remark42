@@ -116,6 +116,24 @@ func TestService_Vote(t *testing.T) {
 	assert.Equal(t, map[string]bool{}, res[0].Votes, "vote reset ok")
 }
 
+func TestService_VoteLimit(t *testing.T) {
+	defer os.Remove(testDb)
+	b := DataStore{Interface: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: 2}
+
+	_, err := b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "id-1", "user2", true)
+	assert.Nil(t, err)
+
+	_, err = b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "id-1", "user3", true)
+	assert.Nil(t, err)
+
+	_, err = b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "id-1", "user4", true)
+	assert.NotNil(t, err, "vote limit reached")
+	assert.True(t, strings.HasPrefix(err.Error(), "maximum number of votes exceeded for comment id-1"))
+
+	_, err = b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "id-2", "user4", true)
+	assert.Nil(t, err)
+}
+
 func TestService_VoteAggressive(t *testing.T) {
 	defer os.Remove(testDb)
 	b := DataStore{Interface: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123")}
