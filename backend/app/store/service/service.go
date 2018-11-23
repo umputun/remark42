@@ -18,6 +18,7 @@ type DataStore struct {
 	EditDuration   time.Duration
 	AdminStore     admin.Store
 	MaxCommentSize int
+	MaxVotes       int
 
 	// granular locks
 	scopedLocks struct {
@@ -28,6 +29,7 @@ type DataStore struct {
 }
 
 const defaultCommentMaxSize = 2000
+const defaultVotesLimit = -1 // unlimited
 
 // Create prepares comment and forward to Interface.Create
 func (s *DataStore) Create(comment store.Comment) (commentID string, err error) {
@@ -95,6 +97,15 @@ func (s *DataStore) Vote(locator store.Locator, commentID string, userID string,
 
 	if voted && v == val {
 		return comment, errors.Errorf("user %s already voted for %s", userID, commentID)
+	}
+
+	maxVotes := s.MaxVotes
+	if s.MaxVotes <= 0 {
+		maxVotes = defaultVotesLimit
+	}
+
+	if maxVotes >= 0 && len(comment.Votes) >= maxVotes {
+		return comment, errors.Errorf("maximum number of votes exceeded for comment %s", commentID)
 	}
 
 	// reset vote if user changed to opposite

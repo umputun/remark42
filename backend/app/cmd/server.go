@@ -45,6 +45,7 @@ type ServerCommand struct {
 	MaxBackupFiles int           `long:"max-back" env:"MAX_BACKUP_FILES" default:"10" description:"max backups to keep"`
 	ImageProxy     bool          `long:"img-proxy" env:"IMG_PROXY" description:"enable image proxy"`
 	MaxCommentSize int           `long:"max-comment" env:"MAX_COMMENT_SIZE" default:"2048" description:"max comment size"`
+	MaxVotes       int           `long:"max-votes" env:"MAX_VOTES" default:"-1" description:"maximum number of votes per comment"`
 	LowScore       int           `long:"low-score" env:"LOW_SCORE" default:"-5" description:"low score threshold"`
 	CriticalScore  int           `long:"critical-score" env:"CRITICAL_SCORE" default:"-10" description:"critical score threshold"`
 	ReadOnlyAge    int           `long:"read-age" env:"READONLY_AGE" default:"0" description:"read-only age of comments"`
@@ -206,6 +207,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		EditDuration:   s.EditDuration,
 		AdminStore:     adminStore,
 		MaxCommentSize: s.MaxCommentSize,
+		MaxVotes:       s.MaxVotes,
 	}
 
 	loadingCache, err := s.makeCache()
