@@ -29,7 +29,9 @@ type DataStore struct {
 }
 
 const defaultCommentMaxSize = 2000
-const defaultVotesLimit = -1 // unlimited
+
+// UnlimitedVotes doesn't restrict MaxVotes
+const UnlimitedVotes = -1
 
 // Create prepares comment and forward to Interface.Create
 func (s *DataStore) Create(comment store.Comment) (commentID string, err error) {
@@ -100,8 +102,8 @@ func (s *DataStore) Vote(locator store.Locator, commentID string, userID string,
 	}
 
 	maxVotes := s.MaxVotes
-	if s.MaxVotes < 0 {
-		maxVotes = defaultVotesLimit
+	if s.MaxVotes <= 0 {
+		maxVotes = UnlimitedVotes
 	}
 
 	if maxVotes >= 0 && len(comment.Votes) >= maxVotes {
