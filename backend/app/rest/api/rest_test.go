@@ -98,6 +98,7 @@ func prep(t *testing.T) (srv *Rest, ts *httptest.Server) {
 		EditDuration:   5 * time.Minute,
 		MaxCommentSize: 4000,
 		AdminStore:     adminStore,
+		MaxVotes:       -1,
 	}
 	srv = &Rest{
 		DataService: dataStore,
