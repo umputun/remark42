@@ -73,7 +73,7 @@ func TestService_CreateFromPartial(t *testing.T) {
 
 func TestService_Vote(t *testing.T) {
 	defer os.Remove(testDb)
-	b := DataStore{Interface: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123")}
+	b := DataStore{Interface: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: -1}
 
 	comment := store.Comment{
 		Text:    "text",
@@ -134,9 +134,18 @@ func TestService_VoteLimit(t *testing.T) {
 	assert.Nil(t, err)
 }
 
+func TestService_VotesDisabled(t *testing.T) {
+	defer os.Remove(testDb)
+	b := DataStore{Interface: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: 0}
+
+	_, err := b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "id-1", "user2", true)
+	assert.NotNil(t, err, "vote limit reached")
+	assert.True(t, strings.HasPrefix(err.Error(), "maximum number of votes exceeded for comment id-1"))
+}
+
 func TestService_VoteAggressive(t *testing.T) {
 	defer os.Remove(testDb)
-	b := DataStore{Interface: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123")}
+	b := DataStore{Interface: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: -1}
 
 	comment := store.Comment{
 		Text:    "text",
@@ -196,7 +205,7 @@ func TestService_VoteAggressive(t *testing.T) {
 func TestService_VoteConcurrent(t *testing.T) {
 
 	defer os.Remove(testDb)
-	b := DataStore{Interface: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123")}
+	b := DataStore{Interface: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: -1}
 
 	comment := store.Comment{
 		Text:    "text",

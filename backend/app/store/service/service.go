@@ -100,7 +100,7 @@ func (s *DataStore) Vote(locator store.Locator, commentID string, userID string,
 	}
 
 	maxVotes := s.MaxVotes
-	if s.MaxVotes <= 0 {
+	if s.MaxVotes < 0 {
 		maxVotes = defaultVotesLimit
 	}
 
