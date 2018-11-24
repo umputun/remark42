@@ -328,7 +328,7 @@ export default class Comment extends Component {
   copyComment({ username, time }) {
     const text = this.textNode.textContent;
 
-    copy(username + '\n' + time + '\n' + text);
+    copy(`<b>${username}</b>&nbsp;${time}<br>${text.replace(/\n+/g, '<br>')}`);
 
     this.setState({ isCopied: true }, () => {
       setTimeout(() => this.setState({ isCopied: false }), 3000);
