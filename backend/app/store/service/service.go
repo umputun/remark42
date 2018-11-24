@@ -101,8 +101,8 @@ func (s *DataStore) Vote(locator store.Locator, commentID string, userID string,
 		return comment, errors.Errorf("user %s already voted for %s", userID, commentID)
 	}
 
-	maxVotes := s.MaxVotes
-	if s.MaxVotes <= 0 {
+	maxVotes := s.MaxVotes // 0 value allowed and treated as "no comments allowed"
+	if s.MaxVotes < 0 {    // any negative value reset max votes to unlimited
 		maxVotes = UnlimitedVotes
 	}
 
