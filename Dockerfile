@@ -62,16 +62,16 @@ RUN \
     go build -o remark42 -ldflags "-X main.revision=${version} -s -w" ./app
 
 
-FROM node:10.6-alpine as build-frontend-deps
+FROM node:10.11-alpine as build-frontend-deps
 
 ARG CI
 
 RUN apk add --no-cache --update git
-ADD web/package.json /srv/web/package.json 
+ADD web/package.json /srv/web/package.json
 ADD web/package-lock.json /srv/web/package-lock.json
 RUN cd /srv/web && CI=true npm ci
 
-FROM node:10.6-alpine as build-frontend
+FROM node:10.11-alpine as build-frontend
 
 ARG CI
 ARG SKIP_FRONTEND_TEST
@@ -81,7 +81,7 @@ COPY --from=build-frontend-deps /srv/web/node_modules /srv/web/node_modules
 ADD web /srv/web
 RUN cd /srv/web && \
     if [ -z "$SKIP_FRONTEND_TEST" ] ; then npx run-p lint test build ; \
-    else echo "skip frontend tests and lint" ; npm run build ; fi && \ 
+    else echo "skip frontend tests and lint" ; npm run build ; fi && \
     rm -rf ./node_modules
 
 

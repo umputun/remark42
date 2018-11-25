@@ -1,4 +1,4 @@
-FROM node:10.6-alpine as build-frontend-deps
+FROM node:10.11-alpine as build-frontend-deps
 
 ARG CI
 ENV SKIP_FRONTEND_TEST=true
@@ -8,7 +8,7 @@ ADD web/package.json /srv/web/package.json
 ADD web/package-lock.json /srv/web/package-lock.json
 RUN cd /srv/web && CI=true npm ci
 
-FROM node:10.6-alpine as build-frontend
+FROM node:10.11-alpine as build-frontend
 
 ARG CI
 ARG NODE_ENV=production
@@ -32,7 +32,7 @@ ADD README.md /go/src/github.com/umputun/remark/
 ADD LICENSE /go/src/github.com/umputun/remark/
 COPY --from=build-frontend /srv/web/public/ web
 
-RUN \ 
+RUN \
     export WEB_ROOT=/go/src/github.com/umputun/remark/backend/web && \
     sed -i "s|https://demo.remark42.com|http://127.0.0.1:8080|g" ${WEB_ROOT}/*.js && \
     sed -i "/REMOVE-START/,/REMOVE-END/d" ${WEB_ROOT}/iframe.html && \
