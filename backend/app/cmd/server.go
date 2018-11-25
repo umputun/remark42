@@ -15,9 +15,9 @@ import (
 	"github.com/coreos/bbolt"
 	"github.com/go-pkgz/mongo"
 	"github.com/pkg/errors"
-	"github.com/umputun/remark/backend/app/notify"
 
 	"github.com/umputun/remark/backend/app/migrator"
+	"github.com/umputun/remark/backend/app/notify"
 	"github.com/umputun/remark/backend/app/rest/api"
 	"github.com/umputun/remark/backend/app/rest/auth"
 	"github.com/umputun/remark/backend/app/rest/cache"
@@ -138,6 +138,7 @@ type SSLGroup struct {
 	Cert         string `long:"cert" env:"CERT" description:"path to cert.pem file"`
 	Key          string `long:"key" env:"KEY" description:"path to key.pem file"`
 	ACMELocation string `long:"acme-location" env:"ACME_LOCATION" description:"dir where certificates will be stored by autocert manager" default:"./var/acme"`
+	ACMEEmail    string `long:"acme-email" env:"ACME_EMAIL" description:"admin email for certificate notifications"`
 }
 
 // serverApp holds all active objects
@@ -520,6 +521,13 @@ func (s *ServerCommand) makeSSLConfig() (config api.SSLConfig, err error) {
 		config.SSLMode = api.Auto
 		config.Port = s.SSL.Port
 		config.ACMELocation = s.SSL.ACMELocation
+		if s.SSL.ACMEEmail != "" {
+			config.ACMEEmail = s.SSL.ACMEEmail
+		} else if s.Admin.Type == "shared" && s.Admin.Shared.Email != "" {
+			config.ACMEEmail = s.Admin.Shared.Email
+		} else if u, e := url.Parse(s.RemarkURL); e == nil {
+			config.ACMEEmail = "admin@" + u.Hostname()
+		}
 	}
 	return config, err
 }

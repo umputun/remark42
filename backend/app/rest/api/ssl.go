@@ -33,6 +33,7 @@ type SSLConfig struct {
 	Key          string
 	Port         int
 	ACMELocation string
+	ACMEEmail    string
 }
 
 // httpToHTTPSRouter creates new router which does redirect from http to https server
@@ -47,7 +48,7 @@ func (s *Rest) httpToHTTPSRouter() chi.Router {
 	return router
 }
 
-// httpChallengeRouter creates new router which perform ACME "http-01" challenge response
+// httpChallengeRouter creates new router which performs ACME "http-01" challenge response
 // with default middlewares. This part is necessary to obtain certificate from LE.
 // If it receives not a acme challenge it performs redirect to https server.
 // Used in 'auto' ssl mode.
@@ -76,7 +77,7 @@ func (s *Rest) makeAutocertManager() *autocert.Manager {
 		Prompt:     autocert.AcceptTOS,
 		Cache:      autocert.DirCache(s.SSLConfig.ACMELocation),
 		HostPolicy: autocert.HostWhitelist(s.getRemarkHost()),
-		Email:      s.DataService.AdminStore.Email(""),
+		Email:      s.SSLConfig.ACMEEmail,
 	}
 }
 

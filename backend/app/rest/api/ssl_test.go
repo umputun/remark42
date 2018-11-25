@@ -8,15 +8,9 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
-	"time"
 
-	bolt "github.com/coreos/bbolt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	adminstore "github.com/umputun/remark/backend/app/store/admin"
-	"github.com/umputun/remark/backend/app/store/engine"
-	"github.com/umputun/remark/backend/app/store/service"
 )
 
 func TestSSL_Redirect(t *testing.T) {
@@ -51,7 +45,6 @@ func TestSSL_ACME_HTTPChallengeRouter(t *testing.T) {
 		SSLConfig: SSLConfig{
 			ACMELocation: "acme",
 		},
-		DataService: prepDataService(t), // for getting admin email
 	}
 
 	m := rest.makeAutocertManager()
@@ -93,18 +86,4 @@ func TestSSL_ACME_HTTPChallengeRouter(t *testing.T) {
 	body, err := ioutil.ReadAll(resp.Body)
 	require.Nil(t, err)
 	assert.Equal(t, "token", string(body))
-}
-
-func prepDataService(t *testing.T) *service.DataStore {
-	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDb, SiteID: "radio-t"})
-	require.Nil(t, err)
-
-	adminStore := adminstore.NewStaticStore("123456", []string{"a1", "a2"}, "admin@remark-42.com")
-
-	return &service.DataStore{
-		Interface:      b,
-		EditDuration:   5 * time.Minute,
-		MaxCommentSize: 4000,
-		AdminStore:     adminStore,
-	}
 }
