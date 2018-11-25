@@ -86,7 +86,7 @@ func (s *Rest) Run(port int) {
 		log.Printf("[INFO] activate https server in 'static' mode on port %d", s.SSLConfig.Port)
 
 		s.lock.Lock()
-		s.httpsServer = s.makeHTTPServer(s.SSLConfig.Port, s.routes())
+		s.httpsServer = s.makeHTTPSServer(s.SSLConfig.Port, s.routes())
 		s.httpServer = s.makeHTTPServer(port, s.httpToHTTPSRouter())
 		s.lock.Unlock()
 
