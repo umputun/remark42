@@ -17,7 +17,7 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 * Self-contained executable can be deployed directly to Linux, Windows and MacOS
 * Clean, lightweight and fully customizable UI
 * Multi-site mode from a single instance
-* Integration with automatic ssl via [nginx-le](https://github.com/umputun/nginx-le)
+* Integration with automatic ssl (direct and via [nginx-le](https://github.com/umputun/nginx-le))
 * [Privacy focused](#privacy)
 
 #
