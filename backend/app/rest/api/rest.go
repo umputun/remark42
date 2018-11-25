@@ -21,8 +21,8 @@ import (
 	"github.com/go-chi/render"
 	"github.com/pkg/errors"
 	"github.com/rakyll/statik/fs"
-	"github.com/umputun/remark/backend/app/notify"
 
+	"github.com/umputun/remark/backend/app/notify"
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/rest/auth"
 	"github.com/umputun/remark/backend/app/rest/cache"
@@ -86,7 +86,7 @@ func (s *Rest) Run(port int) {
 		log.Printf("[INFO] activate https server in 'static' mode on port %d", s.SSLConfig.Port)
 
 		s.lock.Lock()
-		s.httpsServer = s.makeHTTPServer(s.SSLConfig.Port, s.routes())
+		s.httpsServer = s.makeHTTPSServer(s.SSLConfig.Port, s.routes())
 		s.httpServer = s.makeHTTPServer(port, s.httpToHTTPSRouter())
 		s.lock.Unlock()
 
@@ -99,9 +99,24 @@ func (s *Rest) Run(port int) {
 		err := s.httpsServer.ListenAndServeTLS(s.SSLConfig.Cert, s.SSLConfig.Key)
 		log.Printf("[WARN] https server terminated, %s", err)
 	case Auto:
-		log.Printf("[WARN] autocert mode is not implemented yet")
-	}
+		log.Printf("[INFO] activate https server in 'auto' mode on port %d", s.SSLConfig.Port)
 
+		m := s.makeAutocertManager()
+		s.lock.Lock()
+		s.httpsServer = s.makeHTTPSAutocertServer(s.SSLConfig.Port, s.routes(), m)
+		s.httpServer = s.makeHTTPServer(port, s.httpChallengeRouter(m))
+		s.lock.Unlock()
+
+		go func() {
+			log.Printf("[INFO] activate http challenge server on port %d", port)
+
+			err := s.httpServer.ListenAndServe()
+			log.Printf("[WARN] http challenge server terminated, %s", err)
+		}()
+
+		err := s.httpsServer.ListenAndServeTLS("", "")
+		log.Printf("[WARN] https server terminated, %s", err)
+	}
 }
 
 // Shutdown rest http server

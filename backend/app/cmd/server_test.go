@@ -267,6 +267,48 @@ func TestServerApp_MainSignal(t *testing.T) {
 	assert.True(t, time.Since(st).Seconds() < 1, "should take about 500msec")
 }
 
+func Test_ACMEEmail(t *testing.T) {
+	cmd := ServerCommand{}
+	cmd.SetCommon(CommonOpts{RemarkURL: "https://remark.com:443", SharedSecret: "123456"})
+	p := flags.NewParser(&cmd, flags.Default)
+	args := []string{"--ssl.type=auto"}
+	_, err := p.ParseArgs(args)
+	require.Nil(t, err)
+	cfg, err := cmd.makeSSLConfig()
+	require.Nil(t, err)
+	assert.Equal(t, "admin@remark.com", cfg.ACMEEmail)
+
+	cmd = ServerCommand{}
+	cmd.SetCommon(CommonOpts{RemarkURL: "https://remark.com", SharedSecret: "123456"})
+	p = flags.NewParser(&cmd, flags.Default)
+	args = []string{"--ssl.type=auto", "--ssl.acme-email=adminname@adminhost.com"}
+	_, err = p.ParseArgs(args)
+	require.Nil(t, err)
+	cfg, err = cmd.makeSSLConfig()
+	require.Nil(t, err)
+	assert.Equal(t, "adminname@adminhost.com", cfg.ACMEEmail)
+
+	cmd = ServerCommand{}
+	cmd.SetCommon(CommonOpts{RemarkURL: "https://remark.com", SharedSecret: "123456"})
+	p = flags.NewParser(&cmd, flags.Default)
+	args = []string{"--ssl.type=auto", "--admin.type=shared", "--admin.shared.email=superadmin@admin.com"}
+	_, err = p.ParseArgs(args)
+	require.Nil(t, err)
+	cfg, err = cmd.makeSSLConfig()
+	require.Nil(t, err)
+	assert.Equal(t, "superadmin@admin.com", cfg.ACMEEmail)
+
+	cmd = ServerCommand{}
+	cmd.SetCommon(CommonOpts{RemarkURL: "https://remark.com:443", SharedSecret: "123456"})
+	p = flags.NewParser(&cmd, flags.Default)
+	args = []string{"--ssl.type=auto", "--admin.type=shared"}
+	_, err = p.ParseArgs(args)
+	require.Nil(t, err)
+	cfg, err = cmd.makeSSLConfig()
+	require.Nil(t, err)
+	assert.Equal(t, "admin@remark.com", cfg.ACMEEmail)
+}
+
 func prepServerApp(t *testing.T, duration time.Duration, fn func(o ServerCommand) ServerCommand) (*serverApp, context.Context) {
 	cmd := ServerCommand{}
 	cmd.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})

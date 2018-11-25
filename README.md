@@ -119,10 +119,12 @@ _this is the recommended way to run remark42_
 | notify.telegram.token   | NOTIFY_TELEGRAM_TOKEN   |                       | telegram token                                   |
 | notify.telegram.chan    | NOTIFY_TELEGRAM_CHAN    |                       | telegram channel                                 |
 | notify.telegram.timeout | NOTIFY_TELEGRAM_TIMEOUT |                       | telegram timeout                                 |
-| ssl.type                | SSL_TYPE                | none                  | https support, `none` - http, `static` - https   |
+| ssl.type                | SSL_TYPE                | none                  | `none`-http, `static`-https, `auto`-https + le   |
 | ssl.port                | SSL_PORT                | 8443                  | port for https server                            |
 | ssl.cert                | SSL_CERT                |                       | path to cert.pem file                            |
 | ssl.key                 | SSL_KEY                 |                       | path to key.pem file                             |
+| ssl.acme-location       | SSL_ACME_LOCATION       | `./var/acme`          | dir where obtained le-certs will be stored       |
+| ssl.acme-email          | SSL_ACME_EMAIL          |                       | admin email for receiving notifications from LE  |
 | max-comment             | MAX_COMMENT_SIZE        | 2048                  | comment's size limit                             |
 | max-votes               | MAX_VOTES               | `-1`                  | votes limit per comment, `-1` - unlimited        |
 | low-score               | LOW_SCORE               | `-5`                  | low score threshold                              |
