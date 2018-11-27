@@ -20,6 +20,7 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 * Integration with automatic ssl (direct and via [nginx-le](https://github.com/umputun/nginx-le))
 * [Privacy focused](#privacy)
 
+
 #
 
   - [Install](#install)
