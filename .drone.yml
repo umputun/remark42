@@ -10,6 +10,7 @@ pipeline:
       - sleep 5
       - nslookup mongo
       - nslookup mongo | grep Address | awk '{print $3}' > backend/.mongo
+      - cat backend/.mongo
       - cd backend/app
       - go build -v ./...
 
