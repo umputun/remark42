@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-pkgz/repeater"
 	"github.com/pkg/errors"
 )
 
@@ -38,40 +39,43 @@ func NewTelegram(token string, channelName string, timeout time.Duration, api st
 	}
 	log.Printf("[DEBUG] create new telegram notifier for cham %s, timeout=%s, api=%s", channelName, res.timeout, res.timeout)
 
-	client := http.Client{Timeout: telegramTimeOut}
-	resp, err := client.Get(fmt.Sprintf("%s%s/getMe", res.apiPrefix, token))
-	if err != nil {
-		return nil, errors.Wrap(err, "can't initialize telegram notifications")
-	}
-	defer func() {
-		if err = resp.Body.Close(); err != nil {
-			log.Printf("[WARN] can't close request body, %s", err)
+	err := repeater.NewDefault(5, time.Millisecond*250).Do(func() error {
+		client := http.Client{Timeout: telegramTimeOut}
+		resp, err := client.Get(fmt.Sprintf("%s%s/getMe", res.apiPrefix, token))
+		if err != nil {
+			return errors.Wrap(err, "can't initialize telegram notifications")
 		}
-	}()
+		defer func() {
+			if err = resp.Body.Close(); err != nil {
+				log.Printf("[WARN] can't close request body, %s", err)
+			}
+		}()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, errors.Errorf("unexpected telegram status code %d", resp.StatusCode)
-	}
-
-	tgResp := struct {
-		OK     bool `json:"ok"`
-		Result struct {
-			FirstName string `json:"first_name"`
-			ID        uint64 `json:"id"`
-			IsBot     bool   `json:"is_bot"`
-			UserName  string `json:"username"`
+		if resp.StatusCode != http.StatusOK {
+			return errors.Errorf("unexpected telegram status code %d", resp.StatusCode)
 		}
-	}{}
 
-	if err = json.NewDecoder(resp.Body).Decode(&tgResp); err != nil {
-		return nil, errors.Wrap(err, "can't decode response")
-	}
+		tgResp := struct {
+			OK     bool `json:"ok"`
+			Result struct {
+				FirstName string `json:"first_name"`
+				ID        uint64 `json:"id"`
+				IsBot     bool   `json:"is_bot"`
+				UserName  string `json:"username"`
+			}
+		}{}
 
-	if !tgResp.OK || !tgResp.Result.IsBot {
-		return nil, errors.Errorf("unexpected telegram response %+v", tgResp)
-	}
+		if err = json.NewDecoder(resp.Body).Decode(&tgResp); err != nil {
+			return errors.Wrap(err, "can't decode response")
+		}
 
-	return &res, nil
+		if !tgResp.OK || !tgResp.Result.IsBot {
+			return errors.Errorf("unexpected telegram response %+v", tgResp)
+		}
+		return nil
+	})
+
+	return &res, err
 }
 
 // Send to telegram channel
