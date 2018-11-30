@@ -22,7 +22,7 @@ type Telegram struct {
 	timeout     time.Duration
 }
 
-const telegramTimeOut = 2500 * time.Millisecond
+const telegramTimeOut = 5000 * time.Millisecond
 const telegramAPIPrefix = "https://api.telegram.org/bot"
 
 // NewTelegram makes telegram bot for notifications
