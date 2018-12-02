@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
@@ -85,6 +86,96 @@ func TestRest_filterComments(t *testing.T) {
 		return c.Text == "test test #1" || c.Text == "test test #3"
 	})
 	assert.Equal(t, 2, len(r), "one comment filtered")
+}
+
+func TestRest_RunStaticSSLMode(t *testing.T) {
+	srv := Rest{
+		Authenticator: auth.Authenticator{},
+		AvatarProxy: &proxy.Avatar{
+			Store:     avatar.NewLocalFS("/tmp", 300),
+			RoutePath: "/api/v1/avatar",
+		},
+		ImageProxy: &proxy.Image{},
+		SSLConfig: SSLConfig{
+			SSLMode: Static,
+			Port:    8443,
+			Key:     "../../cmd/testdata/key.pem",
+			Cert:    "../../cmd/testdata/cert.pem",
+		},
+		RemarkURL: "https://localhost:8443",
+	}
+
+	go func() {
+		srv.Run(8080)
+	}()
+
+	time.Sleep(100 * time.Millisecond) // let server start
+
+	client := http.Client{
+		// prevent http redirect
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+
+		// allow self-signed certificate
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	}
+
+	resp, err := client.Get("http://localhost:8080/blah?param=1")
+	require.Nil(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, 307, resp.StatusCode)
+	assert.Equal(t, "https://localhost:8443/blah?param=1", resp.Header.Get("Location"))
+
+	resp, err = client.Get("https://localhost:8443/ping")
+	require.Nil(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, 200, resp.StatusCode)
+	body, err := ioutil.ReadAll(resp.Body)
+	assert.Nil(t, err)
+	assert.Equal(t, "pong", string(body))
+
+	srv.Shutdown()
+}
+
+func TestRest_RunAutocertModeHTTPOnly(t *testing.T) {
+	srv := Rest{
+		Authenticator: auth.Authenticator{},
+		AvatarProxy: &proxy.Avatar{
+			Store:     avatar.NewLocalFS("/tmp", 300),
+			RoutePath: "/api/v1/avatar",
+		},
+		ImageProxy: &proxy.Image{},
+		SSLConfig: SSLConfig{
+			SSLMode: Auto,
+			Port:    8443,
+		},
+		RemarkURL: "https://localhost:8443",
+	}
+
+	go func() {
+		// can't check https server locally, just only http server
+		srv.Run(8080)
+	}()
+
+	time.Sleep(100 * time.Millisecond) // let server start
+
+	client := http.Client{
+		// prevent http redirect
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+
+	resp, err := client.Get("http://localhost:8080/blah?param=1")
+	require.Nil(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, 307, resp.StatusCode)
+	assert.Equal(t, "https://localhost:8443/blah?param=1", resp.Header.Get("Location"))
+
+	srv.Shutdown()
 }
 
 func prep(t *testing.T) (srv *Rest, ts *httptest.Server) {
