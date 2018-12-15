@@ -9,9 +9,8 @@
   font-size: 12px;
   line-height: 10px;
   text-align: center;
-  border: 1px solid #ddd;
+  border: 1px solid;
   border-radius: 2px;
-  color: #ddd;
 
   &:hover {
     border-color: #0aa;
@@ -19,9 +18,6 @@
   }
 
   &.comment__action_selected {
-    background: #ddd;
-    color: #fff;
-
     &:hover {
       background: #0aa;
     }

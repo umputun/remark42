@@ -9,3 +9,5 @@ require('./__id/user-info__id.scss');
 require('./__preloader/user-info__preloader.scss');
 require('./__title/user-info__title.scss');
 require('./__avatar/user-info__avatar.scss');
+
+require('./_theme/_light/user-info_theme_light.scss');

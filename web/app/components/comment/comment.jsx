@@ -410,7 +410,10 @@ export default class Comment extends Component {
                 {o.user.name}
               </a>
             </div>{' '}
-            <div className={b('comment__text', { mix: 'raw-content' })} dangerouslySetInnerHTML={{ __html: o.text }} />
+            <div
+              className={b('comment__text', { mix: b('raw-content', {}, { theme: mods.theme }) })}
+              dangerouslySetInnerHTML={{ __html: o.text }}
+            />
           </div>
         </article>
       );
@@ -529,7 +532,7 @@ export default class Comment extends Component {
           </div>
 
           <div
-            className={b('comment__text', { mix: 'raw-content' })}
+            className={b('comment__text', { mix: b('raw-content', {}, { theme: mods.theme }) })}
             ref={r => (this.textNode = r)}
             dangerouslySetInnerHTML={{ __html: o.text }}
           />

@@ -14,4 +14,7 @@ require('./__sort/auth-panel__sort.scss');
 require('./__user-id/auth-panel__user-id.scss');
 require('./__sign-out/auth-panel__sign-out.scss');
 
+require('./_theme/_dark/auth-panel_theme_dark.scss');
+require('./_theme/_light/auth-panel_theme_light.scss');
+
 require('./_logged-in/auth-panel_logged-in.scss');

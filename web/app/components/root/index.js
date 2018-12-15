@@ -1,7 +1,4 @@
-import withTheme from 'components/with-theme';
-import Root from './root';
-
-export default withTheme(Root);
+export { default } from './root';
 
 require('./root.scss');
 
@@ -13,3 +10,6 @@ require('./__pinned-comments/root__pinned-comments.scss');
 require('./__show-more/root__show-more.scss');
 require('./__thread/root__thread.scss');
 require('./__threads/root__threads.scss');
+
+require('./_theme/_dark/root_theme_dark.scss');
+require('./_theme/_light/root_theme_light.scss');

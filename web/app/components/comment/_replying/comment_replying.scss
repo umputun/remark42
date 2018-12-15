@@ -1,6 +1,6 @@
 .comment_replying {
   .comment__input {
-    border: 12px solid #eee;
+    border: 12px solid;
   }
 
   .comment__score {
@@ -10,7 +10,7 @@
 
   /* it isn't mobile first, but it's fine here */
   @media (-moz-touch-enabled: 1) and (max-width: 768px), (pointer: coarse) and (max-width: 768px) {
-    border: 8px solid #eee;
+    border: 8px solid;
     padding-bottom: 0;
 
     .comment__body {

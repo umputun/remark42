@@ -40,6 +40,7 @@ export default class Input extends Component {
   shouldComponentUpdate(nextProps, nextState) {
     return (
       nextProps.id !== this.props.id ||
+      nextProps.mods !== this.props.mods ||
       nextProps.pid !== this.props.pid ||
       nextProps.value !== this.props.value ||
       nextProps.errorMessage !== this.props.errorMessage ||
@@ -171,7 +172,7 @@ export default class Input extends Component {
         !!preview && (
           <div className="input__preview-wrapper">
             <div
-              className={b('input__preview', { mix: 'raw-content' })}
+              className={b('input__preview', { mix: b('raw-content', {}, { theme: mods.theme }) })}
               dangerouslySetInnerHTML={{ __html: preview }}
             />
           </div>

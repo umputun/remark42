@@ -2,12 +2,12 @@
 import { h } from 'preact';
 import store from 'common/store';
 
-const withTheme = Component => {
+const withTheme = PlainComponent => {
   const ThemedComponent = props => {
     const { mods = {} } = props;
     const theme = store.get('theme');
 
-    return <Component {...props} mods={{ ...mods, theme }} />;
+    return <PlainComponent {...props} mods={{ theme, ...mods }} />;
   };
 
   return ThemedComponent;

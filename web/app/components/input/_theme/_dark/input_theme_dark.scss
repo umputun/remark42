@@ -1,0 +1,38 @@
+.input_theme_dark {
+  border-color: #333;
+  background: #22201c; /* try to fix textarea blinking in Safari */
+
+  .input__actions {
+    background: #333;
+  }
+
+  .input__button_type_preview {
+    background: #22201c;
+    color: #ddd;
+  }
+
+  .input__button_type_send {
+    color: #ddd;
+  }
+
+  .input__error {
+    border-top: 8px solid #333;
+    background: #672323;
+    color: #f98989;
+  }
+
+  .input__field {
+    background: #22201c;
+    color: #eee;
+  }
+
+  .input__preview {
+    border-color: #eee;
+    background: #fff;
+    color: #333;
+  }
+
+  .input__preview-wrapper {
+    background: #eee;
+  }
+}

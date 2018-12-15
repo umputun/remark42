@@ -40,6 +40,7 @@ export default class Root extends Component {
       isLoaded: false,
       isCommentsListLoading: false,
       user: {},
+      theme: THEMES[0],
       sort,
       commentsShown: maxShownComments || MAX_SHOWN_ROOT_COMMENTS,
     };
@@ -65,8 +66,10 @@ export default class Root extends Component {
 
     if (THEMES.includes(theme)) {
       store.set('theme', theme);
+      this.setState({ theme });
     } else {
       store.set('theme', THEMES[0]);
+      this.setState({ theme: THEMES[0] });
     }
 
     window.addEventListener('message', this.onThemeUpdate);
@@ -124,6 +127,7 @@ export default class Root extends Component {
       const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
       if (data.theme && THEMES.includes(data.theme)) {
         store.set('theme', data.theme);
+        this.setState({ theme: data.theme });
       }
     } catch (e) {}
   }
@@ -257,12 +261,13 @@ export default class Root extends Component {
       isCommentsListLoading,
       bannedUsers,
       commentsShown,
+      theme,
     }
   ) {
     if (!isLoaded) {
       return (
         <div id={NODE_ID}>
-          <div className={b('root', props)}>
+          <div className={b('root', props, { theme })}>
             <Preloader mix="root__preloader" />
           </div>
         </div>
@@ -276,7 +281,7 @@ export default class Root extends Component {
 
     return (
       <div id={NODE_ID}>
-        <div className={b('root', props)}>
+        <div className={b('root', props, { theme })}>
           <AuthPanel
             user={user}
             sort={sort}
