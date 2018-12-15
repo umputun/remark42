@@ -1,6 +1,8 @@
 import 'components/raw-content';
+import withTheme from 'components/with-theme';
+import Input from './input';
 
-export { default } from './input';
+export default withTheme(Input);
 
 require('./input.scss');
 

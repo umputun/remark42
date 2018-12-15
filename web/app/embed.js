@@ -29,6 +29,9 @@ function init() {
 
   remark_config.url = (remark_config.url || window.location.href).split('#')[0];
 
+  window.REMARK42 = window.REMARK42 || {};
+  window.REMARK42.changeTheme = changeTheme;
+
   const query = Object.keys(remark_config)
     .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(remark_config[key])}`)
     .join('&');
@@ -243,5 +246,9 @@ function init() {
     if (!iframe.contains(e.target)) {
       iframe.contentWindow.postMessage(JSON.stringify({ clickOutside: true }), '*');
     }
+  }
+
+  function changeTheme(theme) {
+    iframe.contentWindow.postMessage(JSON.stringify({ theme }), '*');
   }
 }

@@ -1,4 +1,7 @@
-export { default } from './blocked-users';
+import withTheme from 'components/with-theme';
+import BlockedUsers from './blocked-users';
+
+export default withTheme(BlockedUsers);
 
 require('./blocked-users.scss');
 

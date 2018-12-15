@@ -1,4 +1,7 @@
-export { default } from './auth-panel';
+import withTheme from 'components/with-theme';
+import AuthPanel from './auth-panel';
+
+export default withTheme(AuthPanel);
 
 require('./auth-panel.scss');
 

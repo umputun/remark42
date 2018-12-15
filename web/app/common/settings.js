@@ -1,3 +1,5 @@
+import { THEMES } from './constants';
+
 const querySettings =
   window.location.search
     .substr(1)
@@ -12,3 +14,4 @@ export const siteId = querySettings['site_id'];
 export const url = querySettings['url'];
 export const maxShownComments = querySettings['max_shown_comments'];
 export const token = querySettings['token'];
+export const theme = querySettings['theme'] || THEMES[0];

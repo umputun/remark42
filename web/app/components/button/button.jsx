@@ -44,13 +44,18 @@ export default class Button extends Component {
   }
 
   render(props, state) {
-    const { children, mix, mods, ...rest } = props;
+    const { children } = props;
     const { isClicked, isFocused } = state;
+
+    const localProps = { ...props };
+    delete localProps.children;
+    delete localProps.mix;
+    delete localProps.mods;
 
     return (
       <button
-        {...rest}
-        className={b('button', { mix, mods }, { clicked: isClicked, focused: isFocused })}
+        {...localProps}
+        className={b('button', props, { clicked: isClicked, focused: isFocused })}
         onMouseDown={this.onMouseDown}
         onBlur={this.onBlur}
         onFocus={this.onFocus}

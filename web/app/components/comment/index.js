@@ -1,6 +1,8 @@
 import 'components/raw-content';
+import withTheme from 'components/with-theme';
+import Comment from './comment';
 
-export { default } from './comment';
+export default withTheme(Comment);
 
 require('./comment.scss');
 

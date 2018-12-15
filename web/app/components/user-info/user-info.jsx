@@ -51,7 +51,7 @@ class UserInfo extends Component {
 
     return (
       <div className={b('user-info', props)}>
-        <Avatar className="user-info__avatar" picture={isDefaultPicture ? null : picture} />
+        <Avatar mix="user-info__avatar" picture={isDefaultPicture ? null : picture} />
         <p className="user-info__title">Last comments by {name}</p>
         <p className="user-info__id">{id}</p>
 
