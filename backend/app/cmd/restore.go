@@ -10,7 +10,7 @@ type RestoreCommand struct {
 	ImportPath string `short:"p" long:"path" env:"BACKUP_PATH" default:"./var/backup" description:"export path"`
 	ImportFile string `short:"f" long:"file" default:"userbackup-{{.SITE}}-{{.YYYYMMDD}}.gz" description:"file name" required:"true"`
 
-	Site    string        `long:"site" env:"SITE" default:"remark" description:"site name"`
+	Site    string        `short:"s" long:"site" env:"SITE" default:"remark" description:"site name"`
 	Timeout time.Duration `long:"timeout" default:"15m" description:"import timeout"`
 	CommonOpts
 }
