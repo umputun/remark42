@@ -1,12 +1,13 @@
 /** @jsx h */
 import { h, Component } from 'preact';
 
-import UserId from './__user-id/auth-panel__user-id';
 import Dropdown, { DropdownItem } from 'components/dropdown';
 import Button from 'components/button';
 import { PROVIDER_NAMES, IS_STORAGE_AVAILABLE, IS_THIRD_PARTY } from 'common/constants';
 import { requestDeletion } from 'utils/email';
 import { getHandleClickProps } from 'common/accessibility';
+
+import UserId from './__user-id';
 
 export default class AuthPanel extends Component {
   constructor(props) {

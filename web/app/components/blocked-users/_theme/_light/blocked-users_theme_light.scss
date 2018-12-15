@@ -1,0 +1,11 @@
+.blocked-users_theme_light {
+  .blocked-users__action {
+    &::before {
+      color: #777;
+    }
+  }
+
+  .blocked-users__user-id {
+    color: #888;
+  }
+}

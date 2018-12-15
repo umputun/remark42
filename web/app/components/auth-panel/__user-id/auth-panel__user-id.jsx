@@ -1,8 +1,8 @@
 /** @jsx h */
 import { h } from 'preact';
 
-export default ({ id }) => (
-  <div className="auth-panel__user-id" title={id}>
-    {id}
+export default props => (
+  <div className={b('auth-panel__user-id', props)} title={props.id}>
+    {props.id}
   </div>
 );

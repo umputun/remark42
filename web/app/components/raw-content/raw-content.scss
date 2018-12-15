@@ -44,7 +44,6 @@
   blockquote {
     margin: 0;
     padding: 8px 8px 8px 24px;
-    background: #fafafa;
     border-radius: 2px;
 
     + p {
@@ -66,16 +65,10 @@
     th,
     td {
       padding: 6px 13px;
-      border: 1px solid #dfe2e5;
     }
 
     tr {
-      background-color: #fff;
       border-top: 1px solid #b7dddd;
-
-      &:nth-child(2n) {
-        background-color: #f6f8fa;
-      }
     }
   }
 
@@ -95,7 +88,6 @@
     word-wrap: normal;
     font-size: 85%;
     line-height: 1.45;
-    background-color: #f6f8fa;
     border-radius: 3px;
 
     &:first-child {

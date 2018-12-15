@@ -282,7 +282,8 @@ Add this snippet to the bottom of web page:
   var remark_config = {
     site_id: 'YOUR_SITE_ID',
     url: 'PAGE_URL', // optional param; if it isn't defined window.location.href will be used
-    max_shown_comments: 10, // optional param; if it isn't defined default value (15) will be used 
+    max_shown_comments: 10, // optional param; if it isn't defined default value (15) will be used
+    theme: 'dark', // optional param; if it isn't defined default value ('light') will be used 
   };
 
   (function() {
@@ -300,6 +301,19 @@ And then add this node in the place where you want to see Remark42 widget:
 ``` 
 
 After that widget will be rendered inside this node.
+
+##### Themes
+
+Right now Remark has two themes: light and dark.
+You can pick one using configuration object,
+but there is also a possibility to switch between themes in runtime.
+For this purpose Remark adds to `window` object named `REMARK42`, 
+which contains function `changeTheme`.
+Just call this function and pass a name of the theme that you want to turn on:
+
+```js
+window.REMARK42.changeTheme('light');
+```      
 
 #### Last comments
 

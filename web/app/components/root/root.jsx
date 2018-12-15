@@ -9,9 +9,10 @@ import {
   DEFAULT_SORT,
   COOKIE_SORT_KEY,
   MAX_SHOWN_ROOT_COMMENTS,
+  THEMES,
 } from 'common/constants';
 import { getCookie, setCookie } from 'common/cookies';
-import { siteId, url, maxShownComments } from 'common/settings';
+import { siteId, url, maxShownComments, theme } from 'common/settings';
 import store from 'common/store';
 
 import AuthPanel from 'components/auth-panel';
@@ -39,6 +40,7 @@ export default class Root extends Component {
       isLoaded: false,
       isCommentsListLoading: false,
       user: {},
+      theme: THEMES[0],
       sort,
       commentsShown: maxShownComments || MAX_SHOWN_ROOT_COMMENTS,
     };
@@ -55,11 +57,22 @@ export default class Root extends Component {
     this.onUnblockSomeone = this.onUnblockSomeone.bind(this);
     this.checkUrlHash = this.checkUrlHash.bind(this);
     this.showMore = this.showMore.bind(this);
+    this.onThemeUpdate = this.onThemeUpdate.bind(this);
   }
 
   componentWillMount() {
     store.onUpdate('comments', comments => this.setState({ comments }));
     store.onUpdate('info', info => this.setState({ info }));
+
+    if (THEMES.includes(theme)) {
+      store.set('theme', theme);
+      this.setState({ theme });
+    } else {
+      store.set('theme', THEMES[0]);
+      this.setState({ theme: THEMES[0] });
+    }
+
+    window.addEventListener('message', this.onThemeUpdate);
   }
 
   componentDidMount() {
@@ -107,6 +120,16 @@ export default class Root extends Component {
         }, 500);
       }
     }
+  }
+
+  onThemeUpdate(event) {
+    try {
+      const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+      if (data.theme && THEMES.includes(data.theme)) {
+        store.set('theme', data.theme);
+        this.setState({ theme: data.theme });
+      }
+    } catch (e) {}
   }
 
   onSignOut() {
@@ -238,12 +261,13 @@ export default class Root extends Component {
       isCommentsListLoading,
       bannedUsers,
       commentsShown,
+      theme,
     }
   ) {
     if (!isLoaded) {
       return (
         <div id={NODE_ID}>
-          <div className="root">
+          <div className={b('root', props, { theme })}>
             <Preloader mix="root__preloader" />
           </div>
         </div>
@@ -257,7 +281,7 @@ export default class Root extends Component {
 
     return (
       <div id={NODE_ID}>
-        <div className="root">
+        <div className={b('root', props, { theme })}>
           <AuthPanel
             user={user}
             sort={sort}

@@ -1,4 +1,7 @@
-export { default } from './auth-panel';
+import withTheme from 'components/with-theme';
+import AuthPanel from './auth-panel';
+
+export default withTheme(AuthPanel);
 
 require('./auth-panel.scss');
 
@@ -10,5 +13,8 @@ require('./__sort/auth-panel__sort.scss');
 
 require('./__user-id/auth-panel__user-id.scss');
 require('./__sign-out/auth-panel__sign-out.scss');
+
+require('./_theme/_dark/auth-panel_theme_dark.scss');
+require('./_theme/_light/auth-panel_theme_light.scss');
 
 require('./_logged-in/auth-panel_logged-in.scss');

@@ -39,6 +39,8 @@ export const BLOCKING_DURATIONS = [
   },
 ];
 
+export const THEMES = ['light', 'dark'];
+
 /**
  * Defines if browser storage features (cookies, localsrotage)
  * are available or blocked via browser preferences

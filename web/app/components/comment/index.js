@@ -1,6 +1,8 @@
 import 'components/raw-content';
+import withTheme from 'components/with-theme';
+import Comment from './comment';
 
-export { default } from './comment';
+export default withTheme(Comment);
 
 require('./comment.scss');
 
@@ -51,3 +53,6 @@ require('./_useless/comment_useless.scss');
 require('./_view/_admin/comment_view_admin.scss');
 require('./_view/_preview/comment_view_preview.scss');
 require('./_view/_user/comment_view_user.scss');
+
+require('./_theme/_dark/comment_theme_dark.scss');
+require('./_theme/_light/comment_theme_light.scss');

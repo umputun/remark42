@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -15,7 +15,32 @@
       max-width: 800px;
       margin: 40px;
     }
+
+    .document_theme_dark {
+      background: #22201c;
+      color: #ddd;
+    }
+
+    .document_theme_dark a {
+      color: #5e5eff;
+    }
   </style>
+
+  <script>
+    function toggleTheme() {
+      var body = document.querySelector('body');
+
+      if (body.classList.contains('document_theme_dark')) {
+        body.classList.add('document_theme_light');
+        body.classList.remove('document_theme_dark');
+        window.REMARK42.changeTheme('light');
+      } else {
+        body.classList.add('document_theme_dark');
+        body.classList.remove('document_theme_light');
+        window.REMARK42.changeTheme('dark');
+      }
+    }
+  </script>
 </head>
 <body>
   <div class="container">
@@ -26,6 +51,7 @@
       <li><a href="/web/last-comments.html">Last comments widget</a></li>
       <li><a href="/web/counter.html">Counter widget</a></li>
     </ul>
+    <p><Button onclick="toggleTheme()">Toggle theme</Button></p>
     <div id="remark42"></div>
   </div>
 

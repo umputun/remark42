@@ -1,6 +1,8 @@
 import 'components/raw-content';
+import withTheme from 'components/with-theme';
+import Input from './input';
 
-export { default } from './input';
+export default withTheme(Input);
 
 require('./input.scss');
 
@@ -20,3 +22,6 @@ require('./__rss/input__rss.scss');
 require('./__rss-link/input__rss-link.scss');
 require('./__markdown/input__markdown.scss');
 require('./__markdown-link/input__markdown-link.scss');
+
+require('./_theme/_dark/input_theme_dark.scss');
+require('./_theme/_light/input_theme_light.scss');

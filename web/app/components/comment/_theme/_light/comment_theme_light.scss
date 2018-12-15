@@ -1,0 +1,94 @@
+.comment_theme_light {
+  border-bottom: 1px solid #fcfcfc;
+
+  .comment__action_type_collapse {
+    border-color: #ddd;
+    color: #ddd;
+
+    &.comment__action_selected {
+      background: #ddd;
+      color: #fff;
+    }
+  }
+
+  .comment__action_type_delete {
+    color: #a6a6a6;
+  }
+
+  .comment__action_type_edit {
+    color: #a6a6a6;
+  }
+
+  .comment__action {
+    + .comment__controls {
+      &::before {
+        color: #777;
+      }
+    }
+  }
+
+  .comment__control_view_inactive {
+    &,
+    &:hover,
+    &:focus {
+      color: #999;
+    }
+  }
+
+  .comment__edit-timer {
+    color: #a6a6a6;
+    + .comment__controls {
+      &::before {
+        color: #777;
+      }
+    }
+  }
+
+  .comment__score {
+    color: #c4c4c4;
+  }
+
+  .comment__status {
+    color: #999;
+  }
+
+  .comment__time {
+    color: #999;
+  }
+
+  .comment__user-id {
+    color: #888;
+  }
+
+  .comment__username {
+    color: #777;
+  }
+
+  &.comment_editing {
+    .comment__input {
+      border-color: #eee;
+    }
+
+    @media (-moz-touch-enabled: 1) and (max-width: 768px), (pointer: coarse) and (max-width: 768px) {
+      border-color: #eee;
+    }
+  }
+
+  &.comment_replying {
+    .comment__input {
+      border-color: #eee;
+    }
+
+    @media (-moz-touch-enabled: 1) and (max-width: 768px), (pointer: coarse) and (max-width: 768px) {
+      border-color: #eee;
+    }
+  }
+
+  &.comment_view_preview {
+    .comment__info {
+      &::after {
+        color: #777;
+      }
+    }
+  }
+}
