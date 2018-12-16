@@ -131,6 +131,7 @@ _this is the recommended way to run remark42_
 | low-score               | LOW_SCORE               | `-5`                  | low score threshold                              |
 | critical-score          | CRITICAL_SCORE          | `-10`                 | critical score threshold                         |
 | edit-time               | EDIT_TIME               | `5m`                  | edit window                                      |
+| read-age                | READONLY_AGE            |                       | read-only age of comments, days                  |
 | img-proxy               | IMG_PROXY               | `false`               | enable http->https proxy for images              |
 | dbg                     | DEBUG                   | `false`               | debug mode                                       |
 | dev-passwd              | DEV_PASSWD              |                       | password for `dev` user                          |

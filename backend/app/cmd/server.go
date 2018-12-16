@@ -48,7 +48,7 @@ type ServerCommand struct {
 	MaxVotes       int           `long:"max-votes" env:"MAX_VOTES" default:"-1" description:"maximum number of votes per comment"`
 	LowScore       int           `long:"low-score" env:"LOW_SCORE" default:"-5" description:"low score threshold"`
 	CriticalScore  int           `long:"critical-score" env:"CRITICAL_SCORE" default:"-10" description:"critical score threshold"`
-	ReadOnlyAge    int           `long:"read-age" env:"READONLY_AGE" default:"0" description:"read-only age of comments"`
+	ReadOnlyAge    int           `long:"read-age" env:"READONLY_AGE" default:"0" description:"read-only age of comments, days"`
 	EditDuration   time.Duration `long:"edit-time" env:"EDIT_TIME" default:"5m" description:"edit window"`
 	Port           int           `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
 	WebRoot        string        `long:"web-root" env:"REMARK_WEB_ROOT" default:"./web" description:"web root directory"`
