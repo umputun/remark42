@@ -1,15 +1,15 @@
 .user-info {
-  border: 1px solid;
-  border-radius: 2px;
   position: absolute;
   top: 0;
-  bottom: 0;
   right: 0;
-  width: 100%;
-  padding: 10px;
-  box-sizing: border-box;
-
+  bottom: 0;
   overflow: inherit;
   overflow-x: hidden;
   overflow-y: auto;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #efefef;
+  border-radius: 2px;
+  background: #fff;
 }

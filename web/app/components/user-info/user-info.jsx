@@ -36,7 +36,7 @@ class UserInfo extends Component {
 
   globalOnKeyDown(e) {
     // ESCAPE key pressed
-    if (e.keyCode == 27) {
+    if (e.keyCode === 27) {
       const data = JSON.stringify({ isUserInfoShown: false });
       window.parent.postMessage(data, '*');
     }
