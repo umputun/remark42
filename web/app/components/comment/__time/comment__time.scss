@@ -4,6 +4,10 @@
   vertical-align: middle;
   text-decoration: none;
 
+  &:first-child {
+    margin-left: 0;
+  }
+
   &:hover {
     text-decoration: underline;
   }
