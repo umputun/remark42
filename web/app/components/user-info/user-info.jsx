@@ -51,11 +51,11 @@ class UserInfo extends Component {
 
     return (
       <div className={b('user-info', props)}>
-        <Avatar mix="user-info__avatar" picture={isDefaultPicture ? null : picture} />
+        <Avatar mods={{ theme: 'light' }} mix="user-info__avatar" picture={isDefaultPicture ? null : picture} />
         <p className="user-info__title">Last comments by {name}</p>
         <p className="user-info__id">{id}</p>
 
-        {!!comments && <LastCommentsList isLoading={isLoading} comments={comments} />}
+        {!!comments && <LastCommentsList mods={{ theme: 'light' }} isLoading={isLoading} comments={comments} />}
       </div>
     );
   }
