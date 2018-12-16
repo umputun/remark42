@@ -77,8 +77,13 @@ func (m *Migrator) importCtrl(w http.ResponseWriter, r *http.Request) {
 
 	go func(siteID string, tmpfile string) {
 		m.setBusy(siteID, true)
-		defer m.setBusy(siteID, false)
-		defer os.Remove(tmpfile)
+
+		defer func() {
+			m.setBusy(siteID, false)
+			if err := os.Remove(tmpfile); err != nil {
+				log.Printf("[WARN] failed to remove tmp file %s, %v", tmpfile, err)
+			}
+		}()
 
 		fh, err := os.Open(tmpfile)
 		if err != nil {
