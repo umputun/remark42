@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
+	"runtime"
+	"syscall"
 
 	"github.com/hashicorp/logutils"
 	"github.com/jessevdk/go-flags"
@@ -71,4 +74,22 @@ func setupLog(dbg bool) {
 		filter.MinLevel = logutils.LogLevel("DEBUG")
 	}
 	log.SetOutput(filter)
+}
+
+func init() {
+	// catch SIGQUIT and print stack traces
+	sigChan := make(chan os.Signal)
+	go func() {
+		for range sigChan {
+			log.Print("[INFO] SIGQUIT detected")
+			maxSize := 5 * 1024 * 1024
+			stacktrace := make([]byte, maxSize)
+			length := runtime.Stack(stacktrace, true)
+			if length > maxSize {
+				length = maxSize
+			}
+			fmt.Println(string(stacktrace[:length]))
+		}
+	}()
+	signal.Notify(sigChan, syscall.SIGQUIT)
 }
