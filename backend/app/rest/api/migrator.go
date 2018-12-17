@@ -41,7 +41,9 @@ type KeyStore interface {
 
 func (m *Migrator) withRoutes(router chi.Router) chi.Router {
 	router.Get("/export", m.exportCtrl)
+
 	router.Post("/import", m.importCtrl)
+	router.Post("/import/form", m.importFormCtrl)
 	router.Get("/import/wait", m.importWaitCtrl)
 	return router
 }
@@ -57,50 +59,43 @@ func (m *Migrator) importCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var importer migrator.Importer
-	switch r.URL.Query().Get("provider") {
-	case "disqus":
-		importer = m.DisqusImporter
-	case "wordpress":
-		importer = m.WordPressImporter
-	default:
-		importer = m.NativeImporter
-	}
-
-	log.Printf("[DEBUG] import request for site=%s, provider=%s", siteID, r.URL.Query().Get("provider"))
-
 	tmpfile, err := m.saveTemp(r.Body)
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't save request to temp file")
 		return
 	}
 
-	// import runs in background and sets busy flag for site
-	go func(siteID string, tmpfile string) {
-		m.setBusy(siteID, true)
+	go m.runImport(siteID, r.URL.Query().Get("provider"), tmpfile) // import runs in background and sets busy flag for site
 
-		defer func() {
-			m.setBusy(siteID, false)
-			if err := os.Remove(tmpfile); err != nil {
-				log.Printf("[WARN] failed to remove tmp file %s, %v", tmpfile, err)
-			}
-		}()
+	render.Status(r, http.StatusAccepted)
+	render.JSON(w, r, JSON{"status": "import request accepted"})
+}
 
-		fh, err := os.Open(tmpfile)
-		if err != nil {
-			log.Printf("[WARN] import failed, %v", err)
-			return
-		}
+// POST /import/form?secret=key&site=site-id&provider=disqus|remark|wordpress
+// imports comments from form body.
+func (m *Migrator) importFormCtrl(w http.ResponseWriter, r *http.Request) {
+	siteID := r.URL.Query().Get("site")
 
-		size, err := importer.Import(fh, siteID)
-		if err != nil {
-			log.Printf("[WARN] import failed, %v", err)
-			return
-		}
-		m.Cache.Flush(cache.Flusher(siteID).Scopes(siteID))
-		log.Printf("[DEBUG] import request completed. site=%s, provider=%s, comments=%d",
-			siteID, r.URL.Query().Get("provider"), size)
-	}(siteID, tmpfile)
+	if m.isBusy(siteID) {
+		rest.SendErrorJSON(w, r, http.StatusConflict, errors.New("already running"), "import rejected")
+		return
+	}
+
+	r.ParseMultipartForm(20 * 1024 * 1024) // 20M max memory, if bigger will make a file
+	file, _, err := r.FormFile("import")
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't get import from the request")
+		return
+	}
+	defer file.Close()
+
+	tmpfile, err := m.saveTemp(file)
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't save request to temp file")
+		return
+	}
+
+	go m.runImport(siteID, r.URL.Query().Get("provider"), tmpfile) // import runs in background and sets busy flag for site
 
 	render.Status(r, http.StatusAccepted)
 	render.JSON(w, r, JSON{"status": "import request accepted"})
@@ -151,6 +146,43 @@ func (m *Migrator) exportCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "export failed")
 		return
 	}
+}
+
+// runImport reads from tmpfile and import for given siteID and provider
+func (m *Migrator) runImport(siteID string, provider string, tmpfile string) {
+	m.setBusy(siteID, true)
+
+	defer func() {
+		m.setBusy(siteID, false)
+		if err := os.Remove(tmpfile); err != nil {
+			log.Printf("[WARN] failed to remove tmp file %s, %v", tmpfile, err)
+		}
+	}()
+
+	var importer migrator.Importer
+	switch provider {
+	case "disqus":
+		importer = m.DisqusImporter
+	case "wordpress":
+		importer = m.WordPressImporter
+	default:
+		importer = m.NativeImporter
+	}
+	log.Printf("[DEBUG] import request for site=%s, provider=%s", siteID, provider)
+
+	fh, err := os.Open(tmpfile)
+	if err != nil {
+		log.Printf("[WARN] import failed, %v", err)
+		return
+	}
+
+	size, err := importer.Import(fh, siteID)
+	if err != nil {
+		log.Printf("[WARN] import failed, %v", err)
+		return
+	}
+	m.Cache.Flush(cache.Flusher(siteID).Scopes(siteID))
+	log.Printf("[DEBUG] import request completed. site=%s, provider=%s, comments=%d", siteID, provider, size)
 }
 
 // saveTemp reads from reader and saves to temp file

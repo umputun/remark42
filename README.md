@@ -579,7 +579,9 @@ Sort can be `time`, `active` or `score`. Supported sort order with prefix -/+, i
   }
   ```
 * `GET /api/v1/admin/export?site=side-id&mode=[stream|file]` - export all comments to json stream or gz file.
-* `POST /api/v1/admin/import?site=side-id` - import comments from the backup.
+* `POST /api/v1/admin/import?site=side-id` - import comments from the backup, uses post body.
+* `POST /api/v1/admin/import/form?site=side-id` - import comments from the backup, user post form.
+* `GET /api/v1/admin/import/wait?site=side-id` - wait for import completeion.
 * `PUT /api/v1/admin/pin/{id}?site=site-id&url=post-url&pin=1` - pin or unpin comment.
 * `GET /api/v1/admin/user/{userid}?site=site-id` - get user's info.
 * `DELETE /api/v1/admin/user/{userid}?site=site-id` - delete all user's comments.
