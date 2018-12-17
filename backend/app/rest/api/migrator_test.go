@@ -1,10 +1,13 @@
 package api
 
 import (
+	"bytes"
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -53,6 +56,38 @@ func TestMigrator_Import(t *testing.T) {
 	assert.Equal(t, 200, resp.StatusCode)
 }
 
+func TestMigrator_ImportForm(t *testing.T) {
+	srv, _, ts := prepImportSrv(t)
+	assert.NotNil(t, srv)
+	defer cleanupImportSrv(srv, ts)
+
+	r := strings.NewReader(`{"id":"2aa0478c-df1b-46b1-b561-03d507cf482c","pid":"","text":"<p>test test #1</p>","user":{"name":"developer one","id":"dev","picture":"/api/v1/avatar/remark.image","profile":"https://remark42.com","admin":true,"ip":"ae12fe3b5f129b5cc4cdd2b136b7b7947c4d2741"},"locator":{"site":"radio-t","url":"https://radio-t.com/blah1"},"score":0,"votes":{},"time":"2018-04-30T01:37:00.849053725-05:00"}
+	{"id":"83fd97fd-ff64-48d1-9fb7-ca7769c77037","pid":"p1","text":"<p>test test #2</p>","user":{"name":"developer one","id":"dev","picture":"/api/v1/avatar/remark.image","profile":"https://remark42.com","admin":true,"ip":"ae12fe3b5f129b5cc4cdd2b136b7b7947c4d2741"},"locator":{"site":"radio-t","url":"https://radio-t.com/blah2"},"score":0,"votes":{},"time":"2018-04-30T01:37:00.861387771-05:00"}`)
+
+	bodyBuf := &bytes.Buffer{}
+	bodyWriter := multipart.NewWriter(bodyBuf)
+	fileWriter, err := bodyWriter.CreateFormFile("file", "import.json")
+	require.NoError(t, err)
+	_, err = io.Copy(fileWriter, r)
+	require.NoError(t, err)
+	contentType := bodyWriter.FormDataContentType()
+	bodyWriter.Close()
+
+	resp, err := http.Post(ts.URL+"/import/form?site=radio-t&provider=native&secret=123456", contentType, bodyBuf)
+	assert.Nil(t, err)
+	assert.Equal(t, http.StatusAccepted, resp.StatusCode)
+
+	b, err := ioutil.ReadAll(resp.Body)
+	assert.Nil(t, err)
+	assert.Equal(t, "{\"status\":\"import request accepted\"}\n", string(b))
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	req, err := http.NewRequest("GET", ts.URL+"/import/wait?site=radio-t", nil)
+	req.SetBasicAuth("dev", "password")
+	assert.NoError(t, err)
+	resp, err = client.Do(req)
+	assert.Equal(t, 200, resp.StatusCode)
+}
 func TestMigrator_ImportFromWP(t *testing.T) {
 	srv, ds, ts := prepImportSrv(t)
 	assert.NotNil(t, srv)

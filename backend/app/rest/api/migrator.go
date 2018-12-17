@@ -82,7 +82,7 @@ func (m *Migrator) importFormCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	r.ParseMultipartForm(20 * 1024 * 1024) // 20M max memory, if bigger will make a file
-	file, _, err := r.FormFile("import")
+	file, _, err := r.FormFile("file")
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't get import from the request")
 		return
