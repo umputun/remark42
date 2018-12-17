@@ -149,6 +149,12 @@ func (s *Rest) voteCtrl(w http.ResponseWriter, r *http.Request) {
 
 	vote := r.URL.Query().Get("vote") == "1"
 
+	if s.ReadOnlyAge > 0 {
+		if info, e := s.DataService.Info(locator, s.ReadOnlyAge); e == nil && info.ReadOnly {
+			rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"), "old post, read-only")
+			return
+		}
+	}
 	// check if user blocked
 	if s.adminService.checkBlocked(locator.SiteID, user) {
 		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"), "user blocked")
