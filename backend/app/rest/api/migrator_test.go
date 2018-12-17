@@ -174,6 +174,32 @@ func TestMigrator_ImportDouble(t *testing.T) {
 
 }
 
+func TestMigrator_ImportWaitExpired(t *testing.T) {
+	srv, _, ts := prepImportSrv(t)
+	assert.NotNil(t, srv)
+	defer cleanupImportSrv(srv, ts)
+
+	tmpl := `{"id":"%d","pid":"","text":"<p>test test #1</p>","user":{"name":"developer one","id":"dev","picture":"/api/v1/avatar/remark.image","profile":"https://remark42.com","admin":true,"ip":"ae12fe3b5f129b5cc4cdd2b136b7b7947c4d2741"},"locator":{"site":"radio-t","url":"https://radio-t.com/blah1"},"score":0,"votes":{},"time":"2018-04-30T01:37:00.849053725-05:00"}`
+	recs := []string{}
+	for i := 0; i < 1000; i++ {
+		recs = append(recs, fmt.Sprintf(tmpl, i))
+	}
+	r := strings.NewReader(strings.Join(recs, "\n")) // reader with 10k records
+	client := &http.Client{Timeout: 1 * time.Second}
+	req, err := http.NewRequest("POST", ts.URL+"/import?site=radio-t&provider=native&secret=123456", r)
+	require.Nil(t, err)
+	resp, err := client.Do(req)
+	assert.Nil(t, err)
+	assert.Equal(t, http.StatusAccepted, resp.StatusCode)
+
+	client = &http.Client{Timeout: 10 * time.Second}
+	req, err = http.NewRequest("GET", ts.URL+"/import/wait?site=radio-t&timeout=100ms", nil)
+	req.SetBasicAuth("dev", "password")
+	assert.NoError(t, err)
+	resp, err = client.Do(req)
+	assert.Equal(t, http.StatusGatewayTimeout, resp.StatusCode)
+}
+
 func TestMigrator_Export(t *testing.T) {
 	srv, _, ts := prepImportSrv(t)
 	assert.NotNil(t, srv)

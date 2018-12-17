@@ -103,7 +103,14 @@ func (m *Migrator) importFormCtrl(w http.ResponseWriter, r *http.Request) {
 
 func (m *Migrator) importWaitCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*15)
+	timeOut := time.Minute * 15
+	if v := r.URL.Query().Get("timeout"); v != "" {
+		if vv, e := time.ParseDuration(v); e == nil {
+			timeOut = vv
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeOut)
 	defer cancel()
 	for {
 		if !m.isBusy(siteID) {
@@ -112,7 +119,7 @@ func (m *Migrator) importWaitCtrl(w http.ResponseWriter, r *http.Request) {
 		select {
 		case <-ctx.Done():
 			render.Status(r, http.StatusGatewayTimeout)
-			render.JSON(w, r, JSON{"status": "timeout", "site_id": siteID})
+			render.JSON(w, r, JSON{"status": "timeout expired", "site_id": siteID})
 			return
 		case <-time.After(100 * time.Millisecond):
 		}
