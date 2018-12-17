@@ -48,9 +48,7 @@ func TestRemark_Import(t *testing.T) {
 	buf.WriteString(r2)
 	buf.WriteString("{}")
 
-	os.Remove(testDb)
-	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{SiteID: "radio-t", FileName: testDb})
-	assert.Nil(t, err)
+	b := prep(t) // write some recs
 	r := Remark{DataStore: &service.DataStore{Interface: b, AdminStore: admin.NewStaticStore("12345", []string{}, "")}}
 	size, err := r.Import(buf, "radio-t")
 	assert.Nil(t, err)
@@ -62,6 +60,14 @@ func TestRemark_Import(t *testing.T) {
 	assert.Equal(t, "efbc17f177ee1a1c0ee6e1e025749966ec071adc", comments[0].ID)
 	assert.Equal(t, "afbc17f177ee1a1c0ee6e1e025749966ec071adc", comments[1].ID)
 	assert.Equal(t, "efbc17f177ee1a1c0ee6e1e025749966ec071adc", comments[1].ParentID)
+
+	// try import again
+	buf.WriteString(r1)
+	buf.WriteString(r2)
+	buf.WriteString("{}")
+	size, err = r.Import(buf, "radio-t")
+	assert.Nil(t, err)
+	assert.Equal(t, 2, size)
 }
 
 func TestRemark_ImportManyWithError(t *testing.T) {
@@ -76,9 +82,7 @@ func TestRemark_ImportManyWithError(t *testing.T) {
 	buf.WriteString("bad1\n")
 	buf.WriteString("bad2\n")
 
-	os.Remove(testDb)
-	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{SiteID: "radio-t", FileName: testDb})
-	assert.Nil(t, err)
+	b := prep(t) // write some recs
 	r := Remark{DataStore: &service.DataStore{Interface: b, AdminStore: admin.NewStaticStore("12345", []string{}, "")}}
 	n, err := r.Import(buf, "radio-t")
 	assert.EqualError(t, err, "failed to save 2 comments")
