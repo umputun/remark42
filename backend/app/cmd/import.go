@@ -62,7 +62,7 @@ func (ic *ImportCommand) Execute(args []string) error {
 		return errors.Wrap(err, "can't get response from importer")
 	}
 
-	log.Printf("[INFO] import completed, status=%d, %s", resp.StatusCode, string(body))
+	log.Printf("[INFO] completed, status=%d, %s", resp.StatusCode, string(body))
 	return nil
 }
 

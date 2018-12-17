@@ -75,6 +75,7 @@ func (m *Migrator) importCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// import runs in background and sets busy flag for site
 	go func(siteID string, tmpfile string) {
 		m.setBusy(siteID, true)
 
@@ -152,6 +153,7 @@ func (m *Migrator) exportCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// saveTemp reads from reader and saves to temp file
 func (m *Migrator) saveTemp(r io.Reader) (string, error) {
 	tmpfile, err := ioutil.TempFile("", "remark42_import")
 	if err != nil {
@@ -169,6 +171,7 @@ func (m *Migrator) saveTemp(r io.Reader) (string, error) {
 	return tmpfile.Name(), nil
 }
 
+// isBusy checks busy flag from the map by siteID as key
 func (m *Migrator) isBusy(siteID string) bool {
 	m.lock.Lock()
 	defer m.lock.Unlock()
@@ -178,6 +181,7 @@ func (m *Migrator) isBusy(siteID string) bool {
 	return m.busy[siteID]
 }
 
+// setBusy sets/resets busy flag to the map by siteID as key
 func (m *Migrator) setBusy(siteID string, status bool) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
