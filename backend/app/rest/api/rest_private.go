@@ -51,11 +51,9 @@ func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if s.ReadOnlyAge > 0 {
-		if info, e := s.DataService.Info(comment.Locator, s.ReadOnlyAge); e == nil && info.ReadOnly {
-			rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"), "old post, read-only")
-			return
-		}
+	if s.isReadOnly(comment.Locator) {
+		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"), "old post, read-only")
+		return
 	}
 
 	id, err := s.DataService.Create(comment)
@@ -149,12 +147,11 @@ func (s *Rest) voteCtrl(w http.ResponseWriter, r *http.Request) {
 
 	vote := r.URL.Query().Get("vote") == "1"
 
-	if s.ReadOnlyAge > 0 {
-		if info, e := s.DataService.Info(locator, s.ReadOnlyAge); e == nil && info.ReadOnly {
-			rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"), "old post, read-only")
-			return
-		}
+	if s.isReadOnly(locator) {
+		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"), "old post, read-only")
+		return
 	}
+
 	// check if user blocked
 	if s.adminService.checkBlocked(locator.SiteID, user) {
 		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"), "user blocked")
@@ -196,7 +193,6 @@ func (s *Rest) userAllDataCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var merr error
-
 	merr = multierror.Append(merr, write([]byte(`{"info": `)))     // send user prefix
 	merr = multierror.Append(merr, write(userB))                   // send user info
 	merr = multierror.Append(merr, write([]byte(`, "comments":`))) // send comments prefix
@@ -253,4 +249,13 @@ func (s *Rest) deleteMeCtrl(w http.ResponseWriter, r *http.Request) {
 
 	link := fmt.Sprintf("%s/web/deleteme.html?token=%s", s.RemarkURL, tokenStr)
 	render.JSON(w, r, JSON{"site": siteID, "user_id": user.ID, "token": tokenStr, "link": link})
+}
+
+func (s *Rest) isReadOnly(locator store.Locator) bool {
+	if s.ReadOnlyAge > 0 {
+		if info, e := s.DataService.Info(locator, s.ReadOnlyAge); e == nil && info.ReadOnly {
+			return true
+		}
+	}
+	return false
 }
