@@ -196,8 +196,7 @@ func TestServerApp_Failed(t *testing.T) {
 	_, err := p.ParseArgs([]string{"--backup=/tmp", "--store.bolt.path=/dev/null"})
 	assert.Nil(t, err)
 	_, err = opts.newServerApp()
-	assert.EqualError(t, err, "failed to make data store engine: can't initialize data store: failed to make boltdb for /dev/null/remark.db: "+
-		"open /dev/null/remark.db: not a directory")
+	assert.EqualError(t, err, "failed to make data store engine: failed to create bolt store: can't make directory /dev/null: mkdir /dev/null: not a directory")
 	t.Log(err)
 
 	// RO backup location
@@ -207,7 +206,7 @@ func TestServerApp_Failed(t *testing.T) {
 	_, err = p.ParseArgs([]string{"--store.bolt.path=/tmp", "--backup=/dev/null/not-writable"})
 	assert.Nil(t, err)
 	_, err = opts.newServerApp()
-	assert.EqualError(t, err, "can't check directory status for /dev/null/not-writable: stat /dev/null/not-writable: not a directory")
+	assert.EqualError(t, err, "can't make directory /dev/null/not-writable: mkdir /dev/null: not a directory")
 	t.Log(err)
 
 	// invalid url
