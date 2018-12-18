@@ -106,7 +106,7 @@ func TestRest_RunStaticSSLMode(t *testing.T) {
 	}
 
 	go func() {
-		srv.Run(8080)
+		srv.Run(38080)
 	}()
 
 	time.Sleep(100 * time.Millisecond) // let server start
@@ -123,7 +123,7 @@ func TestRest_RunStaticSSLMode(t *testing.T) {
 		},
 	}
 
-	resp, err := client.Get("http://localhost:8080/blah?param=1")
+	resp, err := client.Get("http://localhost:38080/blah?param=1")
 	require.Nil(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 307, resp.StatusCode)
@@ -157,7 +157,7 @@ func TestRest_RunAutocertModeHTTPOnly(t *testing.T) {
 
 	go func() {
 		// can't check https server locally, just only http server
-		srv.Run(8080)
+		srv.Run(38081)
 	}()
 
 	time.Sleep(100 * time.Millisecond) // let server start
@@ -169,7 +169,7 @@ func TestRest_RunAutocertModeHTTPOnly(t *testing.T) {
 		},
 	}
 
-	resp, err := client.Get("http://localhost:8080/blah?param=1")
+	resp, err := client.Get("http://localhost:38081/blah?param=1")
 	require.Nil(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 307, resp.StatusCode)
