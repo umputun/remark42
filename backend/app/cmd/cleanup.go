@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"strings"
 	"time"
@@ -24,6 +25,7 @@ type CleanupCommand struct {
 }
 
 // Execute runs cleanup with CleanupCommand parameters, entry point for "cleanup" command
+// This command uses provided flags to detect and remove junk comments
 func (cc *CleanupCommand) Execute(args []string) error {
 	log.Printf("[INFO] cleanup for site %s", cc.Site)
 
@@ -31,7 +33,6 @@ func (cc *CleanupCommand) Execute(args []string) error {
 	if err != nil {
 		return errors.Wrap(err, "can't get posts")
 	}
-
 	log.Printf("[DEBUG] got %d posts", len(posts))
 
 	totalComments, spamComments := 0, 0
@@ -45,12 +46,14 @@ func (cc *CleanupCommand) Execute(args []string) error {
 			spam, score := cc.isSpam(comment)
 			if spam {
 				spamComments++
-				log.Printf("[SPAM] %+v [%.0f]", comment, score)
 				if !cc.Dry {
 					if err = cc.deleteComment(comment); err != nil {
 						log.Printf("[WARN] can't remove comment, %v", err)
 					}
 				}
+				comment.Text = strings.Replace(comment.Text, "\n", " ", -1)
+				log.Printf("[SPAM] %+v [%.0f%%]", comment, score)
+
 			}
 		}
 	}
@@ -58,7 +61,7 @@ func (cc *CleanupCommand) Execute(args []string) error {
 	return err
 }
 
-// get list of posts in from/to represented as yyyymmdd
+// get list of posts in from/to represented as yyyymmdd. this is [from-to] inclusive
 func (cc *CleanupCommand) postsInRange(fromS, toS string) ([]store.PostInfo, error) {
 	posts, err := cc.listPosts()
 	if err != nil {
@@ -84,7 +87,7 @@ func (cc *CleanupCommand) postsInRange(fromS, toS string) ([]store.PostInfo, err
 
 	var filteredList []store.PostInfo
 	for _, postInfo := range posts {
-		if postInfo.FirstTS.After(from) && postInfo.LastTS.Before(to) {
+		if postInfo.FirstTS.After(from) && postInfo.LastTS.Before(to.AddDate(0, 0, 1)) {
 			filteredList = append(filteredList, postInfo)
 		}
 	}
@@ -175,7 +178,7 @@ func (cc *CleanupCommand) isSpam(comment store.Comment) (bool, float64) {
 		res := 0.0
 		for _, w := range cc.BadWords {
 			if strings.Contains(txt, w) {
-				res += 0.20
+				res += 0.25
 			}
 			if res > 1 {
 				return 1
@@ -200,19 +203,19 @@ func (cc *CleanupCommand) isSpam(comment store.Comment) (bool, float64) {
 		return false, 0
 	}
 
-	score += 50 * badWord(comment.Text) // up to 50, 5 bad words will reach max
+	score += 50 * badWord(comment.Text) // up to 50, 4 bad words will reach max
 
 	if hasBadUser(comment.User.ID) { // predefined list of bad user substrings
 		score += 10
 	}
 
 	if comment.Score == 0 { // most of spam comments with 0 score
-		score += 10
+		score += 20
 	}
 
 	// any link inside
 	if strings.Contains(comment.Text, "http:") || strings.Contains(comment.Text, "https:") {
-		score += 20
+		score += 10
 	}
 
 	// 5 or more links
@@ -220,10 +223,8 @@ func (cc *CleanupCommand) isSpam(comment store.Comment) (bool, float64) {
 		score += 10
 	}
 
-	// any score probably not for spam
-	if comment.Score != 0 {
-		score -= 30
-	}
+	score = math.Max(score, 0)
+	score = math.Min(score, 100)
 
 	return score > 50, score
 }
