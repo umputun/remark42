@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/coreos/bbolt"
+	bolt "github.com/coreos/bbolt"
 	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/backend/app/store"
@@ -79,7 +79,7 @@ func (b *BoltDB) DeleteAll(siteID string) error {
 		return nil
 	})
 
-	return errors.Wrapf(err, "failed to delete top level buckets fro site %s", siteID)
+	return errors.Wrapf(err, "failed to delete top level buckets from site %s", siteID)
 }
 
 // DeleteUser removes all comments for given user. Everything will be market as deleted
