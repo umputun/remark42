@@ -24,6 +24,11 @@ type CleanupCommand struct {
 	CommonOpts
 }
 
+var (
+	defaultFrom = time.Date(1970, 1, 1, 0, 0, 0, 0, time.Local)
+	defaultTo   = time.Date(2999, 1, 1, 0, 0, 0, 0, time.Local)
+)
+
 // Execute runs cleanup with CleanupCommand parameters, entry point for "cleanup" command
 // This command uses provided flags to detect and remove junk comments
 func (cc *CleanupCommand) Execute(args []string) error {
@@ -68,8 +73,7 @@ func (cc *CleanupCommand) postsInRange(fromS, toS string) ([]store.PostInfo, err
 		return nil, errors.Wrapf(err, "can't list posts for %s", cc.Site)
 	}
 
-	from := time.Date(1970, 1, 1, 0, 0, 0, 0, time.Local)
-	to := time.Date(2999, 1, 1, 0, 0, 0, 0, time.Local)
+	from, to := defaultFrom, defaultTo
 
 	if fromS != "" {
 		from, err = time.ParseInLocation("20060102", fromS, time.Local)
@@ -122,12 +126,13 @@ func (cc *CleanupCommand) listComments(postURL string) ([]store.Comment, error) 
 	var r *http.Response
 	var err error
 
+	// handle 429 error from limiter
 	for {
 		r, err = http.Get(commentsURL)
 		if err != nil {
 			return nil, errors.Wrapf(err, "get request failed for comments, %s", postURL)
 		}
-		if r.StatusCode == 429 {
+		if r.StatusCode == http.StatusTooManyRequests {
 			r.Body.Close()
 			time.Sleep(500 * time.Millisecond)
 			continue
@@ -135,7 +140,7 @@ func (cc *CleanupCommand) listComments(postURL string) ([]store.Comment, error) 
 		break
 	}
 
-	if r.StatusCode != 200 {
+	if r.StatusCode != http.StatusOK {
 		return nil, errors.Errorf("request %s failed with status %d", commentsURL, r.StatusCode)
 	}
 
