@@ -9,18 +9,11 @@ import (
 	"sync/atomic"
 
 	"github.com/umputun/remark/backend/app/store"
-	"github.com/umputun/remark/backend/app/store/service"
 )
-
-// Destination defines interface for a given destination service, like telegram, email and so on
-type Destination interface {
-	fmt.Stringer
-	Send(ctx context.Context, req request) error
-}
 
 // Service delivers notifications to multiple destinations
 type Service struct {
-	dataService  *service.DataStore
+	dataService  Store
 	destinations []Destination
 	queue        chan request
 
@@ -29,6 +22,16 @@ type Service struct {
 	cancel context.CancelFunc
 }
 
+// Destination defines interface for a given destination service, like telegram, email and so on
+type Destination interface {
+	fmt.Stringer
+	Send(ctx context.Context, req request) error
+}
+
+// Store defines the minimal interface accessing stored commens used by notifier
+type Store interface {
+	Get(locator store.Locator, id string) (store.Comment, error)
+}
 type request struct {
 	comment store.Comment
 	parent  store.Comment
@@ -38,7 +41,7 @@ const defaultQueueSize = 100
 const uiNav = "#remark42__comment-"
 
 // NewService makes notification service routing comments to all destinations.
-func NewService(dataService *service.DataStore, size int, destinations ...Destination) *Service {
+func NewService(dataService Store, size int, destinations ...Destination) *Service {
 	if size <= 0 {
 		size = defaultQueueSize
 	}
