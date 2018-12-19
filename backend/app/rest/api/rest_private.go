@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
-	"github.com/hashicorp/go-multierror"
+	multierror "github.com/hashicorp/go-multierror"
 
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/rest/auth"
@@ -253,9 +253,10 @@ func (s *Rest) deleteMeCtrl(w http.ResponseWriter, r *http.Request) {
 
 func (s *Rest) isReadOnly(locator store.Locator) bool {
 	if s.ReadOnlyAge > 0 {
+		// check RO by age
 		if info, e := s.DataService.Info(locator, s.ReadOnlyAge); e == nil && info.ReadOnly {
 			return true
 		}
 	}
-	return false
+	return s.DataService.IsReadOnly(locator) // ro manually
 }
