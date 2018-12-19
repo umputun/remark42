@@ -42,8 +42,8 @@ func (cc *CleanupCommand) Execute(args []string) error {
 
 	totalComments, spamComments := 0, 0
 	for _, post := range posts {
-		comments, err := cc.listComments(post.URL)
-		if err != nil {
+		comments, e := cc.listComments(post.URL)
+		if e != nil {
 			continue
 		}
 		for _, comment := range comments {
@@ -105,7 +105,7 @@ func (cc *CleanupCommand) listPosts() ([]store.PostInfo, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "get request failed for list of posts, site %s", cc.Site)
 	}
-	defer r.Body.Close()
+	defer func() { _ = r.Body.Close() }()
 
 	if r.StatusCode != 200 {
 		return nil, errors.Errorf("request %s failed with status %d", listURL, r.StatusCode)
@@ -133,12 +133,14 @@ func (cc *CleanupCommand) listComments(postURL string) ([]store.Comment, error) 
 			return nil, errors.Wrapf(err, "get request failed for comments, %s", postURL)
 		}
 		if r.StatusCode == http.StatusTooManyRequests {
-			r.Body.Close()
+			_ = r.Body.Close()
 			time.Sleep(500 * time.Millisecond)
 			continue
 		}
 		break
 	}
+
+	defer func() { _ = r.Body.Close() }()
 
 	if r.StatusCode != http.StatusOK {
 		return nil, errors.Errorf("request %s failed with status %d", commentsURL, r.StatusCode)
@@ -169,7 +171,7 @@ func (cc *CleanupCommand) deleteComment(c store.Comment) error {
 	if err != nil {
 		return errors.Wrapf(err, "delete request failed for comment %s, %s", c.ID, c.Locator.URL)
 	}
-	defer r.Body.Close()
+	defer func() { _ = r.Body.Close() }()
 	if r.StatusCode != http.StatusOK {
 		return errors.Errorf("delete request failed with status %s", r.Status)
 	}
