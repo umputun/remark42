@@ -45,8 +45,7 @@ export default class Comment extends Component {
     this.isAdmin = this.isAdmin.bind(this);
     this.isCurrentUser = this.isCurrentUser.bind(this);
     this.isGuest = this.isGuest.bind(this);
-    this.getDownvoteDisabledReason = this.getDownvoteDisabledReason.bind(this);
-    this.getUpvoteDisabledReason = this.getUpvoteDisabledReason.bind(this);
+    this.getVoteDisabledReason = this.getVoteDisabledReason.bind(this);
   }
 
   componentWillReceiveProps(nextProps) {
@@ -356,24 +355,11 @@ export default class Comment extends Component {
   }
 
   /**
-   * returns reason for disabled downvote
+   * returns reason for disabled voting
    *
    * @return {(string|null)}
    */
-  getDownvoteDisabledReason() {
-    if (this.isGuest()) return 'Only authorized users are allowed to vote';
-    const info = store.get('info');
-    if (info && info.read_only) return "You can't vote on read-only topics";
-    if (this.isCurrentUser()) return "You can't vote for your own comment";
-    return null;
-  }
-
-  /**
-   * returns reason for disabled upvote
-   *
-   * @return {(string|null)}
-   */
-  getUpvoteDisabledReason() {
+  getVoteDisabledReason() {
     if (this.isGuest()) return 'Only authorized users are allowed to vote';
     const info = store.get('info');
     if (info && info.read_only) return "You can't vote on read-only topics";
@@ -403,10 +389,8 @@ export default class Comment extends Component {
     const isCurrentUser = this.isCurrentUser();
     const config = store.get('config') || {};
     const lowCommentScore = config.low_score;
-    const upvoteDisabledReason = this.getUpvoteDisabledReason();
-    const isUpvoteDisabled = upvoteDisabledReason !== null;
-    const downvoteDisabledReason = this.getDownvoteDisabledReason();
-    const isDownvoteDisabled = downvoteDisabledReason !== null;
+    const votingDisabledReason = this.getVoteDisabledReason();
+    const isVotingDisabled = votingDisabledReason !== null;
 
     const o = {
       ...data,
@@ -536,10 +520,10 @@ export default class Comment extends Component {
 
             <span className={b('comment__score', {}, { view: o.score.view })}>
               <span
-                className={b('comment__vote', {}, { type: 'up', selected: scoreIncreased, disabled: isUpvoteDisabled })}
-                aria-disabled={isUpvoteDisabled ? 'true' : 'false'}
-                {...getHandleClickProps(isUpvoteDisabled ? null : this.increaseScore)}
-                title={upvoteDisabledReason}
+                className={b('comment__vote', {}, { type: 'up', selected: scoreIncreased, disabled: isVotingDisabled })}
+                aria-disabled={isVotingDisabled ? 'true' : 'false'}
+                {...getHandleClickProps(isVotingDisabled ? null : this.increaseScore)}
+                title={votingDisabledReason}
               >
                 Vote up
               </span>
@@ -553,11 +537,11 @@ export default class Comment extends Component {
                 className={b(
                   'comment__vote',
                   {},
-                  { type: 'down', selected: scoreDecreased, disabled: isDownvoteDisabled }
+                  { type: 'down', selected: scoreDecreased, disabled: isVotingDisabled }
                 )}
-                aria-disabled={isDownvoteDisabled ? 'true' : 'false'}
-                {...getHandleClickProps(isDownvoteDisabled ? null : this.decreaseScore)}
-                title={downvoteDisabledReason}
+                aria-disabled={isVotingDisabled ? 'true' : 'false'}
+                {...getHandleClickProps(isVotingDisabled ? null : this.decreaseScore)}
+                title={votingDisabledReason}
               >
                 Vote down
               </span>
