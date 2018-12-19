@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi"
 	flags "github.com/jessevdk/go-flags"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -59,7 +59,7 @@ func TestCleanup_IsSpam(t *testing.T) {
 
 func TestCleanup_postsInRange(t *testing.T) {
 
-	r := mux.NewRouter()
+	r := chi.NewRouter()
 	cleanupRoutes(t, r, nil)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
@@ -82,7 +82,7 @@ func TestCleanup_postsInRange(t *testing.T) {
 }
 
 func TestCleanup_listComments(t *testing.T) {
-	r := mux.NewRouter()
+	r := chi.NewRouter()
 	cleanupRoutes(t, r, nil)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
@@ -108,7 +108,7 @@ func TestCleanup_listComments(t *testing.T) {
 
 func TestCleanup_Execute(t *testing.T) {
 	cleaned := cleanedComments{}
-	r := mux.NewRouter()
+	r := chi.NewRouter()
 	cleanupRoutes(t, r, &cleaned)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
@@ -125,7 +125,7 @@ func TestCleanup_Execute(t *testing.T) {
 	assert.Equal(t, []string{"/api/v1/admin/comment/1", "/api/v1/admin/comment/3", "/api/v1/admin/comment/11"}, cleaned.ids)
 }
 
-func cleanupRoutes(t *testing.T, r *mux.Router, c *cleanedComments) {
+func cleanupRoutes(t *testing.T, r *chi.Mux, c *cleanedComments) {
 	r.HandleFunc("/api/v1/list", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "GET", r.Method)
 		require.Equal(t, "site=remark&limit=10000", r.URL.RawQuery)
