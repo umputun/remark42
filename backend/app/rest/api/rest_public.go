@@ -10,9 +10,9 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
+	"github.com/go-pkgz/rest/cache"
 
 	"github.com/umputun/remark/backend/app/rest"
-	"github.com/umputun/remark/backend/app/rest/cache"
 	"github.com/umputun/remark/backend/app/store"
 )
 
@@ -26,7 +26,7 @@ func (s *Rest) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("[DEBUG] get comments for %+v, sort %s, format %s", locator, sort, r.URL.Query().Get("format"))
 
-	key := cache.NewKey(locator.SiteID).ID(cache.URLKey(r)).Scopes(locator.SiteID, locator.URL)
+	key := cache.NewKey(locator.SiteID).ID(URLKey(r)).Scopes(locator.SiteID, locator.URL)
 	data, err := s.Cache.Get(key, func() ([]byte, error) {
 		comments, e := s.DataService.Find(locator, sort)
 		if e != nil {
@@ -87,7 +87,7 @@ func (s *Rest) previewCommentCtrl(w http.ResponseWriter, r *http.Request) {
 func (s *Rest) infoCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 
-	key := cache.NewKey(locator.SiteID).ID(cache.URLKey(r)).Scopes(locator.SiteID, locator.URL)
+	key := cache.NewKey(locator.SiteID).ID(URLKey(r)).Scopes(locator.SiteID, locator.URL)
 	data, err := s.Cache.Get(key, func() ([]byte, error) {
 		info, e := s.DataService.Info(locator, s.ReadOnlyAge)
 		if e != nil {
@@ -114,7 +114,7 @@ func (s *Rest) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		limit = 0
 	}
 
-	key := cache.NewKey(siteID).ID(cache.URLKey(r)).Scopes(lastCommentsScope)
+	key := cache.NewKey(siteID).ID(URLKey(r)).Scopes(lastCommentsScope)
 	data, err := s.Cache.Get(key, func() ([]byte, error) {
 		comments, e := s.DataService.Last(siteID, limit)
 		if e != nil {
@@ -170,7 +170,7 @@ func (s *Rest) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[DEBUG] get comments for userID %s, %s", userID, siteID)
 
-	key := cache.NewKey(siteID).ID(cache.URLKey(r)).Scopes(userID, siteID)
+	key := cache.NewKey(siteID).ID(URLKey(r)).Scopes(userID, siteID)
 	data, err := s.Cache.Get(key, func() ([]byte, error) {
 		comments, e := s.DataService.User(siteID, userID, limit, 0)
 		if e != nil {
@@ -253,7 +253,7 @@ func (s *Rest) countMultiCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// key could be long for multiple posts, make it sha1
-	k := cache.URLKey(r) + strings.Join(posts, ",")
+	k := URLKey(r) + strings.Join(posts, ",")
 	hasher := sha1.New()
 	if _, err := hasher.Write([]byte(k)); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't make sha1 for list of urls")
@@ -289,7 +289,7 @@ func (s *Rest) listCtrl(w http.ResponseWriter, r *http.Request) {
 		skip = v
 	}
 
-	key := cache.NewKey(siteID).ID(cache.URLKey(r)).Scopes(siteID)
+	key := cache.NewKey(siteID).ID(URLKey(r)).Scopes(siteID)
 	data, err := s.Cache.Get(key, func() ([]byte, error) {
 		posts, e := s.DataService.List(siteID, limit, skip)
 		if e != nil {

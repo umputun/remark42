@@ -19,13 +19,13 @@ import (
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/cors"
 	"github.com/go-chi/render"
+	"github.com/go-pkgz/rest/cache"
 	"github.com/pkg/errors"
 	"github.com/rakyll/statik/fs"
 
 	"github.com/umputun/remark/backend/app/notify"
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/rest/auth"
-	"github.com/umputun/remark/backend/app/rest/cache"
 	"github.com/umputun/remark/backend/app/rest/proxy"
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/service"
@@ -335,4 +335,15 @@ func filterComments(comments []store.Comment, fn func(c store.Comment) bool) (fi
 		}
 	}
 	return filtered
+}
+
+// URLKey gets url from request to use it as cache key
+// admins will have different keys in order to prevent leak of admin-only data to regular users
+func URLKey(r *http.Request) string {
+	adminPrefix := "admin!!"
+	key := strings.TrimPrefix(r.URL.String(), adminPrefix)          // prevents attach with fake url to get admin view
+	if user, err := rest.GetUserInfo(r); err == nil && user.Admin { // make separate cache key for admins
+		key = adminPrefix + key
+	}
+	return key
 }
