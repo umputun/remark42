@@ -231,9 +231,10 @@ func (s *DataStore) Metas(siteID string) (umetas []UserMetaData, pmetas []PostMe
 		return nil, nil, errors.Wrapf(err, "can't get list of posts for %s", siteID)
 	}
 	for _, p := range posts {
-		if p.ReadOnly {
+		if s.IsReadOnly(store.Locator{SiteID: siteID, URL: p.URL}) {
 			pmetas = append(pmetas, PostMetaData{URL: p.URL, ReadOnly: true})
 		}
+
 	}
 
 	// set users meta
@@ -247,7 +248,7 @@ func (s *DataStore) Metas(siteID string) (umetas []UserMetaData, pmetas []PostMe
 	for _, b := range blocked {
 		val, ok := m[b.ID]
 		if !ok {
-			val = UserMetaData{}
+			val = UserMetaData{UserID: b.ID}
 		}
 		val.Blocked.Status = true
 		val.Blocked.Until = b.Until
@@ -262,10 +263,14 @@ func (s *DataStore) Metas(siteID string) (umetas []UserMetaData, pmetas []PostMe
 	for _, v := range verified {
 		val, ok := m[v]
 		if !ok {
-			val = UserMetaData{}
+			val = UserMetaData{UserID: v}
 		}
 		val.Verified = true
 		m[v] = val
+	}
+
+	for _, u := range m {
+		umetas = append(umetas, u)
 	}
 
 	return umetas, pmetas, nil

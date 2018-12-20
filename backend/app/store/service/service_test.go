@@ -374,6 +374,28 @@ func TestService_Counts(t *testing.T) {
 	}, res)
 }
 
+func TestService_Metas(t *testing.T) {
+	defer os.Remove(testDb)
+	// two comments for https://radio-t.com
+	b := DataStore{Interface: prepStoreEngine(t), EditDuration: 100 * time.Millisecond,
+		AdminStore: admin.NewStaticKeyStore("secret 123")}
+
+	assert.NoError(t, b.SetVerified("radio-t", "user1", true))
+	assert.NoError(t, b.SetReadOnly(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, true))
+
+	um, pm, err := b.Metas("radio-t")
+	require.NoError(t, err)
+
+	assert.Equal(t, 1, len(um))
+	assert.Equal(t, "user1", um[0].UserID)
+	assert.Equal(t, true, um[0].Verified)
+	assert.Equal(t, false, um[0].Blocked.Status)
+
+	assert.Equal(t, 1, len(pm))
+	assert.Equal(t, "https://radio-t.com", pm[0].URL)
+	assert.Equal(t, true, pm[0].ReadOnly)
+}
+
 // makes new boltdb, put two records
 func prepStoreEngine(t *testing.T) engine.Interface {
 	os.Remove(testDb)
