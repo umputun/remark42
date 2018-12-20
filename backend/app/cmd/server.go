@@ -12,15 +12,15 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/coreos/bbolt"
+	bolt "github.com/coreos/bbolt"
 	"github.com/go-pkgz/mongo"
+	"github.com/go-pkgz/rest/cache"
 	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/backend/app/migrator"
 	"github.com/umputun/remark/backend/app/notify"
 	"github.com/umputun/remark/backend/app/rest/api"
 	"github.com/umputun/remark/backend/app/rest/auth"
-	"github.com/umputun/remark/backend/app/rest/cache"
 	"github.com/umputun/remark/backend/app/rest/proxy"
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/admin"
@@ -431,14 +431,14 @@ func (s *ServerCommand) makeCache() (cache.LoadingCache, error) {
 	case "mem":
 		return cache.NewMemoryCache(cache.MaxCacheSize(s.Cache.Max.Size), cache.MaxValSize(s.Cache.Max.Value),
 			cache.MaxKeys(s.Cache.Max.Items))
-	case "mongo":
-		mgServer, err := s.makeMongo()
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to create mongo server")
-		}
-		conn := mongo.NewConnection(mgServer, s.Mongo.DB, "cache")
-		return cache.NewMongoCache(conn, cache.MaxCacheSize(s.Cache.Max.Size), cache.MaxValSize(s.Cache.Max.Value),
-			cache.MaxKeys(s.Cache.Max.Items))
+	// case "mongo":
+	// 	mgServer, err := s.makeMongo()
+	// 	if err != nil {
+	// 		return nil, errors.Wrap(err, "failed to create mongo server")
+	// 	}
+	// 	conn := mongo.NewConnection(mgServer, s.Mongo.DB, "cache")
+	// 	return cache.NewMongoCache(conn, cache.MaxCacheSize(s.Cache.Max.Size), cache.MaxValSize(s.Cache.Max.Value),
+	// 		cache.MaxKeys(s.Cache.Max.Items))
 	case "none":
 		return &cache.Nop{}, nil
 	}
