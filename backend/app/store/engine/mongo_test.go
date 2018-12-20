@@ -239,6 +239,18 @@ func TestMongo_Verified(t *testing.T) {
 	assert.NoError(t, m.SetVerified("radio-t", "u1xyz", false))
 
 	assert.False(t, m.IsVerified("radio-t-bad", "u1"), "nothing verified on wrong site")
+
+	assert.NoError(t, m.SetVerified("radio-t", "u1", true))
+	assert.NoError(t, m.SetVerified("radio-t", "u2", true))
+	assert.NoError(t, m.SetVerified("radio-t", "u3", false))
+
+	ids, err := m.Verified("radio-t")
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"u1", "u2"}, ids, "verified 2 ids")
+
+	ids, err = m.Verified("radio-t-bad")
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(ids))
 }
 
 func TestMongo_GetForUser(t *testing.T) {

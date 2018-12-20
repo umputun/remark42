@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/bbolt"
-	"github.com/hashicorp/go-multierror"
+	bolt "github.com/coreos/bbolt"
+	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/backend/app/store"
