@@ -28,6 +28,22 @@ type DataStore struct {
 	}
 }
 
+// UserMetaData keeps info about user flags
+type UserMetaData struct {
+	UserID  string
+	Blocked struct {
+		Status bool
+		Until  time.Time
+	}
+	Verified bool
+}
+
+// PostMetaData keeps info about post flags
+type PostMetaData struct {
+	URL      string
+	ReadOnly bool
+}
+
 const defaultCommentMaxSize = 2000
 
 // UnlimitedVotes doesn't restrict MaxVotes
@@ -204,6 +220,55 @@ func (s *DataStore) IsAdmin(siteID string, userID string) bool {
 		}
 	}
 	return false
+}
+
+// Metas returns metadata for users and posts
+func (s *DataStore) Metas(siteID string) (umetas []UserMetaData, pmetas []PostMetaData, err error) {
+
+	// set posts meta
+	posts, err := s.List(siteID, 0, 0)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "can't get list of posts for %s", siteID)
+	}
+	for _, p := range posts {
+		if p.ReadOnly {
+			pmetas = append(pmetas, PostMetaData{URL: p.URL, ReadOnly: true})
+		}
+	}
+
+	// set users meta
+	m := map[string]UserMetaData{}
+
+	// process blocked users
+	blocked, err := s.Blocked(siteID)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "can't get list of blocked users for %s", siteID)
+	}
+	for _, b := range blocked {
+		val, ok := m[b.ID]
+		if !ok {
+			val = UserMetaData{}
+		}
+		val.Blocked.Status = true
+		val.Blocked.Until = b.Until
+		m[b.ID] = val
+	}
+
+	// process verified users
+	verified, err := s.Verified(siteID)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "can't get list of verified users for %s", siteID)
+	}
+	for _, v := range verified {
+		val, ok := m[v]
+		if !ok {
+			val = UserMetaData{}
+		}
+		val.Verified = true
+		m[v] = val
+	}
+
+	return umetas, pmetas, nil
 }
 
 // getsScopedLocks pull lock from the map if found or create a new one
