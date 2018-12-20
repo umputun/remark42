@@ -77,19 +77,23 @@ func setupLog(dbg bool) {
 	log.SetOutput(filter)
 }
 
+// getDump reads runtime stack and returns as a string
+func getDump() string {
+	maxSize := 5 * 1024 * 1024
+	stacktrace := make([]byte, maxSize)
+	length := runtime.Stack(stacktrace, true)
+	if length > maxSize {
+		length = maxSize
+	}
+	return string(stacktrace[:length])
+}
+
 func init() {
 	// catch SIGQUIT and print stack traces
 	sigChan := make(chan os.Signal)
 	go func() {
 		for range sigChan {
-			log.Print("[INFO] SIGQUIT detected")
-			maxSize := 5 * 1024 * 1024
-			stacktrace := make([]byte, maxSize)
-			length := runtime.Stack(stacktrace, true)
-			if length > maxSize {
-				length = maxSize
-			}
-			fmt.Println(string(stacktrace[:length]))
+			log.Printf("[INFO] SIGQUIT detected, dump:\n%s", getDump())
 		}
 	}()
 	signal.Notify(sigChan, syscall.SIGQUIT)

@@ -2,8 +2,10 @@ package main
 
 import (
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"syscall"
 	"testing"
@@ -45,4 +47,12 @@ func TestMain(t *testing.T) {
 	assert.Equal(t, "pong", string(body))
 
 	wg.Wait()
+}
+
+func TestGetDump(t *testing.T) {
+	dump := getDump()
+	assert.True(t, strings.Contains(dump, "goroutine"))
+	assert.True(t, strings.Contains(dump, "[running]"))
+	assert.True(t, strings.Contains(dump, "backend/app/main.go"))
+	log.Print("\n dump:" + dump)
 }
