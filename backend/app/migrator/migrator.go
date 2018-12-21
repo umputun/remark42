@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/backend/app/store"
+	"github.com/umputun/remark/backend/app/store/service"
 )
 
 // Importer defines interface to convert posts from external sources
@@ -29,6 +30,7 @@ type Store interface {
 	Find(locator store.Locator, sort string) ([]store.Comment, error)
 	List(siteID string, limit int, skip int) ([]store.PostInfo, error)
 	DeleteAll(siteID string) error
+	Metas(siteID string) (umetas []service.UserMetaData, pmetas []service.PostMetaData, err error)
 }
 
 // ImportParams defines everything needed to run import

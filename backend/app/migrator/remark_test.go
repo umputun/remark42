@@ -2,13 +2,14 @@ package migrator
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/coreos/bbolt"
+	bolt "github.com/coreos/bbolt"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/umputun/remark/backend/app/store"
@@ -22,6 +23,9 @@ var testDb = "/tmp/test-remark.db"
 func TestRemark_Export(t *testing.T) {
 	defer os.Remove(testDb)
 	b := prep(t)
+	b.SetReadOnly(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, true)
+	b.SetBlock("radio-t", "user-2", true, time.Hour)
+	b.SetVerified("radio-t", "user-1", true)
 	r := Remark{DataStore: b}
 
 	buf := &bytes.Buffer{}
@@ -29,11 +33,35 @@ func TestRemark_Export(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 2, size)
 
-	c1, err := buf.ReadString('\n')
-	assert.Nil(t, err)
+	c1 := buf.String()
 	log.Print(c1)
-	exp := `{"id":"efbc17f177ee1a1c0ee6e1e025749966ec071adc","pid":"","text":"some text, <a href=\"http://radio-t.com\" rel=\"nofollow\">link</a>","user":{"name":"user name","id":"user1","picture":"","ip":"293ec5b0cf154855258824ec7fac5dc63d176915","admin":false},"locator":{"site":"radio-t","url":"https://radio-t.com"},"score":0,"votes":{},"time":"2017-12-20T15:18:22-06:00"}` + "\n"
-	assert.Equal(t, exp, c1)
+
+	res := struct {
+		Version  int             `json:"version"`
+		Comments []store.Comment `json:"comments"`
+		Meta     struct {
+			Users []service.UserMetaData `json:"users"`
+			Posts []service.PostMetaData `json:"posts"`
+		} `json:"meta"`
+	}{}
+
+	err = json.Unmarshal([]byte(c1), &res)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(res.Comments))
+	assert.Equal(t, "some text, <a href=\"http://radio-t.com\" rel=\"nofollow\">link</a>", res.Comments[0].Text)
+
+	assert.Equal(t, 2, len(res.Meta.Users))
+	assert.Equal(t, "user-2", res.Meta.Users[0].ID)
+	assert.Equal(t, true, res.Meta.Users[0].Blocked.Status)
+	assert.Equal(t, false, res.Meta.Users[0].Verified)
+	assert.Equal(t, "user-1", res.Meta.Users[1].ID)
+	assert.Equal(t, false, res.Meta.Users[1].Blocked.Status)
+	assert.Equal(t, true, res.Meta.Users[1].Verified)
+
+	assert.Equal(t, 1, len(res.Meta.Posts))
+	assert.Equal(t, "https://radio-t.com", res.Meta.Posts[0].URL)
+	assert.Equal(t, true, res.Meta.Posts[0].ReadOnly)
+
 }
 
 func TestRemark_Import(t *testing.T) {
@@ -113,8 +141,8 @@ func prep(t *testing.T) *service.DataStore {
 
 	comment = store.Comment{
 		Text: "some text2", Timestamp: time.Date(2017, 12, 20, 15, 18, 23, 0, time.Local),
-		Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
-		User:    store.User{ID: "user1", Name: "user name"},
+		Locator: store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"},
+		User:    store.User{ID: "user2", Name: "user name"},
 	}
 	_, err = b.Create(comment)
 	assert.Nil(t, err)

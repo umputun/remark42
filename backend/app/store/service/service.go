@@ -30,18 +30,18 @@ type DataStore struct {
 
 // UserMetaData keeps info about user flags
 type UserMetaData struct {
-	UserID  string
+	ID      string `json:"id"`
 	Blocked struct {
-		Status bool
-		Until  time.Time
-	}
-	Verified bool
+		Status bool      `json:"status"`
+		Until  time.Time `json:"until"`
+	} `json:"blocked"`
+	Verified bool `json:"verified"`
 }
 
 // PostMetaData keeps info about post flags
 type PostMetaData struct {
-	URL      string
-	ReadOnly bool
+	URL      string `json:"url"`
+	ReadOnly bool   `json:"read_only"`
 }
 
 const defaultCommentMaxSize = 2000
@@ -224,7 +224,8 @@ func (s *DataStore) IsAdmin(siteID string, userID string) bool {
 
 // Metas returns metadata for users and posts
 func (s *DataStore) Metas(siteID string) (umetas []UserMetaData, pmetas []PostMetaData, err error) {
-
+	umetas = []UserMetaData{}
+	pmetas = []PostMetaData{}
 	// set posts meta
 	posts, err := s.List(siteID, 0, 0)
 	if err != nil {
@@ -248,7 +249,7 @@ func (s *DataStore) Metas(siteID string) (umetas []UserMetaData, pmetas []PostMe
 	for _, b := range blocked {
 		val, ok := m[b.ID]
 		if !ok {
-			val = UserMetaData{UserID: b.ID}
+			val = UserMetaData{ID: b.ID}
 		}
 		val.Blocked.Status = true
 		val.Blocked.Until = b.Until
@@ -263,7 +264,7 @@ func (s *DataStore) Metas(siteID string) (umetas []UserMetaData, pmetas []PostMe
 	for _, v := range verified {
 		val, ok := m[v]
 		if !ok {
-			val = UserMetaData{UserID: v}
+			val = UserMetaData{ID: v}
 		}
 		val.Verified = true
 		m[v] = val

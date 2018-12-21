@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/bbolt"
+	bolt "github.com/coreos/bbolt"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -380,10 +380,15 @@ func TestService_Metas(t *testing.T) {
 	b := DataStore{Interface: prepStoreEngine(t), EditDuration: 100 * time.Millisecond,
 		AdminStore: admin.NewStaticKeyStore("secret 123")}
 
+	um, pm, err := b.Metas("radio-t")
+	require.NoError(t, err)
+	assert.Equal(t, 0, len(um))
+	assert.Equal(t, 0, len(pm))
+
 	assert.NoError(t, b.SetVerified("radio-t", "user1", true))
 	assert.NoError(t, b.SetReadOnly(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, true))
 
-	um, pm, err := b.Metas("radio-t")
+	um, pm, err = b.Metas("radio-t")
 	require.NoError(t, err)
 
 	assert.Equal(t, 1, len(um))
