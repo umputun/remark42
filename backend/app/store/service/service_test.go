@@ -392,7 +392,7 @@ func TestService_Metas(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, 1, len(um))
-	assert.Equal(t, "user1", um[0].UserID)
+	assert.Equal(t, "user1", um[0].ID)
 	assert.Equal(t, true, um[0].Verified)
 	assert.Equal(t, false, um[0].Blocked.Status)
 

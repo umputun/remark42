@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/bbolt"
+	bolt "github.com/coreos/bbolt"
 	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -234,7 +234,7 @@ func TestMigrator_Export(t *testing.T) {
 	assert.NoError(t, err)
 	ungzBody, err := ioutil.ReadAll(ungzReader)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, strings.Count(string(ungzBody), "\n"))
+	assert.Equal(t, 6, strings.Count(string(ungzBody), "\n"))
 	assert.Equal(t, 2, strings.Count(string(ungzBody), "\"text\""))
 	t.Logf("%s", string(ungzBody))
 
@@ -248,7 +248,7 @@ func TestMigrator_Export(t *testing.T) {
 
 	body, err := ioutil.ReadAll(resp.Body)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, strings.Count(string(body), "\n"))
+	assert.Equal(t, 6, strings.Count(string(body), "\n"))
 	assert.Equal(t, 2, strings.Count(string(body), "\"text\""))
 	t.Logf("%s", string(body))
 

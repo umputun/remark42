@@ -22,7 +22,7 @@ var testDb = "/tmp/test-remark.db"
 
 func TestRemark_Export(t *testing.T) {
 	defer os.Remove(testDb)
-	b := prep(t)
+	b := prep(t) // write 2 comments
 	b.SetReadOnly(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, true)
 	b.SetBlock("radio-t", "user-2", true, time.Hour)
 	b.SetVerified("radio-t", "user-1", true)
@@ -61,7 +61,6 @@ func TestRemark_Export(t *testing.T) {
 	assert.Equal(t, 1, len(res.Meta.Posts))
 	assert.Equal(t, "https://radio-t.com", res.Meta.Posts[0].URL)
 	assert.Equal(t, true, res.Meta.Posts[0].ReadOnly)
-
 }
 
 func TestRemark_Import(t *testing.T) {
