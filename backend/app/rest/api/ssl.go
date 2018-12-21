@@ -82,7 +82,7 @@ func (s *Rest) makeAutocertManager() *autocert.Manager {
 }
 
 // makeHTTPSAutoCertServer makes https server with autocert mode (LE support)
-func (s *Rest) makeHTTPSAutocertServer(port int, router chi.Router, m *autocert.Manager) *http.Server {
+func (s *Rest) makeHTTPSAutocertServer(port int, router http.Handler, m *autocert.Manager) *http.Server {
 	server := s.makeHTTPServer(port, router)
 	cfg := makeTLSConfig()
 	cfg.GetCertificate = m.GetCertificate
@@ -91,7 +91,7 @@ func (s *Rest) makeHTTPSAutocertServer(port int, router chi.Router, m *autocert.
 }
 
 // makeHTTPSServer makes https server for static mode
-func (s *Rest) makeHTTPSServer(port int, router chi.Router) *http.Server {
+func (s *Rest) makeHTTPSServer(port int, router http.Handler) *http.Server {
 	server := s.makeHTTPServer(port, router)
 	server.TLSConfig = makeTLSConfig()
 	return server

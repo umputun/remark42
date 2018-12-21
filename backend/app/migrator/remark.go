@@ -42,9 +42,9 @@ func (r *Remark) Export(w io.Writer, siteID string) (size int, err error) {
 	commentsCount := 0
 	for i := len(topics) - 1; i >= 0; i-- { // topics from List sorted in opposite direction
 		topic := topics[i]
-		comments, err := r.DataStore.Find(store.Locator{SiteID: siteID, URL: topic.URL}, "time")
+		comments, e := r.DataStore.Find(store.Locator{SiteID: siteID, URL: topic.URL}, "time")
 		if err != nil {
-			return commentsCount, err
+			return commentsCount, e
 		}
 
 		for n, comment := range comments {
@@ -53,12 +53,12 @@ func (r *Remark) Export(w io.Writer, siteID string) (size int, err error) {
 			enc := json.NewEncoder(buf)
 			enc.SetEscapeHTML(false)
 
-			if err := enc.Encode(comment); err != nil {
+			if err = enc.Encode(comment); err != nil {
 				return commentsCount, errors.Wrapf(err, "can't marshal %v", comments)
 			}
 			data := buf.Bytes()
 			data = bytes.TrimSuffix(data, []byte("\n"))
-			if _, err := w.Write(data); err != nil {
+			if _, err = w.Write(data); err != nil {
 				return commentsCount, errors.Wrap(err, "can't write comment data")
 			}
 			if n < len(comments)-1 || i != 0 { // don't add , on last comment
@@ -75,9 +75,13 @@ func (r *Remark) Export(w io.Writer, siteID string) (size int, err error) {
 		}
 	}
 	log.Printf("[DEBUG] exported %d comments", commentsCount)
+	err = r.exportMeta(siteID, w)
+	return commentsCount, err
+}
 
-	if _, err := fmt.Fprintf(w, "%s", metaHeader); err != nil {
-		return 0, errors.Wrap(err, "can't write meta header")
+func (r *Remark) exportMeta(siteID string, w io.Writer) (err error) {
+	if _, err = fmt.Fprintf(w, "%s", metaHeader); err != nil {
+		return errors.Wrap(err, "can't write meta header")
 	}
 
 	meta := struct {
@@ -87,18 +91,17 @@ func (r *Remark) Export(w io.Writer, siteID string) (size int, err error) {
 
 	meta.Users, meta.Posts, err = r.DataStore.Metas(siteID)
 	if err != nil {
-		return 0, errors.Wrap(err, "can't get meta")
+		return errors.Wrap(err, "can't get meta")
 	}
 
 	if err := json.NewEncoder(w).Encode(meta); err != nil {
-		return 0, errors.Wrap(err, "can't encode meta")
+		return errors.Wrap(err, "can't encode meta")
 	}
 
 	if _, err := fmt.Fprintf(w, "%s\n", footer); err != nil {
-		return 0, errors.Wrap(err, "can't write footer")
+		return errors.Wrap(err, "can't write footer")
 	}
-
-	return commentsCount, nil
+	return nil
 }
 
 // Import comments from json strings produced by Remark.Export
