@@ -1,6 +1,7 @@
 package service
 
 import (
+	"sort"
 	"sync"
 	"time"
 
@@ -273,6 +274,7 @@ func (s *DataStore) Metas(siteID string) (umetas []UserMetaData, pmetas []PostMe
 	for _, u := range m {
 		umetas = append(umetas, u)
 	}
+	sort.Slice(umetas, func(i, j int) bool { return umetas[i].ID < umetas[j].ID })
 
 	return umetas, pmetas, nil
 }

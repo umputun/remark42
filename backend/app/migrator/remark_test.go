@@ -24,8 +24,8 @@ func TestRemark_Export(t *testing.T) {
 	defer os.Remove(testDb)
 	b := prep(t) // write 2 comments
 	b.SetReadOnly(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, true)
-	b.SetBlock("radio-t", "user-2", true, time.Hour)
-	b.SetVerified("radio-t", "user-1", true)
+	b.SetVerified("radio-t", "user1", true)
+	b.SetBlock("radio-t", "user2", true, time.Hour)
 	r := Remark{DataStore: b}
 
 	buf := &bytes.Buffer{}
@@ -51,12 +51,12 @@ func TestRemark_Export(t *testing.T) {
 	assert.Equal(t, "some text, <a href=\"http://radio-t.com\" rel=\"nofollow\">link</a>", res.Comments[0].Text)
 
 	assert.Equal(t, 2, len(res.Meta.Users))
-	assert.Equal(t, "user-2", res.Meta.Users[0].ID)
-	assert.Equal(t, true, res.Meta.Users[0].Blocked.Status)
-	assert.Equal(t, false, res.Meta.Users[0].Verified)
-	assert.Equal(t, "user-1", res.Meta.Users[1].ID)
-	assert.Equal(t, false, res.Meta.Users[1].Blocked.Status)
-	assert.Equal(t, true, res.Meta.Users[1].Verified)
+	assert.Equal(t, "user1", res.Meta.Users[0].ID)
+	assert.Equal(t, false, res.Meta.Users[0].Blocked.Status)
+	assert.Equal(t, true, res.Meta.Users[0].Verified)
+	assert.Equal(t, "user2", res.Meta.Users[1].ID)
+	assert.Equal(t, true, res.Meta.Users[1].Blocked.Status)
+	assert.Equal(t, false, res.Meta.Users[1].Verified)
 
 	assert.Equal(t, 1, len(res.Meta.Posts))
 	assert.Equal(t, "https://radio-t.com", res.Meta.Posts[0].URL)
