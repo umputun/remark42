@@ -29,7 +29,7 @@ type Remark struct {
 // Export all comments to writer as json strings. Each comment is one string, separated by "\n"
 func (r *Remark) Export(w io.Writer, siteID string) (size int, err error) {
 
-	if _, err := fmt.Fprintf(w, "%s\n", header); err != nil {
+	if _, err = fmt.Fprintf(w, "%s\n", header); err != nil {
 		return 0, err
 	}
 
@@ -62,9 +62,14 @@ func (r *Remark) Export(w io.Writer, siteID string) (size int, err error) {
 				return commentsCount, errors.Wrap(err, "can't write comment data")
 			}
 			if n < len(comments)-1 || i != 0 { // don't add , on last comment
-				w.Write([]byte(","))
+				if _, err = w.Write([]byte(",")); err != nil {
+					return commentsCount, errors.Wrap(err, "can't write comment separator")
+				}
 			}
-			w.Write([]byte("\n"))
+
+			if _, err = w.Write([]byte("\n")); err != nil {
+				return commentsCount, errors.Wrap(err, "can't write comment eol")
+			}
 
 			commentsCount++
 		}
@@ -72,7 +77,7 @@ func (r *Remark) Export(w io.Writer, siteID string) (size int, err error) {
 	log.Printf("[DEBUG] exported %d comments", commentsCount)
 
 	if _, err := fmt.Fprintf(w, "%s", metaHeader); err != nil {
-		return 0, err
+		return 0, errors.Wrap(err, "can't write meta header")
 	}
 
 	meta := struct {
@@ -82,15 +87,15 @@ func (r *Remark) Export(w io.Writer, siteID string) (size int, err error) {
 
 	meta.Users, meta.Posts, err = r.DataStore.Metas(siteID)
 	if err != nil {
-		return 0, err
+		return 0, errors.Wrap(err, "can't get meta")
 	}
 
 	if err := json.NewEncoder(w).Encode(meta); err != nil {
-		return 0, err
+		return 0, errors.Wrap(err, "can't encode meta")
 	}
 
 	if _, err := fmt.Fprintf(w, "%s\n", footer); err != nil {
-		return 0, err
+		return 0, errors.Wrap(err, "can't write footer")
 	}
 
 	return commentsCount, nil
