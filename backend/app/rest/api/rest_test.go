@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/bbolt"
+	bolt "github.com/coreos/bbolt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -209,8 +209,8 @@ func prep(t *testing.T) (srv *Rest, ts *httptest.Server) {
 		Migrator: &Migrator{
 			DisqusImporter:    &migrator.Disqus{DataStore: dataStore},
 			WordPressImporter: &migrator.WordPress{DataStore: dataStore},
-			NativeImporter:    &migrator.Remark{DataStore: dataStore},
-			NativeExported:    &migrator.Remark{DataStore: dataStore},
+			NativeImporter:    &migrator.Native{DataStore: dataStore},
+			NativeExporter:    &migrator.Native{DataStore: dataStore},
 			Cache:             &cache.Nop{},
 			KeyStore:          adminStore,
 		},

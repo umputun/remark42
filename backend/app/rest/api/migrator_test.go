@@ -267,8 +267,8 @@ func prepImportSrv(t *testing.T) (svc *Migrator, ds *service.DataStore, ts *http
 	svc = &Migrator{
 		DisqusImporter:    &migrator.Disqus{DataStore: dataStore},
 		WordPressImporter: &migrator.WordPress{DataStore: dataStore},
-		NativeImporter:    &migrator.Remark{DataStore: dataStore},
-		NativeExported:    &migrator.Remark{DataStore: dataStore},
+		NativeImporter:    &migrator.Native{DataStore: dataStore},
+		NativeExporter:    &migrator.Native{DataStore: dataStore},
 		Cache:             &cache.Nop{},
 		KeyStore:          adminStore,
 	}

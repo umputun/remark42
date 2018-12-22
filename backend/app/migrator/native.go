@@ -20,14 +20,14 @@ const (
 	footer     = `}`
 )
 
-// Remark implements exporter and importer for internal store format
+// Native implements exporter and importer for internal store format
 // {"version": 1, comments:[{...}\n,{}], meta: {meta}}
-type Remark struct {
+type Native struct {
 	DataStore Store
 }
 
 // Export all comments to writer as json strings. Each comment is one string, separated by "\n"
-func (r *Remark) Export(w io.Writer, siteID string) (size int, err error) {
+func (r *Native) Export(w io.Writer, siteID string) (size int, err error) {
 
 	if _, err = fmt.Fprintf(w, "%s\n", header); err != nil {
 		return 0, err
@@ -79,7 +79,7 @@ func (r *Remark) Export(w io.Writer, siteID string) (size int, err error) {
 	return commentsCount, err
 }
 
-func (r *Remark) exportMeta(siteID string, w io.Writer) (err error) {
+func (r *Native) exportMeta(siteID string, w io.Writer) (err error) {
 	if _, err = fmt.Fprintf(w, "%s", metaHeader); err != nil {
 		return errors.Wrap(err, "can't write meta header")
 	}
@@ -105,7 +105,7 @@ func (r *Remark) exportMeta(siteID string, w io.Writer) (err error) {
 }
 
 // Import comments from json strings produced by Remark.Export
-func (r *Remark) Import(reader io.Reader, siteID string) (size int, err error) {
+func (r *Native) Import(reader io.Reader, siteID string) (size int, err error) {
 
 	if err := r.DataStore.DeleteAll(siteID); err != nil {
 		return 0, err

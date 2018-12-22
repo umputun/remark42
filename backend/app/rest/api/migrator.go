@@ -27,7 +27,7 @@ type Migrator struct {
 	NativeImporter    migrator.Importer
 	DisqusImporter    migrator.Importer
 	WordPressImporter migrator.Importer
-	NativeExported    migrator.Exporter
+	NativeExporter    migrator.Exporter
 	KeyStore          KeyStore
 
 	busy map[string]bool
@@ -153,7 +153,7 @@ func (m *Migrator) exportCtrl(w http.ResponseWriter, r *http.Request) {
 		writer = gzWriter
 	}
 
-	if _, err := m.NativeExported.Export(writer, siteID); err != nil {
+	if _, err := m.NativeExporter.Export(writer, siteID); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "export failed")
 		return
 	}

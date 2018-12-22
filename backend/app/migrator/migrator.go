@@ -52,7 +52,7 @@ func ImportComments(p ImportParams) (int, error) {
 	case "wordpress":
 		importer = &WordPress{DataStore: p.DataStore}
 	case "native":
-		importer = &Remark{DataStore: p.DataStore}
+		importer = &Native{DataStore: p.DataStore}
 	default:
 		return 0, errors.Errorf("unsupported import provider %s", p.Provider)
 	}

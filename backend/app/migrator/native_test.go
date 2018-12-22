@@ -20,13 +20,13 @@ import (
 
 var testDb = "/tmp/test-remark.db"
 
-func TestRemark_Export(t *testing.T) {
+func TestNative_Export(t *testing.T) {
 	defer os.Remove(testDb)
 	b := prep(t) // write 2 comments
 	b.SetReadOnly(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, true)
 	b.SetVerified("radio-t", "user1", true)
 	b.SetBlock("radio-t", "user2", true, time.Hour)
-	r := Remark{DataStore: b}
+	r := Native{DataStore: b}
 
 	buf := &bytes.Buffer{}
 	size, err := r.Export(buf, "radio-t")
@@ -63,7 +63,7 @@ func TestRemark_Export(t *testing.T) {
 	assert.Equal(t, true, res.Meta.Posts[0].ReadOnly)
 }
 
-func TestRemark_Import(t *testing.T) {
+func TestNative_Import(t *testing.T) {
 	defer os.Remove(testDb)
 
 	r1 := `{"id":"efbc17f177ee1a1c0ee6e1e025749966ec071adc","pid":"","text":"some text, <a href=\"http://radio-t.com\" rel=\"nofollow\">link</a>","user":{"name":"user name","id":"user1","picture":"","profile":"","admin":false},"locator":{"site":"radio-t","url":"https://radio-t.com"},"score":0,"votes":{},"time":"2017-12-20T15:18:22-06:00"}` + "\n"
@@ -76,7 +76,7 @@ func TestRemark_Import(t *testing.T) {
 	buf.WriteString("{}")
 
 	b := prep(t) // write some recs
-	r := Remark{DataStore: &service.DataStore{Interface: b, AdminStore: admin.NewStaticStore("12345", []string{}, "")}}
+	r := Native{DataStore: &service.DataStore{Interface: b, AdminStore: admin.NewStaticStore("12345", []string{}, "")}}
 	size, err := r.Import(buf, "radio-t")
 	assert.Nil(t, err)
 	assert.Equal(t, 2, size)
@@ -97,7 +97,7 @@ func TestRemark_Import(t *testing.T) {
 	assert.Equal(t, 2, size)
 }
 
-func TestRemark_ImportManyWithError(t *testing.T) {
+func TestNative_ImportManyWithError(t *testing.T) {
 	defer os.Remove(testDb)
 
 	goodRec := `{"id":"%d","pid":"","text":"some text, <a href=\"http://radio-t.com\" rel=\"nofollow\">link</a>","user":{"name":"user name","id":"user1","picture":"","profile":"","admin":false},"locator":{"site":"radio-t","url":"https://radio-t.com"},"score":0,"votes":{},"time":"2017-12-20T15:18:22-06:00"}` + "\n"
@@ -110,7 +110,7 @@ func TestRemark_ImportManyWithError(t *testing.T) {
 	buf.WriteString("bad2\n")
 
 	b := prep(t) // write some recs
-	r := Remark{DataStore: &service.DataStore{Interface: b, AdminStore: admin.NewStaticStore("12345", []string{}, "")}}
+	r := Native{DataStore: &service.DataStore{Interface: b, AdminStore: admin.NewStaticStore("12345", []string{}, "")}}
 	n, err := r.Import(buf, "radio-t")
 	assert.EqualError(t, err, "failed to save 2 comments")
 	assert.Equal(t, 1200, n)
