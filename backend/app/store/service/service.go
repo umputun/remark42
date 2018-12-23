@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	multierror "github.com/hashicorp/go-multierror"
+
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 
@@ -277,6 +279,30 @@ func (s *DataStore) Metas(siteID string) (umetas []UserMetaData, pmetas []PostMe
 	sort.Slice(umetas, func(i, j int) bool { return umetas[i].ID < umetas[j].ID })
 
 	return umetas, pmetas, nil
+}
+
+// SetMetas saves metadata for users and posts
+func (s *DataStore) SetMetas(siteID string, umetas []UserMetaData, pmetas []PostMetaData) (err error) {
+	errs := new(multierror.Error)
+
+	// save posts metas
+	for _, pm := range pmetas {
+		if pm.ReadOnly {
+			errs = multierror.Append(errs, s.SetReadOnly(store.Locator{SiteID: siteID, URL: pm.URL}, true))
+		}
+	}
+
+	// save users metas
+	for _, um := range umetas {
+		if um.Blocked.Status {
+			errs = multierror.Append(errs, s.SetBlock(siteID, um.ID, true, um.Blocked.Until.Sub(time.Now())))
+		}
+		if um.Verified {
+			errs = multierror.Append(errs, s.SetVerified(siteID, um.ID, true))
+		}
+	}
+
+	return errs.ErrorOrNil()
 }
 
 // getsScopedLocks pull lock from the map if found or create a new one

@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
 	bolt "github.com/coreos/bbolt"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/admin"
@@ -36,65 +38,66 @@ func TestNative_Export(t *testing.T) {
 	c1 := buf.String()
 	log.Print(c1)
 
-	res := struct {
-		Version  int             `json:"version"`
-		Comments []store.Comment `json:"comments"`
-		Meta     struct {
-			Users []service.UserMetaData `json:"users"`
-			Posts []service.PostMetaData `json:"posts"`
-		} `json:"meta"`
+	dec := json.NewDecoder(strings.NewReader(c1))
+
+	meta := struct {
+		Version int                    `json:"version"`
+		Users   []service.UserMetaData `json:"users"`
+		Posts   []service.PostMetaData `json:"posts"`
 	}{}
 
-	err = json.Unmarshal([]byte(c1), &res)
-	assert.NoError(t, err)
-	assert.Equal(t, 2, len(res.Comments))
-	assert.Equal(t, "some text, <a href=\"http://radio-t.com\" rel=\"nofollow\">link</a>", res.Comments[0].Text)
+	require.NoError(t, dec.Decode(&meta), "decode meta")
 
-	assert.Equal(t, 2, len(res.Meta.Users))
-	assert.Equal(t, "user1", res.Meta.Users[0].ID)
-	assert.Equal(t, false, res.Meta.Users[0].Blocked.Status)
-	assert.Equal(t, true, res.Meta.Users[0].Verified)
-	assert.Equal(t, "user2", res.Meta.Users[1].ID)
-	assert.Equal(t, true, res.Meta.Users[1].Blocked.Status)
-	assert.Equal(t, false, res.Meta.Users[1].Verified)
+	assert.Equal(t, 2, len(meta.Users))
+	assert.Equal(t, "user1", meta.Users[0].ID)
+	assert.Equal(t, false, meta.Users[0].Blocked.Status)
+	assert.Equal(t, true, meta.Users[0].Verified)
+	assert.Equal(t, "user2", meta.Users[1].ID)
+	assert.Equal(t, true, meta.Users[1].Blocked.Status)
+	assert.Equal(t, false, meta.Users[1].Verified)
 
-	assert.Equal(t, 1, len(res.Meta.Posts))
-	assert.Equal(t, "https://radio-t.com", res.Meta.Posts[0].URL)
-	assert.Equal(t, true, res.Meta.Posts[0].ReadOnly)
+	assert.Equal(t, 1, len(meta.Posts))
+	assert.Equal(t, "https://radio-t.com", meta.Posts[0].URL)
+	assert.Equal(t, true, meta.Posts[0].ReadOnly)
+
+	comments := [3]store.Comment{}
+
+	assert.NoError(t, dec.Decode(&comments[0]), "decode comment 0")
+	assert.NoError(t, dec.Decode(&comments[1]), "decode comment 0")
+	assert.Error(t, dec.Decode(&comments[2]), "EOF")
+
+	assert.Equal(t, "some text, <a href=\"http://radio-t.com\" rel=\"nofollow\">link</a>", comments[0].Text)
 }
 
 func TestNative_Import(t *testing.T) {
 	defer os.Remove(testDb)
 
-	r1 := `{"id":"efbc17f177ee1a1c0ee6e1e025749966ec071adc","pid":"","text":"some text, <a href=\"http://radio-t.com\" rel=\"nofollow\">link</a>","user":{"name":"user name","id":"user1","picture":"","profile":"","admin":false},"locator":{"site":"radio-t","url":"https://radio-t.com"},"score":0,"votes":{},"time":"2017-12-20T15:18:22-06:00"}` + "\n"
-
-	r2 := `{"id":"afbc17f177ee1a1c0ee6e1e025749966ec071adc","pid":"efbc17f177ee1a1c0ee6e1e025749966ec071adc","text":"some text2, <a href=\"http://radio-t.com\" rel=\"nofollow\">link</a>","user":{"name":"user name","id":"user1","picture":"","profile":"","admin":false},"locator":{"site":"radio-t","url":"https://radio-t.com"},"score":0,"votes":{},"time":"2017-12-20T15:18:23-06:00"}` + "\n"
-
-	buf := &bytes.Buffer{}
-	buf.WriteString(r1)
-	buf.WriteString(r2)
-	buf.WriteString("{}")
+	inp := `{"version":1,"users":[{"id":"user1","blocked":{"status":false,"until":"0001-01-01T00:00:00Z"},"verified":true},{"id":"user2","blocked":{"status":true,"until":"2018-12-23T02:55:22.472041-06:00"},"verified":false}],"posts":[{"url":"https://radio-t.com","read_only":true}]}
+	{"id":"efbc17f177ee1a1c0ee6e1e025749966ec071adc","pid":"","text":"some text, <a href=\"http://radio-t.com\" rel=\"nofollow\">link</a>","user":{"name":"user name","id":"user1","picture":"","ip":"293ec5b0cf154855258824ec7fac5dc63d176915","admin":false},"locator":{"site":"radio-t","url":"https://radio-t.com"},"score":0,"votes":{},"time":"2017-12-20T15:18:22-06:00"}
+	{"id":"f863bd79-fec6-4a75-b308-61fe5dd02aa1","pid":"1234","text":"some text2","user":{"name":"user name","id":"user2","picture":"","ip":"293ec5b0cf154855258824ec7fac5dc63d176915","admin":false},"locator":{"site":"radio-t","url":"https://radio-t.com/2"},"score":0,"votes":{},"time":"2017-12-20T15:18:23-06:00"}`
 
 	b := prep(t) // write some recs
 	r := Native{DataStore: &service.DataStore{Interface: b, AdminStore: admin.NewStaticStore("12345", []string{}, "")}}
-	size, err := r.Import(buf, "radio-t")
+	size, err := r.Import(strings.NewReader(inp), "radio-t")
 	assert.Nil(t, err)
 	assert.Equal(t, 2, size)
 
-	comments, err := b.Find(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com"}, "time")
+	comments, err := b.Last("radio-t", 10)
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(comments))
-	assert.Equal(t, "efbc17f177ee1a1c0ee6e1e025749966ec071adc", comments[0].ID)
-	assert.Equal(t, "afbc17f177ee1a1c0ee6e1e025749966ec071adc", comments[1].ID)
-	assert.Equal(t, "efbc17f177ee1a1c0ee6e1e025749966ec071adc", comments[1].ParentID)
+	assert.Equal(t, "f863bd79-fec6-4a75-b308-61fe5dd02aa1", comments[0].ID)
+	assert.Equal(t, "1234", comments[0].ParentID)
+	assert.Equal(t, false, b.IsReadOnly(comments[0].Locator))
 
-	// try import again
-	buf.WriteString(r1)
-	buf.WriteString(r2)
-	buf.WriteString("{}")
-	size, err = r.Import(buf, "radio-t")
-	assert.Nil(t, err)
-	assert.Equal(t, 2, size)
+	assert.Equal(t, "efbc17f177ee1a1c0ee6e1e025749966ec071adc", comments[1].ID)
+	assert.Equal(t, "https://radio-t.com", comments[1].Locator.URL)
+	assert.Equal(t, true, b.IsReadOnly(comments[1].Locator))
+
+	assert.Equal(t, false, b.IsBlocked("radio-t", "user1"))
+	assert.Equal(t, true, b.IsVerified("radio-t", "user1"))
+
+	assert.Equal(t, true, b.IsBlocked("radio-t", "user2"))
+	assert.Equal(t, false, b.IsVerified("radio-t", "user2"))
 }
 
 func TestNative_ImportManyWithError(t *testing.T) {
@@ -103,11 +106,12 @@ func TestNative_ImportManyWithError(t *testing.T) {
 	goodRec := `{"id":"%d","pid":"","text":"some text, <a href=\"http://radio-t.com\" rel=\"nofollow\">link</a>","user":{"name":"user name","id":"user1","picture":"","profile":"","admin":false},"locator":{"site":"radio-t","url":"https://radio-t.com"},"score":0,"votes":{},"time":"2017-12-20T15:18:22-06:00"}` + "\n"
 
 	buf := &bytes.Buffer{}
+	buf.WriteString(`{"version":1, "users":[], "posts":[]}` + "\n")
 	for i := 0; i < 1200; i++ {
 		buf.WriteString(fmt.Sprintf(goodRec, i))
 	}
-	buf.WriteString("bad1\n")
-	buf.WriteString("bad2\n")
+	buf.WriteString("{}\n")
+	buf.WriteString("{}\n")
 
 	b := prep(t) // write some recs
 	r := Native{DataStore: &service.DataStore{Interface: b, AdminStore: admin.NewStaticStore("12345", []string{}, "")}}

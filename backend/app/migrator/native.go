@@ -1,10 +1,8 @@
 package migrator
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 
@@ -14,26 +12,28 @@ import (
 	"github.com/umputun/remark/backend/app/store/service"
 )
 
-const (
-	header     = `{"version":1, "comments":[`
-	metaHeader = "],\n\"meta\":"
-	footer     = `}`
-)
-
 // Native implements exporter and importer for internal store format
 // {"version": 1, comments:[{...}\n,{}], meta: {meta}}
+// each comments starts from the new line
 type Native struct {
 	DataStore Store
 }
 
-// Export all comments to writer as json strings. Each comment is one string, separated by "\n"
-func (r *Native) Export(w io.Writer, siteID string) (size int, err error) {
+type meta struct {
+	Version int                    `json:"version"`
+	Users   []service.UserMetaData `json:"users"`
+	Posts   []service.PostMetaData `json:"posts"`
+}
 
-	if _, err = fmt.Fprintf(w, "%s\n", header); err != nil {
-		return 0, err
+// Export all comments to writer as json strings. Each comment is one string, separated by "\n"
+// The final file is a valid json
+func (n *Native) Export(w io.Writer, siteID string) (size int, err error) {
+
+	if err = n.exportMeta(siteID, w); err != nil {
+		return 0, errors.Wrapf(err, "failed to export meta for site %s", siteID)
 	}
 
-	topics, err := r.DataStore.List(siteID, 0, 0)
+	topics, err := n.DataStore.List(siteID, 0, 0)
 	if err != nil {
 		return 0, err
 	}
@@ -42,12 +42,12 @@ func (r *Native) Export(w io.Writer, siteID string) (size int, err error) {
 	commentsCount := 0
 	for i := len(topics) - 1; i >= 0; i-- { // topics from List sorted in opposite direction
 		topic := topics[i]
-		comments, e := r.DataStore.Find(store.Locator{SiteID: siteID, URL: topic.URL}, "time")
+		comments, e := n.DataStore.Find(store.Locator{SiteID: siteID, URL: topic.URL}, "time")
 		if err != nil {
 			return commentsCount, e
 		}
 
-		for n, comment := range comments {
+		for _, comment := range comments {
 
 			buf := &bytes.Buffer{}
 			enc := json.NewEncoder(buf)
@@ -56,77 +56,61 @@ func (r *Native) Export(w io.Writer, siteID string) (size int, err error) {
 			if err = enc.Encode(comment); err != nil {
 				return commentsCount, errors.Wrapf(err, "can't marshal %v", comments)
 			}
-			data := buf.Bytes()
-			data = bytes.TrimSuffix(data, []byte("\n"))
-			if _, err = w.Write(data); err != nil {
+			if _, err = w.Write(buf.Bytes()); err != nil {
 				return commentsCount, errors.Wrap(err, "can't write comment data")
 			}
-			if n < len(comments)-1 || i != 0 { // don't add , on last comment
-				if _, err = w.Write([]byte(",")); err != nil {
-					return commentsCount, errors.Wrap(err, "can't write comment separator")
-				}
-			}
-
-			if _, err = w.Write([]byte("\n")); err != nil {
-				return commentsCount, errors.Wrap(err, "can't write comment eol")
-			}
-
 			commentsCount++
 		}
 	}
 	log.Printf("[DEBUG] exported %d comments", commentsCount)
-	err = r.exportMeta(siteID, w)
-	return commentsCount, err
+	return commentsCount, nil
 }
 
-func (r *Native) exportMeta(siteID string, w io.Writer) (err error) {
-	if _, err = fmt.Fprintf(w, "%s", metaHeader); err != nil {
-		return errors.Wrap(err, "can't write meta header")
-	}
-
-	meta := struct {
-		Users []service.UserMetaData `json:"users"`
-		Posts []service.PostMetaData `json:"posts"`
-	}{}
-
-	meta.Users, meta.Posts, err = r.DataStore.Metas(siteID)
+// exportMeta appends user and post metas to exported stream
+func (n *Native) exportMeta(siteID string, w io.Writer) (err error) {
+	m := meta{Version: 1}
+	m.Users, m.Posts, err = n.DataStore.Metas(siteID)
 	if err != nil {
 		return errors.Wrap(err, "can't get meta")
 	}
 
-	if err := json.NewEncoder(w).Encode(meta); err != nil {
+	if err := json.NewEncoder(w).Encode(m); err != nil {
 		return errors.Wrap(err, "can't encode meta")
-	}
-
-	if _, err := fmt.Fprintf(w, "%s\n", footer); err != nil {
-		return errors.Wrap(err, "can't write footer")
 	}
 	return nil
 }
 
 // Import comments from json strings produced by Remark.Export
-func (r *Native) Import(reader io.Reader, siteID string) (size int, err error) {
+func (n *Native) Import(reader io.Reader, siteID string) (size int, err error) {
 
-	if err := r.DataStore.DeleteAll(siteID); err != nil {
+	m := meta{}
+	dec := json.NewDecoder(reader)
+	if err = dec.Decode(&m); err != nil {
+		return 0, errors.Wrapf(err, "failed to import meta for site %s", siteID)
+	}
+
+	if err := n.DataStore.DeleteAll(siteID); err != nil {
 		return 0, err
 	}
 
 	failed := 0
 	total, comments := 0, 0
-	scanner := bufio.NewScanner(reader)
-	for scanner.Scan() {
-		rec := scanner.Bytes()
-		if len(rec) < 3 {
-			continue
-		}
-		total++
+
+	for {
 		comment := store.Comment{}
-		if err := json.Unmarshal(rec, &comment); err != nil {
+		err = dec.Decode(&comment)
+		if err == io.EOF {
+			break
+		}
+
+		total++
+
+		if err != nil {
 			failed++
-			log.Printf("[WARN] unmarshal failed for %s, %s", string(rec), err)
 			continue
 		}
-		if _, err := r.DataStore.Create(comment); err != nil {
+
+		if _, err := n.DataStore.Create(comment); err != nil {
 			failed++
 			log.Printf("[WARN] can't write %+v to store, %s", comment, err)
 			continue
@@ -136,12 +120,13 @@ func (r *Native) Import(reader io.Reader, siteID string) (size int, err error) {
 			log.Printf("[DEBUG] imported %d comments", comments)
 		}
 	}
-	if scanner.Err() != nil {
-		return comments, errors.Wrap(scanner.Err(), "error in scan")
-	}
+
 	if failed > 0 {
 		return comments, errors.Errorf("failed to save %d comments", failed)
 	}
 	log.Printf("[INFO] imported %d comments from %d records", comments, total)
-	return comments, nil
+
+	err = n.DataStore.SetMetas(siteID, m.Users, m.Posts)
+
+	return comments, err
 }

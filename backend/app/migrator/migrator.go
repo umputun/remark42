@@ -31,6 +31,7 @@ type Store interface {
 	List(siteID string, limit int, skip int) ([]store.PostInfo, error)
 	DeleteAll(siteID string) error
 	Metas(siteID string) (umetas []service.UserMetaData, pmetas []service.PostMetaData, err error)
+	SetMetas(siteID string, umetas []service.UserMetaData, pmetas []service.PostMetaData) error
 }
 
 // ImportParams defines everything needed to run import
