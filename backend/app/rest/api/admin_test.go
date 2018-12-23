@@ -455,7 +455,7 @@ func TestAdmin_ExportStream(t *testing.T) {
 
 	body, code := getWithAuth(t, ts.URL+"/api/v1/admin/export?site=radio-t&mode=stream")
 	assert.Equal(t, 200, code)
-	assert.Equal(t, 6, strings.Count(body, "\n"))
+	assert.Equal(t, 3, strings.Count(body, "\n"))
 	assert.Equal(t, 2, strings.Count(body, "\"text\""))
 	t.Logf("%s", body)
 }
@@ -487,7 +487,7 @@ func TestAdmin_ExportFile(t *testing.T) {
 	assert.NoError(t, err)
 	ungzBody, err := ioutil.ReadAll(ungzReader)
 	assert.NoError(t, err)
-	assert.Equal(t, 6, strings.Count(string(ungzBody), "\n"))
+	assert.Equal(t, 3, strings.Count(string(ungzBody), "\n"))
 	assert.Equal(t, 2, strings.Count(string(ungzBody), "\"text\""))
 	t.Logf("%s", string(ungzBody))
 }

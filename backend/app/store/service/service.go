@@ -295,7 +295,7 @@ func (s *DataStore) SetMetas(siteID string, umetas []UserMetaData, pmetas []Post
 	// save users metas
 	for _, um := range umetas {
 		if um.Blocked.Status {
-			errs = multierror.Append(errs, s.SetBlock(siteID, um.ID, true, um.Blocked.Until.Sub(time.Now())))
+			errs = multierror.Append(errs, s.SetBlock(siteID, um.ID, true, time.Until(um.Blocked.Until)))
 		}
 		if um.Verified {
 			errs = multierror.Append(errs, s.SetVerified(siteID, um.ID, true))

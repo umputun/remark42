@@ -12,6 +12,8 @@ import (
 	"github.com/umputun/remark/backend/app/store/service"
 )
 
+const natvieVersion = 1
+
 // Native implements exporter and importer for internal store format
 // {"version": 1, comments:[{...}\n,{}], meta: {meta}}
 // each comments starts from the new line
@@ -68,7 +70,7 @@ func (n *Native) Export(w io.Writer, siteID string) (size int, err error) {
 
 // exportMeta appends user and post metas to exported stream
 func (n *Native) exportMeta(siteID string, w io.Writer) (err error) {
-	m := meta{Version: 1}
+	m := meta{Version: natvieVersion}
 	m.Users, m.Posts, err = n.DataStore.Metas(siteID)
 	if err != nil {
 		return errors.Wrap(err, "can't get meta")
@@ -89,7 +91,11 @@ func (n *Native) Import(reader io.Reader, siteID string) (size int, err error) {
 		return 0, errors.Wrapf(err, "failed to import meta for site %s", siteID)
 	}
 
-	if err := n.DataStore.DeleteAll(siteID); err != nil {
+	if m.Version != natvieVersion {
+		return 0, errors.Errorf("unexpected import file version %d", m.Version)
+	}
+
+	if err = n.DataStore.DeleteAll(siteID); err != nil {
 		return 0, err
 	}
 
@@ -110,7 +116,7 @@ func (n *Native) Import(reader io.Reader, siteID string) (size int, err error) {
 			continue
 		}
 
-		if _, err := n.DataStore.Create(comment); err != nil {
+		if _, err = n.DataStore.Create(comment); err != nil {
 			failed++
 			log.Printf("[WARN] can't write %+v to store, %s", comment, err)
 			continue
