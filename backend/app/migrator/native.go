@@ -91,7 +91,7 @@ func (n *Native) Import(reader io.Reader, siteID string) (size int, err error) {
 		return 0, errors.Wrapf(err, "failed to import meta for site %s", siteID)
 	}
 
-	if m.Version != natvieVersion {
+	if m.Version != natvieVersion && m.Version != 0 { // this version allows back compatibility with 0 version
 		return 0, errors.Errorf("unexpected import file version %d", m.Version)
 	}
 
