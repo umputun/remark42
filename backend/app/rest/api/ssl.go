@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+	R "github.com/go-pkgz/rest"
 	"golang.org/x/crypto/acme/autocert"
 )
 
@@ -41,7 +42,7 @@ type SSLConfig struct {
 func (s *Rest) httpToHTTPSRouter() chi.Router {
 	log.Printf("[DEBUG] create https-to-http redirect routes")
 	router := chi.NewRouter()
-	router.Use(middleware.RealIP, Recoverer)
+	router.Use(middleware.RealIP, R.Recoverer)
 	router.Use(middleware.Throttle(1000), middleware.Timeout(60*time.Second))
 
 	router.Handle("/*", s.redirectHandler())
@@ -55,7 +56,7 @@ func (s *Rest) httpToHTTPSRouter() chi.Router {
 func (s *Rest) httpChallengeRouter(m *autocert.Manager) chi.Router {
 	log.Printf("[DEBUG] create http-challenge routes")
 	router := chi.NewRouter()
-	router.Use(middleware.RealIP, Recoverer)
+	router.Use(middleware.RealIP, R.Recoverer)
 	router.Use(middleware.Throttle(1000), middleware.Timeout(60*time.Second))
 
 	router.Handle("/*", m.HTTPHandler(s.redirectHandler()))

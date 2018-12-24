@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	R "github.com/go-pkgz/rest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -28,7 +29,7 @@ func TestRest_Create(t *testing.T) {
 	assert.Nil(t, err)
 	require.Equal(t, http.StatusCreated, resp.StatusCode, string(b))
 
-	c := JSON{}
+	c := R.JSON{}
 	err = json.Unmarshal(b, &c)
 	assert.Nil(t, err)
 	loc := c["locator"].(map[string]interface{})
@@ -83,7 +84,7 @@ func TestRest_CreateTooBig(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	b, err := ioutil.ReadAll(resp.Body)
 	assert.Nil(t, err)
-	c := JSON{}
+	c := R.JSON{}
 	err = json.Unmarshal(b, &c)
 	assert.Nil(t, err)
 	assert.Equal(t, "comment text exceeded max allowed size 4000 (4001)", c["error"])
@@ -95,7 +96,7 @@ func TestRest_CreateTooBig(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	b, err = ioutil.ReadAll(resp.Body)
 	assert.Nil(t, err)
-	c = JSON{}
+	c = R.JSON{}
 	err = json.Unmarshal(b, &c)
 	assert.Nil(t, err)
 	assert.Equal(t, "http: request body too large", c["error"])
@@ -127,7 +128,7 @@ func TestRest_CreateAndGet(t *testing.T) {
 	require.Equal(t, http.StatusCreated, resp.StatusCode)
 	b, err := ioutil.ReadAll(resp.Body)
 	assert.Nil(t, err)
-	c := JSON{}
+	c := R.JSON{}
 	err = json.Unmarshal(b, &c)
 	assert.Nil(t, err)
 

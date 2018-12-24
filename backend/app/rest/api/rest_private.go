@@ -10,11 +10,12 @@ import (
 	"strings"
 	"time"
 
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
+	R "github.com/go-pkgz/rest"
 	"github.com/go-pkgz/rest/cache"
-	multierror "github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/go-multierror"
 
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/rest/auth"
@@ -164,7 +165,7 @@ func (s *Rest) voteCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.Cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL, comment.User.ID))
-	render.JSON(w, r, JSON{"id": comment.ID, "score": comment.Score})
+	render.JSON(w, r, R.JSON{"id": comment.ID, "score": comment.Score})
 }
 
 // GET /userdata?site=siteID - exports all data about the user as a json with user info and list of all comments
@@ -248,7 +249,7 @@ func (s *Rest) deleteMeCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	link := fmt.Sprintf("%s/web/deleteme.html?token=%s", s.RemarkURL, tokenStr)
-	render.JSON(w, r, JSON{"site": siteID, "user_id": user.ID, "token": tokenStr, "link": link})
+	render.JSON(w, r, R.JSON{"site": siteID, "user_id": user.ID, "token": tokenStr, "link": link})
 }
 
 func (s *Rest) isReadOnly(locator store.Locator) bool {

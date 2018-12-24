@@ -12,7 +12,8 @@ import (
 	"testing"
 	"time"
 
-	bolt "github.com/coreos/bbolt"
+	"github.com/coreos/bbolt"
+	R "github.com/go-pkgz/rest"
 	"github.com/go-pkgz/rest/cache"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -53,7 +54,7 @@ func TestRest_GetStarted(t *testing.T) {
 	assert.Equal(t, 200, code)
 	assert.Equal(t, "some html blah", body)
 
-	os.Remove(getStartedHTML)
+	_ = os.Remove(getStartedHTML)
 	_, code = get(t, ts.URL+"/index.html")
 	assert.Equal(t, 404, code)
 
@@ -268,7 +269,7 @@ func addComment(t *testing.T, c store.Comment, ts *httptest.Server) string {
 	b, err = ioutil.ReadAll(resp.Body)
 	assert.Nil(t, err)
 
-	crResp := JSON{}
+	crResp := R.JSON{}
 	err = json.Unmarshal(b, &crResp)
 	assert.Nil(t, err)
 	time.Sleep(time.Nanosecond * 10)

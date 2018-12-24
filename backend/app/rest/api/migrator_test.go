@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	bolt "github.com/coreos/bbolt"
+	"github.com/coreos/bbolt"
 	"github.com/go-chi/chi"
 	"github.com/go-pkgz/rest/cache"
 	"github.com/stretchr/testify/assert"
@@ -71,7 +71,7 @@ func TestMigrator_ImportForm(t *testing.T) {
 	_, err = io.Copy(fileWriter, r)
 	require.NoError(t, err)
 	contentType := bodyWriter.FormDataContentType()
-	bodyWriter.Close()
+	require.NoError(t, bodyWriter.Close())
 
 	resp, err := http.Post(ts.URL+"/import/form?site=radio-t&provider=native&secret=123456", contentType, bodyBuf)
 	assert.Nil(t, err)
@@ -285,7 +285,7 @@ func prepImportSrv(t *testing.T) (svc *Migrator, ds *service.DataStore, ts *http
 
 func cleanupImportSrv(_ *Migrator, ts *httptest.Server) {
 	ts.Close()
-	os.Remove(testDb)
+	_ = os.Remove(testDb)
 }
 
 var xmlTestWP = `

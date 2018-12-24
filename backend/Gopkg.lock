@@ -131,12 +131,16 @@
   version = "v1.0.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:c6b263f17e06fcc612b40d1a4ca6d29588ae536170810bddd78227b5ea21f1f1"
+  digest = "1:71dc1e5b19e179495d2e2ca63454a9204753c5ecb3faa4a842ea5859355a968f"
   name = "github.com/go-pkgz/rest"
-  packages = ["cache"]
+  packages = [
+    ".",
+    "cache",
+    "logger",
+  ]
   pruneopts = "UT"
-  revision = "88a256cf379018b68f9ef9a35c79fd336ae503fe"
+  revision = "c0e09a7a640e54001aed8bad117d60ad8971958e"
+  version = "v1.1.1"
 
 [[projects]]
   digest = "1:ffc060c551980d37ee9e428ef528ee2813137249ccebb0bfc412ef83071cac91"
@@ -384,11 +388,12 @@
     "github.com/go-chi/render",
     "github.com/go-pkgz/mongo",
     "github.com/go-pkgz/repeater",
+    "github.com/go-pkgz/rest",
     "github.com/go-pkgz/rest/cache",
+    "github.com/go-pkgz/rest/logger",
     "github.com/google/uuid",
     "github.com/gorilla/feeds",
     "github.com/hashicorp/go-multierror",
-    "github.com/hashicorp/golang-lru",
     "github.com/hashicorp/logutils",
     "github.com/jessevdk/go-flags",
     "github.com/microcosm-cc/bluemonday",

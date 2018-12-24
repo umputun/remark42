@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
+	R "github.com/go-pkgz/rest"
 	"github.com/go-pkgz/rest/cache"
 
 	"github.com/umputun/remark/backend/app/rest"
@@ -55,7 +56,10 @@ func (s *Rest) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't find comments")
 		return
 	}
-	renderJSONFromBytes(w, r, data)
+
+	if err = R.RenderJSONFromBytes(w, r, data); err != nil {
+		log.Printf("[WARN] can't render comments for post %+v",locator)
+	}
 }
 
 // POST /preview, body is a comment, returns rendered html
@@ -101,7 +105,9 @@ func (s *Rest) infoCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	renderJSONFromBytes(w, r, data)
+	if err = R.RenderJSONFromBytes(w, r, data); err != nil {
+		log.Printf("[WARN] can't render info for post %+v",locator)
+	}
 }
 
 // GET /last/{limit}?site=siteID - last comments for the siteID, across all posts, sorted by time
@@ -130,7 +136,10 @@ func (s *Rest) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't get last comments")
 		return
 	}
-	renderJSONFromBytes(w, r, data)
+
+	if err = R.RenderJSONFromBytes(w, r, data); err != nil {
+		log.Printf("[WARN] can't render last comments for site %s",siteID)
+	}
 }
 
 // GET /id/{id}?site=siteID&url=post-url - gets a comment by id
@@ -149,7 +158,10 @@ func (s *Rest) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	comment = s.adminService.alterComments([]store.Comment{comment}, r)[0]
 	render.Status(r, http.StatusOK)
-	renderJSONWithHTML(w, r, comment)
+
+	if err = R.RenderJSONWithHTML(w, r, comment); err != nil {
+		log.Printf("[WARN] can't render last comments for url=%s, id=%s",url, id)
+	}
 }
 
 // GET /comments?site=siteID&user=id - returns comments for given userID
@@ -190,7 +202,10 @@ func (s *Rest) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get comment by user id")
 		return
 	}
-	renderJSONFromBytes(w, r, data)
+
+	if err = R.RenderJSONFromBytes(w, r, data); err != nil {
+		log.Printf("[WARN] can't render found comments for user %s", userID)
+	}
 }
 
 // GET /config?site=siteID - returns configuration
@@ -240,7 +255,7 @@ func (s *Rest) countCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get count")
 		return
 	}
-	render.JSON(w, r, JSON{"count": count, "locator": locator})
+	render.JSON(w, r, R.JSON{"count": count, "locator": locator})
 }
 
 // POST /count?site=siteID - get number of comments for posts from post body
@@ -273,7 +288,10 @@ func (s *Rest) countMultiCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get counts for "+siteID)
 		return
 	}
-	renderJSONFromBytes(w, r, data)
+
+	if err = R.RenderJSONFromBytes(w, r, data); err != nil {
+		log.Printf("[WARN] can't render comments counters site %s",siteID)
+	}
 }
 
 // GET /list?site=siteID&limit=50&skip=10 - list posts with comments
@@ -302,5 +320,8 @@ func (s *Rest) listCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get list of comments for "+siteID)
 		return
 	}
-	renderJSONFromBytes(w, r, data)
+
+	if err = R.RenderJSONFromBytes(w, r, data); err != nil {
+		log.Printf("[WARN] can't render posts lits for site %s",siteID)
+	}
 }

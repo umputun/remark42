@@ -12,7 +12,8 @@ import (
 	"testing"
 	"time"
 
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/dgrijalva/jwt-go"
+	R "github.com/go-pkgz/rest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -177,14 +178,14 @@ func TestAdmin_Block(t *testing.T) {
 		require.Nil(t, e)
 		body, e = ioutil.ReadAll(resp.Body)
 		assert.Nil(t, e)
-		resp.Body.Close()
+		require.Nil(t, resp.Body.Close())
 		return resp.StatusCode, body
 	}
 
 	// block permanently
 	code, body := block(1, "")
 	require.Equal(t, 200, code)
-	j := JSON{}
+	j := R.JSON{}
 	err = json.Unmarshal(body, &j)
 	assert.Nil(t, err)
 	assert.Equal(t, "user1", j["user_id"])
@@ -528,8 +529,8 @@ func TestAdmin_DeleteMeRequest(t *testing.T) {
 	claims.Flags.DeleteMe = true
 
 	_ = os.MkdirAll("/tmp/42", 0700)
-	defer os.RemoveAll("/tmp/42")
-	ioutil.WriteFile("/tmp/42/pic.image", []byte("some image data"), 0600)
+	defer func(){_ = os.RemoveAll("/tmp/42")}()
+	require.NoError(t,ioutil.WriteFile("/tmp/42/pic.image", []byte("some image data"), 0600))
 
 	token, err := srv.Authenticator.JWTService.Token(&claims)
 	assert.Nil(t, err)

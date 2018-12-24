@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	R "github.com/go-pkgz/rest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -310,7 +311,7 @@ func TestRest_Count(t *testing.T) {
 
 	body, code := get(t, ts.URL+"/api/v1/count?site=radio-t&url=https://radio-t.com/blah1")
 	assert.Equal(t, 200, code)
-	j := JSON{}
+	j := R.JSON{}
 	err := json.Unmarshal([]byte(body), &j)
 	assert.Nil(t, err)
 	assert.Equal(t, 3.0, j["count"])
@@ -386,7 +387,7 @@ func TestRest_Config(t *testing.T) {
 
 	body, code := get(t, ts.URL+"/api/v1/config?site=radio-t")
 	assert.Equal(t, 200, code)
-	j := JSON{}
+	j := R.JSON{}
 	err := json.Unmarshal([]byte(body), &j)
 	assert.Nil(t, err)
 	assert.Equal(t, 300., j["edit_duration"])

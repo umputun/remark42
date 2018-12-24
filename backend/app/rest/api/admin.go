@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
+	R "github.com/go-pkgz/rest"
 	"github.com/go-pkgz/rest/cache"
 
 	"github.com/umputun/remark/backend/app/rest"
@@ -60,7 +61,7 @@ func (a *admin) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	a.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL, lastCommentsScope))
 	render.Status(r, http.StatusOK)
-	render.JSON(w, r, JSON{"id": id, "locator": locator})
+	render.JSON(w, r, R.JSON{"id": id, "locator": locator})
 }
 
 // DELETE /user/{userid}?site=side-id - delete all user comments for requested userid
@@ -76,7 +77,7 @@ func (a *admin) deleteUserCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	a.cache.Flush(cache.Flusher(siteID).Scopes(userID, siteID, lastCommentsScope))
 	render.Status(r, http.StatusOK)
-	render.JSON(w, r, JSON{"user_id": userID, "site_id": siteID})
+	render.JSON(w, r, R.JSON{"user_id": userID, "site_id": siteID})
 }
 
 // GET /user/{userid}?site=side-id - get user info for requested userid
@@ -129,7 +130,7 @@ func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 
 	a.cache.Flush(cache.Flusher(claims.SiteID).Scopes(claims.SiteID, claims.User.ID, lastCommentsScope))
 	render.Status(r, http.StatusOK)
-	render.JSON(w, r, JSON{"user_id": claims.User.ID, "site_id": claims.SiteID})
+	render.JSON(w, r, R.JSON{"user_id": claims.User.ID, "site_id": claims.SiteID})
 }
 
 // PUT /user/{userid}?site=side-id&block=1&ttl=7d - block or unblock user
@@ -150,7 +151,7 @@ func (a *admin) setBlockCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.cache.Flush(cache.Flusher(siteID).Scopes(userID, siteID, lastCommentsScope))
-	render.JSON(w, r, JSON{"user_id": userID, "site_id": siteID, "block": blockStatus})
+	render.JSON(w, r, R.JSON{"user_id": userID, "site_id": siteID, "block": blockStatus})
 }
 
 // GET /blocked?site=siteID - list blocked users
@@ -187,7 +188,7 @@ func (a *admin) setReadOnlyCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL, locator.SiteID))
-	render.JSON(w, r, JSON{"locator": locator, "read-only": roStatus})
+	render.JSON(w, r, R.JSON{"locator": locator, "read-only": roStatus})
 }
 
 // PUT /verify?site=siteID&url=post-url&ro=1 - set or reset read-only status for the post
@@ -201,7 +202,7 @@ func (a *admin) setVerifyCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.cache.Flush(cache.Flusher(siteID).Scopes(siteID, userID))
-	render.JSON(w, r, JSON{"user": userID, "verified": verifyStatus})
+	render.JSON(w, r, R.JSON{"user": userID, "verified": verifyStatus})
 }
 
 // PUT /pin/{id}?site=siteID&url=post-url&pin=1
@@ -216,7 +217,7 @@ func (a *admin) setPinCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL))
-	render.JSON(w, r, JSON{"id": commentID, "locator": locator, "pin": pinStatus})
+	render.JSON(w, r, R.JSON{"id": commentID, "locator": locator, "pin": pinStatus})
 }
 
 func (a *admin) checkBlocked(siteID string, user store.User) bool {

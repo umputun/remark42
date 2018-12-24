@@ -19,7 +19,9 @@ import (
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/cors"
 	"github.com/go-chi/render"
+	R "github.com/go-pkgz/rest"
 	"github.com/go-pkgz/rest/cache"
+	"github.com/go-pkgz/rest/logger"
 	"github.com/pkg/errors"
 	"github.com/rakyll/statik/fs"
 
@@ -154,9 +156,9 @@ func (s *Rest) makeHTTPServer(port int, router http.Handler) *http.Server {
 
 func (s *Rest) routes() chi.Router {
 	router := chi.NewRouter()
-	router.Use(middleware.RealIP, Recoverer)
+	router.Use(middleware.RealIP, R.Recoverer)
 	router.Use(middleware.Throttle(1000), middleware.Timeout(60*time.Second))
-	router.Use(AppInfo("remark42", s.Version), Ping)
+	router.Use(R.AppInfo("remark42", "umputun", s.Version), R.Ping)
 
 	s.adminService = admin{
 		dataService:   s.DataService,
@@ -181,7 +183,8 @@ func (s *Rest) routes() chi.Router {
 
 	// auth routes for all providers
 	router.Route("/auth", func(r chi.Router) {
-		r.Use(Logger(ipFn, LogAll), tollbooth_chi.LimitHandler(tollbooth.NewLimiter(5, nil)))
+		l := logger.New(logger.Flags(logger.All), logger.IPfn(ipFn))
+		r.Use(l.Handler, tollbooth_chi.LimitHandler(tollbooth.NewLimiter(5, nil)))
 		for _, provider := range s.Authenticator.Providers {
 			r.Mount("/"+provider.Name, provider.Routes()) // mount auth providers as /auth/{name}
 		}
@@ -192,7 +195,7 @@ func (s *Rest) routes() chi.Router {
 	})
 
 	avatarMiddlewares := []func(http.Handler) http.Handler{
-		Logger(ipFn, LogNone),
+		logger.New(logger.Flags(logger.None)).Handler,
 		tollbooth_chi.LimitHandler(tollbooth.NewLimiter(100, nil)),
 	}
 	router.Mount(s.AvatarProxy.Routes(avatarMiddlewares...)) // mount avatars to /api/v1/avatar/{file.img}
@@ -204,7 +207,7 @@ func (s *Rest) routes() chi.Router {
 		// open routes
 		rapi.Group(func(ropen chi.Router) {
 			ropen.Use(s.Authenticator.Auth(false))
-			ropen.Use(Logger(ipFn, LogAll))
+			ropen.Use(logger.New(logger.Flags(logger.All), logger.IPfn(ipFn)).Handler)
 			ropen.Get("/find", s.findCommentsCtrl)
 			ropen.Get("/id/{id}", s.commentByIDCtrl)
 			ropen.Get("/comments", s.findUserCommentsCtrl)
@@ -223,7 +226,7 @@ func (s *Rest) routes() chi.Router {
 		// protected routes, require auth
 		rapi.Group(func(rauth chi.Router) {
 			rauth.Use(s.Authenticator.Auth(true))
-			rauth.Use(Logger(ipFn, LogAll))
+			rauth.Use(logger.New(logger.Flags(logger.All), logger.IPfn(ipFn)).Handler)
 			rauth.Post("/comment", s.createCommentCtrl)
 			rauth.Put("/comment/{id}", s.updateCommentCtrl)
 			rauth.Get("/user", s.userInfoCtrl)
@@ -297,16 +300,6 @@ func addFileServer(r chi.Router, path string, root http.FileSystem) {
 		}))
 }
 
-// renderJSONWithHTML allows html tags and forces charset=utf-8
-func renderJSONWithHTML(w http.ResponseWriter, r *http.Request, v interface{}) {
-	data, err := encodeJSONWithHTML(v)
-	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't render json response")
-		return
-	}
-	renderJSONFromBytes(w, r, data)
-}
-
 func encodeJSONWithHTML(v interface{}) ([]byte, error) {
 	buf := &bytes.Buffer{}
 	enc := json.NewEncoder(buf)
@@ -315,17 +308,6 @@ func encodeJSONWithHTML(v interface{}) ([]byte, error) {
 		return nil, errors.Wrap(err, "json encoding failed")
 	}
 	return buf.Bytes(), nil
-}
-
-// renderJSONWithHTML allows html tags and forces charset=utf-8
-func renderJSONFromBytes(w http.ResponseWriter, r *http.Request, data []byte) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	if status, ok := r.Context().Value(render.StatusCtxKey).(int); ok {
-		w.WriteHeader(status)
-	}
-	if _, err := w.Write(data); err != nil {
-		log.Printf("[WARN] failed to send response to %s, %s", r.RemoteAddr, err)
-	}
 }
 
 func filterComments(comments []store.Comment, fn func(c store.Comment) bool) (filtered []store.Comment) {

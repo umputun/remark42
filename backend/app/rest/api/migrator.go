@@ -14,6 +14,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
+	R "github.com/go-pkgz/rest"
 	"github.com/go-pkgz/rest/cache"
 	"github.com/pkg/errors"
 
@@ -68,7 +69,7 @@ func (m *Migrator) importCtrl(w http.ResponseWriter, r *http.Request) {
 	go m.runImport(siteID, r.URL.Query().Get("provider"), tmpfile) // import runs in background and sets busy flag for site
 
 	render.Status(r, http.StatusAccepted)
-	render.JSON(w, r, JSON{"status": "import request accepted"})
+	render.JSON(w, r, R.JSON{"status": "import request accepted"})
 }
 
 // POST /import/form?secret=key&site=site-id&provider=disqus|remark|wordpress
@@ -102,7 +103,7 @@ func (m *Migrator) importFormCtrl(w http.ResponseWriter, r *http.Request) {
 	go m.runImport(siteID, r.URL.Query().Get("provider"), tmpfile) // import runs in background and sets busy flag for site
 
 	render.Status(r, http.StatusAccepted)
-	render.JSON(w, r, JSON{"status": "import request accepted"})
+	render.JSON(w, r, R.JSON{"status": "import request accepted"})
 }
 
 func (m *Migrator) importWaitCtrl(w http.ResponseWriter, r *http.Request) {
@@ -123,13 +124,13 @@ func (m *Migrator) importWaitCtrl(w http.ResponseWriter, r *http.Request) {
 		select {
 		case <-ctx.Done():
 			render.Status(r, http.StatusGatewayTimeout)
-			render.JSON(w, r, JSON{"status": "timeout expired", "site_id": siteID})
+			render.JSON(w, r, R.JSON{"status": "timeout expired", "site_id": siteID})
 			return
 		case <-time.After(100 * time.Millisecond):
 		}
 	}
 	render.Status(r, http.StatusOK)
-	render.JSON(w, r, JSON{"status": "completed", "site_id": siteID})
+	render.JSON(w, r, R.JSON{"status": "completed", "site_id": siteID})
 }
 
 // GET /export?site=site-id&secret=12345&?mode=file|stream

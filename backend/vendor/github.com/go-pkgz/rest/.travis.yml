@@ -1,0 +1,18 @@
+language: go
+
+go:
+  - "1.11.x"
+
+install: true
+
+before_install:
+  - go get github.com/mattn/goveralls
+  - go get gopkg.in/alecthomas/gometalinter.v2
+  - $GOPATH/bin/gometalinter.v2 --install
+
+script:
+  - GO111MODULE=on go get ./...
+  - GO111MODULE=on go mod vendor
+  - GO111MODULE=on go test  -v -mod=vendor ./...
+  - $GOPATH/bin/gometalinter.v2 --exclude=test --exclude=mock --exclude=vendor ./...
+  - $GOPATH/bin/goveralls -service=travis-ci
