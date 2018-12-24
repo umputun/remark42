@@ -386,15 +386,19 @@ func TestService_GetMetas(t *testing.T) {
 	assert.Equal(t, 0, len(pm))
 
 	assert.NoError(t, b.SetVerified("radio-t", "user1", true))
+	assert.NoError(t, b.SetBlock("radio-t", "user1", true, time.Hour))
+	assert.NoError(t, b.SetBlock("radio-t", "user2", true, time.Hour))
 	assert.NoError(t, b.SetReadOnly(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, true))
 
 	um, pm, err = b.Metas("radio-t")
 	require.NoError(t, err)
 
-	assert.Equal(t, 1, len(um))
+	assert.Equal(t, 2, len(um))
 	assert.Equal(t, "user1", um[0].ID)
 	assert.Equal(t, true, um[0].Verified)
-	assert.Equal(t, false, um[0].Blocked.Status)
+	assert.Equal(t, true, um[0].Blocked.Status)
+	assert.Equal(t, false, um[1].Verified)
+	assert.Equal(t, true, um[1].Blocked.Status)
 
 	assert.Equal(t, 1, len(pm))
 	assert.Equal(t, "https://radio-t.com", pm[0].URL)
