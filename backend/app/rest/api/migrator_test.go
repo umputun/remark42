@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/bbolt"
+	bolt "github.com/coreos/bbolt"
 	"github.com/go-chi/chi"
 	"github.com/go-pkgz/rest/cache"
 	"github.com/stretchr/testify/assert"
@@ -154,7 +154,7 @@ func TestMigrator_ImportDouble(t *testing.T) {
 
 	tmpl := `{"id":"%d","pid":"","text":"<p>test test #1</p>","user":{"name":"developer one","id":"dev","picture":"/api/v1/avatar/remark.image","profile":"https://remark42.com","admin":true,"ip":"ae12fe3b5f129b5cc4cdd2b136b7b7947c4d2741"},"locator":{"site":"radio-t","url":"https://radio-t.com/blah1"},"score":0,"votes":{},"time":"2018-04-30T01:37:00.849053725-05:00"}`
 	recs := []string{}
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < 5000; i++ {
 		recs = append(recs, fmt.Sprintf(tmpl, i))
 	}
 	r := strings.NewReader(`{"version":1}` + strings.Join(recs, "\n")) // reader with 10k records
