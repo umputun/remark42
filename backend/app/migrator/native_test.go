@@ -25,9 +25,9 @@ var testDb = "/tmp/test-remark.db"
 func TestNative_Export(t *testing.T) {
 	defer os.Remove(testDb)
 	b := prep(t) // write 2 comments
-	b.SetReadOnly(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, true)
-	b.SetVerified("radio-t", "user1", true)
-	b.SetBlock("radio-t", "user2", true, time.Hour)
+	assert.NoError(t, b.SetReadOnly(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, true))
+	assert.NoError(t, b.SetVerified("radio-t", "user1", true))
+	assert.NoError(t, b.SetBlock("radio-t", "user2", true, time.Hour))
 	r := Native{DataStore: b}
 
 	buf := &bytes.Buffer{}

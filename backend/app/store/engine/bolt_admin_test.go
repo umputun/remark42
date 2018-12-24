@@ -223,6 +223,6 @@ func TestBoltAdmin_Verified(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"u1", "u2"}, ids, "verified 2 ids")
 
-	ids, err = b.Verified("radio-t-bad")
+	_, err = b.Verified("radio-t-bad")
 	assert.Error(t, err, "site \"radio-t-bad\" not found", "fail on wrong site")
 }
