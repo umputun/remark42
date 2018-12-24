@@ -33,11 +33,11 @@ func TestMigrator_ImportDisqus(t *testing.T) {
 		Provider:  "disqus",
 	})
 	assert.Nil(t, err)
-	assert.Equal(t, 3, size)
+	assert.Equal(t, 4, size)
 
 	last, err := dataStore.Last("test", 10)
 	assert.Nil(t, err)
-	assert.Equal(t, 3, len(last), "3 comments imported")
+	assert.Equal(t, 4, len(last), "4 comments imported")
 }
 
 func TestMigrator_ImportWordPress(t *testing.T) {

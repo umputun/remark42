@@ -14,11 +14,11 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
+	"github.com/go-pkgz/rest/cache"
 	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/backend/app/migrator"
 	"github.com/umputun/remark/backend/app/rest"
-	"github.com/umputun/remark/backend/app/rest/cache"
 )
 
 // Migrator rest with import and export controllers
