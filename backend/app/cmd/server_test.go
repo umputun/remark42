@@ -15,7 +15,7 @@ import (
 
 	"github.com/globalsign/mgo"
 	"github.com/go-pkgz/mongo"
-	"github.com/jessevdk/go-flags"
+	flags "github.com/jessevdk/go-flags"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -91,7 +91,7 @@ func TestServerApp_WithMongo(t *testing.T) {
 
 	// prepare options
 	p := flags.NewParser(&opts, flags.Default)
-	_, err := p.ParseArgs([]string{"--dev-passwd=password", "--cache.type=mongo", "--store.type=mongo",
+	_, err := p.ParseArgs([]string{"--dev-passwd=password", "--cache.type=none", "--store.type=mongo",
 		"--avatar.type=mongo", "--mongo.url=" + mongoURL, "--mongo.db=test_remark", "--port=12345", "--admin.type=mongo"})
 	require.Nil(t, err)
 	opts.Auth.Github.CSEC, opts.Auth.Github.CID = "csec", "cid"

@@ -131,6 +131,14 @@
   version = "v1.0.0"
 
 [[projects]]
+  branch = "master"
+  digest = "1:c6b263f17e06fcc612b40d1a4ca6d29588ae536170810bddd78227b5ea21f1f1"
+  name = "github.com/go-pkgz/rest"
+  packages = ["cache"]
+  pruneopts = "UT"
+  revision = "88a256cf379018b68f9ef9a35c79fd336ae503fe"
+
+[[projects]]
   digest = "1:ffc060c551980d37ee9e428ef528ee2813137249ccebb0bfc412ef83071cac91"
   name = "github.com/golang/protobuf"
   packages = ["proto"]
@@ -376,6 +384,7 @@
     "github.com/go-chi/render",
     "github.com/go-pkgz/mongo",
     "github.com/go-pkgz/repeater",
+    "github.com/go-pkgz/rest/cache",
     "github.com/google/uuid",
     "github.com/gorilla/feeds",
     "github.com/hashicorp/go-multierror",

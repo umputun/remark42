@@ -1,12 +1,9 @@
 package cache
 
 import (
-	"net/http"
 	"strings"
 
 	"github.com/pkg/errors"
-
-	"github.com/umputun/remark/backend/app/rest"
 )
 
 // LoadingCache defines interface for caching
@@ -87,17 +84,6 @@ func Flusher(siteID string) FlusherRequest {
 func (f FlusherRequest) Scopes(scopes ...string) FlusherRequest {
 	f.scopes = scopes
 	return f
-}
-
-// URLKey gets url from request to use it as cache key
-// admins will have different keys in order to prevent leak of admin-only data to regular users
-func URLKey(r *http.Request) string {
-	adminPrefix := "admin!!"
-	key := strings.TrimPrefix(r.URL.String(), adminPrefix)          // prevents attach with fake url to get admin view
-	if user, err := rest.GetUserInfo(r); err == nil && user.Admin { // make separate cache key for admins
-		key = adminPrefix + key
-	}
-	return key
 }
 
 // Nop does nothing for caching, passing fn call only

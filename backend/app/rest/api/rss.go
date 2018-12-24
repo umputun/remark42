@@ -7,11 +7,11 @@ import (
 	"time"
 
 	"github.com/go-chi/chi"
+	"github.com/go-pkgz/rest/cache"
 	"github.com/gorilla/feeds"
 	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/backend/app/rest"
-	"github.com/umputun/remark/backend/app/rest/cache"
 	"github.com/umputun/remark/backend/app/store"
 )
 
@@ -35,7 +35,7 @@ func (s *Rest) rssPostCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	log.Printf("[DEBUG] get rss for post %+v", locator)
 
-	key := cache.NewKey(locator.SiteID).ID(cache.URLKey(r)).Scopes(locator.SiteID, locator.URL)
+	key := cache.NewKey(locator.SiteID).ID(URLKey(r)).Scopes(locator.SiteID, locator.URL)
 	data, err := s.Cache.Get(key, func() ([]byte, error) {
 		comments, e := s.DataService.Find(locator, "-time")
 		if e != nil {
@@ -67,7 +67,7 @@ func (s *Rest) rssSiteCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	log.Printf("[DEBUG] get rss for site %s", siteID)
 
-	key := cache.NewKey(siteID).ID(cache.URLKey(r)).Scopes(siteID, lastCommentsScope)
+	key := cache.NewKey(siteID).ID(URLKey(r)).Scopes(siteID, lastCommentsScope)
 	data, err := s.Cache.Get(key, func() ([]byte, error) {
 		comments, e := s.DataService.Last(siteID, maxRssItems)
 		if e != nil {
@@ -100,7 +100,7 @@ func (s *Rest) rssRepliesCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	log.Printf("[DEBUG] get rss replies to user %s for site %s", userID, siteID)
 
-	key := cache.NewKey(siteID).ID(cache.URLKey(r)).Scopes(siteID, lastCommentsScope)
+	key := cache.NewKey(siteID).ID(URLKey(r)).Scopes(siteID, lastCommentsScope)
 	data, err := s.Cache.Get(key, func() (res []byte, e error) {
 		comments, e := s.DataService.Last(siteID, maxLastCommentsReply)
 		if e != nil {
