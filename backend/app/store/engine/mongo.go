@@ -6,7 +6,7 @@ import (
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/go-pkgz/mongo"
-	"github.com/hashicorp/go-multierror"
+	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/backend/app/store"
@@ -219,6 +219,21 @@ func (m *Mongo) IsVerified(siteID string, userID string) (verified bool) {
 		return coll.Find(bson.M{"_id": userID, "site": siteID}).One(&meta)
 	})
 	return err == nil && meta.Verified
+}
+
+// Verified returns list of verified user IDs
+func (m *Mongo) Verified(siteID string) (ids []string, err error) {
+	metas := []metaUser{}
+	err = m.conn.WithCustomCollection(mongoMetaUsers, func(coll *mgo.Collection) error {
+		return coll.Find(bson.M{"site": siteID, "verified": true}).All(&metas)
+	})
+	if err != nil {
+		return nil, err
+	}
+	for _, m := range metas {
+		ids = append(ids, m.ID)
+	}
+	return ids, nil
 }
 
 // SetBlock blocks/unblocks user for given site. ttl defines for for how long, 0 - permanent

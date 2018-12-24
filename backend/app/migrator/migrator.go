@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/backend/app/store"
+	"github.com/umputun/remark/backend/app/store/service"
 )
 
 // Importer defines interface to convert posts from external sources
@@ -29,6 +30,8 @@ type Store interface {
 	Find(locator store.Locator, sort string) ([]store.Comment, error)
 	List(siteID string, limit int, skip int) ([]store.PostInfo, error)
 	DeleteAll(siteID string) error
+	Metas(siteID string) (umetas []service.UserMetaData, pmetas []service.PostMetaData, err error)
+	SetMetas(siteID string, umetas []service.UserMetaData, pmetas []service.PostMetaData) error
 }
 
 // ImportParams defines everything needed to run import
@@ -50,7 +53,7 @@ func ImportComments(p ImportParams) (int, error) {
 	case "wordpress":
 		importer = &WordPress{DataStore: p.DataStore}
 	case "native":
-		importer = &Remark{DataStore: p.DataStore}
+		importer = &Native{DataStore: p.DataStore}
 	default:
 		return 0, errors.Errorf("unsupported import provider %s", p.Provider)
 	}

@@ -53,6 +53,7 @@ type Admin interface {
 	IsReadOnly(locator store.Locator) bool                                       // check if post read-only
 	SetVerified(siteID string, userID string, status bool) error                 // set/reset verified flag
 	IsVerified(siteID string, userID string) bool                                // check verified status
+	Verified(siteID string) ([]string, error)                                    // list of verified user ids
 }
 
 const (

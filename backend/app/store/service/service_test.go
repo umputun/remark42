@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/bbolt"
+	bolt "github.com/coreos/bbolt"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -372,6 +372,57 @@ func TestService_Counts(t *testing.T) {
 		{URL: "https://radio-t.com/2", Count: 1},
 		{URL: "blah", Count: 0},
 	}, res)
+}
+
+func TestService_GetMetas(t *testing.T) {
+	defer os.Remove(testDb)
+	// two comments for https://radio-t.com
+	b := DataStore{Interface: prepStoreEngine(t), EditDuration: 100 * time.Millisecond,
+		AdminStore: admin.NewStaticKeyStore("secret 123")}
+
+	um, pm, err := b.Metas("radio-t")
+	require.NoError(t, err)
+	assert.Equal(t, 0, len(um))
+	assert.Equal(t, 0, len(pm))
+
+	assert.NoError(t, b.SetVerified("radio-t", "user1", true))
+	assert.NoError(t, b.SetReadOnly(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, true))
+
+	um, pm, err = b.Metas("radio-t")
+	require.NoError(t, err)
+
+	assert.Equal(t, 1, len(um))
+	assert.Equal(t, "user1", um[0].ID)
+	assert.Equal(t, true, um[0].Verified)
+	assert.Equal(t, false, um[0].Blocked.Status)
+
+	assert.Equal(t, 1, len(pm))
+	assert.Equal(t, "https://radio-t.com", pm[0].URL)
+	assert.Equal(t, true, pm[0].ReadOnly)
+}
+
+func TestService_SetMetas(t *testing.T) {
+	defer os.Remove(testDb)
+	// two comments for https://radio-t.com
+	b := DataStore{Interface: prepStoreEngine(t), EditDuration: 100 * time.Millisecond,
+		AdminStore: admin.NewStaticKeyStore("secret 123")}
+	umetas := []UserMetaData{}
+	pmetas := []PostMetaData{}
+	err := b.SetMetas("radio-t", umetas, pmetas)
+	assert.NoError(t, err, "empty metas")
+
+	um1 := UserMetaData{ID: "user1", Verified: true}
+	um2 := UserMetaData{ID: "user2"}
+	um2.Blocked.Status = true
+	um2.Blocked.Until = time.Now().AddDate(0, 1, 1)
+
+	pmetas = []PostMetaData{{URL: "https://radio-t.com", ReadOnly: true}}
+	err = b.SetMetas("radio-t", []UserMetaData{um1, um2}, pmetas)
+	assert.NoError(t, err)
+
+	assert.True(t, b.IsReadOnly(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com"}))
+	assert.True(t, b.IsVerified("radio-t", "user1"))
+	assert.True(t, b.IsBlocked("radio-t", "user2"))
 }
 
 // makes new boltdb, put two records

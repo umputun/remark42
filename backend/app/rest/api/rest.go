@@ -142,12 +142,12 @@ func (s *Rest) Shutdown() {
 	s.lock.Unlock()
 }
 
-func (s *Rest) makeHTTPServer(port int, router chi.Router) *http.Server {
+func (s *Rest) makeHTTPServer(port int, router http.Handler) *http.Server {
 	return &http.Server{
 		Addr:              fmt.Sprintf(":%d", port),
 		Handler:           router,
 		ReadHeaderTimeout: 5 * time.Second,
-		WriteTimeout:      5 * time.Second,
+		WriteTimeout:      120 * time.Second, // TODO: such a long timeout needed for blocking export (backup) request
 		IdleTimeout:       30 * time.Second,
 	}
 }

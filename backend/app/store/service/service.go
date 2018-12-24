@@ -1,8 +1,11 @@
 package service
 
 import (
+	"sort"
 	"sync"
 	"time"
+
+	multierror "github.com/hashicorp/go-multierror"
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -26,6 +29,22 @@ type DataStore struct {
 		sync.Once
 		locks map[string]sync.Locker
 	}
+}
+
+// UserMetaData keeps info about user flags
+type UserMetaData struct {
+	ID      string `json:"id"`
+	Blocked struct {
+		Status bool      `json:"status"`
+		Until  time.Time `json:"until"`
+	} `json:"blocked"`
+	Verified bool `json:"verified"`
+}
+
+// PostMetaData keeps info about post flags
+type PostMetaData struct {
+	URL      string `json:"url"`
+	ReadOnly bool   `json:"read_only"`
 }
 
 const defaultCommentMaxSize = 2000
@@ -204,6 +223,86 @@ func (s *DataStore) IsAdmin(siteID string, userID string) bool {
 		}
 	}
 	return false
+}
+
+// Metas returns metadata for users and posts
+func (s *DataStore) Metas(siteID string) (umetas []UserMetaData, pmetas []PostMetaData, err error) {
+	umetas = []UserMetaData{}
+	pmetas = []PostMetaData{}
+	// set posts meta
+	posts, err := s.List(siteID, 0, 0)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "can't get list of posts for %s", siteID)
+	}
+	for _, p := range posts {
+		if s.IsReadOnly(store.Locator{SiteID: siteID, URL: p.URL}) {
+			pmetas = append(pmetas, PostMetaData{URL: p.URL, ReadOnly: true})
+		}
+
+	}
+
+	// set users meta
+	m := map[string]UserMetaData{}
+
+	// process blocked users
+	blocked, err := s.Blocked(siteID)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "can't get list of blocked users for %s", siteID)
+	}
+	for _, b := range blocked {
+		val, ok := m[b.ID]
+		if !ok {
+			val = UserMetaData{ID: b.ID}
+		}
+		val.Blocked.Status = true
+		val.Blocked.Until = b.Until
+		m[b.ID] = val
+	}
+
+	// process verified users
+	verified, err := s.Verified(siteID)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "can't get list of verified users for %s", siteID)
+	}
+	for _, v := range verified {
+		val, ok := m[v]
+		if !ok {
+			val = UserMetaData{ID: v}
+		}
+		val.Verified = true
+		m[v] = val
+	}
+
+	for _, u := range m {
+		umetas = append(umetas, u)
+	}
+	sort.Slice(umetas, func(i, j int) bool { return umetas[i].ID < umetas[j].ID })
+
+	return umetas, pmetas, nil
+}
+
+// SetMetas saves metadata for users and posts
+func (s *DataStore) SetMetas(siteID string, umetas []UserMetaData, pmetas []PostMetaData) (err error) {
+	errs := new(multierror.Error)
+
+	// save posts metas
+	for _, pm := range pmetas {
+		if pm.ReadOnly {
+			errs = multierror.Append(errs, s.SetReadOnly(store.Locator{SiteID: siteID, URL: pm.URL}, true))
+		}
+	}
+
+	// save users metas
+	for _, um := range umetas {
+		if um.Blocked.Status {
+			errs = multierror.Append(errs, s.SetBlock(siteID, um.ID, true, time.Until(um.Blocked.Until)))
+		}
+		if um.Verified {
+			errs = multierror.Append(errs, s.SetVerified(siteID, um.ID, true))
+		}
+	}
+
+	return errs.ErrorOrNil()
 }
 
 // getsScopedLocks pull lock from the map if found or create a new one

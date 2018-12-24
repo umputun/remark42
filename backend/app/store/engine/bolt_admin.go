@@ -320,3 +320,20 @@ func (b *BoltDB) IsVerified(siteID string, userID string) (verified bool) {
 	})
 	return verified
 }
+
+// Verified returns list of verified userIDs
+func (b *BoltDB) Verified(siteID string) (ids []string, err error) {
+	bdb, err := b.db(siteID)
+	if err != nil {
+		return nil, err
+	}
+	err = bdb.View(func(tx *bolt.Tx) error {
+		usersBkt := tx.Bucket([]byte(verifiedBucketName))
+		_ = usersBkt.ForEach(func(k, _ []byte) error {
+			ids = append(ids, string(k))
+			return nil
+		})
+		return nil
+	})
+	return ids, err
+}

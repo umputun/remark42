@@ -230,14 +230,14 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		RemarkURL: strings.TrimSuffix(s.RemarkURL, "/"),
 	}
 
-	exporter := &migrator.Remark{DataStore: dataService}
+	exporter := &migrator.Native{DataStore: dataService}
 
 	migr := &api.Migrator{
 		Cache:             loadingCache,
-		NativeImporter:    &migrator.Remark{DataStore: dataService},
+		NativeImporter:    &migrator.Native{DataStore: dataService},
 		DisqusImporter:    &migrator.Disqus{DataStore: dataService},
 		WordPressImporter: &migrator.WordPress{DataStore: dataService},
-		NativeExported:    &migrator.Remark{DataStore: dataService},
+		NativeExporter:    &migrator.Native{DataStore: dataService},
 		KeyStore:          adminStore,
 	}
 

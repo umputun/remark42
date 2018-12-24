@@ -16,7 +16,7 @@ import (
 // CleanupCommand set of flags and command for cleanup
 type CleanupCommand struct {
 	Site     string   `short:"s" long:"site" env:"SITE" default:"remark" description:"site name"`
-	Dry      bool     `long:"dry" env:"DRY" description:"dry mode, will not remove comments"`
+	Dry      bool     `long:"dry" description:"dry mode, will not remove comments"`
 	From     string   `long:"from" description:"from yyyymmdd"`
 	To       string   `long:"to" description:"from yyyymmdd"`
 	BadWords []string `short:"w" long:"bword" description:"bad word(s)"`

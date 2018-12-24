@@ -34,7 +34,7 @@ func TestMigrator_Import(t *testing.T) {
 	assert.NotNil(t, srv)
 	defer cleanupImportSrv(srv, ts)
 
-	r := strings.NewReader(`{"id":"2aa0478c-df1b-46b1-b561-03d507cf482c","pid":"","text":"<p>test test #1</p>","user":{"name":"developer one","id":"dev","picture":"/api/v1/avatar/remark.image","profile":"https://remark42.com","admin":true,"ip":"ae12fe3b5f129b5cc4cdd2b136b7b7947c4d2741"},"locator":{"site":"radio-t","url":"https://radio-t.com/blah1"},"score":0,"votes":{},"time":"2018-04-30T01:37:00.849053725-05:00"}
+	r := strings.NewReader(`{"version":1} {"id":"2aa0478c-df1b-46b1-b561-03d507cf482c","pid":"","text":"<p>test test #1</p>","user":{"name":"developer one","id":"dev","picture":"/api/v1/avatar/remark.image","profile":"https://remark42.com","admin":true,"ip":"ae12fe3b5f129b5cc4cdd2b136b7b7947c4d2741"},"locator":{"site":"radio-t","url":"https://radio-t.com/blah1"},"score":0,"votes":{},"time":"2018-04-30T01:37:00.849053725-05:00"}
 	{"id":"83fd97fd-ff64-48d1-9fb7-ca7769c77037","pid":"p1","text":"<p>test test #2</p>","user":{"name":"developer one","id":"dev","picture":"/api/v1/avatar/remark.image","profile":"https://remark42.com","admin":true,"ip":"ae12fe3b5f129b5cc4cdd2b136b7b7947c4d2741"},"locator":{"site":"radio-t","url":"https://radio-t.com/blah2"},"score":0,"votes":{},"time":"2018-04-30T01:37:00.861387771-05:00"}`)
 
 	client := &http.Client{Timeout: 1 * time.Second}
@@ -61,7 +61,7 @@ func TestMigrator_ImportForm(t *testing.T) {
 	assert.NotNil(t, srv)
 	defer cleanupImportSrv(srv, ts)
 
-	r := strings.NewReader(`{"id":"2aa0478c-df1b-46b1-b561-03d507cf482c","pid":"","text":"<p>test test #1</p>","user":{"name":"developer one","id":"dev","picture":"/api/v1/avatar/remark.image","profile":"https://remark42.com","admin":true,"ip":"ae12fe3b5f129b5cc4cdd2b136b7b7947c4d2741"},"locator":{"site":"radio-t","url":"https://radio-t.com/blah1"},"score":0,"votes":{},"time":"2018-04-30T01:37:00.849053725-05:00"}
+	r := strings.NewReader(`{"version":1} {"id":"2aa0478c-df1b-46b1-b561-03d507cf482c","pid":"","text":"<p>test test #1</p>","user":{"name":"developer one","id":"dev","picture":"/api/v1/avatar/remark.image","profile":"https://remark42.com","admin":true,"ip":"ae12fe3b5f129b5cc4cdd2b136b7b7947c4d2741"},"locator":{"site":"radio-t","url":"https://radio-t.com/blah1"},"score":0,"votes":{},"time":"2018-04-30T01:37:00.849053725-05:00"}
 	{"id":"83fd97fd-ff64-48d1-9fb7-ca7769c77037","pid":"p1","text":"<p>test test #2</p>","user":{"name":"developer one","id":"dev","picture":"/api/v1/avatar/remark.image","profile":"https://remark42.com","admin":true,"ip":"ae12fe3b5f129b5cc4cdd2b136b7b7947c4d2741"},"locator":{"site":"radio-t","url":"https://radio-t.com/blah2"},"score":0,"votes":{},"time":"2018-04-30T01:37:00.861387771-05:00"}`)
 
 	bodyBuf := &bytes.Buffer{}
@@ -136,7 +136,7 @@ func TestMigrator_ImportRejected(t *testing.T) {
 	assert.NotNil(t, srv)
 	defer cleanupImportSrv(srv, ts)
 
-	r := strings.NewReader(`{"id":"2aa0478c-df1b-46b1-b561-03d507cf482c","pid":"","text":"<p>test test #1</p>","user":{"name":"developer one","id":"dev","picture":"/api/v1/avatar/remark.image","profile":"https://remark42.com","admin":true,"ip":"ae12fe3b5f129b5cc4cdd2b136b7b7947c4d2741"},"locator":{"site":"radio-t","url":"https://radio-t.com/blah1"},"score":0,"votes":{},"time":"2018-04-30T01:37:00.849053725-05:00"}
+	r := strings.NewReader(`{"version":1} {"id":"2aa0478c-df1b-46b1-b561-03d507cf482c","pid":"","text":"<p>test test #1</p>","user":{"name":"developer one","id":"dev","picture":"/api/v1/avatar/remark.image","profile":"https://remark42.com","admin":true,"ip":"ae12fe3b5f129b5cc4cdd2b136b7b7947c4d2741"},"locator":{"site":"radio-t","url":"https://radio-t.com/blah1"},"score":0,"votes":{},"time":"2018-04-30T01:37:00.849053725-05:00"}
 	{"id":"83fd97fd-ff64-48d1-9fb7-ca7769c77037","pid":"p1","text":"<p>test test #2</p>","user":{"name":"developer one","id":"dev","picture":"/api/v1/avatar/remark.image","profile":"https://remark42.com","admin":true,"ip":"ae12fe3b5f129b5cc4cdd2b136b7b7947c4d2741"},"locator":{"site":"radio-t","url":"https://radio-t.com/blah2"},"score":0,"votes":{},"time":"2018-04-30T01:37:00.861387771-05:00"}`)
 
 	client := &http.Client{Timeout: 1 * time.Second}
@@ -157,7 +157,7 @@ func TestMigrator_ImportDouble(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		recs = append(recs, fmt.Sprintf(tmpl, i))
 	}
-	r := strings.NewReader(strings.Join(recs, "\n")) // reader with 10k records
+	r := strings.NewReader(`{"version":1}` + strings.Join(recs, "\n")) // reader with 10k records
 	client := &http.Client{Timeout: 1 * time.Second}
 	req, err := http.NewRequest("POST", ts.URL+"/import?site=radio-t&provider=native&secret=123456", r)
 	assert.Nil(t, err)
@@ -184,7 +184,7 @@ func TestMigrator_ImportWaitExpired(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		recs = append(recs, fmt.Sprintf(tmpl, i))
 	}
-	r := strings.NewReader(strings.Join(recs, "\n")) // reader with 10k records
+	r := strings.NewReader(`{"version":1}` + strings.Join(recs, "\n")) // reader with 10k records
 	client := &http.Client{Timeout: 1 * time.Second}
 	req, err := http.NewRequest("POST", ts.URL+"/import?site=radio-t&provider=native&secret=123456", r)
 	require.Nil(t, err)
@@ -205,7 +205,7 @@ func TestMigrator_Export(t *testing.T) {
 	assert.NotNil(t, srv)
 	defer cleanupImportSrv(srv, ts)
 
-	r := strings.NewReader(`{"id":"2aa0478c-df1b-46b1-b561-03d507cf482c","pid":"","text":"<p>test test #1</p>","user":{"name":"developer one","id":"dev","picture":"/api/v1/avatar/remark.image","profile":"https://remark42.com","admin":true,"ip":"ae12fe3b5f129b5cc4cdd2b136b7b7947c4d2741"},"locator":{"site":"radio-t","url":"https://radio-t.com/blah1"},"score":0,"votes":{},"time":"2018-04-30T01:37:00.849053725-05:00"}
+	r := strings.NewReader(`{"version":1} {"id":"2aa0478c-df1b-46b1-b561-03d507cf482c","pid":"","text":"<p>test test #1</p>","user":{"name":"developer one","id":"dev","picture":"/api/v1/avatar/remark.image","profile":"https://remark42.com","admin":true,"ip":"ae12fe3b5f129b5cc4cdd2b136b7b7947c4d2741"},"locator":{"site":"radio-t","url":"https://radio-t.com/blah1"},"score":0,"votes":{},"time":"2018-04-30T01:37:00.849053725-05:00"}
 	{"id":"83fd97fd-ff64-48d1-9fb7-ca7769c77037","pid":"p1","text":"<p>test test #2</p>","user":{"name":"developer one","id":"dev","picture":"/api/v1/avatar/remark.image","profile":"https://remark42.com","admin":true,"ip":"ae12fe3b5f129b5cc4cdd2b136b7b7947c4d2741"},"locator":{"site":"radio-t","url":"https://radio-t.com/blah2"},"score":0,"votes":{},"time":"2018-04-30T01:37:00.861387771-05:00"}`)
 
 	// import comments first
@@ -234,7 +234,7 @@ func TestMigrator_Export(t *testing.T) {
 	assert.NoError(t, err)
 	ungzBody, err := ioutil.ReadAll(ungzReader)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, strings.Count(string(ungzBody), "\n"))
+	assert.Equal(t, 3, strings.Count(string(ungzBody), "\n"))
 	assert.Equal(t, 2, strings.Count(string(ungzBody), "\"text\""))
 	t.Logf("%s", string(ungzBody))
 
@@ -248,7 +248,7 @@ func TestMigrator_Export(t *testing.T) {
 
 	body, err := ioutil.ReadAll(resp.Body)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, strings.Count(string(body), "\n"))
+	assert.Equal(t, 3, strings.Count(string(body), "\n"))
 	assert.Equal(t, 2, strings.Count(string(body), "\"text\""))
 	t.Logf("%s", string(body))
 
@@ -267,8 +267,8 @@ func prepImportSrv(t *testing.T) (svc *Migrator, ds *service.DataStore, ts *http
 	svc = &Migrator{
 		DisqusImporter:    &migrator.Disqus{DataStore: dataStore},
 		WordPressImporter: &migrator.WordPress{DataStore: dataStore},
-		NativeImporter:    &migrator.Remark{DataStore: dataStore},
-		NativeExported:    &migrator.Remark{DataStore: dataStore},
+		NativeImporter:    &migrator.Native{DataStore: dataStore},
+		NativeExporter:    &migrator.Native{DataStore: dataStore},
 		Cache:             &cache.Nop{},
 		KeyStore:          adminStore,
 	}
