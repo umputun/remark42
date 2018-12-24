@@ -429,6 +429,16 @@ func TestService_SetMetas(t *testing.T) {
 	assert.True(t, b.IsBlocked("radio-t", "user2"))
 }
 
+func TestService_IsAdmin(t *testing.T) {
+	defer os.Remove(testDb)
+	// two comments for https://radio-t.com
+	b := DataStore{Interface: prepStoreEngine(t), EditDuration: 100 * time.Millisecond,
+		AdminStore: admin.NewStaticStore("secret 123", []string{"user2"}, "user@email.com")}
+
+	assert.False(t, b.IsAdmin("radio-t", "user1"))
+	assert.True(t, b.IsAdmin("radio-t", "user2"))
+}
+
 // makes new boltdb, put two records
 func prepStoreEngine(t *testing.T) engine.Interface {
 	os.Remove(testDb)
