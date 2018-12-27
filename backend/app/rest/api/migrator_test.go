@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"github.com/go-pkgz/auth/token"
 	"io"
 	"io/ioutil"
 	"mime/multipart"
@@ -17,12 +18,12 @@ import (
 
 	bolt "github.com/coreos/bbolt"
 	"github.com/go-chi/chi"
+	"github.com/go-pkgz/auth"
 	"github.com/go-pkgz/rest/cache"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/umputun/remark/backend/app/migrator"
-	"github.com/umputun/remark/backend/app/rest/auth"
 	"github.com/umputun/remark/backend/app/store"
 	adminstore "github.com/umputun/remark/backend/app/store/admin"
 	"github.com/umputun/remark/backend/app/store/engine"
@@ -272,13 +273,15 @@ func prepImportSrv(t *testing.T) (svc *Migrator, ds *service.DataStore, ts *http
 		Cache:             &cache.Nop{},
 		KeyStore:          adminStore,
 	}
-	a := auth.Authenticator{
-		DevPasswd:  "password",
-		Providers:  nil,
-		KeyStore:   adminStore,
-		JWTService: auth.NewJWT(adminStore, false, time.Minute, time.Hour),
-	}
-	routes := svc.withRoutes(chi.NewRouter().With(a.Auth(true)).With(a.AdminOnly))
+
+	a := auth.NewService(auth.Opts{
+		DevPasswd:    "password",
+		SecretReader: token.SecretFunc(func(id string) (string, error) { return "123456", nil }),
+		Issuer:       "test",
+	})
+
+	am := a.Middleware()
+	routes := svc.withRoutes(chi.NewRouter().With(am.Auth).With(am.AdminOnly))
 	ts = httptest.NewServer(routes)
 	return svc, dataStore, ts
 }

@@ -413,7 +413,7 @@ func TestRest_DeleteMe(t *testing.T) {
 	assert.Equal(t, "dev", m["user_id"])
 
 	token := m["token"]
-	claims, err := srv.Authenticator.JWTService.Parse(token)
+	claims, err := srv.Authenticator.TokenService().Parse(token)
 	assert.Nil(t, err)
 	assert.Equal(t, "dev", claims.User.ID)
 	assert.Equal(t, "https://demo.remark42.com/web/deleteme.html?token="+token, m["link"])

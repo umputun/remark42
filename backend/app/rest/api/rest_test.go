@@ -13,13 +13,13 @@ import (
 	"time"
 
 	"github.com/coreos/bbolt"
+	"github.com/go-pkgz/auth"
 	R "github.com/go-pkgz/rest"
 	"github.com/go-pkgz/rest/cache"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/umputun/remark/backend/app/migrator"
-	"github.com/umputun/remark/backend/app/rest/auth"
 	"github.com/umputun/remark/backend/app/rest/proxy"
 	"github.com/umputun/remark/backend/app/store"
 	adminstore "github.com/umputun/remark/backend/app/store/admin"
@@ -61,7 +61,7 @@ func TestRest_GetStarted(t *testing.T) {
 }
 
 func TestRest_Shutdown(t *testing.T) {
-	srv := Rest{Authenticator: auth.Authenticator{}, AvatarProxy: &proxy.Avatar{Store: avatar.NewLocalFS("/tmp", 300),
+	srv := Rest{Authenticator: auth.Service{}, AvatarProxy: &proxy.Avatar{Store: avatar.NewLocalFS("/tmp", 300),
 		RoutePath: "/api/v1/avatar"}, ImageProxy: &proxy.Image{}}
 
 	go func() {
@@ -91,7 +91,7 @@ func TestRest_filterComments(t *testing.T) {
 
 func TestRest_RunStaticSSLMode(t *testing.T) {
 	srv := Rest{
-		Authenticator: auth.Authenticator{},
+		Authenticator: auth.Service{},
 		AvatarProxy: &proxy.Avatar{
 			Store:     avatar.NewLocalFS("/tmp", 300),
 			RoutePath: "/api/v1/avatar",
@@ -143,7 +143,7 @@ func TestRest_RunStaticSSLMode(t *testing.T) {
 
 func TestRest_RunAutocertModeHTTPOnly(t *testing.T) {
 	srv := Rest{
-		Authenticator: auth.Authenticator{},
+		Authenticator: auth.Service{},
 		AvatarProxy: &proxy.Avatar{
 			Store:     avatar.NewLocalFS("/tmp", 300),
 			RoutePath: "/api/v1/avatar",
@@ -192,14 +192,14 @@ func prep(t *testing.T) (srv *Rest, ts *httptest.Server) {
 		AdminStore:     adminStore,
 		MaxVotes:       service.UnlimitedVotes,
 	}
+
+	//DevPasswd:  "password",
+	//	Providers:  nil,
+	//		KeyStore:   adminStore,
+	//		JWTService: auth.NewJWT(adminStore, false, time.Minute, time.Hour),
 	srv = &Rest{
-		DataService: dataStore,
-		Authenticator: auth.Authenticator{
-			DevPasswd:  "password",
-			Providers:  nil,
-			KeyStore:   adminStore,
-			JWTService: auth.NewJWT(adminStore, false, time.Minute, time.Hour),
-		},
+		DataService:      dataStore,
+		Authenticator:    *auth.NewService(auth.Opts{}),
 		Cache:            &cache.Nop{},
 		WebRoot:          "/tmp",
 		RemarkURL:        "https://demo.remark42.com",

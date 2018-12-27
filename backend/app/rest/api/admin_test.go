@@ -13,11 +13,12 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/go-pkgz/auth/token"
 	R "github.com/go-pkgz/rest"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/umputun/remark/backend/app/rest/auth"
 	"github.com/umputun/remark/backend/app/store"
 )
 
@@ -512,31 +513,33 @@ func TestAdmin_DeleteMeRequest(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(comments), "a comment for user1")
 
-	claims := auth.CustomClaims{
-		SiteID:      "radio-t",
+	claims := token.Claims{
 		SessionOnly: true,
 		StandardClaims: jwt.StandardClaims{
+			Audience:  "radio-t",
 			Id:        "1234567",
 			Issuer:    "remark42",
 			NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
 			ExpiresAt: time.Now().Add(30 * time.Minute).Unix(),
 		},
-		User: &store.User{
+		User: &token.User{
 			ID:      "user1",
 			Picture: "pic.image",
+			Attributes: map[string]interface{}{
+				"delete_me": true,
+			},
 		},
 	}
-	claims.Flags.DeleteMe = true
 
 	_ = os.MkdirAll("/tmp/42", 0700)
-	defer func(){_ = os.RemoveAll("/tmp/42")}()
-	require.NoError(t,ioutil.WriteFile("/tmp/42/pic.image", []byte("some image data"), 0600))
+	defer func() { _ = os.RemoveAll("/tmp/42") }()
+	require.NoError(t, ioutil.WriteFile("/tmp/42/pic.image", []byte("some image data"), 0600))
 
-	token, err := srv.Authenticator.JWTService.Token(&claims)
+	tkn, err := srv.Authenticator.TokenService().Token(claims)
 	assert.Nil(t, err)
 
 	client := http.Client{}
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, token), nil)
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn), nil)
 	assert.Nil(t, err)
 	req.SetBasicAuth("dev", "password")
 	resp, err := client.Do(req)
@@ -572,24 +575,26 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 	assert.Equal(t, 400, resp.StatusCode)
 
 	// try with bad auth
-	claims := auth.CustomClaims{
-		SiteID:      "radio-t",
+	claims := token.Claims{
 		SessionOnly: true,
 		StandardClaims: jwt.StandardClaims{
+			Audience:  "radio-t",
 			Id:        "1234567",
 			Issuer:    "remark42",
 			NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
 			ExpiresAt: time.Now().Add(30 * time.Minute).Unix(),
 		},
-		User: &store.User{
+		User: &token.User{
 			ID: "user1",
+			Attributes: map[string]interface{}{
+				"delete_me": true,
+			},
 		},
 	}
-	claims.Flags.DeleteMe = true
 
-	token, err := srv.Authenticator.JWTService.Token(&claims)
+	tkn, err := srv.Authenticator.TokenService().Token(claims)
 	assert.Nil(t, err)
-	req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, token), nil)
+	req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn), nil)
 	assert.Nil(t, err)
 	req.SetBasicAuth("dev", "bad-password")
 	resp, err = client.Do(req)
@@ -599,9 +604,9 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 	// try bad user
 	badClaims := claims
 	badClaims.User.ID = "no-such-id"
-	token, err = srv.Authenticator.JWTService.Token(&badClaims)
+	tkn, err = srv.Authenticator.TokenService().Token(badClaims)
 	assert.Nil(t, err)
-	req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, token), nil)
+	req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn), nil)
 	assert.Nil(t, err)
 	req.SetBasicAuth("dev", "password")
 	resp, err = client.Do(req)
@@ -610,10 +615,10 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 
 	// try without deleteme flag
 	badClaims2 := claims
-	badClaims2.Flags.DeleteMe = false
-	token, err = srv.Authenticator.JWTService.Token(&badClaims2)
+	badClaims2.User.SetBoolAttr("delete_me", true)
+	tkn, err = srv.Authenticator.TokenService().Token(badClaims2)
 	assert.Nil(t, err)
-	req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, token), nil)
+	req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn), nil)
 	assert.Nil(t, err)
 	req.SetBasicAuth("dev", "password")
 	resp, err = client.Do(req)

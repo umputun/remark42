@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/go-pkgz/auth/token"
 	"log"
 	"net/http"
 	"strings"
@@ -18,7 +19,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 
 	"github.com/umputun/remark/backend/app/rest"
-	"github.com/umputun/remark/backend/app/rest/auth"
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/service"
 )
@@ -231,18 +231,23 @@ func (s *Rest) deleteMeCtrl(w http.ResponseWriter, r *http.Request) {
 	user := rest.MustGetUserInfo(r)
 	siteID := r.URL.Query().Get("site")
 
-	claims := auth.CustomClaims{
-		SiteID: siteID,
+	claims := token.Claims{
 		StandardClaims: jwt.StandardClaims{
+			Audience:  siteID,
 			Issuer:    "remark42",
 			ExpiresAt: time.Now().AddDate(0, 3, 0).Unix(),
 			NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
 		},
-		User: &user,
+		User: &token.User{
+			ID:   user.ID,
+			Name: user.Name,
+			Attributes: map[string]interface{}{
+				"delete_me": true, // prevents this token from being used for login
+			},
+		},
 	}
-	claims.Flags.DeleteMe = true // prevent this token from being used for login
 
-	tokenStr, err := s.Authenticator.JWTService.Token(&claims)
+	tokenStr, err := s.Authenticator.TokenService().Token(claims)
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't make token")
 		return

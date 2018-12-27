@@ -19,15 +19,16 @@ import (
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/cors"
 	"github.com/go-chi/render"
-	R "github.com/go-pkgz/rest"
-	"github.com/go-pkgz/rest/cache"
-	"github.com/go-pkgz/rest/logger"
+	"github.com/go-pkgz/auth"
 	"github.com/pkg/errors"
 	"github.com/rakyll/statik/fs"
 
+	R "github.com/go-pkgz/rest"
+	"github.com/go-pkgz/rest/cache"
+	"github.com/go-pkgz/rest/logger"
+
 	"github.com/umputun/remark/backend/app/notify"
 	"github.com/umputun/remark/backend/app/rest"
-	"github.com/umputun/remark/backend/app/rest/auth"
 	"github.com/umputun/remark/backend/app/rest/proxy"
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/service"
@@ -38,7 +39,7 @@ type Rest struct {
 	Version string
 
 	DataService      *service.DataStore
-	Authenticator    auth.Authenticator
+	Authenticator    auth.Service
 	Cache            cache.LoadingCache
 	AvatarProxy      *proxy.Avatar
 	ImageProxy       *proxy.Image
@@ -181,32 +182,47 @@ func (s *Rest) routes() chi.Router {
 
 	ipFn := func(ip string) string { return store.HashValue(ip, s.SharedSecret)[:12] } // logger uses it for anonymization
 
-	// auth routes for all providers
-	router.Route("/auth", func(r chi.Router) {
+	authHandler, avatarHandler := s.Authenticator.Handlers()
+
+	router.Group(func(r chi.Router) {
 		l := logger.New(logger.Flags(logger.All), logger.IPfn(ipFn))
 		r.Use(l.Handler, tollbooth_chi.LimitHandler(tollbooth.NewLimiter(5, nil)))
-		for _, provider := range s.Authenticator.Providers {
-			r.Mount("/"+provider.Name, provider.Routes()) // mount auth providers as /auth/{name}
-		}
-		if len(s.Authenticator.Providers) > 0 {
-			// shortcut, can be any of providers, all logouts do the same - removes cookie
-			r.Get("/logout", s.Authenticator.Providers[0].LogoutHandler)
-		}
+		r.Mount("/auth", authHandler)
 	})
 
-	avatarMiddlewares := []func(http.Handler) http.Handler{
-		logger.New(logger.Flags(logger.None)).Handler,
-		tollbooth_chi.LimitHandler(tollbooth.NewLimiter(100, nil)),
-	}
-	router.Mount(s.AvatarProxy.Routes(avatarMiddlewares...)) // mount avatars to /api/v1/avatar/{file.img}
+	router.Group(func(r chi.Router) {
+		r.Use(logger.New(logger.Flags(logger.None)).Handler, tollbooth_chi.LimitHandler(tollbooth.NewLimiter(100, nil)))
+		r.Mount("/avatar", avatarHandler)
+	})
+
+	authMiddleware := s.Authenticator.Middleware()
+
+	//// auth routes for all providers
+	//router.Route("/auth", func(r chi.Router) {
+	//	l := logger.New(logger.Flags(logger.All), logger.IPfn(ipFn))
+	//	r.Use(l.Handler, tollbooth_chi.LimitHandler(tollbooth.NewLimiter(5, nil)))
+	//
+	//	for _, provider := range s.Authenticator.Providers {
+	//		r.Mount("/"+provider.Name, provider.Routes()) // mount auth providers as /auth/{name}
+	//	}
+	//	if len(s.Authenticator.Providers) > 0 {
+	//		// shortcut, can be any of providers, all logouts do the same - removes cookie
+	//		r.Get("/logout", s.Authenticator.Providers[0].LogoutHandler)
+	//	}
+	//})
+
+	//avatarMiddlewares := []func(http.Handler) http.Handler{
+	//	logger.New(logger.Flags(logger.None)).Handler,
+	//	tollbooth_chi.LimitHandler(tollbooth.NewLimiter(100, nil)),
+	//}
+	//router.Mount(s.AvatarProxy.Routes(avatarMiddlewares...)) // mount avatars to /api/v1/avatar/{file.img}
 
 	// api routes
 	router.Route("/api/v1", func(rapi chi.Router) {
 		rapi.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
-
 		// open routes
 		rapi.Group(func(ropen chi.Router) {
-			ropen.Use(s.Authenticator.Auth(false))
+			ropen.Use(authMiddleware.Trace)
 			ropen.Use(logger.New(logger.Flags(logger.All), logger.IPfn(ipFn)).Handler)
 			ropen.Get("/find", s.findCommentsCtrl)
 			ropen.Get("/id/{id}", s.commentByIDCtrl)
@@ -225,7 +241,7 @@ func (s *Rest) routes() chi.Router {
 
 		// protected routes, require auth
 		rapi.Group(func(rauth chi.Router) {
-			rauth.Use(s.Authenticator.Auth(true))
+			rauth.Use(authMiddleware.Auth)
 			rauth.Use(logger.New(logger.Flags(logger.All), logger.IPfn(ipFn)).Handler)
 			rauth.Post("/comment", s.createCommentCtrl)
 			rauth.Put("/comment/{id}", s.updateCommentCtrl)
@@ -235,7 +251,7 @@ func (s *Rest) routes() chi.Router {
 			rauth.Post("/deleteme", s.deleteMeCtrl)
 
 			// admin routes, admin users only
-			rauth.Mount("/admin", s.adminService.routes(s.Authenticator.AdminOnly))
+			rauth.Mount("/admin", s.adminService.routes(authMiddleware.AdminOnly))
 		})
 	})
 

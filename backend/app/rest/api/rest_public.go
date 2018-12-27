@@ -58,7 +58,7 @@ func (s *Rest) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = R.RenderJSONFromBytes(w, r, data); err != nil {
-		log.Printf("[WARN] can't render comments for post %+v",locator)
+		log.Printf("[WARN] can't render comments for post %+v", locator)
 	}
 }
 
@@ -106,7 +106,7 @@ func (s *Rest) infoCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = R.RenderJSONFromBytes(w, r, data); err != nil {
-		log.Printf("[WARN] can't render info for post %+v",locator)
+		log.Printf("[WARN] can't render info for post %+v", locator)
 	}
 }
 
@@ -138,7 +138,7 @@ func (s *Rest) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = R.RenderJSONFromBytes(w, r, data); err != nil {
-		log.Printf("[WARN] can't render last comments for site %s",siteID)
+		log.Printf("[WARN] can't render last comments for site %s", siteID)
 	}
 }
 
@@ -160,7 +160,7 @@ func (s *Rest) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 	render.Status(r, http.StatusOK)
 
 	if err = R.RenderJSONWithHTML(w, r, comment); err != nil {
-		log.Printf("[WARN] can't render last comments for url=%s, id=%s",url, id)
+		log.Printf("[WARN] can't render last comments for url=%s, id=%s", url, id)
 	}
 }
 
@@ -236,7 +236,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cnf.Auth = []string{}
-	for _, ap := range s.Authenticator.Providers {
+	for _, ap := range s.Authenticator.Providers() {
 		cnf.Auth = append(cnf.Auth, ap.Name)
 	}
 
@@ -290,7 +290,7 @@ func (s *Rest) countMultiCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = R.RenderJSONFromBytes(w, r, data); err != nil {
-		log.Printf("[WARN] can't render comments counters site %s",siteID)
+		log.Printf("[WARN] can't render comments counters site %s", siteID)
 	}
 }
 
@@ -322,6 +322,6 @@ func (s *Rest) listCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = R.RenderJSONFromBytes(w, r, data); err != nil {
-		log.Printf("[WARN] can't render posts lits for site %s",siteID)
+		log.Printf("[WARN] can't render posts lits for site %s", siteID)
 	}
 }
