@@ -10,6 +10,17 @@
   version = "v0.18.0"
 
 [[projects]]
+  digest = "1:6f958db63973bc397ef72acacbd56e045b4a0160af1224d6eb0f20deb860c0cd"
+  name = "git.tkginternal.com/commons/pkg/repeater"
+  packages = [
+    ".",
+    "strategy",
+  ]
+  pruneopts = "UT"
+  revision = "a207227f9303dc677c4d9644f709ad1e29bd0940"
+  version = "v1.0.0"
+
+[[projects]]
   digest = "1:bff7b2530f02b143623e260c11df5cbf34e0faeaca6aa001a8be31f333518ca9"
   name = "github.com/PuerkitoBio/goquery"
   packages = ["."]
@@ -110,6 +121,20 @@
   pruneopts = "UT"
   revision = "9f855fadd4b8cde7773f9ef51f6b2705af239519"
   version = "v1.0.0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:5ef69525e5e62fb771f3f6910c94030a86b542eff1cb9d9350803b6dae147144"
+  name = "github.com/go-pkgz/auth"
+  packages = [
+    ".",
+    "avatar",
+    "middleware",
+    "provider",
+    "token",
+  ]
+  pruneopts = "UT"
+  revision = "8d5238712a320d972f9d658e2fd1d4468ef81c3e"
 
 [[projects]]
   digest = "1:1212e114344a5cdcc834ea69e19d456eef230f9784659080fee67e02ba2cb574"
@@ -375,6 +400,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "git.tkginternal.com/commons/pkg/repeater",
     "github.com/PuerkitoBio/goquery",
     "github.com/coreos/bbolt",
     "github.com/dgrijalva/jwt-go",
@@ -386,6 +412,10 @@
     "github.com/go-chi/chi/middleware",
     "github.com/go-chi/cors",
     "github.com/go-chi/render",
+    "github.com/go-pkgz/auth",
+    "github.com/go-pkgz/auth/avatar",
+    "github.com/go-pkgz/auth/provider",
+    "github.com/go-pkgz/auth/token",
     "github.com/go-pkgz/mongo",
     "github.com/go-pkgz/repeater",
     "github.com/go-pkgz/rest",
@@ -397,19 +427,12 @@
     "github.com/hashicorp/logutils",
     "github.com/jessevdk/go-flags",
     "github.com/microcosm-cc/bluemonday",
-    "github.com/nullrocks/identicon",
     "github.com/patrickmn/go-cache",
     "github.com/pkg/errors",
     "github.com/rakyll/statik/fs",
     "github.com/stretchr/testify/assert",
     "github.com/stretchr/testify/require",
     "golang.org/x/crypto/acme/autocert",
-    "golang.org/x/image/draw",
-    "golang.org/x/oauth2",
-    "golang.org/x/oauth2/facebook",
-    "golang.org/x/oauth2/github",
-    "golang.org/x/oauth2/google",
-    "golang.org/x/oauth2/yandex",
     "gopkg.in/russross/blackfriday.v2",
   ]
   solver-name = "gps-cdcl"

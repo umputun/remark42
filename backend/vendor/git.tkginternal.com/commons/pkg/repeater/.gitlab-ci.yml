@@ -1,0 +1,25 @@
+image: docker.tkginternal.com/system/buildimage-go:1.1-master
+
+stages:
+    - build
+
+variables:
+    PROJ: "repeater"
+    GROUP: "commons/pkg"
+    PKG: "git.tkginternal.com"
+
+build_app:
+    stage: build
+    script:
+        - mkdir -p /go/src/$PKG/$GROUP && cp -fR $CI_PROJECT_DIR /go/src/$PKG/$GROUP/$PROJ
+        - mkdir -p $CI_PROJECT_DIR/target && ln -s $CI_PROJECT_DIR/target /go/src/$PKG/$GROUP/$PROJ/target
+        - cd /go/src/$PKG/$GROUP/$PROJ
+        - go get -v && go get -t $(go list -e ./... | grep -v vendor) && go test -v $(go list -e ./... | grep -v vendor)
+        - gometalinter --exclude=test --vendored-linters --disable-all --vendor --enable=vet --enable=vetshadow --enable=golint  --enable=ineffassign --enable=goconst --enable=gas --enable=staticcheck --enable=errcheck --deadline=120s ./...
+        - go build -ldflags "-X main.revision=$REV" -o $CI_PROJECT_DIR/target/$PROJ
+        - cd /go/src/$PKG/$GROUP/$PROJ && /script/coverage.sh
+    tags:
+        - gobuilder
+    artifacts:
+        paths:
+            - target/

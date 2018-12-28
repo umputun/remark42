@@ -39,8 +39,12 @@ func TestServerApp(t *testing.T) {
 	assert.Equal(t, "pong", string(body))
 
 	// add comment
-	resp, err = http.Post("http://dev:password@localhost:18080/api/v1/comment", "json",
+	client := http.Client{Timeout: 5 * time.Second}
+	req, err := http.NewRequest("POST", "http://localhost:18080/api/v1/comment",
 		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "remark"}}`))
+	req.SetBasicAuth("dev", "password")
+	require.Nil(t, err)
+	resp, err = client.Do(req)
 	require.Nil(t, err)
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 	body, _ = ioutil.ReadAll(resp.Body)
@@ -62,8 +66,8 @@ func TestServerApp_DevMode(t *testing.T) {
 	go func() { _ = app.run(ctx) }()
 	time.Sleep(100 * time.Millisecond) // let server start
 
-	assert.Equal(t, 4+1, len(app.restSrv.Authenticator.Providers), "extra auth provider")
-	assert.Equal(t, "dev", app.restSrv.Authenticator.Providers[4].Name, "dev auth provider")
+	assert.Equal(t, 4+1, len(app.restSrv.Authenticator.Providers()), "extra auth provider")
+	assert.Equal(t, "dev", app.restSrv.Authenticator.Providers()[4].Name, "dev auth provider")
 	// send ping
 	resp, err := http.Get("http://localhost:18085/api/v1/ping")
 	require.Nil(t, err)

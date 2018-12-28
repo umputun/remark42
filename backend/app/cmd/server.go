@@ -12,19 +12,23 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-pkgz/auth/token"
+
 	bolt "github.com/coreos/bbolt"
+	"github.com/pkg/errors"
+
+	"github.com/go-pkgz/auth"
+	"github.com/go-pkgz/auth/avatar"
+	"github.com/go-pkgz/auth/provider"
 	"github.com/go-pkgz/mongo"
 	"github.com/go-pkgz/rest/cache"
-	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/backend/app/migrator"
 	"github.com/umputun/remark/backend/app/notify"
 	"github.com/umputun/remark/backend/app/rest/api"
-	"github.com/umputun/remark/backend/app/rest/auth"
 	"github.com/umputun/remark/backend/app/rest/proxy"
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/admin"
-	"github.com/umputun/remark/backend/app/store/avatar"
 	"github.com/umputun/remark/backend/app/store/engine"
 	"github.com/umputun/remark/backend/app/store/service"
 )
@@ -148,7 +152,7 @@ type serverApp struct {
 	restSrv       *api.Rest
 	migratorSrv   *api.Migrator
 	exporter      migrator.Exporter
-	devAuth       *auth.DevAuthServer
+	devAuth       *provider.DevAuthServer
 	dataService   *service.DataStore
 	avatarStore   avatar.Store
 	notifyService *notify.Service
@@ -217,18 +221,38 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		return nil, errors.Wrap(err, "failed to make cache")
 	}
 
-	// token TTL is 5 minutes, inactivity interval 7+ days by default
-	jwtService := auth.NewJWT(adminStore, strings.HasPrefix(s.RemarkURL, "https://"), s.Auth.TTL.JWT, s.Auth.TTL.Cookie)
-
 	avatarStore, err := s.makeAvatarStore()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to make avatar store")
 	}
-	avatarProxy := &proxy.Avatar{
-		Store:     avatarStore,
-		RoutePath: "/api/v1/avatar",
-		RemarkURL: strings.TrimSuffix(s.RemarkURL, "/"),
-	}
+
+	authenticator := auth.NewService(auth.Opts{
+		TokenDuration:  s.Auth.TTL.JWT,
+		CookieDuration: s.Auth.TTL.Cookie,
+		SecureCookies:  strings.HasPrefix(s.RemarkURL, "https://"),
+		SecretReader: token.SecretFunc(func(id string) (string, error) {
+			return adminStore.Key(id)
+		}),
+		ClaimsUpd: token.ClaimsUpdFunc(func(c token.Claims) token.Claims {
+			c.User.SetAdmin(dataService.IsAdmin(c.Audience, c.User.ID))
+			return c
+		}),
+		DevPasswd: s.DevPasswd,
+		//Validator:         dataService,
+		AvatarStore:       avatarStore,
+		AvatarResizeLimit: s.Avatar.RszLmt,
+		AvatarRoutePath:   "/api/v1/avatar",
+	})
+	s.addAuthProviders(authenticator)
+
+	// token TTL is 5 minutes, inactivity interval 7+ days by default
+	// jwtService := auth.NewJWT(adminStore, strings.HasPrefix(s.RemarkURL, "https://"), s.Auth.TTL.JWT, s.Auth.TTL.Cookie)
+
+	// avatarProxy := &proxy.Avatar{
+	// 	Store:     avatarStore,
+	// 	RoutePath: "/api/v1/avatar",
+	// 	RemarkURL: strings.TrimSuffix(s.RemarkURL, "/"),
+	// }
 
 	exporter := &migrator.Native{DataStore: dataService}
 
@@ -247,7 +271,6 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		notifyService = notify.NopService // disable notifier
 	}
 
-	authProviders := s.makeAuthProviders(jwtService, avatarProxy, dataService)
 	imgProxy := &proxy.Image{Enabled: s.ImageProxy, RoutePath: "/api/v1/img", RemarkURL: s.RemarkURL}
 	commentFormatter := store.NewCommentFormatter(imgProxy)
 
@@ -263,27 +286,24 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		RemarkURL:        s.RemarkURL,
 		ImageProxy:       imgProxy,
 		CommentFormatter: commentFormatter,
-		AvatarProxy:      avatarProxy,
 		Migrator:         migr,
 		ReadOnlyAge:      s.ReadOnlyAge,
 		SharedSecret:     s.SharedSecret,
-		Authenticator: auth.Authenticator{
-			JWTService:        jwtService,
-			KeyStore:          adminStore,
-			Providers:         authProviders,
-			DevPasswd:         s.DevPasswd,
-			PermissionChecker: dataService,
-		},
-		Cache:         loadingCache,
-		NotifyService: notifyService,
-		SSLConfig:     sslConfig,
+		Authenticator:    *authenticator,
+		Cache:            loadingCache,
+		NotifyService:    notifyService,
+		SSLConfig:        sslConfig,
 	}
 
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = s.LowScore, s.CriticalScore
 
-	var devAuth *auth.DevAuthServer
+	var devAuth provider.DevAuthServer
 	if s.Auth.Dev {
-		devAuth = &auth.DevAuthServer{Provider: authProviders[len(authProviders)-1]}
+		p, err := authenticator.Provider("dev")
+		if err != nil {
+			return nil, errors.Wrap(err, "can't pick dev provider")
+		}
+		devAuth = provider.DevAuthServer{Provider: p}
 	}
 
 	return &serverApp{
@@ -291,7 +311,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		restSrv:       srv,
 		migratorSrv:   migr,
 		exporter:      exporter,
-		devAuth:       devAuth,
+		devAuth:       &devAuth,
 		dataService:   dataService,
 		avatarStore:   avatarStore,
 		notifyService: notifyService,
@@ -385,19 +405,19 @@ func (s *ServerCommand) makeAvatarStore() (avatar.Store, error) {
 		if err := makeDirs(s.Avatar.FS.Path); err != nil {
 			return nil, err
 		}
-		return avatar.NewLocalFS(s.Avatar.FS.Path, s.Avatar.RszLmt), nil
+		return avatar.NewLocalFS(s.Avatar.FS.Path), nil
 	case "mongo":
 		mgServer, err := s.makeMongo()
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to create mongo server")
 		}
 		conn := mongo.NewConnection(mgServer, s.Mongo.DB, "")
-		return avatar.NewGridFS(conn, s.Avatar.RszLmt), nil
+		return avatar.NewGridFS(conn), nil
 	case "bolt":
 		if err := makeDirs(path.Dir(s.Avatar.Bolt.File)); err != nil {
 			return nil, err
 		}
-		return avatar.NewBoltDB(s.Avatar.Bolt.File, bolt.Options{}, s.Avatar.RszLmt)
+		return avatar.NewBoltDB(s.Avatar.Bolt.File, bolt.Options{})
 	}
 	return nil, errors.Errorf("unsupported avatar store type %s", s.Avatar.Type)
 }
@@ -452,40 +472,33 @@ func (s *ServerCommand) makeMongo() (result *mongo.Server, err error) {
 	return mongo.NewServerWithURL(s.Mongo.URL, 10*time.Second)
 }
 
-func (s *ServerCommand) makeAuthProviders(jwt *auth.JWT, ap *proxy.Avatar, ds *service.DataStore) []auth.Provider {
+func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) {
 
-	makeParams := func(cid, secret string) auth.Params {
-		return auth.Params{
-			JwtService:        jwt,
-			AvatarProxy:       ap,
-			RemarkURL:         s.RemarkURL,
-			Cid:               cid,
-			Csecret:           secret,
-			PermissionChecker: ds,
-		}
-	}
-
-	providers := []auth.Provider{}
+	providers := 0
 	if s.Auth.Google.CID != "" && s.Auth.Google.CSEC != "" {
-		providers = append(providers, auth.NewGoogle(makeParams(s.Auth.Google.CID, s.Auth.Google.CSEC)))
+		authenticator.AddProvider("google", s.Auth.Google.CID, s.Auth.Google.CSEC)
+		providers++
 	}
 	if s.Auth.Github.CID != "" && s.Auth.Github.CSEC != "" {
-		providers = append(providers, auth.NewGithub(makeParams(s.Auth.Github.CID, s.Auth.Github.CSEC)))
+		authenticator.AddProvider("github", s.Auth.Github.CID, s.Auth.Github.CSEC)
+		providers++
 	}
 	if s.Auth.Facebook.CID != "" && s.Auth.Facebook.CSEC != "" {
-		providers = append(providers, auth.NewFacebook(makeParams(s.Auth.Facebook.CID, s.Auth.Facebook.CSEC)))
+		authenticator.AddProvider("facebook", s.Auth.Facebook.CID, s.Auth.Facebook.CSEC)
+		providers++
 	}
 	if s.Auth.Yandex.CID != "" && s.Auth.Yandex.CSEC != "" {
-		providers = append(providers, auth.NewYandex(makeParams(s.Auth.Yandex.CID, s.Auth.Yandex.CSEC)))
+		authenticator.AddProvider("yandex", s.Auth.Yandex.CID, s.Auth.Yandex.CSEC)
+		providers++
 	}
 	if s.Auth.Dev {
-		providers = append(providers, auth.NewDev(makeParams("", "")))
+		authenticator.AddProvider("dev", "", "")
+		providers++
 	}
 
-	if len(providers) == 0 {
+	if providers == 0 {
 		log.Printf("[WARN] no auth providers defined")
 	}
-	return providers
 }
 
 func (s *ServerCommand) makeNotify(dataStore *service.DataStore) (*notify.Service, error) {
