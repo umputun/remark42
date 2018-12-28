@@ -10,14 +10,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-pkgz/auth/token"
-
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
+	multierror "github.com/hashicorp/go-multierror"
+
+	"github.com/go-pkgz/auth/token"
 	R "github.com/go-pkgz/rest"
 	"github.com/go-pkgz/rest/cache"
-	multierror "github.com/hashicorp/go-multierror"
 
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/store"

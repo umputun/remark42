@@ -5,9 +5,8 @@ import (
 	"sync"
 	"time"
 
-	multierror "github.com/hashicorp/go-multierror"
-
 	"github.com/google/uuid"
+	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/backend/app/store"

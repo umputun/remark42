@@ -5,8 +5,9 @@ import (
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
-	"github.com/go-pkgz/mongo"
 	"github.com/pkg/errors"
+
+	"github.com/go-pkgz/mongo"
 )
 
 // MongoStore implements admin.Store with mongo backend

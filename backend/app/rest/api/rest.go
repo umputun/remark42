@@ -19,10 +19,10 @@ import (
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/cors"
 	"github.com/go-chi/render"
-	"github.com/go-pkgz/auth"
 	"github.com/pkg/errors"
 	"github.com/rakyll/statik/fs"
 
+	"github.com/go-pkgz/auth"
 	R "github.com/go-pkgz/rest"
 	"github.com/go-pkgz/rest/cache"
 	"github.com/go-pkgz/rest/logger"

@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
+
 	R "github.com/go-pkgz/rest"
 	"github.com/go-pkgz/rest/cache"
 

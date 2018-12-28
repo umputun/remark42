@@ -10,17 +10,6 @@
   version = "v0.18.0"
 
 [[projects]]
-  digest = "1:6f958db63973bc397ef72acacbd56e045b4a0160af1224d6eb0f20deb860c0cd"
-  name = "git.tkginternal.com/commons/pkg/repeater"
-  packages = [
-    ".",
-    "strategy",
-  ]
-  pruneopts = "UT"
-  revision = "a207227f9303dc677c4d9644f709ad1e29bd0940"
-  version = "v1.0.0"
-
-[[projects]]
   digest = "1:bff7b2530f02b143623e260c11df5cbf34e0faeaca6aa001a8be31f333518ca9"
   name = "github.com/PuerkitoBio/goquery"
   packages = ["."]
@@ -400,7 +389,6 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "git.tkginternal.com/commons/pkg/repeater",
     "github.com/PuerkitoBio/goquery",
     "github.com/coreos/bbolt",
     "github.com/dgrijalva/jwt-go",

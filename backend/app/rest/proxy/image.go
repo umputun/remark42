@@ -8,11 +8,11 @@ import (
 	"strings"
 	"time"
 
-	"git.tkginternal.com/commons/pkg/repeater"
-
 	"github.com/PuerkitoBio/goquery"
 	"github.com/go-chi/chi"
 	"github.com/pkg/errors"
+
+	"github.com/go-pkgz/repeater"
 
 	"github.com/umputun/remark/backend/app/rest"
 )

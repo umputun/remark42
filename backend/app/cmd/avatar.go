@@ -5,10 +5,11 @@ import (
 	"path"
 	"time"
 
-	"github.com/coreos/bbolt"
+	bolt "github.com/coreos/bbolt"
+	"github.com/pkg/errors"
+
 	"github.com/go-pkgz/auth/avatar"
 	"github.com/go-pkgz/mongo"
-	"github.com/pkg/errors"
 )
 
 // AvatarCommand set of flags and command for avatar migration

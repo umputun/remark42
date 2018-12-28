@@ -9,8 +9,9 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
-	R "github.com/go-pkgz/rest"
 	"golang.org/x/crypto/acme/autocert"
+
+	R "github.com/go-pkgz/rest"
 )
 
 // sslMode defines ssl mode for rest server

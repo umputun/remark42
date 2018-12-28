@@ -12,14 +12,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/go-pkgz/auth/token"
-
 	bolt "github.com/coreos/bbolt"
 	"github.com/pkg/errors"
 
 	"github.com/go-pkgz/auth"
 	"github.com/go-pkgz/auth/avatar"
 	"github.com/go-pkgz/auth/provider"
+	"github.com/go-pkgz/auth/token"
 	"github.com/go-pkgz/mongo"
 	"github.com/go-pkgz/rest/cache"
 
