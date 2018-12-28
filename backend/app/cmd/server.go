@@ -227,6 +227,8 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 	}
 
 	authenticator := auth.NewService(auth.Opts{
+		URL:            s.RemarkURL,
+		Issuer:         "remark42",
 		TokenDuration:  s.Auth.TTL.JWT,
 		CookieDuration: s.Auth.TTL.Cookie,
 		SecureCookies:  strings.HasPrefix(s.RemarkURL, "https://"),
@@ -234,6 +236,9 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 			return adminStore.Key(id)
 		}),
 		ClaimsUpd: token.ClaimsUpdFunc(func(c token.Claims) token.Claims {
+			if c.User == nil {
+				return c
+			}
 			c.User.SetAdmin(dataService.IsAdmin(c.Audience, c.User.ID))
 			return c
 		}),
