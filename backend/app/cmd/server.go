@@ -224,39 +224,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to make avatar store")
 	}
-
-	authenticator := auth.NewService(auth.Opts{
-		URL:            s.RemarkURL,
-		Issuer:         "remark42",
-		TokenDuration:  s.Auth.TTL.JWT,
-		CookieDuration: s.Auth.TTL.Cookie,
-		SecureCookies:  strings.HasPrefix(s.RemarkURL, "https://"),
-		SecretReader: token.SecretFunc(func(id string) (string, error) {
-			return adminStore.Key(id)
-		}),
-		ClaimsUpd: token.ClaimsUpdFunc(func(c token.Claims) token.Claims {
-			if c.User == nil {
-				return c
-			}
-			c.User.SetAdmin(dataService.IsAdmin(c.Audience, c.User.ID))
-			return c
-		}),
-		DevPasswd: s.DevPasswd,
-		//Validator:         dataService,
-		AvatarStore:       avatarStore,
-		AvatarResizeLimit: s.Avatar.RszLmt,
-		AvatarRoutePath:   "/api/v1/avatar",
-	})
-	s.addAuthProviders(authenticator)
-
-	// token TTL is 5 minutes, inactivity interval 7+ days by default
-	// jwtService := auth.NewJWT(adminStore, strings.HasPrefix(s.RemarkURL, "https://"), s.Auth.TTL.JWT, s.Auth.TTL.Cookie)
-
-	// avatarProxy := &proxy.Avatar{
-	// 	Store:     avatarStore,
-	// 	RoutePath: "/api/v1/avatar",
-	// 	RemarkURL: strings.TrimSuffix(s.RemarkURL, "/"),
-	// }
+	authenticator := s.makeAuthenticator(dataService, avatarStore, adminStore)
 
 	exporter := &migrator.Native{DataStore: dataService}
 
@@ -549,4 +517,37 @@ func (s *ServerCommand) makeSSLConfig() (config api.SSLConfig, err error) {
 		}
 	}
 	return config, err
+}
+
+func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Store, admns admin.Store) *auth.Service {
+	authenticator := auth.NewService(auth.Opts{
+		URL:            strings.TrimSuffix(s.RemarkURL, "/"),
+		Issuer:         "remark42",
+		TokenDuration:  s.Auth.TTL.JWT,
+		CookieDuration: s.Auth.TTL.Cookie,
+		SecureCookies:  strings.HasPrefix(s.RemarkURL, "https://"),
+		SecretReader: token.SecretFunc(func(id string) (string, error) {
+			return admns.Key(id)
+		}),
+		ClaimsUpd: token.ClaimsUpdFunc(func(c token.Claims) token.Claims {
+			if c.User == nil {
+				return c
+			}
+			c.User.SetAdmin(ds.IsAdmin(c.Audience, c.User.ID))
+			c.User.SetBoolAttr("blocked", ds.IsBlocked(c.Audience, c.User.ID))
+			return c
+		}),
+		DevPasswd: s.DevPasswd,
+		Validator: token.ValidatorFunc(func(token string, claims token.Claims) bool {
+			if claims.User == nil {
+				return false
+			}
+			return !claims.User.BoolAttr("blocked")
+		}),
+		AvatarStore:       avas,
+		AvatarResizeLimit: s.Avatar.RszLmt,
+		AvatarRoutePath:   "/api/v1/avatar",
+	})
+	s.addAuthProviders(authenticator)
+	return authenticator
 }
