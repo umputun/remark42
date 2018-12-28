@@ -23,7 +23,7 @@ import (
 type admin struct {
 	dataService   *service.DataStore
 	cache         cache.LoadingCache
-	authenticator auth.Service
+	authenticator *auth.Service
 	readOnlyAge   int
 	migrator      *Migrator
 }

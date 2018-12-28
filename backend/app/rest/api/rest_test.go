@@ -62,7 +62,7 @@ func TestRest_GetStarted(t *testing.T) {
 }
 
 func TestRest_Shutdown(t *testing.T) {
-	srv := Rest{Authenticator: auth.Service{}, ImageProxy: &proxy.Image{}}
+	srv := Rest{Authenticator: &auth.Service{}, ImageProxy: &proxy.Image{}}
 
 	go func() {
 		time.Sleep(100 * time.Millisecond)
@@ -91,7 +91,7 @@ func TestRest_filterComments(t *testing.T) {
 
 func TestRest_RunStaticSSLMode(t *testing.T) {
 	srv := Rest{
-		Authenticator: *auth.NewService(auth.Opts{
+		Authenticator: auth.NewService(auth.Opts{
 			AvatarStore:       avatar.NewLocalFS("/tmp"),
 			AvatarResizeLimit: 300,
 		}),
@@ -143,7 +143,7 @@ func TestRest_RunStaticSSLMode(t *testing.T) {
 
 func TestRest_RunAutocertModeHTTPOnly(t *testing.T) {
 	srv := Rest{
-		Authenticator: auth.Service{},
+		Authenticator: &auth.Service{},
 		ImageProxy:    &proxy.Image{},
 		SSLConfig: SSLConfig{
 			SSLMode: Auto,
@@ -191,7 +191,7 @@ func prep(t *testing.T) (srv *Rest, ts *httptest.Server) {
 
 	srv = &Rest{
 		DataService: dataStore,
-		Authenticator: *auth.NewService(auth.Opts{
+		Authenticator: auth.NewService(auth.Opts{
 			DevPasswd:         "password",
 			SecretReader:      token.SecretFunc(func(id string) (string, error) { return "secret", nil }),
 			AvatarStore:       avatar.NewLocalFS("/tmp"),

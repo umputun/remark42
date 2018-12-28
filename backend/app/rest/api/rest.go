@@ -39,7 +39,7 @@ type Rest struct {
 	Version string
 
 	DataService      *service.DataStore
-	Authenticator    auth.Service
+	Authenticator    *auth.Service
 	Cache            cache.LoadingCache
 	ImageProxy       *proxy.Image
 	CommentFormatter *store.CommentFormatter

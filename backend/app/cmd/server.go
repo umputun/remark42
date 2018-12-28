@@ -261,7 +261,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		Migrator:         migr,
 		ReadOnlyAge:      s.ReadOnlyAge,
 		SharedSecret:     s.SharedSecret,
-		Authenticator:    *authenticator,
+		Authenticator:    authenticator,
 		Cache:            loadingCache,
 		NotifyService:    notifyService,
 		SSLConfig:        sslConfig,
