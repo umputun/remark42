@@ -289,8 +289,7 @@ func TestRest_UserInfo(t *testing.T) {
 	user := store.User{}
 	err := json.Unmarshal([]byte(body), &user)
 	assert.Nil(t, err)
-	assert.Equal(t, store.User{Name: "developer one", ID: "dev",
-		Picture: "/api/v1/avatar/remark.image", Admin: true, Blocked: false, IP: ""}, user)
+	assert.Equal(t, store.User{Name: "developer one", ID: "dev", Picture: "", Admin: true, Blocked: false, IP: ""}, user)
 }
 
 func TestRest_Count(t *testing.T) {

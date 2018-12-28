@@ -142,8 +142,8 @@ func TestRest_CreateAndGet(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "<p><strong>test</strong> <em>123</em></p>\n\n<p><a href=\"http://radio-t.com\" rel=\"nofollow\">http://radio-t.com</a></p>\n", comment.Text)
 	assert.Equal(t, "**test** *123*\n\n http://radio-t.com", comment.Orig)
-	assert.Equal(t, store.User{Name: "developer one", ID: "dev",
-		Picture: "/api/v1/avatar/remark.image", Admin: true, Blocked: false, IP: "dbc7c999343f003f189f70aaf52cc04443f90790"},
+	assert.Equal(t, store.User{Name: "developer one", ID: "dev", Admin: true, Blocked: false,
+		IP: "dbc7c999343f003f189f70aaf52cc04443f90790"},
 		comment.User)
 	t.Logf("%+v", comment)
 }
@@ -336,7 +336,7 @@ func TestRest_UserAllData(t *testing.T) {
 	ungzBody, err := ioutil.ReadAll(ungzReader)
 	assert.NoError(t, err)
 	assert.True(t, strings.HasPrefix(string(ungzBody),
-		`{"info": {"name":"developer one","id":"dev","picture":"/api/v1/avatar/remark.image","admin":true}, "comments":[{`))
+		`{"info": {"name":"developer one","id":"dev","picture":"","admin":true}, "comments":[{`))
 	assert.Equal(t, 3, strings.Count(string(ungzBody), `"text":`), "3 comments inside")
 	t.Logf("%s", string(ungzBody))
 
@@ -347,7 +347,7 @@ func TestRest_UserAllData(t *testing.T) {
 
 	err = json.Unmarshal(ungzBody, &parsed)
 	assert.Nil(t, err)
-	assert.Equal(t, store.User{Name: "developer one", ID: "dev", Picture: "/api/v1/avatar/remark.image", Admin: true}, parsed.Info)
+	assert.Equal(t, store.User{Name: "developer one", ID: "dev", Picture: "", Admin: true}, parsed.Info)
 	assert.Equal(t, 3, len(parsed.Comments))
 
 	req, err = http.NewRequest("GET", ts.URL+"/api/v1/userdata?site=radio-t", nil)
@@ -387,7 +387,7 @@ func TestRest_UserAllDataManyComments(t *testing.T) {
 	ungzBody, err := ioutil.ReadAll(ungzReader)
 	assert.NoError(t, err)
 	assert.True(t, strings.HasPrefix(string(ungzBody),
-		`{"info": {"name":"developer one","id":"dev","picture":"/api/v1/avatar/remark.image","admin":true}, "comments":[{`))
+		`{"info": {"name":"developer one","id":"dev","picture":"","admin":true}, "comments":[{`))
 	assert.Equal(t, 478, strings.Count(string(ungzBody), `"text":`), "478 comments inside")
 }
 

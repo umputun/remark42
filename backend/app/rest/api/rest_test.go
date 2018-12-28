@@ -12,8 +12,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/bbolt"
+	bolt "github.com/coreos/bbolt"
 	"github.com/go-pkgz/auth"
+	"github.com/go-pkgz/auth/avatar"
+	"github.com/go-pkgz/auth/token"
 	R "github.com/go-pkgz/rest"
 	"github.com/go-pkgz/rest/cache"
 	"github.com/stretchr/testify/assert"
@@ -23,7 +25,6 @@ import (
 	"github.com/umputun/remark/backend/app/rest/proxy"
 	"github.com/umputun/remark/backend/app/store"
 	adminstore "github.com/umputun/remark/backend/app/store/admin"
-	"github.com/umputun/remark/backend/app/store/avatar"
 	"github.com/umputun/remark/backend/app/store/engine"
 	"github.com/umputun/remark/backend/app/store/service"
 )
@@ -61,8 +62,7 @@ func TestRest_GetStarted(t *testing.T) {
 }
 
 func TestRest_Shutdown(t *testing.T) {
-	srv := Rest{Authenticator: auth.Service{}, AvatarProxy: &proxy.Avatar{Store: avatar.NewLocalFS("/tmp", 300),
-		RoutePath: "/api/v1/avatar"}, ImageProxy: &proxy.Image{}}
+	srv := Rest{Authenticator: auth.Service{}, ImageProxy: &proxy.Image{}}
 
 	go func() {
 		time.Sleep(100 * time.Millisecond)
@@ -91,11 +91,11 @@ func TestRest_filterComments(t *testing.T) {
 
 func TestRest_RunStaticSSLMode(t *testing.T) {
 	srv := Rest{
-		Authenticator: auth.Service{},
-		AvatarProxy: &proxy.Avatar{
-			Store:     avatar.NewLocalFS("/tmp", 300),
-			RoutePath: "/api/v1/avatar",
-		},
+		Authenticator: *auth.NewService(auth.Opts{
+			AvatarStore:       avatar.NewLocalFS("/tmp"),
+			AvatarResizeLimit: 300,
+		}),
+
 		ImageProxy: &proxy.Image{},
 		SSLConfig: SSLConfig{
 			SSLMode: Static,
@@ -144,11 +144,7 @@ func TestRest_RunStaticSSLMode(t *testing.T) {
 func TestRest_RunAutocertModeHTTPOnly(t *testing.T) {
 	srv := Rest{
 		Authenticator: auth.Service{},
-		AvatarProxy: &proxy.Avatar{
-			Store:     avatar.NewLocalFS("/tmp", 300),
-			RoutePath: "/api/v1/avatar",
-		},
-		ImageProxy: &proxy.Image{},
+		ImageProxy:    &proxy.Image{},
 		SSLConfig: SSLConfig{
 			SSLMode: Auto,
 			Port:    8443,
@@ -193,17 +189,18 @@ func prep(t *testing.T) (srv *Rest, ts *httptest.Server) {
 		MaxVotes:       service.UnlimitedVotes,
 	}
 
-	//DevPasswd:  "password",
-	//	Providers:  nil,
-	//		KeyStore:   adminStore,
-	//		JWTService: auth.NewJWT(adminStore, false, time.Minute, time.Hour),
 	srv = &Rest{
-		DataService:      dataStore,
-		Authenticator:    *auth.NewService(auth.Opts{}),
-		Cache:            &cache.Nop{},
-		WebRoot:          "/tmp",
-		RemarkURL:        "https://demo.remark42.com",
-		AvatarProxy:      &proxy.Avatar{Store: avatar.NewLocalFS("/tmp", 300), RoutePath: "/api/v1/avatar"},
+		DataService: dataStore,
+		Authenticator: *auth.NewService(auth.Opts{
+			DevPasswd:         "password",
+			SecretReader:      token.SecretFunc(func(id string) (string, error) { return "secret", nil }),
+			AvatarStore:       avatar.NewLocalFS("/tmp"),
+			AvatarResizeLimit: 300,
+		}),
+		Cache:     &cache.Nop{},
+		WebRoot:   "/tmp",
+		RemarkURL: "https://demo.remark42.com",
+
 		ImageProxy:       &proxy.Image{},
 		ReadOnlyAge:      10,
 		CommentFormatter: store.NewCommentFormatter(&proxy.Image{}),
@@ -257,21 +254,21 @@ func post(t *testing.T, url string, body string) (*http.Response, error) {
 func addComment(t *testing.T, c store.Comment, ts *httptest.Server) string {
 
 	b, err := json.Marshal(c)
-	assert.Nil(t, err, "can't marshal comment %+v", c)
+	require.Nil(t, err, "can't marshal comment %+v", c)
 
 	client := &http.Client{Timeout: 5 * time.Second}
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/comment", bytes.NewBuffer(b))
-	assert.Nil(t, err)
+	require.Nil(t, err)
 	req.SetBasicAuth("dev", "password")
 	resp, err := client.Do(req)
-	assert.Nil(t, err)
-	assert.Equal(t, http.StatusCreated, resp.StatusCode)
+	require.Nil(t, err)
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
 	b, err = ioutil.ReadAll(resp.Body)
-	assert.Nil(t, err)
+	require.Nil(t, err)
 
 	crResp := R.JSON{}
 	err = json.Unmarshal(b, &crResp)
-	assert.Nil(t, err)
+	require.Nil(t, err)
 	time.Sleep(time.Nanosecond * 10)
 	return crResp["id"].(string)
 }

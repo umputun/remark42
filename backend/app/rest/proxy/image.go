@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"git.tkginternal.com/commons/pkg/repeater"
+
 	"github.com/PuerkitoBio/goquery"
 	"github.com/go-chi/chi"
 	"github.com/pkg/errors"
@@ -52,7 +54,7 @@ func (p Image) Routes() chi.Router {
 
 		client := http.Client{Timeout: 30 * time.Second}
 		var resp *http.Response
-		err = retry(5, time.Second, func() error {
+		err = repeater.NewDefault(5, time.Second).Do(func() error {
 			var e error
 			resp, e = client.Get(string(src))
 			return e

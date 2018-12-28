@@ -5,18 +5,19 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/go-pkgz/auth/token"
 	"log"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
+	"github.com/go-pkgz/auth/token"
+
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
 	R "github.com/go-pkgz/rest"
 	"github.com/go-pkgz/rest/cache"
-	"github.com/hashicorp/go-multierror"
+	multierror "github.com/hashicorp/go-multierror"
 
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/store"

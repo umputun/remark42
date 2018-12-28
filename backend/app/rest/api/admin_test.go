@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/go-pkgz/auth/token"
 	R "github.com/go-pkgz/rest"
 
@@ -615,7 +615,7 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 
 	// try without deleteme flag
 	badClaims2 := claims
-	badClaims2.User.SetBoolAttr("delete_me", true)
+	badClaims2.User.SetBoolAttr("delete_me", false)
 	tkn, err = srv.Authenticator.TokenService().Token(badClaims2)
 	assert.Nil(t, err)
 	req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn), nil)

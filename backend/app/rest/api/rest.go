@@ -41,7 +41,6 @@ type Rest struct {
 	DataService      *service.DataStore
 	Authenticator    auth.Service
 	Cache            cache.LoadingCache
-	AvatarProxy      *proxy.Avatar
 	ImageProxy       *proxy.Image
 	CommentFormatter *store.CommentFormatter
 	Migrator         *Migrator
@@ -167,7 +166,6 @@ func (s *Rest) routes() chi.Router {
 		cache:         s.Cache,
 		authenticator: s.Authenticator,
 		readOnlyAge:   s.ReadOnlyAge,
-		avatarProxy:   s.AvatarProxy,
 	}
 
 	corsMiddleware := cors.New(cors.Options{
@@ -219,9 +217,15 @@ func (s *Rest) routes() chi.Router {
 
 	// api routes
 	router.Route("/api/v1", func(rapi chi.Router) {
-		rapi.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
+
+		rapi.Group(func(rava chi.Router) {
+			rava.Use(logger.New(logger.Flags(logger.None)).Handler, tollbooth_chi.LimitHandler(tollbooth.NewLimiter(100, nil)))
+			rava.Mount("/avatar", avatarHandler)
+		})
+
 		// open routes
 		rapi.Group(func(ropen chi.Router) {
+			ropen.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
 			ropen.Use(authMiddleware.Trace)
 			ropen.Use(logger.New(logger.Flags(logger.All), logger.IPfn(ipFn)).Handler)
 			ropen.Get("/find", s.findCommentsCtrl)
@@ -241,6 +245,7 @@ func (s *Rest) routes() chi.Router {
 
 		// protected routes, require auth
 		rapi.Group(func(rauth chi.Router) {
+			rauth.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
 			rauth.Use(authMiddleware.Auth)
 			rauth.Use(logger.New(logger.Flags(logger.All), logger.IPfn(ipFn)).Handler)
 			rauth.Post("/comment", s.createCommentCtrl)
@@ -255,7 +260,7 @@ func (s *Rest) routes() chi.Router {
 		})
 	})
 
-	// respond to /robots.tx with the list of allowed paths
+	// respond to /robots.txt with the list of allowed paths
 	router.With(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(50, nil))).
 		Get("/robots.txt", func(w http.ResponseWriter, r *http.Request) {
 			allowed := []string{"/find", "/last", "/id", "/count", "/counts", "/list", "/config", "/img", "/avatar"}

@@ -14,7 +14,6 @@ import (
 	"github.com/go-pkgz/rest/cache"
 
 	"github.com/umputun/remark/backend/app/rest"
-	"github.com/umputun/remark/backend/app/rest/proxy"
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/service"
 )
@@ -25,7 +24,6 @@ type admin struct {
 	cache         cache.LoadingCache
 	authenticator auth.Service
 	readOnlyAge   int
-	avatarProxy   *proxy.Avatar
 	migrator      *Migrator
 }
 
@@ -111,7 +109,7 @@ func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[INFO] delete all user comments by request for %s, site %s", claims.User.ID, claims.Audience)
 
 	// deleteme set by deleteMeCtrl, this check just to make sure we not trying to delete with leaked token
-	if val, err := claims.User.BoolAttr("delete_me"); err != nil || !val {
+	if !claims.User.BoolAttr("delete_me") {
 		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("forbidden"), "can't use provided token")
 		return
 	}
@@ -122,7 +120,8 @@ func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if claims.User.Picture != "" {
-		if err := a.avatarProxy.Store.Remove(path.Base(claims.User.Picture)); err != nil {
+		avatartStore := a.authenticator.AvatarProxy().Store
+		if err := avatartStore.Remove(path.Base(claims.User.Picture)); err != nil {
 			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete user's avatar")
 			return
 		}
