@@ -13,9 +13,12 @@ import (
 	"testing"
 	"time"
 
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/globalsign/mgo"
+	"github.com/go-pkgz/auth/token"
 	"github.com/go-pkgz/mongo"
 	flags "github.com/jessevdk/go-flags"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -312,13 +315,80 @@ func Test_ACMEEmail(t *testing.T) {
 	assert.Equal(t, "admin@remark.com", cfg.ACMEEmail)
 }
 
+func TestServerAuthHooks(t *testing.T) {
+	app, ctx := prepServerApp(t, 2500*time.Millisecond, func(o ServerCommand) ServerCommand {
+		o.Port = 18080
+		return o
+	})
+
+	go func() { _ = app.run(ctx) }()
+	time.Sleep(100 * time.Millisecond) // let server start
+
+	// make a token for user dev
+	tkService := app.restSrv.Authenticator.TokenService()
+	tkService.TokenDuration = time.Second
+
+	claims := token.Claims{
+		StandardClaims: jwt.StandardClaims{
+			Audience:  "remark",
+			Issuer:    "remark",
+			ExpiresAt: time.Now().Add(time.Second).Unix(),
+			NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
+		},
+		User: &token.User{
+			ID:   "dev",
+			Name: "developer one",
+		},
+	}
+	tk, err := tkService.Token(claims)
+	require.NoError(t, err)
+	t.Log(tk)
+
+	// add comment
+	client := http.Client{Timeout: 5 * time.Second}
+	req, err := http.NewRequest("POST", "http://localhost:18080/api/v1/comment",
+		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "remark"}}`))
+	req.Header.Set("X-JWT", tk)
+	require.Nil(t, err)
+	resp, err := client.Do(req)
+	require.Nil(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusCreated, resp.StatusCode, "non-blocked user able to post")
+
+	// block user dev as admin
+	req, e := http.NewRequest(http.MethodPut, "http://localhost:18080/api/v1/admin/user/dev?site=remark&block=1&ttl=10d", nil)
+	assert.Nil(t, e)
+	req.SetBasicAuth("admin", "password")
+	resp, e = client.Do(req)
+	require.Nil(t, e)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusOK, resp.StatusCode, "user dev blocked")
+	b, err := ioutil.ReadAll(resp.Body)
+	require.Nil(t, e)
+	t.Log(string(b))
+
+	time.Sleep(2 * time.Second) // make sure token expired and refresh happened
+
+	// try add a comment with blocked user
+	req, err = http.NewRequest("POST", "http://localhost:18080/api/v1/comment",
+		strings.NewReader(`{"text": "test 123 blah", "locator":{"url": "https://radio-t.com/blah1", "site": "remark"}}`))
+	req.Header.Set("X-JWT", tk)
+	require.Nil(t, err)
+	resp, err = client.Do(req)
+	require.Nil(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusForbidden, resp.StatusCode, "blocked user can't post")
+
+	app.Wait()
+}
+
 func prepServerApp(t *testing.T, duration time.Duration, fn func(o ServerCommand) ServerCommand) (*serverApp, context.Context) {
 	cmd := ServerCommand{}
-	cmd.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+	cmd.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "secret"})
 
 	// prepare options
 	p := flags.NewParser(&cmd, flags.Default)
-	_, err := p.ParseArgs([]string{"--admin-passwd=password"})
+	_, err := p.ParseArgs([]string{"--admin-passwd=password", "--site=remark"})
 	require.Nil(t, err)
 	cmd.Avatar.FS.Path, cmd.Avatar.Type, cmd.BackupLocation = "/tmp", "fs", "/tmp"
 	cmd.Store.Bolt.Path = fmt.Sprintf("/tmp/%d", cmd.Port)
