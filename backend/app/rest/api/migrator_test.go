@@ -5,7 +5,6 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
-	"github.com/go-pkgz/auth/token"
 	"io"
 	"io/ioutil"
 	"mime/multipart"
@@ -15,6 +14,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/go-pkgz/auth/token"
 
 	bolt "github.com/coreos/bbolt"
 	"github.com/go-chi/chi"
@@ -39,7 +40,8 @@ func TestMigrator_Import(t *testing.T) {
 	{"id":"83fd97fd-ff64-48d1-9fb7-ca7769c77037","pid":"p1","text":"<p>test test #2</p>","user":{"name":"developer one","id":"dev","picture":"/api/v1/avatar/remark.image","profile":"https://remark42.com","admin":true,"ip":"ae12fe3b5f129b5cc4cdd2b136b7b7947c4d2741"},"locator":{"site":"radio-t","url":"https://radio-t.com/blah2"},"score":0,"votes":{},"time":"2018-04-30T01:37:00.861387771-05:00"}`)
 
 	client := &http.Client{Timeout: 1 * time.Second}
-	req, err := http.NewRequest("POST", ts.URL+"/import?site=radio-t&provider=native&secret=123456", r)
+	req, err := http.NewRequest("POST", ts.URL+"/import?site=radio-t&provider=native", r)
+	req.SetBasicAuth("admin", "password")
 	assert.Nil(t, err)
 	resp, err := client.Do(req)
 	assert.Nil(t, err)
@@ -51,7 +53,7 @@ func TestMigrator_Import(t *testing.T) {
 
 	client = &http.Client{Timeout: 10 * time.Second}
 	req, err = http.NewRequest("GET", ts.URL+"/import/wait?site=radio-t", nil)
-	req.SetBasicAuth("dev", "password")
+	req.SetBasicAuth("admin", "password")
 	assert.NoError(t, err)
 	resp, err = client.Do(req)
 	assert.Equal(t, 200, resp.StatusCode)
@@ -74,7 +76,8 @@ func TestMigrator_ImportForm(t *testing.T) {
 	contentType := bodyWriter.FormDataContentType()
 	require.NoError(t, bodyWriter.Close())
 
-	resp, err := http.Post(ts.URL+"/import/form?site=radio-t&provider=native&secret=123456", contentType, bodyBuf)
+	authts := strings.Replace(ts.URL, "http://", "http://admin:password@", 1)
+	resp, err := http.Post(authts+"/import/form?site=radio-t&provider=native", contentType, bodyBuf)
 	assert.Nil(t, err)
 	assert.Equal(t, http.StatusAccepted, resp.StatusCode)
 
@@ -84,7 +87,7 @@ func TestMigrator_ImportForm(t *testing.T) {
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	req, err := http.NewRequest("GET", ts.URL+"/import/wait?site=radio-t", nil)
-	req.SetBasicAuth("dev", "password")
+	req.SetBasicAuth("admin", "password")
 	assert.NoError(t, err)
 	resp, err = client.Do(req)
 	assert.Equal(t, 200, resp.StatusCode)
@@ -97,9 +100,10 @@ func TestMigrator_ImportFromWP(t *testing.T) {
 	r := strings.NewReader(strings.Replace(xmlTestWP, "'", "`", -1))
 
 	client := &http.Client{Timeout: 1 * time.Second}
-	req, err := http.NewRequest("POST", ts.URL+"/import?site=radio-t&provider=wordpress&secret=123456", r)
+	req, err := http.NewRequest("POST", ts.URL+"/import?site=radio-t&provider=wordpress", r)
 	assert.Nil(t, err)
 	req.Header.Add("Content-Type", "application/xml; charset=utf-8")
+	req.SetBasicAuth("admin", "password")
 	resp, err := client.Do(req)
 	assert.Nil(t, err)
 	assert.Equal(t, http.StatusAccepted, resp.StatusCode)
@@ -110,16 +114,15 @@ func TestMigrator_ImportFromWP(t *testing.T) {
 
 	client = &http.Client{Timeout: 10 * time.Second}
 	req, err = http.NewRequest("GET", ts.URL+"/import/wait?site=radio-t", nil)
-	req.SetBasicAuth("dev", "password")
+	req.SetBasicAuth("admin", "password")
 	assert.NoError(t, err)
 	resp, err = client.Do(req)
 	assert.Equal(t, 200, resp.StatusCode)
 
 	assert.NoError(t, ds.Interface.Close())
 
-	srvAccess, tsAccess := prep(t)
-	require.NotNil(t, srvAccess)
-	defer cleanup(ts, srvAccess)
+	tsAccess, _, teardownAccess := startupT(t)
+	defer teardownAccess()
 
 	res, code := get(t, tsAccess.URL+"/api/v1/last/10?site=radio-t")
 	require.Equal(t, 200, code)
@@ -160,14 +163,16 @@ func TestMigrator_ImportDouble(t *testing.T) {
 	}
 	r := strings.NewReader(`{"version":1}` + strings.Join(recs, "\n")) // reader with 10k records
 	client := &http.Client{Timeout: 1 * time.Second}
-	req, err := http.NewRequest("POST", ts.URL+"/import?site=radio-t&provider=native&secret=123456", r)
+	req, err := http.NewRequest("POST", ts.URL+"/import?site=radio-t&provider=native", r)
+	req.SetBasicAuth("admin", "password")
 	assert.Nil(t, err)
 	resp, err := client.Do(req)
 	assert.Nil(t, err)
 	assert.Equal(t, http.StatusAccepted, resp.StatusCode)
 
 	client = &http.Client{Timeout: 1 * time.Second}
-	req, err = http.NewRequest("POST", ts.URL+"/import?site=radio-t&provider=native&secret=123456", r)
+	req, err = http.NewRequest("POST", ts.URL+"/import?site=radio-t&provider=native", r)
+	req.SetBasicAuth("admin", "password")
 	assert.Nil(t, err)
 	resp, err = client.Do(req)
 	assert.Nil(t, err)
@@ -187,7 +192,8 @@ func TestMigrator_ImportWaitExpired(t *testing.T) {
 	}
 	r := strings.NewReader(`{"version":1}` + strings.Join(recs, "\n")) // reader with 10k records
 	client := &http.Client{Timeout: 1 * time.Second}
-	req, err := http.NewRequest("POST", ts.URL+"/import?site=radio-t&provider=native&secret=123456", r)
+	req, err := http.NewRequest("POST", ts.URL+"/import?site=radio-t&provider=native", r)
+	req.SetBasicAuth("admin", "password")
 	require.Nil(t, err)
 	resp, err := client.Do(req)
 	assert.Nil(t, err)
@@ -195,7 +201,7 @@ func TestMigrator_ImportWaitExpired(t *testing.T) {
 
 	client = &http.Client{Timeout: 10 * time.Second}
 	req, err = http.NewRequest("GET", ts.URL+"/import/wait?site=radio-t&timeout=100ms", nil)
-	req.SetBasicAuth("dev", "password")
+	req.SetBasicAuth("admin", "password")
 	assert.NoError(t, err)
 	resp, err = client.Do(req)
 	assert.Equal(t, http.StatusGatewayTimeout, resp.StatusCode)
@@ -211,21 +217,23 @@ func TestMigrator_Export(t *testing.T) {
 
 	// import comments first
 	client := &http.Client{Timeout: 1 * time.Second}
-	req, err := http.NewRequest("POST", ts.URL+"/import?site=radio-t&provider=native&secret=123456", r)
+	req, err := http.NewRequest("POST", ts.URL+"/import?site=radio-t&provider=native", r)
 	require.Nil(t, err)
+	req.SetBasicAuth("admin", "password")
 	resp, err := client.Do(req)
 	require.Nil(t, err)
 	require.Equal(t, http.StatusAccepted, resp.StatusCode)
 	client = &http.Client{Timeout: 10 * time.Second}
 	req, err = http.NewRequest("GET", ts.URL+"/import/wait?site=radio-t", nil)
-	req.SetBasicAuth("dev", "password")
+	req.SetBasicAuth("admin", "password")
 	assert.NoError(t, err)
 	resp, err = client.Do(req)
 	assert.Equal(t, 200, resp.StatusCode)
 
 	// check file mode
-	req, err = http.NewRequest("GET", ts.URL+"/export?mode=file&site=radio-t&secret=123456", nil)
+	req, err = http.NewRequest("GET", ts.URL+"/export?mode=file&site=radio-t", nil)
 	require.Nil(t, err)
+	req.SetBasicAuth("admin", "password")
 	resp, err = client.Do(req)
 	require.Nil(t, err)
 	require.Equal(t, 200, resp.StatusCode)
@@ -240,8 +248,9 @@ func TestMigrator_Export(t *testing.T) {
 	t.Logf("%s", string(ungzBody))
 
 	// check stream mode
-	req, err = http.NewRequest("GET", ts.URL+"/export?mode=stream&site=radio-t&secret=123456", nil)
+	req, err = http.NewRequest("GET", ts.URL+"/export?mode=stream&site=radio-t", nil)
 	require.Nil(t, err)
+	req.SetBasicAuth("admin", "password")
 	resp, err = client.Do(req)
 	require.Nil(t, err)
 	require.Equal(t, 200, resp.StatusCode)
@@ -253,7 +262,7 @@ func TestMigrator_Export(t *testing.T) {
 	assert.Equal(t, 2, strings.Count(string(body), "\"text\""))
 	t.Logf("%s", string(body))
 
-	req, err = http.NewRequest("GET", ts.URL+"/export?site=radio-t&secret=bad", nil)
+	req, err = http.NewRequest("GET", ts.URL+"/export?site=radio-t", nil)
 	require.Nil(t, err)
 	resp, err = client.Do(req)
 	require.Nil(t, err)
@@ -275,7 +284,7 @@ func prepImportSrv(t *testing.T) (svc *Migrator, ds *service.DataStore, ts *http
 	}
 
 	a := auth.NewService(auth.Opts{
-		DevPasswd:    "password",
+		AdminPasswd:  "password",
 		SecretReader: token.SecretFunc(func(id string) (string, error) { return "123456", nil }),
 		Issuer:       "test",
 	})

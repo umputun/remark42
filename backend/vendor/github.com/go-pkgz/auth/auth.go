@@ -27,7 +27,7 @@ type Service struct {
 
 // Opts is a full set of all parameters to initialize Service
 type Opts struct {
-	SecretReader   token.Secret        // reader returns secret for given site id (aud)
+	SecretReader   token.Secret        // reader returns secret for given site id (aud), required
 	ClaimsUpd      token.ClaimsUpdater // updater for jwt to add/modify values stored in the token
 	SecureCookies  bool                // makes jwt cookie secure
 	TokenDuration  time.Duration       // token's TTL, refreshed automatically
@@ -42,14 +42,14 @@ type Opts struct {
 
 	Issuer string // optional value for iss claim, usually the application name, default "go-pkgz/auth"
 
-	URL       string          // root url for the rest service, i.e. http://blah.example.com
+	URL       string          // root url for the rest service, i.e. http://blah.example.com, required
 	Validator token.Validator // validator allows to reject some valid tokens with user-defined logic
 
-	AvatarStore       avatar.Store // store to save/load avatars
+	AvatarStore       avatar.Store // store to save/load avatars, required
 	AvatarResizeLimit int          // resize avatar's limit in pixels
-	AvatarRoutePath   string       // avatar routing prefix, i.e. "/api/v1/avatar"
+	AvatarRoutePath   string       // avatar routing prefix, i.e. "/api/v1/avatar", default `/avatar`
 
-	DevPasswd string // if presented, allows basic auth with user dev and given password
+	AdminPasswd string // if presented, allows basic auth with user admin and given password
 }
 
 // NewService initializes everything
@@ -71,7 +71,7 @@ func NewService(opts Opts) *Service {
 
 	if opts.SecretReader == nil {
 		jwtService.SecretReader = token.SecretFunc(func(id string) (string, error) {
-			return "", errors.New("secrets reader not avalibale")
+			return "", errors.New("secrets reader not available")
 		})
 	}
 
@@ -79,9 +79,9 @@ func NewService(opts Opts) *Service {
 		opts:       opts,
 		jwtService: jwtService,
 		authMiddleware: middleware.Authenticator{
-			JWTService: jwtService,
-			Validator:  opts.Validator,
-			DevPasswd:  opts.DevPasswd,
+			JWTService:  jwtService,
+			Validator:   opts.Validator,
+			AdminPasswd: opts.AdminPasswd,
 		},
 	}
 
@@ -96,6 +96,9 @@ func NewService(opts Opts) *Service {
 			RoutePath:   opts.AvatarRoutePath,
 			ResizeLimit: opts.AvatarResizeLimit,
 		}
+		if res.avatarProxy.RoutePath == "" {
+			res.avatarProxy.RoutePath = "/avatar"
+		}
 	}
 
 	return &res
@@ -104,7 +107,7 @@ func NewService(opts Opts) *Service {
 // Handlers gets http.Handler for all providers and avatars
 func (s *Service) Handlers() (authHandler http.Handler, avatarHandler http.Handler) {
 
-	providerHandler := func(w http.ResponseWriter, r *http.Request) {
+	ah := func(w http.ResponseWriter, r *http.Request) {
 		elems := strings.Split(r.URL.Path, "/")
 		if len(elems) < 2 {
 			w.WriteHeader(http.StatusBadRequest)
@@ -127,6 +130,19 @@ func (s *Service) Handlers() (authHandler http.Handler, avatarHandler http.Handl
 			return
 		}
 
+		// show user info
+		if elems[len(elems)-1] == "user" {
+			claims, _, err := s.jwtService.Get(r)
+			if err != nil {
+				w.WriteHeader(http.StatusUnauthorized)
+				rest.RenderJSON(w, r, rest.JSON{"error": err.Error()})
+				return
+			}
+			rest.RenderJSON(w, r, claims.User)
+			return
+		}
+
+		// regular auth handlers
 		provName := elems[len(elems)-2]
 		p, err := s.Provider(provName)
 		if err != nil {
@@ -137,10 +153,10 @@ func (s *Service) Handlers() (authHandler http.Handler, avatarHandler http.Handl
 		p.Handler(w, r)
 	}
 
-	return http.HandlerFunc(providerHandler), http.HandlerFunc(s.avatarProxy.Handler)
+	return http.HandlerFunc(ah), http.HandlerFunc(s.avatarProxy.Handler)
 }
 
-// Middleware returns token middleware
+// Middleware returns auth middleware
 func (s *Service) Middleware() middleware.Authenticator {
 	return s.authMiddleware
 }
@@ -152,7 +168,7 @@ func (s *Service) AddProvider(name string, cid string, csecret string) {
 		URL:         s.opts.URL,
 		JwtService:  s.jwtService,
 		Issuer:      s.issuer,
-		AvatarProxy: s.avatarProxy,
+		AvatarSaver: s.avatarProxy,
 		Cid:         cid,
 		Csecret:     csecret,
 	}

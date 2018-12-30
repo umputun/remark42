@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"text/template"
 	"time"
 
 	"github.com/nullrocks/identicon"
@@ -46,6 +47,12 @@ func (d *DevAuthServer) Run() {
 		log.Printf("[WARN] can't create identicon, %s", err)
 	}
 
+	userFormTmpl, err := template.New("page").Parse(devUserFormTmpl)
+	if err != nil {
+		log.Printf("[WARN] can't parse user form template, %s", err)
+		return
+	}
+
 	d.httpServer = &http.Server{
 		Addr: fmt.Sprintf(":%d", devAuthPort),
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -56,7 +63,10 @@ func (d *DevAuthServer) Run() {
 
 				// first time it will be called without username and will ask for one
 				if !d.Automatic && (r.ParseForm() != nil || r.Form.Get("username") == "") {
-					if _, err = w.Write([]byte(fmt.Sprintf(devUserForm, r.URL.RawQuery))); err != nil {
+
+					formData := struct{ Query string }{Query: r.URL.RawQuery}
+
+					if err = userFormTmpl.Execute(w, formData); err != nil {
 						log.Printf("[WARN] can't write, %s", err)
 					}
 					return
@@ -176,24 +186,121 @@ func (d *DevAuthServer) genAvatar(user string) ([]byte, error) {
 	return buf.Bytes(), err
 }
 
-var devUserForm = `
+var devUserFormTmpl = `
 <html>
-    <head>
-	<title>Dev User</title>
-	<style>
-		form {
-			margin: 100 auto;
-			width: 300px;
-			padding: 1em;
-			border: 1px solid #CCC;
-		}
-	</style>
-    </head>
+	<head>
+		<title>Dev OAuth</title>
+		<style>
+			body {
+				text-align: center;
+			}
+
+			a {
+				color: hsl(200, 50%, 50%);
+				text-decoration-color: hsla(200, 50%, 50%, 0.5);
+			}
+
+			a:hover {
+				color: hsl(200, 50%, 70%);
+				text-decoration-color: hsla(200, 50%, 70%, 0.5);
+			}
+
+			form {
+				font-family: Helvetica, Arial, sans-serif;
+				margin: 100px auto;
+				display: inline-block;
+				padding: 1em;
+				box-shadow: 0 0 0.1rem rgba(0, 0, 0, 0.2), 0 0 0.4rem rgba(0, 0, 0, 0.1);
+			}
+
+			.form-header {
+				text-align: center;
+			}
+
+			.form-header h1 {
+				margin: 0;
+			}
+
+			.form-header h1 a:not(:hover) {
+				text-decoration: none;
+			}
+
+			.form-header p {
+				opacity: 0.6;
+				margin-top: 0;
+				margin-bottom: 2rem;
+			}
+
+			.username-label {
+				opacity: 0.6;
+				font-size: 0.8em;
+			}
+
+			.username-input {
+				font-size: inherit;
+				margin: 0;
+				width: 100%;
+				text-align: inherit;
+			}
+
+			.form-submit {
+				border: none;
+				background: hsl(200, 50%, 50%);
+				color: white;
+				font: inherit;
+				padding: 0.4em 0.8em 0.3em 0.8em;
+				border-radius: 0.2em;
+				width: 100%;
+			}
+
+			.form-submit:hover,
+			.form-submit:focus {
+				background-color: hsl(200, 50%, 70%);
+			}
+
+			.form-submit:active {
+				background-color: hsl(200, 80%, 70%);
+			}
+
+			.username-label,
+			.username-input,
+			.form-submit {
+				display: block;
+				margin-bottom: 0.4rem;
+			}
+
+			.notice {
+				margin: 0;
+				margin-top: 2rem;
+				font-size: 0.8em;
+				opacity: 0.6;
+			}
+		</style>
+	</head>
 	<body>
-		<form action="/login/oauth/authorize?%s" method="post">
-			username: <input type="text" name="username" value="dev_user">
-			<input type="submit" value="Login">
+		<form action="/login/oauth/authorize?{{.Query}}" method="post">
+			<header class="form-header">
+				<h1><a href="https://github.com/go-pkgz/auth">GO-PKGZ/AUTH</a></h1>
+				<p>Dev Provider</p>
+			</header>
+			<label>
+				<span class="username-label">Username</span>
+				<input
+					class="username-input"
+					type="text"
+					name="username"
+					value="dev_user"
+					autofocus
+				/>
+			</label>
+			<input type="submit" class="form-submit" value="Authorize" />
+			<p class="notice">Not for production use</p>
 		</form>
-    </body>
+	</body>
+	<script>
+		var input = document.querySelector(".username-input");
+		input.focus();
+		input.setSelectionRange(0, input.value.length)
+	</script>
 </html>
 `

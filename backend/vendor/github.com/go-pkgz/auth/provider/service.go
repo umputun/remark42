@@ -17,7 +17,6 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
 
-	"github.com/go-pkgz/auth/avatar"
 	"github.com/go-pkgz/auth/token"
 )
 
@@ -37,10 +36,15 @@ type Service struct {
 type Params struct {
 	URL         string
 	JwtService  *token.Service
-	AvatarProxy *avatar.Proxy
+	AvatarSaver AvatarSaver
 	Cid         string
 	Csecret     string
 	Issuer      string
+}
+
+// AvatarSaver defines minimal interface to save avatar
+type AvatarSaver interface {
+	Put(u token.User) (avatarURL string, err error)
 }
 
 type userData map[string]interface{}
@@ -53,9 +57,9 @@ func (u userData) value(key string) string {
 	return ""
 }
 
-// initService makes token service for given provider
+// initService makes oauth2 service for given provider
 func initService(p Params, service Service) Service {
-	log.Printf("[INFO] init token service %s", service.Name)
+	log.Printf("[INFO] init oauth2 service %s", service.Name)
 	service.Params = p
 	service.conf = oauth2.Config{
 		ClientID:     service.Cid,
@@ -65,7 +69,7 @@ func initService(p Params, service Service) Service {
 		Endpoint:     service.Endpoint,
 	}
 
-	log.Printf("[DEBUG] created %s token, id=%s, redir=%s, endpoint=%s",
+	log.Printf("[DEBUG] created %s oauth2, id=%s, redir=%s, endpoint=%s",
 		service.Name, service.Cid, service.Endpoint, service.RedirectURL)
 	return service
 }
@@ -123,7 +127,7 @@ func (p Service) loginHandler(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	if err := p.JwtService.Set(w, claims, false); err != nil {
+	if err := p.JwtService.Set(w, claims); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to set token")
 		return
 	}
@@ -144,9 +148,14 @@ func (p Service) authHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if oauthClaims.Handshake == nil {
+		rest.SendErrorJSON(w, r, http.StatusForbidden, nil, "finvalid handshake token")
+		return
+	}
+
 	retrievedState := oauthClaims.Handshake.State
 	if retrievedState == "" || retrievedState != r.URL.Query().Get("state") {
-		http.Error(w, fmt.Sprintf("unexpected state %v", retrievedState), http.StatusUnauthorized)
+		rest.SendErrorJSON(w, r, http.StatusForbidden, nil, "unexpected state")
 		return
 	}
 
@@ -160,7 +169,7 @@ func (p Service) authHandler(w http.ResponseWriter, r *http.Request) {
 	client := p.conf.Client(context.Background(), tok)
 	uinfo, err := client.Get(p.InfoURL)
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, fmt.Sprintf("failed to get client info via %s", p.InfoURL))
+		rest.SendErrorJSON(w, r, http.StatusServiceUnavailable, err, "failed to get client info")
 		return
 	}
 
@@ -201,8 +210,8 @@ func (p Service) authHandler(w http.ResponseWriter, r *http.Request) {
 		SessionOnly: oauthClaims.SessionOnly,
 	}
 
-	if err = p.JwtService.Set(w, claims, oauthClaims.SessionOnly); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to save user info")
+	if err = p.JwtService.Set(w, claims); err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to set token")
 		return
 	}
 
@@ -218,8 +227,8 @@ func (p Service) authHandler(w http.ResponseWriter, r *http.Request) {
 
 // setAvatar saves avatar and puts proxied URL to u.Picture
 func (p Service) setAvatar(u token.User) token.User {
-	if p.AvatarProxy != nil {
-		if avatarURL, e := p.AvatarProxy.Put(u); e == nil {
+	if p.AvatarSaver != nil {
+		if avatarURL, e := p.AvatarSaver.Put(u); e == nil {
 			u.Picture = avatarURL
 		} else {
 			log.Printf("[WARN] failed to set avatar for %+v, %+v", u, e)
@@ -231,7 +240,6 @@ func (p Service) setAvatar(u token.User) token.User {
 // LogoutHandler - GET /logout
 func (p Service) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	p.JwtService.Reset(w)
-	log.Printf("[DEBUG] logout")
 }
 
 func (p Service) randToken() (string, error) {

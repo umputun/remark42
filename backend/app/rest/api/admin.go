@@ -120,7 +120,7 @@ func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if claims.User.Picture != "" {
+	if claims.User.Picture != "" && a.authenticator.AvatarProxy() != nil {
 		avatartStore := a.authenticator.AvatarProxy().Store
 		if err := avatartStore.Remove(path.Base(claims.User.Picture)); err != nil {
 			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete user's avatar")

@@ -13,20 +13,12 @@ import (
 	"github.com/go-pkgz/auth/token"
 )
 
-// Authenticator is top level token object providing middlewares
+// Authenticator is top level auth object providing middlewares
 type Authenticator struct {
-	JWTService *token.Service
-	Providers  []provider.Service
-	Validator  token.Validator
-	DevPasswd  string
-}
-
-var devUser = token.User{
-	ID:   "dev",
-	Name: "developer one",
-	Attributes: map[string]interface{}{
-		"admin": true,
-	},
+	JWTService  *token.Service
+	Providers   []provider.Service
+	Validator   token.Validator
+	AdminPasswd string
 }
 
 var adminUser = token.User{
@@ -37,7 +29,7 @@ var adminUser = token.User{
 	},
 }
 
-// Auth middleware adds token from session and populates user info
+// Auth middleware adds auth from session and populates user info
 func (a *Authenticator) Auth(next http.Handler) http.Handler {
 	return a.auth(true)(next)
 }
@@ -47,6 +39,7 @@ func (a *Authenticator) Trace(next http.Handler) http.Handler {
 	return a.auth(false)(next)
 }
 
+// auth implements all logic for authentication (reqAuth=true) and tracing (reqAuth=false)
 func (a *Authenticator) auth(reqAuth bool) func(http.Handler) http.Handler {
 
 	onError := func(h http.Handler, w http.ResponseWriter, r *http.Request, err error) {
@@ -57,23 +50,16 @@ func (a *Authenticator) auth(reqAuth bool) func(http.Handler) http.Handler {
 			h.ServeHTTP(w, r)
 			return
 		}
-		log.Printf("[DEBUG] failed token, %s", err)
+		log.Printf("[DEBUG] auth failed, %s", err)
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 	}
 
 	f := func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 
-			// if secret key matches for given site (from request) return admin user
-			if a.checkSecretKey(r) {
+			// use admin user basic auth if enabled
+			if a.basicAdminUser(r) {
 				r = token.SetUserInfo(r, adminUser)
-				h.ServeHTTP(w, r)
-				return
-			}
-
-			// use dev user basic token if enabled
-			if a.basicDevUser(r) {
-				r = token.SetUserInfo(r, devUser)
 				h.ServeHTTP(w, r)
 				return
 			}
@@ -85,12 +71,12 @@ func (a *Authenticator) auth(reqAuth bool) func(http.Handler) http.Handler {
 			}
 
 			if claims.Handshake != nil { // handshake in token indicate special use cases, not for login
-				onError(h, w, r, errors.Errorf("invalid kind of token for %s/%s", claims.User.Name, claims.User.ID))
+				onError(h, w, r, errors.New("invalid kind of token"))
 				return
 			}
 
 			if claims.User == nil {
-				onError(h, w, r, errors.New("failed token, no user info presented in the claim"))
+				onError(h, w, r, errors.New("failed auth, no user info presented in the claim"))
 				return
 			}
 
@@ -121,29 +107,11 @@ func (a *Authenticator) auth(reqAuth bool) func(http.Handler) http.Handler {
 	return f
 }
 
-func (a *Authenticator) checkSecretKey(r *http.Request) bool {
-	if a.JWTService.SecretReader == nil {
-		return false
-	}
-
-	aud := r.URL.Query().Get("aud")
-	secret := r.URL.Query().Get("secret")
-
-	skey, err := a.JWTService.SecretReader.Get(aud)
-	if err != nil {
-		return false
-	}
-
-	if strings.TrimSpace(secret) == "" || secret != skey {
-		return false
-	}
-	return true
-}
-
-// refreshExpiredToken makes new token with passed claims, but only if permission allowed
+// refreshExpiredToken makes a new token with passed claims
 func (a *Authenticator) refreshExpiredToken(w http.ResponseWriter, claims token.Claims) (token.Claims, error) {
-	// refresh token
-	if err := a.JWTService.Set(w, claims, false); err != nil {
+
+	claims.ExpiresAt = 0 // this will cause now+duration for refreshed token
+	if err := a.JWTService.Set(w, claims); err != nil {
 		return token.Claims{}, err
 	}
 	return claims, nil
@@ -168,9 +136,10 @@ func (a *Authenticator) AdminOnly(next http.Handler) http.Handler {
 	return http.HandlerFunc(fn)
 }
 
-func (a *Authenticator) basicDevUser(r *http.Request) bool {
+// basic auth for admin user
+func (a *Authenticator) basicAdminUser(r *http.Request) bool {
 
-	if a.DevPasswd == "" {
+	if a.AdminPasswd == "" {
 		return false
 	}
 
@@ -181,18 +150,18 @@ func (a *Authenticator) basicDevUser(r *http.Request) bool {
 
 	b, err := base64.StdEncoding.DecodeString(s[1])
 	if err != nil {
-		log.Printf("[WARN] dev user token failed, failed to decode %s, %s", s[1], err)
+		log.Printf("[WARN] admin user auth failed, can't to decode %s, %s", s[1], err)
 		return false
 	}
 
 	pair := strings.SplitN(string(b), ":", 2)
 	if len(pair) != 2 {
-		log.Printf("[WARN] dev user token failed, failed to split %s", string(b))
+		log.Printf("[WARN] admin user auth failed, can't split basic auth %s", string(b))
 		return false
 	}
 
-	if pair[0] != "dev" || pair[1] != a.DevPasswd {
-		log.Printf("[WARN] dev user token failed, user/passwd mismatch %+v", pair)
+	if pair[0] != "admin" || pair[1] != a.AdminPasswd {
+		log.Printf("[WARN] dev user auth failed, user/passwd mismatch %+v", pair)
 		return false
 	}
 

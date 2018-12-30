@@ -18,8 +18,8 @@ func NewGoogle(p Params) Service {
 	return initService(p, Service{
 		Name:        "google",
 		Endpoint:    google.Endpoint,
-		RedirectURL: p.URL + "/token/google/callback",
-		Scopes:      []string{"https://www.googleapis.com/token/userinfo.profile"},
+		RedirectURL: p.URL + "/auth/google/callback",
+		Scopes:      []string{"https://www.googleapis.com/auth/userinfo.profile"},
 		InfoURL:     "https://www.googleapis.com/oauth2/v3/userinfo",
 		MapUser: func(data userData, _ []byte) token.User {
 			userInfo := token.User{
@@ -41,7 +41,7 @@ func NewGithub(p Params) Service {
 	return initService(p, Service{
 		Name:        "github",
 		Endpoint:    github.Endpoint,
-		RedirectURL: p.URL + "/token/github/callback",
+		RedirectURL: p.URL + "/auth/github/callback",
 		Scopes:      []string{},
 		InfoURL:     "https://api.github.com/user",
 		MapUser: func(data userData, _ []byte) token.User {
@@ -76,7 +76,7 @@ func NewFacebook(p Params) Service {
 	return initService(p, Service{
 		Name:        "facebook",
 		Endpoint:    facebook.Endpoint,
-		RedirectURL: p.URL + "/token/facebook/callback",
+		RedirectURL: p.URL + "/auth/facebook/callback",
 		Scopes:      []string{"public_profile"},
 		InfoURL:     "https://graph.facebook.com/me?fields=id,name,picture",
 		MapUser: func(data userData, bdata []byte) token.User {
@@ -102,7 +102,7 @@ func NewYandex(p Params) Service {
 	return initService(p, Service{
 		Name:        "yandex",
 		Endpoint:    yandex.Endpoint,
-		RedirectURL: p.URL + "/token/yandex/callback",
+		RedirectURL: p.URL + "/auth/yandex/callback",
 		Scopes:      []string{},
 		// See https://tech.yandex.com/passport/doc/dg/reference/response-docpage/
 		InfoURL: "https://login.yandex.ru/info?format=json",

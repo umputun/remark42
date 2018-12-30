@@ -154,7 +154,7 @@ func (j *Service) Parse(tokenString string) (Claims, error) {
 // Set creates token cookie with xsrf cookie and put it to ResponseWriter
 // accepts claims and sets expiration if none defined. permanent flag means long-living cookie,
 // false makes it session only.
-func (j *Service) Set(w http.ResponseWriter, claims Claims, sessionOnly bool) error {
+func (j *Service) Set(w http.ResponseWriter, claims Claims) error {
 	if claims.ExpiresAt == 0 {
 		claims.ExpiresAt = time.Now().Add(j.TokenDuration).Unix()
 	}
@@ -167,7 +167,7 @@ func (j *Service) Set(w http.ResponseWriter, claims Claims, sessionOnly bool) er
 	}
 
 	cookieExpiration := 0 // session cookie
-	if !sessionOnly {
+	if !claims.SessionOnly && claims.Handshake == nil {
 		cookieExpiration = int(j.CookieDuration.Seconds())
 	}
 

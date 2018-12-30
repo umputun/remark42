@@ -33,10 +33,11 @@ var testDb = "/tmp/test-remark.db"
 var testHTML = "/tmp/test-remark.html"
 var getStartedHTML = "/tmp/getstarted.html"
 
+var devToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6Mzc4OTE5MTgyMiwianRpIjoicmFuZG9tIGlkIiwiaXNzIjoicmVtYXJrNDIiLCJuYmYiOjE1MjE4ODQyMjIsInVzZXIiOnsibmFtZSI6ImRldmVsb3BlciBvbmUiLCJpZCI6ImRldiIsInBpY3R1cmUiOiJodHRwOi8vZXhhbXBsZS5jb20vcGljLnBuZyIsImlwIjoiMTI3LjAuMC4xIiwiZW1haWwiOiJtZUBleGFtcGxlLmNvbSJ9fQ.aKUAXiZxXypgV7m1wEOgUcyPOvUDXHDi3A06YWKbcLg"
+
 func TestRest_FileServer(t *testing.T) {
-	srv, ts := prep(t)
-	assert.NotNil(t, srv)
-	defer cleanup(ts, srv)
+	ts, _, teardown := startupT(t)
+	defer teardown()
 
 	body, code := get(t, ts.URL+"/web/test-remark.html")
 	assert.Equal(t, 200, code)
@@ -44,9 +45,8 @@ func TestRest_FileServer(t *testing.T) {
 }
 
 func TestRest_GetStarted(t *testing.T) {
-	srv, ts := prep(t)
-	assert.NotNil(t, srv)
-	defer cleanup(ts, srv)
+	ts, _, teardown := startupT(t)
+	defer teardown()
 
 	err := ioutil.WriteFile(getStartedHTML, []byte("some html blah"), 0700)
 	assert.Nil(t, err)
@@ -175,7 +175,7 @@ func TestRest_RunAutocertModeHTTPOnly(t *testing.T) {
 	srv.Shutdown()
 }
 
-func prep(t *testing.T) (srv *Rest, ts *httptest.Server) {
+func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDb, SiteID: "radio-t"})
 	require.Nil(t, err)
 
@@ -192,10 +192,9 @@ func prep(t *testing.T) (srv *Rest, ts *httptest.Server) {
 	srv = &Rest{
 		DataService: dataStore,
 		Authenticator: auth.NewService(auth.Opts{
-			DevPasswd:         "password",
-			SecretReader:      token.SecretFunc(func(id string) (string, error) { return "secret", nil }),
-			AvatarStore:       avatar.NewLocalFS("/tmp"),
-			AvatarResizeLimit: 300,
+			AdminPasswd:  "password",
+			SecretReader: token.SecretFunc(func(id string) (string, error) { return "secret", nil }),
+			AvatarStore:  avatar.NewLocalFS("/tmp/ava-remark42"),
 		}),
 		Cache:     &cache.Nop{},
 		WebRoot:   "/tmp",
@@ -217,8 +216,18 @@ func prep(t *testing.T) (srv *Rest, ts *httptest.Server) {
 
 	err = ioutil.WriteFile(testHTML, []byte("some html"), 0700)
 	assert.Nil(t, err)
+
 	ts = httptest.NewServer(srv.routes())
-	return srv, ts
+
+	teardown = func() {
+		ts.Close()
+		srv.DataService.Close()
+		os.Remove(testDb)
+		os.Remove(testHTML)
+		os.RemoveAll("/tmp/ava-remark42")
+	}
+
+	return ts, srv, teardown
 }
 
 func get(t *testing.T, url string) (string, int) {
@@ -230,11 +239,24 @@ func get(t *testing.T, url string) (string, int) {
 	return string(body), r.StatusCode
 }
 
-func getWithAuth(t *testing.T, url string) (string, int) {
+func getWithDevAuth(t *testing.T, url string) (body string, code int) {
 	client := &http.Client{Timeout: 5 * time.Second}
 	req, err := http.NewRequest("GET", url, nil)
 	require.Nil(t, err)
-	req.SetBasicAuth("dev", "password")
+	req.Header.Add("X-JWT", devToken)
+	r, err := client.Do(req)
+	require.Nil(t, err)
+	defer r.Body.Close()
+	b, err := ioutil.ReadAll(r.Body)
+	assert.Nil(t, err)
+	return string(b), r.StatusCode
+}
+
+func getWithAdminAuth(t *testing.T, url string) (string, int) {
+	client := &http.Client{Timeout: 5 * time.Second}
+	req, err := http.NewRequest("GET", url, nil)
+	require.Nil(t, err)
+	req.SetBasicAuth("admin", "password")
 	r, err := client.Do(req)
 	require.Nil(t, err)
 	defer r.Body.Close()
@@ -242,24 +264,22 @@ func getWithAuth(t *testing.T, url string) (string, int) {
 	assert.Nil(t, err)
 	return string(body), r.StatusCode
 }
-
 func post(t *testing.T, url string, body string) (*http.Response, error) {
 	client := &http.Client{Timeout: 5 * time.Second}
 	req, err := http.NewRequest("POST", url, strings.NewReader(body))
 	assert.Nil(t, err)
-	req.SetBasicAuth("dev", "password")
+	req.SetBasicAuth("admin", "password")
 	return client.Do(req)
 }
 
 func addComment(t *testing.T, c store.Comment, ts *httptest.Server) string {
-
 	b, err := json.Marshal(c)
 	require.Nil(t, err, "can't marshal comment %+v", c)
 
 	client := &http.Client{Timeout: 5 * time.Second}
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/comment", bytes.NewBuffer(b))
 	require.Nil(t, err)
-	req.SetBasicAuth("dev", "password")
+	req.Header.Add("X-JWT", devToken)
 	resp, err := client.Do(req)
 	require.Nil(t, err)
 	require.Equal(t, http.StatusCreated, resp.StatusCode)

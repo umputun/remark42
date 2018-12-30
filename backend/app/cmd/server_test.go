@@ -42,7 +42,7 @@ func TestServerApp(t *testing.T) {
 	client := http.Client{Timeout: 5 * time.Second}
 	req, err := http.NewRequest("POST", "http://localhost:18080/api/v1/comment",
 		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "remark"}}`))
-	req.SetBasicAuth("dev", "password")
+	req.SetBasicAuth("admin", "password")
 	require.Nil(t, err)
 	resp, err = client.Do(req)
 	require.Nil(t, err)
@@ -58,7 +58,7 @@ func TestServerApp(t *testing.T) {
 func TestServerApp_DevMode(t *testing.T) {
 	app, ctx := prepServerApp(t, 500*time.Millisecond, func(o ServerCommand) ServerCommand {
 		o.Port = 18085
-		o.DevPasswd = "password"
+		o.AdminPasswd = "password"
 		o.Auth.Dev = true
 		return o
 	})
@@ -95,7 +95,7 @@ func TestServerApp_WithMongo(t *testing.T) {
 
 	// prepare options
 	p := flags.NewParser(&opts, flags.Default)
-	_, err := p.ParseArgs([]string{"--dev-passwd=password", "--cache.type=none", "--store.type=mongo",
+	_, err := p.ParseArgs([]string{"--admin-passwd=password", "--cache.type=none", "--store.type=mongo",
 		"--avatar.type=mongo", "--mongo.url=" + mongoURL, "--mongo.db=test_remark", "--port=12345", "--admin.type=mongo"})
 	require.Nil(t, err)
 	opts.Auth.Github.CSEC, opts.Auth.Github.CID = "csec", "cid"
@@ -142,7 +142,7 @@ func TestServerApp_WithSSL(t *testing.T) {
 
 	// prepare options
 	p := flags.NewParser(&opts, flags.Default)
-	_, err := p.ParseArgs([]string{"--dev-passwd=password", "--port=18080", "--store.bolt.path=/tmp/xyz", "--backup=/tmp", "--avatar.type=bolt", "--avatar.bolt.file=/tmp/ava-test.db", "--notify.type=none",
+	_, err := p.ParseArgs([]string{"--admin-passwd=password", "--port=18080", "--store.bolt.path=/tmp/xyz", "--backup=/tmp", "--avatar.type=bolt", "--avatar.bolt.file=/tmp/ava-test.db", "--notify.type=none",
 		"--ssl.type=static", "--ssl.cert=testdata/cert.pem", "--ssl.key=testdata/key.pem", "--ssl.port=18443"})
 	require.Nil(t, err)
 
@@ -318,7 +318,7 @@ func prepServerApp(t *testing.T, duration time.Duration, fn func(o ServerCommand
 
 	// prepare options
 	p := flags.NewParser(&cmd, flags.Default)
-	_, err := p.ParseArgs([]string{"--dev-passwd=password"})
+	_, err := p.ParseArgs([]string{"--admin-passwd=password"})
 	require.Nil(t, err)
 	cmd.Avatar.FS.Path, cmd.Avatar.Type, cmd.BackupLocation = "/tmp", "fs", "/tmp"
 	cmd.Store.Bolt.Path = fmt.Sprintf("/tmp/%d", cmd.Port)

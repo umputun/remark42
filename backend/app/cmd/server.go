@@ -43,7 +43,7 @@ type ServerCommand struct {
 	SSL    SSLGroup    `group:"ssl" namespace:"ssl" env-namespace:"SSL"`
 
 	Sites          []string      `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
-	DevPasswd      string        `long:"dev-passwd" env:"DEV_PASSWD" default:"" description:"development mode password"`
+	AdminPasswd    string        `long:"admin-passwd" env:"ADMIN_PASSWD" default:"" description:"admin basic auth password"`
 	BackupLocation string        `long:"backup" env:"BACKUP_PATH" default:"./var/backup" description:"backups location"`
 	MaxBackupFiles int           `long:"max-back" env:"MAX_BACKUP_FILES" default:"10" description:"max backups to keep"`
 	ImageProxy     bool          `long:"img-proxy" env:"IMG_PROXY" description:"enable image proxy"`
@@ -293,8 +293,8 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 
 // Run all application objects
 func (a *serverApp) run(ctx context.Context) error {
-	if a.DevPasswd != "" {
-		log.Printf("[WARN] running in dev mode")
+	if a.AdminPasswd != "" {
+		log.Printf("[WARN] admin basic auth enabled")
 	}
 
 	go func() {
@@ -537,7 +537,7 @@ func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Sto
 			c.User.SetBoolAttr("blocked", ds.IsBlocked(c.Audience, c.User.ID))
 			return c
 		}),
-		DevPasswd: s.DevPasswd,
+		AdminPasswd: s.AdminPasswd,
 		Validator: token.ValidatorFunc(func(token string, claims token.Claims) bool { // check on each auth call (in middleware)
 			if claims.User == nil {
 				return false

@@ -133,8 +133,8 @@ _this is the recommended way to run remark42_
 | edit-time               | EDIT_TIME               | `5m`                  | edit window                                      |
 | read-age                | READONLY_AGE            |                       | read-only age of comments, days                  |
 | img-proxy               | IMG_PROXY               | `false`               | enable http->https proxy for images              |
+| admin-passwd            | ADMIN_PASSWD            |                       | password for `admin` basic auth                  |
 | dbg                     | DEBUG                   | `false`               | debug mode                                       |
-| dev-passwd              | DEV_PASSWD              |                       | password for `dev` user                          |
 
 * command line parameters are long form `--<key>=value`, i.e. `--site=https://demo.remark42.com`
 * _multi_ parameters separated by `,` in the environment or repeated with command line key, like `--site=s1 --site=s2 ...`

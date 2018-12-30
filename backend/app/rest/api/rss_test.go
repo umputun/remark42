@@ -12,9 +12,8 @@ import (
 )
 
 func TestServer_RssPost(t *testing.T) {
-	srv, ts := prep(t)
-	assert.NotNil(t, srv)
-	defer cleanup(ts, srv)
+	ts, _, teardown := startupT(t)
+	defer teardown()
 
 	waitOnSecChange()
 
@@ -53,9 +52,8 @@ func TestServer_RssPost(t *testing.T) {
 }
 
 func TestServer_RssSite(t *testing.T) {
-	srv, ts := prep(t)
-	assert.NotNil(t, srv)
-	defer cleanup(ts, srv)
+	ts, _, teardown := startupT(t)
+	defer teardown()
 
 	waitOnSecChange()
 
@@ -107,9 +105,8 @@ func TestServer_RssSite(t *testing.T) {
 }
 
 func TestServer_RssWithReply(t *testing.T) {
-	srv, ts := prep(t)
-	assert.NotNil(t, srv)
-	defer cleanup(ts, srv)
+	ts, _, teardown := startupT(t)
+	defer teardown()
 
 	waitOnSecChange()
 
@@ -159,9 +156,8 @@ func TestServer_RssWithReply(t *testing.T) {
 }
 
 func TestServer_RssReplies(t *testing.T) {
-	srv, ts := prep(t)
-	assert.NotNil(t, srv)
-	defer cleanup(ts, srv)
+	ts, srv, teardown := startupT(t)
+	defer teardown()
 
 	waitOnSecChange()
 
