@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
 	"strings"
 	"sync"
 	"syscall"
@@ -56,20 +55,4 @@ func TestGetDump(t *testing.T) {
 	assert.True(t, strings.Contains(dump, "[running]"))
 	assert.True(t, strings.Contains(dump, "backend/app/main.go"))
 	log.Print("\n dump:" + dump)
-}
-
-func TestCrasher(t *testing.T) {
-	if os.Getenv("BE_CRASHER") == "1" {
-		main()
-		return
-	}
-	cmd := exec.Command(os.Args[0], "-test.run=TestCrasher")
-	cmd.Env = append(os.Environ(), "BE_CRASHER=1")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stdout
-	err := cmd.Run()
-	if e, ok := err.(*exec.ExitError); ok && !e.Success() {
-		return
-	}
-	t.Fatalf("process ran with err %v, want exit status 1", err)
 }
