@@ -526,10 +526,10 @@ func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Sto
 		TokenDuration:  s.Auth.TTL.JWT,
 		CookieDuration: s.Auth.TTL.Cookie,
 		SecureCookies:  strings.HasPrefix(s.RemarkURL, "https://"),
-		SecretReader: token.SecretFunc(func(id string) (string, error) {
+		SecretReader: token.SecretFunc(func(id string) (string, error) { // get secret per site
 			return admns.Key(id)
 		}),
-		ClaimsUpd: token.ClaimsUpdFunc(func(c token.Claims) token.Claims {
+		ClaimsUpd: token.ClaimsUpdFunc(func(c token.Claims) token.Claims { // set attributes, on new token or refresh
 			if c.User == nil {
 				return c
 			}
@@ -538,7 +538,7 @@ func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Sto
 			return c
 		}),
 		DevPasswd: s.DevPasswd,
-		Validator: token.ValidatorFunc(func(token string, claims token.Claims) bool {
+		Validator: token.ValidatorFunc(func(token string, claims token.Claims) bool { // check on each auth call (in middleware)
 			if claims.User == nil {
 				return false
 			}
