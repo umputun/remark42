@@ -2,9 +2,7 @@
 package middleware
 
 import (
-	"encoding/base64"
 	"net/http"
-	"strings"
 
 	"github.com/pkg/errors"
 
@@ -16,10 +14,19 @@ import (
 // Authenticator is top level auth object providing middlewares
 type Authenticator struct {
 	logger.L
-	JWTService  *token.Service
+	JWTService  TokenService
 	Providers   []provider.Service
 	Validator   token.Validator
 	AdminPasswd string
+}
+
+// TokenService defines interface accessing tokens
+type TokenService interface {
+	Parse(tokenString string) (claims token.Claims, err error)
+	Set(w http.ResponseWriter, claims token.Claims) error
+	Get(r *http.Request) (claims token.Claims, token string, err error)
+	IsExpired(claims token.Claims) bool
+	Reset(w http.ResponseWriter)
 }
 
 var adminUser = token.User{
@@ -51,7 +58,7 @@ func (a *Authenticator) auth(reqAuth bool) func(http.Handler) http.Handler {
 			h.ServeHTTP(w, r)
 			return
 		}
-		a.Logf("[DEBUG] auth failed, %s", err)
+		a.Logf("[DEBUG] auth failed, %v", err)
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 	}
 
@@ -144,25 +151,13 @@ func (a *Authenticator) basicAdminUser(r *http.Request) bool {
 		return false
 	}
 
-	s := strings.SplitN(r.Header.Get("Authorization"), " ", 2)
-	if len(s) != 2 {
+	user, passwd, ok := r.BasicAuth()
+	if !ok {
 		return false
 	}
 
-	b, err := base64.StdEncoding.DecodeString(s[1])
-	if err != nil {
-		a.Logf("[WARN] admin user auth failed, can't to decode %s, %s", s[1], err)
-		return false
-	}
-
-	pair := strings.SplitN(string(b), ":", 2)
-	if len(pair) != 2 {
-		a.Logf("[WARN] admin user auth failed, can't split basic auth %s", string(b))
-		return false
-	}
-
-	if pair[0] != "admin" || pair[1] != a.AdminPasswd {
-		a.Logf("[WARN] admin basic auth failed, user/passwd mismatch %+v", pair)
+	if user != "admin" || passwd != a.AdminPasswd {
+		a.Logf("[WARN] admin basic auth failed, user/passwd mismatch, %s:%s", user, passwd)
 		return false
 	}
 

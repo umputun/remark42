@@ -113,7 +113,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:9240838c072f500013fa68b709050692dd6ba0095131046639618a296d4f4400"
+  digest = "1:495f89256b4fef47e64160d109454685afa4949f400d02833207e2af383d1173"
   name = "github.com/go-pkgz/auth"
   packages = [
     ".",
@@ -124,7 +124,7 @@
     "token",
   ]
   pruneopts = "UT"
-  revision = "c322626ae89af60b2ad5a8f96ade761b5ed361bb"
+  revision = "46d3a954882f41fc0efdf551e2c1b070799e0f54"
 
 [[projects]]
   digest = "1:1212e114344a5cdcc834ea69e19d456eef230f9784659080fee67e02ba2cb574"
@@ -403,6 +403,7 @@
     "github.com/go-chi/render",
     "github.com/go-pkgz/auth",
     "github.com/go-pkgz/auth/avatar",
+    "github.com/go-pkgz/auth/logger",
     "github.com/go-pkgz/auth/provider",
     "github.com/go-pkgz/auth/token",
     "github.com/go-pkgz/mongo",

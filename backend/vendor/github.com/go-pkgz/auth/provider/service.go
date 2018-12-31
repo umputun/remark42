@@ -37,7 +37,7 @@ type Service struct {
 type Params struct {
 	logger.L
 	URL         string
-	JwtService  *token.Service
+	JwtService  TokenService
 	AvatarSaver AvatarSaver
 	Cid         string
 	Csecret     string
@@ -47,6 +47,14 @@ type Params struct {
 // AvatarSaver defines minimal interface to save avatar
 type AvatarSaver interface {
 	Put(u token.User) (avatarURL string, err error)
+}
+
+// TokenService defines interface accessing tokens
+type TokenService interface {
+	Parse(tokenString string) (claims token.Claims, err error)
+	Set(w http.ResponseWriter, claims token.Claims) error
+	Get(r *http.Request) (claims token.Claims, token string, err error)
+	Reset(w http.ResponseWriter)
 }
 
 type userData map[string]interface{}
