@@ -31,7 +31,7 @@ func TestRestore_Execute(t *testing.T) {
 	cmd.SetCommon(CommonOpts{RemarkURL: ts.URL, SharedSecret: "123456"})
 
 	p := flags.NewParser(&cmd, flags.Default)
-	_, err := p.ParseArgs([]string{"--site=remark", "--path=testdata", "--file=import.txt"})
+	_, err := p.ParseArgs([]string{"--site=remark", "--path=testdata", "--file=import.txt", "--admin-passwd=secret"})
 	require.Nil(t, err)
 	err = cmd.Execute(nil)
 	assert.NoError(t, err)

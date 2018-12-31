@@ -17,17 +17,18 @@ import (
 
 // ImportCommand set of flags and command for import
 type ImportCommand struct {
-	InputFile string        `short:"f" long:"file" description:"input file name" required:"true"`
-	Provider  string        `short:"p" long:"provider" default:"disqus" choice:"disqus" choice:"wordpress" description:"import format"`
-	Site      string        `short:"s" long:"site" env:"SITE" default:"remark" description:"site name"`
-	Timeout   time.Duration `long:"timeout" default:"15m" description:"import timeout"`
+	InputFile   string        `short:"f" long:"file" description:"input file name" required:"true"`
+	Provider    string        `short:"p" long:"provider" default:"disqus" choice:"disqus" choice:"wordpress" description:"import format"`
+	Site        string        `short:"s" long:"site" env:"SITE" default:"remark" description:"site name"`
+	Timeout     time.Duration `long:"timeout" default:"15m" description:"import timeout"`
+	AdminPasswd string        `long:"admin-passwd" env:"ADMIN_PASSWD" required:"true" description:"admin basic auth password"`
 	CommonOpts
 }
 
 // Execute runs import with ImportCommand parameters, entry point for "import" command
 func (ic *ImportCommand) Execute(args []string) error {
 	log.Printf("[INFO] import %s (%s), site %s", ic.InputFile, ic.Provider, ic.Site)
-	resetEnv("SECRET")
+	resetEnv("SECRET", "ADMIN_PASSWD")
 
 	reader, err := ic.reader(ic.InputFile)
 	if err != nil {
@@ -37,12 +38,12 @@ func (ic *ImportCommand) Execute(args []string) error {
 	client := http.Client{}
 	ctx, cancel := context.WithTimeout(context.Background(), ic.Timeout)
 	defer cancel()
-	importURL := fmt.Sprintf("%s/api/v1/admin/import?site=%s&provider=%s&secret=%s",
-		ic.RemarkURL, ic.Site, ic.Provider, ic.SharedSecret)
+	importURL := fmt.Sprintf("%s/api/v1/admin/import?site=%s&provider=%s", ic.RemarkURL, ic.Site, ic.Provider)
 	req, err := http.NewRequest(http.MethodPost, importURL, reader)
 	if err != nil {
 		return errors.Wrapf(err, "can't make import request for %s", importURL)
 	}
+	req.SetBasicAuth("admin", ic.AdminPasswd)
 
 	resp, err := client.Do(req.WithContext(ctx)) // closes request's reader
 	if err != nil {
