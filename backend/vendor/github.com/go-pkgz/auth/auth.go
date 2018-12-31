@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/go-pkgz/auth/avatar"
+	"github.com/go-pkgz/auth/logger"
 	"github.com/go-pkgz/auth/middleware"
 	"github.com/go-pkgz/auth/provider"
 	"github.com/go-pkgz/auth/token"
@@ -17,6 +18,7 @@ import (
 
 // Service provides higher level wrapper allowing to construct everything and get back token middleware
 type Service struct {
+	logger         logger.L
 	opts           Opts
 	jwtService     *token.Service
 	providers      []provider.Service
@@ -49,11 +51,30 @@ type Opts struct {
 	AvatarResizeLimit int          // resize avatar's limit in pixels
 	AvatarRoutePath   string       // avatar routing prefix, i.e. "/api/v1/avatar", default `/avatar`
 
-	AdminPasswd string // if presented, allows basic auth with user admin and given password
+	AdminPasswd string   // if presented, allows basic auth with user admin and given password
+	Logger      logger.L // logger interface, default is no logging at all
 }
 
 // NewService initializes everything
-func NewService(opts Opts) *Service {
+func NewService(opts Opts) (res *Service) {
+
+	res = &Service{
+		opts:   opts,
+		logger: opts.Logger,
+		authMiddleware: middleware.Authenticator{
+			Validator:   opts.Validator,
+			AdminPasswd: opts.AdminPasswd,
+		},
+		issuer: opts.Issuer,
+	}
+
+	if opts.Issuer == "" {
+		res.issuer = "go-pkgz/auth"
+	}
+
+	if opts.Logger == nil {
+		res.logger = logger.Func(func(fmt string, args ...interface{}) {}) // do-nothing logger
+	}
 
 	jwtService := token.NewService(token.Opts{
 		SecretReader:   opts.SecretReader,
@@ -66,28 +87,19 @@ func NewService(opts Opts) *Service {
 		JWTHeaderKey:   opts.JWTHeaderKey,
 		XSRFCookieName: opts.XSRFCookieName,
 		XSRFHeaderKey:  opts.XSRFHeaderKey,
-		Issuer:         opts.Issuer,
+		Issuer:         res.issuer,
 	})
 
 	if opts.SecretReader == nil {
 		jwtService.SecretReader = token.SecretFunc(func(id string) (string, error) {
 			return "", errors.New("secrets reader not available")
 		})
+		res.logger.Logf("[WARN] no secret reader defined")
 	}
 
-	res := Service{
-		opts:       opts,
-		jwtService: jwtService,
-		authMiddleware: middleware.Authenticator{
-			JWTService:  jwtService,
-			Validator:   opts.Validator,
-			AdminPasswd: opts.AdminPasswd,
-		},
-	}
-
-	if opts.Issuer == "" {
-		res.issuer = "go-pkgz/auth"
-	}
+	res.jwtService = jwtService
+	res.authMiddleware.JWTService = jwtService
+	res.authMiddleware.L = res.logger
 
 	if opts.AvatarStore != nil {
 		res.avatarProxy = &avatar.Proxy{
@@ -95,13 +107,14 @@ func NewService(opts Opts) *Service {
 			URL:         opts.URL,
 			RoutePath:   opts.AvatarRoutePath,
 			ResizeLimit: opts.AvatarResizeLimit,
+			L:           res.logger,
 		}
 		if res.avatarProxy.RoutePath == "" {
 			res.avatarProxy.RoutePath = "/avatar"
 		}
 	}
 
-	return &res
+	return res
 }
 
 // Handlers gets http.Handler for all providers and avatars
@@ -171,6 +184,7 @@ func (s *Service) AddProvider(name string, cid string, csecret string) {
 		AvatarSaver: s.avatarProxy,
 		Cid:         cid,
 		Csecret:     csecret,
+		L:           s.logger,
 	}
 
 	switch strings.ToLower(name) {
@@ -189,6 +203,16 @@ func (s *Service) AddProvider(name string, cid string, csecret string) {
 	}
 
 	s.authMiddleware.Providers = s.providers
+}
+
+// DevAuth makes dev oauth2 server, for testing and development only!
+func (s *Service) DevAuth() (*provider.DevAuthServer, error) {
+	p, err := s.Provider("dev") // peak dev provider
+	if err != nil {
+		return nil, errors.Wrap(err, "dev provider not registered")
+	}
+	// make and start dev auth server
+	return &provider.DevAuthServer{Provider: p, L: s.logger}, nil
 }
 
 // Provider gets provider by name

@@ -7,10 +7,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/go-pkgz/auth/logger"
 
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/go-pkgz/rest"
@@ -34,6 +35,7 @@ type Service struct {
 
 // Params to make initialized and ready to use provider
 type Params struct {
+	logger.L
 	URL         string
 	JwtService  *token.Service
 	AvatarSaver AvatarSaver
@@ -59,7 +61,10 @@ func (u userData) value(key string) string {
 
 // initService makes oauth2 service for given provider
 func initService(p Params, service Service) Service {
-	log.Printf("[INFO] init oauth2 service %s", service.Name)
+	if p.L == nil {
+		p.L = logger.Func(func(fmt string, args ...interface{}) {})
+	}
+	p.Logf("[INFO] init oauth2 service %s", service.Name)
 	service.Params = p
 	service.conf = oauth2.Config{
 		ClientID:     service.Cid,
@@ -69,7 +74,7 @@ func initService(p Params, service Service) Service {
 		Endpoint:     service.Endpoint,
 	}
 
-	log.Printf("[DEBUG] created %s oauth2, id=%s, redir=%s, endpoint=%s",
+	p.Logf("[DEBUG] created %s oauth2, id=%s, redir=%s, endpoint=%s",
 		service.Name, service.Cid, service.Endpoint, service.RedirectURL)
 	return service
 }
@@ -99,7 +104,7 @@ func (p Service) Handler(w http.ResponseWriter, r *http.Request) {
 // loginHandler - GET /login?from=redirect-back-url&site=siteID&session=1
 func (p Service) loginHandler(w http.ResponseWriter, r *http.Request) {
 
-	log.Printf("[DEBUG] login with %s", p.Name)
+	p.Logf("[DEBUG] login with %s", p.Name)
 	// make state (random) and store in session
 	state, err := p.randToken()
 	if err != nil {
@@ -134,7 +139,7 @@ func (p Service) loginHandler(w http.ResponseWriter, r *http.Request) {
 
 	// return login url
 	loginURL := p.conf.AuthCodeURL(state)
-	log.Printf("[DEBUG] login url %s, claims=%+v", loginURL, claims)
+	p.Logf("[DEBUG] login url %s, claims=%+v", loginURL, claims)
 
 	http.Redirect(w, r, loginURL, http.StatusFound)
 }
@@ -159,7 +164,7 @@ func (p Service) authHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("[DEBUG] token with state %s", retrievedState)
+	p.Logf("[DEBUG] token with state %s", retrievedState)
 	tok, err := p.conf.Exchange(context.Background(), r.URL.Query().Get("code"))
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "exchange failed")
@@ -175,7 +180,7 @@ func (p Service) authHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		if e := uinfo.Body.Close(); e != nil {
-			log.Printf("[WARN] failed to close response body, %s", e)
+			p.Logf("[WARN] failed to close response body, %s", e)
 		}
 	}()
 
@@ -190,7 +195,7 @@ func (p Service) authHandler(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to unmarshal user info")
 		return
 	}
-	log.Printf("[DEBUG] got raw user info %+v", jData)
+	p.Logf("[DEBUG] got raw user info %+v", jData)
 
 	u := p.MapUser(jData, data)
 	u = p.setAvatar(u)
@@ -215,7 +220,7 @@ func (p Service) authHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("[DEBUG] user info %+v", u)
+	p.Logf("[DEBUG] user info %+v", u)
 
 	// redirect to back url if presented in login query params
 	if oauthClaims.Handshake != nil && oauthClaims.Handshake.From != "" {
@@ -231,7 +236,7 @@ func (p Service) setAvatar(u token.User) token.User {
 		if avatarURL, e := p.AvatarSaver.Put(u); e == nil {
 			u.Picture = avatarURL
 		} else {
-			log.Printf("[WARN] failed to set avatar for %+v, %+v", u, e)
+			p.Logf("[WARN] failed to set avatar for %+v, %+v", u, e)
 		}
 	}
 	return u

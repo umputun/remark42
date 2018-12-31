@@ -17,6 +17,7 @@ import (
 
 	"github.com/go-pkgz/auth"
 	"github.com/go-pkgz/auth/avatar"
+	"github.com/go-pkgz/auth/logger"
 	"github.com/go-pkgz/auth/provider"
 	"github.com/go-pkgz/auth/token"
 	"github.com/go-pkgz/mongo"
@@ -269,13 +270,13 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = s.LowScore, s.CriticalScore
 
-	var devAuth provider.DevAuthServer
+	var devAuth *provider.DevAuthServer
 	if s.Auth.Dev {
-		p, err := authenticator.Provider("dev")
+		da, err := authenticator.DevAuth()
 		if err != nil {
-			return nil, errors.Wrap(err, "can't pick dev provider")
+			return nil, errors.Wrap(err, "can't make dev oauth2 server")
 		}
-		devAuth = provider.DevAuthServer{Provider: p}
+		devAuth = da
 	}
 
 	return &serverApp{
@@ -283,7 +284,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		restSrv:       srv,
 		migratorSrv:   migr,
 		exporter:      exporter,
-		devAuth:       &devAuth,
+		devAuth:       devAuth,
 		dataService:   dataService,
 		avatarStore:   avatarStore,
 		notifyService: notifyService,
@@ -316,7 +317,7 @@ func (a *serverApp) run(ctx context.Context) error {
 	}()
 	a.activateBackup(ctx) // runs in goroutine for each site
 	if a.Auth.Dev {
-		go a.devAuth.Run() // dev oauth2 server on :8084
+		go a.devAuth.Run(context.Background()) // dev oauth2 server on :8084
 	}
 	a.restSrv.Run(a.Port)
 	close(a.terminated)
@@ -547,6 +548,7 @@ func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Sto
 		AvatarStore:       avas,
 		AvatarResizeLimit: s.Avatar.RszLmt,
 		AvatarRoutePath:   "/api/v1/avatar",
+		Logger:            logger.Std,
 	})
 	s.addAuthProviders(authenticator)
 	return authenticator

@@ -3,18 +3,19 @@ package middleware
 
 import (
 	"encoding/base64"
-	"log"
 	"net/http"
 	"strings"
 
 	"github.com/pkg/errors"
 
+	"github.com/go-pkgz/auth/logger"
 	"github.com/go-pkgz/auth/provider"
 	"github.com/go-pkgz/auth/token"
 )
 
 // Authenticator is top level auth object providing middlewares
 type Authenticator struct {
+	logger.L
 	JWTService  *token.Service
 	Providers   []provider.Service
 	Validator   token.Validator
@@ -50,7 +51,7 @@ func (a *Authenticator) auth(reqAuth bool) func(http.Handler) http.Handler {
 			h.ServeHTTP(w, r)
 			return
 		}
-		log.Printf("[DEBUG] auth failed, %s", err)
+		a.Logf("[DEBUG] auth failed, %s", err)
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 	}
 
@@ -94,7 +95,7 @@ func (a *Authenticator) auth(reqAuth bool) func(http.Handler) http.Handler {
 						onError(h, w, r, errors.Wrap(err, "can't refresh token"))
 						return
 					}
-					log.Printf("[DEBUG] token refreshed for %+v", claims.User)
+					a.Logf("[DEBUG] token refreshed for %+v", claims.User)
 				}
 
 				r = token.SetUserInfo(r, *claims.User) // populate user info to request context
@@ -150,18 +151,18 @@ func (a *Authenticator) basicAdminUser(r *http.Request) bool {
 
 	b, err := base64.StdEncoding.DecodeString(s[1])
 	if err != nil {
-		log.Printf("[WARN] admin user auth failed, can't to decode %s, %s", s[1], err)
+		a.Logf("[WARN] admin user auth failed, can't to decode %s, %s", s[1], err)
 		return false
 	}
 
 	pair := strings.SplitN(string(b), ":", 2)
 	if len(pair) != 2 {
-		log.Printf("[WARN] admin user auth failed, can't split basic auth %s", string(b))
+		a.Logf("[WARN] admin user auth failed, can't split basic auth %s", string(b))
 		return false
 	}
 
 	if pair[0] != "admin" || pair[1] != a.AdminPasswd {
-		log.Printf("[WARN] dev user auth failed, user/passwd mismatch %+v", pair)
+		a.Logf("[WARN] admin basic auth failed, user/passwd mismatch %+v", pair)
 		return false
 	}
 

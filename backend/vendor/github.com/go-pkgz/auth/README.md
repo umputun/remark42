@@ -33,8 +33,8 @@ func main() {
 		SecretReader: token.SecretFunc(func(id string) (string, error) { // secret key for JWT
 			return "secret", nil
 		}),
-		TokenDuration:  time.Hour,
-		CookieDuration: time.Hour * 24,
+		TokenDuration:  time.Minute * 5, // token expires in 5 minutes
+		CookieDuration: time.Hour * 24,  // cookie expires in 1 day and will enforce re-login
 		Issuer:         "my-test-app",
 		URL:            "http://127.0.0.1:8080",
 		AvatarStore:    avatar.NewLocalFS("/tmp"),
@@ -170,7 +170,18 @@ It will run fake aouth2 "server" on port :8084 and user could login with any use
 
 _Warning: this is not the real oauth2 server but just a small fake thing for development and testing only. Don't use `dev` provider with any production code._
 
-    
+### Other ways to authenticate
+
+In addition to the primary method (i.e. JWT cookie with XSRF header) there are two more ways to authenticate:
+
+1. Send JWT header as `X-JWT`. This shouldn't be used for web application, however can be helpful for service-to-service authentication.
+2. [Basic access authentication](https://en.wikipedia.org/wiki/Basic_access_authentication). This mode by default disabled and will be enabled it `Opts.AdminPasswd` defined. This will allow access with basic auth admin:<Opts.AdminPasswd> with user [admin](https://github.com/go-pkgz/auth/blob/master/middleware/auth.go#L24). Such method can be used for automation scripts.
+
+### Logging
+
+By default this library doesn't print anything to stdout/stderr, however user can pass a logger implementing `logger.L` interface with a single method `Logf(format string, args ...interface{})`. Functional adapter for this interface included as `logger.Func`. There are two predefined implementations in the `logger` package - `NoOp` (prints nothing, default) and `Std` wrapping `log.Printf` from stdlib.
+
+
 ## Register oauth2 providers
 
 Authentication handled by external providers. You should setup oauth2 for all (or some) of them to allow users to authenticate. It is not mandatory to have all of them, but at least one should be correctly configured.

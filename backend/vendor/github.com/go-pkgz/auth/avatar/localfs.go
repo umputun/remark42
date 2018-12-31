@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"hash/crc64"
 	"io"
-	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -47,14 +46,13 @@ func (fs *LocalFS) Put(userID string, reader io.Reader) (avatar string, err erro
 	}
 	defer func() {
 		if e := fh.Close(); e != nil {
-			log.Printf("[WARN] can't close avatar file %s, %s", avFile, e)
+			err = errors.Wrapf(err, "can't close avatar file %s", avFile)
 		}
 	}()
 
 	if _, err = io.Copy(fh, reader); err != nil {
 		return "", errors.Wrapf(err, "can't save file %s", avFile)
 	}
-	log.Printf("[DEBUG] put avatar for %s to %s completed", userID, fh.Name())
 	return id + imgSfx, nil
 }
 
@@ -78,7 +76,6 @@ func (fs *LocalFS) ID(avatar string) (id string) {
 	avFile := path.Join(location, avatar)
 	fi, err := os.Stat(avFile)
 	if err != nil {
-		log.Printf("[DEBUG] can't get file info '%s', %s", avFile, err)
 		return encodeID(avatar)
 	}
 	return encodeID(avatar + strconv.FormatInt(fi.ModTime().Unix(), 10))

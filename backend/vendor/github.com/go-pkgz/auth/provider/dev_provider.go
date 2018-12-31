@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 	"sync"
@@ -15,6 +14,7 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
 
+	"github.com/go-pkgz/auth/logger"
 	"github.com/go-pkgz/auth/token"
 )
 
@@ -26,10 +26,10 @@ const devAuthPort = 8084
 // can run in interactive and non-interactive mode. In interactive mode login attempts will show login form to select
 // desired user name, this is the mode used for development. Non-interactive mode for tests only.
 type DevAuthServer struct {
+	logger.L
 	Provider  Service
 	Automatic bool
-
-	username string // unsafe, but fine for dev
+	username  string // unsafe, but fine for dev
 
 	iconGen    *identicon.Generator
 	httpServer *http.Server
@@ -37,26 +37,26 @@ type DevAuthServer struct {
 }
 
 // Run oauth2 dev server on port devAuthPort
-func (d *DevAuthServer) Run() {
+func (d *DevAuthServer) Run(ctx context.Context) {
 	d.username = "dev_user"
-	log.Printf("[INFO] run local oauth2 dev server on %d, redir url=%s", devAuthPort, d.Provider.RedirectURL)
+	d.Logf("[INFO] run local oauth2 dev server on %d, redir url=%s", devAuthPort, d.Provider.RedirectURL)
 	d.lock.Lock()
 	var err error
 	d.iconGen, err = identicon.New("github", 5, 3)
 	if err != nil {
-		log.Printf("[WARN] can't create identicon, %s", err)
+		d.Logf("[WARN] can't create identicon, %s", err)
 	}
 
 	userFormTmpl, err := template.New("page").Parse(devUserFormTmpl)
 	if err != nil {
-		log.Printf("[WARN] can't parse user form template, %s", err)
+		d.Logf("[WARN] can't parse user form template, %s", err)
 		return
 	}
 
 	d.httpServer = &http.Server{
 		Addr: fmt.Sprintf(":%d", devAuthPort),
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			log.Printf("[DEBUG] dev oauth request %s %s %+v", r.Method, r.URL, r.Header)
+			d.Logf("[DEBUG] dev oauth request %s %s %+v", r.Method, r.URL, r.Header)
 			switch {
 
 			case strings.HasPrefix(r.URL.Path, "/login/oauth/authorize"):
@@ -67,7 +67,7 @@ func (d *DevAuthServer) Run() {
 					formData := struct{ Query string }{Query: r.URL.RawQuery}
 
 					if err = userFormTmpl.Execute(w, formData); err != nil {
-						log.Printf("[WARN] can't write, %s", err)
+						d.Logf("[WARN] can't write, %s", err)
 					}
 					return
 				}
@@ -78,7 +78,7 @@ func (d *DevAuthServer) Run() {
 
 				state := r.URL.Query().Get("state")
 				callbackURL := fmt.Sprintf("%s?code=g0ZGZmNjVmOWI&state=%s", d.Provider.RedirectURL, state)
-				log.Printf("[DEBUG] callback url=%s", callbackURL)
+				d.Logf("[DEBUG] callback url=%s", callbackURL)
 				w.Header().Add("Location", callbackURL)
 				w.WriteHeader(http.StatusFound)
 
@@ -131,21 +131,21 @@ func (d *DevAuthServer) Run() {
 	d.lock.Unlock()
 
 	err = d.httpServer.ListenAndServe()
-	log.Printf("[WARN] dev oauth2 server terminated, %s", err)
+	d.Logf("[WARN] dev oauth2 server terminated, %s", err)
 }
 
 // Shutdown oauth2 dev server
 func (d *DevAuthServer) Shutdown() {
-	log.Print("[WARN] shutdown oauth2 dev server")
+	d.Logf("[WARN] shutdown oauth2 dev server")
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	d.lock.Lock()
 	if d.httpServer != nil {
 		if err := d.httpServer.Shutdown(ctx); err != nil {
-			log.Printf("[DEBUG] oauth2 dev shutdown error, %s", err)
+			d.Logf("[DEBUG] oauth2 dev shutdown error, %s", err)
 		}
 	}
-	log.Print("[DEBUG] shutdown dev oauth2 server completed")
+	d.Logf("[DEBUG] shutdown dev oauth2 server completed")
 	d.lock.Unlock()
 }
 
