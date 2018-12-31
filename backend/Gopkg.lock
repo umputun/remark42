@@ -112,8 +112,7 @@
   version = "v1.0.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:495f89256b4fef47e64160d109454685afa4949f400d02833207e2af383d1173"
+  digest = "1:2e6b942dd80c33bba11b9567f3f8a4338e80d597959e4a5d182d5251953bebe6"
   name = "github.com/go-pkgz/auth"
   packages = [
     ".",
@@ -124,7 +123,8 @@
     "token",
   ]
   pruneopts = "UT"
-  revision = "46d3a954882f41fc0efdf551e2c1b070799e0f54"
+  revision = "a4dab49e2656a32ab7eb1255980c24f8560dc298"
+  version = "v0.1.1"
 
 [[projects]]
   digest = "1:1212e114344a5cdcc834ea69e19d456eef230f9784659080fee67e02ba2cb574"

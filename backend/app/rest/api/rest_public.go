@@ -238,7 +238,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 
 	cnf.Auth = []string{}
 	for _, ap := range s.Authenticator.Providers() {
-		cnf.Auth = append(cnf.Auth, ap.Name)
+		cnf.Auth = append(cnf.Auth, ap.Name())
 	}
 
 	if cnf.Admins == nil { // prevent json serialization to nil

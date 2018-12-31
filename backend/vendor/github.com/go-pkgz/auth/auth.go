@@ -131,7 +131,7 @@ func (s *Service) Handlers() (authHandler http.Handler, avatarHandler http.Handl
 		if elems[len(elems)-1] == "list" {
 			list := []string{}
 			for _, p := range s.providers {
-				list = append(list, p.Name)
+				list = append(list, p.Name())
 			}
 			rest.RenderJSON(w, r, list)
 			return
@@ -189,15 +189,15 @@ func (s *Service) AddProvider(name string, cid string, csecret string) {
 
 	switch strings.ToLower(name) {
 	case "github":
-		s.providers = append(s.providers, provider.NewGithub(p))
+		s.providers = append(s.providers, provider.NewService(provider.NewGithub(p)))
 	case "google":
-		s.providers = append(s.providers, provider.NewGoogle(p))
+		s.providers = append(s.providers, provider.NewService(provider.NewGoogle(p)))
 	case "facebook":
-		s.providers = append(s.providers, provider.NewFacebook(p))
+		s.providers = append(s.providers, provider.NewService(provider.NewFacebook(p)))
 	case "yandex":
-		s.providers = append(s.providers, provider.NewFacebook(p))
+		s.providers = append(s.providers, provider.NewService(provider.NewFacebook(p)))
 	case "dev":
-		s.providers = append(s.providers, provider.NewDev(p))
+		s.providers = append(s.providers, provider.NewService(provider.NewDev(p)))
 	default:
 		return
 	}
@@ -212,13 +212,13 @@ func (s *Service) DevAuth() (*provider.DevAuthServer, error) {
 		return nil, errors.Wrap(err, "dev provider not registered")
 	}
 	// make and start dev auth server
-	return &provider.DevAuthServer{Provider: p, L: s.logger}, nil
+	return &provider.DevAuthServer{Provider: p.Provider.(provider.Oauth2Handler), L: s.logger}, nil
 }
 
 // Provider gets provider by name
 func (s *Service) Provider(name string) (provider.Service, error) {
 	for _, p := range s.providers {
-		if p.Name == name {
+		if p.Name() == name {
 			return p, nil
 		}
 	}

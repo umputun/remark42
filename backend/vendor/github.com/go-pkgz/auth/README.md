@@ -13,9 +13,10 @@ This library provides "social login" with Github, Google, Facebook and Yandex.
 - Black list with user-defined validator
 - Multiple aud (audience) supported
 - Secure key with customizable `SecretReader`
-- Ability to store extra information to token and retrieve on login
+- Ability to store an extra information to token and retrieve on login
 - Pre-auth and post-auth hooks to handle custom use cases. 
 - Middleware for easy integration into http routers
+- Wrappers to extract user info from the request
 
 ## Install
 
@@ -107,35 +108,35 @@ It also has placeholders for fields application can populate with custom `token.
 
 - `IP`  - hash of user's IP address
 - `Email` - user's email
-- `Attributes` - map of string:any-value. To simplify management of this map some setters and getters provides, for example `users.StrAttr`, `user.SetBoolAttr` and so on. See [user.go](https://github.com/go-pkgz/auth/blob/master/token/user.go) for more details.
+- `Attributes` - map of string:any-value. To simplify management of this map some setters and getters provided, for example `users.StrAttr`, `user.SetBoolAttr` and so on. See [user.go](https://github.com/go-pkgz/auth/blob/master/token/user.go) for more details.
  
    
 ### Avatar proxy
 
-Direct links to avatars won't survive any real-life usage if they linked from a public page. For example, page [like this](https://remark42.com/demo/) may have hundreds of avatars and, most likely, will trigger throttling on provider's side. To eliminate such restriction `auth` library provides and automatic proxy
+Direct links to avatars won't survive any real-life usage if they linked from a public page. For example, page [like this](https://remark42.com/demo/) may have hundreds of avatars and, most likely, will trigger throttling on provider's side. To eliminate such restriction `auth` library provides an automatic proxy
 
 - On each login the proxy will retrieve user's picture and save it to `AvatarStore`
 - Local (proxied) link to avatar included in user's info (jwt token)
 - API for avatar removal provided as a part of `AvatarStore`
-- User can leverage one of provided stores:
+- User can leverage one of the provided stores:
     - `avatar.LocalFS` - file system, each avatar in a separate file
-    - `avatar.BoltDB`  - a single [boltdb](https://github.com/coreos/bbolt) file (embedded KV store).
+    - `avatar.BoltDB`  - single [boltdb](https://github.com/coreos/bbolt) file (embedded KV store).
     - `avatar.GridFS` - external [GridFS](https://docs.mongodb.com/manual/core/gridfs/) (mongo db).
-- In case of need a custom implementation of other stores can be passed in and used by `auth` library. Each store has to implement `avatar.Store` [interface](https://github.com/go-pkgz/auth/blob/master/avatar/store.go#L25).
+- In case of need custom implementations of other stores can be passed in and used by `auth` library. Each store has to implement `avatar.Store` [interface](https://github.com/go-pkgz/auth/blob/master/avatar/store.go#L25).
 - All avatar-related setup done as a part of `auth.Opts` and needs:
     - `AvatarStore` - avatar store to use, i.e. `avatar.NewLocalFS("/tmp/avatars")`
-    - `AvatarRoutePath` - route prefix for direct links to proxied avatar. For example `/api/v1/avatars` will make full links links this - `http://example.com/api/v1/avatars/1234567890123.image`. The url will be stored in user's token and retrieved by middleware (see "User Info")
-    - `AvatarResizeLimit` - size (in pixel) used to resize avatar. Pls note - resize happens once as a part of `Put` call, i.e. on login. 0 size (default) disables resizing.      
+    - `AvatarRoutePath` - route prefix for direct links to proxied avatar. For example `/api/v1/avatars` will make full links like this - `http://example.com/api/v1/avatars/1234567890123.image`. The url will be stored in user's token and retrieved by middleware (see "User Info")
+    - `AvatarResizeLimit` - size (in pixels) used to resize the avatar. Pls note - resize happens once as a part of `Put` call, i.e. on login. 0 size (default) disables resizing.      
 
 ### Customization
 
 There are several ways to adjust functionality of the library:
 
-1. `SecretReader` - interface with a single method `Get(aud string) string` to return secret used for JWT signing and verification
+1. `SecretReader` - interface with a single method `Get(aud string) string` to return the secret used for JWT signing and verification
 1. `ClaimsUpdater` - interface with `Update(claims Claims) Claims` method. This is the primary way to alter a token at login time and add any attributes, set ip, email, admin status and so on.
 2. `Validator` - interface with `Validate(token string, claims Claims) bool` method. This is post-token hook and will be called on **each request** wrapped with `Auth` middleware. This will be the place for special logic to reject some tokens or users.
 
-All of interfaces have corresponding Func wrappers (adapters) - `SecretFunc`, `ClaimsUpdFunc` and `ValidatorFunc`.
+All of the interfaces above have corresponding Func adapters - `SecretFunc`, `ClaimsUpdFunc` and `ValidatorFunc`.
 
 ### Implementing black list logic or some other filters
 
@@ -157,11 +158,10 @@ Working with oauth2 providers can be a pain, especially during development phase
 ```go
 	// runs dev oauth2 server on :8084
 	go func() {
-		p, err := service.Provider("dev")
+		devAuthServer, err := service.DevAuth()
 		if err != nil {
 			log.Fatal(err)
 		}
-		devAuthServer := provider.DevAuthServer{Provider: p}
 		devAuthServer.Run()
 	}()
 ```
@@ -175,7 +175,7 @@ _Warning: this is not the real oauth2 server but just a small fake thing for dev
 In addition to the primary method (i.e. JWT cookie with XSRF header) there are two more ways to authenticate:
 
 1. Send JWT header as `X-JWT`. This shouldn't be used for web application, however can be helpful for service-to-service authentication.
-2. [Basic access authentication](https://en.wikipedia.org/wiki/Basic_access_authentication). This mode by default disabled and will be enabled it `Opts.AdminPasswd` defined. This will allow access with basic auth admin:<Opts.AdminPasswd> with user [admin](https://github.com/go-pkgz/auth/blob/master/middleware/auth.go#L24). Such method can be used for automation scripts.
+2. [Basic access authentication](https://en.wikipedia.org/wiki/Basic_access_authentication). This mode disabled by default and will be enabled if `Opts.AdminPasswd` defined. This will allow access with basic auth admin:<Opts.AdminPasswd> with user [admin](https://github.com/go-pkgz/auth/blob/master/middleware/auth.go#L24). Such method can be used for automation scripts.
 
 ### Logging
 
@@ -239,4 +239,4 @@ For more details refer to [Yandex OAuth](https://tech.yandex.com/oauth/doc/dg/co
 
 The library extracted from [remark42](https://github.com/umputun/remark) project. The original code in production use on multiple sites and seems to work fine. 
 
-`go-pkgz/auth` library still in beta and until version 1 released some breaking changes still possible.
+`go-pkgz/auth` library still in development and until version 1 released some breaking changes possible.

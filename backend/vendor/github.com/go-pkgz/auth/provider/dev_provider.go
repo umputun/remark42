@@ -27,7 +27,7 @@ const devAuthPort = 8084
 // desired user name, this is the mode used for development. Non-interactive mode for tests only.
 type DevAuthServer struct {
 	logger.L
-	Provider  Service
+	Provider  Oauth2Handler
 	Automatic bool
 	username  string // unsafe, but fine for dev
 
@@ -39,7 +39,7 @@ type DevAuthServer struct {
 // Run oauth2 dev server on port devAuthPort
 func (d *DevAuthServer) Run(ctx context.Context) {
 	d.username = "dev_user"
-	d.Logf("[INFO] run local oauth2 dev server on %d, redir url=%s", devAuthPort, d.Provider.RedirectURL)
+	d.Logf("[INFO] run local oauth2 dev server on %d, redir url=%s", devAuthPort, d.Provider.redirectURL)
 	d.lock.Lock()
 	var err error
 	d.iconGen, err = identicon.New("github", 5, 3)
@@ -77,7 +77,7 @@ func (d *DevAuthServer) Run(ctx context.Context) {
 				}
 
 				state := r.URL.Query().Get("state")
-				callbackURL := fmt.Sprintf("%s?code=g0ZGZmNjVmOWI&state=%s", d.Provider.RedirectURL, state)
+				callbackURL := fmt.Sprintf("%s?code=g0ZGZmNjVmOWI&state=%s", d.Provider.redirectURL, state)
 				d.Logf("[DEBUG] callback url=%s", callbackURL)
 				w.Header().Add("Location", callbackURL)
 				w.WriteHeader(http.StatusFound)
@@ -150,17 +150,17 @@ func (d *DevAuthServer) Shutdown() {
 }
 
 // NewDev makes dev oauth2 provider for admin user
-func NewDev(p Params) Service {
-	return initService(p, Service{
-		Name: "dev",
-		Endpoint: oauth2.Endpoint{
+func NewDev(p Params) Oauth2Handler {
+	return initOauth2Handler(p, Oauth2Handler{
+		name: "dev",
+		endpoint: oauth2.Endpoint{
 			AuthURL:  fmt.Sprintf("http://127.0.0.1:%d/login/oauth/authorize", devAuthPort),
 			TokenURL: fmt.Sprintf("http://127.0.0.1:%d/login/oauth/access_token", devAuthPort),
 		},
-		RedirectURL: p.URL + "/auth/dev/callback",
-		Scopes:      []string{"user:email"},
-		InfoURL:     fmt.Sprintf("http://127.0.0.1:%d/user", devAuthPort),
-		MapUser: func(data userData, _ []byte) token.User {
+		redirectURL: p.URL + "/auth/dev/callback",
+		scopes:      []string{"user:email"},
+		infoURL:     fmt.Sprintf("http://127.0.0.1:%d/user", devAuthPort),
+		mapUser: func(data userData, _ []byte) token.User {
 			userInfo := token.User{
 				ID:      data.value("id"),
 				Name:    data.value("name"),
