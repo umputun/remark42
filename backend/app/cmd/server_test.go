@@ -13,9 +13,12 @@ import (
 	"testing"
 	"time"
 
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/globalsign/mgo"
+	"github.com/go-pkgz/auth/token"
 	"github.com/go-pkgz/mongo"
 	flags "github.com/jessevdk/go-flags"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -39,8 +42,12 @@ func TestServerApp(t *testing.T) {
 	assert.Equal(t, "pong", string(body))
 
 	// add comment
-	resp, err = http.Post("http://dev:password@localhost:18080/api/v1/comment", "json",
+	client := http.Client{Timeout: 5 * time.Second}
+	req, err := http.NewRequest("POST", "http://localhost:18080/api/v1/comment",
 		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "remark"}}`))
+	req.SetBasicAuth("admin", "password")
+	require.Nil(t, err)
+	resp, err = client.Do(req)
 	require.Nil(t, err)
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 	body, _ = ioutil.ReadAll(resp.Body)
@@ -54,7 +61,7 @@ func TestServerApp(t *testing.T) {
 func TestServerApp_DevMode(t *testing.T) {
 	app, ctx := prepServerApp(t, 500*time.Millisecond, func(o ServerCommand) ServerCommand {
 		o.Port = 18085
-		o.DevPasswd = "password"
+		o.AdminPasswd = "password"
 		o.Auth.Dev = true
 		return o
 	})
@@ -62,8 +69,8 @@ func TestServerApp_DevMode(t *testing.T) {
 	go func() { _ = app.run(ctx) }()
 	time.Sleep(100 * time.Millisecond) // let server start
 
-	assert.Equal(t, 4+1, len(app.restSrv.Authenticator.Providers), "extra auth provider")
-	assert.Equal(t, "dev", app.restSrv.Authenticator.Providers[4].Name, "dev auth provider")
+	assert.Equal(t, 4+1, len(app.restSrv.Authenticator.Providers()), "extra auth provider")
+	assert.Equal(t, "dev", app.restSrv.Authenticator.Providers()[4].Name(), "dev auth provider")
 	// send ping
 	resp, err := http.Get("http://localhost:18085/api/v1/ping")
 	require.Nil(t, err)
@@ -91,7 +98,7 @@ func TestServerApp_WithMongo(t *testing.T) {
 
 	// prepare options
 	p := flags.NewParser(&opts, flags.Default)
-	_, err := p.ParseArgs([]string{"--dev-passwd=password", "--cache.type=none", "--store.type=mongo",
+	_, err := p.ParseArgs([]string{"--admin-passwd=password", "--cache.type=none", "--store.type=mongo",
 		"--avatar.type=mongo", "--mongo.url=" + mongoURL, "--mongo.db=test_remark", "--port=12345", "--admin.type=mongo"})
 	require.Nil(t, err)
 	opts.Auth.Github.CSEC, opts.Auth.Github.CID = "csec", "cid"
@@ -138,7 +145,7 @@ func TestServerApp_WithSSL(t *testing.T) {
 
 	// prepare options
 	p := flags.NewParser(&opts, flags.Default)
-	_, err := p.ParseArgs([]string{"--dev-passwd=password", "--port=18080", "--store.bolt.path=/tmp/xyz", "--backup=/tmp", "--avatar.type=bolt", "--avatar.bolt.file=/tmp/ava-test.db", "--notify.type=none",
+	_, err := p.ParseArgs([]string{"--admin-passwd=password", "--port=18080", "--store.bolt.path=/tmp/xyz", "--backup=/tmp", "--avatar.type=bolt", "--avatar.bolt.file=/tmp/ava-test.db", "--notify.type=none",
 		"--ssl.type=static", "--ssl.cert=testdata/cert.pem", "--ssl.key=testdata/key.pem", "--ssl.port=18443"})
 	require.Nil(t, err)
 
@@ -308,13 +315,80 @@ func Test_ACMEEmail(t *testing.T) {
 	assert.Equal(t, "admin@remark.com", cfg.ACMEEmail)
 }
 
+func TestServerAuthHooks(t *testing.T) {
+	app, ctx := prepServerApp(t, 2500*time.Millisecond, func(o ServerCommand) ServerCommand {
+		o.Port = 18080
+		return o
+	})
+
+	go func() { _ = app.run(ctx) }()
+	time.Sleep(100 * time.Millisecond) // let server start
+
+	// make a token for user dev
+	tkService := app.restSrv.Authenticator.TokenService()
+	tkService.TokenDuration = time.Second
+
+	claims := token.Claims{
+		StandardClaims: jwt.StandardClaims{
+			Audience:  "remark",
+			Issuer:    "remark",
+			ExpiresAt: time.Now().Add(time.Second).Unix(),
+			NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
+		},
+		User: &token.User{
+			ID:   "dev",
+			Name: "developer one",
+		},
+	}
+	tk, err := tkService.Token(claims)
+	require.NoError(t, err)
+	t.Log(tk)
+
+	// add comment
+	client := http.Client{Timeout: 5 * time.Second}
+	req, err := http.NewRequest("POST", "http://localhost:18080/api/v1/comment",
+		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "remark"}}`))
+	req.Header.Set("X-JWT", tk)
+	require.Nil(t, err)
+	resp, err := client.Do(req)
+	require.Nil(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusCreated, resp.StatusCode, "non-blocked user able to post")
+
+	// block user dev as admin
+	req, e := http.NewRequest(http.MethodPut, "http://localhost:18080/api/v1/admin/user/dev?site=remark&block=1&ttl=10d", nil)
+	assert.Nil(t, e)
+	req.SetBasicAuth("admin", "password")
+	resp, e = client.Do(req)
+	require.Nil(t, e)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusOK, resp.StatusCode, "user dev blocked")
+	b, err := ioutil.ReadAll(resp.Body)
+	require.Nil(t, err)
+	t.Log(string(b))
+
+	time.Sleep(2 * time.Second) // make sure token expired and refresh happened
+
+	// try add a comment with blocked user
+	req, err = http.NewRequest("POST", "http://localhost:18080/api/v1/comment",
+		strings.NewReader(`{"text": "test 123 blah", "locator":{"url": "https://radio-t.com/blah1", "site": "remark"}}`))
+	req.Header.Set("X-JWT", tk)
+	require.Nil(t, err)
+	resp, err = client.Do(req)
+	require.Nil(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusForbidden, resp.StatusCode, "blocked user can't post")
+
+	app.Wait()
+}
+
 func prepServerApp(t *testing.T, duration time.Duration, fn func(o ServerCommand) ServerCommand) (*serverApp, context.Context) {
 	cmd := ServerCommand{}
-	cmd.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+	cmd.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "secret"})
 
 	// prepare options
 	p := flags.NewParser(&cmd, flags.Default)
-	_, err := p.ParseArgs([]string{"--dev-passwd=password"})
+	_, err := p.ParseArgs([]string{"--admin-passwd=password", "--site=remark"})
 	require.Nil(t, err)
 	cmd.Avatar.FS.Path, cmd.Avatar.Type, cmd.BackupLocation = "/tmp", "fs", "/tmp"
 	cmd.Store.Bolt.Path = fmt.Sprintf("/tmp/%d", cmd.Port)

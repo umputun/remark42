@@ -44,9 +44,9 @@ func (f *CommentFormatter) FormatText(txt string) (res string) {
 		blackfriday.Strikethrough | blackfriday.SpaceHeadings | blackfriday.HardLineBreak |
 		blackfriday.BackslashLineBreak | blackfriday.Autolink
 	res = string(blackfriday.Run([]byte(txt), blackfriday.WithExtensions(mdExt)))
+
 	for _, conv := range f.converters {
 		res = conv.Convert(res)
-
 	}
 	res = f.shortenAutoLinks(res, shortURLLen)
 	return res

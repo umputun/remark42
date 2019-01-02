@@ -67,7 +67,7 @@ func TestCleanup_postsInRange(t *testing.T) {
 	cmd := CleanupCommand{}
 	cmd.SetCommon(CommonOpts{RemarkURL: ts.URL, SharedSecret: "123456"})
 	p := flags.NewParser(&cmd, flags.Default)
-	_, err := p.ParseArgs([]string{"--site=remark", "--bword=bad1", "--bword=bad2", "--buser=bu_"})
+	_, err := p.ParseArgs([]string{"--site=remark", "--bword=bad1", "--bword=bad2", "--buser=bu_", "--admin-passwd=secret"})
 	require.Nil(t, err)
 	posts, err := cmd.postsInRange("20181218", "20181219")
 	assert.NoError(t, err)
@@ -90,7 +90,7 @@ func TestCleanup_listComments(t *testing.T) {
 	cmd := CleanupCommand{}
 	cmd.SetCommon(CommonOpts{RemarkURL: ts.URL, SharedSecret: "123456"})
 	p := flags.NewParser(&cmd, flags.Default)
-	_, err := p.ParseArgs([]string{"--site=remark", "--bword=bad1", "--bword=bad2", "--buser=bu_"})
+	_, err := p.ParseArgs([]string{"--site=remark", "--bword=bad1", "--bword=bad2", "--buser=bu_", "--admin-passwd=secret"})
 	require.Nil(t, err)
 
 	comments, err := cmd.listComments("http://test.com/post1")
@@ -117,7 +117,7 @@ func TestCleanup_Execute(t *testing.T) {
 	cmd.SetCommon(CommonOpts{RemarkURL: ts.URL, SharedSecret: "123456"})
 	p := flags.NewParser(&cmd, flags.Default)
 	_, err := p.ParseArgs([]string{"--site=remark", "--bword=bad1", "--bword=bad2", "--buser=bu_",
-		"--from=20181217", "--to=20181218"})
+		"--from=20181217", "--to=20181218", "--admin-passwd=secret"})
 	require.Nil(t, err)
 	err = cmd.Execute(nil)
 	assert.NoError(t, err)

@@ -8,26 +8,23 @@ import (
 	"io/ioutil"
 	"log"
 
-	"github.com/coreos/bbolt"
+	bolt "github.com/coreos/bbolt"
 	"github.com/pkg/errors"
-
-	"github.com/umputun/remark/backend/app/store"
 )
 
 // BoltDB implements avatar store with bolt
 // using separate db (file) with "avatars" bucket to keep image bin and "metas" bucket
 // to keep sha1 of picture. avatarID (base file name) used as a key for both.
 type BoltDB struct {
-	fileName    string // full path to boltdb
-	resizeLimit int
-	db          *bolt.DB
+	fileName string // full path to boltdb
+	db       *bolt.DB
 }
 
 const avatarsBktName = "avatars"
 const metasBktName = "metas"
 
 // NewBoltDB makes bolt avatar store
-func NewBoltDB(fileName string, options bolt.Options, resizeLimit int) (*BoltDB, error) {
+func NewBoltDB(fileName string, options bolt.Options) (*BoltDB, error) {
 	db, err := bolt.Open(fileName, 0600, &options)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to make boltdb for %s", fileName)
@@ -42,17 +39,12 @@ func NewBoltDB(fileName string, options bolt.Options, resizeLimit int) (*BoltDB,
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to initialize boltdb db %q buckets", fileName)
 	}
-	return &BoltDB{db: db, fileName: fileName, resizeLimit: resizeLimit}, nil
+	return &BoltDB{db: db, fileName: fileName}, nil
 }
 
 // Put avatar to bolt, key by avatarID. Trying to resize image and lso calculates sha1 of the file for ID func
 func (b *BoltDB) Put(userID string, reader io.Reader) (avatar string, err error) {
 	id := encodeID(userID)
-
-	// Trying to resize avatar.
-	if reader = resize(reader, b.resizeLimit); reader == nil {
-		return "", errors.New("avatar resize reader is nil")
-	}
 
 	avatarID := id + imgSfx
 	err = b.db.Update(func(tx *bolt.Tx) error {
@@ -96,7 +88,7 @@ func (b *BoltDB) ID(avatarID string) (id string) {
 
 	if err != nil { // failed to get ID, use encoded avatarID
 		log.Printf("[DEBUG] can't get avatar info '%s', %s", avatarID, err)
-		return store.EncodeID(avatarID)
+		return encodeID(avatarID)
 	}
 
 	return string(data)
@@ -138,7 +130,7 @@ func (b *BoltDB) sha1(data []byte, avatarID string) (id string) {
 	h := sha1.New()
 	if _, err := h.Write(data); err != nil {
 		log.Printf("[DEBUG] can't apply sha1 for content of '%s', %s", avatarID, err)
-		return store.EncodeID(avatarID)
+		return encodeID(avatarID)
 	}
 	return hex.EncodeToString(h.Sum(nil))
 }

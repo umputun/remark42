@@ -36,6 +36,13 @@ const (
 	None
 )
 
+// Logger returns default logger middleware
+func Logger(next http.Handler) http.Handler {
+	l := New(Flags(All), Prefix("[REST]"))
+	return l.Handler(next)
+
+}
+
 // New makes rest Logger with given options
 func New(options ...Option) *Middleware {
 	res := Middleware{

@@ -9,12 +9,12 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
+
+	"github.com/go-pkgz/auth"
 	R "github.com/go-pkgz/rest"
 	"github.com/go-pkgz/rest/cache"
 
 	"github.com/umputun/remark/backend/app/rest"
-	"github.com/umputun/remark/backend/app/rest/auth"
-	"github.com/umputun/remark/backend/app/rest/proxy"
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/service"
 )
@@ -23,9 +23,8 @@ import (
 type admin struct {
 	dataService   *service.DataStore
 	cache         cache.LoadingCache
-	authenticator auth.Authenticator
+	authenticator *auth.Service
 	readOnlyAge   int
-	avatarProxy   *proxy.Avatar
 	migrator      *Migrator
 }
 
@@ -102,35 +101,36 @@ func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 
 	token := r.URL.Query().Get("token")
 
-	claims, err := a.authenticator.JWTService.Parse(token)
+	claims, err := a.authenticator.TokenService().Parse(token)
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't process token")
 		return
 	}
 
-	log.Printf("[INFO] delete all user comments by request for %s, site %s", claims.User.ID, claims.SiteID)
+	log.Printf("[INFO] delete all user comments by request for %s, site %s", claims.User.ID, claims.Audience)
 
 	// deleteme set by deleteMeCtrl, this check just to make sure we not trying to delete with leaked token
-	if !claims.Flags.DeleteMe {
+	if !claims.User.BoolAttr("delete_me") {
 		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("forbidden"), "can't use provided token")
 		return
 	}
 
-	if err := a.dataService.DeleteUser(claims.SiteID, claims.User.ID); err != nil {
+	if err := a.dataService.DeleteUser(claims.Audience, claims.User.ID); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete user")
 		return
 	}
 
-	if claims.User.Picture != "" {
-		if err := a.avatarProxy.Store.Remove(path.Base(claims.User.Picture)); err != nil {
+	if claims.User.Picture != "" && a.authenticator.AvatarProxy() != nil {
+		avatartStore := a.authenticator.AvatarProxy().Store
+		if err := avatartStore.Remove(path.Base(claims.User.Picture)); err != nil {
 			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete user's avatar")
 			return
 		}
 	}
 
-	a.cache.Flush(cache.Flusher(claims.SiteID).Scopes(claims.SiteID, claims.User.ID, lastCommentsScope))
+	a.cache.Flush(cache.Flusher(claims.Audience).Scopes(claims.Audience, claims.User.ID, lastCommentsScope))
 	render.Status(r, http.StatusOK)
-	render.JSON(w, r, R.JSON{"user_id": claims.User.ID, "site_id": claims.SiteID})
+	render.JSON(w, r, R.JSON{"user_id": claims.User.ID, "site_id": claims.Audience})
 }
 
 // PUT /user/{userid}?site=side-id&block=1&ttl=7d - block or unblock user

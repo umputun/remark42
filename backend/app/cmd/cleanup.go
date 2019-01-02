@@ -15,12 +15,13 @@ import (
 
 // CleanupCommand set of flags and command for cleanup
 type CleanupCommand struct {
-	Site     string   `short:"s" long:"site" env:"SITE" default:"remark" description:"site name"`
-	Dry      bool     `long:"dry" description:"dry mode, will not remove comments"`
-	From     string   `long:"from" description:"from yyyymmdd"`
-	To       string   `long:"to" description:"from yyyymmdd"`
-	BadWords []string `short:"w" long:"bword" description:"bad word(s)"`
-	BadUsers []string `short:"u" long:"buser" description:"bad user(s)"`
+	Site        string   `short:"s" long:"site" env:"SITE" default:"remark" description:"site name"`
+	Dry         bool     `long:"dry" description:"dry mode, will not remove comments"`
+	From        string   `long:"from" description:"from yyyymmdd"`
+	To          string   `long:"to" description:"from yyyymmdd"`
+	BadWords    []string `short:"w" long:"bword" description:"bad word(s)"`
+	BadUsers    []string `short:"u" long:"buser" description:"bad user(s)"`
+	AdminPasswd string   `long:"admin-passwd" env:"ADMIN_PASSWD" required:"true" description:"admin basic auth password"`
 	CommonOpts
 }
 
@@ -160,12 +161,13 @@ func (cc *CleanupCommand) listComments(postURL string) ([]store.Comment, error) 
 // deleteComment with DELETE /admin/comment/{id}?site=siteID&url=post-url
 func (cc *CleanupCommand) deleteComment(c store.Comment) error {
 
-	deleteURL := fmt.Sprintf("%s/api/v1/admin/comment/%s?site=%s&url=%s&format=plain&secret=%s",
-		cc.RemarkURL, c.ID, cc.Site, c.Locator.URL, cc.SharedSecret)
+	deleteURL := fmt.Sprintf("%s/api/v1/admin/comment/%s?site=%s&url=%s&format=plain", cc.RemarkURL, c.ID, cc.Site, c.Locator.URL)
 	req, err := http.NewRequest("DELETE", deleteURL, nil)
 	if err != nil {
 		return errors.Wrapf(err, "failed to make delete request for comment %s, %s", c.ID, c.Locator.URL)
 	}
+	req.SetBasicAuth("admin", cc.AdminPasswd)
+
 	client := http.Client{}
 	r, err := client.Do(req)
 	if err != nil {

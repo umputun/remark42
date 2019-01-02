@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"hash/crc64"
 	"io"
-	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -13,33 +12,31 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
-
-	"github.com/umputun/remark/backend/app/store"
 )
 
 // LocalFS implements Store for local file system
 type LocalFS struct {
-	storePath   string
-	resizeLimit int
-	ctcTable    *crc64.Table
-	once        sync.Once
+	storePath string
+	ctcTable  *crc64.Table
+	once      sync.Once
 }
 
 // NewLocalFS makes file-system avatar store
-func NewLocalFS(storePath string, resizeLimit int) *LocalFS {
-	return &LocalFS{storePath: storePath, resizeLimit: resizeLimit}
+func NewLocalFS(storePath string) *LocalFS {
+	return &LocalFS{storePath: storePath}
 }
 
 // Put avatar for userID to file and return avatar's file name (base), like 12345678.image
 // userID can be avatarID as well, in this case encoding just strip .image prefix
 func (fs *LocalFS) Put(userID string, reader io.Reader) (avatar string, err error) {
+	if reader == nil {
+		return "", errors.New("empty reader")
+	}
 	id := encodeID(userID)
 	location := fs.location(id) // location adds partition to path
 
-	if _, err = os.Stat(location); os.IsNotExist(err) {
-		if e := os.Mkdir(location, 0700); e != nil {
-			return "", errors.Wrapf(e, "failed to mkdir avatar location %s", location)
-		}
+	if e := os.MkdirAll(location, 0755); e != nil {
+		return "", errors.Wrapf(e, "failed to mkdir avatar location %s", location)
 	}
 
 	avFile := path.Join(location, id+imgSfx)
@@ -49,14 +46,9 @@ func (fs *LocalFS) Put(userID string, reader io.Reader) (avatar string, err erro
 	}
 	defer func() {
 		if e := fh.Close(); e != nil {
-			log.Printf("[WARN] can't close avatar file %s, %s", avFile, e)
+			err = errors.Wrapf(err, "can't close avatar file %s", avFile)
 		}
 	}()
-
-	// Trying to resize avatar.
-	if reader = resize(reader, fs.resizeLimit); reader == nil {
-		return "", errors.New("avatar resize reader is nil")
-	}
 
 	if _, err = io.Copy(fh, reader); err != nil {
 		return "", errors.Wrapf(err, "can't save file %s", avFile)
@@ -84,10 +76,9 @@ func (fs *LocalFS) ID(avatar string) (id string) {
 	avFile := path.Join(location, avatar)
 	fi, err := os.Stat(avFile)
 	if err != nil {
-		log.Printf("[DEBUG] can't get file info '%s', %s", avFile, err)
-		return store.EncodeID(avatar)
+		return encodeID(avatar)
 	}
-	return store.EncodeID(avatar + strconv.FormatInt(fi.ModTime().Unix(), 10))
+	return encodeID(avatar + strconv.FormatInt(fi.ModTime().Unix(), 10))
 }
 
 // Remove avatar file

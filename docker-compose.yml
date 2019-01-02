@@ -32,6 +32,6 @@ services:
             - AUTH_FACEBOOK_CSEC
             - AUTH_DISQUS_CID
             - AUTH_DISQUS_CSEC
-            # - DEV_PASSWD=password # development mode, be careful!
+            # - ADMIN_PASSWD=password
         volumes:
             - ./var:/srv/var

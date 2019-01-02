@@ -5,9 +5,10 @@ import (
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
-	"github.com/go-pkgz/mongo"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
+
+	"github.com/go-pkgz/mongo"
 
 	"github.com/umputun/remark/backend/app/store"
 )

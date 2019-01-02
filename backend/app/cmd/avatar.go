@@ -5,11 +5,11 @@ import (
 	"path"
 	"time"
 
-	"github.com/coreos/bbolt"
-	"github.com/go-pkgz/mongo"
+	bolt "github.com/coreos/bbolt"
 	"github.com/pkg/errors"
 
-	"github.com/umputun/remark/backend/app/store/avatar"
+	"github.com/go-pkgz/auth/avatar"
+	"github.com/go-pkgz/mongo"
 )
 
 // AvatarCommand set of flags and command for avatar migration
@@ -76,19 +76,19 @@ func (ac *AvatarCommand) makeAvatarStore(gr AvatarGroup) (avatar.Store, error) {
 		if err := makeDirs(gr.FS.Path); err != nil {
 			return nil, err
 		}
-		return avatar.NewLocalFS(gr.FS.Path, gr.RszLmt), nil
+		return avatar.NewLocalFS(gr.FS.Path), nil
 	case "mongo":
 		mgServer, err := ac.makeMongo()
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to create mongo server")
 		}
 		conn := mongo.NewConnection(mgServer, ac.Mongo.DB, "")
-		return avatar.NewGridFS(conn, gr.RszLmt), nil
+		return avatar.NewGridFS(conn), nil
 	case "bolt":
 		if err := makeDirs(path.Dir(gr.Bolt.File)); err != nil {
 			return nil, err
 		}
-		return avatar.NewBoltDB(gr.Bolt.File, bolt.Options{}, gr.RszLmt)
+		return avatar.NewBoltDB(gr.Bolt.File, bolt.Options{})
 	}
 	return nil, errors.Errorf("unsupported avatar store type %s", gr.Type)
 }

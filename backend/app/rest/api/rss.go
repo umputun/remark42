@@ -7,9 +7,10 @@ import (
 	"time"
 
 	"github.com/go-chi/chi"
-	"github.com/go-pkgz/rest/cache"
 	"github.com/gorilla/feeds"
 	"github.com/pkg/errors"
+
+	"github.com/go-pkgz/rest/cache"
 
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/store"

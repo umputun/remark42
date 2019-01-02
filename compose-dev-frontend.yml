@@ -31,9 +31,9 @@ services:
             - REMARK_URL=http://127.0.0.1:8080
             - SECRET=12345
             - STORE_BOLT_PATH=/srv/var/db
-            - BACKUP_PATH=/srv/var/backup
+            - BACKUP_PATH=/srv/var/backupang
             - DEBUG=true
-            - DEV_PASSWD=password
+            - ADMIN_PASSWD=password
             - AUTH_DEV=true   # activate local oauth "dev"
             - ADMIN_SHARED_ID=dev_user  # set admin flag for default user on local ouath2
         volumes:

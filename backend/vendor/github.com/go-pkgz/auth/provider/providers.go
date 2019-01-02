@@ -1,6 +1,7 @@
-package auth
+package provider
 
 import (
+	"crypto/sha1"
 	"encoding/json"
 	"fmt"
 
@@ -9,21 +10,21 @@ import (
 	"golang.org/x/oauth2/google"
 	"golang.org/x/oauth2/yandex"
 
-	"github.com/umputun/remark/backend/app/store"
+	"github.com/go-pkgz/auth/token"
 )
 
 // NewGoogle makes google oauth2 provider
-func NewGoogle(p Params) Provider {
-	return initProvider(p, Provider{
-		Name:        "google",
-		Endpoint:    google.Endpoint,
-		RedirectURL: p.RemarkURL + "/auth/google/callback",
-		Scopes:      []string{"https://www.googleapis.com/auth/userinfo.profile"},
-		InfoURL:     "https://www.googleapis.com/oauth2/v3/userinfo",
-		MapUser: func(data userData, _ []byte) store.User {
-			userInfo := store.User{
+func NewGoogle(p Params) Oauth2Handler {
+	return initOauth2Handler(p, Oauth2Handler{
+		name:        "google",
+		endpoint:    google.Endpoint,
+		redirectURL: p.URL + "/auth/google/callback",
+		scopes:      []string{"https://www.googleapis.com/auth/userinfo.profile"},
+		infoURL:     "https://www.googleapis.com/oauth2/v3/userinfo",
+		mapUser: func(data userData, _ []byte) token.User {
+			userInfo := token.User{
 				// encode email with provider name to avoid collision if same id returned by other provider
-				ID:      "google_" + store.EncodeID(data.value("sub")),
+				ID:      "google_" + token.HashID(sha1.New(), data.value("sub")),
 				Name:    data.value("name"),
 				Picture: data.value("picture"),
 			}
@@ -36,16 +37,16 @@ func NewGoogle(p Params) Provider {
 }
 
 // NewGithub makes github oauth2 provider
-func NewGithub(p Params) Provider {
-	return initProvider(p, Provider{
-		Name:        "github",
-		Endpoint:    github.Endpoint,
-		RedirectURL: p.RemarkURL + "/auth/github/callback",
-		Scopes:      []string{},
-		InfoURL:     "https://api.github.com/user",
-		MapUser: func(data userData, _ []byte) store.User {
-			userInfo := store.User{
-				ID:      "github_" + store.EncodeID(data.value("login")),
+func NewGithub(p Params) Oauth2Handler {
+	return initOauth2Handler(p, Oauth2Handler{
+		name:        "github",
+		endpoint:    github.Endpoint,
+		redirectURL: p.URL + "/auth/github/callback",
+		scopes:      []string{},
+		infoURL:     "https://api.github.com/user",
+		mapUser: func(data userData, _ []byte) token.User {
+			userInfo := token.User{
+				ID:      "github_" + token.HashID(sha1.New(), data.value("login")),
 				Name:    data.value("name"),
 				Picture: data.value("avatar_url"),
 			}
@@ -59,7 +60,7 @@ func NewGithub(p Params) Provider {
 }
 
 // NewFacebook makes facebook oauth2 provider
-func NewFacebook(p Params) Provider {
+func NewFacebook(p Params) Oauth2Handler {
 
 	// response format for fb /me call
 	type uinfo struct {
@@ -72,15 +73,15 @@ func NewFacebook(p Params) Provider {
 		} `json:"picture"`
 	}
 
-	return initProvider(p, Provider{
-		Name:        "facebook",
-		Endpoint:    facebook.Endpoint,
-		RedirectURL: p.RemarkURL + "/auth/facebook/callback",
-		Scopes:      []string{"public_profile"},
-		InfoURL:     "https://graph.facebook.com/me?fields=id,name,picture",
-		MapUser: func(data userData, bdata []byte) store.User {
-			userInfo := store.User{
-				ID:   "facebook_" + store.EncodeID(data.value("id")),
+	return initOauth2Handler(p, Oauth2Handler{
+		name:        "facebook",
+		endpoint:    facebook.Endpoint,
+		redirectURL: p.URL + "/auth/facebook/callback",
+		scopes:      []string{"public_profile"},
+		infoURL:     "https://graph.facebook.com/me?fields=id,name,picture",
+		mapUser: func(data userData, bdata []byte) token.User {
+			userInfo := token.User{
+				ID:   "facebook_" + token.HashID(sha1.New(), data.value("id")),
 				Name: data.value("name"),
 			}
 			if userInfo.Name == "" {
@@ -97,17 +98,17 @@ func NewFacebook(p Params) Provider {
 }
 
 // NewYandex makes yandex oauth2 provider
-func NewYandex(p Params) Provider {
-	return initProvider(p, Provider{
-		Name:        "yandex",
-		Endpoint:    yandex.Endpoint,
-		RedirectURL: p.RemarkURL + "/auth/yandex/callback",
-		Scopes:      []string{},
+func NewYandex(p Params) Oauth2Handler {
+	return initOauth2Handler(p, Oauth2Handler{
+		name:        "yandex",
+		endpoint:    yandex.Endpoint,
+		redirectURL: p.URL + "/auth/yandex/callback",
+		scopes:      []string{},
 		// See https://tech.yandex.com/passport/doc/dg/reference/response-docpage/
-		InfoURL: "https://login.yandex.ru/info?format=json",
-		MapUser: func(data userData, _ []byte) store.User {
-			userInfo := store.User{
-				ID:   "yandex_" + store.EncodeID(data.value("id")),
+		infoURL: "https://login.yandex.ru/info?format=json",
+		mapUser: func(data userData, _ []byte) token.User {
+			userInfo := token.User{
+				ID:   "yandex_" + token.HashID(sha1.New(), data.value("id")),
 				Name: data.value("display_name"), // using Display Name by default
 			}
 			if userInfo.Name == "" {

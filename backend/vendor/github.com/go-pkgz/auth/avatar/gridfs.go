@@ -10,19 +10,16 @@ import (
 	"github.com/globalsign/mgo"
 	"github.com/go-pkgz/mongo"
 	"github.com/pkg/errors"
-
-	"github.com/umputun/remark/backend/app/store"
 )
 
 // NewGridFS makes gridfs (mongo) avatar store
-func NewGridFS(conn *mongo.Connection, resizeLimit int) *GridFS {
-	return &GridFS{Connection: conn, resizeLimit: resizeLimit}
+func NewGridFS(conn *mongo.Connection) *GridFS {
+	return &GridFS{Connection: conn}
 }
 
 // GridFS implements Store for GridFS
 type GridFS struct {
-	Connection  *mongo.Connection
-	resizeLimit int
+	Connection *mongo.Connection
 }
 
 // Put avatar to gridfs object, try to resize
@@ -39,10 +36,6 @@ func (gf *GridFS) Put(userID string, reader io.Reader) (avatar string, err error
 			}
 		}()
 
-		// Trying to resize avatar.
-		if reader = resize(reader, gf.resizeLimit); reader == nil {
-			return errors.New("avatar resize reader is nil")
-		}
 		_, e = io.Copy(fh, reader)
 		return e
 	})
@@ -78,7 +71,7 @@ func (gf *GridFS) ID(avatar string) (id string) {
 	})
 	if err != nil {
 		log.Printf("[DEBUG] can't get file info '%s', %s", avatar, err)
-		return store.EncodeID(avatar)
+		return encodeID(avatar)
 	}
 	return id
 }
