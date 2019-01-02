@@ -364,7 +364,7 @@ func TestServerAuthHooks(t *testing.T) {
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "user dev blocked")
 	b, err := ioutil.ReadAll(resp.Body)
-	require.Nil(t, e)
+	require.Nil(t, err)
 	t.Log(string(b))
 
 	time.Sleep(2 * time.Second) // make sure token expired and refresh happened

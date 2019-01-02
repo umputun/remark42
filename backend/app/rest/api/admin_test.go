@@ -269,6 +269,7 @@ func TestAdmin_BlockedList(t *testing.T) {
 	require.Nil(t, err)
 	req.SetBasicAuth("admin", "password")
 	res, err = client.Do(req)
+	require.Nil(t, err)
 	require.Equal(t, 200, res.StatusCode)
 	users = []store.BlockedUser{}
 	err = json.NewDecoder(res.Body).Decode(&users)
