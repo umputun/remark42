@@ -7,7 +7,6 @@ import (
 	"hash"
 	"hash/crc64"
 	"io"
-	"log"
 	"net/http"
 	"regexp"
 
@@ -74,7 +73,7 @@ func (u *User) IsAdmin() bool {
 	return u.BoolAttr(adminAttr)
 }
 
-// HashID tries to has val with hash.Hash and fallback to crc if needed
+// HashID tries to hash val with hash.Hash and fallback to crc if needed
 func HashID(h hash.Hash, val string) string {
 
 	if reValidSha.MatchString(val) {
@@ -83,7 +82,9 @@ func HashID(h hash.Hash, val string) string {
 
 	if _, err := io.WriteString(h, val); err != nil {
 		// fail back to crc64
-		log.Printf("[WARN] can't hash id %s, %s", val, err)
+		if val == "" {
+			val = "!empty string!"
+		}
 		if reValidCrc64.MatchString(val) {
 			return val // already crced
 		}

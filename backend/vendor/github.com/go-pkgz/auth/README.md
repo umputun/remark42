@@ -2,12 +2,13 @@
 
 
 
-This library provides "social login" with Github, Google, Facebook and Yandex.  
+This library provides "social login" with Github, Google, Facebook and Yandex as well as custom auth providers.  
 
 - Multiple oauth2 providers can be used at the same time
 - Special `dev` provider allows local testing and development
 - JWT stored in a secure cookie with XSRF protection. Cookies can be session-only
 - Minimal scopes with user name, id and picture (avatar) only
+- Direct authentication with user's provided credential checker
 - Integrated avatar proxy with FS, boltdb and gridfs storages
 - Support of user-defined storages for avatars
 - Black list with user-defined validator
@@ -128,13 +129,28 @@ Direct links to avatars won't survive any real-life usage if they linked from a 
     - `AvatarRoutePath` - route prefix for direct links to proxied avatar. For example `/api/v1/avatars` will make full links like this - `http://example.com/api/v1/avatars/1234567890123.image`. The url will be stored in user's token and retrieved by middleware (see "User Info")
     - `AvatarResizeLimit` - size (in pixels) used to resize the avatar. Pls note - resize happens once as a part of `Put` call, i.e. on login. 0 size (default) disables resizing.      
 
+### Direct authentication
+
+In addition to oauth2 providers `auth.Service` allows to use direct user-defined authentication. This is done by adding direct provider with `auth.AddDirectProvider`. 
+
+```go
+	service.AddDirectProvider("local", provider.CredCheckerFunc(func(user, password string) (ok bool, err error) {
+		ok, err := checkUserSomehow(user, password) 
+		return ok, err
+	}))
+```
+
+Such provider acts like any other, i.e. will be registered as `/auth/local/login`. 
+
+The API for this provider - `GET /auth/<name>/login?user=<user>&passwd=<password>&aud=<site_id>&session=[1|0]`
+
 ### Customization
 
 There are several ways to adjust functionality of the library:
 
 1. `SecretReader` - interface with a single method `Get(aud string) string` to return the secret used for JWT signing and verification
-1. `ClaimsUpdater` - interface with `Update(claims Claims) Claims` method. This is the primary way to alter a token at login time and add any attributes, set ip, email, admin status and so on.
-2. `Validator` - interface with `Validate(token string, claims Claims) bool` method. This is post-token hook and will be called on **each request** wrapped with `Auth` middleware. This will be the place for special logic to reject some tokens or users.
+2. `ClaimsUpdater` - interface with `Update(claims Claims) Claims` method. This is the primary way to alter a token at login time and add any attributes, set ip, email, admin status and so on.
+3. `Validator` - interface with `Validate(token string, claims Claims) bool` method. This is post-token hook and will be called on **each request** wrapped with `Auth` middleware. This will be the place for special logic to reject some tokens or users.
 
 All of the interfaces above have corresponding Func adapters - `SecretFunc`, `ClaimsUpdFunc` and `ValidatorFunc`.
 

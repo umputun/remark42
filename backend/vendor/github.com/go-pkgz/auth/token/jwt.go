@@ -1,6 +1,8 @@
 package token
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -48,7 +50,7 @@ type Opts struct {
 	TokenDuration  time.Duration
 	CookieDuration time.Duration
 	DisableXSRF    bool
-
+	DisableIAT     bool // disable IssuedAt claim
 	// optional (custom) names for cookies and headers
 	JWTCookieName  string
 	JWTHeaderKey   string
@@ -95,6 +97,10 @@ func (j *Service) Token(claims Claims) (string, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
+	if j.SecretReader == nil {
+		return "", errors.New("secretreader not defined")
+	}
+
 	secret, err := j.SecretReader.Get(claims.Audience) // get secret via consumer defined SecretReader
 	if err != nil {
 		return "", errors.Wrap(err, "can't get secret")
@@ -128,6 +134,10 @@ func (j *Service) Parse(tokenString string) (Claims, error) {
 		return Claims{}, errors.Wrap(err, "failed to get aud from token token")
 	}
 
+	if j.SecretReader == nil {
+		return Claims{}, errors.New("secretreader not defined")
+	}
+
 	secret, err := j.SecretReader.Get(aud)
 	if err != nil {
 		return Claims{}, errors.Wrap(err, "can't get secret")
@@ -159,7 +169,13 @@ func (j *Service) Set(w http.ResponseWriter, claims Claims) error {
 		claims.ExpiresAt = time.Now().Add(j.TokenDuration).Unix()
 	}
 
-	claims.Issuer = j.Issuer
+	if claims.Issuer == "" {
+		claims.Issuer = j.Issuer
+	}
+
+	if !j.DisableIAT {
+		claims.IssuedAt = time.Now().Unix()
+	}
 
 	tokenString, err := j.Token(claims)
 	if err != nil {
@@ -279,4 +295,12 @@ type ValidatorFunc func(token string, claims Claims) bool
 // Validate calls f(id)
 func (f ValidatorFunc) Validate(token string, claims Claims) bool {
 	return f(token, claims)
+}
+
+func (c Claims) String() string {
+	b, err := json.Marshal(c)
+	if err != nil {
+		return fmt.Sprintf("%+v %+v", c.StandardClaims, c.User)
+	}
+	return string(b)
 }

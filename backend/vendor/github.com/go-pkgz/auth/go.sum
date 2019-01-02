@@ -16,6 +16,7 @@ github.com/go-pkgz/rest v1.1.4 h1:/Lrg9kBWBjNah7nmCDHLszRAfVVBIy5ajf0vVgpHPi0=
 github.com/go-pkgz/rest v1.1.4/go.mod h1:DIxxm3vSt6e+IY+UQUOFsfB2YaHLmGoOfPLWN5pxQSA=
 github.com/go-pkgz/rest v1.1.5 h1:5br4mnscfLb27yxv5hJFLBVmAt09PrmIBP+meA3CfHc=
 github.com/go-pkgz/rest v1.1.5/go.mod h1:DIxxm3vSt6e+IY+UQUOFsfB2YaHLmGoOfPLWN5pxQSA=
+github.com/hashicorp/golang-lru v0.5.0 h1:CL2msUPvZTLb5O648aiLNJw3hnBxN2+1Jq8rCOH9wdo=
 github.com/hashicorp/golang-lru v0.5.0/go.mod h1:/m3WP610KZHVQ1SGc6re/UDhFvYD7pJ4Ao+sR/qLZy8=
 github.com/nullrocks/identicon v0.0.0-20180626043057-7875f45b0022 h1:Ys0rDzh8s4UMlGaDa1UTA0sfKgvF0hQZzTYX8ktjiDc=
 github.com/nullrocks/identicon v0.0.0-20180626043057-7875f45b0022/go.mod h1:x4NsS+uc7ecH/Cbm9xKQ6XzmJM57rWTkjywjfB2yQ18=

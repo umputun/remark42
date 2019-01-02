@@ -126,9 +126,9 @@ func (a *Authenticator) refreshExpiredToken(w http.ResponseWriter, claims token.
 }
 
 // AdminOnly middleware allows access for admins only
+// this handler internally wrapped with auth(true) to avoid situation if AdminOnly defined without prior Auth
 func (a *Authenticator) AdminOnly(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
-
 		user, err := token.GetUserInfo(r)
 		if err != nil {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -141,7 +141,7 @@ func (a *Authenticator) AdminOnly(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	}
-	return http.HandlerFunc(fn)
+	return a.auth(true)(http.HandlerFunc(fn)) // enforce auth
 }
 
 // basic auth for admin user

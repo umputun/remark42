@@ -77,7 +77,7 @@ func (p Oauth2Handler) Name() string { return p.name }
 // LoginHandler - GET /login?from=redirect-back-url&site=siteID&session=1
 func (p Oauth2Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 
-	p.Logf("[DEBUG] login with %s", p.Name)
+	p.Logf("[DEBUG] login with %s", p.Name())
 	// make state (random) and store in session
 	state, err := randToken()
 	if err != nil {
