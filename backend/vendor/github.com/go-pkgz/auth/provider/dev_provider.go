@@ -130,6 +130,12 @@ func (d *DevAuthServer) Run(ctx context.Context) {
 	}
 	d.lock.Unlock()
 
+	go func() {
+		<-ctx.Done()
+		d.Logf("[DEBUG] cancellation via context, %v", ctx.Err())
+		d.Shutdown()
+	}()
+
 	err = d.httpServer.ListenAndServe()
 	d.Logf("[WARN] dev oauth2 server terminated, %s", err)
 }

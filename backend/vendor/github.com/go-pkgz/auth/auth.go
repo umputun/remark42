@@ -53,8 +53,9 @@ type Opts struct {
 	AvatarResizeLimit int          // resize avatar's limit in pixels
 	AvatarRoutePath   string       // avatar routing prefix, i.e. "/api/v1/avatar", default `/avatar`
 
-	AdminPasswd string   // if presented, allows basic auth with user admin and given password
-	Logger      logger.L // logger interface, default is no logging at all
+	AdminPasswd   string   // if presented, allows basic auth with user admin and given password
+	RefreshFactor int      // estimated number of request client sends in parallel during token refresh.
+	Logger        logger.L // logger interface, default is no logging at all
 }
 
 // NewService initializes everything
@@ -64,8 +65,9 @@ func NewService(opts Opts) (res *Service) {
 		opts:   opts,
 		logger: opts.Logger,
 		authMiddleware: middleware.Authenticator{
-			Validator:   opts.Validator,
-			AdminPasswd: opts.AdminPasswd,
+			Validator:     opts.Validator,
+			AdminPasswd:   opts.AdminPasswd,
+			RefreshFactor: opts.RefreshFactor,
 		},
 		issuer: opts.Issuer,
 	}

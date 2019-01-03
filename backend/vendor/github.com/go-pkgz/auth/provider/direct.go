@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/http"
 
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/go-pkgz/rest"
 
 	"github.com/go-pkgz/auth/logger"
@@ -72,7 +72,7 @@ func (p DirectHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	rest.RenderJSON(w, r, claims.User)
 }
 
-// AuthHandler doesn't do anyting for direct login as it has no callbacks
+// AuthHandler doesn't do anything for direct login as it has no callbacks
 func (p DirectHandler) AuthHandler(w http.ResponseWriter, r *http.Request) {}
 
 // LogoutHandler - GET /logout

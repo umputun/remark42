@@ -122,6 +122,9 @@ func (j *Service) Parse(tokenString string) (Claims, error) {
 		if err != nil {
 			return "", errors.Wrap(err, "can't pre-parse token")
 		}
+		if _, ok := preToken.Method.(*jwt.SigningMethodHMAC); !ok {
+			return "", errors.Errorf("unexpected signing method: %v", preToken.Header["alg"])
+		}
 		preClaims, ok := preToken.Claims.(*Claims)
 		if !ok {
 			return "", errors.New("invalid token")

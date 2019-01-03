@@ -2,6 +2,7 @@
 package middleware
 
 import (
+	"math/rand"
 	"net/http"
 
 	"github.com/pkg/errors"
@@ -14,10 +15,11 @@ import (
 // Authenticator is top level auth object providing middlewares
 type Authenticator struct {
 	logger.L
-	JWTService  TokenService
-	Providers   []provider.Service
-	Validator   token.Validator
-	AdminPasswd string
+	JWTService    TokenService
+	Providers     []provider.Service
+	Validator     token.Validator
+	AdminPasswd   string
+	RefreshFactor int
 }
 
 // TokenService defines interface accessing tokens
@@ -96,7 +98,7 @@ func (a *Authenticator) auth(reqAuth bool) func(http.Handler) http.Handler {
 					return
 				}
 
-				if a.JWTService.IsExpired(claims) {
+				if a.shouldRefresh(claims) {
 					if claims, err = a.refreshExpiredToken(w, claims); err != nil {
 						a.JWTService.Reset(w)
 						onError(h, w, r, errors.Wrap(err, "can't refresh token"))
@@ -117,12 +119,26 @@ func (a *Authenticator) auth(reqAuth bool) func(http.Handler) http.Handler {
 
 // refreshExpiredToken makes a new token with passed claims
 func (a *Authenticator) refreshExpiredToken(w http.ResponseWriter, claims token.Claims) (token.Claims, error) {
-
 	claims.ExpiresAt = 0 // this will cause now+duration for refreshed token
 	if err := a.JWTService.Set(w, claims); err != nil {
 		return token.Claims{}, err
 	}
 	return claims, nil
+}
+
+// shouldRefresh checks if token expired with an optional random rejection of refresh.
+// the goal is to prevent multiple refresh request executed at the same time by allowing only some of them
+func (a *Authenticator) shouldRefresh(claims token.Claims) bool {
+	if !a.JWTService.IsExpired(claims) {
+		return false
+	}
+
+	// disable randomizing with 0 factor
+	if a.RefreshFactor == 0 {
+		return true
+	}
+
+	return rand.Int31n(int32(a.RefreshFactor)) == 0 // randomize selection
 }
 
 // AdminOnly middleware allows access for admins only
