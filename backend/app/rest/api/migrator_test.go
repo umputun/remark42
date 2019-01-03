@@ -56,6 +56,7 @@ func TestMigrator_Import(t *testing.T) {
 	req.SetBasicAuth("admin", "password")
 	assert.NoError(t, err)
 	resp, err = client.Do(req)
+	require.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 }
 
@@ -90,6 +91,7 @@ func TestMigrator_ImportForm(t *testing.T) {
 	req.SetBasicAuth("admin", "password")
 	assert.NoError(t, err)
 	resp, err = client.Do(req)
+	require.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 }
 func TestMigrator_ImportFromWP(t *testing.T) {
@@ -117,6 +119,7 @@ func TestMigrator_ImportFromWP(t *testing.T) {
 	req.SetBasicAuth("admin", "password")
 	assert.NoError(t, err)
 	resp, err = client.Do(req)
+	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 
 	assert.NoError(t, ds.Interface.Close())
@@ -204,6 +207,7 @@ func TestMigrator_ImportWaitExpired(t *testing.T) {
 	req.SetBasicAuth("admin", "password")
 	assert.NoError(t, err)
 	resp, err = client.Do(req)
+	assert.NoError(t, err)
 	assert.Equal(t, http.StatusGatewayTimeout, resp.StatusCode)
 }
 
@@ -228,6 +232,7 @@ func TestMigrator_Export(t *testing.T) {
 	req.SetBasicAuth("admin", "password")
 	assert.NoError(t, err)
 	resp, err = client.Do(req)
+	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 
 	// check file mode
