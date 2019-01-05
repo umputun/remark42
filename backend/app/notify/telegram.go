@@ -89,6 +89,9 @@ func (t *Telegram) Send(ctx context.Context, req request) error {
 	}
 	from = "*" + from + "*"
 	link := fmt.Sprintf("↦ [original comment](%s)", req.comment.Locator.URL+uiNav+req.comment.ID)
+	if req.comment.PostTitle != "" {
+		link = fmt.Sprintf("↦ [%s](%s)", req.comment.PostTitle, req.comment.Locator.URL+uiNav+req.comment.ID)
+	}
 	u := fmt.Sprintf("%s%s/sendMessage?chat_id=@%s&parse_mode=Markdown&disable_web_page_preview=true",
 		t.apiPrefix, t.token, t.channelName)
 
