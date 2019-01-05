@@ -2,7 +2,7 @@
 import { h, Component } from 'preact';
 
 import { BASE_URL, API_BASE, DEFAULT_MAX_COMMENT_SIZE } from 'common/constants';
-import { siteId, url } from 'common/settings';
+import { siteId, url, pageTitle } from 'common/settings';
 
 import api from 'common/api';
 import store from 'common/store';
@@ -73,8 +73,9 @@ export default class Input extends Component {
 
     this.setState({ isDisabled: true, isErrorShown: false });
 
-    const request =
-      mods.mode === 'edit' ? api.updateComment({ text, id }) : api.addComment({ text, ...(pid ? { pid } : {}) });
+    const request = mods.mode === 'edit'
+      ? api.updateComment({ text, id })
+      : api.addComment({ title: pageTitle || document.title, text, ...(pid ? { pid } : {}) });
 
     request
       .then(comment => {

@@ -284,7 +284,8 @@ Add this snippet to the bottom of web page:
     site_id: 'YOUR_SITE_ID',
     url: 'PAGE_URL', // optional param; if it isn't defined window.location.href will be used
     max_shown_comments: 10, // optional param; if it isn't defined default value (15) will be used
-    theme: 'dark', // optional param; if it isn't defined default value ('light') will be used 
+    theme: 'dark', // optional param; if it isn't defined default value ('light') will be used
+    page_title: 'Moving to Remark42' // optional param; if it isn't defined `document.title` will be used
   };
 
   (function() {

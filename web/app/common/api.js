@@ -31,10 +31,11 @@ export const putCommentVote = ({ id, url, value }) =>
     withCredentials: true,
   });
 
-export const addComment = ({ text, pid }) =>
+export const addComment = ({ title, text, pid }) =>
   fetcher.post({
     url: '/comment',
     body: {
+      title,
       text,
       locator: {
         site: siteId,

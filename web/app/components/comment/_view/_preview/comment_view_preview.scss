@@ -9,6 +9,22 @@
       color: #0aa;
     }
 
+    .comment__title {
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      color: #0aa;
+    }
+
+    .comment__title-link {
+      color: #0aa;
+      text-decoration: none;
+
+      &:hover {
+        opacity: 0.75;
+      }
+    }
+
     .comment__info {
       display: inline;
       padding-right: 0;
