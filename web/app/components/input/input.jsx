@@ -73,9 +73,10 @@ export default class Input extends Component {
 
     this.setState({ isDisabled: true, isErrorShown: false });
 
-    const request = mods.mode === 'edit'
-      ? api.updateComment({ text, id })
-      : api.addComment({ title: pageTitle || document.title, text, ...(pid ? { pid } : {}) });
+    const request =
+      mods.mode === 'edit'
+        ? api.updateComment({ text, id })
+        : api.addComment({ title: pageTitle || document.title, text, ...(pid ? { pid } : {}) });
 
     request
       .then(comment => {
