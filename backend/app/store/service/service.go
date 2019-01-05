@@ -60,13 +60,14 @@ func (s *DataStore) Create(comment store.Comment) (commentID string, err error) 
 		return "", errors.Wrap(err, "failed to prepare comment")
 	}
 
-	if s.TitleExtractor != nil {
+	if s.TitleExtractor != nil && comment.PostTitle == "" {
 		if title, err := s.TitleExtractor.Get(comment.Locator.URL); err == nil {
 			comment.PostTitle = title
 		} else {
 			log.Printf("[WARN] failed to set title, %v", err)
 		}
 	}
+
 	return s.Interface.Create(comment)
 }
 
