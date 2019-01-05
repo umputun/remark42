@@ -21,6 +21,7 @@ type DataStore struct {
 	AdminStore     admin.Store
 	MaxCommentSize int
 	MaxVotes       int
+	TitleExtractor TitleExtractor
 
 	// granular locks
 	scopedLocks struct {
@@ -58,6 +59,9 @@ func (s *DataStore) Create(comment store.Comment) (commentID string, err error) 
 		return "", errors.Wrap(err, "failed to prepare comment")
 	}
 
+	if title, err := s.TitleExtractor.Get(comment.Locator.URL); err == nil {
+		comment.PostTitle = title
+	}
 	return s.Interface.Create(comment)
 }
 

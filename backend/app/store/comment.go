@@ -22,6 +22,7 @@ type Comment struct {
 	Edit      *Edit           `json:"edit,omitempty" bson:"edit,omitempty"` // pointer to have empty default in json response
 	Pin       bool            `json:"pin,omitempty" bson:"pin,omitempty"`
 	Deleted   bool            `json:"delete,omitempty" bson:"delete"`
+	PostTitle string          `json:"title,omitempty" bson:"title"`
 }
 
 // Locator keeps site and url of the post
