@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
@@ -214,6 +215,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		AdminStore:     adminStore,
 		MaxCommentSize: s.MaxCommentSize,
 		MaxVotes:       s.MaxVotes,
+		TitleExtractor: service.NewTitleExtractor(http.Client{Timeout: time.Second * 5}),
 	}
 
 	loadingCache, err := s.makeCache()

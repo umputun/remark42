@@ -316,7 +316,7 @@ func Test_ACMEEmail(t *testing.T) {
 }
 
 func TestServerAuthHooks(t *testing.T) {
-	app, ctx := prepServerApp(t, 2500*time.Millisecond, func(o ServerCommand) ServerCommand {
+	app, ctx := prepServerApp(t, 10000*time.Millisecond, func(o ServerCommand) ServerCommand {
 		o.Port = 18080
 		return o
 	})
@@ -347,7 +347,7 @@ func TestServerAuthHooks(t *testing.T) {
 	// add comment
 	client := http.Client{Timeout: 5 * time.Second}
 	req, err := http.NewRequest("POST", "http://localhost:18080/api/v1/comment",
-		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "remark"}}`))
+		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/p/2018/12/29/podcast-630/", "site": "remark"}}`))
 	req.Header.Set("X-JWT", tk)
 	require.Nil(t, err)
 	resp, err := client.Do(req)

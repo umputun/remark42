@@ -34,7 +34,6 @@ func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user := rest.MustGetUserInfo(r)
-	log.Printf("[DEBUG] create comment %+v", comment)
 
 	comment.PrepareUntrusted() // clean all fields user not supposed to set
 	comment.User = user
@@ -76,6 +75,8 @@ func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	if s.NotifyService != nil {
 		s.NotifyService.Submit(finalComment)
 	}
+
+	log.Printf("[DEBUG] created commend %+v", finalComment)
 
 	render.Status(r, http.StatusCreated)
 	render.JSON(w, r, &finalComment)

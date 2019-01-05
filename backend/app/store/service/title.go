@@ -38,7 +38,7 @@ func (t *TitleExtractor) Get(url string) (string, error) {
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to load page %s", url)
 		}
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint
 		if resp.StatusCode != 200 {
 			return nil, errors.Errorf("can't load page %s, code %d", url, resp.StatusCode)
 		}

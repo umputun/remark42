@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"math/rand"
+	"net/http"
 	"os"
 	"strings"
 	"sync"
@@ -68,7 +69,30 @@ func TestService_CreateFromPartial(t *testing.T) {
 	assert.Equal(t, "user", res.User.ID)
 	assert.Equal(t, "name", res.User.Name)
 	assert.Equal(t, "23f97cf4d5c29ef788ca2bdd1c9e75656c0e4149", res.User.IP)
+	assert.Equal(t, "", res.PostTitle)
 	assert.Equal(t, comment.Votes, res.Votes)
+}
+
+func TestService_CreateFromPartialWithTitle(t *testing.T) {
+	defer os.Remove(testDb)
+	ks := admin.NewStaticKeyStore("secret 123")
+	b := DataStore{Interface: prepStoreEngine(t), AdminStore: ks,
+		TitleExtractor: NewTitleExtractor(http.Client{Timeout: 5 * time.Second})}
+	comment := store.Comment{
+		Text:      "text",
+		Timestamp: time.Date(2018, 3, 25, 16, 34, 33, 0, time.UTC),
+		Votes:     map[string]bool{"u1": true, "u2": false},
+		User:      store.User{IP: "192.168.1.1", ID: "user", Name: "name"},
+		Locator:   store.Locator{URL: "https://radio-t.com/p/2018/12/29/podcast-630/", SiteID: "radio-t"},
+	}
+	id, err := b.Create(comment)
+	assert.NoError(t, err)
+	assert.True(t, id != "", id)
+
+	res, err := b.Get(store.Locator{URL: "https://radio-t.com/p/2018/12/29/podcast-630/", SiteID: "radio-t"}, id)
+	assert.NoError(t, err)
+	t.Logf("%+v", res)
+	assert.Equal(t, "Радио-Т 630 - Радио-Т Подкаст", res.PostTitle)
 }
 
 func TestService_Vote(t *testing.T) {

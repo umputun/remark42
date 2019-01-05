@@ -1,6 +1,7 @@
 package service
 
 import (
+	"log"
 	"sort"
 	"sync"
 	"time"
@@ -21,7 +22,7 @@ type DataStore struct {
 	AdminStore     admin.Store
 	MaxCommentSize int
 	MaxVotes       int
-	TitleExtractor TitleExtractor
+	TitleExtractor *TitleExtractor
 
 	// granular locks
 	scopedLocks struct {
@@ -59,8 +60,12 @@ func (s *DataStore) Create(comment store.Comment) (commentID string, err error) 
 		return "", errors.Wrap(err, "failed to prepare comment")
 	}
 
-	if title, err := s.TitleExtractor.Get(comment.Locator.URL); err == nil {
-		comment.PostTitle = title
+	if s.TitleExtractor != nil {
+		if title, err := s.TitleExtractor.Get(comment.Locator.URL); err == nil {
+			comment.PostTitle = title
+		} else {
+			log.Printf("[WARN] failed to set title, %v", err)
+		}
 	}
 	return s.Interface.Create(comment)
 }
