@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	jwt "github.com/dgrijalva/jwt-go"
@@ -57,7 +58,8 @@ type Opts struct {
 	XSRFCookieName string
 	XSRFHeaderKey  string
 
-	Issuer string // optional value for iss claim, usually application name
+	AudienceReader Audience // allowed aud values
+	Issuer         string   // optional value for iss claim, usually application name
 }
 
 // NewService makes JWT service
@@ -90,6 +92,8 @@ func NewService(opts Opts) *Service {
 // Token makes token with claims
 func (j *Service) Token(claims Claims) (string, error) {
 
+	// make token for allowed aud values only, rejects others
+
 	// update claims with ClaimsUpdFunc defined by consumer
 	if j.ClaimsUpd != nil {
 		claims = j.ClaimsUpd.Update(claims)
@@ -98,17 +102,21 @@ func (j *Service) Token(claims Claims) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
 	if j.SecretReader == nil {
-		return "", errors.New("secretreader not defined")
+		return "", errors.New("secret reader not defined")
 	}
 
-	secret, err := j.SecretReader.Get(claims.Audience) // get secret via consumer defined SecretReader
+	if err := j.checkAuds(&claims, j.AudienceReader); err != nil {
+		return "", errors.Wrap(err, "aud rejected")
+	}
+
+	secret, err := j.SecretReader.Get() // get secret via consumer defined SecretReader
 	if err != nil {
 		return "", errors.Wrap(err, "can't get secret")
 	}
 
 	tokenString, err := token.SignedString([]byte(secret))
 	if err != nil {
-		return "", errors.Wrap(err, "can't sign token token")
+		return "", errors.Wrap(err, "can't sign token")
 	}
 	return tokenString, nil
 }
@@ -117,31 +125,11 @@ func (j *Service) Token(claims Claims) (string, error) {
 func (j *Service) Parse(tokenString string) (Claims, error) {
 	parser := jwt.Parser{SkipClaimsValidation: true} // allow parsing of expired tokens
 
-	getAud := func() (aud string, err error) { // parse token without signature check to get id (aud)
-		preToken, _, err := parser.ParseUnverified(tokenString, &Claims{})
-		if err != nil {
-			return "", errors.Wrap(err, "can't pre-parse token")
-		}
-		if _, ok := preToken.Method.(*jwt.SigningMethodHMAC); !ok {
-			return "", errors.Errorf("unexpected signing method: %v", preToken.Header["alg"])
-		}
-		preClaims, ok := preToken.Claims.(*Claims)
-		if !ok {
-			return "", errors.New("invalid token")
-		}
-		return preClaims.Audience, nil
-	}
-
-	aud, err := getAud()
-	if err != nil {
-		return Claims{}, errors.Wrap(err, "failed to get aud from token token")
-	}
-
 	if j.SecretReader == nil {
-		return Claims{}, errors.New("secretreader not defined")
+		return Claims{}, errors.New("secret reader not defined")
 	}
 
-	secret, err := j.SecretReader.Get(aud)
+	secret, err := j.SecretReader.Get()
 	if err != nil {
 		return Claims{}, errors.Wrap(err, "can't get secret")
 	}
@@ -157,11 +145,30 @@ func (j *Service) Parse(tokenString string) (Claims, error) {
 	}
 
 	claims, ok := token.Claims.(*Claims)
-	if !ok || !token.Valid {
+	if !ok {
 		return Claims{}, errors.New("invalid token")
 	}
 
-	return *claims, nil
+	if err = j.checkAuds(claims, j.AudienceReader); err != nil {
+		return Claims{}, errors.Wrap(err, "aud rejected")
+	}
+	return *claims, j.validate(claims)
+}
+
+func (j *Service) validate(claims *Claims) error {
+	cerr := claims.Valid()
+
+	if cerr == nil {
+		return nil
+	}
+
+	if e, ok := cerr.(*jwt.ValidationError); ok {
+		e.Errors ^= jwt.ValidationErrorExpired // clear ValidationErrorExpired, allow expired token
+		if e.Errors != 0 {
+			return e
+		}
+	}
+	return nil
 }
 
 // Set creates token cookie with xsrf cookie and put it to ResponseWriter
@@ -257,18 +264,43 @@ func (j *Service) Reset(w http.ResponseWriter) {
 	http.SetCookie(w, &xsrfCookie)
 }
 
+// checkAuds verifies if claims.Audience in the list of allowed by audReader
+func (j *Service) checkAuds(claims *Claims, audReader Audience) error {
+	if audReader == nil { // lack of any allowed means any
+		return nil
+	}
+	auds, err := audReader.Get()
+	if err != nil {
+		return errors.Wrap(err, "failed to get auds")
+	}
+	for _, a := range auds {
+		if strings.EqualFold(a, claims.Audience) {
+			return nil
+		}
+	}
+	return errors.Errorf("aud %q not allowed", claims.Audience)
+}
+
+func (c Claims) String() string {
+	b, err := json.Marshal(c)
+	if err != nil {
+		return fmt.Sprintf("%+v %+v", c.StandardClaims, c.User)
+	}
+	return string(b)
+}
+
 // Secret defines interface returning secret key for given id (aud)
 type Secret interface {
-	Get(id string) (string, error)
+	Get() (string, error)
 }
 
 // SecretFunc type is an adapter to allow the use of ordinary functions as Secret. If f is a function
 // with the appropriate signature, SecretFunc(f) is a Handler that calls f.
-type SecretFunc func(id string) (string, error)
+type SecretFunc func() (string, error)
 
-// Get calls f(id)
-func (f SecretFunc) Get(id string) (string, error) {
-	return f(id)
+// Get calls f()
+func (f SecretFunc) Get() (string, error) {
+	return f()
 }
 
 // ClaimsUpdater defines interface adding extras to claims
@@ -300,10 +332,15 @@ func (f ValidatorFunc) Validate(token string, claims Claims) bool {
 	return f(token, claims)
 }
 
-func (c Claims) String() string {
-	b, err := json.Marshal(c)
-	if err != nil {
-		return fmt.Sprintf("%+v %+v", c.StandardClaims, c.User)
-	}
-	return string(b)
+// Audience defines interface returning list of allowed audiences
+type Audience interface {
+	Get() ([]string, error)
+}
+
+// AudienceFunc type is an adapter to allow the use of ordinary functions as Audience.
+type AudienceFunc func() ([]string, error)
+
+// Get calls f()
+func (f AudienceFunc) Get() ([]string, error) {
+	return f()
 }

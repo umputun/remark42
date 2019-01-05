@@ -53,9 +53,10 @@ type Opts struct {
 	AvatarResizeLimit int          // resize avatar's limit in pixels
 	AvatarRoutePath   string       // avatar routing prefix, i.e. "/api/v1/avatar", default `/avatar`
 
-	AdminPasswd   string   // if presented, allows basic auth with user admin and given password
-	RefreshFactor int      // estimated number of request client sends in parallel during token refresh.
-	Logger        logger.L // logger interface, default is no logging at all
+	AdminPasswd    string         // if presented, allows basic auth with user admin and given password
+	AudienceReader token.Audience // list of allowed aud values, default (empty) allows any
+	RefreshFactor  int            // estimated number of request client sends in parallel during token refresh.
+	Logger         logger.L       // logger interface, default is no logging at all
 }
 
 // NewService initializes everything
@@ -93,10 +94,11 @@ func NewService(opts Opts) (res *Service) {
 		XSRFCookieName: opts.XSRFCookieName,
 		XSRFHeaderKey:  opts.XSRFHeaderKey,
 		Issuer:         res.issuer,
+		AudienceReader: opts.AudienceReader,
 	})
 
 	if opts.SecretReader == nil {
-		jwtService.SecretReader = token.SecretFunc(func(id string) (string, error) {
+		jwtService.SecretReader = token.SecretFunc(func() (string, error) {
 			return "", errors.New("secrets reader not available")
 		})
 		res.logger.Logf("[WARN] no secret reader defined")

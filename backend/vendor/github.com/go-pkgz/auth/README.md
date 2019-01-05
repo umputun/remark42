@@ -166,6 +166,18 @@ _This technic used in the [example](https://github.com/go-pkgz/auth/blob/master/
 The process can be simplified by doing all checks directly in `Validator`, but depends on particular case such solution
 can be too expensive because `Validator` runs on each request as a part of auth middleware. In contrast, `ClaimsUpdater` called on token creation/refresh only.
 
+### Multi-tenant services and support for different audiences 
+
+For complex systems a single authenticator may serve multiple distinct subsystems or multiple set of independent users. For example some SaaS offerings may need to provide different authentications for different customers and prevent use of tokens/cookies made by another customer. 
+
+Such functionality can be implemented in 3 different ways:
+
+- Different instances of `auth.Service` each one with different secret. Doing this way will ensure the highest level of isolation and cookies/tokens won't be even parsable across the instances. Practically such architecture can be too complicated and not always possible.
+– Handling "allowed audience" as a part of `ClaimsUpdater` and `Validator` chain. I.e. `ClaimsUpdater` sets a claim indicating expected audience code/id and `Validator` making sure it matches. This way a single `auth.Service` could handle multiple groups of auth tokens and reject some based on the audience.
+- Using the standard JWT `aud` claim. This method conceptually very similar to the previous one, but done by library internally and consumer don't need to define special  `ClaimsUpdater` and `Validator` logic.
+
+In order to allow `aud` support the list of allowed audiences should be passed in as `opts.Audiences` parameter. Non-empty value will trigger internal checks for token generation (will reject token creation fot alien `aud`) as well as `Auth` middleware.
+
 
 ### Dev provider
 

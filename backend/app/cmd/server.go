@@ -412,7 +412,7 @@ func (s *ServerCommand) makeAdminStore() (admin.Store, error) {
 			return nil, errors.Wrap(e, "failed to create mongo server")
 		}
 		conn := mongo.NewConnection(mgServer, s.Mongo.DB, "admin")
-		return admin.NewMongoStore(conn), nil
+		return admin.NewMongoStore(conn, s.SharedSecret), nil
 	default:
 		return nil, errors.Errorf("unsupported admin store type %s", s.Admin.Type)
 	}
@@ -527,8 +527,8 @@ func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Sto
 		TokenDuration:  s.Auth.TTL.JWT,
 		CookieDuration: s.Auth.TTL.Cookie,
 		SecureCookies:  strings.HasPrefix(s.RemarkURL, "https://"),
-		SecretReader: token.SecretFunc(func(id string) (string, error) { // get secret per site
-			return admns.Key(id)
+		SecretReader: token.SecretFunc(func() (string, error) { // get secret per site
+			return admns.Key()
 		}),
 		ClaimsUpd: token.ClaimsUpdFunc(func(c token.Claims) token.Claims { // set attributes, on new token or refresh
 			if c.User == nil {

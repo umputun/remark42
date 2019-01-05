@@ -38,7 +38,7 @@ type Migrator struct {
 
 // KeyStore defines sub-interface for consumers needed just a key
 type KeyStore interface {
-	Key(siteID string) (key string, err error)
+	Key() (key string, err error)
 }
 
 func (m *Migrator) withRoutes(router chi.Router) chi.Router {

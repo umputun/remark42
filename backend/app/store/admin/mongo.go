@@ -5,7 +5,6 @@ import (
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
-	"github.com/pkg/errors"
 
 	"github.com/go-pkgz/mongo"
 )
@@ -13,28 +12,24 @@ import (
 // MongoStore implements admin.Store with mongo backend
 type MongoStore struct {
 	connection *mongo.Connection
+	key        string
 }
 
 type mongoRec struct {
-	SiteID    string   `bson:"site"`
-	SecretKey string   `bson:"secret"`
-	IDs       []string `bson:"admin_ids"`
-	Email     string   `bson:"admin_email"`
+	SiteID string   `bson:"site"`
+	IDs    []string `bson:"admin_ids"`
+	Email  string   `bson:"admin_email"`
 }
 
 // NewMongoStore makes admin Store for mongo's connection
-func NewMongoStore(conn *mongo.Connection) *MongoStore {
+func NewMongoStore(conn *mongo.Connection, key string) *MongoStore {
 	log.Printf("[DEBUG] make mongo admin store with %+v", conn)
-	return &MongoStore{connection: conn}
+	return &MongoStore{connection: conn, key: key}
 }
 
 // Key executes find by siteID and returns substructure with secret key
-func (m *MongoStore) Key(siteID string) (key string, err error) {
-	resp := mongoRec{}
-	err = m.connection.WithCollection(func(coll *mgo.Collection) error {
-		return coll.Find(bson.M{"site": siteID}).One(&resp)
-	})
-	return resp.SecretKey, errors.Wrapf(err, "can't get secret for site %s", siteID)
+func (m *MongoStore) Key() (key string, err error) {
+	return m.key, nil
 }
 
 // Admins executes find by siteID and returns admins ids

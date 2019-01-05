@@ -290,7 +290,7 @@ func prepImportSrv(t *testing.T) (svc *Migrator, ds *service.DataStore, ts *http
 
 	a := auth.NewService(auth.Opts{
 		AdminPasswd:  "password",
-		SecretReader: token.SecretFunc(func(id string) (string, error) { return "123456", nil }),
+		SecretReader: token.SecretFunc(func() (string, error) { return "123456", nil }),
 		Issuer:       "test",
 	})
 

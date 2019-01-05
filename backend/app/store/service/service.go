@@ -76,7 +76,7 @@ func (s *DataStore) prepareNewComment(comment store.Comment) (store.Comment, err
 	}
 	comment.Sanitize() // clear potentially dangerous js from all parts of comment
 
-	secret, err := s.AdminStore.Key(comment.Locator.SiteID)
+	secret, err := s.AdminStore.Key()
 	if err != nil {
 		return store.Comment{}, errors.Wrapf(err, "can't get secret for site %s", comment.Locator.SiteID)
 	}

@@ -53,10 +53,7 @@ func (a *Authenticator) Trace(next http.Handler) http.Handler {
 func (a *Authenticator) auth(reqAuth bool) func(http.Handler) http.Handler {
 
 	onError := func(h http.Handler, w http.ResponseWriter, r *http.Request, err error) {
-		if err == nil {
-			return
-		}
-		if !reqAuth {
+		if !reqAuth { // if no auth required allow to proceeded on error
 			h.ServeHTTP(w, r)
 			return
 		}

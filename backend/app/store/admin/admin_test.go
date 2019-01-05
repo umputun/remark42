@@ -12,7 +12,7 @@ import (
 func TestStaticStore_Get(t *testing.T) {
 	var ks Store = NewStaticStore("key123", []string{"123", "xyz"}, "aa@example.com")
 
-	k, err := ks.Key("any")
+	k, err := ks.Key()
 	assert.NoError(t, err, "valid store")
 	assert.Equal(t, "key123", k, "valid site")
 
@@ -21,20 +21,16 @@ func TestStaticStore_Get(t *testing.T) {
 
 	email := ks.Email("blah")
 	assert.Equal(t, "aa@example.com", email)
-
-	ks = NewStaticStore("", []string{"123", "xyz"}, "aa@example.com")
-	_, err = ks.Key("any")
-	assert.NotNil(t, err, "invalid (empty key) store")
 }
 
 func TestMongoStore_Get(t *testing.T) {
 	conn, err := mongo.MakeTestConnection(t)
 	require.NoError(t, err)
-	var ms Store = NewMongoStore(conn)
+	var ms Store = NewMongoStore(conn, "secret")
 
 	recs := []mongoRec{
-		{"site1", "secret1", []string{"i11", "i12"}, "e1"},
-		{"site2", "secret2", []string{"i21", "i22"}, "e2"},
+		{"site1", []string{"i11", "i12"}, "e1"},
+		{"site2", []string{"i21", "i22"}, "e2"},
 	}
 	err = conn.WithCollection(func(coll *mgo.Collection) error {
 		if e1 := coll.Insert(recs[0]); e1 != nil {
@@ -48,22 +44,20 @@ func TestMongoStore_Get(t *testing.T) {
 	assert.Equal(t, []string{"i11", "i12"}, admins)
 	email := ms.Email("site1")
 	assert.Equal(t, "e1", email)
-	key, err := ms.Key("site1")
+	key, err := ms.Key()
 	assert.NoError(t, err)
-	assert.Equal(t, "secret1", key)
+	assert.Equal(t, "secret", key)
 
 	admins = ms.Admins("site2")
 	assert.Equal(t, []string{"i21", "i22"}, admins)
 	email = ms.Email("site2")
 	assert.Equal(t, "e2", email)
-	key, err = ms.Key("site2")
+	key, err = ms.Key()
 	assert.NoError(t, err)
-	assert.Equal(t, "secret2", key)
+	assert.Equal(t, "secret", key)
 
 	admins = ms.Admins("no-site-in-db")
 	assert.Equal(t, []string{}, admins)
 	email = ms.Email("no-site-in-db")
 	assert.Equal(t, "", email)
-	_, err = ms.Key("no-site-in-db")
-	assert.Error(t, err, "can't get secret for site no-site-in-db")
 }

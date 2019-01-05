@@ -193,7 +193,7 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 		DataService: dataStore,
 		Authenticator: auth.NewService(auth.Opts{
 			AdminPasswd:  "password",
-			SecretReader: token.SecretFunc(func(id string) (string, error) { return "secret", nil }),
+			SecretReader: token.SecretFunc(func() (string, error) { return "secret", nil }),
 			AvatarStore:  avatar.NewLocalFS("/tmp/ava-remark42"),
 		}),
 		Cache:     &cache.Nop{},
