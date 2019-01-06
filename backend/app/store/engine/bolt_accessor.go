@@ -49,7 +49,7 @@ type BoltSite struct {
 
 // NewBoltDB makes persistent boltdb-based store
 func NewBoltDB(options bolt.Options, sites ...BoltSite) (*BoltDB, error) {
-	log.Printf("[INFO] bolt store for sites %+v", sites)
+	log.Printf("[INFO] bolt store for sites %+v, options %+v", sites, options)
 	result := BoltDB{dbs: make(map[string]*bolt.DB)}
 	for _, site := range sites {
 		db, err := bolt.Open(site.FileName, 0600, &options) // bolt.Options{Timeout: 30 * time.Second}

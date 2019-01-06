@@ -18,7 +18,7 @@ import (
 
 const maxRssItems = 20
 const maxLastCommentsReply = 1000
-const maxReplyDuration = 30 * time.Minute
+const maxReplyDuration = 24 * time.Hour
 
 // ui uses links like <post-url>#remark42__comment-<comment-id>
 const uiNav = "#remark42__comment-"
