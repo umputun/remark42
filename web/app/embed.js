@@ -56,9 +56,7 @@ function init() {
   window.addEventListener('message', receiveMessages);
   window.addEventListener('hashchange', postHashToIframe);
   document.addEventListener('click', postClickOutsideToIframe);
-  setTimeout(postHashToIframe, 1000);
 
-  postTitleToIframe(document.title);
   new MutationObserver(mutations => postTitleToIframe(mutations[0].target.textContent)).observe(
     document.querySelector('title'),
     { subtree: true, characterData: true, childList: true }
@@ -234,6 +232,11 @@ function init() {
         } else {
           userInfo.close();
         }
+      }
+
+      if (data.inited) {
+        postHashToIframe();
+        postTitleToIframe(document.title);
       }
     } catch (e) {}
   }
