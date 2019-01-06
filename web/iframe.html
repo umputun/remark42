@@ -104,6 +104,10 @@
         if (isItHash) {
           location.replace(data.hash);
         }
+
+        if (data.title) {
+          document.title = data.title;
+        }
       } catch (e) {}
     }
   </script>

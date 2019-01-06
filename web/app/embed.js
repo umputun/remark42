@@ -58,6 +58,12 @@ function init() {
   document.addEventListener('click', postClickOutsideToIframe);
   setTimeout(postHashToIframe, 1000);
 
+  postTitleToIframe(document.title);
+  new MutationObserver(mutations => postTitleToIframe(mutations[0].target.textContent)).observe(
+    document.querySelector('title'),
+    { subtree: true, characterData: true, childList: true }
+  );
+
   const remarkRootId = 'remark-km423lmfdslkm34';
   const userInfo = {
     node: null,
@@ -240,6 +246,10 @@ function init() {
 
       iframe.contentWindow.postMessage(JSON.stringify({ hash }), '*');
     }
+  }
+
+  function postTitleToIframe(title) {
+    iframe.contentWindow.postMessage(JSON.stringify({ title }), '*');
   }
 
   function postClickOutsideToIframe(e) {
