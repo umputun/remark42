@@ -106,7 +106,7 @@ func TestCleanup_listComments(t *testing.T) {
 	assert.Equal(t, 0, len(comments))
 }
 
-func TestCleanup_Execute(t *testing.T) {
+func TestCleanup_ExecuteSpam(t *testing.T) {
 	cleaned := cleanedComments{}
 	r := chi.NewRouter()
 	cleanupRoutes(t, r, &cleaned)
@@ -123,6 +123,24 @@ func TestCleanup_Execute(t *testing.T) {
 	assert.NoError(t, err)
 	t.Logf("deleted %+v", cleaned.ids)
 	assert.Equal(t, []string{"/api/v1/admin/comment/1", "/api/v1/admin/comment/3", "/api/v1/admin/comment/11"}, cleaned.ids)
+}
+
+func TestCleanup_ExecuteTitle(t *testing.T) {
+	titledComments := cleanedComments{}
+	r := chi.NewRouter()
+	cleanupRoutes(t, r, &titledComments)
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	cmd := CleanupCommand{}
+	cmd.SetCommon(CommonOpts{RemarkURL: ts.URL, SharedSecret: "123456"})
+	p := flags.NewParser(&cmd, flags.Default)
+	_, err := p.ParseArgs([]string{"--site=remark", "--title", "--from=20181217", "--to=20181218", "--admin-passwd=secret"})
+	require.Nil(t, err)
+	err = cmd.Execute(nil)
+	assert.NoError(t, err)
+	t.Logf("set titles for %+v", titledComments.ids)
+	assert.Equal(t, []string{"/api/v1/admin/title/1", "/api/v1/admin/title/2", "/api/v1/admin/title/3", "/api/v1/admin/title/11"}, titledComments.ids)
 }
 
 func cleanupRoutes(t *testing.T, r *chi.Mux, c *cleanedComments) {
@@ -184,4 +202,13 @@ func cleanupRoutes(t *testing.T, r *chi.Mux, c *cleanedComments) {
 		c.ids = append(c.ids, r.URL.Path)
 		c.lock.Unlock()
 	}))
+
+	r.HandleFunc("/api/v1/admin/title/{id}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "PUT", r.Method)
+		t.Log("title for ", r.URL.Path)
+		c.lock.Lock()
+		c.ids = append(c.ids, r.URL.Path)
+		c.lock.Unlock()
+	}))
+
 }

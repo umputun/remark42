@@ -22,6 +22,7 @@ type CleanupCommand struct {
 	BadWords    []string `short:"w" long:"bword" description:"bad word(s)"`
 	BadUsers    []string `short:"u" long:"buser" description:"bad user(s)"`
 	AdminPasswd string   `long:"admin-passwd" env:"ADMIN_PASSWD" required:"true" description:"admin basic auth password"`
+	SetTitle    bool     `long:"title" description:"title mode, will not remove comments, but reset titles to page's title'"`
 	CommonOpts
 }
 
@@ -47,24 +48,51 @@ func (cc *CleanupCommand) Execute(args []string) error {
 		if e != nil {
 			continue
 		}
-		for _, comment := range comments {
-			totalComments++
-			spam, score := cc.isSpam(comment)
-			if spam {
-				spamComments++
-				if !cc.Dry {
-					if err = cc.deleteComment(comment); err != nil {
-						log.Printf("[WARN] can't remove comment, %v", err)
-					}
-				}
-				comment.Text = strings.Replace(comment.Text, "\n", " ", -1)
-				log.Printf("[SPAM] %+v [%.0f%%]", comment, score)
+		totalComments += len(comments)
 
+		if cc.SetTitle {
+			cc.procTitles(comments)
+		} else {
+			spamComments += cc.procSpam(comments)
+
+		}
+	}
+
+	msg := fmt.Sprintf("comments=%d, spam=%d", totalComments, spamComments)
+	if cc.SetTitle {
+		msg = fmt.Sprintf("comments=%d", totalComments)
+	}
+
+	log.Printf("[INFO] completed, %s", msg)
+	return err
+}
+
+func (cc *CleanupCommand) procSpam(comments []store.Comment) int {
+	spamComments := 0
+	for _, comment := range comments {
+		spam, score := cc.isSpam(comment)
+		if spam {
+			spamComments++
+			if !cc.Dry {
+				if err := cc.deleteComment(comment); err != nil {
+					log.Printf("[WARN] can't remove comment, %v", err)
+				}
+			}
+			comment.Text = strings.Replace(comment.Text, "\n", " ", -1)
+			log.Printf("[SPAM] %+v [%.0f%%]", comment, score)
+		}
+	}
+	return spamComments
+}
+
+func (cc *CleanupCommand) procTitles(comments []store.Comment) {
+	for _, comment := range comments {
+		if !cc.Dry {
+			if err := cc.setTitle(comment); err != nil {
+				log.Printf("[WARN] can't set title for comment, %v", err)
 			}
 		}
 	}
-	log.Printf("[INFO] comments=%d, spam=%d", totalComments, spamComments)
-	return err
 }
 
 // get list of posts in from/to represented as yyyymmdd. this is [from-to] inclusive
@@ -176,6 +204,28 @@ func (cc *CleanupCommand) deleteComment(c store.Comment) error {
 	defer func() { _ = r.Body.Close() }()
 	if r.StatusCode != http.StatusOK {
 		return errors.Errorf("delete request failed with status %s", r.Status)
+	}
+	return nil
+}
+
+// setTitle with PUT /admin/title/{id}?site=siteID&url=post-url
+func (cc *CleanupCommand) setTitle(c store.Comment) error {
+
+	titleURL := fmt.Sprintf("%s/api/v1/admin/title/%s?site=%s&url=%s&format=plain", cc.RemarkURL, c.ID, cc.Site, c.Locator.URL)
+	req, err := http.NewRequest("PUT", titleURL, nil)
+	if err != nil {
+		return errors.Wrapf(err, "failed to make title request for comment %s, %s", c.ID, c.Locator.URL)
+	}
+	req.SetBasicAuth("admin", cc.AdminPasswd)
+
+	client := http.Client{}
+	r, err := client.Do(req)
+	if err != nil {
+		return errors.Wrapf(err, "title request failed for comment %s, %s", c.ID, c.Locator.URL)
+	}
+	defer func() { _ = r.Body.Close() }()
+	if r.StatusCode != http.StatusOK {
+		return errors.Errorf("title request failed with status %s", r.Status)
 	}
 	return nil
 }

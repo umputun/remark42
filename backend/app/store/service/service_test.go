@@ -4,13 +4,15 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
-	bolt "github.com/coreos/bbolt"
+	"github.com/coreos/bbolt"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -101,6 +103,56 @@ func TestService_CreateFromPartialWithTitle(t *testing.T) {
 	assert.NoError(t, err)
 	t.Logf("%+v", res)
 	assert.Equal(t, "post blah", res.PostTitle, "keep comment title")
+}
+
+func TestService_SetTitle(t *testing.T) {
+	defer os.Remove(testDb)
+
+	var titleEnable int32
+	tss := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if atomic.LoadInt32(&titleEnable) == 0 {
+			w.WriteHeader(404)
+		}
+		if r.URL.String() == "/post1" {
+			w.Write([]byte("<html><title>post1 blah 123</title><body> 2222</body></html>"))
+			return
+		}
+		if r.URL.String() == "/post2" {
+			w.Write([]byte("<html><title>post2 blah 123</title><body> 2222</body></html>"))
+			return
+		}
+		w.WriteHeader(404)
+	}))
+	defer tss.Close()
+
+	ks := admin.NewStaticKeyStore("secret 123")
+	b := DataStore{Interface: prepStoreEngine(t), AdminStore: ks,
+		TitleExtractor: NewTitleExtractor(http.Client{Timeout: 5 * time.Second})}
+	comment := store.Comment{
+		Text:      "text",
+		Timestamp: time.Date(2018, 3, 25, 16, 34, 33, 0, time.UTC),
+		Votes:     map[string]bool{"u1": true, "u2": false},
+		User:      store.User{IP: "192.168.1.1", ID: "user", Name: "name"},
+		Locator:   store.Locator{URL: tss.URL + "/post1", SiteID: "radio-t"},
+	}
+
+	id, err := b.Create(comment)
+	assert.NoError(t, err)
+	assert.True(t, id != "", id)
+
+	res, err := b.Get(store.Locator{URL: tss.URL + "/post1", SiteID: "radio-t"}, id)
+	assert.NoError(t, err)
+	t.Logf("%+v", res)
+	assert.Equal(t, "", res.PostTitle)
+
+	atomic.StoreInt32(&titleEnable, 1)
+	c, err := b.SetTitle(store.Locator{URL: tss.URL + "/post1", SiteID: "radio-t"}, id)
+	require.NoError(t, err)
+	assert.Equal(t, "post1 blah 123", c.PostTitle)
+
+	b = DataStore{Interface: prepStoreEngine(t), AdminStore: ks}
+	_, err = b.SetTitle(store.Locator{URL: tss.URL + "/post1", SiteID: "radio-t"}, id)
+	require.EqualError(t, err, "no title extractor")
 }
 
 func TestService_Vote(t *testing.T) {

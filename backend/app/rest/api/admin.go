@@ -40,6 +40,7 @@ func (a *admin) routes(middlewares ...func(http.Handler) http.Handler) chi.Route
 	router.Put("/pin/{id}", a.setPinCtrl)
 	router.Get("/blocked", a.blockedUsersCtrl)
 	router.Put("/readonly", a.setReadOnlyCtrl)
+	router.Put("/title/{id}", a.setTitleCtrl)
 
 	a.migrator.withRoutes(router) // set migrator routes, i.e. /export and /import
 
@@ -189,6 +190,23 @@ func (a *admin) setReadOnlyCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	a.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL, locator.SiteID))
 	render.JSON(w, r, R.JSON{"locator": locator, "read-only": roStatus})
+}
+
+// PUT /title/{id}?site=siteID&url=post-url - set comment PostTitle to page's title
+func (a *admin) setTitleCtrl(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
+
+	c, err := a.dataService.SetTitle(locator, id)
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't set title")
+		return
+	}
+	log.Printf("[INFO] set comment's title %s to %q", id, c.PostTitle)
+
+	a.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL, lastCommentsScope))
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, R.JSON{"id": id, "locator": locator})
 }
 
 // PUT /verify?site=siteID&url=post-url&ro=1 - set or reset read-only status for the post

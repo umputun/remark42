@@ -196,6 +196,26 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 	return comment, err
 }
 
+func (s *DataStore) SetTitle(locator store.Locator, commentID string) (comment store.Comment, err error) {
+	if s.TitleExtractor == nil {
+		return comment, errors.New("no title extractor")
+	}
+
+	comment, err = s.Get(locator, commentID)
+	if err != nil {
+		return comment, err
+	}
+
+	// set title, overwrite the current one
+	title, e := s.TitleExtractor.Get(comment.Locator.URL)
+	if e != nil {
+		return comment, err
+	}
+	comment.PostTitle = title
+	err = s.Put(locator, comment)
+	return comment, err
+}
+
 // Counts returns postID+count list for given comments
 func (s *DataStore) Counts(siteID string, postIDs []string) ([]store.PostInfo, error) {
 	res := []store.PostInfo{}

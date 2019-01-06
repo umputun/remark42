@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
@@ -15,6 +16,7 @@ import (
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/go-pkgz/auth/token"
 	R "github.com/go-pkgz/rest"
+	"github.com/umputun/remark/backend/app/store/service"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -50,6 +52,49 @@ func TestAdmin_Delete(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "", cr.Text)
 	assert.True(t, cr.Deleted)
+}
+
+func TestAdmin_Title(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	srv.DataService.TitleExtractor = service.NewTitleExtractor(http.Client{Timeout: time.Second})
+	tss := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.String() == "/post1" {
+			w.Write([]byte("<html><title>post1 blah 123</title><body> 2222</body></html>"))
+			return
+		}
+		if r.URL.String() == "/post2" {
+			w.Write([]byte("<html><title>post2 blah 123</title><body> 2222</body></html>"))
+			return
+		}
+		w.WriteHeader(404)
+	}))
+	defer tss.Close()
+
+	c1 := store.Comment{Text: "test test #1", User: store.User{ID: "id", Name: "name"},
+		Locator: store.Locator{SiteID: "radio-t", URL: tss.URL + "/post1"}}
+	c2 := store.Comment{Text: "test test #2", User: store.User{ID: "id", Name: "name"}, ParentID: "p1",
+		Locator: store.Locator{SiteID: "radio-t", URL: tss.URL + "/post2"}}
+
+	id1 := addComment(t, c1, ts)
+	addComment(t, c2, ts)
+
+	client := http.Client{}
+	req, err := http.NewRequest(http.MethodPut,
+		fmt.Sprintf("%s/api/v1/admin/title/%s?site=radio-t&url=%s/post1", ts.URL, id1, tss.URL), nil)
+	assert.Nil(t, err)
+	req.SetBasicAuth("admin", "password")
+	resp, err := client.Do(req)
+	require.Nil(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+
+	body, code := get(t, fmt.Sprintf("%s/api/v1/id/%s?site=radio-t&url=%s/post1", ts.URL, id1, tss.URL))
+	require.Equal(t, 200, code)
+	cr := store.Comment{}
+	err = json.Unmarshal([]byte(body), &cr)
+	assert.Nil(t, err)
+	assert.Equal(t, "post1 blah 123", cr.PostTitle)
 }
 
 func TestAdmin_DeleteUser(t *testing.T) {
