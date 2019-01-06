@@ -60,6 +60,7 @@ func (s *DataStore) Create(comment store.Comment) (commentID string, err error) 
 		return "", errors.Wrap(err, "failed to prepare comment")
 	}
 
+	// keep input title and set to extracted if missing
 	if s.TitleExtractor != nil && comment.PostTitle == "" {
 		if title, err := s.TitleExtractor.Get(comment.Locator.URL); err == nil {
 			comment.PostTitle = title
