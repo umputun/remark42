@@ -438,11 +438,13 @@ export default class Comment extends Component {
       return (
         <article className={b('comment', props, defaultMods)}>
           <div className="comment__body">
-            <div className="comment__title">
-              <a className="comment__title-link" href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}>
-                {o.title}
-              </a>
-            </div>
+            {!!o.title && (
+              <div className="comment__title">
+                <a className="comment__title-link" href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}>
+                  {o.title}
+                </a>
+              </div>
+            )}
             <div className="comment__info">
               <a href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`} className="comment__username">
                 {o.user.name}
