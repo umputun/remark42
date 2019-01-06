@@ -483,6 +483,7 @@ type Comment struct {
     Timestamp time.Time       `json:"time"`    // time stamp, read only
     Pin       bool            `json:"pin"`     // pinned status, read only
     Delete    bool            `json:"delete"`  // delete status, read only
+    PostTitle string          `json:"title"`   // post title
 }
 
 type Locator struct {
