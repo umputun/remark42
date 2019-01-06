@@ -446,9 +446,7 @@ export default class Comment extends Component {
               </div>
             )}
             <div className="comment__info">
-              <a href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`} className="comment__username">
-                {o.user.name}
-              </a>
+              <span className="comment__username">{o.user.name}</span>
             </div>{' '}
             <div
               className={b('comment__text', { mix: b('raw-content', {}, { theme: mods.theme }) })}
