@@ -196,6 +196,7 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 	return comment, err
 }
 
+// SetTitle puts title from the locator.URL page and overwrites any existing title
 func (s *DataStore) SetTitle(locator store.Locator, commentID string) (comment store.Comment, err error) {
 	if s.TitleExtractor == nil {
 		return comment, errors.New("no title extractor")
