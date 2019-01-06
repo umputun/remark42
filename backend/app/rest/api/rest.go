@@ -183,7 +183,7 @@ func (s *Rest) routes() chi.Router {
 	authHandler, avatarHandler := s.Authenticator.Handlers()
 
 	router.Group(func(r chi.Router) {
-		l := logger.New(logger.Flags(logger.All), logger.IPfn(ipFn))
+		l := logger.New(logger.Flags(logger.All), logger.IPfn(ipFn), logger.Prefix("[INFO]"))
 		r.Use(l.Handler, tollbooth_chi.LimitHandler(tollbooth.NewLimiter(5, nil)))
 		r.Mount("/auth", authHandler)
 	})
@@ -194,26 +194,6 @@ func (s *Rest) routes() chi.Router {
 	})
 
 	authMiddleware := s.Authenticator.Middleware()
-
-	//// auth routes for all providers
-	//router.Route("/auth", func(r chi.Router) {
-	//	l := logger.New(logger.Flags(logger.All), logger.IPfn(ipFn))
-	//	r.Use(l.Handler, tollbooth_chi.LimitHandler(tollbooth.NewLimiter(5, nil)))
-	//
-	//	for _, provider := range s.Authenticator.Providers {
-	//		r.Mount("/"+provider.Name, provider.Routes()) // mount auth providers as /auth/{name}
-	//	}
-	//	if len(s.Authenticator.Providers) > 0 {
-	//		// shortcut, can be any of providers, all logouts do the same - removes cookie
-	//		r.Get("/logout", s.Authenticator.Providers[0].LogoutHandler)
-	//	}
-	//})
-
-	//avatarMiddlewares := []func(http.Handler) http.Handler{
-	//	logger.New(logger.Flags(logger.None)).Handler,
-	//	tollbooth_chi.LimitHandler(tollbooth.NewLimiter(100, nil)),
-	//}
-	//router.Mount(s.AvatarProxy.Routes(avatarMiddlewares...)) // mount avatars to /api/v1/avatar/{file.img}
 
 	// api routes
 	router.Route("/api/v1", func(rapi chi.Router) {
@@ -227,7 +207,7 @@ func (s *Rest) routes() chi.Router {
 		rapi.Group(func(ropen chi.Router) {
 			ropen.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
 			ropen.Use(authMiddleware.Trace)
-			ropen.Use(logger.New(logger.Flags(logger.All), logger.IPfn(ipFn)).Handler)
+			ropen.Use(logger.New(logger.Flags(logger.All), logger.Prefix("[INFO]"), logger.IPfn(ipFn)).Handler)
 			ropen.Get("/find", s.findCommentsCtrl)
 			ropen.Get("/id/{id}", s.commentByIDCtrl)
 			ropen.Get("/comments", s.findUserCommentsCtrl)
@@ -247,7 +227,7 @@ func (s *Rest) routes() chi.Router {
 		rapi.Group(func(rauth chi.Router) {
 			rauth.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
 			rauth.Use(authMiddleware.Auth)
-			rauth.Use(logger.New(logger.Flags(logger.All), logger.IPfn(ipFn)).Handler)
+			rauth.Use(logger.New(logger.Flags(logger.All), logger.Prefix("[INFO]"), logger.IPfn(ipFn)).Handler)
 			rauth.Post("/comment", s.createCommentCtrl)
 			rauth.Put("/comment/{id}", s.updateCommentCtrl)
 			rauth.Get("/user", s.userInfoCtrl)

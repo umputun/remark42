@@ -107,6 +107,9 @@ GET {{host}}/api/v1/rss/post?site={{site}}&url={{url}}
 ### site rss
 GET {{host}}/api/v1/rss/site?site={{site}}
 
+### replie rss
+GET {{host}}/api/v1/rss/reply?site={{site}}&user={{user}}
+
 ### get default avatar
 GET {{host}}/api/v1/avatar/blah
 

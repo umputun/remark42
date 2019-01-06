@@ -113,7 +113,7 @@ func (s *Rest) rssRepliesCtrl(w http.ResponseWriter, r *http.Request) {
 			if len(replies) > maxRssItems || c.Timestamp.Add(maxReplyDuration).Before(time.Now()) {
 				break
 			}
-			if c.ParentID != "" && !c.Deleted && c.User.ID != userID { // not interested replies to yourself
+			if c.ParentID != "" && !c.Deleted && c.User.ID != userID { // not interested in replies to yourself
 				var pc store.Comment
 				if pc, e = s.DataService.Get(c.Locator, c.ParentID); e != nil {
 					return nil, errors.Wrap(e, "can't get parent comment")
