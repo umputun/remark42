@@ -63,7 +63,7 @@ func NewBoltDB(options bolt.Options, sites ...BoltSite) (*BoltDB, error) {
 		err = db.Update(func(tx *bolt.Tx) error {
 			for _, bktName := range topBuckets {
 				if _, e := tx.CreateBucketIfNotExists([]byte(bktName)); e != nil {
-					return errors.Wrapf(err, "failed to create top level bucket %s", bktName)
+					return errors.Wrapf(e, "failed to create top level bucket %s", bktName)
 				}
 			}
 			return nil
