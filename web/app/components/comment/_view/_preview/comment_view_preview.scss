@@ -5,10 +5,6 @@
     font-size: 14px;
     padding-bottom: 0;
 
-    .comment__username {
-      color: #0aa;
-    }
-
     .comment__title {
       overflow: hidden;
       white-space: nowrap;
@@ -29,11 +25,15 @@
       display: inline;
       padding-right: 0;
       font-weight: 700;
+      color: #777;
 
       &::after {
         content: ' ';
-        color: #777;
       }
+    }
+
+    .comment__username {
+      color: #0aa;
     }
 
     .comment__text {
