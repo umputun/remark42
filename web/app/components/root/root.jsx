@@ -299,7 +299,9 @@ export default class Root extends Component {
           {!isBlockedVisible && (
             <div className="root__main">
               {!isGuest &&
-                !isCommentsDisabled && <Input mix="root__input" mods={{ type: 'main' }} onSubmit={this.addComment} />}
+                !isCommentsDisabled && (
+                  <Input mix="root__input" mods={{ type: 'main' }} onSubmit={this.addComment} userId={user.id} />
+                )}
 
               {!!pinnedComments.length && (
                 <div className="root__pinned-comments" role="region" aria-label="Pinned comments">

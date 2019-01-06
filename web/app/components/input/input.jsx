@@ -10,6 +10,7 @@ import TextareaAutosize from 'components/input/textarea-autosize';
 
 const RSS_THREAD_URL = `${BASE_URL}${API_BASE}/rss/post?site=${siteId}&url=${url}`;
 const RSS_SITE_URL = `${BASE_URL}${API_BASE}/rss/site?site=${siteId}`;
+const RSS_REPLIES_URL = `${BASE_URL}${API_BASE}/rss/reply?site=${siteId}&user=`;
 
 export default class Input extends Component {
   constructor(props) {
@@ -109,7 +110,7 @@ export default class Input extends Component {
 
   render(props, { isDisabled, isErrorShown, preview, maxLength, text }) {
     const charactersLeft = maxLength - text.length;
-    const { mods = {}, errorMessage } = props;
+    const { mods = {}, errorMessage, userId } = props;
 
     return (
       <form className={b('input', props)} onSubmit={this.send} aria-label="New comment">
@@ -156,13 +157,17 @@ export default class Input extends Component {
                 </a>{' '}
                 is supported
               </div>
-              Subscribe to&nbsp;this{' '}
+              Subscribe to&nbsp;the{' '}
               <a className="input__rss-link" href={RSS_THREAD_URL} target="_blank">
                 Thread
-              </a>{' '}
-              or&nbsp;
+              </a>
+              {', '}
               <a className="input__rss-link" href={RSS_SITE_URL} target="_blank">
                 Site
+              </a>{' '}
+              or&nbsp;
+              <a className="input__rss-link" href={RSS_REPLIES_URL + userId} target="_blank">
+                Replies
               </a>{' '}
               by&nbsp;RSS
             </div>
