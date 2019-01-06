@@ -6,7 +6,7 @@
     padding-bottom: 0;
 
     .comment__username {
-      color: inherit;
+      color: #0aa;
     }
 
     .comment__title {
@@ -28,6 +28,7 @@
     .comment__info {
       display: inline;
       padding-right: 0;
+      font-weight: 700;
 
       &::after {
         content: ' ';
