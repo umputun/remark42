@@ -175,6 +175,10 @@ func (s *Rest) toRssFeed(url string, comments []store.Comment) (string, error) {
 				log.Printf("[WARN] failed to get info about parent comment, %s", err)
 			}
 		}
+		if c.PostTitle != "" {
+			f.Title = f.Title + ", " + c.PostTitle
+		}
+
 		feed.Items = append(feed.Items, &f)
 		if i > maxRssItems {
 			break

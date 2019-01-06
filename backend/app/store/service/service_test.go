@@ -94,7 +94,7 @@ func TestService_CreateFromPartialWithTitle(t *testing.T) {
 	res, err := b.Get(store.Locator{URL: "https://radio-t.com/p/2018/12/29/podcast-630/", SiteID: "radio-t"}, id)
 	assert.NoError(t, err)
 	t.Logf("%+v", res)
-	assert.Equal(t, "Радио-Т 630 - Радио-Т Подкаст", res.PostTitle)
+	assert.Equal(t, "Радио-Т 630", res.PostTitle)
 
 	comment.PostTitle = "post blah"
 	id, err = b.Create(comment)
