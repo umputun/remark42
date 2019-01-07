@@ -1,0 +1,13 @@
+.comment__title {
+  margin-bottom: 0.2rem;
+
+  &-link {
+    color: #0e7e9d;
+    font-weight: bold;
+    text-decoration: none;
+
+    &:hover {
+      opacity: 0.75;
+    }
+  }
+}

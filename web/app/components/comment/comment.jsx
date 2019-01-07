@@ -468,6 +468,14 @@ export default class Comment extends Component {
         className={b('comment', props, defaultMods)}
         id={mods.disabled ? null : `${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}
       >
+        {mods.view === 'user' &&
+          o.title && (
+            <div className="comment__title">
+              <a className="comment__title-link" href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}>
+                {o.title}
+              </a>
+            </div>
+          )}
         <div className="comment__body">
           <div className="comment__info">
             {mods.view !== 'user' && <Avatar picture={o.user.picture} />}
