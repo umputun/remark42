@@ -21,7 +21,6 @@ require('./__control/_select-label/comment__control_select-label.scss');
 require('./__control/_view/_inactive/comment__control_view_inactive.scss');
 
 require('./__controls/comment__controls.scss');
-require('./__title/comment__title.scss');
 require('./__info/comment__info.scss');
 require('./__input/comment__input.scss');
 require('./__link-to-parent/comment__link-to-parent.scss');
