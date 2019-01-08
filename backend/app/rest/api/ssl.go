@@ -2,13 +2,13 @@ package api
 
 import (
 	"crypto/tls"
-	"log"
 	"net/http"
 	"net/url"
 	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+	log "github.com/go-pkgz/lgr"
 	"golang.org/x/crypto/acme/autocert"
 
 	R "github.com/go-pkgz/rest"

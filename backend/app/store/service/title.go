@@ -2,9 +2,9 @@ package service
 
 import (
 	"io"
-	"log"
 	"net/http"
 
+	log "github.com/go-pkgz/lgr"
 	"github.com/go-pkgz/rest/cache"
 	"github.com/pkg/errors"
 	"golang.org/x/net/html"

@@ -1,8 +1,9 @@
 package cmd
 
 import (
-	"log"
 	"time"
+
+	log "github.com/go-pkgz/lgr"
 )
 
 // RestoreCommand set of flags and command for restore from backup

@@ -2,7 +2,6 @@ package main
 
 import (
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -10,6 +9,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	log "github.com/go-pkgz/lgr"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -54,5 +55,5 @@ func TestGetDump(t *testing.T) {
 	assert.True(t, strings.Contains(dump, "goroutine"))
 	assert.True(t, strings.Contains(dump, "[running]"))
 	assert.True(t, strings.Contains(dump, "backend/app/main.go"))
-	log.Print("\n dump:" + dump)
+	log.Printf("\n dump: %s", dump)
 }

@@ -3,14 +3,13 @@ package api
 import (
 	"crypto/sha1"
 	"encoding/base64"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
-
+	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
 	"github.com/go-pkgz/rest/cache"
 

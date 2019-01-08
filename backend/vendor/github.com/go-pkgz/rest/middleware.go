@@ -1,11 +1,12 @@
 package rest
 
 import (
-	"log"
 	"net/http"
 	"os"
 	"runtime/debug"
 	"strings"
+
+	log "github.com/go-pkgz/lgr"
 )
 
 // AppInfo adds custom app-info to the response header
@@ -32,9 +33,7 @@ func Ping(next http.Handler) http.Handler {
 		if r.Method == "GET" && strings.HasSuffix(strings.ToLower(r.URL.Path), "/ping") {
 			w.Header().Set("Content-Type", "text/plain")
 			w.WriteHeader(http.StatusOK)
-			if _, err := w.Write([]byte("pong")); err != nil {
-				log.Printf("[WARN] can't send pong, %s", err)
-			}
+			w.Write([]byte("pong")) //nolint
 			return
 		}
 		next.ServeHTTP(w, r)

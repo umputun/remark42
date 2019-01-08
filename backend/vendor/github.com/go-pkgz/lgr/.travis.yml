@@ -1,0 +1,19 @@
+language: go
+
+go:
+  - "1.11.x"
+
+install: true
+
+before_install:
+  - export TZ=America/Chicago
+  - curl -L https://git.io/vp6lP | sh 
+  - go get github.com/mattn/goveralls
+  - export PATH=$(pwd)/bin:$PATH
+
+script:
+  - GO111MODULE=on go get ./...
+  - GO111MODULE=on go mod vendor
+  - GO111MODULE=on go test  -v -mod=vendor -covermode=count -coverprofile=profile.cov ./... || travis_terminate 1;
+  - ./bin/gometalinter --deadline=120s --exclude=test --exclude=mock --exclude=vendor --exclude=_example --disable-all --enable=errcheck --enable=vet --enable=vetshadow --enable=megacheck --enable=ineffassign --enable=varcheck --enable=unconvert --enable=deadcode --enable=interfacer --enable=gotype ./... || travis_terminate 1;
+  - $GOPATH/bin/goveralls -coverprofile=profile.cov -service=travis-ci

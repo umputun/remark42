@@ -3,7 +3,8 @@ package admin
 
 import (
 	"errors"
-	"log"
+
+	log "github.com/go-pkgz/lgr"
 )
 
 // Store defines interface returning admins info for given site
