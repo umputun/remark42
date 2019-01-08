@@ -3,16 +3,15 @@ package proxy
 import (
 	"encoding/base64"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/go-chi/chi"
-	"github.com/pkg/errors"
-
+	log "github.com/go-pkgz/lgr"
 	"github.com/go-pkgz/repeater"
+	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/backend/app/rest"
 )

@@ -9,10 +9,10 @@ import (
 	"time"
 
 	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/go-pkgz/lgr"
 	"github.com/go-pkgz/rest"
 	"golang.org/x/oauth2"
 
-	"github.com/go-pkgz/auth/logger"
 	"github.com/go-pkgz/auth/token"
 )
 
@@ -32,7 +32,7 @@ type Oauth2Handler struct {
 
 // Params to make initialized and ready to use provider
 type Params struct {
-	logger.L
+	lgr.L
 	URL         string
 	JwtService  TokenService
 	Cid         string
@@ -54,7 +54,7 @@ func (u userData) value(key string) string {
 // initOauth2Handler makes oauth2 handler for given provider
 func initOauth2Handler(p Params, service Oauth2Handler) Oauth2Handler {
 	if p.L == nil {
-		p.L = logger.Func(func(fmt string, args ...interface{}) {})
+		p.L = lgr.NoOp
 	}
 	p.Logf("[INFO] init oauth2 service %s", service.name)
 	service.Params = p

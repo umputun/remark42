@@ -3,10 +3,10 @@ package rest
 import (
 	"encoding/json"
 	"io/ioutil"
-	"log"
 	"testing"
 	"time"
 
+	log "github.com/go-pkgz/lgr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 

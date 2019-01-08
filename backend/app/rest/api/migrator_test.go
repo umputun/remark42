@@ -15,11 +15,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-pkgz/auth/token"
-
 	bolt "github.com/coreos/bbolt"
 	"github.com/go-chi/chi"
 	"github.com/go-pkgz/auth"
+	"github.com/go-pkgz/auth/token"
 	"github.com/go-pkgz/rest/cache"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

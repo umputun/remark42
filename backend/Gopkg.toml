@@ -14,10 +14,6 @@ required = ["github.com/patrickmn/go-cache"]
 
 [[constraint]]
   branch = "master"
-  name = "github.com/hashicorp/logutils"
-
-[[constraint]]
-  branch = "master"
   name = "github.com/microcosm-cc/bluemonday"
 
 [[constraint]]

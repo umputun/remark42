@@ -2,13 +2,12 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"runtime"
 	"syscall"
 
-	"github.com/hashicorp/logutils"
+	log "github.com/go-pkgz/lgr"
 	flags "github.com/jessevdk/go-flags"
 
 	"github.com/umputun/remark/backend/app/cmd"
@@ -62,19 +61,9 @@ func main() {
 }
 
 func setupLog(dbg bool) {
-	filter := &logutils.LevelFilter{
-		Levels:   []logutils.LogLevel{"DEBUG", "INFO", "WARN", "ERROR"},
-		MinLevel: logutils.LogLevel("INFO"),
-		Writer:   os.Stdout,
-	}
-
-	log.SetFlags(log.Ldate | log.Ltime)
-
 	if dbg {
-		log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds | log.Lshortfile)
-		filter.MinLevel = logutils.LogLevel("DEBUG")
+		log.Setup(log.Debug, log.Caller)
 	}
-	log.SetOutput(filter)
 }
 
 // getDump reads runtime stack and returns as a string

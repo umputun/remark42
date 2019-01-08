@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 
+	log "github.com/go-pkgz/lgr"
 	"github.com/pkg/errors"
 )
 

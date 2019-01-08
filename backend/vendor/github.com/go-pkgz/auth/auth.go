@@ -6,11 +6,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-pkgz/lgr"
 	"github.com/go-pkgz/rest"
 	"github.com/pkg/errors"
 
 	"github.com/go-pkgz/auth/avatar"
-	"github.com/go-pkgz/auth/logger"
 	"github.com/go-pkgz/auth/middleware"
 	"github.com/go-pkgz/auth/provider"
 	"github.com/go-pkgz/auth/token"
@@ -18,7 +18,7 @@ import (
 
 // Service provides higher level wrapper allowing to construct everything and get back token middleware
 type Service struct {
-	logger         logger.L
+	logger         lgr.L
 	opts           Opts
 	jwtService     *token.Service
 	providers      []provider.Service
@@ -56,7 +56,7 @@ type Opts struct {
 	AdminPasswd    string         // if presented, allows basic auth with user admin and given password
 	AudienceReader token.Audience // list of allowed aud values, default (empty) allows any
 	RefreshFactor  int            // estimated number of request client sends in parallel during token refresh.
-	Logger         logger.L       // logger interface, default is no logging at all
+	Logger         lgr.L          // logger interface, default is no logging at all
 }
 
 // NewService initializes everything
@@ -78,7 +78,7 @@ func NewService(opts Opts) (res *Service) {
 	}
 
 	if opts.Logger == nil {
-		res.logger = logger.Func(func(fmt string, args ...interface{}) {}) // do-nothing logger
+		res.logger = lgr.Func(func(fmt string, args ...interface{}) {}) // do-nothing logger
 	}
 
 	jwtService := token.NewService(token.Opts{

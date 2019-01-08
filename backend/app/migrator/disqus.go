@@ -3,10 +3,10 @@ package migrator
 import (
 	"encoding/xml"
 	"io"
-	"log"
 	"strings"
 	"time"
 
+	log "github.com/go-pkgz/lgr"
 	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/backend/app/store"

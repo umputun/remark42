@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/assert"
+
 	"github.com/umputun/remark/backend/app/store"
 )
 

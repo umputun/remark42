@@ -2,15 +2,14 @@ package api
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
 	"github.com/go-chi/chi"
+	log "github.com/go-pkgz/lgr"
+	"github.com/go-pkgz/rest/cache"
 	"github.com/gorilla/feeds"
 	"github.com/pkg/errors"
-
-	"github.com/go-pkgz/rest/cache"
 
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/store"
@@ -165,6 +164,7 @@ func (s *Rest) toRssFeed(url string, comments []store.Comment) (string, error) {
 			Description: c.Text,
 			Created:     c.Timestamp,
 			Author:      &feeds.Author{Name: c.User.Name},
+			Id:          c.ID,
 		}
 		if c.ParentID != "" {
 			// add indication to parent comment

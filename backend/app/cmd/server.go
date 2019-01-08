@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -14,11 +13,12 @@ import (
 	"time"
 
 	bolt "github.com/coreos/bbolt"
+	"github.com/go-pkgz/lgr"
+	log "github.com/go-pkgz/lgr"
 	"github.com/pkg/errors"
 
 	"github.com/go-pkgz/auth"
 	"github.com/go-pkgz/auth/avatar"
-	"github.com/go-pkgz/auth/logger"
 	"github.com/go-pkgz/auth/provider"
 	"github.com/go-pkgz/auth/token"
 	"github.com/go-pkgz/mongo"
@@ -170,16 +170,16 @@ func (s *ServerCommand) Execute(args []string) error {
 		stop := make(chan os.Signal, 1)
 		signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 		<-stop
-		log.Print("[WARN] interrupt signal")
+		log.Printf("[WARN] interrupt signal")
 		cancel()
 	}()
 
 	app, err := s.newServerApp()
 	if err != nil {
-		log.Fatalf("[ERROR] failed to setup application, %+v", err)
+		log.Printf("[PANIC] failed to setup application, %+v", err)
 	}
 	if err = app.run(ctx); err != nil {
-		log.Printf("[WARN] remark terminated with error %+v", err)
+		log.Printf("[ERROR] remark terminated with error %+v", err)
 		return err
 	}
 	log.Printf("[INFO] remark terminated")
@@ -550,7 +550,7 @@ func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Sto
 		AvatarStore:       avas,
 		AvatarResizeLimit: s.Avatar.RszLmt,
 		AvatarRoutePath:   "/api/v1/avatar",
-		Logger:            logger.Std,
+		Logger:            lgr.Default(),
 	})
 	s.addAuthProviders(authenticator)
 	return authenticator

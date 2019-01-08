@@ -1,10 +1,9 @@
 package admin
 
 import (
-	"log"
-
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
+	log "github.com/go-pkgz/lgr"
 
 	"github.com/go-pkgz/mongo"
 )

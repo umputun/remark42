@@ -4,9 +4,10 @@ package notify
 import (
 	"context"
 	"fmt"
-	"log"
 	"sync"
 	"sync/atomic"
+
+	log "github.com/go-pkgz/lgr"
 
 	"github.com/umputun/remark/backend/app/store"
 )

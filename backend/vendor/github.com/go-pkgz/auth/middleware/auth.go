@@ -5,16 +5,16 @@ import (
 	"math/rand"
 	"net/http"
 
+	"github.com/go-pkgz/lgr"
 	"github.com/pkg/errors"
 
-	"github.com/go-pkgz/auth/logger"
 	"github.com/go-pkgz/auth/provider"
 	"github.com/go-pkgz/auth/token"
 )
 
 // Authenticator is top level auth object providing middlewares
 type Authenticator struct {
-	logger.L
+	lgr.L
 	JWTService    TokenService
 	Providers     []provider.Service
 	Validator     token.Validator
