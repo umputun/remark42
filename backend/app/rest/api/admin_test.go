@@ -640,7 +640,7 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 	req.SetBasicAuth("admin", "bad-password")
 	resp, err = client.Do(req)
 	assert.Nil(t, err)
-	assert.Equal(t, 401, resp.StatusCode)
+	assert.Equal(t, 403, resp.StatusCode)
 
 	// try bad user
 	badClaims := claims

@@ -127,7 +127,7 @@ func (b *BoltDB) Create(comment store.Comment) (commentID string, err error) {
 			return errors.Wrapf(e, "failed to put user comment %s for %s", comment.ID, comment.User.ID)
 		}
 
-		// set info with countfor post url
+		// set info with the count for post url
 		if _, e = b.setInfo(tx, comment); e != nil {
 			return errors.Wrapf(e, "failed to set info for %s", comment.Locator)
 		}
