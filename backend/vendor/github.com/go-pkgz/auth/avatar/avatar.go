@@ -12,18 +12,18 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-pkgz/lgr"
 	"github.com/go-pkgz/rest"
 	"github.com/pkg/errors"
 	"golang.org/x/image/draw"
 
-	"github.com/go-pkgz/auth/logger"
 	"github.com/go-pkgz/auth/token"
 )
 
 // Proxy provides http handler for avatars from avatar.Store
 // On user login token will call Put and it will retrieve and save picture locally.
 type Proxy struct {
-	logger.L
+	lgr.L
 	Store       Store
 	RoutePath   string
 	URL         string

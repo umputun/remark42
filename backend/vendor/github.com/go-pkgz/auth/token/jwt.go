@@ -38,6 +38,7 @@ const (
 	jwtHeaderKey   = "X-JWT"
 	xsrfCookieName = "XSRF-TOKEN"
 	xsrfHeaderKey  = "X-XSRF-TOKEN"
+	tokenQuery     = "token"
 	issuer         = "go-pkgz/auth"
 	tokenDuration  = time.Minute * 15
 	cookieDuration = time.Hour * 24 * 31
@@ -208,15 +209,20 @@ func (j *Service) Set(w http.ResponseWriter, claims Claims) error {
 	return nil
 }
 
-// Get token from header or cookie
+// Get token from url, header or cookie
 // if cookie used, verify xsrf token to match
 func (j *Service) Get(r *http.Request) (Claims, string, error) {
 
 	fromCookie := false
 	tokenString := ""
 
+	// try to get from "token" query param
+	if tkQuery := r.URL.Query().Get(tokenQuery); tkQuery != "" {
+		tokenString = tkQuery
+	}
+
 	// try to get from X-JWT header
-	if tokenHeader := r.Header.Get(jwtHeaderKey); tokenHeader != "" {
+	if tokenHeader := r.Header.Get(jwtHeaderKey); tokenHeader != "" && tokenString == "" {
 		tokenString = tokenHeader
 	}
 

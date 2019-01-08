@@ -10,11 +10,11 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/go-pkgz/lgr"
 	"github.com/nullrocks/identicon"
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
 
-	"github.com/go-pkgz/auth/logger"
 	"github.com/go-pkgz/auth/token"
 )
 
@@ -26,7 +26,7 @@ const devAuthPort = 8084
 // can run in interactive and non-interactive mode. In interactive mode login attempts will show login form to select
 // desired user name, this is the mode used for development. Non-interactive mode for tests only.
 type DevAuthServer struct {
-	logger.L
+	lgr.L
 	Provider  Oauth2Handler
 	Automatic bool
 	username  string // unsafe, but fine for dev

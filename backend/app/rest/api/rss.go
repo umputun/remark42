@@ -164,6 +164,7 @@ func (s *Rest) toRssFeed(url string, comments []store.Comment) (string, error) {
 			Description: c.Text,
 			Created:     c.Timestamp,
 			Author:      &feeds.Author{Name: c.User.Name},
+			Id:          c.ID,
 		}
 		if c.ParentID != "" {
 			// add indication to parent comment
