@@ -1,11 +1,11 @@
 package service
 
 import (
-	"log"
 	"sort"
 	"sync"
 	"time"
 
+	log "github.com/go-pkgz/lgr"
 	"github.com/google/uuid"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"

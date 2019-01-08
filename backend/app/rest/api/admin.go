@@ -2,15 +2,14 @@ package api
 
 import (
 	"errors"
-	"log"
 	"net/http"
 	"path"
 	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
-
 	"github.com/go-pkgz/auth"
+	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
 	"github.com/go-pkgz/rest/cache"
 

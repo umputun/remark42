@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
-	"log"
 
+	log "github.com/go-pkgz/lgr"
 	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/backend/app/store"

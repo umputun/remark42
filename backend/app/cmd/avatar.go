@@ -1,11 +1,11 @@
 package cmd
 
 import (
-	"log"
 	"path"
 	"time"
 
 	bolt "github.com/coreos/bbolt"
+	log "github.com/go-pkgz/lgr"
 	"github.com/pkg/errors"
 
 	"github.com/go-pkgz/auth/avatar"

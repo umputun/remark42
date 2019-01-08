@@ -2,6 +2,8 @@ package logger
 
 import (
 	"net/http"
+
+	"github.com/go-pkgz/lgr"
 )
 
 // Option func type
@@ -41,5 +43,12 @@ func IPfn(ipFn func(ip string) string) Option {
 func UserFn(userFn func(r *http.Request) (string, error)) Option {
 	return func(l *Middleware) {
 		l.userFn = userFn
+	}
+}
+
+// Log functional option defines loging backend.
+func Log(log lgr.L) Option {
+	return func(l *Middleware) {
+		l.log = log
 	}
 }

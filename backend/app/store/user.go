@@ -8,8 +8,9 @@ import (
 	"hash"
 	"hash/crc64"
 	"io"
-	"log"
 	"regexp"
+
+	log "github.com/go-pkgz/lgr"
 )
 
 // User holds user-related info

@@ -4,9 +4,9 @@ import (
 	"encoding/xml"
 	"html"
 	"io"
-	"log"
 	"time"
 
+	log "github.com/go-pkgz/lgr"
 	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/backend/app/store"

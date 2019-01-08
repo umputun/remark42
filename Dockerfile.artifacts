@@ -1,6 +1,11 @@
 FROM node:10.11-alpine as build-frontend-deps
 
 ARG CI
+ARG DRONE
+ARG DRONE_TAG
+ARG DRONE_COMMIT
+ARG DRONE_BRANCH
+
 ENV SKIP_FRONTEND_TEST=true
 
 RUN apk add --no-cache --update git

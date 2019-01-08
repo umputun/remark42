@@ -1,10 +1,9 @@
 package cache
 
 import (
-	"log"
 	"sync/atomic"
 
-	"github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru"
 	"github.com/pkg/errors"
 )
 
@@ -20,7 +19,6 @@ type memoryCache struct {
 
 // NewMemoryCache makes memoryCache implementation
 func NewMemoryCache(options ...Option) (LoadingCache, error) {
-	log.Print("[INFO] make memory cache")
 
 	res := memoryCache{
 		postFlushFn:  func() {},
@@ -44,8 +42,6 @@ func NewMemoryCache(options ...Option) (LoadingCache, error) {
 		return nil, errors.Wrap(err, "failed to make cache")
 	}
 
-	log.Printf("[DEBUG] create lru cache, maxKeys=%d, maxValueSize=%d, maxCacheSize=%d",
-		res.maxKeys, res.maxValueSize, res.maxCacheSize)
 	return &res, nil
 }
 

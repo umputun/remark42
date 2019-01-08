@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -16,6 +15,7 @@ import (
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/globalsign/mgo"
 	"github.com/go-pkgz/auth/token"
+	log "github.com/go-pkgz/lgr"
 	"github.com/go-pkgz/mongo"
 	flags "github.com/jessevdk/go-flags"
 

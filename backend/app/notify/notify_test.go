@@ -4,14 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"math/rand"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	log "github.com/go-pkgz/lgr"
 	"github.com/stretchr/testify/assert"
+
 	"github.com/umputun/remark/backend/app/store"
 )
 

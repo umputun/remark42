@@ -5,13 +5,14 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net"
 	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/go-pkgz/lgr"
 )
 
 var reMultWhtsp = regexp.MustCompile(`[\s\p{Zs}]{2,}`)
@@ -23,6 +24,7 @@ type Middleware struct {
 	flags       []Flag
 	ipFn        func(ip string) string
 	userFn      func(r *http.Request) (string, error)
+	log         lgr.L
 }
 
 // Flag type
@@ -38,7 +40,7 @@ const (
 
 // Logger returns default logger middleware
 func Logger(next http.Handler) http.Handler {
-	l := New(Flags(All), Prefix("[REST]"))
+	l := New(Flags(All), Prefix("REST"))
 	return l.Handler(next)
 
 }
@@ -49,6 +51,7 @@ func New(options ...Option) *Middleware {
 		prefix:      "",
 		maxBodySize: 1024,
 		flags:       []Flag{All},
+		log:         lgr.Default(),
 	}
 	for _, opt := range options {
 		opt(&res)
@@ -86,7 +89,7 @@ func (l *Middleware) Handler(next http.Handler) http.Handler {
 				remoteIP = l.ipFn(remoteIP)
 			}
 
-			log.Printf("%s %s - %s - %s - %d (%d) - %v %s %s",
+			l.log.Logf("%s %s - %s - %s - %d (%d) - %v %s %s",
 				l.prefix, r.Method, q, remoteIP, ww.status, ww.size, t2.Sub(t1), user, body)
 		}()
 

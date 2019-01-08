@@ -7,7 +7,7 @@ const handleBtnKeyPress = (event, handler) => {
 
 export const getHandleClickProps = handler => ({
   role: 'button',
-  tabIndex: 0,
   onClick: handler,
   onKeyPress: event => handleBtnKeyPress(event, handler),
+  ...(handler ? { tabIndex: 0 } : {}),
 });
