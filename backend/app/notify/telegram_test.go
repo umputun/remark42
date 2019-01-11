@@ -65,6 +65,8 @@ func TestTelegram_Send(t *testing.T) {
 	tb, _ = NewTelegram("non-json-resp", "remark_test", 2*time.Second, ts.URL+"/")
 	err = tb.Send(context.TODO(), request{comment: c, parent: cp})
 	assert.Contains(t, err.Error(), "unexpected telegram status code 404")
+
+	assert.Equal(t, "telegram: remark_test", tb.String())
 }
 
 func mockTelegramServer() *httptest.Server {
