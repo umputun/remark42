@@ -292,10 +292,3 @@ func addComment(t *testing.T, c store.Comment, ts *httptest.Server) string {
 	time.Sleep(time.Nanosecond * 10)
 	return crResp["id"].(string)
 }
-
-func cleanup(ts *httptest.Server, srv *Rest) {
-	ts.Close()
-	srv.DataService.Close()
-	os.Remove(testDb)
-	os.Remove(testHTML)
-}
