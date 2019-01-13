@@ -38,10 +38,10 @@ func TestTelegram_New(t *testing.T) {
 	assert.EqualError(t, err, "can't initialize telegram notifications: Get http://127.0.0.1:4321/no-such-thing/getMe: dial tcp 127.0.0.1:4321: connect: connection refused")
 
 	_, err = NewTelegram("good-token", "remark_test", 2*time.Second, "")
-	assert.Error(t, err)
+	assert.Error(t, err, "empty api url not allowed")
 
 	_, err = NewTelegram("good-token", "remark_test", 0, ts.URL+"/")
-	assert.NoError(t, err)
+	assert.NoError(t, err, "0 timeout allowed as default")
 }
 
 func TestTelegram_Send(t *testing.T) {
@@ -62,9 +62,10 @@ func TestTelegram_Send(t *testing.T) {
 	err = tb.Send(context.TODO(), request{comment: c, parent: cp})
 	assert.NoError(t, err)
 
-	tb, _ = NewTelegram("non-json-resp", "remark_test", 2*time.Second, ts.URL+"/")
+	tb, err = NewTelegram("non-json-resp", "remark_test", 2*time.Second, ts.URL+"/")
+	assert.NotNil(t, err, "should failed")
 	err = tb.Send(context.TODO(), request{comment: c, parent: cp})
-	assert.Contains(t, err.Error(), "unexpected telegram status code 404")
+	assert.Contains(t, err.Error(), "unexpected telegram status code 404", "send on broken tg")
 
 	assert.Equal(t, "telegram: remark_test", tb.String())
 }
