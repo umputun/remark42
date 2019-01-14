@@ -2,13 +2,13 @@ package mongo
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/globalsign/mgo"
+	log "github.com/go-pkgz/lgr"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

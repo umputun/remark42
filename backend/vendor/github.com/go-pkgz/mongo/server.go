@@ -6,13 +6,12 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"log"
 	"net"
-	"os"
 	"strings"
 	"time"
 
 	"github.com/globalsign/mgo"
+	log "github.com/go-pkgz/lgr"
 )
 
 // Server represents mongo instance and provides session accessor
@@ -27,11 +26,11 @@ type ServerParams struct {
 	ConsistencyMode mgo.Mode
 	Delay           int  // initial delay to give mongo server some time to start, in case if mongo part of the same compose
 	Debug           bool // turn on mgo debug mode
-	SSL             bool
+	SSL             bool // enforce SSL connection
 }
 
 // NewServerWithURL makes mongo server from url like
-// mongodb://remark42:password@127.0.0.1t:27017/test?ssl=true&replicaSet=Cluster0-shard-0&authSource=admin
+// mongodb://remark42:password@127.0.0.1:27017/test?ssl=true&replicaSet=Cluster0-shard-0&authSource=admin
 func NewServerWithURL(url string, timeout time.Duration) (res *Server, err error) {
 	dial, params, err := parseURL(url, timeout)
 	if err != nil {
@@ -44,10 +43,8 @@ func NewServerWithURL(url string, timeout time.Duration) (res *Server, err error
 func NewServer(dial mgo.DialInfo, params ServerParams) (res *Server, err error) {
 	result := Server{dial: dial, params: params}
 
-	if params.Debug {
-		mgo.SetDebug(true)
-		mgo.SetLogger(log.New(os.Stdout, "MGO ", log.Ldate|log.Ltime|log.Lmicroseconds))
-	}
+	mgo.SetDebug(true)
+	mgo.SetLogger(&mgdLogger{})
 
 	if len(dial.Addrs) == 0 {
 		return nil, errors.New("missing mongo address")
@@ -89,11 +86,11 @@ func NewServer(dial mgo.DialInfo, params ServerParams) (res *Server, err error) 
 }
 
 // SessionCopy returns copy of main session. Client should close it
-func (m Server) SessionCopy() *mgo.Session {
+func (m *Server) SessionCopy() *mgo.Session {
 	return m.sess.Copy()
 }
 
-func (m Server) String() string {
+func (m *Server) String() string {
 	return fmt.Sprintf("%v%s", m.dial.Addrs, m.dial.Database)
 }
 
@@ -110,8 +107,15 @@ func parseURL(mongoURL string, connectTimeout time.Duration) (mgo.DialInfo, Serv
 
 	dial, err := mgo.ParseURL(mongoURL)
 	if err != nil {
-		return mgo.DialInfo{}, ServerParams{}, fmt.Errorf("failed to pars mongo url %s, %s", mongoURL, err)
+		return mgo.DialInfo{}, ServerParams{}, fmt.Errorf("failed to parse mongo url %s, %s", mongoURL, err)
 	}
 	dial.Timeout = connectTimeout
 	return *dial, params, nil
+}
+
+type mgdLogger struct{}
+
+func (l *mgdLogger) Output(calldepth int, s string) error {
+	log.Printf("[DEBUG] MGO %s", s)
+	return nil
 }

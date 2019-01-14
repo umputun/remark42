@@ -137,7 +137,7 @@ func (l *Logger) extractLevel(line string) (level, msg string) {
 			return lv, line[len(lv)+3:]
 		}
 	}
-	return "", line
+	return "INFO", line
 }
 
 // getDump reads runtime stack and returns as a string

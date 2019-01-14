@@ -3,11 +3,11 @@ package mongo
 import (
 	"context"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
 	"github.com/globalsign/mgo"
+	log "github.com/go-pkgz/lgr"
 )
 
 // BufferedWriter defines interface for writes and flush

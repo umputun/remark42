@@ -126,20 +126,20 @@
   version = "v0.3.2"
 
 [[projects]]
-  digest = "1:779380833dce298899504f0b78ce961339cd5b5facb43f41208d2120d22306f5"
+  digest = "1:1933dabfb0e07548ed9684fdef857cc6f2413bbbb74ba838a7c1f77407b8fd90"
   name = "github.com/go-pkgz/lgr"
   packages = ["."]
   pruneopts = "UT"
-  revision = "dbe2f3c6c85e69d224b1dc5ea48d65521827ee8c"
-  version = "v0.2.1"
+  revision = "8f56fccc1a15dfe9c7f72e049fc87cc378205b97"
+  version = "v0.2.2"
 
 [[projects]]
-  digest = "1:1212e114344a5cdcc834ea69e19d456eef230f9784659080fee67e02ba2cb574"
+  digest = "1:c509e3f646c48148f2239fa66d5cd62785dfd057b5d2b46972e45b60049c19ed"
   name = "github.com/go-pkgz/mongo"
   packages = ["."]
   pruneopts = "UT"
-  revision = "9a09a574c336c6ae2338a65bbebed2baab2a713c"
-  version = "v1.0.0"
+  revision = "ee1e9a167094f8cdbc27407907aa694fff350ec3"
+  version = "v1.1.0"
 
 [[projects]]
   digest = "1:0f24c72d7e9bcb682b907be0461ac552973cd4b3f1b60b04b725f6d74a3e59e7"
