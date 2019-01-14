@@ -182,7 +182,7 @@ func (s *Rest) routes() chi.Router {
 	authHandler, avatarHandler := s.Authenticator.Handlers()
 
 	router.Group(func(r chi.Router) {
-		l := logger.New(logger.Flags(logger.All), logger.IPfn(ipFn), logger.Prefix("[INFO]"))
+		l := logger.New(logger.Flags(logger.All), logger.Log(log.Default()), logger.IPfn(ipFn), logger.Prefix("[INFO]"))
 		r.Use(l.Handler, tollbooth_chi.LimitHandler(tollbooth.NewLimiter(5, nil)))
 		r.Mount("/auth", authHandler)
 	})
@@ -206,7 +206,8 @@ func (s *Rest) routes() chi.Router {
 		rapi.Group(func(ropen chi.Router) {
 			ropen.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
 			ropen.Use(authMiddleware.Trace)
-			ropen.Use(logger.New(logger.Flags(logger.All), logger.Prefix("[INFO]"), logger.IPfn(ipFn)).Handler)
+			ropen.Use(logger.New(logger.Flags(logger.All), logger.Log(log.Default()),
+				logger.Prefix("[INFO]"), logger.IPfn(ipFn)).Handler)
 			ropen.Get("/find", s.findCommentsCtrl)
 			ropen.Get("/id/{id}", s.commentByIDCtrl)
 			ropen.Get("/comments", s.findUserCommentsCtrl)
@@ -226,7 +227,8 @@ func (s *Rest) routes() chi.Router {
 		rapi.Group(func(rauth chi.Router) {
 			rauth.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
 			rauth.Use(authMiddleware.Auth)
-			rauth.Use(logger.New(logger.Flags(logger.All), logger.Prefix("[INFO]"), logger.IPfn(ipFn)).Handler)
+			rauth.Use(logger.New(logger.Flags(logger.All), logger.Log(log.Default()),
+				logger.Prefix("[INFO]"), logger.IPfn(ipFn)).Handler)
 			rauth.Post("/comment", s.createCommentCtrl)
 			rauth.Put("/comment/{id}", s.updateCommentCtrl)
 			rauth.Get("/user", s.userInfoCtrl)
