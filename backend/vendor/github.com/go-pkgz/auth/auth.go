@@ -78,7 +78,7 @@ func NewService(opts Opts) (res *Service) {
 	}
 
 	if opts.Logger == nil {
-		res.logger = lgr.Func(func(fmt string, args ...interface{}) {}) // do-nothing logger
+		res.logger = lgr.NoOp
 	}
 
 	jwtService := token.NewService(token.Opts{

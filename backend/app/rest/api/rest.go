@@ -155,7 +155,7 @@ func (s *Rest) makeHTTPServer(port int, router http.Handler) *http.Server {
 
 func (s *Rest) routes() chi.Router {
 	router := chi.NewRouter()
-	router.Use(middleware.RealIP, R.Recoverer)
+	router.Use(middleware.RealIP, R.Recoverer(log.Default()))
 	router.Use(middleware.Throttle(1000), middleware.Timeout(60*time.Second))
 	router.Use(R.AppInfo("remark42", "umputun", s.Version), R.Ping)
 

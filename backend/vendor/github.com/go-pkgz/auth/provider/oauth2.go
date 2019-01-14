@@ -81,13 +81,13 @@ func (p Oauth2Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	// make state (random) and store in session
 	state, err := randToken()
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to make oauth2 state")
+		rest.SendErrorJSON(w, r, p.L, http.StatusInternalServerError, err, "failed to make oauth2 state")
 		return
 	}
 
 	cid, err := randToken()
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to make claim's id")
+		rest.SendErrorJSON(w, r, p.L, http.StatusInternalServerError, err, "failed to make claim's id")
 		return
 	}
 
@@ -106,7 +106,7 @@ func (p Oauth2Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := p.JwtService.Set(w, claims); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to set token")
+		rest.SendErrorJSON(w, r, p.L, http.StatusInternalServerError, err, "failed to set token")
 		return
 	}
 
@@ -122,32 +122,32 @@ func (p Oauth2Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 func (p Oauth2Handler) AuthHandler(w http.ResponseWriter, r *http.Request) {
 	oauthClaims, _, err := p.JwtService.Get(r)
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to get token")
+		rest.SendErrorJSON(w, r, p.L, http.StatusInternalServerError, err, "failed to get token")
 		return
 	}
 
 	if oauthClaims.Handshake == nil {
-		rest.SendErrorJSON(w, r, http.StatusForbidden, nil, "invalid handshake token")
+		rest.SendErrorJSON(w, r, p.L, http.StatusForbidden, nil, "invalid handshake token")
 		return
 	}
 
 	retrievedState := oauthClaims.Handshake.State
 	if retrievedState == "" || retrievedState != r.URL.Query().Get("state") {
-		rest.SendErrorJSON(w, r, http.StatusForbidden, nil, "unexpected state")
+		rest.SendErrorJSON(w, r, p.L, http.StatusForbidden, nil, "unexpected state")
 		return
 	}
 
 	p.Logf("[DEBUG] token with state %s", retrievedState)
 	tok, err := p.conf.Exchange(context.Background(), r.URL.Query().Get("code"))
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "exchange failed")
+		rest.SendErrorJSON(w, r, p.L, http.StatusInternalServerError, err, "exchange failed")
 		return
 	}
 
 	client := p.conf.Client(context.Background(), tok)
 	uinfo, err := client.Get(p.infoURL)
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusServiceUnavailable, err, "failed to get client info")
+		rest.SendErrorJSON(w, r, p.L, http.StatusServiceUnavailable, err, "failed to get client info")
 		return
 	}
 
@@ -159,13 +159,13 @@ func (p Oauth2Handler) AuthHandler(w http.ResponseWriter, r *http.Request) {
 
 	data, err := ioutil.ReadAll(uinfo.Body)
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to read user info")
+		rest.SendErrorJSON(w, r, p.L, http.StatusInternalServerError, err, "failed to read user info")
 		return
 	}
 
 	jData := map[string]interface{}{}
 	if e := json.Unmarshal(data, &jData); e != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to unmarshal user info")
+		rest.SendErrorJSON(w, r, p.L, http.StatusInternalServerError, err, "failed to unmarshal user info")
 		return
 	}
 	p.Logf("[DEBUG] got raw user info %+v", jData)
@@ -173,13 +173,13 @@ func (p Oauth2Handler) AuthHandler(w http.ResponseWriter, r *http.Request) {
 	u := p.mapUser(jData, data)
 	u, err = setAvatar(p.AvatarSaver, u)
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to save avatar to proxy")
+		rest.SendErrorJSON(w, r, p.L, http.StatusInternalServerError, err, "failed to save avatar to proxy")
 		return
 	}
 
 	cid, err := randToken()
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to make claim's id")
+		rest.SendErrorJSON(w, r, p.L, http.StatusInternalServerError, err, "failed to make claim's id")
 		return
 	}
 	claims := token.Claims{
@@ -193,7 +193,7 @@ func (p Oauth2Handler) AuthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = p.JwtService.Set(w, claims); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to set token")
+		rest.SendErrorJSON(w, r, p.L, http.StatusInternalServerError, err, "failed to set token")
 		return
 	}
 

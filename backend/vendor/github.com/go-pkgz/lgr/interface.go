@@ -46,5 +46,5 @@ func Setup(opts ...Option) {
 	def.skipCallers = 2
 }
 
-// Default returns pre-constructed def logger (debug on, callers disabled)
+// Default returns pre-constructed def logger (debug off, callers disabled)
 func Default() L { return def }

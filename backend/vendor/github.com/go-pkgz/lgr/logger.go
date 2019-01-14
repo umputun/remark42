@@ -53,18 +53,19 @@ func (l *Logger) Logf(format string, args ...interface{}) {
 	// format timestamp with or without msecs
 	ts := func() (res string) {
 		if l.msec {
-			return l.now().Format("2006/01/02 15:04:05.000 ")
+			return l.now().Format("2006/01/02 15:04:05.000")
 		}
-		return l.now().Format("2006/01/02 15:04:05 ")
+		return l.now().Format("2006/01/02 15:04:05")
 	}
 
 	lv, msg := l.extractLevel(fmt.Sprintf(format, args...))
-	if lv == "DEBUG " && !l.dbg {
+	if lv == "DEBUG" && !l.dbg {
 		return
 	}
 	var bld strings.Builder
 	bld.WriteString(ts())
-	bld.WriteString(lv)
+	bld.WriteString(l.formatLevel(lv))
+	bld.WriteString(" ")
 
 	if l.dbg && (l.callerFile || l.callerFunc) {
 		if pc, file, line, ok := runtime.Caller(l.skipCallers); ok {
@@ -95,18 +96,19 @@ func (l *Logger) Logf(format string, args ...interface{}) {
 	l.stdout.Write(msgb) //nolint
 
 	switch lv {
-	case "PANIC ", "FATAL ":
+	case "PANIC", "FATAL":
 		l.stderr.Write(msgb)      //nolint
+		bld.WriteString("\n")     //nolint
 		l.stderr.Write(getDump()) //nolint
 		l.fatal()
-	case "ERROR ":
+	case "ERROR":
 		l.stderr.Write(msgb) //nolint
 	}
 
 	l.lock.Unlock()
 }
 
-func (l *Logger) extractLevel(line string) (level, msg string) {
+func (l *Logger) formatLevel(lv string) string {
 
 	brace := func(b string) string {
 		if l.levelBraces {
@@ -115,19 +117,24 @@ func (l *Logger) extractLevel(line string) (level, msg string) {
 		return ""
 	}
 
-	spaces := " "
+	if lv == "" {
+		return ""
+	}
+
+	spaces := ""
+	if len(lv) == 4 {
+		spaces = " "
+	}
+	return " " + brace("[") + lv + brace("]") + spaces
+}
+
+func (l *Logger) extractLevel(line string) (level, msg string) {
 	for _, lv := range levels {
 		if strings.HasPrefix(line, lv) {
-			if len(lv) == 4 {
-				spaces = "  "
-			}
-			return brace("[") + lv + brace("]") + spaces, line[len(lv)+1:]
+			return lv, line[len(lv)+1:]
 		}
 		if strings.HasPrefix(line, "["+lv+"]") {
-			if len(lv) == 4 {
-				spaces = "  "
-			}
-			return brace("[") + lv + brace("]") + spaces, line[len(lv)+3:]
+			return lv, line[len(lv)+3:]
 		}
 	}
 	return "", line

@@ -43,7 +43,7 @@ type SSLConfig struct {
 func (s *Rest) httpToHTTPSRouter() chi.Router {
 	log.Printf("[DEBUG] create https-to-http redirect routes")
 	router := chi.NewRouter()
-	router.Use(middleware.RealIP, R.Recoverer)
+	router.Use(middleware.RealIP, R.Recoverer(log.Default()))
 	router.Use(middleware.Throttle(1000), middleware.Timeout(60*time.Second))
 
 	router.Handle("/*", s.redirectHandler())
@@ -57,7 +57,7 @@ func (s *Rest) httpToHTTPSRouter() chi.Router {
 func (s *Rest) httpChallengeRouter(m *autocert.Manager) chi.Router {
 	log.Printf("[DEBUG] create http-challenge routes")
 	router := chi.NewRouter()
-	router.Use(middleware.RealIP, R.Recoverer)
+	router.Use(middleware.RealIP, R.Recoverer(log.Default()))
 	router.Use(middleware.Throttle(1000), middleware.Timeout(60*time.Second))
 
 	router.Handle("/*", m.HTTPHandler(s.redirectHandler()))

@@ -92,7 +92,7 @@ func (p *Proxy) Handler(w http.ResponseWriter, r *http.Request) {
 	avReader, size, err := p.Store.Get(avatarID)
 	if err != nil {
 
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't load avatar")
+		rest.SendErrorJSON(w, r, p.L, http.StatusBadRequest, err, "can't load avatar")
 		return
 	}
 

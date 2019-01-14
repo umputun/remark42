@@ -44,16 +44,16 @@ func (p DirectHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	aud := r.URL.Query().Get("aud")
 	sessOnly := r.URL.Query().Get("sess") == "1"
 	if p.CredChecker == nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, errors.New("empty credential store"), "no credential store")
+		rest.SendErrorJSON(w, r, p.L, http.StatusInternalServerError, errors.New("empty credential store"), "no credential store")
 		return
 	}
 	ok, err := p.CredChecker.Check(user, password)
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to access creds store")
+		rest.SendErrorJSON(w, r, p.L, http.StatusInternalServerError, err, "failed to access creds store")
 		return
 	}
 	if !ok {
-		rest.SendErrorJSON(w, r, http.StatusForbidden, nil, "incorrect user or password")
+		rest.SendErrorJSON(w, r, p.L, http.StatusForbidden, nil, "incorrect user or password")
 		return
 	}
 	claims := token.Claims{
@@ -66,7 +66,7 @@ func (p DirectHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = p.TokenService.Set(w, claims); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to set token")
+		rest.SendErrorJSON(w, r, p.L, http.StatusInternalServerError, err, "failed to set token")
 		return
 	}
 	rest.RenderJSON(w, r, claims.User)

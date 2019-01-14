@@ -112,7 +112,7 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:94bd00c67ee734ccdafa8c29a3dec31a71e1c0906d12136d50b59af98f0f2a9c"
+  digest = "1:1e397244efaf3322184d8fe59caa62dae159d925aa74a5efafa670964d860d67"
   name = "github.com/go-pkgz/auth"
   packages = [
     ".",
@@ -122,16 +122,16 @@
     "token",
   ]
   pruneopts = "UT"
-  revision = "720bf3c94e674562c17355923524c067e43b6078"
-  version = "v0.3.1"
+  revision = "06e223a293c64ebcaaccda26edfeaf7fba1b8746"
+  version = "v0.3.2"
 
 [[projects]]
-  digest = "1:479ca4406d1521b92615374d807581ccfdb1b971abc3bac7e29c1fc83c988745"
+  digest = "1:779380833dce298899504f0b78ce961339cd5b5facb43f41208d2120d22306f5"
   name = "github.com/go-pkgz/lgr"
   packages = ["."]
   pruneopts = "UT"
-  revision = "07dcefe903e40f6c93674e1b85f84764552665b0"
-  version = "v0.2.0"
+  revision = "dbe2f3c6c85e69d224b1dc5ea48d65521827ee8c"
+  version = "v0.2.1"
 
 [[projects]]
   digest = "1:1212e114344a5cdcc834ea69e19d456eef230f9784659080fee67e02ba2cb574"
@@ -153,7 +153,7 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:f90abdc7788e4c799b440eba9ba2c0da647b734d4bd7c0d6a66b8af74d836e67"
+  digest = "1:9aba5c95373481f118e57e9740d9e82f86802d86849809ab89324bcb4f236451"
   name = "github.com/go-pkgz/rest"
   packages = [
     ".",
@@ -161,8 +161,8 @@
     "logger",
   ]
   pruneopts = "UT"
-  revision = "8fbfa5089252d9c40ed780e00e97763c28764e67"
-  version = "v1.1.6"
+  revision = "e7d08d0194d613b8854de2e487bf7732500fa153"
+  version = "v1.2.0"
 
 [[projects]]
   digest = "1:ffc060c551980d37ee9e428ef528ee2813137249ccebb0bfc412ef83071cac91"
