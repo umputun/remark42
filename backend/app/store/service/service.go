@@ -49,6 +49,7 @@ type PostMetaData struct {
 }
 
 const defaultCommentMaxSize = 2000
+const maxLastCommentsReply = 1000
 
 // UnlimitedVotes doesn't restrict MaxVotes
 const UnlimitedVotes = -1
@@ -179,6 +180,10 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 		return comment, errors.Errorf("too late to edit %s", commentID)
 	}
 
+	if s.HasReplies(comment) {
+		return comment, errors.Errorf("parent comment with reply can't be edited, %s", commentID)
+	}
+
 	if req.Delete { // delete request
 		comment.Deleted = true
 		return comment, s.Delete(locator, commentID, store.SoftDelete)
@@ -194,6 +199,26 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 	comment.Sanitize()
 	err = s.Put(locator, comment)
 	return comment, err
+}
+
+// HasReplies checks if there is any reply to the comments
+// Loads last maxLastCommentsReply comments and compare parent id to the comment's id
+// TODO: add caching?
+func (s *DataStore) HasReplies(comment store.Comment) bool {
+	comments, err := s.Last(comment.Locator.SiteID, maxLastCommentsReply)
+	if err != nil {
+		log.Printf("[WARN] can't get last comments for reply check, %v", err)
+		return false
+	}
+
+	for _, c := range comments {
+		if c.ParentID != "" && !c.Deleted && c.User.ID != comment.User.ID { // not interested in replies to yourself and top level
+			if c.ParentID == comment.ID {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // SetTitle puts title from the locator.URL page and overwrites any existing title

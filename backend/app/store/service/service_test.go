@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/bbolt"
+	bolt "github.com/coreos/bbolt"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -404,6 +404,32 @@ func TestService_EditCommentDurationFailed(t *testing.T) {
 	assert.NotNil(t, err)
 }
 
+func TestService_EditCommentReplyFailed(t *testing.T) {
+	defer os.Remove(testDb)
+	b := DataStore{Interface: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123")}
+
+	res, err := b.Last("radio-t", 0)
+	t.Logf("%+v", res[1])
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(res))
+	assert.Nil(t, res[1].Edit)
+
+	reply := store.Comment{
+		ID:        "123456",
+		ParentID:  "id-1",
+		Text:      "some text",
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
+		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+		User:      store.User{ID: "user2", Name: "user name 2"},
+	}
+	_, err = b.Create(reply)
+	assert.NoError(t, err)
+
+	_, err = b.EditComment(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[1].ID,
+		EditRequest{Orig: "yyy", Text: "xxx", Summary: "my edit"})
+	assert.EqualError(t, err, "parent comment with reply can't be edited, id-1")
+}
+
 func TestService_ValidateComment(t *testing.T) {
 
 	b := DataStore{MaxCommentSize: 2000, AdminStore: admin.NewStaticKeyStore("secret 123")}
@@ -521,6 +547,36 @@ func TestService_IsAdmin(t *testing.T) {
 
 	assert.False(t, b.IsAdmin("radio-t", "user1"))
 	assert.True(t, b.IsAdmin("radio-t", "user2"))
+}
+
+func TestService_HasReplies(t *testing.T) {
+	defer os.Remove(testDb)
+
+	// two comments for https://radio-t.com, no reply
+	b := DataStore{Interface: prepStoreEngine(t), EditDuration: 100 * time.Millisecond,
+		AdminStore: admin.NewStaticStore("secret 123", []string{"user2"}, "user@email.com")}
+
+	comment := store.Comment{
+		ID:        "id-1",
+		Text:      `some text, <a href="http://radio-t.com">link</a>`,
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
+		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+		User:      store.User{ID: "user1", Name: "user name"},
+	}
+
+	assert.False(t, b.HasReplies(comment))
+
+	reply := store.Comment{
+		ID:        "123456",
+		ParentID:  "id-1",
+		Text:      "some text",
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
+		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+		User:      store.User{ID: "user2", Name: "user name 2"},
+	}
+	_, err := b.Create(reply)
+	assert.NoError(t, err)
+	assert.True(t, b.HasReplies(comment))
 }
 
 // makes new boltdb, put two records
