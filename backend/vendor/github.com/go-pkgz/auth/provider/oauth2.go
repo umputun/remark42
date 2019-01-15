@@ -105,7 +105,7 @@ func (p Oauth2Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	if err := p.JwtService.Set(w, claims); err != nil {
+	if _, err := p.JwtService.Set(w, claims); err != nil {
 		rest.SendErrorJSON(w, r, p.L, http.StatusInternalServerError, err, "failed to set token")
 		return
 	}
@@ -192,7 +192,7 @@ func (p Oauth2Handler) AuthHandler(w http.ResponseWriter, r *http.Request) {
 		SessionOnly: oauthClaims.SessionOnly,
 	}
 
-	if err = p.JwtService.Set(w, claims); err != nil {
+	if _, err = p.JwtService.Set(w, claims); err != nil {
 		rest.SendErrorJSON(w, r, p.L, http.StatusInternalServerError, err, "failed to set token")
 		return
 	}

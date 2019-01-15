@@ -65,7 +65,7 @@ func (p DirectHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		SessionOnly: sessOnly,
 	}
 
-	if err = p.TokenService.Set(w, claims); err != nil {
+	if _, err = p.TokenService.Set(w, claims); err != nil {
 		rest.SendErrorJSON(w, r, p.L, http.StatusInternalServerError, err, "failed to set token")
 		return
 	}

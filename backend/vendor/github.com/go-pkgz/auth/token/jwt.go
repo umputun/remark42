@@ -175,7 +175,7 @@ func (j *Service) validate(claims *Claims) error {
 // Set creates token cookie with xsrf cookie and put it to ResponseWriter
 // accepts claims and sets expiration if none defined. permanent flag means long-living cookie,
 // false makes it session only.
-func (j *Service) Set(w http.ResponseWriter, claims Claims) error {
+func (j *Service) Set(w http.ResponseWriter, claims Claims) (Claims, error) {
 	if claims.ExpiresAt == 0 {
 		claims.ExpiresAt = time.Now().Add(j.TokenDuration).Unix()
 	}
@@ -190,7 +190,7 @@ func (j *Service) Set(w http.ResponseWriter, claims Claims) error {
 
 	tokenString, err := j.Token(claims)
 	if err != nil {
-		return errors.Wrap(err, "failed to make token token")
+		return Claims{}, errors.Wrap(err, "failed to make token token")
 	}
 
 	cookieExpiration := 0 // session cookie
@@ -206,7 +206,7 @@ func (j *Service) Set(w http.ResponseWriter, claims Claims) error {
 		MaxAge: cookieExpiration, Secure: j.SecureCookies}
 	http.SetCookie(w, &xsrfCookie)
 
-	return nil
+	return claims, nil
 }
 
 // Get token from url, header or cookie
@@ -239,6 +239,10 @@ func (j *Service) Get(r *http.Request) (Claims, string, error) {
 	claims, err := j.Parse(tokenString)
 	if err != nil {
 		return Claims{}, "", errors.Wrap(err, "failed to get token")
+	}
+
+	if !fromCookie && j.IsExpired(claims) {
+		return Claims{}, "", errors.New("token expired")
 	}
 
 	if j.DisableXSRF {

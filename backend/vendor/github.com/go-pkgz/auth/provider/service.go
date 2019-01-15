@@ -30,7 +30,7 @@ type AvatarSaver interface {
 // TokenService defines interface accessing tokens
 type TokenService interface {
 	Parse(tokenString string) (claims token.Claims, err error)
-	Set(w http.ResponseWriter, claims token.Claims) error
+	Set(w http.ResponseWriter, claims token.Claims) (token.Claims, error)
 	Get(r *http.Request) (claims token.Claims, token string, err error)
 	Reset(w http.ResponseWriter)
 }

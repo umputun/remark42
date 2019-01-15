@@ -2,10 +2,11 @@
 package middleware
 
 import (
-	"math/rand"
 	"net/http"
+	"sync"
 
 	"github.com/go-pkgz/lgr"
+	lru "github.com/hashicorp/golang-lru"
 	"github.com/pkg/errors"
 
 	"github.com/go-pkgz/auth/provider"
@@ -20,12 +21,19 @@ type Authenticator struct {
 	Validator     token.Validator
 	AdminPasswd   string
 	RefreshFactor int
+
+	refresh struct {
+		cache *lru.Cache
+		once  sync.Once
+	}
 }
+
+const refreshCacheSize = 1000
 
 // TokenService defines interface accessing tokens
 type TokenService interface {
 	Parse(tokenString string) (claims token.Claims, err error)
-	Set(w http.ResponseWriter, claims token.Claims) error
+	Set(w http.ResponseWriter, claims token.Claims) (token.Claims, error)
 	Get(r *http.Request) (claims token.Claims, token string, err error)
 	IsExpired(claims token.Claims) bool
 	Reset(w http.ResponseWriter)
@@ -83,7 +91,7 @@ func (a *Authenticator) auth(reqAuth bool) func(http.Handler) http.Handler {
 			}
 
 			if claims.User == nil {
-				onError(h, w, r, errors.New("failed auth, no user info presented in the claim"))
+				onError(h, w, r, errors.New("no user info presented in the claim"))
 				return
 			}
 
@@ -95,13 +103,12 @@ func (a *Authenticator) auth(reqAuth bool) func(http.Handler) http.Handler {
 					return
 				}
 
-				if a.shouldRefresh(claims) {
-					if claims, err = a.refreshExpiredToken(w, claims); err != nil {
+				if a.JWTService.IsExpired(claims) {
+					if claims, err = a.refreshExpiredToken(w, claims, tkn); err != nil {
 						a.JWTService.Reset(w)
 						onError(h, w, r, errors.Wrap(err, "can't refresh token"))
 						return
 					}
-					a.Logf("[DEBUG] token refreshed for %+v", claims.User)
 				}
 
 				r = token.SetUserInfo(r, *claims.User) // populate user info to request context
@@ -115,27 +122,35 @@ func (a *Authenticator) auth(reqAuth bool) func(http.Handler) http.Handler {
 }
 
 // refreshExpiredToken makes a new token with passed claims
-func (a *Authenticator) refreshExpiredToken(w http.ResponseWriter, claims token.Claims) (token.Claims, error) {
-	claims.ExpiresAt = 0 // this will cause now+duration for refreshed token
-	if err := a.JWTService.Set(w, claims); err != nil {
+func (a *Authenticator) refreshExpiredToken(w http.ResponseWriter, claims token.Claims, tkn string) (token.Claims, error) {
+
+	a.refresh.once.Do(func() {
+		var e error
+		if a.refresh.cache, e = lru.New(refreshCacheSize); e != nil {
+			a.Logf("[WARN] can't make refresh cache, %v", e)
+			a.refresh.cache = nil
+		}
+	})
+
+	if a.refresh.cache != nil {
+		if c, ok := a.refresh.cache.Get(tkn); ok {
+			// already in cache
+			return c.(token.Claims), nil
+		}
+	}
+
+	claims.ExpiresAt = 0                  // this will cause now+duration for refreshed token
+	c, err := a.JWTService.Set(w, claims) // Set changes token
+	if err != nil {
 		return token.Claims{}, err
 	}
-	return claims, nil
-}
 
-// shouldRefresh checks if token expired with an optional random rejection of refresh.
-// the goal is to prevent multiple refresh request executed at the same time by allowing only some of them
-func (a *Authenticator) shouldRefresh(claims token.Claims) bool {
-	if !a.JWTService.IsExpired(claims) {
-		return false
+	if a.refresh.cache != nil {
+		a.refresh.cache.Add(tkn, c)
 	}
 
-	// disable randomizing with 0 factor
-	if a.RefreshFactor == 0 {
-		return true
-	}
-
-	return rand.Int31n(int32(a.RefreshFactor)) == 0 // randomize selection
+	a.Logf("[DEBUG] token refreshed for %+v", claims.User)
+	return c, nil
 }
 
 // AdminOnly middleware allows access for admins only
