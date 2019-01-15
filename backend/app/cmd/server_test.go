@@ -377,7 +377,7 @@ func TestServerAuthHooks(t *testing.T) {
 	resp, err = client.Do(req)
 	require.Nil(t, err)
 	defer resp.Body.Close()
-	assert.Equal(t, http.StatusForbidden, resp.StatusCode, "blocked user can't post")
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "blocked user can't post")
 
 	app.Wait()
 }
