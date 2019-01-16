@@ -21,6 +21,7 @@ export default class Input extends Component {
     this.state = {
       preview: null,
       isErrorShown: false,
+      errorMessage: null,
       isDisabled: false,
       maxLength: config.max_comment_size || DEFAULT_MAX_COMMENT_SIZE,
       text: props.value || '',
@@ -60,6 +61,7 @@ export default class Input extends Component {
     this.setState({
       preview: null,
       isErrorShown: false,
+      errorMessage: null,
       text: e.target.value,
     });
   }
@@ -87,8 +89,17 @@ export default class Input extends Component {
 
         this.setState({ preview: null, text: '' });
       })
-      .catch(() => {
-        this.setState({ isErrorShown: true });
+      .catch(e => {
+        if (
+          e.response &&
+          e.response.data &&
+          typeof e.response.data.error === 'string' &&
+          e.response.data.error.indexOf("parent comment with reply can't be edited") === 0
+        ) {
+          this.setState({ isErrorShown: true, errorMessage: 'Comment has reply, editing is not possible' });
+          return;
+        }
+        this.setState({ isErrorShown: true, errorMessage: null });
       })
       .finally(() => this.setState({ isDisabled: false }));
   }
@@ -98,19 +109,20 @@ export default class Input extends Component {
 
     if (!text || !text.trim()) return;
 
-    this.setState({ isErrorShown: false });
+    this.setState({ isErrorShown: false, errorMessage: null });
 
     api
       .getPreview({ text })
       .then(preview => this.setState({ preview }))
       .catch(() => {
-        this.setState({ isErrorShown: true });
+        this.setState({ isErrorShown: true, errorMessage: null });
       });
   }
 
-  render(props, { isDisabled, isErrorShown, preview, maxLength, text }) {
+  render(props, { isDisabled, isErrorShown, errorMessage, preview, maxLength, text }) {
     const charactersLeft = maxLength - text.length;
-    const { mods = {}, errorMessage, userId } = props;
+    const { mods = {}, userId } = props;
+    errorMessage = props.errorMessage || errorMessage;
 
     return (
       <form className={b('input', props)} onSubmit={this.send} aria-label="New comment">

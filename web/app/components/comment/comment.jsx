@@ -391,6 +391,7 @@ export default class Comment extends Component {
     const lowCommentScore = config.low_score;
     const votingDisabledReason = this.getVoteDisabledReason();
     const isVotingDisabled = votingDisabledReason !== null;
+    const editable = data.repliesCount === 0 && !!editTimeLeft;
 
     const o = {
       ...data,
@@ -588,7 +589,7 @@ export default class Comment extends Component {
               !mods.disabled &&
               !!o.orig &&
               isCurrentUser &&
-              (!!editTimeLeft || isEditing) &&
+              (editable || isEditing) &&
               mods.view !== 'user' && [
                 <span
                   {...getHandleClickProps(this.toggleEditing)}

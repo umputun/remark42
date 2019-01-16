@@ -31,7 +31,7 @@ class Thread extends Component {
         aria-expanded={!collapsed}
       >
         <Comment
-          data={comment}
+          data={{ ...comment, repliesCount: replies.length }}
           isCommentsDisabled={isCommentsDisabled}
           mods={{ level: mods.level, collapsed }}
           onReply={props.onReply}
