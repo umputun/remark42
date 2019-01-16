@@ -212,7 +212,7 @@ func (s *DataStore) HasReplies(comment store.Comment) bool {
 	}
 
 	for _, c := range comments {
-		if c.ParentID != "" && !c.Deleted && c.User.ID != comment.User.ID { // not interested in replies to yourself and top level
+		if c.ParentID != "" && !c.Deleted {
 			if c.ParentID == comment.ID {
 				return true
 			}
