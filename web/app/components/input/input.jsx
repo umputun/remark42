@@ -74,6 +74,11 @@ export default class Input extends Component {
 
     if (!text || !text.trim()) return;
 
+    if (text === this.props.value) {
+      this.props.onCancel && this.props.onCancel();
+      this.setState({ preview: null, text: '' });
+    }
+
     this.setState({ isDisabled: true, isErrorShown: false });
 
     const request =
@@ -83,10 +88,7 @@ export default class Input extends Component {
 
     request
       .then(comment => {
-        if (this.props.onSubmit) {
-          this.props.onSubmit(comment);
-        }
-
+        this.props.onSubmit && this.props.onSubmit(comment);
         this.setState({ preview: null, text: '' });
       })
       .catch(e => {
