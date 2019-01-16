@@ -1,7 +1,10 @@
 .comment__vote_disabled {
-  &,
-  &:hover {
-    background-image: url('comment__vote_disabled.svg');
-    cursor: not-allowed;
+  &.comment__vote_type_up,
+  &.comment__vote_type_down {
+    &,
+    &:hover {
+      background-image: url('comment__vote_disabled.svg');
+      cursor: not-allowed;
+    }
   }
 }
