@@ -209,5 +209,9 @@ func (p Oauth2Handler) AuthHandler(w http.ResponseWriter, r *http.Request) {
 
 // LogoutHandler - GET /logout
 func (p Oauth2Handler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
+	if _, _, err := p.JwtService.Get(r); err != nil {
+		rest.SendErrorJSON(w, r, p.L, http.StatusForbidden, err, "logout not allowed")
+		return
+	}
 	p.JwtService.Reset(w)
 }
