@@ -237,7 +237,7 @@ func (s *Rest) routes() chi.Router {
 			rauth.Mount("/admin", s.adminService.routes(authMiddleware.AdminOnly))
 		})
 
-		// protected routes, throttled to 10/s by default, th
+		// protected routes, throttled to 10/s by default, controlled by external UpdateLimiter param
 		rapi.Group(func(rauth chi.Router) {
 			lmt := 10.0
 			if s.UpdateLimiter > 0 {
