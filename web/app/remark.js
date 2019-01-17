@@ -49,7 +49,8 @@ function init() {
       isDefaultPicture: params.isDefaultPicture != 0,
       picture: params.picture,
     };
-    store.set('user', user);
+    store.set('user', {});
+    store.set('target-user', user);
     const onClose = () => {
       if (window.parent) {
         window.parent.postMessage(JSON.stringify({ isUserInfoShown: false }), '*');

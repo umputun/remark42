@@ -360,6 +360,7 @@ export default class Comment extends Component {
    * @return {(string|null)}
    */
   getVoteDisabledReason() {
+    if (this.props.mods && this.props.mods.view === 'user') return 'Voting disabled in last comments';
     if (this.isGuest()) return 'Only authorized users are allowed to vote';
     const info = store.get('info');
     if (info && info.read_only) return "You can't vote on read-only topics";
