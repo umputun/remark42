@@ -8,6 +8,7 @@ import (
 	log "github.com/go-pkgz/lgr"
 	"github.com/google/uuid"
 	multierror "github.com/hashicorp/go-multierror"
+	cache "github.com/patrickmn/go-cache"
 	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/backend/app/store"
@@ -29,6 +30,11 @@ type DataStore struct {
 		sync.Mutex
 		sync.Once
 		locks map[string]sync.Locker
+	}
+
+	repliesCache struct {
+		*cache.Cache
+		once sync.Once
 	}
 }
 
@@ -203,8 +209,18 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 
 // HasReplies checks if there is any reply to the comments
 // Loads last maxLastCommentsReply comments and compare parent id to the comment's id
-// TODO: add caching?
+// Comments with replies cached for 5 minutes
 func (s *DataStore) HasReplies(comment store.Comment) bool {
+
+	s.repliesCache.once.Do(func() {
+		//  default expiration time of 5 minutes, purge every 10 minutes
+		s.repliesCache.Cache = cache.New(5*time.Minute, 10*time.Minute)
+	})
+
+	if _, found := s.repliesCache.Get(comment.ID); found {
+		return true
+	}
+
 	comments, err := s.Last(comment.Locator.SiteID, maxLastCommentsReply)
 	if err != nil {
 		log.Printf("[WARN] can't get last comments for reply check, %v", err)
@@ -214,6 +230,7 @@ func (s *DataStore) HasReplies(comment store.Comment) bool {
 	for _, c := range comments {
 		if c.ParentID != "" && !c.Deleted {
 			if c.ParentID == comment.ID {
+				s.repliesCache.Set(comment.ID, true, cache.DefaultExpiration)
 				return true
 			}
 		}
