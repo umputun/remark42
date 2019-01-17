@@ -622,9 +622,11 @@ export default class Comment extends Component {
 
                   {isCopied && <span className="comment__control comment__control_view_inactive">Copied!</span>}
 
-                  <span {...getHandleClickProps(() => this.togglePin(pinned))} className="comment__control">
-                    {pinned ? 'Unpin' : 'Pin'}
-                  </span>
+                  {mods.view !== 'user' && (
+                    <span {...getHandleClickProps(() => this.togglePin(pinned))} className="comment__control">
+                      {pinned ? 'Unpin' : 'Pin'}
+                    </span>
+                  )}
 
                   {userBlocked && (
                     <span {...getHandleClickProps(() => this.onUnblockUserClick())} className="comment__control">
