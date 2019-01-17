@@ -53,6 +53,7 @@ type Rest struct {
 		Low      int
 		Critical int
 	}
+	UpdateLimiter float64
 
 	SSLConfig   SSLConfig
 	httpsServer *http.Server
@@ -229,15 +230,28 @@ func (s *Rest) routes() chi.Router {
 			rauth.Use(authMiddleware.Auth)
 			rauth.Use(logger.New(logger.Flags(logger.All), logger.Log(log.Default()),
 				logger.Prefix("[INFO]"), logger.IPfn(ipFn)).Handler)
-			rauth.Post("/comment", s.createCommentCtrl)
-			rauth.Put("/comment/{id}", s.updateCommentCtrl)
 			rauth.Get("/user", s.userInfoCtrl)
-			rauth.Put("/vote/{id}", s.voteCtrl)
 			rauth.Get("/userdata", s.userAllDataCtrl)
-			rauth.Post("/deleteme", s.deleteMeCtrl)
 
 			// admin routes, admin users only
 			rauth.Mount("/admin", s.adminService.routes(authMiddleware.AdminOnly))
+		})
+
+		// protected routes, throttled to 10/s by default, th
+		rapi.Group(func(rauth chi.Router) {
+			lmt := 10.0
+			if s.UpdateLimiter > 0 {
+				lmt = s.UpdateLimiter
+			}
+			rauth.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(lmt, nil)))
+			rauth.Use(authMiddleware.Auth)
+			rauth.Use(logger.New(logger.Flags(logger.All), logger.Log(log.Default()),
+				logger.Prefix("[DEBUG]"), logger.IPfn(ipFn)).Handler)
+
+			rauth.Put("/comment/{id}", s.updateCommentCtrl)
+			rauth.Post("/comment", s.createCommentCtrl)
+			rauth.Put("/vote/{id}", s.voteCtrl)
+			rauth.Post("/deleteme", s.deleteMeCtrl)
 		})
 	})
 

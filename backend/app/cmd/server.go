@@ -58,6 +58,7 @@ type ServerCommand struct {
 	EditDuration   time.Duration `long:"edit-time" env:"EDIT_TIME" default:"5m" description:"edit window"`
 	Port           int           `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
 	WebRoot        string        `long:"web-root" env:"REMARK_WEB_ROOT" default:"./web" description:"web root directory"`
+	UpdateLimit    float64       `long:"update-limit" env:"UPDATE_LIMIT" default:"0.5" description:"updates/sec limit"`
 
 	Auth struct {
 		TTL struct {
@@ -269,6 +270,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		Cache:            loadingCache,
 		NotifyService:    notifyService,
 		SSLConfig:        sslConfig,
+		UpdateLimiter:    s.UpdateLimit,
 	}
 
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = s.LowScore, s.CriticalScore
