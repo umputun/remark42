@@ -133,6 +133,7 @@ _this is the recommended way to run remark42_
 | edit-time               | EDIT_TIME               | `5m`                  | edit window                                      |
 | read-age                | READONLY_AGE            |                       | read-only age of comments, days                  |
 | img-proxy               | IMG_PROXY               | `false`               | enable http->https proxy for images              |
+| update-limit            | UPDATE_LIMIT            | `0.5`                 | updates/sec limit                                |
 | admin-passwd            | ADMIN_PASSWD            |                       | password for `admin` basic auth                  |
 | dbg                     | DEBUG                   | `false`               | debug mode                                       |
 
