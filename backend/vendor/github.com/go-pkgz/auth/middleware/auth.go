@@ -3,32 +3,28 @@ package middleware
 
 import (
 	"net/http"
-	"sync"
 
-	"github.com/go-pkgz/lgr"
-	lru "github.com/hashicorp/golang-lru"
 	"github.com/pkg/errors"
 
+	"github.com/go-pkgz/auth/logger"
 	"github.com/go-pkgz/auth/provider"
 	"github.com/go-pkgz/auth/token"
 )
 
 // Authenticator is top level auth object providing middlewares
 type Authenticator struct {
-	lgr.L
-	JWTService    TokenService
-	Providers     []provider.Service
-	Validator     token.Validator
-	AdminPasswd   string
-	RefreshFactor int
-
-	refresh struct {
-		cache *lru.Cache
-		once  sync.Once
-	}
+	logger.L
+	JWTService   TokenService
+	Providers    []provider.Service
+	Validator    token.Validator
+	AdminPasswd  string
+	RefreshCache RefreshCache
 }
 
-const refreshCacheSize = 1000
+type RefreshCache interface {
+	Get(key interface{}) (value interface{}, ok bool)
+	Set(key, value interface{})
+}
 
 // TokenService defines interface accessing tokens
 type TokenService interface {
@@ -124,16 +120,8 @@ func (a *Authenticator) auth(reqAuth bool) func(http.Handler) http.Handler {
 // refreshExpiredToken makes a new token with passed claims
 func (a *Authenticator) refreshExpiredToken(w http.ResponseWriter, claims token.Claims, tkn string) (token.Claims, error) {
 
-	a.refresh.once.Do(func() {
-		var e error
-		if a.refresh.cache, e = lru.New(refreshCacheSize); e != nil {
-			a.Logf("[WARN] can't make refresh cache, %v", e)
-			a.refresh.cache = nil
-		}
-	})
-
-	if a.refresh.cache != nil {
-		if c, ok := a.refresh.cache.Get(tkn); ok {
+	if a.RefreshCache != nil {
+		if c, ok := a.RefreshCache.Get(tkn); ok {
 			// already in cache
 			return c.(token.Claims), nil
 		}
@@ -145,8 +133,8 @@ func (a *Authenticator) refreshExpiredToken(w http.ResponseWriter, claims token.
 		return token.Claims{}, err
 	}
 
-	if a.refresh.cache != nil {
-		a.refresh.cache.Add(tkn, c)
+	if a.RefreshCache != nil {
+		a.RefreshCache.Set(tkn, c)
 	}
 
 	a.Logf("[DEBUG] token refreshed for %+v", claims.User)

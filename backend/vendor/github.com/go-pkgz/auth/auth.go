@@ -6,11 +6,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-pkgz/lgr"
 	"github.com/go-pkgz/rest"
 	"github.com/pkg/errors"
 
 	"github.com/go-pkgz/auth/avatar"
+	"github.com/go-pkgz/auth/logger"
 	"github.com/go-pkgz/auth/middleware"
 	"github.com/go-pkgz/auth/provider"
 	"github.com/go-pkgz/auth/token"
@@ -18,7 +18,7 @@ import (
 
 // Service provides higher level wrapper allowing to construct everything and get back token middleware
 type Service struct {
-	logger         lgr.L
+	logger         logger.L
 	opts           Opts
 	jwtService     *token.Service
 	providers      []provider.Service
@@ -53,10 +53,10 @@ type Opts struct {
 	AvatarResizeLimit int          // resize avatar's limit in pixels
 	AvatarRoutePath   string       // avatar routing prefix, i.e. "/api/v1/avatar", default `/avatar`
 
-	AdminPasswd    string         // if presented, allows basic auth with user admin and given password
-	AudienceReader token.Audience // list of allowed aud values, default (empty) allows any
-	RefreshFactor  int            // estimated number of request client sends in parallel during token refresh.
-	Logger         lgr.L          // logger interface, default is no logging at all
+	AdminPasswd    string                  // if presented, allows basic auth with user admin and given password
+	AudienceReader token.Audience          // list of allowed aud values, default (empty) allows any
+	Logger         logger.L                // logger interface, default is no logging at all
+	RefreshCache   middleware.RefreshCache // optional cache to keep refreshed tokens
 }
 
 // NewService initializes everything
@@ -66,9 +66,9 @@ func NewService(opts Opts) (res *Service) {
 		opts:   opts,
 		logger: opts.Logger,
 		authMiddleware: middleware.Authenticator{
-			Validator:     opts.Validator,
-			AdminPasswd:   opts.AdminPasswd,
-			RefreshFactor: opts.RefreshFactor,
+			Validator:    opts.Validator,
+			AdminPasswd:  opts.AdminPasswd,
+			RefreshCache: opts.RefreshCache,
 		},
 		issuer: opts.Issuer,
 	}
@@ -78,7 +78,7 @@ func NewService(opts Opts) (res *Service) {
 	}
 
 	if opts.Logger == nil {
-		res.logger = lgr.NoOp
+		res.logger = logger.NoOp
 	}
 
 	jwtService := token.NewService(token.Opts{

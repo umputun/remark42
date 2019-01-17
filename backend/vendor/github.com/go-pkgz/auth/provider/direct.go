@@ -5,16 +5,16 @@ import (
 	"net/http"
 
 	jwt "github.com/dgrijalva/jwt-go"
-	"github.com/go-pkgz/lgr"
 	"github.com/go-pkgz/rest"
 
+	"github.com/go-pkgz/auth/logger"
 	"github.com/go-pkgz/auth/token"
 )
 
 // DirectHandler implements non-oauth2 provider authorizing user in traditional way with storage
 // with users and hashes
 type DirectHandler struct {
-	lgr.L
+	logger.L
 	CredChecker  CredChecker
 	ProviderName string
 	TokenService TokenService

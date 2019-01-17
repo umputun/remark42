@@ -6,10 +6,8 @@ require (
 	github.com/coreos/bbolt v1.3.0
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
-	github.com/go-pkgz/lgr v0.2.2
 	github.com/go-pkgz/mongo v1.0.0
 	github.com/go-pkgz/rest v1.2.0
-	github.com/hashicorp/golang-lru v0.5.0
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/nullrocks/identicon v0.0.0-20180626043057-7875f45b0022
 	github.com/pkg/errors v0.8.1

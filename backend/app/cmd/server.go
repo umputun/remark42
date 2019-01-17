@@ -15,6 +15,7 @@ import (
 	bolt "github.com/coreos/bbolt"
 	"github.com/go-pkgz/lgr"
 	log "github.com/go-pkgz/lgr"
+	acache "github.com/patrickmn/go-cache"
 	"github.com/pkg/errors"
 
 	"github.com/go-pkgz/auth"
@@ -551,7 +552,25 @@ func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Sto
 		AvatarResizeLimit: s.Avatar.RszLmt,
 		AvatarRoutePath:   "/api/v1/avatar",
 		Logger:            lgr.Default(),
+		RefreshCache:      newAuthRefreshCache(),
 	})
 	s.addAuthProviders(authenticator)
 	return authenticator
+}
+
+// authRefreshCache used by authenticator to minimize repeatable token refreshes
+type authRefreshCache struct {
+	*acache.Cache
+}
+
+func newAuthRefreshCache() *authRefreshCache {
+	return &authRefreshCache{Cache: acache.New(5*time.Minute, 10*time.Minute)}
+}
+
+func (c *authRefreshCache) Get(key interface{}) (interface{}, bool) {
+	return c.Cache.Get(key.(string))
+}
+
+func (c *authRefreshCache) Set(key, value interface{}) {
+	c.Cache.Set(key.(string), value, acache.DefaultExpiration)
 }

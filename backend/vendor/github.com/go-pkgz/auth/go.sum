@@ -11,8 +11,6 @@ github.com/dgrijalva/jwt-go v3.2.0+incompatible h1:7qlOGliEKZXTDg6OTjfoBKDXWrumC
 github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
 github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8 h1:DujepqpGd1hyOd7aW59XpK7Qymp8iy83xq74fLr21is=
 github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8/go.mod h1:xkRDCp4j0OGD1HRkm4kmhM+pmpv3AKq5SU7GMg4oO/Q=
-github.com/go-pkgz/lgr v0.2.2 h1:HSOqMVoetAfvA40Gpy/X/HGyV0UUafIMPgp+SdZends=
-github.com/go-pkgz/lgr v0.2.2/go.mod h1:hBM1NM/SoYdlrykgdgJWGrZ/TM/XaZIjRbJfx7NkMm8=
 github.com/go-pkgz/mongo v1.0.0 h1:9jijAK7prCRMetiyTu3c1rv/2lMypzuf2DWcVpTlwzw=
 github.com/go-pkgz/mongo v1.0.0/go.mod h1:R9si/F2aJsjz4MUxhzuppIHY8yLV3YCeuCpgcI50cu4=
 github.com/go-pkgz/rest v1.2.0 h1:75GVv25NmkV2l4dBr/io/ZApJ6zWQu5aZ4wFJA6QQCw=
