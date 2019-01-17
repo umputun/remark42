@@ -360,6 +360,7 @@ export default class Comment extends Component {
    * @return {(string|null)}
    */
   getVoteDisabledReason() {
+    if (this.props.mods && this.props.mods.view === 'user') return 'Voting disabled in last comments';
     if (this.isGuest()) return 'Only authorized users are allowed to vote';
     const info = store.get('info');
     if (info && info.read_only) return "You can't vote on read-only topics";
@@ -621,9 +622,11 @@ export default class Comment extends Component {
 
                   {isCopied && <span className="comment__control comment__control_view_inactive">Copied!</span>}
 
-                  <span {...getHandleClickProps(() => this.togglePin(pinned))} className="comment__control">
-                    {pinned ? 'Unpin' : 'Pin'}
-                  </span>
+                  {mods.view !== 'user' && (
+                    <span {...getHandleClickProps(() => this.togglePin(pinned))} className="comment__control">
+                      {pinned ? 'Unpin' : 'Pin'}
+                    </span>
+                  )}
 
                   {userBlocked && (
                     <span {...getHandleClickProps(() => this.onUnblockUserClick())} className="comment__control">
