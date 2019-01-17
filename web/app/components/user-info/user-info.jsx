@@ -2,6 +2,7 @@
 import { h, Component } from 'preact';
 import { connect } from 'preact-redux';
 
+import store from 'common/store';
 import api from 'common/api';
 import LastCommentsList from './last-comments-list';
 import Avatar from 'components/avatar-icon';
@@ -20,6 +21,11 @@ class UserInfo extends Component {
 
     if (!comments && !isLoading) {
       fetchComments(id);
+
+      api
+        .getUser()
+        .then(data => store.set('user', data))
+        .catch(() => store.set('user', {}));
 
       api
         .getUserComments({ user: id, limit: 10 })
