@@ -36,7 +36,7 @@ func (_ WhitespaceTokenizer) Tokenize(text string) []string {
 
 	// since we append tokens when we already left the word (on next iteration),
 	// we need to do it manually for the last iteration
-	if word && start < len(text)-1 {
+	if word {
 		tokens = append(tokens, strings.ToLower(text[start:]))
 	}
 
