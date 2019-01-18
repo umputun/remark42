@@ -1,14 +1,15 @@
 package service
 
 import (
+	"fmt"
 	"sort"
 	"sync"
 	"time"
 
 	log "github.com/go-pkgz/lgr"
 	"github.com/google/uuid"
-	multierror "github.com/hashicorp/go-multierror"
-	cache "github.com/patrickmn/go-cache"
+	"github.com/hashicorp/go-multierror"
+	"github.com/patrickmn/go-cache"
 	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/backend/app/store"
@@ -24,6 +25,7 @@ type DataStore struct {
 	MaxCommentSize int
 	MaxVotes       int
 	TitleExtractor *TitleExtractor
+	Matcher        *Matcher
 
 	// granular locks
 	scopedLocks struct {
@@ -62,6 +64,10 @@ const UnlimitedVotes = -1
 
 // Create prepares comment and forward to Interface.Create
 func (s *DataStore) Create(comment store.Comment) (commentID string, err error) {
+
+	if s.Matcher != nil && s.Matcher.Match(comment.Locator.SiteID, comment.Text) {
+		return "", fmt.Errorf("failed to create comment for site %s: comment contains restricted words", comment.Locator.SiteID)
+	}
 
 	if comment, err = s.prepareNewComment(comment); err != nil {
 		return "", errors.Wrap(err, "failed to prepare comment")
@@ -200,6 +206,10 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 	comment.Edit = &store.Edit{
 		Timestamp: time.Now(),
 		Summary:   req.Summary,
+	}
+
+	if s.Matcher != nil && s.Matcher.Match(comment.Locator.SiteID, comment.Text) {
+		return comment, fmt.Errorf("failed to update comment for site %s: comment contains restricted words", comment.Locator.SiteID)
 	}
 
 	comment.Sanitize()

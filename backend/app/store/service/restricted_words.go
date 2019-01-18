@@ -1,17 +1,68 @@
 package service
 
 import (
+	"fmt"
 	"strings"
 	"unicode"
 )
 
-type Tokenizer interface {
-	Tokenize(text string) []string
+type Lister interface {
+	List(siteID string) (restricted []string, err error)
 }
 
-type WhitespaceTokenizer struct{}
+type StaticLister struct {
+	Words map[string][]string
+}
 
-func (_ WhitespaceTokenizer) Tokenize(text string) []string {
+func (l *StaticLister) List(siteID string) (restricted []string, err error) {
+	restricted, exists := l.Words[siteID]
+	if !exists {
+		return restricted, fmt.Errorf("no restricted words configured for site '%s'", siteID)
+	}
+	return
+}
+
+type Matcher struct {
+	lister Lister
+	data   map[string]restrictedWordsSet
+}
+
+type restrictedWordsSet struct {
+	restricted map[string]bool
+}
+
+func NewMatcher(lister Lister) *Matcher {
+	return &Matcher{lister, make(map[string]restrictedWordsSet)}
+}
+
+func (m *Matcher) Match(siteID string, text string) bool {
+	tokens := m.tokenize(text)
+
+	data, exists := m.data[siteID]
+	if !exists {
+		words, err := m.lister.List(siteID)
+		if err != nil {
+			fmt.Printf("failed to get restricted words for site %s: %v", siteID, err)
+			return false
+		}
+		restricted := make(map[string]bool)
+		for _, w := range words {
+			restricted[strings.ToLower(w)] = true
+		}
+		data = restrictedWordsSet{restricted}
+		m.data[siteID] = data
+	}
+
+	for _, token := range tokens {
+		_, present := data.restricted[token]
+		if present {
+			return true
+		}
+	}
+	return false
+}
+
+func (_ *Matcher) tokenize(text string) []string {
 	tokens := make([]string, 0, 10) // accumulator for tokens
 	word := false                   // flag shows if current range is word
 	start := 0                      // beginning of the current range
@@ -41,67 +92,4 @@ func (_ WhitespaceTokenizer) Tokenize(text string) []string {
 	}
 
 	return tokens
-}
-
-type Matcher interface {
-	Match(words []string) bool
-}
-
-type SimpleMatcher struct {
-	restricted map[string]bool
-}
-
-func NewSimpleMatcher(words []string) *SimpleMatcher {
-	restricted := make(map[string]bool)
-	for _, w := range words {
-		restricted[strings.ToLower(w)] = true
-	}
-
-	return &SimpleMatcher{restricted}
-}
-
-func (l *SimpleMatcher) Match(words []string) bool {
-	for _, w := range words {
-		_, present := l.restricted[w]
-		if present {
-			return true
-		}
-	}
-	return false
-}
-
-type Lister interface {
-	List(siteID string) (restricted []string, err error)
-}
-
-type Checker interface {
-	Check(siteID string, text string) bool
-}
-
-type RestrictedWordsChecker struct {
-	tokenizer      Tokenizer
-	lister         Lister
-	matcherFactory func([]string) Matcher
-	matchers       map[string]Matcher
-}
-
-func NewRestrictedWordsChecker(tokenizer Tokenizer, lister Lister, matcherFactory func([]string) Matcher) *RestrictedWordsChecker {
-	return &RestrictedWordsChecker{tokenizer, lister, matcherFactory, make(map[string]Matcher)}
-}
-
-func (c *RestrictedWordsChecker) Check(siteID string, text string) bool {
-	tokens := c.tokenizer.Tokenize(text)
-
-	matcher, _ := c.matchers[siteID]
-	if matcher == nil {
-		words, err := c.lister.List(siteID)
-		if err != nil {
-			// todo log error
-			return false
-		}
-		matcher = c.matcherFactory(words)
-		c.matchers[siteID] = matcher
-	}
-
-	return matcher.Match(tokens)
 }
