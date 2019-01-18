@@ -16,7 +16,7 @@ type StaticRestrictedWordsLister struct {
 	Words []string
 }
 
-// Provides restricted words in comments (ignores siteID)
+// List provides restricted words in comments (ignores siteID)
 func (l StaticRestrictedWordsLister) List(siteID string) (restricted []string, err error) {
 	return l.Words, nil
 }
@@ -31,12 +31,12 @@ type restrictedWordsSet struct {
 	restricted map[string]bool
 }
 
-// Creates new RestrictedWordsMatcher using provided RestrictedWordsLister
+// NewRestrictedWordsMatcher creates new RestrictedWordsMatcher using provided RestrictedWordsLister
 func NewRestrictedWordsMatcher(lister RestrictedWordsLister) *RestrictedWordsMatcher {
 	return &RestrictedWordsMatcher{lister, make(map[string]restrictedWordsSet)}
 }
 
-// Matches comment text against restricted words for specified site
+// Match matches comment text against restricted words for specified site
 func (m *RestrictedWordsMatcher) Match(siteID string, text string) bool {
 	tokens := m.tokenize(text)
 
