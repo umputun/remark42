@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"html"
 	"net/http"
-	"strings"
 	"time"
 
 	log "github.com/go-pkgz/lgr"
@@ -17,7 +16,7 @@ import (
 
 // Telegram implements notify.Destination for telegram
 type Telegram struct {
-	channelName string
+	channelID string
 	token       string
 	apiPrefix   string
 	timeout     time.Duration
@@ -27,17 +26,16 @@ const telegramTimeOut = 5000 * time.Millisecond
 const telegramAPIPrefix = "https://api.telegram.org/bot"
 
 // NewTelegram makes telegram bot for notifications
-func NewTelegram(token string, channelName string, timeout time.Duration, api string) (*Telegram, error) {
+func NewTelegram(token string, channelID string, timeout time.Duration, api string) (*Telegram, error) {
 
-	res := Telegram{channelName: channelName, token: token, apiPrefix: api, timeout: timeout}
-	res.channelName = strings.TrimPrefix(res.channelName, "@")
+	res := Telegram{channelID: channelID, token: token, apiPrefix: api, timeout: timeout}
 	if res.apiPrefix == "" {
 		res.apiPrefix = telegramAPIPrefix
 	}
 	if res.timeout == 0 {
 		res.timeout = telegramTimeOut
 	}
-	log.Printf("[DEBUG] create new telegram notifier for cham %s, timeout=%s, api=%s", channelName, res.timeout, res.timeout)
+	log.Printf("[DEBUG] create new telegram notifier for cham %s, timeout=%s, api=%s", channelID, res.timeout, res.timeout)
 
 	err := repeater.NewDefault(5, time.Millisecond*250).Do(func() error {
 		client := http.Client{Timeout: telegramTimeOut}
@@ -81,7 +79,7 @@ func NewTelegram(token string, channelName string, timeout time.Duration, api st
 // Send to telegram channel
 func (t *Telegram) Send(ctx context.Context, req request) error {
 	client := http.Client{Timeout: telegramTimeOut}
-	log.Printf("[DEBUG] send telegram notification to %s, comment id %s", t.channelName, req.comment.ID)
+	log.Printf("[DEBUG] send telegram notification to %s, comment id %s", t.channelID, req.comment.ID)
 
 	from := req.comment.User.Name
 	if req.comment.ParentID != "" {
@@ -92,8 +90,8 @@ func (t *Telegram) Send(ctx context.Context, req request) error {
 	if req.comment.PostTitle != "" {
 		link = fmt.Sprintf("↦ [%s](%s)", req.comment.PostTitle, req.comment.Locator.URL+uiNav+req.comment.ID)
 	}
-	u := fmt.Sprintf("%s%s/sendMessage?chat_id=@%s&parse_mode=Markdown&disable_web_page_preview=true",
-		t.apiPrefix, t.token, t.channelName)
+	u := fmt.Sprintf("%s%s/sendMessage?chat_id=%s&parse_mode=Markdown&disable_web_page_preview=true",
+		t.apiPrefix, t.token, t.channelID)
 
 	msg := fmt.Sprintf("%s\n\n%s\n\n%s", from, req.comment.Orig, link)
 	msg = html.UnescapeString(msg)
@@ -138,5 +136,5 @@ func (t *Telegram) Send(ctx context.Context, req request) error {
 }
 
 func (t *Telegram) String() string {
-	return "telegram: " + t.channelName
+	return "telegram: " + t.channelID
 }
