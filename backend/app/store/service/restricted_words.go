@@ -6,18 +6,22 @@ import (
 	"unicode"
 )
 
+// RestrictedWordsLister provides restricted words in comments per site
 type RestrictedWordsLister interface {
 	List(siteID string) (restricted []string, err error)
 }
 
+// StaticRestrictedWordsLister provides same restricted words in comments for every site
 type StaticRestrictedWordsLister struct {
 	Words []string
 }
 
+// Provides restricted words in comments (ignores siteID)
 func (l StaticRestrictedWordsLister) List(siteID string) (restricted []string, err error) {
 	return l.Words, nil
 }
 
+// RestrictedWordsMatcher matches comment text against restricted words
 type RestrictedWordsMatcher struct {
 	lister RestrictedWordsLister
 	data   map[string]restrictedWordsSet
@@ -27,10 +31,12 @@ type restrictedWordsSet struct {
 	restricted map[string]bool
 }
 
+// Creates new RestrictedWordsMatcher using provided RestrictedWordsLister
 func NewRestrictedWordsMatcher(lister RestrictedWordsLister) *RestrictedWordsMatcher {
 	return &RestrictedWordsMatcher{lister, make(map[string]restrictedWordsSet)}
 }
 
+// Matches comment text against restricted words for specified site
 func (m *RestrictedWordsMatcher) Match(siteID string, text string) bool {
 	tokens := m.tokenize(text)
 
@@ -58,7 +64,7 @@ func (m *RestrictedWordsMatcher) Match(siteID string, text string) bool {
 	return false
 }
 
-func (_ *RestrictedWordsMatcher) tokenize(text string) []string {
+func (m *RestrictedWordsMatcher) tokenize(text string) []string {
 	tokens := make([]string, 0, 10) // accumulator for tokens
 	word := false                   // flag shows if current range is word
 	start := 0                      // beginning of the current range
