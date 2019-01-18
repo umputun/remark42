@@ -20,12 +20,12 @@ import (
 // DataStore wraps store.Interface with additional methods
 type DataStore struct {
 	engine.Interface
-	EditDuration   time.Duration
-	AdminStore     admin.Store
-	MaxCommentSize int
-	MaxVotes       int
-	TitleExtractor *TitleExtractor
-	Matcher        *Matcher
+	EditDuration           time.Duration
+	AdminStore             admin.Store
+	MaxCommentSize         int
+	MaxVotes               int
+	TitleExtractor         *TitleExtractor
+	RestrictedWordsMatcher *RestrictedWordsMatcher
 
 	// granular locks
 	scopedLocks struct {
@@ -65,7 +65,7 @@ const UnlimitedVotes = -1
 // Create prepares comment and forward to Interface.Create
 func (s *DataStore) Create(comment store.Comment) (commentID string, err error) {
 
-	if s.Matcher != nil && s.Matcher.Match(comment.Locator.SiteID, comment.Text) {
+	if s.RestrictedWordsMatcher != nil && s.RestrictedWordsMatcher.Match(comment.Locator.SiteID, comment.Text) {
 		return "", fmt.Errorf("failed to create comment for site %s: comment contains restricted words", comment.Locator.SiteID)
 	}
 
@@ -208,7 +208,7 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 		Summary:   req.Summary,
 	}
 
-	if s.Matcher != nil && s.Matcher.Match(comment.Locator.SiteID, comment.Text) {
+	if s.RestrictedWordsMatcher != nil && s.RestrictedWordsMatcher.Match(comment.Locator.SiteID, comment.Text) {
 		return comment, fmt.Errorf("failed to update comment for site %s: comment contains restricted words", comment.Locator.SiteID)
 	}
 

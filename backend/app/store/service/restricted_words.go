@@ -6,24 +6,20 @@ import (
 	"unicode"
 )
 
-type Lister interface {
+type RestrictedWordsLister interface {
 	List(siteID string) (restricted []string, err error)
 }
 
-type StaticLister struct {
-	Words map[string][]string
+type StaticRestrictedWordsLister struct {
+	Words []string
 }
 
-func (l *StaticLister) List(siteID string) (restricted []string, err error) {
-	restricted, exists := l.Words[siteID]
-	if !exists {
-		return restricted, fmt.Errorf("no restricted words configured for site '%s'", siteID)
-	}
-	return
+func (l StaticRestrictedWordsLister) List(siteID string) (restricted []string, err error) {
+	return l.Words, nil
 }
 
-type Matcher struct {
-	lister Lister
+type RestrictedWordsMatcher struct {
+	lister RestrictedWordsLister
 	data   map[string]restrictedWordsSet
 }
 
@@ -31,11 +27,11 @@ type restrictedWordsSet struct {
 	restricted map[string]bool
 }
 
-func NewMatcher(lister Lister) *Matcher {
-	return &Matcher{lister, make(map[string]restrictedWordsSet)}
+func NewRestrictedWordsMatcher(lister RestrictedWordsLister) *RestrictedWordsMatcher {
+	return &RestrictedWordsMatcher{lister, make(map[string]restrictedWordsSet)}
 }
 
-func (m *Matcher) Match(siteID string, text string) bool {
+func (m *RestrictedWordsMatcher) Match(siteID string, text string) bool {
 	tokens := m.tokenize(text)
 
 	data, exists := m.data[siteID]
@@ -62,7 +58,7 @@ func (m *Matcher) Match(siteID string, text string) bool {
 	return false
 }
 
-func (_ *Matcher) tokenize(text string) []string {
+func (_ *RestrictedWordsMatcher) tokenize(text string) []string {
 	tokens := make([]string, 0, 10) // accumulator for tokens
 	word := false                   // flag shows if current range is word
 	start := 0                      // beginning of the current range
