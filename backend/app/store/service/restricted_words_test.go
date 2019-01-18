@@ -16,8 +16,8 @@ func TestWhitespaceTokenizer_Tokenize(t *testing.T) {
 
 func TestWhitespaceTokenizer_TokenizeLanguages(t *testing.T) {
 	tokenizer := WhitespaceTokenizer{}
-	input := "русский 中文 ไทย française"
-	expectedTokens := []string{"русский", "中文", "ไทย", "française"}
+	input := "русский 中文 française ไทย"
+	expectedTokens := []string{"русский", "中文", "française", "ไทย"}
 	actualTokens := tokenizer.Tokenize(input)
 
 	assert.Equal(t, expectedTokens, actualTokens)

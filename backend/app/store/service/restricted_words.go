@@ -15,7 +15,6 @@ func (_ WhitespaceTokenizer) Tokenize(text string) []string {
 	tokens := make([]string, 0, 10) // accumulator for tokens
 	word := false                   // flag shows if current range is word
 	start := 0                      // beginning of the current range
-	lastPos := len(text) - 1        // last position in text string
 
 	for pos, r := range text {
 		if unicode.IsLetter(r) || unicode.IsNumber(r) {
@@ -24,14 +23,6 @@ func (_ WhitespaceTokenizer) Tokenize(text string) []string {
 				start = pos
 				word = true
 			}
-
-			if pos == lastPos {
-				// since we append tokens when we already left the word (on next iteration),
-				// we need to do it manually for the last iteration
-				tokens = append(tokens, strings.ToLower(text[start:pos+1]))
-				break
-			}
-
 			continue
 		} else if word && start < pos {
 			// everything from start to pos - 1 is a word, so add it as a token and reset start
@@ -41,6 +32,12 @@ func (_ WhitespaceTokenizer) Tokenize(text string) []string {
 
 		// exited the word
 		word = false
+	}
+
+	// since we append tokens when we already left the word (on next iteration),
+	// we need to do it manually for the last iteration
+	if word && start < len(text)-1 {
+		tokens = append(tokens, strings.ToLower(text[start:]))
 	}
 
 	return tokens
