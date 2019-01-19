@@ -278,11 +278,11 @@ func (s *DataStore) Counts(siteID string, postIDs []string) ([]store.PostInfo, e
 
 // ValidateComment checks if comment not empty, below max size, does not contain restricted words, and user fields set
 func (s *DataStore) ValidateComment(c *store.Comment) error {
-	if c.User.ID == "" || c.User.Name == "" {
-		return errors.Errorf("empty user info")
-	}
 	if err := s.ValidateCommentText(c.Locator.SiteID, c.Orig); err != nil {
 		return err
+	}
+	if c.User.ID == "" || c.User.Name == "" {
+		return errors.Errorf("empty user info")
 	}
 	return nil
 }
