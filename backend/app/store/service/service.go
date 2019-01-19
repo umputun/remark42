@@ -65,10 +65,6 @@ const UnlimitedVotes = -1
 // Create prepares comment and forward to Interface.Create
 func (s *DataStore) Create(comment store.Comment) (commentID string, err error) {
 
-	if s.RestrictedWordsMatcher != nil && s.RestrictedWordsMatcher.Match(comment.Locator.SiteID, comment.Text) {
-		return "", fmt.Errorf("failed to create comment for site %s: comment contains restricted words", comment.Locator.SiteID)
-	}
-
 	if comment, err = s.prepareNewComment(comment); err != nil {
 		return "", errors.Wrap(err, "failed to prepare comment")
 	}
@@ -280,20 +276,31 @@ func (s *DataStore) Counts(siteID string, postIDs []string) ([]store.PostInfo, e
 	return res, nil
 }
 
-// ValidateComment checks if comment size below max and user fields set
+// ValidateComment checks if comment not empty, below max size, does not contain restricted words, and user fields set
 func (s *DataStore) ValidateComment(c *store.Comment) error {
+	if c.User.ID == "" || c.User.Name == "" {
+		return errors.Errorf("empty user info")
+	}
+	if err := s.ValidateCommentText(c.Locator.SiteID, c.Orig); err != nil {
+		return err
+	}
+	return nil
+}
+
+// ValidateCommentText checks if comment not empty, below max size, does not contain restricted words
+func (s *DataStore) ValidateCommentText(siteID string, originalText string) error {
 	maxSize := s.MaxCommentSize
 	if s.MaxCommentSize <= 0 {
 		maxSize = defaultCommentMaxSize
 	}
-	if c.Orig == "" {
+	if originalText == "" {
 		return errors.New("empty comment text")
 	}
-	if len([]rune(c.Orig)) > maxSize {
-		return errors.Errorf("comment text exceeded max allowed size %d (%d)", maxSize, len([]rune(c.Orig)))
+	if len([]rune(originalText)) > maxSize {
+		return errors.Errorf("comment text exceeded max allowed size %d (%d)", maxSize, len([]rune(originalText)))
 	}
-	if c.User.ID == "" || c.User.Name == "" {
-		return errors.Errorf("empty user info")
+	if s.RestrictedWordsMatcher != nil && s.RestrictedWordsMatcher.Match(siteID, originalText) {
+		return errors.New("comment contains restricted words")
 	}
 	return nil
 }
