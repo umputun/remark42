@@ -114,7 +114,7 @@ func (s *Rest) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !edit.Delete {
-		if err := s.DataService.ValidateCommentText(locator.SiteID, edit.Text); err != nil {
+		if err = s.DataService.ValidateCommentText(locator.SiteID, edit.Text); err != nil {
 			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment")
 			return
 		}
