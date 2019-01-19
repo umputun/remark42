@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	"sort"
 	"sync"
 	"time"
@@ -202,10 +201,6 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 	comment.Edit = &store.Edit{
 		Timestamp: time.Now(),
 		Summary:   req.Summary,
-	}
-
-	if s.RestrictedWordsMatcher != nil && s.RestrictedWordsMatcher.Match(comment.Locator.SiteID, comment.Text) {
-		return comment, fmt.Errorf("failed to update comment for site %s: comment contains restricted words", comment.Locator.SiteID)
 	}
 
 	comment.Sanitize()
