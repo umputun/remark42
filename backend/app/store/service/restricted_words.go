@@ -77,7 +77,9 @@ func (m *RestrictedWordsMatcher) tokenize(text string) []string {
 				word = true
 			}
 			continue
-		} else if word && start < pos {
+		}
+
+		if word && start < pos {
 			// everything from start to pos - 1 is a word, so add it as a token and reset start
 			tokens = append(tokens, strings.ToLower(text[start:pos]))
 			start = pos
