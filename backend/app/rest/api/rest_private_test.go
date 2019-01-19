@@ -295,6 +295,7 @@ func TestRest_UpdateWithRestrictedWords(t *testing.T) {
 	assert.Nil(t, err)
 	c := R.JSON{}
 	err = json.Unmarshal(body, &c)
+	assert.Nil(t, err)
 	assert.Equal(t, 400, b.StatusCode, string(body))
 	assert.Equal(t, "comment contains restricted words", c["error"])
 	assert.Equal(t, "invalid comment", c["details"])
