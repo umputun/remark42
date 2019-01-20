@@ -60,3 +60,57 @@ func TestMatcher_DoNotMatchIfNoRestrictedWords(t *testing.T) {
 	text := "What the duck it that?"
 	assert.False(t, matcher.Match("fakeID", text))
 }
+
+func TestWildcardTrie_Check(t *testing.T) {
+	n := newWildcardTrie("abc", "abb", "aab")
+
+	shouldMatch(t, n, "abc", "abb", "aab")
+	shouldNotMatch(t, n, "aaa", "aaaa", "a", "ab")
+}
+
+func TestWildcardTrie_CheckPrefixWildcards(t *testing.T) {
+	n := newWildcardTrie("abc", "*ck", "?olor", "+itch", "!unt")
+
+	shouldMatch(t, n, "abc", "duck", "quack", "ck", "color", "olor", "witch", "skitch", "aunt")
+	shouldNotMatch(t, n, "quacker", "itch", "unt", "stunt")
+}
+
+func TestWildcardTrie_CheckSuffixWildcards(t *testing.T) {
+	n := newWildcardTrie("abc", "du*", "colo?", "pitch+", "aun!")
+
+	shouldMatch(t, n, "abc", "duck", "dungeon", "du", "color", "colo", "pitcher", "pitch1", "aunt")
+	shouldNotMatch(t, n, "bbc", "pitch", "aun", "auntie")
+}
+
+func TestWildcardTrie_CheckPrefixAndSuffixWildcards(t *testing.T) {
+	n := newWildcardTrie("abc", "*uc*", "?olo?", "+itc+", "!un!")
+
+	shouldMatch(t, n, "abc", "duck", "stuck", "uc", "color", "olo", "pitch", "thewitcher", "aunt")
+	shouldNotMatch(t, n, "bbc", "trololo", "itc", "itcher", "pitc", "un", "stunt", "auntie")
+}
+
+func TestWildcardTrie_CheckInnerWildcards(t *testing.T) {
+	n := newWildcardTrie("abc", "d*k", "colo?r", "pi+h", "au!t")
+
+	shouldMatch(t, n, "abc", "duck", "dk", "color", "colour", "pitch", "pipestash", "aunt")
+	shouldNotMatch(t, n, "quack", "colouur", "pih", "aut", "august")
+}
+
+func TestWildcardTrie_CheckInnerAndOuterWildcards(t *testing.T) {
+	n := newWildcardTrie("abc", "*a*a*", "?o?o?", "+p+p+", "!i!i!")
+
+	shouldMatch(t, n, "abc", "safari", "banana", "aa", "oo", "olo", "color", "xpxpx", "xyzpxyzpxyz", "wiwiw")
+	shouldNotMatch(t, n, "car", "colour", "pp", "xpxp", "pxpx", "ii", "wwwiwwwiwww")
+}
+
+func shouldMatch(t *testing.T, n *wildcardTrie, tokens ...string) {
+	for _, token := range tokens {
+		assert.True(t, n.check(token), "should match token '%s'", token)
+	}
+}
+
+func shouldNotMatch(t *testing.T, n *wildcardTrie, tokens ...string) {
+	for _, token := range tokens {
+		assert.False(t, n.check(token), "should not match token '%s'", token)
+	}
+}

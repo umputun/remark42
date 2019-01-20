@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 )
 
 // RestrictedWordsLister provides restricted words in comments per site
@@ -23,41 +24,33 @@ func (l StaticRestrictedWordsLister) List(siteID string) (restricted []string, e
 
 // RestrictedWordsMatcher matches comment text against restricted words
 type RestrictedWordsMatcher struct {
-	lister RestrictedWordsLister
-	data   map[string]restrictedWordsSet
-}
-
-type restrictedWordsSet struct {
-	restricted map[string]bool
+	lister          RestrictedWordsLister
+	patternMatchers map[string]*wildcardTrie
 }
 
 // NewRestrictedWordsMatcher creates new RestrictedWordsMatcher using provided RestrictedWordsLister
 func NewRestrictedWordsMatcher(lister RestrictedWordsLister) *RestrictedWordsMatcher {
-	return &RestrictedWordsMatcher{lister, make(map[string]restrictedWordsSet)}
+	return &RestrictedWordsMatcher{lister, make(map[string]*wildcardTrie)}
 }
 
 // Match matches comment text against restricted words for specified site
 func (m *RestrictedWordsMatcher) Match(siteID string, text string) bool {
 	tokens := m.tokenize(text)
 
-	data, exists := m.data[siteID]
+	trie, exists := m.patternMatchers[siteID]
 	if !exists {
-		words, err := m.lister.List(siteID)
+		patterns, err := m.lister.List(siteID)
 		if err != nil {
-			fmt.Printf("failed to get restricted words for site %s: %v", siteID, err)
+			fmt.Printf("failed to get restricted patterns for site %s: %v", siteID, err)
 			return false
 		}
-		restricted := make(map[string]bool)
-		for _, w := range words {
-			restricted[strings.ToLower(w)] = true
-		}
-		data = restrictedWordsSet{restricted}
-		m.data[siteID] = data
+
+		trie = newWildcardTrie(patterns...)
+		m.patternMatchers[siteID] = trie
 	}
 
 	for _, token := range tokens {
-		_, present := data.restricted[token]
-		if present {
+		if trie.check(token) {
 			return true
 		}
 	}
@@ -96,4 +89,124 @@ func (m *RestrictedWordsMatcher) tokenize(text string) []string {
 	}
 
 	return tokens
+}
+
+const (
+	zeroOrMoreWildcard = '*'
+	zeroOrOneWildcard  = '?'
+	oneOrMoreWildcard  = '+'
+	exactlyOneWildcard = '!'
+)
+
+type wildcardTrie struct {
+	terminal bool
+	children map[rune]*wildcardTrie
+}
+
+func newWildcardTrie(patterns ...string) *wildcardTrie {
+	trie := &wildcardTrie{terminal: false, children: make(map[rune]*wildcardTrie)}
+	for _, p := range patterns {
+		trie.addPattern(p)
+	}
+	return trie
+}
+
+func (trie *wildcardTrie) addPattern(pattern string) {
+	// since pattern matching algorithm is recursive we do not allow long patterns
+	if utf8.RuneCountInString(pattern) < 1 || utf8.RuneCountInString(pattern) > 64 {
+		fmt.Printf("[WARN] invalid pattern length '%s': actual - %d, min allowed - 1, max allowed - 64", pattern, utf8.RuneCountInString(pattern))
+		return
+	}
+
+	node := trie
+
+	for _, r := range strings.ToLower(pattern) {
+		if childNode, exists := node.children[r]; exists {
+			node = childNode
+			continue
+		}
+
+		childNode := newWildcardTrie()
+		node.children[r] = childNode
+		node = childNode
+	}
+
+	node.terminal = true
+}
+
+// check tests if any pattern stored in trie matches the token. Recursive. Max depth is longest pattern in trie.
+func (trie *wildcardTrie) check(token string) bool {
+	if len(token) == 0 {
+		if trie.terminal {
+			return true
+		}
+
+		if childNode, exists := trie.children[zeroOrMoreWildcard]; exists && childNode.terminal {
+			return true
+		}
+
+		if childNode, exists := trie.children[zeroOrOneWildcard]; exists && childNode.terminal {
+			return true
+		}
+		return false
+	}
+
+	r, width := utf8.DecodeRuneInString(token)
+
+	if childNode, exists := trie.children[r]; exists {
+		if childNode.check(token[width:]) {
+			return true
+		}
+	}
+
+	if childNode, exists := trie.children[exactlyOneWildcard]; exists {
+		if childNode.check(token[width:]) {
+			return true
+		}
+	}
+
+	if childNode, exists := trie.children[zeroOrOneWildcard]; exists {
+		if childNode.check(token) {
+			return true
+		}
+		if childNode.check(token[width:]) {
+			return true
+		}
+	}
+
+	if childNode, exists := trie.children[zeroOrMoreWildcard]; exists {
+		if childNode.terminal {
+			return true
+		}
+		if childNode.checkAllSuffixes(token) {
+			return true
+		}
+	}
+
+	if childNode, exists := trie.children[oneOrMoreWildcard]; exists {
+		if childNode.terminal {
+			return true
+		}
+		if childNode.checkAllSuffixes(token[width:]) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (trie *wildcardTrie) checkAllSuffixes(token string) bool {
+	suffix := token
+	for {
+		if len(suffix) == 0 {
+			return false
+		}
+
+		if trie.check(suffix) {
+			return true
+		}
+
+		_, width := utf8.DecodeRuneInString(suffix)
+		suffix = suffix[width:]
+	}
 }
