@@ -1,10 +1,11 @@
 package service
 
 import (
-	"fmt"
 	"strings"
 	"unicode"
 	"unicode/utf8"
+
+	log "github.com/go-pkgz/lgr"
 )
 
 // RestrictedWordsLister provides restricted words in comments per site
@@ -36,7 +37,7 @@ func NewRestrictedWordsMatcher(lister RestrictedWordsLister) *RestrictedWordsMat
 func (m *RestrictedWordsMatcher) Match(siteID string, text string) bool {
 	restrictedWords, err := m.lister.List(siteID)
 	if err != nil {
-		fmt.Printf("failed to get restricted patterns for site %s: %v", siteID, err)
+		log.Printf("[WARN] failed to get restricted patterns for site %s: %v", siteID, err)
 		return false
 	}
 	if len(restrictedWords) == 0 {
@@ -104,7 +105,7 @@ func newWildcardTrie(patterns ...string) *wildcardTrie {
 func (trie *wildcardTrie) addPattern(pattern string) {
 	// since pattern matching algorithm is recursive we do not allow long patterns
 	if utf8.RuneCountInString(pattern) < 1 || utf8.RuneCountInString(pattern) > 64 {
-		fmt.Printf("[WARN] invalid pattern length '%s': actual - %d, min allowed - 1, max allowed - 64", pattern, utf8.RuneCountInString(pattern))
+		log.Printf("[WARN] invalid pattern length '%s': actual - %d, min allowed - 1, max allowed - 64", pattern, utf8.RuneCountInString(pattern))
 		return
 	}
 
