@@ -34,14 +34,16 @@ func NewRestrictedWordsMatcher(lister RestrictedWordsLister) *RestrictedWordsMat
 
 // Match matches comment text against restricted words for specified site
 func (m *RestrictedWordsMatcher) Match(siteID string, text string) bool {
-	tokens := m.tokenize(text)
-
 	restrictedWords, err := m.lister.List(siteID)
 	if err != nil {
 		fmt.Printf("failed to get restricted patterns for site %s: %v", siteID, err)
 		return false
 	}
+	if len(restrictedWords) == 0 {
+		return false
+	}
 
+	tokens := m.tokenize(text)
 	trie := newWildcardTrie(restrictedWords...)
 
 	for _, token := range tokens {
