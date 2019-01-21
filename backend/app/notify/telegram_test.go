@@ -73,7 +73,7 @@ func TestTelegram_Send(t *testing.T) {
 	err = tb.Send(context.TODO(), request{comment: c, parent: cp})
 	assert.Contains(t, err.Error(), "unexpected telegram status code 404", "send on broken tg")
 
-	assert.Equal(t, "telegram: remark_test", tb.String())
+	assert.Equal(t, "telegram: @remark_test", tb.String())
 }
 
 func mockTelegramServer() *httptest.Server {
