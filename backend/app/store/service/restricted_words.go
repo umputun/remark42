@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"unicode"
 	"unicode/utf8"
 )
@@ -26,27 +27,44 @@ func (l StaticRestrictedWordsLister) List(siteID string) (restricted []string, e
 type RestrictedWordsMatcher struct {
 	lister          RestrictedWordsLister
 	patternMatchers map[string]*wildcardTrie
+
+	lock sync.RWMutex
 }
 
 // NewRestrictedWordsMatcher creates new RestrictedWordsMatcher using provided RestrictedWordsLister
 func NewRestrictedWordsMatcher(lister RestrictedWordsLister) *RestrictedWordsMatcher {
-	return &RestrictedWordsMatcher{lister, make(map[string]*wildcardTrie)}
+	return &RestrictedWordsMatcher{lister: lister, patternMatchers: make(map[string]*wildcardTrie)}
 }
 
 // Match matches comment text against restricted words for specified site
 func (m *RestrictedWordsMatcher) Match(siteID string, text string) bool {
 	tokens := m.tokenize(text)
 
-	trie, exists := m.patternMatchers[siteID]
-	if !exists {
-		patterns, err := m.lister.List(siteID)
-		if err != nil {
-			fmt.Printf("failed to get restricted patterns for site %s: %v", siteID, err)
-			return false
+	getOrInitWildcardTrie := func() (*wildcardTrie, bool) {
+		m.lock.RLock()
+		trie, exists := m.patternMatchers[siteID]
+		m.lock.RUnlock()
+
+		if !exists {
+			patterns, err := m.lister.List(siteID)
+			if err != nil {
+				fmt.Printf("failed to get restricted patterns for site %s: %v", siteID, err)
+				return nil, false
+			}
+
+			trie = newWildcardTrie(patterns...)
+
+			m.lock.Lock()
+			m.patternMatchers[siteID] = trie
+			m.lock.Unlock()
 		}
 
-		trie = newWildcardTrie(patterns...)
-		m.patternMatchers[siteID] = trie
+		return trie, true
+	}
+
+	trie, ok := getOrInitWildcardTrie()
+	if !ok {
+		return false
 	}
 
 	for _, token := range tokens {
@@ -91,13 +109,6 @@ func (m *RestrictedWordsMatcher) tokenize(text string) []string {
 	return tokens
 }
 
-const (
-	zeroOrMoreWildcard = '*'
-	zeroOrOneWildcard  = '?'
-	oneOrMoreWildcard  = '+'
-	exactlyOneWildcard = '!'
-)
-
 type wildcardTrie struct {
 	terminal bool
 	children map[rune]*wildcardTrie
@@ -120,7 +131,7 @@ func (trie *wildcardTrie) addPattern(pattern string) {
 
 	node := trie
 
-	for _, r := range strings.ToLower(pattern) {
+	for _, r := range strings.ToLower(strings.TrimSpace(pattern)) {
 		if childNode, exists := node.children[r]; exists {
 			node = childNode
 			continue
@@ -141,13 +152,10 @@ func (trie *wildcardTrie) check(token string) bool {
 			return true
 		}
 
-		if childNode, exists := trie.children[zeroOrMoreWildcard]; exists && childNode.terminal {
+		if childNode, exists := trie.children['*']; exists && childNode.terminal {
 			return true
 		}
 
-		if childNode, exists := trie.children[zeroOrOneWildcard]; exists && childNode.terminal {
-			return true
-		}
 		return false
 	}
 
@@ -159,35 +167,11 @@ func (trie *wildcardTrie) check(token string) bool {
 		}
 	}
 
-	if childNode, exists := trie.children[exactlyOneWildcard]; exists {
-		if childNode.check(token[width:]) {
-			return true
-		}
-	}
-
-	if childNode, exists := trie.children[zeroOrOneWildcard]; exists {
-		if childNode.check(token) {
-			return true
-		}
-		if childNode.check(token[width:]) {
-			return true
-		}
-	}
-
-	if childNode, exists := trie.children[zeroOrMoreWildcard]; exists {
+	if childNode, exists := trie.children['*']; exists {
 		if childNode.terminal {
 			return true
 		}
 		if childNode.checkAllSuffixes(token) {
-			return true
-		}
-	}
-
-	if childNode, exists := trie.children[oneOrMoreWildcard]; exists {
-		if childNode.terminal {
-			return true
-		}
-		if childNode.checkAllSuffixes(token[width:]) {
 			return true
 		}
 	}
