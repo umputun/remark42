@@ -21,6 +21,7 @@ func TestTelegram_New(t *testing.T) {
 	tb, err := NewTelegram("good-token", "remark_test", 2*time.Second, ts.URL+"/")
 	assert.NoError(t, err)
 	assert.NotNil(t, tb)
+	assert.Equal(t, "@remark_test", tb.channelID, "@ added")
 
 	st := time.Now()
 	_, err = NewTelegram("bad-resp", "remark_test", 2*time.Second, ts.URL+"/")
@@ -42,6 +43,11 @@ func TestTelegram_New(t *testing.T) {
 
 	_, err = NewTelegram("good-token", "remark_test", 0, ts.URL+"/")
 	assert.NoError(t, err, "0 timeout allowed as default")
+
+	tb, err = NewTelegram("good-token", "1234567890", 2*time.Second, ts.URL+"/")
+	assert.NoError(t, err)
+	assert.NotNil(t, tb)
+	assert.Equal(t, "1234567890", tb.channelID, "no @ prefix")
 }
 
 func TestTelegram_Send(t *testing.T) {

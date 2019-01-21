@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"html"
 	"net/http"
+	"strconv"
 	"time"
 
 	log "github.com/go-pkgz/lgr"
@@ -16,10 +17,10 @@ import (
 
 // Telegram implements notify.Destination for telegram
 type Telegram struct {
-	channelID string
-	token       string
-	apiPrefix   string
-	timeout     time.Duration
+	channelID string // unique identifier for the target chat or username of the target channel (in the format @channelusername)
+	token     string
+	apiPrefix string
+	timeout   time.Duration
 }
 
 const telegramTimeOut = 5000 * time.Millisecond
@@ -27,6 +28,10 @@ const telegramAPIPrefix = "https://api.telegram.org/bot"
 
 // NewTelegram makes telegram bot for notifications
 func NewTelegram(token string, channelID string, timeout time.Duration, api string) (*Telegram, error) {
+
+	if _, err := strconv.ParseInt(channelID, 10, 64); err != nil {
+		channelID = "@" + channelID // if channelID not a number enforce @ prefix
+	}
 
 	res := Telegram{channelID: channelID, token: token, apiPrefix: api, timeout: timeout}
 	if res.apiPrefix == "" {
