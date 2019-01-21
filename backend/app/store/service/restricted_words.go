@@ -3,7 +3,6 @@ package service
 import (
 	"fmt"
 	"strings"
-	"sync"
 	"unicode"
 	"unicode/utf8"
 )
@@ -25,47 +24,25 @@ func (l StaticRestrictedWordsLister) List(siteID string) (restricted []string, e
 
 // RestrictedWordsMatcher matches comment text against restricted words
 type RestrictedWordsMatcher struct {
-	lister          RestrictedWordsLister
-	patternMatchers map[string]*wildcardTrie
-
-	lock sync.RWMutex
+	lister RestrictedWordsLister
 }
 
 // NewRestrictedWordsMatcher creates new RestrictedWordsMatcher using provided RestrictedWordsLister
 func NewRestrictedWordsMatcher(lister RestrictedWordsLister) *RestrictedWordsMatcher {
-	return &RestrictedWordsMatcher{lister: lister, patternMatchers: make(map[string]*wildcardTrie)}
+	return &RestrictedWordsMatcher{lister: lister}
 }
 
 // Match matches comment text against restricted words for specified site
 func (m *RestrictedWordsMatcher) Match(siteID string, text string) bool {
 	tokens := m.tokenize(text)
 
-	getOrInitWildcardTrie := func() (*wildcardTrie, bool) {
-		m.lock.RLock()
-		trie, exists := m.patternMatchers[siteID]
-		m.lock.RUnlock()
-
-		if !exists {
-			patterns, err := m.lister.List(siteID)
-			if err != nil {
-				fmt.Printf("failed to get restricted patterns for site %s: %v", siteID, err)
-				return nil, false
-			}
-
-			trie = newWildcardTrie(patterns...)
-
-			m.lock.Lock()
-			m.patternMatchers[siteID] = trie
-			m.lock.Unlock()
-		}
-
-		return trie, true
-	}
-
-	trie, ok := getOrInitWildcardTrie()
-	if !ok {
+	restrictedWords, err := m.lister.List(siteID)
+	if err != nil {
+		fmt.Printf("failed to get restricted patterns for site %s: %v", siteID, err)
 		return false
 	}
+
+	trie := newWildcardTrie(restrictedWords...)
 
 	for _, token := range tokens {
 		if trie.check(token) {

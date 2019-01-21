@@ -57,6 +57,10 @@ func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id, err := s.DataService.Create(comment)
+	if err == service.CommentWithRestrictedWordsError {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment")
+		return
+	}
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't save comment")
 		return
@@ -113,13 +117,6 @@ func (s *Rest) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !edit.Delete {
-		if err = s.DataService.ValidateCommentText(locator.SiteID, edit.Text); err != nil {
-			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment")
-			return
-		}
-	}
-
 	editReq := service.EditRequest{
 		Text:    s.CommentFormatter.FormatText(edit.Text),
 		Orig:    edit.Text,
@@ -128,6 +125,10 @@ func (s *Rest) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	res, err := s.DataService.EditComment(locator, id, editReq)
+	if err == service.CommentWithRestrictedWordsError {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment")
+		return
+	}
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't update comment")
 		return
