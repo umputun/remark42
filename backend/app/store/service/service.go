@@ -61,8 +61,8 @@ const maxLastCommentsReply = 1000
 // UnlimitedVotes doesn't restrict MaxVotes
 const UnlimitedVotes = -1
 
-// CommentWithRestrictedWordsError returned in case comment text contains restricted words
-var CommentWithRestrictedWordsError = errors.New("comment contains restricted words")
+// ErrRestrictedWordsFound returned in case comment text contains restricted words
+var ErrRestrictedWordsFound = errors.New("comment contains restricted words")
 
 // Create prepares comment and forward to Interface.Create
 func (s *DataStore) Create(comment store.Comment) (commentID string, err error) {
@@ -72,7 +72,7 @@ func (s *DataStore) Create(comment store.Comment) (commentID string, err error) 
 	}
 
 	if s.RestrictedWordsMatcher != nil && s.RestrictedWordsMatcher.Match(comment.Locator.SiteID, comment.Text) {
-		return "", CommentWithRestrictedWordsError
+		return "", ErrRestrictedWordsFound
 	}
 
 	// keep input title and set to extracted if missing
@@ -204,7 +204,7 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 	}
 
 	if s.RestrictedWordsMatcher != nil && s.RestrictedWordsMatcher.Match(comment.Locator.SiteID, req.Text) {
-		return comment, CommentWithRestrictedWordsError
+		return comment, ErrRestrictedWordsFound
 	}
 
 	comment.Text = req.Text

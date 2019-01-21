@@ -57,7 +57,7 @@ func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id, err := s.DataService.Create(comment)
-	if err == service.CommentWithRestrictedWordsError {
+	if err == service.ErrRestrictedWordsFound {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment")
 		return
 	}
@@ -125,7 +125,7 @@ func (s *Rest) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	res, err := s.DataService.EditComment(locator, id, editReq)
-	if err == service.CommentWithRestrictedWordsError {
+	if err == service.ErrRestrictedWordsFound {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment")
 		return
 	}
