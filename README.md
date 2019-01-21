@@ -130,7 +130,7 @@ _this is the recommended way to run remark42_
 | max-votes               | MAX_VOTES               | `-1`                  | votes limit per comment, `-1` - unlimited        |
 | low-score               | LOW_SCORE               | `-5`                  | low score threshold                              |
 | critical-score          | CRITICAL_SCORE          | `-10`                 | critical score threshold                         |
-| restricted-words        | RESTRICTED_WORDS        |                       | words prohibited in comments (comma separated)   |
+| restricted-words        | RESTRICTED_WORDS        |                       | words banned in comments (can use `*`), _multi_  |
 | edit-time               | EDIT_TIME               | `5m`                  | edit window                                      |
 | read-age                | READONLY_AGE            |                       | read-only age of comments, days                  |
 | img-proxy               | IMG_PROXY               | `false`               | enable http->https proxy for images              |
