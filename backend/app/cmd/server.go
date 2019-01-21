@@ -12,7 +12,7 @@ import (
 	"syscall"
 	"time"
 
-	bolt "github.com/coreos/bbolt"
+	"github.com/coreos/bbolt"
 	log "github.com/go-pkgz/lgr"
 	auth_cache "github.com/patrickmn/go-cache"
 	"github.com/pkg/errors"
@@ -44,20 +44,21 @@ type ServerCommand struct {
 	Notify NotifyGroup `group:"notify" namespace:"notify" env-namespace:"NOTIFY"`
 	SSL    SSLGroup    `group:"ssl" namespace:"ssl" env-namespace:"SSL"`
 
-	Sites          []string      `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
-	AdminPasswd    string        `long:"admin-passwd" env:"ADMIN_PASSWD" default:"" description:"admin basic auth password"`
-	BackupLocation string        `long:"backup" env:"BACKUP_PATH" default:"./var/backup" description:"backups location"`
-	MaxBackupFiles int           `long:"max-back" env:"MAX_BACKUP_FILES" default:"10" description:"max backups to keep"`
-	ImageProxy     bool          `long:"img-proxy" env:"IMG_PROXY" description:"enable image proxy"`
-	MaxCommentSize int           `long:"max-comment" env:"MAX_COMMENT_SIZE" default:"2048" description:"max comment size"`
-	MaxVotes       int           `long:"max-votes" env:"MAX_VOTES" default:"-1" description:"maximum number of votes per comment"`
-	LowScore       int           `long:"low-score" env:"LOW_SCORE" default:"-5" description:"low score threshold"`
-	CriticalScore  int           `long:"critical-score" env:"CRITICAL_SCORE" default:"-10" description:"critical score threshold"`
-	ReadOnlyAge    int           `long:"read-age" env:"READONLY_AGE" default:"0" description:"read-only age of comments, days"`
-	EditDuration   time.Duration `long:"edit-time" env:"EDIT_TIME" default:"5m" description:"edit window"`
-	Port           int           `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
-	WebRoot        string        `long:"web-root" env:"REMARK_WEB_ROOT" default:"./web" description:"web root directory"`
-	UpdateLimit    float64       `long:"update-limit" env:"UPDATE_LIMIT" default:"0.5" description:"updates/sec limit"`
+	Sites           []string      `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
+	AdminPasswd     string        `long:"admin-passwd" env:"ADMIN_PASSWD" default:"" description:"admin basic auth password"`
+	BackupLocation  string        `long:"backup" env:"BACKUP_PATH" default:"./var/backup" description:"backups location"`
+	MaxBackupFiles  int           `long:"max-back" env:"MAX_BACKUP_FILES" default:"10" description:"max backups to keep"`
+	ImageProxy      bool          `long:"img-proxy" env:"IMG_PROXY" description:"enable image proxy"`
+	MaxCommentSize  int           `long:"max-comment" env:"MAX_COMMENT_SIZE" default:"2048" description:"max comment size"`
+	MaxVotes        int           `long:"max-votes" env:"MAX_VOTES" default:"-1" description:"maximum number of votes per comment"`
+	LowScore        int           `long:"low-score" env:"LOW_SCORE" default:"-5" description:"low score threshold"`
+	CriticalScore   int           `long:"critical-score" env:"CRITICAL_SCORE" default:"-10" description:"critical score threshold"`
+	ReadOnlyAge     int           `long:"read-age" env:"READONLY_AGE" default:"0" description:"read-only age of comments, days"`
+	EditDuration    time.Duration `long:"edit-time" env:"EDIT_TIME" default:"5m" description:"edit window"`
+	Port            int           `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
+	WebRoot         string        `long:"web-root" env:"REMARK_WEB_ROOT" default:"./web" description:"web root directory"`
+	UpdateLimit     float64       `long:"update-limit" env:"UPDATE_LIMIT" default:"0.5" description:"updates/sec limit"`
+	RestrictedWords []string      `long:"restricted-words" env:"RESTRICTED_WORDS" default:"" description:"words prohibited to use in comments" env-delim:","`
 
 	Auth struct {
 		TTL struct {
@@ -211,12 +212,13 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 	}
 
 	dataService := &service.DataStore{
-		Interface:      storeEngine,
-		EditDuration:   s.EditDuration,
-		AdminStore:     adminStore,
-		MaxCommentSize: s.MaxCommentSize,
-		MaxVotes:       s.MaxVotes,
-		TitleExtractor: service.NewTitleExtractor(http.Client{Timeout: time.Second * 5}),
+		Interface:              storeEngine,
+		EditDuration:           s.EditDuration,
+		AdminStore:             adminStore,
+		MaxCommentSize:         s.MaxCommentSize,
+		MaxVotes:               s.MaxVotes,
+		TitleExtractor:         service.NewTitleExtractor(http.Client{Timeout: time.Second * 5}),
+		RestrictedWordsMatcher: service.NewRestrictedWordsMatcher(service.StaticRestrictedWordsLister{Words: s.RestrictedWords}),
 	}
 
 	loadingCache, err := s.makeCache()

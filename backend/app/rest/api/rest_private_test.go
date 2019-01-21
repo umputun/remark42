@@ -101,6 +101,24 @@ func TestRest_CreateTooBig(t *testing.T) {
 	assert.Equal(t, "can't bind comment", c["details"])
 }
 
+func TestRest_CreateWithRestrictedWord(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	badComment := fmt.Sprintf(`{"text": "What the duck is that?", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
+
+	resp, err := post(t, ts.URL+"/api/v1/comment", badComment)
+	assert.Nil(t, err)
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	b, err := ioutil.ReadAll(resp.Body)
+	assert.Nil(t, err)
+	c := R.JSON{}
+	err = json.Unmarshal(b, &c)
+	assert.Nil(t, err)
+	assert.Equal(t, "comment contains restricted words", c["error"])
+	assert.Equal(t, "invalid comment", c["details"])
+}
+
 func TestRest_CreateRejected(t *testing.T) {
 
 	ts, _, teardown := startupT(t)
@@ -256,6 +274,31 @@ func TestRest_UpdateNotOwner(t *testing.T) {
 	b, err = client.Do(req)
 	assert.Nil(t, err)
 	assert.Equal(t, 400, b.StatusCode, string(body), "update is not json")
+}
+
+func TestRest_UpdateWithRestrictedWords(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	c1 := store.Comment{Text: "What the quack is that?", ParentID: "p1",
+		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}}
+	id := addComment(t, c1, ts)
+
+	client := http.Client{}
+	req, err := http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/"+id+"?site=radio-t&url=https://radio-t.com/blah1",
+		strings.NewReader(`{"text":"What the duck is that?", "summary":"my edit"}`))
+	assert.Nil(t, err)
+	req.Header.Add("X-JWT", devToken)
+	b, err := client.Do(req)
+	assert.Nil(t, err)
+	body, err := ioutil.ReadAll(b.Body)
+	assert.Nil(t, err)
+	c := R.JSON{}
+	err = json.Unmarshal(body, &c)
+	assert.Nil(t, err)
+	assert.Equal(t, 400, b.StatusCode, string(body))
+	assert.Equal(t, "comment contains restricted words", c["error"])
+	assert.Equal(t, "invalid comment", c["details"])
 }
 
 func TestRest_Vote(t *testing.T) {

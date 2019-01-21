@@ -180,13 +180,15 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 	require.Nil(t, err)
 
 	adminStore := adminstore.NewStaticStore("123456", []string{"a1", "a2"}, "admin@remark-42.com")
+	restrictedWordsMatcher := service.NewRestrictedWordsMatcher(service.StaticRestrictedWordsLister{Words: []string{"duck"}})
 
 	dataStore := &service.DataStore{
-		Interface:      b,
-		EditDuration:   5 * time.Minute,
-		MaxCommentSize: 4000,
-		AdminStore:     adminStore,
-		MaxVotes:       service.UnlimitedVotes,
+		Interface:              b,
+		EditDuration:           5 * time.Minute,
+		MaxCommentSize:         4000,
+		AdminStore:             adminStore,
+		MaxVotes:               service.UnlimitedVotes,
+		RestrictedWordsMatcher: restrictedWordsMatcher,
 	}
 
 	srv = &Rest{
