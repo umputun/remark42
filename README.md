@@ -266,7 +266,7 @@ Admins/moderators should be defined in `docker-compose.yml` as a list of user ID
 
 ```
     environment:
-        - ADMIN=github_ef0f706a79cc24b17bbbb374cd234a691a034128,github_dae9983158e9e5e127ef2b87a411ef13c891e9e5
+        - ADMIN_SHARED_ID=github_ef0f706a79cc24b17bbbb374cd234a691a034128,github_dae9983158e9e5e127ef2b87a411ef13c891e9e5
 ```
 
 To get user id just login and click on your username or any other user you want to promote to admins. 
