@@ -7,8 +7,8 @@ import (
 
 	log "github.com/go-pkgz/lgr"
 	"github.com/google/uuid"
-	multierror "github.com/hashicorp/go-multierror"
-	cache "github.com/patrickmn/go-cache"
+	"github.com/hashicorp/go-multierror"
+	"github.com/patrickmn/go-cache"
 	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/backend/app/store"
@@ -19,11 +19,12 @@ import (
 // DataStore wraps store.Interface with additional methods
 type DataStore struct {
 	engine.Interface
-	EditDuration   time.Duration
-	AdminStore     admin.Store
-	MaxCommentSize int
-	MaxVotes       int
-	TitleExtractor *TitleExtractor
+	EditDuration           time.Duration
+	AdminStore             admin.Store
+	MaxCommentSize         int
+	MaxVotes               int
+	TitleExtractor         *TitleExtractor
+	RestrictedWordsMatcher *RestrictedWordsMatcher
 
 	// granular locks
 	scopedLocks struct {
@@ -60,11 +61,18 @@ const maxLastCommentsReply = 1000
 // UnlimitedVotes doesn't restrict MaxVotes
 const UnlimitedVotes = -1
 
+// ErrRestrictedWordsFound returned in case comment text contains restricted words
+var ErrRestrictedWordsFound = errors.New("comment contains restricted words")
+
 // Create prepares comment and forward to Interface.Create
 func (s *DataStore) Create(comment store.Comment) (commentID string, err error) {
 
 	if comment, err = s.prepareNewComment(comment); err != nil {
 		return "", errors.Wrap(err, "failed to prepare comment")
+	}
+
+	if s.RestrictedWordsMatcher != nil && s.RestrictedWordsMatcher.Match(comment.Locator.SiteID, comment.Text) {
+		return "", ErrRestrictedWordsFound
 	}
 
 	// keep input title and set to extracted if missing
@@ -193,6 +201,10 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 	if req.Delete { // delete request
 		comment.Deleted = true
 		return comment, s.Delete(locator, commentID, store.SoftDelete)
+	}
+
+	if s.RestrictedWordsMatcher != nil && s.RestrictedWordsMatcher.Match(comment.Locator.SiteID, req.Text) {
+		return comment, ErrRestrictedWordsFound
 	}
 
 	comment.Text = req.Text
