@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"runtime"
 	"strings"
 	"sync"
@@ -14,15 +15,17 @@ var levels = []string{"DEBUG", "INFO", "WARN", "ERROR", "PANIC", "FATAL"}
 
 // Logger provided simple logger with basic support of levels. Thread safe
 type Logger struct {
-	stdout, stderr         io.Writer
-	dbg                    bool
-	lock                   sync.Mutex
-	callerFile, callerFunc bool
-	now                    nowFn
-	fatal                  panicFn
-	skipCallers            int
-	levelBraces            bool
-	msec                   bool
+	stdout, stderr io.Writer
+	dbg            bool
+	lock           sync.Mutex
+	callerFile     bool
+	callerFunc     bool
+	callerPkg      bool
+	now            nowFn
+	fatal          panicFn
+	skipCallers    int
+	levelBraces    bool
+	msec           bool
 }
 
 type nowFn func() time.Time
@@ -67,7 +70,7 @@ func (l *Logger) Logf(format string, args ...interface{}) {
 	bld.WriteString(l.formatLevel(lv))
 	bld.WriteString(" ")
 
-	if l.dbg && (l.callerFile || l.callerFunc) {
+	if l.dbg && (l.callerFile || l.callerFunc || l.callerPkg) {
 		if pc, file, line, ok := runtime.Caller(l.skipCallers); ok {
 
 			funcName := ""
@@ -79,6 +82,12 @@ func (l *Logger) Logf(format string, args ...interface{}) {
 			if l.callerFile {
 				fnameElems := strings.Split(file, "/")
 				fileInfo = fmt.Sprintf("%s:%d", strings.Join(fnameElems[len(fnameElems)-2:], "/"), line)
+				if l.callerFunc {
+					fileInfo += " "
+				}
+			}
+			if l.callerPkg && !l.callerFile && !l.callerFunc {
+				_, fileInfo = path.Split(path.Dir(file))
 				if l.callerFunc {
 					fileInfo += " "
 				}
@@ -181,6 +190,11 @@ func CallerFile(l *Logger) {
 // CallerFunc adds caller info with function name
 func CallerFunc(l *Logger) {
 	l.callerFunc = true
+}
+
+// Pkg adds caller's package name
+func CallerPkg(l *Logger) {
+	l.callerPkg = true
 }
 
 // LevelBraces adds [] to level

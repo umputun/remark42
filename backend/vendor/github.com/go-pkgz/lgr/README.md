@@ -18,7 +18,7 @@ output looks like this:
 2018/01/07 13:02:34.015 DEBUG {svc/handler.go:155 h.MyFunc2} some less important err message, file is too small`
 ```
 
-_Without `lgr.CallerFile` it will drop `{caller}` part_
+_Without `lgr.Caller*` it will drop `{caller}` part_
 
 ## details
 
@@ -33,8 +33,9 @@ _Without `lgr.CallerFile` it will drop `{caller}` part_
 `lgr.New` call accepts functional options:
 
 - `lgr.Debug` - turn debug mode on. This allows messages with "DEBUG" level (filtered overwise)
-- `lgr.CallerFile` - adds the caller file info each message
-- `lgr.CallerFunc` - adds the caller function info each message
+- `lgr.CallerFile` - adds the caller file info
+- `lgr.CallerFunc` - adds the caller function info
+- `lgr.CallerPkg` - adds the caller package
 - `lgr.LevelBraces` - wraps levels with "[" and "]"
 - `lgr.Msec` - adds milliseconds to timestamp
 - `lgr.Out(io.Writer)` - sets the output writer, default `os.Stdout`
