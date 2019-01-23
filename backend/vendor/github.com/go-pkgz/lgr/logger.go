@@ -70,7 +70,7 @@ func (l *Logger) Logf(format string, args ...interface{}) {
 	bld.WriteString(l.formatLevel(lv))
 	bld.WriteString(" ")
 
-	if l.dbg && (l.callerFile || l.callerFunc || l.callerPkg) {
+	if l.callerFile || l.callerFunc || l.callerPkg {
 		if pc, file, line, ok := runtime.Caller(l.skipCallers); ok {
 
 			funcName := ""
