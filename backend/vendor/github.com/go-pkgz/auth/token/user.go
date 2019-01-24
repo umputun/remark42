@@ -73,6 +73,23 @@ func (u *User) IsAdmin() bool {
 	return u.BoolAttr(adminAttr)
 }
 
+// SliceAttr gets slice attribute
+func (u *User) SliceAttr(key string) []string {
+	r, ok := u.Attributes[key].([]string)
+	if !ok {
+		return []string{}
+	}
+	return r
+}
+
+// SetSliceAttr sets boolean attribute
+func (u *User) SetSliceAttr(key string, val []string) {
+	if u.Attributes == nil {
+		u.Attributes = map[string]interface{}{}
+	}
+	u.Attributes[key] = val
+}
+
 // HashID tries to hash val with hash.Hash and fallback to crc if needed
 func HashID(h hash.Hash, val string) string {
 

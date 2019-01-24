@@ -21,7 +21,7 @@ This library provides "social login" with Github, Google, Facebook and Yandex as
 
 ## Install
 
-`go install github.com/go-pkgz/auth`
+`go get -u github.com/go-pkgz/auth`
 
 ## Usage
 
