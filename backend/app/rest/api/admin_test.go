@@ -16,6 +16,7 @@ import (
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/go-pkgz/auth/token"
 	R "github.com/go-pkgz/rest"
+	"github.com/go-pkgz/rest/cache"
 	"github.com/umputun/remark/backend/app/store/service"
 
 	"github.com/stretchr/testify/assert"
@@ -312,6 +313,7 @@ func TestAdmin_Block(t *testing.T) {
 	assert.Equal(t, "", comments.Comments[0].Text)
 	assert.True(t, comments.Comments[0].Deleted)
 
+	srv.Cache = &cache.Nop{} // TODO: with lru cache it won't be refreshed and invalidated for long time
 	time.Sleep(50 * time.Millisecond)
 	res, code = get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah&sort=+time")
 	assert.Equal(t, 200, code)

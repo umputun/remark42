@@ -179,6 +179,9 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDb, SiteID: "radio-t"})
 	require.Nil(t, err)
 
+	memCache, err := cache.NewMemoryCache()
+	assert.NoError(t, err)
+
 	adminStore := adminstore.NewStaticStore("123456", []string{"a1", "a2"}, "admin@remark-42.com")
 	restrictedWordsMatcher := service.NewRestrictedWordsMatcher(service.StaticRestrictedWordsLister{Words: []string{"duck"}})
 
@@ -198,7 +201,7 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 			SecretReader: token.SecretFunc(func() (string, error) { return "secret", nil }),
 			AvatarStore:  avatar.NewLocalFS("/tmp/ava-remark42"),
 		}),
-		Cache:     &cache.Nop{},
+		Cache:     memCache,
 		WebRoot:   "/tmp",
 		RemarkURL: "https://demo.remark42.com",
 

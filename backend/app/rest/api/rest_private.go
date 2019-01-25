@@ -134,7 +134,7 @@ func (s *Rest) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.Cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL, lastCommentsScope, user.ID))
+	s.Cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.SiteID, locator.URL, lastCommentsScope, user.ID))
 	render.JSON(w, r, res)
 }
 

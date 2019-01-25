@@ -10,6 +10,7 @@ import (
 	"time"
 
 	R "github.com/go-pkgz/rest"
+	"github.com/go-pkgz/rest/cache"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -227,6 +228,7 @@ func TestRest_Last(t *testing.T) {
 
 	err = srv.DataService.Delete(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}, id1, store.SoftDelete)
 	assert.Nil(t, err)
+	srv.Cache.Flush(cache.FlusherRequest{})
 	res, code = get(t, ts.URL+"/api/v1/last/5?site=radio-t")
 	assert.Equal(t, 200, code)
 	err = json.Unmarshal([]byte(res), &comments)
