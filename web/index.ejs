@@ -24,6 +24,15 @@
     .document_theme_dark a {
       color: #5e5eff;
     }
+
+    .widget {
+      margin-top: 1rem;
+    }
+
+    .widget__comments-frame {
+      border: 1px dashed #aaa;
+      min-width: 35rem;
+    }
   </style>
 
   <script>
@@ -46,11 +55,18 @@
   <div class="container">
     <h1>Demo page</h1>
     <p>To install widgets on your website, follow the <a href="https://github.com/umputun/remark#setup-on-your-website">instructions</a>.</p>
-    <p>See also</p>
-    <ul>
-      <li><a href="/web/last-comments.html">Last comments widget</a></li>
-      <li><a href="/web/counter.html">Counter widget</a></li>
-    </ul>
+    <div class="widgets">
+      <div class="widget widgets__widget ">
+        <a class="widget__link" href="/web/last-comments.html">Last comments widget page</a><br/>
+        <iframe class="widget__frame widget__comments-frame" src="/web/last-comments.html" frameborder="0"></iframe>
+      </div>
+      <div class="widget widgets__widget">
+        <a class="widget__link" href="/web/counter.html">Counter widget page</a><br/>
+        <div class="widget__frame widget__counter-frame">
+          Comments count: <span class="remark42__counter"></span>
+        </div>
+      </div>
+    </div>
     <p><Button onclick="toggleTheme()">Toggle theme</Button></p>
     <div id="remark42"></div>
   </div>
@@ -64,6 +80,13 @@
     (function() {
       var d = document, s = d.createElement('script');
       s.src = '/web/embed.js';
+      s.type = 'text/javascript';
+      (d.head || d.body).appendChild(s);
+    })();
+
+    (function() {
+      var d = document, s = d.createElement('script');
+      s.src = '/web/counter.js';
       s.type = 'text/javascript';
       (d.head || d.body).appendChild(s);
     })();
