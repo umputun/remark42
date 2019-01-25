@@ -25,31 +25,14 @@
       color: #5e5eff;
     }
 
-    .widgets {
-      display: flex;
-      flex-wrap: wrap;
-    }
+		.widget {
+			margin-top: 1rem;
+		}
 
-    .widgets__widget:not(:last-child) {
-      margin-right: .5rem;
-      flex: 1 0;
-    }
-
-    .widgets__last-comment-widget {
-      flex: 1 0 40%;
-    }
-
-    .widget__frame {
-      border: 1px dashed #aaa;
-      width: 100%;
-      min-height: 15rem;
-      min-width: 16rem;
-      box-sizing: border-box;
-    }
-
-    .widget__counter-frame {
-      padding: 2rem;
-    }
+		.widget__comments-frame {
+			border: 1px dashed #aaa;
+			min-width: 35rem;
+		}
   </style>
 
   <script>
@@ -73,28 +56,14 @@
     <h1>Demo page</h1>
     <p>To install widgets on your website, follow the <a href="https://github.com/umputun/remark#setup-on-your-website">instructions</a>.</p>
     <div class="widgets">
-      <div class="widget widgets__widget">
+      <div class="widget widgets__widget ">
         <a class="widget__link" href="/web/last-comments.html">Last comments widget page</a><br/>
-        <iframe class="widget__frame" src="/web/last-comments.html" frameborder="0"></iframe>
+        <iframe class="widget__frame widget__comments-frame" src="/web/last-comments.html" frameborder="0"></iframe>
       </div>
-      <div class="widget widgets__widget widgets__last-comment-widget">
+      <div class="widget widgets__widget">
         <a class="widget__link" href="/web/counter.html">Counter widget page</a><br/>
         <div class="widget__frame widget__counter-frame">
-          <p>
-            First counter with url from data-attribute:
-            <span class="remark42__counter" data-url="http://127.0.0.1:8080/web/"></span>
-            (<a href="http://127.0.0.1:8080/web/" target="_blank">note</a>)
-          </p>
-
-          <p>
-            Second counter with url from global remark config:
-            <span class="remark42__counter"></span>
-            (<a href="http://127.0.0.1:8080/web/" target="_blank">note</a>)
-          </p>
-
-          <p>
-            If it can't get url from data-attribute or remark config, it will try to use window.location.href for it.
-          </p>
+					Comments count: <span class="remark42__counter"></span>
         </div>
       </div>
     </div>
