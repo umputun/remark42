@@ -20,6 +20,10 @@ func TestBoltAdmin_Delete(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(res), "initially 2 comments")
 
+	count, err := b.Count(loc)
+	require.NoError(t, err)
+	assert.Equal(t, 2, count, "count=2 initially")
+
 	err = b.Delete(loc, res[0].ID, store.SoftDelete)
 	assert.Nil(t, err)
 
@@ -36,6 +40,10 @@ func TestBoltAdmin_Delete(t *testing.T) {
 	comments, err := b.Last("radio-t", 10)
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(comments), "1 in last, 1 removed")
+
+	count, err = b.Count(loc)
+	require.NoError(t, err)
+	assert.Equal(t, 1, count)
 
 	err = b.Delete(loc, "123456", store.SoftDelete)
 	assert.NotNil(t, err)

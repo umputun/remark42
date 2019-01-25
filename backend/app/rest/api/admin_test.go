@@ -36,12 +36,33 @@ func TestAdmin_Delete(t *testing.T) {
 	id1 := addComment(t, c1, ts)
 	addComment(t, c2, ts)
 
+	// check last comments
+	res, code := get(t, ts.URL+"/api/v1/last/2?site=radio-t")
+	assert.Equal(t, 200, code)
+	comments := []store.Comment{}
+	err := json.Unmarshal([]byte(res), &comments)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(comments), "should have 2 comments")
+
+	// check multi count
+	resp, err := post(t, ts.URL+"/api/v1/counts?site=radio-t", `["https://radio-t.com/blah","https://radio-t.com/blah2"]`)
+	assert.Nil(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	bb, err := ioutil.ReadAll(resp.Body)
+	assert.Nil(t, err)
+	j := []store.PostInfo{}
+	err = json.Unmarshal(bb, &j)
+	assert.Nil(t, err)
+	assert.Equal(t, []store.PostInfo([]store.PostInfo{{URL: "https://radio-t.com/blah", Count: 2},
+		{URL: "https://radio-t.com/blah2", Count: 0}}), j)
+
+	// delete a comment
 	client := http.Client{}
 	req, err := http.NewRequest(http.MethodDelete,
 		fmt.Sprintf("%s/api/v1/admin/comment/%s?site=radio-t&url=https://radio-t.com/blah", ts.URL, id1), nil)
 	assert.Nil(t, err)
 	req.SetBasicAuth("admin", "password")
-	resp, err := client.Do(req)
+	resp, err = client.Do(req)
 	assert.Nil(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 
@@ -52,6 +73,35 @@ func TestAdmin_Delete(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "", cr.Text)
 	assert.True(t, cr.Deleted)
+
+	// check last comments updated
+	res, code = get(t, ts.URL+"/api/v1/last/2?site=radio-t")
+	assert.Equal(t, 200, code)
+	comments = []store.Comment{}
+	err = json.Unmarshal([]byte(res), &comments)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(comments), "should have 1 comments")
+
+	// check count updated
+	res, code = get(t, ts.URL+"/api/v1/count?site=radio-t&url=https://radio-t.com/blah")
+	assert.Equal(t, 200, code)
+	b := map[string]interface{}{}
+	err = json.Unmarshal([]byte(res), &b)
+	assert.Nil(t, err)
+	t.Logf("%#v", b)
+	assert.Equal(t, 1.0, b["count"], "should report 1 comments")
+
+	// check multi count updated
+	resp, err = post(t, ts.URL+"/api/v1/counts?site=radio-t", `["https://radio-t.com/blah","https://radio-t.com/blah2"]`)
+	assert.Nil(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	bb, err = ioutil.ReadAll(resp.Body)
+	assert.Nil(t, err)
+	j = []store.PostInfo{}
+	err = json.Unmarshal(bb, &j)
+	assert.Nil(t, err)
+	assert.Equal(t, []store.PostInfo([]store.PostInfo{{URL: "https://radio-t.com/blah", Count: 1},
+		{URL: "https://radio-t.com/blah2", Count: 0}}), j)
 }
 
 func TestAdmin_Title(t *testing.T) {

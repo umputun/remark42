@@ -216,21 +216,34 @@ func TestRest_UpdateDelete(t *testing.T) {
 		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}}
 	id := addComment(t, c1, ts)
 
+	// check multi count updated
+	resp, err := post(t, ts.URL+"/api/v1/counts?site=radio-t", `["https://radio-t.com/blah1","https://radio-t.com/blah2"]`)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	bb, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	j := []store.PostInfo{}
+	err = json.Unmarshal(bb, &j)
+	assert.Nil(t, err)
+	assert.Equal(t, []store.PostInfo([]store.PostInfo{{URL: "https://radio-t.com/blah1", Count: 1},
+		{URL: "https://radio-t.com/blah2", Count: 0}}), j)
+
+	// delete a comment
 	client := http.Client{}
 	req, err := http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/"+id+"?site=radio-t&url=https://radio-t.com/blah1",
 		strings.NewReader(`{"delete": true, "summary":"removed by user"}`))
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	req.Header.Add("X-JWT", devToken)
 	b, err := client.Do(req)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	body, err := ioutil.ReadAll(b.Body)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 200, b.StatusCode, string(body))
 
 	// comments returned by update
 	c2 := store.Comment{}
 	err = json.Unmarshal(body, &c2)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, id, c2.ID)
 	assert.True(t, c2.Deleted)
 
@@ -243,6 +256,18 @@ func TestRest_UpdateDelete(t *testing.T) {
 	assert.Equal(t, "", c3.Text)
 	assert.Equal(t, "", c3.Orig)
 	assert.True(t, c3.Deleted)
+
+	// check multi count updated
+	resp, err = post(t, ts.URL+"/api/v1/counts?site=radio-t", `["https://radio-t.com/blah1","https://radio-t.com/blah2"]`)
+	assert.Nil(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	bb, err = ioutil.ReadAll(resp.Body)
+	assert.Nil(t, err)
+	j = []store.PostInfo{}
+	err = json.Unmarshal(bb, &j)
+	require.NoError(t, err)
+	assert.Equal(t, []store.PostInfo([]store.PostInfo{{URL: "https://radio-t.com/blah1", Count: 0},
+		{URL: "https://radio-t.com/blah2", Count: 0}}), j)
 }
 
 func TestRest_UpdateNotOwner(t *testing.T) {
