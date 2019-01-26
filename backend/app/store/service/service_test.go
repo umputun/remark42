@@ -325,11 +325,15 @@ func TestService_VotePositive(t *testing.T) {
 	_, err := b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "id-1", "user2", false)
 	assert.EqualError(t, err, "minimal score reached for comment id-1")
 
+	_, err = b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "id-1", "user3", true)
+	assert.Nil(t, err, "minimal score doesn't affect positive vote")
+
 	b = DataStore{Interface: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123"),
 		MaxVotes: -1, PositiveScore: false}
 	c, err := b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "id-1", "user2", false)
 	assert.Nil(t, err, "minimal score ignored")
 	assert.Equal(t, -1, c.Score)
+
 }
 
 func TestService_Pin(t *testing.T) {

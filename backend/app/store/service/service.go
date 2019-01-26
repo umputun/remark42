@@ -155,7 +155,7 @@ func (s *DataStore) Vote(locator store.Locator, commentID string, userID string,
 		return comment, errors.Errorf("maximum number of votes exceeded for comment %s", commentID)
 	}
 
-	if s.PositiveScore && comment.Score <= 0 {
+	if s.PositiveScore && comment.Score <= 0 && !val {
 		return comment, errors.Errorf("minimal score reached for comment %s", commentID)
 	}
 
