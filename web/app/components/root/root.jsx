@@ -94,7 +94,10 @@ export default class Root extends Component {
           store.set('comments', comments);
           store.set('info', info);
         })
-        .catch(() => store.set('comments', [])),
+        .catch(() => {
+          store.set('comments', []);
+          store.set('info', {});
+        }),
     ]).finally(() => {
       this.setState({
         isLoaded: true,

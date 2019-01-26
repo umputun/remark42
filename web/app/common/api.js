@@ -11,9 +11,25 @@ export const logOut = () => fetcher.get({ url: `/auth/logout`, overriddenApiBase
 export const getConfig = () => fetcher.get(`/config`);
 
 // TODO: looks like we can get url from settings here and below
-export const getPostComments = ({ sort, url }) => fetcher.get(`/find?url=${url}&sort=${sort}&format=tree`);
+export const getPostComments = ({ sort, url }) =>
+  fetcher.get(`/find?url=${url}&sort=${sort}&format=tree`).then(data => {
+    if (typeof data !== 'object') data = { comments: [], info: {} };
 
-export const getLastComments = ({ siteId, max }) => fetcher.get(`/last/${max}?site=${siteId}`);
+    if (!data.hasOwnProperty('comments')) data.comments = [];
+    // cheap check for typeodf comments === "array"
+    if (!(data.comments !== null && typeof data.comments === 'object' && 'length' in data.comments)) data.comments = [];
+
+    if (!data.hasOwnProperty('info')) data.info = {};
+    if (!(data.info !== null && typeof data.comments === 'object')) data.comments = {};
+
+    return data;
+  });
+
+export const getLastComments = ({ siteId, max }) =>
+  fetcher.get(`/last/${max}?site=${siteId}`).then(comments => {
+    if (!(comments !== null && typeof comments === 'object' && 'length' in comments)) comments = [];
+    return comments;
+  });
 
 export const getCommentsCount = ({ urls, siteId }) =>
   fetcher.post({
