@@ -31,7 +31,7 @@ func (s *Rest) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	data, err := s.Cache.Get(key, func() ([]byte, error) {
 		comments, e := s.DataService.Find(locator, sort)
 		if e != nil {
-			return nil, e
+			comments = []store.Comment{} // error should clear comments and continue for post info
 		}
 		maskedComments := s.adminService.alterComments(comments, r)
 		var b []byte

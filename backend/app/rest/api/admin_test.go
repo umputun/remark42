@@ -17,12 +17,12 @@ import (
 	"github.com/go-pkgz/auth/token"
 	R "github.com/go-pkgz/rest"
 	"github.com/go-pkgz/rest/cache"
-	"github.com/umputun/remark/backend/app/store/service"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/umputun/remark/backend/app/store"
+	"github.com/umputun/remark/backend/app/store/service"
 )
 
 func TestAdmin_Delete(t *testing.T) {
@@ -442,6 +442,33 @@ func TestAdmin_ReadOnly(t *testing.T) {
 	resp, err = client.Do(req)
 	assert.Nil(t, err)
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
+}
+
+func TestAdmin_ReadOnlyNoComments(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	client := http.Client{}
+
+	// set post to read-only
+	req, err := http.NewRequest(http.MethodPut,
+		fmt.Sprintf("%s/api/v1/admin/readonly?site=radio-t&url=https://radio-t.com/blah&ro=1", ts.URL), nil)
+	assert.Nil(t, err)
+	req.SetBasicAuth("admin", "password")
+	resp, err := client.Do(req)
+	require.Nil(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+	_, err = srv.DataService.Info(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}, 0)
+	assert.NotNil(t, err)
+
+	res, code := get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah&format=tree")
+	assert.Equal(t, 200, code)
+	comments := commentsWithInfo{}
+	err = json.Unmarshal([]byte(res), &comments)
+	assert.Nil(t, err)
+	assert.Equal(t, 0, len(comments.Comments), "should have 0 comments")
+	assert.True(t, comments.Info.ReadOnly)
+	t.Logf("%+v", comments)
 }
 
 func TestAdmin_ReadOnlyWithAge(t *testing.T) {

@@ -70,8 +70,12 @@ func TestRest_Find(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
 
-	_, code := get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah1")
-	assert.Equal(t, 400, code, "nothing in")
+	res, code := get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah1")
+	assert.Equal(t, 200, code)
+	comments := commentsWithInfo{}
+	err := json.Unmarshal([]byte(res), &comments)
+	assert.Nil(t, err)
+	assert.Equal(t, 0, len(comments.Comments), "should have 0 comments")
 
 	c1 := store.Comment{Text: "test test #1", ParentID: "",
 		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}}
@@ -84,10 +88,10 @@ func TestRest_Find(t *testing.T) {
 	assert.NotEqual(t, id1, id2)
 
 	// get sorted by +time
-	res, code := get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah1&sort=+time")
+	res, code = get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah1&sort=+time")
 	assert.Equal(t, 200, code)
-	comments := commentsWithInfo{}
-	err := json.Unmarshal([]byte(res), &comments)
+	comments = commentsWithInfo{}
+	err = json.Unmarshal([]byte(res), &comments)
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(comments.Comments), "should have 2 comments")
 	assert.Equal(t, id1, comments.Comments[0].ID)
