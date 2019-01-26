@@ -199,6 +199,10 @@ func TestRest_Last(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
 
+	res, code := get(t, ts.URL+"/api/v1/last/2?site=radio-t")
+	assert.Equal(t, 200, code)
+	assert.Equal(t, "[]\n", res, "empty last should return empty list")
+
 	c1 := store.Comment{Text: "test test #1", ParentID: "p1",
 		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}}
 	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
@@ -209,7 +213,7 @@ func TestRest_Last(t *testing.T) {
 	id1 := addComment(t, c1, ts)
 	id2 := addComment(t, c2, ts)
 
-	res, code := get(t, ts.URL+"/api/v1/last/2?site=radio-t")
+	res, code = get(t, ts.URL+"/api/v1/last/2?site=radio-t")
 	assert.Equal(t, 200, code)
 	comments := []store.Comment{}
 	err := json.Unmarshal([]byte(res), &comments)

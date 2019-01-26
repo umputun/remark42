@@ -326,7 +326,8 @@ func encodeJSONWithHTML(v interface{}) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func filterComments(comments []store.Comment, fn func(c store.Comment) bool) (filtered []store.Comment) {
+func filterComments(comments []store.Comment, fn func(c store.Comment) bool) []store.Comment {
+	filtered := []store.Comment{}
 	for _, c := range comments {
 		if fn(c) {
 			filtered = append(filtered, c)
