@@ -392,6 +392,7 @@ func TestRest_Config(t *testing.T) {
 	assert.Equal(t, 4000., j["max_comment_size"])
 	assert.Equal(t, -5., j["low_score"])
 	assert.Equal(t, -10., j["critical_score"])
+	assert.False(t, j["positive_score"].(bool))
 	assert.Equal(t, 10., j["readonly_age"])
 	t.Logf("%+v", j)
 }

@@ -7,8 +7,8 @@ import (
 
 	log "github.com/go-pkgz/lgr"
 	"github.com/google/uuid"
-	"github.com/hashicorp/go-multierror"
-	"github.com/patrickmn/go-cache"
+	multierror "github.com/hashicorp/go-multierror"
+	cache "github.com/patrickmn/go-cache"
 	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/backend/app/store"
@@ -23,6 +23,7 @@ type DataStore struct {
 	AdminStore             admin.Store
 	MaxCommentSize         int
 	MaxVotes               int
+	PositiveScore          bool
 	TitleExtractor         *TitleExtractor
 	RestrictedWordsMatcher *RestrictedWordsMatcher
 
@@ -152,6 +153,10 @@ func (s *DataStore) Vote(locator store.Locator, commentID string, userID string,
 
 	if maxVotes >= 0 && len(comment.Votes) >= maxVotes {
 		return comment, errors.Errorf("maximum number of votes exceeded for comment %s", commentID)
+	}
+
+	if s.PositiveScore && comment.Score <= 0 {
+		return comment, errors.Errorf("minimal score reached for comment %s", commentID)
 	}
 
 	// reset vote if user changed to opposite

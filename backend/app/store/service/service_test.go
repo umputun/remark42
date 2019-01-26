@@ -317,6 +317,21 @@ func TestService_VoteConcurrent(t *testing.T) {
 	assert.Equal(t, 100, len(res[0].Votes), "should have 1000 votes")
 }
 
+func TestService_VotePositive(t *testing.T) {
+	defer os.Remove(testDb)
+	b := DataStore{Interface: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123"),
+		MaxVotes: -1, PositiveScore: true}
+
+	_, err := b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "id-1", "user2", false)
+	assert.EqualError(t, err, "minimal score reached for comment id-1")
+
+	b = DataStore{Interface: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123"),
+		MaxVotes: -1, PositiveScore: false}
+	c, err := b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "id-1", "user2", false)
+	assert.Nil(t, err, "minimal score ignored")
+	assert.Equal(t, -1, c.Score)
+}
+
 func TestService_Pin(t *testing.T) {
 	defer os.Remove(testDb)
 	b := DataStore{Interface: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123")}

@@ -224,6 +224,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		Auth           []string `json:"auth_providers"`
 		LowScore       int      `json:"low_score"`
 		CriticalScore  int      `json:"critical_score"`
+		PositiveScore  bool     `json:"positive_score"`
 		ReadOnlyAge    int      `json:"readonly_age"`
 	}
 
@@ -235,6 +236,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		AdminEmail:     s.DataService.AdminStore.Email(siteID),
 		LowScore:       s.ScoreThresholds.Low,
 		CriticalScore:  s.ScoreThresholds.Critical,
+		PositiveScore:  s.DataService.PositiveScore,
 		ReadOnlyAge:    s.ReadOnlyAge,
 	}
 

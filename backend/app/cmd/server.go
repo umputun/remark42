@@ -12,7 +12,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/coreos/bbolt"
+	bolt "github.com/coreos/bbolt"
 	log "github.com/go-pkgz/lgr"
 	auth_cache "github.com/patrickmn/go-cache"
 	"github.com/pkg/errors"
@@ -53,6 +53,7 @@ type ServerCommand struct {
 	MaxVotes        int           `long:"max-votes" env:"MAX_VOTES" default:"-1" description:"maximum number of votes per comment"`
 	LowScore        int           `long:"low-score" env:"LOW_SCORE" default:"-5" description:"low score threshold"`
 	CriticalScore   int           `long:"critical-score" env:"CRITICAL_SCORE" default:"-10" description:"critical score threshold"`
+	PositiveScore   bool          `long:"positive-score" env:"POSITIVE_SCORE" description:"enable positive score only"`
 	ReadOnlyAge     int           `long:"read-age" env:"READONLY_AGE" default:"0" description:"read-only age of comments, days"`
 	EditDuration    time.Duration `long:"edit-time" env:"EDIT_TIME" default:"5m" description:"edit window"`
 	Port            int           `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
@@ -217,6 +218,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		AdminStore:             adminStore,
 		MaxCommentSize:         s.MaxCommentSize,
 		MaxVotes:               s.MaxVotes,
+		PositiveScore:          s.PositiveScore,
 		TitleExtractor:         service.NewTitleExtractor(http.Client{Timeout: time.Second * 5}),
 		RestrictedWordsMatcher: service.NewRestrictedWordsMatcher(service.StaticRestrictedWordsLister{Words: s.RestrictedWords}),
 	}
