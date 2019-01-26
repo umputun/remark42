@@ -38,6 +38,9 @@ func (s *Rest) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Query().Get("format") {
 		case "tree":
 			tree := rest.MakeTree(maskedComments, sort, s.ReadOnlyAge)
+			if tree.Nodes == nil { // eliminate json nil serialization
+				tree.Nodes = []*rest.Node{}
+			}
 			if s.DataService.IsReadOnly(locator) {
 				tree.Info.ReadOnly = true
 			}

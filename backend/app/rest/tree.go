@@ -111,8 +111,8 @@ func (t *Tree) proc(comments []store.Comment, node *Node, rd *recurData, parentI
 }
 
 // filter returns comments for parentID
-func (t *Tree) filter(comments []store.Comment, fn func(comment store.Comment) bool) (f []store.Comment) {
-
+func (t *Tree) filter(comments []store.Comment, fn func(comment store.Comment) bool) []store.Comment {
+	f := []store.Comment{}
 	for _, c := range comments {
 		if fn(c) {
 			f = append(f, c)

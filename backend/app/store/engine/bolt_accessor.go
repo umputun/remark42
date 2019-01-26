@@ -170,6 +170,8 @@ func (b *BoltDB) Find(locator store.Locator, sortFld string) (comments []store.C
 // Last returns up to max last comments for given siteID
 func (b *BoltDB) Last(siteID string, max int) (comments []store.Comment, err error) {
 
+	comments = []store.Comment{}
+
 	if max > lastLimit || max == 0 {
 		max = lastLimit
 	}
