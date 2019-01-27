@@ -1,8 +1,9 @@
 package service
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMatcher_Tokenize(t *testing.T) {
