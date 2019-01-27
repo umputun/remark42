@@ -104,9 +104,9 @@ _this is the recommended way to run remark42_
 | avatar.type             | AVATAR_TYPE             | `fs`                  | type of avatar storage, `fs`, 'bolt`, or `mongo` |
 | avatar.fs.path          | AVATAR_FS_PATH          | `./var/avatars`       | avatars location for `fs` store                  |
 | avatar.bolt.file        | AVATAR_BOLT_FILE        | `./var/avatars.db`    | file name for  `bolt` store                      |
-| avatar.rsz-lmt          | AVATAR_RSZ_LMT          | 0                     | max image size for resizing avatars on save      |
-| auth.ttl.jwt            | AUTH_TTL_JWT            | 5m                    | jwt TTL                                          |
-| auth.ttl.cookie         | AUTH_TTL_COOKIE         | 200h                  | cookie TTL                                       |
+| avatar.rsz-lmt          | AVATAR_RSZ_LMT          | `0` (disabled)        | max image size for resizing avatars on save      |
+| auth.ttl.jwt            | AUTH_TTL_JWT            | `5m`                  | jwt TTL                                          |
+| auth.ttl.cookie         | AUTH_TTL_COOKIE         | `200h`                | cookie TTL                                       |
 | auth.google.cid         | AUTH_GOOGLE_CID         |                       | Google OAuth client ID                           |
 | auth.google.csec        | AUTH_GOOGLE_CSEC        |                       | Google OAuth client secret                       |
 | auth.facebook.cid       | AUTH_FACEBOOK_CID       |                       | Facebook OAuth client ID                         |
@@ -115,28 +115,29 @@ _this is the recommended way to run remark42_
 | auth.github.csec        | AUTH_GITHUB_CSEC        |                       | Github OAuth client secret                       |
 | auth.yandex.cid         | AUTH_YANDEX_CID         |                       | Yandex OAuth client ID                           |
 | auth.yandex.csec        | AUTH_YANDEX_CSEC        |                       | Yandex OAuth client secret                       |
-| auth.dev                | AUTH_DEV                | false                 | local oauth2 server, development mode only       |
+| auth.dev                | AUTH_DEV                | `false`               | local oauth2 server, development mode only       |
 | notify.type             | NOTIFY_TYPE             | none                  | type of notification (none or telegram)          |
-| notify.queue            | NOTIFY_QUEUE            | 100                   | size of notification queue                       |
+| notify.queue            | NOTIFY_QUEUE            | `100`                 | size of notification queue                       |
 | notify.telegram.token   | NOTIFY_TELEGRAM_TOKEN   |                       | telegram token                                   |
 | notify.telegram.chan    | NOTIFY_TELEGRAM_CHAN    |                       | telegram channel                                 |
-| notify.telegram.timeout | NOTIFY_TELEGRAM_TIMEOUT |                       | telegram timeout                                 |
+| notify.telegram.timeout | NOTIFY_TELEGRAM_TIMEOUT | `5s`                  | telegram timeout                                 |
 | ssl.type                | SSL_TYPE                | none                  | `none`-http, `static`-https, `auto`-https + le   |
-| ssl.port                | SSL_PORT                | 8443                  | port for https server                            |
+| ssl.port                | SSL_PORT                | `8443`                | port for https server                            |
 | ssl.cert                | SSL_CERT                |                       | path to cert.pem file                            |
 | ssl.key                 | SSL_KEY                 |                       | path to key.pem file                             |
 | ssl.acme-location       | SSL_ACME_LOCATION       | `./var/acme`          | dir where obtained le-certs will be stored       |
 | ssl.acme-email          | SSL_ACME_EMAIL          |                       | admin email for receiving notifications from LE  |
-| max-comment             | MAX_COMMENT_SIZE        | 2048                  | comment's size limit                             |
+| max-comment             | MAX_COMMENT_SIZE        | `2048`                | comment's size limit                             |
 | max-votes               | MAX_VOTES               | `-1`                  | votes limit per comment, `-1` - unlimited        |
 | low-score               | LOW_SCORE               | `-5`                  | low score threshold                              |
+| positive-score          | POSITIVE_SCORE          | `false`               | enable positive score only                       |
 | critical-score          | CRITICAL_SCORE          | `-10`                 | critical score threshold                         |
 | restricted-words        | RESTRICTED_WORDS        |                       | words banned in comments (can use `*`), _multi_  |
 | edit-time               | EDIT_TIME               | `5m`                  | edit window                                      |
 | read-age                | READONLY_AGE            |                       | read-only age of comments, days                  |
 | img-proxy               | IMG_PROXY               | `false`               | enable http->https proxy for images              |
 | update-limit            | UPDATE_LIMIT            | `0.5`                 | updates/sec limit                                |
-| admin-passwd            | ADMIN_PASSWD            |                       | password for `admin` basic auth                  |
+| admin-passwd            | ADMIN_PASSWD            | none (disabled)       | password for `admin` basic auth                  |
 | dbg                     | DEBUG                   | `false`               | debug mode                                       |
 
 * command line parameters are long form `--<key>=value`, i.e. `--site=https://demo.remark42.com`

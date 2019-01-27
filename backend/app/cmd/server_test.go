@@ -109,8 +109,8 @@ func TestServerApp_WithMongo(t *testing.T) {
 	require.Nil(t, err)
 
 	defer func() {
-		s, err := mongo.NewServerWithURL(mongoURL, 10*time.Second)
-		assert.NoError(t, err)
+		s, e := mongo.NewServerWithURL(mongoURL, 10*time.Second)
+		assert.NoError(t, e)
 		conn := mongo.NewConnection(s, "test_remark", "")
 		_ = conn.WithDB(func(dbase *mgo.Database) error {
 			assert.NoError(t, dbase.DropDatabase())
