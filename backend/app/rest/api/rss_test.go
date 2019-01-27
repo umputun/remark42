@@ -38,7 +38,7 @@ func TestServer_RssPost(t *testing.T) {
         <channel>
             <title>Remark42 comments</title>
             <link>https://radio-t.com/blah1</link>
-            <description>comment updates</description>
+            <description>post comments for https://radio-t.com/blah1</description>
             <pubDate>%s</pubDate>
             <item>
 		      <title>developer one</title>
@@ -93,7 +93,7 @@ func TestServer_RssSite(t *testing.T) {
 		  <channel>
 		    <title>Remark42 comments</title>
 		    <link>radio-t</link>
-		    <description>comment updates</description>
+		    <description>site comment for radio-t</description>
 		    <pubDate>%s</pubDate>
 		    <item>
 		      <title>developer one</title>
@@ -156,7 +156,7 @@ func TestServer_RssWithReply(t *testing.T) {
 		  <channel>
 		    <title>Remark42 comments</title>
 		    <link>https://radio-t.com/blah10</link>
-		    <description>comment updates</description>
+		    <description>post comments for https://radio-t.com/blah10</description>
 		    <pubDate>%s</pubDate>
 		    <item>
 		      <title>developer one &gt; developer one</title>
@@ -242,7 +242,7 @@ func TestServer_RssReplies(t *testing.T) {
 	    <channel>
 	        <title>Remark42 comments</title>
 	        <link>radio-t</link>
-	        <description>comment updates</description>
+	        <description>replies to user2</description>
 	        <pubDate>%s</pubDate>
 	        <item>
 		      <title>user3 &gt; user1</title>

@@ -42,7 +42,7 @@ func (s *Rest) rssPostCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 			return nil, e
 		}
 		comments = s.adminService.alterComments(comments, r)
-		rss, e := s.toRssFeed(locator.URL, comments)
+		rss, e := s.toRssFeed(locator.URL, comments, "post comments for "+r.URL.Query().Get("url"))
 		if e != nil {
 			return nil, e
 		}
@@ -75,7 +75,7 @@ func (s *Rest) rssSiteCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		}
 		comments = s.adminService.alterComments(comments, r)
 
-		rss, e := s.toRssFeed(r.URL.Query().Get("site"), comments)
+		rss, e := s.toRssFeed(r.URL.Query().Get("site"), comments, "site comment for "+siteID)
 		if e != nil {
 			return nil, e
 		}
@@ -100,6 +100,7 @@ func (s *Rest) rssRepliesCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	log.Printf("[DEBUG] get rss replies to user %s for site %s", userID, siteID)
 
+	userName := ""
 	key := cache.NewKey(siteID).ID(URLKey(r)).Scopes(siteID, lastCommentsScope)
 	data, err := s.Cache.Get(key, func() (res []byte, e error) {
 		comments, e := s.DataService.Last(siteID, maxLastCommentsReply)
@@ -112,6 +113,9 @@ func (s *Rest) rssRepliesCtrl(w http.ResponseWriter, r *http.Request) {
 			if len(replies) > maxRssItems || c.Timestamp.Add(maxReplyDuration).Before(time.Now()) {
 				break
 			}
+			if c.User.ID != userID {
+				userName = c.User.Name
+			}
 			if c.ParentID != "" && !c.Deleted && c.User.ID != userID { // not interested in replies to yourself
 				var pc store.Comment
 				if pc, e = s.DataService.Get(c.Locator, c.ParentID); e != nil {
@@ -123,7 +127,7 @@ func (s *Rest) rssRepliesCtrl(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		rss, e := s.toRssFeed(siteID, replies)
+		rss, e := s.toRssFeed(siteID, replies, "replies to "+userName)
 		if e != nil {
 			return nil, e
 		}
@@ -142,8 +146,11 @@ func (s *Rest) rssRepliesCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Rest) toRssFeed(url string, comments []store.Comment) (string, error) {
+func (s *Rest) toRssFeed(url string, comments []store.Comment, description string) (string, error) {
 
+	if description == "" {
+		description = "comment updates"
+	}
 	lastCommentTS := time.Unix(0, 0)
 	if len(comments) > 0 {
 		lastCommentTS = comments[0].Timestamp
@@ -152,7 +159,7 @@ func (s *Rest) toRssFeed(url string, comments []store.Comment) (string, error) {
 	feed := &feeds.Feed{
 		Title:       "Remark42 comments",
 		Link:        &feeds.Link{Href: url},
-		Description: "comment updates",
+		Description: description,
 		Created:     lastCommentTS,
 	}
 
