@@ -29,6 +29,7 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
       - [Without docker](#without-docker) 
       - [Parameters](#parameters)
         - [Required parameters](#required-parameters)
+      - [Quick installation test](#quick-installation-test)
       - [Register oauth2 providers](#register-oauth2-providers)
         - [Google Auth Provider](#google-auth-provider)
         - [GitHub Auth Provider](#github-auth-provider)
@@ -169,6 +170,10 @@ services:
         volumes:
             - ./var:/srv/var                        # persistent volume to store all remark42 data 
 ```
+
+#### Quick installation test
+
+To verify if remark has been properly installed, check a demo page at `${REMARK_URL}/web` URL. Make sure to include `remark` site id to `${SITE}` list.
 
 #### Register oauth2 providers
 
