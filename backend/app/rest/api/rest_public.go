@@ -263,7 +263,7 @@ func (s *Rest) countCtrl(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, R.JSON{"count": count, "locator": locator})
 }
 
-// POST /count?site=siteID - get number of comments for posts from post body
+// POST /counts?site=siteID - get number of comments for posts from post body
 func (s *Rest) countMultiCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	posts := []string{}
