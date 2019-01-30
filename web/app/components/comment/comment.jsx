@@ -45,7 +45,8 @@ export default class Comment extends Component {
     this.isAdmin = this.isAdmin.bind(this);
     this.isCurrentUser = this.isCurrentUser.bind(this);
     this.isGuest = this.isGuest.bind(this);
-    this.getVoteDisabledReason = this.getVoteDisabledReason.bind(this);
+    this.getUpvoteDisabledReason = this.getUpvoteDisabledReason.bind(this);
+    this.getDownvoteDisabledReason = this.getDownvoteDisabledReason.bind(this);
   }
 
   componentWillReceiveProps(nextProps) {
@@ -359,7 +360,23 @@ export default class Comment extends Component {
    *
    * @return {(string|null)}
    */
-  getVoteDisabledReason() {
+  getDownvoteDisabledReason() {
+    if (this.props.mods && this.props.mods.view === 'user') return 'Voting disabled in last comments';
+    if (this.isGuest()) return 'Only authorized users are allowed to vote';
+    const info = store.get('info');
+    if (info && info.read_only) return "You can't vote on read-only topics";
+    if (this.isCurrentUser()) return "You can't vote for your own comment";
+    const config = store.get('config') || {};
+    if (config.positive_score && this.state.score < 1) return 'Only positive score allowed';
+    return null;
+  }
+
+  /**
+   * returns reason for disabled voting
+   *
+   * @return {(string|null)}
+   */
+  getUpvoteDisabledReason() {
     if (this.props.mods && this.props.mods.view === 'user') return 'Voting disabled in last comments';
     if (this.isGuest()) return 'Only authorized users are allowed to vote';
     const info = store.get('info');
@@ -389,10 +406,14 @@ export default class Comment extends Component {
     const isGuest = this.isGuest();
     const isCurrentUser = this.isCurrentUser();
     const config = store.get('config') || {};
+
     const lowCommentScore = config.low_score;
-    const votingDisabledReason = this.getVoteDisabledReason();
-    const isVotingDisabled = votingDisabledReason !== null;
+    const downvotingDisabledReason = this.getDownvoteDisabledReason();
+    const isDownvotingDisabled = downvotingDisabledReason !== null;
+    const upvotingDisabledReason = this.getUpvoteDisabledReason();
+    const isUpvotingDisabled = upvotingDisabledReason !== null;
     const editable = data.repliesCount === 0 && !!editTimeLeft;
+    const scoreSignEnabled = !config.positive_score;
 
     const o = {
       ...data,
@@ -416,7 +437,7 @@ export default class Comment extends Component {
         : data.orig,
       score: {
         value: Math.abs(score),
-        sign: score > 0 ? '+' : score < 0 ? '−' : null,
+        sign: !scoreSignEnabled ? '' : score > 0 ? '+' : score < 0 ? '−' : null,
         view: score > 0 ? 'positive' : score < 0 ? 'negative' : null,
       },
       user: {
@@ -541,10 +562,14 @@ export default class Comment extends Component {
 
             <span className={b('comment__score', {}, { view: o.score.view })}>
               <span
-                className={b('comment__vote', {}, { type: 'up', selected: scoreIncreased, disabled: isVotingDisabled })}
-                aria-disabled={isVotingDisabled ? 'true' : 'false'}
-                {...getHandleClickProps(isVotingDisabled ? null : this.increaseScore)}
-                title={votingDisabledReason}
+                className={b(
+                  'comment__vote',
+                  {},
+                  { type: 'up', selected: scoreIncreased, disabled: isUpvotingDisabled }
+                )}
+                aria-disabled={isUpvotingDisabled ? 'true' : 'false'}
+                {...getHandleClickProps(isUpvotingDisabled ? null : this.increaseScore)}
+                title={upvotingDisabledReason}
               >
                 Vote up
               </span>
@@ -558,11 +583,11 @@ export default class Comment extends Component {
                 className={b(
                   'comment__vote',
                   {},
-                  { type: 'down', selected: scoreDecreased, disabled: isVotingDisabled }
+                  { type: 'down', selected: scoreDecreased, disabled: isDownvotingDisabled }
                 )}
-                aria-disabled={isVotingDisabled ? 'true' : 'false'}
-                {...getHandleClickProps(isVotingDisabled ? null : this.decreaseScore)}
-                title={votingDisabledReason}
+                aria-disabled={isDownvotingDisabled ? 'true' : 'false'}
+                {...getHandleClickProps(isDownvotingDisabled ? null : this.decreaseScore)}
+                title={downvotingDisabledReason}
               >
                 Vote down
               </span>

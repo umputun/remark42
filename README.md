@@ -25,8 +25,8 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 
   - [Install](#install)
     - [Backend](#backend)
-      - [With Docker](#with-docker) 
-      - [Without docker](#without-docker) 
+      - [With Docker](#with-docker)
+      - [Without docker](#without-docker)
       - [Parameters](#parameters)
         - [Required parameters](#required-parameters)
       - [Quick installation test](#quick-installation-test)
@@ -78,7 +78,7 @@ _this is the recommended way to run remark42_
 #### Without docker
 
 * download archive for [stable release](https://github.com/umputun/remark/releases) or [development version](https://remark42.com/downloads)
-* unpack with `gunzip` (Linux, macOS) or with `zip` (Windows) 
+* unpack with `gunzip` (Linux, macOS) or with `zip` (Windows)
 * run as `remark42.{os}-{arch} server {parameters...}`, i.e. `remark42.linux-amd64 server --secret=12345 --url=http://127.0.0.1:8080`
 * alternatively compile from the sources - `make OS=[linux|darwin|windows] ARCH=[amd64,386,arm64,arm32]`
 
@@ -132,6 +132,7 @@ _this is the recommended way to run remark42_
 | low-score               | LOW_SCORE               | `-5`                  | low score threshold                              |
 | positive-score          | POSITIVE_SCORE          | `false`               | enable positive score only                       |
 | critical-score          | CRITICAL_SCORE          | `-10`                 | critical score threshold                         |
+| positive-score          | POSITIVE_SCORE          | `false`               | restricts comment's score to be only positive    |
 | restricted-words        | RESTRICTED_WORDS        |                       | words banned in comments (can use `*`), _multi_  |
 | edit-time               | EDIT_TIME               | `5m`                  | edit window                                      |
 | read-age                | READONLY_AGE            |                       | read-only age of comments, days                  |
@@ -146,7 +147,7 @@ _this is the recommended way to run remark42_
 
 ##### Required parameters
 
-Most of the parameters have sane defaults and don't require customization. There are only a few parameters user has to define:  
+Most of the parameters have sane defaults and don't require customization. There are only a few parameters user has to define:
 
 1. `SECRET` - secret key, can be any long and hard-to-guess string.
 2. `REMARK_URL` - url pointing to your remark42 server, i.e. `https://demo.reamark42.com`
@@ -169,7 +170,7 @@ services:
             - AUTH_GITHUB_CID=12345667890           # oauth2 client ID
             - AUTH_GITHUB_CSEC=abcdefg12345678      # oauth2 client secret
         volumes:
-            - ./var:/srv/var                        # persistent volume to store all remark42 data 
+            - ./var:/srv/var                        # persistent volume to store all remark42 data
 ```
 
 #### Quick installation test
@@ -236,7 +237,7 @@ For more details refer to [Yandex OAuth](https://tech.yandex.com/oauth/doc/dg/co
 
 #### Initial import from WordPress
 
-1. Install WordPress [plugin](https://wordpress.org/plugins/wp-exporter/) to export comments and follow it instructions. The plugin should produce a xml-based file with site content including comments. 
+1. Install WordPress [plugin](https://wordpress.org/plugins/wp-exporter/) to export comments and follow it instructions. The plugin should produce a xml-based file with site content including comments.
 2. Move this file to your remark42 host within `./var`
 3. Run import command - `docker exec -it remark42 import -p wordpress -f {wordpress-export-name}.xml -s {your site id}`
 
@@ -264,25 +265,25 @@ Restore will clean all comments first and then will processed with complete impo
 ##### Backup format
 
 Backup file is a text file with all exported comments separated by EOL. Each backup record is a valid json with all key/value
-unmarshaled from `Comment` struct (see below). 
+unmarshaled from `Comment` struct (see below).
 
 #### Admin users
 
-Admins/moderators should be defined in `docker-compose.yml` as a list of user IDs or passed in the command line. 
+Admins/moderators should be defined in `docker-compose.yml` as a list of user IDs or passed in the command line.
 
 ```
     environment:
         - ADMIN_SHARED_ID=github_ef0f706a79cc24b17bbbb374cd234a691a034128,github_dae9983158e9e5e127ef2b87a411ef13c891e9e5
 ```
 
-To get user id just login and click on your username or any other user you want to promote to admins. 
+To get user id just login and click on your username or any other user you want to promote to admins.
 It will expand login info and show full user ID.
 
 ### Setup on your website
 
 #### Comments
 
-It's a main widget which renders list of comments. 
+It's a main widget which renders list of comments.
 
 Add this snippet to the bottom of web page:
 
@@ -308,7 +309,7 @@ And then add this node in the place where you want to see Remark42 widget:
 
 ```html
 <div id="remark42"></div>
-``` 
+```
 
 After that widget will be rendered inside this node.
 
@@ -317,13 +318,13 @@ After that widget will be rendered inside this node.
 Right now Remark has two themes: light and dark.
 You can pick one using configuration object,
 but there is also a possibility to switch between themes in runtime.
-For this purpose Remark adds to `window` object named `REMARK42`, 
+For this purpose Remark adds to `window` object named `REMARK42`,
 which contains function `changeTheme`.
 Just call this function and pass a name of the theme that you want to turn on:
 
 ```js
 window.REMARK42.changeTheme('light');
-```      
+```
 
 #### Last comments
 
@@ -334,7 +335,7 @@ Add this snippet to the bottom of web page:
 ```html
 <script>
   var remark_config = {
-    site_id: 'YOUR_SITE_ID', 
+    site_id: 'YOUR_SITE_ID',
   };
 
   (function() {
@@ -379,18 +380,18 @@ And then add a node like this in the place where you want to see a number of com
 <span class="remark42__counter" data-url="https://domain.com/path/to/article/"></span>
 ```
 
-You can use as many nodes like this as you need to. 
-The script will found all them by the class `remark__counter`, 
+You can use as many nodes like this as you need to.
+The script will found all them by the class `remark__counter`,
 and it will use `data-url` attribute to define the page with comments.
 
-Also script can uses `url` property from `remark_config` object, or `window.location.href` if nothing else is defined. 
+Also script can uses `url` property from `remark_config` object, or `window.location.href` if nothing else is defined.
 
 ## Build from the source
 
 - to build docker container - `make docker`. This command will produce container `umputun/remark42`.
-- to build a single binary for direct execution - `make OS=<linux|windows|darwin> ARCH=<amd64|386>`. This step will produce executable 
+- to build a single binary for direct execution - `make OS=<linux|windows|darwin> ARCH=<amd64|386>`. This step will produce executable
  `remark42` file with everything embedded.
- 
+
 ## Development
 
 You can use fully functional local version to develop and test both frontend & backend.
@@ -408,11 +409,11 @@ docker-compose -f compose-dev-frontend.yml up
 
 It starts Remark42 on `127.0.0.1:8080` and adds local OAuth2 provider “Dev”.
 To access UI demo page go to `127.0.0.1:8080/web`.
-By default, you would be logged in as `dev_user` which defined as admin. 
+By default, you would be logged in as `dev_user` which defined as admin.
 You can tweak any of [supported parameters](#Parameters) in corresponded yml file.
 
-Backend docker compose config by default skips running frontend related tests. 
-Frontend docker compose config by default skips running backend related tests and sets `NODE_ENV=development` for frontend build. 
+Backend docker compose config by default skips running frontend related tests.
+Frontend docker compose config by default skips running backend related tests and sets `NODE_ENV=development` for frontend build.
 
 ### Backend development
 
@@ -527,7 +528,7 @@ Sort can be `time`, `active` or `score`. Supported sort order with prefix -/+, i
  	type EditRequest struct {
  		Text    string `json:"text"`    // updated text
  		Summary string `json:"summary"` // optional, summary of the edit
- 		Delete  bool   `json:"delete"`  // delete flag 
+ 		Delete  bool   `json:"delete"`  // delete flag
  	}{}
 ```
 
@@ -567,11 +568,11 @@ Sort can be `time`, `active` or `score`. Supported sort order with prefix -/+, i
       LowScore      int      `json:"low_score"`
       CriticalScore int      `json:"critical_score"`
   }
-  ``` 
+  ```
 * `GET /api/v1/info?site=site-idd&url=post-ur` - returns `PostInfo` for site and url
-  
+
 ### RSS feeds
-  
+
 * `GET /api/v1/rss/post?site=site-id&url=post-url` - rss feed for a post
 * `GET /api/v1/rss/site?site=site-id` - rss feed for given site
 * `GET /api/v1/rss/reply?site=site-id&user=user-id` - rss feed for replies to user's comments
@@ -601,7 +602,7 @@ Sort can be `time`, `active` or `score`. Supported sort order with prefix -/+, i
 
 _all admin calls require auth and admin privilege_
 
-## Privacy 
+## Privacy
 
 * Remark42 is trying to be very sensitive to any private or semi-private information.
 * Authentication requesting the minimal possible scope from authentication providers. All extra information returned by them dropped immediately and not stored in any form.
@@ -612,7 +613,7 @@ _all admin calls require auth and admin privilege_
 * There are no third-party analytic services involved.
 * User can request all information remark42 knows about and export to gz file.
 * Supported complete cleanup of all information related to user's activity.
-* Cookie lifespan can be restricted to session-only. 
+* Cookie lifespan can be restricted to session-only.
 * All potentially sensitive data stored by remark42 hashed and encrypted.
 
 ## Technical details
