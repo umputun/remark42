@@ -143,15 +143,15 @@
   version = "v1.1.0"
 
 [[projects]]
-  digest = "1:0f24c72d7e9bcb682b907be0461ac552973cd4b3f1b60b04b725f6d74a3e59e7"
+  digest = "1:35cb9b5c59734ea9bc47166aabc7d7136139ed8fe39f084fbc29afbbe3ae9213"
   name = "github.com/go-pkgz/repeater"
   packages = [
     ".",
     "strategy",
   ]
   pruneopts = "UT"
-  revision = "f2a67dcf050cab24d57132a7d8b45553ceab817b"
-  version = "v1.0.0"
+  revision = "661f2868dc41260f912f400aed01c14476659ff2"
+  version = "v1.1.1"
 
 [[projects]]
   digest = "1:9aba5c95373481f118e57e9740d9e82f86802d86849809ab89324bcb4f236451"

@@ -2,7 +2,10 @@
 // Strategy result is a channel acting like time.Timer ot time.Tick
 package strategy
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 // Interface for repeater strategy. Returns channel with ticks
 type Interface interface {
@@ -25,4 +28,13 @@ func (s *Once) Start(ctx context.Context) (ch chan struct{}) {
 		close(ch)
 	}()
 	return ch
+}
+
+func sleep(ctx context.Context, duration time.Duration) {
+	select {
+	case <-time.After(duration):
+		return
+	case <-ctx.Done():
+		return
+	}
 }

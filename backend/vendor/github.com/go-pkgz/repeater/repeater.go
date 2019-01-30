@@ -30,9 +30,9 @@ func NewDefault(repeats int, delay time.Duration) *Repeater {
 }
 
 // Do repeats fun till no error. Predefined (optional) errors terminate immediately
-func (r Repeater) Do(fun func() error, errors ...error) (err error) {
+func (r Repeater) Do(ctx context.Context, fun func() error, errors ...error) (err error) {
 
-	ctx, cancelFunc := context.WithCancel(context.Background())
+	ctx, cancelFunc := context.WithCancel(ctx)
 	defer cancelFunc() // ensure strategy's channel termination
 
 	inErrors := func(err error) bool {

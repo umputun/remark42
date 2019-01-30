@@ -47,7 +47,7 @@ func (b *Backoff) Start(ctx context.Context) (ch chan struct{}) {
 				if b.jitter {
 					delay = rnd.Float64()*(float64(2*minDelay)) + (delay - float64(minDelay))
 				}
-				time.Sleep(time.Duration(delay))
+				sleep(ctx, time.Duration(delay))
 			}
 		}
 	}()

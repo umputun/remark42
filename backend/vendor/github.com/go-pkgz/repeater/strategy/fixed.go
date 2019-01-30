@@ -33,7 +33,7 @@ func (s *FixedDelay) Start(ctx context.Context) (ch chan struct{}) {
 				return
 			default:
 				ch <- struct{}{}
-				time.Sleep(s.delay)
+				sleep(ctx, s.delay)
 			}
 		}
 	}()
