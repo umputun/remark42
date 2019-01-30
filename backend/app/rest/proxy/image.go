@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"context"
 	"encoding/base64"
 	"io"
 	"net/http"
@@ -22,6 +23,7 @@ type Image struct {
 	RemarkURL string
 	RoutePath string
 	Enabled   bool
+	Timeout   time.Duration
 }
 
 // Convert all img src links without https to proxied links
@@ -51,11 +53,23 @@ func (p Image) Routes() chi.Router {
 			return
 		}
 
+		timeout := 60 * time.Second // default
+		if p.Timeout > 0 {
+			timeout = p.Timeout
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+
 		client := http.Client{Timeout: 30 * time.Second}
 		var resp *http.Response
-		err = repeater.NewDefault(5, time.Second).Do(func() error {
+		err = repeater.NewDefault(5, time.Second).Do(ctx, func() error {
 			var e error
-			resp, e = client.Get(string(src))
+			req, e := http.NewRequest("GET", string(src), nil)
+			if e != nil {
+				return errors.Wrapf(e, "failed to make request for %s", r.URL.Query().Get("src"))
+			}
+			resp, e = client.Do(req.WithContext(ctx))
 			return e
 		})
 		if err != nil {

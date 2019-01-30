@@ -3,9 +3,12 @@ package proxy
 import (
 	"encoding/base64"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -87,6 +90,25 @@ func TestImage_Routes(t *testing.T) {
 	assert.Equal(t, 400, resp.StatusCode)
 }
 
+func TestImage_RoutesTimedOut(t *testing.T) {
+	img := Image{Enabled: true, RemarkURL: "https://demo.remark42.com", RoutePath: "/api/v1/proxy", Timeout: 50 * time.Millisecond}
+	router := img.Routes()
+
+	httpSrv := imgHTTPServer(t)
+	defer httpSrv.Close()
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	encodedImgURL := base64.URLEncoding.EncodeToString([]byte(httpSrv.URL + "/image/img-slow.png"))
+	resp, err := http.Get(ts.URL + "/?src=" + encodedImgURL)
+	require.Nil(t, err)
+	assert.Equal(t, 400, resp.StatusCode)
+	b, err := ioutil.ReadAll(resp.Body)
+	require.Nil(t, err)
+	t.Log(string(b))
+	assert.True(t, strings.Contains(string(b), "deadline exceeded"))
+}
+
 func TestPicture_Convert(t *testing.T) {
 	img := Image{Enabled: true, RoutePath: "/img"}
 	r := img.Convert(`<img src="http://radio-t.com/img3.png"/> xyz <img src="http://images.pexels.com/67636/img4.jpeg">`)
@@ -111,6 +133,11 @@ func imgHTTPServer(t *testing.T) *httptest.Server {
 			w.Header().Add("Content-Length", "123")
 			w.Header().Add("Content-Type", "image/png")
 			w.Write([]byte(fmt.Sprintf("%123s", "X")))
+			return
+		}
+		if r.URL.Path == "/image/img-slow.png" {
+			time.Sleep(500 * time.Millisecond)
+			w.WriteHeader(500)
 			return
 		}
 		t.Log("http img request - not found", r.URL)

@@ -42,7 +42,10 @@ func NewTelegram(token string, channelID string, timeout time.Duration, api stri
 	}
 	log.Printf("[DEBUG] create new telegram notifier for cham %s, timeout=%s, api=%s", channelID, res.timeout, res.timeout)
 
-	err := repeater.NewDefault(5, time.Millisecond*250).Do(func() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	err := repeater.NewDefault(5, time.Millisecond*250).Do(ctx, func() error {
 		client := http.Client{Timeout: telegramTimeOut}
 		resp, err := client.Get(fmt.Sprintf("%s%s/getMe", res.apiPrefix, token))
 		if err != nil {
