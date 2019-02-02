@@ -1,0 +1,16 @@
+language: go
+
+go:
+  - "1.11.x"
+
+go_import_path: github.com/go-pkgz/syncs
+
+before_install:
+  - go get github.com/mattn/goveralls
+  - go get gopkg.in/alecthomas/gometalinter.v2
+  - $GOPATH/bin/gometalinter.v2 --install
+
+script:
+  - go test ./...
+  - $GOPATH/bin/gometalinter.v2 --exclude=test --exclude=mock --exclude=vendor --exclude=maligned ./...
+  - $GOPATH/bin/goveralls -service=travis-ci
