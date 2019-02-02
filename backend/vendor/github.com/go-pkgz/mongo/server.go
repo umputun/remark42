@@ -43,7 +43,7 @@ func NewServerWithURL(url string, timeout time.Duration) (res *Server, err error
 func NewServer(dial mgo.DialInfo, params ServerParams) (res *Server, err error) {
 	result := Server{dial: dial, params: params}
 
-	mgo.SetDebug(true)
+	mgo.SetDebug(params.Debug)
 	mgo.SetLogger(&mgdLogger{})
 
 	if len(dial.Addrs) == 0 {
