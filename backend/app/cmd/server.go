@@ -59,7 +59,7 @@ type ServerCommand struct {
 	Port            int           `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
 	WebRoot         string        `long:"web-root" env:"REMARK_WEB_ROOT" default:"./web" description:"web root directory"`
 	UpdateLimit     float64       `long:"update-limit" env:"UPDATE_LIMIT" default:"0.5" description:"updates/sec limit"`
-	RestrictedWords []string      `long:"restricted-words" env:"RESTRICTED_WORDS" default:"" description:"words prohibited to use in comments" env-delim:","`
+	RestrictedWords []string      `long:"restricted-words" env:"RESTRICTED_WORDS" description:"words prohibited to use in comments" env-delim:","`
 
 	Auth struct {
 		TTL struct {
