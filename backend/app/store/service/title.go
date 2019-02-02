@@ -34,9 +34,9 @@ func NewTitleExtractor(client http.Client) *TitleExtractor {
 
 // Get page for url and return title
 func (t *TitleExtractor) Get(url string) (string, error) {
-
+	client := http.Client{Timeout: t.client.Timeout, Transport: t.client.Transport}
 	b, err := t.cache.Get(cache.NewKey("site").ID(url), func() ([]byte, error) {
-		resp, err := t.client.Get(url)
+		resp, err := client.Get(url)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to load page %s", url)
 		}
