@@ -93,3 +93,22 @@ func TestTitle_GetConcurrent(t *testing.T) {
 	g.Wait()
 	assert.Equal(t, int32(100), atomic.LoadInt32(&hits))
 }
+
+func TestTitle_GetFailed(t *testing.T) {
+	ex := NewTitleExtractor(http.Client{Timeout: 5 * time.Second})
+	var hits int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&hits, 1)
+		w.WriteHeader(404)
+	}))
+
+	_, err := ex.Get(ts.URL + "/bad")
+	require.NotNil(t, err)
+
+	for i := 0; i < 100; i++ {
+		title, err := ex.Get(ts.URL + "/bad")
+		require.Nil(t, err)
+		assert.Equal(t, "", title)
+	}
+	assert.Equal(t, int32(1), atomic.LoadInt32(&hits), "hit once, errors cached")
+}

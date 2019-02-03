@@ -3,9 +3,10 @@ package service
 import (
 	"io"
 	"net/http"
+	"time"
 
+	"github.com/go-pkgz/lcw"
 	log "github.com/go-pkgz/lgr"
-	"github.com/go-pkgz/rest/cache"
 	"github.com/pkg/errors"
 	"golang.org/x/net/html"
 )
@@ -15,7 +16,7 @@ const teMaxCachedRecs = 1000
 // TitleExtractor gets html title from remote page, cached
 type TitleExtractor struct {
 	client http.Client
-	cache  cache.LoadingCache
+	cache  lcw.LoadingCache
 }
 
 // NewTitleExtractor makes extractor with cache. If memory cache failed, switching to no-cache
@@ -24,10 +25,10 @@ func NewTitleExtractor(client http.Client) *TitleExtractor {
 		client: client,
 	}
 	var err error
-	res.cache, err = cache.NewMemoryCache(cache.MaxKeys(teMaxCachedRecs))
+	res.cache, err = lcw.NewExpirableCache(lcw.TTL(15*time.Minute), lcw.MaxKeySize(teMaxCachedRecs))
 	if err != nil {
-		log.Printf("[WARN] failed to make cache, %v", err)
-		res.cache = &cache.Nop{}
+		log.Printf("[WARN] failed to make cache, caching disabled for titles, %v", err)
+		res.cache = &lcw.Nop{}
 	}
 	return &res
 }
@@ -35,7 +36,7 @@ func NewTitleExtractor(client http.Client) *TitleExtractor {
 // Get page for url and return title
 func (t *TitleExtractor) Get(url string) (string, error) {
 	client := http.Client{Timeout: t.client.Timeout, Transport: t.client.Transport}
-	b, err := t.cache.Get(cache.NewKey("site").ID(url), func() ([]byte, error) {
+	b, err := t.cache.Get(url, func() (lcw.Value, error) {
 		resp, err := client.Get(url)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to load page %s", url)
@@ -49,14 +50,16 @@ func (t *TitleExtractor) Get(url string) (string, error) {
 		if !ok {
 			return nil, errors.Errorf("can't get title for %s", url)
 		}
-		return []byte(title), nil
+		return title, nil
 	})
 
+	// on error save result (empty strung) to cache too but
 	if err != nil {
+		_, _ = t.cache.Get(url, func() (lcw.Value, error) { return "", nil })
 		return "", err
 	}
 
-	return string(b), nil
+	return b.(string), nil
 }
 
 // get title from body reader, traverse recursively

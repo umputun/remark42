@@ -127,6 +127,14 @@
   version = "v0.4.1"
 
 [[projects]]
+  digest = "1:c4cb8b521f8e55dd02e1ed0952953adb35dbcc8eca8aeac9d707abc7ed625843"
+  name = "github.com/go-pkgz/lcw"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "4f4492679c5c96714bc4b25d195036534bb01f72"
+  version = "v0.2.0"
+
+[[projects]]
   digest = "1:7b1f422f560b103f435f8501f854f238f1ce00d0f8146e76eacdfa71f2c8d8c0"
   name = "github.com/go-pkgz/lgr"
   packages = ["."]
@@ -413,6 +421,7 @@
     "github.com/go-pkgz/auth/avatar",
     "github.com/go-pkgz/auth/provider",
     "github.com/go-pkgz/auth/token",
+    "github.com/go-pkgz/lcw",
     "github.com/go-pkgz/lgr",
     "github.com/go-pkgz/mongo",
     "github.com/go-pkgz/repeater",
