@@ -53,7 +53,7 @@ func (t *TitleExtractor) Get(url string) (string, error) {
 		return title, nil
 	})
 
-	// on error save result (empty strung) to cache too but
+	// on error save result (empty string) to cache too and return "" title
 	if err != nil {
 		_, _ = t.cache.Get(url, func() (lcw.Value, error) { return "", nil })
 		return "", err

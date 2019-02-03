@@ -76,14 +76,17 @@ func (s *DataStore) Create(comment store.Comment) (commentID string, err error) 
 		return "", ErrRestrictedWordsFound
 	}
 
-	// keep input title and set to extracted if missing
-	if s.TitleExtractor != nil && comment.PostTitle == "" {
-		if title, err := s.TitleExtractor.Get(comment.Locator.URL); err == nil {
-			comment.PostTitle = title
-		} else {
-			log.Printf("[WARN] failed to set title, %v", err)
+	func() { // keep input title and set to extracted if missing
+		if s.TitleExtractor == nil || comment.PostTitle != "" {
+			return
 		}
-	}
+		title, e := s.TitleExtractor.Get(comment.Locator.URL)
+		if e != nil {
+			log.Printf("[WARN] failed to set title, %v", e)
+			return
+		}
+		comment.PostTitle = title
+	}()
 
 	return s.Interface.Create(comment)
 }

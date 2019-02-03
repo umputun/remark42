@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -84,7 +85,7 @@ func TestTitle_GetConcurrent(t *testing.T) {
 
 	for i := 0; i < 100; i++ {
 		i := i
-		g.Go(func() {
+		g.Go(func(_ context.Context) {
 			title, err := ex.Get(ts.URL + "/good/" + strconv.Itoa(i))
 			require.Nil(t, err)
 			assert.Equal(t, "blah 123 "+"/good/"+strconv.Itoa(i), title)
