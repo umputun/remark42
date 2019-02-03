@@ -109,7 +109,7 @@ func (n *Native) Import(reader io.Reader, siteID string) (size int, err error) {
 	if n.Concurrent > 0 {
 		concurrent = n.Concurrent
 	}
-	grp := syncs.NewSizedGroup(concurrent)
+	grp := syncs.NewErrSizedGroup(concurrent, syncs.Preemptive())
 
 	for {
 		comment := store.Comment{}
@@ -127,21 +127,22 @@ func (n *Native) Import(reader io.Reader, siteID string) (size int, err error) {
 		}
 
 		// write comments in parallel
-		grp.Go(func() {
+		grp.Go(func() error {
 			if _, e := n.DataStore.Create(comment); e != nil {
 				atomic.AddInt64(&failed, 1)
 				log.Printf("[WARN] can't write %+v to store, %s", comment, e)
-				return
+				return nil
 			}
 			n := atomic.AddInt64(&comments, 1)
 			if n%1000 == 0 {
 				log.Printf("[DEBUG] imported %d comments", n)
 			}
+			return nil
 		})
 
 	}
 
-	grp.Wait()
+	_ = grp.Wait()
 
 	if failed > 0 {
 		return int(comments), errors.Errorf("failed to save %d comments", failed)

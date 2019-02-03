@@ -145,6 +145,8 @@ func TestService_SetTitle(t *testing.T) {
 	t.Logf("%+v", res)
 	assert.Equal(t, "", res.PostTitle)
 
+	b.TitleExtractor.cache.Purge()
+
 	atomic.StoreInt32(&titleEnable, 1)
 	c, err := b.SetTitle(store.Locator{URL: tss.URL + "/post1", SiteID: "radio-t"}, id)
 	require.NoError(t, err)

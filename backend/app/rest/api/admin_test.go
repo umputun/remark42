@@ -75,7 +75,7 @@ func TestAdmin_Delete(t *testing.T) {
 	assert.Equal(t, "", cr.Text)
 	assert.True(t, cr.Deleted)
 
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(250 * time.Millisecond)
 	// check last comments updated
 	res, code = get(t, ts.URL+"/api/v1/last/2?site=radio-t")
 	assert.Equal(t, 200, code)
