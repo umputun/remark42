@@ -143,12 +143,12 @@
   version = "v0.3.2"
 
 [[projects]]
-  digest = "1:b6a473bc305dd50d66d0db6cc26b1ecffc19f94d232948b4c977f58f8df61df5"
+  digest = "1:62aeed92576ea10c25389334254f957594b4b5ae8ff71a53d3aa9df5dc6961eb"
   name = "github.com/go-pkgz/mongo"
   packages = ["."]
   pruneopts = "UT"
-  revision = "b749ea7cee576ebbc0e63c43d3d36f72681ba8e0"
-  version = "v1.1.1"
+  revision = "b39a3946e96d28d96eb54d7a8400d80134302f69"
+  version = "v1.1.2"
 
 [[projects]]
   digest = "1:35cb9b5c59734ea9bc47166aabc7d7136139ed8fe39f084fbc29afbbe3ae9213"

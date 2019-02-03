@@ -43,8 +43,10 @@ func NewServerWithURL(url string, timeout time.Duration) (res *Server, err error
 func NewServer(dial mgo.DialInfo, params ServerParams) (res *Server, err error) {
 	result := Server{dial: dial, params: params}
 
-	mgo.SetDebug(params.Debug)
-	mgo.SetLogger(&mgdLogger{})
+	if params.Debug {
+		mgo.SetDebug(true)
+		mgo.SetLogger(&mgdLogger{})
+	}
 
 	if len(dial.Addrs) == 0 {
 		return nil, errors.New("missing mongo address")
