@@ -11,7 +11,10 @@ import (
 	"golang.org/x/net/html"
 )
 
-const teMaxCachedRecs = 1000
+const (
+	teCacheMaxRecs = 1000
+	teCacheTTL     = 15 * time.Minute
+)
 
 // TitleExtractor gets html title from remote page, cached
 type TitleExtractor struct {
@@ -25,7 +28,7 @@ func NewTitleExtractor(client http.Client) *TitleExtractor {
 		client: client,
 	}
 	var err error
-	res.cache, err = lcw.NewExpirableCache(lcw.TTL(15*time.Minute), lcw.MaxKeySize(teMaxCachedRecs))
+	res.cache, err = lcw.NewExpirableCache(lcw.TTL(teCacheTTL), lcw.MaxKeySize(teCacheMaxRecs))
 	if err != nil {
 		log.Printf("[WARN] failed to make cache, caching disabled for titles, %v", err)
 		res.cache = &lcw.Nop{}
