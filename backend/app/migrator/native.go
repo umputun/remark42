@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"sync/atomic"
 
 	log "github.com/go-pkgz/lgr"
+	"github.com/go-pkgz/syncs"
 	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/backend/app/store"
@@ -13,12 +15,14 @@ import (
 )
 
 const natvieVersion = 1
+const defaultConcurrent = 8
 
 // Native implements exporter and importer for internal store format
 // {"version": 1, comments:[{...}\n,{}], meta: {meta}}
 // each comments starts from the new line
 type Native struct {
-	DataStore Store
+	DataStore  Store
+	Concurrent int
 }
 
 type meta struct {
@@ -99,8 +103,13 @@ func (n *Native) Import(reader io.Reader, siteID string) (size int, err error) {
 		return 0, err
 	}
 
-	failed := 0
-	total, comments := 0, 0
+	var failed, total, comments int64
+
+	concurrent := defaultConcurrent
+	if n.Concurrent > 0 {
+		concurrent = n.Concurrent
+	}
+	grp := syncs.NewSizedGroup(concurrent)
 
 	for {
 		comment := store.Comment{}
@@ -112,27 +121,34 @@ func (n *Native) Import(reader io.Reader, siteID string) (size int, err error) {
 		total++
 
 		if err != nil {
+			atomic.AddInt64(&failed, 1)
 			failed++
 			continue
 		}
 
-		if _, err = n.DataStore.Create(comment); err != nil {
-			failed++
-			log.Printf("[WARN] can't write %+v to store, %s", comment, err)
-			continue
-		}
-		comments++
-		if comments%1000 == 0 {
-			log.Printf("[DEBUG] imported %d comments", comments)
-		}
+		// write comments in parallel
+		grp.Go(func() {
+			if _, e := n.DataStore.Create(comment); e != nil {
+				atomic.AddInt64(&failed, 1)
+				log.Printf("[WARN] can't write %+v to store, %s", comment, e)
+				return
+			}
+			n := atomic.AddInt64(&comments, 1)
+			if n%1000 == 0 {
+				log.Printf("[DEBUG] imported %d comments", n)
+			}
+		})
+
 	}
 
+	grp.Wait()
+
 	if failed > 0 {
-		return comments, errors.Errorf("failed to save %d comments", failed)
+		return int(comments), errors.Errorf("failed to save %d comments", failed)
 	}
 	log.Printf("[INFO] imported %d comments from %d records", comments, total)
 
 	err = n.DataStore.SetMetas(siteID, m.Users, m.Posts)
 
-	return comments, err
+	return int(comments), err
 }
