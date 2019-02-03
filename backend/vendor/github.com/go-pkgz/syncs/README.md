@@ -29,13 +29,14 @@ Implements `sync.Locker` interface but for given capacity, thread safe. Lock inc
 
 Mix semaphore and WaitGroup to provide sized waiting group. The result is a wait group allowing limited number of goroutine to run in parallel.
 
-The locking happens inside of goroutine, i.e. **every call will be non-blocked**, but some goroutines may wait if semaphore locked. It means - technically it doesn't limit number of goroutines, but rather number of running (active) goroutines. 
+By default the locking happens inside of goroutine, i.e. **every call will be non-blocked**, but some goroutines may wait if semaphore locked. It means - technically it doesn't limit number of goroutines, but rather number of running (active) goroutines. 
+In order to block goroutines from even starting use `Preemptive` option (see below).
 
 ```go
     swg := syncs.NewSizedGroup(5) // wait group with max size=5
      for i :=0; i<10; i++ {
-        swg.Go(fn func(){
-            doThings() // only 5 of these will run in parallel
+        swg.Go(fn func(ctx context.Context){
+            doThings(ctx) // only 5 of these will run in parallel
         })
     }
     swg.Wait()
@@ -48,17 +49,17 @@ Works the same as errgrp.Group, i.e. returns first error.
 Can work as regular errgrp.Group or with early termination.
 Thread safe.
 
-Supports both in-goroutine-wait via `NewErrSizedGroup` as well as outside of goroutine wait with `Preemptive()` option. Another options are  `TermOnErr` which will skip (won't start) all other goroutines if any error returned, and `Context`.
+Supports both in-goroutine-wait via `NewErrSizedGroup` as well as outside of goroutine wait with `Preemptive` option. Another options are  `TermOnErr` which will skip (won't start) all other goroutines if any error returned, and `Context` for early termination/timeouts.
 
 Important! With `Preemptive` Go call **can block**. In case if maximum size reached the call will wait till number of running goroutines 
 dropped under max. This way we not only limiting number of running goroutines but also number of waiting goroutines.
 
 
 ```go
-    ewg := syncs.NewErrSizedGroup(5, syncs.Preemptive()) // error wait group with max size=5, don't try to start more if any error happened
+    ewg := syncs.NewErrSizedGroup(5, syncs.Preemptive) // error wait group with max size=5, don't try to start more if any error happened
      for i :=0; i<10; i++ {
-        ewg.Go(fn func() error { // Go here could be blocked if trying to run >5 at the same time 
-           err := doThings()     // only 5 of these will run in parallel
+        ewg.Go(fn func(ctx context.Context) error { // Go here could be blocked if trying to run >5 at the same time 
+           err := doThings(ctx)     // only 5 of these will run in parallel
            return err
         })
     }

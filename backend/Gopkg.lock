@@ -174,12 +174,12 @@
   version = "v1.2.0"
 
 [[projects]]
-  digest = "1:98626887dd476c5187317d8235da0c5489ed4bc9b3a86dd32b5e158f46b4a8ae"
+  digest = "1:92b44856ee15e8a98b91d751a60b512017e0ba227d1ed9d2c02ad13d67062ff8"
   name = "github.com/go-pkgz/syncs"
   packages = ["."]
   pruneopts = "UT"
-  revision = "ac098f93e9edc6a9c213ada2e74074b12acf9dbe"
-  version = "v1.0.0"
+  revision = "72b3cd427a3495479f72a3a06c8949e39485dfc0"
+  version = "v1.1.0"
 
 [[projects]]
   digest = "1:ffc060c551980d37ee9e428ef528ee2813137249ccebb0bfc412ef83071cac91"

@@ -1,9 +1,7 @@
 package syncs
 
 import (
-	"context"
 	"fmt"
-	"log"
 	"strings"
 	"sync"
 )
@@ -11,18 +9,10 @@ import (
 // ErrSizedGroup is a SizedGroup with error control. Works the same as errgrp.Group, i.e. returns first error.
 // Can work as regular errgrp.Group or with early termination. Thread safe.
 // ErrSizedGroup interface enforces constructor usage and doesn't allow direct creation of errSizedGroup
-type ErrSizedGroup interface {
-	Go(fn func() error)
-	Wait() error
-}
-
-type errSizedGroup struct {
-	wg          sync.WaitGroup
-	sema        sync.Locker
-	ctx         context.Context
-	cancel      func()
-	termOnError bool
-	preLock     bool
+type ErrSizedGroup struct {
+	options
+	wg   sync.WaitGroup
+	sema sync.Locker
 
 	err     *multierror
 	errLock sync.RWMutex
@@ -32,16 +22,15 @@ type errSizedGroup struct {
 // NewErrSizedGroup makes wait group with limited size alive goroutines.
 // By default all goroutines will be started but will wait inside. For limited number of goroutines use Preemptive() options.
 // TermOnErr will skip (won't start) all other goroutines if any error returned.
-func NewErrSizedGroup(size int, options ...ESGOption) ErrSizedGroup {
-	res := errSizedGroup{
+func NewErrSizedGroup(size int, options ...GroupOption) *ErrSizedGroup {
+
+	res := ErrSizedGroup{
 		sema: NewSemaphore(size),
 		err:  new(multierror),
 	}
 
 	for _, opt := range options {
-		if err := opt(&res); err != nil {
-			log.Printf("[WARN] failed to set cache option, %v", err)
-		}
+		opt(&res.options)
 	}
 
 	return &res
@@ -50,7 +39,7 @@ func NewErrSizedGroup(size int, options ...ESGOption) ErrSizedGroup {
 // Go calls the given function in a new goroutine.
 // The first call to return a non-nil error cancels the group if termOnError; its error will be
 // returned by Wait. If no termOnError all errors will be collected in multierror.
-func (g *errSizedGroup) Go(f func() error) {
+func (g *ErrSizedGroup) Go(f func() error) {
 
 	g.wg.Add(1)
 
@@ -97,41 +86,12 @@ func (g *errSizedGroup) Go(f func() error) {
 
 // Wait blocks until all function calls from the Go method have returned, then
 // returns the first all errors (if any) wrapped with multierror from them.
-func (g *errSizedGroup) Wait() error {
+func (g *ErrSizedGroup) Wait() error {
 	g.wg.Wait()
 	if g.cancel != nil {
 		g.cancel()
 	}
 	return g.err.errorOrNil()
-}
-
-// ESGOption functional option type
-type ESGOption func(esg *errSizedGroup) error
-
-// Context passes ctx and makes it cancelable
-func Context(ctx context.Context) ESGOption {
-	return func(esg *errSizedGroup) error {
-		ctxWithCancel, cancel := context.WithCancel(ctx)
-		esg.cancel = cancel
-		esg.ctx = ctxWithCancel
-		return nil
-	}
-}
-
-// Preemptive sets locking mode preventing spawning waiting goroutine. May cause Go call to block!
-func Preemptive() ESGOption {
-	return func(esg *errSizedGroup) error {
-		esg.preLock = true
-		return nil
-	}
-}
-
-// TermOnErr prevents new goroutines to start after first error
-func TermOnErr() ESGOption {
-	return func(esg *errSizedGroup) error {
-		esg.termOnError = true
-		return nil
-	}
 }
 
 type multierror struct {
