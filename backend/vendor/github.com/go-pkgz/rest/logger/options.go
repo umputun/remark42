@@ -44,6 +44,13 @@ func UserFn(userFn func(r *http.Request) (string, error)) Option {
 	}
 }
 
+// SubjFn functional option defines subject function.
+func SubjFn(userFn func(r *http.Request) (string, error)) Option {
+	return func(l *Middleware) {
+		l.subjFn = userFn
+	}
+}
+
 // Log functional option defines loging backend.
 func Log(log Backend) Option {
 	return func(l *Middleware) {

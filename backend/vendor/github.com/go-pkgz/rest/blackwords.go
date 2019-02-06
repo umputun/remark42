@@ -32,3 +32,8 @@ func BlackWords(words ...string) func(http.Handler) http.Handler {
 		return http.HandlerFunc(fn)
 	}
 }
+
+// BlackWordsFn middleware uses func to get the list and doesn't allow some words in the request body
+func BlackWordsFn(fn func() []string) func(http.Handler) http.Handler {
+	return BlackWords(fn()...)
+}

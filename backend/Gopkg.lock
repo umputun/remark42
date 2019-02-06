@@ -162,7 +162,7 @@
   version = "v1.1.1"
 
 [[projects]]
-  digest = "1:9aba5c95373481f118e57e9740d9e82f86802d86849809ab89324bcb4f236451"
+  digest = "1:27df73e1f59fffb9aaa2c28ba81561f177710576f18ad602564949355fac3e23"
   name = "github.com/go-pkgz/rest"
   packages = [
     ".",
@@ -170,8 +170,8 @@
     "logger",
   ]
   pruneopts = "UT"
-  revision = "e7d08d0194d613b8854de2e487bf7732500fa153"
-  version = "v1.2.0"
+  revision = "27af5e3ba9439ec0df51c30794f473befe0a0e6d"
+  version = "v1.3.1"
 
 [[projects]]
   digest = "1:92b44856ee15e8a98b91d751a60b512017e0ba227d1ed9d2c02ad13d67062ff8"

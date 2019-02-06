@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 )
@@ -23,6 +24,7 @@ type Middleware struct {
 	flags       []Flag
 	ipFn        func(ip string) string
 	userFn      func(r *http.Request) (string, error)
+	subjFn      func(r *http.Request) (string, error)
 	log         Backend
 }
 
@@ -99,8 +101,37 @@ func (l *Middleware) Handler(next http.Handler) http.Handler {
 				remoteIP = l.ipFn(remoteIP)
 			}
 
-			l.log.Logf("%s %s - %s - %s - %d (%d) - %v %s %s",
-				l.prefix, r.Method, q, remoteIP, ww.status, ww.size, t2.Sub(t1), user, body)
+			var bld strings.Builder
+			if l.prefix != "" {
+				bld.WriteString(l.prefix)
+				bld.WriteString(" ")
+			}
+
+			bld.WriteString(fmt.Sprintf("%s - %s - %s - %d (%d) - %v", r.Method, q, remoteIP, ww.status, ww.size, t2.Sub(t1)))
+
+			if user != "" {
+				bld.WriteString(" - ")
+				bld.WriteString(user)
+			}
+
+			if l.subjFn != nil {
+				if subj, err := l.subjFn(r); err == nil {
+					bld.WriteString(" - ")
+					bld.WriteString(subj)
+				}
+			}
+
+			if traceID := r.Header.Get("X-Request-ID"); traceID != "" {
+				bld.WriteString(" - ")
+				bld.WriteString(traceID)
+			}
+
+			if body != "" {
+				bld.WriteString(" - ")
+				bld.WriteString(body)
+			}
+
+			l.log.Logf("%s", bld.String())
 		}()
 
 		next.ServeHTTP(ww, r)
@@ -133,7 +164,7 @@ func (l *Middleware) getBodyAndUser(r *http.Request) (body string, user string) 
 	if l.inLogFlags(User) && l.userFn != nil {
 		u, err := l.userFn(r)
 		if err == nil && u != "" {
-			user = fmt.Sprintf(" - %s", u)
+			user = u
 		}
 	}
 
@@ -149,24 +180,40 @@ func (l *Middleware) inLogFlags(f Flag) bool {
 	return false
 }
 
+var hideWords = []string{"password", "passwd", "secret", "credentials", "token"}
+
+// hide query values for hideWords. May change order of query params
 func (l *Middleware) sanitizeQuery(inp string) string {
-	out := []rune(inp)
-	hide := []string{"password", "passwd", "secret", "credentials"}
-	for _, h := range hide {
-		if strings.Contains(strings.ToLower(inp), h+"=") {
-			stPos := strings.Index(strings.ToLower(inp), h+"=") + len(h) + 1
-			fnPos := strings.Index(inp[stPos:], "&")
-			if fnPos == -1 {
-				fnPos = len(inp)
-			} else {
-				fnPos = stPos + fnPos
-			}
-			for i := stPos; i < fnPos; i++ {
-				out[i] = rune('*')
+
+	inHiddenWords := func(str string) bool {
+		for _, w := range hideWords {
+			if strings.EqualFold(w, str) {
+				return true
 			}
 		}
+		return false
 	}
-	return string(out)
+
+	parts := strings.SplitN(inp, "?", 2)
+	if len(parts) < 2 {
+		return inp
+	}
+
+	q, e := url.ParseQuery(parts[1])
+	if e != nil || len(q) == 0 {
+		return inp
+	}
+
+	res := []string{}
+	for k, v := range q {
+		if inHiddenWords(k) {
+			res = append(res, fmt.Sprintf("%s=********", k))
+		} else {
+			res = append(res, fmt.Sprintf("%s=%v", k, v[0]))
+		}
+	}
+	sort.Strings(res) // to make testing persistent
+	return parts[0] + "?" + strings.Join(res, "&")
 }
 
 // customResponseWriter implements ResponseWriter and keeping status and size
