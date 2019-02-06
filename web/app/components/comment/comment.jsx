@@ -7,6 +7,7 @@ import { API_BASE, BASE_URL, COMMENT_NODE_CLASSNAME_PREFIX, BLOCKING_DURATIONS }
 import { url } from 'common/settings';
 import store from 'common/store';
 import copy from 'common/copy';
+import debounce from 'utils/debounce';
 
 import Input from 'components/input';
 
@@ -41,6 +42,7 @@ export default class Comment extends Component {
     this.onDeleteClick = this.onDeleteClick.bind(this);
     this.onOwnCommentDeleteClick = this.onOwnCommentDeleteClick.bind(this);
     this.onBlockUserClick = this.onBlockUserClick.bind(this);
+    this.blockUser = debounce(this.blockUser, 100).bind(this);
     this.onUnblockUserClick = this.onUnblockUserClick.bind(this);
     this.isAdmin = this.isAdmin.bind(this);
     this.isCurrentUser = this.isCurrentUser.bind(this);
@@ -180,17 +182,28 @@ export default class Comment extends Component {
   }
 
   onBlockUserClick(e) {
+    // blur event will be triggered by the confirm pop-up which will start
+    // infinite loop of blur -> confirm -> blur -> ...
+    // so we trigger the blur event manually and have debounce mechanism to prevent it
+    if (e.type === 'change') {
+      e.target.blur();
+    }
+    // we have to debounce the blockUser function calls otherwise it will be
+    // called 2 times (by change event and by blur event)
+    this.blockUser(e.target.value);
+  }
+
+  blockUser(ttl) {
     const {
       id,
-      user: { id: userId },
+      user: { id: userId, name: userName },
     } = this.props.data;
 
-    const ttl = e.target.value;
     const duration = BLOCKING_DURATIONS.find(el => el.value === ttl).label;
     const promptMessage =
       ttl === 'permanently'
-        ? 'Do you want to permanently block this user?'
-        : `Do you want to block this user (${duration.toLowerCase()})?`;
+        ? `Do you want to permanently block user "${userName}"?`
+        : `Do you want to block user "${userName}" (${duration.toLowerCase()})?`;
     if (confirm(promptMessage)) {
       this.setState({ userBlocked: true });
 
@@ -663,8 +676,11 @@ export default class Comment extends Component {
                   {!userBlocked && (
                     <span className="comment__control comment__control_select-label">
                       Block
-                      {/* eslint-disable jsx-a11y/no-onchange */}
-                      <select className="comment__control_select" onChange={this.onBlockUserClick}>
+                      <select
+                        className="comment__control_select"
+                        onBlur={this.onBlockUserClick}
+                        onChange={this.onBlockUserClick}
+                      >
                         <option disabled selected value>
                           {' '}
                           Blocking period{' '}
