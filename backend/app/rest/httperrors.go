@@ -25,7 +25,7 @@ const (
 	ErrReadOnly           = 8  // write failed on read only
 	ErrCommentRejected    = 9  // general error on rejected comment change
 	ErrCommentEditExpired = 10 // too late for edit
-	ErrCommentEditChanged = 11 // parent commend changed
+	ErrCommentEditChanged = 11 // parent comment cannot be changed
 	ErrVoteRejected       = 12 // general error on vote rejected
 	ErrVoteSelf           = 13 // vote for own comment
 	ErrVoteDbl            = 14 // already voted for the comment
