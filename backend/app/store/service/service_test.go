@@ -16,9 +16,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/umputun/remark/backend/app/store/admin"
 
 	"github.com/umputun/remark/backend/app/store"
+	"github.com/umputun/remark/backend/app/store/admin"
 	"github.com/umputun/remark/backend/app/store/engine"
 )
 
@@ -192,6 +192,7 @@ func TestService_Vote(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 3, len(res))
 	assert.Equal(t, 1, res[0].Score)
+	assert.Equal(t, 0.0, res[0].Controversy)
 
 	_, err = b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "user1", false)
 	assert.Nil(t, err, "vote reset")
@@ -315,8 +316,9 @@ func TestService_VoteConcurrent(t *testing.T) {
 	wg.Wait()
 	res, err = b.Last("radio-t", 0)
 	require.NoError(t, err)
-	assert.Equal(t, 100, res[0].Score, "should have 1000 score")
-	assert.Equal(t, 100, len(res[0].Votes), "should have 1000 votes")
+	assert.Equal(t, 100, res[0].Score, "should have 100 score")
+	assert.Equal(t, 100, len(res[0].Votes), "should have 100 votes")
+	assert.Equal(t, 0.0, res[0].Controversy, "should have 0 controversy")
 }
 
 func TestService_VotePositive(t *testing.T) {
@@ -335,7 +337,57 @@ func TestService_VotePositive(t *testing.T) {
 	c, err := b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "id-1", "user2", false)
 	assert.Nil(t, err, "minimal score ignored")
 	assert.Equal(t, -1, c.Score)
+	assert.Equal(t, 0.0, c.Controversy)
+}
 
+func TestService_VoteControversy(t *testing.T) {
+	defer os.Remove(testDb)
+	b := DataStore{Interface: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: -1}
+
+	c, err := b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "id-2", "user2", false)
+	assert.NoError(t, err)
+	assert.Equal(t, -1, c.Score, "should have -1 score")
+	assert.InDelta(t, 0.00, c.Controversy, 0.01)
+
+	c, err = b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "id-2", "user3", true)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, c.Score, "should have 0 score")
+	assert.InDelta(t, 2.00, c.Controversy, 0.01)
+
+	c, err = b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "id-2", "user4", true)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, c.Score, "should have 1 score")
+	assert.InDelta(t, 1.73, c.Controversy, 0.01)
+
+	// check if stored
+	res, err := b.Last("radio-t", 0)
+	require.NoError(t, err)
+	assert.Equal(t, 1, res[0].Score, "should have 1 score")
+	assert.InDelta(t, 1.73, res[0].Controversy, 0.01)
+}
+
+func TestService_Controversy(t *testing.T) {
+	tbl := []struct {
+		ups, downs int
+		res        float64
+	}{
+		{0, 0, 0},
+		{10, 5, 3.87},
+		{20, 5, 2.24},
+		{20, 50, 5.47},
+		{20, 0, 0},
+		{1100, 500, 28.60},
+		{1100, 12100, 2.37},
+		{100, 100, 200},
+		{101, 101, 202},
+	}
+
+	b := DataStore{}
+	for i, tt := range tbl {
+		t.Run(fmt.Sprintf("check-%d-%d:%d", i, tt.ups, tt.downs), func(t *testing.T) {
+			assert.InDelta(t, tt.res, b.controversy(tt.ups, tt.downs), 0.01)
+		})
+	}
 }
 
 func TestService_Pin(t *testing.T) {

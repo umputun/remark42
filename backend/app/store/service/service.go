@@ -1,6 +1,7 @@
 package service
 
 import (
+	"math"
 	"sort"
 	"sync"
 	"time"
@@ -179,7 +180,35 @@ func (s *DataStore) Vote(locator store.Locator, commentID string, userID string,
 		comment.Score--
 	}
 
+	upsAndDowns := func() (ups, downs int) {
+		for _, v := range comment.Votes {
+			if v {
+				ups++
+				continue
+			}
+			downs++
+		}
+		return ups, downs
+	}
+	comment.Controversy = s.controversy(upsAndDowns())
+
 	return comment, s.Put(locator, comment)
+}
+
+// controversy calculates controversial index of votes
+// source - https://github.com/reddit-archive/reddit/blob/master/r2/r2/lib/db/_sorts.pyx#L60
+func (s *DataStore) controversy(ups, downs int) float64 {
+
+	if downs <= 0 || ups <= 0 {
+		return 0
+	}
+
+	magnitude := ups + downs
+	balance := float64(downs) / float64(ups)
+	if ups <= downs {
+		balance = float64(ups) / float64(downs)
+	}
+	return math.Pow(float64(magnitude), balance)
 }
 
 // EditRequest contains fields needed for comment update
