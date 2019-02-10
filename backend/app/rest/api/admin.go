@@ -55,7 +55,7 @@ func (a *admin) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 	err := a.dataService.Delete(locator, id, store.SoftDelete)
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete comment")
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete comment", rest.ErrInternal)
 		return
 	}
 	a.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.SiteID, locator.URL, lastCommentsScope))
@@ -71,7 +71,7 @@ func (a *admin) deleteUserCtrl(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[INFO] delete all user comments for %s, site %s", userID, siteID)
 
 	if err := a.dataService.DeleteUser(siteID, userID); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete user")
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete user", rest.ErrInternal)
 		return
 	}
 	a.cache.Flush(cache.Flusher(siteID).Scopes(userID, siteID, lastCommentsScope))
@@ -88,7 +88,7 @@ func (a *admin) getUserInfoCtrl(w http.ResponseWriter, r *http.Request) {
 
 	ucomments, err := a.dataService.User(siteID, userID, 1, 0)
 	if err != nil || len(ucomments) == 0 {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get user info")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get user info", rest.ErrInternal)
 		return
 	}
 	render.Status(r, http.StatusOK)
@@ -103,7 +103,7 @@ func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 
 	claims, err := a.authenticator.TokenService().Parse(token)
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't process token")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't process token", rest.ErrActionRejected)
 		return
 	}
 
@@ -111,19 +111,19 @@ func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 
 	// deleteme set by deleteMeCtrl, this check just to make sure we not trying to delete with leaked token
 	if !claims.User.BoolAttr("delete_me") {
-		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("forbidden"), "can't use provided token")
+		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("forbidden"), "can't use provided token", rest.ErrNoAccess)
 		return
 	}
 
 	if err := a.dataService.DeleteUser(claims.Audience, claims.User.ID); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete user")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete user", rest.ErrNoAccess)
 		return
 	}
 
 	if claims.User.Picture != "" && a.authenticator.AvatarProxy() != nil {
 		avatartStore := a.authenticator.AvatarProxy().Store
 		if err := avatartStore.Remove(path.Base(claims.User.Picture)); err != nil {
-			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete user's avatar")
+			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete user's avatar", rest.ErrInternal)
 			return
 		}
 	}
@@ -147,7 +147,7 @@ func (a *admin) setBlockCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := a.dataService.SetBlock(siteID, userID, blockStatus, ttl); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set blocking status")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set blocking status", rest.ErrActionRejected)
 		return
 	}
 	a.cache.Flush(cache.Flusher(siteID).Scopes(userID, siteID, lastCommentsScope))
@@ -159,7 +159,7 @@ func (a *admin) blockedUsersCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	users, err := a.dataService.Blocked(siteID)
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get blocked users")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get blocked users", rest.ErrSiteNotFound)
 		return
 	}
 	render.JSON(w, r, users)
@@ -178,13 +178,14 @@ func (a *admin) setReadOnlyCtrl(w http.ResponseWriter, r *http.Request) {
 	// don't allow to reset ro for posts turned to ro by ReadOnlyAge
 	if !roStatus {
 		if info, e := a.dataService.Info(locator, a.readOnlyAge); e == nil && isRoByAge(info) {
-			rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"), "read-only due the age")
+			rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"),
+				"read-only due the age", rest.ErrActionRejected)
 			return
 		}
 	}
 
 	if err := a.dataService.SetReadOnly(locator, roStatus); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set readonly status")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set readonly status", rest.ErrPostNotFound)
 		return
 	}
 	a.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL, locator.SiteID))
@@ -198,7 +199,7 @@ func (a *admin) setTitleCtrl(w http.ResponseWriter, r *http.Request) {
 
 	c, err := a.dataService.SetTitle(locator, id)
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't set title")
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't set title", rest.ErrInternal)
 		return
 	}
 	log.Printf("[INFO] set comment's title %s to %q", id, c.PostTitle)
@@ -215,7 +216,7 @@ func (a *admin) setVerifyCtrl(w http.ResponseWriter, r *http.Request) {
 	verifyStatus := r.URL.Query().Get("verified") == "1"
 
 	if err := a.dataService.SetVerified(siteID, userID, verifyStatus); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set verify status")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set verify status", rest.ErrActionRejected)
 		return
 	}
 	a.cache.Flush(cache.Flusher(siteID).Scopes(siteID, userID))
@@ -230,7 +231,7 @@ func (a *admin) setPinCtrl(w http.ResponseWriter, r *http.Request) {
 	pinStatus := r.URL.Query().Get("pin") == "1"
 
 	if err := a.dataService.SetPin(locator, commentID, pinStatus); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set pin status")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set pin status", rest.ErrActionRejected)
 		return
 	}
 	a.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL))

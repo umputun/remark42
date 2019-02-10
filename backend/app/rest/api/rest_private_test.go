@@ -289,7 +289,7 @@ func TestRest_UpdateNotOwner(t *testing.T) {
 	body, err := ioutil.ReadAll(b.Body)
 	assert.Nil(t, err)
 	assert.Equal(t, 403, b.StatusCode, string(body), "update from non-owner")
-	assert.Equal(t, `{"details":"can not edit comments for other users","error":"rejected"}`+"\n", string(body))
+	assert.Equal(t, `{"code":3,"details":"can not edit comments for other users","error":"rejected"}`+"\n", string(body))
 
 	client = http.Client{}
 	req, err = http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/"+id1+

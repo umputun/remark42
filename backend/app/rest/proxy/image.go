@@ -49,7 +49,7 @@ func (p Image) Routes() chi.Router {
 	router.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		src, err := base64.URLEncoding.DecodeString(r.URL.Query().Get("src"))
 		if err != nil {
-			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't decode image url")
+			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't decode image url", rest.ErrDecode)
 			return
 		}
 
@@ -73,7 +73,7 @@ func (p Image) Routes() chi.Router {
 			return e
 		})
 		if err != nil {
-			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get image "+string(src))
+			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get image "+string(src), rest.ErrAssetNotFound)
 			return
 		}
 		defer func() {

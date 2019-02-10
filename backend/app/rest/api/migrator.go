@@ -56,13 +56,14 @@ func (m *Migrator) importCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 
 	if m.isBusy(siteID) {
-		rest.SendErrorJSON(w, r, http.StatusConflict, errors.New("already running"), "import rejected")
+		rest.SendErrorJSON(w, r, http.StatusConflict, errors.New("already running"),
+			"import rejected", rest.ErrActionRejected)
 		return
 	}
 
 	tmpfile, err := m.saveTemp(r.Body)
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't save request to temp file")
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't save request to temp file", rest.ErrInternal)
 		return
 	}
 
@@ -78,25 +79,26 @@ func (m *Migrator) importFormCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 
 	if m.isBusy(siteID) {
-		rest.SendErrorJSON(w, r, http.StatusConflict, errors.New("already running"), "import rejected")
+		rest.SendErrorJSON(w, r, http.StatusConflict, errors.New("already running"),
+			"import rejected", rest.ErrActionRejected)
 		return
 	}
 
 	if err := r.ParseMultipartForm(20 * 1024 * 1024); err != nil { // 20M max memory, if bigger will make a file
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't parse multipart form")
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't parse multipart form", rest.ErrDecode)
 		return
 	}
 
 	file, _, err := r.FormFile("file")
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't get import from the request")
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't get import file from the request", rest.ErrInternal)
 		return
 	}
 	defer func() { _ = file.Close() }()
 
 	tmpfile, err := m.saveTemp(file)
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't save request to temp file")
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't save request to temp file", rest.ErrInternal)
 		return
 	}
 
@@ -155,7 +157,7 @@ func (m *Migrator) exportCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if _, err := m.NativeExporter.Export(writer, siteID); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "export failed")
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "export failed", rest.ErrInternal)
 		return
 	}
 }

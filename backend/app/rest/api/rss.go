@@ -50,7 +50,7 @@ func (s *Rest) rssPostCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't find comments")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't find comments", rest.ErrPostNotFound)
 		return
 	}
 
@@ -83,7 +83,7 @@ func (s *Rest) rssSiteCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get last comments")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get last comments", rest.ErrSiteNotFound)
 		return
 	}
 
@@ -135,7 +135,7 @@ func (s *Rest) rssRepliesCtrl(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get replies")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get replies", rest.ErrSiteNotFound)
 		return
 	}
 

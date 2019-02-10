@@ -17,7 +17,7 @@ func TestSendErrorJSON(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/error" {
 			t.Log("http err request", r.URL)
-			SendErrorJSON(w, r, 500, errors.New("error 500"), "error details 123456")
+			SendErrorJSON(w, r, 500, errors.New("error 500"), "error details 123456", 123)
 			return
 		}
 		w.WriteHeader(404)
@@ -33,7 +33,7 @@ func TestSendErrorJSON(t *testing.T) {
 	require.Nil(t, err)
 	assert.Equal(t, 500, resp.StatusCode)
 
-	assert.Equal(t, `{"details":"error details 123456","error":"error 500"}`+"\n", string(body))
+	assert.Equal(t, `{"code":123,"details":"error details 123456","error":"error 500"}`+"\n", string(body))
 }
 
 func TestErrorDetailsMsg(t *testing.T) {
@@ -41,8 +41,8 @@ func TestErrorDetailsMsg(t *testing.T) {
 		req, err := http.NewRequest("GET", "https://example.com/test?k1=v1&k2=v2", nil)
 		require.Nil(t, err)
 		req.RemoteAddr = "1.2.3.4"
-		msg := errDetailsMsg(req, 500, errors.New("error 500"), "error details 123456")
-		assert.Equal(t, "error details 123456 - error 500 - 500 - 1.2.3.4 - https://example.com/test?k1=v1&k2=v2 [caused by app/rest/httperrors_test.go:47 rest.TestErrorDetailsMsg]", msg)
+		msg := errDetailsMsg(req, 500, errors.New("error 500"), "error details 123456", 123)
+		assert.Equal(t, "error details 123456 - error 500 - 500 (123) - 1.2.3.4 - https://example.com/test?k1=v1&k2=v2 [caused by app/rest/httperrors_test.go:47 rest.TestErrorDetailsMsg]", msg)
 	}
 	callerFn()
 }
@@ -53,8 +53,8 @@ func TestErrorDetailsMsgWithUser(t *testing.T) {
 		req.RemoteAddr = "127.0.0.1:1234"
 		req = SetUserInfo(req, store.User{Name: "test", ID: "id"})
 		require.Nil(t, err)
-		msg := errDetailsMsg(req, 500, errors.New("error 500"), "error details 123456")
-		assert.Equal(t, "error details 123456 - error 500 - 500 - test/id - 127.0.0.1 - https://example.com/test?k1=v1&k2=v2 [caused by app/rest/httperrors_test.go:59 rest.TestErrorDetailsMsgWithUser]", msg)
+		msg := errDetailsMsg(req, 500, errors.New("error 500"), "error details 123456", 34567)
+		assert.Equal(t, "error details 123456 - error 500 - 500 (34567) - test/id - 127.0.0.1 - https://example.com/test?k1=v1&k2=v2 [caused by app/rest/httperrors_test.go:59 rest.TestErrorDetailsMsgWithUser]", msg)
 	}
 	callerFn()
 }

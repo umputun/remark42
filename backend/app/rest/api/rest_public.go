@@ -56,7 +56,7 @@ func (s *Rest) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't find comments")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't find comments", rest.ErrCommentNotFound)
 		return
 	}
 
@@ -69,19 +69,19 @@ func (s *Rest) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 func (s *Rest) previewCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	comment := store.Comment{}
 	if err := render.DecodeJSON(http.MaxBytesReader(w, r.Body, hardBodyLimit), &comment); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't bind comment")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't bind comment", rest.ErrDecode)
 		return
 	}
 
 	user, err := rest.GetUserInfo(r)
 	if err != nil { // this not suppose to happen (handled by Auth), just dbl-check
-		rest.SendErrorJSON(w, r, http.StatusUnauthorized, err, "can't get user info")
+		rest.SendErrorJSON(w, r, http.StatusUnauthorized, err, "can't get user info", rest.ErrNoAccess)
 		return
 	}
 	comment.User = user
 	comment.Orig = comment.Text
 	if err = s.DataService.ValidateComment(&comment); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment", rest.ErrCommentValidation)
 		return
 	}
 
@@ -104,7 +104,7 @@ func (s *Rest) infoCtrl(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get post info")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get post info", rest.ErrPostNotFound)
 		return
 	}
 
@@ -136,7 +136,7 @@ func (s *Rest) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't get last comments")
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't get last comments", rest.ErrInternal)
 		return
 	}
 
@@ -156,7 +156,7 @@ func (s *Rest) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 
 	comment, err := s.DataService.Get(store.Locator{SiteID: siteID, URL: url}, id)
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get comment by id")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get comment by id", rest.ErrCommentNotFound)
 		return
 	}
 	comment = s.adminService.alterComments([]store.Comment{comment}, r)[0]
@@ -202,7 +202,7 @@ func (s *Rest) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get comment by user id")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get comment by user id", rest.ErrCommentNotFound)
 		return
 	}
 
@@ -257,7 +257,7 @@ func (s *Rest) countCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	count, err := s.DataService.Count(locator)
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get count")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get count", rest.ErrPostNotFound)
 		return
 	}
 	render.JSON(w, r, R.JSON{"count": count, "locator": locator})
@@ -268,7 +268,7 @@ func (s *Rest) countMultiCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	posts := []string{}
 	if err := render.DecodeJSON(http.MaxBytesReader(w, r.Body, hardBodyLimit), &posts); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get list of posts from request")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get list of posts from request", rest.ErrSiteNotFound)
 		return
 	}
 
@@ -276,7 +276,7 @@ func (s *Rest) countMultiCtrl(w http.ResponseWriter, r *http.Request) {
 	k := URLKey(r) + strings.Join(posts, ",")
 	hasher := sha1.New()
 	if _, err := hasher.Write([]byte(k)); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't make sha1 for list of urls")
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't make sha1 for list of urls", rest.ErrInternal)
 		return
 	}
 	sha := base64.URLEncoding.EncodeToString(hasher.Sum(nil))
@@ -290,7 +290,7 @@ func (s *Rest) countMultiCtrl(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get counts for "+siteID)
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get counts for "+siteID, rest.ErrSiteNotFound)
 		return
 	}
 
@@ -322,7 +322,7 @@ func (s *Rest) listCtrl(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get list of comments for "+siteID)
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get list of comments for "+siteID, rest.ErrSiteNotFound)
 		return
 	}
 

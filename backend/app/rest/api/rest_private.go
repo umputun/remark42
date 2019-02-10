@@ -28,7 +28,7 @@ func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 	comment := store.Comment{}
 	if err := render.DecodeJSON(http.MaxBytesReader(w, r.Body, hardBodyLimit), &comment); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't bind comment")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't bind comment", rest.ErrDecode)
 		return
 	}
 
@@ -40,36 +40,36 @@ func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 	comment.Orig = comment.Text // original comment text, prior to md render
 	if err := s.DataService.ValidateComment(&comment); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment", rest.ErrCommentValidation)
 		return
 	}
 	comment = s.CommentFormatter.Format(comment)
 
 	// check if user blocked
 	if s.adminService.checkBlocked(comment.Locator.SiteID, comment.User) {
-		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"), "user blocked")
+		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"), "user blocked", rest.ErrUserBlocked)
 		return
 	}
 
 	if s.isReadOnly(comment.Locator) {
-		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"), "old post, read-only")
+		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"), "old post, read-only", rest.ErrReadOnly)
 		return
 	}
 
 	id, err := s.DataService.Create(comment)
 	if err == service.ErrRestrictedWordsFound {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment", rest.ErrCommentValidation)
 		return
 	}
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't save comment")
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't save comment", rest.ErrInternal)
 		return
 	}
 
 	// DataService modifies comment
 	finalComment, err := s.DataService.Get(comment.Locator, id)
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't load created comment")
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't load created comment", rest.ErrInternal)
 		return
 	}
 	s.Cache.Flush(cache.Flusher(comment.Locator.SiteID).
@@ -95,7 +95,7 @@ func (s *Rest) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	}{}
 
 	if err := render.DecodeJSON(http.MaxBytesReader(w, r.Body, hardBodyLimit), &edit); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't bind comment")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't bind comment", rest.ErrDecode)
 		return
 	}
 
@@ -108,12 +108,13 @@ func (s *Rest) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	var currComment store.Comment
 	var err error
 	if currComment, err = s.DataService.Get(locator, id); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't find comment")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't find comment", rest.ErrCommentNotFound)
 		return
 	}
 
 	if currComment.User.ID != user.ID {
-		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"), "can not edit comments for other users")
+		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"),
+			"can not edit comments for other users", rest.ErrNoAccess)
 		return
 	}
 
@@ -126,11 +127,18 @@ func (s *Rest) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 	res, err := s.DataService.EditComment(locator, id, editReq)
 	if err == service.ErrRestrictedWordsFound {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment", rest.ErrCommentValidation)
 		return
 	}
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't update comment")
+		code := rest.ErrCommentRejected
+		switch {
+		case strings.HasPrefix(err.Error(), "too late to edit"):
+			code = rest.ErrCommentEditExpired
+		case strings.HasPrefix(err.Error(), "parent comment with reply can't be edited"):
+			code = rest.ErrCommentEditChanged
+		}
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't update comment", code)
 		return
 	}
 
@@ -158,19 +166,30 @@ func (s *Rest) voteCtrl(w http.ResponseWriter, r *http.Request) {
 	vote := r.URL.Query().Get("vote") == "1"
 
 	if s.isReadOnly(locator) {
-		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"), "old post, read-only")
+		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"), "old post, read-only", rest.ErrReadOnly)
 		return
 	}
 
 	// check if user blocked
 	if s.adminService.checkBlocked(locator.SiteID, user) {
-		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"), "user blocked")
+		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"), "user blocked", rest.ErrUserBlocked)
 		return
 	}
 
 	comment, err := s.DataService.Vote(locator, id, user.ID, vote)
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't vote for comment")
+		code := rest.ErrVoteRejected
+		switch {
+		case strings.Contains(err.Error(), "can not vote for his own comment"):
+			code = rest.ErrVoteSelf
+		case strings.Contains(err.Error(), "already voted for"):
+			code = rest.ErrVoteDbl
+		case strings.Contains(err.Error(), "maximum number of votes exceeded for comment"):
+			code = rest.ErrVoteMax
+		case strings.Contains(err.Error(), "minimal score reached for comment"):
+			code = rest.ErrVoteMinScore
+		}
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't vote for comment", code)
 		return
 	}
 	s.Cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL, comment.User.ID))
@@ -183,7 +202,7 @@ func (s *Rest) userAllDataCtrl(w http.ResponseWriter, r *http.Request) {
 	user := rest.MustGetUserInfo(r)
 	userB, err := json.Marshal(&user)
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't marshal user info")
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't marshal user info", rest.ErrInternal)
 		return
 	}
 
@@ -211,12 +230,12 @@ func (s *Rest) userAllDataCtrl(w http.ResponseWriter, r *http.Request) {
 	for i := 0; i < 100; i++ {
 		comments, err := s.DataService.User(siteID, user.ID, 100, i*100)
 		if err != nil {
-			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't get user comments")
+			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't get user comments", rest.ErrInternal)
 			return
 		}
 		b, err := json.Marshal(comments)
 		if err != nil {
-			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't marshal user comments")
+			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't marshal user comments", rest.ErrInternal)
 			return
 		}
 
@@ -228,7 +247,7 @@ func (s *Rest) userAllDataCtrl(w http.ResponseWriter, r *http.Request) {
 
 	merr = multierror.Append(merr, write([]byte(`}`)))
 	if merr.(*multierror.Error).ErrorOrNil() != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, merr, "can't write user info")
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, merr, "can't write user info", rest.ErrInternal)
 		return
 	}
 
@@ -258,7 +277,7 @@ func (s *Rest) deleteMeCtrl(w http.ResponseWriter, r *http.Request) {
 
 	tokenStr, err := s.Authenticator.TokenService().Token(claims)
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't make token")
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't make token", rest.ErrInternal)
 		return
 	}
 
