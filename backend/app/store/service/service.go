@@ -417,6 +417,7 @@ func (s *DataStore) SetMetas(siteID string, umetas []UserMetaData, pmetas []Post
 	return errs.ErrorOrNil()
 }
 
+// Find wraps engine's Find call and alter results if needed
 func (s *DataStore) Find(locator store.Locator, sort string) ([]store.Comment, error) {
 	comments, err := s.Interface.Find(locator, sort)
 	if err != nil {
