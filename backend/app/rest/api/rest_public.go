@@ -17,7 +17,7 @@ import (
 	"github.com/umputun/remark/backend/app/store"
 )
 
-// GET /find?site=siteID&url=post-url&format=[tree|plain]&sort=[+/-time|+/-score]
+// GET /find?site=siteID&url=post-url&format=[tree|plain]&sort=[+/-time|+/-score|+/-controversy ]
 // find comments for given post. Returns in tree or plain formats, sorted
 func (s *Rest) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}

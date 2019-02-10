@@ -151,6 +151,18 @@ func (t *Tree) sortNodes(sortType string) {
 			}
 			return t.Nodes[i].Comment.Score < t.Nodes[j].Comment.Score
 
+		case "+controversy", "-controversy", "controversy":
+			if strings.HasPrefix(sortType, "-") {
+				if t.Nodes[i].Comment.Controversy == t.Nodes[j].Comment.Controversy {
+					return t.Nodes[i].Comment.Timestamp.Before(t.Nodes[j].Comment.Timestamp)
+				}
+				return t.Nodes[i].Comment.Controversy > t.Nodes[j].Comment.Controversy
+			}
+			if t.Nodes[i].Comment.Controversy == t.Nodes[j].Comment.Controversy {
+				return t.Nodes[i].Comment.Timestamp.Before(t.Nodes[j].Comment.Timestamp)
+			}
+			return t.Nodes[i].Comment.Controversy < t.Nodes[j].Comment.Controversy
+
 		default:
 			return t.Nodes[i].Comment.Timestamp.Before(t.Nodes[j].Comment.Timestamp)
 		}

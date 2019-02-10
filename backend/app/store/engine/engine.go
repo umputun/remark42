@@ -84,6 +84,18 @@ func sortComments(comments []store.Comment, sortFld string) []store.Comment {
 			}
 			return comments[i].Score < comments[j].Score
 
+		case "+controversy", "-controversy", "controversy":
+			if strings.HasPrefix(sortFld, "-") {
+				if comments[i].Controversy == comments[j].Controversy {
+					return comments[i].Timestamp.Before(comments[j].Timestamp)
+				}
+				return comments[i].Controversy > comments[j].Controversy
+			}
+			if comments[i].Controversy == comments[j].Controversy {
+				return comments[i].Timestamp.Before(comments[j].Timestamp)
+			}
+			return comments[i].Controversy < comments[j].Controversy
+
 		default:
 			return comments[i].Timestamp.Before(comments[j].Timestamp)
 		}
