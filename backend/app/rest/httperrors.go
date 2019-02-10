@@ -12,6 +12,7 @@ import (
 	"github.com/go-pkgz/rest"
 )
 
+// All error codes for UI mapping and translation
 const (
 	ErrInternal           = 0  // any internal error
 	ErrCommentNotFound    = 1  // can't find comment
