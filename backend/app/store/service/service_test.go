@@ -652,6 +652,40 @@ func TestService_HasReplies(t *testing.T) {
 	assert.True(t, b.HasReplies(comment))
 }
 
+func TestService_Find(t *testing.T) {
+	defer os.Remove(testDb)
+
+	// two comments for https://radio-t.com, no reply
+	b := DataStore{Interface: prepStoreEngine(t), EditDuration: 100 * time.Millisecond,
+		AdminStore: admin.NewStaticStore("secret 123", []string{"user2"}, "user@email.com")}
+
+	res, err := b.Find(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "time")
+	require.NoError(t, err)
+	assert.Equal(t, 2, len(res))
+
+	// add one more for https://radio-t.com/2
+	comment := store.Comment{
+		ID:        "123456",
+		Text:      `some text, <a href="http://radio-t.com">link</a>`,
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
+		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+		User:      store.User{ID: "user1", Name: "user name"},
+		Score:     1,
+		Votes:     map[string]bool{"id-1": true, "id-2": true, "123456": false},
+	}
+	_, err = b.Interface.Create(comment) // create directly with engine, doesn't set Controversy
+	assert.Nil(t, err)
+
+	// make sure Controversy altered
+	res, err = b.Find(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "-controversy")
+	require.NoError(t, err)
+	assert.Equal(t, 3, len(res))
+	assert.Equal(t, "123456", res[0].ID)
+	assert.InDelta(t, 1.73, res[0].Controversy, 0.01)
+	assert.Equal(t, "id-1", res[1].ID)
+	assert.InDelta(t, 0, res[1].Controversy, 0.01)
+}
+
 // makes new boltdb, put two records
 func prepStoreEngine(t *testing.T) engine.Interface {
 	os.Remove(testDb)

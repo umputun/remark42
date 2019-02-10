@@ -180,17 +180,7 @@ func (s *DataStore) Vote(locator store.Locator, commentID string, userID string,
 		comment.Score--
 	}
 
-	upsAndDowns := func() (ups, downs int) {
-		for _, v := range comment.Votes {
-			if v {
-				ups++
-				continue
-			}
-			downs++
-		}
-		return ups, downs
-	}
-	comment.Controversy = s.controversy(upsAndDowns())
+	comment.Controversy = s.controversy(s.upsAndDowns(comment))
 
 	return comment, s.Put(locator, comment)
 }
@@ -425,6 +415,33 @@ func (s *DataStore) SetMetas(siteID string, umetas []UserMetaData, pmetas []Post
 	}
 
 	return errs.ErrorOrNil()
+}
+
+func (s *DataStore) Find(locator store.Locator, sort string) ([]store.Comment, error) {
+	comments, err := s.Interface.Find(locator, sort)
+	if err != nil {
+		return comments, err
+	}
+
+	// set votes controversy for comments added prior to #274
+	for i, c := range comments {
+		if c.Controversy == 0 && len(c.Votes) > 0 {
+			comments[i].Controversy = s.controversy(s.upsAndDowns(c))
+		}
+	}
+
+	return comments, nil
+}
+
+func (s *DataStore) upsAndDowns(c store.Comment) (ups, downs int) {
+	for _, v := range c.Votes {
+		if v {
+			ups++
+			continue
+		}
+		downs++
+	}
+	return ups, downs
 }
 
 // getsScopedLocks pull lock from the map if found or create a new one
