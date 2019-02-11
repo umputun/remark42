@@ -163,7 +163,7 @@ func (b *BoltDB) Find(locator store.Locator, sortFld string) (comments []store.C
 		})
 	})
 
-	comments = sortComments(comments, sortFld)
+	comments = SortComments(comments, sortFld)
 	return comments, err
 }
 

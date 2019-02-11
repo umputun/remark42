@@ -3,6 +3,7 @@ package service
 import (
 	"math"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -424,11 +425,20 @@ func (s *DataStore) Find(locator store.Locator, sort string) ([]store.Comment, e
 		return comments, err
 	}
 
+	changedSort := false
 	// set votes controversy for comments added prior to #274
 	for i, c := range comments {
 		if c.Controversy == 0 && len(c.Votes) > 0 {
 			comments[i].Controversy = s.controversy(s.upsAndDowns(c))
+			if !changedSort && strings.Contains(sort, "controversy") { // trigger sort change
+				changedSort = true
+			}
 		}
+	}
+
+	// resort commits if altered
+	if changedSort {
+		comments = engine.SortComments(comments, sort)
 	}
 
 	return comments, nil

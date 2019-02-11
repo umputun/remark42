@@ -1,9 +1,9 @@
 
 ### find request with tree
-GET {{host}}/api/v1/find?site={{site}}&sort=-active&format=tree&url={{url}}
+GET {{host}}/api/v1/find?site={{site}}&sort=-controversy&format=tree&url={{url}}
 
 ### find request with plain
-GET {{host}}/api/v1/find?site={{site}}&sort=-time&format=plain&url={{url}}
+GET {{host}}/api/v1/find?site={{site}}&sort=-controversy&format=plain&url={{url}}
 
 ### last 50 comments
 GET {{host}}/api/v1/last/50?site={{site}}
@@ -41,7 +41,7 @@ Content-Type: application/json
 }
 
 ### update comment
-PUT {{host}}/api/v1/comment/7b88d7a91353ab206cb63cdca18fb26bcb30205b?site=remark&url=https://radio-t.com/blah1
+PUT {{host}}/api/v1/comment/7b88d7a91353ab206cb63cdca18fb26bcb30205b?site={{site}}&url=https://radio-t.com/blah1
 Content-Type: application/json
 
 {
@@ -50,22 +50,22 @@ Content-Type: application/json
 }
 
 ### pin comment
-PUT {{host}}/api/v1/admin/pin/3665976683?site=remark&url={{url}}&pin=1
+PUT {{host}}/api/v1/admin/pin/3665976683?site={{site}}&url={{url}}&pin=1
 
 ### vote for comment
-PUT {{host}}/api/v1/vote/3665976683?site=remark&url={{url}}&vote=1
+PUT {{host}}/api/v1/vote/73e346f4-d57d-41a8-8803-6671aa187d8e?site={{site}}&url={{url}}&vote=1
 
 ### get user info
 GET {{host}}/api/v1/user
 
 ### get comment by id
-GET {{host}}/api/v1/id/3665976683?site=remark&url={{url}}
+GET {{host}}/api/v1/id/73e346f4-d57d-41a8-8803-6671aa187d8e?site={{site}}&url={{url}}
 
 ### get comment by id 2
-GET {{host}}/api/v1/id/a2ddb8d2f65008ee1a1e3af8df0f26beb042309c?site=remark&url=https://radio-t.com/blah1
+GET {{host}}/api/v1/id/a2ddb8d2f65008ee1a1e3af8df0f26beb042309c?site={{site}}&url=https://radio-t.com/blah1
 
 ### get comment by user id
-GET {{host}}/api/v1/comments?site={{site}}&user=github_f1fda731dd18fbb388c943599fcae5a213315add&limit=5
+GET {{host}}/api/v1/comments?site={{site}}&user={{user}}&limit=5
 
 ### get comment by user id2
 GET {{host}}/api/v1/comments?site={{site}}&user=github_0a4349d868946d7841424c9bdd4415629df771e6
@@ -84,7 +84,7 @@ Content-Type: application/json
 ]
 
 ### list commented posts
-GET {{host}}/api/v1/list?site={{site}}&limit=10&skip=5
+GET {{host}}/api/v1/list?site={{site}}&limit=10&skip=0
 
 ### block user
 PUT {{host}}/api/v1/admin/user/disqus_grigorybakunov?site={{site}}&block=1
