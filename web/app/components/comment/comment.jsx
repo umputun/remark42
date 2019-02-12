@@ -8,6 +8,7 @@ import { url } from 'common/settings';
 import store from 'common/store';
 import copy from 'common/copy';
 import debounce from 'utils/debounce';
+import { extractErrorMessageFromResponse } from 'utils/errorUtils';
 
 import Input from 'components/input';
 
@@ -23,6 +24,7 @@ export default class Comment extends Component {
       isEditing: false,
       isUserVerified: false,
       editTimeLeft: null,
+      voteErrorMessage: null,
     };
 
     this.votingPromise = Promise.resolve();
@@ -49,6 +51,8 @@ export default class Comment extends Component {
     this.isGuest = this.isGuest.bind(this);
     this.getUpvoteDisabledReason = this.getUpvoteDisabledReason.bind(this);
     this.getDownvoteDisabledReason = this.getDownvoteDisabledReason.bind(this);
+    this.handleVoteError = this.handleVoteError.bind(this);
+    this.sendVotingRequest = this.sendVotingRequest.bind(this);
   }
 
   componentWillReceiveProps(nextProps) {
@@ -264,6 +268,23 @@ export default class Comment extends Component {
     }
   }
 
+  handleVoteError(e, originalVotingState) {
+    this.setState({
+      ...originalVotingState,
+      voteErrorMessage: extractErrorMessageFromResponse(e.response),
+    });
+  }
+
+  sendVotingRequest(id, votingValue, originalVotingState) {
+    this.votingPromise = this.votingPromise
+      .then(() => {
+        return api.putCommentVote({ id, url, value: votingValue }).then(() => {
+          api.getComment({ id }).then(comment => store.replaceComment(comment));
+        });
+      })
+      .catch(e => this.handleVoteError(e, originalVotingState));
+  }
+
   increaseScore() {
     const { score, scoreIncreased, scoreDecreased } = this.state;
     const { id } = this.props.data;
@@ -274,13 +295,10 @@ export default class Comment extends Component {
       scoreIncreased: !scoreDecreased,
       scoreDecreased: false,
       score: score + 1,
+      voteErrorMessage: null,
     });
 
-    this.votingPromise = this.votingPromise.then(() => {
-      return api.putCommentVote({ id, url, value: 1 }).then(() => {
-        api.getComment({ id }).then(comment => store.replaceComment(comment));
-      });
-    });
+    this.sendVotingRequest(id, 1, { score, scoreIncreased, scoreDecreased });
   }
 
   decreaseScore() {
@@ -293,13 +311,10 @@ export default class Comment extends Component {
       scoreDecreased: !scoreIncreased,
       scoreIncreased: false,
       score: score - 1,
+      voteErrorMessage: null,
     });
 
-    this.votingPromise = this.votingPromise.then(() => {
-      return api.putCommentVote({ id, url, value: -1 }).then(() => {
-        api.getComment({ id }).then(comment => store.replaceComment(comment));
-      });
-    });
+    this.sendVotingRequest(id, -1, { score, scoreIncreased, scoreDecreased });
   }
 
   onReply(...rest) {
@@ -412,6 +427,7 @@ export default class Comment extends Component {
       isEditing,
       isUserVerified,
       editTimeLeft,
+      voteErrorMessage,
     }
   ) {
     const { data, mods = {}, isCommentsDisabled } = props;
@@ -606,6 +622,12 @@ export default class Comment extends Component {
               </span>
             </span>
           </div>
+
+          {!!voteErrorMessage && (
+            <div className="voting__error" role="alert">
+              Voting error: {voteErrorMessage}
+            </div>
+          )}
 
           <div
             className={b('comment__text', { mix: b('raw-content', {}, { theme: mods.theme }) })}

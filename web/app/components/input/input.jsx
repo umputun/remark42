@@ -6,6 +6,7 @@ import { siteId, url, pageTitle } from 'common/settings';
 
 import api from 'common/api';
 import store from 'common/store';
+import { extractErrorMessageFromResponse } from 'utils/errorUtils';
 import TextareaAutosize from 'components/input/textarea-autosize';
 
 const RSS_THREAD_URL = `${BASE_URL}${API_BASE}/rss/post?site=${siteId}&url=${url}`;
@@ -92,16 +93,8 @@ export default class Input extends Component {
         this.setState({ preview: null, text: '' });
       })
       .catch(e => {
-        if (
-          e.response &&
-          e.response.data &&
-          typeof e.response.data.error === 'string' &&
-          e.response.data.error.indexOf("parent comment with reply can't be edited") === 0
-        ) {
-          this.setState({ isErrorShown: true, errorMessage: 'Comment has reply, editing is not possible' });
-          return;
-        }
-        this.setState({ isErrorShown: true, errorMessage: null });
+        const errorMessage = extractErrorMessageFromResponse(e.response);
+        this.setState({ isErrorShown: true, errorMessage });
       })
       .finally(() => this.setState({ isDisabled: false }));
   }
