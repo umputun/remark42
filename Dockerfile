@@ -64,6 +64,7 @@ RUN \
 FROM node:10.11-alpine as build-frontend-deps
 
 ARG CI
+ENV HUSKY_SKIP_INSTALL=true
 
 RUN apk add --no-cache --update git
 ADD web/package.json /srv/web/package.json

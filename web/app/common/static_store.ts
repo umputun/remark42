@@ -1,0 +1,30 @@
+import { Config } from './types';
+import { QuerySettingsType, querySettings } from './settings';
+
+interface StaticStoreType {
+  config: Config;
+  query: QuerySettingsType;
+  /** used in user-comments page */
+  serverClientTimeDiff?: number;
+}
+
+/**
+ * Represent store of values that and will not change, or doesn't need reactivity
+ *
+ * Initialized once at webpack's entry points (i.e remark.tsx)
+ */
+export const StaticStore = {
+  config: {
+    version: '',
+    edit_duration: 5000,
+    max_comment_size: 5000,
+    admins: [],
+    admin_email: '',
+    auth_providers: [],
+    critical_score: 0,
+    low_score: 0,
+    positive_score: false,
+    readonly_age: 0,
+  },
+  query: querySettings,
+} as StaticStoreType;

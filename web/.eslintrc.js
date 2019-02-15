@@ -1,7 +1,45 @@
 module.exports = {
   parser: 'babel-eslint',
-  extends: ['eslint:recommended', 'plugin:jsx-a11y/recommended', 'plugin:prettier/recommended'],
+  extends: [
+    'eslint:recommended',
+    'plugin:jsx-a11y/recommended',
+    'plugin:prettier/recommended',
+    'plugin:@typescript-eslint/recommended',
+  ],
   plugins: ['react', 'jsx-a11y', 'prettier'],
+  overrides: [
+    {
+      files: ['*.ts', '*.tsx'],
+      plugins: ['@typescript-eslint'],
+      parser: '@typescript-eslint/parser',
+      parserOptions: {
+        project: './tsconfig.json',
+        tsconfigRootDir: './',
+      },
+      rules: {
+        // disabling because typescipt uses it's own lint (see next rule)
+        'no-unused-vars': 0,
+        // allow Rust-like var starting with _underscore
+        '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: /^_/ }],
+        // disabling because it's bad practice to mark acceesibility in react classes
+        '@typescript-eslint/explicit-member-accessibility': 0,
+        // doesn't work in real world
+        '@typescript-eslint/no-non-null-assertion': 0,
+        // actually it better to disable inly in tests, but i'm tired to to do this now, feel free to change
+        '@typescript-eslint/no-explicit-any': 0,
+        // disabling because store actions use WATCH_ME_IM_SPECIAL case
+        '@typescript-eslint/class-name-casing': 0,
+        // actually it better to disable inly in tests, but i'm tired to to do this now, feel free to change
+        '@typescript-eslint/no-object-literal-type-assertion': 0,
+        // disabling because server output uses snake case response
+        '@typescript-eslint/camelcase': 0,
+        // disabling because it's standard behaviour that function is hoisted to top
+        '@typescript-eslint/no-use-before-define': 0,
+        // maybe good but I have just tired to type return types everywhere, especially with complex generic return types
+        '@typescript-eslint/explicit-function-return-type': 0,
+      },
+    },
+  ],
   env: {
     browser: true,
     node: true,
@@ -9,6 +47,8 @@ module.exports = {
     jest: true,
   },
   parserOptions: {
+    ecmaVersion: 6,
+    sourceType: 'module',
     ecmaFeatures: {
       modules: true,
       jsx: true,
@@ -16,9 +56,9 @@ module.exports = {
   },
   globals: {
     remark_config: true,
-    b: true,
   },
   rules: {
+    '@typescript-eslint/indent': 0,
     'react/jsx-uses-react': 2,
     'react/jsx-uses-vars': 2,
     'no-cond-assign': 1,
@@ -49,10 +89,12 @@ module.exports = {
     'no-dupe-class-members': 2,
     'no-const-assign': 2,
     'prefer-spread': 2,
+    'prefer-const': 2,
     'no-useless-concat': 2,
     'no-var': 2,
     'object-shorthand': 2,
     'prefer-arrow-callback': 2,
     'prettier/prettier': 2,
+    '@typescript-eslint/no-var-requires': 0,
   },
 };
