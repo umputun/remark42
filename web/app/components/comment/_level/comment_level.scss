@@ -2,13 +2,13 @@ $step: 24px;
 
 @for $i from 1 to 5 {
   .comment_level {
-    &_$(i) {
-      padding-left: calc($i * $step);
+    &_#{$i} {
+      padding-left: $i * $step;
 
       &.comment_replying {
         .comment__input {
           @media (-moz-touch-enabled: 1) and (max-width: 768px), (pointer: coarse) and (max-width: 768px) {
-            margin-left: calc(-$i * $step);
+            margin-left: -$i * $step;
           }
         }
       }
