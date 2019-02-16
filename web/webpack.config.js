@@ -70,22 +70,12 @@ module.exports = {
         },
       },
       {
-        test: /\.css$/,
+        test: /\.s?css$/,
         use: [
           {
             loader: MiniCssExtractPlugin.loader,
           },
           ...commonStyleLoaders,
-        ],
-      },
-      {
-        test: /\.scss$/,
-        use: [
-          {
-            loader: MiniCssExtractPlugin.loader,
-          },
-          ...commonStyleLoaders,
-          'sass-loader',
         ],
       },
       {
