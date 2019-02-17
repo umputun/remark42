@@ -3,7 +3,7 @@
   $fontSize: 16px;
   $paddingVrt: 10px;
   $lines: 3;
-  $height: calc($fontSize * $lineHeight * $lines+$paddingVrt * 2);
+  $height: calc($fontSize * $lineHeight * $lines + $paddingVrt * 2);
 
   box-sizing: border-box;
   width: 100%;

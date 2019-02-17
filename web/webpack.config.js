@@ -3,7 +3,7 @@
 const path = require('path');
 
 const webpack = require('webpack');
-const ExtractText = require('extract-text-webpack-plugin');
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const Clean = require('clean-webpack-plugin');
 const Copy = require('copy-webpack-plugin');
 const Html = require('html-webpack-plugin');
@@ -70,11 +70,13 @@ module.exports = {
         },
       },
       {
-        test: /\.scss$/,
-        use: ExtractText.extract({
-          fallback: 'style-loader',
-          use: commonStyleLoaders,
-        }),
+        test: /\.s?css$/,
+        use: [
+          {
+            loader: MiniCssExtractPlugin.loader,
+          },
+          ...commonStyleLoaders,
+        ],
       },
       {
         test: /\.(png|jpg|jpeg|gif|svg)$/,
@@ -119,12 +121,10 @@ module.exports = {
       filename: 'comments.html',
       inject: false,
     }),
-    new ExtractText({
-      filename: `remark.css`,
-      allChunks: true,
+    new MiniCssExtractPlugin({
+      filename: '[name].css',
     }),
     new webpack.optimize.ModuleConcatenationPlugin(),
-    ...(env === 'production' ? [new webpack.optimize.UglifyJsPlugin()] : []),
     ...(process.env.CI
       ? []
       : [

@@ -298,10 +298,9 @@ export default class Root extends Component {
 
           {!isBlockedVisible && (
             <div className="root__main">
-              {!isGuest &&
-                !isCommentsDisabled && (
-                  <Input mix="root__input" mods={{ type: 'main' }} onSubmit={this.addComment} userId={user.id} />
-                )}
+              {!isGuest && !isCommentsDisabled && (
+                <Input mix="root__input" mods={{ type: 'main' }} onSubmit={this.addComment} userId={user.id} />
+              )}
 
               {!!pinnedComments.length && (
                 <div className="root__pinned-comments" role="region" aria-label="Pinned comments">
@@ -311,29 +310,27 @@ export default class Root extends Component {
                 </div>
               )}
 
-              {!!comments.length &&
-                !isCommentsListLoading && (
-                  <div className="root__threads" role="list">
-                    {(IS_MOBILE ? comments.slice(0, commentsShown) : comments).map(thread => (
-                      <Thread
-                        key={thread.comment.id}
-                        mix="root__thread"
-                        mods={{ level: 0 }}
-                        data={thread}
-                        isCommentsDisabled={isCommentsDisabled}
-                        onReply={this.addComment}
-                        onEdit={this.replaceComment}
-                      />
-                    ))}
+              {!!comments.length && !isCommentsListLoading && (
+                <div className="root__threads" role="list">
+                  {(IS_MOBILE ? comments.slice(0, commentsShown) : comments).map(thread => (
+                    <Thread
+                      key={thread.comment.id}
+                      mix="root__thread"
+                      mods={{ level: 0 }}
+                      data={thread}
+                      isCommentsDisabled={isCommentsDisabled}
+                      onReply={this.addComment}
+                      onEdit={this.replaceComment}
+                    />
+                  ))}
 
-                    {commentsShown < comments.length &&
-                      IS_MOBILE && (
-                        <button className="root__show-more" onClick={this.showMore}>
-                          Show more
-                        </button>
-                      )}
-                  </div>
-                )}
+                  {commentsShown < comments.length && IS_MOBILE && (
+                    <button className="root__show-more" onClick={this.showMore}>
+                      Show more
+                    </button>
+                  )}
+                </div>
+              )}
 
               {isCommentsListLoading && (
                 <div className="root__threads" role="list">

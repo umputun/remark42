@@ -451,10 +451,10 @@ export default class Comment extends Component {
           ? getTextSnippet(data.text)
           : data.text
         : userBlocked
-          ? 'This user was blocked'
-          : deleted
-            ? 'This comment was deleted'
-            : data.text,
+        ? 'This user was blocked'
+        : deleted
+        ? 'This comment was deleted'
+        : data.text,
       time: formatTime(new Date(data.time)),
       orig: isEditing
         ? data.orig &&
@@ -520,14 +520,13 @@ export default class Comment extends Component {
         className={b('comment', props, defaultMods)}
         id={mods.disabled ? null : `${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}
       >
-        {mods.view === 'user' &&
-          o.title && (
-            <div className="comment__title">
-              <a className="comment__title-link" href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}>
-                {o.title}
-              </a>
-            </div>
-          )}
+        {mods.view === 'user' && o.title && (
+          <div className="comment__title">
+            <a className="comment__title-link" href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}>
+              {o.title}
+            </a>
+          </div>
+        )}
         <div className="comment__body">
           <div className="comment__info">
             {mods.view !== 'user' && <Avatar picture={o.user.picture} />}
@@ -542,52 +541,47 @@ export default class Comment extends Component {
               </span>
             )}
 
-            {isAdmin &&
-              mods.view !== 'user' && (
-                <span
-                  {...getHandleClickProps(() => this.toggleVerify(o.user.verified))}
-                  aria-label="Toggle verification"
-                  title={o.user.verified ? 'Verified user' : 'Unverified user'}
-                  className={b('comment__verification', {}, { active: o.user.verified, clickable: true })}
-                />
-              )}
+            {isAdmin && mods.view !== 'user' && (
+              <span
+                {...getHandleClickProps(() => this.toggleVerify(o.user.verified))}
+                aria-label="Toggle verification"
+                title={o.user.verified ? 'Verified user' : 'Unverified user'}
+                className={b('comment__verification', {}, { active: o.user.verified, clickable: true })}
+              />
+            )}
 
-            {!isAdmin &&
-              !!o.user.verified &&
-              mods.view !== 'user' && (
-                <span title="Verified user" className={b('comment__verification', {}, { active: true })} />
-              )}
+            {!isAdmin && !!o.user.verified && mods.view !== 'user' && (
+              <span title="Verified user" className={b('comment__verification', {}, { active: true })} />
+            )}
 
             <a href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`} className="comment__time">
               {o.time}
             </a>
 
-            {mods.level > 0 &&
-              mods.view !== 'user' && (
-                <a
-                  className="comment__link-to-parent"
-                  href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.pid}`}
-                  aria-label="Go to parent comment"
-                  title="Go to parent comment"
-                  onClick={this.scrollToParent}
-                >
-                  {' '}
-                </a>
-              )}
+            {mods.level > 0 && mods.view !== 'user' && (
+              <a
+                className="comment__link-to-parent"
+                href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.pid}`}
+                aria-label="Go to parent comment"
+                title="Go to parent comment"
+                onClick={this.scrollToParent}
+              >
+                {' '}
+              </a>
+            )}
 
             {isAdmin && userBlocked && mods.view !== 'user' && <span className="comment__status">Blocked</span>}
 
             {isAdmin && !userBlocked && deleted && <span className="comment__status">Deleted</span>}
 
-            {!mods.disabled &&
-              mods.view !== 'user' && (
-                <span
-                  {...getHandleClickProps(this.toggleCollapse)}
-                  className={b('comment__action', {}, { type: 'collapse', selected: mods.collapsed })}
-                >
-                  {mods.collapsed ? '+' : '−'}
-                </span>
-              )}
+            {!mods.disabled && mods.view !== 'user' && (
+              <span
+                {...getHandleClickProps(this.toggleCollapse)}
+                className={b('comment__action', {}, { type: 'collapse', selected: mods.collapsed })}
+              >
+                {mods.collapsed ? '+' : '−'}
+              </span>
+            )}
 
             <span className={b('comment__score', {}, { view: o.score.view })}>
               <span
@@ -636,15 +630,11 @@ export default class Comment extends Component {
           />
 
           <div className="comment__actions">
-            {!deleted &&
-              !isCommentsDisabled &&
-              !mods.disabled &&
-              !isGuest &&
-              mods.view !== 'user' && (
-                <span {...getHandleClickProps(this.toggleReplying)} className="comment__action">
-                  {isReplying ? 'Cancel' : 'Reply'}
-                </span>
-              )}
+            {!deleted && !isCommentsDisabled && !mods.disabled && !isGuest && mods.view !== 'user' && (
+              <span {...getHandleClickProps(this.toggleReplying)} className="comment__action">
+                {isReplying ? 'Cancel' : 'Reply'}
+              </span>
+            )}
 
             {!deleted &&
               !mods.disabled &&
@@ -669,76 +659,75 @@ export default class Comment extends Component {
                 <span className="comment__edit-timer">{editTimeLeft && `${editTimeLeft}`}</span>,
               ]}
 
-            {!deleted &&
-              isAdmin && (
-                <span className="comment__controls">
-                  {!isCopied && (
-                    <span
-                      {...getHandleClickProps(() => this.copyComment({ username: o.user.name, time: o.time }))}
-                      className="comment__control"
+            {!deleted && isAdmin && (
+              <span className="comment__controls">
+                {!isCopied && (
+                  <span
+                    {...getHandleClickProps(() => this.copyComment({ username: o.user.name, time: o.time }))}
+                    className="comment__control"
+                  >
+                    Copy
+                  </span>
+                )}
+
+                {isCopied && <span className="comment__control comment__control_view_inactive">Copied!</span>}
+
+                {mods.view !== 'user' && (
+                  <span {...getHandleClickProps(() => this.togglePin(pinned))} className="comment__control">
+                    {pinned ? 'Unpin' : 'Pin'}
+                  </span>
+                )}
+
+                {userBlocked && (
+                  <span {...getHandleClickProps(() => this.onUnblockUserClick())} className="comment__control">
+                    Unblock
+                  </span>
+                )}
+
+                {!userBlocked && (
+                  <span className="comment__control comment__control_select-label">
+                    Block
+                    <select
+                      className="comment__control_select"
+                      onBlur={this.onBlockUserClick}
+                      onChange={this.onBlockUserClick}
                     >
-                      Copy
-                    </span>
-                  )}
+                      <option disabled selected value>
+                        {' '}
+                        Blocking period{' '}
+                      </option>
+                      {BLOCKING_DURATIONS.map(block => (
+                        <option value={block.value}>{block.label}</option>
+                      ))}
+                    </select>
+                  </span>
+                )}
 
-                  {isCopied && <span className="comment__control comment__control_view_inactive">Copied!</span>}
-
-                  {mods.view !== 'user' && (
-                    <span {...getHandleClickProps(() => this.togglePin(pinned))} className="comment__control">
-                      {pinned ? 'Unpin' : 'Pin'}
-                    </span>
-                  )}
-
-                  {userBlocked && (
-                    <span {...getHandleClickProps(() => this.onUnblockUserClick())} className="comment__control">
-                      Unblock
-                    </span>
-                  )}
-
-                  {!userBlocked && (
-                    <span className="comment__control comment__control_select-label">
-                      Block
-                      <select
-                        className="comment__control_select"
-                        onBlur={this.onBlockUserClick}
-                        onChange={this.onBlockUserClick}
-                      >
-                        <option disabled selected value>
-                          {' '}
-                          Blocking period{' '}
-                        </option>
-                        {BLOCKING_DURATIONS.map(block => <option value={block.value}>{block.label}</option>)}
-                      </select>
-                    </span>
-                  )}
-
-                  {!deleted && (
-                    <span {...getHandleClickProps(this.onDeleteClick)} className="comment__control">
-                      Delete
-                    </span>
-                  )}
-                </span>
-              )}
+                {!deleted && (
+                  <span {...getHandleClickProps(this.onDeleteClick)} className="comment__control">
+                    Delete
+                  </span>
+                )}
+              </span>
+            )}
           </div>
         </div>
 
-        {isReplying &&
-          mods.view !== 'user' && (
-            <Input mix="comment__input" onSubmit={this.onReply} onCancel={this.toggleReplying} pid={o.id} />
-          )}
+        {isReplying && mods.view !== 'user' && (
+          <Input mix="comment__input" onSubmit={this.onReply} onCancel={this.toggleReplying} pid={o.id} />
+        )}
 
-        {isEditing &&
-          mods.view !== 'user' && (
-            <Input
-              mix="comment__input"
-              mods={{ mode: 'edit' }}
-              onSubmit={this.onEdit}
-              onCancel={this.toggleEditing}
-              id={o.id}
-              value={o.orig}
-              errorMessage={!editTimeLeft && 'Editing time has expired.'}
-            />
-          )}
+        {isEditing && mods.view !== 'user' && (
+          <Input
+            mix="comment__input"
+            mods={{ mode: 'edit' }}
+            onSubmit={this.onEdit}
+            onCancel={this.toggleEditing}
+            id={o.id}
+            value={o.orig}
+            errorMessage={!editTimeLeft && 'Editing time has expired.'}
+          />
+        )}
       </article>
     );
   }

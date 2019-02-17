@@ -11,7 +11,9 @@ const LastCommentsList = ({ comments, isLoading, mods = {} }) => {
 
   return (
     <div>
-      {comments.map(comment => <Comment data={comment} mods={{ level: 0, view: 'user', theme: mods.theme }} />)}
+      {comments.map(comment => (
+        <Comment data={comment} mods={{ level: 0, view: 'user', theme: mods.theme }} />
+      ))}
     </div>
   );
 };
