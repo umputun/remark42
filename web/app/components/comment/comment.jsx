@@ -446,6 +446,7 @@ export default class Comment extends Component {
 
     const o = {
       ...data,
+      controversyText: `Controversy: ${(data.controversy || 0).toFixed(2)}`,
       text: data.text.length
         ? mods.view === 'preview'
           ? getTextSnippet(data.text)
@@ -603,7 +604,7 @@ export default class Comment extends Component {
                 Vote up
               </span>
 
-              <span className="comment__score-value">
+              <span className="comment__score-value" title={o.controversyText}>
                 {o.score.sign}
                 {o.score.value}
               </span>

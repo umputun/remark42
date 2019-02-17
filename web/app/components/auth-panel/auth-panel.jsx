@@ -188,6 +188,14 @@ function getSortArray(currentSort) {
       value: '+active',
       label: 'Least recently updated',
     },
+    {
+      value: '-controversy',
+      label: 'Most controversial',
+    },
+    {
+      value: '+controversy',
+      label: 'Least controversial',
+    },
   ];
 
   return sortArray.map(sort => {

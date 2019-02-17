@@ -489,6 +489,7 @@ type Comment struct {
     Locator   Locator         `json:"locator"` // post locator
     Score     int             `json:"score"`   // comment score, read only
     Votes     map[string]bool `json:"votes"`   // comment votes, read only
+    Controversy float64       `json:"controversy,omitempty"` // comment controversy, read only
     Timestamp time.Time       `json:"time"`    // time stamp, read only
     Pin       bool            `json:"pin"`     // pinned status, read only
     Delete    bool            `json:"delete"`  // delete status, read only
