@@ -116,6 +116,7 @@ _this is the recommended way to run remark42_
 | auth.yandex.cid         | AUTH_YANDEX_CID         |                       | Yandex OAuth client ID                           |
 | auth.yandex.csec        | AUTH_YANDEX_CSEC        |                       | Yandex OAuth client secret                       |
 | auth.dev                | AUTH_DEV                | `false`               | local oauth2 server, development mode only       |
+| auth.anon               | AUTH_ANON               | `false`               | enable anonymous login                           |
 | notify.type             | NOTIFY_TYPE             | none                  | type of notification (none or telegram)          |
 | notify.queue            | NOTIFY_QUEUE            | `100`                 | size of notification queue                       |
 | notify.telegram.token   | NOTIFY_TELEGRAM_TOKEN   |                       | telegram token                                   |
@@ -474,6 +475,11 @@ type User struct {
 ```
 
 _currently supported providers are `google`, `facebook`, `github` and `yandex`_
+
+Optionally, anonymous access can be turned on. In this case and extra `anonymous` provider will allow logins without any social login with any name satisfying 2 conditions:
+
+- name should be at least 3 characters long 
+- name has to start from the letter and contains letters, numbers, underscores and spaces only.
 
 ### Commenting
 

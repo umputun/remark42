@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"path"
+	"regexp"
 	"strings"
 	"syscall"
 	"time"
@@ -66,11 +67,12 @@ type ServerCommand struct {
 			JWT    time.Duration `long:"jwt" env:"JWT" default:"5m" description:"jwt TTL"`
 			Cookie time.Duration `long:"cookie" env:"COOKIE" default:"200h" description:"auth cookie TTL"`
 		} `group:"ttl" namespace:"ttl" env-namespace:"TTL"`
-		Google   AuthGroup `group:"google" namespace:"google" env-namespace:"GOOGLE" description:"Google OAuth"`
-		Github   AuthGroup `group:"github" namespace:"github" env-namespace:"GITHUB" description:"Github OAuth"`
-		Facebook AuthGroup `group:"facebook" namespace:"facebook" env-namespace:"FACEBOOK" description:"Facebook OAuth"`
-		Yandex   AuthGroup `group:"yandex" namespace:"yandex" env-namespace:"YANDEX" description:"Yandex OAuth"`
-		Dev      bool      `long:"dev" env:"DEV" description:"enable dev (local) oauth2"`
+		Google    AuthGroup `group:"google" namespace:"google" env-namespace:"GOOGLE" description:"Google OAuth"`
+		Github    AuthGroup `group:"github" namespace:"github" env-namespace:"GITHUB" description:"Github OAuth"`
+		Facebook  AuthGroup `group:"facebook" namespace:"facebook" env-namespace:"FACEBOOK" description:"Facebook OAuth"`
+		Yandex    AuthGroup `group:"yandex" namespace:"yandex" env-namespace:"YANDEX" description:"Yandex OAuth"`
+		Dev       bool      `long:"dev" env:"DEV" description:"enable dev (local) oauth2"`
+		Anonymous bool      `long:"anon" env:"ANON" description:"enable anonymous login"`
 	} `group:"auth" namespace:"auth" env-namespace:"AUTH"`
 
 	CommonOpts
@@ -475,6 +477,24 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) {
 	if s.Auth.Dev {
 		authenticator.AddProvider("dev", "", "")
 		providers++
+	}
+
+	if s.Auth.Anonymous {
+		log.Print("[INFO] anonymous access enabled")
+		var isValidAnonName = regexp.MustCompile(`^[a-zA-Z][\w ]+$`).MatchString
+		authenticator.AddDirectProvider("anonymous", provider.CredCheckerFunc(func(user, _ string) (ok bool, err error) {
+			user = strings.TrimSpace(user)
+			if len(user) < 3 {
+				log.Printf("[WARN] name %q is too short, should be at least 3 characters", user)
+				return false, nil
+			}
+
+			if !isValidAnonName(user) {
+				log.Printf("[WARN] name %q should have letters, digits, underscores and spaces only", user)
+				return false, nil
+			}
+			return true, nil
+		}))
 	}
 
 	if providers == 0 {
