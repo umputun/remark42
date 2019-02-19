@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"crypto/sha1"
 	"errors"
 	"net/http"
 
@@ -57,7 +58,10 @@ func (p DirectHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	claims := token.Claims{
-		User: &token.User{Name: user},
+		User: &token.User{
+			Name: user,
+			ID:   p.ProviderName + "_" + token.HashID(sha1.New(), user),
+		},
 		StandardClaims: jwt.StandardClaims{
 			Issuer:   p.Issuer,
 			Audience: aud,

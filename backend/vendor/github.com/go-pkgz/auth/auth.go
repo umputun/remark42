@@ -146,6 +146,11 @@ func (s *Service) Handlers() (authHandler http.Handler, avatarHandler http.Handl
 
 		// allow logout without specifying provider
 		if elems[len(elems)-1] == "logout" {
+			if len(s.providers) == 0 {
+				w.WriteHeader(http.StatusBadRequest)
+				rest.RenderJSON(w, r, rest.JSON{"error": "provides not defined"})
+				return
+			}
 			s.providers[0].Handler(w, r)
 			return
 		}
