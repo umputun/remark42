@@ -3,6 +3,7 @@
 Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engine, which doesn't spy on users. It can be embedded into blogs, articles or any other place where readers add comments.
 
 * Social login via Google, Facebook, Github and Yandex
+* Optional anonymous access
 * Multi-level nested comments with both tree and plain presentations
 * Import from disqus and wordpress
 * Markdown support
@@ -11,11 +12,12 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 * Sortable comments
 * Extractor for recent comments, cross-post
 * RSS for all comments and each post
+* Telegram notifications
 * Export data to json with automatic backups
 * No external databases, everything embedded in a single data file
 * Fully dockerized and can be deployed in a single command
 * Self-contained executable can be deployed directly to Linux, Windows and MacOS
-* Clean, lightweight and fully customizable UI
+* Clean, lightweight and customizable UI
 * Multi-site mode from a single instance
 * Integration with automatic ssl (direct and via [nginx-le](https://github.com/umputun/nginx-le))
 * [Privacy focused](#privacy)
@@ -229,6 +231,13 @@ _instructions for google oauth2 setup borrowed from [oauth2_proxy](https://githu
 1.  Take note of the **ID** and **Password**
 
 For more details refer to [Yandex OAuth](https://tech.yandex.com/oauth/doc/dg/concepts/about-docpage/) and [Yandex.Passport](https://tech.yandex.com/passport/doc/dg/index-docpage/) API documentation.
+
+##### Anonymous Auth Provider
+
+Optionally, anonymous access can be turned on. In this case an extra `anonymous` provider will allow logins without any social login with any name satisfying 2 conditions:
+
+- name should be at least 3 characters long 
+- name has to start from the letter and contains letters, numbers, underscores and spaces only.
 
 #### Initial import from Disqus
 
@@ -475,11 +484,6 @@ type User struct {
 ```
 
 _currently supported providers are `google`, `facebook`, `github` and `yandex`_
-
-Optionally, anonymous access can be turned on. In this case and extra `anonymous` provider will allow logins without any social login with any name satisfying 2 conditions:
-
-- name should be at least 3 characters long 
-- name has to start from the letter and contains letters, numbers, underscores and spaces only.
 
 ### Commenting
 
