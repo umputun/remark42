@@ -83,6 +83,48 @@ func TestServerApp_DevMode(t *testing.T) {
 	app.Wait()
 }
 
+func TestServerApp_AnonMode(t *testing.T) {
+	app, ctx := prepServerApp(t, 500*time.Millisecond, func(o ServerCommand) ServerCommand {
+		o.Port = 18085
+		o.Auth.Anonymous = true
+		return o
+	})
+
+	go func() { _ = app.run(ctx) }()
+	time.Sleep(100 * time.Millisecond) // let server start
+
+	assert.Equal(t, 4+1, len(app.restSrv.Authenticator.Providers()), "extra auth provider for anon")
+	assert.Equal(t, "anonymous", app.restSrv.Authenticator.Providers()[4].Name(), "anon auth provider")
+
+	// send ping
+	resp, err := http.Get("http://localhost:18085/api/v1/ping")
+	require.Nil(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, 200, resp.StatusCode)
+	body, err := ioutil.ReadAll(resp.Body)
+	assert.Nil(t, err)
+	assert.Equal(t, "pong", string(body))
+
+	// try to login with good name
+	resp, err = http.Get("http://localhost:18085/auth/anonymous/login?user=blah123&aud=remark42")
+	require.Nil(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, 200, resp.StatusCode)
+
+	// try to login with bad name
+	resp, err = http.Get("http://localhost:18085/auth/anonymous/login?user=**blah123&aud=remark42")
+	require.Nil(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, 403, resp.StatusCode)
+
+	// try to login with short name
+	resp, err = http.Get(`http://localhost:18085/auth/anonymous/login?user=bl%20%20&aud=remark42`)
+	require.Nil(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, 403, resp.StatusCode)
+
+	app.Wait()
+}
 func TestServerApp_WithMongo(t *testing.T) {
 
 	mongoURL := os.Getenv("MONGO_TEST")
