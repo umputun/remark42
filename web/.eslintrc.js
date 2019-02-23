@@ -25,11 +25,11 @@ module.exports = {
         '@typescript-eslint/explicit-member-accessibility': 0,
         // doesn't work in real world
         '@typescript-eslint/no-non-null-assertion': 0,
-        // actually it better to disable inly in tests, but i'm tired to to do this now, feel free to change
+        // actually it is better to disable only in tests, but I'm tired to do this now, feel free to change
         '@typescript-eslint/no-explicit-any': 0,
         // disabling because store actions use WATCH_ME_IM_SPECIAL case
         '@typescript-eslint/class-name-casing': 0,
-        // actually it better to disable only in tests, but I'm tired to do this now, feel free to change
+        // actually it is better to disable only in tests, but I'm tired to do this now, feel free to change
         '@typescript-eslint/no-object-literal-type-assertion': 0,
         // disabling because server output uses snake case response
         '@typescript-eslint/camelcase': 0,
