@@ -24,7 +24,7 @@ export const PROVIDER_NAMES: { [P in Provider]: string } = {
 /** locastorage key for collapsed comments */
 export const LS_COLLAPSE_KEY = '__remarkCollapsed';
 
-/** cookie key inder which sort preference resides */
+/** cookie key under which sort preference resides */
 export const COOKIE_SORT_KEY = 'remarkSort';
 
 export const BLOCKING_DURATIONS: BlockingDuration[] = [

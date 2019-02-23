@@ -17,7 +17,7 @@ type FetcherInit =
 
 const fetcher = methods.reduce(
   (acc: Partial<{ [K in FetcherMethod]: (data: FetcherInit) => Promise<unknown> }>, method: FetcherMethod) => {
-    acc[method] = (data: FetcherInit): Promise<unknown> => {
+    acc[method] = <T = unknown>(data: FetcherInit): Promise<T> => {
       const { url, body = undefined, withCredentials = false, overriddenApiBase = API_BASE } =
         typeof data === 'string' ? { url: data } : data;
       const basename = `${BASE_URL}${overriddenApiBase}`;
@@ -63,6 +63,6 @@ const fetcher = methods.reduce(
     return acc;
   },
   {}
-) as { [K in FetcherMethod]: (data: FetcherInit) => Promise<unknown> };
+) as { [K in FetcherMethod]: <T = unknown>(data: FetcherInit) => Promise<T> };
 
 export default fetcher;

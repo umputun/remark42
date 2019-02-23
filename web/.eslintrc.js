@@ -3,8 +3,8 @@ module.exports = {
   extends: [
     'eslint:recommended',
     'plugin:jsx-a11y/recommended',
-    'plugin:prettier/recommended',
     'plugin:@typescript-eslint/recommended',
+    'plugin:prettier/recommended',
   ],
   plugins: ['react', 'jsx-a11y', 'prettier'],
   overrides: [
@@ -21,7 +21,7 @@ module.exports = {
         'no-unused-vars': 0,
         // allow Rust-like var starting with _underscore
         '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: /^_/ }],
-        // disabling because it's bad practice to mark acceesibility in react classes
+        // disabling because it's bad practice to mark accessibility in react classes
         '@typescript-eslint/explicit-member-accessibility': 0,
         // doesn't work in real world
         '@typescript-eslint/no-non-null-assertion': 0,
@@ -29,7 +29,7 @@ module.exports = {
         '@typescript-eslint/no-explicit-any': 0,
         // disabling because store actions use WATCH_ME_IM_SPECIAL case
         '@typescript-eslint/class-name-casing': 0,
-        // actually it better to disable inly in tests, but i'm tired to to do this now, feel free to change
+        // actually it better to disable only in tests, but I'm tired to do this now, feel free to change
         '@typescript-eslint/no-object-literal-type-assertion': 0,
         // disabling because server output uses snake case response
         '@typescript-eslint/camelcase': 0,
