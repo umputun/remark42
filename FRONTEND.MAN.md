@@ -4,7 +4,6 @@
 * project uses `eslint` to check frontend code. You can manually run `npm run lint` from `./web` directory to check style.
 * git hooks (via husky) installed automatically on `npm install` and check and try to fix code style if possible, otherwise commit will be rejected
 * if you want IDE integration, you need `eslint` plugin to be installed.
-  Caveat: `eslint` uses `@typescript-eslint` plugin to check typescript, and it doesn't work well if IDE (in my case VSCode) opened not in `./web` directory. It fails to find `.tsconfig` file. This should be fixed
 
 ### CSS Styles
 
