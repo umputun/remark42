@@ -14,7 +14,7 @@ module.exports = {
       parser: '@typescript-eslint/parser',
       parserOptions: {
         project: './tsconfig.json',
-        tsconfigRootDir: './',
+        tsconfigRootDir: __dirname,
       },
       rules: {
         // disabling because typescipt uses it's own lint (see next rule)
@@ -71,7 +71,7 @@ module.exports = {
     'no-implied-eval': 2,
     'no-new-func': 2,
     'guard-for-in': 0,
-    eqeqeq: 0,
+    eqeqeq: 2,
     'no-else-return': 2,
     'no-redeclare': 2,
     'no-dupe-keys': 2,

@@ -27,7 +27,7 @@ if (querySettings.max_shown_comments) {
   querySettings.max_shown_comments = MAX_SHOWN_ROOT_COMMENTS;
 }
 
-if (!querySettings.theme || THEMES.indexOf(querySettings.theme) == -1) {
+if (!querySettings.theme || THEMES.indexOf(querySettings.theme) === -1) {
   querySettings.theme = THEMES[0];
 }
 

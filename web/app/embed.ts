@@ -216,7 +216,7 @@ async function init(): Promise<void> {
     },
     onKeyDown(e) {
       // ESCAPE key pressed
-      if (e.keyCode == 27) {
+      if (e.keyCode === 27) {
         userInfo.close();
       }
     },
