@@ -53,10 +53,7 @@ async function init(): Promise<void> {
       <div id={NODE_ID}>
         <div className="root root_user-info">
           <Provider store={reduxStore}>
-            <UserInfo
-            // wtf?
-            //onClose={onClose}
-            />
+            <UserInfo />
           </Provider>
         </div>
       </div>,

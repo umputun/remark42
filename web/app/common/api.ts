@@ -41,7 +41,6 @@ export const logOut = (): Promise<void> => fetcher.get({ url: `/auth/logout`, ov
 
 export const getConfig = (): Promise<Config> => fetcher.get(`/config`);
 
-// TODO: looks like we can get url from settings here and below
 export const getPostComments = (sort: Sorting): Promise<Tree> =>
   fetcher.get(`/find?site=${siteId}&url=${url}&sort=${sort}&format=tree`);
 

@@ -144,7 +144,6 @@ export class Root extends Component<Props, State> {
   }
 
   onBlockedUsersShow() {
-    // TODO:
     this.props.fetchBlockedUsers().then(() => {
       this.props.setBlockedVisible(true);
     });
@@ -189,7 +188,6 @@ export class Root extends Component<Props, State> {
       );
     }
 
-    // TODO: i think we should do it on backend
     const isGuest = !props.user;
     const isCommentsDisabled = !!props.info.read_only;
 
