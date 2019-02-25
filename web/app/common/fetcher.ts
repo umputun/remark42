@@ -67,7 +67,11 @@ const fetcher = methods.reduce(
           });
         }
 
-        return res.json();
+        if (res.headers.has('Content-Type') && res.headers.get('Content-Type')!.indexOf('application/json') === 0) {
+          return res.json();
+        }
+
+        return res.text();
       });
     };
     return acc;
