@@ -5,7 +5,7 @@ declare let remark_config: LastCommentsConfig;
 import loadPolyfills from '@app/common/polyfills';
 import { h, render } from 'preact';
 import 'preact/debug';
-import api from './common/api';
+import { getLastComments } from './common/api';
 import { LastCommentsConfig } from '@app/common/config-types';
 import { BASE_URL, DEFAULT_LAST_COMMENTS_MAX, LAST_COMMENTS_NODE_CLASSNAME } from '@app/common/constants';
 import { ListComments } from '@app/components/list-comments';
@@ -48,7 +48,7 @@ async function init(): Promise<void> {
       (node.dataset.max && parseInt(node.dataset.max, 10)) ||
       remark_config.max_last_comments ||
       DEFAULT_LAST_COMMENTS_MAX;
-    api.getLastComments({ max, siteId: remark_config.site_id! }).then(comments => {
+    getLastComments({ max, siteId: remark_config.site_id! }).then(comments => {
       try {
         render(<ListComments comments={comments} />, node);
       } catch (e) {

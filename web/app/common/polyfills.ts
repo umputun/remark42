@@ -8,7 +8,6 @@ export default async function loadPolyfills() {
       'endsWith' in String.prototype &&
       'includes' in Array.prototype &&
       'assign' in Object &&
-      'fetch' in Object &&
       'keys' in Object
     )
       return;
