@@ -20,33 +20,29 @@ const errorMessageForCodes = new Map([
   [18, 'Requested file cannot be found.'],
 ]);
 
-interface Response {
-  data?:
-    | string
-    | {
-        code?: number;
-        details?: string;
-      };
-}
+type Response =
+  | string
+  | {
+      code?: number;
+      details?: string;
+    };
 
 export function extractErrorMessageFromResponse(response: Response): string {
   const defaultErrorMessage = 'Something went wrong. Please try again a bit later.';
-  if (!(response && response.data)) {
+  if (!response) {
     return defaultErrorMessage;
   }
 
-  const responseData = response.data;
-
-  if (typeof responseData === 'string') {
-    return responseData;
+  if (typeof response === 'string') {
+    return response;
   }
 
-  if (typeof responseData.code === 'number' && errorMessageForCodes.has(responseData.code)) {
-    return errorMessageForCodes.get(responseData.code)!;
+  if (typeof response.code === 'number' && errorMessageForCodes.has(response.code)) {
+    return errorMessageForCodes.get(response.code)!;
   }
 
-  if (typeof responseData.details === 'string') {
-    return responseData.details;
+  if (typeof response.details === 'string') {
+    return response.details;
   }
 
   return defaultErrorMessage;

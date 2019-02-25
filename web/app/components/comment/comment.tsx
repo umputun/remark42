@@ -240,7 +240,7 @@ export class Comment extends Component<Props, State> {
     this.setState({
       scoreDelta: originalDelta,
       cachedScore: originalScore,
-      voteErrorMessage: extractErrorMessageFromResponse(e.response),
+      voteErrorMessage: extractErrorMessageFromResponse(e),
     });
   }
 

@@ -115,7 +115,7 @@ export class Input extends Component<Props, State> {
       })
       .catch(e => {
         console.error(e); // eslint-disable-line no-console
-        const errorMessage = extractErrorMessageFromResponse(e.response);
+        const errorMessage = extractErrorMessageFromResponse(e);
         this.setState({ isErrorShown: true, errorMessage });
       })
       .finally(() => this.setState({ isDisabled: false }));

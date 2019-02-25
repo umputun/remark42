@@ -55,6 +55,18 @@ const fetcher = methods.reduce(
         const timeDiff = (new Date().getTime() - timestamp) / 1000;
         StaticStore.serverClientTimeDiff = timeDiff;
 
+        if (res.status >= 400) {
+          return res.text().then(text => {
+            let err;
+            try {
+              err = JSON.parse(text);
+            } catch (e) {
+              throw text;
+            }
+            throw err;
+          });
+        }
+
         return res.json();
       });
     };
