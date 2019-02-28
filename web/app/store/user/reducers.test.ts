@@ -5,7 +5,11 @@ import { fetchUser, logIn, logout } from './actions';
 import { user } from './reducers';
 import { USER_SET } from './types';
 
-jest.mock('../../common/api');
+jest.mock('@app/common/api');
+
+afterEach(() => {
+  jest.resetModules();
+});
 
 describe('user', () => {
   it('should return null by default', () => {
