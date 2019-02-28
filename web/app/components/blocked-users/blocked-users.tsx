@@ -37,7 +37,6 @@ export default class BlockedUsers extends Component<Props, State> {
       this.setState({
         unblockedUsers: this.state.unblockedUsers.filter(x => x !== user.id),
       });
-      this.props.onUnblockSomeone();
       this.props.blockUser(user.id, user.name, 'permanently');
     }
   }
@@ -46,6 +45,7 @@ export default class BlockedUsers extends Component<Props, State> {
     if (confirm('Do you want to unblock this user?')) {
       this.setState({ unblockedUsers: this.state.unblockedUsers.concat([user.id]) });
       this.props.unblockUser(user.id);
+      this.props.onUnblockSomeone();
     }
   }
 
