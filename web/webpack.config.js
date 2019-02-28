@@ -38,7 +38,7 @@ const commonStyleLoaders = [
   },
 ];
 
-module.exports = (_cliEnv, args) => ({
+module.exports = () => ({
   context: __dirname,
   devtool: env === 'development' ? 'source-map' : false,
   entry: {
@@ -97,24 +97,20 @@ module.exports = (_cliEnv, args) => ({
       'process.env.REMARK_NODE': JSON.stringify(NODE_ID),
       'process.env.REMARK_URL': env === 'production' ? JSON.stringify(remarkUrl) : 'window.location.origin',
     }),
-    ...(args.mode === 'development' || env === 'developmment'
-      ? [
-          new Html({
-            template: path.resolve(__dirname, 'index.ejs'),
-            inject: false,
-          }),
-          new Html({
-            template: path.resolve(__dirname, 'counter.ejs'),
-            filename: 'counter.html',
-            inject: false,
-          }),
-          new Html({
-            template: path.resolve(__dirname, 'last-comments.ejs'),
-            filename: 'last-comments.html',
-            inject: false,
-          }),
-        ]
-      : []),
+    new Html({
+      template: path.resolve(__dirname, 'index.ejs'),
+      inject: false,
+    }),
+    new Html({
+      template: path.resolve(__dirname, 'counter.ejs'),
+      filename: 'counter.html',
+      inject: false,
+    }),
+    new Html({
+      template: path.resolve(__dirname, 'last-comments.ejs'),
+      filename: 'last-comments.html',
+      inject: false,
+    }),
     new Html({
       template: path.resolve(__dirname, 'comments.ejs'),
       filename: 'comments.html',
