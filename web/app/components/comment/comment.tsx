@@ -545,7 +545,7 @@ export class Comment extends Component<Props, State> {
                   {},
                   { type: 'up', selected: state.scoreDelta === 1, disabled: isUpvotingDisabled }
                 )}
-                aria-disabled={isUpvotingDisabled ? 'true' : 'false'}
+                aria-disabled={state.scoreDelta === 1 || isUpvotingDisabled ? 'true' : 'false'}
                 {...getHandleClickProps(isUpvotingDisabled ? undefined : () => this.increaseScore())}
                 title={upvotingDisabledReason || undefined}
               >
@@ -563,7 +563,7 @@ export class Comment extends Component<Props, State> {
                   {},
                   { type: 'down', selected: state.scoreDelta === -1, disabled: isDownvotingDisabled }
                 )}
-                aria-disabled={isDownvotingDisabled ? 'true' : 'false'}
+                aria-disabled={state.scoreDelta === -1 || isUpvotingDisabled ? 'true' : 'false'}
                 {...getHandleClickProps(isDownvotingDisabled ? undefined : () => this.decreaseScore())}
                 title={downvotingDisabledReason || undefined}
               >
