@@ -49,10 +49,7 @@ export default class BlockedUsers extends Component<Props, State> {
     }
   }
 
-  render(props: RenderableProps<Props>, state: State) {
-    const { theme } = props;
-    const { users, unblockedUsers } = state;
-
+  render({ theme }: RenderableProps<Props>, { users, unblockedUsers }: State) {
     return (
       <div className={b('blocked-users', {}, { theme })} role="region" aria-label="Blocked users">
         {!users.length && <p>There are no blocked users.</p>}
