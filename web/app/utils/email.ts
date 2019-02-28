@@ -2,9 +2,11 @@ import { siteId } from '@app/common/settings';
 import { deleteMe } from '@app/common/api';
 import { StaticStore } from '@app/common/static_store';
 
-// The right line breaks code in the body of inline email
-// should be not just %0A, but %0D%0A
-// see: https://www.ietf.org/rfc/rfc2368.txt
+/**
+ *  The right line breaks code in the body of inline email
+ * should be not just %0A, but %0D%0A
+ * see: https://www.ietf.org/rfc/rfc2368.txt
+ */
 const LINE_BREAK_CODE = '%0D%0A';
 
 export function getDeleteInformationMessage(
