@@ -178,7 +178,7 @@ export class Comment extends Component<Props, State> {
 
   setVerify(value: boolean) {
     const userId = this.props.data.user.id;
-    const promptMessage = `Do you want to ${value ? 'unverify' : 'verify'} this user?`;
+    const promptMessage = `Do you want to ${value ? 'verify' : 'unverify'} this user?`;
 
     if (confirm(promptMessage)) {
       this.props.setVerifyStatus!(userId, value);
