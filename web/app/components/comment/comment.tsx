@@ -115,6 +115,7 @@ export class Comment extends Component<Props, State> {
 
     this.setState({
       scoreDelta,
+      cachedScore: props.data.score,
     });
 
     if (props.user) {
