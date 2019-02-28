@@ -33,7 +33,7 @@ export default class BlockedUsers extends Component<Props, State> {
   }
 
   block(user: BlockedUser) {
-    if (confirm('Do you want to block this user?')) {
+    if (confirm(`Do you want to block ${user.name}?`)) {
       this.setState({
         unblockedUsers: this.state.unblockedUsers.filter(x => x !== user.id),
       });
@@ -42,7 +42,7 @@ export default class BlockedUsers extends Component<Props, State> {
   }
 
   unblock(user: BlockedUser) {
-    if (confirm('Do you want to unblock this user?')) {
+    if (confirm(`Do you want to unblock ${user.name}?`)) {
       this.setState({ unblockedUsers: this.state.unblockedUsers.concat([user.id]) });
       this.props.unblockUser(user.id);
       this.props.onUnblockSomeone();
