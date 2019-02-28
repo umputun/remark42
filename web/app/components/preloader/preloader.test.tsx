@@ -1,7 +1,7 @@
 /** @jsx h */
 import { h, render } from 'preact';
-import Preloader from '../preloader';
-import { createDomContainer } from '../../../testUtils';
+import Preloader from './preloader';
+import { createDomContainer } from '@app/testUtils';
 
 describe(`<Preloader />`, () => {
   let container: HTMLElement;
