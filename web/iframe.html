@@ -88,7 +88,7 @@
     /* REMOVE-END */
     var lastHeight = 0;
     setInterval(function() {
-      if (document.body.offsetHeight !== lastHeight) {
+      if (document.body.offsetHeight !== lastHeight && document.body.offsetHeight > 10) {
         lastHeight = document.body.offsetHeight;
         window.parent.postMessage(JSON.stringify({ remarkIframeHeight: lastHeight }), '*');
       }
