@@ -37,7 +37,8 @@ export const logIn = (provider: Provider) => {
   });
 };
 
-export const logOut = (): Promise<void> => fetcher.get({ url: `/auth/logout`, overriddenApiBase: '' });
+export const logOut = (): Promise<void> =>
+  fetcher.get({ url: `/auth/logout`, overriddenApiBase: '', withCredentials: true });
 
 export const getConfig = (): Promise<Config> => fetcher.get(`/config`);
 
