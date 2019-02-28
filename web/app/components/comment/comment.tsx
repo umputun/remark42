@@ -74,6 +74,7 @@ let onPrevInputToggleCb: (() => void) | null = null;
 
 export class Comment extends Component<Props, State> {
   votingPromise: Promise<unknown>;
+  /** comment text node. Used in comment text copying */
   textNode?: HTMLDivElement;
 
   constructor(props: Props) {
