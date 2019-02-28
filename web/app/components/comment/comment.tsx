@@ -18,7 +18,7 @@ import { Input } from '@app/components/input';
 import { AvatarIcon } from '@app/components/avatar-icon';
 import Countdown from '../countdown';
 
-interface Props {
+export interface Props {
   user: User | null;
   data: CommentType;
   repliesCount?: number;
@@ -46,7 +46,7 @@ interface Props {
   setVerifyStatus?(id: User['id'], value: boolean): Promise<void>;
 }
 
-interface State {
+export interface State {
   isCopied: boolean;
   isReplying: boolean;
   isEditing: boolean;
@@ -355,7 +355,7 @@ export class Comment extends Component<Props, State> {
     if (this.props.view === 'user') return 'Voting disabled in last comments';
     if (this.isGuest()) return 'Only authorized users are allowed to vote';
     if (this.props.post_info.read_only) return "You can't vote on read-only topics";
-    if (this.props.data.delete) return "Can't vote for deleted comment";
+    if (this.props.data.delete) return "You can't vote for deleted comment";
     if (this.isCurrentUser()) return "You can't vote for your own comment";
     if (StaticStore.config.positive_score && this.props.data.score < 1) return 'Only positive score allowed';
     return null;
@@ -368,7 +368,7 @@ export class Comment extends Component<Props, State> {
     if (this.props.view === 'user') return 'Voting disabled in last comments';
     if (this.isGuest()) return 'Only authorized users are allowed to vote';
     if (this.props.post_info.read_only) return "You can't vote on read-only topics";
-    if (this.props.data.delete) return "Can't vote for deleted comment";
+    if (this.props.data.delete) return "You can't vote for deleted comment";
     if (this.isCurrentUser()) return "You can't vote for your own comment";
     return null;
   }
