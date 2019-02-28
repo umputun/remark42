@@ -48,7 +48,7 @@ async function init(): Promise<void> {
       (node.dataset.max && parseInt(node.dataset.max, 10)) ||
       remark_config.max_last_comments ||
       DEFAULT_LAST_COMMENTS_MAX;
-    getLastComments({ max, siteId: remark_config.site_id! }).then(comments => {
+    getLastComments(remark_config.site_id!, max).then(comments => {
       try {
         render(<ListComments comments={comments} />, node);
       } catch (e) {

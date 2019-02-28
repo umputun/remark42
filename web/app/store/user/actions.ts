@@ -47,7 +47,7 @@ export const blockUser = (
   name: string,
   ttl: BlockTTL
 ): StoreAction<Promise<void>> => async dispatch => {
-  await api.blockUser({ id, ttl });
+  await api.blockUser(id, ttl);
   dispatch({
     type: USER_BAN,
     user: {
@@ -59,7 +59,7 @@ export const blockUser = (
 };
 
 export const unblockUser = (id: User['id']): StoreAction<Promise<void>> => async dispatch => {
-  await api.unblockUser({ id });
+  await api.unblockUser(id);
   dispatch({
     type: USER_UNBAN,
     id,
@@ -71,9 +71,9 @@ export const setVirifiedStatus = (id: User['id'], status: boolean): StoreAction<
   getState
 ) => {
   if (status) {
-    await api.setVerifyStatus({ id });
+    await api.setVerifyStatus(id);
   } else {
-    await api.removeVerifyStatus({ id });
+    await api.removeVerifyStatus(id);
   }
   const comments = getState().comments;
   dispatch(setComments(uSetUserVerified(comments, id, status)));

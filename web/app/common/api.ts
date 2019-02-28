@@ -44,7 +44,7 @@ export const getConfig = (): Promise<Config> => fetcher.get(`/config`);
 export const getPostComments = (sort: Sorting): Promise<Tree> =>
   fetcher.get(`/find?site=${siteId}&url=${url}&sort=${sort}&format=tree`);
 
-export const getLastComments = ({ siteId, max }: { siteId: string; max: number }): Promise<Comment[]> =>
+export const getLastComments = (siteId: string, max: number): Promise<Comment[]> =>
   fetcher.get(`/last/${max}?site=${siteId}`);
 
 export const getCommentsCount = (siteId: string, urls: string[]): Promise<{ url: string; count: number }[]> =>
@@ -53,15 +53,12 @@ export const getCommentsCount = (siteId: string, urls: string[]): Promise<{ url:
     body: urls,
   });
 
-export const getComment = ({ id }: { id: Comment['id'] }): Promise<Comment> => fetcher.get(`/id/${id}?url=${url}`);
+export const getComment = (id: Comment['id']): Promise<Comment> => fetcher.get(`/id/${id}?url=${url}`);
 
-export const getUserComments = ({
-  userId,
-  limit,
-}: {
-  userId: User['id'];
-  limit: number;
-}): Promise<{
+export const getUserComments = (
+  userId: User['id'],
+  limit: number
+): Promise<{
   comments: Comment[];
   count: number;
 }> => fetcher.get(`/comments?user=${userId}&limit=${limit}`);
@@ -149,25 +146,25 @@ export const unpinComment = (id: Comment['id']): Promise<void> =>
     withCredentials: true,
   });
 
-export const setVerifyStatus = ({ id }: { id: User['id'] }): Promise<void> =>
+export const setVerifiedStatus = (id: User['id']): Promise<void> =>
   fetcher.put({
     url: `/admin/verify/${id}?verified=1`,
     withCredentials: true,
   });
 
-export const removeVerifyStatus = ({ id }: { id: User['id'] }): Promise<void> =>
+export const removeVerifiedStatus = (id: User['id']): Promise<void> =>
   fetcher.put({
     url: `/admin/verify/${id}?verified=0`,
     withCredentials: true,
   });
 
-export const removeComment = ({ id }: { id: Comment['id'] }) =>
+export const removeComment = (id: Comment['id']) =>
   fetcher.delete({
     url: `/admin/comment/${id}?url=${url}`,
     withCredentials: true,
   });
 
-export const removeMyComment = ({ id }: { id: Comment['id'] }): Promise<void> =>
+export const removeMyComment = (id: Comment['id']): Promise<void> =>
   fetcher.put({
     url: `/comment/${id}?url=${url}`,
     body: {
@@ -176,13 +173,10 @@ export const removeMyComment = ({ id }: { id: Comment['id'] }): Promise<void> =>
     withCredentials: true,
   });
 
-export const blockUser = ({
-  id,
-  ttl,
-}: {
-  id: User['id'];
-  ttl: BlockTTL;
-}): Promise<{
+export const blockUser = (
+  id: User['id'],
+  ttl: BlockTTL
+): Promise<{
   block: boolean;
   site_id: string;
   user_id: string;
@@ -192,11 +186,9 @@ export const blockUser = ({
     withCredentials: true,
   });
 
-export const unblockUser = ({
-  id,
-}: {
-  id: User['id'];
-}): Promise<{
+export const unblockUser = (
+  id: User['id']
+): Promise<{
   block: boolean;
   site_id: string;
   user_id: string;
@@ -242,8 +234,8 @@ export default {
 
   pinComment,
   unpinComment,
-  setVerifyStatus,
-  removeVerifyStatus,
+  setVerifyStatus: setVerifiedStatus,
+  removeVerifyStatus: removeVerifiedStatus,
   removeComment,
   blockUser,
   unblockUser,

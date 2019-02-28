@@ -47,7 +47,7 @@ export const updateComment = (id: Comment['id'], text: string): StoreAction<Prom
 /** edits comment in tree */
 export const putVote = (id: Comment['id'], value: number): StoreAction<Promise<void>> => async (dispatch, getState) => {
   await api.putCommentVote({ id, value });
-  const updatedComment = await api.getComment({ id });
+  const updatedComment = await api.getComment(id);
   const comments = getState().comments;
   dispatch(setComments(uReplaceComment(comments, updatedComment)));
 };
@@ -71,9 +71,9 @@ export const removeComment = (id: Comment['id']): StoreAction<Promise<void>> => 
   const user = getState().user;
   if (!user) return;
   if (user.admin) {
-    await api.removeComment({ id });
+    await api.removeComment(id);
   } else {
-    await api.removeMyComment({ id });
+    await api.removeMyComment(id);
   }
   const comments = getState().comments;
   dispatch(setComments(uRemoveComment(comments, id)));

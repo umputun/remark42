@@ -21,7 +21,7 @@ export const fetchInfo = (): StoreAction<Promise<Comment[] | null>> => async dis
     return null;
   }
   // TODO: limit
-  const info = await api.getUserComments({ userId: userInfo.id, limit: 10 });
+  const info = await api.getUserComments(userInfo.id, 10);
   dispatch({
     type: USER_INFO_SET,
     id: userInfo.id,
