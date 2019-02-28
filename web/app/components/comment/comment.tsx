@@ -54,9 +54,9 @@ export interface State {
   voteErrorMessage: string | null;
   /**
    * delta of the score:
-   * default is 0
-   * if user upvoted, delta will be incremented
-   * if downvoted, delta will be decremented
+   * default is 0.
+   * if user upvoted delta will be incremented
+   * if downvoted delta will be decremented
    */
   scoreDelta: number;
   /**
