@@ -70,7 +70,6 @@ export const setVirifiedStatus = (id: User['id'], status: boolean): StoreAction<
   dispatch,
   getState
 ) => {
-  // await api.unblockUser({ id });
   if (status) {
     await api.setVerifyStatus({ id });
   } else {
