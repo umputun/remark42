@@ -355,6 +355,7 @@ export class Comment extends Component<Props, State> {
     if (this.props.view === 'user') return 'Voting disabled in last comments';
     if (this.isGuest()) return 'Only authorized users are allowed to vote';
     if (this.props.post_info.read_only) return "You can't vote on read-only topics";
+    if (this.props.data.delete) return "Can't vote for deleted comment";
     if (this.isCurrentUser()) return "You can't vote for your own comment";
     if (StaticStore.config.positive_score && this.props.data.score < 1) return 'Only positive score allowed';
     return null;
@@ -367,6 +368,7 @@ export class Comment extends Component<Props, State> {
     if (this.props.view === 'user') return 'Voting disabled in last comments';
     if (this.isGuest()) return 'Only authorized users are allowed to vote';
     if (this.props.post_info.read_only) return "You can't vote on read-only topics";
+    if (this.props.data.delete) return "Can't vote for deleted comment";
     if (this.isCurrentUser()) return "You can't vote for your own comment";
     return null;
   }
