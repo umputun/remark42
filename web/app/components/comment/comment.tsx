@@ -207,11 +207,7 @@ export class Comment extends Component<Props, State> {
     if (!block_duration) return;
 
     const duration = block_duration.label;
-    const promptMessage =
-      ttl === 'permanently'
-        ? `Do you want to permanently block user "${user.name}"?`
-        : `Do you want to block user "${user.name}" (${duration.toLowerCase()})?`;
-    if (confirm(promptMessage)) {
+    if (confirm(`Do you want to block ${user.name} ${duration.toLowerCase()}?`)) {
       this.props.blockUser!(user.id, user.name, ttl);
     }
   }
