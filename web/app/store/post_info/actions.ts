@@ -1,8 +1,9 @@
-import { PostInfo } from '@app/common/types';
+import { PostInfo, CommentMode } from '@app/common/types';
 
 import { StoreAction } from '../index';
 import { POST_INFO_SET } from './types';
 import api from '@app/common/api';
+import { setCommentMode } from '../comments/actions';
 
 export const setPostInfo = (info: PostInfo): StoreAction<void> => dispatch =>
   dispatch({
@@ -17,6 +18,7 @@ export const setCommentsReadOnlyState = (state: boolean): StoreAction<Promise<bo
 ) => {
   await (!state ? api.enableComments() : api.disableComments());
   const storeState = getState();
+  dispatch(setCommentMode({ id: '', state: CommentMode.None }));
   dispatch({
     type: POST_INFO_SET,
     info: { ...storeState.info, read_only: state },
@@ -29,6 +31,7 @@ export const toggleCommentsReadOnlyState = (): StoreAction<Promise<boolean>> => 
   const storeState = getState();
   const state = !storeState.info.read_only!;
   await (state ? api.enableComments() : api.disableComments());
+  dispatch(setCommentMode({ id: '', state: CommentMode.None }));
   dispatch({
     type: POST_INFO_SET,
     info: { ...storeState.info, read_only: !state },
