@@ -686,8 +686,7 @@ export class Comment extends Component<Props, State> {
         {state.isReplying && props.view !== 'user' && (
           <Input
             theme={props.theme}
-            id={o.id}
-            pid={o.id}
+            value=""
             mode="reply"
             mix="comment__input"
             onSubmit={(text, title) => this.addComment(text, title, o.id)}
@@ -700,10 +699,9 @@ export class Comment extends Component<Props, State> {
         {state.isEditing && props.view !== 'user' && (
           <Input
             theme={props.theme}
-            id={o.id}
             value={o.orig}
-            mix="comment__input"
             mode="edit"
+            mix="comment__input"
             onSubmit={(text, _title) => this.updateComment(props.data.id, text)}
             onCancel={this.toggleEditing}
             getPreview={this.props.getPreview!}

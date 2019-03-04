@@ -5,9 +5,9 @@ import '@app/components/raw-content';
 import './styles';
 
 import { h, Component, RenderableProps } from 'preact';
-import b from 'bem-react-helper';
+import b, { Mix } from 'bem-react-helper';
 
-import { User, Comment, Theme } from '@app/common/types';
+import { User, Theme } from '@app/common/types';
 import { BASE_URL, API_BASE } from '@app/common/constants';
 import { StaticStore } from '@app/common/static_store';
 import { siteId, url, pageTitle } from '@app/common/settings';
@@ -20,12 +20,11 @@ const RSS_SITE_URL = `${BASE_URL}${API_BASE}/rss/site?site=${siteId}`;
 const RSS_REPLIES_URL = `${BASE_URL}${API_BASE}/rss/reply?site=${siteId}&user=`;
 
 interface Props {
-  id?: Comment['id'];
-  pid?: Comment['id'];
+  /** user id for rss link generation */
   userId?: User['id'];
   errorMessage?: string;
   value?: string;
-  mix?: string;
+  mix?: Mix;
   mode?: 'main' | 'edit' | 'reply';
   theme: Theme;
   autofocus?: boolean;
@@ -66,11 +65,9 @@ export class Input extends Component<Props, State> {
 
   shouldComponentUpdate(nextProps: Props, nextState: State) {
     return (
-      nextProps.id !== this.props.id ||
       nextProps.mode !== this.props.mode ||
       nextProps.theme !== this.props.theme ||
       nextProps.userId !== this.props.userId ||
-      nextProps.pid !== this.props.pid ||
       nextProps.value !== this.props.value ||
       nextProps.errorMessage !== this.props.errorMessage ||
       nextState !== this.state
