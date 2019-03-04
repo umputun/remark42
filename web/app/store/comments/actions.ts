@@ -1,5 +1,5 @@
 import api from '@app/common/api';
-import { Node, Tree, Comment, Sorting, CommentMode } from '@app/common/types';
+import { Tree, Comment, Sorting, CommentMode } from '@app/common/types';
 
 import { StoreAction, StoreState } from '../index';
 import { POST_INFO_SET } from '../post_info/types';
@@ -10,10 +10,10 @@ import {
   removeComment as uRemoveComment,
   setCommentPin as uSetCommentPin,
 } from './utils';
-import { COMMENTS_SET, PINNED_COMMENTS_SET, COMMENTS_SET_MODE } from './types';
+import { COMMENTS_SET, PINNED_COMMENTS_SET, COMMENT_MODE_SET } from './types';
 
 /** sets comments, and put pinned comments in cache */
-export const setComments = (comments: Node[]): StoreAction<void> => dispatch => {
+export const setComments = (comments: StoreState['comments']): StoreAction<void> => dispatch => {
   dispatch({
     type: COMMENTS_SET,
     comments,
@@ -30,7 +30,7 @@ export const setCommentMode = (mode: StoreState['activeComment']): StoreAction<v
     mode = null;
   }
   dispatch({
-    type: COMMENTS_SET_MODE,
+    type: COMMENT_MODE_SET,
     mode,
   });
 };
@@ -99,30 +99,4 @@ export const fetchComments = (sort: Sorting): StoreAction<Promise<Tree>> => asyn
     info: data.info,
   });
   return data;
-};
-
-/** set state of post: readonly or not */
-export const setCommentsReadOnlyState = (state: boolean): StoreAction<Promise<boolean>> => async (
-  dispatch,
-  getState
-) => {
-  await (!state ? api.enableComments() : api.disableComments());
-  const storeState = getState();
-  dispatch({
-    type: POST_INFO_SET,
-    info: { ...storeState.info, read_only: state },
-  });
-  return state;
-};
-
-/** toggles state of post: readonly or not */
-export const toggleCommentsReadOnlyState = (): StoreAction<Promise<boolean>> => async (dispatch, getState) => {
-  const storeState = getState();
-  const state = !storeState.info.read_only!;
-  await (state ? api.enableComments() : api.disableComments());
-  dispatch({
-    type: POST_INFO_SET,
-    info: { ...storeState.info, read_only: !state },
-  });
-  return !state;
 };

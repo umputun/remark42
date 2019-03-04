@@ -7,16 +7,25 @@ import storeReducers from './reducers';
 import { ACTIONS } from './actions';
 
 export interface StoreState {
+  /** Comments sort */
   sort: Sorting;
+  /** Comments list */
   comments: Node[];
+  /** List of pinned comments */
   pinnedComments: Comment[];
   /** Defines comment that is in reply or edit mode */
   activeComment: null | { id: Comment['id']; state: CommentMode };
+  /** Logged in user */
   user: User | null;
+  /** Remark's styling theme */
   theme: Theme;
+  /** Current post information */
   info: PostInfo;
+  /** List of banned users */
   bannedUsers: BlockedUser[];
+  /** Whether list of blocked users should be visible */
   isBlockedVisible: boolean;
+  /** Map of collapsed threads */
   collapsedThreads: {
     [key: string]: boolean;
   };

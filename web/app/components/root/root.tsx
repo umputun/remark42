@@ -35,7 +35,8 @@ import {
   fetchBlockedUsers,
   setBlockedVisibleState,
 } from '@app/store/user/actions';
-import { fetchComments, setCommentsReadOnlyState } from '@app/store/comments/actions';
+import { fetchComments } from '@app/store/comments/actions';
+import { setCommentsReadOnlyState } from '@app/store/post_info/actions';
 import { setTheme } from '@app/store/theme/actions';
 import { setSort } from '@app/store/sort/actions';
 import { addComment, updateComment } from '@app/store/comments/actions';

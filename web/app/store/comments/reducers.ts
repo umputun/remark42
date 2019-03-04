@@ -4,10 +4,10 @@ import { StoreState } from '../index';
 import {
   COMMENTS_SET,
   COMMENTS_SET_ACTION,
-  COMMENTS_SET_MODE_ACTION,
   PINNED_COMMENTS_SET_ACTION,
   PINNED_COMMENTS_SET,
-  COMMENTS_SET_MODE,
+  COMMENT_MODE_SET,
+  COMMENT_MODE_SET_ACTION,
 } from './types';
 
 export const comments = (state: StoreState['comments'] = [], action: COMMENTS_SET_ACTION): Node[] => {
@@ -22,10 +22,10 @@ export const comments = (state: StoreState['comments'] = [], action: COMMENTS_SE
 
 export const activeComment = (
   state: StoreState['activeComment'] = null,
-  action: COMMENTS_SET_MODE_ACTION
+  action: COMMENT_MODE_SET_ACTION
 ): StoreState['activeComment'] => {
   switch (action.type) {
-    case COMMENTS_SET_MODE: {
+    case COMMENT_MODE_SET: {
       return action.mode;
     }
     default:
