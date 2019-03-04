@@ -11,7 +11,7 @@ import { API_BASE, BASE_URL, COMMENT_NODE_CLASSNAME_PREFIX, BLOCKING_DURATIONS }
 import { StaticStore } from '@app/common/static_store';
 import debounce from '@app/utils/debounce';
 import copy from '@app/common/copy';
-import { Theme, BlockTTL, Comment as CommentType, PostInfo, User } from '@app/common/types';
+import { Theme, BlockTTL, Comment as CommentType, PostInfo, User, CommentMode } from '@app/common/types';
 import { extractErrorMessageFromResponse } from '@app/utils/errorUtils';
 
 import { Input } from '@app/components/input';
@@ -26,6 +26,8 @@ export interface Props {
   /** whether comment's user is banned */
   isUserBanned?: boolean;
   isCommentsDisabled: boolean;
+  /** edit mode: is comment should have reply, or edit Input */
+  editMode?: CommentMode;
   view?: 'user' | 'preview';
   disabled?: boolean;
   collapsed?: boolean;
@@ -37,6 +39,7 @@ export interface Props {
   addComment?: (text: string, title: string, pid?: CommentType['id']) => Promise<void>;
   updateComment?: (id: CommentType['id'], text: string) => Promise<void>;
   removeComment?(id: CommentType['id']): Promise<void>;
+  setReplyEditState?(id: CommentType['id'], mode: CommentMode): void;
   getPreview?: (text: string) => Promise<string>;
   putCommentVote?(id: CommentType['id'], value: number): Promise<void>;
   collapseToggle?: (id: CommentType['id']) => void;
@@ -48,8 +51,6 @@ export interface Props {
 
 export interface State {
   isCopied: boolean;
-  isReplying: boolean;
-  isEditing: boolean;
   editDeadline: Date | null;
   voteErrorMessage: string | null;
   /**
@@ -66,12 +67,6 @@ export interface State {
   cachedScore: number;
 }
 
-/**
- * handler singletone which toggles replying/editing
- * state between multiple comments
- */
-let onPrevInputToggleCb: (() => void) | null = null;
-
 export class Comment extends Component<Props, State> {
   votingPromise: Promise<unknown>;
   /** comment text node. Used in comment text copying */
@@ -82,8 +77,6 @@ export class Comment extends Component<Props, State> {
 
     this.state = {
       isCopied: false,
-      isReplying: false,
-      isEditing: false,
       editDeadline: null,
       voteErrorMessage: null,
       scoreDelta: 0,
@@ -136,29 +129,20 @@ export class Comment extends Component<Props, State> {
   }
 
   toggleReplying() {
-    const { isReplying } = this.state;
-    this.setState({ isEditing: false }, () => this.setState({ isReplying: !isReplying }));
-
-    if (onPrevInputToggleCb) onPrevInputToggleCb();
-
-    if (!isReplying) {
-      onPrevInputToggleCb = () => this.setState({ isReplying: false });
+    const { editMode } = this.props;
+    if (editMode === CommentMode.Reply) {
+      this.props.setReplyEditState!(this.props.data.id, CommentMode.None);
     } else {
-      onPrevInputToggleCb = null;
+      this.props.setReplyEditState!(this.props.data.id, CommentMode.Reply);
     }
   }
 
   toggleEditing() {
-    const { isEditing } = this.state;
-
-    this.setState({ isReplying: false }, () => this.setState({ isEditing: !isEditing }));
-
-    if (onPrevInputToggleCb) onPrevInputToggleCb();
-
-    if (!isEditing) {
-      onPrevInputToggleCb = () => this.setState({ isEditing: false });
+    const { editMode } = this.props;
+    if (editMode === CommentMode.Edit) {
+      this.props.setReplyEditState!(this.props.data.id, CommentMode.None);
     } else {
-      onPrevInputToggleCb = null;
+      this.props.setReplyEditState!(this.props.data.id, CommentMode.Edit);
     }
   }
 
@@ -225,10 +209,7 @@ export class Comment extends Component<Props, State> {
 
   deleteComment() {
     if (confirm('Do you want to delete this comment?')) {
-      this.setState({
-        isEditing: false,
-        isReplying: false,
-      });
+      this.props.setReplyEditState!(this.props.data.id, CommentMode.None);
 
       this.props.removeComment!(this.props.data.id);
     }
@@ -279,17 +260,13 @@ export class Comment extends Component<Props, State> {
   async addComment(text: string, title: string, pid?: CommentType['id']) {
     await this.props.addComment!(text, title, pid);
 
-    this.setState({
-      isReplying: false,
-    });
+    this.props.setReplyEditState!(this.props.data.id, CommentMode.None);
   }
 
   async updateComment(id: CommentType['id'], text: string) {
     await this.props.updateComment!(id, text);
 
-    this.setState({
-      isEditing: false,
-    });
+    this.props.setReplyEditState!(this.props.data.id, CommentMode.None);
   }
 
   scrollToParent(e: Event) {
@@ -307,10 +284,7 @@ export class Comment extends Component<Props, State> {
   }
 
   toggleCollapse() {
-    this.setState({
-      isEditing: false,
-      isReplying: false,
-    });
+    this.props.setReplyEditState!(this.props.data.id, CommentMode.None);
 
     this.props.collapseToggle!(this.props.data.id);
   }
@@ -379,6 +353,9 @@ export class Comment extends Component<Props, State> {
     const isGuest = this.isGuest();
     const isCurrentUser = this.isCurrentUser();
 
+    const isReplying = props.editMode === CommentMode.Reply;
+    const isEditing = props.editMode === CommentMode.Edit;
+
     const lowCommentScore = StaticStore.config.low_score;
     const downvotingDisabledReason = this.getDownvoteDisabledReason();
     const isDownvotingDisabled = downvotingDisabledReason !== null;
@@ -403,7 +380,7 @@ export class Comment extends Component<Props, State> {
         ? 'This comment was deleted'
         : props.data.text,
       time: formatTime(new Date(props.data.time)),
-      orig: state.isEditing
+      orig: isEditing
         ? props.data.orig &&
           props.data.orig.replace(/&[#A-Za-z0-9]+;/gi, entity => {
             const span = document.createElement('span');
@@ -436,8 +413,8 @@ export class Comment extends Component<Props, State> {
       // TODO: add default view mod or don't?
       guest: isGuest,
       view: isAdmin ? 'admin' : props.view,
-      replying: state.isReplying,
-      editing: state.isEditing,
+      replying: isReplying,
+      editing: isEditing,
       theme: props.view === 'preview' ? null : props.theme,
       level: props.level,
     };
@@ -591,7 +568,7 @@ export class Comment extends Component<Props, State> {
             <div className="comment__actions">
               {!props.data.delete && !props.isCommentsDisabled && !props.disabled && !isGuest && props.view !== 'user' && (
                 <span {...getHandleClickProps(() => this.toggleReplying())} className="comment__action">
-                  {state.isReplying ? 'Cancel' : 'Reply'}
+                  {isReplying ? 'Cancel' : 'Reply'}
                 </span>
               )}
 
@@ -599,13 +576,13 @@ export class Comment extends Component<Props, State> {
                 !props.disabled &&
                 !!o.orig &&
                 isCurrentUser &&
-                (editable || state.isEditing) &&
+                (editable || isEditing) &&
                 props.view !== 'user' && [
                   <span
                     {...getHandleClickProps(() => this.toggleEditing())}
                     className="comment__action comment__action_type_edit"
                   >
-                    {state.isEditing ? 'Cancel' : 'Edit'}
+                    {isEditing ? 'Cancel' : 'Edit'}
                   </span>,
                   !isAdmin && (
                     <span
@@ -683,7 +660,7 @@ export class Comment extends Component<Props, State> {
           )}
         </div>
 
-        {state.isReplying && props.view !== 'user' && (
+        {isReplying && props.view !== 'user' && (
           <Input
             theme={props.theme}
             value=""
@@ -696,7 +673,7 @@ export class Comment extends Component<Props, State> {
           />
         )}
 
-        {state.isEditing && props.view !== 'user' && (
+        {isEditing && props.view !== 'user' && (
           <Input
             theme={props.theme}
             value={o.orig}

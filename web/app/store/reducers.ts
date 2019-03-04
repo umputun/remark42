@@ -6,6 +6,7 @@ import userInfo from './user-info/reducers';
 import thread from './thread/reducers';
 import sort from './sort/reducers';
 
+/** Merged store reducers */
 export default {
   ...sort,
   ...comments,

@@ -1,10 +1,18 @@
 import { Node, Comment } from '@app/common/types';
+import { StoreState } from '../index';
 
 export const COMMENTS_SET = 'COMMENTS/SET';
 
 export interface COMMENTS_SET_ACTION {
   type: typeof COMMENTS_SET;
   comments: Node[];
+}
+
+export const COMMENTS_SET_MODE = 'COMMENTS/SET_MODE';
+
+export interface COMMENTS_SET_MODE_ACTION {
+  type: typeof COMMENTS_SET_MODE;
+  mode: StoreState['activeComment'];
 }
 
 export const COMMENTS_APPEND = 'COMMENTS/APPEND';
@@ -37,6 +45,7 @@ export interface COMMENTS_SET_READONLY_ACTION {
 
 export type COMMENTS_ACTIONS =
   | COMMENTS_SET_ACTION
+  | COMMENTS_SET_MODE_ACTION
   | COMMENTS_APPEND_ACTION
   | PINNED_COMMENTS_SET_ACTION
   | COMMENTS_FETCH_TREE_ACTION

@@ -1,7 +1,7 @@
 import api from '@app/common/api';
-import { Node, Tree, Comment, Sorting } from '@app/common/types';
+import { Node, Tree, Comment, Sorting, CommentMode } from '@app/common/types';
 
-import { StoreAction } from '../index';
+import { StoreAction, StoreState } from '../index';
 import { POST_INFO_SET } from '../post_info/types';
 import {
   getPinnedComments,
@@ -10,7 +10,7 @@ import {
   removeComment as uRemoveComment,
   setCommentPin as uSetCommentPin,
 } from './utils';
-import { COMMENTS_SET, PINNED_COMMENTS_SET } from './types';
+import { COMMENTS_SET, PINNED_COMMENTS_SET, COMMENTS_SET_MODE } from './types';
 
 /** sets comments, and put pinned comments in cache */
 export const setComments = (comments: Node[]): StoreAction<void> => dispatch => {
@@ -21,6 +21,17 @@ export const setComments = (comments: Node[]): StoreAction<void> => dispatch => 
   dispatch({
     type: PINNED_COMMENTS_SET,
     comments: getPinnedComments(comments),
+  });
+};
+
+/** sets comments, and put pinned comments in cache */
+export const setCommentMode = (mode: StoreState['activeComment']): StoreAction<void> => dispatch => {
+  if (mode !== null && mode.state === CommentMode.None) {
+    mode = null;
+  }
+  dispatch({
+    type: COMMENTS_SET_MODE,
+    mode,
   });
 };
 

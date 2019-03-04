@@ -45,6 +45,8 @@ interface State {
 }
 
 export class Input extends Component<Props, State> {
+  textAreaRef?: TextareaAutosize;
+
   constructor(props: Props) {
     super(props);
 
@@ -61,6 +63,13 @@ export class Input extends Component<Props, State> {
     this.getPreview = this.getPreview.bind(this);
     this.onInput = this.onInput.bind(this);
     this.onKeyDown = this.onKeyDown.bind(this);
+  }
+
+  componentWillReceiveProps(nextProps: Props) {
+    if (nextProps.value !== this.props.value) {
+      this.setState({ text: nextProps.value || '' });
+      this.props.autofocus && this.textAreaRef && this.textAreaRef.focus();
+    }
   }
 
   shouldComponentUpdate(nextProps: Props, nextState: State) {
@@ -151,6 +160,7 @@ export class Input extends Component<Props, State> {
       >
         <div className="input__field-wrapper">
           <TextareaAutosize
+            ref={ref => (this.textAreaRef = ref)}
             className="input__field"
             placeholder="Your comment here"
             value={text}

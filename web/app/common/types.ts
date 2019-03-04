@@ -118,3 +118,13 @@ export interface BlockingDuration {
 }
 
 export type Theme = 'light' | 'dark';
+
+/**
+ * Comment component's edit mode:
+ * whether it should have reply or edit Input shown
+ */
+export enum CommentMode {
+  None,
+  Reply,
+  Edit,
+}

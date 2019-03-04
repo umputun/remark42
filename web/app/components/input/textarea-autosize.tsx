@@ -16,20 +16,23 @@ export default class TextareaAutosize extends Component<Props> {
   componentDidMount() {
     this.autoResize();
 
-    if (this.props.autofocus) {
-      setTimeout(() => {
-        if (this.textareaRef) {
-          this.textareaRef.focus();
-          this.textareaRef.selectionStart = this.textareaRef.selectionEnd = this.textareaRef.value.length;
-        }
-      }, 100);
-    }
+    if (this.props.autofocus) this.focus();
   }
   componentDidUpdate(prevProps: Props) {
     if (prevProps.value !== this.props.value) {
       this.autoResize();
     }
   }
+
+  focus(): void {
+    setTimeout(() => {
+      if (this.textareaRef) {
+        this.textareaRef.focus();
+        this.textareaRef.selectionStart = this.textareaRef.selectionEnd = this.textareaRef.value.length;
+      }
+    }, 100);
+  }
+
   onRef(node: HTMLTextAreaElement) {
     this.textareaRef = node;
   }
