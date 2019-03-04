@@ -1,20 +1,25 @@
-// possible options: expires (in seconds), path, domain, secure
 interface CookieOptions {
-  /** time in seconds */
-  expires?: number | string;
+  /**
+   * Either time in seconds,
+   * RFC-1123 formatted date string,
+   * or Date object
+   */
+  expires?: number | string | Date;
   path?: string;
   domain?: string;
   secure?: boolean;
 }
 
 export function setCookie(name: string, value: string, options: CookieOptions = {}) {
-  let expires: string | number | Date = options.expires as string | number;
-
-  if (typeof expires === 'number') {
-    const d = new Date();
-    d.setTime(d.getTime() + expires * 1000);
-    expires = d;
-    options.expires = expires.toUTCString();
+  if (options.expires) {
+    if (typeof options.expires === 'number') {
+      const d = new Date();
+      d.setTime(d.getTime() + options.expires * 1000);
+      options.expires = d;
+      options.expires = options.expires.toUTCString();
+    } else if (options.expires instanceof Date) {
+      options.expires = options.expires.toUTCString();
+    }
   }
 
   value = encodeURIComponent(value);
