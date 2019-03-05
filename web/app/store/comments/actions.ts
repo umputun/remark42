@@ -24,17 +24,6 @@ export const setComments = (comments: StoreState['comments']): StoreAction<void>
   });
 };
 
-/** sets comments, and put pinned comments in cache */
-export const setCommentMode = (mode: StoreState['activeComment']): StoreAction<void> => dispatch => {
-  if (mode !== null && mode.state === CommentMode.None) {
-    mode = null;
-  }
-  dispatch({
-    type: COMMENT_MODE_SET,
-    mode,
-  });
-};
-
 /** appends comment to tree */
 export const addComment = (text: string, title: string, pid?: Comment['id']): StoreAction<Promise<void>> => async (
   dispatch,
@@ -99,4 +88,23 @@ export const fetchComments = (sort: Sorting): StoreAction<Promise<Tree>> => asyn
     info: data.info,
   });
   return data;
+};
+
+/** sets mode for comment, either reply or edit */
+export const setCommentMode = (mode: StoreState['activeComment']): StoreAction<void> => dispatch => {
+  if (mode !== null && mode.state === CommentMode.None) {
+    mode = null;
+  }
+  dispatch({
+    type: COMMENT_MODE_SET,
+    mode,
+  });
+};
+
+/** unsets comment mode */
+export const unsetCommentMode = (): StoreAction<void> => dispatch => {
+  dispatch({
+    type: COMMENT_MODE_SET,
+    mode: null,
+  });
 };

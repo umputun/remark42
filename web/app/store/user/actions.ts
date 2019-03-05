@@ -1,10 +1,10 @@
 import api from '@app/common/api';
-import { User, BlockedUser, Provider, BlockTTL, CommentMode } from '@app/common/types';
+import { User, BlockedUser, Provider, BlockTTL } from '@app/common/types';
 import { ttlToTime } from '@app/utils/ttl-to-time';
 
 import { StoreAction } from '../index';
 import { USER_BAN, USER_SET, USER_UNBAN, BLOCKED_VISIBLE_SET, USER_BANLIST_SET } from './types';
-import { setComments, setCommentMode } from '../comments/actions';
+import { setComments, unsetCommentMode } from '../comments/actions';
 import { setUserVerified as uSetUserVerified } from '../comments/utils';
 
 export const fetchUser = (): StoreAction<Promise<User | null>> => async dispatch => {
@@ -27,7 +27,7 @@ export const logIn = (provider: Provider): StoreAction<Promise<User | null>> => 
 
 export const logout = (): StoreAction<Promise<void>> => async dispatch => {
   await api.logOut();
-  dispatch(setCommentMode({ id: '', state: CommentMode.None }));
+  dispatch(unsetCommentMode());
   dispatch({
     type: USER_SET,
     user: null,
