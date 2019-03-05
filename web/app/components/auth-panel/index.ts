@@ -2,6 +2,8 @@ export { AuthPanel } from './auth-panel';
 
 require('./auth-panel.scss');
 
+require('./__readonly-label/auth-panel__readonly-label.scss');
+
 require('./__column/auth-panel__column.scss');
 require('./__pseudo-link/auth-panel__pseudo-link.scss');
 require('./__select/auth-panel__select.scss');

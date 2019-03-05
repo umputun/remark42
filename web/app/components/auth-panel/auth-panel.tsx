@@ -5,7 +5,7 @@ import b from 'bem-react-helper';
 import { PROVIDER_NAMES, IS_STORAGE_AVAILABLE, IS_THIRD_PARTY } from '@app/common/constants';
 import { requestDeletion } from '@app/utils/email';
 import { getHandleClickProps } from '@app/common/accessibility';
-import { User, Provider, Sorting, Theme } from '@app/common/types';
+import { User, Provider, Sorting, Theme, PostInfo } from '@app/common/types';
 
 import Dropdown, { DropdownItem } from '@app/components/dropdown';
 import { Button } from '@app/components/button';
@@ -17,6 +17,7 @@ export interface Props {
   sort: Sorting;
   isCommentsDisabled: boolean;
   theme: Theme;
+  postInfo: PostInfo;
 
   onSortChange(s: Sorting): Promise<void>;
   onSignIn(p: Provider): Promise<User | null>;
@@ -69,10 +70,10 @@ export class AuthPanel extends Component<Props, State> {
 
   render(props: RenderableProps<Props>, { isBlockedVisible }: State) {
     const { user, providers = [], sort, isCommentsDisabled } = props;
-
     const sortArray = getSortArray(sort);
-
     const loggedIn = !!user;
+    const signInMessage = props.postInfo.read_only ? 'Sign in using ' : 'Sign in to comment using ';
+
     return (
       <div className={b('auth-panel', {}, { theme: props.theme, loggedIn })}>
         {user && (
@@ -106,7 +107,7 @@ export class AuthPanel extends Component<Props, State> {
 
         {IS_STORAGE_AVAILABLE && !loggedIn && (
           <div className="auth-panel__column">
-            Sign in to comment using{' '}
+            {signInMessage}
             {providers.map((provider, i) => {
               const comma = i === 0 ? '' : i === providers.length - 1 ? ' or ' : ', ';
 
@@ -123,7 +124,6 @@ export class AuthPanel extends Component<Props, State> {
                 </span>
               );
             })}
-            {'.'}
           </div>
         )}
 
@@ -168,6 +168,10 @@ export class AuthPanel extends Component<Props, State> {
           )}
 
           {user && user.admin && ' • '}
+
+          {!(user && user.admin) && props.postInfo.read_only && (
+            <span className="auth-panel__readonly-label">Read-only</span>
+          )}
 
           <span className="auth-panel__sort">
             Sort by{' '}

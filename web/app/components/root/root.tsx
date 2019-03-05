@@ -201,6 +201,7 @@ export class Root extends Component<Props, State> {
             sort={this.props.sort}
             providers={StaticStore.config.auth_providers}
             isCommentsDisabled={isCommentsDisabled}
+            postInfo={this.props.info}
             onSignIn={this.props.logIn}
             onSignOut={this.props.logOut}
             onBlockedUsersShow={this.onBlockedUsersShow}
