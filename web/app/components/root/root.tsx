@@ -226,7 +226,7 @@ export class Root extends Component<Props, State> {
               {this.props.pinnedComments.length > 0 && (
                 <div className="root__pinned-comments" role="region" aria-label="Pinned comments">
                   {this.props.pinnedComments.map(comment => (
-                    <Comment data={comment} level={0} disabled={true} mix="root__pinned-comment" />
+                    <Comment view="pinned" data={comment} level={0} disabled={true} mix="root__pinned-comment" />
                   ))}
                 </div>
               )}

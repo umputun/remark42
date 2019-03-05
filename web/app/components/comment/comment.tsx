@@ -28,7 +28,14 @@ export interface Props {
   isCommentsDisabled: boolean;
   /** edit mode: is comment should have reply, or edit Input */
   editMode?: CommentMode;
-  view?: 'user' | 'preview';
+  /**
+   * "main" view used in main case,
+   * "pinned" view used in pinned block,
+   * "user" is for user comments widget,
+   * "preview" is for last comments page
+   */
+  view: 'main' | 'pinned' | 'user' | 'preview';
+  /** defines whether comment should have reply/edit actions */
   disabled?: boolean;
   collapsed?: boolean;
   theme: Theme;
@@ -327,11 +334,11 @@ export class Comment extends Component<Props, State> {
    * returns reason for disabled downvoting
    */
   getDownvoteDisabledReason(): string | null {
-    if (this.props.view === 'user') return 'Voting disabled in last comments';
-    if (this.isGuest()) return 'Only authorized users are allowed to vote';
-    if (this.props.post_info.read_only) return "You can't vote on read-only topics";
-    if (this.props.data.delete) return "You can't vote for deleted comment";
-    if (this.isCurrentUser()) return "You can't vote for your own comment";
+    if (!(this.props.view === 'main' || this.props.view === 'pinned')) return "Voting allowed only on post's page";
+    if (this.isGuest()) return 'Sign in to vote';
+    if (this.props.post_info.read_only) return "Can't vote on read-only topics";
+    if (this.props.data.delete) return "Can't vote for deleted comment";
+    if (this.isCurrentUser()) return "Can't vote for your own comment";
     if (StaticStore.config.positive_score && this.props.data.score < 1) return 'Only positive score allowed';
     return null;
   }
@@ -340,11 +347,11 @@ export class Comment extends Component<Props, State> {
    * returns reason for disabled upvoting
    */
   getUpvoteDisabledReason(): string | null {
-    if (this.props.view === 'user') return 'Voting disabled in last comments';
-    if (this.isGuest()) return 'Only authorized users are allowed to vote';
-    if (this.props.post_info.read_only) return "You can't vote on read-only topics";
-    if (this.props.data.delete) return "You can't vote for deleted comment";
-    if (this.isCurrentUser()) return "You can't vote for your own comment";
+    if (!(this.props.view === 'main' || this.props.view === 'pinned')) return "Voting allowed only on post's page";
+    if (this.isGuest()) return 'Sign in to vote';
+    if (this.props.post_info.read_only) return "Can't vote on read-only topics";
+    if (this.props.data.delete) return "Can't vote for deleted comment";
+    if (this.isCurrentUser()) return "Can't vote for your own comment";
     return null;
   }
 
@@ -413,8 +420,8 @@ export class Comment extends Component<Props, State> {
       // TODO: add default view mod or don't?
       guest: isGuest,
       view: isAdmin ? 'admin' : props.view,
-      replying: isReplying,
-      editing: isEditing,
+      replying: props.view === 'main' && isReplying,
+      editing: props.view === 'main' && isEditing,
       theme: props.view === 'preview' ? null : props.theme,
       level: props.level,
     };
@@ -491,7 +498,7 @@ export class Comment extends Component<Props, State> {
               {o.time}
             </a>
 
-            {!!props.level && props.level > 0 && props.view !== 'user' && (
+            {!!props.level && props.level > 0 && props.view === 'main' && (
               <a
                 className="comment__link-to-parent"
                 href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.pid}`}
@@ -507,7 +514,7 @@ export class Comment extends Component<Props, State> {
 
             {isAdmin && !props.isUserBanned && props.data.delete && <span className="comment__status">Deleted</span>}
 
-            {!props.disabled && props.view !== 'user' && (
+            {!props.disabled && props.view === 'main' && (
               <span
                 {...getHandleClickProps(() => this.toggleCollapse())}
                 className={b('comment__action', {}, { type: 'collapse', selected: props.collapsed })}
@@ -556,7 +563,7 @@ export class Comment extends Component<Props, State> {
             </div>
           )}
 
-          {!props.collapsed && (
+          {(!props.collapsed || props.view === 'pinned') && (
             <div
               className={b('comment__text', { mix: b('raw-content', {}, { theme: props.theme }) })}
               ref={r => (this.textNode = r)}
@@ -564,9 +571,9 @@ export class Comment extends Component<Props, State> {
             />
           )}
 
-          {!props.collapsed && (
+          {(!props.collapsed || props.view === 'pinned') && (
             <div className="comment__actions">
-              {!props.data.delete && !props.isCommentsDisabled && !props.disabled && !isGuest && props.view !== 'user' && (
+              {!props.data.delete && !props.isCommentsDisabled && !props.disabled && !isGuest && props.view === 'main' && (
                 <span {...getHandleClickProps(() => this.toggleReplying())} className="comment__action">
                   {isReplying ? 'Cancel' : 'Reply'}
                 </span>
@@ -577,7 +584,7 @@ export class Comment extends Component<Props, State> {
                 !!o.orig &&
                 isCurrentUser &&
                 (editable || isEditing) &&
-                props.view !== 'user' && [
+                props.view === 'main' && [
                   <span
                     {...getHandleClickProps(() => this.toggleEditing())}
                     className="comment__action comment__action_type_edit"
@@ -618,7 +625,7 @@ export class Comment extends Component<Props, State> {
 
                   {state.isCopied && <span className="comment__control comment__control_view_inactive">Copied!</span>}
 
-                  {props.view !== 'user' && (
+                  {(props.view === 'main' || props.view === 'pinned') && (
                     <span {...getHandleClickProps(() => this.setPin(!props.data.pin))} className="comment__control">
                       {props.data.pin ? 'Unpin' : 'Pin'}
                     </span>
@@ -660,7 +667,7 @@ export class Comment extends Component<Props, State> {
           )}
         </div>
 
-        {isReplying && props.view !== 'user' && (
+        {isReplying && props.view === 'main' && (
           <Input
             theme={props.theme}
             value=""
@@ -673,7 +680,7 @@ export class Comment extends Component<Props, State> {
           />
         )}
 
-        {isEditing && props.view !== 'user' && (
+        {isEditing && props.view === 'main' && (
           <Input
             theme={props.theme}
             value={o.orig}

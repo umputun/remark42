@@ -31,7 +31,7 @@ function Thread(props: RenderableProps<Props>) {
       role={['listitem'].concat(!collapsed && replies.length ? 'list' : []).join(' ')}
       aria-expanded={!collapsed}
     >
-      <Comment data={comment} repliesCount={replies.length} level={level} getPreview={props.getPreview} />
+      <Comment view="main" data={comment} repliesCount={replies.length} level={level} getPreview={props.getPreview} />
 
       {!collapsed &&
         !!replies.length &&
