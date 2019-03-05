@@ -2,11 +2,16 @@
 import { h, render } from 'preact';
 import { Props, AuthPanel } from './auth-panel';
 import { createDomContainer } from '../../testUtils';
-import { User } from '../../common/types';
+import { User, PostInfo } from '../../common/types';
 
 const DefaultProps: Partial<Props> = {
   sort: '-score',
   providers: [`google`, `github`],
+  postInfo: {
+    read_only: false,
+    url: 'https://example.com',
+    count: 3,
+  },
 };
 
 describe('<AuthPanel />', () => {
@@ -29,6 +34,31 @@ describe('<AuthPanel />', () => {
       const authForm = authPanelColumn[0];
 
       expect(authForm.textContent).toEqual(expect.stringContaining('Sign in to comment using'));
+
+      const providerLinks = authForm.querySelectorAll('.auth-panel__pseudo-link');
+
+      expect(providerLinks[0].textContent).toEqual('Google');
+      expect(providerLinks[1].textContent).toEqual('GitHub');
+    });
+
+    it('should render login form with google and github provider for read-only post', () => {
+      const element = (
+        <AuthPanel
+          {...DefaultProps as Props}
+          user={null}
+          postInfo={{ ...DefaultProps.postInfo, read_only: true } as PostInfo}
+        />
+      );
+
+      render(element, container);
+
+      const authPanelColumn = container.querySelectorAll('.auth-panel__column');
+
+      expect(authPanelColumn.length).toEqual(2);
+
+      const authForm = authPanelColumn[0];
+
+      expect(authForm.textContent).toEqual(expect.stringContaining('Sign in using Google or GitHub'));
 
       const providerLinks = authForm.querySelectorAll('.auth-panel__pseudo-link');
 
