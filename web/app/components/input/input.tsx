@@ -44,6 +44,12 @@ interface State {
   text: string;
 }
 
+const Labels = {
+  main: 'Send',
+  edit: 'Edit',
+  reply: 'Reply',
+};
+
 export class Input extends Component<Props, State> {
   textAreaRef?: TextareaAutosize;
 
@@ -145,6 +151,7 @@ export class Input extends Component<Props, State> {
   render(props: RenderableProps<Props>, { isDisabled, isErrorShown, errorMessage, preview, maxLength, text }: State) {
     const charactersLeft = maxLength - text.length;
     errorMessage = props.errorMessage || errorMessage;
+    const label = Labels[props.mode || 'main'];
 
     return (
       <form
@@ -191,7 +198,7 @@ export class Input extends Component<Props, State> {
           </button>
 
           <button className={b('input__button', {}, { type: 'send' })} type="submit" disabled={isDisabled}>
-            Send
+            {label}
           </button>
 
           {props.mode === 'main' && (
