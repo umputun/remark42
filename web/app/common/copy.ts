@@ -1,9 +1,12 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 // based on https://github.com/sindresorhus/copy-text-to-clipboard, but improved to copy text styles too
 export default (input: string): boolean => {
   const el = document.createElement('div');
 
   el.innerHTML = input;
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (el.style as any).contain = 'strict';
   el.style.position = 'absolute';
   el.style.left = '-9999px';

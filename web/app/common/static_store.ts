@@ -4,7 +4,7 @@ import { QuerySettingsType, querySettings } from './settings';
 interface StaticStoreType {
   config: Config;
   query: QuerySettingsType;
-  /** used in user-comments page */
+  /** used in fetcher, fer example to set comment edit temiout */
   serverClientTimeDiff?: number;
 }
 
@@ -13,7 +13,7 @@ interface StaticStoreType {
  *
  * Initialized once at webpack's entry points (i.e remark.tsx)
  */
-export const StaticStore = {
+export const StaticStore: StaticStoreType = {
   config: {
     version: '',
     edit_duration: 5000,
@@ -26,5 +26,5 @@ export const StaticStore = {
     positive_score: false,
     readonly_age: 0,
   },
-  query: querySettings,
-} as StaticStoreType;
+  query: querySettings as QuerySettingsType,
+};

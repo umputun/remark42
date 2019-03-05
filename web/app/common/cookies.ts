@@ -28,7 +28,9 @@ export function setCookie(name: string, value: string, options: CookieOptions = 
 
   for (const propName in options) {
     updatedCookie += `; ${propName}`;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if ((options as any)[propName] !== true) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       updatedCookie += `=${(options as any)[propName]}`;
     }
   }

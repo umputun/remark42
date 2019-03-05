@@ -12,7 +12,7 @@ import { StaticStore } from '@app/common/static_store';
 import debounce from '@app/utils/debounce';
 import copy from '@app/common/copy';
 import { Theme, BlockTTL, Comment as CommentType, PostInfo, User, CommentMode } from '@app/common/types';
-import { extractErrorMessageFromResponse } from '@app/utils/errorUtils';
+import { extractErrorMessageFromResponse, FetcherResponse } from '@app/utils/errorUtils';
 
 import { Input } from '@app/components/input';
 import { AvatarIcon } from '@app/components/avatar-icon';
@@ -22,7 +22,7 @@ export interface Props {
   user: User | null;
   data: CommentType;
   repliesCount?: number;
-  post_info: PostInfo;
+  post_info: PostInfo | null;
   /** whether comment's user is banned */
   isUserBanned?: boolean;
   isCommentsDisabled: boolean;
@@ -222,7 +222,7 @@ export class Comment extends Component<Props, State> {
     }
   }
 
-  handleVoteError(e: any, originalScore: number, originalDelta: number) {
+  handleVoteError(e: FetcherResponse, originalScore: number, originalDelta: number) {
     this.setState({
       scoreDelta: originalDelta,
       cachedScore: originalScore,
@@ -335,7 +335,7 @@ export class Comment extends Component<Props, State> {
    */
   getDownvoteDisabledReason(): string | null {
     if (!(this.props.view === 'main' || this.props.view === 'pinned')) return "Voting allowed only on post's page";
-    if (this.props.post_info.read_only) return "Can't vote on read-only topics";
+    if (this.props.post_info!.read_only) return "Can't vote on read-only topics";
     if (this.props.data.delete) return "Can't vote for deleted comment";
     if (this.isCurrentUser()) return "Can't vote for your own comment";
     if (StaticStore.config.positive_score && this.props.data.score < 1) return 'Only positive score allowed';
@@ -348,7 +348,7 @@ export class Comment extends Component<Props, State> {
    */
   getUpvoteDisabledReason(): string | null {
     if (!(this.props.view === 'main' || this.props.view === 'pinned')) return "Voting allowed only on post's page";
-    if (this.props.post_info.read_only) return "Can't vote on read-only topics";
+    if (this.props.post_info!.read_only) return "Can't vote on read-only topics";
     if (this.props.data.delete) return "Can't vote for deleted comment";
     if (this.isCurrentUser()) return "Can't vote for your own comment";
     if (this.isGuest()) return 'Sign in to vote';

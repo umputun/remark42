@@ -35,16 +35,13 @@ async function init(): Promise<void> {
   const params = window.location.search
     .replace(/^\?/, '')
     .split('&')
-    .reduce(
-      (memo, value) => {
-        const vals = value.split('=');
-        if (vals.length === 2) {
-          memo[vals[0]] = vals[1];
-        }
-        return memo;
-      },
-      {} as any
-    );
+    .reduce<{ [key: string]: string }>((memo, value) => {
+      const vals = value.split('=');
+      if (vals.length === 2) {
+        memo[vals[0]] = vals[1];
+      }
+      return memo;
+    }, {});
 
   StaticStore.config = await api.getConfig();
 

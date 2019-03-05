@@ -1,4 +1,5 @@
-/* eslint-disable no-console */
+/* eslint-disable no-console, @typescript-eslint/no-explicit-any */
+
 declare let remark_config: CommentsConfig;
 
 import loadPolyfills from '@app/common/polyfills';

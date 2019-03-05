@@ -25,18 +25,21 @@ module.exports = {
         '@typescript-eslint/explicit-member-accessibility': 0,
         // doesn't work in real world
         '@typescript-eslint/no-non-null-assertion': 0,
-        // actually it is better to disable only in tests, but I'm tired to do this now, feel free to change
-        '@typescript-eslint/no-explicit-any': 0,
         // disabling because store actions use WATCH_ME_IM_SPECIAL case
         '@typescript-eslint/class-name-casing': 0,
-        // actually it is better to disable only in tests, but I'm tired to do this now, feel free to change
-        '@typescript-eslint/no-object-literal-type-assertion': 0,
-        // disabling because server output uses snake case response
+        // disabling because server response contains snake case
         '@typescript-eslint/camelcase': 0,
         // disabling because it's standard behaviour that function is hoisted to top
         '@typescript-eslint/no-use-before-define': 0,
         // maybe good but I have just tired to type return types everywhere, especially with complex generic return types
         '@typescript-eslint/explicit-function-return-type': 0,
+      },
+    },
+    {
+      files: ['*.test.ts', '*.test.tsx'],
+      rules: {
+        '@typescript-eslint/no-explicit-any': 0,
+        '@typescript-eslint/no-object-literal-type-assertion': 0,
       },
     },
     {

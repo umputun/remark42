@@ -15,7 +15,9 @@ type FetcherInit =
       withCredentials?: boolean;
     };
 
-const fetcher = methods.reduce(
+type FetcherObject = { [K in FetcherMethod]: <T = unknown>(data: FetcherInit) => Promise<T> };
+
+const fetcher: FetcherObject = methods.reduce<FetcherObject>(
   (acc, method) => {
     acc[method] = <T = unknown>(data: FetcherInit): Promise<T> => {
       const { url, body = undefined, withCredentials = false, overriddenApiBase = API_BASE } =
@@ -76,7 +78,8 @@ const fetcher = methods.reduce(
     };
     return acc;
   },
-  {} as { [K in FetcherMethod]: <T = unknown>(data: FetcherInit) => Promise<T> }
+  // eslint-disable-next-line
+  {} as FetcherObject
 );
 
 export default fetcher;

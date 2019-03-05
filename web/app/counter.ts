@@ -15,7 +15,7 @@ if (document.readyState === 'loading') {
 async function init(): Promise<void> {
   await loadPolyfills();
 
-  const nodes = [].slice.call(document.getElementsByClassName(COUNTER_NODE_CLASSNAME)) as HTMLElement[];
+  const nodes: HTMLElement[] = [].slice.call(document.getElementsByClassName(COUNTER_NODE_CLASSNAME));
 
   if (!nodes) {
     console.error("Remark42: Can't find counter nodes.");
@@ -34,15 +34,12 @@ async function init(): Promise<void> {
     return;
   }
 
-  const map = nodes.reduce(
-    (acc, node) => {
-      const id = node.dataset.url || remark_config.url || window.location.href;
-      if (!acc[id]) acc[id] = [];
-      acc[id].push(node);
-      return acc;
-    },
-    {} as { [key: string]: HTMLElement[] }
-  );
+  const map = nodes.reduce<{ [key: string]: HTMLElement[] }>((acc, node) => {
+    const id = node.dataset.url || remark_config.url || window.location.href;
+    if (!acc[id]) acc[id] = [];
+    acc[id].push(node);
+    return acc;
+  }, {});
 
   api.getCommentsCount(remark_config.site_id, Object.keys(map)).then(res => {
     res.forEach(item => map[item.url].map(n => (n.innerHTML = item.count.toString(10))));

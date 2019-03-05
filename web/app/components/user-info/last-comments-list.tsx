@@ -1,7 +1,7 @@
 /** @jsx h */
 import { h } from 'preact';
 
-import { Comment as CommentType, PostInfo } from '@app/common/types';
+import { Comment as CommentType } from '@app/common/types';
 
 import { Comment } from '../comment';
 import Preloader from '../preloader';
@@ -21,7 +21,7 @@ const LastCommentsList = ({ comments, isLoading }: { comments: CommentType[]; is
           user={null}
           isCommentsDisabled={false}
           theme="light"
-          post_info={{} as PostInfo}
+          post_info={null}
         />
       ))}
     </div>

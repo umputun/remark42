@@ -133,7 +133,7 @@ export class Root extends Component<Props, State> {
     }
   }
 
-  onMessage(event: { data: any }) {
+  onMessage(event: { data: string | object }) {
     try {
       const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
       if (data.theme && THEMES.includes(data.theme)) {

@@ -2,7 +2,7 @@
 import { h } from 'preact';
 
 import { NODE_ID } from '@app/common/constants';
-import { Comment as CommentType, PostInfo } from '@app/common/types';
+import { Comment as CommentType } from '@app/common/types';
 
 import { Comment } from '@app/components/comment';
 
@@ -22,7 +22,7 @@ export const ListComments = ({ comments = [] }: Props) => (
           user={null}
           theme="light"
           isCommentsDisabled={false}
-          post_info={{} as PostInfo}
+          post_info={null}
         />
       ))}
     </div>

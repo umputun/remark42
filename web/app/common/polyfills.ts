@@ -18,6 +18,7 @@ export default async function loadPolyfills() {
 
   const fillFetch = async () => {
     if ('fetch' in window) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await import(/* webpackChunkName: "polyfills" */ 'whatwg-fetch' as any).then();
   };
 

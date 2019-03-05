@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 // type signature is wrong, but there is no way
 // in typescript to augment function return type currently
 export default function debounce<F extends (...args: any[]) => void>(func: F, wait: number): F {
