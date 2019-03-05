@@ -8,6 +8,7 @@ const DefaultProps: Partial<Props> = {
   post_info: {
     read_only: false,
   } as PostInfo,
+  view: 'main',
   data: {
     text: 'test comment',
     votes: {},
@@ -43,7 +44,7 @@ describe('<Comment />', () => {
 
       for (const b of voteButtons as any) {
         expect(b.getAttribute('aria-disabled')).toStrictEqual('true');
-        expect(b.getAttribute('title')).toStrictEqual('Voting disabled in last comments');
+        expect(b.getAttribute('title')).toStrictEqual("Voting allowed only on post's page");
       }
     });
 
@@ -58,7 +59,7 @@ describe('<Comment />', () => {
 
       for (const b of voteButtons as any) {
         expect(b.getAttribute('aria-disabled')).toStrictEqual('true');
-        expect(b.getAttribute('title')).toStrictEqual("You can't vote on read-only topics");
+        expect(b.getAttribute('title')).toStrictEqual("Can't vote on read-only topics");
       }
     });
 
@@ -74,7 +75,7 @@ describe('<Comment />', () => {
 
       for (const b of voteButtons as any) {
         expect(b.getAttribute('aria-disabled')).toStrictEqual('true');
-        expect(b.getAttribute('title')).toStrictEqual("You can't vote for deleted comment");
+        expect(b.getAttribute('title')).toStrictEqual("Can't vote for deleted comment");
       }
     });
 
@@ -97,7 +98,7 @@ describe('<Comment />', () => {
 
       for (const b of voteButtons as any) {
         expect(b.getAttribute('aria-disabled')).toStrictEqual('true');
-        expect(b.getAttribute('title')).toStrictEqual("You can't vote for your own comment");
+        expect(b.getAttribute('title')).toStrictEqual("Can't vote for your own comment");
       }
     });
 
@@ -110,7 +111,7 @@ describe('<Comment />', () => {
 
       for (const b of voteButtons as any) {
         expect(b.getAttribute('aria-disabled')).toStrictEqual('true');
-        expect(b.getAttribute('title')).toStrictEqual('Only authorized users are allowed to vote');
+        expect(b.getAttribute('title')).toStrictEqual('Sign in to vote');
       }
     });
   });
