@@ -3,6 +3,7 @@ import { h, render } from 'preact';
 import { Props, Comment } from './comment';
 import { createDomContainer } from '../../testUtils';
 import { User, Comment as CommentType, PostInfo } from '@app/common/types';
+import { delay } from '@app/store/comments/utils';
 
 const DefaultProps: Partial<Props> = {
   post_info: {
@@ -114,6 +115,56 @@ describe('<Comment />', () => {
         expect(b.getAttribute('title')).toStrictEqual('Sign in to vote');
       }
     });
+
+    it('disabled for already upvoted comment', async () => {
+      const voteSpy = jest.fn(async () => {});
+      const element = (
+        <Comment
+          {...DefaultProps as Props}
+          data={{ ...DefaultProps.data, votes: { [DefaultProps.user!.id]: true } } as Props['data']}
+          putCommentVote={voteSpy}
+        />
+      );
+      render(element, container);
+
+      const voteButtons = container.querySelectorAll<HTMLSpanElement>('.comment__vote');
+      expect(voteButtons.length).toStrictEqual(2);
+
+      expect(voteButtons[0].getAttribute('aria-disabled')).toStrictEqual('true');
+      voteButtons[0].click();
+      await delay(100);
+      expect(voteSpy).not.toBeCalled();
+
+      expect(voteButtons[1].getAttribute('aria-disabled')).toStrictEqual('false');
+      voteButtons[1].click();
+      await delay(100);
+      expect(voteSpy).toBeCalled();
+    }, 30000);
+
+    it('disabled for already downvoted comment', async () => {
+      const voteSpy = jest.fn(async () => {});
+      const element = (
+        <Comment
+          {...DefaultProps as Props}
+          data={{ ...DefaultProps.data, votes: { [DefaultProps.user!.id]: false } } as Props['data']}
+          putCommentVote={voteSpy}
+        />
+      );
+      render(element, container);
+
+      const voteButtons = container.querySelectorAll<HTMLSpanElement>('.comment__vote');
+      expect(voteButtons.length).toStrictEqual(2);
+
+      expect(voteButtons[1].getAttribute('aria-disabled')).toStrictEqual('true');
+      voteButtons[1].click();
+      await delay(100);
+      expect(voteSpy).not.toBeCalled();
+
+      expect(voteButtons[0].getAttribute('aria-disabled')).toStrictEqual('false');
+      voteButtons[0].click();
+      await delay(100);
+      expect(voteSpy).toBeCalled();
+    }, 30000);
   });
 
   describe('admin controls', () => {

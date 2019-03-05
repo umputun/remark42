@@ -137,3 +137,9 @@ export function addComment(comments: Node[], comment: Comment): Node[] {
 export function replaceComment(comments: Node[], comment: Comment): Node[] {
   return mapTreeIfID(comments, comment.id, n => ({ ...n, comment }));
 }
+
+export function delay(ms: number = 100): Promise<void> {
+  return new Promise(resolve => {
+    setTimeout(resolve, ms);
+  });
+}
