@@ -39,6 +39,12 @@ module.exports = {
         '@typescript-eslint/explicit-function-return-type': 0,
       },
     },
+    {
+      files: ['*.test.ts', '*.test.tsx', '*.test.js', '*.test.jsx'],
+      rules: {
+        'max-nested-callbacks': ['warn', { max: 10 }],
+      },
+    },
   ],
   env: {
     browser: true,
