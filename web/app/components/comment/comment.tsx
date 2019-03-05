@@ -335,11 +335,11 @@ export class Comment extends Component<Props, State> {
    */
   getDownvoteDisabledReason(): string | null {
     if (!(this.props.view === 'main' || this.props.view === 'pinned')) return "Voting allowed only on post's page";
-    if (this.isGuest()) return 'Sign in to vote';
     if (this.props.post_info.read_only) return "Can't vote on read-only topics";
     if (this.props.data.delete) return "Can't vote for deleted comment";
     if (this.isCurrentUser()) return "Can't vote for your own comment";
     if (StaticStore.config.positive_score && this.props.data.score < 1) return 'Only positive score allowed';
+    if (this.isGuest()) return 'Sign in to vote';
     return null;
   }
 
@@ -348,10 +348,10 @@ export class Comment extends Component<Props, State> {
    */
   getUpvoteDisabledReason(): string | null {
     if (!(this.props.view === 'main' || this.props.view === 'pinned')) return "Voting allowed only on post's page";
-    if (this.isGuest()) return 'Sign in to vote';
     if (this.props.post_info.read_only) return "Can't vote on read-only topics";
     if (this.props.data.delete) return "Can't vote for deleted comment";
     if (this.isCurrentUser()) return "Can't vote for your own comment";
+    if (this.isGuest()) return 'Sign in to vote';
     return null;
   }
 
