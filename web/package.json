@@ -13,7 +13,8 @@
   "husky": {
     "hooks": {
       "pre-commit": "./node_modules/.bin/lint-staged",
-      "post-commit": "git update-index --again"
+      "post-commit": "git update-index --again",
+      "pre-push": "npm test"
     }
   },
   "lint-staged": {
