@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -29,7 +31,6 @@ import (
 	"github.com/umputun/remark/backend/app/store/service"
 )
 
-var testDb = "/tmp/test-remark.db"
 var testHTML = "/tmp/test-remark.html"
 var getStartedHTML = "/tmp/getstarted.html"
 
@@ -177,6 +178,7 @@ func TestRest_RunAutocertModeHTTPOnly(t *testing.T) {
 
 func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 
+	testDb := fmt.Sprintf("/tmp/test-remark-%d.db", rand.Int31())
 	os.Remove(testDb)
 	os.Remove(testHTML)
 	os.RemoveAll("/tmp/ava-remark42")

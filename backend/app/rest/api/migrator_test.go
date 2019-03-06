@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -243,6 +244,7 @@ func waitForImportCompletion(t *testing.T, ts *httptest.Server) {
 }
 
 func prepImportSrv(t *testing.T) (ts *httptest.Server, teardown func()) {
+	testDb := fmt.Sprintf("/tmp/test-remark-import-%d.db", rand.Int31())
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDb, SiteID: "radio-t"})
 	require.Nil(t, err)
 	adminStore := adminstore.NewStaticStore("123456", []string{"a1", "a2"}, "admin@remark-42.com")
