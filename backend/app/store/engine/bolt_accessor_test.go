@@ -16,8 +16,8 @@ import (
 var testDb = "test-remark.db"
 
 func TestBoltDB_CreateAndFind(t *testing.T) {
-	defer os.Remove(testDb)
-	var b = prep(t)
+	var b, teardown = prep(t)
+	defer teardown()
 
 	res, err := b.Find(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "time")
 	assert.Nil(t, err)
@@ -37,8 +37,8 @@ func TestBoltDB_CreateAndFind(t *testing.T) {
 }
 
 func TestBoltDB_CreateReadOnly(t *testing.T) {
-	defer os.Remove(testDb)
-	var b = prep(t)
+	var b, teardown = prep(t)
+	defer teardown()
 
 	comment := store.Comment{
 		ID:        "id-ro",
@@ -61,8 +61,8 @@ func TestBoltDB_CreateReadOnly(t *testing.T) {
 }
 
 func TestBoltDB_Get(t *testing.T) {
-	defer os.Remove(testDb)
-	b := prep(t)
+	var b, teardown = prep(t)
+	defer teardown()
 
 	res, err := b.Find(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "time")
 	assert.Nil(t, err)
@@ -80,8 +80,9 @@ func TestBoltDB_Get(t *testing.T) {
 }
 
 func TestBoltDB_Put(t *testing.T) {
-	defer os.Remove(testDb)
-	b := prep(t)
+	var b, teardown = prep(t)
+	defer teardown()
+
 	loc := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
 	res, err := b.Find(loc, "time")
 	assert.Nil(t, err)
@@ -107,8 +108,8 @@ func TestBoltDB_Put(t *testing.T) {
 }
 
 func TestBoltDB_Last(t *testing.T) {
-	defer os.Remove(testDb)
-	b := prep(t)
+	var b, teardown = prep(t)
+	defer teardown()
 
 	res, err := b.Last("radio-t", 0)
 	assert.Nil(t, err)
@@ -125,8 +126,8 @@ func TestBoltDB_Last(t *testing.T) {
 }
 
 func TestBoltDB_Count(t *testing.T) {
-	defer os.Remove(testDb)
-	b := prep(t)
+	var b, teardown = prep(t)
+	defer teardown()
 
 	c, err := b.Count(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"})
 	assert.Nil(t, err)
@@ -141,8 +142,8 @@ func TestBoltDB_Count(t *testing.T) {
 }
 
 func TestBoltDB_List(t *testing.T) {
-	defer os.Remove(testDb)
-	b := prep(t) // two comments for https://radio-t.com
+	b, teardown := prep(t) // two comments for https://radio-t.com
+	defer teardown()
 
 	// add one more for https://radio-t.com/2
 	comment := store.Comment{
@@ -181,8 +182,8 @@ func TestBoltDB_List(t *testing.T) {
 }
 
 func TestBoltDB_Info(t *testing.T) {
-	defer os.Remove(testDb)
-	b := prep(t) // two comments for https://radio-t.com
+	b, teardown := prep(t) // two comments for https://radio-t.com
+	defer teardown()
 
 	ts := func(min int) time.Time { return time.Date(2017, 12, 20, 15, 18, min, 0, time.Local) }
 
@@ -224,8 +225,8 @@ func TestBoltDB_Info(t *testing.T) {
 }
 
 func TestBoltDB_GetForUser(t *testing.T) {
-	defer os.Remove(testDb)
-	b := prep(t)
+	var b, teardown = prep(t)
+	defer teardown()
 
 	res, err := b.User("radio-t", "user1", 5, 0)
 	assert.Nil(t, err)
@@ -253,7 +254,11 @@ func TestBoltDB_GetForUserPagination(t *testing.T) {
 	os.Remove(testDb)
 	b, err := NewBoltDB(bolt.Options{}, BoltSite{FileName: testDb, SiteID: "radio-t"})
 	require.Nil(t, err)
-	defer os.Remove(testDb)
+
+	defer func() {
+		require.NoError(t, b.Close())
+		os.Remove(testDb)
+	}()
 
 	c := store.Comment{
 		Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
@@ -303,8 +308,9 @@ func TestBoltDB_GetForUserPagination(t *testing.T) {
 }
 
 func TestBoltDB_GetForUserCounter(t *testing.T) {
-	defer os.Remove(testDb)
-	b := prep(t)
+	var b, teardown = prep(t)
+	defer teardown()
+
 	count, err := b.UserCount("radio-t", "user1")
 	assert.Nil(t, err)
 	assert.Equal(t, 2, count)
@@ -343,12 +349,12 @@ func TestBoltDB_New(t *testing.T) {
 }
 
 // makes new boltdb, put two records
-func prep(t *testing.T) *BoltDB {
+func prep(t *testing.T) (b *BoltDB, teardown func()) {
 	os.Remove(testDb)
 
 	boltStore, err := NewBoltDB(bolt.Options{}, BoltSite{FileName: testDb, SiteID: "radio-t"})
 	assert.Nil(t, err)
-	b := boltStore
+	b = boltStore
 
 	comment := store.Comment{
 		ID:        "id-1",
@@ -370,5 +376,9 @@ func prep(t *testing.T) *BoltDB {
 	_, err = b.Create(comment)
 	assert.Nil(t, err)
 
-	return b
+	teardown = func() {
+		require.NoError(t, b.Close())
+		os.Remove(testDb)
+	}
+	return b, teardown
 }
