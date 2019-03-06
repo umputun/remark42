@@ -176,6 +176,11 @@ func TestRest_RunAutocertModeHTTPOnly(t *testing.T) {
 }
 
 func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
+
+	os.Remove(testDb)
+	os.Remove(testHTML)
+	os.RemoveAll("/tmp/ava-remark42")
+
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDb, SiteID: "radio-t"})
 	require.Nil(t, err)
 
@@ -226,7 +231,7 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 
 	teardown = func() {
 		ts.Close()
-		srv.DataService.Close()
+		require.NoError(t, srv.DataService.Close())
 		os.Remove(testDb)
 		os.Remove(testHTML)
 		os.RemoveAll("/tmp/ava-remark42")
