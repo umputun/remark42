@@ -5,7 +5,7 @@
 /web/public/
 /.vscode/
 /.idea/
-#/.git/
+/bin/
 
 # source files
 docker-compose.yml
@@ -19,5 +19,4 @@ debug
 debug.test
 *.prof
 *.test
-/bin/
 remark42
