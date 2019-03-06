@@ -59,6 +59,16 @@ Metrics middleware responds to GET /metrics with list of [expvar](https://golang
 
 BlackWords middleware doesn't allow user-defined words in the request body.
 
+### SizeLimit middleware
+
+SizeLimit middleware checks if body size is above the limit and returns `StatusRequestEntityTooLarge` (413) 
+
+### Trace middleware
+
+It looks for `X-Request-ID` header and makes it as a random id
+ (if not found), then populates it to the result's header
+    and to the request's context.
+    
 ## Helpers
 
 - `rest.JSON` - map alias, just for convenience `type JSON map[string]interface{}`

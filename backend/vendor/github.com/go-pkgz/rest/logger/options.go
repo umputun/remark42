@@ -7,14 +7,12 @@ import (
 // Option func type
 type Option func(l *Middleware)
 
-// Flags functional option defines output modes
-func Flags(flags ...Flag) Option {
-	return func(l *Middleware) {
-		l.flags = flags
-	}
+// WithBody triggers request body logging. Body size is limited (default 1k)
+func WithBody(l *Middleware) {
+	l.logBody = true
 }
 
-// MaxBodySize functional option defines the largest body size to log.
+// MaxBodySize sets size of the logged part of the request body.
 func MaxBodySize(max int) Option {
 	return func(l *Middleware) {
 		if max >= 0 {
@@ -23,35 +21,35 @@ func MaxBodySize(max int) Option {
 	}
 }
 
-// Prefix functional option defines log line prefix.
+// Prefix sets log line prefix.
 func Prefix(prefix string) Option {
 	return func(l *Middleware) {
 		l.prefix = prefix
 	}
 }
 
-// IPfn functional option defines ip masking function.
+// IPfn sets IP masking function. If ipFn is nil then IP address will be logged as is.
 func IPfn(ipFn func(ip string) string) Option {
 	return func(l *Middleware) {
 		l.ipFn = ipFn
 	}
 }
 
-// UserFn functional option defines user name function.
+// UserFn triggers user name logging if userFn is not nil.
 func UserFn(userFn func(r *http.Request) (string, error)) Option {
 	return func(l *Middleware) {
 		l.userFn = userFn
 	}
 }
 
-// SubjFn functional option defines subject function.
-func SubjFn(userFn func(r *http.Request) (string, error)) Option {
+// SubjFn triggers subject logging if subjFn is not nil.
+func SubjFn(subjFn func(r *http.Request) (string, error)) Option {
 	return func(l *Middleware) {
-		l.subjFn = userFn
+		l.subjFn = subjFn
 	}
 }
 
-// Log functional option defines loging backend.
+// Log sets logging backend. 
 func Log(log Backend) Option {
 	return func(l *Middleware) {
 		l.log = log

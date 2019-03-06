@@ -39,5 +39,5 @@ In addition to `Get` and `Flush` methods, memory cache also support limits for a
 		return []byte("1234567890"), nil
     }) 
     
-    lc.Flush("scope1") // invalidate cache for scope1
+    lc.Flush(cache.Flusher("site1").Scopes("scope1")) // invalidate cache for scope1
 ```

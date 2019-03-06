@@ -21,12 +21,13 @@ type Logger struct {
 	callerFile        bool
 	callerFunc        bool
 	callerPkg         bool
+	callerSkip        int
 	ignoredPkgCallers []string
-	now               nowFn
-	fatal             panicFn
-	skipCallers       int
-	levelBraces       bool
-	msec              bool
+
+	now         nowFn
+	fatal       panicFn
+	levelBraces bool
+	msec        bool
 }
 
 type nowFn func() time.Time
@@ -36,11 +37,11 @@ type panicFn func()
 // Two writers can be passed optionally - first for out and second for err
 func New(options ...Option) *Logger {
 	res := Logger{
-		now:         time.Now,
-		fatal:       func() { os.Exit(1) },
-		stdout:      os.Stdout,
-		stderr:      os.Stderr,
-		skipCallers: 1,
+		now:        time.Now,
+		fatal:      func() { os.Exit(1) },
+		stdout:     os.Stdout,
+		stderr:     os.Stderr,
+		callerSkip: 1,
 	}
 	for _, opt := range options {
 		opt(&res)
@@ -72,7 +73,7 @@ func (l *Logger) Logf(format string, args ...interface{}) {
 	bld.WriteString(" ")
 
 	if l.callerFile || l.callerFunc || l.callerPkg {
-		if pc, file, line, ok := runtime.Caller(l.skipCallers); ok {
+		if pc, file, line, ok := runtime.Caller(l.callerSkip); ok {
 
 			funcName, fileInfo := "", ""
 
@@ -214,6 +215,14 @@ func CallerPkg(l *Logger) {
 func CallerIgnore(ignores ...string) Option {
 	return func(l *Logger) {
 		l.ignoredPkgCallers = ignores
+	}
+}
+
+// CallerSkip sets how many trace levels to skip.
+// by default this value is 1 , i.e. skip logger level only
+func CallerSkip(n int) Option {
+	return func(l *Logger) {
+		l.callerSkip = n
 	}
 }
 
