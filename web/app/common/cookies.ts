@@ -26,12 +26,10 @@ export function setCookie(name: string, value: string, options: CookieOptions = 
 
   let updatedCookie = `${name}=${value}`;
 
-  for (const propName in options) {
-    updatedCookie += `; ${propName}`;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if ((options as any)[propName] !== true) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      updatedCookie += `=${(options as any)[propName]}`;
+  for (const [key, value] of Object.entries(options)) {
+    updatedCookie += `; ${key}`;
+    if (value !== true) {
+      updatedCookie += `=${value}`;
     }
   }
 
