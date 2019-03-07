@@ -250,7 +250,7 @@ func (s *Rest) routes() chi.Router {
 
 			rauth.Put("/comment/{id}", s.updateCommentCtrl)
 			rauth.Post("/comment", s.createCommentCtrl)
-			rauth.Put("/vote/{id}", s.voteCtrl)
+			rauth.With(rejectAnonUser).Put("/vote/{id}", s.voteCtrl)
 			rauth.Post("/deleteme", s.deleteMeCtrl)
 		})
 	})
@@ -345,4 +345,22 @@ func URLKey(r *http.Request) string {
 		key = adminPrefix + key
 	}
 	return key
+}
+
+// rejectAnonUser is a middleware rejecting anonymous users
+func rejectAnonUser(next http.Handler) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		user, err := rest.GetUserInfo(r)
+		if err != nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		if strings.HasPrefix(user.ID, "anonymous_") {
+			http.Error(w, "Access denied", http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
+	}
+	return http.HandlerFunc(fn)
 }
