@@ -131,7 +131,7 @@ func (cc *CleanupCommand) postsInRange(fromS, toS string) ([]store.PostInfo, err
 // get all posts via GET /list?site=siteID&limit=50&skip=10
 func (cc *CleanupCommand) listPosts() ([]store.PostInfo, error) {
 	listURL := fmt.Sprintf("%s/api/v1/list?site=%s&limit=10000", cc.RemarkURL, cc.Site)
-	r, err := http.Get(listURL)
+	r, err := http.Get(listURL) //nolint
 	if err != nil {
 		return nil, errors.Wrapf(err, "get request failed for list of posts, site %s", cc.Site)
 	}
@@ -158,7 +158,7 @@ func (cc *CleanupCommand) listComments(postURL string) ([]store.Comment, error) 
 
 	// handle 429 error from limiter
 	for {
-		r, err = http.Get(commentsURL)
+		r, err = http.Get(commentsURL) //nolint
 		if err != nil {
 			return nil, errors.Wrapf(err, "get request failed for comments, %s", postURL)
 		}
