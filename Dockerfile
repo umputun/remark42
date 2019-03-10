@@ -21,15 +21,15 @@ ARG DRONE_PULL_REQUEST
 ARG SKIP_BACKEND_TEST
 ARG MONGO_TEST
 
-WORKDIR /go/src/github.com/umputun/remark/backend
-ADD backend /go/src/github.com/umputun/remark/backend
-ADD .git /go/src/github.com/umputun/remark/.git
+ADD backend /build/backend
+ADD .git /build/.git
+WORKDIR /build/backend
 
 # run tests
 RUN \
     if [ -f .mongo ] ; then export MONGO_TEST=$(cat .mongo) ; fi && \
     cd app && \
-    if [ -z "$SKIP_BACKEND_TEST" ] ; then go test -covermode=count -coverprofile=/profile.cov ./... ; \
+    if [ -z "$SKIP_BACKEND_TEST" ] ; then go test -mod=vendor -covermode=count -coverprofile=/profile.cov ./... ; \
     else echo "skip backend test" ; fi
 
 RUN echo "mongo=${MONGO_TEST}" >> /etc/hosts
@@ -37,11 +37,11 @@ RUN echo "mongo=${MONGO_TEST}" >> /etc/hosts
 # linters
 RUN if [ -z "$SKIP_BACKEND_TEST" ] ; then \
     if [ -f .mongo ] ; then export MONGO_TEST=$(cat .mongo) ; fi && \
-    gometalinter --disable-all --deadline=300s --vendor --enable=vet --enable=vetshadow --enable=golint \
-    --enable=staticcheck --enable=ineffassign --enable=errcheck --enable=unconvert \
-    --enable=deadcode  --enable=gosimple --exclude=test --exclude=mock --exclude=vendor ./... ; \
+    golangci-lint run --out-format=tab --disable-all --tests=false --enable=unconvert \
+    --enable=megacheck --enable=structcheck --enable=gas --enable=gocyclo --enable=dupl --enable=misspell \
+    --enable=unparam --enable=varcheck --enable=deadcode --enable=typecheck \
+    --enable=ineffassign --enable=varcheck ./... ; \
     else echo "skip backend linters" ; fi
-
 
 # submit coverage to coverals if COVERALLS_TOKEN in env
 RUN if [ -z "$COVERALLS_TOKEN" ] ; then \
@@ -90,7 +90,7 @@ ADD backend/scripts/restore.sh /usr/local/bin/restore
 ADD backend/scripts/import.sh /usr/local/bin/import
 RUN chmod +x /entrypoint.sh /usr/local/bin/backup /usr/local/bin/restore /usr/local/bin/import
 
-COPY --from=build-backend /go/src/github.com/umputun/remark/backend/remark42 /srv/remark42
+COPY --from=build-backend /build/backend/remark42 /srv/remark42
 COPY --from=build-frontend /srv/web/public/ /srv/web
 RUN chown -R app:app /srv
 RUN ln -s /srv/remark42 /usr/bin/remark42

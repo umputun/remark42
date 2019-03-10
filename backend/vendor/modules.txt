@@ -1,0 +1,123 @@
+# cloud.google.com/go v0.34.0
+cloud.google.com/go/compute/metadata
+# github.com/PuerkitoBio/goquery v1.4.0
+github.com/PuerkitoBio/goquery
+# github.com/andybalholm/cascadia v1.0.0
+github.com/andybalholm/cascadia
+# github.com/coreos/bbolt v1.3.0
+github.com/coreos/bbolt
+# github.com/davecgh/go-spew v1.1.1
+github.com/davecgh/go-spew/spew
+# github.com/dgrijalva/jwt-go v3.2.0+incompatible
+github.com/dgrijalva/jwt-go
+# github.com/didip/tollbooth v4.0.0+incompatible
+github.com/didip/tollbooth
+github.com/didip/tollbooth/errors
+github.com/didip/tollbooth/libstring
+github.com/didip/tollbooth/limiter
+# github.com/didip/tollbooth_chi v0.0.0-20170928041846-6ab5f3083f3d
+github.com/didip/tollbooth_chi
+# github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
+github.com/globalsign/mgo
+github.com/globalsign/mgo/bson
+github.com/globalsign/mgo/internal/sasl
+github.com/globalsign/mgo/internal/scram
+github.com/globalsign/mgo/internal/json
+# github.com/go-chi/chi v3.3.2+incompatible
+github.com/go-chi/chi
+github.com/go-chi/chi/middleware
+# github.com/go-chi/cors v1.0.0
+github.com/go-chi/cors
+# github.com/go-chi/render v1.0.0
+github.com/go-chi/render
+# github.com/go-pkgz/auth v0.4.2
+github.com/go-pkgz/auth
+github.com/go-pkgz/auth/avatar
+github.com/go-pkgz/auth/provider
+github.com/go-pkgz/auth/token
+github.com/go-pkgz/auth/logger
+github.com/go-pkgz/auth/middleware
+# github.com/go-pkgz/lcw v0.2.0
+github.com/go-pkgz/lcw
+# github.com/go-pkgz/lgr v0.4.0
+github.com/go-pkgz/lgr
+# github.com/go-pkgz/mongo v1.1.2
+github.com/go-pkgz/mongo
+# github.com/go-pkgz/repeater v1.1.1
+github.com/go-pkgz/repeater
+github.com/go-pkgz/repeater/strategy
+# github.com/go-pkgz/rest v1.4.0
+github.com/go-pkgz/rest/cache
+github.com/go-pkgz/rest
+github.com/go-pkgz/rest/logger
+# github.com/go-pkgz/syncs v1.1.0
+github.com/go-pkgz/syncs
+# github.com/golang/protobuf v1.2.0
+github.com/golang/protobuf/proto
+# github.com/google/uuid v0.0.0-20161128191214-064e2069ce9c
+github.com/google/uuid
+# github.com/gorilla/feeds v1.1.0
+github.com/gorilla/feeds
+# github.com/hashicorp/errwrap v0.0.0-20141028054710-7554cd9344ce
+github.com/hashicorp/errwrap
+# github.com/hashicorp/go-multierror v0.0.0-20171204182908-b7773ae21874
+github.com/hashicorp/go-multierror
+# github.com/hashicorp/golang-lru v0.5.1
+github.com/hashicorp/golang-lru
+github.com/hashicorp/golang-lru/simplelru
+# github.com/jessevdk/go-flags v0.0.0-20180331124232-1c38ed7ad0cc
+github.com/jessevdk/go-flags
+# github.com/microcosm-cc/bluemonday v0.0.0-20171222152607-542fd4642604
+github.com/microcosm-cc/bluemonday
+# github.com/nullrocks/identicon v0.0.0-20180626043057-7875f45b0022
+github.com/nullrocks/identicon
+# github.com/patrickmn/go-cache v2.1.0+incompatible
+github.com/patrickmn/go-cache
+# github.com/pkg/errors v0.8.1
+github.com/pkg/errors
+# github.com/pmezard/go-difflib v1.0.0
+github.com/pmezard/go-difflib/difflib
+# github.com/rakyll/statik v0.1.3
+github.com/rakyll/statik/fs
+# github.com/shurcooL/sanitized_anchor_name v0.0.0-20170918181015-86672fcb3f95
+github.com/shurcooL/sanitized_anchor_name
+# github.com/stretchr/testify v1.3.0
+github.com/stretchr/testify/assert
+github.com/stretchr/testify/require
+# golang.org/x/crypto v0.0.0-20181030102418-4d3f4d9ffa16
+golang.org/x/crypto/acme/autocert
+golang.org/x/crypto/acme
+# golang.org/x/image v0.0.0-20181116024801-cd38e8056d9b
+golang.org/x/image/draw
+golang.org/x/image/math/f64
+# golang.org/x/net v0.0.0-20190107210223-45ffb0cd1ba0
+golang.org/x/net/html
+golang.org/x/net/html/atom
+golang.org/x/net/context/ctxhttp
+golang.org/x/net/context
+# golang.org/x/oauth2 v0.0.0-20181203162652-d668ce993890
+golang.org/x/oauth2
+golang.org/x/oauth2/facebook
+golang.org/x/oauth2/github
+golang.org/x/oauth2/google
+golang.org/x/oauth2/yandex
+golang.org/x/oauth2/internal
+golang.org/x/oauth2/jws
+golang.org/x/oauth2/jwt
+# golang.org/x/sys v0.0.0-20190109145017-48ac38b7c8cb
+golang.org/x/sys/unix
+# golang.org/x/time v0.0.0-20170927054726-6dc17368e09b
+golang.org/x/time/rate
+# google.golang.org/appengine v1.4.0
+google.golang.org/appengine
+google.golang.org/appengine/urlfetch
+google.golang.org/appengine/internal
+google.golang.org/appengine/internal/app_identity
+google.golang.org/appengine/internal/modules
+google.golang.org/appengine/internal/urlfetch
+google.golang.org/appengine/internal/base
+google.golang.org/appengine/internal/datastore
+google.golang.org/appengine/internal/log
+google.golang.org/appengine/internal/remote_api
+# gopkg.in/russross/blackfriday.v2 v2.0.0
+gopkg.in/russross/blackfriday.v2
