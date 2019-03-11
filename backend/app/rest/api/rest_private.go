@@ -285,6 +285,32 @@ func (s *Rest) deleteMeCtrl(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, R.JSON{"site": siteID, "user_id": user.ID, "token": tokenStr, "link": link})
 }
 
+// POST /image - save image with form request
+func (s *Rest) savePictureCtrl(w http.ResponseWriter, r *http.Request) {
+	user := rest.MustGetUserInfo(r)
+
+	if err := r.ParseMultipartForm(5 * 1024 * 1024); err != nil { // 5M max memory, if bigger will make a file
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't parse multipart form", rest.ErrDecode)
+		return
+	}
+
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't get image file from the request", rest.ErrInternal)
+		return
+	}
+	defer func() { _ = file.Close() }()
+
+	picName := fmt.Sprintf("%s_%d_%s", user.ID, time.Now().Nanosecond(), header.Filename)
+	id, err := s.ImageService.Save(picName, file)
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't save image", rest.ErrInternal)
+		return
+	}
+
+	render.JSON(w, r, R.JSON{"location": id})
+}
+
 func (s *Rest) isReadOnly(locator store.Locator) bool {
 	if s.ReadOnlyAge > 0 {
 		// check RO by age

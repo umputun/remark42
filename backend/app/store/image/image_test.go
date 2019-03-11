@@ -61,14 +61,14 @@ func TestImage_Load(t *testing.T) {
 	id, err := svc.Save("blah_ff1.png", strings.NewReader("blah blah"))
 	assert.NoError(t, err)
 
-	r, err := svc.Load(id)
+	r, sz, err := svc.Load(id)
 	assert.NoError(t, err)
 	defer r.Close()
 	data, err := ioutil.ReadAll(r)
 	assert.NoError(t, err)
 	assert.Equal(t, "blah blah", string(data))
-
-	_, err = svc.Load("abcd")
+	assert.Equal(t, int64(9), sz)
+	_, _, err = svc.Load("abcd")
 	assert.NotNil(t, err)
 }
 

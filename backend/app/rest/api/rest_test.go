@@ -29,6 +29,7 @@ import (
 	"github.com/umputun/remark/backend/app/store"
 	adminstore "github.com/umputun/remark/backend/app/store/admin"
 	"github.com/umputun/remark/backend/app/store/engine"
+	"github.com/umputun/remark/backend/app/store/image"
 	"github.com/umputun/remark/backend/app/store/service"
 )
 
@@ -203,6 +204,7 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 	os.Remove(testDb)
 	os.Remove(testHTML)
 	os.RemoveAll("/tmp/ava-remark42")
+	os.RemoveAll("/tmp/pics-remark42")
 
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDb, SiteID: "radio-t"})
 	require.Nil(t, err)
@@ -232,6 +234,11 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 		Cache:     memCache,
 		WebRoot:   "/tmp",
 		RemarkURL: "https://demo.remark42.com",
+		ImageService: &image.FileSystem{
+			Location:  "/tmp/pics-remark42",
+			Partitons: 100,
+			MaxSize:   10000,
+		},
 
 		ImageProxy:       &proxy.Image{},
 		ReadOnlyAge:      10,
@@ -258,6 +265,7 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 		os.Remove(testDb)
 		os.Remove(testHTML)
 		os.RemoveAll("/tmp/ava-remark42")
+		os.RemoveAll("/tmp/pics-remark42")
 	}
 
 	return ts, srv, teardown

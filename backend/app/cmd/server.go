@@ -32,6 +32,7 @@ import (
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/admin"
 	"github.com/umputun/remark/backend/app/store/engine"
+	"github.com/umputun/remark/backend/app/store/image"
 	"github.com/umputun/remark/backend/app/store/service"
 )
 
@@ -43,6 +44,7 @@ type ServerCommand struct {
 	Mongo  MongoGroup  `group:"mongo" namespace:"mongo" env-namespace:"MONGO"`
 	Admin  AdminGroup  `group:"admin" namespace:"admin" env-namespace:"ADMIN"`
 	Notify NotifyGroup `group:"notify" namespace:"notify" env-namespace:"NOTIFY"`
+	Image  ImageGroup  `group:"image" namespace:"image" env-namespace:"IMAGE"`
 	SSL    SSLGroup    `group:"ssl" namespace:"ssl" env-namespace:"SSL"`
 
 	Sites           []string      `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
@@ -91,6 +93,19 @@ type StoreGroup struct {
 		Path    string        `long:"path" env:"PATH" default:"./var" description:"parent dir for bolt files"`
 		Timeout time.Duration `long:"timeout" env:"TIMEOUT" default:"30s" description:"bolt timeout"`
 	} `group:"bolt" namespace:"bolt" env-namespace:"BOLT"`
+}
+
+// ImageGroup defines options group for store pictures
+type ImageGroup struct {
+	Type string `long:"type" env:"TYPE" description:"type of storage" choice:"fs" choice:"bolt" choice:"mongo" default:"fs"`
+	FS   struct {
+		Path      string `long:"path" env:"PATH" default:"./var/pictures" description:"images location"`
+		Partitons int    `long:"partitions" env:"PARTITIONS" default:"100" description:"partitions (subdirs)"`
+	} `group:"fs" namespace:"fs" env-namespace:"FS"`
+	Bolt struct {
+		File string `long:"file" env:"FILE" default:"./var/pictures.db" description:"images bolt file location"`
+	} `group:"bolt" namespace:"bolt" env-namespace:"bolt"`
+	MaxSize int `long:"max-size" env:"MAX_SIZE" default:"5000000" description:"max size of image file"`
 }
 
 // AvatarGroup defines options group for avatar params
@@ -256,6 +271,11 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 	imgProxy := &proxy.Image{Enabled: s.ImageProxy, RoutePath: "/api/v1/img", RemarkURL: s.RemarkURL}
 	commentFormatter := store.NewCommentFormatter(imgProxy)
 
+	pictStore, err := s.makePicturesStore()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to make pictures store")
+	}
+
 	sslConfig, err := s.makeSSLConfig()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to make config of ssl server params")
@@ -276,6 +296,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		NotifyService:    notifyService,
 		SSLConfig:        sslConfig,
 		UpdateLimiter:    s.UpdateLimit,
+		ImageService:     pictStore,
 	}
 
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = s.LowScore, s.CriticalScore
@@ -403,6 +424,17 @@ func (s *ServerCommand) makeAvatarStore() (avatar.Store, error) {
 		return avatar.NewBoltDB(s.Avatar.Bolt.File, bolt.Options{})
 	}
 	return nil, errors.Errorf("unsupported avatar store type %s", s.Avatar.Type)
+}
+
+func (s *ServerCommand) makePicturesStore() (image.Interface, error) {
+	switch s.Image.Type {
+	case "fs":
+		if err := makeDirs(s.Image.FS.Path); err != nil {
+			return nil, err
+		}
+		return &image.FileSystem{Location: s.Image.FS.Path, Partitons: s.Image.FS.Partitons, MaxSize: s.Image.MaxSize}, nil
+	}
+	return nil, errors.Errorf("unsupported pictures store type %s", s.Image.Type)
 }
 
 func (s *ServerCommand) makeAdminStore() (admin.Store, error) {

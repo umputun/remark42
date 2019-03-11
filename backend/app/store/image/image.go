@@ -21,7 +21,7 @@ import (
 // Interface defines Save and Load methods
 type Interface interface {
 	Save(name string, r io.Reader) (id string, err error) // get name and reader and returns ID of stored image
-	Load(id string) (io.ReadCloser, error)                // load image by ID. Caller has to close the reader.
+	Load(id string) (io.ReadCloser, int64, error)         // load image by ID. Caller has to close the reader.
 }
 
 // FileSystem provides image Interface for local files. Saves and loads files from Location, restricts max size
@@ -78,14 +78,20 @@ func (f *FileSystem) Save(name string, r io.Reader) (id string, err error) {
 
 // Load image from FS. Uses id to get partition subdirectory.
 // returns ReadCloser and caller should call close after processing completed.
-func (f *FileSystem) Load(id string) (io.ReadCloser, error) {
+func (f *FileSystem) Load(id string) (io.ReadCloser, int64, error) {
 	location := f.location(id)
 	imgFile := path.Join(location, id)
+
+	st, err := os.Stat(imgFile)
+	if err != nil {
+		return nil, 0, errors.Wrapf(err, "can't get image size for %s", id)
+	}
+
 	fh, err := os.Open(imgFile)
 	if err != nil {
-		return nil, errors.Wrapf(err, "can't load image %s", id)
+		return nil, 0, errors.Wrapf(err, "can't load image %s", id)
 	}
-	return fh, nil
+	return fh, st.Size(), nil
 }
 
 // get location (directory) for id by adding partition to the final path in order to keep files

@@ -3,6 +3,7 @@ package api
 import (
 	"crypto/sha1" //nolint
 	"encoding/base64"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -328,5 +329,48 @@ func (s *Rest) listCtrl(w http.ResponseWriter, r *http.Request) {
 
 	if err = R.RenderJSONFromBytes(w, r, data); err != nil {
 		log.Printf("[WARN] can't render posts lits for site %s", siteID)
+	}
+}
+
+// GET /picture/{id} - get picture
+func (s *Rest) loadPictureCtrl(w http.ResponseWriter, r *http.Request) {
+
+	imgContentType := func(img string) string {
+		img = strings.ToLower(img)
+		switch {
+		case strings.HasSuffix(img, ".png"):
+			return "image/png"
+		case strings.HasSuffix(img, ".jpg") || strings.HasSuffix(img, ".jpeg"):
+			return "image/jpeg"
+		case strings.HasSuffix(img, ".gif"):
+			return "image/gif"
+		}
+		return "image/*"
+	}
+
+	id := chi.URLParam(r, "id")
+	imgRdr, size, err := s.ImageService.Load(id)
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get image "+id, rest.ErrAssetNotFound)
+		return
+	}
+	// enforce client-side caching
+	etag := `"` + id + `"`
+	w.Header().Set("Etag", etag)
+	w.Header().Set("Cache-Control", "max-age=604800") // 7 days
+	if match := r.Header.Get("If-None-Match"); match != "" {
+		if strings.Contains(match, etag) {
+			w.WriteHeader(http.StatusNotModified)
+			return
+		}
+	}
+
+	defer imgRdr.Close()
+
+	w.Header().Set("Content-Type", imgContentType(id))
+	w.Header().Set("Content-Length", strconv.Itoa(int(size)))
+	w.WriteHeader(http.StatusOK)
+	if _, err = io.Copy(w, imgRdr); err != nil {
+		log.Printf("[WARN] can't send response to %s, %s", r.RemoteAddr, err)
 	}
 }

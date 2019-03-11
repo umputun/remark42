@@ -22,18 +22,17 @@ require (
 	github.com/go-pkgz/syncs v1.1.0
 	github.com/google/uuid v0.0.0-20161128191214-064e2069ce9c
 	github.com/gorilla/feeds v1.1.0
-	github.com/hashicorp/errwrap v0.0.0-20141028054710-7554cd9344ce // indirect
+	github.com/hashicorp/errwrap v1.0.0 // indirect
 	github.com/hashicorp/go-multierror v0.0.0-20171204182908-b7773ae21874
-	github.com/hashicorp/golang-lru v0.5.1 // indirect
 	github.com/jessevdk/go-flags v0.0.0-20180331124232-1c38ed7ad0cc
 	github.com/microcosm-cc/bluemonday v0.0.0-20171222152607-542fd4642604
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/errors v0.8.1
 	github.com/rakyll/statik v0.1.3
-	github.com/shurcooL/sanitized_anchor_name v0.0.0-20170918181015-86672fcb3f95 // indirect
+	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
 	github.com/stretchr/testify v1.3.0
 	golang.org/x/crypto v0.0.0-20181030102418-4d3f4d9ffa16
 	golang.org/x/net v0.0.0-20190107210223-45ffb0cd1ba0
-	golang.org/x/time v0.0.0-20170927054726-6dc17368e09b // indirect
+	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4 // indirect
 	gopkg.in/russross/blackfriday.v2 v2.0.0
 )

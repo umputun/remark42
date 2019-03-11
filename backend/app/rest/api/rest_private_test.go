@@ -1,10 +1,13 @@
 package api
 
 import (
+	"bytes"
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"mime/multipart"
 	"net/http"
 	"strings"
 	"testing"
@@ -487,4 +490,43 @@ func TestRest_DeleteMe(t *testing.T) {
 	resp, err = client.Do(req)
 	assert.Nil(t, err)
 	assert.Equal(t, 401, resp.StatusCode)
+}
+
+func TestRest_SavePictureCtrl(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	// save picture
+	r := strings.NewReader("file content 123")
+	bodyBuf := &bytes.Buffer{}
+	bodyWriter := multipart.NewWriter(bodyBuf)
+	fileWriter, err := bodyWriter.CreateFormFile("file", "picture.png")
+	require.NoError(t, err)
+	_, err = io.Copy(fileWriter, r)
+	require.NoError(t, err)
+	contentType := bodyWriter.FormDataContentType()
+	require.NoError(t, bodyWriter.Close())
+
+	client := http.Client{}
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/api/v1/picture", ts.URL), bodyBuf)
+	req.Header.Add("Content-Type", contentType)
+	req.Header.Add("X-JWT", devToken)
+	resp, err := client.Do(req)
+	assert.Nil(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+	body, err := ioutil.ReadAll(resp.Body)
+	require.Nil(t, err)
+
+	m := map[string]string{}
+	err = json.Unmarshal(body, &m)
+	assert.Contains(t, m["location"], ".png")
+
+	// load picture
+	resp, err = http.Get(fmt.Sprintf("%s/api/v1/picture/%s", ts.URL, m["location"]))
+	require.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.Nil(t, err)
+	assert.Equal(t, "file content 123", string(body))
+	assert.Equal(t, "image/png", resp.Header.Get("Content-Type"))
 }
