@@ -24,9 +24,9 @@ func TestImage_Save(t *testing.T) {
 	}
 	id, err := svc.Save("blah_ff1.png", strings.NewReader("blah blah"))
 	assert.NoError(t, err)
-	assert.Equal(t, "6851dcde6024e03258a66705f29e14b506048c74.png", id)
+	assert.Equal(t, "fc77a87ad3c898b9603119711f99305145e272e103c904d85ee2deda.png", id)
 
-	dst := path.Join(loc, "02", id)
+	dst := path.Join(loc, "56", id)
 	data, err := ioutil.ReadFile(dst)
 	assert.NoError(t, err)
 	assert.Equal(t, "blah blah", string(data))

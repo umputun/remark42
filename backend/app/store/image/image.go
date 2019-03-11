@@ -2,7 +2,7 @@
 package image
 
 import (
-	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"hash/crc64"
@@ -42,7 +42,7 @@ type FileSystem struct {
 // Files partitioned across multiple subdirectories.
 func (f *FileSystem) Save(name string, r io.Reader) (id string, err error) {
 
-	h := sha1.Sum([]byte(name))
+	h := sha256.Sum224([]byte(name))
 	id = hex.EncodeToString(h[:])
 	if ext := path.Ext(name); ext != "" {
 		id += ext
