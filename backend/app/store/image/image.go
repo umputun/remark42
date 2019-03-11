@@ -14,7 +14,6 @@ import (
 	"sync"
 
 	log "github.com/go-pkgz/lgr"
-
 	"github.com/pkg/errors"
 )
 
@@ -40,6 +39,7 @@ type FileSystem struct {
 
 // Save data from reader for given file name to local FS. Returns id as a hash of name
 // name should be passed in unique prefix, for example with userID_*
+// Files partitioned across multiple subdirectories.
 func (f *FileSystem) Save(name string, r io.Reader) (id string, err error) {
 
 	h := sha1.Sum([]byte(name))
