@@ -1,4 +1,5 @@
-// Package image handles storing, resizing and retrival of images
+// Package image handles storing, resizing and retrieval of images
+// Provides Interface with Save and Load and one implementation on top of local file system.
 package image
 
 import (
@@ -25,9 +26,9 @@ type Interface interface {
 
 // FileSystem provides image Interface for local files. Saves and loads files from Location, restricts max size
 type FileSystem struct {
-	Location  string
-	MaxSize   int
-	Partitons int
+	Location   string
+	MaxSize    int
+	Partitions int
 
 	crc struct {
 		*crc64.Table
@@ -98,13 +99,13 @@ func (f *FileSystem) Load(id string) (io.ReadCloser, int64, error) {
 // in different subdirectories and avoid too many files in a single place.
 // the end result is a full path like this - /tmp/images/92. Number of partitions defined by FileSystem.Partitions
 func (f *FileSystem) location(id string) string {
-	if f.Partitons == 0 {
+	if f.Partitions == 0 {
 		return f.Location
 	}
 
 	f.crc.Do(func() {
 		f.crc.Table = crc64.MakeTable(crc64.ECMA)
-		p := int(math.Round(math.Log10(float64(f.Partitons))))
+		p := int(math.Round(math.Log10(float64(f.Partitions))))
 		f.crc.mask = "%0" + strconv.Itoa(p) + "d"
 		f.crc.divider = uint64(math.Pow(10, float64(p)))
 	})
