@@ -235,9 +235,9 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 		WebRoot:   "/tmp",
 		RemarkURL: "https://demo.remark42.com",
 		ImageService: &image.FileSystem{
-			Location:  "/tmp/pics-remark42",
-			Partitons: 100,
-			MaxSize:   10000,
+			Location:   "/tmp/pics-remark42",
+			Partitions: 100,
+			MaxSize:    10000,
 		},
 
 		ImageProxy:       &proxy.Image{},

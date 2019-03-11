@@ -197,6 +197,7 @@ func (s *ServerCommand) Execute(args []string) error {
 	app, err := s.newServerApp()
 	if err != nil {
 		log.Printf("[PANIC] failed to setup application, %+v", err)
+		return err
 	}
 	if err = app.run(ctx); err != nil {
 		log.Printf("[ERROR] remark terminated with error %+v", err)
@@ -432,7 +433,7 @@ func (s *ServerCommand) makePicturesStore() (image.Interface, error) {
 		if err := makeDirs(s.Image.FS.Path); err != nil {
 			return nil, err
 		}
-		return &image.FileSystem{Location: s.Image.FS.Path, Partitons: s.Image.FS.Partitons, MaxSize: s.Image.MaxSize}, nil
+		return &image.FileSystem{Location: s.Image.FS.Path, Partitions: s.Image.FS.Partitons, MaxSize: s.Image.MaxSize}, nil
 	}
 	return nil, errors.Errorf("unsupported pictures store type %s", s.Image.Type)
 }
