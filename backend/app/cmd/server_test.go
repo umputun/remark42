@@ -24,7 +24,7 @@ import (
 )
 
 func TestServerApp(t *testing.T) {
-	app, ctx := prepServerApp(t, 500*time.Millisecond, func(o ServerCommand) ServerCommand {
+	app, ctx := prepServerApp(t, 1500*time.Millisecond, func(o ServerCommand) ServerCommand {
 		o.Port = 18080
 		return o
 	})
