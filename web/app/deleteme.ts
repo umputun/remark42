@@ -29,15 +29,15 @@ async function init(): Promise<void> {
       approveDeleteMe(token!).then(
         data => {
           node.innerHTML = `
-						<h3>User deleted successfully</h3>
-						<pre>${JSON.stringify(data, null, 4)}</pre>
-					`;
+            <h3>User deleted successfully</h3>
+            <pre>${JSON.stringify(data, null, 4)}</pre>
+          `;
         },
         err => {
           node.innerHTML = `
-						<h3>Something went wrong</h3>
-						<pre>${err}</pre>
-					`;
+            <h3>Something went wrong</h3>
+            <pre>${err}</pre>
+          `;
         }
       );
     })
@@ -46,7 +46,7 @@ async function init(): Promise<void> {
 
 function handleNotAuthorizedError(node: HTMLElement): void {
   node.innerHTML = `
-		<h3>You are not logged in</h3>
-		<p><a href='${BASE_URL}' target='_blank'>Sign in</a> as admin to delete user information</p>
-	`;
+    <h3>You are not logged in</h3>
+    <p><a href='${BASE_URL}' target='_blank'>Sign in</a> as admin to delete user information</p>
+  `;
 }

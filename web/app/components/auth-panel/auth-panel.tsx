@@ -36,6 +36,10 @@ export class AuthPanel extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
 
+    this.state = {
+      isBlockedVisible: false,
+    };
+
     this.toggleBlockedVisibility = this.toggleBlockedVisibility.bind(this);
     this.toggleCommentsAvailability = this.toggleCommentsAvailability.bind(this);
     this.onSortChange = this.onSortChange.bind(this);

@@ -22,10 +22,7 @@ interface State {
 }
 
 class UserInfo extends Component<Props, State> {
-  constructor(props: Props) {
-    super(props);
-    this.state = { isLoading: true, error: null };
-  }
+  state = { isLoading: true, error: null };
 
   async componentWillMount(): Promise<void> {
     if (!this.props.comments && this.state.isLoading) {
@@ -39,19 +36,11 @@ class UserInfo extends Component<Props, State> {
         });
     }
 
-    document.addEventListener('keydown', this.globalOnKeyDown);
+    document.addEventListener('keydown', UserInfo.onKeyDown);
   }
 
   componentWillUnmount(): void {
-    document.removeEventListener('keydown', this.globalOnKeyDown);
-  }
-
-  globalOnKeyDown(e: KeyboardEvent): void {
-    // ESCAPE key pressed
-    if (e.keyCode === 27) {
-      const data = JSON.stringify({ isUserInfoShown: false });
-      window.parent.postMessage(data, '*');
-    }
+    document.removeEventListener('keydown', UserInfo.onKeyDown);
   }
 
   render(props: RenderableProps<Props>, state: State): JSX.Element | null {
@@ -72,6 +61,14 @@ class UserInfo extends Component<Props, State> {
         {!!comments && <LastCommentsList isLoading={state.isLoading} comments={comments} />}
       </div>
     );
+  }
+
+  static onKeyDown(e: KeyboardEvent): void {
+    // ESCAPE key pressed
+    if (e.keyCode === 27) {
+      const data = JSON.stringify({ isUserInfoShown: false });
+      window.parent.postMessage(data, '*');
+    }
   }
 }
 
