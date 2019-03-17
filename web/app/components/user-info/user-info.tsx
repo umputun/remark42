@@ -63,6 +63,10 @@ class UserInfo extends Component<Props, State> {
     );
   }
 
+  /**
+   * Global on `keydown` handler which is set on component mount.
+   * Listens for user's `esc` key press
+   */
   static onKeyDown(e: KeyboardEvent): void {
     // ESCAPE key pressed
     if (e.keyCode === 27) {
