@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"os"
 	"testing"
 	"time"
 
@@ -12,8 +11,9 @@ import (
 )
 
 func TestBoltAdmin_Delete(t *testing.T) {
-	defer os.Remove(testDb)
-	b := prep(t)
+
+	b, teardown := prep(t)
+	defer teardown()
 
 	loc := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
 	res, err := b.Find(loc, "time")
@@ -58,8 +58,9 @@ func TestBoltAdmin_Delete(t *testing.T) {
 }
 
 func TestBoltAdmin_DeleteHard(t *testing.T) {
-	defer os.Remove(testDb)
-	b := prep(t)
+
+	b, teardown := prep(t)
+	defer teardown()
 
 	loc := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
 	res, err := b.Find(loc, "time")
@@ -78,8 +79,9 @@ func TestBoltAdmin_DeleteHard(t *testing.T) {
 }
 
 func TestBoltAdmin_DeleteAll(t *testing.T) {
-	defer os.Remove(testDb)
-	b := prep(t)
+
+	b, teardown := prep(t)
+	defer teardown()
 
 	loc := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
 	res, err := b.Find(loc, "time")
@@ -102,8 +104,9 @@ func TestBoltAdmin_DeleteAll(t *testing.T) {
 }
 
 func TestBoltAdmin_DeleteUser(t *testing.T) {
-	defer os.Remove(testDb)
-	b := prep(t)
+
+	b, teardown := prep(t)
+	defer teardown()
 	err := b.DeleteUser("radio-t", "user1")
 	require.NoError(t, err)
 
@@ -130,8 +133,9 @@ func TestBoltAdmin_DeleteUser(t *testing.T) {
 }
 
 func TestBoltAdmin_BlockUser(t *testing.T) {
-	defer os.Remove(testDb)
-	b := prep(t)
+
+	b, teardown := prep(t)
+	defer teardown()
 
 	assert.False(t, b.IsBlocked("radio-t", "user1"), "nothing blocked")
 
@@ -150,8 +154,9 @@ func TestBoltAdmin_BlockUser(t *testing.T) {
 }
 
 func TestBoltAdmin_BlockUserWithTTL(t *testing.T) {
-	defer os.Remove(testDb)
-	b := prep(t)
+
+	b, teardown := prep(t)
+	defer teardown()
 	assert.False(t, b.IsBlocked("radio-t", "user1"), "nothing blocked")
 	assert.NoError(t, b.SetBlock("radio-t", "user1", true, 50*time.Millisecond))
 	assert.True(t, b.IsBlocked("radio-t", "user1"), "user1 blocked")
@@ -160,8 +165,9 @@ func TestBoltAdmin_BlockUserWithTTL(t *testing.T) {
 }
 
 func TestBoltAdmin_BlockList(t *testing.T) {
-	defer os.Remove(testDb)
-	b := prep(t)
+
+	b, teardown := prep(t)
+	defer teardown()
 
 	assert.NoError(t, b.SetBlock("radio-t", "user1", true, 0))
 	assert.NoError(t, b.SetBlock("radio-t", "user2", true, 50*time.Millisecond))
@@ -186,8 +192,9 @@ func TestBoltAdmin_BlockList(t *testing.T) {
 }
 
 func TestBoltAdmin_ReadOnly(t *testing.T) {
-	defer os.Remove(testDb)
-	b := prep(t)
+
+	b, teardown := prep(t)
+	defer teardown()
 
 	assert.False(t, b.IsReadOnly(store.Locator{SiteID: "radio-t", URL: "url-1"}), "nothing ro")
 
@@ -206,8 +213,9 @@ func TestBoltAdmin_ReadOnly(t *testing.T) {
 }
 
 func TestBoltAdmin_Verified(t *testing.T) {
-	defer os.Remove(testDb)
-	b := prep(t)
+
+	b, teardown := prep(t)
+	defer teardown()
 
 	assert.False(t, b.IsVerified("radio-t", "u1"), "nothing verified")
 

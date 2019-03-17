@@ -2,20 +2,20 @@
 
 ## install
 
-`go get github/go-pkgz/lgr`
+`go get github.com/go-pkgz/lgr`
 
 ## usage
 
 ```go
     l := lgr.New(lgr.Debug, lgr.CallerFile) // allow debug and caller file info
-    l.Logf("INFO some important err message, %v", err)
-    l.Logf("DEBUG some less important err message, %v", err)
+    l.Logf("INFO some important message, %v", err)
+    l.Logf("DEBUG some less important message, %v", err)
 ```
 
 output looks like this:
 ```
-2018/01/07 13:02:34.000 INFO  {svc/handler.go:101 h.MyFunc1} some important err message, can't open file`
-2018/01/07 13:02:34.015 DEBUG {svc/handler.go:155 h.MyFunc2} some less important err message, file is too small`
+2018/01/07 13:02:34.000 INFO  {svc/handler.go:101 h.MyFunc1} some important message, can't open file`
+2018/01/07 13:02:34.015 DEBUG {svc/handler.go:155 h.MyFunc2} some less important message, file is too small`
 ```
 
 _Without `lgr.Caller*` it will drop `{caller}` part_
@@ -32,7 +32,7 @@ _Without `lgr.Caller*` it will drop `{caller}` part_
 
 `lgr.New` call accepts functional options:
 
-- `lgr.Debug` - turn debug mode on. This allows messages with "DEBUG" level (filtered overwise)
+- `lgr.Debug` - turn debug mode on to allow messages with "DEBUG" level (filtered overwise)
 - `lgr.CallerFile` - adds the caller file info
 - `lgr.CallerFunc` - adds the caller function info
 - `lgr.CallerPkg` - adds the caller package
@@ -48,11 +48,11 @@ _Without `lgr.Caller*` it will drop `{caller}` part_
 - `DEBUG` will be filtered unless `lgr.Debug` option defined
 - `INFO` and `WARN` don't have any special behavior attached
 - `ERROR` sends messages to both out and err writers
-- `PANIC` and `FATAL` send messages to both out and err writers. In addition sends dump of callers and runtime info to err only, and call `os.Exit(1)`.
+- `PANIC` and `FATAL` send messages to both out and err writers. In addition sends dump of callers and runtime info to err only, and calls `os.Exit(1)`.
   
 ### global logger
 
-Users should avoid global logger and pass the concrete logger as a dependency. However, in some cases global logger may be needed, for example migration from stdlib `log` to `lgr`. For such cases `log "github.com/go-pkgz/lgr"` can be imported instead of `log` package.
+Users **should avoid** global logger and pass the concrete logger as a dependency. However, in some cases a global logger may be needed, for example migration from stdlib `log` to `lgr`. For such cases `log "github.com/go-pkgz/lgr"` can be imported instead of `log` package.
 
-Global logger provides `lgr.Printf`, `lgr.Print` and `lgr.Fatalf` functions. User can customize the logger by calling `lgr.Setup(options ...)`. The instance of this logger can be retried with `lgr.Default()`
+Global logger provides `lgr.Printf`, `lgr.Print` and `lgr.Fatalf` functions. User can customize the logger by calling `lgr.Setup(options ...)`. The instance of this logger can be retrieved with `lgr.Default()`
  

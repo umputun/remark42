@@ -1,3 +1,9 @@
+// Package cache implements a wrapper on top of hashicorp/golang-lru with guava-style loader func.
+// In addition for Get (i.e. load from cache if found and put to cache if absent) it adds a Key struct
+// with record ID, site ID and invalidation scopes. Scopes used to evict matching records.
+// Additional limits added for total cache size, mac number of keys and max size of the value. If exceeded it won't
+// put to cache but will call loader func.
+// Usually the cache involved on []byte response level, i.e. post-marshaling right before response's send.
 package cache
 
 import (
@@ -8,16 +14,16 @@ import (
 
 // LoadingCache defines interface for caching
 type LoadingCache interface {
-	Get(key Key, fn func() ([]byte, error)) (data []byte, err error)
-	Flush(req FlusherRequest)
+	Get(key Key, fn func() ([]byte, error)) (data []byte, err error) // load from cache if found or put to cache and return
+	Flush(req FlusherRequest)                                        // evict matched records
 }
 
 type cacheWithOpts interface {
 	LoadingCache
-	setMaxValSize(max int) error
-	setMaxKeys(max int) error
-	setMaxCacheSize(max int64) error
-	setPostFlushFn(postFlushFn func()) error
+	setMaxValSize(max int) error             // max value size, in bytes
+	setMaxKeys(max int) error                // max number of keys
+	setMaxCacheSize(max int64) error         // max cache size (total values) in bytes
+	setPostFlushFn(postFlushFn func()) error // optional callback after flush
 }
 
 // Key for cache

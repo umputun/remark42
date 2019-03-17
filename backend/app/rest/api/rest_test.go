@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -22,6 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/umputun/remark/backend/app/migrator"
+	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/rest/proxy"
 	"github.com/umputun/remark/backend/app/store"
 	adminstore "github.com/umputun/remark/backend/app/store/admin"
@@ -29,7 +32,6 @@ import (
 	"github.com/umputun/remark/backend/app/store/service"
 )
 
-var testDb = "/tmp/test-remark.db"
 var testHTML = "/tmp/test-remark.html"
 var getStartedHTML = "/tmp/getstarted.html"
 
@@ -175,7 +177,33 @@ func TestRest_RunAutocertModeHTTPOnly(t *testing.T) {
 	srv.Shutdown()
 }
 
+func Test_rejectAnonUser(t *testing.T) {
+
+	ts := httptest.NewServer(fakeAuth(rejectAnonUser(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, "Hello")
+	}))))
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "use not logged in")
+
+	resp, err = http.Get(ts.URL + "?fake_id=anonymous_user123&fake_name=test")
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusForbidden, resp.StatusCode, "anon rejected")
+
+	resp, err = http.Get(ts.URL + "?fake_id=real_user123&fake_name=test")
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode, "real user")
+}
+
 func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
+
+	testDb := fmt.Sprintf("/tmp/test-remark-%d.db", rand.Int31())
+	os.Remove(testDb)
+	os.Remove(testHTML)
+	os.RemoveAll("/tmp/ava-remark42")
+
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDb, SiteID: "radio-t"})
 	require.Nil(t, err)
 
@@ -226,13 +254,27 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 
 	teardown = func() {
 		ts.Close()
-		srv.DataService.Close()
+		require.NoError(t, srv.DataService.Close())
 		os.Remove(testDb)
 		os.Remove(testHTML)
 		os.RemoveAll("/tmp/ava-remark42")
 	}
 
 	return ts, srv, teardown
+}
+
+// fake auth middleware make user authed and uses query's fake_id for ID and fake_name for Name
+func fakeAuth(next http.Handler) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("fake_id") != "" {
+			r = rest.SetUserInfo(r, store.User{
+				ID:   r.URL.Query().Get("fake_id"),
+				Name: r.URL.Query().Get("fake_name"),
+			})
+		}
+		next.ServeHTTP(w, r)
+	}
+	return http.HandlerFunc(fn)
 }
 
 func get(t *testing.T, url string) (string, int) {

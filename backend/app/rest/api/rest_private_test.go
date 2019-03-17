@@ -432,13 +432,12 @@ func TestRest_UserAllDataManyComments(t *testing.T) {
 	c := store.Comment{User: user, Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
 		URL: "https://radio-t.com/blah1"}, Timestamp: time.Date(2018, 05, 27, 1, 14, 10, 0, time.Local)}
 
-	for i := 0; i < 478; i++ {
+	for i := 0; i < 51; i++ {
 		c.ID = fmt.Sprintf("id-%03d", i)
 		c.Timestamp = c.Timestamp.Add(time.Second)
 		_, err := srv.DataService.Create(c)
 		require.Nil(t, err)
 	}
-
 	client := &http.Client{Timeout: 1 * time.Second}
 	req, err := http.NewRequest("GET", ts.URL+"/api/v1/userdata?site=radio-t", nil)
 	require.Nil(t, err)
@@ -454,7 +453,7 @@ func TestRest_UserAllDataManyComments(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, strings.HasPrefix(string(ungzBody),
 		`{"info": {"name":"developer one","id":"dev","picture":"http://example.com/pic.png","ip":"127.0.0.1","admin":false}, "comments":[{`))
-	assert.Equal(t, 478, strings.Count(string(ungzBody), `"text":`), "478 comments inside")
+	assert.Equal(t, 51, strings.Count(string(ungzBody), `"text":`), "51 comments inside")
 }
 
 func TestRest_DeleteMe(t *testing.T) {

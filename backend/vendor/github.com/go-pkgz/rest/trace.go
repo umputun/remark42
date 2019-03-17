@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
 	"net/http"
 	"time"
@@ -38,17 +39,10 @@ func GetTraceID(r *http.Request) string {
 }
 
 func randToken() string {
-	fallback := func() string {
-		return fmt.Sprintf("%x", time.Now().Nanosecond())
-	}
-
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
-		return fallback()
+		return fmt.Sprintf("%x", time.Now().Nanosecond())
 	}
-	s := sha1.New()
-	if _, err := s.Write(b); err != nil {
-		return fallback()
-	}
-	return fmt.Sprintf("%x", s.Sum(nil))
+	sum := sha1.Sum(b)
+	return hex.EncodeToString(sum[:])
 }

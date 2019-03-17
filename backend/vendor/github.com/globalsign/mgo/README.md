@@ -13,6 +13,12 @@ Detailed documentation of the API is available at
 
 A [sub-package](https://godoc.org/github.com/globalsign/mgo/bson) that implements the [BSON](http://bsonspec.org) specification is also included, and may be used independently of the driver.
 
+## Supported Versions
+
+`mgo` is known to work well on (and has integration tests against) MongoDB v3.0, 3.2, 3.4 and 3.6. 
+
+MongoDB 4.0 is currently experimental - we would happily accept PRs to help improve support!
+
 ## Changes
 * Fixes attempting to authenticate before every query ([details](https://github.com/go-mgo/mgo/issues/254))
 * Removes bulk update / delete batch size limitations ([details](https://github.com/go-mgo/mgo/issues/288))
