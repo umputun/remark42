@@ -24,7 +24,7 @@ interface State {
 class UserInfo extends Component<Props, State> {
   state = { isLoading: true, error: null };
 
-  async componentWillMount(): Promise<void> {
+  componentWillMount(): void {
     if (!this.props.comments && this.state.isLoading) {
       this.props
         .fetchInfo()
