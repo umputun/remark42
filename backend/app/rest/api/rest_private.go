@@ -228,14 +228,14 @@ func (s *Rest) userAllDataCtrl(w http.ResponseWriter, r *http.Request) {
 
 	// get comments in 100 in each paginated request
 	for i := 0; i < 100; i++ {
-		comments, err := s.DataService.User(siteID, user.ID, 100, i*100)
-		if err != nil {
-			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't get user comments", rest.ErrInternal)
+		comments, errUser := s.DataService.User(siteID, user.ID, 100, i*100)
+		if errUser != nil {
+			rest.SendErrorJSON(w, r, http.StatusInternalServerError, errUser, "can't get user comments", rest.ErrInternal)
 			return
 		}
-		b, err := json.Marshal(comments)
-		if err != nil {
-			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't marshal user comments", rest.ErrInternal)
+		b, errUser := json.Marshal(comments)
+		if errUser != nil {
+			rest.SendErrorJSON(w, r, http.StatusInternalServerError, errUser, "can't marshal user comments", rest.ErrInternal)
 			return
 		}
 

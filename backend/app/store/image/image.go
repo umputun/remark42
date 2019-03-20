@@ -51,7 +51,7 @@ func (f *FileSystem) Save(name string, r io.Reader) (id string, err error) {
 	location := f.location(id)
 	dst := path.Join(location, id)
 
-	if err := os.MkdirAll(location, 0700); err != nil {
+	if err = os.MkdirAll(location, 0700); err != nil {
 		return "", errors.Wrap(err, "can't make image directory")
 	}
 
@@ -64,7 +64,7 @@ func (f *FileSystem) Save(name string, r io.Reader) (id string, err error) {
 	if err != nil {
 		return "", errors.Wrapf(err, "can't write image file %s", dst)
 	}
-	if err := fh.Close(); err != nil {
+	if err = fh.Close(); err != nil {
 		return "", errors.Wrapf(err, "can't close image file %s", dst)
 	}
 	if written > int64(f.MaxSize) {

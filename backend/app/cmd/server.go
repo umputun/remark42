@@ -15,7 +15,7 @@ import (
 
 	bolt "github.com/coreos/bbolt"
 	log "github.com/go-pkgz/lgr"
-	auth_cache "github.com/patrickmn/go-cache"
+	authcache "github.com/patrickmn/go-cache"
 	"github.com/pkg/errors"
 
 	"github.com/go-pkgz/auth"
@@ -304,9 +304,9 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 
 	var devAuth *provider.DevAuthServer
 	if s.Auth.Dev {
-		da, err := authenticator.DevAuth()
-		if err != nil {
-			return nil, errors.Wrap(err, "can't make dev oauth2 server")
+		da, errDevAuth := authenticator.DevAuth()
+		if errDevAuth != nil {
+			return nil, errors.Wrap(errDevAuth, "can't make dev oauth2 server")
 		}
 		devAuth = da
 	}
@@ -618,17 +618,19 @@ func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Sto
 
 // authRefreshCache used by authenticator to minimize repeatable token refreshes
 type authRefreshCache struct {
-	*auth_cache.Cache
+	*authcache.Cache
 }
 
 func newAuthRefreshCache() *authRefreshCache {
-	return &authRefreshCache{Cache: auth_cache.New(5*time.Minute, 10*time.Minute)}
+	return &authRefreshCache{Cache: authcache.New(5*time.Minute, 10*time.Minute)}
 }
 
+// Get implements cache getter with key converted to string
 func (c *authRefreshCache) Get(key interface{}) (interface{}, bool) {
 	return c.Cache.Get(key.(string))
 }
 
+// Set implements cache setter with key converted to string
 func (c *authRefreshCache) Set(key, value interface{}) {
-	c.Cache.Set(key.(string), value, auth_cache.DefaultExpiration)
+	c.Cache.Set(key.(string), value, authcache.DefaultExpiration)
 }
