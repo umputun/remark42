@@ -221,7 +221,7 @@ func (s *Rest) routes() chi.Router {
 			ropen.Get("/config", s.configCtrl)
 			ropen.Post("/preview", s.previewCommentCtrl)
 			ropen.Get("/info", s.infoCtrl)
-			ropen.Get("/picture/{id}", s.loadPictureCtrl)
+			ropen.Get("/picture/{user}/{id}", s.loadPictureCtrl)
 
 			ropen.Mount("/rss", s.rssRoutes())
 			ropen.Mount("/img", s.ImageProxy.Routes())

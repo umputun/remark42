@@ -509,6 +509,7 @@ func TestRest_SavePictureCtrl(t *testing.T) {
 
 	client := http.Client{}
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/api/v1/picture", ts.URL), bodyBuf)
+	require.NoError(t, err)
 	req.Header.Add("Content-Type", contentType)
 	req.Header.Add("X-JWT", devToken)
 	resp, err := client.Do(req)
@@ -519,10 +520,10 @@ func TestRest_SavePictureCtrl(t *testing.T) {
 
 	m := map[string]string{}
 	err = json.Unmarshal(body, &m)
-	assert.Contains(t, m["location"], ".png")
+	assert.Contains(t, m["id"], ".png")
 
 	// load picture
-	resp, err = http.Get(fmt.Sprintf("%s/api/v1/picture/%s", ts.URL, m["location"]))
+	resp, err = http.Get(fmt.Sprintf("%s/api/v1/picture/%s", ts.URL, m["id"]))
 	require.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 	body, err = ioutil.ReadAll(resp.Body)

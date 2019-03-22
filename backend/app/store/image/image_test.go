@@ -4,7 +4,6 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"os"
-	"path"
 	"strconv"
 	"strings"
 	"testing"
@@ -17,12 +16,13 @@ func TestImage_Save(t *testing.T) {
 	svc, teardown := prepareImageTest(t)
 	defer teardown()
 
-	id, err := svc.Save("blah_ff1.png", strings.NewReader("blah blah"))
+	id, err := svc.Save("file1.png", "user1", strings.NewReader("blah blah"))
 	assert.NoError(t, err)
-	assert.Equal(t, "fc77a87ad3c898b9603119711f99305145e272e103c904d85ee2deda.png", id)
+	assert.Contains(t, id, "user1/")
+	assert.Contains(t, id, ".png")
+	t.Log(id)
 
-	dst := path.Join(svc.Location, "56", id)
-	data, err := ioutil.ReadFile(dst)
+	data, err := ioutil.ReadFile(svc.location(id))
 	assert.NoError(t, err)
 	assert.Equal(t, "blah blah", string(data))
 }
@@ -31,9 +31,9 @@ func TestImage_SaveTooLarge(t *testing.T) {
 	svc, teardown := prepareImageTest(t)
 	defer teardown()
 	svc.MaxSize = 5
-	_, err := svc.Save("blah_ff1.png", strings.NewReader("blah blah"))
+	_, err := svc.Save("blah_ff1.png", "user2", strings.NewReader("blah blah"))
 	assert.Error(t, err)
-	assert.EqualError(t, err, "file blah_ff1.png is too large")
+	assert.Contains(t, err.Error(), "is too large")
 }
 
 func TestImage_Load(t *testing.T) {
@@ -41,8 +41,9 @@ func TestImage_Load(t *testing.T) {
 	svc, teardown := prepareImageTest(t)
 	defer teardown()
 
-	id, err := svc.Save("blah_ff1.png", strings.NewReader("blah blah"))
+	id, err := svc.Save("blah_ff1.png", "user1", strings.NewReader("blah blah"))
 	assert.NoError(t, err)
+	t.Log(id)
 
 	r, sz, err := svc.Load(id)
 	assert.NoError(t, err)
@@ -60,15 +61,15 @@ func TestImage_location(t *testing.T) {
 		partitions int
 		id, res    string
 	}{
-		{10, "abcdefg", "/tmp/2"},
-		{10, "abcdefe", "/tmp/1"},
-		{10, "12345", "/tmp/9"},
-		{100, "12345", "/tmp/69"},
-		{100, "xyzz", "/tmp/58"},
-		{100, "6851dcde6024e03258a66705f29e14b506048c74.png", "/tmp/02"},
-		{5, "6851dcde6024e03258a66705f29e14b506048c74.png", "/tmp/2"},
-		{5, "xxxyz.png", "/tmp/0"},
-		{0, "12345", "/tmp"},
+		{10, "u1/abcdefg.png", "/tmp/u1/4/abcdefg.png"},
+		{10, "abcdefe", "/tmp/unknown/1/abcdefe"},
+		{10, "12345", "/tmp/unknown/9/12345"},
+		{100, "12345", "/tmp/unknown/69/12345"},
+		{100, "xyzz", "/tmp/unknown/58/xyzz"},
+		{100, "6851dcde6024e03258a66705f29e14b506048c74.png", "/tmp/unknown/02/6851dcde6024e03258a66705f29e14b506048c74.png"},
+		{5, "6851dcde6024e03258a66705f29e14b506048c74.png", "/tmp/unknown/2/6851dcde6024e03258a66705f29e14b506048c74.png"},
+		{5, "xxxyz.png", "/tmp/unknown/0/xxxyz.png"},
+		{0, "12345", "/tmp/unknown/12345"},
 	}
 	for n, tt := range tbl {
 		t.Run(strconv.Itoa(n), func(t *testing.T) {
@@ -79,20 +80,21 @@ func TestImage_location(t *testing.T) {
 
 	// generate random names and make sure partition never runs out of allowed
 	letterRunes := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-	randomString := func(n int) string {
+	randomID := func(n int) string {
 		b := make([]rune, n)
 		for i := range b {
 			b[i] = letterRunes[rand.Intn(len(letterRunes))]
 		}
-		return string(b)
+		return "user1" + "/" + string(b)
 	}
 
 	svc := FileSystem{Location: "/tmp", Partitions: 10}
 	for i := 0; i < 1000; i++ {
-		v := randomString(rand.Intn(64))
-		parts := strings.Split(svc.location(v), "/")
-		p, err := strconv.Atoi(parts[len(parts)-1])
-		require.NoError(t, err)
+		v := randomID(rand.Intn(64))
+		location := svc.location(v)
+		elems := strings.Split(location, "/")
+		p, err := strconv.Atoi(elems[3])
+		require.NoError(t, err, location)
 		assert.True(t, p >= 0 && p < 10)
 	}
 }

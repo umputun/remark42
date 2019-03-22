@@ -332,7 +332,7 @@ func (s *Rest) listCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// GET /picture/{id} - get picture
+// GET /picture/{user}/{id} - get picture
 func (s *Rest) loadPictureCtrl(w http.ResponseWriter, r *http.Request) {
 
 	imgContentType := func(img string) string {
@@ -348,7 +348,7 @@ func (s *Rest) loadPictureCtrl(w http.ResponseWriter, r *http.Request) {
 		return "image/*"
 	}
 
-	id := chi.URLParam(r, "id")
+	id := chi.URLParam(r, "user") + "/" + chi.URLParam(r, "id")
 	imgRdr, size, err := s.ImageService.Load(id)
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get image "+id, rest.ErrAssetNotFound)

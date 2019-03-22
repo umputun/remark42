@@ -301,14 +301,13 @@ func (s *Rest) savePictureCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	defer func() { _ = file.Close() }()
 
-	picName := fmt.Sprintf("%s_%d_%s", user.ID, time.Now().Nanosecond(), header.Filename)
-	id, err := s.ImageService.Save(picName, file)
+	id, err := s.ImageService.Save(header.Filename, user.ID, file)
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't save image", rest.ErrInternal)
 		return
 	}
 
-	render.JSON(w, r, R.JSON{"location": id})
+	render.JSON(w, r, R.JSON{"id": id})
 }
 
 func (s *Rest) isReadOnly(locator store.Locator) bool {
