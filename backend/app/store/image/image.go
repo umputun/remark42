@@ -39,9 +39,8 @@ type FileSystem struct {
 	}
 }
 
-// Save data from reader for given file name to local FS. Returns id as a hash of name
-// name should be passed in unique prefix, for example with userID_*
-// Files partitioned across multiple subdirectories.
+// Save data from reader for given file name to local FS. Returns id as user/uuid.ext
+// Files partitioned across multiple subdirectories and the final path includes part, i.e. /location/user1/03/123-4567.png
 func (f *FileSystem) Save(fileName string, userID string, r io.Reader) (id string, err error) {
 
 	uid, err := uuid.NewUUID()
@@ -95,10 +94,10 @@ func (f *FileSystem) Load(id string) (io.ReadCloser, int64, error) {
 	return fh, st.Size(), nil
 }
 
-// get location (full path) for id by adding partition to the final path in order to keep files
-// in different subdirectories and avoid too many files in a single place.
-// the end result is a full path like this - /tmp/images/user1/92/xxx-yyy.png. Number of partitions defined by FileSystem.
-// Partitions
+// location gets full path for id by adding partition to the final path in order to keep files in different subdirectories
+// and avoid too many files in a single place.
+// the end result is a full path like this - /tmp/images/user1/92/xxx-yyy.png.
+// Number of partitions defined by FileSystem.Partitions
 func (f *FileSystem) location(id string) string {
 
 	partition := func(id string) string {
@@ -113,15 +112,14 @@ func (f *FileSystem) location(id string) string {
 		return fmt.Sprintf(f.crc.mask, partition)
 	}
 
-	user := "unknown"
-	file := id
-	elems := strings.Split(id, "/")
-	if len(elems) == 2 {
-		user, file = elems[0], elems[1]
+	user, file := "unknown", id // default if no user in id
+	if elems := strings.Split(id, "/"); len(elems) == 2 {
+		user, file = elems[0], elems[1] // user in id
 	}
 
 	if f.Partitions == 0 {
-		return path.Join(f.Location, user, file)
+		return path.Join(f.Location, user, file) // avoid partition directory if 0 Partitions
 	}
+
 	return path.Join(f.Location, user, partition(id), file)
 }
