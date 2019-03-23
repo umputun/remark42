@@ -3,6 +3,7 @@
 package image
 
 import (
+	"context"
 	"fmt"
 	"hash/crc64"
 	"io"
@@ -13,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	log "github.com/go-pkgz/lgr"
 	"github.com/google/uuid"
@@ -28,8 +30,10 @@ type Interface interface {
 // FileSystem provides image Interface for local files. Saves and loads files from Location, restricts max size
 type FileSystem struct {
 	Location   string
+	Staging    string
 	MaxSize    int
 	Partitions int
+	TTL        time.Duration // for how long file allowed on staging
 
 	crc struct {
 		*crc64.Table
@@ -39,7 +43,7 @@ type FileSystem struct {
 	}
 }
 
-// Save data from reader for given file name to local FS. Returns id as user/uuid.ext
+// Save data from reader for given file name to local FS, staging directory. Returns id as user/uuid.ext
 // Files partitioned across multiple subdirectories and the final path includes part, i.e. /location/user1/03/123-4567.png
 func (f *FileSystem) Save(fileName string, userID string, r io.Reader) (id string, err error) {
 
@@ -49,7 +53,7 @@ func (f *FileSystem) Save(fileName string, userID string, r io.Reader) (id strin
 	}
 
 	id = path.Join(userID, uid.String()) + filepath.Ext(fileName) // make id as user/uuid.ext
-	dst := f.location(id)
+	dst := f.location(f.Staging, id)
 
 	if err = os.MkdirAll(path.Dir(dst), 0700); err != nil {
 		return "", errors.Wrap(err, "can't make image directory")
@@ -77,14 +81,36 @@ func (f *FileSystem) Save(fileName string, userID string, r io.Reader) (id strin
 	return id, nil
 }
 
+// Commit file stored in staging location by moving it to permanent location
+func (f *FileSystem) Commit(id string) error {
+	stagingImage, permImage := f.location(f.Staging, id), f.location(f.Location, id)
+
+	if err := os.MkdirAll(path.Dir(permImage), 0700); err != nil {
+		return errors.Wrap(err, "can't make image directory")
+	}
+
+	err := os.Rename(stagingImage, permImage)
+	return errors.Wrapf(err, "failed to commit image %s", id)
+}
+
 // Load image from FS. Uses id to get partition subdirectory.
 // returns ReadCloser and caller should call close after processing completed.
 func (f *FileSystem) Load(id string) (io.ReadCloser, int64, error) {
-	imgFile := f.location(id)
 
-	st, err := os.Stat(imgFile)
+	// get image file by id. first try permanent location and if not found - staging
+	img := func(id string) (file string, st os.FileInfo, err error) {
+		file = f.location(f.Location, id)
+		st, err = os.Stat(file)
+		if err != nil {
+			file = f.location(f.Staging, id)
+			st, err = os.Stat(file)
+		}
+		return file, st, errors.Wrapf(err, "can't get image stats for %s", id)
+	}
+
+	imgFile, st, err := img(id)
 	if err != nil {
-		return nil, 0, errors.Wrapf(err, "can't get image size for %s", id)
+		return nil, 0, errors.Wrapf(err, "can't get image file for %s", id)
 	}
 
 	fh, err := os.Open(imgFile)
@@ -94,11 +120,45 @@ func (f *FileSystem) Load(id string) (io.ReadCloser, int64, error) {
 	return fh, st.Size(), nil
 }
 
+// Cleanup runs periodic scan of staging and removes old files based on TTL
+func (f *FileSystem) Cleanup(ctx context.Context) {
+
+	cleanup := func() {
+		err := filepath.Walk(f.Staging, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if info.IsDir() {
+				return nil
+			}
+			age := time.Since(info.ModTime())
+			if age > f.TTL {
+				log.Printf("[INFO] remove staging image %s, age %v", path, age)
+				return os.Remove(path)
+			}
+			return nil
+		})
+		if err != nil {
+			log.Printf("[WARN] failed to cleanup images, %v", err)
+		}
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			log.Printf("[INFO] cleanup terminated, %v", ctx.Err())
+			return
+		case <-time.After(f.TTL / 2):
+			cleanup()
+		}
+	}
+}
+
 // location gets full path for id by adding partition to the final path in order to keep files in different subdirectories
 // and avoid too many files in a single place.
 // the end result is a full path like this - /tmp/images/user1/92/xxx-yyy.png.
 // Number of partitions defined by FileSystem.Partitions
-func (f *FileSystem) location(id string) string {
+func (f *FileSystem) location(base string, id string) string {
 
 	partition := func(id string) string {
 		f.crc.Do(func() {
@@ -118,8 +178,8 @@ func (f *FileSystem) location(id string) string {
 	}
 
 	if f.Partitions == 0 {
-		return path.Join(f.Location, user, file) // avoid partition directory if 0 Partitions
+		return path.Join(base, user, file) // avoid partition directory if 0 Partitions
 	}
 
-	return path.Join(f.Location, user, partition(id), file)
+	return path.Join(base, user, partition(id), file)
 }
