@@ -52,6 +52,8 @@ github.com/go-pkgz/rest
 github.com/go-pkgz/rest/logger
 # github.com/go-pkgz/syncs v1.1.0
 github.com/go-pkgz/syncs
+# github.com/golang/mock v1.2.0
+github.com/golang/mock/gomock
 # github.com/golang/protobuf v1.2.0
 github.com/golang/protobuf/proto
 # github.com/google/uuid v0.0.0-20161128191214-064e2069ce9c

@@ -20,6 +20,7 @@ require (
 	github.com/go-pkgz/repeater v1.1.1
 	github.com/go-pkgz/rest v1.4.0
 	github.com/go-pkgz/syncs v1.1.0
+	github.com/golang/mock v1.2.0
 	github.com/google/uuid v0.0.0-20161128191214-064e2069ce9c
 	github.com/gorilla/feeds v1.1.0
 	github.com/hashicorp/errwrap v1.0.0 // indirect

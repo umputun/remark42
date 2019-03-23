@@ -129,8 +129,8 @@ func (s *DataStore) SetPin(locator store.Locator, commentID string, status bool)
 // Vote for comment by id and locator
 func (s *DataStore) Vote(locator store.Locator, commentID string, userID string, val bool) (comment store.Comment, err error) {
 
-	cLock := s.getsScopedLocks(locator.URL) // get lock for URL scope
-	cLock.Lock()                            // prevents race on voting
+	cLock := s.getScopedLocks(locator.URL) // get lock for URL scope
+	cLock.Lock()                           // prevents race on voting
 	defer cLock.Unlock()
 
 	comment, err = s.Get(locator, commentID)
@@ -455,8 +455,8 @@ func (s *DataStore) upsAndDowns(c store.Comment) (ups, downs int) {
 	return ups, downs
 }
 
-// getsScopedLocks pull lock from the map if found or create a new one
-func (s *DataStore) getsScopedLocks(id string) (lock sync.Locker) {
+// getScopedLocks pull lock from the map if found or create a new one
+func (s *DataStore) getScopedLocks(id string) (lock sync.Locker) {
 	s.scopedLocks.Do(func() { s.scopedLocks.locks = map[string]sync.Locker{} })
 
 	s.scopedLocks.Lock()

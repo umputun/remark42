@@ -178,7 +178,7 @@ type serverApp struct {
 	dataService   *service.DataStore
 	avatarStore   avatar.Store
 	notifyService *notify.Service
-	imageService  image.Interface
+	imageService  image.Store
 	terminated    chan struct{}
 }
 
@@ -434,7 +434,7 @@ func (s *ServerCommand) makeAvatarStore() (avatar.Store, error) {
 	return nil, errors.Errorf("unsupported avatar store type %s", s.Avatar.Type)
 }
 
-func (s *ServerCommand) makePicturesStore() (image.Interface, error) {
+func (s *ServerCommand) makePicturesStore() (image.Store, error) {
 	switch s.Image.Type {
 	case "fs":
 		if err := makeDirs(s.Image.FS.Path); err != nil {

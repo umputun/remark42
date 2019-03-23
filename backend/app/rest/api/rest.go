@@ -45,7 +45,7 @@ type Rest struct {
 	CommentFormatter *store.CommentFormatter
 	Migrator         *Migrator
 	NotifyService    *notify.Service
-	ImageService     image.Interface
+	ImageService     image.Store
 
 	WebRoot         string
 	RemarkURL       string
