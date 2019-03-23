@@ -9,6 +9,7 @@ import (
 	gomock "github.com/golang/mock/gomock"
 	io "io"
 	reflect "reflect"
+	time "time"
 )
 
 // MockStore is a mock of Store interface
@@ -80,13 +81,15 @@ func (mr *MockStoreMockRecorder) Load(id interface{}) *gomock.Call {
 }
 
 // Cleanup mocks base method
-func (m *MockStore) Cleanup(ctx context.Context) {
+func (m *MockStore) Cleanup(ctx context.Context, ttl time.Duration) error {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Cleanup", ctx)
+	ret := m.ctrl.Call(m, "Cleanup", ctx, ttl)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // Cleanup indicates an expected call of Cleanup
-func (mr *MockStoreMockRecorder) Cleanup(ctx interface{}) *gomock.Call {
+func (mr *MockStoreMockRecorder) Cleanup(ctx, ttl interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cleanup", reflect.TypeOf((*MockStore)(nil).Cleanup), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cleanup", reflect.TypeOf((*MockStore)(nil).Cleanup), ctx, ttl)
 }

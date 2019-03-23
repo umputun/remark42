@@ -178,7 +178,7 @@ type serverApp struct {
 	dataService   *service.DataStore
 	avatarStore   avatar.Store
 	notifyService *notify.Service
-	imageService  image.Store
+	imageService  *image.Service
 	terminated    chan struct{}
 }
 
@@ -232,6 +232,11 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		return nil, errors.Wrap(err, "failed to make admin store")
 	}
 
+	imageService, err := s.makePicturesStore()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to make pictures store")
+	}
+
 	dataService := &service.DataStore{
 		Interface:              storeEngine,
 		EditDuration:           s.EditDuration,
@@ -239,6 +244,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		MaxCommentSize:         s.MaxCommentSize,
 		MaxVotes:               s.MaxVotes,
 		PositiveScore:          s.PositiveScore,
+		ImageService:           imageService,
 		TitleExtractor:         service.NewTitleExtractor(http.Client{Timeout: time.Second * 5}),
 		RestrictedWordsMatcher: service.NewRestrictedWordsMatcher(service.StaticRestrictedWordsLister{Words: s.RestrictedWords}),
 	}
@@ -274,11 +280,6 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 	imgProxy := &proxy.Image{Enabled: s.ImageProxy, RoutePath: "/api/v1/img", RemarkURL: s.RemarkURL}
 	commentFormatter := store.NewCommentFormatter(imgProxy)
 
-	pictStore, err := s.makePicturesStore()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to make pictures store")
-	}
-
 	sslConfig, err := s.makeSSLConfig()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to make config of ssl server params")
@@ -299,7 +300,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		NotifyService:    notifyService,
 		SSLConfig:        sslConfig,
 		UpdateLimiter:    s.UpdateLimit,
-		ImageService:     pictStore,
+		ImageService:     imageService,
 	}
 
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = s.LowScore, s.CriticalScore
@@ -322,7 +323,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		dataService:   dataService,
 		avatarStore:   avatarStore,
 		notifyService: notifyService,
-		imageService:  pictStore,
+		imageService:  imageService,
 		terminated:    make(chan struct{}),
 	}, nil
 }
@@ -434,17 +435,20 @@ func (s *ServerCommand) makeAvatarStore() (avatar.Store, error) {
 	return nil, errors.Errorf("unsupported avatar store type %s", s.Avatar.Type)
 }
 
-func (s *ServerCommand) makePicturesStore() (image.Store, error) {
+func (s *ServerCommand) makePicturesStore() (*image.Service, error) {
 	switch s.Image.Type {
 	case "fs":
 		if err := makeDirs(s.Image.FS.Path); err != nil {
 			return nil, err
 		}
-		return &image.FileSystem{
-			Location:   s.Image.FS.Path,
-			Staging:    s.Image.FS.Staging,
-			Partitions: s.Image.FS.Partitions,
-			MaxSize:    s.Image.MaxSize,
+		return &image.Service{
+			Store: &image.FileSystem{
+				Location:   s.Image.FS.Path,
+				Staging:    s.Image.FS.Staging,
+				Partitions: s.Image.FS.Partitions,
+				MaxSize:    s.Image.MaxSize,
+			},
+			TTL: s.EditDuration + time.Second, // add extra second to image TTL for staging
 		}, nil
 	}
 	return nil, errors.Errorf("unsupported pictures store type %s", s.Image.Type)

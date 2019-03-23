@@ -12,6 +12,7 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 	cache "github.com/patrickmn/go-cache"
 	"github.com/pkg/errors"
+	"github.com/umputun/remark/backend/app/store/image"
 
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/admin"
@@ -28,6 +29,7 @@ type DataStore struct {
 	PositiveScore          bool
 	TitleExtractor         *TitleExtractor
 	RestrictedWordsMatcher *RestrictedWordsMatcher
+	ImageService           *image.Service
 
 	// granular locks
 	scopedLocks struct {
@@ -90,6 +92,11 @@ func (s *DataStore) Create(comment store.Comment) (commentID string, err error) 
 		comment.PostTitle = title
 	}()
 
+	imgIds, err := s.ImageService.ExtractPictures(comment.Text)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to prepare extract pictures")
+	}
+	s.ImageService.Submit(imgIds) // submit images commit, delayed by EditDuration
 	return s.Interface.Create(comment)
 }
 
