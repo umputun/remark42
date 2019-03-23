@@ -183,6 +183,16 @@ func TestImage_Cleanup(t *testing.T) {
 	assert.NotNil(t, err, "no file on staging anymore")
 }
 
+func TestExtractPictures(t *testing.T) {
+	html := `blah <img src="/blah/user1/pic1.png"/> foo 
+<img src="/blah/user2/pic3.png"/> xyz <p>123</p> <img src="/pic3.png"/>`
+	ids, err := ExtractPictures(html, "/blah/")
+	require.NoError(t, err)
+	assert.Equal(t, 2, len(ids), "two images")
+	assert.Equal(t, "user1/pic1.png", ids[0])
+	assert.Equal(t, "user2/pic3.png", ids[1])
+}
+
 func prepareImageTest(t *testing.T) (svc FileSystem, teardown func()) {
 	loc, err := ioutil.TempDir("", "test_image_r42")
 	require.NoError(t, err, "failed to make temp dir")

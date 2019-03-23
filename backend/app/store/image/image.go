@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/PuerkitoBio/goquery"
 	log "github.com/go-pkgz/lgr"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -185,4 +186,27 @@ func (f *FileSystem) location(base string, id string) string {
 	}
 
 	return path.Join(base, user, partition(id), file)
+}
+
+// ExtractPictures gets list of images from the doc html and convert from urls to ids, i.e. user/pic.png
+func ExtractPictures(commentHTML string, match string) (ids []string, err error) {
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(commentHTML))
+	if err != nil {
+		return nil, errors.Wrap(err, "can't create document")
+	}
+	result := []string{}
+	doc.Find("img").Each(func(i int, s *goquery.Selection) {
+		if im, ok := s.Attr("src"); ok {
+			if strings.Contains(im, match) {
+				elems := strings.Split(im, "/")
+				if len(elems) >= 2 {
+					id := elems[len(elems)-2] + "/" + elems[len(elems)-1]
+					result = append(result, id)
+				}
+			}
+		}
+	})
+
+	return result, nil
 }
