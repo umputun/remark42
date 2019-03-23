@@ -24,7 +24,9 @@ import (
 // Interface defines Save and Load methods
 type Interface interface {
 	Save(fileName string, userID string, r io.Reader) (id string, err error) // get name and reader and returns ID of stored image
+	Commit(id string) error                                                  // move image from staging to permanent
 	Load(id string) (io.ReadCloser, int64, error)                            // load image by ID. Caller has to close the reader.
+	Cleanup(ctx context.Context)                                             // run removal loop for old images on staging
 }
 
 // FileSystem provides image Interface for local files. Saves and loads files from Location, restricts max size
@@ -122,6 +124,7 @@ func (f *FileSystem) Load(id string) (io.ReadCloser, int64, error) {
 
 // Cleanup runs periodic scan of staging and removes old files based on TTL
 func (f *FileSystem) Cleanup(ctx context.Context) {
+	log.Printf("[INFO] start pictures cleanup, staging ttl=%v", f.TTL)
 
 	cleanup := func() {
 		err := filepath.Walk(f.Staging, func(path string, info os.FileInfo, err error) error {

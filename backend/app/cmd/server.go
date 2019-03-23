@@ -99,8 +99,9 @@ type StoreGroup struct {
 type ImageGroup struct {
 	Type string `long:"type" env:"TYPE" description:"type of storage" choice:"fs" choice:"bolt" choice:"mongo" default:"fs"`
 	FS   struct {
-		Path      string `long:"path" env:"PATH" default:"./var/pictures" description:"images location"`
-		Partitons int    `long:"partitions" env:"PARTITIONS" default:"100" description:"partitions (subdirs)"`
+		Path       string `long:"path" env:"PATH" default:"./var/pictures" description:"images location"`
+		Staging    string `long:"staging" env:"STAGING" default:"./var/pictures.staging" description:"staging location"`
+		Partitions int    `long:"partitions" env:"PARTITIONS" default:"100" description:"partitions (subdirs)"`
 	} `group:"fs" namespace:"fs" env-namespace:"FS"`
 	Bolt struct {
 		File string `long:"file" env:"FILE" default:"./var/pictures.db" description:"images bolt file location"`
@@ -177,6 +178,7 @@ type serverApp struct {
 	dataService   *service.DataStore
 	avatarStore   avatar.Store
 	notifyService *notify.Service
+	imageService  image.Interface
 	terminated    chan struct{}
 }
 
@@ -320,6 +322,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		dataService:   dataService,
 		avatarStore:   avatarStore,
 		notifyService: notifyService,
+		imageService:  pictStore,
 		terminated:    make(chan struct{}),
 	}, nil
 }
@@ -347,10 +350,14 @@ func (a *serverApp) run(ctx context.Context) error {
 		a.notifyService.Close()
 		log.Print("[INFO] shutdown completed")
 	}()
+
 	a.activateBackup(ctx) // runs in goroutine for each site
 	if a.Auth.Dev {
 		go a.devAuth.Run(context.Background()) // dev oauth2 server on :8084
 	}
+
+	go a.imageService.Cleanup(ctx) // pictures cleanup for staging images
+
 	a.restSrv.Run(a.Port)
 	close(a.terminated)
 	return nil
@@ -433,7 +440,12 @@ func (s *ServerCommand) makePicturesStore() (image.Interface, error) {
 		if err := makeDirs(s.Image.FS.Path); err != nil {
 			return nil, err
 		}
-		return &image.FileSystem{Location: s.Image.FS.Path, Partitions: s.Image.FS.Partitons, MaxSize: s.Image.MaxSize}, nil
+		return &image.FileSystem{
+			Location:   s.Image.FS.Path,
+			Staging:    s.Image.FS.Staging,
+			Partitions: s.Image.FS.Partitions,
+			MaxSize:    s.Image.MaxSize,
+		}, nil
 	}
 	return nil, errors.Errorf("unsupported pictures store type %s", s.Image.Type)
 }
