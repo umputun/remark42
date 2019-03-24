@@ -33,7 +33,7 @@ type CommonOpts struct {
 // SetCommon satisfies CommonOptionsCommander interface and sets common option fields
 // The method called by main for each command
 func (c *CommonOpts) SetCommon(commonOpts CommonOpts) {
-	c.RemarkURL = commonOpts.RemarkURL
+	c.RemarkURL = strings.TrimSuffix(commonOpts.RemarkURL, "/") // allow RemarkURL with trailing /
 	c.SharedSecret = commonOpts.SharedSecret
 	c.Revision = commonOpts.Revision
 }
