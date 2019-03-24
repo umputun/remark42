@@ -51,7 +51,7 @@ describe('user', () => {
     );
     const dispatch = jest.fn();
     const getState = jest.fn();
-    await logIn('google')(dispatch, getState, undefined);
+    await logIn({ name: 'google' })(dispatch, getState, undefined);
     expect(dispatch).toBeCalledWith({
       type: USER_SET,
       user: {
@@ -70,7 +70,7 @@ describe('user', () => {
     );
     const dispatch = jest.fn();
     const getState = jest.fn();
-    await logIn('google')(dispatch, getState, undefined).catch(() => {});
+    await logIn({ name: 'google' })(dispatch, getState, undefined).catch(() => {});
     expect(dispatch).not.toBeCalled();
   });
 

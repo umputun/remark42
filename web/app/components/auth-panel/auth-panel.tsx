@@ -5,22 +5,23 @@ import b from 'bem-react-helper';
 import { PROVIDER_NAMES, IS_STORAGE_AVAILABLE, IS_THIRD_PARTY } from '@app/common/constants';
 import { requestDeletion } from '@app/utils/email';
 import { getHandleClickProps } from '@app/common/accessibility';
-import { User, Provider, Sorting, Theme, PostInfo } from '@app/common/types';
+import { User, AuthProvider, Sorting, Theme, PostInfo } from '@app/common/types';
 
 import Dropdown, { DropdownItem } from '@app/components/dropdown';
 import { Button } from '@app/components/button';
 import { UserID } from './__user-id';
+import { AnonymousLoginForm } from './__anonymous-login-form';
 
 export interface Props {
   user: User | null;
-  providers: Provider[];
+  providers: (AuthProvider['name'])[];
   sort: Sorting;
   isCommentsDisabled: boolean;
   theme: Theme;
   postInfo: PostInfo;
 
   onSortChange(s: Sorting): Promise<void>;
-  onSignIn(p: Provider): Promise<User | null>;
+  onSignIn(p: AuthProvider): Promise<User | null>;
   onSignOut(): Promise<void>;
   onCommentsEnable(): Promise<boolean>;
   onCommentsDisable(): Promise<boolean>;
@@ -30,6 +31,7 @@ export interface Props {
 
 interface State {
   isBlockedVisible: boolean;
+  anonymousUsernameInputValue: string;
 }
 
 export class AuthPanel extends Component<Props, State> {
@@ -38,11 +40,16 @@ export class AuthPanel extends Component<Props, State> {
 
     this.state = {
       isBlockedVisible: false,
+      anonymousUsernameInputValue: 'anon',
     };
 
     this.toggleBlockedVisibility = this.toggleBlockedVisibility.bind(this);
     this.toggleCommentsAvailability = this.toggleCommentsAvailability.bind(this);
     this.onSortChange = this.onSortChange.bind(this);
+    this.onSignIn = this.onSignIn.bind(this);
+    this.handleAnonymousLoginFormSubmut = this.handleAnonymousLoginFormSubmut.bind(this);
+    this.handleOAuthLogin = this.handleOAuthLogin.bind(this);
+    this.toggleUserInfoVisibility = this.toggleUserInfoVisibility.bind(this);
   }
 
   onSortChange(e: Event) {
@@ -67,9 +74,32 @@ export class AuthPanel extends Component<Props, State> {
     }
   }
 
+  toggleUserInfoVisibility() {
+    const user = this.props.user;
+    if (window.parent && user) {
+      const data = JSON.stringify({ isUserInfoShown: true, user });
+      window.parent.postMessage(data, '*');
+    }
+  }
+
   getUserTitle() {
     const { user } = this.props;
     return <span className="auth-panel__username">{user!.name}</span>;
+  }
+
+  /** wrapper function to handle both oauth and anonymous providers*/
+  onSignIn(provider: AuthProvider) {
+    this.props.onSignIn(provider);
+  }
+
+  async handleAnonymousLoginFormSubmut(username: string) {
+    this.onSignIn({ name: 'anonymous', username });
+  }
+
+  async handleOAuthLogin(e: MouseEvent | KeyboardEvent) {
+    const p = (e.target as HTMLButtonElement).dataset.provider! as AuthProvider['name'];
+    // eslint-disable-next-line @typescript-eslint/no-object-literal-type-assertion
+    this.onSignIn({ name: p } as AuthProvider);
   }
 
   render(props: RenderableProps<Props>, { isBlockedVisible }: State) {
@@ -77,6 +107,7 @@ export class AuthPanel extends Component<Props, State> {
     const sortArray = getSortArray(sort);
     const loggedIn = !!user;
     const signInMessage = props.postInfo.read_only ? 'Sign in using ' : 'Sign in to comment using ';
+    const isUserAnonymous = user && user.id.substr(0, 10) === 'anonymous_';
 
     return (
       <div className={b('auth-panel', {}, { theme: props.theme, loggedIn })}>
@@ -84,19 +115,21 @@ export class AuthPanel extends Component<Props, State> {
           <div className="auth-panel__column">
             You signed in as{' '}
             <Dropdown title={user.name} theme={this.props.theme}>
-              <DropdownItem separator={true}>
-                <UserID id={user.id} theme={this.props.theme} />
+              <DropdownItem separator={!isUserAnonymous}>
+                <UserID id={user.id} theme={this.props.theme} {...getHandleClickProps(this.toggleUserInfoVisibility)} />
               </DropdownItem>
 
-              <DropdownItem>
-                <Button
-                  kind="link"
-                  theme={this.props.theme}
-                  onClick={() => requestDeletion().then(() => props.onSignOut())}
-                >
-                  Request my data removal
-                </Button>
-              </DropdownItem>
+              {!isUserAnonymous && (
+                <DropdownItem>
+                  <Button
+                    kind="link"
+                    theme={this.props.theme}
+                    onClick={() => requestDeletion().then(() => props.onSignOut())}
+                  >
+                    Request my data removal
+                  </Button>
+                </DropdownItem>
+              )}
             </Dropdown>{' '}
             <Button
               className="auth-panel__sign-out"
@@ -115,12 +148,35 @@ export class AuthPanel extends Component<Props, State> {
             {providers.map((provider, i) => {
               const comma = i === 0 ? '' : i === providers.length - 1 ? ' or ' : ', ';
 
+              if (provider === 'anonymous') {
+                return (
+                  <span>
+                    {comma}{' '}
+                    <Dropdown
+                      title={PROVIDER_NAMES[provider]}
+                      titleClass="auth-panel__pseudo-link"
+                      theme={this.props.theme}
+                    >
+                      <DropdownItem>
+                        <AnonymousLoginForm
+                          onSubmit={this.handleAnonymousLoginFormSubmut}
+                          theme={this.props.theme}
+                          className="auth-panel__anonymous-login-form"
+                        />
+                      </DropdownItem>
+                    </Dropdown>
+                  </span>
+                );
+              }
+
               return (
                 <span>
                   {comma}
                   <span
                     className="auth-panel__pseudo-link"
-                    {...getHandleClickProps(() => props.onSignIn(provider))}
+                    data-provider={provider}
+                    // eslint-disable-next-line @typescript-eslint/no-object-literal-type-assertion
+                    {...getHandleClickProps(this.handleOAuthLogin)}
                     role="link"
                   >
                     {PROVIDER_NAMES[provider]}

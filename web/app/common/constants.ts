@@ -1,4 +1,4 @@
-import { Sorting, Provider, BlockingDuration, Theme } from './types';
+import { Sorting, AuthProvider, BlockingDuration, Theme } from './types';
 
 export const BASE_URL: string = process.env.REMARK_URL!;
 export const API_BASE = '/api/v1';
@@ -12,13 +12,14 @@ export const MAX_SHOWN_ROOT_COMMENTS = 10;
 
 export const DEFAULT_SORT: Sorting = '-active';
 
-/* object of supported providers */
-export const PROVIDER_NAMES: { [P in Provider]: string } = {
+/* matches auth providers to UI label */
+export const PROVIDER_NAMES: { [P in AuthProvider['name']]: string } = {
   google: 'Google',
   facebook: 'Facebook',
   github: 'GitHub',
   yandex: 'Yandex',
   dev: 'Dev',
+  anonymous: 'Anonymous',
 };
 
 /** locastorage key for collapsed comments */

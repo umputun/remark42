@@ -1,3 +1,7 @@
 .dropdown__items {
   padding: 5px 0;
 }
+
+.dropdown__items:last-child {
+  padding-bottom: 0;
+}

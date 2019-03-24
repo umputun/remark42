@@ -4,9 +4,10 @@
   outline-width: 0;
   display: none;
   top: 100%;
-  left: 50%;
-  transform: translate(-50%, 5px);
-  width: 170px;
+  left: 0%;
+  transform: translate(-0.5em, 5px);
+  min-width: 170px;
+  max-width: 260px;
   border: 2px solid #259c9a;
   border-radius: 3px;
   padding: 0 0 5px;

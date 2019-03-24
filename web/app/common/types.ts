@@ -92,7 +92,7 @@ export interface Config {
   max_comment_size: number;
   admins: string[];
   admin_email: string;
-  auth_providers: Provider[];
+  auth_providers: (AuthProvider['name'])[];
   low_score: number;
   critical_score: number;
   positive_score: boolean;
@@ -108,7 +108,13 @@ export interface RemarkConfig {
 
 export type Sorting = '-time' | '+time' | '-active' | '+active' | '-score' | '+score' | '-controversy' | '+controversy';
 
-export type Provider = 'google' | 'facebook' | 'github' | 'yandex' | 'dev';
+export type AuthProvider =
+  | { name: 'google' }
+  | { name: 'facebook' }
+  | { name: 'github' }
+  | { name: 'yandex' }
+  | { name: 'dev' }
+  | { name: 'anonymous'; username: string };
 
 export type BlockTTL = 'permanently' | '43200m' | '10080m' | '1440m';
 
