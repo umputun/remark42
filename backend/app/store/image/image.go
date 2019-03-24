@@ -48,12 +48,12 @@ type submitReq struct {
 
 // Submit multiple ids via function for delayed commit
 func (s *Service) Submit(idsFn func() []string) {
-	if idsFn == nil {
+	if idsFn == nil || s == nil {
 		return
 	}
 
 	s.once.Do(func() {
-		log.Printf("[DEBUG] image submiter activate")
+		log.Printf("[DEBUG] image submitter activated")
 		s.submitCh = make(chan submitReq, submitQueueSize)
 		s.wg.Add(1)
 		go func() {
@@ -69,7 +69,7 @@ func (s *Service) Submit(idsFn func() []string) {
 					}
 				}
 			}
-			log.Printf("[INFO] image submiter terminated")
+			log.Printf("[INFO] image submitter terminated")
 		}()
 	})
 

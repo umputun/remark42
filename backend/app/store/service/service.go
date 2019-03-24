@@ -92,14 +92,20 @@ func (s *DataStore) Create(comment store.Comment) (commentID string, err error) 
 		comment.PostTitle = title
 	}()
 
-	// submit comment images to delayed processing
+	s.submitImages(comment)
+	return s.Interface.Create(comment)
+}
+
+// submitImages initiated delayed commit of all images from the comment uploaded to remark42
+func (s *DataStore) submitImages(comment store.Comment) {
+
 	s.ImageService.Submit(func() []string {
 		c := comment
-		cc, e := s.Get(c.Locator, c.ID) // this can be called after last edit, we have to retrieve fresh comment
-		if e != nil {
+		cc, err := s.Get(c.Locator, c.ID) // this can be called after last edit, we have to retrieve fresh comment
+		if err != nil {
 			return nil
 		}
-		imgIds, e := s.ImageService.ExtractPictures(cc.Text)
+		imgIds, err := s.ImageService.ExtractPictures(cc.Text)
 		if err != nil {
 			return nil
 		}
@@ -108,8 +114,6 @@ func (s *DataStore) Create(comment store.Comment) (commentID string, err error) 
 		}
 		return imgIds
 	})
-
-	return s.Interface.Create(comment)
 }
 
 // prepareNewComment sets new comment fields, hashing and sanitizing data
