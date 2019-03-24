@@ -20,6 +20,7 @@ type DirectHandler struct {
 	ProviderName string
 	TokenService TokenService
 	Issuer       string
+	AvatarSaver  AvatarSaver
 }
 
 // CredChecker defines interface to check credentials
@@ -45,23 +46,31 @@ func (p DirectHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	aud := r.URL.Query().Get("aud")
 	sessOnly := r.URL.Query().Get("sess") == "1"
 	if p.CredChecker == nil {
-		rest.SendErrorJSON(w, r, p.L, http.StatusInternalServerError, errors.New("empty credential store"), "no credential store")
+		rest.SendErrorJSON(w, r, p.L, http.StatusInternalServerError,
+			errors.New("no credential checker"), "no credential checker")
 		return
 	}
 	ok, err := p.CredChecker.Check(user, password)
 	if err != nil {
-		rest.SendErrorJSON(w, r, p.L, http.StatusInternalServerError, err, "failed to access creds store")
+		rest.SendErrorJSON(w, r, p.L, http.StatusInternalServerError, err, "failed to check user credentials")
 		return
 	}
 	if !ok {
 		rest.SendErrorJSON(w, r, p.L, http.StatusForbidden, nil, "incorrect user or password")
 		return
 	}
+	u := token.User{
+		Name: user,
+		ID:   p.ProviderName + "_" + token.HashID(sha1.New(), user),
+	}
+	u, err = setAvatar(p.AvatarSaver, u)
+	if err != nil {
+		rest.SendErrorJSON(w, r, p.L, http.StatusInternalServerError, err, "failed to save avatar to proxy")
+		return
+	}
+
 	claims := token.Claims{
-		User: &token.User{
-			Name: user,
-			ID:   p.ProviderName + "_" + token.HashID(sha1.New(), user),
-		},
+		User: &u,
 		StandardClaims: jwt.StandardClaims{
 			Issuer:   p.Issuer,
 			Audience: aud,

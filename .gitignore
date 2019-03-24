@@ -18,3 +18,4 @@ debug.test
 .mongo
 remark42
 /bin/
+/backend/var/

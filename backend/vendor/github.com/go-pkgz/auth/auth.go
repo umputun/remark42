@@ -1,3 +1,4 @@
+// Package auth provides "social login" with Github, Google, Facebook and Yandex as well as custom auth providers.
 package auth
 
 import (
@@ -226,6 +227,7 @@ func (s *Service) AddDirectProvider(name string, credChecker provider.CredChecke
 		Issuer:       s.issuer,
 		TokenService: s.jwtService,
 		CredChecker:  credChecker,
+		AvatarSaver:  s.avatarProxy,
 	}
 	s.providers = append(s.providers, provider.NewService(dh))
 	s.authMiddleware.Providers = s.providers

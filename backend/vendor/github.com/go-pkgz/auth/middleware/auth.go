@@ -1,4 +1,7 @@
-// Package middleware provides oauth2 support as well as related middlewares.
+// Package middleware provides login middlewares:
+// - Auth: adds auth from session and populates user info
+// - Trace: populates user info if token presented
+// - AdminOnly: restrict access to admin users only
 package middleware
 
 import (
@@ -35,6 +38,7 @@ type TokenService interface {
 	Reset(w http.ResponseWriter)
 }
 
+// adminUser sets claims for an optional basic auth
 var adminUser = token.User{
 	ID:   "admin",
 	Name: "admin",
@@ -120,6 +124,7 @@ func (a *Authenticator) auth(reqAuth bool) func(http.Handler) http.Handler {
 // refreshExpiredToken makes a new token with passed claims
 func (a *Authenticator) refreshExpiredToken(w http.ResponseWriter, claims token.Claims, tkn string) (token.Claims, error) {
 
+	// cache refreshed claims for given token in order to eliminate multiple refreshes for concurrent requests
 	if a.RefreshCache != nil {
 		if c, ok := a.RefreshCache.Get(tkn); ok {
 			// already in cache

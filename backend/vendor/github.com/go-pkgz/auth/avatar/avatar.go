@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/go-pkgz/rest"
+	"github.com/nullrocks/identicon"
 	"github.com/pkg/errors"
 	"golang.org/x/image/draw"
 
@@ -33,9 +34,19 @@ type Proxy struct {
 // Put stores retrieved avatar to avatar.Store. Gets image from user info. Returns proxied url
 func (p *Proxy) Put(u token.User) (avatarURL string, err error) {
 
-	// no picture for user, try default avatar
+	// no picture for user, try to generate identicon avatar
 	if u.Picture == "" {
-		return "", errors.Errorf("no picture for %s", u.ID)
+		b, err := GenerateAvatar(u.ID)
+		if err != nil {
+			return "", errors.Errorf("no picture for %s", u.ID)
+		}
+		avatarID, err := p.Store.Put(u.ID, p.resize(bytes.NewBuffer(b), p.ResizeLimit)) // put returns avatar base name, like 123456.image
+		if err != nil {
+			return "", err
+		}
+
+		p.Logf("[DEBUG] saved identicon avatar to %s, user %q", avatarID, u.Name)
+		return p.URL + p.RoutePath + "/" + avatarID, nil
 	}
 
 	// load avatar from remote location
@@ -152,6 +163,25 @@ func (p *Proxy) resize(reader io.Reader, limit int) io.Reader {
 	}
 	return &out
 }
+
+// GenerateAvatar for give user with identicon
+func GenerateAvatar(user string) ([]byte, error) {
+
+	iconGen, err := identicon.New("pkgz/auth", 5, 5)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't create identicon service")
+	}
+
+	ii, err := iconGen.Draw(user) // generate an IdentIcon
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to draw avatar for %s", user)
+	}
+
+	buf := &bytes.Buffer{}
+	err = ii.Png(300, buf)
+	return buf.Bytes(), err
+}
+
 func retry(retries int, delay time.Duration, fn func() error) (err error) {
 	for i := 0; i < retries; i++ {
 		if err = fn(); err == nil {
