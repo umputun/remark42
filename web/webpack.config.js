@@ -7,11 +7,9 @@ const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const Clean = require('clean-webpack-plugin');
 const Copy = require('copy-webpack-plugin');
 const Html = require('html-webpack-plugin');
-const Provide = webpack.ProvidePlugin;
 const Define = webpack.DefinePlugin;
 const BundleAnalyze = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 
-const babelOptions = require('./babelOptions');
 const publicFolder = path.resolve(__dirname, 'public');
 const env = process.env.NODE_ENV || 'development';
 const remarkUrl = process.env.REMARK_URL || 'https://demo.remark42.com';
@@ -40,15 +38,15 @@ const commonStyleLoaders = [
   },
 ];
 
-module.exports = {
+module.exports = () => ({
   context: __dirname,
   devtool: env === 'development' ? 'source-map' : false,
   entry: {
-    embed: './app/embed',
-    counter: './app/counter',
-    'last-comments': './app/last-comments',
-    remark: './app/remark',
-    deleteme: './app/deleteme',
+    embed: './app/embed.ts',
+    counter: './app/counter.ts',
+    'last-comments': './app/last-comments.tsx',
+    remark: './app/remark.tsx',
+    deleteme: './app/deleteme.ts',
   },
   output: {
     path: publicFolder,
@@ -56,18 +54,21 @@ module.exports = {
     chunkFilename: '[name].js',
   },
   resolve: {
-    extensions: ['.jsx', '.js'],
-    modules: [path.resolve(__dirname, 'app'), path.resolve(__dirname, 'node_modules')],
+    extensions: ['.tsx', '.ts', '.jsx', '.js'],
+    alias: { '@app': path.resolve(__dirname, 'app') },
+    modules: [path.resolve(__dirname, 'node_modules')],
   },
   module: {
     rules: [
       {
-        test: /\.jsx?$/,
-        exclude: /(node_modules|\.vendor\.js$)/,
-        use: {
-          loader: 'babel-loader',
-          options: babelOptions,
-        },
+        test: /\.js(x?)$/,
+        exclude: /node_modules/,
+        use: 'babel-loader',
+      },
+      {
+        test: /\.ts(x?)$/,
+        exclude: /node_modules/,
+        use: ['babel-loader', 'ts-loader'],
       },
       {
         test: /\.s?css$/,
@@ -91,26 +92,20 @@ module.exports = {
   },
   plugins: [
     new Clean(publicFolder),
-    new Provide({
-      b: 'bem-react-helper',
-    }),
     new Define({
       'process.env.NODE_ENV': JSON.stringify(env),
       'process.env.REMARK_NODE': JSON.stringify(NODE_ID),
       'process.env.REMARK_URL': env === 'production' ? JSON.stringify(remarkUrl) : 'window.location.origin',
     }),
-    // TODO: we should add it only on demo serv
     new Html({
       template: path.resolve(__dirname, 'index.ejs'),
       inject: false,
     }),
-    // TODO: we should add it only on demo serv
     new Html({
       template: path.resolve(__dirname, 'counter.ejs'),
       filename: 'counter.html',
       inject: false,
     }),
-    // TODO: we should add it only on demo serv
     new Html({
       template: path.resolve(__dirname, 'last-comments.ejs'),
       filename: 'last-comments.html',
@@ -142,6 +137,9 @@ module.exports = {
   watchOptions: {
     ignored: /(node_modules|\.vendor\.js$)/,
   },
+  stats: {
+    children: false,
+  },
   devServer: {
     host: 'localhost',
     port: 9000,
@@ -160,4 +158,4 @@ module.exports = {
       },
     },
   },
-};
+});
