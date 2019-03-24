@@ -8,13 +8,13 @@ package image
 import (
 	"context"
 	"io"
-	"log"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	log "github.com/go-pkgz/lgr"
 	"github.com/pkg/errors"
 )
 
@@ -42,17 +42,18 @@ type Service struct {
 const submitQueueSize = 5000
 
 type submitReq struct {
-	ID string
-	TS time.Time
+	idsFn func() (ids []string)
+	TS    time.Time
 }
 
-// Submit multiple ids for delayed commit
-func (s *Service) Submit(ids []string) {
-	if len(ids) == 0 {
+// Submit multiple ids via function for delayed commit
+func (s *Service) Submit(idsFn func() []string) {
+	if idsFn == nil {
 		return
 	}
 
 	s.once.Do(func() {
+		log.Printf("[DEBUG] image submiter activate")
 		s.submitCh = make(chan submitReq, submitQueueSize)
 		s.wg.Add(1)
 		go func() {
@@ -62,17 +63,17 @@ func (s *Service) Submit(ids []string) {
 				for atomic.LoadInt32(&s.term) == 0 && time.Since(req.TS) <= s.TTL {
 					time.Sleep(time.Millisecond * 10) // small sleep to relive busy wait but keep reactive for term (close)
 				}
-				if err := s.Commit(req.ID); err != nil {
-					log.Printf("[WARN] failed to commit image %s", req.ID)
+				for _, id := range req.idsFn() {
+					if err := s.Commit(id); err != nil {
+						log.Printf("[WARN] failed to commit image %s", id)
+					}
 				}
 			}
 			log.Printf("[INFO] image submiter terminated")
 		}()
 	})
 
-	for _, id := range ids {
-		s.submitCh <- submitReq{ID: id, TS: time.Now()}
-	}
+	s.submitCh <- submitReq{idsFn: idsFn, TS: time.Now()}
 }
 
 // ExtractPictures gets list of images from the doc html and convert from urls to ids, i.e. user/pic.png

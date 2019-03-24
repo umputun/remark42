@@ -92,11 +92,23 @@ func (s *DataStore) Create(comment store.Comment) (commentID string, err error) 
 		comment.PostTitle = title
 	}()
 
-	imgIds, err := s.ImageService.ExtractPictures(comment.Text)
-	if err != nil {
-		return "", errors.Wrap(err, "failed to prepare extract pictures")
-	}
-	s.ImageService.Submit(imgIds) // submit images commit, delayed by EditDuration
+	// submit comment images to delayed processing
+	s.ImageService.Submit(func() []string {
+		c := comment
+		cc, e := s.Get(c.Locator, c.ID) // this can be called after last edit, we have to retrieve fresh comment
+		if e != nil {
+			return nil
+		}
+		imgIds, e := s.ImageService.ExtractPictures(cc.Text)
+		if err != nil {
+			return nil
+		}
+		if len(imgIds) > 0 {
+			log.Printf("[DEBUG] image ids extracted from %s - %+v", c.ID, imgIds)
+		}
+		return imgIds
+	})
+
 	return s.Interface.Create(comment)
 }
 

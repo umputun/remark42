@@ -41,8 +41,8 @@ func TestService_Submit(t *testing.T) {
 
 	store.EXPECT().Commit(gomock.Any()).Times(5) // all 5 should be committed
 	svc := Service{Store: store, ImageAPI: "/blah/", TTL: time.Millisecond * 100}
-	svc.Submit([]string{"id1", "id2", "id3"})
-	svc.Submit([]string{"id4", "id5"})
+	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
+	svc.Submit(func() []string { return []string{"id4", "id5"} })
 	svc.Submit(nil)
 	time.Sleep(time.Millisecond * 500)
 }
@@ -54,8 +54,8 @@ func TestService_Close(t *testing.T) {
 
 	store.EXPECT().Commit(gomock.Any()).Times(5) // all 5 should be committed
 	svc := Service{Store: store, ImageAPI: "/blah/", TTL: time.Millisecond * 500}
-	svc.Submit([]string{"id1", "id2", "id3"})
-	svc.Submit([]string{"id4", "id5"})
+	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
+	svc.Submit(func() []string { return []string{"id4", "id5"} })
 	svc.Submit(nil)
 	svc.Close()
 }
@@ -70,8 +70,8 @@ func TestService_SubmitDelay(t *testing.T) {
 
 	store.EXPECT().Commit(gomock.Any()).Times(3) // first batch should be committed
 	svc := Service{Store: store, ImageAPI: "/blah/", TTL: time.Millisecond * 100}
-	svc.Submit([]string{"id1", "id2", "id3"})
+	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
 	time.Sleep(150 * time.Millisecond) // let first batch to pass TTL
-	svc.Submit([]string{"id4", "id5"})
+	svc.Submit(func() []string { return []string{"id4", "id5"} })
 	svc.Submit(nil)
 }

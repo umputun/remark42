@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"hash/crc64"
 	"io"
-	"log"
 	"math"
 	"os"
 	"path"
@@ -15,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	log "github.com/go-pkgz/lgr"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 )
