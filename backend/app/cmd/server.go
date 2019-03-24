@@ -349,6 +349,7 @@ func (a *serverApp) run(ctx context.Context) error {
 			log.Printf("[WARN] failed to close avatar store, %s", e)
 		}
 		a.notifyService.Close()
+		a.imageService.Close()
 		log.Print("[INFO] shutdown completed")
 	}()
 

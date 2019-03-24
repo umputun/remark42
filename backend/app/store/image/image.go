@@ -10,6 +10,8 @@ import (
 	"io"
 	"log"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
@@ -30,6 +32,18 @@ type Service struct {
 	Store
 	TTL      time.Duration // for how long file allowed on staging
 	ImageAPI string        // image api matching path
+
+	wg       sync.WaitGroup
+	submitCh chan submitReq
+	once     sync.Once
+	term     int32
+}
+
+const submitQueueSize = 5000
+
+type submitReq struct {
+	ID string
+	TS time.Time
 }
 
 // Submit multiple ids for delayed commit
@@ -38,13 +52,27 @@ func (s *Service) Submit(ids []string) {
 		return
 	}
 
-	time.AfterFunc(s.TTL, func() {
-		for _, id := range ids {
-			if err := s.Commit(id); err != nil {
-				log.Printf("[WARN] failed to commit image %s", id)
+	s.once.Do(func() {
+		s.submitCh = make(chan submitReq, submitQueueSize)
+		s.wg.Add(1)
+		go func() {
+			defer s.wg.Done()
+			for req := range s.submitCh {
+				// wait for TTL expiration with emergency pass on term
+				for atomic.LoadInt32(&s.term) == 0 && time.Since(req.TS) <= s.TTL {
+					time.Sleep(time.Millisecond * 10) // small sleep to relive busy wait but keep reactive for term (close)
+				}
+				if err := s.Commit(req.ID); err != nil {
+					log.Printf("[WARN] failed to commit image %s", req.ID)
+				}
 			}
-		}
+			log.Printf("[INFO] image submiter terminated")
+		}()
 	})
+
+	for _, id := range ids {
+		s.submitCh <- submitReq{ID: id, TS: time.Now()}
+	}
 }
 
 // ExtractPictures gets list of images from the doc html and convert from urls to ids, i.e. user/pic.png
@@ -85,4 +113,14 @@ func (s *Service) Cleanup(ctx context.Context) {
 			}
 		}
 	}
+}
+
+// Close flushes all in-progress submits and enforces waiting commits
+func (s *Service) Close() {
+	log.Printf("[INFO] close image service ")
+	atomic.AddInt32(&s.term, 1) // enforce non-delayed commits for all ids left in submitCh
+	if s.submitCh != nil {
+		close(s.submitCh)
+	}
+	s.wg.Wait()
 }

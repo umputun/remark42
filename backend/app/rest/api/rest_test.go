@@ -234,12 +234,14 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 		Cache:     memCache,
 		WebRoot:   "/tmp",
 		RemarkURL: "https://demo.remark42.com",
-		ImageService: &image.FileSystem{
-			Location:   "/tmp/pics-remark42",
-			Partitions: 100,
-			MaxSize:    10000,
+		ImageService: &image.Service{
+			Store: &image.FileSystem{
+				Location:   "/tmp/pics-remark42",
+				Partitions: 100,
+				MaxSize:    10000,
+			},
+			TTL: time.Millisecond * 100,
 		},
-
 		ImageProxy:       &proxy.Image{},
 		ReadOnlyAge:      10,
 		CommentFormatter: store.NewCommentFormatter(&proxy.Image{}),
