@@ -5,7 +5,7 @@ workspace:
 pipeline:
   
   build:
-    image: golang:1.10-alpine
+    image: golang:1.12-alpine
     commands:
       - sleep 5
       - nslookup mongo
