@@ -99,3 +99,4 @@ services:
   mongo:
     image: mongo:3.6
     command: [ --smallfiles ]
+
