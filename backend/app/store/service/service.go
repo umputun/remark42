@@ -103,10 +103,12 @@ func (s *DataStore) submitImages(comment store.Comment) {
 		c := comment
 		cc, err := s.Get(c.Locator, c.ID) // this can be called after last edit, we have to retrieve fresh comment
 		if err != nil {
+			log.Printf("[WARN] can't get comment's %s text for image extraction, %v", c.ID, err)
 			return nil
 		}
 		imgIds, err := s.ImageService.ExtractPictures(cc.Text)
 		if err != nil {
+			log.Printf("[WARN] can't get extract pictures from %s, %v", c.ID, err)
 			return nil
 		}
 		if len(imgIds) > 0 {

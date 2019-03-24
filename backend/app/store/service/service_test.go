@@ -13,9 +13,12 @@ import (
 	"time"
 
 	bolt "github.com/coreos/bbolt"
+	"github.com/go-pkgz/lgr"
+	"github.com/golang/mock/gomock"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/umputun/remark/backend/app/store/image"
 
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/admin"
@@ -684,6 +687,35 @@ func TestService_Find(t *testing.T) {
 	assert.InDelta(t, 1.73, res[0].Controversy, 0.01)
 	assert.Equal(t, "id-1", res[1].ID)
 	assert.InDelta(t, 0, res[1].Controversy, 0.01)
+}
+
+func TestService_submitImages(t *testing.T) {
+	defer os.Remove(testDb)
+	lgr.Setup(lgr.Debug, lgr.CallerFile, lgr.CallerFunc)
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockStore := image.NewMockStore(ctrl)
+	imgSvc := &image.Service{Store: mockStore, TTL: time.Millisecond * 50}
+
+	mockStore.EXPECT().Commit(gomock.Any()).Times(2)
+
+	// two comments for https://radio-t.com
+	b := DataStore{Interface: prepStoreEngine(t), EditDuration: 50 * time.Millisecond,
+		AdminStore: admin.NewStaticKeyStore("secret 123"), ImageService: imgSvc}
+
+	c := store.Comment{
+		ID:        "id-22",
+		Text:      `some text <img src="/images/dev/pic1.png"/> xx <img src="/images/dev/pic2.png"/>`,
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
+		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+		User:      store.User{ID: "user1", Name: "user name"},
+	}
+	_, err := b.Interface.Create(c) // create directly with engine, doesn't call submitImages
+	assert.NoError(t, err)
+
+	b.submitImages(c)
+	time.Sleep(250 * time.Millisecond)
 }
 
 // makes new boltdb, put two records
