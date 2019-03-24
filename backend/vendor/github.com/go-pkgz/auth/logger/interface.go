@@ -1,3 +1,5 @@
+// Package logger defines interface for logging. Implementation should be passed by user.
+// Also provides NoOp (do-nothing) and Std (redirect to std log) predefined loggers.
 package logger
 
 import "log"

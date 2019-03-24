@@ -1,7 +1,6 @@
 package provider
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"net/http"
@@ -10,9 +9,8 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/go-pkgz/auth/avatar"
 	"github.com/go-pkgz/auth/logger"
-	"github.com/nullrocks/identicon"
-	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
 
 	"github.com/go-pkgz/auth/token"
@@ -31,7 +29,6 @@ type DevAuthServer struct {
 	Automatic bool
 	username  string // unsafe, but fine for dev
 
-	iconGen    *identicon.Generator
 	httpServer *http.Server
 	lock       sync.Mutex
 }
@@ -42,10 +39,6 @@ func (d *DevAuthServer) Run(ctx context.Context) {
 	d.Logf("[INFO] run local oauth2 dev server on %d, redir url=%s", devAuthPort, d.Provider.redirectURL)
 	d.lock.Lock()
 	var err error
-	d.iconGen, err = identicon.New("github", 5, 3)
-	if err != nil {
-		d.Logf("[WARN] can't create identicon, %s", err)
-	}
 
 	userFormTmpl, err := template.New("page").Parse(devUserFormTmpl)
 	if err != nil {
@@ -113,7 +106,7 @@ func (d *DevAuthServer) Run(ctx context.Context) {
 
 			case strings.HasPrefix(r.URL.Path, "/avatar"):
 				user := r.URL.Query().Get("user")
-				b, e := d.genAvatar(user)
+				b, e := avatar.GenerateAvatar(user)
 				if e != nil {
 					w.WriteHeader(http.StatusNotFound)
 					return
@@ -175,21 +168,6 @@ func NewDev(p Params) Oauth2Handler {
 			return userInfo
 		},
 	})
-}
-
-func (d *DevAuthServer) genAvatar(user string) ([]byte, error) {
-	if d.iconGen == nil {
-		return nil, errors.Errorf("no iconGen, skip avatar generation for %s", user)
-	}
-
-	ii, err := d.iconGen.Draw(user) // Generate an IdentIcon
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to draw avatar for %s", user)
-	}
-
-	buf := &bytes.Buffer{}
-	err = ii.Png(300, buf)
-	return buf.Bytes(), err
 }
 
 var devUserFormTmpl = `

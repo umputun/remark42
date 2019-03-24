@@ -10,7 +10,8 @@ This library provides "social login" with Github, Google, Facebook and Yandex as
 - Minimal scopes with user name, id and picture (avatar) only
 - Direct authentication with user's provided credential checker
 - Integrated avatar proxy with FS, boltdb and gridfs storages
-- Support of user-defined storages for avatars
+- Support of user-defined storage for avatars
+- Identicon for default avatars  
 - Black list with user-defined validator
 - Multiple aud (audience) supported
 - Secure key with customizable `SecretReader`
@@ -144,6 +145,8 @@ Such provider acts like any other, i.e. will be registered as `/auth/local/login
 
 The API for this provider - `GET /auth/<name>/login?user=<user>&passwd=<password>&aud=<site_id>&session=[1|0]`
 
+_note: password parameter doesn't have to be naked/real password and can be any kind of password hash prepared by caller._ 
+  
 ### Customization
 
 There are several ways to adjust functionality of the library:

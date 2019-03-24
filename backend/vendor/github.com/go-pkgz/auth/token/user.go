@@ -20,12 +20,14 @@ const adminAttr = "admin" // predefined attribute key for bool isAdmin status
 
 // User is the basic part of oauth data provided by service
 type User struct {
+	// set by service
 	Name    string `json:"name"`
 	ID      string `json:"id"`
 	Picture string `json:"picture"`
-	IP      string `json:"ip,omitempty"`
-	Email   string `json:"email,omitempty"`
 
+	// set by client
+	IP         string                 `json:"ip,omitempty"`
+	Email      string                 `json:"email,omitempty"`
 	Attributes map[string]interface{} `json:"attrs,omitempty"`
 }
 
@@ -82,7 +84,7 @@ func (u *User) SliceAttr(key string) []string {
 	return r
 }
 
-// SetSliceAttr sets boolean attribute
+// SetSliceAttr sets slice attribute for given key
 func (u *User) SetSliceAttr(key string, val []string) {
 	if u.Attributes == nil {
 		u.Attributes = map[string]interface{}{}
@@ -112,7 +114,7 @@ func HashID(h hash.Hash, val string) string {
 
 type contextKey string
 
-// MustGetUserInfo fails if can't extract user data from the request.
+// MustGetUserInfo gets user info and panics if can't extract it from the request.
 // should be called from authenticated controllers only
 func MustGetUserInfo(r *http.Request) User {
 	user, err := GetUserInfo(r)
@@ -122,7 +124,7 @@ func MustGetUserInfo(r *http.Request) User {
 	return user
 }
 
-// GetUserInfo returns user from request context
+// GetUserInfo returns user info from request context
 func GetUserInfo(r *http.Request) (user User, err error) {
 
 	ctx := r.Context()

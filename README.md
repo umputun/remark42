@@ -236,7 +236,7 @@ For more details refer to [Yandex OAuth](https://tech.yandex.com/oauth/doc/dg/co
 
 Optionally, anonymous access can be turned on. In this case an extra `anonymous` provider will allow logins without any social login with any name satisfying 2 conditions:
 
-- name should be at least 3 characters long 
+- name should be at least 3 characters long
 - name has to start from the letter and contains letters, numbers, underscores and spaces only.
 
 #### Initial import from Disqus
@@ -465,6 +465,10 @@ npx cross-env REMARK_URL=http://127.0.0.1:8080 npm start
 Developer build running by `webpack-dev-server` supports devtools for [React](https://github.com/facebook/react-devtools) and
 [Redux](https://github.com/zalmoxisus/redux-devtools-extension).
 
+#### Frontend guide
+
+Frontend guide can be found here: [./FRONTEND.MAN.md](./FRONTEND.MAN.md)
+
 ## API
 
 ### Authorization
@@ -501,6 +505,7 @@ type Comment struct {
     Votes     map[string]bool `json:"votes"`   // comment votes, read only
     Controversy float64       `json:"controversy,omitempty"` // comment controversy, read only
     Timestamp time.Time       `json:"time"`    // time stamp, read only
+    Edit      *Edit           `json:"edit,omitempty" bson:"edit,omitempty"` // pointer to have empty default in json response
     Pin       bool            `json:"pin"`     // pinned status, read only
     Delete    bool            `json:"delete"`  // delete status, read only
     PostTitle string          `json:"title"`   // post title
@@ -509,6 +514,11 @@ type Comment struct {
 type Locator struct {
     SiteID string `json:"site"`     // site id
     URL    string `json:"url"`      // post url
+}
+
+type Edit struct {
+  Timestamp time.Time `json:"time" bson:"time"`
+  Summary   string    `json:"summary"`
 }
 ```
 
@@ -536,11 +546,11 @@ Sort can be `time`, `active` or `score`. Supported sort order with prefix -/+, i
 * `PUT /api/v1/comment/{id}?site=site-id&url=post-url` - edit comment, allowed once in `EDIT_TIME` minutes since creation.  Body is `EditRequest` json
 
 ```go
- 	type EditRequest struct {
- 		Text    string `json:"text"`    // updated text
- 		Summary string `json:"summary"` // optional, summary of the edit
- 		Delete  bool   `json:"delete"`  // delete flag
- 	}{}
+   type EditRequest struct {
+     Text    string `json:"text"`    // updated text
+     Summary string `json:"summary"` // optional, summary of the edit
+     Delete  bool   `json:"delete"`  // delete flag
+   }{}
 ```
 
 * `GET /api/v1/last/{max}?site=site-id` - get up to `{max}` last comments
@@ -571,13 +581,17 @@ Sort can be `time`, `active` or `score`. Supported sort order with prefix -/+, i
 * `GET /api/v1/config?site=site-id` - returns configuration (parameters) for given site
 
   ```go
-  type config struct {
-      Version       string   `json:"version"`
-      EditDuration  int      `json:"edit_duration"` // seconds
-      Admins        []string `json:"admins"`
-      Auth          []string `json:"auth_providers"`
-      LowScore      int      `json:"low_score"`
-      CriticalScore int      `json:"critical_score"`
+  type Config struct {
+      Version        string   `json:"version"`
+      EditDuration   int      `json:"edit_duration"`
+      MaxCommentSize int      `json:"max_comment_size"`
+      Admins         []string `json:"admins"`
+      AdminEmail     string   `json:"admin_email"`
+      Auth           []string `json:"auth_providers"`
+      LowScore       int      `json:"low_score"`
+      CriticalScore  int      `json:"critical_score"`
+      PositiveScore  bool     `json:"positive_score"`
+      ReadOnlyAge    int      `json:"readonly_age"`
   }
   ```
 * `GET /api/v1/info?site=site-idd&url=post-ur` - returns `PostInfo` for site and url
