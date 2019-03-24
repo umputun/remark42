@@ -91,7 +91,7 @@ module.exports = () => ({
     ],
   },
   plugins: [
-    new Clean(publicFolder),
+    new Clean(),
     new Define({
       'process.env.NODE_ENV': JSON.stringify(env),
       'process.env.REMARK_NODE': JSON.stringify(NODE_ID),
