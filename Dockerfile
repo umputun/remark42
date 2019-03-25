@@ -54,7 +54,7 @@ RUN \
     echo "runs outside of drone" && version="local"; \
     else version=${DRONE_TAG}${DRONE_BRANCH}${DRONE_PULL_REQUEST}-${DRONE_COMMIT:0:7}-$(date +%Y%m%d-%H:%M:%S); fi && \
     echo "version=$version" && \
-    go build -o remark42 -ldflags "-X main.revision=${version} -s -w" ./app
+    go build -mod=vendor -o remark42 -ldflags "-X main.revision=${version} -s -w" ./app
 
 
 FROM node:10.11-alpine as build-frontend-deps
