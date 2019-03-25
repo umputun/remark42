@@ -41,7 +41,7 @@ func (s *Rest) rssPostCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		if e != nil {
 			return nil, e
 		}
-		comments = s.adminService.alterComments(comments, r)
+		comments = s.alterComments(comments, r)
 		rss, e := s.toRssFeed(locator.URL, comments, "post comments for "+r.URL.Query().Get("url"))
 		if e != nil {
 			return nil, e
@@ -73,7 +73,7 @@ func (s *Rest) rssSiteCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		if e != nil {
 			return nil, e
 		}
-		comments = s.adminService.alterComments(comments, r)
+		comments = s.alterComments(comments, r)
 
 		rss, e := s.toRssFeed(r.URL.Query().Get("site"), comments, "site comment for "+siteID)
 		if e != nil {
@@ -107,7 +107,7 @@ func (s *Rest) rssRepliesCtrl(w http.ResponseWriter, r *http.Request) {
 		if e != nil {
 			return nil, errors.Wrap(e, "can't get last comments")
 		}
-		comments = s.adminService.alterComments(comments, r)
+		comments = s.alterComments(comments, r)
 		replies := []store.Comment{}
 		for _, c := range comments {
 			if len(replies) > maxRssItems || c.Timestamp.Add(maxReplyDuration).Before(time.Now()) {
