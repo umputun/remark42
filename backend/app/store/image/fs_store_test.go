@@ -187,14 +187,14 @@ func TestFsStore_Cleanup(t *testing.T) {
 	assert.NotNil(t, err, "no file on staging anymore")
 }
 
-func prepareImageTest(t *testing.T) (svc FileSystem, teardown func()) {
+func prepareImageTest(t *testing.T) (svc *FileSystem, teardown func()) {
 	loc, err := ioutil.TempDir("", "test_image_r42")
 	require.NoError(t, err, "failed to make temp dir")
 
 	staging, err := ioutil.TempDir("", "test_image_r42.staging")
 	require.NoError(t, err, "failed to make temp staging dir")
 
-	svc = FileSystem{
+	svc = &FileSystem{
 		Location:   loc,
 		Staging:    staging,
 		Partitions: 100,

@@ -523,6 +523,7 @@ func TestRest_SavePictureCtrl(t *testing.T) {
 
 	m := map[string]string{}
 	err = json.Unmarshal(body, &m)
+	assert.NoError(t, err)
 	assert.Contains(t, m["id"], ".png")
 
 	// load picture
@@ -577,6 +578,7 @@ func TestRest_CreateWithPictures(t *testing.T) {
 		require.Nil(t, err)
 		m := map[string]string{}
 		err = json.Unmarshal(body, &m)
+		assert.NoError(t, err)
 		assert.Contains(t, m["id"], ".png")
 		return m["id"]
 	}
