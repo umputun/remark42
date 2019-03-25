@@ -108,14 +108,15 @@ func TestFsStore_location(t *testing.T) {
 		id, res    string
 	}{
 		{10, "u1/abcdefg.png", "/tmp/u1/4/abcdefg.png"},
-		{10, "abcdefe", "/tmp/unknown/1/abcdefe"},
-		{10, "12345", "/tmp/unknown/9/12345"},
+		{10, "u2/abcdefe", "/tmp/u2/0/abcdefe"},
+		{10, "u3/12345", "/tmp/u3/4/12345"},
 		{100, "12345", "/tmp/unknown/69/12345"},
 		{100, "xyzz", "/tmp/unknown/58/xyzz"},
-		{100, "6851dcde6024e03258a66705f29e14b506048c74.png", "/tmp/unknown/02/6851dcde6024e03258a66705f29e14b506048c74.png"},
-		{5, "6851dcde6024e03258a66705f29e14b506048c74.png", "/tmp/unknown/2/6851dcde6024e03258a66705f29e14b506048c74.png"},
-		{5, "xxxyz.png", "/tmp/unknown/0/xxxyz.png"},
+		{100, "u4/6851dcde6024e03258a66705f29e14b506048c74.png", "/tmp/u4/07/6851dcde6024e03258a66705f29e14b506048c74.png"},
+		{5, "user/6851dcde6024e03258a66705f29e14b506048c74.png", "/tmp/user/1/6851dcde6024e03258a66705f29e14b506048c74.png"},
+		{5, "aa-xxxyz.png", "/tmp/unknown/3/aa-xxxyz.png"},
 		{0, "12345", "/tmp/unknown/12345"},
+		{0, "user/12345", "/tmp/user/12345"},
 	}
 	for n, tt := range tbl {
 		t.Run(strconv.Itoa(n), func(t *testing.T) {
