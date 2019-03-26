@@ -261,7 +261,7 @@ func TestService_VoteAggressive(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "user1", true)
+			_, _ = b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "user1", true)
 		}()
 	}
 	wg.Wait()
@@ -280,7 +280,7 @@ func TestService_VoteAggressive(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			val := rand.Intn(2) > 0
-			b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "user1", val)
+			_, _ = b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "user1", val)
 		}()
 	}
 	wg.Wait()

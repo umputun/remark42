@@ -132,7 +132,8 @@ func imgHTTPServer(t *testing.T) *httptest.Server {
 			t.Log("http img request", r.URL)
 			w.Header().Add("Content-Length", "123")
 			w.Header().Add("Content-Type", "image/png")
-			w.Write([]byte(fmt.Sprintf("%123s", "X")))
+			_, err := w.Write([]byte(fmt.Sprintf("%123s", "X")))
+			assert.NoError(t, err)
 			return
 		}
 		if r.URL.Path == "/image/img-slow.png" {
