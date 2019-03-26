@@ -29,10 +29,11 @@ type Destination interface {
 	Send(ctx context.Context, req request) error
 }
 
-// Store defines the minimal interface accessing stored commens used by notifier
+// Store defines the minimal interface accessing stored comments used by notifier
 type Store interface {
 	Get(locator store.Locator, id string) (store.Comment, error)
 }
+
 type request struct {
 	comment store.Comment
 	parent  store.Comment

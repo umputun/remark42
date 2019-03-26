@@ -39,6 +39,7 @@ type wpTime struct {
 	time time.Time
 }
 
+// UnmarshalXML decoding xml with time in WP format
 func (w *wpTime) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	var v string
 	if err := d.DecodeElement(&v, &start); err != nil {
@@ -111,7 +112,7 @@ func (w *WordPress) convert(r io.Reader, siteID string) chan store.Comment {
 				if el.Name.Local == "item" {
 					stats.inpItems++
 					item := wpItem{}
-					if err := decoder.DecodeElement(&item, &el); err != nil {
+					if err = decoder.DecodeElement(&item, &el); err != nil {
 						log.Printf("[WARN] Can't decode item, %s", err)
 						stats.failedItems++
 						continue

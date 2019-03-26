@@ -1,20 +1,26 @@
 package api
 
 import (
+	"bytes"
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"mime/multipart"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/umputun/remark/backend/app/store"
+	"github.com/umputun/remark/backend/app/store/image"
 )
 
 func TestRest_Create(t *testing.T) {
@@ -487,4 +493,142 @@ func TestRest_DeleteMe(t *testing.T) {
 	resp, err = client.Do(req)
 	assert.Nil(t, err)
 	assert.Equal(t, 401, resp.StatusCode)
+}
+
+func TestRest_SavePictureCtrl(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	// save picture
+	savePic := func(name string) (id string) {
+		r := strings.NewReader("file content 123")
+		bodyBuf := &bytes.Buffer{}
+		bodyWriter := multipart.NewWriter(bodyBuf)
+		fileWriter, err := bodyWriter.CreateFormFile("file", name)
+		require.NoError(t, err)
+		_, err = io.Copy(fileWriter, r)
+		require.NoError(t, err)
+		contentType := bodyWriter.FormDataContentType()
+		require.NoError(t, bodyWriter.Close())
+
+		client := http.Client{}
+		req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/api/v1/picture", ts.URL), bodyBuf)
+		require.NoError(t, err)
+		req.Header.Add("Content-Type", contentType)
+		req.Header.Add("X-JWT", devToken)
+		resp, err := client.Do(req)
+		assert.Nil(t, err)
+		assert.Equal(t, 200, resp.StatusCode)
+		body, err := ioutil.ReadAll(resp.Body)
+		require.Nil(t, err)
+
+		m := map[string]string{}
+		err = json.Unmarshal(body, &m)
+		assert.NoError(t, err)
+		assert.True(t, m["id"] != "")
+		return m["id"]
+	}
+
+	id := savePic("picture.png")
+	resp, err := http.Get(fmt.Sprintf("%s/api/v1/picture/%s", ts.URL, id))
+	require.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+	body, err := ioutil.ReadAll(resp.Body)
+	require.Nil(t, err)
+	assert.Equal(t, "file content 123", string(body))
+	assert.Equal(t, "image/png", resp.Header.Get("Content-Type"))
+
+	id = savePic("picture.gif")
+	resp, err = http.Get(fmt.Sprintf("%s/api/v1/picture/%s", ts.URL, id))
+	require.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+	assert.Equal(t, "image/gif", resp.Header.Get("Content-Type"))
+
+	id = savePic("picture.jpg")
+	resp, err = http.Get(fmt.Sprintf("%s/api/v1/picture/%s", ts.URL, id))
+	require.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+	assert.Equal(t, "image/jpeg", resp.Header.Get("Content-Type"))
+
+	id = savePic("picture.blah")
+	resp, err = http.Get(fmt.Sprintf("%s/api/v1/picture/%s", ts.URL, id))
+	require.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+	assert.Equal(t, "image/*", resp.Header.Get("Content-Type"))
+
+	resp, err = http.Get(fmt.Sprintf("%s/api/v1/picture/blah/pic.blah", ts.URL))
+	require.NoError(t, err)
+	assert.Equal(t, 400, resp.StatusCode)
+}
+
+func TestRest_CreateWithPictures(t *testing.T) {
+	ts, svc, teardown := startupT(t)
+	defer func() {
+		teardown()
+		os.RemoveAll("/tmp/remark42")
+	}()
+	lgr.Setup(lgr.Debug, lgr.CallerFile, lgr.CallerFunc)
+
+	svc.ImageService = &image.Service{
+		Store: &image.FileSystem{
+			Staging:  "/tmp/remark42/images.staging",
+			Location: "/tmp/remark42/images",
+			MaxSize:  1000,
+		},
+		TTL: time.Millisecond * 100,
+	}
+	svc.DataService.EditDuration = time.Millisecond * 100
+	svc.DataService.ImageService = svc.ImageService
+
+	uploadPicture := func(file, content string) (id string) {
+		r := strings.NewReader(content)
+		bodyBuf := &bytes.Buffer{}
+		bodyWriter := multipart.NewWriter(bodyBuf)
+		fileWriter, err := bodyWriter.CreateFormFile("file", file)
+		require.NoError(t, err)
+		_, err = io.Copy(fileWriter, r)
+		require.NoError(t, err)
+		contentType := bodyWriter.FormDataContentType()
+		require.NoError(t, bodyWriter.Close())
+		client := http.Client{}
+		req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/api/v1/picture", ts.URL), bodyBuf)
+		require.NoError(t, err)
+		req.Header.Add("Content-Type", contentType)
+		req.Header.Add("X-JWT", devToken)
+		resp, err := client.Do(req)
+		assert.Nil(t, err)
+		assert.Equal(t, 200, resp.StatusCode)
+
+		body, err := ioutil.ReadAll(resp.Body)
+		require.Nil(t, err)
+		m := map[string]string{}
+		err = json.Unmarshal(body, &m)
+		assert.NoError(t, err)
+		assert.Contains(t, m["id"], ".png")
+		return m["id"]
+	}
+
+	id1 := uploadPicture("pic1.png", "file content 123")
+	id2 := uploadPicture("pic2.png", "file content 12345")
+	id3 := uploadPicture("pic3.png", "file content xyz12365789")
+
+	text := fmt.Sprintf(`text 123  ![](/api/v1/picture/%s) *xxx* ![](/api/v1/picture/%s) ![](/api/v1/picture/%s)`, id1, id2, id3)
+	body := fmt.Sprintf(`{"text": "%s", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, text)
+
+	resp, err := post(t, ts.URL+"/api/v1/comment", body)
+	assert.Nil(t, err)
+	b, err := ioutil.ReadAll(resp.Body)
+	assert.Nil(t, err)
+	require.Equal(t, http.StatusCreated, resp.StatusCode, string(b))
+
+	_, err = os.Stat("/tmp/remark42/images/" + id1)
+	assert.NotNil(t, err, "not moved from staging yet")
+
+	time.Sleep(300 * time.Millisecond)
+	_, err = os.Stat("/tmp/remark42/images/" + id1)
+	assert.NoError(t, err, "moved from staging")
+	_, err = os.Stat("/tmp/remark42/images/" + id2)
+	assert.NoError(t, err, "moved from staging")
+	_, err = os.Stat("/tmp/remark42/images/" + id3)
+	assert.NoError(t, err, "moved from staging")
 }

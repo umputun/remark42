@@ -230,8 +230,8 @@ func (m *Mongo) Verified(siteID string) (ids []string, err error) {
 	if err != nil {
 		return nil, err
 	}
-	for _, m := range metas {
-		ids = append(ids, m.ID)
+	for _, meta := range metas {
+		ids = append(ids, meta.ID)
 	}
 	return ids, nil
 }

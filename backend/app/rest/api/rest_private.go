@@ -228,14 +228,14 @@ func (s *Rest) userAllDataCtrl(w http.ResponseWriter, r *http.Request) {
 
 	// get comments in 100 in each paginated request
 	for i := 0; i < 100; i++ {
-		comments, err := s.DataService.User(siteID, user.ID, 100, i*100)
-		if err != nil {
-			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't get user comments", rest.ErrInternal)
+		comments, errUser := s.DataService.User(siteID, user.ID, 100, i*100)
+		if errUser != nil {
+			rest.SendErrorJSON(w, r, http.StatusInternalServerError, errUser, "can't get user comments", rest.ErrInternal)
 			return
 		}
-		b, err := json.Marshal(comments)
-		if err != nil {
-			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't marshal user comments", rest.ErrInternal)
+		b, errUser := json.Marshal(comments)
+		if errUser != nil {
+			rest.SendErrorJSON(w, r, http.StatusInternalServerError, errUser, "can't marshal user comments", rest.ErrInternal)
 			return
 		}
 
@@ -283,6 +283,31 @@ func (s *Rest) deleteMeCtrl(w http.ResponseWriter, r *http.Request) {
 
 	link := fmt.Sprintf("%s/web/deleteme.html?token=%s", s.RemarkURL, tokenStr)
 	render.JSON(w, r, R.JSON{"site": siteID, "user_id": user.ID, "token": tokenStr, "link": link})
+}
+
+// POST /image - save image with form request
+func (s *Rest) savePictureCtrl(w http.ResponseWriter, r *http.Request) {
+	user := rest.MustGetUserInfo(r)
+
+	if err := r.ParseMultipartForm(5 * 1024 * 1024); err != nil { // 5M max memory, if bigger will make a file
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't parse multipart form", rest.ErrDecode)
+		return
+	}
+
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't get image file from the request", rest.ErrInternal)
+		return
+	}
+	defer func() { _ = file.Close() }()
+
+	id, err := s.ImageService.Save(header.Filename, user.ID, file)
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't save image", rest.ErrInternal)
+		return
+	}
+
+	render.JSON(w, r, R.JSON{"id": id})
 }
 
 func (s *Rest) isReadOnly(locator store.Locator) bool {

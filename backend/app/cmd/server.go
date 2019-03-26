@@ -15,7 +15,7 @@ import (
 
 	bolt "github.com/coreos/bbolt"
 	log "github.com/go-pkgz/lgr"
-	auth_cache "github.com/patrickmn/go-cache"
+	authcache "github.com/patrickmn/go-cache"
 	"github.com/pkg/errors"
 
 	"github.com/go-pkgz/auth"
@@ -32,6 +32,7 @@ import (
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/admin"
 	"github.com/umputun/remark/backend/app/store/engine"
+	"github.com/umputun/remark/backend/app/store/image"
 	"github.com/umputun/remark/backend/app/store/service"
 )
 
@@ -43,6 +44,7 @@ type ServerCommand struct {
 	Mongo  MongoGroup  `group:"mongo" namespace:"mongo" env-namespace:"MONGO"`
 	Admin  AdminGroup  `group:"admin" namespace:"admin" env-namespace:"ADMIN"`
 	Notify NotifyGroup `group:"notify" namespace:"notify" env-namespace:"NOTIFY"`
+	Image  ImageGroup  `group:"image" namespace:"image" env-namespace:"IMAGE"`
 	SSL    SSLGroup    `group:"ssl" namespace:"ssl" env-namespace:"SSL"`
 
 	Sites           []string      `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
@@ -91,6 +93,20 @@ type StoreGroup struct {
 		Path    string        `long:"path" env:"PATH" default:"./var" description:"parent dir for bolt files"`
 		Timeout time.Duration `long:"timeout" env:"TIMEOUT" default:"30s" description:"bolt timeout"`
 	} `group:"bolt" namespace:"bolt" env-namespace:"BOLT"`
+}
+
+// ImageGroup defines options group for store pictures
+type ImageGroup struct {
+	Type string `long:"type" env:"TYPE" description:"type of storage" choice:"fs" choice:"bolt" choice:"mongo" default:"fs"`
+	FS   struct {
+		Path       string `long:"path" env:"PATH" default:"./var/pictures" description:"images location"`
+		Staging    string `long:"staging" env:"STAGING" default:"./var/pictures.staging" description:"staging location"`
+		Partitions int    `long:"partitions" env:"PARTITIONS" default:"100" description:"partitions (subdirs)"`
+	} `group:"fs" namespace:"fs" env-namespace:"FS"`
+	Bolt struct {
+		File string `long:"file" env:"FILE" default:"./var/pictures.db" description:"images bolt file location"`
+	} `group:"bolt" namespace:"bolt" env-namespace:"bolt"`
+	MaxSize int `long:"max-size" env:"MAX_SIZE" default:"5000000" description:"max size of image file"`
 }
 
 // AvatarGroup defines options group for avatar params
@@ -162,6 +178,7 @@ type serverApp struct {
 	dataService   *service.DataStore
 	avatarStore   avatar.Store
 	notifyService *notify.Service
+	imageService  *image.Service
 	terminated    chan struct{}
 }
 
@@ -182,6 +199,7 @@ func (s *ServerCommand) Execute(args []string) error {
 	app, err := s.newServerApp()
 	if err != nil {
 		log.Printf("[PANIC] failed to setup application, %+v", err)
+		return err
 	}
 	if err = app.run(ctx); err != nil {
 		log.Printf("[ERROR] remark terminated with error %+v", err)
@@ -214,6 +232,11 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		return nil, errors.Wrap(err, "failed to make admin store")
 	}
 
+	imageService, err := s.makePicturesStore()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to make pictures store")
+	}
+
 	dataService := &service.DataStore{
 		Interface:              storeEngine,
 		EditDuration:           s.EditDuration,
@@ -221,6 +244,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		MaxCommentSize:         s.MaxCommentSize,
 		MaxVotes:               s.MaxVotes,
 		PositiveScore:          s.PositiveScore,
+		ImageService:           imageService,
 		TitleExtractor:         service.NewTitleExtractor(http.Client{Timeout: time.Second * 5}),
 		RestrictedWordsMatcher: service.NewRestrictedWordsMatcher(service.StaticRestrictedWordsLister{Words: s.RestrictedWords}),
 	}
@@ -276,15 +300,16 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		NotifyService:    notifyService,
 		SSLConfig:        sslConfig,
 		UpdateLimiter:    s.UpdateLimit,
+		ImageService:     imageService,
 	}
 
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = s.LowScore, s.CriticalScore
 
 	var devAuth *provider.DevAuthServer
 	if s.Auth.Dev {
-		da, err := authenticator.DevAuth()
-		if err != nil {
-			return nil, errors.Wrap(err, "can't make dev oauth2 server")
+		da, errDevAuth := authenticator.DevAuth()
+		if errDevAuth != nil {
+			return nil, errors.Wrap(errDevAuth, "can't make dev oauth2 server")
 		}
 		devAuth = da
 	}
@@ -298,6 +323,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		dataService:   dataService,
 		avatarStore:   avatarStore,
 		notifyService: notifyService,
+		imageService:  imageService,
 		terminated:    make(chan struct{}),
 	}, nil
 }
@@ -323,12 +349,17 @@ func (a *serverApp) run(ctx context.Context) error {
 			log.Printf("[WARN] failed to close avatar store, %s", e)
 		}
 		a.notifyService.Close()
+		a.imageService.Close()
 		log.Print("[INFO] shutdown completed")
 	}()
+
 	a.activateBackup(ctx) // runs in goroutine for each site
 	if a.Auth.Dev {
 		go a.devAuth.Run(context.Background()) // dev oauth2 server on :8084
 	}
+
+	go a.imageService.Cleanup(ctx) // pictures cleanup for staging images
+
 	a.restSrv.Run(a.Port)
 	close(a.terminated)
 	return nil
@@ -403,6 +434,25 @@ func (s *ServerCommand) makeAvatarStore() (avatar.Store, error) {
 		return avatar.NewBoltDB(s.Avatar.Bolt.File, bolt.Options{})
 	}
 	return nil, errors.Errorf("unsupported avatar store type %s", s.Avatar.Type)
+}
+
+func (s *ServerCommand) makePicturesStore() (*image.Service, error) {
+	switch s.Image.Type {
+	case "fs":
+		if err := makeDirs(s.Image.FS.Path); err != nil {
+			return nil, err
+		}
+		return &image.Service{
+			Store: &image.FileSystem{
+				Location:   s.Image.FS.Path,
+				Staging:    s.Image.FS.Staging,
+				Partitions: s.Image.FS.Partitions,
+				MaxSize:    s.Image.MaxSize,
+			},
+			TTL: s.EditDuration + time.Second, // add extra second to image TTL for staging
+		}, nil
+	}
+	return nil, errors.Errorf("unsupported pictures store type %s", s.Image.Type)
 }
 
 func (s *ServerCommand) makeAdminStore() (admin.Store, error) {
@@ -585,17 +635,19 @@ func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Sto
 
 // authRefreshCache used by authenticator to minimize repeatable token refreshes
 type authRefreshCache struct {
-	*auth_cache.Cache
+	*authcache.Cache
 }
 
 func newAuthRefreshCache() *authRefreshCache {
-	return &authRefreshCache{Cache: auth_cache.New(5*time.Minute, 10*time.Minute)}
+	return &authRefreshCache{Cache: authcache.New(5*time.Minute, 10*time.Minute)}
 }
 
+// Get implements cache getter with key converted to string
 func (c *authRefreshCache) Get(key interface{}) (interface{}, bool) {
 	return c.Cache.Get(key.(string))
 }
 
+// Set implements cache setter with key converted to string
 func (c *authRefreshCache) Set(key, value interface{}) {
-	c.Cache.Set(key.(string), value, auth_cache.DefaultExpiration)
+	c.Cache.Set(key.(string), value, authcache.DefaultExpiration)
 }

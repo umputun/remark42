@@ -12,6 +12,7 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 	cache "github.com/patrickmn/go-cache"
 	"github.com/pkg/errors"
+	"github.com/umputun/remark/backend/app/store/image"
 
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/admin"
@@ -28,6 +29,7 @@ type DataStore struct {
 	PositiveScore          bool
 	TitleExtractor         *TitleExtractor
 	RestrictedWordsMatcher *RestrictedWordsMatcher
+	ImageService           *image.Service
 
 	// granular locks
 	scopedLocks struct {
@@ -90,7 +92,30 @@ func (s *DataStore) Create(comment store.Comment) (commentID string, err error) 
 		comment.PostTitle = title
 	}()
 
+	s.submitImages(comment)
 	return s.Interface.Create(comment)
+}
+
+// submitImages initiated delayed commit of all images from the comment uploaded to remark42
+func (s *DataStore) submitImages(comment store.Comment) {
+
+	s.ImageService.Submit(func() []string {
+		c := comment
+		cc, err := s.Get(c.Locator, c.ID) // this can be called after last edit, we have to retrieve fresh comment
+		if err != nil {
+			log.Printf("[WARN] can't get comment's %s text for image extraction, %v", c.ID, err)
+			return nil
+		}
+		imgIds, err := s.ImageService.ExtractPictures(cc.Text)
+		if err != nil {
+			log.Printf("[WARN] can't get extract pictures from %s, %v", c.ID, err)
+			return nil
+		}
+		if len(imgIds) > 0 {
+			log.Printf("[DEBUG] image ids extracted from %s - %+v", c.ID, imgIds)
+		}
+		return imgIds
+	})
 }
 
 // prepareNewComment sets new comment fields, hashing and sanitizing data
@@ -129,8 +154,8 @@ func (s *DataStore) SetPin(locator store.Locator, commentID string, status bool)
 // Vote for comment by id and locator
 func (s *DataStore) Vote(locator store.Locator, commentID string, userID string, val bool) (comment store.Comment, err error) {
 
-	cLock := s.getsScopedLocks(locator.URL) // get lock for URL scope
-	cLock.Lock()                            // prevents race on voting
+	cLock := s.getScopedLocks(locator.URL) // get lock for URL scope
+	cLock.Lock()                           // prevents race on voting
 	defer cLock.Unlock()
 
 	comment, err = s.Get(locator, commentID)
@@ -455,8 +480,8 @@ func (s *DataStore) upsAndDowns(c store.Comment) (ups, downs int) {
 	return ups, downs
 }
 
-// getsScopedLocks pull lock from the map if found or create a new one
-func (s *DataStore) getsScopedLocks(id string) (lock sync.Locker) {
+// getScopedLocks pull lock from the map if found or create a new one
+func (s *DataStore) getScopedLocks(id string) (lock sync.Locker) {
 	s.scopedLocks.Do(func() { s.scopedLocks.locks = map[string]sync.Locker{} })
 
 	s.scopedLocks.Lock()

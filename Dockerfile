@@ -29,7 +29,9 @@ WORKDIR /build/backend
 RUN \
     if [ -f .mongo ] ; then export MONGO_TEST=$(cat .mongo) ; fi && \
     cd app && \
-    if [ -z "$SKIP_BACKEND_TEST" ] ; then go test -mod=vendor -covermode=count -coverprofile=/profile.cov ./... ; \
+    if [ -z "$SKIP_BACKEND_TEST" ] ; then \
+        go test -mod=vendor -covermode=count -coverprofile=/profile.cov_tmp ./... && \
+        cat /profile.cov_tmp | grep -v "_mock.go" > /profile.cov ; \
     else echo "skip backend test" ; fi
 
 RUN echo "mongo=${MONGO_TEST}" >> /etc/hosts
@@ -37,10 +39,10 @@ RUN echo "mongo=${MONGO_TEST}" >> /etc/hosts
 # linters
 RUN if [ -z "$SKIP_BACKEND_TEST" ] ; then \
     if [ -f .mongo ] ; then export MONGO_TEST=$(cat .mongo) ; fi && \
-    golangci-lint run --out-format=tab --disable-all --tests=false --enable=unconvert \
-    --enable=megacheck --enable=structcheck --enable=gas --enable=gocyclo --enable=dupl --enable=misspell \
-    --enable=unparam --enable=varcheck --enable=deadcode --enable=typecheck \
-    --enable=ineffassign --enable=varcheck ./... ; \
+        golangci-lint run --out-format=tab --disable-all --tests=false --enable=unconvert \
+        --enable=megacheck --enable=structcheck --enable=gas --enable=gocyclo --enable=dupl --enable=misspell \
+        --enable=unparam --enable=varcheck --enable=deadcode --enable=typecheck \
+        --enable=ineffassign --enable=varcheck ./... ; \
     else echo "skip backend linters" ; fi
 
 # submit coverage to coverals if COVERALLS_TOKEN in env
@@ -50,8 +52,7 @@ RUN if [ -z "$COVERALLS_TOKEN" ] ; then \
 
 # if DRONE presented use DRONE_* git env to make version
 RUN \
-    if [ -z "$DRONE" ] ; then \
-    echo "runs outside of drone" && version="local"; \
+    if [ -z "$DRONE" ] ; then echo "runs outside of drone" && version="local"; \
     else version=${DRONE_TAG}${DRONE_BRANCH}${DRONE_PULL_REQUEST}-${DRONE_COMMIT:0:7}-$(date +%Y%m%d-%H:%M:%S); fi && \
     echo "version=$version" && \
     go build -mod=vendor -o remark42 -ldflags "-X main.revision=${version} -s -w" ./app

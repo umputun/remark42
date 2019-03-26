@@ -1,8 +1,9 @@
 package api
 
 import (
-	"crypto/sha1" //nolint
+	"crypto/sha1" // nolint
 	"encoding/base64"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -274,12 +275,9 @@ func (s *Rest) countMultiCtrl(w http.ResponseWriter, r *http.Request) {
 
 	// key could be long for multiple posts, make it sha1
 	k := URLKey(r) + strings.Join(posts, ",")
-	hasher := sha1.New() //nolint
-	if _, err := hasher.Write([]byte(k)); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't make sha1 for list of urls", rest.ErrInternal)
-		return
-	}
-	sha := base64.URLEncoding.EncodeToString(hasher.Sum(nil))
+	h := sha1.Sum([]byte(k)) //nolint
+	sha := base64.URLEncoding.EncodeToString(h[:])
+
 	key := cache.NewKey(siteID).ID(sha).Scopes(siteID)
 	data, err := s.Cache.Get(key, func() ([]byte, error) {
 		counts, e := s.DataService.Counts(siteID, posts)
@@ -328,5 +326,48 @@ func (s *Rest) listCtrl(w http.ResponseWriter, r *http.Request) {
 
 	if err = R.RenderJSONFromBytes(w, r, data); err != nil {
 		log.Printf("[WARN] can't render posts lits for site %s", siteID)
+	}
+}
+
+// GET /picture/{user}/{id} - get picture
+func (s *Rest) loadPictureCtrl(w http.ResponseWriter, r *http.Request) {
+
+	imgContentType := func(img string) string {
+		img = strings.ToLower(img)
+		switch {
+		case strings.HasSuffix(img, ".png"):
+			return "image/png"
+		case strings.HasSuffix(img, ".jpg") || strings.HasSuffix(img, ".jpeg"):
+			return "image/jpeg"
+		case strings.HasSuffix(img, ".gif"):
+			return "image/gif"
+		}
+		return "image/*"
+	}
+
+	id := chi.URLParam(r, "user") + "/" + chi.URLParam(r, "id")
+	imgRdr, size, err := s.ImageService.Load(id)
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get image "+id, rest.ErrAssetNotFound)
+		return
+	}
+	// enforce client-side caching
+	etag := `"` + id + `"`
+	w.Header().Set("Etag", etag)
+	w.Header().Set("Cache-Control", "max-age=604800") // 7 days
+	if match := r.Header.Get("If-None-Match"); match != "" {
+		if strings.Contains(match, etag) {
+			w.WriteHeader(http.StatusNotModified)
+			return
+		}
+	}
+
+	defer imgRdr.Close()
+
+	w.Header().Set("Content-Type", imgContentType(id))
+	w.Header().Set("Content-Length", strconv.Itoa(int(size)))
+	w.WriteHeader(http.StatusOK)
+	if _, err = io.Copy(w, imgRdr); err != nil {
+		log.Printf("[WARN] can't send response to %s, %s", r.RemoteAddr, err)
 	}
 }
