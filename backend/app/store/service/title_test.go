@@ -44,7 +44,8 @@ func TestTitle_Get(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.String() == "/good" {
 			atomic.AddInt32(&hits, 1)
-			w.Write([]byte("<html><title>blah 123</title><body> 2222</body></html>"))
+			_, err := w.Write([]byte("<html><title>blah 123</title><body> 2222</body></html>"))
+			assert.NoError(t, err)
 			return
 		}
 		w.WriteHeader(404)
@@ -58,9 +59,9 @@ func TestTitle_Get(t *testing.T) {
 	require.NotNil(t, err)
 
 	for i := 0; i < 100; i++ {
-		title, err := ex.Get(ts.URL + "/good")
-		require.Nil(t, err)
-		assert.Equal(t, "blah 123", title)
+		r, e := ex.Get(ts.URL + "/good")
+		require.Nil(t, e)
+		assert.Equal(t, "blah 123", r)
 	}
 	assert.Equal(t, int32(1), atomic.LoadInt32(&hits))
 }
@@ -75,7 +76,8 @@ func TestTitle_GetConcurrent(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.String(), "/good") {
 			atomic.AddInt32(&hits, 1)
-			w.Write([]byte(fmt.Sprintf("<html><title>blah 123 %s</title><body>%s</body></html>", r.URL.String(), body)))
+			_, err := w.Write([]byte(fmt.Sprintf("<html><title>blah 123 %s</title><body>%s</body></html>", r.URL.String(), body)))
+			assert.NoError(t, err)
 			return
 		}
 		w.WriteHeader(404)
@@ -84,11 +86,11 @@ func TestTitle_GetConcurrent(t *testing.T) {
 	g := syncs.NewSizedGroup(10)
 
 	for i := 0; i < 100; i++ {
-		i := i
+		ii := i
 		g.Go(func(_ context.Context) {
-			title, err := ex.Get(ts.URL + "/good/" + strconv.Itoa(i))
+			title, err := ex.Get(ts.URL + "/good/" + strconv.Itoa(ii))
 			require.Nil(t, err)
-			assert.Equal(t, "blah 123 "+"/good/"+strconv.Itoa(i), title)
+			assert.Equal(t, "blah 123 "+"/good/"+strconv.Itoa(ii), title)
 		})
 	}
 	g.Wait()
@@ -107,9 +109,9 @@ func TestTitle_GetFailed(t *testing.T) {
 	require.NotNil(t, err)
 
 	for i := 0; i < 100; i++ {
-		title, err := ex.Get(ts.URL + "/bad")
-		require.Nil(t, err)
-		assert.Equal(t, "", title)
+		r, e := ex.Get(ts.URL + "/bad")
+		require.Nil(t, e)
+		assert.Equal(t, "", r)
 	}
 	assert.Equal(t, int32(1), atomic.LoadInt32(&hits), "hit once, errors cached")
 }
