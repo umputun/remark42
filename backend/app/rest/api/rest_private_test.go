@@ -500,40 +500,65 @@ func TestRest_SavePictureCtrl(t *testing.T) {
 	defer teardown()
 
 	// save picture
-	r := strings.NewReader("file content 123")
-	bodyBuf := &bytes.Buffer{}
-	bodyWriter := multipart.NewWriter(bodyBuf)
-	fileWriter, err := bodyWriter.CreateFormFile("file", "picture.png")
-	require.NoError(t, err)
-	_, err = io.Copy(fileWriter, r)
-	require.NoError(t, err)
-	contentType := bodyWriter.FormDataContentType()
-	require.NoError(t, bodyWriter.Close())
+	savePic := func(name string) (id string) {
+		r := strings.NewReader("file content 123")
+		bodyBuf := &bytes.Buffer{}
+		bodyWriter := multipart.NewWriter(bodyBuf)
+		fileWriter, err := bodyWriter.CreateFormFile("file", name)
+		require.NoError(t, err)
+		_, err = io.Copy(fileWriter, r)
+		require.NoError(t, err)
+		contentType := bodyWriter.FormDataContentType()
+		require.NoError(t, bodyWriter.Close())
 
-	client := http.Client{}
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/api/v1/picture", ts.URL), bodyBuf)
+		client := http.Client{}
+		req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/api/v1/picture", ts.URL), bodyBuf)
+		require.NoError(t, err)
+		req.Header.Add("Content-Type", contentType)
+		req.Header.Add("X-JWT", devToken)
+		resp, err := client.Do(req)
+		assert.Nil(t, err)
+		assert.Equal(t, 200, resp.StatusCode)
+		body, err := ioutil.ReadAll(resp.Body)
+		require.Nil(t, err)
+
+		m := map[string]string{}
+		err = json.Unmarshal(body, &m)
+		assert.NoError(t, err)
+		assert.True(t, m["id"] != "")
+		return m["id"]
+	}
+
+	id := savePic("picture.png")
+	resp, err := http.Get(fmt.Sprintf("%s/api/v1/picture/%s", ts.URL, id))
 	require.NoError(t, err)
-	req.Header.Add("Content-Type", contentType)
-	req.Header.Add("X-JWT", devToken)
-	resp, err := client.Do(req)
-	assert.Nil(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 	body, err := ioutil.ReadAll(resp.Body)
 	require.Nil(t, err)
-
-	m := map[string]string{}
-	err = json.Unmarshal(body, &m)
-	assert.NoError(t, err)
-	assert.Contains(t, m["id"], ".png")
-
-	// load picture
-	resp, err = http.Get(fmt.Sprintf("%s/api/v1/picture/%s", ts.URL, m["id"]))
-	require.NoError(t, err)
-	assert.Equal(t, 200, resp.StatusCode)
-	body, err = ioutil.ReadAll(resp.Body)
-	require.Nil(t, err)
 	assert.Equal(t, "file content 123", string(body))
 	assert.Equal(t, "image/png", resp.Header.Get("Content-Type"))
+
+	id = savePic("picture.gif")
+	resp, err = http.Get(fmt.Sprintf("%s/api/v1/picture/%s", ts.URL, id))
+	require.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+	assert.Equal(t, "image/gif", resp.Header.Get("Content-Type"))
+
+	id = savePic("picture.jpg")
+	resp, err = http.Get(fmt.Sprintf("%s/api/v1/picture/%s", ts.URL, id))
+	require.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+	assert.Equal(t, "image/jpeg", resp.Header.Get("Content-Type"))
+
+	id = savePic("picture.blah")
+	resp, err = http.Get(fmt.Sprintf("%s/api/v1/picture/%s", ts.URL, id))
+	require.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+	assert.Equal(t, "image/*", resp.Header.Get("Content-Type"))
+
+	resp, err = http.Get(fmt.Sprintf("%s/api/v1/picture/blah/pic.blah", ts.URL))
+	require.NoError(t, err)
+	assert.Equal(t, 400, resp.StatusCode)
 }
 
 func TestRest_CreateWithPictures(t *testing.T) {
