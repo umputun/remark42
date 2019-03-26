@@ -130,14 +130,9 @@ func (s *Rest) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment", rest.ErrCommentValidation)
 		return
 	}
+
 	if err != nil {
-		code := rest.ErrCommentRejected
-		switch {
-		case strings.HasPrefix(err.Error(), "too late to edit"):
-			code = rest.ErrCommentEditExpired
-		case strings.HasPrefix(err.Error(), "parent comment with reply can't be edited"):
-			code = rest.ErrCommentEditChanged
-		}
+		code := s.parseError(err, rest.ErrCommentRejected)
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't update comment", code)
 		return
 	}
@@ -178,17 +173,7 @@ func (s *Rest) voteCtrl(w http.ResponseWriter, r *http.Request) {
 
 	comment, err := s.DataService.Vote(locator, id, user.ID, vote)
 	if err != nil {
-		code := rest.ErrVoteRejected
-		switch {
-		case strings.Contains(err.Error(), "can not vote for his own comment"):
-			code = rest.ErrVoteSelf
-		case strings.Contains(err.Error(), "already voted for"):
-			code = rest.ErrVoteDbl
-		case strings.Contains(err.Error(), "maximum number of votes exceeded for comment"):
-			code = rest.ErrVoteMax
-		case strings.Contains(err.Error(), "minimal score reached for comment"):
-			code = rest.ErrVoteMinScore
-		}
+		code := s.parseError(err, rest.ErrVoteRejected)
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't vote for comment", code)
 		return
 	}
@@ -318,4 +303,29 @@ func (s *Rest) isReadOnly(locator store.Locator) bool {
 		}
 	}
 	return s.DataService.IsReadOnly(locator) // ro manually
+}
+
+func (s *Rest) parseError(err error, defaultCode int) (code int) {
+	code = defaultCode
+
+	switch {
+	// voting errors
+	case strings.Contains(err.Error(), "can not vote for his own comment"):
+		code = rest.ErrVoteSelf
+	case strings.Contains(err.Error(), "already voted for"):
+		code = rest.ErrVoteDbl
+	case strings.Contains(err.Error(), "maximum number of votes exceeded for comment"):
+		code = rest.ErrVoteMax
+	case strings.Contains(err.Error(), "minimal score reached for comment"):
+		code = rest.ErrVoteMinScore
+
+	// edit errors
+	case strings.HasPrefix(err.Error(), "too late to edit"):
+		code = rest.ErrCommentEditExpired
+	case strings.HasPrefix(err.Error(), "parent comment with reply can't be edited"):
+		code = rest.ErrCommentEditChanged
+
+	}
+
+	return code
 }
