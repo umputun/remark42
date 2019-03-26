@@ -377,6 +377,37 @@ func TestRest_List(t *testing.T) {
 	assert.Equal(t, 3, pi[1].Count)
 }
 
+func TestRest_ListWithSkipAndLimit(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	c1 := store.Comment{Text: "test test #1",
+		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}}
+	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
+		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah2"}}
+	c3 := store.Comment{Text: "test test #3", ParentID: "p1",
+		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah3"}}
+
+	addComment(t, c1, ts)
+	addComment(t, c1, ts)
+	addComment(t, c1, ts)
+	addComment(t, c2, ts)
+	addComment(t, c2, ts)
+	addComment(t, c3, ts)
+	addComment(t, c3, ts)
+
+	body, code := get(t, ts.URL+"/api/v1/list?site=radio-t&skip=1&limit=2")
+	assert.Equal(t, 200, code)
+	pi := []store.PostInfo{}
+	err := json.Unmarshal([]byte(body), &pi)
+	assert.Nil(t, err)
+	require.Equal(t, 2, len(pi))
+	assert.Equal(t, "https://radio-t.com/blah2", pi[0].URL)
+	assert.Equal(t, 2, pi[0].Count)
+	assert.Equal(t, "https://radio-t.com/blah1", pi[1].URL)
+	assert.Equal(t, 3, pi[1].Count)
+}
+
 func TestRest_Config(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()

@@ -1,7 +1,7 @@
 package api
 
 import (
-	"crypto/sha1" //nolint
+	"crypto/sha1" // nolint
 	"encoding/base64"
 	"io"
 	"net/http"
@@ -275,12 +275,9 @@ func (s *Rest) countMultiCtrl(w http.ResponseWriter, r *http.Request) {
 
 	// key could be long for multiple posts, make it sha1
 	k := URLKey(r) + strings.Join(posts, ",")
-	hasher := sha1.New() //nolint
-	if _, err := hasher.Write([]byte(k)); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't make sha1 for list of urls", rest.ErrInternal)
-		return
-	}
-	sha := base64.URLEncoding.EncodeToString(hasher.Sum(nil))
+	h := sha1.Sum([]byte(k)) //nolint
+	sha := base64.URLEncoding.EncodeToString(h[:])
+
 	key := cache.NewKey(siteID).ID(sha).Scopes(siteID)
 	data, err := s.Cache.Get(key, func() ([]byte, error) {
 		counts, e := s.DataService.Counts(siteID, posts)
