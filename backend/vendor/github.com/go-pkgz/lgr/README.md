@@ -7,14 +7,14 @@
 ## usage
 
 ```go
-    l := lgr.New(lgr.Debug, lgr.CallerFile) // allow debug and caller file info
+    l := lgr.New(lgr.Msec, lgr.Debug, lgr.CallerFile, lgr.CallerFunc) // allow debug and caller info, timestamp with milliseconds
     l.Logf("INFO some important message, %v", err)
     l.Logf("DEBUG some less important message, %v", err)
 ```
 
 output looks like this:
 ```
-2018/01/07 13:02:34.000 INFO  {svc/handler.go:101 h.MyFunc1} some important message, can't open file`
+2018/01/07 13:02:34.000 INFO  {svc/handler.go:101 h.MyFunc1} some important message, can't open file myfile.xyz
 2018/01/07 13:02:34.015 DEBUG {svc/handler.go:155 h.MyFunc2} some less important message, file is too small`
 ```
 
@@ -25,7 +25,7 @@ _Without `lgr.Caller*` it will drop `{caller}` part_
 ### interfaces and default loggers
 
 - `lgr` package provides a single interface `lgr.L` with a single method `Logf(format string, args ...interface{})`. Function wrapper `lgr.Func` allows to make `lgr.L` from a function directly.
-- Default logger functionality can be used without `lgr.New`, but just `lgr.Printf`
+- Default logger functionality can be used without `lgr.New` (see "global logger")
 - Two predefined loggers available: `lgr.NoOp` (do-nothing logger) and `lgr.Std` (passing directly to stdlib log)
 
 ### options

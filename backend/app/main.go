@@ -62,10 +62,10 @@ func main() {
 
 func setupLog(dbg bool) {
 	if dbg {
-		log.Setup(log.Debug, log.CallerFile, log.Msec, log.LevelBraces)
+		log.Setup(log.Debug, log.CallerFile, log.Msec)
 		return
 	}
-	log.Setup(log.Msec, log.LevelBraces, log.CallerPkg)
+	log.Setup(log.Msec, log.CallerPkg)
 }
 
 // getDump reads runtime stack and returns as a string

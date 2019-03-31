@@ -33,6 +33,8 @@ github.com/go-pkgz/lcw v0.2.0/go.mod h1:k+PY1CkCMTLXILtFoJOyK65Qqi9rkoTYunFH1vE/
 github.com/go-pkgz/lgr v0.2.2/go.mod h1:hBM1NM/SoYdlrykgdgJWGrZ/TM/XaZIjRbJfx7NkMm8=
 github.com/go-pkgz/lgr v0.6.0 h1:Z9FRhfSyuASiF05iXRj+clTAAl8+1EfLR7SeyLIaGKg=
 github.com/go-pkgz/lgr v0.6.0/go.mod h1:hBM1NM/SoYdlrykgdgJWGrZ/TM/XaZIjRbJfx7NkMm8=
+github.com/go-pkgz/lgr v0.6.1 h1:poohUbv/iguoQ6bzJ5j/Ubl1VcsjU+rzTbbxsKbkGXk=
+github.com/go-pkgz/lgr v0.6.1/go.mod h1:hBM1NM/SoYdlrykgdgJWGrZ/TM/XaZIjRbJfx7NkMm8=
 github.com/go-pkgz/mongo v1.0.0/go.mod h1:R9si/F2aJsjz4MUxhzuppIHY8yLV3YCeuCpgcI50cu4=
 github.com/go-pkgz/mongo v1.1.2 h1:2Vqn3CWQJkkx4gxxDiQUitAW2FN/CH26lKHkipmpKcc=
 github.com/go-pkgz/mongo v1.1.2/go.mod h1:0NkWnzpiUxoL5fYZuttCtJrpC67oNDidfYxcdPqHTf0=
