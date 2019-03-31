@@ -15,7 +15,7 @@ type L interface {
 // Func type is an adapter to allow the use of ordinary functions as Logger.
 type Func func(format string, args ...interface{})
 
-// Logf calls f(id)
+// Logf calls f(format, args...)
 func (f Func) Logf(format string, args ...interface{}) { f(format, args...) }
 
 // NoOp logger
@@ -26,24 +26,23 @@ var Std = Func(func(format string, args ...interface{}) { stdlog.Printf(format, 
 
 // Printf simplifies replacement of std logger
 func Printf(format string, args ...interface{}) {
-	def.Logf(format, args...)
+	def.logf(format, args...)
 }
 
 // Print simplifies replacement of std logger
 func Print(line string) {
-	def.Logf(line)
+	def.logf(line)
 }
 
 // Fatalf simplifies replacement of std logger
 func Fatalf(format string, args ...interface{}) {
-	def.Logf(format, args...)
+	def.logf(format, args...)
 	os.Exit(1)
 }
 
 // Setup default logger with options
 func Setup(opts ...Option) {
 	def = New(opts...)
-	def.callerSkip = 2
 }
 
 // Default returns pre-constructed def logger (debug off, callers disabled)

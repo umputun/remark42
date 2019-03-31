@@ -82,6 +82,7 @@ func (s *Rest) Run(port int) {
 
 		s.lock.Lock()
 		s.httpServer = s.makeHTTPServer(port, s.routes())
+		s.httpServer.ErrorLog = log.ToStdLogger(log.Default(), "WARN")
 		s.lock.Unlock()
 
 		err := s.httpServer.ListenAndServe()
@@ -91,7 +92,10 @@ func (s *Rest) Run(port int) {
 
 		s.lock.Lock()
 		s.httpsServer = s.makeHTTPSServer(s.SSLConfig.Port, s.routes())
+		s.httpsServer.ErrorLog = log.ToStdLogger(log.Default(), "WARN")
+
 		s.httpServer = s.makeHTTPServer(port, s.httpToHTTPSRouter())
+		s.httpServer.ErrorLog = log.ToStdLogger(log.Default(), "WARN")
 		s.lock.Unlock()
 
 		go func() {
@@ -108,7 +112,11 @@ func (s *Rest) Run(port int) {
 		m := s.makeAutocertManager()
 		s.lock.Lock()
 		s.httpsServer = s.makeHTTPSAutocertServer(s.SSLConfig.Port, s.routes(), m)
+		s.httpsServer.ErrorLog = log.ToStdLogger(log.Default(), "WARN")
+
 		s.httpServer = s.makeHTTPServer(port, s.httpChallengeRouter(m))
+		s.httpServer.ErrorLog = log.ToStdLogger(log.Default(), "WARN")
+
 		s.lock.Unlock()
 
 		go func() {

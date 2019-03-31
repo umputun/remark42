@@ -33,22 +33,53 @@ _Without `lgr.Caller*` it will drop `{caller}` part_
 `lgr.New` call accepts functional options:
 
 - `lgr.Debug` - turn debug mode on to allow messages with "DEBUG" level (filtered overwise)
+- `lgr.Out(io.Writer)` - sets the output writer, default `os.Stdout`
+- `lgr.Err(io.Writer)` - sets the error writer, default `os.Stderr`
 - `lgr.CallerFile` - adds the caller file info
 - `lgr.CallerFunc` - adds the caller function info
 - `lgr.CallerPkg` - adds the caller package
 - `lgr.LevelBraces` - wraps levels with "[" and "]"
 - `lgr.Msec` - adds milliseconds to timestamp
-- `lgr.Out(io.Writer)` - sets the output writer, default `os.Stdout`
-- `lgr.Err(io.Writer)` - sets the error writer, default `os.Stderr`
+- `lgr.Format` - sets custom template, overwrite all other formatting modifiers.
 
+#### formatting templates:
+
+Several predefined templates provided and can be passed directly to `lgr.Format`, i.e. `lgr.Format(lgr.WithMsec)`
+
+```
+	Short      = `{{.DT.Format "2006/01/02 15:04:05"}} {{.Level}} {{.Message}}`
+	WithMsec   = `{{.DT.Format "2006/01/02 15:04:05.000"}} {{.Level}} {{.Message}}`
+	WithPkg    = `{{.DT.Format "2006/01/02 15:04:05.000"}} {{.Level}} ({{.CallerPkg}}) {{.Message}}`
+	ShortDebug = `{{.DT.Format "2006/01/02 15:04:05.000"}} {{.Level}} ({{.CallerFile}}:{{.CallerLine}}) {{.Message}}`
+	FuncDebug  = `{{.DT.Format "2006/01/02 15:04:05.000"}} {{.Level}} ({{.CallerFunc}}) {{.Message}}`
+	FullDebug  = `{{.DT.Format "2006/01/02 15:04:05.000"}} {{.Level}} ({{.CallerFile}}:{{.CallerLine}} {{.CallerFunc}}) {{.Message}}`
+```
+
+User can make a custom template and pass it directly to `lgr.Format`. For example:
+
+```go    
+    lgr.Format(`{{.Level}} - {{.DT.Format "2006-01-02T15:04:05Z07:00") - {{.CallerPkg}} - {{.Message}}`)
+```
+)
+    
 ### levels
 
-`lgr.Logf` recognizes prefixes like "INFO" or "[INFO]" as levels. The full list of supported levels - "DEBUG", "INFO", "WARN", "ERROR", "PANIC" and "FATAL"
+`lgr.Logf` recognizes prefixes like "INFO" or "[INFO]" as levels. The full list of supported levels - "TRACE", "DEBUG", "INFO", "WARN", "ERROR", "PANIC" and "FATAL"
 
-- `DEBUG` will be filtered unless `lgr.Debug` option defined
+- `TRACE` will be filtered unless `lgr.Trace` option defined
+- `DEBUG` will be filtered unless `lgr.Debug` or `lgr.Trace` options defined
 - `INFO` and `WARN` don't have any special behavior attached
 - `ERROR` sends messages to both out and err writers
 - `PANIC` and `FATAL` send messages to both out and err writers. In addition sends dump of callers and runtime info to err only, and calls `os.Exit(1)`.
+
+### adaptors
+
+`lgr` logger can be converted to `io.Writer` or `*log.Logger`
+
+- `lgr.ToWriter(l lgr.L, level string) io.Writer` - makes io.Writer forwarding write ops to underlying `lgr.L`
+- `lgr.ToStdLogger(l lgr.L, level string) *log.Logger` - makes standard logger on top of `lgr.L`
+
+_`level` parameter is optional, if defined will enforce the level._    
   
 ### global logger
 
