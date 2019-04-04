@@ -16,13 +16,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestMain(t *testing.T) {
+func Test_Main(t *testing.T) {
 
 	os.Args = []string{"test", "server", "--secret=123456", "--store.bolt.path=/tmp/xyz", "--backup=/tmp",
 		"--avatar.fs.path=/tmp", "--port=18202", "--url=https://demo.remark42.com", "--dbg", "--notify.type=none"}
 
 	go func() {
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(1000 * time.Millisecond)
 		err := syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
 		require.Nil(t, err)
 	}()
@@ -32,11 +32,11 @@ func TestMain(t *testing.T) {
 	go func() {
 		st := time.Now()
 		main()
-		assert.True(t, time.Since(st).Seconds() < 1, "should take about 500msec")
+		assert.True(t, time.Since(st).Seconds() < 2, "should take under 1s")
 		wg.Done()
 	}()
 
-	time.Sleep(200 * time.Millisecond) // let server start
+	time.Sleep(500 * time.Millisecond) // let server start
 
 	// send ping
 	resp, err := http.Get("http://localhost:18202/api/v1/ping")
