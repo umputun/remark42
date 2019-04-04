@@ -18,8 +18,12 @@ import (
 
 func Test_Main(t *testing.T) {
 
-	os.Args = []string{"test", "server", "--secret=123456", "--store.bolt.path=/tmp/xyz", "--backup=/tmp",
-		"--avatar.fs.path=/tmp", "--port=18202", "--url=https://demo.remark42.com", "--dbg", "--notify.type=none"}
+	dir, err := ioutil.TempDir(os.TempDir(), "remark42")
+	require.NoError(t, err)
+	defer os.RemoveAll(dir)
+
+	os.Args = []string{"test", "server", "--secret=123456", "--store.bolt.path=" + dir, "--backup=/tmp",
+		"--avatar.fs.path=" + dir, "--port=18202", "--url=https://demo.remark42.com", "--dbg", "--notify.type=none"}
 
 	go func() {
 		time.Sleep(1000 * time.Millisecond)
