@@ -525,6 +525,7 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) {
 		providers++
 	}
 	if s.Auth.Dev {
+		log.Print("[INFO] dev access enabled")
 		authenticator.AddProvider("dev", "", "")
 		providers++
 	}

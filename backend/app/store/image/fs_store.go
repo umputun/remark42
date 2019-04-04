@@ -114,6 +114,11 @@ func (f *FileSystem) Load(id string) (io.ReadCloser, int64, error) {
 
 // Cleanup runs scan of staging and removes old files based on ttl
 func (f *FileSystem) Cleanup(ctx context.Context, ttl time.Duration) error {
+
+	if _, err := os.Stat(f.Staging); os.IsNotExist(err) {
+		return nil
+	}
+
 	err := filepath.Walk(f.Staging, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err

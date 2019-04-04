@@ -273,7 +273,7 @@ func (s *Rest) routes() chi.Router {
 			rauth.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(lmt, nil)))
 			rauth.Use(authMiddleware.Auth)
 			rauth.Use(logger.New(logger.Log(log.Default()), logger.Prefix("[DEBUG]"), logger.IPfn(ipFn)).Handler)
-			rauth.Post("/picture", s.savePictureCtrl)
+			rauth.With(rejectAnonUser).Post("/picture", s.savePictureCtrl)
 		})
 
 	})
