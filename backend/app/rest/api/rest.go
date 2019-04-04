@@ -262,7 +262,7 @@ func (s *Rest) routes() chi.Router {
 			rauth.Put("/comment/{id}", s.updateCommentCtrl)
 			rauth.Post("/comment", s.createCommentCtrl)
 			rauth.With(rejectAnonUser).Put("/vote/{id}", s.voteCtrl)
-			rauth.Post("/deleteme", s.deleteMeCtrl)
+			rauth.With(rejectAnonUser).Post("/deleteme", s.deleteMeCtrl)
 		})
 
 		rapi.Group(func(rauth chi.Router) {

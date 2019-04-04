@@ -1,10 +1,11 @@
 // Package lgr provides a simple logger with some extras. Primary way to log is Logf method.
 // The logger's output can be customized in 2 ways:
-//   - by passing formatting template, i.e. lgr.New(lgr.Format(lgr.Short))
 //   - by setting individual formatting flags, i.e. lgr.New(lgr.Msec, lgr.CallerFunc)
-// Leveled output works for messages based on level prefix, i.e. Logf("INFO some message") means INFO level.
+//   - by passing formatting template, i.e. lgr.New(lgr.Format(lgr.Short))
+// Leveled output works for messages based on text prefix, i.e. Logf("INFO some message") means INFO level.
 // Debug and trace levels can be filtered based on lgr.Trace and lgr.Debug options.
-// ERROR, FATAL and PANIC levels send to err as well. Both FATAL and PANIC also print stack trace and terminate caller application with os.Exit(1)
+// ERROR, FATAL and PANIC levels send to err as well. FATAL terminate caller application with os.Exit(1)
+// and PANIC also prints stack trace.
 
 package lgr
 
@@ -15,6 +16,7 @@ import (
 	"os"
 	"path"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"text/template"
@@ -59,7 +61,7 @@ type Logger struct {
 type nowFn func() time.Time
 type panicFn func()
 
-// layout holds all parts to construct the final message with template
+// layout holds all parts to construct the final message with template or with individual flags
 type layout struct {
 	DT         time.Time
 	Level      string
@@ -85,27 +87,28 @@ func New(options ...Option) *Logger {
 		opt(&res)
 	}
 
-	var err error
-	if res.format == "" {
-		res.format = res.templateFromOptions()
+	if res.format != "" {
+		// formatter defined
+		var err error
+		res.templ, err = template.New("lgr").Parse(res.format)
+		if err != nil {
+			fmt.Printf("invalid template %s, error %v. switched to %s\n", res.format, err, Short)
+			res.format = Short
+			res.templ = template.Must(template.New("lgrDefault").Parse(Short))
+		}
+
+		buf := bytes.Buffer{}
+		if err = res.templ.Execute(&buf, layout{}); err != nil {
+			fmt.Printf("failed to execute template %s, error %v. switched to %s\n", res.format, err, Short)
+			res.format = Short
+			res.templ = template.Must(template.New("lgrDefault").Parse(Short))
+		}
 	}
 
-	res.templ, err = template.New("lgr").Parse(res.format)
-	if err != nil {
-		fmt.Printf("invalid template %s, error %v. switched to %s\n", res.format, err, Short)
-		res.format = Short
-		res.templ = template.Must(template.New("lgrDefault").Parse(Short))
-	}
+	// set *On flags once for optimization on multiple Logf calls
+	res.callerOn = strings.Contains(res.format, "{{.Caller") || res.callerFile || res.callerFunc || res.callerPkg
+	res.levelBracesOn = strings.Contains(res.format, "[{{.Level}}]") || res.levelBraces
 
-	buf := bytes.Buffer{}
-	if err = res.templ.Execute(&buf, layout{}); err != nil {
-		fmt.Printf("failed to execute template %s, error %v. switched to %s\n", res.format, err, Short)
-		res.format = Short
-		res.templ = template.Must(template.New("lgrDefault").Parse(Short))
-	}
-
-	res.callerOn = strings.Contains(res.format, "{{.Caller")
-	res.levelBracesOn = strings.Contains(res.format, "[{{.Level}}]")
 	return &res
 }
 
@@ -128,7 +131,7 @@ func (l *Logger) logf(format string, args ...interface{}) {
 		return
 	}
 
-	ci := callerInfo{}
+	var ci callerInfo
 	if l.callerOn { // optimization to avoid expensive caller evaluation if caller info not in the template
 		ci = l.reportCaller(l.callerDepth)
 	}
@@ -136,21 +139,26 @@ func (l *Logger) logf(format string, args ...interface{}) {
 	elems := layout{
 		DT:         l.now(),
 		Level:      l.formatLevel(lv),
-		Message:    strings.TrimSuffix(msg, "\n"),
+		Message:    strings.TrimSuffix(msg, "\n"), // output adds EOL, trim from the message if passed
 		CallerFunc: ci.FuncName,
 		CallerFile: ci.File,
 		CallerPkg:  ci.Pkg,
 		CallerLine: ci.Line,
 	}
 
-	buf := bytes.Buffer{}
-	err := l.templ.Execute(&buf, elems) // once constructed, a template may be executed safely in parallel.
-	if err != nil {
-		fmt.Printf("failed to execute template, %v\n", err)
+	var data []byte
+	if l.format == "" {
+		data = []byte(l.formatWithOptions(elems))
+	} else {
+		buf := bytes.Buffer{}
+		err := l.templ.Execute(&buf, elems) // once constructed, a template may be executed safely in parallel.
+		if err != nil {
+			fmt.Printf("failed to execute template, %v\n", err) // should never happen
+		}
+		data = buf.Bytes()
 	}
-	buf.WriteString("\n")
+	data = append(data, '\n')
 
-	data := buf.Bytes()
 	if l.levelBracesOn { // rearrange space in short levels
 		data = bytes.Replace(data, []byte("[WARN ]"), []byte("[WARN] "), 1)
 		data = bytes.Replace(data, []byte("[INFO ]"), []byte("[INFO] "), 1)
@@ -230,50 +238,50 @@ func (l *Logger) reportCaller(calldepth int) (res callerInfo) {
 	return res
 }
 
-// make template from option flags
-func (l *Logger) templateFromOptions() (res string) {
+// speed-optimized version of formatter, used with individual options only, i.e. without Format call
+func (l *Logger) formatWithOptions(elems layout) (res string) {
 
-	const (
-		// escape { and } from templates to allow "{some/blah}" output for caller
-		openCallerBrace  = `{{"{"}}`
-		closeCallerBrace = `{{"}"}}`
-	)
-
-	orElse := func(flag bool, value string, elseValue string) string {
+	orElse := func(flag bool, fnTrue func() string, fnFalse func() string) string {
 		if flag {
-			return value
+			return fnTrue()
 		}
-		return elseValue
+		return fnFalse()
 	}
+	nothing := func() string { return "" }
 
-	var parts []string
+	parts := make([]string, 0, 4)
 
-	parts = append(parts, orElse(l.msec, `{{.DT.Format "2006/01/02 15:04:05.000"}}`, `{{.DT.Format "2006/01/02 15:04:05"}}`))
-	parts = append(parts, orElse(l.levelBraces, `[{{.Level}}]`, `{{.Level}}`))
+	parts = append(parts, orElse(l.msec,
+		func() string { return elems.DT.Format("2006/01/02 15:04:05.000") },
+		func() string { return elems.DT.Format("2006/01/02 15:04:05") },
+	))
+
+	parts = append(parts, orElse(l.levelBraces,
+		func() string { return `[` + elems.Level + `]` },
+		func() string { return elems.Level },
+	))
 
 	if l.callerFile || l.callerFunc || l.callerPkg {
 		var callerParts []string
-		if v := orElse(l.callerFile, `{{.CallerFile}}:{{.CallerLine}}`, ""); v != "" {
+		v := orElse(l.callerFile, func() string { return elems.CallerFile + ":" + strconv.Itoa(elems.CallerLine) }, nothing)
+		if v != "" {
 			callerParts = append(callerParts, v)
 		}
-		if v := orElse(l.callerFunc, `{{.CallerFunc}}`, ""); v != "" {
+		if v := orElse(l.callerFunc, func() string { return elems.CallerFunc }, nothing); v != "" {
 			callerParts = append(callerParts, v)
 		}
-		if v := orElse(l.callerPkg, `{{.CallerPkg}}`, ""); v != "" {
+		if v := orElse(l.callerPkg, func() string { return elems.CallerPkg }, nothing); v != "" {
 			callerParts = append(callerParts, v)
 		}
-		parts = append(parts, openCallerBrace+strings.Join(callerParts, " ")+closeCallerBrace)
+		parts = append(parts, "{"+strings.Join(callerParts, " ")+"}")
 	}
-	parts = append(parts, "{{.Message}}")
+
+	parts = append(parts, elems.Message)
 	return strings.Join(parts, " ")
 }
 
 // formatLevel aligns level to 5 chars
 func (l *Logger) formatLevel(lv string) string {
-
-	if lv == "" {
-		return ""
-	}
 
 	spaces := ""
 	if len(lv) == 4 {
@@ -304,71 +312,4 @@ func getDump() []byte {
 		length = maxSize
 	}
 	return stacktrace[:length]
-}
-
-// Option func type
-type Option func(l *Logger)
-
-// Out sets out writer, stdout by default
-func Out(w io.Writer) Option {
-	return func(l *Logger) {
-		l.stdout = w
-	}
-}
-
-// Err sets error writer, stderr by default
-func Err(w io.Writer) Option {
-	return func(l *Logger) {
-		l.stderr = w
-	}
-}
-
-// Debug turn on dbg mode
-func Debug(l *Logger) {
-	l.dbg = true
-}
-
-// Trace turn on trace + dbg mode
-func Trace(l *Logger) {
-	l.dbg = true
-	l.trace = true
-}
-
-// CallerDepth sets number of stack frame skipped for caller reporting, 0 by default
-func CallerDepth(n int) Option {
-	return func(l *Logger) {
-		l.callerDepth = n
-	}
-}
-
-// Format sets output layout, overwrites all options for individual parts, i.e. Caller*, Msec and LevelBraces
-func Format(f string) Option {
-	return func(l *Logger) {
-		l.format = f
-	}
-}
-
-// CallerFunc adds caller info with function name. Ignored if Format option used.
-func CallerFunc(l *Logger) {
-	l.callerFunc = true
-}
-
-// CallerPkg adds caller's package name. Ignored if Format option used.
-func CallerPkg(l *Logger) {
-	l.callerPkg = true
-}
-
-// LevelBraces surrounds level with [], i.e. [INFO]. Ignored if Format option used.
-func LevelBraces(l *Logger) {
-	l.levelBraces = true
-}
-
-// CallerFile adds caller info with file, and line number. Ignored if Format option used.
-func CallerFile(l *Logger) {
-	l.callerFile = true
-}
-
-// Msec adds .msec to timestamp. Ignored if Format option used.
-func Msec(l *Logger) {
-	l.msec = true
 }

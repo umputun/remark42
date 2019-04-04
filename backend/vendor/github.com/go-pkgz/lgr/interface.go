@@ -2,7 +2,6 @@ package lgr
 
 import (
 	stdlog "log"
-	"os"
 )
 
 var def = New() // default logger doesn't allow DEBUG and doesn't add caller info
@@ -37,7 +36,7 @@ func Print(line string) {
 // Fatalf simplifies replacement of std logger
 func Fatalf(format string, args ...interface{}) {
 	def.logf(format, args...)
-	os.Exit(1)
+	def.fatal()
 }
 
 // Setup default logger with options

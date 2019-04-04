@@ -11,9 +11,9 @@ type Writer struct {
 	level string // if defined added to each message
 }
 
-// Write to lgr.L, trim EOL
+// Write to lgr.L
 func (w *Writer) Write(p []byte) (n int, err error) {
-	w.Logf(strings.TrimSuffix(w.level+string(p), "\n"))
+	w.Logf(w.level + string(p))
 	return len(p), nil
 }
 
