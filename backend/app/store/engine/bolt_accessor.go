@@ -65,7 +65,6 @@ func NewBoltDB(options bolt.Options, sites ...BoltSite) (*BoltDB, error) {
 				if _, e := tx.CreateBucketIfNotExists([]byte(bktName)); e != nil {
 					return errors.Wrapf(e, "failed to create top level bucket %s", bktName)
 				}
-				log.Printf("[DEBUG] created bucket %s", string(bktName))
 			}
 			return nil
 		})
@@ -75,7 +74,7 @@ func NewBoltDB(options bolt.Options, sites ...BoltSite) (*BoltDB, error) {
 		}
 
 		result.dbs[site.SiteID] = db
-		log.Printf("[DEBUG] bolt store created for %+v", site.SiteID)
+		log.Printf("[DEBUG] bolt store created for %s", site.SiteID)
 	}
 	return &result, nil
 }
