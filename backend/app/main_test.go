@@ -28,7 +28,7 @@ func Test_Main(t *testing.T) {
 		"--avatar.fs.path=" + dir, "--port=18222", "--url=https://demo.remark42.com", "--dbg", "--notify.type=none"}
 
 	go func() {
-		time.Sleep(1000 * time.Millisecond)
+		time.Sleep(2000 * time.Millisecond)
 		e := syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
 		require.Nil(t, e)
 	}()
@@ -38,12 +38,12 @@ func Test_Main(t *testing.T) {
 	go func() {
 		st := time.Now()
 		main()
-		assert.True(t, time.Since(st).Seconds() < 2, "should take under 1s")
+		assert.True(t, time.Since(st).Seconds() > 2, "should take 2s")
 		wg.Done()
 	}()
 
 	var passed bool
-	err = repeater.NewDefault(10, time.Millisecond*100).Do(context.Background(), func() error {
+	err = repeater.NewDefault(10, time.Millisecond*200).Do(context.Background(), func() error {
 		resp, e := http.Get("http://localhost:18222/api/v1/ping")
 		if e != nil {
 			t.Logf("%+v", e)
