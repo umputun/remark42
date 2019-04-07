@@ -507,7 +507,7 @@ type Comment struct {
     User      User            `json:"user"`    // user info, read only
     Locator   Locator         `json:"locator"` // post locator
     Score     int             `json:"score"`   // comment score, read only
-    Votes     map[string]bool `json:"votes"`   // comment votes, read only
+    Vote      int             `json:"vote"`    // vote for the current user, -1/1/0.
     Controversy float64       `json:"controversy,omitempty"` // comment controversy, read only
     Timestamp time.Time       `json:"time"`    // time stamp, read only
     Edit      *Edit           `json:"edit,omitempty" bson:"edit,omitempty"` // pointer to have empty default in json response
@@ -609,11 +609,11 @@ Sort can be `time`, `active` or `score`. Supported sort order with prefix -/+, i
 
 ### Images management
 
-* `GET /api/v1/picture/{user}/{id}` - load stored image 
+* `GET /api/v1/picture/{user}/{id}` - load stored image
 * `POST /api/v1/picture` - upload and store image, uses post form with `FormFile("file")`. returns `{"id": user/imgid}` _auth required_
 
 _returned id should be appended to load image url on caller side_
-  
+
 ### Admin
 
 * `DELETE /api/v1/admin/comment/{id}?site=site-id&url=post-url` - delete comment by `id`.
