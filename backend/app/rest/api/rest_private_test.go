@@ -353,7 +353,6 @@ func TestRest_Vote(t *testing.T) {
 			fmt.Sprintf("%s/api/v1/vote/%s?site=radio-t&url=https://radio-t.com/blah&vote=%d", ts.URL, id1, val), nil)
 		assert.Nil(t, err)
 		req.Header.Add("X-JWT", devToken)
-		//req.SetBasicAuth("admin", "password")
 		resp, err := client.Do(req)
 		assert.Nil(t, err)
 		return resp.StatusCode
@@ -370,15 +369,6 @@ func TestRest_Vote(t *testing.T) {
 	assert.Equal(t, 1, cr.Vote)
 	assert.Equal(t, map[string]bool(nil), cr.Votes)
 
-	body, code = get(t, fmt.Sprintf("%s/api/v1/id/%s?site=radio-t&url=https://radio-t.com/blah", ts.URL, id1))
-	assert.Equal(t, 200, code)
-	cr = store.Comment{}
-	err = json.Unmarshal([]byte(body), &cr)
-	assert.Nil(t, err)
-	assert.Equal(t, 1, cr.Score)
-	assert.Equal(t, 0, cr.Vote, "no vote info for not authed user")
-	assert.Equal(t, map[string]bool(nil), cr.Votes)
-
 	assert.Equal(t, 200, vote(-1), "opposite vote allowed")
 	body, code = getWithDevAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=radio-t&url=https://radio-t.com/blah", ts.URL, id1))
 	assert.Equal(t, 200, code)
@@ -386,6 +376,35 @@ func TestRest_Vote(t *testing.T) {
 	err = json.Unmarshal([]byte(body), &cr)
 	assert.Nil(t, err)
 	assert.Equal(t, 0, cr.Score)
+	assert.Equal(t, 0, cr.Vote)
+
+	assert.Equal(t, 200, vote(-1), "opposite vote allowed one more time")
+	body, code = getWithDevAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=radio-t&url=https://radio-t.com/blah", ts.URL, id1))
+	assert.Equal(t, 200, code)
+	cr = store.Comment{}
+	err = json.Unmarshal([]byte(body), &cr)
+	assert.Nil(t, err)
+	assert.Equal(t, -1, cr.Score)
+	assert.Equal(t, -1, cr.Vote)
+
+	assert.Equal(t, 400, vote(-1), "dbl vote not allowed")
+	body, code = getWithDevAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=radio-t&url=https://radio-t.com/blah", ts.URL, id1))
+	assert.Equal(t, 200, code)
+	cr = store.Comment{}
+	err = json.Unmarshal([]byte(body), &cr)
+	assert.Nil(t, err)
+	assert.Equal(t, -1, cr.Score)
+	assert.Equal(t, -1, cr.Vote)
+
+	body, code = get(t, fmt.Sprintf("%s/api/v1/id/%s?site=radio-t&url=https://radio-t.com/blah", ts.URL, id1))
+	assert.Equal(t, 200, code)
+	cr = store.Comment{}
+	err = json.Unmarshal([]byte(body), &cr)
+	assert.Nil(t, err)
+	assert.Equal(t, -1, cr.Score)
+	assert.Equal(t, 0, cr.Vote, "no vote info for not authed user")
+	assert.Equal(t, map[string]bool(nil), cr.Votes)
+
 	assert.Equal(t, map[string]bool(nil), cr.Votes)
 }
 
