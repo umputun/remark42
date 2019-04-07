@@ -400,6 +400,17 @@ func filterComments(comments []store.Comment, fn func(c store.Comment) bool) []s
 func URLKey(r *http.Request) string {
 	adminPrefix := "admin!!"
 	key := strings.TrimPrefix(r.URL.String(), adminPrefix) // prevents attach with fake url to get admin view
+	if user, err := rest.GetUserInfo(r); err == nil && user.Admin {
+		key = adminPrefix + key // make separate cache key for admins
+	}
+	return key
+}
+
+// URLKeyWithUser gets url from request to use it as cache key and attaching user ID
+// admins will have different keys in order to prevent leak of admin-only data to regular users
+func URLKeyWithUser(r *http.Request) string {
+	adminPrefix := "admin!!"
+	key := strings.TrimPrefix(r.URL.String(), adminPrefix) // prevents attach with fake url to get admin view
 	if user, err := rest.GetUserInfo(r); err == nil {
 		if user.Admin {
 			key = adminPrefix + key // make separate cache key for admins
