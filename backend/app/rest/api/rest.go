@@ -312,7 +312,7 @@ func (s *Rest) alterComments(comments []store.Comment, r *http.Request) (res []s
 	// prepare vote info for client view
 	vote := func(c store.Comment, r *http.Request) store.Comment {
 
-		c.Vote = 0 //default is "none" (not voted)
+		c.Vote = 0 // default is "none" (not voted)
 
 		user, err := rest.GetUserInfo(r)
 		if err != nil {

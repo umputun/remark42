@@ -38,6 +38,8 @@ var getStartedHTML = "/tmp/getstarted.html"
 
 var devToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6Mzc4OTE5MTgyMiwianRpIjoicmFuZG9tIGlkIiwiaXNzIjoicmVtYXJrNDIiLCJuYmYiOjE1MjE4ODQyMjIsInVzZXIiOnsibmFtZSI6ImRldmVsb3BlciBvbmUiLCJpZCI6ImRldiIsInBpY3R1cmUiOiJodHRwOi8vZXhhbXBsZS5jb20vcGljLnBuZyIsImlwIjoiMTI3LjAuMC4xIiwiZW1haWwiOiJtZUBleGFtcGxlLmNvbSJ9fQ.aKUAXiZxXypgV7m1wEOgUcyPOvUDXHDi3A06YWKbcLg"
 
+var adminUmputunToken = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJyYWRpb3QiLCJleHAiOjE5NTQ1OTc5ODAsImp0aSI6Ijk3YTJlMGFjNGRjN2Q1ZjY5MjZkNWU4NjIwYWNlZjlhNDBjMCIsImlhdCI6MTQ1NDU5NzY4MCwiaXNzIjoicmVtYXJrNDIiLCJ1c2VyIjp7Im5hbWUiOiJVbXB1dHVuIiwiaWQiOiJnaXRodWJfZWYwZjcwNmE3IiwicGljdHVyZSI6Imh0dHBzOi8vcmVtYXJrNDIucmFkaW8tdC5jb20vYXBpL3YxL2F2YXRhci9jYjQyZmY0OTNhZGU2OTZkODhhM2E1OTBmMTM2YWU5ZTM0ZGU3YzFiLmltYWdlIiwiYXR0cnMiOnsiYWRtaW4iOnRydWUsImJsb2NrZWQiOmZhbHNlfX19.I5a8EHbUJy8mApuYCPDRThbC-1jP0sbPh1qwNyY1V4E"
+
 func TestRest_FileServer(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
@@ -294,6 +296,14 @@ func get(t *testing.T, url string) (string, int) {
 	body, err := ioutil.ReadAll(r.Body)
 	require.Nil(t, err)
 	return string(body), r.StatusCode
+}
+
+func sendReq(t *testing.T, r *http.Request, token string) (*http.Response, error) {
+	client := http.Client{Timeout: 5 * time.Second}
+	if token != "" {
+		r.Header.Set("X-JWT", token)
+	}
+	return client.Do(r)
 }
 
 func getWithDevAuth(t *testing.T, url string) (body string, code int) {
