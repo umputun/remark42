@@ -399,9 +399,13 @@ func filterComments(comments []store.Comment, fn func(c store.Comment) bool) []s
 // admins will have different keys in order to prevent leak of admin-only data to regular users
 func URLKey(r *http.Request) string {
 	adminPrefix := "admin!!"
-	key := strings.TrimPrefix(r.URL.String(), adminPrefix)          // prevents attach with fake url to get admin view
-	if user, err := rest.GetUserInfo(r); err == nil && user.Admin { // make separate cache key for admins
-		key = adminPrefix + key
+	key := strings.TrimPrefix(r.URL.String(), adminPrefix) // prevents attach with fake url to get admin view
+	if user, err := rest.GetUserInfo(r); err == nil {
+		if user.Admin {
+			key = adminPrefix + key // make separate cache key for admins
+		} else {
+			key = user.ID + "!!" + key // make separate cache key for authed users
+		}
 	}
 	return key
 }
