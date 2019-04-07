@@ -15,7 +15,7 @@ import (
 	"github.com/umputun/remark/backend/app/store/service"
 )
 
-const natvieVersion = 1
+const nativeVersion = 1
 const defaultConcurrent = 8
 
 // Native implements exporter and importer for internal store format
@@ -50,7 +50,7 @@ func (n *Native) Export(w io.Writer, siteID string) (size int, err error) {
 	for i := len(topics) - 1; i >= 0; i-- { // topics from List sorted in opposite direction
 		topic := topics[i]
 		comments, e := n.DataStore.Find(store.Locator{SiteID: siteID, URL: topic.URL}, "time")
-		if err != nil {
+		if e != nil {
 			return commentsCount, e
 		}
 
@@ -75,13 +75,13 @@ func (n *Native) Export(w io.Writer, siteID string) (size int, err error) {
 
 // exportMeta appends user and post metas to exported stream
 func (n *Native) exportMeta(siteID string, w io.Writer) (err error) {
-	m := meta{Version: natvieVersion}
+	m := meta{Version: nativeVersion}
 	m.Users, m.Posts, err = n.DataStore.Metas(siteID)
 	if err != nil {
 		return errors.Wrap(err, "can't get meta")
 	}
 
-	if err := json.NewEncoder(w).Encode(m); err != nil {
+	if err = json.NewEncoder(w).Encode(m); err != nil {
 		return errors.Wrap(err, "can't encode meta")
 	}
 	return nil
@@ -96,7 +96,7 @@ func (n *Native) Import(reader io.Reader, siteID string) (size int, err error) {
 		return 0, errors.Wrapf(err, "failed to import meta for site %s", siteID)
 	}
 
-	if m.Version != natvieVersion && m.Version != 0 { // this version allows back compatibility with 0 version
+	if m.Version != nativeVersion && m.Version != 0 { // this version allows back compatibility with 0 version
 		return 0, errors.Errorf("unexpected import file version %d", m.Version)
 	}
 
@@ -134,9 +134,9 @@ func (n *Native) Import(reader io.Reader, siteID string) (size int, err error) {
 				log.Printf("[WARN] can't write %+v to store, %s", comment, e)
 				return
 			}
-			n := atomic.AddInt64(&comments, 1)
-			if n%1000 == 0 {
-				log.Printf("[DEBUG] imported %d comments", n)
+			num := atomic.AddInt64(&comments, 1)
+			if num%1000 == 0 {
+				log.Printf("[DEBUG] imported %d comments", num)
 			}
 		})
 

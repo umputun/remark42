@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/umputun/remark/backend/app/store"
 )
@@ -71,6 +72,7 @@ func TestTelegram_Send(t *testing.T) {
 	tb, err = NewTelegram("non-json-resp", "remark_test", 2*time.Second, ts.URL+"/")
 	assert.NotNil(t, err, "should failed")
 	err = tb.Send(context.TODO(), request{comment: c, parent: cp})
+	require.NotNil(t, err)
 	assert.Contains(t, err.Error(), "unexpected telegram status code 404", "send on broken tg")
 
 	assert.Equal(t, "telegram: @remark_test", tb.String())

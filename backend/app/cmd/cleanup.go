@@ -181,7 +181,7 @@ func (cc *CleanupCommand) listComments(postURL string) ([]store.Comment, error) 
 		Info     store.PostInfo  `json:"info,omitempty"`
 	}{}
 
-	if err := json.NewDecoder(r.Body).Decode(&commentsWithInfo); err != nil {
+	if err = json.NewDecoder(r.Body).Decode(&commentsWithInfo); err != nil {
 		return nil, errors.Wrapf(err, "can't decode list of comments for %s", postURL)
 	}
 	return commentsWithInfo.Comments, nil

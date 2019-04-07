@@ -30,6 +30,7 @@ import (
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/rest/proxy"
 	"github.com/umputun/remark/backend/app/store"
+	"github.com/umputun/remark/backend/app/store/image"
 	"github.com/umputun/remark/backend/app/store/service"
 )
 
@@ -44,6 +45,7 @@ type Rest struct {
 	CommentFormatter *store.CommentFormatter
 	Migrator         *Migrator
 	NotifyService    *notify.Service
+	ImageService     *image.Service
 
 	WebRoot         string
 	RemarkURL       string
@@ -80,6 +82,7 @@ func (s *Rest) Run(port int) {
 
 		s.lock.Lock()
 		s.httpServer = s.makeHTTPServer(port, s.routes())
+		s.httpServer.ErrorLog = log.ToStdLogger(log.Default(), "WARN")
 		s.lock.Unlock()
 
 		err := s.httpServer.ListenAndServe()
@@ -89,7 +92,10 @@ func (s *Rest) Run(port int) {
 
 		s.lock.Lock()
 		s.httpsServer = s.makeHTTPSServer(s.SSLConfig.Port, s.routes())
+		s.httpsServer.ErrorLog = log.ToStdLogger(log.Default(), "WARN")
+
 		s.httpServer = s.makeHTTPServer(port, s.httpToHTTPSRouter())
+		s.httpServer.ErrorLog = log.ToStdLogger(log.Default(), "WARN")
 		s.lock.Unlock()
 
 		go func() {
@@ -106,7 +112,11 @@ func (s *Rest) Run(port int) {
 		m := s.makeAutocertManager()
 		s.lock.Lock()
 		s.httpsServer = s.makeHTTPSAutocertServer(s.SSLConfig.Port, s.routes(), m)
+		s.httpsServer.ErrorLog = log.ToStdLogger(log.Default(), "WARN")
+
 		s.httpServer = s.makeHTTPServer(port, s.httpChallengeRouter(m))
+		s.httpServer.ErrorLog = log.ToStdLogger(log.Default(), "WARN")
+
 		s.lock.Unlock()
 
 		go func() {
@@ -219,6 +229,7 @@ func (s *Rest) routes() chi.Router {
 			ropen.Get("/config", s.configCtrl)
 			ropen.Post("/preview", s.previewCommentCtrl)
 			ropen.Get("/info", s.infoCtrl)
+			ropen.Get("/picture/{user}/{id}", s.loadPictureCtrl)
 
 			ropen.Mount("/rss", s.rssRoutes())
 			ropen.Mount("/img", s.ImageProxy.Routes())
@@ -251,14 +262,27 @@ func (s *Rest) routes() chi.Router {
 			rauth.Put("/comment/{id}", s.updateCommentCtrl)
 			rauth.Post("/comment", s.createCommentCtrl)
 			rauth.With(rejectAnonUser).Put("/vote/{id}", s.voteCtrl)
-			rauth.Post("/deleteme", s.deleteMeCtrl)
+			rauth.With(rejectAnonUser).Post("/deleteme", s.deleteMeCtrl)
 		})
+
+		rapi.Group(func(rauth chi.Router) {
+			lmt := 10.0
+			if s.UpdateLimiter > 0 {
+				lmt = s.UpdateLimiter
+			}
+			rauth.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(lmt, nil)))
+			rauth.Use(authMiddleware.Auth)
+			rauth.Use(logger.New(logger.Log(log.Default()), logger.Prefix("[DEBUG]"), logger.IPfn(ipFn)).Handler)
+			rauth.With(rejectAnonUser).Post("/picture", s.savePictureCtrl)
+		})
+
 	})
 
 	// respond to /robots.txt with the list of allowed paths
 	router.With(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(50, nil))).
 		Get("/robots.txt", func(w http.ResponseWriter, r *http.Request) {
-			allowed := []string{"/find", "/last", "/id", "/count", "/counts", "/list", "/config", "/img", "/avatar"}
+			allowed := []string{"/find", "/last", "/id", "/count", "/counts", "/list", "/config",
+				"/img", "/avatar", "/picture"}
 			for i := range allowed {
 				allowed[i] = "Allow: /api/v1" + allowed[i]
 			}

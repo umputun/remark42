@@ -31,6 +31,7 @@ type AvatarMigrator interface {
 
 type avatarMigrator struct{}
 
+// Migrate from one avatar store to another. Can be used to convert between stores
 func (a avatarMigrator) Migrate(dst, src avatar.Store) (int, error) {
 	return avatar.Migrate(dst, src)
 }

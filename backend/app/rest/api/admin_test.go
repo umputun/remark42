@@ -113,11 +113,13 @@ func TestAdmin_Title(t *testing.T) {
 	srv.DataService.TitleExtractor = service.NewTitleExtractor(http.Client{Timeout: time.Second})
 	tss := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.String() == "/post1" {
-			w.Write([]byte("<html><title>post1 blah 123</title><body> 2222</body></html>"))
+			_, err := w.Write([]byte("<html><title>post1 blah 123</title><body> 2222</body></html>"))
+			assert.NoError(t, err)
 			return
 		}
 		if r.URL.String() == "/post2" {
-			w.Write([]byte("<html><title>post2 blah 123</title><body> 2222</body></html>"))
+			_, err := w.Write([]byte("<html><title>post2 blah 123</title><body> 2222</body></html>"))
+			assert.NoError(t, err)
 			return
 		}
 		w.WriteHeader(404)

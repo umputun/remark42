@@ -130,14 +130,9 @@ func (s *Rest) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment", rest.ErrCommentValidation)
 		return
 	}
+
 	if err != nil {
-		code := rest.ErrCommentRejected
-		switch {
-		case strings.HasPrefix(err.Error(), "too late to edit"):
-			code = rest.ErrCommentEditExpired
-		case strings.HasPrefix(err.Error(), "parent comment with reply can't be edited"):
-			code = rest.ErrCommentEditChanged
-		}
+		code := s.parseError(err, rest.ErrCommentRejected)
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't update comment", code)
 		return
 	}
@@ -178,17 +173,7 @@ func (s *Rest) voteCtrl(w http.ResponseWriter, r *http.Request) {
 
 	comment, err := s.DataService.Vote(locator, id, user.ID, vote)
 	if err != nil {
-		code := rest.ErrVoteRejected
-		switch {
-		case strings.Contains(err.Error(), "can not vote for his own comment"):
-			code = rest.ErrVoteSelf
-		case strings.Contains(err.Error(), "already voted for"):
-			code = rest.ErrVoteDbl
-		case strings.Contains(err.Error(), "maximum number of votes exceeded for comment"):
-			code = rest.ErrVoteMax
-		case strings.Contains(err.Error(), "minimal score reached for comment"):
-			code = rest.ErrVoteMinScore
-		}
+		code := s.parseError(err, rest.ErrVoteRejected)
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't vote for comment", code)
 		return
 	}
@@ -228,14 +213,14 @@ func (s *Rest) userAllDataCtrl(w http.ResponseWriter, r *http.Request) {
 
 	// get comments in 100 in each paginated request
 	for i := 0; i < 100; i++ {
-		comments, err := s.DataService.User(siteID, user.ID, 100, i*100)
-		if err != nil {
-			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't get user comments", rest.ErrInternal)
+		comments, errUser := s.DataService.User(siteID, user.ID, 100, i*100)
+		if errUser != nil {
+			rest.SendErrorJSON(w, r, http.StatusInternalServerError, errUser, "can't get user comments", rest.ErrInternal)
 			return
 		}
-		b, err := json.Marshal(comments)
-		if err != nil {
-			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't marshal user comments", rest.ErrInternal)
+		b, errUser := json.Marshal(comments)
+		if errUser != nil {
+			rest.SendErrorJSON(w, r, http.StatusInternalServerError, errUser, "can't marshal user comments", rest.ErrInternal)
 			return
 		}
 
@@ -285,6 +270,31 @@ func (s *Rest) deleteMeCtrl(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, R.JSON{"site": siteID, "user_id": user.ID, "token": tokenStr, "link": link})
 }
 
+// POST /image - save image with form request
+func (s *Rest) savePictureCtrl(w http.ResponseWriter, r *http.Request) {
+	user := rest.MustGetUserInfo(r)
+
+	if err := r.ParseMultipartForm(5 * 1024 * 1024); err != nil { // 5M max memory, if bigger will make a file
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't parse multipart form", rest.ErrDecode)
+		return
+	}
+
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't get image file from the request", rest.ErrInternal)
+		return
+	}
+	defer func() { _ = file.Close() }()
+
+	id, err := s.ImageService.Save(header.Filename, user.ID, file)
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't save image", rest.ErrInternal)
+		return
+	}
+
+	render.JSON(w, r, R.JSON{"id": id})
+}
+
 func (s *Rest) isReadOnly(locator store.Locator) bool {
 	if s.ReadOnlyAge > 0 {
 		// check RO by age
@@ -293,4 +303,29 @@ func (s *Rest) isReadOnly(locator store.Locator) bool {
 		}
 	}
 	return s.DataService.IsReadOnly(locator) // ro manually
+}
+
+func (s *Rest) parseError(err error, defaultCode int) (code int) {
+	code = defaultCode
+
+	switch {
+	// voting errors
+	case strings.Contains(err.Error(), "can not vote for his own comment"):
+		code = rest.ErrVoteSelf
+	case strings.Contains(err.Error(), "already voted for"):
+		code = rest.ErrVoteDbl
+	case strings.Contains(err.Error(), "maximum number of votes exceeded for comment"):
+		code = rest.ErrVoteMax
+	case strings.Contains(err.Error(), "minimal score reached for comment"):
+		code = rest.ErrVoteMinScore
+
+	// edit errors
+	case strings.HasPrefix(err.Error(), "too late to edit"):
+		code = rest.ErrCommentEditExpired
+	case strings.HasPrefix(err.Error(), "parent comment with reply can't be edited"):
+		code = rest.ErrCommentEditChanged
+
+	}
+
+	return code
 }

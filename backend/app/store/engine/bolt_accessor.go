@@ -74,6 +74,7 @@ func NewBoltDB(options bolt.Options, sites ...BoltSite) (*BoltDB, error) {
 		}
 
 		result.dbs[site.SiteID] = db
+		log.Printf("[DEBUG] bolt store created for %s", site.SiteID)
 	}
 	return &result, nil
 }
@@ -155,7 +156,7 @@ func (b *BoltDB) Find(locator store.Locator, sortFld string) (comments []store.C
 
 		return bucket.ForEach(func(k, v []byte) error {
 			comment := store.Comment{}
-			if e := json.Unmarshal(v, &comment); e != nil {
+			if e = json.Unmarshal(v, &comment); e != nil {
 				return errors.Wrap(e, "failed to unmarshal")
 			}
 			comments = append(comments, comment)
@@ -195,7 +196,7 @@ func (b *BoltDB) Last(siteID string, max int) (comments []store.Comment, err err
 			}
 
 			comment := store.Comment{}
-			if e := b.load(postBkt, []byte(commentID), &comment); e != nil {
+			if e = b.load(postBkt, []byte(commentID), &comment); e != nil {
 				log.Printf("[WARN] can't load comment for %s from store %s", commentID, url)
 				continue
 			}
@@ -335,11 +336,11 @@ func (b *BoltDB) User(siteID, userID string, limit, skip int) (comments []store.
 
 	// retrieve comments for refs
 	for _, v := range commentRefs {
-		url, commentID, e := b.parseRef([]byte(v))
-		if e != nil {
-			return comments, errors.Wrapf(e, "can't parse reference %s", v)
+		url, commentID, errParse := b.parseRef([]byte(v))
+		if errParse != nil {
+			return comments, errors.Wrapf(errParse, "can't parse reference %s", v)
 		}
-		if c, e := b.Get(store.Locator{SiteID: siteID, URL: url}, commentID); e == nil {
+		if c, errRef := b.Get(store.Locator{SiteID: siteID, URL: url}, commentID); errRef == nil {
 			comments = append(comments, c)
 		}
 	}

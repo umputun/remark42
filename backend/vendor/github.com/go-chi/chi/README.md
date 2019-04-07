@@ -3,7 +3,7 @@
 
 [![GoDoc Widget]][GoDoc] [![Travis Widget]][Travis]
 
-`chi` is a lightweight, idiomatic and composable router for building Go 1.7+ HTTP services. It's
+`chi` is a lightweight, idiomatic and composable router for building Go HTTP services. It's
 especially good at helping you write large REST API services that are kept maintainable as your
 project grows and changes. `chi` is built on the new `context` package introduced in Go 1.7 to
 handle signaling, cancelation and request-scoped values across a handler chain.
@@ -31,18 +31,12 @@ included some useful/optional subpackages: [middleware](/middleware), [render](h
 * **Context control** - built on new `context` package, providing value chaining, cancelations and timeouts
 * **Robust** - in production at Pressly, CloudFlare, Heroku, 99Designs, and many others (see [discussion](https://github.com/go-chi/chi/issues/91))
 * **Doc generation** - `docgen` auto-generates routing documentation from your source to JSON or Markdown
-* **No external dependencies** - plain ol' Go 1.7+ stdlib + net/http
+* **No external dependencies** - plain ol' Go stdlib + net/http
 
 
 ## Examples
 
-* [rest](https://github.com/go-chi/chi/blob/master/_examples/rest/main.go) - REST APIs made easy, productive and maintainable
-* [logging](https://github.com/go-chi/chi/blob/master/_examples/logging/main.go) - Easy structured logging for any backend
-* [limits](https://github.com/go-chi/chi/blob/master/_examples/limits/main.go) - Timeouts and Throttling
-* [todos-resource](https://github.com/go-chi/chi/blob/master/_examples/todos-resource/main.go) - Struct routers/handlers, an example of another code layout style
-* [versions](https://github.com/go-chi/chi/blob/master/_examples/versions/main.go) - Demo of `chi/render` subpkg
-* [fileserver](https://github.com/go-chi/chi/blob/master/_examples/fileserver/main.go) - Easily serve static files
-* [graceful](https://github.com/go-chi/chi/blob/master/_examples/graceful/main.go) - Graceful context signaling and server shutdown
+See [_examples/](https://github.com/go-chi/chi/blob/master/_examples/) for a variety of examples.
 
 
 **As easy as:**
@@ -70,8 +64,8 @@ Here is a little preview of how routing looks like with chi. Also take a look at
 in JSON ([routes.json](https://github.com/go-chi/chi/blob/master/_examples/rest/routes.json)) and in
 Markdown ([routes.md](https://github.com/go-chi/chi/blob/master/_examples/rest/routes.md)).
 
-I highly recommend reading the source of the [examples](#examples) listed above, they will show you all the features
-of chi and serve as a good form of documentation.
+I highly recommend reading the source of the [examples](https://github.com/go-chi/chi/blob/master/_examples/) listed
+above, they will show you all the features of chi and serve as a good form of documentation.
 
 ```go
 import (
@@ -232,7 +226,7 @@ type Router interface {
 }
 
 // Routes interface adds two methods for router traversal, which is also
-// used by the `docgen` subpackage to generation documentation for Routers.
+// used by the github.com/go-chi/docgen package to generate documentation for Routers.
 type Routes interface {
 	// Routes returns the routing tree in an easily traversable structure.
 	Routes() []Route
@@ -261,7 +255,7 @@ friendly with any middleware in the community. This offers much better extensibi
 of packages and is at the heart of chi's purpose.
 
 Here is an example of a standard net/http middleware handler using the new request context
-available in Go 1.7+. This middleware sets a hypothetical user identifier on the request
+available in Go. This middleware sets a hypothetical user identifier on the request
 context and calls the next handler in the chain.
 
 ```go
@@ -347,6 +341,7 @@ Please see https://github.com/go-chi for additional packages.
 | package                                            | description                                                 |
 |:---------------------------------------------------|:-------------------------------------------------------------
 | [cors](https://github.com/go-chi/cors)             | Cross-origin resource sharing (CORS)                        |
+| [docgen](https://github.com/go-chi/docgen)         | Print chi.Router routes at runtime                          |
 | [jwtauth](https://github.com/go-chi/jwtauth)       | JWT authentication                                          |
 | [hostrouter](https://github.com/go-chi/hostrouter) | Domain/host based request routing                           |
 | [httpcoala](https://github.com/go-chi/httpcoala)   | HTTP request coalescer                                      |
@@ -374,33 +369,33 @@ and..
 
 The benchmark suite: https://github.com/pkieltyka/go-http-routing-benchmark
 
-Results as of Aug 31, 2017 on Go 1.9.0
+Results as of Jan 9, 2019 with Go 1.11.4 on Linux X1 Carbon laptop
 
 ```shell
-BenchmarkChi_Param        	 3000000	       607 ns/op	     432 B/op	       3 allocs/op
-BenchmarkChi_Param5       	 2000000	       935 ns/op	     432 B/op	       3 allocs/op
-BenchmarkChi_Param20      	 1000000	      1944 ns/op	     432 B/op	       3 allocs/op
-BenchmarkChi_ParamWrite   	 2000000	       664 ns/op	     432 B/op	       3 allocs/op
-BenchmarkChi_GithubStatic 	 2000000	       627 ns/op	     432 B/op	       3 allocs/op
-BenchmarkChi_GithubParam  	 2000000	       847 ns/op	     432 B/op	       3 allocs/op
-BenchmarkChi_GithubAll    	   10000	    175556 ns/op	   87700 B/op	     609 allocs/op
-BenchmarkChi_GPlusStatic  	 3000000	       566 ns/op	     432 B/op	       3 allocs/op
-BenchmarkChi_GPlusParam   	 2000000	       652 ns/op	     432 B/op	       3 allocs/op
-BenchmarkChi_GPlus2Params 	 2000000	       767 ns/op	     432 B/op	       3 allocs/op
-BenchmarkChi_GPlusAll     	  200000	      9794 ns/op	    5616 B/op	      39 allocs/op
-BenchmarkChi_ParseStatic  	 3000000	       590 ns/op	     432 B/op	       3 allocs/op
-BenchmarkChi_ParseParam   	 2000000	       656 ns/op	     432 B/op	       3 allocs/op
-BenchmarkChi_Parse2Params 	 2000000	       715 ns/op	     432 B/op	       3 allocs/op
-BenchmarkChi_ParseAll     	  100000	     18045 ns/op	   11232 B/op	      78 allocs/op
-BenchmarkChi_StaticAll    	   10000	    108871 ns/op	   67827 B/op	     471 allocs/op
+BenchmarkChi_Param            3000000         475 ns/op       432 B/op      3 allocs/op
+BenchmarkChi_Param5           2000000         696 ns/op       432 B/op      3 allocs/op
+BenchmarkChi_Param20          1000000        1275 ns/op       432 B/op      3 allocs/op
+BenchmarkChi_ParamWrite       3000000         505 ns/op       432 B/op      3 allocs/op
+BenchmarkChi_GithubStatic     3000000         508 ns/op       432 B/op      3 allocs/op
+BenchmarkChi_GithubParam      2000000         669 ns/op       432 B/op      3 allocs/op
+BenchmarkChi_GithubAll          10000      134627 ns/op     87699 B/op    609 allocs/op
+BenchmarkChi_GPlusStatic      3000000         402 ns/op       432 B/op      3 allocs/op
+BenchmarkChi_GPlusParam       3000000         500 ns/op       432 B/op      3 allocs/op
+BenchmarkChi_GPlus2Params     3000000         586 ns/op       432 B/op      3 allocs/op
+BenchmarkChi_GPlusAll          200000        7237 ns/op      5616 B/op     39 allocs/op
+BenchmarkChi_ParseStatic      3000000         408 ns/op       432 B/op      3 allocs/op
+BenchmarkChi_ParseParam       3000000         488 ns/op       432 B/op      3 allocs/op
+BenchmarkChi_Parse2Params     3000000         551 ns/op       432 B/op      3 allocs/op
+BenchmarkChi_ParseAll          100000       13508 ns/op     11232 B/op     78 allocs/op
+BenchmarkChi_StaticAll          20000       81933 ns/op     67826 B/op    471 allocs/op
 ```
 
-Comparison with other routers: https://gist.github.com/pkieltyka/c089f309abeb179cfc4deaa519956d8c
+Comparison with other routers: https://gist.github.com/pkieltyka/123032f12052520aaccab752bd3e78cc
 
 NOTE: the allocs in the benchmark above are from the calls to http.Request's
 `WithContext(context.Context)` method that clones the http.Request, sets the `Context()`
 on the duplicated (alloc'd) request and returns it the new request object. This is just
-how setting context on a request in Go 1.7+ works.
+how setting context on a request in Go works.
 
 
 ## Credits

@@ -29,19 +29,19 @@ func (b *BoltDB) Delete(locator store.Locator, commentID string, mode store.Dele
 		}
 
 		comment := store.Comment{}
-		if err := b.load(postBkt, []byte(commentID), &comment); err != nil {
+		if err = b.load(postBkt, []byte(commentID), &comment); err != nil {
 			return errors.Wrapf(err, "can't load key %s from bucket %s", commentID, locator.URL)
 		}
 		// set deleted status and clear fields
 		comment.SetDeleted(mode)
 
-		if err := b.save(postBkt, []byte(commentID), comment); err != nil {
+		if err = b.save(postBkt, []byte(commentID), comment); err != nil {
 			return errors.Wrapf(err, "can't save deleted comment for key %s from bucket %s", commentID, locator.URL)
 		}
 
 		// delete from "last" bucket
 		lastBkt := tx.Bucket([]byte(lastBucketName))
-		if err := lastBkt.Delete([]byte(commentID)); err != nil {
+		if err = lastBkt.Delete([]byte(commentID)); err != nil {
 			return errors.Wrapf(err, "can't delete key %s from bucket %s", commentID, lastBucketName)
 		}
 
@@ -200,8 +200,8 @@ func (b *BoltDB) IsBlocked(siteID string, userID string) (blocked bool) {
 			return nil
 		}
 
-		until, err := time.Parse(tsNano, string(val))
-		if err != nil {
+		until, e := time.Parse(tsNano, string(val))
+		if e != nil {
 			blocked = false
 			return nil
 		}
@@ -223,15 +223,15 @@ func (b *BoltDB) Blocked(siteID string) (users []store.BlockedUser, err error) {
 	err = bdb.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(blocksBucketName))
 		return bucket.ForEach(func(k []byte, v []byte) error {
-			ts, e := time.ParseInLocation(tsNano, string(v), time.Local)
-			if e != nil {
-				return errors.Wrap(e, "can't parse block ts")
+			ts, errParse := time.ParseInLocation(tsNano, string(v), time.Local)
+			if errParse != nil {
+				return errors.Wrap(errParse, "can't parse block ts")
 			}
 			if time.Now().Before(ts) {
 				// get user name from comment user section
 				userName := ""
-				userComments, e := b.User(siteID, string(k), 1, 0)
-				if e == nil && len(userComments) > 0 {
+				userComments, errUser := b.User(siteID, string(k), 1, 0)
+				if errUser == nil && len(userComments) > 0 {
 					userName = userComments[0].User.Name
 				}
 				users = append(users, store.BlockedUser{ID: string(k), Name: userName, Until: ts})
