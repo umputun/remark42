@@ -312,11 +312,20 @@ func (s *Rest) alterComments(comments []store.Comment, r *http.Request) (res []s
 	// prepare vote info for client view
 	vote := func(c store.Comment, r *http.Request) store.Comment {
 
-		_, err := rest.GetUserInfo(r)
+		c.Vote = 0 //default is "none" (not voted)
+
+		user, err := rest.GetUserInfo(r)
 		if err != nil {
-			c.Vote = 0    //default is "none" (not voted) for non-authed user
-			c.Votes = nil // hide voters list
+			c.Votes = nil // hide voters list and don't set Vote for non-authed user
 			return c
+		}
+
+		if v, ok := c.Votes[user.ID]; ok {
+			if v {
+				c.Vote = 1
+			} else {
+				c.Vote = -1
+			}
 		}
 
 		c.Votes = nil // hide voters list
@@ -324,7 +333,7 @@ func (s *Rest) alterComments(comments []store.Comment, r *http.Request) (res []s
 	}
 
 	for i, c := range res {
-		c = vote(c, r) // hide voters list
+		c = vote(c, r)
 		res[i] = c
 	}
 
