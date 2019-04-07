@@ -18,7 +18,7 @@ type Comment struct {
 	Locator     Locator         `json:"locator"`
 	Score       int             `json:"score"`
 	Votes       map[string]bool `json:"votes,omitempty"`
-	Vote        int             `json:"vote"` // vote for the current user, -1/1/0. set by rest from Votes
+	Vote        int             `json:"vote"` // vote for the current user, -1/1/0.
 	Controversy float64         `json:"controversy,omitempty"`
 	Timestamp   time.Time       `json:"time" bson:"time"`
 	Edit        *Edit           `json:"edit,omitempty" bson:"edit,omitempty"` // pointer to have empty default in json response

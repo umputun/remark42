@@ -179,11 +179,13 @@ func TestService_Vote(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 3, len(res))
 	assert.Equal(t, 0, res[0].Score)
+	assert.Equal(t, 0, res[0].Vote)
 	assert.Equal(t, map[string]bool(nil), res[0].Votes, "no votes initially")
 
 	c, err := b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "user1", true)
 	assert.Nil(t, err)
 	assert.Equal(t, 1, c.Score)
+	assert.Equal(t, 1, c.Vote)
 	assert.Equal(t, map[string]bool{"user1": true}, c.Votes, "user voted +")
 
 	c, err = b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "user", true)
@@ -197,6 +199,7 @@ func TestService_Vote(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 3, len(res))
 	assert.Equal(t, 1, res[0].Score)
+	assert.Equal(t, 1, res[0].Vote)
 	assert.Equal(t, 0.0, res[0].Controversy)
 
 	_, err = b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "user1", false)
@@ -205,6 +208,7 @@ func TestService_Vote(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 3, len(res))
 	assert.Equal(t, 0, res[0].Score)
+	assert.Equal(t, 0, res[0].Vote)
 	assert.Equal(t, map[string]bool(nil), res[0].Votes, "vote reset ok")
 }
 
