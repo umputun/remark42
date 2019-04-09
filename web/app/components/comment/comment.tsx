@@ -321,12 +321,18 @@ export class Comment extends Component<Props, State> {
   }
 
   /**
+   * Defines whether current client is logged in via `Anonymous provider`
+   */
+  isAnonymous(): boolean {
+    return this.props.user! && this.props.user!.id.substr(0, 10) === 'anonymous_';
+  }
+
+  /**
    * Defines whether comment made by logged in user
    */
   isCurrentUser(): boolean {
-    if (this.isGuest()) {
-      return false;
-    }
+    if (this.isGuest()) return false;
+
     return this.props.data.user.id === this.props.user!.id;
   }
 
@@ -340,6 +346,7 @@ export class Comment extends Component<Props, State> {
     if (this.isCurrentUser()) return "Can't vote for your own comment";
     if (StaticStore.config.positive_score && this.props.data.score < 1) return 'Only positive score allowed';
     if (this.isGuest()) return 'Sign in to vote';
+    if (this.isAnonymous()) return "Anonymous users can't vote";
     return null;
   }
 
@@ -352,6 +359,7 @@ export class Comment extends Component<Props, State> {
     if (this.props.data.delete) return "Can't vote for deleted comment";
     if (this.isCurrentUser()) return "Can't vote for your own comment";
     if (this.isGuest()) return 'Sign in to vote';
+    if (this.isAnonymous()) return "Anonymous users can't vote";
     return null;
   }
 

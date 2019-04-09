@@ -1,5 +1,5 @@
 import api from '@app/common/api';
-import { User, BlockedUser, Provider, BlockTTL } from '@app/common/types';
+import { User, BlockedUser, AuthProvider, BlockTTL } from '@app/common/types';
 import { ttlToTime } from '@app/utils/ttl-to-time';
 
 import { StoreAction } from '../index';
@@ -16,7 +16,7 @@ export const fetchUser = (): StoreAction<Promise<User | null>> => async dispatch
   return user;
 };
 
-export const logIn = (provider: Provider): StoreAction<Promise<User | null>> => async dispatch => {
+export const logIn = (provider: AuthProvider): StoreAction<Promise<User | null>> => async dispatch => {
   const user = await api.logIn(provider);
   dispatch({
     type: USER_SET,

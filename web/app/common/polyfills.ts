@@ -1,4 +1,4 @@
-import 'core-js/es7/promise';
+import 'core-js/es/promise';
 import 'focus-visible';
 
 export default async function loadPolyfills() {

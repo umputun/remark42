@@ -1,0 +1,29 @@
+.auth-panel-anonymous-login-form {
+  padding: 0.5em 0.7em;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+}
+
+.auth-panel-anonymous-login-form__input {
+  width: 15em;
+}
+
+.auth-panel-anonymous-login-form__remember-me {
+  display: none;
+}
+
+.auth-panel-anonymous-login-form__submit {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0 0.5em;
+  color: currentColor;
+  font: inherit;
+  cursor: pointer;
+}
+
+.auth-panel-anonymous-login-form__submit:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

@@ -12,7 +12,7 @@ import {
   Tree,
   Sorting,
   Theme,
-  Provider,
+  AuthProvider,
   BlockTTL,
 } from '@app/common/types';
 import {
@@ -61,7 +61,7 @@ interface Props {
   fetchComments(sort: Sorting): Promise<Tree>;
   fetchUser(): Promise<User | null>;
   fetchBlockedUsers(): Promise<BlockedUser[]>;
-  logIn(): Promise<User | null>;
+  logIn(p: AuthProvider): Promise<User | null>;
   logOut(): Promise<void>;
   setTheme: (theme: Theme) => void;
   setBlockedVisible: (value: boolean) => boolean;
@@ -289,7 +289,7 @@ const mapDispatchToProps = (dispatch: StoreDispatch) => {
     fetchUser: () => dispatch(fetchUser()),
     fetchBlockedUsers: () => dispatch(fetchBlockedUsers()),
     setBlockedVisible: (value: boolean) => dispatch(setBlockedVisibleState(value)),
-    logIn: (provider: Provider) => dispatch(logIn(provider)),
+    logIn: (provider: AuthProvider) => dispatch(logIn(provider)),
     logOut: () => dispatch(logout()),
     setTheme: (theme: Theme) => dispatch(setTheme(theme)),
     enableComments: () => dispatch(setCommentsReadOnlyState(false)),

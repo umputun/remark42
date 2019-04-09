@@ -6,7 +6,7 @@ import { User, PostInfo } from '../../common/types';
 
 const DefaultProps: Partial<Props> = {
   sort: '-score',
-  providers: [`google`, `github`],
+  providers: ['google', 'github'],
   postInfo: {
     read_only: false,
     url: 'https://example.com',
