@@ -139,6 +139,7 @@ module.exports = () => ({
   },
   stats: {
     children: false,
+    entrypoints: false,
   },
   devServer: {
     host: 'localhost',
@@ -156,6 +157,10 @@ module.exports = () => ({
         logLevel: 'debug',
         changeOrigin: true,
       },
+    },
+    stats: {
+      children: false,
+      entrypoints: false,
     },
   },
 });
