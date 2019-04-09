@@ -52,7 +52,10 @@ export const logOut = (): Promise<void> =>
 export const getConfig = (): Promise<Config> => fetcher.get(`/config`);
 
 export const getPostComments = (sort: Sorting): Promise<Tree> =>
-  fetcher.get(`/find?site=${siteId}&url=${url}&sort=${sort}&format=tree`);
+  fetcher.get({
+    url: `/find?site=${siteId}&url=${url}&sort=${sort}&format=tree`,
+    withCredentials: true,
+  });
 
 export const getLastComments = (siteId: string, max: number): Promise<Comment[]> =>
   fetcher.get(`/last/${max}?site=${siteId}`);
@@ -63,7 +66,8 @@ export const getCommentsCount = (siteId: string, urls: string[]): Promise<{ url:
     body: urls,
   });
 
-export const getComment = (id: Comment['id']): Promise<Comment> => fetcher.get(`/id/${id}?url=${url}`);
+export const getComment = (id: Comment['id']): Promise<Comment> =>
+  fetcher.get({ url: `/id/${id}?url=${url}`, withCredentials: true });
 
 export const getUserComments = (
   userId: User['id'],
@@ -71,7 +75,11 @@ export const getUserComments = (
 ): Promise<{
   comments: Comment[];
   count: number;
-}> => fetcher.get(`/comments?user=${userId}&limit=${limit}`);
+}> =>
+  fetcher.get({
+    url: `/comments?user=${userId}&limit=${limit}`,
+    withCredentials: true,
+  });
 
 export const putCommentVote = ({ id, value }: { id: Comment['id']; value: number }): Promise<void> =>
   fetcher.put({

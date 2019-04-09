@@ -104,18 +104,8 @@ export class Comment extends Component<Props, State> {
   }
 
   updateState(props: Props) {
-    let scoreDelta = 0;
-    if (props.user) {
-      if (props.data.votes[props.user.id] === true) {
-        ++scoreDelta;
-      }
-      if (props.data.votes[props.user.id] === false) {
-        --scoreDelta;
-      }
-    }
-
     this.setState({
-      scoreDelta,
+      scoreDelta: props.data.vote,
       cachedScore: props.data.score,
     });
 

@@ -12,7 +12,7 @@ const DefaultProps: Partial<Props> = {
   view: 'main',
   data: {
     text: 'test comment',
-    votes: {},
+    vote: 0,
     user: {
       id: 'someone',
       picture: 'somepicture-url',
@@ -121,7 +121,7 @@ describe('<Comment />', () => {
       const element = (
         <Comment
           {...DefaultProps as Props}
-          data={{ ...DefaultProps.data, votes: { [DefaultProps.user!.id]: true } } as Props['data']}
+          data={{ ...DefaultProps.data, vote: +1 } as Props['data']}
           putCommentVote={voteSpy}
         />
       );
@@ -146,7 +146,7 @@ describe('<Comment />', () => {
       const element = (
         <Comment
           {...DefaultProps as Props}
-          data={{ ...DefaultProps.data, votes: { [DefaultProps.user!.id]: false } } as Props['data']}
+          data={{ ...DefaultProps.data, vote: -1 } as Props['data']}
           putCommentVote={voteSpy}
         />
       );
