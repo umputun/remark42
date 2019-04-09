@@ -7,6 +7,7 @@ import { Theme } from '@app/common/types';
 
 interface Props {
   title: string;
+  titleClass?: string;
   heading?: string;
   isActive?: boolean;
   onTitleClick?: () => void;
@@ -76,7 +77,7 @@ export default class Dropdown extends Component<Props, State> {
   }
 
   render(props: RenderableProps<Props>, { isActive }: State) {
-    const { title, heading, children, mix } = props;
+    const { title, titleClass, heading, children, mix } = props;
 
     return (
       <div className={b('dropdown', { mix }, { theme: props.theme, active: isActive })} ref={r => (this.rootNode = r)}>
@@ -87,6 +88,7 @@ export default class Dropdown extends Component<Props, State> {
           type="button"
           onClick={() => this.onTitleClick()}
           theme="light"
+          className={titleClass}
         >
           {title}
         </Button>

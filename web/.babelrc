@@ -6,7 +6,8 @@
         "targets": {
           "browsers": ["> 1%", "android >= 4.4.4", "ios >= 9", "IE >= 11"]
         },
-        "useBuiltIns": "usage"
+        "useBuiltIns": "usage",
+				"corejs": 3
       }
     ],
     [

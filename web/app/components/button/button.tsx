@@ -62,9 +62,24 @@ export class Button extends Component<JSX.HTMLAttributes & Props, State> {
     this.props.onFocus!(e);
   }
 
-  render(props: RenderableProps<Props>, state: State) {
-    const { children } = props;
+  render(props: RenderableProps<JSX.HTMLAttributes & Props>, state: State) {
+    const { children, className } = props;
     const { isClicked, isFocused } = state;
+
+    let rclassName = b(
+      'button',
+      { mix: props.mix },
+      { theme: props.theme, type: props.type, kind: props.kind, clicked: isClicked, focused: isFocused }
+    );
+    if (className) {
+      rclassName +=
+        ' ' +
+        b(
+          className,
+          {},
+          { theme: props.theme, type: props.type, kind: props.kind, clicked: isClicked, focused: isFocused }
+        );
+    }
 
     const localProps = { ...props };
     delete localProps.children;
@@ -73,11 +88,7 @@ export class Button extends Component<JSX.HTMLAttributes & Props, State> {
     return (
       <button
         {...localProps}
-        className={b(
-          'button',
-          { mix: props.mix },
-          { theme: props.theme, type: props.type, kind: props.kind, clicked: isClicked, focused: isFocused }
-        )}
+        className={rclassName}
         onMouseDown={this.onMouseDown}
         onBlur={this.onBlur}
         onFocus={this.onFocus}

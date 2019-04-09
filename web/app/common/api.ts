@@ -1,17 +1,26 @@
 import { siteId, url } from './settings';
 import { BASE_URL } from './constants';
-import { Config, Comment, Tree, User, BlockedUser, Sorting, Provider, BlockTTL } from './types';
+import { Config, Comment, Tree, User, BlockedUser, Sorting, AuthProvider, BlockTTL } from './types';
 import fetcher from './fetcher';
 
 /* common */
 
-export const logIn = (provider: Provider) => {
+const __loginAnonymously = (username: string): Promise<User | null> => {
+  const url = `/auth/anonymous/login?user=${encodeURIComponent(username)}&aud=${siteId}?from=${encodeURIComponent(
+    location.origin + location.pathname + '?selfClose'
+  )}`;
+  return fetcher.get<User>({ url, withCredentials: true, overriddenApiBase: '' });
+};
+
+export const logIn = (provider: AuthProvider): Promise<User | null> => {
+  if (provider.name === 'anonymous') return __loginAnonymously(provider.username);
+
   return new Promise<User | null>((resolve, reject) => {
-    const newWindow = window.open(
-      `${BASE_URL}/auth/${provider}/login?from=${encodeURIComponent(
-        location.origin + location.pathname + '?selfClose'
-      )}&site=${siteId}`
-    );
+    const url = `${BASE_URL}/auth/${provider.name}/login?from=${encodeURIComponent(
+      location.origin + location.pathname + '?selfClose'
+    )}&site=${siteId}`;
+
+    const newWindow = window.open(url);
 
     let secondsPass = 0;
     const checkMsDelay = 300;
