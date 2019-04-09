@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -180,7 +181,7 @@ func TestRest_RunAutocertModeHTTPOnly(t *testing.T) {
 	srv.Shutdown()
 }
 
-func Test_rejectAnonUser(t *testing.T) {
+func TestRest_rejectAnonUser(t *testing.T) {
 
 	ts := httptest.NewServer(fakeAuth(rejectAnonUser(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "Hello")
@@ -200,6 +201,54 @@ func Test_rejectAnonUser(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "real user")
 }
 
+func Test_URLKey(t *testing.T) {
+	tbl := []struct {
+		url  string
+		user store.User
+		key  string
+	}{
+		{"http://example.com/1", store.User{}, "http://example.com/1"},
+		{"http://example.com/1", store.User{ID: "user"}, "http://example.com/1"},
+		{"http://example.com/1", store.User{ID: "user", Admin: true}, "admin!!http://example.com/1"},
+	}
+
+	for i, tt := range tbl {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			r, err := http.NewRequest("GET", tt.url, nil)
+			require.NoError(t, err)
+			if tt.user.ID != "" {
+				r = rest.SetUserInfo(r, tt.user)
+			}
+			assert.Equal(t, tt.key, URLKey(r))
+		})
+	}
+
+}
+
+func Test_URLKeyWithUser(t *testing.T) {
+	tbl := []struct {
+		url  string
+		user store.User
+		key  string
+	}{
+		{"http://example.com/1", store.User{}, "http://example.com/1"},
+		{"http://example.com/1", store.User{ID: "user"}, "user!!http://example.com/1"},
+		{"http://example.com/2", store.User{ID: "user2"}, "user2!!http://example.com/2"},
+		{"http://example.com/1", store.User{ID: "user", Admin: true}, "admin!!user!!http://example.com/1"},
+	}
+
+	for i, tt := range tbl {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			r, err := http.NewRequest("GET", tt.url, nil)
+			require.NoError(t, err)
+			if tt.user.ID != "" {
+				r = rest.SetUserInfo(r, tt.user)
+			}
+			assert.Equal(t, tt.key, URLKeyWithUser(r))
+		})
+	}
+
+}
 func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 
 	testDb := fmt.Sprintf("/tmp/test-remark-%d.db", rand.Int31())

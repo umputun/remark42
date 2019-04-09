@@ -346,14 +346,13 @@ func addFileServer(r chi.Router, path string, root http.FileSystem) {
 	var webFS http.Handler
 
 	statikFS, err := fs.New()
-	if err == nil {
-		log.Printf("[INFO] run file server for %s, embedded", root)
-		webFS = http.FileServer(statikFS)
-	}
 	if err != nil {
 		log.Printf("[DEBUG] no embedded assets loaded, %s", err)
 		log.Printf("[INFO] run file server for %s, path %s", root, path)
 		webFS = http.FileServer(root)
+	} else {
+		log.Printf("[INFO] run file server for %s, embedded", root)
+		webFS = http.FileServer(statikFS)
 	}
 
 	origPath := path
@@ -413,7 +412,7 @@ func URLKeyWithUser(r *http.Request) string {
 	key := strings.TrimPrefix(r.URL.String(), adminPrefix) // prevents attach with fake url to get admin view
 	if user, err := rest.GetUserInfo(r); err == nil {
 		if user.Admin {
-			key = adminPrefix + key // make separate cache key for admins
+			key = adminPrefix + user.ID + "!!" + key // make separate cache key for admins
 		} else {
 			key = user.ID + "!!" + key // make separate cache key for authed users
 		}
