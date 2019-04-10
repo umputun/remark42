@@ -44,8 +44,12 @@ export interface Comment {
   locator: Locator;
   /** comment score, read only */
   score: number;
-  /** comment votes, read only */
-  votes: { [key: string]: boolean };
+  /**
+   * vote delta,
+   * if user hasn't voted delta will be 0,
+   * -1/+1 for downvote/upvote
+   */
+  vote: number;
   /** comment controversy, read only */
   controversy?: number;
   /** pointer to have empty default in json response */
