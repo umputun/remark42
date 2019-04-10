@@ -417,7 +417,7 @@ export class Comment extends Component<Props, State> {
         (props.view !== 'preview' && props.data.score < lowCommentScore && !props.data.pin && !props.disabled),
       // TODO: add default view mod or don't?
       guest: isGuest,
-      view: isAdmin ? 'admin' : props.view,
+      view: props.view === 'main' ? props.data.user.admin && 'admin' : props.view,
       replying: props.view === 'main' && isReplying,
       editing: props.view === 'main' && isEditing,
       theme: props.view === 'preview' ? null : props.theme,
