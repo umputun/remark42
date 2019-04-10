@@ -35,7 +35,7 @@ export interface StoreState {
   };
 }
 
-const reducers = combineReducers(storeReducers);
+const reducers = combineReducers<StoreState>(storeReducers);
 const middleware = applyMiddleware(thunk);
 
 /**
