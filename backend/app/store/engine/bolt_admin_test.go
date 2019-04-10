@@ -107,6 +107,7 @@ func TestBoltAdmin_DeleteUser(t *testing.T) {
 
 	b, teardown := prep(t)
 	defer teardown()
+
 	err := b.DeleteUser("radio-t", "user1")
 	require.NoError(t, err)
 
@@ -157,6 +158,7 @@ func TestBoltAdmin_BlockUserWithTTL(t *testing.T) {
 
 	b, teardown := prep(t)
 	defer teardown()
+
 	assert.False(t, b.IsBlocked("radio-t", "user1"), "nothing blocked")
 	assert.NoError(t, b.SetBlock("radio-t", "user1", true, 50*time.Millisecond))
 	assert.True(t, b.IsBlocked("radio-t", "user1"), "user1 blocked")

@@ -113,6 +113,17 @@ export class Root extends Component<Props, State> {
     window.addEventListener('message', this.onMessage.bind(this));
   }
 
+  logIn = async (p: AuthProvider): Promise<User | null> => {
+    const user = await this.props.logIn(p);
+    await this.props.fetchComments(this.props.sort);
+    return user;
+  };
+
+  logOut = async (): Promise<void> => {
+    await this.props.logOut();
+    await this.props.fetchComments(this.props.sort);
+  };
+
   checkUrlHash(
     e: Event & {
       newURL?: string;
@@ -202,8 +213,8 @@ export class Root extends Component<Props, State> {
             providers={StaticStore.config.auth_providers}
             isCommentsDisabled={isCommentsDisabled}
             postInfo={this.props.info}
-            onSignIn={this.props.logIn}
-            onSignOut={this.props.logOut}
+            onSignIn={this.logIn}
+            onSignOut={this.logOut}
             onBlockedUsersShow={this.onBlockedUsersShow}
             onBlockedUsersHide={this.onBlockedUsersHide}
             onCommentsEnable={this.props.enableComments}

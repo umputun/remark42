@@ -206,6 +206,15 @@ func (s *DataStore) Vote(locator store.Locator, commentID string, userID string,
 		comment.Score--
 	}
 
+	comment.Vote = 0
+	if v, ok := comment.Votes[userID]; ok {
+		if v {
+			comment.Vote = 1
+		} else {
+			comment.Vote = -1
+		}
+	}
+
 	comment.Controversy = s.controversy(s.upsAndDowns(comment))
 
 	return comment, s.Put(locator, comment)

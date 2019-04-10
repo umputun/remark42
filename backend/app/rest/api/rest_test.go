@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -37,6 +38,8 @@ var testHTML = "/tmp/test-remark.html"
 var getStartedHTML = "/tmp/getstarted.html"
 
 var devToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6Mzc4OTE5MTgyMiwianRpIjoicmFuZG9tIGlkIiwiaXNzIjoicmVtYXJrNDIiLCJuYmYiOjE1MjE4ODQyMjIsInVzZXIiOnsibmFtZSI6ImRldmVsb3BlciBvbmUiLCJpZCI6ImRldiIsInBpY3R1cmUiOiJodHRwOi8vZXhhbXBsZS5jb20vcGljLnBuZyIsImlwIjoiMTI3LjAuMC4xIiwiZW1haWwiOiJtZUBleGFtcGxlLmNvbSJ9fQ.aKUAXiZxXypgV7m1wEOgUcyPOvUDXHDi3A06YWKbcLg"
+
+var adminUmputunToken = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJyYWRpb3QiLCJleHAiOjE5NTQ1OTc5ODAsImp0aSI6Ijk3YTJlMGFjNGRjN2Q1ZjY5MjZkNWU4NjIwYWNlZjlhNDBjMCIsImlhdCI6MTQ1NDU5NzY4MCwiaXNzIjoicmVtYXJrNDIiLCJ1c2VyIjp7Im5hbWUiOiJVbXB1dHVuIiwiaWQiOiJnaXRodWJfZWYwZjcwNmE3IiwicGljdHVyZSI6Imh0dHBzOi8vcmVtYXJrNDIucmFkaW8tdC5jb20vYXBpL3YxL2F2YXRhci9jYjQyZmY0OTNhZGU2OTZkODhhM2E1OTBmMTM2YWU5ZTM0ZGU3YzFiLmltYWdlIiwiYXR0cnMiOnsiYWRtaW4iOnRydWUsImJsb2NrZWQiOmZhbHNlfX19.I5a8EHbUJy8mApuYCPDRThbC-1jP0sbPh1qwNyY1V4E"
 
 func TestRest_FileServer(t *testing.T) {
 	ts, _, teardown := startupT(t)
@@ -178,7 +181,7 @@ func TestRest_RunAutocertModeHTTPOnly(t *testing.T) {
 	srv.Shutdown()
 }
 
-func Test_rejectAnonUser(t *testing.T) {
+func TestRest_rejectAnonUser(t *testing.T) {
 
 	ts := httptest.NewServer(fakeAuth(rejectAnonUser(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "Hello")
@@ -198,6 +201,54 @@ func Test_rejectAnonUser(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "real user")
 }
 
+func Test_URLKey(t *testing.T) {
+	tbl := []struct {
+		url  string
+		user store.User
+		key  string
+	}{
+		{"http://example.com/1", store.User{}, "http://example.com/1"},
+		{"http://example.com/1", store.User{ID: "user"}, "http://example.com/1"},
+		{"http://example.com/1", store.User{ID: "user", Admin: true}, "admin!!http://example.com/1"},
+	}
+
+	for i, tt := range tbl {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			r, err := http.NewRequest("GET", tt.url, nil)
+			require.NoError(t, err)
+			if tt.user.ID != "" {
+				r = rest.SetUserInfo(r, tt.user)
+			}
+			assert.Equal(t, tt.key, URLKey(r))
+		})
+	}
+
+}
+
+func Test_URLKeyWithUser(t *testing.T) {
+	tbl := []struct {
+		url  string
+		user store.User
+		key  string
+	}{
+		{"http://example.com/1", store.User{}, "http://example.com/1"},
+		{"http://example.com/1", store.User{ID: "user"}, "user!!http://example.com/1"},
+		{"http://example.com/2", store.User{ID: "user2"}, "user2!!http://example.com/2"},
+		{"http://example.com/1", store.User{ID: "user", Admin: true}, "admin!!user!!http://example.com/1"},
+	}
+
+	for i, tt := range tbl {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			r, err := http.NewRequest("GET", tt.url, nil)
+			require.NoError(t, err)
+			if tt.user.ID != "" {
+				r = rest.SetUserInfo(r, tt.user)
+			}
+			assert.Equal(t, tt.key, URLKeyWithUser(r))
+		})
+	}
+
+}
 func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 
 	testDb := fmt.Sprintf("/tmp/test-remark-%d.db", rand.Int31())
@@ -294,6 +345,14 @@ func get(t *testing.T, url string) (string, int) {
 	body, err := ioutil.ReadAll(r.Body)
 	require.Nil(t, err)
 	return string(body), r.StatusCode
+}
+
+func sendReq(t *testing.T, r *http.Request, token string) (*http.Response, error) {
+	client := http.Client{Timeout: 5 * time.Second}
+	if token != "" {
+		r.Header.Set("X-JWT", token)
+	}
+	return client.Do(r)
 }
 
 func getWithDevAuth(t *testing.T, url string) (body string, code int) {

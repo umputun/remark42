@@ -48,7 +48,7 @@ func TestService_CreateFromEmpty(t *testing.T) {
 	assert.Equal(t, "user", res.User.ID)
 	assert.Equal(t, "name", res.User.Name)
 	assert.Equal(t, "23f97cf4d5c29ef788ca2bdd1c9e75656c0e4149", res.User.IP)
-	assert.Equal(t, map[string]bool{}, res.Votes)
+	assert.Equal(t, map[string]bool(nil), res.Votes)
 }
 
 func TestService_CreateFromPartial(t *testing.T) {
@@ -179,11 +179,13 @@ func TestService_Vote(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 3, len(res))
 	assert.Equal(t, 0, res[0].Score)
-	assert.Equal(t, map[string]bool{}, res[0].Votes, "no votes initially")
+	assert.Equal(t, 0, res[0].Vote)
+	assert.Equal(t, map[string]bool(nil), res[0].Votes, "no votes initially")
 
 	c, err := b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "user1", true)
 	assert.Nil(t, err)
 	assert.Equal(t, 1, c.Score)
+	assert.Equal(t, 1, c.Vote)
 	assert.Equal(t, map[string]bool{"user1": true}, c.Votes, "user voted +")
 
 	c, err = b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "user", true)
@@ -197,6 +199,7 @@ func TestService_Vote(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 3, len(res))
 	assert.Equal(t, 1, res[0].Score)
+	assert.Equal(t, 1, res[0].Vote)
 	assert.Equal(t, 0.0, res[0].Controversy)
 
 	_, err = b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "user1", false)
@@ -205,7 +208,8 @@ func TestService_Vote(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 3, len(res))
 	assert.Equal(t, 0, res[0].Score)
-	assert.Equal(t, map[string]bool{}, res[0].Votes, "vote reset ok")
+	assert.Equal(t, 0, res[0].Vote)
+	assert.Equal(t, map[string]bool(nil), res[0].Votes, "vote reset ok")
 }
 
 func TestService_VoteLimit(t *testing.T) {
@@ -251,7 +255,7 @@ func TestService_VoteAggressive(t *testing.T) {
 	t.Logf("%+v", res[0])
 	assert.Equal(t, 3, len(res))
 	assert.Equal(t, 0, res[0].Score)
-	assert.Equal(t, map[string]bool{}, res[0].Votes, "no votes initially")
+	assert.Equal(t, map[string]bool(nil), res[0].Votes, "no votes initially")
 
 	// add a vote as user2
 	_, err = b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "user2", true)

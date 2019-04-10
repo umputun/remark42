@@ -28,13 +28,13 @@ func (s *Rest) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("[DEBUG] get comments for %+v, sort %s, format %s", locator, sort, r.URL.Query().Get("format"))
 
-	key := cache.NewKey(locator.SiteID).ID(URLKey(r)).Scopes(locator.SiteID, locator.URL)
+	key := cache.NewKey(locator.SiteID).ID(URLKeyWithUser(r)).Scopes(locator.SiteID, locator.URL)
 	data, err := s.Cache.Get(key, func() ([]byte, error) {
 		comments, e := s.DataService.Find(locator, sort)
 		if e != nil {
 			comments = []store.Comment{} // error should clear comments and continue for post info
 		}
-		maskedComments := s.adminService.alterComments(comments, r)
+		maskedComments := s.alterComments(comments, r)
 		var b []byte
 		switch r.URL.Query().Get("format") {
 		case "tree":
@@ -130,7 +130,7 @@ func (s *Rest) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		if e != nil {
 			return nil, e
 		}
-		comments = s.adminService.alterComments(comments, r)
+		comments = s.alterComments(comments, r)
 		// filter deleted from last comments view. Blocked marked as deleted and will sneak in without
 		filterDeleted := filterComments(comments, func(c store.Comment) bool { return !c.Deleted })
 		return encodeJSONWithHTML(filterDeleted)
@@ -160,7 +160,7 @@ func (s *Rest) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get comment by id", rest.ErrCommentNotFound)
 		return
 	}
-	comment = s.adminService.alterComments([]store.Comment{comment}, r)[0]
+	comment = s.alterComments([]store.Comment{comment}, r)[0]
 	render.Status(r, http.StatusOK)
 
 	if err = R.RenderJSONWithHTML(w, r, comment); err != nil {
@@ -186,13 +186,13 @@ func (s *Rest) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[DEBUG] get comments for userID %s, %s", userID, siteID)
 
-	key := cache.NewKey(siteID).ID(URLKey(r)).Scopes(userID, siteID)
+	key := cache.NewKey(siteID).ID(URLKeyWithUser(r)).Scopes(userID, siteID)
 	data, err := s.Cache.Get(key, func() ([]byte, error) {
 		comments, e := s.DataService.User(siteID, userID, limit, 0)
 		if e != nil {
 			return nil, e
 		}
-		comments = s.adminService.alterComments(comments, r)
+		comments = s.alterComments(comments, r)
 		comments = filterComments(comments, func(c store.Comment) bool { return !c.Deleted })
 		count, e := s.DataService.UserCount(siteID, userID)
 		if e != nil {

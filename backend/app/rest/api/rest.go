@@ -305,20 +305,54 @@ func (s *Rest) routes() chi.Router {
 	return router
 }
 
+func (s *Rest) alterComments(comments []store.Comment, r *http.Request) (res []store.Comment) {
+
+	res = s.adminService.alterComments(comments, r) // apply admin's alteration
+
+	// prepare vote info for client view
+	vote := func(c store.Comment, r *http.Request) store.Comment {
+
+		c.Vote = 0 // default is "none" (not voted)
+
+		user, err := rest.GetUserInfo(r)
+		if err != nil {
+			c.Votes = nil // hide voters list and don't set Vote for non-authed user
+			return c
+		}
+
+		if v, ok := c.Votes[user.ID]; ok {
+			if v {
+				c.Vote = 1
+			} else {
+				c.Vote = -1
+			}
+		}
+
+		c.Votes = nil // hide voters list
+		return c
+	}
+
+	for i, c := range res {
+		c = vote(c, r)
+		res[i] = c
+	}
+
+	return res
+}
+
 // serves static files from /web or embedded by statik
 func addFileServer(r chi.Router, path string, root http.FileSystem) {
 
 	var webFS http.Handler
 
 	statikFS, err := fs.New()
-	if err == nil {
-		log.Printf("[INFO] run file server for %s, embedded", root)
-		webFS = http.FileServer(statikFS)
-	}
 	if err != nil {
 		log.Printf("[DEBUG] no embedded assets loaded, %s", err)
 		log.Printf("[INFO] run file server for %s, path %s", root, path)
 		webFS = http.FileServer(root)
+	} else {
+		log.Printf("[INFO] run file server for %s, embedded", root)
+		webFS = http.FileServer(statikFS)
 	}
 
 	origPath := path
@@ -364,9 +398,24 @@ func filterComments(comments []store.Comment, fn func(c store.Comment) bool) []s
 // admins will have different keys in order to prevent leak of admin-only data to regular users
 func URLKey(r *http.Request) string {
 	adminPrefix := "admin!!"
-	key := strings.TrimPrefix(r.URL.String(), adminPrefix)          // prevents attach with fake url to get admin view
-	if user, err := rest.GetUserInfo(r); err == nil && user.Admin { // make separate cache key for admins
-		key = adminPrefix + key
+	key := strings.TrimPrefix(r.URL.String(), adminPrefix) // prevents attach with fake url to get admin view
+	if user, err := rest.GetUserInfo(r); err == nil && user.Admin {
+		key = adminPrefix + key // make separate cache key for admins
+	}
+	return key
+}
+
+// URLKeyWithUser gets url from request to use it as cache key and attaching user ID
+// admins will have different keys in order to prevent leak of admin-only data to regular users
+func URLKeyWithUser(r *http.Request) string {
+	adminPrefix := "admin!!"
+	key := strings.TrimPrefix(r.URL.String(), adminPrefix) // prevents attach with fake url to get admin view
+	if user, err := rest.GetUserInfo(r); err == nil {
+		if user.Admin {
+			key = adminPrefix + user.ID + "!!" + key // make separate cache key for admins
+		} else {
+			key = user.ID + "!!" + key // make separate cache key for authed users
+		}
 	}
 	return key
 }
