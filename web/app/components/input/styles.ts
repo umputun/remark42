@@ -18,6 +18,7 @@ require('./__rss/input__rss.scss');
 require('./__rss-link/input__rss-link.scss');
 require('./__markdown/input__markdown.scss');
 require('./__markdown-link/input__markdown-link.scss');
+require('./__markdown-toolbar/input__markdown-toolbar.scss');
 
 require('./_theme/_dark/input_theme_dark.scss');
 require('./_theme/_light/input_theme_light.scss');

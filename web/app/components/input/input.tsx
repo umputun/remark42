@@ -2,6 +2,7 @@
 
 /* styles imports */
 import '@app/components/raw-content';
+import '@github/markdown-toolbar-element';
 import './styles';
 
 import { h, Component, RenderableProps } from 'preact';
@@ -18,6 +19,8 @@ import TextareaAutosize from './textarea-autosize';
 const RSS_THREAD_URL = `${BASE_URL}${API_BASE}/rss/post?site=${siteId}&url=${url}`;
 const RSS_SITE_URL = `${BASE_URL}${API_BASE}/rss/site?site=${siteId}`;
 const RSS_REPLIES_URL = `${BASE_URL}${API_BASE}/rss/reply?site=${siteId}&user=`;
+
+let textareaId = 0;
 
 interface Props {
   /** user id for rss link generation */
@@ -52,10 +55,11 @@ const Labels = {
 
 export class Input extends Component<Props, State> {
   textAreaRef?: TextareaAutosize;
-
+  textareaId: string;
   constructor(props: Props) {
     super(props);
-
+    textareaId = textareaId + 1;
+    this.textareaId = `textarea_${textareaId}`;
     this.state = {
       preview: null,
       isErrorShown: false,
@@ -166,7 +170,11 @@ export class Input extends Component<Props, State> {
         aria-label="New comment"
       >
         <div className="input__field-wrapper">
+          <markdown-toolbar for={this.textareaId}>
+            <md-bold>bold</md-bold>
+          </markdown-toolbar>
           <TextareaAutosize
+            id={this.textareaId}
             ref={ref => (this.textAreaRef = ref)}
             className="input__field"
             placeholder="Your comment here"

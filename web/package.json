@@ -80,8 +80,10 @@
     "whatwg-fetch": "^3.0.0"
   },
   "dependencies": {
+    "@github/markdown-toolbar-element": "^0.2.0",
     "bem-react-helper": "^1.1.2",
     "core-js": "^3.0.1",
+    "document-register-element": "^1.13.1",
     "focus-visible": "^4.1.5",
     "preact": "^8.4.2",
     "preact-redux": "^2.0.3",
