@@ -34,8 +34,10 @@ export default (input: string): boolean => {
     range = document.createRange();
     range.selectNodeContents(el);
 
-    selection.removeAllRanges();
-    selection.addRange(range);
+    if (selection) {
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
   }
 
   document.execCommand('copy');
@@ -46,7 +48,8 @@ export default (input: string): boolean => {
   } catch (err) {}
 
   if (!(document.body as any).createTextRange && window.getSelection) {
-    window.getSelection().removeAllRanges();
+    const selection = window.getSelection();
+    selection && selection.removeAllRanges();
   }
 
   document.body.removeChild(el);
