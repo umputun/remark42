@@ -10,5 +10,6 @@ declare namespace JSX {
     'md-italic': any;
     'md-quote': any;
     'md-code': any;
+    'md-link': any;
   }
 }
