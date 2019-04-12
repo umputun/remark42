@@ -597,8 +597,10 @@ Sort can be `time`, `active` or `score`. Supported sort order with prefix -/+, i
       CriticalScore  int      `json:"critical_score"`
       PositiveScore  bool     `json:"positive_score"`
       ReadOnlyAge    int      `json:"readonly_age"`
+      MaxImageSize   int      `json:"max_image_size"`
   }
   ```
+
 * `GET /api/v1/info?site=site-idd&url=post-ur` - returns `PostInfo` for site and url
 
 ### RSS feeds
