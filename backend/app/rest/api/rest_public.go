@@ -227,6 +227,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		CriticalScore  int      `json:"critical_score"`
 		PositiveScore  bool     `json:"positive_score"`
 		ReadOnlyAge    int      `json:"readonly_age"`
+		MaxImageSize   int      `json:"max_image_size"`
 	}
 
 	cnf := config{
@@ -239,6 +240,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		CriticalScore:  s.ScoreThresholds.Critical,
 		PositiveScore:  s.DataService.PositiveScore,
 		ReadOnlyAge:    s.ReadOnlyAge,
+		MaxImageSize:   s.ImageService.Store.SizeLimit(),
 	}
 
 	cnf.Auth = []string{}

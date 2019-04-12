@@ -425,6 +425,7 @@ func TestRest_Config(t *testing.T) {
 	assert.Equal(t, -10., j["critical_score"])
 	assert.False(t, j["positive_score"].(bool))
 	assert.Equal(t, 10., j["readonly_age"])
+	assert.Equal(t, 10000., j["max_image_size"])
 	t.Logf("%+v", j)
 }
 

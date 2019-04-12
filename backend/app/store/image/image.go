@@ -25,6 +25,7 @@ type Store interface {
 	Commit(id string) error                                                  // move image from staging to permanent
 	Load(id string) (io.ReadCloser, int64, error)                            // load image by ID. Caller has to close the reader.
 	Cleanup(ctx context.Context, ttl time.Duration) error                    // run removal loop for old images on staging
+	SizeLimit() int                                                          // max image size
 }
 
 // Service extends Store with common functions needed for any store implementation

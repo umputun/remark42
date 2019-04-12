@@ -136,6 +136,11 @@ func (f *FileSystem) Cleanup(ctx context.Context, ttl time.Duration) error {
 	return errors.Wrap(err, "failed to cleanup images")
 }
 
+// SizeLimit returns max size of allowed image
+func (f *FileSystem) SizeLimit() int {
+	return f.MaxSize
+}
+
 // location gets full path for id by adding partition to the final path in order to keep files in different subdirectories
 // and avoid too many files in a single place.
 // the end result is a full path like this - /tmp/images/user1/92/xxx-yyy.png.
