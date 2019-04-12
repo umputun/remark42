@@ -8,5 +8,6 @@ declare namespace JSX {
     'md-bold': any;
     'md-header': any;
     'md-italic': any;
+    'md-quote': any;
   }
 }
