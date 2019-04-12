@@ -9,5 +9,6 @@ declare namespace JSX {
     'md-header': any;
     'md-italic': any;
     'md-quote': any;
+    'md-code': any;
   }
 }

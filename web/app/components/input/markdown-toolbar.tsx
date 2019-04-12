@@ -5,6 +5,7 @@ import BoldIcon from './markdown-toolbar-icons/bold-icon';
 import HeaderIcon from './markdown-toolbar-icons/header-icon';
 import ItalicIcon from './markdown-toolbar-icons/italic-icon';
 import QuoteIcon from './markdown-toolbar-icons/quote-icon';
+import CodeIcon from './markdown-toolbar-icons/code-icon';
 
 interface Props {
   textareaId: string;
@@ -13,7 +14,8 @@ interface Props {
 const boldLabel = 'Add bold text <cmd-b>';
 const headerLabel = 'Add header text';
 const italicLabel = 'Add italic text <cmd-i>';
-const quoteLabel = 'Add italic text <cmd-i>';
+const quoteLabel = 'Insert a quote';
+const codeLabel = 'Insert a code';
 
 export default class MarkdownToolbar extends Component<Props> {
   render(props: RenderableProps<Props>) {
@@ -34,6 +36,9 @@ export default class MarkdownToolbar extends Component<Props> {
           <md-quote className="input__toolbar-item" title={quoteLabel} aria-label={quoteLabel}>
             <QuoteIcon />
           </md-quote>
+          <md-code className="input__toolbar-item" title={codeLabel} aria-label={codeLabel}>
+            <CodeIcon />
+          </md-code>
         </div>
       </markdown-toolbar>
     );
