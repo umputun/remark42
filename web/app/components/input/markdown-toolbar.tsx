@@ -7,6 +7,8 @@ import ItalicIcon from './markdown-toolbar-icons/italic-icon';
 import QuoteIcon from './markdown-toolbar-icons/quote-icon';
 import CodeIcon from './markdown-toolbar-icons/code-icon';
 import LinkIcon from './markdown-toolbar-icons/link-icon';
+import UnorderedListIcon from './markdown-toolbar-icons/unordered-list-icon';
+import OrderedListIcon from './markdown-toolbar-icons/ordered-list-icon';
 
 interface Props {
   textareaId: string;
@@ -18,6 +20,8 @@ const italicLabel = 'Add italic text <cmd-i>';
 const quoteLabel = 'Insert a quote';
 const codeLabel = 'Insert a code';
 const linkLabel = 'Add a link <cmd-k>';
+const unorderedListLabel = 'Add a bulleted list';
+const orderedListLabel = 'Add a numbered list';
 
 export default class MarkdownToolbar extends Component<Props> {
   render(props: RenderableProps<Props>) {
@@ -44,6 +48,14 @@ export default class MarkdownToolbar extends Component<Props> {
           <md-link className="input__toolbar-item" title={linkLabel} aria-label={linkLabel}>
             <LinkIcon />
           </md-link>
+        </div>
+        <div className="input__toolbar-group">
+          <md-unordered-list className="input__toolbar-item" title={unorderedListLabel} aria-label={unorderedListLabel}>
+            <UnorderedListIcon />
+          </md-unordered-list>
+          <md-ordered-list className="input__toolbar-item" title={orderedListLabel} aria-label={orderedListLabel}>
+            <OrderedListIcon />
+          </md-ordered-list>
         </div>
       </markdown-toolbar>
     );

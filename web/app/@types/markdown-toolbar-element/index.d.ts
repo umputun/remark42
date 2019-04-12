@@ -11,5 +11,7 @@ declare namespace JSX {
     'md-quote': any;
     'md-code': any;
     'md-link': any;
+    'md-unordered-list': any;
+    'md-ordered-list': any;
   }
 }
