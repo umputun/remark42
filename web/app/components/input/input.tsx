@@ -7,13 +7,15 @@ import './styles';
 import { h, Component, RenderableProps } from 'preact';
 import b, { Mix } from 'bem-react-helper';
 
-import { User, Theme } from '@app/common/types';
+import { User, Theme, Image, ApiError } from '@app/common/types';
 import { BASE_URL, API_BASE } from '@app/common/constants';
 import { StaticStore } from '@app/common/static_store';
 import { siteId, url, pageTitle } from '@app/common/settings';
 import { extractErrorMessageFromResponse } from '@app/utils/errorUtils';
 
 import TextareaAutosize from './textarea-autosize';
+import { sleep } from '@app/utils/sleep';
+import { replaceSelection } from '@app/utils/replaceSelection';
 
 const RSS_THREAD_URL = `${BASE_URL}${API_BASE}/rss/post?site=${siteId}&url=${url}`;
 const RSS_SITE_URL = `${BASE_URL}${API_BASE}/rss/site?site=${siteId}`;
@@ -33,15 +35,22 @@ interface Props {
   getPreview(text: string): Promise<string>;
   /** action on cancel. optional as root input has no cancel option */
   onCancel?: () => void;
+  uploadImage: (image: File) => Promise<Image>;
 }
 
 interface State {
   preview: string | null;
   isErrorShown: boolean;
+  /** error message, if contains newlines, it will be splitted to multiple errors */
   errorMessage: string | null;
+  /** prevents error hiding on input event */
+  errorLock: boolean;
   isDisabled: boolean;
   maxLength: number;
+  /** main input value */
   text: string;
+  /** override main button text */
+  buttonText: null | string;
 }
 
 const Labels = {
@@ -50,7 +59,10 @@ const Labels = {
   reply: 'Reply',
 };
 
+const ImageMimeRegex = /image\//i;
+
 export class Input extends Component<Props, State> {
+  /** reference to textarea element */
   textAreaRef?: TextareaAutosize;
 
   constructor(props: Props) {
@@ -60,15 +72,22 @@ export class Input extends Component<Props, State> {
       preview: null,
       isErrorShown: false,
       errorMessage: null,
+      errorLock: false,
       isDisabled: false,
       maxLength: StaticStore.config.max_comment_size,
       text: props.value || '',
+      buttonText: null,
     };
 
     this.send = this.send.bind(this);
     this.getPreview = this.getPreview.bind(this);
     this.onInput = this.onInput.bind(this);
     this.onKeyDown = this.onKeyDown.bind(this);
+    this.onDragOver = this.onDragOver.bind(this);
+    this.onDrop = this.onDrop.bind(this);
+    this.appendError = this.appendError.bind(this);
+    this.uploadImage = this.uploadImage.bind(this);
+    this.uploadImages = this.uploadImages.bind(this);
   }
 
   componentWillReceiveProps(nextProps: Props) {
@@ -97,10 +116,17 @@ export class Input extends Component<Props, State> {
   }
 
   onInput(e: Event) {
+    if (this.state.errorLock) {
+      this.setState({
+        preview: null,
+        text: (e.target as HTMLInputElement).value,
+      });
+      return;
+    }
     this.setState({
-      preview: null,
       isErrorShown: false,
       errorMessage: null,
+      preview: null,
       text: (e.target as HTMLInputElement).value,
     });
   }
@@ -148,10 +174,165 @@ export class Input extends Component<Props, State> {
       });
   }
 
-  render(props: RenderableProps<Props>, { isDisabled, isErrorShown, errorMessage, preview, maxLength, text }: State) {
+  /** appends error to input's error block */
+  appendError(...errors: string[]) {
+    if (!this.state.errorMessage) {
+      this.setState({
+        errorMessage: errors.join('\n'),
+        isErrorShown: true,
+      });
+      return;
+    }
+    this.setState({
+      errorMessage: this.state.errorMessage + '\n' + errors.join('\n'),
+      isErrorShown: true,
+    });
+  }
+
+  onDragOver(e: DragEvent) {
+    if (StaticStore.config.max_image_size === 0) return;
+    if (!this.textAreaRef) return;
+    if (!e.dataTransfer) return;
+    const items = Array.from(e.dataTransfer.items);
+    if (Array.from(items).filter(i => i.kind === 'file' && ImageMimeRegex.test(i.type)).length === 0) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  }
+
+  onDrop(e: DragEvent) {
+    if (StaticStore.config.max_image_size === 0) return;
+    if (!e.dataTransfer) return;
+
+    const data = Array.from(e.dataTransfer.files).filter(f => ImageMimeRegex.test(f.type));
+    if (data.length === 0) return;
+
+    e.preventDefault();
+
+    this.uploadImages(data);
+  }
+
+  /** wrapper with error handling for props.uploadImage */
+  uploadImage(file: File): Promise<Image | Error> {
+    return this.props
+      .uploadImage(file)
+      .catch(
+        (e: ApiError | string) =>
+          new Error(
+            typeof e === 'string'
+              ? `${file.name} upload failed with "${e}"`
+              : `${file.name} upload failed with "${e.error}"`
+          )
+      );
+  }
+
+  /** performs upload process */
+  async uploadImages(files: File[]) {
+    if (!this.textAreaRef) return;
+
+    /** Human readable image size limit, i.e 5MB */
+    const maxImageSizeString = (StaticStore.config.max_image_size / 1024 / 1024).toFixed(2) + 'MB';
+    /** upload delay to avoid server rate limiter */
+    const uploadDelay = 5000;
+
+    const isSelectionSupported = this.textAreaRef.isSelectionSupported();
+
+    this.setState({
+      errorLock: true,
+      errorMessage: null,
+      isErrorShown: false,
+      isDisabled: true,
+      buttonText: 'Uploading...',
+    });
+
+    // fallback for ie < 9
+    if (!isSelectionSupported) {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const isFirst = i === 0;
+        const placeholderStart = this.state.text.length === 0 ? '' : '\n';
+
+        if (file.size > StaticStore.config.max_image_size) {
+          this.appendError(`${file.name} exceeds size limit of ${maxImageSizeString}`);
+          continue;
+        }
+
+        !isFirst && (await sleep(uploadDelay));
+
+        const result = await this.uploadImage(file);
+
+        if (result instanceof Error) {
+          this.appendError(result.message);
+          continue;
+        }
+
+        const markdownString = `${placeholderStart}![${result.name}](${result.url})`;
+        this.setState({
+          text: this.state.text + markdownString,
+        });
+      }
+
+      this.setState({ errorLock: false, isDisabled: false, buttonText: null });
+      return;
+    }
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const isFirst = i === 0;
+      const placeholderStart = this.state.text.length === 0 ? '' : '\n';
+
+      const uploadPlaceholder = `${placeholderStart}![uploading ${file.name}...]()`;
+      const uploadPlaceholderLength = uploadPlaceholder.length;
+      const selection = this.textAreaRef.getSelection();
+      /** saved selection in case of error */
+      const originalText = this.state.text;
+      const restoreSelection = async () => {
+        this.setState({
+          text: originalText,
+        });
+        /** sleeping awhile so textarea catch state change and its selection */
+        await sleep(100);
+        this.textAreaRef!.setSelection(selection);
+      };
+
+      if (file.size > StaticStore.config.max_image_size) {
+        this.appendError(`${file.name} exceeds size limit of ${maxImageSizeString}`);
+        continue;
+      }
+
+      this.setState({
+        text: replaceSelection(this.state.text, selection, uploadPlaceholder),
+      });
+
+      !isFirst && (await sleep(uploadDelay));
+
+      const result = await this.uploadImage(file);
+
+      if (result instanceof Error) {
+        this.appendError(result.message);
+        await restoreSelection();
+        continue;
+      }
+
+      const markdownString = `${placeholderStart}![${result.name}](${result.url})`;
+      this.setState({
+        text: replaceSelection(this.state.text, [selection[0], selection[0] + uploadPlaceholderLength], markdownString),
+      });
+      /** sleeping awhile so textarea catch state change and its selection */
+      await sleep(100);
+      const selectionPointer = selection[0] + markdownString.length;
+      this.textAreaRef.setSelection([selectionPointer, selectionPointer]);
+    }
+
+    this.setState({ errorLock: false, isDisabled: false, buttonText: null });
+  }
+
+  render(
+    props: RenderableProps<Props>,
+    { isDisabled, isErrorShown, errorMessage, preview, maxLength, text, buttonText }: State
+  ) {
     const charactersLeft = maxLength - text.length;
     errorMessage = props.errorMessage || errorMessage;
-    const label = Labels[props.mode || 'main'];
+    const label = buttonText || Labels[props.mode || 'main'];
 
     return (
       <form
@@ -164,6 +345,8 @@ export class Input extends Component<Props, State> {
         })}
         onSubmit={this.send}
         aria-label="New comment"
+        onDragOver={this.onDragOver}
+        onDrop={this.onDrop}
       >
         <div className="input__field-wrapper">
           <TextareaAutosize
@@ -181,11 +364,12 @@ export class Input extends Component<Props, State> {
           {charactersLeft < 100 && <span className="input__counter">{charactersLeft}</span>}
         </div>
 
-        {(isErrorShown || !!errorMessage) && (
-          <p className="input__error" role="alert">
-            {errorMessage || 'Something went wrong. Please try again a bit later.'}
-          </p>
-        )}
+        {(isErrorShown || !!errorMessage) &&
+          (errorMessage || 'Something went wrong. Please try again a bit later.').split('\n').map(e => (
+            <p className="input__error" role="alert" key={e}>
+              {e}
+            </p>
+          ))}
 
         <div className="input__actions">
           <button

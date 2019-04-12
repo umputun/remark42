@@ -1,6 +1,6 @@
 import { siteId, url } from './settings';
-import { BASE_URL } from './constants';
-import { Config, Comment, Tree, User, BlockedUser, Sorting, AuthProvider, BlockTTL } from './types';
+import { BASE_URL, API_BASE } from './constants';
+import { Config, Comment, Tree, User, BlockedUser, Sorting, AuthProvider, BlockTTL, Image } from './types';
 import fetcher from './fetcher';
 
 /* common */
@@ -234,6 +234,25 @@ export const enableComments = (): Promise<void> =>
     withCredentials: true,
   });
 
+export const uploadImage = (image: File): Promise<Image> => {
+  const data = new FormData();
+  data.append('file', image);
+
+  return fetcher
+    .post<{ id: string }>({
+      url: `/picture`,
+      withCredentials: true,
+      contentType: 'multipart/form-data',
+      body: data,
+    })
+    .then(resp => ({
+      name: image.name,
+      size: image.size,
+      type: image.type,
+      url: BASE_URL + API_BASE + '/picture/' + resp.id,
+    }));
+};
+
 export default {
   logIn,
   logOut,
@@ -260,4 +279,5 @@ export default {
   getBlocked,
   disableComments,
   enableComments,
+  uploadImage,
 };

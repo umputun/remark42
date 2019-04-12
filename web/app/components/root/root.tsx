@@ -14,6 +14,7 @@ import {
   Theme,
   AuthProvider,
   BlockTTL,
+  Image,
 } from '@app/common/types';
 import {
   NODE_ID,
@@ -47,6 +48,7 @@ import { ConnectedComment as Comment } from '@app/components/comment/connected-c
 import { Input } from '@app/components/input';
 import Preloader from '@app/components/preloader';
 import { Thread } from '@app/components/thread';
+import { uploadImage } from '@app/common/api';
 
 interface Props {
   user: User | null;
@@ -73,6 +75,7 @@ interface Props {
   unblockUser(id: User['id']): Promise<void>;
   addComment(text: string, title: string, pid?: CommentType['id']): Promise<void>;
   updateComment(id: string, text: string): Promise<void>;
+  uploadImage(image: File): Promise<Image>;
 }
 
 interface State {
@@ -232,6 +235,7 @@ export class Root extends Component<Props, State> {
                   userId={this.props.user!.id}
                   onSubmit={(text, title) => this.props.addComment(text, title)}
                   getPreview={this.props.getPreview}
+                  uploadImage={this.props.uploadImage}
                 />
               )}
 
@@ -311,6 +315,7 @@ const mapDispatchToProps = (dispatch: StoreDispatch) => {
     addComment: (text: string, pageTitle: string, pid?: CommentType['id']) =>
       dispatch(addComment(text, pageTitle, pid)),
     updateComment: (id: CommentType['id'], text: string) => dispatch(updateComment(id, text)),
+    uploadImage: (image: File) => uploadImage(image),
   };
 };
 
