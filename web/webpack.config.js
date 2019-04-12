@@ -62,8 +62,32 @@ module.exports = () => ({
     rules: [
       {
         test: /\.js(x?)$/,
-        exclude: /node_modules/,
-        use: 'babel-loader',
+        oneOf: [
+          {
+            include: /node_modules\/@github\/markdown-toolbar-element/,
+            use: {
+              loader: 'babel-loader',
+              options: {
+                presets: [
+                  [
+                    '@babel/preset-env',
+                    {
+                      targets: {
+                        browsers: ['> 1%', 'android >= 4.4.4', 'ios >= 9', 'IE >= 11'],
+                      },
+                      useBuiltIns: 'usage',
+                      corejs: 3,
+                    },
+                  ],
+                ],
+              },
+            },
+          },
+          {
+            exclude: /node_modules/,
+            use: 'babel-loader',
+          },
+        ],
       },
       {
         test: /\.ts(x?)$/,

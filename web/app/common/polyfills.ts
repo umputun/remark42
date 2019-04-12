@@ -1,5 +1,7 @@
 import 'core-js/es/promise';
 import 'focus-visible';
+import '@webcomponents/custom-elements';
+import './closest-polyfill';
 
 export default async function loadPolyfills() {
   const fillCoreJs = async () => {

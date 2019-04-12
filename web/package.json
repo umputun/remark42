@@ -47,6 +47,7 @@
     "clean-webpack-plugin": "^2.0.1",
     "copy-webpack-plugin": "^5.0.2",
     "css-loader": "^2.1.1",
+    "document-register-element": "^1.13.1",
     "eslint": "^5.16.0",
     "eslint-config-prettier": "^4.1.0",
     "eslint-plugin-jsx-a11y": "^6.2.1",
@@ -81,9 +82,9 @@
   },
   "dependencies": {
     "@github/markdown-toolbar-element": "^0.2.0",
+    "@webcomponents/custom-elements": "^1.2.2",
     "bem-react-helper": "^1.1.2",
     "core-js": "^3.0.1",
-    "document-register-element": "^1.13.1",
     "focus-visible": "^4.1.5",
     "preact": "^8.4.2",
     "preact-redux": "^2.0.3",
