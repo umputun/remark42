@@ -35,4 +35,15 @@
   .input__preview-wrapper {
     background: #eee;
   }
+
+  .input__toolbar-item {
+    color: #ddd;
+    &:hover {
+      color: #0aa;
+    }
+  }
+
+  .input__control-panel {
+    background-color: #333;
+  }
 }

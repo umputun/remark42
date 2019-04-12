@@ -8,6 +8,7 @@ require('./__button/input__button.scss');
 require('./__button/_type/_preview/input__button_type_preview.scss');
 require('./__button/_type/_send/input__button_type_send.scss');
 
+require('./__control-panel/input__control-panel.scss');
 require('./__counter/input__counter.scss');
 require('./__error/input__error.scss');
 require('./__field/input__field.scss');

@@ -1,11 +1,31 @@
 markdown-toolbar {
   display: block;
-  font-size: 16px;
-  line-height: 1.2;
-  border: 1px dashed;
-  border-radius: 2px;
+  float: right;
 }
 
-md-bold {
+.input__toolbar-item {
+  background: none;
+  border: 0;
+  color: #586069;
   display: block;
+  float: left;
+  padding: 4px 5px;
+
+  &:hover {
+    color: #0aa;
+  }
+}
+
+.input__toolbar-icon {
+  display: inline-block;
+  fill: currentColor;
+}
+
+.input__toolbar-group {
+  display: inline-block;
+  margin-left: 20px;
+}
+
+.input__toolbar-group:first-child {
+  margin-left: 0;
 }

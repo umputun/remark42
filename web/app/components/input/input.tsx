@@ -2,7 +2,6 @@
 
 /* styles imports */
 import '@app/components/raw-content';
-import '@github/markdown-toolbar-element';
 import './styles';
 
 import { h, Component, RenderableProps } from 'preact';
@@ -14,6 +13,7 @@ import { StaticStore } from '@app/common/static_store';
 import { siteId, url, pageTitle } from '@app/common/settings';
 import { extractErrorMessageFromResponse } from '@app/utils/errorUtils';
 
+import MarkdownToolbar from './markdown-toolbar';
 import TextareaAutosize from './textarea-autosize';
 
 const RSS_THREAD_URL = `${BASE_URL}${API_BASE}/rss/post?site=${siteId}&url=${url}`;
@@ -169,10 +169,10 @@ export class Input extends Component<Props, State> {
         onSubmit={this.send}
         aria-label="New comment"
       >
+        <div className="input__control-panel">
+          <MarkdownToolbar textareaId={this.textareaId} />
+        </div>
         <div className="input__field-wrapper">
-          <markdown-toolbar for={this.textareaId}>
-            <md-bold>bold</md-bold>
-          </markdown-toolbar>
           <TextareaAutosize
             id={this.textareaId}
             ref={ref => (this.textAreaRef = ref)}

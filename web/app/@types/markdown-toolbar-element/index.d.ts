@@ -1,6 +1,10 @@
 declare namespace JSX {
   interface IntrinsicElements {
-    'markdown-toolbar': any;
+    'markdown-toolbar': {
+      for: string;
+      children?: any;
+    };
     'md-bold': any;
+    'md-header': any;
   }
 }
