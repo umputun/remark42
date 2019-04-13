@@ -1,6 +1,7 @@
 package image
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"hash/crc64"
@@ -15,7 +16,6 @@ import (
 	"time"
 
 	log "github.com/go-pkgz/lgr"
-	"github.com/google/uuid"
 	"github.com/pkg/errors"
 )
 
@@ -38,12 +38,7 @@ type FileSystem struct {
 // Files partitioned across multiple subdirectories and the final path includes part, i.e. /location/user1/03/123-4567.png
 func (f *FileSystem) Save(fileName string, userID string, r io.Reader) (id string, err error) {
 
-	uid, err := uuid.NewUUID()
-	if err != nil {
-		return "", errors.Wrap(err, "can't make image uuid")
-	}
-
-	id = path.Join(userID, uid.String()) + filepath.Ext(fileName) // make id as user/uuid.ext
+	id = path.Join(userID, guid()) + filepath.Ext(fileName) // make id as user/uuid.ext
 	dst := f.location(f.Staging, id)
 
 	if err = os.MkdirAll(path.Dir(dst), 0700); err != nil {
@@ -54,20 +49,31 @@ func (f *FileSystem) Save(fileName string, userID string, r io.Reader) (id strin
 	if err != nil {
 		return "", errors.Wrapf(err, "can't make image file %s", dst)
 	}
+
 	lr := io.LimitReader(r, int64(f.MaxSize)+1)
-	written, err := io.Copy(fh, lr)
+
+	// read header first, needed it to check if data is valid png/gif/jpeg
+	header := make([]byte, 512)
+	hl, err := lr.Read(header)
+	if !isValidImage(header) {
+		return "", errors.Errorf("file %s is not in allowed format", fileName)
+	}
+
+	written, err := io.Copy(fh, io.MultiReader(bytes.NewReader(header[:hl]), lr)) // write header and the rest of input
 	if err != nil {
 		return "", errors.Wrapf(err, "can't write image file %s", dst)
 	}
 	if err = fh.Close(); err != nil {
 		return "", errors.Wrapf(err, "can't close image file %s", dst)
 	}
+
 	if written > int64(f.MaxSize) {
 		if err = os.Remove(dst); err != nil {
 			log.Printf("[WARN] can't remove image file %s, %v", dst, err)
 		}
 		return "", errors.Errorf("file %s is too large", fileName)
 	}
+
 	log.Printf("[DEBUG] file %s saved for image %s", fh.Name(), fileName)
 	return id, nil
 }

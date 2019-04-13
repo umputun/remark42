@@ -8,6 +8,7 @@ package image
 import (
 	"context"
 	"io"
+	"net/http"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -16,6 +17,7 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	log "github.com/go-pkgz/lgr"
 	"github.com/pkg/errors"
+	"github.com/rs/xid"
 )
 
 // Store defines interface for saving and loading pictures.
@@ -125,4 +127,15 @@ func (s *Service) Close() {
 		close(s.submitCh)
 	}
 	s.wg.Wait()
+}
+
+// check if file f is a valid image format, i.e. gif, png or jpeg
+func isValidImage(b []byte) bool {
+	ct := http.DetectContentType(b)
+	return ct == "image/gif" || ct == "image/png" || ct == "image/jpeg"
+}
+
+// guid makes a globally unique id
+func guid() string {
+	return xid.New().String()
 }

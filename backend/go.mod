@@ -30,6 +30,7 @@ require (
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/errors v0.8.1
 	github.com/rakyll/statik v0.1.3
+	github.com/rs/xid v1.2.1
 	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
 	github.com/stretchr/testify v1.3.0
 	golang.org/x/crypto v0.0.0-20181030102418-4d3f4d9ffa16
