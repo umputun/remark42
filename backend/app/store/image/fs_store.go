@@ -52,9 +52,12 @@ func (f *FileSystem) Save(fileName string, userID string, r io.Reader) (id strin
 
 	lr := io.LimitReader(r, int64(f.MaxSize)+1)
 
-	// read header first, needed it to check if data is valid png/gif/jpeg
+	// read header first, needs it to check if data is valid png/gif/jpeg
 	header := make([]byte, 512)
 	hl, err := lr.Read(header)
+	if err != nil {
+		return "", errors.Wrapf(err, "can't read image header for %s", fileName)
+	}
 	if !isValidImage(header) {
 		return "", errors.Errorf("file %s is not in allowed format", fileName)
 	}
