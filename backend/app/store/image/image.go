@@ -132,7 +132,7 @@ func (s *Service) Close() {
 // check if file f is a valid image format, i.e. gif, png or jpeg
 func isValidImage(b []byte) bool {
 	ct := http.DetectContentType(b)
-	return ct == "image/gif" || ct == "image/png" || ct == "image/jpeg"
+	return ct == "image/gif" || ct == "image/png" || ct == "image/jpeg" || ct == "image/webp"
 }
 
 // guid makes a globally unique id
