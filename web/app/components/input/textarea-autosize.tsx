@@ -13,11 +13,13 @@ export default class TextareaAutosize extends Component<Props> {
 
     this.onRef = this.onRef.bind(this);
   }
+
   componentDidMount() {
     this.autoResize();
 
     if (this.props.autofocus) this.focus();
   }
+
   componentDidUpdate(prevProps: Props) {
     if (prevProps.value !== this.props.value) {
       this.autoResize();
@@ -33,9 +35,30 @@ export default class TextareaAutosize extends Component<Props> {
     }, 100);
   }
 
+  /** returns whether selectionStart api supported */
+  isSelectionSupported(): boolean {
+    if (!this.textareaRef) throw new Error('No textarea element reference exists');
+    return 'selectionStart' in this.textareaRef;
+  }
+
+  /** returns selection range of a textarea */
+  getSelection(): [number, number] {
+    if (!this.textareaRef) throw new Error('No textarea element reference exists');
+
+    return [this.textareaRef.selectionStart, this.textareaRef.selectionEnd];
+  }
+
+  /** sets selection range of a textarea */
+  setSelection(selection: [number, number]) {
+    if (!this.textareaRef) throw new Error('No textarea element reference exists');
+    this.textareaRef.selectionStart = selection[0];
+    this.textareaRef.selectionEnd = selection[1];
+  }
+
   onRef(node: HTMLTextAreaElement) {
     this.textareaRef = node;
   }
+
   autoResize() {
     if (this.textareaRef) {
       this.textareaRef.style.height = '';

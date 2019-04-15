@@ -101,6 +101,7 @@ export interface Config {
   critical_score: number;
   positive_score: boolean;
   readonly_age: number;
+  max_image_size: number;
 }
 
 export interface RemarkConfig {
@@ -137,4 +138,24 @@ export enum CommentMode {
   None,
   Reply,
   Edit,
+}
+
+/**
+ * Used as api.uploadImage response type
+ */
+export interface Image {
+  name: string;
+  size: number;
+  /** mime type of an image */
+  type: string;
+  url: string;
+}
+
+/** error struct returned in case of api call error */
+export interface ApiError {
+  code: number;
+  /** simple explanation */
+  details: string;
+  /** in-depth explanation */
+  error: string;
 }

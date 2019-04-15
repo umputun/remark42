@@ -6,28 +6,45 @@ import { getCookie } from './cookies';
 export type FetcherMethod = 'get' | 'post' | 'put' | 'patch' | 'delete' | 'head';
 const methods: FetcherMethod[] = ['get', 'post', 'put', 'patch', 'delete', 'head'];
 
-type FetcherInit =
-  | string
-  | {
-      url: string;
-      body?: string | object | Blob | ArrayBuffer;
-      overriddenApiBase?: string;
-      withCredentials?: boolean;
-    };
+interface FetcherInitBase {
+  url: string;
+  overriddenApiBase?: string;
+  withCredentials?: boolean;
+}
+
+interface FetcherInitJSON extends FetcherInitBase {
+  contentType?: 'application/json';
+  body?: string | object | Blob | ArrayBuffer;
+}
+
+interface FetcherInitMultipart extends FetcherInitBase {
+  contentType: 'multipart/form-data';
+  body: FormData;
+}
+
+type FetcherInit = string | FetcherInitJSON | FetcherInitMultipart;
 
 type FetcherObject = { [K in FetcherMethod]: <T = unknown>(data: FetcherInit) => Promise<T> };
 
 const fetcher = methods.reduce<Partial<FetcherObject>>((acc, method) => {
   acc[method] = <T = unknown>(data: FetcherInit): Promise<T> => {
-    const { url, body = undefined, withCredentials = false, overriddenApiBase = API_BASE } =
-      typeof data === 'string' ? { url: data } : data;
+    const {
+      url,
+      body = undefined,
+      withCredentials = false,
+      overriddenApiBase = API_BASE,
+      contentType = 'application/json',
+    } = typeof data === 'string' ? { url: data } : data;
     const basename = `${BASE_URL}${overriddenApiBase}`;
 
     const headers = new Headers({
       Accept: 'application/json',
-      'Content-Type': 'application/json',
       'X-XSRF-TOKEN': getCookie('XSRF-TOKEN') || '',
     });
+
+    if (contentType !== 'multipart/form-data') {
+      headers.append('Content-Type', contentType);
+    }
 
     let rurl = `${basename}${url}`;
 
@@ -39,7 +56,9 @@ const fetcher = methods.reduce<Partial<FetcherObject>>((acc, method) => {
     };
 
     if (body) {
-      if (typeof body === 'object') {
+      if (contentType === 'multipart/form-data') {
+        parameters.body = body as FormData;
+      } else if (typeof body === 'object' && !(body instanceof Blob) && !(body instanceof ArrayBuffer)) {
         parameters.body = JSON.stringify(body);
       } else {
         parameters.body = body;

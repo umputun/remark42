@@ -11,7 +11,7 @@ import { API_BASE, BASE_URL, COMMENT_NODE_CLASSNAME_PREFIX, BLOCKING_DURATIONS }
 import { StaticStore } from '@app/common/static_store';
 import debounce from '@app/utils/debounce';
 import copy from '@app/common/copy';
-import { Theme, BlockTTL, Comment as CommentType, PostInfo, User, CommentMode } from '@app/common/types';
+import { Theme, BlockTTL, Comment as CommentType, PostInfo, User, CommentMode, Image } from '@app/common/types';
 import { extractErrorMessageFromResponse, FetcherResponse } from '@app/utils/errorUtils';
 
 import { Input } from '@app/components/input';
@@ -54,6 +54,7 @@ export interface Props {
   blockUser?(id: User['id'], name: User['name'], ttl: BlockTTL): Promise<void>;
   unblockUser?(id: User['id']): Promise<void>;
   setVerifyStatus?(id: User['id'], value: boolean): Promise<void>;
+  uploadImage?(image: File): Promise<Image>;
 }
 
 export interface State {
@@ -675,6 +676,7 @@ export class Comment extends Component<Props, State> {
             onCancel={this.toggleReplying}
             getPreview={this.props.getPreview!}
             autofocus={true}
+            uploadImage={this.props.uploadImage!}
           />
         )}
 
@@ -689,6 +691,7 @@ export class Comment extends Component<Props, State> {
             getPreview={this.props.getPreview!}
             errorMessage={state.editDeadline === null ? 'Editing time has expired.' : undefined}
             autofocus={true}
+            uploadImage={this.props.uploadImage!}
           />
         )}
       </article>

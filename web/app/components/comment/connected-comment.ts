@@ -21,6 +21,7 @@ import { blockUser, unblockUser, setVirifiedStatus } from '@app/store/user/actio
 
 import { Comment, Props } from './comment';
 import { getCommentMode } from '@app/store/comments/getters';
+import { uploadImage } from '@app/common/api';
 
 const mapProps = (state: StoreState, cprops: { data: CommentType }) => {
   const props: Pick<
@@ -51,6 +52,7 @@ const mapDispatchToProps = (dispatch: StoreDispatch) => {
     | 'blockUser'
     | 'unblockUser'
     | 'setVerifyStatus'
+    | 'uploadImage'
   > = {
     addComment: (text: string, title: string, pid?: CommentType['id']) => dispatch(addComment(text, title, pid)),
     updateComment: (id: CommentType['id'], text: string) => dispatch(updateComment(id, text)),
@@ -63,6 +65,8 @@ const mapDispatchToProps = (dispatch: StoreDispatch) => {
     blockUser: (id: User['id'], name: User['name'], ttl: BlockTTL) => dispatch(blockUser(id, name, ttl)),
     unblockUser: (id: User['id']) => dispatch(unblockUser(id)),
     setVerifyStatus: (id: User['id'], value: boolean) => dispatch(setVirifiedStatus(id, value)),
+    // should i made it as store action?
+    uploadImage: (image: File) => uploadImage(image),
   };
 
   return props;
