@@ -13,11 +13,14 @@ import { StaticStore } from '@app/common/static_store';
 import { siteId, url, pageTitle } from '@app/common/settings';
 import { extractErrorMessageFromResponse } from '@app/utils/errorUtils';
 
+import MarkdownToolbar from './markdown-toolbar';
 import TextareaAutosize from './textarea-autosize';
 
 const RSS_THREAD_URL = `${BASE_URL}${API_BASE}/rss/post?site=${siteId}&url=${url}`;
 const RSS_SITE_URL = `${BASE_URL}${API_BASE}/rss/site?site=${siteId}`;
 const RSS_REPLIES_URL = `${BASE_URL}${API_BASE}/rss/reply?site=${siteId}&user=`;
+
+let textareaId = 0;
 
 interface Props {
   /** user id for rss link generation */
@@ -52,10 +55,11 @@ const Labels = {
 
 export class Input extends Component<Props, State> {
   textAreaRef?: TextareaAutosize;
-
+  textareaId: string;
   constructor(props: Props) {
     super(props);
-
+    textareaId = textareaId + 1;
+    this.textareaId = `textarea_${textareaId}`;
     this.state = {
       preview: null,
       isErrorShown: false,
@@ -165,8 +169,12 @@ export class Input extends Component<Props, State> {
         onSubmit={this.send}
         aria-label="New comment"
       >
+        <div className="input__control-panel">
+          <MarkdownToolbar textareaId={this.textareaId} />
+        </div>
         <div className="input__field-wrapper">
           <TextareaAutosize
+            id={this.textareaId}
             ref={ref => (this.textAreaRef = ref)}
             className="input__field"
             placeholder="Your comment here"

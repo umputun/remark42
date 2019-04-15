@@ -8,6 +8,7 @@ require('./__button/input__button.scss');
 require('./__button/_type/_preview/input__button_type_preview.scss');
 require('./__button/_type/_send/input__button_type_send.scss');
 
+require('./__control-panel/input__control-panel.scss');
 require('./__counter/input__counter.scss');
 require('./__error/input__error.scss');
 require('./__field/input__field.scss');
@@ -18,6 +19,7 @@ require('./__rss/input__rss.scss');
 require('./__rss-link/input__rss-link.scss');
 require('./__markdown/input__markdown.scss');
 require('./__markdown-link/input__markdown-link.scss');
+require('./__markdown-toolbar/input__markdown-toolbar.scss');
 
 require('./_theme/_dark/input_theme_dark.scss');
 require('./_theme/_light/input_theme_light.scss');
