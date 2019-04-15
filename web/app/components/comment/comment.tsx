@@ -13,6 +13,7 @@ import debounce from '@app/utils/debounce';
 import copy from '@app/common/copy';
 import { Theme, BlockTTL, Comment as CommentType, PostInfo, User, CommentMode, Image } from '@app/common/types';
 import { extractErrorMessageFromResponse, FetcherError } from '@app/utils/errorUtils';
+import { isUserAnonymous } from '@app/utils/isUserAnonymous';
 
 import { Input } from '@app/components/input';
 import { AvatarIcon } from '@app/components/avatar-icon';
@@ -315,7 +316,7 @@ export class Comment extends Component<Props, State> {
    * Defines whether current client is logged in via `Anonymous provider`
    */
   isAnonymous(): boolean {
-    return this.props.user! && this.props.user!.id.substr(0, 10) === 'anonymous_';
+    return isUserAnonymous(this.props.user);
   }
 
   /**
@@ -369,6 +370,7 @@ export class Comment extends Component<Props, State> {
     const isUpvotingDisabled = upvotingDisabledReason !== null;
     const editable = props.repliesCount === 0 && state.editDeadline;
     const scoreSignEnabled = !StaticStore.config.positive_score;
+    const uploadImageHandler = this.isAnonymous() ? undefined : this.props.uploadImage;
 
     /**
      * CommentType adapted for rendering
@@ -676,7 +678,7 @@ export class Comment extends Component<Props, State> {
             onCancel={this.toggleReplying}
             getPreview={this.props.getPreview!}
             autofocus={true}
-            uploadImage={this.props.uploadImage!}
+            uploadImage={uploadImageHandler}
           />
         )}
 
@@ -691,7 +693,7 @@ export class Comment extends Component<Props, State> {
             getPreview={this.props.getPreview!}
             errorMessage={state.editDeadline === null ? 'Editing time has expired.' : undefined}
             autofocus={true}
-            uploadImage={this.props.uploadImage!}
+            uploadImage={uploadImageHandler}
           />
         )}
       </article>
