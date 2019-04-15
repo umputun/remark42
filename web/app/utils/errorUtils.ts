@@ -20,14 +20,15 @@ const errorMessageForCodes = new Map([
   [18, 'Requested file cannot be found.'],
 ]);
 
-export type FetcherResponse =
+export type FetcherError =
   | string
   | {
       code?: number;
       details?: string;
+      error: string;
     };
 
-export function extractErrorMessageFromResponse(response: FetcherResponse): string {
+export function extractErrorMessageFromResponse(response: FetcherError): string {
   const defaultErrorMessage = 'Something went wrong. Please try again a bit later.';
   if (!response) {
     return defaultErrorMessage;

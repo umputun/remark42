@@ -12,7 +12,7 @@ import { StaticStore } from '@app/common/static_store';
 import debounce from '@app/utils/debounce';
 import copy from '@app/common/copy';
 import { Theme, BlockTTL, Comment as CommentType, PostInfo, User, CommentMode, Image } from '@app/common/types';
-import { extractErrorMessageFromResponse, FetcherResponse } from '@app/utils/errorUtils';
+import { extractErrorMessageFromResponse, FetcherError } from '@app/utils/errorUtils';
 
 import { Input } from '@app/components/input';
 import { AvatarIcon } from '@app/components/avatar-icon';
@@ -213,7 +213,7 @@ export class Comment extends Component<Props, State> {
     }
   }
 
-  handleVoteError(e: FetcherResponse, originalScore: number, originalDelta: number) {
+  handleVoteError(e: FetcherError, originalScore: number, originalDelta: number) {
     this.setState({
       scoreDelta: originalDelta,
       cachedScore: originalScore,

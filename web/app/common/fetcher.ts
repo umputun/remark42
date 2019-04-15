@@ -81,7 +81,9 @@ const fetcher = methods.reduce<Partial<FetcherObject>>((acc, method) => {
           try {
             err = JSON.parse(text);
           } catch (e) {
-            throw text;
+            // eslint-disable-next-line no-console
+            console.error(err);
+            throw 'Something went wrong.';
           }
           throw err;
         });
