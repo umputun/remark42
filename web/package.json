@@ -5,7 +5,7 @@
     "build": "webpack --mode production",
     "start": "webpack-dev-server --mode development",
     "check": "tsc -p tsconfig.json --noEmit --skipLibCheck",
-    "lint": "eslint --ext=.ts,.tsx,.js,.jsx .",
+    "lint": "eslint --max-warnings=0 --ext=.ts,.tsx,.js,.jsx .",
     "test": "jest",
     "test:coverage": "jest --coverage",
     "prettier": "prettier --write \"./**/*.{js,jsx,ts,tsx,scss}\""
