@@ -67,18 +67,18 @@ func TestService_Close(t *testing.T) {
 
 func TestService_SubmitDelay(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer func() {
-		ctrl.Finish()
-	}()
+	defer ctrl.Finish()
 
 	store := NewMockStore(ctrl)
 
 	store.EXPECT().Commit(gomock.Any()).Times(3) // first batch should be committed
+
 	svc := Service{Store: store, ImageAPI: "/blah/", TTL: time.Millisecond * 100}
 	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
 	time.Sleep(150 * time.Millisecond) // let first batch to pass TTL
 	svc.Submit(func() []string { return []string{"id4", "id5"} })
 	svc.Submit(nil)
+	close(svc.submitCh)
 }
 
 func TestService_resize(t *testing.T) {
