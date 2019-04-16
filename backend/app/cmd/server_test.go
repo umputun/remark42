@@ -144,7 +144,7 @@ func TestServerApp_WithMongo(t *testing.T) {
 		"--avatar.type=mongo", "--mongo.url=" + mongoURL, "--mongo.db=test_remark", "--port=12345", "--admin.type=mongo"})
 	require.Nil(t, err)
 	opts.Auth.Github.CSEC, opts.Auth.Github.CID = "csec", "cid"
-	opts.BackupLocation = "/tmp"
+	opts.BackupLocation, opts.Image.FS.Path = "/tmp", "/tmp"
 
 	// create app
 	app, err := opts.newServerApp()
@@ -187,8 +187,10 @@ func TestServerApp_WithSSL(t *testing.T) {
 
 	// prepare options
 	p := flags.NewParser(&opts, flags.Default)
-	_, err := p.ParseArgs([]string{"--admin-passwd=password", "--port=18080", "--store.bolt.path=/tmp/xyz", "--backup=/tmp", "--avatar.type=bolt", "--avatar.bolt.file=/tmp/ava-test.db", "--notify.type=none",
-		"--ssl.type=static", "--ssl.cert=testdata/cert.pem", "--ssl.key=testdata/key.pem", "--ssl.port=18443"})
+	_, err := p.ParseArgs([]string{"--admin-passwd=password", "--port=18080", "--store.bolt.path=/tmp/xyz", "--backup=/tmp",
+		"--avatar.type=bolt", "--avatar.bolt.file=/tmp/ava-test.db", "--notify.type=none",
+		"--ssl.type=static", "--ssl.cert=testdata/cert.pem", "--ssl.key=testdata/key.pem",
+		"--ssl.port=18443", "--image.fs.path=/tmp"})
 	require.Nil(t, err)
 
 	// create app
@@ -242,7 +244,7 @@ func TestServerApp_Failed(t *testing.T) {
 	p := flags.NewParser(&opts, flags.Default)
 
 	// RO bolt location
-	_, err := p.ParseArgs([]string{"--backup=/tmp", "--store.bolt.path=/dev/null"})
+	_, err := p.ParseArgs([]string{"--backup=/tmp", "--store.bolt.path=/dev/null", "--image.fs.path=/tmp"})
 	assert.Nil(t, err)
 	_, err = opts.newServerApp()
 	assert.EqualError(t, err, "failed to make data store engine: failed to create bolt store: can't make directory /dev/null: mkdir /dev/null: not a directory")
@@ -306,7 +308,7 @@ func TestServerApp_MainSignal(t *testing.T) {
 
 	p := flags.NewParser(&s, flags.Default)
 	args := []string{"test", "--store.bolt.path=/tmp/xyz", "--backup=/tmp", "--avatar.type=bolt",
-		"--avatar.bolt.file=/tmp/ava-test.db", "--port=18100", "--notify.type=none"}
+		"--avatar.bolt.file=/tmp/ava-test.db", "--port=18100", "--notify.type=none", "--image.fs.path=/tmp"}
 	defer os.Remove("/tmp/ava-test.db")
 	_, err := p.ParseArgs(args)
 	require.Nil(t, err)
@@ -432,7 +434,7 @@ func prepServerApp(t *testing.T, duration time.Duration, fn func(o ServerCommand
 	p := flags.NewParser(&cmd, flags.Default)
 	_, err := p.ParseArgs([]string{"--admin-passwd=password", "--site=remark"})
 	require.Nil(t, err)
-	cmd.Avatar.FS.Path, cmd.Avatar.Type, cmd.BackupLocation = "/tmp", "fs", "/tmp"
+	cmd.Avatar.FS.Path, cmd.Avatar.Type, cmd.BackupLocation, cmd.Image.FS.Path = "/tmp", "fs", "/tmp", "/tmp"
 	cmd.Store.Bolt.Path = fmt.Sprintf("/tmp/%d", cmd.Port)
 	cmd.Store.Bolt.Timeout = 10 * time.Second
 	cmd.Auth.Github.CSEC, cmd.Auth.Github.CID = "csec", "cid"
