@@ -20,8 +20,6 @@ github.com/didip/tollbooth_chi v0.0.0-20170928041846-6ab5f3083f3d/go.mod h1:YWyI
 github.com/globalsign/mgo v0.0.0-20180615134936-113d3961e731/go.mod h1:xkRDCp4j0OGD1HRkm4kmhM+pmpv3AKq5SU7GMg4oO/Q=
 github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8 h1:DujepqpGd1hyOd7aW59XpK7Qymp8iy83xq74fLr21is=
 github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8/go.mod h1:xkRDCp4j0OGD1HRkm4kmhM+pmpv3AKq5SU7GMg4oO/Q=
-github.com/go-chi/chi v3.3.2+incompatible h1:uQNcQN3NsV1j4ANsPh42P4ew4t6rnRbJb8frvpp31qQ=
-github.com/go-chi/chi v3.3.2+incompatible/go.mod h1:eB3wogJHnLi3x/kFX2A+IbTBlXxmMeXJVKy9tTv1XzQ=
 github.com/go-chi/chi v4.0.2+incompatible h1:maB6vn6FqCxrpz4FqWdh4+lwpyZIQS7YEAUcHlgXVRs=
 github.com/go-chi/chi v4.0.2+incompatible/go.mod h1:eB3wogJHnLi3x/kFX2A+IbTBlXxmMeXJVKy9tTv1XzQ=
 github.com/go-chi/cors v1.0.0 h1:e6x8k7uWbUwYs+aXDoiUzeQFT6l0cygBYyNhD7/1Tg0=
@@ -33,10 +31,6 @@ github.com/go-pkgz/auth v0.5.0/go.mod h1:CWtB8dHmOv+TfF3MUzKwk/YwTLepC2TaDL05A+p
 github.com/go-pkgz/lcw v0.2.0 h1:aFoKUG8q0YybId+ThVRQpDMjjuSG4hkLL1EA2xUtruc=
 github.com/go-pkgz/lcw v0.2.0/go.mod h1:k+PY1CkCMTLXILtFoJOyK65Qqi9rkoTYunFH1vE/C0I=
 github.com/go-pkgz/lgr v0.2.2/go.mod h1:hBM1NM/SoYdlrykgdgJWGrZ/TM/XaZIjRbJfx7NkMm8=
-github.com/go-pkgz/lgr v0.6.0 h1:Z9FRhfSyuASiF05iXRj+clTAAl8+1EfLR7SeyLIaGKg=
-github.com/go-pkgz/lgr v0.6.0/go.mod h1:hBM1NM/SoYdlrykgdgJWGrZ/TM/XaZIjRbJfx7NkMm8=
-github.com/go-pkgz/lgr v0.6.1 h1:poohUbv/iguoQ6bzJ5j/Ubl1VcsjU+rzTbbxsKbkGXk=
-github.com/go-pkgz/lgr v0.6.1/go.mod h1:hBM1NM/SoYdlrykgdgJWGrZ/TM/XaZIjRbJfx7NkMm8=
 github.com/go-pkgz/lgr v0.6.2 h1:Twf2YIe2J5tg7mKs+IkDDxrDF7GWlTCl/LzqELWjT5o=
 github.com/go-pkgz/lgr v0.6.2/go.mod h1:hBM1NM/SoYdlrykgdgJWGrZ/TM/XaZIjRbJfx7NkMm8=
 github.com/go-pkgz/mongo v1.0.0/go.mod h1:R9si/F2aJsjz4MUxhzuppIHY8yLV3YCeuCpgcI50cu4=
