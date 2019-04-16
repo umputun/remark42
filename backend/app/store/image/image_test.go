@@ -1,7 +1,12 @@
 package image
 
 import (
+	"bytes"
 	"context"
+	"image"
+	"io"
+	"io/ioutil"
+	"strings"
 	"testing"
 	"time"
 
@@ -74,4 +79,62 @@ func TestService_SubmitDelay(t *testing.T) {
 	time.Sleep(150 * time.Millisecond) // let first batch to pass TTL
 	svc.Submit(func() []string { return []string{"id4", "id5"} })
 	svc.Submit(nil)
+}
+
+func TestService_resize(t *testing.T) {
+
+	checkC := func(t *testing.T, r io.Reader, cExp []byte) {
+		content, err := ioutil.ReadAll(r)
+		require.NoError(t, err)
+		assert.Equal(t, cExp, content)
+	}
+
+	// Reader is nil.
+	resizedR, ok := resize(nil, 100)
+	assert.Nil(t, resizedR)
+	assert.False(t, ok)
+
+	// Negative limit error.
+	resizedR, ok = resize(strings.NewReader("some picture bin data"), -1)
+	require.NotNil(t, resizedR)
+	checkC(t, resizedR, []byte("some picture bin data"))
+	assert.False(t, ok)
+
+	// Decode error.
+	resizedR, ok = resize(strings.NewReader("invalid image content"), 100)
+	assert.NotNil(t, resizedR)
+	checkC(t, resizedR, []byte("invalid image content"))
+	assert.False(t, ok)
+
+	cases := []struct {
+		file   string
+		wr, hr int
+	}{
+		{"testdata/circles.png", 400, 300}, // full size: 800x600 px
+		{"testdata/circles.jpg", 300, 400}, // full size: 600x800 px
+	}
+
+	for _, c := range cases {
+		img, err := ioutil.ReadFile(c.file)
+		require.Nil(t, err, "can't open test file %s", c.file)
+
+		// No need for resize, image dimensions are smaller than resize limit.
+		resizedR, ok = resize(bytes.NewReader(img), 800)
+		assert.NotNil(t, resizedR, "file %s", c.file)
+		checkC(t, resizedR, img)
+		assert.False(t, ok)
+
+		// Resizing to half of width. Check resizedR image format PNG.
+		resizedR, ok = resize(bytes.NewReader(img), 400)
+		assert.NotNil(t, resizedR, "file %s", c.file)
+		assert.True(t, ok)
+
+		imgRz, format, err := image.Decode(resizedR)
+		assert.Nil(t, err, "file %s", c.file)
+		assert.Equal(t, "png", format, "file %s", c.file)
+		bounds := imgRz.Bounds()
+		assert.Equal(t, c.wr, bounds.Dx(), "file %s", c.file)
+		assert.Equal(t, c.hr, bounds.Dy(), "file %s", c.file)
+	}
+
 }

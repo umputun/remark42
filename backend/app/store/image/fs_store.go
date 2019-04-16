@@ -25,6 +25,7 @@ type FileSystem struct {
 	Staging    string
 	MaxSize    int
 	Partitions int
+	Resize     int
 
 	crc struct {
 		*crc64.Table
@@ -45,11 +46,6 @@ func (f *FileSystem) Save(fileName string, userID string, r io.Reader) (id strin
 		return "", errors.Wrap(err, "can't make image directory")
 	}
 
-	fh, err := os.Create(dst)
-	if err != nil {
-		return "", errors.Wrapf(err, "can't make image file %s", dst)
-	}
-
 	lr := io.LimitReader(r, int64(f.MaxSize)+1)
 
 	// read header first, needs it to check if data is valid png/gif/jpeg
@@ -62,7 +58,17 @@ func (f *FileSystem) Save(fileName string, userID string, r io.Reader) (id strin
 		return "", errors.Errorf("file %s is not in allowed format", fileName)
 	}
 
-	written, err := io.Copy(fh, io.MultiReader(bytes.NewReader(header[:hl]), lr)) // write header and the rest of input
+	reader, ok := resize(io.MultiReader(bytes.NewReader(header[:hl]), lr), f.Resize) // header and the rest of input
+	if ok {
+		dst = strings.TrimSuffix(dst, filepath.Ext(dst)) + ".png"
+		id = strings.TrimSuffix(id, filepath.Ext(id)) + ".png"
+	}
+	fh, err := os.Create(dst)
+	if err != nil {
+		return "", errors.Wrapf(err, "can't make image file %s", dst)
+	}
+
+	written, err := io.Copy(fh, reader)
 	if err != nil {
 		return "", errors.Wrapf(err, "can't write image file %s", dst)
 	}
@@ -74,7 +80,7 @@ func (f *FileSystem) Save(fileName string, userID string, r io.Reader) (id strin
 		if err = os.Remove(dst); err != nil {
 			log.Printf("[WARN] can't remove image file %s, %v", dst, err)
 		}
-		return "", errors.Errorf("file %s is too large", fileName)
+		return "", errors.Errorf("file %s is too large (%d)", fileName, written)
 	}
 
 	log.Printf("[DEBUG] file %s saved for image %s", fh.Name(), fileName)

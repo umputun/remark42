@@ -102,11 +102,12 @@ type ImageGroup struct {
 		Path       string `long:"path" env:"PATH" default:"./var/pictures" description:"images location"`
 		Staging    string `long:"staging" env:"STAGING" default:"./var/pictures.staging" description:"staging location"`
 		Partitions int    `long:"partitions" env:"PARTITIONS" default:"100" description:"partitions (subdirs)"`
-	} `group:"fs" namespace:"fs" env-namespace:"FS"`
+		} `group:"fs" namespace:"fs" env-namespace:"FS"`
 	Bolt struct {
 		File string `long:"file" env:"FILE" default:"./var/pictures.db" description:"images bolt file location"`
 	} `group:"bolt" namespace:"bolt" env-namespace:"bolt"`
 	MaxSize int `long:"max-size" env:"MAX_SIZE" default:"5000000" description:"max size of image file"`
+	Resize  int `long:"resize" env:"RESIZE" default:"0" description:"height/width of resized image"`
 }
 
 // AvatarGroup defines options group for avatar params
@@ -448,6 +449,7 @@ func (s *ServerCommand) makePicturesStore() (*image.Service, error) {
 				Staging:    s.Image.FS.Staging,
 				Partitions: s.Image.FS.Partitions,
 				MaxSize:    s.Image.MaxSize,
+				Resize:     s.Image.Resize,
 			},
 			TTL: s.EditDuration + time.Second, // add extra second to image TTL for staging
 		}, nil
