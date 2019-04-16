@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -27,58 +27,50 @@ func TestService_ExtractPictures(t *testing.T) {
 }
 
 func TestService_Cleanup(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+	store := MockStore{}
+	store.On("Cleanup", mock.Anything, mock.Anything).Times(10).Return(nil)
 
-	store := NewMockStore(ctrl)
-	store.EXPECT().Cleanup(gomock.Any(), gomock.Any()).Times(10)
-
-	svc := Service{Store: store, TTL: 100 * time.Millisecond}
+	svc := Service{Store: &store, TTL: 100 * time.Millisecond}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*549)
 	defer cancel()
 	svc.Cleanup(ctx)
+	store.AssertNumberOfCalls(t, "Cleanup", 10)
 }
 
 func TestService_Submit(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-	store := NewMockStore(ctrl)
-
-	store.EXPECT().Commit(gomock.Any()).Times(5) // all 5 should be committed
-	svc := Service{Store: store, ImageAPI: "/blah/", TTL: time.Millisecond * 100}
+	store := MockStore{}
+	store.On("Commit", mock.Anything, mock.Anything).Times(5).Return(nil)
+	svc := Service{Store: &store, ImageAPI: "/blah/", TTL: time.Millisecond * 100}
 	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
 	svc.Submit(func() []string { return []string{"id4", "id5"} })
 	svc.Submit(nil)
-	time.Sleep(time.Millisecond * 500)
+	store.AssertNumberOfCalls(t, "Commit", 0)
+	time.Sleep(time.Millisecond * 150)
+	store.AssertNumberOfCalls(t, "Commit", 5)
 }
 
 func TestService_Close(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-	store := NewMockStore(ctrl)
-
-	store.EXPECT().Commit(gomock.Any()).Times(5) // all 5 should be committed
-	svc := Service{Store: store, ImageAPI: "/blah/", TTL: time.Millisecond * 500}
+	store := MockStore{}
+	store.On("Commit", mock.Anything, mock.Anything).Times(5).Return(nil)
+	svc := Service{Store: &store, ImageAPI: "/blah/", TTL: time.Millisecond * 500}
 	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
 	svc.Submit(func() []string { return []string{"id4", "id5"} })
 	svc.Submit(nil)
 	svc.Close()
+	store.AssertNumberOfCalls(t, "Commit", 5)
 }
 
 func TestService_SubmitDelay(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	store := NewMockStore(ctrl)
-
-	store.EXPECT().Commit(gomock.Any()).Times(3) // first batch should be committed
-
-	svc := Service{Store: store, ImageAPI: "/blah/", TTL: time.Millisecond * 100}
+	store := MockStore{}
+	store.On("Commit", mock.Anything, mock.Anything).Times(5).Return(nil)
+	svc := Service{Store: &store, ImageAPI: "/blah/", TTL: time.Millisecond * 100}
 	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
 	time.Sleep(150 * time.Millisecond) // let first batch to pass TTL
 	svc.Submit(func() []string { return []string{"id4", "id5"} })
 	svc.Submit(nil)
-	close(svc.submitCh)
+	store.AssertNumberOfCalls(t, "Commit", 3)
+	svc.Close()
+	store.AssertNumberOfCalls(t, "Commit", 5)
 }
 
 func TestService_resize(t *testing.T) {

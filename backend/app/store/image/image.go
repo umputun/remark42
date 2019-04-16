@@ -3,7 +3,7 @@
 // Service object encloses Store and add common methods, this is the one consumer should use
 package image
 
-//go:generate sh -c "mockgen -source=image.go -package=image > image_mock.go"
+//go:generate sh -c "mockery -inpkg -name Store -print > /tmp/mock.tmp && mv /tmp/mock.tmp image_mock.go"
 
 import (
 	"bytes"
