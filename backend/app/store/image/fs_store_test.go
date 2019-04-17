@@ -57,9 +57,9 @@ func TestFsStore_Save(t *testing.T) {
 }
 
 func TestFsStore_SaveWithResize(t *testing.T) {
-	svc, _ := prepareImageTest(t)
+	svc, teardown := prepareImageTest(t)
+	defer teardown()
 	svc.MaxWidth, svc.MaxHeight = 32, 32
-	// defer teardown()
 
 	id, err := svc.Save("file1.png", "user1", gopherPNG())
 	assert.NoError(t, err)
@@ -75,7 +75,8 @@ func TestFsStore_SaveWithResize(t *testing.T) {
 }
 
 func TestFsStore_SaveWithResizeJpeg(t *testing.T) {
-	svc, _ := prepareImageTest(t)
+	svc, teardown := prepareImageTest(t)
+	defer teardown()
 	svc.MaxWidth, svc.MaxHeight = 400, 300
 	svc.MaxSize = 32000
 
@@ -96,7 +97,8 @@ func TestFsStore_SaveWithResizeJpeg(t *testing.T) {
 }
 
 func TestFsStore_SaveNoResizeJpeg(t *testing.T) {
-	svc, _ := prepareImageTest(t)
+	svc, teardown := prepareImageTest(t)
+	defer teardown()
 	svc.MaxWidth, svc.MaxHeight = 1400, 1300
 	svc.MaxSize = 32000
 
