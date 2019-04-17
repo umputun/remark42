@@ -80,7 +80,7 @@ func TestFsStore_SaveWithResizeJpeg(t *testing.T) {
 	svc.MaxSize = 32000
 
 	fh, err := os.Open("testdata/circles.jpg")
-	defer fh.Close()
+	defer func() { assert.NoError(t, fh.Close()) }()
 	assert.NoError(t, err)
 	id, err := svc.Save("circles.jpg", "user1", fh)
 	assert.NoError(t, err)
