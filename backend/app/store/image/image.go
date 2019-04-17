@@ -3,10 +3,15 @@
 // Service object encloses Store and add common methods, this is the one consumer should use
 package image
 
-//go:generate sh -c "mockgen -source=image.go -package=image > image_mock.go"
+//go:generate sh -c "mockery -inpkg -name Store -print > /tmp/mock.tmp && mv /tmp/mock.tmp image_mock.go"
 
 import (
+	"bytes"
 	"context"
+	"image"
+	_ "image/gif"
+	_ "image/jpeg"
+	"image/png"
 	"io"
 	"net/http"
 	"strings"
@@ -18,6 +23,7 @@ import (
 	log "github.com/go-pkgz/lgr"
 	"github.com/pkg/errors"
 	"github.com/rs/xid"
+	"golang.org/x/image/draw"
 )
 
 // Store defines interface for saving and loading pictures.
@@ -127,6 +133,61 @@ func (s *Service) Close() {
 		close(s.submitCh)
 	}
 	s.wg.Wait()
+}
+
+// resize an image of supported format (PNG, JPG, GIF) to the size of "limit" px of the
+// biggest side (width or height) preserving aspect ratio.
+// Returns original reader if resizing is not needed or failed. If resized the reader will be for png format
+// and ok flag will be true.
+func resize(reader io.Reader, limitW, limitH int) (io.Reader, bool) {
+	if reader == nil || limitW <= 0 || limitH <= 0 {
+		return reader, false
+	}
+
+	var teeBuf bytes.Buffer
+	tee := io.TeeReader(reader, &teeBuf)
+	src, _, err := image.Decode(tee)
+	if err != nil {
+		log.Printf("[WARN] can't decode image, %s", err)
+		return &teeBuf, false
+	}
+
+	bounds := src.Bounds()
+	w, h := bounds.Dx(), bounds.Dy()
+	if w <= limitW && h <= limitH || w <= 0 || h <= 0 {
+		log.Printf("[DEBUG] resizing image is smaller that the limit or has 0 size")
+		return &teeBuf, false
+	}
+
+	newW, newH := getProportionalSizes(w, h, limitW, limitH)
+	m := image.NewRGBA(image.Rect(0, 0, newW, newH))
+	draw.BiLinear.Scale(m, m.Bounds(), src, src.Bounds(), draw.Src, nil)
+
+	var out bytes.Buffer
+	if err = png.Encode(&out, m); err != nil {
+		log.Printf("[WARN] can't encode resized image to png, %s", err)
+		return &teeBuf, false
+	}
+	return &out, true
+}
+
+func getProportionalSizes(srcW, srcH int, limitW, limitH int) (resW, resH int) {
+
+	if srcW <= limitW && srcH <= limitH {
+		return srcW, srcH
+	}
+
+	ratioW := float64(srcW) / float64(limitW)
+	propH := float64(srcH) / ratioW
+
+	ratioH := float64(srcH) / float64(limitH)
+	propW := float64(srcW) / ratioH
+
+	if int(propH) > limitH {
+		return int(propW), limitH
+	}
+
+	return limitW, int(propH)
 }
 
 // check if file f is a valid image format, i.e. gif, png or jpeg

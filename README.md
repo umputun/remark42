@@ -6,10 +6,11 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 * Optional anonymous access
 * Multi-level nested comments with both tree and plain presentations
 * Import from disqus and wordpress
-* Markdown support
+* Markdown support with friendly formatter toolbar
 * Moderator can remove comments and block users
 * Voting, pinning and verification system
 * Sortable comments
+* Images upload with drag-and-drop
 * Extractor for recent comments, cross-post
 * RSS for all comments and each post
 * Telegram notifications
@@ -17,7 +18,7 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 * No external databases, everything embedded in a single data file
 * Fully dockerized and can be deployed in a single command
 * Self-contained executable can be deployed directly to Linux, Windows and MacOS
-* Clean, lightweight and customizable UI
+* Clean, lightweight and customizable UI with white and dark themes
 * Multi-site mode from a single instance
 * Integration with automatic ssl (direct and via [nginx-le](https://github.com/umputun/nginx-le))
 * [Privacy focused](#privacy)
@@ -112,6 +113,8 @@ _this is the recommended way to run remark42_
 | image.fs.path           | IMAGE_FS_PATH           | `./var/pictures`         | permanent location of images                     |
 | image.fs.staging        | IMAGE_FS_STAGING        | `./var/pictures.staging` | staging location of images                       |
 | image.fs.partitions     | IMAGE_FS_PARTITIONS     | `100`                    | number of image partitions                       |
+| image.resize-width      | IMAGE_RESIZE_WIDTH      | `800`                    | width of resized image                          |
+| image.resize-height     | IMAGE_RESIZE_HEIGHT     | `300`                    | height of resized image                          |
 | auth.ttl.jwt            | AUTH_TTL_JWT            | `5m`                     | jwt TTL                                          |
 | auth.ttl.cookie         | AUTH_TTL_COOKIE         | `200h`                   | cookie TTL                                       |
 | auth.google.cid         | AUTH_GOOGLE_CID         |                          | Google OAuth client ID                           |

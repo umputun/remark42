@@ -106,7 +106,9 @@ type ImageGroup struct {
 	Bolt struct {
 		File string `long:"file" env:"FILE" default:"./var/pictures.db" description:"images bolt file location"`
 	} `group:"bolt" namespace:"bolt" env-namespace:"bolt"`
-	MaxSize int `long:"max-size" env:"MAX_SIZE" default:"5000000" description:"max size of image file"`
+	MaxSize      int `long:"max-size" env:"MAX_SIZE" default:"5000000" description:"max size of image file"`
+	ResizeWidth  int `long:"resize-width" env:"RESIZE_WIDTH" default:"800" description:"width of resized image"`
+	ResizeHeight int `long:"resize-height" env:"RESIZE_HEIGHT" default:"300" description:"height of resized image"`
 }
 
 // AvatarGroup defines options group for avatar params
@@ -448,6 +450,8 @@ func (s *ServerCommand) makePicturesStore() (*image.Service, error) {
 				Staging:    s.Image.FS.Staging,
 				Partitions: s.Image.FS.Partitions,
 				MaxSize:    s.Image.MaxSize,
+				MaxHeight:  s.Image.ResizeHeight,
+				MaxWidth:   s.Image.ResizeWidth,
 			},
 			TTL: s.EditDuration + time.Second, // add extra second to image TTL for staging
 		}, nil

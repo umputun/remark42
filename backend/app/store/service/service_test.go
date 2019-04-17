@@ -14,9 +14,9 @@ import (
 
 	bolt "github.com/coreos/bbolt"
 	"github.com/go-pkgz/lgr"
-	"github.com/golang/mock/gomock"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/umputun/remark/backend/app/store/image"
 
@@ -700,12 +700,9 @@ func TestService_submitImages(t *testing.T) {
 	defer teardown(t)
 	lgr.Setup(lgr.Debug, lgr.CallerFile, lgr.CallerFunc)
 
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-	mockStore := image.NewMockStore(ctrl)
-	imgSvc := &image.Service{Store: mockStore, TTL: time.Millisecond * 50}
-
-	mockStore.EXPECT().Commit(gomock.Any()).Times(2)
+	mockStore := image.MockStore{}
+	mockStore.On("Commit", mock.Anything, mock.Anything).Times(2).Return(nil)
+	imgSvc := &image.Service{Store: &mockStore, TTL: time.Millisecond * 50}
 
 	// two comments for https://radio-t.com
 	b := DataStore{Interface: prepStoreEngine(t), EditDuration: 50 * time.Millisecond,

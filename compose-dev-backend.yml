@@ -17,6 +17,7 @@ services:
             context: .
             dockerfile: Dockerfile
             args:
+                - SKIP_BACKEND_TEST
                 - SKIP_FRONTEND_TEST=true
                 - MONGO_TEST=skip # disable mongo tests on build by default. To allow remove =skip part and see above
 

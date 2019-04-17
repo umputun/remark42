@@ -290,6 +290,7 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 				Location:   "/tmp/pics-remark42",
 				Partitions: 100,
 				MaxSize:    10000,
+				Staging:    "/tmp/pics-remark42/staging",
 			},
 			TTL: time.Millisecond * 100,
 		},

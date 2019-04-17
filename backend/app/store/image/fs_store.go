@@ -25,6 +25,8 @@ type FileSystem struct {
 	Staging    string
 	MaxSize    int
 	Partitions int
+	MaxHeight  int
+	MaxWidth   int
 
 	crc struct {
 		*crc64.Table
@@ -38,18 +40,6 @@ type FileSystem struct {
 // Files partitioned across multiple subdirectories and the final path includes part, i.e. /location/user1/03/123-4567.png
 func (f *FileSystem) Save(fileName string, userID string, r io.Reader) (id string, err error) {
 
-	id = path.Join(userID, guid()) + filepath.Ext(fileName) // make id as user/uuid.ext
-	dst := f.location(f.Staging, id)
-
-	if err = os.MkdirAll(path.Dir(dst), 0700); err != nil {
-		return "", errors.Wrap(err, "can't make image directory")
-	}
-
-	fh, err := os.Create(dst)
-	if err != nil {
-		return "", errors.Wrapf(err, "can't make image file %s", dst)
-	}
-
 	lr := io.LimitReader(r, int64(f.MaxSize)+1)
 
 	// read header first, needs it to check if data is valid png/gif/jpeg
@@ -62,7 +52,25 @@ func (f *FileSystem) Save(fileName string, userID string, r io.Reader) (id strin
 		return "", errors.Errorf("file %s is not in allowed format", fileName)
 	}
 
-	written, err := io.Copy(fh, io.MultiReader(bytes.NewReader(header[:hl]), lr)) // write header and the rest of input
+	reader, resized := resize(io.MultiReader(bytes.NewReader(header[:hl]), lr), f.MaxWidth, f.MaxHeight)
+
+	id = path.Join(userID, guid()) + filepath.Ext(fileName) // make id as user/uuid.ext
+	dst := f.location(f.Staging, id)
+	if resized { // resized also converted to png
+		id = strings.TrimSuffix(id, filepath.Ext(id)) + ".png"
+		dst = f.location(f.Staging, id)
+	}
+
+	if err = os.MkdirAll(path.Dir(dst), 0700); err != nil {
+		return "", errors.Wrap(err, "can't make image directory")
+	}
+
+	fh, err := os.Create(dst)
+	if err != nil {
+		return "", errors.Wrapf(err, "can't make image file %s", dst)
+	}
+
+	written, err := io.Copy(fh, reader)
 	if err != nil {
 		return "", errors.Wrapf(err, "can't write image file %s", dst)
 	}
@@ -74,7 +82,7 @@ func (f *FileSystem) Save(fileName string, userID string, r io.Reader) (id strin
 		if err = os.Remove(dst); err != nil {
 			log.Printf("[WARN] can't remove image file %s, %v", dst, err)
 		}
-		return "", errors.Errorf("file %s is too large", fileName)
+		return "", errors.Errorf("file %s is too large (%d)", fileName, written)
 	}
 
 	log.Printf("[DEBUG] file %s saved for image %s", fh.Name(), fileName)
