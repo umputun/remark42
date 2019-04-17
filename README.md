@@ -6,10 +6,11 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 * Optional anonymous access
 * Multi-level nested comments with both tree and plain presentations
 * Import from disqus and wordpress
-* Markdown support
+* Markdown support with friendly formatter toolbar
 * Moderator can remove comments and block users
 * Voting, pinning and verification system
 * Sortable comments
+* Images upload with drag-and-drop
 * Extractor for recent comments, cross-post
 * RSS for all comments and each post
 * Telegram notifications
@@ -17,7 +18,7 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 * No external databases, everything embedded in a single data file
 * Fully dockerized and can be deployed in a single command
 * Self-contained executable can be deployed directly to Linux, Windows and MacOS
-* Clean, lightweight and customizable UI
+* Clean, lightweight and customizable UI with white and dark themes
 * Multi-site mode from a single instance
 * Integration with automatic ssl (direct and via [nginx-le](https://github.com/umputun/nginx-le))
 * [Privacy focused](#privacy)
