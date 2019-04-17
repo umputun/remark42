@@ -139,8 +139,8 @@ func (s *Service) Close() {
 // biggest side (width or height) preserving aspect ratio.
 // Returns original reader if resizing is not needed or failed. If resized the reader will be for png format
 // and ok flag will be true.
-func resize(reader io.Reader, limit int) (io.Reader, bool) {
-	if reader == nil || limit <= 0 {
+func resize(reader io.Reader, limitW, limitH int) (io.Reader, bool) {
+	if reader == nil || limitW <= 0 || limitH <= 0 {
 		return reader, false
 	}
 
@@ -154,14 +154,12 @@ func resize(reader io.Reader, limit int) (io.Reader, bool) {
 
 	bounds := src.Bounds()
 	w, h := bounds.Dx(), bounds.Dy()
-	if w <= limit && h <= limit || w <= 0 || h <= 0 {
+	if w <= limitW && h <= limitH || w <= 0 || h <= 0 {
 		log.Printf("[DEBUG] resizing image is smaller that the limit or has 0 size")
 		return &teeBuf, false
 	}
-	newW, newH := w*limit/h, limit
-	if w > h {
-		newW, newH = limit, h*limit/w
-	}
+
+	newW, newH := getProportionalSizes(w, h, limitW, limitH)
 	m := image.NewRGBA(image.Rect(0, 0, newW, newH))
 	draw.BiLinear.Scale(m, m.Bounds(), src, src.Bounds(), draw.Src, nil)
 
@@ -171,6 +169,25 @@ func resize(reader io.Reader, limit int) (io.Reader, bool) {
 		return &teeBuf, false
 	}
 	return &out, true
+}
+
+func getProportionalSizes(srcW, srcH int, limitW, limitH int) (resW, resH int) {
+
+	if srcW <= limitW && srcH <= limitH {
+		return srcW, srcH
+	}
+
+	ratioW := float64(srcW) / float64(limitW)
+	propH := float64(srcH) / ratioW
+
+	ratioH := float64(srcH) / float64(limitH)
+	propW := float64(srcW) / ratioH
+
+	if int(propH) > limitH {
+		return int(propW), limitH
+	}
+
+	return limitW, int(propH)
 }
 
 // check if file f is a valid image format, i.e. gif, png or jpeg

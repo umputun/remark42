@@ -6,6 +6,7 @@ import (
 	"image"
 	"io"
 	"io/ioutil"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -82,18 +83,18 @@ func TestService_resize(t *testing.T) {
 	}
 
 	// Reader is nil.
-	resizedR, ok := resize(nil, 100)
+	resizedR, ok := resize(nil, 100, 100)
 	assert.Nil(t, resizedR)
 	assert.False(t, ok)
 
 	// Negative limit error.
-	resizedR, ok = resize(strings.NewReader("some picture bin data"), -1)
+	resizedR, ok = resize(strings.NewReader("some picture bin data"), -1, -1)
 	require.NotNil(t, resizedR)
 	checkC(t, resizedR, []byte("some picture bin data"))
 	assert.False(t, ok)
 
 	// Decode error.
-	resizedR, ok = resize(strings.NewReader("invalid image content"), 100)
+	resizedR, ok = resize(strings.NewReader("invalid image content"), 100, 100)
 	assert.NotNil(t, resizedR)
 	checkC(t, resizedR, []byte("invalid image content"))
 	assert.False(t, ok)
@@ -111,13 +112,13 @@ func TestService_resize(t *testing.T) {
 		require.Nil(t, err, "can't open test file %s", c.file)
 
 		// No need for resize, image dimensions are smaller than resize limit.
-		resizedR, ok = resize(bytes.NewReader(img), 800)
+		resizedR, ok = resize(bytes.NewReader(img), 800, 800)
 		assert.NotNil(t, resizedR, "file %s", c.file)
 		checkC(t, resizedR, img)
 		assert.False(t, ok)
 
 		// Resizing to half of width. Check resizedR image format PNG.
-		resizedR, ok = resize(bytes.NewReader(img), 400)
+		resizedR, ok = resize(bytes.NewReader(img), 400, 400)
 		assert.NotNil(t, resizedR, "file %s", c.file)
 		assert.True(t, ok)
 
@@ -129,4 +130,25 @@ func TestService_resize(t *testing.T) {
 		assert.Equal(t, c.hr, bounds.Dy(), "file %s", c.file)
 	}
 
+}
+
+func TestGetProportionalSizes(t *testing.T) {
+	tbl := []struct {
+		inpW, inpH     int
+		limitW, limitH int
+		resW, resH     int
+	}{
+		{10, 20, 50, 25, 10, 20},
+		{400, 200, 50, 25, 50, 25},
+		{100, 100, 50, 25, 25, 25},
+		{100, 200, 50, 25, 12, 25},
+	}
+
+	for i, tt := range tbl {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			resW, resH := getProportionalSizes(tt.inpW, tt.inpH, tt.limitW, tt.limitH)
+			assert.Equal(t, tt.resW, resW, "width")
+			assert.Equal(t, tt.resH, resH, "height")
+		})
+	}
 }

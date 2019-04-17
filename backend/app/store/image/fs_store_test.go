@@ -58,7 +58,7 @@ func TestFsStore_Save(t *testing.T) {
 
 func TestFsStore_SaveWithResize(t *testing.T) {
 	svc, _ := prepareImageTest(t)
-	svc.Resize = 32
+	svc.MaxWidth, svc.MaxHeight = 32, 32
 	// defer teardown()
 
 	id, err := svc.Save("file1.png", "user1", gopherPNG())
@@ -72,6 +72,27 @@ func TestFsStore_SaveWithResize(t *testing.T) {
 	data, err := ioutil.ReadFile(img)
 	assert.NoError(t, err)
 	assert.Equal(t, 1142, len(data))
+}
+
+func TestFsStore_SaveWithResizeJpeg(t *testing.T) {
+	svc, _ := prepareImageTest(t)
+	svc.MaxWidth, svc.MaxHeight = 400, 300
+	svc.MaxSize = 32000
+
+	fh, err := os.Open("testdata/circles.jpg")
+	defer fh.Close()
+	assert.NoError(t, err)
+	id, err := svc.Save("circles.jpg", "user1", fh)
+	assert.NoError(t, err)
+	assert.Contains(t, id, "user1/")
+	assert.Contains(t, id, ".png")
+	t.Log(id)
+
+	img := svc.location(svc.Staging, id)
+	t.Log(img)
+	data, err := ioutil.ReadFile(img)
+	assert.NoError(t, err)
+	assert.Equal(t, 10786, len(data))
 }
 
 func TestFsStore_WrongFormat(t *testing.T) {
