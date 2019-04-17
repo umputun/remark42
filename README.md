@@ -112,6 +112,8 @@ _this is the recommended way to run remark42_
 | image.fs.path           | IMAGE_FS_PATH           | `./var/pictures`         | permanent location of images                     |
 | image.fs.staging        | IMAGE_FS_STAGING        | `./var/pictures.staging` | staging location of images                       |
 | image.fs.partitions     | IMAGE_FS_PARTITIONS     | `100`                    | number of image partitions                       |
+| image.resize-width      | IMAGE_RESIZE_WIDTH      | `800`                    | width of resized image                          |
+| image.resize-height     | IMAGE_RESIZE_HEIGHT     | `300`                    | height of resized image                          |
 | auth.ttl.jwt            | AUTH_TTL_JWT            | `5m`                     | jwt TTL                                          |
 | auth.ttl.cookie         | AUTH_TTL_COOKIE         | `200h`                   | cookie TTL                                       |
 | auth.google.cid         | AUTH_GOOGLE_CID         |                          | Google OAuth client ID                           |
