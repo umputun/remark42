@@ -1,11 +1,11 @@
 package image
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"hash/crc64"
 	"io"
+	"io/ioutil"
 	"math"
 	"os"
 	"path"
@@ -41,18 +41,20 @@ type FileSystem struct {
 func (f *FileSystem) Save(fileName string, userID string, r io.Reader) (id string, err error) {
 
 	lr := io.LimitReader(r, int64(f.MaxSize)+1)
+	data, err := ioutil.ReadAll(lr)
+	if err != nil {
+		return "", errors.Wrapf(err, "can't read source data for image %s", fileName)
+	}
+	if len(data) > f.MaxSize {
+		return "", errors.Errorf("file %s is too large (limit=%d)", fileName, f.MaxSize)
+	}
 
 	// read header first, needs it to check if data is valid png/gif/jpeg
-	header := make([]byte, 512)
-	hl, err := lr.Read(header)
-	if err != nil {
-		return "", errors.Wrapf(err, "can't read image header for %s", fileName)
-	}
-	if !isValidImage(header) {
+	if !isValidImage(data[:512]) {
 		return "", errors.Errorf("file %s is not in allowed format", fileName)
 	}
 
-	reader, resized := resize(io.MultiReader(bytes.NewReader(header[:hl]), lr), f.MaxWidth, f.MaxHeight)
+	data, resized := resize(data, f.MaxWidth, f.MaxHeight)
 
 	id = path.Join(userID, guid()) + filepath.Ext(fileName) // make id as user/uuid.ext
 	dst := f.location(f.Staging, id)
@@ -65,27 +67,11 @@ func (f *FileSystem) Save(fileName string, userID string, r io.Reader) (id strin
 		return "", errors.Wrap(err, "can't make image directory")
 	}
 
-	fh, err := os.Create(dst)
-	if err != nil {
-		return "", errors.Wrapf(err, "can't make image file %s", dst)
-	}
-
-	written, err := io.Copy(fh, reader)
-	if err != nil {
+	if err := ioutil.WriteFile(dst, data, 0600); err != nil {
 		return "", errors.Wrapf(err, "can't write image file %s", dst)
 	}
-	if err = fh.Close(); err != nil {
-		return "", errors.Wrapf(err, "can't close image file %s", dst)
-	}
 
-	if written > int64(f.MaxSize) {
-		if err = os.Remove(dst); err != nil {
-			log.Printf("[WARN] can't remove image file %s, %v", dst, err)
-		}
-		return "", errors.Errorf("file %s is too large (%d)", fileName, written)
-	}
-
-	log.Printf("[DEBUG] file %s saved for image %s", fh.Name(), fileName)
+	log.Printf("[DEBUG] file %s saved for image %s, size=%d", dst, fileName, len(data))
 	return id, nil
 }
 

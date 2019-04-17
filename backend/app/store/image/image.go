@@ -137,26 +137,24 @@ func (s *Service) Close() {
 
 // resize an image of supported format (PNG, JPG, GIF) to the size of "limit" px of the
 // biggest side (width or height) preserving aspect ratio.
-// Returns original reader if resizing is not needed or failed. If resized the reader will be for png format
-// and ok flag will be true.
-func resize(reader io.Reader, limitW, limitH int) (io.Reader, bool) {
-	if reader == nil || limitW <= 0 || limitH <= 0 {
-		return reader, false
+// Returns original data if resizing is not needed or failed.
+// If resized the result will be for png format and ok flag will be true.
+func resize(data []byte, limitW, limitH int) ([]byte, bool) {
+	if data == nil || limitW <= 0 || limitH <= 0 {
+		return data, false
 	}
 
-	var teeBuf bytes.Buffer
-	tee := io.TeeReader(reader, &teeBuf)
-	src, _, err := image.Decode(tee)
+	src, _, err := image.Decode(bytes.NewBuffer(data))
 	if err != nil {
 		log.Printf("[WARN] can't decode image, %s", err)
-		return &teeBuf, false
+		return data, false
 	}
 
 	bounds := src.Bounds()
 	w, h := bounds.Dx(), bounds.Dy()
 	if w <= limitW && h <= limitH || w <= 0 || h <= 0 {
 		log.Printf("[DEBUG] resizing image is smaller that the limit or has 0 size")
-		return &teeBuf, false
+		return data, false
 	}
 
 	newW, newH := getProportionalSizes(w, h, limitW, limitH)
@@ -166,11 +164,12 @@ func resize(reader io.Reader, limitW, limitH int) (io.Reader, bool) {
 	var out bytes.Buffer
 	if err = png.Encode(&out, m); err != nil {
 		log.Printf("[WARN] can't encode resized image to png, %s", err)
-		return &teeBuf, false
+		return data, false
 	}
-	return &out, true
+	return out.Bytes(), true
 }
 
+// getProportionalSizes returns width and height resized by both dimensions proportionally
 func getProportionalSizes(srcW, srcH int, limitW, limitH int) (resW, resH int) {
 
 	if srcW <= limitW && srcH <= limitH {
@@ -190,7 +189,7 @@ func getProportionalSizes(srcW, srcH int, limitW, limitH int) (resW, resH int) {
 	return limitW, int(propH)
 }
 
-// check if file f is a valid image format, i.e. gif, png or jpeg
+// check if file f is a valid image format, i.e. gif, png, jpeg or webp
 func isValidImage(b []byte) bool {
 	ct := http.DetectContentType(b)
 	return ct == "image/gif" || ct == "image/png" || ct == "image/jpeg" || ct == "image/webp"

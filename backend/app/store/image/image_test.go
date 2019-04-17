@@ -4,10 +4,8 @@ import (
 	"bytes"
 	"context"
 	"image"
-	"io"
 	"io/ioutil"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -76,27 +74,21 @@ func TestService_SubmitDelay(t *testing.T) {
 
 func TestService_resize(t *testing.T) {
 
-	checkC := func(t *testing.T, r io.Reader, cExp []byte) {
-		content, err := ioutil.ReadAll(r)
-		require.NoError(t, err)
-		assert.Equal(t, cExp, content)
-	}
-
 	// Reader is nil.
-	resizedR, ok := resize(nil, 100, 100)
-	assert.Nil(t, resizedR)
+	resized, ok := resize(nil, 100, 100)
+	assert.Nil(t, resized)
 	assert.False(t, ok)
 
 	// Negative limit error.
-	resizedR, ok = resize(strings.NewReader("some picture bin data"), -1, -1)
-	require.NotNil(t, resizedR)
-	checkC(t, resizedR, []byte("some picture bin data"))
+	resized, ok = resize([]byte("some picture bin data"), -1, -1)
+	require.NotNil(t, resized)
+	assert.Equal(t, resized, []byte("some picture bin data"))
 	assert.False(t, ok)
 
 	// Decode error.
-	resizedR, ok = resize(strings.NewReader("invalid image content"), 100, 100)
-	assert.NotNil(t, resizedR)
-	checkC(t, resizedR, []byte("invalid image content"))
+	resized, ok = resize([]byte("invalid image content"), 100, 100)
+	assert.NotNil(t, resized)
+	assert.Equal(t, resized, []byte("invalid image content"))
 	assert.False(t, ok)
 
 	cases := []struct {
@@ -112,17 +104,17 @@ func TestService_resize(t *testing.T) {
 		require.Nil(t, err, "can't open test file %s", c.file)
 
 		// No need for resize, image dimensions are smaller than resize limit.
-		resizedR, ok = resize(bytes.NewReader(img), 800, 800)
-		assert.NotNil(t, resizedR, "file %s", c.file)
-		checkC(t, resizedR, img)
+		resized, ok = resize(img, 800, 800)
+		assert.NotNil(t, resized, "file %s", c.file)
+		assert.Equal(t, resized, img)
 		assert.False(t, ok)
 
-		// Resizing to half of width. Check resizedR image format PNG.
-		resizedR, ok = resize(bytes.NewReader(img), 400, 400)
-		assert.NotNil(t, resizedR, "file %s", c.file)
+		// Resizing to half of width. Check resized image format PNG.
+		resized, ok = resize(img, 400, 400)
+		assert.NotNil(t, resized, "file %s", c.file)
 		assert.True(t, ok)
 
-		imgRz, format, err := image.Decode(resizedR)
+		imgRz, format, err := image.Decode(bytes.NewBuffer(resized))
 		assert.Nil(t, err, "file %s", c.file)
 		assert.Equal(t, "png", format, "file %s", c.file)
 		bounds := imgRz.Bounds()
