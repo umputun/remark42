@@ -67,7 +67,7 @@ func (f *FileSystem) Save(fileName string, userID string, r io.Reader) (id strin
 		return "", errors.Wrap(err, "can't make image directory")
 	}
 
-	if err := ioutil.WriteFile(dst, data, 0600); err != nil {
+	if err = ioutil.WriteFile(dst, data, 0600); err != nil {
 		return "", errors.Wrapf(err, "can't write image file %s", dst)
 	}
 
