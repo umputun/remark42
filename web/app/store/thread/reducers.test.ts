@@ -4,10 +4,10 @@ import { setCollapse } from './actions';
 import { THREAD_SET_COLLAPSE } from './types';
 
 describe('collapsedThreads', () => {
-  const comment = { id: 'some-id' } as Comment;
-
   it('should set collapsed to true', () => {
-    const state = { collapsedThreads: {} };
+    const comment = { id: 'some-id' } as Comment;
+    const node = { comment, replies: [] };
+    const state = { collapsedThreads: {}, comments: [node] };
 
     const dispatch = jest.fn();
     const getState = jest.fn(() => state) as any;
@@ -20,9 +20,11 @@ describe('collapsedThreads', () => {
   });
 
   it('should collapse toggled', () => {
+    const comment = { id: 'some-id' } as Comment;
+    const node = { comment, replies: [] };
     const dispatch = jest.fn();
     const getState = jest.fn();
-    getState.mockReturnValue({ collapsedThreads: { 'some-id': true } });
+    getState.mockReturnValue({ collapsedThreads: { 'some-id': true }, comments: [node] });
 
     setCollapse(comment.id)(dispatch, getState, undefined);
     expect(dispatch).toBeCalledWith({
