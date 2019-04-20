@@ -49,6 +49,7 @@ import { Input } from '@app/components/input';
 import Preloader from '@app/components/preloader';
 import { Thread } from '@app/components/thread';
 import { uploadImage } from '@app/common/api';
+import { isUserAnonymous } from '@app/utils/isUserAnonymous';
 
 interface Props {
   user: User | null;
@@ -192,6 +193,13 @@ export class Root extends Component<Props, State> {
     });
   }
 
+  /**
+   * Defines whether current client is logged in via `Anonymous provider`
+   */
+  isAnonymous(): boolean {
+    return isUserAnonymous(this.props.user);
+  }
+
   render(props: RenderableProps<Props>, { isLoaded, isCommentsListLoading, commentsShown }: State) {
     if (!isLoaded) {
       return (
@@ -205,6 +213,7 @@ export class Root extends Component<Props, State> {
 
     const isGuest = !props.user;
     const isCommentsDisabled = !!props.info.read_only;
+    const imageUploadHandler = this.isAnonymous() ? undefined : this.props.uploadImage;
 
     return (
       <div id={NODE_ID}>
@@ -235,7 +244,7 @@ export class Root extends Component<Props, State> {
                   userId={this.props.user!.id}
                   onSubmit={(text, title) => this.props.addComment(text, title)}
                   getPreview={this.props.getPreview}
-                  uploadImage={this.props.uploadImage}
+                  uploadImage={imageUploadHandler}
                 />
               )}
 

@@ -38,7 +38,7 @@ interface Props {
   getPreview(text: string): Promise<string>;
   /** action on cancel. optional as root input has no cancel option */
   onCancel?: () => void;
-  uploadImage: (image: File) => Promise<Image>;
+  uploadImage?: (image: File) => Promise<Image>;
 }
 
 interface State {
@@ -194,6 +194,7 @@ export class Input extends Component<Props, State> {
   }
 
   onDragOver(e: DragEvent) {
+    if (!this.props.uploadImage) return;
     if (StaticStore.config.max_image_size === 0) return;
     if (!this.textAreaRef) return;
     if (!e.dataTransfer) return;
@@ -204,6 +205,7 @@ export class Input extends Component<Props, State> {
   }
 
   onDrop(e: DragEvent) {
+    if (!this.props.uploadImage) return;
     if (StaticStore.config.max_image_size === 0) return;
     if (!e.dataTransfer) return;
 
@@ -217,20 +219,19 @@ export class Input extends Component<Props, State> {
 
   /** wrapper with error handling for props.uploadImage */
   uploadImage(file: File): Promise<Image | Error> {
-    return this.props
-      .uploadImage(file)
-      .catch(
-        (e: ApiError | string) =>
-          new Error(
-            typeof e === 'string'
-              ? `${file.name} upload failed with "${e}"`
-              : `${file.name} upload failed with "${e.error}"`
-          )
-      );
+    return this.props.uploadImage!(file).catch(
+      (e: ApiError | string) =>
+        new Error(
+          typeof e === 'string'
+            ? `${file.name} upload failed with "${e}"`
+            : `${file.name} upload failed with "${e.error}"`
+        )
+    );
   }
 
   /** performs upload process */
   async uploadImages(files: File[]) {
+    if (!this.props.uploadImage) return;
     if (!this.textAreaRef) return;
 
     /** Human readable image size limit, i.e 5MB */
