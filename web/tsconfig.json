@@ -23,5 +23,4 @@
   },
   "include": ["app/**/*"],
   "exclude": ["node_modules"],
-  "typeAcquisition": { "enable": true }
 }

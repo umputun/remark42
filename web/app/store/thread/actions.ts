@@ -5,12 +5,11 @@ import { StoreAction } from '../index';
 import { THREAD_SET_COLLAPSE } from './types';
 import { saveCollapsedComments } from './utils';
 
-export const setCollapse = (id: Comment['id']): StoreAction<void> => (dispatch, getState) => {
-  const collapsed = !getState().collapsedThreads[id];
+export const setCollapse = (id: Comment['id'], value: boolean): StoreAction<void> => (dispatch, getState) => {
   dispatch({
     type: THREAD_SET_COLLAPSE,
     id,
-    collapsed,
+    collapsed: value,
   });
   saveCollapsedComments(
     siteId!,

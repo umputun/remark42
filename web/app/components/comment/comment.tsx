@@ -50,7 +50,7 @@ export interface Props {
   setReplyEditState?(id: CommentType['id'], mode: CommentMode): void;
   getPreview?: (text: string) => Promise<string>;
   putCommentVote?(id: CommentType['id'], value: number): Promise<void>;
-  collapseToggle?: (id: CommentType['id']) => void;
+  setCollapse?: (id: CommentType['id'], value: boolean) => void;
   setPinState?(id: CommentType['id'], value: boolean): Promise<void>;
   blockUser?(id: User['id'], name: User['name'], ttl: BlockTTL): Promise<void>;
   unblockUser?(id: User['id']): Promise<void>;
@@ -285,7 +285,7 @@ export class Comment extends Component<Props, State> {
   toggleCollapse() {
     this.props.setReplyEditState!(this.props.data.id, CommentMode.None);
 
-    this.props.collapseToggle!(this.props.data.id);
+    this.props.setCollapse!(this.props.data.id, !this.props.collapsed);
   }
 
   copyComment({ username, time }: { username: string; time: string }) {

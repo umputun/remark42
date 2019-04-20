@@ -22,6 +22,7 @@ import { blockUser, unblockUser, setVirifiedStatus } from '@app/store/user/actio
 import { Comment, Props } from './comment';
 import { getCommentMode } from '@app/store/comments/getters';
 import { uploadImage } from '@app/common/api';
+import { getThreadIsCollapsed } from '@app/store/thread/getters';
 
 const mapProps = (state: StoreState, cprops: { data: CommentType }) => {
   const props: Pick<
@@ -34,7 +35,7 @@ const mapProps = (state: StoreState, cprops: { data: CommentType }) => {
     post_info: state.info,
     isCommentsDisabled: state.info.read_only || false,
     theme: state.theme,
-    collapsed: state.collapsedThreads[cprops.data.id] === true,
+    collapsed: getThreadIsCollapsed(state, cprops.data),
   };
   return props;
 };
@@ -46,7 +47,7 @@ const mapDispatchToProps = (dispatch: StoreDispatch) => {
     | 'updateComment'
     | 'removeComment'
     | 'setReplyEditState'
-    | 'collapseToggle'
+    | 'setCollapse'
     | 'setPinState'
     | 'putCommentVote'
     | 'blockUser'
@@ -58,7 +59,7 @@ const mapDispatchToProps = (dispatch: StoreDispatch) => {
     updateComment: (id: CommentType['id'], text: string) => dispatch(updateComment(id, text)),
     removeComment: (id: CommentType['id']) => dispatch(removeComment(id)),
     setReplyEditState: (id: CommentType['id'], mode: CommentMode) => dispatch(setCommentMode({ id, state: mode })),
-    collapseToggle: (id: CommentType['id']) => dispatch(setCollapse(id)),
+    setCollapse: (id: CommentType['id'], value: boolean) => dispatch(setCollapse(id, value)),
     setPinState: (id: CommentType['id'], value: boolean) => dispatch(setPinState(id, value)),
     putCommentVote: (id: CommentType['id'], value: number) => dispatch(putVote(id, value)),
 

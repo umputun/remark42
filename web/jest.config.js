@@ -11,5 +11,5 @@ module.exports = {
     '\\.scss$': '<rootDir>/app/testUtils/mockStyles.js',
     '@app/(.*)': '<rootDir>/app/$1',
   },
-  setupFilesAfterEnv: ['<rootDir>/setup-jest-env.js'],
+  setupFilesAfterEnv: ['<rootDir>/app/testUtils/index.ts'],
 };
