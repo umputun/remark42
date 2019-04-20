@@ -3,7 +3,7 @@ declare let remark_config: CounterConfig;
 
 import loadPolyfills from '@app/common/polyfills';
 import api from './common/api';
-import { COUNTER_NODE_CLASSNAME } from '@app/common/constants';
+import { COUNTER_NODE_CLASSNAME, BASE_URL } from '@app/common/constants';
 import { CounterConfig } from '@app/common/config-types';
 
 if (document.readyState === 'loading') {
@@ -13,6 +13,8 @@ if (document.readyState === 'loading') {
 }
 
 async function init(): Promise<void> {
+  __webpack_public_path__ = BASE_URL + '/web/';
+
   await loadPolyfills();
 
   const nodes: HTMLElement[] = [].slice.call(document.getElementsByClassName(COUNTER_NODE_CLASSNAME));

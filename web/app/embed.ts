@@ -14,6 +14,7 @@ if (document.readyState === 'loading') {
 }
 
 async function init(): Promise<void> {
+  __webpack_public_path__ = BASE_URL + '/web/';
   await loadPolyfills();
 
   const node = document.getElementById(NODE_ID);
