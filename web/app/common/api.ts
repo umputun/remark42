@@ -133,6 +133,7 @@ export const getUser = (): Promise<User | null> =>
     .get<User | null>({
       url: '/user',
       withCredentials: true,
+      logError: false,
     })
     .catch(() => null);
 

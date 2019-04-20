@@ -10,6 +10,8 @@ interface FetcherInitBase {
   url: string;
   overriddenApiBase?: string;
   withCredentials?: boolean;
+  /** whether log error message to console */
+  logError?: boolean;
 }
 
 interface FetcherInitJSON extends FetcherInitBase {
@@ -34,6 +36,7 @@ const fetcher = methods.reduce<Partial<FetcherObject>>((acc, method) => {
       withCredentials = false,
       overriddenApiBase = API_BASE,
       contentType = 'application/json',
+      logError = true,
     } = typeof data === 'string' ? { url: data } : data;
     const basename = `${BASE_URL}${overriddenApiBase}`;
 
@@ -81,8 +84,10 @@ const fetcher = methods.reduce<Partial<FetcherObject>>((acc, method) => {
           try {
             err = JSON.parse(text);
           } catch (e) {
-            // eslint-disable-next-line no-console
-            console.error(err);
+            if (logError) {
+              // eslint-disable-next-line no-console
+              console.error(err);
+            }
             throw 'Something went wrong.';
           }
           throw err;
