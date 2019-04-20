@@ -47,7 +47,7 @@ const mapDispatchToProps = (dispatch: StoreDispatch) => {
     | 'updateComment'
     | 'removeComment'
     | 'setReplyEditState'
-    | 'collapseToggle'
+    | 'setCollapse'
     | 'setPinState'
     | 'putCommentVote'
     | 'blockUser'
@@ -59,7 +59,7 @@ const mapDispatchToProps = (dispatch: StoreDispatch) => {
     updateComment: (id: CommentType['id'], text: string) => dispatch(updateComment(id, text)),
     removeComment: (id: CommentType['id']) => dispatch(removeComment(id)),
     setReplyEditState: (id: CommentType['id'], mode: CommentMode) => dispatch(setCommentMode({ id, state: mode })),
-    collapseToggle: (id: CommentType['id']) => dispatch(setCollapse(id)),
+    setCollapse: (id: CommentType['id'], value: boolean) => dispatch(setCollapse(id, value)),
     setPinState: (id: CommentType['id'], value: boolean) => dispatch(setPinState(id, value)),
     putCommentVote: (id: CommentType['id'], value: number) => dispatch(putVote(id, value)),
 

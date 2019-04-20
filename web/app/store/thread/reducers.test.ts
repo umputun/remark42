@@ -11,7 +11,7 @@ describe('collapsedThreads', () => {
 
     const dispatch = jest.fn();
     const getState = jest.fn(() => state) as any;
-    setCollapse(comment.id)(dispatch, getState, undefined);
+    setCollapse(comment.id, true)(dispatch, getState, undefined);
     expect(dispatch).toBeCalledWith({
       type: THREAD_SET_COLLAPSE,
       id: 'some-id',
@@ -26,7 +26,7 @@ describe('collapsedThreads', () => {
     const getState = jest.fn();
     getState.mockReturnValue({ collapsedThreads: { 'some-id': true }, comments: [node] });
 
-    setCollapse(comment.id)(dispatch, getState, undefined);
+    setCollapse(comment.id, false)(dispatch, getState, undefined);
     expect(dispatch).toBeCalledWith({
       type: THREAD_SET_COLLAPSE,
       id: 'some-id',
