@@ -194,12 +194,12 @@ func (s *Rest) routes() chi.Router {
 
 	router.Group(func(r chi.Router) {
 		l := logger.New(logger.Log(log.Default()), logger.WithBody, logger.IPfn(ipFn), logger.Prefix("[INFO]"))
-		r.Use(l.Handler, tollbooth_chi.LimitHandler(tollbooth.NewLimiter(5, nil)))
+		r.Use(l.Handler, tollbooth_chi.LimitHandler(tollbooth.NewLimiter(5, nil)), middleware.NoCache)
 		r.Mount("/auth", authHandler)
 	})
 
 	router.Group(func(r chi.Router) {
-		r.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(100, nil)))
+		r.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(100, nil)), middleware.NoCache)
 		r.Mount("/avatar", avatarHandler)
 	})
 
@@ -210,6 +210,7 @@ func (s *Rest) routes() chi.Router {
 
 		rapi.Group(func(rava chi.Router) {
 			rava.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(100, nil)))
+			rava.Use(middleware.NoCache)
 			rava.Mount("/avatar", avatarHandler)
 		})
 
@@ -217,6 +218,7 @@ func (s *Rest) routes() chi.Router {
 		rapi.Group(func(ropen chi.Router) {
 			ropen.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
 			ropen.Use(authMiddleware.Trace)
+			ropen.Use(middleware.NoCache)
 			ropen.Use(logger.New(logger.Log(log.Default()), logger.WithBody,
 				logger.Prefix("[INFO]"), logger.IPfn(ipFn)).Handler)
 			ropen.Get("/find", s.findCommentsCtrl)
@@ -239,6 +241,7 @@ func (s *Rest) routes() chi.Router {
 		rapi.Group(func(rauth chi.Router) {
 			rauth.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
 			rauth.Use(authMiddleware.Auth)
+			rauth.Use(middleware.NoCache)
 			rauth.Use(logger.New(logger.Log(log.Default()), logger.WithBody,
 				logger.Prefix("[INFO]"), logger.IPfn(ipFn)).Handler)
 			rauth.Get("/user", s.userInfoCtrl)
@@ -256,6 +259,7 @@ func (s *Rest) routes() chi.Router {
 			}
 			rauth.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(lmt, nil)))
 			rauth.Use(authMiddleware.Auth)
+			rauth.Use(middleware.NoCache)
 			rauth.Use(logger.New(logger.Log(log.Default()), logger.WithBody,
 				logger.Prefix("[DEBUG]"), logger.IPfn(ipFn)).Handler)
 
