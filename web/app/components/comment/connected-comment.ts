@@ -22,6 +22,7 @@ import { blockUser, unblockUser, setVirifiedStatus } from '@app/store/user/actio
 import { Comment, Props } from './comment';
 import { getCommentMode } from '@app/store/comments/getters';
 import { uploadImage } from '@app/common/api';
+import { getThreadIsCollapsed } from '@app/store/thread/getters';
 
 const mapProps = (state: StoreState, cprops: { data: CommentType }) => {
   const props: Pick<
@@ -34,7 +35,7 @@ const mapProps = (state: StoreState, cprops: { data: CommentType }) => {
     post_info: state.info,
     isCommentsDisabled: state.info.read_only || false,
     theme: state.theme,
-    collapsed: state.collapsedThreads[cprops.data.id] === true,
+    collapsed: getThreadIsCollapsed(state, cprops.data),
   };
   return props;
 };
