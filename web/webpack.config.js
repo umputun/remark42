@@ -166,10 +166,11 @@ module.exports = () => ({
     entrypoints: false,
   },
   devServer: {
-    host: 'localhost',
+    host: '0.0.0.0',
     port: 9000,
     contentBase: publicFolder,
     publicPath: '/web',
+    disableHostCheck: true,
     proxy: {
       '/api': {
         target: remarkUrl,

@@ -36,6 +36,12 @@ module.exports = {
       },
     },
     {
+      files: ['*.d.ts'],
+      rules: {
+        'no-var': 0,
+      },
+    },
+    {
       files: ['*.test.ts', '*.test.tsx'],
       rules: {
         '@typescript-eslint/no-explicit-any': 0,
@@ -65,6 +71,7 @@ module.exports = {
   },
   globals: {
     remark_config: true,
+    __webpack_public_path__: true,
   },
   rules: {
     '@typescript-eslint/indent': 0,

@@ -12,7 +12,7 @@ import reduxStore from '@app/store';
 // importing css
 import '@app/components/list-comments';
 
-import { NODE_ID } from '@app/common/constants';
+import { NODE_ID, BASE_URL } from '@app/common/constants';
 import { StaticStore } from '@app/common/static_store';
 import api from '@app/common/api';
 
@@ -23,6 +23,8 @@ if (document.readyState === 'loading') {
 }
 
 async function init(): Promise<void> {
+  __webpack_public_path__ = BASE_URL + '/web/';
+
   await loadPolyfills();
 
   const node = document.getElementById(NODE_ID);
