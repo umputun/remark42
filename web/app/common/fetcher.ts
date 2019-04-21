@@ -2,6 +2,7 @@ import { BASE_URL, API_BASE } from './constants';
 import { siteId } from './settings';
 import { StaticStore } from './static_store';
 import { getCookie } from './cookies';
+import { httpErrorMap } from '@app/utils/errorUtils';
 
 export type FetcherMethod = 'get' | 'post' | 'put' | 'patch' | 'delete' | 'head';
 const methods: FetcherMethod[] = ['get', 'post', 'put', 'patch', 'delete', 'head'];
@@ -79,6 +80,14 @@ const fetcher = methods.reduce<Partial<FetcherObject>>((acc, method) => {
       StaticStore.serverClientTimeDiff = timeDiff;
 
       if (res.status >= 400) {
+        if (httpErrorMap.has(res.status)) {
+          const errString = httpErrorMap.get(res.status)!;
+          throw {
+            code: -1,
+            error: errString,
+            details: errString,
+          };
+        }
         return res.text().then(text => {
           let err;
           try {
@@ -88,7 +97,11 @@ const fetcher = methods.reduce<Partial<FetcherObject>>((acc, method) => {
               // eslint-disable-next-line no-console
               console.error(err);
             }
-            throw 'Something went wrong.';
+            throw {
+              code: -1,
+              error: 'Something went wrong.',
+              details: text,
+            };
           }
           throw err;
         });

@@ -1,3 +1,7 @@
+/**
+ * map of codes that server returns in its response in case of error
+ * to client readable version
+ */
 const errorMessageForCodes = new Map([
   [0, 'Something went wrong. Please try again a bit later.'],
   [1, 'Comment cannot be found. Please refresh the page and try again.'],
@@ -20,9 +24,23 @@ const errorMessageForCodes = new Map([
   [18, 'Requested file cannot be found.'],
 ]);
 
+/**
+ * map of http rest codes to ui label, used by fetcher to generate error with `-1` code
+ */
+export const httpErrorMap = new Map([
+  [401, 'Not authorized.'],
+  [403, 'Forbidden.'],
+  [429, 'You have reached maximum request limit.'],
+]);
+
 export type FetcherError =
   | string
   | {
+      /**
+       * Error code, that is part of server error response.
+       *
+       * Note that -1 is reserved for error where `error` field shall be used directly
+       */
       code?: number;
       details?: string;
       error: string;
@@ -36,6 +54,10 @@ export function extractErrorMessageFromResponse(response: FetcherError): string 
 
   if (typeof response === 'string') {
     return response;
+  }
+
+  if (response.code === -1) {
+    return response.error;
   }
 
   if (typeof response.code === 'number' && errorMessageForCodes.has(response.code)) {

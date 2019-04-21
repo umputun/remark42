@@ -47,6 +47,9 @@ module.exports = {
         '@typescript-eslint/no-explicit-any': 0,
         '@typescript-eslint/no-object-literal-type-assertion': 0,
       },
+      globals: {
+        fail: true,
+      },
     },
     {
       files: ['*.test.ts', '*.test.tsx', '*.test.js', '*.test.jsx'],
