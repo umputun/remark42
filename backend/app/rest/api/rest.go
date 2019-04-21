@@ -232,8 +232,15 @@ func (s *Rest) routes() chi.Router {
 			ropen.Post("/preview", s.previewCommentCtrl)
 			ropen.Get("/info", s.infoCtrl)
 			ropen.Get("/picture/{user}/{id}", s.loadPictureCtrl)
-
 			ropen.Mount("/rss", s.rssRoutes())
+		})
+
+		// open routes, cached
+		rapi.Group(func(ropen chi.Router) {
+			ropen.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
+			ropen.Use(authMiddleware.Trace)
+			ropen.Use(logger.New(logger.Log(log.Default()), logger.WithBody,
+				logger.Prefix("[INFO]"), logger.IPfn(ipFn)).Handler)
 			ropen.Mount("/img", s.ImageProxy.Routes())
 		})
 
