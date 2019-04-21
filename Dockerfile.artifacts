@@ -9,19 +9,20 @@ ARG DRONE_BRANCH
 ENV SKIP_FRONTEND_TEST=true
 
 RUN apk add --no-cache --update git
-ADD web/package.json /srv/web/package.json
-ADD web/package-lock.json /srv/web/package-lock.json
-RUN cd /srv/web && CI=true npm ci
+ADD frontend/package.json /srv/frontend/package.json
+ADD frontend/package-lock.json /srv/frontend/package-lock.json
+RUN cd /srv/frontend && CI=true npm ci
 
 FROM node:10.11-alpine as build-frontend
 
 ARG CI
 ARG NODE_ENV=production
 ENV SKIP_FRONTEND_TEST=true
+ENV HUSKY_SKIP_INSTALL=true
 
-COPY --from=build-frontend-deps /srv/web/node_modules /srv/web/node_modules
-ADD web /srv/web
-RUN cd /srv/web && \
+COPY --from=build-frontend-deps /srv/frontend/node_modules /srv/frontend/node_modules
+ADD frontend /srv/frontend
+RUN cd /srv/frontend && \
     npm run build && \
     rm -rf ./node_modules
 
@@ -35,7 +36,7 @@ WORKDIR /go/src/github.com/umputun/remark/backend
 ADD backend /go/src/github.com/umputun/remark/backend
 ADD README.md /go/src/github.com/umputun/remark/
 ADD LICENSE /go/src/github.com/umputun/remark/
-COPY --from=build-frontend /srv/web/public/ web
+COPY --from=build-frontend /srv/frontend/public/ web
 
 RUN \
     export WEB_ROOT=/go/src/github.com/umputun/remark/backend/web && \

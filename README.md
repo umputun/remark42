@@ -450,9 +450,9 @@ To run backend with mongodb store mongo container should be started first - `doc
 
 * install [Node.js 8](https://nodejs.org/en/) or higher;
 * install [NPM 6.1.0](https://www.npmjs.com/package/npm);
-* run `npm install` inside `./web`;
+* run `npm install` inside `./frontend`;
 * run `npm run build` there;
-* result files will be saved in `./web/public`.
+* result files will be saved in `./frontend/public`.
 
 **Note** Running `npm install` will set up precommit hooks into your git repository.
 It used to reformat your frontend code using `prettier` and lint with `eslint` before every commit.
@@ -475,7 +475,7 @@ Developer build running by `webpack-dev-server` supports devtools for [React](ht
 
 #### Frontend guide
 
-Frontend guide can be found here: [./FRONTEND.MAN.md](./FRONTEND.MAN.md)
+Frontend guide can be found here: [./frontend/README.md](./frontend/README.md)
 
 ## API
 

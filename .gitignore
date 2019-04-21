@@ -8,9 +8,9 @@ debug
 debug.test
 .vscode
 .idea/
-/web/node_modules/
-/web/public/
-/web/coverage
+/frontend/node_modules/
+/frontend/public/
+/frontend/coverage
 *.prof
 *.test
 /rest-client.env.json

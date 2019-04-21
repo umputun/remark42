@@ -64,9 +64,9 @@ ARG CI
 ENV HUSKY_SKIP_INSTALL=true
 
 RUN apk add --no-cache --update git
-ADD web/package.json /srv/web/package.json
-ADD web/package-lock.json /srv/web/package-lock.json
-RUN cd /srv/web && CI=true npm ci
+ADD frontend/package.json /srv/frontend/package.json
+ADD frontend/package-lock.json /srv/frontend/package-lock.json
+RUN cd /srv/frontend && CI=true npm ci
 
 FROM node:10.11-alpine as build-frontend
 
@@ -74,9 +74,9 @@ ARG CI
 ARG SKIP_FRONTEND_TEST
 ARG NODE_ENV=production
 
-COPY --from=build-frontend-deps /srv/web/node_modules /srv/web/node_modules
-ADD web /srv/web
-RUN cd /srv/web && \
+COPY --from=build-frontend-deps /srv/frontend/node_modules /srv/frontend/node_modules
+ADD frontend /srv/frontend
+RUN cd /srv/frontend && \
     if [ -z "$SKIP_FRONTEND_TEST" ] ; then npx run-p lint test build ; \
     else echo "skip frontend tests and lint" ; npm run build ; fi && \
     rm -rf ./node_modules
@@ -93,7 +93,7 @@ ADD backend/scripts/import.sh /usr/local/bin/import
 RUN chmod +x /entrypoint.sh /usr/local/bin/backup /usr/local/bin/restore /usr/local/bin/import
 
 COPY --from=build-backend /build/backend/remark42 /srv/remark42
-COPY --from=build-frontend /srv/web/public/ /srv/web
+COPY --from=build-frontend /srv/frontend/public/ /srv/web
 RUN chown -R app:app /srv
 RUN ln -s /srv/remark42 /usr/bin/remark42
 
