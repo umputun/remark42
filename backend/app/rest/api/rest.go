@@ -231,7 +231,7 @@ func (s *Rest) routes() chi.Router {
 			ropen.Get("/config", s.configCtrl)
 			ropen.Post("/preview", s.previewCommentCtrl)
 			ropen.Get("/info", s.infoCtrl)
-			ropen.Get("/picture/{user}/{id}", s.loadPictureCtrl)
+			ropen.Mount("/img", s.ImageProxy.Routes())
 			ropen.Mount("/rss", s.rssRoutes())
 		})
 
@@ -241,7 +241,7 @@ func (s *Rest) routes() chi.Router {
 			ropen.Use(authMiddleware.Trace)
 			ropen.Use(logger.New(logger.Log(log.Default()), logger.WithBody,
 				logger.Prefix("[INFO]"), logger.IPfn(ipFn)).Handler)
-			ropen.Mount("/img", s.ImageProxy.Routes())
+			ropen.Get("/picture/{user}/{id}", s.loadPictureCtrl)
 		})
 
 		// protected routes, require auth
