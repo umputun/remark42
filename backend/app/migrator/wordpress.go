@@ -143,7 +143,7 @@ func (w *WordPress) convert(r io.Reader, siteID string) chan store.Comment {
 							commentsCh <- commentFormatter.Format(c)
 							stats.inpComments++
 							if stats.inpComments%1000 == 0 {
-								log.Printf("[DEBUG] proccessed %d comments", stats.inpComments)
+								log.Printf("[DEBUG] processed %d comments", stats.inpComments)
 							}
 						}
 					}

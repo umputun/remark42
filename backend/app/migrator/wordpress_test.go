@@ -17,7 +17,7 @@ import (
 
 func TestWordPress_Import(t *testing.T) {
 	siteID := "testWP"
-	defer os.Remove("/tmp/remark-test.db")
+	defer func() { _ = os.Remove("/tmp/remark-test.db") }()
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: siteID})
 	assert.Nil(t, err, "create store")
 
