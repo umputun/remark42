@@ -1,8 +1,8 @@
 /logs/
 /target/
 /var/
-/web/node_modules/
-/web/public/
+/frontend/node_modules/
+/frontend/public/
 /.vscode/
 /.idea/
 /bin/
