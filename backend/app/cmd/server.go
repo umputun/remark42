@@ -238,6 +238,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to make pictures store")
 	}
+	log.Printf("[DEBUG] image service for url=%s, ttl=%v", imageService.ImageAPI, imageService.TTL)
 
 	dataService := &service.DataStore{
 		Interface:              storeEngine,
@@ -453,7 +454,8 @@ func (s *ServerCommand) makePicturesStore() (*image.Service, error) {
 				MaxHeight:  s.Image.ResizeHeight,
 				MaxWidth:   s.Image.ResizeWidth,
 			},
-			TTL: s.EditDuration + time.Second, // add extra second to image TTL for staging
+			ImageAPI: s.RemarkURL + "/api/v1/picture/",
+			TTL:      s.EditDuration + time.Second, // add extra second to image TTL for staging
 		}, nil
 	}
 	return nil, errors.Errorf("unsupported pictures store type %s", s.Image.Type)

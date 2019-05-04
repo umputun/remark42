@@ -17,7 +17,7 @@ import (
 func TestService_ExtractPictures(t *testing.T) {
 	svc := Service{ImageAPI: "/blah/"}
 	html := `blah <img src="/blah/user1/pic1.png"/> foo 
-<img src="/blah/user2/pic3.png"/> xyz <p>123</p> <img src="/pic3.png"/>`
+<img src="/blah/user2/pic3.png"/> xyz <p>123</p> <img src="/pic3.png"/> <img src="https://i.ibb.co/0cqqqnD/ezgif-5-3b07b6b97610.png" alt="">`
 	ids, err := svc.ExtractPictures(html)
 	require.NoError(t, err)
 	assert.Equal(t, 2, len(ids), "two images")
