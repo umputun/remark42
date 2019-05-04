@@ -16,6 +16,7 @@ import (
 
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/store"
+	"github.com/umputun/remark/backend/app/store/service"
 )
 
 // GET /find?site=siteID&url=post-url&format=[tree|plain]&sort=[+/-time|+/-score|+/-controversy ]
@@ -38,9 +39,9 @@ func (s *Rest) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		var b []byte
 		switch r.URL.Query().Get("format") {
 		case "tree":
-			tree := rest.MakeTree(maskedComments, sort, s.ReadOnlyAge)
+			tree := service.MakeTree(maskedComments, sort, s.ReadOnlyAge)
 			if tree.Nodes == nil { // eliminate json nil serialization
-				tree.Nodes = []*rest.Node{}
+				tree.Nodes = []*service.Node{}
 			}
 			if s.DataService.IsReadOnly(locator) {
 				tree.Info.ReadOnly = true
@@ -364,7 +365,11 @@ func (s *Rest) loadPictureCtrl(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	defer imgRdr.Close()
+	defer func() {
+		if e := imgRdr.Close(); e != nil {
+			log.Printf("[WARN] failed to close reader for picture %s, %v", id, e)
+		}
+	}()
 
 	w.Header().Set("Content-Type", imgContentType(id))
 	w.Header().Set("Content-Length", strconv.Itoa(int(size)))

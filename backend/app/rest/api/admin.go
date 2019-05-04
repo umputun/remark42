@@ -27,25 +27,6 @@ type admin struct {
 	migrator      *Migrator
 }
 
-func (a *admin) routes(middlewares ...func(http.Handler) http.Handler) chi.Router {
-	router := chi.NewRouter()
-	router.Use(middlewares...)
-	router.Delete("/comment/{id}", a.deleteCommentCtrl)
-	router.Put("/user/{userid}", a.setBlockCtrl)
-	router.Delete("/user/{userid}", a.deleteUserCtrl)
-	router.Get("/user/{userid}", a.getUserInfoCtrl)
-	router.Get("/deleteme", a.deleteMeRequestCtrl)
-	router.Put("/verify/{userid}", a.setVerifyCtrl)
-	router.Put("/pin/{id}", a.setPinCtrl)
-	router.Get("/blocked", a.blockedUsersCtrl)
-	router.Put("/readonly", a.setReadOnlyCtrl)
-	router.Put("/title/{id}", a.setTitleCtrl)
-
-	a.migrator.withRoutes(router) // set migrator routes, i.e. /export and /import
-
-	return router
-}
-
 // DELETE /comment/{id}?site=siteID&url=post-url - removes comment
 func (a *admin) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 

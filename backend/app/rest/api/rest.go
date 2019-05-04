@@ -253,9 +253,32 @@ func (s *Rest) routes() chi.Router {
 				logger.Prefix("[INFO]"), logger.IPfn(ipFn)).Handler)
 			rauth.Get("/user", s.userInfoCtrl)
 			rauth.Get("/userdata", s.userAllDataCtrl)
+		})
 
-			// admin routes, admin users only
-			rauth.Mount("/admin", s.adminService.routes(authMiddleware.AdminOnly))
+		// admin routes, require auth and admin users only
+		rapi.Route("/admin", func(radmin chi.Router) {
+			radmin.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
+			radmin.Use(authMiddleware.Auth, authMiddleware.AdminOnly)
+			radmin.Use(middleware.NoCache)
+			radmin.Use(logger.New(logger.Log(log.Default()), logger.WithBody,
+				logger.Prefix("[INFO]"), logger.IPfn(ipFn)).Handler)
+
+			radmin.Delete("/comment/{id}", s.adminService.deleteCommentCtrl)
+			radmin.Put("/user/{userid}", s.adminService.setBlockCtrl)
+			radmin.Delete("/user/{userid}", s.adminService.deleteUserCtrl)
+			radmin.Get("/user/{userid}", s.adminService.getUserInfoCtrl)
+			radmin.Get("/deleteme", s.adminService.deleteMeRequestCtrl)
+			radmin.Put("/verify/{userid}", s.adminService.setVerifyCtrl)
+			radmin.Put("/pin/{id}", s.adminService.setPinCtrl)
+			radmin.Get("/blocked", s.adminService.blockedUsersCtrl)
+			radmin.Put("/readonly", s.adminService.setReadOnlyCtrl)
+			radmin.Put("/title/{id}", s.adminService.setTitleCtrl)
+
+			// migrator
+			radmin.Get("/export", s.adminService.migrator.exportCtrl)
+			radmin.Post("/import", s.adminService.migrator.importCtrl)
+			radmin.Post("/import/form", s.adminService.migrator.importFormCtrl)
+			radmin.Get("/import/wait", s.adminService.migrator.importWaitCtrl)
 		})
 
 		// protected routes, throttled to 10/s by default, controlled by external UpdateLimiter param

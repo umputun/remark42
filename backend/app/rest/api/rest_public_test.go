@@ -14,8 +14,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/store"
+	"github.com/umputun/remark/backend/app/store/service"
 )
 
 func TestRest_Ping(t *testing.T) {
@@ -111,7 +111,7 @@ func TestRest_Find(t *testing.T) {
 	assert.Equal(t, id2, comments.Comments[0].ID)
 
 	// get in tree mode
-	tree := rest.Tree{}
+	tree := service.Tree{}
 	res, code = get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah1&format=tree")
 	assert.Equal(t, 200, code)
 	err = json.Unmarshal([]byte(res), &tree)
@@ -137,7 +137,7 @@ func TestRest_FindAge(t *testing.T) {
 	_, err = srv.DataService.Create(c2)
 	require.Nil(t, err)
 
-	tree := rest.Tree{}
+	tree := service.Tree{}
 
 	res, code := get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah1&format=tree")
 	assert.Equal(t, 200, code)
@@ -178,7 +178,7 @@ func TestRest_FindReadOnly(t *testing.T) {
 	_, err = client.Do(req)
 	require.Nil(t, err)
 
-	tree := rest.Tree{}
+	tree := service.Tree{}
 	res, code := get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah1&format=tree")
 	assert.Equal(t, 200, code)
 	err = json.Unmarshal([]byte(res), &tree)
@@ -186,7 +186,7 @@ func TestRest_FindReadOnly(t *testing.T) {
 	assert.Equal(t, "https://radio-t.com/blah1", tree.Info.URL)
 	assert.True(t, tree.Info.ReadOnly, "post is ro")
 
-	tree = rest.Tree{}
+	tree = service.Tree{}
 	res, code = get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah2&format=tree")
 	assert.Equal(t, 200, code)
 	err = json.Unmarshal([]byte(res), &tree)
