@@ -1,4 +1,4 @@
-package rest
+package service
 
 import (
 	"encoding/json"
