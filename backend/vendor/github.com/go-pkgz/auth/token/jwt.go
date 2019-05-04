@@ -32,16 +32,19 @@ type Handshake struct {
 	ID    string `json:"id,omitempty"`
 }
 
-// default names for cookies and headers
 const (
-	jwtCookieName  = "JWT"
-	jwtHeaderKey   = "X-JWT"
-	xsrfCookieName = "XSRF-TOKEN"
-	xsrfHeaderKey  = "X-XSRF-TOKEN"
-	tokenQuery     = "token"
-	issuer         = "go-pkgz/auth"
-	tokenDuration  = time.Minute * 15
-	cookieDuration = time.Hour * 24 * 31
+	// default names for cookies and headers
+	defaultJWTCookieName  = "JWT"
+	defaultJWTHeaderKey   = "X-JWT"
+	defaultXSRFCookieName = "XSRF-TOKEN"
+	defaultXSRFHeaderKey  = "X-XSRF-TOKEN"
+
+	defaultIssuer = "go-pkgz/auth"
+
+	defaultTokenDuration  = time.Minute * 15
+	defaultCookieDuration = time.Hour * 24 * 31
+
+	tokenQuery = "token"
 )
 
 // Opts holds constructor params
@@ -73,18 +76,18 @@ func NewService(opts Opts) *Service {
 		}
 	}
 
-	setDefault(&res.JWTCookieName, jwtCookieName)
-	setDefault(&res.JWTHeaderKey, jwtHeaderKey)
-	setDefault(&res.XSRFCookieName, xsrfCookieName)
-	setDefault(&res.XSRFHeaderKey, xsrfHeaderKey)
-	setDefault(&res.Issuer, issuer)
+	setDefault(&res.JWTCookieName, defaultJWTCookieName)
+	setDefault(&res.JWTHeaderKey, defaultJWTHeaderKey)
+	setDefault(&res.XSRFCookieName, defaultXSRFCookieName)
+	setDefault(&res.XSRFHeaderKey, defaultXSRFHeaderKey)
+	setDefault(&res.Issuer, defaultIssuer)
 
 	if opts.TokenDuration == 0 {
-		res.TokenDuration = tokenDuration
+		res.TokenDuration = defaultTokenDuration
 	}
 
 	if opts.CookieDuration == 0 {
-		res.CookieDuration = cookieDuration
+		res.CookieDuration = defaultCookieDuration
 	}
 
 	return &res
@@ -198,11 +201,11 @@ func (j *Service) Set(w http.ResponseWriter, claims Claims) (Claims, error) {
 		cookieExpiration = int(j.CookieDuration.Seconds())
 	}
 
-	jwtCookie := http.Cookie{Name: jwtCookieName, Value: tokenString, HttpOnly: true, Path: "/",
+	jwtCookie := http.Cookie{Name: j.JWTCookieName, Value: tokenString, HttpOnly: true, Path: "/",
 		MaxAge: cookieExpiration, Secure: j.SecureCookies}
 	http.SetCookie(w, &jwtCookie)
 
-	xsrfCookie := http.Cookie{Name: xsrfCookieName, Value: claims.Id, HttpOnly: false, Path: "/",
+	xsrfCookie := http.Cookie{Name: j.XSRFCookieName, Value: claims.Id, HttpOnly: false, Path: "/",
 		MaxAge: cookieExpiration, Secure: j.SecureCookies}
 	http.SetCookie(w, &xsrfCookie)
 
@@ -221,15 +224,15 @@ func (j *Service) Get(r *http.Request) (Claims, string, error) {
 		tokenString = tkQuery
 	}
 
-	// try to get from X-JWT header
-	if tokenHeader := r.Header.Get(jwtHeaderKey); tokenHeader != "" && tokenString == "" {
+	// try to get from JWT header
+	if tokenHeader := r.Header.Get(j.JWTHeaderKey); tokenHeader != "" && tokenString == "" {
 		tokenString = tokenHeader
 	}
 
 	// try to get from JWT cookie
 	if tokenString == "" {
 		fromCookie = true
-		jc, err := r.Cookie(jwtCookieName)
+		jc, err := r.Cookie(j.JWTCookieName)
 		if err != nil {
 			return Claims{}, "", errors.Wrap(err, "token cookie was not presented")
 		}
@@ -250,7 +253,7 @@ func (j *Service) Get(r *http.Request) (Claims, string, error) {
 	}
 
 	if fromCookie && claims.User != nil {
-		xsrf := r.Header.Get(xsrfHeaderKey)
+		xsrf := r.Header.Get(j.XSRFHeaderKey)
 		if claims.Id != xsrf {
 			return Claims{}, "", errors.New("xsrf mismatch")
 		}
@@ -265,11 +268,11 @@ func (j *Service) IsExpired(claims Claims) bool {
 
 // Reset token's cookies
 func (j *Service) Reset(w http.ResponseWriter) {
-	jwtCookie := http.Cookie{Name: jwtCookieName, Value: "", HttpOnly: false, Path: "/",
+	jwtCookie := http.Cookie{Name: j.JWTCookieName, Value: "", HttpOnly: false, Path: "/",
 		MaxAge: -1, Expires: time.Unix(0, 0), Secure: j.SecureCookies}
 	http.SetCookie(w, &jwtCookie)
 
-	xsrfCookie := http.Cookie{Name: xsrfCookieName, Value: "", HttpOnly: false, Path: "/",
+	xsrfCookie := http.Cookie{Name: j.XSRFCookieName, Value: "", HttpOnly: false, Path: "/",
 		MaxAge: -1, Expires: time.Unix(0, 0), Secure: j.SecureCookies}
 	http.SetCookie(w, &xsrfCookie)
 }
