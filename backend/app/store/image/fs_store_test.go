@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"os"
+	"path"
 	"strconv"
 	"strings"
 	"testing"
@@ -268,6 +269,9 @@ func TestFsStore_Cleanup(t *testing.T) {
 
 	_, err = os.Stat(img1)
 	assert.NotNil(t, err, "no file on staging anymore")
+	_, err = os.Stat(path.Dir(img1))
+	assert.NotNil(t, err, "no dir %s on staging anymore", path.Dir(img1))
+
 	_, err = os.Stat(img2)
 	assert.NoError(t, err, "file on staging")
 	_, err = os.Stat(img3)

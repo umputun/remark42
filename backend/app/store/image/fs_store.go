@@ -122,7 +122,7 @@ func (f *FileSystem) Cleanup(ctx context.Context, ttl time.Duration) error {
 		return nil
 	}
 
-	err := filepath.Walk(f.Staging, func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(f.Staging, func(fpath string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -131,8 +131,10 @@ func (f *FileSystem) Cleanup(ctx context.Context, ttl time.Duration) error {
 		}
 		age := time.Since(info.ModTime())
 		if age > ttl {
-			log.Printf("[INFO] remove staging image %s, age %v", path, age)
-			return os.Remove(path)
+			log.Printf("[INFO] remove staging image %s, age %v", fpath, age)
+			rmErr := os.Remove(fpath)
+			_ = os.Remove(path.Dir(fpath)) // try to remove directory
+			return rmErr
 		}
 		return nil
 	})
