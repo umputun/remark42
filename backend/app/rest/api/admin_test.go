@@ -61,6 +61,7 @@ func TestAdmin_Delete(t *testing.T) {
 	req, err := http.NewRequest(http.MethodDelete,
 		fmt.Sprintf("%s/api/v1/admin/comment/%s?site=radio-t&url=https://radio-t.com/blah", ts.URL, id1), nil)
 	assert.Nil(t, err)
+	requireAdmin(t, req)
 	resp, err = sendReq(t, req, adminUmputunToken)
 	assert.Nil(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
@@ -135,6 +136,7 @@ func TestAdmin_Title(t *testing.T) {
 	req, err := http.NewRequest(http.MethodPut,
 		fmt.Sprintf("%s/api/v1/admin/title/%s?site=radio-t&url=%s/post1", ts.URL, id1, tss.URL), nil)
 	assert.Nil(t, err)
+	requireAdmin(t, req)
 	resp, err := sendReq(t, req, adminUmputunToken)
 	require.Nil(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
@@ -168,6 +170,7 @@ func TestAdmin_DeleteUser(t *testing.T) {
 
 	req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/api/v1/admin/user/%s?site=radio-t", ts.URL, "id2"), nil)
 	assert.Nil(t, err)
+	requireAdmin(t, req)
 	resp, err := sendReq(t, req, adminUmputunToken)
 	assert.Nil(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
@@ -215,6 +218,7 @@ func TestAdmin_Pin(t *testing.T) {
 		req, err := http.NewRequest(http.MethodPut,
 			fmt.Sprintf("%s/api/v1/admin/pin/%s?site=radio-t&url=https://radio-t.com/blah&pin=%d", ts.URL, id1, val), nil)
 		assert.Nil(t, err)
+		requireAdmin(t, req)
 		req.SetBasicAuth("admin", "password")
 		resp, err := client.Do(req)
 		assert.Nil(t, err)
@@ -262,6 +266,7 @@ func TestAdmin_Block(t *testing.T) {
 		}
 		req, e := http.NewRequest(http.MethodPut, url, nil)
 		assert.Nil(t, e)
+		requireAdmin(t, req)
 		resp, e := sendReq(t, req, adminUmputunToken)
 		require.Nil(t, e)
 		body, e = ioutil.ReadAll(resp.Body)
@@ -431,6 +436,16 @@ func TestAdmin_ReadOnly(t *testing.T) {
 	resp, err = sendReq(t, req, adminUmputunToken)
 	require.Nil(t, err)
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
+}
+
+func requireAdmin(t *testing.T, req *http.Request) {
+	resp, err := sendReq(t, req, "") // no-auth user
+	require.Nil(t, err)
+	assert.Equal(t, 401, resp.StatusCode)
+
+	resp, err = sendReq(t, req, devToken) // non-admin user
+	require.Nil(t, err)
+	assert.Equal(t, 403, resp.StatusCode)
 }
 
 func TestAdmin_ReadOnlyNoComments(t *testing.T) {
