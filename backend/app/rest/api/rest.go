@@ -186,12 +186,12 @@ func (s *Rest) routes() chi.Router {
 	router.Use(corsMiddleware.Handler)
 
 	ipFn := func(ip string) string { return store.HashValue(ip, s.SharedSecret)[:12] } // logger uses it for anonymization
+	logInfoWithBody := logger.New(logger.Log(log.Default()), logger.WithBody, logger.IPfn(ipFn), logger.Prefix("[INFO]")).Handler
 
 	authHandler, avatarHandler := s.Authenticator.Handlers()
 
 	router.Group(func(r chi.Router) {
-		l := logger.New(logger.Log(log.Default()), logger.WithBody, logger.IPfn(ipFn), logger.Prefix("[INFO]"))
-		r.Use(l.Handler, tollbooth_chi.LimitHandler(tollbooth.NewLimiter(5, nil)), middleware.NoCache)
+		r.Use(logInfoWithBody, tollbooth_chi.LimitHandler(tollbooth.NewLimiter(5, nil)), middleware.NoCache)
 		r.Mount("/auth", authHandler)
 	})
 
@@ -214,10 +214,7 @@ func (s *Rest) routes() chi.Router {
 		// open routes
 		rapi.Group(func(ropen chi.Router) {
 			ropen.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
-			ropen.Use(authMiddleware.Trace)
-			ropen.Use(middleware.NoCache)
-			ropen.Use(logger.New(logger.Log(log.Default()), logger.WithBody,
-				logger.Prefix("[INFO]"), logger.IPfn(ipFn)).Handler)
+			ropen.Use(authMiddleware.Trace, middleware.NoCache, logInfoWithBody)
 			ropen.Get("/find", s.findCommentsCtrl)
 			ropen.Get("/id/{id}", s.commentByIDCtrl)
 			ropen.Get("/comments", s.findUserCommentsCtrl)
@@ -240,19 +237,14 @@ func (s *Rest) routes() chi.Router {
 		// open routes, cached
 		rapi.Group(func(ropen chi.Router) {
 			ropen.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
-			ropen.Use(authMiddleware.Trace)
-			ropen.Use(logger.New(logger.Log(log.Default()), logger.WithBody,
-				logger.Prefix("[INFO]"), logger.IPfn(ipFn)).Handler)
+			ropen.Use(authMiddleware.Trace, logInfoWithBody)
 			ropen.Get("/picture/{user}/{id}", s.loadPictureCtrl)
 		})
 
 		// protected routes, require auth
 		rapi.Group(func(rauth chi.Router) {
 			rauth.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
-			rauth.Use(authMiddleware.Auth)
-			rauth.Use(middleware.NoCache)
-			rauth.Use(logger.New(logger.Log(log.Default()), logger.WithBody,
-				logger.Prefix("[INFO]"), logger.IPfn(ipFn)).Handler)
+			rauth.Use(authMiddleware.Auth, middleware.NoCache, logInfoWithBody)
 			rauth.Get("/user", s.userInfoCtrl)
 			rauth.Get("/userdata", s.userAllDataCtrl)
 		})
@@ -261,9 +253,7 @@ func (s *Rest) routes() chi.Router {
 		rapi.Route("/admin", func(radmin chi.Router) {
 			radmin.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
 			radmin.Use(authMiddleware.Auth, authMiddleware.AdminOnly)
-			radmin.Use(middleware.NoCache)
-			radmin.Use(logger.New(logger.Log(log.Default()), logger.WithBody,
-				logger.Prefix("[INFO]"), logger.IPfn(ipFn)).Handler)
+			radmin.Use(middleware.NoCache, logInfoWithBody)
 
 			radmin.Delete("/comment/{id}", s.adminService.deleteCommentCtrl)
 			radmin.Put("/user/{userid}", s.adminService.setBlockCtrl)
@@ -285,15 +275,10 @@ func (s *Rest) routes() chi.Router {
 
 		// protected routes, throttled to 10/s by default, controlled by external UpdateLimiter param
 		rapi.Group(func(rauth chi.Router) {
-			lmt := 10.0
-			if s.UpdateLimiter > 0 {
-				lmt = s.UpdateLimiter
-			}
-			rauth.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(lmt, nil)))
+			rauth.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(s.updateLimiter(), nil)))
 			rauth.Use(authMiddleware.Auth)
 			rauth.Use(middleware.NoCache)
-			rauth.Use(logger.New(logger.Log(log.Default()), logger.WithBody,
-				logger.Prefix("[DEBUG]"), logger.IPfn(ipFn)).Handler)
+			rauth.Use(logger.New(logger.Log(log.Default()), logger.WithBody, logger.Prefix("[DEBUG]"), logger.IPfn(ipFn)).Handler)
 
 			rauth.Put("/comment/{id}", s.updateCommentCtrl)
 			rauth.Post("/comment", s.createCommentCtrl)
@@ -302,18 +287,15 @@ func (s *Rest) routes() chi.Router {
 		})
 
 		rapi.Group(func(rauth chi.Router) {
-			lmt := 10.0
-			if s.UpdateLimiter > 0 {
-				lmt = s.UpdateLimiter
-			}
-			rauth.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(lmt, nil)))
-			rauth.Use(authMiddleware.Auth)
+			rauth.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(s.updateLimiter(), nil)))
+			rauth.Use(authMiddleware.Auth, rejectAnonUser)
 			rauth.Use(logger.New(logger.Log(log.Default()), logger.Prefix("[DEBUG]"), logger.IPfn(ipFn)).Handler)
-			rauth.With(rejectAnonUser).Post("/picture", s.savePictureCtrl)
+			rauth.Post("/picture", s.savePictureCtrl)
 		})
 
 	})
 
+	// open routes on root level
 	router.Group(func(rroot chi.Router) {
 		tollbooth_chi.LimitHandler(tollbooth.NewLimiter(50, nil))
 		rroot.Get("/index.html", s.getStartedCtrl)
@@ -358,6 +340,15 @@ func (s *Rest) alterComments(comments []store.Comment, r *http.Request) (res []s
 	}
 
 	return res
+}
+
+// updateLimiter returns UpdateLimiter if set, or 10 if not
+func (s *Rest) updateLimiter() float64 {
+	lmt := 10.0
+	if s.UpdateLimiter > 0 {
+		lmt = s.UpdateLimiter
+	}
+	return lmt
 }
 
 // serves static files from /web or embedded by statik
