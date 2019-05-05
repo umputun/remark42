@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"os"
 	"strings"
@@ -12,20 +13,21 @@ import (
 	"testing"
 	"time"
 
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/globalsign/mgo"
 	"github.com/go-pkgz/auth/token"
 	log "github.com/go-pkgz/lgr"
 	"github.com/go-pkgz/mongo"
-	flags "github.com/jessevdk/go-flags"
+	"github.com/jessevdk/go-flags"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestServerApp(t *testing.T) {
+	port := rand.Intn(40000) + 10000
 	app, ctx := prepServerApp(t, 1500*time.Millisecond, func(o ServerCommand) ServerCommand {
-		o.Port = 18080
+		o.Port = port
 		return o
 	})
 
@@ -33,7 +35,7 @@ func TestServerApp(t *testing.T) {
 	time.Sleep(100 * time.Millisecond) // let server start
 
 	// send ping
-	resp, err := http.Get("http://localhost:18080/api/v1/ping")
+	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/ping", port))
 	require.Nil(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 200, resp.StatusCode)
@@ -43,7 +45,7 @@ func TestServerApp(t *testing.T) {
 
 	// add comment
 	client := http.Client{Timeout: 5 * time.Second}
-	req, err := http.NewRequest("POST", "http://localhost:18080/api/v1/comment",
+	req, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
 		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "remark"}}`))
 	req.SetBasicAuth("admin", "password")
 	require.Nil(t, err)
@@ -59,8 +61,9 @@ func TestServerApp(t *testing.T) {
 }
 
 func TestServerApp_DevMode(t *testing.T) {
+	port := rand.Intn(40000) + 10000
 	app, ctx := prepServerApp(t, 500*time.Millisecond, func(o ServerCommand) ServerCommand {
-		o.Port = 18085
+		o.Port = port
 		o.AdminPasswd = "password"
 		o.Auth.Dev = true
 		return o
@@ -72,7 +75,7 @@ func TestServerApp_DevMode(t *testing.T) {
 	assert.Equal(t, 4+1, len(app.restSrv.Authenticator.Providers()), "extra auth provider")
 	assert.Equal(t, "dev", app.restSrv.Authenticator.Providers()[4].Name(), "dev auth provider")
 	// send ping
-	resp, err := http.Get("http://localhost:18085/api/v1/ping")
+	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/ping", port))
 	require.Nil(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 200, resp.StatusCode)
@@ -84,8 +87,9 @@ func TestServerApp_DevMode(t *testing.T) {
 }
 
 func TestServerApp_AnonMode(t *testing.T) {
+	port := rand.Intn(40000) + 10000
 	app, ctx := prepServerApp(t, 500*time.Millisecond, func(o ServerCommand) ServerCommand {
-		o.Port = 18085
+		o.Port = port
 		o.Auth.Anonymous = true
 		return o
 	})
@@ -97,7 +101,7 @@ func TestServerApp_AnonMode(t *testing.T) {
 	assert.Equal(t, "anonymous", app.restSrv.Authenticator.Providers()[4].Name(), "anon auth provider")
 
 	// send ping
-	resp, err := http.Get("http://localhost:18085/api/v1/ping")
+	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/ping", port))
 	require.Nil(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 200, resp.StatusCode)
@@ -106,19 +110,19 @@ func TestServerApp_AnonMode(t *testing.T) {
 	assert.Equal(t, "pong", string(body))
 
 	// try to login with good name
-	resp, err = http.Get("http://localhost:18085/auth/anonymous/login?user=blah123&aud=remark42")
+	resp, err = http.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=blah123&aud=remark42", port))
 	require.Nil(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 200, resp.StatusCode)
 
 	// try to login with bad name
-	resp, err = http.Get("http://localhost:18085/auth/anonymous/login?user=**blah123&aud=remark42")
+	resp, err = http.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=**blah123&aud=remark42", port))
 	require.Nil(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 403, resp.StatusCode)
 
 	// try to login with short name
-	resp, err = http.Get(`http://localhost:18085/auth/anonymous/login?user=bl%20%20&aud=remark42`)
+	resp, err = http.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=bl%20%20&aud=remark42", port))
 	require.Nil(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 403, resp.StatusCode)
@@ -284,7 +288,7 @@ func TestServerApp_Failed(t *testing.T) {
 
 func TestServerApp_Shutdown(t *testing.T) {
 	app, ctx := prepServerApp(t, 500*time.Millisecond, func(o ServerCommand) ServerCommand {
-		o.Port = 18090
+		o.Port = rand.Intn(40000) + 10000
 		return o
 	})
 	st := time.Now()
@@ -360,8 +364,9 @@ func Test_ACMEEmail(t *testing.T) {
 }
 
 func TestServerAuthHooks(t *testing.T) {
+	port := rand.Intn(40000) + 10000
 	app, ctx := prepServerApp(t, 5*time.Second, func(o ServerCommand) ServerCommand {
-		o.Port = 18080
+		o.Port = port
 		return o
 	})
 
@@ -390,7 +395,7 @@ func TestServerAuthHooks(t *testing.T) {
 
 	// add comment
 	client := http.Client{Timeout: 1 * time.Second}
-	req, err := http.NewRequest("POST", "http://localhost:18080/api/v1/comment",
+	req, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
 		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/p/2018/12/29/podcast-630/", "site": "remark"}}`))
 	req.Header.Set("X-JWT", tk)
 	require.Nil(t, err)
@@ -400,7 +405,8 @@ func TestServerAuthHooks(t *testing.T) {
 	assert.Equal(t, http.StatusCreated, resp.StatusCode, "non-blocked user able to post")
 
 	// block user dev as admin
-	req, e := http.NewRequest(http.MethodPut, "http://localhost:18080/api/v1/admin/user/dev?site=remark&block=1&ttl=10d", nil)
+	req, e := http.NewRequest(http.MethodPut,
+		fmt.Sprintf("http://localhost:%d/api/v1/admin/user/dev?site=remark&block=1&ttl=10d", port), nil)
 	assert.Nil(t, e)
 	req.SetBasicAuth("admin", "password")
 	resp, e = client.Do(req)
@@ -414,7 +420,7 @@ func TestServerAuthHooks(t *testing.T) {
 	time.Sleep(2 * time.Second) // make sure token expired and refresh happened
 
 	// try add a comment with blocked user
-	req, err = http.NewRequest("POST", "http://localhost:18080/api/v1/comment",
+	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
 		strings.NewReader(`{"text": "test 123 blah", "locator":{"url": "https://radio-t.com/blah1", "site": "remark"}}`))
 	req.Header.Set("X-JWT", tk)
 	require.Nil(t, err)
@@ -459,5 +465,6 @@ func prepServerApp(t *testing.T, duration time.Duration, fn func(o ServerCommand
 		log.Print("[TEST] terminate app")
 		cancel()
 	}()
+	rand.Seed(time.Now().UnixNano())
 	return app, ctx
 }
