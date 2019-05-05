@@ -5,9 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
-	"path"
 	"strings"
 	"sync"
 	"time"
@@ -17,7 +15,6 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/cors"
-	"github.com/go-chi/render"
 	"github.com/go-pkgz/auth"
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
@@ -231,8 +228,13 @@ func (s *Rest) routes() chi.Router {
 			ropen.Get("/config", s.configCtrl)
 			ropen.Post("/preview", s.previewCommentCtrl)
 			ropen.Get("/info", s.infoCtrl)
-			ropen.Mount("/img", s.ImageProxy.Routes())
-			ropen.Mount("/rss", s.rssRoutes())
+			ropen.Get("/img", s.ImageProxy.Handler)
+
+			ropen.Route("/rss", func(rrss chi.Router) {
+				rrss.Get("/post", s.rssPostCommentsCtrl)
+				rrss.Get("/site", s.rssSiteCommentsCtrl)
+				rrss.Get("/reply", s.rssRepliesCtrl)
+			})
 		})
 
 		// open routes, cached
@@ -312,27 +314,11 @@ func (s *Rest) routes() chi.Router {
 
 	})
 
-	// respond to /robots.txt with the list of allowed paths
-	router.With(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(50, nil))).
-		Get("/robots.txt", func(w http.ResponseWriter, r *http.Request) {
-			allowed := []string{"/find", "/last", "/id", "/count", "/counts", "/list", "/config",
-				"/img", "/avatar", "/picture"}
-			for i := range allowed {
-				allowed[i] = "Allow: /api/v1" + allowed[i]
-			}
-			render.PlainText(w, r, "User-agent: *\nDisallow: /auth/\nDisallow: /api/\n"+strings.Join(allowed, "\n")+"\n")
-		})
-
-	// respond to /index.html with the content of getstarted.html under /web root
-	router.With(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(50, nil))).
-		Get("/index.html", func(w http.ResponseWriter, r *http.Request) {
-			data, err := ioutil.ReadFile(path.Join(s.WebRoot, "getstarted.html"))
-			if err != nil {
-				w.WriteHeader(http.StatusNotFound)
-				return
-			}
-			render.HTML(w, r, string(data))
-		})
+	router.Group(func(rroot chi.Router) {
+		tollbooth_chi.LimitHandler(tollbooth.NewLimiter(50, nil))
+		rroot.Get("/index.html", s.getStartedCtrl)
+		rroot.Get("/robots.txt", s.getRobotsCtrl)
+	})
 
 	// file server for static content from /web
 	addFileServer(router, "/web", http.Dir(s.WebRoot))

@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/go-chi/chi"
 	log "github.com/go-pkgz/lgr"
 	"github.com/go-pkgz/repeater"
 	"github.com/pkg/errors"
@@ -40,76 +39,75 @@ func (p Image) Convert(commentHTML string) string {
 	return p.replace(commentHTML, imgs)
 }
 
-// Routes returns router group to respond to proxied request
-func (p Image) Routes() chi.Router {
-	router := chi.NewRouter()
+// Handler returns http handler respond to proxied request
+func (p Image) Handler(w http.ResponseWriter, r *http.Request) {
+
 	if !p.Enabled {
-		return router
+		http.Error(w, "proxy disabled", http.StatusNotImplemented)
+		return
 	}
-	router.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		src, err := base64.URLEncoding.DecodeString(r.URL.Query().Get("src"))
-		if err != nil {
-			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't decode image url", rest.ErrDecode)
-			return
-		}
 
-		timeout := 60 * time.Second // default
-		if p.Timeout > 0 {
-			timeout = p.Timeout
-		}
+	src, err := base64.URLEncoding.DecodeString(r.URL.Query().Get("src"))
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't decode image url", rest.ErrDecode)
+		return
+	}
 
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
-		defer cancel()
+	timeout := 60 * time.Second // default
+	if p.Timeout > 0 {
+		timeout = p.Timeout
+	}
 
-		client := http.Client{Timeout: 30 * time.Second}
-		var resp *http.Response
-		err = repeater.NewDefault(5, time.Second).Do(ctx, func() error {
-			var e error
-			req, e := http.NewRequest("GET", string(src), nil)
-			if e != nil {
-				return errors.Wrapf(e, "failed to make request for %s", r.URL.Query().Get("src"))
-			}
-			resp, e = client.Do(req.WithContext(ctx))
-			return e
-		})
-		if err != nil {
-			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get image "+string(src), rest.ErrAssetNotFound)
-			return
-		}
-		defer func() {
-			if e := resp.Body.Close(); e != nil {
-				log.Printf("[WARN] can't close body, %s", e)
-			}
-		}()
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 
-		if resp.StatusCode != http.StatusOK {
-			w.WriteHeader(resp.StatusCode)
-			return
+	client := http.Client{Timeout: 30 * time.Second}
+	var resp *http.Response
+	err = repeater.NewDefault(5, time.Second).Do(ctx, func() error {
+		var e error
+		req, e := http.NewRequest("GET", string(src), nil)
+		if e != nil {
+			return errors.Wrapf(e, "failed to make request for %s", r.URL.Query().Get("src"))
 		}
-
-		for k, v := range resp.Header {
-			if strings.EqualFold(k, "Content-Type") {
-				w.Header().Set(k, v[0])
-			}
-			if strings.EqualFold(k, "Content-Length") {
-				w.Header().Set(k, v[0])
-			}
-		}
-		// enforce client-side caching
-		etag := `"` + r.URL.Query().Get("src") + `"`
-		w.Header().Set("Etag", etag)
-		w.Header().Set("Cache-Control", "max-age=2592000") // 30 days
-		if match := r.Header.Get("If-None-Match"); match != "" {
-			if strings.Contains(match, etag) {
-				w.WriteHeader(http.StatusNotModified)
-				return
-			}
-		}
-		if _, e := io.Copy(w, resp.Body); e != nil {
-			log.Printf("[WARN] can't copy image stream, %s", e)
-		}
+		resp, e = client.Do(req.WithContext(ctx))
+		return e
 	})
-	return router
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get image "+string(src), rest.ErrAssetNotFound)
+		return
+	}
+	defer func() {
+		if e := resp.Body.Close(); e != nil {
+			log.Printf("[WARN] can't close body, %s", e)
+		}
+	}()
+
+	if resp.StatusCode != http.StatusOK {
+		w.WriteHeader(resp.StatusCode)
+		return
+	}
+
+	for k, v := range resp.Header {
+		if strings.EqualFold(k, "Content-Type") {
+			w.Header().Set(k, v[0])
+		}
+		if strings.EqualFold(k, "Content-Length") {
+			w.Header().Set(k, v[0])
+		}
+	}
+	// enforce client-side caching
+	etag := `"` + r.URL.Query().Get("src") + `"`
+	w.Header().Set("Etag", etag)
+	w.Header().Set("Cache-Control", "max-age=2592000") // 30 days
+	if match := r.Header.Get("If-None-Match"); match != "" {
+		if strings.Contains(match, etag) {
+			w.WriteHeader(http.StatusNotModified)
+			return
+		}
+	}
+	if _, e := io.Copy(w, resp.Body); e != nil {
+		log.Printf("[WARN] can't copy image stream, %s", e)
+	}
 }
 
 // extract gets all non-https images and return list of src
