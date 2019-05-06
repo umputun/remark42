@@ -280,7 +280,7 @@ func (s *Rest) countMultiCtrl(w http.ResponseWriter, r *http.Request) {
 
 	// key could be long for multiple posts, make it sha1
 	k := URLKey(r) + strings.Join(posts, ",")
-	h := sha1.Sum([]byte(k)) //nolint
+	h := sha1.Sum([]byte(k)) // nolint
 	sha := base64.URLEncoding.EncodeToString(h[:])
 
 	key := cache.NewKey(siteID).ID(sha).Scopes(siteID)

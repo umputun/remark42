@@ -44,7 +44,11 @@ func (t *TitleExtractor) Get(url string) (string, error) {
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to load page %s", url)
 		}
-		defer resp.Body.Close() //nolint
+		defer func() {
+			if err = resp.Body.Close(); err != nil {
+				log.Printf("[WARN] failed to close title extractor body, %v", err)
+			}
+		}()
 		if resp.StatusCode != 200 {
 			return nil, errors.Errorf("can't load page %s, code %d", url, resp.StatusCode)
 		}

@@ -9,14 +9,14 @@ import (
 
 	log "github.com/go-pkgz/lgr"
 	"github.com/google/uuid"
-	multierror "github.com/hashicorp/go-multierror"
-	cache "github.com/patrickmn/go-cache"
+	"github.com/hashicorp/go-multierror"
+	"github.com/patrickmn/go-cache"
 	"github.com/pkg/errors"
-	"github.com/umputun/remark/backend/app/store/image"
 
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/admin"
 	"github.com/umputun/remark/backend/app/store/engine"
+	"github.com/umputun/remark/backend/app/store/image"
 )
 
 // DataStore wraps store.Interface with additional methods
@@ -207,8 +207,8 @@ func (s *DataStore) Vote(locator store.Locator, commentID string, userID string,
 	}
 
 	comment.Vote = 0
-	if v, ok := comment.Votes[userID]; ok {
-		if v {
+	if vv, ok := comment.Votes[userID]; ok {
+		if vv {
 			comment.Vote = 1
 		} else {
 			comment.Vote = -1
