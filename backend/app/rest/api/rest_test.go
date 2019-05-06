@@ -409,3 +409,13 @@ func addComment(t *testing.T, c store.Comment, ts *httptest.Server) string {
 	time.Sleep(time.Nanosecond * 10)
 	return crResp["id"].(string)
 }
+
+func requireAdminOnly(t *testing.T, req *http.Request) {
+	resp, err := sendReq(t, req, "") // no-auth user
+	require.NoError(t, err)
+	assert.Equal(t, 401, resp.StatusCode)
+
+	resp, err = sendReq(t, req, devToken) // non-admin user
+	require.NoError(t, err)
+	assert.Equal(t, 403, resp.StatusCode)
+}
