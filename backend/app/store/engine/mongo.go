@@ -6,7 +6,7 @@ import (
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/go-pkgz/mongo"
-	multierror "github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/backend/app/store"
@@ -39,7 +39,7 @@ type metaUser struct {
 }
 
 // NewMongo makes mongo engine. bufferSize denies how many records will be buffered, 0 turns buffering off.
-// flushDuration triggers automatic flus (write from buffer), 0 disables it and will flush as buffer size reached.
+// flushDuration triggers automatic flush (write from buffer), 0 disables it and will flush as buffer size reached.
 // important! don't use flushDuration=0 for production use as it can leave records in-fly state for long or even unlimited time.
 func NewMongo(conn *mongo.Connection, bufferSize int, flushDuration time.Duration) (*Mongo, error) {
 	writer := mongo.NewBufferedWriter(bufferSize, conn).WithCollection(mongoPosts).WithAutoFlush(flushDuration)

@@ -11,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
@@ -38,15 +37,6 @@ type Migrator struct {
 // KeyStore defines sub-interface for consumers needed just a key
 type KeyStore interface {
 	Key() (key string, err error)
-}
-
-func (m *Migrator) withRoutes(router chi.Router) chi.Router {
-	router.Get("/export", m.exportCtrl)
-
-	router.Post("/import", m.importCtrl)
-	router.Post("/import/form", m.importFormCtrl)
-	router.Get("/import/wait", m.importWaitCtrl)
-	return router
 }
 
 // POST /import?secret=key&site=site-id&provider=disqus|remark|wordpress

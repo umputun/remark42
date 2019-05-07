@@ -4,7 +4,9 @@ import (
 	"crypto/sha1" // nolint
 	"encoding/base64"
 	"io"
+	"io/ioutil"
 	"net/http"
+	"path"
 	"strconv"
 	"strings"
 
@@ -16,6 +18,7 @@ import (
 
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/store"
+	"github.com/umputun/remark/backend/app/store/service"
 )
 
 // GET /find?site=siteID&url=post-url&format=[tree|plain]&sort=[+/-time|+/-score|+/-controversy ]
@@ -38,9 +41,9 @@ func (s *Rest) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		var b []byte
 		switch r.URL.Query().Get("format") {
 		case "tree":
-			tree := rest.MakeTree(maskedComments, sort, s.ReadOnlyAge)
+			tree := service.MakeTree(maskedComments, sort, s.ReadOnlyAge)
 			if tree.Nodes == nil { // eliminate json nil serialization
-				tree.Nodes = []*rest.Node{}
+				tree.Nodes = []*service.Node{}
 			}
 			if s.DataService.IsReadOnly(locator) {
 				tree.Info.ReadOnly = true
@@ -277,7 +280,7 @@ func (s *Rest) countMultiCtrl(w http.ResponseWriter, r *http.Request) {
 
 	// key could be long for multiple posts, make it sha1
 	k := URLKey(r) + strings.Join(posts, ",")
-	h := sha1.Sum([]byte(k)) //nolint
+	h := sha1.Sum([]byte(k)) // nolint
 	sha := base64.URLEncoding.EncodeToString(h[:])
 
 	key := cache.NewKey(siteID).ID(sha).Scopes(siteID)
@@ -364,7 +367,11 @@ func (s *Rest) loadPictureCtrl(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	defer imgRdr.Close()
+	defer func() {
+		if e := imgRdr.Close(); e != nil {
+			log.Printf("[WARN] failed to close reader for picture %s, %v", id, e)
+		}
+	}()
 
 	w.Header().Set("Content-Type", imgContentType(id))
 	w.Header().Set("Content-Length", strconv.Itoa(int(size)))
@@ -372,4 +379,24 @@ func (s *Rest) loadPictureCtrl(w http.ResponseWriter, r *http.Request) {
 	if _, err = io.Copy(w, imgRdr); err != nil {
 		log.Printf("[WARN] can't send response to %s, %s", r.RemoteAddr, err)
 	}
+}
+
+// GET /index.html - respond to /index.html with the content of getstarted.html under /web root
+func (s *Rest) getStartedCtrl(w http.ResponseWriter, r *http.Request) {
+	data, err := ioutil.ReadFile(path.Join(s.WebRoot, "getstarted.html"))
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	render.HTML(w, r, string(data))
+}
+
+// GET /robots.txt
+func (s *Rest) getRobotsCtrl(w http.ResponseWriter, r *http.Request) {
+	allowed := []string{"/find", "/last", "/id", "/count", "/counts", "/list", "/config",
+		"/img", "/avatar", "/picture"}
+	for i := range allowed {
+		allowed[i] = "Allow: /api/v1" + allowed[i]
+	}
+	render.PlainText(w, r, "User-agent: *\nDisallow: /auth/\nDisallow: /api/\n"+strings.Join(allowed, "\n")+"\n")
 }

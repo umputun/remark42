@@ -38,8 +38,22 @@ pong
 
 ### Logger middleware
 
-Logs all info about request, including user, method, status code, response size, url, elapsed time, request body (optional).
-Can be customized by passing flags - LogNone, LogAll, LogUser and LogBody. Flags can be combined (provided multiple times)
+Logs request, request handling time and response. Log record fields in order of occurrence:
+
+- Request's HTTP method
+- Requested URL (with sanitized query)
+- Remote IP
+- Response's HTTP status code
+- Response body size
+- Request handling time
+- Userinfo associated with the request (optional)
+- Request subject (optional)
+- Request ID (if `X-Request-ID` present)
+- Request body (optional)
+
+_remote IP can be masked with user defined function_
+
+example: `019/03/05 17:26:12.976 [INFO] GET - /api/v1/find?site=remark - 8e228e9cfece - 200 (115) - 4.47784618s`
 
 ### Recoverer middleware
 

@@ -25,12 +25,14 @@ ADD backend /build/backend
 ADD .git /build/.git
 WORKDIR /build/backend
 
+ENV GOFLAGS="-mod=vendor"
+
 # run tests
 RUN \
     if [ -f .mongo ] ; then export MONGO_TEST=$(cat .mongo) ; fi && \
     cd app && \
     if [ -z "$SKIP_BACKEND_TEST" ] ; then \
-        go test -mod=vendor -covermode=count -coverprofile=/profile.cov_tmp ./... && \
+        go test -covermode=count -coverprofile=/profile.cov_tmp ./... && \
         cat /profile.cov_tmp | grep -v "_mock.go" > /profile.cov ; \
     else echo "skip backend test" ; fi
 
@@ -55,7 +57,7 @@ RUN \
     if [ -z "$DRONE" ] ; then echo "runs outside of drone" && version="local"; \
     else version=${DRONE_TAG}${DRONE_BRANCH}${DRONE_PULL_REQUEST}-${DRONE_COMMIT:0:7}-$(date +%Y%m%d-%H:%M:%S); fi && \
     echo "version=$version" && \
-    go build -mod=vendor -o remark42 -ldflags "-X main.revision=${version} -s -w" ./app
+    go build -o remark42 -ldflags "-X main.revision=${version} -s -w" ./app
 
 
 FROM node:10.11-alpine as build-frontend-deps

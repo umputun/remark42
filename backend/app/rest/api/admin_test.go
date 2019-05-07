@@ -58,12 +58,11 @@ func TestAdmin_Delete(t *testing.T) {
 		{URL: "https://radio-t.com/blah2", Count: 0}}), j)
 
 	// delete a comment
-	client := http.Client{}
 	req, err := http.NewRequest(http.MethodDelete,
 		fmt.Sprintf("%s/api/v1/admin/comment/%s?site=radio-t&url=https://radio-t.com/blah", ts.URL, id1), nil)
 	assert.Nil(t, err)
-	req.SetBasicAuth("admin", "password")
-	resp, err = client.Do(req)
+	requireAdminOnly(t, req)
+	resp, err = sendReq(t, req, adminUmputunToken)
 	assert.Nil(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 
@@ -134,13 +133,12 @@ func TestAdmin_Title(t *testing.T) {
 	id1 := addComment(t, c1, ts)
 	addComment(t, c2, ts)
 
-	client := http.Client{}
 	req, err := http.NewRequest(http.MethodPut,
 		fmt.Sprintf("%s/api/v1/admin/title/%s?site=radio-t&url=%s/post1", ts.URL, id1, tss.URL), nil)
 	assert.Nil(t, err)
-	req.SetBasicAuth("admin", "password")
-	resp, err := client.Do(req)
-	require.Nil(t, err)
+	requireAdminOnly(t, req)
+	resp, err := sendReq(t, req, adminUmputunToken)
+	require.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 
 	body, code := get(t, fmt.Sprintf("%s/api/v1/id/%s?site=radio-t&url=%s/post1", ts.URL, id1, tss.URL))
@@ -170,38 +168,37 @@ func TestAdmin_DeleteUser(t *testing.T) {
 	_, err = srv.DataService.Create(c3)
 	assert.NoError(t, err)
 
-	client := http.Client{}
 	req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/api/v1/admin/user/%s?site=radio-t", ts.URL, "id2"), nil)
 	assert.Nil(t, err)
-	req.SetBasicAuth("admin", "password")
-	resp, err := client.Do(req)
+	requireAdminOnly(t, req)
+	resp, err := sendReq(t, req, adminUmputunToken)
 	assert.Nil(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 
 	// all 3 comments here, but for id2 they deleted
 	res, code := get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah&sort=+time")
 	assert.Equal(t, 200, code)
-	commentsWithInfo := commentsWithInfo{}
-	err = json.Unmarshal([]byte(res), &commentsWithInfo)
+	cmntWithInfo := commentsWithInfo{}
+	err = json.Unmarshal([]byte(res), &cmntWithInfo)
 	assert.Nil(t, err)
-	assert.Equal(t, 3, len(commentsWithInfo.Comments), "should have 3 comment")
+	assert.Equal(t, 3, len(cmntWithInfo.Comments), "should have 3 comment")
 
 	// id1 comment untouched
-	assert.Equal(t, id1, commentsWithInfo.Comments[0].ID)
-	assert.Equal(t, "o test test #1", commentsWithInfo.Comments[0].Orig)
-	assert.False(t, commentsWithInfo.Comments[0].Deleted)
-	t.Logf("%+v", commentsWithInfo.Comments[0].User)
+	assert.Equal(t, id1, cmntWithInfo.Comments[0].ID)
+	assert.Equal(t, "o test test #1", cmntWithInfo.Comments[0].Orig)
+	assert.False(t, cmntWithInfo.Comments[0].Deleted)
+	t.Logf("%+v", cmntWithInfo.Comments[0].User)
 
 	// id2 comments fully deleted
-	assert.Equal(t, "", commentsWithInfo.Comments[1].Text)
-	assert.Equal(t, "", commentsWithInfo.Comments[1].Orig)
-	assert.Equal(t, store.User{Name: "deleted", ID: "deleted", Picture: "", Admin: false, Blocked: false, IP: ""}, commentsWithInfo.Comments[1].User)
-	assert.True(t, commentsWithInfo.Comments[1].Deleted)
+	assert.Equal(t, "", cmntWithInfo.Comments[1].Text)
+	assert.Equal(t, "", cmntWithInfo.Comments[1].Orig)
+	assert.Equal(t, store.User{Name: "deleted", ID: "deleted", Picture: "", Admin: false, Blocked: false, IP: ""}, cmntWithInfo.Comments[1].User)
+	assert.True(t, cmntWithInfo.Comments[1].Deleted)
 
-	assert.Equal(t, "", commentsWithInfo.Comments[2].Text)
-	assert.Equal(t, "", commentsWithInfo.Comments[2].Orig)
-	assert.Equal(t, store.User{Name: "deleted", ID: "deleted", Picture: "", Admin: false, Blocked: false, IP: ""}, commentsWithInfo.Comments[1].User)
-	assert.True(t, commentsWithInfo.Comments[2].Deleted)
+	assert.Equal(t, "", cmntWithInfo.Comments[2].Text)
+	assert.Equal(t, "", cmntWithInfo.Comments[2].Orig)
+	assert.Equal(t, store.User{Name: "deleted", ID: "deleted", Picture: "", Admin: false, Blocked: false, IP: ""}, cmntWithInfo.Comments[1].User)
+	assert.True(t, cmntWithInfo.Comments[2].Deleted)
 }
 
 func TestAdmin_Pin(t *testing.T) {
@@ -221,6 +218,7 @@ func TestAdmin_Pin(t *testing.T) {
 		req, err := http.NewRequest(http.MethodPut,
 			fmt.Sprintf("%s/api/v1/admin/pin/%s?site=radio-t&url=https://radio-t.com/blah&pin=%d", ts.URL, id1, val), nil)
 		assert.Nil(t, err)
+		requireAdminOnly(t, req)
 		req.SetBasicAuth("admin", "password")
 		resp, err := client.Do(req)
 		assert.Nil(t, err)
@@ -262,15 +260,14 @@ func TestAdmin_Block(t *testing.T) {
 	assert.Nil(t, err)
 
 	block := func(val int, ttl string) (code int, body []byte) {
-		client := http.Client{}
 		url := fmt.Sprintf("%s/api/v1/admin/user/%s?site=radio-t&block=%d", ts.URL, "user1", val)
 		if ttl != "" {
 			url = url + "&ttl=" + ttl
 		}
 		req, e := http.NewRequest(http.MethodPut, url, nil)
 		assert.Nil(t, e)
-		req.SetBasicAuth("admin", "password")
-		resp, e := client.Do(req)
+		requireAdminOnly(t, req)
+		resp, e := sendReq(t, req, adminUmputunToken)
 		require.Nil(t, e)
 		body, e = ioutil.ReadAll(resp.Body)
 		assert.Nil(t, e)
@@ -332,29 +329,26 @@ func TestAdmin_BlockedList(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
 
-	client := http.Client{}
-
 	// block user1
 	req, err := http.NewRequest(http.MethodPut,
 		fmt.Sprintf("%s/api/v1/admin/user/%s?site=radio-t&block=%d", ts.URL, "user1", 1), nil)
 	assert.Nil(t, err)
-	req.SetBasicAuth("admin", "password")
-	_, err = client.Do(req)
-	require.Nil(t, err)
+	res, err := sendReq(t, req, adminUmputunToken)
+	require.NoError(t, err)
+	assert.Equal(t, 200, res.StatusCode)
 
 	// block user2
 	req, err = http.NewRequest(http.MethodPut,
 		fmt.Sprintf("%s/api/v1/admin/user/%s?site=radio-t&block=%d&ttl=50ms", ts.URL, "user2", 1), nil)
 	assert.Nil(t, err)
-	req.SetBasicAuth("admin", "password")
-	_, err = client.Do(req)
-	require.Nil(t, err)
+	res, err = sendReq(t, req, adminUmputunToken)
+	require.NoError(t, err)
+	assert.Equal(t, 200, res.StatusCode)
 
 	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/blocked?site=radio-t", nil)
-	require.Nil(t, err)
-	req.SetBasicAuth("admin", "password")
-	res, err := client.Do(req)
-	require.Nil(t, err)
+	require.NoError(t, err)
+	res, err = sendReq(t, req, adminUmputunToken)
+	require.NoError(t, err)
 	require.Equal(t, 200, res.StatusCode)
 	users := []store.BlockedUser{}
 	err = json.NewDecoder(res.Body).Decode(&users)
@@ -366,10 +360,9 @@ func TestAdmin_BlockedList(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/blocked?site=radio-t", nil)
-	require.Nil(t, err)
-	req.SetBasicAuth("admin", "password")
-	res, err = client.Do(req)
-	require.Nil(t, err)
+	require.NoError(t, err)
+	res, err = sendReq(t, req, adminUmputunToken)
+	require.NoError(t, err)
 	require.Equal(t, 200, res.StatusCode)
 	users = []store.BlockedUser{}
 	err = json.NewDecoder(res.Body).Decode(&users)
@@ -396,15 +389,15 @@ func TestAdmin_ReadOnly(t *testing.T) {
 	assert.Nil(t, err)
 	assert.False(t, info.ReadOnly)
 
-	client := http.Client{}
-
 	// set post to read-only
 	req, err := http.NewRequest(http.MethodPut,
 		fmt.Sprintf("%s/api/v1/admin/readonly?site=radio-t&url=https://radio-t.com/blah&ro=1", ts.URL), nil)
 	assert.Nil(t, err)
-	req.SetBasicAuth("admin", "password")
-	resp, err := client.Do(req)
-	require.Nil(t, err)
+	resp, err := sendReq(t, req, "") // non-admin user
+	require.NoError(t, err)
+	assert.Equal(t, 401, resp.StatusCode)
+	resp, err = sendReq(t, req, adminUmputunToken)
+	require.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 	info, err = srv.DataService.Info(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}, 0)
 	assert.Nil(t, err)
@@ -416,20 +409,18 @@ func TestAdmin_ReadOnly(t *testing.T) {
 	b, err := json.Marshal(c)
 	assert.Nil(t, err, "can't marshal comment %+v", c)
 	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", bytes.NewBuffer(b))
-	assert.Nil(t, err)
-	req.SetBasicAuth("admin", "password")
-	resp, err = client.Do(req)
-	assert.Nil(t, err)
+	require.NoError(t, err)
+	resp, err = sendReq(t, req, adminUmputunToken)
+	require.NoError(t, err)
 	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 
 	// reset post's read-only
 	req, err = http.NewRequest(http.MethodPut,
 		fmt.Sprintf("%s/api/v1/admin/readonly?site=radio-t&url=https://radio-t.com/blah&ro=0", ts.URL), nil)
 	assert.Nil(t, err)
-	req.SetBasicAuth("admin", "password")
-	resp, err = client.Do(req)
+	resp, err = sendReq(t, req, adminUmputunToken)
+	require.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
-	require.Nil(t, err)
 	info, err = srv.DataService.Info(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}, 0)
 	assert.Nil(t, err)
 	assert.False(t, info.ReadOnly)
@@ -440,10 +431,9 @@ func TestAdmin_ReadOnly(t *testing.T) {
 	b, err = json.Marshal(c)
 	assert.Nil(t, err, "can't marshal comment %+v", c)
 	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", bytes.NewBuffer(b))
-	assert.Nil(t, err)
-	req.SetBasicAuth("admin", "password")
-	resp, err = client.Do(req)
-	assert.Nil(t, err)
+	require.NoError(t, err)
+	resp, err = sendReq(t, req, adminUmputunToken)
+	require.NoError(t, err)
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 }
 
@@ -451,15 +441,13 @@ func TestAdmin_ReadOnlyNoComments(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
 
-	client := http.Client{}
-
 	// set post to read-only
 	req, err := http.NewRequest(http.MethodPut,
 		fmt.Sprintf("%s/api/v1/admin/readonly?site=radio-t&url=https://radio-t.com/blah&ro=1", ts.URL), nil)
 	assert.Nil(t, err)
-	req.SetBasicAuth("admin", "password")
-	resp, err := client.Do(req)
-	require.Nil(t, err)
+	requireAdminOnly(t, req)
+	resp, err := sendReq(t, req, adminUmputunToken)
+	require.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 	_, err = srv.DataService.Info(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}, 0)
 	assert.NotNil(t, err)
@@ -488,30 +476,27 @@ func TestAdmin_ReadOnlyWithAge(t *testing.T) {
 	assert.Nil(t, err)
 	assert.True(t, info.ReadOnly, "ro by age")
 
-	client := http.Client{}
-
 	// set post to read-only
 	req, err := http.NewRequest(http.MethodPut,
 		fmt.Sprintf("%s/api/v1/admin/readonly?site=radio-t&url=https://radio-t.com/blah&ro=1", ts.URL), nil)
 	assert.Nil(t, err)
-	req.SetBasicAuth("admin", "password")
-	resp, err := client.Do(req)
-	require.Nil(t, err)
+	requireAdminOnly(t, req)
+	resp, err := sendReq(t, req, adminUmputunToken)
+	require.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 	info, err = srv.DataService.Info(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}, 0)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.True(t, info.ReadOnly)
 
 	// reset post's read-only
 	req, err = http.NewRequest(http.MethodPut,
 		fmt.Sprintf("%s/api/v1/admin/readonly?site=radio-t&url=https://radio-t.com/blah&ro=0", ts.URL), nil)
 	assert.Nil(t, err)
-	req.SetBasicAuth("admin", "password")
-	resp, err = client.Do(req)
+	resp, err = sendReq(t, req, adminUmputunToken)
+	require.NoError(t, err)
 	assert.Equal(t, 403, resp.StatusCode)
-	require.Nil(t, err)
 	info, err = srv.DataService.Info(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}, 0)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.True(t, info.ReadOnly)
 
 }
@@ -532,13 +517,13 @@ func TestAdmin_Verify(t *testing.T) {
 	verified := srv.DataService.IsVerified("radio-t", "user1")
 	assert.False(t, verified)
 
-	client := http.Client{}
 	req, err := http.NewRequest(http.MethodPut,
 		fmt.Sprintf("%s/api/v1/admin/verify/user1?site=radio-t&verified=1", ts.URL), nil)
 	assert.Nil(t, err)
-	req.SetBasicAuth("admin", "password")
-	_, err = client.Do(req)
-	require.Nil(t, err)
+	requireAdminOnly(t, req)
+	resp, err := sendReq(t, req, adminUmputunToken)
+	require.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
 	verified = srv.DataService.IsVerified("radio-t", "user1")
 	assert.True(t, verified)
 
@@ -554,9 +539,9 @@ func TestAdmin_Verify(t *testing.T) {
 	req, err = http.NewRequest(http.MethodPut,
 		fmt.Sprintf("%s/api/v1/admin/verify/user1?site=radio-t&verified=0", ts.URL), nil)
 	assert.Nil(t, err)
-	req.SetBasicAuth("admin", "password")
-	_, err = client.Do(req)
-	require.Nil(t, err)
+	resp, err = sendReq(t, req, adminUmputunToken)
+	require.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
 	verified = srv.DataService.IsVerified("radio-t", "user1")
 	assert.False(t, verified)
 
@@ -601,12 +586,11 @@ func TestAdmin_ExportFile(t *testing.T) {
 	addComment(t, c1, ts)
 	addComment(t, c2, ts)
 
-	client := &http.Client{Timeout: 5 * time.Second}
 	req, err := http.NewRequest("GET", ts.URL+"/api/v1/admin/export?site=radio-t&mode=file", nil)
-	require.Nil(t, err)
-	req.SetBasicAuth("admin", "password")
-	resp, err := client.Do(req)
-	require.Nil(t, err)
+	require.NoError(t, err)
+	requireAdminOnly(t, req)
+	resp, err := sendReq(t, req, adminUmputunToken)
+	require.NoError(t, err)
 
 	assert.Equal(t, 200, resp.StatusCode)
 	assert.Equal(t, "application/gzip", resp.Header.Get("Content-Type"))
@@ -665,9 +649,10 @@ func TestAdmin_DeleteMeRequest(t *testing.T) {
 	client := http.Client{}
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn), nil)
 	assert.Nil(t, err)
+
 	req.SetBasicAuth("admin", "password")
 	resp, err := client.Do(req)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 
 	_, err = srv.DataService.User("radio-t", "user1", 0, 0)

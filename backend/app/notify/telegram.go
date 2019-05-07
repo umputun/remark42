@@ -113,10 +113,10 @@ func (t *Telegram) Send(ctx context.Context, req request) error {
 	}
 
 	r, err := http.NewRequest("POST", u, bytes.NewReader(b))
-	r.Header.Set("Content-Type", "application/json; charset=utf-8")
 	if err != nil {
 		return errors.Wrap(err, "failed to make telegram request")
 	}
+	r.Header.Set("Content-Type", "application/json; charset=utf-8")
 
 	r = r.WithContext(ctx)
 	resp, err := client.Do(r)

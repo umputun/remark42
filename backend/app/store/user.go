@@ -2,7 +2,7 @@ package store
 
 import (
 	"crypto/hmac"
-	"crypto/sha1" //nolint
+	"crypto/sha1" // nolint
 	"encoding/hex"
 	"fmt"
 	"hash"
@@ -41,7 +41,7 @@ func HashValue(val string, secret string) string {
 // EncodeID hashes id to sha1. The function intentionally left outside of User struct because in some cases
 // we need hashing for parts of id, in some others hashing for non-User values.
 func EncodeID(id string) string {
-	return hashWithFallback(sha1.New(), id) //nolint
+	return hashWithFallback(sha1.New(), id) // nolint
 }
 
 // hashWithFallback tries to has val with hash.Hash and fallback to crc if needed

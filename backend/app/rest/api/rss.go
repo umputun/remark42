@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-chi/chi"
 	log "github.com/go-pkgz/lgr"
 	"github.com/go-pkgz/rest/cache"
 	"github.com/gorilla/feeds"
@@ -21,14 +20,6 @@ const maxReplyDuration = 31 * 24 * time.Hour
 
 // ui uses links like <post-url>#remark42__comment-<comment-id>
 const uiNav = "#remark42__comment-"
-
-func (s *Rest) rssRoutes() chi.Router {
-	router := chi.NewRouter()
-	router.Get("/post", s.rssPostCommentsCtrl)
-	router.Get("/site", s.rssSiteCommentsCtrl)
-	router.Get("/reply", s.rssRepliesCtrl)
-	return router
-}
 
 // GET /rss/post?site=siteID&url=post-url
 func (s *Rest) rssPostCommentsCtrl(w http.ResponseWriter, r *http.Request) {

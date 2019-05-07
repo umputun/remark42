@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -48,9 +49,11 @@ func TestPicture_Extract(t *testing.T) {
 	img := Image{Enabled: true}
 
 	for i, tt := range tbl {
-		res, err := img.extract(tt.inp)
-		assert.Nil(t, err, "err in #%d", i)
-		assert.Equal(t, tt.res, res, "mismatch in #%d", i)
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			res, err := img.extract(tt.inp)
+			assert.Nil(t, err)
+			assert.Equal(t, tt.res, res)
+		})
 	}
 }
 
@@ -63,12 +66,11 @@ func TestPicture_Replace(t *testing.T) {
 
 func TestImage_Routes(t *testing.T) {
 	img := Image{Enabled: true, RemarkURL: "https://demo.remark42.com", RoutePath: "/api/v1/proxy"}
-	router := img.Routes()
 
+	ts := httptest.NewServer(http.HandlerFunc(img.Handler))
+	defer ts.Close()
 	httpSrv := imgHTTPServer(t)
 	defer httpSrv.Close()
-	ts := httptest.NewServer(router)
-	defer ts.Close()
 
 	encodedImgURL := base64.URLEncoding.EncodeToString([]byte(httpSrv.URL + "/image/img1.png"))
 
@@ -92,12 +94,11 @@ func TestImage_Routes(t *testing.T) {
 
 func TestImage_RoutesTimedOut(t *testing.T) {
 	img := Image{Enabled: true, RemarkURL: "https://demo.remark42.com", RoutePath: "/api/v1/proxy", Timeout: 50 * time.Millisecond}
-	router := img.Routes()
 
+	ts := httptest.NewServer(http.HandlerFunc(img.Handler))
+	defer ts.Close()
 	httpSrv := imgHTTPServer(t)
 	defer httpSrv.Close()
-	ts := httptest.NewServer(router)
-	defer ts.Close()
 
 	encodedImgURL := base64.URLEncoding.EncodeToString([]byte(httpSrv.URL + "/image/img-slow.png"))
 	resp, err := http.Get(ts.URL + "/?src=" + encodedImgURL)
