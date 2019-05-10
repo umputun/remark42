@@ -40,8 +40,6 @@ COPY --from=build-frontend /srv/frontend/public/ web
 
 RUN \
     export WEB_ROOT=/go/src/github.com/umputun/remark/backend/web && \
-    sed -i "s|https://demo.remark42.com|http://127.0.0.1:8080|g" ${WEB_ROOT}/*.js && \
-    sed -i "/REMOVE-START/,/REMOVE-END/d" ${WEB_ROOT}/iframe.html && \
     go get -v github.com/rakyll/statik && \
     statik --src=${WEB_ROOT} --dest=/go/src/github.com/umputun/remark/backend/app/rest -p api -f && \
     ls -la /go/src/github.com/umputun/remark/backend/app/rest/api/statik.go && \
