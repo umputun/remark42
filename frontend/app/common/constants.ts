@@ -1,6 +1,8 @@
 import { Sorting, AuthProvider, BlockingDuration, Theme } from './types';
+import { parseQuery } from '@app/utils/parseQuery';
 
-export const BASE_URL: string = process.env.REMARK_URL!;
+export const QUERY: { [key: string]: string } = parseQuery(window.location.search);
+export const BASE_URL: string = QUERY['host'] || process.env.REMARK_URL!;
 export const API_BASE = '/api/v1';
 export const NODE_ID: string = process.env.REMARK_NODE!;
 export const COUNTER_NODE_CLASSNAME = 'remark42__counter';

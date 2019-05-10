@@ -68,16 +68,17 @@
 
         var remark_config = {
           site_id: query.site_id,
-          url: query.url,
+					host: window.location.origin,
+          url: query.url
         };
 
-        (function() {
-          var d = document,
-            s = d.createElement('script');
-          s.src = '/web/embed.js';
-          s.type = 'text/javascript';
-          (d.head || d.body).appendChild(s);
-        })();
+        (function(c) {
+					for(var i = 0; i < c.length; i++){
+						var d = document, s = d.createElement('script');
+						s.src = remark_config.host + '/web/' +c[i] +'.js';
+						(d.head || d.body).appendChild(s);
+					}
+				})(remark_config.components || ['embed']);
       }
     </script>
     <noscript> Please enable JavaScript to view the comments powered by Remark. </noscript>

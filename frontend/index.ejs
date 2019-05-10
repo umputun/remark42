@@ -74,23 +74,19 @@
   <script>
     var remark_config = {
       site_id: 'remark',
+			host: window.location.origin,
       url: 'https://remark42.com/demo/',
+			components: ['embed', 'counter']
     };
 
-    (function() {
-      var d = document, s = d.createElement('script');
-      s.src = '/web/embed.js';
-      s.type = 'text/javascript';
-      (d.head || d.body).appendChild(s);
-    })();
-
-    (function() {
-      var d = document, s = d.createElement('script');
-      s.src = '/web/counter.js';
-      s.type = 'text/javascript';
-      (d.head || d.body).appendChild(s);
-    })();
-  </script>
+		(function(c) {
+			for(var i = 0; i < c.length; i++){
+				var d = document, s = d.createElement('script');
+				s.src = remark_config.host + '/web/' +c[i] +'.js';
+				(d.head || d.body).appendChild(s);
+			}
+		})(remark_config.components || ['embed']);
+	</script>
   <noscript>
     Please enable JavaScript to view the comments powered by Remark.
   </noscript>

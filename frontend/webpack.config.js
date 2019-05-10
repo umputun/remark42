@@ -12,7 +12,7 @@ const BundleAnalyze = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 
 const publicFolder = path.resolve(__dirname, 'public');
 const env = process.env.NODE_ENV || 'development';
-const remarkUrl = process.env.REMARK_URL || 'https://demo.remark42.com';
+const remarkUrl = process.env.REMARK_URL || 'http://127.0.0.1:8080';
 const NODE_ID = 'remark42';
 
 // let's log some env variables because we can
@@ -119,7 +119,7 @@ module.exports = () => ({
     new Define({
       'process.env.NODE_ENV': JSON.stringify(env),
       'process.env.REMARK_NODE': JSON.stringify(NODE_ID),
-      'process.env.REMARK_URL': env === 'production' ? JSON.stringify(remarkUrl) : 'window.location.origin',
+      'process.env.REMARK_URL': JSON.stringify(remarkUrl),
     }),
     new Html({
       template: path.resolve(__dirname, 'index.ejs'),
