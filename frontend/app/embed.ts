@@ -7,6 +7,8 @@ import { BASE_URL, NODE_ID, COMMENT_NODE_CLASSNAME_PREFIX } from '@app/common/co
 import { UserInfo, Theme } from '@app/common/types';
 import { CommentsConfig } from '@app/common/config-types';
 
+const HOST = remark_config.host || BASE_URL;
+
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
 } else {
@@ -14,7 +16,7 @@ if (document.readyState === 'loading') {
 }
 
 async function init(): Promise<void> {
-  __webpack_public_path__ = BASE_URL + '/web/';
+  __webpack_public_path__ = HOST + '/web/';
   await loadPolyfills();
 
   const node = document.getElementById(NODE_ID);
@@ -47,7 +49,7 @@ async function init(): Promise<void> {
 
   node.innerHTML = `
     <iframe
-      src="${BASE_URL}/web/iframe.html?${query}"
+      src="${HOST}/web/iframe.html?${query}"
       width="100%"
       frameborder="0"
       allowtransparency="true"
@@ -173,7 +175,7 @@ async function init(): Promise<void> {
         `&id=${user.id}&name=${user.name}&picture=${user.picture || ''}&isDefaultPicture=${user.isDefaultPicture || 0}`;
       this.node.innerHTML = `
       <iframe
-        src="${BASE_URL}/web/iframe.html?${queryUserInfo}"
+        src="${HOST}/web/iframe.html?${queryUserInfo}"
         width="100%"
         height="100%"
         frameborder="0"

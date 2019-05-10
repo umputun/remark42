@@ -111,6 +111,15 @@
       } catch (e) {}
     }
 
+    var remark_config = window.location.search.length < 2 ? {} : window.location.search.substr(1).split("&").reduce(function (c, x) {
+      var splitted = x.split("=")
+      if(!splitted[1]) {
+        splitted[1] = ""
+      }
+      c[splitted[0]] = decodeURIComponent(splitted[1])
+      return c
+    }, {})
+
     window.parent.postMessage(JSON.stringify({ inited: true }), '*');
   </script>
   <script type="text/javascript" src="remark.js"></script>
