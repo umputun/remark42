@@ -308,18 +308,28 @@ Add this snippet to the bottom of web page:
 ```html
 <script>
   var remark_config = {
+    host: "REMARK_URL", // hostname of remark server, same as REMARK_URL in backend config, e.g. "https://demo.remark42.com"
     site_id: 'YOUR_SITE_ID',
+    components: ['embed'] // optional param; which components to load. default to ["embed"]
+                          // to load all components define components as ['embed', 'last-comments', 'counter']
+                          // available component are:
+                          //     - 'embed': basic comments widget
+                          //     - 'last-comments': last comments widget, see `Last Comments` section below
+                          //     - 'counter': counter widget, see `Counter` section below
     url: 'PAGE_URL', // optional param; if it isn't defined window.location.href will be used
     max_shown_comments: 10, // optional param; if it isn't defined default value (15) will be used
     theme: 'dark', // optional param; if it isn't defined default value ('light') will be used
     page_title: 'Moving to Remark42' // optional param; if it isn't defined `document.title` will be used
   };
 
-  (function() {
-    var d = document, s = d.createElement('script');
-    s.src = '/web/embed.js'; // prepends this address with domain where remark42 is placed
-    (d.head || d.body).appendChild(s);
-  })();
+  (function(c) {
+    for(var i = 0; i < c.length; i++){
+      var d = document, s = d.createElement('script');
+      s.src = remark_config.host + '/web/' +c[i] +'.js';
+      s.defer = true;
+      (d.head || d.body).appendChild(s);
+    }
+  })(['vendor'].concat(remark_config.components || ['embed']));
 </script>
 ```
 
@@ -348,19 +358,24 @@ window.REMARK42.changeTheme('light');
 
 It's a widget which renders list of last comments from your site.
 
-Add this snippet to the bottom of web page:
+Add this snippet to the bottom of web page, or adjust already present `remark_config` to have `last-comments` in `components` list:
 
 ```html
 <script>
   var remark_config = {
+    host: "REMARK_URL", // hostname of remark server, same as REMARK_URL in backend config, e.g. "https://demo.remark42.com"
     site_id: 'YOUR_SITE_ID',
+    components: ['last-comments']
   };
 
-  (function() {
-    var d = document, s = d.createElement('script');
-    s.src = '/web/last-comments.js'; // prepends this address with domain where remark42 is placed
-    (d.head || d.body).appendChild(s);
-  })();
+  (function(c) {
+    for(var i = 0; i < c.length; i++){
+      var d = document, s = d.createElement('script');
+      s.src = remark_config.host + '/web/' +c[i] +'.js';
+      s.defer = true;
+      (d.head || d.body).appendChild(s);
+    }
+  })(['vendor'].concat(remark_config.components || ['embed']));
 </script>
 ```
 
@@ -376,19 +391,24 @@ And then add this node in the place where you want to see last comments widget:
 
 It's a widget which renders a number of comments for the specified page.
 
-Add this snippet to the bottom of web page:
+Add this snippet to the bottom of web page, or adjust already present `remark_config` to have `counter` in `components` list:
 
 ```html
 <script>
   var remark_config = {
+    host: "REMARK_URL", // hostname of remark server, same as REMARK_URL in backend config, e.g. "https://demo.remark42.com"
     site_id: 'YOUR_SITE_ID',
+    components: ['counter']
   };
 
-  (function() {
-    var d = document, s = d.createElement('script');
-    s.src = '/web/counter.js'; // prepends this address with domain where remark42 is placed
-    (d.head || d.body).appendChild(s);
-  })();
+  (function(c) {
+    for(var i = 0; i < c.length; i++){
+      var d = document, s = d.createElement('script');
+      s.src = remark_config.host + '/web/' +c[i] +'.js';
+      s.defer = true;
+      (d.head || d.body).appendChild(s);
+    }
+  })(['vendor'].concat(remark_config.components || ['embed']));
 </script>
 ```
 
