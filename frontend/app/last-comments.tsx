@@ -7,7 +7,7 @@ import { h, render } from 'preact';
 import 'preact/debug';
 import { getLastComments } from './common/api';
 import { LastCommentsConfig } from '@app/common/config-types';
-import { BASE_URL, DEFAULT_LAST_COMMENTS_MAX, LAST_COMMENTS_NODE_CLASSNAME } from '@app/common/constants';
+import { DEFAULT_LAST_COMMENTS_MAX, LAST_COMMENTS_NODE_CLASSNAME } from '@app/common/constants';
 import { ListComments } from '@app/components/list-comments';
 
 if (document.readyState === 'loading') {
@@ -17,7 +17,7 @@ if (document.readyState === 'loading') {
 }
 
 async function init(): Promise<void> {
-  __webpack_public_path__ = BASE_URL + '/web/';
+  __webpack_public_path__ = remark_config.host + '/web/';
 
   await loadPolyfills();
 
@@ -41,7 +41,7 @@ async function init(): Promise<void> {
   }
 
   const styles = document.createElement('link');
-  styles.href = `${BASE_URL}/web/last-comments.css`;
+  styles.href = `${remark_config.host}/web/last-comments.css`;
   styles.rel = 'stylesheet';
   (document.head || document.body).appendChild(styles);
 

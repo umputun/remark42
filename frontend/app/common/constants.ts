@@ -2,7 +2,9 @@ import { Sorting, AuthProvider, BlockingDuration, Theme } from './types';
 import { parseQuery } from '@app/utils/parseQuery';
 
 export const QUERY: { [key: string]: string } = parseQuery(window.location.search);
-export const BASE_URL: string = QUERY['host'] || process.env.REMARK_URL!;
+export const BASE_URL: string =
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ((window as any).remark_config && (window as any).remark_config.host) || QUERY['host'] || process.env.REMARK_URL!;
 export const API_BASE = '/api/v1';
 export const NODE_ID: string = process.env.REMARK_NODE!;
 export const COUNTER_NODE_CLASSNAME = 'remark42__counter';
