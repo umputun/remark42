@@ -145,11 +145,13 @@ export const deleteMe = (): Promise<{
 }> =>
   fetcher.post({
     url: `/deleteme?site=${siteId}`,
+    withCredentials: true,
   });
 
 export const approveDeleteMe = (token: string): Promise<void> =>
   fetcher.get({
     url: `/admin/deleteme?token=${token}`,
+    withCredentials: true,
   });
 
 /* admin */
