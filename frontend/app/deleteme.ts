@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 import loadPolyfills from '@app/common/polyfills';
-import { NODE_ID, BASE_URL } from '@app/common/constants';
+import { NODE_ID } from '@app/common/constants';
 import { approveDeleteMe, getUser } from '@app/common/api';
 import { token } from '@app/common/settings';
 import { ApiError } from './common/types';
@@ -12,7 +12,7 @@ if (document.readyState === 'loading') {
 }
 
 async function init(): Promise<void> {
-  __webpack_public_path__ = BASE_URL + '/web/';
+  __webpack_public_path__ = window.location.origin + '/web/';
 
   await loadPolyfills();
 
@@ -41,9 +41,9 @@ async function init(): Promise<void> {
           err instanceof Error ? err.message : typeof err === 'object' && err !== null && err.error ? err.error : err;
         console.error(err);
         node.innerHTML = `
-            <h3>Something went wrong</h3>
-            <pre>${message}</pre>
-          `;
+          <h3>Something went wrong</h3>
+          <pre>${message}</pre>
+        `;
       }
     );
   });
