@@ -1,8 +1,9 @@
 /* eslint-disable no-console */
 import loadPolyfills from '@app/common/polyfills';
-import { NODE_ID, BASE_URL } from '@app/common/constants';
+import { NODE_ID } from '@app/common/constants';
 import { approveDeleteMe, getUser } from '@app/common/api';
 import { token } from '@app/common/settings';
+import { ApiError } from './common/types';
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
@@ -11,7 +12,7 @@ if (document.readyState === 'loading') {
 }
 
 async function init(): Promise<void> {
-  __webpack_public_path__ = BASE_URL + '/web/';
+  __webpack_public_path__ = window.location.origin + '/web/';
 
   await loadPolyfills();
 
@@ -22,34 +23,35 @@ async function init(): Promise<void> {
     return;
   }
 
-  getUser()
-    .then(user => {
-      if (user && !user.admin) {
-        handleNotAuthorizedError(node);
-        return;
-      }
+  getUser().then(user => {
+    if (!user || !user.admin) {
+      handleNotAuthorizedError(node);
+      return;
+    }
 
-      approveDeleteMe(token!).then(
-        data => {
-          node.innerHTML = `
+    approveDeleteMe(token!).then(
+      data => {
+        node.innerHTML = `
             <h3>User deleted successfully</h3>
             <pre>${JSON.stringify(data, null, 4)}</pre>
           `;
-        },
-        err => {
-          node.innerHTML = `
-            <h3>Something went wrong</h3>
-            <pre>${err}</pre>
-          `;
-        }
-      );
-    })
-    .catch(() => handleNotAuthorizedError(node));
+      },
+      (err: Error | ApiError | string) => {
+        const message =
+          err instanceof Error ? err.message : typeof err === 'object' && err !== null && err.error ? err.error : err;
+        console.error(err);
+        node.innerHTML = `
+          <h3>Something went wrong</h3>
+          <pre>${message}</pre>
+        `;
+      }
+    );
+  });
 }
 
 function handleNotAuthorizedError(node: HTMLElement): void {
   node.innerHTML = `
     <h3>You are not logged in</h3>
-    <p><a href='${BASE_URL}' target='_blank'>Sign in</a> as admin to delete user information</p>
+    <p><a href='/web' target='_blank'>Sign in</a> as admin to delete user information</p>
   `;
 }
