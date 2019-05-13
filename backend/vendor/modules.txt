@@ -30,7 +30,7 @@ github.com/go-chi/chi/middleware
 github.com/go-chi/cors
 # github.com/go-chi/render v1.0.0
 github.com/go-chi/render
-# github.com/go-pkgz/auth v0.5.1
+# github.com/go-pkgz/auth v0.5.2
 github.com/go-pkgz/auth
 github.com/go-pkgz/auth/avatar
 github.com/go-pkgz/auth/provider
@@ -89,13 +89,13 @@ github.com/stretchr/objx
 github.com/stretchr/testify/mock
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/require
-# golang.org/x/crypto v0.0.0-20190426145343-a29dc8fdc734
+# golang.org/x/crypto v0.0.0-20190510104115-cbcb75029529
 golang.org/x/crypto/acme/autocert
 golang.org/x/crypto/acme
-# golang.org/x/image v0.0.0-20190501045829-6d32002ffd75
+# golang.org/x/image v0.0.0-20190507092727-e4e5bf290fec
 golang.org/x/image/draw
 golang.org/x/image/math/f64
-# golang.org/x/net v0.0.0-20190503192946-f4e77d36d62c
+# golang.org/x/net v0.0.0-20190509222800-a4d6f7feada5
 golang.org/x/net/html
 golang.org/x/net/idna
 golang.org/x/net/html/atom
@@ -110,7 +110,7 @@ golang.org/x/oauth2/yandex
 golang.org/x/oauth2/internal
 golang.org/x/oauth2/jws
 golang.org/x/oauth2/jwt
-# golang.org/x/sys v0.0.0-20190502175342-a43fa875dd82
+# golang.org/x/sys v0.0.0-20190509141414-a5b02f93d862
 golang.org/x/sys/unix
 # golang.org/x/text v0.3.2
 golang.org/x/text/secure/bidirule

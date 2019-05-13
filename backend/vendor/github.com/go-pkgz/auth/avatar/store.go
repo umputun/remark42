@@ -4,14 +4,13 @@ package avatar
 
 import (
 	"crypto/sha1"
-	"strings"
-
-	// Initializing packages for supporting GIF and JPEG formats.
-	_ "image/gif"
-	_ "image/jpeg"
+	_ "image/gif"  // initializing packages for supporting GIF
+	_ "image/jpeg" // initializing packages for supporting JPEG.
+	_ "image/png"  // initializing packages for supporting PNG.
 	"io"
 	"log"
 	"regexp"
+	"strings"
 
 	"github.com/go-pkgz/auth/token"
 )

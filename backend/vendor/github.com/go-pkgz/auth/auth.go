@@ -44,6 +44,7 @@ type Opts struct {
 	JWTHeaderKey   string // default "X-JWT"
 	XSRFCookieName string // default "XSRF-TOKEN"
 	XSRFHeaderKey  string // default "X-XSRF-TOKEN"
+	JWTQuery       string // default "token"
 
 	Issuer string // optional value for iss claim, usually the application name, default "go-pkgz/auth"
 
@@ -94,6 +95,7 @@ func NewService(opts Opts) (res *Service) {
 		JWTHeaderKey:   opts.JWTHeaderKey,
 		XSRFCookieName: opts.XSRFCookieName,
 		XSRFHeaderKey:  opts.XSRFHeaderKey,
+		JWTQuery:       opts.JWTQuery,
 		Issuer:         res.issuer,
 		AudienceReader: opts.AudienceReader,
 	})

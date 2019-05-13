@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/go-pkgz/rest"
 
 	"github.com/go-pkgz/auth/logger"

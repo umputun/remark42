@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/pkg/errors"
 )
 
@@ -44,7 +44,7 @@ const (
 	defaultTokenDuration  = time.Minute * 15
 	defaultCookieDuration = time.Hour * 24 * 31
 
-	tokenQuery = "token"
+	defaultTokenQuery = "token"
 )
 
 // Opts holds constructor params
@@ -61,7 +61,7 @@ type Opts struct {
 	JWTHeaderKey   string
 	XSRFCookieName string
 	XSRFHeaderKey  string
-
+	JWTQuery       string
 	AudienceReader Audience // allowed aud values
 	Issuer         string   // optional value for iss claim, usually application name
 }
@@ -80,6 +80,7 @@ func NewService(opts Opts) *Service {
 	setDefault(&res.JWTHeaderKey, defaultJWTHeaderKey)
 	setDefault(&res.XSRFCookieName, defaultXSRFCookieName)
 	setDefault(&res.XSRFHeaderKey, defaultXSRFHeaderKey)
+	setDefault(&res.JWTQuery, defaultTokenQuery)
 	setDefault(&res.Issuer, defaultIssuer)
 
 	if opts.TokenDuration == 0 {
@@ -167,12 +168,12 @@ func (j *Service) validate(claims *Claims) error {
 	}
 
 	if e, ok := cerr.(*jwt.ValidationError); ok {
-		e.Errors ^= jwt.ValidationErrorExpired // clear ValidationErrorExpired, allow expired token
-		if e.Errors != 0 {
-			return e
+		if e.Errors == jwt.ValidationErrorExpired {
+			return nil // allow expired tokens
 		}
 	}
-	return nil
+
+	return cerr
 }
 
 // Set creates token cookie with xsrf cookie and put it to ResponseWriter
@@ -220,7 +221,7 @@ func (j *Service) Get(r *http.Request) (Claims, string, error) {
 	tokenString := ""
 
 	// try to get from "token" query param
-	if tkQuery := r.URL.Query().Get(tokenQuery); tkQuery != "" {
+	if tkQuery := r.URL.Query().Get(j.JWTQuery); tkQuery != "" {
 		tokenString = tkQuery
 	}
 

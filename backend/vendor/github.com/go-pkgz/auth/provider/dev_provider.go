@@ -9,10 +9,10 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/go-pkgz/auth/avatar"
-	"github.com/go-pkgz/auth/logger"
 	"golang.org/x/oauth2"
 
+	"github.com/go-pkgz/auth/avatar"
+	"github.com/go-pkgz/auth/logger"
 	"github.com/go-pkgz/auth/token"
 )
 
