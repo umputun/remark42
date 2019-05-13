@@ -630,6 +630,7 @@ func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Sto
 			}
 			return !claims.User.BoolAttr("blocked")
 		}),
+		JWTQuery:          "jwt", // change default from "token" as it used for deleteme
 		AvatarStore:       avas,
 		AvatarResizeLimit: s.Avatar.RszLmt,
 		AvatarRoutePath:   "/api/v1/avatar",
