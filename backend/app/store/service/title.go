@@ -3,6 +3,7 @@ package service
 import (
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-pkgz/lcw"
@@ -85,7 +86,10 @@ func (t *TitleExtractor) isTitleElement(n *html.Node) bool {
 
 func (t *TitleExtractor) traverse(n *html.Node) (string, bool) {
 	if t.isTitleElement(n) {
-		return n.FirstChild.Data, true
+		title := n.FirstChild.Data
+		title = strings.Replace(title, "\n", "", -1)
+		title = strings.TrimSpace(title)
+		return title, true
 	}
 
 	for c := n.FirstChild; c != nil; c = c.NextSibling {

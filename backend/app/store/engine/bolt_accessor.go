@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -169,7 +170,7 @@ func (b *BoltDB) Find(locator store.Locator, sortFld string) (comments []store.C
 }
 
 // Last returns up to max last comments for given siteID
-func (b *BoltDB) Last(siteID string, max int) (comments []store.Comment, err error) {
+func (b *BoltDB) Last(siteID string, max int, since time.Time) (comments []store.Comment, err error) {
 
 	comments = []store.Comment{}
 
@@ -185,7 +186,16 @@ func (b *BoltDB) Last(siteID string, max int) (comments []store.Comment, err err
 	err = bdb.View(func(tx *bolt.Tx) error {
 		lastBkt := tx.Bucket([]byte(lastBucketName))
 		c := lastBkt.Cursor()
+
 		for k, v := c.Last(); k != nil; k, v = c.Prev() {
+
+			if !since.IsZero() {
+				// stop if reached "since" ts
+				tsSince := []byte(since.Format(tsNano))
+				if bytes.Compare(k, tsSince) <= 0 {
+					break
+				}
+			}
 			url, commentID, e := b.parseRef(v)
 			if e != nil {
 				return e

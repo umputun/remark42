@@ -581,7 +581,7 @@ Sort can be `time`, `active` or `score`. Supported sort order with prefix -/+, i
    }{}
 ```
 
-* `GET /api/v1/last/{max}?site=site-id` - get up to `{max}` last comments
+* `GET /api/v1/last/{max}?site=site-id&since=ts-msec` - get up to `{max}` last comments, `since` (epoch time, milliseconds) is optional
 * `GET /api/v1/id/{id}?site=site-id` - get comment by `comment id`
 * `GET /api/v1/comments?site=site-id&user=id&limit=N` - get comment by `user id`, returns `response` object
   ```go

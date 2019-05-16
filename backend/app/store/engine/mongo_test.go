@@ -90,12 +90,22 @@ func TestMongo_Last(t *testing.T) {
 	if skip {
 		return
 	}
-	res, err := m.Last("radio-t", 0)
+	res, err := m.Last("radio-t", 0, time.Time{})
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(res))
 	assert.Equal(t, "some text2", res[0].Text)
 
-	res, err = m.Last("radio-t", 1)
+	res, err = m.Last("radio-t", 0, time.Date(2017, 12, 20, 15, 18, 21, 0, time.Local))
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(res))
+	assert.Equal(t, "some text2", res[0].Text)
+
+	res, err = m.Last("radio-t", 0, time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local))
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(res))
+	assert.Equal(t, "some text2", res[0].Text)
+
+	res, err = m.Last("radio-t", 1, time.Time{})
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(res))
 	assert.Equal(t, "some text2", res[0].Text)
@@ -428,7 +438,7 @@ func TestMongo_Delete(t *testing.T) {
 	assert.Equal(t, "some text2", res[1].Text)
 	assert.False(t, res[1].Deleted)
 
-	comments, err := m.Last("radio-t", 10)
+	comments, err := m.Last("radio-t", 10, time.Time{})
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(comments), "1 in last, 1 removed")
 
@@ -478,7 +488,7 @@ func TestMongo_DeleteAll(t *testing.T) {
 	err = m.DeleteAll("radio-t")
 	assert.Nil(t, err)
 
-	comments, err := m.Last("radio-t", 10)
+	comments, err := m.Last("radio-t", 10, time.Time{})
 	assert.Nil(t, err)
 	assert.Equal(t, 0, len(comments), "nothing left")
 
@@ -510,7 +520,7 @@ func TestMongo_DeleteUser(t *testing.T) {
 	assert.Nil(t, err, "no comments for user user1 in store")
 	assert.Equal(t, 0, len(cc), "no comments for user user1 in store")
 
-	comments, err := m.Last("radio-t", 10)
+	comments, err := m.Last("radio-t", 10, time.Time{})
 	assert.Nil(t, err)
 	assert.Equal(t, 0, len(comments), "nothing left")
 }

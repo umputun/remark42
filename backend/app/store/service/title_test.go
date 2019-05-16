@@ -24,7 +24,8 @@ func TestTitle_GetTitle(t *testing.T) {
 		title string
 	}{
 		{`<html><title>blah 123</title><body> 2222</body></html>`, true, "blah 123"},
-		{`<html><title>blah 123 `, true, "blah 123 "},
+		{`<html><title>blah 123 `, true, "blah 123"},
+		{"<html><title>\n\n  blah 123 \n ", true, "blah 123"},
 		{`<html><body> 2222</body></html>`, false, ""},
 	}
 
@@ -44,7 +45,7 @@ func TestTitle_Get(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.String() == "/good" {
 			atomic.AddInt32(&hits, 1)
-			_, err := w.Write([]byte("<html><title>blah 123</title><body> 2222</body></html>"))
+			_, err := w.Write([]byte("<html><title>\n\n blah 123\n</title><body> 2222</body></html>"))
 			assert.NoError(t, err)
 			return
 		}

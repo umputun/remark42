@@ -27,7 +27,7 @@ func TestWordPress_Import(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 3, size)
 
-	last, err := dataStore.Last(siteID, 10)
+	last, err := dataStore.Last(siteID, 10, time.Time{})
 	assert.Nil(t, err)
 	assert.Equal(t, 3, len(last), "3 comments imported")
 

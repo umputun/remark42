@@ -92,13 +92,16 @@ func (m *Mongo) Put(locator store.Locator, comment store.Comment) error {
 }
 
 // Last returns up to max last comments for given siteID
-func (m *Mongo) Last(siteID string, max int) (comments []store.Comment, err error) {
+func (m *Mongo) Last(siteID string, max int, since time.Time) (comments []store.Comment, err error) {
 	comments = []store.Comment{}
 	if max > lastLimit || max == 0 {
 		max = lastLimit
 	}
 	err = m.conn.WithCustomCollection(mongoPosts, func(coll *mgo.Collection) error {
 		query := bson.M{"locator.site": siteID, "delete": false}
+		if !since.IsZero() {
+			query["time"] = bson.M{"$gt": since}
+		}
 		return coll.Find(query).Sort("-time").Limit(max).All(&comments)
 	})
 	return comments, err

@@ -82,7 +82,7 @@ func TestNative_Import(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 2, size)
 
-	comments, err := b.Last("radio-t", 10)
+	comments, err := b.Last("radio-t", 10, time.Time{})
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(comments))
 	assert.Equal(t, "f863bd79-fec6-4a75-b308-61fe5dd02aa1", comments[0].ID)

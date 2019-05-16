@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"os"
 	"testing"
+	"time"
 
 	bolt "github.com/coreos/bbolt"
 	"github.com/stretchr/testify/assert"
@@ -35,7 +36,7 @@ func TestMigrator_ImportDisqus(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 4, size)
 
-	last, err := dataStore.Last("test", 10)
+	last, err := dataStore.Last("test", 10, time.Time{})
 	assert.Nil(t, err)
 	assert.Equal(t, 4, len(last), "4 comments imported")
 }
@@ -61,7 +62,7 @@ func TestMigrator_ImportWordPress(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 3, size)
 
-	last, err := dataStore.Last("test", 10)
+	last, err := dataStore.Last("test", 10, time.Time{})
 	assert.Nil(t, err)
 	assert.Equal(t, 3, len(last), "3 comments imported")
 }
@@ -91,7 +92,7 @@ func TestMigrator_ImportNative(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 2, size)
 
-	last, err := dataStore.Last("radio-t", 10)
+	last, err := dataStore.Last("radio-t", 10, time.Time{})
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(last), "2 comments imported")
 }
