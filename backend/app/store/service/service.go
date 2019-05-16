@@ -295,7 +295,7 @@ func (s *DataStore) HasReplies(comment store.Comment) bool {
 		return true
 	}
 
-	comments, err := s.Last(comment.Locator.SiteID, maxLastCommentsReply)
+	comments, err := s.Last(comment.Locator.SiteID, maxLastCommentsReply, time.Time{})
 	if err != nil {
 		log.Printf("[WARN] can't get last comments for reply check, %v", err)
 		return false

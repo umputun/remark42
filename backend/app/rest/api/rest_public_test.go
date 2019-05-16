@@ -209,8 +209,11 @@ func TestRest_Last(t *testing.T) {
 		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah2"}}
 
 	// add 3 comments
+	ts1 := time.Now().UnixNano() / 1000000
 	addComment(t, c1, ts)
 	id1 := addComment(t, c1, ts)
+	time.Sleep(10 * time.Millisecond)
+	ts2 := time.Now().UnixNano() / 1000000
 	id2 := addComment(t, c2, ts)
 
 	res, code = get(t, ts.URL+"/api/v1/last/2?site=radio-t")
@@ -220,6 +223,23 @@ func TestRest_Last(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(comments), "should have 2 comments")
 	assert.Equal(t, id1, comments[1].ID)
+	assert.Equal(t, id2, comments[0].ID)
+
+	res, code = get(t, fmt.Sprintf("%s/api/v1/last/2?site=radio-t&since=%d", ts.URL, ts1))
+	assert.Equal(t, 200, code)
+	comments = []store.Comment{}
+	err = json.Unmarshal([]byte(res), &comments)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(comments), "should have 2 comments")
+	assert.Equal(t, id1, comments[1].ID)
+	assert.Equal(t, id2, comments[0].ID)
+
+	res, code = get(t, fmt.Sprintf("%s/api/v1/last/2?site=radio-t&since=%d", ts.URL, ts2))
+	assert.Equal(t, 200, code)
+	comments = []store.Comment{}
+	err = json.Unmarshal([]byte(res), &comments)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(comments), "should have 1 comments")
 	assert.Equal(t, id2, comments[0].ID)
 
 	res, code = get(t, ts.URL+"/api/v1/last/5?site=radio-t")

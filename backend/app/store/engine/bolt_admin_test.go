@@ -37,7 +37,7 @@ func TestBoltAdmin_Delete(t *testing.T) {
 	assert.Equal(t, "some text2", res[1].Text)
 	assert.False(t, res[1].Deleted)
 
-	comments, err := b.Last("radio-t", 10)
+	comments, err := b.Last("radio-t", 10, time.Time{})
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(comments), "1 in last, 1 removed")
 
@@ -91,7 +91,7 @@ func TestBoltAdmin_DeleteAll(t *testing.T) {
 	err = b.DeleteAll("radio-t")
 	assert.Nil(t, err)
 
-	comments, err := b.Last("radio-t", 10)
+	comments, err := b.Last("radio-t", 10, time.Time{})
 	assert.Nil(t, err)
 	assert.Equal(t, 0, len(comments), "nothing left")
 
@@ -125,7 +125,7 @@ func TestBoltAdmin_DeleteUser(t *testing.T) {
 	_, err = b.User("radio-t", "user1", 5, 0)
 	assert.EqualError(t, err, "no comments for user user1 in store")
 
-	comments, err := b.Last("radio-t", 10)
+	comments, err := b.Last("radio-t", 10, time.Time{})
 	assert.Nil(t, err)
 	assert.Equal(t, 0, len(comments), "nothing left")
 

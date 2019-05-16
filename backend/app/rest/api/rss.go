@@ -60,7 +60,7 @@ func (s *Rest) rssSiteCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	key := cache.NewKey(siteID).ID(URLKey(r)).Scopes(siteID, lastCommentsScope)
 	data, err := s.Cache.Get(key, func() ([]byte, error) {
-		comments, e := s.DataService.Last(siteID, maxRssItems)
+		comments, e := s.DataService.Last(siteID, maxRssItems, time.Time{})
 		if e != nil {
 			return nil, e
 		}
@@ -94,7 +94,7 @@ func (s *Rest) rssRepliesCtrl(w http.ResponseWriter, r *http.Request) {
 	userName := ""
 	key := cache.NewKey(siteID).ID(URLKey(r)).Scopes(siteID, lastCommentsScope)
 	data, err := s.Cache.Get(key, func() (res []byte, e error) {
-		comments, e := s.DataService.Last(siteID, maxLastCommentsReply)
+		comments, e := s.DataService.Last(siteID, maxLastCommentsReply, time.Time{})
 		if e != nil {
 			return nil, errors.Wrap(e, "can't get last comments")
 		}

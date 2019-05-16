@@ -111,18 +111,40 @@ func TestBoltDB_Last(t *testing.T) {
 	var b, teardown = prep(t)
 	defer teardown()
 
-	res, err := b.Last("radio-t", 0)
+	res, err := b.Last("radio-t", 0, time.Time{})
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(res))
 	assert.Equal(t, "some text2", res[0].Text)
 
-	res, err = b.Last("radio-t", 1)
+	res, err = b.Last("radio-t", 1, time.Time{})
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(res))
 	assert.Equal(t, "some text2", res[0].Text)
 
-	_, err = b.Last("bad", 0)
+	_, err = b.Last("bad", 0, time.Time{})
 	assert.EqualError(t, err, `site "bad" not found`)
+}
+
+func TestBoltDB_LastSince(t *testing.T) {
+	var b, teardown = prep(t)
+	defer teardown()
+
+	ts := time.Date(2017, 12, 20, 15, 18, 21, 0, time.Local)
+	res, err := b.Last("radio-t", 0, ts)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(res))
+	assert.Equal(t, "some text2", res[0].Text)
+
+	ts = time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local)
+	res, err = b.Last("radio-t", 0, ts)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(res))
+	assert.Equal(t, "some text2", res[0].Text)
+
+	ts = time.Date(2017, 12, 20, 16, 18, 22, 0, time.Local)
+	res, err = b.Last("radio-t", 0, ts)
+	assert.Nil(t, err)
+	assert.Equal(t, 0, len(res))
 }
 
 func TestBoltDB_Count(t *testing.T) {

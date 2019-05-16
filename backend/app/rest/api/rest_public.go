@@ -9,6 +9,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
@@ -117,7 +118,8 @@ func (s *Rest) infoCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// GET /last/{limit}?site=siteID - last comments for the siteID, across all posts, sorted by time
+// GET /last/{limit}?site=siteID&since=unix_ts_msec - last comments for the siteID, across all posts, sorted by time, optionally
+// limited with "since" param
 func (s *Rest) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	log.Printf("[DEBUG] get last comments for %s", siteID)
@@ -127,9 +129,20 @@ func (s *Rest) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		limit = 0
 	}
 
+	sinceTime := time.Time{}
+	since := r.URL.Query().Get("since")
+	if since != "" {
+		unixTS, err := strconv.ParseInt(since, 10, 64)
+		if err != nil {
+			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't translate since parameter", rest.ErrDecode)
+			return
+		}
+		sinceTime = time.Unix(unixTS/1000, 1000000*(unixTS%1000)) // since param in msec timestamp
+	}
+
 	key := cache.NewKey(siteID).ID(URLKey(r)).Scopes(lastCommentsScope)
 	data, err := s.Cache.Get(key, func() ([]byte, error) {
-		comments, e := s.DataService.Last(siteID, limit)
+		comments, e := s.DataService.Last(siteID, limit, sinceTime)
 		if e != nil {
 			return nil, e
 		}
