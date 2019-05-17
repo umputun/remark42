@@ -12,19 +12,46 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
+	"github.com/go-pkgz/auth"
 	"github.com/go-pkgz/auth/token"
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
 	"github.com/go-pkgz/rest/cache"
 	"github.com/hashicorp/go-multierror"
 
+	"github.com/umputun/remark/backend/app/notify"
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/store"
+	"github.com/umputun/remark/backend/app/store/image"
 	"github.com/umputun/remark/backend/app/store/service"
 )
 
+type private struct {
+	dataService      privStore
+	cache            cache.LoadingCache
+	readOnlyAge      int
+	commentFormatter *store.CommentFormatter
+	imageService     *image.Service
+	notifyService    *notify.Service
+	authenticator    *auth.Service
+	remarkURL        string
+}
+
+type privStore interface {
+	Create(comment store.Comment) (commentID string, err error)
+	EditComment(locator store.Locator, commentID string, req service.EditRequest) (comment store.Comment, err error)
+	Vote(locator store.Locator, commentID string, userID string, val bool) (comment store.Comment, err error)
+	Get(locator store.Locator, commentID string, user store.User) (store.Comment, error)
+	User(siteID, userID string, limit, skip int, user store.User) ([]store.Comment, error)
+	ValidateComment(c *store.Comment) error
+	IsVerified(siteID string, userID string) bool
+	IsReadOnly(locator store.Locator) bool
+	IsBlocked(siteID string, userID string) bool
+	Info(locator store.Locator, readonlyAge int) (store.PostInfo, error)
+}
+
 // POST /comment - adds comment, resets all immutable fields
-func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
+func (s *private) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 	comment := store.Comment{}
 	if err := render.DecodeJSON(http.MaxBytesReader(w, r.Body, hardBodyLimit), &comment); err != nil {
@@ -39,14 +66,14 @@ func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	comment.User.IP = strings.Split(r.RemoteAddr, ":")[0]
 
 	comment.Orig = comment.Text // original comment text, prior to md render
-	if err := s.DataService.ValidateComment(&comment); err != nil {
+	if err := s.dataService.ValidateComment(&comment); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment", rest.ErrCommentValidation)
 		return
 	}
-	comment = s.CommentFormatter.Format(comment)
+	comment = s.commentFormatter.Format(comment)
 
 	// check if user blocked
-	if s.adminService.checkBlocked(comment.Locator.SiteID, comment.User) {
+	if s.dataService.IsBlocked(comment.Locator.SiteID, comment.User.ID) {
 		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"), "user blocked", rest.ErrUserBlocked)
 		return
 	}
@@ -56,7 +83,7 @@ func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, err := s.DataService.Create(comment)
+	id, err := s.dataService.Create(comment)
 	if err == service.ErrRestrictedWordsFound {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment", rest.ErrCommentValidation)
 		return
@@ -66,17 +93,17 @@ func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// DataService modifies comment
-	finalComment, err := s.DataService.Get(comment.Locator, id, rest.GetUserOrEmpty(r))
+	// dataService modifies comment
+	finalComment, err := s.dataService.Get(comment.Locator, id, rest.GetUserOrEmpty(r))
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't load created comment", rest.ErrInternal)
 		return
 	}
-	s.Cache.Flush(cache.Flusher(comment.Locator.SiteID).
+	s.cache.Flush(cache.Flusher(comment.Locator.SiteID).
 		Scopes(comment.Locator.URL, lastCommentsScope, comment.User.ID, comment.Locator.SiteID))
 
-	if s.NotifyService != nil {
-		s.NotifyService.Submit(finalComment)
+	if s.notifyService != nil {
+		s.notifyService.Submit(finalComment)
 	}
 
 	log.Printf("[DEBUG] created commend %+v", finalComment)
@@ -86,7 +113,7 @@ func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 }
 
 // PUT /comment/{id}?site=siteID&url=post-url - update comment
-func (s *Rest) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
+func (s *private) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 	edit := struct {
 		Text    string
@@ -107,7 +134,7 @@ func (s *Rest) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 	var currComment store.Comment
 	var err error
-	if currComment, err = s.DataService.Get(locator, id, rest.GetUserOrEmpty(r)); err != nil {
+	if currComment, err = s.dataService.Get(locator, id, rest.GetUserOrEmpty(r)); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't find comment", rest.ErrCommentNotFound)
 		return
 	}
@@ -119,40 +146,40 @@ func (s *Rest) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	editReq := service.EditRequest{
-		Text:    s.CommentFormatter.FormatText(edit.Text),
+		Text:    s.commentFormatter.FormatText(edit.Text),
 		Orig:    edit.Text,
 		Summary: edit.Summary,
 		Delete:  edit.Delete,
 	}
 
-	res, err := s.DataService.EditComment(locator, id, editReq)
+	res, err := s.dataService.EditComment(locator, id, editReq)
 	if err == service.ErrRestrictedWordsFound {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment", rest.ErrCommentValidation)
 		return
 	}
 
 	if err != nil {
-		code := s.parseError(err, rest.ErrCommentRejected)
+		code := parseError(err, rest.ErrCommentRejected)
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't update comment", code)
 		return
 	}
 
-	s.Cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.SiteID, locator.URL, lastCommentsScope, user.ID))
+	s.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.SiteID, locator.URL, lastCommentsScope, user.ID))
 	render.JSON(w, r, res)
 }
 
 // GET /user?site=siteID - returns user info
-func (s *Rest) userInfoCtrl(w http.ResponseWriter, r *http.Request) {
+func (s *private) userInfoCtrl(w http.ResponseWriter, r *http.Request) {
 	user := rest.MustGetUserInfo(r)
 	if siteID := r.URL.Query().Get("site"); siteID != "" {
-		user.Verified = s.DataService.IsVerified(siteID, user.ID)
+		user.Verified = s.dataService.IsVerified(siteID, user.ID)
 	}
 
 	render.JSON(w, r, user)
 }
 
 // PUT /vote/{id}?site=siteID&url=post-url&vote=1 - vote for/against comment
-func (s *Rest) voteCtrl(w http.ResponseWriter, r *http.Request) {
+func (s *private) voteCtrl(w http.ResponseWriter, r *http.Request) {
 	user := rest.MustGetUserInfo(r)
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	id := chi.URLParam(r, "id")
@@ -166,23 +193,23 @@ func (s *Rest) voteCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// check if user blocked
-	if s.adminService.checkBlocked(locator.SiteID, user) {
+	if s.dataService.IsBlocked(locator.SiteID, user.ID) {
 		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"), "user blocked", rest.ErrUserBlocked)
 		return
 	}
 
-	comment, err := s.DataService.Vote(locator, id, user.ID, vote)
+	comment, err := s.dataService.Vote(locator, id, user.ID, vote)
 	if err != nil {
-		code := s.parseError(err, rest.ErrVoteRejected)
+		code := parseError(err, rest.ErrVoteRejected)
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't vote for comment", code)
 		return
 	}
-	s.Cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL, comment.User.ID))
+	s.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL, comment.User.ID))
 	render.JSON(w, r, R.JSON{"id": comment.ID, "score": comment.Score})
 }
 
 // GET /userdata?site=siteID - exports all data about the user as a json with user info and list of all comments
-func (s *Rest) userAllDataCtrl(w http.ResponseWriter, r *http.Request) {
+func (s *private) userAllDataCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	user := rest.MustGetUserInfo(r)
 	userB, err := json.Marshal(&user)
@@ -213,7 +240,7 @@ func (s *Rest) userAllDataCtrl(w http.ResponseWriter, r *http.Request) {
 
 	// get comments in 100 in each paginated request
 	for i := 0; i < 100; i++ {
-		comments, errUser := s.DataService.User(siteID, user.ID, 100, i*100, rest.GetUserOrEmpty(r))
+		comments, errUser := s.dataService.User(siteID, user.ID, 100, i*100, rest.GetUserOrEmpty(r))
 		if errUser != nil {
 			rest.SendErrorJSON(w, r, http.StatusInternalServerError, errUser, "can't get user comments", rest.ErrInternal)
 			return
@@ -240,7 +267,7 @@ func (s *Rest) userAllDataCtrl(w http.ResponseWriter, r *http.Request) {
 
 // POST /deleteme?site_id=site - requesting delete of all user info
 // makes jwt with user info and sends it back as a part of json response
-func (s *Rest) deleteMeCtrl(w http.ResponseWriter, r *http.Request) {
+func (s *private) deleteMeCtrl(w http.ResponseWriter, r *http.Request) {
 	user := rest.MustGetUserInfo(r)
 	siteID := r.URL.Query().Get("site")
 
@@ -260,18 +287,18 @@ func (s *Rest) deleteMeCtrl(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	tokenStr, err := s.Authenticator.TokenService().Token(claims)
+	tokenStr, err := s.authenticator.TokenService().Token(claims)
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't make token", rest.ErrInternal)
 		return
 	}
 
-	link := fmt.Sprintf("%s/web/deleteme.html?token=%s", s.RemarkURL, tokenStr)
+	link := fmt.Sprintf("%s/web/deleteme.html?token=%s", s.remarkURL, tokenStr)
 	render.JSON(w, r, R.JSON{"site": siteID, "user_id": user.ID, "token": tokenStr, "link": link})
 }
 
 // POST /image - save image with form request
-func (s *Rest) savePictureCtrl(w http.ResponseWriter, r *http.Request) {
+func (s *private) savePictureCtrl(w http.ResponseWriter, r *http.Request) {
 	user := rest.MustGetUserInfo(r)
 
 	if err := r.ParseMultipartForm(5 * 1024 * 1024); err != nil { // 5M max memory, if bigger will make a file
@@ -286,7 +313,7 @@ func (s *Rest) savePictureCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	defer func() { _ = file.Close() }()
 
-	id, err := s.ImageService.Save(header.Filename, user.ID, file)
+	id, err := s.imageService.Save(header.Filename, user.ID, file)
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't save image", rest.ErrInternal)
 		return
@@ -295,37 +322,12 @@ func (s *Rest) savePictureCtrl(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, R.JSON{"id": id})
 }
 
-func (s *Rest) isReadOnly(locator store.Locator) bool {
-	if s.ReadOnlyAge > 0 {
+func (s *private) isReadOnly(locator store.Locator) bool {
+	if s.readOnlyAge > 0 {
 		// check RO by age
-		if info, e := s.DataService.Info(locator, s.ReadOnlyAge); e == nil && info.ReadOnly {
+		if info, e := s.dataService.Info(locator, s.readOnlyAge); e == nil && info.ReadOnly {
 			return true
 		}
 	}
-	return s.DataService.IsReadOnly(locator) // ro manually
-}
-
-func (s *Rest) parseError(err error, defaultCode int) (code int) {
-	code = defaultCode
-
-	switch {
-	// voting errors
-	case strings.Contains(err.Error(), "can not vote for his own comment"):
-		code = rest.ErrVoteSelf
-	case strings.Contains(err.Error(), "already voted for"):
-		code = rest.ErrVoteDbl
-	case strings.Contains(err.Error(), "maximum number of votes exceeded for comment"):
-		code = rest.ErrVoteMax
-	case strings.Contains(err.Error(), "minimal score reached for comment"):
-		code = rest.ErrVoteMinScore
-
-	// edit errors
-	case strings.HasPrefix(err.Error(), "too late to edit"):
-		code = rest.ErrCommentEditExpired
-	case strings.HasPrefix(err.Error(), "parent comment with reply can't be edited"):
-		code = rest.ErrCommentEditChanged
-
-	}
-
-	return code
+	return s.dataService.IsReadOnly(locator) // ro manually
 }

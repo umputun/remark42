@@ -11,17 +11,14 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/umputun/remark/backend/app/rest"
 
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/image"
@@ -620,16 +617,21 @@ func TestRest_CreateWithPictures(t *testing.T) {
 	}()
 	lgr.Setup(lgr.Debug, lgr.CallerFile, lgr.CallerFunc)
 
-	svc.ImageService = &image.Service{
-		Store: &image.FileSystem{
-			Staging:  "/tmp/remark42/images.staging",
-			Location: "/tmp/remark42/images",
-			MaxSize:  2000,
-		},
-		TTL: time.Millisecond * 100,
+	imageService := svc.ImageService
+	imageService.Store = &image.FileSystem{
+		Staging:  "/tmp/remark42/images.staging",
+		Location: "/tmp/remark42/images",
+		MaxSize:  2000,
 	}
-	svc.DataService.EditDuration = time.Millisecond * 100
-	svc.DataService.ImageService = svc.ImageService
+	imageService.TTL = 100 * time.Millisecond
+
+	svc.privRest.imageService = imageService
+	svc.ImageService = imageService
+
+	dataService := svc.DataService
+	dataService.EditDuration = time.Millisecond * 100
+	dataService.ImageService = svc.ImageService
+	svc.privRest.dataService = dataService
 
 	uploadPicture := func(file string) (id string) {
 		bodyBuf := &bytes.Buffer{}
@@ -682,27 +684,4 @@ func TestRest_CreateWithPictures(t *testing.T) {
 	assert.NoError(t, err, "moved from staging")
 	_, err = os.Stat("/tmp/remark42/images/" + id3)
 	assert.NoError(t, err, "moved from staging")
-}
-
-func TestRest_parseError(t *testing.T) {
-	tbl := []struct {
-		err error
-		res int
-	}{
-		{errors.New("can not vote for his own comment"), rest.ErrVoteSelf},
-		{errors.New("already voted for"), rest.ErrVoteDbl},
-		{errors.New("maximum number of votes exceeded for comment"), rest.ErrVoteMax},
-		{errors.New("minimal score reached for comment"), rest.ErrVoteMinScore},
-		{errors.New("too late to edit"), rest.ErrCommentEditExpired},
-		{errors.New("parent comment with reply can't be edited"), rest.ErrCommentEditChanged},
-		{errors.New("blah blah"), rest.ErrInternal},
-	}
-
-	svc := Rest{}
-	for n, tt := range tbl {
-		t.Run(strconv.Itoa(n), func(t *testing.T) {
-			res := svc.parseError(tt.err, rest.ErrInternal)
-			assert.Equal(t, tt.res, res)
-		})
-	}
 }

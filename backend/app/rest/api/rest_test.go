@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -249,6 +250,29 @@ func Test_URLKeyWithUser(t *testing.T) {
 	}
 
 }
+
+func TestRest_parseError(t *testing.T) {
+	tbl := []struct {
+		err error
+		res int
+	}{
+		{errors.New("can not vote for his own comment"), rest.ErrVoteSelf},
+		{errors.New("already voted for"), rest.ErrVoteDbl},
+		{errors.New("maximum number of votes exceeded for comment"), rest.ErrVoteMax},
+		{errors.New("minimal score reached for comment"), rest.ErrVoteMinScore},
+		{errors.New("too late to edit"), rest.ErrCommentEditExpired},
+		{errors.New("parent comment with reply can't be edited"), rest.ErrCommentEditChanged},
+		{errors.New("blah blah"), rest.ErrInternal},
+	}
+
+	for n, tt := range tbl {
+		t.Run(strconv.Itoa(n), func(t *testing.T) {
+			res := parseError(tt.err, rest.ErrInternal)
+			assert.Equal(t, tt.res, res)
+		})
+	}
+}
+
 func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 
 	testDb := fmt.Sprintf("/tmp/test-remark-%d.db", rand.Int31())

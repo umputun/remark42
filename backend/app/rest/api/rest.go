@@ -59,8 +59,9 @@ type Rest struct {
 	httpServer  *http.Server
 	lock        sync.Mutex
 
-	adminService admin
-	pubRest      public
+	pubRest   public
+	privRest  private
+	adminRest admin
 }
 
 const hardBodyLimit = 1024 * 64 // limit size of body
@@ -169,16 +170,27 @@ func (s *Rest) routes() chi.Router {
 	router.Use(R.AppInfo("remark42", "umputun", s.Version), R.Ping)
 
 	s.pubRest = public{
-		confFn:           s.config,
 		dataService:      s.DataService,
 		cache:            s.Cache,
 		imageService:     s.ImageService,
 		commentFormatter: s.CommentFormatter,
 		readOnlyAge:      s.ReadOnlyAge,
+		confFn:           s.config,
 		webRoot:          s.WebRoot,
 	}
 
-	s.adminService = admin{
+	s.privRest = private{
+		dataService:      s.DataService,
+		cache:            s.Cache,
+		imageService:     s.ImageService,
+		commentFormatter: s.CommentFormatter,
+		readOnlyAge:      s.ReadOnlyAge,
+		authenticator:    s.Authenticator,
+		notifyService:    s.NotifyService,
+		remarkURL:        s.RemarkURL,
+	}
+
+	s.adminRest = admin{
 		dataService:   s.DataService,
 		migrator:      s.Migrator,
 		cache:         s.Cache,
@@ -256,8 +268,8 @@ func (s *Rest) routes() chi.Router {
 		rapi.Group(func(rauth chi.Router) {
 			rauth.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
 			rauth.Use(authMiddleware.Auth, middleware.NoCache, logInfoWithBody)
-			rauth.Get("/user", s.userInfoCtrl)
-			rauth.Get("/userdata", s.userAllDataCtrl)
+			rauth.Get("/user", s.privRest.userInfoCtrl)
+			rauth.Get("/userdata", s.privRest.userAllDataCtrl)
 		})
 
 		// admin routes, require auth and admin users only
@@ -266,22 +278,22 @@ func (s *Rest) routes() chi.Router {
 			radmin.Use(authMiddleware.Auth, authMiddleware.AdminOnly)
 			radmin.Use(middleware.NoCache, logInfoWithBody)
 
-			radmin.Delete("/comment/{id}", s.adminService.deleteCommentCtrl)
-			radmin.Put("/user/{userid}", s.adminService.setBlockCtrl)
-			radmin.Delete("/user/{userid}", s.adminService.deleteUserCtrl)
-			radmin.Get("/user/{userid}", s.adminService.getUserInfoCtrl)
-			radmin.Get("/deleteme", s.adminService.deleteMeRequestCtrl)
-			radmin.Put("/verify/{userid}", s.adminService.setVerifyCtrl)
-			radmin.Put("/pin/{id}", s.adminService.setPinCtrl)
-			radmin.Get("/blocked", s.adminService.blockedUsersCtrl)
-			radmin.Put("/readonly", s.adminService.setReadOnlyCtrl)
-			radmin.Put("/title/{id}", s.adminService.setTitleCtrl)
+			radmin.Delete("/comment/{id}", s.adminRest.deleteCommentCtrl)
+			radmin.Put("/user/{userid}", s.adminRest.setBlockCtrl)
+			radmin.Delete("/user/{userid}", s.adminRest.deleteUserCtrl)
+			radmin.Get("/user/{userid}", s.adminRest.getUserInfoCtrl)
+			radmin.Get("/deleteme", s.adminRest.deleteMeRequestCtrl)
+			radmin.Put("/verify/{userid}", s.adminRest.setVerifyCtrl)
+			radmin.Put("/pin/{id}", s.adminRest.setPinCtrl)
+			radmin.Get("/blocked", s.adminRest.blockedUsersCtrl)
+			radmin.Put("/readonly", s.adminRest.setReadOnlyCtrl)
+			radmin.Put("/title/{id}", s.adminRest.setTitleCtrl)
 
 			// migrator
-			radmin.Get("/export", s.adminService.migrator.exportCtrl)
-			radmin.Post("/import", s.adminService.migrator.importCtrl)
-			radmin.Post("/import/form", s.adminService.migrator.importFormCtrl)
-			radmin.Get("/import/wait", s.adminService.migrator.importWaitCtrl)
+			radmin.Get("/export", s.adminRest.migrator.exportCtrl)
+			radmin.Post("/import", s.adminRest.migrator.importCtrl)
+			radmin.Post("/import/form", s.adminRest.migrator.importFormCtrl)
+			radmin.Get("/import/wait", s.adminRest.migrator.importWaitCtrl)
 		})
 
 		// protected routes, throttled to 10/s by default, controlled by external UpdateLimiter param
@@ -291,17 +303,17 @@ func (s *Rest) routes() chi.Router {
 			rauth.Use(middleware.NoCache)
 			rauth.Use(logger.New(logger.Log(log.Default()), logger.WithBody, logger.Prefix("[DEBUG]"), logger.IPfn(ipFn)).Handler)
 
-			rauth.Put("/comment/{id}", s.updateCommentCtrl)
-			rauth.Post("/comment", s.createCommentCtrl)
-			rauth.With(rejectAnonUser).Put("/vote/{id}", s.voteCtrl)
-			rauth.With(rejectAnonUser).Post("/deleteme", s.deleteMeCtrl)
+			rauth.Put("/comment/{id}", s.privRest.updateCommentCtrl)
+			rauth.Post("/comment", s.privRest.createCommentCtrl)
+			rauth.With(rejectAnonUser).Put("/vote/{id}", s.privRest.voteCtrl)
+			rauth.With(rejectAnonUser).Post("/deleteme", s.privRest.deleteMeCtrl)
 		})
 
 		rapi.Group(func(rauth chi.Router) {
 			rauth.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(s.updateLimiter(), nil)))
 			rauth.Use(authMiddleware.Auth, rejectAnonUser)
 			rauth.Use(logger.New(logger.Log(log.Default()), logger.Prefix("[DEBUG]"), logger.IPfn(ipFn)).Handler)
-			rauth.Post("/picture", s.savePictureCtrl)
+			rauth.Post("/picture", s.privRest.savePictureCtrl)
 		})
 
 	})
@@ -449,4 +461,29 @@ func (s *Rest) config(siteID string) config {
 		cnf.Admins = []string{}
 	}
 	return cnf
+}
+
+func parseError(err error, defaultCode int) (code int) {
+	code = defaultCode
+
+	switch {
+	// voting errors
+	case strings.Contains(err.Error(), "can not vote for his own comment"):
+		code = rest.ErrVoteSelf
+	case strings.Contains(err.Error(), "already voted for"):
+		code = rest.ErrVoteDbl
+	case strings.Contains(err.Error(), "maximum number of votes exceeded for comment"):
+		code = rest.ErrVoteMax
+	case strings.Contains(err.Error(), "minimal score reached for comment"):
+		code = rest.ErrVoteMinScore
+
+	// edit errors
+	case strings.HasPrefix(err.Error(), "too late to edit"):
+		code = rest.ErrCommentEditExpired
+	case strings.HasPrefix(err.Error(), "parent comment with reply can't be edited"):
+		code = rest.ErrCommentEditChanged
+
+	}
+
+	return code
 }
