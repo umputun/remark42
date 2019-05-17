@@ -15,16 +15,29 @@ import (
 
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/store"
-	"github.com/umputun/remark/backend/app/store/service"
 )
 
 // admin provides router for all requests available for admin users only
 type admin struct {
-	dataService   *service.DataStore
+	dataService   adminStore
 	cache         cache.LoadingCache
 	authenticator *auth.Service
 	readOnlyAge   int
 	migrator      *Migrator
+}
+
+type adminStore interface {
+	Delete(locator store.Locator, commentID string, mode store.DeleteMode) error
+	DeleteUser(siteID string, userID string) error
+	User(siteID, userID string, limit, skip int, user store.User) ([]store.Comment, error)
+	IsBlocked(siteID string, userID string) bool
+	SetBlock(siteID string, userID string, status bool, ttl time.Duration) error
+	Blocked(siteID string) ([]store.BlockedUser, error)
+	Info(locator store.Locator, readonlyAge int) (store.PostInfo, error)
+	SetTitle(locator store.Locator, commentID string) (comment store.Comment, err error)
+	SetVerified(siteID string, userID string, status bool) error
+	SetReadOnly(locator store.Locator, status bool) error
+	SetPin(locator store.Locator, commentID string, status bool) error
 }
 
 // DELETE /comment/{id}?site=siteID&url=post-url - removes comment
@@ -67,7 +80,7 @@ func (a *admin) getUserInfoCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	log.Printf("[INFO] get user info for %s, site %s", userID, siteID)
 
-	ucomments, err := a.dataService.User(siteID, userID, 1, 0)
+	ucomments, err := a.dataService.User(siteID, userID, 1, 0, rest.GetUserOrEmpty(r))
 	if err != nil || len(ucomments) == 0 {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get user info", rest.ErrInternal)
 		return
@@ -217,43 +230,4 @@ func (a *admin) setPinCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	a.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL))
 	render.JSON(w, r, R.JSON{"id": commentID, "locator": locator, "pin": pinStatus})
-}
-
-func (a *admin) checkBlocked(siteID string, user store.User) bool {
-	return a.dataService.IsBlocked(siteID, user.ID)
-}
-
-// post-processes comments, hides text of all comments for blocked users,
-// resets score and votes too. Also hides sensitive info for non-admin users
-func (a *admin) alterComments(comments []store.Comment, r *http.Request) (res []store.Comment) {
-	res = make([]store.Comment, len(comments))
-
-	user, err := rest.GetUserInfo(r)
-	isAdmin := err == nil && user.Admin
-
-	for i, c := range comments {
-
-		blocked := a.dataService.IsBlocked(c.Locator.SiteID, c.User.ID)
-		// process blocked users
-		if blocked {
-			if !isAdmin { // reset comment to deleted for non-admins
-				c.SetDeleted(store.SoftDelete)
-			}
-			c.User.Blocked = true
-			c.Deleted = true
-		}
-
-		// set verified status retroactively
-		if !blocked {
-			c.User.Verified = a.dataService.IsVerified(c.Locator.SiteID, c.User.ID)
-		}
-
-		// hide info from non-admins
-		if !isAdmin {
-			c.User.IP = ""
-		}
-
-		res[i] = c
-	}
-	return res
 }

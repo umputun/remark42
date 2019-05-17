@@ -26,7 +26,7 @@ func TestDisqus_Import(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 4, size)
 
-	last, err := dataStore.Last("test", 10, time.Time{})
+	last, err := dataStore.Last("test", 10, time.Time{}, adminUser)
 	assert.Nil(t, err)
 	assert.Equal(t, 4, len(last), "4 comments imported")
 

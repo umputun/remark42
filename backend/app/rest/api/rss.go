@@ -28,11 +28,10 @@ func (s *Rest) rssPostCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	key := cache.NewKey(locator.SiteID).ID(URLKey(r)).Scopes(locator.SiteID, locator.URL)
 	data, err := s.Cache.Get(key, func() ([]byte, error) {
-		comments, e := s.DataService.Find(locator, "-time")
+		comments, e := s.DataService.Find(locator, "-time", rest.GetUserOrEmpty(r))
 		if e != nil {
 			return nil, e
 		}
-		comments = s.alterComments(comments, r)
 		rss, e := s.toRssFeed(locator.URL, comments, "post comments for "+r.URL.Query().Get("url"))
 		if e != nil {
 			return nil, e
@@ -60,11 +59,10 @@ func (s *Rest) rssSiteCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	key := cache.NewKey(siteID).ID(URLKey(r)).Scopes(siteID, lastCommentsScope)
 	data, err := s.Cache.Get(key, func() ([]byte, error) {
-		comments, e := s.DataService.Last(siteID, maxRssItems, time.Time{})
+		comments, e := s.DataService.Last(siteID, maxRssItems, time.Time{}, rest.GetUserOrEmpty(r))
 		if e != nil {
 			return nil, e
 		}
-		comments = s.alterComments(comments, r)
 
 		rss, e := s.toRssFeed(r.URL.Query().Get("site"), comments, "site comment for "+siteID)
 		if e != nil {
@@ -94,11 +92,10 @@ func (s *Rest) rssRepliesCtrl(w http.ResponseWriter, r *http.Request) {
 	userName := ""
 	key := cache.NewKey(siteID).ID(URLKey(r)).Scopes(siteID, lastCommentsScope)
 	data, err := s.Cache.Get(key, func() (res []byte, e error) {
-		comments, e := s.DataService.Last(siteID, maxLastCommentsReply, time.Time{})
+		comments, e := s.DataService.Last(siteID, maxLastCommentsReply, time.Time{}, rest.GetUserOrEmpty(r))
 		if e != nil {
 			return nil, errors.Wrap(e, "can't get last comments")
 		}
-		comments = s.alterComments(comments, r)
 		replies := []store.Comment{}
 		for _, c := range comments {
 			if len(replies) > maxRssItems || c.Timestamp.Add(maxReplyDuration).Before(time.Now()) {
@@ -109,7 +106,7 @@ func (s *Rest) rssRepliesCtrl(w http.ResponseWriter, r *http.Request) {
 			}
 			if c.ParentID != "" && !c.Deleted && c.User.ID != userID { // not interested in replies to yourself
 				var pc store.Comment
-				if pc, e = s.DataService.Get(c.Locator, c.ParentID); e != nil {
+				if pc, e = s.DataService.Get(c.Locator, c.ParentID, rest.GetUserOrEmpty(r)); e != nil {
 					return nil, errors.Wrap(e, "can't get parent comment")
 				}
 				if pc.User.ID == userID {
@@ -166,7 +163,7 @@ func (s *Rest) toRssFeed(url string, comments []store.Comment, description strin
 		}
 		if c.ParentID != "" {
 			// add indication to parent comment
-			parentComment, err := s.DataService.Get(c.Locator, c.ParentID)
+			parentComment, err := s.DataService.Get(c.Locator, c.ParentID, store.User{})
 			if err == nil {
 				f.Title = fmt.Sprintf("%s > %s", c.User.Name, parentComment.User.Name)
 			} else {

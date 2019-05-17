@@ -27,7 +27,7 @@ type Exporter interface {
 // Store defines minimal interface needed to export and import comments
 type Store interface {
 	Create(comment store.Comment) (commentID string, err error)
-	Find(locator store.Locator, sort string) ([]store.Comment, error)
+	Find(locator store.Locator, sort string, user store.User) ([]store.Comment, error)
 	List(siteID string, limit int, skip int) ([]store.PostInfo, error)
 	DeleteAll(siteID string) error
 	Metas(siteID string) (umetas []service.UserMetaData, pmetas []service.PostMetaData, err error)
@@ -41,6 +41,8 @@ type ImportParams struct {
 	Provider  string
 	SiteID    string
 }
+
+var adminUser = store.User{Admin: true}
 
 // ImportComments imports from given provider format and saves to store
 func ImportComments(p ImportParams) (int, error) {

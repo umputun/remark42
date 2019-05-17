@@ -59,7 +59,9 @@ type Rest struct {
 	httpServer  *http.Server
 	lock        sync.Mutex
 
-	adminService admin
+	pubRest   public
+	privRest  private
+	adminRest admin
 }
 
 const hardBodyLimit = 1024 * 64 // limit size of body
@@ -167,7 +169,28 @@ func (s *Rest) routes() chi.Router {
 	router.Use(middleware.Throttle(1000), middleware.Timeout(60*time.Second))
 	router.Use(R.AppInfo("remark42", "umputun", s.Version), R.Ping)
 
-	s.adminService = admin{
+	s.pubRest = public{
+		dataService:      s.DataService,
+		cache:            s.Cache,
+		imageService:     s.ImageService,
+		commentFormatter: s.CommentFormatter,
+		readOnlyAge:      s.ReadOnlyAge,
+		confFn:           s.config,
+		webRoot:          s.WebRoot,
+	}
+
+	s.privRest = private{
+		dataService:      s.DataService,
+		cache:            s.Cache,
+		imageService:     s.ImageService,
+		commentFormatter: s.CommentFormatter,
+		readOnlyAge:      s.ReadOnlyAge,
+		authenticator:    s.Authenticator,
+		notifyService:    s.NotifyService,
+		remarkURL:        s.RemarkURL,
+	}
+
+	s.adminRest = admin{
 		dataService:   s.DataService,
 		migrator:      s.Migrator,
 		cache:         s.Cache,
@@ -215,16 +238,16 @@ func (s *Rest) routes() chi.Router {
 		rapi.Group(func(ropen chi.Router) {
 			ropen.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
 			ropen.Use(authMiddleware.Trace, middleware.NoCache, logInfoWithBody)
-			ropen.Get("/find", s.findCommentsCtrl)
-			ropen.Get("/id/{id}", s.commentByIDCtrl)
-			ropen.Get("/comments", s.findUserCommentsCtrl)
-			ropen.Get("/last/{limit}", s.lastCommentsCtrl)
-			ropen.Get("/count", s.countCtrl)
-			ropen.Post("/counts", s.countMultiCtrl)
-			ropen.Get("/list", s.listCtrl)
-			ropen.Get("/config", s.configCtrl)
-			ropen.Post("/preview", s.previewCommentCtrl)
-			ropen.Get("/info", s.infoCtrl)
+			ropen.Get("/find", s.pubRest.findCommentsCtrl)
+			ropen.Get("/id/{id}", s.pubRest.commentByIDCtrl)
+			ropen.Get("/comments", s.pubRest.findUserCommentsCtrl)
+			ropen.Get("/last/{limit}", s.pubRest.lastCommentsCtrl)
+			ropen.Get("/count", s.pubRest.countCtrl)
+			ropen.Post("/counts", s.pubRest.countMultiCtrl)
+			ropen.Get("/list", s.pubRest.listCtrl)
+			ropen.Get("/config", s.pubRest.configCtrl)
+			ropen.Post("/preview", s.pubRest.previewCommentCtrl)
+			ropen.Get("/info", s.pubRest.infoCtrl)
 			ropen.Get("/img", s.ImageProxy.Handler)
 
 			ropen.Route("/rss", func(rrss chi.Router) {
@@ -238,15 +261,15 @@ func (s *Rest) routes() chi.Router {
 		rapi.Group(func(ropen chi.Router) {
 			ropen.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
 			ropen.Use(authMiddleware.Trace, logInfoWithBody)
-			ropen.Get("/picture/{user}/{id}", s.loadPictureCtrl)
+			ropen.Get("/picture/{user}/{id}", s.pubRest.loadPictureCtrl)
 		})
 
 		// protected routes, require auth
 		rapi.Group(func(rauth chi.Router) {
 			rauth.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
 			rauth.Use(authMiddleware.Auth, middleware.NoCache, logInfoWithBody)
-			rauth.Get("/user", s.userInfoCtrl)
-			rauth.Get("/userdata", s.userAllDataCtrl)
+			rauth.Get("/user", s.privRest.userInfoCtrl)
+			rauth.Get("/userdata", s.privRest.userAllDataCtrl)
 		})
 
 		// admin routes, require auth and admin users only
@@ -255,22 +278,22 @@ func (s *Rest) routes() chi.Router {
 			radmin.Use(authMiddleware.Auth, authMiddleware.AdminOnly)
 			radmin.Use(middleware.NoCache, logInfoWithBody)
 
-			radmin.Delete("/comment/{id}", s.adminService.deleteCommentCtrl)
-			radmin.Put("/user/{userid}", s.adminService.setBlockCtrl)
-			radmin.Delete("/user/{userid}", s.adminService.deleteUserCtrl)
-			radmin.Get("/user/{userid}", s.adminService.getUserInfoCtrl)
-			radmin.Get("/deleteme", s.adminService.deleteMeRequestCtrl)
-			radmin.Put("/verify/{userid}", s.adminService.setVerifyCtrl)
-			radmin.Put("/pin/{id}", s.adminService.setPinCtrl)
-			radmin.Get("/blocked", s.adminService.blockedUsersCtrl)
-			radmin.Put("/readonly", s.adminService.setReadOnlyCtrl)
-			radmin.Put("/title/{id}", s.adminService.setTitleCtrl)
+			radmin.Delete("/comment/{id}", s.adminRest.deleteCommentCtrl)
+			radmin.Put("/user/{userid}", s.adminRest.setBlockCtrl)
+			radmin.Delete("/user/{userid}", s.adminRest.deleteUserCtrl)
+			radmin.Get("/user/{userid}", s.adminRest.getUserInfoCtrl)
+			radmin.Get("/deleteme", s.adminRest.deleteMeRequestCtrl)
+			radmin.Put("/verify/{userid}", s.adminRest.setVerifyCtrl)
+			radmin.Put("/pin/{id}", s.adminRest.setPinCtrl)
+			radmin.Get("/blocked", s.adminRest.blockedUsersCtrl)
+			radmin.Put("/readonly", s.adminRest.setReadOnlyCtrl)
+			radmin.Put("/title/{id}", s.adminRest.setTitleCtrl)
 
 			// migrator
-			radmin.Get("/export", s.adminService.migrator.exportCtrl)
-			radmin.Post("/import", s.adminService.migrator.importCtrl)
-			radmin.Post("/import/form", s.adminService.migrator.importFormCtrl)
-			radmin.Get("/import/wait", s.adminService.migrator.importWaitCtrl)
+			radmin.Get("/export", s.adminRest.migrator.exportCtrl)
+			radmin.Post("/import", s.adminRest.migrator.importCtrl)
+			radmin.Post("/import/form", s.adminRest.migrator.importFormCtrl)
+			radmin.Get("/import/wait", s.adminRest.migrator.importWaitCtrl)
 		})
 
 		// protected routes, throttled to 10/s by default, controlled by external UpdateLimiter param
@@ -280,17 +303,17 @@ func (s *Rest) routes() chi.Router {
 			rauth.Use(middleware.NoCache)
 			rauth.Use(logger.New(logger.Log(log.Default()), logger.WithBody, logger.Prefix("[DEBUG]"), logger.IPfn(ipFn)).Handler)
 
-			rauth.Put("/comment/{id}", s.updateCommentCtrl)
-			rauth.Post("/comment", s.createCommentCtrl)
-			rauth.With(rejectAnonUser).Put("/vote/{id}", s.voteCtrl)
-			rauth.With(rejectAnonUser).Post("/deleteme", s.deleteMeCtrl)
+			rauth.Put("/comment/{id}", s.privRest.updateCommentCtrl)
+			rauth.Post("/comment", s.privRest.createCommentCtrl)
+			rauth.With(rejectAnonUser).Put("/vote/{id}", s.privRest.voteCtrl)
+			rauth.With(rejectAnonUser).Post("/deleteme", s.privRest.deleteMeCtrl)
 		})
 
 		rapi.Group(func(rauth chi.Router) {
 			rauth.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(s.updateLimiter(), nil)))
 			rauth.Use(authMiddleware.Auth, rejectAnonUser)
 			rauth.Use(logger.New(logger.Log(log.Default()), logger.Prefix("[DEBUG]"), logger.IPfn(ipFn)).Handler)
-			rauth.Post("/picture", s.savePictureCtrl)
+			rauth.Post("/picture", s.privRest.savePictureCtrl)
 		})
 
 	})
@@ -298,48 +321,13 @@ func (s *Rest) routes() chi.Router {
 	// open routes on root level
 	router.Group(func(rroot chi.Router) {
 		tollbooth_chi.LimitHandler(tollbooth.NewLimiter(50, nil))
-		rroot.Get("/index.html", s.getStartedCtrl)
-		rroot.Get("/robots.txt", s.getRobotsCtrl)
+		rroot.Get("/index.html", s.pubRest.getStartedCtrl)
+		rroot.Get("/robots.txt", s.pubRest.getRobotsCtrl)
 	})
 
 	// file server for static content from /web
 	addFileServer(router, "/web", http.Dir(s.WebRoot))
 	return router
-}
-
-func (s *Rest) alterComments(comments []store.Comment, r *http.Request) (res []store.Comment) {
-
-	res = s.adminService.alterComments(comments, r) // apply admin's alteration
-
-	// prepare vote info for client view
-	vote := func(c store.Comment, r *http.Request) store.Comment {
-
-		c.Vote = 0 // default is "none" (not voted)
-
-		user, err := rest.GetUserInfo(r)
-		if err != nil {
-			c.Votes = nil // hide voters list and don't set Vote for non-authed user
-			return c
-		}
-
-		if v, ok := c.Votes[user.ID]; ok {
-			if v {
-				c.Vote = 1
-			} else {
-				c.Vote = -1
-			}
-		}
-
-		c.Votes = nil // hide voters list
-		return c
-	}
-
-	for i, c := range res {
-		c = vote(c, r)
-		res[i] = c
-	}
-
-	return res
 }
 
 // updateLimiter returns UpdateLimiter if set, or 10 if not
@@ -447,4 +435,55 @@ func rejectAnonUser(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	}
 	return http.HandlerFunc(fn)
+}
+
+func (s *Rest) config(siteID string) config {
+
+	cnf := config{
+		Version:        s.Version,
+		EditDuration:   int(s.DataService.EditDuration.Seconds()),
+		MaxCommentSize: s.DataService.MaxCommentSize,
+		Admins:         s.DataService.AdminStore.Admins(siteID),
+		AdminEmail:     s.DataService.AdminStore.Email(siteID),
+		LowScore:       s.ScoreThresholds.Low,
+		CriticalScore:  s.ScoreThresholds.Critical,
+		PositiveScore:  s.DataService.PositiveScore,
+		ReadOnlyAge:    s.ReadOnlyAge,
+		MaxImageSize:   s.ImageService.Store.SizeLimit(),
+	}
+
+	cnf.Auth = []string{}
+	for _, ap := range s.Authenticator.Providers() {
+		cnf.Auth = append(cnf.Auth, ap.Name())
+	}
+
+	if cnf.Admins == nil { // prevent json serialization to nil
+		cnf.Admins = []string{}
+	}
+	return cnf
+}
+
+func parseError(err error, defaultCode int) (code int) {
+	code = defaultCode
+
+	switch {
+	// voting errors
+	case strings.Contains(err.Error(), "can not vote for his own comment"):
+		code = rest.ErrVoteSelf
+	case strings.Contains(err.Error(), "already voted for"):
+		code = rest.ErrVoteDbl
+	case strings.Contains(err.Error(), "maximum number of votes exceeded for comment"):
+		code = rest.ErrVoteMax
+	case strings.Contains(err.Error(), "minimal score reached for comment"):
+		code = rest.ErrVoteMinScore
+
+	// edit errors
+	case strings.HasPrefix(err.Error(), "too late to edit"):
+		code = rest.ErrCommentEditExpired
+	case strings.HasPrefix(err.Error(), "parent comment with reply can't be edited"):
+		code = rest.ErrCommentEditChanged
+
+	}
+
+	return code
 }

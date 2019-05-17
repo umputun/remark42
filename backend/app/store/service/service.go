@@ -1,3 +1,6 @@
+// Package service wraps engine interfaces with common logic unrelated to any particular engine implementation.
+// All consumers should be using service.DataStore and not the naked engine!
+
 package service
 
 import (
@@ -96,12 +99,48 @@ func (s *DataStore) Create(comment store.Comment) (commentID string, err error) 
 	return s.Interface.Create(comment)
 }
 
+// Find wraps engine's Find call and alter results if needed
+func (s *DataStore) Find(locator store.Locator, sort string, user store.User) ([]store.Comment, error) {
+	comments, err := s.Interface.Find(locator, sort)
+	if err != nil {
+		return comments, err
+	}
+
+	changedSort := false
+	// set votes controversy for comments added prior to #274
+	for i, c := range comments {
+		if c.Controversy == 0 && len(c.Votes) > 0 {
+			c.Controversy = s.controversy(s.upsAndDowns(c))
+			if !changedSort && strings.Contains(sort, "controversy") { // trigger sort change
+				changedSort = true
+			}
+		}
+		comments[i] = s.alterComment(c, user)
+	}
+
+	// resort commits if altered
+	if changedSort {
+		comments = engine.SortComments(comments, sort)
+	}
+
+	return comments, nil
+}
+
+// Get comment by ID
+func (s *DataStore) Get(locator store.Locator, commentID string, user store.User) (store.Comment, error) {
+	c, err := s.Interface.Get(locator, commentID)
+	if err != nil {
+		return store.Comment{}, err
+	}
+	return s.alterComment(c, user), nil
+}
+
 // submitImages initiated delayed commit of all images from the comment uploaded to remark42
 func (s *DataStore) submitImages(comment store.Comment) {
 
 	s.ImageService.Submit(func() []string {
 		c := comment
-		cc, err := s.Get(c.Locator, c.ID) // this can be called after last edit, we have to retrieve fresh comment
+		cc, err := s.Interface.Get(c.Locator, c.ID) // this can be called after last edit, we have to retrieve fresh comment
 		if err != nil {
 			log.Printf("[WARN] can't get comment's %s text for image extraction, %v", c.ID, err)
 			return nil
@@ -143,7 +182,7 @@ func (s *DataStore) prepareNewComment(comment store.Comment) (store.Comment, err
 
 // SetPin pin/un-pin comment as special
 func (s *DataStore) SetPin(locator store.Locator, commentID string, status bool) error {
-	comment, err := s.Get(locator, commentID)
+	comment, err := s.Interface.Get(locator, commentID)
 	if err != nil {
 		return err
 	}
@@ -158,7 +197,7 @@ func (s *DataStore) Vote(locator store.Locator, commentID string, userID string,
 	cLock.Lock()                           // prevents race on voting
 	defer cLock.Unlock()
 
-	comment, err = s.Get(locator, commentID)
+	comment, err = s.Interface.Get(locator, commentID)
 	if err != nil {
 		return comment, err
 	}
@@ -246,7 +285,7 @@ type EditRequest struct {
 
 // EditComment to edit text and update Edit info
 func (s *DataStore) EditComment(locator store.Locator, commentID string, req EditRequest) (comment store.Comment, err error) {
-	comment, err = s.Get(locator, commentID)
+	comment, err = s.Interface.Get(locator, commentID)
 	if err != nil {
 		return comment, err
 	}
@@ -295,7 +334,7 @@ func (s *DataStore) HasReplies(comment store.Comment) bool {
 		return true
 	}
 
-	comments, err := s.Last(comment.Locator.SiteID, maxLastCommentsReply, time.Time{})
+	comments, err := s.Interface.Last(comment.Locator.SiteID, maxLastCommentsReply, time.Time{})
 	if err != nil {
 		log.Printf("[WARN] can't get last comments for reply check, %v", err)
 		return false
@@ -318,7 +357,7 @@ func (s *DataStore) SetTitle(locator store.Locator, commentID string) (comment s
 		return comment, errors.New("no title extractor")
 	}
 
-	comment, err = s.Get(locator, commentID)
+	comment, err = s.Interface.Get(locator, commentID)
 	if err != nil {
 		return comment, err
 	}
@@ -452,30 +491,22 @@ func (s *DataStore) SetMetas(siteID string, umetas []UserMetaData, pmetas []Post
 	return errs.ErrorOrNil()
 }
 
-// Find wraps engine's Find call and alter results if needed
-func (s *DataStore) Find(locator store.Locator, sort string) ([]store.Comment, error) {
-	comments, err := s.Interface.Find(locator, sort)
+// User gets comment for given userID on siteID
+func (s *DataStore) User(siteID, userID string, limit, skip int, user store.User) ([]store.Comment, error) {
+	comments, err := s.Interface.User(siteID, userID, limit, skip)
 	if err != nil {
 		return comments, err
 	}
+	return s.alterComments(comments, user), nil
+}
 
-	changedSort := false
-	// set votes controversy for comments added prior to #274
-	for i, c := range comments {
-		if c.Controversy == 0 && len(c.Votes) > 0 {
-			comments[i].Controversy = s.controversy(s.upsAndDowns(c))
-			if !changedSort && strings.Contains(sort, "controversy") { // trigger sort change
-				changedSort = true
-			}
-		}
+// Last gets last comments for site, cross-post. Limited by count and optional since ts
+func (s *DataStore) Last(siteID string, limit int, since time.Time, user store.User) ([]store.Comment, error) {
+	comments, err := s.Interface.Last(siteID, limit, since)
+	if err != nil {
+		return comments, err
 	}
-
-	// resort commits if altered
-	if changedSort {
-		comments = engine.SortComments(comments, sort)
-	}
-
-	return comments, nil
+	return s.alterComments(comments, user), nil
 }
 
 func (s *DataStore) upsAndDowns(c store.Comment) (ups, downs int) {
@@ -502,4 +533,55 @@ func (s *DataStore) getScopedLocks(id string) (lock sync.Locker) {
 	s.scopedLocks.Unlock()
 
 	return lock
+}
+
+func (s *DataStore) alterComments(cc []store.Comment, user store.User) (res []store.Comment) {
+	res = make([]store.Comment, len(cc))
+	for i, c := range cc {
+		res[i] = s.alterComment(c, user)
+	}
+	return res
+}
+
+func (s *DataStore) alterComment(c store.Comment, user store.User) (res store.Comment) {
+
+	blocked := s.IsBlocked(c.Locator.SiteID, c.User.ID)
+	// process blocked users
+	if blocked {
+		if !user.Admin { // reset comment to deleted for non-admins
+			c.SetDeleted(store.SoftDelete)
+		}
+		c.User.Blocked = true
+		c.Deleted = true
+	}
+
+	// set verified status retroactively
+	if !blocked {
+		c.User.Verified = s.IsVerified(c.Locator.SiteID, c.User.ID)
+	}
+
+	// hide info from non-admins
+	if !user.Admin {
+		c.User.IP = ""
+	}
+
+	c = s.prepVotes(c, user)
+	return c
+}
+
+// prepare vote info for client view
+func (s *DataStore) prepVotes(c store.Comment, user store.User) store.Comment {
+
+	c.Vote = 0 // default is "none" (not voted)
+
+	if v, ok := c.Votes[user.ID]; ok {
+		if v {
+			c.Vote = 1
+		} else {
+			c.Vote = -1
+		}
+	}
+
+	c.Votes = nil // hide voters list
+	return c
 }
