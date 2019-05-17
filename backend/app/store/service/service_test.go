@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -726,22 +725,33 @@ func TestService_submitImages(t *testing.T) {
 
 func TestService_alterComment(t *testing.T) {
 	defer teardown(t)
-	svc := DataStore{Interface: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123")}
 
-	tbl := []struct {
-		c store.Comment
-		u store.User
-		r store.Comment
-	}{
-		{store.Comment{}, store.User{}, store.Comment{}},
-		{store.Comment{}, store.User{}, store.Comment{}},
-	}
-	for i, tt := range tbl {
-		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			r := svc.alterComment(tt.c, tt.u)
-			assert.Equal(t, tt.r, r)
-		})
-	}
+	engineMock := engine.MockInterface{}
+	engineMock.On("IsBlocked", mock.Anything, mock.Anything).Return(false)
+	engineMock.On("IsVerified", mock.Anything, mock.Anything).Return(false)
+	svc := DataStore{Interface: &engineMock}
+
+	r := svc.alterComment(store.Comment{ID: "123", User: store.User{IP: "127.0.0.1"}}, store.User{Name: "dev", Admin: false})
+	assert.Equal(t, store.Comment{ID: "123", User: store.User{IP: ""}}, r, "ip cleaned")
+	r = svc.alterComment(store.Comment{ID: "123", User: store.User{IP: "127.0.0.1"}}, store.User{Name: "dev", Admin: true})
+	assert.Equal(t, store.Comment{ID: "123", User: store.User{IP: "127.0.0.1"}}, r, "ip not cleaned")
+
+	engineMock = engine.MockInterface{}
+	engineMock.On("IsBlocked", mock.Anything, mock.Anything).Return(false)
+	engineMock.On("IsVerified", mock.Anything, mock.Anything).Return(true)
+	svc = DataStore{Interface: &engineMock}
+	r = svc.alterComment(store.Comment{ID: "123", User: store.User{IP: "127.0.0.1", Verified: true}},
+		store.User{Name: "dev", Admin: false})
+	assert.Equal(t, store.Comment{ID: "123", User: store.User{IP: "", Verified: true}}, r, "verified set")
+
+	engineMock = engine.MockInterface{}
+	engineMock.On("IsBlocked", mock.Anything, mock.Anything).Return(true)
+	engineMock.On("IsVerified", mock.Anything, mock.Anything).Return(false)
+	svc = DataStore{Interface: &engineMock}
+	r = svc.alterComment(store.Comment{ID: "123", User: store.User{IP: "127.0.0.1", Verified: true}},
+		store.User{Name: "dev", Admin: false})
+	assert.Equal(t, store.Comment{ID: "123", User: store.User{IP: "", Verified: true, Blocked: true}, Deleted: true}, r,
+		"blocked")
 }
 
 // makes new boltdb, put two records
