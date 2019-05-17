@@ -24,8 +24,7 @@ require (
 	github.com/golang/protobuf v1.3.1 // indirect
 	github.com/google/uuid v0.0.0-20161128191214-064e2069ce9c
 	github.com/gorilla/feeds v1.1.0
-	github.com/hashicorp/errwrap v1.0.0 // indirect
-	github.com/hashicorp/go-multierror v0.0.0-20171204182908-b7773ae21874
+	github.com/hashicorp/go-multierror v1.0.0
 	github.com/hashicorp/golang-lru v0.5.1 // indirect
 	github.com/jessevdk/go-flags v0.0.0-20180331124232-1c38ed7ad0cc
 	github.com/microcosm-cc/bluemonday v0.0.0-20171222152607-542fd4642604

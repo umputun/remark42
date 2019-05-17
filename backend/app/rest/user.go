@@ -36,7 +36,15 @@ func GetUserInfo(r *http.Request) (user store.User, err error) {
 		Verified: u.BoolAttr("verified"),
 		Blocked:  u.BoolAttr("blocked"),
 	}, nil
+}
 
+// GetUserOrEmpty attempts to get user info from request and returns empty object if failed
+func GetUserOrEmpty(r *http.Request) store.User {
+	user, err := GetUserInfo(r)
+	if err != nil {
+		return store.User{}
+	}
+	return user
 }
 
 // SetUserInfo sets user into request context

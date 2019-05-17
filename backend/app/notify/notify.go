@@ -31,7 +31,7 @@ type Destination interface {
 
 // Store defines the minimal interface accessing stored comments used by notifier
 type Store interface {
-	Get(locator store.Locator, id string) (store.Comment, error)
+	Get(locator store.Locator, id string, user store.User) (store.Comment, error)
 }
 
 type request struct {
@@ -69,7 +69,7 @@ func (s *Service) Submit(comment store.Comment) {
 	}
 	parentComment := store.Comment{}
 	if s.dataService != nil {
-		if p, err := s.dataService.Get(comment.Locator, comment.ParentID); err == nil {
+		if p, err := s.dataService.Get(comment.Locator, comment.ParentID, store.User{}); err == nil {
 			parentComment = p
 		}
 	}

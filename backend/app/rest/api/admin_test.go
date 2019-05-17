@@ -618,7 +618,7 @@ func TestAdmin_DeleteMeRequest(t *testing.T) {
 	_, err = srv.DataService.Create(c2)
 	assert.Nil(t, err)
 
-	comments, err := srv.DataService.User("radio-t", "user1", 0, 0)
+	comments, err := srv.DataService.User("radio-t", "user1", 0, 0, store.User{})
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(comments), "a comment for user1")
 
@@ -655,7 +655,7 @@ func TestAdmin_DeleteMeRequest(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 
-	_, err = srv.DataService.User("radio-t", "user1", 0, 0)
+	_, err = srv.DataService.User("radio-t", "user1", 0, 0, store.User{})
 	assert.EqualError(t, err, "no comments for user user1 in store")
 }
 

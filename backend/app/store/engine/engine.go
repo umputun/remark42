@@ -10,7 +10,7 @@ import (
 	"github.com/umputun/remark/backend/app/store"
 )
 
-//go:generate sh -c "mockery -inpkg -name Interface -print > file.tmp && mv file.tmp engine_mock.go"
+//go:generate sh -c "mockery -inpkg -name Interface -print > /tmp/engine-mock.tmp && mv /tmp/engine-mock.tmp engine_mock.go"
 
 // Interface combines all store interfaces
 type Interface interface {

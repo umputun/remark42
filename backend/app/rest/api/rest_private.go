@@ -67,7 +67,7 @@ func (s *Rest) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// DataService modifies comment
-	finalComment, err := s.DataService.Get(comment.Locator, id)
+	finalComment, err := s.DataService.Get(comment.Locator, id, rest.GetUserOrEmpty(r))
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't load created comment", rest.ErrInternal)
 		return
@@ -107,7 +107,7 @@ func (s *Rest) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 	var currComment store.Comment
 	var err error
-	if currComment, err = s.DataService.Get(locator, id); err != nil {
+	if currComment, err = s.DataService.Get(locator, id, rest.GetUserOrEmpty(r)); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't find comment", rest.ErrCommentNotFound)
 		return
 	}
@@ -213,7 +213,7 @@ func (s *Rest) userAllDataCtrl(w http.ResponseWriter, r *http.Request) {
 
 	// get comments in 100 in each paginated request
 	for i := 0; i < 100; i++ {
-		comments, errUser := s.DataService.User(siteID, user.ID, 100, i*100)
+		comments, errUser := s.DataService.User(siteID, user.ID, 100, i*100, rest.GetUserOrEmpty(r))
 		if errUser != nil {
 			rest.SendErrorJSON(w, r, http.StatusInternalServerError, errUser, "can't get user comments", rest.ErrInternal)
 			return

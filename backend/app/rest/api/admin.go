@@ -67,7 +67,7 @@ func (a *admin) getUserInfoCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	log.Printf("[INFO] get user info for %s, site %s", userID, siteID)
 
-	ucomments, err := a.dataService.User(siteID, userID, 1, 0)
+	ucomments, err := a.dataService.User(siteID, userID, 1, 0, rest.GetUserOrEmpty(r))
 	if err != nil || len(ucomments) == 0 {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get user info", rest.ErrInternal)
 		return
@@ -221,39 +221,4 @@ func (a *admin) setPinCtrl(w http.ResponseWriter, r *http.Request) {
 
 func (a *admin) checkBlocked(siteID string, user store.User) bool {
 	return a.dataService.IsBlocked(siteID, user.ID)
-}
-
-// post-processes comments, hides text of all comments for blocked users,
-// resets score and votes too. Also hides sensitive info for non-admin users
-func (a *admin) alterComments(comments []store.Comment, r *http.Request) (res []store.Comment) {
-	res = make([]store.Comment, len(comments))
-
-	user, err := rest.GetUserInfo(r)
-	isAdmin := err == nil && user.Admin
-
-	for i, c := range comments {
-
-		blocked := a.dataService.IsBlocked(c.Locator.SiteID, c.User.ID)
-		// process blocked users
-		if blocked {
-			if !isAdmin { // reset comment to deleted for non-admins
-				c.SetDeleted(store.SoftDelete)
-			}
-			c.User.Blocked = true
-			c.Deleted = true
-		}
-
-		// set verified status retroactively
-		if !blocked {
-			c.User.Verified = a.dataService.IsVerified(c.Locator.SiteID, c.User.ID)
-		}
-
-		// hide info from non-admins
-		if !isAdmin {
-			c.User.IP = ""
-		}
-
-		res[i] = c
-	}
-	return res
 }

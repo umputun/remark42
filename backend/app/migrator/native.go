@@ -49,7 +49,7 @@ func (n *Native) Export(w io.Writer, siteID string) (size int, err error) {
 	commentsCount := 0
 	for i := len(topics) - 1; i >= 0; i-- { // topics from List sorted in opposite direction
 		topic := topics[i]
-		comments, e := n.DataStore.Find(store.Locator{SiteID: siteID, URL: topic.URL}, "time")
+		comments, e := n.DataStore.Find(store.Locator{SiteID: siteID, URL: topic.URL}, "time", adminUser)
 		if e != nil {
 			return commentsCount, e
 		}

@@ -77,12 +77,13 @@ func TestNative_Import(t *testing.T) {
 	{"id":"f863bd79-fec6-4a75-b308-61fe5dd02aa1","pid":"1234","text":"some text2","user":{"name":"user name","id":"user2","picture":"","ip":"293ec5b0cf154855258824ec7fac5dc63d176915","admin":false},"locator":{"site":"radio-t","url":"https://radio-t.com/2"},"score":0,"votes":{},"time":"2017-12-20T15:18:23-06:00"}`
 
 	b := prep(t) // write some recs
-	r := Native{DataStore: &service.DataStore{Interface: b, AdminStore: admin.NewStaticStore("12345", []string{}, "")}}
+	b.AdminStore = admin.NewStaticStore("12345", []string{}, "")
+	r := Native{DataStore: b}
 	size, err := r.Import(strings.NewReader(inp), "radio-t")
 	assert.Nil(t, err)
 	assert.Equal(t, 2, size)
 
-	comments, err := b.Last("radio-t", 10, time.Time{})
+	comments, err := b.Last("radio-t", 10, time.Time{}, store.User{})
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(comments))
 	assert.Equal(t, "f863bd79-fec6-4a75-b308-61fe5dd02aa1", comments[0].ID)
@@ -106,7 +107,8 @@ func TestNative_ImportWrongVersion(t *testing.T) {
 	{"id":"f863bd79-fec6-4a75-b308-61fe5dd02aa1","pid":"1234","text":"some text2","user":{"name":"user name","id":"user2","picture":"","ip":"293ec5b0cf154855258824ec7fac5dc63d176915","admin":false},"locator":{"site":"radio-t","url":"https://radio-t.com/2"},"score":0,"votes":{},"time":"2017-12-20T15:18:23-06:00"}`
 
 	b := prep(t) // write some recs
-	r := Native{DataStore: &service.DataStore{Interface: b, AdminStore: admin.NewStaticStore("12345", []string{}, "")}}
+	b.AdminStore = admin.NewStaticStore("12345", []string{}, "")
+	r := Native{DataStore: b}
 	size, err := r.Import(strings.NewReader(inp), "radio-t")
 	assert.EqualError(t, err, "unexpected import file version 2")
 	assert.Equal(t, 0, size)
@@ -126,11 +128,12 @@ func TestNative_ImportManyWithError(t *testing.T) {
 	buf.WriteString("{}\n")
 
 	b := prep(t) // write some recs
-	r := Native{DataStore: &service.DataStore{Interface: b, AdminStore: admin.NewStaticStore("12345", []string{}, "")}}
+	b.AdminStore = admin.NewStaticStore("12345", []string{}, "")
+	r := Native{DataStore: b}
 	n, err := r.Import(buf, "radio-t")
 	assert.EqualError(t, err, "failed to save 2 comments")
 	assert.Equal(t, 1200, n)
-	comments, err := b.Find(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com"}, "time")
+	comments, err := b.Find(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com"}, "time", store.User{})
 	assert.Nil(t, err)
 	assert.Equal(t, 1200, len(comments))
 }

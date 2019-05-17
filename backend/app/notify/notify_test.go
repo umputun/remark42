@@ -146,7 +146,7 @@ func (m *mockDest) String() string { return fmt.Sprintf("mock id=%d, closed=%v",
 
 type mockStore struct{ data map[string]store.Comment }
 
-func (m *mockStore) Get(_ store.Locator, id string) (store.Comment, error) {
+func (m *mockStore) Get(_ store.Locator, id string, user store.User) (store.Comment, error) {
 	res, ok := m.data[id]
 	if !ok {
 		return store.Comment{}, errors.New("no such id")

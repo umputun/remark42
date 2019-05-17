@@ -307,41 +307,6 @@ func (s *Rest) routes() chi.Router {
 	return router
 }
 
-func (s *Rest) alterComments(comments []store.Comment, r *http.Request) (res []store.Comment) {
-
-	res = s.adminService.alterComments(comments, r) // apply admin's alteration
-
-	// prepare vote info for client view
-	vote := func(c store.Comment, r *http.Request) store.Comment {
-
-		c.Vote = 0 // default is "none" (not voted)
-
-		user, err := rest.GetUserInfo(r)
-		if err != nil {
-			c.Votes = nil // hide voters list and don't set Vote for non-authed user
-			return c
-		}
-
-		if v, ok := c.Votes[user.ID]; ok {
-			if v {
-				c.Vote = 1
-			} else {
-				c.Vote = -1
-			}
-		}
-
-		c.Votes = nil // hide voters list
-		return c
-	}
-
-	for i, c := range res {
-		c = vote(c, r)
-		res[i] = c
-	}
-
-	return res
-}
-
 // updateLimiter returns UpdateLimiter if set, or 10 if not
 func (s *Rest) updateLimiter() float64 {
 	lmt := 10.0

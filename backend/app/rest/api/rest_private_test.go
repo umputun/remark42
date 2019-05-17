@@ -63,7 +63,7 @@ func TestRest_CreateOldPost(t *testing.T) {
 	_, err := srv.DataService.Create(old)
 	assert.Nil(t, err)
 
-	comments, err := srv.DataService.Find(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}, "time")
+	comments, err := srv.DataService.Find(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}, "time", store.User{})
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(comments))
 

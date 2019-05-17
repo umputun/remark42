@@ -34,15 +34,14 @@ func (s *Rest) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	key := cache.NewKey(locator.SiteID).ID(URLKeyWithUser(r)).Scopes(locator.SiteID, locator.URL)
 	data, err := s.Cache.Get(key, func() ([]byte, error) {
-		comments, e := s.DataService.Find(locator, sort)
+		comments, e := s.DataService.Find(locator, sort, rest.GetUserOrEmpty(r))
 		if e != nil {
 			comments = []store.Comment{} // error should clear comments and continue for post info
 		}
-		maskedComments := s.alterComments(comments, r)
 		var b []byte
 		switch r.URL.Query().Get("format") {
 		case "tree":
-			tree := service.MakeTree(maskedComments, sort, s.ReadOnlyAge)
+			tree := service.MakeTree(comments, sort, s.ReadOnlyAge)
 			if tree.Nodes == nil { // eliminate json nil serialization
 				tree.Nodes = []*service.Node{}
 			}
@@ -51,7 +50,7 @@ func (s *Rest) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 			}
 			b, e = encodeJSONWithHTML(tree)
 		default:
-			withInfo := commentsWithInfo{Comments: maskedComments}
+			withInfo := commentsWithInfo{Comments: comments}
 			if info, ee := s.DataService.Info(locator, s.ReadOnlyAge); ee == nil {
 				withInfo.Info = info
 			}
@@ -132,9 +131,9 @@ func (s *Rest) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	sinceTime := time.Time{}
 	since := r.URL.Query().Get("since")
 	if since != "" {
-		unixTS, err := strconv.ParseInt(since, 10, 64)
-		if err != nil {
-			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't translate since parameter", rest.ErrDecode)
+		unixTS, e := strconv.ParseInt(since, 10, 64)
+		if e != nil {
+			rest.SendErrorJSON(w, r, http.StatusBadRequest, e, "can't translate since parameter", rest.ErrDecode)
 			return
 		}
 		sinceTime = time.Unix(unixTS/1000, 1000000*(unixTS%1000)) // since param in msec timestamp
@@ -142,11 +141,10 @@ func (s *Rest) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	key := cache.NewKey(siteID).ID(URLKey(r)).Scopes(lastCommentsScope)
 	data, err := s.Cache.Get(key, func() ([]byte, error) {
-		comments, e := s.DataService.Last(siteID, limit, sinceTime)
+		comments, e := s.DataService.Last(siteID, limit, sinceTime, rest.GetUserOrEmpty(r))
 		if e != nil {
 			return nil, e
 		}
-		comments = s.alterComments(comments, r)
 		// filter deleted from last comments view. Blocked marked as deleted and will sneak in without
 		filterDeleted := filterComments(comments, func(c store.Comment) bool { return !c.Deleted })
 		return encodeJSONWithHTML(filterDeleted)
@@ -171,12 +169,11 @@ func (s *Rest) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[DEBUG] get comments by id %s, %s %s", id, siteID, url)
 
-	comment, err := s.DataService.Get(store.Locator{SiteID: siteID, URL: url}, id)
+	comment, err := s.DataService.Get(store.Locator{SiteID: siteID, URL: url}, id, rest.GetUserOrEmpty(r))
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get comment by id", rest.ErrCommentNotFound)
 		return
 	}
-	comment = s.alterComments([]store.Comment{comment}, r)[0]
 	render.Status(r, http.StatusOK)
 
 	if err = R.RenderJSONWithHTML(w, r, comment); err != nil {
@@ -204,11 +201,10 @@ func (s *Rest) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	key := cache.NewKey(siteID).ID(URLKeyWithUser(r)).Scopes(userID, siteID)
 	data, err := s.Cache.Get(key, func() ([]byte, error) {
-		comments, e := s.DataService.User(siteID, userID, limit, 0)
+		comments, e := s.DataService.User(siteID, userID, limit, 0, rest.GetUserOrEmpty(r))
 		if e != nil {
 			return nil, e
 		}
-		comments = s.alterComments(comments, r)
 		comments = filterComments(comments, func(c store.Comment) bool { return !c.Deleted })
 		count, e := s.DataService.UserCount(siteID, userID)
 		if e != nil {
