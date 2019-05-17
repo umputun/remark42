@@ -313,7 +313,7 @@ func TestAdmin_Block(t *testing.T) {
 	assert.Equal(t, "", comments.Comments[0].Text)
 	assert.True(t, comments.Comments[0].Deleted)
 
-	srv.Cache = &cache.Nop{} // TODO: with lru cache it won't be refreshed and invalidated for long time
+	srv.pubRest.cache = &cache.Nop{} // TODO: with lru cache it won't be refreshed and invalidated for long time
 	time.Sleep(50 * time.Millisecond)
 	res, code = get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah&sort=+time")
 	assert.Equal(t, 200, code)

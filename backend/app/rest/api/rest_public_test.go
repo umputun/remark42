@@ -453,7 +453,7 @@ func TestRest_Info(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
 
-	srv.ReadOnlyAge = 10000000 // make sure we don't hit read-only
+	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
 
 	user := store.User{ID: "user1", Name: "user name 1"}
 	c1 := store.Comment{User: user, Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",

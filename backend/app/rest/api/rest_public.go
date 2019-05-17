@@ -19,12 +19,53 @@ import (
 
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/store"
+	"github.com/umputun/remark/backend/app/store/image"
 	"github.com/umputun/remark/backend/app/store/service"
 )
 
+type public struct {
+	dataService      pubStore
+	cache            cache.LoadingCache
+	readOnlyAge      int
+	commentFormatter *store.CommentFormatter
+	imageService     *image.Service
+	webRoot          string
+	confFn           func(siteID string) config
+}
+
+type pubStore interface {
+	Create(comment store.Comment) (commentID string, err error)
+	Get(locator store.Locator, commentID string, user store.User) (store.Comment, error)
+	Find(locator store.Locator, sort string, user store.User) ([]store.Comment, error)
+	Last(siteID string, limit int, since time.Time, user store.User) ([]store.Comment, error)
+	User(siteID, userID string, limit, skip int, user store.User) ([]store.Comment, error)
+	UserCount(siteID, userID string) (int, error)
+	Count(locator store.Locator) (int, error)
+	List(siteID string, limit int, skip int) ([]store.PostInfo, error)
+	Info(locator store.Locator, readonlyAge int) (store.PostInfo, error)
+
+	ValidateComment(c *store.Comment) error
+	IsReadOnly(locator store.Locator) bool
+	Counts(siteID string, postIDs []string) ([]store.PostInfo, error)
+}
+
+type config struct {
+	Version        string   `json:"version"`
+	EditDuration   int      `json:"edit_duration"`
+	MaxCommentSize int      `json:"max_comment_size"`
+	Admins         []string `json:"admins"`
+	AdminEmail     string   `json:"admin_email"`
+	Auth           []string `json:"auth_providers"`
+	LowScore       int      `json:"low_score"`
+	CriticalScore  int      `json:"critical_score"`
+	PositiveScore  bool     `json:"positive_score"`
+	ReadOnlyAge    int      `json:"readonly_age"`
+	MaxImageSize   int      `json:"max_image_size"`
+}
+
 // GET /find?site=siteID&url=post-url&format=[tree|plain]&sort=[+/-time|+/-score|+/-controversy ]
 // find comments for given post. Returns in tree or plain formats, sorted
-func (s *Rest) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
+func (s *public) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	sort := r.URL.Query().Get("sort")
 	if strings.HasPrefix(sort, " ") { // restore + replaced by " "
@@ -33,25 +74,25 @@ func (s *Rest) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[DEBUG] get comments for %+v, sort %s, format %s", locator, sort, r.URL.Query().Get("format"))
 
 	key := cache.NewKey(locator.SiteID).ID(URLKeyWithUser(r)).Scopes(locator.SiteID, locator.URL)
-	data, err := s.Cache.Get(key, func() ([]byte, error) {
-		comments, e := s.DataService.Find(locator, sort, rest.GetUserOrEmpty(r))
+	data, err := s.cache.Get(key, func() ([]byte, error) {
+		comments, e := s.dataService.Find(locator, sort, rest.GetUserOrEmpty(r))
 		if e != nil {
 			comments = []store.Comment{} // error should clear comments and continue for post info
 		}
 		var b []byte
 		switch r.URL.Query().Get("format") {
 		case "tree":
-			tree := service.MakeTree(comments, sort, s.ReadOnlyAge)
+			tree := service.MakeTree(comments, sort, s.readOnlyAge)
 			if tree.Nodes == nil { // eliminate json nil serialization
 				tree.Nodes = []*service.Node{}
 			}
-			if s.DataService.IsReadOnly(locator) {
+			if s.dataService.IsReadOnly(locator) {
 				tree.Info.ReadOnly = true
 			}
 			b, e = encodeJSONWithHTML(tree)
 		default:
 			withInfo := commentsWithInfo{Comments: comments}
-			if info, ee := s.DataService.Info(locator, s.ReadOnlyAge); ee == nil {
+			if info, ee := s.dataService.Info(locator, s.readOnlyAge); ee == nil {
 				withInfo.Info = info
 			}
 			b, e = encodeJSONWithHTML(withInfo)
@@ -70,7 +111,7 @@ func (s *Rest) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 }
 
 // POST /preview, body is a comment, returns rendered html
-func (s *Rest) previewCommentCtrl(w http.ResponseWriter, r *http.Request) {
+func (s *public) previewCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	comment := store.Comment{}
 	if err := render.DecodeJSON(http.MaxBytesReader(w, r.Body, hardBodyLimit), &comment); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't bind comment", rest.ErrDecode)
@@ -84,23 +125,23 @@ func (s *Rest) previewCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	comment.User = user
 	comment.Orig = comment.Text
-	if err = s.DataService.ValidateComment(&comment); err != nil {
+	if err = s.dataService.ValidateComment(&comment); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment", rest.ErrCommentValidation)
 		return
 	}
 
-	comment = s.CommentFormatter.Format(comment)
+	comment = s.commentFormatter.Format(comment)
 	comment.Sanitize()
 	render.HTML(w, r, comment.Text)
 }
 
 // GET /info?site=siteID&url=post-url - get info about the post
-func (s *Rest) infoCtrl(w http.ResponseWriter, r *http.Request) {
+func (s *public) infoCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 
 	key := cache.NewKey(locator.SiteID).ID(URLKey(r)).Scopes(locator.SiteID, locator.URL)
-	data, err := s.Cache.Get(key, func() ([]byte, error) {
-		info, e := s.DataService.Info(locator, s.ReadOnlyAge)
+	data, err := s.cache.Get(key, func() ([]byte, error) {
+		info, e := s.dataService.Info(locator, s.readOnlyAge)
 		if e != nil {
 			return nil, e
 		}
@@ -119,7 +160,7 @@ func (s *Rest) infoCtrl(w http.ResponseWriter, r *http.Request) {
 
 // GET /last/{limit}?site=siteID&since=unix_ts_msec - last comments for the siteID, across all posts, sorted by time, optionally
 // limited with "since" param
-func (s *Rest) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
+func (s *public) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	log.Printf("[DEBUG] get last comments for %s", siteID)
 
@@ -140,8 +181,8 @@ func (s *Rest) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	key := cache.NewKey(siteID).ID(URLKey(r)).Scopes(lastCommentsScope)
-	data, err := s.Cache.Get(key, func() ([]byte, error) {
-		comments, e := s.DataService.Last(siteID, limit, sinceTime, rest.GetUserOrEmpty(r))
+	data, err := s.cache.Get(key, func() ([]byte, error) {
+		comments, e := s.dataService.Last(siteID, limit, sinceTime, rest.GetUserOrEmpty(r))
 		if e != nil {
 			return nil, e
 		}
@@ -161,7 +202,7 @@ func (s *Rest) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET /id/{id}?site=siteID&url=post-url - gets a comment by id
-func (s *Rest) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
+func (s *public) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	siteID := r.URL.Query().Get("site")
@@ -169,7 +210,7 @@ func (s *Rest) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[DEBUG] get comments by id %s, %s %s", id, siteID, url)
 
-	comment, err := s.DataService.Get(store.Locator{SiteID: siteID, URL: url}, id, rest.GetUserOrEmpty(r))
+	comment, err := s.dataService.Get(store.Locator{SiteID: siteID, URL: url}, id, rest.GetUserOrEmpty(r))
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get comment by id", rest.ErrCommentNotFound)
 		return
@@ -182,7 +223,7 @@ func (s *Rest) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET /comments?site=siteID&user=id - returns comments for given userID
-func (s *Rest) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
+func (s *public) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	userID := r.URL.Query().Get("user")
 	siteID := r.URL.Query().Get("site")
@@ -200,13 +241,13 @@ func (s *Rest) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[DEBUG] get comments for userID %s, %s", userID, siteID)
 
 	key := cache.NewKey(siteID).ID(URLKeyWithUser(r)).Scopes(userID, siteID)
-	data, err := s.Cache.Get(key, func() ([]byte, error) {
-		comments, e := s.DataService.User(siteID, userID, limit, 0, rest.GetUserOrEmpty(r))
+	data, err := s.cache.Get(key, func() ([]byte, error) {
+		comments, e := s.dataService.User(siteID, userID, limit, 0, rest.GetUserOrEmpty(r))
 		if e != nil {
 			return nil, e
 		}
 		comments = filterComments(comments, func(c store.Comment) bool { return !c.Deleted })
-		count, e := s.DataService.UserCount(siteID, userID)
+		count, e := s.dataService.UserCount(siteID, userID)
 		if e != nil {
 			return nil, e
 		}
@@ -225,52 +266,17 @@ func (s *Rest) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET /config?site=siteID - returns configuration
-func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
+func (s *public) configCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
-
-	type config struct {
-		Version        string   `json:"version"`
-		EditDuration   int      `json:"edit_duration"`
-		MaxCommentSize int      `json:"max_comment_size"`
-		Admins         []string `json:"admins"`
-		AdminEmail     string   `json:"admin_email"`
-		Auth           []string `json:"auth_providers"`
-		LowScore       int      `json:"low_score"`
-		CriticalScore  int      `json:"critical_score"`
-		PositiveScore  bool     `json:"positive_score"`
-		ReadOnlyAge    int      `json:"readonly_age"`
-		MaxImageSize   int      `json:"max_image_size"`
-	}
-
-	cnf := config{
-		Version:        s.Version,
-		EditDuration:   int(s.DataService.EditDuration.Seconds()),
-		MaxCommentSize: s.DataService.MaxCommentSize,
-		Admins:         s.DataService.AdminStore.Admins(siteID),
-		AdminEmail:     s.DataService.AdminStore.Email(siteID),
-		LowScore:       s.ScoreThresholds.Low,
-		CriticalScore:  s.ScoreThresholds.Critical,
-		PositiveScore:  s.DataService.PositiveScore,
-		ReadOnlyAge:    s.ReadOnlyAge,
-		MaxImageSize:   s.ImageService.Store.SizeLimit(),
-	}
-
-	cnf.Auth = []string{}
-	for _, ap := range s.Authenticator.Providers() {
-		cnf.Auth = append(cnf.Auth, ap.Name())
-	}
-
-	if cnf.Admins == nil { // prevent json serialization to nil
-		cnf.Admins = []string{}
-	}
+	cnf := s.confFn(siteID)
 	render.Status(r, http.StatusOK)
 	render.JSON(w, r, cnf)
 }
 
 // GET /count?site=siteID&url=post-url - get number of comments for given post
-func (s *Rest) countCtrl(w http.ResponseWriter, r *http.Request) {
+func (s *public) countCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
-	count, err := s.DataService.Count(locator)
+	count, err := s.dataService.Count(locator)
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get count", rest.ErrPostNotFound)
 		return
@@ -279,7 +285,7 @@ func (s *Rest) countCtrl(w http.ResponseWriter, r *http.Request) {
 }
 
 // POST /counts?site=siteID - get number of comments for posts from post body
-func (s *Rest) countMultiCtrl(w http.ResponseWriter, r *http.Request) {
+func (s *public) countMultiCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	posts := []string{}
 	if err := render.DecodeJSON(http.MaxBytesReader(w, r.Body, hardBodyLimit), &posts); err != nil {
@@ -293,8 +299,8 @@ func (s *Rest) countMultiCtrl(w http.ResponseWriter, r *http.Request) {
 	sha := base64.URLEncoding.EncodeToString(h[:])
 
 	key := cache.NewKey(siteID).ID(sha).Scopes(siteID)
-	data, err := s.Cache.Get(key, func() ([]byte, error) {
-		counts, e := s.DataService.Counts(siteID, posts)
+	data, err := s.cache.Get(key, func() ([]byte, error) {
+		counts, e := s.dataService.Counts(siteID, posts)
 		if e != nil {
 			return nil, e
 		}
@@ -312,7 +318,7 @@ func (s *Rest) countMultiCtrl(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET /list?site=siteID&limit=50&skip=10 - list posts with comments
-func (s *Rest) listCtrl(w http.ResponseWriter, r *http.Request) {
+func (s *public) listCtrl(w http.ResponseWriter, r *http.Request) {
 
 	siteID := r.URL.Query().Get("site")
 	limit, skip := 0, 0
@@ -325,8 +331,8 @@ func (s *Rest) listCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	key := cache.NewKey(siteID).ID(URLKey(r)).Scopes(siteID)
-	data, err := s.Cache.Get(key, func() ([]byte, error) {
-		posts, e := s.DataService.List(siteID, limit, skip)
+	data, err := s.cache.Get(key, func() ([]byte, error) {
+		posts, e := s.dataService.List(siteID, limit, skip)
 		if e != nil {
 			return nil, e
 		}
@@ -344,7 +350,7 @@ func (s *Rest) listCtrl(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET /picture/{user}/{id} - get picture
-func (s *Rest) loadPictureCtrl(w http.ResponseWriter, r *http.Request) {
+func (s *public) loadPictureCtrl(w http.ResponseWriter, r *http.Request) {
 
 	imgContentType := func(img string) string {
 		img = strings.ToLower(img)
@@ -360,7 +366,7 @@ func (s *Rest) loadPictureCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "user") + "/" + chi.URLParam(r, "id")
-	imgRdr, size, err := s.ImageService.Load(id)
+	imgRdr, size, err := s.imageService.Load(id)
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get image "+id, rest.ErrAssetNotFound)
 		return
@@ -391,8 +397,8 @@ func (s *Rest) loadPictureCtrl(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET /index.html - respond to /index.html with the content of getstarted.html under /web root
-func (s *Rest) getStartedCtrl(w http.ResponseWriter, r *http.Request) {
-	data, err := ioutil.ReadFile(path.Join(s.WebRoot, "getstarted.html"))
+func (s *public) getStartedCtrl(w http.ResponseWriter, r *http.Request) {
+	data, err := ioutil.ReadFile(path.Join(s.webRoot, "getstarted.html"))
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -401,7 +407,7 @@ func (s *Rest) getStartedCtrl(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET /robots.txt
-func (s *Rest) getRobotsCtrl(w http.ResponseWriter, r *http.Request) {
+func (s *public) getRobotsCtrl(w http.ResponseWriter, r *http.Request) {
 	allowed := []string{"/find", "/last", "/id", "/count", "/counts", "/list", "/config",
 		"/img", "/avatar", "/picture"}
 	for i := range allowed {

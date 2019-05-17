@@ -60,6 +60,7 @@ type Rest struct {
 	lock        sync.Mutex
 
 	adminService admin
+	pubRest      public
 }
 
 const hardBodyLimit = 1024 * 64 // limit size of body
@@ -167,6 +168,16 @@ func (s *Rest) routes() chi.Router {
 	router.Use(middleware.Throttle(1000), middleware.Timeout(60*time.Second))
 	router.Use(R.AppInfo("remark42", "umputun", s.Version), R.Ping)
 
+	s.pubRest = public{
+		confFn:           s.config,
+		dataService:      s.DataService,
+		cache:            s.Cache,
+		imageService:     s.ImageService,
+		commentFormatter: s.CommentFormatter,
+		readOnlyAge:      s.ReadOnlyAge,
+		webRoot:          s.WebRoot,
+	}
+
 	s.adminService = admin{
 		dataService:   s.DataService,
 		migrator:      s.Migrator,
@@ -215,16 +226,16 @@ func (s *Rest) routes() chi.Router {
 		rapi.Group(func(ropen chi.Router) {
 			ropen.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
 			ropen.Use(authMiddleware.Trace, middleware.NoCache, logInfoWithBody)
-			ropen.Get("/find", s.findCommentsCtrl)
-			ropen.Get("/id/{id}", s.commentByIDCtrl)
-			ropen.Get("/comments", s.findUserCommentsCtrl)
-			ropen.Get("/last/{limit}", s.lastCommentsCtrl)
-			ropen.Get("/count", s.countCtrl)
-			ropen.Post("/counts", s.countMultiCtrl)
-			ropen.Get("/list", s.listCtrl)
-			ropen.Get("/config", s.configCtrl)
-			ropen.Post("/preview", s.previewCommentCtrl)
-			ropen.Get("/info", s.infoCtrl)
+			ropen.Get("/find", s.pubRest.findCommentsCtrl)
+			ropen.Get("/id/{id}", s.pubRest.commentByIDCtrl)
+			ropen.Get("/comments", s.pubRest.findUserCommentsCtrl)
+			ropen.Get("/last/{limit}", s.pubRest.lastCommentsCtrl)
+			ropen.Get("/count", s.pubRest.countCtrl)
+			ropen.Post("/counts", s.pubRest.countMultiCtrl)
+			ropen.Get("/list", s.pubRest.listCtrl)
+			ropen.Get("/config", s.pubRest.configCtrl)
+			ropen.Post("/preview", s.pubRest.previewCommentCtrl)
+			ropen.Get("/info", s.pubRest.infoCtrl)
 			ropen.Get("/img", s.ImageProxy.Handler)
 
 			ropen.Route("/rss", func(rrss chi.Router) {
@@ -238,7 +249,7 @@ func (s *Rest) routes() chi.Router {
 		rapi.Group(func(ropen chi.Router) {
 			ropen.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
 			ropen.Use(authMiddleware.Trace, logInfoWithBody)
-			ropen.Get("/picture/{user}/{id}", s.loadPictureCtrl)
+			ropen.Get("/picture/{user}/{id}", s.pubRest.loadPictureCtrl)
 		})
 
 		// protected routes, require auth
@@ -298,8 +309,8 @@ func (s *Rest) routes() chi.Router {
 	// open routes on root level
 	router.Group(func(rroot chi.Router) {
 		tollbooth_chi.LimitHandler(tollbooth.NewLimiter(50, nil))
-		rroot.Get("/index.html", s.getStartedCtrl)
-		rroot.Get("/robots.txt", s.getRobotsCtrl)
+		rroot.Get("/index.html", s.pubRest.getStartedCtrl)
+		rroot.Get("/robots.txt", s.pubRest.getRobotsCtrl)
 	})
 
 	// file server for static content from /web
@@ -412,4 +423,30 @@ func rejectAnonUser(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	}
 	return http.HandlerFunc(fn)
+}
+
+func (s *Rest) config(siteID string) config {
+
+	cnf := config{
+		Version:        s.Version,
+		EditDuration:   int(s.DataService.EditDuration.Seconds()),
+		MaxCommentSize: s.DataService.MaxCommentSize,
+		Admins:         s.DataService.AdminStore.Admins(siteID),
+		AdminEmail:     s.DataService.AdminStore.Email(siteID),
+		LowScore:       s.ScoreThresholds.Low,
+		CriticalScore:  s.ScoreThresholds.Critical,
+		PositiveScore:  s.DataService.PositiveScore,
+		ReadOnlyAge:    s.ReadOnlyAge,
+		MaxImageSize:   s.ImageService.Store.SizeLimit(),
+	}
+
+	cnf.Auth = []string{}
+	for _, ap := range s.Authenticator.Providers() {
+		cnf.Auth = append(cnf.Auth, ap.Name())
+	}
+
+	if cnf.Admins == nil { // prevent json serialization to nil
+		cnf.Admins = []string{}
+	}
+	return cnf
 }
