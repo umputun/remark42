@@ -144,6 +144,13 @@ func (a *admin) setBlockCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set blocking status", rest.ErrActionRejected)
 		return
 	}
+
+	// delete comments for blocked user
+	if blockStatus {
+		if err := a.dataService.DeleteUser(siteID, userID); err != nil {
+			log.Printf("[WARN] can't delete comments for blocked user %s on site %s, %v", userID, siteID, err)
+		}
+	}
 	a.cache.Flush(cache.Flusher(siteID).Scopes(userID, siteID, lastCommentsScope))
 	render.JSON(w, r, R.JSON{"user_id": userID, "site_id": siteID, "block": blockStatus})
 }

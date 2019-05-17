@@ -249,15 +249,17 @@ func TestAdmin_Block(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
 
-	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
-		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"}}
-	c2 := store.Comment{Text: "test test #2", ParentID: "p1", Locator: store.Locator{SiteID: "radio-t",
-		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user2", ID: "user2"}}
+	makeTwoComments := func() {
+		c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
+			URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"}}
+		c2 := store.Comment{Text: "test test #2", ParentID: "p1", Locator: store.Locator{SiteID: "radio-t",
+			URL: "https://radio-t.com/blah"}, User: store.User{Name: "user2", ID: "user2"}}
 
-	_, err := srv.DataService.Create(c1)
-	assert.Nil(t, err)
-	_, err = srv.DataService.Create(c2)
-	assert.Nil(t, err)
+		_, err := srv.DataService.Create(c1)
+		require.Nil(t, err)
+		_, err = srv.DataService.Create(c2)
+		require.Nil(t, err)
+	}
 
 	block := func(val int, ttl string) (code int, body []byte) {
 		url := fmt.Sprintf("%s/api/v1/admin/user/%s?site=radio-t&block=%d", ts.URL, "user1", val)
@@ -275,15 +277,38 @@ func TestAdmin_Block(t *testing.T) {
 		return resp.StatusCode, body
 	}
 
+	makeTwoComments()
+
 	// block permanently
 	code, body := block(1, "")
 	require.Equal(t, 200, code)
 	j := R.JSON{}
-	err = json.Unmarshal(body, &j)
+	err := json.Unmarshal(body, &j)
 	assert.Nil(t, err)
 	assert.Equal(t, "user1", j["user_id"])
 	assert.Equal(t, true, j["block"])
 	assert.Equal(t, "radio-t", j["site_id"])
+
+	assert.True(t, srv.adminRest.dataService.IsBlocked("radio-t", "user1"))
+	assert.False(t, srv.adminRest.dataService.IsBlocked("radio-t", "user2"))
+
+	// get last to confirm one comment deleted
+	bodyStr, code := get(t, ts.URL+"/api/v1/last/10?site=radio-t")
+	assert.Equal(t, 200, code)
+	pi := []store.PostInfo{}
+	assert.NoError(t, json.Unmarshal([]byte(bodyStr), &pi))
+	assert.Equal(t, 1, len(pi), "last status updated, one comment left")
+
+	// check if count call has one comment left
+	resp, err := post(t, ts.URL+"/api/v1/counts?site=radio-t", `["https://radio-t.com/blah"]`)
+	assert.Nil(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	body, err = ioutil.ReadAll(resp.Body)
+	assert.Nil(t, err)
+	pi = []store.PostInfo{}
+	err = json.Unmarshal(body, &pi)
+	assert.NoError(t, err)
+	assert.Equal(t, []store.PostInfo([]store.PostInfo{{URL: "https://radio-t.com/blah", Count: 1}}), pi)
 
 	res, code := get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah&sort=+time")
 	assert.Equal(t, 200, code)
@@ -294,6 +319,7 @@ func TestAdmin_Block(t *testing.T) {
 	assert.Equal(t, "", comments.Comments[0].Text)
 	assert.True(t, comments.Comments[0].Deleted)
 
+	// unblock
 	code, body = block(-1, "")
 	require.Equal(t, 200, code)
 	err = json.Unmarshal(body, &j)
@@ -301,6 +327,7 @@ func TestAdmin_Block(t *testing.T) {
 	assert.Equal(t, false, j["block"])
 
 	// block with ttl
+	makeTwoComments()
 	code, _ = block(1, "50ms")
 	require.Equal(t, 200, code)
 
@@ -309,9 +336,9 @@ func TestAdmin_Block(t *testing.T) {
 	comments = commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
 	assert.Nil(t, err)
-	assert.Equal(t, 2, len(comments.Comments), "should have 2 comments")
-	assert.Equal(t, "", comments.Comments[0].Text)
-	assert.True(t, comments.Comments[0].Deleted)
+	assert.Equal(t, 4, len(comments.Comments), "should have 4 comments")
+	assert.Equal(t, "", comments.Comments[2].Text)
+	assert.True(t, comments.Comments[2].Deleted)
 
 	srv.pubRest.cache = &cache.Nop{} // TODO: with lru cache it won't be refreshed and invalidated for long time
 	time.Sleep(50 * time.Millisecond)
@@ -320,9 +347,13 @@ func TestAdmin_Block(t *testing.T) {
 	comments = commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
 	assert.Nil(t, err)
-	assert.Equal(t, 2, len(comments.Comments), "should have 2 comments")
-	assert.Equal(t, "test test #1", comments.Comments[0].Text)
-	assert.False(t, comments.Comments[0].Deleted)
+	assert.Equal(t, 4, len(comments.Comments), "should have 4 comments")
+	assert.Equal(t, "", comments.Comments[0].Text, "still deleted")
+	assert.True(t, comments.Comments[0].Deleted)
+
+	assert.False(t, srv.adminRest.dataService.IsBlocked("radio-t", "user1"))
+	assert.False(t, srv.adminRest.dataService.IsBlocked("radio-t", "user2"))
+
 }
 
 func TestAdmin_BlockedList(t *testing.T) {
