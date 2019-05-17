@@ -15,16 +15,29 @@ import (
 
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/store"
-	"github.com/umputun/remark/backend/app/store/service"
 )
 
 // admin provides router for all requests available for admin users only
 type admin struct {
-	dataService   *service.DataStore
+	dataService   adminStore
 	cache         cache.LoadingCache
 	authenticator *auth.Service
 	readOnlyAge   int
 	migrator      *Migrator
+}
+
+type adminStore interface {
+	Delete(locator store.Locator, commentID string, mode store.DeleteMode) error
+	DeleteUser(siteID string, userID string) error
+	User(siteID, userID string, limit, skip int, user store.User) ([]store.Comment, error)
+	IsBlocked(siteID string, userID string) bool
+	SetBlock(siteID string, userID string, status bool, ttl time.Duration) error
+	Blocked(siteID string) ([]store.BlockedUser, error)
+	Info(locator store.Locator, readonlyAge int) (store.PostInfo, error)
+	SetTitle(locator store.Locator, commentID string) (comment store.Comment, err error)
+	SetVerified(siteID string, userID string, status bool) error
+	SetReadOnly(locator store.Locator, status bool) error
+	SetPin(locator store.Locator, commentID string, status bool) error
 }
 
 // DELETE /comment/{id}?site=siteID&url=post-url - removes comment
@@ -217,8 +230,4 @@ func (a *admin) setPinCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	a.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL))
 	render.JSON(w, r, R.JSON{"id": commentID, "locator": locator, "pin": pinStatus})
-}
-
-func (a *admin) checkBlocked(siteID string, user store.User) bool {
-	return a.dataService.IsBlocked(siteID, user.ID)
 }
