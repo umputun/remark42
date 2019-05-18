@@ -171,7 +171,7 @@ func (s *Rest) routes() chi.Router {
 	router.Use(middleware.Throttle(1000), middleware.Timeout(60*time.Second))
 	router.Use(R.AppInfo("remark42", "umputun", s.Version), R.Ping)
 
-	s.setControllerGroups() // assign controllers for groups
+	s.pubRest, s.privRest, s.adminRest, s.rssRest = s.controllerGroups() // assign controllers for groups
 
 	corsMiddleware := cors.New(cors.Options{
 		AllowedOrigins:   []string{"*"},
@@ -305,9 +305,9 @@ func (s *Rest) routes() chi.Router {
 	return router
 }
 
-func (s *Rest) setControllerGroups() {
+func (s *Rest) controllerGroups() (public, private, admin, rss) {
 
-	s.pubRest = public{
+	pubGrp := public{
 		dataService:      s.DataService,
 		cache:            s.Cache,
 		imageService:     s.ImageService,
@@ -316,7 +316,7 @@ func (s *Rest) setControllerGroups() {
 		webRoot:          s.WebRoot,
 	}
 
-	s.privRest = private{
+	privGrp := private{
 		dataService:      s.DataService,
 		cache:            s.Cache,
 		imageService:     s.ImageService,
@@ -327,7 +327,7 @@ func (s *Rest) setControllerGroups() {
 		remarkURL:        s.RemarkURL,
 	}
 
-	s.adminRest = admin{
+	admGrp := admin{
 		dataService:   s.DataService,
 		migrator:      s.Migrator,
 		cache:         s.Cache,
@@ -335,10 +335,12 @@ func (s *Rest) setControllerGroups() {
 		readOnlyAge:   s.ReadOnlyAge,
 	}
 
-	s.rssRest = rss{
+	rssGrp := rss{
 		dataService: s.DataService,
 		cache:       s.Cache,
 	}
+
+	return pubGrp, privGrp, admGrp, rssGrp
 }
 
 // updateLimiter returns UpdateLimiter if set, or 10 if not
