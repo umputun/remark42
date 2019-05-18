@@ -30,7 +30,6 @@ type public struct {
 	commentFormatter *store.CommentFormatter
 	imageService     *image.Service
 	webRoot          string
-	confFn           func(siteID string) config
 }
 
 type pubStore interface {
@@ -47,20 +46,6 @@ type pubStore interface {
 	ValidateComment(c *store.Comment) error
 	IsReadOnly(locator store.Locator) bool
 	Counts(siteID string, postIDs []string) ([]store.PostInfo, error)
-}
-
-type config struct {
-	Version        string   `json:"version"`
-	EditDuration   int      `json:"edit_duration"`
-	MaxCommentSize int      `json:"max_comment_size"`
-	Admins         []string `json:"admins"`
-	AdminEmail     string   `json:"admin_email"`
-	Auth           []string `json:"auth_providers"`
-	LowScore       int      `json:"low_score"`
-	CriticalScore  int      `json:"critical_score"`
-	PositiveScore  bool     `json:"positive_score"`
-	ReadOnlyAge    int      `json:"readonly_age"`
-	MaxImageSize   int      `json:"max_image_size"`
 }
 
 // GET /find?site=siteID&url=post-url&format=[tree|plain]&sort=[+/-time|+/-score|+/-controversy ]
@@ -265,14 +250,6 @@ func (s *public) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// GET /config?site=siteID - returns configuration
-func (s *public) configCtrl(w http.ResponseWriter, r *http.Request) {
-	siteID := r.URL.Query().Get("site")
-	cnf := s.confFn(siteID)
-	render.Status(r, http.StatusOK)
-	render.JSON(w, r, cnf)
-}
-
 // GET /count?site=siteID&url=post-url - get number of comments for given post
 func (s *public) countCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
@@ -407,7 +384,7 @@ func (s *public) getStartedCtrl(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET /robots.txt
-func (s *public) getRobotsCtrl(w http.ResponseWriter, r *http.Request) {
+func (s *public) robotsCtrl(w http.ResponseWriter, r *http.Request) {
 	allowed := []string{"/find", "/last", "/id", "/count", "/counts", "/list", "/config",
 		"/img", "/avatar", "/picture"}
 	for i := range allowed {

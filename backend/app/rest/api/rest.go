@@ -296,7 +296,7 @@ func (s *Rest) routes() chi.Router {
 	router.Group(func(rroot chi.Router) {
 		tollbooth_chi.LimitHandler(tollbooth.NewLimiter(50, nil))
 		rroot.Get("/index.html", s.pubRest.getStartedCtrl)
-		rroot.Get("/robots.txt", s.pubRest.getRobotsCtrl)
+		rroot.Get("/robots.txt", s.pubRest.robotsCtrl)
 	})
 
 	// file server for static content from /web
@@ -342,6 +342,47 @@ func (s *Rest) updateLimiter() float64 {
 		lmt = s.UpdateLimiter
 	}
 	return lmt
+}
+
+// GET /config?site=siteID - returns configuration
+func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
+	siteID := r.URL.Query().Get("site")
+
+	cnf := struct {
+		Version        string   `json:"version"`
+		EditDuration   int      `json:"edit_duration"`
+		MaxCommentSize int      `json:"max_comment_size"`
+		Admins         []string `json:"admins"`
+		AdminEmail     string   `json:"admin_email"`
+		Auth           []string `json:"auth_providers"`
+		LowScore       int      `json:"low_score"`
+		CriticalScore  int      `json:"critical_score"`
+		PositiveScore  bool     `json:"positive_score"`
+		ReadOnlyAge    int      `json:"readonly_age"`
+		MaxImageSize   int      `json:"max_image_size"`
+	}{
+		Version:        s.Version,
+		EditDuration:   int(s.DataService.EditDuration.Seconds()),
+		MaxCommentSize: s.DataService.MaxCommentSize,
+		Admins:         s.DataService.AdminStore.Admins(siteID),
+		AdminEmail:     s.DataService.AdminStore.Email(siteID),
+		LowScore:       s.ScoreThresholds.Low,
+		CriticalScore:  s.ScoreThresholds.Critical,
+		PositiveScore:  s.DataService.PositiveScore,
+		ReadOnlyAge:    s.ReadOnlyAge,
+		MaxImageSize:   s.ImageService.Store.SizeLimit(),
+	}
+
+	cnf.Auth = []string{}
+	for _, ap := range s.Authenticator.Providers() {
+		cnf.Auth = append(cnf.Auth, ap.Name())
+	}
+
+	if cnf.Admins == nil { // prevent json serialization to nil
+		cnf.Admins = []string{}
+	}
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, cnf)
 }
 
 // serves static files from /web or embedded by statik
