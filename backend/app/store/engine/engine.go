@@ -13,12 +13,6 @@ import (
 // NOTE: mockery works from linked to go-path and with GOFLAGS='-mod=vendor' go generate
 //go:generate sh -c "mockery -inpkg -name Interface -print > /tmp/engine-mock.tmp && mv /tmp/engine-mock.tmp engine_mock.go"
 
-// Interface combines all store interfaces
-type Interface interface {
-	Accessor
-	Admin
-}
-
 // UserRequest is the request send to get comments by user
 type UserRequest struct {
 	SiteID string
@@ -27,23 +21,18 @@ type UserRequest struct {
 	Skip   int
 }
 
-// Accessor defines all usual access ops avail for regular user
-type Accessor interface {
-	Create(comment store.Comment) (commentID string, err error)              // create new comment, avoid dups by id
-	Get(locator store.Locator, commentID string) (store.Comment, error)      // get comment by id
-	Put(locator store.Locator, comment store.Comment) error                  // update comment, mutable parts only
-	Find(locator store.Locator, sort string) ([]store.Comment, error)        // find comments for locator
-	Last(siteID string, limit int, since time.Time) ([]store.Comment, error) // last comments for given site, sorted by time
-	User(siteID, userID string, limit, skip int) ([]store.Comment, error)    // comments by user, sorted by time
-	UserCount(siteID, userID string) (int, error)                            // comments count by user
-	Count(locator store.Locator) (int, error)                                // number of comments for the post
-	List(siteID string, limit int, skip int) ([]store.PostInfo, error)       // list of commented posts
-	Info(locator store.Locator, readonlyAge int) (store.PostInfo, error)     // get post info
-	Close() error                                                            // close/stop engine
-}
-
-// Admin defines all store ops avail for admin only
-type Admin interface {
+// Interface defines methods provided by low-level storage engine
+type Interface interface {
+	Create(comment store.Comment) (commentID string, err error)                  // create new comment, avoid dups by id
+	Get(locator store.Locator, commentID string) (store.Comment, error)          // get comment by id
+	Put(locator store.Locator, comment store.Comment) error                      // update comment, mutable parts only
+	Find(locator store.Locator, sort string) ([]store.Comment, error)            // find comments for locator
+	Last(siteID string, limit int, since time.Time) ([]store.Comment, error)     // last comments for given site, sorted by time
+	User(siteID, userID string, limit, skip int) ([]store.Comment, error)        // comments by user, sorted by time
+	UserCount(siteID, userID string) (int, error)                                // comments count by user
+	Count(locator store.Locator) (int, error)                                    // number of comments for the post
+	List(siteID string, limit int, skip int) ([]store.PostInfo, error)           // list of commented posts
+	Info(locator store.Locator, readonlyAge int) (store.PostInfo, error)         // get post info
 	Delete(locator store.Locator, commentID string, mode store.DeleteMode) error // delete comment by id
 	DeleteAll(siteID string) error                                               // delete all data from site
 	DeleteUser(siteID string, userID string) error                               // remove all comments from user
@@ -55,6 +44,7 @@ type Admin interface {
 	SetVerified(siteID string, userID string, status bool) error                 // set/reset verified flag
 	IsVerified(siteID string, userID string) bool                                // check verified status
 	Verified(siteID string) ([]string, error)                                    // list of verified user ids
+	Close() error                                                                // close/stop engine
 }
 
 const (
