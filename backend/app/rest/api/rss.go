@@ -14,6 +14,17 @@ import (
 	"github.com/umputun/remark/backend/app/store"
 )
 
+type rss struct {
+	dataService rssStore
+	cache       cache.LoadingCache
+}
+
+type rssStore interface {
+	Find(locator store.Locator, sort string, user store.User) ([]store.Comment, error)
+	Last(siteID string, limit int, since time.Time, user store.User) ([]store.Comment, error)
+	Get(locator store.Locator, commentID string, user store.User) (store.Comment, error)
+}
+
 const maxRssItems = 20
 const maxLastCommentsReply = 5000
 const maxReplyDuration = 31 * 24 * time.Hour
@@ -22,21 +33,21 @@ const maxReplyDuration = 31 * 24 * time.Hour
 const uiNav = "#remark42__comment-"
 
 // GET /rss/post?site=siteID&url=post-url
-func (s *Rest) rssPostCommentsCtrl(w http.ResponseWriter, r *http.Request) {
+func (s *rss) postCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	log.Printf("[DEBUG] get rss for post %+v", locator)
 
 	key := cache.NewKey(locator.SiteID).ID(URLKey(r)).Scopes(locator.SiteID, locator.URL)
-	data, err := s.Cache.Get(key, func() ([]byte, error) {
-		comments, e := s.DataService.Find(locator, "-time", rest.GetUserOrEmpty(r))
+	data, err := s.cache.Get(key, func() ([]byte, error) {
+		comments, e := s.dataService.Find(locator, "-time", rest.GetUserOrEmpty(r))
 		if e != nil {
 			return nil, e
 		}
-		rss, e := s.toRssFeed(locator.URL, comments, "post comments for "+r.URL.Query().Get("url"))
+		feed, e := s.toRssFeed(locator.URL, comments, "post comments for "+r.URL.Query().Get("url"))
 		if e != nil {
 			return nil, e
 		}
-		return []byte(rss), e
+		return []byte(feed), e
 	})
 
 	if err != nil {
@@ -53,22 +64,22 @@ func (s *Rest) rssPostCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET /rss/site?site=siteID
-func (s *Rest) rssSiteCommentsCtrl(w http.ResponseWriter, r *http.Request) {
+func (s *rss) siteCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	log.Printf("[DEBUG] get rss for site %s", siteID)
 
 	key := cache.NewKey(siteID).ID(URLKey(r)).Scopes(siteID, lastCommentsScope)
-	data, err := s.Cache.Get(key, func() ([]byte, error) {
-		comments, e := s.DataService.Last(siteID, maxRssItems, time.Time{}, rest.GetUserOrEmpty(r))
+	data, err := s.cache.Get(key, func() ([]byte, error) {
+		comments, e := s.dataService.Last(siteID, maxRssItems, time.Time{}, rest.GetUserOrEmpty(r))
 		if e != nil {
 			return nil, e
 		}
 
-		rss, e := s.toRssFeed(r.URL.Query().Get("site"), comments, "site comment for "+siteID)
+		feed, e := s.toRssFeed(r.URL.Query().Get("site"), comments, "site comment for "+siteID)
 		if e != nil {
 			return nil, e
 		}
-		return []byte(rss), e
+		return []byte(feed), e
 	})
 
 	if err != nil {
@@ -84,15 +95,15 @@ func (s *Rest) rssSiteCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET /rss/reply?user=userID&site=siteID
-func (s *Rest) rssRepliesCtrl(w http.ResponseWriter, r *http.Request) {
+func (s *rss) repliesCtrl(w http.ResponseWriter, r *http.Request) {
 	userID := r.URL.Query().Get("user")
 	siteID := r.URL.Query().Get("site")
 	log.Printf("[DEBUG] get rss replies to user %s for site %s", userID, siteID)
 
 	userName := ""
 	key := cache.NewKey(siteID).ID(URLKey(r)).Scopes(siteID, lastCommentsScope)
-	data, err := s.Cache.Get(key, func() (res []byte, e error) {
-		comments, e := s.DataService.Last(siteID, maxLastCommentsReply, time.Time{}, rest.GetUserOrEmpty(r))
+	data, err := s.cache.Get(key, func() (res []byte, e error) {
+		comments, e := s.dataService.Last(siteID, maxLastCommentsReply, time.Time{}, rest.GetUserOrEmpty(r))
 		if e != nil {
 			return nil, errors.Wrap(e, "can't get last comments")
 		}
@@ -106,7 +117,7 @@ func (s *Rest) rssRepliesCtrl(w http.ResponseWriter, r *http.Request) {
 			}
 			if c.ParentID != "" && !c.Deleted && c.User.ID != userID { // not interested in replies to yourself
 				var pc store.Comment
-				if pc, e = s.DataService.Get(c.Locator, c.ParentID, rest.GetUserOrEmpty(r)); e != nil {
+				if pc, e = s.dataService.Get(c.Locator, c.ParentID, rest.GetUserOrEmpty(r)); e != nil {
 					return nil, errors.Wrap(e, "can't get parent comment")
 				}
 				if pc.User.ID == userID {
@@ -115,11 +126,11 @@ func (s *Rest) rssRepliesCtrl(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		rss, e := s.toRssFeed(siteID, replies, "replies to "+userName)
+		feed, e := s.toRssFeed(siteID, replies, "replies to "+userName)
 		if e != nil {
 			return nil, e
 		}
-		return []byte(rss), e
+		return []byte(feed), e
 	})
 
 	if err != nil {
@@ -134,7 +145,7 @@ func (s *Rest) rssRepliesCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Rest) toRssFeed(url string, comments []store.Comment, description string) (string, error) {
+func (s *rss) toRssFeed(url string, comments []store.Comment, description string) (string, error) {
 
 	if description == "" {
 		description = "comment updates"
@@ -163,7 +174,7 @@ func (s *Rest) toRssFeed(url string, comments []store.Comment, description strin
 		}
 		if c.ParentID != "" {
 			// add indication to parent comment
-			parentComment, err := s.DataService.Get(c.Locator, c.ParentID, store.User{})
+			parentComment, err := s.dataService.Get(c.Locator, c.ParentID, store.User{})
 			if err == nil {
 				f.Title = fmt.Sprintf("%s > %s", c.User.Name, parentComment.User.Name)
 			} else {

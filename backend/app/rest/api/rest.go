@@ -63,6 +63,7 @@ type Rest struct {
 	pubRest   public
 	privRest  private
 	adminRest admin
+	rssRest   rss
 }
 
 const hardBodyLimit = 1024 * 64 // limit size of body
@@ -225,9 +226,9 @@ func (s *Rest) routes() chi.Router {
 			ropen.Get("/img", s.ImageProxy.Handler)
 
 			ropen.Route("/rss", func(rrss chi.Router) {
-				rrss.Get("/post", s.rssPostCommentsCtrl)
-				rrss.Get("/site", s.rssSiteCommentsCtrl)
-				rrss.Get("/reply", s.rssRepliesCtrl)
+				rrss.Get("/post", s.rssRest.postCommentsCtrl)
+				rrss.Get("/site", s.rssRest.siteCommentsCtrl)
+				rrss.Get("/reply", s.rssRest.repliesCtrl)
 			})
 		})
 
@@ -332,6 +333,11 @@ func (s *Rest) setControllerGroups() {
 		cache:         s.Cache,
 		authenticator: s.Authenticator,
 		readOnlyAge:   s.ReadOnlyAge,
+	}
+
+	s.rssRest = rss{
+		dataService: s.DataService,
+		cache:       s.Cache,
 	}
 }
 

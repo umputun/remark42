@@ -86,7 +86,7 @@ func (s *Rest) makeAutocertManager() *autocert.Manager {
 // makeHTTPSAutoCertServer makes https server with autocert mode (LE support)
 func (s *Rest) makeHTTPSAutocertServer(port int, router http.Handler, m *autocert.Manager) *http.Server {
 	server := s.makeHTTPServer(port, router)
-	cfg := makeTLSConfig()
+	cfg := s.makeTLSConfig()
 	cfg.GetCertificate = m.GetCertificate
 	server.TLSConfig = cfg
 	return server
@@ -95,7 +95,7 @@ func (s *Rest) makeHTTPSAutocertServer(port int, router http.Handler, m *autocer
 // makeHTTPSServer makes https server for static mode
 func (s *Rest) makeHTTPSServer(port int, router http.Handler) *http.Server {
 	server := s.makeHTTPServer(port, router)
-	server.TLSConfig = makeTLSConfig()
+	server.TLSConfig = s.makeTLSConfig()
 	return server
 }
 
@@ -109,7 +109,7 @@ func (s *Rest) getRemarkHost() string {
 	return u.Hostname()
 }
 
-func makeTLSConfig() *tls.Config {
+func (s *Rest) makeTLSConfig() *tls.Config {
 	return &tls.Config{
 		PreferServerCipherSuites: true,
 		CipherSuites: []uint16{
