@@ -15,6 +15,7 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/cors"
+	"github.com/go-chi/render"
 	"github.com/go-pkgz/auth"
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
@@ -169,34 +170,7 @@ func (s *Rest) routes() chi.Router {
 	router.Use(middleware.Throttle(1000), middleware.Timeout(60*time.Second))
 	router.Use(R.AppInfo("remark42", "umputun", s.Version), R.Ping)
 
-	s.pubRest = public{
-		dataService:      s.DataService,
-		cache:            s.Cache,
-		imageService:     s.ImageService,
-		commentFormatter: s.CommentFormatter,
-		readOnlyAge:      s.ReadOnlyAge,
-		confFn:           s.config,
-		webRoot:          s.WebRoot,
-	}
-
-	s.privRest = private{
-		dataService:      s.DataService,
-		cache:            s.Cache,
-		imageService:     s.ImageService,
-		commentFormatter: s.CommentFormatter,
-		readOnlyAge:      s.ReadOnlyAge,
-		authenticator:    s.Authenticator,
-		notifyService:    s.NotifyService,
-		remarkURL:        s.RemarkURL,
-	}
-
-	s.adminRest = admin{
-		dataService:   s.DataService,
-		migrator:      s.Migrator,
-		cache:         s.Cache,
-		authenticator: s.Authenticator,
-		readOnlyAge:   s.ReadOnlyAge,
-	}
+	s.setControllerGroups() // assign controllers for groups
 
 	corsMiddleware := cors.New(cors.Options{
 		AllowedOrigins:   []string{"*"},
@@ -238,6 +212,7 @@ func (s *Rest) routes() chi.Router {
 		rapi.Group(func(ropen chi.Router) {
 			ropen.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
 			ropen.Use(authMiddleware.Trace, middleware.NoCache, logInfoWithBody)
+			ropen.Get("/config", s.configCtrl)
 			ropen.Get("/find", s.pubRest.findCommentsCtrl)
 			ropen.Get("/id/{id}", s.pubRest.commentByIDCtrl)
 			ropen.Get("/comments", s.pubRest.findUserCommentsCtrl)
@@ -245,7 +220,6 @@ func (s *Rest) routes() chi.Router {
 			ropen.Get("/count", s.pubRest.countCtrl)
 			ropen.Post("/counts", s.pubRest.countMultiCtrl)
 			ropen.Get("/list", s.pubRest.listCtrl)
-			ropen.Get("/config", s.pubRest.configCtrl)
 			ropen.Post("/preview", s.pubRest.previewCommentCtrl)
 			ropen.Get("/info", s.pubRest.infoCtrl)
 			ropen.Get("/img", s.ImageProxy.Handler)
@@ -328,6 +302,37 @@ func (s *Rest) routes() chi.Router {
 	// file server for static content from /web
 	addFileServer(router, "/web", http.Dir(s.WebRoot))
 	return router
+}
+
+func (s *Rest) setControllerGroups() {
+
+	s.pubRest = public{
+		dataService:      s.DataService,
+		cache:            s.Cache,
+		imageService:     s.ImageService,
+		commentFormatter: s.CommentFormatter,
+		readOnlyAge:      s.ReadOnlyAge,
+		webRoot:          s.WebRoot,
+	}
+
+	s.privRest = private{
+		dataService:      s.DataService,
+		cache:            s.Cache,
+		imageService:     s.ImageService,
+		commentFormatter: s.CommentFormatter,
+		readOnlyAge:      s.ReadOnlyAge,
+		authenticator:    s.Authenticator,
+		notifyService:    s.NotifyService,
+		remarkURL:        s.RemarkURL,
+	}
+
+	s.adminRest = admin{
+		dataService:   s.DataService,
+		migrator:      s.Migrator,
+		cache:         s.Cache,
+		authenticator: s.Authenticator,
+		readOnlyAge:   s.ReadOnlyAge,
+	}
 }
 
 // updateLimiter returns UpdateLimiter if set, or 10 if not
@@ -435,32 +440,6 @@ func rejectAnonUser(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	}
 	return http.HandlerFunc(fn)
-}
-
-func (s *Rest) config(siteID string) config {
-
-	cnf := config{
-		Version:        s.Version,
-		EditDuration:   int(s.DataService.EditDuration.Seconds()),
-		MaxCommentSize: s.DataService.MaxCommentSize,
-		Admins:         s.DataService.AdminStore.Admins(siteID),
-		AdminEmail:     s.DataService.AdminStore.Email(siteID),
-		LowScore:       s.ScoreThresholds.Low,
-		CriticalScore:  s.ScoreThresholds.Critical,
-		PositiveScore:  s.DataService.PositiveScore,
-		ReadOnlyAge:    s.ReadOnlyAge,
-		MaxImageSize:   s.ImageService.Store.SizeLimit(),
-	}
-
-	cnf.Auth = []string{}
-	for _, ap := range s.Authenticator.Providers() {
-		cnf.Auth = append(cnf.Auth, ap.Name())
-	}
-
-	if cnf.Admins == nil { // prevent json serialization to nil
-		cnf.Admins = []string{}
-	}
-	return cnf
 }
 
 func parseError(err error, defaultCode int) (code int) {
