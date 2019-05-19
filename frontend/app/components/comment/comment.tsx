@@ -106,7 +106,7 @@ export class Comment extends Component<Props, State> {
     this.updateState(nextProps);
   }
 
-  updateState(props: Props) {
+  updateState = (props: Props) => {
     this.setState({
       scoreDelta: props.data.vote,
       cachedScore: props.data.score,
@@ -126,52 +126,54 @@ export class Comment extends Component<Props, State> {
         });
       }
     }
-  }
+  };
 
-  toggleReplying() {
+  toggleReplying = () => {
     const { editMode } = this.props;
     if (editMode === CommentMode.Reply) {
       this.props.setReplyEditState!(this.props.data.id, CommentMode.None);
     } else {
       this.props.setReplyEditState!(this.props.data.id, CommentMode.Reply);
     }
-  }
+  };
 
-  toggleEditing() {
+  toggleEditing = () => {
     const { editMode } = this.props;
     if (editMode === CommentMode.Edit) {
       this.props.setReplyEditState!(this.props.data.id, CommentMode.None);
     } else {
       this.props.setReplyEditState!(this.props.data.id, CommentMode.Edit);
     }
-  }
+  };
 
-  toggleUserInfoVisibility() {
+  toggleUserInfoVisibility = () => {
     if (window.parent) {
       const { user } = this.props.data;
       const data = JSON.stringify({ isUserInfoShown: true, user });
       window.parent.postMessage(data, '*');
     }
-  }
+  };
 
-  setPin(value: boolean) {
+  togglePin = () => {
+    const value = !this.props.data.pin;
     const promptMessage = `Do you want to ${value ? 'pin' : 'unpin'} this comment?`;
 
     if (confirm(promptMessage)) {
       this.props.setPinState!(this.props.data.id, value);
     }
-  }
+  };
 
-  setVerify(value: boolean) {
+  toggleVerify = () => {
+    const value = !this.props.data.user.verified;
     const userId = this.props.data.user.id;
-    const promptMessage = `Do you want to ${value ? 'verify' : 'unverify'} this user?`;
+    const promptMessage = `Do you want to ${value ? 'verify' : 'unverify'} ${this.props.data.user.name}?`;
 
     if (confirm(promptMessage)) {
       this.props.setVerifyStatus!(userId, value);
     }
-  }
+  };
 
-  onBlockUserClick(e: Event) {
+  onBlockUserClick = (e: Event) => {
     // blur event will be triggered by the confirm pop-up which will start
     // infinite loop of blur -> confirm -> blur -> ...
     // so we trigger the blur event manually and have debounce mechanism to prevent it
@@ -181,9 +183,9 @@ export class Comment extends Component<Props, State> {
     // we have to debounce the blockUser function calls otherwise it will be
     // called 2 times (by change event and by blur event)
     this.blockUser((e.target as HTMLOptionElement).value as BlockTTL);
-  }
+  };
 
-  blockUser(ttl: BlockTTL) {
+  blockUser = (ttl: BlockTTL) => {
     const { user } = this.props.data;
 
     const block_duration = BLOCKING_DURATIONS.find(el => el.value === ttl);
@@ -195,9 +197,9 @@ export class Comment extends Component<Props, State> {
     if (confirm(`Do you want to block ${user.name} ${duration.toLowerCase()}?`)) {
       this.props.blockUser!(user.id, user.name, ttl);
     }
-  }
+  };
 
-  onUnblockUserClick() {
+  onUnblockUserClick = () => {
     const { user } = this.props.data;
 
     const promptMessage = `Do you want to unblock this user?`;
@@ -205,15 +207,15 @@ export class Comment extends Component<Props, State> {
     if (confirm(promptMessage)) {
       this.props.unblockUser!(user.id);
     }
-  }
+  };
 
-  deleteComment() {
+  deleteComment = () => {
     if (confirm('Do you want to delete this comment?')) {
       this.props.setReplyEditState!(this.props.data.id, CommentMode.None);
 
       this.props.removeComment!(this.props.data.id);
     }
-  }
+  };
 
   hideUser = () => {
     if (confirm(`Do you want to hide comments of ${this.props.data.user.name}?`)) {
@@ -221,21 +223,21 @@ export class Comment extends Component<Props, State> {
     }
   };
 
-  handleVoteError(e: FetcherError, originalScore: number, originalDelta: number) {
+  handleVoteError = (e: FetcherError, originalScore: number, originalDelta: number) => {
     this.setState({
       scoreDelta: originalDelta,
       cachedScore: originalScore,
       voteErrorMessage: extractErrorMessageFromResponse(e),
     });
-  }
+  };
 
-  sendVotingRequest(votingValue: number, originalScore: number, originalDelta: number) {
+  sendVotingRequest = (votingValue: number, originalScore: number, originalDelta: number) => {
     this.votingPromise = this.votingPromise
       .then(() => this.props.putCommentVote!(this.props.data.id, votingValue))
       .catch(e => this.handleVoteError(e, originalScore, originalDelta));
-  }
+  };
 
-  increaseScore() {
+  increaseScore = () => {
     const { cachedScore, scoreDelta } = this.state;
 
     if (scoreDelta === 1) return;
@@ -247,9 +249,9 @@ export class Comment extends Component<Props, State> {
     });
 
     this.sendVotingRequest(1, cachedScore, scoreDelta);
-  }
+  };
 
-  decreaseScore() {
+  decreaseScore = () => {
     const { cachedScore, scoreDelta } = this.state;
 
     if (scoreDelta === -1) return;
@@ -261,21 +263,21 @@ export class Comment extends Component<Props, State> {
     });
 
     this.sendVotingRequest(-1, cachedScore, scoreDelta);
-  }
+  };
 
-  async addComment(text: string, title: string, pid?: CommentType['id']) {
+  addComment = async (text: string, title: string, pid?: CommentType['id']) => {
     await this.props.addComment!(text, title, pid);
 
     this.props.setReplyEditState!(this.props.data.id, CommentMode.None);
-  }
+  };
 
-  async updateComment(id: CommentType['id'], text: string) {
+  updateComment = async (id: CommentType['id'], text: string) => {
     await this.props.updateComment!(id, text);
 
     this.props.setReplyEditState!(this.props.data.id, CommentMode.None);
-  }
+  };
 
-  scrollToParent(e: Event) {
+  scrollToParent = (e: Event) => {
     const {
       data: { pid },
     } = this.props;
@@ -287,15 +289,17 @@ export class Comment extends Component<Props, State> {
     if (parentCommentNode) {
       parentCommentNode.scrollIntoView();
     }
-  }
+  };
 
-  toggleCollapse() {
+  toggleCollapse = () => {
     this.props.setReplyEditState!(this.props.data.id, CommentMode.None);
 
     this.props.setCollapse!(this.props.data.id, !this.props.collapsed);
-  }
+  };
 
-  copyComment({ username, time }: { username: string; time: string }) {
+  copyComment = () => {
+    const username = this.props.data.user.name;
+    const time = this.props.data.time;
     const text = this.textNode!.textContent || '';
 
     copy(`<b>${username}</b>&nbsp;${time}<br>${text.replace(/\n+/g, '<br>')}`);
@@ -303,42 +307,42 @@ export class Comment extends Component<Props, State> {
     this.setState({ isCopied: true }, () => {
       setTimeout(() => this.setState({ isCopied: false }), 3000);
     });
-  }
+  };
 
   /**
    * Defines whether current client is admin
    */
-  isAdmin(): boolean {
+  isAdmin = (): boolean => {
     return !!this.props.user && this.props.user.admin;
-  }
+  };
 
   /**
    * Defines whether current client is not logged in
    */
-  isGuest(): boolean {
+  isGuest = (): boolean => {
     return !this.props.user;
-  }
+  };
 
   /**
    * Defines whether current client is logged in via `Anonymous provider`
    */
-  isAnonymous(): boolean {
+  isAnonymous = (): boolean => {
     return isUserAnonymous(this.props.user);
-  }
+  };
 
   /**
    * Defines whether comment made by logged in user
    */
-  isCurrentUser(): boolean {
+  isCurrentUser = (): boolean => {
     if (this.isGuest()) return false;
 
     return this.props.data.user.id === this.props.user!.id;
-  }
+  };
 
   /**
    * returns reason for disabled downvoting
    */
-  getDownvoteDisabledReason(): string | null {
+  getDownvoteDisabledReason = (): string | null => {
     if (!(this.props.view === 'main' || this.props.view === 'pinned')) return "Voting allowed only on post's page";
     if (this.props.post_info!.read_only) return "Can't vote on read-only topics";
     if (this.props.data.delete) return "Can't vote for deleted comment";
@@ -347,12 +351,12 @@ export class Comment extends Component<Props, State> {
     if (this.isGuest()) return 'Sign in to vote';
     if (this.isAnonymous()) return "Anonymous users can't vote";
     return null;
-  }
+  };
 
   /**
    * returns reason for disabled upvoting
    */
-  getUpvoteDisabledReason(): string | null {
+  getUpvoteDisabledReason = (): string | null => {
     if (!(this.props.view === 'main' || this.props.view === 'pinned')) return "Voting allowed only on post's page";
     if (this.props.post_info!.read_only) return "Can't vote on read-only topics";
     if (this.props.data.delete) return "Can't vote for deleted comment";
@@ -360,7 +364,7 @@ export class Comment extends Component<Props, State> {
     if (this.isGuest()) return 'Sign in to vote';
     if (this.isAnonymous()) return "Anonymous users can't vote";
     return null;
-  }
+  };
 
   render(props: RenderableProps<Props>, state: State) {
     const isAdmin = this.isAdmin();
@@ -481,7 +485,7 @@ export class Comment extends Component<Props, State> {
 
             {props.view !== 'user' && (
               <span
-                {...getHandleClickProps(() => this.toggleUserInfoVisibility())}
+                {...getHandleClickProps(this.toggleUserInfoVisibility)}
                 className="comment__username"
                 title={o.user.id}
               >
@@ -491,7 +495,7 @@ export class Comment extends Component<Props, State> {
 
             {isAdmin && props.view !== 'user' && (
               <span
-                {...getHandleClickProps(() => this.setVerify(!o.user.verified))}
+                {...getHandleClickProps(this.toggleVerify)}
                 aria-label="Toggle verification"
                 title={o.user.verified ? 'Verified user' : 'Unverified user'}
                 className={b('comment__verification', {}, { active: o.user.verified, clickable: true })}
@@ -524,7 +528,7 @@ export class Comment extends Component<Props, State> {
 
             {!props.disabled && props.view === 'main' && (
               <span
-                {...getHandleClickProps(() => this.toggleCollapse())}
+                {...getHandleClickProps(this.toggleCollapse)}
                 className={b('comment__action', {}, { type: 'collapse', selected: props.collapsed })}
               >
                 {props.collapsed ? '+' : '−'}
@@ -539,7 +543,7 @@ export class Comment extends Component<Props, State> {
                   { type: 'up', selected: state.scoreDelta === 1, disabled: isUpvotingDisabled }
                 )}
                 aria-disabled={state.scoreDelta === 1 || isUpvotingDisabled ? 'true' : 'false'}
-                {...getHandleClickProps(isUpvotingDisabled ? undefined : () => this.increaseScore())}
+                {...getHandleClickProps(isUpvotingDisabled ? undefined : this.increaseScore)}
                 title={upvotingDisabledReason || undefined}
               >
                 Vote up
@@ -557,7 +561,7 @@ export class Comment extends Component<Props, State> {
                   { type: 'down', selected: state.scoreDelta === -1, disabled: isDownvotingDisabled }
                 )}
                 aria-disabled={state.scoreDelta === -1 || isUpvotingDisabled ? 'true' : 'false'}
-                {...getHandleClickProps(isDownvotingDisabled ? undefined : () => this.decreaseScore())}
+                {...getHandleClickProps(isDownvotingDisabled ? undefined : this.decreaseScore)}
                 title={downvotingDisabledReason || undefined}
               >
                 Vote down
@@ -582,7 +586,7 @@ export class Comment extends Component<Props, State> {
           {(!props.collapsed || props.view === 'pinned') && (
             <div className="comment__actions">
               {!props.data.delete && !props.isCommentsDisabled && !props.disabled && !isGuest && props.view === 'main' && (
-                <span {...getHandleClickProps(() => this.toggleReplying())} className="comment__action">
+                <span {...getHandleClickProps(this.toggleReplying)} className="comment__action">
                   {isReplying ? 'Cancel' : 'Reply'}
                 </span>
               )}
@@ -594,14 +598,14 @@ export class Comment extends Component<Props, State> {
                 (editable || isEditing) &&
                 props.view === 'main' && [
                   <span
-                    {...getHandleClickProps(() => this.toggleEditing())}
+                    {...getHandleClickProps(this.toggleEditing)}
                     className="comment__action comment__action_type_edit"
                   >
                     {isEditing ? 'Cancel' : 'Edit'}
                   </span>,
                   !isAdmin && (
                     <span
-                      {...getHandleClickProps(() => this.deleteComment())}
+                      {...getHandleClickProps(this.deleteComment)}
                       className="comment__action comment__action_type_delete"
                     >
                       Delete
@@ -631,10 +635,7 @@ export class Comment extends Component<Props, State> {
               {!props.data.delete && isAdmin && (
                 <span className="comment__controls">
                   {!state.isCopied && (
-                    <span
-                      {...getHandleClickProps(() => this.copyComment({ username: o.user.name, time: o.time }))}
-                      className="comment__control"
-                    >
+                    <span {...getHandleClickProps(this.copyComment)} className="comment__control">
                       Copy
                     </span>
                   )}
@@ -642,13 +643,13 @@ export class Comment extends Component<Props, State> {
                   {state.isCopied && <span className="comment__control comment__control_view_inactive">Copied!</span>}
 
                   {(props.view === 'main' || props.view === 'pinned') && (
-                    <span {...getHandleClickProps(() => this.setPin(!props.data.pin))} className="comment__control">
+                    <span {...getHandleClickProps(this.togglePin)} className="comment__control">
                       {props.data.pin ? 'Unpin' : 'Pin'}
                     </span>
                   )}
 
                   {props.isUserBanned && (
-                    <span {...getHandleClickProps(() => this.onUnblockUserClick())} className="comment__control">
+                    <span {...getHandleClickProps(this.onUnblockUserClick)} className="comment__control">
                       Unblock
                     </span>
                   )}
@@ -673,7 +674,7 @@ export class Comment extends Component<Props, State> {
                   )}
 
                   {!props.data.delete && (
-                    <span {...getHandleClickProps(() => this.deleteComment())} className="comment__control">
+                    <span {...getHandleClickProps(this.deleteComment)} className="comment__control">
                       Delete
                     </span>
                   )}
