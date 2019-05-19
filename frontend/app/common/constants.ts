@@ -1,4 +1,4 @@
-import { Sorting, AuthProvider, BlockingDuration, Theme } from './types';
+import { Sorting, AuthProvider, BlockingDuration, Theme, User } from './types';
 
 export const BASE_URL: string =
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -26,6 +26,9 @@ export const PROVIDER_NAMES: { [P in AuthProvider['name']]: string } = {
 
 /** locastorage key for collapsed comments */
 export const LS_COLLAPSE_KEY = '__remarkCollapsed';
+
+/** locastorage key for hidden users */
+export const LS_HIDDEN_USERS_KEY = '__remarkHiddenUsers';
 
 /** cookie key under which sort preference resides */
 export const COOKIE_SORT_KEY = 'remarkSort';
@@ -78,3 +81,13 @@ export const IS_THIRD_PARTY: boolean = (() => {
     return true;
   }
 })();
+
+/**
+ * Defined HiddenUser entity interface
+ *
+ * Is empty currently but may be extended in future
+ */
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+export interface HiddenUser {}
+
+export type HiddenUsersRecords = Record<User['id'], HiddenUser>;

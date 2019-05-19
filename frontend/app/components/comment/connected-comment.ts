@@ -15,6 +15,7 @@ import {
   setPinState,
   putVote,
   setCommentMode,
+  hideUserComments,
 } from '@app/store/comments/actions';
 import { setCollapse } from '@app/store/thread/actions';
 import { blockUser, unblockUser, setVirifiedStatus } from '@app/store/user/actions';
@@ -52,6 +53,7 @@ const mapDispatchToProps = (dispatch: StoreDispatch) => {
     | 'putCommentVote'
     | 'blockUser'
     | 'unblockUser'
+    | 'hideUser'
     | 'setVerifyStatus'
     | 'uploadImage'
   > = {
@@ -65,6 +67,7 @@ const mapDispatchToProps = (dispatch: StoreDispatch) => {
 
     blockUser: (id: User['id'], name: User['name'], ttl: BlockTTL) => dispatch(blockUser(id, name, ttl)),
     unblockUser: (id: User['id']) => dispatch(unblockUser(id)),
+    hideUser: async (id: User['id']) => dispatch(hideUserComments(id)),
     setVerifyStatus: (id: User['id'], value: boolean) => dispatch(setVirifiedStatus(id, value)),
     // should i made it as store action?
     uploadImage: (image: File) => uploadImage(image),

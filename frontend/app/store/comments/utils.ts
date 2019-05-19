@@ -38,6 +38,27 @@ function mapTreeIfID(tree: Node[], id: Comment['id'], fn: (c: Node) => Node): No
 }
 
 /**
+ * Filters tree node
+ */
+export function filterTree(tree: Node[], fn: (node: Node) => boolean): Node[] {
+  let filtered = false;
+  const newTree = tree.reduce<Node[]>((tree, node) => {
+    if (!fn(node)) {
+      filtered = true;
+      return tree;
+    }
+    const newNode: Node = !node.replies ? node : { ...node, replies: filterTree(node.replies, fn) };
+    if (newNode !== node) {
+      filtered = true;
+    }
+    tree.push(newNode);
+    return tree;
+  }, []);
+  if (!filtered) return tree;
+  return newTree;
+}
+
+/**
  * Traverses through tree and applies function to comment on which function passed.
  * Note that function must not mutate comment
  */

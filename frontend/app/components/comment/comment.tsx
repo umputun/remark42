@@ -53,6 +53,7 @@ export interface Props {
   setCollapse?: (id: CommentType['id'], value: boolean) => void;
   setPinState?(id: CommentType['id'], value: boolean): Promise<void>;
   blockUser?(id: User['id'], name: User['name'], ttl: BlockTTL): Promise<void>;
+  hideUser?(id: User['id']): Promise<void>;
   unblockUser?(id: User['id']): Promise<void>;
   setVerifyStatus?(id: User['id'], value: boolean): Promise<void>;
   uploadImage?(image: File): Promise<Image>;
@@ -213,6 +214,12 @@ export class Comment extends Component<Props, State> {
       this.props.removeComment!(this.props.data.id);
     }
   }
+
+  hideUser = () => {
+    if (confirm(`Do you want to hide comments of ${this.props.data.user.name}?`)) {
+      this.props.hideUser!(this.props.data.user.id);
+    }
+  };
 
   handleVoteError(e: FetcherError, originalScore: number, originalDelta: number) {
     this.setState({
@@ -612,6 +619,14 @@ export class Comment extends Component<Props, State> {
                     />
                   ),
                 ]}
+
+              {!isAdmin && !props.data.delete && !props.disabled && !isCurrentUser && (
+                <span className="comment__controls">
+                  <span {...getHandleClickProps(this.hideUser)} className="comment__action comment__action_type_hide">
+                    Hide
+                  </span>
+                </span>
+              )}
 
               {!props.data.delete && isAdmin && (
                 <span className="comment__controls">
