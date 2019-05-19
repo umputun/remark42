@@ -663,6 +663,83 @@ func TestService_HasReplies(t *testing.T) {
 	assert.True(t, b.HasReplies(comment))
 }
 
+func TestService_UserReplies(t *testing.T) {
+
+	defer teardown(t)
+
+	// two comments for https://radio-t.com, no reply
+	b := DataStore{Interface: prepStoreEngine(t),
+		AdminStore: admin.NewStaticStore("secret 123", []string{"user2"}, "user@email.com")}
+
+	c1 := store.Comment{
+		ID:      "comment-id-1",
+		Text:    "test 123",
+		Locator: store.Locator{URL: "https://radio-t.com/blah10", SiteID: "radio-t"},
+		User:    store.User{ID: "u1", Name: "developer one u1"},
+	}
+	c2 := store.Comment{
+		ID:       "comment-id-2",
+		ParentID: "comment-id-1",
+		Text:     "xyz test",
+		Locator:  store.Locator{URL: "https://radio-t.com/blah10", SiteID: "radio-t"},
+		User:     store.User{ID: "u2", Name: "developer one u2"},
+	}
+	c3 := store.Comment{
+		ID:       "comment-id-3",
+		ParentID: "comment-id-1",
+		Text:     "xyz test",
+		Locator:  store.Locator{URL: "https://radio-t.com/blah10", SiteID: "radio-t"},
+		User:     store.User{ID: "u2", Name: "developer one u3"},
+	}
+	c4 := store.Comment{
+		ID:       "comment-id-4",
+		ParentID: "",
+		Text:     "xyz test",
+		Locator:  store.Locator{URL: "https://radio-t.com/blah10", SiteID: "radio-t"},
+		User:     store.User{ID: "u4", Name: "developer one u4"},
+	}
+
+	c5 := store.Comment{
+		ID:       "comment-id-5",
+		ParentID: "comment-id-1",
+		Text:     "xyz test",
+		Locator:  store.Locator{URL: "https://radio-t.com/blah10", SiteID: "radio-t"},
+		User:     store.User{ID: "u2", Name: "developer one u2"},
+	}
+
+	_, err := b.Create(c1)
+	require.NoError(t, err)
+	_, err = b.Create(c2)
+	require.NoError(t, err)
+	_, err = b.Create(c3)
+	require.NoError(t, err)
+	_, err = b.Create(c4)
+	require.NoError(t, err)
+
+	time.Sleep(100 * time.Millisecond)
+	_, err = b.Create(c5)
+	require.NoError(t, err)
+
+	cc, u, err := b.UserReplies("radio-t", "u1", 10, time.Hour)
+	assert.NoError(t, err)
+	assert.Equal(t, 3, len(cc), "3 replies to u1")
+	assert.Equal(t, "developer one u1", u)
+
+	cc, u, err = b.UserReplies("radio-t", "u1", 10, time.Millisecond*50)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(cc), "1 reply to u1 in last 90ms")
+	assert.Equal(t, "developer one u1", u)
+
+	cc, u, err = b.UserReplies("radio-t", "u2", 10, time.Hour)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(cc), "0 replies to u2")
+	assert.Equal(t, "developer one u2", u)
+
+	cc, u, err = b.UserReplies("radio-t", "uxxx", 10, time.Hour)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(cc), "0 replies to uxxx")
+}
+
 func TestService_Find(t *testing.T) {
 	defer teardown(t)
 

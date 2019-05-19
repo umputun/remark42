@@ -64,10 +64,12 @@ type PostMetaData struct {
 }
 
 const defaultCommentMaxSize = 2000
-const maxLastCommentsReply = 1000
+const maxLastCommentsReply = 5000
 
 // UnlimitedVotes doesn't restrict MaxVotes
 const UnlimitedVotes = -1
+
+var nonAdminUser = store.User{}
 
 // ErrRestrictedWordsFound returned in case comment text contains restricted words
 var ErrRestrictedWordsFound = errors.New("comment contains restricted words")
@@ -349,6 +351,42 @@ func (s *DataStore) HasReplies(comment store.Comment) bool {
 		}
 	}
 	return false
+}
+
+// UserReplies returns list of all comments replied to given user
+func (s *DataStore) UserReplies(siteID, userID string, limit int, duration time.Duration) ([]store.Comment, string, error) {
+
+	comments, e := s.Last(siteID, maxLastCommentsReply, time.Time{}, nonAdminUser)
+	if e != nil {
+		return nil, "", errors.Wrap(e, "can't get last comments")
+	}
+	replies := []store.Comment{}
+
+	// get a comment for given userID in order to retrieve name
+	userName := ""
+	if cc, err := s.User(siteID, userID, 1, 0, nonAdminUser); err == nil && len(cc) > 0 {
+		userName = cc[0].User.Name
+	}
+
+	// collect replies
+	for _, c := range comments {
+
+		if len(replies) > limit || time.Since(c.Timestamp) > duration {
+			break
+		}
+
+		if c.ParentID != "" && !c.Deleted && c.User.ID != userID { // not interested in replies to yourself
+			var pc store.Comment
+			if pc, e = s.Get(c.Locator, c.ParentID, nonAdminUser); e != nil {
+				return nil, "", errors.Wrap(e, "can't get parent comment")
+			}
+			if pc.User.ID == userID {
+				replies = append(replies, c)
+			}
+		}
+	}
+
+	return replies, userName, nil
 }
 
 // SetTitle puts title from the locator.URL page and overwrites any existing title

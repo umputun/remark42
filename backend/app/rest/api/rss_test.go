@@ -242,7 +242,7 @@ func TestServer_RssReplies(t *testing.T) {
 	    <channel>
 	        <title>Remark42 comments</title>
 	        <link>radio-t</link>
-	        <description>replies to user2</description>
+	        <description>replies to user1</description>
 	        <pubDate>%s</pubDate>
 	        <item>
 		      <title>user3 &gt; user1</title>

@@ -23,10 +23,10 @@ type rssStore interface {
 	Find(locator store.Locator, sort string, user store.User) ([]store.Comment, error)
 	Last(siteID string, limit int, since time.Time, user store.User) ([]store.Comment, error)
 	Get(locator store.Locator, commentID string, user store.User) (store.Comment, error)
+	UserReplies(siteID, userID string, limit int, duration time.Duration) ([]store.Comment, string, error)
 }
 
 const maxRssItems = 20
-const maxLastCommentsReply = 5000
 const maxReplyDuration = 31 * 24 * time.Hour
 
 // ui uses links like <post-url>#remark42__comment-<comment-id>
@@ -100,30 +100,35 @@ func (s *rss) repliesCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	log.Printf("[DEBUG] get rss replies to user %s for site %s", userID, siteID)
 
-	userName := ""
 	key := cache.NewKey(siteID).ID(URLKey(r)).Scopes(siteID, lastCommentsScope)
 	data, err := s.cache.Get(key, func() (res []byte, e error) {
-		comments, e := s.dataService.Last(siteID, maxLastCommentsReply, time.Time{}, rest.GetUserOrEmpty(r))
+
+		//comments, e := s.dataService.UserReplies(siteID, userID, maxRssItems, maxReplyDuration)
+		//if e != nil {
+		//	return nil, errors.Wrap(e, "can't get last comments")
+		//}
+		//replies := []store.Comment{}
+		//for _, c := range comments {
+		//	if len(replies) > maxRssItems || c.Timestamp.Add(maxReplyDuration).Before(time.Now()) {
+		//		break
+		//	}
+		//	if c.User.ID != userID {
+		//		userName = c.User.Name
+		//	}
+		//	if c.ParentID != "" && !c.Deleted && c.User.ID != userID { // not interested in replies to yourself
+		//		var pc store.Comment
+		//		if pc, e = s.dataService.Get(c.Locator, c.ParentID, rest.GetUserOrEmpty(r)); e != nil {
+		//			return nil, errors.Wrap(e, "can't get parent comment")
+		//		}
+		//		if pc.User.ID == userID {
+		//			replies = append(replies, c)
+		//		}
+		//	}
+		//}
+
+		replies, userName, e := s.dataService.UserReplies(siteID, userID, maxRssItems, maxReplyDuration)
 		if e != nil {
 			return nil, errors.Wrap(e, "can't get last comments")
-		}
-		replies := []store.Comment{}
-		for _, c := range comments {
-			if len(replies) > maxRssItems || c.Timestamp.Add(maxReplyDuration).Before(time.Now()) {
-				break
-			}
-			if c.User.ID != userID {
-				userName = c.User.Name
-			}
-			if c.ParentID != "" && !c.Deleted && c.User.ID != userID { // not interested in replies to yourself
-				var pc store.Comment
-				if pc, e = s.dataService.Get(c.Locator, c.ParentID, rest.GetUserOrEmpty(r)); e != nil {
-					return nil, errors.Wrap(e, "can't get parent comment")
-				}
-				if pc.User.ID == userID {
-					replies = append(replies, c)
-				}
-			}
 		}
 
 		feed, e := s.toRssFeed(siteID, replies, "replies to "+userName)
