@@ -103,29 +103,6 @@ func (s *rss) repliesCtrl(w http.ResponseWriter, r *http.Request) {
 	key := cache.NewKey(siteID).ID(URLKey(r)).Scopes(siteID, lastCommentsScope)
 	data, err := s.cache.Get(key, func() (res []byte, e error) {
 
-		//comments, e := s.dataService.UserReplies(siteID, userID, maxRssItems, maxReplyDuration)
-		//if e != nil {
-		//	return nil, errors.Wrap(e, "can't get last comments")
-		//}
-		//replies := []store.Comment{}
-		//for _, c := range comments {
-		//	if len(replies) > maxRssItems || c.Timestamp.Add(maxReplyDuration).Before(time.Now()) {
-		//		break
-		//	}
-		//	if c.User.ID != userID {
-		//		userName = c.User.Name
-		//	}
-		//	if c.ParentID != "" && !c.Deleted && c.User.ID != userID { // not interested in replies to yourself
-		//		var pc store.Comment
-		//		if pc, e = s.dataService.Get(c.Locator, c.ParentID, rest.GetUserOrEmpty(r)); e != nil {
-		//			return nil, errors.Wrap(e, "can't get parent comment")
-		//		}
-		//		if pc.User.ID == userID {
-		//			replies = append(replies, c)
-		//		}
-		//	}
-		//}
-
 		replies, userName, e := s.dataService.UserReplies(siteID, userID, maxRssItems, maxReplyDuration)
 		if e != nil {
 			return nil, errors.Wrap(e, "can't get last comments")
