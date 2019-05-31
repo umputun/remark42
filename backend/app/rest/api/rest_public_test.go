@@ -96,6 +96,8 @@ func TestRest_Find(t *testing.T) {
 	assert.Equal(t, 2, len(comments.Comments), "should have 2 comments")
 	assert.Equal(t, id1, comments.Comments[0].ID)
 	assert.Equal(t, id2, comments.Comments[1].ID)
+	assert.Equal(t, "<p>test test #1</p>\n", comments.Comments[0].Text)
+	assert.Equal(t, "<p>test test #2</p>\n", comments.Comments[1].Text)
 	assert.Equal(t, "https://radio-t.com/blah1", comments.Info.URL)
 	assert.Equal(t, 2, comments.Info.Count)
 	assert.Equal(t, false, comments.Info.ReadOnly)
@@ -193,6 +195,42 @@ func TestRest_FindReadOnly(t *testing.T) {
 	require.Nil(t, err)
 	assert.Equal(t, "https://radio-t.com/blah2", tree.Info.URL)
 	assert.False(t, tree.Info.ReadOnly, "post is writable")
+}
+
+func TestRest_FindUserView(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	res, code := get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah1&view=user")
+	assert.Equal(t, 200, code)
+	comments := commentsWithInfo{}
+	err := json.Unmarshal([]byte(res), &comments)
+	assert.Nil(t, err)
+	assert.Equal(t, 0, len(comments.Comments), "should have 0 comments")
+
+	c1 := store.Comment{Text: "test test #1", ParentID: "",
+		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}}
+	id1 := addComment(t, c1, ts)
+
+	c2 := store.Comment{Text: "test test #2", ParentID: id1,
+		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}}
+	id2 := addComment(t, c2, ts)
+
+	assert.NotEqual(t, id1, id2)
+
+	// get sorted by +time with view=user
+	res, code = get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah1&sort=+time&view=user")
+	assert.Equal(t, 200, code)
+	comments = commentsWithInfo{}
+	err = json.Unmarshal([]byte(res), &comments)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(comments.Comments), "should have 2 comments")
+	assert.Equal(t, id1, comments.Comments[0].ID)
+	assert.Equal(t, id2, comments.Comments[1].ID)
+	assert.Equal(t, "dev", comments.Comments[0].User.ID)
+	assert.Equal(t, "dev", comments.Comments[1].User.ID)
+	assert.Equal(t, "", comments.Comments[0].Text)
+	assert.Equal(t, "", comments.Comments[1].Text)
 }
 
 func TestRest_Last(t *testing.T) {

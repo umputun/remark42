@@ -48,7 +48,7 @@ type pubStore interface {
 	Counts(siteID string, postIDs []string) ([]store.PostInfo, error)
 }
 
-// GET /find?site=siteID&url=post-url&format=[tree|plain]&sort=[+/-time|+/-score|+/-controversy ]
+// GET /find?site=siteID&url=post-url&format=[tree|plain]&sort=[+/-time|+/-score|+/-controversy ]&view=[user|all]
 // find comments for given post. Returns in tree or plain formats, sorted
 func (s *public) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
@@ -56,6 +56,8 @@ func (s *public) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(sort, " ") { // restore + replaced by " "
 		sort = "+" + sort[1:]
 	}
+
+	view := r.URL.Query().Get("view")
 	log.Printf("[DEBUG] get comments for %+v, sort %s, format %s", locator, sort, r.URL.Query().Get("format"))
 
 	key := cache.NewKey(locator.SiteID).ID(URLKeyWithUser(r)).Scopes(locator.SiteID, locator.URL)
@@ -64,6 +66,7 @@ func (s *public) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		if e != nil {
 			comments = []store.Comment{} // error should clear comments and continue for post info
 		}
+		comments = s.applyView(comments, view)
 		var b []byte
 		switch r.URL.Query().Get("format") {
 		case "tree":
@@ -391,4 +394,19 @@ func (s *public) robotsCtrl(w http.ResponseWriter, r *http.Request) {
 		allowed[i] = "Allow: /api/v1" + allowed[i]
 	}
 	render.PlainText(w, r, "User-agent: *\nDisallow: /auth/\nDisallow: /api/\n"+strings.Join(allowed, "\n")+"\n")
+}
+
+func (s *public) applyView(comments []store.Comment, view string) []store.Comment {
+	if strings.EqualFold(view, "user") {
+		projection := make([]store.Comment, len(comments))
+		for i, c := range comments {
+			p := store.Comment{
+				ID:   c.ID,
+				User: c.User,
+			}
+			projection[i] = p
+		}
+		return projection
+	}
+	return comments
 }
