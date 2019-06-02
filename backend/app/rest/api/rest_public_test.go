@@ -1,11 +1,13 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -522,6 +524,131 @@ func TestRest_Info(t *testing.T) {
 	assert.Equal(t, 400, code)
 	_, code = get(t, ts.URL+"/api/v1/info?site=radio-t-no&url=https://radio-t.com/blah-no")
 	assert.Equal(t, 400, code)
+}
+
+func TestRest_InfoStream(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
+	srv.pubRest.streamRefresh = 1 * time.Millisecond
+	srv.pubRest.streamTimeOut = 200 * time.Millisecond
+
+	user := store.User{ID: "user1", Name: "user name 1"}
+	c1 := store.Comment{User: user, Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
+		URL: "https://radio-t.com/blah1"}, Timestamp: time.Now()}
+	_, err := srv.DataService.Create(c1)
+	require.Nil(t, err, "%+v", err)
+
+	defer teardown()
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		for i := 0; i < 9; i++ {
+			resp, err := post(t, ts.URL+"/api/v1/comment",
+				`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
+			assert.Nil(t, err)
+			b, err := ioutil.ReadAll(resp.Body)
+			assert.Nil(t, err)
+			require.Equal(t, http.StatusCreated, resp.StatusCode, string(b))
+			time.Sleep(10 * time.Millisecond)
+		}
+		wg.Done()
+	}()
+
+	body, code := get(t, ts.URL+"/api/v1/stream/info?site=radio-t&url=https://radio-t.com/blah1")
+	assert.Equal(t, 200, code)
+	wg.Wait()
+
+	recs := strings.Split(string(body), "\n")
+	require.Equal(t, 10+1, len(recs), "10 records and \n")
+	assert.True(t, strings.Contains(recs[0], `"count":1`), recs[0])
+	assert.True(t, strings.Contains(recs[9], `"count":10`), recs[9])
+}
+
+func TestRest_InfoStreamTimeout(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
+	srv.pubRest.streamRefresh = 1 * time.Millisecond
+	srv.pubRest.streamTimeOut = 45 * time.Millisecond
+
+	user := store.User{ID: "user1", Name: "user name 1"}
+	c1 := store.Comment{User: user, Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
+		URL: "https://radio-t.com/blah1"}, Timestamp: time.Now()}
+	_, err := srv.DataService.Create(c1)
+	require.Nil(t, err, "%+v", err)
+
+	defer teardown()
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		for i := 0; i < 9; i++ {
+			resp, err := post(t, ts.URL+"/api/v1/comment",
+				`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
+			assert.Nil(t, err)
+			b, err := ioutil.ReadAll(resp.Body)
+			assert.Nil(t, err)
+			require.Equal(t, http.StatusCreated, resp.StatusCode, string(b))
+			time.Sleep(10 * time.Millisecond)
+		}
+		wg.Done()
+	}()
+
+	body, code := get(t, ts.URL+"/api/v1/stream/info?site=radio-t&url=https://radio-t.com/blah1")
+	assert.Equal(t, 200, code)
+	wg.Wait()
+
+	recs := strings.Split(string(body), "\n")
+	require.Equal(t, 4+1, len(recs), "3 records and \n")
+	assert.True(t, strings.Contains(recs[0], `"count":1`), recs[0])
+	assert.True(t, strings.Contains(recs[2], `"count":3`), recs[2])
+}
+
+func TestRest_InfoStreamCancel(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
+	srv.pubRest.streamRefresh = 1 * time.Millisecond
+	srv.pubRest.streamTimeOut = 500 * time.Millisecond
+
+	user := store.User{ID: "user1", Name: "user name 1"}
+	c1 := store.Comment{User: user, Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
+		URL: "https://radio-t.com/blah1"}, Timestamp: time.Now()}
+	_, err := srv.DataService.Create(c1)
+	require.Nil(t, err, "%+v", err)
+
+	defer teardown()
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		for i := 0; i < 9; i++ {
+			resp, err := post(t, ts.URL+"/api/v1/comment",
+				`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
+			assert.Nil(t, err)
+			b, err := ioutil.ReadAll(resp.Body)
+			assert.Nil(t, err)
+			require.Equal(t, http.StatusCreated, resp.StatusCode, string(b))
+			time.Sleep(100 * time.Millisecond)
+		}
+		wg.Done()
+	}()
+
+	client := http.Client{}
+	req, err := http.NewRequest("GET", ts.URL+"/api/v1/stream/info?site=radio-t&url=https://radio-t.com/blah1", nil)
+	require.Nil(t, err)
+	ctx, cancel := context.WithTimeout(context.Background(), 150*time.Millisecond)
+	defer cancel()
+	req = req.WithContext(ctx)
+	r, err := client.Do(req)
+	require.Nil(t, err)
+	defer r.Body.Close()
+	body, err := ioutil.ReadAll(r.Body)
+	require.EqualError(t, err, "context deadline exceeded")
+	assert.Equal(t, 200, r.StatusCode)
+
+	wg.Wait()
+
+	recs := strings.Split(string(body), "\n")
+	require.Equal(t, 3+1, len(recs), "3 records and \n")
+	assert.True(t, strings.Contains(recs[0], `"count":1`), recs[0])
+	assert.True(t, strings.Contains(recs[2], `"count":3`), recs[2])
 }
 
 func TestRest_Robots(t *testing.T) {

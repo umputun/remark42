@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"crypto/sha1" // nolint
 	"encoding/base64"
 	"io"
@@ -16,7 +17,6 @@ import (
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
 	"github.com/go-pkgz/rest/cache"
-
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/image"
@@ -30,6 +30,8 @@ type public struct {
 	commentFormatter *store.CommentFormatter
 	imageService     *image.Service
 	webRoot          string
+	streamTimeOut    time.Duration
+	streamRefresh    time.Duration
 }
 
 type pubStore interface {
@@ -143,6 +145,57 @@ func (s *public) infoCtrl(w http.ResponseWriter, r *http.Request) {
 
 	if err = R.RenderJSONFromBytes(w, r, data); err != nil {
 		log.Printf("[WARN] can't render info for post %+v", locator)
+	}
+}
+
+// GET /stream/info?site=siteID&url=post-url - get info stream about the post
+func (s *public) infoStreamCtrl(w http.ResponseWriter, r *http.Request) {
+	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
+	log.Printf("[DEBUG] start stream for %+v, timeout=%v, refresh=%v", locator, s.streamTimeOut, s.streamRefresh)
+
+	key := cache.NewKey(locator.SiteID).ID(URLKey(r)).Scopes(locator.SiteID, locator.URL)
+	info := func() (data []byte, upd bool, err error) {
+		data, err = s.cache.Get(key, func() ([]byte, error) {
+			info, e := s.dataService.Info(locator, s.readOnlyAge)
+			if e != nil {
+				return nil, e
+			}
+			upd = true // cache update used as indication of post update
+			return encodeJSONWithHTML(info)
+		})
+		if err != nil {
+			return data, false, err
+		}
+
+		return data, upd, nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), s.streamTimeOut)
+	tick := time.NewTicker(s.streamRefresh)
+	defer func() {
+		tick.Stop()
+		cancel()
+	}()
+
+	for {
+		select {
+		case <-r.Context().Done(): // request closes by remote client
+			return
+		case <-ctx.Done(): // request closed by timeout
+			return
+		case <-tick.C:
+			resp, upd, err := info()
+			if err != nil {
+				rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get post info", rest.ErrPostNotFound)
+				return
+			}
+			if upd {
+				w.Write(resp)
+				if fw, ok := w.(http.Flusher); ok {
+					fw.Flush()
+				}
+			}
+		}
 	}
 }
 

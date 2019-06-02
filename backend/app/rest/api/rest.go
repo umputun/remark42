@@ -55,6 +55,9 @@ type Rest struct {
 	}
 	UpdateLimiter float64
 
+	StreamTimeOut time.Duration
+	StreamRefresh time.Duration
+
 	SSLConfig   SSLConfig
 	httpsServer *http.Server
 	httpServer  *http.Server
@@ -230,6 +233,10 @@ func (s *Rest) routes() chi.Router {
 				rrss.Get("/site", s.rssRest.siteCommentsCtrl)
 				rrss.Get("/reply", s.rssRest.repliesCtrl)
 			})
+
+			ropen.Route("/stream", func(rstream chi.Router) {
+				rstream.Get("/info", s.pubRest.infoStreamCtrl)
+			})
 		})
 
 		// open routes, cached
@@ -314,6 +321,8 @@ func (s *Rest) controllerGroups() (public, private, admin, rss) {
 		commentFormatter: s.CommentFormatter,
 		readOnlyAge:      s.ReadOnlyAge,
 		webRoot:          s.WebRoot,
+		streamTimeOut:    s.StreamTimeOut,
+		streamRefresh:    s.StreamRefresh,
 	}
 
 	privGrp := private{
