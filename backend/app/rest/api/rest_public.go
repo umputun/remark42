@@ -183,18 +183,21 @@ func (s *public) infoStreamCtrl(w http.ResponseWriter, r *http.Request) {
 
 	for {
 		select {
-		case <-r.Context().Done(): // request closes by remote client
+		case <-r.Context().Done(): // request closed by remote client
 			return
 		case <-ctx.Done(): // request closed by timeout
 			return
-		case <-tick.C:
+		case <-tick.C: // refresh
 			resp, upd, err := info()
 			if err != nil {
 				rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get post info", rest.ErrPostNotFound)
 				return
 			}
 			if upd {
-				w.Write(resp)
+				if _, e := w.Write(resp); e != nil {
+					log.Printf("[WARN] failed to send stream, %v", e)
+					return
+				}
 				if fw, ok := w.(http.Flusher); ok {
 					fw.Flush()
 				}
