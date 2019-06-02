@@ -581,7 +581,7 @@ func TestRest_InfoStreamTimeout(t *testing.T) {
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
-		// write 10 more comments in 10ms intervals
+		// write 10 more comments in 100ms intervals
 		for i := 0; i < 9; i++ {
 			time.Sleep(100 * time.Millisecond)
 			resp, err := post(t, ts.URL+"/api/v1/comment",
