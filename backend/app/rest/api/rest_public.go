@@ -154,13 +154,17 @@ func (s *public) infoStreamCtrl(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[DEBUG] start stream for %+v, timeout=%v, refresh=%v", locator, s.streamTimeOut, s.streamRefresh)
 
 	key := cache.NewKey(locator.SiteID).ID(URLKey(r)).Scopes(locator.SiteID, locator.URL)
+	lastTS := time.Time{}
 	info := func() (data []byte, upd bool, err error) {
 		data, err = s.cache.Get(key, func() ([]byte, error) {
 			info, e := s.dataService.Info(locator, s.readOnlyAge)
 			if e != nil {
 				return nil, e
 			}
-			upd = true // cache update used as indication of post update
+			if info.LastTS != lastTS {
+				lastTS = info.LastTS
+				upd = true // cache update used as indication of post update. comparing lastTS for no-cache
+			}
 			return encodeJSONWithHTML(info)
 		})
 		if err != nil {
