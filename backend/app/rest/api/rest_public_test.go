@@ -567,10 +567,11 @@ func TestRest_InfoStream(t *testing.T) {
 func TestRest_InfoStreamTimeout(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
-	srv.pubRest.streamRefresh = 1 * time.Millisecond
-	srv.pubRest.streamTimeOut = 45 * time.Millisecond
+	srv.pubRest.streamRefresh = 10 * time.Millisecond
+	srv.pubRest.streamTimeOut = 450 * time.Millisecond
 
 	user := store.User{ID: "user1", Name: "user name 1"}
+	// write first comment right away
 	c1 := store.Comment{User: user, Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
 		URL: "https://radio-t.com/blah1"}, Timestamp: time.Now()}
 	_, err := srv.DataService.Create(c1)
@@ -580,26 +581,32 @@ func TestRest_InfoStreamTimeout(t *testing.T) {
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
+		// write 10 more comments in 10ms intervals
 		for i := 0; i < 9; i++ {
+			time.Sleep(100 * time.Millisecond)
 			resp, err := post(t, ts.URL+"/api/v1/comment",
 				`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
 			assert.Nil(t, err)
 			b, err := ioutil.ReadAll(resp.Body)
 			assert.Nil(t, err)
 			require.Equal(t, http.StatusCreated, resp.StatusCode, string(b))
-			time.Sleep(10 * time.Millisecond)
 		}
 		wg.Done()
 	}()
 
+	st := time.Now()
 	body, code := get(t, ts.URL+"/api/v1/stream/info?site=radio-t&url=https://radio-t.com/blah1")
 	assert.Equal(t, 200, code)
+	assert.True(t, time.Since(st) > time.Millisecond*450 && time.Since(st) < time.Millisecond*500, time.Since(st))
+	recs := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
+	t.Log(recs)
+	t.Log(time.Since(st))
+	require.Equal(t, 5, len(recs), "5 records in 450ms")
+	assert.True(t, strings.Contains(recs[0], `"count":1`), recs[0])
+	assert.True(t, strings.Contains(recs[4], `"count":5`), recs[4])
+
 	wg.Wait()
 
-	recs := strings.Split(string(body), "\n")
-	require.Equal(t, 4+1, len(recs), "3 records and \n")
-	assert.True(t, strings.Contains(recs[0], `"count":1`), recs[0])
-	assert.True(t, strings.Contains(recs[2], `"count":3`), recs[2])
 }
 
 func TestRest_InfoStreamCancel(t *testing.T) {
