@@ -532,23 +532,14 @@ func TestRest_InfoStream(t *testing.T) {
 	srv.pubRest.streamRefresh = 1 * time.Millisecond
 	srv.pubRest.streamTimeOut = 200 * time.Millisecond
 
-	user := store.User{ID: "user1", Name: "user name 1"}
-	c1 := store.Comment{User: user, Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
-		URL: "https://radio-t.com/blah1"}, Timestamp: time.Now()}
-	_, err := srv.DataService.Create(c1)
-	require.Nil(t, err, "%+v", err)
+	posrComment(t, ts.URL)
 
 	defer teardown()
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
 		for i := 0; i < 9; i++ {
-			resp, err := post(t, ts.URL+"/api/v1/comment",
-				`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
-			assert.Nil(t, err)
-			b, err := ioutil.ReadAll(resp.Body)
-			assert.Nil(t, err)
-			require.Equal(t, http.StatusCreated, resp.StatusCode, string(b))
+			posrComment(t, ts.URL)
 			time.Sleep(10 * time.Millisecond)
 		}
 		wg.Done()
@@ -567,29 +558,19 @@ func TestRest_InfoStream(t *testing.T) {
 func TestRest_InfoStreamTimeout(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
-	srv.pubRest.streamRefresh = 10 * time.Millisecond
+	srv.pubRest.streamRefresh = 5 * time.Millisecond
 	srv.pubRest.streamTimeOut = 450 * time.Millisecond
 
-	user := store.User{ID: "user1", Name: "user name 1"}
-	// write first comment right away
-	c1 := store.Comment{User: user, Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
-		URL: "https://radio-t.com/blah1"}, Timestamp: time.Now()}
-	_, err := srv.DataService.Create(c1)
-	require.Nil(t, err, "%+v", err)
+	posrComment(t, ts.URL)
 
 	defer teardown()
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
 		// write 10 more comments in 100ms intervals
-		for i := 0; i < 9; i++ {
+		for i := 1; i < 10; i++ {
 			time.Sleep(100 * time.Millisecond)
-			resp, e := post(t, ts.URL+"/api/v1/comment",
-				`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
-			require.Nil(t, e)
-			b, e := ioutil.ReadAll(resp.Body)
-			assert.Nil(t, e)
-			require.Equal(t, http.StatusCreated, resp.StatusCode, string(b))
+			posrComment(t, ts.URL)
 		}
 		wg.Done()
 	}()
@@ -613,11 +594,7 @@ func TestRest_InfoStreamCancel(t *testing.T) {
 	srv.pubRest.streamRefresh = 10 * time.Millisecond
 	srv.pubRest.streamTimeOut = 500 * time.Millisecond
 
-	user := store.User{ID: "user1", Name: "user name 1"}
-	c1 := store.Comment{User: user, Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
-		URL: "https://radio-t.com/blah1"}, Timestamp: time.Now()}
-	_, err := srv.DataService.Create(c1)
-	require.Nil(t, err, "%+v", err)
+	posrComment(t, ts.URL)
 
 	defer teardown()
 	wg := sync.WaitGroup{}
@@ -625,12 +602,7 @@ func TestRest_InfoStreamCancel(t *testing.T) {
 	go func() {
 		for i := 0; i < 9; i++ {
 			time.Sleep(100 * time.Millisecond)
-			resp, e := post(t, ts.URL+"/api/v1/comment",
-				`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
-			assert.Nil(t, e)
-			b, e := ioutil.ReadAll(resp.Body)
-			assert.Nil(t, e)
-			require.Equal(t, http.StatusCreated, resp.StatusCode, string(b))
+			posrComment(t, ts.URL)
 		}
 		wg.Done()
 	}()
@@ -665,4 +637,13 @@ func TestRest_Robots(t *testing.T) {
 	assert.Equal(t, "User-agent: *\nDisallow: /auth/\nDisallow: /api/\nAllow: /api/v1/find\n"+
 		"Allow: /api/v1/last\nAllow: /api/v1/id\nAllow: /api/v1/count\nAllow: /api/v1/counts\n"+
 		"Allow: /api/v1/list\nAllow: /api/v1/config\nAllow: /api/v1/img\nAllow: /api/v1/avatar\nAllow: /api/v1/picture\n", string(body))
+}
+
+func posrComment(t *testing.T, url string) {
+	resp, e := post(t, url+"/api/v1/comment",
+		`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
+	require.Nil(t, e)
+	b, e := ioutil.ReadAll(resp.Body)
+	require.Nil(t, e)
+	require.Equal(t, http.StatusCreated, resp.StatusCode, string(b))
 }

@@ -184,8 +184,10 @@ func (s *public) infoStreamCtrl(w http.ResponseWriter, r *http.Request) {
 	for {
 		select {
 		case <-r.Context().Done(): // request closed by remote client
+			log.Printf("[DEBUG] info stream closed by remote client, %v", r.Context().Err())
 			return
 		case <-ctx.Done(): // request closed by timeout
+			log.Printf("[DEBUG] info stream closed due to timeout")
 			return
 		case <-tick.C: // refresh
 			resp, upd, err := info()
