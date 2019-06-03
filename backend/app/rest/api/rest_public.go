@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"crypto/sha1" // nolint
 	"encoding/base64"
 	"io"
@@ -16,6 +17,8 @@ import (
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
 	"github.com/go-pkgz/rest/cache"
+	"github.com/pkg/errors"
+
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/image"
@@ -175,34 +178,7 @@ func (s *public) infoStreamCtrl(w http.ResponseWriter, r *http.Request) {
 		return data, upd, nil
 	}
 
-	// populate updates to chan, break on remote close
-	updCh := func() <-chan []byte {
-		ch := make(chan []byte)
-		go func() {
-			tick := time.NewTicker(s.streamRefresh)
-			defer func() {
-				close(ch)
-				tick.Stop()
-			}()
-			for {
-				select {
-				case <-r.Context().Done(): // request closed by remote client
-					log.Printf("[DEBUG] info stream closed by remote client, %v", r.Context().Err())
-					return
-				case <-tick.C:
-					resp, upd, err := info()
-					if err != nil {
-						rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get post info", rest.ErrPostNotFound)
-						return
-					}
-					if upd {
-						ch <- resp
-					}
-				}
-			}
-		}()
-		return ch
-	}()
+	updCh := s.eventsCh(r.Context(), info)
 
 	for {
 		select {
@@ -215,15 +191,55 @@ func (s *public) infoStreamCtrl(w http.ResponseWriter, r *http.Request) {
 			if !ok { // closed
 				return
 			}
-			if _, e := w.Write(resp); e != nil {
+			if resp.err != nil {
+				rest.SendErrorJSON(w, r, http.StatusBadRequest, resp.err, "can't get post info", rest.ErrPostNotFound)
+				return
+			}
+			if _, e := w.Write(resp.data); e != nil {
 				log.Printf("[WARN] failed to send stream, %v", e)
 				return
 			}
-			if fw, ok := w.(http.Flusher); ok {
+			if fw, okFlush := w.(http.Flusher); okFlush {
 				fw.Flush()
 			}
 		}
 	}
+}
+
+type eventFn func() (data []byte, upd bool, err error)
+
+type eventResp struct {
+	data []byte
+	err  error
+}
+
+// populate updates to chan, break on context close
+func (s *public) eventsCh(ctx context.Context, fn eventFn) <-chan eventResp {
+	ch := make(chan eventResp)
+	go func() {
+		tick := time.NewTicker(s.streamRefresh)
+		defer func() {
+			close(ch)
+			tick.Stop()
+		}()
+		for {
+			select {
+			case <-ctx.Done(): // request closed by remote client
+				log.Printf("[DEBUG] info stream closed by remote client, %v", ctx.Err())
+				return
+			case <-tick.C:
+				resp, upd, err := fn()
+				if err != nil {
+					ch <- eventResp{data: nil, err: errors.Wrap(err, "can't get stream data")}
+					return
+				}
+				if upd {
+					ch <- eventResp{data: resp, err: nil}
+				}
+			}
+		}
+	}()
+	return ch
 }
 
 // GET /last/{limit}?site=siteID&since=unix_ts_msec - last comments for the siteID, across all posts, sorted by time, optionally
