@@ -171,7 +171,7 @@ func (s *Rest) makeHTTPServer(port int, router http.Handler) *http.Server {
 func (s *Rest) routes() chi.Router {
 	router := chi.NewRouter()
 	router.Use(middleware.RealIP, R.Recoverer(log.Default()))
-	router.Use(middleware.Throttle(1000), middleware.Timeout(60*time.Second))
+	router.Use(middleware.Throttle(1000))
 	router.Use(R.AppInfo("remark42", "umputun", s.Version), R.Ping)
 
 	s.pubRest, s.privRest, s.adminRest, s.rssRest = s.controllerGroups() // assign controllers for groups
@@ -192,11 +192,13 @@ func (s *Rest) routes() chi.Router {
 	authHandler, avatarHandler := s.Authenticator.Handlers()
 
 	router.Group(func(r chi.Router) {
+		r.Use(middleware.Timeout(5 * time.Second))
 		r.Use(logInfoWithBody, tollbooth_chi.LimitHandler(tollbooth.NewLimiter(5, nil)), middleware.NoCache)
 		r.Mount("/auth", authHandler)
 	})
 
 	router.Group(func(r chi.Router) {
+		r.Use(middleware.Timeout(5 * time.Second))
 		r.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(100, nil)), middleware.NoCache)
 		r.Mount("/avatar", avatarHandler)
 	})
@@ -207,6 +209,7 @@ func (s *Rest) routes() chi.Router {
 	router.Route("/api/v1", func(rapi chi.Router) {
 
 		rapi.Group(func(rava chi.Router) {
+			rava.Use(middleware.Timeout(5 * time.Second))
 			rava.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(100, nil)))
 			rava.Use(middleware.NoCache)
 			rava.Mount("/avatar", avatarHandler)
@@ -214,6 +217,7 @@ func (s *Rest) routes() chi.Router {
 
 		// open routes
 		rapi.Group(func(ropen chi.Router) {
+			ropen.Use(middleware.Timeout(30 * time.Second))
 			ropen.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
 			ropen.Use(authMiddleware.Trace, middleware.NoCache, logInfoWithBody)
 			ropen.Get("/config", s.configCtrl)
@@ -234,13 +238,20 @@ func (s *Rest) routes() chi.Router {
 				rrss.Get("/reply", s.rssRest.repliesCtrl)
 			})
 
-			ropen.Route("/stream", func(rstream chi.Router) {
-				rstream.Get("/info", s.pubRest.infoStreamCtrl)
-			})
+		})
+
+		// open routes, streams
+		rapi.Route("/stream", func(rstream chi.Router) {
+			rstream.Use(middleware.Timeout(s.StreamTimeOut + time.Second))
+			rstream.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
+			rstream.Use(authMiddleware.Trace, middleware.NoCache, logInfoWithBody)
+
+			rstream.Get("/info", s.pubRest.infoStreamCtrl)
 		})
 
 		// open routes, cached
 		rapi.Group(func(ropen chi.Router) {
+			ropen.Use(middleware.Timeout(30 * time.Second))
 			ropen.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
 			ropen.Use(authMiddleware.Trace, logInfoWithBody)
 			ropen.Get("/picture/{user}/{id}", s.pubRest.loadPictureCtrl)
@@ -248,6 +259,7 @@ func (s *Rest) routes() chi.Router {
 
 		// protected routes, require auth
 		rapi.Group(func(rauth chi.Router) {
+			rauth.Use(middleware.Timeout(30 * time.Second))
 			rauth.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
 			rauth.Use(authMiddleware.Auth, middleware.NoCache, logInfoWithBody)
 			rauth.Get("/user", s.privRest.userInfoCtrl)
@@ -256,6 +268,7 @@ func (s *Rest) routes() chi.Router {
 
 		// admin routes, require auth and admin users only
 		rapi.Route("/admin", func(radmin chi.Router) {
+			radmin.Use(middleware.Timeout(30 * time.Second))
 			radmin.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
 			radmin.Use(authMiddleware.Auth, authMiddleware.AdminOnly)
 			radmin.Use(middleware.NoCache, logInfoWithBody)
@@ -280,6 +293,7 @@ func (s *Rest) routes() chi.Router {
 
 		// protected routes, throttled to 10/s by default, controlled by external UpdateLimiter param
 		rapi.Group(func(rauth chi.Router) {
+			rauth.Use(middleware.Timeout(10 * time.Second))
 			rauth.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(s.updateLimiter(), nil)))
 			rauth.Use(authMiddleware.Auth)
 			rauth.Use(middleware.NoCache)
@@ -291,7 +305,9 @@ func (s *Rest) routes() chi.Router {
 			rauth.With(rejectAnonUser).Post("/deleteme", s.privRest.deleteMeCtrl)
 		})
 
+		// protected routes, anonymous rejected
 		rapi.Group(func(rauth chi.Router) {
+			rauth.Use(middleware.Timeout(10 * time.Second))
 			rauth.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(s.updateLimiter(), nil)))
 			rauth.Use(authMiddleware.Auth, rejectAnonUser)
 			rauth.Use(logger.New(logger.Log(log.Default()), logger.Prefix("[DEBUG]"), logger.IPfn(ipFn)).Handler)
@@ -302,7 +318,8 @@ func (s *Rest) routes() chi.Router {
 
 	// open routes on root level
 	router.Group(func(rroot chi.Router) {
-		tollbooth_chi.LimitHandler(tollbooth.NewLimiter(50, nil))
+		rroot.Use(middleware.Timeout(10 * time.Second))
+		rroot.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(50, nil)))
 		rroot.Get("/index.html", s.pubRest.getStartedCtrl)
 		rroot.Get("/robots.txt", s.pubRest.robotsCtrl)
 	})
@@ -425,7 +442,7 @@ func addFileServer(r chi.Router, path string, root http.FileSystem) {
 	}
 	path += "*"
 
-	r.With(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(20, nil))).
+	r.With(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(20, nil)), middleware.Timeout(10*time.Second)).
 		Get(path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// don't show dirs, just serve files
 			if strings.HasSuffix(r.URL.Path, "/") && len(r.URL.Path) > 1 && r.URL.Path != (origPath+"/") {

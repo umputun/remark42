@@ -558,8 +558,8 @@ func TestRest_InfoStream(t *testing.T) {
 	assert.Equal(t, 200, code)
 	wg.Wait()
 
-	recs := strings.Split(string(body), "\n")
-	require.Equal(t, 10+1, len(recs), "10 records and \n")
+	recs := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
+	require.Equal(t, 10, len(recs), "10 records")
 	assert.True(t, strings.Contains(recs[0], `"count":1`), recs[0])
 	assert.True(t, strings.Contains(recs[9], `"count":10`), recs[9])
 }
@@ -584,11 +584,11 @@ func TestRest_InfoStreamTimeout(t *testing.T) {
 		// write 10 more comments in 100ms intervals
 		for i := 0; i < 9; i++ {
 			time.Sleep(100 * time.Millisecond)
-			resp, err := post(t, ts.URL+"/api/v1/comment",
+			resp, e := post(t, ts.URL+"/api/v1/comment",
 				`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
-			assert.Nil(t, err)
-			b, err := ioutil.ReadAll(resp.Body)
-			assert.Nil(t, err)
+			require.Nil(t, e)
+			b, e := ioutil.ReadAll(resp.Body)
+			assert.Nil(t, e)
 			require.Equal(t, http.StatusCreated, resp.StatusCode, string(b))
 		}
 		wg.Done()
@@ -599,11 +599,9 @@ func TestRest_InfoStreamTimeout(t *testing.T) {
 	assert.Equal(t, 200, code)
 	assert.True(t, time.Since(st) > time.Millisecond*450 && time.Since(st) < time.Millisecond*500, time.Since(st))
 	recs := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
-	t.Log(recs)
-	t.Log(time.Since(st))
-	require.Equal(t, 5, len(recs), "5 records in 450ms")
+	require.Equal(t, 4, len(recs), "4 records in 450ms")
 	assert.True(t, strings.Contains(recs[0], `"count":1`), recs[0])
-	assert.True(t, strings.Contains(recs[4], `"count":5`), recs[4])
+	assert.True(t, strings.Contains(recs[3], `"count":4`), recs[3])
 
 	wg.Wait()
 
@@ -612,7 +610,7 @@ func TestRest_InfoStreamTimeout(t *testing.T) {
 func TestRest_InfoStreamCancel(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
-	srv.pubRest.streamRefresh = 1 * time.Millisecond
+	srv.pubRest.streamRefresh = 10 * time.Millisecond
 	srv.pubRest.streamTimeOut = 500 * time.Millisecond
 
 	user := store.User{ID: "user1", Name: "user name 1"}
@@ -626,13 +624,13 @@ func TestRest_InfoStreamCancel(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		for i := 0; i < 9; i++ {
-			resp, err := post(t, ts.URL+"/api/v1/comment",
-				`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
-			assert.Nil(t, err)
-			b, err := ioutil.ReadAll(resp.Body)
-			assert.Nil(t, err)
-			require.Equal(t, http.StatusCreated, resp.StatusCode, string(b))
 			time.Sleep(100 * time.Millisecond)
+			resp, e := post(t, ts.URL+"/api/v1/comment",
+				`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
+			assert.Nil(t, e)
+			b, e := ioutil.ReadAll(resp.Body)
+			assert.Nil(t, e)
+			require.Equal(t, http.StatusCreated, resp.StatusCode, string(b))
 		}
 		wg.Done()
 	}()
@@ -652,10 +650,10 @@ func TestRest_InfoStreamCancel(t *testing.T) {
 
 	wg.Wait()
 
-	recs := strings.Split(string(body), "\n")
-	require.Equal(t, 3+1, len(recs), "3 records and \n")
+	recs := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
+	require.Equal(t, 2, len(recs), "2 records")
 	assert.True(t, strings.Contains(recs[0], `"count":1`), recs[0])
-	assert.True(t, strings.Contains(recs[2], `"count":3`), recs[2])
+	assert.True(t, strings.Contains(recs[1], `"count":2`), recs[1])
 }
 
 func TestRest_Robots(t *testing.T) {
