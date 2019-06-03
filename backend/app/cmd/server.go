@@ -304,6 +304,8 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		SSLConfig:        sslConfig,
 		UpdateLimiter:    s.UpdateLimit,
 		ImageService:     imageService,
+		StreamTimeOut:    time.Minute * 15,
+		StreamRefresh:    time.Second,
 	}
 
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = s.LowScore, s.CriticalScore

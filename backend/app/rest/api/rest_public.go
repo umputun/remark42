@@ -16,7 +16,6 @@ import (
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
 	"github.com/go-pkgz/rest/cache"
-
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/image"
@@ -30,6 +29,8 @@ type public struct {
 	commentFormatter *store.CommentFormatter
 	imageService     *image.Service
 	webRoot          string
+	streamTimeOut    time.Duration
+	streamRefresh    time.Duration
 }
 
 type pubStore interface {
@@ -143,6 +144,85 @@ func (s *public) infoCtrl(w http.ResponseWriter, r *http.Request) {
 
 	if err = R.RenderJSONFromBytes(w, r, data); err != nil {
 		log.Printf("[WARN] can't render info for post %+v", locator)
+	}
+}
+
+// GET /stream/info?site=siteID&url=post-url - get info stream about the post
+func (s *public) infoStreamCtrl(w http.ResponseWriter, r *http.Request) {
+	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
+	log.Printf("[DEBUG] start stream for %+v, timeout=%v, refresh=%v", locator, s.streamTimeOut, s.streamRefresh)
+
+	key := cache.NewKey(locator.SiteID).ID(URLKey(r)).Scopes(locator.SiteID, locator.URL)
+	lastTS := time.Time{}
+	lastCount := 0
+	info := func() (data []byte, upd bool, err error) {
+		data, err = s.cache.Get(key, func() ([]byte, error) {
+			info, e := s.dataService.Info(locator, s.readOnlyAge)
+			if e != nil {
+				return nil, e
+			}
+			if info.LastTS != lastTS || info.Count != lastCount {
+				lastTS = info.LastTS
+				lastCount = info.Count // removal won't update lastTS
+				upd = true             // cache update used as indication of post update. comparing lastTS for no-cache
+			}
+			return encodeJSONWithHTML(info)
+		})
+		if err != nil {
+			return data, false, err
+		}
+
+		return data, upd, nil
+	}
+
+	// populate updates to chan, break on remote close
+	updCh := func() <-chan []byte {
+		ch := make(chan []byte)
+		go func() {
+			tick := time.NewTicker(s.streamRefresh)
+			defer func() {
+				close(ch)
+				tick.Stop()
+			}()
+			for {
+				select {
+				case <-r.Context().Done(): // request closed by remote client
+					log.Printf("[DEBUG] info stream closed by remote client, %v", r.Context().Err())
+					return
+				case <-tick.C:
+					resp, upd, err := info()
+					if err != nil {
+						rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get post info", rest.ErrPostNotFound)
+						return
+					}
+					if upd {
+						ch <- resp
+					}
+				}
+			}
+		}()
+		return ch
+	}()
+
+	for {
+		select {
+		case <-r.Context().Done(): // request closed by remote client
+			return
+		case <-time.After(s.streamTimeOut): // request closed by timeout
+			log.Printf("[DEBUG] info stream closed due to timeout")
+			return
+		case resp, ok := <-updCh: // new update
+			if !ok { // closed
+				return
+			}
+			if _, e := w.Write(resp); e != nil {
+				log.Printf("[WARN] failed to send stream, %v", e)
+				return
+			}
+			if fw, ok := w.(http.Flusher); ok {
+				fw.Flush()
+			}
+		}
 	}
 }
 
