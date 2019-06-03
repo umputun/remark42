@@ -155,15 +155,17 @@ func (s *public) infoStreamCtrl(w http.ResponseWriter, r *http.Request) {
 
 	key := cache.NewKey(locator.SiteID).ID(URLKey(r)).Scopes(locator.SiteID, locator.URL)
 	lastTS := time.Time{}
+	lastCount := 0
 	info := func() (data []byte, upd bool, err error) {
 		data, err = s.cache.Get(key, func() ([]byte, error) {
 			info, e := s.dataService.Info(locator, s.readOnlyAge)
 			if e != nil {
 				return nil, e
 			}
-			if info.LastTS != lastTS {
+			if info.LastTS != lastTS || info.Count != lastCount {
 				lastTS = info.LastTS
-				upd = true // cache update used as indication of post update. comparing lastTS for no-cache
+				lastCount = info.Count // removal won't update lastTS
+				upd = true             // cache update used as indication of post update. comparing lastTS for no-cache
 			}
 			return encodeJSONWithHTML(info)
 		})

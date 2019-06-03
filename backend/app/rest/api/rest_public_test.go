@@ -530,19 +530,19 @@ func TestRest_InfoStream(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
 	srv.pubRest.streamRefresh = 1 * time.Millisecond
-	srv.pubRest.streamTimeOut = 200 * time.Millisecond
+	srv.pubRest.streamTimeOut = 300 * time.Millisecond
 
-	posrComment(t, ts.URL)
+	postComment(t, ts.URL)
 
 	defer teardown()
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
-		for i := 0; i < 9; i++ {
-			posrComment(t, ts.URL)
+		defer wg.Done()
+		for i := 1; i < 10; i++ {
 			time.Sleep(10 * time.Millisecond)
+			postComment(t, ts.URL)
 		}
-		wg.Done()
 	}()
 
 	body, code := get(t, ts.URL+"/api/v1/stream/info?site=radio-t&url=https://radio-t.com/blah1")
@@ -558,21 +558,21 @@ func TestRest_InfoStream(t *testing.T) {
 func TestRest_InfoStreamTimeout(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
-	srv.pubRest.streamRefresh = 5 * time.Millisecond
+	srv.pubRest.streamRefresh = 10 * time.Millisecond
 	srv.pubRest.streamTimeOut = 450 * time.Millisecond
 
-	posrComment(t, ts.URL)
+	postComment(t, ts.URL)
 
 	defer teardown()
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
-		// write 10 more comments in 100ms intervals
+		defer wg.Done()
+		// write 9 more comments in 100ms intervals
 		for i := 1; i < 10; i++ {
 			time.Sleep(100 * time.Millisecond)
-			posrComment(t, ts.URL)
+			postComment(t, ts.URL)
 		}
-		wg.Done()
 	}()
 
 	st := time.Now()
@@ -580,9 +580,7 @@ func TestRest_InfoStreamTimeout(t *testing.T) {
 	assert.Equal(t, 200, code)
 	assert.True(t, time.Since(st) > time.Millisecond*450 && time.Since(st) < time.Millisecond*500, time.Since(st))
 	recs := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
-	require.Equal(t, 4, len(recs), "4 records in 450ms")
-	assert.True(t, strings.Contains(recs[0], `"count":1`), recs[0])
-	assert.True(t, strings.Contains(recs[3], `"count":4`), recs[3])
+	require.True(t, len(recs) < 10, "not all for 10 streamed, only %d", len(recs))
 
 	wg.Wait()
 
@@ -594,17 +592,17 @@ func TestRest_InfoStreamCancel(t *testing.T) {
 	srv.pubRest.streamRefresh = 10 * time.Millisecond
 	srv.pubRest.streamTimeOut = 500 * time.Millisecond
 
-	posrComment(t, ts.URL)
+	postComment(t, ts.URL)
 
 	defer teardown()
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
-		for i := 0; i < 9; i++ {
+		defer wg.Done()
+		for i := 1; i < 10; i++ {
 			time.Sleep(100 * time.Millisecond)
-			posrComment(t, ts.URL)
+			postComment(t, ts.URL)
 		}
-		wg.Done()
 	}()
 
 	client := http.Client{}
@@ -639,7 +637,7 @@ func TestRest_Robots(t *testing.T) {
 		"Allow: /api/v1/list\nAllow: /api/v1/config\nAllow: /api/v1/img\nAllow: /api/v1/avatar\nAllow: /api/v1/picture\n", string(body))
 }
 
-func posrComment(t *testing.T, url string) {
+func postComment(t *testing.T, url string) {
 	resp, e := post(t, url+"/api/v1/comment",
 		`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
 	require.Nil(t, e)
