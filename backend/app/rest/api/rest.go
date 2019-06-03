@@ -240,12 +240,10 @@ func (s *Rest) routes() chi.Router {
 
 		})
 
-		// open routes, streams
+		// open routes, streams, no send timeout
 		rapi.Route("/stream", func(rstream chi.Router) {
-			rstream.Use(middleware.Timeout(s.StreamTimeOut + time.Second))
 			rstream.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
 			rstream.Use(authMiddleware.Trace, middleware.NoCache, logInfoWithBody)
-
 			rstream.Get("/info", s.pubRest.infoStreamCtrl)
 		})
 

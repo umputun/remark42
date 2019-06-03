@@ -557,23 +557,12 @@ func TestRest_InfoStream(t *testing.T) {
 
 func TestRest_InfoStreamTimeout(t *testing.T) {
 	ts, srv, teardown := startupT(t)
+	defer teardown()
 	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
 	srv.pubRest.streamRefresh = 10 * time.Millisecond
 	srv.pubRest.streamTimeOut = 450 * time.Millisecond
 
 	postComment(t, ts.URL)
-
-	defer teardown()
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		// write 9 more comments in 100ms intervals
-		for i := 1; i < 10; i++ {
-			time.Sleep(100 * time.Millisecond)
-			postComment(t, ts.URL)
-		}
-	}()
 
 	st := time.Now()
 	body, code := get(t, ts.URL+"/api/v1/stream/info?site=radio-t&url=https://radio-t.com/blah1")
@@ -581,9 +570,6 @@ func TestRest_InfoStreamTimeout(t *testing.T) {
 	assert.True(t, time.Since(st) > time.Millisecond*450 && time.Since(st) < time.Millisecond*500, time.Since(st))
 	recs := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
 	require.True(t, len(recs) < 10, "not all for 10 streamed, only %d", len(recs))
-
-	wg.Wait()
-
 }
 
 func TestRest_InfoStreamCancel(t *testing.T) {

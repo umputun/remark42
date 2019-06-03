@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"crypto/sha1" // nolint
 	"encoding/base64"
 	"io"
@@ -176,35 +175,52 @@ func (s *public) infoStreamCtrl(w http.ResponseWriter, r *http.Request) {
 		return data, upd, nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), s.streamTimeOut)
-	tick := time.NewTicker(s.streamRefresh)
-	defer func() {
-		tick.Stop()
-		cancel()
+	// populate updates to chan, break on remote close
+	updCh := func() <-chan []byte {
+		ch := make(chan []byte)
+		go func() {
+			tick := time.NewTicker(s.streamRefresh)
+			defer func() {
+				close(ch)
+				tick.Stop()
+			}()
+			for {
+				select {
+				case <-r.Context().Done(): // request closed by remote client
+					log.Printf("[DEBUG] info stream closed by remote client, %v", r.Context().Err())
+					return
+				case <-tick.C:
+					resp, upd, err := info()
+					if err != nil {
+						rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get post info", rest.ErrPostNotFound)
+						return
+					}
+					if upd {
+						ch <- resp
+					}
+				}
+			}
+		}()
+		return ch
 	}()
 
 	for {
 		select {
 		case <-r.Context().Done(): // request closed by remote client
-			log.Printf("[DEBUG] info stream closed by remote client, %v", r.Context().Err())
 			return
-		case <-ctx.Done(): // request closed by timeout
+		case <-time.After(s.streamTimeOut): // request closed by timeout
 			log.Printf("[DEBUG] info stream closed due to timeout")
 			return
-		case <-tick.C: // refresh
-			resp, upd, err := info()
-			if err != nil {
-				rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get post info", rest.ErrPostNotFound)
+		case resp, ok := <-updCh: // new update
+			if !ok { // closed
 				return
 			}
-			if upd {
-				if _, e := w.Write(resp); e != nil {
-					log.Printf("[WARN] failed to send stream, %v", e)
-					return
-				}
-				if fw, ok := w.(http.Flusher); ok {
-					fw.Flush()
-				}
+			if _, e := w.Write(resp); e != nil {
+				log.Printf("[WARN] failed to send stream, %v", e)
+				return
+			}
+			if fw, ok := w.(http.Flusher); ok {
+				fw.Flush()
 			}
 		}
 	}
