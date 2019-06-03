@@ -244,6 +244,7 @@ func (s *Rest) routes() chi.Router {
 			rstream.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
 			rstream.Use(authMiddleware.Trace, middleware.NoCache, logInfoWithBody)
 			rstream.Get("/info", s.pubRest.infoStreamCtrl)
+			rstream.Get("/last", s.pubRest.lastCommentsStreamCtrl)
 		})
 
 		// open routes, cached

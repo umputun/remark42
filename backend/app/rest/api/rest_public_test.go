@@ -565,11 +565,9 @@ func TestRest_InfoStreamTimeout(t *testing.T) {
 	postComment(t, ts.URL)
 
 	st := time.Now()
-	body, code := get(t, ts.URL+"/api/v1/stream/info?site=radio-t&url=https://radio-t.com/blah1")
+	_, code := get(t, ts.URL+"/api/v1/stream/info?site=radio-t&url=https://radio-t.com/blah1")
 	assert.Equal(t, 200, code)
 	assert.True(t, time.Since(st) > time.Millisecond*450 && time.Since(st) < time.Millisecond*500, time.Since(st))
-	recs := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
-	require.True(t, len(recs) < 10, "not all for 10 streamed, only %d", len(recs))
 }
 
 func TestRest_InfoStreamCancel(t *testing.T) {
@@ -621,6 +619,97 @@ func TestRest_Robots(t *testing.T) {
 	assert.Equal(t, "User-agent: *\nDisallow: /auth/\nDisallow: /api/\nAllow: /api/v1/find\n"+
 		"Allow: /api/v1/last\nAllow: /api/v1/id\nAllow: /api/v1/count\nAllow: /api/v1/counts\n"+
 		"Allow: /api/v1/list\nAllow: /api/v1/config\nAllow: /api/v1/img\nAllow: /api/v1/avatar\nAllow: /api/v1/picture\n", string(body))
+}
+
+func TestRest_LastCommentsStream(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
+	srv.pubRest.streamRefresh = 10 * time.Millisecond
+	srv.pubRest.streamTimeOut = 500 * time.Millisecond
+
+	postComment(t, ts.URL)
+
+	defer teardown()
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for i := 1; i < 10; i++ {
+			time.Sleep(100 * time.Millisecond)
+			postComment(t, ts.URL)
+		}
+	}()
+
+	client := http.Client{}
+	req, err := http.NewRequest("GET", ts.URL+"/api/v1/stream/last?site=radio-t", nil)
+	require.Nil(t, err)
+	r, err := client.Do(req)
+	require.Nil(t, err)
+	defer r.Body.Close()
+	body, err := ioutil.ReadAll(r.Body)
+	require.Nil(t, err)
+	assert.Equal(t, 200, r.StatusCode)
+
+	wg.Wait()
+
+	recs := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
+	require.Equal(t, 9, len(recs), "9 records")
+	t.Logf("%v", recs)
+	assert.True(t, strings.Contains(recs[0], `test 123`), recs[0])
+}
+
+func TestRest_LastCommentsStreamTimeout(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
+	srv.pubRest.streamRefresh = 10 * time.Millisecond
+	srv.pubRest.streamTimeOut = 450 * time.Millisecond
+
+	postComment(t, ts.URL)
+
+	st := time.Now()
+	_, code := get(t, ts.URL+"/api/v1/stream/last?site=radio-t")
+	assert.Equal(t, 200, code)
+	assert.True(t, time.Since(st) > time.Millisecond*450 && time.Since(st) < time.Millisecond*500, time.Since(st))
+}
+
+func TestRest_LastCommentsStreamCancel(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
+	srv.pubRest.streamRefresh = 10 * time.Millisecond
+	srv.pubRest.streamTimeOut = 500 * time.Millisecond
+
+	postComment(t, ts.URL)
+
+	defer teardown()
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for i := 1; i < 10; i++ {
+			time.Sleep(100 * time.Millisecond)
+			postComment(t, ts.URL)
+		}
+	}()
+
+	client := http.Client{}
+	req, err := http.NewRequest("GET", ts.URL+"/api/v1/stream/last?site=radio-t", nil)
+	require.Nil(t, err)
+	ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
+	defer cancel()
+	req = req.WithContext(ctx)
+	r, err := client.Do(req)
+	require.Nil(t, err)
+	defer r.Body.Close()
+	body, err := ioutil.ReadAll(r.Body)
+	require.EqualError(t, err, "context deadline exceeded")
+	assert.Equal(t, 200, r.StatusCode)
+
+	wg.Wait()
+
+	recs := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
+	require.Equal(t, 2, len(recs), "2 records")
+	assert.True(t, strings.Contains(recs[0], `test 123`), recs[0])
 }
 
 func postComment(t *testing.T, url string) {

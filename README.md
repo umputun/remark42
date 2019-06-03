@@ -625,7 +625,11 @@ Sort can be `time`, `active` or `score`. Supported sort order with prefix -/+, i
   ```
 
 * `GET /api/v1/info?site=site-idd&url=post-url` - returns `PostInfo` for site and url
-* `GET /api/v1/stream/info?site=site-idd&url=post-url` - returns stream with `PostInfo` records ("\n" separated) for site and url`
+
+### Streaming API
+
+* `GET /api/v1/stream/info?site=site-idd&url=post-url` - returns stream with `PostInfo` records ("\n" separated) for the site and url`
+* `GET /api/v1/stream/last?site=site-id` - returns updates stream with comments ("\n" separated) for the site`
 
 ### RSS feeds
 

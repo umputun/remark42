@@ -155,10 +155,10 @@ func (s *public) infoStreamCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	log.Printf("[DEBUG] start stream for %+v, timeout=%v, refresh=%v", locator, s.streamTimeOut, s.streamRefresh)
 
-	key := cache.NewKey(locator.SiteID).ID(URLKey(r)).Scopes(locator.SiteID, locator.URL)
 	lastTS := time.Time{}
 	lastCount := 0
 	info := func() (data []byte, upd bool, err error) {
+		key := cache.NewKey(locator.SiteID).ID(URLKey(r)).Scopes(locator.SiteID, locator.URL)
 		data, err = s.cache.Get(key, func() ([]byte, error) {
 			info, e := s.dataService.Info(locator, s.readOnlyAge)
 			if e != nil {
@@ -196,7 +196,7 @@ func (s *public) infoStreamCtrl(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			if _, e := w.Write(resp.data); e != nil {
-				log.Printf("[WARN] failed to send stream, %v", e)
+				log.Printf("[WARN] failed to send info stream, %v", e)
 				return
 			}
 			if fw, okFlush := w.(http.Flusher); okFlush {
@@ -204,42 +204,6 @@ func (s *public) infoStreamCtrl(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-}
-
-type eventFn func() (data []byte, upd bool, err error)
-
-type eventResp struct {
-	data []byte
-	err  error
-}
-
-// populate updates to chan, break on context close
-func (s *public) eventsCh(ctx context.Context, fn eventFn) <-chan eventResp {
-	ch := make(chan eventResp)
-	go func() {
-		tick := time.NewTicker(s.streamRefresh)
-		defer func() {
-			close(ch)
-			tick.Stop()
-		}()
-		for {
-			select {
-			case <-ctx.Done(): // request closed by remote client
-				log.Printf("[DEBUG] info stream closed by remote client, %v", ctx.Err())
-				return
-			case <-tick.C:
-				resp, upd, err := fn()
-				if err != nil {
-					ch <- eventResp{data: nil, err: errors.Wrap(err, "can't get stream data")}
-					return
-				}
-				if upd {
-					ch <- eventResp{data: resp, err: nil}
-				}
-			}
-		}
-	}()
-	return ch
 }
 
 // GET /last/{limit}?site=siteID&since=unix_ts_msec - last comments for the siteID, across all posts, sorted by time, optionally
@@ -282,6 +246,58 @@ func (s *public) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	if err = R.RenderJSONFromBytes(w, r, data); err != nil {
 		log.Printf("[WARN] can't render last comments for site %s", siteID)
+	}
+}
+
+// GET /stream/last?site=siteID& - stream of last comments last comments for the siteID, across all posts
+func (s *public) lastCommentsStreamCtrl(w http.ResponseWriter, r *http.Request) {
+	siteID := r.URL.Query().Get("site")
+	log.Printf("[DEBUG] get last comments stream for %s", siteID)
+
+	sinceTime := time.Now()
+
+	info := func() (data []byte, upd bool, err error) {
+		key := cache.NewKey(siteID).ID(URLKey(r)).Scopes(lastCommentsScope)
+		data, err = s.cache.Get(key, func() ([]byte, error) {
+			comments, e := s.dataService.Last(siteID, 1, sinceTime, rest.GetUserOrEmpty(r))
+			if e != nil {
+				return nil, e
+			}
+			if len(comments) > 0 {
+				sinceTime = comments[0].Timestamp
+				upd = true
+			}
+			sinceTime = time.Now()
+			return encodeJSONWithHTML(comments)
+		})
+		return data, upd, err
+	}
+
+	updCh := s.eventsCh(r.Context(), info)
+
+	for {
+		select {
+		case <-r.Context().Done(): // request closed by remote client
+			return
+		case <-time.After(s.streamTimeOut): // request closed by timeout
+			log.Printf("[DEBUG] last comments stream closed due to timeout")
+			return
+		case resp, ok := <-updCh: // new update
+			if !ok { // closed
+				return
+			}
+			if resp.err != nil {
+				rest.SendErrorJSON(w, r, http.StatusInternalServerError, resp.err, "can't get last comments", rest.ErrInternal)
+				return
+			}
+			if _, e := w.Write(resp.data); e != nil {
+				log.Printf("[WARN] failed to send last comments stream, %v", e)
+				return
+			}
+			if fw, okFlush := w.(http.Flusher); okFlush {
+				fw.Flush()
+			}
+		}
 	}
 }
 
@@ -505,4 +521,40 @@ func (s *public) applyView(comments []store.Comment, view string) []store.Commen
 		return projection
 	}
 	return comments
+}
+
+type eventFn func() (data []byte, upd bool, err error)
+
+type eventResp struct {
+	data []byte
+	err  error
+}
+
+// populate updates to chan, break on context close
+func (s *public) eventsCh(ctx context.Context, fn eventFn) <-chan eventResp {
+	ch := make(chan eventResp)
+	go func() {
+		tick := time.NewTicker(s.streamRefresh)
+		defer func() {
+			close(ch)
+			tick.Stop()
+		}()
+		for {
+			select {
+			case <-ctx.Done(): // request closed by remote client
+				log.Printf("[DEBUG] info stream closed by remote client, %v", ctx.Err())
+				return
+			case <-tick.C:
+				resp, upd, err := fn()
+				if err != nil {
+					ch <- eventResp{data: nil, err: errors.Wrap(err, "can't get stream data")}
+					return
+				}
+				if upd {
+					ch <- eventResp{data: resp, err: nil}
+				}
+			}
+		}
+	}()
+	return ch
 }
