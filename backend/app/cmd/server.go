@@ -305,7 +305,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		UpdateLimiter:    s.UpdateLimit,
 		ImageService:     imageService,
 		StreamTimeOut:    time.Minute * 15,
-		StreamRefresh:    time.Second,
+		StreamRefresh:    time.Second * 5,
 	}
 
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = s.LowScore, s.CriticalScore
