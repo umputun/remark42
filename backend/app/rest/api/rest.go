@@ -338,6 +338,7 @@ func (s *Rest) controllerGroups() (public, private, admin, rss) {
 		webRoot:          s.WebRoot,
 		streamTimeOut:    s.StreamTimeOut,
 		streamRefresh:    s.StreamRefresh,
+		maxActiveStreams: 500,
 	}
 
 	privGrp := private{

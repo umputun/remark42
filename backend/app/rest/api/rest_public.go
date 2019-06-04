@@ -10,6 +10,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-chi/chi"
@@ -34,6 +35,9 @@ type public struct {
 	webRoot          string
 	streamTimeOut    time.Duration
 	streamRefresh    time.Duration
+	maxActiveStreams int32
+
+	activeStreamsCount int32
 }
 
 type pubStore interface {
@@ -178,6 +182,14 @@ func (s *public) infoStreamCtrl(w http.ResponseWriter, r *http.Request) {
 		return data, upd, nil
 	}
 
+	count := atomic.AddInt32(&s.activeStreamsCount, 1)
+	defer atomic.AddInt32(&s.activeStreamsCount, -1)
+	if count > s.maxActiveStreams {
+		rest.SendErrorJSON(w, r, http.StatusTooManyRequests, errors.New("too many streams"),
+			"can't open new stream", rest.ErrActionRejected)
+		return
+	}
+
 	updCh := s.eventsCh(r.Context(), info)
 
 	for {
@@ -274,6 +286,14 @@ func (s *public) lastCommentsStreamCtrl(w http.ResponseWriter, r *http.Request) 
 	}
 
 	updCh := s.eventsCh(r.Context(), info)
+
+	count := atomic.AddInt32(&s.activeStreamsCount, 1)
+	defer atomic.AddInt32(&s.activeStreamsCount, -1)
+	if count > s.maxActiveStreams {
+		rest.SendErrorJSON(w, r, http.StatusTooManyRequests, errors.New("too many streams"),
+			"can't open new stream", rest.ErrActionRejected)
+		return
+	}
 
 	for {
 		select {

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -528,13 +529,13 @@ func TestRest_Info(t *testing.T) {
 
 func TestRest_InfoStream(t *testing.T) {
 	ts, srv, teardown := startupT(t)
+	defer teardown()
 	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
 	srv.pubRest.streamRefresh = 1 * time.Millisecond
 	srv.pubRest.streamTimeOut = 300 * time.Millisecond
 
 	postComment(t, ts.URL)
 
-	defer teardown()
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
@@ -553,6 +554,32 @@ func TestRest_InfoStream(t *testing.T) {
 	require.Equal(t, 10, len(recs), "10 records")
 	assert.True(t, strings.Contains(recs[0], `"count":1`), recs[0])
 	assert.True(t, strings.Contains(recs[9], `"count":10`), recs[9])
+}
+
+func TestRest_InfoStreamTooMany(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
+	srv.pubRest.streamRefresh = 1 * time.Millisecond
+	srv.pubRest.streamTimeOut = 300 * time.Millisecond
+	srv.pubRest.maxActiveStreams = 10
+
+	postComment(t, ts.URL)
+
+	var errsCount int32
+	wg := sync.WaitGroup{}
+	wg.Add(20)
+	for i := 0; i < 20; i++ {
+		go func() {
+			_, code := get(t, ts.URL+"/api/v1/stream/info?site=radio-t&url=https://radio-t.com/blah1")
+			if code == 429 {
+				atomic.AddInt32(&errsCount, 1)
+			}
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+	assert.Equal(t, int32(10), atomic.LoadInt32(&errsCount), "10 streams rejected")
 }
 
 func TestRest_InfoStreamTimeout(t *testing.T) {
@@ -710,6 +737,32 @@ func TestRest_LastCommentsStreamCancel(t *testing.T) {
 	recs := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
 	require.Equal(t, 2, len(recs), "2 records")
 	assert.True(t, strings.Contains(recs[0], `test 123`), recs[0])
+}
+
+func TestRest_LastCommentsStreamTooMany(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
+	srv.pubRest.streamRefresh = 1 * time.Millisecond
+	srv.pubRest.streamTimeOut = 300 * time.Millisecond
+	srv.pubRest.maxActiveStreams = 10
+
+	postComment(t, ts.URL)
+
+	var errsCount int32
+	wg := sync.WaitGroup{}
+	wg.Add(20)
+	for i := 0; i < 20; i++ {
+		go func() {
+			_, code := get(t, ts.URL+"/api/v1/stream/last?site=radio-t")
+			if code == 429 {
+				atomic.AddInt32(&errsCount, 1)
+			}
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+	assert.Equal(t, int32(10), atomic.LoadInt32(&errsCount), "10 streams rejected")
 }
 
 func postComment(t *testing.T, url string) {
