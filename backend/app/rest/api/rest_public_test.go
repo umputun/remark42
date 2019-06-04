@@ -533,6 +533,7 @@ func TestRest_InfoStream(t *testing.T) {
 	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
 	srv.pubRest.streamRefresh = 1 * time.Millisecond
 	srv.pubRest.streamTimeOut = 300 * time.Millisecond
+	srv.pubRest.maxActiveStreams = 100
 
 	postComment(t, ts.URL)
 
@@ -588,6 +589,7 @@ func TestRest_InfoStreamTimeout(t *testing.T) {
 	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
 	srv.pubRest.streamRefresh = 10 * time.Millisecond
 	srv.pubRest.streamTimeOut = 450 * time.Millisecond
+	srv.pubRest.maxActiveStreams = 100
 
 	postComment(t, ts.URL)
 
@@ -602,6 +604,7 @@ func TestRest_InfoStreamCancel(t *testing.T) {
 	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
 	srv.pubRest.streamRefresh = 10 * time.Millisecond
 	srv.pubRest.streamTimeOut = 500 * time.Millisecond
+	srv.pubRest.maxActiveStreams = 100
 
 	postComment(t, ts.URL)
 
@@ -653,6 +656,7 @@ func TestRest_LastCommentsStream(t *testing.T) {
 	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
 	srv.pubRest.streamRefresh = 10 * time.Millisecond
 	srv.pubRest.streamTimeOut = 500 * time.Millisecond
+	srv.pubRest.maxActiveStreams = 100
 
 	postComment(t, ts.URL)
 
@@ -691,6 +695,7 @@ func TestRest_LastCommentsStreamTimeout(t *testing.T) {
 	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
 	srv.pubRest.streamRefresh = 10 * time.Millisecond
 	srv.pubRest.streamTimeOut = 450 * time.Millisecond
+	srv.pubRest.maxActiveStreams = 100
 
 	postComment(t, ts.URL)
 
@@ -705,6 +710,7 @@ func TestRest_LastCommentsStreamCancel(t *testing.T) {
 	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
 	srv.pubRest.streamRefresh = 10 * time.Millisecond
 	srv.pubRest.streamTimeOut = 500 * time.Millisecond
+	srv.pubRest.maxActiveStreams = 100
 
 	postComment(t, ts.URL)
 
@@ -763,6 +769,9 @@ func TestRest_LastCommentsStreamTooMany(t *testing.T) {
 	}
 	wg.Wait()
 	assert.Equal(t, int32(10), atomic.LoadInt32(&errsCount), "10 streams rejected")
+
+	_, code := get(t, ts.URL+"/api/v1/stream/last?site=radio-t")
+	assert.Equal(t, 200, code, "all streams closed, good to go again")
 }
 
 func postComment(t *testing.T, url string) {

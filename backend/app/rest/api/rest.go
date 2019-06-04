@@ -55,8 +55,9 @@ type Rest struct {
 	}
 	UpdateLimiter float64
 
-	StreamTimeOut time.Duration
-	StreamRefresh time.Duration
+	StreamTimeOut   time.Duration
+	StreamRefresh   time.Duration
+	StreamMaxActive int
 
 	SSLConfig   SSLConfig
 	httpsServer *http.Server
@@ -338,7 +339,7 @@ func (s *Rest) controllerGroups() (public, private, admin, rss) {
 		webRoot:          s.WebRoot,
 		streamTimeOut:    s.StreamTimeOut,
 		streamRefresh:    s.StreamRefresh,
-		maxActiveStreams: 500,
+		maxActiveStreams: int32(s.StreamMaxActive),
 	}
 
 	privGrp := private{

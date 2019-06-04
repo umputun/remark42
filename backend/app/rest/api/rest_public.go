@@ -562,7 +562,7 @@ func (s *public) eventsCh(ctx context.Context, fn eventFn) <-chan eventResp {
 		for {
 			select {
 			case <-ctx.Done(): // request closed by remote client
-				log.Printf("[DEBUG] info stream closed by remote client, %v", ctx.Err())
+				log.Printf("[DEBUG] stream closed by remote client, %v", ctx.Err())
 				return
 			case <-tick.C:
 				resp, upd, err := fn()

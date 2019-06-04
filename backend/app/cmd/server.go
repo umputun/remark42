@@ -46,6 +46,7 @@ type ServerCommand struct {
 	Notify NotifyGroup `group:"notify" namespace:"notify" env-namespace:"NOTIFY"`
 	Image  ImageGroup  `group:"image" namespace:"image" env-namespace:"IMAGE"`
 	SSL    SSLGroup    `group:"ssl" namespace:"ssl" env-namespace:"SSL"`
+	Stream StreamGroup `group:"stream" namespace:"stream" env-namespace:"STREAM"`
 
 	Sites           []string      `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
 	AdminPasswd     string        `long:"admin-passwd" env:"ADMIN_PASSWD" default:"" description:"admin basic auth password"`
@@ -168,6 +169,13 @@ type SSLGroup struct {
 	Key          string `long:"key" env:"KEY" description:"path to key.pem file"`
 	ACMELocation string `long:"acme-location" env:"ACME_LOCATION" description:"dir where certificates will be stored by autocert manager" default:"./var/acme"`
 	ACMEEmail    string `long:"acme-email" env:"ACME_EMAIL" description:"admin email for certificate notifications"`
+}
+
+// StreamGroup define options for streaming apis
+type StreamGroup struct {
+	RefreshInterval time.Duration `long:"refresh" env:"REFRESH" default:"5s" description:"refresh interval for streams"`
+	TimeOut         time.Duration `long:"timeout" env:"TIMEOUT" default:"15m" description:"timeout to close streams on inactivity"`
+	MaxActive       int           `long:"max" env:"MAX" default:"500" description:"max number of parallel streams"`
 }
 
 // serverApp holds all active objects
@@ -304,8 +312,9 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		SSLConfig:        sslConfig,
 		UpdateLimiter:    s.UpdateLimit,
 		ImageService:     imageService,
-		StreamTimeOut:    time.Minute * 15,
-		StreamRefresh:    time.Second * 5,
+		StreamTimeOut:    s.Stream.TimeOut,
+		StreamRefresh:    s.Stream.RefreshInterval,
+		StreamMaxActive:  s.Stream.MaxActive,
 	}
 
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = s.LowScore, s.CriticalScore
