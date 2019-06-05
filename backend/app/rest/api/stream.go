@@ -29,6 +29,7 @@ type steamEventResp struct {
 
 // activate starts blocking function streaming update created by eventFn to ResponseWriter
 // canceled on context or inactivity timeout
+// note: eventFn is a closure needed to allow state management inside eventFn
 func (s *streamer) activate(ctx context.Context, eventFn func() steamEventFn, w io.Writer) error {
 	updCh := s.eventsCh(ctx, eventFn())
 

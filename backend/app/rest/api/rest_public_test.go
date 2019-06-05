@@ -41,6 +41,11 @@ func TestRest_Preview(t *testing.T) {
 	b, err := ioutil.ReadAll(resp.Body)
 	assert.Nil(t, err)
 	assert.Equal(t, "<p>test 123</p>\n", string(b))
+
+
+	resp, err = post(t, ts.URL+"/api/v1/preview", "bad")
+	assert.Nil(t, err)
+	assert.Equal(t, 400, resp.StatusCode)
 }
 
 func TestRest_PreviewWithMD(t *testing.T) {
@@ -305,6 +310,9 @@ func TestRest_Last(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(comments), "should have 2 comments")
 	t.Logf("%+v", comments)
+
+	_, code = get(t, ts.URL+"/api/v1/last/2?site=radio-t-BLAH")
+	assert.Equal(t, 500, code)
 }
 
 func TestRest_FindUserComments(t *testing.T) {
@@ -382,6 +390,9 @@ func TestRest_Count(t *testing.T) {
 	err = json.Unmarshal([]byte(body), &j)
 	assert.Nil(t, err)
 	assert.Equal(t, 2.0, j["count"])
+
+	_, code = get(t, ts.URL+"/api/v1/count?site=radio-t-BLAH&url=https://radio-t.com/blah1XXX")
+	assert.Equal(t, 400, code)
 }
 
 func TestRest_Counts(t *testing.T) {
@@ -411,6 +422,10 @@ func TestRest_Counts(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, []store.PostInfo([]store.PostInfo{{URL: "https://radio-t.com/blah1", Count: 3},
 		{URL: "https://radio-t.com/blah2", Count: 2}}), j)
+
+	resp, err = post(t, ts.URL+"/api/v1/counts?site=radio-XXX", `{}`)
+	require.NoError(t, err)
+	assert.Equal(t, 400, resp.StatusCode)
 }
 
 func TestRest_List(t *testing.T) {
@@ -437,6 +452,9 @@ func TestRest_List(t *testing.T) {
 	assert.Equal(t, 2, pi[0].Count)
 	assert.Equal(t, "https://radio-t.com/blah1", pi[1].URL)
 	assert.Equal(t, 3, pi[1].Count)
+
+	_, code = get(t, ts.URL+"/api/v1/list?site=radio-t-BLAH")
+	assert.Equal(t, 400, code)
 }
 
 func TestRest_ListWithSkipAndLimit(t *testing.T) {
@@ -556,6 +574,9 @@ func TestRest_InfoStream(t *testing.T) {
 	require.Equal(t, 10, len(recs), "10 records")
 	assert.True(t, strings.Contains(recs[0], `"count":2`), recs[0])
 	assert.True(t, strings.Contains(recs[9], `"count":11`), recs[9])
+
+	_, code = get(t, ts.URL+"/api/v1/stream/info?site=radio-t&url=https://radio-t.com/blah123")
+	assert.Equal(t, 500, code)
 }
 
 func TestRest_InfoStreamTooMany(t *testing.T) {
