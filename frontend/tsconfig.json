@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+		"incremental": true,
     "lib": ["es2017", "dom"],
     "target": "es2017",
     "jsx": "react",

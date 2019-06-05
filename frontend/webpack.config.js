@@ -4,7 +4,7 @@ const path = require('path');
 
 const webpack = require('webpack');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
-const Clean = require('clean-webpack-plugin');
+const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const Copy = require('copy-webpack-plugin');
 const Html = require('html-webpack-plugin');
 const Define = webpack.DefinePlugin;
@@ -29,7 +29,7 @@ const commonStyleLoaders = [
         require('postcss-simple-vars'),
         require('postcss-nested'),
         require('postcss-calc'),
-        require('autoprefixer')({ browsers: ['> 1%'] }),
+        require('autoprefixer')({ overrideBrowserslist: ['> 1%'] }),
         require('postcss-url')({ url: 'inline', maxSize: 5 }),
         require('postcss-wrap')({ selector: `#${NODE_ID}` }),
         require('postcss-csso'),
@@ -115,7 +115,7 @@ module.exports = () => ({
     ],
   },
   plugins: [
-    new Clean(),
+    new CleanWebpackPlugin(),
     new Define({
       'process.env.NODE_ENV': JSON.stringify(env),
       'process.env.REMARK_NODE': JSON.stringify(NODE_ID),

@@ -188,9 +188,10 @@ export const removeComment = (id: Comment['id']) =>
 export const removeMyComment = (id: Comment['id']): Promise<void> =>
   fetcher.put({
     url: `/comment/${id}?url=${url}`,
+    // eslint-disable-next-line @typescript-eslint/no-object-literal-type-assertion
     body: {
       delete: true,
-    },
+    } as object,
     withCredentials: true,
   });
 
