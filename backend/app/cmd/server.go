@@ -312,9 +312,11 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		SSLConfig:        sslConfig,
 		UpdateLimiter:    s.UpdateLimit,
 		ImageService:     imageService,
-		StreamTimeOut:    s.Stream.TimeOut,
-		StreamRefresh:    s.Stream.RefreshInterval,
-		StreamMaxActive:  s.Stream.MaxActive,
+		Streamer: &api.Streamer{
+			TimeOut:   s.Stream.TimeOut,
+			Refresh:   s.Stream.RefreshInterval,
+			MaxActive: int32(s.Stream.MaxActive),
+		},
 	}
 
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = s.LowScore, s.CriticalScore

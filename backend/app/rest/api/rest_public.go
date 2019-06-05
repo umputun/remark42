@@ -29,8 +29,8 @@ type public struct {
 	readOnlyAge      int
 	commentFormatter *store.CommentFormatter
 	imageService     *image.Service
+	streamer         *Streamer
 	webRoot          string
-	streamer         *streamer
 }
 
 type pubStore interface {
@@ -150,7 +150,7 @@ func (s *public) infoCtrl(w http.ResponseWriter, r *http.Request) {
 // GET /stream/info?site=siteID&url=post-url - get info stream about the post
 func (s *public) infoStreamCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
-	log.Printf("[DEBUG] start stream for %+v, timeout=%v, refresh=%v", locator, s.streamer.timeout, s.streamer.refresh)
+	log.Printf("[DEBUG] start stream for %+v, timeout=%v, refresh=%v", locator, s.streamer.TimeOut, s.streamer.Refresh)
 
 	fn := func() steamEventFn {
 		lastTS := time.Time{}
@@ -179,7 +179,7 @@ func (s *public) infoStreamCtrl(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := s.streamer.activate(r.Context(), fn, w); err != nil {
+	if err := s.streamer.Activate(r.Context(), fn, w); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't stream", rest.ErrInternal)
 	}
 }
@@ -252,7 +252,7 @@ func (s *public) lastCommentsStreamCtrl(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	if err := s.streamer.activate(r.Context(), fn, w); err != nil {
+	if err := s.streamer.Activate(r.Context(), fn, w); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't stream", rest.ErrInternal)
 	}
 }

@@ -339,6 +339,11 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 			Cache:             &cache.Nop{},
 			KeyStore:          adminStore,
 		},
+		Streamer: &Streamer{
+			Refresh:   100 * time.Millisecond,
+			TimeOut:   5 * time.Second,
+			MaxActive: 100,
+		},
 	}
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = -5, -10
 

@@ -44,6 +44,7 @@ type Rest struct {
 	Migrator         *Migrator
 	NotifyService    *notify.Service
 	ImageService     *image.Service
+	Streamer         *Streamer
 
 	WebRoot         string
 	RemarkURL       string
@@ -54,10 +55,6 @@ type Rest struct {
 		Critical int
 	}
 	UpdateLimiter float64
-
-	StreamTimeOut   time.Duration
-	StreamRefresh   time.Duration
-	StreamMaxActive int
 
 	SSLConfig   SSLConfig
 	httpsServer *http.Server
@@ -337,11 +334,7 @@ func (s *Rest) controllerGroups() (public, private, admin, rss) {
 		commentFormatter: s.CommentFormatter,
 		readOnlyAge:      s.ReadOnlyAge,
 		webRoot:          s.WebRoot,
-		streamer: &streamer{
-			timeout:   s.StreamTimeOut,
-			refresh:   s.StreamRefresh,
-			maxActive: int32(s.StreamMaxActive),
-		},
+		streamer:         s.Streamer,
 	}
 
 	privGrp := private{

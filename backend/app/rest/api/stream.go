@@ -11,11 +11,11 @@ import (
 	"github.com/pkg/errors"
 )
 
-// streamer creates endless stream of \n seprated json records send to remote client
-type streamer struct {
-	timeout   time.Duration
-	refresh   time.Duration
-	maxActive int32
+// Streamer creates endless stream of \n separated json records send to remote client
+type Streamer struct {
+	TimeOut   time.Duration
+	Refresh   time.Duration
+	MaxActive int32
 
 	activeCount int32
 }
@@ -27,15 +27,15 @@ type steamEventResp struct {
 	err  error
 }
 
-// activate starts blocking function streaming update created by eventFn to ResponseWriter
+// Activate starts blocking function streaming update created by eventFn to ResponseWriter
 // canceled on context or inactivity timeout
 // note: eventFn is a closure needed to allow state management inside eventFn
-func (s *streamer) activate(ctx context.Context, eventFn func() steamEventFn, w io.Writer) error {
+func (s *Streamer) Activate(ctx context.Context, eventFn func() steamEventFn, w io.Writer) error {
 	updCh := s.eventsCh(ctx, eventFn())
 
 	count := atomic.AddInt32(&s.activeCount, 1)
 	defer atomic.AddInt32(&s.activeCount, -1)
-	if count > s.maxActive {
+	if count > s.MaxActive {
 		return errors.New("too many streams")
 	}
 
@@ -44,7 +44,7 @@ func (s *streamer) activate(ctx context.Context, eventFn func() steamEventFn, w 
 		case <-ctx.Done(): // request closed by remote client
 			log.Printf("[DEBUG] stream closed by remote client, %s", ctx.Err())
 			return nil
-		case <-time.After(s.timeout): // request closed by timeout
+		case <-time.After(s.TimeOut): // request closed by timeout
 			log.Printf("[DEBUG] stream closed due to timeout")
 			return nil
 		case resp, ok := <-updCh: // new update
@@ -65,10 +65,10 @@ func (s *streamer) activate(ctx context.Context, eventFn func() steamEventFn, w 
 }
 
 // populate updates to chan, break on context close
-func (s *streamer) eventsCh(ctx context.Context, fn steamEventFn) <-chan steamEventResp {
+func (s *Streamer) eventsCh(ctx context.Context, fn steamEventFn) <-chan steamEventResp {
 	ch := make(chan steamEventResp)
 	go func() {
-		tick := time.NewTicker(s.refresh)
+		tick := time.NewTicker(s.Refresh)
 		defer func() {
 			close(ch)
 			tick.Stop()

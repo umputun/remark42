@@ -42,7 +42,6 @@ func TestRest_Preview(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "<p>test 123</p>\n", string(b))
 
-
 	resp, err = post(t, ts.URL+"/api/v1/preview", "bad")
 	assert.Nil(t, err)
 	assert.Equal(t, 400, resp.StatusCode)
@@ -550,9 +549,9 @@ func TestRest_InfoStream(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
 	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
-	srv.pubRest.streamer.refresh = 1 * time.Millisecond
-	srv.pubRest.streamer.timeout = 300 * time.Millisecond
-	srv.pubRest.streamer.maxActive = 100
+	srv.pubRest.streamer.Refresh = 1 * time.Millisecond
+	srv.pubRest.streamer.TimeOut = 300 * time.Millisecond
+	srv.pubRest.streamer.MaxActive = 100
 
 	postComment(t, ts.URL)
 
@@ -583,9 +582,9 @@ func TestRest_InfoStreamTooMany(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
 	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
-	srv.pubRest.streamer.refresh = 1 * time.Millisecond
-	srv.pubRest.streamer.timeout = 300 * time.Millisecond
-	srv.pubRest.streamer.maxActive = 10
+	srv.pubRest.streamer.Refresh = 1 * time.Millisecond
+	srv.pubRest.streamer.TimeOut = 300 * time.Millisecond
+	srv.pubRest.streamer.MaxActive = 10
 
 	postComment(t, ts.URL)
 
@@ -609,9 +608,9 @@ func TestRest_InfoStreamTimeout(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
 	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
-	srv.pubRest.streamer.refresh = 10 * time.Millisecond
-	srv.pubRest.streamer.timeout = 450 * time.Millisecond
-	srv.pubRest.streamer.maxActive = 100
+	srv.pubRest.streamer.Refresh = 10 * time.Millisecond
+	srv.pubRest.streamer.TimeOut = 450 * time.Millisecond
+	srv.pubRest.streamer.MaxActive = 100
 
 	postComment(t, ts.URL)
 
@@ -625,9 +624,9 @@ func TestRest_InfoStreamCancel(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
 	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
-	srv.pubRest.streamer.refresh = 10 * time.Millisecond
-	srv.pubRest.streamer.timeout = 500 * time.Millisecond
-	srv.pubRest.streamer.maxActive = 100
+	srv.pubRest.streamer.Refresh = 10 * time.Millisecond
+	srv.pubRest.streamer.TimeOut = 500 * time.Millisecond
+	srv.pubRest.streamer.MaxActive = 100
 
 	postComment(t, ts.URL)
 
@@ -679,9 +678,9 @@ func TestRest_Robots(t *testing.T) {
 func TestRest_LastCommentsStream(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
-	srv.pubRest.streamer.refresh = 10 * time.Millisecond
-	srv.pubRest.streamer.timeout = 500 * time.Millisecond
-	srv.pubRest.streamer.maxActive = 100
+	srv.pubRest.streamer.Refresh = 10 * time.Millisecond
+	srv.pubRest.streamer.TimeOut = 500 * time.Millisecond
+	srv.pubRest.streamer.MaxActive = 100
 
 	postComment(t, ts.URL)
 
@@ -718,9 +717,9 @@ func TestRest_LastCommentsStreamTimeout(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
 	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
-	srv.pubRest.streamer.refresh = 10 * time.Millisecond
-	srv.pubRest.streamer.timeout = 450 * time.Millisecond
-	srv.pubRest.streamer.maxActive = 100
+	srv.pubRest.streamer.Refresh = 10 * time.Millisecond
+	srv.pubRest.streamer.TimeOut = 450 * time.Millisecond
+	srv.pubRest.streamer.MaxActive = 100
 
 	postComment(t, ts.URL)
 
@@ -733,9 +732,9 @@ func TestRest_LastCommentsStreamTimeout(t *testing.T) {
 func TestRest_LastCommentsStreamCancel(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
-	srv.pubRest.streamer.refresh = 10 * time.Millisecond
-	srv.pubRest.streamer.timeout = 500 * time.Millisecond
-	srv.pubRest.streamer.maxActive = 100
+	srv.pubRest.streamer.Refresh = 10 * time.Millisecond
+	srv.pubRest.streamer.TimeOut = 500 * time.Millisecond
+	srv.pubRest.streamer.MaxActive = 100
 
 	postComment(t, ts.URL)
 
@@ -774,9 +773,9 @@ func TestRest_LastCommentsStreamTooMany(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
 	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
-	srv.pubRest.streamer.refresh = 1 * time.Millisecond
-	srv.pubRest.streamer.timeout = 300 * time.Millisecond
-	srv.pubRest.streamer.maxActive = 10
+	srv.pubRest.streamer.Refresh = 1 * time.Millisecond
+	srv.pubRest.streamer.TimeOut = 300 * time.Millisecond
+	srv.pubRest.streamer.MaxActive = 10
 
 	postComment(t, ts.URL)
 

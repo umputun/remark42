@@ -11,10 +11,10 @@ import (
 )
 
 func TestStream_Timeout(t *testing.T) {
-	s := streamer{
-		refresh:   10 * time.Millisecond,
-		timeout:   100 * time.Millisecond,
-		maxActive: 10,
+	s := Streamer{
+		Refresh:   10 * time.Millisecond,
+		TimeOut:   100 * time.Millisecond,
+		MaxActive: 10,
 	}
 
 	eventFn := func() steamEventFn {
@@ -29,16 +29,16 @@ func TestStream_Timeout(t *testing.T) {
 	}
 
 	buf := bytes.Buffer{}
-	err := s.activate(context.Background(), eventFn, &buf)
+	err := s.Activate(context.Background(), eventFn, &buf)
 	assert.NoError(t, err)
 	assert.Equal(t, "some data 1\nsome data 3\nsome data 5\nsome data 7\nsome data 9\n", buf.String())
 }
 
 func TestStream_Cancel(t *testing.T) {
-	s := streamer{
-		refresh:   10 * time.Millisecond,
-		timeout:   100 * time.Millisecond,
-		maxActive: 10,
+	s := Streamer{
+		Refresh:   10 * time.Millisecond,
+		TimeOut:   100 * time.Millisecond,
+		MaxActive: 10,
 	}
 
 	eventFn := func() steamEventFn {
@@ -55,7 +55,7 @@ func TestStream_Cancel(t *testing.T) {
 	buf := bytes.Buffer{}
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
-	err := s.activate(ctx, eventFn, &buf)
+	err := s.Activate(ctx, eventFn, &buf)
 	assert.NoError(t, err)
 	assert.Equal(t, "some data 1\nsome data 3\nsome data 5\nsome data 7\nsome data 9\n", buf.String())
 }
