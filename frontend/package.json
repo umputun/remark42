@@ -20,7 +20,7 @@
   "lint-staged": {
     "linters": {
       "./**/*.{ts,tsx,js,jsx}": [
-        "eslint --fix",
+        "eslint --fix --max-warnings=0",
         "git add"
       ],
       "./**/*.scss": [
