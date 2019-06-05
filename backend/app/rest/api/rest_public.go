@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"crypto/sha1" // nolint
 	"encoding/base64"
 	"io"
@@ -10,7 +9,6 @@ import (
 	"path"
 	"strconv"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/go-chi/chi"
@@ -18,7 +16,6 @@ import (
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
 	"github.com/go-pkgz/rest/cache"
-	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/store"
@@ -33,11 +30,7 @@ type public struct {
 	commentFormatter *store.CommentFormatter
 	imageService     *image.Service
 	webRoot          string
-	streamTimeOut    time.Duration
-	streamRefresh    time.Duration
-	maxActiveStreams int32
-
-	activeStreamsCount int32
+	streamer         *streamer
 }
 
 type pubStore interface {
@@ -157,66 +150,37 @@ func (s *public) infoCtrl(w http.ResponseWriter, r *http.Request) {
 // GET /stream/info?site=siteID&url=post-url - get info stream about the post
 func (s *public) infoStreamCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
-	log.Printf("[DEBUG] start stream for %+v, timeout=%v, refresh=%v", locator, s.streamTimeOut, s.streamRefresh)
+	log.Printf("[DEBUG] start stream for %+v, timeout=%v, refresh=%v", locator, s.streamer.timeout, s.streamer.refresh)
 
-	lastTS := time.Time{}
-	lastCount := 0
-	info := func() (data []byte, upd bool, err error) {
-		key := cache.NewKey(locator.SiteID).ID(URLKey(r)).Scopes(locator.SiteID, locator.URL)
-		data, err = s.cache.Get(key, func() ([]byte, error) {
-			info, e := s.dataService.Info(locator, s.readOnlyAge)
-			if e != nil {
-				return nil, e
+	fn := func() steamEventFn {
+		lastTS := time.Time{}
+		lastCount := 0
+		return func() (data []byte, upd bool, err error) {
+			key := cache.NewKey(locator.SiteID).ID(URLKey(r)).Scopes(locator.SiteID, locator.URL)
+			data, err = s.cache.Get(key, func() ([]byte, error) {
+				info, e := s.dataService.Info(locator, s.readOnlyAge)
+				if e != nil {
+					return nil, e
+				}
+				// cache update used as indication of post update. comparing lastTS for no-cache.
+				// removal won't update lastTS, count check will catch it.
+				if !lastTS.IsZero() && (info.LastTS != lastTS || info.Count != lastCount) {
+					upd = true
+				}
+				lastTS = info.LastTS
+				lastCount = info.Count
+				return encodeJSONWithHTML(info)
+			})
+			if err != nil {
+				return data, false, err
 			}
-			// cache update used as indication of post update. comparing lastTS for no-cache.
-			// removal won't update lastTS, count check will catch it.
-			if !lastTS.IsZero() && (info.LastTS != lastTS || info.Count != lastCount) {
-				upd = true
-			}
-			lastTS = info.LastTS
-			lastCount = info.Count
-			return encodeJSONWithHTML(info)
-		})
-		if err != nil {
-			return data, false, err
+
+			return data, upd, nil
 		}
-
-		return data, upd, nil
 	}
 
-	count := atomic.AddInt32(&s.activeStreamsCount, 1)
-	defer atomic.AddInt32(&s.activeStreamsCount, -1)
-	if count > s.maxActiveStreams {
-		rest.SendErrorJSON(w, r, http.StatusTooManyRequests, errors.New("too many streams"),
-			"can't open new stream", rest.ErrActionRejected)
-		return
-	}
-
-	updCh := s.eventsCh(r.Context(), info)
-
-	for {
-		select {
-		case <-r.Context().Done(): // request closed by remote client
-			return
-		case <-time.After(s.streamTimeOut): // request closed by timeout
-			log.Printf("[DEBUG] info stream closed due to timeout")
-			return
-		case resp, ok := <-updCh: // new update
-			if !ok { // closed
-				return
-			}
-			if resp.err != nil {
-				rest.SendErrorJSON(w, r, http.StatusBadRequest, resp.err, "can't get post info", rest.ErrPostNotFound)
-				return
-			}
-			if _, e := w.Write(resp.data); e != nil {
-				log.Printf("[WARN] failed to send info stream, %v", e)
-				return
-			}
-			if fw, okFlush := w.(http.Flusher); okFlush {
-				fw.Flush()
-			}
-		}
+	if err := s.streamer.activate(r.Context(), fn, w); err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't stream", rest.ErrInternal)
 	}
 }
 
@@ -268,58 +232,28 @@ func (s *public) lastCommentsStreamCtrl(w http.ResponseWriter, r *http.Request) 
 	siteID := r.URL.Query().Get("site")
 	log.Printf("[DEBUG] get last comments stream for %s", siteID)
 
-	sinceTime := time.Now()
-
-	info := func() (data []byte, upd bool, err error) {
-		key := cache.NewKey(siteID).ID(URLKey(r)).Scopes(lastCommentsScope)
-		data, err = s.cache.Get(key, func() ([]byte, error) {
-			comments, e := s.dataService.Last(siteID, 1, sinceTime, rest.GetUserOrEmpty(r))
-			if e != nil {
-				return nil, e
-			}
-			if len(comments) > 0 {
-				sinceTime = comments[0].Timestamp
-				upd = true
-			}
-			sinceTime = time.Now()
-			return encodeJSONWithHTML(comments)
-		})
-		return data, upd, err
-	}
-
-	updCh := s.eventsCh(r.Context(), info)
-
-	count := atomic.AddInt32(&s.activeStreamsCount, 1)
-	defer atomic.AddInt32(&s.activeStreamsCount, -1)
-	if count > s.maxActiveStreams {
-		rest.SendErrorJSON(w, r, http.StatusTooManyRequests, errors.New("too many streams"),
-			"can't open new stream", rest.ErrActionRejected)
-		return
-	}
-
-	for {
-		select {
-		case <-r.Context().Done(): // request closed by remote client
-			return
-		case <-time.After(s.streamTimeOut): // request closed by timeout
-			log.Printf("[DEBUG] last comments stream closed due to timeout")
-			return
-		case resp, ok := <-updCh: // new update
-			if !ok { // closed
-				return
-			}
-			if resp.err != nil {
-				rest.SendErrorJSON(w, r, http.StatusInternalServerError, resp.err, "can't get last comments", rest.ErrInternal)
-				return
-			}
-			if _, e := w.Write(resp.data); e != nil {
-				log.Printf("[WARN] failed to send last comments stream, %v", e)
-				return
-			}
-			if fw, okFlush := w.(http.Flusher); okFlush {
-				fw.Flush()
-			}
+	fn := func() steamEventFn {
+		sinceTime := time.Now()
+		return func() (data []byte, upd bool, err error) {
+			key := cache.NewKey(siteID).ID(URLKey(r)).Scopes(lastCommentsScope)
+			data, err = s.cache.Get(key, func() ([]byte, error) {
+				comments, e := s.dataService.Last(siteID, 1, sinceTime, rest.GetUserOrEmpty(r))
+				if e != nil {
+					return nil, e
+				}
+				if len(comments) > 0 {
+					sinceTime = comments[0].Timestamp
+					upd = true
+				}
+				sinceTime = time.Now()
+				return encodeJSONWithHTML(comments)
+			})
+			return data, upd, err
 		}
+	}
+
+	if err := s.streamer.activate(r.Context(), fn, w); err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't stream", rest.ErrInternal)
 	}
 }
 
@@ -543,40 +477,4 @@ func (s *public) applyView(comments []store.Comment, view string) []store.Commen
 		return projection
 	}
 	return comments
-}
-
-type eventFn func() (data []byte, upd bool, err error)
-
-type eventResp struct {
-	data []byte
-	err  error
-}
-
-// populate updates to chan, break on context close
-func (s *public) eventsCh(ctx context.Context, fn eventFn) <-chan eventResp {
-	ch := make(chan eventResp)
-	go func() {
-		tick := time.NewTicker(s.streamRefresh)
-		defer func() {
-			close(ch)
-			tick.Stop()
-		}()
-		for {
-			select {
-			case <-ctx.Done(): // request closed by remote client
-				log.Printf("[DEBUG] stream closed by remote client, %v", ctx.Err())
-				return
-			case <-tick.C:
-				resp, upd, err := fn()
-				if err != nil {
-					ch <- eventResp{data: nil, err: errors.Wrap(err, "can't get stream data")}
-					return
-				}
-				if upd {
-					ch <- eventResp{data: resp, err: nil}
-				}
-			}
-		}
-	}()
-	return ch
 }

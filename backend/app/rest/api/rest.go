@@ -337,9 +337,11 @@ func (s *Rest) controllerGroups() (public, private, admin, rss) {
 		commentFormatter: s.CommentFormatter,
 		readOnlyAge:      s.ReadOnlyAge,
 		webRoot:          s.WebRoot,
-		streamTimeOut:    s.StreamTimeOut,
-		streamRefresh:    s.StreamRefresh,
-		maxActiveStreams: int32(s.StreamMaxActive),
+		streamer: &streamer{
+			timeout:   s.StreamTimeOut,
+			refresh:   s.StreamRefresh,
+			maxActive: int32(s.StreamMaxActive),
+		},
 	}
 
 	privGrp := private{
