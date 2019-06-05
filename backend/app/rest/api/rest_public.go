@@ -168,11 +168,13 @@ func (s *public) infoStreamCtrl(w http.ResponseWriter, r *http.Request) {
 			if e != nil {
 				return nil, e
 			}
-			if info.LastTS != lastTS || info.Count != lastCount {
-				lastTS = info.LastTS
-				lastCount = info.Count // removal won't update lastTS
-				upd = true             // cache update used as indication of post update. comparing lastTS for no-cache
+			// cache update used as indication of post update. comparing lastTS for no-cache.
+			// removal won't update lastTS, count check will catch it.
+			if !lastTS.IsZero() && (info.LastTS != lastTS || info.Count != lastCount) {
+				upd = true
 			}
+			lastTS = info.LastTS
+			lastCount = info.Count
 			return encodeJSONWithHTML(info)
 		})
 		if err != nil {
@@ -457,7 +459,7 @@ func (s *public) listCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = R.RenderJSONFromBytes(w, r, data); err != nil {
-		log.Printf("[WARN] can't render posts lits for site %s", siteID)
+		log.Printf("[WARN] can't render posts list for site %s", siteID)
 	}
 }
 

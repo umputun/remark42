@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
 	"github.com/go-pkgz/rest/cache"
 	"github.com/stretchr/testify/assert"
@@ -541,7 +542,7 @@ func TestRest_InfoStream(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		for i := 1; i < 10; i++ {
+		for i := 0; i < 10; i++ {
 			time.Sleep(10 * time.Millisecond)
 			postComment(t, ts.URL)
 		}
@@ -553,8 +554,8 @@ func TestRest_InfoStream(t *testing.T) {
 
 	recs := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
 	require.Equal(t, 10, len(recs), "10 records")
-	assert.True(t, strings.Contains(recs[0], `"count":1`), recs[0])
-	assert.True(t, strings.Contains(recs[9], `"count":10`), recs[9])
+	assert.True(t, strings.Contains(recs[0], `"count":2`), recs[0])
+	assert.True(t, strings.Contains(recs[9], `"count":11`), recs[9])
 }
 
 func TestRest_InfoStreamTooMany(t *testing.T) {
@@ -601,6 +602,7 @@ func TestRest_InfoStreamTimeout(t *testing.T) {
 
 func TestRest_InfoStreamCancel(t *testing.T) {
 	ts, srv, teardown := startupT(t)
+	defer teardown()
 	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
 	srv.pubRest.streamRefresh = 10 * time.Millisecond
 	srv.pubRest.streamTimeOut = 500 * time.Millisecond
@@ -608,24 +610,26 @@ func TestRest_InfoStreamCancel(t *testing.T) {
 
 	postComment(t, ts.URL)
 
-	defer teardown()
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		for i := 1; i < 10; i++ {
+		for i := 0; i < 5; i++ {
 			time.Sleep(100 * time.Millisecond)
 			postComment(t, ts.URL)
+			log.Printf("write #%d", i)
 		}
 	}()
 
 	client := http.Client{}
 	req, err := http.NewRequest("GET", ts.URL+"/api/v1/stream/info?site=radio-t&url=https://radio-t.com/blah1", nil)
 	require.Nil(t, err)
-	ctx, cancel := context.WithTimeout(context.Background(), 150*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 290*time.Millisecond)
 	defer cancel()
 	req = req.WithContext(ctx)
+	log.Print("start req")
 	r, err := client.Do(req)
+	log.Print("end req")
 	require.Nil(t, err)
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
@@ -635,9 +639,9 @@ func TestRest_InfoStreamCancel(t *testing.T) {
 	wg.Wait()
 
 	recs := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
-	require.Equal(t, 2, len(recs), "2 records")
-	assert.True(t, strings.Contains(recs[0], `"count":1`), recs[0])
-	assert.True(t, strings.Contains(recs[1], `"count":2`), recs[1])
+	require.Equal(t, 2, len(recs), "should have 2 records")
+	assert.True(t, strings.Contains(recs[0], `"count":2`), recs[0])
+	assert.True(t, strings.Contains(recs[1], `"count":3`), recs[1])
 }
 
 func TestRest_Robots(t *testing.T) {
