@@ -3,6 +3,7 @@
 declare let remark_config: LastCommentsConfig;
 
 import loadPolyfills from '@app/common/polyfills';
+import '@app/utils/patchPreactContext';
 import { h, render } from 'preact';
 import 'preact/debug';
 import { getLastComments } from './common/api';

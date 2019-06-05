@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
 /** @jsx h */
 import loadPolyfills from '@app/common/polyfills';
+import '@app/utils/patchPreactContext';
 import { h, render } from 'preact';
 import 'preact/debug';
 
