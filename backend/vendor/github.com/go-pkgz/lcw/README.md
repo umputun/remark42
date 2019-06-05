@@ -18,6 +18,7 @@ Main features:
 - Limit maximum size of a value 
 - Limit number of keys
 - TTL support (`ExpirableCache` only)
+- Callback on eviction event
 - Functional style invalidation
 - Functional options
 - Sane defaults

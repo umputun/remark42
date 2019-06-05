@@ -1,6 +1,6 @@
-# cloud.google.com/go v0.38.0
+# cloud.google.com/go v0.39.0
 cloud.google.com/go/compute/metadata
-# github.com/PuerkitoBio/goquery v1.4.0
+# github.com/PuerkitoBio/goquery v1.5.0
 github.com/PuerkitoBio/goquery
 # github.com/andybalholm/cascadia v1.0.0
 github.com/andybalholm/cascadia
@@ -28,7 +28,7 @@ github.com/go-chi/chi
 github.com/go-chi/chi/middleware
 # github.com/go-chi/cors v1.0.0
 github.com/go-chi/cors
-# github.com/go-chi/render v1.0.0
+# github.com/go-chi/render v1.0.1
 github.com/go-chi/render
 # github.com/go-pkgz/auth v0.5.2
 github.com/go-pkgz/auth
@@ -37,37 +37,37 @@ github.com/go-pkgz/auth/provider
 github.com/go-pkgz/auth/token
 github.com/go-pkgz/auth/logger
 github.com/go-pkgz/auth/middleware
-# github.com/go-pkgz/lcw v0.2.0
+# github.com/go-pkgz/lcw v0.3.1
 github.com/go-pkgz/lcw
 # github.com/go-pkgz/lgr v0.6.2
 github.com/go-pkgz/lgr
 # github.com/go-pkgz/mongo v1.1.2
 github.com/go-pkgz/mongo
-# github.com/go-pkgz/repeater v1.1.1
+# github.com/go-pkgz/repeater v1.1.2
 github.com/go-pkgz/repeater
 github.com/go-pkgz/repeater/strategy
 # github.com/go-pkgz/rest v1.4.1
 github.com/go-pkgz/rest/cache
 github.com/go-pkgz/rest
 github.com/go-pkgz/rest/logger
-# github.com/go-pkgz/syncs v1.1.0
+# github.com/go-pkgz/syncs v1.1.1
 github.com/go-pkgz/syncs
 # github.com/golang/protobuf v1.3.1
 github.com/golang/protobuf/proto
-# github.com/google/uuid v0.0.0-20161128191214-064e2069ce9c
+# github.com/google/uuid v1.1.1
 github.com/google/uuid
-# github.com/gorilla/feeds v1.1.0
+# github.com/gorilla/feeds v1.1.1
 github.com/gorilla/feeds
 # github.com/hashicorp/errwrap v1.0.0
 github.com/hashicorp/errwrap
-# github.com/hashicorp/go-multierror v0.0.0-20171204182908-b7773ae21874
+# github.com/hashicorp/go-multierror v1.0.0
 github.com/hashicorp/go-multierror
 # github.com/hashicorp/golang-lru v0.5.1
 github.com/hashicorp/golang-lru
 github.com/hashicorp/golang-lru/simplelru
 # github.com/jessevdk/go-flags v0.0.0-20180331124232-1c38ed7ad0cc
 github.com/jessevdk/go-flags
-# github.com/microcosm-cc/bluemonday v0.0.0-20171222152607-542fd4642604
+# github.com/microcosm-cc/bluemonday v1.0.2
 github.com/microcosm-cc/bluemonday
 # github.com/nullrocks/identicon v0.0.0-20180626043057-7875f45b0022
 github.com/nullrocks/identicon
@@ -77,7 +77,7 @@ github.com/patrickmn/go-cache
 github.com/pkg/errors
 # github.com/pmezard/go-difflib v1.0.0
 github.com/pmezard/go-difflib/difflib
-# github.com/rakyll/statik v0.1.3
+# github.com/rakyll/statik v0.1.6
 github.com/rakyll/statik/fs
 # github.com/rs/xid v1.2.1
 github.com/rs/xid
@@ -89,19 +89,19 @@ github.com/stretchr/objx
 github.com/stretchr/testify/mock
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/require
-# golang.org/x/crypto v0.0.0-20190510104115-cbcb75029529
+# golang.org/x/crypto v0.0.0-20190530122614-20be4c3c3ed5
 golang.org/x/crypto/acme/autocert
 golang.org/x/crypto/acme
-# golang.org/x/image v0.0.0-20190507092727-e4e5bf290fec
+# golang.org/x/image v0.0.0-20190523035834-f03afa92d3ff
 golang.org/x/image/draw
 golang.org/x/image/math/f64
-# golang.org/x/net v0.0.0-20190509222800-a4d6f7feada5
+# golang.org/x/net v0.0.0-20190603091049-60506f45cf65
 golang.org/x/net/html
 golang.org/x/net/idna
 golang.org/x/net/html/atom
 golang.org/x/net/context/ctxhttp
 golang.org/x/net/context
-# golang.org/x/oauth2 v0.0.0-20190402181905-9f3314589c9a
+# golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
 golang.org/x/oauth2
 golang.org/x/oauth2/facebook
 golang.org/x/oauth2/github
@@ -110,7 +110,7 @@ golang.org/x/oauth2/yandex
 golang.org/x/oauth2/internal
 golang.org/x/oauth2/jws
 golang.org/x/oauth2/jwt
-# golang.org/x/sys v0.0.0-20190509141414-a5b02f93d862
+# golang.org/x/sys v0.0.0-20190602015325-4c4f7f33c9ed
 golang.org/x/sys/unix
 # golang.org/x/text v0.3.2
 golang.org/x/text/secure/bidirule
@@ -119,7 +119,7 @@ golang.org/x/text/unicode/norm
 golang.org/x/text/transform
 # golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
 golang.org/x/time/rate
-# google.golang.org/appengine v1.5.0
+# google.golang.org/appengine v1.6.0
 google.golang.org/appengine
 google.golang.org/appengine/urlfetch
 google.golang.org/appengine/internal
@@ -130,5 +130,5 @@ google.golang.org/appengine/internal/base
 google.golang.org/appengine/internal/datastore
 google.golang.org/appengine/internal/log
 google.golang.org/appengine/internal/remote_api
-# gopkg.in/russross/blackfriday.v2 v2.0.0
+# gopkg.in/russross/blackfriday.v2 v2.0.0-00010101000000-000000000000 => github.com/russross/blackfriday/v2 v2.0.1
 gopkg.in/russross/blackfriday.v2

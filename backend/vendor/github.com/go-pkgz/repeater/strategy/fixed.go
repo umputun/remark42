@@ -7,33 +7,27 @@ import (
 
 // FixedDelay implements strategy.Interface for fixed intervals up to max repeats
 type FixedDelay struct {
-	repeats int
-	delay   time.Duration
-}
-
-// NewFixedDelay makes a Interface
-func NewFixedDelay(repeats int, delay time.Duration) Interface {
-	if repeats == 0 {
-		repeats = 1
-	}
-	result := FixedDelay{repeats: repeats, delay: delay}
-	return &result
+	Repeats int
+	Delay   time.Duration
 }
 
 // Start returns channel, similar to time.Timer
 // then publishing signals to channel ch for retries attempt.
 // can be terminated (canceled) via context.
 func (s *FixedDelay) Start(ctx context.Context) (ch chan struct{}) {
+	if s.Repeats == 0 {
+		s.Repeats = 1
+	}
 	ch = make(chan struct{})
 	go func() {
 		defer close(ch)
-		for i := 0; i < s.repeats; i++ {
+		for i := 0; i < s.Repeats; i++ {
 			select {
 			case <-ctx.Done():
 				return
 			default:
 				ch <- struct{}{}
-				sleep(ctx, s.delay)
+				sleep(ctx, s.Delay)
 			}
 		}
 	}()

@@ -85,7 +85,7 @@ func (g *ErrSizedGroup) Go(f func() error) {
 }
 
 // Wait blocks until all function calls from the Go method have returned, then
-// returns the first all errors (if any) wrapped with multierror from them.
+// returns all errors (if any) wrapped with multierror from them.
 func (g *ErrSizedGroup) Wait() error {
 	g.wg.Wait()
 	if g.cancel != nil {
@@ -106,7 +106,7 @@ func (m *multierror) append(err error) *multierror {
 	return m
 }
 
-func (m *multierror) errorOrNil() *multierror {
+func (m *multierror) errorOrNil() error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	if len(m.errors) == 0 {

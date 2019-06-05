@@ -20,10 +20,14 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
+	"path"
+	"sort"
 	"strings"
+	"time"
 )
 
 var zipData string
@@ -32,10 +36,12 @@ var zipData string
 type file struct {
 	os.FileInfo
 	data []byte
+	fs   *statikFS
 }
 
 type statikFS struct {
 	files map[string]file
+	dirs  map[string][]string
 }
 
 // Register registers zip contents data, later used to initialize
@@ -54,19 +60,53 @@ func New() (http.FileSystem, error) {
 	if err != nil {
 		return nil, err
 	}
-	files := make(map[string]file)
+	files := make(map[string]file, len(zipReader.File))
+	dirs := make(map[string][]string)
+	fs := &statikFS{files: files, dirs: dirs}
 	for _, zipFile := range zipReader.File {
-		unzipped, err := unzip(zipFile)
+		fi := zipFile.FileInfo()
+		f := file{FileInfo: fi, fs: fs}
+		f.data, err = unzip(zipFile)
 		if err != nil {
 			return nil, fmt.Errorf("statik/fs: error unzipping file %q: %s", zipFile.Name, err)
 		}
-		files["/"+zipFile.Name] = file{
-			FileInfo: zipFile.FileInfo(),
-			data:     unzipped,
+		files["/"+zipFile.Name] = f
+	}
+	for fn := range files {
+		// go up directories recursively in order to care deep directory
+		for dn := path.Dir(fn); dn != fn; {
+			if _, ok := files[dn]; !ok {
+				files[dn] = file{FileInfo: dirInfo{dn}, fs: fs}
+			} else {
+				break
+			}
+			fn, dn = dn, path.Dir(dn)
 		}
 	}
-	return &statikFS{files: files}, nil
+	for fn := range files {
+		dn := path.Dir(fn)
+		if fn != dn {
+			fs.dirs[dn] = append(fs.dirs[dn], path.Base(fn))
+		}
+	}
+	for _, s := range fs.dirs {
+		sort.Strings(s)
+	}
+	return fs, nil
 }
+
+var _ = os.FileInfo(dirInfo{})
+
+type dirInfo struct {
+	name string
+}
+
+func (di dirInfo) Name() string       { return path.Base(di.name) }
+func (di dirInfo) Size() int64        { return 0 }
+func (di dirInfo) Mode() os.FileMode  { return 0755 | os.ModeDir }
+func (di dirInfo) ModTime() time.Time { return time.Time{} }
+func (di dirInfo) IsDir() bool        { return true }
+func (di dirInfo) Sys() interface{}   { return nil }
 
 func unzip(zf *zip.File) ([]byte, error) {
 	rc, err := zf.Open()
@@ -83,26 +123,17 @@ func unzip(zf *zip.File) ([]byte, error) {
 // in the requested directory, if that file exists.
 func (fs *statikFS) Open(name string) (http.File, error) {
 	name = strings.Replace(name, "//", "/", -1)
-	f, ok := fs.files[name]
-	if ok {
-		return newHTTPFile(f, false), nil
+	if f, ok := fs.files[name]; ok {
+		return newHTTPFile(f), nil
 	}
-	// The file doesn't match, but maybe it's a directory,
-	// thus we should look for index.html
-	indexName := strings.Replace(name+"/index.html", "//", "/", -1)
-	f, ok = fs.files[indexName]
-	if !ok {
-		return nil, os.ErrNotExist
-	}
-	return newHTTPFile(f, true), nil
+	return nil, os.ErrNotExist
 }
 
-func newHTTPFile(file file, isDir bool) *httpFile {
-	return &httpFile{
-		file:   file,
-		reader: bytes.NewReader(file.data),
-		isDir:  isDir,
+func newHTTPFile(file file) *httpFile {
+	if file.IsDir() {
+		return &httpFile{file: file, isDir: true}
 	}
+	return &httpFile{file: file, reader: bytes.NewReader(file.data)}
 }
 
 // httpFile represents an HTTP file and acts as a bridge
@@ -112,10 +143,14 @@ type httpFile struct {
 
 	reader *bytes.Reader
 	isDir  bool
+	dirIdx int
 }
 
 // Read reads bytes into p, returns the number of read bytes.
 func (f *httpFile) Read(p []byte) (n int, err error) {
+	if f.reader == nil && f.isDir {
+		return 0, io.EOF
+	}
 	return f.reader.Read(p)
 }
 
@@ -137,8 +172,43 @@ func (f *httpFile) IsDir() bool {
 // Readdir returns an empty slice of files, directory
 // listing is disabled.
 func (f *httpFile) Readdir(count int) ([]os.FileInfo, error) {
-	// directory listing is disabled.
-	return make([]os.FileInfo, 0), nil
+	var fis []os.FileInfo
+	if !f.isDir {
+		return fis, nil
+	}
+	di, ok := f.FileInfo.(dirInfo)
+	if !ok {
+		return nil, fmt.Errorf("failed to read directory: %q", f.Name())
+	}
+
+	// If count is positive, the specified number of files will be returned,
+	// and if negative, all remaining files will be returned.
+	// The reading position of which file is returned is held in dirIndex.
+	fnames := f.file.fs.dirs[di.name]
+	flen := len(fnames)
+
+	// If dirIdx reaches the end and the count is a positive value,
+	// an io.EOF error is returned.
+	// In other cases, no error will be returned even if, for example,
+	// you specified more counts than the number of remaining files.
+	start := f.dirIdx
+	if start >= flen && count > 0 {
+		return fis, io.EOF
+	}
+	var end int
+	if count < 0 {
+		end = flen
+	} else {
+		end = start + count
+	}
+	if end > flen {
+		end = flen
+	}
+	for i := start; i < end; i++ {
+		fis = append(fis, f.file.fs.files[path.Join(di.name, fnames[i])].FileInfo)
+	}
+	f.dirIdx += len(fis)
+	return fis, nil
 }
 
 func (f *httpFile) Close() error {

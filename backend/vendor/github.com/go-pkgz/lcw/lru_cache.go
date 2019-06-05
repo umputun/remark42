@@ -31,6 +31,9 @@ func NewLruCache(opts ...Option) (*LruCache, error) {
 	}
 
 	onEvicted := func(key interface{}, value interface{}) {
+		if res.onEvicted != nil {
+			res.onEvicted(key.(string), value)
+		}
 		if s, ok := value.(Sizer); ok {
 			size := s.Size()
 			atomic.AddInt64(&res.currentSize, -1*int64(size))
@@ -94,6 +97,11 @@ func (c *LruCache) Invalidate(fn func(key string) bool) {
 			c.backend.Remove(key)
 		}
 	}
+}
+
+// Delete cache item by key
+func (c *LruCache) Delete(key string) {
+	c.backend.Remove(key)
 }
 
 // Stat returns cache statistics

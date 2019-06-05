@@ -1,3 +1,9 @@
+// Package lcw adds a thin layer on top of lru cache and go-cache providing more limits and common interface.
+// The primary method to get (and set) data to/from the cache is LoadingCache.Get retruning stored data for a given key or
+// call provided func to retrive and store, similar to Guava loading cache.
+// Limits allow max values for key size, number of keys, value size and total size of values in the cache.
+// CacheStat gives general stats on cache performance.
+// 3 flavours of cache provided - NoP (do-nothing cache), ExpirableCache (TTL based), and LruCache
 package lcw
 
 import "fmt"
@@ -11,11 +17,12 @@ type Sizer interface {
 	Size() int
 }
 
-// LoadingCache defines guava-like cache with Get method returning cached value ao retriving it if not in cache
+// LoadingCache defines guava-like cache with Get method returning cached value ao retrieving it if not in cache
 type LoadingCache interface {
 	Get(key string, fn func() (Value, error)) (val Value, err error) // load or get from cache
 	Peek(key string) (Value, bool)                                   // get from cache by key
 	Invalidate(fn func(key string) bool)                             // invalidate items for func(key) == true
+	Delete(key string)                                               // delete by key
 	Purge()                                                          // clear cache
 	Stat() CacheStat                                                 // cache stats
 }
@@ -29,8 +36,8 @@ type CacheStat struct {
 	Errors int64
 }
 
-// String fromats cache stats
-func (s *CacheStat) String() string {
+// String formats cache stats
+func (s CacheStat) String() string {
 	return fmt.Sprintf("{hits:%d, misses:%d, ratio:%.1f%%, keys:%d, size:%d, errors:%d}",
 		s.Hits, s.Misses, 100*(float64(s.Hits)/float64(s.Hits+s.Misses)), s.Keys, s.Size, s.Errors)
 }
@@ -54,6 +61,9 @@ func (n *Nop) Invalidate(fn func(key string) bool) {}
 
 // Purge does nothing for nop cache
 func (n *Nop) Purge() {}
+
+// Delete does nothing for nop cache
+func (n *Nop) Delete(key string) {}
 
 // Stat always 0s for nop cache
 func (n *Nop) Stat() CacheStat {

@@ -13,7 +13,6 @@ type ExpirableCache struct {
 	options
 	CacheStat
 	currentSize int64
-	currKeys    int64
 	backend     *cache.Cache
 }
 
@@ -38,7 +37,9 @@ func NewExpirableCache(opts ...Option) (*ExpirableCache, error) {
 
 	// OnEvicted called automatically for expired and manually deleted
 	res.backend.OnEvicted(func(key string, value interface{}) {
-		atomic.AddInt64(&res.currKeys, -1)
+		if res.onEvicted != nil {
+			res.onEvicted(key, value)
+		}
 		if s, ok := value.(Sizer); ok {
 			size := s.Size()
 			atomic.AddInt64(&res.currentSize, -1*int64(size))
@@ -70,8 +71,7 @@ func (c *ExpirableCache) Get(key string, fn func() (Value, error)) (data Value, 
 			}
 			atomic.AddInt64(&c.currentSize, int64(s.Size()))
 		}
-		atomic.AddInt64(&c.currKeys, 1)
-		_ = c.backend.Add(key, data, time.Second)
+		c.backend.Set(key, data, c.ttl)
 	}
 
 	return data, nil
@@ -95,7 +95,11 @@ func (c *ExpirableCache) Peek(key string) (Value, bool) {
 func (c *ExpirableCache) Purge() {
 	c.backend.Flush()
 	atomic.StoreInt64(&c.currentSize, 0)
-	atomic.StoreInt64(&c.currKeys, 0)
+}
+
+// Delete cache item by key
+func (c *ExpirableCache) Delete(key string) {
+	c.backend.Delete(key)
 }
 
 // Stat returns cache statistics
@@ -114,11 +118,11 @@ func (c *ExpirableCache) size() int64 {
 }
 
 func (c *ExpirableCache) keys() int {
-	return int(atomic.LoadInt64(&c.currKeys))
+	return c.backend.ItemCount()
 }
 
 func (c *ExpirableCache) allowed(key string, data Value) bool {
-	if atomic.LoadInt64(&c.currKeys) >= int64(c.maxKeys) {
+	if c.backend.ItemCount() >= c.maxKeys {
 		return false
 	}
 	if c.maxKeySize > 0 && len(key) > c.maxKeySize {

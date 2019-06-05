@@ -15,11 +15,6 @@ type Interface interface {
 // Once strategy eliminate repeats and makes a single try only
 type Once struct{}
 
-// NewOnce makes no-repeat strategy
-func NewOnce() Interface {
-	return &Once{}
-}
-
 // Start returns closed channel with a single element to prevent any repeats
 func (s *Once) Start(ctx context.Context) (ch chan struct{}) {
 	ch = make(chan struct{})
