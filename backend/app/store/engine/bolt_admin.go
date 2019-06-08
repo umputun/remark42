@@ -29,13 +29,13 @@ func (b *BoltDB) Delete(locator store.Locator, commentID string, mode store.Dele
 		}
 
 		comment := store.Comment{}
-		if err = b.load(postBkt, []byte(commentID), &comment); err != nil {
+		if err = b.load(postBkt, commentID, &comment); err != nil {
 			return errors.Wrapf(err, "can't load key %s from bucket %s", commentID, locator.URL)
 		}
 		// set deleted status and clear fields
 		comment.SetDeleted(mode)
 
-		if err = b.save(postBkt, []byte(commentID), comment); err != nil {
+		if err = b.save(postBkt, commentID, comment); err != nil {
 			return errors.Wrapf(err, "can't save deleted comment for key %s from bucket %s", commentID, locator.URL)
 		}
 
