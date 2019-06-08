@@ -103,6 +103,7 @@ func (s *DataStore) Create(comment store.Comment) (commentID string, err error) 
 }
 
 // Find wraps engine's Find call and alter results if needed
+// user used to filter results for self vs others
 func (s *DataStore) Find(locator store.Locator, sort string, user store.User) ([]store.Comment, error) {
 	req := engine2.FindRequest{Locator: locator, Sort: sort}
 	comments, err := s.Engine.Find(req)
