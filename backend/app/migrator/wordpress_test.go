@@ -11,17 +11,17 @@ import (
 
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/admin"
-	"github.com/umputun/remark/backend/app/store/engine"
+	"github.com/umputun/remark/backend/app/store/engine2"
 	"github.com/umputun/remark/backend/app/store/service"
 )
 
 func TestWordPress_Import(t *testing.T) {
 	siteID := "testWP"
 	defer func() { _ = os.Remove("/tmp/remark-test.db") }()
-	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: siteID})
+	b, err := engine2.NewBoltDB(bolt.Options{}, engine2.BoltSite{FileName: "/tmp/remark-test.db", SiteID: siteID})
 	assert.Nil(t, err, "create store")
 
-	dataStore := service.DataStore{Interface: b, AdminStore: admin.NewStaticStore("12345", []string{}, "")}
+	dataStore := service.DataStore{Engine: b, AdminStore: admin.NewStaticStore("12345", []string{}, "")}
 	wp := WordPress{DataStore: &dataStore}
 	size, err := wp.Import(strings.NewReader(xmlTestWP), siteID)
 	assert.Nil(t, err)

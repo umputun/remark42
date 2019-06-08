@@ -12,15 +12,15 @@ import (
 
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/admin"
-	"github.com/umputun/remark/backend/app/store/engine"
+	"github.com/umputun/remark/backend/app/store/engine2"
 	"github.com/umputun/remark/backend/app/store/service"
 )
 
 func TestDisqus_Import(t *testing.T) {
 	defer os.Remove("/tmp/remark-test.db")
-	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "test"})
+	b, err := engine2.NewBoltDB(bolt.Options{}, engine2.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "test"})
 	require.Nil(t, err, "create store")
-	dataStore := service.DataStore{Interface: b, AdminStore: admin.NewStaticStore("12345", []string{}, "")}
+	dataStore := service.DataStore{Engine: b, AdminStore: admin.NewStaticStore("12345", []string{}, "")}
 	d := Disqus{DataStore: &dataStore}
 	size, err := d.Import(strings.NewReader(xmlTestDisqus), "test")
 	assert.Nil(t, err)
