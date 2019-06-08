@@ -31,7 +31,7 @@ import (
 	"github.com/umputun/remark/backend/app/rest/proxy"
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/admin"
-	"github.com/umputun/remark/backend/app/store/engine"
+	"github.com/umputun/remark/backend/app/store/engine2"
 	"github.com/umputun/remark/backend/app/store/image"
 	"github.com/umputun/remark/backend/app/store/service"
 )
@@ -249,7 +249,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 	log.Printf("[DEBUG] image service for url=%s, ttl=%v", imageService.ImageAPI, imageService.TTL)
 
 	dataService := &service.DataStore{
-		Interface:              storeEngine,
+		Engine:                 storeEngine,
 		EditDuration:           s.EditDuration,
 		AdminStore:             adminStore,
 		MaxCommentSize:         s.MaxCommentSize,
@@ -401,7 +401,7 @@ func (a *serverApp) activateBackup(ctx context.Context) {
 }
 
 // makeDataStore creates store for all sites
-func (s *ServerCommand) makeDataStore() (result engine.Interface, err error) {
+func (s *ServerCommand) makeDataStore() (result engine2.Interface, err error) {
 	log.Printf("[INFO] make data store, type=%s", s.Store.Type)
 
 	switch s.Store.Type {
@@ -409,18 +409,18 @@ func (s *ServerCommand) makeDataStore() (result engine.Interface, err error) {
 		if err = makeDirs(s.Store.Bolt.Path); err != nil {
 			return nil, errors.Wrap(err, "failed to create bolt store")
 		}
-		sites := []engine.BoltSite{}
+		sites := []engine2.BoltSite{}
 		for _, site := range s.Sites {
-			sites = append(sites, engine.BoltSite{SiteID: site, FileName: fmt.Sprintf("%s/%s.db", s.Store.Bolt.Path, site)})
+			sites = append(sites, engine2.BoltSite{SiteID: site, FileName: fmt.Sprintf("%s/%s.db", s.Store.Bolt.Path, site)})
 		}
-		result, err = engine.NewBoltDB(bolt.Options{Timeout: s.Store.Bolt.Timeout}, sites...)
-	case "mongo":
-		mgServer, e := s.makeMongo()
-		if e != nil {
-			return result, errors.Wrap(e, "failed to create mongo server")
-		}
-		conn := mongo.NewConnection(mgServer, s.Mongo.DB, "")
-		result, err = engine.NewMongo(conn, 500, 100*time.Millisecond)
+		result, err = engine2.NewBoltDB(bolt.Options{Timeout: s.Store.Bolt.Timeout}, sites...)
+	// case "mongo":
+	// 	mgServer, e := s.makeMongo()
+	// 	if e != nil {
+	// 		return result, errors.Wrap(e, "failed to create mongo server")
+	// 	}
+	// 	conn := mongo.NewConnection(mgServer, s.Mongo.DB, "")
+	// 	result, err = engine.NewMongo(conn, 500, 100*time.Millisecond)
 	default:
 		return nil, errors.Errorf("unsupported store type %s", s.Store.Type)
 	}

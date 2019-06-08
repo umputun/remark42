@@ -13,14 +13,6 @@ import (
 // NOTE: mockery works from linked to go-path and with GOFLAGS='-mod=vendor' go generate
 //go:generate sh -c "mockery -inpkg -name Interface -print > /tmp/engine-mock.tmp && mv /tmp/engine-mock.tmp engine_mock.go"
 
-// UserRequest is the request send to get comments by user
-type UserRequest struct {
-	SiteID string
-	UserID string
-	Limit  int
-	Skip   int
-}
-
 // Interface defines methods provided by low-level storage engine
 type Interface interface {
 	Create(comment store.Comment) (commentID string, err error)                  // create new comment, avoid dups by id
