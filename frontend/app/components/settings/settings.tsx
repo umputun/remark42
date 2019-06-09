@@ -57,7 +57,6 @@ export default class BlockedUsers extends Component<Props, State> {
   };
 
   hide = (user: User) => {
-    if (!confirm(`Do you want to hide ${user.name}?`)) return;
     this.setState({
       unhiddenUsers: this.state.unhiddenUsers.filter(x => x !== user.id),
     });
@@ -65,7 +64,6 @@ export default class BlockedUsers extends Component<Props, State> {
   };
 
   unhide = (user: User) => {
-    if (!confirm(`Do you want to unhide ${user.name}?`)) return;
     this.setState({ unhiddenUsers: this.state.unhiddenUsers.concat([user.id]) });
     this.props.unhideUser(user.id);
     this.props.onUnblockSomeone();
