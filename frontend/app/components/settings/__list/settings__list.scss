@@ -1,0 +1,22 @@
+.settings__list {
+  padding: 0 0 0 20px;
+}
+
+.settings__list-item {
+  cursor: default;
+  position: relative;
+  padding-bottom: 1em;
+  margin-bottom: 0.5em;
+
+  @media (hover: hover) {
+    .settings__action {
+      opacity: 0;
+    }
+
+    &:hover {
+      .settings__action {
+        opacity: 1;
+      }
+    }
+  }
+}

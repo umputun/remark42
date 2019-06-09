@@ -3,11 +3,11 @@
  * and should be importded explicitly
  */
 
-import { Comment as CommentType, User, BlockTTL, CommentMode } from '@app/common/types';
+import { Comment as CommentType } from '@app/common/types';
 
 import { connect } from 'preact-redux';
 
-import { StoreState, StoreDispatch } from '@app/store';
+import { StoreState } from '@app/store';
 import {
   addComment,
   removeComment,
@@ -15,17 +15,17 @@ import {
   setPinState,
   putVote,
   setCommentMode,
-  hideUserComments,
 } from '@app/store/comments/actions';
 import { setCollapse } from '@app/store/thread/actions';
-import { blockUser, unblockUser, setVirifiedStatus } from '@app/store/user/actions';
+import { blockUser, unblockUser, hideUser, setVerifiedStatus } from '@app/store/user/actions';
 
 import { Comment, Props } from './comment';
 import { getCommentMode } from '@app/store/comments/getters';
-import { uploadImage } from '@app/common/api';
+import { uploadImage, getPreview } from '@app/common/api';
 import { getThreadIsCollapsed } from '@app/store/thread/getters';
+import { bindActions } from '@app/utils/actionBinder';
 
-const mapProps = (state: StoreState, cprops: { data: CommentType }) => {
+const mapStateToProps = (state: StoreState, cprops: { data: CommentType }) => {
   const props: Pick<
     Props,
     'editMode' | 'user' | 'isUserBanned' | 'post_info' | 'isCommentsDisabled' | 'theme' | 'collapsed'
@@ -41,43 +41,24 @@ const mapProps = (state: StoreState, cprops: { data: CommentType }) => {
   return props;
 };
 
-const mapDispatchToProps = (dispatch: StoreDispatch) => {
-  const props: Pick<
-    Props,
-    | 'addComment'
-    | 'updateComment'
-    | 'removeComment'
-    | 'setReplyEditState'
-    | 'setCollapse'
-    | 'setPinState'
-    | 'putCommentVote'
-    | 'blockUser'
-    | 'unblockUser'
-    | 'hideUser'
-    | 'setVerifyStatus'
-    | 'uploadImage'
-  > = {
-    addComment: (text: string, title: string, pid?: CommentType['id']) => dispatch(addComment(text, title, pid)),
-    updateComment: (id: CommentType['id'], text: string) => dispatch(updateComment(id, text)),
-    removeComment: (id: CommentType['id']) => dispatch(removeComment(id)),
-    setReplyEditState: (id: CommentType['id'], mode: CommentMode) => dispatch(setCommentMode({ id, state: mode })),
-    setCollapse: (id: CommentType['id'], value: boolean) => dispatch(setCollapse(id, value)),
-    setPinState: (id: CommentType['id'], value: boolean) => dispatch(setPinState(id, value)),
-    putCommentVote: (id: CommentType['id'], value: number) => dispatch(putVote(id, value)),
-
-    blockUser: (id: User['id'], name: User['name'], ttl: BlockTTL) => dispatch(blockUser(id, name, ttl)),
-    unblockUser: (id: User['id']) => dispatch(unblockUser(id)),
-    hideUser: async (id: User['id']) => dispatch(hideUserComments(id)),
-    setVerifyStatus: (id: User['id'], value: boolean) => dispatch(setVirifiedStatus(id, value)),
-    // should i made it as store action?
-    uploadImage: (image: File) => uploadImage(image),
-  };
-
-  return props;
-};
+export const boundActions = bindActions({
+  addComment,
+  updateComment,
+  removeComment,
+  setReplyEditState: setCommentMode,
+  setCollapse,
+  setPinState,
+  putCommentVote: putVote,
+  blockUser,
+  unblockUser,
+  hideUser,
+  setVerifyStatus: setVerifiedStatus,
+  uploadImage,
+  getPreview,
+});
 
 /** Comment component connected to redux */
 export const ConnectedComment = connect(
-  mapProps,
-  mapDispatchToProps
+  mapStateToProps,
+  boundActions as Partial<typeof boundActions>
 )(Comment);

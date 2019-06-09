@@ -11,15 +11,16 @@ import { API_BASE, BASE_URL, COMMENT_NODE_CLASSNAME_PREFIX, BLOCKING_DURATIONS }
 import { StaticStore } from '@app/common/static_store';
 import debounce from '@app/utils/debounce';
 import copy from '@app/common/copy';
-import { Theme, BlockTTL, Comment as CommentType, PostInfo, User, CommentMode, Image } from '@app/common/types';
+import { Theme, BlockTTL, Comment as CommentType, PostInfo, User, CommentMode } from '@app/common/types';
 import { extractErrorMessageFromResponse, FetcherError } from '@app/utils/errorUtils';
 import { isUserAnonymous } from '@app/utils/isUserAnonymous';
 
 import { Input } from '@app/components/input';
 import { AvatarIcon } from '@app/components/avatar-icon';
 import Countdown from '../countdown';
+import { boundActions } from './connected-comment';
 
-export interface Props {
+export type Props = {
   user: User | null;
   data: CommentType;
   repliesCount?: number;
@@ -42,22 +43,7 @@ export interface Props {
   theme: Theme;
   level?: number;
   mix?: string;
-
-  // actions are optional, as component has read-only mode, such as in last comments
-  addComment?: (text: string, title: string, pid?: CommentType['id']) => Promise<void>;
-  updateComment?: (id: CommentType['id'], text: string) => Promise<void>;
-  removeComment?(id: CommentType['id']): Promise<void>;
-  setReplyEditState?(id: CommentType['id'], mode: CommentMode): void;
-  getPreview?: (text: string) => Promise<string>;
-  putCommentVote?(id: CommentType['id'], value: number): Promise<void>;
-  setCollapse?: (id: CommentType['id'], value: boolean) => void;
-  setPinState?(id: CommentType['id'], value: boolean): Promise<void>;
-  blockUser?(id: User['id'], name: User['name'], ttl: BlockTTL): Promise<void>;
-  hideUser?(id: User['id']): Promise<void>;
-  unblockUser?(id: User['id']): Promise<void>;
-  setVerifyStatus?(id: User['id'], value: boolean): Promise<void>;
-  uploadImage?(image: File): Promise<Image>;
-}
+} & Partial<typeof boundActions>;
 
 export interface State {
   isCopied: boolean;
@@ -131,18 +117,18 @@ export class Comment extends Component<Props, State> {
   toggleReplying = () => {
     const { editMode } = this.props;
     if (editMode === CommentMode.Reply) {
-      this.props.setReplyEditState!(this.props.data.id, CommentMode.None);
+      this.props.setReplyEditState!({ id: this.props.data.id, state: CommentMode.None });
     } else {
-      this.props.setReplyEditState!(this.props.data.id, CommentMode.Reply);
+      this.props.setReplyEditState!({ id: this.props.data.id, state: CommentMode.Reply });
     }
   };
 
   toggleEditing = () => {
     const { editMode } = this.props;
     if (editMode === CommentMode.Edit) {
-      this.props.setReplyEditState!(this.props.data.id, CommentMode.None);
+      this.props.setReplyEditState!({ id: this.props.data.id, state: CommentMode.None });
     } else {
-      this.props.setReplyEditState!(this.props.data.id, CommentMode.Edit);
+      this.props.setReplyEditState!({ id: this.props.data.id, state: CommentMode.Edit });
     }
   };
 
@@ -211,16 +197,15 @@ export class Comment extends Component<Props, State> {
 
   deleteComment = () => {
     if (confirm('Do you want to delete this comment?')) {
-      this.props.setReplyEditState!(this.props.data.id, CommentMode.None);
+      this.props.setReplyEditState!({ id: this.props.data.id, state: CommentMode.None });
 
       this.props.removeComment!(this.props.data.id);
     }
   };
 
   hideUser = () => {
-    if (confirm(`Do you want to hide comments of ${this.props.data.user.name}?`)) {
-      this.props.hideUser!(this.props.data.user.id);
-    }
+    if (!confirm(`Do you want to hide comments of ${this.props.data.user.name}?`)) return;
+    this.props.hideUser!(this.props.data.user);
   };
 
   handleVoteError = (e: FetcherError, originalScore: number, originalDelta: number) => {
@@ -268,13 +253,13 @@ export class Comment extends Component<Props, State> {
   addComment = async (text: string, title: string, pid?: CommentType['id']) => {
     await this.props.addComment!(text, title, pid);
 
-    this.props.setReplyEditState!(this.props.data.id, CommentMode.None);
+    this.props.setReplyEditState!({ id: this.props.data.id, state: CommentMode.None });
   };
 
   updateComment = async (id: CommentType['id'], text: string) => {
     await this.props.updateComment!(id, text);
 
-    this.props.setReplyEditState!(this.props.data.id, CommentMode.None);
+    this.props.setReplyEditState!({ id: this.props.data.id, state: CommentMode.None });
   };
 
   scrollToParent = (e: Event) => {
@@ -292,7 +277,7 @@ export class Comment extends Component<Props, State> {
   };
 
   toggleCollapse = () => {
-    this.props.setReplyEditState!(this.props.data.id, CommentMode.None);
+    this.props.setReplyEditState!({ id: this.props.data.id, state: CommentMode.None });
 
     this.props.setCollapse!(this.props.data.id, !this.props.collapsed);
   };
@@ -366,6 +351,82 @@ export class Comment extends Component<Props, State> {
     return null;
   };
 
+  getCommentControls = (): JSX.Element[] => {
+    const isAdmin = this.isAdmin();
+    const isCurrentUser = this.isCurrentUser();
+    const controls: JSX.Element[] = [];
+
+    if (this.props.data.delete) {
+      return controls;
+    }
+
+    if (!(this.props.view === 'main' || this.props.view === 'pinned')) {
+      return controls;
+    }
+
+    if (isAdmin) {
+      controls.push(
+        this.state.isCopied ? (
+          <span className="comment__control comment__control_view_inactive">Copied!</span>
+        ) : (
+          <span {...getHandleClickProps(this.copyComment)} className="comment__control">
+            Copy
+          </span>
+        )
+      );
+
+      controls.push(
+        <span {...getHandleClickProps(this.togglePin)} className="comment__control">
+          {this.props.data.pin ? 'Unpin' : 'Pin'}
+        </span>
+      );
+    }
+
+    if (!isCurrentUser) {
+      controls.push(
+        <span {...getHandleClickProps(this.hideUser)} className="comment__control">
+          Hide
+        </span>
+      );
+    }
+
+    if (isAdmin) {
+      if (this.props.isUserBanned) {
+        controls.push(
+          <span {...getHandleClickProps(this.onUnblockUserClick)} className="comment__control">
+            Unblock
+          </span>
+        );
+      }
+
+      if (this.props.user!.id !== this.props.data.user.id && !this.props.isUserBanned) {
+        controls.push(
+          <span className="comment__control comment__control_select-label">
+            Block
+            <select className="comment__control_select" onBlur={this.onBlockUserClick} onChange={this.onBlockUserClick}>
+              <option disabled selected value={undefined}>
+                {' '}
+                Blocking period{' '}
+              </option>
+              {BLOCKING_DURATIONS.map(block => (
+                <option value={block.value}>{block.label}</option>
+              ))}
+            </select>
+          </span>
+        );
+      }
+
+      if (!this.props.data.delete) {
+        controls.push(
+          <span {...getHandleClickProps(this.deleteComment)} className="comment__control">
+            Delete
+          </span>
+        );
+      }
+    }
+    return controls;
+  };
+
   render(props: RenderableProps<Props>, state: State) {
     const isAdmin = this.isAdmin();
     const isGuest = this.isGuest();
@@ -382,6 +443,7 @@ export class Comment extends Component<Props, State> {
     const editable = props.repliesCount === 0 && state.editDeadline;
     const scoreSignEnabled = !StaticStore.config.positive_score;
     const uploadImageHandler = this.isAnonymous() ? undefined : this.props.uploadImage;
+    const commentControls = this.getCommentControls();
 
     /**
      * CommentType adapted for rendering
@@ -624,62 +686,7 @@ export class Comment extends Component<Props, State> {
                   ),
                 ]}
 
-              {!isAdmin && !props.data.delete && !props.disabled && !isCurrentUser && (
-                <span className="comment__controls">
-                  <span {...getHandleClickProps(this.hideUser)} className="comment__action comment__action_type_hide">
-                    Hide
-                  </span>
-                </span>
-              )}
-
-              {!props.data.delete && isAdmin && (
-                <span className="comment__controls">
-                  {!state.isCopied && (
-                    <span {...getHandleClickProps(this.copyComment)} className="comment__control">
-                      Copy
-                    </span>
-                  )}
-
-                  {state.isCopied && <span className="comment__control comment__control_view_inactive">Copied!</span>}
-
-                  {(props.view === 'main' || props.view === 'pinned') && (
-                    <span {...getHandleClickProps(this.togglePin)} className="comment__control">
-                      {props.data.pin ? 'Unpin' : 'Pin'}
-                    </span>
-                  )}
-
-                  {props.isUserBanned && (
-                    <span {...getHandleClickProps(this.onUnblockUserClick)} className="comment__control">
-                      Unblock
-                    </span>
-                  )}
-
-                  {props.user!.id !== props.data.user.id && !props.isUserBanned && (
-                    <span className="comment__control comment__control_select-label">
-                      Block
-                      <select
-                        className="comment__control_select"
-                        onBlur={e => this.onBlockUserClick(e)}
-                        onChange={e => this.onBlockUserClick(e)}
-                      >
-                        <option disabled selected value={undefined}>
-                          {' '}
-                          Blocking period{' '}
-                        </option>
-                        {BLOCKING_DURATIONS.map(block => (
-                          <option value={block.value}>{block.label}</option>
-                        ))}
-                      </select>
-                    </span>
-                  )}
-
-                  {!props.data.delete && (
-                    <span {...getHandleClickProps(this.deleteComment)} className="comment__control">
-                      Delete
-                    </span>
-                  )}
-                </span>
-              )}
+              {commentControls.length > 0 && <span className="comment__controls">{commentControls}</span>}
             </div>
           )}
         </div>

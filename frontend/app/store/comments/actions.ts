@@ -12,8 +12,6 @@ import {
   filterTree,
 } from './utils';
 import { COMMENTS_SET, PINNED_COMMENTS_SET, COMMENT_MODE_SET } from './types';
-import { IS_STORAGE_AVAILABLE, LS_HIDDEN_USERS_KEY, HiddenUsersRecords } from '@app/common/constants';
-import { getItem } from '@app/common/local-storage';
 
 /** sets comments, and put pinned comments in cache */
 export const setComments = (comments: StoreState['comments']): StoreAction<void> => dispatch => {
@@ -83,10 +81,9 @@ export const removeComment = (id: Comment['id']): StoreAction<Promise<void>> => 
 };
 
 /** fetches comments from server */
-export const fetchComments = (sort: Sorting): StoreAction<Promise<Tree>> => async dispatch => {
+export const fetchComments = (sort: Sorting): StoreAction<Promise<Tree>> => async (dispatch, getState) => {
   const data = await api.getPostComments(sort);
-  const hiddenUsers: HiddenUsersRecords = IS_STORAGE_AVAILABLE && JSON.parse(getItem(LS_HIDDEN_USERS_KEY) || '{}');
-  const hiddenUsersIds = Object.keys(hiddenUsers);
+  const hiddenUsersIds = Object.keys(getState().hiddenUsers);
   if (hiddenUsersIds.length > 0)
     data.comments = filterTree(data.comments, node => hiddenUsersIds.indexOf(node.comment.user.id) === -1);
   dispatch(setComments(data.comments));
@@ -114,14 +111,4 @@ export const unsetCommentMode = (): StoreAction<void> => dispatch => {
     type: COMMENT_MODE_SET,
     mode: null,
   });
-};
-
-export const hideUserComments = (userId: string): StoreAction<void> => (dispatch, getState) => {
-  if (IS_STORAGE_AVAILABLE) {
-    const hiddenUsers = JSON.parse(getItem(LS_HIDDEN_USERS_KEY) || '{}');
-    hiddenUsers[userId] = {};
-    localStorage.setItem(LS_HIDDEN_USERS_KEY, JSON.stringify(hiddenUsers));
-  }
-  const comments = getState().comments;
-  return dispatch(setComments(filterTree(comments, node => node.comment.user.id !== userId)));
 };

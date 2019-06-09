@@ -11,9 +11,11 @@ import Dropdown, { DropdownItem } from '@app/components/dropdown';
 import { Button } from '@app/components/button';
 import { UserID } from './__user-id';
 import { AnonymousLoginForm } from './__anonymous-login-form';
+import { StoreState } from '@app/store';
 
 export interface Props {
   user: User | null;
+  hiddenUsers: StoreState['hiddenUsers'];
   providers: (AuthProvider['name'])[];
   sort: Sorting;
   isCommentsDisabled: boolean;
@@ -108,6 +110,8 @@ export class AuthPanel extends Component<Props, State> {
     const loggedIn = !!user;
     const signInMessage = props.postInfo.read_only ? 'Sign in using ' : 'Sign in to comment using ';
     const isUserAnonymous = user && user.id.substr(0, 10) === 'anonymous_';
+    const isSettingsLabelVisible =
+      Object.keys(this.props.hiddenUsers).length > 0 || (user && user.admin) || this.state.isBlockedVisible;
 
     return (
       <div className={b('auth-panel', {}, { theme: props.theme, loggedIn })}>
@@ -205,17 +209,17 @@ export class AuthPanel extends Component<Props, State> {
         )}
 
         <div className="auth-panel__column">
-          {user && user.admin && (
+          {isSettingsLabelVisible && (
             <span
               className="auth-panel__pseudo-link auth-panel__admin-action"
               {...getHandleClickProps(() => this.toggleBlockedVisibility())}
               role="link"
             >
-              {isBlockedVisible ? 'Hide' : 'Show'} blocked users
+              {isBlockedVisible ? 'Hide' : 'Show'} settings
             </span>
           )}
 
-          {user && user.admin && ' • '}
+          {isSettingsLabelVisible && ' • '}
 
           {user && user.admin && (
             <span

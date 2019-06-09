@@ -1,12 +1,8 @@
-.blocked-users__action {
+.settings__action {
   margin-left: 8px;
   font-weight: 700;
   color: #0aa;
   cursor: pointer;
-
-  @media (hover: hover) {
-    opacity: 0;
-  }
 
   &:hover {
     color: #06c5c5;

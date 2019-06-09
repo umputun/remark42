@@ -12,6 +12,7 @@ const DefaultProps: Partial<Props> = {
     url: 'https://example.com',
     count: 3,
   },
+  hiddenUsers: {},
 };
 
 describe('<AuthPanel />', () => {
@@ -65,6 +66,39 @@ describe('<AuthPanel />', () => {
       expect(providerLinks[0].textContent).toEqual('Google');
       expect(providerLinks[1].textContent).toEqual('GitHub');
     });
+
+    it('should not render settings if there is no hidden users', () => {
+      const element = (
+        <AuthPanel
+          {...DefaultProps as Props}
+          user={null}
+          postInfo={{ ...DefaultProps.postInfo, read_only: true } as PostInfo}
+        />
+      );
+
+      render(element, container);
+
+      const adminAction = container.querySelector('.auth-panel__admin-action')!;
+
+      expect(adminAction).toBe(null);
+    });
+
+    it('should render settings if there is some hidden users', () => {
+      const element = (
+        <AuthPanel
+          {...DefaultProps as Props}
+          user={null}
+          postInfo={{ ...DefaultProps.postInfo, read_only: true } as PostInfo}
+          hiddenUsers={{ hidden_joe: {} as any }}
+        />
+      );
+
+      render(element, container);
+
+      const adminAction = container.querySelector('.auth-panel__admin-action')!;
+
+      expect(adminAction.textContent).toEqual('Show settings');
+    });
   });
   describe('For authorized user', () => {
     let container: HTMLElement;
@@ -101,7 +135,7 @@ describe('<AuthPanel />', () => {
 
       const adminAction = container.querySelector('.auth-panel__admin-action')!;
 
-      expect(adminAction.textContent).toEqual('Show blocked users');
+      expect(adminAction.textContent).toEqual('Show settings');
     });
   });
 });
