@@ -1,4 +1,4 @@
-import { Sorting, AuthProvider, BlockingDuration, Theme, User } from './types';
+import { Sorting, AuthProvider, BlockingDuration, Theme } from './types';
 
 export const BASE_URL: string =
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -81,13 +81,3 @@ export const IS_THIRD_PARTY: boolean = (() => {
     return true;
   }
 })();
-
-/**
- * Defined HiddenUser entity interface
- *
- * Is empty currently but may be extended in future
- */
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface HiddenUser {}
-
-export type HiddenUsersRecords = Record<User['id'], HiddenUser>;
