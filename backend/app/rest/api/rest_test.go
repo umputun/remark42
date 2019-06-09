@@ -31,7 +31,7 @@ import (
 	"github.com/umputun/remark/backend/app/rest/proxy"
 	"github.com/umputun/remark/backend/app/store"
 	adminstore "github.com/umputun/remark/backend/app/store/admin"
-	"github.com/umputun/remark/backend/app/store/engine2"
+	"github.com/umputun/remark/backend/app/store/engine"
 	"github.com/umputun/remark/backend/app/store/image"
 	"github.com/umputun/remark/backend/app/store/service"
 )
@@ -291,7 +291,7 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 	os.RemoveAll("/tmp/ava-remark42")
 	os.RemoveAll("/tmp/pics-remark42")
 
-	b, err := engine2.NewBoltDB(bolt.Options{}, engine2.BoltSite{FileName: testDb, SiteID: "radio-t"})
+	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDb, SiteID: "radio-t"})
 	require.Nil(t, err)
 
 	memCache, err := cache.NewMemoryCache()

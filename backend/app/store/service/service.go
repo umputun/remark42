@@ -19,13 +19,12 @@ import (
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/admin"
 	"github.com/umputun/remark/backend/app/store/engine"
-	"github.com/umputun/remark/backend/app/store/engine2"
 	"github.com/umputun/remark/backend/app/store/image"
 )
 
 // DataStore wraps store.Interface with additional methods
 type DataStore struct {
-	Engine                 engine2.Interface
+	Engine                 engine.Interface
 	EditDuration           time.Duration
 	AdminStore             admin.Store
 	MaxCommentSize         int
@@ -105,7 +104,7 @@ func (s *DataStore) Create(comment store.Comment) (commentID string, err error) 
 // Find wraps engine's Find call and alter results if needed
 // user used to filter results for self vs others
 func (s *DataStore) Find(locator store.Locator, sort string, user store.User) ([]store.Comment, error) {
-	req := engine2.FindRequest{Locator: locator, Sort: sort}
+	req := engine.FindRequest{Locator: locator, Sort: sort}
 	comments, err := s.Engine.Find(req)
 	if err != nil {
 		return comments, err
@@ -192,7 +191,7 @@ func (s *DataStore) prepareNewComment(comment store.Comment) (store.Comment, err
 
 // DeleteAll removes all data from site
 func (s *DataStore) DeleteAll(siteID string) error {
-	req := engine2.DeleteRequest{Locator: store.Locator{SiteID: siteID}}
+	req := engine.DeleteRequest{Locator: store.Locator{SiteID: siteID}}
 	return s.Engine.Delete(req)
 }
 
@@ -317,7 +316,7 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 
 	if req.Delete { // delete request
 		comment.Deleted = true
-		delReq := engine2.DeleteRequest{Locator: locator, CommentID: commentID, DeleteMode: store.SoftDelete}
+		delReq := engine.DeleteRequest{Locator: locator, CommentID: commentID, DeleteMode: store.SoftDelete}
 		return comment, s.Engine.Delete(delReq)
 	}
 
@@ -351,7 +350,7 @@ func (s *DataStore) HasReplies(comment store.Comment) bool {
 		return true
 	}
 
-	req := engine2.FindRequest{Locator: store.Locator{SiteID: comment.Locator.SiteID}, Limit: maxLastCommentsReply}
+	req := engine.FindRequest{Locator: store.Locator{SiteID: comment.Locator.SiteID}, Limit: maxLastCommentsReply}
 	comments, err := s.Engine.Find(req)
 	if err != nil {
 		log.Printf("[WARN] can't get last comments for reply check, %v", err)
@@ -430,7 +429,7 @@ func (s *DataStore) SetTitle(locator store.Locator, commentID string) (comment s
 func (s *DataStore) Counts(siteID string, postIDs []string) ([]store.PostInfo, error) {
 	res := []store.PostInfo{}
 	for _, p := range postIDs {
-		req := engine2.FindRequest{Locator: store.Locator{SiteID: siteID, URL: p}}
+		req := engine.FindRequest{Locator: store.Locator{SiteID: siteID, URL: p}}
 		if c, err := s.Engine.Count(req); err == nil {
 			res = append(res, store.PostInfo{URL: p, Count: c})
 		}
@@ -468,63 +467,63 @@ func (s *DataStore) IsAdmin(siteID string, userID string) bool {
 
 // IsReadOnly checks if post read-only
 func (s *DataStore) IsReadOnly(locator store.Locator) bool {
-	req := engine2.FlagRequest{Locator: locator, Flag: engine2.ReadOnly}
+	req := engine.FlagRequest{Locator: locator, Flag: engine.ReadOnly}
 	ro, err := s.Engine.Flag(req)
 	return err == nil && ro
 }
 
 // SetReadOnly set/reset read-only flag
 func (s *DataStore) SetReadOnly(locator store.Locator, status bool) error {
-	roStatus := engine2.FlagFalse
+	roStatus := engine.FlagFalse
 	if status {
-		roStatus = engine2.FlagTrue
+		roStatus = engine.FlagTrue
 
 	}
-	req := engine2.FlagRequest{Locator: locator, Flag: engine2.ReadOnly, Update: roStatus}
+	req := engine.FlagRequest{Locator: locator, Flag: engine.ReadOnly, Update: roStatus}
 	_, err := s.Engine.Flag(req)
 	return err
 }
 
 // IsVerified checks if user verified
 func (s *DataStore) IsVerified(siteID string, userID string) bool {
-	req := engine2.FlagRequest{Locator: store.Locator{SiteID: siteID}, UserID: userID, Flag: engine2.Verified}
+	req := engine.FlagRequest{Locator: store.Locator{SiteID: siteID}, UserID: userID, Flag: engine.Verified}
 	ro, err := s.Engine.Flag(req)
 	return err == nil && ro
 }
 
 // SetVerified set/reset verified status for user
 func (s *DataStore) SetVerified(siteID string, userID string, status bool) error {
-	roStatus := engine2.FlagFalse
+	roStatus := engine.FlagFalse
 	if status {
-		roStatus = engine2.FlagTrue
+		roStatus = engine.FlagTrue
 	}
-	req := engine2.FlagRequest{Locator: store.Locator{SiteID: siteID}, UserID: userID, Flag: engine2.Verified, Update: roStatus}
+	req := engine.FlagRequest{Locator: store.Locator{SiteID: siteID}, UserID: userID, Flag: engine.Verified, Update: roStatus}
 	_, err := s.Engine.Flag(req)
 	return err
 }
 
 // IsBlocked checks if user blocked
 func (s *DataStore) IsBlocked(siteID string, userID string) bool {
-	req := engine2.FlagRequest{Locator: store.Locator{SiteID: siteID}, UserID: userID, Flag: engine2.Blocked}
+	req := engine.FlagRequest{Locator: store.Locator{SiteID: siteID}, UserID: userID, Flag: engine.Blocked}
 	ro, err := s.Engine.Flag(req)
 	return err == nil && ro
 }
 
 // SetBlock set/reset verified status for user
 func (s *DataStore) SetBlock(siteID string, userID string, status bool, ttl time.Duration) error {
-	roStatus := engine2.FlagFalse
+	roStatus := engine.FlagFalse
 	if status {
-		roStatus = engine2.FlagTrue
+		roStatus = engine.FlagTrue
 	}
-	req := engine2.FlagRequest{Locator: store.Locator{SiteID: siteID}, UserID: userID,
-		Flag: engine2.Blocked, Update: roStatus, TTL: ttl}
+	req := engine.FlagRequest{Locator: store.Locator{SiteID: siteID}, UserID: userID,
+		Flag: engine.Blocked, Update: roStatus, TTL: ttl}
 	_, err := s.Engine.Flag(req)
 	return err
 }
 
 // Blocked returns list with all blocked users
 func (s *DataStore) Blocked(siteID string) (res []store.BlockedUser, err error) {
-	blocked, e := s.Engine.ListFlags(siteID, engine2.Blocked)
+	blocked, e := s.Engine.ListFlags(siteID, engine.Blocked)
 	if e != nil {
 		return nil, errors.Wrapf(err, "can't get list of blocked users for %s", siteID)
 	}
@@ -536,7 +535,7 @@ func (s *DataStore) Blocked(siteID string) (res []store.BlockedUser, err error) 
 
 // Info get post info
 func (s *DataStore) Info(locator store.Locator, readonlyAge int) (store.PostInfo, error) {
-	req := engine2.InfoRequest{Locator: locator, ReadOnlyAge: readonlyAge}
+	req := engine.InfoRequest{Locator: locator, ReadOnlyAge: readonlyAge}
 	res, err := s.Engine.Info(req)
 	if err != nil {
 		return store.PostInfo{}, err
@@ -549,25 +548,25 @@ func (s *DataStore) Info(locator store.Locator, readonlyAge int) (store.PostInfo
 
 // Delete comment by id
 func (s *DataStore) Delete(locator store.Locator, commentID string, mode store.DeleteMode) error {
-	req := engine2.DeleteRequest{Locator: locator, CommentID: commentID, DeleteMode: mode}
+	req := engine.DeleteRequest{Locator: locator, CommentID: commentID, DeleteMode: mode}
 	return s.Engine.Delete(req)
 }
 
 // DeleteUser removes all comments from user
 func (s *DataStore) DeleteUser(siteID string, userID string) error {
-	req := engine2.DeleteRequest{Locator: store.Locator{SiteID: siteID}, UserID: userID, DeleteMode: store.HardDelete}
+	req := engine.DeleteRequest{Locator: store.Locator{SiteID: siteID}, UserID: userID, DeleteMode: store.HardDelete}
 	return s.Engine.Delete(req)
 }
 
 // List of commented posts
 func (s *DataStore) List(siteID string, limit int, skip int) ([]store.PostInfo, error) {
-	req := engine2.InfoRequest{Locator: store.Locator{SiteID: siteID}, Limit: limit, Skip: skip}
+	req := engine.InfoRequest{Locator: store.Locator{SiteID: siteID}, Limit: limit, Skip: skip}
 	return s.Engine.Info(req)
 }
 
 // Count gets number of comments for the post
 func (s *DataStore) Count(locator store.Locator) (int, error) {
-	req := engine2.FindRequest{Locator: locator}
+	req := engine.FindRequest{Locator: locator}
 	return s.Engine.Count(req)
 }
 
@@ -577,7 +576,7 @@ func (s *DataStore) Metas(siteID string) (umetas []UserMetaData, pmetas []PostMe
 	pmetas = []PostMetaData{}
 
 	// set posts meta
-	posts, err := s.Engine.Info(engine2.InfoRequest{Locator: store.Locator{SiteID: siteID}})
+	posts, err := s.Engine.Info(engine.InfoRequest{Locator: store.Locator{SiteID: siteID}})
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "can't get list of posts for %s", siteID)
 	}
@@ -607,7 +606,7 @@ func (s *DataStore) Metas(siteID string) (umetas []UserMetaData, pmetas []PostMe
 	}
 
 	// process verified users
-	verified, err := s.Engine.ListFlags(siteID, engine2.Verified)
+	verified, err := s.Engine.ListFlags(siteID, engine.Verified)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "can't get list of verified users for %s", siteID)
 	}
@@ -655,7 +654,7 @@ func (s *DataStore) SetMetas(siteID string, umetas []UserMetaData, pmetas []Post
 
 // User gets comment for given userID on siteID
 func (s *DataStore) User(siteID, userID string, limit, skip int, user store.User) ([]store.Comment, error) {
-	req := engine2.FindRequest{Locator: store.Locator{SiteID: siteID}, UserID: userID, Limit: limit, Skip: skip}
+	req := engine.FindRequest{Locator: store.Locator{SiteID: siteID}, UserID: userID, Limit: limit, Skip: skip}
 	comments, err := s.Engine.Find(req)
 	if err != nil {
 		return comments, err
@@ -665,13 +664,13 @@ func (s *DataStore) User(siteID, userID string, limit, skip int, user store.User
 
 // UserCount is comments count by user
 func (s *DataStore) UserCount(siteID, userID string) (int, error) {
-	req := engine2.FindRequest{Locator: store.Locator{SiteID: siteID}, UserID: userID}
+	req := engine.FindRequest{Locator: store.Locator{SiteID: siteID}, UserID: userID}
 	return s.Engine.Count(req)
 }
 
 // Last gets last comments for site, cross-post. Limited by count and optional since ts
 func (s *DataStore) Last(siteID string, limit int, since time.Time, user store.User) ([]store.Comment, error) {
-	req := engine2.FindRequest{Locator: store.Locator{SiteID: siteID}, Limit: limit, Since: since, Sort: "-time"}
+	req := engine.FindRequest{Locator: store.Locator{SiteID: siteID}, Limit: limit, Since: since, Sort: "-time"}
 	comments, err := s.Engine.Find(req)
 	if err != nil {
 		return comments, err
@@ -720,7 +719,7 @@ func (s *DataStore) alterComments(cc []store.Comment, user store.User) (res []st
 
 func (s *DataStore) alterComment(c store.Comment, user store.User) (res store.Comment) {
 
-	blocReq := engine2.FlagRequest{Flag: engine2.Blocked, Locator: store.Locator{SiteID: c.Locator.SiteID}, UserID: c.User.ID}
+	blocReq := engine.FlagRequest{Flag: engine.Blocked, Locator: store.Locator{SiteID: c.Locator.SiteID}, UserID: c.User.ID}
 	blocked, _ := s.Engine.Flag(blocReq)
 
 	// process blocked users
@@ -734,7 +733,7 @@ func (s *DataStore) alterComment(c store.Comment, user store.User) (res store.Co
 
 	// set verified status retroactively
 	if !blocked {
-		verifReq := engine2.FlagRequest{Flag: engine2.Verified, Locator: store.Locator{SiteID: c.Locator.SiteID}, UserID: c.User.ID}
+		verifReq := engine.FlagRequest{Flag: engine.Verified, Locator: store.Locator{SiteID: c.Locator.SiteID}, UserID: c.User.ID}
 		c.User.Verified, _ = s.Engine.Flag(verifReq)
 	}
 

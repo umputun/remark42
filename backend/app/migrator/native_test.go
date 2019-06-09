@@ -16,7 +16,7 @@ import (
 
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/admin"
-	"github.com/umputun/remark/backend/app/store/engine2"
+	"github.com/umputun/remark/backend/app/store/engine"
 	"github.com/umputun/remark/backend/app/store/service"
 )
 
@@ -142,7 +142,7 @@ func TestNative_ImportManyWithError(t *testing.T) {
 func prep(t *testing.T) *service.DataStore {
 	os.Remove(testDb)
 
-	boltStore, err := engine2.NewBoltDB(bolt.Options{}, engine2.BoltSite{SiteID: "radio-t", FileName: testDb})
+	boltStore, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{SiteID: "radio-t", FileName: testDb})
 	assert.Nil(t, err)
 
 	b := &service.DataStore{Engine: boltStore, AdminStore: admin.NewStaticStore("12345", []string{}, "")}

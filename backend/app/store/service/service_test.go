@@ -21,7 +21,7 @@ import (
 
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/admin"
-	"github.com/umputun/remark/backend/app/store/engine2"
+	"github.com/umputun/remark/backend/app/store/engine"
 	"github.com/umputun/remark/backend/app/store/image"
 )
 
@@ -1015,9 +1015,9 @@ func TestService_submitImages(t *testing.T) {
 func TestService_alterComment(t *testing.T) {
 	defer teardown(t)
 
-	engineMock := engine2.MockInterface{}
-	engineMock.On("Flag", engine2.FlagRequest{Flag: engine2.Blocked, UserID: "devid"}).Return(false, nil)
-	engineMock.On("Flag", engine2.FlagRequest{Flag: engine2.Verified, UserID: "devid"}).Return(false, nil)
+	engineMock := engine.MockInterface{}
+	engineMock.On("Flag", engine.FlagRequest{Flag: engine.Blocked, UserID: "devid"}).Return(false, nil)
+	engineMock.On("Flag", engine.FlagRequest{Flag: engine.Verified, UserID: "devid"}).Return(false, nil)
 	svc := DataStore{Engine: &engineMock}
 
 	r := svc.alterComment(store.Comment{ID: "123", User: store.User{IP: "127.0.0.1", ID: "devid"}},
@@ -1027,17 +1027,17 @@ func TestService_alterComment(t *testing.T) {
 		store.User{Name: "dev", ID: "devid", Admin: true})
 	assert.Equal(t, store.Comment{ID: "123", User: store.User{IP: "127.0.0.1", ID: "devid"}}, r, "ip not cleaned")
 
-	engineMock = engine2.MockInterface{}
-	engineMock.On("Flag", engine2.FlagRequest{Flag: engine2.Blocked, UserID: "devid"}).Return(false, nil)
-	engineMock.On("Flag", engine2.FlagRequest{Flag: engine2.Verified, UserID: "devid"}).Return(true, nil)
+	engineMock = engine.MockInterface{}
+	engineMock.On("Flag", engine.FlagRequest{Flag: engine.Blocked, UserID: "devid"}).Return(false, nil)
+	engineMock.On("Flag", engine.FlagRequest{Flag: engine.Verified, UserID: "devid"}).Return(true, nil)
 	svc = DataStore{Engine: &engineMock}
 	r = svc.alterComment(store.Comment{ID: "123", User: store.User{IP: "127.0.0.1", ID: "devid", Verified: true}},
 		store.User{Name: "dev", ID: "devid", Admin: false})
 	assert.Equal(t, store.Comment{ID: "123", User: store.User{IP: "", ID: "devid", Verified: true}}, r, "verified set")
 
-	engineMock = engine2.MockInterface{}
-	engineMock.On("Flag", engine2.FlagRequest{Flag: engine2.Blocked, UserID: "devid"}).Return(true, nil)
-	engineMock.On("Flag", engine2.FlagRequest{Flag: engine2.Verified, UserID: "devid"}).Return(false, nil)
+	engineMock = engine.MockInterface{}
+	engineMock.On("Flag", engine.FlagRequest{Flag: engine.Blocked, UserID: "devid"}).Return(true, nil)
+	engineMock.On("Flag", engine.FlagRequest{Flag: engine.Verified, UserID: "devid"}).Return(false, nil)
 	svc = DataStore{Engine: &engineMock}
 	r = svc.alterComment(store.Comment{ID: "123", User: store.User{IP: "127.0.0.1", ID: "devid", Verified: true}},
 		store.User{Name: "dev", ID: "devid", Admin: false})
@@ -1046,10 +1046,10 @@ func TestService_alterComment(t *testing.T) {
 }
 
 // makes new boltdb, put two records
-func prepStoreEngine(t *testing.T) engine2.Interface {
+func prepStoreEngine(t *testing.T) engine.Interface {
 	_ = os.Remove(testDb)
 
-	boltStore, err := engine2.NewBoltDB(bolt.Options{}, engine2.BoltSite{FileName: "/tmp/test-remark.db", SiteID: "radio-t"})
+	boltStore, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/test-remark.db", SiteID: "radio-t"})
 	assert.NoError(t, err)
 	b := boltStore
 
