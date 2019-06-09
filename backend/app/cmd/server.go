@@ -468,7 +468,7 @@ func (s *ServerCommand) makePicturesStore() (*image.Service, error) {
 				MaxWidth:   s.Image.ResizeWidth,
 			},
 			ImageAPI: s.RemarkURL + "/api/v1/picture/",
-			TTL:      s.EditDuration + time.Second, // add extra second to image TTL for staging
+			TTL:      5 * s.EditDuration, // add extra time to image TTL for staging
 		}, nil
 	}
 	return nil, errors.Errorf("unsupported pictures store type %s", s.Image.Type)
