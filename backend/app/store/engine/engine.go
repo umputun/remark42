@@ -22,7 +22,7 @@ type Interface interface {
 	Find(req FindRequest) ([]store.Comment, error)                      // find comments for locator or site
 	Info(req InfoRequest) ([]store.PostInfo, error)                     // get post(s) meta info
 	Count(req FindRequest) (int, error)                                 // get count for post or user
-	Delete(req DeleteRequest) error                // delete post(s) by id or by userID
+	Delete(req DeleteRequest) error                                     // delete post(s) by id or by userID
 	Flag(req FlagRequest) (bool, error)                                 // set and get flags
 	ListFlags(siteID string, flag Flag) ([]interface{}, error)          // get list of flagged keys, like blocked & verified user
 	Close() error                                                       // close storage engine
@@ -30,25 +30,28 @@ type Interface interface {
 
 // FindRequest is the input for all find operations
 type FindRequest struct {
-	Locator     store.Locator // lack of URL means site operation
-	UserID      string        // presence of UserID treated as user-related find
-	Sort        string        // sort order with +/-field syntax
-	Since       time.Time     // time limit for found results
-	Limit, Skip int
+	Locator store.Locator `json:"locator"`           // lack of URL means site operation
+	UserID  string        `json:"user_id,omitempty"` // presence of UserID treated as user-related find
+	Sort    string        `json:"sort,omitempty"`    // sort order with +/-field syntax
+	Since   time.Time     `json:"since,omitempty"`   // time limit for found results
+	Limit   int           `json:"limit,omitempty"`
+	Skip    int           `json:"skip,omitempty"`
 }
 
 // InfoRequest is the input of Info operation used to get meta data about posts
 type InfoRequest struct {
-	Locator     store.Locator
-	Limit, Skip int
-	ReadOnlyAge int
+	Locator     store.Locator `json:"locator"`
+	Limit       int           `json:"limit,omitempty"`
+	Skip        int           `json:"skip,omitempty"`
+	ReadOnlyAge int           `json:"ro_age,omitempty"`
 }
 
+// DeleteRequest is the input for all delete operations (comments, sites, users)
 type DeleteRequest struct {
-	Locator    store.Locator // lack of URL means site operation
-	CommentID  string
-	UserID string
-	DeleteMode store.DeleteMode
+	Locator    store.Locator    `json:"locator"` // lack of URL means site operation
+	CommentID  string           `json:"comment_id,omitempty"`
+	UserID     string           `json:"user_id,omitempty"`
+	DeleteMode store.DeleteMode `json:"del_mode"`
 }
 
 // Flag defines type of binary attribute
@@ -73,11 +76,11 @@ const (
 
 // FlagRequest is the input for both get/set for flags, like blocked, verified and so on
 type FlagRequest struct {
-	Flag    Flag          // flag type
-	Locator store.Locator // post locator
-	UserID  string        // for flags setting user status
-	Update  FlagStatus    // if FlagNonSet it will be get op, if set will set the value
-	TTL     time.Duration // ttl for time-sensitive flags only, like blocked for some period
+	Flag    Flag          `json:"flag"`              // flag type
+	Locator store.Locator `json:"locator"`           // post locator
+	UserID  string        `json:"user_id,omitempty"` // for flags setting user status
+	Update  FlagStatus    `json:"update,omitempty"`  // if FlagNonSet it will be get op, if set will set the value
+	TTL     time.Duration `json:"ttl,omitempty"`     // ttl for time-sensitive flags only, like blocked for some period
 }
 
 const (
