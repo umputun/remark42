@@ -96,7 +96,6 @@ export default class BlockedUsers extends Component<Props, State> {
                     >
                       {user.name || 'unknown'}
                     </span>
-                    <span className="settings__user-id">id: {user.id}</span>
                     {this.__isUserHidden(user) ? (
                       <span className="settings__action" {...getHandleClickProps(() => this.unhide(user))}>
                         show
@@ -106,6 +105,11 @@ export default class BlockedUsers extends Component<Props, State> {
                         hide
                       </span>
                     )}
+                    <div>
+                      <span className="settings__user-id">
+                        id: <span>{user.id}</span>
+                      </span>
+                    </div>
                   </li>
                 );
               })}
@@ -131,7 +135,6 @@ export default class BlockedUsers extends Component<Props, State> {
                       >
                         {user.name || 'unknown'}
                       </span>
-                      <span className="settings__user-id">id: {user.id}</span>
                       <span className="settings__blocked-users-user-block-ttl"> {formatTime(new Date(user.time))}</span>
                       {isUserUnblocked && (
                         <span {...getHandleClickProps(() => this.block(user))} className="blocked-users__action">
@@ -143,6 +146,11 @@ export default class BlockedUsers extends Component<Props, State> {
                           unblock
                         </span>
                       )}
+                      <div>
+                        <span className="settings__user-id">
+                          id: <span>{user.id}</span>
+                        </span>
+                      </div>
                     </li>
                   );
                 })}
