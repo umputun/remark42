@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"net/http"
-	"time"
 
 	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/backend/app/store"
+	"github.com/umputun/remark/backend/app/store/engine"
 )
 
 // Client implements remote engine and delegates all calls to remote http server
@@ -54,50 +54,72 @@ func (r *Client) Get(locator store.Locator, commentID string) (comment store.Com
 	return comment, err
 }
 
-// Put updates comment, mutable parts only
-func (r *Client) Put(locator store.Locator, comment store.Comment) error {
-	_, err := r.call("put", locator, comment)
+// Update comment, mutable parts only
+func (r *Client) Update(locator store.Locator, comment store.Comment) error {
+	_, err := r.call("update", locator, comment)
 	return err
 }
 
 // Find comments for locator
-func (r *Client) Find(locator store.Locator, sort string) (comments []store.Comment, err error) {
-	resp, err := r.call("find", locator, sort)
+func (r *Client) Find(req engine.FindRequest) (comments []store.Comment, err error) {
+	resp, err := r.call("find", req)
 	if err != nil {
-		return []store.Comment{}, err
+		return nil, err
 	}
 	err = json.Unmarshal(*resp.Result, &comments)
 	return comments, err
 }
 
-// Last comments for given site, sorted by time
-func (r *Client) Last(siteID string, limit int, since time.Time) (comments []store.Comment, err error) {
-	resp, err := r.call("last", siteID, limit, since)
+// Info returns post(s) meta info
+func (r *Client) Info(req engine.InfoRequest) (info []store.PostInfo, err error) {
+	resp, err := r.call("info", req)
 	if err != nil {
-		return []store.Comment{}, err
+		return nil, err
 	}
-	err = json.Unmarshal(*resp.Result, &comments)
-	return comments, err
+	err = json.Unmarshal(*resp.Result, &info)
+	return info, err
 }
 
-// User get comments by user, sorted by time
-func (r *Client) User(siteID, userID string, limit, skip int) (comments []store.Comment, err error) {
-	resp, err := r.call("user", siteID, userID, limit, skip)
+// Flag sets and gets flags
+func (r *Client) Flag(req engine.FlagRequest) (status bool, err error) {
+	resp, err := r.call("flag", req)
 	if err != nil {
-		return []store.Comment{}, err
+		return false, err
 	}
-	err = json.Unmarshal(*resp.Result, &comments)
-	return comments, err
+	err = json.Unmarshal(*resp.Result, &status)
+	return status, err
 }
 
-// UserCount gets comments count by user
-func (r *Client) UserCount(siteID, userID string) (count int, err error)        {
-	resp, err := r.call("user_count", siteID, userID)
+// ListFlags get list of flagged keys, like blocked & verified user
+func (r *Client) ListFlags(siteID string, flag engine.Flag) (list []interface{}, err error) {
+	resp, err := r.call("list_flags", siteID, flag)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(*resp.Result, &list)
+	return list, err
+}
+
+// Count gets comments count by user or site
+func (r *Client) Count(req engine.FindRequest) (count int, err error) {
+	resp, err := r.call("count", req)
 	if err != nil {
 		return 0, err
 	}
 	err = json.Unmarshal(*resp.Result, &count)
 	return count, err
+}
+
+// Delete post(s) by id or by userID
+func (r *Client) Delete(req engine.DeleteRequest) error {
+	_, err := r.call("delete", req)
+	return err
+}
+
+// Close storage engine
+func (r *Client) Close() error {
+	_, err := r.call("close")
+	return err
 }
 
 func (r *Client) call(method string, args ...interface{}) (*Response, error) {
