@@ -25,6 +25,16 @@ func TestService_ExtractPictures(t *testing.T) {
 	assert.Equal(t, "user2/pic3.png", ids[1])
 }
 
+func TestService_ExtractPictures2(t *testing.T) {
+	svc := Service{ImageAPI: "https://remark42.radio-t.com/api/v1/picture/"}
+	html := "<p>TLDR: такое в go пока правильно посчитать трудно. То, что они считают это общее количество go packages в коде." +
+		"</p>\n\n<p>Пакеты в го это средство организации кода, они могут быть связанны друг с другом в рамках одной библиотеки (модуля). Например одна из моих вот так выглядит на libraries.io:</p>\n\n<p><img src=\"https://remark42.radio-t.com/api/v1/picture/github_ef0f706a79cc24b17bbbb374cd234a691d034128/bjttt8ahajfmrhsula10.png\" alt=\"bjtr0-201906-08110846-i324c.png\"/></p>\n\n<p>По форме все верно, это все packages, но по сути это все одна библиотека организованная таким образом. При ее импорте, например посредством go mod, она выглядит как один модуль, т.е. <code>github.com/go-pkgz/auth v0.5.2</code>.</p>\n"
+	ids, err := svc.ExtractPictures(html)
+	require.NoError(t, err)
+	assert.Equal(t, 1, len(ids), "one image in")
+	assert.Equal(t, "github_ef0f706a79cc24b17bbbb374cd234a691d034128/bjttt8ahajfmrhsula10.png", ids[0])
+}
+
 func TestService_Cleanup(t *testing.T) {
 	store := MockStore{}
 	store.On("Cleanup", mock.Anything, mock.Anything).Times(10).Return(nil)
