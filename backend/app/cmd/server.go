@@ -31,7 +31,7 @@ import (
 	"github.com/umputun/remark/backend/app/rest/proxy"
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/admin"
-	"github.com/umputun/remark/backend/app/store/engine2"
+	"github.com/umputun/remark/backend/app/store/engine"
 	"github.com/umputun/remark/backend/app/store/image"
 	"github.com/umputun/remark/backend/app/store/service"
 )
@@ -401,7 +401,7 @@ func (a *serverApp) activateBackup(ctx context.Context) {
 }
 
 // makeDataStore creates store for all sites
-func (s *ServerCommand) makeDataStore() (result engine2.Interface, err error) {
+func (s *ServerCommand) makeDataStore() (result engine.Interface, err error) {
 	log.Printf("[INFO] make data store, type=%s", s.Store.Type)
 
 	switch s.Store.Type {
@@ -409,11 +409,11 @@ func (s *ServerCommand) makeDataStore() (result engine2.Interface, err error) {
 		if err = makeDirs(s.Store.Bolt.Path); err != nil {
 			return nil, errors.Wrap(err, "failed to create bolt store")
 		}
-		sites := []engine2.BoltSite{}
+		sites := []engine.BoltSite{}
 		for _, site := range s.Sites {
-			sites = append(sites, engine2.BoltSite{SiteID: site, FileName: fmt.Sprintf("%s/%s.db", s.Store.Bolt.Path, site)})
+			sites = append(sites, engine.BoltSite{SiteID: site, FileName: fmt.Sprintf("%s/%s.db", s.Store.Bolt.Path, site)})
 		}
-		result, err = engine2.NewBoltDB(bolt.Options{Timeout: s.Store.Bolt.Timeout}, sites...)
+		result, err = engine.NewBoltDB(bolt.Options{Timeout: s.Store.Bolt.Timeout}, sites...)
 	// case "mongo":
 	// 	mgServer, e := s.makeMongo()
 	// 	if e != nil {
