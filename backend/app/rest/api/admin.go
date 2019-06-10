@@ -28,7 +28,7 @@ type admin struct {
 
 type adminStore interface {
 	Delete(locator store.Locator, commentID string, mode store.DeleteMode) error
-	DeleteUser(siteID string, userID string) error
+	DeleteUser(siteID string, userID string, mode store.DeleteMode) error
 	User(siteID, userID string, limit, skip int, user store.User) ([]store.Comment, error)
 	IsBlocked(siteID string, userID string) bool
 	SetBlock(siteID string, userID string, status bool, ttl time.Duration) error
@@ -64,7 +64,7 @@ func (a *admin) deleteUserCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	log.Printf("[INFO] delete all user comments for %s, site %s", userID, siteID)
 
-	if err := a.dataService.DeleteUser(siteID, userID); err != nil {
+	if err := a.dataService.DeleteUser(siteID, userID, store.HardDelete); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete user", rest.ErrInternal)
 		return
 	}
@@ -109,7 +109,7 @@ func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = a.dataService.DeleteUser(claims.Audience, claims.User.ID); err != nil {
+	if err = a.dataService.DeleteUser(claims.Audience, claims.User.ID, store.HardDelete); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete user", rest.ErrNoAccess)
 		return
 	}
@@ -145,9 +145,9 @@ func (a *admin) setBlockCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// delete comments for blocked user
+	// delete comments for blocked user.
 	if blockStatus {
-		if err := a.dataService.DeleteUser(siteID, userID); err != nil {
+		if err := a.dataService.DeleteUser(siteID, userID, store.SoftDelete); err != nil {
 			log.Printf("[WARN] can't delete comments for blocked user %s on site %s, %v", userID, siteID, err)
 		}
 	}

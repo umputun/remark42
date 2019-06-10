@@ -553,8 +553,8 @@ func (s *DataStore) Delete(locator store.Locator, commentID string, mode store.D
 }
 
 // DeleteUser removes all comments from user
-func (s *DataStore) DeleteUser(siteID string, userID string) error {
-	req := engine.DeleteRequest{Locator: store.Locator{SiteID: siteID}, UserID: userID, DeleteMode: store.HardDelete}
+func (s *DataStore) DeleteUser(siteID string, userID string, mode store.DeleteMode) error {
+	req := engine.DeleteRequest{Locator: store.Locator{SiteID: siteID}, UserID: userID, DeleteMode: mode}
 	return s.Engine.Delete(req)
 }
 

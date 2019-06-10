@@ -683,12 +683,12 @@ func TestBolt_DeleteAll(t *testing.T) {
 	assert.EqualError(t, err, `site "bad" not found`)
 }
 
-func TestBoltAdmin_DeleteUser(t *testing.T) {
+func TestBoltAdmin_DeleteUserHard(t *testing.T) {
 
 	b, teardown := prep(t)
 	defer teardown()
 
-	err := b.Delete(DeleteRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1"})
+	err := b.Delete(DeleteRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", DeleteMode: store.HardDelete})
 	require.NoError(t, err)
 
 	comments, err := b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com"}, Sort: "time"})
@@ -706,6 +706,40 @@ func TestBoltAdmin_DeleteUser(t *testing.T) {
 
 	comments, err = b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Sort: "time"})
 	assert.Nil(t, err)
+	assert.Equal(t, 0, len(comments), "nothing left")
+
+	err = b.Delete(DeleteRequest{Locator: store.Locator{SiteID: "radio-t-bad"}, UserID: "user1"})
+	assert.EqualError(t, err, `site "radio-t-bad" not found`)
+}
+
+func TestBoltAdmin_DeleteUserSoft(t *testing.T) {
+
+	b, teardown := prep(t)
+	defer teardown()
+
+	err := b.Delete(DeleteRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", DeleteMode: store.SoftDelete})
+	require.NoError(t, err)
+
+	comments, err := b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com"}, Sort: "time"})
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(comments), "2 comments with deleted info")
+	assert.Equal(t, store.User{Name: "user name", ID: "user1", Picture: "", Admin: false, Blocked: false, IP: ""}, comments[0].User)
+	assert.Equal(t, store.User{Name: "user name", ID: "user1", Picture: "", Admin: false, Blocked: false, IP: ""}, comments[1].User)
+
+	c, err := b.Count(FindRequest{Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com"}})
+	assert.NoError(t, err)
+	assert.Equal(t, 0, c, "0 count")
+
+	comments, err = b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", Limit: 5})
+	assert.NoError(t, err, "no comments for user user1 in store")
+	assert.Equal(t, 2, len(comments), "2 comments with deleted info")
+	assert.True(t, comments[0].Deleted)
+	assert.True(t, comments[1].Deleted)
+	assert.Equal(t, "", comments[0].Text)
+	assert.Equal(t, "", comments[1].Text)
+
+	comments, err = b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Sort: "time"})
+	assert.NoError(t, err)
 	assert.Equal(t, 0, len(comments), "nothing left")
 
 	err = b.Delete(DeleteRequest{Locator: store.Locator{SiteID: "radio-t-bad"}, UserID: "user1"})
