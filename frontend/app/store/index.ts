@@ -1,4 +1,4 @@
-import { createStore, applyMiddleware, AnyAction } from 'redux';
+import { createStore, applyMiddleware, AnyAction, compose } from 'redux';
 import { combineReducers } from 'redux';
 import thunk, { ThunkAction, ThunkDispatch } from 'redux-thunk';
 import { Comment, User, PostInfo, Node, BlockedUser, Theme, Sorting, CommentMode } from '@app/common/types';
@@ -50,7 +50,12 @@ export type StoreAction<R, A extends AnyAction = ACTIONS> = ThunkAction<R, Store
  */
 export type StoreDispatch = ThunkDispatch<StoreState, undefined, ACTIONS>;
 
-const store = createStore(reducers, middleware);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const composeEnhancers = (window as any).__REDUX_DEVTOOLS_EXTENSION_COMPOSE__
+  ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).__REDUX_DEVTOOLS_EXTENSION_COMPOSE__
+  : compose;
+const store = createStore(reducers, composeEnhancers(middleware));
 
 if (process.env.NODE_ENV === 'development') {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
