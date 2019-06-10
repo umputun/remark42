@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"net/http"
+	"reflect"
+	"sync/atomic"
 
 	"github.com/pkg/errors"
 )
@@ -14,20 +16,32 @@ type Client struct {
 	Client     http.Client
 	AuthUser   string
 	AuthPasswd string
+
+	id uint64
 }
 
 // Call remote server with given method and arguments
 func (r *Client) Call(method string, args ...interface{}) (*Response, error) {
 
-	b, err := json.Marshal(Request{Method: method, Params: args})
-	if err != nil {
-		return nil, errors.Wrapf(err, "marshaling failed for %s", method)
+	var b []byte
+	var err error
+	if len(args) == 1 && reflect.TypeOf(args[0]).Kind() == reflect.Struct {
+		b, err = json.Marshal(Request{Method: method, Params: args[0], ID: atomic.AddUint64(&r.id, 1)})
+		if err != nil {
+			return nil, errors.Wrapf(err, "marshaling failed for %s", method)
+		}
+	} else {
+		b, err = json.Marshal(Request{Method: method, Params: args, ID: atomic.AddUint64(&r.id, 1)})
+		if err != nil {
+			return nil, errors.Wrapf(err, "marshaling failed for %s", method)
+		}
 	}
 
 	req, err := http.NewRequest("POST", r.API, bytes.NewBuffer(b))
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to make request for %s", method)
 	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 
 	if r.AuthUser != "" && r.AuthPasswd != "" {
 		req.SetBasicAuth(r.AuthUser, r.AuthPasswd)
