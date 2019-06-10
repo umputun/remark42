@@ -353,12 +353,22 @@ func TestAdmin_Block(t *testing.T) {
 
 	assert.False(t, srv.adminRest.dataService.IsBlocked("radio-t", "user1"))
 	assert.False(t, srv.adminRest.dataService.IsBlocked("radio-t", "user2"))
-
 }
 
 func TestAdmin_BlockedList(t *testing.T) {
-	ts, _, teardown := startupT(t)
+	ts, srv, teardown := startupT(t)
 	defer teardown()
+
+	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
+		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"}}
+	c2 := store.Comment{Text: "test test #2", ParentID: "p1", Locator: store.Locator{SiteID: "radio-t",
+		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user2 name", ID: "user2"}}
+
+	// write comments for user1 and user2
+	_, err := srv.DataService.Create(c1)
+	assert.Nil(t, err)
+	_, err = srv.DataService.Create(c2)
+	assert.Nil(t, err)
 
 	// block user1
 	req, err := http.NewRequest(http.MethodPut,
@@ -386,8 +396,10 @@ func TestAdmin_BlockedList(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(users), "two users blocked")
 	assert.Equal(t, "user1", users[0].ID)
+	assert.Equal(t, "user1 name", users[0].Name)
 	assert.Equal(t, "user2", users[1].ID)
-
+	assert.Equal(t, "user2 name", users[1].Name)
+	t.Logf("%+v", users)
 	time.Sleep(50 * time.Millisecond)
 
 	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/blocked?site=radio-t", nil)

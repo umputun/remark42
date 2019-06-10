@@ -378,7 +378,7 @@ func (b *BoltDB) Delete(req DeleteRequest) error {
 	case req.Locator.URL != "" && req.CommentID != "":
 		return b.deleteComment(bdb, req.Locator, req.CommentID, req.DeleteMode)
 	case req.Locator.SiteID != "" && req.UserID != "" && req.CommentID == "":
-		return b.deleteUser(bdb, req.Locator.SiteID, req.UserID)
+		return b.deleteUser(bdb, req.Locator.SiteID, req.UserID, req.DeleteMode)
 	case req.Locator.SiteID != "" && req.Locator.URL == "" && req.CommentID == "" && req.UserID == "":
 		return b.deleteAll(bdb, req.Locator.SiteID)
 	}
@@ -673,7 +673,7 @@ func (b *BoltDB) deleteAll(bdb *bolt.DB, siteID string) error {
 
 // deleteUser removes all comments for given user. Everything will be market as deleted
 // and user name and userID will be changed to "deleted". Also removes from last and from user buckets.
-func (b *BoltDB) deleteUser(bdb *bolt.DB, siteID string, userID string) error {
+func (b *BoltDB) deleteUser(bdb *bolt.DB, siteID string, userID string, mode store.DeleteMode) error {
 	bdb, err := b.db(siteID)
 	if err != nil {
 		return err
@@ -717,24 +717,26 @@ func (b *BoltDB) deleteUser(bdb *bolt.DB, siteID string, userID string) error {
 
 	// delete collected comments
 	for _, ci := range comments {
-		if e := b.deleteComment(bdb, ci.locator, ci.commentID, store.HardDelete); e != nil {
+		if e := b.deleteComment(bdb, ci.locator, ci.commentID, mode); e != nil {
 			return errors.Wrapf(err, "failed to delete comment %+v", ci)
 		}
 	}
 
-	//  delete  user bucket
-	err = bdb.Update(func(tx *bolt.Tx) error {
-		usersBkt := tx.Bucket([]byte(userBucketName))
-		if usersBkt != nil {
-			if e := usersBkt.DeleteBucket([]byte(userID)); e != nil {
-				return errors.Wrapf(err, "failed to delete user bucket for %s", userID)
+	//  delete  user bucket in hard mode
+	if mode == store.HardDelete {
+		err = bdb.Update(func(tx *bolt.Tx) error {
+			usersBkt := tx.Bucket([]byte(userBucketName))
+			if usersBkt != nil {
+				if e := usersBkt.DeleteBucket([]byte(userID)); e != nil {
+					return errors.Wrapf(err, "failed to delete user bucket for %s", userID)
+				}
 			}
-		}
-		return nil
-	})
+			return nil
+		})
 
-	if err != nil {
-		return errors.Wrap(err, "can't delete user meta")
+		if err != nil {
+			return errors.Wrap(err, "can't delete user meta")
+		}
 	}
 
 	if len(comments) == 0 {
