@@ -862,7 +862,7 @@ func TestService_DeleteUser(t *testing.T) {
 	assert.Equal(t, 3, len(res), "3 comments initially, for 2 diff users and 2 posts")
 	assert.NoError(t, err)
 
-	err = b.DeleteUser("radio-t", "user1")
+	err = b.DeleteUser("radio-t", "user1", store.HardDelete)
 	assert.NoError(t, err)
 
 	res, err = b.Last("radio-t", 0, time.Time{}, store.User{})
