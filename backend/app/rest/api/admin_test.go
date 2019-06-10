@@ -411,7 +411,6 @@ func TestAdmin_BlockedList(t *testing.T) {
 	err = json.NewDecoder(res.Body).Decode(&users)
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(users), "one user left blocked")
-
 }
 
 func TestAdmin_ReadOnly(t *testing.T) {

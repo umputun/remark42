@@ -17,7 +17,8 @@ import (
 )
 
 func TestClient_Create(t *testing.T) {
-	ts := testServer(t, `{"method":"create","params":[{"id":"123","pid":"","text":"msg","user":{"name":"","id":"","picture":"","admin":false},"locator":{"site":"site","url":"http://example.com/url"},"score":0,"vote":0,"time":"0001-01-01T00:00:00Z"}]}`, `{"result":"12345"}`)
+	ts := testServer(t, `{"method":"create","params":{"id":"123","pid":"","text":"msg","user":{"name":"","id":"","picture":"","admin":false},"locator":{"site":"site","url":"http://example.com/url"},"score":0,"vote":0,"time":"0001-01-01T00:00:00Z"},"id":1}`,
+		`{"result":"12345","id":1}`)
 	defer ts.Close()
 	c := Remote{Client: remote.Client{API: ts.URL, Client: http.Client{}}}
 
@@ -29,7 +30,7 @@ func TestClient_Create(t *testing.T) {
 }
 
 func TestClient_Get(t *testing.T) {
-	ts := testServer(t, `{"method":"get","params":[{"url":"http://example.com/url"},"site"]}`,
+	ts := testServer(t, `{"method":"get","params":[{"url":"http://example.com/url"},"site"],"id":1}`,
 		`{"result":{"id":"123","pid":"","text":"msg","delete":true}}`)
 	defer ts.Close()
 	c := Remote{Client: remote.Client{API: ts.URL, Client: http.Client{}}}
@@ -41,7 +42,7 @@ func TestClient_Get(t *testing.T) {
 }
 
 func TestClient_GetWithErrorResult(t *testing.T) {
-	ts := testServer(t, `{"method":"get","params":[{"url":"http://example.com/url"},"site"]}`, `{"error":"failed"}`)
+	ts := testServer(t, `{"method":"get","params":[{"url":"http://example.com/url"},"site"],"id":1}`, `{"error":"failed"}`)
 	defer ts.Close()
 	c := Remote{Client: remote.Client{API: ts.URL, Client: http.Client{}}}
 
@@ -50,7 +51,7 @@ func TestClient_GetWithErrorResult(t *testing.T) {
 }
 
 func TestClient_GetWithErrorDecode(t *testing.T) {
-	ts := testServer(t, `{"method":"get","params":[{"url":"http://example.com/url"},"site"]}`, ``)
+	ts := testServer(t, `{"method":"get","params":[{"url":"http://example.com/url"},"site"],"id":1}`, ``)
 	defer ts.Close()
 	c := Remote{Client: remote.Client{API: ts.URL, Client: http.Client{}}}
 
@@ -63,7 +64,7 @@ func TestClient_GetWithErrorRemote(t *testing.T) {
 
 	_, err := c.Get(store.Locator{URL: "http://example.com/url"}, "site")
 	assert.NotNil(t, err)
-	assert.True(t, strings.Contains(err.Error(), "remote Call failed for get:"))
+	assert.True(t, strings.Contains(err.Error(), "remote call failed for get:"), err.Error())
 }
 
 func TestClient_FailedStatus(t *testing.T) {
@@ -81,7 +82,7 @@ func TestClient_FailedStatus(t *testing.T) {
 }
 
 func TestClient_Update(t *testing.T) {
-	ts := testServer(t, `{"method":"update","params":[{"url":"http://example.com/url"},{"id":"123","pid":"","text":"msg","user":{"name":"","id":"","picture":"","admin":false},"locator":{"site":"site123","url":"http://example.com/url"},"score":0,"vote":0,"time":"0001-01-01T00:00:00Z"}]}`, `{}`)
+	ts := testServer(t, `{"method":"update","params":[{"url":"http://example.com/url"},{"id":"123","pid":"","text":"msg","user":{"name":"","id":"","picture":"","admin":false},"locator":{"site":"site123","url":"http://example.com/url"},"score":0,"vote":0,"time":"0001-01-01T00:00:00Z"}],"id":1}`, `{}`)
 	defer ts.Close()
 	c := Remote{Client: remote.Client{API: ts.URL, Client: http.Client{}}}
 
@@ -92,7 +93,7 @@ func TestClient_Update(t *testing.T) {
 }
 
 func TestClient_Find(t *testing.T) {
-	ts := testServer(t, `{"method":"find","params":[{"locator":{"url":"http://example.com/url"},"sort":"-time","since":"0001-01-01T00:00:00Z","limit":10}]}`, `{"result":[{"text":"1"},{"text":"2"}]}`)
+	ts := testServer(t, `{"method":"find","params":{"locator":{"url":"http://example.com/url"},"sort":"-time","since":"0001-01-01T00:00:00Z","limit":10},"id":1}`, `{"result":[{"text":"1"},{"text":"2"}]}`)
 	defer ts.Close()
 	c := Remote{Client: remote.Client{API: ts.URL, Client: http.Client{}}}
 
@@ -102,7 +103,7 @@ func TestClient_Find(t *testing.T) {
 }
 
 func TestClient_Info(t *testing.T) {
-	ts := testServer(t, `{"method":"info","params":[{"locator":{"url":"http://example.com/url"},"limit":10,"skip":5,"ro_age":10}]}`, `{"result":[{"url":"u1","count":22},{"url":"u2","count":33}]}`)
+	ts := testServer(t, `{"method":"info","params":{"locator":{"url":"http://example.com/url"},"limit":10,"skip":5,"ro_age":10},"id":1}`, `{"result":[{"url":"u1","count":22},{"url":"u2","count":33}]}`)
 	defer ts.Close()
 	c := Remote{Client: remote.Client{API: ts.URL, Client: http.Client{}}}
 
@@ -113,7 +114,7 @@ func TestClient_Info(t *testing.T) {
 }
 
 func TestClient_Flag(t *testing.T) {
-	ts := testServer(t, `{"method":"flag","params":[{"flag":"verified","locator":{"url":"http://example.com/url"}}]}`,
+	ts := testServer(t, `{"method":"flag","params":{"flag":"verified","locator":{"url":"http://example.com/url"}},"id":1}`,
 		`{"result":false}`)
 	defer ts.Close()
 	c := Remote{Client: remote.Client{API: ts.URL, Client: http.Client{}}}
@@ -124,7 +125,8 @@ func TestClient_Flag(t *testing.T) {
 }
 
 func TestClient_ListFlag(t *testing.T) {
-	ts := testServer(t, `{"method":"list_flags","params":["site_id","blocked"]}`, `{"result":[{"ID":"id1"},{"ID":"id2"}]}`)
+	ts := testServer(t, `{"method":"list_flags","params":["site_id","blocked"],"id":1}`,
+		`{"result":[{"ID":"id1"},{"ID":"id2"}]}`)
 	defer ts.Close()
 	c := Remote{Client: remote.Client{API: ts.URL, Client: http.Client{}}}
 	res, err := c.ListFlags("site_id", Blocked)
@@ -133,8 +135,7 @@ func TestClient_ListFlag(t *testing.T) {
 }
 
 func TestClient_Count(t *testing.T) {
-	ts := testServer(t, `{"method":"count","params":[{"locator":{"url":"http://example.com/url"},"since":"0001-01-01T00:00:00Z"}]}`,
-		`{"result":11}`)
+	ts := testServer(t, `{"method":"count","params":{"locator":{"url":"http://example.com/url"},"since":"0001-01-01T00:00:00Z"},"id":1}`, `{"result":11}`)
 	defer ts.Close()
 	c := Remote{Client: remote.Client{API: ts.URL, Client: http.Client{}}}
 
@@ -144,7 +145,7 @@ func TestClient_Count(t *testing.T) {
 }
 
 func TestClient_Delete(t *testing.T) {
-	ts := testServer(t, `{"method":"delete","params":[{"locator":{"url":"http://example.com/url"},"del_mode":0}]}`, `{}`)
+	ts := testServer(t, `{"method":"delete","params":{"locator":{"url":"http://example.com/url"},"del_mode":0},"id":1}`, `{}`)
 	defer ts.Close()
 	c := Remote{Client: remote.Client{API: ts.URL, Client: http.Client{}}}
 
@@ -153,7 +154,7 @@ func TestClient_Delete(t *testing.T) {
 }
 
 func TestClient_Close(t *testing.T) {
-	ts := testServer(t, `{"method":"close","params":null}`, `{}`)
+	ts := testServer(t, `{"method":"close","params":null,"id":1}`, `{}`)
 	defer ts.Close()
 	c := Remote{Client: remote.Client{API: ts.URL, Client: http.Client{}}}
 	err := c.Close()
