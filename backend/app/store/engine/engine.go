@@ -24,7 +24,7 @@ type Interface interface {
 	Count(req FindRequest) (int, error)                                 // get count for post or user
 	Delete(req DeleteRequest) error                                     // delete post(s) by id or by userID
 	Flag(req FlagRequest) (bool, error)                                 // set and get flags
-	ListFlags(siteID string, flag Flag) ([]interface{}, error)          // get list of flagged keys, like blocked & verified user
+	ListFlags(req FlagRequest) ([]interface{}, error)                   // get list of flagged keys, like blocked & verified user
 	Close() error                                                       // close storage engine
 }
 

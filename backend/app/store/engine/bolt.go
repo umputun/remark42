@@ -322,14 +322,14 @@ func (b *BoltDB) Info(req InfoRequest) ([]store.PostInfo, error) {
 
 // ListFlags get list of flagged keys, like blocked & verified user
 // works for full locator (post flags) or with userID
-func (b *BoltDB) ListFlags(siteID string, flag Flag) (res []interface{}, err error) {
+func (b *BoltDB) ListFlags(req FlagRequest) (res []interface{}, err error) {
 
-	bdb, e := b.db(siteID)
+	bdb, e := b.db(req.Locator.SiteID)
 	if e != nil {
 		return nil, e
 	}
 
-	switch flag {
+	switch req.Flag {
 	case Verified:
 		err = bdb.View(func(tx *bolt.Tx) error {
 			usersBkt := tx.Bucket([]byte(verifiedBucketName))
@@ -351,7 +351,7 @@ func (b *BoltDB) ListFlags(siteID string, flag Flag) (res []interface{}, err err
 				if time.Now().Before(ts) {
 					// get user name from comment user section
 					userName := ""
-					req := FindRequest{Locator: store.Locator{SiteID: siteID}, UserID: string(k), Limit: 1}
+					req := FindRequest{Locator: store.Locator{SiteID: req.Locator.SiteID}, UserID: string(k), Limit: 1}
 					userComments, errUser := b.Find(req)
 					if errUser == nil && len(userComments) > 0 {
 						userName = userComments[0].User.Name
@@ -363,7 +363,7 @@ func (b *BoltDB) ListFlags(siteID string, flag Flag) (res []interface{}, err err
 		})
 		return res, err
 	}
-	return nil, errors.Errorf("flag %s not listable", flag)
+	return nil, errors.Errorf("flag %s not listable", req.Flag)
 }
 
 // Delete post(s) by id or by userID

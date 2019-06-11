@@ -167,13 +167,13 @@ func (_m *MockInterface) Info(req InfoRequest) ([]store.PostInfo, error) {
 	return r0, r1
 }
 
-// ListFlags provides a mock function with given fields: siteID, flag
-func (_m *MockInterface) ListFlags(siteID string, flag Flag) ([]interface{}, error) {
-	ret := _m.Called(siteID, flag)
+// ListFlags provides a mock function with given fields: req
+func (_m *MockInterface) ListFlags(req FlagRequest) ([]interface{}, error) {
+	ret := _m.Called(req)
 
 	var r0 []interface{}
-	if rf, ok := ret.Get(0).(func(string, Flag) []interface{}); ok {
-		r0 = rf(siteID, flag)
+	if rf, ok := ret.Get(0).(func(FlagRequest) []interface{}); ok {
+		r0 = rf(req)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]interface{})
@@ -181,8 +181,8 @@ func (_m *MockInterface) ListFlags(siteID string, flag Flag) ([]interface{}, err
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(string, Flag) error); ok {
-		r1 = rf(siteID, flag)
+	if rf, ok := ret.Get(1).(func(FlagRequest) error); ok {
+		r1 = rf(req)
 	} else {
 		r1 = ret.Error(1)
 	}

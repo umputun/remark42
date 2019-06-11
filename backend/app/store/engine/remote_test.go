@@ -125,11 +125,11 @@ func TestClient_Flag(t *testing.T) {
 }
 
 func TestClient_ListFlag(t *testing.T) {
-	ts := testServer(t, `{"method":"list_flags","params":["site_id","blocked"],"id":1}`,
+	ts := testServer(t, `{"method":"list_flags","params":{"flag":"blocked","locator":{"site":"site_id","url":""}},"id":1}`,
 		`{"result":[{"ID":"id1"},{"ID":"id2"}]}`)
 	defer ts.Close()
 	c := Remote{Client: remote.Client{API: ts.URL, Client: http.Client{}}}
-	res, err := c.ListFlags("site_id", Blocked)
+	res, err := c.ListFlags(FlagRequest{Locator: store.Locator{SiteID: "site_id"}, Flag: Blocked})
 	assert.NoError(t, err)
 	assert.Equal(t, []interface{}{map[string]interface{}{"ID": "id1"}, map[string]interface{}{"ID": "id2"}}, res)
 }
