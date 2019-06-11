@@ -9,12 +9,9 @@ import {
   PostInfo,
   BlockedUser,
   Comment as CommentType,
-  Tree,
   Sorting,
   Theme,
   AuthProvider,
-  BlockTTL,
-  Image,
 } from '@app/common/types';
 import {
   NODE_ID,
@@ -26,7 +23,7 @@ import {
 import { maxShownComments } from '@app/common/settings';
 
 import { StaticStore } from '@app/common/static_store';
-import { StoreState, StoreDispatch } from '@app/store';
+import { StoreState } from '@app/store';
 import {
   fetchUser,
   logout,
@@ -34,7 +31,9 @@ import {
   blockUser,
   unblockUser,
   fetchBlockedUsers,
-  setBlockedVisibleState,
+  setSettingsVisibleState,
+  hideUser,
+  unhideUser,
 } from '@app/store/user/actions';
 import { fetchComments } from '@app/store/comments/actions';
 import { setCommentsReadOnlyState } from '@app/store/post_info/actions';
@@ -43,41 +42,47 @@ import { setSort } from '@app/store/sort/actions';
 import { addComment, updateComment } from '@app/store/comments/actions';
 
 import { AuthPanel } from '@app/components/auth-panel';
-import BlockedUsers from '@app/components/blocked-users';
+import Settings from '@app/components/settings';
 import { ConnectedComment as Comment } from '@app/components/comment/connected-comment';
 import { Input } from '@app/components/input';
 import Preloader from '@app/components/preloader';
 import { Thread } from '@app/components/thread';
-import { uploadImage } from '@app/common/api';
+import { uploadImage, getPreview } from '@app/common/api';
 import { isUserAnonymous } from '@app/utils/isUserAnonymous';
+import { bindActions } from '@app/utils/actionBinder';
 
-interface Props {
+const boundActions = bindActions({
+  fetchComments,
+  fetchUser,
+  fetchBlockedUsers,
+  setSettingsVisible: setSettingsVisibleState,
+  logIn,
+  logOut: logout,
+  setTheme,
+  getPreview,
+  enableComments: () => setCommentsReadOnlyState(false),
+  disableComments: () => setCommentsReadOnlyState(true),
+  changeSort: setSort,
+  blockUser,
+  unblockUser,
+  hideUser,
+  unhideUser,
+  addComment,
+  updateComment,
+  uploadImage,
+});
+
+type Props = {
   user: User | null;
   sort: Sorting;
   comments: Node[];
   pinnedComments: CommentType[];
   theme: Theme;
   info: PostInfo;
-  bannedUsers: BlockedUser[];
-  isBlockedVisible: boolean;
-
-  fetchComments(sort: Sorting): Promise<Tree>;
-  fetchUser(): Promise<User | null>;
-  fetchBlockedUsers(): Promise<BlockedUser[]>;
-  logIn(p: AuthProvider): Promise<User | null>;
-  logOut(): Promise<void>;
-  setTheme: (theme: Theme) => void;
-  setBlockedVisible: (value: boolean) => boolean;
-  changeSort(sort: Sorting): Promise<void>;
-  enableComments(): Promise<boolean>;
-  disableComments(): Promise<boolean>;
-  getPreview(text: string): Promise<string>;
-  blockUser(id: User['id'], name: User['name'], ttl: BlockTTL): Promise<void>;
-  unblockUser(id: User['id']): Promise<void>;
-  addComment(text: string, title: string, pid?: CommentType['id']): Promise<void>;
-  updateComment(id: string, text: string): Promise<void>;
-  uploadImage(image: File): Promise<Image>;
-}
+  hiddenUsers: StoreState['hiddenUsers'];
+  blockedUsers: BlockedUser[];
+  isSettingsVisible: boolean;
+} & typeof boundActions;
 
 interface State {
   isLoaded: boolean;
@@ -159,21 +164,22 @@ export class Root extends Component<Props, State> {
     }
   }
 
-  onBlockedUsersShow() {
-    this.props.fetchBlockedUsers().then(() => {
-      this.props.setBlockedVisible(true);
-    });
+  async onBlockedUsersShow() {
+    if (this.props.user && this.props.user.admin) {
+      await this.props.fetchBlockedUsers();
+    }
+    this.props.setSettingsVisible(true);
   }
 
-  onBlockedUsersHide() {
+  async onBlockedUsersHide() {
     // if someone was unblocked let's reload comments
     if (this.state.wasSomeoneUnblocked) {
       this.props.fetchComments(this.props.sort);
     }
-    this.props.setBlockedVisible(false),
-      this.setState({
-        wasSomeoneUnblocked: false,
-      });
+    this.props.setSettingsVisible(false);
+    this.setState({
+      wasSomeoneUnblocked: false,
+    });
   }
 
   async changeSort(sort: Sorting) {
@@ -221,6 +227,7 @@ export class Root extends Component<Props, State> {
           <AuthPanel
             theme={this.props.theme}
             user={this.props.user}
+            hiddenUsers={this.props.hiddenUsers}
             sort={this.props.sort}
             providers={StaticStore.config.auth_providers}
             isCommentsDisabled={isCommentsDisabled}
@@ -234,7 +241,7 @@ export class Root extends Component<Props, State> {
             onSortChange={this.props.changeSort}
           />
 
-          {!this.props.isBlockedVisible && (
+          {!this.props.isSettingsVisible && (
             <div className="root__main">
               {!isGuest && !isCommentsDisabled && (
                 <Input
@@ -284,12 +291,16 @@ export class Root extends Component<Props, State> {
             </div>
           )}
 
-          {this.props.isBlockedVisible && (
+          {this.props.isSettingsVisible && (
             <div className="root__main">
-              <BlockedUsers
-                users={this.props.bannedUsers}
+              <Settings
+                user={this.props.user}
+                hiddenUsers={this.props.hiddenUsers}
+                blockedUsers={this.props.blockedUsers}
                 blockUser={this.props.blockUser}
                 unblockUser={this.props.unblockUser}
+                hideUser={this.props.hideUser}
+                unhideUser={this.props.unhideUser}
                 onUnblockSomeone={this.onUnblockSomeone}
               />
             </div>
@@ -307,38 +318,18 @@ export class Root extends Component<Props, State> {
   }
 }
 
-const mapDispatchToProps = (dispatch: StoreDispatch) => {
-  return {
-    fetchComments: (sort: Sorting) => dispatch(fetchComments(sort)),
-    fetchUser: () => dispatch(fetchUser()),
-    fetchBlockedUsers: () => dispatch(fetchBlockedUsers()),
-    setBlockedVisible: (value: boolean) => dispatch(setBlockedVisibleState(value)),
-    logIn: (provider: AuthProvider) => dispatch(logIn(provider)),
-    logOut: () => dispatch(logout()),
-    setTheme: (theme: Theme) => dispatch(setTheme(theme)),
-    enableComments: () => dispatch(setCommentsReadOnlyState(false)),
-    disableComments: () => dispatch(setCommentsReadOnlyState(true)),
-    changeSort: (sort: Sorting) => dispatch(setSort(sort)),
-    blockUser: (id: User['id'], name: User['name'], ttl: BlockTTL) => dispatch(blockUser(id, name, ttl)),
-    unblockUser: (id: User['id']) => dispatch(unblockUser(id)),
-    addComment: (text: string, pageTitle: string, pid?: CommentType['id']) =>
-      dispatch(addComment(text, pageTitle, pid)),
-    updateComment: (id: CommentType['id'], text: string) => dispatch(updateComment(id, text)),
-    uploadImage: (image: File) => uploadImage(image),
-  };
-};
-
 /** Root component connected to redux */
 export const ConnectedRoot = connect(
   (state: StoreState) => ({
     user: state.user,
     sort: state.sort,
-    isBlockedVisible: state.isBlockedVisible,
+    isSettingsVisible: state.isSettingsVisible,
     comments: state.comments,
     pinnedComments: state.pinnedComments,
     theme: state.theme,
     info: state.info,
-    bannedUsers: state.bannedUsers,
+    hiddenUsers: state.hiddenUsers,
+    blockedUsers: state.bannedUsers,
   }),
-  mapDispatchToProps
+  boundActions
 )(Root);

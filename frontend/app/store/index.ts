@@ -1,4 +1,4 @@
-import { createStore, applyMiddleware } from 'redux';
+import { createStore, applyMiddleware, AnyAction, compose } from 'redux';
 import { combineReducers } from 'redux';
 import thunk, { ThunkAction, ThunkDispatch } from 'redux-thunk';
 import { Comment, User, PostInfo, Node, BlockedUser, Theme, Sorting, CommentMode } from '@app/common/types';
@@ -23,8 +23,10 @@ export interface StoreState {
   info: PostInfo;
   /** List of banned users */
   bannedUsers: BlockedUser[];
+  /** List of hidden users */
+  hiddenUsers: { [id: string]: User };
   /** Whether list of blocked users should be visible */
-  isBlockedVisible: boolean;
+  isSettingsVisible: boolean;
   /** Map of collapsed threads */
   collapsedThreads: {
     [key: string]: boolean;
@@ -41,11 +43,23 @@ const middleware = applyMiddleware(thunk);
 /**
  * Thunk Action shortcut
  */
-export type StoreAction<R> = ThunkAction<R, StoreState, undefined, ACTIONS>;
+export type StoreAction<R, A extends AnyAction = ACTIONS> = ThunkAction<R, StoreState, undefined, A>;
 
 /**
  * Thunk Dispatch shortcut
  */
 export type StoreDispatch = ThunkDispatch<StoreState, undefined, ACTIONS>;
 
-export default createStore(reducers, middleware);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const composeEnhancers = (window as any).__REDUX_DEVTOOLS_EXTENSION_COMPOSE__
+  ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).__REDUX_DEVTOOLS_EXTENSION_COMPOSE__
+  : compose;
+const store = createStore(reducers, composeEnhancers(middleware));
+
+if (process.env.NODE_ENV === 'development') {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (window as any).ReduxStore = store;
+}
+
+export default store;
