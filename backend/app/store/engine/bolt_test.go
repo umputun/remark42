@@ -530,17 +530,17 @@ func TestBolt_FlagListVerified(t *testing.T) {
 		return err
 	}
 
-	ids, err := b.ListFlags("radio-t", Verified)
+	ids, err := b.ListFlags(FlagRequest{Flag: Verified, Locator: store.Locator{SiteID: "radio-t"}})
 	assert.NoError(t, err)
 	assert.Equal(t, []string{}, toIDs(ids), "verified list empty")
 
 	assert.NoError(t, setVerified("radio-t", "u1", FlagTrue))
 	assert.NoError(t, setVerified("radio-t", "u2", FlagTrue))
-	ids, err = b.ListFlags("radio-t", Verified)
+	ids, err = b.ListFlags(FlagRequest{Flag: Verified, Locator: store.Locator{SiteID: "radio-t"}})
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"u1", "u2"}, toIDs(ids), "verified 2 ids")
 
-	_, err = b.ListFlags("radio-t-bad", Verified)
+	_, err = b.ListFlags(FlagRequest{Flag: Verified, Locator: store.Locator{SiteID: "radio-t-bad"}})
 	assert.Error(t, err, "site \"radio-t-bad\" not found", "fail on wrong site")
 }
 
@@ -568,7 +568,7 @@ func TestBolt_FlagListBlocked(t *testing.T) {
 	assert.NoError(t, setBlocked("radio-t", "user2", FlagTrue, 50*time.Millisecond))
 	assert.NoError(t, setBlocked("radio-t", "user3", FlagFalse, 0))
 
-	vv, err := b.ListFlags("radio-t", Blocked)
+	vv, err := b.ListFlags(FlagRequest{Flag: Blocked, Locator: store.Locator{SiteID: "radio-t"}})
 	assert.NoError(t, err)
 
 	blockedList := toBlocked(vv)
@@ -579,13 +579,13 @@ func TestBolt_FlagListBlocked(t *testing.T) {
 
 	// check block expiration
 	time.Sleep(50 * time.Millisecond)
-	vv, err = b.ListFlags("radio-t", Blocked)
+	vv, err = b.ListFlags(FlagRequest{Flag: Blocked, Locator: store.Locator{SiteID: "radio-t"}})
 	assert.NoError(t, err)
 	blockedList = toBlocked(vv)
 	assert.Equal(t, 1, len(blockedList))
 	assert.Equal(t, "user1", blockedList[0].ID)
 
-	_, err = b.ListFlags("bad", Blocked)
+	_, err = b.ListFlags(FlagRequest{Flag: Blocked, Locator: store.Locator{SiteID: "bad"}})
 	assert.EqualError(t, err, `site "bad" not found`)
 
 }

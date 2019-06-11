@@ -72,8 +72,8 @@ func (r *Remote) Flag(req FlagRequest) (status bool, err error) {
 }
 
 // ListFlags get list of flagged keys, like blocked & verified user
-func (r *Remote) ListFlags(siteID string, flag Flag) (list []interface{}, err error) {
-	resp, err := r.Call("list_flags", siteID, flag)
+func (r *Remote) ListFlags(req FlagRequest) (list []interface{}, err error) {
+	resp, err := r.Call("list_flags", req)
 	if err != nil {
 		return nil, err
 	}
