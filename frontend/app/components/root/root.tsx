@@ -68,7 +68,6 @@ const boundActions = bindActions({
   unhideUser,
   addComment,
   updateComment,
-  uploadImage,
 });
 
 type Props = {
@@ -82,6 +81,7 @@ type Props = {
   blockedUsers: BlockedUser[];
   isSettingsVisible: boolean;
   getPreview: typeof getPreview;
+  uploadImage: typeof uploadImage;
 } & typeof boundActions;
 
 interface State {
@@ -331,6 +331,7 @@ export const ConnectedRoot = connect(
     hiddenUsers: state.hiddenUsers,
     blockedUsers: state.bannedUsers,
     getPreview,
+    uploadImage,
   }),
   boundActions
 )(Root);
