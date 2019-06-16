@@ -59,7 +59,6 @@ const boundActions = bindActions({
   logIn,
   logOut: logout,
   setTheme,
-  getPreview,
   enableComments: () => setCommentsReadOnlyState(false),
   disableComments: () => setCommentsReadOnlyState(true),
   changeSort: setSort,
@@ -69,7 +68,6 @@ const boundActions = bindActions({
   unhideUser,
   addComment,
   updateComment,
-  uploadImage,
 });
 
 type Props = {
@@ -82,6 +80,8 @@ type Props = {
   hiddenUsers: StoreState['hiddenUsers'];
   blockedUsers: BlockedUser[];
   isSettingsVisible: boolean;
+  getPreview: typeof getPreview;
+  uploadImage: typeof uploadImage;
 } & typeof boundActions;
 
 interface State {
@@ -330,6 +330,8 @@ export const ConnectedRoot = connect(
     info: state.info,
     hiddenUsers: state.hiddenUsers,
     blockedUsers: state.bannedUsers,
+    getPreview,
+    uploadImage,
   }),
   boundActions
 )(Root);

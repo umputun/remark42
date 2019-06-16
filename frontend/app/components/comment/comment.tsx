@@ -19,6 +19,7 @@ import { Input } from '@app/components/input';
 import { AvatarIcon } from '@app/components/avatar-icon';
 import Countdown from '../countdown';
 import { boundActions } from './connected-comment';
+import { getPreview, uploadImage } from '@app/common/api';
 
 export type Props = {
   user: User | null;
@@ -43,6 +44,8 @@ export type Props = {
   theme: Theme;
   level?: number;
   mix?: string;
+  getPreview?: typeof getPreview;
+  uploadImage?: typeof uploadImage;
 } & Partial<typeof boundActions>;
 
 export interface State {
