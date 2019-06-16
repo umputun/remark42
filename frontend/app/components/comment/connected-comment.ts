@@ -28,7 +28,7 @@ import { bindActions } from '@app/utils/actionBinder';
 const mapStateToProps = (state: StoreState, cprops: { data: CommentType }) => {
   const props: Pick<
     Props,
-    'editMode' | 'user' | 'isUserBanned' | 'post_info' | 'isCommentsDisabled' | 'theme' | 'collapsed'
+    'editMode' | 'user' | 'isUserBanned' | 'post_info' | 'isCommentsDisabled' | 'theme' | 'collapsed' | 'getPreview'
   > = {
     editMode: getCommentMode(state, cprops.data.id),
     user: state.user,
@@ -37,6 +37,7 @@ const mapStateToProps = (state: StoreState, cprops: { data: CommentType }) => {
     isCommentsDisabled: state.info.read_only || false,
     theme: state.theme,
     collapsed: getThreadIsCollapsed(state, cprops.data),
+    getPreview,
   };
   return props;
 };
@@ -54,7 +55,6 @@ export const boundActions = bindActions({
   hideUser,
   setVerifyStatus: setVerifiedStatus,
   uploadImage,
-  getPreview,
 });
 
 /** Comment component connected to redux */
