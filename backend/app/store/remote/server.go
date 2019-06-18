@@ -17,6 +17,8 @@ import (
 	R "github.com/go-pkgz/rest"
 	"github.com/go-pkgz/rest/logger"
 	"github.com/pkg/errors"
+
+	"github.com/umputun/remark/backend/app/rest"
 )
 
 // Server is json-rpc server with an optional basic auth
@@ -39,11 +41,14 @@ type Server struct {
 }
 
 // ServerFn handler registered for each method with Add
+// Implementations provided by consumer and define response logic.
 type ServerFn func(id uint64, params json.RawMessage) Response
 
 // Run http server on given port
 func (s *Server) Run(port int) error {
-
+	if s.AuthUser == "" || s.AuthPasswd == "" {
+		log.Print("[WARN] extension server runs without auth")
+	}
 	if s.funcs.m == nil && len(s.funcs.m) == 0 {
 		return errors.Errorf("nothing mapped for dispatch, Add has to be called prior to Run")
 	}
@@ -95,7 +100,9 @@ func (s *Server) Shutdown() error {
 	if s.httpServer.Server == nil {
 		return errors.Errorf("http server is not running")
 	}
-	return s.httpServer.Shutdown(context.TODO())
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	return s.httpServer.Shutdown(ctx)
 }
 
 // Add method handler
@@ -114,12 +121,12 @@ func (s *Server) handler(w http.ResponseWriter, r *http.Request) {
 	}{}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, req.Method, 0)
 		return
 	}
 	fn, ok := s.funcs.m[req.Method]
 	if !ok {
-		w.WriteHeader(http.StatusNotImplemented)
+		rest.SendErrorJSON(w, r, http.StatusNotImplemented, errors.New("unsupported method"), req.Method, 0)
 		return
 	}
 	render.JSON(w, r, fn(req.ID, *req.Params))
@@ -136,7 +143,7 @@ func (s *Server) basicAuth(h http.Handler) http.Handler {
 		user, pass, ok := r.BasicAuth()
 		if user != s.AuthUser || pass != s.AuthPasswd || !ok {
 			w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
-			http.Error(w, "Unauthorized.", http.StatusUnauthorized)
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 		h.ServeHTTP(w, r)
