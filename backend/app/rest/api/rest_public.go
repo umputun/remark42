@@ -147,14 +147,26 @@ func (s *public) infoCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// GET /stream/info?site=siteID&url=post-url - get info stream about the post
+// GET /stream/info?site=siteID&url=post-url&since=unix_ts_msec - get info stream about the post
 func (s *public) infoStreamCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	log.Printf("[DEBUG] start stream for %+v, timeout=%v, refresh=%v", locator, s.streamer.TimeOut, s.streamer.Refresh)
 
+	sinceTs := time.Time{}
+	since := r.URL.Query().Get("since")
+	if since != "" {
+		unixTS, e := strconv.ParseInt(since, 10, 64)
+		if e != nil {
+			rest.SendErrorJSON(w, r, http.StatusBadRequest, e, "can't translate since parameter", rest.ErrDecode)
+			return
+		}
+		sinceTs = time.Unix(unixTS/1000, 1000000*(unixTS%1000)) // since param in msec timestamp
+	}
+
 	fn := func() steamEventFn {
-		lastTS := time.Time{}
+		lastTS := sinceTs
 		lastCount := 0
+
 		return func() (event string, data []byte, upd bool, err error) {
 			key := cache.NewKey(locator.SiteID).ID(URLKey(r)).Scopes(locator.SiteID, locator.URL)
 			data, err = s.cache.Get(key, func() ([]byte, error) {
@@ -227,13 +239,24 @@ func (s *public) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// GET /stream/last?site=siteID& - stream of last comments last comments for the siteID, across all posts
+// GET /stream/last?site=siteID&since=unix_ts_ms - stream of last comments last comments for the siteID, across all posts
 func (s *public) lastCommentsStreamCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	log.Printf("[DEBUG] get last comments stream for %s", siteID)
 
+	sinceTs := time.Time{}
+	since := r.URL.Query().Get("since")
+	if since != "" {
+		unixTS, e := strconv.ParseInt(since, 10, 64)
+		if e != nil {
+			rest.SendErrorJSON(w, r, http.StatusBadRequest, e, "can't translate since parameter", rest.ErrDecode)
+			return
+		}
+		sinceTs = time.Unix(unixTS/1000, 1000000*(unixTS%1000)) // since param in msec timestamp
+	}
+
 	fn := func() steamEventFn {
-		sinceTime := time.Now()
+		sinceTime := sinceTs
 		return func() (event string, data []byte, upd bool, err error) {
 			key := cache.NewKey(siteID).ID(URLKey(r)).Scopes(lastCommentsScope)
 			data, err = s.cache.Get(key, func() ([]byte, error) {
