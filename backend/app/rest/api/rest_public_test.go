@@ -569,10 +569,11 @@ func TestRest_InfoStream(t *testing.T) {
 	assert.Equal(t, 200, code)
 	wg.Wait()
 
+	t.Logf(string(body))
 	recs := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
-	require.Equal(t, 10, len(recs), "10 records")
-	assert.True(t, strings.Contains(recs[0], `"count":2`), recs[0])
-	assert.True(t, strings.Contains(recs[9], `"count":11`), recs[9])
+	require.Equal(t, 10*3, len(recs), "10 records. each 2 lines +1 emty line")
+	assert.True(t, strings.Contains(recs[0+1], `"count":2`), recs[0])
+	assert.True(t, strings.Contains(recs[9*3+1], `"count":11`), recs[9])
 
 	_, code = get(t, ts.URL+"/api/v1/stream/info?site=radio-t&url=https://radio-t.com/blah123")
 	assert.Equal(t, 500, code)
@@ -659,9 +660,9 @@ func TestRest_InfoStreamCancel(t *testing.T) {
 	wg.Wait()
 
 	recs := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
-	require.Equal(t, 2, len(recs), "should have 2 records")
-	assert.True(t, strings.Contains(recs[0], `"count":2`), recs[0])
-	assert.True(t, strings.Contains(recs[1], `"count":3`), recs[1])
+	require.Equal(t, 2*3, len(recs), "should have 2 events")
+	assert.True(t, strings.Contains(recs[0*3+1], `"count":2`), recs[0])
+	assert.True(t, strings.Contains(recs[1*3+1], `"count":3`), recs[1])
 }
 
 func TestRest_Robots(t *testing.T) {
@@ -706,11 +707,13 @@ func TestRest_LastCommentsStream(t *testing.T) {
 	assert.Equal(t, 200, r.StatusCode)
 
 	wg.Wait()
+	t.Logf("headers: %+v", r.Header)
+	assert.Equal(t, "text/event-stream", r.Header.Get("content-type"))
 
 	recs := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
-	require.Equal(t, 9, len(recs), "9 records")
+	require.Equal(t, 9*3, len(recs), "9 events")
 	t.Logf("%v", recs)
-	assert.True(t, strings.Contains(recs[0], `test 123`), recs[0])
+	assert.True(t, strings.Contains(recs[1], `test 123`), recs[1])
 }
 
 func TestRest_LastCommentsStreamTimeout(t *testing.T) {
@@ -765,8 +768,8 @@ func TestRest_LastCommentsStreamCancel(t *testing.T) {
 	wg.Wait()
 
 	recs := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
-	require.Equal(t, 2, len(recs), "2 records")
-	assert.True(t, strings.Contains(recs[0], `test 123`), recs[0])
+	require.Equal(t, 2*3, len(recs), "2 events")
+	assert.True(t, strings.Contains(recs[0+1], `test 123`), recs[0+1])
 }
 
 func TestRest_LastCommentsStreamTooMany(t *testing.T) {

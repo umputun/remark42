@@ -19,19 +19,19 @@ func TestStream_Timeout(t *testing.T) {
 
 	eventFn := func() steamEventFn {
 		n := 0
-		return func() (data []byte, upd bool, err error) {
+		return func() (event string, data []byte, upd bool, err error) {
 			n++
 			if n%2 == 0 || n > 10 {
-				return nil, false, nil
+				return "test", nil, false, nil
 			}
-			return []byte(fmt.Sprintf("some data %d\n", n)), true, nil
+			return "test", []byte(fmt.Sprintf("some data %d\n", n)), true, nil
 		}
 	}
 
 	buf := bytes.Buffer{}
 	err := s.Activate(context.Background(), eventFn, &buf)
 	assert.NoError(t, err)
-	assert.Equal(t, "some data 1\nsome data 3\nsome data 5\nsome data 7\nsome data 9\n", buf.String())
+	assert.Equal(t, "event: test\ndata: some data 1\n\nevent: test\ndata: some data 3\n\nevent: test\ndata: some data 5\n\nevent: test\ndata: some data 7\n\nevent: test\ndata: some data 9\n\n", buf.String())
 }
 
 func TestStream_Cancel(t *testing.T) {
@@ -43,12 +43,12 @@ func TestStream_Cancel(t *testing.T) {
 
 	eventFn := func() steamEventFn {
 		n := 0
-		return func() (data []byte, upd bool, err error) {
+		return func() (event string, data []byte, upd bool, err error) {
 			n++
 			if n%2 == 0 {
-				return nil, false, nil
+				return "test", nil, false, nil
 			}
-			return []byte(fmt.Sprintf("some data %d\n", n)), true, nil
+			return "test", []byte(fmt.Sprintf("some data %d\n", n)), true, nil
 		}
 	}
 
@@ -57,5 +57,5 @@ func TestStream_Cancel(t *testing.T) {
 	defer cancel()
 	err := s.Activate(ctx, eventFn, &buf)
 	assert.NoError(t, err)
-	assert.Equal(t, "some data 1\nsome data 3\nsome data 5\nsome data 7\nsome data 9\n", buf.String())
+	assert.Equal(t, "event: test\ndata: some data 1\n\nevent: test\ndata: some data 3\n\nevent: test\ndata: some data 5\n\nevent: test\ndata: some data 7\n\nevent: test\ndata: some data 9\n\n", buf.String())
 }

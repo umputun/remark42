@@ -155,7 +155,7 @@ func (s *public) infoStreamCtrl(w http.ResponseWriter, r *http.Request) {
 	fn := func() steamEventFn {
 		lastTS := time.Time{}
 		lastCount := 0
-		return func() (data []byte, upd bool, err error) {
+		return func() (event string, data []byte, upd bool, err error) {
 			key := cache.NewKey(locator.SiteID).ID(URLKey(r)).Scopes(locator.SiteID, locator.URL)
 			data, err = s.cache.Get(key, func() ([]byte, error) {
 				info, e := s.dataService.Info(locator, s.readOnlyAge)
@@ -172,10 +172,10 @@ func (s *public) infoStreamCtrl(w http.ResponseWriter, r *http.Request) {
 				return encodeJSONWithHTML(info)
 			})
 			if err != nil {
-				return data, false, err
+				return "info", data, false, err
 			}
 
-			return data, upd, nil
+			return "info", data, upd, nil
 		}
 	}
 
@@ -234,7 +234,7 @@ func (s *public) lastCommentsStreamCtrl(w http.ResponseWriter, r *http.Request) 
 
 	fn := func() steamEventFn {
 		sinceTime := time.Now()
-		return func() (data []byte, upd bool, err error) {
+		return func() (event string, data []byte, upd bool, err error) {
 			key := cache.NewKey(siteID).ID(URLKey(r)).Scopes(lastCommentsScope)
 			data, err = s.cache.Get(key, func() ([]byte, error) {
 				comments, e := s.dataService.Last(siteID, 1, sinceTime, rest.GetUserOrEmpty(r))
@@ -248,7 +248,7 @@ func (s *public) lastCommentsStreamCtrl(w http.ResponseWriter, r *http.Request) 
 				sinceTime = time.Now()
 				return encodeJSONWithHTML(comments)
 			})
-			return data, upd, err
+			return "last", data, upd, err
 		}
 	}
 
