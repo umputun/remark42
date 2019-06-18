@@ -42,6 +42,8 @@ func (s *Streamer) Activate(ctx context.Context, eventFn func() steamEventFn, w 
 
 	if ww, ok := w.(http.ResponseWriter); ok {
 		ww.Header().Set("Content-Type", "text/event-stream")
+		ww.Header().Set("Connection", "keep-alive")
+		ww.Header().Set("Cache-Control", "no-cache")
 	}
 
 	for {
