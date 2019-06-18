@@ -208,8 +208,7 @@ func (s *public) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sinceTime := time.Time{}
-	since := r.URL.Query().Get("since")
-	if since != "" {
+	if since := r.URL.Query().Get("since"); since != "" {
 		unixTS, e := strconv.ParseInt(since, 10, 64)
 		if e != nil {
 			rest.SendErrorJSON(w, r, http.StatusBadRequest, e, "can't translate since parameter", rest.ErrDecode)
@@ -244,9 +243,8 @@ func (s *public) lastCommentsStreamCtrl(w http.ResponseWriter, r *http.Request) 
 	siteID := r.URL.Query().Get("site")
 	log.Printf("[DEBUG] get last comments stream for %s", siteID)
 
-	sinceTs := time.Time{}
-	since := r.URL.Query().Get("since")
-	if since != "" {
+	sinceTs := time.Now()
+	if since := r.URL.Query().Get("since"); since != "" {
 		unixTS, e := strconv.ParseInt(since, 10, 64)
 		if e != nil {
 			rest.SendErrorJSON(w, r, http.StatusBadRequest, e, "can't translate since parameter", rest.ErrDecode)
