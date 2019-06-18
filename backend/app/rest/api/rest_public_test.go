@@ -569,10 +569,11 @@ func TestRest_InfoStream(t *testing.T) {
 	assert.Equal(t, 200, code)
 	wg.Wait()
 
+	t.Logf(string(body))
 	recs := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
-	require.Equal(t, 10, len(recs), "10 records")
-	assert.True(t, strings.Contains(recs[0], `"count":2`), recs[0])
-	assert.True(t, strings.Contains(recs[9], `"count":11`), recs[9])
+	require.Equal(t, 10*3, len(recs), "10 records. each 2 lines +1 emty line")
+	assert.True(t, strings.Contains(recs[0+1], `"count":2`), recs[0])
+	assert.True(t, strings.Contains(recs[9*3+1], `"count":11`), recs[9])
 
 	_, code = get(t, ts.URL+"/api/v1/stream/info?site=radio-t&url=https://radio-t.com/blah123")
 	assert.Equal(t, 500, code)
@@ -659,9 +660,38 @@ func TestRest_InfoStreamCancel(t *testing.T) {
 	wg.Wait()
 
 	recs := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
-	require.Equal(t, 2, len(recs), "should have 2 records")
-	assert.True(t, strings.Contains(recs[0], `"count":2`), recs[0])
-	assert.True(t, strings.Contains(recs[1], `"count":3`), recs[1])
+	require.Equal(t, 2*3, len(recs), "should have 2 events")
+	assert.True(t, strings.Contains(recs[0*3+1], `"count":2`), recs[0])
+	assert.True(t, strings.Contains(recs[1*3+1], `"count":3`), recs[1])
+}
+
+func TestRest_InfoStreamSince(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
+	srv.pubRest.streamer.Refresh = 10 * time.Millisecond
+	srv.pubRest.streamer.TimeOut = 500 * time.Millisecond
+	srv.pubRest.streamer.MaxActive = 100
+
+	postComment(t, ts.URL)
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 10; i++ {
+			time.Sleep(10 * time.Millisecond)
+			postComment(t, ts.URL)
+		}
+	}()
+
+	body, code := get(t, ts.URL+"/api/v1/stream/info?site=radio-t&url=https://radio-t.com/blah1&since=12345678")
+	assert.Equal(t, 200, code)
+	wg.Wait()
+
+	t.Logf(string(body))
+	recs := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
+	require.Equal(t, 11*3, len(recs), "include first record, total 11 records. each 2 lines +1 empty line")
 }
 
 func TestRest_Robots(t *testing.T) {
@@ -706,11 +736,13 @@ func TestRest_LastCommentsStream(t *testing.T) {
 	assert.Equal(t, 200, r.StatusCode)
 
 	wg.Wait()
+	t.Logf("headers: %+v", r.Header)
+	assert.Equal(t, "text/event-stream", r.Header.Get("content-type"))
 
 	recs := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
-	require.Equal(t, 9, len(recs), "9 records")
-	t.Logf("%v", recs)
-	assert.True(t, strings.Contains(recs[0], `test 123`), recs[0])
+	require.Equal(t, 9*3, len(recs), "9 events")
+	t.Logf("%s", string(body))
+	assert.True(t, strings.Contains(recs[1], `test 123`), recs[1])
 }
 
 func TestRest_LastCommentsStreamTimeout(t *testing.T) {
@@ -765,8 +797,8 @@ func TestRest_LastCommentsStreamCancel(t *testing.T) {
 	wg.Wait()
 
 	recs := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
-	require.Equal(t, 2, len(recs), "2 records")
-	assert.True(t, strings.Contains(recs[0], `test 123`), recs[0])
+	require.Equal(t, 2*3, len(recs), "2 events")
+	assert.True(t, strings.Contains(recs[0+1], `test 123`), recs[0+1])
 }
 
 func TestRest_LastCommentsStreamTooMany(t *testing.T) {
@@ -796,6 +828,45 @@ func TestRest_LastCommentsStreamTooMany(t *testing.T) {
 
 	_, code := get(t, ts.URL+"/api/v1/stream/last?site=radio-t")
 	assert.Equal(t, 200, code, "all streams closed, good to go again")
+}
+
+func TestRest_LastCommentsStreamSince(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
+	srv.pubRest.streamer.Refresh = 10 * time.Millisecond
+	srv.pubRest.streamer.TimeOut = 500 * time.Millisecond
+	srv.pubRest.streamer.MaxActive = 100
+
+	postComment(t, ts.URL)
+
+	defer teardown()
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for i := 1; i < 10; i++ {
+			time.Sleep(100 * time.Millisecond)
+			postComment(t, ts.URL)
+		}
+	}()
+
+	client := http.Client{}
+	req, err := http.NewRequest("GET", ts.URL+"/api/v1/stream/last?site=radio-t&since=123456", nil)
+	require.Nil(t, err)
+	r, err := client.Do(req)
+	require.Nil(t, err)
+	defer r.Body.Close()
+	body, err := ioutil.ReadAll(r.Body)
+	require.Nil(t, err)
+	assert.Equal(t, 200, r.StatusCode)
+
+	wg.Wait()
+	t.Logf("headers: %+v", r.Header)
+	assert.Equal(t, "text/event-stream", r.Header.Get("content-type"))
+
+	recs := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
+	require.Equal(t, 10*3, len(recs), "10 events, includes first record")
+	t.Logf("%v", recs)
 }
 
 func postComment(t *testing.T, url string) {

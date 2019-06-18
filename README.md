@@ -5,7 +5,7 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 * Social login via Google, Facebook, Github and Yandex
 * Optional anonymous access
 * Multi-level nested comments with both tree and plain presentations
-* Import from disqus and wordpress
+* Import from Disqus and WordPress
 * Markdown support with friendly formatter toolbar
 * Moderator can remove comments and block users
 * Voting, pinning and verification system
@@ -113,7 +113,7 @@ _this is the recommended way to run remark42_
 | image.fs.path           | IMAGE_FS_PATH           | `./var/pictures`         | permanent location of images                     |
 | image.fs.staging        | IMAGE_FS_STAGING        | `./var/pictures.staging` | staging location of images                       |
 | image.fs.partitions     | IMAGE_FS_PARTITIONS     | `100`                    | number of image partitions                       |
-| image.resize-width      | IMAGE_RESIZE_WIDTH      | `800`                    | width of resized image                          |
+| image.resize-width      | IMAGE_RESIZE_WIDTH      | `800`                    | width of resized image                           |
 | image.resize-height     | IMAGE_RESIZE_HEIGHT     | `300`                    | height of resized image                          |
 | auth.ttl.jwt            | AUTH_TTL_JWT            | `5m`                     | jwt TTL                                          |
 | auth.ttl.cookie         | AUTH_TTL_COOKIE         | `200h`                   | cookie TTL                                       |
@@ -148,6 +148,8 @@ _this is the recommended way to run remark42_
 | edit-time               | EDIT_TIME               | `5m`                     | edit window                                      |
 | read-age                | READONLY_AGE            |                          | read-only age of comments, days                  |
 | img-proxy               | IMG_PROXY               | `false`                  | enable http->https proxy for images              |
+| port                    | REMARK_PORT             | `8080`                   | web server port                                  |
+| web-root                | REMARK_WEB_ROOT         | `./web`                  | web server root directory                        |
 | update-limit            | UPDATE_LIMIT            | `0.5`                    | updates/sec limit                                |
 | admin-passwd            | ADMIN_PASSWD            | none (disabled)          | password for `admin` basic auth                  |
 | dbg                     | DEBUG                   | `false`                  | debug mode                                       |
@@ -628,8 +630,39 @@ Sort can be `time`, `active` or `score`. Supported sort order with prefix -/+, i
 
 ### Streaming API
 
-* `GET /api/v1/stream/info?site=site-idd&url=post-url` - returns stream with `PostInfo` records ("\n" separated) for the site and url`
-* `GET /api/v1/stream/last?site=site-id` - returns updates stream with comments ("\n" separated) for the site`
+Streaming API provide server-sent events for post updates as well as site update
+
+* `GET /api/v1/stream/info?site=site-idd&url=post-url` - returns stream (`event: info`) with `PostInfo` records for the site and url`
+* `GET /api/v1/stream/last?site=site-id` - returns updates stream (`event: last`) with comments for the site`
+
+<details><summary>response example</summary>
+
+```
+data: {"url":"https://radio-t.com/blah1","count":2,"first_time":"2019-06-18T12:53:48.125686-05:00","last_time":"2019-06-18T12:53:48.142872-05:00"}
+
+event: info
+data: {"url":"https://radio-t.com/blah1","count":3,"first_time":"2019-06-18T12:53:48.125686-05:00","last_time":"2019-06-18T12:53:48.157709-05:00"}
+
+event: info
+data: {"url":"https://radio-t.com/blah1","count":4,"first_time":"2019-06-18T12:53:48.125686-05:00","last_time":"2019-06-18T12:53:48.172991-05:00"}
+
+event: info
+data: {"url":"https://radio-t.com/blah1","count":5,"first_time":"2019-06-18T12:53:48.125686-05:00","last_time":"2019-06-18T12:53:48.188429-05:00"}
+
+event: info
+data: {"url":"https://radio-t.com/blah1","count":6,"first_time":"2019-06-18T12:53:48.125686-05:00","last_time":"2019-06-18T12:53:48.204742-05:00"}
+
+event: info
+data: {"url":"https://radio-t.com/blah1","count":7,"first_time":"2019-06-18T12:53:48.125686-05:00","last_time":"2019-06-18T12:53:48.220692-05:00"}
+
+event: info
+data: {"url":"https://radio-t.com/blah1","count":8,"first_time":"2019-06-18T12:53:48.125686-05:00","last_time":"2019-06-18T12:53:48.23817-05:00"}
+
+event: info
+data: {"url":"https://radio-t.com/blah1","count":9,"first_time":"2019-06-18T12:53:48.125686-05:00","last_time":"2019-06-18T12:53:48.254669-05:00"}         
+```
+
+</details>
 
 ### RSS feeds
 
@@ -659,7 +692,7 @@ _returned id should be appended to load image url on caller side_
 * `GET /api/v1/admin/export?site=side-id&mode=[stream|file]` - export all comments to json stream or gz file.
 * `POST /api/v1/admin/import?site=side-id` - import comments from the backup, uses post body.
 * `POST /api/v1/admin/import/form?site=side-id` - import comments from the backup, user post form.
-* `GET /api/v1/admin/import/wait?site=side-id` - wait for import completeion.
+* `GET /api/v1/admin/import/wait?site=side-id` - wait for import completion.
 * `PUT /api/v1/admin/pin/{id}?site=site-id&url=post-url&pin=1` - pin or unpin comment.
 * `GET /api/v1/admin/user/{userid}?site=site-id` - get user's info.
 * `DELETE /api/v1/admin/user/{userid}?site=site-id` - delete all user's comments.

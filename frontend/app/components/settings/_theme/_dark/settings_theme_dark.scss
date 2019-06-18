@@ -1,0 +1,11 @@
+.settings_theme_dark {
+  .settings__action {
+    &::before {
+      color: #ddd;
+    }
+  }
+
+  .settings__blocked-users-username {
+    color: #eee;
+  }
+}

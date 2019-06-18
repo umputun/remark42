@@ -9,6 +9,7 @@ import {
   replaceComment as uReplaceComment,
   removeComment as uRemoveComment,
   setCommentPin as uSetCommentPin,
+  filterTree,
 } from './utils';
 import { COMMENTS_SET, PINNED_COMMENTS_SET, COMMENT_MODE_SET } from './types';
 
@@ -80,8 +81,11 @@ export const removeComment = (id: Comment['id']): StoreAction<Promise<void>> => 
 };
 
 /** fetches comments from server */
-export const fetchComments = (sort: Sorting): StoreAction<Promise<Tree>> => async dispatch => {
+export const fetchComments = (sort: Sorting): StoreAction<Promise<Tree>> => async (dispatch, getState) => {
   const data = await api.getPostComments(sort);
+  const hiddenUsersIds = Object.keys(getState().hiddenUsers);
+  if (hiddenUsersIds.length > 0)
+    data.comments = filterTree(data.comments, node => hiddenUsersIds.indexOf(node.comment.user.id) === -1);
   dispatch(setComments(data.comments));
   dispatch({
     type: POST_INFO_SET,

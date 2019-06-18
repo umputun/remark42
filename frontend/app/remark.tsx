@@ -16,6 +16,8 @@ import '@app/components/list-comments';
 import { NODE_ID, BASE_URL } from '@app/common/constants';
 import { StaticStore } from '@app/common/static_store';
 import api from '@app/common/api';
+import { bindActionCreators } from 'redux';
+import { fetchHiddenUsers } from './store/user/actions';
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
@@ -34,6 +36,9 @@ async function init(): Promise<void> {
     console.error("Remark42: Can't find root node.");
     return;
   }
+
+  const boundFetchHiddenUsers = bindActionCreators(fetchHiddenUsers, reduxStore.dispatch);
+  boundFetchHiddenUsers();
 
   const params = window.location.search
     .replace(/^\?/, '')
@@ -63,7 +68,7 @@ async function init(): Promise<void> {
   } else {
     render(
       <Provider store={reduxStore}>
-        <ConnectedRoot getPreview={api.getPreview} />
+        <ConnectedRoot />
       </Provider>,
       node.parentElement!,
       node

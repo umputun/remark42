@@ -174,20 +174,26 @@ describe('<Comment />', () => {
       container = domContainer;
     });
 
-    it('visible for admin', () => {
+    it('for admin if shows admin controls', () => {
       const element = <Comment {...{ ...DefaultProps, user: { ...DefaultProps.user, admin: true } } as Props} />;
       render(element, container);
 
-      const controls = container.querySelector('.comment__controls');
-      expect(controls).not.toBe(null);
+      const controls = container.querySelectorAll('.comment__controls > span');
+      expect(controls!.length).toBe(5);
+      expect(controls![0].textContent).toBe('Copy');
+      expect(controls![1].textContent).toBe('Pin');
+      expect(controls![2].textContent).toBe('Hide');
+      expect(controls![3].childNodes[0].textContent).toBe('Block');
+      expect(controls![4].textContent).toBe('Delete');
     });
 
-    it('not visible for regular user', () => {
+    it('for regular user it shows only "hide"', () => {
       const element = <Comment {...{ ...DefaultProps, user: { ...DefaultProps.user, admin: false } } as Props} />;
       render(element, container);
 
-      const controls = container.querySelector('.comment__controls');
-      expect(controls).toBe(null);
+      const controls = container.querySelectorAll('.comment__controls > span');
+      expect(controls!.length).toBe(1);
+      expect(controls![0].textContent).toBe('Hide');
     });
 
     it('verification badge clickable for admin', () => {
