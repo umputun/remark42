@@ -628,8 +628,39 @@ Sort can be `time`, `active` or `score`. Supported sort order with prefix -/+, i
 
 ### Streaming API
 
-* `GET /api/v1/stream/info?site=site-idd&url=post-url` - returns stream with `PostInfo` records ("\n" separated) for the site and url`
-* `GET /api/v1/stream/last?site=site-id` - returns updates stream with comments ("\n" separated) for the site`
+Streaming API provide server-sent events for post updates as well as site update
+
+* `GET /api/v1/stream/info?site=site-idd&url=post-url` - returns stream (`event: info`) with `PostInfo` records for the site and url`
+* `GET /api/v1/stream/last?site=site-id` - returns updates stream (`event: last`) with comments for the site`
+
+<details><summary>response example</summary>
+
+```
+data: {"url":"https://radio-t.com/blah1","count":2,"first_time":"2019-06-18T12:53:48.125686-05:00","last_time":"2019-06-18T12:53:48.142872-05:00"}
+
+event: info
+data: {"url":"https://radio-t.com/blah1","count":3,"first_time":"2019-06-18T12:53:48.125686-05:00","last_time":"2019-06-18T12:53:48.157709-05:00"}
+
+event: info
+data: {"url":"https://radio-t.com/blah1","count":4,"first_time":"2019-06-18T12:53:48.125686-05:00","last_time":"2019-06-18T12:53:48.172991-05:00"}
+
+event: info
+data: {"url":"https://radio-t.com/blah1","count":5,"first_time":"2019-06-18T12:53:48.125686-05:00","last_time":"2019-06-18T12:53:48.188429-05:00"}
+
+event: info
+data: {"url":"https://radio-t.com/blah1","count":6,"first_time":"2019-06-18T12:53:48.125686-05:00","last_time":"2019-06-18T12:53:48.204742-05:00"}
+
+event: info
+data: {"url":"https://radio-t.com/blah1","count":7,"first_time":"2019-06-18T12:53:48.125686-05:00","last_time":"2019-06-18T12:53:48.220692-05:00"}
+
+event: info
+data: {"url":"https://radio-t.com/blah1","count":8,"first_time":"2019-06-18T12:53:48.125686-05:00","last_time":"2019-06-18T12:53:48.23817-05:00"}
+
+event: info
+data: {"url":"https://radio-t.com/blah1","count":9,"first_time":"2019-06-18T12:53:48.125686-05:00","last_time":"2019-06-18T12:53:48.254669-05:00"}         
+```
+
+</details>
 
 ### RSS feeds
 

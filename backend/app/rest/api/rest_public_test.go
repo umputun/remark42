@@ -741,7 +741,7 @@ func TestRest_LastCommentsStream(t *testing.T) {
 
 	recs := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
 	require.Equal(t, 9*3, len(recs), "9 events")
-	t.Logf("%v", recs)
+	t.Logf("%s", string(body))
 	assert.True(t, strings.Contains(recs[1], `test 123`), recs[1])
 }
 
