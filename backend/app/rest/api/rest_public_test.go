@@ -738,6 +738,7 @@ func TestRest_LastCommentsStream(t *testing.T) {
 	wg.Wait()
 	t.Logf("headers: %+v", r.Header)
 	assert.Equal(t, "text/event-stream", r.Header.Get("content-type"))
+	assert.Equal(t, "keep-alive", r.Header.Get("connection"))
 
 	recs := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
 	require.Equal(t, 9*3, len(recs), "9 events")
