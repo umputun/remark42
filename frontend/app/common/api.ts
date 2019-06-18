@@ -257,6 +257,45 @@ export const uploadImage = (image: File): Promise<Image> => {
     }));
 };
 
+/**
+ * Connects to SSE stream which notifies on post's comments count change
+ *
+ * @param data set of handlers
+ */
+export const connectToUpdatesStream = (data: {
+  onOpen?: () => void | Promise<void>;
+  onMessage?: (data: { url: string; count: number; first_time: string; last_time: string }) => void | Promise<void>;
+  onError?: (err: Event) => void | Promise<void>;
+}): EventSource | null => {
+  // Ignoring browsers that don't support SSE (IE, lookin at you)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if (!(window as any).EventSource) return null;
+
+  const source = new EventSource(
+    `${API_BASE}/stream/info?site=${encodeURIComponent(siteId!)}&url=${encodeURIComponent(url!)}`
+  );
+  if (data.onMessage) {
+    source.addEventListener(
+      'info',
+      e => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        data.onMessage!(JSON.parse((e as any).data));
+      },
+      false
+    );
+  }
+
+  if (data.onOpen) {
+    source.addEventListener('open', data.onOpen!, false);
+  }
+
+  if (data.onError) {
+    source.addEventListener('error', data.onError!, false);
+  }
+
+  return source;
+};
+
 export default {
   logIn,
   logOut,
@@ -284,4 +323,6 @@ export default {
   disableComments,
   enableComments,
   uploadImage,
+
+  connectToUpdatesStream,
 };
