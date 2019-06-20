@@ -40,7 +40,7 @@ func TestService_CreateFromEmpty(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, id != "", id)
 
-	res, err := b.Engine.Get(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, id)
+	res, err := b.Engine.Get(getReq(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, id))
 	assert.NoError(t, err)
 	t.Logf("%+v", res)
 	assert.Equal(t, "text", res.Text)
@@ -66,7 +66,7 @@ func TestService_CreateFromPartial(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, id != "", id)
 
-	res, err := b.Engine.Get(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, id)
+	res, err := b.Engine.Get(getReq(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, id))
 	assert.NoError(t, err)
 	t.Logf("%+v", res)
 	assert.Equal(t, "text", res.Text)
@@ -94,7 +94,7 @@ func TestService_CreateFromPartialWithTitle(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, id != "", id)
 
-	res, err := b.Engine.Get(store.Locator{URL: "https://radio-t.com/p/2018/12/29/podcast-630/", SiteID: "radio-t"}, id)
+	res, err := b.Engine.Get(getReq(store.Locator{URL: "https://radio-t.com/p/2018/12/29/podcast-630/", SiteID: "radio-t"}, id))
 	assert.NoError(t, err)
 	t.Logf("%+v", res)
 	assert.Equal(t, "Радио-Т 630 — Радио-Т Подкаст", res.PostTitle)
@@ -102,7 +102,7 @@ func TestService_CreateFromPartialWithTitle(t *testing.T) {
 	comment.PostTitle = "post blah"
 	id, err = b.Create(comment)
 	assert.NoError(t, err)
-	res, err = b.Engine.Get(store.Locator{URL: "https://radio-t.com/p/2018/12/29/podcast-630/", SiteID: "radio-t"}, id)
+	res, err = b.Engine.Get(getReq(store.Locator{URL: "https://radio-t.com/p/2018/12/29/podcast-630/", SiteID: "radio-t"}, id))
 	assert.NoError(t, err)
 	t.Logf("%+v", res)
 	assert.Equal(t, "post blah", res.PostTitle, "keep comment title")
@@ -145,7 +145,7 @@ func TestService_SetTitle(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, id != "", id)
 
-	res, err := b.Engine.Get(store.Locator{URL: tss.URL + "/post1", SiteID: "radio-t"}, id)
+	res, err := b.Engine.Get(getReq(store.Locator{URL: tss.URL + "/post1", SiteID: "radio-t"}, id))
 	assert.NoError(t, err)
 	t.Logf("%+v", res)
 	assert.Equal(t, "", res.PostTitle)
@@ -438,13 +438,13 @@ func TestService_Pin(t *testing.T) {
 	err = b.SetPin(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, true)
 	assert.NoError(t, err)
 
-	c, err := b.Engine.Get(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID)
+	c, err := b.Engine.Get(getReq(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID))
 	assert.NoError(t, err)
 	assert.Equal(t, true, c.Pin)
 
 	err = b.SetPin(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, false)
 	assert.NoError(t, err)
-	c, err = b.Engine.Get(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID)
+	c, err = b.Engine.Get(getReq(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID))
 	assert.NoError(t, err)
 	assert.Equal(t, false, c.Pin)
 }
@@ -466,7 +466,7 @@ func TestService_EditComment(t *testing.T) {
 	assert.Equal(t, "xxx", comment.Text)
 	assert.Equal(t, "yyy", comment.Orig)
 
-	c, err := b.Engine.Get(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID)
+	c, err := b.Engine.Get(getReq(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID))
 	assert.NoError(t, err)
 	assert.Equal(t, "my edit", c.Edit.Summary)
 	assert.Equal(t, "xxx", c.Text)
@@ -489,7 +489,7 @@ func TestService_DeleteComment(t *testing.T) {
 	_, err = b.EditComment(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, EditRequest{Delete: true})
 	assert.NoError(t, err)
 
-	c, err := b.Engine.Get(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID)
+	c, err := b.Engine.Get(getReq(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID))
 	assert.NoError(t, err)
 	assert.True(t, c.Deleted)
 	t.Logf("%+v", c)
@@ -1078,4 +1078,11 @@ func prepStoreEngine(t *testing.T) engine.Interface {
 
 func teardown(_ *testing.T) {
 	_ = os.Remove(testDb)
+}
+
+func getReq(locator store.Locator, commentID string) engine.GetRequest {
+	return engine.GetRequest{
+		Locator:  locator,
+		CommentID: commentID,
+	}
 }

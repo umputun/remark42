@@ -16,16 +16,22 @@ import (
 
 // Interface defines methods provided by low-level storage engine
 type Interface interface {
-	Create(comment store.Comment) (commentID string, err error)         // create new comment, avoid dups by id
-	Update(locator store.Locator, comment store.Comment) error          // update comment, mutable parts only
-	Get(locator store.Locator, commentID string) (store.Comment, error) // get comment by id
-	Find(req FindRequest) ([]store.Comment, error)                      // find comments for locator or site
-	Info(req InfoRequest) ([]store.PostInfo, error)                     // get post(s) meta info
-	Count(req FindRequest) (int, error)                                 // get count for post or user
-	Delete(req DeleteRequest) error                                     // delete post(s) by id or by userID
-	Flag(req FlagRequest) (bool, error)                                 // set and get flags
-	ListFlags(req FlagRequest) ([]interface{}, error)                   // get list of flagged keys, like blocked & verified user
-	Close() error                                                       // close storage engine
+	Create(comment store.Comment) (commentID string, err error) // create new comment, avoid dups by id
+	Update(comment store.Comment) error                         // update comment, mutable parts only
+	Get(req GetRequest) (store.Comment, error)                  // get comment by id
+	Find(req FindRequest) ([]store.Comment, error)              // find comments for locator or site
+	Info(req InfoRequest) ([]store.PostInfo, error)             // get post(s) meta info
+	Count(req FindRequest) (int, error)                         // get count for post or user
+	Delete(req DeleteRequest) error                             // delete post(s) by id or by userID
+	Flag(req FlagRequest) (bool, error)                         // set and get flags
+	ListFlags(req FlagRequest) ([]interface{}, error)           // get list of flagged keys, like blocked & verified user
+	Close() error                                               // close storage engine
+}
+
+// GetRequest is the input for Get func
+type GetRequest struct {
+	Locator   store.Locator `json:"locator"`
+	CommentID string        `json:"comment_id"`
 }
 
 // FindRequest is the input for all find operations

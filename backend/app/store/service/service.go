@@ -132,7 +132,7 @@ func (s *DataStore) Find(locator store.Locator, sort string, user store.User) ([
 
 // Get comment by ID
 func (s *DataStore) Get(locator store.Locator, commentID string, user store.User) (store.Comment, error) {
-	c, err := s.Engine.Get(locator, commentID)
+	c, err := s.Engine.Get(engine.GetRequest{Locator: locator, CommentID: commentID})
 	if err != nil {
 		return store.Comment{}, err
 	}
@@ -141,7 +141,8 @@ func (s *DataStore) Get(locator store.Locator, commentID string, user store.User
 
 // Put updates comment, mutable parts only
 func (s *DataStore) Put(locator store.Locator, comment store.Comment) error {
-	return s.Engine.Update(locator, comment)
+	comment.Locator = locator
+	return s.Engine.Update(comment)
 }
 
 // submitImages initiated delayed commit of all images from the comment uploaded to remark42
@@ -149,7 +150,8 @@ func (s *DataStore) submitImages(comment store.Comment) {
 
 	s.ImageService.Submit(func() []string {
 		c := comment
-		cc, err := s.Engine.Get(c.Locator, c.ID) // this can be called after last edit, we have to retrieve fresh comment
+		// this can be called after last edit, we have to retrieve fresh comment
+		cc, err := s.Engine.Get(engine.GetRequest{Locator: c.Locator, CommentID: c.ID})
 		if err != nil {
 			log.Printf("[WARN] can't get comment's %s text for image extraction, %v", c.ID, err)
 			return nil
@@ -197,12 +199,13 @@ func (s *DataStore) DeleteAll(siteID string) error {
 
 // SetPin pin/un-pin comment as special
 func (s *DataStore) SetPin(locator store.Locator, commentID string, status bool) error {
-	comment, err := s.Engine.Get(locator, commentID)
+	comment, err := s.Engine.Get(engine.GetRequest{Locator: locator, CommentID: commentID})
 	if err != nil {
 		return err
 	}
 	comment.Pin = status
-	return s.Engine.Update(locator, comment)
+	comment.Locator = locator
+	return s.Engine.Update(comment)
 }
 
 // Vote for comment by id and locator
@@ -212,7 +215,7 @@ func (s *DataStore) Vote(locator store.Locator, commentID string, userID string,
 	cLock.Lock()                           // prevents race on voting
 	defer cLock.Unlock()
 
-	comment, err = s.Engine.Get(locator, commentID)
+	comment, err = s.Engine.Get(engine.GetRequest{Locator: locator, CommentID: commentID})
 	if err != nil {
 		return comment, err
 	}
@@ -270,8 +273,8 @@ func (s *DataStore) Vote(locator store.Locator, commentID string, userID string,
 	}
 
 	comment.Controversy = s.controversy(s.upsAndDowns(comment))
-
-	return comment, s.Engine.Update(locator, comment)
+	comment.Locator = locator
+	return comment, s.Engine.Update(comment)
 }
 
 // controversy calculates controversial index of votes
@@ -300,7 +303,7 @@ type EditRequest struct {
 
 // EditComment to edit text and update Edit info
 func (s *DataStore) EditComment(locator store.Locator, commentID string, req EditRequest) (comment store.Comment, err error) {
-	comment, err = s.Engine.Get(locator, commentID)
+	comment, err = s.Engine.Get(engine.GetRequest{Locator: locator, CommentID: commentID})
 	if err != nil {
 		return comment, err
 	}
@@ -330,9 +333,10 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 		Timestamp: time.Now(),
 		Summary:   req.Summary,
 	}
-
+	comment.Locator = locator
 	comment.Sanitize()
-	err = s.Engine.Update(locator, comment)
+
+	err = s.Engine.Update(comment)
 	return comment, err
 }
 
@@ -410,7 +414,7 @@ func (s *DataStore) SetTitle(locator store.Locator, commentID string) (comment s
 		return comment, errors.New("no title extractor")
 	}
 
-	comment, err = s.Engine.Get(locator, commentID)
+	comment, err = s.Engine.Get(engine.GetRequest{Locator: locator, CommentID: commentID})
 	if err != nil {
 		return comment, err
 	}
@@ -421,7 +425,8 @@ func (s *DataStore) SetTitle(locator store.Locator, commentID string) (comment s
 		return comment, err
 	}
 	comment.PostTitle = title
-	err = s.Engine.Update(locator, comment)
+	comment.Locator = locator
+	err = s.Engine.Update(comment)
 	return comment, err
 }
 

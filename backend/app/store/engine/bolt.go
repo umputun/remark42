@@ -137,19 +137,19 @@ func (b *BoltDB) Create(comment store.Comment) (commentID string, err error) {
 }
 
 // Get returns comment for locator.URL and commentID string
-func (b *BoltDB) Get(locator store.Locator, commentID string) (comment store.Comment, err error) {
+func (b *BoltDB) Get(req GetRequest) (comment store.Comment, err error) {
 
-	bdb, err := b.db(locator.SiteID)
+	bdb, err := b.db(req.Locator.SiteID)
 	if err != nil {
 		return comment, err
 	}
 
 	err = bdb.View(func(tx *bolt.Tx) error {
-		bucket, e := b.getPostBucket(tx, locator.URL)
+		bucket, e := b.getPostBucket(tx, req.Locator.URL)
 		if e != nil {
 			return e
 		}
-		return b.load(bucket, commentID, &comment)
+		return b.load(bucket, req.CommentID, &comment)
 	})
 	return comment, err
 }
@@ -204,9 +204,10 @@ func (b *BoltDB) Flag(req FlagRequest) (val bool, err error) {
 }
 
 // Update for locator.URL with mutable part of comment
-func (b *BoltDB) Update(locator store.Locator, comment store.Comment) error {
+func (b *BoltDB) Update(comment store.Comment) error {
 
-	if curComment, err := b.Get(locator, comment.ID); err == nil {
+	getReq := GetRequest{Locator: comment.Locator, CommentID: comment.ID}
+	if curComment, err := b.Get(getReq); err == nil {
 		// preserve immutable fields
 		comment.ParentID = curComment.ParentID
 		comment.Locator = curComment.Locator
@@ -214,13 +215,13 @@ func (b *BoltDB) Update(locator store.Locator, comment store.Comment) error {
 		comment.User = curComment.User
 	}
 
-	bdb, err := b.db(locator.SiteID)
+	bdb, err := b.db(comment.Locator.SiteID)
 	if err != nil {
 		return err
 	}
 
 	return bdb.Update(func(tx *bolt.Tx) error {
-		bucket, e := b.getPostBucket(tx, locator.URL)
+		bucket, e := b.getPostBucket(tx, comment.Locator.URL)
 		if e != nil {
 			return e
 		}
@@ -351,8 +352,8 @@ func (b *BoltDB) ListFlags(req FlagRequest) (res []interface{}, err error) {
 				if time.Now().Before(ts) {
 					// get user name from comment user section
 					userName := ""
-					req := FindRequest{Locator: store.Locator{SiteID: req.Locator.SiteID}, UserID: string(k), Limit: 1}
-					userComments, errUser := b.Find(req)
+					findReq := FindRequest{Locator: store.Locator{SiteID: req.Locator.SiteID}, UserID: string(k), Limit: 1}
+					userComments, errUser := b.Find(findReq)
 					if errUser == nil && len(userComments) > 0 {
 						userName = userComments[0].User.Name
 					}
@@ -500,7 +501,8 @@ func (b *BoltDB) userComments(siteID, userID string, limit, skip int) (comments 
 		if errParse != nil {
 			return comments, errors.Wrapf(errParse, "can't parse reference %s", v)
 		}
-		if c, errRef := b.Get(store.Locator{SiteID: siteID, URL: url}, commentID); errRef == nil {
+		getReq := GetRequest{Locator: store.Locator{SiteID: siteID, URL: url}, CommentID: commentID}
+		if c, errRef := b.Get(getReq); errRef == nil {
 			comments = append(comments, c)
 		}
 	}
