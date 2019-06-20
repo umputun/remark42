@@ -19,6 +19,10 @@ func TestBoltDB_CreateAndFind(t *testing.T) {
 	var b, teardown = prep(t)
 	defer teardown()
 
+	var bb Interface
+	bb = b
+	_ = bb
+
 	req := FindRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, Sort: "time"}
 	res, err := b.Find(req)
 	assert.NoError(t, err)
@@ -77,14 +81,14 @@ func TestBoltDB_Get(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(res), "2 records initially")
 
-	comment, err := b.Get(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[1].ID)
+	comment, err := b.Get(getReq(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[1].ID))
 	assert.NoError(t, err)
 	assert.Equal(t, "some text2", comment.Text)
 
-	comment, err = b.Get(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "1234567")
+	comment, err = b.Get(getReq(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "1234567"))
 	assert.NotNil(t, err)
 
-	_, err = b.Get(store.Locator{URL: "https://radio-t.com", SiteID: "bad"}, res[1].ID)
+	_, err = b.Get(getReq(store.Locator{URL: "https://radio-t.com", SiteID: "bad"}, res[1].ID))
 	assert.EqualError(t, err, `site "bad" not found`)
 }
 
@@ -100,19 +104,22 @@ func TestBoltDB_Update(t *testing.T) {
 	comment := res[0]
 	comment.Text = "abc 123"
 	comment.Score = 100
-	err = b.Update(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, comment)
+	err = b.Update(comment)
 	assert.NoError(t, err)
 
-	comment, err = b.Get(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID)
+	comment, err = b.Get(getReq(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID))
 	assert.NoError(t, err)
 	assert.Equal(t, "abc 123", comment.Text)
 	assert.Equal(t, res[0].ID, comment.ID)
 	assert.Equal(t, 100, comment.Score)
 
-	err = b.Update(store.Locator{URL: "https://radio-t.com", SiteID: "bad"}, comment)
+	comment.Locator.SiteID = "bad"
+	err = b.Update(comment)
 	assert.EqualError(t, err, `site "bad" not found`)
 
-	err = b.Update(store.Locator{URL: "https://radio-t.com-bad", SiteID: "radio-t"}, comment)
+	comment.Locator.SiteID="radio-t"
+	comment.Locator.URL="https://radio-t.com-bad"
+	err = b.Update(comment)
 	assert.EqualError(t, err, `no bucket https://radio-t.com-bad in store`)
 }
 
@@ -805,4 +812,11 @@ func prep(t *testing.T) (b *BoltDB, teardown func()) {
 		_ = os.Remove(testDb)
 	}
 	return b, teardown
+}
+
+func getReq(locator store.Locator, commentID string) GetRequest {
+	return GetRequest{
+		Locator:  locator,
+		CommentID: commentID,
+	}
 }

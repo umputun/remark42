@@ -123,20 +123,20 @@ func (_m *MockInterface) Flag(req FlagRequest) (bool, error) {
 	return r0, r1
 }
 
-// Get provides a mock function with given fields: locator, commentID
-func (_m *MockInterface) Get(locator store.Locator, commentID string) (store.Comment, error) {
-	ret := _m.Called(locator, commentID)
+// Get provides a mock function with given fields: req
+func (_m *MockInterface) Get(req GetRequest) (store.Comment, error) {
+	ret := _m.Called(req)
 
 	var r0 store.Comment
-	if rf, ok := ret.Get(0).(func(store.Locator, string) store.Comment); ok {
-		r0 = rf(locator, commentID)
+	if rf, ok := ret.Get(0).(func(GetRequest) store.Comment); ok {
+		r0 = rf(req)
 	} else {
 		r0 = ret.Get(0).(store.Comment)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(store.Locator, string) error); ok {
-		r1 = rf(locator, commentID)
+	if rf, ok := ret.Get(1).(func(GetRequest) error); ok {
+		r1 = rf(req)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -190,13 +190,13 @@ func (_m *MockInterface) ListFlags(req FlagRequest) ([]interface{}, error) {
 	return r0, r1
 }
 
-// Update provides a mock function with given fields: locator, comment
-func (_m *MockInterface) Update(locator store.Locator, comment store.Comment) error {
-	ret := _m.Called(locator, comment)
+// Update provides a mock function with given fields: comment
+func (_m *MockInterface) Update(comment store.Comment) error {
+	ret := _m.Called(comment)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(store.Locator, store.Comment) error); ok {
-		r0 = rf(locator, comment)
+	if rf, ok := ret.Get(0).(func(store.Comment) error); ok {
+		r0 = rf(comment)
 	} else {
 		r0 = ret.Error(0)
 	}
