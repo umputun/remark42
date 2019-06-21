@@ -377,6 +377,9 @@ func (s *Rest) updateLimiter() float64 {
 func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 
+	admins, _ := s.DataService.AdminStore.Admins(siteID)
+	emails, _ := s.DataService.AdminStore.Email(siteID)
+
 	cnf := struct {
 		Version        string   `json:"version"`
 		EditDuration   int      `json:"edit_duration"`
@@ -393,8 +396,8 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		Version:        s.Version,
 		EditDuration:   int(s.DataService.EditDuration.Seconds()),
 		MaxCommentSize: s.DataService.MaxCommentSize,
-		Admins:         s.DataService.AdminStore.Admins(siteID),
-		AdminEmail:     s.DataService.AdminStore.Email(siteID),
+		Admins:         admins,
+		AdminEmail:     emails,
 		LowScore:       s.ScoreThresholds.Low,
 		CriticalScore:  s.ScoreThresholds.Critical,
 		PositiveScore:  s.DataService.PositiveScore,
