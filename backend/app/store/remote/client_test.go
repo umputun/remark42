@@ -47,6 +47,18 @@ func TestClient_CallWithObject(t *testing.T) {
 	t.Logf("%v %T", res, res)
 }
 
+func TestClient_CallWithNoParams(t *testing.T) {
+	ts := testServer(t, `{"method":"test","id":1}`, `{"result":"12345"}`)
+	defer ts.Close()
+	c := Client{API: ts.URL, Client: http.Client{}}
+	resp, err := c.Call("test")
+	assert.NoError(t, err)
+	res := ""
+	err = json.Unmarshal(*resp.Result, &res)
+	assert.Equal(t, "12345", res)
+	t.Logf("%v %T", res, res)
+}
+
 func TestClient_CallError(t *testing.T) {
 	ts := testServer(t, `{"method":"test","params":[123,"abc"],"id":1}`, `{"error":"some error"}`)
 	defer ts.Close()
