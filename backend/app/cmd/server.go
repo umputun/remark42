@@ -22,7 +22,6 @@ import (
 	"github.com/go-pkgz/auth/avatar"
 	"github.com/go-pkgz/auth/provider"
 	"github.com/go-pkgz/auth/token"
-	"github.com/go-pkgz/mongo"
 	"github.com/go-pkgz/rest/cache"
 
 	"github.com/umputun/remark/backend/app/migrator"
@@ -41,7 +40,6 @@ type ServerCommand struct {
 	Store  StoreGroup  `group:"store" namespace:"store" env-namespace:"STORE"`
 	Avatar AvatarGroup `group:"avatar" namespace:"avatar" env-namespace:"AVATAR"`
 	Cache  CacheGroup  `group:"cache" namespace:"cache" env-namespace:"CACHE"`
-	Mongo  MongoGroup  `group:"mongo" namespace:"mongo" env-namespace:"MONGO"`
 	Admin  AdminGroup  `group:"admin" namespace:"admin" env-namespace:"ADMIN"`
 	Notify NotifyGroup `group:"notify" namespace:"notify" env-namespace:"NOTIFY"`
 	Image  ImageGroup  `group:"image" namespace:"image" env-namespace:"IMAGE"`
@@ -89,11 +87,15 @@ type AuthGroup struct {
 
 // StoreGroup defines options group for store params
 type StoreGroup struct {
-	Type string `long:"type" env:"TYPE" description:"type of storage" choice:"bolt" choice:"mongo" default:"bolt"`
+	Type string `long:"type" env:"TYPE" description:"type of storage" choice:"bolt" choice:"remote" default:"bolt"`
 	Bolt struct {
 		Path    string        `long:"path" env:"PATH" default:"./var" description:"parent dir for bolt files"`
 		Timeout time.Duration `long:"timeout" env:"TIMEOUT" default:"30s" description:"bolt timeout"`
 	} `group:"bolt" namespace:"bolt" env-namespace:"BOLT"`
+	Remote struct {
+		API     string        `long:"api" env:"API" description:"remote extension api url"`
+		TimeOut time.Duration `long:"timeout" env:"TIMEOUT" description:"http timeout"`
+	} `group:"remote" namespace:"remote" env-namespace:"REMOTE"`
 }
 
 // ImageGroup defines options group for store pictures
@@ -132,12 +134,6 @@ type CacheGroup struct {
 		Value int   `long:"value" env:"VALUE" default:"65536" description:"max size of cached value"`
 		Size  int64 `long:"size" env:"SIZE" default:"50000000" description:"max size of total cache"`
 	} `group:"max" namespace:"max" env-namespace:"MAX"`
-}
-
-// MongoGroup holds all mongo params, used by store, avatar and cache
-type MongoGroup struct {
-	URL string `long:"url" env:"URL" description:"mongo url"`
-	DB  string `long:"db" env:"DB" default:"remark42" description:"mongo database"`
 }
 
 // AdminGroup defines options group for admin params
@@ -436,13 +432,13 @@ func (s *ServerCommand) makeAvatarStore() (avatar.Store, error) {
 			return nil, err
 		}
 		return avatar.NewLocalFS(s.Avatar.FS.Path), nil
-	case "mongo":
-		mgServer, err := s.makeMongo()
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to create mongo server")
-		}
-		conn := mongo.NewConnection(mgServer, s.Mongo.DB, "")
-		return avatar.NewGridFS(conn), nil
+	// case "mongo":
+	// 	mgServer, err := s.makeMongo()
+	// 	if err != nil {
+	// 		return nil, errors.Wrap(err, "failed to create mongo server")
+	// 	}
+	// 	conn := mongo.NewConnection(mgServer, s.Mongo.DB, "")
+	// 	return avatar.NewGridFS(conn), nil
 	case "bolt":
 		if err := makeDirs(path.Dir(s.Avatar.Bolt.File)); err != nil {
 			return nil, err
@@ -485,13 +481,13 @@ func (s *ServerCommand) makeAdminStore() (admin.Store, error) {
 			}
 		}
 		return admin.NewStaticStore(s.SharedSecret, s.Admin.Shared.Admins, s.Admin.Shared.Email), nil
-	case "mongo":
-		mgServer, e := s.makeMongo()
-		if e != nil {
-			return nil, errors.Wrap(e, "failed to create mongo server")
-		}
-		conn := mongo.NewConnection(mgServer, s.Mongo.DB, "admin")
-		return admin.NewMongoStore(conn, s.SharedSecret), nil
+	// case "mongo":
+	// 	mgServer, e := s.makeMongo()
+	// 	if e != nil {
+	// 		return nil, errors.Wrap(e, "failed to create mongo server")
+	// 	}
+	// 	conn := mongo.NewConnection(mgServer, s.Mongo.DB, "admin")
+	// 	return admin.NewMongoStore(conn, s.SharedSecret), nil
 	default:
 		return nil, errors.Errorf("unsupported admin store type %s", s.Admin.Type)
 	}
@@ -515,13 +511,6 @@ func (s *ServerCommand) makeCache() (cache.LoadingCache, error) {
 		return &cache.Nop{}, nil
 	}
 	return nil, errors.Errorf("unsupported cache type %s", s.Cache.Type)
-}
-
-func (s *ServerCommand) makeMongo() (result *mongo.Server, err error) {
-	if s.Mongo.URL == "" {
-		return nil, errors.New("no mongo URL provided")
-	}
-	return mongo.NewServerWithURL(s.Mongo.URL, 10*time.Second)
 }
 
 func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) {
