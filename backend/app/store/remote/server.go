@@ -129,7 +129,13 @@ func (s *Server) handler(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusNotImplemented, errors.New("unsupported method"), req.Method, 0)
 		return
 	}
-	render.JSON(w, r, fn(req.ID, *req.Params))
+
+	params := json.RawMessage{}
+	if req.Params != nil {
+		params = *req.Params
+	}
+
+	render.JSON(w, r, fn(req.ID, params))
 }
 
 func (s *Server) basicAuth(h http.Handler) http.Handler {

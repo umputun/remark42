@@ -25,12 +25,19 @@ func (r *Client) Call(method string, args ...interface{}) (*Response, error) {
 
 	var b []byte
 	var err error
-	if len(args) == 1 && reflect.TypeOf(args[0]).Kind() == reflect.Struct {
+
+	switch {
+	case args == nil || len(args) == 0:
+		b, err = json.Marshal(Request{Method: method, ID: atomic.AddUint64(&r.id, 1)})
+		if err != nil {
+			return nil, errors.Wrapf(err, "marshaling failed for %s", method)
+		}
+	case len(args) == 1 && reflect.TypeOf(args[0]).Kind() == reflect.Struct:
 		b, err = json.Marshal(Request{Method: method, Params: args[0], ID: atomic.AddUint64(&r.id, 1)})
 		if err != nil {
 			return nil, errors.Wrapf(err, "marshaling failed for %s", method)
 		}
-	} else {
+	default:
 		b, err = json.Marshal(Request{Method: method, Params: args, ID: atomic.AddUint64(&r.id, 1)})
 		if err != nil {
 			return nil, errors.Wrapf(err, "marshaling failed for %s", method)
