@@ -40,6 +40,9 @@ type Server struct {
 	}
 }
 
+// Encoder is a function to encode call's result to Response
+type Encoder func(id uint64, resp interface{}, e error) (Response, error)
+
 // ServerFn handler registered for each method with Add
 // Implementations provided by consumer and define response logic.
 type ServerFn func(id uint64, params json.RawMessage) Response
@@ -107,10 +110,29 @@ func (s *Server) Shutdown() error {
 
 // Add method handler
 func (s *Server) Add(method string, fn ServerFn) {
+	s.httpServer.Lock()
+	defer s.httpServer.Unlock()
+	if s.httpServer.Server != nil {
+		log.Printf("[WARN] ignored method %s, can't be added to activated server", method)
+		return
+	}
+
 	s.funcs.once.Do(func() {
 		s.funcs.m = map[string]ServerFn{}
 	})
+
 	s.funcs.m[method] = fn
+	log.Printf("[INFO] add handler for %s", method)
+}
+
+// HandlersGroup alias for map of handlers
+type HandlersGroup map[string]ServerFn
+
+// Group of handlers with common prefix
+func (s *Server) Group(prefix string, m HandlersGroup) {
+	for k, v := range m {
+		s.Add(prefix+"."+k, v)
+	}
 }
 
 func (s *Server) handler(w http.ResponseWriter, r *http.Request) {

@@ -40,6 +40,7 @@ func TestServerPrimitiveTypes(t *testing.T) {
 	})
 
 	go func() { s.Run(9091) }()
+	defer func() { assert.NoError(t, s.Shutdown()) }()
 	time.Sleep(10 * time.Millisecond)
 
 	// check with direct http call
@@ -64,7 +65,6 @@ func TestServerPrimitiveTypes(t *testing.T) {
 	err = json.Unmarshal(*r.Result, &res)
 	assert.Equal(t, respData{Res1: "res blah", Res2: true}, res)
 	assert.Equal(t, uint64(1), r.ID)
-	assert.NoError(t, s.Shutdown())
 }
 
 func TestServerWithObject(t *testing.T) {
@@ -94,6 +94,7 @@ func TestServerWithObject(t *testing.T) {
 	})
 
 	go func() { s.Run(9091) }()
+	defer func() { assert.NoError(t, s.Shutdown()) }()
 	time.Sleep(10 * time.Millisecond)
 
 	c := Client{API: "http://127.0.0.1:9091/v1/cmd", Client: http.Client{}}
@@ -104,8 +105,6 @@ func TestServerWithObject(t *testing.T) {
 	res := respData{}
 	err = json.Unmarshal(*r.Result, &res)
 	assert.Equal(t, respData{Res1: "res blah", Res2: true}, res)
-
-	assert.NoError(t, s.Shutdown())
 }
 
 func TestServerMethodNotImplemented(t *testing.T) {
@@ -148,6 +147,7 @@ func TestServerWithAuth(t *testing.T) {
 
 	go func() { s.Run(9091) }()
 	time.Sleep(10 * time.Millisecond)
+	defer func() { assert.NoError(t, s.Shutdown()) }()
 
 	c := Client{API: "http://127.0.0.1:9091/v1/cmd", Client: http.Client{}, AuthUser: "user", AuthPasswd: "passwd"}
 	r, err := c.Call("test", "blah", 42, true)
@@ -160,9 +160,7 @@ func TestServerWithAuth(t *testing.T) {
 
 	c = Client{API: "http://127.0.0.1:9091/v1/cmd", Client: http.Client{}}
 	_, err = c.Call("test", "blah", 42, true)
-	assert.EqualError(t, err, "bad status 401 for test")
-
-	assert.NoError(t, s.Shutdown())
+	assert.EqualError(t, err, "bad status 401 Unauthorized for test")
 }
 
 func TestServerErrReturn(t *testing.T) {
@@ -186,13 +184,57 @@ func TestServerErrReturn(t *testing.T) {
 	})
 
 	go func() { s.Run(9091) }()
+	defer func() { assert.NoError(t, s.Shutdown()) }()
 	time.Sleep(10 * time.Millisecond)
 
 	c := Client{API: "http://127.0.0.1:9091/v1/cmd", Client: http.Client{}, AuthUser: "user", AuthPasswd: "passwd"}
 	_, err := c.Call("test", "blah", 42, true)
 	assert.EqualError(t, err, "some error")
+}
 
-	assert.NoError(t, s.Shutdown())
+func TestServerGroup(t *testing.T) {
+	s := Server{API: "/v1/cmd"}
+	s.Group("pre", HandlersGroup{
+		"fn1": func(id uint64, params json.RawMessage) Response {
+			return Response{}
+		},
+		"fn2": func(id uint64, params json.RawMessage) Response {
+			return Response{}
+		},
+	})
+	go func() { s.Run(9091) }()
+	defer func() { assert.NoError(t, s.Shutdown()) }()
+	time.Sleep(10 * time.Millisecond)
+
+	c := Client{API: "http://127.0.0.1:9091/v1/cmd", Client: http.Client{}}
+	_, err := c.Call("fn1")
+	assert.EqualError(t, err, "bad status 501 Not Implemented for fn1")
+
+	_, err = c.Call("pre.fn1")
+	assert.NoError(t, err)
+	_, err = c.Call("pre.fn2")
+	assert.NoError(t, err)
+}
+
+func TestServerAddLate(t *testing.T) {
+	s := Server{API: "/v1/cmd"}
+	s.Add("fn1", func(id uint64, params json.RawMessage) Response {
+		return Response{}
+	})
+	go func() { s.Run(9091) }()
+	defer func() { assert.NoError(t, s.Shutdown()) }()
+	time.Sleep(10 * time.Millisecond)
+
+	// too late, ignored after run
+	s.Add("fn2", func(id uint64, params json.RawMessage) Response {
+		return Response{}
+	})
+
+	c := Client{API: "http://127.0.0.1:9091/v1/cmd", Client: http.Client{}}
+	_, err := c.Call("fn1")
+	assert.NoError(t, err)
+	_, err = c.Call("fn2")
+	assert.EqualError(t, err, "bad status 501 Not Implemented for fn2")
 }
 
 func TestServerNoHandlers(t *testing.T) {

@@ -59,7 +59,7 @@ func (r *Client) Call(method string, args ...interface{}) (*Response, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
-		return nil, errors.Errorf("bad status %d for %s", resp.StatusCode, method)
+		return nil, errors.Errorf("bad status %s for %s", resp.Status, method)
 	}
 
 	cr := Response{}
