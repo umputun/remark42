@@ -85,7 +85,7 @@ func TestRemote_FailedStatus(t *testing.T) {
 
 	req := GetRequest{Locator: store.Locator{URL: "http://example.com/url"}, CommentID: "site"}
 	_, err := c.Get(req)
-	assert.EqualError(t, err, "bad status 400 for store.get")
+	assert.EqualError(t, err, "bad status 400 Bad Request for store.get")
 }
 
 func TestRemote_Update(t *testing.T) {
@@ -160,7 +160,7 @@ func TestRemote_Delete(t *testing.T) {
 }
 
 func TestRemote_Close(t *testing.T) {
-	ts := testServer(t, `{"method":"store.close","params":null,"id":1}`, `{}`)
+	ts := testServer(t, `{"method":"store.close","id":1}`, `{}`)
 	defer ts.Close()
 	c := Remote{Client: remote.Client{API: ts.URL, Client: http.Client{}}}
 	err := c.Close()

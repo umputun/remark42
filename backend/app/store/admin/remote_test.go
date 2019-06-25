@@ -20,7 +20,7 @@ import (
 )
 
 func TestRemote_Key(t *testing.T) {
-	ts := testServer(t, `{"method":"admin.key","params":null,"id":1}`,
+	ts := testServer(t, `{"method":"admin.key","id":1}`,
 		`{"result":"12345","id":1}`)
 	defer ts.Close()
 	c := Remote{Client: remote.Client{API: ts.URL, Client: http.Client{}}}
