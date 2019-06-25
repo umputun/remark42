@@ -14,10 +14,8 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/globalsign/mgo"
 	"github.com/go-pkgz/auth/token"
 	log "github.com/go-pkgz/lgr"
-	"github.com/go-pkgz/mongo"
 	"github.com/jessevdk/go-flags"
 
 	"github.com/stretchr/testify/assert"
@@ -128,61 +126,6 @@ func TestServerApp_AnonMode(t *testing.T) {
 	require.Nil(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 403, resp.StatusCode)
-
-	app.Wait()
-}
-func TestServerApp_WithMongo(t *testing.T) {
-
-	mongoURL := os.Getenv("MONGO_TEST")
-	if mongoURL == "" {
-		mongoURL = "mongodb://localhost:27017/test"
-	}
-	if mongoURL == "skip" {
-		t.Skip("skip mongo app test")
-	}
-
-	opts := ServerCommand{}
-	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
-
-	// prepare options
-	p := flags.NewParser(&opts, flags.Default)
-	_, err := p.ParseArgs([]string{"--admin-passwd=password", "--cache.type=none", "--store.type=mongo",
-		"--avatar.type=mongo", "--mongo.url=" + mongoURL, "--mongo.db=test_remark", "--port=12345", "--admin.type=mongo"})
-	require.Nil(t, err)
-	opts.Auth.Github.CSEC, opts.Auth.Github.CID = "csec", "cid"
-	opts.BackupLocation, opts.Image.FS.Path = "/tmp", "/tmp"
-
-	// create app
-	app, err := opts.newServerApp()
-	require.Nil(t, err)
-
-	defer func() {
-		s, e := mongo.NewServerWithURL(mongoURL, 10*time.Second)
-		assert.NoError(t, e)
-		conn := mongo.NewConnection(s, "test_remark", "")
-		_ = conn.WithDB(func(dbase *mgo.Database) error {
-			assert.NoError(t, dbase.DropDatabase())
-			return nil
-		})
-	}()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	go func() {
-		time.Sleep(5 * time.Second)
-		log.Print("[TEST] terminate app")
-		cancel()
-	}()
-	go func() { _ = app.run(ctx) }()
-	time.Sleep(100 * time.Millisecond) // let server start
-
-	// send ping
-	resp, err := http.Get("http://localhost:12345/api/v1/ping")
-	require.Nil(t, err)
-	defer resp.Body.Close()
-	assert.Equal(t, 200, resp.StatusCode)
-	body, err := ioutil.ReadAll(resp.Body)
-	assert.Nil(t, err)
-	assert.Equal(t, "pong", string(body))
 
 	app.Wait()
 }

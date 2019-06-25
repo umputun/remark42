@@ -32,6 +32,7 @@ import (
 	"github.com/umputun/remark/backend/app/store/admin"
 	"github.com/umputun/remark/backend/app/store/engine"
 	"github.com/umputun/remark/backend/app/store/image"
+	"github.com/umputun/remark/backend/app/store/remote"
 	"github.com/umputun/remark/backend/app/store/service"
 )
 
@@ -92,10 +93,7 @@ type StoreGroup struct {
 		Path    string        `long:"path" env:"PATH" default:"./var" description:"parent dir for bolt files"`
 		Timeout time.Duration `long:"timeout" env:"TIMEOUT" default:"30s" description:"bolt timeout"`
 	} `group:"bolt" namespace:"bolt" env-namespace:"BOLT"`
-	Remote struct {
-		API     string        `long:"api" env:"API" description:"remote extension api url"`
-		TimeOut time.Duration `long:"timeout" env:"TIMEOUT" description:"http timeout"`
-	} `group:"remote" namespace:"remote" env-namespace:"REMOTE"`
+	Remote RemoteGroup `group:"remote" namespace:"remote" env-namespace:"REMOTE"`
 }
 
 // ImageGroup defines options group for store pictures
@@ -138,11 +136,12 @@ type CacheGroup struct {
 
 // AdminGroup defines options group for admin params
 type AdminGroup struct {
-	Type   string `long:"type" env:"TYPE" description:"type of admin store" choice:"shared" choice:"mongo" default:"shared"`
+	Type   string `long:"type" env:"TYPE" description:"type of admin store" choice:"shared" choice:"remote" default:"shared"`
 	Shared struct {
 		Admins []string `long:"id" env:"ID" description:"admin(s) ids" env-delim:","`
 		Email  string   `long:"email" env:"EMAIL" default:"" description:"admin email"`
 	} `group:"shared" namespace:"shared" env-namespace:"SHARED"`
+	Remote RemoteGroup `group:"remote" namespace:"remote" env-namespace:"REMOTE"`
 }
 
 // NotifyGroup defines options for notification
@@ -172,6 +171,14 @@ type StreamGroup struct {
 	RefreshInterval time.Duration `long:"refresh" env:"REFRESH" default:"5s" description:"refresh interval for streams"`
 	TimeOut         time.Duration `long:"timeout" env:"TIMEOUT" default:"15m" description:"timeout to close streams on inactivity"`
 	MaxActive       int           `long:"max" env:"MAX" default:"500" description:"max number of parallel streams"`
+}
+
+// RemoteGroup defines options for remote modules (plugins)
+type RemoteGroup struct {
+	API          string        `long:"api" env:"API" description:"remote extension api url"`
+	TimeOut      time.Duration `long:"timeout" env:"TIMEOUT" description:"http timeout"`
+	AuthUser     string        `long:"auth_user" env:"AUTH_USER" description:"basic auth user name"`
+	AuthPassword string        `long:"auth_passwd" env:"AUTH_PASSWD" description:"basic auth user password"`
 }
 
 // serverApp holds all active objects
@@ -410,13 +417,14 @@ func (s *ServerCommand) makeDataStore() (result engine.Interface, err error) {
 			sites = append(sites, engine.BoltSite{SiteID: site, FileName: fmt.Sprintf("%s/%s.db", s.Store.Bolt.Path, site)})
 		}
 		result, err = engine.NewBoltDB(bolt.Options{Timeout: s.Store.Bolt.Timeout}, sites...)
-	// case "mongo":
-	// 	mgServer, e := s.makeMongo()
-	// 	if e != nil {
-	// 		return result, errors.Wrap(e, "failed to create mongo server")
-	// 	}
-	// 	conn := mongo.NewConnection(mgServer, s.Mongo.DB, "")
-	// 	result, err = engine.NewMongo(conn, 500, 100*time.Millisecond)
+	case "remote":
+		r := &engine.Remote{Client: remote.Client{
+			API:        s.Store.Remote.API,
+			Client:     http.Client{Timeout: s.Store.Remote.TimeOut},
+			AuthUser:   s.Store.Remote.AuthUser,
+			AuthPasswd: s.Store.Remote.AuthPassword,
+		}}
+		return r, nil
 	default:
 		return nil, errors.Errorf("unsupported store type %s", s.Store.Type)
 	}
@@ -432,13 +440,6 @@ func (s *ServerCommand) makeAvatarStore() (avatar.Store, error) {
 			return nil, err
 		}
 		return avatar.NewLocalFS(s.Avatar.FS.Path), nil
-	// case "mongo":
-	// 	mgServer, err := s.makeMongo()
-	// 	if err != nil {
-	// 		return nil, errors.Wrap(err, "failed to create mongo server")
-	// 	}
-	// 	conn := mongo.NewConnection(mgServer, s.Mongo.DB, "")
-	// 	return avatar.NewGridFS(conn), nil
 	case "bolt":
 		if err := makeDirs(path.Dir(s.Avatar.Bolt.File)); err != nil {
 			return nil, err
@@ -481,13 +482,14 @@ func (s *ServerCommand) makeAdminStore() (admin.Store, error) {
 			}
 		}
 		return admin.NewStaticStore(s.SharedSecret, s.Admin.Shared.Admins, s.Admin.Shared.Email), nil
-	// case "mongo":
-	// 	mgServer, e := s.makeMongo()
-	// 	if e != nil {
-	// 		return nil, errors.Wrap(e, "failed to create mongo server")
-	// 	}
-	// 	conn := mongo.NewConnection(mgServer, s.Mongo.DB, "admin")
-	// 	return admin.NewMongoStore(conn, s.SharedSecret), nil
+	case "remote":
+		r := &admin.Remote{Client: remote.Client{
+			API:        s.Admin.Remote.API,
+			Client:     http.Client{Timeout: s.Admin.Remote.TimeOut},
+			AuthUser:   s.Admin.Remote.AuthUser,
+			AuthPasswd: s.Admin.Remote.AuthPassword,
+		}}
+		return r, nil
 	default:
 		return nil, errors.Errorf("unsupported admin store type %s", s.Admin.Type)
 	}
@@ -499,14 +501,6 @@ func (s *ServerCommand) makeCache() (cache.LoadingCache, error) {
 	case "mem":
 		return cache.NewMemoryCache(cache.MaxCacheSize(s.Cache.Max.Size), cache.MaxValSize(s.Cache.Max.Value),
 			cache.MaxKeys(s.Cache.Max.Items))
-	// case "mongo":
-	// 	mgServer, err := s.makeMongo()
-	// 	if err != nil {
-	// 		return nil, errors.Wrap(err, "failed to create mongo server")
-	// 	}
-	// 	conn := mongo.NewConnection(mgServer, s.Mongo.DB, "cache")
-	// 	return cache.NewMongoCache(conn, cache.MaxCacheSize(s.Cache.Max.Size), cache.MaxValSize(s.Cache.Max.Value),
-	// 		cache.MaxKeys(s.Cache.Max.Items))
 	case "none":
 		return &cache.Nop{}, nil
 	}
