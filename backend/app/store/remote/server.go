@@ -61,7 +61,7 @@ func (s *Server) Run(port int) error {
 	router.Use(R.AppInfo(s.AppName, "umputun", s.Version), R.Ping)
 	logInfoWithBody := logger.New(logger.Log(log.Default()), logger.WithBody, logger.Prefix("[INFO]")).Handler
 	router.Use(middleware.Timeout(5 * time.Second))
-	router.Use(logInfoWithBody, tollbooth_chi.LimitHandler(tollbooth.NewLimiter(5, nil)), middleware.NoCache)
+	router.Use(logInfoWithBody, tollbooth_chi.LimitHandler(tollbooth.NewLimiter(1000, nil)), middleware.NoCache)
 	router.Use(s.basicAuth)
 
 	router.Post(s.API, s.handler)
