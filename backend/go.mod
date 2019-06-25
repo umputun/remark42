@@ -11,14 +11,13 @@ require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/didip/tollbooth v4.0.0+incompatible
 	github.com/didip/tollbooth_chi v0.0.0-20170928041846-6ab5f3083f3d
-	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
 	github.com/go-chi/chi v4.0.2+incompatible
 	github.com/go-chi/cors v1.0.0
 	github.com/go-chi/render v1.0.1
 	github.com/go-pkgz/auth v0.5.2
 	github.com/go-pkgz/lcw v0.3.1
 	github.com/go-pkgz/lgr v0.6.2
-	github.com/go-pkgz/mongo v1.1.2
+	github.com/go-pkgz/mongo v1.1.2 // indirect
 	github.com/go-pkgz/repeater v1.1.2
 	github.com/go-pkgz/rest v1.4.1
 	github.com/go-pkgz/syncs v1.1.1

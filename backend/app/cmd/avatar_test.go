@@ -13,13 +13,6 @@ import (
 
 func TestAvatar_Execute(t *testing.T) {
 
-	mongoURL := os.Getenv("MONGO_TEST")
-	if mongoURL == "" {
-		mongoURL = "mongodb://localhost:27017/test"
-	}
-	if mongoURL == "skip" {
-		t.Skip("skip mongo app test")
-	}
 	defer os.RemoveAll("/tmp/ava-test")
 
 	// from fs to bolt
@@ -37,7 +30,7 @@ func TestAvatar_Execute(t *testing.T) {
 	cmd.SetCommon(CommonOpts{RemarkURL: "", SharedSecret: "123456"})
 	p = flags.NewParser(&cmd, flags.Default)
 	_, err = p.ParseArgs([]string{"--src.type=fs", "--src.fs.path=/tmp/ava-test", "--dst.type=bolt",
-		"--dst.bolt.file=/tmp/ava-test.db"})
+		"--dst.bolt.file=/tmp/ava-test2.db"})
 	require.NoError(t, err)
 	err = cmd.Execute(nil)
 	assert.Error(t, err, "failed blah")

@@ -16,7 +16,6 @@ import (
 type AvatarCommand struct {
 	AvatarSrc AvatarGroup `group:"src" namespace:"src"`
 	AvatarDst AvatarGroup `group:"dst" namespace:"dst"`
-	// Mongo     MongoGroup  `group:"mongo" namespace:"mongo" env-namespace:"MONGO"`
 
 	migrator AvatarMigrator
 	CommonOpts
