@@ -7,10 +7,6 @@ pipeline:
   build:
     image: golang:1.12-alpine
     commands:
-      - sleep 5
-      - nslookup mongo
-      - nslookup mongo | grep Address | awk '{print $3}' > backend/.mongo
-      - cat backend/.mongo
       - cd backend/app
       - go build -v ./...
 
@@ -94,8 +90,3 @@ pipeline:
     secrets: [ email_username, email_password ]
     when:
       status: [ changed, failure ]
-
-services:
-  mongo:
-    image: mongo:3.6
-    command: [ --smallfiles ]
