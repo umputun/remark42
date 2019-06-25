@@ -676,10 +676,6 @@ func (b *BoltDB) deleteAll(bdb *bolt.DB, siteID string) error {
 // deleteUser removes all comments for given user. Everything will be market as deleted
 // and user name and userID will be changed to "deleted". Also removes from last and from user buckets.
 func (b *BoltDB) deleteUser(bdb *bolt.DB, siteID string, userID string, mode store.DeleteMode) error {
-	bdb, err := b.db(siteID)
-	if err != nil {
-		return err
-	}
 
 	// get list of all comments outside of transaction loop
 	posts, err := b.Info(InfoRequest{Locator: store.Locator{SiteID: siteID}})
