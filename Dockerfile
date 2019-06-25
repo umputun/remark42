@@ -19,7 +19,6 @@ ARG DRONE_BRANCH
 ARG DRONE_PULL_REQUEST
 
 ARG SKIP_BACKEND_TEST
-ARG MONGO_TEST
 
 ADD backend /build/backend
 ADD .git /build/.git
@@ -29,18 +28,14 @@ ENV GOFLAGS="-mod=vendor"
 
 # run tests
 RUN \
-    if [ -f .mongo ] ; then export MONGO_TEST=$(cat .mongo) ; fi && \
     cd app && \
     if [ -z "$SKIP_BACKEND_TEST" ] ; then \
-        go test -covermode=count -coverprofile=/profile.cov_tmp ./... && \
+        go test -p 1 -timeout=30s -covermode=count -coverprofile=/profile.cov_tmp ./... && \
         cat /profile.cov_tmp | grep -v "_mock.go" > /profile.cov ; \
     else echo "skip backend test" ; fi
 
-RUN echo "mongo=${MONGO_TEST}" >> /etc/hosts
-
 # linters
 RUN if [ -z "$SKIP_BACKEND_TEST" ] ; then \
-    if [ -f .mongo ] ; then export MONGO_TEST=$(cat .mongo) ; fi && \
         golangci-lint run --out-format=tab --disable-all --tests=false --enable=unconvert \
         --enable=megacheck --enable=structcheck --enable=gas --enable=gocyclo --enable=dupl --enable=misspell \
         --enable=unparam --enable=varcheck --enable=deadcode --enable=typecheck \

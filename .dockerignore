@@ -21,3 +21,4 @@ debug.test
 *.test
 remark42
 /backend/var/
+compose-private-backend.yml

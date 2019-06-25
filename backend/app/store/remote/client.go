@@ -27,7 +27,7 @@ func (r *Client) Call(method string, args ...interface{}) (*Response, error) {
 	var err error
 
 	switch {
-	case args == nil || len(args) == 0:
+	case len(args) == 0:
 		b, err = json.Marshal(Request{Method: method, ID: atomic.AddUint64(&r.id, 1)})
 		if err != nil {
 			return nil, errors.Wrapf(err, "marshaling failed for %s", method)
