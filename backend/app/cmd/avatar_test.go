@@ -22,23 +22,13 @@ func TestAvatar_Execute(t *testing.T) {
 	}
 	defer os.RemoveAll("/tmp/ava-test")
 
-	// from fs to mongo
+	// from fs to bolt
 	cmd := AvatarCommand{migrator: &avatarMigratorMock{retCount: 100}}
 	cmd.SetCommon(CommonOpts{RemarkURL: "", SharedSecret: "123456"})
 	p := flags.NewParser(&cmd, flags.Default)
-	_, err := p.ParseArgs([]string{"--src.type=fs", "--src.fs.path=/tmp/ava-test", "--dst.type=mongo",
-		"--mongo.url=" + mongoURL, "--mongo.db=test_remark"})
-	require.Nil(t, err)
-	err = cmd.Execute(nil)
-	assert.NoError(t, err)
-
-	// from fs to bolt
-	cmd = AvatarCommand{migrator: &avatarMigratorMock{retCount: 100}}
-	cmd.SetCommon(CommonOpts{RemarkURL: "", SharedSecret: "123456"})
-	p = flags.NewParser(&cmd, flags.Default)
-	_, err = p.ParseArgs([]string{"--src.type=fs", "--src.fs.path=/tmp/ava-test", "--dst.type=bolt",
+	_, err := p.ParseArgs([]string{"--src.type=fs", "--src.fs.path=/tmp/ava-test", "--dst.type=bolt",
 		"--dst.bolt.file=/tmp/ava-test.db"})
-	require.Nil(t, err)
+	require.NoError(t, err)
 	err = cmd.Execute(nil)
 	assert.NoError(t, err)
 
@@ -46,9 +36,9 @@ func TestAvatar_Execute(t *testing.T) {
 	cmd = AvatarCommand{migrator: &avatarMigratorMock{retCount: 0, retError: errors.New("failed blah")}}
 	cmd.SetCommon(CommonOpts{RemarkURL: "", SharedSecret: "123456"})
 	p = flags.NewParser(&cmd, flags.Default)
-	_, err = p.ParseArgs([]string{"--src.type=fs", "--src.fs.path=/tmp/ava-test", "--dst.type=mongo",
-		"--mongo.url=" + mongoURL, "--mongo.db=test_remark"})
-	require.Nil(t, err)
+	_, err = p.ParseArgs([]string{"--src.type=fs", "--src.fs.path=/tmp/ava-test", "--dst.type=bolt",
+		"--dst.bolt.file=/tmp/ava-test.db"})
+	require.NoError(t, err)
 	err = cmd.Execute(nil)
 	assert.Error(t, err, "failed blah")
 }
