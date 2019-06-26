@@ -26,13 +26,13 @@ import (
 
 	"github.com/umputun/remark/backend/app/migrator"
 	"github.com/umputun/remark/backend/app/notify"
+	"github.com/umputun/remark/backend/app/remote"
 	"github.com/umputun/remark/backend/app/rest/api"
 	"github.com/umputun/remark/backend/app/rest/proxy"
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/admin"
 	"github.com/umputun/remark/backend/app/store/engine"
 	"github.com/umputun/remark/backend/app/store/image"
-	"github.com/umputun/remark/backend/app/store/remote"
 	"github.com/umputun/remark/backend/app/store/service"
 )
 

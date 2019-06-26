@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/umputun/remark/backend/app/store/remote"
+	"github.com/umputun/remark/backend/app/remote"
 )
 
 func TestRemote_Key(t *testing.T) {
