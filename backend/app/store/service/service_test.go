@@ -764,6 +764,8 @@ func TestService_UserReplies(t *testing.T) {
 	cc, u, err = b.UserReplies("radio-t", "uxxx", 10, time.Hour)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(cc), "0 replies to uxxx")
+	assert.Equal(t, "", u)
+
 }
 
 func TestService_Find(t *testing.T) {
