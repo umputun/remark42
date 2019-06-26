@@ -40,7 +40,7 @@ func TestServerPrimitiveTypes(t *testing.T) {
 	})
 
 	go func() { _ = s.Run(9091) }()
-	defer func() { s.Shutdown() }()
+	defer func() { assert.NoError(t, s.Shutdown()) }()
 	time.Sleep(10 * time.Millisecond)
 
 	// check with direct http call
@@ -63,6 +63,7 @@ func TestServerPrimitiveTypes(t *testing.T) {
 
 	res := respData{}
 	err = json.Unmarshal(*r.Result, &res)
+	assert.NoError(t, err)
 	assert.Equal(t, respData{Res1: "res blah", Res2: true}, res)
 	assert.Equal(t, uint64(1), r.ID)
 }
@@ -104,6 +105,7 @@ func TestServerWithObject(t *testing.T) {
 
 	res := respData{}
 	err = json.Unmarshal(*r.Result, &res)
+	assert.NoError(t, err)
 	assert.Equal(t, respData{Res1: "res blah", Res2: true}, res)
 }
 
