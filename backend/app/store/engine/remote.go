@@ -3,8 +3,8 @@ package engine
 import (
 	"encoding/json"
 
+	"github.com/umputun/remark/backend/app/remote"
 	"github.com/umputun/remark/backend/app/store"
-	"github.com/umputun/remark/backend/app/store/remote"
 )
 
 // Remote implements remote engine and delegates all Calls to remote http server

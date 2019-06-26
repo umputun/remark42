@@ -957,7 +957,7 @@ func TestService_UserCount(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, c)
 
-	c, err = b.UserCount("radio-t", "userBad")
+	_, err = b.UserCount("radio-t", "userBad")
 	assert.EqualError(t, err, "no comments for user userBad in store for radio-t site")
 }
 
@@ -1082,7 +1082,7 @@ func teardown(_ *testing.T) {
 
 func getReq(locator store.Locator, commentID string) engine.GetRequest {
 	return engine.GetRequest{
-		Locator:  locator,
+		Locator:   locator,
 		CommentID: commentID,
 	}
 }

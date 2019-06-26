@@ -21,6 +21,7 @@ func TestClient_Call(t *testing.T) {
 	assert.NoError(t, err)
 	res := ""
 	err = json.Unmarshal(*resp.Result, &res)
+	assert.NoError(t, err)
 	assert.Equal(t, "12345", res)
 	t.Logf("%v %T", res, res)
 }
@@ -43,6 +44,7 @@ func TestClient_CallWithObject(t *testing.T) {
 	assert.NoError(t, err)
 	res := ""
 	err = json.Unmarshal(*resp.Result, &res)
+	assert.NoError(t, err)
 	assert.Equal(t, "12345", res)
 	t.Logf("%v %T", res, res)
 }
@@ -55,6 +57,7 @@ func TestClient_CallWithNoParams(t *testing.T) {
 	assert.NoError(t, err)
 	res := ""
 	err = json.Unmarshal(*resp.Result, &res)
+	assert.NoError(t, err)
 	assert.Equal(t, "12345", res)
 	t.Logf("%v %T", res, res)
 }

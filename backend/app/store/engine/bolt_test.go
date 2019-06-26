@@ -19,8 +19,7 @@ func TestBoltDB_CreateAndFind(t *testing.T) {
 	var b, teardown = prep(t)
 	defer teardown()
 
-	var bb Interface
-	bb = b
+	var bb Interface = b
 	_ = bb
 
 	req := FindRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, Sort: "time"}
@@ -117,8 +116,8 @@ func TestBoltDB_Update(t *testing.T) {
 	err = b.Update(comment)
 	assert.EqualError(t, err, `site "bad" not found`)
 
-	comment.Locator.SiteID="radio-t"
-	comment.Locator.URL="https://radio-t.com-bad"
+	comment.Locator.SiteID = "radio-t"
+	comment.Locator.URL = "https://radio-t.com-bad"
 	err = b.Update(comment)
 	assert.EqualError(t, err, `no bucket https://radio-t.com-bad in store`)
 }
@@ -451,6 +450,7 @@ func TestBolt_FlagReadOnlyPost(t *testing.T) {
 	req = FlagRequest{Locator: store.Locator{SiteID: "radio-t", URL: "url-1"}, Flag: ReadOnly, Update: FlagTrue}
 	val, err = b.Flag(req)
 	assert.NoError(t, err)
+	assert.Equal(t, true, val)
 	req = FlagRequest{Locator: store.Locator{SiteID: "radio-t", URL: "url-1"}, Flag: ReadOnly}
 	val, err = b.Flag(req)
 	assert.NoError(t, err)
@@ -816,7 +816,7 @@ func prep(t *testing.T) (b *BoltDB, teardown func()) {
 
 func getReq(locator store.Locator, commentID string) GetRequest {
 	return GetRequest{
-		Locator:  locator,
+		Locator:   locator,
 		CommentID: commentID,
 	}
 }

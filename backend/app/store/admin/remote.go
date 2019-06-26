@@ -9,7 +9,7 @@ package admin
 import (
 	"encoding/json"
 
-	"github.com/umputun/remark/backend/app/store/remote"
+	"github.com/umputun/remark/backend/app/remote"
 )
 
 // Remote implements remote engine and delegates all Calls to remote http server

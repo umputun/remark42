@@ -39,8 +39,8 @@ func TestServerPrimitiveTypes(t *testing.T) {
 		return r
 	})
 
-	go func() { s.Run(9091) }()
-	defer func() { assert.NoError(t, s.Shutdown()) }()
+	go func() { _ = s.Run(9091) }()
+	defer func() { s.Shutdown() }()
 	time.Sleep(10 * time.Millisecond)
 
 	// check with direct http call
@@ -93,7 +93,7 @@ func TestServerWithObject(t *testing.T) {
 		return r
 	})
 
-	go func() { s.Run(9091) }()
+	go func() { _ = s.Run(9091) }()
 	defer func() { assert.NoError(t, s.Shutdown()) }()
 	time.Sleep(10 * time.Millisecond)
 
@@ -145,7 +145,7 @@ func TestServerWithAuth(t *testing.T) {
 		return r
 	})
 
-	go func() { s.Run(9091) }()
+	go func() { _ = s.Run(9091) }()
 	time.Sleep(10 * time.Millisecond)
 	defer func() { assert.NoError(t, s.Shutdown()) }()
 
@@ -183,7 +183,7 @@ func TestServerErrReturn(t *testing.T) {
 		return r
 	})
 
-	go func() { s.Run(9091) }()
+	go func() { _ = s.Run(9091) }()
 	defer func() { assert.NoError(t, s.Shutdown()) }()
 	time.Sleep(10 * time.Millisecond)
 
@@ -202,7 +202,7 @@ func TestServerGroup(t *testing.T) {
 			return Response{}
 		},
 	})
-	go func() { s.Run(9091) }()
+	go func() { _ = s.Run(9091) }()
 	defer func() { assert.NoError(t, s.Shutdown()) }()
 	time.Sleep(10 * time.Millisecond)
 
@@ -221,7 +221,7 @@ func TestServerAddLate(t *testing.T) {
 	s.Add("fn1", func(id uint64, params json.RawMessage) Response {
 		return Response{}
 	})
-	go func() { s.Run(9091) }()
+	go func() { _ = s.Run(9091) }()
 	defer func() { assert.NoError(t, s.Shutdown()) }()
 	time.Sleep(10 * time.Millisecond)
 
