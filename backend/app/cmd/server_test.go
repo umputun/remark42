@@ -186,6 +186,45 @@ func TestServerApp_WithSSL(t *testing.T) {
 	app.Wait()
 }
 
+func TestServerApp_WithRemote(t *testing.T) {
+
+	opts := ServerCommand{}
+	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+
+	// prepare options
+	p := flags.NewParser(&opts, flags.Default)
+	_, err := p.ParseArgs([]string{"--admin-passwd=password", "--cache.type=none",
+		"--store.type=remote", "--store.remote.api=http://127.0.0.1",
+		"--port=12345", "--admin.type=remote", "--admin.remote.api=http://127.0.0.1", "--avatar.fs.path=/tmp"})
+	require.Nil(t, err)
+	opts.Auth.Github.CSEC, opts.Auth.Github.CID = "csec", "cid"
+	opts.BackupLocation, opts.Image.FS.Path = "/tmp", "/tmp"
+
+	// create app
+	app, err := opts.newServerApp()
+	require.Nil(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		time.Sleep(5 * time.Second)
+		log.Print("[TEST] terminate app")
+		cancel()
+	}()
+	go func() { _ = app.run(ctx) }()
+	time.Sleep(100 * time.Millisecond) // let server start
+
+	// send ping
+	resp, err := http.Get("http://localhost:12345/api/v1/ping")
+	require.Nil(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, 200, resp.StatusCode)
+	body, err := ioutil.ReadAll(resp.Body)
+	assert.Nil(t, err)
+	assert.Equal(t, "pong", string(body))
+
+	app.Wait()
+}
+
 func TestServerApp_Failed(t *testing.T) {
 	opts := ServerCommand{}
 	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
