@@ -26,9 +26,9 @@ import (
 
 	"github.com/umputun/remark/backend/app/migrator"
 	"github.com/umputun/remark/backend/app/notify"
-	"github.com/umputun/remark/backend/app/remote"
 	"github.com/umputun/remark/backend/app/rest/api"
 	"github.com/umputun/remark/backend/app/rest/proxy"
+	"github.com/umputun/remark/backend/app/rpc"
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/admin"
 	"github.com/umputun/remark/backend/app/store/engine"
@@ -88,12 +88,12 @@ type AuthGroup struct {
 
 // StoreGroup defines options group for store params
 type StoreGroup struct {
-	Type string `long:"type" env:"TYPE" description:"type of storage" choice:"bolt" choice:"remote" default:"bolt"`
+	Type string `long:"type" env:"TYPE" description:"type of storage" choice:"bolt" choice:"rpc" default:"bolt"`
 	Bolt struct {
 		Path    string        `long:"path" env:"PATH" default:"./var" description:"parent dir for bolt files"`
 		Timeout time.Duration `long:"timeout" env:"TIMEOUT" default:"30s" description:"bolt timeout"`
 	} `group:"bolt" namespace:"bolt" env-namespace:"BOLT"`
-	Remote RemoteGroup `group:"remote" namespace:"remote" env-namespace:"REMOTE"`
+	RPC RPCGroup `group:"rpc" namespace:"rpc" env-namespace:"TPC"`
 }
 
 // ImageGroup defines options group for store pictures
@@ -136,12 +136,12 @@ type CacheGroup struct {
 
 // AdminGroup defines options group for admin params
 type AdminGroup struct {
-	Type   string `long:"type" env:"TYPE" description:"type of admin store" choice:"shared" choice:"remote" default:"shared"`
+	Type   string `long:"type" env:"TYPE" description:"type of admin store" choice:"shared" choice:"rpc" default:"shared"`
 	Shared struct {
 		Admins []string `long:"id" env:"ID" description:"admin(s) ids" env-delim:","`
 		Email  string   `long:"email" env:"EMAIL" default:"" description:"admin email"`
 	} `group:"shared" namespace:"shared" env-namespace:"SHARED"`
-	Remote RemoteGroup `group:"remote" namespace:"remote" env-namespace:"REMOTE"`
+	RPC RPCGroup `group:"rpc" namespace:"rpc" env-namespace:"RPC"`
 }
 
 // NotifyGroup defines options for notification
@@ -173,9 +173,9 @@ type StreamGroup struct {
 	MaxActive       int           `long:"max" env:"MAX" default:"500" description:"max number of parallel streams"`
 }
 
-// RemoteGroup defines options for remote modules (plugins)
-type RemoteGroup struct {
-	API          string        `long:"api" env:"API" description:"remote extension api url"`
+// RPCGroup defines options for remote modules (plugins)
+type RPCGroup struct {
+	API          string        `long:"api" env:"API" description:"rpc extension api url"`
 	TimeOut      time.Duration `long:"timeout" env:"TIMEOUT" default:"5s" description:"http timeout"`
 	AuthUser     string        `long:"auth_user" env:"AUTH_USER" description:"basic auth user name"`
 	AuthPassword string        `long:"auth_passwd" env:"AUTH_PASSWD" description:"basic auth user password"`
@@ -417,12 +417,12 @@ func (s *ServerCommand) makeDataStore() (result engine.Interface, err error) {
 			sites = append(sites, engine.BoltSite{SiteID: site, FileName: fmt.Sprintf("%s/%s.db", s.Store.Bolt.Path, site)})
 		}
 		result, err = engine.NewBoltDB(bolt.Options{Timeout: s.Store.Bolt.Timeout}, sites...)
-	case "remote":
-		r := &engine.Remote{Client: remote.Client{
-			API:        s.Store.Remote.API,
-			Client:     http.Client{Timeout: s.Store.Remote.TimeOut},
-			AuthUser:   s.Store.Remote.AuthUser,
-			AuthPasswd: s.Store.Remote.AuthPassword,
+	case "rpc":
+		r := &engine.RPC{Client: rpc.Client{
+			API:        s.Store.RPC.API,
+			Client:     http.Client{Timeout: s.Store.RPC.TimeOut},
+			AuthUser:   s.Store.RPC.AuthUser,
+			AuthPasswd: s.Store.RPC.AuthPassword,
 		}}
 		return r, nil
 	default:
@@ -482,12 +482,12 @@ func (s *ServerCommand) makeAdminStore() (admin.Store, error) {
 			}
 		}
 		return admin.NewStaticStore(s.SharedSecret, s.Admin.Shared.Admins, s.Admin.Shared.Email), nil
-	case "remote":
-		r := &admin.Remote{Client: remote.Client{
-			API:        s.Admin.Remote.API,
-			Client:     http.Client{Timeout: s.Admin.Remote.TimeOut},
-			AuthUser:   s.Admin.Remote.AuthUser,
-			AuthPasswd: s.Admin.Remote.AuthPassword,
+	case "rpc":
+		r := &admin.RPC{Client: rpc.Client{
+			API:        s.Admin.RPC.API,
+			Client:     http.Client{Timeout: s.Admin.RPC.TimeOut},
+			AuthUser:   s.Admin.RPC.AuthUser,
+			AuthPasswd: s.Admin.RPC.AuthPassword,
 		}}
 		return r, nil
 	default:

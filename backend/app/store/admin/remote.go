@@ -9,16 +9,16 @@ package admin
 import (
 	"encoding/json"
 
-	"github.com/umputun/remark/backend/app/remote"
+	"github.com/umputun/remark/backend/app/rpc"
 )
 
-// Remote implements remote engine and delegates all Calls to remote http server
-type Remote struct {
-	remote.Client
+// RPC implements remote engine and delegates all Calls to remote http server
+type RPC struct {
+	rpc.Client
 }
 
 // Key returns the key, same for all sites
-func (r *Remote) Key() (key string, err error) {
+func (r *RPC) Key() (key string, err error) {
 	resp, err := r.Call("admin.key")
 	if err != nil {
 		return "", err
@@ -29,7 +29,7 @@ func (r *Remote) Key() (key string, err error) {
 }
 
 // Admins returns list of admin's ids for given site
-func (r *Remote) Admins(siteID string) (ids []string, err error) {
+func (r *RPC) Admins(siteID string) (ids []string, err error) {
 	resp, err := r.Call("admin.admins", siteID)
 	if err != nil {
 		return []string{}, err
@@ -42,7 +42,7 @@ func (r *Remote) Admins(siteID string) (ids []string, err error) {
 }
 
 // Email gets email address for given site
-func (r *Remote) Email(siteID string) (email string, err error) {
+func (r *RPC) Email(siteID string) (email string, err error) {
 	resp, err := r.Call("admin.email", siteID)
 	if err != nil {
 		return "", err

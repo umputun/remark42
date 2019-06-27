@@ -30,7 +30,7 @@ func TestServerApp(t *testing.T) {
 	})
 
 	go func() { _ = app.run(ctx) }()
-	time.Sleep(100 * time.Millisecond) // let server start
+	time.Sleep(250 * time.Millisecond) // let server start
 
 	// send ping
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/ping", port))
@@ -194,8 +194,8 @@ func TestServerApp_WithRemote(t *testing.T) {
 	// prepare options
 	p := flags.NewParser(&opts, flags.Default)
 	_, err := p.ParseArgs([]string{"--admin-passwd=password", "--cache.type=none",
-		"--store.type=remote", "--store.remote.api=http://127.0.0.1",
-		"--port=12345", "--admin.type=remote", "--admin.remote.api=http://127.0.0.1", "--avatar.fs.path=/tmp"})
+		"--store.type=rpc", "--store.rpc.api=http://127.0.0.1",
+		"--port=12345", "--admin.type=rpc", "--admin.rpc.api=http://127.0.0.1", "--avatar.fs.path=/tmp"})
 	require.Nil(t, err)
 	opts.Auth.Github.CSEC, opts.Auth.Github.CID = "csec", "cid"
 	opts.BackupLocation, opts.Image.FS.Path = "/tmp", "/tmp"

@@ -3,17 +3,17 @@ package engine
 import (
 	"encoding/json"
 
-	"github.com/umputun/remark/backend/app/remote"
+	"github.com/umputun/remark/backend/app/rpc"
 	"github.com/umputun/remark/backend/app/store"
 )
 
-// Remote implements remote engine and delegates all Calls to remote http server
-type Remote struct {
-	remote.Client
+// RPC implements remote engine and delegates all Calls to remote http server
+type RPC struct {
+	rpc.Client
 }
 
 // Create comment and return ID
-func (r *Remote) Create(comment store.Comment) (commentID string, err error) {
+func (r *RPC) Create(comment store.Comment) (commentID string, err error) {
 
 	resp, err := r.Call("store.create", comment)
 	if err != nil {
@@ -25,7 +25,7 @@ func (r *Remote) Create(comment store.Comment) (commentID string, err error) {
 }
 
 // Get comment by ID
-func (r *Remote) Get(req GetRequest) (comment store.Comment, err error) {
+func (r *RPC) Get(req GetRequest) (comment store.Comment, err error) {
 	resp, err := r.Call("store.get", req)
 	if err != nil {
 		return store.Comment{}, err
@@ -36,13 +36,13 @@ func (r *Remote) Get(req GetRequest) (comment store.Comment, err error) {
 }
 
 // Update comment, mutable parts only
-func (r *Remote) Update(comment store.Comment) error {
+func (r *RPC) Update(comment store.Comment) error {
 	_, err := r.Call("store.update", comment)
 	return err
 }
 
 // Find comments for locator
-func (r *Remote) Find(req FindRequest) (comments []store.Comment, err error) {
+func (r *RPC) Find(req FindRequest) (comments []store.Comment, err error) {
 	resp, err := r.Call("store.find", req)
 	if err != nil {
 		return nil, err
@@ -52,7 +52,7 @@ func (r *Remote) Find(req FindRequest) (comments []store.Comment, err error) {
 }
 
 // Info returns post(s) meta info
-func (r *Remote) Info(req InfoRequest) (info []store.PostInfo, err error) {
+func (r *RPC) Info(req InfoRequest) (info []store.PostInfo, err error) {
 	resp, err := r.Call("store.info", req)
 	if err != nil {
 		return nil, err
@@ -62,7 +62,7 @@ func (r *Remote) Info(req InfoRequest) (info []store.PostInfo, err error) {
 }
 
 // Flag sets and gets flags
-func (r *Remote) Flag(req FlagRequest) (status bool, err error) {
+func (r *RPC) Flag(req FlagRequest) (status bool, err error) {
 	resp, err := r.Call("store.flag", req)
 	if err != nil {
 		return false, err
@@ -72,7 +72,7 @@ func (r *Remote) Flag(req FlagRequest) (status bool, err error) {
 }
 
 // ListFlags get list of flagged keys, like blocked & verified user
-func (r *Remote) ListFlags(req FlagRequest) (list []interface{}, err error) {
+func (r *RPC) ListFlags(req FlagRequest) (list []interface{}, err error) {
 	resp, err := r.Call("store.list_flags", req)
 	if err != nil {
 		return nil, err
@@ -82,7 +82,7 @@ func (r *Remote) ListFlags(req FlagRequest) (list []interface{}, err error) {
 }
 
 // Count gets comments count by user or site
-func (r *Remote) Count(req FindRequest) (count int, err error) {
+func (r *RPC) Count(req FindRequest) (count int, err error) {
 	resp, err := r.Call("store.count", req)
 	if err != nil {
 		return 0, err
@@ -92,13 +92,13 @@ func (r *Remote) Count(req FindRequest) (count int, err error) {
 }
 
 // Delete post(s) by id or by userID
-func (r *Remote) Delete(req DeleteRequest) error {
+func (r *RPC) Delete(req DeleteRequest) error {
 	_, err := r.Call("store.delete", req)
 	return err
 }
 
 // Close storage engine
-func (r *Remote) Close() error {
+func (r *RPC) Close() error {
 	_, err := r.Call("store.close")
 	return err
 }
