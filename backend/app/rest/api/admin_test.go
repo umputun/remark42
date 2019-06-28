@@ -348,8 +348,8 @@ func TestAdmin_Block(t *testing.T) {
 	err = json.Unmarshal([]byte(res), &comments)
 	assert.Nil(t, err)
 	assert.Equal(t, 4, len(comments.Comments), "should have 4 comments")
-	assert.Equal(t, "", comments.Comments[0].Text, "still deleted")
-	assert.True(t, comments.Comments[0].Deleted)
+	assert.Equal(t, "test test #1", comments.Comments[2].Text, "restored")
+	assert.False(t, comments.Comments[2].Deleted)
 
 	assert.False(t, srv.adminRest.dataService.IsBlocked("radio-t", "user1"))
 	assert.False(t, srv.adminRest.dataService.IsBlocked("radio-t", "user2"))

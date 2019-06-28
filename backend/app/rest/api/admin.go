@@ -145,8 +145,8 @@ func (a *admin) setBlockCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// delete comments for blocked user.
-	if blockStatus {
+	// delete comments for permanently blocked user.
+	if blockStatus && ttl == time.Duration(0) {
 		if err := a.dataService.DeleteUser(siteID, userID, store.SoftDelete); err != nil {
 			log.Printf("[WARN] can't delete comments for blocked user %s on site %s, %v", userID, siteID, err)
 		}
