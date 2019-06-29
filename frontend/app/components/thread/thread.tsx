@@ -7,8 +7,15 @@ import { ConnectedComment as Comment } from '@app/components/comment/connected-c
 import { Node, Theme } from '@app/common/types';
 import { getThreadIsCollapsed } from '@app/store/thread/getters';
 import { StoreState } from '@app/store';
+import { CommentUnwrapButton } from '../comment-unwrap-button/comment-unwrap-button';
+import { bindActions } from '@app/utils/actionBinder';
+import { unwrapNewComments } from '@app/store/comments/actions';
 
-interface Props {
+const boundActions = bindActions({
+  unwrapNewComments,
+});
+
+type Props = {
   collapsed: boolean;
   data: Node;
   isCommentsDisabled: boolean;
@@ -17,7 +24,7 @@ interface Props {
   mix?: string;
 
   getPreview(text: string): Promise<string>;
-}
+} & typeof boundActions;
 
 function Thread(props: RenderableProps<Props>) {
   const {
@@ -25,9 +32,19 @@ function Thread(props: RenderableProps<Props>) {
     data: { comment, replies = [] },
     level,
     theme,
+    unwrapNewComments,
   } = props;
 
   const indented = level > 0;
+
+  let newRepliesCount = 0;
+  const filteredReplies = replies.filter(thread => {
+    if (thread.comment.new) {
+      ++newRepliesCount;
+      return false;
+    }
+    return true;
+  });
 
   return (
     <div
@@ -38,8 +55,8 @@ function Thread(props: RenderableProps<Props>) {
       <Comment view="main" data={comment} repliesCount={replies.length} level={level} />
 
       {!collapsed &&
-        !!replies.length &&
-        replies.map(thread => (
+        !!filteredReplies.length &&
+        filteredReplies.map(thread => (
           <ConnectedThread
             key={thread.comment.id}
             data={thread}
@@ -47,12 +64,26 @@ function Thread(props: RenderableProps<Props>) {
             getPreview={props.getPreview}
           />
         ))}
+
+      {!!newRepliesCount && (
+        <CommentUnwrapButton
+          className="thread__action thread__unwrap-new-replies-action"
+          count={newRepliesCount}
+          id={comment.id}
+          unwrapComment={unwrapNewComments}
+        />
+      )}
     </div>
   );
 }
 
-export const ConnectedThread = connect((state: StoreState, props: { data: Node }) => ({
+const mapStateToProps = (state: StoreState, props: { data: Node }) => ({
   collapsed: getThreadIsCollapsed(state, props.data.comment),
-  isCommentsDisabled: !!state.info.read_only,
   theme: state.theme,
-}))(Thread);
+  isCommentsDisabled: !!state.info.read_only,
+});
+
+export const ConnectedThread = connect(
+  mapStateToProps,
+  boundActions
+)(Thread);

@@ -35,7 +35,7 @@ import {
   hideUser,
   unhideUser,
 } from '@app/store/user/actions';
-import { fetchComments } from '@app/store/comments/actions';
+import { fetchComments, fetchNewComments } from '@app/store/comments/actions';
 import { setCommentsReadOnlyState } from '@app/store/post_info/actions';
 import { setTheme } from '@app/store/theme/actions';
 import { setSort } from '@app/store/sort/actions';
@@ -47,12 +47,14 @@ import { ConnectedComment as Comment } from '@app/components/comment/connected-c
 import { Input } from '@app/components/input';
 import Preloader from '@app/components/preloader';
 import { Thread } from '@app/components/thread';
-import { uploadImage, getPreview } from '@app/common/api';
+import { uploadImage, getPreview, connectToUpdatesStream } from '@app/common/api';
 import { isUserAnonymous } from '@app/utils/isUserAnonymous';
 import { bindActions } from '@app/utils/actionBinder';
+import { throttle } from '@app/utils/throttle';
 
 const boundActions = bindActions({
   fetchComments,
+  fetchNewComments,
   fetchUser,
   fetchBlockedUsers,
   setSettingsVisible: setSettingsVisibleState,
@@ -82,6 +84,7 @@ type Props = {
   isSettingsVisible: boolean;
   getPreview: typeof getPreview;
   uploadImage: typeof uploadImage;
+  connectToUpdatesStream?: typeof connectToUpdatesStream;
 } & typeof boundActions;
 
 interface State {
@@ -117,6 +120,13 @@ export class Root extends Component<Props, State> {
 
       setTimeout(this.checkUrlHash);
       window.addEventListener('hashchange', this.checkUrlHash);
+
+      const onMessage = throttle(() => this.props.fetchNewComments(), 10000);
+
+      this.props.connectToUpdatesStream &&
+        this.props.connectToUpdatesStream({
+          onMessage,
+        });
     });
 
     window.addEventListener('message', this.onMessage.bind(this));
@@ -320,7 +330,23 @@ export class Root extends Component<Props, State> {
 
 /** Root component connected to redux */
 export const ConnectedRoot = connect(
-  (state: StoreState) => ({
+  (
+    state: StoreState
+  ): Pick<
+    Props,
+    | 'user'
+    | 'sort'
+    | 'isSettingsVisible'
+    | 'comments'
+    | 'pinnedComments'
+    | 'theme'
+    | 'info'
+    | 'hiddenUsers'
+    | 'blockedUsers'
+    | 'getPreview'
+    | 'uploadImage'
+    | 'connectToUpdatesStream'
+  > => ({
     user: state.user,
     sort: state.sort,
     isSettingsVisible: state.isSettingsVisible,
@@ -332,6 +358,7 @@ export const ConnectedRoot = connect(
     blockedUsers: state.bannedUsers,
     getPreview,
     uploadImage,
+    connectToUpdatesStream,
   }),
   boundActions
 )(Root);

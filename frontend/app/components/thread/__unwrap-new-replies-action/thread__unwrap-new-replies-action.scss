@@ -1,0 +1,13 @@
+.thread__unwrap-new-replies-action {
+  z-index: 2;
+  position: absolute;
+  display: inline-block;
+  font-size: 0px;
+  margin-top: -1rem;
+  margin-left: -0.1rem;
+
+  &::before {
+    content: '‣';
+    font-size: 1.5rem;
+  }
+}
