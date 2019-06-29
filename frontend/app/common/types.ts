@@ -65,6 +65,12 @@ export interface Comment {
   delete?: boolean;
   /** post title */
   title?: string;
+  /**
+   * @ClientOnly added on client side.
+   * When comment received via stream api, and is reply
+   * it gets such label
+   */
+  new?: boolean;
 }
 
 export interface CommentsResponse {
