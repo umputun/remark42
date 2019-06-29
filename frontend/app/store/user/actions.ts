@@ -50,7 +50,7 @@ export const logout = (): StoreAction<Promise<void>> => async dispatch => {
 };
 
 export const fetchBlockedUsers = (): StoreAction<Promise<BlockedUser[]>> => async dispatch => {
-  const list = await api.getBlocked();
+  const list = (await api.getBlocked()) || [];
   dispatch({
     type: USER_BANLIST_SET,
     list,

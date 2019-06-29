@@ -220,7 +220,7 @@ export const unblockUser = (
     withCredentials: true,
   });
 
-export const getBlocked = (): Promise<BlockedUser[]> =>
+export const getBlocked = (): Promise<BlockedUser[] | null> =>
   fetcher.get({
     url: '/admin/blocked',
     withCredentials: true,
