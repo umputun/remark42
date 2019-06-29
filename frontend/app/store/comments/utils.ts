@@ -4,7 +4,7 @@ import { Comment, Node, User } from '@app/common/types';
  * Traverses through tree and applies function to comment with given id.
  * Note that function must not mutate comment, or rerender will not happen
  */
-function mapTreeIfID(tree: Node[], id: Comment['id'], fn: (c: Node) => Node): Node[] {
+export function mapTreeIfID(tree: Node[], id: Comment['id'], fn: (c: Node) => Node): Node[] {
   // path of indexes to comment with given id
   let path: number[] = [];
   const subfn = (tree: Node[], level: number): boolean => {
@@ -62,7 +62,7 @@ export function filterTree(tree: Node[], fn: (node: Node) => boolean): Node[] {
  * Traverses through tree and applies function to comment on which function passed.
  * Note that function must not mutate comment
  */
-function mapTree(tree: Node[], fn: (c: Comment) => Comment): Node[] {
+export function mapTree(tree: Node[], fn: (c: Comment) => Comment): Node[] {
   return tree.map(node => {
     const clone: Node = {
       comment: fn(node.comment),
@@ -72,6 +72,18 @@ function mapTree(tree: Node[], fn: (c: Comment) => Comment): Node[] {
     }
     return clone;
   });
+}
+
+export function flattenTree<T>(tree: Node[], fn: (c: Comment) => T): T[] {
+  const result: T[] = [];
+  tree.forEach(node => {
+    result.push(fn(node.comment));
+    if (node.replies) {
+      result.push(...flattenTree(node.replies, fn));
+    }
+  });
+
+  return result;
 }
 
 export function findPinnedComments(thread: Node): Comment[] {
@@ -135,24 +147,24 @@ export function setUserVerified(comments: Node[], userId: User['id'], value: boo
   });
 }
 
-function pasteReply(comments: Node[], reply: Comment): Node[] {
+function pasteReply(comments: Node[], reply: Comment, append: boolean = false): Node[] {
   return mapTreeIfID(
     comments,
     reply.pid,
     (n): Node => {
       const nn = { ...n };
       if (!nn.replies) nn.replies = [];
-      nn.replies = [{ comment: reply }, ...nn.replies];
+      nn.replies = append ? [...nn.replies, { comment: reply }] : [{ comment: reply }, ...nn.replies];
       return nn;
     }
   );
 }
 
-export function addComment(comments: Node[], comment: Comment): Node[] {
+export function addComment(comments: Node[], comment: Comment, append: boolean = false): Node[] {
   if (comment.pid !== '') {
-    return pasteReply(comments, comment);
+    return pasteReply(comments, comment, append);
   }
-  return [{ comment }, ...comments];
+  return append ? [...comments, { comment }] : [{ comment }, ...comments];
 }
 
 export function replaceComment(comments: Node[], comment: Comment): Node[] {
