@@ -160,6 +160,7 @@ module.exports = () => ({
   ],
   watchOptions: {
     ignored: /(node_modules|\.vendor\.js$)/,
+    aggregateTimeout: 3000,
   },
   stats: {
     children: false,
