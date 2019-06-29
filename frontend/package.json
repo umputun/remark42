@@ -60,6 +60,7 @@
     "html-webpack-plugin": "^3.2.0",
     "husky": "^2.4.0",
     "jest": "^24.8.0",
+    "jest-extended": "^0.11.1",
     "jest-localstorage-mock": "^2.4.0",
     "lint-staged": "^8.1.7",
     "mini-css-extract-plugin": "^0.7.0",
