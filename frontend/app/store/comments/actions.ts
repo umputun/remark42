@@ -10,6 +10,9 @@ import {
   removeComment as uRemoveComment,
   setCommentPin as uSetCommentPin,
   filterTree,
+  flattenTree,
+  mapTreeIfID,
+  mapTree,
 } from './utils';
 import { COMMENTS_SET, PINNED_COMMENTS_SET, COMMENT_MODE_SET } from './types';
 
@@ -94,6 +97,45 @@ export const fetchComments = (sort: Sorting): StoreAction<Promise<Tree>> => asyn
   return data;
 };
 
+function getCommentHash(comment: Comment): string {
+  return comment.id + (comment.edit ? comment.edit.time : '');
+}
+
+/** fetches comments from server */
+export const fetchNewComments = (): StoreAction<Promise<void>> => async (dispatch, getState) => {
+  const { comments, hiddenUsers } = getState();
+  const data = await api.getPostCommentsList('+time');
+  // get flat list of existing ids
+  const currentCommentsIds = flattenTree(comments, c => c.id);
+  // get flat list of existing hashes
+  // the reason is that we need to distinguish new comments and edited comments
+  // so we consider newComments further comments that has different hash instead of just id
+  const currentCommentsHashes = flattenTree(comments, getCommentHash);
+  const hiddenUsersIds = Object.keys(hiddenUsers);
+  const newComments = data.comments.filter(
+    c => currentCommentsHashes.indexOf(getCommentHash(c)) === -1 && hiddenUsersIds.indexOf(c.user.id) === -1
+  );
+  if (!newComments.length) return;
+
+  let updatedComments = [...comments];
+  for (const comment of newComments) {
+    if (!comment.pid) {
+      if (currentCommentsIds.indexOf(comment.id) === -1) {
+        updatedComments.push({ comment });
+      } else {
+        updatedComments = uReplaceComment(updatedComments, comment);
+      }
+      continue;
+    }
+    if (currentCommentsIds.indexOf(comment.id) === -1) {
+      updatedComments = uAddComment(updatedComments, { ...comment, new: true }, true);
+    } else {
+      updatedComments = uReplaceComment(updatedComments, comment);
+    }
+  }
+  dispatch(setComments(updatedComments));
+};
+
 /** sets mode for comment, either reply or edit */
 export const setCommentMode = (mode: StoreState['activeComment']): StoreAction<void> => dispatch => {
   if (mode !== null && mode.state === CommentMode.None) {
@@ -111,4 +153,12 @@ export const unsetCommentMode = (): StoreAction<void> => dispatch => {
     type: COMMENT_MODE_SET,
     mode: null,
   });
+};
+
+export const unwrapNewComments = (id: Comment['id']): StoreAction<void> => (dispatch, getState) => {
+  const comments = mapTreeIfID(getState().comments, id, node => {
+    if (!node.replies) return node;
+    return { ...node, replies: mapTree(node.replies, c => ({ ...c, new: false })) };
+  });
+  dispatch(setComments(comments));
 };
