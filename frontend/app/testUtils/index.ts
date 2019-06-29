@@ -1,3 +1,4 @@
+import 'jest-extended';
 import { StaticStore } from '@app/common/static_store';
 
 require('document-register-element/pony')(window);
