@@ -330,6 +330,7 @@ func (b *BoltDB) ListFlags(req FlagRequest) (res []interface{}, err error) {
 		return nil, e
 	}
 
+	res = []interface{}{}
 	switch req.Flag {
 	case Verified:
 		err = bdb.View(func(tx *bolt.Tx) error {
