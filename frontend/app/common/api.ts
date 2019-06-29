@@ -1,6 +1,6 @@
 import { siteId, url } from './settings';
 import { BASE_URL, API_BASE } from './constants';
-import { Config, Comment, Tree, User, BlockedUser, Sorting, AuthProvider, BlockTTL, Image } from './types';
+import { Config, Comment, Tree, User, BlockedUser, Sorting, AuthProvider, BlockTTL, Image, PostInfo } from './types';
 import fetcher from './fetcher';
 
 /* common */
@@ -51,9 +51,17 @@ export const logOut = (): Promise<void> =>
 
 export const getConfig = (): Promise<Config> => fetcher.get(`/config`);
 
+/** returns post comments in tree format */
 export const getPostComments = (sort: Sorting): Promise<Tree> =>
   fetcher.get({
     url: `/find?site=${siteId}&url=${url}&sort=${sort}&format=tree`,
+    withCredentials: true,
+  });
+
+/** returns post comments in flat format */
+export const getPostCommentsList = (sort: Sorting): Promise<{ comments: Comment[]; info: PostInfo }> =>
+  fetcher.get({
+    url: `/find?site=${siteId}&url=${url}&sort=${sort}&format=plain`,
     withCredentials: true,
   });
 
@@ -301,6 +309,7 @@ export default {
   logOut,
   getConfig,
   getPostComments,
+  getPostCommentsList,
   getLastComments,
   getCommentsCount,
   getComment,
