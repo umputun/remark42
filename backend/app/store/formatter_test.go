@@ -14,17 +14,23 @@ func (m mockConverter) Convert(text string) string { return text + "!converted" 
 func TestFormatter_FormatText(t *testing.T) {
 	tbl := []struct {
 		in, out string
+		name    string
 	}{
-		{"", "!converted"},
-		{"12345 abc", "<p>12345 abc</p>\n!converted"},
-		{"**xyz** _aaa_ - \"sfs\"", "<p><strong>xyz</strong> <em>aaa</em> – «sfs»</p>\n!converted"},
+		{"", "!converted", "empty"},
+		{"12345 abc", "<p>12345 abc</p>\n!converted", "simple"},
+		{"**xyz** _aaa_ - \"sfs\"", "<p><strong>xyz</strong> <em>aaa</em> – «sfs»</p>\n!converted", "format"},
 		{
-			"http://127.0.0.1/some-long-link/12345/678901234567890", "<p><a href=\"http://127.0.0.1/some-long-link/12345/678901234567890\">http://127.0.0.1/some-long-link/12345/6789012...</a></p>\n!converted",
+			"http://127.0.0.1/some-long-link/12345/678901234567890",
+			"<p><a href=\"http://127.0.0.1/some-long-link/12345/678901234567890\">http://127.0.0." +
+				"1/some-long-link/12345/6789012...</a></p>\n!converted", "links",
 		},
+		{"&mdash; not translated #354", "<p>— not translated #354</p>\n!converted", "mdash"},
 	}
 	f := NewCommentFormatter(mockConverter{})
-	for n, tt := range tbl {
-		assert.Equal(t, tt.out, f.FormatText(tt.in), "check #%d", n)
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.out, f.FormatText(tt.in))
+		})
 	}
 }
 

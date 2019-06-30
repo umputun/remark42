@@ -49,6 +49,7 @@ func (f *CommentFormatter) FormatText(txt string) (res string) {
 	})
 
 	res = string(bf.Run([]byte(txt), bf.WithExtensions(mdExt), bf.WithRenderer(rend)))
+	res = f.unEscape(res)
 
 	for _, conv := range f.converters {
 		res = conv.Convert(res)
@@ -89,4 +90,17 @@ func (f *CommentFormatter) shortenAutoLinks(commentHTML string, max int) (resHTM
 		return commentHTML
 	}
 	return resHTML
+}
+
+func (f *CommentFormatter) unEscape(txt string) (res string) {
+	elems := []struct {
+		from, to string
+	}{
+		{`&amp;mdash;`, "—"},
+	}
+	res = txt
+	for _, e := range elems {
+		res = strings.Replace(res, e.from, e.to, -1)
+	}
+	return res
 }
