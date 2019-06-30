@@ -304,6 +304,65 @@ export const connectToUpdatesStream = (data: {
   return source;
 };
 
+/**
+ * Connects to SSE stream which notifies on site's last comments change
+ *
+ * @param data set of handlers
+ */
+export const connectToLastCommentsStream = (
+  siteId: string,
+  data: {
+    onOpen?: () => void | Promise<void>;
+    onMessage?: (data: {
+      id: string;
+      pid: string;
+      text: string;
+      orig: string;
+      user: {
+        name: string;
+        id: string;
+        picture: string;
+        admin: boolean;
+      };
+      locator: {
+        site: string;
+        url: string;
+      };
+      score: number;
+      vote: number;
+      time: string;
+      title: string;
+    }) => void | Promise<void>;
+    onError?: (err: Event) => void | Promise<void>;
+  }
+): EventSource | null => {
+  // Ignoring browsers that don't support SSE (IE, lookin at you)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if (!(window as any).EventSource) return null;
+
+  const source = new EventSource(`${API_BASE}/stream/last?site=${encodeURIComponent(siteId!)}`);
+  if (data.onMessage) {
+    source.addEventListener(
+      'last',
+      e => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        data.onMessage!(JSON.parse((e as any).data));
+      },
+      false
+    );
+  }
+
+  if (data.onOpen) {
+    source.addEventListener('open', data.onOpen!, false);
+  }
+
+  if (data.onError) {
+    source.addEventListener('error', data.onError!, false);
+  }
+
+  return source;
+};
+
 export default {
   logIn,
   logOut,
