@@ -4,12 +4,14 @@ declare let remark_config: LastCommentsConfig;
 
 import loadPolyfills from '@app/common/polyfills';
 import '@app/utils/patchPreactContext';
-import { h, render } from 'preact';
+import { h, render, Component } from 'preact';
 import 'preact/debug';
-import { getLastComments } from './common/api';
+import { getLastComments, connectToLastCommentsStream } from './common/api';
 import { LastCommentsConfig } from '@app/common/config-types';
 import { BASE_URL, DEFAULT_LAST_COMMENTS_MAX, LAST_COMMENTS_NODE_CLASSNAME } from '@app/common/constants';
 import { ListComments } from '@app/components/list-comments';
+import { Comment } from './common/types';
+import { throttle } from './utils/throttle';
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
@@ -51,13 +53,39 @@ async function init(): Promise<void> {
       (node.dataset.max && parseInt(node.dataset.max, 10)) ||
       remark_config.max_last_comments ||
       DEFAULT_LAST_COMMENTS_MAX;
-    getLastComments(remark_config.site_id!, max).then(comments => {
-      try {
-        render(<ListComments comments={comments} />, node);
-      } catch (e) {
-        console.error('Remark42: Something went wrong with last comments rendering');
-        console.error(e);
+
+    const updateInterval = ((node.dataset.updateInterval && parseFloat(node.dataset.updateInterval)) || 1) * 60000;
+
+    const Renderer = class extends Component<{}, { comments: Comment[] }> {
+      state: { comments: Comment[] } = {
+        comments: [],
+      };
+
+      update = (comments: Comment[]) => {
+        this.setState({ comments });
+      };
+
+      async componentWillMount() {
+        getLastComments(remark_config.site_id!, max).then(this.update);
+
+        if (!updateInterval) return;
+        connectToLastCommentsStream(remark_config.site_id!, {
+          onMessage: throttle(async () => {
+            getLastComments(remark_config.site_id!, max).then(this.update);
+          }, updateInterval),
+        });
       }
-    });
+
+      render() {
+        return <ListComments comments={this.state.comments} />;
+      }
+    };
+
+    try {
+      render(<Renderer />, node);
+    } catch (e) {
+      console.error('Remark42: Something went wrong with last comments rendering');
+      console.error(e);
+    }
   });
 }

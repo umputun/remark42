@@ -384,10 +384,11 @@ Add this snippet to the bottom of web page, or adjust already present `remark_co
 And then add this node in the place where you want to see last comments widget:
 
 ```html
-<div class="remark42__last-comments" data-max="50"></div>
+<div class="remark42__last-comments" data-max="50" data-update-interval="5"></div>
 ```
 
 `data-max` sets the max amount of comments (default: `15`).
+`data-update-interval` sets interval (in minutes) of comments autoupdate (default: `1`). `0` disabled autoupdate. Float `0.5` values allowed.
 
 #### Counter
 
@@ -659,7 +660,7 @@ event: info
 data: {"url":"https://radio-t.com/blah1","count":8,"first_time":"2019-06-18T12:53:48.125686-05:00","last_time":"2019-06-18T12:53:48.23817-05:00"}
 
 event: info
-data: {"url":"https://radio-t.com/blah1","count":9,"first_time":"2019-06-18T12:53:48.125686-05:00","last_time":"2019-06-18T12:53:48.254669-05:00"}         
+data: {"url":"https://radio-t.com/blah1","count":9,"first_time":"2019-06-18T12:53:48.125686-05:00","last_time":"2019-06-18T12:53:48.254669-05:00"}
 ```
 
 </details>
