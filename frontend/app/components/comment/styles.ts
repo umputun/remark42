@@ -40,7 +40,6 @@ require('./__vote/_type/_up/comment__vote_type_up.scss');
 
 require('./_collapsed/comment_collapsed.scss');
 require('./_editing/comment_editing.scss');
-require('./_level/comment_level.scss');
 require('./_replying/comment_replying.scss');
 require('./_useless/comment_useless.scss');
 
