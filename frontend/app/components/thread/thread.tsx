@@ -4,7 +4,7 @@ import { connect } from 'preact-redux';
 import b from 'bem-react-helper';
 
 import { ConnectedComment as Comment } from '@app/components/comment/connected-comment';
-import { Node } from '@app/common/types';
+import { Node, Theme } from '@app/common/types';
 import { getThreadIsCollapsed } from '@app/store/thread/getters';
 import { StoreState } from '@app/store';
 
@@ -13,6 +13,7 @@ interface Props {
   data: Node;
   isCommentsDisabled: boolean;
   level: number;
+  theme: Theme;
   mix?: string;
 
   getPreview(text: string): Promise<string>;
@@ -23,11 +24,14 @@ function Thread(props: RenderableProps<Props>) {
     collapsed,
     data: { comment, replies = [] },
     level,
+    theme,
   } = props;
+
+  const indented = level > 0;
 
   return (
     <div
-      className={b('thread', props, { level: props.level })}
+      className={b('thread', props, { level, theme, indented })}
       role={['listitem'].concat(!collapsed && replies.length ? 'list' : []).join(' ')}
       aria-expanded={!collapsed}
     >
@@ -39,7 +43,7 @@ function Thread(props: RenderableProps<Props>) {
           <ConnectedThread
             key={thread.comment.id}
             data={thread}
-            level={Math.min(level + 1, 5)}
+            level={Math.min(level + 1, 6)}
             getPreview={props.getPreview}
           />
         ))}
@@ -50,4 +54,5 @@ function Thread(props: RenderableProps<Props>) {
 export const ConnectedThread = connect((state: StoreState, props: { data: Node }) => ({
   collapsed: getThreadIsCollapsed(state, props.data.comment),
   isCommentsDisabled: !!state.info.read_only,
+  theme: state.theme,
 }))(Thread);
