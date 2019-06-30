@@ -167,7 +167,7 @@ type AdminGroup struct {
 
 // NotifyGroup defines options for notification
 type NotifyGroup struct {
-	Type      string `long:"type" env:"TYPE" description:"type of notification" choice:"none" choice:"telegram" default:"none"`
+	Type      string `long:"type" env:"TYPE" description:"type of notification" choice:"none" choice:"telegram" choice:"email" default:"none"`
 	QueueSize int    `long:"queue" env:"QUEUE" description:"size of notification queue" default:"100"`
 	Telegram  struct {
 		Token   string        `long:"token" env:"TOKEN" description:"telegram token"`
@@ -175,6 +175,13 @@ type NotifyGroup struct {
 		Timeout time.Duration `long:"timeout" env:"TIMEOUT" default:"5s" description:"telegram timeout"`
 		API     string        `long:"api" env:"API" default:"https://api.telegram.org/bot" description:"telegram api prefix"`
 	} `group:"telegram" namespace:"telegram" env-namespace:"TELEGRAM"`
+	Email struct {
+		Server    string        `long:"server" env:"SERVER" description:"email server name"`
+		Port      int           `long:"port" env:"PORT" default:"587" description:"email server port"`
+		Username  string        `long:"username" env:"USERNAME" description:"email username"`
+		Password  string        `long:"password" env:"PASSWORD" description:"email password"`
+		KeepAlive time.Duration `long:"keepalive" env:"KEEPALIVE" default:"30s" description:"duration to keep SMTP connection after last email sent"`
+	} `group:"email" namespace:"email" env-namespace:"EMAIL"`
 }
 
 // SSLGroup defines options group for server ssl params
@@ -654,6 +661,13 @@ func (s *ServerCommand) makeNotify(dataStore *service.DataStore) (*notify.Servic
 			return nil, errors.Wrap(err, "failed to create telegram notification destination")
 		}
 		return notify.NewService(dataStore, s.Notify.QueueSize, tg), nil
+	case "email":
+		email, err := notify.NewEmail(s.Notify.Email.Server, s.Notify.Email.Port, s.Notify.Email.Username,
+			s.Notify.Email.Password, s.Notify.Email.KeepAlive)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create email notification destination")
+		}
+		return notify.NewService(dataStore, s.Notify.QueueSize, email), nil
 	case "none":
 		return notify.NopService, nil
 	}
