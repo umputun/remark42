@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
-	blackfriday "gopkg.in/russross/blackfriday.v2"
+	bf "gopkg.in/russross/blackfriday.v2"
 )
 
 // CommentFormatter implements all generic formatting ops on comment
@@ -40,10 +40,15 @@ func (f *CommentFormatter) Format(c Comment) Comment {
 
 // FormatText converts text with markdown processor, applies external converters and shortens links
 func (f *CommentFormatter) FormatText(txt string) (res string) {
-	mdExt := blackfriday.NoIntraEmphasis | blackfriday.Tables | blackfriday.FencedCode |
-		blackfriday.Strikethrough | blackfriday.SpaceHeadings | blackfriday.HardLineBreak |
-		blackfriday.BackslashLineBreak | blackfriday.Autolink
-	res = string(blackfriday.Run([]byte(txt), blackfriday.WithExtensions(mdExt)))
+	mdExt := bf.NoIntraEmphasis | bf.Tables | bf.FencedCode |
+		bf.Strikethrough | bf.SpaceHeadings | bf.HardLineBreak |
+		bf.BackslashLineBreak | bf.Autolink
+
+	rend := bf.NewHTMLRenderer(bf.HTMLRendererParameters{
+		Flags: bf.Smartypants | bf.SmartypantsFractions | bf.SmartypantsDashes | bf.SmartypantsAngledQuotes,
+	})
+
+	res = string(bf.Run([]byte(txt), bf.WithExtensions(mdExt), bf.WithRenderer(rend)))
 
 	for _, conv := range f.converters {
 		res = conv.Convert(res)

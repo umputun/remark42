@@ -17,7 +17,7 @@ func TestFormatter_FormatText(t *testing.T) {
 	}{
 		{"", "!converted"},
 		{"12345 abc", "<p>12345 abc</p>\n!converted"},
-		{"**xyz** _aaa_", "<p><strong>xyz</strong> <em>aaa</em></p>\n!converted"},
+		{"**xyz** _aaa_ - \"sfs\"", "<p><strong>xyz</strong> <em>aaa</em> – «sfs»</p>\n!converted"},
 		{
 			"http://127.0.0.1/some-long-link/12345/678901234567890", "<p><a href=\"http://127.0.0.1/some-long-link/12345/678901234567890\">http://127.0.0.1/some-long-link/12345/6789012...</a></p>\n!converted",
 		},
