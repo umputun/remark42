@@ -368,6 +368,7 @@ export class Input extends Component<Props, State> {
             onKeyDown={this.onKeyDown}
             disabled={isDisabled}
             autofocus={!!props.autofocus}
+            spellcheck={true}
           />
 
           {charactersLeft < 100 && <span className="input__counter">{charactersLeft}</span>}
