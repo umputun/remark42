@@ -101,4 +101,8 @@
   & ~ .thread {
     border-left-color: rgba(255, 255, 255, 0.35);
   }
+
+  & ~ .thread_level_5 > .thread_level_5 {
+    border-left-color: rgba(255, 255, 255, 0.2);
+  }
 }
