@@ -8,8 +8,8 @@ import (
 )
 
 func TestEmail(t *testing.T) {
-	email, err := NewEmail("", 0, "", "", 0)
-	assert.EqualError(t, err, "[WARN] error connecting to '':0 with username '': dial tcp :0: connect: can't assign requested address")
+	email, err := NewEmail(EmailParams{})
+	assert.Error(t, err, "No connection established with empty address and port zero")
 	assert.NotNil(t, email, "despite the error we got object reference")
 	assert.Equal(t, email.server, "")
 	assert.Equal(t, email.port, 0)

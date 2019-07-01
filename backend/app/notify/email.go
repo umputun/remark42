@@ -10,6 +10,15 @@ import (
 	"gopkg.in/gomail.v2"
 )
 
+// EmailParams contain settings for email set up
+type EmailParams struct {
+	Server    string
+	Port      int
+	Username  string
+	Password  string
+	KeepAlive time.Duration
+}
+
 // Email implements notify.Destination for email
 type Email struct {
 	server    string
@@ -17,21 +26,21 @@ type Email struct {
 	username  string
 	password  string
 	keepAlive time.Duration
-	ch        chan *gomail.Message
+	sendChan  chan *gomail.Message
 }
 
 const emailConnectionKeepAlive = 30 * time.Second
 
 //NewEmail makes email object for notifications and run sending daemon
-func NewEmail(server string, port int, username string, password string, keepAlive time.Duration) (*Email, error) {
+func NewEmail(params EmailParams) (*Email, error) {
 
 	res := Email{
-		server:    server,
-		port:      port,
-		username:  username,
-		password:  password,
-		keepAlive: keepAlive,
-		ch:        make(chan *gomail.Message),
+		server:    params.Server,
+		port:      params.Port,
+		username:  params.Username,
+		password:  params.Password,
+		keepAlive: params.KeepAlive,
+		sendChan:  make(chan *gomail.Message),
 	}
 
 	if res.keepAlive == 0 {
@@ -56,48 +65,11 @@ func NewEmail(server string, port int, username string, password string, keepAli
 			res.server, res.port, err)
 	}
 
-	go func() {
-		d := gomail.NewDialer(res.server, res.port, res.username, res.password)
-
-		var s gomail.SendCloser
-		var err error
-		open := false
-		for {
-			select {
-			case m, ok := <-res.ch:
-				if !ok {
-					return
-				}
-				if !open {
-					if s, err = d.Dial(); err != nil {
-						log.Printf(
-							"[WARN] error connecting to %s:%d with username %s: %s",
-							res.server, res.port, res.username, err)
-					}
-					open = true
-				}
-				if err := gomail.Send(s, m); err != nil {
-					log.Printf(
-						"[INFO] error sending to %s:%d with username %s: %s",
-						res.server, res.port, res.username, err)
-				}
-			// Close the connection to the SMTP server if no email was sent in the keepAlive period.
-			case <-time.After(res.keepAlive):
-				if open {
-					if err := s.Close(); err != nil {
-						log.Printf(
-							"[WARN] error closing connection with %s:%d with username %s: %s",
-							res.server, res.port, res.username, err)
-					}
-					open = false
-				}
-			}
-		}
-	}()
+	go res.activate()
 
 	// TODO: do we need to close this?
 	// Close the channel to stop the mail daemon.
-	//close(res.ch)
+	//close(res.sendChan)
 
 	return &res, nil
 }
@@ -111,4 +83,43 @@ func (e *Email) Send(ctx context.Context, req request) error {
 
 func (e *Email) String() string {
 	return fmt.Sprintf("email: '%s'@'%s':%d", e.username, e.server, e.port)
+}
+
+func (e *Email) activate() {
+	d := gomail.NewDialer(e.server, e.port, e.username, e.password)
+
+	var s gomail.SendCloser
+	var err error
+	open := false
+	for {
+		select {
+		case m, ok := <-e.sendChan:
+			if !ok {
+				return
+			}
+			if !open {
+				if s, err = d.Dial(); err != nil {
+					log.Printf(
+						"[WARN] error connecting to %s:%d with username %s: %s",
+						e.server, e.port, e.username, err)
+				}
+				open = true
+			}
+			if err := gomail.Send(s, m); err != nil {
+				log.Printf(
+					"[INFO] error sending to %s:%d with username %s: %s",
+					e.server, e.port, e.username, err)
+			}
+		// Close the connection to the SMTP server if no email was sent in the keepAlive period.
+		case <-time.After(e.keepAlive):
+			if open {
+				if err := s.Close(); err != nil {
+					log.Printf(
+						"[WARN] error closing connection with %s:%d with username %s: %s",
+						e.server, e.port, e.username, err)
+				}
+				open = false
+			}
+		}
+	}
 }

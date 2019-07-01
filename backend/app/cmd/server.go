@@ -662,8 +662,13 @@ func (s *ServerCommand) makeNotify(dataStore *service.DataStore) (*notify.Servic
 		}
 		return notify.NewService(dataStore, s.Notify.QueueSize, tg), nil
 	case "email":
-		email, err := notify.NewEmail(s.Notify.Email.Server, s.Notify.Email.Port, s.Notify.Email.Username,
-			s.Notify.Email.Password, s.Notify.Email.KeepAlive)
+		emailParams := notify.EmailParams{
+			Server:    s.Notify.Email.Server,
+			Port:      s.Notify.Email.Port,
+			Username:  s.Notify.Email.Username,
+			Password:  s.Notify.Email.Password,
+			KeepAlive: s.Notify.Email.KeepAlive}
+		email, err := notify.NewEmail(emailParams)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to create email notification destination")
 		}
