@@ -25,14 +25,19 @@ func TestEmail(t *testing.T) {
 	c := store.Comment{Text: "some text", ParentID: "1"}
 	c.User.Name = "from"
 	c.PostTitle = "post title"
+	c.Locator.URL = "//example.org"
+	c.Orig = "orig"
 	cp := store.Comment{Text: "some parent text"}
 	cp.User.Name = "to"
+	req := request{comment: c, parent: cp}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() { cancel(); <-ctx.Done() }()
-	assert.EqualError(t, email.Send(ctx, request{comment: c, parent: cp}), "context canceled")
+	assert.EqualError(t, email.Send(ctx, req), "context canceled")
 
-	go func() { _ = email.Send(context.Background(), request{comment: c, parent: cp}) }()
+	go func() { _ = email.Send(context.Background(), req) }()
 	message := <-email.sendChan
 	assert.Equal(t, message.GetHeader("Subject"), []string{"New comment for \"post title\""})
+
+	assert.Equal(t, prepareBody(req), "from → to\n\norig\n\n↦ [post title](//example.org#remark42__comment-)")
 }

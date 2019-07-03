@@ -78,16 +78,7 @@ func NewEmail(ctx context.Context, params EmailParams) (*Email, error) {
 func (e *Email) Send(ctx context.Context, req request) error {
 	log.Printf("[DEBUG] send notification via %s, comment id %s", e, req.comment.ID)
 
-	// Gather data for message to send from request.
-	from := req.comment.User.Name
-	if req.comment.ParentID != "" {
-		from += " → " + req.parent.User.Name
-	}
-	link := fmt.Sprintf("↦ [original comment](%s)", req.comment.Locator.URL+uiNav+req.comment.ID)
-	if req.comment.PostTitle != "" {
-		link = fmt.Sprintf("↦ [%s](%s)", req.comment.PostTitle, req.comment.Locator.URL+uiNav+req.comment.ID)
-	}
-	body := fmt.Sprintf("%s\n\n%s\n\n%s", from, req.comment.Orig, link)
+	messageBody := prepareBody(req)
 
 	// Create message.
 	m := gomail.NewMessage()
@@ -95,7 +86,7 @@ func (e *Email) Send(ctx context.Context, req request) error {
 	//m.SetHeader("From", "no-reply@example.com")
 	//m.SetAddressHeader("To", req.Address, req.Name)
 	m.SetHeader("Subject", fmt.Sprintf("New comment for \"%s\"", req.comment.PostTitle))
-	m.SetBody("text/html", body)
+	m.SetBody("text/html", messageBody)
 
 	// Wait for ability to send message and return error from error channel after sending it.
 	select {
@@ -108,6 +99,20 @@ func (e *Email) Send(ctx context.Context, req request) error {
 
 func (e *Email) String() string {
 	return fmt.Sprintf("email: '%s'@'%s':%d", e.username, e.server, e.port)
+}
+
+//prepareBody generates email message text based on request
+func prepareBody(req request) string {
+	from := req.comment.User.Name
+	if req.comment.ParentID != "" {
+		from += " → " + req.parent.User.Name
+	}
+	link := fmt.Sprintf("↦ [original comment](%s)", req.comment.Locator.URL+uiNav+req.comment.ID)
+	if req.comment.PostTitle != "" {
+		link = fmt.Sprintf("↦ [%s](%s)", req.comment.PostTitle, req.comment.Locator.URL+uiNav+req.comment.ID)
+	}
+	body := fmt.Sprintf("%s\n\n%s\n\n%s", from, req.comment.Orig, link)
+	return body
 }
 
 func (e *Email) activate() {
