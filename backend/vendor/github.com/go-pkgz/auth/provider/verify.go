@@ -196,7 +196,7 @@ func (e VerifyHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 var msgTemplate = `
-Remark42 confirmation for {{.User}} {{.Address}}, site {{.Site}}
+Confirmation for {{.User}} {{.Address}}, site {{.Site}}
 
 Token: {{.Token}}
 `

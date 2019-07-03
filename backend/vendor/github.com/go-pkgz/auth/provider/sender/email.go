@@ -55,7 +55,7 @@ func NewEmailClient(p EmailParams, l logger.L) *Email {
 // If SMTPClient defined in Email struct it will be used, if not - new smtp.Client on each send.
 // Always closes client on completion or failure.
 func (em *Email) Send(to string, text string) error {
-
+	em.Logf("[DEBUG] send %q to %s", text, to)
 	client := em.SMTPClient
 	if client == nil { // if client not set make new net/smtp
 		c, err := em.client()

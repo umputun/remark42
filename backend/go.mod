@@ -14,7 +14,7 @@ require (
 	github.com/go-chi/chi v4.0.2+incompatible
 	github.com/go-chi/cors v1.0.0
 	github.com/go-chi/render v1.0.1
-	github.com/go-pkgz/auth v0.7.0
+	github.com/go-pkgz/auth v0.7.1
 	github.com/go-pkgz/lcw v0.3.1
 	github.com/go-pkgz/lgr v0.6.3
 	github.com/go-pkgz/repeater v1.1.2
