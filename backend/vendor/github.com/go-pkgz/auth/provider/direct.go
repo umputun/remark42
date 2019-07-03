@@ -69,9 +69,16 @@ func (p DirectHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	cid, err := randToken()
+	if err != nil {
+		rest.SendErrorJSON(w, r, p.L, http.StatusInternalServerError, err, "can't make token id")
+		return
+	}
+
 	claims := token.Claims{
 		User: &u,
 		StandardClaims: jwt.StandardClaims{
+			Id:       cid,
 			Issuer:   p.Issuer,
 			Audience: aud,
 		},

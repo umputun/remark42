@@ -21,6 +21,7 @@ import (
 	"github.com/go-pkgz/auth"
 	"github.com/go-pkgz/auth/avatar"
 	"github.com/go-pkgz/auth/provider"
+	"github.com/go-pkgz/auth/provider/sender"
 	"github.com/go-pkgz/auth/token"
 	"github.com/go-pkgz/rest/cache"
 
@@ -75,6 +76,18 @@ type ServerCommand struct {
 		Yandex    AuthGroup `group:"yandex" namespace:"yandex" env-namespace:"YANDEX" description:"Yandex OAuth"`
 		Dev       bool      `long:"dev" env:"DEV" description:"enable dev (local) oauth2"`
 		Anonymous bool      `long:"anon" env:"ANON" description:"enable anonymous login"`
+		Email     struct {
+			Enable       bool          `long:"enable" env:"ENABLE" description:"enable auth via email"`
+			Host         string        `long:"host" env:"HOST" description:"smtp host"`
+			Port         int           `long:"port" env:"PORT" description:"smtp port"`
+			From         string        `long:"from" env:"FROM" description:"email's from"`
+			Subject      string        `long:"subj" env:"SUBJ" default:"remark42 confirmation" description:"email's subject"`
+			ContentType  string        `long:"content-type" env:"CONTENT_TYPE" default:"text/html" description:"content type"`
+			TLS          bool          `long:"tls" env:"TLS" description:"enable TLS"`
+			SMTPUserName string        `long:"user" env:"USER" description:"smtp user name"`
+			SMTPPassword string        `long:"passwd" env:"PASSWD" description:"smtp password"`
+			TimeOut      time.Duration `long:"timeout" env:"TIMEOUT" default:"10s" description:"smtp timeout"`
+		} `group:"email" namespace:"email" env-namespace:"EMAIL"`
 	} `group:"auth" namespace:"auth" env-namespace:"AUTH"`
 
 	CommonOpts
@@ -507,6 +520,15 @@ func (s *ServerCommand) makeCache() (cache.LoadingCache, error) {
 	return nil, errors.Errorf("unsupported cache type %s", s.Cache.Type)
 }
 
+var msgTemplate = `
+<html>
+<body>
+Remark42 confirmation for {{.User}} {{.Address}}, site {{.Site}}
+<p>Token: {{.Token}}</p>
+</body>
+</html>
+`
+
 func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) {
 
 	providers := 0
@@ -548,6 +570,22 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) {
 			}
 			return true, nil
 		}))
+	}
+
+	if s.Auth.Email.Enable {
+		params := sender.EmailParams{
+			Host:         s.Auth.Email.Host,
+			Port:         s.Auth.Email.Port,
+			From:         s.Auth.Email.From,
+			Subject:      s.Auth.Email.Subject,
+			ContentType:  s.Auth.Email.ContentType,
+			TLS:          s.Auth.Email.TLS,
+			SMTPUserName: s.Auth.Email.SMTPUserName,
+			SMTPPassword: s.Auth.Email.SMTPPassword,
+			TimeOut:      s.Auth.Email.TimeOut,
+		}
+		s := sender.NewEmailClient(params, log.Default())
+		authenticator.AddVerifProvider("email", msgTemplate, s)
 	}
 
 	if providers == 0 {
