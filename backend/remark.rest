@@ -104,7 +104,7 @@ GET {{host}}/api/v1/admin/blocked?site={{site}}
 DELETE {{host}}/api/v1/admin/comment/3665976683?site={{site}}&url={{url}}
 
 ### get post info
-GET {{host}}/api/v1/info?site={{site}}&url=https://radio-t.com/p/2018/05/08/prep-597/
+GET {{host}}/api/v1/info?site={{site}}&url={{url}
 
 ### post rss
 GET {{host}}/api/v1/rss/post?site={{site}}&url={{url}}
@@ -121,7 +121,7 @@ GET {{host}}/api/v1/avatar/blah
 ### get config
 GET  {{host}}/api/v1/config?site={{site}}
 
-### deleteme (use request). dev token for secret=secret, not admin
+### deleteme (user's request). dev token for secret=secret, not admin
 POST {{host}}/api/v1/deleteme?site_id={{site}}
 X-JWT: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6Mzc4OTE5MTgyMiwianRpIjoicmFuZG9tIGlkIiwiaXNzIjoicmVtYXJrNDIiLCJuYmYiOjE1MjE4ODQyMjIsInVzZXIiOnsibmFtZSI6ImRldmVsb3BlciBvbmUiLCJpZCI6ImRldiIsInBpY3R1cmUiOiJodHRwOi8vZXhhbXBsZS5jb20vcGljLnBuZyIsImlwIjoiMTI3LjAuMC4xIiwiZW1haWwiOiJtZUBleGFtcGxlLmNvbSJ9fQ.aKUAXiZxXypgV7m1wEOgUcyPOvUDXHDi3A06YWKbcLg
 
