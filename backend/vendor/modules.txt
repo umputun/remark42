@@ -30,7 +30,7 @@ github.com/go-chi/chi/middleware
 github.com/go-chi/cors
 # github.com/go-chi/render v1.0.1
 github.com/go-chi/render
-# github.com/go-pkgz/auth v0.7.1
+# github.com/go-pkgz/auth v0.7.2
 github.com/go-pkgz/auth
 github.com/go-pkgz/auth/avatar
 github.com/go-pkgz/auth/provider
@@ -93,7 +93,7 @@ github.com/stretchr/testify/require
 # golang.org/x/crypto v0.0.0-20190701094942-4def268fd1a4
 golang.org/x/crypto/acme/autocert
 golang.org/x/crypto/acme
-# golang.org/x/image v0.0.0-20190622003408-7e034cad6442
+# golang.org/x/image v0.0.0-20190703141733-d6a02ce849c9
 golang.org/x/image/draw
 golang.org/x/image/math/f64
 # golang.org/x/net v0.0.0-20190628185345-da137c7871d7

@@ -47,6 +47,7 @@ func (f SenderFunc) Send(address string, text string) error {
 type VerifTokenService interface {
 	Token(claims token.Claims) (string, error)
 	Parse(tokenString string) (claims token.Claims, err error)
+	IsExpired(claims token.Claims) bool
 	Set(w http.ResponseWriter, claims token.Claims) (token.Claims, error)
 	Reset(w http.ResponseWriter)
 }
@@ -70,6 +71,11 @@ func (e VerifyHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	confClaims, err := e.TokenService.Parse(tkn)
 	if err != nil {
 		rest.SendErrorJSON(w, r, e.L, http.StatusForbidden, err, "failed to verify confirmation token")
+		return
+	}
+
+	if e.TokenService.IsExpired(confClaims) {
+		rest.SendErrorJSON(w, r, e.L, http.StatusForbidden, errors.New("expired"), "failed to verify confirmation token")
 		return
 	}
 
