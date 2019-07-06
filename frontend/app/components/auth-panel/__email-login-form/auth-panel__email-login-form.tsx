@@ -11,14 +11,14 @@ const mapStateToProps = () => ({
   sendEmailVerification: sendEmailVerificationRequest,
 });
 
-type Props = {
+export type Props = {
   onSignIn(token: string): Promise<User | null>;
   onSuccess?(user: User): Promise<void>;
   theme: Theme;
   className?: string;
 } & ReturnType<typeof mapStateToProps>;
 
-interface State {
+export interface State {
   usernameValue: string;
   addressValue: string;
   tokenValue: string;
