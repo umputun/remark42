@@ -39,5 +39,6 @@ services:
             - POSITIVE_SCORE=false # restricts comment's score to be only positive
             - EDIT_TIME=5m # edit window
             - AUTH_ANON=true
+            - AUTH_EMAIL_ENABLE=true
         volumes:
             - ./var:/srv/var
