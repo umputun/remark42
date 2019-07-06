@@ -6,6 +6,7 @@ import { sendEmailVerificationRequest } from '@app/common/api';
 import { extractErrorMessageFromResponse } from '@app/utils/errorUtils';
 import { connect } from 'preact-redux';
 import { getHandleClickProps } from '@app/common/accessibility';
+import { sleep } from '@app/utils/sleep';
 
 const mapStateToProps = () => ({
   sendEmailVerification: sendEmailVerificationRequest,
@@ -46,12 +47,22 @@ export class EmailLoginForm extends Component<Props, State> {
       error: null,
     };
 
+    this.focus = this.focus.bind(this);
     this.onVerificationSubmit = this.onVerificationSubmit.bind(this);
     this.onSubmit = this.onSubmit.bind(this);
     this.onUsernameChange = this.onUsernameChange.bind(this);
     this.onAddressChange = this.onAddressChange.bind(this);
     this.onTokenChange = this.onTokenChange.bind(this);
     this.goBack = this.goBack.bind(this);
+  }
+
+  async focus() {
+    await sleep(100);
+    if (this.inputRef) {
+      this.inputRef.focus();
+      return;
+    }
+    this.tokenRef && this.tokenRef.select();
   }
 
   async onVerificationSubmit(e: Event) {
@@ -212,4 +223,9 @@ export class EmailLoginForm extends Component<Props, State> {
   }
 }
 
-export const EmailLoginFormConnected = connect(mapStateToProps)(EmailLoginForm);
+export const EmailLoginFormConnected = connect(
+  mapStateToProps,
+  null,
+  null,
+  { withRef: true }
+)(EmailLoginForm);
