@@ -12,8 +12,27 @@ const __loginAnonymously = (username: string): Promise<User | null> => {
   return fetcher.get<User>({ url, withCredentials: true, overriddenApiBase: '' });
 };
 
+const __loginViaEmail = (token: string): Promise<User | null> => {
+  const url = `/auth/email/login?token=${token}`;
+  return fetcher.get<User>({ url, withCredentials: true, overriddenApiBase: '' });
+};
+
+/**
+ * First step of two of `email` authorization
+ *
+ * @param username userrname
+ * @param address email address
+ */
+export const sendEmailVerificationRequest = (username: string, address: string): Promise<void> => {
+  const url = `/auth/email/login?id=${siteId}&user=${encodeURIComponent(username)}&address=${encodeURIComponent(
+    address
+  )}`;
+  return fetcher.get({ url, withCredentials: true, overriddenApiBase: '' });
+};
+
 export const logIn = (provider: AuthProvider): Promise<User | null> => {
   if (provider.name === 'anonymous') return __loginAnonymously(provider.username);
+  if (provider.name === 'email') return __loginViaEmail(provider.token);
 
   return new Promise<User | null>((resolve, reject) => {
     const url = `${BASE_URL}/auth/${provider.name}/login?from=${encodeURIComponent(
