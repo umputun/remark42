@@ -5,9 +5,17 @@
   flex-wrap: nowrap;
 }
 
-.auth-panel-email-login-form__input {
-  width: 15em;
+.auth-panel-email-login-form__input,
+.auth-panel-email-login-form__token-input {
+  width: 12rem;
   margin: 0.1em;
+}
+
+.auth-panel-email-login-form__token-input {
+  resize: vertical;
+  font: inherit;
+  font-weight: normal;
+  font-size: 0.8em;
 }
 
 .auth-panel-email-login-form__submit {
