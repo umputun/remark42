@@ -11,7 +11,7 @@ import Dropdown, { DropdownItem } from '@app/components/dropdown';
 import { Button } from '@app/components/button';
 import { UserID } from './__user-id';
 import { AnonymousLoginForm } from './__anonymous-login-form';
-import { EmailLoginFormConnected as EmailLoginForm } from './__email-login-form';
+import { EmailLoginForm, EmailLoginFormConnected } from './__email-login-form';
 import { StoreState } from '@app/store';
 
 export interface Props {
@@ -38,6 +38,8 @@ interface State {
 }
 
 export class AuthPanel extends Component<Props, State> {
+  emailLoginRef?: EmailLoginForm;
+
   constructor(props: Props) {
     super(props);
 
@@ -54,6 +56,11 @@ export class AuthPanel extends Component<Props, State> {
     this.handleAnonymousLoginFormSubmut = this.handleAnonymousLoginFormSubmut.bind(this);
     this.handleOAuthLogin = this.handleOAuthLogin.bind(this);
     this.toggleUserInfoVisibility = this.toggleUserInfoVisibility.bind(this);
+    this.onEmailTitleClick = this.onEmailTitleClick.bind(this);
+  }
+
+  onEmailTitleClick() {
+    this.emailLoginRef && this.emailLoginRef.focus();
   }
 
   onSortChange(e: Event) {
@@ -187,9 +194,11 @@ export class AuthPanel extends Component<Props, State> {
                       title={PROVIDER_NAMES[provider]}
                       titleClass="auth-panel__pseudo-link"
                       theme={this.props.theme}
+                      onTitleClick={this.onEmailTitleClick}
                     >
                       <DropdownItem>
-                        <EmailLoginForm
+                        <EmailLoginFormConnected
+                          ref={ref => (this.emailLoginRef = ref.getWrappedInstance())}
                           onSignIn={this.onEmailSignIn}
                           theme={this.props.theme}
                           className="auth-panel__email-login-form"
