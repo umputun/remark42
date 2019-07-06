@@ -198,7 +198,7 @@ export class AuthPanel extends Component<Props, State> {
                     >
                       <DropdownItem>
                         <EmailLoginFormConnected
-                          ref={ref => (this.emailLoginRef = ref.getWrappedInstance())}
+                          ref={ref => (this.emailLoginRef = ref ? ref.getWrappedInstance() : null)}
                           onSignIn={this.onEmailSignIn}
                           theme={this.props.theme}
                           className="auth-panel__email-login-form"
