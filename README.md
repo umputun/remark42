@@ -632,8 +632,8 @@ Sort can be `time`, `active` or `score`. Supported sort order with prefix -/+, i
 
 Streaming API provide server-sent events for post updates as well as site update
 
-* `GET /api/v1/stream/info?site=site-idd&url=post-url` - returns stream (`event: info`) with `PostInfo` records for the site and url`
-* `GET /api/v1/stream/last?site=site-id` - returns updates stream (`event: last`) with comments for the site`
+* `GET /api/v1/stream/info?site=site-idd&url=post-url&since=unix_ts_msec` - returns stream (`event: info`) with `PostInfo` records for the site and url. `since` is optional
+* `GET /api/v1/stream/last?site=site-id&since=unix_ts_msec` - returns updates stream (`event: last`) with comments for the site, `since` is optional
 
 <details><summary>response example</summary>
 
