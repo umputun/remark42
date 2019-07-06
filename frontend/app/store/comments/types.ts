@@ -22,13 +22,6 @@ export interface PINNED_COMMENTS_SET_ACTION {
   comments: StoreState['pinnedComments'];
 }
 
-export const COMMENTS_FETCH_TREE = 'COMMENTS/FETCH_TREE';
-
-export interface COMMENTS_FETCH_TREE_ACTION {
-  type: typeof COMMENTS_FETCH_TREE;
-  comments: Node[];
-}
-
 export const COMMENT_MODE_SET = 'COMMENT_MODE/SET';
 
 export interface COMMENT_MODE_SET_ACTION {
@@ -40,5 +33,4 @@ export type COMMENTS_ACTIONS =
   | COMMENTS_SET_ACTION
   | COMMENTS_APPEND_ACTION
   | PINNED_COMMENTS_SET_ACTION
-  | COMMENTS_FETCH_TREE_ACTION
   | COMMENT_MODE_SET_ACTION;
