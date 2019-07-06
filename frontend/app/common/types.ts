@@ -119,7 +119,8 @@ export type AuthProvider =
   | { name: 'github' }
   | { name: 'yandex' }
   | { name: 'dev' }
-  | { name: 'anonymous'; username: string };
+  | { name: 'anonymous'; username: string }
+  | { name: 'email'; token: string };
 
 export type BlockTTL = 'permanently' | '43200m' | '10080m' | '1440m';
 
