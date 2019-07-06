@@ -14,7 +14,6 @@ import (
 	"time"
 
 	bolt "github.com/coreos/bbolt"
-	"github.com/go-pkgz/auth/provider/sender"
 	log "github.com/go-pkgz/lgr"
 	authcache "github.com/patrickmn/go-cache"
 	"github.com/pkg/errors"
@@ -22,6 +21,7 @@ import (
 	"github.com/go-pkgz/auth"
 	"github.com/go-pkgz/auth/avatar"
 	"github.com/go-pkgz/auth/provider"
+	"github.com/go-pkgz/auth/provider/sender"
 	"github.com/go-pkgz/auth/token"
 	"github.com/go-pkgz/rest/cache"
 
