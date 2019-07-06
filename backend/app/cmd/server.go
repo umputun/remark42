@@ -670,6 +670,7 @@ func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Sto
 		AvatarRoutePath:   "/api/v1/avatar",
 		Logger:            log.Default(),
 		RefreshCache:      newAuthRefreshCache(),
+		UseGravatar:       true,
 	})
 	s.addAuthProviders(authenticator)
 	return authenticator
