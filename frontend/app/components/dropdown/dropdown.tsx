@@ -28,6 +28,9 @@ export default class Dropdown extends Component<Props, State> {
     this.state = {
       isActive: props.isActive || false,
     };
+
+    this.onOutsideClick = this.onOutsideClick.bind(this);
+    this.receiveMessage = this.receiveMessage.bind(this);
   }
 
   onTitleClick() {
@@ -65,15 +68,15 @@ export default class Dropdown extends Component<Props, State> {
   }
 
   componentDidMount() {
-    document.addEventListener('click', e => this.onOutsideClick(e));
+    document.addEventListener('click', this.onOutsideClick);
 
-    window.addEventListener('message', e => this.receiveMessage(e));
+    window.addEventListener('message', this.receiveMessage);
   }
 
   componentWillUnmount() {
-    document.removeEventListener('click', e => this.onOutsideClick(e));
+    document.removeEventListener('click', this.onOutsideClick);
 
-    window.removeEventListener('message', e => this.receiveMessage(e));
+    window.removeEventListener('message', this.receiveMessage);
   }
 
   render(props: RenderableProps<Props>, { isActive }: State) {
