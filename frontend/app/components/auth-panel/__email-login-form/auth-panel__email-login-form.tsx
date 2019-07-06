@@ -90,6 +90,7 @@ export class EmailLoginForm extends Component<Props, State> {
         this.setState({ error: 'No user was found' });
         return;
       }
+      this.setState({ verificationSent: false, tokenValue: '' });
       this.props.onSuccess && this.props.onSuccess(user);
     } catch (e) {
       this.setState({ error: extractErrorMessageFromResponse(e) });
