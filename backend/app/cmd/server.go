@@ -14,6 +14,7 @@ import (
 	"time"
 
 	bolt "github.com/coreos/bbolt"
+	"github.com/go-pkgz/auth/provider/sender"
 	log "github.com/go-pkgz/lgr"
 	authcache "github.com/patrickmn/go-cache"
 	"github.com/pkg/errors"
@@ -21,7 +22,6 @@ import (
 	"github.com/go-pkgz/auth"
 	"github.com/go-pkgz/auth/avatar"
 	"github.com/go-pkgz/auth/provider"
-	"github.com/go-pkgz/auth/provider/sender"
 	"github.com/go-pkgz/auth/token"
 	"github.com/go-pkgz/rest/cache"
 
@@ -554,6 +554,22 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) {
 		providers++
 	}
 
+	if s.Auth.Email.Enable {
+		params := sender.EmailParams{
+			Host:         s.Auth.Email.Host,
+			Port:         s.Auth.Email.Port,
+			From:         s.Auth.Email.From,
+			Subject:      s.Auth.Email.Subject,
+			ContentType:  s.Auth.Email.ContentType,
+			TLS:          s.Auth.Email.TLS,
+			SMTPUserName: s.Auth.Email.SMTPUserName,
+			SMTPPassword: s.Auth.Email.SMTPPassword,
+			TimeOut:      s.Auth.Email.TimeOut,
+		}
+		s := sender.NewEmailClient(params, log.Default())
+		authenticator.AddVerifProvider("email", msgTemplate, s)
+	}
+
 	if s.Auth.Anonymous {
 		log.Print("[INFO] anonymous access enabled")
 		var isValidAnonName = regexp.MustCompile(`^[a-zA-Z][\w ]+$`).MatchString
@@ -570,22 +586,6 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) {
 			}
 			return true, nil
 		}))
-	}
-
-	if s.Auth.Email.Enable {
-		params := sender.EmailParams{
-			Host:         s.Auth.Email.Host,
-			Port:         s.Auth.Email.Port,
-			From:         s.Auth.Email.From,
-			Subject:      s.Auth.Email.Subject,
-			ContentType:  s.Auth.Email.ContentType,
-			TLS:          s.Auth.Email.TLS,
-			SMTPUserName: s.Auth.Email.SMTPUserName,
-			SMTPPassword: s.Auth.Email.SMTPPassword,
-			TimeOut:      s.Auth.Email.TimeOut,
-		}
-		s := sender.NewEmailClient(params, log.Default())
-		authenticator.AddVerifProvider("email", msgTemplate, s)
 	}
 
 	if providers == 0 {
