@@ -7,6 +7,7 @@ import { extractErrorMessageFromResponse } from '@app/utils/errorUtils';
 import { connect } from 'preact-redux';
 import { getHandleClickProps } from '@app/common/accessibility';
 import { sleep } from '@app/utils/sleep';
+import TextareaAutosize from '@app/components/input/textarea-autosize';
 
 const mapStateToProps = () => ({
   sendEmailVerification: sendEmailVerificationRequest,
@@ -33,7 +34,7 @@ export class EmailLoginForm extends Component<Props, State> {
   static emailRegex = /[^@]+@[^.]+\..+/;
 
   inputRef?: HTMLInputElement;
-  tokenRef?: HTMLInputElement;
+  tokenRef?: TextareaAutosize;
 
   constructor(props: Props) {
     super(props);
@@ -62,7 +63,7 @@ export class EmailLoginForm extends Component<Props, State> {
       this.inputRef.focus();
       return;
     }
-    this.tokenRef && this.tokenRef.select();
+    this.tokenRef && this.tokenRef.textareaRef && this.tokenRef.textareaRef.select();
   }
 
   async onVerificationSubmit(e: Event) {
@@ -203,13 +204,15 @@ export class EmailLoginForm extends Component<Props, State> {
         <span className="auth-panel-email-login-form__back-button" role="button" {...getHandleClickProps(this.goBack)}>
           {'< Back'}
         </span>
-        <input
-          className="auth-panel-email-login-form__input"
+        <TextareaAutosize
+          autofocus={true}
+          className="auth-panel-email-login-form__token-input"
           ref={ref => (this.tokenRef = ref)}
-          type="text"
           placeholder="Token"
           value={this.state.tokenValue}
           onInput={this.onTokenChange}
+          spellcheck={false}
+          autocomplete="off"
         />
         <input
           className="auth-panel-email-login-form__submit"
