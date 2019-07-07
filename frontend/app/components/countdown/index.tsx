@@ -32,6 +32,9 @@ export default class Countdown extends Component<Props, State> {
     });
     this.start();
   }
+  componentWillUnmount() {
+    window.clearInterval(this.intervalID);
+  }
   shouldComponentUpdate() {
     return false;
   }
