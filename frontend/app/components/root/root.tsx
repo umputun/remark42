@@ -3,16 +3,7 @@ import { h, Component, RenderableProps } from 'preact';
 import { connect } from 'preact-redux';
 import b from 'bem-react-helper';
 
-import {
-  User,
-  Node,
-  PostInfo,
-  BlockedUser,
-  Comment as CommentType,
-  Sorting,
-  Theme,
-  AuthProvider,
-} from '@app/common/types';
+import { User, Sorting, AuthProvider } from '@app/common/types';
 import {
   NODE_ID,
   COMMENT_NODE_CLASSNAME_PREFIX,
@@ -50,7 +41,21 @@ import { Thread } from '@app/components/thread';
 import { uploadImage, getPreview } from '@app/common/api';
 import { isUserAnonymous } from '@app/utils/isUserAnonymous';
 import { bindActions } from '@app/utils/actionBinder';
-import { ProviderState } from '@app/store/provider/reducers';
+
+const mapStateToProps = (state: StoreState) => ({
+  user: state.user,
+  sort: state.sort,
+  isSettingsVisible: state.isSettingsVisible,
+  topComments: state.topComments,
+  pinnedComments: state.pinnedComments.map(id => state.comments[id]).filter(c => !c.hidden),
+  provider: state.provider,
+  theme: state.theme,
+  info: state.info,
+  hiddenUsers: state.hiddenUsers,
+  blockedUsers: state.bannedUsers,
+  getPreview,
+  uploadImage,
+});
 
 const boundActions = bindActions({
   fetchComments,
@@ -71,20 +76,7 @@ const boundActions = bindActions({
   updateComment,
 });
 
-type Props = {
-  user: User | null;
-  sort: Sorting;
-  comments: Node[];
-  pinnedComments: CommentType[];
-  theme: Theme;
-  info: PostInfo;
-  hiddenUsers: StoreState['hiddenUsers'];
-  blockedUsers: BlockedUser[];
-  isSettingsVisible: boolean;
-  getPreview: typeof getPreview;
-  uploadImage: typeof uploadImage;
-  provider: ProviderState;
-} & typeof boundActions;
+type Props = ReturnType<typeof mapStateToProps> & typeof boundActions;
 
 interface State {
   isLoaded: boolean;
@@ -261,24 +253,34 @@ export class Root extends Component<Props, State> {
               {this.props.pinnedComments.length > 0 && (
                 <div className="root__pinned-comments" role="region" aria-label="Pinned comments">
                   {this.props.pinnedComments.map(comment => (
-                    <Comment view="pinned" data={comment} level={0} disabled={true} mix="root__pinned-comment" />
+                    <Comment
+                      key={`pinned-comment-${comment.id}`}
+                      view="pinned"
+                      data={comment}
+                      level={0}
+                      disabled={true}
+                      mix="root__pinned-comment"
+                    />
                   ))}
                 </div>
               )}
 
-              {!!this.props.comments.length && !isCommentsListLoading && (
+              {!!this.props.topComments.length && !isCommentsListLoading && (
                 <div className="root__threads" role="list">
-                  {(IS_MOBILE ? this.props.comments.slice(0, commentsShown) : this.props.comments).map(thread => (
+                  {(IS_MOBILE && commentsShown < this.props.topComments.length
+                    ? this.props.topComments.slice(0, commentsShown)
+                    : this.props.topComments
+                  ).map(id => (
                     <Thread
-                      key={thread.comment.id}
+                      key={`thread-${id}`}
+                      id={id}
                       mix="root__thread"
                       level={0}
-                      data={thread}
                       getPreview={this.props.getPreview}
                     />
                   ))}
 
-                  {commentsShown < this.props.comments.length && IS_MOBILE && (
+                  {commentsShown < this.props.topComments.length && IS_MOBILE && (
                     <button className="root__show-more" onClick={this.showMore}>
                       Show more
                     </button>
@@ -323,19 +325,6 @@ export class Root extends Component<Props, State> {
 
 /** Root component connected to redux */
 export const ConnectedRoot = connect(
-  (state: StoreState) => ({
-    user: state.user,
-    sort: state.sort,
-    isSettingsVisible: state.isSettingsVisible,
-    comments: state.comments,
-    pinnedComments: state.pinnedComments,
-    theme: state.theme,
-    info: state.info,
-    hiddenUsers: state.hiddenUsers,
-    blockedUsers: state.bannedUsers,
-    provider: state.provider,
-    getPreview,
-    uploadImage,
-  }),
+  mapStateToProps,
   boundActions
 )(Root);

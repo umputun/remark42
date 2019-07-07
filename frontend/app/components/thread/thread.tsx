@@ -4,55 +4,54 @@ import { connect } from 'preact-redux';
 import b from 'bem-react-helper';
 
 import { ConnectedComment as Comment } from '@app/components/comment/connected-comment';
-import { Node, Theme } from '@app/common/types';
+import { Comment as CommentInterface } from '@app/common/types';
 import { getThreadIsCollapsed } from '@app/store/thread/getters';
 import { StoreState } from '@app/store';
 
-interface Props {
-  collapsed: boolean;
-  data: Node;
-  isCommentsDisabled: boolean;
+const mapStateToProps = (state: StoreState, props: { id: CommentInterface['id'] }) => {
+  const comment = state.comments[props.id];
+  return {
+    comment,
+    childs: state.childComments[props.id],
+    collapsed: getThreadIsCollapsed(state, comment),
+    isCommentsDisabled: !!state.info.read_only,
+    theme: state.theme,
+  };
+};
+
+type Props = {
+  id: CommentInterface['id'];
+  childs?: (CommentInterface['id'])[];
   level: number;
-  theme: Theme;
   mix?: string;
 
   getPreview(text: string): Promise<string>;
-}
+} & ReturnType<typeof mapStateToProps>;
 
 function Thread(props: RenderableProps<Props>) {
-  const {
-    collapsed,
-    data: { comment, replies = [] },
-    level,
-    theme,
-  } = props;
+  const { collapsed, comment, childs, level, theme } = props;
+
+  if (comment.hidden) return null;
 
   const indented = level > 0;
+  const repliesCount = childs ? childs.length : 0;
 
   return (
     <div
       className={b('thread', props, { level, theme, indented })}
-      role={['listitem'].concat(!collapsed && replies.length ? 'list' : []).join(' ')}
+      role={['listitem'].concat(!collapsed && !!repliesCount ? 'list' : []).join(' ')}
       aria-expanded={!collapsed}
     >
-      <Comment view="main" data={comment} repliesCount={replies.length} level={level} />
+      <Comment key={`comment-${props.id}`} view="main" data={comment} repliesCount={repliesCount} level={level} />
 
       {!collapsed &&
-        !!replies.length &&
-        replies.map(thread => (
-          <ConnectedThread
-            key={thread.comment.id}
-            data={thread}
-            level={Math.min(level + 1, 6)}
-            getPreview={props.getPreview}
-          />
+        childs &&
+        !!childs.length &&
+        childs.map(id => (
+          <ConnectedThread key={`thread-${id}`} id={id} level={Math.min(level + 1, 6)} getPreview={props.getPreview} />
         ))}
     </div>
   );
 }
 
-export const ConnectedThread = connect((state: StoreState, props: { data: Node }) => ({
-  collapsed: getThreadIsCollapsed(state, props.data.comment),
-  isCommentsDisabled: !!state.info.read_only,
-  theme: state.theme,
-}))(Thread);
+export const ConnectedThread = connect(mapStateToProps)(Thread);
