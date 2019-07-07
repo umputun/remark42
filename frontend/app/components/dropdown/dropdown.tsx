@@ -4,6 +4,7 @@ import b from 'bem-react-helper';
 
 import { Button } from '@app/components/button';
 import { Theme } from '@app/common/types';
+import { sleep } from '@app/utils/sleep';
 
 interface Props {
   title: string;
@@ -19,6 +20,7 @@ interface Props {
 
 interface State {
   isActive: boolean;
+  contentTranslateX: number;
 }
 
 export default class Dropdown extends Component<Props, State> {
@@ -29,24 +31,31 @@ export default class Dropdown extends Component<Props, State> {
 
     this.state = {
       isActive: props.isActive || false,
+      contentTranslateX: 0,
     };
 
     this.onOutsideClick = this.onOutsideClick.bind(this);
     this.receiveMessage = this.receiveMessage.bind(this);
+    this.__onOpen = this.__onOpen.bind(this);
+    this.__onClose = this.__onClose.bind(this);
   }
 
   onTitleClick() {
     const isActive = !this.state.isActive;
+    const contentTranslateX = isActive ? this.state.contentTranslateX : 0;
     this.setState(
       {
+        contentTranslateX,
         isActive,
       },
-      () => {
-        if (isActive && this.props.onOpen) {
-          this.props.onOpen(this.rootNode!);
-        }
-        if (!isActive && this.props.onClose) {
-          this.props.onClose(this.rootNode!);
+      async () => {
+        await this.__adjustDropDownContent();
+        if (isActive) {
+          this.__onOpen();
+          this.props.onOpen && this.props.onOpen(this.rootNode!);
+        } else {
+          this.__onClose();
+          this.props.onClose && this.props.onClose(this.rootNode!);
         }
 
         if (this.props.onTitleClick) {
@@ -54,6 +63,48 @@ export default class Dropdown extends Component<Props, State> {
         }
       }
     );
+  }
+
+  storedDocumentHeight: string | null = null;
+  checkInterval: number | undefined = undefined;
+
+  __onOpen() {
+    let firstPass = false;
+    let prevDcBottom: number | null = null;
+    this.checkInterval = window.setInterval(() => {
+      if (!this.rootNode || !this.state.isActive) return;
+      const windowHeight = window.innerHeight;
+      const dcBottom = (() => {
+        const dc = this.rootNode.querySelector('.dropdown__content');
+        return dc ? dc.getBoundingClientRect().bottom : 0;
+      })();
+      if (prevDcBottom === null && dcBottom <= windowHeight) return;
+      if (!firstPass) {
+        firstPass = true;
+        this.storedDocumentHeight = document.body.style.height;
+      }
+      if (dcBottom !== prevDcBottom) {
+        prevDcBottom = dcBottom;
+        document.body.style.height = dcBottom + 'px';
+      }
+    }, 100);
+  }
+
+  __onClose() {
+    window.clearInterval(this.checkInterval);
+    document.body.style.height = this.storedDocumentHeight;
+  }
+
+  async __adjustDropDownContent() {
+    if (!this.rootNode) return;
+    const dc = this.rootNode.querySelector<HTMLDivElement>('.dropdown__content');
+    if (!dc) return;
+    await sleep(10);
+    const rect = dc.getBoundingClientRect();
+    if (rect.left > 0) return;
+    this.setState({
+      contentTranslateX: -rect.left,
+    });
   }
 
   receiveMessage(e: { data: string | object }) {
@@ -64,9 +115,11 @@ export default class Dropdown extends Component<Props, State> {
       if (!this.state.isActive) return;
       this.setState(
         {
+          contentTranslateX: 0,
           isActive: false,
         },
         () => {
+          this.__onClose();
           this.props.onClose && this.props.onClose(this.rootNode!);
         }
       );
@@ -77,9 +130,11 @@ export default class Dropdown extends Component<Props, State> {
     if (!this.rootNode || this.rootNode.contains(e.target as Node) || !this.state.isActive) return;
     this.setState(
       {
+        contentTranslateX: 0,
         isActive: false,
       },
       () => {
+        this.__onClose();
         this.props.onClose && this.props.onClose(this.rootNode!);
       }
     );
@@ -114,7 +169,12 @@ export default class Dropdown extends Component<Props, State> {
           {title}
         </Button>
 
-        <div className="dropdown__content" tabIndex={-1} role="listbox">
+        <div
+          className="dropdown__content"
+          tabIndex={-1}
+          role="listbox"
+          style={{ transform: `translateX(${this.state.contentTranslateX}px)` }}
+        >
           {heading && <div className="dropdown__heading">{heading}</div>}
           <div className="dropdown__items">{children}</div>
         </div>
