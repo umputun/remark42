@@ -12,11 +12,12 @@ import (
 
 func TestEmail(t *testing.T) {
 	// Test failed start of the server.
-	email, err := NewEmail(context.Background(), EmailParams{})
+	email, err := NewEmail(EmailParams{From: "test@address"})
 	assert.Error(t, err, "No connection established with empty address and port zero")
 	assert.NotNil(t, email, "despite the error we got object reference")
 	assert.Equal(t, email.server, "")
 	assert.Equal(t, email.port, 0)
+	assert.Equal(t, email.from, "test@address")
 	assert.Equal(t, email.username, "")
 	assert.Equal(t, email.password, "")
 	assert.Equal(t, email.keepAlive, 30*time.Second, "default value if keepAlive is not defined is set to 30s")
@@ -38,6 +39,7 @@ func TestEmail(t *testing.T) {
 	go func() { _ = email.Send(context.Background(), req) }()
 	message := <-email.sendChan
 	assert.Equal(t, message.GetHeader("Subject"), []string{"New comment for \"post title\""})
+	assert.Equal(t, message.GetHeader("From"), []string{"test@address"})
 
 	assert.Equal(t, prepareBody(req), "from → to\n\norig\n\n↦ [post title](//example.org#remark42__comment-)")
 }

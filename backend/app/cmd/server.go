@@ -178,6 +178,7 @@ type NotifyGroup struct {
 	Email struct {
 		Server    string        `long:"server" env:"SERVER" description:"email server name"`
 		Port      int           `long:"port" env:"PORT" default:"587" description:"email server port"`
+		From      string        `long:"fromAddress" env:"FROM" description:"email sender address"`
 		Username  string        `long:"username" env:"USERNAME" description:"email username"`
 		Password  string        `long:"password" env:"PASSWORD" description:"email password"`
 		KeepAlive time.Duration `long:"keepalive" env:"KEEPALIVE" default:"30s" description:"duration to keep SMTP connection after last email sent"`
@@ -665,6 +666,7 @@ func (s *ServerCommand) makeNotify(dataStore *service.DataStore) (*notify.Servic
 		emailParams := notify.EmailParams{
 			Server:    s.Notify.Email.Server,
 			Port:      s.Notify.Email.Port,
+			From:      s.Notify.Email.From,
 			Username:  s.Notify.Email.Username,
 			Password:  s.Notify.Email.Password,
 			KeepAlive: s.Notify.Email.KeepAlive}

@@ -14,6 +14,7 @@ import (
 type EmailParams struct {
 	Server    string
 	Port      int
+	From      string
 	Username  string
 	Password  string
 	KeepAlive time.Duration
@@ -23,6 +24,7 @@ type EmailParams struct {
 type Email struct {
 	server    string
 	port      int
+	from      string
 	username  string
 	password  string
 	keepAlive time.Duration
@@ -38,6 +40,7 @@ func NewEmail(ctx context.Context, params EmailParams) (*Email, error) {
 	res := Email{
 		server:    params.Server,
 		port:      params.Port,
+		from:      params.From,
 		username:  params.Username,
 		password:  params.Password,
 		keepAlive: params.KeepAlive,
@@ -82,8 +85,8 @@ func (e *Email) Send(ctx context.Context, req request) error {
 
 	// Create message.
 	m := gomail.NewMessage()
-	// TODO: figure out where "from" and "to" addresses come from
-	//m.SetHeader("From", "no-reply@example.com")
+	m.SetHeader("From", e.from)
+	// TODO: figure out where "to" addresses come from
 	//m.SetAddressHeader("To", req.Address, req.Name)
 	m.SetHeader("Subject", fmt.Sprintf("New comment for \"%s\"", req.comment.PostTitle))
 	m.SetBody("text/html", messageBody)
