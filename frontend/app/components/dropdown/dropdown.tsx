@@ -47,24 +47,19 @@ export default class Dropdown extends Component<Props, State> {
     try {
       const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
 
-      if (data.clickOutside) {
-        if (this.state.isActive) {
-          this.setState({
-            isActive: false,
-          });
-        }
-      }
+      if (!data.clickOutside) return;
+      if (!this.state.isActive) return;
+      this.setState({
+        isActive: false,
+      });
     } catch (e) {}
   }
 
   onOutsideClick(e: MouseEvent) {
-    if (this.rootNode && !this.rootNode.contains(e.target as Node)) {
-      if (this.state.isActive) {
-        this.setState({
-          isActive: false,
-        });
-      }
-    }
+    if (!this.rootNode || this.rootNode.contains(e.target as Node) || !this.state.isActive) return;
+    this.setState({
+      isActive: false,
+    });
   }
 
   componentDidMount() {
