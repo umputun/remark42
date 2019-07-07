@@ -35,7 +35,7 @@ type Email struct {
 const emailConnectionKeepAlive = 30 * time.Second
 
 //NewEmail makes email object for notifications and run sending daemon
-func NewEmail(ctx context.Context, params EmailParams) (*Email, error) {
+func NewEmail(params EmailParams) (*Email, error) {
 
 	res := Email{
 		server:    params.Server,
@@ -52,27 +52,25 @@ func NewEmail(ctx context.Context, params EmailParams) (*Email, error) {
 		res.keepAlive = emailConnectionKeepAlive
 	}
 
-	log.Printf(
-		"[DEBUG] create new email notifier for server %s with user %s, keepalive=%s",
+	log.Printf("[DEBUG] create new email notifier for server %s with user %s, keepalive=%s",
 		res.server, res.username, res.keepAlive)
 
 	// Test connection before starting a daemon.
 	tmpConn, err := gomail.NewDialer(res.server, res.port, res.username, res.password).Dial()
 	if err != nil {
-		return &res, errors.Errorf(
-			"[WARN] error establishing test connecting to '%s':%d with username '%s': %s",
-			res.server, res.port, res.username, err)
+		return &res, errors.Wrapf(err, "error establishing test connecting to '%s':%d with username '%s'",
+			res.server, res.port, res.username)
 	}
 	if err = tmpConn.Close(); err != nil {
-		return &res, errors.Errorf(
-			"[WARN] error closing test connection to %s:%d: %s",
-			res.server, res.port, err)
+		return &res, errors.Wrapf(err, "error closing test connection to %s:%d",
+			res.server, res.port)
 	}
 
 	// Activate server goroutine.
 	go res.activate()
+	// TODO: server goroutine never dies! This exiter should be run once first time we get context
 	// Close the channel to stop the mail daemon
-	go func() { <-ctx.Done(); close(res.sendChan) }()
+	// go func() { <-ctx.Done(); close(res.sendChan) }()
 
 	return &res, nil
 }
@@ -134,17 +132,15 @@ func (e *Email) activate() {
 			if !open {
 				if s, err = d.Dial(); err != nil {
 					// Problems with connection, returning error and considering connection not established.
-					e.errChan <- errors.Errorf(
-						"error connecting to %s:%d with username %s: %s",
-						e.server, e.port, e.username, err)
+					e.errChan <- errors.Wrapf(err, "error connecting to %s:%d with username %s",
+						e.server, e.port, e.username)
 					break
 				}
 				open = true
 			}
 			if err = gomail.Send(s, m); err != nil {
-				e.errChan <- errors.Errorf(
-					"error sending to %s:%d: %s",
-					e.server, e.port, err)
+				e.errChan <- errors.Wrapf(err, "error sending to %s:%d",
+					e.server, e.port)
 			}
 			// Email sent successfully.
 			e.errChan <- nil
@@ -153,8 +149,7 @@ func (e *Email) activate() {
 			if open {
 				if err := s.Close(); err != nil {
 					// Problems with closing connection, considering connection still established.
-					log.Printf(
-						"[WARN] error closing connection with %s:%d with username %s: %s",
+					log.Printf("[WARN] error closing connection with %s:%d with username %s: %s",
 						e.server, e.port, e.username, err)
 					break
 				}
