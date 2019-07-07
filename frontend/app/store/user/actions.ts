@@ -8,20 +8,16 @@ import {
   USER_SET,
   USER_UNBAN,
   USER_BANLIST_SET,
-  USER_HIDELIST_SET_ACTION,
   USER_HIDELIST_SET,
-  USER_HIDE_ACTION,
   USER_HIDE,
-  USER_UNHIDE_ACTION,
   USER_UNHIDE,
   SETTINGS_VISIBLE_SET,
 } from './types';
-import { setComments, unsetCommentMode } from '../comments/actions';
-import { setUserVerified as uSetUserVerified, filterTree, mapTree } from '../comments/utils';
+import { unsetCommentMode } from '../comments/actions';
 import { IS_STORAGE_AVAILABLE, LS_HIDDEN_USERS_KEY } from '@app/common/constants';
 import { getItem } from '@app/common/local-storage';
-import { Dispatch } from 'redux';
 import { updateProvider } from '../provider/actions';
+import { COMMENTS_PATCH } from '../comments/types';
 
 export const fetchUser = (): StoreAction<Promise<User | null>> => async dispatch => {
   const user = await api.getUser();
@@ -78,23 +74,27 @@ export const blockUser = (
 
 export const unblockUser = (id: User['id']): StoreAction<Promise<void>> => async (dispatch, getState) => {
   await api.unblockUser(id);
-  const comments = mapTree(getState().comments, c => {
-    if (c.user.id !== id) return c;
-    if (!c.user.block) return c;
-    return { ...c, user: { ...c.user, block: false } };
-  });
   dispatch({
     type: USER_UNBAN,
     id,
   });
-  dispatch(setComments(comments));
+  const comments = Object.values(getState().comments).filter(c => c.user.id === id);
+
+  if (!comments.length) return;
+  const user = comments[0].user;
+
+  dispatch({
+    type: COMMENTS_PATCH,
+    ids: comments.map(c => c.id),
+    patch: { user: { ...user, block: false } },
+  });
 };
 
 export const fetchHiddenUsers = (): StoreAction<void> => dispatch => {
   if (!IS_STORAGE_AVAILABLE) return;
 
   const hiddenUsers = JSON.parse(getItem(LS_HIDDEN_USERS_KEY) || '{}');
-  return (dispatch as Dispatch<USER_HIDELIST_SET_ACTION>)({ type: USER_HIDELIST_SET, payload: hiddenUsers });
+  dispatch({ type: USER_HIDELIST_SET, payload: hiddenUsers });
 };
 
 export const hideUser = (user: User): StoreAction<void> => (dispatch, getState) => {
@@ -103,13 +103,18 @@ export const hideUser = (user: User): StoreAction<void> => (dispatch, getState) 
     hiddenUsers[user.id] = user;
     localStorage.setItem(LS_HIDDEN_USERS_KEY, JSON.stringify(hiddenUsers));
   }
-  (dispatch as Dispatch<USER_HIDE_ACTION>)({ type: USER_HIDE, user });
+  dispatch({ type: USER_HIDE, user });
 
-  const comments = getState().comments;
-  return dispatch(setComments(filterTree(comments, node => node.comment.user.id !== user.id)));
+  dispatch({
+    type: COMMENTS_PATCH,
+    ids: Object.values(getState().comments)
+      .filter(c => c.user.id === user.id)
+      .map(c => c.id),
+    patch: { hidden: true },
+  });
 };
 
-export const unhideUser = (userId: string): StoreAction<void> => dispatch => {
+export const unhideUser = (userId: string): StoreAction<void> => (dispatch, getState) => {
   if (IS_STORAGE_AVAILABLE) {
     const hiddenUsers = JSON.parse(getItem(LS_HIDDEN_USERS_KEY) || '{}');
     if (hiddenUsers.hasOwnProperty(userId)) {
@@ -117,7 +122,15 @@ export const unhideUser = (userId: string): StoreAction<void> => dispatch => {
     }
     localStorage.setItem(LS_HIDDEN_USERS_KEY, JSON.stringify(hiddenUsers));
   }
-  return (dispatch as Dispatch<USER_UNHIDE_ACTION>)({ type: USER_UNHIDE, id: userId });
+
+  dispatch({ type: USER_UNHIDE, id: userId });
+  dispatch({
+    type: COMMENTS_PATCH,
+    ids: Object.values(getState().comments)
+      .filter(c => c.user.id === userId)
+      .map(c => c.id),
+    patch: { hidden: false },
+  });
 };
 
 export const setVerifiedStatus = (id: User['id'], status: boolean): StoreAction<Promise<void>> => async (
@@ -129,8 +142,15 @@ export const setVerifiedStatus = (id: User['id'], status: boolean): StoreAction<
   } else {
     await api.removeVerifyStatus(id);
   }
-  const comments = getState().comments;
-  dispatch(setComments(uSetUserVerified(comments, id, status)));
+  const comments = Object.values(getState().comments).filter(c => c.user.id === id);
+  if (!comments.length) return;
+  const user = comments[0].user;
+
+  dispatch({
+    type: COMMENTS_PATCH,
+    ids: comments.map(c => c.id),
+    patch: { user: { ...user, verified: status } },
+  });
 };
 
 export const setSettingsVisibleState = (state: boolean): StoreAction<boolean> => dispatch => {

@@ -3,7 +3,7 @@ import { h } from 'preact';
 import { mount } from 'enzyme';
 import { Props, Comment } from './comment';
 import { User, Comment as CommentType, PostInfo } from '@app/common/types';
-import { delay } from '@app/store/comments/utils';
+import { sleep } from '@app/utils/sleep';
 
 const DefaultProps: Partial<Props> = {
   post_info: {
@@ -125,7 +125,7 @@ describe('<Comment />', () => {
           .getAttribute('aria-disabled')
       ).toStrictEqual('true');
       voteButtons.at(0).simulate('click');
-      await delay(100);
+      await sleep(100);
       expect(voteSpy).not.toBeCalled();
 
       expect(
@@ -135,7 +135,7 @@ describe('<Comment />', () => {
           .getAttribute('aria-disabled')
       ).toStrictEqual('false');
       voteButtons.at(1).simulate('click');
-      await delay(100);
+      await sleep(100);
       expect(voteSpy).toBeCalled();
     }, 30000);
 
@@ -159,7 +159,7 @@ describe('<Comment />', () => {
           .getAttribute('aria-disabled')
       ).toStrictEqual('true');
       voteButtons.at(1).simulate('click');
-      await delay(100);
+      await sleep(100);
       expect(voteSpy).not.toBeCalled();
 
       expect(
@@ -169,7 +169,7 @@ describe('<Comment />', () => {
           .getAttribute('aria-disabled')
       ).toStrictEqual('false');
       voteButtons.at(0).simulate('click');
-      await delay(100);
+      await sleep(100);
       expect(voteSpy).toBeCalled();
     }, 30000);
   });
