@@ -13,6 +13,8 @@ interface Props {
   onTitleClick?: () => void;
   mix?: string;
   theme: Theme;
+  onOpen?: (root: HTMLDivElement) => unknown;
+  onClose?: (root: HTMLDivElement) => unknown;
 }
 
 interface State {
@@ -34,13 +36,24 @@ export default class Dropdown extends Component<Props, State> {
   }
 
   onTitleClick() {
-    this.setState({
-      isActive: !this.state.isActive,
-    });
+    const isActive = !this.state.isActive;
+    this.setState(
+      {
+        isActive,
+      },
+      () => {
+        if (isActive && this.props.onOpen) {
+          this.props.onOpen(this.rootNode!);
+        }
+        if (!isActive && this.props.onClose) {
+          this.props.onClose(this.rootNode!);
+        }
 
-    if (this.props.onTitleClick) {
-      this.props.onTitleClick();
-    }
+        if (this.props.onTitleClick) {
+          this.props.onTitleClick();
+        }
+      }
+    );
   }
 
   receiveMessage(e: { data: string | object }) {
@@ -49,17 +62,27 @@ export default class Dropdown extends Component<Props, State> {
 
       if (!data.clickOutside) return;
       if (!this.state.isActive) return;
-      this.setState({
-        isActive: false,
-      });
+      this.setState(
+        {
+          isActive: false,
+        },
+        () => {
+          this.props.onClose && this.props.onClose(this.rootNode!);
+        }
+      );
     } catch (e) {}
   }
 
   onOutsideClick(e: MouseEvent) {
     if (!this.rootNode || this.rootNode.contains(e.target as Node) || !this.state.isActive) return;
-    this.setState({
-      isActive: false,
-    });
+    this.setState(
+      {
+        isActive: false,
+      },
+      () => {
+        this.props.onClose && this.props.onClose(this.rootNode!);
+      }
+    );
   }
 
   componentDidMount() {
