@@ -76,23 +76,25 @@ export default class Dropdown extends Component<Props, State> {
       const windowHeight = window.innerHeight;
       const dcBottom = (() => {
         const dc = this.rootNode.querySelector('.dropdown__content');
-        return dc ? dc.getBoundingClientRect().bottom : 0;
+        if (!dc) return 0;
+        const rect = dc.getBoundingClientRect();
+        return Math.abs(rect.top) + rect.height;
       })();
       if (prevDcBottom === null && dcBottom <= windowHeight) return;
       if (!firstPass) {
         firstPass = true;
-        this.storedDocumentHeight = document.body.style.height;
+        this.storedDocumentHeight = document.body.style.minHeight;
       }
       if (dcBottom !== prevDcBottom) {
         prevDcBottom = dcBottom;
-        document.body.style.height = dcBottom + 'px';
+        document.body.style.minHeight = dcBottom + 'px';
       }
     }, 100);
   }
 
   __onClose() {
     window.clearInterval(this.checkInterval);
-    document.body.style.height = this.storedDocumentHeight;
+    document.body.style.minHeight = this.storedDocumentHeight;
   }
 
   async __adjustDropDownContent() {
@@ -101,7 +103,16 @@ export default class Dropdown extends Component<Props, State> {
     if (!dc) return;
     await sleep(10);
     const rect = dc.getBoundingClientRect();
-    if (rect.left > 0) return;
+    if (rect.left > 0) {
+      const wWindow = window.innerWidth;
+      if (rect.right <= wWindow) return;
+      const delta = rect.right - wWindow;
+      const max = Math.min(rect.left, delta);
+      this.setState({
+        contentTranslateX: -max,
+      });
+      return;
+    }
     this.setState({
       contentTranslateX: -rect.left,
     });
