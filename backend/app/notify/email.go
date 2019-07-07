@@ -138,12 +138,8 @@ func (e *Email) activate() {
 				}
 				open = true
 			}
-			if err = gomail.Send(s, m); err != nil {
-				e.errChan <- errors.Wrapf(err, "error sending to %s:%d",
-					e.server, e.port)
-			}
-			// Email sent successfully.
-			e.errChan <- nil
+			err = gomail.Send(s, m)
+			e.errChan <- errors.Wrapf(err, "error sending to %s:%d", e.server, e.port)
 		// Close the connection to the SMTP server if no email was sent in the keepAlive period.
 		case <-time.After(e.keepAlive):
 			if open {
