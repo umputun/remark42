@@ -23,19 +23,20 @@ func TestEmptyEmailServer(t *testing.T) {
 	assert.Equal(t, "email: ''@'':0", email.String())
 }
 
-func TestBuildMessage(t *testing.T) {
+func TestBuildMessageFromRequest(t *testing.T) {
 	email, _ := NewEmail(EmailParams{From: "noreply@example.org"})
 	c := store.Comment{Text: "some text"}
 	c.User.Name = "@from_user"
 	c.Locator.URL = "//example.org"
 	c.Orig = "orig"
 	req := request{comment: c}
-	mgs := email.buildMessage(req, "test_address@example.com")
+	mgs := email.buildMessageFromRequest(req, "test_address@example.com")
 	emptyTitleMessage := `From: noreply@example.org
 To: test_address@example.com
 Subject: New comment
 MIME-version: 1.0;
 Content-Type: text/html; charset="UTF-8";
+
 @from_user
 
 orig
@@ -52,13 +53,29 @@ To: test_address@example.com
 Subject: New comment for "post title"
 MIME-version: 1.0;
 Content-Type: text/html; charset="UTF-8";
+
 @from_user → @to_user
 
 orig
 
 ↦ <a href="//example.org#remark42__comment-">post title</a>`
-	mgs = email.buildMessage(req, "test_address@example.com")
+	mgs = email.buildMessageFromRequest(req, "test_address@example.com")
 	assert.Equal(t, filledTitleMessage, mgs)
+}
+
+func TestBuildMessage(t *testing.T) {
+	email := Email{from: "from@email"}
+	msg := email.BuildMessage("test_subj", "test_body", "recepient@email", "")
+	expectedMsg := `From: from@email
+To: recepient@email
+Subject: test_subj
+
+test_body`
+	assert.Equal(t, expectedMsg, msg)
+	msg = email.BuildMessage("test_subj", "test_body", "recepient@email", "text/html")
+	expectedLines := `MIME-version: 1.0;
+Content-Type: text/html; charset="UTF-8";`
+	assert.Contains(t, msg, expectedLines)
 }
 
 func TestConnectErrors(t *testing.T) {

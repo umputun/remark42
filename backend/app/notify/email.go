@@ -64,7 +64,7 @@ func NewEmail(params EmailParams) (*Email, error) {
 // Send email from request to address in settings
 func (e *Email) Send(ctx context.Context, req request) error {
 	log.Printf("[DEBUG] send notification via %s, comment id %s", e, req.comment.ID)
-	msg := e.buildMessage(req, "test@localhost")
+	msg := e.buildMessageFromRequest(req, "test@localhost")
 	return e.SendEmail(msg)
 }
 
@@ -78,25 +78,32 @@ func (e *Email) String() string {
 	return fmt.Sprintf("email: '%s'@'%s':%d", e.username, e.host, e.port)
 }
 
-//buildMessage generates email message based on request
-func (e *Email) buildMessage(req request, to string) (message string) {
-	message += fmt.Sprintf("From: %s\n", e.from)
-	message += fmt.Sprintf("To: %s\n", to)
+//buildMessageFromRequest generates email message based on request
+func (e *Email) buildMessageFromRequest(req request, to string) (message string) {
 	subject := "New comment"
 	link := fmt.Sprintf("↦ <a href=\"%s\">original comment</a>", req.comment.Locator.URL+uiNav+req.comment.ID)
 	if req.comment.PostTitle != "" {
 		link = fmt.Sprintf("↦ <a href=\"%s\">%s</a>", req.comment.Locator.URL+uiNav+req.comment.ID, req.comment.PostTitle)
 		subject += fmt.Sprintf(" for \"%s\"", req.comment.PostTitle)
 	}
-	message += fmt.Sprintf("Subject: %s\n", subject)
-	message += "MIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";\n"
-
 	from := req.comment.User.Name
 	if req.comment.ParentID != "" {
 		from += " → " + req.parent.User.Name
 	}
 	// TODO: message looks bad, review it
-	message += fmt.Sprintf("%s\n\n%s\n\n%s", from, req.comment.Orig, link)
+	msg := fmt.Sprintf("%s\n\n%s\n\n%s", from, req.comment.Orig, link)
+	return e.BuildMessage(subject, msg, to, "text/html")
+}
+
+//BuildMessage generates email message
+func (e *Email) BuildMessage(subject, msg, to, contentType string) (message string) {
+	message += fmt.Sprintf("From: %s\n", e.from)
+	message += fmt.Sprintf("To: %s\n", to)
+	message += fmt.Sprintf("Subject: %s\n", subject)
+	if contentType != "" {
+		message += fmt.Sprintf("MIME-version: 1.0;\nContent-Type: %s; charset=\"UTF-8\";\n", contentType)
+	}
+	message += "\n" + msg
 	return message
 }
 
