@@ -2,155 +2,129 @@ package notify
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
+	"net"
+	"net/smtp"
 	"time"
 
 	log "github.com/go-pkgz/lgr"
 	"github.com/pkg/errors"
-	"gopkg.in/gomail.v2"
 )
 
 // EmailParams contain settings for email set up
 type EmailParams struct {
-	Server    string
-	Port      int
-	From      string
-	Username  string
-	Password  string
-	KeepAlive time.Duration
+	Host     string        // SMTP host
+	Port     int           // SMTP port
+	TLS      bool          // TLS auth
+	From     string        // From email field
+	Username string        // user name
+	Password string        // password
+	TimeOut  time.Duration // TLS connection timeout
 }
 
 // Email implements notify.Destination for email
 type Email struct {
-	server    string
-	port      int
-	from      string
-	username  string
-	password  string
-	keepAlive time.Duration
-	sendChan  chan *gomail.Message
-	errChan   chan error
+	connection *smtp.Client
+	host       string        // SMTP host
+	port       int           // SMTP port
+	tls        bool          // TLS auth
+	from       string        // From email field
+	username   string        // user name
+	password   string        // password
+	timeOut    time.Duration // TLS connection timeout
 }
 
-const emailConnectionKeepAlive = 30 * time.Second
+const emailConnectionTimeOut = 10 * time.Second
 
 //NewEmail makes email object for notifications and run sending daemon
 func NewEmail(params EmailParams) (*Email, error) {
 
 	res := Email{
-		server:    params.Server,
-		port:      params.Port,
-		from:      params.From,
-		username:  params.Username,
-		password:  params.Password,
-		keepAlive: params.KeepAlive,
-		sendChan:  make(chan *gomail.Message),
-		errChan:   make(chan error),
+		host:     params.Host,
+		port:     params.Port,
+		tls:      params.TLS,
+		from:     params.From,
+		username: params.Username,
+		password: params.Password,
+		timeOut:  params.TimeOut,
 	}
-
-	if res.keepAlive == 0 {
-		res.keepAlive = emailConnectionKeepAlive
+	if res.timeOut == 0 {
+		res.timeOut = emailConnectionTimeOut
 	}
+	log.Printf("[DEBUG] create new email notifier for server %s with user %s, timeout=%s",
+		res.host, res.username, res.timeOut)
 
-	log.Printf("[DEBUG] create new email notifier for server %s with user %s, keepalive=%s",
-		res.server, res.username, res.keepAlive)
+	var err error
+	res.connection, err = res.client()
 
-	// Test connection before starting a daemon.
-	tmpConn, err := gomail.NewDialer(res.server, res.port, res.username, res.password).Dial()
-	if err != nil {
-		return &res, errors.Wrapf(err, "error establishing test connecting to '%s':%d with username '%s'",
-			res.server, res.port, res.username)
-	}
-	if err = tmpConn.Close(); err != nil {
-		return &res, errors.Wrapf(err, "error closing test connection to %s:%d",
-			res.server, res.port)
-	}
-
-	// Activate server goroutine.
-	go res.activate()
-	// TODO: server goroutine never dies! This exiter should be run once first time we get context
-	// Close the channel to stop the mail daemon
-	// go func() { <-ctx.Done(); close(res.sendChan) }()
-
-	return &res, nil
+	return &res, err
 }
 
 // Send email from request to address in settings
 func (e *Email) Send(ctx context.Context, req request) error {
 	log.Printf("[DEBUG] send notification via %s, comment id %s", e, req.comment.ID)
+	msg := e.buildMessage(req, "test@localhost")
+	return e.SendEmail(msg)
+}
 
-	messageBody := prepareBody(req)
-
-	// Create message.
-	m := gomail.NewMessage()
-	m.SetHeader("From", e.from)
-	// TODO: figure out where "to" addresses come from
-	//m.SetAddressHeader("To", req.Address, req.Name)
-	m.SetHeader("Subject", fmt.Sprintf("New comment for \"%s\"", req.comment.PostTitle))
-	m.SetBody("text/html", messageBody)
-
-	// Wait for ability to send message and return error from error channel after sending it.
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case e.sendChan <- m:
-		return <-e.errChan
-	}
+// SendEmail sends prepared message
+func (e *Email) SendEmail(message string) error {
+	// TODO: write send logic reusing e.connection
+	return nil
 }
 
 func (e *Email) String() string {
-	return fmt.Sprintf("email: '%s'@'%s':%d", e.username, e.server, e.port)
+	return fmt.Sprintf("email: '%s'@'%s':%d", e.username, e.host, e.port)
 }
 
-//prepareBody generates email message text based on request
-func prepareBody(req request) string {
+//buildMessage generates email message based on request
+func (e *Email) buildMessage(req request, to string) (message string) {
+	message += fmt.Sprintf("From: %s\n", e.from)
+	message += fmt.Sprintf("To: %s\n", to)
+	subject := "New comment"
+	link := fmt.Sprintf("↦ <a href=\"%s\">original comment</a>", req.comment.Locator.URL+uiNav+req.comment.ID)
+	if req.comment.PostTitle != "" {
+		link = fmt.Sprintf("↦ <a href=\"%s\">%s</a>", req.comment.Locator.URL+uiNav+req.comment.ID, req.comment.PostTitle)
+		subject += fmt.Sprintf(" for \"%s\"", req.comment.PostTitle)
+	}
+	message += fmt.Sprintf("Subject: %s\n", subject)
+	message += "MIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";\n"
+
 	from := req.comment.User.Name
 	if req.comment.ParentID != "" {
 		from += " → " + req.parent.User.Name
 	}
-	link := fmt.Sprintf("↦ [original comment](%s)", req.comment.Locator.URL+uiNav+req.comment.ID)
-	if req.comment.PostTitle != "" {
-		link = fmt.Sprintf("↦ [%s](%s)", req.comment.PostTitle, req.comment.Locator.URL+uiNav+req.comment.ID)
-	}
-	body := fmt.Sprintf("%s\n\n%s\n\n%s", from, req.comment.Orig, link)
-	return body
+	// TODO: message looks bad, review it
+	message += fmt.Sprintf("%s\n\n%s\n\n%s", from, req.comment.Orig, link)
+	return message
 }
 
-func (e *Email) activate() {
-	d := gomail.NewDialer(e.server, e.port, e.username, e.password)
-
-	var s gomail.SendCloser
-	var err error
-	open := false
-	for {
-		select {
-		case m, ok := <-e.sendChan:
-			if !ok {
-				close(e.errChan)
-				return
-			}
-			if !open {
-				if s, err = d.Dial(); err != nil {
-					// Problems with connection, returning error and considering connection not established.
-					e.errChan <- errors.Wrapf(err, "error connecting to %s:%d with username %s",
-						e.server, e.port, e.username)
-					break
-				}
-				open = true
-			}
-			err = gomail.Send(s, m)
-			e.errChan <- errors.Wrapf(err, "error sending to %s:%d", e.server, e.port)
-		// Close the connection to the SMTP server if no email was sent in the keepAlive period.
-		case <-time.After(e.keepAlive):
-			if open {
-				if err := s.Close(); err != nil {
-					// Problems with closing connection, considering connection still established.
-					log.Printf("[WARN] error closing connection with %s:%d with username %s: %s",
-						e.server, e.port, e.username, err)
-					break
-				}
-				open = false
-			}
+func (e *Email) client() (c *smtp.Client, err error) {
+	srvAddress := fmt.Sprintf("%s:%d", e.host, e.port)
+	if e.tls {
+		tlsConf := &tls.Config{
+			InsecureSkipVerify: false,
+			ServerName:         e.host,
 		}
+		conn, err := tls.Dial("tcp", srvAddress, tlsConf)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to dial smtp tls to %s", srvAddress)
+		}
+		if c, err = smtp.NewClient(conn, e.host); err != nil {
+			return nil, errors.Wrapf(err, "failed to make smtp client for %s", srvAddress)
+		}
+		return c, nil
 	}
+
+	conn, err := net.DialTimeout("tcp", srvAddress, e.timeOut)
+	if err != nil {
+		return nil, errors.Wrapf(err, "timeout connecting to %s", srvAddress)
+	}
+
+	c, err = smtp.NewClient(conn, srvAddress)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to dial")
+	}
+	return c, nil
 }
