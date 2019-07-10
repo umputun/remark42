@@ -58,7 +58,7 @@ interface State {
 
 const Labels = {
   main: 'Send',
-  edit: 'Edit',
+  edit: 'Save',
   reply: 'Reply',
 };
 
