@@ -354,7 +354,11 @@ export class Input extends Component<Props, State> {
         onDrop={this.onDrop}
       >
         <div className="input__control-panel">
-          <MarkdownToolbar textareaId={this.textareaId} />
+          <MarkdownToolbar
+            allowUpload={Boolean(this.props.uploadImage)}
+            uploadImages={this.uploadImages}
+            textareaId={this.textareaId}
+          />
         </div>
         <div className="input__field-wrapper">
           <TextareaAutosize
