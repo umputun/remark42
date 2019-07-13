@@ -68,6 +68,8 @@ github.com/hashicorp/golang-lru
 github.com/hashicorp/golang-lru/simplelru
 # github.com/jessevdk/go-flags v0.0.0-20180331124232-1c38ed7ad0cc
 github.com/jessevdk/go-flags
+# github.com/kyokomi/emoji v2.1.0+incompatible
+github.com/kyokomi/emoji
 # github.com/microcosm-cc/bluemonday v1.0.2
 github.com/microcosm-cc/bluemonday
 # github.com/nullrocks/identicon v0.0.0-20180626043057-7875f45b0022

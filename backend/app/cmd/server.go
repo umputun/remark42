@@ -15,6 +15,7 @@ import (
 
 	bolt "github.com/coreos/bbolt"
 	log "github.com/go-pkgz/lgr"
+	"github.com/kyokomi/emoji"
 	authcache "github.com/patrickmn/go-cache"
 	"github.com/pkg/errors"
 
@@ -64,6 +65,7 @@ type ServerCommand struct {
 	WebRoot         string        `long:"web-root" env:"REMARK_WEB_ROOT" default:"./web" description:"web root directory"`
 	UpdateLimit     float64       `long:"update-limit" env:"UPDATE_LIMIT" default:"0.5" description:"updates/sec limit"`
 	RestrictedWords []string      `long:"restricted-words" env:"RESTRICTED_WORDS" description:"words prohibited to use in comments" env-delim:","`
+	EnableEmoji     bool          `long:"emoji" env:"EMOJI" description:"enable emoji"`
 
 	Auth struct {
 		TTL struct {
@@ -305,7 +307,11 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 	}
 
 	imgProxy := &proxy.Image{Enabled: s.ImageProxy, RoutePath: "/api/v1/img", RemarkURL: s.RemarkURL}
-	commentFormatter := store.NewCommentFormatter(imgProxy)
+	emojiFmt :=  store.CommentConverterFunc(func(text string) string { return text })
+	if s.EnableEmoji {
+		emojiFmt = func(text string) string { return emoji.Sprint(text) }
+	}
+	commentFormatter := store.NewCommentFormatter(imgProxy, emojiFmt)
 
 	sslConfig, err := s.makeSSLConfig()
 	if err != nil {

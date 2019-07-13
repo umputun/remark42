@@ -47,5 +47,6 @@ services:
             - NOTIFY_TYPE
             - NOTIFY_TELEGRAM_TOKEN
             - NOTIFY_TELEGRAM_CHAN
+            - EMOJI=true
         volumes:
             - ./var:/srv/var 

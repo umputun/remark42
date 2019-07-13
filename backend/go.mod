@@ -24,6 +24,7 @@ require (
 	github.com/gorilla/feeds v1.1.1
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/jessevdk/go-flags v0.0.0-20180331124232-1c38ed7ad0cc
+	github.com/kyokomi/emoji v2.1.0+incompatible
 	github.com/microcosm-cc/bluemonday v1.0.2
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/errors v0.8.1

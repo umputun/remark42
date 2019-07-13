@@ -148,6 +148,7 @@ _this is the recommended way to run remark42_
 | edit-time               | EDIT_TIME               | `5m`                     | edit window                                      |
 | read-age                | READONLY_AGE            |                          | read-only age of comments, days                  |
 | img-proxy               | IMG_PROXY               | `false`                  | enable http->https proxy for images              |
+| emoji                   | EMOJI                   | `false`                  | enable emoji support                             |
 | port                    | REMARK_PORT             | `8080`                   | web server port                                  |
 | web-root                | REMARK_WEB_ROOT         | `./web`                  | web server root directory                        |
 | update-limit            | UPDATE_LIMIT            | `0.5`                    | updates/sec limit                                |
