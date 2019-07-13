@@ -40,25 +40,25 @@ func TestNative_Export(t *testing.T) {
 
 	dec := json.NewDecoder(strings.NewReader(c1))
 
-	meta := struct {
+	m := struct {
 		Version int                    `json:"version"`
 		Users   []service.UserMetaData `json:"users"`
 		Posts   []service.PostMetaData `json:"posts"`
 	}{}
 
-	require.NoError(t, dec.Decode(&meta), "decode meta")
+	require.NoError(t, dec.Decode(&m), "decode meta")
 
-	assert.Equal(t, 2, len(meta.Users))
-	assert.Equal(t, "user1", meta.Users[0].ID)
-	assert.Equal(t, false, meta.Users[0].Blocked.Status)
-	assert.Equal(t, true, meta.Users[0].Verified)
-	assert.Equal(t, "user2", meta.Users[1].ID)
-	assert.Equal(t, true, meta.Users[1].Blocked.Status)
-	assert.Equal(t, false, meta.Users[1].Verified)
+	assert.Equal(t, 2, len(m.Users))
+	assert.Equal(t, "user1", m.Users[0].ID)
+	assert.Equal(t, false, m.Users[0].Blocked.Status)
+	assert.Equal(t, true, m.Users[0].Verified)
+	assert.Equal(t, "user2", m.Users[1].ID)
+	assert.Equal(t, true, m.Users[1].Blocked.Status)
+	assert.Equal(t, false, m.Users[1].Verified)
 
-	assert.Equal(t, 1, len(meta.Posts))
-	assert.Equal(t, "https://radio-t.com", meta.Posts[0].URL)
-	assert.Equal(t, true, meta.Posts[0].ReadOnly)
+	assert.Equal(t, 1, len(m.Posts))
+	assert.Equal(t, "https://radio-t.com", m.Posts[0].URL)
+	assert.Equal(t, true, m.Posts[0].ReadOnly)
 
 	comments := [3]store.Comment{}
 

@@ -579,8 +579,8 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) {
 			SMTPPassword: s.Auth.Email.SMTPPassword,
 			TimeOut:      s.Auth.Email.TimeOut,
 		}
-		s := sender.NewEmailClient(params, log.Default())
-		authenticator.AddVerifProvider("email", msgTemplate, s)
+		sndr := sender.NewEmailClient(params, log.Default())
+		authenticator.AddVerifProvider("email", msgTemplate, sndr)
 	}
 
 	if s.Auth.Anonymous {

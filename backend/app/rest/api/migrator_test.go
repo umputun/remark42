@@ -26,6 +26,7 @@ func TestMigrator_Import(t *testing.T) {
 
 	client := &http.Client{Timeout: 1 * time.Second}
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=radio-t&provider=native", r)
+	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
 	assert.Nil(t, err)
 	resp, err := client.Do(req)
@@ -116,6 +117,7 @@ func TestMigrator_ImportDouble(t *testing.T) {
 	r := strings.NewReader(`{"version":1}` + strings.Join(recs, "\n")) // reader with 10k records
 	client := &http.Client{Timeout: 1 * time.Second}
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=radio-t&provider=native", r)
+	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
 	assert.Nil(t, err)
 	resp, err := client.Do(req)
@@ -124,6 +126,7 @@ func TestMigrator_ImportDouble(t *testing.T) {
 
 	client = &http.Client{Timeout: 1 * time.Second}
 	req, err = http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=radio-t&provider=native", r)
+	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
 	assert.Nil(t, err)
 	resp, err = client.Do(req)
@@ -144,6 +147,7 @@ func TestMigrator_ImportWaitExpired(t *testing.T) {
 	r := strings.NewReader(`{"version":1}` + strings.Join(recs, "\n")) // reader with 10k records
 	client := &http.Client{Timeout: 1 * time.Second}
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=radio-t&provider=native", r)
+	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
 	require.Nil(t, err)
 	resp, err := client.Do(req)
@@ -152,6 +156,7 @@ func TestMigrator_ImportWaitExpired(t *testing.T) {
 
 	client = &http.Client{Timeout: 10 * time.Second}
 	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/import/wait?site=radio-t&timeout=100ms", nil)
+	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
 	assert.NoError(t, err)
 	resp, err = client.Do(req)
@@ -220,6 +225,7 @@ func TestMigrator_Export(t *testing.T) {
 func waitForImportCompletion(t *testing.T, ts *httptest.Server) {
 	client := &http.Client{Timeout: 10 * time.Second}
 	req, err := http.NewRequest("GET", ts.URL+"/api/v1/admin/import/wait?site=radio-t", nil)
+	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
 	assert.NoError(t, err)
 	resp, err := client.Do(req)
