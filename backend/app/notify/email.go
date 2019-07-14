@@ -112,6 +112,8 @@ func (e *Email) sendEmail(message, to string) error {
 	if e.SMTPClient == nil { // if client not set make new net/smtp
 		c, err := e.client()
 		if err != nil {
+			e.count--
+			e.sendMutex.Unlock()
 			return errors.Wrap(err, "failed to make smtp client")
 		}
 		e.SMTPClient = c
