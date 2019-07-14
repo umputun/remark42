@@ -109,13 +109,12 @@ func (e *Email) Send(ctx context.Context, req request) error {
 func (e *Email) sendEmail(message, to string) error {
 	e.count++
 	e.sendMutex.Lock()
-	client := e.SMTPClient
-	if client == nil { // if client not set make new net/smtp
+	if e.SMTPClient == nil { // if client not set make new net/smtp
 		c, err := e.client()
 		if err != nil {
 			return errors.Wrap(err, "failed to make smtp client")
 		}
-		client = c
+		e.SMTPClient = c
 	}
 
 	defer func() {
