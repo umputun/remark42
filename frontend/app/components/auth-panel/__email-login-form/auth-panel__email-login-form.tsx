@@ -181,7 +181,7 @@ export class EmailLoginForm extends Component<Props, State> {
           />
           <input
             className="auth-panel-email-login-form__input"
-            type="text"
+            type="email"
             placeholder="Email Address"
             value={this.state.addressValue}
             onInput={this.onAddressChange}

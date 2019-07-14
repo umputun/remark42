@@ -161,7 +161,7 @@ func TestServer_RssWithReply(t *testing.T) {
 		    <item>
 		      <title>developer one &gt; developer one</title>
 		      <link>https://radio-t.com/blah10#remark42__comment-comment-id-2</link>
-		      <description>xyz test</description>
+              <description>xyz test&lt;p&gt;&lt;blockquote&gt;&lt;summary&gt;test 123&lt;/summary&gt;&lt;/blockquote&gt;&lt;/p&gt;</description>
 		      <author>developer one</author>
               <guid>comment-id-2</guid>
 		      <pubDate>%s</pubDate>
@@ -247,7 +247,7 @@ func TestServer_RssReplies(t *testing.T) {
 	        <item>
 		      <title>user3 &gt; user1</title>
 		      <link>https://radio-t.com/blah1#remark42__comment-comment-3</link>
-		      <description>reply to c1 from user3</description>
+		      <description>reply to c1 from user3&lt;p&gt;&lt;blockquote&gt;&lt;summary&gt;c1&lt;/summary&gt;&lt;/blockquote&gt;&lt;/p&gt;</description>
 		      <author>user3</author>
               <guid>comment-3</guid> 
 		      <pubDate>%s</pubDate>
@@ -255,7 +255,7 @@ func TestServer_RssReplies(t *testing.T) {
 			<item>
 		      <title>user2 &gt; user1</title>
 		      <link>https://radio-t.com/blah1#remark42__comment-comment-2</link>
-		      <description>reply to c1 from user2</description>
+		      <description>reply to c1 from user2&lt;p&gt;&lt;blockquote&gt;&lt;summary&gt;c1&lt;/summary&gt;&lt;/blockquote&gt;&lt;/p&gt;</description>
 		      <author>user2</author>
               <guid>comment-2</guid> 
 		      <pubDate>%s</pubDate>

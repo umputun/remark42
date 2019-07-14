@@ -441,14 +441,14 @@ func addFileServer(r chi.Router, path string, root http.FileSystem) {
 	path += "*"
 
 	r.With(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(20, nil)), middleware.Timeout(10*time.Second)).
-		Get(path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		Get(path, func(w http.ResponseWriter, r *http.Request) {
 			// don't show dirs, just serve files
 			if strings.HasSuffix(r.URL.Path, "/") && len(r.URL.Path) > 1 && r.URL.Path != (origPath+"/") {
 				http.NotFound(w, r)
 				return
 			}
 			webFS.ServeHTTP(w, r)
-		}))
+		})
 }
 
 func encodeJSONWithHTML(v interface{}) ([]byte, error) {

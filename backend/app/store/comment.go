@@ -3,6 +3,7 @@ package store
 import (
 	"html/template"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/microcosm-cc/bluemonday"
@@ -66,6 +67,7 @@ const (
 
 // Maximum length for URL text shortening.
 const shortURLLen = 48
+const snippetLen = 200
 
 // PrepareUntrusted pre-processes a comment received from untrusted source by clearing all
 // autogen fields and reset everything users not supposed to provide
@@ -106,4 +108,25 @@ func (c *Comment) Sanitize() {
 	c.User.ID = template.HTMLEscapeString(c.User.ID)
 	c.User.Name = template.HTMLEscapeString(c.User.Name)
 	c.User.Picture = p.Sanitize(c.User.Picture)
+}
+
+// Snippet from comment's text
+func (c *Comment) Snippet(limit int) string {
+	if limit <= 0 {
+		limit = snippetLen
+	}
+	cleanText := strings.Replace(c.Text, "\n", " ", -1)
+	size := len([]rune(cleanText))
+	if size < limit {
+		return cleanText
+	}
+	snippet := []rune(cleanText)[:size]
+	// go back in snippet and found the first space
+	for i := len(snippet) - 1; i >= 0; i-- {
+		if snippet[i] == ' ' {
+			snippet = snippet[:i]
+			break
+		}
+	}
+	return string(snippet) + " ..."
 }

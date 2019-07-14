@@ -45,8 +45,8 @@ func TestServerApp(t *testing.T) {
 	client := http.Client{Timeout: 5 * time.Second}
 	req, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
 		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "remark"}}`))
+	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
-	require.Nil(t, err)
 	resp, err = client.Do(req)
 	require.Nil(t, err)
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
@@ -381,10 +381,10 @@ func TestServerAuthHooks(t *testing.T) {
 	client := http.Client{Timeout: 1 * time.Second}
 	req, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
 		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/p/2018/12/29/podcast-630/", "site": "remark"}}`))
+	require.NoError(t, err)
 	req.Header.Set("X-JWT", tk)
-	require.Nil(t, err)
 	resp, err := client.Do(req)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusCreated, resp.StatusCode, "non-blocked user able to post")
 
@@ -406,8 +406,8 @@ func TestServerAuthHooks(t *testing.T) {
 	// try add a comment with blocked user
 	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
 		strings.NewReader(`{"text": "test 123 blah", "locator":{"url": "https://radio-t.com/blah1", "site": "remark"}}`))
+	require.NoError(t, err)
 	req.Header.Set("X-JWT", tk)
-	require.Nil(t, err)
 	resp, err = client.Do(req)
 	require.Nil(t, err)
 	defer resp.Body.Close()
@@ -444,11 +444,10 @@ func prepServerApp(t *testing.T, duration time.Duration, fn func(o ServerCommand
 	require.Nil(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	go func() {
-		time.Sleep(duration)
+	time.AfterFunc(duration, func() {
 		log.Print("[TEST] terminate app")
 		cancel()
-	}()
+	})
 	rand.Seed(time.Now().UnixNano())
 	return app, ctx
 }

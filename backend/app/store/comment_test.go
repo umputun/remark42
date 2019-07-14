@@ -1,6 +1,7 @@
 package store
 
 import (
+	"strconv"
 	"testing"
 	"time"
 
@@ -127,4 +128,26 @@ func TestComment_SetDeletedHard(t *testing.T) {
 	assert.Nil(t, comment.Edit)
 	assert.False(t, comment.Pin)
 	assert.Equal(t, User{Name: "deleted", ID: "deleted", Picture: "", Admin: false, Blocked: false, IP: ""}, comment.User)
+}
+
+func TestComment_Snippet(t *testing.T) {
+	tbl := []struct {
+		limit int
+		inp   string
+		out   string
+	}{
+		{0, "", ""},
+		{-1, "test\nblah", "test blah"},
+		{5, "test\nblah", "test ..."},
+		{5, "xyz12345 xxx", "xyz12345 ..."},
+		{10, "xyz12345 xxx\ntest 123456", "xyz12345 xxx test ..."},
+	}
+
+	for i, tt := range tbl {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			c := Comment{Text: tt.inp}
+			out := c.Snippet(tt.limit)
+			assert.Equal(t, tt.out, out)
+		})
+	}
 }
