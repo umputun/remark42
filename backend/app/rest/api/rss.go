@@ -159,6 +159,7 @@ func (s *rss) toRssFeed(url string, comments []store.Comment, description string
 			parentComment, err := s.dataService.Get(c.Locator, c.ParentID, store.User{})
 			if err == nil {
 				f.Title = fmt.Sprintf("%s > %s", c.User.Name, parentComment.User.Name)
+				f.Description = f.Description + "<p><summary>" + parentComment.Snippet(300) + "</summary>"
 			} else {
 				log.Printf("[WARN] failed to get info about parent comment, %s", err)
 			}
