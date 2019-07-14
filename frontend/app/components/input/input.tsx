@@ -92,6 +92,7 @@ export class Input extends Component<Props, State> {
     this.appendError = this.appendError.bind(this);
     this.uploadImage = this.uploadImage.bind(this);
     this.uploadImages = this.uploadImages.bind(this);
+    this.onPaste = this.onPaste.bind(this);
   }
 
   componentWillReceiveProps(nextProps: Props) {
@@ -133,6 +134,13 @@ export class Input extends Component<Props, State> {
       preview: null,
       text: (e.target as HTMLInputElement).value,
     });
+  }
+
+  onPaste(e: ClipboardEvent) {
+    if (e.clipboardData && e.clipboardData.files.length > 0) {
+      const files = (e.clipboardData.files as unknown) as File[];
+      this.uploadImages(files);
+    }
   }
 
   send(e: Event) {
@@ -363,6 +371,7 @@ export class Input extends Component<Props, State> {
         <div className="input__field-wrapper">
           <TextareaAutosize
             id={this.textareaId}
+            onPaste={this.onPaste}
             ref={ref => (this.textAreaRef = ref)}
             className="input__field"
             placeholder="Your comment here"
