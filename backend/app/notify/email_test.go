@@ -1,41 +1,46 @@
 package notify
 
 import (
+	"bytes"
+	"context"
+	"errors"
+	"io"
+	"net/smtp"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/umputun/remark/backend/app/store"
 )
 
-func TestEmptyEmailServer(t *testing.T) {
-	// Test failed start of the server.
-	email, err := NewEmail(EmailParams{})
-	assert.Error(t, err, "no connection established with empty address and port zero")
-	assert.NotNil(t, email, "despite the error we got object reference")
-	assert.Nil(t, email.connection, "connection was not created due to error")
-	assert.Equal(t, 10*time.Second, email.params.TimeOut, "default value if TimeOut is not defined is set to 10s")
-	assert.NotNil(t, email.template, "default template is set")
-	assert.Equal(t, email.String(), "email: ''@'':0", "correct empty object string representation")
+func TestBrokenTemplate(t *testing.T) {
 	// Test broken template
-	email, err = NewEmail(EmailParams{Template: "{{"})
+	email, err := NewEmail(EmailParams{Template: "{{"})
 	assert.Error(t, err, "error due to parsing improper template")
 	assert.NotNil(t, email, "despite the error we got object reference")
 	assert.Nil(t, email.template, "default template is not set due to error")
-	assert.Nil(t, email.connection, "connection was not created due to error")
-
 }
 
-func TestBuildMessageFromRequest(t *testing.T) {
-	email, _ := NewEmail(EmailParams{From: "noreply@example.org"})
+func TestBuildAndSendMessageFromRequest(t *testing.T) {
+	email, err := NewEmail(EmailParams{From: "noreply@example.org"})
+	fakeSMTP := &fakeTestSMTP{}
+	email.SMTPClient = fakeSMTP
+	// test empty connection
+	assert.Error(t, err, "no connection established with empty address and port zero")
+	assert.NotNil(t, email, "despite the error we got object reference")
+	assert.Equal(t, 10*time.Second, email.TimeOut, "default value if TimeOut is not defined is set to 10s")
+	assert.NotNil(t, email.template, "default template is set")
+	assert.Equal(t, email.String(), "email: noreply@example.org using ''@'':0", "correct string representation of Email")
+	// test building message from requiest
 	c := store.Comment{Text: "some text"}
 	c.User.Name = "@from_user"
 	c.Locator.URL = "//example.org"
 	c.Orig = "orig"
 	req := request{comment: c}
-	mgs := email.buildMessageFromRequest(req, "test_address@example.com")
+	mgs := email.buildMessageFromRequest(req, "test@localhost")
 	emptyTitleMessage := `From: noreply@example.org
-To: test_address@example.com
+To: test@localhost
 Subject: New comment
 MIME-version: 1.0;
 Content-Type: text/html; charset="UTF-8";
@@ -53,7 +58,7 @@ orig
 	cp.User.Name = "@to_user"
 	req = request{comment: c, parent: cp}
 	filledTitleMessage := `From: noreply@example.org
-To: test_address@example.com
+To: test@localhost
 Subject: New comment for "post title"
 MIME-version: 1.0;
 Content-Type: text/html; charset="UTF-8";
@@ -64,12 +69,21 @@ orig
 
 ↦ <a href="//example.org#remark42__comment-">post title</a>
 `
-	mgs = email.buildMessageFromRequest(req, "test_address@example.com")
+	mgs = email.buildMessageFromRequest(req, "test@localhost")
 	assert.Equal(t, filledTitleMessage, mgs)
+	// test sending
+	err = email.Send(context.Background(), req)
+	require.NoError(t, err)
+
+	assert.Equal(t, "noreply@example.org", fakeSMTP.mail)
+	assert.Equal(t, "test@localhost", fakeSMTP.rcpt)
+	assert.Equal(t, filledTitleMessage, fakeSMTP.buff.String())
+	assert.True(t, fakeSMTP.quit)
+	assert.False(t, fakeSMTP.close)
 }
 
 func TestBuildMessage(t *testing.T) {
-	email := Email{params: EmailParams{From: "from@email"}}
+	email := Email{EmailParams: EmailParams{From: "from@email"}}
 	msg := email.buildMessage("test_subj", "test_body", "recepient@email", "")
 	expectedMsg := `From: from@email
 To: recepient@email
@@ -88,8 +102,49 @@ func TestConnectErrors(t *testing.T) {
 	client, err := email.client()
 	assert.Nil(t, client)
 	assert.Error(t, err, "connection with wrong settings return error")
-	email = Email{params: EmailParams{TLS: true}}
+	email = Email{EmailParams: EmailParams{TLS: true}}
 	client, err = email.client()
 	assert.Nil(t, client)
 	assert.Error(t, err, "TLS connection with wrong settings return error")
 }
+
+func TestEmail_SendFailed(t *testing.T) {
+	fakeSMTP := &fakeTestSMTP{fail: true}
+	e := Email{EmailParams: EmailParams{From: "from@example.com"}, SMTPClient: fakeSMTP}
+	err := e.sendEmail("some text", "to@example.com")
+	require.EqualError(t, err, "can't make email writer: failed")
+
+	assert.Equal(t, "from@example.com", fakeSMTP.mail)
+	assert.Equal(t, "to@example.com", fakeSMTP.rcpt)
+	assert.Equal(t, "", fakeSMTP.buff.String())
+	assert.False(t, fakeSMTP.quit)
+	assert.True(t, fakeSMTP.close)
+}
+
+type fakeTestSMTP struct {
+	fail bool
+
+	buff        bytes.Buffer
+	mail, rcpt  string
+	auth        bool
+	quit, close bool
+}
+
+func (f *fakeTestSMTP) Mail(m string) error  { f.mail = m; return nil }
+func (f *fakeTestSMTP) Auth(smtp.Auth) error { f.auth = true; return nil }
+func (f *fakeTestSMTP) Rcpt(r string) error  { f.rcpt = r; return nil }
+func (f *fakeTestSMTP) Quit() error          { f.quit = true; return nil }
+func (f *fakeTestSMTP) Close() error         { f.close = true; return nil }
+
+func (f *fakeTestSMTP) Data() (io.WriteCloser, error) {
+	if f.fail {
+		return nil, errors.New("failed")
+	}
+	return nopCloser{&f.buff}, nil
+}
+
+type nopCloser struct {
+	io.Writer
+}
+
+func (nopCloser) Close() error { return nil }
