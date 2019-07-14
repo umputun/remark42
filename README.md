@@ -3,6 +3,7 @@
 Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engine, which doesn't spy on users. It can be embedded into blogs, articles or any other place where readers add comments.
 
 * Social login via Google, Facebook, Github and Yandex
+* Login via email 
 * Optional anonymous access
 * Multi-level nested comments with both tree and plain presentations
 * Import from Disqus and WordPress
@@ -127,6 +128,16 @@ _this is the recommended way to run remark42_
 | auth.yandex.csec        | AUTH_YANDEX_CSEC        |                          | Yandex OAuth client secret                       |
 | auth.dev                | AUTH_DEV                | `false`                  | local oauth2 server, development mode only       |
 | auth.anon               | AUTH_ANON               | `false`                  | enable anonymous login                           |
+| auth.email.enable       | AUTH_EMAIL_ENABLE       | `false`                  | enable auth via email                            |
+| auth.email.host         | AUTH_EMAIL_HOST         |                          | smtp host                                        |
+| auth.email.port         | AUTH_EMAIL_PORT         | `25`                     | smtp port                                        |
+| auth.email.from         | AUTH_EMAIL_FROM         |                          | email from                                       |
+| auth.email.subj         | AUTH_EMAIL_SUBJ         | `remark42 confirmation`  | email subject                                    |
+| auth.email.content-type | AUTH_EMAIL_CONTENT_TYPE | `text/html`              | email content type                               |
+| auth.email.tls          | AUTH_EMAIL_TLS          | `false`                  | enable TLS                                       |
+| auth.email.user         | AUTH_EMAIL_USER         |                          | smtp user name                                   |
+| auth.email.passwd       | AUTH_EMAIL_PASSWD       |                          | smtp password                                    |
+| auth.email.timeout      | AUTH_EMAIL_TIMEOUT      | `10s`                    | smtp timeout                                     |
 | notify.type             | NOTIFY_TYPE             | none                     | type of notification (none or telegram)          |
 | notify.queue            | NOTIFY_QUEUE            | `100`                    | size of notification queue                       |
 | notify.telegram.token   | NOTIFY_TELEGRAM_TOKEN   |                          | telegram token                                   |
