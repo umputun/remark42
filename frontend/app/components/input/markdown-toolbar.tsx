@@ -34,7 +34,7 @@ const codeLabel = 'Insert a code';
 const linkLabel = 'Add a link <cmd-k>';
 const unorderedListLabel = 'Add a bulleted list';
 const orderedListLabel = 'Add a numbered list';
-const attachImageLabel = 'Attach an image';
+const attachImageLabel = 'Attach the image, drag & drop or paste from clipboard';
 
 export default class MarkdownToolbar extends Component<Props> {
   constructor(props: Props) {
