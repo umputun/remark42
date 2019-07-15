@@ -37,7 +37,7 @@ describe('<Comment />', () => {
     });
 
     it('disabled on user info widget', () => {
-      const element = <Comment {...{ ...DefaultProps, view: 'user' } as Props} />;
+      const element = <Comment {...({ ...DefaultProps, view: 'user' } as Props)} />;
       render(element, container);
 
       const voteButtons = container.querySelectorAll('.comment__vote');
@@ -51,7 +51,7 @@ describe('<Comment />', () => {
 
     it('disabled on read only post', () => {
       const element = (
-        <Comment {...{ ...DefaultProps, post_info: { ...DefaultProps.post_info, read_only: true } } as Props} />
+        <Comment {...({ ...DefaultProps, post_info: { ...DefaultProps.post_info, read_only: true } } as Props)} />
       );
       render(element, container);
 
@@ -67,7 +67,7 @@ describe('<Comment />', () => {
     it('disabled for deleted comment', () => {
       const element = (
         // ahem
-        <Comment {...{ ...DefaultProps, data: { ...DefaultProps.data, delete: true } } as Props} />
+        <Comment {...({ ...DefaultProps, data: { ...DefaultProps.data, delete: true } } as Props)} />
       );
       render(element, container);
 
@@ -83,13 +83,13 @@ describe('<Comment />', () => {
     it('disabled for guest', () => {
       const element = (
         <Comment
-          {...{
+          {...({
             ...DefaultProps,
             user: {
               id: 'someone',
               picture: 'somepicture-url',
             },
-          } as Props}
+          } as Props)}
         />
       );
       render(element, container);
@@ -104,7 +104,7 @@ describe('<Comment />', () => {
     });
 
     it('disabled for own comment', () => {
-      const element = <Comment {...{ ...DefaultProps, user: null } as Props} />;
+      const element = <Comment {...({ ...DefaultProps, user: null } as Props)} />;
       render(element, container);
 
       const voteButtons = container.querySelectorAll('.comment__vote');
@@ -120,7 +120,7 @@ describe('<Comment />', () => {
       const voteSpy = jest.fn(async () => {});
       const element = (
         <Comment
-          {...DefaultProps as Props}
+          {...(DefaultProps as Props)}
           data={{ ...DefaultProps.data, vote: +1 } as Props['data']}
           putCommentVote={voteSpy}
         />
@@ -145,7 +145,7 @@ describe('<Comment />', () => {
       const voteSpy = jest.fn(async () => {});
       const element = (
         <Comment
-          {...DefaultProps as Props}
+          {...(DefaultProps as Props)}
           data={{ ...DefaultProps.data, vote: -1 } as Props['data']}
           putCommentVote={voteSpy}
         />
@@ -175,7 +175,7 @@ describe('<Comment />', () => {
     });
 
     it('for admin if shows admin controls', () => {
-      const element = <Comment {...{ ...DefaultProps, user: { ...DefaultProps.user, admin: true } } as Props} />;
+      const element = <Comment {...({ ...DefaultProps, user: { ...DefaultProps.user, admin: true } } as Props)} />;
       render(element, container);
 
       const controls = container.querySelectorAll('.comment__controls > span');
@@ -188,7 +188,7 @@ describe('<Comment />', () => {
     });
 
     it('for regular user it shows only "hide"', () => {
-      const element = <Comment {...{ ...DefaultProps, user: { ...DefaultProps.user, admin: false } } as Props} />;
+      const element = <Comment {...({ ...DefaultProps, user: { ...DefaultProps.user, admin: false } } as Props)} />;
       render(element, container);
 
       const controls = container.querySelectorAll('.comment__controls > span');
@@ -197,7 +197,7 @@ describe('<Comment />', () => {
     });
 
     it('verification badge clickable for admin', () => {
-      const element = <Comment {...{ ...DefaultProps, user: { ...DefaultProps.user, admin: true } } as Props} />;
+      const element = <Comment {...({ ...DefaultProps, user: { ...DefaultProps.user, admin: true } } as Props)} />;
       render(element, container);
 
       const controls = container.querySelector('.comment__verification')!;
@@ -207,10 +207,10 @@ describe('<Comment />', () => {
     it('verification badge not clickable for regular user', () => {
       const element = (
         <Comment
-          {...{
+          {...({
             ...DefaultProps,
             data: { ...DefaultProps.data, user: { ...DefaultProps.data!.user, verified: true } },
-          } as Props}
+          } as Props)}
         />
       );
       render(element, container);

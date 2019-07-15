@@ -24,7 +24,7 @@ describe('<AuthPanel />', () => {
     });
 
     it('should render login form with google and github provider', () => {
-      const element = <AuthPanel {...DefaultProps as Props} user={null} />;
+      const element = <AuthPanel {...(DefaultProps as Props)} user={null} />;
 
       render(element, container);
 
@@ -45,7 +45,7 @@ describe('<AuthPanel />', () => {
     it('should render login form with google and github provider for read-only post', () => {
       const element = (
         <AuthPanel
-          {...DefaultProps as Props}
+          {...(DefaultProps as Props)}
           user={null}
           postInfo={{ ...DefaultProps.postInfo, read_only: true } as PostInfo}
         />
@@ -70,7 +70,7 @@ describe('<AuthPanel />', () => {
     it('should not render settings if there is no hidden users', () => {
       const element = (
         <AuthPanel
-          {...DefaultProps as Props}
+          {...(DefaultProps as Props)}
           user={null}
           postInfo={{ ...DefaultProps.postInfo, read_only: true } as PostInfo}
         />
@@ -86,7 +86,7 @@ describe('<AuthPanel />', () => {
     it('should render settings if there is some hidden users', () => {
       const element = (
         <AuthPanel
-          {...DefaultProps as Props}
+          {...(DefaultProps as Props)}
           user={null}
           postInfo={{ ...DefaultProps.postInfo, read_only: true } as PostInfo}
           hiddenUsers={{ hidden_joe: {} as any }}
@@ -108,7 +108,7 @@ describe('<AuthPanel />', () => {
     });
 
     it('should render info about current user', () => {
-      const element = <AuthPanel {...DefaultProps as Props} user={{ id: `john`, name: 'John' } as User} />;
+      const element = <AuthPanel {...(DefaultProps as Props)} user={{ id: `john`, name: 'John' } as User} />;
 
       render(element, container);
 
@@ -129,7 +129,9 @@ describe('<AuthPanel />', () => {
     });
 
     it('should render admin action', () => {
-      const element = <AuthPanel {...DefaultProps as Props} user={{ id: `test`, admin: true, name: 'John' } as User} />;
+      const element = (
+        <AuthPanel {...(DefaultProps as Props)} user={{ id: `test`, admin: true, name: 'John' } as User} />
+      );
 
       render(element, container);
 
