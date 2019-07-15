@@ -47,7 +47,7 @@
     "babel-loader": "^8.0.6",
     "clean-webpack-plugin": "^3.0.0",
     "copy-webpack-plugin": "^5.0.3",
-    "css-loader": "^2.1.1",
+    "css-loader": "^3.0.0",
     "document-register-element": "^1.13.2",
     "enzyme": "^3.10.0",
     "enzyme-adapter-preact-pure": "^2.0.0",
