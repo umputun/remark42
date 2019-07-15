@@ -136,11 +136,12 @@ export class Input extends Component<Props, State> {
     });
   }
 
-  onPaste(e: ClipboardEvent) {
-    if (e.clipboardData && e.clipboardData.files.length > 0) {
-      const files = (e.clipboardData.files as unknown) as File[];
-      this.uploadImages(files);
+  async onPaste(e: ClipboardEvent) {
+    if (!(e.clipboardData && e.clipboardData.files.length > 0)) {
+      return;
     }
+    const files = Array.from(e.clipboardData.files);
+    await this.uploadImages(files);
   }
 
   send(e: Event) {

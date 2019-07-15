@@ -13,12 +13,12 @@ import OrderedListIcon from './markdown-toolbar-icons/ordered-list-icon';
 
 interface Props {
   textareaId: string;
-  uploadImages: (files: File[]) => void;
+  uploadImages: (files: File[]) => Promise<void>;
   allowUpload: boolean;
 }
 
 interface FileEventTarget extends EventTarget {
-  readonly files: File[] | null;
+  readonly files: FileList | null;
   value: string | null;
 }
 
@@ -41,13 +41,12 @@ export default class MarkdownToolbar extends Component<Props> {
     super(props);
     this.uploadImages = this.uploadImages.bind(this);
   }
-  uploadImages(e: Event) {
+  async uploadImages(e: Event) {
     const currentTarget = (e as FileInputEvent).currentTarget;
-    if (currentTarget && currentTarget.files && currentTarget.files.length > 0 && this.props.allowUpload) {
-      const files = currentTarget.files;
-      this.props.uploadImages(files);
-      currentTarget.value = '';
-    }
+    if (!(this.props.allowUpload && currentTarget && currentTarget.files && currentTarget.files.length !== 0)) return;
+    const files = Array.from(currentTarget.files);
+    await this.props.uploadImages(files);
+    currentTarget.value = null;
   }
   render(props: RenderableProps<Props>) {
     return (
@@ -75,7 +74,7 @@ export default class MarkdownToolbar extends Component<Props> {
           </md-link>
           {this.props.allowUpload ? (
             <label className="input__toolbar-item" title={attachImageLabel} aria-label={attachImageLabel}>
-              <input class="input__toolbar-file-input" type="file" onChange={this.uploadImages} />
+              <input multiple class="input__toolbar-file-input" type="file" onChange={this.uploadImages} />
               <ImageIcon />
             </label>
           ) : null}
