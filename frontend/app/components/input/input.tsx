@@ -140,6 +140,7 @@ export class Input extends Component<Props, State> {
     if (!(e.clipboardData && e.clipboardData.files.length > 0)) {
       return;
     }
+    e.preventDefault();
     const files = Array.from(e.clipboardData.files);
     await this.uploadImages(files);
   }
