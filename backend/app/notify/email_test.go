@@ -4,13 +4,16 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/smtp"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"github.com/umputun/remark/backend/app/store"
 )
 
@@ -108,7 +111,7 @@ func TestConnectErrors(t *testing.T) {
 	assert.Error(t, err, "TLS connection with wrong settings return error")
 }
 
-func TestEmail_SendFailed(t *testing.T) {
+func TestEmailSendFailed(t *testing.T) {
 	fakeSMTP := &fakeTestSMTP{fail: true}
 	e := Email{EmailParams: EmailParams{From: "from@example.com"}, SMTPClient: fakeSMTP}
 	err := e.sendEmail("some text", "to@example.com")
@@ -121,6 +124,26 @@ func TestEmail_SendFailed(t *testing.T) {
 	assert.True(t, fakeSMTP.close)
 }
 
+func TestEmailMultipleSend(t *testing.T) {
+	fakeSMTP := &fakeTestSMTP{}
+	waitCh := make(chan int)
+	var waitGroup sync.WaitGroup
+	e := Email{EmailParams: EmailParams{}, SMTPClient: fakeSMTP}
+	for i := 1; i <= 10; i++ {
+		waitGroup.Add(1)
+		go func() {
+			// will start once we close the channel
+			<-waitCh
+			_ = e.sendEmail(fmt.Sprint(i), fmt.Sprint(i))
+			waitGroup.Done()
+		}()
+	}
+	close(waitCh)
+	waitGroup.Wait()
+	assert.Equal(t, 1, fakeSMTP.quitCount, "10 messages sent reusing same connection, closing it once afterwards")
+	assert.True(t, fakeSMTP.quit)
+}
+
 type fakeTestSMTP struct {
 	fail bool
 
@@ -128,12 +151,13 @@ type fakeTestSMTP struct {
 	mail, rcpt  string
 	auth        bool
 	quit, close bool
+	quitCount   int
 }
 
 func (f *fakeTestSMTP) Mail(m string) error  { f.mail = m; return nil }
 func (f *fakeTestSMTP) Auth(smtp.Auth) error { f.auth = true; return nil }
 func (f *fakeTestSMTP) Rcpt(r string) error  { f.rcpt = r; return nil }
-func (f *fakeTestSMTP) Quit() error          { f.quit = true; return nil }
+func (f *fakeTestSMTP) Quit() error          { f.quitCount++; f.quit = true; return nil }
 func (f *fakeTestSMTP) Close() error         { f.close = true; return nil }
 
 func (f *fakeTestSMTP) Data() (io.WriteCloser, error) {
