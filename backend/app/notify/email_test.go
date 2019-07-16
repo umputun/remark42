@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"net/smtp"
 	"sync"
@@ -134,7 +133,7 @@ func TestEmailMultipleSend(t *testing.T) {
 		go func() {
 			// will start once we close the channel
 			<-waitCh
-			_ = e.sendEmail(fmt.Sprint(i), fmt.Sprint(i))
+			_ = e.sendEmail("", "")
 			waitGroup.Done()
 		}()
 	}
