@@ -40,7 +40,8 @@ func TestBuildAndSendMessageFromRequest(t *testing.T) {
 	c.Locator.URL = "//example.org"
 	c.Orig = "orig"
 	req := request{comment: c}
-	mgs := email.buildMessageFromRequest(req, "test@localhost")
+	msg, err := email.buildMessageFromRequest(req, "test@localhost")
+	assert.NoError(t, err)
 	emptyTitleMessage := `From: noreply@example.org
 To: test@localhost
 Subject: New comment
@@ -53,7 +54,7 @@ orig
 
 ↦ <a href="//example.org#remark42__comment-">original comment</a>
 `
-	assert.Equal(t, emptyTitleMessage, mgs)
+	assert.Equal(t, emptyTitleMessage, msg)
 	c.ParentID = "1"
 	c.PostTitle = "post title"
 	cp := store.Comment{Text: "some parent text"}
@@ -71,8 +72,9 @@ orig
 
 ↦ <a href="//example.org#remark42__comment-">post title</a>
 `
-	mgs = email.buildMessageFromRequest(req, "test@localhost")
-	assert.Equal(t, filledTitleMessage, mgs)
+	msg, err = email.buildMessageFromRequest(req, "test@localhost")
+	assert.NoError(t, err)
+	assert.Equal(t, filledTitleMessage, msg)
 	// test sending
 	err = email.Send(context.Background(), req)
 	require.NoError(t, err)

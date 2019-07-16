@@ -34,7 +34,7 @@ type Email struct {
 	EmailParams
 	SMTPClient
 	template  *template.Template // request message template
-	sendMutex sync.Mutex         // Send is synchronious and blocked by this mutex
+	sendMutex sync.Mutex         // Send is synchronous and blocked by this mutex
 	count     int                // amount of waiting + running send requests
 }
 
@@ -57,21 +57,21 @@ type tmplData struct {
 	PostTitle string
 }
 
-const emailConnectionTimeOut = 10 * time.Second
+const defaultEmailTimeout = 10 * time.Second
 
 //NewEmail makes email object for notifications and run sending daemon
 func NewEmail(params EmailParams) (*Email, error) {
 
 	res := Email{EmailParams: params}
 	if res.TimeOut == 0 {
-		res.TimeOut = emailConnectionTimeOut
+		res.TimeOut = defaultEmailTimeout
 	}
 	log.Printf("[DEBUG] create new email notifier for server %s with user %s, timeout=%s",
 		res.Host, res.Username, res.TimeOut)
 
 	var err error
 
-	tmpl := msgTemplate
+	tmpl := defaultEmailTemplate
 	if params.Template != "" {
 		tmpl = params.Template
 	}
@@ -93,13 +93,16 @@ func NewEmail(params EmailParams) (*Email, error) {
 	return &res, err
 }
 
-// Send email from request to address in settings
+// Send email from request to address in settings, thread-safe
 func (e *Email) Send(ctx context.Context, req request) error {
 	log.Printf("[DEBUG] send notification via %s, comment id %s", e, req.comment.ID)
 	// TODO: decide where to get "to" email from
 	to := "test@localhost"
-	msg := e.buildMessageFromRequest(req, to)
-	err := repeater.NewDefault(5, time.Millisecond*250).Do(ctx, func() error {
+	msg, err := e.buildMessageFromRequest(req, to)
+	if err != nil {
+		return err
+	}
+	err = repeater.NewDefault(5, time.Millisecond*250).Do(ctx, func() error {
 		return e.sendEmail(msg, to)
 	})
 	return err
@@ -168,21 +171,23 @@ func (e *Email) String() string {
 }
 
 //buildMessageFromRequest generates email message based on request
-func (e *Email) buildMessageFromRequest(req request, to string) (message string) {
+func (e *Email) buildMessageFromRequest(req request, to string) (string, error) {
 	subject := "New comment"
 	if req.comment.PostTitle != "" {
 		subject += fmt.Sprintf(" for \"%s\"", req.comment.PostTitle)
 	}
 	msg := bytes.Buffer{}
-	// we don't expect valid template to fail
-	_ = e.template.Execute(&msg, tmplData{
+	err := e.template.Execute(&msg, tmplData{
 		req.comment.User.Name,
 		req.parent.User.Name,
 		req.comment.Orig,
 		req.comment.Locator.URL + uiNav + req.comment.ID,
 		req.comment.PostTitle,
 	})
-	return e.buildMessage(subject, msg.String(), to, "text/html")
+	if err != nil {
+		return "", errors.Wrapf(err, "error executing template to build message from request")
+	}
+	return e.buildMessage(subject, msg.String(), to, "text/html"), nil
 }
 
 //buildMessage generates email message
@@ -234,7 +239,7 @@ func (e *Email) client() (c *smtp.Client, err error) {
 	return c, nil
 }
 
-var msgTemplate = `{{.From}}{{if .To}} → {{.To}}{{end}}
+var defaultEmailTemplate = `{{.From}}{{if .To}} → {{.To}}{{end}}
 
 {{.Orig}}
 
