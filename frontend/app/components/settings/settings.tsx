@@ -135,7 +135,7 @@ export default class BlockedUsers extends Component<Props, State> {
                       </span>
                       <span className="settings__blocked-users-user-block-ttl"> {formatTime(new Date(user.time))}</span>
                       {isUserUnblocked && (
-                        <span {...getHandleClickProps(() => this.block(user))} className="blocked-users__action">
+                        <span {...getHandleClickProps(() => this.block(user))} className="settings__action">
                           block
                         </span>
                       )}
