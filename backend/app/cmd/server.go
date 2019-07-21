@@ -307,7 +307,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 	}
 
 	imgProxy := &proxy.Image{Enabled: s.ImageProxy, RoutePath: "/api/v1/img", RemarkURL: s.RemarkURL}
-	emojiFmt :=  store.CommentConverterFunc(func(text string) string { return text })
+	emojiFmt := store.CommentConverterFunc(func(text string) string { return text })
 	if s.EnableEmoji {
 		emojiFmt = func(text string) string { return emoji.Sprint(text) }
 	}
@@ -339,6 +339,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 			Refresh:   s.Stream.RefreshInterval,
 			MaxActive: int32(s.Stream.MaxActive),
 		},
+		EmojiEnabled: s.EnableEmoji,
 	}
 
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = s.LowScore, s.CriticalScore

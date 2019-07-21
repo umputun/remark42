@@ -505,6 +505,7 @@ func TestRest_Config(t *testing.T) {
 	assert.False(t, j["positive_score"].(bool))
 	assert.Equal(t, 10., j["readonly_age"])
 	assert.Equal(t, 10000., j["max_image_size"])
+	assert.Equal(t, true, j["emoji_enabled"].(bool))
 	t.Logf("%+v", j)
 }
 
