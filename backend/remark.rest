@@ -1,6 +1,6 @@
 
 ### find request with tree
-GET {{host}}/api/v1/find?site={{site}}&sort=-controversy&format=tree&url={{url}}
+GET {{host}}/api/v1/find?site={{site}}&sort=-time&format=tree&url={{url}}
 
 ### find request with plain
 GET {{host}}/api/v1/find?site={{site}}&sort=-controversy&format=plain&url={{url}}

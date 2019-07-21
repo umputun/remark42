@@ -729,19 +729,15 @@ func (s *DataStore) alterComments(cc []store.Comment, user store.User) (res []st
 func (s *DataStore) alterComment(c store.Comment, user store.User) (res store.Comment) {
 
 	blocReq := engine.FlagRequest{Flag: engine.Blocked, Locator: store.Locator{SiteID: c.Locator.SiteID}, UserID: c.User.ID}
-	blocked, _ := s.Engine.Flag(blocReq)
+	blocked, bErr := s.Engine.Flag(blocReq)
 
-	// process blocked users
-	if blocked {
-		if !user.Admin { // reset comment to deleted for non-admins
-			c.SetDeleted(store.SoftDelete)
-		}
-		c.User.Blocked = true
-		c.Deleted = true
+	// mark user blocked
+	if bErr == nil && blocked {
+		c.User.Blocked = blocked
 	}
 
 	// set verified status retroactively
-	if !blocked {
+	if !c.User.Blocked {
 		verifReq := engine.FlagRequest{Flag: engine.Verified, Locator: store.Locator{SiteID: c.Locator.SiteID}, UserID: c.User.ID}
 		c.User.Verified, _ = s.Engine.Flag(verifReq)
 	}
