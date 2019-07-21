@@ -624,17 +624,18 @@ Sort can be `time`, `active` or `score`. Supported sort order with prefix -/+, i
 
   ```go
   type Config struct {
-      Version        string   `json:"version"`
-      EditDuration   int      `json:"edit_duration"`
-      MaxCommentSize int      `json:"max_comment_size"`
-      Admins         []string `json:"admins"`
-      AdminEmail     string   `json:"admin_email"`
-      Auth           []string `json:"auth_providers"`
-      LowScore       int      `json:"low_score"`
-      CriticalScore  int      `json:"critical_score"`
-      PositiveScore  bool     `json:"positive_score"`
-      ReadOnlyAge    int      `json:"readonly_age"`
-      MaxImageSize   int      `json:"max_image_size"`
+     	Version        string   `json:"version"`
+        EditDuration   int      `json:"edit_duration"`
+        MaxCommentSize int      `json:"max_comment_size"`
+        Admins         []string `json:"admins"`
+        AdminEmail     string   `json:"admin_email"`
+        Auth           []string `json:"auth_providers"`
+        LowScore       int      `json:"low_score"`
+        CriticalScore  int      `json:"critical_score"`
+        PositiveScore  bool     `json:"positive_score"`
+        ReadOnlyAge    int      `json:"readonly_age"`
+        MaxImageSize   int      `json:"max_image_size"`
+        EmojiEnabled   bool     `json:"emoji_enabled"`
   }
   ```
 
