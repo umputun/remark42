@@ -1044,7 +1044,7 @@ func TestService_alterComment(t *testing.T) {
 	r = svc.alterComment(store.Comment{ID: "123", User: store.User{IP: "127.0.0.1", ID: "devid", Verified: true}},
 		store.User{Name: "dev", ID: "devid", Admin: false})
 	assert.Equal(t, store.Comment{ID: "123", User: store.User{IP: "", Verified: true, Blocked: true, ID: "devid"},
-		Deleted: true}, r, "blocked")
+		Deleted: false}, r, "blocked")
 }
 
 // makes new boltdb, put two records
