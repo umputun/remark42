@@ -8,7 +8,7 @@ import { SORT_SET, SORT_SET_ACTION } from './types';
 
 function setSortCookie(sort: Sorting) {
   try {
-    setCookie(COOKIE_SORT_KEY, sort, { expires: 60 * 60 * 24 * 365 }); // save sorting for a year
+    setCookie(COOKIE_SORT_KEY, sort, { expires: 60 * 60 * 24 * 365, path: '/' }); // save sorting for a year
   } catch {
     // can't save; ignore it
   }
