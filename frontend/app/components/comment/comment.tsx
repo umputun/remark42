@@ -454,11 +454,11 @@ export class Comment extends Component<Props, State> {
     const o = {
       ...props.data,
       controversyText: `Controversy: ${(props.data.controversy || 0).toFixed(2)}`,
-      text: props.data.text.length
-        ? props.view === 'preview'
-          ? getTextSnippet(props.data.text)
-          : props.data.text
-        : this.props.isUserBanned
+      text: !props.data.text.length
+        ? ''
+        : props.view === 'preview'
+        ? getTextSnippet(props.data.text)
+        : props.isUserBanned && !isAdmin
         ? 'This user was blocked'
         : props.data.delete
         ? 'This comment was deleted'
