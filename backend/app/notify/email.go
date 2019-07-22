@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"net/smtp"
+	"strings"
 	"sync"
 	"text/template"
 	"time"
@@ -19,33 +20,45 @@ import (
 
 // EmailParams contain settings for email set up
 type EmailParams struct {
-	Host     string        // SMTP host
-	Port     int           // SMTP port
-	TLS      bool          // TLS auth
-	From     string        // From email field
-	Username string        // user name
-	Password string        // password
-	TimeOut  time.Duration // TLS connection timeout
-	Template string        // request message template
+	Host          string        // SMTP host
+	Port          int           // SMTP port
+	TLS           bool          // TLS auth
+	From          string        // From email field
+	Username      string        // user name
+	Password      string        // password
+	TimeOut       time.Duration // TLS connection timeout
+	Template      string        // request message template
+	BufferSize    int           // email send buffer size
+	FlushDuration time.Duration // maximum time after which email will me sent
 }
 
 // Email implements notify.Destination for email
 type Email struct {
 	EmailParams
-	SMTPClient
-	template  *template.Template // request message template
-	sendMutex sync.Mutex         // Send is synchronous and blocked by this mutex
-	count     int                // amount of waiting + running send requests
+	smtpClient
+	template *template.Template // request message template
+
+	ctx context.Context
+
+	buffer        []emailMessage
+	lock          sync.Mutex
+	lastWriteTime time.Time
+	once          sync.Once
 }
 
-// SMTPClient interface defines subset of net/smtp used by email client
-type SMTPClient interface {
+// smtpClient interface defines subset of net/smtp used by email client
+type smtpClient interface {
 	Mail(string) error
 	Auth(smtp.Auth) error
 	Rcpt(string) error
 	Data() (io.WriteCloser, error)
 	Quit() error
 	Close() error
+}
+
+type emailMessage struct {
+	message string
+	to      string
 }
 
 // tmplData store data for message from request template execution
@@ -66,6 +79,10 @@ func NewEmail(params EmailParams) (*Email, error) {
 	if res.TimeOut == 0 {
 		res.TimeOut = defaultEmailTimeout
 	}
+	if res.BufferSize == 0 {
+		res.BufferSize = 1
+	}
+	res.buffer = make([]emailMessage, 0, res.BufferSize+1)
 	log.Printf("[DEBUG] create new email notifier for server %s with user %s, timeout=%s",
 		res.Host, res.Username, res.TimeOut)
 
@@ -79,7 +96,7 @@ func NewEmail(params EmailParams) (*Email, error) {
 	if err != nil {
 		return &res, errors.Wrapf(err, "can't parse message template")
 	}
-	// establish test connection and
+	// establish test connection
 	testSMTPClient, err := res.client()
 	if err != nil {
 		return &res, errors.Wrapf(err, "can't establish test connection")
@@ -93,8 +110,14 @@ func NewEmail(params EmailParams) (*Email, error) {
 	return &res, err
 }
 
-// Send email from request to address in settings, thread-safe
+// Send email from request to address in settings via buffer, thread-safe
 func (e *Email) Send(ctx context.Context, req request) error {
+	// initialise context and start auto flush once,
+	// as this is the first moment we see the context from caller
+	e.once.Do(func() {
+		e.ctx = ctx
+		e.startAutoFlush()
+	})
 	log.Printf("[DEBUG] send notification via %s, comment id %s", e, req.comment.ID)
 	// TODO: decide where to get "to" email from
 	to := "test@localhost"
@@ -102,68 +125,123 @@ func (e *Email) Send(ctx context.Context, req request) error {
 	if err != nil {
 		return err
 	}
-	err = repeater.NewDefault(5, time.Millisecond*250).Do(ctx, func() error {
-		return e.sendEmail(msg, to)
+	return e.synced(func() error {
+		e.lastWriteTime = time.Now()
+		e.buffer = append(e.buffer, emailMessage{msg, to})
+		if len(e.buffer) >= e.BufferSize {
+			if err := e.sendBuffer(); err != nil {
+				log.Printf("[WARN] , %s", err)
+				return errors.Wrapf(err, "email flush failed")
+			}
+			e.buffer = e.buffer[0:0]
+		}
+		return nil
 	})
-	return err
 }
 
-// sendEmail sends message, prepared by Email.buildMessage
-func (e *Email) sendEmail(message, to string) error {
-	e.count++
-	e.sendMutex.Lock()
-	if e.SMTPClient == nil { // if client not set make new net/smtp
-		c, err := e.client()
-		if err != nil {
-			e.count--
-			e.sendMutex.Unlock()
-			return errors.Wrap(err, "failed to make smtp client")
-		}
-		e.SMTPClient = c
+// sendEmail sends message prepared by Email.buildMessage to prepared Email.smtpClient, thread unsafe
+func (e *Email) sendEmail(m emailMessage) error {
+	if e.smtpClient == nil {
+		return errors.New("sendEmail called without smtpClient set")
 	}
-
-	defer func() {
-		// count == 1 means that no one else waiting to send the message at this moment,
-		// e.SMTPClient is nil if Quit() call passed because it's closing connection as well
-		if e.count == 1 && e.SMTPClient != nil {
-			if err := e.SMTPClient.Close(); err != nil {
-				log.Printf("[WARN] can't close smtp connection, %v", err)
-			}
-			e.SMTPClient = nil
-		}
-		e.count--
-		e.sendMutex.Unlock()
-	}()
-
-	if err := e.SMTPClient.Mail(e.From); err != nil {
+	if err := e.smtpClient.Mail(e.From); err != nil {
 		return errors.Wrapf(err, "bad from address %q", e.From)
 	}
-	if err := e.SMTPClient.Rcpt(to); err != nil {
-		return errors.Wrapf(err, "bad to address %q", to)
+	if err := e.smtpClient.Rcpt(m.to); err != nil {
+		return errors.Wrapf(err, "bad to address %q", m.to)
 	}
 
-	writer, err := e.SMTPClient.Data()
+	writer, err := e.smtpClient.Data()
 	if err != nil {
 		return errors.Wrap(err, "can't make email writer")
 	}
 
-	buf := bytes.NewBufferString(message)
+	buf := bytes.NewBufferString(m.message)
 	if _, err = buf.WriteTo(writer); err != nil {
-		return errors.Wrapf(err, "failed to send email body to %q", to)
+		return errors.Wrapf(err, "failed to send email body to %q", m.to)
 	}
 	if err = writer.Close(); err != nil {
 		log.Printf("[WARN] can't close smtp body writer, %v", err)
 	}
+	return nil
+}
 
-	// count == 1 means that no one else waiting to send the message at this moment
-	if e.count == 1 {
-		if err = e.SMTPClient.Quit(); err != nil {
-			log.Printf("[WARN] failed to send quit command to %s:%d, %v", e.Host, e.Port, err)
-		} else {
-			e.SMTPClient = nil
+// sendBuffer sends all collected messages to server, thread unsafe
+func (e *Email) sendBuffer() (err error) {
+	if len(e.buffer) == 0 {
+		return nil
+	}
+
+	if e.smtpClient == nil { // if client not set make new net/smtp
+		c, err := e.client()
+		if err != nil {
+			return errors.Wrap(err, "failed to make smtp client")
+		}
+		e.smtpClient = c
+	}
+
+	var cumulativeErrors []string
+
+	for _, m := range e.buffer {
+		err := repeater.NewDefault(5, time.Millisecond*250).Do(e.ctx, func() error { return e.sendEmail(m) })
+		if err != nil {
+			cumulativeErrors = append(cumulativeErrors, errors.Wrapf(err, "can't send message to %s", m.to).Error())
 		}
 	}
-	return nil
+
+	if err := e.smtpClient.Quit(); err != nil {
+		log.Printf("[WARN] failed to send quit command to %s:%d, %v", e.Host, e.Port, err)
+		if err := e.smtpClient.Close(); err != nil {
+			log.Printf("[WARN] can't close smtp connection, %v", err)
+			cumulativeErrors = append(cumulativeErrors, err.Error())
+		}
+	}
+	// forget smtpClient to make next run establish new connection
+	e.smtpClient = nil
+	if len(cumulativeErrors) > 0 {
+		err = fmt.Errorf(strings.Join(cumulativeErrors, "\n"))
+	}
+	return errors.Wrapf(err, "problems with sending messages")
+}
+
+// startAutoFlush sets auto flush duration from e.FlushDuration if it's not zero
+// and flushes all in-fly records in case of e.ctx closure
+func (e *Email) startAutoFlush() {
+	if e.FlushDuration > 0 { // activate background auto-flush
+		ticker := time.NewTicker(e.FlushDuration)
+		go func() {
+			for {
+				select {
+				case <-ticker.C:
+					var shouldFlush bool
+					_ = e.synced(func() error {
+						shouldFlush = time.Now().After(e.lastWriteTime.Add(e.FlushDuration)) && len(e.buffer) > 0
+						return nil
+					})
+					if shouldFlush {
+						if err := e.Flush(); err != nil {
+							log.Printf("[WARN] email flush failed, %s", err)
+						}
+					}
+				case <-e.ctx.Done():
+					err := e.synced(func() error { return e.sendBuffer() })
+					log.Printf("[WARN] email flush failed, %s", err)
+					return
+				}
+			}
+		}()
+
+	}
+}
+
+// Flush sends everything left in buffer to server
+func (e *Email) Flush() error {
+	err := e.synced(func() error {
+		err := e.sendBuffer()
+		e.buffer = e.buffer[0:0]
+		return err
+	})
+	return errors.Wrapf(err, "failed to flush emails")
 }
 
 func (e *Email) String() string {
@@ -237,6 +315,12 @@ func (e *Email) client() (c *smtp.Client, err error) {
 	}
 
 	return c, nil
+}
+
+func (e *Email) synced(fn func() error) error {
+	e.lock.Lock()
+	defer e.lock.Unlock()
+	return fn()
 }
 
 var defaultEmailTemplate = `{{.From}}{{if .To}} → {{.To}}{{end}}

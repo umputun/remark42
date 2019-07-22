@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/smtp"
 	"sync"
@@ -26,15 +27,15 @@ func TestBrokenTemplate(t *testing.T) {
 
 func TestBuildAndSendMessageFromRequest(t *testing.T) {
 	email, err := NewEmail(EmailParams{From: "noreply@example.org"})
-	fakeSMTP := &fakeTestSMTP{}
-	email.SMTPClient = fakeSMTP
 	// test empty connection
 	assert.Error(t, err, "no connection established with empty address and port zero")
+	fakeSMTP := &fakeTestSMTP{}
+	email.smtpClient = fakeSMTP
 	assert.NotNil(t, email, "despite the error we got object reference")
 	assert.Equal(t, 10*time.Second, email.TimeOut, "default value if TimeOut is not defined is set to 10s")
 	assert.NotNil(t, email.template, "default template is set")
 	assert.Equal(t, email.String(), "email: noreply@example.org using ''@'':0", "correct string representation of Email")
-	// test building message from requiest
+	// test building message from request
 	c := store.Comment{Text: "some text"}
 	c.User.Name = "@from_user"
 	c.Locator.URL = "//example.org"
@@ -84,6 +85,12 @@ orig
 	assert.Equal(t, filledTitleMessage, fakeSMTP.buff.String())
 	assert.True(t, fakeSMTP.quit)
 	assert.False(t, fakeSMTP.close)
+	// test sending failure
+	fakeSMTP = &fakeTestSMTP{fail: true}
+	email.smtpClient = fakeSMTP
+	err = email.Send(context.Background(), req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "can't make email writer: failed")
 }
 
 func TestBuildMessage(t *testing.T) {
@@ -112,35 +119,30 @@ func TestConnectErrors(t *testing.T) {
 	assert.Error(t, err, "TLS connection with wrong settings return error")
 }
 
-func TestEmailSendFailed(t *testing.T) {
-	fakeSMTP := &fakeTestSMTP{fail: true}
-	e := Email{EmailParams: EmailParams{From: "from@example.com"}, SMTPClient: fakeSMTP}
-	err := e.sendEmail("some text", "to@example.com")
-	require.EqualError(t, err, "can't make email writer: failed")
-
-	assert.Equal(t, "from@example.com", fakeSMTP.mail)
-	assert.Equal(t, "to@example.com", fakeSMTP.rcpt)
-	assert.Equal(t, "", fakeSMTP.buff.String())
-	assert.False(t, fakeSMTP.quit)
-	assert.True(t, fakeSMTP.close)
-}
-
 func TestEmailMultipleSend(t *testing.T) {
+	e, _ := NewEmail(EmailParams{BufferSize: 11})
 	fakeSMTP := &fakeTestSMTP{}
+	e.smtpClient = fakeSMTP
 	waitCh := make(chan int)
 	var waitGroup sync.WaitGroup
-	e := Email{EmailParams: EmailParams{}, SMTPClient: fakeSMTP}
+	// accumulate 10 messages in parallel
 	for i := 1; i <= 10; i++ {
 		waitGroup.Add(1)
+		i := i
 		go func() {
 			// will start once we close the channel
 			<-waitCh
-			_ = e.sendEmail("", "")
+			assert.NoError(t, e.Send(context.Background(), request{}), fmt.Sprint(i))
 			waitGroup.Done()
 		}()
 	}
 	close(waitCh)
 	waitGroup.Wait()
+	// make sure they end up in a buffer
+	assert.Equal(t, 10, len(e.buffer))
+	assert.NoError(t, e.Flush())
+	// make sure they are flushed
+	assert.Equal(t, 0, len(e.buffer))
 	assert.Equal(t, 1, fakeSMTP.quitCount, "10 messages sent reusing same connection, closing it once afterwards")
 	assert.True(t, fakeSMTP.quit)
 }

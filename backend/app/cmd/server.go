@@ -176,13 +176,15 @@ type NotifyGroup struct {
 		API     string        `long:"api" env:"API" default:"https://api.telegram.org/bot" description:"telegram api prefix"`
 	} `group:"telegram" namespace:"telegram" env-namespace:"TELEGRAM"`
 	Email struct {
-		Host     string        `long:"host" env:"HOST" description:"email server host"`
-		Port     int           `long:"port" env:"PORT" default:"587" description:"email server port"`
-		TLS      bool          `long:"tls" env:"TLS" description:"TLS auth flag"`
-		From     string        `long:"fromAddress" env:"FROM" description:"email sender address"`
-		Username string        `long:"username" env:"USERNAME" description:"email username"`
-		Password string        `long:"password" env:"PASSWORD" description:"email password"`
-		TimeOut  time.Duration `long:"timeout" env:"TIMEOUT" default:"10s" description:"TLS connection timeout"`
+		Host          string        `long:"host" env:"HOST" description:"email server host"`
+		Port          int           `long:"port" env:"PORT" default:"587" description:"email server port"`
+		TLS           bool          `long:"tls" env:"TLS" description:"TLS auth flag"`
+		From          string        `long:"fromAddress" env:"FROM" description:"email sender address"`
+		Username      string        `long:"username" env:"USERNAME" description:"email username"`
+		Password      string        `long:"password" env:"PASSWORD" description:"email password"`
+		TimeOut       time.Duration `long:"timeout" env:"TIMEOUT" default:"10s" description:"TLS connection timeout"`
+		BufferSize    int           `long:"bufferSize" env:"BUFFER_SIZE" default:"10" description:"email send buffer size"`
+		FlushDuration time.Duration `long:"flushDuration" env:"FLUSH_DURATION" default:"30s" description:"maximum time after which email will me sent"`
 	} `group:"email" namespace:"email" env-namespace:"EMAIL"`
 }
 
@@ -665,13 +667,16 @@ func (s *ServerCommand) makeNotify(dataStore *service.DataStore) (*notify.Servic
 		return notify.NewService(dataStore, s.Notify.QueueSize, tg), nil
 	case "email":
 		emailParams := notify.EmailParams{
-			Host:     s.Notify.Email.Host,
-			Port:     s.Notify.Email.Port,
-			TLS:      s.Notify.Email.TLS,
-			From:     s.Notify.Email.From,
-			Username: s.Notify.Email.Username,
-			Password: s.Notify.Email.Password,
-			TimeOut:  s.Notify.Email.TimeOut}
+			Host:          s.Notify.Email.Host,
+			Port:          s.Notify.Email.Port,
+			TLS:           s.Notify.Email.TLS,
+			From:          s.Notify.Email.From,
+			Username:      s.Notify.Email.Username,
+			Password:      s.Notify.Email.Password,
+			TimeOut:       s.Notify.Email.TimeOut,
+			BufferSize:    s.Notify.Email.BufferSize,
+			FlushDuration: s.Notify.Email.FlushDuration,
+		}
 		email, err := notify.NewEmail(emailParams)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to create email notification destination")
