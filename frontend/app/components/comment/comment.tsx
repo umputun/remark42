@@ -454,15 +454,12 @@ export class Comment extends Component<Props, State> {
     const o = {
       ...props.data,
       controversyText: `Controversy: ${(props.data.controversy || 0).toFixed(2)}`,
-      text: !props.data.text.length
-        ? ''
-        : props.view === 'preview'
-        ? getTextSnippet(props.data.text)
-        : props.isUserBanned && !isAdmin
-        ? 'This user was blocked'
-        : props.data.delete
-        ? 'This comment was deleted'
-        : props.data.text,
+      text:
+        props.view === 'preview'
+          ? getTextSnippet(props.data.text)
+          : props.data.delete
+          ? 'This comment was deleted'
+          : props.data.text,
       time: formatTime(new Date(props.data.time)),
       orig: isEditing
         ? props.data.orig &&
@@ -587,7 +584,7 @@ export class Comment extends Component<Props, State> {
               </a>
             )}
 
-            {isAdmin && props.isUserBanned && props.view !== 'user' && <span className="comment__status">Blocked</span>}
+            {props.isUserBanned && props.view !== 'user' && <span className="comment__status">Blocked</span>}
 
             {isAdmin && !props.isUserBanned && props.data.delete && <span className="comment__status">Deleted</span>}
 
