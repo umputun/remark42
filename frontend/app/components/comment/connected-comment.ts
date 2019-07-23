@@ -40,7 +40,7 @@ const mapStateToProps = (state: StoreState, cprops: { data: CommentType }) => {
   > = {
     editMode: getCommentMode(state, cprops.data.id),
     user: state.user,
-    isUserBanned: state.bannedUsers.find(u => u.id === cprops.data.user.id) !== undefined,
+    isUserBanned: cprops.data.user.block || state.bannedUsers.find(u => u.id === cprops.data.user.id) !== undefined,
     post_info: state.info,
     isCommentsDisabled: state.info.read_only || false,
     theme: state.theme,
