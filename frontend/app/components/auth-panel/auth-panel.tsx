@@ -148,8 +148,9 @@ export class AuthPanel extends Component<Props, State> {
 
   renderUnauthorized = () => {
     const { user, providers = [], postInfo } = this.props;
-    const signInMessage = postInfo.read_only ? 'Sign in using ' : 'Sign in to comment using ';
     if (user || !IS_STORAGE_AVAILABLE) return null;
+
+    const signInMessage = postInfo.read_only ? 'Sign in using ' : 'Sign in to comment using ';
 
     return (
       <div className="auth-panel__column">
@@ -287,13 +288,16 @@ export class AuthPanel extends Component<Props, State> {
   };
 
   render(props: RenderableProps<Props>, { isBlockedVisible }: State) {
-    const { user } = props;
+    const {
+      user,
+      postInfo: { read_only },
+      theme,
+    } = props;
     const isAdmin = user && user.admin;
-    const isSettingsLabelVisible =
-      Object.keys(this.props.hiddenUsers).length > 0 || (user && user.admin) || isBlockedVisible;
+    const isSettingsLabelVisible = Object.keys(this.props.hiddenUsers).length > 0 || isAdmin || isBlockedVisible;
 
     return (
-      <div className={b('auth-panel', {}, { theme: props.theme, loggedIn: !!user })}>
+      <div className={b('auth-panel', {}, { theme, loggedIn: !!user })}>
         {this.renderAuthorized()}
         {this.renderUnauthorized()}
         {this.renderThirdPartyWarning()}
@@ -307,7 +311,7 @@ export class AuthPanel extends Component<Props, State> {
 
           {isAdmin && ' • '}
 
-          {!isAdmin && props.postInfo.read_only && <span className="auth-panel__readonly-label">Read-only</span>}
+          {!isAdmin && read_only && <span className="auth-panel__readonly-label">Read-only</span>}
 
           {this.renderSort()}
         </div>
