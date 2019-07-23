@@ -176,13 +176,13 @@ type NotifyGroup struct {
 		API     string        `long:"api" env:"API" default:"https://api.telegram.org/bot" description:"telegram api prefix"`
 	} `group:"telegram" namespace:"telegram" env-namespace:"TELEGRAM"`
 	Email struct {
-		Host          string        `long:"host" env:"HOST" description:"email server host"`
-		Port          int           `long:"port" env:"PORT" default:"587" description:"email server port"`
-		TLS           bool          `long:"tls" env:"TLS" description:"TLS auth flag"`
-		From          string        `long:"fromAddress" env:"FROM" description:"email sender address"`
-		Username      string        `long:"username" env:"USERNAME" description:"email username"`
-		Password      string        `long:"password" env:"PASSWORD" description:"email password"`
-		TimeOut       time.Duration `long:"timeout" env:"TIMEOUT" default:"10s" description:"TLS connection timeout"`
+		Host          string        `long:"host" env:"HOST" description:"smtp host"`
+		Port          int           `long:"port" env:"PORT" default:"587" description:"smtp port"`
+		TLS           bool          `long:"tls" env:"TLS" description:"enable TLS"`
+		From          string        `long:"fromAddress" env:"FROM" description:"email's from"`
+		Username      string        `long:"username" env:"USERNAME" description:"smtp user name"`
+		Password      string        `long:"password" env:"PASSWORD" description:"smtp password"`
+		TimeOut       time.Duration `long:"timeout" env:"TIMEOUT" default:"10s" description:"smtp timeout"`
 		BufferSize    int           `long:"bufferSize" env:"BUFFER_SIZE" default:"10" description:"email send buffer size"`
 		FlushDuration time.Duration `long:"flushDuration" env:"FLUSH_DURATION" default:"30s" description:"maximum time after which email will me sent"`
 	} `group:"email" namespace:"email" env-namespace:"EMAIL"`
