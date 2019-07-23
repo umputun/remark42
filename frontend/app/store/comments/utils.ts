@@ -62,7 +62,7 @@ export function filterTree(tree: Node[], fn: (node: Node) => boolean): Node[] {
  * Traverses through tree and applies function to comment on which function passed.
  * Note that function must not mutate comment
  */
-function mapTree(tree: Node[], fn: (c: Comment) => Comment): Node[] {
+export function mapTree(tree: Node[], fn: (c: Comment) => Comment): Node[] {
   return tree.map(node => {
     const clone: Node = {
       comment: fn(node.comment),
