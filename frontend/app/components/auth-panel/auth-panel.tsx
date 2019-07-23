@@ -146,6 +146,53 @@ export class AuthPanel extends Component<Props, State> {
     );
   };
 
+  renderProvider = (provider: AuthProvider['name']) => {
+    if (provider === 'anonymous') {
+      return (
+        <Dropdown title={PROVIDER_NAMES['anonymous']} titleClass="auth-panel__pseudo-link" theme={this.props.theme}>
+          <DropdownItem>
+            <AnonymousLoginForm
+              onSubmit={this.handleAnonymousLoginFormSubmut}
+              theme={this.props.theme}
+              className="auth-panel__anonymous-login-form"
+            />
+          </DropdownItem>
+        </Dropdown>
+      );
+    }
+    if (provider === 'email') {
+      return (
+        <Dropdown
+          title={PROVIDER_NAMES['email']}
+          titleClass="auth-panel__pseudo-link"
+          theme={this.props.theme}
+          onTitleClick={this.onEmailTitleClick}
+        >
+          <DropdownItem>
+            <EmailLoginFormConnected
+              ref={ref => (this.emailLoginRef = ref ? ref.getWrappedInstance() : null)}
+              onSignIn={this.onEmailSignIn}
+              theme={this.props.theme}
+              className="auth-panel__email-login-form"
+            />
+          </DropdownItem>
+        </Dropdown>
+      );
+    }
+
+    return (
+      <span
+        className="auth-panel__pseudo-link"
+        data-provider={provider}
+        // eslint-disable-next-line @typescript-eslint/no-object-literal-type-assertion
+        {...getHandleClickProps(this.handleOAuthLogin)}
+        role="link"
+      >
+        {PROVIDER_NAMES[provider]}
+      </span>
+    );
+  };
+
   renderUnauthorized = () => {
     const { user, providers = [], postInfo } = this.props;
     if (user || !IS_STORAGE_AVAILABLE) return null;
@@ -158,62 +205,9 @@ export class AuthPanel extends Component<Props, State> {
         {providers.map((provider, i) => {
           const comma = i === 0 ? '' : i === providers.length - 1 ? ' or ' : ', ';
 
-          if (provider === 'anonymous') {
-            return (
-              <span>
-                {comma}{' '}
-                <Dropdown
-                  title={PROVIDER_NAMES[provider]}
-                  titleClass="auth-panel__pseudo-link"
-                  theme={this.props.theme}
-                >
-                  <DropdownItem>
-                    <AnonymousLoginForm
-                      onSubmit={this.handleAnonymousLoginFormSubmut}
-                      theme={this.props.theme}
-                      className="auth-panel__anonymous-login-form"
-                    />
-                  </DropdownItem>
-                </Dropdown>
-              </span>
-            );
-          }
-
-          if (provider === 'email') {
-            return (
-              <span>
-                {comma}{' '}
-                <Dropdown
-                  title={PROVIDER_NAMES[provider]}
-                  titleClass="auth-panel__pseudo-link"
-                  theme={this.props.theme}
-                  onTitleClick={this.onEmailTitleClick}
-                >
-                  <DropdownItem>
-                    <EmailLoginFormConnected
-                      ref={ref => (this.emailLoginRef = ref ? ref.getWrappedInstance() : null)}
-                      onSignIn={this.onEmailSignIn}
-                      theme={this.props.theme}
-                      className="auth-panel__email-login-form"
-                    />
-                  </DropdownItem>
-                </Dropdown>
-              </span>
-            );
-          }
-
           return (
             <span>
-              {comma}
-              <span
-                className="auth-panel__pseudo-link"
-                data-provider={provider}
-                // eslint-disable-next-line @typescript-eslint/no-object-literal-type-assertion
-                {...getHandleClickProps(this.handleOAuthLogin)}
-                role="link"
-              >
-                {PROVIDER_NAMES[provider]}
-              </span>
+              {comma} {this.renderProvider(provider)}
             </span>
           );
         })}
