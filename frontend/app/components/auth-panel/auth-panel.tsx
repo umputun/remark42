@@ -117,175 +117,199 @@ export class AuthPanel extends Component<Props, State> {
     this.onSignIn({ name: p } as AuthProvider);
   }
 
-  render(props: RenderableProps<Props>, { isBlockedVisible }: State) {
-    const { user, providers = [], sort, isCommentsDisabled } = props;
-    const sortArray = getSortArray(sort);
-    const loggedIn = !!user;
-    const signInMessage = props.postInfo.read_only ? 'Sign in using ' : 'Sign in to comment using ';
+  renderAuthorized = () => {
+    const { user, onSignOut } = this.props;
+    if (!user) return null;
+
     const isUserAnonymous = user && user.id.substr(0, 10) === 'anonymous_';
-    const isSettingsLabelVisible =
-      Object.keys(this.props.hiddenUsers).length > 0 || (user && user.admin) || this.state.isBlockedVisible;
 
     return (
-      <div className={b('auth-panel', {}, { theme: props.theme, loggedIn })}>
-        {user && (
-          <div className="auth-panel__column">
-            You signed in as{' '}
-            <Dropdown title={user.name} theme={this.props.theme}>
-              <DropdownItem separator={!isUserAnonymous}>
-                <UserID id={user.id} theme={this.props.theme} {...getHandleClickProps(this.toggleUserInfoVisibility)} />
-              </DropdownItem>
+      <div className="auth-panel__column">
+        You signed in as{' '}
+        <Dropdown title={user.name} theme={this.props.theme}>
+          <DropdownItem separator={!isUserAnonymous}>
+            <UserID id={user.id} theme={this.props.theme} {...getHandleClickProps(this.toggleUserInfoVisibility)} />
+          </DropdownItem>
 
-              {!isUserAnonymous && (
-                <DropdownItem>
-                  <Button
-                    kind="link"
-                    theme={this.props.theme}
-                    onClick={() => requestDeletion().then(() => props.onSignOut())}
-                  >
-                    Request my data removal
-                  </Button>
-                </DropdownItem>
-              )}
-            </Dropdown>{' '}
-            <Button
-              className="auth-panel__sign-out"
-              kind="link"
-              theme={this.props.theme}
-              onClick={() => props.onSignOut()}
-            >
-              Sign out?
-            </Button>
-          </div>
-        )}
-
-        {IS_STORAGE_AVAILABLE && !loggedIn && (
-          <div className="auth-panel__column">
-            {signInMessage}
-            {providers.map((provider, i) => {
-              const comma = i === 0 ? '' : i === providers.length - 1 ? ' or ' : ', ';
-
-              if (provider === 'anonymous') {
-                return (
-                  <span>
-                    {comma}{' '}
-                    <Dropdown
-                      title={PROVIDER_NAMES[provider]}
-                      titleClass="auth-panel__pseudo-link"
-                      theme={this.props.theme}
-                    >
-                      <DropdownItem>
-                        <AnonymousLoginForm
-                          onSubmit={this.handleAnonymousLoginFormSubmut}
-                          theme={this.props.theme}
-                          className="auth-panel__anonymous-login-form"
-                        />
-                      </DropdownItem>
-                    </Dropdown>
-                  </span>
-                );
-              }
-
-              if (provider === 'email') {
-                return (
-                  <span>
-                    {comma}{' '}
-                    <Dropdown
-                      title={PROVIDER_NAMES[provider]}
-                      titleClass="auth-panel__pseudo-link"
-                      theme={this.props.theme}
-                      onTitleClick={this.onEmailTitleClick}
-                    >
-                      <DropdownItem>
-                        <EmailLoginFormConnected
-                          ref={ref => (this.emailLoginRef = ref ? ref.getWrappedInstance() : null)}
-                          onSignIn={this.onEmailSignIn}
-                          theme={this.props.theme}
-                          className="auth-panel__email-login-form"
-                        />
-                      </DropdownItem>
-                    </Dropdown>
-                  </span>
-                );
-              }
-
-              return (
-                <span>
-                  {comma}
-                  <span
-                    className="auth-panel__pseudo-link"
-                    data-provider={provider}
-                    // eslint-disable-next-line @typescript-eslint/no-object-literal-type-assertion
-                    {...getHandleClickProps(this.handleOAuthLogin)}
-                    role="link"
-                  >
-                    {PROVIDER_NAMES[provider]}
-                  </span>
-                </span>
-              );
-            })}
-          </div>
-        )}
-
-        {!IS_STORAGE_AVAILABLE && IS_THIRD_PARTY && (
-          <div className="auth-panel__column">
-            Disable third-party cookies blocking to sign in or open comments in{' '}
-            <a
-              class="auth-panel__pseudo-link"
-              href={`${window.location.origin}/web/comments.html${window.location.search}`}
-              target="_blank"
-            >
-              new page
-            </a>
-          </div>
-        )}
-
-        {!IS_STORAGE_AVAILABLE && !IS_THIRD_PARTY && (
-          <div className="auth-panel__column">Allow cookies to sign in and comment</div>
-        )}
-
-        <div className="auth-panel__column">
-          {isSettingsLabelVisible && (
-            <span
-              className="auth-panel__pseudo-link auth-panel__admin-action"
-              {...getHandleClickProps(() => this.toggleBlockedVisibility())}
-              role="link"
-            >
-              {isBlockedVisible ? 'Hide' : 'Show'} settings
-            </span>
+          {!isUserAnonymous && (
+            <DropdownItem>
+              <Button kind="link" theme={this.props.theme} onClick={() => requestDeletion().then(onSignOut)}>
+                Request my data removal
+              </Button>
+            </DropdownItem>
           )}
+        </Dropdown>{' '}
+        <Button className="auth-panel__sign-out" kind="link" theme={this.props.theme} onClick={onSignOut}>
+          Sign out?
+        </Button>
+      </div>
+    );
+  };
+
+  renderUnauthorized = () => {
+    const { user, providers = [], postInfo } = this.props;
+    const signInMessage = postInfo.read_only ? 'Sign in using ' : 'Sign in to comment using ';
+    if (user || !IS_STORAGE_AVAILABLE) return null;
+
+    return (
+      <div className="auth-panel__column">
+        {signInMessage}
+        {providers.map((provider, i) => {
+          const comma = i === 0 ? '' : i === providers.length - 1 ? ' or ' : ', ';
+
+          if (provider === 'anonymous') {
+            return (
+              <span>
+                {comma}{' '}
+                <Dropdown
+                  title={PROVIDER_NAMES[provider]}
+                  titleClass="auth-panel__pseudo-link"
+                  theme={this.props.theme}
+                >
+                  <DropdownItem>
+                    <AnonymousLoginForm
+                      onSubmit={this.handleAnonymousLoginFormSubmut}
+                      theme={this.props.theme}
+                      className="auth-panel__anonymous-login-form"
+                    />
+                  </DropdownItem>
+                </Dropdown>
+              </span>
+            );
+          }
+
+          if (provider === 'email') {
+            return (
+              <span>
+                {comma}{' '}
+                <Dropdown
+                  title={PROVIDER_NAMES[provider]}
+                  titleClass="auth-panel__pseudo-link"
+                  theme={this.props.theme}
+                  onTitleClick={this.onEmailTitleClick}
+                >
+                  <DropdownItem>
+                    <EmailLoginFormConnected
+                      ref={ref => (this.emailLoginRef = ref ? ref.getWrappedInstance() : null)}
+                      onSignIn={this.onEmailSignIn}
+                      theme={this.props.theme}
+                      className="auth-panel__email-login-form"
+                    />
+                  </DropdownItem>
+                </Dropdown>
+              </span>
+            );
+          }
+
+          return (
+            <span>
+              {comma}
+              <span
+                className="auth-panel__pseudo-link"
+                data-provider={provider}
+                // eslint-disable-next-line @typescript-eslint/no-object-literal-type-assertion
+                {...getHandleClickProps(this.handleOAuthLogin)}
+                role="link"
+              >
+                {PROVIDER_NAMES[provider]}
+              </span>
+            </span>
+          );
+        })}
+      </div>
+    );
+  };
+
+  renderThirdPartyWarning = () => {
+    if (IS_STORAGE_AVAILABLE || !IS_THIRD_PARTY) return null;
+    return (
+      <div className="auth-panel__column">
+        Disable third-party cookies blocking to sign in or open comments in{' '}
+        <a
+          class="auth-panel__pseudo-link"
+          href={`${window.location.origin}/web/comments.html${window.location.search}`}
+          target="_blank"
+        >
+          new page
+        </a>
+      </div>
+    );
+  };
+
+  renderCookiesWarning = () => {
+    if (IS_STORAGE_AVAILABLE || IS_THIRD_PARTY) return null;
+    return <div className="auth-panel__column">Allow cookies to sign in and comment</div>;
+  };
+
+  renderSettingsLabel = () => {
+    return (
+      <span
+        className="auth-panel__pseudo-link auth-panel__admin-action"
+        {...getHandleClickProps(() => this.toggleBlockedVisibility())}
+        role="link"
+      >
+        {this.state.isBlockedVisible ? 'Hide' : 'Show'} settings
+      </span>
+    );
+  };
+
+  renderReadOnlySwitch = () => {
+    const { isCommentsDisabled } = this.props;
+    return (
+      <span
+        className="auth-panel__pseudo-link auth-panel__admin-action"
+        {...getHandleClickProps(() => this.toggleCommentsAvailability())}
+        role="link"
+      >
+        {isCommentsDisabled ? 'Enable' : 'Disable'} comments
+      </span>
+    );
+  };
+
+  renderSort = () => {
+    const { sort } = this.props;
+    const sortArray = getSortArray(sort);
+    return (
+      <span className="auth-panel__sort">
+        Sort by{' '}
+        <span className="auth-panel__select-label">
+          {sortArray.find(x => 'selected' in x && x.selected!)!.label}
+          <select className="auth-panel__select" onChange={this.onSortChange} onBlur={this.onSortChange}>
+            {sortArray.map(sort => (
+              <option value={sort.value} selected={sort.selected}>
+                {sort.label}
+              </option>
+            ))}
+          </select>
+        </span>
+      </span>
+    );
+  };
+
+  render(props: RenderableProps<Props>, { isBlockedVisible }: State) {
+    const { user } = props;
+    const isAdmin = user && user.admin;
+    const isSettingsLabelVisible =
+      Object.keys(this.props.hiddenUsers).length > 0 || (user && user.admin) || isBlockedVisible;
+
+    return (
+      <div className={b('auth-panel', {}, { theme: props.theme, loggedIn: !!user })}>
+        {this.renderAuthorized()}
+        {this.renderUnauthorized()}
+        {this.renderThirdPartyWarning()}
+        {this.renderCookiesWarning()}
+        <div className="auth-panel__column">
+          {isSettingsLabelVisible && this.renderSettingsLabel()}
 
           {isSettingsLabelVisible && ' • '}
 
-          {user && user.admin && (
-            <span
-              className="auth-panel__pseudo-link auth-panel__admin-action"
-              {...getHandleClickProps(() => this.toggleCommentsAvailability())}
-              role="link"
-            >
-              {isCommentsDisabled ? 'Enable' : 'Disable'} comments
-            </span>
-          )}
+          {isAdmin && this.renderReadOnlySwitch()}
 
-          {user && user.admin && ' • '}
+          {isAdmin && ' • '}
 
-          {!(user && user.admin) && props.postInfo.read_only && (
-            <span className="auth-panel__readonly-label">Read-only</span>
-          )}
+          {!isAdmin && props.postInfo.read_only && <span className="auth-panel__readonly-label">Read-only</span>}
 
-          <span className="auth-panel__sort">
-            Sort by{' '}
-            <span className="auth-panel__select-label">
-              {sortArray.find(x => 'selected' in x && x.selected!)!.label}
-              <select className="auth-panel__select" onChange={this.onSortChange} onBlur={this.onSortChange}>
-                {sortArray.map(sort => (
-                  <option value={sort.value} selected={sort.selected}>
-                    {sort.label}
-                  </option>
-                ))}
-              </select>
-            </span>
-          </span>
+          {this.renderSort()}
         </div>
       </div>
     );
