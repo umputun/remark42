@@ -17,7 +17,7 @@ import {
   SETTINGS_VISIBLE_SET,
 } from './types';
 import { setComments, unsetCommentMode } from '../comments/actions';
-import { setUserVerified as uSetUserVerified, filterTree } from '../comments/utils';
+import { setUserVerified as uSetUserVerified, filterTree, mapTree } from '../comments/utils';
 import { IS_STORAGE_AVAILABLE, LS_HIDDEN_USERS_KEY } from '@app/common/constants';
 import { getItem } from '@app/common/local-storage';
 import { Dispatch } from 'redux';
@@ -74,12 +74,18 @@ export const blockUser = (
   });
 };
 
-export const unblockUser = (id: User['id']): StoreAction<Promise<void>> => async dispatch => {
+export const unblockUser = (id: User['id']): StoreAction<Promise<void>> => async (dispatch, getState) => {
   await api.unblockUser(id);
+  const comments = mapTree(getState().comments, c => {
+    if (c.user.id !== id) return c;
+    if (!c.user.block) return c;
+    return { ...c, user: { ...c.user, block: false } };
+  });
   dispatch({
     type: USER_UNBAN,
     id,
   });
+  dispatch(setComments(comments));
 };
 
 export const fetchHiddenUsers = (): StoreAction<void> => dispatch => {
