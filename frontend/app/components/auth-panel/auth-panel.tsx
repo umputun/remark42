@@ -193,24 +193,60 @@ export class AuthPanel extends Component<Props, State> {
     );
   };
 
+  renderOther = (providers: (AuthProvider['name'])[]) => {
+    return (
+      <Dropdown
+        title="Other"
+        titleClass="auth-panel__pseudo-link"
+        theme={this.props.theme}
+        onTitleClick={this.onEmailTitleClick}
+      >
+        {providers.map(provider => (
+          <DropdownItem>{this.renderProvider(provider)}</DropdownItem>
+        ))}
+      </Dropdown>
+    );
+  };
+
   renderUnauthorized = () => {
     const { user, providers = [], postInfo } = this.props;
     if (user || !IS_STORAGE_AVAILABLE) return null;
 
     const signInMessage = postInfo.read_only ? 'Sign in using ' : 'Sign in to comment using ';
+    const threshold = 3;
+    const isAboveThreshold = providers.length > threshold;
 
     return (
       <div className="auth-panel__column">
         {signInMessage}
-        {providers.map((provider, i) => {
-          const comma = i === 0 ? '' : i === providers.length - 1 ? ' or ' : ', ';
+        {!isAboveThreshold &&
+          providers.map((provider, i) => {
+            const comma = i === 0 ? '' : i === providers.length - 1 ? ' or ' : ', ';
 
-          return (
-            <span>
-              {comma} {this.renderProvider(provider)}
-            </span>
-          );
-        })}
+            return (
+              <span>
+                {comma}
+                {this.renderProvider(provider)}
+              </span>
+            );
+          })}
+        {isAboveThreshold &&
+          providers.slice(0, threshold - 1).map((provider, i) => {
+            const comma = i === 0 ? '' : ', ';
+
+            return (
+              <span>
+                {comma}
+                {this.renderProvider(provider)}
+              </span>
+            );
+          })}
+        {isAboveThreshold && (
+          <span>
+            {' or '}
+            {this.renderOther(providers.slice(threshold))}
+          </span>
+        )}
       </div>
     );
   };
