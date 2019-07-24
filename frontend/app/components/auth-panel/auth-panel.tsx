@@ -146,10 +146,14 @@ export class AuthPanel extends Component<Props, State> {
     );
   };
 
-  renderProvider = (provider: AuthProvider['name']) => {
+  renderProvider = (provider: AuthProvider['name'], dropdown: boolean = false) => {
     if (provider === 'anonymous') {
       return (
-        <Dropdown title={PROVIDER_NAMES['anonymous']} titleClass="auth-panel__pseudo-link" theme={this.props.theme}>
+        <Dropdown
+          title={PROVIDER_NAMES['anonymous']}
+          titleClass={`${dropdown ? 'auth-panel__dropdown-provider' : ''} auth-panel__pseudo-link`}
+          theme={this.props.theme}
+        >
           <DropdownItem>
             <AnonymousLoginForm
               onSubmit={this.handleAnonymousLoginFormSubmut}
@@ -164,7 +168,7 @@ export class AuthPanel extends Component<Props, State> {
       return (
         <Dropdown
           title={PROVIDER_NAMES['email']}
-          titleClass="auth-panel__pseudo-link"
+          titleClass={`${dropdown ? 'auth-panel__dropdown-provider' : ''} auth-panel__pseudo-link`}
           theme={this.props.theme}
           onTitleClick={this.onEmailTitleClick}
         >
@@ -182,7 +186,7 @@ export class AuthPanel extends Component<Props, State> {
 
     return (
       <span
-        className="auth-panel__pseudo-link"
+        className={`${dropdown ? 'auth-panel__dropdown-provider' : ''} auth-panel__pseudo-link`}
         data-provider={provider}
         // eslint-disable-next-line @typescript-eslint/no-object-literal-type-assertion
         {...getHandleClickProps(this.handleOAuthLogin)}
@@ -202,7 +206,7 @@ export class AuthPanel extends Component<Props, State> {
         onTitleClick={this.onEmailTitleClick}
       >
         {providers.map(provider => (
-          <DropdownItem>{this.renderProvider(provider)}</DropdownItem>
+          <DropdownItem>{this.renderProvider(provider, true)}</DropdownItem>
         ))}
       </Dropdown>
     );
