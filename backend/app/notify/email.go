@@ -35,13 +35,12 @@ type EmailParams struct {
 // Email implements notify.Destination for email
 type Email struct {
 	EmailParams
-	smtpClient
-	template *template.Template // request message template
+	smtpClient // embedded into Email for test purposes: not set in production code, used in autoFlush initialisation
 
-	ctx context.Context
-
-	submit chan emailMessage
-	once   sync.Once
+	template *template.Template // parsed request message template
+	ctx      context.Context    // context from notify
+	submit   chan emailMessage  // unbuffered channel for email sending
+	once     sync.Once
 }
 
 // smtpClient interface defines subset of net/smtp used by email client
@@ -69,31 +68,42 @@ type tmplData struct {
 }
 
 const defaultEmailTimeout = 10 * time.Second
+const defaultFlushDuration = time.Second * 30
+const defaultEmailTemplate = `{{.From}}{{if .To}} → {{.To}}{{end}}
 
-//NewEmail makes email object for notifications and run sending daemon
+{{.Orig}}
+
+↦ <a href="{{.Link}}">{{if .PostTitle}}{{.PostTitle}}{{else}}original comment{{end}}</a>
+`
+
+//NewEmail makes email object for notifications
 func NewEmail(params EmailParams) (*Email, error) {
-
+	var err error
 	res := Email{EmailParams: params}
-	if res.TimeOut == 0 {
+	if res.TimeOut <= 0 {
 		res.TimeOut = defaultEmailTimeout
 	}
-	if res.BufferSize == 0 {
+	if res.FlushDuration <= 0 {
+		res.FlushDuration = defaultFlushDuration
+	}
+	if res.BufferSize <= 0 {
 		res.BufferSize = 1
 	}
+	if res.Template == "" {
+		res.Template = defaultEmailTemplate
+	}
+	// unbuffered send channel for sending messages to autoFlush goroutine
 	res.submit = make(chan emailMessage)
+
 	log.Printf("[DEBUG] create new email notifier for server %s with user %s, timeout=%s",
 		res.Host, res.Username, res.TimeOut)
 
-	var err error
-
-	tmpl := defaultEmailTemplate
-	if params.Template != "" {
-		tmpl = params.Template
-	}
-	res.template, err = template.New("messageFromRequest").Parse(tmpl)
+	// initialise template
+	res.template, err = template.New("messageFromRequest").Parse(res.Template)
 	if err != nil {
 		return &res, errors.Wrapf(err, "can't parse message template")
 	}
+
 	// establish test connection
 	testSMTPClient, err := res.client()
 	if err != nil {
@@ -102,20 +112,22 @@ func NewEmail(params EmailParams) (*Email, error) {
 	if err = testSMTPClient.Quit(); err != nil {
 		log.Printf("[WARN] failed to send quit command to %s:%d, %v", res.Host, res.Port, err)
 	}
-	if err := testSMTPClient.Close(); err != nil {
+	if err = testSMTPClient.Close(); err != nil {
 		log.Printf("[WARN] can't close smtp connection, %v", err)
 	}
 	return &res, err
 }
 
 // Send email from request to address in settings via submit, thread safe
-// do not returns sending error right away, logs it later
+// do not returns sending error, only:
+// 1. (likely impossible) error of creating email message from request
+// 2. error in case of closed ctx which mean that message wasn't attempted to be sent and dropped
 func (e *Email) Send(ctx context.Context, req request) error {
 	// initialise context and start auto flush once,
 	// as this is the first moment we see the context from caller
 	e.once.Do(func() {
 		e.ctx = ctx
-		e.startAutoFlush(e.smtpClient)
+		e.autoFlush(e.smtpClient)
 	})
 	log.Printf("[DEBUG] send notification via %s, comment id %s", e, req.comment.ID)
 	// TODO: decide where to get "to" email from
@@ -132,40 +144,50 @@ func (e *Email) Send(ctx context.Context, req request) error {
 	}
 }
 
-// sendEmail sends message prepared by Email.buildMessage to prepared Email.smtpClient, thread unsafe
-func (e *Email) sendEmail(smtpClient smtpClient, m emailMessage) error {
-	if smtpClient == nil {
-		return errors.New("sendEmail called without smtpClient set")
+// autoFlush flushes all in-fly records in case of:
+// 1. buffer of size e.BufferSize + 1 is filled
+// 2. there are no new messages for e.FlushDuration and buffer is not empty
+// 3. e.ctx is closed
+func (e *Email) autoFlush(smtpClient smtpClient) {
+	lastWriteTime := time.Time{}
+	msgBuffer := make([]emailMessage, 0, e.BufferSize+1)
+	ticker := time.NewTicker(e.FlushDuration)
+	for {
+		select {
+		case m := <-e.submit:
+			lastWriteTime = time.Now()
+			msgBuffer = append(msgBuffer, m)
+			if len(msgBuffer) >= e.BufferSize {
+				if err := e.sendBuffer(smtpClient, msgBuffer); err != nil {
+					log.Printf("[WARN] notification email(s) send failed, %s", err)
+				}
+				msgBuffer = msgBuffer[0:0]
+			}
+		case <-ticker.C:
+			shouldFlush := time.Now().After(lastWriteTime.Add(e.FlushDuration)) && len(msgBuffer) > 0
+			if shouldFlush {
+				if err := e.sendBuffer(smtpClient, msgBuffer); err != nil {
+					log.Printf("[WARN] notification email(s) send failed, %s", err)
+				}
+				msgBuffer = msgBuffer[0:0]
+			}
+		case <-e.ctx.Done():
+			err := e.sendBuffer(smtpClient, msgBuffer)
+			log.Printf("[WARN] email flush failed, %s", err)
+			return
+		}
 	}
-	if err := smtpClient.Mail(e.From); err != nil {
-		return errors.Wrapf(err, "bad from address %q", e.From)
-	}
-	if err := smtpClient.Rcpt(m.to); err != nil {
-		return errors.Wrapf(err, "bad to address %q", m.to)
-	}
-
-	writer, err := smtpClient.Data()
-	if err != nil {
-		return errors.Wrap(err, "can't make email writer")
-	}
-
-	buf := bytes.NewBufferString(m.message)
-	if _, err = buf.WriteTo(writer); err != nil {
-		return errors.Wrapf(err, "failed to send email body to %q", m.to)
-	}
-	if err = writer.Close(); err != nil {
-		log.Printf("[WARN] can't close smtp body writer, %v", err)
-	}
-	return nil
 }
 
-// sendBuffer sends all collected messages to server, thread safe
+// sendBuffer sends all collected messages to server, closing the connection after finishing
+// in case smtpClient is not provided, establish connection using e.client function
+// thread safe in case smtpClient is unique per thread or nil
 func (e *Email) sendBuffer(smtpClient smtpClient, sendBuffer []emailMessage) (err error) {
 	if len(sendBuffer) == 0 {
 		return nil
 	}
 
-	if smtpClient == nil { // if client not set make new net/smtp
+	if smtpClient == nil {
 		smtpClient, err = e.client()
 		if err != nil {
 			return errors.Wrap(err, "failed to make smtp client")
@@ -194,52 +216,34 @@ func (e *Email) sendBuffer(smtpClient smtpClient, sendBuffer []emailMessage) (er
 	return errors.Wrapf(err, "problems with sending messages")
 }
 
-// startAutoFlush sets auto flush duration from e.FlushDuration
-// and flushes all in-fly records in case of e.ctx closure;
-// default value of 30s is used in case e.FlushDuration is not set
-// by the time of the call
-func (e *Email) startAutoFlush(smtpClient smtpClient) {
-	duration := e.FlushDuration
-	if e.FlushDuration <= 0 {
-		duration = time.Second * 30
+// sendEmail sends message prepared by e.buildMessage to net/smtp.Client with established connection, thread unsafe
+func (e *Email) sendEmail(smtpClient smtpClient, m emailMessage) error {
+	if smtpClient == nil {
+		return errors.New("sendEmail called without smtpClient set")
 	}
-	ticker := time.NewTicker(duration)
-	lastWriteTime := time.Time{}
-	msgBuffer := make([]emailMessage, 0, e.BufferSize+1)
-	go func() {
-		for {
-			select {
-			case m := <-e.submit:
-				lastWriteTime = time.Now()
-				msgBuffer = append(msgBuffer, m)
-				if len(msgBuffer) >= e.BufferSize {
-					if err := e.sendBuffer(smtpClient, msgBuffer); err != nil {
-						log.Printf("[WARN] notification email(s) send failed, %s", err)
-					}
-					msgBuffer = msgBuffer[0:0]
-				}
-			case <-ticker.C:
-				shouldFlush := time.Now().After(lastWriteTime.Add(duration)) && len(msgBuffer) > 0
-				if shouldFlush {
-					if err := e.sendBuffer(smtpClient, msgBuffer); err != nil {
-						log.Printf("[WARN] notification email(s) send failed, %s", err)
-					}
-					msgBuffer = msgBuffer[0:0]
-				}
-			case <-e.ctx.Done():
-				err := e.sendBuffer(smtpClient, msgBuffer)
-				log.Printf("[WARN] email flush failed, %s", err)
-				return
-			}
-		}
-	}()
+	if err := smtpClient.Mail(e.From); err != nil {
+		return errors.Wrapf(err, "bad from address %q", e.From)
+	}
+	if err := smtpClient.Rcpt(m.to); err != nil {
+		return errors.Wrapf(err, "bad to address %q", m.to)
+	}
+
+	writer, err := smtpClient.Data()
+	if err != nil {
+		return errors.Wrap(err, "can't make email writer")
+	}
+
+	buf := bytes.NewBufferString(m.message)
+	if _, err = buf.WriteTo(writer); err != nil {
+		return errors.Wrapf(err, "failed to send email body to %q", m.to)
+	}
+	if err = writer.Close(); err != nil {
+		log.Printf("[WARN] can't close smtp body writer, %v", err)
+	}
+	return nil
 }
 
-func (e *Email) String() string {
-	return fmt.Sprintf("email: %s using '%s'@'%s':%d", e.From, e.Username, e.Host, e.Port)
-}
-
-//buildMessageFromRequest generates email message based on request
+//buildMessageFromRequest generates email message based on request using e.Template
 func (e *Email) buildMessageFromRequest(req request, to string) (string, error) {
 	subject := "New comment"
 	if req.comment.PostTitle != "" {
@@ -259,18 +263,19 @@ func (e *Email) buildMessageFromRequest(req request, to string) (string, error) 
 	return e.buildMessage(subject, msg.String(), to, "text/html"), nil
 }
 
-//buildMessage generates email message
-func (e *Email) buildMessage(subject, msg, to, contentType string) (message string) {
+//buildMessage generates email message to send with using net/smtp.Data()
+func (e *Email) buildMessage(subject, body, to, contentType string) (message string) {
 	message += fmt.Sprintf("From: %s\n", e.From)
 	message += fmt.Sprintf("To: %s\n", to)
 	message += fmt.Sprintf("Subject: %s\n", subject)
 	if contentType != "" {
 		message += fmt.Sprintf("MIME-version: 1.0;\nContent-Type: %s; charset=\"UTF-8\";\n", contentType)
 	}
-	message += "\n" + msg
+	message += "\n" + body
 	return message
 }
 
+// client establish connection with smtp server using credentials in e.EmailParams
 func (e *Email) client() (c *smtp.Client, err error) {
 	srvAddress := fmt.Sprintf("%s:%d", e.Host, e.Port)
 	if e.TLS {
@@ -308,9 +313,7 @@ func (e *Email) client() (c *smtp.Client, err error) {
 	return c, nil
 }
 
-var defaultEmailTemplate = `{{.From}}{{if .To}} → {{.To}}{{end}}
-
-{{.Orig}}
-
-↦ <a href="{{.Link}}">{{if .PostTitle}}{{.PostTitle}}{{else}}original comment{{end}}</a>
-`
+// String representation of Email object
+func (e *Email) String() string {
+	return fmt.Sprintf("email: %s using '%s'@'%s':%d", e.From, e.Username, e.Host, e.Port)
+}
