@@ -76,7 +76,8 @@ const defaultEmailTemplate = `{{.From}}{{if .To}} → {{.To}}{{end}}
 ↦ <a href="{{.Link}}">{{if .PostTitle}}{{.PostTitle}}{{else}}original comment{{end}}</a>
 `
 
-//NewEmail makes email object for notifications
+//NewEmail makes new Email object, returns it even in case of problems
+// (e.Template parsing error or error while testing smtp connection by credentials provided in params)
 func NewEmail(params EmailParams) (*Email, error) {
 	var err error
 	res := Email{EmailParams: params}
@@ -128,7 +129,7 @@ func (e *Email) Send(ctx context.Context, req request) error {
 	// as this is the first moment we see the context from caller
 	e.once.Do(func() {
 		e.ctx = ctx
-		e.autoFlush(e.smtpClient)
+		go e.autoFlush(e.smtpClient)
 	})
 	log.Printf("[DEBUG] send notification via %s, comment id %s", e, req.comment.ID)
 	// TODO: decide where to get "to" email from
