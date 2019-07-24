@@ -1,5 +1,5 @@
 .dropdown_active {
-  .dropdown__content {
+  & > .dropdown__content {
     display: block;
   }
 }
