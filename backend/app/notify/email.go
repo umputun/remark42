@@ -119,9 +119,10 @@ func NewEmail(params EmailParams) (*Email, error) {
 }
 
 // Send email from request to address in settings via submit, thread safe
-// do not returns sending error, only:
-// 1. (likely impossible) error of creating email message from request
-// 2. error in case of closed ctx which mean that message wasn't attempted to be sent and dropped
+// in case of ctx is closed message will be dropped
+// do not returns sending error, except following cases:
+// 1. (likely impossible) template execution error from email message creation from request
+// 2. message dropped error in case of closed ctx
 func (e *Email) Send(ctx context.Context, req request) error {
 	// initialise context and start auto flush once,
 	// as this is the first moment we see the context from caller
@@ -180,7 +181,7 @@ func (e *Email) autoFlush(smtpClient smtpClient) {
 }
 
 // sendBuffer sends all collected messages to server, closing the connection after finishing
-// in case smtpClient is not provided, establish connection using e.client function
+// in case smtpClient is not provided, establish connection using e.client()
 // thread safe in case smtpClient is unique per thread or nil
 func (e *Email) sendBuffer(smtpClient smtpClient, sendBuffer []emailMessage) (err error) {
 	if len(sendBuffer) == 0 {
