@@ -129,6 +129,7 @@ func (e *Email) Send(ctx context.Context, req request) error {
 	// as this is the first moment we see the context from caller
 	e.once.Do(func() {
 		e.ctx = ctx
+		// e.smtpClient initialised only in tests
 		go e.autoFlush(e.smtpClient)
 	})
 	log.Printf("[DEBUG] send notification via %s, comment id %s", e, req.comment.ID)
@@ -141,7 +142,7 @@ func (e *Email) Send(ctx context.Context, req request) error {
 	select {
 	case e.submit <- emailMessage{msg, to}:
 		return nil
-	case <-e.ctx.Done():
+	case <-ctx.Done():
 		return errors.Errorf("canceling sending message to %q because of canceled context", to)
 	}
 }

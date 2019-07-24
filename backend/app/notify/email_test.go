@@ -4,146 +4,100 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"net/smtp"
-	"sync"
 	"testing"
+	"text/template"
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
-	"github.com/umputun/remark/backend/app/store"
 )
 
-func TestBrokenTemplate(t *testing.T) {
-	// Test broken template
-	email, err := NewEmail(EmailParams{Template: "{{"})
-	assert.Error(t, err, "error due to parsing improper template")
-	assert.NotNil(t, email, "despite the error we got object reference")
-	assert.Nil(t, email.template, "default template is not set due to error")
-}
-
-func TestBuildAndSendMessageFromRequest(t *testing.T) {
-	email, err := NewEmail(EmailParams{From: "noreply@example.org"})
-	// test empty connection
-	assert.Error(t, err, "no connection established with empty address and port zero")
-	fakeSMTP := &fakeTestSMTP{}
-	email.smtpClient = fakeSMTP
-	assert.NotNil(t, email, "despite the error we got object reference")
-	assert.Equal(t, 10*time.Second, email.TimeOut, "default value if TimeOut is not defined is set to 10s")
-	assert.NotNil(t, email.template, "default template is set")
-	assert.Equal(t, email.String(), "email: noreply@example.org using ''@'':0", "correct string representation of Email")
-	// test building message from request
-	c := store.Comment{Text: "some text"}
-	c.User.Name = "@from_user"
-	c.Locator.URL = "//example.org"
-	c.Orig = "orig"
-	req := request{comment: c}
-	msg, err := email.buildMessageFromRequest(req, "test@localhost")
-	assert.NoError(t, err)
-	emptyTitleMessage := `From: noreply@example.org
-To: test@localhost
-Subject: New comment
-MIME-version: 1.0;
-Content-Type: text/html; charset="UTF-8";
-
-@from_user
-
-orig
-
-↦ <a href="//example.org#remark42__comment-">original comment</a>
-`
-	assert.Equal(t, emptyTitleMessage, msg)
-	c.ParentID = "1"
-	c.PostTitle = "post title"
-	cp := store.Comment{Text: "some parent text"}
-	cp.User.Name = "@to_user"
-	req = request{comment: c, parent: cp}
-	filledTitleMessage := `From: noreply@example.org
-To: test@localhost
-Subject: New comment for "post title"
-MIME-version: 1.0;
-Content-Type: text/html; charset="UTF-8";
-
-@from_user → @to_user
-
-orig
-
-↦ <a href="//example.org#remark42__comment-">post title</a>
-`
-	msg, err = email.buildMessageFromRequest(req, "test@localhost")
-	assert.NoError(t, err)
-	assert.Equal(t, filledTitleMessage, msg)
-	// test sending
-	err = email.Send(context.Background(), req)
-	require.NoError(t, err)
-	// send empty message afterwards to force flushing previous one
-	err = email.Send(context.Background(), request{})
-	require.NoError(t, err)
-
-	// TODO: fake server is thread unsafe, re-enable after implementing locks
-	//assert.Equal(t, "noreply@example.org", fakeSMTP.mail)
-	//assert.Equal(t, "test@localhost", fakeSMTP.rcpt)
-	//assert.Equal(t, filledTitleMessage, fakeSMTP.buff.String())
-	//assert.True(t, fakeSMTP.quit)
-	//assert.False(t, fakeSMTP.close)
-}
-
-func TestBuildMessage(t *testing.T) {
-	email := Email{EmailParams: EmailParams{From: "from@email"}}
-	msg := email.buildMessage("test_subj", "test_body", "recepient@email", "")
-	expectedMsg := `From: from@email
-To: recepient@email
-Subject: test_subj
-
-test_body`
-	assert.Equal(t, expectedMsg, msg)
-	msg = email.buildMessage("test_subj", "test_body", "recepient@email", "text/html")
-	expectedLines := `MIME-version: 1.0;
-Content-Type: text/html; charset="UTF-8";`
-	assert.Contains(t, msg, expectedLines)
-}
-
-func TestConnectErrors(t *testing.T) {
-	email := Email{}
-	client, err := email.client()
-	assert.Nil(t, client)
-	assert.Error(t, err, "connection with wrong settings return error")
-	email = Email{EmailParams: EmailParams{TLS: true}}
-	client, err = email.client()
-	assert.Nil(t, client)
-	assert.Error(t, err, "TLS connection with wrong settings return error")
-}
-
-func TestEmailMultipleSend(t *testing.T) {
-	e, _ := NewEmail(EmailParams{BufferSize: 5})
-	fakeSMTP := &fakeTestSMTP{}
-	e.smtpClient = fakeSMTP
-	waitCh := make(chan int)
-	var waitGroup sync.WaitGroup
-	// accumulate 15 messages in parallel
-	for i := 1; i <= 15; i++ {
-		waitGroup.Add(1)
-		i := i
-		go func() {
-			// will start once we close the channel
-			<-waitCh
-			assert.NoError(t, e.Send(context.Background(), request{}), fmt.Sprint(i))
-			waitGroup.Done()
-		}()
+func TestEmailNew(t *testing.T) {
+	var testSet = map[int]struct {
+		params   EmailParams
+		template bool
+		err      bool
+		errText  string
+	}{
+		1: {EmailParams{}, true, true, ""},
+		2: {EmailParams{
+			Host:          "test@host",
+			Port:          1000,
+			TLS:           true,
+			From:          "test@from",
+			Username:      "test@username",
+			Password:      "test@password",
+			TimeOut:       time.Second,
+			Template:      "{{",
+			BufferSize:    10,
+			FlushDuration: time.Second,
+		},
+			false, true, "can't parse message template: template: messageFromRequest:1: unexpected unclosed action in command"},
 	}
-	close(waitCh)
-	waitGroup.Wait()
-	// TODO: fake server is thread unsafe, re-enable after implementing locks
-	// make sure we sent messages twice and closed the connection afterwards
-	//assert.Equal(t, 2, fakeSMTP.quitCount, "5 messages sent reusing same connection twice, closing it afterwards")
-	// send one more to flush the queue
-	assert.NoError(t, e.Send(context.Background(), request{}), "16th message sent, forcing previous batch to be sent")
-	//assert.Equal(t, 3, fakeSMTP.quitCount, "15 messages sent in three batches closing connection every time after")
-	//assert.True(t, fakeSMTP.quit)
+	for i, d := range testSet {
+		email, err := NewEmail(d.params)
+
+		if d.err && d.errText == "" {
+			assert.Error(t, err, "error match expected for test set %d", i)
+		} else if d.err && d.errText != "" {
+			assert.EqualError(t, err, d.errText, "error match expected for test set %d", i)
+		} else {
+			assert.NoError(t, err, "error match expected for test set %d", i)
+		}
+
+		assert.NotNil(t, email, "email returned for test set %d", i)
+		assert.Nil(t, email.ctx, "e.ctx is not set during initialisation for test set %d", i)
+		assert.NotNil(t, email.submit, "e.submit is created during initialisation for test set %d", i)
+		if d.template {
+			assert.NotNil(t, email.template, "e.template is set for test set %d", i)
+		} else {
+			assert.Nil(t, email.template, "e.template is not set for test set %d", i)
+		}
+		if d.params.Template == "" {
+			assert.Equal(t, defaultEmailTemplate, email.EmailParams.Template, "empty params.Template changed to default for test set %d", i)
+		} else {
+			assert.Equal(t, d.params.Template, email.EmailParams.Template, "params.Template unchanged after creation for test set %d", i)
+		}
+		if d.params.FlushDuration == 0 {
+			assert.Equal(t, defaultFlushDuration, email.EmailParams.FlushDuration, "empty params.FlushDuration changed to default for test set %d", i)
+		} else {
+			assert.Equal(t, d.params.FlushDuration, email.EmailParams.FlushDuration, "params.FlushDuration unchanged after creation for test set %d", i)
+		}
+		if d.params.TimeOut == 0 {
+			assert.Equal(t, defaultEmailTimeout, email.EmailParams.TimeOut, "empty params.TimeOut changed to default for test set %d", i)
+		} else {
+			assert.Equal(t, d.params.TimeOut, email.EmailParams.TimeOut, "params.TimOut unchanged after creation for test set %d", i)
+		}
+		if d.params.BufferSize == 0 {
+			assert.Equal(t, 1, email.EmailParams.BufferSize, "empty params.BufferSize changed to default for test set %d", i)
+		} else {
+			assert.Equal(t, d.params.BufferSize, email.EmailParams.BufferSize, "params.BufferSize unchanged after creation for test set %d", i)
+		}
+		assert.Equal(t, d.params.From, email.EmailParams.From, "params.From unchanged after creation for test set %d", i)
+		assert.Equal(t, d.params.Host, email.EmailParams.Host, "params.Host unchanged after creation for test set %d", i)
+		assert.Equal(t, d.params.Username, email.EmailParams.Username, "params.Username unchanged after creation for test set %d", i)
+		assert.Equal(t, d.params.Password, email.EmailParams.Password, "params.Password unchanged after creation for test set %d", i)
+		assert.Equal(t, d.params.Port, email.EmailParams.Port, "params.Port unchanged after creation for test set %d", i)
+		assert.Equal(t, d.params.TLS, email.EmailParams.TLS, "params.TLS unchanged after creation for test set %d", i)
+	}
 }
+
+func TestEmailSendErrors(t *testing.T) {
+	var err error
+	e := Email{EmailParams: EmailParams{FlushDuration: time.Second}}
+	e.template, err = template.New("test").Parse("{{.Test}}")
+	assert.NoError(t, err)
+	assert.EqualError(t, e.Send(context.Background(), request{}),
+		"error executing template to build message from request: template: test:1:2: executing \"test\" at <.Test>: can't evaluate field Test in type notify.tmplData")
+	e.template, err = template.New("test").Parse(defaultEmailTemplate)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	assert.EqualError(t, e.Send(ctx, request{}),
+		"canceling sending message to \"test@localhost\" because of canceled context")
+}
+
+// TODO: test writing is in process, more tests to come
 
 type fakeTestSMTP struct {
 	fail bool
