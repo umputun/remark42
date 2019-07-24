@@ -38,7 +38,6 @@ type Email struct {
 	smtpClient // embedded into Email for test purposes: not set in production code, used in autoFlush initialisation
 
 	template *template.Template // parsed request message template
-	ctx      context.Context    // context from notify
 	submit   chan emailMessage  // unbuffered channel for email sending
 	once     sync.Once
 }
@@ -125,12 +124,10 @@ func NewEmail(params EmailParams) (*Email, error) {
 // 1. (likely impossible) template execution error from email message creation from request
 // 2. message dropped error in case of closed ctx
 func (e *Email) Send(ctx context.Context, req request) error {
-	// initialise context and start auto flush once,
-	// as this is the first moment we see the context from caller
+	// start auto flush once, as this is the first moment we see the context from caller
 	e.once.Do(func() {
-		e.ctx = ctx
 		// e.smtpClient initialised only in tests
-		go e.autoFlush(e.smtpClient)
+		go e.autoFlush(ctx, e.smtpClient)
 	})
 	log.Printf("[DEBUG] send notification via %s, comment id %s", e, req.comment.ID)
 	// TODO: decide where to get "to" email from
@@ -143,15 +140,15 @@ func (e *Email) Send(ctx context.Context, req request) error {
 	case e.submit <- emailMessage{msg, to}:
 		return nil
 	case <-ctx.Done():
-		return errors.Errorf("canceling sending message to %q because of canceled context", to)
+		return errors.Errorf("sending message to %q aborted due to canceled context", to)
 	}
 }
 
 // autoFlush flushes all in-fly records in case of:
 // 1. buffer of size e.BufferSize + 1 is filled
 // 2. there are no new messages for e.FlushDuration and buffer is not empty
-// 3. e.ctx is closed
-func (e *Email) autoFlush(smtpClient smtpClient) {
+// 3. ctx is closed
+func (e *Email) autoFlush(ctx context.Context, smtpClient smtpClient) {
 	lastWriteTime := time.Time{}
 	msgBuffer := make([]emailMessage, 0, e.BufferSize+1)
 	ticker := time.NewTicker(e.FlushDuration)
@@ -161,7 +158,7 @@ func (e *Email) autoFlush(smtpClient smtpClient) {
 			lastWriteTime = time.Now()
 			msgBuffer = append(msgBuffer, m)
 			if len(msgBuffer) >= e.BufferSize {
-				if err := e.sendBuffer(smtpClient, msgBuffer); err != nil {
+				if err := e.sendBuffer(ctx, smtpClient, msgBuffer); err != nil {
 					log.Printf("[WARN] notification email(s) send failed, %s", err)
 				}
 				msgBuffer = msgBuffer[0:0]
@@ -169,13 +166,13 @@ func (e *Email) autoFlush(smtpClient smtpClient) {
 		case <-ticker.C:
 			shouldFlush := time.Now().After(lastWriteTime.Add(e.FlushDuration)) && len(msgBuffer) > 0
 			if shouldFlush {
-				if err := e.sendBuffer(smtpClient, msgBuffer); err != nil {
+				if err := e.sendBuffer(ctx, smtpClient, msgBuffer); err != nil {
 					log.Printf("[WARN] notification email(s) send failed, %s", err)
 				}
 				msgBuffer = msgBuffer[0:0]
 			}
-		case <-e.ctx.Done():
-			err := e.sendBuffer(smtpClient, msgBuffer)
+		case <-ctx.Done():
+			err := e.sendBuffer(ctx, smtpClient, msgBuffer)
 			log.Printf("[WARN] email flush failed, %s", err)
 			return
 		}
@@ -185,7 +182,7 @@ func (e *Email) autoFlush(smtpClient smtpClient) {
 // sendBuffer sends all collected messages to server, closing the connection after finishing
 // in case smtpClient is not provided, establish connection using e.client()
 // thread safe in case smtpClient is unique per thread or nil
-func (e *Email) sendBuffer(smtpClient smtpClient, sendBuffer []emailMessage) (err error) {
+func (e *Email) sendBuffer(ctx context.Context, smtpClient smtpClient, sendBuffer []emailMessage) (err error) {
 	if len(sendBuffer) == 0 {
 		return nil
 	}
@@ -200,7 +197,7 @@ func (e *Email) sendBuffer(smtpClient smtpClient, sendBuffer []emailMessage) (er
 	var cumulativeErrors []string
 
 	for _, m := range sendBuffer {
-		err := repeater.NewDefault(5, time.Millisecond*250).Do(e.ctx, func() error { return e.sendEmail(smtpClient, m) })
+		err := repeater.NewDefault(5, time.Millisecond*250).Do(ctx, func() error { return e.sendEmail(smtpClient, m) })
 		if err != nil {
 			cumulativeErrors = append(cumulativeErrors, errors.Wrapf(err, "can't send message to %s", m.to).Error())
 		}

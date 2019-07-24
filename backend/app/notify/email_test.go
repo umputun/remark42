@@ -1,11 +1,7 @@
 package notify
 
 import (
-	"bytes"
 	"context"
-	"errors"
-	"io"
-	"net/smtp"
 	"testing"
 	"text/template"
 	"time"
@@ -47,7 +43,6 @@ func TestEmailNew(t *testing.T) {
 		}
 
 		assert.NotNil(t, email, "email returned for test set %d", i)
-		assert.Nil(t, email.ctx, "e.ctx is not set during initialisation for test set %d", i)
 		assert.NotNil(t, email.submit, "e.submit is created during initialisation for test set %d", i)
 		if d.template {
 			assert.NotNil(t, email.template, "e.template is set for test set %d", i)
@@ -91,39 +86,9 @@ func TestEmailSendErrors(t *testing.T) {
 	assert.EqualError(t, e.Send(context.Background(), request{}),
 		"error executing template to build message from request: template: test:1:2: executing \"test\" at <.Test>: can't evaluate field Test in type notify.tmplData")
 	e.template, err = template.New("test").Parse(defaultEmailTemplate)
+	assert.NoError(t, err)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	assert.EqualError(t, e.Send(ctx, request{}),
-		"canceling sending message to \"test@localhost\" because of canceled context")
+		"sending message to \"test@localhost\" aborted due to canceled context")
 }
-
-// TODO: test writing is in process, more tests to come
-
-type fakeTestSMTP struct {
-	fail bool
-
-	buff        bytes.Buffer
-	mail, rcpt  string
-	auth        bool
-	quit, close bool
-	quitCount   int
-}
-
-func (f *fakeTestSMTP) Mail(m string) error  { f.mail = m; return nil }
-func (f *fakeTestSMTP) Auth(smtp.Auth) error { f.auth = true; return nil }
-func (f *fakeTestSMTP) Rcpt(r string) error  { f.rcpt = r; return nil }
-func (f *fakeTestSMTP) Quit() error          { f.quitCount++; f.quit = true; return nil }
-func (f *fakeTestSMTP) Close() error         { f.close = true; return nil }
-
-func (f *fakeTestSMTP) Data() (io.WriteCloser, error) {
-	if f.fail {
-		return nil, errors.New("failed")
-	}
-	return nopCloser{&f.buff}, nil
-}
-
-type nopCloser struct {
-	io.Writer
-}
-
-func (nopCloser) Close() error { return nil }
