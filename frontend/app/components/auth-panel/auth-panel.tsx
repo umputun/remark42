@@ -13,15 +13,17 @@ import { UserID } from './__user-id';
 import { AnonymousLoginForm } from './__anonymous-login-form';
 import { EmailLoginForm, EmailLoginFormConnected } from './__email-login-form';
 import { StoreState } from '@app/store';
+import { ProviderState } from '@app/store/provider/reducers';
 
 export interface Props {
   user: User | null;
   hiddenUsers: StoreState['hiddenUsers'];
-  providers: (AuthProvider['name'])[];
   sort: Sorting;
   isCommentsDisabled: boolean;
   theme: Theme;
   postInfo: PostInfo;
+  providers: (AuthProvider['name'])[];
+  provider: ProviderState;
 
   onSortChange(s: Sorting): Promise<void>;
   onSignIn(p: AuthProvider): Promise<User | null>;
@@ -219,13 +221,23 @@ export class AuthPanel extends Component<Props, State> {
     const signInMessage = postInfo.read_only ? 'Sign in using ' : 'Sign in to comment using ';
     const threshold = 3;
     const isAboveThreshold = providers.length > threshold;
+    const sortedProviders = ((): typeof providers => {
+      if (!this.props.provider.name) return providers;
+      const lastProviderIndex = providers.indexOf(this.props.provider.name as typeof providers[0]);
+      if (!lastProviderIndex) return providers;
+      return [
+        this.props.provider.name as typeof providers[0],
+        ...providers.slice(0, lastProviderIndex),
+        ...providers.slice(lastProviderIndex + 1),
+      ];
+    })();
 
     return (
       <div className="auth-panel__column">
         {signInMessage}
         {!isAboveThreshold &&
-          providers.map((provider, i) => {
-            const comma = i === 0 ? '' : i === providers.length - 1 ? ' or ' : ', ';
+          sortedProviders.map((provider, i) => {
+            const comma = i === 0 ? '' : i === sortedProviders.length - 1 ? ' or ' : ', ';
 
             return (
               <span>
@@ -235,7 +247,7 @@ export class AuthPanel extends Component<Props, State> {
             );
           })}
         {isAboveThreshold &&
-          providers.slice(0, threshold - 1).map((provider, i) => {
+          sortedProviders.slice(0, threshold - 1).map((provider, i) => {
             const comma = i === 0 ? '' : ', ';
 
             return (
@@ -248,7 +260,7 @@ export class AuthPanel extends Component<Props, State> {
         {isAboveThreshold && (
           <span>
             {' or '}
-            {this.renderOther(providers.slice(threshold))}
+            {this.renderOther(sortedProviders.slice(threshold))}
           </span>
         )}
       </div>
