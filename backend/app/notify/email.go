@@ -131,7 +131,7 @@ func (e *Email) Send(ctx context.Context, req request) error {
 	})
 	log.Printf("[DEBUG] send notification via %s, comment id %s", e, req.comment.ID)
 	// TODO: decide where to get "to" email from
-	to := "test@localhost"
+	to := "recepient@replaceme"
 	msg, err := e.buildMessageFromRequest(req, to)
 	if err != nil {
 		return err
@@ -172,8 +172,10 @@ func (e *Email) autoFlush(ctx context.Context, smtpClient smtpClient) {
 				msgBuffer = msgBuffer[0:0]
 			}
 		case <-ctx.Done():
-			err := e.sendBuffer(ctx, smtpClient, msgBuffer)
-			log.Printf("[WARN] email flush failed, %s", err)
+			// e.sendBuffer is context-aware and won't send messages, but will produce meaningful error message
+			if err := e.sendBuffer(ctx, smtpClient, msgBuffer); err != nil {
+				log.Printf("[WARN] notification email(s) send failed, %s", err)
+			}
 			return
 		}
 	}
