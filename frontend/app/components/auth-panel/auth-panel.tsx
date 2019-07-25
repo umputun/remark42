@@ -219,8 +219,6 @@ export class AuthPanel extends Component<Props, State> {
     if (user || !IS_STORAGE_AVAILABLE) return null;
 
     const signInMessage = postInfo.read_only ? 'Sign in using ' : 'Sign in to comment using ';
-    const threshold = 3;
-    const isAboveThreshold = providers.length > threshold;
     const sortedProviders = ((): typeof providers => {
       if (!this.props.provider.name) return providers;
       const lastProviderIndex = providers.indexOf(this.props.provider.name as typeof providers[0]);
@@ -231,6 +229,9 @@ export class AuthPanel extends Component<Props, State> {
         ...providers.slice(lastProviderIndex + 1),
       ];
     })();
+
+    const threshold = 3;
+    const isAboveThreshold = sortedProviders.length > threshold;
 
     return (
       <div className="auth-panel__column">
@@ -260,7 +261,7 @@ export class AuthPanel extends Component<Props, State> {
         {isAboveThreshold && (
           <span>
             {' or '}
-            {this.renderOther(sortedProviders.slice(threshold))}
+            {this.renderOther(sortedProviders.slice(threshold - 1))}
           </span>
         )}
       </div>
