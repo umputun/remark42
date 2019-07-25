@@ -14,6 +14,7 @@ import { AnonymousLoginForm } from './__anonymous-login-form';
 import { EmailLoginForm, EmailLoginFormConnected } from './__email-login-form';
 import { StoreState } from '@app/store';
 import { ProviderState } from '@app/store/provider/reducers';
+import debounce from '@app/utils/debounce';
 
 export interface Props {
   user: User | null;
@@ -37,6 +38,7 @@ export interface Props {
 interface State {
   isBlockedVisible: boolean;
   anonymousUsernameInputValue: string;
+  threshold: number;
 }
 
 export class AuthPanel extends Component<Props, State> {
@@ -48,6 +50,7 @@ export class AuthPanel extends Component<Props, State> {
     this.state = {
       isBlockedVisible: false,
       anonymousUsernameInputValue: 'anon',
+      threshold: 3,
     };
 
     this.toggleBlockedVisibility = this.toggleBlockedVisibility.bind(this);
@@ -60,6 +63,23 @@ export class AuthPanel extends Component<Props, State> {
     this.toggleUserInfoVisibility = this.toggleUserInfoVisibility.bind(this);
     this.onEmailTitleClick = this.onEmailTitleClick.bind(this);
   }
+
+  componentWillMount() {
+    this.resizeHandler();
+    window.addEventListener('resize', this.resizeHandler);
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener('resize', this.resizeHandler);
+  }
+
+  singInMessageAndSortWidth = 255;
+
+  resizeHandler = debounce(() => {
+    this.setState({
+      threshold: Math.max(3, Math.round((window.innerWidth - this.singInMessageAndSortWidth) / 80)),
+    });
+  }, 100);
 
   onEmailTitleClick() {
     this.emailLoginRef && this.emailLoginRef.focus();
@@ -216,6 +236,7 @@ export class AuthPanel extends Component<Props, State> {
 
   renderUnauthorized = () => {
     const { user, providers = [], postInfo } = this.props;
+    const { threshold } = this.state;
     if (user || !IS_STORAGE_AVAILABLE) return null;
 
     const signInMessage = postInfo.read_only ? 'Sign in using ' : 'Sign in to comment using ';
@@ -230,7 +251,6 @@ export class AuthPanel extends Component<Props, State> {
       ];
     })();
 
-    const threshold = 3;
     const isAboveThreshold = sortedProviders.length > threshold;
 
     return (
