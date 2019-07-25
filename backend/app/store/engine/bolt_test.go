@@ -166,6 +166,29 @@ func TestBoltDB_FindLastSince(t *testing.T) {
 	assert.Equal(t, 0, len(res))
 }
 
+func TestBoltDB_FindInPostSince(t *testing.T) {
+	var b, teardown = prep(t)
+	defer teardown()
+
+	ts := time.Date(2017, 12, 20, 15, 18, 21, 0, time.Local)
+	req := FindRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, Sort: "-time", Since: ts}
+	res, err := b.Find(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(res))
+	assert.Equal(t, "some text2", res[0].Text)
+
+	req.Since = time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local)
+	res, err = b.Find(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(res))
+	assert.Equal(t, "some text2", res[0].Text)
+
+	req.Since = time.Date(2017, 12, 20, 16, 18, 22, 0, time.Local)
+	res, err = b.Find(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(res))
+}
+
 func TestBoltDB_FindForUser(t *testing.T) {
 	var b, teardown = prep(t)
 	defer teardown()

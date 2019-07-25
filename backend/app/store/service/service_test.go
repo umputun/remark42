@@ -802,6 +802,23 @@ func TestService_Find(t *testing.T) {
 	assert.InDelta(t, 0, res[1].Controversy, 0.01)
 }
 
+func TestService_FindSince(t *testing.T) {
+	// two comments for https://radio-t.com, no reply
+	b := DataStore{Engine: prepStoreEngine(t), EditDuration: 100 * time.Millisecond,
+		AdminStore: admin.NewStaticStore("secret 123", []string{"user2"}, "user@email.com")}
+
+	res, err := b.FindSince(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "time", store.User{}, time.Time{})
+	require.NoError(t, err)
+	assert.Equal(t, 2, len(res))
+	assert.Equal(t, "id-1", res[0].ID)
+
+	res, err = b.FindSince(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "time", store.User{},
+		time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local))
+	require.NoError(t, err)
+	assert.Equal(t, 1, len(res))
+	assert.Equal(t, "id-2", res[0].ID)
+}
+
 func TestService_Info(t *testing.T) {
 	defer teardown(t)
 

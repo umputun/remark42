@@ -101,10 +101,15 @@ func (s *DataStore) Create(comment store.Comment) (commentID string, err error) 
 	return s.Engine.Create(comment)
 }
 
-// Find wraps engine's Find call and alter results if needed
-// user used to filter results for self vs others
+// Find wraps engine's Find call and alter results if needed. User used to alter comments
+// in order to differentiate between user's comments vs others comments.
 func (s *DataStore) Find(locator store.Locator, sort string, user store.User) ([]store.Comment, error) {
-	req := engine.FindRequest{Locator: locator, Sort: sort}
+	return s.FindSince(locator, sort, user, time.Time{})
+}
+
+// FindSince wraps engine's Find call and alter results if needed. Returns comments after since tx
+func (s *DataStore) FindSince(locator store.Locator, sort string, user store.User, since time.Time) ([]store.Comment, error) {
+	req := engine.FindRequest{Locator: locator, Sort: sort, Since: since}
 	comments, err := s.Engine.Find(req)
 	if err != nil {
 		return comments, err

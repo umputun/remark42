@@ -16,6 +16,7 @@ import (
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
 	"github.com/go-pkgz/rest/cache"
+	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/store"
@@ -36,7 +37,7 @@ type public struct {
 type pubStore interface {
 	Create(comment store.Comment) (commentID string, err error)
 	Get(locator store.Locator, commentID string, user store.User) (store.Comment, error)
-	Find(locator store.Locator, sort string, user store.User) ([]store.Comment, error)
+	FindSince(locator store.Locator, sort string, user store.User, since time.Time) ([]store.Comment, error)
 	Last(siteID string, limit int, since time.Time, user store.User) ([]store.Comment, error)
 	User(siteID, userID string, limit, skip int, user store.User) ([]store.Comment, error)
 	UserCount(siteID, userID string) (int, error)
@@ -49,7 +50,7 @@ type pubStore interface {
 	Counts(siteID string, postIDs []string) ([]store.PostInfo, error)
 }
 
-// GET /find?site=siteID&url=post-url&format=[tree|plain]&sort=[+/-time|+/-score|+/-controversy ]&view=[user|all]
+// GET /find?site=siteID&url=post-url&format=[tree|plain]&sort=[+/-time|+/-score|+/-controversy]&view=[user|all]&since=unix_ts_msec
 // find comments for given post. Returns in tree or plain formats, sorted
 func (s *public) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
@@ -59,17 +60,27 @@ func (s *public) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	view := r.URL.Query().Get("view")
-	log.Printf("[DEBUG] get comments for %+v, sort %s, format %s", locator, sort, r.URL.Query().Get("format"))
+	since, err := s.parseSince(r)
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't parse since", rest.ErrCommentNotFound)
+		return
+	}
+	format := r.URL.Query().Get("format")
+	if format == "tree" {
+		since = time.Time{} // since doesn't make sense for tree
+	}
+
+	log.Printf("[DEBUG] get comments for %+v, sort %s, format %s, since %v", locator, sort, format, since)
 
 	key := cache.NewKey(locator.SiteID).ID(URLKeyWithUser(r)).Scopes(locator.SiteID, locator.URL)
 	data, err := s.cache.Get(key, func() ([]byte, error) {
-		comments, e := s.dataService.Find(locator, sort, rest.GetUserOrEmpty(r))
+		comments, e := s.dataService.FindSince(locator, sort, rest.GetUserOrEmpty(r), since)
 		if e != nil {
 			comments = []store.Comment{} // error should clear comments and continue for post info
 		}
 		comments = s.applyView(comments, view)
 		var b []byte
-		switch r.URL.Query().Get("format") {
+		switch format {
 		case "tree":
 			tree := service.MakeTree(comments, sort, s.readOnlyAge)
 			if tree.Nodes == nil { // eliminate json nil serialization
@@ -152,15 +163,10 @@ func (s *public) infoStreamCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	log.Printf("[DEBUG] start stream for %+v, timeout=%v, refresh=%v", locator, s.streamer.TimeOut, s.streamer.Refresh)
 
-	sinceTs := time.Time{}
-	since := r.URL.Query().Get("since")
-	if since != "" {
-		unixTS, e := strconv.ParseInt(since, 10, 64)
-		if e != nil {
-			rest.SendErrorJSON(w, r, http.StatusBadRequest, e, "can't translate since parameter", rest.ErrDecode)
-			return
-		}
-		sinceTs = time.Unix(unixTS/1000, 1000000*(unixTS%1000)) // since param in msec timestamp
+	sinceTs, err := s.parseSince(r)
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't translate since parameter", rest.ErrDecode)
+		return
 	}
 
 	fn := func() steamEventFn {
@@ -191,8 +197,8 @@ func (s *public) infoStreamCtrl(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := s.streamer.Activate(r.Context(), fn, w); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't stream", rest.ErrInternal)
+	if e := s.streamer.Activate(r.Context(), fn, w); e != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, e, "can't stream", rest.ErrInternal)
 	}
 }
 
@@ -207,14 +213,10 @@ func (s *public) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		limit = 0
 	}
 
-	sinceTime := time.Time{}
-	if since := r.URL.Query().Get("since"); since != "" {
-		unixTS, e := strconv.ParseInt(since, 10, 64)
-		if e != nil {
-			rest.SendErrorJSON(w, r, http.StatusBadRequest, e, "can't translate since parameter", rest.ErrDecode)
-			return
-		}
-		sinceTime = time.Unix(unixTS/1000, 1000000*(unixTS%1000)) // since param in msec timestamp
+	sinceTime, err := s.parseSince(r)
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't translate since parameter", rest.ErrDecode)
+		return
 	}
 
 	key := cache.NewKey(siteID).ID(URLKey(r)).Scopes(lastCommentsScope)
@@ -243,14 +245,13 @@ func (s *public) lastCommentsStreamCtrl(w http.ResponseWriter, r *http.Request) 
 	siteID := r.URL.Query().Get("site")
 	log.Printf("[DEBUG] get last comments stream for %s", siteID)
 
-	sinceTs := time.Now()
-	if since := r.URL.Query().Get("since"); since != "" {
-		unixTS, e := strconv.ParseInt(since, 10, 64)
-		if e != nil {
-			rest.SendErrorJSON(w, r, http.StatusBadRequest, e, "can't translate since parameter", rest.ErrDecode)
-			return
-		}
-		sinceTs = time.Unix(unixTS/1000, 1000000*(unixTS%1000)) // since param in msec timestamp
+	sinceTs, err := s.parseSince(r)
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't translate since parameter", rest.ErrDecode)
+		return
+	}
+	if sinceTs.IsZero() {
+		sinceTs = time.Now()
 	}
 
 	fn := func() steamEventFn {
@@ -273,8 +274,8 @@ func (s *public) lastCommentsStreamCtrl(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	if err := s.streamer.Activate(r.Context(), fn, w); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't stream", rest.ErrInternal)
+	if e := s.streamer.Activate(r.Context(), fn, w); e != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, e, "can't stream", rest.ErrInternal)
 	}
 }
 
@@ -498,4 +499,16 @@ func (s *public) applyView(comments []store.Comment, view string) []store.Commen
 		return projection
 	}
 	return comments
+}
+
+func (s *public) parseSince(r *http.Request) (time.Time, error) {
+	sinceTs := time.Time{}
+	if since := r.URL.Query().Get("since"); since != "" {
+		unixTS, e := strconv.ParseInt(since, 10, 64)
+		if e != nil {
+			return time.Time{}, errors.Wrap(e, "can't translate since parameter")
+		}
+		sinceTs = time.Unix(unixTS/1000, 1000000*(unixTS%1000)) // since param in msec timestamp
+	}
+	return sinceTs, nil
 }
