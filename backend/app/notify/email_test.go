@@ -175,10 +175,9 @@ func TestEmailSend(t *testing.T) {
 			// wait for another batch of email being sent
 		}
 		assert.Equal(t, d.quitCount+1, d.smtp.readQuitCount(), "connection closed expected amount of times on test run #%d", i)
-		if d.waitForTicker {
-			cancel()
-			assert.Equal(t, d.quitCount+1, d.smtp.readQuitCount(), "connection closed expected amount of times on test run #%d", i)
-		}
+		cancel()
+		assert.Equal(t, d.quitCount+1, d.smtp.readQuitCount(),
+			"second context cancel (or context cancel after timer sent messages) don't cause another try of sending messages on test run #%d", i)
 	}
 }
 
