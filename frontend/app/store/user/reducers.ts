@@ -1,6 +1,5 @@
 import { User, BlockedUser } from '@app/common/types';
 
-import { StoreState } from '../index';
 import {
   USER_SET,
   USER_BAN,
@@ -14,7 +13,7 @@ import {
   USER_UNHIDE,
 } from './types';
 
-export const user = (state: StoreState['user'] = null, action: USER_ACTIONS): User | null => {
+export const user = (state: User | null = null, action: USER_ACTIONS): User | null => {
   switch (action.type) {
     case USER_SET: {
       return action.user;
@@ -24,7 +23,7 @@ export const user = (state: StoreState['user'] = null, action: USER_ACTIONS): Us
   }
 };
 
-export const bannedUsers = (state: StoreState['bannedUsers'] = [], action: USER_ACTIONS): BlockedUser[] => {
+export const bannedUsers = (state: BlockedUser[] = [], action: USER_ACTIONS): BlockedUser[] => {
   switch (action.type) {
     case USER_BANLIST_SET: {
       return action.list;
@@ -47,7 +46,7 @@ export const bannedUsers = (state: StoreState['bannedUsers'] = [], action: USER_
   }
 };
 
-export const hiddenUsers = (state: StoreState['hiddenUsers'] = {}, action: USER_ACTIONS): StoreState['hiddenUsers'] => {
+export const hiddenUsers = (state: { [id: string]: User } = {}, action: USER_ACTIONS): { [id: string]: User } => {
   switch (action.type) {
     case USER_HIDELIST_SET: {
       return action.payload;
@@ -66,10 +65,7 @@ export const hiddenUsers = (state: StoreState['hiddenUsers'] = {}, action: USER_
   }
 };
 
-export const isSettingsVisible = (
-  state: StoreState['isSettingsVisible'] = false,
-  action: SETTINGS_VISIBLE_SET_ACTION
-): boolean => {
+export const isSettingsVisible = (state: boolean = false, action: SETTINGS_VISIBLE_SET_ACTION): boolean => {
   switch (action.type) {
     case SETTINGS_VISIBLE_SET: {
       return action.state;
