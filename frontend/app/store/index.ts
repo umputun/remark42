@@ -2,6 +2,7 @@ import { createStore, applyMiddleware, AnyAction, compose } from 'redux';
 import { combineReducers } from 'redux';
 import thunk, { ThunkAction, ThunkDispatch } from 'redux-thunk';
 import { Comment, User, PostInfo, Node, BlockedUser, Theme, Sorting, CommentMode } from '@app/common/types';
+import { ProviderState } from './provider/reducers';
 
 import storeReducers from './reducers';
 import { ACTIONS } from './actions';
@@ -35,6 +36,8 @@ export interface StoreState {
   userComments?: {
     [key: string]: Comment[];
   };
+  /** stores info about provider used for login */
+  provider: ProviderState;
 }
 
 const reducers = combineReducers<StoreState>(storeReducers);
