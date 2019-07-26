@@ -56,15 +56,9 @@ describe('<AuthPanel />', () => {
 
         render(element, container);
 
-        const authPanelColumn = container.querySelectorAll('.auth-panel__column');
-
-        expect(authPanelColumn.length).toEqual(2);
-
-        const authForm = authPanelColumn[0];
-
-        expect(authForm.textContent).toEqual(expect.stringContaining('Sign in to comment using'));
-
-        const providerLinks = authForm.querySelectorAll('.auth-panel__pseudo-link');
+        const providerLinks = container
+          .querySelectorAll('.auth-panel__column')[0]
+          .querySelectorAll('.auth-panel__pseudo-link');
 
         expect(providerLinks[0].textContent).toEqual('GitHub');
         expect(providerLinks[1].textContent).toEqual('Google');
@@ -83,15 +77,9 @@ describe('<AuthPanel />', () => {
 
         render(element, container);
 
-        const authPanelColumn = container.querySelectorAll('.auth-panel__column');
-
-        expect(authPanelColumn.length).toEqual(2);
-
-        const authForm = authPanelColumn[0];
-
-        expect(authForm.textContent).toEqual(expect.stringContaining('Sign in to comment using'));
-
-        const providerLinks = authForm.querySelectorAll('.auth-panel__pseudo-link');
+        const providerLinks = container
+          .querySelectorAll('.auth-panel__column')[0]
+          .querySelectorAll('.auth-panel__pseudo-link');
 
         expect(providerLinks[0].textContent).toEqual('Google');
         expect(providerLinks[1].textContent).toEqual('GitHub');
