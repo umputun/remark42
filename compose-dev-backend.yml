@@ -1,6 +1,6 @@
 # compose file for local development
 # starts backend on 8080 with basic auth "dev:password" and Dev oauth2 provider on port 8084, UI on http://127.0.0.1:8080/web
-# 
+#
 # mongo-related tests needs mongodb container running - docker run -d -name=mongo mongo:3.6 --smallfiles
 # start build with backend tests:
 # MONGO_REMARK_TEST=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' mongo) \
@@ -9,31 +9,30 @@
 # to skip mongo test set MONGO_REMARK_TEST=skip
 #
 # start remark42 service - docker-compose -f compose-dev-backend.yml up
-version: '2'
+version: "2"
 
 services:
     remark42:
-        build: 
+        build:
             context: .
             dockerfile: Dockerfile
             args:
                 - SKIP_BACKEND_TEST
                 - SKIP_FRONTEND_TEST=true
-                - MONGO_TEST=skip # disable mongo tests on build by default. To allow remove =skip part and see above
 
         image: umputun/remark42:dev
         container_name: "remark42-dev"
         hostname: "remark42-dev"
 
         logging:
-          driver: json-file
-          options:
-              max-size: "10m"
-              max-file: "5"
+            driver: json-file
+            options:
+                max-size: "10m"
+                max-file: "5"
 
         ports:
-         - "8080:8080" # primary rest server
-         - "8084:8084" # local oauth2 server
+            - "8080:8080" # primary rest server
+            - "8084:8084" # local oauth2 server
 
         environment:
             - REMARK_URL=http://127.0.0.1:8080
@@ -42,11 +41,19 @@ services:
             - BACKUP_PATH=/srv/var/backup
             - DEBUG=true
             - ADMIN_PASSWD=password
-            - AUTH_DEV=true   # activate local oauth "dev"
-            - ADMIN_SHARED_ID=dev_user  # set admin flag for default user on local ouath2
+            - AUTH_DEV=true # activate local oauth "dev"
+            - ADMIN_SHARED_ID=dev_user # set admin flag for default user on local ouath2
             - NOTIFY_TYPE
             - NOTIFY_TELEGRAM_TOKEN
             - NOTIFY_TELEGRAM_CHAN
             - EMOJI=true
+            - AUTH_EMAIL_ENABLE=true
+            - AUTH_ANON=true
+            - AUTH_GOOGLE_CID=1111
+            - AUTH_GOOGLE_CSEC=1111
+            - AUTH_GITHUB_CID=1111
+            - AUTH_GITHUB_CSEC=1111
+            - AUTH_FACEBOOK_CID=1111
+            - AUTH_FACEBOOK_CSEC=1111
         volumes:
-            - ./var:/srv/var 
+            - ./var:/srv/var
