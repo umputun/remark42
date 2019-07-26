@@ -3,6 +3,8 @@
  * and should be importded explicitly
  */
 
+import './styles';
+
 import { Comment as CommentType } from '@app/common/types';
 
 import { connect } from 'preact-redux';
