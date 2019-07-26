@@ -8,6 +8,7 @@ require('./__column/auth-panel__column.scss');
 require('./__pseudo-link/auth-panel__pseudo-link.scss');
 require('./__select/auth-panel__select.scss');
 require('./__select-label/auth-panel__select-label.scss');
+require('./__select-label-value/auth-panel__select-label-value.scss');
 require('./__sort/auth-panel__sort.scss');
 
 require('./__user-id/auth-panel__user-id.scss');

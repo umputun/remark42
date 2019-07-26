@@ -39,6 +39,7 @@ interface State {
   isBlockedVisible: boolean;
   anonymousUsernameInputValue: string;
   threshold: number;
+  sortSelectFocused: boolean;
 }
 
 export class AuthPanel extends Component<Props, State> {
@@ -51,6 +52,7 @@ export class AuthPanel extends Component<Props, State> {
       isBlockedVisible: false,
       anonymousUsernameInputValue: 'anon',
       threshold: 3,
+      sortSelectFocused: false,
     };
 
     this.toggleBlockedVisibility = this.toggleBlockedVisibility.bind(this);
@@ -90,6 +92,16 @@ export class AuthPanel extends Component<Props, State> {
       this.props.onSortChange((e.target! as HTMLOptionElement).value as Sorting);
     }
   }
+
+  onSortFocus = () => {
+    this.setState({ sortSelectFocused: true });
+  };
+
+  onSortBlur = (e: Event) => {
+    this.setState({ sortSelectFocused: false });
+
+    this.onSortChange(e);
+  };
 
   toggleBlockedVisibility() {
     if (!this.state.isBlockedVisible) {
@@ -336,13 +348,21 @@ export class AuthPanel extends Component<Props, State> {
 
   renderSort = () => {
     const { sort } = this.props;
+    const { sortSelectFocused } = this.state;
     const sortArray = getSortArray(sort);
     return (
       <span className="auth-panel__sort">
         Sort by{' '}
         <span className="auth-panel__select-label">
-          {sortArray.find(x => 'selected' in x && x.selected!)!.label}
-          <select className="auth-panel__select" onChange={this.onSortChange} onBlur={this.onSortChange}>
+          <span className={b('auth-panel__select-label-value', {}, { focused: sortSelectFocused })}>
+            {sortArray.find(x => 'selected' in x && x.selected!)!.label}
+          </span>
+          <select
+            className="auth-panel__select"
+            onChange={this.onSortChange}
+            onFocus={this.onSortFocus}
+            onBlur={this.onSortBlur}
+          >
             {sortArray.map(sort => (
               <option value={sort.value} selected={sort.selected}>
                 {sort.label}
