@@ -29,7 +29,7 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 <details><summary>Screenshots</summary>
 
 Comments example:
-![](https://github.com/umputun/remark/blob/master/screenshots/admin-settings.png)
+![](https://github.com/umputun/remark/blob/master/screenshots/comments.png)
 
 For admin screenshots see [Admin UI wiki](https://github.com/umputun/remark/wiki/Admin-UI)
 </details>
