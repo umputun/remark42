@@ -1,18 +1,12 @@
 /** @jsx h */
-import { h, render } from 'preact';
+import { h } from 'preact';
+import { mount } from 'enzyme';
 import Preloader from './preloader';
-import { createDomContainer } from '@app/testUtils';
 
 describe(`<Preloader />`, () => {
-  let container: HTMLElement;
-
-  createDomContainer(domContainer => {
-    container = domContainer;
-  });
-
   it('should render Preloader', () => {
-    render(<Preloader mix="root__preloader" />, container);
+    const element = mount(<Preloader mix="root__preloader" />);
 
-    expect(container.children[0].className).toEqual('preloader root__preloader');
+    expect(element.childAt(0).hasClass('preloader root__preloader')).toEqual(true);
   });
 });
