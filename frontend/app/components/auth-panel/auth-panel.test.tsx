@@ -43,23 +43,60 @@ describe('<AuthPanel />', () => {
       expect(providerLinks[1].textContent).toEqual('GitHub');
     });
 
-    it('should place selected provider first', () => {
-      const element = <AuthPanel {...(DefaultProps as Props)} provider={{ name: 'github' }} user={null} />;
+    describe('sorting', () => {
+      it('should place selected provider first', () => {
+        const element = (
+          <AuthPanel
+            {...(DefaultProps as Props)}
+            providers={['google', 'github', 'yandex']}
+            provider={{ name: 'github' }}
+            user={null}
+          />
+        );
 
-      render(element, container);
+        render(element, container);
 
-      const authPanelColumn = container.querySelectorAll('.auth-panel__column');
+        const authPanelColumn = container.querySelectorAll('.auth-panel__column');
 
-      expect(authPanelColumn.length).toEqual(2);
+        expect(authPanelColumn.length).toEqual(2);
 
-      const authForm = authPanelColumn[0];
+        const authForm = authPanelColumn[0];
 
-      expect(authForm.textContent).toEqual(expect.stringContaining('Sign in to comment using'));
+        expect(authForm.textContent).toEqual(expect.stringContaining('Sign in to comment using'));
 
-      const providerLinks = authForm.querySelectorAll('.auth-panel__pseudo-link');
+        const providerLinks = authForm.querySelectorAll('.auth-panel__pseudo-link');
 
-      expect(providerLinks[0].textContent).toEqual('GitHub');
-      expect(providerLinks[1].textContent).toEqual('Google');
+        expect(providerLinks[0].textContent).toEqual('GitHub');
+        expect(providerLinks[1].textContent).toEqual('Google');
+        expect(providerLinks[2].textContent).toEqual('Yandex');
+      });
+
+      it('should do nothing if provider not found', () => {
+        const element = (
+          <AuthPanel
+            {...(DefaultProps as Props)}
+            providers={['google', 'github', 'yandex']}
+            provider={{ name: 'baidu' }}
+            user={null}
+          />
+        );
+
+        render(element, container);
+
+        const authPanelColumn = container.querySelectorAll('.auth-panel__column');
+
+        expect(authPanelColumn.length).toEqual(2);
+
+        const authForm = authPanelColumn[0];
+
+        expect(authForm.textContent).toEqual(expect.stringContaining('Sign in to comment using'));
+
+        const providerLinks = authForm.querySelectorAll('.auth-panel__pseudo-link');
+
+        expect(providerLinks[0].textContent).toEqual('Google');
+        expect(providerLinks[1].textContent).toEqual('GitHub');
+        expect(providerLinks[2].textContent).toEqual('Yandex');
+      });
     });
 
     it('should render login form with google and github provider for read-only post', () => {

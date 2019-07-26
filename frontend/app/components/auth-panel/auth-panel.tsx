@@ -243,7 +243,7 @@ export class AuthPanel extends Component<Props, State> {
     const sortedProviders = ((): typeof providers => {
       if (!this.props.provider.name) return providers;
       const lastProviderIndex = providers.indexOf(this.props.provider.name as typeof providers[0]);
-      if (!lastProviderIndex) return providers;
+      if (lastProviderIndex < 1) return providers;
       return [
         this.props.provider.name as typeof providers[0],
         ...providers.slice(0, lastProviderIndex),
