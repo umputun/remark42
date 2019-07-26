@@ -5,6 +5,7 @@ import theme from './theme/reducers';
 import user from './user/reducers';
 import userInfo from './user-info/reducers';
 import thread from './thread/reducers';
+import provider from './provider/reducers';
 
 /** Merged store reducers */
 export default {
@@ -15,4 +16,5 @@ export default {
   ...user,
   ...userInfo,
   ...thread,
+  ...provider,
 };

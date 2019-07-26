@@ -17,3 +17,5 @@ require('./_theme/_dark/auth-panel_theme_dark.scss');
 require('./_theme/_light/auth-panel_theme_light.scss');
 
 require('./_logged-in/auth-panel_logged-in.scss');
+
+require('./__dropdown-provider/auth-panel__dropdown-provider.scss');

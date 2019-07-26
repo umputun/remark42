@@ -50,6 +50,7 @@ import { Thread } from '@app/components/thread';
 import { uploadImage, getPreview } from '@app/common/api';
 import { isUserAnonymous } from '@app/utils/isUserAnonymous';
 import { bindActions } from '@app/utils/actionBinder';
+import { ProviderState } from '@app/store/provider/reducers';
 
 const boundActions = bindActions({
   fetchComments,
@@ -82,6 +83,7 @@ type Props = {
   isSettingsVisible: boolean;
   getPreview: typeof getPreview;
   uploadImage: typeof uploadImage;
+  provider: ProviderState;
 } & typeof boundActions;
 
 interface State {
@@ -229,9 +231,10 @@ export class Root extends Component<Props, State> {
             user={this.props.user}
             hiddenUsers={this.props.hiddenUsers}
             sort={this.props.sort}
-            providers={StaticStore.config.auth_providers}
             isCommentsDisabled={isCommentsDisabled}
             postInfo={this.props.info}
+            providers={StaticStore.config.auth_providers}
+            provider={this.props.provider}
             onSignIn={this.logIn}
             onSignOut={this.logOut}
             onBlockedUsersShow={this.onBlockedUsersShow}
@@ -330,6 +333,7 @@ export const ConnectedRoot = connect(
     info: state.info,
     hiddenUsers: state.hiddenUsers,
     blockedUsers: state.bannedUsers,
+    provider: state.provider,
     getPreview,
     uploadImage,
   }),

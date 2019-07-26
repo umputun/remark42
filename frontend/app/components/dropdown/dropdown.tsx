@@ -66,25 +66,36 @@ export default class Dropdown extends Component<Props, State> {
   }
 
   storedDocumentHeight: string | null = null;
+  storedDocumentHeightSet: boolean = false;
   checkInterval: number | undefined = undefined;
 
   __onOpen() {
-    let firstPass = false;
+    const isChildOfDropDown = (() => {
+      if (!this.rootNode) return false;
+      let parent = this.rootNode.parentElement!;
+      while (parent !== document.body) {
+        if (parent.classList.contains('dropdown')) return true;
+        parent = parent.parentElement!;
+      }
+      return false;
+    })();
+    if (isChildOfDropDown) return;
+
+    this.storedDocumentHeight = document.body.style.minHeight;
+    this.storedDocumentHeightSet = true;
+
     let prevDcBottom: number | null = null;
+
     this.checkInterval = window.setInterval(() => {
       if (!this.rootNode || !this.state.isActive) return;
       const windowHeight = window.innerHeight;
       const dcBottom = (() => {
-        const dc = this.rootNode.querySelector('.dropdown__content');
+        const dc = Array.from(this.rootNode.children).find(c => c.classList.contains('dropdown__content'));
         if (!dc) return 0;
         const rect = dc.getBoundingClientRect();
-        return Math.abs(rect.top) + rect.height;
+        return window.scrollY + Math.abs(rect.top) + dc.scrollHeight + 10;
       })();
       if (prevDcBottom === null && dcBottom <= windowHeight) return;
-      if (!firstPass) {
-        firstPass = true;
-        this.storedDocumentHeight = document.body.style.minHeight;
-      }
       if (dcBottom !== prevDcBottom) {
         prevDcBottom = dcBottom;
         document.body.style.minHeight = dcBottom + 'px';
@@ -94,7 +105,9 @@ export default class Dropdown extends Component<Props, State> {
 
   __onClose() {
     window.clearInterval(this.checkInterval);
-    document.body.style.minHeight = this.storedDocumentHeight;
+    if (this.storedDocumentHeightSet) {
+      document.body.style.minHeight = this.storedDocumentHeight;
+    }
   }
 
   async __adjustDropDownContent() {

@@ -21,6 +21,7 @@ import { setUserVerified as uSetUserVerified, filterTree, mapTree } from '../com
 import { IS_STORAGE_AVAILABLE, LS_HIDDEN_USERS_KEY } from '@app/common/constants';
 import { getItem } from '@app/common/local-storage';
 import { Dispatch } from 'redux';
+import { updateProvider } from '../provider/actions';
 
 export const fetchUser = (): StoreAction<Promise<User | null>> => async dispatch => {
   const user = await api.getUser();
@@ -33,6 +34,7 @@ export const fetchUser = (): StoreAction<Promise<User | null>> => async dispatch
 
 export const logIn = (provider: AuthProvider): StoreAction<Promise<User | null>> => async dispatch => {
   const user = await api.logIn(provider);
+  dispatch(updateProvider({ name: provider.name }));
   dispatch({
     type: USER_SET,
     user,
