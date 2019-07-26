@@ -103,13 +103,33 @@ func TestEmailSendErrors(t *testing.T) {
 }
 
 func TestEmailSend(t *testing.T) {
-	const emptyEmail = "From: test_sender\nTo: recepient@replaceme\nSubject: New comment\nMIME-version: 1.0;" +
-		"\nContent-Type: text/html; charset=\"UTF-8\";\n\n\n\n\n\n" +
-		"↦ <a href=\"#remark42__comment-\">original comment</a>\n"
 	const filledEmail = "From: test_sender\nTo: recepient@replaceme\n" +
 		"Subject: New comment for \"test title\"\nMIME-version: 1.0;\nContent-Type: text/html;" +
 		" charset=\"UTF-8\";\n\ntest user name → test parent user name\n\n" +
 		"test comment orig\n\n↦ <a href=\"http://test#remark42__comment-1\">test title</a>\n"
+	email, err := NewEmail(EmailParams{BufferSize: 3, From: "test_sender", FlushDuration: time.Millisecond * 200})
+	assert.Error(t, err, "error match expected")
+	assert.NotNil(t, email, "expecting email returned")
+	// prevent triggering e.autoFlush creation
+	email.once.Do(func() {})
+	var testMessage emailMessage
+	var waitGroup sync.WaitGroup
+	waitGroup.Add(1)
+	go func() { testMessage = <-email.submit; waitGroup.Done() }()
+	assert.NoError(t, email.Send(context.Background(),
+		request{
+			comment: store.Comment{ID: "1", Orig: "test comment orig", User: store.User{Name: "test user name"},
+				Locator:   store.Locator{URL: "http://test"},
+				PostTitle: "test title"},
+			parent: store.Comment{User: store.User{Name: "test parent user name"}}}))
+	waitGroup.Wait()
+	assert.Equal(t, emailMessage{message: filledEmail, to: "recepient@replaceme"}, testMessage)
+}
+
+func TestEmailSendAndAutoFlush(t *testing.T) {
+	const emptyEmail = "From: test_sender\nTo: recepient@replaceme\nSubject: New comment\nMIME-version: 1.0;" +
+		"\nContent-Type: text/html; charset=\"UTF-8\";\n\n\n\n\n\n" +
+		"↦ <a href=\"#remark42__comment-\">original comment</a>\n"
 	var testSet = map[int]struct {
 		smtp                *fakeTestSMTP
 		request             request
@@ -119,24 +139,15 @@ func TestEmailSend(t *testing.T) {
 		waitForTicker       bool
 	}{
 		1: {smtp: &fakeTestSMTP{}, amount: 1, quitCount: 0}, // single message: still in buffer at the time context is closed, not sent
-		// TODO: flaky test, investigate the reason: sometimes it does send messages, sometimes don't
-		// TODO: also sometimes goes into infinite cycle
-		//2: {smtp: &fakeTestSMTP{}, amount: 3, quitCount: 0}, // three messages: still in buffer at the time context is closed, not sent
-		3: {smtp: &fakeTestSMTP{fail: map[string]bool{"data": true}}, amount: 4, quitCount: 1, mail: "test_sender", // four messages: three sent with failure, one discarded
-			rcpt: "recepient@replaceme"}, // TODO: this is wrong! replace with actual to check!
-		4: {smtp: &fakeTestSMTP{}, amount: 4, quitCount: 1, mail: "test_sender", // four messages: three sent, one discarded
-			rcpt:     "recepient@replaceme", // TODO: this is wrong! replace with actual to check!
-			response: strings.Repeat(filledEmail, 3),
-			request: request{
-				comment: store.Comment{ID: "1", Orig: "test comment orig", User: store.User{Name: "test user name"},
-					Locator:   store.Locator{URL: "http://test"},
-					PostTitle: "test title"},
-				parent: store.Comment{User: store.User{Name: "test parent user name"}},
-			}}, // test request message template
-		5: {smtp: &fakeTestSMTP{}, amount: 10, quitCount: 3, // 10 messages, 1 abandoned by context exit
-			rcpt: "recepient@replaceme", // TODO: this is wrong! replace with actual to check!
+		2: {smtp: &fakeTestSMTP{fail: map[string]bool{"data": true}}, amount: 4, quitCount: 1, mail: "test_sender", // four messages: three sent with failure, one discarded
+			rcpt: "recepient@replaceme"},
+		3: {smtp: &fakeTestSMTP{}, amount: 4, quitCount: 1, mail: "test_sender", // four messages: three sent, one discarded
+			rcpt:     "recepient@replaceme",
+			response: strings.Repeat(emptyEmail, 3)},
+		4: {smtp: &fakeTestSMTP{}, amount: 10, quitCount: 3, // 10 messages, 1 abandoned by context exit
+			rcpt: "recepient@replaceme",
 			mail: "test_sender", response: strings.Repeat(emptyEmail, 9)},
-		6: {smtp: &fakeTestSMTP{}, amount: 1, quitCount: 0, waitForTicker: true}, // one message sent by timer
+		5: {smtp: &fakeTestSMTP{}, amount: 1, quitCount: 0, waitForTicker: true}, // one message sent by timer
 	}
 	for i, d := range testSet {
 		email, err := NewEmail(EmailParams{BufferSize: 3, From: "test_sender", FlushDuration: time.Millisecond * 200})

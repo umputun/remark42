@@ -131,6 +131,7 @@ func (e *Email) Send(ctx context.Context, req request) error {
 	})
 	log.Printf("[DEBUG] send notification via %s, comment id %s", e, req.comment.ID)
 	// TODO: decide where to get "to" email from
+	// TODO: replace this email with something else in all tests
 	to := "recepient@replaceme"
 	msg, err := e.buildMessageFromRequest(req, to)
 	if err != nil {
