@@ -114,7 +114,7 @@ export const hideUser = (user: User): StoreAction<void> => (dispatch, getState) 
   });
 };
 
-export const unhideUser = (userId: string): StoreAction<void> => (dispatch, getState) => {
+export const unhideUser = (userId: string): StoreAction<void> => (dispatch, _getState) => {
   if (IS_STORAGE_AVAILABLE) {
     const hiddenUsers = JSON.parse(getItem(LS_HIDDEN_USERS_KEY) || '{}');
     if (hiddenUsers.hasOwnProperty(userId)) {
@@ -124,13 +124,8 @@ export const unhideUser = (userId: string): StoreAction<void> => (dispatch, getS
   }
 
   dispatch({ type: USER_UNHIDE, id: userId });
-  dispatch({
-    type: COMMENTS_PATCH,
-    ids: Object.values(getState().comments)
-      .filter(c => c.user.id === userId)
-      .map(c => c.id),
-    patch: { hidden: false },
-  });
+
+  // no need for comments patch as comments will be refetched after action
 };
 
 export const setVerifiedStatus = (id: User['id'], status: boolean): StoreAction<Promise<void>> => async (
