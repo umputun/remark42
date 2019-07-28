@@ -22,7 +22,7 @@ import {
   blockUser,
   unblockUser,
   fetchBlockedUsers,
-  setSettingsVisibleState,
+  setSettingsVisibility,
   hideUser,
   unhideUser,
 } from '@app/store/user/actions';
@@ -61,7 +61,7 @@ const boundActions = bindActions({
   fetchComments,
   fetchUser,
   fetchBlockedUsers,
-  setSettingsVisible: setSettingsVisibleState,
+  setSettingsVisibility,
   logIn,
   logOut: logout,
   setTheme,
@@ -162,7 +162,7 @@ export class Root extends Component<Props, State> {
     if (this.props.user && this.props.user.admin) {
       await this.props.fetchBlockedUsers();
     }
-    this.props.setSettingsVisible(true);
+    this.props.setSettingsVisibility(true);
   }
 
   async onBlockedUsersHide() {
@@ -170,7 +170,7 @@ export class Root extends Component<Props, State> {
     if (this.state.wasSomeoneUnblocked) {
       this.props.fetchComments(this.props.sort);
     }
-    this.props.setSettingsVisible(false);
+    this.props.setSettingsVisibility(false);
     this.setState({
       wasSomeoneUnblocked: false,
     });

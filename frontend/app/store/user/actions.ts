@@ -148,7 +148,7 @@ export const setVerifiedStatus = (id: User['id'], status: boolean): StoreAction<
   });
 };
 
-export const setSettingsVisibleState = (state: boolean): StoreAction<boolean> => dispatch => {
+export const setSettingsVisibility = (state: boolean): StoreAction<boolean> => dispatch => {
   dispatch({
     type: SETTINGS_VISIBLE_SET,
     state,
