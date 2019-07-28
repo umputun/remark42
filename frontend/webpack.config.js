@@ -27,11 +27,16 @@ console.log(`REMARK_ENV = ${remarkUrl}`);
  * so we have to exclude from ignore these modules
  */
 function getExcluded() {
-  const modules = ['markdown-toolbar-element'];
+  const modules = ['@github/markdown-toolbar-element'];
   const exclude = new RegExp(`node_modules\\/(?!(${modules.map(m => m.replace(/\//g, '\\/')).join('|')})\\/).*`);
 
-  return { exclude };
+  return {
+    exclude,
+  };
 }
+
+// console.log(getExcluded())
+// process.exit(1)
 
 const commonStyleLoaders = [
   'css-loader',
@@ -51,6 +56,8 @@ const commonStyleLoaders = [
     },
   },
 ];
+
+const babelConfigPath = path.resolve(__dirname, './.babelrc.js');
 
 module.exports = () => ({
   context: __dirname,
@@ -76,12 +83,12 @@ module.exports = () => ({
     rules: [
       {
         test: /\.js(x?)$/,
-        use: 'babel-loader',
+        use: [{ loader: 'babel-loader', options: { configFile: babelConfigPath } }],
         ...getExcluded(),
       },
       {
         test: /\.ts(x?)$/,
-        use: ['babel-loader', 'ts-loader'],
+        use: [{ loader: 'babel-loader', options: { configFile: babelConfigPath } }, 'ts-loader'],
         ...getExcluded(),
       },
       {
