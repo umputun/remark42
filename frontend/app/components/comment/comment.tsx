@@ -42,6 +42,7 @@ export type Props = {
   disabled?: boolean;
   collapsed?: boolean;
   theme: Theme;
+  inView?: boolean;
   level?: number;
   mix?: string;
   getPreview?: typeof getPreview;
@@ -64,6 +65,7 @@ export interface State {
    * without server response
    */
   cachedScore: number;
+  initial: boolean;
 }
 
 export class Comment extends Component<Props, State> {
@@ -80,6 +82,7 @@ export class Comment extends Component<Props, State> {
       voteErrorMessage: null,
       scoreDelta: 0,
       cachedScore: props.data.score,
+      initial: true,
     };
 
     this.votingPromise = Promise.resolve();
@@ -91,8 +94,18 @@ export class Comment extends Component<Props, State> {
     this.blockUser = debounce(this.blockUser, 100).bind(this);
   }
 
+  // getHandleClickProps = (handler?: (e: KeyboardEvent | MouseEvent) => void) => {
+  //   if (this.state.initial) return null;
+  //   if (this.props.inView === false) return null;
+  //   return getHandleClickProps(handler);
+  // };
+
   componentWillReceiveProps(nextProps: Props) {
     this.updateState(nextProps);
+  }
+
+  componentDidMount() {
+    this.setState({ initial: false });
   }
 
   updateState = (props: Props) => {
@@ -526,6 +539,19 @@ export class Comment extends Component<Props, State> {
             />
           </div>
         </article>
+      );
+    }
+
+    if (this.props.inView === false) {
+      const [width, height] = this.base ? [this.base.scrollWidth, this.base.scrollHeight] : [100, 100];
+      return (
+        <div
+          id={props.disabled ? undefined : `${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}
+          style={{
+            width: `${width}px`,
+            height: `${height}px`,
+          }}
+        />
       );
     }
 
