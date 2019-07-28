@@ -29,7 +29,7 @@ const observer = new IntersectionObserver(
 
 export class InView extends Component<Props, State> {
   state: State = {
-    inView: true,
+    inView: false,
     ref: undefined,
   };
 

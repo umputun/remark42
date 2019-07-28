@@ -7,6 +7,7 @@ import { ConnectedComment as Comment } from '@app/components/comment/connected-c
 import { Comment as CommentInterface } from '@app/common/types';
 import { getThreadIsCollapsed } from '@app/store/thread/getters';
 import { StoreState } from '@app/store';
+import { InView } from '../root/in-view/in-view';
 
 const mapStateToProps = (state: StoreState, props: { id: CommentInterface['id'] }) => {
   const comment = state.comments[props.id];
@@ -42,7 +43,19 @@ function Thread(props: RenderableProps<Props>) {
       role={['listitem'].concat(!collapsed && !!repliesCount ? 'list' : []).join(' ')}
       aria-expanded={!collapsed}
     >
-      <Comment key={`comment-${props.id}`} view="main" data={comment} repliesCount={repliesCount} level={level} />
+      <InView>
+        {inviewProps => (
+          <Comment
+            ref={ref => inviewProps.ref(ref)}
+            key={`comment-${props.id}`}
+            view="main"
+            data={comment}
+            repliesCount={repliesCount}
+            level={level}
+            inView={inviewProps.inView}
+          />
+        )}
+      </InView>
 
       {!collapsed &&
         childs &&
