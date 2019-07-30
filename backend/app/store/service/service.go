@@ -101,10 +101,15 @@ func (s *DataStore) Create(comment store.Comment) (commentID string, err error) 
 	return s.Engine.Create(comment)
 }
 
-// Find wraps engine's Find call and alter results if needed
-// user used to filter results for self vs others
+// Find wraps engine's Find call and alter results if needed. User used to alter comments
+// in order to differentiate between user's comments vs others comments.
 func (s *DataStore) Find(locator store.Locator, sort string, user store.User) ([]store.Comment, error) {
-	req := engine.FindRequest{Locator: locator, Sort: sort}
+	return s.FindSince(locator, sort, user, time.Time{})
+}
+
+// FindSince wraps engine's Find call and alter results if needed. Returns comments after since tx
+func (s *DataStore) FindSince(locator store.Locator, sort string, user store.User, since time.Time) ([]store.Comment, error) {
+	req := engine.FindRequest{Locator: locator, Sort: sort, Since: since}
 	comments, err := s.Engine.Find(req)
 	if err != nil {
 		return comments, err
@@ -729,19 +734,15 @@ func (s *DataStore) alterComments(cc []store.Comment, user store.User) (res []st
 func (s *DataStore) alterComment(c store.Comment, user store.User) (res store.Comment) {
 
 	blocReq := engine.FlagRequest{Flag: engine.Blocked, Locator: store.Locator{SiteID: c.Locator.SiteID}, UserID: c.User.ID}
-	blocked, _ := s.Engine.Flag(blocReq)
+	blocked, bErr := s.Engine.Flag(blocReq)
 
-	// process blocked users
-	if blocked {
-		if !user.Admin { // reset comment to deleted for non-admins
-			c.SetDeleted(store.SoftDelete)
-		}
-		c.User.Blocked = true
-		c.Deleted = true
+	// mark user blocked
+	if bErr == nil && blocked {
+		c.User.Blocked = blocked
 	}
 
 	// set verified status retroactively
-	if !blocked {
+	if !c.User.Blocked {
 		verifReq := engine.FlagRequest{Flag: engine.Verified, Locator: store.Locator{SiteID: c.Locator.SiteID}, UserID: c.User.ID}
 		c.User.Verified, _ = s.Engine.Flag(verifReq)
 	}

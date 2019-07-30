@@ -1,8 +1,9 @@
 import { Comment } from '@app/common/types';
 
-export const THREAD_GET_COLLAPSE = 'THREAD/COLLAPSE_GET';
-export interface THREAD_GET_COLLAPSE_ACTION {
-  type: typeof THREAD_GET_COLLAPSE;
+export const THREAD_RESTORE_COLLAPSE = 'THREAD/COLLAPSE_RESTORE';
+export interface THREAD_RESTORE_COLLAPSE_ACTION {
+  type: typeof THREAD_RESTORE_COLLAPSE;
+  ids: (Comment['id'])[];
 }
 
 export const THREAD_SET_COLLAPSE = 'THREAD/COLLAPSE_SET';
@@ -12,4 +13,4 @@ export interface THREAD_SET_COLLAPSE_ACTION {
   collapsed: boolean;
 }
 
-export type THREAD_ACTIONS = THREAD_GET_COLLAPSE_ACTION | THREAD_SET_COLLAPSE_ACTION;
+export type THREAD_ACTIONS = THREAD_RESTORE_COLLAPSE_ACTION | THREAD_SET_COLLAPSE_ACTION;

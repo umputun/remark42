@@ -164,7 +164,7 @@ func (b *BoltDB) Find(req FindRequest) (comments []store.Comment, err error) {
 	}
 
 	switch {
-	case req.Locator.SiteID != "" && req.Locator.URL != "": // find comments for site and url
+	case req.Locator.SiteID != "" && req.Locator.URL != "": // find post comments, i.e. for site and url
 		err = bdb.View(func(tx *bolt.Tx) error {
 
 			bucket, e := b.getPostBucket(tx, req.Locator.URL)
@@ -177,7 +177,9 @@ func (b *BoltDB) Find(req FindRequest) (comments []store.Comment, err error) {
 				if e = json.Unmarshal(v, &comment); e != nil {
 					return errors.Wrap(e, "failed to unmarshal")
 				}
-				comments = append(comments, comment)
+				if req.Since.IsZero() || comment.Timestamp.After(req.Since) {
+					comments = append(comments, comment)
+				}
 				return nil
 			})
 		})

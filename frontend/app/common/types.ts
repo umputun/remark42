@@ -65,6 +65,14 @@ export interface Comment {
   delete?: boolean;
   /** post title */
   title?: string;
+  /**
+   * @ClientOnly defines whether comments was hidden (deleted)
+   *
+   * Situatuon may occure for example if user decided to hide someone,
+   * in this case we don't use `delete` field because comment with `delete`
+   * still renders, and comment with `hidden` flag completely removed from DOM
+   */
+  hidden?: boolean;
 }
 
 export interface CommentsResponse {
@@ -119,7 +127,8 @@ export type AuthProvider =
   | { name: 'github' }
   | { name: 'yandex' }
   | { name: 'dev' }
-  | { name: 'anonymous'; username: string };
+  | { name: 'anonymous'; username: string }
+  | { name: 'email'; token: string };
 
 export type BlockTTL = 'permanently' | '43200m' | '10080m' | '1440m';
 

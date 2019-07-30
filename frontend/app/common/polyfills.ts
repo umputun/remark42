@@ -1,3 +1,4 @@
+import 'intersection-observer';
 import 'core-js/es/promise';
 import 'focus-visible';
 import '@webcomponents/custom-elements';

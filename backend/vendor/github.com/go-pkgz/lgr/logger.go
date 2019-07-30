@@ -170,12 +170,18 @@ func (l *Logger) logf(format string, args ...interface{}) {
 	// write to err as well for high levels, exit(1) on fatal and panic and dump stack on panic level
 	switch lv {
 	case "ERROR":
-		_, _ = l.stderr.Write(data)
+		if l.stderr != l.stdout {
+			_, _ = l.stderr.Write(data)
+		}
 	case "FATAL":
-		_, _ = l.stderr.Write(data)
+		if l.stderr != l.stdout {
+			_, _ = l.stderr.Write(data)
+		}
 		l.fatal()
 	case "PANIC":
-		_, _ = l.stderr.Write(data)
+		if l.stderr != l.stdout {
+			_, _ = l.stderr.Write(data)
+		}
 		_, _ = l.stderr.Write(getDump())
 		l.fatal()
 	}
@@ -224,7 +230,7 @@ func (l *Logger) reportCaller(calldepth int) (res callerInfo) {
 	}
 
 	_, pkgInfo := path.Split(path.Dir(filePath))
-	res.Pkg = pkgInfo
+	res.Pkg = strings.Split(pkgInfo, "@")[0] // remove version from package name
 
 	res.File = filePath
 	if pathElems := strings.Split(filePath, "/"); len(pathElems) > 2 {
@@ -294,10 +300,10 @@ func (l *Logger) formatLevel(lv string) string {
 func (l *Logger) extractLevel(line string) (level, msg string) {
 	for _, lv := range levels {
 		if strings.HasPrefix(line, lv) {
-			return lv, line[len(lv)+1:]
+			return lv, strings.TrimSpace(line[len(lv):])
 		}
 		if strings.HasPrefix(line, "["+lv+"]") {
-			return lv, line[len(lv)+3:]
+			return lv, strings.TrimSpace(line[len("["+lv+"]"):])
 		}
 	}
 	return "INFO", line

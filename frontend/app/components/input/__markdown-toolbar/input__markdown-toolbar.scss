@@ -3,6 +3,14 @@
   float: right;
 }
 
+.input__toolbar-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
 .input__toolbar-item {
   background: none;
   border: 0;

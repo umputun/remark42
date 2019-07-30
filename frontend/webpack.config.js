@@ -19,6 +19,25 @@ const NODE_ID = 'remark42';
 console.log(`NODE_ENV = ${env}`);
 console.log(`REMARK_ENV = ${remarkUrl}`);
 
+/**
+ * Generates excludes for babel-loader
+ *
+ * Exclude is a module that has >=es6 code and resides in node_modules.
+ * By defaut babel-loader ignores everything from node_modules,
+ * so we have to exclude from ignore these modules
+ */
+function getExcluded() {
+  const modules = ['@github/markdown-toolbar-element'];
+  const exclude = new RegExp(`node_modules\\/(?!(${modules.map(m => m.replace(/\//g, '\\/')).join('|')})\\/).*`);
+
+  return {
+    exclude,
+  };
+}
+
+// console.log(getExcluded())
+// process.exit(1)
+
 const commonStyleLoaders = [
   'css-loader',
   {
@@ -37,6 +56,8 @@ const commonStyleLoaders = [
     },
   },
 ];
+
+const babelConfigPath = path.resolve(__dirname, './.babelrc.js');
 
 module.exports = () => ({
   context: __dirname,
@@ -62,37 +83,13 @@ module.exports = () => ({
     rules: [
       {
         test: /\.js(x?)$/,
-        oneOf: [
-          {
-            include: /node_modules\/@github\/markdown-toolbar-element/,
-            use: {
-              loader: 'babel-loader',
-              options: {
-                presets: [
-                  [
-                    '@babel/preset-env',
-                    {
-                      targets: {
-                        browsers: ['> 1%', 'android >= 4.4.4', 'ios >= 9', 'IE >= 11'],
-                      },
-                      useBuiltIns: 'usage',
-                      corejs: 3,
-                    },
-                  ],
-                ],
-              },
-            },
-          },
-          {
-            exclude: /node_modules/,
-            use: 'babel-loader',
-          },
-        ],
+        use: [{ loader: 'babel-loader', options: { configFile: babelConfigPath } }],
+        ...getExcluded(),
       },
       {
         test: /\.ts(x?)$/,
-        exclude: /node_modules/,
-        use: ['babel-loader', 'ts-loader'],
+        use: [{ loader: 'babel-loader', options: { configFile: babelConfigPath } }, 'ts-loader'],
+        ...getExcluded(),
       },
       {
         test: /\.s?css$/,
@@ -160,6 +157,7 @@ module.exports = () => ({
   ],
   watchOptions: {
     ignored: /(node_modules|\.vendor\.js$)/,
+    aggregateTimeout: 3000,
   },
   stats: {
     children: false,

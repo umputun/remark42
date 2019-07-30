@@ -1,10 +1,10 @@
-# cloud.google.com/go v0.39.0
+# cloud.google.com/go v0.41.0
 cloud.google.com/go/compute/metadata
 # github.com/PuerkitoBio/goquery v1.5.0
 github.com/PuerkitoBio/goquery
 # github.com/andybalholm/cascadia v1.0.0
 github.com/andybalholm/cascadia
-# github.com/coreos/bbolt v1.3.2
+# github.com/coreos/bbolt v1.3.3
 github.com/coreos/bbolt
 # github.com/davecgh/go-spew v1.1.1
 github.com/davecgh/go-spew/spew
@@ -30,16 +30,17 @@ github.com/go-chi/chi/middleware
 github.com/go-chi/cors
 # github.com/go-chi/render v1.0.1
 github.com/go-chi/render
-# github.com/go-pkgz/auth v0.5.2
+# github.com/go-pkgz/auth v0.7.2
 github.com/go-pkgz/auth
 github.com/go-pkgz/auth/avatar
 github.com/go-pkgz/auth/provider
+github.com/go-pkgz/auth/provider/sender
 github.com/go-pkgz/auth/token
 github.com/go-pkgz/auth/logger
 github.com/go-pkgz/auth/middleware
 # github.com/go-pkgz/lcw v0.3.1
 github.com/go-pkgz/lcw
-# github.com/go-pkgz/lgr v0.6.2
+# github.com/go-pkgz/lgr v0.6.3
 github.com/go-pkgz/lgr
 # github.com/go-pkgz/mongo v1.1.2
 github.com/go-pkgz/mongo
@@ -67,6 +68,8 @@ github.com/hashicorp/golang-lru
 github.com/hashicorp/golang-lru/simplelru
 # github.com/jessevdk/go-flags v0.0.0-20180331124232-1c38ed7ad0cc
 github.com/jessevdk/go-flags
+# github.com/kyokomi/emoji v2.1.0+incompatible
+github.com/kyokomi/emoji
 # github.com/microcosm-cc/bluemonday v1.0.2
 github.com/microcosm-cc/bluemonday
 # github.com/nullrocks/identicon v0.0.0-20180626043057-7875f45b0022
@@ -89,13 +92,13 @@ github.com/stretchr/objx
 github.com/stretchr/testify/mock
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/require
-# golang.org/x/crypto v0.0.0-20190530122614-20be4c3c3ed5
+# golang.org/x/crypto v0.0.0-20190701094942-4def268fd1a4
 golang.org/x/crypto/acme/autocert
 golang.org/x/crypto/acme
-# golang.org/x/image v0.0.0-20190523035834-f03afa92d3ff
+# golang.org/x/image v0.0.0-20190703141733-d6a02ce849c9
 golang.org/x/image/draw
 golang.org/x/image/math/f64
-# golang.org/x/net v0.0.0-20190603091049-60506f45cf65
+# golang.org/x/net v0.0.0-20190628185345-da137c7871d7
 golang.org/x/net/html
 golang.org/x/net/idna
 golang.org/x/net/html/atom
@@ -110,7 +113,7 @@ golang.org/x/oauth2/yandex
 golang.org/x/oauth2/internal
 golang.org/x/oauth2/jws
 golang.org/x/oauth2/jwt
-# golang.org/x/sys v0.0.0-20190602015325-4c4f7f33c9ed
+# golang.org/x/sys v0.0.0-20190626221950-04f50cda93cb
 golang.org/x/sys/unix
 # golang.org/x/text v0.3.2
 golang.org/x/text/secure/bidirule
@@ -119,7 +122,7 @@ golang.org/x/text/unicode/norm
 golang.org/x/text/transform
 # golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
 golang.org/x/time/rate
-# google.golang.org/appengine v1.6.0
+# google.golang.org/appengine v1.6.1
 google.golang.org/appengine
 google.golang.org/appengine/urlfetch
 google.golang.org/appengine/internal
@@ -130,5 +133,5 @@ google.golang.org/appengine/internal/base
 google.golang.org/appengine/internal/datastore
 google.golang.org/appengine/internal/log
 google.golang.org/appengine/internal/remote_api
-# gopkg.in/russross/blackfriday.v2 v2.0.0-00010101000000-000000000000 => github.com/russross/blackfriday/v2 v2.0.1
+# gopkg.in/russross/blackfriday.v2 v2.0.1 => github.com/russross/blackfriday/v2 v2.0.1
 gopkg.in/russross/blackfriday.v2

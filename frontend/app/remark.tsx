@@ -18,6 +18,8 @@ import { StaticStore } from '@app/common/static_store';
 import api from '@app/common/api';
 import { bindActionCreators } from 'redux';
 import { fetchHiddenUsers } from './store/user/actions';
+import { restoreProvider } from './store/provider/actions';
+import { restoreCollapsedThreads } from './store/thread/actions';
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
@@ -37,8 +39,13 @@ async function init(): Promise<void> {
     return;
   }
 
-  const boundFetchHiddenUsers = bindActionCreators(fetchHiddenUsers, reduxStore.dispatch);
-  boundFetchHiddenUsers();
+  const boundActions = bindActionCreators(
+    { fetchHiddenUsers, restoreProvider, restoreCollapsedThreads },
+    reduxStore.dispatch
+  );
+  boundActions.fetchHiddenUsers();
+  boundActions.restoreProvider();
+  boundActions.restoreCollapsedThreads();
 
   const params = window.location.search
     .replace(/^\?/, '')

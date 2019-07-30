@@ -2,7 +2,8 @@
 
 Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engine, which doesn't spy on users. It can be embedded into blogs, articles or any other place where readers add comments.
 
-* Social login via Google, Facebook, Github and Yandex
+* Social login via Google, Facebook, GitHub and Yandex
+* Login via email 
 * Optional anonymous access
 * Multi-level nested comments with both tree and plain presentations
 * Import from Disqus and WordPress
@@ -22,6 +23,16 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 * Multi-site mode from a single instance
 * Integration with automatic ssl (direct and via [nginx-le](https://github.com/umputun/nginx-le))
 * [Privacy focused](#privacy)
+
+[Demo site](https://remark42.com/demo/) available with all authentication methods, including email auth and anonymous access.
+
+<details><summary>Screenshots</summary>
+
+Comments example:
+![](https://github.com/umputun/remark/blob/master/screenshots/comments.png)
+
+For admin screenshots see [Admin UI wiki](https://github.com/umputun/remark/wiki/Admin-UI)
+</details>
 
 
 #
@@ -127,6 +138,16 @@ _this is the recommended way to run remark42_
 | auth.yandex.csec        | AUTH_YANDEX_CSEC        |                          | Yandex OAuth client secret                       |
 | auth.dev                | AUTH_DEV                | `false`                  | local oauth2 server, development mode only       |
 | auth.anon               | AUTH_ANON               | `false`                  | enable anonymous login                           |
+| auth.email.enable       | AUTH_EMAIL_ENABLE       | `false`                  | enable auth via email                            |
+| auth.email.host         | AUTH_EMAIL_HOST         |                          | smtp host                                        |
+| auth.email.port         | AUTH_EMAIL_PORT         | `25`                     | smtp port                                        |
+| auth.email.from         | AUTH_EMAIL_FROM         |                          | email from                                       |
+| auth.email.subj         | AUTH_EMAIL_SUBJ         | `remark42 confirmation`  | email subject                                    |
+| auth.email.content-type | AUTH_EMAIL_CONTENT_TYPE | `text/html`              | email content type                               |
+| auth.email.tls          | AUTH_EMAIL_TLS          | `false`                  | enable TLS                                       |
+| auth.email.user         | AUTH_EMAIL_USER         |                          | smtp user name                                   |
+| auth.email.passwd       | AUTH_EMAIL_PASSWD       |                          | smtp password                                    |
+| auth.email.timeout      | AUTH_EMAIL_TIMEOUT      | `10s`                    | smtp timeout                                     |
 | notify.type             | NOTIFY_TYPE             | none                     | type of notification (none or telegram)          |
 | notify.queue            | NOTIFY_QUEUE            | `100`                    | size of notification queue                       |
 | notify.telegram.token   | NOTIFY_TELEGRAM_TOKEN   |                          | telegram token                                   |
@@ -148,6 +169,7 @@ _this is the recommended way to run remark42_
 | edit-time               | EDIT_TIME               | `5m`                     | edit window                                      |
 | read-age                | READONLY_AGE            |                          | read-only age of comments, days                  |
 | img-proxy               | IMG_PROXY               | `false`                  | enable http->https proxy for images              |
+| emoji                   | EMOJI                   | `false`                  | enable emoji support                             |
 | port                    | REMARK_PORT             | `8080`                   | web server port                                  |
 | web-root                | REMARK_WEB_ROOT         | `./web`                  | web server root directory                        |
 | update-limit            | UPDATE_LIMIT            | `0.5`                    | updates/sec limit                                |
@@ -612,17 +634,18 @@ Sort can be `time`, `active` or `score`. Supported sort order with prefix -/+, i
 
   ```go
   type Config struct {
-      Version        string   `json:"version"`
-      EditDuration   int      `json:"edit_duration"`
-      MaxCommentSize int      `json:"max_comment_size"`
-      Admins         []string `json:"admins"`
-      AdminEmail     string   `json:"admin_email"`
-      Auth           []string `json:"auth_providers"`
-      LowScore       int      `json:"low_score"`
-      CriticalScore  int      `json:"critical_score"`
-      PositiveScore  bool     `json:"positive_score"`
-      ReadOnlyAge    int      `json:"readonly_age"`
-      MaxImageSize   int      `json:"max_image_size"`
+     	Version        string   `json:"version"`
+        EditDuration   int      `json:"edit_duration"`
+        MaxCommentSize int      `json:"max_comment_size"`
+        Admins         []string `json:"admins"`
+        AdminEmail     string   `json:"admin_email"`
+        Auth           []string `json:"auth_providers"`
+        LowScore       int      `json:"low_score"`
+        CriticalScore  int      `json:"critical_score"`
+        PositiveScore  bool     `json:"positive_score"`
+        ReadOnlyAge    int      `json:"readonly_age"`
+        MaxImageSize   int      `json:"max_image_size"`
+        EmojiEnabled   bool     `json:"emoji_enabled"`
   }
   ```
 
@@ -632,8 +655,8 @@ Sort can be `time`, `active` or `score`. Supported sort order with prefix -/+, i
 
 Streaming API provide server-sent events for post updates as well as site update
 
-* `GET /api/v1/stream/info?site=site-idd&url=post-url` - returns stream (`event: info`) with `PostInfo` records for the site and url`
-* `GET /api/v1/stream/last?site=site-id` - returns updates stream (`event: last`) with comments for the site`
+* `GET /api/v1/stream/info?site=site-idd&url=post-url&since=unix_ts_msec` - returns stream (`event: info`) with `PostInfo` records for the site and url. `since` is optional
+* `GET /api/v1/stream/last?site=site-id&since=unix_ts_msec` - returns updates stream (`event: last`) with comments for the site, `since` is optional
 
 <details><summary>response example</summary>
 

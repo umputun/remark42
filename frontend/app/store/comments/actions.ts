@@ -1,56 +1,40 @@
 import api from '@app/common/api';
-import { Tree, Comment, Sorting, CommentMode } from '@app/common/types';
+import { Tree, Comment, Sorting, CommentMode, Node } from '@app/common/types';
 
 import { StoreAction, StoreState } from '../index';
 import { POST_INFO_SET } from '../post_info/types';
-import {
-  getPinnedComments,
-  addComment as uAddComment,
-  replaceComment as uReplaceComment,
-  removeComment as uRemoveComment,
-  setCommentPin as uSetCommentPin,
-  filterTree,
-} from './utils';
-import { COMMENTS_SET, PINNED_COMMENTS_SET, COMMENT_MODE_SET } from './types';
+import { filterTree } from './utils';
+import { COMMENTS_SET, COMMENT_MODE_SET, COMMENTS_APPEND, COMMENTS_EDIT } from './types';
 
 /** sets comments, and put pinned comments in cache */
-export const setComments = (comments: StoreState['comments']): StoreAction<void> => dispatch => {
+export const setComments = (comments: Node[]): StoreAction<void> => dispatch => {
   dispatch({
     type: COMMENTS_SET,
     comments,
   });
-  dispatch({
-    type: PINNED_COMMENTS_SET,
-    comments: getPinnedComments(comments),
-  });
 };
 
 /** appends comment to tree */
-export const addComment = (text: string, title: string, pid?: Comment['id']): StoreAction<Promise<void>> => async (
-  dispatch,
-  getState
-) => {
+export const addComment = (
+  text: string,
+  title: string,
+  pid?: Comment['id']
+): StoreAction<Promise<void>> => async dispatch => {
   const comment = await api.addComment({ text, title, pid });
-  const comments = getState().comments;
-  dispatch(setComments(uAddComment(comments, comment)));
+  dispatch({ type: COMMENTS_APPEND, pid: pid || null, comment });
 };
 
 /** edits comment in tree */
-export const updateComment = (id: Comment['id'], text: string): StoreAction<Promise<void>> => async (
-  dispatch,
-  getState
-) => {
+export const updateComment = (id: Comment['id'], text: string): StoreAction<Promise<void>> => async dispatch => {
   const comment = await api.updateComment({ id, text });
-  const comments = getState().comments;
-  dispatch(setComments(uReplaceComment(comments, comment)));
+  dispatch({ type: COMMENTS_EDIT, comment });
 };
 
 /** edits comment in tree */
-export const putVote = (id: Comment['id'], value: number): StoreAction<Promise<void>> => async (dispatch, getState) => {
+export const putVote = (id: Comment['id'], value: number): StoreAction<Promise<void>> => async dispatch => {
   await api.putCommentVote({ id, value });
-  const updatedComment = await api.getComment(id);
-  const comments = getState().comments;
-  dispatch(setComments(uReplaceComment(comments, updatedComment)));
+  const comment = await api.getComment(id);
+  dispatch({ type: COMMENTS_EDIT, comment });
 };
 
 /** edits comment in tree */
@@ -63,8 +47,9 @@ export const setPinState = (id: Comment['id'], value: boolean): StoreAction<Prom
   } else {
     await api.unpinComment(id);
   }
-  const comments = getState().comments;
-  dispatch(setComments(uSetCommentPin(comments, id, value)));
+  let comment = getState().comments[id];
+  comment = { ...comment, pin: value, edit: { summary: '', time: new Date().toISOString() } };
+  dispatch({ type: COMMENTS_EDIT, comment });
 };
 
 /** edits comment in tree */
@@ -76,8 +61,9 @@ export const removeComment = (id: Comment['id']): StoreAction<Promise<void>> => 
   } else {
     await api.removeMyComment(id);
   }
-  const comments = getState().comments;
-  dispatch(setComments(uRemoveComment(comments, id)));
+  let comment = getState().comments[id];
+  comment = { ...comment, delete: true, edit: { summary: '', time: new Date().toISOString() } };
+  dispatch({ type: COMMENTS_EDIT, comment });
 };
 
 /** fetches comments from server */

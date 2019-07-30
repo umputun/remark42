@@ -4,6 +4,8 @@ package avatar
 
 import (
 	"bytes"
+	"crypto/md5"
+	"encoding/hex"
 	"image"
 	"image/png"
 	"io"
@@ -180,6 +182,25 @@ func GenerateAvatar(user string) ([]byte, error) {
 	buf := &bytes.Buffer{}
 	err = ii.Png(300, buf)
 	return buf.Bytes(), err
+}
+
+// GetGravatarURL returns url to gravatar picture for given email
+func GetGravatarURL(email string) (res string, err error) {
+
+	hash := md5.Sum([]byte(email))
+	hexHash := hex.EncodeToString(hash[:])
+
+	client := http.Client{Timeout: 1 * time.Second}
+	res = "https://www.gravatar.com/avatar/" + hexHash + ".jpg"
+	resp, err := client.Get(res + "?d=404&s=80")
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return "", errors.New(resp.Status)
+	}
+	return res, nil
 }
 
 func retry(retries int, delay time.Duration, fn func() error) (err error) {

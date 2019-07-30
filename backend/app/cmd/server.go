@@ -15,12 +15,14 @@ import (
 
 	bolt "github.com/coreos/bbolt"
 	log "github.com/go-pkgz/lgr"
+	"github.com/kyokomi/emoji"
 	authcache "github.com/patrickmn/go-cache"
 	"github.com/pkg/errors"
 
 	"github.com/go-pkgz/auth"
 	"github.com/go-pkgz/auth/avatar"
 	"github.com/go-pkgz/auth/provider"
+	"github.com/go-pkgz/auth/provider/sender"
 	"github.com/go-pkgz/auth/token"
 	"github.com/go-pkgz/rest/cache"
 
@@ -63,6 +65,7 @@ type ServerCommand struct {
 	WebRoot         string        `long:"web-root" env:"REMARK_WEB_ROOT" default:"./web" description:"web root directory"`
 	UpdateLimit     float64       `long:"update-limit" env:"UPDATE_LIMIT" default:"0.5" description:"updates/sec limit"`
 	RestrictedWords []string      `long:"restricted-words" env:"RESTRICTED_WORDS" description:"words prohibited to use in comments" env-delim:","`
+	EnableEmoji     bool          `long:"emoji" env:"EMOJI" description:"enable emoji"`
 
 	Auth struct {
 		TTL struct {
@@ -75,6 +78,18 @@ type ServerCommand struct {
 		Yandex    AuthGroup `group:"yandex" namespace:"yandex" env-namespace:"YANDEX" description:"Yandex OAuth"`
 		Dev       bool      `long:"dev" env:"DEV" description:"enable dev (local) oauth2"`
 		Anonymous bool      `long:"anon" env:"ANON" description:"enable anonymous login"`
+		Email     struct {
+			Enable       bool          `long:"enable" env:"ENABLE" description:"enable auth via email"`
+			Host         string        `long:"host" env:"HOST" description:"smtp host"`
+			Port         int           `long:"port" env:"PORT" description:"smtp port"`
+			From         string        `long:"from" env:"FROM" description:"email's from"`
+			Subject      string        `long:"subj" env:"SUBJ" default:"remark42 confirmation" description:"email's subject"`
+			ContentType  string        `long:"content-type" env:"CONTENT_TYPE" default:"text/html" description:"content type"`
+			TLS          bool          `long:"tls" env:"TLS" description:"enable TLS"`
+			SMTPUserName string        `long:"user" env:"USER" description:"smtp user name"`
+			SMTPPassword string        `long:"passwd" env:"PASSWD" description:"smtp password"`
+			TimeOut      time.Duration `long:"timeout" env:"TIMEOUT" default:"10s" description:"smtp timeout"`
+		} `group:"email" namespace:"email" env-namespace:"EMAIL"`
 	} `group:"auth" namespace:"auth" env-namespace:"AUTH"`
 
 	CommonOpts
@@ -292,7 +307,11 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 	}
 
 	imgProxy := &proxy.Image{Enabled: s.ImageProxy, RoutePath: "/api/v1/img", RemarkURL: s.RemarkURL}
-	commentFormatter := store.NewCommentFormatter(imgProxy)
+	emojiFmt := store.CommentConverterFunc(func(text string) string { return text })
+	if s.EnableEmoji {
+		emojiFmt = func(text string) string { return emoji.Sprint(text) }
+	}
+	commentFormatter := store.NewCommentFormatter(imgProxy, emojiFmt)
 
 	sslConfig, err := s.makeSSLConfig()
 	if err != nil {
@@ -320,6 +339,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 			Refresh:   s.Stream.RefreshInterval,
 			MaxActive: int32(s.Stream.MaxActive),
 		},
+		EmojiEnabled: s.EnableEmoji,
 	}
 
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = s.LowScore, s.CriticalScore
@@ -507,6 +527,28 @@ func (s *ServerCommand) makeCache() (cache.LoadingCache, error) {
 	return nil, errors.Errorf("unsupported cache type %s", s.Cache.Type)
 }
 
+var msgTemplate = `
+<!DOCTYPE html>
+<html>
+<head>
+	<meta name="viewport" content="width=device-width" />
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+</head>
+<body>
+<div style="text-align: center; font-family: Arial, sans-serif; font-size: 18px;">
+	<h1 style="position: relative; color: #4fbbd6; margin-top: 0.2em;">Remark42</h1>
+	<p style="position: relative; max-width: 20em; margin: 0 auto 1em auto; line-height: 1.4em;">Confirmation&nbsp;for <b>{{.User}}</b> on&nbsp;site&nbsp;<b>{{.Site}}</b></p>
+	<div style="background-color: #eee; max-width: 20em; margin: 0 auto; border-radius: 0.4em; padding: 0.5em;">
+		<p style="position: relative; margin: 0 0 0.5em 0;">TOKEN</p>
+		<p style="position: relative; font-size: 0.7em; opacity: 0.8;"><i>Copy and&nbsp;paste this text into “token” field on&nbsp;comments page</i></p>
+		<p style="position: relative; font-family: monospace; background-color: #fff; margin: 0; padding: 0.5em; word-break: break-all; text-align: left; border-radius: 0.2em; -webkit-user-select: all; user-select: all;">{{.Token}}</p>
+	</div>
+	<p style="position: relative; margin-top: 2em; font-size: 0.8em; opacity: 0.8;"><i>Sent to {{.Address}}</i></p>
+</div>
+</body>
+</html>
+`
+
 func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) {
 
 	providers := 0
@@ -530,6 +572,22 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) {
 		log.Print("[INFO] dev access enabled")
 		authenticator.AddProvider("dev", "", "")
 		providers++
+	}
+
+	if s.Auth.Email.Enable {
+		params := sender.EmailParams{
+			Host:         s.Auth.Email.Host,
+			Port:         s.Auth.Email.Port,
+			From:         s.Auth.Email.From,
+			Subject:      s.Auth.Email.Subject,
+			ContentType:  s.Auth.Email.ContentType,
+			TLS:          s.Auth.Email.TLS,
+			SMTPUserName: s.Auth.Email.SMTPUserName,
+			SMTPPassword: s.Auth.Email.SMTPPassword,
+			TimeOut:      s.Auth.Email.TimeOut,
+		}
+		sndr := sender.NewEmailClient(params, log.Default())
+		authenticator.AddVerifProvider("email", msgTemplate, sndr)
 	}
 
 	if s.Auth.Anonymous {
@@ -632,6 +690,7 @@ func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Sto
 		AvatarRoutePath:   "/api/v1/avatar",
 		Logger:            log.Default(),
 		RefreshCache:      newAuthRefreshCache(),
+		UseGravatar:       true,
 	})
 	s.addAuthProviders(authenticator)
 	return authenticator

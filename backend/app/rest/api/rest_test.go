@@ -297,14 +297,14 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 	memCache, err := cache.NewMemoryCache()
 	assert.NoError(t, err)
 
-	adminStore := adminstore.NewStaticStore("123456", []string{"a1", "a2"}, "admin@remark-42.com")
+	astore := adminstore.NewStaticStore("123456", []string{"a1", "a2"}, "admin@remark-42.com")
 	restrictedWordsMatcher := service.NewRestrictedWordsMatcher(service.StaticRestrictedWordsLister{Words: []string{"duck"}})
 
 	dataStore := &service.DataStore{
 		Engine:                 b,
 		EditDuration:           5 * time.Minute,
 		MaxCommentSize:         4000,
-		AdminStore:             adminStore,
+		AdminStore:             astore,
 		MaxVotes:               service.UnlimitedVotes,
 		RestrictedWordsMatcher: restrictedWordsMatcher,
 	}
@@ -337,13 +337,14 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 			NativeImporter:    &migrator.Native{DataStore: dataStore},
 			NativeExporter:    &migrator.Native{DataStore: dataStore},
 			Cache:             &cache.Nop{},
-			KeyStore:          adminStore,
+			KeyStore:          astore,
 		},
 		Streamer: &Streamer{
 			Refresh:   100 * time.Millisecond,
 			TimeOut:   5 * time.Second,
 			MaxActive: 100,
 		},
+		EmojiEnabled: true,
 	}
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = -5, -10
 
@@ -387,7 +388,7 @@ func get(t *testing.T, url string) (string, int) {
 	return string(body), r.StatusCode
 }
 
-func sendReq(t *testing.T, r *http.Request, token string) (*http.Response, error) {
+func sendReq(_ *testing.T, r *http.Request, token string) (*http.Response, error) {
 	client := http.Client{Timeout: 5 * time.Second}
 	if token != "" {
 		r.Header.Set("X-JWT", token)

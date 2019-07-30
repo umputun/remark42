@@ -316,8 +316,8 @@ func TestAdmin_Block(t *testing.T) {
 	err = json.Unmarshal([]byte(res), &comments)
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(comments.Comments), "should have 2 comments")
-	assert.Equal(t, "", comments.Comments[0].Text)
-	assert.True(t, comments.Comments[0].Deleted)
+	assert.Equal(t, "", comments.Comments[0].Text, "permanent block clear comment")
+	assert.True(t, comments.Comments[0].Deleted, "permanent block set deleted comment's status")
 
 	// unblock
 	code, body = block(-1, "")
@@ -331,14 +331,15 @@ func TestAdmin_Block(t *testing.T) {
 	code, _ = block(1, "50ms")
 	require.Equal(t, 200, code)
 
+	// get as regular user
 	res, code = get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah&sort=+time")
 	assert.Equal(t, 200, code)
 	comments = commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
 	assert.Nil(t, err)
 	assert.Equal(t, 4, len(comments.Comments), "should have 4 comments")
-	assert.Equal(t, "", comments.Comments[2].Text)
-	assert.True(t, comments.Comments[2].Deleted)
+	assert.Equal(t, "test test #1", comments.Comments[2].Text, "comment not removed and not cleared")
+	assert.False(t, comments.Comments[2].Deleted, "not deleted")
 
 	srv.pubRest.cache = &cache.Nop{} // TODO: with lru cache it won't be refreshed and invalidated for long time
 	time.Sleep(50 * time.Millisecond)

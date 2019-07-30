@@ -1,23 +1,13 @@
 import fetcher from './fetcher';
+import { mockHeaders } from '@app/testUtils/mockHeaders';
 
 describe('fetcher', () => {
-  let originalHeaders = (window as any).Headers;
-
   beforeAll(() => {
-    originalHeaders = (window as any).Headers;
-    (window as any).Headers = class {
-      append() {}
-      has() {
-        return false;
-      }
-      get() {
-        return null;
-      }
-    };
+    mockHeaders.mock();
   });
 
   afterAll(() => {
-    (window as any).Headers = originalHeaders;
+    mockHeaders.restore();
   });
 
   afterEach(() => {

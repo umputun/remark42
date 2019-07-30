@@ -58,7 +58,7 @@ interface State {
 
 const Labels = {
   main: 'Send',
-  edit: 'Edit',
+  edit: 'Save',
   reply: 'Reply',
 };
 
@@ -92,6 +92,7 @@ export class Input extends Component<Props, State> {
     this.appendError = this.appendError.bind(this);
     this.uploadImage = this.uploadImage.bind(this);
     this.uploadImages = this.uploadImages.bind(this);
+    this.onPaste = this.onPaste.bind(this);
   }
 
   componentWillReceiveProps(nextProps: Props) {
@@ -133,6 +134,15 @@ export class Input extends Component<Props, State> {
       preview: null,
       text: (e.target as HTMLInputElement).value,
     });
+  }
+
+  async onPaste(e: ClipboardEvent) {
+    if (!(e.clipboardData && e.clipboardData.files.length > 0)) {
+      return;
+    }
+    e.preventDefault();
+    const files = Array.from(e.clipboardData.files);
+    await this.uploadImages(files);
   }
 
   send(e: Event) {
@@ -354,11 +364,16 @@ export class Input extends Component<Props, State> {
         onDrop={this.onDrop}
       >
         <div className="input__control-panel">
-          <MarkdownToolbar textareaId={this.textareaId} />
+          <MarkdownToolbar
+            allowUpload={Boolean(this.props.uploadImage)}
+            uploadImages={this.uploadImages}
+            textareaId={this.textareaId}
+          />
         </div>
         <div className="input__field-wrapper">
           <TextareaAutosize
             id={this.textareaId}
+            onPaste={this.onPaste}
             ref={ref => (this.textAreaRef = ref)}
             className="input__field"
             placeholder="Your comment here"
@@ -368,6 +383,7 @@ export class Input extends Component<Props, State> {
             onKeyDown={this.onKeyDown}
             disabled={isDisabled}
             autofocus={!!props.autofocus}
+            spellcheck={true}
           />
 
           {charactersLeft < 100 && <span className="input__counter">{charactersLeft}</span>}

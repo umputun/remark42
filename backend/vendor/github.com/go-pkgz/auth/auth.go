@@ -26,6 +26,7 @@ type Service struct {
 	authMiddleware middleware.Authenticator
 	avatarProxy    *avatar.Proxy
 	issuer         string
+	useGravatar    bool
 }
 
 // Opts is a full set of all parameters to initialize Service
@@ -54,6 +55,7 @@ type Opts struct {
 	AvatarStore       avatar.Store // store to save/load avatars, required
 	AvatarResizeLimit int          // resize avatar's limit in pixels
 	AvatarRoutePath   string       // avatar routing prefix, i.e. "/api/v1/avatar", default `/avatar`
+	UseGravatar       bool         // for email based auth (verified provider) use gravatar service
 
 	AdminPasswd    string                  // if presented, allows basic auth with user admin and given password
 	AudienceReader token.Audience          // list of allowed aud values, default (empty) allows any
@@ -72,7 +74,8 @@ func NewService(opts Opts) (res *Service) {
 			AdminPasswd:  opts.AdminPasswd,
 			RefreshCache: opts.RefreshCache,
 		},
-		issuer: opts.Issuer,
+		issuer:      opts.Issuer,
+		useGravatar: opts.UseGravatar,
 	}
 
 	if opts.Issuer == "" {
@@ -230,6 +233,22 @@ func (s *Service) AddDirectProvider(name string, credChecker provider.CredChecke
 		TokenService: s.jwtService,
 		CredChecker:  credChecker,
 		AvatarSaver:  s.avatarProxy,
+	}
+	s.providers = append(s.providers, provider.NewService(dh))
+	s.authMiddleware.Providers = s.providers
+}
+
+// AddVerifProvider adds provider user's verification sent by sender
+func (s *Service) AddVerifProvider(name string, msgTmpl string, sender provider.Sender) {
+	dh := provider.VerifyHandler{
+		L:            s.logger,
+		ProviderName: name,
+		Issuer:       s.issuer,
+		TokenService: s.jwtService,
+		AvatarSaver:  s.avatarProxy,
+		Sender:       sender,
+		Template:     msgTmpl,
+		UseGravatar:  s.useGravatar,
 	}
 	s.providers = append(s.providers, provider.NewService(dh))
 	s.authMiddleware.Providers = s.providers

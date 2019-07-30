@@ -1,4 +1,10 @@
+import 'jest-extended';
+import 'jest-enzyme';
 import { StaticStore } from '@app/common/static_store';
+import { configure } from 'enzyme';
+import PreactAdapter from 'enzyme-adapter-preact-pure';
+
+configure({ adapter: new PreactAdapter() });
 
 require('document-register-element/pony')(window);
 
@@ -17,21 +23,3 @@ beforeEach(() => {
     version: 'jest-test',
   };
 });
-
-export function createDomContainer(setup: (domContainer: HTMLElement) => void): void {
-  let domContainer: HTMLElement | null = null;
-  beforeAll(() => {
-    domContainer = document.createElement('div');
-    (document.body || document.documentElement).appendChild(domContainer);
-    setup(domContainer);
-  });
-
-  beforeEach(() => {
-    domContainer!.innerHTML = '';
-  });
-
-  afterAll(() => {
-    domContainer!.parentNode!.removeChild(domContainer!);
-    domContainer = null;
-  });
-}
