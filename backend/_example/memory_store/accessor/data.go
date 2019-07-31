@@ -89,7 +89,7 @@ func (m *MemData) Find(req engine.FindRequest) (comments []store.Comment, err er
 
 	case req.Locator.SiteID != "" && req.Locator.URL != "": // find comments for site and url
 		comments = m.match(m.posts[req.Locator.SiteID], func(c store.Comment) bool {
-			return c.Locator == req.Locator && c.Timestamp.After(req.Since)
+			return c.Locator == req.Locator && (req.Since.IsZero() || c.Timestamp.After(req.Since))
 		})
 
 	case req.Locator.SiteID != "" && req.Locator.URL == "" && req.UserID == "": // find last comments for site

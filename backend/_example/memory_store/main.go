@@ -10,10 +10,9 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/go-pkgz/jrpc"
 	log "github.com/go-pkgz/lgr"
 	"github.com/jessevdk/go-flags"
-
-	"github.com/umputun/remark/backend/app/rpc"
 
 	"github.com/umputun/remark/backend/_example/memory_store/accessor"
 	"github.com/umputun/remark/backend/_example/memory_store/server"
@@ -43,7 +42,7 @@ func main() {
 	dataStore := accessor.NewMemData()
 	adminStore := accessor.NewMemAdminStore(opts.Secret)
 
-	rpcServer := rpc.Server{
+	rpcServer := jrpc.Server{
 		API:        opts.API,
 		AuthUser:   opts.AuthUser,
 		AuthPasswd: opts.AuthPasswd,
