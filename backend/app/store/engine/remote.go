@@ -3,13 +3,14 @@ package engine
 import (
 	"encoding/json"
 
-	"github.com/umputun/remark/backend/app/rpc"
+	"github.com/go-pkgz/jrpc"
+
 	"github.com/umputun/remark/backend/app/store"
 )
 
 // RPC implements remote engine and delegates all Calls to remote http server
 type RPC struct {
-	rpc.Client
+	jrpc.Client
 }
 
 // Create comment and return ID

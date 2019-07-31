@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-pkgz/jrpc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/umputun/remark/backend/app/rpc"
 	"github.com/umputun/remark/backend/app/store"
 )
 
@@ -20,7 +20,7 @@ func TestRemote_Create(t *testing.T) {
 	ts := testServer(t, `{"method":"store.create","params":{"id":"123","pid":"","text":"msg","user":{"name":"","id":"","picture":"","admin":false},"locator":{"site":"site","url":"http://example.com/url"},"score":0,"vote":0,"time":"0001-01-01T00:00:00Z"},"id":1}`,
 		`{"result":"12345","id":1}`)
 	defer ts.Close()
-	c := RPC{Client: rpc.Client{API: ts.URL, Client: http.Client{}}}
+	c := RPC{Client: jrpc.Client{API: ts.URL, Client: http.Client{}}}
 
 	var eng Interface = &c
 	_ = eng
@@ -35,7 +35,7 @@ func TestRemote_Create(t *testing.T) {
 func TestRemote_Get(t *testing.T) {
 	ts := testServer(t, `{"method":"store.get","params":{"locator":{"url":"http://example.com/url"},"comment_id":"site"},"id":1}`, `{"result":{"id":"123","pid":"","text":"msg","delete":true}}`)
 	defer ts.Close()
-	c := RPC{Client: rpc.Client{API: ts.URL, Client: http.Client{}}}
+	c := RPC{Client: jrpc.Client{API: ts.URL, Client: http.Client{}}}
 
 	req := GetRequest{Locator: store.Locator{URL: "http://example.com/url"}, CommentID: "site"}
 	res, err := c.Get(req)
@@ -47,7 +47,7 @@ func TestRemote_Get(t *testing.T) {
 func TestRemote_GetWithErrorResult(t *testing.T) {
 	ts := testServer(t, `{"method":"store.get","params":{"locator":{"url":"http://example.com/url"},"comment_id":"site"},"id":1}`, `{"error":"failed"}`)
 	defer ts.Close()
-	c := RPC{Client: rpc.Client{API: ts.URL, Client: http.Client{}}}
+	c := RPC{Client: jrpc.Client{API: ts.URL, Client: http.Client{}}}
 
 	req := GetRequest{Locator: store.Locator{URL: "http://example.com/url"}, CommentID: "site"}
 	_, err := c.Get(req)
@@ -57,7 +57,7 @@ func TestRemote_GetWithErrorResult(t *testing.T) {
 func TestRemote_GetWithErrorDecode(t *testing.T) {
 	ts := testServer(t, `{"method":"store.get","params":{"locator":{"url":"http://example.com/url"},"comment_id":"site"},"id":1}`, ``)
 	defer ts.Close()
-	c := RPC{Client: rpc.Client{API: ts.URL, Client: http.Client{}}}
+	c := RPC{Client: jrpc.Client{API: ts.URL, Client: http.Client{}}}
 
 	req := GetRequest{Locator: store.Locator{URL: "http://example.com/url"}, CommentID: "site"}
 	_, err := c.Get(req)
@@ -65,7 +65,7 @@ func TestRemote_GetWithErrorDecode(t *testing.T) {
 }
 
 func TestRemote_GetWithErrorRemote(t *testing.T) {
-	c := RPC{Client: rpc.Client{API: "http://127.0.0.2", Client: http.Client{Timeout: 10 * time.Millisecond}}}
+	c := RPC{Client: jrpc.Client{API: "http://127.0.0.2", Client: http.Client{Timeout: 10 * time.Millisecond}}}
 
 	req := GetRequest{Locator: store.Locator{URL: "http://example.com/url"}, CommentID: "site"}
 	_, err := c.Get(req)
@@ -81,7 +81,7 @@ func TestRemote_FailedStatus(t *testing.T) {
 		w.WriteHeader(400)
 	}))
 	defer ts.Close()
-	c := RPC{Client: rpc.Client{API: ts.URL, Client: http.Client{}}}
+	c := RPC{Client: jrpc.Client{API: ts.URL, Client: http.Client{}}}
 
 	req := GetRequest{Locator: store.Locator{URL: "http://example.com/url"}, CommentID: "site"}
 	_, err := c.Get(req)
@@ -91,7 +91,7 @@ func TestRemote_FailedStatus(t *testing.T) {
 func TestRemote_Update(t *testing.T) {
 	ts := testServer(t, `{"method":"store.update","params":{"id":"123","pid":"","text":"msg","user":{"name":"","id":"","picture":"","admin":false},"locator":{"site":"site123","url":"http://example.com/url"},"score":0,"vote":0,"time":"0001-01-01T00:00:00Z"},"id":1}`, `{}`)
 	defer ts.Close()
-	c := RPC{Client: rpc.Client{API: ts.URL, Client: http.Client{}}}
+	c := RPC{Client: jrpc.Client{API: ts.URL, Client: http.Client{}}}
 
 	err := c.Update(store.Comment{ID: "123", Locator: store.Locator{URL: "http://example.com/url", SiteID: "site123"},
 		Text: "msg"})
@@ -102,7 +102,7 @@ func TestRemote_Update(t *testing.T) {
 func TestRemote_Find(t *testing.T) {
 	ts := testServer(t, `{"method":"store.find","params":{"locator":{"url":"http://example.com/url"},"sort":"-time","since":"0001-01-01T00:00:00Z","limit":10},"id":1}`, `{"result":[{"text":"1"},{"text":"2"}]}`)
 	defer ts.Close()
-	c := RPC{Client: rpc.Client{API: ts.URL, Client: http.Client{}}}
+	c := RPC{Client: jrpc.Client{API: ts.URL, Client: http.Client{}}}
 
 	res, err := c.Find(FindRequest{Locator: store.Locator{URL: "http://example.com/url"}, Sort: "-time", Limit: 10})
 	assert.NoError(t, err)
@@ -112,7 +112,7 @@ func TestRemote_Find(t *testing.T) {
 func TestRemote_Info(t *testing.T) {
 	ts := testServer(t, `{"method":"store.info","params":{"locator":{"url":"http://example.com/url"},"limit":10,"skip":5,"ro_age":10},"id":1}`, `{"result":[{"url":"u1","count":22},{"url":"u2","count":33}]}`)
 	defer ts.Close()
-	c := RPC{Client: rpc.Client{API: ts.URL, Client: http.Client{}}}
+	c := RPC{Client: jrpc.Client{API: ts.URL, Client: http.Client{}}}
 
 	res, err := c.Info(InfoRequest{Locator: store.Locator{URL: "http://example.com/url"},
 		Limit: 10, Skip: 5, ReadOnlyAge: 10})
@@ -123,7 +123,7 @@ func TestRemote_Info(t *testing.T) {
 func TestRemote_Flag(t *testing.T) {
 	ts := testServer(t, `{"method":"store.flag","params":{"flag":"verified","locator":{"url":"http://example.com/url"}},"id":1}`, `{"result":false}`)
 	defer ts.Close()
-	c := RPC{Client: rpc.Client{API: ts.URL, Client: http.Client{}}}
+	c := RPC{Client: jrpc.Client{API: ts.URL, Client: http.Client{}}}
 
 	res, err := c.Flag(FlagRequest{Locator: store.Locator{URL: "http://example.com/url"}, Flag: Verified})
 	assert.NoError(t, err)
@@ -133,7 +133,7 @@ func TestRemote_Flag(t *testing.T) {
 func TestRemote_ListFlag(t *testing.T) {
 	ts := testServer(t, `{"method":"store.list_flags","params":{"flag":"blocked","locator":{"site":"site_id","url":""}},"id":1}`, `{"result":[{"ID":"id1"},{"ID":"id2"}]}`)
 	defer ts.Close()
-	c := RPC{Client: rpc.Client{API: ts.URL, Client: http.Client{}}}
+	c := RPC{Client: jrpc.Client{API: ts.URL, Client: http.Client{}}}
 	res, err := c.ListFlags(FlagRequest{Locator: store.Locator{SiteID: "site_id"}, Flag: Blocked})
 	assert.NoError(t, err)
 	assert.Equal(t, []interface{}{map[string]interface{}{"ID": "id1"}, map[string]interface{}{"ID": "id2"}}, res)
@@ -142,7 +142,7 @@ func TestRemote_ListFlag(t *testing.T) {
 func TestRemote_Count(t *testing.T) {
 	ts := testServer(t, `{"method":"store.count","params":{"locator":{"url":"http://example.com/url"},"since":"0001-01-01T00:00:00Z"},"id":1}`, `{"result":11}`)
 	defer ts.Close()
-	c := RPC{Client: rpc.Client{API: ts.URL, Client: http.Client{}}}
+	c := RPC{Client: jrpc.Client{API: ts.URL, Client: http.Client{}}}
 
 	res, err := c.Count(FindRequest{Locator: store.Locator{URL: "http://example.com/url"}})
 	assert.NoError(t, err)
@@ -153,7 +153,7 @@ func TestRemote_Delete(t *testing.T) {
 	ts := testServer(t, `{"method":"store.delete","params":{"locator":{"url":"http://example.com/url"},"del_mode":0},"id":1}`,
 		`{}`)
 	defer ts.Close()
-	c := RPC{Client: rpc.Client{API: ts.URL, Client: http.Client{}}}
+	c := RPC{Client: jrpc.Client{API: ts.URL, Client: http.Client{}}}
 
 	err := c.Delete(DeleteRequest{Locator: store.Locator{URL: "http://example.com/url"}})
 	assert.NoError(t, err)
@@ -162,7 +162,7 @@ func TestRemote_Delete(t *testing.T) {
 func TestRemote_Close(t *testing.T) {
 	ts := testServer(t, `{"method":"store.close","id":1}`, `{}`)
 	defer ts.Close()
-	c := RPC{Client: rpc.Client{API: ts.URL, Client: http.Client{}}}
+	c := RPC{Client: jrpc.Client{API: ts.URL, Client: http.Client{}}}
 	err := c.Close()
 	assert.NoError(t, err)
 }
