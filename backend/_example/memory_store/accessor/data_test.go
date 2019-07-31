@@ -4,10 +4,11 @@
  * license that can be found in the LICENSE file.
  */
 
-package plugin
+package accessor
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -191,7 +192,7 @@ func TestMem_FindForUser(t *testing.T) {
 }
 
 func TestMem_FindForUserPagination(t *testing.T) {
-	b := NewMemEngine()
+	b := NewMemData()
 
 	c := store.Comment{
 		Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
@@ -484,6 +485,7 @@ func TestMem_FlagListVerified(t *testing.T) {
 			require.True(t, ok)
 			res[i] = vv
 		}
+		sort.Strings(res)
 		return res
 	}
 
@@ -691,9 +693,9 @@ func TestBoltAdmin_DeleteUserSoft(t *testing.T) {
 	assert.Equal(t, 0, len(comments), "nothing left")
 }
 
-func prepMem(t *testing.T) *MemEngine {
+func prepMem(t *testing.T) *MemData {
 
-	m := NewMemEngine()
+	m := NewMemData()
 
 	comment := store.Comment{
 		ID:        "id-1",

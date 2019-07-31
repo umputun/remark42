@@ -4,7 +4,7 @@
  * license that can be found in the LICENSE file.
  */
 
-package plugin
+package accessor
 
 import (
 	"testing"
@@ -14,7 +14,7 @@ import (
 	"github.com/umputun/remark/backend/app/store/admin"
 )
 
-func TestMongoStore_Get(t *testing.T) {
+func TestMemAdmin_Get(t *testing.T) {
 
 	adm := NewMemAdminStore("secret")
 	var ms admin.Store = adm

@@ -4,7 +4,7 @@
  * license that can be found in the LICENSE file.
  */
 
-package plugin
+package accessor
 
 import (
 	"log"
@@ -21,8 +21,8 @@ import (
 
 const lastLimit = 1000
 
-// MemEngine implements in-memory engine interface
-type MemEngine struct {
+// MemData implements in-memory data store
+type MemData struct {
 	posts     map[string][]store.Comment // key is siteID
 	metaUsers map[string]metaUser        // key is userID
 	metaPosts map[store.Locator]metaPost // key is post's locator
@@ -43,10 +43,10 @@ type metaUser struct {
 	BlockedUntil time.Time
 }
 
-// NewMemEngine makes in-memory engine.
-func NewMemEngine() *MemEngine {
+// NewMemData makes in-memory engine.
+func NewMemData() *MemData {
 
-	result := &MemEngine{
+	result := &MemData{
 		posts:     map[string][]store.Comment{},
 		metaUsers: map[string]metaUser{},
 		metaPosts: map[store.Locator]metaPost{},
@@ -54,8 +54,8 @@ func NewMemEngine() *MemEngine {
 	return result
 }
 
-// Create new comment, write can be buffered and delayed.
-func (m *MemEngine) Create(comment store.Comment) (commentID string, err error) {
+// Create new comment
+func (m *MemData) Create(comment store.Comment) (commentID string, err error) {
 
 	if ro, e := m.Flag(engine.FlagRequest{Flag: engine.ReadOnly, Locator: comment.Locator}); e == nil && ro {
 		return "", errors.Errorf("post %s is read-only", comment.Locator.URL)
@@ -64,7 +64,7 @@ func (m *MemEngine) Create(comment store.Comment) (commentID string, err error) 
 	m.Lock()
 	defer m.Unlock()
 	comments := m.posts[comment.Locator.SiteID]
-	for _, c := range comments {
+	for _, c := range comments { // don't allow duplicated IDs
 		if c.ID == comment.ID {
 			return "", errors.New("dup key")
 		}
@@ -75,7 +75,7 @@ func (m *MemEngine) Create(comment store.Comment) (commentID string, err error) 
 }
 
 // Find returns all comments for post and sorts results
-func (m *MemEngine) Find(req engine.FindRequest) (comments []store.Comment, err error) {
+func (m *MemData) Find(req engine.FindRequest) (comments []store.Comment, err error) {
 	m.RLock()
 	defer m.RUnlock()
 
@@ -89,7 +89,7 @@ func (m *MemEngine) Find(req engine.FindRequest) (comments []store.Comment, err 
 
 	case req.Locator.SiteID != "" && req.Locator.URL != "": // find comments for site and url
 		comments = m.match(m.posts[req.Locator.SiteID], func(c store.Comment) bool {
-			return c.Locator == req.Locator
+			return c.Locator == req.Locator && c.Timestamp.After(req.Since)
 		})
 
 	case req.Locator.SiteID != "" && req.Locator.URL == "" && req.UserID == "": // find last comments for site
@@ -114,6 +114,7 @@ func (m *MemEngine) Find(req engine.FindRequest) (comments []store.Comment, err 
 			return c.User.ID == req.UserID
 		})
 	}
+
 	comments = engine.SortComments(comments, req.Sort)
 	if req.Skip > 0 && req.Skip > len(comments) {
 		return []store.Comment{}, nil
@@ -130,21 +131,21 @@ func (m *MemEngine) Find(req engine.FindRequest) (comments []store.Comment, err 
 }
 
 // Get returns comment for locator.URL and commentID string
-func (m *MemEngine) Get(req engine.GetRequest) (comment store.Comment, err error) {
+func (m *MemData) Get(req engine.GetRequest) (comment store.Comment, err error) {
 	m.RLock()
 	defer m.RUnlock()
 	return m.get(req.Locator, req.CommentID)
 }
 
 // Update updates comment for locator.URL with mutable part of comment
-func (m *MemEngine) Update(comment store.Comment) error {
+func (m *MemData) Update(comment store.Comment) error {
 	m.Lock()
 	defer m.Unlock()
 	return m.updateComment(comment)
 }
 
 // Count returns number of comments for post or user
-func (m *MemEngine) Count(req engine.FindRequest) (count int, err error) {
+func (m *MemData) Count(req engine.FindRequest) (count int, err error) {
 	m.RLock()
 	defer m.RUnlock()
 
@@ -165,7 +166,7 @@ func (m *MemEngine) Count(req engine.FindRequest) (count int, err error) {
 }
 
 // Info get post(s) meta info
-func (m *MemEngine) Info(req engine.InfoRequest) (res []store.PostInfo, err error) {
+func (m *MemData) Info(req engine.InfoRequest) (res []store.PostInfo, err error) {
 	m.RLock()
 	defer m.RUnlock()
 	res = []store.PostInfo{}
@@ -214,20 +215,23 @@ func (m *MemEngine) Info(req engine.InfoRequest) (res []store.PostInfo, err erro
 			infoAll[c.Locator] = info
 		}
 
-		n := 0
 		for _, v := range infoAll {
-			n++
-			if len(res) >= req.Limit {
-				break
-			}
-			if req.Skip > 0 && n <= req.Skip {
-				continue
-			}
 			res = append(res, v)
 		}
 		sort.Slice(res, func(i, j int) bool {
 			return res[i].URL > res[j].URL
 		})
+
+		if req.Skip > 0 {
+			if req.Skip >= len(res) {
+				return []store.PostInfo{}, nil
+			}
+			res = res[req.Skip:]
+		}
+
+		if req.Limit > 0 && req.Limit < len(res) {
+			res = res[:req.Limit]
+		}
 		return res, nil
 	}
 
@@ -235,7 +239,7 @@ func (m *MemEngine) Info(req engine.InfoRequest) (res []store.PostInfo, err erro
 }
 
 // Flag sets and gets flag values
-func (m *MemEngine) Flag(req engine.FlagRequest) (val bool, err error) {
+func (m *MemData) Flag(req engine.FlagRequest) (val bool, err error) {
 	m.Lock()
 	defer m.Unlock()
 
@@ -248,7 +252,7 @@ func (m *MemEngine) Flag(req engine.FlagRequest) (val bool, err error) {
 
 // ListFlags get list of flagged keys, like blocked & verified user
 // works for full locator (post flags) or with userID
-func (m *MemEngine) ListFlags(req engine.FlagRequest) (res []interface{}, err error) {
+func (m *MemData) ListFlags(req engine.FlagRequest) (res []interface{}, err error) {
 	m.RLock()
 	defer m.RUnlock()
 
@@ -277,7 +281,7 @@ func (m *MemEngine) ListFlags(req engine.FlagRequest) (res []interface{}, err er
 }
 
 // Delete post(s) by id or by userID
-func (m *MemEngine) Delete(req engine.DeleteRequest) error {
+func (m *MemData) Delete(req engine.DeleteRequest) error {
 
 	m.Lock()
 	defer m.Unlock()
@@ -308,7 +312,7 @@ func (m *MemEngine) Delete(req engine.DeleteRequest) error {
 	return errors.Errorf("invalid delete request %+v", req)
 }
 
-func (m *MemEngine) deleteComment(loc store.Locator, id string, mode store.DeleteMode) error {
+func (m *MemData) deleteComment(loc store.Locator, id string, mode store.DeleteMode) error {
 
 	comments := m.match(m.posts[loc.SiteID], func(c store.Comment) bool {
 		return c.Locator == loc && c.ID == id
@@ -322,11 +326,11 @@ func (m *MemEngine) deleteComment(loc store.Locator, id string, mode store.Delet
 }
 
 // Close store
-func (m *MemEngine) Close() error {
+func (m *MemData) Close() error {
 	return nil
 }
 
-func (m *MemEngine) checkFlag(req engine.FlagRequest) (val bool) {
+func (m *MemData) checkFlag(req engine.FlagRequest) (val bool) {
 	switch req.Flag {
 	case engine.Blocked:
 		if meta, ok := m.metaUsers[req.UserID]; ok {
@@ -350,7 +354,7 @@ func (m *MemEngine) checkFlag(req engine.FlagRequest) (val bool) {
 	return false
 }
 
-func (m *MemEngine) setFlag(req engine.FlagRequest) (res bool, err error) {
+func (m *MemData) setFlag(req engine.FlagRequest) (res bool, err error) {
 
 	status := false
 	if req.Update == engine.FlagTrue {
@@ -397,7 +401,7 @@ func (m *MemEngine) setFlag(req engine.FlagRequest) (res bool, err error) {
 	return status, errors.Wrapf(err, "failed to set flag %+v", req)
 }
 
-func (m *MemEngine) get(loc store.Locator, commentID string) (store.Comment, error) {
+func (m *MemData) get(loc store.Locator, commentID string) (store.Comment, error) {
 	comments := m.match(m.posts[loc.SiteID], func(c store.Comment) bool {
 		return c.Locator == loc && c.ID == commentID
 	})
@@ -407,7 +411,7 @@ func (m *MemEngine) get(loc store.Locator, commentID string) (store.Comment, err
 	return comments[0], nil
 }
 
-func (m *MemEngine) updateComment(comment store.Comment) error {
+func (m *MemData) updateComment(comment store.Comment) error {
 	comments := m.posts[comment.Locator.SiteID]
 	for i, c := range comments {
 		if c.ID == comment.ID && c.Locator == comment.Locator {
@@ -426,7 +430,8 @@ func (m *MemEngine) updateComment(comment store.Comment) error {
 	return errors.New("not found")
 }
 
-func (m *MemEngine) match(comments []store.Comment, fn func(c store.Comment) bool) (res []store.Comment) {
+func (m *MemData) match(comments []store.Comment, fn func(c store.Comment) bool) (res []store.Comment) {
+	res = []store.Comment{}
 	for _, c := range comments {
 		if fn(c) {
 			res = append(res, c)

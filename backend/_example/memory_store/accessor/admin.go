@@ -4,41 +4,39 @@
  * license that can be found in the LICENSE file.
  */
 
-package plugin
+package accessor
 
 import (
 	log "github.com/go-pkgz/lgr"
 	"github.com/pkg/errors"
 )
 
-// MemAdminStore implements admin.Store with mongo backend
-type MemAdminStore struct {
-	data map[string]AdminRec
+// MemAdmin implements admin.Store with memory backend
+type MemAdmin struct {
+	data map[string]AdminRec // admin info per site
 	key  string
 }
 
 // AdminRec is a records per site with all admin info in
 type AdminRec struct {
 	SiteID string   `bson:"site"`
-	IDs    []string `bson:"ids"`
-	Email  string   `bson:"email"`
+	IDs    []string `bson:"ids"`   // admin ids
+	Email  string   `bson:"email"` // admin email
 }
 
-const mongoAdmin = "admin"
-
 // NewMemAdminStore makes admin Store in memory
-func NewMemAdminStore(key string) *MemAdminStore {
+func NewMemAdminStore(key string) *MemAdmin {
 	log.Print("[DEBUG] make memory admin store")
-	return &MemAdminStore{data: map[string]AdminRec{}, key: key}
+	return &MemAdmin{data: map[string]AdminRec{}, key: key}
 }
 
 // Key executes find by siteID and returns substructure with secret key
-func (m *MemAdminStore) Key() (key string, err error) {
+func (m *MemAdmin) Key() (key string, err error) {
 	return m.key, nil
 }
 
 // Admins executes find by siteID and returns admins ids
-func (m *MemAdminStore) Admins(siteID string) (ids []string, err error) {
+func (m *MemAdmin) Admins(siteID string) (ids []string, err error) {
 	resp, ok := m.data[siteID]
 	if !ok {
 		return nil, errors.Errorf("site %s not found", siteID)
@@ -48,11 +46,16 @@ func (m *MemAdminStore) Admins(siteID string) (ids []string, err error) {
 }
 
 // Email executes find by siteID and returns admin's email
-func (m *MemAdminStore) Email(siteID string) (email string, err error) {
+func (m *MemAdmin) Email(siteID string) (email string, err error) {
 	resp, ok := m.data[siteID]
 	if !ok {
 		return "", errors.Errorf("site %s not found", siteID)
 	}
 
 	return resp.Email, nil
+}
+
+// Set admin data for siteID
+func (m *MemAdmin) Set(siteID string, arec AdminRec) {
+	m.data[siteID] = arec
 }
