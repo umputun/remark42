@@ -41,7 +41,7 @@ func (m *MemAdmin) Admins(siteID string) (ids []string, err error) {
 	if !ok {
 		return nil, errors.Errorf("site %s not found", siteID)
 	}
-
+	log.Printf("[DEBUG] admins for %s, %+v", siteID, resp.IDs)
 	return resp.IDs, nil
 }
 

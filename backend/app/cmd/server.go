@@ -108,7 +108,7 @@ type StoreGroup struct {
 		Path    string        `long:"path" env:"PATH" default:"./var" description:"parent dir for bolt files"`
 		Timeout time.Duration `long:"timeout" env:"TIMEOUT" default:"30s" description:"bolt timeout"`
 	} `group:"bolt" namespace:"bolt" env-namespace:"BOLT"`
-	RPC RPCGroup `group:"rpc" namespace:"rpc" env-namespace:"TPC"`
+	RPC RPCGroup `group:"rpc" namespace:"rpc" env-namespace:"RPC"`
 }
 
 // ImageGroup defines options group for store pictures
