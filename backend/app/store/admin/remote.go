@@ -9,12 +9,12 @@ package admin
 import (
 	"encoding/json"
 
-	"github.com/umputun/remark/backend/app/rpc"
+	"github.com/go-pkgz/jrpc"
 )
 
 // RPC implements remote engine and delegates all Calls to remote http server
 type RPC struct {
-	rpc.Client
+	jrpc.Client
 }
 
 // Key returns the key, same for all sites
