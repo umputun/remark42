@@ -19,7 +19,7 @@ async function init(): Promise<void> {
   __webpack_public_path__ = HOST + '/web/';
   await loadPolyfills();
 
-  const node = document.getElementById(NODE_ID);
+  const node = document.getElementById( remark_config.node || NODE_ID);
 
   if (!node) {
     console.error("Remark42: Can't find root node.");
