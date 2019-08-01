@@ -1,0 +1,33 @@
+version: '2'
+
+services:
+    remark:
+        image: umputun/remark42:dev
+        container_name: "remark42"
+        hostname: "remark42"
+        restart: always
+
+        logging:
+          driver: json-file
+          options:
+              max-size: "10m"
+              max-file: "5"
+
+        ports:
+          - "8080:8080"
+
+        environment:
+            - REMARK_URL
+            - SECRET
+            - STORE_BOLT_PATH=/srv/var/db
+            - BACKUP_PATH=/srv/var/backup
+            - DEBUG=true
+            - EMOJI=true
+            - AUTH_ANON=true
+            - AUTH_DEV=true
+            -
+        volumes:
+            - ./var:/srv/var
+
+    mem_storage:
+        build: .

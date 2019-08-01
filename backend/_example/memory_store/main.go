@@ -14,8 +14,8 @@ import (
 	log "github.com/go-pkgz/lgr"
 	"github.com/jessevdk/go-flags"
 
-	"github.com/umputun/remark/backend/_example/memory_store/accessor"
-	"github.com/umputun/remark/backend/_example/memory_store/server"
+	"github.com/umputun/remark/memory_store/accessor"
+	"github.com/umputun/remark/memory_store/server"
 )
 
 // opts with all cli commands and flags
