@@ -10,7 +10,7 @@ import (
 	"github.com/umputun/remark/backend/app/store/engine"
 )
 
-// RPC handler wraps both engine and remote server and implements all handlers
+// RPC handler wraps both engine and remote server and implements all handlers for data store and admin store
 // Note: this file can be used as-is in any custom jrpc plugin
 type RPC struct {
 	*jrpc.Server
@@ -156,13 +156,9 @@ func (s *RPC) admKeyHndl(id uint64, _ json.RawMessage) (rr jrpc.Response) {
 
 // get admins list
 func (s *RPC) admAdminsHndl(id uint64, params json.RawMessage) (rr jrpc.Response) {
-	args := []interface{}{}
-	if err := json.Unmarshal(params, &args); err != nil {
+	var siteID string
+	if err := json.Unmarshal(params, &siteID); err != nil {
 		return jrpc.Response{Error: err.Error()}
-	}
-	siteID, ok := args[0].(string)
-	if !ok {
-		return jrpc.Response{Error: "incompatible argument"}
 	}
 
 	admins, err := s.adm.Admins(siteID)
@@ -174,13 +170,9 @@ func (s *RPC) admAdminsHndl(id uint64, params json.RawMessage) (rr jrpc.Response
 
 // get admin email
 func (s *RPC) admEmailHndl(id uint64, params json.RawMessage) (rr jrpc.Response) {
-	args := []interface{}{}
-	if err := json.Unmarshal(params, &args); err != nil {
+	var siteID string
+	if err := json.Unmarshal(params, &siteID); err != nil {
 		return jrpc.Response{Error: err.Error()}
-	}
-	siteID, ok := args[0].(string)
-	if !ok {
-		return jrpc.Response{Error: "incompatible argument"}
 	}
 
 	email, err := s.adm.Email(siteID)

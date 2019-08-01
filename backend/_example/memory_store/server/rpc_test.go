@@ -17,12 +17,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/umputun/remark/backend/app/rpc"
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/admin"
 	"github.com/umputun/remark/backend/app/store/engine"
-
-	"github.com/umputun/remark/backend/_example/memory_store/accessor"
+	"github.com/umputun/remark/memory_store/accessor"
 )
 
 func TestRPC_createHndl(t *testing.T) {
@@ -30,7 +28,7 @@ func TestRPC_createHndl(t *testing.T) {
 	defer teardown()
 	api := fmt.Sprintf("http://localhost:%d/test", port)
 
-	re := engine.RPC{Client: rpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
+	re := engine.RPC{Client: jrpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
 	id, err := re.Create(store.Comment{ID: "123456", Locator: store.Locator{SiteID: "test-site", URL: "http://example.com/post1"},
 		Text: "text 123", User: store.User{ID: "u1", Name: "user1"}})
 	assert.NoError(t, err)
@@ -42,7 +40,7 @@ func TestRPC_findHndl(t *testing.T) {
 	defer teardown()
 	api := fmt.Sprintf("http://localhost:%d/test", port)
 
-	re := engine.RPC{Client: rpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
+	re := engine.RPC{Client: jrpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
 	findReq := engine.FindRequest{Locator: store.Locator{SiteID: "test-site", URL: "http://example.com/post1"}}
 	comments, err := re.Find(findReq)
 	require.NoError(t, err)
@@ -65,7 +63,7 @@ func TestRPC_getHndl(t *testing.T) {
 	defer teardown()
 	api := fmt.Sprintf("http://localhost:%d/test", port)
 
-	re := engine.RPC{Client: rpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
+	re := engine.RPC{Client: jrpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
 	req := engine.GetRequest{
 		Locator:   store.Locator{SiteID: "test-site", URL: "http://example.com/post1"},
 		CommentID: "123456",
@@ -89,7 +87,7 @@ func TestRPC_updateHndl(t *testing.T) {
 	defer teardown()
 	api := fmt.Sprintf("http://localhost:%d/test", port)
 
-	re := engine.RPC{Client: rpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
+	re := engine.RPC{Client: jrpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
 
 	c := store.Comment{ID: "123456", Locator: store.Locator{SiteID: "test-site", URL: "http://example.com/post1"},
 		Text: "text 123", User: store.User{ID: "u1", Name: "user1"}}
@@ -117,7 +115,7 @@ func TestRPC_countHndl(t *testing.T) {
 	defer teardown()
 	api := fmt.Sprintf("http://localhost:%d/test", port)
 
-	re := engine.RPC{Client: rpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
+	re := engine.RPC{Client: jrpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
 	findReq := engine.FindRequest{Locator: store.Locator{SiteID: "test-site", URL: "http://example.com/post1"}}
 	count, err := re.Count(findReq)
 	require.NoError(t, err)
@@ -139,7 +137,7 @@ func TestRPC_infoHndl(t *testing.T) {
 	defer teardown()
 	api := fmt.Sprintf("http://localhost:%d/test", port)
 
-	re := engine.RPC{Client: rpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
+	re := engine.RPC{Client: jrpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
 
 	c := store.Comment{ID: "123456", Locator: store.Locator{SiteID: "test-site", URL: "http://example.com/post1"},
 		Text: "text 123", User: store.User{ID: "u1", Name: "user1"}}
@@ -160,7 +158,7 @@ func TestRPC_flagHndl(t *testing.T) {
 	defer teardown()
 	api := fmt.Sprintf("http://localhost:%d/test", port)
 
-	re := engine.RPC{Client: rpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
+	re := engine.RPC{Client: jrpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
 
 	c := store.Comment{ID: "123456", Locator: store.Locator{SiteID: "test-site", URL: "http://example.com/post1"},
 		Text: "text 123", User: store.User{ID: "u1", Name: "user1"}}
@@ -195,7 +193,7 @@ func TestRPC_listFlagsHndl(t *testing.T) {
 	defer teardown()
 	api := fmt.Sprintf("http://localhost:%d/test", port)
 
-	re := engine.RPC{Client: rpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
+	re := engine.RPC{Client: jrpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
 
 	c := store.Comment{ID: "123456", Locator: store.Locator{SiteID: "test-site", URL: "http://example.com/post1"},
 		Text: "text 123", User: store.User{ID: "u1", Name: "user1"}}
@@ -229,7 +227,7 @@ func TestRPC_deleteHndl(t *testing.T) {
 	defer teardown()
 	api := fmt.Sprintf("http://localhost:%d/test", port)
 
-	re := engine.RPC{Client: rpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
+	re := engine.RPC{Client: jrpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
 	req := engine.DeleteRequest{
 		Locator:   store.Locator{SiteID: "test-site", URL: "http://example.com/post1"},
 		CommentID: "123456",
@@ -252,7 +250,7 @@ func TestRPC_closeHndl(t *testing.T) {
 	defer teardown()
 	api := fmt.Sprintf("http://localhost:%d/test", port)
 
-	re := engine.RPC{Client: rpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
+	re := engine.RPC{Client: jrpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
 	err := re.Close()
 	assert.NoError(t, err)
 }
@@ -261,7 +259,7 @@ func TestRPC_admKeyHndl(t *testing.T) {
 	defer teardown()
 	api := fmt.Sprintf("http://localhost:%d/test", port)
 
-	ra := admin.RPC{Client: rpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
+	ra := admin.RPC{Client: jrpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
 	key, err := ra.Key()
 	assert.NoError(t, err)
 	assert.Equal(t, "secret", key)
@@ -272,7 +270,7 @@ func TestRPC_admAdminsHndl(t *testing.T) {
 	defer teardown()
 	api := fmt.Sprintf("http://localhost:%d/test", port)
 
-	ra := admin.RPC{Client: rpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
+	ra := admin.RPC{Client: jrpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
 	_, err := ra.Admins("bad site")
 	assert.EqualError(t, err, "site bad site not found")
 
@@ -286,7 +284,7 @@ func TestRPC_admEmailHndl(t *testing.T) {
 	defer teardown()
 	api := fmt.Sprintf("http://localhost:%d/test", port)
 
-	ra := admin.RPC{Client: rpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
+	ra := admin.RPC{Client: jrpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
 	_, err := ra.Admins("bad site")
 	assert.EqualError(t, err, "site bad site not found")
 
