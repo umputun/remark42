@@ -14,6 +14,7 @@ import (
 	"time"
 
 	bolt "github.com/coreos/bbolt"
+	"github.com/go-pkgz/jrpc"
 	log "github.com/go-pkgz/lgr"
 	"github.com/kyokomi/emoji"
 	authcache "github.com/patrickmn/go-cache"
@@ -30,7 +31,6 @@ import (
 	"github.com/umputun/remark/backend/app/notify"
 	"github.com/umputun/remark/backend/app/rest/api"
 	"github.com/umputun/remark/backend/app/rest/proxy"
-	"github.com/umputun/remark/backend/app/rpc"
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/admin"
 	"github.com/umputun/remark/backend/app/store/engine"
@@ -108,7 +108,7 @@ type StoreGroup struct {
 		Path    string        `long:"path" env:"PATH" default:"./var" description:"parent dir for bolt files"`
 		Timeout time.Duration `long:"timeout" env:"TIMEOUT" default:"30s" description:"bolt timeout"`
 	} `group:"bolt" namespace:"bolt" env-namespace:"BOLT"`
-	RPC RPCGroup `group:"rpc" namespace:"rpc" env-namespace:"TPC"`
+	RPC RPCGroup `group:"rpc" namespace:"rpc" env-namespace:"RPC"`
 }
 
 // ImageGroup defines options group for store pictures
@@ -438,7 +438,7 @@ func (s *ServerCommand) makeDataStore() (result engine.Interface, err error) {
 		}
 		result, err = engine.NewBoltDB(bolt.Options{Timeout: s.Store.Bolt.Timeout}, sites...)
 	case "rpc":
-		r := &engine.RPC{Client: rpc.Client{
+		r := &engine.RPC{Client: jrpc.Client{
 			API:        s.Store.RPC.API,
 			Client:     http.Client{Timeout: s.Store.RPC.TimeOut},
 			AuthUser:   s.Store.RPC.AuthUser,
@@ -503,7 +503,7 @@ func (s *ServerCommand) makeAdminStore() (admin.Store, error) {
 		}
 		return admin.NewStaticStore(s.SharedSecret, s.Admin.Shared.Admins, s.Admin.Shared.Email), nil
 	case "rpc":
-		r := &admin.RPC{Client: rpc.Client{
+		r := &admin.RPC{Client: jrpc.Client{
 			API:        s.Admin.RPC.API,
 			Client:     http.Client{Timeout: s.Admin.RPC.TimeOut},
 			AuthUser:   s.Admin.RPC.AuthUser,

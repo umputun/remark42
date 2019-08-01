@@ -1,4 +1,4 @@
-package rpc
+package jrpc
 
 import (
 	"context"
@@ -13,21 +13,19 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/render"
-	log "github.com/go-pkgz/lgr"
-	R "github.com/go-pkgz/rest"
+	"github.com/go-pkgz/rest"
 	"github.com/go-pkgz/rest/logger"
 	"github.com/pkg/errors"
-
-	"github.com/umputun/remark/backend/app/rest"
 )
 
 // Server is json-rpc server with an optional basic auth
 type Server struct {
-	API        string
-	AuthUser   string
-	AuthPasswd string
-	Version    string
-	AppName    string
+	API        string // url path, i.e. "/command" or "/rpc" etc.
+	AuthUser   string // basic auth user name, should match Client.AuthUser, optional
+	AuthPasswd string // basic auth password, should match Client.AuthPasswd, optional
+	Version    string // server version, injected from main and used for informational headers only
+	AppName    string // plugin name, injected from main and used for informational headers only
+	Logger     L      // logger, if nil will default to NoOpLogger
 
 	funcs struct {
 		m    map[string]ServerFn
@@ -40,26 +38,26 @@ type Server struct {
 	}
 }
 
-// Encoder is a function to encode call's result to Response
-type Encoder func(id uint64, resp interface{}, e error) (Response, error)
-
-// ServerFn handler registered for each method with Add
-// Implementations provided by consumer and define response logic.
+// ServerFn handler registered for each method with Add or Group.
+// Implementations provided by consumer and defines response logic.
 type ServerFn func(id uint64, params json.RawMessage) Response
 
 // Run http server on given port
 func (s *Server) Run(port int) error {
+	if s.Logger == nil {
+		s.Logger = NoOpLogger
+	}
 	if s.AuthUser == "" || s.AuthPasswd == "" {
-		log.Print("[WARN] extension server runs without auth")
+		s.Logger.Logf("[WARN] extension server runs without auth")
 	}
 	if s.funcs.m == nil && len(s.funcs.m) == 0 {
 		return errors.Errorf("nothing mapped for dispatch, Add has to be called prior to Run")
 	}
 
 	router := chi.NewRouter()
-	router.Use(middleware.Throttle(1000), middleware.RealIP, R.Recoverer(log.Default()))
-	router.Use(R.AppInfo(s.AppName, "umputun", s.Version), R.Ping)
-	logInfoWithBody := logger.New(logger.Log(log.Default()), logger.WithBody, logger.Prefix("[INFO]")).Handler
+	router.Use(middleware.Throttle(1000), middleware.RealIP, rest.Recoverer(s.Logger))
+	router.Use(rest.AppInfo(s.AppName, "umputun", s.Version), rest.Ping)
+	logInfoWithBody := logger.New(logger.Log(s.Logger), logger.WithBody, logger.Prefix("[INFO]")).Handler
 	router.Use(middleware.Timeout(5 * time.Second))
 	router.Use(logInfoWithBody, tollbooth_chi.LimitHandler(tollbooth.NewLimiter(1000, nil)), middleware.NoCache)
 	router.Use(s.basicAuth)
@@ -76,24 +74,8 @@ func (s *Server) Run(port int) error {
 	}
 	s.httpServer.Unlock()
 
-	log.Printf("[INFO] listen on %d", port)
+	s.Logger.Logf("[INFO] listen on %d", port)
 	return s.httpServer.ListenAndServe()
-}
-
-// EncodeResponse convert anything to Response
-func (s *Server) EncodeResponse(id uint64, resp interface{}, e error) (Response, error) {
-	v, err := json.Marshal(&resp)
-	if err != nil {
-		return Response{}, err
-	}
-	if e != nil {
-		return Response{ID: id, Result: nil, Error: e.Error()}, nil
-	}
-	raw := json.RawMessage{}
-	if err = raw.UnmarshalJSON(v); err != nil {
-		return Response{}, err
-	}
-	return Response{ID: id, Result: &raw}, nil
 }
 
 // Shutdown http server
@@ -108,12 +90,12 @@ func (s *Server) Shutdown() error {
 	return s.httpServer.Shutdown(ctx)
 }
 
-// Add method handler
+// Add method handler. Handler will be called on matching method (Request.Method)
 func (s *Server) Add(method string, fn ServerFn) {
 	s.httpServer.Lock()
 	defer s.httpServer.Unlock()
 	if s.httpServer.Server != nil {
-		log.Printf("[WARN] ignored method %s, can't be added to activated server", method)
+		s.Logger.Logf("[WARN] ignored method %s, can't be added to activated server", method)
 		return
 	}
 
@@ -122,19 +104,20 @@ func (s *Server) Add(method string, fn ServerFn) {
 	})
 
 	s.funcs.m[method] = fn
-	log.Printf("[INFO] add handler for %s", method)
+	s.Logger.Logf("[INFO] add handler for %s", method)
 }
 
 // HandlersGroup alias for map of handlers
 type HandlersGroup map[string]ServerFn
 
-// Group of handlers with common prefix
+// Group of handlers with common prefix, match on group.method
 func (s *Server) Group(prefix string, m HandlersGroup) {
 	for k, v := range m {
 		s.Add(prefix+"."+k, v)
 	}
 }
 
+// handler is http handler multiplexing calls by req.Method
 func (s *Server) handler(w http.ResponseWriter, r *http.Request) {
 	req := struct {
 		ID     uint64           `json:"id"`
@@ -143,12 +126,12 @@ func (s *Server) handler(w http.ResponseWriter, r *http.Request) {
 	}{}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, req.Method, 0)
+		rest.SendErrorJSON(w, r, s.Logger, http.StatusBadRequest, err, req.Method)
 		return
 	}
 	fn, ok := s.funcs.m[req.Method]
 	if !ok {
-		rest.SendErrorJSON(w, r, http.StatusNotImplemented, errors.New("unsupported method"), req.Method, 0)
+		rest.SendErrorJSON(w, r, s.Logger, http.StatusNotImplemented, errors.New("unsupported method"), req.Method)
 		return
 	}
 
@@ -160,6 +143,7 @@ func (s *Server) handler(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, fn(req.ID, params))
 }
 
+// basicAuth middleware. enabled only if both AuthUser and AuthPasswd defined.
 func (s *Server) basicAuth(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
@@ -177,3 +161,17 @@ func (s *Server) basicAuth(h http.Handler) http.Handler {
 		h.ServeHTTP(w, r)
 	})
 }
+
+// L defined logger interface used for an optional rest logging
+type L interface {
+	Logf(format string, args ...interface{})
+}
+
+// LoggerFunc type is an adapter to allow the use of ordinary functions as Logger.
+type LoggerFunc func(format string, args ...interface{})
+
+// Logf calls f(id)
+func (f LoggerFunc) Logf(format string, args ...interface{}) { f(format, args...) }
+
+// NoOpLogger logger does nothing
+var NoOpLogger = LoggerFunc(func(format string, args ...interface{}) {})

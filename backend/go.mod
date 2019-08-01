@@ -9,12 +9,13 @@ require (
 	github.com/PuerkitoBio/goquery v1.5.0
 	github.com/coreos/bbolt v1.3.3
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/didip/tollbooth v4.0.0+incompatible
+	github.com/didip/tollbooth v4.0.2+incompatible
 	github.com/didip/tollbooth_chi v0.0.0-20170928041846-6ab5f3083f3d
 	github.com/go-chi/chi v4.0.2+incompatible
 	github.com/go-chi/cors v1.0.0
 	github.com/go-chi/render v1.0.1
 	github.com/go-pkgz/auth v0.7.2
+	github.com/go-pkgz/jrpc v0.1.0
 	github.com/go-pkgz/lcw v0.3.1
 	github.com/go-pkgz/lgr v0.6.3
 	github.com/go-pkgz/repeater v1.1.2
@@ -35,7 +36,7 @@ require (
 	github.com/stretchr/testify v1.3.0
 	golang.org/x/crypto v0.0.0-20190701094942-4def268fd1a4
 	golang.org/x/image v0.0.0-20190703141733-d6a02ce849c9
-	golang.org/x/net v0.0.0-20190628185345-da137c7871d7
+	golang.org/x/net v0.0.0-20190724013045-ca1201d0de80
 	golang.org/x/sys v0.0.0-20190626221950-04f50cda93cb // indirect
 	gopkg.in/russross/blackfriday.v2 v2.0.1
 )

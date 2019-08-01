@@ -469,6 +469,7 @@ func (s *DataStore) ValidateComment(c *store.Comment) error {
 func (s *DataStore) IsAdmin(siteID string, userID string) bool {
 	admins, err := s.AdminStore.Admins(siteID)
 	if err != nil {
+		log.Printf("[WARN] can't get admins for %s, %v", siteID, err)
 		return false
 	}
 	for _, a := range admins {

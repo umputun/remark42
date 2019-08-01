@@ -13,17 +13,16 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/go-pkgz/jrpc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/umputun/remark/backend/app/rpc"
 )
 
 func TestRemote_Key(t *testing.T) {
 	ts := testServer(t, `{"method":"admin.key","id":1}`,
 		`{"result":"12345","id":1}`)
 	defer ts.Close()
-	c := RPC{Client: rpc.Client{API: ts.URL, Client: http.Client{}}}
+	c := RPC{Client: jrpc.Client{API: ts.URL, Client: http.Client{}}}
 
 	var a Store = &c
 	_ = a
@@ -35,10 +34,10 @@ func TestRemote_Key(t *testing.T) {
 }
 
 func TestRemote_Admins(t *testing.T) {
-	ts := testServer(t, `{"method":"admin.admins","params":["site-1"],"id":1}`,
+	ts := testServer(t, `{"method":"admin.admins","params":"site-1","id":1}`,
 		`{"result":["id1","id2"],"id":1}`)
 	defer ts.Close()
-	c := RPC{Client: rpc.Client{API: ts.URL, Client: http.Client{}}}
+	c := RPC{Client: jrpc.Client{API: ts.URL, Client: http.Client{}}}
 
 	var a Store = &c
 	_ = a
@@ -50,10 +49,10 @@ func TestRemote_Admins(t *testing.T) {
 }
 
 func TestRemote_Email(t *testing.T) {
-	ts := testServer(t, `{"method":"admin.email","params":["site-1"],"id":1}`,
+	ts := testServer(t, `{"method":"admin.email","params":"site-1","id":1}`,
 		`{"result":"bbb@example.com","id":1}`)
 	defer ts.Close()
-	c := RPC{Client: rpc.Client{API: ts.URL, Client: http.Client{}}}
+	c := RPC{Client: jrpc.Client{API: ts.URL, Client: http.Client{}}}
 
 	var a Store = &c
 	_ = a

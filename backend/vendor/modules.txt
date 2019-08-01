@@ -10,7 +10,7 @@ github.com/coreos/bbolt
 github.com/davecgh/go-spew/spew
 # github.com/dgrijalva/jwt-go v3.2.0+incompatible
 github.com/dgrijalva/jwt-go
-# github.com/didip/tollbooth v4.0.0+incompatible
+# github.com/didip/tollbooth v4.0.2+incompatible
 github.com/didip/tollbooth
 github.com/didip/tollbooth/errors
 github.com/didip/tollbooth/libstring
@@ -38,6 +38,8 @@ github.com/go-pkgz/auth/provider/sender
 github.com/go-pkgz/auth/token
 github.com/go-pkgz/auth/logger
 github.com/go-pkgz/auth/middleware
+# github.com/go-pkgz/jrpc v0.1.0
+github.com/go-pkgz/jrpc
 # github.com/go-pkgz/lcw v0.3.1
 github.com/go-pkgz/lcw
 # github.com/go-pkgz/lgr v0.6.3
@@ -98,7 +100,7 @@ golang.org/x/crypto/acme
 # golang.org/x/image v0.0.0-20190703141733-d6a02ce849c9
 golang.org/x/image/draw
 golang.org/x/image/math/f64
-# golang.org/x/net v0.0.0-20190628185345-da137c7871d7
+# golang.org/x/net v0.0.0-20190724013045-ca1201d0de80
 golang.org/x/net/html
 golang.org/x/net/idna
 golang.org/x/net/html/atom
