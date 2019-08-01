@@ -48,15 +48,17 @@ func main() {
 		AuthPasswd: opts.AuthPasswd,
 		Version:    revision,
 		AppName:    "remark42-memory",
+		Logger:     log.Default(),
 	}
+
 	srv := server.NewRPC(dataStore, adminStore, &rpcServer)
 
 	admRec := accessor.AdminRec{
-		SiteID: "example",
-		IDs:    []string{"id1", "id2"},
+		SiteID: "remark",
+		IDs:    []string{"dev_user"},
 		Email:  "admin@example.com",
 	}
-	adminStore.Set("example", admRec)
+	adminStore.Set("remark", admRec)
 
 	err := srv.Run(opts.Port)
 	log.Printf("[ERROR] server failed or terminated, %+v", err)
