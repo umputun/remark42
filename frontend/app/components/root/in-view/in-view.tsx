@@ -10,7 +10,7 @@ interface State {
   ref: Element | undefined;
 }
 
-const instance_map: Map<Element, Component<Props, State>> = new Map();
+const instance_map: WeakMap<Element, Component<Props, State>> = new WeakMap();
 
 const observer = new IntersectionObserver(
   entries => {

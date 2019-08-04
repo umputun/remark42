@@ -1,3 +1,5 @@
+export { AuthPanel } from './auth-panel';
+
 import './auth-panel.scss';
 
 import './__readonly-label/auth-panel__readonly-label.scss';
@@ -18,5 +20,3 @@ import './_theme/_light/auth-panel_theme_light.scss';
 import './_logged-in/auth-panel_logged-in.scss';
 
 import './__dropdown-provider/auth-panel__dropdown-provider.scss';
-
-export { AuthPanel } from './auth-panel';

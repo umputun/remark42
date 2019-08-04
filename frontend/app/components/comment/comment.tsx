@@ -542,10 +542,10 @@ export class Comment extends Component<Props, State> {
       );
     }
 
-    if (this.props.inView === false) {
+    if (!props.editMode && this.props.inView === false) {
       const [width, height] = this.base ? [this.base.scrollWidth, this.base.scrollHeight] : [100, 100];
       return (
-        <div
+        <article
           id={props.disabled ? undefined : `${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}
           style={{
             width: `${width}px`,
