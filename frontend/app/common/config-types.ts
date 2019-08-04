@@ -15,6 +15,7 @@ export interface CommentsConfig {
   max_shown_comments?: number;
   theme?: Theme;
   page_title?: string;
+  node?: string;
 }
 
 export interface LastCommentsConfig {
