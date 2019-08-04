@@ -1,3 +1,5 @@
+export { Root, ConnectedRoot } from './root';
+
 import './root.scss';
 
 import './__copyright/root__copyright.scss';
@@ -11,5 +13,3 @@ import './__threads/root__threads.scss';
 
 import './_theme/_dark/root_theme_dark.scss';
 import './_theme/_light/root_theme_light.scss';
-
-export { Root, ConnectedRoot } from './root';

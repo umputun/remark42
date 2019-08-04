@@ -1,3 +1,5 @@
+import '@app/components/raw-content';
+
 import './input.scss';
 
 import './__actions/input__actions.scss';
@@ -21,5 +23,3 @@ import './__markdown-toolbar/input__markdown-toolbar.scss';
 
 import './_theme/_dark/input_theme_dark.scss';
 import './_theme/_light/input_theme_light.scss';
-
-import '@app/components/raw-content';

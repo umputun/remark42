@@ -1,3 +1,5 @@
+import '@app/components/raw-content';
+
 import './comment.scss';
 
 import './__action/comment__action.scss';
@@ -47,5 +49,3 @@ import './_view/_user/comment_view_user.scss';
 
 import './_theme/_dark/comment_theme_dark.scss';
 import './_theme/_light/comment_theme_light.scss';
-
-import '@app/components/raw-content';
