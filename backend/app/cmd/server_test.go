@@ -88,7 +88,7 @@ func TestServerApp_DevMode(t *testing.T) {
 
 func TestServerApp_AnonMode(t *testing.T) {
 	port := rand.Intn(40000) + 10000
-	app, ctx := prepServerApp(t, 500*time.Millisecond, func(o ServerCommand) ServerCommand {
+	app, ctx := prepServerApp(t, 1000*time.Millisecond, func(o ServerCommand) ServerCommand {
 		o.Port = port
 		o.Auth.Anonymous = true
 		return o
@@ -104,7 +104,7 @@ func TestServerApp_AnonMode(t *testing.T) {
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/ping", port))
 	require.Nil(t, err)
 	defer resp.Body.Close()
-	assert.Equal(t, 200, resp.StatusCode)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	body, err := ioutil.ReadAll(resp.Body)
 	assert.Nil(t, err)
 	assert.Equal(t, "pong", string(body))
@@ -113,19 +113,19 @@ func TestServerApp_AnonMode(t *testing.T) {
 	resp, err = http.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=blah123&aud=remark42", port))
 	require.Nil(t, err)
 	defer resp.Body.Close()
-	assert.Equal(t, 200, resp.StatusCode)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	// try to login with bad name
 	resp, err = http.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=**blah123&aud=remark42", port))
 	require.Nil(t, err)
 	defer resp.Body.Close()
-	assert.Equal(t, 403, resp.StatusCode)
+	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 
 	// try to login with short name
 	resp, err = http.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=bl%20%20&aud=remark42", port))
 	require.Nil(t, err)
 	defer resp.Body.Close()
-	assert.Equal(t, 403, resp.StatusCode)
+	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 
 	app.Wait()
 }
@@ -355,7 +355,7 @@ func TestServerAuthHooks(t *testing.T) {
 	})
 
 	go func() { _ = app.run(ctx) }()
-	time.Sleep(100 * time.Millisecond) // let server start
+	time.Sleep(150 * time.Millisecond) // let server start
 
 	// make a token for user dev
 	tkService := app.restSrv.Authenticator.TokenService()
@@ -378,7 +378,7 @@ func TestServerAuthHooks(t *testing.T) {
 	t.Log(tk)
 
 	// add comment
-	client := http.Client{Timeout: 1 * time.Second}
+	client := http.Client{Timeout: 2 * time.Second}
 	req, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
 		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/p/2018/12/29/podcast-630/", "site": "remark"}}`))
 	require.NoError(t, err)

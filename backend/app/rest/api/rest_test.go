@@ -80,7 +80,7 @@ func TestRest_Shutdown(t *testing.T) {
 	srv := Rest{Authenticator: &auth.Service{}, ImageProxy: &proxy.Image{}}
 
 	go func() {
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(200 * time.Millisecond)
 		srv.Shutdown()
 	}()
 
@@ -282,7 +282,6 @@ func TestRest_parseError(t *testing.T) {
 }
 
 func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
-	// log.Setup(log.Out(ioutil.Discard))
 	log.Setup(log.CallerFile, log.CallerFunc, log.Msec, log.LevelBraces)
 
 	testDb := fmt.Sprintf("/tmp/test-remark-%d.db", rand.Int31())
