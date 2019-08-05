@@ -162,7 +162,6 @@ _this is the recommended way to run remark42_
 | max-comment             | MAX_COMMENT_SIZE        | `2048`                   | comment's size limit                             |
 | max-votes               | MAX_VOTES               | `-1`                     | votes limit per comment, `-1` - unlimited        |
 | low-score               | LOW_SCORE               | `-5`                     | low score threshold                              |
-| positive-score          | POSITIVE_SCORE          | `false`                  | enable positive score only                       |
 | critical-score          | CRITICAL_SCORE          | `-10`                    | critical score threshold                         |
 | positive-score          | POSITIVE_SCORE          | `false`                  | restricts comment's score to be only positive    |
 | restricted-words        | RESTRICTED_WORDS        |                          | words banned in comments (can use `*`), _multi_  |
