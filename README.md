@@ -633,7 +633,7 @@ Sort can be `time`, `active` or `score`. Supported sort order with prefix -/+, i
 
   ```go
   type Config struct {
-     	Version        string   `json:"version"`
+        Version        string   `json:"version"`
         EditDuration   int      `json:"edit_duration"`
         MaxCommentSize int      `json:"max_comment_size"`
         Admins         []string `json:"admins"`
