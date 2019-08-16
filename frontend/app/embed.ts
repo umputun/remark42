@@ -38,7 +38,7 @@ async function init(): Promise<void> {
     return;
   }
 
-  remark_config.url = (remark_config.url || window.location.href).split('#')[0];
+  remark_config.url = (remark_config.url || window.location.origin + window.location.pathname).split('#')[0];
 
   (window as any).REMARK42 = (window as any).REMARK42 || {};
   (window as any).REMARK42.changeTheme = changeTheme;
