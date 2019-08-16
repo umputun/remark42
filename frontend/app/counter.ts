@@ -37,7 +37,7 @@ async function init(): Promise<void> {
   }
 
   const map = nodes.reduce<{ [key: string]: HTMLElement[] }>((acc, node) => {
-    const id = node.dataset.url || remark_config.url || window.location.href;
+    const id = node.dataset.url || remark_config.url || window.location.origin + window.location.pathname;
     if (!acc[id]) acc[id] = [];
     acc[id].push(node);
     return acc;
