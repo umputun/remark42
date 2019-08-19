@@ -24,12 +24,15 @@ import (
 
 // DataStore wraps store.Interface with additional methods
 type DataStore struct {
-	Engine                 engine.Interface
-	EditDuration           time.Duration
-	AdminStore             admin.Store
-	MaxCommentSize         int
-	MaxVotes               int
-	RestrictSameIPVotes    bool
+	Engine              engine.Interface
+	EditDuration        time.Duration
+	AdminStore          admin.Store
+	MaxCommentSize      int
+	MaxVotes            int
+	RestrictSameIPVotes struct {
+		Enabled  bool
+		Duration time.Duration
+	}
 	PositiveScore          bool
 	TitleExtractor         *TitleExtractor
 	RestrictedWordsMatcher *RestrictedWordsMatcher
@@ -248,9 +251,11 @@ func (s *DataStore) Vote(req VoteReq) (comment store.Comment, err error) {
 		return comment, errors.Errorf("user %s already voted for %s", req.UserID, req.CommentID)
 	}
 
-	if req.UserIP != "" && s.RestrictSameIPVotes {
-		if _, ipFound := comment.VotedIPs[req.UserIP]; ipFound {
-			return comment, errors.Errorf("the same ip %s already voted for %s", req.UserIP, req.CommentID)
+	if req.UserIP != "" && s.RestrictSameIPVotes.Enabled {
+		if vts, ipFound := comment.VotedIPs[req.UserIP]; ipFound {
+			if s.RestrictSameIPVotes.Duration == 0 || vts.Add(s.RestrictSameIPVotes.Duration).After(time.Now()) {
+				return comment, errors.Errorf("the same ip %s already voted for %s", req.UserIP, req.CommentID)
+			}
 		}
 	}
 
