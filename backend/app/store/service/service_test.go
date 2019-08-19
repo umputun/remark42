@@ -443,6 +443,22 @@ func TestService_VoteControversy(t *testing.T) {
 	assert.InDelta(t, 1.73, res[0].Controversy, 0.01)
 }
 
+func TestService_VoteSameIP(t *testing.T) {
+	defer teardown(t)
+	b := DataStore{Engine: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123"),
+		MaxVotes: -1, RestrictSameIPVotes: true}
+
+	c, err := b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
+		UserID: "user2", UserIP: "123", Val: true})
+	assert.NoError(t, err)
+	assert.Equal(t, 1, c.Score, "should have 1 score")
+
+	c, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
+		UserID: "user3", UserIP: "123", Val: true})
+	assert.EqualError(t, err, "the same ip 123 already voted for id-2")
+	assert.Equal(t, 1, c.Score, "still have 1 score")
+}
+
 func TestService_Controversy(t *testing.T) {
 	tbl := []struct {
 		ups, downs int

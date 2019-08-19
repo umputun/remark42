@@ -29,6 +29,7 @@ type DataStore struct {
 	AdminStore             admin.Store
 	MaxCommentSize         int
 	MaxVotes               int
+	RestrictSameIPVotes    bool
 	PositiveScore          bool
 	TitleExtractor         *TitleExtractor
 	RestrictedWordsMatcher *RestrictedWordsMatcher
@@ -213,6 +214,7 @@ func (s *DataStore) SetPin(locator store.Locator, commentID string, status bool)
 	return s.Engine.Update(comment)
 }
 
+// VoteReq is the request ot make a vote
 type VoteReq struct {
 	Locator   store.Locator
 	CommentID string
@@ -246,7 +248,11 @@ func (s *DataStore) Vote(req VoteReq) (comment store.Comment, err error) {
 		return comment, errors.Errorf("user %s already voted for %s", req.UserID, req.CommentID)
 	}
 
-	// vip, found := comment.VotedIPs[]
+	if req.UserIP != "" && s.RestrictSameIPVotes {
+		if _, ipFound := comment.VotedIPs[req.UserIP]; ipFound {
+			return comment, errors.Errorf("the same ip %s already voted for %s", req.UserIP, req.CommentID)
+		}
+	}
 
 	maxVotes := s.MaxVotes // 0 value allowed and treated as "no comments allowed"
 	if s.MaxVotes < 0 {    // any negative value reset max votes to unlimited
@@ -270,6 +276,12 @@ func (s *DataStore) Vote(req VoteReq) (comment store.Comment, err error) {
 	if !voted {
 		comment.Votes[req.UserID] = req.Val
 	}
+
+	// add ip hash to voted ip map
+	if comment.VotedIPs == nil {
+		comment.VotedIPs = map[string]time.Time{}
+	}
+	comment.VotedIPs[req.UserIP] = time.Now()
 
 	// update score
 	if req.Val {
