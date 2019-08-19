@@ -56,6 +56,8 @@ type ServerCommand struct {
 	ImageProxy      bool          `long:"img-proxy" env:"IMG_PROXY" description:"enable image proxy"`
 	MaxCommentSize  int           `long:"max-comment" env:"MAX_COMMENT_SIZE" default:"2048" description:"max comment size"`
 	MaxVotes        int           `long:"max-votes" env:"MAX_VOTES" default:"-1" description:"maximum number of votes per comment"`
+	RestrictVoteIP  bool          `long:"votes-ip" env:"VOTES_IP" description:"restrict votes from the same ip"`
+	DurationVoteIP  time.Duration `long:"votes-ip-time" env:"VOTES_IP_TIME" default:"5m" description:"same ip vote duration"`
 	LowScore        int           `long:"low-score" env:"LOW_SCORE" default:"-5" description:"low score threshold"`
 	CriticalScore   int           `long:"critical-score" env:"CRITICAL_SCORE" default:"-10" description:"critical score threshold"`
 	PositiveScore   bool          `long:"positive-score" env:"POSITIVE_SCORE" description:"enable positive score only"`
@@ -277,6 +279,8 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		TitleExtractor:         service.NewTitleExtractor(http.Client{Timeout: time.Second * 5}),
 		RestrictedWordsMatcher: service.NewRestrictedWordsMatcher(service.StaticRestrictedWordsLister{Words: s.RestrictedWords}),
 	}
+	dataService.RestrictSameIPVotes.Enabled = s.RestrictVoteIP
+	dataService.RestrictSameIPVotes.Duration = s.DurationVoteIP
 
 	loadingCache, err := s.makeCache()
 	if err != nil {
