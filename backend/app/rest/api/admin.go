@@ -32,7 +32,7 @@ type adminStore interface {
 	User(siteID, userID string, limit, skip int, user store.User) ([]store.Comment, error)
 	IsBlocked(siteID string, userID string) bool
 	SetBlock(siteID string, userID string, status bool, ttl time.Duration) error
-	Blocked(siteID string) ([]store.BlockedUser, error)
+	BlockedUsers(siteID string) ([]store.BlockedUser, error)
 	Info(locator store.Locator, readonlyAge int) (store.PostInfo, error)
 	SetTitle(locator store.Locator, commentID string) (comment store.Comment, err error)
 	SetVerified(siteID string, userID string, status bool) error
@@ -158,7 +158,7 @@ func (a *admin) setBlockCtrl(w http.ResponseWriter, r *http.Request) {
 // GET /blocked?site=siteID - list blocked users
 func (a *admin) blockedUsersCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
-	users, err := a.dataService.Blocked(siteID)
+	users, err := a.dataService.BlockedUsers(siteID)
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get blocked users", rest.ErrSiteNotFound)
 		return

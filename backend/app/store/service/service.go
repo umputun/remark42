@@ -536,8 +536,8 @@ func (s *DataStore) SetBlock(siteID string, userID string, status bool, ttl time
 	return err
 }
 
-// Blocked returns list with all blocked users
-func (s *DataStore) Blocked(siteID string) (res []store.BlockedUser, err error) {
+// BlockedUsers returns list with all blocked users for given siteID
+func (s *DataStore) BlockedUsers(siteID string) (res []store.BlockedUser, err error) {
 	blocked, e := s.Engine.ListFlags(engine.FlagRequest{Locator: store.Locator{SiteID: siteID}, Flag: engine.Blocked})
 	if e != nil {
 		return nil, errors.Wrapf(err, "can't get list of blocked users for %s", siteID)
@@ -606,7 +606,7 @@ func (s *DataStore) Metas(siteID string) (umetas []UserMetaData, pmetas []PostMe
 	m := map[string]UserMetaData{}
 
 	// process blocked users
-	blocked, err := s.Blocked(siteID)
+	blocked, err := s.BlockedUsers(siteID)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "can't get list of blocked users for %s", siteID)
 	}
