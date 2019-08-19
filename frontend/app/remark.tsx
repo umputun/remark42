@@ -53,7 +53,7 @@ async function init(): Promise<void> {
     .reduce<{ [key: string]: string }>((memo, value) => {
       const vals = value.split('=');
       if (vals.length === 2) {
-        memo[vals[0]] = vals[1];
+        memo[vals[0]] = decodeURIComponent(vals[1]);
       }
       return memo;
     }, {});
