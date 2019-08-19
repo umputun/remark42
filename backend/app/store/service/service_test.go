@@ -456,8 +456,13 @@ func TestService_VoteSameIP(t *testing.T) {
 
 	c, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
 		UserID: "user3", UserIP: "123", Val: true})
-	assert.EqualError(t, err, "the same ip 123 already voted for id-2")
+	assert.EqualError(t, err, "the same ip cce61be6e0a692420ae0de31dceca179123c3b8a already voted for id-2")
 	assert.Equal(t, 1, c.Score, "still have 1 score")
+
+	c, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
+		UserID: "user3", UserIP: "123", Val: false})
+	assert.NoError(t, err)
+	assert.Equal(t, 0, c.Score, "reset to 0 score, opposite vote allowed")
 }
 
 func TestService_VoteSameIPWithDuration(t *testing.T) {
@@ -474,15 +479,20 @@ func TestService_VoteSameIPWithDuration(t *testing.T) {
 
 	c, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
 		UserID: "user3", UserIP: "123", Val: true})
-	assert.EqualError(t, err, "the same ip 123 already voted for id-2")
+	assert.EqualError(t, err, "the same ip cce61be6e0a692420ae0de31dceca179123c3b8a already voted for id-2")
 	assert.Equal(t, 1, c.Score, "still have 1 score")
+
+	c, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
+		UserID: "user4", UserIP: "12345", Val: true})
+	assert.NoError(t, err)
+	assert.Equal(t, 2, c.Score, "have 2 score")
 
 	time.Sleep(51 * time.Millisecond)
 
 	c, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
 		UserID: "user3", UserIP: "123", Val: true})
 	assert.NoError(t, err)
-	assert.Equal(t, 2, c.Score, "have 2 score")
+	assert.Equal(t, 3, c.Score, "have 3 score")
 }
 
 func TestService_Controversy(t *testing.T) {

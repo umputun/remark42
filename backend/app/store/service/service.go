@@ -251,12 +251,13 @@ func (s *DataStore) Vote(req VoteReq) (comment store.Comment, err error) {
 		return comment, errors.Errorf("user %s already voted for %s", req.UserID, req.CommentID)
 	}
 
-	if req.UserIP != "" && s.RestrictSameIPVotes.Enabled {
-		if vts, ipFound := comment.VotedIPs[req.UserIP]; ipFound {
-			if s.RestrictSameIPVotes.Duration == 0 || vts.Add(s.RestrictSameIPVotes.Duration).After(time.Now()) {
-				return comment, errors.Errorf("the same ip %s already voted for %s", req.UserIP, req.CommentID)
-			}
-		}
+	secret, err := s.AdminStore.Key()
+	if err != nil {
+		return store.Comment{}, errors.Wrapf(err, "can't get secret for site %s", comment.Locator.SiteID)
+	}
+	userIPHash := store.HashValue(req.UserIP, secret)
+	if s.isSameIPVote(req, userIPHash, comment) {
+		return comment, errors.Errorf("the same ip %s already voted for %s", userIPHash, req.CommentID)
 	}
 
 	maxVotes := s.MaxVotes // 0 value allowed and treated as "no comments allowed"
@@ -284,9 +285,10 @@ func (s *DataStore) Vote(req VoteReq) (comment store.Comment, err error) {
 
 	// add ip hash to voted ip map
 	if comment.VotedIPs == nil {
-		comment.VotedIPs = map[string]time.Time{}
+		comment.VotedIPs = map[string]store.VotedIPInfo{}
 	}
-	comment.VotedIPs[req.UserIP] = time.Now()
+
+	comment.VotedIPs[userIPHash] = store.VotedIPInfo{Timestamp: time.Now(), Value: req.Val}
 
 	// update score
 	if req.Val {
@@ -307,6 +309,22 @@ func (s *DataStore) Vote(req VoteReq) (comment store.Comment, err error) {
 	comment.Controversy = s.controversy(s.upsAndDowns(comment))
 	comment.Locator = req.Locator
 	return comment, s.Engine.Update(comment)
+}
+
+func (s *DataStore) isSameIPVote(req VoteReq, userIPHash string, comment store.Comment) bool {
+	if req.UserIP == "" || !s.RestrictSameIPVotes.Enabled {
+		return false
+	}
+
+	if v, ipFound := comment.VotedIPs[userIPHash]; ipFound {
+		if v.Value != req.Val {
+			return false // opposite direction vote allowed
+		}
+		if s.RestrictSameIPVotes.Duration == 0 || v.Timestamp.Add(s.RestrictSameIPVotes.Duration).After(time.Now()) {
+			return true
+		}
+	}
+	return false
 }
 
 // controversy calculates controversial index of votes
