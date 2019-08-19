@@ -172,7 +172,9 @@ async function init(): Promise<void> {
       const queryUserInfo =
         query +
         '&page=user-info&' +
-        `&id=${user.id}&name=${user.name}&picture=${user.picture || ''}&isDefaultPicture=${user.isDefaultPicture || 0}`;
+        `&id=${encodeURIComponent(user.id)}&name=${encodeURIComponent(user.name)}&picture=${encodeURIComponent(
+          user.picture
+        ) || ''}&isDefaultPicture=${user.isDefaultPicture || 0}`;
       this.node.innerHTML = `
       <iframe
         src="${HOST}/web/iframe.html?${queryUserInfo}"
