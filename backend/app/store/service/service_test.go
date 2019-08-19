@@ -187,7 +187,7 @@ func TestService_Vote(t *testing.T) {
 		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
 		CommentID: res[0].ID,
 		UserID:    "user1",
-		UserIP:    "",
+		UserIP:    "123",
 		Val:       true,
 	}
 	c, err := b.Vote(req)
@@ -212,7 +212,7 @@ func TestService_Vote(t *testing.T) {
 		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
 		CommentID: res[0].ID,
 		UserID:    "user",
-		UserIP:    "",
+		UserIP:    "123",
 		Val:       true,
 	}
 	c, err = b.Vote(req)
@@ -222,7 +222,7 @@ func TestService_Vote(t *testing.T) {
 		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
 		CommentID: res[0].ID,
 		UserID:    "user1",
-		UserIP:    "",
+		UserIP:    "123",
 		Val:       true,
 	}
 	_, err = b.Vote(req)
@@ -251,7 +251,7 @@ func TestService_Vote(t *testing.T) {
 		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
 		CommentID: res[0].ID,
 		UserID:    "user1",
-		UserIP:    "",
+		UserIP:    "123",
 		Val:       false,
 	}
 	_, err = b.Vote(req)
