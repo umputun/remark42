@@ -213,30 +213,40 @@ func (s *DataStore) SetPin(locator store.Locator, commentID string, status bool)
 	return s.Engine.Update(comment)
 }
 
-// Vote for comment by id and locator
-func (s *DataStore) Vote(locator store.Locator, commentID string, userID string, val bool) (comment store.Comment, err error) {
+type VoteReq struct {
+	Locator   store.Locator
+	CommentID string
+	UserID    string
+	UserIP    string
+	Val       bool
+}
 
-	cLock := s.getScopedLocks(locator.URL) // get lock for URL scope
-	cLock.Lock()                           // prevents race on voting
+// Vote for comment by id and locator
+func (s *DataStore) Vote(req VoteReq) (comment store.Comment, err error) {
+
+	cLock := s.getScopedLocks(req.Locator.URL) // get lock for URL scope
+	cLock.Lock()                               // prevents race on voting
 	defer cLock.Unlock()
 
-	comment, err = s.Engine.Get(engine.GetRequest{Locator: locator, CommentID: commentID})
+	comment, err = s.Engine.Get(engine.GetRequest{Locator: req.Locator, CommentID: req.CommentID})
 	if err != nil {
 		return comment, err
 	}
 
-	if comment.User.ID == userID && userID != "dev" {
-		return comment, errors.Errorf("user %s can not vote for his own comment %s", userID, commentID)
+	if comment.User.ID == req.UserID && req.UserID != "dev" {
+		return comment, errors.Errorf("user %s can not vote for his own comment %s", req.UserID, req.CommentID)
 	}
 
 	if comment.Votes == nil {
 		comment.Votes = make(map[string]bool)
 	}
-	v, voted := comment.Votes[userID]
 
-	if voted && v == val {
-		return comment, errors.Errorf("user %s already voted for %s", userID, commentID)
+	v, voted := comment.Votes[req.UserID]
+	if voted && v == req.Val {
+		return comment, errors.Errorf("user %s already voted for %s", req.UserID, req.CommentID)
 	}
+
+	// vip, found := comment.VotedIPs[]
 
 	maxVotes := s.MaxVotes // 0 value allowed and treated as "no comments allowed"
 	if s.MaxVotes < 0 {    // any negative value reset max votes to unlimited
@@ -244,32 +254,32 @@ func (s *DataStore) Vote(locator store.Locator, commentID string, userID string,
 	}
 
 	if maxVotes >= 0 && len(comment.Votes) >= maxVotes {
-		return comment, errors.Errorf("maximum number of votes exceeded for comment %s", commentID)
+		return comment, errors.Errorf("maximum number of votes exceeded for comment %s", req.CommentID)
 	}
 
-	if s.PositiveScore && comment.Score <= 0 && !val {
-		return comment, errors.Errorf("minimal score reached for comment %s", commentID)
+	if s.PositiveScore && comment.Score <= 0 && !req.Val {
+		return comment, errors.Errorf("minimal score reached for comment %s", req.CommentID)
 	}
 
 	// reset vote if user changed to opposite
-	if voted && v != val {
-		delete(comment.Votes, userID)
+	if voted && v != req.Val {
+		delete(comment.Votes, req.UserID)
 	}
 
 	// add to voted map if first vote
 	if !voted {
-		comment.Votes[userID] = val
+		comment.Votes[req.UserID] = req.Val
 	}
 
 	// update score
-	if val {
+	if req.Val {
 		comment.Score++
 	} else {
 		comment.Score--
 	}
 
 	comment.Vote = 0
-	if vv, ok := comment.Votes[userID]; ok {
+	if vv, ok := comment.Votes[req.UserID]; ok {
 		if vv {
 			comment.Vote = 1
 		} else {
@@ -278,7 +288,7 @@ func (s *DataStore) Vote(locator store.Locator, commentID string, userID string,
 	}
 
 	comment.Controversy = s.controversy(s.upsAndDowns(comment))
-	comment.Locator = locator
+	comment.Locator = req.Locator
 	return comment, s.Engine.Update(comment)
 }
 

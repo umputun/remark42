@@ -183,7 +183,14 @@ func TestService_Vote(t *testing.T) {
 	assert.Equal(t, map[string]bool(nil), res[0].Votes, "no votes initially")
 
 	// vote +1 as user1
-	c, err := b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "user1", true)
+	req := VoteReq{
+		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+		CommentID: res[0].ID,
+		UserID:    "user1",
+		UserIP:    "",
+		Val:       true,
+	}
+	c, err := b.Vote(req)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, c.Score)
 	assert.Equal(t, 1, c.Vote)
@@ -201,10 +208,24 @@ func TestService_Vote(t *testing.T) {
 	assert.Equal(t, 0, c.Vote, "can't see other user vote result")
 	assert.Nil(t, c.Votes)
 
-	c, err = b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "user", true)
+	req = VoteReq{
+		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+		CommentID: res[0].ID,
+		UserID:    "user",
+		UserIP:    "",
+		Val:       true,
+	}
+	c, err = b.Vote(req)
 	assert.NotNil(t, err, "self-voting not allowed")
 
-	_, err = b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "user1", true)
+	req = VoteReq{
+		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+		CommentID: res[0].ID,
+		UserID:    "user1",
+		UserIP:    "",
+		Val:       true,
+	}
+	_, err = b.Vote(req)
 	assert.NotNil(t, err, "double-voting rejected")
 	assert.True(t, strings.HasPrefix(err.Error(), "user user1 already voted"))
 
@@ -226,7 +247,14 @@ func TestService_Vote(t *testing.T) {
 	assert.Equal(t, 0, res[0].Vote)
 	assert.Equal(t, 0.0, res[0].Controversy)
 
-	_, err = b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "user1", false)
+	req = VoteReq{
+		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+		CommentID: res[0].ID,
+		UserID:    "user1",
+		UserIP:    "",
+		Val:       false,
+	}
+	_, err = b.Vote(req)
 	assert.NoError(t, err, "vote reset")
 	res, err = b.Last("radio-t", 0, time.Time{}, store.User{})
 	assert.NoError(t, err)
@@ -240,17 +268,21 @@ func TestService_VoteLimit(t *testing.T) {
 	defer teardown(t)
 	b := DataStore{Engine: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: 2}
 
-	_, err := b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "id-1", "user2", true)
+	_, err := b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-1",
+		UserID: "user2", Val: true})
 	assert.NoError(t, err)
 
-	_, err = b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "id-1", "user3", true)
+	_, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-1",
+		UserID: "user3", Val: true})
 	assert.NoError(t, err)
 
-	_, err = b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "id-1", "user4", true)
+	_, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-1",
+		UserID: "user4", Val: true})
 	assert.NotNil(t, err, "vote limit reached")
 	assert.True(t, strings.HasPrefix(err.Error(), "maximum number of votes exceeded for comment id-1"))
 
-	_, err = b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "id-2", "user4", true)
+	_, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
+		UserID: "user4", Val: true})
 	assert.NoError(t, err)
 }
 
@@ -258,7 +290,8 @@ func TestService_VotesDisabled(t *testing.T) {
 	defer teardown(t)
 	b := DataStore{Engine: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: 0}
 
-	_, err := b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "id-1", "user2", true)
+	_, err := b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-1",
+		UserID: "user2", Val: true})
 	assert.EqualError(t, err, "maximum number of votes exceeded for comment id-1")
 }
 
@@ -282,7 +315,8 @@ func TestService_VoteAggressive(t *testing.T) {
 	assert.Equal(t, map[string]bool(nil), res[0].Votes, "no votes initially")
 
 	// add a vote as user2
-	_, err = b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "user2", true)
+	_, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: res[0].ID,
+		UserID: "user2", Val: true})
 	require.NoError(t, err)
 
 	// crazy vote +1 as user1
@@ -291,7 +325,8 @@ func TestService_VoteAggressive(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_, _ = b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "user1", true)
+			_, _ = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: res[0].ID,
+				UserID: "user1", Val: true})
 		}()
 	}
 	wg.Wait()
@@ -311,7 +346,8 @@ func TestService_VoteAggressive(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			val := rand.Intn(2) > 0
-			_, _ = b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, "user1", val)
+			_, _ = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: res[0].ID,
+				UserID: "user1", Val: val})
 		}()
 	}
 	wg.Wait()
@@ -344,8 +380,8 @@ func TestService_VoteConcurrent(t *testing.T) {
 		ii := i
 		go func() {
 			defer wg.Done()
-			_, _ = b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID,
-				fmt.Sprintf("user1-%d", ii), true)
+			_, _ = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: res[0].ID,
+				UserID: fmt.Sprintf("user1-%d", ii), Val: true})
 		}()
 	}
 	wg.Wait()
@@ -361,15 +397,18 @@ func TestService_VotePositive(t *testing.T) {
 	b := DataStore{Engine: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123"),
 		MaxVotes: -1, PositiveScore: true}
 
-	_, err := b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "id-1", "user2", false)
+	_, err := b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-1",
+		UserID: "user2", Val: false})
 	assert.EqualError(t, err, "minimal score reached for comment id-1")
 
-	_, err = b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "id-1", "user3", true)
+	_, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-1",
+		UserID: "user3", Val: true})
 	assert.NoError(t, err, "minimal score doesn't affect positive vote")
 
 	b = DataStore{Engine: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123"),
 		MaxVotes: -1, PositiveScore: false}
-	c, err := b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "id-1", "user2", false)
+	c, err := b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-1",
+		UserID: "user2", Val: false})
 	assert.NoError(t, err, "minimal score ignored")
 	assert.Equal(t, -1, c.Score)
 	assert.Equal(t, 0.0, c.Controversy)
@@ -379,17 +418,20 @@ func TestService_VoteControversy(t *testing.T) {
 	defer teardown(t)
 	b := DataStore{Engine: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: -1}
 
-	c, err := b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "id-2", "user2", false)
+	c, err := b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
+		UserID: "user2", Val: false})
 	assert.NoError(t, err)
 	assert.Equal(t, -1, c.Score, "should have -1 score")
 	assert.InDelta(t, 0.00, c.Controversy, 0.01)
 
-	c, err = b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "id-2", "user3", true)
+	c, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
+		UserID: "user3", Val: true})
 	assert.NoError(t, err)
 	assert.Equal(t, 0, c.Score, "should have 0 score")
 	assert.InDelta(t, 2.00, c.Controversy, 0.01)
 
-	c, err = b.Vote(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "id-2", "user4", true)
+	c, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
+		UserID: "user4", Val: true})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, c.Score, "should have 1 score")
 	assert.InDelta(t, 1.73, c.Controversy, 0.01)
