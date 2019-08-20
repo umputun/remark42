@@ -106,7 +106,7 @@ func (c *Comment) Sanitize() {
 	c.Text = p.Sanitize(c.Text)
 	c.Orig = p.Sanitize(c.Orig)
 	c.User.ID = template.HTMLEscapeString(c.User.ID)
-	c.User.Name = template.HTMLEscapeString(c.User.Name)
+	c.User.Name = c.escapeHtmlWithSome(c.User.Name)
 	c.User.Picture = p.Sanitize(c.User.Picture)
 }
 
@@ -129,4 +129,12 @@ func (c *Comment) Snippet(limit int) string {
 		}
 	}
 	return string(snippet) + " ..."
+}
+
+func (c *Comment) escapeHtmlWithSome(inp string) string {
+	res := template.HTMLEscapeString(inp)
+	res = strings.Replace(res, "&#34;", "\"", -1)
+	res = strings.Replace(res, "&#39;", "'", -1)
+	res = strings.Replace(res, "&amp;", "&", -1)
+	return res
 }

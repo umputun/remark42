@@ -43,6 +43,10 @@ func TestComment_Sanitize(t *testing.T) {
 			inp: Comment{Text: "blah & & 123 — —"},
 			out: Comment{Text: `blah &amp; &amp; 123 — —`},
 		},
+		{
+			inp: Comment{Text: "blah & & 123", User: User{Name: "name <> & ' ` \""}},
+			out: Comment{Text: `blah &amp; &amp; 123`, User: User{Name: "name &lt;&gt; & ' ` \""}},
+		},
 	}
 
 	for n, tt := range tbl {
