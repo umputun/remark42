@@ -14,6 +14,7 @@ import {
 } from './types';
 import { getPinnedComments } from './utils';
 import { cmpRef } from '@app/utils/cmpRef';
+import { unescapeComment } from '@app/utils/unescapeComment';
 
 export const topComments = (
   state: (Comment['id'])[] = [],
@@ -80,7 +81,7 @@ const cmpComment = (a: Comment | undefined, b: Comment): Comment => {
 };
 
 const reduceComments = (c: Record<Comment['id'], Comment>, x: Node): Record<Comment['id'], Comment> => {
-  c[x.comment.id] = cmpComment(c[x.comment.id], x.comment);
+  c[x.comment.id] = cmpComment(c[x.comment.id], unescapeComment(x.comment));
   if (x.replies) {
     x.replies.reduce(reduceComments, c);
   }
