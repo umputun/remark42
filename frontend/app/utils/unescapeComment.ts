@@ -1,5 +1,5 @@
 import { Comment } from '@app/common/types';
-import { htmlUnescape } from './htmlUnescape';
+import { htmlPartialUnescape } from './htmlUnescape';
 
 /**
  * comment received from api has name of user html escaped,
@@ -8,6 +8,6 @@ import { htmlUnescape } from './htmlUnescape';
 export const unescapeComment = (comment: Comment): Comment => {
   return {
     ...comment,
-    user: { ...comment.user, name: htmlUnescape(comment.user.name) },
+    user: { ...comment.user, name: htmlPartialUnescape(comment.user.name) },
   };
 };
