@@ -420,8 +420,6 @@ func TestRest_Vote(t *testing.T) {
 	assert.Equal(t, -1, cr.Score)
 	assert.Equal(t, 0, cr.Vote, "no vote info for different user")
 	assert.Equal(t, map[string]bool(nil), cr.Votes)
-
-	assert.Equal(t, map[string]bool(nil), cr.Votes)
 }
 
 func TestRest_UserAllData(t *testing.T) {

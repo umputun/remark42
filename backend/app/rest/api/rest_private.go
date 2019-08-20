@@ -40,7 +40,7 @@ type private struct {
 type privStore interface {
 	Create(comment store.Comment) (commentID string, err error)
 	EditComment(locator store.Locator, commentID string, req service.EditRequest) (comment store.Comment, err error)
-	Vote(locator store.Locator, commentID string, userID string, val bool) (comment store.Comment, err error)
+	Vote(req service.VoteReq) (comment store.Comment, err error)
 	Get(locator store.Locator, commentID string, user store.User) (store.Comment, error)
 	User(siteID, userID string, limit, skip int, user store.User) ([]store.Comment, error)
 	ValidateComment(c *store.Comment) error
@@ -198,7 +198,14 @@ func (s *private) voteCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	comment, err := s.dataService.Vote(locator, id, user.ID, vote)
+	req := service.VoteReq{
+		Locator:   locator,
+		CommentID: id,
+		UserID:    user.ID,
+		UserIP:    strings.Split(r.RemoteAddr, ":")[0],
+		Val:       vote,
+	}
+	comment, err := s.dataService.Vote(req)
 	if err != nil {
 		code := parseError(err, rest.ErrVoteRejected)
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't vote for comment", code)

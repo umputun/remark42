@@ -11,21 +11,22 @@ import (
 
 // Comment represents a single comment with optional reference to its parent
 type Comment struct {
-	ID          string          `json:"id" bson:"_id"`
-	ParentID    string          `json:"pid"`
-	Text        string          `json:"text"`
-	Orig        string          `json:"orig,omitempty"`
-	User        User            `json:"user"`
-	Locator     Locator         `json:"locator"`
-	Score       int             `json:"score"`
-	Votes       map[string]bool `json:"votes,omitempty"`
-	Vote        int             `json:"vote"` // vote for the current user, -1/1/0.
-	Controversy float64         `json:"controversy,omitempty"`
-	Timestamp   time.Time       `json:"time" bson:"time"`
-	Edit        *Edit           `json:"edit,omitempty" bson:"edit,omitempty"` // pointer to have empty default in json response
-	Pin         bool            `json:"pin,omitempty" bson:"pin,omitempty"`
-	Deleted     bool            `json:"delete,omitempty" bson:"delete"`
-	PostTitle   string          `json:"title,omitempty" bson:"title"`
+	ID          string                 `json:"id" bson:"_id"`
+	ParentID    string                 `json:"pid"`
+	Text        string                 `json:"text"`
+	Orig        string                 `json:"orig,omitempty"`
+	User        User                   `json:"user"`
+	Locator     Locator                `json:"locator"`
+	Score       int                    `json:"score"`
+	Votes       map[string]bool        `json:"votes,omitempty"`
+	VotedIPs    map[string]VotedIPInfo `json:"voted_ips,omitempty"` // voted ips (hashes) with TS
+	Vote        int                    `json:"vote"`                // vote for the current user, -1/1/0.
+	Controversy float64                `json:"controversy,omitempty"`
+	Timestamp   time.Time              `json:"time" bson:"time"`
+	Edit        *Edit                  `json:"edit,omitempty" bson:"edit,omitempty"` // pointer to have empty default in json response
+	Pin         bool                   `json:"pin,omitempty" bson:"pin,omitempty"`
+	Deleted     bool                   `json:"delete,omitempty" bson:"delete"`
+	PostTitle   string                 `json:"title,omitempty" bson:"title"`
 }
 
 // Locator keeps site and url of the post
@@ -54,6 +55,12 @@ type BlockedUser struct {
 	ID    string    `json:"id"`
 	Name  string    `json:"name"`
 	Until time.Time `json:"time"`
+}
+
+// VotedIPInfo keeps timestamp and voting value (direction). Used as VotedIPs value
+type VotedIPInfo struct {
+	Timestamp time.Time
+	Value     bool
 }
 
 // DeleteMode defines how much comment info will be erased
