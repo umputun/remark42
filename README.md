@@ -322,6 +322,39 @@ Admins/moderators should be defined in `docker-compose.yml` as a list of user ID
 To get user id just login and click on your username or any other user you want to promote to admins.
 It will expand login info and show full user ID.
 
+#### Docker parameters
+
+Two parameters allow to customize docker container on the system level:
+
+- `APP_UID` - sets UID to run remark42 application in container (default=1001)
+- `TIME_ZONE` - sets time zone of remark42 container (default=America/Chicago)
+
+_see [umputun/baseimage](https://github.com/umputun/baseimage) for more details_
+
+example of compose:
+
+```yaml
+version: '2'
+
+services:
+    remark42:
+        image: umputun/remark42:latest
+        restart: always
+        container_name: "remark42"
+        environment:
+            - APP_UID=2000                          # runs remark42 app with non-default UID
+            - TIME_ZINE=GTC                         # sets container time to UTC
+
+            - REMARK_URL=https://demo.remark42.com  # url pointing to your remark42 server
+            - SITE=YOUR_SITE_ID                     # site ID, same as used for `site_id`, see "Setup on your website"
+            - SECRET=abcd-123456-xyz-$%^&           # secret key
+            - AUTH_GITHUB_CID=12345667890           # oauth2 client ID
+            - AUTH_GITHUB_CSEC=abcdefg12345678      # oauth2 client secret
+        volumes:
+            - ./var:/srv/var                        # persistent volume to store all remark42 data
+```
+
+
 ### Setup on your website
 
 #### Comments

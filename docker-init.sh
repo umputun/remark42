@@ -6,6 +6,3 @@ sed -i "s|https://demo.remark42.com|${REMARK_URL}|g" /srv/web/*.js
 sed -i "/REMOVE-START/,/REMOVE-END/d" /srv/web/iframe.html
 
 chown -R app:app /srv/var 2>/dev/null
-
-echo "start remark42 server"
-/sbin/su-exec app /srv/remark42 $@

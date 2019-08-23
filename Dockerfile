@@ -79,11 +79,11 @@ RUN cd /srv/frontend && \
     rm -rf ./node_modules
 
 
-FROM umputun/baseimage:app-latest
+FROM umputun/baseimage:app
 
 WORKDIR /srv
 
-ADD entrypoint.sh /entrypoint.sh
+ADD docker-init.sh /entrypoint.sh
 ADD backend/scripts/backup.sh /usr/local/bin/backup
 ADD backend/scripts/restore.sh /usr/local/bin/restore
 ADD backend/scripts/import.sh /usr/local/bin/import
@@ -97,5 +97,6 @@ RUN ln -s /srv/remark42 /usr/bin/remark42
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s CMD curl --fail http://localhost:8080/ping || exit 1
 
-CMD ["server"]
-ENTRYPOINT ["/entrypoint.sh"]
+COPY docker-init.sh /srv/init.sh
+RUN chmod +x /srv/init.sh
+CMD ["/srv/remark42", "server"]
