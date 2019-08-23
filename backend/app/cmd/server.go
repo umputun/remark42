@@ -78,6 +78,7 @@ type ServerCommand struct {
 		Github    AuthGroup `group:"github" namespace:"github" env-namespace:"GITHUB" description:"Github OAuth"`
 		Facebook  AuthGroup `group:"facebook" namespace:"facebook" env-namespace:"FACEBOOK" description:"Facebook OAuth"`
 		Yandex    AuthGroup `group:"yandex" namespace:"yandex" env-namespace:"YANDEX" description:"Yandex OAuth"`
+		Twitter   AuthGroup `group:"twitter" namespace:"twitter" env-namespace:"TWITTER" description:"Twitter OAuth"`
 		Dev       bool      `long:"dev" env:"DEV" description:"enable dev (local) oauth2"`
 		Anonymous bool      `long:"anon" env:"ANON" description:"enable anonymous login"`
 		Email     struct {
@@ -572,6 +573,11 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) {
 		authenticator.AddProvider("yandex", s.Auth.Yandex.CID, s.Auth.Yandex.CSEC)
 		providers++
 	}
+	if s.Auth.Twitter.CID != "" && s.Auth.Twitter.CSEC != "" {
+		authenticator.AddProvider("twitter", s.Auth.Twitter.CID, s.Auth.Twitter.CSEC)
+		providers++
+	}
+
 	if s.Auth.Dev {
 		log.Print("[INFO] dev access enabled")
 		authenticator.AddProvider("dev", "", "")
