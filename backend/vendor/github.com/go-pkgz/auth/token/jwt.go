@@ -259,6 +259,9 @@ func (j *Service) Get(r *http.Request) (Claims, string, error) {
 			return Claims{}, "", errors.New("xsrf mismatch")
 		}
 	}
+	if claims.User != nil {
+		claims.User.Audience = claims.Audience
+	}
 	return claims, tokenString, nil
 }
 

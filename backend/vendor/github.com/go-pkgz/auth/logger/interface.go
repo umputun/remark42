@@ -4,6 +4,7 @@ package logger
 
 import "log"
 
+// L defined logger interface used everywhere in the package
 type L interface {
 	Logf(format string, args ...interface{})
 }

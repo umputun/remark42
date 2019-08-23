@@ -35,7 +35,7 @@ func (fs *LocalFS) Put(userID string, reader io.Reader) (avatar string, err erro
 	id := encodeID(userID)
 	location := fs.location(id) // location adds partition to path
 
-	if e := os.MkdirAll(location, 0755); e != nil {
+	if e := os.MkdirAll(location, 0750); e != nil {
 		return "", errors.Wrapf(e, "failed to mkdir avatar location %s", location)
 	}
 
@@ -59,8 +59,7 @@ func (fs *LocalFS) Put(userID string, reader io.Reader) (avatar string, err erro
 // Get avatar reader for avatar id.image
 func (fs *LocalFS) Get(avatar string) (reader io.ReadCloser, size int, err error) {
 	location := fs.location(strings.TrimSuffix(avatar, imgSfx))
-	avFile := path.Join(location, avatar)
-	fh, err := os.Open(avFile)
+	fh, err := os.Open(path.Join(location, avatar)) //nolint
 	if err != nil {
 		return nil, 0, errors.Wrapf(err, "can't load avatar %s, id", avatar)
 	}

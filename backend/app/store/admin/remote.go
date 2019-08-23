@@ -53,3 +53,16 @@ func (r *RPC) Email(siteID string) (email string, err error) {
 	}
 	return email, nil
 }
+
+// Enabled returns true if allowed
+func (r *RPC) Enabled(siteID string) (ok bool, err error) {
+	resp, err := r.Call("admin.enabled", siteID)
+	if err != nil {
+		return false, err
+	}
+
+	if err = json.Unmarshal(*resp.Result, &ok); err != nil {
+		return false, err
+	}
+	return ok, nil
+}

@@ -28,11 +28,11 @@ func TestComment_Sanitize(t *testing.T) {
 		{
 			inp: Comment{
 				Text: "blah 123" + "\n\t",
-				User: User{ID: "id", Name: "xyz"},
+				User: User{ID: "id", Name: "xyz-123"},
 			},
 			out: Comment{
 				Text: `blah 123` + "\n\t",
-				User: User{ID: "id", Name: "xyz"},
+				User: User{ID: "id", Name: "xyz-123"},
 			},
 		},
 		{

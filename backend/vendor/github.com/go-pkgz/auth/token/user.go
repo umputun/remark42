@@ -21,9 +21,10 @@ const adminAttr = "admin" // predefined attribute key for bool isAdmin status
 // User is the basic part of oauth data provided by service
 type User struct {
 	// set by service
-	Name    string `json:"name"`
-	ID      string `json:"id"`
-	Picture string `json:"picture"`
+	Name     string `json:"name"`
+	ID       string `json:"id"`
+	Picture  string `json:"picture"`
+	Audience string `json:"aud,omitempty"`
 
 	// set by client
 	IP         string                 `json:"ip,omitempty"`
@@ -40,7 +41,7 @@ func (u *User) SetBoolAttr(key string, val bool) {
 }
 
 // SetStrAttr sets string attribute
-func (u *User) SetStrAttr(key string, val string) {
+func (u *User) SetStrAttr(key, val string) {
 	if u.Attributes == nil {
 		u.Attributes = map[string]interface{}{}
 	}

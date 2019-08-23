@@ -54,7 +54,7 @@ func NewEmailClient(p EmailParams, l logger.L) *Email {
 // Send email with given text
 // If SMTPClient defined in Email struct it will be used, if not - new smtp.Client on each send.
 // Always closes client on completion or failure.
-func (em *Email) Send(to string, text string) error {
+func (em *Email) Send(to, text string) error {
 	em.Logf("[DEBUG] send %q to %s", text, to)
 	client := em.SMTPClient
 	if client == nil { // if client not set make new net/smtp
@@ -117,9 +117,9 @@ func (em *Email) client() (c *smtp.Client, err error) {
 			InsecureSkipVerify: false,
 			ServerName:         em.Host,
 		}
-		conn, err := tls.Dial("tcp", srvAddress, tlsConf)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to dial smtp tls to %s", srvAddress)
+		conn, e := tls.Dial("tcp", srvAddress, tlsConf)
+		if e != nil {
+			return nil, errors.Wrapf(e, "failed to dial smtp tls to %s", srvAddress)
 		}
 		if c, err = smtp.NewClient(conn, em.Host); err != nil {
 			return nil, errors.Wrapf(err, "failed to make smtp client for %s", srvAddress)
@@ -139,7 +139,7 @@ func (em *Email) client() (c *smtp.Client, err error) {
 	return c, nil
 }
 
-func (em *Email) buildMessage(msg string, to string) (message string) {
+func (em *Email) buildMessage(msg, to string) (message string) {
 	message += fmt.Sprintf("From: %s\n", em.From)
 	message += fmt.Sprintf("To: %s\n", to)
 	message += fmt.Sprintf("Subject: %s\n", em.Subject)

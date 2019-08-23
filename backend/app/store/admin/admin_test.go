@@ -20,4 +20,8 @@ func TestStaticStore_Get(t *testing.T) {
 	email, err := ks.Email("blah")
 	assert.NoError(t, err)
 	assert.Equal(t, "aa@example.com", email)
+
+	enabled, err := ks.Enabled("blah")
+	assert.NoError(t, err)
+	assert.Equal(t, true, enabled)
 }

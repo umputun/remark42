@@ -62,6 +62,22 @@ func TestRemote_Email(t *testing.T) {
 	assert.Equal(t, "bbb@example.com", res)
 	t.Logf("%v %T", res, res)
 }
+
+func TestRemote_Enables(t *testing.T) {
+	ts := testServer(t, `{"method":"admin.enabled","params":"site-1","id":1}`,
+		`{"result":true,"id":1}`)
+	defer ts.Close()
+	c := RPC{Client: jrpc.Client{API: ts.URL, Client: http.Client{}}}
+
+	var a Store = &c
+	_ = a
+
+	res, err := c.Enabled("site-1")
+	assert.NoError(t, err)
+	assert.True(t, res)
+	t.Logf("%v %T", res, res)
+}
+
 func testServer(t *testing.T, req, resp string) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, err := ioutil.ReadAll(r.Body)

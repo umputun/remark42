@@ -32,18 +32,18 @@ type VerifyHandler struct {
 
 // Sender defines interface to send emails
 type Sender interface {
-	Send(address string, text string) error
+	Send(address, text string) error
 }
 
 // SenderFunc type is an adapter to allow the use of ordinary functions as Sender.
-type SenderFunc func(address string, text string) error
+type SenderFunc func(address, text string) error
 
 // Send calls f(address,text) to implement Sender interface
-func (f SenderFunc) Send(address string, text string) error {
+func (f SenderFunc) Send(address, text string) error {
 	return f(address, text)
 }
 
-// TokenService defines interface accessing tokens
+// VerifTokenService defines interface accessing tokens
 type VerifTokenService interface {
 	Token(claims token.Claims) (string, error)
 	Parse(tokenString string) (claims token.Claims, err error)
@@ -93,7 +93,7 @@ func (e VerifyHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// try to get gravatar for email
 	if e.UseGravatar && strings.Contains(address, "@") { // TODO: better email check to avoid silly hits to gravatar api
-		if picURL, err := avatar.GetGravatarURL(address); err == nil {
+		if picURL, e := avatar.GetGravatarURL(address); e == nil {
 			u.Picture = picURL
 		}
 	}

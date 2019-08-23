@@ -22,6 +22,7 @@ type User struct {
 	Admin    bool   `json:"admin"`
 	Blocked  bool   `json:"block,omitempty"`
 	Verified bool   `json:"verified,omitempty"`
+	SiteID   string `json:"site_id,omitempty"`
 }
 
 var reValidSha = regexp.MustCompile("^[a-fA-F0-9]{40}$")

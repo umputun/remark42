@@ -38,12 +38,13 @@ func (p *Proxy) Put(u token.User) (avatarURL string, err error) {
 
 	// no picture for user, try to generate identicon avatar
 	if u.Picture == "" {
-		b, err := GenerateAvatar(u.ID)
-		if err != nil {
-			return "", errors.Errorf("no picture for %s", u.ID)
+		b, e := GenerateAvatar(u.ID)
+		if e != nil {
+			return "", errors.Wrapf(e, "no picture for %s", u.ID)
 		}
-		avatarID, err := p.Store.Put(u.ID, p.resize(bytes.NewBuffer(b), p.ResizeLimit)) // put returns avatar base name, like 123456.image
-		if err != nil {
+		// put returns avatar base name, like 123456.image
+		avatarID, e := p.Store.Put(u.ID, p.resize(bytes.NewBuffer(b), p.ResizeLimit))
+		if e != nil {
 			return "", err
 		}
 

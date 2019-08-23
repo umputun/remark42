@@ -12,6 +12,7 @@ type Store interface {
 	Key() (key string, err error)
 	Admins(siteID string) (ids []string, err error)
 	Email(siteID string) (email string, err error)
+	Enabled(siteID string) (ok bool, err error)
 }
 
 // StaticStore implements keys.Store with a single set of admins and email for all sites
@@ -48,4 +49,9 @@ func (s *StaticStore) Admins(string) (ids []string, err error) {
 // Email gets static email address
 func (s *StaticStore) Email(string) (email string, err error) {
 	return s.email, nil
+}
+
+// Enabled if always true for StaticStore
+func (s *StaticStore) Enabled(string) (ok bool, err error) {
+	return true, nil
 }

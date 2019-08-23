@@ -454,10 +454,11 @@ func TestRest_UserAllData(t *testing.T) {
 	assert.NoError(t, err)
 	ungzBody, err := ioutil.ReadAll(ungzReader)
 	assert.NoError(t, err)
-	assert.True(t, strings.HasPrefix(string(ungzBody),
-		`{"info": {"name":"developer one","id":"dev","picture":"http://example.com/pic.png","ip":"127.0.0.1","admin":false}, "comments":[{`))
-	assert.Equal(t, 3, strings.Count(string(ungzBody), `"text":`), "3 comments inside")
-	t.Logf("%s", string(ungzBody))
+	strUungzBody := string(ungzBody)
+	assert.True(t, strings.HasPrefix(strUungzBody,
+		`{"info": {"name":"developer one","id":"dev","picture":"http://example.com/pic.png","ip":"127.0.0.1","admin":false,"site_id":"remark42"}, "comments":[{`))
+	assert.Equal(t, 3, strings.Count(strUungzBody, `"text":`), "3 comments inside")
+	t.Logf("%s", strUungzBody)
 
 	parsed := struct {
 		Info     store.User      `json:"info"`
@@ -467,7 +468,7 @@ func TestRest_UserAllData(t *testing.T) {
 	err = json.Unmarshal(ungzBody, &parsed)
 	assert.Nil(t, err)
 	assert.Equal(t, store.User{Name: "developer one", ID: "dev",
-		Picture: "http://example.com/pic.png", IP: "127.0.0.1"}, parsed.Info)
+		Picture: "http://example.com/pic.png", IP: "127.0.0.1", SiteID: "remark42"}, parsed.Info)
 	assert.Equal(t, 3, len(parsed.Comments))
 
 	req, err = http.NewRequest("GET", ts.URL+"/api/v1/userdata?site=radio-t", nil)
@@ -504,9 +505,10 @@ func TestRest_UserAllDataManyComments(t *testing.T) {
 	assert.NoError(t, err)
 	ungzBody, err := ioutil.ReadAll(ungzReader)
 	assert.NoError(t, err)
-	assert.True(t, strings.HasPrefix(string(ungzBody),
-		`{"info": {"name":"developer one","id":"dev","picture":"http://example.com/pic.png","ip":"127.0.0.1","admin":false}, "comments":[{`))
-	assert.Equal(t, 51, strings.Count(string(ungzBody), `"text":`), "51 comments inside")
+	strUngzBody := string(ungzBody)
+	assert.True(t, strings.HasPrefix(strUngzBody,
+		`{"info": {"name":"developer one","id":"dev","picture":"http://example.com/pic.png","ip":"127.0.0.1","admin":false,"site_id":"remark42"}, "comments":[{`))
+	assert.Equal(t, 51, strings.Count(strUngzBody, `"text":`), "51 comments inside")
 }
 
 func TestRest_DeleteMe(t *testing.T) {

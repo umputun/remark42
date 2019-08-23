@@ -1,8 +1,9 @@
-# auth - authentication via oauth2 [![Build Status](https://travis-ci.org/go-pkgz/auth.svg?branch=master)](https://travis-ci.org/go-pkgz/auth) [![Coverage Status](https://coveralls.io/repos/github/go-pkgz/auth/badge.svg?branch=master)](https://coveralls.io/github/go-pkgz/auth?branch=master) [![godoc](https://godoc.org/github.com/go-pkgz/auth?status.svg)](https://godoc.org/github.com/go-pkgz/auth)
+# auth - authentication via oauth2, direct and email 
+[![Build Status](https://travis-ci.org/go-pkgz/auth.svg?branch=master)](https://travis-ci.org/go-pkgz/auth) [![Coverage Status](https://coveralls.io/repos/github/go-pkgz/auth/badge.svg?branch=master)](https://coveralls.io/github/go-pkgz/auth?branch=master) [![godoc](https://godoc.org/github.com/go-pkgz/auth?status.svg)](https://godoc.org/github.com/go-pkgz/auth)
 
 
 
-This library provides "social login" with Github, Google, Facebook and Yandex as well as custom auth providers.  
+This library provides "social login" with Github, Google, Facebook, Twitter and Yandex as well as custom auth providers and email verification.  
 
 - Multiple oauth2 providers can be used at the same time
 - Special `dev` provider allows local testing and development
@@ -10,6 +11,7 @@ This library provides "social login" with Github, Google, Facebook and Yandex as
 - Minimal scopes with user name, id and picture (avatar) only
 - Direct authentication with user's provided credential checker
 - Verified authentication with user's provided sender (email, im, etc)
+- Custom oauth2 server and ability to use any third party provider
 - Integrated avatar proxy with FS, boltdb and gridfs storage
 - Support of user-defined storage for avatars
 - Identicon for default avatars  
@@ -92,7 +94,7 @@ Generally, adding support of `auth` includes a few relatively simple steps:
 
 For the example above authentication handlers wired as `/auth` and provides:
 
-- `/auth/<provider>/login?id=<site_id>&from=<redirect_url>` - site_id used as `aud` claim for the token and can be processed by `SecretReader` to load/retrieve/define different secrets. redirect_url is the url to redirect after successful login.
+- `/auth/<provider>/login?site=<site_id>&from=<redirect_url>` - site_id used as `aud` claim for the token and can be processed by `SecretReader` to load/retrieve/define different secrets. redirect_url is the url to redirect after successful login.
 - `/avatar/<avatar_id>` - returns the avatar (image). Links to those pictures added into user info automatically, for details see "Avatar proxy"
 - `/auth/<provider>/logout` and `/auth/logout` - invalidate "session" by removing JWT cookie
 - `/auth/list` - gives a json list of active providers 
@@ -183,6 +185,65 @@ The API for this provider:
 
 The provider acts like any other, i.e. will be registered as `/auth/email/login`.
   
+### Custom oauth2
+
+This provider brings two extra functions:
+
+1. Adds ability to use any third-party oauth2 providers in addition to the list of directly supported. Included [example](https://github.com/go-pkgz/auth/blob/master/_example/main.go#L113) demonstrates how to do it for bitbucket.
+In order to add a new oauth2 provider following input is required:
+	* `Name` - any name is allowed except the names from list of supported providers. It is possible to register more than one client for one given oauth2 provider (for example using different names `bitbucket_dev` and `bitbucket_prod`)
+	* `Client` - ID and secret of client
+	* `Endpoint` - auth URL and token URL. This information could be obtained from auth2 provider page
+	* `InfoURL` - oauth2 provider API method to read information of logged in user. This method could be found in documentation of oauth2 provider (e.g. for bitbucket https://developer.atlassian.com/bitbucket/api/2/reference/resource/user)
+	* `MapUserFn` - function to convert the response from `InfoURL` to `token.User` (s. example below)
+	* `Scopes` - minimal needed scope to read user information. Client should be authorized to these scopes
+	```go
+	c := auth.Client{
+		Cid:     os.Getenv("AEXMPL_BITBUCKET_CID"),
+		Csecret: os.Getenv("AEXMPL_BITBUCKET_CSEC"),
+	}
+
+	service.AddCustomProvider("bitbucket", c, provider.CustomHandlerOpt{
+		Endpoint: oauth2.Endpoint{
+			AuthURL:  "https://bitbucket.org/site/oauth2/authorize",
+			TokenURL: "https://bitbucket.org/site/oauth2/access_token",
+		},
+		InfoURL: "https://api.bitbucket.org/2.0/user/",
+		MapUserFn: func(data provider.UserData, _ []byte) token.User {
+			userInfo := token.User{
+				ID: "bitbucket_" + token.HashID(sha1.New(),
+					data.Value("username")),
+				Name: data.Value("nickname"),
+			}
+			return userInfo
+		},
+		Scopes: []string{"account"},
+	})
+	```
+2.  Adds local oauth2 server user can fully customize. It uses [`gopkg.in/oauth2.v3`](https://github.com/go-oauth2/oauth2) library and example shows how [to initialize](https://github.com/go-pkgz/auth/blob/master/_example/main.go#L227) the server and [setup a provider](https://github.com/go-pkgz/auth/blob/master/_example/main.go#L100).
+	*  to start local oauth2 server following options are required: 
+		* `URL` - url of oauth2 server with port
+		* `WithLoginPage` - flag to define whether login page should be shown
+		* `LoginPageHandler` - function to handle login request. If not specified default login page will be shown
+		```go
+		sopts := provider.CustomServerOpt{
+			URL:           "http://127.0.0.1:9096",
+			L:             options.Logger,
+			WithLoginPage: true,
+		}
+		prov := provider.NewCustomServer(srv, sopts)
+		
+		// Start server
+		go prov.Run(context.Background())
+		```
+	* to register handler for local oauth2 following option are required:
+		* `Name` - any name except the names from list of supported providers
+		* `Client` - ID and secret of client
+		* `HandlerOpt` - handler options of custom oauth provider
+		```go
+		service.AddCustomProvider("custom123", auth.Client{Cid: "cid", Csecret: "csecret"}, prov.HandlerOpt)
+		```
+
 ### Customization
 
 There are several ways to adjust functionality of the library:
@@ -215,7 +276,7 @@ Such functionality can be implemented in 3 different ways:
 – Handling "allowed audience" as a part of `ClaimsUpdater` and `Validator` chain. I.e. `ClaimsUpdater` sets a claim indicating expected audience code/id and `Validator` making sure it matches. This way a single `auth.Service` could handle multiple groups of auth tokens and reject some based on the audience.
 - Using the standard JWT `aud` claim. This method conceptually very similar to the previous one, but done by library internally and consumer don't need to define special  `ClaimsUpdater` and `Validator` logic.
 
-In order to allow `aud` support the list of allowed audiences should be passed in as `opts.Audiences` parameter. Non-empty value will trigger internal checks for token generation (will reject token creation fot alien `aud`) as well as `Auth` middleware.
+In order to allow `aud` support the list of allowed audiences should be passed in as `opts.Audiences` parameter. Non-empty value will trigger internal checks for token generation (will reject token creation for alien `aud`) as well as `Auth` middleware.
 
 
 ### Dev provider
@@ -302,8 +363,11 @@ _instructions for google oauth2 setup borrowed from [oauth2_proxy](https://githu
 
 For more details refer to [Yandex OAuth](https://tech.yandex.com/oauth/doc/dg/concepts/about-docpage/) and [Yandex.Passport](https://tech.yandex.com/passport/doc/dg/index-docpage/) API documentation.
 
-
-
+#### Twitter Auth Provider
+1.	Create a new twitter application https://developer.twitter.com/en/apps
+1.	Fill **App name**  and **Description** and **URL** of your site
+1.	In the field **Callback URLs** enter the correct url of your callback handler e.g. https://example.mysite.com/{route}/twitter/callback
+1.	Under **Key and tokens** take note of the **Consumer API Key** and **Consumer API Secret key**. Those will be used as `cid` and `csecret`
 ## Status 
 
 The library extracted from [remark42](https://github.com/umputun/remark) project. The original code in production use on multiple sites and seems to work fine. 

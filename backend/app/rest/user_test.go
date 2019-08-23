@@ -14,10 +14,10 @@ func TestUser_GetUserInfo(t *testing.T) {
 	_, err = GetUserInfo(r)
 	assert.NotNil(t, err, "no user info")
 
-	r = SetUserInfo(r, store.User{Name: "test", ID: "id"})
+	r = SetUserInfo(r, store.User{Name: "test", ID: "id", SiteID:"test"})
 	u, err := GetUserInfo(r)
 	assert.Nil(t, err)
-	assert.Equal(t, store.User{Name: "test", ID: "id"}, u)
+	assert.Equal(t, store.User{Name: "test", ID: "id", SiteID:"test"}, u)
 }
 
 func TestUSer_MustGetUserInfo(t *testing.T) {

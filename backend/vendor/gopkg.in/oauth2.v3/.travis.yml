@@ -1,0 +1,13 @@
+language: go
+sudo: false
+go_import_path: gopkg.in/oauth2.v3
+go:
+  - 1.9
+before_install:
+  - go get -t -v ./...
+
+script:
+  - chmod +x ./go.test.sh && ./go.test.sh
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)

@@ -12,6 +12,12 @@ import (
 	"github.com/go-pkgz/auth/token"
 )
 
+const (
+	urlLoginSuffix    = "/login"
+	urlCallbackSuffix = "/callback"
+	urlLogoutSuffix   = "/logout"
+)
+
 // Service represents oauth2 provider. Adds Handler method multiplexing login, auth and logout requests
 type Service struct {
 	Provider
@@ -50,15 +56,15 @@ func (p Service) Handler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	if strings.HasSuffix(r.URL.Path, "/login") {
+	if strings.HasSuffix(r.URL.Path, urlLoginSuffix) {
 		p.LoginHandler(w, r)
 		return
 	}
-	if strings.HasSuffix(r.URL.Path, "/callback") {
+	if strings.HasSuffix(r.URL.Path, urlCallbackSuffix) {
 		p.AuthHandler(w, r)
 		return
 	}
-	if strings.HasSuffix(r.URL.Path, "/logout") {
+	if strings.HasSuffix(r.URL.Path, urlLogoutSuffix) {
 		p.LogoutHandler(w, r)
 		return
 	}

@@ -24,6 +24,7 @@ type Authenticator struct {
 	RefreshCache RefreshCache
 }
 
+// RefreshCache defines interface storing and retrieving refreshed tokens
 type RefreshCache interface {
 	Get(key interface{}) (value interface{}, ok bool)
 	Set(key, value interface{})

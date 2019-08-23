@@ -35,6 +35,7 @@ func GetUserInfo(r *http.Request) (user store.User, err error) {
 		Admin:    u.IsAdmin(),
 		Verified: u.BoolAttr("verified"),
 		Blocked:  u.BoolAttr("blocked"),
+		SiteID:   u.Audience,
 	}, nil
 }
 
@@ -50,10 +51,11 @@ func GetUserOrEmpty(r *http.Request) store.User {
 // SetUserInfo sets user into request context
 func SetUserInfo(r *http.Request, user store.User) *http.Request {
 	u := token.User{
-		ID:      user.ID,
-		Name:    user.Name,
-		Picture: user.Picture,
-		IP:      user.IP,
+		ID:       user.ID,
+		Name:     user.Name,
+		Picture:  user.Picture,
+		IP:       user.IP,
+		Audience: user.SiteID,
 		Attributes: map[string]interface{}{
 			"blocked":  user.Blocked,
 			"verified": user.Verified,

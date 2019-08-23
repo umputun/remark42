@@ -1,4 +1,4 @@
-# cloud.google.com/go v0.41.0
+# cloud.google.com/go v0.44.3
 cloud.google.com/go/compute/metadata
 # github.com/PuerkitoBio/goquery v1.5.0
 github.com/PuerkitoBio/goquery
@@ -8,6 +8,9 @@ github.com/andybalholm/cascadia
 github.com/coreos/bbolt
 # github.com/davecgh/go-spew v1.1.1
 github.com/davecgh/go-spew/spew
+# github.com/dghubble/oauth1 v0.6.0
+github.com/dghubble/oauth1
+github.com/dghubble/oauth1/twitter
 # github.com/dgrijalva/jwt-go v3.2.0+incompatible
 github.com/dgrijalva/jwt-go
 # github.com/didip/tollbooth v4.0.2+incompatible
@@ -30,7 +33,7 @@ github.com/go-chi/chi/middleware
 github.com/go-chi/cors
 # github.com/go-chi/render v1.0.1
 github.com/go-chi/render
-# github.com/go-pkgz/auth v0.7.2
+# github.com/go-pkgz/auth v0.8.0
 github.com/go-pkgz/auth
 github.com/go-pkgz/auth/avatar
 github.com/go-pkgz/auth/provider
@@ -55,7 +58,7 @@ github.com/go-pkgz/rest
 github.com/go-pkgz/rest/logger
 # github.com/go-pkgz/syncs v1.1.1
 github.com/go-pkgz/syncs
-# github.com/golang/protobuf v1.3.1
+# github.com/golang/protobuf v1.3.2
 github.com/golang/protobuf/proto
 # github.com/google/uuid v1.1.1
 github.com/google/uuid
@@ -65,7 +68,7 @@ github.com/gorilla/feeds
 github.com/hashicorp/errwrap
 # github.com/hashicorp/go-multierror v1.0.0
 github.com/hashicorp/go-multierror
-# github.com/hashicorp/golang-lru v0.5.1
+# github.com/hashicorp/golang-lru v0.5.3
 github.com/hashicorp/golang-lru
 github.com/hashicorp/golang-lru/simplelru
 # github.com/jessevdk/go-flags v0.0.0-20180331124232-1c38ed7ad0cc
@@ -90,17 +93,17 @@ github.com/rs/xid
 github.com/shurcooL/sanitized_anchor_name
 # github.com/stretchr/objx v0.2.0
 github.com/stretchr/objx
-# github.com/stretchr/testify v1.3.0
+# github.com/stretchr/testify v1.4.0
 github.com/stretchr/testify/mock
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/require
-# golang.org/x/crypto v0.0.0-20190701094942-4def268fd1a4
+# golang.org/x/crypto v0.0.0-20190820162420-60c769a6c586
 golang.org/x/crypto/acme/autocert
 golang.org/x/crypto/acme
-# golang.org/x/image v0.0.0-20190703141733-d6a02ce849c9
+# golang.org/x/image v0.0.0-20190823064033-3a9bac650e44
 golang.org/x/image/draw
 golang.org/x/image/math/f64
-# golang.org/x/net v0.0.0-20190724013045-ca1201d0de80
+# golang.org/x/net v0.0.0-20190813141303-74dc4d7220e7
 golang.org/x/net/html
 golang.org/x/net/idna
 golang.org/x/net/html/atom
@@ -115,7 +118,7 @@ golang.org/x/oauth2/yandex
 golang.org/x/oauth2/internal
 golang.org/x/oauth2/jws
 golang.org/x/oauth2/jwt
-# golang.org/x/sys v0.0.0-20190626221950-04f50cda93cb
+# golang.org/x/sys v0.0.0-20190813064441-fde4db37ae7a
 golang.org/x/sys/unix
 # golang.org/x/text v0.3.2
 golang.org/x/text/secure/bidirule
@@ -135,5 +138,11 @@ google.golang.org/appengine/internal/base
 google.golang.org/appengine/internal/datastore
 google.golang.org/appengine/internal/log
 google.golang.org/appengine/internal/remote_api
+# gopkg.in/oauth2.v3 v3.10.1
+gopkg.in/oauth2.v3/server
+gopkg.in/oauth2.v3
+gopkg.in/oauth2.v3/errors
 # gopkg.in/russross/blackfriday.v2 v2.0.1 => github.com/russross/blackfriday/v2 v2.0.1
 gopkg.in/russross/blackfriday.v2
+# gopkg.in/yaml.v2 v2.2.2
+gopkg.in/yaml.v2

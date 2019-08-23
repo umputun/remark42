@@ -34,9 +34,9 @@ type DevAuthServer struct {
 }
 
 // Run oauth2 dev server on port devAuthPort
-func (d *DevAuthServer) Run(ctx context.Context) {
+func (d *DevAuthServer) Run(ctx context.Context) { //nolint (gocyclo)
 	d.username = "dev_user"
-	d.Logf("[INFO] run local oauth2 dev server on %d, redir url=%s", devAuthPort, d.Provider.redirectURL)
+	d.Logf("[INFO] run local oauth2 dev server on %d, redir url=%s", devAuthPort, d.Provider.conf.RedirectURL)
 	d.lock.Lock()
 	var err error
 
@@ -70,7 +70,7 @@ func (d *DevAuthServer) Run(ctx context.Context) {
 				}
 
 				state := r.URL.Query().Get("state")
-				callbackURL := fmt.Sprintf("%s?code=g0ZGZmNjVmOWI&state=%s", d.Provider.redirectURL, state)
+				callbackURL := fmt.Sprintf("%s?code=g0ZGZmNjVmOWI&state=%s", d.Provider.conf.RedirectURL, state)
 				d.Logf("[DEBUG] callback url=%s", callbackURL)
 				w.Header().Add("Location", callbackURL)
 				w.WriteHeader(http.StatusFound)
@@ -150,24 +150,26 @@ func (d *DevAuthServer) Shutdown() {
 
 // NewDev makes dev oauth2 provider for admin user
 func NewDev(p Params) Oauth2Handler {
-	return initOauth2Handler(p, Oauth2Handler{
+	oh := initOauth2Handler(p, Oauth2Handler{
 		name: "dev",
 		endpoint: oauth2.Endpoint{
 			AuthURL:  fmt.Sprintf("http://127.0.0.1:%d/login/oauth/authorize", devAuthPort),
 			TokenURL: fmt.Sprintf("http://127.0.0.1:%d/login/oauth/access_token", devAuthPort),
 		},
-		redirectURL: p.URL + "/auth/dev/callback",
-		scopes:      []string{"user:email"},
-		infoURL:     fmt.Sprintf("http://127.0.0.1:%d/user", devAuthPort),
-		mapUser: func(data userData, _ []byte) token.User {
+		scopes:  []string{"user:email"},
+		infoURL: fmt.Sprintf("http://127.0.0.1:%d/user", devAuthPort),
+		mapUser: func(data UserData, _ []byte) token.User {
 			userInfo := token.User{
-				ID:      data.value("id"),
-				Name:    data.value("name"),
-				Picture: data.value("picture"),
+				ID:      data.Value("id"),
+				Name:    data.Value("name"),
+				Picture: data.Value("picture"),
 			}
 			return userInfo
 		},
 	})
+
+	oh.conf.RedirectURL = p.URL + "/auth/dev/callback"
+	return oh
 }
 
 var devUserFormTmpl = `

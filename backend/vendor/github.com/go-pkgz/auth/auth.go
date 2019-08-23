@@ -17,6 +17,12 @@ import (
 	"github.com/go-pkgz/auth/token"
 )
 
+// Client is a type of auth client
+type Client struct {
+	Cid     string
+	Csecret string
+}
+
 // Service provides higher level wrapper allowing to construct everything and get back token middleware
 type Service struct {
 	logger         logger.L
@@ -131,7 +137,7 @@ func NewService(opts Opts) (res *Service) {
 }
 
 // Handlers gets http.Handler for all providers and avatars
-func (s *Service) Handlers() (authHandler http.Handler, avatarHandler http.Handler) {
+func (s *Service) Handlers() (authHandler, avatarHandler http.Handler) {
 
 	ah := func(w http.ResponseWriter, r *http.Request) {
 		elems := strings.Split(r.URL.Path, "/")
@@ -193,7 +199,7 @@ func (s *Service) Middleware() middleware.Authenticator {
 }
 
 // AddProvider adds provider for given name
-func (s *Service) AddProvider(name string, cid string, csecret string) {
+func (s *Service) AddProvider(name, cid, csecret string) {
 
 	p := provider.Params{
 		URL:         s.opts.URL,
@@ -214,12 +220,30 @@ func (s *Service) AddProvider(name string, cid string, csecret string) {
 		s.providers = append(s.providers, provider.NewService(provider.NewFacebook(p)))
 	case "yandex":
 		s.providers = append(s.providers, provider.NewService(provider.NewYandex(p)))
+	case "twitter":
+		s.providers = append(s.providers, provider.NewService(provider.NewTwitter(p)))
 	case "dev":
 		s.providers = append(s.providers, provider.NewService(provider.NewDev(p)))
 	default:
 		return
 	}
 
+	s.authMiddleware.Providers = s.providers
+}
+
+// AddCustomProvider adds custom provider (e.g. https://gopkg.in/oauth2.v3)
+func (s *Service) AddCustomProvider(name string, client Client, copts provider.CustomHandlerOpt) {
+	p := provider.Params{
+		URL:         s.opts.URL,
+		JwtService:  s.jwtService,
+		Issuer:      s.issuer,
+		AvatarSaver: s.avatarProxy,
+		Cid:         client.Cid,
+		Csecret:     client.Csecret,
+		L:           s.logger,
+	}
+
+	s.providers = append(s.providers, provider.NewService(provider.NewCustom(name, p, copts)))
 	s.authMiddleware.Providers = s.providers
 }
 
@@ -239,7 +263,7 @@ func (s *Service) AddDirectProvider(name string, credChecker provider.CredChecke
 }
 
 // AddVerifProvider adds provider user's verification sent by sender
-func (s *Service) AddVerifProvider(name string, msgTmpl string, sender provider.Sender) {
+func (s *Service) AddVerifProvider(name, msgTmpl string, sender provider.Sender) {
 	dh := provider.VerifyHandler{
 		L:            s.logger,
 		ProviderName: name,

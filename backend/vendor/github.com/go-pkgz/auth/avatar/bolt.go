@@ -25,7 +25,7 @@ const metasBktName = "metas"
 
 // NewBoltDB makes bolt avatar store
 func NewBoltDB(fileName string, options bolt.Options) (*BoltDB, error) {
-	db, err := bolt.Open(fileName, 0600, &options)
+	db, err := bolt.Open(fileName, 0600, &options) //nolint
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to make boltdb for %s", fileName)
 	}

@@ -31,7 +31,7 @@ type Store interface {
 }
 
 // Migrate avatars between stores
-func Migrate(dst Store, src Store) (int, error) {
+func Migrate(dst, src Store) (int, error) {
 	ids, err := src.List()
 	if err != nil {
 		return 0, err
