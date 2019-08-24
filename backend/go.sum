@@ -53,8 +53,8 @@ github.com/go-chi/cors v1.0.0/go.mod h1:K2Yje0VW/SJzxiyMYu6iPQYa7hMjQX2i/F491VCh
 github.com/go-chi/render v1.0.1 h1:4/5tis2cKaNdnv9zFLfXzcquC9HbeZgCnxGnKrltBS8=
 github.com/go-chi/render v1.0.1/go.mod h1:pq4Rr7HbnsdaeHagklXub+p6Wd16Af5l9koip1OvJns=
 github.com/go-pkgz/auth v0.4.1/go.mod h1:CWtB8dHmOv+TfF3MUzKwk/YwTLepC2TaDL05A+pFVBM=
-github.com/go-pkgz/auth v0.8.1 h1:HBJau0LDOZ9NI5+fnrJu5azETuXLJx9ipx5uosYdK8I=
-github.com/go-pkgz/auth v0.8.1/go.mod h1:MBNrhig13KG0iXz/0d+30lnFUgzTxncUlaQ8suH/2p8=
+github.com/go-pkgz/auth v0.8.2 h1:cMpLwoIeVAP1QwwRRDRlgQcsDvBS+yT/gL0m8p4gmcI=
+github.com/go-pkgz/auth v0.8.2/go.mod h1:MBNrhig13KG0iXz/0d+30lnFUgzTxncUlaQ8suH/2p8=
 github.com/go-pkgz/auth/_example v0.0.0-20190722170031-705d3f732438/go.mod h1:rvZtFFkmm3p+E0CHmfUqTGKweCVg2ddsRUrEEPB1iaE=
 github.com/go-pkgz/jrpc v0.1.0 h1:hNg/IyfEqJcSWOKkuHw0ZwcuGc9TDp7QZREsD2ycmiM=
 github.com/go-pkgz/jrpc v0.1.0/go.mod h1:JxZsvoBklA50DNhELVJnJ567Rt+KrMH9rR3u515wvE8=
