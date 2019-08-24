@@ -1,0 +1,16 @@
+.comment__controls {
+  display: inline;
+  vertical-align: middle;
+  user-select: none;
+  font-size: 14px;
+  font-weight: 700;
+
+  @media (hover: hover) {
+    opacity: 0;
+
+    &:hover,
+    &:focus-within {
+      opacity: 1;
+    }
+  }
+}

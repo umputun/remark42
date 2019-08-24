@@ -99,7 +99,7 @@ func JSON(w http.ResponseWriter, r *http.Request, v interface{}) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	if status, ok := r.Context().Value(StatusCtxKey).(int); ok {
 		w.WriteHeader(status)
 	}
@@ -146,7 +146,13 @@ func channelEventStream(w http.ResponseWriter, r *http.Request, v interface{}) {
 
 	w.Header().Set("Content-Type", "text/event-stream; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
+
+	if r.ProtoMajor == 1 {
+		// An endpoint MUST NOT generate an HTTP/2 message containing connection-specific header fields.
+		// Source: RFC7540
+		w.Header().Set("Connection", "keep-alive")
+	}
+
 	w.WriteHeader(200)
 
 	ctx := r.Context()

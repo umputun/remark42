@@ -1,11 +1,11 @@
 /logs/
 /target/
 /var/
-/web/node_modules/
-/web/public/
+/frontend/node_modules/
+/frontend/public/
 /.vscode/
 /.idea/
-#/.git/objects/
+/bin/
 
 # source files
 docker-compose.yml
@@ -19,3 +19,6 @@ debug
 debug.test
 *.prof
 *.test
+remark42
+/backend/var/
+compose-private-backend.yml

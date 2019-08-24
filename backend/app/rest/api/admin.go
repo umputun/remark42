@@ -1,48 +1,43 @@
 package api
 
 import (
-	"compress/gzip"
 	"errors"
-	"fmt"
-	"io"
-	"log"
 	"net/http"
+	"path"
 	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
-	"github.com/umputun/remark/backend/app/rest/auth"
+	"github.com/go-pkgz/auth"
+	log "github.com/go-pkgz/lgr"
+	R "github.com/go-pkgz/rest"
+	"github.com/go-pkgz/rest/cache"
 
-	"github.com/umputun/remark/backend/app/migrator"
 	"github.com/umputun/remark/backend/app/rest"
-	"github.com/umputun/remark/backend/app/rest/cache"
 	"github.com/umputun/remark/backend/app/store"
-	"github.com/umputun/remark/backend/app/store/service"
 )
 
 // admin provides router for all requests available for admin users only
 type admin struct {
-	dataService   *service.DataStore
-	exporter      migrator.Exporter
+	dataService   adminStore
 	cache         cache.LoadingCache
-	authenticator auth.Authenticator
+	authenticator *auth.Service
 	readOnlyAge   int
+	migrator      *Migrator
 }
 
-func (a *admin) routes(middlewares ...func(http.Handler) http.Handler) chi.Router {
-	router := chi.NewRouter()
-	router.Use(middlewares...)
-	router.Delete("/comment/{id}", a.deleteCommentCtrl)
-	router.Put("/user/{userid}", a.setBlockCtrl)
-	router.Delete("/user/{userid}", a.deleteUserCtrl)
-	router.Get("/user/{userid}", a.getUserInfoCtrl)
-	router.Get("/deleteme", a.deleteMeRequestCtrl)
-	router.Put("/verify/{userid}", a.setVerifyCtrl)
-	router.Get("/export", a.exportCtrl)
-	router.Put("/pin/{id}", a.setPinCtrl)
-	router.Get("/blocked", a.blockedUsersCtrl)
-	router.Put("/readonly", a.setReadOnlyCtrl)
-	return router
+type adminStore interface {
+	Delete(locator store.Locator, commentID string, mode store.DeleteMode) error
+	DeleteUser(siteID string, userID string, mode store.DeleteMode) error
+	User(siteID, userID string, limit, skip int, user store.User) ([]store.Comment, error)
+	IsBlocked(siteID string, userID string) bool
+	SetBlock(siteID string, userID string, status bool, ttl time.Duration) error
+	BlockedUsers(siteID string) ([]store.BlockedUser, error)
+	Info(locator store.Locator, readonlyAge int) (store.PostInfo, error)
+	SetTitle(locator store.Locator, commentID string) (comment store.Comment, err error)
+	SetVerified(siteID string, userID string, status bool) error
+	SetReadOnly(locator store.Locator, status bool) error
+	SetPin(locator store.Locator, commentID string, status bool) error
 }
 
 // DELETE /comment/{id}?site=siteID&url=post-url - removes comment
@@ -54,12 +49,12 @@ func (a *admin) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 	err := a.dataService.Delete(locator, id, store.SoftDelete)
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete comment")
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete comment", rest.ErrInternal)
 		return
 	}
-	a.cache.Flush(locator.SiteID, locator.URL)
+	a.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.SiteID, locator.URL, lastCommentsScope))
 	render.Status(r, http.StatusOK)
-	render.JSON(w, r, JSON{"id": id, "locator": locator})
+	render.JSON(w, r, R.JSON{"id": id, "locator": locator})
 }
 
 // DELETE /user/{userid}?site=side-id - delete all user comments for requested userid
@@ -69,13 +64,13 @@ func (a *admin) deleteUserCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	log.Printf("[INFO] delete all user comments for %s, site %s", userID, siteID)
 
-	if err := a.dataService.DeleteUser(siteID, userID); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete user")
+	if err := a.dataService.DeleteUser(siteID, userID, store.HardDelete); err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete user", rest.ErrInternal)
 		return
 	}
-	a.cache.Flush(siteID, userID)
+	a.cache.Flush(cache.Flusher(siteID).Scopes(userID, siteID, lastCommentsScope))
 	render.Status(r, http.StatusOK)
-	render.JSON(w, r, JSON{"user_id": userID, "site_id": siteID})
+	render.JSON(w, r, R.JSON{"user_id": userID, "site_id": siteID})
 }
 
 // GET /user/{userid}?site=side-id - get user info for requested userid
@@ -85,9 +80,9 @@ func (a *admin) getUserInfoCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	log.Printf("[INFO] get user info for %s, site %s", userID, siteID)
 
-	ucomments, err := a.dataService.User(siteID, userID, 1, 0)
+	ucomments, err := a.dataService.User(siteID, userID, 1, 0, rest.GetUserOrEmpty(r))
 	if err != nil || len(ucomments) == 0 {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get user info")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get user info", rest.ErrInternal)
 		return
 	}
 	render.Status(r, http.StatusOK)
@@ -100,21 +95,36 @@ func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 
 	token := r.URL.Query().Get("token")
 
-	claims, err := a.authenticator.JWTService.Parse(token)
+	claims, err := a.authenticator.TokenService().Parse(token)
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't process token")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't process token", rest.ErrActionRejected)
 		return
 	}
 
-	log.Printf("[INFO] delete all user comments by request for %s, site %s", claims.User.ID, claims.SiteID)
+	log.Printf("[INFO] delete all user comments by request for %s, site %s", claims.User.ID, claims.Audience)
 
-	if err := a.dataService.DeleteUser(claims.SiteID, claims.User.ID); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete user")
+	// deleteme set by deleteMeCtrl, this check just to make sure we not trying to delete with leaked token
+	if !claims.User.BoolAttr("delete_me") {
+		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("forbidden"), "can't use provided token", rest.ErrNoAccess)
 		return
 	}
-	a.cache.Flush(claims.SiteID, claims.User.ID)
+
+	if err = a.dataService.DeleteUser(claims.Audience, claims.User.ID, store.HardDelete); err != nil {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete user", rest.ErrNoAccess)
+		return
+	}
+
+	if claims.User.Picture != "" && a.authenticator.AvatarProxy() != nil {
+		avatarStore := a.authenticator.AvatarProxy().Store
+		if err = avatarStore.Remove(path.Base(claims.User.Picture)); err != nil {
+			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete user's avatar", rest.ErrInternal)
+			return
+		}
+	}
+
+	a.cache.Flush(cache.Flusher(claims.Audience).Scopes(claims.Audience, claims.User.ID, lastCommentsScope))
 	render.Status(r, http.StatusOK)
-	render.JSON(w, r, JSON{"user_id": claims.User.ID, "site_id": claims.SiteID})
+	render.JSON(w, r, R.JSON{"user_id": claims.User.ID, "site_id": claims.Audience})
 }
 
 // PUT /user/{userid}?site=side-id&block=1&ttl=7d - block or unblock user
@@ -131,19 +141,26 @@ func (a *admin) setBlockCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := a.dataService.SetBlock(siteID, userID, blockStatus, ttl); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set blocking status")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set blocking status", rest.ErrActionRejected)
 		return
 	}
-	a.cache.Flush(siteID, userID)
-	render.JSON(w, r, JSON{"user_id": userID, "site_id": siteID, "block": blockStatus})
+
+	// delete comments for permanently blocked user.
+	if blockStatus && ttl == time.Duration(0) {
+		if err := a.dataService.DeleteUser(siteID, userID, store.SoftDelete); err != nil {
+			log.Printf("[WARN] can't delete comments for blocked user %s on site %s, %v", userID, siteID, err)
+		}
+	}
+	a.cache.Flush(cache.Flusher(siteID).Scopes(userID, siteID, lastCommentsScope))
+	render.JSON(w, r, R.JSON{"user_id": userID, "site_id": siteID, "block": blockStatus})
 }
 
 // GET /blocked?site=siteID - list blocked users
 func (a *admin) blockedUsersCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
-	users, err := a.dataService.Blocked(siteID)
+	users, err := a.dataService.BlockedUsers(siteID)
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get blocked users")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get blocked users", rest.ErrSiteNotFound)
 		return
 	}
 	render.JSON(w, r, users)
@@ -162,17 +179,35 @@ func (a *admin) setReadOnlyCtrl(w http.ResponseWriter, r *http.Request) {
 	// don't allow to reset ro for posts turned to ro by ReadOnlyAge
 	if !roStatus {
 		if info, e := a.dataService.Info(locator, a.readOnlyAge); e == nil && isRoByAge(info) {
-			rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"), "read-only due the age")
+			rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"),
+				"read-only due the age", rest.ErrActionRejected)
 			return
 		}
 	}
 
 	if err := a.dataService.SetReadOnly(locator, roStatus); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set readonly status")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set readonly status", rest.ErrPostNotFound)
 		return
 	}
-	a.cache.Flush(locator.SiteID)
-	render.JSON(w, r, JSON{"locator": locator, "read-only": roStatus})
+	a.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL, locator.SiteID))
+	render.JSON(w, r, R.JSON{"locator": locator, "read-only": roStatus})
+}
+
+// PUT /title/{id}?site=siteID&url=post-url - set comment PostTitle to page's title
+func (a *admin) setTitleCtrl(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
+
+	c, err := a.dataService.SetTitle(locator, id)
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't set title", rest.ErrInternal)
+		return
+	}
+	log.Printf("[INFO] set comment's title %s to %q", id, c.PostTitle)
+
+	a.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL, lastCommentsScope))
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, R.JSON{"id": id, "locator": locator})
 }
 
 // PUT /verify?site=siteID&url=post-url&ro=1 - set or reset read-only status for the post
@@ -182,11 +217,11 @@ func (a *admin) setVerifyCtrl(w http.ResponseWriter, r *http.Request) {
 	verifyStatus := r.URL.Query().Get("verified") == "1"
 
 	if err := a.dataService.SetVerified(siteID, userID, verifyStatus); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set verify status")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set verify status", rest.ErrActionRejected)
 		return
 	}
-	a.cache.Flush(siteID, userID)
-	render.JSON(w, r, JSON{"user": userID, "verified": verifyStatus})
+	a.cache.Flush(cache.Flusher(siteID).Scopes(siteID, userID))
+	render.JSON(w, r, R.JSON{"user": userID, "verified": verifyStatus})
 }
 
 // PUT /pin/{id}?site=siteID&url=post-url&pin=1
@@ -197,73 +232,9 @@ func (a *admin) setPinCtrl(w http.ResponseWriter, r *http.Request) {
 	pinStatus := r.URL.Query().Get("pin") == "1"
 
 	if err := a.dataService.SetPin(locator, commentID, pinStatus); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set pin status")
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set pin status", rest.ErrActionRejected)
 		return
 	}
-	a.cache.Flush(locator.URL)
-	render.JSON(w, r, JSON{"id": commentID, "locator": locator, "pin": pinStatus})
-}
-
-// GET /export?site=site-id?mode=file|stream
-// exports all comments for siteID as json stream or gz file
-func (a *admin) exportCtrl(w http.ResponseWriter, r *http.Request) {
-	siteID := r.URL.Query().Get("site")
-	var writer io.Writer = w
-	if r.URL.Query().Get("mode") == "file" {
-		exportFile := fmt.Sprintf("%s-%s.json.gz", siteID, time.Now().Format("20060102"))
-		w.Header().Set("Content-Type", "application/gzip")
-		w.Header().Set("Content-Disposition", "attachment;filename="+exportFile)
-		w.WriteHeader(http.StatusOK)
-		gzWriter := gzip.NewWriter(w)
-		defer func() {
-			if e := gzWriter.Close(); e != nil {
-				log.Printf("[WARN] can't close gzip writer, %s", e)
-			}
-		}()
-		writer = gzWriter
-	}
-
-	if _, err := a.exporter.Export(writer, siteID); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "export failed")
-		return
-	}
-}
-
-func (a *admin) checkBlocked(siteID string, user store.User) bool {
-	return a.dataService.IsBlocked(siteID, user.ID)
-}
-
-// post-processes comments, hides text of all comments for blocked users,
-// resets score and votes too. Also hides sensitive info for non-admin users
-func (a *admin) alterComments(comments []store.Comment, r *http.Request) (res []store.Comment) {
-	res = make([]store.Comment, len(comments))
-
-	user, err := rest.GetUserInfo(r)
-	isAdmin := err == nil && user.Admin
-
-	for i, c := range comments {
-
-		blocked := a.dataService.IsBlocked(c.Locator.SiteID, c.User.ID)
-		// process blocked users
-		if blocked {
-			if !isAdmin { // reset comment to deleted for non-admins
-				c.SetDeleted(store.SoftDelete)
-			}
-			c.User.Blocked = true
-			c.Deleted = true
-		}
-
-		// set verified status retroactively
-		if !blocked {
-			c.User.Verified = a.dataService.IsVerified(c.Locator.SiteID, c.User.ID)
-		}
-
-		// hide info from non-admins
-		if !isAdmin {
-			c.User.IP = ""
-		}
-
-		res[i] = c
-	}
-	return res
+	a.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL))
+	render.JSON(w, r, R.JSON{"id": commentID, "locator": locator, "pin": pinStatus})
 }

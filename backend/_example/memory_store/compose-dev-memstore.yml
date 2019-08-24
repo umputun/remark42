@@ -1,0 +1,47 @@
+# compose file demonstrating custom storage use. The memory_store (see backend/_example/memory_store) starts
+# in a separate container and remark42 communicates to mem_store.r42 via STORE_RPC_API url
+
+version: '2'
+
+services:
+
+  remark42:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - SKIP_BACKEND_TEST=true
+        - SKIP_FRONTEND_TEST=true
+    image: umputun/remark42:dev
+    container_name: "remark42"
+    hostname: "remark42"
+    restart: always
+
+    ports:
+      - "8080:8080" # primary rest server
+      - "8084:8084" # local oauth2 server
+
+    environment:
+      - REMARK_URL=http://127.0.0.1:8080
+      - SECRET=123456
+      - BACKUP_PATH=/srv/var/backup
+      - DEBUG=true
+      - EMOJI=true
+      - AUTH_ANON=true
+      - AUTH_DEV=true
+      - ADMIN_TYPE=rpc
+      - ADMIN_RPC_API=http://mem_store.r42:8080/cmd
+      - STORE_TYPE=rpc
+      - STORE_RPC_API=http://mem_store.r42:8080/cmd
+
+  mem_store.r42:
+    image: umputun/mem_store.r42
+    build:
+      context: .
+      dockerfile: backend/_example/memory_store/Dockerfile
+    container_name: "mem_store.r42"
+    hostname: "mem_store.r42"
+    environment:
+      - API=/cmd
+      - SECRET=123456
+      - DEBUG=true

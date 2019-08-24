@@ -1,6 +1,7 @@
 package store
 
 import (
+	"strconv"
 	"testing"
 	"time"
 
@@ -17,22 +18,34 @@ func TestComment_Sanitize(t *testing.T) {
 		{
 			inp: Comment{
 				Text: `blah <a href="javascript:alert('XSS1')" onmouseover="alert('XSS2')">XSS</a>` + "\n\t",
-				User: User{ID: `<a href="http://blah.com">username</a>`},
+				User: User{ID: `<a href="http://blah.com">username</a>`, Name: "name <b/>"},
 			},
 			out: Comment{
 				Text: "blah XSS\n\t",
-				User: User{ID: `&lt;a href=&#34;http://blah.com&#34;&gt;username&lt;/a&gt;`},
+				User: User{ID: `&lt;a href=&#34;http://blah.com&#34;&gt;username&lt;/a&gt;`, Name: "name &lt;b/&gt;"},
 			},
 		},
 		{
 			inp: Comment{
-				Text: `blah <a href="https://www.reddit.com/r/golang/comments/8jdo2l/remark42_is_a_selfhosted_lightweight_and_simple/">https://www.reddit.com/r/golang/comments/8jdo2l/remark42_is_a_selfhosted_lightweight_and_simple/</a>` + "\n\t",
-				User: User{ID: `<a href="http://blah.com">username</a>`},
+				Text: "blah 123" + "\n\t",
+				User: User{ID: "id", Name: "xyz-123"},
 			},
 			out: Comment{
-				Text: `blah <a href="https://www.reddit.com/r/golang/comments/8jdo2l/remark42_is_a_selfhosted_lightweight_and_simple/" rel="nofollow">https://www.reddit.com/r/golang/comments/8jdo...</a>` + "\n\t",
-				User: User{ID: `&lt;a href=&#34;http://blah.com&#34;&gt;username&lt;/a&gt;`},
+				Text: `blah 123` + "\n\t",
+				User: User{ID: "id", Name: "xyz-123"},
 			},
+		},
+		{
+			inp: Comment{Text: "blah & & 123 &mdash; &mdash;"},
+			out: Comment{Text: `blah &amp; &amp; 123 — —`},
+		},
+		{
+			inp: Comment{Text: "blah & & 123 — —"},
+			out: Comment{Text: `blah &amp; &amp; 123 — —`},
+		},
+		{
+			inp: Comment{Text: "blah & & 123", User: User{Name: "name <> & ' ` \""}},
+			out: Comment{Text: `blah &amp; &amp; 123`, User: User{Name: "name &lt;&gt; & ' ` \""}},
 		},
 	}
 
@@ -121,45 +134,24 @@ func TestComment_SetDeletedHard(t *testing.T) {
 	assert.Equal(t, User{Name: "deleted", ID: "deleted", Picture: "", Admin: false, Blocked: false, IP: ""}, comment.User)
 }
 
-func TestComment_ShortenAutoLinks(t *testing.T) {
+func TestComment_Snippet(t *testing.T) {
 	tbl := []struct {
-		max     int
-		in, out string
+		limit int
+		inp   string
+		out   string
 	}{
-		{32, "", ""},
-		{32, "text", "text"},
-		{32, "<p>asd</p>", "<p>asd</p>"},
-		{5, `<a href="incorrect-url">incorrect-url</a>`, `<a href="incorrect-url">incorrect-url</a>`},
-		{32, `<a href="https://blah.com">some text, not href</a>`, `<a href="https://blah.com">some text, not href</a>`},
-		{
-			32,
-			`<a href="https://blah.com/a/b/c/d?g=123#anc">https://blah.com/a/b/c/d?g=123#anc</a>`,
-			`<a href="https://blah.com/a/b/c/d?g=123#anc">https://blah.com/a/b/c/d?g=123#anc</a>`,
-		},
-		{
-			31,
-			`<a href="https://blah.com/a/b/c/d?g=123#anc">https://blah.com/a/b/c/d?g=123#anc</a>`,
-			`<a href="https://blah.com/a/b/c/d?g=123#anc">https://blah.com/a/b/c/d?g=1...</a>`,
-		},
-		{
-			15,
-			`<a href="https://blah.com/a/b/c/d?g=123#anc">https://blah.com/a/b/c/d?g=123#anc</a>`,
-			`<a href="https://blah.com/a/b/c/d?g=123#anc">https://blah.com...</a>`,
-		},
-		{
-			3,
-			`<a href="https://blah.com/a/b/c/d?g=123#anc">https://blah.com/a/b/c/d?g=123#anc</a>`,
-			`<a href="https://blah.com/a/b/c/d?g=123#anc">https://blah.com...</a>`,
-		},
-		{
-			-1,
-			`<a href="https://blah.com/a/b/c/d?g=123#anc">https://blah.com/a/b/c/d?g=123#anc</a>`,
-			`<a href="https://blah.com/a/b/c/d?g=123#anc">https://blah.com/a/b/c/d?g=123#anc</a>`,
-		},
+		{0, "", ""},
+		{-1, "test\nblah", "test blah"},
+		{5, "test\nblah", "test ..."},
+		{5, "xyz12345 xxx", "xyz12345 ..."},
+		{10, "xyz12345 xxx\ntest 123456", "xyz12345 xxx test ..."},
 	}
 
-	for n, tt := range tbl {
-		got := shortenAutoLinks(tt.in, tt.max)
-		assert.Equalf(t, tt.out, got, "check #%d", n)
+	for i, tt := range tbl {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			c := Comment{Text: tt.inp}
+			out := c.Snippet(tt.limit)
+			assert.Equal(t, tt.out, out)
+		})
 	}
 }

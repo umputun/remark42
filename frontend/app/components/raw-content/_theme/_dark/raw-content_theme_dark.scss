@@ -1,0 +1,28 @@
+.raw-content_theme_dark {
+  blockquote {
+    background: #393734;
+  }
+
+  table {
+    th,
+    td {
+      border: 1px solid #313133;
+    }
+
+    tr {
+      background-color: #22201c;
+
+      &:nth-child(2n) {
+        background-color: #393734;
+      }
+    }
+  }
+
+  pre {
+    background-color: #393734;
+  }
+
+  hr {
+    border-color: #2d2d2c;
+  }
+}

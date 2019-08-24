@@ -1,0 +1,14 @@
+.dropdown__item {
+  & > a,
+  & > button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 5px 15px;
+  }
+
+  &_separator {
+    border-bottom: 1px solid #259c9a;
+    margin-bottom: 5px;
+  }
+}

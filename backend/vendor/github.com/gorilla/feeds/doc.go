@@ -13,7 +13,7 @@ Create a Feed and some Items in that feed using the generic interfaces:
 
 	import (
 		"time"
-		. "github.com/gorilla/feeds
+		. "github.com/gorilla/feeds"
 	)
 
 	now = time.Now()

@@ -44,6 +44,15 @@ func RenderList(w http.ResponseWriter, r *http.Request, l []Renderer) error {
 	return nil
 }
 
+func isNil(f reflect.Value) bool {
+	switch f.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Ptr, reflect.Slice:
+		return f.IsNil()
+	default:
+		return false
+	}
+}
+
 // Executed top-down
 func renderer(w http.ResponseWriter, r *http.Request, v Renderer) error {
 	rv := reflect.ValueOf(v)
@@ -66,7 +75,7 @@ func renderer(w http.ResponseWriter, r *http.Request, v Renderer) error {
 		f := rv.Field(i)
 		if f.Type().Implements(rendererType) {
 
-			if f.IsNil() {
+			if isNil(f) {
 				continue
 			}
 
@@ -98,7 +107,7 @@ func binder(r *http.Request, v Binder) error {
 		f := rv.Field(i)
 		if f.Type().Implements(binderType) {
 
-			if f.IsNil() {
+			if isNil(f) {
 				continue
 			}
 

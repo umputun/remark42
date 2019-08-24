@@ -5,11 +5,13 @@ package migrator
 
 import (
 	"io"
-	"log"
 	"os"
 
+	log "github.com/go-pkgz/lgr"
 	"github.com/pkg/errors"
+
 	"github.com/umputun/remark/backend/app/store"
+	"github.com/umputun/remark/backend/app/store/service"
 )
 
 // Importer defines interface to convert posts from external sources
@@ -25,9 +27,11 @@ type Exporter interface {
 // Store defines minimal interface needed to export and import comments
 type Store interface {
 	Create(comment store.Comment) (commentID string, err error)
-	Find(locator store.Locator, sort string) ([]store.Comment, error)
+	Find(locator store.Locator, sort string, user store.User) ([]store.Comment, error)
 	List(siteID string, limit int, skip int) ([]store.PostInfo, error)
 	DeleteAll(siteID string) error
+	Metas(siteID string) (umetas []service.UserMetaData, pmetas []service.PostMetaData, err error)
+	SetMetas(siteID string, umetas []service.UserMetaData, pmetas []service.PostMetaData) error
 }
 
 // ImportParams defines everything needed to run import
@@ -38,6 +42,8 @@ type ImportParams struct {
 	SiteID    string
 }
 
+var adminUser = store.User{Admin: true}
+
 // ImportComments imports from given provider format and saves to store
 func ImportComments(p ImportParams) (int, error) {
 	log.Printf("[INFO] import from %s (%s) to %s", p.InputFile, p.Provider, p.SiteID)
@@ -46,8 +52,10 @@ func ImportComments(p ImportParams) (int, error) {
 	switch p.Provider {
 	case "disqus":
 		importer = &Disqus{DataStore: p.DataStore}
+	case "wordpress":
+		importer = &WordPress{DataStore: p.DataStore}
 	case "native":
-		importer = &Remark{DataStore: p.DataStore}
+		importer = &Native{DataStore: p.DataStore}
 	default:
 		return 0, errors.Errorf("unsupported import provider %s", p.Provider)
 	}

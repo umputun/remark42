@@ -80,7 +80,7 @@ type AtomFeed struct {
 	Link        *AtomLink
 	Author      *AtomAuthor `xml:"author,omitempty"`
 	Contributor *AtomContributor
-	Entries     []*AtomEntry
+	Entries     []*AtomEntry `xml:"entry"`
 }
 
 type Atom struct {
@@ -158,12 +158,12 @@ func (a *Atom) AtomFeed() *AtomFeed {
 	return feed
 }
 
-// return an XML-Ready object for an Atom object
+// FeedXml returns an XML-Ready object for an Atom object
 func (a *Atom) FeedXml() interface{} {
 	return a.AtomFeed()
 }
 
-// return an XML-ready object for an AtomFeed object
+// FeedXml returns an XML-ready object for an AtomFeed object
 func (a *AtomFeed) FeedXml() interface{} {
 	return a
 }

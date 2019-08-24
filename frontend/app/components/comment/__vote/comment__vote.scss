@@ -1,0 +1,19 @@
+.comment__vote {
+  display: inline-block;
+  width: 16px;
+  height: 14px;
+  vertical-align: top;
+  font-size: 0;
+  line-height: 0;
+  background: url('comment__vote.svg') center no-repeat;
+  background-size: contain;
+  cursor: pointer;
+}
+
+.voting__error {
+  color: #9a0000;
+  text-align: right;
+  font-size: 14px;
+  line-height: 1;
+  margin-top: -10px;
+}

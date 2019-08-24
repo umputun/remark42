@@ -5,7 +5,7 @@ workspace:
 pipeline:
   
   build:
-    image: golang:1.10-alpine
+    image: golang:1.12-alpine
     commands:
       - cd backend/app
       - go build -v ./...
@@ -13,8 +13,13 @@ pipeline:
   docker_master:
     image: plugins/docker
     repo: umputun/remark42
-    secrets: [ docker_username, docker_password ]
-    tags: 
+    secrets: [ docker_username, docker_password]
+    build_args:
+      - DRONE=${DRONE}
+      - DRONE_TAG=${DRONE_TAG}
+      - DRONE_COMMIT=${DRONE_COMMIT}
+      - DRONE_BRANCH=${DRONE_BRANCH}
+    tags:
       - ${DRONE_COMMIT_BRANCH/\//-}
     when:
       branch: [master, release/*]
@@ -25,6 +30,7 @@ pipeline:
     repo: umputun/remark42
     secrets: [ docker_username, docker_password ]
     build_args:
+      - DRONE=${DRONE}
       - DRONE_TAG=${DRONE_TAG}
       - DRONE_COMMIT=${DRONE_COMMIT}
     tags: 
@@ -33,25 +39,31 @@ pipeline:
     when:
       event: tag
 
+  artifacts_tag:
+    image: plugins/docker
+    dockerfile: Dockerfile.artifacts
+    build_args:
+      - DRONE=${DRONE}
+      - DRONE_TAG=${DRONE_TAG}
+      - DRONE_COMMIT=${DRONE_COMMIT}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+    when:
+      event: tag
+
   docker_branch:
     image: plugins/docker
     repo: umputun/remark42
     secrets: [ docker_username, docker_password ]
-    tags: 
+    build_args:
+      - DRONE=${DRONE}
+      - DRONE_COMMIT=${DRONE_COMMIT}
+      - DRONE_BRANCH=${DRONE_BRANCH}
+    tags:
       - ${DRONE_COMMIT_BRANCH/\//-}
     when:
       branch:
         exclude: [master, release/*]
         event: push
-
-  docker_pullrequest:
-    image: docker
-    commands:
-      - docker build .
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    when:
-      event: pull_request
 
   deploy:
     image: appleboy/drone-ssh

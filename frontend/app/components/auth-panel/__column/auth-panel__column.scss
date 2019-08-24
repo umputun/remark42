@@ -1,0 +1,10 @@
+.auth-panel__column {
+  &:nth-child(1) {
+    font-weight: 700;
+  }
+
+  &:nth-child(2) {
+    margin-left: 8px;
+    text-align: right;
+  }
+}

@@ -1,0 +1,13 @@
+.button_kind_link {
+  border: none;
+  background: transparent;
+  padding: 0;
+
+  font-weight: 700;
+  white-space: nowrap;
+  color: #0aa;
+
+  &:hover {
+    color: #06c5c5;
+  }
+}

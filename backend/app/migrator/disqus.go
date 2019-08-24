@@ -3,10 +3,10 @@ package migrator
 import (
 	"encoding/xml"
 	"io"
-	"log"
 	"strings"
 	"time"
 
+	log "github.com/go-pkgz/lgr"
 	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/backend/app/store"
@@ -68,14 +68,14 @@ func (d *Disqus) Import(r io.Reader, siteID string) (size int, err error) {
 	}
 
 	if failed > 0 {
-		return passed, errors.Errorf("failed to save %d comments", failed)
+		err = errors.Errorf("failed to save %d comments", failed)
+		if passed == 0 {
+			err = errors.New("import failed")
+		}
 	}
 
 	log.Printf("[DEBUG] imported %d comments to site %s", passed, siteID)
 
-	if failed > 0 && passed == 0 {
-		err = errors.New("import failed")
-	}
 	return passed, err
 }
 
@@ -105,7 +105,7 @@ func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 				if se.Name.Local == "thread" {
 					stats.inpThreads++
 					thread := disqusThread{}
-					if err := decoder.DecodeElement(&thread, &se); err != nil {
+					if err = decoder.DecodeElement(&thread, &se); err != nil {
 						log.Printf("[WARN] can't decode disqus thread, %s", err)
 						stats.failedThreads++
 						continue
@@ -116,7 +116,7 @@ func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 				if se.Name.Local == "post" {
 					stats.inpComments++
 					comment := disqusComment{}
-					if err := decoder.DecodeElement(&comment, &se); err != nil {
+					if err = decoder.DecodeElement(&comment, &se); err != nil {
 						log.Printf("[WARN] can't decode disqus comment, %s", err)
 						stats.failedPosts++
 						continue
@@ -158,7 +158,7 @@ func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 	return commentsCh
 }
 
-func (d *Disqus) cleanText(text string) string {
+func (*Disqus) cleanText(text string) string {
 	text = strings.Replace(text, "\n", "", -1)
 	text = strings.Replace(text, "\t", "", -1)
 	return text

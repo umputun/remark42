@@ -16,7 +16,8 @@ func TestBackup_RemoveOldBackupFiles(t *testing.T) {
 	loc := "/tmp/remark-backups.test"
 	defer os.RemoveAll(loc)
 
-	os.MkdirAll(loc, 0700)
+	assert.NoError(t, os.MkdirAll(loc, 0700))
+
 	for i := 1; i <= 10; i++ {
 		fname := fmt.Sprintf("%s/backup-site1-201712%02d.gz", loc, i)
 		err := ioutil.WriteFile(fname, []byte("blah"), 0600)
@@ -40,7 +41,7 @@ func TestBackup_RemoveOldBackupFiles(t *testing.T) {
 func TestBackup_MakeBackup(t *testing.T) {
 	loc := "/tmp/remark-backups.test"
 	defer os.RemoveAll(loc)
-	os.MkdirAll(loc, 0700)
+	assert.NoError(t, os.MkdirAll(loc, 0700))
 
 	bk := AutoBackup{BackupLocation: loc, SiteID: "site1", KeepMax: 3, Exporter: &mockExporter{}}
 	fname, err := bk.makeBackup()
@@ -56,7 +57,7 @@ func TestBackup_MakeBackup(t *testing.T) {
 func TestBackup_Do(t *testing.T) {
 	loc := "/tmp/remark-backups.test"
 	defer os.RemoveAll(loc)
-	os.MkdirAll(loc, 0700)
+	assert.NoError(t, os.MkdirAll(loc, 0700))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {

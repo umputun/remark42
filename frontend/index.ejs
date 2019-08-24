@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>remark42 demo page</title>
+
+  <style>
+    body {
+      padding: 0;
+      margin: 0;
+    }
+
+    .container {
+      max-width: 800px;
+      padding: 40px;
+    }
+
+    .document_theme_dark {
+      background: #22201c;
+      color: #ddd;
+    }
+
+    .document_theme_dark a {
+      color: #5e5eff;
+    }
+
+		.widgets {
+			display: flex;
+			flex-wrap: nowrap;
+		}
+
+    .widget {
+      margin-top: 1rem;
+    }
+
+    .widget__comments-frame {
+      border: 1px dashed #aaa;
+      width: 35rem;
+			max-width: 100%;
+    }
+
+		.widgets__counter-widget {
+			margin-left: 1em;
+		}
+
+		@media screen and (max-width: 800px) {
+			.container {
+				padding: 1em;
+			}
+
+			.widgets {
+				flex-direction: column
+			}
+
+			.widgets__counter-widget {
+				margin-left: 0;
+			}
+		}
+  </style>
+
+  <script>
+    function toggleTheme() {
+      var body = document.querySelector('body');
+
+      if (body.classList.contains('document_theme_dark')) {
+        body.classList.add('document_theme_light');
+        body.classList.remove('document_theme_dark');
+        window.REMARK42.changeTheme('light');
+      } else {
+        body.classList.add('document_theme_dark');
+        body.classList.remove('document_theme_light');
+        window.REMARK42.changeTheme('dark');
+      }
+    }
+  </script>
+</head>
+<body>
+  <div class="container">
+    <h1>Demo page</h1>
+    <p>To install widgets on your website, follow the <a href="https://github.com/umputun/remark#setup-on-your-website">instructions</a>.</p>
+    <div class="widgets">
+      <div class="widget widgets__widget widgets__comments-widget">
+        <a class="widget__link" href="/web/last-comments.html">Last comments widget page</a><br/>
+        <iframe class="widget__frame widget__comments-frame" src="/web/last-comments.html" frameborder="0"></iframe>
+      </div>
+      <div class="widget widgets__widget widgets__counter-widget">
+        <a class="widget__link" href="/web/counter.html">Counter widget page</a><br/>
+        <div class="widget__frame widget__counter-frame">
+          Comments count: <span class="remark42__counter"></span>
+        </div>
+      </div>
+    </div>
+    <p><Button onclick="toggleTheme()">Toggle theme</Button></p>
+    <div id="remark42"></div>
+  </div>
+
+  <script>
+    var remark_config = {
+      site_id: 'remark',
+      host: window.location.origin,
+      url: 'https://remark42.com/demo/',
+      components: ['embed', 'counter']
+    };
+
+    (function(c) {
+      for(var i = 0; i < c.length; i++){
+        var d = document, s = d.createElement('script');
+        s.src = remark_config.host + '/web/' +c[i] +'.js';
+        (d.head || d.body).appendChild(s);
+      }
+    })(remark_config.components || ['embed']);
+  </script>
+  <noscript>
+    Please enable JavaScript to view the comments powered by Remark.
+  </noscript>
+</body>
+</html>

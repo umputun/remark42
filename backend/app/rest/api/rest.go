@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 	"sync"
@@ -15,47 +14,63 @@ import (
 	"github.com/didip/tollbooth_chi"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+	"github.com/go-chi/cors"
 	"github.com/go-chi/render"
+	"github.com/go-pkgz/auth"
+	log "github.com/go-pkgz/lgr"
+	R "github.com/go-pkgz/rest"
+	"github.com/go-pkgz/rest/cache"
+	"github.com/go-pkgz/rest/logger"
 	"github.com/pkg/errors"
-	"gopkg.in/russross/blackfriday.v2"
+	"github.com/rakyll/statik/fs"
 
-	"github.com/umputun/remark/backend/app/migrator"
+	"github.com/umputun/remark/backend/app/notify"
 	"github.com/umputun/remark/backend/app/rest"
-	"github.com/umputun/remark/backend/app/rest/auth"
-	"github.com/umputun/remark/backend/app/rest/cache"
 	"github.com/umputun/remark/backend/app/rest/proxy"
 	"github.com/umputun/remark/backend/app/store"
+	"github.com/umputun/remark/backend/app/store/image"
 	"github.com/umputun/remark/backend/app/store/service"
 )
 
 // Rest is a rest access server
 type Rest struct {
-	Version         string
-	DataService     *service.DataStore
-	Authenticator   auth.Authenticator
-	Exporter        migrator.Exporter
-	Cache           cache.LoadingCache
-	AvatarProxy     *proxy.Avatar
-	ImageProxy      *proxy.Image
+	Version string
+
+	DataService      *service.DataStore
+	Authenticator    *auth.Service
+	Cache            cache.LoadingCache
+	ImageProxy       *proxy.Image
+	CommentFormatter *store.CommentFormatter
+	Migrator         *Migrator
+	NotifyService    *notify.Service
+	ImageService     *image.Service
+	Streamer         *Streamer
+
 	WebRoot         string
 	RemarkURL       string
 	ReadOnlyAge     int
+	SharedSecret    string
 	ScoreThresholds struct {
 		Low      int
 		Critical int
 	}
+	UpdateLimiter float64
+	EmojiEnabled  bool
 
-	httpServer *http.Server
-	lock       sync.Mutex
+	SSLConfig   SSLConfig
+	httpsServer *http.Server
+	httpServer  *http.Server
+	lock        sync.Mutex
 
-	adminService admin
+	pubRest   public
+	privRest  private
+	adminRest admin
+	rssRest   rss
 }
 
 const hardBodyLimit = 1024 * 64 // limit size of body
 
-var mdExt = blackfriday.NoIntraEmphasis | blackfriday.Tables | blackfriday.FencedCode |
-	blackfriday.Strikethrough | blackfriday.SpaceHeadings | blackfriday.HardLineBreak |
-	blackfriday.BackslashLineBreak | blackfriday.Autolink
+const lastCommentsScope = "last"
 
 type commentsWithInfo struct {
 	Comments []store.Comment `json:"comments"`
@@ -64,26 +79,59 @@ type commentsWithInfo struct {
 
 // Run the lister and request's router, activate rest server
 func (s *Rest) Run(port int) {
-	log.Printf("[INFO] activate rest server on port %d", port)
+	switch s.SSLConfig.SSLMode {
+	case None:
+		log.Printf("[INFO] activate http rest server on port %d", port)
 
-	if s.DataService != nil && len(s.DataService.Admins) > 0 {
-		log.Printf("[DEBUG] admins %+v", s.DataService.Admins)
+		s.lock.Lock()
+		s.httpServer = s.makeHTTPServer(port, s.routes())
+		s.httpServer.ErrorLog = log.ToStdLogger(log.Default(), "WARN")
+		s.lock.Unlock()
+
+		err := s.httpServer.ListenAndServe()
+		log.Printf("[WARN] http server terminated, %s", err)
+	case Static:
+		log.Printf("[INFO] activate https server in 'static' mode on port %d", s.SSLConfig.Port)
+
+		s.lock.Lock()
+		s.httpsServer = s.makeHTTPSServer(s.SSLConfig.Port, s.routes())
+		s.httpsServer.ErrorLog = log.ToStdLogger(log.Default(), "WARN")
+
+		s.httpServer = s.makeHTTPServer(port, s.httpToHTTPSRouter())
+		s.httpServer.ErrorLog = log.ToStdLogger(log.Default(), "WARN")
+		s.lock.Unlock()
+
+		go func() {
+			log.Printf("[INFO] activate http redirect server on port %d", port)
+			err := s.httpServer.ListenAndServe()
+			log.Printf("[WARN] http redirect server terminated, %s", err)
+		}()
+
+		err := s.httpsServer.ListenAndServeTLS(s.SSLConfig.Cert, s.SSLConfig.Key)
+		log.Printf("[WARN] https server terminated, %s", err)
+	case Auto:
+		log.Printf("[INFO] activate https server in 'auto' mode on port %d", s.SSLConfig.Port)
+
+		m := s.makeAutocertManager()
+		s.lock.Lock()
+		s.httpsServer = s.makeHTTPSAutocertServer(s.SSLConfig.Port, s.routes(), m)
+		s.httpsServer.ErrorLog = log.ToStdLogger(log.Default(), "WARN")
+
+		s.httpServer = s.makeHTTPServer(port, s.httpChallengeRouter(m))
+		s.httpServer.ErrorLog = log.ToStdLogger(log.Default(), "WARN")
+
+		s.lock.Unlock()
+
+		go func() {
+			log.Printf("[INFO] activate http challenge server on port %d", port)
+
+			err := s.httpServer.ListenAndServe()
+			log.Printf("[WARN] http challenge server terminated, %s", err)
+		}()
+
+		err := s.httpsServer.ListenAndServeTLS("", "")
+		log.Printf("[WARN] https server terminated, %s", err)
 	}
-
-	router := s.routes()
-
-	s.lock.Lock()
-	s.httpServer = &http.Server{
-		Addr:              fmt.Sprintf(":%d", port),
-		Handler:           router,
-		ReadHeaderTimeout: 5 * time.Second,
-		WriteTimeout:      5 * time.Second,
-		IdleTimeout:       30 * time.Second,
-	}
-	s.lock.Unlock()
-
-	err := s.httpServer.ListenAndServe()
-	log.Printf("[WARN] http server terminated, %s", err)
 }
 
 // Shutdown rest http server
@@ -94,130 +142,316 @@ func (s *Rest) Shutdown() {
 	s.lock.Lock()
 	if s.httpServer != nil {
 		if err := s.httpServer.Shutdown(ctx); err != nil {
-			log.Printf("[DEBUG] rest shutdown error, %s", err)
+			log.Printf("[DEBUG] http shutdown error, %s", err)
 		}
+		log.Print("[DEBUG] shutdown http server completed")
 	}
-	log.Print("[DEBUG] shutdown rest server completed")
+
+	if s.httpsServer != nil {
+		log.Print("[WARN] shutdown https server")
+		if err := s.httpsServer.Shutdown(ctx); err != nil {
+			log.Printf("[DEBUG] https shutdown error, %s", err)
+		}
+		log.Print("[DEBUG] shutdown https server completed")
+	}
 	s.lock.Unlock()
+}
+
+func (s *Rest) makeHTTPServer(port int, router http.Handler) *http.Server {
+	return &http.Server{
+		Addr:              fmt.Sprintf(":%d", port),
+		Handler:           router,
+		ReadHeaderTimeout: 5 * time.Second,
+		// WriteTimeout:      120 * time.Second, // TODO: such a long timeout needed for blocking export (backup) request
+		IdleTimeout: 30 * time.Second,
+	}
 }
 
 func (s *Rest) routes() chi.Router {
 	router := chi.NewRouter()
-	router.Use(middleware.RealIP, Recoverer)
-	router.Use(middleware.Throttle(1000), middleware.Timeout(60*time.Second))
-	router.Use(AppInfo("remark42", s.Version), Ping)
+	router.Use(middleware.Throttle(1000), middleware.RealIP, R.Recoverer(log.Default()))
+	router.Use(R.AppInfo("remark42", "umputun", s.Version), R.Ping)
 
-	s.adminService = admin{
-		dataService:   s.DataService,
-		exporter:      s.Exporter,
-		cache:         s.Cache,
-		authenticator: s.Authenticator,
-		readOnlyAge:   s.ReadOnlyAge,
-	}
+	s.pubRest, s.privRest, s.adminRest, s.rssRest = s.controllerGroups() // assign controllers for groups
 
-	ipFn := func(ip string) string { return store.HashValue(ip, s.DataService.Secret)[:12] } // logger uses it for anonymization
+	corsMiddleware := cors.New(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-XSRF-Token", "X-JWT"},
+		ExposedHeaders:   []string{"Authorization"},
+		AllowCredentials: true,
+		MaxAge:           300,
+	})
+	router.Use(corsMiddleware.Handler)
 
-	// auth routes for all providers
-	router.Route("/auth", func(r chi.Router) {
-		r.Use(Logger(ipFn, LogAll), tollbooth_chi.LimitHandler(tollbooth.NewLimiter(5, nil)))
-		for _, provider := range s.Authenticator.Providers {
-			r.Mount("/"+provider.Name, provider.Routes()) // mount auth providers as /auth/{name}
-		}
-		if len(s.Authenticator.Providers) > 0 {
-			// shortcut, can be any of providers, all logouts do the same - removes cookie
-			r.Get("/logout", s.Authenticator.Providers[0].LogoutHandler)
-		}
+	ipFn := func(ip string) string { return store.HashValue(ip, s.SharedSecret)[:12] } // logger uses it for anonymization
+	logInfoWithBody := logger.New(logger.Log(log.Default()), logger.WithBody, logger.IPfn(ipFn), logger.Prefix("[INFO]")).Handler
+
+	authHandler, avatarHandler := s.Authenticator.Handlers()
+
+	router.Group(func(r chi.Router) {
+		r.Use(middleware.Timeout(5 * time.Second))
+		r.Use(logInfoWithBody, tollbooth_chi.LimitHandler(tollbooth.NewLimiter(5, nil)), middleware.NoCache)
+		r.Mount("/auth", authHandler)
 	})
 
-	avatarMiddlewares := []func(http.Handler) http.Handler{
-		Logger(ipFn, LogNone),
-		tollbooth_chi.LimitHandler(tollbooth.NewLimiter(100, nil)),
-	}
-	router.Mount(s.AvatarProxy.Routes(avatarMiddlewares...)) // mount avatars to /api/v1/avatar/{file.img}
+	router.Group(func(r chi.Router) {
+		r.Use(middleware.Timeout(5 * time.Second))
+		r.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(100, nil)), middleware.NoCache)
+		r.Mount("/avatar", avatarHandler)
+	})
+
+	authMiddleware := s.Authenticator.Middleware()
 
 	// api routes
 	router.Route("/api/v1", func(rapi chi.Router) {
-		rapi.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
+
+		rapi.Group(func(rava chi.Router) {
+			rava.Use(middleware.Timeout(5 * time.Second))
+			rava.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(100, nil)))
+			rava.Use(middleware.NoCache)
+			rava.Mount("/avatar", avatarHandler)
+		})
 
 		// open routes
 		rapi.Group(func(ropen chi.Router) {
-			ropen.Use(s.Authenticator.Auth(false))
-			ropen.Use(Logger(ipFn, LogAll))
-			ropen.Get("/find", s.findCommentsCtrl)
-			ropen.Get("/id/{id}", s.commentByIDCtrl)
-			ropen.Get("/comments", s.findUserCommentsCtrl)
-			ropen.Get("/last/{limit}", s.lastCommentsCtrl)
-			ropen.Get("/count", s.countCtrl)
-			ropen.Post("/counts", s.countMultiCtrl)
-			ropen.Get("/list", s.listCtrl)
+			ropen.Use(middleware.Timeout(30 * time.Second))
+			ropen.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
+			ropen.Use(authMiddleware.Trace, middleware.NoCache, logInfoWithBody)
 			ropen.Get("/config", s.configCtrl)
-			ropen.Post("/preview", s.previewCommentCtrl)
-			ropen.Get("/info", s.infoCtrl)
+			ropen.Get("/find", s.pubRest.findCommentsCtrl)
+			ropen.Get("/id/{id}", s.pubRest.commentByIDCtrl)
+			ropen.Get("/comments", s.pubRest.findUserCommentsCtrl)
+			ropen.Get("/last/{limit}", s.pubRest.lastCommentsCtrl)
+			ropen.Get("/count", s.pubRest.countCtrl)
+			ropen.Post("/counts", s.pubRest.countMultiCtrl)
+			ropen.Get("/list", s.pubRest.listCtrl)
+			ropen.Post("/preview", s.pubRest.previewCommentCtrl)
+			ropen.Get("/info", s.pubRest.infoCtrl)
+			ropen.Get("/img", s.ImageProxy.Handler)
 
-			ropen.Mount("/rss", s.rssRoutes())
-			ropen.Mount("/img", s.ImageProxy.Routes())
+			ropen.Route("/rss", func(rrss chi.Router) {
+				rrss.Get("/post", s.rssRest.postCommentsCtrl)
+				rrss.Get("/site", s.rssRest.siteCommentsCtrl)
+				rrss.Get("/reply", s.rssRest.repliesCtrl)
+			})
+
+		})
+
+		// open routes, streams, no send timeout
+		rapi.Route("/stream", func(rstream chi.Router) {
+			rstream.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
+			rstream.Use(authMiddleware.Trace, middleware.NoCache, logInfoWithBody)
+			rstream.Get("/info", s.pubRest.infoStreamCtrl)
+			rstream.Get("/last", s.pubRest.lastCommentsStreamCtrl)
+		})
+
+		// open routes, cached
+		rapi.Group(func(ropen chi.Router) {
+			ropen.Use(middleware.Timeout(30 * time.Second))
+			ropen.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
+			ropen.Use(authMiddleware.Trace, logInfoWithBody)
+			ropen.Get("/picture/{user}/{id}", s.pubRest.loadPictureCtrl)
 		})
 
 		// protected routes, require auth
 		rapi.Group(func(rauth chi.Router) {
-			rauth.Use(s.Authenticator.Auth(true))
-			rauth.Use(Logger(ipFn, LogAll))
-			rauth.Post("/comment", s.createCommentCtrl)
-			rauth.Put("/comment/{id}", s.updateCommentCtrl)
-			rauth.Get("/user", s.userInfoCtrl)
-			rauth.Put("/vote/{id}", s.voteCtrl)
-			rauth.Get("/userdata", s.userAllDataCtrl)
-			rauth.Post("/deleteme", s.deleteMeCtrl)
-
-			// admin routes, admin users only
-			rauth.Mount("/admin", s.adminService.routes(s.Authenticator.AdminOnly, Logger(nil, LogAll)))
+			rauth.Use(middleware.Timeout(30 * time.Second))
+			rauth.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
+			rauth.Use(authMiddleware.Auth, middleware.NoCache, logInfoWithBody)
+			rauth.Get("/user", s.privRest.userInfoCtrl)
+			rauth.Get("/userdata", s.privRest.userAllDataCtrl)
 		})
+
+		// admin routes, require auth and admin users only
+		rapi.Route("/admin", func(radmin chi.Router) {
+			radmin.Use(middleware.Timeout(30 * time.Second))
+			radmin.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
+			radmin.Use(authMiddleware.Auth, authMiddleware.AdminOnly)
+			radmin.Use(middleware.NoCache, logInfoWithBody)
+
+			radmin.Delete("/comment/{id}", s.adminRest.deleteCommentCtrl)
+			radmin.Put("/user/{userid}", s.adminRest.setBlockCtrl)
+			radmin.Delete("/user/{userid}", s.adminRest.deleteUserCtrl)
+			radmin.Get("/user/{userid}", s.adminRest.getUserInfoCtrl)
+			radmin.Get("/deleteme", s.adminRest.deleteMeRequestCtrl)
+			radmin.Put("/verify/{userid}", s.adminRest.setVerifyCtrl)
+			radmin.Put("/pin/{id}", s.adminRest.setPinCtrl)
+			radmin.Get("/blocked", s.adminRest.blockedUsersCtrl)
+			radmin.Put("/readonly", s.adminRest.setReadOnlyCtrl)
+			radmin.Put("/title/{id}", s.adminRest.setTitleCtrl)
+
+			// migrator
+			radmin.Get("/export", s.adminRest.migrator.exportCtrl)
+			radmin.Post("/import", s.adminRest.migrator.importCtrl)
+			radmin.Post("/import/form", s.adminRest.migrator.importFormCtrl)
+			radmin.Get("/import/wait", s.adminRest.migrator.importWaitCtrl)
+		})
+
+		// protected routes, throttled to 10/s by default, controlled by external UpdateLimiter param
+		rapi.Group(func(rauth chi.Router) {
+			rauth.Use(middleware.Timeout(10 * time.Second))
+			rauth.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(s.updateLimiter(), nil)))
+			rauth.Use(authMiddleware.Auth)
+			rauth.Use(middleware.NoCache)
+			rauth.Use(logger.New(logger.Log(log.Default()), logger.WithBody, logger.Prefix("[DEBUG]"), logger.IPfn(ipFn)).Handler)
+
+			rauth.Put("/comment/{id}", s.privRest.updateCommentCtrl)
+			rauth.Post("/comment", s.privRest.createCommentCtrl)
+			rauth.With(rejectAnonUser).Put("/vote/{id}", s.privRest.voteCtrl)
+			rauth.With(rejectAnonUser).Post("/deleteme", s.privRest.deleteMeCtrl)
+		})
+
+		// protected routes, anonymous rejected
+		rapi.Group(func(rauth chi.Router) {
+			rauth.Use(middleware.Timeout(10 * time.Second))
+			rauth.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(s.updateLimiter(), nil)))
+			rauth.Use(authMiddleware.Auth, rejectAnonUser)
+			rauth.Use(logger.New(logger.Log(log.Default()), logger.Prefix("[DEBUG]"), logger.IPfn(ipFn)).Handler)
+			rauth.Post("/picture", s.privRest.savePictureCtrl)
+		})
+
 	})
 
-	router.With(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(50, nil))).
-		Get("/robots.txt", func(w http.ResponseWriter, r *http.Request) {
-			allowed := []string{"/find", "/last", "/id", "/count", "/counts", "/list", "/config", "/img", "/avatar"}
-			for i := range allowed {
-				allowed[i] = "Allow: /api/v1" + allowed[i]
-			}
-			render.PlainText(w, r, "User-agent: *\nDisallow: /auth/\nDisallow: /api/\n"+strings.Join(allowed, "\n")+"\n")
-		})
+	// open routes on root level
+	router.Group(func(rroot chi.Router) {
+		rroot.Use(middleware.Timeout(10 * time.Second))
+		rroot.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(50, nil)))
+		rroot.Get("/index.html", s.pubRest.getStartedCtrl)
+		rroot.Get("/robots.txt", s.pubRest.robotsCtrl)
+	})
 
 	// file server for static content from /web
 	addFileServer(router, "/web", http.Dir(s.WebRoot))
 	return router
 }
 
-// serves static files from /web
+func (s *Rest) controllerGroups() (public, private, admin, rss) {
+
+	pubGrp := public{
+		dataService:      s.DataService,
+		cache:            s.Cache,
+		imageService:     s.ImageService,
+		commentFormatter: s.CommentFormatter,
+		readOnlyAge:      s.ReadOnlyAge,
+		webRoot:          s.WebRoot,
+		streamer:         s.Streamer,
+	}
+
+	privGrp := private{
+		dataService:      s.DataService,
+		cache:            s.Cache,
+		imageService:     s.ImageService,
+		commentFormatter: s.CommentFormatter,
+		readOnlyAge:      s.ReadOnlyAge,
+		authenticator:    s.Authenticator,
+		notifyService:    s.NotifyService,
+		remarkURL:        s.RemarkURL,
+	}
+
+	admGrp := admin{
+		dataService:   s.DataService,
+		migrator:      s.Migrator,
+		cache:         s.Cache,
+		authenticator: s.Authenticator,
+		readOnlyAge:   s.ReadOnlyAge,
+	}
+
+	rssGrp := rss{
+		dataService: s.DataService,
+		cache:       s.Cache,
+	}
+
+	return pubGrp, privGrp, admGrp, rssGrp
+}
+
+// updateLimiter returns UpdateLimiter if set, or 10 if not
+func (s *Rest) updateLimiter() float64 {
+	lmt := 10.0
+	if s.UpdateLimiter > 0 {
+		lmt = s.UpdateLimiter
+	}
+	return lmt
+}
+
+// GET /config?site=siteID - returns configuration
+func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
+	siteID := r.URL.Query().Get("site")
+
+	admins, _ := s.DataService.AdminStore.Admins(siteID)
+	emails, _ := s.DataService.AdminStore.Email(siteID)
+
+	cnf := struct {
+		Version        string   `json:"version"`
+		EditDuration   int      `json:"edit_duration"`
+		MaxCommentSize int      `json:"max_comment_size"`
+		Admins         []string `json:"admins"`
+		AdminEmail     string   `json:"admin_email"`
+		Auth           []string `json:"auth_providers"`
+		LowScore       int      `json:"low_score"`
+		CriticalScore  int      `json:"critical_score"`
+		PositiveScore  bool     `json:"positive_score"`
+		ReadOnlyAge    int      `json:"readonly_age"`
+		MaxImageSize   int      `json:"max_image_size"`
+		EmojiEnabled   bool     `json:"emoji_enabled"`
+	}{
+		Version:        s.Version,
+		EditDuration:   int(s.DataService.EditDuration.Seconds()),
+		MaxCommentSize: s.DataService.MaxCommentSize,
+		Admins:         admins,
+		AdminEmail:     emails,
+		LowScore:       s.ScoreThresholds.Low,
+		CriticalScore:  s.ScoreThresholds.Critical,
+		PositiveScore:  s.DataService.PositiveScore,
+		ReadOnlyAge:    s.ReadOnlyAge,
+		MaxImageSize:   s.ImageService.Store.SizeLimit(),
+		EmojiEnabled:   s.EmojiEnabled,
+	}
+
+	cnf.Auth = []string{}
+	for _, ap := range s.Authenticator.Providers() {
+		cnf.Auth = append(cnf.Auth, ap.Name())
+	}
+
+	if cnf.Admins == nil { // prevent json serialization to nil
+		cnf.Admins = []string{}
+	}
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, cnf)
+}
+
+// serves static files from /web or embedded by statik
 func addFileServer(r chi.Router, path string, root http.FileSystem) {
-	log.Printf("[INFO] run file server for %s, path %s", root, path)
+
+	var webFS http.Handler
+
+	statikFS, err := fs.New()
+	if err != nil {
+		log.Printf("[DEBUG] no embedded assets loaded, %s", err)
+		log.Printf("[INFO] run file server for %s, path %s", root, path)
+		webFS = http.FileServer(root)
+	} else {
+		log.Printf("[INFO] run file server for %s, embedded", root)
+		webFS = http.FileServer(statikFS)
+	}
+
 	origPath := path
-	fs := http.StripPrefix(path, http.FileServer(root))
+	webFS = http.StripPrefix(path, webFS)
 	if path != "/" && path[len(path)-1] != '/' {
 		r.Get(path, http.RedirectHandler(path+"/", 301).ServeHTTP)
 		path += "/"
 	}
 	path += "*"
 
-	r.With(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(20, nil))).
-		Get(path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	r.With(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(20, nil)), middleware.Timeout(10*time.Second)).
+		Get(path, func(w http.ResponseWriter, r *http.Request) {
 			// don't show dirs, just serve files
 			if strings.HasSuffix(r.URL.Path, "/") && len(r.URL.Path) > 1 && r.URL.Path != (origPath+"/") {
 				http.NotFound(w, r)
 				return
 			}
-			fs.ServeHTTP(w, r)
-		}))
-}
-
-// renderJSONWithHTML allows html tags and forces charset=utf-8
-func renderJSONWithHTML(w http.ResponseWriter, r *http.Request, v interface{}) {
-	data, err := encodeJSONWithHTML(v)
-	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't render json response")
-		return
-	}
-	renderJSONFromBytes(w, r, data)
+			webFS.ServeHTTP(w, r)
+		})
 }
 
 func encodeJSONWithHTML(v interface{}) ([]byte, error) {
@@ -230,22 +464,81 @@ func encodeJSONWithHTML(v interface{}) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// renderJSONWithHTML allows html tags and forces charset=utf-8
-func renderJSONFromBytes(w http.ResponseWriter, r *http.Request, data []byte) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	if status, ok := r.Context().Value(render.StatusCtxKey).(int); ok {
-		w.WriteHeader(status)
-	}
-	if _, err := w.Write(data); err != nil {
-		log.Printf("[WARN] failed to send response to %s, %s", r.RemoteAddr, err)
-	}
-}
-
-func filterComments(comments []store.Comment, fn func(c store.Comment) bool) (filtered []store.Comment) {
+func filterComments(comments []store.Comment, fn func(c store.Comment) bool) []store.Comment {
+	filtered := []store.Comment{}
 	for _, c := range comments {
 		if fn(c) {
 			filtered = append(filtered, c)
 		}
 	}
 	return filtered
+}
+
+// URLKey gets url from request to use it as cache key
+// admins will have different keys in order to prevent leak of admin-only data to regular users
+func URLKey(r *http.Request) string {
+	adminPrefix := "admin!!"
+	key := strings.TrimPrefix(r.URL.String(), adminPrefix) // prevents attach with fake url to get admin view
+	if user, err := rest.GetUserInfo(r); err == nil && user.Admin {
+		key = adminPrefix + key // make separate cache key for admins
+	}
+	return key
+}
+
+// URLKeyWithUser gets url from request to use it as cache key and attaching user ID
+// admins will have different keys in order to prevent leak of admin-only data to regular users
+func URLKeyWithUser(r *http.Request) string {
+	adminPrefix := "admin!!"
+	key := strings.TrimPrefix(r.URL.String(), adminPrefix) // prevents attach with fake url to get admin view
+	if user, err := rest.GetUserInfo(r); err == nil {
+		if user.Admin {
+			key = adminPrefix + user.ID + "!!" + key // make separate cache key for admins
+		} else {
+			key = user.ID + "!!" + key // make separate cache key for authed users
+		}
+	}
+	return key
+}
+
+// rejectAnonUser is a middleware rejecting anonymous users
+func rejectAnonUser(next http.Handler) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		user, err := rest.GetUserInfo(r)
+		if err != nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		if strings.HasPrefix(user.ID, "anonymous_") {
+			http.Error(w, "Access denied", http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
+	}
+	return http.HandlerFunc(fn)
+}
+
+func parseError(err error, defaultCode int) (code int) {
+	code = defaultCode
+
+	switch {
+	// voting errors
+	case strings.Contains(err.Error(), "can not vote for his own comment"):
+		code = rest.ErrVoteSelf
+	case strings.Contains(err.Error(), "already voted for"):
+		code = rest.ErrVoteDbl
+	case strings.Contains(err.Error(), "maximum number of votes exceeded for comment"):
+		code = rest.ErrVoteMax
+	case strings.Contains(err.Error(), "minimal score reached for comment"):
+		code = rest.ErrVoteMinScore
+
+	// edit errors
+	case strings.HasPrefix(err.Error(), "too late to edit"):
+		code = rest.ErrCommentEditExpired
+	case strings.HasPrefix(err.Error(), "parent comment with reply can't be edited"):
+		code = rest.ErrCommentEditChanged
+
+	}
+
+	return code
 }

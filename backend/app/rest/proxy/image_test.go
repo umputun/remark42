@@ -3,9 +3,13 @@ package proxy
 import (
 	"encoding/base64"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -45,9 +49,11 @@ func TestPicture_Extract(t *testing.T) {
 	img := Image{Enabled: true}
 
 	for i, tt := range tbl {
-		res, err := img.extract(tt.inp)
-		assert.Nil(t, err, "err in #%d", i)
-		assert.Equal(t, tt.res, res, "mismatch in #%d", i)
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			res, err := img.extract(tt.inp)
+			assert.Nil(t, err)
+			assert.Equal(t, tt.res, res)
+		})
 	}
 }
 
@@ -60,12 +66,11 @@ func TestPicture_Replace(t *testing.T) {
 
 func TestImage_Routes(t *testing.T) {
 	img := Image{Enabled: true, RemarkURL: "https://demo.remark42.com", RoutePath: "/api/v1/proxy"}
-	router := img.Routes()
 
+	ts := httptest.NewServer(http.HandlerFunc(img.Handler))
+	defer ts.Close()
 	httpSrv := imgHTTPServer(t)
 	defer httpSrv.Close()
-	ts := httptest.NewServer(router)
-	defer ts.Close()
 
 	encodedImgURL := base64.URLEncoding.EncodeToString([]byte(httpSrv.URL + "/image/img1.png"))
 
@@ -85,6 +90,24 @@ func TestImage_Routes(t *testing.T) {
 	resp, err = http.Get(ts.URL + "/?src=" + encodedImgURL)
 	require.Nil(t, err)
 	assert.Equal(t, 400, resp.StatusCode)
+}
+
+func TestImage_RoutesTimedOut(t *testing.T) {
+	img := Image{Enabled: true, RemarkURL: "https://demo.remark42.com", RoutePath: "/api/v1/proxy", Timeout: 50 * time.Millisecond}
+
+	ts := httptest.NewServer(http.HandlerFunc(img.Handler))
+	defer ts.Close()
+	httpSrv := imgHTTPServer(t)
+	defer httpSrv.Close()
+
+	encodedImgURL := base64.URLEncoding.EncodeToString([]byte(httpSrv.URL + "/image/img-slow.png"))
+	resp, err := http.Get(ts.URL + "/?src=" + encodedImgURL)
+	require.Nil(t, err)
+	assert.Equal(t, 400, resp.StatusCode)
+	b, err := ioutil.ReadAll(resp.Body)
+	require.Nil(t, err)
+	t.Log(string(b))
+	assert.True(t, strings.Contains(string(b), "deadline exceeded"))
 }
 
 func TestPicture_Convert(t *testing.T) {
@@ -110,7 +133,13 @@ func imgHTTPServer(t *testing.T) *httptest.Server {
 			t.Log("http img request", r.URL)
 			w.Header().Add("Content-Length", "123")
 			w.Header().Add("Content-Type", "image/png")
-			w.Write([]byte(fmt.Sprintf("%123s", "X")))
+			_, err := w.Write([]byte(fmt.Sprintf("%123s", "X")))
+			assert.NoError(t, err)
+			return
+		}
+		if r.URL.Path == "/image/img-slow.png" {
+			time.Sleep(500 * time.Millisecond)
+			w.WriteHeader(500)
 			return
 		}
 		t.Log("http img request - not found", r.URL)

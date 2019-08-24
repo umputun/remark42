@@ -1,9 +1,0 @@
-.comment__vote_type_up {
-  margin-right: 4px;
-
-  &.comment__vote_selected {
-    &, &:hover {
-      background-image: url('comment__vote_type_up.svg');
-    }
-  }
-}

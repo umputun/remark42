@@ -1,0 +1,12 @@
+.root {
+  position: relative;
+  font-family: 'PT Sans', Helvetica, Arial, sans-serif;
+
+  ::selection {
+    background: #c6efef;
+  }
+
+  &_user-info {
+    position: static;
+  }
+}

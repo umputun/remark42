@@ -6,37 +6,38 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/bbolt"
+	bolt "github.com/coreos/bbolt"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"github.com/umputun/remark/backend/app/store"
+	"github.com/umputun/remark/backend/app/store/admin"
 	"github.com/umputun/remark/backend/app/store/engine"
 	"github.com/umputun/remark/backend/app/store/service"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestDisqus_Import(t *testing.T) {
 	defer os.Remove("/tmp/remark-test.db")
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "test"})
 	require.Nil(t, err, "create store")
-	dataStore := service.DataStore{Interface: b}
+	dataStore := service.DataStore{Engine: b, AdminStore: admin.NewStaticStore("12345", []string{}, "")}
 	d := Disqus{DataStore: &dataStore}
-	size, err := d.Import(strings.NewReader(xmlTest), "test")
+	size, err := d.Import(strings.NewReader(xmlTestDisqus), "test")
 	assert.Nil(t, err)
-	assert.Equal(t, 3, size)
+	assert.Equal(t, 4, size)
 
-	last, err := dataStore.Last("test", 10)
+	last, err := dataStore.Last("test", 10, time.Time{}, adminUser)
 	assert.Nil(t, err)
-	assert.Equal(t, 3, len(last), "3 comments imported")
+	assert.Equal(t, 4, len(last), "4 comments imported")
 
-	c := last[0]
-	assert.True(t, strings.HasPrefix(c.Text, "<p>Google App Engine"))
-	assert.Equal(t, "299986072", c.ID)
+	c := last[len(last)-1] // last reverses, get first one
+	assert.True(t, strings.HasPrefix(c.Text, "<p>The quick brown fox"))
+	assert.Equal(t, "299619020", c.ID)
 	assert.Equal(t, "", c.ParentID)
-	assert.Equal(t, store.Locator{SiteID: "test", URL: "http://radio-t.umputun.com/2011/03/229_8880.html"}, c.Locator)
-	assert.Equal(t, "Dmitry Noname", c.User.Name)
-	assert.Equal(t, "disqus_8799342cdf328253e03313958ffc6a433659d7ff", c.User.ID)
-	assert.Equal(t, "96243f024cf6ad42b66f0c72709ae20b5d10ec14", c.User.IP)
+	assert.Equal(t, store.Locator{SiteID: "test", URL: "https://radio-t.com/p/2011/03/05/podcast-229/"}, c.Locator)
+	assert.Equal(t, "Alexander Blah", c.User.Name)
+	assert.Equal(t, "disqus_328c8b68974aef73785f6b38c3d3fedfdf941434", c.User.ID)
+	assert.Equal(t, "2ba6b71dbf9750ae3356cce14cac6c1b1962747c", c.User.IP)
 
 	posts, err := dataStore.List("test", 0, 0)
 	assert.Nil(t, err)
@@ -49,13 +50,13 @@ func TestDisqus_Import(t *testing.T) {
 
 func TestDisqus_Convert(t *testing.T) {
 	d := Disqus{}
-	ch := d.convert(strings.NewReader(xmlTest), "test")
+	ch := d.convert(strings.NewReader(xmlTestDisqus), "test")
 
 	res := []store.Comment{}
 	for comment := range ch {
 		res = append(res, comment)
 	}
-	assert.Equal(t, 3, len(res), "3 comments total, 1 spam excluded")
+	assert.Equal(t, 4, len(res), "4 comments total, 1 spam excluded, 1 bad excluded")
 
 	exp0 := store.Comment{
 		ID: "299619020",
@@ -74,7 +75,7 @@ func TestDisqus_Convert(t *testing.T) {
 	assert.Equal(t, exp0, res[0])
 }
 
-var xmlTest = `<?xml version="1.0" encoding="utf-8"?>
+var xmlTestDisqus = `<?xml version="1.0" encoding="utf-8"?>
 <disqus xmlns="http://disqus.com" xmlns:dsq="http://disqus.com/disqus-internals" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://disqus.com/api/schemas/1.0/disqus.xsd http://disqus.com/api/schemas/1.0/disqus-internals.xsd">
 
 	<category dsq:id="707279">
@@ -101,6 +102,7 @@ var xmlTest = `<?xml version="1.0" encoding="utf-8"?>
 		<isClosed>false</isClosed>
 		<isDeleted>false</isDeleted>
 	</thread>
+
 	<thread dsq:id="247937687">
 		<id>http://www.radio-t.com/p/2011/03/05/podcast-229/</id>
 		<forum>radiot</forum>
@@ -119,6 +121,7 @@ var xmlTest = `<?xml version="1.0" encoding="utf-8"?>
 		<isClosed>true</isClosed>
 		<isDeleted>false</isDeleted>
 	</thread>
+
 
 	<post dsq:id="299619020">
 		<id>3565798471341011339</id>
@@ -174,6 +177,23 @@ var xmlTest = `<?xml version="1.0" encoding="utf-8"?>
 		<thread dsq:id="247918464"/>
 	</post>
 
+	<post>
+		<id>12345678890</id>
+		<message>This comment had no ID</message>
+		<createdAt>2011-08-31T22:49:43Z</createdAt>
+		<forum>radiot</forum>
+		<isDeleted>false</isDeleted>
+		<isSpam>false</isSpam>
+		<author>
+			<email>blah.noname@gmail.com</email>
+			<name>Blah Noname</name>
+			<isAnonymous>false</isAnonymous>
+			<username>74b9e7568ef6860e93862c5d77590123</username>
+		</author>
+		<ipAddress>189.89.89.139</ipAddress>
+		<thread dsq:id="247918464"/>
+	</post>
+
 	<post dsq:id="299986073">
 		<id>6580890074280459219</id>
 		<message>some ugly spam</message>
@@ -189,5 +209,21 @@ var xmlTest = `<?xml version="1.0" encoding="utf-8"?>
 		<ipAddress>189.89.89.139</ipAddress>
 		<thread dsq:id="247937687"/>
 	</post>
+
+	<post dsq:id="x299986073">
+		<message>some bad comment</message>
+		<createdAt>2011-x09-30T22:48:43Z</createdAt>
+		<isDeleted>false</isDeleted>
+		<isSpam>123</isSpam>
+		<author>
+			<email>noname@gmail.com</email>
+			<name>Noname</name>
+			<isAnonymous>true</isAnonymous>
+			<username>google-2c5d77590123</username>
+		</author>
+		<ipAddress>189.89.89.39</ipAddress>
+		<thread dsq:id=247937687/>
+	</post>
+
 </disqus>
 `

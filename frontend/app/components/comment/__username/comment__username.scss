@@ -1,0 +1,10 @@
+.comment__username {
+  vertical-align: middle;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+
+  &:hover {
+    opacity: 0.75;
+  }
+}

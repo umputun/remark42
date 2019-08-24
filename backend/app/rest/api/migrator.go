@@ -4,132 +4,225 @@ import (
 	"compress/gzip"
 	"context"
 	"fmt"
-	"log"
+	"io"
+	"io/ioutil"
 	"net/http"
-	"strings"
+	"os"
 	"sync"
 	"time"
 
-	"github.com/didip/tollbooth"
-	"github.com/didip/tollbooth_chi"
-	"github.com/go-chi/chi"
-	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/render"
+	log "github.com/go-pkgz/lgr"
+	R "github.com/go-pkgz/rest"
+	"github.com/go-pkgz/rest/cache"
+	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/backend/app/migrator"
 	"github.com/umputun/remark/backend/app/rest"
-	"github.com/umputun/remark/backend/app/rest/cache"
 )
 
-// Migrator rest runs on unexposed port and available for local requests only
+// Migrator rest with import and export controllers
 type Migrator struct {
-	Version        string
-	Cache          cache.LoadingCache
-	NativeImporter migrator.Importer
-	DisqusImporter migrator.Importer
-	NativeExported migrator.Exporter
-	SecretKey      string
+	Cache             cache.LoadingCache
+	NativeImporter    migrator.Importer
+	DisqusImporter    migrator.Importer
+	WordPressImporter migrator.Importer
+	NativeExporter    migrator.Exporter
+	KeyStore          KeyStore
 
-	httpServer *http.Server
-	lock       sync.Mutex
+	busy map[string]bool
+	lock sync.Mutex
 }
 
-// Run the listener and request's router, activate rest server
-// this server doesn't have any authentication and SHOULDN'T BE EXPOSED in any way
-func (m *Migrator) Run(port int) {
-	log.Printf("[INFO] activate import server on port %d", port)
-	router := m.routes()
-
-	m.lock.Lock()
-	m.httpServer = &http.Server{Addr: fmt.Sprintf("127.0.0.1:%d", port), Handler: router}
-	m.lock.Unlock()
-
-	err := m.httpServer.ListenAndServe()
-	log.Printf("[WARN] http server terminated, %s", err)
+// KeyStore defines sub-interface for consumers needed just a key
+type KeyStore interface {
+	Key() (key string, err error)
 }
 
-// Shutdown import http server
-func (m *Migrator) Shutdown() {
-	log.Print("[WARN] shutdown import server")
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-
-	m.lock.Lock()
-	if m.httpServer != nil {
-		if err := m.httpServer.Shutdown(ctx); err != nil {
-			log.Printf("[DEBUG] importer shutdown error, %s", err)
-		}
-	}
-	m.lock.Unlock()
-
-	log.Print("[DEBUG] shutdown import server completed")
-}
-
-func (m *Migrator) routes() chi.Router {
-	router := chi.NewRouter()
-	router.Use(middleware.RealIP, Recoverer)
-	router.Use(middleware.Throttle(1000), middleware.Timeout(15*time.Minute))
-	router.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
-	router.Use(AppInfo("remark42-migrator", m.Version), Ping, Logger(nil, LogAll))
-	router.Post("/api/v1/admin/import", m.importCtrl)
-	router.Get("/api/v1/admin/export", m.exportCtrl)
-	return router
-}
-
-// POST /import?secret=key&site=site-id&provider=disqus|remark
+// POST /import?secret=key&site=site-id&provider=disqus|remark|wordpress
 // imports comments from post body.
 func (m *Migrator) importCtrl(w http.ResponseWriter, r *http.Request) {
 
-	secret := r.URL.Query().Get("secret")
-	if strings.TrimSpace(secret) == "" || secret != m.SecretKey {
-		render.Status(r, http.StatusForbidden)
-		render.JSON(w, r, JSON{"status": "error", "details": "secret key"})
-		return
-	}
-
 	siteID := r.URL.Query().Get("site")
-	importer := m.NativeImporter
-	if r.URL.Query().Get("provider") == "disqus" {
-		importer = m.DisqusImporter
-	}
 
-	size, err := importer.Import(r.Body, siteID)
-	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "import failed")
+	if m.isBusy(siteID) {
+		rest.SendErrorJSON(w, r, http.StatusConflict, errors.New("already running"),
+			"import rejected", rest.ErrActionRejected)
 		return
 	}
-	m.Cache.Flush(siteID)
 
-	render.Status(r, http.StatusCreated)
-	render.JSON(w, r, JSON{"status": "ok", "size": size})
+	tmpfile, err := m.saveTemp(r.Body)
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't save request to temp file", rest.ErrInternal)
+		return
+	}
+
+	go m.runImport(siteID, r.URL.Query().Get("provider"), tmpfile) // import runs in background and sets busy flag for site
+
+	render.Status(r, http.StatusAccepted)
+	render.JSON(w, r, R.JSON{"status": "import request accepted"})
 }
 
-// GET /export?site=site-id&secret=12345
+// POST /import/form?secret=key&site=site-id&provider=disqus|remark|wordpress
+// imports comments from form body.
+func (m *Migrator) importFormCtrl(w http.ResponseWriter, r *http.Request) {
+	siteID := r.URL.Query().Get("site")
+
+	if m.isBusy(siteID) {
+		rest.SendErrorJSON(w, r, http.StatusConflict, errors.New("already running"),
+			"import rejected", rest.ErrActionRejected)
+		return
+	}
+
+	if err := r.ParseMultipartForm(20 * 1024 * 1024); err != nil { // 20M max memory, if bigger will make a file
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't parse multipart form", rest.ErrDecode)
+		return
+	}
+
+	file, _, err := r.FormFile("file")
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't get import file from the request", rest.ErrInternal)
+		return
+	}
+	defer func() { _ = file.Close() }()
+
+	tmpfile, err := m.saveTemp(file)
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't save request to temp file", rest.ErrInternal)
+		return
+	}
+
+	go m.runImport(siteID, r.URL.Query().Get("provider"), tmpfile) // import runs in background and sets busy flag for site
+
+	render.Status(r, http.StatusAccepted)
+	render.JSON(w, r, R.JSON{"status": "import request accepted"})
+}
+
+func (m *Migrator) importWaitCtrl(w http.ResponseWriter, r *http.Request) {
+	siteID := r.URL.Query().Get("site")
+	timeOut := time.Minute * 15
+	if v := r.URL.Query().Get("timeout"); v != "" {
+		if vv, e := time.ParseDuration(v); e == nil {
+			timeOut = vv
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeOut)
+	defer cancel()
+	for {
+		if !m.isBusy(siteID) {
+			break
+		}
+		select {
+		case <-ctx.Done():
+			render.Status(r, http.StatusGatewayTimeout)
+			render.JSON(w, r, R.JSON{"status": "timeout expired", "site_id": siteID})
+			return
+		case <-time.After(100 * time.Millisecond):
+		}
+	}
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, R.JSON{"status": "completed", "site_id": siteID})
+}
+
+// GET /export?site=site-id&secret=12345&?mode=file|stream
 // exports all comments for siteID as gz file
 func (m *Migrator) exportCtrl(w http.ResponseWriter, r *http.Request) {
 
-	secret := r.URL.Query().Get("secret")
-	if strings.TrimSpace(secret) == "" || secret != m.SecretKey {
-		render.Status(r, http.StatusForbidden)
-		render.JSON(w, r, JSON{"status": "error", "details": "secret key"})
-		return
-	}
-
 	siteID := r.URL.Query().Get("site")
 
-	exportFile := fmt.Sprintf("%s-%s.json.gz", siteID, time.Now().Format("20060102"))
-	w.Header().Set("Content-Type", "application/gzip")
-	w.Header().Set("Content-Disposition", "attachment;filename="+exportFile)
-	w.WriteHeader(http.StatusOK)
-	gzWriter := gzip.NewWriter(w)
+	var writer io.Writer = w
+	if r.URL.Query().Get("mode") == "file" {
+		exportFile := fmt.Sprintf("%s-%s.json.gz", siteID, time.Now().Format("20060102"))
+		w.Header().Set("Content-Type", "application/gzip")
+		w.Header().Set("Content-Disposition", "attachment;filename="+exportFile)
+		w.WriteHeader(http.StatusOK)
+		gzWriter := gzip.NewWriter(w)
+		defer func() {
+			if e := gzWriter.Close(); e != nil {
+				log.Printf("[WARN] can't close gzip writer, %s", e)
+			}
+		}()
+		writer = gzWriter
+	}
+
+	if _, err := m.NativeExporter.Export(writer, siteID); err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "export failed", rest.ErrInternal)
+		return
+	}
+}
+
+// runImport reads from tmpfile and import for given siteID and provider
+func (m *Migrator) runImport(siteID string, provider string, tmpfile string) {
+	m.setBusy(siteID, true)
+
 	defer func() {
-		if e := gzWriter.Close(); e != nil {
-			log.Printf("[WARN] can't close gzip writer, %s", e)
+		m.setBusy(siteID, false)
+		if err := os.Remove(tmpfile); err != nil {
+			log.Printf("[WARN] failed to remove tmp file %s, %v", tmpfile, err)
 		}
 	}()
 
-	if _, err := m.NativeExported.Export(gzWriter, siteID); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "export failed")
+	var importer migrator.Importer
+	switch provider {
+	case "disqus":
+		importer = m.DisqusImporter
+	case "wordpress":
+		importer = m.WordPressImporter
+	default:
+		importer = m.NativeImporter
+	}
+	log.Printf("[DEBUG] import request for site=%s, provider=%s", siteID, provider)
+
+	fh, err := os.Open(tmpfile)
+	if err != nil {
+		log.Printf("[WARN] import failed, %v", err)
 		return
 	}
+
+	size, err := importer.Import(fh, siteID)
+	if err != nil {
+		log.Printf("[WARN] import failed, %v", err)
+		return
+	}
+	m.Cache.Flush(cache.Flusher(siteID).Scopes(siteID))
+	log.Printf("[DEBUG] import request completed. site=%s, provider=%s, comments=%d", siteID, provider, size)
+}
+
+// saveTemp reads from reader and saves to temp file
+func (m *Migrator) saveTemp(r io.Reader) (string, error) {
+	tmpfile, err := ioutil.TempFile("", "remark42_import")
+	if err != nil {
+		return "", errors.Wrap(err, "can't make temp file")
+	}
+
+	if _, err = io.Copy(tmpfile, r); err != nil {
+		return "", errors.Wrap(err, "can't copy to temp file")
+	}
+
+	if err = tmpfile.Close(); err != nil {
+		return "", errors.Wrap(err, "can't close temp file")
+	}
+
+	return tmpfile.Name(), nil
+}
+
+// isBusy checks busy flag from the map by siteID as key
+func (m *Migrator) isBusy(siteID string) bool {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	if m.busy == nil {
+		m.busy = map[string]bool{}
+	}
+	return m.busy[siteID]
+}
+
+// setBusy sets/resets busy flag to the map by siteID as key
+func (m *Migrator) setBusy(siteID string, status bool) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	if m.busy == nil {
+		m.busy = map[string]bool{}
+	}
+	m.busy[siteID] = status
 }

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>remark42</title>
+  <base target="_blank">
+  <style>
+    html, body {
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    .preloader {
+      width: 60px;
+      text-align: center;
+      font-size: 0;
+    }
+
+    .preloader_view_iframe {
+      margin: 0 auto;
+    }
+
+    .preloader__bounce {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      margin-right: 3px;
+      background-color: #333;
+      border-radius: 100%;
+      animation: iframePreloaderBounce 1.4s infinite ease-in-out both;
+    }
+
+    .preloader__bounce:first-child {
+      animation-delay: -.32s;
+    }
+
+    .preloader__bounce:nth-child(2) {
+      animation-delay: -.16s;
+    }
+
+    .preloader__bounce:last-child {
+      margin-right: 0;
+    }
+
+    @keyframes iframePreloaderBounce {
+      0% {
+        transform: scale(0);
+      }
+
+      40% {
+        transform: scale(1);
+      }
+
+      80%, 100% {
+        transform: scale(0);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="remark42">
+    <div class="preloader preloader_view_iframe">
+      <div class="preloader__bounce"></div>
+      <div class="preloader__bounce"></div>
+      <div class="preloader__bounce"></div>
+    </div>
+  </div>
+	<script>
+		var remark_config = {
+			host: window.location.origin
+		}
+	</script>
+  <script src="deleteme.js"></script>
+</body>
+</html>

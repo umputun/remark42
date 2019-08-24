@@ -1,0 +1,14 @@
+.comment__time {
+  margin-left: 8px;
+  margin-right: 8px;
+  vertical-align: middle;
+  text-decoration: none;
+
+  &:first-child {
+    margin-left: 0;
+  }
+
+  &:hover {
+    text-decoration: underline;
+  }
+}

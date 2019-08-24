@@ -1,0 +1,8 @@
+.comment_collapsed {
+  > .comment__body {
+    .comment__text,
+    .comment__actions {
+      display: none;
+    }
+  }
+}
