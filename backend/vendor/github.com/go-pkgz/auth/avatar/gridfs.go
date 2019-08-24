@@ -2,6 +2,7 @@ package avatar
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -115,4 +116,8 @@ func (gf *GridFS) List() (ids []string, err error) {
 // Close gridfs does nothing but satisfies interface
 func (gf *GridFS) Close() error {
 	return nil
+}
+
+func (gf *GridFS) String() string {
+	return fmt.Sprintf("mongo (grid fs), conn=%s", gf.Connection)
 }

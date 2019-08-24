@@ -34,7 +34,7 @@ Example with chi router:
 ```go
 
 func main() {
-	/// define options
+	// define options
 	options := auth.Opts{
 		SecretReader: token.SecretFunc(func(id string) (string, error) { // secret key for JWT
 			return "secret", nil
@@ -129,7 +129,10 @@ Direct links to avatars won't survive any real-life usage if they linked from a 
     - `avatar.GridFS` - external [GridFS](https://docs.mongodb.com/manual/core/gridfs/) (mongo db).
 - In case of need custom implementations of other stores can be passed in and used by `auth` library. Each store has to implement `avatar.Store` [interface](https://github.com/go-pkgz/auth/blob/master/avatar/store.go#L25).
 - All avatar-related setup done as a part of `auth.Opts` and needs:
-    - `AvatarStore` - avatar store to use, i.e. `avatar.NewLocalFS("/tmp/avatars")`
+    - `AvatarStore` - avatar store to use, i.e. `avatar.NewLocalFS("/tmp/avatars")` or more generic `avatar.NewStore(uri)`
+        - file system uri - `file:///tmp/location` or just `/tmp/location`
+        - boltdb - `bolt://tmp/avatars.bdb`
+        - mongo - `"mongodb://127.0.0.1:27017/test?ava_db=db1&ava_coll=coll1`
     - `AvatarRoutePath` - route prefix for direct links to proxied avatar. For example `/api/v1/avatars` will make full links like this - `http://example.com/api/v1/avatars/1234567890123.image`. The url will be stored in user's token and retrieved by middleware (see "User Info")
     - `AvatarResizeLimit` - size (in pixels) used to resize the avatar. Pls note - resize happens once as a part of `Put` call, i.e. on login. 0 size (default) disables resizing.      
 

@@ -33,7 +33,7 @@ github.com/go-chi/chi/middleware
 github.com/go-chi/cors
 # github.com/go-chi/render v1.0.1
 github.com/go-chi/render
-# github.com/go-pkgz/auth v0.8.0
+# github.com/go-pkgz/auth v0.8.1
 github.com/go-pkgz/auth
 github.com/go-pkgz/auth/avatar
 github.com/go-pkgz/auth/provider

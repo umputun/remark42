@@ -4,15 +4,21 @@ package avatar
 
 import (
 	"crypto/sha1"
+	"fmt"
 	_ "image/gif"  // initializing packages for supporting GIF
 	_ "image/jpeg" // initializing packages for supporting JPEG.
 	_ "image/png"  // initializing packages for supporting PNG.
 	"io"
 	"log"
+	"net/url"
 	"regexp"
 	"strings"
+	"time"
 
+	bolt "github.com/coreos/bbolt"
 	"github.com/go-pkgz/auth/token"
+	"github.com/go-pkgz/mongo"
+	"github.com/pkg/errors"
 )
 
 // imgSfx for avatars
@@ -22,12 +28,37 @@ var reValidAvatarID = regexp.MustCompile(`^[a-fA-F0-9]{40}\.image$`)
 
 // Store defines interface to store and and load avatars
 type Store interface {
+	fmt.Stringer
 	Put(userID string, reader io.Reader) (avatarID string, err error) // save avatar data from the reader and return base name
 	Get(avatarID string) (reader io.ReadCloser, size int, err error)  // load avatar via reader
 	ID(avatarID string) (id string)                                   // unique id of stored avatar's data
 	Remove(avatarID string) error                                     // remove avatar data
 	List() (ids []string, err error)                                  // list all avatar ids
 	Close() error                                                     // close store
+}
+
+// NewStore provides factory for all supported stores making the one
+// based on uri protocol. Default (no protocol) is file-system
+func NewStore(uri string) (Store, error) {
+	switch {
+	case strings.HasPrefix(uri, "file://"):
+		return NewLocalFS(strings.TrimPrefix(uri, "file://")), nil
+	case !strings.Contains(uri, "://"):
+		return NewLocalFS(uri), nil
+	case strings.HasPrefix(uri, "mongodb://"):
+		db, coll, u, err := parseExtMongoURI(uri)
+		if err != nil {
+			return nil, errors.Wrapf(err, "can't parse mongo store uri %s", uri)
+		}
+		mg, err := mongo.NewServerWithURL(u, time.Second)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to make mongo server")
+		}
+		return NewGridFS(mongo.NewConnection(mg, db, coll)), nil
+	case strings.HasPrefix(uri, "bolt://"):
+		return NewBoltDB(strings.TrimPrefix(uri, "bolt://"), bolt.Options{})
+	}
+	return nil, errors.Errorf("can't parse store url %s", uri)
 }
 
 // Migrate avatars between stores
@@ -58,4 +89,27 @@ func encodeID(id string) string {
 		return strings.TrimSuffix(id, imgSfx) // already encoded, strip .image
 	}
 	return token.HashID(sha1.New(), id)
+}
+
+// parseExtMongoURI extracts extra params ava_db and ava_coll and remove
+// from the url. Input example: mongodb://user:password@127.0.0.1:27017/test?ssl=true&ava_db=db1&ava_coll=coll1
+func parseExtMongoURI(uri string) (db, collection, cleanURI string, err error) {
+
+	db, collection = "test", "avatars_fs"
+	u, err := url.Parse(uri)
+	if err != nil {
+		return "", "", "", err
+	}
+	if val := u.Query().Get("ava_db"); val != "" {
+		db = val
+	}
+	if val := u.Query().Get("ava_coll"); val != "" {
+		collection = val
+	}
+
+	q := u.Query()
+	q.Del("ava_db")
+	q.Del("ava_coll")
+	u.RawQuery = q.Encode()
+	return db, collection, u.String(), nil
 }

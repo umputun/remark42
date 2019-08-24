@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -124,6 +125,10 @@ func (b *BoltDB) List() (ids []string, err error) {
 // Close bolt store
 func (b *BoltDB) Close() error {
 	return errors.Wrapf(b.db.Close(), "failed to close %s", b.fileName)
+}
+
+func (b *BoltDB) String() string {
+	return fmt.Sprintf("boltdb, path=%s", b.fileName)
 }
 
 func (b *BoltDB) sha1(data []byte, avatarID string) (id string) {

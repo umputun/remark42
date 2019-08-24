@@ -132,14 +132,15 @@ type ImageGroup struct {
 
 // AvatarGroup defines options group for avatar params
 type AvatarGroup struct {
-	Type string `long:"type" env:"TYPE" description:"type of avatar storage" choice:"fs" choice:"bolt" default:"fs"`
+	Type string `long:"type" env:"TYPE" description:"type of avatar storage" choice:"fs" choice:"bolt" choice:"uri" default:"fs"`
 	FS   struct {
 		Path string `long:"path" env:"PATH" default:"./var/avatars" description:"avatars location"`
 	} `group:"fs" namespace:"fs" env-namespace:"FS"`
 	Bolt struct {
 		File string `long:"file" env:"FILE" default:"./var/avatars.db" description:"avatars bolt file location"`
 	} `group:"bolt" namespace:"bolt" env-namespace:"bolt"`
-	RszLmt int `long:"rsz-lmt" env:"RESIZE" default:"0" description:"max image size for resizing avatars on save"`
+	URI    string `long:"uri" env:"URI" default:"./var/avatars" description:"avatar's store URI"`
+	RszLmt int    `long:"rsz-lmt" env:"RESIZE" default:"0" description:"max image size for resizing avatars on save"`
 }
 
 // CacheGroup defines options group for cache params
@@ -470,6 +471,8 @@ func (s *ServerCommand) makeAvatarStore() (avatar.Store, error) {
 			return nil, err
 		}
 		return avatar.NewBoltDB(s.Avatar.Bolt.File, bolt.Options{})
+	case "uri":
+		return avatar.NewStore(s.Avatar.URI)
 	}
 	return nil, errors.Errorf("unsupported avatar store type %s", s.Avatar.Type)
 }

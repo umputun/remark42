@@ -108,6 +108,10 @@ func (fs *LocalFS) Close() error {
 	return nil
 }
 
+func (fs *LocalFS) String() string {
+	return fmt.Sprintf("localfs, path=%s", fs.storePath)
+}
+
 // get location (directory) for user id by adding partition to final path in order to keep files
 // in different subdirectories and avoid too many files in a single place.
 // the end result is a full path like this - /tmp/avatars.test/92
