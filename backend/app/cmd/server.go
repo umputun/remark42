@@ -695,6 +695,9 @@ func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Sto
 			if claims.User == nil {
 				return false
 			}
+			if claims.User.Audience == "" { // reject empty aud, made with old (pre 0.8.x) version of auth package
+				return false
+			}
 			return !claims.User.BoolAttr("blocked")
 		}),
 		JWTQuery:          "jwt", // change default from "token" as it used for deleteme

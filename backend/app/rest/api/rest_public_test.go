@@ -368,9 +368,9 @@ func TestRest_Count(t *testing.T) {
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1",
-		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}}
+		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
 	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
-		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah2"}}
+		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah2"}}
 
 	addComment(t, c1, ts)
 	addComment(t, c1, ts)
@@ -378,20 +378,20 @@ func TestRest_Count(t *testing.T) {
 	addComment(t, c2, ts)
 	addComment(t, c2, ts)
 
-	body, code := get(t, ts.URL+"/api/v1/count?site=radio-t&url=https://radio-t.com/blah1")
+	body, code := get(t, ts.URL+"/api/v1/count?site=remark42&url=https://radio-t.com/blah1")
 	assert.Equal(t, 200, code)
 	j := R.JSON{}
 	err := json.Unmarshal([]byte(body), &j)
 	assert.Nil(t, err)
 	assert.Equal(t, 3.0, j["count"])
 
-	body, code = get(t, ts.URL+"/api/v1/count?site=radio-t&url=https://radio-t.com/blah2")
+	body, code = get(t, ts.URL+"/api/v1/count?site=remark42&url=https://radio-t.com/blah2")
 	assert.Equal(t, 200, code)
 	err = json.Unmarshal([]byte(body), &j)
 	assert.Nil(t, err)
 	assert.Equal(t, 2.0, j["count"])
 
-	_, code = get(t, ts.URL+"/api/v1/count?site=radio-t-BLAH&url=https://radio-t.com/blah1XXX")
+	_, code = get(t, ts.URL+"/api/v1/count?site=remark42-BLAH&url=https://radio-t.com/blah1XXX")
 	assert.Equal(t, 400, code)
 }
 
@@ -400,9 +400,9 @@ func TestRest_Counts(t *testing.T) {
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1",
-		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}}
+		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
 	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
-		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah2"}}
+		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah2"}}
 
 	addComment(t, c1, ts)
 	addComment(t, c1, ts)
@@ -410,7 +410,7 @@ func TestRest_Counts(t *testing.T) {
 	addComment(t, c2, ts)
 	addComment(t, c2, ts)
 
-	resp, err := post(t, ts.URL+"/api/v1/counts?site=radio-t", `["https://radio-t.com/blah1","https://radio-t.com/blah2"]`)
+	resp, err := post(t, ts.URL+"/api/v1/counts?site=remark42", `["https://radio-t.com/blah1","https://radio-t.com/blah2"]`)
 	assert.Nil(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 

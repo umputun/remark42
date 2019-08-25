@@ -388,6 +388,23 @@ func TestServerAuthHooks(t *testing.T) {
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusCreated, resp.StatusCode, "non-blocked user able to post")
 
+	time.Sleep(1001 * time.Millisecond) // prevent limiter to be triggered
+	// add comment with no-aud claim
+	claimsNoAud := claims
+	claims.Audience = ""
+	tkNoAud, err := tkService.Token(claimsNoAud)
+	require.NoError(t, err)
+	t.Log(tkNoAud)
+	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
+		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/p/2018/12/29/podcast-631/", 
+"site": "remark"}}`))
+	require.NoError(t, err)
+	req.Header.Set("X-JWT", tkNoAud)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "user without aud claim rejected")
+
 	// block user dev as admin
 	req, e := http.NewRequest(http.MethodPut,
 		fmt.Sprintf("http://localhost:%d/api/v1/admin/user/dev?site=remark&block=1&ttl=10d", port), nil)

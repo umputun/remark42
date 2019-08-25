@@ -34,7 +34,7 @@ func TestRest_Create(t *testing.T) {
 	defer teardown()
 
 	resp, err := post(t, ts.URL+"/api/v1/comment",
-		`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
+		`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`)
 	assert.Nil(t, err)
 	b, err := ioutil.ReadAll(resp.Body)
 	assert.Nil(t, err)
@@ -45,7 +45,7 @@ func TestRest_Create(t *testing.T) {
 	err = json.Unmarshal(b, &c)
 	assert.Nil(t, err)
 	loc := c["locator"].(map[string]interface{})
-	assert.Equal(t, "radio-t", loc["site"])
+	assert.Equal(t, "remark42", loc["site"])
 	assert.Equal(t, "https://radio-t.com/blah1", loc["url"])
 	assert.True(t, len(c["id"].(string)) > 8)
 }
@@ -56,29 +56,29 @@ func TestRest_CreateOldPost(t *testing.T) {
 
 	// make old, but not too old comment
 	old := store.Comment{Text: "test test old", ParentID: "", Timestamp: time.Now().AddDate(0, 0, -5),
-		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}, User: store.User{ID: "u1"}}
+		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}, User: store.User{ID: "u1"}}
 	_, err := srv.DataService.Create(old)
 	assert.Nil(t, err)
 
-	comments, err := srv.DataService.Find(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}, "time", store.User{})
+	comments, err := srv.DataService.Find(store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}, "time", store.User{})
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(comments))
 
 	// try to add new comment to the same old post
 	resp, err := post(t, ts.URL+"/api/v1/comment",
-		`{"text": "test 123", "locator":{"site": "radio-t","url": "https://radio-t.com/blah1"}}`)
+		`{"text": "test 123", "locator":{"site": "remark42","url": "https://radio-t.com/blah1"}}`)
 	assert.Nil(t, err)
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
-	assert.Nil(t, srv.DataService.DeleteAll("radio-t"))
+	assert.Nil(t, srv.DataService.DeleteAll("remark42"))
 	// make too old comment
 	old = store.Comment{Text: "test test old", ParentID: "", Timestamp: time.Now().AddDate(0, 0, -15),
-		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}, User: store.User{ID: "u1"}}
+		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}, User: store.User{ID: "u1"}}
 	_, err = srv.DataService.Create(old)
 	assert.Nil(t, err)
 
 	resp, err = post(t, ts.URL+"/api/v1/comment",
-		`{"text": "test 123", "locator":{"site": "radio-t","url": "https://radio-t.com/blah1"}}`)
+		`{"text": "test 123", "locator":{"site": "remark42","url": "https://radio-t.com/blah1"}}`)
 	assert.Nil(t, err)
 	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 }
@@ -87,7 +87,7 @@ func TestRest_CreateTooBig(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
 
-	longComment := fmt.Sprintf(`{"text": "%4001s", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, "Щ")
+	longComment := fmt.Sprintf(`{"text": "%4001s", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`, "Щ")
 
 	resp, err := post(t, ts.URL+"/api/v1/comment", longComment)
 	assert.Nil(t, err)
@@ -100,7 +100,7 @@ func TestRest_CreateTooBig(t *testing.T) {
 	assert.Equal(t, "comment text exceeded max allowed size 4000 (4001)", c["error"])
 	assert.Equal(t, "invalid comment", c["details"])
 
-	veryLongComment := fmt.Sprintf(`{"text": "%70000s", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, "Щ")
+	veryLongComment := fmt.Sprintf(`{"text": "%70000s", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`, "Щ")
 	resp, err = post(t, ts.URL+"/api/v1/comment", veryLongComment)
 	assert.Nil(t, err)
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
@@ -117,7 +117,8 @@ func TestRest_CreateWithRestrictedWord(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
 
-	badComment := fmt.Sprintf(`{"text": "What the duck is that?", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
+	badComment := fmt.Sprintf(`{"text": "What the duck is that?", "locator":{"url": "https://radio-t.com/blah1", 
+"site": "remark42"}}`)
 
 	resp, err := post(t, ts.URL+"/api/v1/comment", badComment)
 	assert.Nil(t, err)
@@ -135,7 +136,7 @@ func TestRest_CreateRejected(t *testing.T) {
 
 	ts, _, teardown := startupT(t)
 	defer teardown()
-	body := `{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`
+	body := `{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`
 
 	// try to create without auth
 	resp, err := http.Post(ts.URL+"/api/v1/comment", "", strings.NewReader(body))
@@ -149,7 +150,7 @@ func TestRest_CreateAndGet(t *testing.T) {
 
 	// create comment
 	resp, err := post(t, ts.URL+"/api/v1/comment",
-		`{"text": "**test** *123*\n\n http://radio-t.com", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
+		`{"text": "**test** *123*\n\n http://radio-t.com", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`)
 	require.Nil(t, err)
 	require.Equal(t, http.StatusCreated, resp.StatusCode)
 	b, err := ioutil.ReadAll(resp.Body)
@@ -666,7 +667,7 @@ func TestRest_CreateWithPictures(t *testing.T) {
 	id3 := uploadPicture("pic3.png")
 
 	text := fmt.Sprintf(`text 123  ![](/api/v1/picture/%s) *xxx* ![](/api/v1/picture/%s) ![](/api/v1/picture/%s)`, id1, id2, id3)
-	body := fmt.Sprintf(`{"text": "%s", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, text)
+	body := fmt.Sprintf(`{"text": "%s", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`, text)
 
 	resp, err := post(t, ts.URL+"/api/v1/comment", body)
 	assert.Nil(t, err)

@@ -290,7 +290,7 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 	os.RemoveAll("/tmp/ava-remark42")
 	os.RemoveAll("/tmp/pics-remark42")
 
-	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDb, SiteID: "radio-t"})
+	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDb, SiteID: "remark42"})
 	require.Nil(t, err)
 
 	memCache, err := cache.NewMemoryCache()

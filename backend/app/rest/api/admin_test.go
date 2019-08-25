@@ -30,15 +30,15 @@ func TestAdmin_Delete(t *testing.T) {
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1", User: store.User{ID: "id", Name: "name"},
-		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}}
+		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
 	c2 := store.Comment{Text: "test test #2", User: store.User{ID: "id", Name: "name"}, ParentID: "p1",
-		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}}
+		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
 
 	id1 := addComment(t, c1, ts)
 	addComment(t, c2, ts)
 
 	// check last comments
-	res, code := get(t, ts.URL+"/api/v1/last/2?site=radio-t")
+	res, code := get(t, ts.URL+"/api/v1/last/2?site=remark42")
 	assert.Equal(t, 200, code)
 	comments := []store.Comment{}
 	err := json.Unmarshal([]byte(res), &comments)
@@ -46,7 +46,7 @@ func TestAdmin_Delete(t *testing.T) {
 	assert.Equal(t, 2, len(comments), "should have 2 comments")
 
 	// check multi count
-	resp, err := post(t, ts.URL+"/api/v1/counts?site=radio-t", `["https://radio-t.com/blah","https://radio-t.com/blah2"]`)
+	resp, err := post(t, ts.URL+"/api/v1/counts?site=remark42", `["https://radio-t.com/blah","https://radio-t.com/blah2"]`)
 	assert.Nil(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	bb, err := ioutil.ReadAll(resp.Body)
@@ -59,14 +59,14 @@ func TestAdmin_Delete(t *testing.T) {
 
 	// delete a comment
 	req, err := http.NewRequest(http.MethodDelete,
-		fmt.Sprintf("%s/api/v1/admin/comment/%s?site=radio-t&url=https://radio-t.com/blah", ts.URL, id1), nil)
+		fmt.Sprintf("%s/api/v1/admin/comment/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1), nil)
 	assert.Nil(t, err)
 	requireAdminOnly(t, req)
 	resp, err = sendReq(t, req, adminUmputunToken)
 	assert.Nil(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 
-	body, code := getWithDevAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=radio-t&url=https://radio-t.com/blah", ts.URL, id1))
+	body, code := getWithDevAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1))
 	assert.Equal(t, 200, code)
 	cr := store.Comment{}
 	err = json.Unmarshal([]byte(body), &cr)
@@ -76,7 +76,7 @@ func TestAdmin_Delete(t *testing.T) {
 
 	time.Sleep(250 * time.Millisecond)
 	// check last comments updated
-	res, code = get(t, ts.URL+"/api/v1/last/2?site=radio-t")
+	res, code = get(t, ts.URL+"/api/v1/last/2?site=remark42")
 	assert.Equal(t, 200, code)
 	comments = []store.Comment{}
 	err = json.Unmarshal([]byte(res), &comments)
@@ -84,7 +84,7 @@ func TestAdmin_Delete(t *testing.T) {
 	assert.Equal(t, 1, len(comments), "should have 1 comments")
 
 	// check count updated
-	res, code = get(t, ts.URL+"/api/v1/count?site=radio-t&url=https://radio-t.com/blah")
+	res, code = get(t, ts.URL+"/api/v1/count?site=remark42&url=https://radio-t.com/blah")
 	assert.Equal(t, 200, code)
 	b := map[string]interface{}{}
 	err = json.Unmarshal([]byte(res), &b)
@@ -93,7 +93,7 @@ func TestAdmin_Delete(t *testing.T) {
 	assert.Equal(t, 1.0, b["count"], "should report 1 comments")
 
 	// check multi count updated
-	resp, err = post(t, ts.URL+"/api/v1/counts?site=radio-t", `["https://radio-t.com/blah","https://radio-t.com/blah2"]`)
+	resp, err = post(t, ts.URL+"/api/v1/counts?site=remark42", `["https://radio-t.com/blah","https://radio-t.com/blah2"]`)
 	assert.Nil(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	bb, err = ioutil.ReadAll(resp.Body)
@@ -126,22 +126,22 @@ func TestAdmin_Title(t *testing.T) {
 	defer tss.Close()
 
 	c1 := store.Comment{Text: "test test #1", User: store.User{ID: "id", Name: "name"},
-		Locator: store.Locator{SiteID: "radio-t", URL: tss.URL + "/post1"}}
+		Locator: store.Locator{SiteID: "remark42", URL: tss.URL + "/post1"}}
 	c2 := store.Comment{Text: "test test #2", User: store.User{ID: "id", Name: "name"}, ParentID: "p1",
-		Locator: store.Locator{SiteID: "radio-t", URL: tss.URL + "/post2"}}
+		Locator: store.Locator{SiteID: "remark42", URL: tss.URL + "/post2"}}
 
 	id1 := addComment(t, c1, ts)
 	addComment(t, c2, ts)
 
 	req, err := http.NewRequest(http.MethodPut,
-		fmt.Sprintf("%s/api/v1/admin/title/%s?site=radio-t&url=%s/post1", ts.URL, id1, tss.URL), nil)
+		fmt.Sprintf("%s/api/v1/admin/title/%s?site=remark42&url=%s/post1", ts.URL, id1, tss.URL), nil)
 	assert.Nil(t, err)
 	requireAdminOnly(t, req)
 	resp, err := sendReq(t, req, adminUmputunToken)
 	require.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 
-	body, code := get(t, fmt.Sprintf("%s/api/v1/id/%s?site=radio-t&url=%s/post1", ts.URL, id1, tss.URL))
+	body, code := get(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=%s/post1", ts.URL, id1, tss.URL))
 	require.Equal(t, 200, code)
 	cr := store.Comment{}
 	err = json.Unmarshal([]byte(body), &cr)
@@ -154,11 +154,11 @@ func TestAdmin_DeleteUser(t *testing.T) {
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1", Orig: "o test test #1", User: store.User{ID: "id1", Name: "name"},
-		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}}
+		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
 	c2 := store.Comment{Text: "test test #2", Orig: "o test test #2", User: store.User{ID: "id2", Name: "name"}, ParentID: "p1",
-		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}}
+		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
 	c3 := store.Comment{Text: "test test #3", Orig: "o test test #3", User: store.User{ID: "id2", Name: "name"}, ParentID: "",
-		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}}
+		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
 
 	// write comments directly to store to keep user id
 	id1, err := srv.DataService.Create(c1)
@@ -168,7 +168,7 @@ func TestAdmin_DeleteUser(t *testing.T) {
 	_, err = srv.DataService.Create(c3)
 	assert.NoError(t, err)
 
-	req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/api/v1/admin/user/%s?site=radio-t", ts.URL, "id2"), nil)
+	req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/api/v1/admin/user/%s?site=remark42", ts.URL, "id2"), nil)
 	assert.Nil(t, err)
 	requireAdminOnly(t, req)
 	resp, err := sendReq(t, req, adminUmputunToken)
@@ -176,7 +176,7 @@ func TestAdmin_DeleteUser(t *testing.T) {
 	assert.Equal(t, 200, resp.StatusCode)
 
 	// all 3 comments here, but for id2 they deleted
-	res, code := get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah&sort=+time")
+	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah&sort=+time")
 	assert.Equal(t, 200, code)
 	cmntWithInfo := commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &cmntWithInfo)
@@ -206,9 +206,9 @@ func TestAdmin_Pin(t *testing.T) {
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1",
-		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}}
+		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
 	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
-		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}}
+		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
 
 	id1 := addComment(t, c1, ts)
 	addComment(t, c2, ts)
@@ -216,7 +216,7 @@ func TestAdmin_Pin(t *testing.T) {
 	pin := func(val int) int {
 		client := http.Client{}
 		req, err := http.NewRequest(http.MethodPut,
-			fmt.Sprintf("%s/api/v1/admin/pin/%s?site=radio-t&url=https://radio-t.com/blah&pin=%d", ts.URL, id1, val), nil)
+			fmt.Sprintf("%s/api/v1/admin/pin/%s?site=remark42&url=https://radio-t.com/blah&pin=%d", ts.URL, id1, val), nil)
 		assert.Nil(t, err)
 		requireAdminOnly(t, req)
 		req.SetBasicAuth("admin", "password")
@@ -228,7 +228,7 @@ func TestAdmin_Pin(t *testing.T) {
 	code := pin(1)
 	assert.Equal(t, 200, code)
 
-	body, code := get(t, fmt.Sprintf("%s/api/v1/id/%s?site=radio-t&url=https://radio-t.com/blah", ts.URL, id1))
+	body, code := get(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1))
 	assert.Equal(t, 200, code)
 	cr := store.Comment{}
 	err := json.Unmarshal([]byte(body), &cr)
@@ -237,7 +237,7 @@ func TestAdmin_Pin(t *testing.T) {
 
 	code = pin(-1)
 	assert.Equal(t, 200, code)
-	body, code = get(t, fmt.Sprintf("%s/api/v1/id/%s?site=radio-t&url=https://radio-t.com/blah", ts.URL, id1))
+	body, code = get(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1))
 	assert.Equal(t, 200, code)
 	cr = store.Comment{}
 	err = json.Unmarshal([]byte(body), &cr)
@@ -250,9 +250,9 @@ func TestAdmin_Block(t *testing.T) {
 	defer teardown()
 
 	makeTwoComments := func() {
-		c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
+		c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
 			URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"}}
-		c2 := store.Comment{Text: "test test #2", ParentID: "p1", Locator: store.Locator{SiteID: "radio-t",
+		c2 := store.Comment{Text: "test test #2", ParentID: "p1", Locator: store.Locator{SiteID: "remark42",
 			URL: "https://radio-t.com/blah"}, User: store.User{Name: "user2", ID: "user2"}}
 
 		_, err := srv.DataService.Create(c1)
@@ -262,7 +262,7 @@ func TestAdmin_Block(t *testing.T) {
 	}
 
 	block := func(val int, ttl string) (code int, body []byte) {
-		url := fmt.Sprintf("%s/api/v1/admin/user/%s?site=radio-t&block=%d", ts.URL, "user1", val)
+		url := fmt.Sprintf("%s/api/v1/admin/user/%s?site=remark42&block=%d", ts.URL, "user1", val)
 		if ttl != "" {
 			url = url + "&ttl=" + ttl
 		}
@@ -293,14 +293,14 @@ func TestAdmin_Block(t *testing.T) {
 	assert.False(t, srv.adminRest.dataService.IsBlocked("radio-t", "user2"))
 
 	// get last to confirm one comment deleted
-	bodyStr, code := get(t, ts.URL+"/api/v1/last/10?site=radio-t")
+	bodyStr, code := get(t, ts.URL+"/api/v1/last/10?site=remark42")
 	assert.Equal(t, 200, code)
 	pi := []store.PostInfo{}
 	assert.NoError(t, json.Unmarshal([]byte(bodyStr), &pi))
 	assert.Equal(t, 1, len(pi), "last status updated, one comment left")
 
 	// check if count call has one comment left
-	resp, err := post(t, ts.URL+"/api/v1/counts?site=radio-t", `["https://radio-t.com/blah"]`)
+	resp, err := post(t, ts.URL+"/api/v1/counts?site=remark42", `["https://radio-t.com/blah"]`)
 	assert.Nil(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	body, err = ioutil.ReadAll(resp.Body)
@@ -310,7 +310,7 @@ func TestAdmin_Block(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, []store.PostInfo([]store.PostInfo{{URL: "https://radio-t.com/blah", Count: 1}}), pi)
 
-	res, code := get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah&sort=+time")
+	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah&sort=+time")
 	assert.Equal(t, 200, code)
 	comments := commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
@@ -332,7 +332,7 @@ func TestAdmin_Block(t *testing.T) {
 	require.Equal(t, 200, code)
 
 	// get as regular user
-	res, code = get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah&sort=+time")
+	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah&sort=+time")
 	assert.Equal(t, 200, code)
 	comments = commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
@@ -343,7 +343,7 @@ func TestAdmin_Block(t *testing.T) {
 
 	srv.pubRest.cache = &cache.Nop{} // TODO: with lru cache it won't be refreshed and invalidated for long time
 	time.Sleep(50 * time.Millisecond)
-	res, code = get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah&sort=+time")
+	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah&sort=+time")
 	assert.Equal(t, 200, code)
 	comments = commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
@@ -360,9 +360,9 @@ func TestAdmin_BlockedList(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
 
-	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
+	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
 		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"}}
-	c2 := store.Comment{Text: "test test #2", ParentID: "p1", Locator: store.Locator{SiteID: "radio-t",
+	c2 := store.Comment{Text: "test test #2", ParentID: "p1", Locator: store.Locator{SiteID: "remark42",
 		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user2 name", ID: "user2"}}
 
 	// write comments for user1 and user2
@@ -373,7 +373,7 @@ func TestAdmin_BlockedList(t *testing.T) {
 
 	// block user1
 	req, err := http.NewRequest(http.MethodPut,
-		fmt.Sprintf("%s/api/v1/admin/user/%s?site=radio-t&block=%d", ts.URL, "user1", 1), nil)
+		fmt.Sprintf("%s/api/v1/admin/user/%s?site=remark42&block=%d", ts.URL, "user1", 1), nil)
 	assert.Nil(t, err)
 	res, err := sendReq(t, req, adminUmputunToken)
 	require.NoError(t, err)
@@ -381,13 +381,13 @@ func TestAdmin_BlockedList(t *testing.T) {
 
 	// block user2
 	req, err = http.NewRequest(http.MethodPut,
-		fmt.Sprintf("%s/api/v1/admin/user/%s?site=radio-t&block=%d&ttl=50ms", ts.URL, "user2", 1), nil)
+		fmt.Sprintf("%s/api/v1/admin/user/%s?site=remark42&block=%d&ttl=50ms", ts.URL, "user2", 1), nil)
 	assert.Nil(t, err)
 	res, err = sendReq(t, req, adminUmputunToken)
 	require.NoError(t, err)
 	assert.Equal(t, 200, res.StatusCode)
 
-	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/blocked?site=radio-t", nil)
+	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/blocked?site=remark42", nil)
 	require.NoError(t, err)
 	res, err = sendReq(t, req, adminUmputunToken)
 	require.NoError(t, err)
@@ -403,7 +403,7 @@ func TestAdmin_BlockedList(t *testing.T) {
 	t.Logf("%+v", users)
 	time.Sleep(50 * time.Millisecond)
 
-	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/blocked?site=radio-t", nil)
+	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/blocked?site=remark42", nil)
 	require.NoError(t, err)
 	res, err = sendReq(t, req, adminUmputunToken)
 	require.NoError(t, err)
@@ -418,9 +418,9 @@ func TestAdmin_ReadOnly(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
 
-	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
+	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
 		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"}}
-	c2 := store.Comment{Text: "test test #2", ParentID: "p1", Locator: store.Locator{SiteID: "radio-t",
+	c2 := store.Comment{Text: "test test #2", ParentID: "p1", Locator: store.Locator{SiteID: "remark42",
 		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user2", ID: "user2"}}
 
 	_, err := srv.DataService.Create(c1)
@@ -428,13 +428,13 @@ func TestAdmin_ReadOnly(t *testing.T) {
 	_, err = srv.DataService.Create(c2)
 	assert.Nil(t, err)
 
-	info, err := srv.DataService.Info(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}, 0)
+	info, err := srv.DataService.Info(store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}, 0)
 	assert.Nil(t, err)
 	assert.False(t, info.ReadOnly)
 
 	// set post to read-only
 	req, err := http.NewRequest(http.MethodPut,
-		fmt.Sprintf("%s/api/v1/admin/readonly?site=radio-t&url=https://radio-t.com/blah&ro=1", ts.URL), nil)
+		fmt.Sprintf("%s/api/v1/admin/readonly?site=remark42&url=https://radio-t.com/blah&ro=1", ts.URL), nil)
 	assert.Nil(t, err)
 	resp, err := sendReq(t, req, "") // non-admin user
 	require.NoError(t, err)
@@ -442,13 +442,13 @@ func TestAdmin_ReadOnly(t *testing.T) {
 	resp, err = sendReq(t, req, adminUmputunToken)
 	require.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
-	info, err = srv.DataService.Info(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}, 0)
+	info, err = srv.DataService.Info(store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}, 0)
 	assert.Nil(t, err)
 	assert.True(t, info.ReadOnly)
 
 	// try to write comment
 	c := store.Comment{Text: "test test #2", ParentID: "p1",
-		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}}
+		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
 	b, err := json.Marshal(c)
 	assert.Nil(t, err, "can't marshal comment %+v", c)
 	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", bytes.NewBuffer(b))
@@ -459,18 +459,18 @@ func TestAdmin_ReadOnly(t *testing.T) {
 
 	// reset post's read-only
 	req, err = http.NewRequest(http.MethodPut,
-		fmt.Sprintf("%s/api/v1/admin/readonly?site=radio-t&url=https://radio-t.com/blah&ro=0", ts.URL), nil)
+		fmt.Sprintf("%s/api/v1/admin/readonly?site=remark42&url=https://radio-t.com/blah&ro=0", ts.URL), nil)
 	assert.Nil(t, err)
 	resp, err = sendReq(t, req, adminUmputunToken)
 	require.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
-	info, err = srv.DataService.Info(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}, 0)
+	info, err = srv.DataService.Info(store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}, 0)
 	assert.Nil(t, err)
 	assert.False(t, info.ReadOnly)
 
 	// try to write comment
 	c = store.Comment{Text: "test test #2", ParentID: "p1",
-		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}}
+		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
 	b, err = json.Marshal(c)
 	assert.Nil(t, err, "can't marshal comment %+v", c)
 	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", bytes.NewBuffer(b))
@@ -486,16 +486,16 @@ func TestAdmin_ReadOnlyNoComments(t *testing.T) {
 
 	// set post to read-only
 	req, err := http.NewRequest(http.MethodPut,
-		fmt.Sprintf("%s/api/v1/admin/readonly?site=radio-t&url=https://radio-t.com/blah&ro=1", ts.URL), nil)
+		fmt.Sprintf("%s/api/v1/admin/readonly?site=remark42&url=https://radio-t.com/blah&ro=1", ts.URL), nil)
 	assert.Nil(t, err)
 	requireAdminOnly(t, req)
 	resp, err := sendReq(t, req, adminUmputunToken)
 	require.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
-	_, err = srv.DataService.Info(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}, 0)
+	_, err = srv.DataService.Info(store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}, 0)
 	assert.NotNil(t, err)
 
-	res, code := get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah&format=tree")
+	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah&format=tree")
 	assert.Equal(t, 200, code)
 	comments := commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
@@ -509,36 +509,36 @@ func TestAdmin_ReadOnlyWithAge(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
 
-	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
+	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
 		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"},
 		Timestamp: time.Date(2001, 1, 1, 1, 1, 1, 0, time.Local)}
 	_, err := srv.DataService.Create(c1)
 	assert.Nil(t, err)
 
-	info, err := srv.DataService.Info(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}, 10)
+	info, err := srv.DataService.Info(store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}, 10)
 	assert.Nil(t, err)
 	assert.True(t, info.ReadOnly, "ro by age")
 
 	// set post to read-only
 	req, err := http.NewRequest(http.MethodPut,
-		fmt.Sprintf("%s/api/v1/admin/readonly?site=radio-t&url=https://radio-t.com/blah&ro=1", ts.URL), nil)
+		fmt.Sprintf("%s/api/v1/admin/readonly?site=remark42&url=https://radio-t.com/blah&ro=1", ts.URL), nil)
 	assert.Nil(t, err)
 	requireAdminOnly(t, req)
 	resp, err := sendReq(t, req, adminUmputunToken)
 	require.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
-	info, err = srv.DataService.Info(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}, 0)
+	info, err = srv.DataService.Info(store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}, 0)
 	assert.NoError(t, err)
 	assert.True(t, info.ReadOnly)
 
 	// reset post's read-only
 	req, err = http.NewRequest(http.MethodPut,
-		fmt.Sprintf("%s/api/v1/admin/readonly?site=radio-t&url=https://radio-t.com/blah&ro=0", ts.URL), nil)
+		fmt.Sprintf("%s/api/v1/admin/readonly?site=remark42&url=https://radio-t.com/blah&ro=0", ts.URL), nil)
 	assert.Nil(t, err)
 	resp, err = sendReq(t, req, adminUmputunToken)
 	require.NoError(t, err)
 	assert.Equal(t, 403, resp.StatusCode)
-	info, err = srv.DataService.Info(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}, 0)
+	info, err = srv.DataService.Info(store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}, 0)
 	assert.NoError(t, err)
 	assert.True(t, info.ReadOnly)
 
@@ -547,9 +547,9 @@ func TestAdmin_Verify(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
 
-	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
+	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
 		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"}}
-	c2 := store.Comment{Text: "test test #2", ParentID: "p1", Locator: store.Locator{SiteID: "radio-t",
+	c2 := store.Comment{Text: "test test #2", ParentID: "p1", Locator: store.Locator{SiteID: "remark42",
 		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user2", ID: "user2"}}
 
 	_, err := srv.DataService.Create(c1)
@@ -557,20 +557,20 @@ func TestAdmin_Verify(t *testing.T) {
 	_, err = srv.DataService.Create(c2)
 	assert.Nil(t, err)
 
-	verified := srv.DataService.IsVerified("radio-t", "user1")
+	verified := srv.DataService.IsVerified("remark42", "user1")
 	assert.False(t, verified)
 
 	req, err := http.NewRequest(http.MethodPut,
-		fmt.Sprintf("%s/api/v1/admin/verify/user1?site=radio-t&verified=1", ts.URL), nil)
+		fmt.Sprintf("%s/api/v1/admin/verify/user1?site=remark42&verified=1", ts.URL), nil)
 	assert.Nil(t, err)
 	requireAdminOnly(t, req)
 	resp, err := sendReq(t, req, adminUmputunToken)
 	require.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
-	verified = srv.DataService.IsVerified("radio-t", "user1")
+	verified = srv.DataService.IsVerified("remark42", "user1")
 	assert.True(t, verified)
 
-	res, code := get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah&sort=+time")
+	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah&sort=+time")
 	assert.Equal(t, 200, code)
 	comments := commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
@@ -580,7 +580,7 @@ func TestAdmin_Verify(t *testing.T) {
 	assert.True(t, comments.Comments[0].User.Verified)
 
 	req, err = http.NewRequest(http.MethodPut,
-		fmt.Sprintf("%s/api/v1/admin/verify/user1?site=radio-t&verified=0", ts.URL), nil)
+		fmt.Sprintf("%s/api/v1/admin/verify/user1?site=remark42&verified=0", ts.URL), nil)
 	assert.Nil(t, err)
 	resp, err = sendReq(t, req, adminUmputunToken)
 	require.NoError(t, err)
@@ -588,7 +588,7 @@ func TestAdmin_Verify(t *testing.T) {
 	verified = srv.DataService.IsVerified("radio-t", "user1")
 	assert.False(t, verified)
 
-	res, code = get(t, ts.URL+"/api/v1/find?site=radio-t&url=https://radio-t.com/blah&sort=+time")
+	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah&sort=+time")
 	assert.Equal(t, 200, code)
 	comments = commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
@@ -603,14 +603,14 @@ func TestAdmin_ExportStream(t *testing.T) {
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1",
-		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}}
+		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
 	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
-		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah2"}}
+		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah2"}}
 
 	addComment(t, c1, ts)
 	addComment(t, c2, ts)
 
-	body, code := getWithAdminAuth(t, ts.URL+"/api/v1/admin/export?site=radio-t&mode=stream")
+	body, code := getWithAdminAuth(t, ts.URL+"/api/v1/admin/export?site=remark42&mode=stream")
 	assert.Equal(t, 200, code)
 	assert.Equal(t, 3, strings.Count(body, "\n"))
 	assert.Equal(t, 2, strings.Count(body, "\"text\""))
@@ -622,14 +622,14 @@ func TestAdmin_ExportFile(t *testing.T) {
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1",
-		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}}
+		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
 	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
-		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah2"}}
+		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah2"}}
 
 	addComment(t, c1, ts)
 	addComment(t, c2, ts)
 
-	req, err := http.NewRequest("GET", ts.URL+"/api/v1/admin/export?site=radio-t&mode=file", nil)
+	req, err := http.NewRequest("GET", ts.URL+"/api/v1/admin/export?site=remark42&mode=file", nil)
 	require.NoError(t, err)
 	requireAdminOnly(t, req)
 	resp, err := sendReq(t, req, adminUmputunToken)
@@ -651,9 +651,9 @@ func TestAdmin_DeleteMeRequest(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
 
-	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
+	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
 		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"}}
-	c2 := store.Comment{Text: "test test #2", ParentID: "p1", Locator: store.Locator{SiteID: "radio-t",
+	c2 := store.Comment{Text: "test test #2", ParentID: "p1", Locator: store.Locator{SiteID: "remark42",
 		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user2", ID: "user2"}}
 
 	_, err := srv.DataService.Create(c1)
@@ -706,9 +706,9 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
 
-	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
+	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
 		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"}}
-	c2 := store.Comment{Text: "test test #2", ParentID: "p1", Locator: store.Locator{SiteID: "radio-t",
+	c2 := store.Comment{Text: "test test #2", ParentID: "p1", Locator: store.Locator{SiteID: "remark42",
 		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user2", ID: "user2"}}
 
 	_, err := srv.DataService.Create(c1)
@@ -784,9 +784,9 @@ func TestAdmin_GetUserInfo(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
 
-	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
+	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
 		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"}}
-	c2 := store.Comment{Text: "test test #2", ParentID: "p1", Locator: store.Locator{SiteID: "radio-t",
+	c2 := store.Comment{Text: "test test #2", ParentID: "p1", Locator: store.Locator{SiteID: "remark42",
 		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user2", ID: "user2"}}
 
 	_, err := srv.DataService.Create(c1)
@@ -794,7 +794,8 @@ func TestAdmin_GetUserInfo(t *testing.T) {
 	_, err = srv.DataService.Create(c2)
 	assert.Nil(t, err)
 
-	body, code := getWithAdminAuth(t, fmt.Sprintf("%s/api/v1/admin/user/user1?site=radio-t&url=https://radio-t.com/blah", ts.URL))
+	body, code := getWithAdminAuth(t, fmt.Sprintf("%s/api/v1/admin/user/user1?site=remark42&url=https://radio-t.com/blah",
+		ts.URL))
 	assert.Equal(t, 200, code)
 	u := store.User{}
 	err = json.Unmarshal([]byte(body), &u)
@@ -802,9 +803,9 @@ func TestAdmin_GetUserInfo(t *testing.T) {
 	assert.Equal(t, store.User{Name: "user1 name", ID: "user1", Picture: "", IP: "823688dafca7393d24c871a2da98a84d8732e927",
 		Admin: false, Blocked: false, Verified: false}, u)
 
-	_, code = get(t, fmt.Sprintf("%s/api/v1/admin/user/user1?site=radio-t&url=https://radio-t.com/blah", ts.URL))
+	_, code = get(t, fmt.Sprintf("%s/api/v1/admin/user/user1?site=remark42&url=https://radio-t.com/blah", ts.URL))
 	assert.Equal(t, 401, code, "no auth")
 
-	_, code = getWithAdminAuth(t, fmt.Sprintf("%s/api/v1/admin/user/userX?site=radio-t&url=https://radio-t.com/blah", ts.URL))
+	_, code = getWithAdminAuth(t, fmt.Sprintf("%s/api/v1/admin/user/userX?site=remark42&url=https://radio-t.com/blah", ts.URL))
 	assert.Equal(t, 400, code, "no info about user")
 }
