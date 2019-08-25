@@ -245,6 +245,11 @@ func (j *Service) Get(r *http.Request) (Claims, string, error) {
 		return Claims{}, "", errors.Wrap(err, "failed to get token")
 	}
 
+	// promote claim's aud to User.Audience
+	if claims.User != nil {
+		claims.User.Audience = claims.Audience
+	}
+
 	if !fromCookie && j.IsExpired(claims) {
 		return Claims{}, "", errors.New("token expired")
 	}
@@ -259,9 +264,7 @@ func (j *Service) Get(r *http.Request) (Claims, string, error) {
 			return Claims{}, "", errors.New("xsrf mismatch")
 		}
 	}
-	if claims.User != nil {
-		claims.User.Audience = claims.Audience
-	}
+
 	return claims, tokenString, nil
 }
 
