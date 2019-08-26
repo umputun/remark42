@@ -534,7 +534,7 @@ func matchSiteID(next http.Handler) http.Handler {
 		}
 
 		siteID := r.URL.Query().Get("site")
-		if siteID != "" && user.SiteID == siteID {
+		if siteID != "" && user.SiteID != siteID {
 			http.Error(w, "Access denied", http.StatusForbidden)
 			return
 		}

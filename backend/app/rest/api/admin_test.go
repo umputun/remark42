@@ -287,10 +287,10 @@ func TestAdmin_Block(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "user1", j["user_id"])
 	assert.Equal(t, true, j["block"])
-	assert.Equal(t, "radio-t", j["site_id"])
+	assert.Equal(t, "remark42", j["site_id"])
 
-	assert.True(t, srv.adminRest.dataService.IsBlocked("radio-t", "user1"))
-	assert.False(t, srv.adminRest.dataService.IsBlocked("radio-t", "user2"))
+	assert.True(t, srv.adminRest.dataService.IsBlocked("remark42", "user1"))
+	assert.False(t, srv.adminRest.dataService.IsBlocked("remark42", "user2"))
 
 	// get last to confirm one comment deleted
 	bodyStr, code := get(t, ts.URL+"/api/v1/last/10?site=remark42")
@@ -352,8 +352,8 @@ func TestAdmin_Block(t *testing.T) {
 	assert.Equal(t, "test test #1", comments.Comments[2].Text, "restored")
 	assert.False(t, comments.Comments[2].Deleted)
 
-	assert.False(t, srv.adminRest.dataService.IsBlocked("radio-t", "user1"))
-	assert.False(t, srv.adminRest.dataService.IsBlocked("radio-t", "user2"))
+	assert.False(t, srv.adminRest.dataService.IsBlocked("remark42", "user1"))
+	assert.False(t, srv.adminRest.dataService.IsBlocked("remark42", "user2"))
 }
 
 func TestAdmin_BlockedList(t *testing.T) {
@@ -585,7 +585,7 @@ func TestAdmin_Verify(t *testing.T) {
 	resp, err = sendReq(t, req, adminUmputunToken)
 	require.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
-	verified = srv.DataService.IsVerified("radio-t", "user1")
+	verified = srv.DataService.IsVerified("remark42", "user1")
 	assert.False(t, verified)
 
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah&sort=+time")
@@ -661,14 +661,14 @@ func TestAdmin_DeleteMeRequest(t *testing.T) {
 	_, err = srv.DataService.Create(c2)
 	assert.Nil(t, err)
 
-	comments, err := srv.DataService.User("radio-t", "user1", 0, 0, store.User{})
+	comments, err := srv.DataService.User("remark42", "user1", 0, 0, store.User{})
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(comments), "a comment for user1")
 
 	claims := token.Claims{
 		SessionOnly: true,
 		StandardClaims: jwt.StandardClaims{
-			Audience:  "radio-t",
+			Audience:  "remark42",
 			Id:        "1234567",
 			Issuer:    "remark42",
 			NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
@@ -698,7 +698,7 @@ func TestAdmin_DeleteMeRequest(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 
-	_, err = srv.DataService.User("radio-t", "user1", 0, 0, store.User{})
+	_, err = srv.DataService.User("remark42", "user1", 0, 0, store.User{})
 	assert.EqualError(t, err, "no comments for user user1 in store")
 }
 
@@ -729,7 +729,7 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 	claims := token.Claims{
 		SessionOnly: true,
 		StandardClaims: jwt.StandardClaims{
-			Audience:  "radio-t",
+			Audience:  "remark42",
 			Id:        "1234567",
 			Issuer:    "remark42",
 			NotBefore: time.Now().Add(-1 * time.Minute).Unix(),

@@ -162,7 +162,7 @@ func TestRest_CreateAndGet(t *testing.T) {
 	id := c["id"].(string)
 
 	// get created comment by id as admin
-	res, code := getWithAdminAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=radio-t&url=https://radio-t.com/blah1", ts.URL, id))
+	res, code := getWithAdminAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah1", ts.URL, id))
 	assert.Equal(t, 200, code)
 	comment := store.Comment{}
 	err = json.Unmarshal([]byte(res), &comment)
@@ -175,7 +175,7 @@ func TestRest_CreateAndGet(t *testing.T) {
 	t.Logf("%+v", comment)
 
 	// get created comment by id as non-admin
-	res, code = getWithDevAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=radio-t&url=https://radio-t.com/blah1", ts.URL, id))
+	res, code = getWithDevAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah1", ts.URL, id))
 	assert.Equal(t, 200, code)
 	comment = store.Comment{}
 	err = json.Unmarshal([]byte(res), &comment)
@@ -188,11 +188,11 @@ func TestRest_Update(t *testing.T) {
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1", ParentID: "p1",
-		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}}
+		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
 	id := addComment(t, c1, ts)
 
 	client := http.Client{}
-	req, err := http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/"+id+"?site=radio-t&url=https://radio-t.com/blah1",
+	req, err := http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/"+id+"?site=remark42&url=https://radio-t.com/blah1",
 		strings.NewReader(`{"text":"updated text", "summary":"my edit"}`))
 	assert.Nil(t, err)
 	req.Header.Add("X-JWT", devToken)
@@ -213,7 +213,7 @@ func TestRest_Update(t *testing.T) {
 	assert.True(t, time.Since(c2.Edit.Timestamp) < 1*time.Second)
 
 	// read updated comment
-	res, code := getWithAdminAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=radio-t&url=https://radio-t.com/blah1", ts.URL, id))
+	res, code := getWithAdminAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah1", ts.URL, id))
 	assert.Equal(t, 200, code)
 	c3 := store.Comment{}
 	err = json.Unmarshal([]byte(res), &c3)
@@ -226,11 +226,11 @@ func TestRest_UpdateDelete(t *testing.T) {
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1", ParentID: "p1",
-		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}}
+		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
 	id := addComment(t, c1, ts)
 
 	// check multi count updated
-	resp, err := post(t, ts.URL+"/api/v1/counts?site=radio-t", `["https://radio-t.com/blah1","https://radio-t.com/blah2"]`)
+	resp, err := post(t, ts.URL+"/api/v1/counts?site=remark42", `["https://radio-t.com/blah1","https://radio-t.com/blah2"]`)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	bb, err := ioutil.ReadAll(resp.Body)
@@ -243,7 +243,7 @@ func TestRest_UpdateDelete(t *testing.T) {
 
 	// delete a comment
 	client := http.Client{}
-	req, err := http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/"+id+"?site=radio-t&url=https://radio-t.com/blah1",
+	req, err := http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/"+id+"?site=remark42&url=https://radio-t.com/blah1",
 		strings.NewReader(`{"delete": true, "summary":"removed by user"}`))
 	require.NoError(t, err)
 	req.Header.Add("X-JWT", devToken)
@@ -261,7 +261,7 @@ func TestRest_UpdateDelete(t *testing.T) {
 	assert.True(t, c2.Deleted)
 
 	// read updated comment
-	res, code := getWithDevAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=radio-t&url=https://radio-t.com/blah1", ts.URL, id))
+	res, code := getWithDevAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah1", ts.URL, id))
 	assert.Equal(t, 200, code)
 	c3 := store.Comment{}
 	err = json.Unmarshal([]byte(res), &c3)
@@ -271,7 +271,7 @@ func TestRest_UpdateDelete(t *testing.T) {
 	assert.True(t, c3.Deleted)
 
 	// check multi count updated
-	resp, err = post(t, ts.URL+"/api/v1/counts?site=radio-t", `["https://radio-t.com/blah1","https://radio-t.com/blah2"]`)
+	resp, err = post(t, ts.URL+"/api/v1/counts?site=remark42", `["https://radio-t.com/blah1","https://radio-t.com/blah2"]`)
 	assert.Nil(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	bb, err = ioutil.ReadAll(resp.Body)
@@ -288,13 +288,13 @@ func TestRest_UpdateNotOwner(t *testing.T) {
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1", ParentID: "p1",
-		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}, User: store.User{ID: "xyz"}}
+		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}, User: store.User{ID: "xyz"}}
 	id1, err := srv.DataService.Create(c1)
 	assert.Nil(t, err)
 
 	client := http.Client{}
 	req, err := http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/"+id1+
-		"?site=radio-t&url=https://radio-t.com/blah1", strings.NewReader(`{"text":"updated text", "summary":"my edit"}`))
+		"?site=remark42&url=https://radio-t.com/blah1", strings.NewReader(`{"text":"updated text", "summary":"my edit"}`))
 	assert.Nil(t, err)
 	req.Header.Add("X-JWT", devToken)
 	b, err := client.Do(req)
@@ -306,7 +306,7 @@ func TestRest_UpdateNotOwner(t *testing.T) {
 
 	client = http.Client{}
 	req, err = http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/"+id1+
-		"?site=radio-t&url=https://radio-t.com/blah1", strings.NewReader(`ERRR "text":"updated text", "summary":"my"}`))
+		"?site=remark42&url=https://radio-t.com/blah1", strings.NewReader(`ERRR "text":"updated text", "summary":"my"}`))
 	assert.Nil(t, err)
 	req.Header.Add("X-JWT", devToken)
 	b, err = client.Do(req)
@@ -319,11 +319,11 @@ func TestRest_UpdateWithRestrictedWords(t *testing.T) {
 	defer teardown()
 
 	c1 := store.Comment{Text: "What the quack is that?", ParentID: "p1",
-		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah1"}}
+		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
 	id := addComment(t, c1, ts)
 
 	client := http.Client{}
-	req, err := http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/"+id+"?site=radio-t&url=https://radio-t.com/blah1",
+	req, err := http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/"+id+"?site=remark42&url=https://radio-t.com/blah1",
 		strings.NewReader(`{"text":"What the duck is that?", "summary":"my edit"}`))
 	assert.Nil(t, err)
 	req.Header.Add("X-JWT", devToken)
@@ -344,9 +344,9 @@ func TestRest_Vote(t *testing.T) {
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1",
-		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}}
+		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
 	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
-		Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/blah"}}
+		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
 
 	id1 := addComment(t, c1, ts)
 	addComment(t, c2, ts)
@@ -354,7 +354,7 @@ func TestRest_Vote(t *testing.T) {
 	vote := func(val int) int {
 		client := http.Client{}
 		req, err := http.NewRequest(http.MethodPut,
-			fmt.Sprintf("%s/api/v1/vote/%s?site=radio-t&url=https://radio-t.com/blah&vote=%d", ts.URL, id1, val), nil)
+			fmt.Sprintf("%s/api/v1/vote/%s?site=remark42&url=https://radio-t.com/blah&vote=%d", ts.URL, id1, val), nil)
 		assert.Nil(t, err)
 		req.Header.Add("X-JWT", devToken)
 		resp, err := client.Do(req)
@@ -364,7 +364,7 @@ func TestRest_Vote(t *testing.T) {
 
 	assert.Equal(t, 200, vote(1), "first vote allowed")
 	assert.Equal(t, 400, vote(1), "second vote rejected")
-	body, code := getWithDevAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=radio-t&url=https://radio-t.com/blah", ts.URL, id1))
+	body, code := getWithDevAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1))
 	assert.Equal(t, 200, code)
 	cr := store.Comment{}
 	err := json.Unmarshal([]byte(body), &cr)
@@ -374,7 +374,7 @@ func TestRest_Vote(t *testing.T) {
 	assert.Equal(t, map[string]bool(nil), cr.Votes)
 
 	assert.Equal(t, 200, vote(-1), "opposite vote allowed")
-	body, code = getWithDevAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=radio-t&url=https://radio-t.com/blah", ts.URL, id1))
+	body, code = getWithDevAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1))
 	assert.Equal(t, 200, code)
 	cr = store.Comment{}
 	err = json.Unmarshal([]byte(body), &cr)
@@ -383,7 +383,7 @@ func TestRest_Vote(t *testing.T) {
 	assert.Equal(t, 0, cr.Vote)
 
 	assert.Equal(t, 200, vote(-1), "opposite vote allowed one more time")
-	body, code = getWithDevAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=radio-t&url=https://radio-t.com/blah", ts.URL, id1))
+	body, code = getWithDevAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1))
 	assert.Equal(t, 200, code)
 	cr = store.Comment{}
 	err = json.Unmarshal([]byte(body), &cr)
@@ -392,7 +392,7 @@ func TestRest_Vote(t *testing.T) {
 	assert.Equal(t, -1, cr.Vote)
 
 	assert.Equal(t, 400, vote(-1), "dbl vote not allowed")
-	body, code = getWithDevAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=radio-t&url=https://radio-t.com/blah", ts.URL, id1))
+	body, code = getWithDevAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1))
 	assert.Equal(t, 200, code)
 	cr = store.Comment{}
 	err = json.Unmarshal([]byte(body), &cr)
@@ -400,7 +400,7 @@ func TestRest_Vote(t *testing.T) {
 	assert.Equal(t, -1, cr.Score)
 	assert.Equal(t, -1, cr.Vote)
 
-	body, code = get(t, fmt.Sprintf("%s/api/v1/id/%s?site=radio-t&url=https://radio-t.com/blah", ts.URL, id1))
+	body, code = get(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1))
 	assert.Equal(t, 200, code)
 	cr = store.Comment{}
 	err = json.Unmarshal([]byte(body), &cr)
@@ -410,7 +410,7 @@ func TestRest_Vote(t *testing.T) {
 	assert.Equal(t, map[string]bool(nil), cr.Votes)
 
 	req, err := http.NewRequest("GET",
-		fmt.Sprintf("%s/api/v1/id/%s?site=radio-t&url=https://radio-t.com/blah", ts.URL, id1), nil)
+		fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1), nil)
 	assert.NoError(t, err)
 	resp, err := sendReq(t, req, adminUmputunToken)
 	assert.NoError(t, err)
@@ -429,11 +429,11 @@ func TestRest_UserAllData(t *testing.T) {
 
 	// write 3 comments
 	user := store.User{ID: "dev", Name: "user name 1"}
-	c1 := store.Comment{User: user, Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
+	c1 := store.Comment{User: user, Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
 		URL: "https://radio-t.com/blah1"}, Timestamp: time.Date(2018, 05, 27, 1, 14, 10, 0, time.Local)}
-	c2 := store.Comment{User: user, Text: "test test #2", ParentID: "p1", Locator: store.Locator{SiteID: "radio-t",
+	c2 := store.Comment{User: user, Text: "test test #2", ParentID: "p1", Locator: store.Locator{SiteID: "remark42",
 		URL: "https://radio-t.com/blah1"}, Timestamp: time.Date(2018, 05, 27, 1, 14, 20, 0, time.Local)}
-	c3 := store.Comment{User: user, Text: "test test #3", ParentID: "p1", Locator: store.Locator{SiteID: "radio-t",
+	c3 := store.Comment{User: user, Text: "test test #3", ParentID: "p1", Locator: store.Locator{SiteID: "remark42",
 		URL: "https://radio-t.com/blah1"}, Timestamp: time.Date(2018, 05, 27, 1, 14, 25, 0, time.Local)}
 	_, err := srv.DataService.Create(c1)
 	require.Nil(t, err, "%+v", err)
@@ -443,7 +443,7 @@ func TestRest_UserAllData(t *testing.T) {
 	require.Nil(t, err)
 
 	client := &http.Client{Timeout: 1 * time.Second}
-	req, err := http.NewRequest("GET", ts.URL+"/api/v1/userdata?site=radio-t", nil)
+	req, err := http.NewRequest("GET", ts.URL+"/api/v1/userdata?site=remark42", nil)
 	require.Nil(t, err)
 	req.Header.Add("X-JWT", devToken)
 	resp, err := client.Do(req)
@@ -472,7 +472,7 @@ func TestRest_UserAllData(t *testing.T) {
 		Picture: "http://example.com/pic.png", IP: "127.0.0.1", SiteID: "remark42"}, parsed.Info)
 	assert.Equal(t, 3, len(parsed.Comments))
 
-	req, err = http.NewRequest("GET", ts.URL+"/api/v1/userdata?site=radio-t", nil)
+	req, err = http.NewRequest("GET", ts.URL+"/api/v1/userdata?site=remark42", nil)
 	require.Nil(t, err)
 	resp, err = client.Do(req)
 	require.Nil(t, err)
@@ -484,7 +484,7 @@ func TestRest_UserAllDataManyComments(t *testing.T) {
 	defer teardown()
 
 	user := store.User{ID: "dev", Name: "user name 1"}
-	c := store.Comment{User: user, Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
+	c := store.Comment{User: user, Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
 		URL: "https://radio-t.com/blah1"}, Timestamp: time.Date(2018, 05, 27, 1, 14, 10, 0, time.Local)}
 
 	for i := 0; i < 51; i++ {
@@ -494,7 +494,7 @@ func TestRest_UserAllDataManyComments(t *testing.T) {
 		require.Nil(t, err)
 	}
 	client := &http.Client{Timeout: 1 * time.Second}
-	req, err := http.NewRequest("GET", ts.URL+"/api/v1/userdata?site=radio-t", nil)
+	req, err := http.NewRequest("GET", ts.URL+"/api/v1/userdata?site=remark42", nil)
 	require.Nil(t, err)
 	req.Header.Add("X-JWT", devToken)
 	resp, err := client.Do(req)
@@ -517,7 +517,7 @@ func TestRest_DeleteMe(t *testing.T) {
 	defer teardown()
 
 	client := http.Client{}
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/api/v1/deleteme?site=radio-t", ts.URL), nil)
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/api/v1/deleteme?site=remark42", ts.URL), nil)
 	assert.Nil(t, err)
 	req.Header.Add("X-JWT", devToken)
 	resp, err := client.Do(req)
@@ -529,7 +529,7 @@ func TestRest_DeleteMe(t *testing.T) {
 	m := map[string]string{}
 	err = json.Unmarshal(body, &m)
 	assert.Nil(t, err)
-	assert.Equal(t, "radio-t", m["site"])
+	assert.Equal(t, "remark42", m["site"])
 	assert.Equal(t, "dev", m["user_id"])
 
 	token := m["token"]
@@ -538,7 +538,7 @@ func TestRest_DeleteMe(t *testing.T) {
 	assert.Equal(t, "dev", claims.User.ID)
 	assert.Equal(t, "https://demo.remark42.com/web/deleteme.html?token="+token, m["link"])
 
-	req, err = http.NewRequest(http.MethodPost, fmt.Sprintf("%s/api/v1/deleteme?site=radio-t", ts.URL), nil)
+	req, err = http.NewRequest(http.MethodPost, fmt.Sprintf("%s/api/v1/deleteme?site=remark42", ts.URL), nil)
 	assert.Nil(t, err)
 	resp, err = client.Do(req)
 	assert.Nil(t, err)
