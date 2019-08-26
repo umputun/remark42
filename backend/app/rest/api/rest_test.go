@@ -291,7 +291,7 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 	memCache, err := cache.NewMemoryCache()
 	assert.NoError(t, err)
 
-	astore := adminstore.NewStaticStore("123456", []string{"a1", "a2"}, "admin@remark-42.com")
+	astore := adminstore.NewStaticStore("123456", []string{"remark42"}, []string{"a1", "a2"}, "admin@remark-42.com")
 	restrictedWordsMatcher := service.NewRestrictedWordsMatcher(service.StaticRestrictedWordsLister{Words: []string{"duck"}})
 
 	dataStore := &service.DataStore{

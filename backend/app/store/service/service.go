@@ -192,7 +192,7 @@ func (s *DataStore) prepareNewComment(comment store.Comment) (store.Comment, err
 	}
 	comment.Sanitize() // clear potentially dangerous js from all parts of comment
 
-	secret, err := s.AdminStore.Key()
+	secret, err := s.getSecret(comment.Locator.SiteID)
 	if err != nil {
 		return store.Comment{}, errors.Wrapf(err, "can't get secret for site %s", comment.Locator.SiteID)
 	}
@@ -251,7 +251,7 @@ func (s *DataStore) Vote(req VoteReq) (comment store.Comment, err error) {
 		return comment, errors.Errorf("user %s already voted for %s", req.UserID, req.CommentID)
 	}
 
-	secret, err := s.AdminStore.Key()
+	secret, err := s.getSecret(comment.Locator.SiteID)
 	if err != nil {
 		return store.Comment{}, errors.Wrapf(err, "can't get secret for site %s", comment.Locator.SiteID)
 	}
@@ -817,4 +817,22 @@ func (s *DataStore) prepVotes(c store.Comment, user store.User) store.Comment {
 
 	c.Votes = nil // hide voters list
 	return c
+}
+
+// get secret for given siteID
+// Note: secret shared across sites, but some sites can be disabled.
+func (s *DataStore) getSecret(siteID string) (secret string, err error) {
+
+	if secret, err = s.AdminStore.Key(); err != nil {
+		return "", errors.Wrapf(err, "can't get secret for site %s", siteID)
+	}
+
+	ok, err := s.AdminStore.Enabled(siteID)
+	if err != nil {
+		return "", errors.Wrapf(err, "can't check secret enabled for site %s", siteID)
+	}
+	if !ok {
+		return "", errors.Wrapf(err, "site %s disabled", siteID)
+	}
+	return secret, nil
 }

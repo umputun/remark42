@@ -509,7 +509,7 @@ func (s *ServerCommand) makeAdminStore() (admin.Store, error) {
 				s.Admin.Shared.Email = "admin@" + u.Host
 			}
 		}
-		return admin.NewStaticStore(s.SharedSecret, s.Admin.Shared.Admins, s.Admin.Shared.Email), nil
+		return admin.NewStaticStore(s.SharedSecret, s.Sites, s.Admin.Shared.Admins, s.Admin.Shared.Email), nil
 	case "rpc":
 		r := &admin.RPC{Client: jrpc.Client{
 			API:        s.Admin.RPC.API,
