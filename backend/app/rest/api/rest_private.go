@@ -60,6 +60,12 @@ func (s *private) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user := rest.MustGetUserInfo(r)
+	if user.ID != "admin" && user.SiteID != comment.Locator.SiteID {
+		rest.SendErrorJSON(w, r, http.StatusForbidden,
+			errors.New("site mismatch, not allowed to post to "+comment.Locator.SiteID), "invalid site",
+			rest.ErrCommentValidation)
+		return
+	}
 
 	comment.PrepareUntrusted() // clean all fields user not supposed to set
 	comment.User = user

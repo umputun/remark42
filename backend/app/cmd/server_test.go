@@ -388,6 +388,23 @@ func TestServerAuthHooks(t *testing.T) {
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusCreated, resp.StatusCode, "non-blocked user able to post")
 
+	time.Sleep(1200 * time.Millisecond) // prevent limiter to be triggered
+	// add comment with no-aud claim
+	claimsNoAud := claims
+	claims.Audience = ""
+	tkNoAud, err := tkService.Token(claimsNoAud)
+	require.NoError(t, err)
+	t.Log(tkNoAud)
+	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
+		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/p/2018/12/29/podcast-631/", 
+"site": "remark"}}`))
+	require.NoError(t, err)
+	req.Header.Set("X-JWT", tkNoAud)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "user without aud claim rejected")
+
 	// block user dev as admin
 	req, e := http.NewRequest(http.MethodPut,
 		fmt.Sprintf("http://localhost:%d/api/v1/admin/user/dev?site=remark&block=1&ttl=10d", port), nil)
@@ -400,8 +417,6 @@ func TestServerAuthHooks(t *testing.T) {
 	b, err := ioutil.ReadAll(resp.Body)
 	require.Nil(t, err)
 	t.Log(string(b))
-
-	time.Sleep(2 * time.Second) // make sure token expired and refresh happened
 
 	// try add a comment with blocked user
 	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
@@ -435,6 +450,7 @@ func prepServerApp(t *testing.T, duration time.Duration, fn func(o ServerCommand
 	cmd.Notify.Type = "telegram"
 	cmd.Notify.Telegram.API = "http://127.0.0.1:12340/"
 	cmd.Notify.Telegram.Token = "blah"
+	cmd.UpdateLimit = 10
 	cmd = fn(cmd)
 
 	os.Remove(cmd.Store.Bolt.Path + "/remark.db")

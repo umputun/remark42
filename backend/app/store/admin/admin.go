@@ -3,6 +3,7 @@ package admin
 
 import (
 	"errors"
+	"strings"
 
 	log "github.com/go-pkgz/lgr"
 )
@@ -20,12 +21,13 @@ type StaticStore struct {
 	admins []string
 	email  string
 	key    string
+	sites  []string
 }
 
 // NewStaticStore makes StaticStore instance with given key
-func NewStaticStore(key string, admins []string, email string) *StaticStore {
+func NewStaticStore(key string, sites []string, admins []string, email string) *StaticStore {
 	log.Printf("[DEBUG] admin users %+v, email %s", admins, email)
-	return &StaticStore{key: key, admins: admins, email: email}
+	return &StaticStore{key: key, sites: sites, admins: admins, email: email}
 }
 
 // NewStaticKeyStore is a shortcut for making StaticStore for key consumers only
@@ -52,6 +54,14 @@ func (s *StaticStore) Email(string) (email string, err error) {
 }
 
 // Enabled if always true for StaticStore
-func (s *StaticStore) Enabled(string) (ok bool, err error) {
-	return true, nil
+func (s *StaticStore) Enabled(site string) (ok bool, err error) {
+	if len(s.sites) == 0 {
+		return true, nil
+	}
+	for _, allowedSite := range s.sites {
+		if strings.EqualFold(allowedSite, site) {
+			return true, nil
+		}
+	}
+	return false, nil
 }

@@ -51,6 +51,19 @@ func TestService_CreateFromEmpty(t *testing.T) {
 	assert.Equal(t, map[string]bool(nil), res.Votes)
 }
 
+func TestService_CreateSiteDisabled(t *testing.T) {
+	defer teardown(t)
+	ks := admin.NewStaticStore("secret 123", []string{"xxx"}, nil, "email")
+	b := DataStore{Engine: prepStoreEngine(t), AdminStore: ks}
+	comment := store.Comment{
+		Text:    "text",
+		User:    store.User{IP: "192.168.1.1", ID: "user", Name: "name"},
+		Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+	}
+	_, err := b.Create(comment)
+	assert.EqualError(t, err, "failed to prepare comment: can't get secret for site radio-t: site radio-t disabled")
+}
+
 func TestService_CreateFromPartial(t *testing.T) {
 	defer teardown(t)
 	ks := admin.NewStaticKeyStore("secret 123")
@@ -747,10 +760,12 @@ func TestService_IsAdmin(t *testing.T) {
 	defer teardown(t)
 	// two comments for https://radio-t.com
 	b := DataStore{Engine: prepStoreEngine(t), EditDuration: 100 * time.Millisecond,
-		AdminStore: admin.NewStaticStore("secret 123", []string{"user2"}, "user@email.com")}
+		AdminStore: admin.NewStaticStore("secret 123", []string{"radio-t"}, []string{"user2"}, "user@email.com")}
 
 	assert.False(t, b.IsAdmin("radio-t", "user1"))
 	assert.True(t, b.IsAdmin("radio-t", "user2"))
+	assert.False(t, b.IsAdmin("radio-t-bad", "user1"))
+
 }
 
 func TestService_HasReplies(t *testing.T) {
@@ -758,7 +773,7 @@ func TestService_HasReplies(t *testing.T) {
 
 	// two comments for https://radio-t.com, no reply
 	b := DataStore{Engine: prepStoreEngine(t), EditDuration: 100 * time.Millisecond,
-		AdminStore: admin.NewStaticStore("secret 123", []string{"user2"}, "user@email.com")}
+		AdminStore: admin.NewStaticStore("secret 123", []string{"radio-t"}, []string{"user2"}, "user@email.com")}
 
 	comment := store.Comment{
 		ID:        "id-1",
@@ -789,7 +804,7 @@ func TestService_UserReplies(t *testing.T) {
 
 	// two comments for https://radio-t.com, no reply
 	b := DataStore{Engine: prepStoreEngine(t),
-		AdminStore: admin.NewStaticStore("secret 123", []string{"user2"}, "user@email.com")}
+		AdminStore: admin.NewStaticStore("secret 123", nil, []string{"user2"}, "user@email.com")}
 
 	c1 := store.Comment{
 		ID:      "comment-id-1",
@@ -867,7 +882,7 @@ func TestService_Find(t *testing.T) {
 
 	// two comments for https://radio-t.com, no reply
 	b := DataStore{Engine: prepStoreEngine(t), EditDuration: 100 * time.Millisecond,
-		AdminStore: admin.NewStaticStore("secret 123", []string{"user2"}, "user@email.com")}
+		AdminStore: admin.NewStaticStore("secret 123", nil, []string{"user2"}, "user@email.com")}
 
 	res, err := b.Find(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "time", store.User{})
 	require.NoError(t, err)
@@ -899,7 +914,7 @@ func TestService_Find(t *testing.T) {
 func TestService_FindSince(t *testing.T) {
 	// two comments for https://radio-t.com, no reply
 	b := DataStore{Engine: prepStoreEngine(t), EditDuration: 100 * time.Millisecond,
-		AdminStore: admin.NewStaticStore("secret 123", []string{"user2"}, "user@email.com")}
+		AdminStore: admin.NewStaticStore("secret 123", nil, []string{"user2"}, "user@email.com")}
 
 	res, err := b.FindSince(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "time", store.User{}, time.Time{})
 	require.NoError(t, err)
@@ -918,7 +933,7 @@ func TestService_Info(t *testing.T) {
 
 	// two comments for https://radio-t.com, no reply
 	b := DataStore{Engine: prepStoreEngine(t), EditDuration: 100 * time.Millisecond,
-		AdminStore: admin.NewStaticStore("secret 123", []string{"user2"}, "user@email.com")}
+		AdminStore: admin.NewStaticStore("secret 123", nil, []string{"user2"}, "user@email.com")}
 
 	info, err := b.Info(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, 0)
 	require.NoError(t, err)
@@ -939,7 +954,7 @@ func TestService_Delete(t *testing.T) {
 
 	// two comments for https://radio-t.com, no reply
 	b := DataStore{Engine: prepStoreEngine(t), EditDuration: 100 * time.Millisecond,
-		AdminStore: admin.NewStaticStore("secret 123", []string{"user2"}, "user@email.com")}
+		AdminStore: admin.NewStaticStore("secret 123", nil, []string{"user2"}, "user@email.com")}
 
 	res, err := b.Last("radio-t", 0, time.Time{}, store.User{})
 	assert.Equal(t, 2, len(res))
@@ -958,7 +973,7 @@ func TestService_DeleteUser(t *testing.T) {
 	defer teardown(t)
 	// two comments for https://radio-t.com, no reply
 	b := DataStore{Engine: prepStoreEngine(t), EditDuration: 100 * time.Millisecond,
-		AdminStore: admin.NewStaticStore("secret 123", []string{"user2"}, "user@email.com")}
+		AdminStore: admin.NewStaticStore("secret 123", nil, []string{"user2"}, "user@email.com")}
 
 	// add one more for user2
 	comment := store.Comment{
@@ -988,7 +1003,7 @@ func TestService_List(t *testing.T) {
 	defer teardown(t)
 	// two comments for https://radio-t.com, no reply
 	b := DataStore{Engine: prepStoreEngine(t), EditDuration: 100 * time.Millisecond,
-		AdminStore: admin.NewStaticStore("secret 123", []string{"user2"}, "user@email.com")}
+		AdminStore: admin.NewStaticStore("secret 123", nil, []string{"user2"}, "user@email.com")}
 
 	// add one more for user2
 	comment := store.Comment{
@@ -1019,7 +1034,7 @@ func TestService_Count(t *testing.T) {
 	defer teardown(t)
 	// two comments for https://radio-t.com, no reply
 	b := DataStore{Engine: prepStoreEngine(t), EditDuration: 100 * time.Millisecond,
-		AdminStore: admin.NewStaticStore("secret 123", []string{"user2"}, "user@email.com")}
+		AdminStore: admin.NewStaticStore("secret 123", nil, []string{"user2"}, "user@email.com")}
 
 	// add one more for user2
 	comment := store.Comment{
@@ -1049,7 +1064,7 @@ func TestService_UserCount(t *testing.T) {
 	defer teardown(t)
 	// two comments for https://radio-t.com, no reply
 	b := DataStore{Engine: prepStoreEngine(t), EditDuration: 100 * time.Millisecond,
-		AdminStore: admin.NewStaticStore("secret 123", []string{"user2"}, "user@email.com")}
+		AdminStore: admin.NewStaticStore("secret 123", nil, []string{"user2"}, "user@email.com")}
 
 	// add one more for user2
 	comment := store.Comment{
@@ -1078,7 +1093,7 @@ func TestService_DeleteAll(t *testing.T) {
 	defer teardown(t)
 	// two comments for https://radio-t.com, no reply
 	b := DataStore{Engine: prepStoreEngine(t), EditDuration: 100 * time.Millisecond,
-		AdminStore: admin.NewStaticStore("secret 123", []string{"user2"}, "user@email.com")}
+		AdminStore: admin.NewStaticStore("secret 123", nil, []string{"user2"}, "user@email.com")}
 
 	// add one more for user2
 	comment := store.Comment{

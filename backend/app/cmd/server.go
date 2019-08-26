@@ -509,7 +509,7 @@ func (s *ServerCommand) makeAdminStore() (admin.Store, error) {
 				s.Admin.Shared.Email = "admin@" + u.Host
 			}
 		}
-		return admin.NewStaticStore(s.SharedSecret, s.Admin.Shared.Admins, s.Admin.Shared.Email), nil
+		return admin.NewStaticStore(s.SharedSecret, s.Sites, s.Admin.Shared.Admins, s.Admin.Shared.Email), nil
 	case "rpc":
 		r := &admin.RPC{Client: jrpc.Client{
 			API:        s.Admin.RPC.API,
@@ -693,6 +693,9 @@ func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Sto
 		AdminPasswd: s.AdminPasswd,
 		Validator: token.ValidatorFunc(func(token string, claims token.Claims) bool { // check on each auth call (in middleware)
 			if claims.User == nil {
+				return false
+			}
+			if claims.User.Audience == "" { // reject empty aud, made with old (pre 0.8.x) version of auth package
 				return false
 			}
 			return !claims.User.BoolAttr("blocked")
