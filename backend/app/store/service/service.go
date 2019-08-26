@@ -832,7 +832,7 @@ func (s *DataStore) getSecret(siteID string) (secret string, err error) {
 		return "", errors.Wrapf(err, "can't check secret enabled for site %s", siteID)
 	}
 	if !ok {
-		return "", errors.Wrapf(err, "site %s disabled", siteID)
+		return "", errors.Errorf("site %s disabled", siteID)
 	}
 	return secret, nil
 }

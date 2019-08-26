@@ -51,6 +51,19 @@ func TestService_CreateFromEmpty(t *testing.T) {
 	assert.Equal(t, map[string]bool(nil), res.Votes)
 }
 
+func TestService_CreateSiteDisabled(t *testing.T) {
+	defer teardown(t)
+	ks := admin.NewStaticStore("secret 123", []string{"xxx"}, nil, "email")
+	b := DataStore{Engine: prepStoreEngine(t), AdminStore: ks}
+	comment := store.Comment{
+		Text:    "text",
+		User:    store.User{IP: "192.168.1.1", ID: "user", Name: "name"},
+		Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+	}
+	_, err := b.Create(comment)
+	assert.EqualError(t, err, "failed to prepare comment: can't get secret for site radio-t: site radio-t disabled")
+}
+
 func TestService_CreateFromPartial(t *testing.T) {
 	defer teardown(t)
 	ks := admin.NewStaticKeyStore("secret 123")
