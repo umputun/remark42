@@ -42,9 +42,10 @@ func (s *RPC) addHandlers() {
 
 	// admin store handlers
 	s.Group("admin", jrpc.HandlersGroup{
-		"key":    s.admKeyHndl,
-		"admins": s.admAdminsHndl,
-		"email":  s.admEmailHndl,
+		"key":     s.admKeyHndl,
+		"admins":  s.admAdminsHndl,
+		"email":   s.admEmailHndl,
+		"enabled": s.admEnabledHndl,
 	})
 }
 
@@ -180,4 +181,18 @@ func (s *RPC) admEmailHndl(id uint64, params json.RawMessage) (rr jrpc.Response)
 		return jrpc.Response{Error: err.Error()}
 	}
 	return jrpc.EncodeResponse(id, email, err)
+}
+
+// get admin email
+func (s *RPC) admEnabledHndl(id uint64, params json.RawMessage) (rr jrpc.Response) {
+	var siteID string
+	if err := json.Unmarshal(params, &siteID); err != nil {
+		return jrpc.Response{Error: err.Error()}
+	}
+
+	ok, err := s.adm.Enabled(siteID)
+	if err != nil {
+		return jrpc.Response{Error: err.Error()}
+	}
+	return jrpc.EncodeResponse(id, ok, err)
 }

@@ -19,9 +19,10 @@ type MemAdmin struct {
 
 // AdminRec is a records per site with all admin info in
 type AdminRec struct {
-	SiteID string   `bson:"site"`
-	IDs    []string `bson:"ids"`   // admin ids
-	Email  string   `bson:"email"` // admin email
+	SiteID  string
+	IDs     []string // admin ids
+	Email   string   // admin email
+	Enabled bool     // site enabled
 }
 
 // NewMemAdminStore makes admin Store in memory
@@ -53,6 +54,15 @@ func (m *MemAdmin) Email(siteID string) (email string, err error) {
 	}
 
 	return resp.Email, nil
+}
+
+// Enabled return
+func (m *MemAdmin) Enabled(siteID string) (ok bool, err error) {
+	resp, ok := m.data[siteID]
+	if !ok {
+		return false, errors.Errorf("site %s not found", siteID)
+	}
+	return resp.Enabled, nil
 }
 
 // Set admin data for siteID
