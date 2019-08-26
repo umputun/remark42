@@ -183,7 +183,7 @@ func (s *RPC) admEmailHndl(id uint64, params json.RawMessage) (rr jrpc.Response)
 	return jrpc.EncodeResponse(id, email, err)
 }
 
-// get admin email
+// return site enabled status
 func (s *RPC) admEnabledHndl(id uint64, params json.RawMessage) (rr jrpc.Response) {
 	var siteID string
 	if err := json.Unmarshal(params, &siteID); err != nil {
