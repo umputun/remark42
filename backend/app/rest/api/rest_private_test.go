@@ -140,8 +140,17 @@ func TestRest_CreateRejected(t *testing.T) {
 
 	// try to create without auth
 	resp, err := http.Post(ts.URL+"/api/v1/comment", "", strings.NewReader(body))
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 401, resp.StatusCode)
+
+	// try with wrong aud
+	client := &http.Client{Timeout: 5 * time.Second}
+	req, err := http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(body))
+	require.Nil(t, err)
+	req.Header.Add("X-JWT", devTokenBadAud)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusForbidden, resp.StatusCode, "reject wrong aud")
 }
 
 func TestRest_CreateAndGet(t *testing.T) {
@@ -312,6 +321,24 @@ func TestRest_UpdateNotOwner(t *testing.T) {
 	b, err = client.Do(req)
 	assert.Nil(t, err)
 	assert.Equal(t, 400, b.StatusCode, string(body), "update is not json")
+}
+
+func TestRest_UpdateWrongAud(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	c1 := store.Comment{Text: "test test #1", ParentID: "p1",
+		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
+	id := addComment(t, c1, ts)
+
+	client := http.Client{}
+	req, err := http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/"+id+"?site=remark42&url=https://radio-t.com/blah1",
+		strings.NewReader(`{"text":"updated text", "summary":"my edit"}`))
+	assert.Nil(t, err)
+	req.Header.Add("X-JWT", devTokenBadAud)
+	b, err := client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusForbidden, b.StatusCode, "reject update with wrong aut in jwt")
 }
 
 func TestRest_UpdateWithRestrictedWords(t *testing.T) {
