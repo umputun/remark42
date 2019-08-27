@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -92,6 +93,7 @@ type ServerCommand struct {
 			SMTPUserName string        `long:"user" env:"USER" description:"smtp user name"`
 			SMTPPassword string        `long:"passwd" env:"PASSWD" description:"smtp password"`
 			TimeOut      time.Duration `long:"timeout" env:"TIMEOUT" default:"10s" description:"smtp timeout"`
+			MsgTemplate  string        `long:"template" env:"TEMPLATE" description:"message template file"`
 		} `group:"email" namespace:"email" env-namespace:"EMAIL"`
 	} `group:"auth" namespace:"auth" env-namespace:"AUTH"`
 
@@ -600,7 +602,7 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) {
 			TimeOut:      s.Auth.Email.TimeOut,
 		}
 		sndr := sender.NewEmailClient(params, log.Default())
-		authenticator.AddVerifProvider("email", msgTemplate, sndr)
+		authenticator.AddVerifProvider("email", s.loadEmailTemplate(), sndr)
 	}
 
 	if s.Auth.Anonymous {
@@ -624,6 +626,22 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) {
 	if providers == 0 {
 		log.Printf("[WARN] no auth providers defined")
 	}
+}
+
+// loadEmailTemplate trying to get template from opts MsgTemplate and default to embedded
+// if not defined or failed to load
+func (s *ServerCommand) loadEmailTemplate() string {
+	tmpl := msgTemplate
+	if s.Auth.Email.MsgTemplate != "" {
+		log.Printf("[DEBUG] load email template from %s", s.Auth.Email.MsgTemplate)
+		b, err := ioutil.ReadFile(s.Auth.Email.MsgTemplate)
+		if err == nil {
+			tmpl = string(b)
+		} else {
+			log.Printf("[WARN] failed to load email template from %s, %v", s.Auth.Email.MsgTemplate, err)
+		}
+	}
+	return tmpl
 }
 
 func (s *ServerCommand) makeNotify(dataStore *service.DataStore) (*notify.Service, error) {

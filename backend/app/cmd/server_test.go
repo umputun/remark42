@@ -431,6 +431,21 @@ func TestServerAuthHooks(t *testing.T) {
 	app.Wait()
 }
 
+func TestServer_loadEmailTemplate(t *testing.T) {
+	cmd := ServerCommand{}
+	cmd.Auth.Email.MsgTemplate = "testdata/email.tmpl"
+	r := cmd.loadEmailTemplate()
+	assert.Equal(t, "The token is {{.Token}}", r)
+
+	cmd.Auth.Email.MsgTemplate = ""
+	r = cmd.loadEmailTemplate()
+	assert.Contains(t, r, "Remark42</h1>")
+
+	cmd.Auth.Email.MsgTemplate = "bad-file"
+	r = cmd.loadEmailTemplate()
+	assert.Contains(t, r, "Remark42</h1>")
+}
+
 func prepServerApp(t *testing.T, duration time.Duration, fn func(o ServerCommand) ServerCommand) (*serverApp, context.Context) {
 	cmd := ServerCommand{}
 	cmd.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "secret"})
@@ -446,6 +461,8 @@ func prepServerApp(t *testing.T, duration time.Duration, fn func(o ServerCommand
 	cmd.Auth.Google.CSEC, cmd.Auth.Google.CID = "csec", "cid"
 	cmd.Auth.Facebook.CSEC, cmd.Auth.Facebook.CID = "csec", "cid"
 	cmd.Auth.Yandex.CSEC, cmd.Auth.Yandex.CID = "csec", "cid"
+	cmd.Auth.Email.Enable = true
+	cmd.Auth.Email.MsgTemplate = "testdata/email.tmpl"
 	cmd.BackupLocation = "/tmp"
 	cmd.Notify.Type = "telegram"
 	cmd.Notify.Telegram.API = "http://127.0.0.1:12340/"
