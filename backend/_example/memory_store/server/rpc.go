@@ -46,6 +46,7 @@ func (s *RPC) addHandlers() {
 		"admins":  s.admAdminsHndl,
 		"email":   s.admEmailHndl,
 		"enabled": s.admEnabledHndl,
+		"event":   s.admEventHndl,
 	})
 }
 
@@ -195,4 +196,26 @@ func (s *RPC) admEnabledHndl(id uint64, params json.RawMessage) (rr jrpc.Respons
 		return jrpc.Response{Error: err.Error()}
 	}
 	return jrpc.EncodeResponse(id, ok, err)
+}
+
+// onEvent returns nothing, callback to OnEvent
+func (s *RPC) admEventHndl(id uint64, params json.RawMessage) (rr jrpc.Response) {
+	var siteID string
+	ps := []interface{}{}
+	if err := json.Unmarshal(params, &ps); err != nil {
+		return jrpc.Response{Error: err.Error()}
+	}
+	siteID, ok := ps[0].(string)
+	if !ok {
+		return jrpc.Response{Error: "wrong siteID type"}
+	}
+	evType, ok := ps[1].(float64)
+	if !ok {
+		return jrpc.Response{Error: "wrong event type"}
+	}
+	err := s.adm.OnEvent(siteID, admin.EventType(evType))
+	if err != nil {
+		return jrpc.Response{Error: err.Error()}
+	}
+	return jrpc.EncodeResponse(id, nil, err)
 }

@@ -14,7 +14,19 @@ type Store interface {
 	Admins(siteID string) (ids []string, err error)
 	Email(siteID string) (email string, err error)
 	Enabled(siteID string) (ok bool, err error)
+	OnEvent(siteID string, et EventType) error
 }
+
+// EventType indicates type of the event
+type EventType int
+
+// enum of all event types
+const (
+	EvCreate EventType = iota
+	EvDelete
+	EvUpdate
+	EvVote
+)
 
 // StaticStore implements keys.Store with a single set of admins and email for all sites
 type StaticStore struct {
@@ -65,3 +77,6 @@ func (s *StaticStore) Enabled(site string) (ok bool, err error) {
 	}
 	return false, nil
 }
+
+// OnEvent doesn nothing for StaticStore
+func (s *StaticStore) OnEvent(siteID string, et EventType) error { return nil }

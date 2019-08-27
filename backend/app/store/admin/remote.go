@@ -66,3 +66,12 @@ func (r *RPC) Enabled(siteID string) (ok bool, err error) {
 	}
 	return ok, nil
 }
+
+// OnEvent reacts (register) events about data modification
+func (r *RPC) OnEvent(siteID string, et EventType) error {
+	_, err := r.Call("admin.event", siteID, et)
+	if err != nil {
+		return err
+	}
+	return nil
+}

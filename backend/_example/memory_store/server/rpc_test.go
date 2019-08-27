@@ -311,6 +311,20 @@ func TestRPC_admEnabledHndl(t *testing.T) {
 	assert.Equal(t, false, ok)
 }
 
+
+func TestRPC_admEventHndl(t *testing.T) {
+	_, port, teardown := prepTestStore(t)
+	defer teardown()
+	api := fmt.Sprintf("http://localhost:%d/test", port)
+
+	ra := admin.RPC{Client: jrpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
+	err := ra.OnEvent("bad site", admin.EvCreate)
+	assert.EqualError(t, err, "site bad site not found")
+
+	err = ra.OnEvent("test-site", admin.EvCreate)
+	assert.NoError(t, err)
+}
+
 func prepTestStore(t *testing.T) (s *RPC, port int, teardown func()) {
 	port = 40000 + int(rand.Int31n(10000))
 
