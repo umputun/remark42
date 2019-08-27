@@ -376,6 +376,9 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 	}
 
 	if req.Delete { // delete request
+		if e := s.AdminStore.OnEvent(comment.Locator.SiteID, admin.EvDelete); e != nil {
+			log.Printf("[WARN] failed to send delete event, %s", e)
+		}
 		comment.Deleted = true
 		delReq := engine.DeleteRequest{Locator: locator, CommentID: commentID, DeleteMode: store.SoftDelete}
 		return comment, s.Engine.Delete(delReq)
