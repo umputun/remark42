@@ -102,6 +102,10 @@ func (s *DataStore) Create(comment store.Comment) (commentID string, err error) 
 	}()
 
 	s.submitImages(comment)
+	if e := s.AdminStore.OnEvent(comment.Locator.SiteID, admin.EvCreate); e != nil {
+		log.Printf("[WARN] failed to send create event, %s", e)
+	}
+
 	return s.Engine.Create(comment)
 }
 
@@ -306,6 +310,10 @@ func (s *DataStore) Vote(req VoteReq) (comment store.Comment, err error) {
 		}
 	}
 
+	if e := s.AdminStore.OnEvent(comment.Locator.SiteID, admin.EvVote); e != nil {
+		log.Printf("[WARN] failed to send vote event, %s", e)
+	}
+
 	comment.Controversy = s.controversy(s.upsAndDowns(comment))
 	comment.Locator = req.Locator
 	return comment, s.Engine.Update(comment)
@@ -368,6 +376,9 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 	}
 
 	if req.Delete { // delete request
+		if e := s.AdminStore.OnEvent(comment.Locator.SiteID, admin.EvDelete); e != nil {
+			log.Printf("[WARN] failed to send delete event, %s", e)
+		}
 		comment.Deleted = true
 		delReq := engine.DeleteRequest{Locator: locator, CommentID: commentID, DeleteMode: store.SoftDelete}
 		return comment, s.Engine.Delete(delReq)
@@ -385,6 +396,10 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 	}
 	comment.Locator = locator
 	comment.Sanitize()
+
+	if e := s.AdminStore.OnEvent(comment.Locator.SiteID, admin.EvUpdate); e != nil {
+		log.Printf("[WARN] failed to send update event, %s", e)
+	}
 
 	err = s.Engine.Update(comment)
 	return comment, err
@@ -608,6 +623,9 @@ func (s *DataStore) Info(locator store.Locator, readonlyAge int) (store.PostInfo
 
 // Delete comment by id
 func (s *DataStore) Delete(locator store.Locator, commentID string, mode store.DeleteMode) error {
+	if e := s.AdminStore.OnEvent(locator.SiteID, admin.EvDelete); e != nil {
+		log.Printf("[WARN] failed to send delete event, %s", e)
+	}
 	req := engine.DeleteRequest{Locator: locator, CommentID: commentID, DeleteMode: mode}
 	return s.Engine.Delete(req)
 }

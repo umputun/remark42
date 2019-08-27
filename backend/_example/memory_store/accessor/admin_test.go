@@ -20,9 +20,9 @@ func TestMemAdmin_Get(t *testing.T) {
 	var ms admin.Store = adm
 
 	adm.data = map[string]AdminRec{
-		"site1": {"site1", []string{"i11", "i12"}, "e1", true},
-		"site2": {"site2", []string{"i21", "i22"}, "e2", true},
-		"site3": {"site3", []string{"i21", "i22"}, "e3", false},
+		"site1": {"site1", []string{"i11", "i12"}, "e1", true, 0},
+		"site2": {"site2", []string{"i21", "i22"}, "e2", true, 0},
+		"site3": {"site3", []string{"i21", "i22"}, "e3", false, 0},
 	}
 
 	admins, err := ms.Admins("site1")
