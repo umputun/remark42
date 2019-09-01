@@ -72,7 +72,7 @@ func TestServerApp_DevMode(t *testing.T) {
 	go func() { _ = app.run(ctx) }()
 	time.Sleep(100 * time.Millisecond) // let server start
 
-	assert.Equal(t, 4+1, len(app.restSrv.Authenticator.Providers()), "extra auth provider")
+	assert.Equal(t, 5+1, len(app.restSrv.Authenticator.Providers()), "extra auth provider")
 	assert.Equal(t, "dev", app.restSrv.Authenticator.Providers()[4].Name(), "dev auth provider")
 	// send ping
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/ping", port))
