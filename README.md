@@ -149,7 +149,7 @@ _this is the recommended way to run remark42_
 | auth.email.user         | AUTH_EMAIL_USER         |                          | smtp user name                                   |
 | auth.email.passwd       | AUTH_EMAIL_PASSWD       |                          | smtp password                                    |
 | auth.email.timeout      | AUTH_EMAIL_TIMEOUT      | `10s`                    | smtp timeout                                     |
-| auth.email.template     | AUTH_EMAIL_TEMPLATE     | none (predefined)        | custom email message template                    |   
+| auth.email.template     | AUTH_EMAIL_TEMPLATE     | none (predefined)        | custom email message template file               |   
 | notify.type             | NOTIFY_TYPE             | none                     | type of notification (none or telegram)          |
 | notify.queue            | NOTIFY_QUEUE            | `100`                    | size of notification queue                       |
 | notify.telegram.token   | NOTIFY_TELEGRAM_TOKEN   |                          | telegram token                                   |
