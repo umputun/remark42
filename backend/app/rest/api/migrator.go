@@ -24,7 +24,7 @@ import (
 // Migrator rest with import and export controllers
 type Migrator struct {
 	Cache             cache.LoadingCache
-	NativeImporter    migrator.Importer
+	NativeImporter    migrator.MapImporter
 	DisqusImporter    migrator.Importer
 	WordPressImporter migrator.Importer
 	NativeExporter    migrator.Exporter
@@ -57,7 +57,7 @@ func (m *Migrator) importCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	go m.runImport(siteID, r.URL.Query().Get("provider"), tmpfile) // import runs in background and sets busy flag for site
+	go m.runImport(siteID, r.URL.Query().Get("provider"), tmpfile, nil) // import runs in background and sets busy flag for site
 
 	render.Status(r, http.StatusAccepted)
 	render.JSON(w, r, R.JSON{"status": "import request accepted"})
@@ -92,7 +92,7 @@ func (m *Migrator) importFormCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	go m.runImport(siteID, r.URL.Query().Get("provider"), tmpfile) // import runs in background and sets busy flag for site
+	go m.runImport(siteID, r.URL.Query().Get("provider"), tmpfile, nil) // import runs in background and sets busy flag for site
 
 	render.Status(r, http.StatusAccepted)
 	render.JSON(w, r, R.JSON{"status": "import request accepted"})
@@ -152,8 +152,41 @@ func (m *Migrator) exportCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// POST /import?site=site-id
+// converts urls in comments based on given rules ("oldUrl":"newUrl")
+func (m *Migrator) convertCtrl(w http.ResponseWriter, r *http.Request) {
+	siteID := r.URL.Query().Get("site")
+
+	// do export
+	backupFile := fmt.Sprintf("backup-%s-%s.gz", siteID, time.Now().Format("20060102"))
+	fh, err := os.Create(backupFile)
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "export failed", rest.ErrInternal)
+		return
+	}
+	gz := gzip.NewWriter(fh)
+	if _, err := m.NativeExporter.Export(gz, siteID); err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "export failed", rest.ErrInternal)
+		return
+	}
+
+	// make url-mapper from request body
+	mapper, err := migrator.NewUrlMapper(r.Body)
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "building mapper failed", rest.ErrInternal)
+		return
+	}
+	defer r.Body.Close()
+
+	// run import
+	go m.runImport(siteID, "native", backupFile, mapper) // import runs in background and sets busy flag for site
+
+	render.Status(r, http.StatusAccepted)
+	render.JSON(w, r, R.JSON{"status": "convert request accepted"})
+}
+
 // runImport reads from tmpfile and import for given siteID and provider
-func (m *Migrator) runImport(siteID string, provider string, tmpfile string) {
+func (m *Migrator) runImport(siteID string, provider string, tmpfile string, mapper migrator.Mapper) {
 	m.setBusy(siteID, true)
 
 	defer func() {
@@ -163,15 +196,6 @@ func (m *Migrator) runImport(siteID string, provider string, tmpfile string) {
 		}
 	}()
 
-	var importer migrator.Importer
-	switch provider {
-	case "disqus":
-		importer = m.DisqusImporter
-	case "wordpress":
-		importer = m.WordPressImporter
-	default:
-		importer = m.NativeImporter
-	}
 	log.Printf("[DEBUG] import request for site=%s, provider=%s", siteID, provider)
 
 	fh, err := os.Open(tmpfile)
@@ -180,7 +204,16 @@ func (m *Migrator) runImport(siteID string, provider string, tmpfile string) {
 		return
 	}
 
-	size, err := importer.Import(fh, siteID)
+	var size int
+	switch provider {
+	case "disqus":
+		size, err = m.DisqusImporter.Import(fh, siteID)
+	case "wordpress":
+		size, err = m.WordPressImporter.Import(fh, siteID)
+	default:
+		size, err = m.NativeImporter.MapImport(fh, siteID, mapper)
+	}
+
 	if err != nil {
 		log.Printf("[WARN] import failed, %v", err)
 		return

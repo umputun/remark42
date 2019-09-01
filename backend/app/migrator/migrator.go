@@ -24,6 +24,14 @@ type Exporter interface {
 	Export(w io.Writer, siteID string) (int, error)
 }
 
+type MapImporter interface {
+	MapImport(r io.Reader, siteID string, mapper Mapper) (int, error)
+}
+
+type Mapper interface {
+	URL(url string) string
+}
+
 // Store defines minimal interface needed to export and import comments
 type Store interface {
 	Create(comment store.Comment) (commentID string, err error)

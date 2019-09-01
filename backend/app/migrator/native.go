@@ -18,7 +18,7 @@ import (
 const nativeVersion = 1
 const defaultConcurrent = 8
 
-// Native implements exporter and importer for internal store format
+// Native implements exporter, importer and mapImporter for internal store format
 // {"version": 1, comments:[{...}\n,{}], meta: {meta}}
 // each comments starts from the new line
 type Native struct {
@@ -88,12 +88,26 @@ func (n *Native) exportMeta(siteID string, w io.Writer) (err error) {
 }
 
 // Import comments from json strings produced by Remark.Export
-func (n *Native) Import(reader io.Reader, siteID string) (size int, err error) {
+func (n *Native) Import(reader io.Reader, siteID string) (int, error) {
+	return n.doImport(reader, siteID, nil)
+}
+
+// MapImport converts urls and performs import
+func (n *Native) MapImport(reader io.Reader, siteID string, mapper Mapper) (int, error) {
+	return n.doImport(reader, siteID, mapper)
+}
+
+func (n *Native) doImport(reader io.Reader, siteID string, mapper Mapper) (size int, err error) {
 
 	m := meta{}
 	dec := json.NewDecoder(reader)
 	if err = dec.Decode(&m); err != nil {
 		return 0, errors.Wrapf(err, "failed to import meta for site %s", siteID)
+	}
+	if mapper != nil {
+		for _, post := range m.Posts {
+			post.URL = mapper.URL(post.URL)
+		}
 	}
 
 	if m.Version != nativeVersion && m.Version != 0 { // this version allows back compatibility with 0 version
@@ -125,6 +139,11 @@ func (n *Native) Import(reader io.Reader, siteID string) (size int, err error) {
 			atomic.AddInt64(&failed, 1)
 			failed++
 			continue
+		}
+
+		// convert url in comment if url-mapper given
+		if mapper != nil {
+			comment.Locator.URL = mapper.URL(comment.Locator.URL)
 		}
 
 		// write comments in parallel

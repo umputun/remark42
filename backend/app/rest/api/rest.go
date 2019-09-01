@@ -284,6 +284,7 @@ func (s *Rest) routes() chi.Router {
 			// migrator
 			radmin.Get("/export", s.adminRest.migrator.exportCtrl)
 			radmin.Post("/import", s.adminRest.migrator.importCtrl)
+			radmin.Post("/convert", s.adminRest.migrator.convertCtrl)
 			radmin.Post("/import/form", s.adminRest.migrator.importFormCtrl)
 			radmin.Get("/import/wait", s.adminRest.migrator.importWaitCtrl)
 		})
