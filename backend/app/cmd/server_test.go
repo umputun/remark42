@@ -97,8 +97,8 @@ func TestServerApp_AnonMode(t *testing.T) {
 	go func() { _ = app.run(ctx) }()
 	time.Sleep(100 * time.Millisecond) // let server start
 
-	assert.Equal(t, 4+1, len(app.restSrv.Authenticator.Providers()), "extra auth provider for anon")
-	assert.Equal(t, "anonymous", app.restSrv.Authenticator.Providers()[4].Name(), "anon auth provider")
+	assert.Equal(t, 5+1, len(app.restSrv.Authenticator.Providers()), "extra auth provider for anon")
+	assert.Equal(t, "anonymous", app.restSrv.Authenticator.Providers()[5].Name(), "anon auth provider")
 
 	// send ping
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/ping", port))
