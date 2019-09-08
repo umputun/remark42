@@ -152,6 +152,61 @@ func (m *Migrator) exportCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// POST /convert?site=site-id
+// converts urls in comments based on given rules ("oldUrl":"newUrl")
+func (m *Migrator) convertCtrl(w http.ResponseWriter, r *http.Request) {
+	siteID := r.URL.Query().Get("site")
+
+	// make url-mapper from request body
+	mapper, err := migrator.NewUrlMapper(r.Body)
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "convert failed", rest.ErrDecode)
+		return
+	}
+	defer r.Body.Close()
+
+	go func() {
+		m.setBusy(siteID, true)
+		defer m.setBusy(siteID, false)
+
+		// do export
+		fh, err := ioutil.TempFile("", "remark42_convert")
+		if err != nil {
+			log.Printf("[WARN] failed to make temp file %+v", err)
+			return
+		}
+		defer func() {
+			if err := os.Remove(fh.Name()); err != nil {
+				log.Printf("[WARN] failed to remove temp file %+v", err)
+			}
+		}()
+		log.Printf("[DEBUG] start export for site=%s", siteID)
+		if _, err := m.NativeExporter.Export(fh, siteID); err != nil {
+			log.Printf("[WARN] export failed with %+v", err)
+			return
+		}
+
+		if _, err = fh.Seek(0, 0); err != nil {
+			log.Printf("[WARN] failed to seek file %+v", err)
+			return
+		}
+
+		log.Printf("[DEBUG] start import for site=%s", siteID)
+		mappedReader := migrator.WithMapper(fh, mapper)
+		size, err := m.NativeImporter.Import(mappedReader, siteID)
+		if err != nil {
+			log.Printf("[WARN] import failed with %+v", err)
+			return
+		}
+
+		m.Cache.Flush(cache.Flusher(siteID).Scopes(siteID))
+		log.Printf("[DEBUG] convert request completed. size=%s, comments=%d", siteID, size)
+	}()
+
+	render.Status(r, http.StatusAccepted)
+	render.JSON(w, r, R.JSON{"status": "convert request accepted"})
+}
+
 // runImport reads from tmpfile and import for given siteID and provider
 func (m *Migrator) runImport(siteID string, provider string, tmpfile string) {
 	m.setBusy(siteID, true)
