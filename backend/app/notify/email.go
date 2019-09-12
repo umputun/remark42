@@ -118,21 +118,22 @@ func NewEmail(params EmailParams) (*Email, error) {
 	return &res, err
 }
 
-// Send email from request to address in settings via submit, thread safe
+// Send email from request to request.parent.User.Email if it's set, otherwise do nothing and return nil, thread safe
 // in case of ctx is closed message will be dropped
 // do not returns sending error, except following cases:
 // 1. (likely impossible) template execution error from email message creation from request
-// 2. message dropped error in case of closed ctx
+// 2. message dropped without sending in case of closed ctx
 func (e *Email) Send(ctx context.Context, req request) error {
 	// start auto flush once, as this is the first moment we see the context from caller
 	e.once.Do(func() {
 		// e.smtpClient initialised only in tests
 		go e.autoFlush(ctx, e.smtpClient)
 	})
+	if req.parent.User.Email == "" {
+		return nil
+	}
+	to := req.parent.User.Email
 	log.Printf("[DEBUG] send notification via %s, comment id %s", e, req.comment.ID)
-	// TODO: decide where to get "to" email from
-	// TODO: replace this email with something else in all tests
-	to := "recepient@replaceme"
 	msg, err := e.buildMessageFromRequest(req, to)
 	if err != nil {
 		return err

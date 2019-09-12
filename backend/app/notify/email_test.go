@@ -92,18 +92,18 @@ func TestEmailSendErrors(t *testing.T) {
 	e := Email{EmailParams: EmailParams{FlushDuration: time.Second}}
 	e.template, err = template.New("test").Parse("{{.Test}}")
 	assert.NoError(t, err)
-	assert.EqualError(t, e.Send(context.Background(), request{}),
+	assert.EqualError(t, e.Send(context.Background(), request{parent: store.Comment{User: store.User{Email: "bad@example.org"}}}),
 		"error executing template to build message from request: template: test:1:2: executing \"test\" at <.Test>: can't evaluate field Test in type notify.tmplData")
 	e.template, err = template.New("test").Parse(defaultEmailTemplate)
 	assert.NoError(t, err)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	assert.EqualError(t, e.Send(ctx, request{}),
-		"sending message to \"recepient@replaceme\" aborted due to canceled context")
+	assert.EqualError(t, e.Send(ctx, request{parent: store.Comment{User: store.User{Email: "bad@example.org"}}}),
+		"sending message to \"bad@example.org\" aborted due to canceled context")
 }
 
 func TestEmailSend(t *testing.T) {
-	const filledEmail = "From: test_sender\nTo: recepient@replaceme\n" +
+	const filledEmail = "From: test_sender\nTo: good_example@example.org\n" +
 		"Subject: New comment for \"test title\"\nMIME-version: 1.0;\nContent-Type: text/html;" +
 		" charset=\"UTF-8\";\n\ntest user name → test parent user name\n\n" +
 		"test comment orig\n\n↦ <a href=\"http://test#remark42__comment-1\">test title</a>\n"
@@ -118,16 +118,24 @@ func TestEmailSend(t *testing.T) {
 	go func() { testMessage = <-email.submit; waitGroup.Done() }()
 	assert.NoError(t, email.Send(context.Background(),
 		request{
-			comment: store.Comment{ID: "1", Orig: "test comment orig", User: store.User{Name: "test user name"},
+			comment: store.Comment{
+				ID: "1", Orig: "test comment orig",
+				User:      store.User{Name: "test user name"},
 				Locator:   store.Locator{URL: "http://test"},
 				PostTitle: "test title"},
-			parent: store.Comment{User: store.User{Name: "test parent user name"}}}))
+			parent: store.Comment{
+				User: store.User{
+					Name:  "test parent user name",
+					Email: "good_example@example.org",
+				}}}))
 	waitGroup.Wait()
-	assert.Equal(t, emailMessage{message: filledEmail, to: "recepient@replaceme"}, testMessage)
+	assert.Equal(t, emailMessage{message: filledEmail, to: "good_example@example.org"}, testMessage)
+	assert.Nil(t, email.Send(context.Background(), request{}),
+		"Message without parent comment User.Email is not sent and returns nil")
 }
 
 func TestEmailSendAndAutoFlush(t *testing.T) {
-	const emptyEmail = "From: test_sender\nTo: recepient@replaceme\nSubject: New comment\nMIME-version: 1.0;" +
+	const emptyEmail = "From: test_sender\nTo: test@example.org\nSubject: New comment\nMIME-version: 1.0;" +
 		"\nContent-Type: text/html; charset=\"UTF-8\";\n\n\n\n\n\n" +
 		"↦ <a href=\"#remark42__comment-\">original comment</a>\n"
 	var testSet = map[int]struct {
@@ -138,16 +146,18 @@ func TestEmailSendAndAutoFlush(t *testing.T) {
 		response, response2 string
 		waitForTicker       bool
 	}{
-		1: {smtp: &fakeTestSMTP{}, amount: 1, quitCount: 0}, // single message: still in buffer at the time context is closed, not sent
+		1: {smtp: &fakeTestSMTP{}, amount: 1, quitCount: 0,
+			request: request{parent: store.Comment{User: store.User{Email: "test@example.org"}}}}, // single message: still in buffer at the time context is closed, not sent
 		2: {smtp: &fakeTestSMTP{fail: map[string]bool{"data": true}}, amount: 4, quitCount: 1, mail: "test_sender", // four messages: three sent with failure, one discarded
-			rcpt: "recepient@replaceme"},
+			rcpt: "test@example.org", request: request{parent: store.Comment{User: store.User{Email: "test@example.org"}}}},
 		3: {smtp: &fakeTestSMTP{}, amount: 4, quitCount: 1, mail: "test_sender", // four messages: three sent, one discarded
-			rcpt:     "recepient@replaceme",
+			rcpt: "test@example.org", request: request{parent: store.Comment{User: store.User{Email: "test@example.org"}}},
 			response: strings.Repeat(emptyEmail, 3)},
 		4: {smtp: &fakeTestSMTP{}, amount: 10, quitCount: 3, // 10 messages, 1 abandoned by context exit
-			rcpt: "recepient@replaceme",
+			rcpt: "test@example.org", request: request{parent: store.Comment{User: store.User{Email: "test@example.org"}}},
 			mail: "test_sender", response: strings.Repeat(emptyEmail, 9)},
-		5: {smtp: &fakeTestSMTP{}, amount: 1, quitCount: 0, waitForTicker: true}, // one message sent by timer
+		5: {smtp: &fakeTestSMTP{}, amount: 1, quitCount: 0, waitForTicker: true, // one message sent by timer
+			request: request{parent: store.Comment{User: store.User{Email: "test@example.org"}}}},
 	}
 	for i, d := range testSet {
 		email, err := NewEmail(EmailParams{BufferSize: 3, From: "test_sender", FlushDuration: time.Millisecond * 200})
