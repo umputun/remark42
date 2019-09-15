@@ -258,7 +258,7 @@ func (s *Rest) routes() chi.Router {
 		rapi.Group(func(rauth chi.Router) {
 			rauth.Use(middleware.Timeout(30 * time.Second))
 			rauth.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
-			rauth.Use(authMiddleware.Auth, middleware.NoCache, logInfoWithBody)
+			rauth.Use(authMiddleware.Auth, matchSiteID, middleware.NoCache, logInfoWithBody)
 			rauth.Get("/user", s.privRest.userInfoCtrl)
 			rauth.Get("/userdata", s.privRest.userAllDataCtrl)
 		})
@@ -267,7 +267,7 @@ func (s *Rest) routes() chi.Router {
 		rapi.Route("/admin", func(radmin chi.Router) {
 			radmin.Use(middleware.Timeout(30 * time.Second))
 			radmin.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
-			radmin.Use(authMiddleware.Auth, authMiddleware.AdminOnly)
+			radmin.Use(authMiddleware.Auth, authMiddleware.AdminOnly, matchSiteID)
 			radmin.Use(middleware.NoCache, logInfoWithBody)
 
 			radmin.Delete("/comment/{id}", s.adminRest.deleteCommentCtrl)
@@ -293,7 +293,7 @@ func (s *Rest) routes() chi.Router {
 		rapi.Group(func(rauth chi.Router) {
 			rauth.Use(middleware.Timeout(10 * time.Second))
 			rauth.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(s.updateLimiter(), nil)))
-			rauth.Use(authMiddleware.Auth)
+			rauth.Use(authMiddleware.Auth, matchSiteID)
 			rauth.Use(middleware.NoCache)
 			rauth.Use(logger.New(logger.Log(log.Default()), logger.WithBody, logger.Prefix("[DEBUG]"), logger.IPfn(ipFn)).Handler)
 
@@ -307,7 +307,7 @@ func (s *Rest) routes() chi.Router {
 		rapi.Group(func(rauth chi.Router) {
 			rauth.Use(middleware.Timeout(10 * time.Second))
 			rauth.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(s.updateLimiter(), nil)))
-			rauth.Use(authMiddleware.Auth, rejectAnonUser)
+			rauth.Use(authMiddleware.Auth, rejectAnonUser, matchSiteID)
 			rauth.Use(logger.New(logger.Log(log.Default()), logger.Prefix("[DEBUG]"), logger.IPfn(ipFn)).Handler)
 			rauth.Post("/picture", s.privRest.savePictureCtrl)
 		})
@@ -511,6 +511,31 @@ func rejectAnonUser(next http.Handler) http.Handler {
 		}
 
 		if strings.HasPrefix(user.ID, "anonymous_") {
+			http.Error(w, "Access denied", http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
+	}
+	return http.HandlerFunc(fn)
+}
+
+// matchSiteID is a middleware rejecting users with mismatch between site param and and User.SiteID
+func matchSiteID(next http.Handler) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		user, err := rest.GetUserInfo(r)
+		if err != nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		// skip for basic auth user
+		if user.Name == "admin" && user.ID == "admin" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		siteID := r.URL.Query().Get("site")
+		if siteID != "" && user.SiteID != siteID {
 			http.Error(w, "Access denied", http.StatusForbidden)
 			return
 		}

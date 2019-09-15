@@ -39,16 +39,11 @@ import (
 var testHTML = "/tmp/test-remark.html"
 var getStartedHTML = "/tmp/getstarted.html"
 
-var devToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9." +
-	"eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6Mzc4OTE5MTgyMiwianRpIjoicmFuZG9tIGlkIiwiaXNzIjoicmVtYXJrNDIiLCJuYmYiOjE1MjE4ODQyMjIs" +
-	"InVzZXIiOnsibmFtZSI6ImRldmVsb3BlciBvbmUiLCJpZCI6ImRldiIsInBpY3R1cmUiOiJodHRwOi8vZXhhbXBsZS5jb20vcGljLnBuZyIsImlwIjoiMT" +
-	"I3LjAuMC4xIiwiZW1haWwiOiJtZUBleGFtcGxlLmNvbSJ9fQ.aKUAXiZxXypgV7m1wEOgUcyPOvUDXHDi3A06YWKbcLg"
+var devToken = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6Mzc4OTE5MTgyMiwianRpIjoicmFuZG9tIGlkIiwiaXNzIjoicmVtYXJrNDIiLCJuYmYiOjE1MjE4ODQyMjIsInVzZXIiOnsibmFtZSI6ImRldmVsb3BlciBvbmUiLCJpZCI6ImRldiIsInBpY3R1cmUiOiJodHRwOi8vZXhhbXBsZS5jb20vcGljLnBuZyIsImlwIjoiMTI3LjAuMC4xIiwiZW1haWwiOiJtZUBleGFtcGxlLmNvbSJ9fQ.aKUAXiZxXypgV7m1wEOgUcyPOvUDXHDi3A06YWKbcLg`
 
-var adminUmputunToken = "eyJhbGciOiJIUzI1NiJ9." +
-	"eyJhdWQiOiJyYWRpb3QiLCJleHAiOjE5NTQ1OTc5ODAsImp0aSI6Ijk3YTJlMGFjNGRjN2Q1ZjY5MjZkNWU4NjIwYWNlZjlhNDBjMCIsImlhdCI6MTQ1" +
-	"NDU5NzY4MCwiaXNzIjoicmVtYXJrNDIiLCJ1c2VyIjp7Im5hbWUiOiJVbXB1dHVuIiwiaWQiOiJnaXRodWJfZWYwZjcwNmE3IiwicGljdHVyZSI6Imh0" +
-	"dHBzOi8vcmVtYXJrNDIucmFkaW8tdC5jb20vYXBpL3YxL2F2YXRhci9jYjQyZmY0OTNhZGU2OTZkODhhM2E1OTBmMTM2YWU5ZTM0ZGU3YzFiLmltYWdlI" +
-	"iwiYXR0cnMiOnsiYWRtaW4iOnRydWUsImJsb2NrZWQiOmZhbHNlfX19.gAR_sZT7hTx7CNHByyrJQWMB5tAtoiISAiG8kes1IjA"
+var devTokenBadAud = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0Ml9iYWQiLCJleHAiOjM3ODkxOTE4MjIsImp0aSI6InJhbmRvbSBpZCIsImlzcyI6InJlbWFyazQyIiwibmJmIjoxNTIxODg0MjIyLCJ1c2VyIjp7Im5hbWUiOiJkZXZlbG9wZXIgb25lIiwiaWQiOiJkZXYiLCJwaWN0dXJlIjoiaHR0cDovL2V4YW1wbGUuY29tL3BpYy5wbmciLCJpcCI6IjEyNy4wLjAuMSIsImVtYWlsIjoibWVAZXhhbXBsZS5jb20ifX0.FuTTocVtcxr4VjpfIICvU2yOb3su28VkDzj94H9Q3xY`
+
+var adminUmputunToken = `eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6MTk1NDU5Nzk4MCwianRpIjoiOTdhMmUwYWM0ZGM3ZDVmNjkyNmQ1ZTg2MjBhY2VmOWE0MGMwIiwiaWF0IjoxNDU0NTk3NjgwLCJpc3MiOiJyZW1hcms0MiIsInVzZXIiOnsibmFtZSI6IlVtcHV0dW4iLCJpZCI6ImdpdGh1Yl9lZjBmNzA2YTciLCJwaWN0dXJlIjoiaHR0cHM6Ly9yZW1hcms0Mi5yYWRpby10LmNvbS9hcGkvdjEvYXZhdGFyL2NiNDJmZjQ5M2FkZTY5NmQ4OGEzYTU5MGYxMzZhZTllMzRkZTdjMWIuaW1hZ2UiLCJhdHRycyI6eyJhZG1pbiI6dHJ1ZSwiYmxvY2tlZCI6ZmFsc2V9fX0.dZiOjWHguo9f42XCMooMcv4EmYFzifl_-LEvPZHCtks`
 
 func TestRest_FileServer(t *testing.T) {
 	ts, _, teardown := startupT(t)
@@ -290,13 +285,13 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 	os.RemoveAll("/tmp/ava-remark42")
 	os.RemoveAll("/tmp/pics-remark42")
 
-	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDb, SiteID: "radio-t"})
+	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDb, SiteID: "remark42"})
 	require.Nil(t, err)
 
 	memCache, err := cache.NewMemoryCache()
 	assert.NoError(t, err)
 
-	astore := adminstore.NewStaticStore("123456", []string{"a1", "a2"}, "admin@remark-42.com")
+	astore := adminstore.NewStaticStore("123456", []string{"remark42"}, []string{"a1", "a2"}, "admin@remark-42.com")
 	restrictedWordsMatcher := service.NewRestrictedWordsMatcher(service.StaticRestrictedWordsLister{Words: []string{"duck"}})
 
 	dataStore := &service.DataStore{

@@ -21,7 +21,7 @@ func TestWordPress_Import(t *testing.T) {
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: siteID})
 	assert.Nil(t, err, "create store")
 
-	dataStore := service.DataStore{Engine: b, AdminStore: admin.NewStaticStore("12345", []string{}, "")}
+	dataStore := service.DataStore{Engine: b, AdminStore: admin.NewStaticStore("12345", nil, []string{}, "")}
 	wp := WordPress{DataStore: &dataStore}
 	size, err := wp.Import(strings.NewReader(xmlTestWP), siteID)
 	assert.Nil(t, err)

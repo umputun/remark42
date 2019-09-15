@@ -17,7 +17,7 @@ require (
 	github.com/go-chi/chi v4.0.2+incompatible
 	github.com/go-chi/cors v1.0.0
 	github.com/go-chi/render v1.0.1
-	github.com/go-pkgz/auth v0.8.2
+	github.com/go-pkgz/auth v0.8.3
 	github.com/go-pkgz/jrpc v0.1.0
 	github.com/go-pkgz/lcw v0.3.1
 	github.com/go-pkgz/lgr v0.6.3
@@ -33,7 +33,6 @@ require (
 	github.com/jessevdk/go-flags v0.0.0-20180331124232-1c38ed7ad0cc
 	github.com/klauspost/compress v1.7.6 // indirect
 	github.com/klauspost/cpuid v1.2.1 // indirect
-	github.com/kr/pretty v0.1.0 // indirect
 	github.com/kyokomi/emoji v2.1.0+incompatible
 	github.com/mattn/go-colorable v0.1.2 // indirect
 	github.com/mattn/go-isatty v0.0.9 // indirect
@@ -57,6 +56,5 @@ require (
 	golang.org/x/crypto v0.0.0-20190820162420-60c769a6c586
 	golang.org/x/image v0.0.0-20190823064033-3a9bac650e44
 	golang.org/x/net v0.0.0-20190813141303-74dc4d7220e7
-	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	gopkg.in/russross/blackfriday.v2 v2.0.1
 )

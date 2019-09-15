@@ -87,10 +87,10 @@ func (t *Tree) proc(comments []store.Comment, node *Node, rd *recurData, parentI
 
 	repComments := t.filter(comments, func(comment store.Comment) bool { return comment.ParentID == parentID })
 	for _, rc := range repComments {
-		if !rc.Timestamp.IsZero() && rc.Timestamp.After(rd.tsModified) {
+		if !rc.Timestamp.IsZero() && rc.Timestamp.After(rd.tsModified) && !rc.Deleted {
 			rd.tsModified = rc.Timestamp
 		}
-		if !rc.Timestamp.IsZero() && rc.Timestamp.Before(rd.tsCreated) {
+		if !rc.Timestamp.IsZero() && rc.Timestamp.Before(rd.tsCreated) && !rc.Deleted {
 			rd.tsCreated = rc.Timestamp
 		}
 		if !rc.Deleted {

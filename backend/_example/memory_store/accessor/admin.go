@@ -9,6 +9,7 @@ package accessor
 import (
 	log "github.com/go-pkgz/lgr"
 	"github.com/pkg/errors"
+	"github.com/umputun/remark/backend/app/store/admin"
 )
 
 // MemAdmin implements admin.Store with memory backend
@@ -19,9 +20,11 @@ type MemAdmin struct {
 
 // AdminRec is a records per site with all admin info in
 type AdminRec struct {
-	SiteID string   `bson:"site"`
-	IDs    []string `bson:"ids"`   // admin ids
-	Email  string   `bson:"email"` // admin email
+	SiteID       string
+	IDs          []string // admin ids
+	Email        string   // admin email
+	Enabled      bool     // site enabled
+	CountCreated int64    // number of created posts
 }
 
 // NewMemAdminStore makes admin Store in memory
@@ -53,6 +56,28 @@ func (m *MemAdmin) Email(siteID string) (email string, err error) {
 	}
 
 	return resp.Email, nil
+}
+
+// Enabled return
+func (m *MemAdmin) Enabled(siteID string) (ok bool, err error) {
+	resp, ok := m.data[siteID]
+	if !ok {
+		return false, errors.Errorf("site %s not found", siteID)
+	}
+	return resp.Enabled, nil
+}
+
+// OnEvent reacts on events from updates, created, delete and vote
+func (m *MemAdmin) OnEvent(siteID string, ev admin.EventType) error {
+	resp, ok := m.data[siteID]
+	if !ok {
+		return errors.Errorf("site %s not found", siteID)
+	}
+	if ev == admin.EvCreate {
+		resp.CountCreated += 1 // not a good idea, just for demo
+		m.data[siteID] = resp
+	}
+	return nil
 }
 
 // Set admin data for siteID

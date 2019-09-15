@@ -102,6 +102,10 @@ func (s *DataStore) Create(comment store.Comment) (commentID string, err error) 
 	}()
 
 	s.submitImages(comment)
+	if e := s.AdminStore.OnEvent(comment.Locator.SiteID, admin.EvCreate); e != nil {
+		log.Printf("[WARN] failed to send create event, %s", e)
+	}
+
 	return s.Engine.Create(comment)
 }
 
@@ -192,7 +196,7 @@ func (s *DataStore) prepareNewComment(comment store.Comment) (store.Comment, err
 	}
 	comment.Sanitize() // clear potentially dangerous js from all parts of comment
 
-	secret, err := s.AdminStore.Key()
+	secret, err := s.getSecret(comment.Locator.SiteID)
 	if err != nil {
 		return store.Comment{}, errors.Wrapf(err, "can't get secret for site %s", comment.Locator.SiteID)
 	}
@@ -251,7 +255,7 @@ func (s *DataStore) Vote(req VoteReq) (comment store.Comment, err error) {
 		return comment, errors.Errorf("user %s already voted for %s", req.UserID, req.CommentID)
 	}
 
-	secret, err := s.AdminStore.Key()
+	secret, err := s.getSecret(comment.Locator.SiteID)
 	if err != nil {
 		return store.Comment{}, errors.Wrapf(err, "can't get secret for site %s", comment.Locator.SiteID)
 	}
@@ -304,6 +308,10 @@ func (s *DataStore) Vote(req VoteReq) (comment store.Comment, err error) {
 		} else {
 			comment.Vote = -1
 		}
+	}
+
+	if e := s.AdminStore.OnEvent(comment.Locator.SiteID, admin.EvVote); e != nil {
+		log.Printf("[WARN] failed to send vote event, %s", e)
 	}
 
 	comment.Controversy = s.controversy(s.upsAndDowns(comment))
@@ -368,6 +376,9 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 	}
 
 	if req.Delete { // delete request
+		if e := s.AdminStore.OnEvent(comment.Locator.SiteID, admin.EvDelete); e != nil {
+			log.Printf("[WARN] failed to send delete event, %s", e)
+		}
 		comment.Deleted = true
 		delReq := engine.DeleteRequest{Locator: locator, CommentID: commentID, DeleteMode: store.SoftDelete}
 		return comment, s.Engine.Delete(delReq)
@@ -385,6 +396,10 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 	}
 	comment.Locator = locator
 	comment.Sanitize()
+
+	if e := s.AdminStore.OnEvent(comment.Locator.SiteID, admin.EvUpdate); e != nil {
+		log.Printf("[WARN] failed to send update event, %s", e)
+	}
 
 	err = s.Engine.Update(comment)
 	return comment, err
@@ -608,6 +623,9 @@ func (s *DataStore) Info(locator store.Locator, readonlyAge int) (store.PostInfo
 
 // Delete comment by id
 func (s *DataStore) Delete(locator store.Locator, commentID string, mode store.DeleteMode) error {
+	if e := s.AdminStore.OnEvent(locator.SiteID, admin.EvDelete); e != nil {
+		log.Printf("[WARN] failed to send delete event, %s", e)
+	}
 	req := engine.DeleteRequest{Locator: locator, CommentID: commentID, DeleteMode: mode}
 	return s.Engine.Delete(req)
 }
@@ -817,4 +835,22 @@ func (s *DataStore) prepVotes(c store.Comment, user store.User) store.Comment {
 
 	c.Votes = nil // hide voters list
 	return c
+}
+
+// get secret for given siteID
+// Note: secret shared across sites, but some sites can be disabled.
+func (s *DataStore) getSecret(siteID string) (secret string, err error) {
+
+	if secret, err = s.AdminStore.Key(); err != nil {
+		return "", errors.Wrapf(err, "can't get secret for site %s", siteID)
+	}
+
+	ok, err := s.AdminStore.Enabled(siteID)
+	if err != nil {
+		return "", errors.Wrapf(err, "can't check secret enabled for site %s", siteID)
+	}
+	if !ok {
+		return "", errors.Errorf("site %s disabled", siteID)
+	}
+	return secret, nil
 }
