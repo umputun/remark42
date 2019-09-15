@@ -22,3 +22,5 @@ require (
 	google.golang.org/appengine v1.6.1 // indirect
 	gopkg.in/oauth2.v3 v3.10.1
 )
+
+go 1.13

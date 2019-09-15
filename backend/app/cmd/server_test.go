@@ -72,7 +72,7 @@ func TestServerApp_DevMode(t *testing.T) {
 	go func() { _ = app.run(ctx) }()
 	time.Sleep(100 * time.Millisecond) // let server start
 
-	assert.Equal(t, 4+1, len(app.restSrv.Authenticator.Providers()), "extra auth provider")
+	assert.Equal(t, 5+1, len(app.restSrv.Authenticator.Providers()), "extra auth provider")
 	assert.Equal(t, "dev", app.restSrv.Authenticator.Providers()[4].Name(), "dev auth provider")
 	// send ping
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/ping", port))
@@ -97,8 +97,8 @@ func TestServerApp_AnonMode(t *testing.T) {
 	go func() { _ = app.run(ctx) }()
 	time.Sleep(100 * time.Millisecond) // let server start
 
-	assert.Equal(t, 4+1, len(app.restSrv.Authenticator.Providers()), "extra auth provider for anon")
-	assert.Equal(t, "anonymous", app.restSrv.Authenticator.Providers()[4].Name(), "anon auth provider")
+	assert.Equal(t, 5+1, len(app.restSrv.Authenticator.Providers()), "extra auth provider for anon")
+	assert.Equal(t, "anonymous", app.restSrv.Authenticator.Providers()[5].Name(), "anon auth provider")
 
 	// send ping
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/ping", port))
@@ -388,6 +388,24 @@ func TestServerAuthHooks(t *testing.T) {
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusCreated, resp.StatusCode, "non-blocked user able to post")
 
+	// add comment with no-aud claim
+	claimsNoAud := claims
+	claimsNoAud.Audience = ""
+	tkNoAud, err := tkService.Token(claimsNoAud)
+	require.NoError(t, err)
+	t.Logf("no-aud claims: %s", tkNoAud)
+	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
+		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/p/2018/12/29/podcast-631/", 
+"site": "remark"}}`))
+	require.NoError(t, err)
+	req.Header.Set("X-JWT", tkNoAud)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "user without aud claim rejected, \n"+tkNoAud+"\n"+string(body))
+
 	// block user dev as admin
 	req, e := http.NewRequest(http.MethodPut,
 		fmt.Sprintf("http://localhost:%d/api/v1/admin/user/dev?site=remark&block=1&ttl=10d", port), nil)
@@ -401,8 +419,6 @@ func TestServerAuthHooks(t *testing.T) {
 	require.Nil(t, err)
 	t.Log(string(b))
 
-	time.Sleep(2 * time.Second) // make sure token expired and refresh happened
-
 	// try add a comment with blocked user
 	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
 		strings.NewReader(`{"text": "test 123 blah", "locator":{"url": "https://radio-t.com/blah1", "site": "remark"}}`))
@@ -411,9 +427,27 @@ func TestServerAuthHooks(t *testing.T) {
 	resp, err = client.Do(req)
 	require.Nil(t, err)
 	defer resp.Body.Close()
-	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "blocked user can't post")
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	assert.True(t, resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusUnauthorized,
+		"blocked user can't post, \n"+tk+"\n"+string(body))
 
 	app.Wait()
+}
+
+func TestServer_loadEmailTemplate(t *testing.T) {
+	cmd := ServerCommand{}
+	cmd.Auth.Email.MsgTemplate = "testdata/email.tmpl"
+	r := cmd.loadEmailTemplate()
+	assert.Equal(t, "The token is {{.Token}}", r)
+
+	cmd.Auth.Email.MsgTemplate = ""
+	r = cmd.loadEmailTemplate()
+	assert.Contains(t, r, "Remark42</h1>")
+
+	cmd.Auth.Email.MsgTemplate = "bad-file"
+	r = cmd.loadEmailTemplate()
+	assert.Contains(t, r, "Remark42</h1>")
 }
 
 func prepServerApp(t *testing.T, duration time.Duration, fn func(o ServerCommand) ServerCommand) (*serverApp, context.Context) {
@@ -431,10 +465,13 @@ func prepServerApp(t *testing.T, duration time.Duration, fn func(o ServerCommand
 	cmd.Auth.Google.CSEC, cmd.Auth.Google.CID = "csec", "cid"
 	cmd.Auth.Facebook.CSEC, cmd.Auth.Facebook.CID = "csec", "cid"
 	cmd.Auth.Yandex.CSEC, cmd.Auth.Yandex.CID = "csec", "cid"
+	cmd.Auth.Email.Enable = true
+	cmd.Auth.Email.MsgTemplate = "testdata/email.tmpl"
 	cmd.BackupLocation = "/tmp"
 	cmd.Notify.Type = "telegram"
 	cmd.Notify.Telegram.API = "http://127.0.0.1:12340/"
 	cmd.Notify.Telegram.Token = "blah"
+	cmd.UpdateLimit = 10
 	cmd = fn(cmd)
 
 	os.Remove(cmd.Store.Bolt.Path + "/remark.db")

@@ -20,8 +20,9 @@ func TestMemAdmin_Get(t *testing.T) {
 	var ms admin.Store = adm
 
 	adm.data = map[string]AdminRec{
-		"site1": {"site1", []string{"i11", "i12"}, "e1"},
-		"site2": {"site2", []string{"i21", "i22"}, "e2"},
+		"site1": {"site1", []string{"i11", "i12"}, "e1", true, 0},
+		"site2": {"site2", []string{"i21", "i22"}, "e2", true, 0},
+		"site3": {"site3", []string{"i21", "i22"}, "e3", false, 0},
 	}
 
 	admins, err := ms.Admins("site1")
@@ -48,5 +49,16 @@ func TestMemAdmin_Get(t *testing.T) {
 	assert.EqualError(t, err, "site no-site-in-db not found")
 
 	email, err = ms.Email("no-site-in-db")
+	assert.EqualError(t, err, "site no-site-in-db not found")
+
+	enabled, err := ms.Enabled("site1")
+	assert.NoError(t, err)
+	assert.True(t, enabled)
+
+	enabled, err = ms.Enabled("site3")
+	assert.NoError(t, err)
+	assert.False(t, enabled)
+
+	enabled, err = ms.Enabled("no-site-in-db")
 	assert.EqualError(t, err, "site no-site-in-db not found")
 }

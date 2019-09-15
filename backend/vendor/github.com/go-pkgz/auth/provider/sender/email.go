@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
+	"mime/quotedprintable"
 	"net"
 	"net/smtp"
 	"time"
@@ -94,7 +95,11 @@ func (em *Email) Send(to, text string) error {
 		return errors.Wrap(err, "can't make email writer")
 	}
 
-	buf := bytes.NewBufferString(em.buildMessage(text, to))
+	msg, err := em.buildMessage(text, to)
+	if err != nil {
+		return errors.Wrap(err, "can't make email message")
+	}
+	buf := bytes.NewBufferString(msg)
 	if _, err = buf.WriteTo(writer); err != nil {
 		return errors.Wrapf(err, "failed to send email body to %q", to)
 	}
@@ -139,13 +144,29 @@ func (em *Email) client() (c *smtp.Client, err error) {
 	return c, nil
 }
 
-func (em *Email) buildMessage(msg, to string) (message string) {
-	message += fmt.Sprintf("From: %s\n", em.From)
-	message += fmt.Sprintf("To: %s\n", to)
-	message += fmt.Sprintf("Subject: %s\n", em.Subject)
-	if em.ContentType != "" {
-		message += fmt.Sprintf("MIME-version: 1.0;\nContent-Type: %s; charset=\"UTF-8\";\n", em.ContentType)
+func (em *Email) buildMessage(msg, to string) (message string, err error) {
+	addHeader := func(msg, h, v string) string {
+		msg += fmt.Sprintf("%s: %s\n", h, v)
+		return msg
 	}
-	message += "\n" + msg
-	return message
+	message = addHeader(message, "From", em.From)
+	message = addHeader(message, "To", to)
+	message = addHeader(message, "Subject", em.Subject)
+	message = addHeader(message, "Content-Transfer-Encoding", "quoted-printable")
+
+	if em.ContentType != "" {
+		message = addHeader(message, "MIME-version", "1.0")
+		message = addHeader(message, "Content-Type", em.ContentType+`; charset="UTF-8"`)
+	}
+	message = addHeader(message, "Date", time.Now().Format(time.RFC1123Z))
+
+	buff := &bytes.Buffer{}
+	qp := quotedprintable.NewWriter(buff)
+	if _, err := qp.Write([]byte(msg)); err != nil {
+		return "", err
+	}
+	defer qp.Close()
+	m := buff.String()
+	message += "\n" + m
+	return message, nil
 }

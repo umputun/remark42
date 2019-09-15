@@ -293,6 +293,38 @@ func TestRPC_admEmailHndl(t *testing.T) {
 	assert.Equal(t, "admin@example.com", email)
 }
 
+func TestRPC_admEnabledHndl(t *testing.T) {
+	_, port, teardown := prepTestStore(t)
+	defer teardown()
+	api := fmt.Sprintf("http://localhost:%d/test", port)
+
+	ra := admin.RPC{Client: jrpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
+	_, err := ra.Enabled("bad site")
+	assert.EqualError(t, err, "site bad site not found")
+
+	ok, err := ra.Enabled("test-site")
+	assert.NoError(t, err)
+	assert.Equal(t, true, ok)
+
+	ok, err = ra.Enabled("test-site-disabled")
+	assert.NoError(t, err)
+	assert.Equal(t, false, ok)
+}
+
+
+func TestRPC_admEventHndl(t *testing.T) {
+	_, port, teardown := prepTestStore(t)
+	defer teardown()
+	api := fmt.Sprintf("http://localhost:%d/test", port)
+
+	ra := admin.RPC{Client: jrpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
+	err := ra.OnEvent("bad site", admin.EvCreate)
+	assert.EqualError(t, err, "site bad site not found")
+
+	err = ra.OnEvent("test-site", admin.EvCreate)
+	assert.NoError(t, err)
+}
+
 func prepTestStore(t *testing.T) (s *RPC, port int, teardown func()) {
 	port = 40000 + int(rand.Int31n(10000))
 
@@ -301,11 +333,16 @@ func prepTestStore(t *testing.T) (s *RPC, port int, teardown func()) {
 	s = NewRPC(mg, adm, &jrpc.Server{API: "/test", Logger: jrpc.NoOpLogger})
 
 	admRec := accessor.AdminRec{
-		SiteID: "test-site",
-		IDs:    []string{"id1", "id2"},
-		Email:  "admin@example.com",
+		SiteID:  "test-site",
+		IDs:     []string{"id1", "id2"},
+		Email:   "admin@example.com",
+		Enabled: true,
 	}
 	adm.Set("test-site", admRec)
+
+	admRecDisabled := admRec
+	admRecDisabled.Enabled = false
+	adm.Set("test-site-disabled", admRecDisabled)
 
 	go func() {
 		t.Log(s.Run(port))

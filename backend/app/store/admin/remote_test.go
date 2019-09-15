@@ -78,6 +78,18 @@ func TestRemote_Enables(t *testing.T) {
 	t.Logf("%v %T", res, res)
 }
 
+func TestRemote_OnEvent(t *testing.T) {
+	ts := testServer(t, `{"method":"admin.event","params":["site-1",2],"id":1}`, `{"id":1}`)
+	defer ts.Close()
+	c := RPC{Client: jrpc.Client{API: ts.URL, Client: http.Client{}}}
+
+	var a Store = &c
+	_ = a
+
+	err := c.OnEvent("site-1", EvUpdate)
+	assert.NoError(t, err)
+}
+
 func testServer(t *testing.T, req, resp string) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, err := ioutil.ReadAll(r.Body)
