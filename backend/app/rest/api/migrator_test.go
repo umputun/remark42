@@ -276,7 +276,7 @@ func TestMigrator_Convert(t *testing.T) {
 	require.Equal(t, 1, comments.Info.Count)
 
 	// we want remap urls to another domain - www.radio-t.com
-	rules := strings.NewReader(`https://radio-t.com/demo/ https://www.radio-t.com/demo/
+	rules := strings.NewReader(`https://radio-t.com/* https://www.radio-t.com/*
 https://radio-t.com/demo-another/ https://www.radio-t.com/demo-another/`)
 	req, err = http.NewRequest("POST", ts.URL+"/api/v1/admin/convert?site=radio-t", rules)
 	require.Nil(t, err)
