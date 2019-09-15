@@ -28,6 +28,7 @@ type Migrator struct {
 	DisqusImporter    migrator.Importer
 	WordPressImporter migrator.Importer
 	NativeExporter    migrator.Exporter
+	Mapper            migrator.Mapper
 	KeyStore          KeyStore
 
 	busy map[string]bool
@@ -153,14 +154,13 @@ func (m *Migrator) exportCtrl(w http.ResponseWriter, r *http.Request) {
 }
 
 // POST /convert?site=site-id
-// converts urls in comments based on given rules ("oldUrl":"newUrl")
+// converts urls in comments based on given rules (oldUrl newUrl)
 func (m *Migrator) convertCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 
-	// make url-mapper from request body
-	mapper, err := migrator.NewUrlMapper(r.Body)
-	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "convert failed", rest.ErrDecode)
+	// read rules and put it to url-mapper
+	if err := m.Mapper.LoadRules(r.Body); err != nil {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "convert failed, bad given rules", rest.ErrDecode)
 		return
 	}
 	defer r.Body.Close()
@@ -192,7 +192,7 @@ func (m *Migrator) convertCtrl(w http.ResponseWriter, r *http.Request) {
 		}
 
 		log.Printf("[DEBUG] start import for site=%s", siteID)
-		mappedReader := migrator.WithMapper(fh, mapper)
+		mappedReader := migrator.WithMapper(fh, m.Mapper)
 		size, err := m.NativeImporter.Import(mappedReader, siteID)
 		if err != nil {
 			log.Printf("[WARN] import failed with %+v", err)
@@ -200,7 +200,7 @@ func (m *Migrator) convertCtrl(w http.ResponseWriter, r *http.Request) {
 		}
 
 		m.Cache.Flush(cache.Flusher(siteID).Scopes(siteID))
-		log.Printf("[DEBUG] convert request completed. size=%s, comments=%d", siteID, size)
+		log.Printf("[DEBUG] convert request completed. site=%s, comments=%d", siteID, size)
 	}()
 
 	render.Status(r, http.StatusAccepted)

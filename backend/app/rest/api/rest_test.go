@@ -282,7 +282,7 @@ func TestRest_parseError(t *testing.T) {
 }
 
 func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
-	log.Setup(log.CallerFile, log.CallerFunc, log.Msec, log.LevelBraces)
+	log.Setup(log.CallerFile, log.CallerFunc, log.Msec, log.LevelBraces, log.Debug)
 
 	testDb := fmt.Sprintf("/tmp/test-remark-%d.db", rand.Int31())
 	os.Remove(testDb)
@@ -335,7 +335,8 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 			WordPressImporter: &migrator.WordPress{DataStore: dataStore},
 			NativeImporter:    &migrator.Native{DataStore: dataStore},
 			NativeExporter:    &migrator.Native{DataStore: dataStore},
-			Cache:             &cache.Nop{},
+			Mapper:            &migrator.UrlMapper{},
+			Cache:             memCache,
 			KeyStore:          astore,
 		},
 		Streamer: &Streamer{

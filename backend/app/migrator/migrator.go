@@ -27,6 +27,7 @@ type Exporter interface {
 // Mapper defines interface to convert data in import procedure
 type Mapper interface {
 	URL(url string) string
+	LoadRules(reader io.Reader) error
 }
 
 // Store defines minimal interface needed to export and import comments

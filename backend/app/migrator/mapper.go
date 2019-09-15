@@ -8,31 +8,35 @@ import (
 )
 
 // UrlMapper implements Mapper interface
-type UrlMapper map[string]string
+type UrlMapper struct {
+	rules map[string]string
+}
 
-func NewUrlMapper(reader io.Reader) (UrlMapper, error) {
+func (u *UrlMapper) LoadRules(reader io.Reader) error {
 	data, err := ioutil.ReadAll(reader)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	mapper := make(map[string]string)
+	rules := make(map[string]string)
 	for _, row := range strings.Split(string(data), "\n") {
 		urls := strings.Split(row, " ")
 		if len(urls) != 2 {
-			return nil, errors.New("bad row " + row)
+			return errors.New("bad row " + row)
 		}
-		mapper[urls[0]] = urls[1]
+		rules[urls[0]] = urls[1]
 	}
-	return mapper, nil
+	u.rules = rules
+	return nil
 }
 
-// URL maps given url to another url if it found.
-// Otherwise returns given url
-func (u UrlMapper) URL(url string) string {
-	newUrl, ok := u[url]
-	if !ok {
-		return url
+// URL maps given url to another url according loaded url-rules.
+// If match failed returns given url.
+func (u *UrlMapper) URL(url string) string {
+	newUrl, ok := u.rules[url]
+	if ok {
+		return newUrl
 	}
-	return newUrl
+	// try to match
+	return url
 }
