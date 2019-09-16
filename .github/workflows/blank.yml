@@ -11,8 +11,8 @@ jobs:
       run: docker version
     - name: Build image
       run: |
-        docker build
-        --build-arg COVERALLS_TOKEN=$COVERALLS_TOKEN
+        docker build \
+        --build-arg COVERALLS_TOKEN=$COVERALLS_TOKEN \
         .
       env:
         COVERALLS_TOKEN: ${{secrets.COVERALLS_TOKEN}}
