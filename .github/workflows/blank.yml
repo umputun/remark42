@@ -9,9 +9,12 @@ jobs:
     - uses: actions/checkout@v1
     - name: Docker version
       run: docker version
+    - name: show env
+      run: env
     - name: Build image
       run: |
         docker build \
+        --build-arg CI=$CI \
         --build-arg COVERALLS_TOKEN=$COVERALLS_TOKEN \
         .
       env:
