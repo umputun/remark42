@@ -1,6 +1,9 @@
 name: Github Actions CI
 
-on: [push]
+on:
+  push:
+    branches:
+    tags:
 
 jobs:
   build:
