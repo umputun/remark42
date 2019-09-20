@@ -15,11 +15,9 @@ jobs:
       run: docker version
     - name: Debug if needed
       run: |
-        export DEBUG=$DEBUG
-
-        [[ -n "$DEBUG" ]] && env
+        [[ "$DEBUG" == "true" ]] && env
       env:
-        DEBUG: ${{secrets.DEBUG}}
+        DEBUG: ${{secrets.DEBUG:-false}}
     - name: Build image
       run: |
         export GIT_BRANCH="${GITHUB_REF/refs\/heads\//}"
