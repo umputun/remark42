@@ -19,7 +19,7 @@ jobs:
         export GIT_BRANCH="${GITHUB_REF/refs\/heads\//}"
 
         docker build \
-        --build-arg CI=$GITHUB_WORKFLOW \
+        --build-arg CI="$GITHUB_WORKFLOW" \
         --build-arg GIT_BRANCH=$GIT_BRANCH \
         --build-arg COVERALLS_TOKEN=$COVERALLS_TOKEN \
         .
