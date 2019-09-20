@@ -10,7 +10,7 @@ jobs:
     - name: Docker version
       run: docker version
     - name: show env
-      run: env
+      run: echo $GITHUB_BASE_REF
     - name: Build image
       run: |
         docker build \
