@@ -19,7 +19,7 @@ jobs:
       run: |
         docker build \
         --build-arg CI=$CI \
-        --build-arg COVERALLS_TOKEN=$COVERALLS_TOKEN \
+        --build-arg COVERALLS_TOKEN=$COVERALLS_TOKEN 
         .
       env:
         COVERALLS_TOKEN: ${{secrets.COVERALLS_TOKEN}}
