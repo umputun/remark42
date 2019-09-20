@@ -1,4 +1,4 @@
-name: CI
+name: Github Actions CI
 
 on: [push]
 
@@ -17,10 +17,9 @@ jobs:
     - name: Build image
       run: |
         export GIT_BRANCH="${GITHUB_REF/refs\/heads\//}"
-        echo $GIT_BRANCH
 
         docker build \
-        --build-arg CI=$CI \
+        --build-arg CI=$GITHUB_WORKFLOW \
         --build-arg GIT_BRANCH=$GIT_BRANCH \
         --build-arg COVERALLS_TOKEN=$COVERALLS_TOKEN \
         .
