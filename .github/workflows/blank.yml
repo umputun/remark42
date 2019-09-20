@@ -9,8 +9,12 @@ jobs:
     - uses: actions/checkout@v1
     - name: Docker version
       run: docker version
-    - name: show env
-      run: echo $GITHUB_BASE_REF
+    - name: Debug
+      run: |
+        [[ "$TRACE" ]] && env
+        cat "${GITHUB_EVENT_PATH}"
+      env:
+        DEBUG: ${{secrets.DEBUG}}
     - name: Build image
       run: |
         docker build \
