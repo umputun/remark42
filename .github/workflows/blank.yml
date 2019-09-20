@@ -15,7 +15,7 @@ jobs:
       run: docker version
     - name: Debug if needed
       run: |
-        export DEBUG=${DEBUG:-"false"}
+        export DEBUG=${DEBUG:-false}
 
         [[ "$DEBUG" == "true" ]] && env
       env:
