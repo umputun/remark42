@@ -1,7 +1,6 @@
 install:
   - docker --version
   - docker-compose --version
-  - env
 
 script:
   - docker build

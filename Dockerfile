@@ -2,6 +2,7 @@ FROM umputun/baseimage:buildgo-latest as build-backend
 
 ARG COVERALLS_TOKEN
 ARG CI
+ARG GIT_BRANCH
 ARG TRAVIS
 ARG TRAVIS_BRANCH
 ARG TRAVIS_COMMIT
