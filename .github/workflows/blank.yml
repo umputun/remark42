@@ -11,7 +11,7 @@ jobs:
       run: docker version
     - name: Debug
       run: |
-        [[ "$TRACE" ]] && env
+        [[ "$DEBUG" ]] && env
         cat "${GITHUB_EVENT_PATH}"
       env:
         DEBUG: ${{secrets.DEBUG}}
