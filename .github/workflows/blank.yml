@@ -17,7 +17,9 @@ jobs:
       run: |
         export DEBUG=${DEBUG:-false}
 
-        [[ "$DEBUG" == "true" ]] && env
+        if [[ "$DEBUG" == "true" ]]; then
+          env
+        fi
       env:
         DEBUG: ${{secrets.DEBUG}}
     - name: Build image
