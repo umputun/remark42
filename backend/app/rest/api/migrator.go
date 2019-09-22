@@ -28,7 +28,7 @@ type Migrator struct {
 	DisqusImporter    migrator.Importer
 	WordPressImporter migrator.Importer
 	NativeExporter    migrator.Exporter
-	Mapper            migrator.Mapper
+	NewMapperFn       migrator.NewMapper
 	KeyStore          KeyStore
 
 	busy map[string]bool
@@ -158,13 +158,15 @@ func (m *Migrator) exportCtrl(w http.ResponseWriter, r *http.Request) {
 func (m *Migrator) convertCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 
-	// read rules and put it to url-mapper
-	if err := m.Mapper.LoadRules(r.Body); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "convert failed, bad given rules", rest.ErrDecode)
+	// create new url-mapper from given rules in body
+	mapper, err := m.NewMapperFn(r.Body)
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "remap failed, bad given rules", rest.ErrDecode)
 		return
 	}
 	defer r.Body.Close()
 
+	// start remap procedure with built mapper
 	go func() {
 		m.setBusy(siteID, true)
 		defer m.setBusy(siteID, false)
@@ -192,7 +194,7 @@ func (m *Migrator) convertCtrl(w http.ResponseWriter, r *http.Request) {
 		}
 
 		log.Printf("[DEBUG] start import for site=%s", siteID)
-		mappedReader := migrator.WithMapper(fh, m.Mapper)
+		mappedReader := migrator.WithMapper(fh, mapper)
 		size, err := m.NativeImporter.Import(mappedReader, siteID)
 		if err != nil {
 			log.Printf("[WARN] import failed with %+v", err)

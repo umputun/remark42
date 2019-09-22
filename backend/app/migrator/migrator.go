@@ -27,8 +27,12 @@ type Exporter interface {
 // Mapper defines interface to convert data in import procedure
 type Mapper interface {
 	URL(url string) string
-	LoadRules(reader io.Reader) error
 }
+
+// NewMapper defines function that reads rules from reader and
+// returns new Mapper with loaded rules. If rules are not valid
+// it returns error.
+type NewMapper func(reader io.Reader) (Mapper, error)
 
 // Store defines minimal interface needed to export and import comments
 type Store interface {

@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestUrlMapper(t *testing.T) {
+func TestUrlMapper_URL(t *testing.T) {
 	// want remap urls from https://radio-t.com to https://www.radio-t.com
 	// also map individual urls
 	rules := strings.NewReader(`
@@ -16,8 +16,7 @@ https://radio-t.com/p/2018/09/22////podcast-616/ https://www.radio-t.com/p/2018/
 https://radio-t.com/p/2018/09/22/podcast-616/?with_query=1 https://www.radio-t.com/p/2018/09/22/podcast-616/
 `)
 
-	mapper := UrlMapper{}
-	err := mapper.LoadRules(rules)
+	mapper, err := NewUrlMapper(rules)
 	assert.NoError(t, err)
 
 	// if url not matched mapper should return given url
@@ -32,10 +31,46 @@ https://radio-t.com/p/2018/09/22/podcast-616/?with_query=1 https://www.radio-t.c
 	assert.Equal(t, "https://www.radio-t.com/p/post/123/", mapper.URL("https://radio-t.com/p/post/123/"))
 }
 
-func TestUrlMapper_BadInput(t *testing.T) {
-	mapper := UrlMapper{}
-	assert.Error(t, mapper.LoadRules(strings.NewReader("https://radio-t.com ")))
-	assert.Error(t, mapper.LoadRules(strings.NewReader("https://radio-t.com https://radio-t.com https://radio-t.com")))
-	assert.Error(t, mapper.LoadRules(strings.NewReader("https://radio-t.com https://radio-t.com\n https://radio-t.com")))
-	assert.Error(t, mapper.LoadRules(strings.NewReader("https://radio-t.com   \n https://radio-t.com https://radio-t.com")))
+func TestUrlMapper_New(t *testing.T) {
+	casesError := []struct {
+		rules       string
+		expectError bool
+	}{
+		// bad input, expect error
+		{
+			rules:       "https://radio-t.com ",
+			expectError: true,
+		},
+		{
+			rules:       "https://radio-t.com https://radio-t.com https://radio-t.com",
+			expectError: true,
+		},
+		{
+			rules:       "https://radio-t.com https://radio-t.com\n https://radio-t.com",
+			expectError: true,
+		},
+		{
+			rules:       "https://radio-t.com   \n https://radio-t.com https://radio-t.com",
+			expectError: true,
+		},
+
+		// valid input, no error
+		{
+			rules: "https://radio-t.com* https://www.radio-t.com*",
+		},
+		{
+			rules: "https://radio-t.com/p/2018/09/22/podcast-616/?with_query=1 https://www.radio-t.com/p/2018/09/22/podcast-616/",
+		},
+		{
+			rules: "https://any.com/p/111 https://any.com/p/222   \n https://any.com/p/333 https://any.com/p/222   \n",
+		},
+	}
+	for _, c := range casesError {
+		_, err := NewUrlMapper(strings.NewReader(c.rules))
+		if c.expectError {
+			assert.Error(t, err)
+		} else {
+			assert.Nil(t, err)
+		}
+	}
 }
