@@ -370,12 +370,12 @@ Add this snippet to the bottom of web page:
   var remark_config = {
     host: "REMARK_URL", // hostname of remark server, same as REMARK_URL in backend config, e.g. "https://demo.remark42.com"
     site_id: 'YOUR_SITE_ID',
-    components: ['embed'] // optional param; which components to load. default to ["embed"]
-                          // to load all components define components as ['embed', 'last-comments', 'counter']
-                          // available component are:
-                          //     - 'embed': basic comments widget
-                          //     - 'last-comments': last comments widget, see `Last Comments` section below
-                          //     - 'counter': counter widget, see `Counter` section below
+    components: ['embed'], // optional param; which components to load. default to ["embed"]
+                           // to load all components define components as ['embed', 'last-comments', 'counter']
+                           // available component are:
+                           //     - 'embed': basic comments widget
+                           //     - 'last-comments': last comments widget, see `Last Comments` section below
+                           //     - 'counter': counter widget, see `Counter` section below
     url: 'PAGE_URL', // optional param; if it isn't defined
                      // `window.location.origin + window.location.pathname` will be used,
                      //
