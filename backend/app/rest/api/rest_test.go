@@ -277,7 +277,7 @@ func TestRest_parseError(t *testing.T) {
 }
 
 func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
-	log.Setup(log.CallerFile, log.CallerFunc, log.Msec, log.LevelBraces, log.Debug)
+	log.Setup(log.CallerFile, log.CallerFunc, log.Msec, log.LevelBraces)
 
 	testDb := fmt.Sprintf("/tmp/test-remark-%d.db", rand.Int31())
 	os.Remove(testDb)
