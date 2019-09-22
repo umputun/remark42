@@ -253,7 +253,7 @@ func TestMigrator_Export(t *testing.T) {
 	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 }
 
-func TestMigrator_Convert(t *testing.T) {
+func TestMigrator_Remap(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
 
@@ -308,7 +308,7 @@ func TestMigrator_Convert(t *testing.T) {
 	// we want remap urls to another domain - www.remark42.com
 	rules := strings.NewReader(`https://remark42.com/* https://www.remark42.com/*
 https://remark42.com/demo-another/ https://www.remark42.com/demo-another/`)
-	req, err = http.NewRequest("POST", ts.URL+"/api/v1/admin/convert?site=remark42", rules)
+	req, err = http.NewRequest("POST", ts.URL+"/api/v1/admin/remap?site=remark42", rules)
 	require.Nil(t, err)
 	req.SetBasicAuth("admin", "password")
 	resp, err = client.Do(req)
@@ -316,7 +316,7 @@ https://remark42.com/demo-another/ https://www.remark42.com/demo-another/`)
 	require.Equal(t, http.StatusAccepted, resp.StatusCode)
 	waitForImportCompletion(t, ts)
 
-	// after convert finished we should find comments from new urls
+	// after remap finished we should find comments from new urls
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://www.remark42.com/demo/")
 	require.Equal(t, 200, code)
 	comments = commentsWithInfo{}

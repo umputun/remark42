@@ -153,9 +153,9 @@ func (m *Migrator) exportCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// POST /convert?site=site-id
-// converts urls in comments based on given rules (oldUrl newUrl)
-func (m *Migrator) convertCtrl(w http.ResponseWriter, r *http.Request) {
+// POST /remap?site=site-id
+// remap urls in comments based on given rules (oldUrl newUrl)
+func (m *Migrator) remapCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 
 	// create new url-mapper from given rules in body
