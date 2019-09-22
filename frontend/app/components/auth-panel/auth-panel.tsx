@@ -147,7 +147,6 @@ export class AuthPanel extends Component<Props, State> {
 
   async handleOAuthLogin(e: MouseEvent | KeyboardEvent) {
     const p = (e.target as HTMLButtonElement).dataset.provider! as AuthProvider['name'];
-    // eslint-disable-next-line @typescript-eslint/no-object-literal-type-assertion
     this.onSignIn({ name: p } as AuthProvider);
   }
 
@@ -180,7 +179,7 @@ export class AuthPanel extends Component<Props, State> {
     );
   };
 
-  renderProvider = (provider: AuthProvider['name'], dropdown: boolean = false) => {
+  renderProvider = (provider: AuthProvider['name'], dropdown = false) => {
     if (provider === 'anonymous') {
       return (
         <Dropdown
@@ -222,7 +221,6 @@ export class AuthPanel extends Component<Props, State> {
       <span
         className={`${dropdown ? 'auth-panel__dropdown-provider' : ''} auth-panel__pseudo-link`}
         data-provider={provider}
-        // eslint-disable-next-line @typescript-eslint/no-object-literal-type-assertion
         {...getHandleClickProps(this.handleOAuthLogin)}
         role="link"
       >
