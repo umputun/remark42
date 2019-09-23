@@ -82,6 +82,26 @@ func (r *RPC) ListFlags(req FlagRequest) (list []interface{}, err error) {
 	return list, err
 }
 
+// UserDetail sets and gets details
+func (r *RPC) UserDetail(req UserDetailRequest) (status bool, err error) {
+	resp, err := r.Call("store.user_detail", req)
+	if err != nil {
+		return false, err
+	}
+	err = json.Unmarshal(*resp.Result, &status)
+	return status, err
+}
+
+// GetUserDetails get list of details keys, like email
+func (r *RPC) GetUserDetails(req UserDetailRequest) (list []interface{}, err error) {
+	resp, err := r.Call("store.get_user_details", req)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(*resp.Result, &list)
+	return list, err
+}
+
 // Count gets comments count by user or site
 func (r *RPC) Count(req FindRequest) (count int, err error) {
 	resp, err := r.Call("store.count", req)

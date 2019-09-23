@@ -16,12 +16,13 @@ import (
 )
 
 // BoltDB implements store.Interface, represents multiple sites with multiplexing to different bolt dbs. Thread safe.
-// there are 5 types of top-level buckets:
+// there are 6 types of top-level buckets:
 //  - comments for post in "posts" top-level bucket. Each url (post) makes its own bucket and each k:v pair is commentID:comment
 //  - history of all comments. They all in a single "last" bucket (per site) and key is defined by ref struct as ts+commentID
 //    value is not full comment but a reference combined from post-url+commentID
 //  - user to comment references in "users" bucket. It used to get comments for user. Key is userID and value
 //    is a nested bucket named userID with kv as ts:reference
+//  - users subscription emails in "user_details" bucket. Key is userID and value is map with single "email" element
 //  - blocking info sits in "block" bucket. Key is userID, value - ts
 //  - counts per post to keep number of comments. Key is post url, value - count
 //  - readonly per post to keep status of manually set RO posts. Key is post url, value - ts
@@ -31,13 +32,14 @@ type BoltDB struct {
 
 const (
 	// top level buckets
-	postsBucketName    = "posts"
-	lastBucketName     = "last"
-	userBucketName     = "users"
-	blocksBucketName   = "block"
-	infoBucketName     = "info"
-	readonlyBucketName = "readonly"
-	verifiedBucketName = "verified"
+	postsBucketName       = "posts"
+	lastBucketName        = "last"
+	userBucketName        = "users"
+	userDetailsBucketName = "user_details"
+	blocksBucketName      = "block"
+	infoBucketName        = "info"
+	readonlyBucketName    = "readonly"
+	verifiedBucketName    = "verified"
 
 	tsNano = "2006-01-02T15:04:05.000000000Z07:00"
 )
@@ -59,8 +61,8 @@ func NewBoltDB(options bolt.Options, sites ...BoltSite) (*BoltDB, error) {
 		}
 
 		// make top-level buckets
-		topBuckets := []string{postsBucketName, lastBucketName, userBucketName, blocksBucketName, infoBucketName,
-			readonlyBucketName, verifiedBucketName}
+		topBuckets := []string{postsBucketName, lastBucketName, userBucketName, userDetailsBucketName,
+			blocksBucketName, infoBucketName, readonlyBucketName, verifiedBucketName}
 		err = db.Update(func(tx *bolt.Tx) error {
 			for _, bktName := range topBuckets {
 				if _, e := tx.CreateBucketIfNotExists([]byte(bktName)); e != nil {
@@ -205,6 +207,16 @@ func (b *BoltDB) Flag(req FlagRequest) (val bool, err error) {
 	return b.setFlag(req)
 }
 
+// UserDetail sets and gets detail values
+func (b *BoltDB) UserDetail(req UserDetailRequest) (val bool, err error) {
+	if req.Update == "" { // read detail value, no update requested
+		return b.checkUserDetail(req), nil
+	}
+
+	// write detail value
+	return b.setUserDetail(req)
+}
+
 // Update for locator.URL with mutable part of comment
 func (b *BoltDB) Update(comment store.Comment) error {
 
@@ -321,6 +333,44 @@ func (b *BoltDB) Info(req InfoRequest) ([]store.PostInfo, error) {
 	}
 
 	return nil, errors.Errorf("invalid info request %+v", req)
+}
+
+// TODO write
+// GetUserDetails get list of details keys, like email
+// works for full locator (to locate user) or with userID
+func (b *BoltDB) GetUserDetails(req UserDetailRequest) (res []interface{}, err error) {
+
+	bdb, e := b.db(req.Locator.SiteID)
+	if e != nil {
+		return nil, e
+	}
+
+	res = []interface{}{}
+	switch req.Detail {
+	case Email:
+		err = bdb.View(func(tx *bolt.Tx) error {
+			bucket := tx.Bucket([]byte(userDetailsBucketName))
+			return bucket.ForEach(func(k []byte, v []byte) error {
+				ts, errParse := time.ParseInLocation(tsNano, string(v), time.Local)
+				if errParse != nil {
+					return errors.Wrap(errParse, "can't parse block ts")
+				}
+				if time.Now().Before(ts) {
+					// get user name from comment user section
+					userName := ""
+					findReq := FindRequest{Locator: store.Locator{SiteID: req.Locator.SiteID}, UserID: string(k), Limit: 1}
+					userComments, errUser := b.Find(findReq)
+					if errUser == nil && len(userComments) > 0 {
+						userName = userComments[0].User.Name
+					}
+					res = append(res, store.BlockedUser{ID: string(k), Name: userName, Until: ts})
+				}
+				return nil
+			})
+		})
+		return res, err
+	}
+	return nil, errors.Errorf("detail %s not listable", req.Detail)
 }
 
 // ListFlags get list of flagged keys, like blocked & verified user
@@ -597,6 +647,93 @@ func (b *BoltDB) setFlag(req FlagRequest) (res bool, err error) {
 				return errors.Wrapf(e, "failed to clean flag %s for %s", req.Flag, req.Locator.URL)
 			}
 			res = false
+		}
+		return nil
+	})
+
+	return res, err
+}
+
+// TODO write
+func (b *BoltDB) checkUserDetail(req UserDetailRequest) (val bool) {
+
+	bdb, err := b.db(req.Locator.SiteID)
+	if err != nil {
+		return false
+	}
+
+	key := req.Locator.URL
+	if req.UserID != "" {
+		key = req.UserID
+	}
+
+	if req.Detail == Email {
+		var blocked bool
+		_ = bdb.View(func(tx *bolt.Tx) error {
+			bucket := tx.Bucket([]byte(blocksBucketName))
+			v := bucket.Get([]byte(key))
+			if v == nil {
+				blocked = false
+				return nil
+			}
+
+			until, e := time.Parse(tsNano, string(v))
+			if e != nil {
+				blocked = false
+				return nil
+			}
+			blocked = time.Now().Before(until)
+			return nil
+		})
+		return blocked
+	}
+
+	_ = bdb.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(userDetailsBucketName))
+		val = bucket.Get([]byte(key)) != nil
+		return nil
+	})
+	return val
+}
+
+// TODO write
+func (b *BoltDB) setUserDetail(req UserDetailRequest) (res bool, err error) {
+	bdb, e := b.db(req.Locator.SiteID)
+	if e != nil {
+		return false, e
+	}
+
+	key := req.Locator.URL
+	if req.UserID != "" {
+		key = req.UserID
+	}
+
+	err = bdb.Update(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(userDetailsBucketName))
+		switch req.Update {
+		case "":
+			if e = bucket.Delete([]byte(key)); e != nil {
+				return errors.Wrapf(e, "failed to clean detail %s for %s", req.Detail, req.Locator.URL)
+			}
+			res = false
+		default:
+			if req.Detail == Email {
+				val := time.Now().AddDate(100, 0, 0).Format(tsNano) // permanent is 100 year
+				//if req.TTL > 0 {
+				//	val = time.Now().Add(req.TTL).Format(tsNano)
+				//}
+				if e = bucket.Put([]byte(key), []byte(val)); e != nil {
+					return errors.Wrapf(e, "failed to put blocked to %s", key)
+				}
+				res = true
+				return nil
+			}
+
+			if e = bucket.Put([]byte(key), []byte(time.Now().Format(tsNano))); e != nil {
+				return errors.Wrapf(e, "failed to set detail %s for %s", req.Detail, req.Locator.URL)
+			}
+			res = true
+			return nil
 		}
 		return nil
 	})

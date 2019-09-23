@@ -144,6 +144,29 @@ func (_m *MockInterface) Get(req GetRequest) (store.Comment, error) {
 	return r0, r1
 }
 
+// GetUserDetails provides a mock function with given fields: req
+func (_m *MockInterface) GetUserDetails(req UserDetailRequest) ([]interface{}, error) {
+	ret := _m.Called(req)
+
+	var r0 []interface{}
+	if rf, ok := ret.Get(0).(func(UserDetailRequest) []interface{}); ok {
+		r0 = rf(req)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]interface{})
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(UserDetailRequest) error); ok {
+		r1 = rf(req)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // Info provides a mock function with given fields: req
 func (_m *MockInterface) Info(req InfoRequest) ([]store.PostInfo, error) {
 	ret := _m.Called(req)
@@ -202,4 +225,25 @@ func (_m *MockInterface) Update(comment store.Comment) error {
 	}
 
 	return r0
+}
+
+// UserDetail provides a mock function with given fields: req
+func (_m *MockInterface) UserDetail(req UserDetailRequest) (bool, error) {
+	ret := _m.Called(req)
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(UserDetailRequest) bool); ok {
+		r0 = rf(req)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(UserDetailRequest) error); ok {
+		r1 = rf(req)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
