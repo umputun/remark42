@@ -280,6 +280,18 @@ func (m *MemData) ListFlags(req engine.FlagRequest) (res []interface{}, err erro
 	return nil, errors.Errorf("flag %s not listable", req.Flag)
 }
 
+// Flag sets and gets flag values
+func (m *MemData) UserDetail(req engine.UserDetailRequest) (val bool, err error) {
+	m.Lock()
+	defer m.Unlock()
+
+	if req.Update == "" { // read user detail value, no update requested
+		return m.checkUserDetail(req), nil
+	}
+	// write user detail value
+	return m.setUserDetail(req)
+}
+
 // Delete post(s) by id or by userID
 func (m *MemData) Delete(req engine.DeleteRequest) error {
 
@@ -399,6 +411,16 @@ func (m *MemData) setFlag(req engine.FlagRequest) (res bool, err error) {
 		m.metaPosts[req.Locator] = info
 	}
 	return status, errors.Wrapf(err, "failed to set flag %+v", req)
+}
+
+// TODO write
+func (m *MemData) checkUserDetail(req engine.UserDetailRequest) (val bool) {
+	return true
+}
+
+// TODO write
+func (m *MemData) setUserDetail(req engine.UserDetailRequest) (res bool, err error) {
+	return true, nil
 }
 
 func (m *MemData) get(loc store.Locator, commentID string) (store.Comment, error) {

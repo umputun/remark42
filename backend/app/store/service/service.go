@@ -51,6 +51,7 @@ type DataStore struct {
 	}
 }
 
+// TODO investigate if necessary for email
 // UserMetaData keeps info about user flags
 type UserMetaData struct {
 	ID      string `json:"id"`
@@ -557,6 +558,31 @@ func (s *DataStore) SetReadOnly(locator store.Locator, status bool) error {
 	req := engine.FlagRequest{Locator: locator, Flag: engine.ReadOnly, Update: roStatus}
 	_, err := s.Engine.Flag(req)
 	return err
+}
+
+// Add a new API and new store.engine/store.service method(s) to save,
+// load and clean email for the user. I like this one much more as we keep only necessary emails.
+// Adding email should be two-step process with email confirmation code/link,
+// smth like go-pkgz/auth does for VerifProvider
+
+// GetEmail checks if user verified
+func (s *DataStore) GetEmail(siteID string, userID string) string {
+	return ""
+	//req := engine.FlagRequest{Locator: store.Locator{SiteID: siteID}, UserID: userID, Flag: engine.Verified}
+	//ro, err := s.Engine.Flag(req)
+	//return err == nil && ro
+}
+
+// SetEmail set email for user
+func (s *DataStore) SetEmail(siteID string, userID string, email string) error {
+	return nil
+	//roStatus := engine.FlagFalse
+	//if status {
+	//	roStatus = engine.FlagTrue
+	//}
+	//req := engine.FlagRequest{Locator: store.Locator{SiteID: siteID}, UserID: userID, Flag: engine.Verified, Update: roStatus}
+	//_, err := s.Engine.Flag(req)
+	//return err
 }
 
 // IsVerified checks if user verified

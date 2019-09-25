@@ -167,7 +167,7 @@ type AdminGroup struct {
 
 // NotifyGroup defines options for notification
 type NotifyGroup struct {
-	Type      string `long:"type" env:"TYPE" description:"type of notification" choice:"none" choice:"telegram" default:"none"`
+	Type      string `long:"type" env:"TYPE" description:"type of notification" choice:"none" choice:"telegram" choice:"email" default:"none"`
 	QueueSize int    `long:"queue" env:"QUEUE" description:"size of notification queue" default:"100"`
 	Telegram  struct {
 		Token   string        `long:"token" env:"TOKEN" description:"telegram token"`
@@ -175,6 +175,17 @@ type NotifyGroup struct {
 		Timeout time.Duration `long:"timeout" env:"TIMEOUT" default:"5s" description:"telegram timeout"`
 		API     string        `long:"api" env:"API" default:"https://api.telegram.org/bot" description:"telegram api prefix"`
 	} `group:"telegram" namespace:"telegram" env-namespace:"TELEGRAM"`
+	Email struct {
+		Host          string        `long:"host" env:"HOST" description:"smtp host"`
+		Port          int           `long:"port" env:"PORT" default:"587" description:"smtp port"`
+		TLS           bool          `long:"tls" env:"TLS" description:"enable TLS"`
+		From          string        `long:"fromAddress" env:"FROM" description:"email's from"`
+		Username      string        `long:"username" env:"USERNAME" description:"smtp user name"`
+		Password      string        `long:"password" env:"PASSWORD" description:"smtp password"`
+		TimeOut       time.Duration `long:"timeout" env:"TIMEOUT" default:"10s" description:"smtp timeout"`
+		BufferSize    int           `long:"bufferSize" env:"BUFFER_SIZE" default:"10" description:"email send buffer size"`
+		FlushDuration time.Duration `long:"flushDuration" env:"FLUSH_DURATION" default:"30s" description:"maximum time after which email will me sent"`
+	} `group:"email" namespace:"email" env-namespace:"EMAIL"`
 }
 
 // SSLGroup defines options group for server ssl params
@@ -654,6 +665,23 @@ func (s *ServerCommand) makeNotify(dataStore *service.DataStore) (*notify.Servic
 			return nil, errors.Wrap(err, "failed to create telegram notification destination")
 		}
 		return notify.NewService(dataStore, s.Notify.QueueSize, tg), nil
+	case "email":
+		emailParams := notify.EmailParams{
+			Host:          s.Notify.Email.Host,
+			Port:          s.Notify.Email.Port,
+			TLS:           s.Notify.Email.TLS,
+			From:          s.Notify.Email.From,
+			Username:      s.Notify.Email.Username,
+			Password:      s.Notify.Email.Password,
+			TimeOut:       s.Notify.Email.TimeOut,
+			BufferSize:    s.Notify.Email.BufferSize,
+			FlushDuration: s.Notify.Email.FlushDuration,
+		}
+		email, err := notify.NewEmail(emailParams)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create email notification destination")
+		}
+		return notify.NewService(dataStore, s.Notify.QueueSize, email), nil
 	case "none":
 		return notify.NopService, nil
 	}

@@ -16,12 +16,13 @@ import (
 )
 
 // BoltDB implements store.Interface, represents multiple sites with multiplexing to different bolt dbs. Thread safe.
-// there are 5 types of top-level buckets:
+// there are 6 types of top-level buckets:
 //  - comments for post in "posts" top-level bucket. Each url (post) makes its own bucket and each k:v pair is commentID:comment
 //  - history of all comments. They all in a single "last" bucket (per site) and key is defined by ref struct as ts+commentID
 //    value is not full comment but a reference combined from post-url+commentID
 //  - user to comment references in "users" bucket. It used to get comments for user. Key is userID and value
 //    is a nested bucket named userID with kv as ts:reference
+//  - users subscription emails in "user_details" bucket. Key is userID and value is map with single "email" element
 //  - blocking info sits in "block" bucket. Key is userID, value - ts
 //  - counts per post to keep number of comments. Key is post url, value - count
 //  - readonly per post to keep status of manually set RO posts. Key is post url, value - ts
@@ -31,13 +32,14 @@ type BoltDB struct {
 
 const (
 	// top level buckets
-	postsBucketName    = "posts"
-	lastBucketName     = "last"
-	userBucketName     = "users"
-	blocksBucketName   = "block"
-	infoBucketName     = "info"
-	readonlyBucketName = "readonly"
-	verifiedBucketName = "verified"
+	postsBucketName       = "posts"
+	lastBucketName        = "last"
+	userBucketName        = "users"
+	userDetailsBucketName = "user_details"
+	blocksBucketName      = "block"
+	infoBucketName        = "info"
+	readonlyBucketName    = "readonly"
+	verifiedBucketName    = "verified"
 
 	tsNano = "2006-01-02T15:04:05.000000000Z07:00"
 )
@@ -59,8 +61,8 @@ func NewBoltDB(options bolt.Options, sites ...BoltSite) (*BoltDB, error) {
 		}
 
 		// make top-level buckets
-		topBuckets := []string{postsBucketName, lastBucketName, userBucketName, blocksBucketName, infoBucketName,
-			readonlyBucketName, verifiedBucketName}
+		topBuckets := []string{postsBucketName, lastBucketName, userBucketName, userDetailsBucketName,
+			blocksBucketName, infoBucketName, readonlyBucketName, verifiedBucketName}
 		err = db.Update(func(tx *bolt.Tx) error {
 			for _, bktName := range topBuckets {
 				if _, e := tx.CreateBucketIfNotExists([]byte(bktName)); e != nil {
@@ -203,6 +205,16 @@ func (b *BoltDB) Flag(req FlagRequest) (val bool, err error) {
 
 	// write flag value
 	return b.setFlag(req)
+}
+
+// UserDetail sets and gets detail values
+func (b *BoltDB) UserDetail(req UserDetailRequest) (val bool, err error) {
+	if req.Update == "" { // read detail value, no update requested
+		return b.checkUserDetail(req), nil
+	}
+
+	// write detail value
+	return b.setUserDetail(req)
 }
 
 // Update for locator.URL with mutable part of comment
@@ -602,6 +614,16 @@ func (b *BoltDB) setFlag(req FlagRequest) (res bool, err error) {
 	})
 
 	return res, err
+}
+
+// TODO write
+func (b *BoltDB) checkUserDetail(req UserDetailRequest) (val bool) {
+	return true
+}
+
+// TODO write
+func (b *BoltDB) setUserDetail(req UserDetailRequest) (res bool, err error) {
+	return true, nil
 }
 
 func (b *BoltDB) flagBucket(tx *bolt.Tx, flag Flag) (bkt *bolt.Bucket, err error) {

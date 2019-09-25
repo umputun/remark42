@@ -222,6 +222,42 @@ func TestRPC_listFlagsHndl(t *testing.T) {
 	assert.Equal(t, []interface{}{"u1"}, flags)
 }
 
+func TestRPC_userDetailHndl(t *testing.T) {
+	_, port, teardown := prepTestStore(t)
+	defer teardown()
+	api := fmt.Sprintf("http://localhost:%d/test", port)
+
+	re := engine.RPC{Client: jrpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
+
+	c := store.Comment{ID: "123456", Locator: store.Locator{SiteID: "test-site", URL: "http://example.com/post1"},
+		Text: "text 123", User: store.User{ID: "u1", Name: "user1"}}
+	id, err := re.Create(c)
+	assert.NoError(t, err)
+	assert.Equal(t, "123456", id)
+
+	userDetailRequest := engine.UserDetailRequest{
+		Detail: engine.Email,
+		Locator: store.Locator{
+			SiteID: "test-site",
+		},
+		UserID: "u1",
+	}
+	status, err := re.UserDetail(userDetailRequest)
+	require.NoError(t, err)
+	// TODO should return false
+	//assert.Equal(t, false, status)
+
+	userDetailRequest.Update = "test@gmail.com"
+	status, err = re.UserDetail(userDetailRequest)
+	require.NoError(t, err)
+	assert.Equal(t, true, status)
+
+	userDetailRequest.Update = "other_test@gmail.com"
+	status, err = re.UserDetail(userDetailRequest)
+	require.NoError(t, err)
+	assert.Equal(t, true, status)
+}
+
 func TestRPC_deleteHndl(t *testing.T) {
 	_, port, teardown := prepTestStore(t)
 	defer teardown()
@@ -310,7 +346,6 @@ func TestRPC_admEnabledHndl(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, false, ok)
 }
-
 
 func TestRPC_admEventHndl(t *testing.T) {
 	_, port, teardown := prepTestStore(t)

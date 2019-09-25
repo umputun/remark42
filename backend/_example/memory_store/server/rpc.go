@@ -28,16 +28,17 @@ func NewRPC(e engine.Interface, a admin.Store, r *jrpc.Server) *RPC {
 func (s *RPC) addHandlers() {
 	// data store handlers
 	s.Group("store", jrpc.HandlersGroup{
-		"create":     s.createHndl,
-		"find":       s.findHndl,
-		"get":        s.getHndl,
-		"update":     s.updateHndl,
-		"count":      s.countHndl,
-		"info":       s.infoHndl,
-		"flag":       s.flagHndl,
-		"list_flags": s.listFlagsHndl,
-		"delete":     s.deleteHndl,
-		"close":      s.closeHndl,
+		"create":           s.createHndl,
+		"find":             s.findHndl,
+		"get":              s.getHndl,
+		"update":           s.updateHndl,
+		"count":            s.countHndl,
+		"info":             s.infoHndl,
+		"flag":             s.flagHndl,
+		"list_flags":       s.listFlagsHndl,
+		"user_detail":      s.userDetailHndl,
+		"delete":           s.deleteHndl,
+		"close":            s.closeHndl,
 	})
 
 	// admin store handlers
@@ -127,6 +128,16 @@ func (s *RPC) listFlagsHndl(id uint64, params json.RawMessage) (rr jrpc.Response
 	}
 	flags, err := s.eng.ListFlags(req)
 	return jrpc.EncodeResponse(id, flags, err)
+}
+
+// userDetailHndl get and sets detail value
+func (s *RPC) userDetailHndl(id uint64, params json.RawMessage) (rr jrpc.Response) {
+	req := engine.UserDetailRequest{}
+	if err := json.Unmarshal(params, &req); err != nil {
+		return jrpc.Response{Error: err.Error()}
+	}
+	value, err := s.eng.UserDetail(req)
+	return jrpc.EncodeResponse(id, value, err)
 }
 
 // deleteHndl remove comment(s)
