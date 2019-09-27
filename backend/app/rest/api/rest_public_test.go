@@ -348,6 +348,10 @@ func TestRest_FindUserComments(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 3, len(resp.Comments), "should have 3 comments")
 	assert.Equal(t, 4, resp.Count, "should have 3 count")
+
+	// user comment sorted with -time
+	assert.True(t, resp.Comments[0].Timestamp.After(resp.Comments[1].Timestamp))
+	assert.True(t, resp.Comments[1].Timestamp.After(resp.Comments[2].Timestamp))
 }
 
 func TestRest_UserInfo(t *testing.T) {

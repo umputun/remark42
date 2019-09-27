@@ -1060,6 +1060,31 @@ func TestService_Count(t *testing.T) {
 	assert.Equal(t, 0, c)
 }
 
+func TestService_UserComments(t *testing.T) {
+	defer teardown(t)
+
+	// two comments for https://radio-t.com, no reply
+	b := DataStore{Engine: prepStoreEngine(t), EditDuration: 100 * time.Millisecond,
+		AdminStore: admin.NewStaticStore("secret 123", nil, []string{"user2"}, "user@email.com")}
+
+	// add one more for user2
+	comment := store.Comment{
+		ID:        "id-3",
+		Timestamp: time.Date(2018, 12, 20, 15, 18, 22, 0, time.Local),
+		Text:      `some text, <a href="http://radio-t.com">link</a>`,
+		Locator:   store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"},
+		User:      store.User{ID: "user2", Name: "user name"},
+	}
+	_, err := b.Create(comment)
+	assert.NoError(t, err)
+
+	cc, err := b.User("radio-t", "user1", 0, 0, store.User{})
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(cc), "two recs for user1")
+	assert.Equal(t, "id-2", cc[0].ID, "reverse sort")
+	assert.Equal(t, "id-1", cc[1].ID, "reverse sort")
+}
+
 func TestService_UserCount(t *testing.T) {
 	defer teardown(t)
 	// two comments for https://radio-t.com, no reply

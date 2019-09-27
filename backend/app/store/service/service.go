@@ -732,7 +732,8 @@ func (s *DataStore) SetMetas(siteID string, umetas []UserMetaData, pmetas []Post
 
 // User gets comment for given userID on siteID
 func (s *DataStore) User(siteID, userID string, limit, skip int, user store.User) ([]store.Comment, error) {
-	req := engine.FindRequest{Locator: store.Locator{SiteID: siteID}, UserID: userID, Limit: limit, Skip: skip}
+	req := engine.FindRequest{Locator: store.Locator{SiteID: siteID}, UserID: userID,
+		Limit: limit, Skip: skip, Sort: "-time"}
 	comments, err := s.Engine.Find(req)
 	if err != nil {
 		return comments, err
