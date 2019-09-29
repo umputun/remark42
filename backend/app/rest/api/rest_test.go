@@ -330,7 +330,7 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 			WordPressImporter: &migrator.WordPress{DataStore: dataStore},
 			NativeImporter:    &migrator.Native{DataStore: dataStore},
 			NativeExporter:    &migrator.Native{DataStore: dataStore},
-			NewMapperFn:       migrator.NewUrlMapper,
+			UrlMapperMaker:    migrator.NewUrlMapper,
 			Cache:             memCache,
 			KeyStore:          astore,
 		},

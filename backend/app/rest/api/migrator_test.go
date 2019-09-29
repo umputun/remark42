@@ -16,6 +16,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/umputun/remark/backend/app/store"
+	"github.com/umputun/remark/backend/app/store/service"
 )
 
 func TestMigrator_Import(t *testing.T) {
@@ -254,49 +257,40 @@ func TestMigrator_Export(t *testing.T) {
 }
 
 func TestMigrator_Remap(t *testing.T) {
-	ts, _, teardown := startupT(t)
+	ts, srv, teardown := startupT(t)
 	defer teardown()
 
-	// test case
-	// we have several comments from one site `remark42` belong to two urls.
-	// one url is set readonly.
-	//[
-	//	{
-	//		"url": "https://remark42.com/demo/",
-	//		"count": 5
-	//	},
-	//	{
-	//		"url": "https://remark42.com/demo-another/",   - readonly!
-	//		"count": 1
-	//	}
-	//]
-	// import test case first
-	s := `{"version":1,"users":[{"id":"blocked_user","blocked":{"status":true,"until":"2019-09-21T07:18:32.2346858-05:00"},"verified":false},{"id":"verified_user","blocked":{"status":false,"until":"0001-01-01T00:00:00Z"},"verified":true}],"posts":[{"url":"https://remark42.com/demo-another/","read_only":true}]}
-{"id":"25a18d59-aee9-45ab-86f5-c3fa31ef22c9","pid":"","text":"<p>comment to another post</p>\n","orig":"comment to another post","user":{"name":"admin","id":"admin","picture":"","ip":"1539deba4a54fc7862f0adf8d27192b19a27b1ed","admin":true},"locator":{"site":"remark42","url":"https://remark42.com/demo-another/"},"score":0,"vote":0,"time":"2019-09-14T07:26:23.4121277-05:00"}
-{"id":"b814a90b-5b60-4e2b-b6e9-7058266c7706","pid":"","text":"<p>first comment from dev_user</p>\n","orig":"first comment from dev_user","user":{"name":"dev_user","id":"dev_user","picture":"http://127.0.0.1:8080/api/v1/avatar/ccfa2abd01667605b4e1fc4fcb91b1e1af323240.image","ip":"1539deba4a54fc7862f0adf8d27192b19a27b1ed","admin":true,"site_id":"remark42"},"locator":{"site":"remark42","url":"https://remark42.com/demo/"},"score":1,"voted_ips":{"1539deba4a54fc7862f0adf8d27192b19a27b1ed":{"Timestamp":"2019-09-14T07:16:57.9319874-05:00","Value":true}},"vote":0,"time":"2019-09-14T07:16:18.0986736-05:00","title":"remark42 demo page"}
-{"id":"145e3285-5dfd-4a4c-b8b0-3c6b5164473c","pid":"b814a90b-5b60-4e2b-b6e9-7058266c7706","text":"<p>reply to first message from any_user</p>\n","orig":"reply to first message from any_user","user":{"name":"any_user","id":"any_user","picture":"http://127.0.0.1:8080/api/v1/avatar/05ac5abbad12297e7a3578106fc0306f4fd73171.image","ip":"1539deba4a54fc7862f0adf8d27192b19a27b1ed","admin":false,"site_id":"remark42"},"locator":{"site":"remark42","url":"https://remark42.com/demo/"},"score":0,"vote":0,"time":"2019-09-14T07:16:55.2362843-05:00","title":"remark42 demo page"}
-{"id":"9beeb568-52b2-466d-b012-cd0d4dcdb854","pid":"","text":"<p>I want to be verified</p>\n","orig":"I want to be verified","user":{"name":"verified_user","id":"verified_user","picture":"http://127.0.0.1:8080/api/v1/avatar/7be676cbf4b5d7c0ae4da5f8143de927b12cfb42.image","ip":"1539deba4a54fc7862f0adf8d27192b19a27b1ed","admin":false,"verified":true,"site_id":"remark42"},"locator":{"site":"remark42","url":"https://remark42.com/demo/"},"score":1,"voted_ips":{"1539deba4a54fc7862f0adf8d27192b19a27b1ed":{"Timestamp":"2019-09-14T07:22:01.0384052-05:00","Value":true}},"vote":0,"time":"2019-09-14T07:17:26.1825625-05:00","title":"remark42 demo page"}
-{"id":"28e3b25a-d13b-4c0e-9179-5de9aad4a196","pid":"","text":"<p>I want to be blocked</p>\n","orig":"I want to be blocked","user":{"name":"blocked_user","id":"blocked_user","picture":"http://127.0.0.1:8080/api/v1/avatar/b4570b63a82ff5b5e188c9cb1820362ec13ad361.image","ip":"1539deba4a54fc7862f0adf8d27192b19a27b1ed","admin":false,"block":true,"site_id":"remark42"},"locator":{"site":"remark42","url":"https://remark42.com/demo/"},"score":0,"vote":0,"time":"2019-09-14T07:18:05.8465267-05:00","title":"remark42 demo page"}
-{"id":"09328137-9ac6-4388-ab75-e50113874f45","pid":"145e3285-5dfd-4a4c-b8b0-3c6b5164473c","text":"<p>reply from admin</p>\n","orig":"reply from admin","user":{"name":"dev_user","id":"dev_user","picture":"http://127.0.0.1:8080/api/v1/avatar/ccfa2abd01667605b4e1fc4fcb91b1e1af323240.image","ip":"1539deba4a54fc7862f0adf8d27192b19a27b1ed","admin":true,"site_id":"remark42"},"locator":{"site":"remark42","url":"https://remark42.com/demo/"},"score":0,"vote":0,"time":"2019-09-14T07:24:17.5763304-05:00","title":"remark42 demo page"}`
-	r := strings.NewReader(s)
+	// create 2 comments in https://remark42.com/demo/
+	c1 := store.Comment{Text: "first comment", Timestamp: time.Now(),
+		Locator: store.Locator{SiteID: "remark42", URL: "https://remark42.com/demo/"}, User: store.User{ID: "u1"}}
+	_, err := srv.DataService.Create(c1)
+	require.NoError(t, err)
+	c2 := store.Comment{Text: "second comment", Timestamp: time.Now(),
+		Locator: store.Locator{SiteID: "remark42", URL: "https://remark42.com/demo/"}, User: store.User{ID: "u2"}}
+	_, err = srv.DataService.Create(c2)
+	require.NoError(t, err)
 
-	client := &http.Client{Timeout: 1 * time.Second}
-	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=native", r)
-	require.Nil(t, err)
-	req.SetBasicAuth("admin", "password")
-	resp, err := client.Do(req)
-	require.Nil(t, err)
-	require.Equal(t, http.StatusAccepted, resp.StatusCode)
-	waitForImportCompletion(t, ts)
+	// create 1 comment in https://remark42.com/demo-another/
+	c3 := store.Comment{Text: "third comment", Timestamp: time.Now(),
+		Locator: store.Locator{SiteID: "remark42", URL: "https://remark42.com/demo-another/"}, User: store.User{ID: "u3"}}
+	_, err = srv.DataService.Create(c3)
+	require.NoError(t, err)
 
-	// import finished
-	// check that comments imported as expected
+	// set url https://remark42.com/demo-another/ to be readonly
+	err = srv.DataService.SetMetas("remark42", []service.UserMetaData{}, []service.PostMetaData{{
+		URL:      "https://remark42.com/demo-another/",
+		ReadOnly: true,
+	}})
+	require.NoError(t, err)
+
+	// check that comments created as expected
 	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://remark42.com/demo/")
 	require.Equal(t, 200, code)
 	comments := commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
 	require.Nil(t, err)
-	require.Equal(t, 5, comments.Info.Count)
+	require.Equal(t, 2, comments.Info.Count)
+	require.False(t, comments.Info.ReadOnly)
 
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://remark42.com/demo-another/")
 	require.Equal(t, 200, code)
@@ -304,17 +298,14 @@ func TestMigrator_Remap(t *testing.T) {
 	err = json.Unmarshal([]byte(res), &comments)
 	require.Nil(t, err)
 	require.Equal(t, 1, comments.Info.Count)
+	require.True(t, comments.Info.ReadOnly)
 
 	// we want remap urls to another domain - www.remark42.com
-	rules := strings.NewReader(`https://remark42.com/* https://www.remark42.com/*
-https://remark42.com/demo-another/ https://www.remark42.com/demo-another/`)
-	req, err = http.NewRequest("POST", ts.URL+"/api/v1/admin/remap?site=remark42", rules)
-	require.Nil(t, err)
-	req.SetBasicAuth("admin", "password")
-	resp, err = client.Do(req)
+	rules := "https://remark42.com/* https://www.remark42.com/*"
+	resp, err := post(t, ts.URL+"/api/v1/admin/remap?site=remark42", rules) // auth as admin
 	require.Nil(t, err)
 	require.Equal(t, http.StatusAccepted, resp.StatusCode)
-	waitForImportCompletion(t, ts)
+	waitForImportCompletion(t, ts) // todo rename
 
 	// after remap finished we should find comments from new urls
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://www.remark42.com/demo/")
@@ -322,7 +313,7 @@ https://remark42.com/demo-another/ https://www.remark42.com/demo-another/`)
 	comments = commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
 	require.Nil(t, err)
-	require.Equal(t, 5, comments.Info.Count)
+	require.Equal(t, 2, comments.Info.Count)
 	require.False(t, comments.Info.ReadOnly)
 
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://www.remark42.com/demo-another/")
@@ -349,22 +340,14 @@ https://remark42.com/demo-another/ https://www.remark42.com/demo-another/`)
 	require.Equal(t, 0, comments.Info.Count)
 }
 
-func TestMigrator_ConvertReject(t *testing.T) {
+func TestMigrator_RemapReject(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
 
-	s := `{"version":1,"users":[{"id":"blocked_user","blocked":{"status":true,"until":"2019-09-21T07:18:32.2346858-05:00"},"verified":false},{"id":"verified_user","blocked":{"status":false,"until":"0001-01-01T00:00:00Z"},"verified":true}],"posts":[{"url":"https://remark42.com/demo-another/","read_only":true}]}
-{"id":"25a18d59-aee9-45ab-86f5-c3fa31ef22c9","pid":"","text":"<p>comment to another post</p>\n","orig":"comment to another post","user":{"name":"admin","id":"admin","picture":"","ip":"1539deba4a54fc7862f0adf8d27192b19a27b1ed","admin":true},"locator":{"site":"remark42","url":"https://remark42.com/demo-another/"},"score":0,"vote":0,"time":"2019-09-14T07:26:23.4121277-05:00"}
-{"id":"b814a90b-5b60-4e2b-b6e9-7058266c7706","pid":"","text":"<p>first comment from dev_user</p>\n","orig":"first comment from dev_user","user":{"name":"dev_user","id":"dev_user","picture":"http://127.0.0.1:8080/api/v1/avatar/ccfa2abd01667605b4e1fc4fcb91b1e1af323240.image","ip":"1539deba4a54fc7862f0adf8d27192b19a27b1ed","admin":true,"site_id":"remark42"},"locator":{"site":"remark42","url":"https://remark42.com/demo/"},"score":1,"voted_ips":{"1539deba4a54fc7862f0adf8d27192b19a27b1ed":{"Timestamp":"2019-09-14T07:16:57.9319874-05:00","Value":true}},"vote":0,"time":"2019-09-14T07:16:18.0986736-05:00","title":"remark42 demo page"}
-{"id":"145e3285-5dfd-4a4c-b8b0-3c6b5164473c","pid":"b814a90b-5b60-4e2b-b6e9-7058266c7706","text":"<p>reply to first message from any_user</p>\n","orig":"reply to first message from any_user","user":{"name":"any_user","id":"any_user","picture":"http://127.0.0.1:8080/api/v1/avatar/05ac5abbad12297e7a3578106fc0306f4fd73171.image","ip":"1539deba4a54fc7862f0adf8d27192b19a27b1ed","admin":false,"site_id":"remark42"},"locator":{"site":"remark42","url":"https://remark42.com/demo/"},"score":0,"vote":0,"time":"2019-09-14T07:16:55.2362843-05:00","title":"remark42 demo page"}
-{"id":"9beeb568-52b2-466d-b012-cd0d4dcdb854","pid":"","text":"<p>I want to be verified</p>\n","orig":"I want to be verified","user":{"name":"verified_user","id":"verified_user","picture":"http://127.0.0.1:8080/api/v1/avatar/7be676cbf4b5d7c0ae4da5f8143de927b12cfb42.image","ip":"1539deba4a54fc7862f0adf8d27192b19a27b1ed","admin":false,"verified":true,"site_id":"remark42"},"locator":{"site":"remark42","url":"https://remark42.com/demo/"},"score":1,"voted_ips":{"1539deba4a54fc7862f0adf8d27192b19a27b1ed":{"Timestamp":"2019-09-14T07:22:01.0384052-05:00","Value":true}},"vote":0,"time":"2019-09-14T07:17:26.1825625-05:00","title":"remark42 demo page"}
-{"id":"28e3b25a-d13b-4c0e-9179-5de9aad4a196","pid":"","text":"<p>I want to be blocked</p>\n","orig":"I want to be blocked","user":{"name":"blocked_user","id":"blocked_user","picture":"http://127.0.0.1:8080/api/v1/avatar/b4570b63a82ff5b5e188c9cb1820362ec13ad361.image","ip":"1539deba4a54fc7862f0adf8d27192b19a27b1ed","admin":false,"block":true,"site_id":"remark42"},"locator":{"site":"remark42","url":"https://remark42.com/demo/"},"score":0,"vote":0,"time":"2019-09-14T07:18:05.8465267-05:00","title":"remark42 demo page"}
-{"id":"09328137-9ac6-4388-ab75-e50113874f45","pid":"145e3285-5dfd-4a4c-b8b0-3c6b5164473c","text":"<p>reply from admin</p>\n","orig":"reply from admin","user":{"name":"dev_user","id":"dev_user","picture":"http://127.0.0.1:8080/api/v1/avatar/ccfa2abd01667605b4e1fc4fcb91b1e1af323240.image","ip":"1539deba4a54fc7862f0adf8d27192b19a27b1ed","admin":true,"site_id":"remark42"},"locator":{"site":"remark42","url":"https://remark42.com/demo/"},"score":0,"vote":0,"time":"2019-09-14T07:24:17.5763304-05:00","title":"remark42 demo page"}`
-	r := strings.NewReader(s)
-
 	// without admin credentials
 	client := &http.Client{Timeout: 1 * time.Second}
-	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=native", r)
+	rules := strings.NewReader(`https://remark42.com/* https://www.remark42.com/*`)
+	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/remap?site=remark42", rules)
 	require.Nil(t, err)
 	resp, err := client.Do(req)
 	require.Nil(t, err)

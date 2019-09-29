@@ -28,7 +28,7 @@ type Migrator struct {
 	DisqusImporter    migrator.Importer
 	WordPressImporter migrator.Importer
 	NativeExporter    migrator.Exporter
-	NewMapperFn       migrator.NewMapper
+	UrlMapperMaker    migrator.MapperMaker
 	KeyStore          KeyStore
 
 	busy map[string]bool
@@ -159,14 +159,14 @@ func (m *Migrator) remapCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 
 	// create new url-mapper from given rules in body
-	mapper, err := m.NewMapperFn(r.Body)
+	mapper, err := m.UrlMapperMaker(r.Body)
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "remap failed, bad given rules", rest.ErrDecode)
 		return
 	}
 	defer r.Body.Close()
 
-	// start remap procedure with built mapper
+	// start remap procedure with mapper
 	go func() {
 		m.setBusy(siteID, true)
 		defer m.setBusy(siteID, false)
