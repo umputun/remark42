@@ -41,6 +41,7 @@ import { Thread } from '@app/components/thread';
 import { uploadImage, getPreview } from '@app/common/api';
 import { isUserAnonymous } from '@app/utils/isUserAnonymous';
 import { bindActions } from '@app/utils/actionBinder';
+import postMessage from '@app/utils/postMessage';
 
 const mapStateToProps = (state: StoreState) => ({
   user: state.user,
@@ -141,7 +142,7 @@ export class Root extends Component<Props, State> {
 
       if (comment) {
         setTimeout(() => {
-          window.parent.postMessage(JSON.stringify({ scrollTo: comment.getBoundingClientRect().top }), '*');
+          postMessage({ scrollTo: comment.getBoundingClientRect().top });
         }, 500);
       }
     }
