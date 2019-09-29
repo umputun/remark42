@@ -22,7 +22,7 @@ module.exports = {
         // disabling because typescipt uses it's own lint (see next rule)
         'no-unused-vars': 0,
         // allow Rust-like var starting with _underscore
-        '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: /^_/ }],
+        '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
         // disabling because it's bad practice to mark accessibility in react classes
         '@typescript-eslint/explicit-member-accessibility': 0,
         // doesn't work in real world
