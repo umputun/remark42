@@ -770,7 +770,8 @@ _returned id should be appended to load image url on caller side_
 * `POST /api/v1/admin/import?site=side-id` - import comments from the backup, uses post body.
 * `POST /api/v1/admin/import/form?site=side-id` - import comments from the backup, user post form.
 * `POST /api/v1/admin/remap?site=side-id` - remap comments to different URLs. Expect list of "from-url new-url" pairs separated by \n. 
-From-url and new-url parts separated by space. If urls end with asterisk (*) it means matching by prefix
+From-url and new-url parts separated by space. If urls end with asterisk (*) it means matching by prefix. Remap procedure based on
+export/import chain so make backup first.
     ```
     http://oldsite.com* https://newsite.com*
     http://oldsite.com/from-old-page/1 https://newsite.com/to-new-page/1

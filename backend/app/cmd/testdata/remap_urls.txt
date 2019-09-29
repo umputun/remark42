@@ -1,0 +1,2 @@
+http://oldsite.com* https://newsite.com*
+http://oldsite.com/from-old-page/1 https://newsite.com/to-new-page/1
