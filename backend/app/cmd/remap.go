@@ -34,16 +34,16 @@ func (rc *RemapCommand) Execute(args []string) error {
 	client := http.Client{}
 	ctx, cancel := context.WithTimeout(context.Background(), rc.Timeout)
 	defer cancel()
-	importURL := fmt.Sprintf("%s/api/v1/admin/remap?site=%s", rc.RemarkURL, rc.Site)
-	req, err := http.NewRequest(http.MethodPost, importURL, rulesReader)
+	remapURL := fmt.Sprintf("%s/api/v1/admin/remap?site=%s", rc.RemarkURL, rc.Site)
+	req, err := http.NewRequest(http.MethodPost, remapURL, rulesReader)
 	if err != nil {
-		return errors.Wrapf(err, "can't make remap request for %s", importURL)
+		return errors.Wrapf(err, "can't make remap request for %s", remapURL)
 	}
 	req.SetBasicAuth("admin", rc.AdminPasswd)
 
 	resp, err := client.Do(req.WithContext(ctx))
 	if err != nil {
-		return errors.Wrapf(err, "request failed for %s", importURL)
+		return errors.Wrapf(err, "request failed for %s", remapURL)
 	}
 	defer func() {
 		if err = resp.Body.Close(); err != nil {
