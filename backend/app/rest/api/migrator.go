@@ -99,7 +99,9 @@ func (m *Migrator) importFormCtrl(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, R.JSON{"status": "import request accepted"})
 }
 
-func (m *Migrator) importWaitCtrl(w http.ResponseWriter, r *http.Request) {
+// GET /wait?site=site-id
+// waits for migration operation (import or remap)
+func (m *Migrator) waitCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	timeOut := time.Minute * 15
 	if v := r.URL.Query().Get("timeout"); v != "" {

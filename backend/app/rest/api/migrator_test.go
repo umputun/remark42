@@ -47,7 +47,7 @@ func TestMigrator_Import(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "{\"status\":\"import request accepted\"}\n", string(b))
 
-	waitForImportCompletion(t, ts)
+	waitForMigrationCompletion(t, ts)
 }
 
 func TestMigrator_ImportForm(t *testing.T) {
@@ -81,7 +81,7 @@ func TestMigrator_ImportForm(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "{\"status\":\"import request accepted\"}\n", string(b))
 
-	waitForImportCompletion(t, ts)
+	waitForMigrationCompletion(t, ts)
 }
 
 func TestMigrator_ImportFromWP(t *testing.T) {
@@ -103,7 +103,7 @@ func TestMigrator_ImportFromWP(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "{\"status\":\"import request accepted\"}\n", string(b))
 
-	waitForImportCompletion(t, ts)
+	waitForMigrationCompletion(t, ts)
 }
 
 func TestMigrator_ImportRejected(t *testing.T) {
@@ -157,7 +157,7 @@ func TestMigrator_ImportDouble(t *testing.T) {
 	resp, err = client.Do(req)
 	assert.Nil(t, err)
 	assert.Equal(t, http.StatusConflict, resp.StatusCode)
-	waitForImportCompletion(t, ts)
+	waitForMigrationCompletion(t, ts)
 }
 
 func TestMigrator_ImportWaitExpired(t *testing.T) {
@@ -183,7 +183,7 @@ func TestMigrator_ImportWaitExpired(t *testing.T) {
 	assert.Equal(t, http.StatusAccepted, resp.StatusCode)
 
 	client = &http.Client{Timeout: 10 * time.Second}
-	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/import/wait?site=remark42&timeout=100ms", nil)
+	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/wait?site=remark42&timeout=100ms", nil)
 	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
 	assert.NoError(t, err)
@@ -191,7 +191,7 @@ func TestMigrator_ImportWaitExpired(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusGatewayTimeout, resp.StatusCode)
 
-	waitForImportCompletion(t, ts)
+	waitForMigrationCompletion(t, ts)
 }
 
 func TestMigrator_Export(t *testing.T) {
@@ -215,7 +215,7 @@ func TestMigrator_Export(t *testing.T) {
 	resp, err := client.Do(req)
 	require.Nil(t, err)
 	require.Equal(t, http.StatusAccepted, resp.StatusCode)
-	waitForImportCompletion(t, ts)
+	waitForMigrationCompletion(t, ts)
 
 	// check file mode
 	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/export?mode=file&site=remark42", nil)
@@ -305,7 +305,7 @@ func TestMigrator_Remap(t *testing.T) {
 	resp, err := post(t, ts.URL+"/api/v1/admin/remap?site=remark42", rules) // auth as admin
 	require.Nil(t, err)
 	require.Equal(t, http.StatusAccepted, resp.StatusCode)
-	waitForImportCompletion(t, ts) // todo rename
+	waitForMigrationCompletion(t, ts)
 
 	// after remap finished we should find comments from new urls
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://www.remark42.com/demo/")
@@ -354,9 +354,9 @@ func TestMigrator_RemapReject(t *testing.T) {
 	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 }
 
-func waitForImportCompletion(t *testing.T, ts *httptest.Server) {
+func waitForMigrationCompletion(t *testing.T, ts *httptest.Server) {
 	client := &http.Client{Timeout: 10 * time.Second}
-	req, err := http.NewRequest("GET", ts.URL+"/api/v1/admin/import/wait?site=remark42", nil)
+	req, err := http.NewRequest("GET", ts.URL+"/api/v1/admin/wait?site=remark42", nil)
 	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
 	assert.NoError(t, err)
