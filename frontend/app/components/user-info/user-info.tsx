@@ -10,6 +10,7 @@ import { userInfo } from '@app/common/user-info-settings';
 
 import LastCommentsList from './last-comments-list';
 import { AvatarIcon } from '../avatar-icon';
+import postMessage from '@app/utils/postMessage';
 
 interface Props {
   comments: Comment[] | null;
@@ -70,8 +71,7 @@ class UserInfo extends Component<Props, State> {
   static onKeyDown(e: KeyboardEvent): void {
     // ESCAPE key pressed
     if (e.keyCode === 27) {
-      const data = JSON.stringify({ isUserInfoShown: false });
-      window.parent.postMessage(data, '*');
+      postMessage({ isUserInfoShown: false });
     }
   }
 }

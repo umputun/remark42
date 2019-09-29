@@ -20,6 +20,7 @@ import { AvatarIcon } from '@app/components/avatar-icon';
 import Countdown from '../countdown';
 import { boundActions } from './connected-comment';
 import { getPreview, uploadImage } from '@app/common/api';
+import postMessage from '@app/utils/postMessage';
 
 export type Props = {
   user: User | null;
@@ -288,7 +289,10 @@ export class Comment extends Component<Props, State> {
     const parentCommentNode = document.getElementById(`${COMMENT_NODE_CLASSNAME_PREFIX}${pid}`);
 
     if (parentCommentNode) {
-      parentCommentNode.scrollIntoView();
+      const top = parentCommentNode.getBoundingClientRect().top;
+      if (!postMessage({ scrollTo: top })) {
+        parentCommentNode.scrollIntoView();
+      }
     }
   };
 

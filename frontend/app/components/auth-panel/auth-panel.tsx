@@ -15,6 +15,7 @@ import { EmailLoginForm, EmailLoginFormConnected } from './__email-login-form';
 import { StoreState } from '@app/store';
 import { ProviderState } from '@app/store/provider/reducers';
 import debounce from '@app/utils/debounce';
+import postMessage from '@app/utils/postMessage';
 
 export interface Props {
   user: User | null;
@@ -122,8 +123,8 @@ export class AuthPanel extends Component<Props, State> {
   toggleUserInfoVisibility() {
     const user = this.props.user;
     if (window.parent && user) {
-      const data = JSON.stringify({ isUserInfoShown: true, user });
-      window.parent.postMessage(data, '*');
+      const data = { isUserInfoShown: true, user };
+      postMessage(data);
     }
   }
 
