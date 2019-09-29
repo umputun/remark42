@@ -44,6 +44,7 @@ export interface Comment {
   locator: Locator;
   /** comment score, read only */
   score: number;
+  voted_ips: { Timestamp: string; Value: boolean }[];
   /**
    * vote delta,
    * if user hasn't voted delta will be 0,
