@@ -117,7 +117,7 @@ export const hideUser = (user: User): StoreAction<void> => (dispatch, getState) 
 export const unhideUser = (userId: string): StoreAction<void> => (dispatch, _getState) => {
   if (IS_STORAGE_AVAILABLE) {
     const hiddenUsers = JSON.parse(getItem(LS_HIDDEN_USERS_KEY) || '{}');
-    if (hiddenUsers.hasOwnProperty(userId)) {
+    if (Object.prototype.hasOwnProperty.call(hiddenUsers, userId)) {
       delete hiddenUsers[userId];
     }
     localStorage.setItem(LS_HIDDEN_USERS_KEY, JSON.stringify(hiddenUsers));
