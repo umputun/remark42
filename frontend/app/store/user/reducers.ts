@@ -55,7 +55,7 @@ export const hiddenUsers = (state: { [id: string]: User } = {}, action: USER_ACT
       return { ...state, [action.user.id]: action.user };
     }
     case USER_UNHIDE: {
-      if (!state.hasOwnProperty(action.id)) return state;
+      if (!Object.prototype.hasOwnProperty.call(state, action.id)) return state;
       const newState = { ...state };
       delete newState[action.id];
       return newState;

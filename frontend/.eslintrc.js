@@ -33,8 +33,10 @@ module.exports = {
         '@typescript-eslint/camelcase': 0,
         // disabling because it's standard behaviour that function is hoisted to top
         '@typescript-eslint/no-use-before-define': 0,
-        // maybe good but I have just tired to type return types everywhere, especially with complex generic return types
-        '@typescript-eslint/explicit-function-return-type': 0,
+        // well
+        '@typescript-eslint/ban-ts-ignore': 0,
+        // better to be explicit here maybe?
+        '@typescript-eslint/no-inferrable-types': 0,
       },
     },
     {
@@ -117,5 +119,6 @@ module.exports = {
     'prefer-arrow-callback': 2,
     'prettier/prettier': 2,
     '@typescript-eslint/no-var-requires': 0,
+    '@typescript-eslint/explicit-function-return-type': 0,
   },
 };

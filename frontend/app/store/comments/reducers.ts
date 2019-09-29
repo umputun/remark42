@@ -104,7 +104,7 @@ export const comments = (
       let changed = false;
       const editObject = { summary: '', time: new Date().toISOString() };
       for (const id of action.ids) {
-        if (!state.hasOwnProperty(id)) continue;
+        if (!Object.prototype.hasOwnProperty.call(state, id)) continue;
         if (!changed) {
           changed = true;
           newState = { ...newState };
@@ -153,7 +153,7 @@ export const pinnedComments = (
       return [...state, action.comment.id];
     }
     case COMMENTS_PATCH: {
-      if (!action.patch.hasOwnProperty('pin')) return state;
+      if (!Object.prototype.hasOwnProperty.call(action.patch, 'pin')) return state;
       if (!action.patch.pin) {
         return state.filter(x => action.ids.indexOf(x) === -1);
       }
