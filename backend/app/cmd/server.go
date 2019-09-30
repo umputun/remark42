@@ -305,6 +305,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		DisqusImporter:    &migrator.Disqus{DataStore: dataService},
 		WordPressImporter: &migrator.WordPress{DataStore: dataService},
 		NativeExporter:    &migrator.Native{DataStore: dataService},
+		UrlMapperMaker:    migrator.NewUrlMapper,
 		KeyStore:          adminStore,
 	}
 

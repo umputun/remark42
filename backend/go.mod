@@ -56,5 +56,6 @@ require (
 	golang.org/x/crypto v0.0.0-20190820162420-60c769a6c586
 	golang.org/x/image v0.0.0-20190823064033-3a9bac650e44
 	golang.org/x/net v0.0.0-20190813141303-74dc4d7220e7
+	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	gopkg.in/russross/blackfriday.v2 v2.0.1
 )

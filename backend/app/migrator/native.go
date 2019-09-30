@@ -87,9 +87,49 @@ func (n *Native) exportMeta(siteID string, w io.Writer) (err error) {
 	return nil
 }
 
+// WithMapper wraps reader with url-mapper.
+func WithMapper(reader io.Reader, mapper Mapper) io.Reader {
+	r, w := io.Pipe()
+	go func() {
+		var err error
+		defer func() {
+			log.Printf("[DEBUG] finish write to pipe with %+v", err)
+			if e := w.Close(); e != nil {
+				log.Printf("[WARN] failed close pipe writer with %+v", e)
+			}
+		}()
+
+		// decode from reader and encode to pipe writer
+		dec, enc := json.NewDecoder(reader), json.NewEncoder(w)
+
+		m := meta{}
+		if err = dec.Decode(&m); err != nil {
+			return
+		}
+		for i := range m.Posts {
+			m.Posts[i].URL = mapper.URL(m.Posts[i].URL)
+		}
+		if err = enc.Encode(m); err != nil {
+			return
+		}
+
+		for {
+			comment := store.Comment{}
+			if err = dec.Decode(&comment); err != nil {
+				return
+			}
+			comment.Locator.URL = mapper.URL(comment.Locator.URL)
+			if err = enc.Encode(comment); err != nil {
+				return
+			}
+		}
+	}()
+
+	return r
+}
+
 // Import comments from json strings produced by Remark.Export
 func (n *Native) Import(reader io.Reader, siteID string) (size int, err error) {
-
 	m := meta{}
 	dec := json.NewDecoder(reader)
 	if err = dec.Decode(&m); err != nil {
