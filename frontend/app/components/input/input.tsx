@@ -7,6 +7,8 @@ import './styles';
 import { h, Component, RenderableProps } from 'preact';
 import b, { Mix } from 'bem-react-helper';
 
+import Dropdown, { DropdownItem } from '@app/components/dropdown';
+
 import { User, Theme, Image, ApiError } from '@app/common/types';
 import { BASE_URL, API_BASE } from '@app/common/constants';
 import { StaticStore } from '@app/common/static_store';
@@ -114,10 +116,26 @@ export class Input extends Component<Props, State> {
   }
 
   onKeyDown(e: KeyboardEvent) {
+    const colon = ':';
+    const isColon = e.key === colon;
+
     // send on cmd+enter / ctrl+enter
     if (e.keyCode === 13 && (e.metaKey || e.ctrlKey)) {
       this.send(e);
+    } else if (isColon) {
+      // eslint-disable-next-line no-console
+      console.log('Emoji will show');
     }
+  }
+
+  renderEmojiDropdown() {
+    // eslint-disable-next-line no-console
+    console.log(this.props);
+    return (
+      <Dropdown title={'Emoji'} theme={this.props.theme}>
+        <DropdownItem>Here will be emoji...</DropdownItem>
+      </Dropdown>
+    );
   }
 
   onInput(e: Event) {
@@ -363,6 +381,7 @@ export class Input extends Component<Props, State> {
         onDragOver={this.onDragOver}
         onDrop={this.onDrop}
       >
+        <div class="input__emoji-dropdown">{this.renderEmojiDropdown()}</div>
         <div className="input__control-panel">
           <MarkdownToolbar
             allowUpload={Boolean(this.props.uploadImage)}

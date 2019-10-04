@@ -10,6 +10,7 @@ import './__button/_type/_send/input__button_type_send.scss';
 
 import './__control-panel/input__control-panel.scss';
 import './__counter/input__counter.scss';
+import './__emoji-dropdown/input__emoji-dropdown.scss';
 import './__error/input__error.scss';
 import './__field/input__field.scss';
 import './__field-wrapper/input__field-wrapper.scss';
