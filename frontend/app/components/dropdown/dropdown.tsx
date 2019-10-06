@@ -5,6 +5,7 @@ import b from 'bem-react-helper';
 import { Button } from '@app/components/button';
 import { Theme } from '@app/common/types';
 import { sleep } from '@app/utils/sleep';
+import { isUndefined } from 'lodash';
 
 interface Props {
   title: string;
@@ -36,8 +37,21 @@ export default class Dropdown extends Component<Props, State> {
 
     this.onOutsideClick = this.onOutsideClick.bind(this);
     this.receiveMessage = this.receiveMessage.bind(this);
+    this.updateState = this.updateState.bind(this);
     this.__onOpen = this.__onOpen.bind(this);
     this.__onClose = this.__onClose.bind(this);
+  }
+
+  updateState(props: Props) {
+    if (isUndefined(props.isActive) || props.isActive === this.state.isActive) {
+      return;
+    }
+
+    this.setState({
+      isActive: !props.isActive,
+    });
+
+    this.onTitleClick();
   }
 
   onTitleClick() {
@@ -178,6 +192,7 @@ export default class Dropdown extends Component<Props, State> {
 
   render(props: RenderableProps<Props>, { isActive }: State) {
     const { title, titleClass, heading, children, mix } = props;
+    this.updateState(props);
 
     return (
       <div className={b('dropdown', { mix }, { theme: props.theme, active: isActive })} ref={r => (this.rootNode = r)}>

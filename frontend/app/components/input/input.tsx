@@ -56,6 +56,8 @@ interface State {
   text: string;
   /** override main button text */
   buttonText: null | string;
+  /** open or not emoji dropdown */
+  isEmojiOpen: boolean;
 }
 
 const Labels = {
@@ -83,6 +85,7 @@ export class Input extends Component<Props, State> {
       maxLength: StaticStore.config.max_comment_size,
       text: props.value || '',
       buttonText: null,
+      isEmojiOpen: false,
     };
 
     this.send = this.send.bind(this);
@@ -95,6 +98,9 @@ export class Input extends Component<Props, State> {
     this.uploadImage = this.uploadImage.bind(this);
     this.uploadImages = this.uploadImages.bind(this);
     this.onPaste = this.onPaste.bind(this);
+
+    this.onOpenEmoji = this.onOpenEmoji.bind(this);
+    this.onCloseEmoji = this.onCloseEmoji.bind(this);
   }
 
   componentWillReceiveProps(nextProps: Props) {
@@ -102,6 +108,18 @@ export class Input extends Component<Props, State> {
       this.setState({ text: nextProps.value || '' });
       this.props.autofocus && this.textAreaRef && this.textAreaRef.focus();
     }
+  }
+
+  onOpenEmoji() {
+    this.setState({
+      isEmojiOpen: true,
+    });
+  }
+
+  onCloseEmoji() {
+    this.setState({
+      isEmojiOpen: false,
+    });
   }
 
   shouldComponentUpdate(nextProps: Props, nextState: State) {
@@ -124,18 +142,10 @@ export class Input extends Component<Props, State> {
       this.send(e);
     } else if (isColon) {
       // eslint-disable-next-line no-console
-      console.log('Emoji will show');
+      this.onOpenEmoji();
+    } else {
+      this.onCloseEmoji();
     }
-  }
-
-  renderEmojiDropdown() {
-    // eslint-disable-next-line no-console
-    console.log(this.props);
-    return (
-      <Dropdown title={'Emoji'} theme={this.props.theme}>
-        <DropdownItem>Here will be emoji...</DropdownItem>
-      </Dropdown>
-    );
   }
 
   onInput(e: Event) {
@@ -381,7 +391,11 @@ export class Input extends Component<Props, State> {
         onDragOver={this.onDragOver}
         onDrop={this.onDrop}
       >
-        <div class="input__emoji-dropdown">{this.renderEmojiDropdown()}</div>
+        <div class="input__emoji-dropdown">
+          <Dropdown title={'Emoji'} theme={this.props.theme} isActive={this.state.isEmojiOpen}>
+            <DropdownItem>Here will be emoji...</DropdownItem>
+          </Dropdown>
+        </div>
         <div className="input__control-panel">
           <MarkdownToolbar
             allowUpload={Boolean(this.props.uploadImage)}
