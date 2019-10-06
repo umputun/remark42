@@ -1,5 +1,5 @@
-/** @jsx h */
-import { h } from 'preact';
+/** @jsx createElement */
+import { createElement } from 'preact';
 import { mount } from 'enzyme';
 import { EmailLoginForm, Props, State } from './auth-panel__email-login-form';
 import { User } from '@app/common/types';

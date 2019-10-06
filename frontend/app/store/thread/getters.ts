@@ -3,7 +3,7 @@ import { StaticStore } from '@app/common/static_store';
 
 import { StoreState } from '../index';
 
-export const getThreadIsCollapsed = (state: StoreState, comment: Comment): boolean => {
+export const getThreadIsCollapsed = (comment: Comment) => (state: StoreState): boolean => {
   const collapsed = state.collapsedThreads[comment.id];
 
   if (collapsed !== null && collapsed !== undefined) {

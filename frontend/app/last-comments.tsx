@@ -1,10 +1,9 @@
 /* eslint-disable no-console, @typescript-eslint/camelcase */
-/** @jsx h */
+/** @jsx createElement */
 declare let remark_config: LastCommentsConfig;
 
 import loadPolyfills from '@app/common/polyfills';
-import '@app/utils/patchPreactContext';
-import { h, render } from 'preact';
+import { createElement, render } from 'preact';
 import 'preact/debug';
 import { getLastComments } from './common/api';
 import { LastCommentsConfig } from '@app/common/config-types';

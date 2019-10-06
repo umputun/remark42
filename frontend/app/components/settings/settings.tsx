@@ -1,5 +1,5 @@
-/** @jsx h */
-import { h, Component, RenderableProps } from 'preact';
+/** @jsx createElement */
+import { createElement, Component } from 'preact';
 import b from 'bem-react-helper';
 
 import { User, BlockedUser, Theme, BlockTTL } from '@app/common/types';
@@ -29,7 +29,7 @@ interface State {
   unhiddenUsers: (User['id'])[];
 }
 
-export default class BlockedUsers extends Component<Props, State> {
+export default class Settings extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
 
@@ -74,7 +74,7 @@ export default class BlockedUsers extends Component<Props, State> {
     return false;
   };
 
-  render({ user, theme }: RenderableProps<Props>, { blockedUsers, unblockedUsers, unhiddenUsers }: State) {
+  render({ user, theme }: Props, { blockedUsers, unblockedUsers, unhiddenUsers }: State) {
     const hiddenUsersList = Object.values(this.state.hiddenUsers);
     return (
       <div className={b('settings', {}, { theme })}>

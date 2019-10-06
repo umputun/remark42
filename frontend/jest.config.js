@@ -10,6 +10,8 @@ module.exports = {
   moduleNameMapper: {
     '\\.scss$': '<rootDir>/app/testUtils/mockStyles.js',
     '@app/(.*)': '<rootDir>/app/$1',
+    '^react$': 'preact/compat',
+    '^react-dom$': 'preact/compat',
   },
   setupFilesAfterEnv: ['<rootDir>/app/testUtils/index.ts'],
 };

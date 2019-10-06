@@ -1,5 +1,5 @@
-/** @jsx h */
-import { h, Component, RenderableProps } from 'preact';
+/** @jsx createElement */
+import { createElement, Component } from 'preact';
 import '@github/markdown-toolbar-element';
 import BoldIcon from './markdown-toolbar-icons/bold-icon';
 import HeaderIcon from './markdown-toolbar-icons/header-icon';
@@ -48,7 +48,7 @@ export default class MarkdownToolbar extends Component<Props> {
     await this.props.uploadImages(files);
     currentTarget.value = null;
   }
-  render(props: RenderableProps<Props>) {
+  render(props: Props) {
     return (
       <markdown-toolbar className="input__toolbar" for={props.textareaId}>
         <div className="input__toolbar-group">
@@ -74,7 +74,7 @@ export default class MarkdownToolbar extends Component<Props> {
           </md-link>
           {this.props.allowUpload ? (
             <label className="input__toolbar-item" title={attachImageLabel} aria-label={attachImageLabel}>
-              <input multiple class="input__toolbar-file-input" type="file" onChange={this.uploadImages} />
+              <input multiple className="input__toolbar-file-input" type="file" onChange={this.uploadImages} />
               <ImageIcon />
             </label>
           ) : null}

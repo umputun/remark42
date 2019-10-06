@@ -1,5 +1,5 @@
-/** @jsx h */
-import { h } from 'preact';
+/** @jsx createElement */
+import { createElement } from 'preact';
 
 import { NODE_ID } from '@app/common/constants';
 import { Comment as CommentType } from '@app/common/types';
