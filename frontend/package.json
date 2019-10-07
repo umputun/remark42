@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "scripts": {
     "build": "webpack --mode production && node postbuild.js",
-    "start": "webpack-dev-server --mode development",
+    "start": "webpack-dev-server --watch-poll --mode development",
     "check": "tsc -p tsconfig.json --noEmit --skipLibCheck",
     "lint": "eslint --max-warnings=0 --ext=.ts,.tsx,.js,.jsx .",
     "test": "jest",

@@ -6,6 +6,7 @@ import { Button } from '@app/components/button';
 import { Theme } from '@app/common/types';
 import { sleep } from '@app/utils/sleep';
 import { isUndefined } from 'lodash';
+import { DropdownItem } from '@app/components/dropdown/index';
 
 interface Props {
   title: string;
@@ -15,13 +16,16 @@ interface Props {
   onTitleClick?: () => void;
   mix?: string;
   theme: Theme;
-  onOpen?: (root: HTMLDivElement) => unknown;
-  onClose?: (root: HTMLDivElement) => unknown;
+  onOpen?: (root: HTMLDivElement) => {};
+  onClose?: (root: HTMLDivElement) => {};
+  emojiList?: string[];
+  activeListEl?: number;
 }
 
 interface State {
   isActive: boolean;
   contentTranslateX: number;
+  activeListEl: 0;
 }
 
 export default class Dropdown extends Component<Props, State> {
@@ -33,6 +37,7 @@ export default class Dropdown extends Component<Props, State> {
     this.state = {
       isActive: props.isActive || false,
       contentTranslateX: 0,
+      activeListEl: 0,
     };
 
     this.onOutsideClick = this.onOutsideClick.bind(this);
@@ -42,13 +47,17 @@ export default class Dropdown extends Component<Props, State> {
     this.__onClose = this.__onClose.bind(this);
   }
 
-  updateState(props: Props) {
+  generateList(list: string[]) {
+    return list.map((emoji, index) => <DropdownItem active={index === this.state.activeListEl}>{emoji}</DropdownItem>);
+  }
+
+  updateState(props: Props, isActive?: boolean) {
     if (isUndefined(props.isActive) || props.isActive === this.state.isActive) {
       return;
     }
 
     this.setState({
-      isActive: !props.isActive,
+      isActive: isActive ? !isActive : !props.isActive,
     });
 
     this.onTitleClick();
@@ -191,8 +200,15 @@ export default class Dropdown extends Component<Props, State> {
   }
 
   render(props: RenderableProps<Props>, { isActive }: State) {
-    const { title, titleClass, heading, children, mix } = props;
+    let { children } = props;
+    const { title, titleClass, heading, mix } = props;
     this.updateState(props);
+
+    {
+      if (this.props.emojiList) {
+        children = this.generateList(this.props.emojiList);
+      }
+    }
 
     return (
       <div className={b('dropdown', { mix }, { theme: props.theme, active: isActive })} ref={r => (this.rootNode = r)}>

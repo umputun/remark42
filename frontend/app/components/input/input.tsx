@@ -7,7 +7,7 @@ import './styles';
 import { h, Component, RenderableProps } from 'preact';
 import b, { Mix } from 'bem-react-helper';
 
-import Dropdown, { DropdownItem } from '@app/components/dropdown';
+import Dropdown from '@app/components/dropdown';
 
 import { User, Theme, Image, ApiError } from '@app/common/types';
 import { BASE_URL, API_BASE } from '@app/common/constants';
@@ -58,6 +58,7 @@ interface State {
   buttonText: null | string;
   /** open or not emoji dropdown */
   isEmojiOpen: boolean;
+  isFreezeUpAndDownArrows: boolean;
 }
 
 const Labels = {
@@ -65,6 +66,8 @@ const Labels = {
   edit: 'Save',
   reply: 'Reply',
 };
+
+const EmojiList = ['smile', 'worried', 'kiss', 'cry'];
 
 const ImageMimeRegex = /image\//i;
 
@@ -86,6 +89,7 @@ export class Input extends Component<Props, State> {
       text: props.value || '',
       buttonText: null,
       isEmojiOpen: false,
+      isFreezeUpAndDownArrows: false,
     };
 
     this.send = this.send.bind(this);
@@ -113,12 +117,14 @@ export class Input extends Component<Props, State> {
   onOpenEmoji() {
     this.setState({
       isEmojiOpen: true,
+      isFreezeUpAndDownArrows: true,
     });
   }
 
   onCloseEmoji() {
     this.setState({
       isEmojiOpen: false,
+      isFreezeUpAndDownArrows: false,
     });
   }
 
@@ -134,8 +140,18 @@ export class Input extends Component<Props, State> {
   }
 
   onKeyDown(e: KeyboardEvent) {
+    const key = e.key;
     const colon = ':';
-    const isColon = e.key === colon;
+    const isColon = key === colon;
+    const isArrowUp = key === 'ArrowUp';
+    const isArrowDown = key === 'ArrowDown';
+    const { isFreezeUpAndDownArrows } = this.state;
+
+    if (isFreezeUpAndDownArrows && (isArrowUp || isArrowDown)) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
 
     // send on cmd+enter / ctrl+enter
     if (e.keyCode === 13 && (e.metaKey || e.ctrlKey)) {
@@ -392,9 +408,7 @@ export class Input extends Component<Props, State> {
         onDrop={this.onDrop}
       >
         <div class="input__emoji-dropdown">
-          <Dropdown title={'Emoji'} theme={this.props.theme} isActive={this.state.isEmojiOpen}>
-            <DropdownItem>Here will be emoji...</DropdownItem>
-          </Dropdown>
+          <Dropdown title={'Emoji'} theme={this.props.theme} isActive={this.state.isEmojiOpen} emojiList={EmojiList} />
         </div>
         <div className="input__control-panel">
           <MarkdownToolbar
