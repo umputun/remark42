@@ -59,6 +59,7 @@ interface State {
   /** open or not emoji dropdown */
   isEmojiOpen: boolean;
   isFreezeUpAndDownArrows: boolean;
+  selectedEmojiId: number;
 }
 
 const Labels = {
@@ -67,7 +68,7 @@ const Labels = {
   reply: 'Reply',
 };
 
-const EmojiList = ['smile', 'worried', 'kiss', 'cry'];
+const EmojiList = [':smile:', ':worried:', ':kiss:', ':cry:'];
 
 const ImageMimeRegex = /image\//i;
 
@@ -90,6 +91,7 @@ export class Input extends Component<Props, State> {
       buttonText: null,
       isEmojiOpen: false,
       isFreezeUpAndDownArrows: false,
+      selectedEmojiId: 0,
     };
 
     this.send = this.send.bind(this);
@@ -105,6 +107,8 @@ export class Input extends Component<Props, State> {
 
     this.onOpenEmoji = this.onOpenEmoji.bind(this);
     this.onCloseEmoji = this.onCloseEmoji.bind(this);
+    this.selectNextEmoji = this.selectNextEmoji.bind(this);
+    this.selectPrevEmoji = this.selectPrevEmoji.bind(this);
   }
 
   componentWillReceiveProps(nextProps: Props) {
@@ -128,6 +132,32 @@ export class Input extends Component<Props, State> {
     });
   }
 
+  selectNextEmoji() {
+    let { selectedEmojiId } = this.state;
+    selectedEmojiId++;
+
+    if (selectedEmojiId >= EmojiList.length) {
+      selectedEmojiId = 0;
+    }
+
+    this.setState({
+      selectedEmojiId,
+    });
+  }
+
+  selectPrevEmoji() {
+    let { selectedEmojiId } = this.state;
+    selectedEmojiId--;
+
+    if (selectedEmojiId < 0) {
+      selectedEmojiId = EmojiList.length - 1;
+    }
+
+    this.setState({
+      selectedEmojiId,
+    });
+  }
+
   shouldComponentUpdate(nextProps: Props, nextState: State) {
     return (
       nextProps.mode !== this.props.mode ||
@@ -145,12 +175,32 @@ export class Input extends Component<Props, State> {
     const isColon = key === colon;
     const isArrowUp = key === 'ArrowUp';
     const isArrowDown = key === 'ArrowDown';
+    const isEnter = key === 'Enter';
+    const isOpenEmoji = Boolean(this.state.isEmojiOpen);
     const { isFreezeUpAndDownArrows } = this.state;
 
     if (isFreezeUpAndDownArrows && (isArrowUp || isArrowDown)) {
+      if (isArrowDown) {
+        this.selectNextEmoji();
+      } else if (isArrowUp) {
+        this.selectPrevEmoji();
+      }
+
       e.preventDefault();
       e.stopPropagation();
       return;
+    }
+
+    if (isOpenEmoji && isEnter) {
+      let { text } = this.state;
+
+      text = text.substr(0, text.length - 1);
+      text += EmojiList[this.state.selectedEmojiId];
+
+      this.setState({
+        text,
+      });
+      e.preventDefault();
     }
 
     // send on cmd+enter / ctrl+enter
@@ -408,7 +458,13 @@ export class Input extends Component<Props, State> {
         onDrop={this.onDrop}
       >
         <div class="input__emoji-dropdown">
-          <Dropdown title={'Emoji'} theme={this.props.theme} isActive={this.state.isEmojiOpen} emojiList={EmojiList} />
+          <Dropdown
+            title={'Emoji'}
+            theme={this.props.theme}
+            isActive={this.state.isEmojiOpen}
+            emojiList={EmojiList}
+            activeListEl={this.state.selectedEmojiId}
+          />
         </div>
         <div className="input__control-panel">
           <MarkdownToolbar

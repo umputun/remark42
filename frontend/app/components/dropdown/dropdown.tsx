@@ -25,7 +25,7 @@ interface Props {
 interface State {
   isActive: boolean;
   contentTranslateX: number;
-  activeListEl: 0;
+  activeListEl: number;
 }
 
 export default class Dropdown extends Component<Props, State> {
@@ -34,10 +34,15 @@ export default class Dropdown extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
 
+    let { activeListEl } = this.props;
+    if (!activeListEl) {
+      activeListEl = 0;
+    }
+
     this.state = {
       isActive: props.isActive || false,
       contentTranslateX: 0,
-      activeListEl: 0,
+      activeListEl,
     };
 
     this.onOutsideClick = this.onOutsideClick.bind(this);
@@ -48,7 +53,7 @@ export default class Dropdown extends Component<Props, State> {
   }
 
   generateList(list: string[]) {
-    return list.map((emoji, index) => <DropdownItem active={index === this.state.activeListEl}>{emoji}</DropdownItem>);
+    return list.map((emoji, index) => <DropdownItem active={index === this.props.activeListEl}>{emoji}</DropdownItem>);
   }
 
   updateState(props: Props, isActive?: boolean) {
