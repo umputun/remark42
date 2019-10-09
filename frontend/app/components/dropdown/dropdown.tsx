@@ -5,11 +5,10 @@ import b from 'bem-react-helper';
 import { Button } from '@app/components/button';
 import { Theme } from '@app/common/types';
 import { sleep } from '@app/utils/sleep';
-import { isUndefined } from 'lodash';
 import { DropdownItem } from '@app/components/dropdown/index';
 
 interface Props {
-  title: string;
+  title: string | JSX.Element;
   titleClass?: string;
   heading?: string;
   isActive?: boolean;
@@ -18,14 +17,15 @@ interface Props {
   theme: Theme;
   onOpen?: (root: HTMLDivElement) => {};
   onClose?: (root: HTMLDivElement) => {};
-  emojiList?: string[];
-  activeListEl?: number;
+  selectableItems?: string[];
+  activeSelectableItem?: number;
 }
 
 interface State {
   isActive: boolean;
   contentTranslateX: number;
-  activeListEl: number;
+  selectableItems?: string[];
+  activeSelectableItem: number;
 }
 
 export default class Dropdown extends Component<Props, State> {
@@ -34,38 +34,78 @@ export default class Dropdown extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
 
-    let { activeListEl } = this.props;
-    if (!activeListEl) {
-      activeListEl = 0;
+    const { isActive, selectableItems } = this.props;
+    let { activeSelectableItem } = this.props;
+
+    if (activeSelectableItem === undefined) {
+      activeSelectableItem = 0;
     }
 
     this.state = {
-      isActive: props.isActive || false,
+      isActive: isActive || false,
       contentTranslateX: 0,
-      activeListEl,
+      activeSelectableItem,
+      selectableItems,
     };
 
     this.onOutsideClick = this.onOutsideClick.bind(this);
     this.receiveMessage = this.receiveMessage.bind(this);
-    this.updateState = this.updateState.bind(this);
     this.__onOpen = this.__onOpen.bind(this);
     this.__onClose = this.__onClose.bind(this);
+    this.open = this.open.bind(this);
+    this.close = this.close.bind(this);
   }
 
-  generateList(list: string[]) {
-    return list.map((emoji, index) => <DropdownItem active={index === this.props.activeListEl}>{emoji}</DropdownItem>);
-  }
+  selectNextSelectableItem() {
+    const { selectableItems, activeSelectableItem } = this.state;
 
-  updateState(props: Props, isActive?: boolean) {
-    if (isUndefined(props.isActive) || props.isActive === this.state.isActive) {
-      return;
+    if (!selectableItems) return;
+
+    const itemsLength = selectableItems.length;
+    const firstItem = 0;
+
+    let newActiveSelectableItem = activeSelectableItem + 1;
+
+    if (newActiveSelectableItem >= itemsLength) {
+      newActiveSelectableItem = firstItem;
     }
 
     this.setState({
-      isActive: isActive ? !isActive : !props.isActive,
+      activeSelectableItem: newActiveSelectableItem,
     });
+  }
 
-    this.onTitleClick();
+  selectPreviousSelectableItem() {
+    const { selectableItems, activeSelectableItem } = this.state;
+
+    if (!selectableItems) return;
+
+    const itemsLength = selectableItems.length;
+    const lastItem = itemsLength - 1;
+
+    let newActiveSelectableItem = activeSelectableItem - 1;
+
+    if (newActiveSelectableItem < 0) {
+      newActiveSelectableItem = lastItem;
+    }
+
+    this.setState({
+      activeSelectableItem: newActiveSelectableItem,
+    });
+  }
+
+  getSelectedItem() {
+    const { selectableItems, activeSelectableItem } = this.state;
+
+    if (!selectableItems || !activeSelectableItem) return;
+
+    return selectableItems[activeSelectableItem];
+  }
+
+  generateList(list: string[]) {
+    return list.map((emoji, index) => (
+      <DropdownItem active={index === this.state.activeSelectableItem}>{emoji}</DropdownItem>
+    ));
   }
 
   onTitleClick() {
@@ -131,11 +171,40 @@ export default class Dropdown extends Component<Props, State> {
     }, 100);
   }
 
+  /**
+   * Force open dropdown
+   */
+  open() {
+    if (this.state.isActive) return;
+
+    this.setState({
+      isActive: true,
+    });
+    this.__adjustDropDownContent().then(() => this.__onOpen());
+  }
+
   __onClose() {
     window.clearInterval(this.checkInterval);
     if (this.storedDocumentHeightSet) {
       document.body.style.minHeight = this.storedDocumentHeight;
     }
+
+    this.setState({
+      activeSelectableItem: 0,
+    });
+  }
+
+  /**
+   * Force close dropdown
+   */
+  close() {
+    if (!this.state.isActive) return;
+
+    this.setState({
+      isActive: false,
+    });
+    this.__adjustDropDownContent();
+    this.__onClose();
   }
 
   async __adjustDropDownContent() {
@@ -207,11 +276,10 @@ export default class Dropdown extends Component<Props, State> {
   render(props: RenderableProps<Props>, { isActive }: State) {
     let { children } = props;
     const { title, titleClass, heading, mix } = props;
-    this.updateState(props);
 
     {
-      if (this.props.emojiList) {
-        children = this.generateList(this.props.emojiList);
+      if (this.props.selectableItems) {
+        children = this.generateList(this.props.selectableItems);
       }
     }
 

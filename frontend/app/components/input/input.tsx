@@ -4,7 +4,7 @@
 import '@app/components/raw-content';
 import './styles';
 
-import { h, Component, RenderableProps } from 'preact';
+import { h, createRef, Component, RenderableProps } from 'preact';
 import b, { Mix } from 'bem-react-helper';
 
 import Dropdown from '@app/components/dropdown';
@@ -19,6 +19,8 @@ import MarkdownToolbar from './markdown-toolbar';
 import TextareaAutosize from './textarea-autosize';
 import { sleep } from '@app/utils/sleep';
 import { replaceSelection } from '@app/utils/replaceSelection';
+
+import EmojiIcon from './markdown-toolbar-icons/emoji-icon';
 
 const RSS_THREAD_URL = `${BASE_URL}${API_BASE}/rss/post?site=${siteId}&url=${url}`;
 const RSS_SITE_URL = `${BASE_URL}${API_BASE}/rss/site?site=${siteId}`;
@@ -56,10 +58,7 @@ interface State {
   text: string;
   /** override main button text */
   buttonText: null | string;
-  /** open or not emoji dropdown */
-  isEmojiOpen: boolean;
-  isFreezeUpAndDownArrows: boolean;
-  selectedEmojiId: number;
+  isFreezeInput: boolean;
 }
 
 const Labels = {
@@ -76,6 +75,10 @@ export class Input extends Component<Props, State> {
   /** reference to textarea element */
   textAreaRef?: TextareaAutosize;
   textareaId: string;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  emojiDropdown: any;
+
   constructor(props: Props) {
     super(props);
     textareaId = textareaId + 1;
@@ -89,9 +92,7 @@ export class Input extends Component<Props, State> {
       maxLength: StaticStore.config.max_comment_size,
       text: props.value || '',
       buttonText: null,
-      isEmojiOpen: false,
-      isFreezeUpAndDownArrows: false,
-      selectedEmojiId: 0,
+      isFreezeInput: false,
     };
 
     this.send = this.send.bind(this);
@@ -105,10 +106,9 @@ export class Input extends Component<Props, State> {
     this.uploadImages = this.uploadImages.bind(this);
     this.onPaste = this.onPaste.bind(this);
 
-    this.onOpenEmoji = this.onOpenEmoji.bind(this);
-    this.onCloseEmoji = this.onCloseEmoji.bind(this);
-    this.selectNextEmoji = this.selectNextEmoji.bind(this);
-    this.selectPrevEmoji = this.selectPrevEmoji.bind(this);
+    this.freezeInput = this.freezeInput.bind(this);
+    this.unFreezeInput = this.unFreezeInput.bind(this);
+    this.emojiDropdown = createRef();
   }
 
   componentWillReceiveProps(nextProps: Props) {
@@ -116,46 +116,6 @@ export class Input extends Component<Props, State> {
       this.setState({ text: nextProps.value || '' });
       this.props.autofocus && this.textAreaRef && this.textAreaRef.focus();
     }
-  }
-
-  onOpenEmoji() {
-    this.setState({
-      isEmojiOpen: true,
-      isFreezeUpAndDownArrows: true,
-    });
-  }
-
-  onCloseEmoji() {
-    this.setState({
-      isEmojiOpen: false,
-      isFreezeUpAndDownArrows: false,
-    });
-  }
-
-  selectNextEmoji() {
-    let { selectedEmojiId } = this.state;
-    selectedEmojiId++;
-
-    if (selectedEmojiId >= EmojiList.length) {
-      selectedEmojiId = 0;
-    }
-
-    this.setState({
-      selectedEmojiId,
-    });
-  }
-
-  selectPrevEmoji() {
-    let { selectedEmojiId } = this.state;
-    selectedEmojiId--;
-
-    if (selectedEmojiId < 0) {
-      selectedEmojiId = EmojiList.length - 1;
-    }
-
-    this.setState({
-      selectedEmojiId,
-    });
   }
 
   shouldComponentUpdate(nextProps: Props, nextState: State) {
@@ -169,6 +129,18 @@ export class Input extends Component<Props, State> {
     );
   }
 
+  freezeInput() {
+    this.setState({
+      isFreezeInput: true,
+    });
+  }
+
+  unFreezeInput() {
+    this.setState({
+      isFreezeInput: false,
+    });
+  }
+
   onKeyDown(e: KeyboardEvent) {
     const key = e.key;
     const colon = ':';
@@ -176,14 +148,14 @@ export class Input extends Component<Props, State> {
     const isArrowUp = key === 'ArrowUp';
     const isArrowDown = key === 'ArrowDown';
     const isEnter = key === 'Enter';
-    const isOpenEmoji = Boolean(this.state.isEmojiOpen);
-    const { isFreezeUpAndDownArrows } = this.state;
+    const { isFreezeInput } = this.state;
+    const { emojiDropdown } = this;
 
-    if (isFreezeUpAndDownArrows && (isArrowUp || isArrowDown)) {
+    if (isFreezeInput && (isArrowUp || isArrowDown)) {
       if (isArrowDown) {
-        this.selectNextEmoji();
+        emojiDropdown.current.selectNextSelectableItem();
       } else if (isArrowUp) {
-        this.selectPrevEmoji();
+        emojiDropdown.current.selectPreviousSelectableItem();
       }
 
       e.preventDefault();
@@ -191,11 +163,11 @@ export class Input extends Component<Props, State> {
       return;
     }
 
-    if (isOpenEmoji && isEnter) {
+    if (isFreezeInput && isEnter) {
       let { text } = this.state;
 
       text = text.substr(0, text.length - 1);
-      text += EmojiList[this.state.selectedEmojiId];
+      text += emojiDropdown.current.getSelectedItem();
 
       this.setState({
         text,
@@ -208,9 +180,11 @@ export class Input extends Component<Props, State> {
       this.send(e);
     } else if (isColon) {
       // eslint-disable-next-line no-console
-      this.onOpenEmoji();
+      emojiDropdown.current.open();
+      this.freezeInput();
     } else {
-      this.onCloseEmoji();
+      emojiDropdown.current.close();
+      this.unFreezeInput();
     }
   }
 
@@ -443,6 +417,9 @@ export class Input extends Component<Props, State> {
     errorMessage = props.errorMessage || errorMessage;
     const label = buttonText || Labels[props.mode || 'main'];
 
+    // @ts-ignore
+    // @ts-ignore
+    // @ts-ignore
     return (
       <form
         className={b('input', {
@@ -459,11 +436,10 @@ export class Input extends Component<Props, State> {
       >
         <div class="input__emoji-dropdown">
           <Dropdown
-            title={'Emoji'}
+            title={<EmojiIcon />}
             theme={this.props.theme}
-            isActive={this.state.isEmojiOpen}
-            emojiList={EmojiList}
-            activeListEl={this.state.selectedEmojiId}
+            selectableItems={EmojiList}
+            ref={this.emojiDropdown}
           />
         </div>
         <div className="input__control-panel">
