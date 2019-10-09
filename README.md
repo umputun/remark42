@@ -103,11 +103,9 @@ _this is the recommended way to run remark42_
 | url                     | REMARK_URL              |                          | url to remark42 server, _required_               |
 | secret                  | SECRET                  |                          | secret key, _required_                           |
 | site                    | SITE                    | `remark`                 | site name(s), _multi_                            |
-| store.type              | STORE_TYPE              | `bolt`                   | type of storage, `bolt` or `mongo`               |
+| store.type              | STORE_TYPE              | `bolt`                   | type of storage, `bolt` or `rpc`                 |
 | store.bolt.path         | STORE_BOLT_PATH         | `./var`                  | path to data directory                           |
 | store.bolt.timeout      | STORE_BOLT_TIMEOUT      | `30s`                    | boltdb access timeout                            |
-| mongo.url               | MONGO_URL               |                          | mongo url for all stores using mongodb           |
-| mongo.db                | MONGO_DB                |                          | mongo database                                   |
 | admin.shared.id         | ADMIN_SHARED_ID         |                          | admin names (list of user ids), _multi_          |
 | admin.shared.email      | ADMIN_SHARED_EMAIL      | `admin@${REMARK_URL}`    | admin email                                      |
 | backup                  | BACKUP_PATH             | `./var/backup`           | backups location                                 |
@@ -120,7 +118,7 @@ _this is the recommended way to run remark42_
 | avatar.bolt.file        | AVATAR_BOLT_FILE        | `./var/avatars.db`       | file name for  `bolt` store                      |
 | avatar.uri              | AVATAR_URI              | `./var/avatars`          | avatar store uri                                 |
 | avatar.rsz-lmt          | AVATAR_RSZ_LMT          | `0` (disabled)           | max image size for resizing avatars on save      |
-| image.type              | IMAGE_TYPE              | `fs`                     | type of image storage, `fs`, `bolt`, or `mongo`  |
+| image.type              | IMAGE_TYPE              | `fs`                     | type of image storage, `fs`, `bolt`              |
 | image.max-size          | IMAGE_MAX_SIZE          | `5000000`                | max size of image file                           |
 | image.fs.path           | IMAGE_FS_PATH           | `./var/pictures`         | permanent location of images                     |
 | image.fs.staging        | IMAGE_FS_STAGING        | `./var/pictures.staging` | staging location of images                       |
@@ -538,9 +536,6 @@ In order to run backend locally (development mode, without docker) you have to h
 To run backend - `go run backend/app/main.go server --dbg --secret=12345 --url=http://127.0.0.1:8080 --admin-passwd=password --site=remark`
 It stars backend service with embedded bolt store on port `8080` with basic auth, allowing to authenticate and run requests directly, like this:
 `HTTP http://admin:password@127.0.0.1:8080/api/v1/find?site=remark&sort=-active&format=tree&url=http://127.0.0.1:8080`
-
-To run backend with mongodb store mongo container should be started first - `docker run -d -p 27017:27017 -name=mongo mongo:3.6 --smallfiles` and then
-`go run backend/app/main.go --dbg --secret=12345 --dev-passwd=password --site=remark --url=http://127.0.0.1:8080 --store.type=mongo --store.mongo.url=localhost`
 
 ### Frontend development
 
