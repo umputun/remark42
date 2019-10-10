@@ -26,6 +26,7 @@ interface State {
   contentTranslateX: number;
   selectableItems?: string[];
   activeSelectableItem: number;
+  filter?: string;
 }
 
 export default class Dropdown extends Component<Props, State> {
@@ -94,18 +95,42 @@ export default class Dropdown extends Component<Props, State> {
     });
   }
 
+  setFilter(filter?: string) {
+    this.setState({
+      filter,
+    });
+  }
+
   getSelectedItem() {
     const { selectableItems, activeSelectableItem } = this.state;
 
-    if (!selectableItems || !activeSelectableItem) return;
+    if (!selectableItems || activeSelectableItem === undefined) return;
 
     return selectableItems[activeSelectableItem];
   }
 
+  filterSelectableList(): void {
+    const { filter } = this.state;
+    if (!filter) return;
+
+    const list = this.props.selectableItems || [];
+
+    const newSelectableList = list.filter(emoji => {
+      if (filter) {
+        if (emoji.indexOf(filter) === -1) return false;
+      }
+      return true;
+    });
+
+    this.setState({
+      selectableItems: newSelectableList,
+    });
+  }
+
   generateList(list: string[]) {
-    return list.map((emoji, index) => (
-      <DropdownItem active={index === this.state.activeSelectableItem}>{emoji}</DropdownItem>
-    ));
+    return list.map((emoji, index) => {
+      return <DropdownItem active={index === this.state.activeSelectableItem}>{emoji}</DropdownItem>;
+    });
   }
 
   onTitleClick() {
@@ -172,7 +197,7 @@ export default class Dropdown extends Component<Props, State> {
   }
 
   /**
-   * Force open dropdown
+   * Force open dropdown if close
    */
   open() {
     if (this.state.isActive) return;
@@ -195,7 +220,7 @@ export default class Dropdown extends Component<Props, State> {
   }
 
   /**
-   * Force close dropdown
+   * Force close dropdown if open
    */
   close() {
     if (!this.state.isActive) return;
@@ -278,8 +303,8 @@ export default class Dropdown extends Component<Props, State> {
     const { title, titleClass, heading, mix } = props;
 
     {
-      if (this.props.selectableItems) {
-        children = this.generateList(this.props.selectableItems);
+      if (this.state.selectableItems) {
+        children = this.generateList(this.state.selectableItems);
       }
     }
 

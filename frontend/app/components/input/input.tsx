@@ -144,12 +144,19 @@ export class Input extends Component<Props, State> {
   onKeyDown(e: KeyboardEvent) {
     const key = e.key;
     const colon = ':';
+    const { text } = this.state;
     const isColon = key === colon;
     const isArrowUp = key === 'ArrowUp';
     const isArrowDown = key === 'ArrowDown';
     const isEnter = key === 'Enter';
     const { isFreezeInput } = this.state;
     const { emojiDropdown } = this;
+    let start;
+    let end;
+
+    if (this.textAreaRef) {
+      [start, end] = this.textAreaRef.getSelection();
+    }
 
     if (isFreezeInput && (isArrowUp || isArrowDown)) {
       if (isArrowDown) {
@@ -164,15 +171,16 @@ export class Input extends Component<Props, State> {
     }
 
     if (isFreezeInput && isEnter) {
-      let { text } = this.state;
-
-      text = text.substr(0, text.length - 1);
-      text += emojiDropdown.current.getSelectedItem();
+      e.preventDefault();
+      if (!start || !end) return;
+      const firstPart = text.substr(0, start - 1);
+      const secondPart = text.substr(end, text.length - end);
+      const emoji = emojiDropdown.current.getSelectedItem();
+      const newText = firstPart + emoji + secondPart;
 
       this.setState({
-        text,
+        text: newText,
       });
-      e.preventDefault();
     }
 
     // send on cmd+enter / ctrl+enter
@@ -182,7 +190,7 @@ export class Input extends Component<Props, State> {
       // eslint-disable-next-line no-console
       emojiDropdown.current.open();
       this.freezeInput();
-    } else {
+    } else if (!isColon && !e.shiftKey) {
       emojiDropdown.current.close();
       this.unFreezeInput();
     }
@@ -202,6 +210,29 @@ export class Input extends Component<Props, State> {
       preview: null,
       text: (e.target as HTMLInputElement).value,
     });
+
+    if (this.textAreaRef) {
+      const colon = ':';
+      const space = ' ';
+      const { text } = this.state;
+      const [start] = this.textAreaRef.getSelection();
+      const firstPart = text.substr(0, start);
+      const lastSpace = firstPart.lastIndexOf(space, firstPart.length);
+      const lastColon = firstPart.lastIndexOf(colon, firstPart.length);
+      let draftEmoji;
+
+      if (lastColon > lastSpace) {
+        draftEmoji = firstPart.substr(lastColon, firstPart.length - lastColon);
+        this.emojiDropdown.current.setFilter(draftEmoji);
+        this.emojiDropdown.current.filterSelectableList();
+      }
+
+      const { emojiDropdown } = this;
+      if (draftEmoji) {
+        emojiDropdown.current.open();
+        this.freezeInput();
+      }
+    }
   }
 
   async onPaste(e: ClipboardEvent) {
