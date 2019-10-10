@@ -126,6 +126,7 @@ export type AuthProvider =
   | { name: 'facebook' }
   | { name: 'github' }
   | { name: 'yandex' }
+  | { name: 'twitter' }
   | { name: 'dev' }
   | { name: 'anonymous'; username: string }
   | { name: 'email'; token: string };

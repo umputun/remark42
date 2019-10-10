@@ -35,8 +35,8 @@ services:
             - "8084:8084" # local oauth2 server
 
         environment:
-#            - APP_UID=1000
-#            - TIME_ZONE=GMT
+            #            - APP_UID=1000
+            #            - TIME_ZONE=GMT
             - REMARK_URL=http://127.0.0.1:8080
             - SECRET=12345
             - STORE_BOLT_PATH=/srv/var/db
@@ -57,5 +57,7 @@ services:
             - AUTH_GITHUB_CSEC=1111
             - AUTH_FACEBOOK_CID=1111
             - AUTH_FACEBOOK_CSEC=1111
+            - AUTH_TWITTER_CID=1111
+            - AUTH_TWITTER_CSEC=1111
         volumes:
             - ./var:/srv/var

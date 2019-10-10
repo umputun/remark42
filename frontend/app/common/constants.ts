@@ -17,6 +17,7 @@ export const DEFAULT_SORT: Sorting = '-active';
 /* matches auth providers to UI label */
 export const PROVIDER_NAMES: { [P in AuthProvider['name']]: string } = {
   google: 'Google',
+  twitter: 'Twitter',
   facebook: 'Facebook',
   github: 'GitHub',
   yandex: 'Yandex',
