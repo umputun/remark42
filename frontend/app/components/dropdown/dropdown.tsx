@@ -128,9 +128,15 @@ export default class Dropdown extends Component<Props, State> {
   }
 
   generateList(list: string[]) {
-    return list.map((emoji, index) => {
+    const items = list.map((emoji, index) => {
       return <DropdownItem active={index === this.state.activeSelectableItem}>{emoji}</DropdownItem>;
     });
+
+    if (items.length === 0) {
+      return <DropdownItem>No such emoji</DropdownItem>;
+    }
+
+    return items;
   }
 
   onTitleClick() {
@@ -209,6 +215,8 @@ export default class Dropdown extends Component<Props, State> {
   }
 
   __onClose() {
+    const { selectableItems } = this.props;
+
     window.clearInterval(this.checkInterval);
     if (this.storedDocumentHeightSet) {
       document.body.style.minHeight = this.storedDocumentHeight;
@@ -216,6 +224,8 @@ export default class Dropdown extends Component<Props, State> {
 
     this.setState({
       activeSelectableItem: 0,
+      filter: undefined,
+      selectableItems,
     });
   }
 

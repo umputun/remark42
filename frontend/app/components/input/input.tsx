@@ -98,6 +98,7 @@ export class Input extends Component<Props, State> {
     this.send = this.send.bind(this);
     this.getPreview = this.getPreview.bind(this);
     this.onInput = this.onInput.bind(this);
+    this.onClick = this.onClick.bind(this);
     this.onKeyDown = this.onKeyDown.bind(this);
     this.onDragOver = this.onDragOver.bind(this);
     this.onDrop = this.onDrop.bind(this);
@@ -174,13 +175,18 @@ export class Input extends Component<Props, State> {
       e.preventDefault();
       if (!start || !end) return;
       const firstPart = text.substr(0, start - 1);
+      const lastColon = firstPart.lastIndexOf(colon, firstPart.length);
+      const firstPartWithoutDraftEmoji = text.substr(0, lastColon);
       const secondPart = text.substr(end, text.length - end);
       const emoji = emojiDropdown.current.getSelectedItem();
-      const newText = firstPart + emoji + secondPart;
 
-      this.setState({
-        text: newText,
-      });
+      if (emoji) {
+        const newText = firstPartWithoutDraftEmoji + emoji + secondPart;
+
+        this.setState({
+          text: newText,
+        });
+      }
     }
 
     // send on cmd+enter / ctrl+enter
@@ -194,6 +200,11 @@ export class Input extends Component<Props, State> {
       emojiDropdown.current.close();
       this.unFreezeInput();
     }
+  }
+
+  // Заготовка, чтобы показывать emoji dropdown при клике
+  onClick(e: Event) {
+    return e;
   }
 
   onInput(e: Event) {
@@ -491,6 +502,7 @@ export class Input extends Component<Props, State> {
             maxLength={maxLength}
             onInput={this.onInput}
             onKeyDown={this.onKeyDown}
+            onClick={this.onClick}
             disabled={isDisabled}
             autofocus={!!props.autofocus}
             spellcheck={true}
