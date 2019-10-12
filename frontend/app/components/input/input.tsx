@@ -59,6 +59,7 @@ interface State {
   /** override main button text */
   buttonText: null | string;
   isFreezeInput: boolean;
+  cursorPosition: number;
 }
 
 const Labels = {
@@ -93,10 +94,12 @@ export class Input extends Component<Props, State> {
       text: props.value || '',
       buttonText: null,
       isFreezeInput: false,
+      cursorPosition: 0,
     };
 
     this.send = this.send.bind(this);
     this.getPreview = this.getPreview.bind(this);
+    this.onBlur = this.onBlur.bind(this);
     this.onInput = this.onInput.bind(this);
     this.onClick = this.onClick.bind(this);
     this.onKeyDown = this.onKeyDown.bind(this);
@@ -106,6 +109,7 @@ export class Input extends Component<Props, State> {
     this.uploadImage = this.uploadImage.bind(this);
     this.uploadImages = this.uploadImages.bind(this);
     this.onPaste = this.onPaste.bind(this);
+    this.onDropdownItemClick = this.onDropdownItemClick.bind(this);
 
     this.freezeInput = this.freezeInput.bind(this);
     this.unFreezeInput = this.unFreezeInput.bind(this);
@@ -198,6 +202,32 @@ export class Input extends Component<Props, State> {
     } else if (!isColon && !e.shiftKey) {
       emojiDropdown.current.close();
       this.unFreezeInput();
+    }
+  }
+
+  onBlur() {
+    if (!this.textAreaRef) return;
+
+    const [cursorPosition] = this.textAreaRef.getSelection();
+
+    this.setState({
+      cursorPosition,
+    });
+  }
+
+  onDropdownItemClick() {
+    const { text, cursorPosition } = this.state;
+    const emoji = this.emojiDropdown.current.getSelectedItem();
+
+    if (emoji) {
+      const fistPart = text.substr(0, cursorPosition);
+      const lastPart = text.substr(cursorPosition);
+      const newText = fistPart + emoji + lastPart;
+
+      this.setState({
+        text: newText,
+      });
+      this.emojiDropdown.current.close();
     }
   }
 
@@ -481,6 +511,7 @@ export class Input extends Component<Props, State> {
             theme={this.props.theme}
             selectableItems={EmojiList}
             ref={this.emojiDropdown}
+            onDropdownItemClick={this.onDropdownItemClick}
           />
         </div>
         <div className="input__control-panel">
@@ -499,6 +530,7 @@ export class Input extends Component<Props, State> {
             placeholder="Your comment here"
             value={text}
             maxLength={maxLength}
+            onBlur={this.onBlur}
             onInput={this.onInput}
             onKeyDown={this.onKeyDown}
             onClick={this.onClick}
