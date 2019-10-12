@@ -55,6 +55,7 @@ export default class Dropdown extends Component<Props, State> {
     this.__onClose = this.__onClose.bind(this);
     this.open = this.open.bind(this);
     this.close = this.close.bind(this);
+    this.onDropdownItemHover = this.onDropdownItemHover.bind(this);
   }
 
   selectNextSelectableItem() {
@@ -129,7 +130,16 @@ export default class Dropdown extends Component<Props, State> {
 
   generateList(list: string[]) {
     const items = list.map((emoji, index) => {
-      return <DropdownItem active={index === this.state.activeSelectableItem}>{emoji}</DropdownItem>;
+      return (
+        <DropdownItem
+          index={index}
+          onFocus={this.onDropdownItemHover}
+          onMouseOver={this.onDropdownItemHover}
+          active={index === this.state.activeSelectableItem}
+        >
+          {emoji}
+        </DropdownItem>
+      );
     });
 
     if (items.length === 0) {
@@ -306,6 +316,20 @@ export default class Dropdown extends Component<Props, State> {
     document.removeEventListener('click', this.onOutsideClick);
 
     window.removeEventListener('message', this.receiveMessage);
+  }
+
+  onDropdownItemHover(e: Event) {
+    const target = e.target;
+
+    if (target instanceof HTMLElement) {
+      const { id } = target.dataset;
+
+      if (id !== undefined) {
+        this.setState({
+          activeSelectableItem: +id,
+        });
+      }
+    }
   }
 
   render(props: RenderableProps<Props>, { isActive }: State) {

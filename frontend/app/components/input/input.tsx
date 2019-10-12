@@ -67,7 +67,7 @@ const Labels = {
   reply: 'Reply',
 };
 
-const EmojiList = [':smile:', ':worried:', ':kiss:', ':cry:'];
+const EmojiList = [':smile:', ':simple:', ':sososo:', ':worried:', ':kiss:', ':cry:'];
 
 const ImageMimeRegex = /image\//i;
 
@@ -193,7 +193,6 @@ export class Input extends Component<Props, State> {
     if (e.keyCode === 13 && (e.metaKey || e.ctrlKey)) {
       this.send(e);
     } else if (isColon) {
-      // eslint-disable-next-line no-console
       emojiDropdown.current.open();
       this.freezeInput();
     } else if (!isColon && !e.shiftKey) {
