@@ -233,7 +233,30 @@ export class Input extends Component<Props, State> {
 
   // Заготовка, чтобы показывать emoji dropdown при клике
   onClick(e: Event) {
-    return e;
+    if (this.textAreaRef) {
+      const colon = ':';
+      const space = ' ';
+      const { text } = this.state;
+      const [start] = this.textAreaRef.getSelection();
+      const firstPart = text.substr(0, start);
+      const lastSpace = firstPart.lastIndexOf(space, firstPart.length);
+      const lastColon = firstPart.lastIndexOf(colon, firstPart.length);
+      let draftEmoji;
+
+      if (lastColon > lastSpace) {
+        draftEmoji = firstPart.substr(lastColon, firstPart.length - lastColon);
+        this.emojiDropdown.current.setFilter(draftEmoji);
+        this.emojiDropdown.current.filterSelectableList();
+      }
+
+      const { emojiDropdown } = this;
+      if (draftEmoji) {
+        emojiDropdown.current.open();
+        this.freezeInput();
+        e.stopPropagation();
+        e.preventDefault();
+      }
+    }
   }
 
   onInput(e: Event) {
@@ -505,15 +528,6 @@ export class Input extends Component<Props, State> {
         onDragOver={this.onDragOver}
         onDrop={this.onDrop}
       >
-        <div class="input__emoji-dropdown">
-          <Dropdown
-            title={<EmojiIcon />}
-            theme={this.props.theme}
-            selectableItems={EmojiList}
-            ref={this.emojiDropdown}
-            onDropdownItemClick={this.onDropdownItemClick}
-          />
-        </div>
         <div className="input__control-panel">
           <MarkdownToolbar
             allowUpload={Boolean(this.props.uploadImage)}
@@ -562,6 +576,16 @@ export class Input extends Component<Props, State> {
           <button className={b('input__button', {}, { type: 'send' })} type="submit" disabled={isDisabled}>
             {label}
           </button>
+
+          <div class="input__emoji-dropdown">
+            <Dropdown
+              title={<EmojiIcon />}
+              theme={this.props.theme}
+              selectableItems={EmojiList}
+              ref={this.emojiDropdown}
+              onDropdownItemClick={this.onDropdownItemClick}
+            />
+          </div>
 
           {props.mode === 'main' && (
             <div className="input__rss">
