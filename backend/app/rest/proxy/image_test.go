@@ -112,18 +112,18 @@ func TestImage_RoutesTimedOut(t *testing.T) {
 
 func TestPicture_Convert(t *testing.T) {
 	img := Image{Enabled: true, RoutePath: "/img"}
-	r := img.Convert(`<img src="http://radio-t.com/img3.png"/> xyz <img src="http://images.pexels.com/67636/img4.jpeg">`)
+	r := img.Convert(`<img src="http://radio-t.com/img3.png"/> xyz <img src="http://images.pexels.com/67636/img4.jpeg">`, "userID")
 	assert.Equal(t, `<img src="/img?src=aHR0cDovL3JhZGlvLXQuY29tL2ltZzMucG5n"/> xyz <img src="/img?src=aHR0cDovL2ltYWdlcy5wZXhlbHMuY29tLzY3NjM2L2ltZzQuanBlZw==">`, r)
 
-	r = img.Convert(`<img src="https://radio-t.com/img3.png"/> xyz <img src="http://images.pexels.com/67636/img4.jpeg">`)
+	r = img.Convert(`<img src="https://radio-t.com/img3.png"/> xyz <img src="http://images.pexels.com/67636/img4.jpeg">`, "userID")
 	assert.Equal(t, `<img src="https://radio-t.com/img3.png"/> xyz <img src="/img?src=aHR0cDovL2ltYWdlcy5wZXhlbHMuY29tLzY3NjM2L2ltZzQuanBlZw==">`, r)
 
 	img = Image{Enabled: true, RoutePath: "/img", RemarkURL: "http://example.com"}
-	r = img.Convert(`<img src="http://radio-t.com/img3.png"/> xyz`)
+	r = img.Convert(`<img src="http://radio-t.com/img3.png"/> xyz`, "userID")
 	assert.Equal(t, `<img src="http://radio-t.com/img3.png"/> xyz`, r, "http:// remark url, no proxy")
 
 	img = Image{Enabled: false, RoutePath: "/img"}
-	r = img.Convert(`<img src="http://radio-t.com/img3.png"/> xyz`)
+	r = img.Convert(`<img src="http://radio-t.com/img3.png"/> xyz`, "userID")
 	assert.Equal(t, `<img src="http://radio-t.com/img3.png"/> xyz`, r, "disabled, no proxy")
 }
 

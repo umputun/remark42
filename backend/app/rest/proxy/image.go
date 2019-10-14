@@ -26,7 +26,7 @@ type Image struct {
 }
 
 // Convert all img src links without https to proxied links
-func (p Image) Convert(commentHTML string) string {
+func (p Image) Convert(commentHTML string, userID string) string {
 	if !p.Enabled || strings.HasPrefix(p.RemarkURL, "http://") {
 		return commentHTML
 	}

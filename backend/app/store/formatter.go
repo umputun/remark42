@@ -16,15 +16,15 @@ type CommentFormatter struct {
 // CommentConverter defines interface to convert some parts of commentHTML
 // Passed at creation time and does client-defined conversions, like image proxy link change
 type CommentConverter interface {
-	Convert(text string) string
+	Convert(text string, userID string) string
 }
 
 // CommentConverterFunc functional struct implementing CommentConverter
-type CommentConverterFunc func(text string) string
+type CommentConverterFunc func(text string, userID string) string
 
 // Convert calls func for given text
-func (f CommentConverterFunc) Convert(text string) string {
-	return f(text)
+func (f CommentConverterFunc) Convert(text string, userID string) string {
+	return f(text, userID)
 }
 
 // NewCommentFormatter makes CommentFormatter
@@ -34,12 +34,12 @@ func NewCommentFormatter(converters ...CommentConverter) *CommentFormatter {
 
 // Format comment fields
 func (f *CommentFormatter) Format(c Comment) Comment {
-	c.Text = f.FormatText(c.Text)
+	c.Text = f.FormatText(c.Text, c.User.ID)
 	return c
 }
 
 // FormatText converts text with markdown processor, applies external converters and shortens links
-func (f *CommentFormatter) FormatText(txt string) (res string) {
+func (f *CommentFormatter) FormatText(txt string, userID string) (res string) {
 	mdExt := bf.NoIntraEmphasis | bf.Tables | bf.FencedCode |
 		bf.Strikethrough | bf.SpaceHeadings | bf.HardLineBreak |
 		bf.BackslashLineBreak | bf.Autolink
@@ -52,7 +52,7 @@ func (f *CommentFormatter) FormatText(txt string) (res string) {
 	res = f.unEscape(res)
 
 	for _, conv := range f.converters {
-		res = conv.Convert(res)
+		res = conv.Convert(res, userID)
 	}
 	res = f.shortenAutoLinks(res, shortURLLen)
 	return res

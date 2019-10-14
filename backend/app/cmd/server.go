@@ -380,9 +380,9 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 	}
 
 	imgProxy := &proxy.Image{Enabled: s.ImageProxy, RoutePath: "/api/v1/img", RemarkURL: s.RemarkURL}
-	emojiFmt := store.CommentConverterFunc(func(text string) string { return text })
+	emojiFmt := store.CommentConverterFunc(func(text string, userID string) string { return text })
 	if s.EnableEmoji {
-		emojiFmt = func(text string) string { return emoji.Sprint(text) }
+		emojiFmt = func(text string, userID string) string { return emoji.Sprint(text) }
 	}
 	commentFormatter := store.NewCommentFormatter(imgProxy, emojiFmt)
 

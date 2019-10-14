@@ -175,7 +175,7 @@ func (s *private) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	editReq := service.EditRequest{
-		Text:    s.commentFormatter.FormatText(edit.Text),
+		Text:    s.commentFormatter.FormatText(edit.Text, user.ID),
 		Orig:    edit.Text,
 		Summary: edit.Summary,
 		Delete:  edit.Delete,

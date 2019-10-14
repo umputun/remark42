@@ -9,40 +9,42 @@ import (
 
 type mockConverter struct{}
 
-func (m mockConverter) Convert(text string) string { return text + "!converted" }
+func (m mockConverter) Convert(text string, userID string) string {
+	return text + "/" + userID + "!converted"
+}
 
 func TestFormatter_FormatText(t *testing.T) {
 	tbl := []struct {
 		in, out string
 		name    string
 	}{
-		{"", "!converted", "empty"},
-		{"12345 abc", "<p>12345 abc</p>\n!converted", "simple"},
-		{"**xyz** _aaa_ - \"sfs\"", "<p><strong>xyz</strong> <em>aaa</em> – «sfs»</p>\n!converted", "format"},
+		{"", "/userID!converted", "empty"},
+		{"12345 abc", "<p>12345 abc</p>\n/userID!converted", "simple"},
+		{"**xyz** _aaa_ - \"sfs\"", "<p><strong>xyz</strong> <em>aaa</em> – «sfs»</p>\n/userID!converted", "format"},
 		{
 			"http://127.0.0.1/some-long-link/12345/678901234567890",
 			"<p><a href=\"http://127.0.0.1/some-long-link/12345/678901234567890\">http://127.0.0." +
-				"1/some-long-link/12345/6789012...</a></p>\n!converted", "links",
+				"1/some-long-link/12345/6789012...</a></p>\n/userID!converted", "links",
 		},
-		{"&mdash; not translated #354", "<p>— not translated #354</p>\n!converted", "mdash"},
+		{"&mdash; not translated #354", "<p>— not translated #354</p>\n/userID!converted", "mdash"},
 	}
 	f := NewCommentFormatter(mockConverter{})
 	for _, tt := range tbl {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.out, f.FormatText(tt.in))
+			assert.Equal(t, tt.out, f.FormatText(tt.in, "userID"))
 		})
 	}
 }
 
 func TestFormatter_FormatTextNoConverter(t *testing.T) {
 	f := NewCommentFormatter()
-	assert.Equal(t, "<p>12345</p>\n", f.FormatText("12345"))
+	assert.Equal(t, "<p>12345</p>\n", f.FormatText("12345", "userID"))
 }
 
 func TestFormatter_FormatTextConverterFunc(t *testing.T) {
-	fn := CommentConverterFunc(func(text string) string { return "zz!" + text })
+	fn := CommentConverterFunc(func(text string, userID string) string { return "zz!" + text + userID })
 	f := NewCommentFormatter(fn)
-	assert.Equal(t, "zz!<p>12345</p>\n", f.FormatText("12345"))
+	assert.Equal(t, "zz!<p>12345</p>\nuserID", f.FormatText("12345", "userID"))
 }
 
 func TestFormatter_FormatComment(t *testing.T) {
@@ -61,7 +63,7 @@ func TestFormatter_FormatComment(t *testing.T) {
 
 	f := NewCommentFormatter(mockConverter{})
 	exp := comment
-	exp.Text = "<p>blah</p>\n\n<p>xyz</p>\n!converted"
+	exp.Text = "<p>blah</p>\n\n<p>xyz</p>\n/username!converted"
 	assert.Equal(t, exp, f.Format(comment))
 }
 
