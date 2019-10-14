@@ -4,7 +4,7 @@
 import '@app/components/raw-content';
 import './styles';
 
-import { h, createRef, Component, RenderableProps } from 'preact';
+import { h, Component, RenderableProps } from 'preact';
 import b, { Mix } from 'bem-react-helper';
 
 import Dropdown from '@app/components/dropdown';
@@ -75,8 +75,7 @@ export class Input extends Component<Props, State> {
   textAreaRef?: TextareaAutosize;
   textareaId: string;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  emojiDropdown: any;
+  emojiDropdown?: Dropdown;
 
   constructor(props: Props) {
     super(props);
@@ -108,10 +107,8 @@ export class Input extends Component<Props, State> {
     this.uploadImages = this.uploadImages.bind(this);
     this.onPaste = this.onPaste.bind(this);
     this.onDropdownItemClick = this.onDropdownItemClick.bind(this);
-
     this.freezeInput = this.freezeInput.bind(this);
-    this.unFreezeInput = this.unFreezeInput.bind(this);
-    this.emojiDropdown = createRef();
+    this.unfreezeInput = this.unfreezeInput.bind(this);
   }
 
   componentWillReceiveProps(nextProps: Props) {
@@ -138,7 +135,7 @@ export class Input extends Component<Props, State> {
     });
   }
 
-  unFreezeInput() {
+  unfreezeInput() {
     this.setState({
       isFreezeInput: false,
     });
@@ -146,26 +143,33 @@ export class Input extends Component<Props, State> {
 
   onKeyDown(e: KeyboardEvent) {
     const key = e.key;
-    const colon = ':';
-    const { text } = this.state;
-    const isColon = key === colon;
-    const isArrowUp = key === 'ArrowUp';
-    const isArrowDown = key === 'ArrowDown';
-    const isEnter = key === 'Enter';
-    const { isFreezeInput } = this.state;
-    const { emojiDropdown } = this;
-    let start;
-    let end;
+    const enter = 'Enter';
+    const isEnter = key === enter;
 
-    if (this.textAreaRef) {
-      [start, end] = this.textAreaRef.getSelection();
+    // send on cmd+enter / ctrl+enter
+    if (isEnter && (e.metaKey || e.ctrlKey)) {
+      this.send(e);
+      return;
     }
 
-    if (isFreezeInput && (isArrowUp || isArrowDown)) {
+    if (!this.textAreaRef || !this.emojiDropdown) return;
+
+    const colon = ':';
+    const arrowUp = 'ArrowUp';
+    const arrowDown = 'ArrowDown';
+
+    const isColon = key === colon;
+    const isArrowUp = key === arrowUp;
+    const isArrowDown = key === arrowDown;
+
+    const { isFreezeInput } = this.state;
+    const { emojiDropdown } = this;
+
+    if (isFreezeInput && (isArrowDown || isArrowUp)) {
       if (isArrowDown) {
-        emojiDropdown.current.selectNextSelectableItem();
+        emojiDropdown.selectNextSelectableItem();
       } else if (isArrowUp) {
-        emojiDropdown.current.selectPreviousSelectableItem();
+        emojiDropdown.selectPreviousSelectableItem();
       }
 
       e.preventDefault();
@@ -173,33 +177,36 @@ export class Input extends Component<Props, State> {
       return;
     }
 
+    const { text } = this.state;
+    const [start, end] = this.textAreaRef.getSelection();
+
     if (isFreezeInput && isEnter) {
       e.preventDefault();
-      if (!start || !end) return;
-      const firstPart = text.substr(0, start - 1);
-      const lastColon = firstPart.lastIndexOf(colon, firstPart.length);
-      const firstPartWithoutDraftEmoji = text.substr(0, lastColon);
-      const secondPart = text.substr(end, text.length - end);
-      const emoji = emojiDropdown.current.getSelectedItem();
+      e.stopPropagation();
+
+      const startText = text.substr(0, start - 1);
+      const lastColonOfStartText = startText.lastIndexOf(colon, startText.length);
+      const startTextWithoutDraftEmoji = text.substr(0, lastColonOfStartText);
+
+      const endText = text.substr(end, text.length - end);
+
+      const emoji = emojiDropdown.getSelectedItem();
 
       if (emoji) {
-        const newText = firstPartWithoutDraftEmoji + emoji + secondPart;
+        const textWithEmoji = `${startTextWithoutDraftEmoji}${emoji}${endText}`;
 
         this.setState({
-          text: newText,
+          text: textWithEmoji,
         });
       }
     }
 
-    // send on cmd+enter / ctrl+enter
-    if (e.keyCode === 13 && (e.metaKey || e.ctrlKey)) {
-      this.send(e);
-    } else if (isColon) {
-      emojiDropdown.current.open();
+    if (isColon) {
+      emojiDropdown.forceOpen();
       this.freezeInput();
     } else if (!isColon && !e.shiftKey) {
-      emojiDropdown.current.close();
-      this.unFreezeInput();
+      emojiDropdown.forceClose();
+      this.unfreezeInput();
     }
   }
 
@@ -217,46 +224,55 @@ export class Input extends Component<Props, State> {
     e.stopPropagation();
     e.preventDefault();
 
+    if (!this.emojiDropdown) return;
+
+    const colon = ':';
     const { text, cursorPosition } = this.state;
-    const emoji = this.emojiDropdown.current.getSelectedItem();
+    const emoji = this.emojiDropdown.getSelectedItem();
 
     if (emoji) {
-      const fistPart = text.substr(0, cursorPosition);
-      const lastPart = text.substr(cursorPosition);
-      const newText = fistPart + emoji + lastPart;
+      const startText = text.substr(0, cursorPosition - 1);
+      const lastColonOfStartText = startText.lastIndexOf(colon, startText.length);
+      const startTextWithoutDraftEmoji = text.substr(0, lastColonOfStartText);
+
+      const endText = text.substr(cursorPosition);
+
+      const textWithEmoji = `${startTextWithoutDraftEmoji}${emoji}${endText}`;
 
       this.setState({
-        text: newText,
+        text: textWithEmoji,
       });
-      this.emojiDropdown.current.close();
+      this.emojiDropdown.forceClose();
     }
   }
 
-  // Заготовка, чтобы показывать emoji dropdown при клике
   onClick(e: Event) {
-    if (this.textAreaRef) {
-      const colon = ':';
-      const space = ' ';
-      const { text } = this.state;
-      const [start] = this.textAreaRef.getSelection();
-      const firstPart = text.substr(0, start);
-      const lastSpace = firstPart.lastIndexOf(space, firstPart.length);
-      const lastColon = firstPart.lastIndexOf(colon, firstPart.length);
-      let draftEmoji;
+    if (!this.textAreaRef || !this.emojiDropdown) return;
 
-      if (lastColon > lastSpace) {
-        draftEmoji = firstPart.substr(lastColon, firstPart.length - lastColon);
-        this.emojiDropdown.current.setFilter(draftEmoji);
-        this.emojiDropdown.current.filterSelectableList();
-      }
+    e.stopPropagation();
+    e.preventDefault();
 
-      const { emojiDropdown } = this;
-      if (draftEmoji) {
-        emojiDropdown.current.open();
-        this.freezeInput();
-        e.stopPropagation();
-        e.preventDefault();
-      }
+    const colon = ':';
+    const space = ' ';
+
+    const { text } = this.state;
+    const [start] = this.textAreaRef.getSelection();
+
+    const startText = text.substr(0, start);
+    const lastSpace = startText.lastIndexOf(space, startText.length);
+    const lastColon = startText.lastIndexOf(colon, startText.length);
+
+    let draftEmoji;
+
+    if (lastColon > lastSpace) {
+      draftEmoji = startText.substr(lastColon, startText.length - lastColon);
+      this.emojiDropdown.setSelectableItemsFilter(draftEmoji);
+      this.emojiDropdown.filterSelectableItems();
+    }
+
+    if (draftEmoji) {
+      this.emojiDropdown.forceOpen();
+      this.freezeInput();
     }
   }
 
@@ -275,27 +291,28 @@ export class Input extends Component<Props, State> {
       text: (e.target as HTMLInputElement).value,
     });
 
-    if (this.textAreaRef) {
-      const colon = ':';
-      const space = ' ';
-      const { text } = this.state;
-      const [start] = this.textAreaRef.getSelection();
-      const firstPart = text.substr(0, start);
-      const lastSpace = firstPart.lastIndexOf(space, firstPart.length);
-      const lastColon = firstPart.lastIndexOf(colon, firstPart.length);
-      let draftEmoji;
+    if (!this.textAreaRef || !this.emojiDropdown) return;
 
-      if (lastColon > lastSpace) {
-        draftEmoji = firstPart.substr(lastColon, firstPart.length - lastColon);
-        this.emojiDropdown.current.setFilter(draftEmoji);
-        this.emojiDropdown.current.filterSelectableList();
-      }
+    const colon = ':';
+    const space = ' ';
 
-      const { emojiDropdown } = this;
-      if (draftEmoji) {
-        emojiDropdown.current.open();
-        this.freezeInput();
-      }
+    const { text } = this.state;
+    const [start] = this.textAreaRef.getSelection();
+
+    const textStart = text.substr(0, start);
+    const lastSpace = textStart.lastIndexOf(space, textStart.length);
+    const lastColon = textStart.lastIndexOf(colon, textStart.length);
+    let draftEmoji;
+
+    if (lastColon > lastSpace) {
+      draftEmoji = textStart.substr(lastColon, textStart.length - lastColon);
+      this.emojiDropdown.setSelectableItemsFilter(draftEmoji);
+      this.emojiDropdown.filterSelectableItems();
+    }
+
+    if (draftEmoji) {
+      this.emojiDropdown.forceOpen();
+      this.freezeInput();
     }
   }
 
@@ -512,9 +529,6 @@ export class Input extends Component<Props, State> {
     errorMessage = props.errorMessage || errorMessage;
     const label = buttonText || Labels[props.mode || 'main'];
 
-    // @ts-ignore
-    // @ts-ignore
-    // @ts-ignore
     return (
       <form
         className={b('input', {
@@ -583,7 +597,7 @@ export class Input extends Component<Props, State> {
               title="Emoji"
               theme={this.props.theme}
               selectableItems={EmojiList}
-              ref={this.emojiDropdown}
+              ref={ref => (this.emojiDropdown = ref)}
               onDropdownItemClick={this.onDropdownItemClick}
             />
           </div>

@@ -8,7 +8,7 @@ import { sleep } from '@app/utils/sleep';
 import { DropdownItem } from '@app/components/dropdown/index';
 
 interface Props {
-  title: string | JSX.Element;
+  title: string;
   titleClass?: string;
   heading?: string;
   isActive?: boolean;
@@ -18,16 +18,16 @@ interface Props {
   onOpen?: (root: HTMLDivElement) => {};
   onClose?: (root: HTMLDivElement) => {};
   selectableItems?: string[];
-  activeSelectableItem?: number;
+  activeSelectableItemID?: number;
   onDropdownItemClick?: (e: Event) => void;
 }
 
 interface State {
   isActive: boolean;
   contentTranslateX: number;
+  activeSelectableItemID: number;
   selectableItems?: string[];
-  activeSelectableItem: number;
-  filter?: string;
+  selectableItemsFilter?: string;
 }
 
 export default class Dropdown extends Component<Props, State> {
@@ -37,16 +37,16 @@ export default class Dropdown extends Component<Props, State> {
     super(props);
 
     const { isActive, selectableItems } = this.props;
-    let { activeSelectableItem } = this.props;
 
-    if (activeSelectableItem === undefined) {
-      activeSelectableItem = 0;
+    let { activeSelectableItemID } = this.props;
+    if (activeSelectableItemID === undefined) {
+      activeSelectableItemID = 0;
     }
 
     this.state = {
       isActive: isActive || false,
       contentTranslateX: 0,
-      activeSelectableItem,
+      activeSelectableItemID,
       selectableItems,
     };
 
@@ -54,102 +54,102 @@ export default class Dropdown extends Component<Props, State> {
     this.receiveMessage = this.receiveMessage.bind(this);
     this.__onOpen = this.__onOpen.bind(this);
     this.__onClose = this.__onClose.bind(this);
-    this.open = this.open.bind(this);
-    this.close = this.close.bind(this);
+    this.forceOpen = this.forceOpen.bind(this);
+    this.forceClose = this.forceClose.bind(this);
+    this.selectNextSelectableItem = this.selectNextSelectableItem.bind(this);
+    this.selectPreviousSelectableItem = this.selectPreviousSelectableItem.bind(this);
+    this.setSelectableItemsFilter = this.setSelectableItemsFilter.bind(this);
     this.onDropdownItemHover = this.onDropdownItemHover.bind(this);
   }
 
   selectNextSelectableItem() {
-    const { selectableItems, activeSelectableItem } = this.state;
+    const { selectableItems, activeSelectableItemID } = this.state;
 
     if (!selectableItems) return;
 
     const itemsLength = selectableItems.length;
     const firstItem = 0;
 
-    let newActiveSelectableItem = activeSelectableItem + 1;
+    let newActiveSelectableItemID = activeSelectableItemID + 1;
 
-    if (newActiveSelectableItem >= itemsLength) {
-      newActiveSelectableItem = firstItem;
+    if (newActiveSelectableItemID >= itemsLength) {
+      newActiveSelectableItemID = firstItem;
     }
 
     this.setState({
-      activeSelectableItem: newActiveSelectableItem,
+      activeSelectableItemID: newActiveSelectableItemID,
     });
   }
 
   selectPreviousSelectableItem() {
-    const { selectableItems, activeSelectableItem } = this.state;
+    const { selectableItems, activeSelectableItemID } = this.state;
 
     if (!selectableItems) return;
 
     const itemsLength = selectableItems.length;
     const lastItem = itemsLength - 1;
 
-    let newActiveSelectableItem = activeSelectableItem - 1;
+    let newActiveSelectableItemID = activeSelectableItemID - 1;
 
-    if (newActiveSelectableItem < 0) {
-      newActiveSelectableItem = lastItem;
+    if (newActiveSelectableItemID < 0) {
+      newActiveSelectableItemID = lastItem;
     }
 
     this.setState({
-      activeSelectableItem: newActiveSelectableItem,
+      activeSelectableItemID: newActiveSelectableItemID,
     });
   }
 
-  setFilter(filter?: string) {
+  setSelectableItemsFilter(selectableItemsFilter?: string) {
     this.setState({
-      filter,
+      selectableItemsFilter,
     });
   }
 
   getSelectedItem() {
-    const { selectableItems, activeSelectableItem } = this.state;
+    const { selectableItems, activeSelectableItemID } = this.state;
 
-    if (!selectableItems || activeSelectableItem === undefined) return;
+    if (!selectableItems || activeSelectableItemID === undefined) return;
 
-    return selectableItems[activeSelectableItem];
+    return selectableItems[activeSelectableItemID];
   }
 
-  filterSelectableList(): void {
-    const { filter } = this.state;
-    if (!filter) return;
+  filterSelectableItems(): void {
+    const { selectableItemsFilter } = this.state;
+    if (!selectableItemsFilter) return;
 
-    const list = this.props.selectableItems || [];
+    const selectableItems = this.props.selectableItems || [];
 
-    const newSelectableList = list.filter(emoji => {
-      if (filter) {
-        if (emoji.indexOf(filter) === -1) return false;
-      }
-      return true;
+    const filteredSelectableItems = selectableItems.filter(selectableItem => {
+      return ~selectableItem.indexOf(selectableItemsFilter);
     });
 
     this.setState({
-      selectableItems: newSelectableList,
+      selectableItems: filteredSelectableItems,
     });
   }
 
-  generateList(list: string[]) {
-    const items = list.map((emoji, index) => {
+  generateSelectableItems(selectableItems: string[]) {
+    if (!this.props.onDropdownItemClick) return;
+
+    if (selectableItems.length === 0) {
+      return <DropdownItem>No such item</DropdownItem>;
+    }
+
+    return selectableItems.map((selectableItem, index) => {
       return (
         <DropdownItem
           index={index}
           onFocus={this.onDropdownItemHover}
           onMouseOver={this.onDropdownItemHover}
-          active={index === this.state.activeSelectableItem}
+          active={index === this.state.activeSelectableItemID}
           selectable={true}
           onClick={this.props.onDropdownItemClick}
         >
-          {emoji}
+          {selectableItem}
         </DropdownItem>
       );
     });
-
-    if (items.length === 0) {
-      return <DropdownItem>No such emoji</DropdownItem>;
-    }
-
-    return items;
   }
 
   onTitleClick() {
@@ -215,10 +215,7 @@ export default class Dropdown extends Component<Props, State> {
     }, 100);
   }
 
-  /**
-   * Force open dropdown if close
-   */
-  open() {
+  forceOpen() {
     if (this.state.isActive) return;
 
     this.setState({
@@ -236,22 +233,18 @@ export default class Dropdown extends Component<Props, State> {
     }
 
     this.setState({
-      activeSelectableItem: 0,
-      filter: undefined,
+      activeSelectableItemID: 0,
+      selectableItemsFilter: undefined,
       selectableItems,
     });
   }
 
-  /**
-   * Force close dropdown if open
-   */
-  close() {
+  forceClose() {
     if (!this.state.isActive) return;
 
     this.setState({
       isActive: false,
     });
-    this.__adjustDropDownContent();
     this.__onClose();
   }
 
@@ -329,7 +322,7 @@ export default class Dropdown extends Component<Props, State> {
 
       if (id !== undefined) {
         this.setState({
-          activeSelectableItem: +id,
+          activeSelectableItemID: +id,
         });
       }
     }
@@ -341,7 +334,7 @@ export default class Dropdown extends Component<Props, State> {
 
     {
       if (this.state.selectableItems) {
-        children = this.generateList(this.state.selectableItems);
+        children = this.generateSelectableItems(this.state.selectableItems);
       }
     }
 
