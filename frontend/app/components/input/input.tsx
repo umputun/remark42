@@ -227,17 +227,26 @@ export class Input extends Component<Props, State> {
     if (!this.emojiDropdown) return;
 
     const colon = ':';
+    const space = ' ';
     const { text, cursorPosition } = this.state;
     const emoji = this.emojiDropdown.getSelectedItem();
 
+    let textWithEmoji;
+
     if (emoji) {
       const startText = text.substr(0, cursorPosition - 1);
-      const lastColonOfStartText = startText.lastIndexOf(colon, startText.length);
-      const startTextWithoutDraftEmoji = text.substr(0, lastColonOfStartText);
+      const lastSpace = startText.lastIndexOf(space, startText.length);
+      const lastColon = startText.lastIndexOf(colon, startText.length);
 
       const endText = text.substr(cursorPosition);
 
-      const textWithEmoji = `${startTextWithoutDraftEmoji}${emoji}${endText}`;
+      if (lastColon > lastSpace) {
+        const startTextWithoutDraftEmoji = text.substr(0, lastColon);
+        textWithEmoji = `${startTextWithoutDraftEmoji}${emoji}${endText}`;
+      } else {
+        const fullStartText = text.substr(0, cursorPosition);
+        textWithEmoji = `${fullStartText}${emoji}${endText}`;
+      }
 
       this.setState({
         text: textWithEmoji,
