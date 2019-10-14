@@ -4,26 +4,25 @@ import b from 'bem-react-helper';
 
 interface Props {
   separator?: boolean;
+  selectable?: boolean;
   active?: boolean;
   onMouseOver?: (e: Event) => void;
   index?: number;
-  onDropdownItemClick?: () => void;
+  onClick?: (e: Event) => void;
 }
 
 export default function DropdownItem(props: RenderableProps<Props> & JSX.HTMLAttributes & { separator?: boolean }) {
-  const { children, separator = false, active = false, onMouseOver, index, onDropdownItemClick } = props;
-  const additionalClass = active ? ' active' : '';
+  const { children, separator = false, selectable = false, active = false, onMouseOver, index, onClick } = props;
 
-  return (
-    // eslint-disable-next-line jsx-a11y/click-events-have-key-events,jsx-a11y/no-static-element-interactions
-    <div
-      data-id={index}
-      onFocus={onMouseOver}
-      onMouseOver={onMouseOver}
-      className={b('dropdown__item', {}, { separator }) + additionalClass}
-      onClick={onDropdownItemClick}
-    >
-      {children}
-    </div>
-  );
+  const classNames = b('dropdown__item', {}, { separator, selectable, active });
+
+  if (onClick) {
+    return (
+      <button data-id={index} onFocus={onMouseOver} onMouseOver={onMouseOver} className={classNames} onClick={onClick}>
+        {children}
+      </button>
+    );
+  }
+
+  return <div className={classNames}>{children}</div>;
 }

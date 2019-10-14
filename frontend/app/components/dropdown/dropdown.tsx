@@ -19,7 +19,7 @@ interface Props {
   onClose?: (root: HTMLDivElement) => {};
   selectableItems?: string[];
   activeSelectableItem?: number;
-  onDropdownItemClick?: () => void;
+  onDropdownItemClick?: (e: Event) => void;
 }
 
 interface State {
@@ -137,7 +137,8 @@ export default class Dropdown extends Component<Props, State> {
           onFocus={this.onDropdownItemHover}
           onMouseOver={this.onDropdownItemHover}
           active={index === this.state.activeSelectableItem}
-          onDropdownItemClick={this.props.onDropdownItemClick}
+          selectable={true}
+          onClick={this.props.onDropdownItemClick}
         >
           {emoji}
         </DropdownItem>

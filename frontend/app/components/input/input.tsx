@@ -20,8 +20,6 @@ import TextareaAutosize from './textarea-autosize';
 import { sleep } from '@app/utils/sleep';
 import { replaceSelection } from '@app/utils/replaceSelection';
 
-import EmojiIcon from './markdown-toolbar-icons/emoji-icon';
-
 const RSS_THREAD_URL = `${BASE_URL}${API_BASE}/rss/post?site=${siteId}&url=${url}`;
 const RSS_SITE_URL = `${BASE_URL}${API_BASE}/rss/site?site=${siteId}`;
 const RSS_REPLIES_URL = `${BASE_URL}${API_BASE}/rss/reply?site=${siteId}&user=`;
@@ -215,7 +213,10 @@ export class Input extends Component<Props, State> {
     });
   }
 
-  onDropdownItemClick() {
+  onDropdownItemClick(e: Event) {
+    e.stopPropagation();
+    e.preventDefault();
+
     const { text, cursorPosition } = this.state;
     const emoji = this.emojiDropdown.current.getSelectedItem();
 
@@ -579,7 +580,7 @@ export class Input extends Component<Props, State> {
 
           <div class="input__emoji-dropdown">
             <Dropdown
-              title={<EmojiIcon />}
+              title="Emoji"
               theme={this.props.theme}
               selectableItems={EmojiList}
               ref={this.emojiDropdown}
