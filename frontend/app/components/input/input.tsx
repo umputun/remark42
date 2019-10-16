@@ -20,9 +20,16 @@ import TextareaAutosize from './textarea-autosize';
 import { sleep } from '@app/utils/sleep';
 import { replaceSelection } from '@app/utils/replaceSelection';
 
+import emoji from '@app/components/input/emoji/data';
+import { firstLevelSplitting, secondLevelSplitting } from '@app/components/input/emoji/emoji';
+
 const RSS_THREAD_URL = `${BASE_URL}${API_BASE}/rss/post?site=${siteId}&url=${url}`;
 const RSS_SITE_URL = `${BASE_URL}${API_BASE}/rss/site?site=${siteId}`;
 const RSS_REPLIES_URL = `${BASE_URL}${API_BASE}/rss/reply?site=${siteId}&user=`;
+
+const splittedEmoji = firstLevelSplitting(emoji);
+const sec = secondLevelSplitting(splittedEmoji);
+alert(sec);
 
 let textareaId = 0;
 
