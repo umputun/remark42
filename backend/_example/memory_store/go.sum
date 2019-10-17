@@ -50,6 +50,7 @@ github.com/go-pkgz/auth v0.7.2/go.mod h1:ibOpZYISiaOvAHe2bsKj2s3v4AkMam2WxxIFn+z
 github.com/go-pkgz/auth v0.8.0/go.mod h1:MBNrhig13KG0iXz/0d+30lnFUgzTxncUlaQ8suH/2p8=
 github.com/go-pkgz/auth v0.8.1/go.mod h1:MBNrhig13KG0iXz/0d+30lnFUgzTxncUlaQ8suH/2p8=
 github.com/go-pkgz/auth v0.8.2/go.mod h1:MBNrhig13KG0iXz/0d+30lnFUgzTxncUlaQ8suH/2p8=
+github.com/go-pkgz/auth v0.8.3/go.mod h1:Ij9y6oBzfsvutSGWSGwh9C4WyU4hOfxB6rTlj4xBwGE=
 github.com/go-pkgz/auth/_example v0.0.0-20190722170031-705d3f732438/go.mod h1:rvZtFFkmm3p+E0CHmfUqTGKweCVg2ddsRUrEEPB1iaE=
 github.com/go-pkgz/auth/_example v0.0.0-20190823054154-cc9c87832e19/go.mod h1:M9HLEzuiKQQ+rwGA9bAzmUDguCJi2HyGwKkxb5ouGJU=
 github.com/go-pkgz/jrpc v0.1.0 h1:hNg/IyfEqJcSWOKkuHw0ZwcuGc9TDp7QZREsD2ycmiM=
