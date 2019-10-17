@@ -1,56 +1,64 @@
 import { Emoji } from './data';
 
-interface FirstLevelSplittedEmoji {
+interface ABCBook {
   [s: string]: string[];
 }
 
-interface SecondLevelSplittedEmoji {
-  [s: string]: {
-    [s: string]: string[];
-  };
+interface SecondLevelABCBook {
+  [s: string]: ABCBook;
 }
 
-export const firstLevelSplitting = (emoji: Emoji): FirstLevelSplittedEmoji => {
-  const emojiList = Object.keys(emoji);
-  const splittedEmoji: FirstLevelSplittedEmoji = {};
+const getABCBook = (arr: string[], from: number): ABCBook => {
+  const abcBook: ABCBook = {};
 
-  emojiList.forEach(emoji => {
-    const firsLetter = emoji[1];
+  arr.forEach(el => {
+    const firstLetter = el[from];
 
-    if (splittedEmoji[firsLetter] === undefined) {
-      splittedEmoji[firsLetter] = [];
-      splittedEmoji[firsLetter].push(emoji);
+    if (abcBook[firstLetter] === undefined) {
+      abcBook[firstLetter] = [];
+      abcBook[firstLetter].push(el);
       return;
     }
 
-    splittedEmoji[firsLetter].push(emoji);
+    abcBook[firstLetter].push(el);
   });
 
-  return splittedEmoji;
+  return abcBook;
 };
 
-export const secondLevelSplitting = (splittedEmoji: FirstLevelSplittedEmoji): SecondLevelSplittedEmoji => {
-  const lettersList = Object.keys(splittedEmoji);
-  const newSplittedEmoji: SecondLevelSplittedEmoji = {};
+const getSecondLevelABCBook = (abcBook: ABCBook, from: number): SecondLevelABCBook => {
+  const lettersList = Object.keys(abcBook);
+  const secondLevelABCBook: SecondLevelABCBook = {};
 
   lettersList.forEach(letter => {
-    const emojiList = splittedEmoji[letter];
-    const split: FirstLevelSplittedEmoji = {};
-
-    emojiList.forEach(emoji => {
-      const firsLetter = emoji[2];
-
-      if (split[firsLetter] === undefined) {
-        split[firsLetter] = [];
-        split[firsLetter].push(emoji);
-        return;
-      }
-
-      split[firsLetter].push(emoji);
-    });
-
-    newSplittedEmoji[letter] = splittedEmoji;
+    secondLevelABCBook[letter] = getABCBook(abcBook[letter], from + 1);
   });
 
-  return newSplittedEmoji;
+  return secondLevelABCBook;
+};
+
+const getSecondLevelABCBookByArray = (arr: string[], from: number): SecondLevelABCBook => {
+  return getSecondLevelABCBook(getABCBook(arr, from), from);
+};
+
+export const getSplittedEmoji = (emoji: Emoji): SecondLevelABCBook => {
+  const emojiList = Object.keys(emoji);
+  return getSecondLevelABCBookByArray(emojiList, 1);
+};
+
+export const getFirstNEmojiByLetter = (splittedEmoji: SecondLevelABCBook, letter: string, n: number): string[] => {
+  const abcBook = splittedEmoji[letter];
+  const letters = Object.keys(abcBook);
+  const emojiList: string[] = [];
+
+  letters.some(letter => {
+    abcBook[letter].some(el => {
+      emojiList.push(el);
+      return emojiList.length >= n;
+    });
+
+    return emojiList.length >= n;
+  });
+
+  return emojiList;
 };
