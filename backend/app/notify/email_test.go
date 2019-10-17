@@ -130,8 +130,13 @@ func TestEmailSend(t *testing.T) {
 				}}}))
 	waitGroup.Wait()
 	assert.Equal(t, emailMessage{message: filledEmail, to: "good_example@example.org"}, testMessage)
-	assert.Nil(t, email.Send(context.Background(), request{}),
+	emptyRequest := request{}
+	assert.Nil(t, email.Send(context.Background(), emptyRequest),
 		"Message without parent comment User.Email is not sent and returns nil")
+	requestWithEqualUsersWithEmails := request{parent: store.Comment{User: store.User{Email: "bad@example.org"}},
+		comment: store.Comment{User: store.User{Email: "bad@example.org"}}}
+	assert.Nil(t, email.Send(context.Background(), requestWithEqualUsersWithEmails),
+		"Message with parent comment User equals comment User is not sent and returns nil")
 }
 
 func TestEmailSendAndAutoFlush(t *testing.T) {

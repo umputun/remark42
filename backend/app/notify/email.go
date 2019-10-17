@@ -129,7 +129,9 @@ func (e *Email) Send(ctx context.Context, req request) error {
 		// e.smtpClient initialised only in tests
 		go e.autoFlush(ctx, e.smtpClient)
 	})
-	if req.parent.User.Email == "" {
+	if req.parent.User.Email == "" || req.parent.User == req.comment.User {
+		// don't send anything if there is no email to send information to
+		// or if user replied to his own comment
 		return nil
 	}
 	to := req.parent.User.Email
