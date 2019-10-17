@@ -28,8 +28,7 @@ const RSS_SITE_URL = `${BASE_URL}${API_BASE}/rss/site?site=${siteId}`;
 const RSS_REPLIES_URL = `${BASE_URL}${API_BASE}/rss/reply?site=${siteId}&user=`;
 
 const splittedEmoji = getSplittedEmoji(emoji);
-alert(splittedEmoji);
-alert(getFirstNEmojiByLetter(splittedEmoji, 'z', 30));
+let emojiList = getFirstNEmojiByLetter(splittedEmoji, 's', 30);
 
 let textareaId = 0;
 
@@ -72,8 +71,6 @@ const Labels = {
   edit: 'Save',
   reply: 'Reply',
 };
-
-const EmojiList = [':smile:', ':simple:', ':sososo:', ':worried:', ':kiss:', ':cry:'];
 
 const ImageMimeRegex = /image\//i;
 
@@ -322,6 +319,13 @@ export class Input extends Component<Props, State> {
 
     if (lastColon > lastSpace) {
       draftEmoji = textStart.substr(lastColon, textStart.length - lastColon);
+
+      if (draftEmoji.length === 2) {
+        emojiList = getFirstNEmojiByLetter(splittedEmoji, draftEmoji[1], 30);
+      } else if (draftEmoji.length > 2) {
+        emojiList = splittedEmoji[draftEmoji[1]][draftEmoji[2]];
+      }
+
       this.emojiDropdown.setSelectableItemsFilter(draftEmoji);
       this.emojiDropdown.filterSelectableItems();
     }
@@ -612,7 +616,7 @@ export class Input extends Component<Props, State> {
             <Dropdown
               title="Emoji"
               theme={this.props.theme}
-              selectableItems={EmojiList}
+              selectableItems={emojiList}
               ref={ref => (this.emojiDropdown = ref)}
               onDropdownItemClick={this.onDropdownItemClick}
             />
