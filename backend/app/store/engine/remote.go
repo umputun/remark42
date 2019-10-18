@@ -83,13 +83,13 @@ func (r *RPC) ListFlags(req FlagRequest) (list []interface{}, err error) {
 }
 
 // UserDetail sets and gets details
-func (r *RPC) UserDetail(req UserDetailRequest) (status bool, err error) {
+func (r *RPC) UserDetail(req UserDetailRequest) (value string, err error) {
 	resp, err := r.Call("store.user_detail", req)
 	if err != nil {
-		return false, err
+		return "", err
 	}
-	err = json.Unmarshal(*resp.Result, &status)
-	return status, err
+	err = json.Unmarshal(*resp.Result, &value)
+	return value, err
 }
 
 // Count gets comments count by user or site

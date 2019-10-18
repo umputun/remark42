@@ -25,7 +25,7 @@ type Interface interface {
 	Delete(req DeleteRequest) error                             // delete post(s) by id or by userID
 	Flag(req FlagRequest) (bool, error)                         // set and get flags
 	ListFlags(req FlagRequest) ([]interface{}, error)           // get list of flagged keys, like blocked & verified user
-	UserDetail(req UserDetailRequest) (bool, error)             // set and get user details
+	UserDetail(req UserDetailRequest) (string, error)           // set and get user details
 	Close() error                                               // close storage engine
 }
 

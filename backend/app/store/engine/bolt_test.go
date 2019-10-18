@@ -620,6 +620,56 @@ func TestBolt_FlagListBlocked(t *testing.T) {
 
 }
 
+func TestBoltDB_UserDetail(t *testing.T) {
+
+	b, teardown := prep(t)
+	defer teardown()
+
+	bucket, err := b.userDetailsBucket(nil, "bad_detail")
+	assert.EqualError(t, err, "unsupported detail bad_detail")
+	assert.Nil(t, bucket)
+
+	for _, detail := range []UserDetail{Email} {
+		readDetail := func(site, user string) string {
+			req := UserDetailRequest{Detail: detail, Locator: store.Locator{SiteID: site}, UserID: user}
+			v, err := b.UserDetail(req)
+			require.NoError(t, err)
+			return v
+		}
+
+		setDetail := func(site, user string, value string) error {
+			req := UserDetailRequest{Detail: detail, Locator: store.Locator{SiteID: site}, UserID: user, Update: value}
+			_, err := b.UserDetail(req)
+			return err
+		}
+
+		assert.Equal(t, "", readDetail("radio-t", "u1"), "no %s set yet", detail)
+
+		assert.NoError(t, setDetail("radio-t", "u1", "value1"))
+		assert.Equal(t, "value1", readDetail("radio-t", "u1"), "u1 %s set", detail)
+
+		assert.Equal(t, "", readDetail("radio-t", "u2"), "u2 still don't have %s set", detail)
+		// TODO fix: empty Update value results in read request instead of update request
+		assert.NoError(t, setDetail("radio-t", "u1", ""))
+		//assert.Equal(t, "", readDetail("radio-t", "u1"), "u1 %s is not set anymore", detail)
+
+		assert.EqualError(t, setDetail("bad", "u1", "value2"), `site "bad" not found`)
+		assert.NoError(t, setDetail("radio-t", "u1xyz", ""))
+
+		assert.Equal(t, "", readDetail("radio-t-bad", "u1"), "nothing verified on wrong site")
+
+		assert.NoError(t, setDetail("radio-t", "u1", "value3"))
+		assert.NoError(t, setDetail("radio-t", "u2", "value4"))
+		assert.NoError(t, setDetail("radio-t", "u3", ""))
+	}
+	v, err := b.UserDetail(UserDetailRequest{Update: "new_value"})
+	require.EqualError(t, err, "UserID is not set")
+	require.Equal(t, "", v)
+	v, err = b.UserDetail(UserDetailRequest{})
+	require.NoError(t, err, "Unset UserID results in empty response")
+	require.Equal(t, "", v)
+}
+
 func TestBolt_DeleteComment(t *testing.T) {
 
 	b, teardown := prep(t)

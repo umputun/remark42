@@ -22,7 +22,7 @@ import (
 //    value is not full comment but a reference combined from post-url+commentID
 //  - user to comment references in "users" bucket. It used to get comments for user. Key is userID and value
 //    is a nested bucket named userID with kv as ts:reference
-//  - users subscription emails in "user_details" bucket. Key is userID and value is map with single "email" element
+//  - users details in "user_details" top-level bucket. Each detail makes its own bucket and each k:v pair is userID:value
 //  - blocking info sits in "block" bucket. Key is userID, value - ts
 //  - counts per post to keep number of comments. Key is post url, value - count
 //  - readonly per post to keep status of manually set RO posts. Key is post url, value - ts
@@ -74,6 +74,22 @@ func NewBoltDB(options bolt.Options, sites ...BoltSite) (*BoltDB, error) {
 
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to create top level bucket)")
+		}
+
+		// make user details buckets
+		userDetailsBuckets := []UserDetail{Email}
+		err = db.Update(func(tx *bolt.Tx) error {
+			usrDetailsBkt := tx.Bucket([]byte(userDetailsBucketName))
+			for _, bktName := range userDetailsBuckets {
+				if _, e := usrDetailsBkt.CreateBucketIfNotExists([]byte(bktName)); e != nil {
+					return errors.Wrapf(e, "failed to create user details bucket for %s", bktName)
+				}
+			}
+			return nil
+		})
+
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create user details buckets)")
 		}
 
 		result.dbs[site.SiteID] = db
@@ -208,7 +224,7 @@ func (b *BoltDB) Flag(req FlagRequest) (val bool, err error) {
 }
 
 // UserDetail sets and gets detail values
-func (b *BoltDB) UserDetail(req UserDetailRequest) (val bool, err error) {
+func (b *BoltDB) UserDetail(req UserDetailRequest) (val string, err error) {
 	if req.Update == "" { // read detail value, no update requested
 		return b.checkUserDetail(req), nil
 	}
@@ -616,16 +632,6 @@ func (b *BoltDB) setFlag(req FlagRequest) (res bool, err error) {
 	return res, err
 }
 
-// TODO write
-func (b *BoltDB) checkUserDetail(req UserDetailRequest) (val bool) {
-	return true
-}
-
-// TODO write
-func (b *BoltDB) setUserDetail(req UserDetailRequest) (res bool, err error) {
-	return true, nil
-}
-
 func (b *BoltDB) flagBucket(tx *bolt.Tx, flag Flag) (bkt *bolt.Bucket, err error) {
 	switch flag {
 	case ReadOnly:
@@ -636,6 +642,77 @@ func (b *BoltDB) flagBucket(tx *bolt.Tx, flag Flag) (bkt *bolt.Bucket, err error
 		bkt = tx.Bucket([]byte(verifiedBucketName))
 	default:
 		return nil, errors.Errorf("unsupported flag %v", flag)
+	}
+	return bkt, nil
+}
+
+// checkUserDetail returns requested userDetail
+func (b *BoltDB) checkUserDetail(req UserDetailRequest) (val string) {
+	key := req.UserID
+	if key == "" {
+		return "" // return nothing in case UserID is not set
+	}
+
+	bdb, err := b.db(req.Locator.SiteID)
+	if err != nil {
+		return ""
+	}
+
+	_ = bdb.View(func(tx *bolt.Tx) error {
+		var bucket *bolt.Bucket
+		if bucket, err = b.userDetailsBucket(tx, req.Detail); err != nil {
+			return err
+		}
+		v := bucket.Get([]byte(key))
+		val = string(v)
+		return nil
+	})
+
+	return val
+}
+
+// checkUserDetail sets requested userDetail
+func (b *BoltDB) setUserDetail(req UserDetailRequest) (res string, err error) {
+	key := req.UserID
+	if key == "" {
+		return "", errors.New("UserID is not set")
+	}
+
+	bdb, e := b.db(req.Locator.SiteID)
+	if e != nil {
+		return "", e
+	}
+
+	err = bdb.Update(func(tx *bolt.Tx) error {
+		var bucket *bolt.Bucket
+		if bucket, err = b.userDetailsBucket(tx, req.Detail); err != nil {
+			return err
+		}
+		switch req.Update {
+		case "":
+			if e = bucket.Delete([]byte(key)); e != nil {
+				return errors.Wrapf(e, "failed to clean flag %s for %s", req.Detail, req.Locator.URL)
+			}
+			res = ""
+		default:
+			if e = bucket.Put([]byte(key), []byte(req.Update)); e != nil {
+				return errors.Wrapf(e, "failed to set detail %s for %s", req.Detail, req.Locator.URL)
+			}
+			res = req.Update
+		}
+		return nil
+	})
+
+	return res, err
+}
+
+func (b *BoltDB) userDetailsBucket(tx *bolt.Tx, userDetail UserDetail) (bkt *bolt.Bucket, err error) {
+	switch userDetail {
+	case Email:
+		usrDetailsBkt := tx.Bucket([]byte(userDetailsBucketName))
+		bkt = usrDetailsBkt.Bucket([]byte(userDetail))
+	default:
+		return nil, errors.Errorf("unsupported detail %v", userDetail)
 	}
 	return bkt, nil
 }
@@ -679,7 +756,7 @@ func (b *BoltDB) deleteComment(bdb *bolt.DB, locator store.Locator, commentID st
 func (b *BoltDB) deleteAll(bdb *bolt.DB, siteID string) error {
 
 	// delete all buckets except blocked users
-	toDelete := []string{postsBucketName, lastBucketName, userBucketName, infoBucketName}
+	toDelete := []string{postsBucketName, lastBucketName, userBucketName, userDetailsBucketName, infoBucketName}
 
 	// delete top-level buckets
 	err := bdb.Update(func(tx *bolt.Tx) error {

@@ -206,14 +206,14 @@ func (_m *MockInterface) Update(comment store.Comment) error {
 }
 
 // UserDetail provides a mock function with given fields: req
-func (_m *MockInterface) UserDetail(req UserDetailRequest) (bool, error) {
+func (_m *MockInterface) UserDetail(req UserDetailRequest) (string, error) {
 	ret := _m.Called(req)
 
-	var r0 bool
-	if rf, ok := ret.Get(0).(func(UserDetailRequest) bool); ok {
+	var r0 string
+	if rf, ok := ret.Get(0).(func(UserDetailRequest) string); ok {
 		r0 = rf(req)
 	} else {
-		r0 = ret.Get(0).(bool)
+		r0 = ret.Get(0).(string)
 	}
 
 	var r1 error
