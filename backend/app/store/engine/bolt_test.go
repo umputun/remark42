@@ -637,30 +637,29 @@ func TestBoltDB_UserDetail(t *testing.T) {
 			return v
 		}
 
-		setDetail := func(site, user string, value string) error {
-			req := UserDetailRequest{Detail: detail, Locator: store.Locator{SiteID: site}, UserID: user, Update: value}
+		setDetail := func(site, user string, value string, delete bool) error {
+			req := UserDetailRequest{Detail: detail, Locator: store.Locator{SiteID: site}, UserID: user, Update: value, Delete: delete}
 			_, err := b.UserDetail(req)
 			return err
 		}
 
 		assert.Equal(t, "", readDetail("radio-t", "u1"), "no %s set yet", detail)
 
-		assert.NoError(t, setDetail("radio-t", "u1", "value1"))
+		assert.NoError(t, setDetail("radio-t", "u1", "value1", false))
 		assert.Equal(t, "value1", readDetail("radio-t", "u1"), "u1 %s set", detail)
 
 		assert.Equal(t, "", readDetail("radio-t", "u2"), "u2 still don't have %s set", detail)
-		// TODO fix: empty Update value results in read request instead of update request
-		assert.NoError(t, setDetail("radio-t", "u1", ""))
-		//assert.Equal(t, "", readDetail("radio-t", "u1"), "u1 %s is not set anymore", detail)
+		assert.NoError(t, setDetail("radio-t", "u1", "", true))
+		assert.Equal(t, "", readDetail("radio-t", "u1"), "u1 %s is not set anymore", detail)
 
-		assert.EqualError(t, setDetail("bad", "u1", "value2"), `site "bad" not found`)
-		assert.NoError(t, setDetail("radio-t", "u1xyz", ""))
+		assert.EqualError(t, setDetail("bad", "u1", "value2", false), `site "bad" not found`)
+		assert.NoError(t, setDetail("radio-t", "u1xyz", "", true))
 
 		assert.Equal(t, "", readDetail("radio-t-bad", "u1"), "nothing verified on wrong site")
 
-		assert.NoError(t, setDetail("radio-t", "u1", "value3"))
-		assert.NoError(t, setDetail("radio-t", "u2", "value4"))
-		assert.NoError(t, setDetail("radio-t", "u3", ""))
+		assert.NoError(t, setDetail("radio-t", "u1", "value3", false))
+		assert.EqualError(t, setDetail("radio-t", "u2", "value4", true), "Both Delete and Update are set, pick one")
+		assert.NoError(t, setDetail("radio-t", "u3", "", false))
 	}
 	v, err := b.UserDetail(UserDetailRequest{Update: "new_value"})
 	require.EqualError(t, err, "UserID is not set")

@@ -100,6 +100,7 @@ type UserDetailRequest struct {
 	Locator store.Locator `json:"locator"`          // post locator
 	UserID  string        `json:"user_id"`          // user id for get\set
 	Update  string        `json:"update,omitempty"` // update value
+	Delete  bool          `json:"delete,omitempty"` // update value
 }
 
 const (

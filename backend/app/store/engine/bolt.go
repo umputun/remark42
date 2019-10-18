@@ -225,7 +225,7 @@ func (b *BoltDB) Flag(req FlagRequest) (val bool, err error) {
 
 // UserDetail sets and gets detail values
 func (b *BoltDB) UserDetail(req UserDetailRequest) (val string, err error) {
-	if req.Update == "" { // read detail value, no update requested
+	if req.Update == "" && !req.Delete { // read detail value, no update requested
 		return b.checkUserDetail(req), nil
 	}
 
@@ -677,6 +677,9 @@ func (b *BoltDB) setUserDetail(req UserDetailRequest) (res string, err error) {
 	if key == "" {
 		return "", errors.New("UserID is not set")
 	}
+	if req.Delete && req.Update != "" {
+		return "", errors.New("Both Delete and Update are set, pick one")
+	}
 
 	bdb, e := b.db(req.Locator.SiteID)
 	if e != nil {
@@ -688,13 +691,13 @@ func (b *BoltDB) setUserDetail(req UserDetailRequest) (res string, err error) {
 		if bucket, err = b.userDetailsBucket(tx, req.Detail); err != nil {
 			return err
 		}
-		switch req.Update {
-		case "":
+		switch {
+		case req.Delete:
 			if e = bucket.Delete([]byte(key)); e != nil {
 				return errors.Wrapf(e, "failed to clean flag %s for %s", req.Detail, req.Locator.URL)
 			}
 			res = ""
-		default:
+		case req.Update != "":
 			if e = bucket.Put([]byte(key), []byte(req.Update)); e != nil {
 				return errors.Wrapf(e, "failed to set detail %s for %s", req.Detail, req.Locator.URL)
 			}
