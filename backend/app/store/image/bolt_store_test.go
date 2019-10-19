@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestBoltStore_Save(t *testing.T) {
+func TestBoltStore_SaveCommit(t *testing.T) {
 	svc, teardown := prepareBoltImageStorageTest(t)
 	defer teardown()
 
@@ -24,12 +24,24 @@ func TestBoltStore_Save(t *testing.T) {
 	t.Log(id)
 
 	err = svc.db.View(func(tx *bolt.Tx) error {
+		data := tx.Bucket([]byte(imagesStagedBktName)).Get([]byte(id))
+		assert.NotNil(t, data)
+		assert.Equal(t, 1462, len(data))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	err = svc.Commit(id)
+	require.NoError(t, err)
+
+	err = svc.db.View(func(tx *bolt.Tx) error {
 		data := tx.Bucket([]byte(imagesBktName)).Get([]byte(id))
 		assert.NotNil(t, data)
 		assert.Equal(t, 1462, len(data))
 		return nil
 	})
 	assert.NoError(t, err)
+
 }
 
 func TestBoltStore_LoadAfterSave(t *testing.T) {
@@ -62,7 +74,7 @@ func TestBoltStore_Cleanup(t *testing.T) {
 		id, err := svc.Save(file, user, gopherPNG())
 		require.NoError(t, err)
 
-		checkBoltImgData(t, svc.db, id, func(data []byte) error {
+		checkBoltImgData(t, svc.db, imagesStagedBktName, id, func(data []byte) error {
 			assert.NotNil(t, data)
 			assert.Equal(t, 1462, len(data))
 			return nil
@@ -81,9 +93,11 @@ func TestBoltStore_Cleanup(t *testing.T) {
 	err := svc.Cleanup(context.Background(), time.Millisecond*300)
 	assert.NoError(t, err)
 
-	assertBoltImgNil(t, svc.db, img1)
-	assertBoltImgNotNil(t, svc.db, img2)
-	assertBoltImgNotNil(t, svc.db, img3)
+	assertBoltImgNil(t, svc.db, imagesStagedBktName, img1)
+	assertBoltImgNil(t, svc.db, imagesBktName, img1)
+	assertBoltImgNotNil(t, svc.db, imagesStagedBktName, img2)
+	assertBoltImgNotNil(t, svc.db, imagesStagedBktName, img3)
+
 	err = svc.Commit(img3)
 	require.NoError(t, err)
 
@@ -91,28 +105,31 @@ func TestBoltStore_Cleanup(t *testing.T) {
 	err = svc.Cleanup(context.Background(), time.Millisecond*300)
 	assert.NoError(t, err)
 
-	assertBoltImgNil(t, svc.db, img2)
-	assertBoltImgNotNil(t, svc.db, img3)
+	assertBoltImgNil(t, svc.db, imagesStagedBktName, img2)
+	assertBoltImgNil(t, svc.db, imagesBktName, img2)
+	assertBoltImgNotNil(t, svc.db, imagesBktName, img3)
 	assert.NoError(t, err)
 }
 
-func assertBoltImgNil(t *testing.T, db *bolt.DB, id string) {
-	checkBoltImgData(t, db, id, func(data []byte) error {
+func assertBoltImgNil(t *testing.T, db *bolt.DB, bucket string, id string) {
+	checkBoltImgData(t, db, bucket, id, func(data []byte) error {
 		assert.Nil(t, data)
 		return nil
 	})
 }
 
-func assertBoltImgNotNil(t *testing.T, db *bolt.DB, id string) {
-	checkBoltImgData(t, db, id, func(data []byte) error {
+func assertBoltImgNotNil(t *testing.T, db *bolt.DB, bucket string, id string) {
+	checkBoltImgData(t, db, bucket, id, func(data []byte) error {
 		assert.NotNil(t, data)
 		return nil
 	})
 }
 
-func checkBoltImgData(t *testing.T, db *bolt.DB, id string, callback func([]byte) error) {
+func checkBoltImgData(t *testing.T, db *bolt.DB, bucket string, id string, callback func([]byte) error) {
 	err := db.View(func(tx *bolt.Tx) error {
-		data := tx.Bucket([]byte(imagesBktName)).Get([]byte(id))
+		bkt := tx.Bucket([]byte(bucket))
+		assert.NotNil(t, bkt, "bucket %s not found", bucket)
+		data := bkt.Get([]byte(id))
 		return callback(data)
 	})
 	assert.NoError(t, err)

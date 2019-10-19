@@ -22,9 +22,9 @@ type Bolt struct {
 	MaxWidth  int
 }
 
+const imagesStagedBktName = "images_staged"
 const imagesBktName = "images"
 const insertTimeBktName = "insert_times"
-const commitedFlagBktName = "commited_flags"
 
 func NewBoltStorage(fileName string, maxSize int, maxHeight int, maxWidth int, options bolt.Options) (*Bolt, error) {
 	db, err := bolt.Open(fileName, 0600, &options)
@@ -36,11 +36,11 @@ func NewBoltStorage(fileName string, maxSize int, maxHeight int, maxWidth int, o
 		if _, e := tx.CreateBucketIfNotExists([]byte(imagesBktName)); e != nil {
 			return errors.Wrapf(e, "failed to create top level bucket %s", imagesBktName)
 		}
+		if _, e := tx.CreateBucketIfNotExists([]byte(imagesStagedBktName)); e != nil {
+			return errors.Wrapf(e, "failed to create top level bucket %s", imagesStagedBktName)
+		}
 		if _, e := tx.CreateBucketIfNotExists([]byte(insertTimeBktName)); e != nil {
 			return errors.Wrapf(e, "failed to create top level bucket %s", insertTimeBktName)
-		}
-		if _, e := tx.CreateBucketIfNotExists([]byte(commitedFlagBktName)); e != nil {
-			return errors.Wrapf(e, "failed to create top level bucket %s", commitedFlagBktName)
 		}
 		return nil
 	})
@@ -67,7 +67,7 @@ func (b *Bolt) Save(fileName string, userID string, r io.Reader) (id string, err
 	id = path.Join(userID, guid())
 
 	err = b.db.Update(func(tx *bolt.Tx) error {
-		if err = tx.Bucket([]byte(imagesBktName)).Put([]byte(id), data); err != nil {
+		if err = tx.Bucket([]byte(imagesStagedBktName)).Put([]byte(id), data); err != nil {
 			return errors.Wrapf(err, "can't put to bucket with %s", id)
 		}
 		tsBuf := &bytes.Buffer{}
@@ -85,11 +85,12 @@ func (b *Bolt) Save(fileName string, userID string, r io.Reader) (id string, err
 
 func (b *Bolt) Commit(id string) error {
 	err := b.db.Update(func(tx *bolt.Tx) error {
-		err := tx.Bucket([]byte(commitedFlagBktName)).Put([]byte(id), []byte{1})
-		if err != nil {
-			return errors.Wrapf(err, "failed to set commited flag for %s", id)
+		data := tx.Bucket([]byte(imagesStagedBktName)).Get([]byte(id))
+		if data == nil {
+			return errors.Errorf("failed to commit %s, not found in staging", id)
 		}
-		return nil
+		err := tx.Bucket([]byte(imagesBktName)).Put([]byte(id), data)
+		return errors.Wrapf(err, "can't put to bucket with %s", id)
 	})
 	return err
 }
@@ -99,6 +100,9 @@ func (b *Bolt) Load(id string) (io.ReadCloser, int64, error) {
 	var size int = 0
 	err := b.db.View(func(tx *bolt.Tx) error {
 		data := tx.Bucket([]byte(imagesBktName)).Get([]byte(id))
+		if data == nil {
+			data = tx.Bucket([]byte(imagesStagedBktName)).Get([]byte(id))
+		}
 		if data == nil {
 			return errors.Errorf("can't load image %s", id)
 		}
@@ -114,12 +118,8 @@ func (b *Bolt) Cleanup(ctx context.Context, ttl time.Duration) error {
 		c := tx.Bucket([]byte(insertTimeBktName)).Cursor()
 
 		idsToRemove := [][]byte{}
-		flagBkt := tx.Bucket([]byte(commitedFlagBktName))
 
 		for id, tsData := c.First(); id != nil; id, tsData = c.Next() {
-			if isCommited := flagBkt.Get(id); isCommited != nil {
-				continue
-			}
 			var ts int64
 			err := binary.Read(bytes.NewReader(tsData), binary.LittleEndian, &ts)
 			if err != nil {
@@ -137,7 +137,7 @@ func (b *Bolt) Cleanup(ctx context.Context, ttl time.Duration) error {
 				}
 			}
 		}
-		imgBkt := tx.Bucket([]byte(imagesBktName))
+		imgBkt := tx.Bucket([]byte(imagesStagedBktName))
 		for _, id := range idsToRemove {
 			err := imgBkt.Delete(id)
 			if err != nil {
