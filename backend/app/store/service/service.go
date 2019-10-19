@@ -564,21 +564,6 @@ func (s *DataStore) SetReadOnly(locator store.Locator, status bool) error {
 	return err
 }
 
-// Add a new API and new store.engine/store.service method(s) to save,
-// load and clean email for the user. I like this one much more as we keep only necessary emails.
-// Adding email should be two-step process with email confirmation code/link,
-// smth like go-pkgz/auth does for VerifProvider
-
-// GetEmail get email for the user
-func (s *DataStore) GetEmail(siteID string, userID string) string {
-	return ""
-}
-
-// SetEmail set email for user
-func (s *DataStore) SetEmail(siteID string, userID string, email string) error {
-	return nil
-}
-
 // IsVerified checks if user verified
 func (s *DataStore) IsVerified(siteID string, userID string) bool {
 	req := engine.FlagRequest{Locator: store.Locator{SiteID: siteID}, UserID: userID, Flag: engine.Verified}
