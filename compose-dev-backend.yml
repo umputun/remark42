@@ -18,6 +18,7 @@ services:
             dockerfile: Dockerfile
             args:
                 - SKIP_BACKEND_TEST
+                - BACKEND_TEST_TIMEOUT
                 - SKIP_FRONTEND_TEST=true
 
         image: umputun/remark42:dev

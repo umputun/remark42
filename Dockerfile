@@ -20,6 +20,7 @@ ARG DRONE_BRANCH
 ARG DRONE_PULL_REQUEST
 
 ARG SKIP_BACKEND_TEST
+ARG BACKEND_TEST_TIMEOUT
 
 ADD backend /build/backend
 ADD .git /build/.git
@@ -31,7 +32,7 @@ ENV GOFLAGS="-mod=vendor"
 RUN \
     cd app && \
     if [ -z "$SKIP_BACKEND_TEST" ] ; then \
-        go test -p 1 -timeout=30s -covermode=count -coverprofile=/profile.cov_tmp ./... && \
+        go test -p 1 -timeout="${BACKEND_TEST_TIMEOUT:-30s}" -covermode=count -coverprofile=/profile.cov_tmp ./... && \
         cat /profile.cov_tmp | grep -v "_mock.go" > /profile.cov ; \
     else echo "skip backend test" ; fi
 
