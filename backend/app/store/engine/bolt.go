@@ -229,7 +229,7 @@ func (b *BoltDB) UserDetail(req UserDetailRequest) (val string, err error) {
 		return b.checkUserDetail(req), nil
 	}
 
-	// write detail value
+	// write or delete detail value
 	return b.setUserDetail(req)
 }
 
