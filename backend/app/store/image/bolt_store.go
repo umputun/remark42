@@ -71,7 +71,9 @@ func (b *Bolt) Save(fileName string, userID string, r io.Reader) (id string, err
 			return errors.Wrapf(err, "can't put to bucket with %s", id)
 		}
 		tsBuf := &bytes.Buffer{}
-		binary.Write(tsBuf, binary.LittleEndian, time.Now().UnixNano())
+		if err = binary.Write(tsBuf, binary.LittleEndian, time.Now().UnixNano()); err != nil {
+			return errors.Wrapf(err, "can't serialize timestamp for %s", id)
+		}
 		if err = tx.Bucket([]byte(insertTimeBktName)).Put([]byte(id), tsBuf.Bytes()); err != nil {
 			return errors.Wrapf(err, "can't put to bucket with %s", id)
 		}
@@ -115,7 +117,7 @@ func (b *Bolt) Cleanup(ctx context.Context, ttl time.Duration) error {
 		flagBkt := tx.Bucket([]byte(commitedFlagBktName))
 
 		for id, tsData := c.First(); id != nil; id, tsData = c.Next() {
-			if isCommited := flagBkt.Get([]byte(id)); isCommited != nil {
+			if isCommited := flagBkt.Get(id); isCommited != nil {
 				continue
 			}
 			var ts int64
@@ -137,7 +139,7 @@ func (b *Bolt) Cleanup(ctx context.Context, ttl time.Duration) error {
 		}
 		imgBkt := tx.Bucket([]byte(imagesBktName))
 		for _, id := range idsToRemove {
-			err := imgBkt.Delete([]byte(id))
+			err := imgBkt.Delete(id)
 			if err != nil {
 				return errors.Wrapf(err, "failed to remove image for %s", id)
 			}
