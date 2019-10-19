@@ -92,13 +92,13 @@ func TestEmailSendErrors(t *testing.T) {
 	e := Email{EmailParams: EmailParams{FlushDuration: time.Second}}
 	e.template, err = template.New("test").Parse("{{.Test}}")
 	assert.NoError(t, err)
-	assert.EqualError(t, e.Send(context.Background(), request{parent: store.Comment{User: store.User{Email: "bad@example.org"}}}),
+	assert.EqualError(t, e.Send(context.Background(), request{parent: store.Comment{User: store.User{ID: "test"}}, parentUserEmail: "bad@example.org"}),
 		"error executing template to build message from request: template: test:1:2: executing \"test\" at <.Test>: can't evaluate field Test in type notify.tmplData")
 	e.template, err = template.New("test").Parse(defaultEmailTemplate)
 	assert.NoError(t, err)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	assert.EqualError(t, e.Send(ctx, request{parent: store.Comment{User: store.User{Email: "bad@example.org"}}}),
+	assert.EqualError(t, e.Send(ctx, request{parent: store.Comment{User: store.User{ID: "test"}}, parentUserEmail: "bad@example.org"}),
 		"sending message to \"bad@example.org\" aborted due to canceled context")
 }
 
@@ -125,16 +125,16 @@ func TestEmailSend(t *testing.T) {
 				PostTitle: "test title"},
 			parent: store.Comment{
 				User: store.User{
-					Name:  "test parent user name",
-					Email: "good_example@example.org",
-				}}}))
+					Name: "test parent user name",
+				}},
+			parentUserEmail: "good_example@example.org",
+		}))
 	waitGroup.Wait()
 	assert.Equal(t, emailMessage{message: filledEmail, to: "good_example@example.org"}, testMessage)
 	emptyRequest := request{}
 	assert.Nil(t, email.Send(context.Background(), emptyRequest),
 		"Message without parent comment User.Email is not sent and returns nil")
-	requestWithEqualUsersWithEmails := request{parent: store.Comment{User: store.User{Email: "bad@example.org"}},
-		comment: store.Comment{User: store.User{Email: "bad@example.org"}}}
+	requestWithEqualUsersWithEmails := request{parentUserEmail: "good_example@example.org"}
 	assert.Nil(t, email.Send(context.Background(), requestWithEqualUsersWithEmails),
 		"Message with parent comment User equals comment User is not sent and returns nil")
 }
@@ -152,17 +152,17 @@ func TestEmailSendAndAutoFlush(t *testing.T) {
 		waitForTicker       bool
 	}{
 		1: {smtp: &fakeTestSMTP{}, amount: 1, quitCount: 0,
-			request: request{parent: store.Comment{User: store.User{Email: "test@example.org"}}}}, // single message: still in buffer at the time context is closed, not sent
+			request: request{parent: store.Comment{User: store.User{ID: "test"}}, parentUserEmail: "test@example.org"}}, // single message: still in buffer at the time context is closed, not sent
 		2: {smtp: &fakeTestSMTP{fail: map[string]bool{"data": true}}, amount: 4, quitCount: 1, mail: "test_sender", // four messages: three sent with failure, one discarded
-			rcpt: "test@example.org", request: request{parent: store.Comment{User: store.User{Email: "test@example.org"}}}},
+			rcpt: "test@example.org", request: request{parent: store.Comment{User: store.User{ID: "test"}}, parentUserEmail: "test@example.org"}},
 		3: {smtp: &fakeTestSMTP{}, amount: 4, quitCount: 1, mail: "test_sender", // four messages: three sent, one discarded
-			rcpt: "test@example.org", request: request{parent: store.Comment{User: store.User{Email: "test@example.org"}}},
+			rcpt: "test@example.org", request: request{parent: store.Comment{User: store.User{ID: "test"}}, parentUserEmail: "test@example.org"},
 			response: strings.Repeat(emptyEmail, 3)},
 		4: {smtp: &fakeTestSMTP{}, amount: 10, quitCount: 3, // 10 messages, 1 abandoned by context exit
-			rcpt: "test@example.org", request: request{parent: store.Comment{User: store.User{Email: "test@example.org"}}},
+			rcpt: "test@example.org", request: request{parent: store.Comment{User: store.User{ID: "test"}}, parentUserEmail: "test@example.org"},
 			mail: "test_sender", response: strings.Repeat(emptyEmail, 9)},
 		5: {smtp: &fakeTestSMTP{}, amount: 1, quitCount: 0, waitForTicker: true, // one message sent by timer
-			request: request{parent: store.Comment{User: store.User{Email: "test@example.org"}}}},
+			request: request{parent: store.Comment{User: store.User{ID: "test"}}, parentUserEmail: "test@example.org"}},
 	}
 	for i, d := range testSet {
 		email, err := NewEmail(EmailParams{BufferSize: 3, From: "test_sender", FlushDuration: time.Millisecond * 200})

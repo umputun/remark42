@@ -19,7 +19,6 @@ type User struct {
 	ID       string `json:"id"`
 	Picture  string `json:"picture"`
 	IP       string `json:"ip,omitempty"`
-	Email    string `json:"email,omitempty"`
 	Admin    bool   `json:"admin"`
 	Blocked  bool   `json:"block,omitempty"`
 	Verified bool   `json:"verified,omitempty"`

@@ -51,7 +51,6 @@ type DataStore struct {
 	}
 }
 
-// TODO investigate if necessary for email
 // UserMetaData keeps info about user flags
 type UserMetaData struct {
 	ID      string `json:"id"`
@@ -157,6 +156,11 @@ func (s *DataStore) Get(locator store.Locator, commentID string, user store.User
 func (s *DataStore) Put(locator store.Locator, comment store.Comment) error {
 	comment.Locator = locator
 	return s.Engine.Update(comment)
+}
+
+// Get userDetail
+func (s *DataStore) UserDetail(locator store.Locator, userID string, detail string) (string, error) {
+	return s.Engine.UserDetail(engine.UserDetailRequest{Detail: engine.UserDetail(detail), Locator: locator, UserID: userID})
 }
 
 // submitImages initiated delayed commit of all images from the comment uploaded to remark42
@@ -565,24 +569,14 @@ func (s *DataStore) SetReadOnly(locator store.Locator, status bool) error {
 // Adding email should be two-step process with email confirmation code/link,
 // smth like go-pkgz/auth does for VerifProvider
 
-// GetEmail checks if user verified
+// GetEmail get email for the user
 func (s *DataStore) GetEmail(siteID string, userID string) string {
 	return ""
-	//req := engine.FlagRequest{Locator: store.Locator{SiteID: siteID}, UserID: userID, Flag: engine.Verified}
-	//ro, err := s.Engine.Flag(req)
-	//return err == nil && ro
 }
 
 // SetEmail set email for user
 func (s *DataStore) SetEmail(siteID string, userID string, email string) error {
 	return nil
-	//roStatus := engine.FlagFalse
-	//if status {
-	//	roStatus = engine.FlagTrue
-	//}
-	//req := engine.FlagRequest{Locator: store.Locator{SiteID: siteID}, UserID: userID, Flag: engine.Verified, Update: roStatus}
-	//_, err := s.Engine.Flag(req)
-	//return err
 }
 
 // IsVerified checks if user verified

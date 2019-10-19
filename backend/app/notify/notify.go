@@ -29,14 +29,16 @@ type Destination interface {
 	Send(ctx context.Context, req request) error
 }
 
-// Store defines the minimal interface accessing stored comments used by notifier
+// Store defines the minimal interface accessing stored comments and retrieving users details used by notifier
 type Store interface {
 	Get(locator store.Locator, id string, user store.User) (store.Comment, error)
+	UserDetail(locator store.Locator, userID string, detail string) (string, error)
 }
 
 type request struct {
-	comment store.Comment
-	parent  store.Comment
+	comment         store.Comment
+	parent          store.Comment
+	parentUserEmail string
 }
 
 const defaultQueueSize = 100
@@ -67,14 +69,18 @@ func (s *Service) Submit(comment store.Comment) {
 	if len(s.destinations) == 0 || atomic.LoadUint32(&s.closed) != 0 {
 		return
 	}
+	var email string
 	parentComment := store.Comment{}
 	if s.dataService != nil {
 		if p, err := s.dataService.Get(comment.Locator, comment.ParentID, store.User{}); err == nil {
 			parentComment = p
+			if e, err := s.dataService.UserDetail(p.Locator, p.User.ID, "email"); err == nil {
+				email = e
+			}
 		}
 	}
 	select {
-	case s.queue <- request{comment: comment, parent: parentComment}:
+	case s.queue <- request{comment: comment, parent: parentComment, parentUserEmail: email}:
 	default:
 		log.Printf("[WARN] can't send comment notification to queue, %+v", comment)
 	}

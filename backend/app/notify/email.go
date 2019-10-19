@@ -129,22 +129,21 @@ func (e *Email) Send(ctx context.Context, req request) error {
 		// e.smtpClient initialised only in tests
 		go e.autoFlush(ctx, e.smtpClient)
 	})
-	if req.parent.User.Email == "" || req.parent.User == req.comment.User {
+	if req.parentUserEmail == "" || req.parent.User == req.comment.User {
 		// don't send anything if there is no email to send information to
 		// or if user replied to his own comment
 		return nil
 	}
-	to := req.parent.User.Email
 	log.Printf("[DEBUG] send notification via %s, comment id %s", e, req.comment.ID)
-	msg, err := e.buildMessageFromRequest(req, to)
+	msg, err := e.buildMessageFromRequest(req, req.parentUserEmail)
 	if err != nil {
 		return err
 	}
 	select {
-	case e.submit <- emailMessage{msg, to}:
+	case e.submit <- emailMessage{msg, req.parentUserEmail}:
 		return nil
 	case <-ctx.Done():
-		return errors.Errorf("sending message to %q aborted due to canceled context", to)
+		return errors.Errorf("sending message to %q aborted due to canceled context", req.parentUserEmail)
 	}
 }
 
