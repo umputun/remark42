@@ -288,7 +288,7 @@ func (m *MemData) ListFlags(req engine.FlagRequest) (res []interface{}, err erro
 	return nil, errors.Errorf("flag %s not listable", req.Flag)
 }
 
-// Flag sets and gets flag values
+// UserDetail sets and gets detail values
 func (m *MemData) UserDetail(req engine.UserDetailRequest) (val string, err error) {
 	m.Lock()
 	defer m.Unlock()
@@ -422,7 +422,7 @@ func (m *MemData) setFlag(req engine.FlagRequest) (res bool, err error) {
 	return status, errors.Wrapf(err, "failed to set flag %+v", req)
 }
 
-// checkUserDetail returns requested userDetail
+// checkUserDetail returns requested userDetail value
 func (m *MemData) checkUserDetail(req engine.UserDetailRequest) string {
 	if req.UserID == "" {
 		return "" // return nothing in case UserID is not set
