@@ -468,7 +468,7 @@ func prepServerApp(t *testing.T, duration time.Duration, fn func(o ServerCommand
 	cmd.Auth.Email.Enable = true
 	cmd.Auth.Email.MsgTemplate = "testdata/email.tmpl"
 	cmd.BackupLocation = "/tmp"
-	cmd.Notify.Type = "telegram"
+	cmd.Notify.Type = []string{"telegram"}
 	cmd.Notify.Telegram.API = "http://127.0.0.1:12340/"
 	cmd.Notify.Telegram.Token = "blah"
 	cmd.UpdateLimit = 10

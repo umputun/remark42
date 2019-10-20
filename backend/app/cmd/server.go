@@ -167,8 +167,8 @@ type AdminGroup struct {
 
 // NotifyGroup defines options for notification
 type NotifyGroup struct {
-	Type      string `long:"type" env:"TYPE" description:"type of notification" choice:"none" choice:"telegram" choice:"email" default:"none"`
-	QueueSize int    `long:"queue" env:"QUEUE" description:"size of notification queue" default:"100"`
+	Type      []string `long:"type" env:"TYPE" description:"type of notification" choice:"none" choice:"telegram" choice:"email" default:"none" env-delim:","`
+	QueueSize int      `long:"queue" env:"QUEUE" description:"size of notification queue" default:"100"`
 	Telegram  struct {
 		Token   string        `long:"token" env:"TOKEN" description:"telegram token"`
 		Channel string        `long:"chan" env:"CHAN" description:"telegram channel"`
@@ -656,36 +656,41 @@ func (s *ServerCommand) loadEmailTemplate() string {
 }
 
 func (s *ServerCommand) makeNotify(dataStore *service.DataStore) (*notify.Service, error) {
-	log.Printf("[INFO] make notify, type=%s", s.Notify.Type)
-	switch s.Notify.Type {
-	case "telegram":
-		tg, err := notify.NewTelegram(s.Notify.Telegram.Token, s.Notify.Telegram.Channel,
-			s.Notify.Telegram.Timeout, s.Notify.Telegram.API)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to create telegram notification destination")
+	log.Printf("[INFO] make notify, types=%s", s.Notify.Type)
+	var destinations []notify.Destination
+	for _, t := range s.Notify.Type {
+		switch t {
+		case "telegram":
+			tg, err := notify.NewTelegram(s.Notify.Telegram.Token, s.Notify.Telegram.Channel,
+				s.Notify.Telegram.Timeout, s.Notify.Telegram.API)
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to create telegram notification destination")
+			}
+			destinations = append(destinations, tg)
+		case "email":
+			emailParams := notify.EmailParams{
+				Host:          s.Notify.Email.Host,
+				Port:          s.Notify.Email.Port,
+				TLS:           s.Notify.Email.TLS,
+				From:          s.Notify.Email.From,
+				Username:      s.Notify.Email.Username,
+				Password:      s.Notify.Email.Password,
+				TimeOut:       s.Notify.Email.TimeOut,
+				BufferSize:    s.Notify.Email.BufferSize,
+				FlushDuration: s.Notify.Email.FlushDuration,
+			}
+			email, err := notify.NewEmail(emailParams)
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to create email notification destination")
+			}
+			destinations = append(destinations, email)
+		case "none":
+			return notify.NopService, nil
+		default:
+			return nil, errors.Errorf("unsupported notification type %q", s.Notify.Type)
 		}
-		return notify.NewService(dataStore, s.Notify.QueueSize, tg), nil
-	case "email":
-		emailParams := notify.EmailParams{
-			Host:          s.Notify.Email.Host,
-			Port:          s.Notify.Email.Port,
-			TLS:           s.Notify.Email.TLS,
-			From:          s.Notify.Email.From,
-			Username:      s.Notify.Email.Username,
-			Password:      s.Notify.Email.Password,
-			TimeOut:       s.Notify.Email.TimeOut,
-			BufferSize:    s.Notify.Email.BufferSize,
-			FlushDuration: s.Notify.Email.FlushDuration,
-		}
-		email, err := notify.NewEmail(emailParams)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to create email notification destination")
-		}
-		return notify.NewService(dataStore, s.Notify.QueueSize, email), nil
-	case "none":
-		return notify.NopService, nil
 	}
-	return nil, errors.Errorf("unsupported notification type %q", s.Notify.Type)
+	return notify.NewService(dataStore, s.Notify.QueueSize, destinations...), nil
 }
 
 func (s *ServerCommand) makeSSLConfig() (config api.SSLConfig, err error) {
