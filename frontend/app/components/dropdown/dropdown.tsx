@@ -17,7 +17,7 @@ interface Props {
   theme: Theme;
   onOpen?: (root: HTMLDivElement) => {};
   onClose?: (root: HTMLDivElement) => {};
-  selectableItems?: string[];
+  getSelectableItems?: (filter?: string) => string[];
   activeSelectableItemID?: number;
   onDropdownItemClick?: (e: Event) => void;
 }
@@ -36,7 +36,10 @@ export default class Dropdown extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
 
-    const { isActive, selectableItems } = this.props;
+    const { isActive } = this.props;
+    let selectableItems: string[] = [];
+
+    if (this.props.getSelectableItems) selectableItems = this.props.getSelectableItems();
 
     let { activeSelectableItemID } = this.props;
     if (activeSelectableItemID === undefined) {
@@ -60,6 +63,13 @@ export default class Dropdown extends Component<Props, State> {
     this.selectPreviousSelectableItem = this.selectPreviousSelectableItem.bind(this);
     this.setSelectableItemsFilter = this.setSelectableItemsFilter.bind(this);
     this.onDropdownItemHover = this.onDropdownItemHover.bind(this);
+    this.setSelectableItems = this.setSelectableItems.bind(this);
+  }
+
+  setSelectableItems(selectableItems: string[]) {
+    this.setState({
+      selectableItems,
+    });
   }
 
   selectNextSelectableItem() {
@@ -116,9 +126,9 @@ export default class Dropdown extends Component<Props, State> {
 
   filterSelectableItems(): void {
     const { selectableItemsFilter } = this.state;
-    if (!selectableItemsFilter) return;
+    if (!this.props.getSelectableItems || !selectableItemsFilter) return;
 
-    const selectableItems = this.props.selectableItems || [];
+    const selectableItems = this.props.getSelectableItems(selectableItemsFilter);
 
     const filteredSelectableItems = selectableItems.filter(selectableItem => {
       return ~selectableItem.indexOf(selectableItemsFilter);
@@ -133,7 +143,7 @@ export default class Dropdown extends Component<Props, State> {
     if (!this.props.onDropdownItemClick) return;
 
     if (selectableItems.length === 0) {
-      return <DropdownItem>No such item</DropdownItem>;
+      return <DropdownItem selectable={true}>No such item</DropdownItem>;
     }
 
     return selectableItems.map((selectableItem, index) => {
@@ -225,7 +235,10 @@ export default class Dropdown extends Component<Props, State> {
   }
 
   __onClose() {
-    const { selectableItems } = this.props;
+    let selectableItems: string[] = [];
+    if (this.props.getSelectableItems) {
+      selectableItems = this.props.getSelectableItems();
+    }
 
     window.clearInterval(this.checkInterval);
     if (this.storedDocumentHeightSet) {

@@ -1,10 +1,10 @@
-import { Emoji } from './data';
+import { emoji } from './data';
 
-interface ABCBook {
+export interface ABCBook {
   [s: string]: string[];
 }
 
-interface SecondLevelABCBook {
+export interface SecondLevelABCBook {
   [s: string]: ABCBook;
 }
 
@@ -41,7 +41,7 @@ const getSecondLevelABCBookByArray = (arr: string[], from: number): SecondLevelA
   return getSecondLevelABCBook(getABCBook(arr, from), from);
 };
 
-export const getSplittedEmoji = (emoji: Emoji): SecondLevelABCBook => {
+export const getSplittedEmoji = (): SecondLevelABCBook => {
   const emojiList = Object.keys(emoji);
   return getSecondLevelABCBookByArray(emojiList, 1);
 };

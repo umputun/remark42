@@ -20,15 +20,11 @@ import TextareaAutosize from './textarea-autosize';
 import { sleep } from '@app/utils/sleep';
 import { replaceSelection } from '@app/utils/replaceSelection';
 
-import emoji from '@app/components/input/emoji/data';
 import { getSplittedEmoji, getFirstNEmojiByLetter } from '@app/components/input/emoji/emoji';
 
 const RSS_THREAD_URL = `${BASE_URL}${API_BASE}/rss/post?site=${siteId}&url=${url}`;
 const RSS_SITE_URL = `${BASE_URL}${API_BASE}/rss/site?site=${siteId}`;
 const RSS_REPLIES_URL = `${BASE_URL}${API_BASE}/rss/reply?site=${siteId}&user=`;
-
-const splittedEmoji = getSplittedEmoji(emoji);
-let emojiList = getFirstNEmojiByLetter(splittedEmoji, 's', 30);
 
 let textareaId = 0;
 
@@ -80,6 +76,7 @@ export class Input extends Component<Props, State> {
   textareaId: string;
 
   emojiDropdown?: Dropdown;
+  splittedEmoji = getSplittedEmoji();
 
   constructor(props: Props) {
     super(props);
@@ -113,6 +110,7 @@ export class Input extends Component<Props, State> {
     this.onDropdownItemClick = this.onDropdownItemClick.bind(this);
     this.freezeInput = this.freezeInput.bind(this);
     this.unfreezeInput = this.unfreezeInput.bind(this);
+    this.getActualEmojiList = this.getActualEmojiList.bind(this);
   }
 
   componentWillReceiveProps(nextProps: Props) {
@@ -320,12 +318,6 @@ export class Input extends Component<Props, State> {
     if (lastColon > lastSpace) {
       draftEmoji = textStart.substr(lastColon, textStart.length - lastColon);
 
-      if (draftEmoji.length === 2) {
-        emojiList = getFirstNEmojiByLetter(splittedEmoji, draftEmoji[1], 30);
-      } else if (draftEmoji.length > 2) {
-        emojiList = splittedEmoji[draftEmoji[1]][draftEmoji[2]];
-      }
-
       this.emojiDropdown.setSelectableItemsFilter(draftEmoji);
       this.emojiDropdown.filterSelectableItems();
     }
@@ -343,6 +335,20 @@ export class Input extends Component<Props, State> {
     e.preventDefault();
     const files = Array.from(e.clipboardData.files);
     await this.uploadImages(files);
+  }
+
+  getActualEmojiList(draftEmoji?: string) {
+    if (!draftEmoji || draftEmoji.length < 2) {
+      return getFirstNEmojiByLetter(this.splittedEmoji, 's', 30);
+    }
+
+    if (draftEmoji.length === 2) {
+      return getFirstNEmojiByLetter(this.splittedEmoji, draftEmoji[1], 30);
+    } else if (draftEmoji.length > 2) {
+      return this.splittedEmoji[draftEmoji[1]][draftEmoji[2]];
+    }
+
+    return [];
   }
 
   send(e: Event) {
@@ -616,7 +622,7 @@ export class Input extends Component<Props, State> {
             <Dropdown
               title="Emoji"
               theme={this.props.theme}
-              selectableItems={emojiList}
+              getSelectableItems={this.getActualEmojiList}
               ref={ref => (this.emojiDropdown = ref)}
               onDropdownItemClick={this.onDropdownItemClick}
             />
