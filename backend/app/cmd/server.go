@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"path"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"syscall"
@@ -488,21 +489,24 @@ func (s *ServerCommand) makePicturesStore() (*image.Service, error) {
 			return nil, err
 		}
 		store = &image.FileSystem{
-				Location:   s.Image.FS.Path,
-				Staging:    s.Image.FS.Staging,
-				Partitions: s.Image.FS.Partitions,
-				MaxSize:    s.Image.MaxSize,
-				MaxHeight:  s.Image.ResizeHeight,
-				MaxWidth:   s.Image.ResizeWidth,
-			},
-			ImageAPI: s.RemarkURL + "/api/v1/picture/",
-			TTL:      5 * s.EditDuration, // add extra time to image TTL for staging
-		}, nil
-	}
+			Location:   s.Image.FS.Path,
+			Staging:    s.Image.FS.Staging,
+			Partitions: s.Image.FS.Partitions,
+		}
+
+	case "bolt":
+		if err := makeDirs(filepath.Dir(s.Image.Bolt.File)); err != nil {
+			return nil, err
+		}
+		var err error
+		store, err = image.NewBoltDB(image.BoltStore{FileName: s.Image.Bolt.File}, bolt.Options{})
+		if err != nil {
+			return nil, err
+		}
 
 	default:
-	return nil, errors.Errorf("unsupported pictures store type %s", s.Image.Type)
-}
+		return nil, errors.Errorf("unsupported pictures store type %s", s.Image.Type)
+	}
 
 	return image.NewImageService(store, 5*s.EditDuration, s.RemarkURL+"/api/v1/picture/", s.Image.MaxSize, s.Image.ResizeHeight, s.Image.ResizeWidth), nil
 }
