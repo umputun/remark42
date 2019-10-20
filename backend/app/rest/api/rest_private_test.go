@@ -21,7 +21,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/umputun/remark/backend/app/store"
-	"github.com/umputun/remark/backend/app/store/image"
 )
 
 // gopher png for test, from https://golang.org/src/image/png/example_test.go
@@ -645,16 +644,7 @@ func TestRest_CreateWithPictures(t *testing.T) {
 	}()
 	lgr.Setup(lgr.Debug, lgr.CallerFile, lgr.CallerFunc)
 
-	imageService := svc.ImageService
-	imageService.Store = &image.FileSystem{
-		Staging:  "/tmp/remark42/images.staging",
-		Location: "/tmp/remark42/images",
-		MaxSize:  2000,
-	}
-	imageService.TTL = 100 * time.Millisecond
-
-	svc.privRest.imageService = imageService
-	svc.ImageService = imageService
+	svc.privRest.imageService = svc.ImageService
 
 	dataService := svc.DataService
 	dataService.EditDuration = time.Millisecond * 100
@@ -702,14 +692,14 @@ func TestRest_CreateWithPictures(t *testing.T) {
 	assert.Nil(t, err)
 	require.Equal(t, http.StatusCreated, resp.StatusCode, string(b))
 
-	_, err = os.Stat("/tmp/remark42/images/" + id1)
+	_, err = os.Stat("/tmp/pics-remark42/" + id1)
 	assert.NotNil(t, err, "not moved from staging yet")
 
 	time.Sleep(300 * time.Millisecond)
-	_, err = os.Stat("/tmp/remark42/images/" + id1)
+	_, err = os.Stat("/tmp/pics-remark42/" + id1)
 	assert.NoError(t, err, "moved from staging")
-	_, err = os.Stat("/tmp/remark42/images/" + id2)
+	_, err = os.Stat("/tmp/pics-remark42/" + id2)
 	assert.NoError(t, err, "moved from staging")
-	_, err = os.Stat("/tmp/remark42/images/" + id3)
+	_, err = os.Stat("/tmp/pics-remark42/" + id3)
 	assert.NoError(t, err, "moved from staging")
 }

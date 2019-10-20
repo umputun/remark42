@@ -13,7 +13,9 @@ import (
 	_ "image/jpeg"
 	"image/png"
 	"io"
+	"io/ioutil"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -29,19 +31,21 @@ import (
 // Store defines interface for saving and loading pictures.
 // Declares two-stage save with commit
 type Store interface {
-	Save(fileName string, userID string, r io.Reader) (id string, err error) // get name and reader and returns ID of stored image
+	Save(fileName string, userID string, data []byte) (id string, err error) // get name, userID and data and returns ID of stored image
 	Commit(id string) error                                                  // move image from staging to permanent
 	Load(id string) (io.ReadCloser, int64, error)                            // load image by ID. Caller has to close the reader.
 	Cleanup(ctx context.Context, ttl time.Duration) error                    // run removal loop for old images on staging
-	SizeLimit() int                                                          // max image size
 }
 
 // Service extends Store with common functions needed for any store implementation
 type Service struct {
-	Store
-	TTL      time.Duration // for how long file allowed on staging
-	ImageAPI string        // image api matching path
+	TTL       time.Duration // for how long file allowed on staging
+	ImageAPI  string        // image api matching path
+	MaxSize   int
+	MaxWidth  int
+	MaxHeight int
 
+	store    Store
 	wg       sync.WaitGroup
 	submitCh chan submitReq
 	once     sync.Once
@@ -53,6 +57,38 @@ const submitQueueSize = 5000
 type submitReq struct {
 	idsFn func() (ids []string)
 	TS    time.Time
+}
+
+// NewImageService creates a new Image Service
+func NewImageService(store Store, ttl time.Duration, imageAPI string, maxSize int, maxWidth int, maxHeight int) *Service {
+	return &Service{
+		store:     store,
+		ImageAPI:  imageAPI,
+		TTL:       ttl,
+		MaxSize:   maxSize,
+		MaxHeight: maxHeight,
+		MaxWidth:  maxWidth,
+	}
+}
+
+// Save preprocess image and sends it to a Store
+func (s *Service) Save(fileName string, userID string, r io.Reader) (string, error) {
+	data, resized, err := preprocessImage(r, s.MaxSize, s.MaxWidth, s.MaxHeight)
+	if err != nil {
+		return "", errors.Wrapf(err, "image file %s preprocessing failed", fileName)
+	}
+	if resized {
+		ext := filepath.Ext(fileName)
+		fileName = strings.TrimSuffix(fileName, ext) + ".png"
+	}
+
+	return s.store.Save(fileName, userID, data)
+}
+
+// Load image from configured store.
+// returns ReadCloser and caller should call close after processing completed.
+func (s *Service) Load(id string) (io.ReadCloser, int64, error) {
+	return s.store.Load(id)
 }
 
 // Submit multiple ids via function for delayed commit
@@ -73,7 +109,7 @@ func (s *Service) Submit(idsFn func() []string) {
 					time.Sleep(time.Millisecond * 10) // small sleep to relive busy wait but keep reactive for term (close)
 				}
 				for _, id := range req.idsFn() {
-					if err := s.Commit(id); err != nil {
+					if err := s.store.Commit(id); err != nil {
 						log.Printf("[WARN] failed to commit image %s", id)
 					}
 				}
@@ -118,7 +154,7 @@ func (s *Service) Cleanup(ctx context.Context) {
 			log.Printf("[INFO] cleanup terminated, %v", ctx.Err())
 			return
 		case <-time.After(s.TTL / 2):
-			if err := s.Store.Cleanup(ctx, s.TTL); err != nil {
+			if err := s.store.Cleanup(ctx, s.TTL); err != nil {
 				log.Printf("[WARN] failed to cleanup, %v", err)
 			}
 		}
@@ -193,6 +229,25 @@ func getProportionalSizes(srcW, srcH int, limitW, limitH int) (resW, resH int) {
 func isValidImage(b []byte) bool {
 	ct := http.DetectContentType(b)
 	return ct == "image/gif" || ct == "image/png" || ct == "image/jpeg" || ct == "image/webp"
+}
+
+func preprocessImage(r io.Reader, maxSize int, maxWidth int, maxHeight int) ([]byte, bool, error) {
+	lr := io.LimitReader(r, int64(maxSize)+1)
+	data, err := ioutil.ReadAll(lr)
+	if err != nil {
+		return nil, false, errors.Wrap(err, "can't read source data")
+	}
+	if len(data) > maxSize {
+		return nil, false, errors.Errorf("file is too large (limit=%d)", maxSize)
+	}
+
+	// read header first, needs it to check if data is valid png/gif/jpeg
+	if !isValidImage(data[:512]) {
+		return nil, false, errors.Errorf("file is not in allowed format")
+	}
+
+	data, resized := resize(data, maxWidth, maxHeight)
+	return data, resized, nil
 }
 
 // guid makes a globally unique id

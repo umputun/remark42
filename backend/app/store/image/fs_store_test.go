@@ -3,7 +3,6 @@ package image
 import (
 	"context"
 	"encoding/base64"
-	"io"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -38,7 +37,10 @@ const gopher = "iVBORw0KGgoAAAANSUhEUgAAAEsAAAA8CAAAAAALAhhPAAAFfUlEQVRYw62XeWwU
 	"1y98c3D27eppUjsZ6fql3jcd5rUe7+ZIlLNQny3Rd+E5Tct3WVhTM5RBCEdiEK0b6B+/ca2gYU393nFj/n1AygRQxPIUA043M42u85+z2S" +
 	"nssKrPl8Mx76NL3E6eXc3be7OD+H4WHbJkKI8AU8irbITQjZ+0hQcPEgId/Fn/pl9crKH02+5o2b9T/eMx7pKoskYgAAAABJRU5ErkJggg=="
 
-func gopherPNG() io.Reader { return base64.NewDecoder(base64.StdEncoding, strings.NewReader(gopher)) }
+func gopherPNG() []byte {
+	data, _ := ioutil.ReadAll(base64.NewDecoder(base64.StdEncoding, strings.NewReader(gopher)))
+	return data
+}
 
 func TestFsStore_Save(t *testing.T) {
 	svc, teardown := prepareImageTest(t)
@@ -57,56 +59,13 @@ func TestFsStore_Save(t *testing.T) {
 	assert.Equal(t, 1462, len(data))
 }
 
-func TestFsStore_SaveWithResize(t *testing.T) {
+func TestFsStore_SaveJpeg(t *testing.T) {
 	svc, teardown := prepareImageTest(t)
 	defer teardown()
-	svc.MaxWidth, svc.MaxHeight = 32, 32
 
-	id, err := svc.Save("file1.png", "user1", gopherPNG())
+	data, err := ioutil.ReadFile("testdata/circles.jpg")
 	assert.NoError(t, err)
-	assert.Contains(t, id, "user1/")
-	assert.Contains(t, id, ".png")
-	t.Log(id)
-
-	img := svc.location(svc.Staging, id)
-	t.Log(img)
-	data, err := ioutil.ReadFile(img)
-	assert.NoError(t, err)
-	assert.Equal(t, 1142, len(data))
-}
-
-func TestFsStore_SaveWithResizeJpeg(t *testing.T) {
-	svc, teardown := prepareImageTest(t)
-	defer teardown()
-	svc.MaxWidth, svc.MaxHeight = 400, 300
-	svc.MaxSize = 32000
-
-	fh, err := os.Open("testdata/circles.jpg")
-	defer func() { assert.NoError(t, fh.Close()) }()
-	assert.NoError(t, err)
-	id, err := svc.Save("circles.jpg", "user1", fh)
-	assert.NoError(t, err)
-	assert.Contains(t, id, "user1/")
-	assert.Contains(t, id, ".png")
-	t.Log(id)
-
-	img := svc.location(svc.Staging, id)
-	t.Log(img)
-	data, err := ioutil.ReadFile(img)
-	assert.NoError(t, err)
-	assert.Equal(t, 10786, len(data))
-}
-
-func TestFsStore_SaveNoResizeJpeg(t *testing.T) {
-	svc, teardown := prepareImageTest(t)
-	defer teardown()
-	svc.MaxWidth, svc.MaxHeight = 1400, 1300
-	svc.MaxSize = 32000
-
-	fh, err := os.Open("testdata/circles.jpg")
-	defer func() { assert.NoError(t, fh.Close()) }()
-	assert.NoError(t, err)
-	id, err := svc.Save("circles.jpg", "user1", fh)
+	id, err := svc.Save("circles.jpg", "user1", data)
 	assert.NoError(t, err)
 	assert.Contains(t, id, "user1/")
 	assert.Contains(t, id, ".jpg")
@@ -114,17 +73,9 @@ func TestFsStore_SaveNoResizeJpeg(t *testing.T) {
 
 	img := svc.location(svc.Staging, id)
 	t.Log(img)
-	data, err := ioutil.ReadFile(img)
+	data, err = ioutil.ReadFile(img)
 	assert.NoError(t, err)
 	assert.Equal(t, 23983, len(data))
-}
-
-func TestFsStore_WrongFormat(t *testing.T) {
-	svc, teardown := prepareImageTest(t)
-	defer teardown()
-
-	_, err := svc.Save("file1.png", "user1", strings.NewReader("blah blah bad image"))
-	assert.EqualError(t, err, "file file1.png is not in allowed format")
 }
 
 func TestFsStore_SaveAndCommit(t *testing.T) {
@@ -145,15 +96,6 @@ func TestFsStore_SaveAndCommit(t *testing.T) {
 	data, err := ioutil.ReadFile(img)
 	assert.NoError(t, err)
 	assert.Equal(t, 1462, len(data))
-}
-
-func TestFsStore_SaveTooLarge(t *testing.T) {
-	svc, teardown := prepareImageTest(t)
-	defer teardown()
-	svc.MaxSize = 2000
-	_, err := svc.Save("blah_ff1.png", "user2", io.MultiReader(gopherPNG(), gopherPNG()))
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "is too large")
 }
 
 func TestFsStore_LoadAfterSave(t *testing.T) {
@@ -298,7 +240,6 @@ func prepareImageTest(t *testing.T) (svc *FileSystem, teardown func()) {
 		Location:   loc,
 		Staging:    staging,
 		Partitions: 100,
-		MaxSize:    1500,
 	}
 
 	teardown = func() {

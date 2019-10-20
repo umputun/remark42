@@ -5,7 +5,9 @@ import (
 	"context"
 	"image"
 	"io/ioutil"
+	"os"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -39,7 +41,7 @@ func TestService_Cleanup(t *testing.T) {
 	store := MockStore{}
 	store.On("Cleanup", mock.Anything, mock.Anything).Times(10).Return(nil)
 
-	svc := Service{Store: &store, TTL: 100 * time.Millisecond}
+	svc := Service{store: &store, TTL: 100 * time.Millisecond}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*549)
 	defer cancel()
 	svc.Cleanup(ctx)
@@ -49,7 +51,7 @@ func TestService_Cleanup(t *testing.T) {
 func TestService_Submit(t *testing.T) {
 	store := MockStore{}
 	store.On("Commit", mock.Anything, mock.Anything).Times(5).Return(nil)
-	svc := Service{Store: &store, ImageAPI: "/blah/", TTL: time.Millisecond * 100}
+	svc := Service{store: &store, ImageAPI: "/blah/", TTL: time.Millisecond * 100}
 	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
 	svc.Submit(func() []string { return []string{"id4", "id5"} })
 	svc.Submit(nil)
@@ -58,10 +60,71 @@ func TestService_Submit(t *testing.T) {
 	store.AssertNumberOfCalls(t, "Commit", 5)
 }
 
+func TestService_Save(t *testing.T) {
+	extectedData, _ := ioutil.ReadFile("./testdata/circles.jpg")
+	f, _ := os.Open("./testdata/circles.jpg")
+	defer func() { require.NoError(t, f.Close()) }()
+
+	store := MockStore{}
+	store.On("Save", "circles.jpg", "admin", extectedData).Times(1).Return("admin/id.jpg", nil)
+	svc := Service{store: &store, ImageAPI: "/blah/", TTL: time.Millisecond * 100, MaxSize: 30000}
+	id, err := svc.Save("circles.jpg", "admin", f)
+	assert.NoError(t, err)
+	assert.Equal(t, "admin/id.jpg", id)
+	store.AssertNumberOfCalls(t, "Save", 1)
+}
+
+func TestService_SaveWithResizeJPG(t *testing.T) {
+	originalData, _ := ioutil.ReadFile("./testdata/circles.jpg")
+	expectedData, _ := resize(originalData, 200, 200)
+	f, _ := os.Open("./testdata/circles.jpg")
+	defer func() { require.NoError(t, f.Close()) }()
+
+	store := MockStore{}
+	store.On("Save", "circles.png", "admin", expectedData).Times(1).Return("admin/id.png", nil)
+	svc := Service{store: &store, ImageAPI: "/blah/", TTL: time.Millisecond * 100, MaxSize: 30000, MaxWidth: 200, MaxHeight: 200}
+	id, err := svc.Save("circles.jpg", "admin", f)
+	assert.NoError(t, err)
+	assert.Equal(t, "admin/id.png", id)
+	store.AssertNumberOfCalls(t, "Save", 1)
+}
+
+func TestService_SaveWithResizePNG(t *testing.T) {
+	originalData, _ := ioutil.ReadFile("./testdata/circles.png")
+	expectedData, _ := resize(originalData, 200, 200)
+	f, _ := os.Open("./testdata/circles.png")
+	defer func() { require.NoError(t, f.Close()) }()
+
+	store := MockStore{}
+	store.On("Save", "circles.png", "admin", expectedData).Times(1).Return("admin/id.png", nil)
+	svc := Service{store: &store, ImageAPI: "/blah/", TTL: time.Millisecond * 100, MaxSize: 30000, MaxWidth: 200, MaxHeight: 200}
+	id, err := svc.Save("circles.jpg", "admin", f)
+	assert.NoError(t, err)
+	assert.Equal(t, "admin/id.png", id)
+	store.AssertNumberOfCalls(t, "Save", 1)
+}
+
+func TestService_SaveTooLarge(t *testing.T) {
+	f, _ := os.Open("./testdata/circles.jpg")
+	defer func() { require.NoError(t, f.Close()) }()
+
+	store := MockStore{}
+	svc := Service{store: &store, ImageAPI: "/blah/", TTL: time.Millisecond * 100, MaxSize: 1000}
+	_, err := svc.Save("circles.jpg", "admin", f)
+	assert.NotNil(t, err)
+}
+
+func TestService_SaveUnsupportedFormat(t *testing.T) {
+	store := MockStore{}
+	svc := Service{store: &store, ImageAPI: "/blah/", TTL: time.Millisecond * 100, MaxSize: 1000}
+	_, err := svc.Save("circles.jpg", "admin", strings.NewReader("bad file"))
+	assert.NotNil(t, err)
+}
+
 func TestService_Close(t *testing.T) {
 	store := MockStore{}
 	store.On("Commit", mock.Anything, mock.Anything).Times(5).Return(nil)
-	svc := Service{Store: &store, ImageAPI: "/blah/", TTL: time.Millisecond * 500}
+	svc := Service{store: &store, ImageAPI: "/blah/", TTL: time.Millisecond * 500}
 	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
 	svc.Submit(func() []string { return []string{"id4", "id5"} })
 	svc.Submit(nil)
@@ -72,7 +135,7 @@ func TestService_Close(t *testing.T) {
 func TestService_SubmitDelay(t *testing.T) {
 	store := MockStore{}
 	store.On("Commit", mock.Anything, mock.Anything).Times(5).Return(nil)
-	svc := Service{Store: &store, ImageAPI: "/blah/", TTL: time.Millisecond * 100}
+	svc := Service{store: &store, ImageAPI: "/blah/", TTL: time.Millisecond * 100}
 	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
 	time.Sleep(150 * time.Millisecond) // let first batch to pass TTL
 	svc.Submit(func() []string { return []string{"id4", "id5"} })

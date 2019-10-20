@@ -405,7 +405,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		CriticalScore:  s.ScoreThresholds.Critical,
 		PositiveScore:  s.DataService.PositiveScore,
 		ReadOnlyAge:    s.ReadOnlyAge,
-		MaxImageSize:   s.ImageService.Store.SizeLimit(),
+		MaxImageSize:   s.ImageService.MaxSize,
 		EmojiEnabled:   s.EmojiEnabled,
 	}
 

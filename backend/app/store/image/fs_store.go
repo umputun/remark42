@@ -23,10 +23,7 @@ import (
 type FileSystem struct {
 	Location   string
 	Staging    string
-	MaxSize    int
 	Partitions int
-	MaxHeight  int
-	MaxWidth   int
 
 	crc struct {
 		*crc64.Table
@@ -38,30 +35,9 @@ type FileSystem struct {
 
 // Save data from reader for given file name to local FS, staging directory. Returns id as user/uuid.ext
 // Files partitioned across multiple subdirectories and the final path includes part, i.e. /location/user1/03/123-4567.png
-func (f *FileSystem) Save(fileName string, userID string, r io.Reader) (id string, err error) {
-
-	lr := io.LimitReader(r, int64(f.MaxSize)+1)
-	data, err := ioutil.ReadAll(lr)
-	if err != nil {
-		return "", errors.Wrapf(err, "can't read source data for image %s", fileName)
-	}
-	if len(data) > f.MaxSize {
-		return "", errors.Errorf("file %s is too large (limit=%d)", fileName, f.MaxSize)
-	}
-
-	// read header first, needs it to check if data is valid png/gif/jpeg
-	if !isValidImage(data[:512]) {
-		return "", errors.Errorf("file %s is not in allowed format", fileName)
-	}
-
-	data, resized := resize(data, f.MaxWidth, f.MaxHeight)
-
+func (f *FileSystem) Save(fileName string, userID string, data []byte) (id string, err error) {
 	id = path.Join(userID, guid()) + filepath.Ext(fileName) // make id as user/uuid.ext
 	dst := f.location(f.Staging, id)
-	if resized { // resized also converted to png
-		id = strings.TrimSuffix(id, filepath.Ext(id)) + ".png"
-		dst = f.location(f.Staging, id)
-	}
 
 	if err = os.MkdirAll(path.Dir(dst), 0700); err != nil {
 		return "", errors.Wrap(err, "can't make image directory")
@@ -139,11 +115,6 @@ func (f *FileSystem) Cleanup(ctx context.Context, ttl time.Duration) error {
 		return nil
 	})
 	return errors.Wrap(err, "failed to cleanup images")
-}
-
-// SizeLimit returns max size of allowed image
-func (f *FileSystem) SizeLimit() int {
-	return f.MaxSize
 }
 
 // location gets full path for id by adding partition to the final path in order to keep files in different subdirectories

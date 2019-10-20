@@ -481,13 +481,13 @@ func (s *ServerCommand) makeAvatarStore() (avatar.Store, error) {
 }
 
 func (s *ServerCommand) makePicturesStore() (*image.Service, error) {
+	var store image.Store
 	switch s.Image.Type {
 	case "fs":
 		if err := makeDirs(s.Image.FS.Path); err != nil {
 			return nil, err
 		}
-		return &image.Service{
-			Store: &image.FileSystem{
+		store = &image.FileSystem{
 				Location:   s.Image.FS.Path,
 				Staging:    s.Image.FS.Staging,
 				Partitions: s.Image.FS.Partitions,
@@ -499,7 +499,12 @@ func (s *ServerCommand) makePicturesStore() (*image.Service, error) {
 			TTL:      5 * s.EditDuration, // add extra time to image TTL for staging
 		}, nil
 	}
+
+	default:
 	return nil, errors.Errorf("unsupported pictures store type %s", s.Image.Type)
+}
+
+	return image.NewImageService(store, 5*s.EditDuration, s.RemarkURL+"/api/v1/picture/", s.Image.MaxSize, s.Image.ResizeHeight, s.Image.ResizeWidth), nil
 }
 
 func (s *ServerCommand) makeAdminStore() (admin.Store, error) {
