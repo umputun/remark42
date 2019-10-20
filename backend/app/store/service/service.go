@@ -158,9 +158,24 @@ func (s *DataStore) Put(locator store.Locator, comment store.Comment) error {
 	return s.Engine.Update(comment)
 }
 
-// Get userDetail
-func (s *DataStore) UserDetail(locator store.Locator, userID string, detail string) (string, error) {
+// GetUserDetail gets user detail
+func (s *DataStore) GetUserDetail(locator store.Locator, userID string, detail string) (string, error) {
 	return s.Engine.UserDetail(engine.UserDetailRequest{Detail: engine.UserDetail(detail), Locator: locator, UserID: userID})
+}
+
+// SetUserDetail sets or deletes user detail
+func (s *DataStore) SetUserDetail(locator store.Locator, userID string, detail string, value string, delete bool) (string, error) {
+	if !delete && value == "" {
+		// update request without update value set would return user email instead of updating or deleting it
+		return "", errors.New("update value is not set")
+	}
+	return s.Engine.UserDetail(engine.UserDetailRequest{
+		Detail:  engine.UserDetail(detail),
+		Locator: locator,
+		UserID:  userID,
+		Update:  value,
+		Delete:  delete,
+	})
 }
 
 // submitImages initiated delayed commit of all images from the comment uploaded to remark42

@@ -728,6 +728,7 @@ func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Sto
 		SecretReader: token.SecretFunc(func() (string, error) { // get secret per site
 			return admns.Key()
 		}),
+		// TODO add email filling to token
 		ClaimsUpd: token.ClaimsUpdFunc(func(c token.Claims) token.Claims { // set attributes, on new token or refresh
 			if c.User == nil {
 				return c

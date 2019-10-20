@@ -300,6 +300,8 @@ func (s *Rest) routes() chi.Router {
 			rauth.Post("/comment", s.privRest.createCommentCtrl)
 			rauth.With(rejectAnonUser).Put("/vote/{id}", s.privRest.voteCtrl)
 			rauth.With(rejectAnonUser).Post("/deleteme", s.privRest.deleteMeCtrl)
+			rauth.With(rejectAnonUser).Put("/email", s.privRest.emailCtrl)
+			rauth.With(rejectAnonUser).Delete("/email", s.privRest.deleteEmailCtrl)
 		})
 
 		// protected routes, anonymous rejected

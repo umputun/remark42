@@ -450,6 +450,69 @@ func TestRest_Vote(t *testing.T) {
 	assert.Equal(t, map[string]bool(nil), cr.Votes)
 }
 
+func TestRest_Email(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	// issue delete request without auth
+	client := http.Client{}
+	req, err := http.NewRequest(http.MethodDelete, ts.URL+"/api/v1/email", nil)
+	require.NoError(t, err)
+	b, err := client.Do(req)
+	require.NoError(t, err)
+	body, err := ioutil.ReadAll(b.Body)
+	require.NoError(t, err)
+	assert.Equal(t, 401, b.StatusCode, string(body))
+
+	// issue delete request without site_id
+	req.Header.Add("X-JWT", devToken)
+	b, err = client.Do(req)
+	require.NoError(t, err)
+	body, err = ioutil.ReadAll(b.Body)
+	require.NoError(t, err)
+	assert.Equal(t, 400, b.StatusCode, string(body))
+
+	// delete non-existent user email
+	req, err = http.NewRequest(http.MethodDelete, ts.URL+"/api/v1/email?site=remark42", nil)
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	b, err = client.Do(req)
+	require.NoError(t, err)
+	body, err = ioutil.ReadAll(b.Body)
+	require.NoError(t, err)
+	assert.Equal(t, 200, b.StatusCode, string(body))
+
+	// set user email, update value not set
+	req, err = http.NewRequest(http.MethodPut, ts.URL+"/api/v1/email?site=remark42", nil)
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	b, err = client.Do(req)
+	require.NoError(t, err)
+	body, err = ioutil.ReadAll(b.Body)
+	require.NoError(t, err)
+	assert.Equal(t, 400, b.StatusCode, string(body))
+
+	// set user email
+	req, err = http.NewRequest(http.MethodPut, ts.URL+"/api/v1/email?site=remark42&value=test@example.com", nil)
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	b, err = client.Do(req)
+	require.NoError(t, err)
+	body, err = ioutil.ReadAll(b.Body)
+	require.NoError(t, err)
+	assert.Equal(t, 200, b.StatusCode, string(body))
+
+	// delete user email
+	req, err = http.NewRequest(http.MethodDelete, ts.URL+"/api/v1/email?site=remark42", nil)
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	b, err = client.Do(req)
+	require.NoError(t, err)
+	body, err = ioutil.ReadAll(b.Body)
+	require.NoError(t, err)
+	assert.Equal(t, 200, b.StatusCode, string(body))
+}
+
 func TestRest_UserAllData(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()

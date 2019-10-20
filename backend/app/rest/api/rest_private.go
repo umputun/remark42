@@ -43,6 +43,8 @@ type privStore interface {
 	Vote(req service.VoteReq) (comment store.Comment, err error)
 	Get(locator store.Locator, commentID string, user store.User) (store.Comment, error)
 	User(siteID, userID string, limit, skip int, user store.User) ([]store.Comment, error)
+	GetUserDetail(locator store.Locator, userID string, detail string) (string, error)
+	SetUserDetail(locator store.Locator, userID string, detail string, value string, delete bool) (string, error)
 	ValidateComment(c *store.Comment) error
 	IsVerified(siteID string, userID string) bool
 	IsReadOnly(locator store.Locator) bool
@@ -219,6 +221,39 @@ func (s *private) voteCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	s.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL, comment.User.ID))
 	render.JSON(w, r, R.JSON{"id": comment.ID, "score": comment.Score})
+}
+
+// TODO: Should be two-step process with email confirmation code/link,
+// something like go-pkgz/auth does for VerifProvider
+// PUT /email?site=siteID&value=email@example.com - set email for user
+func (s *private) emailCtrl(w http.ResponseWriter, r *http.Request) {
+	user := rest.MustGetUserInfo(r)
+	locator := store.Locator{SiteID: r.URL.Query().Get("site")}
+	value := r.URL.Query().Get("value")
+	log.Printf("[DEBUG] set email for user %s", user.ID)
+
+	val, err := s.dataService.SetUserDetail(locator, user.ID, "email", value, false)
+	if err != nil {
+		code := parseError(err, rest.ErrInternal)
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set email for user", code)
+		return
+	}
+	render.JSON(w, r, R.JSON{"updated": true, "value": val})
+}
+
+// DELETE /email?site=siteID - removes user's email
+func (s *private) deleteEmailCtrl(w http.ResponseWriter, r *http.Request) {
+	user := rest.MustGetUserInfo(r)
+	locator := store.Locator{SiteID: r.URL.Query().Get("site")}
+	log.Printf("[DEBUG] remove email for user %s", user.ID)
+
+	_, err := s.dataService.SetUserDetail(locator, user.ID, "email", "", true)
+	if err != nil {
+		code := parseError(err, rest.ErrInternal)
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete email for user", code)
+		return
+	}
+	render.JSON(w, r, R.JSON{"deleted": true})
 }
 
 // GET /userdata?site=siteID - exports all data about the user as a json with user info and list of all comments

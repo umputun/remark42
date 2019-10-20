@@ -154,6 +154,6 @@ func (m *mockStore) Get(_ store.Locator, id string, user store.User) (store.Comm
 	return res, nil
 }
 
-func (m *mockStore) UserDetail(locator store.Locator, userID string, detail string) (string, error) {
+func (m *mockStore) GetUserDetail(locator store.Locator, userID string, detail string) (string, error) {
 	return "", nil
 }
