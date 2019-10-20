@@ -20,6 +20,7 @@ interface Props {
   getSelectableItems?: (filter?: string) => string[];
   activeSelectableItemID?: number;
   onDropdownItemClick?: (e: Event) => void;
+  withSelectableItems?: boolean;
 }
 
 interface State {
@@ -376,7 +377,7 @@ export default class Dropdown extends Component<Props, State> {
     const { title, titleClass, heading, mix } = props;
 
     {
-      if (this.state.selectableItems) {
+      if (this.state.selectableItems && this.props.withSelectableItems) {
         children = this.generateSelectableItems(this.state.selectableItems);
       }
     }
