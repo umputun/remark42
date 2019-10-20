@@ -69,7 +69,7 @@ func TestBoltDB_LoadCommitted(t *testing.T) {
 	data, _ := ioutil.ReadFile("./testdata/circles.png")
 
 	id, _ := store.Save("circles.png", "smaant", data)
-	store.Commit(id)
+	assert.NoError(t, store.Commit(id))
 	r, size, err := store.Load(id)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(len(data)), size)

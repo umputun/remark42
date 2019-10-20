@@ -72,7 +72,9 @@ func (b *BoltDB) Save(fileName string, userID string, data []byte) (id string, e
 	log.Printf("[DEBUG] save image %s to staging", id)
 	err = b.db.Update(func(tx *bolt.Tx) error {
 		userBucket := tx.Bucket([]byte(stagingBucketName))
-		b.addMeta(id, tx)
+		if err = b.addMeta(id, tx); err != nil {
+			return errors.Wrapf(err, "unable to save meta for image %s", id)
+		}
 		if err = userBucket.Put([]byte(id), data); err != nil {
 			return errors.Wrapf(err, "can't put to bucket with %s", userID)
 		}
@@ -141,7 +143,9 @@ func (b *BoltDB) Cleanup(ctx context.Context, ttl time.Duration) error {
 					log.Printf("[WARN] unable to delete image %s", img)
 				}
 			}
-			metasBkt.Delete(k)
+			if err := metasBkt.Delete(k); err != nil {
+				log.Printf("[WARN] failed to delete meta %s", string(k))
+			}
 		}
 		return nil
 	})
