@@ -118,8 +118,7 @@ func NewEmail(params EmailParams) (*Email, error) {
 	return &res, err
 }
 
-// Send email from request to request.parent.User.Email if it's set, otherwise do nothing and return nil, thread safe
-// in case of ctx is closed message will be dropped
+// Send email from request to request.parentUserEmail if it's set, otherwise do nothing and return nil, thread safe
 // do not returns sending error, except following cases:
 // 1. (likely impossible) template execution error from email message creation from request
 // 2. message dropped without sending in case of closed ctx

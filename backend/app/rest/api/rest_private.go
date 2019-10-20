@@ -27,14 +27,15 @@ import (
 )
 
 type private struct {
-	dataService      privStore
-	cache            cache.LoadingCache
-	readOnlyAge      int
-	commentFormatter *store.CommentFormatter
-	imageService     *image.Service
-	notifyService    *notify.Service
-	authenticator    *auth.Service
-	remarkURL        string
+	dataService               privStore
+	cache                     cache.LoadingCache
+	readOnlyAge               int
+	commentFormatter          *store.CommentFormatter
+	imageService              *image.Service
+	notifyService             *notify.Service
+	authenticator             *auth.Service
+	remarkURL                 string
+	emailNotificationsEnabled bool
 }
 
 type privStore interface {

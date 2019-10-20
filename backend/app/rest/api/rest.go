@@ -54,8 +54,9 @@ type Rest struct {
 		Low      int
 		Critical int
 	}
-	UpdateLimiter float64
-	EmojiEnabled  bool
+	UpdateLimiter             float64
+	EmojiEnabled              bool
+	EmailNotificationsEnabled bool
 
 	SSLConfig   SSLConfig
 	httpsServer *http.Server
@@ -341,14 +342,15 @@ func (s *Rest) controllerGroups() (public, private, admin, rss) {
 	}
 
 	privGrp := private{
-		dataService:      s.DataService,
-		cache:            s.Cache,
-		imageService:     s.ImageService,
-		commentFormatter: s.CommentFormatter,
-		readOnlyAge:      s.ReadOnlyAge,
-		authenticator:    s.Authenticator,
-		notifyService:    s.NotifyService,
-		remarkURL:        s.RemarkURL,
+		dataService:               s.DataService,
+		cache:                     s.Cache,
+		imageService:              s.ImageService,
+		commentFormatter:          s.CommentFormatter,
+		readOnlyAge:               s.ReadOnlyAge,
+		authenticator:             s.Authenticator,
+		notifyService:             s.NotifyService,
+		remarkURL:                 s.RemarkURL,
+		emailNotificationsEnabled: s.EmailNotificationsEnabled,
 	}
 
 	admGrp := admin{
@@ -384,30 +386,32 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 	emails, _ := s.DataService.AdminStore.Email(siteID)
 
 	cnf := struct {
-		Version        string   `json:"version"`
-		EditDuration   int      `json:"edit_duration"`
-		MaxCommentSize int      `json:"max_comment_size"`
-		Admins         []string `json:"admins"`
-		AdminEmail     string   `json:"admin_email"`
-		Auth           []string `json:"auth_providers"`
-		LowScore       int      `json:"low_score"`
-		CriticalScore  int      `json:"critical_score"`
-		PositiveScore  bool     `json:"positive_score"`
-		ReadOnlyAge    int      `json:"readonly_age"`
-		MaxImageSize   int      `json:"max_image_size"`
-		EmojiEnabled   bool     `json:"emoji_enabled"`
+		Version                   string   `json:"version"`
+		EditDuration              int      `json:"edit_duration"`
+		MaxCommentSize            int      `json:"max_comment_size"`
+		Admins                    []string `json:"admins"`
+		AdminEmail                string   `json:"admin_email"`
+		Auth                      []string `json:"auth_providers"`
+		LowScore                  int      `json:"low_score"`
+		CriticalScore             int      `json:"critical_score"`
+		PositiveScore             bool     `json:"positive_score"`
+		ReadOnlyAge               int      `json:"readonly_age"`
+		MaxImageSize              int      `json:"max_image_size"`
+		EmojiEnabled              bool     `json:"emoji_enabled"`
+		EmailNotificationsEnabled bool     `json:"email_notifications_enabled"`
 	}{
-		Version:        s.Version,
-		EditDuration:   int(s.DataService.EditDuration.Seconds()),
-		MaxCommentSize: s.DataService.MaxCommentSize,
-		Admins:         admins,
-		AdminEmail:     emails,
-		LowScore:       s.ScoreThresholds.Low,
-		CriticalScore:  s.ScoreThresholds.Critical,
-		PositiveScore:  s.DataService.PositiveScore,
-		ReadOnlyAge:    s.ReadOnlyAge,
-		MaxImageSize:   s.ImageService.Store.SizeLimit(),
-		EmojiEnabled:   s.EmojiEnabled,
+		Version:                   s.Version,
+		EditDuration:              int(s.DataService.EditDuration.Seconds()),
+		MaxCommentSize:            s.DataService.MaxCommentSize,
+		Admins:                    admins,
+		AdminEmail:                emails,
+		LowScore:                  s.ScoreThresholds.Low,
+		CriticalScore:             s.ScoreThresholds.Critical,
+		PositiveScore:             s.DataService.PositiveScore,
+		ReadOnlyAge:               s.ReadOnlyAge,
+		MaxImageSize:              s.ImageService.Store.SizeLimit(),
+		EmojiEnabled:              s.EmojiEnabled,
+		EmailNotificationsEnabled: s.EmailNotificationsEnabled,
 	}
 
 	cnf.Auth = []string{}

@@ -361,6 +361,12 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		EmojiEnabled: s.EnableEmoji,
 	}
 
+	for _, t := range s.Notify.Type {
+		if t == "email" {
+			srv.EmailNotificationsEnabled = true
+		}
+	}
+
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = s.LowScore, s.CriticalScore
 
 	var devAuth *provider.DevAuthServer
