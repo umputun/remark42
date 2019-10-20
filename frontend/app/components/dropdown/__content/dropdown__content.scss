@@ -4,10 +4,12 @@
   outline-width: 0;
   display: none;
   top: 100%;
-  left: 0%;
+  left: 0;
   transform: translate(-0.5em, 5px);
   min-width: 170px;
   max-width: 260px;
+  max-height: 300px;
+  overflow: auto;
   border: 2px solid #259c9a;
   border-radius: 3px;
   padding: 0 0 5px;

@@ -28,10 +28,13 @@ interface State {
   activeSelectableItemID: number;
   selectableItems?: string[];
   selectableItemsFilter?: string;
+  isHover?: boolean;
 }
 
 export default class Dropdown extends Component<Props, State> {
   rootNode?: HTMLDivElement;
+  dropdownContent?: HTMLDivElement;
+  activeSelectableElement?: Component;
 
   constructor(props: Props) {
     super(props);
@@ -64,12 +67,25 @@ export default class Dropdown extends Component<Props, State> {
     this.setSelectableItemsFilter = this.setSelectableItemsFilter.bind(this);
     this.onDropdownItemHover = this.onDropdownItemHover.bind(this);
     this.setSelectableItems = this.setSelectableItems.bind(this);
+    this.scrollContentTo = this.scrollContentTo.bind(this);
   }
 
   setSelectableItems(selectableItems: string[]) {
     this.setState({
       selectableItems,
     });
+  }
+
+  scrollContentTo(activeSelectableElement: Component) {
+    if (!this.dropdownContent || !activeSelectableElement.base) return;
+
+    const element = activeSelectableElement.base;
+
+    const elementOffsetTop = element.offsetTop;
+    const contentOffsetTop = this.dropdownContent.offsetTop;
+    const childOffsetTop = elementOffsetTop - contentOffsetTop;
+
+    this.dropdownContent.scrollTop = childOffsetTop;
   }
 
   selectNextSelectableItem() {
@@ -88,6 +104,7 @@ export default class Dropdown extends Component<Props, State> {
 
     this.setState({
       activeSelectableItemID: newActiveSelectableItemID,
+      isHover: false,
     });
   }
 
@@ -107,6 +124,7 @@ export default class Dropdown extends Component<Props, State> {
 
     this.setState({
       activeSelectableItemID: newActiveSelectableItemID,
+      isHover: false,
     });
   }
 
@@ -129,10 +147,13 @@ export default class Dropdown extends Component<Props, State> {
     if (!this.props.getSelectableItems || !selectableItemsFilter) return;
 
     const selectableItems = this.props.getSelectableItems(selectableItemsFilter);
+    let filteredSelectableItems;
 
-    const filteredSelectableItems = selectableItems.filter(selectableItem => {
-      return ~selectableItem.indexOf(selectableItemsFilter);
-    });
+    if (selectableItems) {
+      filteredSelectableItems = selectableItems.filter(selectableItem => {
+        return ~selectableItem.indexOf(selectableItemsFilter);
+      });
+    }
 
     this.setState({
       selectableItems: filteredSelectableItems,
@@ -147,14 +168,16 @@ export default class Dropdown extends Component<Props, State> {
     }
 
     return selectableItems.map((selectableItem, index) => {
+      const isActive = index === this.state.activeSelectableItemID;
       return (
         <DropdownItem
           index={index}
           onFocus={this.onDropdownItemHover}
           onMouseOver={this.onDropdownItemHover}
-          active={index === this.state.activeSelectableItemID}
+          active={isActive}
           selectable={true}
           onClick={this.props.onDropdownItemClick}
+          ref={isActive ? ref => (this.activeSelectableElement = ref) : undefined}
         >
           {selectableItem}
         </DropdownItem>
@@ -315,6 +338,12 @@ export default class Dropdown extends Component<Props, State> {
     );
   }
 
+  componentDidUpdate() {
+    if (this.activeSelectableElement && !this.state.isHover) {
+      this.scrollContentTo(this.activeSelectableElement);
+    }
+  }
+
   componentDidMount() {
     document.addEventListener('click', this.onOutsideClick);
 
@@ -336,6 +365,7 @@ export default class Dropdown extends Component<Props, State> {
       if (id !== undefined) {
         this.setState({
           activeSelectableItemID: +id,
+          isHover: true,
         });
       }
     }
@@ -370,6 +400,7 @@ export default class Dropdown extends Component<Props, State> {
           tabIndex={-1}
           role="listbox"
           style={{ transform: `translateX(${this.state.contentTranslateX}px)` }}
+          ref={ref => (this.dropdownContent = ref)}
         >
           {heading && <div className="dropdown__heading">{heading}</div>}
           <div className="dropdown__items">{children}</div>
