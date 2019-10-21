@@ -20,16 +20,17 @@ import (
 
 // EmailParams contain settings for email set up
 type EmailParams struct {
-	Host          string        // SMTP host
-	Port          int           // SMTP port
-	TLS           bool          // TLS auth
-	From          string        // From email field
-	Username      string        // user name
-	Password      string        // password
-	TimeOut       time.Duration // TLS connection timeout
-	Template      string        // request message template
-	BufferSize    int           // email send buffer size
-	FlushDuration time.Duration // maximum time after which email will me sent, 30s by default
+	Host                 string        // SMTP host
+	Port                 int           // SMTP port
+	TLS                  bool          // TLS auth
+	From                 string        // From email field
+	Username             string        // user name
+	Password             string        // password
+	TimeOut              time.Duration // TLS connection timeout
+	MsgTemplate          string        // request message template
+	VerificationTemplate string        // verification message template
+	BufferSize           int           // email send buffer size
+	FlushDuration        time.Duration // maximum time after which email will me sent, 30s by default
 }
 
 // Email implements notify.Destination for email
@@ -37,9 +38,10 @@ type Email struct {
 	EmailParams
 	smtpClient // embedded into Email for test purposes: not set in production code, used in autoFlush initialisation
 
-	template *template.Template // parsed request message template
-	submit   chan emailMessage  // unbuffered channel for email sending
-	once     sync.Once
+	msgTmpl    *template.Template // parsed request message template
+	verifyTmpl *template.Template // parsed verification message template
+	submit     chan emailMessage  // unbuffered channel for email sending
+	once       sync.Once
 }
 
 // smtpClient interface defines subset of net/smtp used by email client
@@ -57,13 +59,21 @@ type emailMessage struct {
 	to      string
 }
 
-// tmplData store data for message from request template execution
-type tmplData struct {
+// msgTmplData store data for message from request template execution
+type msgTmplData struct {
 	From      string
 	To        string
 	Orig      string
 	Link      string
 	PostTitle string
+}
+
+// verifyTmplData store data for verification message template execution
+type verifyTmplData struct {
+	User    string
+	Address string
+	Token   string
+	Site    string
 }
 
 const defaultEmailTimeout = 10 * time.Second
@@ -75,8 +85,13 @@ const defaultEmailTemplate = `{{.From}}{{if .To}} → {{.To}}{{end}}
 ↦ <a href="{{.Link}}">{{if .PostTitle}}{{.PostTitle}}{{else}}original comment{{end}}</a>
 `
 
+const defaultEmailVerificationTemplate = `Confirmation for {{.User}} {{.Address}}, site {{.Site}}
+
+Token: {{.Token}}
+`
+
 //NewEmail makes new Email object, returns it even in case of problems
-// (e.Template parsing error or error while testing smtp connection by credentials provided in params)
+// (e.MsgTemplate parsing error or error while testing smtp connection by credentials provided in params)
 func NewEmail(params EmailParams) (*Email, error) {
 	var err error
 	res := Email{EmailParams: params}
@@ -89,8 +104,11 @@ func NewEmail(params EmailParams) (*Email, error) {
 	if res.BufferSize <= 0 {
 		res.BufferSize = 1
 	}
-	if res.Template == "" {
-		res.Template = defaultEmailTemplate
+	if res.MsgTemplate == "" {
+		res.MsgTemplate = defaultEmailTemplate
+	}
+	if res.VerificationTemplate == "" {
+		res.VerificationTemplate = defaultEmailVerificationTemplate
 	}
 	// unbuffered send channel for sending messages to autoFlush goroutine
 	res.submit = make(chan emailMessage)
@@ -98,10 +116,14 @@ func NewEmail(params EmailParams) (*Email, error) {
 	log.Printf("[DEBUG] create new email notifier for server %s with user %s, timeout=%s",
 		res.Host, res.Username, res.TimeOut)
 
-	// initialise template
-	res.template, err = template.New("messageFromRequest").Parse(res.Template)
+	// initialise templates
+	res.msgTmpl, err = template.New("messageFromRequest").Parse(res.MsgTemplate)
 	if err != nil {
 		return &res, errors.Wrapf(err, "can't parse message template")
+	}
+	res.verifyTmpl, err = template.New("messageFromRequest").Parse(res.VerificationTemplate)
+	if err != nil {
+		return &res, errors.Wrapf(err, "can't parse verification template")
 	}
 
 	// establish test connection
@@ -123,16 +145,16 @@ func NewEmail(params EmailParams) (*Email, error) {
 // 1. (likely impossible) template execution error from email message creation from request
 // 2. message dropped without sending in case of closed ctx
 func (e *Email) Send(ctx context.Context, req request) error {
-	// start auto flush once, as this is the first moment we see the context from caller
-	e.once.Do(func() {
-		// e.smtpClient initialised only in tests
-		go e.autoFlush(ctx, e.smtpClient)
-	})
 	if req.parentUserEmail == "" || req.parent.User == req.comment.User {
 		// don't send anything if there is no email to send information to
 		// or if user replied to his own comment
 		return nil
 	}
+	// start auto flush once, as this is the first moment we see the context from caller
+	e.once.Do(func() {
+		// e.smtpClient initialised only in tests
+		go e.autoFlush(ctx, e.smtpClient)
+	})
 	log.Printf("[DEBUG] send notification via %s, comment id %s", e, req.comment.ID)
 	msg, err := e.buildMessageFromRequest(req, req.parentUserEmail)
 	if err != nil {
@@ -143,6 +165,30 @@ func (e *Email) Send(ctx context.Context, req request) error {
 		return nil
 	case <-ctx.Done():
 		return errors.Errorf("sending message to %q aborted due to canceled context", req.parentUserEmail)
+	}
+}
+
+// SendVerification sends email verification
+// do not returns sending error, except following cases:
+// 1. (likely impossible) template execution error from verify message template execution
+// 2. message dropped without sending in case of closed ctx
+func (e *Email) SendVerification(ctx context.Context, user string, address string, token string, site string) error {
+	// start auto flush once, as this is the first moment we see the context from caller
+	e.once.Do(func() {
+		// e.smtpClient initialised only in tests
+		go e.autoFlush(ctx, e.smtpClient)
+	})
+	log.Printf("[DEBUG] send verification via %s, user %s", e, user)
+	msg, err := e.buildVerificationMessage(user, address, token, site)
+	if err != nil {
+		return err
+	}
+
+	select {
+	case e.submit <- emailMessage{msg, address}:
+		return nil
+	case <-ctx.Done():
+		return errors.Errorf("sending message to %q aborted due to canceled context", address)
 	}
 }
 
@@ -247,14 +293,14 @@ func (e *Email) sendEmail(smtpClient smtpClient, m emailMessage) error {
 	return nil
 }
 
-//buildMessageFromRequest generates email message based on request using e.Template
+//buildMessageFromRequest generates email message based on request using e.MsgTemplate
 func (e *Email) buildMessageFromRequest(req request, to string) (string, error) {
 	subject := "New comment"
 	if req.comment.PostTitle != "" {
 		subject += fmt.Sprintf(" for \"%s\"", req.comment.PostTitle)
 	}
 	msg := bytes.Buffer{}
-	err := e.template.Execute(&msg, tmplData{
+	err := e.msgTmpl.Execute(&msg, msgTmplData{
 		req.comment.User.Name,
 		req.parent.User.Name,
 		req.comment.Orig,
@@ -265,6 +311,17 @@ func (e *Email) buildMessageFromRequest(req request, to string) (string, error) 
 		return "", errors.Wrapf(err, "error executing template to build message from request")
 	}
 	return e.buildMessage(subject, msg.String(), to, "text/html"), nil
+}
+
+//buildVerificationMessage generates verification email message based on given input
+func (e *Email) buildVerificationMessage(user, address, token, site string) (string, error) {
+	subject := "Email verification"
+	msg := bytes.Buffer{}
+	err := e.verifyTmpl.Execute(&msg, verifyTmplData{user, address, token, site})
+	if err != nil {
+		return "", errors.Wrapf(err, "error executing template to build verifying message from request")
+	}
+	return e.buildMessage(subject, msg.String(), address, "text/html"), nil
 }
 
 //buildMessage generates email message to send with using net/smtp.Data()

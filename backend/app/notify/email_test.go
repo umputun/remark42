@@ -35,7 +35,7 @@ func TestEmailNew(t *testing.T) {
 				Username:      "test@username",
 				Password:      "test@password",
 				TimeOut:       time.Second,
-				Template:      "{{",
+				MsgTemplate:   "{{",
 				BufferSize:    10,
 				FlushDuration: time.Second,
 			}},
@@ -54,14 +54,14 @@ func TestEmailNew(t *testing.T) {
 		assert.NotNil(t, email, "email returned on test run #%d", i)
 		assert.NotNil(t, email.submit, "e.submit is created during initialisation on test run #%d", i)
 		if d.template {
-			assert.NotNil(t, email.template, "e.template is set on test run #%d", i)
+			assert.NotNil(t, email.msgTmpl, "e.template is set on test run #%d", i)
 		} else {
-			assert.Nil(t, email.template, "e.template is not set on test run #%d", i)
+			assert.Nil(t, email.msgTmpl, "e.template is not set on test run #%d", i)
 		}
-		if d.params.Template == "" {
-			assert.Equal(t, defaultEmailTemplate, email.EmailParams.Template, "empty params.Template changed to default on test run #%d", i)
+		if d.params.MsgTemplate == "" {
+			assert.Equal(t, defaultEmailTemplate, email.EmailParams.MsgTemplate, "empty params.MsgTemplate changed to default on test run #%d", i)
 		} else {
-			assert.Equal(t, d.params.Template, email.EmailParams.Template, "params.Template unchanged after creation on test run #%d", i)
+			assert.Equal(t, d.params.MsgTemplate, email.EmailParams.MsgTemplate, "params.MsgTemplate unchanged after creation on test run #%d", i)
 		}
 		if d.params.FlushDuration == 0 {
 			assert.Equal(t, defaultFlushDuration, email.EmailParams.FlushDuration, "empty params.FlushDuration changed to default on test run #%d", i)
@@ -90,15 +90,26 @@ func TestEmailNew(t *testing.T) {
 func TestEmailSendErrors(t *testing.T) {
 	var err error
 	e := Email{EmailParams: EmailParams{FlushDuration: time.Second}}
-	e.template, err = template.New("test").Parse("{{.Test}}")
+
+	e.verifyTmpl, err = template.New("test").Parse("{{.Test}}")
+	assert.NoError(t, err)
+	assert.EqualError(t, e.SendVerification(context.Background(), "", "bad@example.org", "", ""),
+		"error executing template to build verifying message from request: template: test:1:2: executing \"test\" at <.Test>: can't evaluate field Test in type notify.verifyTmplData")
+	e.verifyTmpl, err = template.New("test").Parse(defaultEmailVerificationTemplate)
+	assert.NoError(t, err)
+
+	e.msgTmpl, err = template.New("test").Parse("{{.Test}}")
 	assert.NoError(t, err)
 	assert.EqualError(t, e.Send(context.Background(), request{parent: store.Comment{User: store.User{ID: "test"}}, parentUserEmail: "bad@example.org"}),
-		"error executing template to build message from request: template: test:1:2: executing \"test\" at <.Test>: can't evaluate field Test in type notify.tmplData")
-	e.template, err = template.New("test").Parse(defaultEmailTemplate)
+		"error executing template to build message from request: template: test:1:2: executing \"test\" at <.Test>: can't evaluate field Test in type notify.msgTmplData")
+	e.msgTmpl, err = template.New("test").Parse(defaultEmailTemplate)
 	assert.NoError(t, err)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	assert.EqualError(t, e.Send(ctx, request{parent: store.Comment{User: store.User{ID: "test"}}, parentUserEmail: "bad@example.org"}),
+		"sending message to \"bad@example.org\" aborted due to canceled context")
+	assert.EqualError(t, e.SendVerification(ctx, "", "bad@example.org", "", ""),
 		"sending message to \"bad@example.org\" aborted due to canceled context")
 }
 
@@ -107,15 +118,21 @@ func TestEmailSend(t *testing.T) {
 		"Subject: New comment for \"test title\"\nMIME-version: 1.0;\nContent-Type: text/html;" +
 		" charset=\"UTF-8\";\n\ntest user name → test parent user name\n\n" +
 		"test comment orig\n\n↦ <a href=\"http://test#remark42__comment-1\">test title</a>\n"
+	const filledVerifyEmail = "From: test_sender\nTo: another@example.org\n" +
+		"Subject: Email verification\nMIME-version: 1.0;\nContent-Type: text/html;" +
+		" charset=\"UTF-8\";\n\nConfirmation for u another@example.org, site s\n\nToken: t\n"
 	email, err := NewEmail(EmailParams{BufferSize: 3, From: "test_sender", FlushDuration: time.Millisecond * 200})
 	assert.Error(t, err, "error match expected")
 	assert.NotNil(t, email, "expecting email returned")
 	// prevent triggering e.autoFlush creation
 	email.once.Do(func() {})
-	var testMessage emailMessage
+	var testMessages []emailMessage
 	var waitGroup sync.WaitGroup
-	waitGroup.Add(1)
-	go func() { testMessage = <-email.submit; waitGroup.Done() }()
+	waitGroup.Add(2)
+	go func() {
+		testMessages = append(testMessages, <-email.submit, <-email.submit)
+		waitGroup.Add(-len(testMessages))
+	}()
 	assert.NoError(t, email.Send(context.Background(),
 		request{
 			comment: store.Comment{
@@ -129,8 +146,11 @@ func TestEmailSend(t *testing.T) {
 				}},
 			parentUserEmail: "good_example@example.org",
 		}))
+	assert.NoError(t, email.SendVerification(context.Background(), "u", "another@example.org", "t", "s"))
 	waitGroup.Wait()
-	assert.Equal(t, emailMessage{message: filledEmail, to: "good_example@example.org"}, testMessage)
+	assert.Equal(t, 2, len(testMessages))
+	assert.Equal(t, emailMessage{message: filledEmail, to: "good_example@example.org"}, testMessages[0])
+	assert.Equal(t, emailMessage{message: filledVerifyEmail, to: "another@example.org"}, testMessages[1])
 	emptyRequest := request{}
 	assert.Nil(t, email.Send(context.Background(), emptyRequest),
 		"Message without parent comment User.Email is not sent and returns nil")
