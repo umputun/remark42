@@ -14,6 +14,13 @@ import (
 	"github.com/pkg/errors"
 )
 
+const imagesStagedBktName = "imagesStaged"
+const imagesBktName = "images"
+const insertTimeBktName = "insertTimestamps"
+
+// Bolt provides image Store for images keeping data in bolt DB, restricts max size.
+// It uses 3 buckets to manage images data.
+// Two buckets contains image data (staged and commited images). Third bucket holds insertion timestamps.
 type Bolt struct {
 	fileName  string
 	db        *bolt.DB
@@ -22,10 +29,7 @@ type Bolt struct {
 	MaxWidth  int
 }
 
-const imagesStagedBktName = "images_staged"
-const imagesBktName = "images"
-const insertTimeBktName = "insert_times"
-
+// Create Bolt Store.
 func NewBoltStorage(fileName string, maxSize int, maxHeight int, maxWidth int, options bolt.Options) (*Bolt, error) {
 	db, err := bolt.Open(fileName, 0600, &options)
 	if err != nil {
@@ -56,6 +60,7 @@ func NewBoltStorage(fileName string, maxSize int, maxHeight int, maxWidth int, o
 	}, nil
 }
 
+// Save data from reader to staging bucket in DB
 func (b *Bolt) Save(fileName string, userID string, r io.Reader) (id string, err error) {
 	data, err := readAndValidateImage(r, b.MaxSize)
 	if err != nil {
@@ -83,6 +88,8 @@ func (b *Bolt) Save(fileName string, userID string, r io.Reader) (id string, err
 	return id, err
 }
 
+// Commit file stored in staging bucket by copying it to permanent bucket
+// Data from staging bucket not removed immediately, but would be removed on cleanup
 func (b *Bolt) Commit(id string) error {
 	err := b.db.Update(func(tx *bolt.Tx) error {
 		data := tx.Bucket([]byte(imagesStagedBktName)).Get([]byte(id))
@@ -95,6 +102,8 @@ func (b *Bolt) Commit(id string) error {
 	return err
 }
 
+// Load image from DB
+// returns ReadCloser and caller should call close after processing completed.
 func (b *Bolt) Load(id string) (io.ReadCloser, int64, error) {
 	buf := &bytes.Buffer{}
 	var size int = 0
@@ -113,6 +122,7 @@ func (b *Bolt) Load(id string) (io.ReadCloser, int64, error) {
 	return ioutil.NopCloser(buf), int64(size), err
 }
 
+// Cleanup runs scan of staging and removes old data based on ttl
 func (b *Bolt) Cleanup(ctx context.Context, ttl time.Duration) error {
 	err := b.db.Update(func(tx *bolt.Tx) error {
 		c := tx.Bucket([]byte(insertTimeBktName)).Cursor()
@@ -149,6 +159,7 @@ func (b *Bolt) Cleanup(ctx context.Context, ttl time.Duration) error {
 	return err
 }
 
+// SizeLimit returns max size of allowed image
 func (b *Bolt) SizeLimit() int {
 	return b.MaxSize
 }
