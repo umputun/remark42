@@ -454,63 +454,41 @@ func TestRest_Email(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
 
-	// issue delete request without auth
+	const goodToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6MTU3MTY5MjU2MSwiaXNzIjoicmVtYXJrNDIiL" +
+		"CJuYmYiOjE1NzE2OTA3MDEsImhhbmRzaGFrZSI6eyJpZCI6ImRldjo6Z29vZEBleGFtcGxlLmNvbSJ9fQ.QQ-Q2PbXYnKDXPMSfcpNjoh8xzh1zYdL_F_Xgy7czZc"
+
+	var testData = []struct {
+		description  string
+		url          string
+		method       string
+		responseCode int
+		noAuth       bool
+	}{
+		{description: "issue delete request without auth", url: "/api/v1/email", method: http.MethodDelete, responseCode: http.StatusUnauthorized, noAuth: true},
+		{description: "issue delete request without site_id", url: "/api/v1/email", method: http.MethodDelete, responseCode: http.StatusBadRequest},
+		{description: "delete non-existent user email", url: "/api/v1/email?site=remark42", method: http.MethodDelete, responseCode: http.StatusOK},
+		{description: "set user email, token not set", url: "/api/v1/email?site=remark42", method: http.MethodPut, responseCode: http.StatusBadRequest},
+		{description: "send confirmation without address", url: "/api/v1/email?site=remark42", method: http.MethodGet, responseCode: http.StatusBadRequest},
+		{description: "send confirmation", url: "/api/v1/email?site=remark42&address=good@example.com", method: http.MethodGet, responseCode: http.StatusOK},
+		{description: "set user email, token is good", url: fmt.Sprintf("/api/v1/email?site=remark42&tkn=%s", goodToken), method: http.MethodPut, responseCode: http.StatusOK},
+		{description: "send confirmation with same address", url: "/api/v1/email?site=remark42&address=good@example.com", method: http.MethodGet, responseCode: http.StatusBadRequest},
+		{description: "delete user email", url: "/api/v1/email?site=remark42", method: http.MethodDelete, responseCode: http.StatusOK},
+		{description: "send confirmation", url: "/api/v1/email?site=remark42&address=good@example.com", method: http.MethodGet, responseCode: http.StatusOK},
+	}
+
 	client := http.Client{}
-	req, err := http.NewRequest(http.MethodDelete, ts.URL+"/api/v1/email", nil)
-	require.NoError(t, err)
-	b, err := client.Do(req)
-	require.NoError(t, err)
-	body, err := ioutil.ReadAll(b.Body)
-	require.NoError(t, err)
-	assert.Equal(t, 401, b.StatusCode, string(body))
-
-	// issue delete request without site_id
-	req.Header.Add("X-JWT", devToken)
-	b, err = client.Do(req)
-	require.NoError(t, err)
-	body, err = ioutil.ReadAll(b.Body)
-	require.NoError(t, err)
-	assert.Equal(t, 400, b.StatusCode, string(body))
-
-	// delete non-existent user email
-	req, err = http.NewRequest(http.MethodDelete, ts.URL+"/api/v1/email?site=remark42", nil)
-	require.NoError(t, err)
-	req.Header.Add("X-JWT", devToken)
-	b, err = client.Do(req)
-	require.NoError(t, err)
-	body, err = ioutil.ReadAll(b.Body)
-	require.NoError(t, err)
-	assert.Equal(t, 200, b.StatusCode, string(body))
-
-	// set user email, update address not set
-	//req, err = http.NewRequest(http.MethodPut, ts.URL+"/api/v1/email?site=remark42", nil)
-	//require.NoError(t, err)
-	//req.Header.Add("X-JWT", devToken)
-	//b, err = client.Do(req)
-	//require.NoError(t, err)
-	//body, err = ioutil.ReadAll(b.Body)
-	//require.NoError(t, err)
-	//assert.Equal(t, 400, b.StatusCode, string(body))
-
-	// set user email
-	//req, err = http.NewRequest(http.MethodPut, ts.URL+"/api/v1/email?site=remark42&address=test@example.com", nil)
-	//require.NoError(t, err)
-	//req.Header.Add("X-JWT", devToken)
-	//b, err = client.Do(req)
-	//require.NoError(t, err)
-	//body, err = ioutil.ReadAll(b.Body)
-	//require.NoError(t, err)
-	//assert.Equal(t, 200, b.StatusCode, string(body))
-
-	// delete user email
-	req, err = http.NewRequest(http.MethodDelete, ts.URL+"/api/v1/email?site=remark42", nil)
-	require.NoError(t, err)
-	req.Header.Add("X-JWT", devToken)
-	b, err = client.Do(req)
-	require.NoError(t, err)
-	body, err = ioutil.ReadAll(b.Body)
-	require.NoError(t, err)
-	assert.Equal(t, 200, b.StatusCode, string(body))
+	for _, x := range testData {
+		req, err := http.NewRequest(x.method, ts.URL+x.url, nil)
+		require.NoError(t, err)
+		if !x.noAuth {
+			req.Header.Add("X-JWT", devToken)
+		}
+		b, err := client.Do(req)
+		require.NoError(t, err)
+		body, err := ioutil.ReadAll(b.Body)
+		require.NoError(t, err)
+		assert.Equal(t, x.responseCode, b.StatusCode, x.description+": "+string(body))
+	}
 }
 
 func TestRest_UserAllData(t *testing.T) {
