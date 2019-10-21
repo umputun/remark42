@@ -254,6 +254,17 @@ func (s *private) deleteEmailCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete email for user", code)
 		return
 	}
+	// clean User.Email from the token
+	claims, _, err := s.authenticator.TokenService().Get(r)
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusForbidden, err, "failed to verify confirmation token", rest.ErrInternal)
+		return
+	}
+	claims.User.Email = ""
+	if _, err = s.authenticator.TokenService().Set(w, claims); err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to set token", rest.ErrInternal)
+		return
+	}
 	render.JSON(w, r, R.JSON{"deleted": true})
 }
 
