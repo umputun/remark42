@@ -651,11 +651,13 @@ export class Input extends Component<Props, State> {
           <div class="input__emoji-dropdown">
             <Dropdown
               title="Emoji"
+              titleClass={'emoji-dropdown'}
               theme={this.props.theme}
               getSelectableItems={this.getActualEmojiList}
               ref={ref => (this.emojiDropdown = ref)}
               onDropdownItemClick={this.onDropdownItemClick}
               withSelectableItems={true}
+              isEmojiDropdown={true}
             />
           </div>
 

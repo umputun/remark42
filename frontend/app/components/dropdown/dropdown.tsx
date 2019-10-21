@@ -21,6 +21,7 @@ interface Props {
   activeSelectableItemID?: number;
   onDropdownItemClick?: (e: Event) => void;
   withSelectableItems?: boolean;
+  isEmojiDropdown?: boolean;
 }
 
 interface State {
@@ -30,6 +31,7 @@ interface State {
   selectableItems?: string[];
   selectableItemsFilter?: string;
   isHover?: boolean;
+  isEmojiDropdown?: boolean;
 }
 
 export default class Dropdown extends Component<Props, State> {
@@ -40,7 +42,7 @@ export default class Dropdown extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
 
-    const { isActive } = this.props;
+    const { isActive, isEmojiDropdown } = this.props;
     let selectableItems: string[] = [];
 
     if (this.props.getSelectableItems) selectableItems = this.props.getSelectableItems();
@@ -55,6 +57,7 @@ export default class Dropdown extends Component<Props, State> {
       contentTranslateX: 0,
       activeSelectableItemID,
       selectableItems,
+      isEmojiDropdown,
     };
 
     this.onOutsideClick = this.onOutsideClick.bind(this);
