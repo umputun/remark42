@@ -20,7 +20,7 @@ const insertTimeBktName = "insertTimestamps"
 
 // Bolt provides image Store for images keeping data in bolt DB, restricts max size.
 // It uses 3 buckets to manage images data.
-// Two buckets contains image data (staged and commited images). Third bucket holds insertion timestamps.
+// Two buckets contains image data (staged and committed images). Third bucket holds insertion timestamps.
 type Bolt struct {
 	fileName  string
 	db        *bolt.DB
