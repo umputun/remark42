@@ -29,6 +29,13 @@ type Destination interface {
 	Send(ctx context.Context, req request) error
 }
 
+type VerificationRequest struct {
+	locator store.Locator
+	User    string
+	Address string
+	Token   string
+}
+
 // Store defines the minimal interface accessing stored comments and retrieving users details used by notifier
 type Store interface {
 	Get(locator store.Locator, id string, user store.User) (store.Comment, error)

@@ -172,23 +172,23 @@ func (e *Email) Send(ctx context.Context, req request) error {
 // do not returns sending error, except following cases:
 // 1. (likely impossible) template execution error from verify message template execution
 // 2. message dropped without sending in case of closed ctx
-func (e *Email) SendVerification(ctx context.Context, user string, address string, token string, site string) error {
+func (e *Email) SendVerification(ctx context.Context, req VerificationRequest) error {
 	// start auto flush once, as this is the first moment we see the context from caller
 	e.once.Do(func() {
 		// e.smtpClient initialised only in tests
 		go e.autoFlush(ctx, e.smtpClient)
 	})
-	log.Printf("[DEBUG] send verification via %s, user %s", e, user)
-	msg, err := e.buildVerificationMessage(user, address, token, site)
+	log.Printf("[DEBUG] send verification via %s, user %s", e, req.User)
+	msg, err := e.buildVerificationMessage(req.User, req.Address, req.Token, req.locator.SiteID)
 	if err != nil {
 		return err
 	}
 
 	select {
-	case e.submit <- emailMessage{msg, address}:
+	case e.submit <- emailMessage{msg, req.Address}:
 		return nil
 	case <-ctx.Done():
-		return errors.Errorf("sending message to %q aborted due to canceled context", address)
+		return errors.Errorf("sending message to %q aborted due to canceled context", req.Address)
 	}
 }
 
