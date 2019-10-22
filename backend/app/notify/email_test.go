@@ -147,7 +147,7 @@ func TestEmailSend(t *testing.T) {
 			parentUserEmail: "good_example@example.org",
 		}))
 	assert.NoError(t, email.SendVerification(context.Background(), VerificationRequest{
-		locator: store.Locator{SiteID: "s"},
+		Locator: store.Locator{SiteID: "s"},
 		Email:   "another@example.org",
 		User:    "u",
 		Token:   "t",
