@@ -179,7 +179,7 @@ func (e *Email) SendVerification(ctx context.Context, req VerificationRequest) e
 		go e.autoFlush(ctx, e.smtpClient)
 	})
 	log.Printf("[DEBUG] send verification via %s, user %s", e, req.User)
-	msg, err := e.buildVerificationMessage(req.User, req.Email, req.Token, req.locator.SiteID)
+	msg, err := e.buildVerificationMessage(req.User, req.Email, req.Token, req.Locator.SiteID)
 	if err != nil {
 		return err
 	}

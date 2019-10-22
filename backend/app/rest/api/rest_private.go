@@ -244,10 +244,7 @@ func (s *private) sendConfirmation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	claims := token.Claims{
-		Handshake: &token.Handshake{
-			State: "",
-			ID:    user.ID + "::" + address,
-		},
+		Handshake: &token.Handshake{ID: user.ID + "::" + address},
 		StandardClaims: jwt.StandardClaims{
 			Audience:  r.URL.Query().Get("site"),
 			ExpiresAt: time.Now().Add(30 * time.Minute).Unix(),
@@ -262,8 +259,8 @@ func (s *private) sendConfirmation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	////TODO: figure out how to send emails
-	//if err := s.Sender.SendVerification(r.Context(), user.Name, address, tkn, siteID); err != nil {
+	//TODO: figure out how to send emails
+	//if err := s.Sender.SendVerification(r.Context(), notify.VerificationRequest{Locator: store.Locator{SiteID: siteID}, User: user.Name, Email: address, Token: tkn}); err != nil {
 	//	rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to send confirmation", rest.ErrInternal)
 	//	return
 	//}

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -15,6 +16,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dgrijalva/jwt-go"
+	"github.com/go-pkgz/auth/token"
 	"github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
 	"github.com/stretchr/testify/assert"
@@ -451,11 +454,22 @@ func TestRest_Vote(t *testing.T) {
 }
 
 func TestRest_Email(t *testing.T) {
-	ts, _, teardown := startupT(t)
+	ts, srv, teardown := startupT(t)
 	defer teardown()
 
-	const goodToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6MTU3MTY5MjU2MSwiaXNzIjoicmVtYXJrNDIiL" +
-		"CJuYmYiOjE1NzE2OTA3MDEsImhhbmRzaGFrZSI6eyJpZCI6ImRldjo6Z29vZEBleGFtcGxlLmNvbSJ9fQ.QQ-Q2PbXYnKDXPMSfcpNjoh8xzh1zYdL_F_Xgy7czZc"
+	// issue good token
+	claims := token.Claims{
+		Handshake: &token.Handshake{ID: "dev::good@example.com"},
+		StandardClaims: jwt.StandardClaims{
+			Audience:  "remark42",
+			ExpiresAt: time.Now().Add(10 * time.Minute).Unix(),
+			NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
+			Issuer:    "remark42",
+		},
+	}
+	tkn, err := srv.Authenticator.TokenService().Token(claims)
+	require.NoError(t, err)
+	goodToken := tkn
 
 	var testData = []struct {
 		description  string
@@ -463,6 +477,7 @@ func TestRest_Email(t *testing.T) {
 		method       string
 		responseCode int
 		noAuth       bool
+		cookieEmail  string
 	}{
 		{description: "issue delete request without auth", url: "/api/v1/email", method: http.MethodDelete, responseCode: http.StatusUnauthorized, noAuth: true},
 		{description: "issue delete request without site_id", url: "/api/v1/email", method: http.MethodDelete, responseCode: http.StatusBadRequest},
@@ -470,7 +485,7 @@ func TestRest_Email(t *testing.T) {
 		{description: "set user email, token not set", url: "/api/v1/email?site=remark42", method: http.MethodPut, responseCode: http.StatusBadRequest},
 		{description: "send confirmation without address", url: "/api/v1/email?site=remark42", method: http.MethodGet, responseCode: http.StatusBadRequest},
 		{description: "send confirmation", url: "/api/v1/email?site=remark42&address=good@example.com", method: http.MethodGet, responseCode: http.StatusOK},
-		{description: "set user email, token is good", url: fmt.Sprintf("/api/v1/email?site=remark42&tkn=%s", goodToken), method: http.MethodPut, responseCode: http.StatusOK},
+		{description: "set user email, token is good", url: fmt.Sprintf("/api/v1/email?site=remark42&tkn=%s", goodToken), method: http.MethodPut, responseCode: http.StatusOK, cookieEmail: "good@example.com"},
 		{description: "send confirmation with same address", url: "/api/v1/email?site=remark42&address=good@example.com", method: http.MethodGet, responseCode: http.StatusBadRequest},
 		{description: "delete user email", url: "/api/v1/email?site=remark42", method: http.MethodDelete, responseCode: http.StatusOK},
 		{description: "send confirmation", url: "/api/v1/email?site=remark42&address=good@example.com", method: http.MethodGet, responseCode: http.StatusOK},
@@ -487,6 +502,15 @@ func TestRest_Email(t *testing.T) {
 		require.NoError(t, err)
 		body, err := ioutil.ReadAll(b.Body)
 		require.NoError(t, err)
+		// read User.Email from the token in the cookie
+		for _, c := range b.Cookies() {
+			if c.Name == "JWT" {
+				claims, err := srv.Authenticator.TokenService().Parse(c.Value)
+				require.NoError(t, err)
+				log.Printf("%s:%v", x.description, claims)
+				assert.Equal(t, x.cookieEmail, claims.User.Email, x.description+": cookie email check failed")
+			}
+		}
 		assert.Equal(t, x.responseCode, b.StatusCode, x.description+": "+string(body))
 	}
 }
