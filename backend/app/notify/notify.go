@@ -32,7 +32,7 @@ type Destination interface {
 type VerificationRequest struct {
 	locator store.Locator
 	User    string
-	Address string
+	Email   string
 	Token   string
 }
 

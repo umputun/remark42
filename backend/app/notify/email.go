@@ -70,10 +70,10 @@ type msgTmplData struct {
 
 // verifyTmplData store data for verification message template execution
 type verifyTmplData struct {
-	User    string
-	Address string
-	Token   string
-	Site    string
+	User  string
+	Email string
+	Token string
+	Site  string
 }
 
 const defaultEmailTimeout = 10 * time.Second
@@ -85,7 +85,7 @@ const defaultEmailTemplate = `{{.From}}{{if .To}} → {{.To}}{{end}}
 ↦ <a href="{{.Link}}">{{if .PostTitle}}{{.PostTitle}}{{else}}original comment{{end}}</a>
 `
 
-const defaultEmailVerificationTemplate = `Confirmation for {{.User}} {{.Address}}, site {{.Site}}
+const defaultEmailVerificationTemplate = `Confirmation for {{.User}} {{.Email}}, site {{.Site}}
 
 Token: {{.Token}}
 `
@@ -179,16 +179,16 @@ func (e *Email) SendVerification(ctx context.Context, req VerificationRequest) e
 		go e.autoFlush(ctx, e.smtpClient)
 	})
 	log.Printf("[DEBUG] send verification via %s, user %s", e, req.User)
-	msg, err := e.buildVerificationMessage(req.User, req.Address, req.Token, req.locator.SiteID)
+	msg, err := e.buildVerificationMessage(req.User, req.Email, req.Token, req.locator.SiteID)
 	if err != nil {
 		return err
 	}
 
 	select {
-	case e.submit <- emailMessage{msg, req.Address}:
+	case e.submit <- emailMessage{msg, req.Email}:
 		return nil
 	case <-ctx.Done():
-		return errors.Errorf("sending message to %q aborted due to canceled context", req.Address)
+		return errors.Errorf("sending message to %q aborted due to canceled context", req.Email)
 	}
 }
 

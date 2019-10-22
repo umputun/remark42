@@ -93,7 +93,7 @@ func TestEmailSendErrors(t *testing.T) {
 
 	e.verifyTmpl, err = template.New("test").Parse("{{.Test}}")
 	assert.NoError(t, err)
-	assert.EqualError(t, e.SendVerification(context.Background(), VerificationRequest{Address: "bad@example.org"}),
+	assert.EqualError(t, e.SendVerification(context.Background(), VerificationRequest{Email: "bad@example.org"}),
 		"error executing template to build verifying message from request: template: test:1:2: executing \"test\" at <.Test>: can't evaluate field Test in type notify.verifyTmplData")
 	e.verifyTmpl, err = template.New("test").Parse(defaultEmailVerificationTemplate)
 	assert.NoError(t, err)
@@ -109,7 +109,7 @@ func TestEmailSendErrors(t *testing.T) {
 	cancel()
 	assert.EqualError(t, e.Send(ctx, request{parent: store.Comment{User: store.User{ID: "test"}}, parentUserEmail: "bad@example.org"}),
 		"sending message to \"bad@example.org\" aborted due to canceled context")
-	assert.EqualError(t, e.SendVerification(ctx, VerificationRequest{Address: "bad@example.org"}),
+	assert.EqualError(t, e.SendVerification(ctx, VerificationRequest{Email: "bad@example.org"}),
 		"sending message to \"bad@example.org\" aborted due to canceled context")
 }
 
@@ -148,7 +148,7 @@ func TestEmailSend(t *testing.T) {
 		}))
 	assert.NoError(t, email.SendVerification(context.Background(), VerificationRequest{
 		locator: store.Locator{SiteID: "s"},
-		Address: "another@example.org",
+		Email:   "another@example.org",
 		User:    "u",
 		Token:   "t",
 	}))
