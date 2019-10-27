@@ -124,7 +124,7 @@ func TestFsStore_WrongFormat(t *testing.T) {
 	defer teardown()
 
 	_, err := svc.Save("file1.png", "user1", strings.NewReader("blah blah bad image"))
-	assert.EqualError(t, err, "file file1.png is not in allowed format")
+	assert.EqualError(t, err, "can't load image file1.png: file format is not allowed")
 }
 
 func TestFsStore_SaveAndCommit(t *testing.T) {

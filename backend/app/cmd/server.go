@@ -482,6 +482,22 @@ func (s *ServerCommand) makeAvatarStore() (avatar.Store, error) {
 
 func (s *ServerCommand) makePicturesStore() (*image.Service, error) {
 	switch s.Image.Type {
+	case "bolt":
+		boltImageStore, err := image.NewBoltStorage(
+			s.Image.Bolt.File,
+			s.Image.MaxSize,
+			s.Image.ResizeHeight,
+			s.Image.ResizeWidth,
+			bolt.Options{},
+		)
+		if err != nil {
+			return nil, err
+		}
+		return &image.Service{
+			Store: boltImageStore,
+			ImageAPI: s.RemarkURL + "/api/v1/picture/",
+			TTL:      5 * s.EditDuration, // add extra time to image TTL for staging
+		}, nil
 	case "fs":
 		if err := makeDirs(s.Image.FS.Path); err != nil {
 			return nil, err
