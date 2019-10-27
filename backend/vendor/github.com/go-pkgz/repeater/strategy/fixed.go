@@ -14,21 +14,22 @@ type FixedDelay struct {
 // Start returns channel, similar to time.Timer
 // then publishing signals to channel ch for retries attempt.
 // can be terminated (canceled) via context.
-func (s *FixedDelay) Start(ctx context.Context) (ch chan struct{}) {
+func (s *FixedDelay) Start(ctx context.Context) <-chan struct{} {
 	if s.Repeats == 0 {
 		s.Repeats = 1
 	}
-	ch = make(chan struct{})
+	ch := make(chan struct{})
 	go func() {
-		defer close(ch)
+		defer func() {
+			close(ch)
+		}()
 		for i := 0; i < s.Repeats; i++ {
 			select {
 			case <-ctx.Done():
 				return
-			default:
-				ch <- struct{}{}
-				sleep(ctx, s.Delay)
+			case ch <- struct{}{}:
 			}
+			sleep(ctx, s.Delay)
 		}
 	}()
 	return ch

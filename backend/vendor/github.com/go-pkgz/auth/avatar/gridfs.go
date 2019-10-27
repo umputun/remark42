@@ -2,122 +2,153 @@ package avatar
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"time"
 
-	"github.com/globalsign/mgo"
-	"github.com/go-pkgz/mongo"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/gridfs"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // NewGridFS makes gridfs (mongo) avatar store
-func NewGridFS(conn *mongo.Connection) *GridFS {
-	return &GridFS{Connection: conn}
+func NewGridFS(client *mongo.Client, dbName, bucketName string, timeout time.Duration) *GridFS {
+	return &GridFS{client: client, db: client.Database(dbName), bucketName: bucketName, timeout: timeout}
 }
 
 // GridFS implements Store for GridFS
 type GridFS struct {
-	Connection *mongo.Connection
+	client     *mongo.Client
+	db         *mongo.Database
+	bucketName string
+	timeout    time.Duration
 }
 
 // Put avatar to gridfs object, try to resize
 func (gf *GridFS) Put(userID string, reader io.Reader) (avatar string, err error) {
 	id := encodeID(userID)
-	err = gf.Connection.WithDB(func(dbase *mgo.Database) error {
-		fh, e := dbase.GridFS("fs").Create(id + imgSfx)
-		if e != nil {
-			return e
-		}
-		defer func() {
-			if err = fh.Close(); err != nil {
-				log.Printf("[WARN] can't close avatar file %v, %s", fh, err)
-			}
-		}()
+	bucket, err := gridfs.NewBucket(gf.db, &options.BucketOptions{Name: &gf.bucketName})
+	if err != nil {
+		return "", err
+	}
 
-		_, e = io.Copy(fh, reader)
-		return e
-	})
+	buf := &bytes.Buffer{}
+	if _, err = io.Copy(buf, reader); err != nil {
+		return "", errors.Wrapf(err, "can't read avatar for %s", userID)
+	}
+
+	avaHash := hash(buf.Bytes(), id)
+	_, err = bucket.UploadFromStream(id+imgSfx, buf, &options.UploadOptions{Metadata: bson.M{"hash": avaHash}})
 	return id + imgSfx, err
 }
 
 // Get avatar reader for avatar id.image
 func (gf *GridFS) Get(avatar string) (reader io.ReadCloser, size int, err error) {
+	bucket, err := gridfs.NewBucket(gf.db, &options.BucketOptions{Name: &gf.bucketName})
+	if err != nil {
+		return nil, 0, err
+	}
 	buf := &bytes.Buffer{}
-	err = gf.Connection.WithDB(func(dbase *mgo.Database) error {
-		fh, e := dbase.GridFS("fs").Open(avatar)
-		if e != nil {
-			return errors.Wrapf(e, "can't load avatar %s", avatar)
-		}
-		if _, e = io.Copy(buf, fh); e != nil {
-			return errors.Wrapf(e, "can't copy avatar %s", avatar)
-		}
-		size = int(fh.Size())
-		return fh.Close()
-	})
-	return ioutil.NopCloser(buf), size, err
+	sz, e := bucket.DownloadToStreamByName(avatar, buf)
+	return ioutil.NopCloser(buf), int(sz), errors.Wrapf(e, "can't read avatar %s", avatar)
 }
 
+//
 // ID returns a fingerprint of the avatar content. Uses MD5 because gridfs provides it directly
 func (gf *GridFS) ID(avatar string) (id string) {
-	err := gf.Connection.WithDB(func(dbase *mgo.Database) error {
-		fh, e := dbase.GridFS("fs").Open(avatar)
-		if e != nil {
-			return errors.Wrapf(e, "can't open avatar %s", avatar)
-		}
-		id = fh.MD5()
-		return errors.Wrapf(fh.Close(), "can't close avatar")
-	})
+
+	finfo := struct {
+		ID       primitive.ObjectID `bson:"_id"`
+		Len      int                `bson:"length"`
+		FileName string             `bson:"filename"`
+		MetaData struct {
+			Hash string `bson:"hash"`
+		} `bson:"metadata"`
+	}{}
+
+	bucket, err := gridfs.NewBucket(gf.db, &options.BucketOptions{Name: &gf.bucketName})
 	if err != nil {
-		log.Printf("[DEBUG] can't get file info '%s', %s", avatar, err)
 		return encodeID(avatar)
 	}
-	return id
+	cursor, err := bucket.Find(bson.M{"filename": avatar})
+	if err != nil {
+		return encodeID(avatar)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), gf.timeout)
+	defer cancel()
+	if found := cursor.Next(ctx); found {
+		if err = cursor.Decode(&finfo); err != nil {
+			return encodeID(avatar)
+		}
+		return finfo.MetaData.Hash
+	}
+	return encodeID(avatar)
 }
 
 // Remove avatar from gridfs
 func (gf *GridFS) Remove(avatar string) error {
-	return gf.Connection.WithDB(func(dbase *mgo.Database) error {
-		fh, e := dbase.GridFS("fs").Open(avatar)
-		if e != nil {
-			return errors.Wrapf(e, "can't get avatar %s", avatar)
+	bucket, err := gridfs.NewBucket(gf.db, &options.BucketOptions{Name: &gf.bucketName})
+	if err != nil {
+		return err
+	}
+	cursor, err := bucket.Find(bson.M{"filename": avatar})
+	if err != nil {
+		return err
+	}
+
+	r := struct {
+		ID primitive.ObjectID `bson:"_id"`
+	}{}
+	ctx, cancel := context.WithTimeout(context.Background(), gf.timeout)
+	defer cancel()
+	if found := cursor.Next(ctx); found {
+		if err := cursor.Decode(&r); err != nil {
+			return err
 		}
-		if e = fh.Close(); e != nil {
-			log.Printf("[WARN] can't close avatar %s, %s", avatar, e)
-		}
-		return dbase.GridFS("fs").Remove(avatar)
-	})
+		return bucket.Delete(r.ID)
+	}
+	return errors.Errorf("avatar %s not found", avatar)
 }
 
 // List all avatars (ids) on gfs
 // note: id includes .image suffix
 func (gf *GridFS) List() (ids []string, err error) {
-
-	type gfsFile struct {
-		UploadDate time.Time `bson:"uploadDate"`
-		Length     int64     `bson:",minsize"`
-		MD5        string
-		Filename   string `bson:",omitempty"`
+	bucket, err := gridfs.NewBucket(gf.db, &options.BucketOptions{Name: &gf.bucketName})
+	if err != nil {
+		return nil, err
 	}
 
-	files := []gfsFile{}
-	err = gf.Connection.WithDB(func(dbase *mgo.Database) error {
-		return dbase.GridFS("fs").Find(nil).All(&files)
-	})
-
-	for _, f := range files {
-		ids = append(ids, f.Filename)
+	gfsFile := struct {
+		Filename string `bson:"filename,omitempty"`
+	}{}
+	cursor, err := bucket.Find(bson.M{})
+	if err != nil {
+		return nil, err
 	}
-	return ids, errors.Wrap(err, "can't list avatars")
+	ctx, cancel := context.WithTimeout(context.Background(), gf.timeout)
+	defer cancel()
+	for cursor.Next(ctx) {
+		if err := cursor.Decode(&gfsFile); err != nil {
+			return nil, err
+		}
+		ids = append(ids, gfsFile.Filename)
+	}
+	return ids, nil
 }
 
 // Close gridfs does nothing but satisfies interface
 func (gf *GridFS) Close() error {
-	return nil
+	ctx, cancel := context.WithTimeout(context.Background(), gf.timeout)
+	defer cancel()
+	return gf.client.Disconnect(ctx)
 }
 
 func (gf *GridFS) String() string {
-	return fmt.Sprintf("mongo (grid fs), conn=%s", gf.Connection)
+	return fmt.Sprintf("mongo (grid fs), db=%s, bucket=%s", gf.db.Name(), gf.bucketName)
 }

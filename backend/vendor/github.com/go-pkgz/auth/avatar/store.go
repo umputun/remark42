@@ -3,7 +3,9 @@ package avatar
 //go:generate sh -c "mockery -inpkg -name Store -print > /tmp/mock.tmp && mv /tmp/mock.tmp store_mock.go"
 
 import (
+	"context"
 	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
 	_ "image/gif"  // initializing packages for supporting GIF
 	_ "image/jpeg" // initializing packages for supporting JPEG.
@@ -17,8 +19,9 @@ import (
 
 	bolt "github.com/coreos/bbolt"
 	"github.com/go-pkgz/auth/token"
-	"github.com/go-pkgz/mongo"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // imgSfx for avatars
@@ -46,15 +49,23 @@ func NewStore(uri string) (Store, error) {
 	case !strings.Contains(uri, "://"):
 		return NewLocalFS(uri), nil
 	case strings.HasPrefix(uri, "mongodb://"):
-		db, coll, u, err := parseExtMongoURI(uri)
+
+		db, bucketName, u, err := parseExtMongoURI(uri)
 		if err != nil {
 			return nil, errors.Wrapf(err, "can't parse mongo store uri %s", uri)
 		}
-		mg, err := mongo.NewServerWithURL(u, time.Second)
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+
+		client, err := mongo.Connect(ctx, options.Client().ApplyURI(u))
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to make mongo server")
+			return nil, errors.Wrap(err, "failed to connect to mongo server")
 		}
-		return NewGridFS(mongo.NewConnection(mg, db, coll)), nil
+		if err = client.Ping(ctx, nil); err != nil {
+			return nil, errors.Wrap(err, "failed to connect to mongo server")
+		}
+		return NewGridFS(client, db, bucketName, time.Second*5), nil
 	case strings.HasPrefix(uri, "bolt://"):
 		return NewBoltDB(strings.TrimPrefix(uri, "bolt://"), bolt.Options{})
 	}
@@ -112,4 +123,13 @@ func parseExtMongoURI(uri string) (db, collection, cleanURI string, err error) {
 	q.Del("ava_coll")
 	u.RawQuery = q.Encode()
 	return db, collection, u.String(), nil
+}
+
+func hash(data []byte, avatarID string) (id string) {
+	h := sha1.New()
+	if _, err := h.Write(data); err != nil {
+		log.Printf("[DEBUG] can't apply sha1 for content of '%s', %s", avatarID, err)
+		return encodeID(avatarID)
+	}
+	return hex.EncodeToString(h.Sum(nil))
 }

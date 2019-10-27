@@ -494,7 +494,7 @@ func (s *ServerCommand) makePicturesStore() (*image.Service, error) {
 			return nil, err
 		}
 		return &image.Service{
-			Store: boltImageStore,
+			Store:    boltImageStore,
 			ImageAPI: s.RemarkURL + "/api/v1/picture/",
 			TTL:      5 * s.EditDuration, // add extra time to image TTL for staging
 		}, nil

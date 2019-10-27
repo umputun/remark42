@@ -1,3 +1,4 @@
+// Package token wraps jwt-go library and provides higher level abstraction to work with JWT.
 package token
 
 import (

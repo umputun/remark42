@@ -9,7 +9,7 @@ import (
 )
 
 // Backoff implements strategy.Interface for exponential-backoff
-// it starts from 100ms and goes in steps with last * math.Pow(factor, attempt)
+// it starts from 100ms (by default, if no Duration set) and goes in steps with last * math.Pow(factor, attempt)
 // optional jitter randomize intervals a little bit.
 type Backoff struct {
 	Duration time.Duration
@@ -23,7 +23,7 @@ type Backoff struct {
 // Start returns channel, similar to time.Timer
 // then publishing signals to channel ch for retries attempt. Closed ch indicates "done" event
 // consumer (repeater) should stop it explicitly after completion
-func (b *Backoff) Start(ctx context.Context) (ch chan struct{}) {
+func (b *Backoff) Start(ctx context.Context) <-chan struct{} {
 
 	b.once.Do(func() {
 		if b.Duration == 0 {
@@ -37,7 +37,7 @@ func (b *Backoff) Start(ctx context.Context) (ch chan struct{}) {
 		}
 	})
 
-	ch = make(chan struct{})
+	ch := make(chan struct{})
 	go func() {
 		defer close(ch)
 		rnd := rand.New(rand.NewSource(int64(time.Now().Nanosecond())))
@@ -45,14 +45,14 @@ func (b *Backoff) Start(ctx context.Context) (ch chan struct{}) {
 			select {
 			case <-ctx.Done():
 				return
-			default:
-				ch <- struct{}{}
-				delay := float64(b.Duration) * math.Pow(b.Factor, float64(i))
-				if b.Jitter {
-					delay = rnd.Float64()*(float64(2*b.Duration)) + (delay - float64(b.Duration))
-				}
-				sleep(ctx, time.Duration(delay))
+			case ch <- struct{}{}:
 			}
+
+			delay := float64(b.Duration) * math.Pow(b.Factor, float64(i))
+			if b.Jitter {
+				delay = rnd.Float64()*(float64(2*b.Duration)) + (delay - float64(b.Duration))
+			}
+			sleep(ctx, time.Duration(delay))
 		}
 	}()
 	return ch
