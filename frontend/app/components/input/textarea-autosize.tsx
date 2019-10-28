@@ -1,5 +1,5 @@
-/** @jsx h */
-import { h, Component, RenderableProps } from 'preact';
+/** @jsx createElement */
+import { createElement, JSX, Component } from 'preact';
 
 type Props = JSX.HTMLAttributes & {
   autofocus: boolean;
@@ -65,7 +65,7 @@ export default class TextareaAutosize extends Component<Props> {
       this.textareaRef.style.height = `${this.textareaRef.scrollHeight}px`;
     }
   }
-  render(props: RenderableProps<Props>) {
+  render(props: Props) {
     return (
       // We set text as a child of textarea and not in value property for a reason.
       // It's a workaround for the bug described here https://github.com/developit/preact/issues/326

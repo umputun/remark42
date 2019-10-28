@@ -1,5 +1,5 @@
-/** @jsx h */
-import { h, Component, RenderableProps } from 'preact';
+/** @jsx createElement */
+import { createElement, Component, createRef } from 'preact';
 import b from 'bem-react-helper';
 
 import { PROVIDER_NAMES, IS_STORAGE_AVAILABLE, IS_THIRD_PARTY } from '@app/common/constants';
@@ -11,11 +11,12 @@ import Dropdown, { DropdownItem } from '@app/components/dropdown';
 import { Button } from '@app/components/button';
 import { UserID } from './__user-id';
 import { AnonymousLoginForm } from './__anonymous-login-form';
-import { EmailLoginForm, EmailLoginFormConnected } from './__email-login-form';
+import { EmailLoginFormConnected } from './__email-login-form';
 import { StoreState } from '@app/store';
 import { ProviderState } from '@app/store/provider/reducers';
 import debounce from '@app/utils/debounce';
 import postMessage from '@app/utils/postMessage';
+import { EmailLoginFormRef } from './__email-login-form/auth-panel__email-login-form';
 
 export interface Props {
   user: User | null;
@@ -44,7 +45,7 @@ interface State {
 }
 
 export class AuthPanel extends Component<Props, State> {
-  emailLoginRef?: EmailLoginForm;
+  emailLoginRef = createRef<EmailLoginFormRef>();
 
   constructor(props: Props) {
     super(props);
@@ -85,7 +86,7 @@ export class AuthPanel extends Component<Props, State> {
   }, 100);
 
   onEmailTitleClick() {
-    this.emailLoginRef && this.emailLoginRef.focus();
+    this.emailLoginRef.current && this.emailLoginRef.current.focus();
   }
 
   onSortChange(e: Event) {
@@ -208,7 +209,7 @@ export class AuthPanel extends Component<Props, State> {
         >
           <DropdownItem>
             <EmailLoginFormConnected
-              ref={ref => (this.emailLoginRef = ref ? ref.getWrappedInstance() : null)}
+              ref={this.emailLoginRef}
               onSignIn={this.onEmailSignIn}
               theme={this.props.theme}
               className="auth-panel__email-login-form"
@@ -305,7 +306,7 @@ export class AuthPanel extends Component<Props, State> {
       <div className="auth-panel__column">
         Disable third-party cookies blocking to sign in or open comments in{' '}
         <a
-          class="auth-panel__pseudo-link"
+          className="auth-panel__pseudo-link"
           href={`${window.location.origin}/web/comments.html${window.location.search}`}
           target="_blank"
         >
@@ -373,7 +374,7 @@ export class AuthPanel extends Component<Props, State> {
     );
   };
 
-  render(props: RenderableProps<Props>, { isBlockedVisible }: State) {
+  render(props: Props, { isBlockedVisible }: State) {
     const {
       user,
       postInfo: { read_only },

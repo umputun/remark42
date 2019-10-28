@@ -1,11 +1,10 @@
 /* eslint-disable no-console */
-/** @jsx h */
+/** @jsx createElement */
 import loadPolyfills from '@app/common/polyfills';
-import '@app/utils/patchPreactContext';
-import { h, render } from 'preact';
+import { createElement, render } from 'preact';
 import 'preact/debug';
 
-import { Provider } from 'preact-redux';
+import { Provider } from 'react-redux';
 import { ConnectedRoot } from '@app/components/root';
 import { UserInfo } from '@app/components/user-info';
 import reduxStore from '@app/store';
@@ -69,7 +68,6 @@ async function init(): Promise<void> {
           </Provider>
         </div>
       </div>,
-      node.parentElement!,
       node
     );
   } else {
@@ -77,7 +75,6 @@ async function init(): Promise<void> {
       <Provider store={reduxStore}>
         <ConnectedRoot />
       </Provider>,
-      node.parentElement!,
       node
     );
   }

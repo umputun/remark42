@@ -1,5 +1,5 @@
-/** @jsx h */
-import { h, Component, RenderableProps } from 'preact';
+/** @jsx createElement */
+import { createElement, JSX, Component, createRef } from 'preact';
 import { exclude } from '@app/utils/exclude';
 
 type Props = {
@@ -14,7 +14,7 @@ interface State {
 
 /** Component which uses plain DOM mutation instead of rerendering react reactive reactivity */
 export default class Countdown extends Component<Props, State> {
-  elemRef?: HTMLSpanElement;
+  elemRef = createRef<HTMLSpanElement>();
   intervalID?: number;
   constructor(props: Props) {
     super(props);
@@ -41,7 +41,7 @@ export default class Countdown extends Component<Props, State> {
   tick() {
     if (this.elemRef) {
       const value = Math.max(0, (this.state.time - new Date().getTime()) / 1000).toFixed(0);
-      this.elemRef!.innerText = value;
+      this.elemRef.current!.innerText = value;
       if (value === '0') {
         this.props.onTimePassed && this.props.onTimePassed();
         window.clearInterval(this.intervalID);
@@ -56,7 +56,7 @@ export default class Countdown extends Component<Props, State> {
       this.tick();
     }, 1000);
   }
-  render(props: RenderableProps<Props>) {
-    return <span {...exclude(props, 'time', 'onTimePassed')} ref={ref => (this.elemRef = ref)} />;
+  render(props: Props) {
+    return <span {...exclude(props, 'time', 'onTimePassed')} ref={this.elemRef} />;
   }
 }

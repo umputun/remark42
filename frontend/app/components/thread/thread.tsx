@@ -1,6 +1,6 @@
-/** @jsx h */
-import { h, RenderableProps } from 'preact';
-import { connect } from 'preact-redux';
+/** @jsx createElement */
+import { createElement, RenderableProps, FunctionComponent } from 'preact';
+import { useStore } from 'react-redux';
 import b from 'bem-react-helper';
 
 import { ConnectedComment as Comment } from '@app/components/comment/connected-comment';
@@ -14,20 +14,22 @@ const mapStateToProps = (state: StoreState, props: { id: CommentInterface['id'] 
   return {
     comment,
     childs: state.childComments[props.id],
-    collapsed: getThreadIsCollapsed(state, comment),
+    collapsed: getThreadIsCollapsed(comment)(state),
     isCommentsDisabled: !!state.info.read_only,
     theme: state.theme,
   };
 };
 
-type Props = {
+interface OwnProps {
   id: CommentInterface['id'];
   childs?: (CommentInterface['id'])[];
   level: number;
   mix?: string;
 
   getPreview(text: string): Promise<string>;
-} & ReturnType<typeof mapStateToProps>;
+}
+
+type Props = OwnProps & ReturnType<typeof mapStateToProps>;
 
 function Thread(props: RenderableProps<Props>) {
   const { collapsed, comment, childs, level, theme } = props;
@@ -67,4 +69,7 @@ function Thread(props: RenderableProps<Props>) {
   );
 }
 
-export const ConnectedThread = connect(mapStateToProps)(Thread);
+export const ConnectedThread: FunctionComponent<OwnProps> = props => {
+  const providedProps = mapStateToProps(useStore().getState(), props);
+  return <Thread {...props} {...providedProps} />;
+};
