@@ -182,8 +182,8 @@ func TestMigrator_ImportWaitExpired(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, http.StatusAccepted, resp.StatusCode)
 
-	client = &http.Client{Timeout: 10 * time.Second}
-	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/wait?site=remark42&timeout=100ms", nil)
+	client = &http.Client{Timeout: 1 * time.Second}
+	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/wait?site=remark42&timeout=500ms", nil)
 	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
 	assert.NoError(t, err)
