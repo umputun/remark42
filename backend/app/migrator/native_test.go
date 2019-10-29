@@ -162,7 +162,7 @@ func TestNative_ImportManyWithError(t *testing.T) {
 
 	buf := &bytes.Buffer{}
 	buf.WriteString(`{"version":1, "users":[], "posts":[]}` + "\n")
-	for i := 0; i < 1200; i++ {
+	for i := 0; i < 100; i++ {
 		buf.WriteString(fmt.Sprintf(goodRec, i))
 	}
 	buf.WriteString("{}\n")
@@ -172,10 +172,10 @@ func TestNative_ImportManyWithError(t *testing.T) {
 	r := Native{DataStore: b}
 	n, err := r.Import(buf, "radio-t")
 	assert.EqualError(t, err, "failed to save 2 comments")
-	assert.Equal(t, 1200, n)
+	assert.Equal(t, 100, n)
 	comments, err := b.Find(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com"}, "time", store.User{})
 	assert.Nil(t, err)
-	assert.Equal(t, 1200, len(comments))
+	assert.Equal(t, 100, len(comments))
 }
 
 // makes new boltdb, put two records
