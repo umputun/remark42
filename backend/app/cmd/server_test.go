@@ -30,7 +30,7 @@ func TestServerApp(t *testing.T) {
 	})
 
 	go func() { _ = app.run(ctx) }()
-	time.Sleep(250 * time.Millisecond) // let server start
+	time.Sleep(500 * time.Millisecond) // let server start
 
 	// send ping
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/ping", port))

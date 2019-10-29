@@ -381,7 +381,7 @@ func TestAdmin_BlockedList(t *testing.T) {
 
 	// block user2
 	req, err = http.NewRequest(http.MethodPut,
-		fmt.Sprintf("%s/api/v1/admin/user/%s?site=remark42&block=%d&ttl=50ms", ts.URL, "user2", 1), nil)
+		fmt.Sprintf("%s/api/v1/admin/user/%s?site=remark42&block=%d&ttl=150ms", ts.URL, "user2", 1), nil)
 	assert.Nil(t, err)
 	res, err = sendReq(t, req, adminUmputunToken)
 	require.NoError(t, err)
@@ -401,7 +401,7 @@ func TestAdmin_BlockedList(t *testing.T) {
 	assert.Equal(t, "user2", users[1].ID)
 	assert.Equal(t, "user2 name", users[1].Name)
 	t.Logf("%+v", users)
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(150 * time.Millisecond)
 
 	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/blocked?site=remark42", nil)
 	require.NoError(t, err)
