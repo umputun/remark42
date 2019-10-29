@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"os"
 	"strings"
 	"testing"
@@ -20,11 +21,9 @@ import (
 	"github.com/umputun/remark/backend/app/store/service"
 )
 
-var testDb = "/tmp/test-remark.db"
-
 func TestNative_Export(t *testing.T) {
-	defer os.Remove(testDb)
-	b := prep(t) // write 2 comments
+	b, teardown := prep(t) // write 2 comments
+	defer teardown()
 	assert.NoError(t, b.SetReadOnly(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, true))
 	assert.NoError(t, b.SetVerified("radio-t", "user1", true))
 	assert.NoError(t, b.SetBlock("radio-t", "user2", true, time.Hour))
@@ -70,13 +69,13 @@ func TestNative_Export(t *testing.T) {
 }
 
 func TestNative_Import(t *testing.T) {
-	defer os.Remove(testDb)
+	b, teardown := prep(t) // write 2 comments
+	defer teardown()
 
 	inp := `{"version":1,"users":[{"id":"user1","blocked":{"status":false,"until":"0001-01-01T00:00:00Z"},"verified":true},{"id":"user2","blocked":{"status":true,"until":"2018-12-23T02:55:22.472041-06:00"},"verified":false}],"posts":[{"url":"https://radio-t.com","read_only":true}]}
 	{"id":"efbc17f177ee1a1c0ee6e1e025749966ec071adc","pid":"","text":"some text, <a href=\"http://radio-t.com\" rel=\"nofollow\">link</a>","user":{"name":"user name","id":"user1","picture":"","ip":"293ec5b0cf154855258824ec7fac5dc63d176915","admin":false},"locator":{"site":"radio-t","url":"https://radio-t.com"},"score":0,"votes":{},"time":"2017-12-20T15:18:22-06:00"}
 	{"id":"f863bd79-fec6-4a75-b308-61fe5dd02aa1","pid":"1234","text":"some text2","user":{"name":"user name","id":"user2","picture":"","ip":"293ec5b0cf154855258824ec7fac5dc63d176915","admin":false},"locator":{"site":"radio-t","url":"https://radio-t.com/2"},"score":0,"votes":{},"time":"2017-12-20T15:18:23-06:00"}`
 
-	b := prep(t) // write some recs
 	b.AdminStore = admin.NewStaticStore("12345", nil, []string{}, "")
 	r := Native{DataStore: b}
 	size, err := r.Import(strings.NewReader(inp), "radio-t")
@@ -102,7 +101,8 @@ func TestNative_Import(t *testing.T) {
 }
 
 func TestNative_ImportWithMapper(t *testing.T) {
-	defer os.Remove(testDb)
+	b, teardown := prep(t) // write 2 comments
+	defer teardown()
 
 	// want to remap comments to https://rdt.c
 	rules := `https://radio-t.com* https://rdt.c*`
@@ -114,7 +114,6 @@ func TestNative_ImportWithMapper(t *testing.T) {
 	{"id":"f863bd79-fec6-4a75-b308-61fe5dd02aa1","pid":"1234","text":"some text2","user":{"name":"user name","id":"user2","picture":"","ip":"293ec5b0cf154855258824ec7fac5dc63d176915","admin":false},"locator":{"site":"radio-t","url":"https://radio-t.com/2"},"score":0,"votes":{},"time":"2017-12-20T15:18:23-06:00"}`
 	mappedReader := WithMapper(strings.NewReader(inp), mapper)
 
-	b := prep(t) // write some recs, they will be deleted
 	b.AdminStore = admin.NewStaticStore("12345", nil, []string{}, "")
 	r := Native{DataStore: b}
 	size, err := r.Import(mappedReader, "radio-t")
@@ -141,11 +140,13 @@ func TestNative_ImportWithMapper(t *testing.T) {
 }
 
 func TestNative_ImportWrongVersion(t *testing.T) {
+	b, teardown := prep(t) // write 2 comments
+	defer teardown()
+
 	inp := `{"version":2,"users":[{"id":"user1","blocked":{"status":false,"until":"0001-01-01T00:00:00Z"},"verified":true},{"id":"user2","blocked":{"status":true,"until":"2018-12-23T02:55:22.472041-06:00"},"verified":false}],"posts":[{"url":"https://radio-t.com","read_only":true}]}
 	{"id":"efbc17f177ee1a1c0ee6e1e025749966ec071adc","pid":"","text":"some text, <a href=\"http://radio-t.com\" rel=\"nofollow\">link</a>","user":{"name":"user name","id":"user1","picture":"","ip":"293ec5b0cf154855258824ec7fac5dc63d176915","admin":false},"locator":{"site":"radio-t","url":"https://radio-t.com"},"score":0,"votes":{},"time":"2017-12-20T15:18:22-06:00"}
 	{"id":"f863bd79-fec6-4a75-b308-61fe5dd02aa1","pid":"1234","text":"some text2","user":{"name":"user name","id":"user2","picture":"","ip":"293ec5b0cf154855258824ec7fac5dc63d176915","admin":false},"locator":{"site":"radio-t","url":"https://radio-t.com/2"},"score":0,"votes":{},"time":"2017-12-20T15:18:23-06:00"}`
 
-	b := prep(t) // write some recs
 	b.AdminStore = admin.NewStaticStore("12345", nil, []string{}, "")
 	r := Native{DataStore: b}
 	size, err := r.Import(strings.NewReader(inp), "radio-t")
@@ -154,7 +155,8 @@ func TestNative_ImportWrongVersion(t *testing.T) {
 
 }
 func TestNative_ImportManyWithError(t *testing.T) {
-	defer os.Remove(testDb)
+	b, teardown := prep(t) // write 2 comments
+	defer teardown()
 
 	goodRec := `{"id":"%d","pid":"","text":"some text, <a href=\"http://radio-t.com\" rel=\"nofollow\">link</a>","user":{"name":"user name","id":"user1","picture":"","profile":"","admin":false},"locator":{"site":"radio-t","url":"https://radio-t.com"},"score":0,"votes":{},"time":"2017-12-20T15:18:22-06:00"}` + "\n"
 
@@ -166,7 +168,6 @@ func TestNative_ImportManyWithError(t *testing.T) {
 	buf.WriteString("{}\n")
 	buf.WriteString("{}\n")
 
-	b := prep(t) // write some recs
 	b.AdminStore = admin.NewStaticStore("12345", nil, []string{}, "")
 	r := Native{DataStore: b}
 	n, err := r.Import(buf, "radio-t")
@@ -178,8 +179,9 @@ func TestNative_ImportManyWithError(t *testing.T) {
 }
 
 // makes new boltdb, put two records
-func prep(t *testing.T) *service.DataStore {
-	os.Remove(testDb)
+func prep(t *testing.T) (*service.DataStore, func()) {
+
+	testDb := fmt.Sprintf("/tmp/migrator-%d.db", rand.Intn(999999999))
 
 	boltStore, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{SiteID: "radio-t", FileName: testDb})
 	assert.Nil(t, err)
@@ -204,5 +206,5 @@ func prep(t *testing.T) *service.DataStore {
 	_, err = b.Create(comment)
 	assert.Nil(t, err)
 
-	return b
+	return b, func() { os.Remove(testDb) }
 }
