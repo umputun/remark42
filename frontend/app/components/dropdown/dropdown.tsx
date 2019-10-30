@@ -159,6 +159,10 @@ export default class Dropdown extends Component<Props, State> {
       });
     }
 
+    if (filteredSelectableItems) {
+      filteredSelectableItems = filteredSelectableItems.slice(0, 5);
+    }
+
     this.setState({
       selectableItems: filteredSelectableItems,
     });

@@ -17,6 +17,7 @@ import { extractErrorMessageFromResponse } from '@app/utils/errorUtils';
 
 import MarkdownToolbar from './markdown-toolbar';
 import TextareaAutosize from './textarea-autosize';
+import CaretDetector from './parts/caret-detector/caret-detector';
 import { sleep } from '@app/utils/sleep';
 import { replaceSelection } from '@app/utils/replaceSelection';
 
@@ -250,6 +251,12 @@ export class Input extends Component<Props, State> {
     if (this.selectSelectableItem(e)) return;
     if (!this.textAreaRef || !this.emojiDropdown) return;
 
+    const [cursorPosition] = this.textAreaRef.getSelection();
+
+    this.setState({
+      cursorPosition,
+    });
+
     const colon = ':';
     const isColon = key === colon;
 
@@ -347,11 +354,17 @@ export class Input extends Component<Props, State> {
       });
       return;
     }
+
+    if (!this.textAreaRef || !this.emojiDropdown) return;
+
+    const [cursorPosition] = this.textAreaRef.getSelection();
+
     this.setState({
       isErrorShown: false,
       errorMessage: null,
       preview: null,
       text: (e.target as HTMLInputElement).value,
+      cursorPosition,
     });
     this.prepareForEmojiAutocomplete(e);
   }
@@ -623,7 +636,7 @@ export class Input extends Component<Props, State> {
             autofocus={!!props.autofocus}
             spellcheck={true}
           />
-
+          <CaretDetector text={this.state.text} caretPosition={this.state.cursorPosition} />
           {charactersLeft < 100 && <span className="input__counter">{charactersLeft}</span>}
         </div>
 
