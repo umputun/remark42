@@ -4,6 +4,12 @@ type: docker
 
 steps:
 
+  - name: build server
+    image: umputun/baseimage:buildgo-latest
+    commands:
+      - cd backend/app
+      - go build -mod=vendor
+
   - name: docker_master
     image: plugins/docker
     repo: umputun/remark42
