@@ -38,7 +38,7 @@ func Test_Main(t *testing.T) {
 	go func() {
 		st := time.Now()
 		main()
-		assert.True(t, time.Since(st).Seconds() >= 5, "should take about 5s")
+		assert.True(t, time.Since(st).Seconds() >= 4, "should take about 5s", time.Since(st))
 		wg.Done()
 	}()
 
