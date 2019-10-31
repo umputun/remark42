@@ -9,8 +9,9 @@ steps:
     commands:
       - cd backend/app
       - go build -mod=vendor
+      - echo "build completed"
 
-  - name: docker_master
+  - name: docker master
     image: plugins/docker
     settings:
       repo: umputun/remark42
@@ -26,10 +27,10 @@ steps:
       tags:
         - ${DRONE_COMMIT_BRANCH/\//-}
     when:
-      branch: [master, release/*]
+      branch: [master]
       event: push
 
-  - name: docker_tag
+  - name: docker tag
     image: plugins/docker
     settings:
       repo: umputun/remark42
@@ -47,19 +48,7 @@ steps:
     when:
       event: tag
 
-  - name: artifacts_tag
-    image: plugins/docker
-    settings:
-      dockerfile: Dockerfile.artifacts
-      build_args:
-        - DRONE=${DRONE}
-        - DRONE_TAG=${DRONE_TAG}
-        - DRONE_COMMIT=${DRONE_COMMIT}
-        - GITHUB_TOKEN=${GITHUB_TOKEN}
-    when:
-      event: tag
-
-  - name: docker_branch
+  - name: docker branch
     image: plugins/docker
     settings:
       repo: umputun/remark42
@@ -78,6 +67,18 @@ steps:
       branch:
         exclude: [master, release/*]
         event: push
+
+  - name: artifacts tag
+    image: plugins/docker
+    settings:
+      dockerfile: Dockerfile.artifacts
+      build_args:
+        - DRONE=${DRONE}
+        - DRONE_TAG=${DRONE_TAG}
+        - DRONE_COMMIT=${DRONE_COMMIT}
+        - GITHUB_TOKEN=${GITHUB_TOKEN}
+    when:
+      event: tag
 
   - name: deploy
     image: docker.umputun.com/system/deploy-ci:master
