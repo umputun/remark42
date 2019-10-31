@@ -1,16 +1,10 @@
-workspace:
-  base: /go
-  path: src/github.com/umputun/remark
+kind: pipeline
+name: default
+type: docker
 
-pipeline:
-  
-  build:
-    image: golang:1.12-alpine
-    commands:
-      - cd backend/app
-      - go build -v ./...
+steps:
 
-  docker_master:
+  - name: docker_master
     image: plugins/docker
     repo: umputun/remark42
     secrets: [ docker_username, docker_password]
@@ -25,7 +19,7 @@ pipeline:
       branch: [master, release/*]
       event: push
 
-  docker_tag:
+  - name: docker_tag
     image: plugins/docker
     repo: umputun/remark42
     secrets: [ docker_username, docker_password ]
@@ -33,13 +27,13 @@ pipeline:
       - DRONE=${DRONE}
       - DRONE_TAG=${DRONE_TAG}
       - DRONE_COMMIT=${DRONE_COMMIT}
-    tags: 
+    tags:
       - ${DRONE_TAG}
       - latest
     when:
       event: tag
 
-  artifacts_tag:
+  - name: artifacts_tag
     image: plugins/docker
     dockerfile: Dockerfile.artifacts
     build_args:
@@ -50,7 +44,7 @@ pipeline:
     when:
       event: tag
 
-  docker_branch:
+  - name: docker_branch
     image: plugins/docker
     repo: umputun/remark42
     secrets: [ docker_username, docker_password ]
@@ -65,21 +59,16 @@ pipeline:
         exclude: [master, release/*]
         event: push
 
-  deploy:
-    image: appleboy/drone-ssh
-    host: remark42.com
-    username: umputun
-    port: 22
-    secrets: [ ssh_key ]
-    script:
-      - cd /srv/remark
-      - docker-compose pull
-      - docker-compose up -d
+  - name: deploy
+    image: docker.umputun.com/system/deploy-ci:master
+    commands:
+      - ssh umputun@master.radio-t.com "cd /srv/remark && git pull"
+      - ssh umputun@master.radio-t.com "cd /srv/remark && docker-compose pull && docker-compose up -d"
     when:
       branch: master
       event: push
 
-  notify:
+  - name: notify
     image: drillster/drone-email
     host: smtp.mailgun.org
     port: 25
@@ -90,3 +79,9 @@ pipeline:
     secrets: [ email_username, email_password ]
     when:
       status: [ changed, failure ]
+
+
+volumes:
+  - name: docker_sock
+    host:
+      path: /var/run/docker.sock
