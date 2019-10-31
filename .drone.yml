@@ -81,7 +81,7 @@ steps:
     username: email_username
     password: email_password
     from: drone@mg.umputun.dev
-    recipients: [ umputun@gmail.com ]
+    recipients: [ sys@umputun.dev ]
     secrets: [ email_username, email_password ]
     when:
       status: [ changed, failure ]
