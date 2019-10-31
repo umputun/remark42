@@ -52,14 +52,15 @@ steps:
 
   - name: docker_branch
     image: plugins/docker
-    repo: umputun/remark42
-    secrets: [ docker_username, docker_password ]
-    build_args:
-      - DRONE=${DRONE}
-      - DRONE_COMMIT=${DRONE_COMMIT}
-      - DRONE_BRANCH=${DRONE_BRANCH}
-    tags:
-      - ${DRONE_COMMIT_BRANCH/\//-}
+    settings:
+      repo: umputun/remark42
+      secrets: [ docker_username, docker_password ]
+      build_args:
+        - DRONE=${DRONE}
+        - DRONE_COMMIT=${DRONE_COMMIT}
+        - DRONE_BRANCH=${DRONE_BRANCH}
+      tags:
+        - ${DRONE_COMMIT_BRANCH/\//-}
     when:
       branch:
         exclude: [master, release/*]
@@ -76,15 +77,16 @@ steps:
 
   - name: notify
     image: drillster/drone-email
-    host: smtp.mailgun.org
-    port: 25
-    username: email_username
-    password: email_password
-    from: drone@mg.umputun.dev
-    recipients: [ sys@umputun.dev ]
-    secrets: [ email_username, email_password ]
     when:
       status: [ changed, failure ]
+    settings:
+      host: smtp.mailgun.org
+      username:
+        from_secret: email_username
+        password:
+          from_secret: email_password
+      from: drone@mg.umputun.dev
+      recipients: [ sys@umputun.dev ]
 
 
 volumes:
