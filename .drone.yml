@@ -12,41 +12,50 @@ steps:
 
   - name: docker_master
     image: plugins/docker
-    repo: umputun/remark42
-    secrets: [ docker_username, docker_password]
-    build_args:
-      - DRONE=${DRONE}
-      - DRONE_TAG=${DRONE_TAG}
-      - DRONE_COMMIT=${DRONE_COMMIT}
-      - DRONE_BRANCH=${DRONE_BRANCH}
-    tags:
-      - ${DRONE_COMMIT_BRANCH/\//-}
+    settings:
+      repo: umputun/remark42
+      username:
+        from_secret: docker_username
+      password:
+        from_secret: docker_password
+      build_args:
+        - DRONE=${DRONE}
+        - DRONE_TAG=${DRONE_TAG}
+        - DRONE_COMMIT=${DRONE_COMMIT}
+        - DRONE_BRANCH=${DRONE_BRANCH}
+      tags:
+        - ${DRONE_COMMIT_BRANCH/\//-}
     when:
       branch: [master, release/*]
       event: push
 
   - name: docker_tag
     image: plugins/docker
-    repo: umputun/remark42
-    secrets: [ docker_username, docker_password ]
-    build_args:
-      - DRONE=${DRONE}
-      - DRONE_TAG=${DRONE_TAG}
-      - DRONE_COMMIT=${DRONE_COMMIT}
-    tags:
-      - ${DRONE_TAG}
-      - latest
+    settings:
+      repo: umputun/remark42
+      username:
+        from_secret: docker_username
+      password:
+        from_secret: docker_password
+      build_args:
+        - DRONE=${DRONE}
+        - DRONE_TAG=${DRONE_TAG}
+        - DRONE_COMMIT=${DRONE_COMMIT}
+      tags:
+        - ${DRONE_TAG}
+        - latest
     when:
       event: tag
 
   - name: artifacts_tag
     image: plugins/docker
-    dockerfile: Dockerfile.artifacts
-    build_args:
-      - DRONE=${DRONE}
-      - DRONE_TAG=${DRONE_TAG}
-      - DRONE_COMMIT=${DRONE_COMMIT}
-      - GITHUB_TOKEN=${GITHUB_TOKEN}
+    settings:
+      dockerfile: Dockerfile.artifacts
+      build_args:
+        - DRONE=${DRONE}
+        - DRONE_TAG=${DRONE_TAG}
+        - DRONE_COMMIT=${DRONE_COMMIT}
+        - GITHUB_TOKEN=${GITHUB_TOKEN}
     when:
       event: tag
 
@@ -81,8 +90,6 @@ steps:
 
   - name: notify
     image: drillster/drone-email
-    when:
-      status: [ changed, failure ]
     settings:
       host: smtp.mailgun.org
       username:
@@ -91,9 +98,5 @@ steps:
         from_secret: email_password
       from: drone@mg.umputun.dev
       recipients: [ sys@umputun.dev ]
-
-
-volumes:
-  - name: docker_sock
-    host:
-      path: /var/run/docker.sock
+    when:
+      status: [ changed, failure ]
