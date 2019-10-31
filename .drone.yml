@@ -54,13 +54,17 @@ steps:
     image: plugins/docker
     settings:
       repo: umputun/remark42
-      secrets: [ docker_username, docker_password ]
+      username:
+        from_secret: docker_username
+      password:
+        from_secret: docker_password
       build_args:
         - DRONE=${DRONE}
         - DRONE_COMMIT=${DRONE_COMMIT}
         - DRONE_BRANCH=${DRONE_BRANCH}
       tags:
         - ${DRONE_COMMIT_BRANCH/\//-}
+      dry_run: true
     when:
       branch:
         exclude: [master, release/*]
@@ -83,8 +87,8 @@ steps:
       host: smtp.mailgun.org
       username:
         from_secret: email_username
-        password:
-          from_secret: email_password
+      password:
+        from_secret: email_password
       from: drone@mg.umputun.dev
       recipients: [ sys@umputun.dev ]
 
