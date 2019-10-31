@@ -683,8 +683,8 @@ func TestAdmin_DeleteMeRequest(t *testing.T) {
 		},
 	}
 
-	require.NoError(t, os.MkdirAll("/tmp/ava-remark42/42", 0700))
-	require.NoError(t, ioutil.WriteFile("/tmp/ava-remark42/42/pic.image", []byte("some image data"), 0600))
+	require.NoError(t, os.MkdirAll(os.TempDir()+"/ava-remark42/42", 0700))
+	require.NoError(t, ioutil.WriteFile(os.TempDir()+"/ava-remark42/42/pic.image", []byte("some image data"), 0600))
 
 	tkn, err := srv.Authenticator.TokenService().Token(claims)
 	assert.Nil(t, err)

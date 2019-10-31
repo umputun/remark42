@@ -43,7 +43,7 @@ func Test_Main(t *testing.T) {
 	}()
 
 	var passed bool
-	err = repeater.NewDefault(10, time.Millisecond*500).Do(context.Background(), func() error {
+	err = repeater.NewDefault(10, time.Millisecond*1000).Do(context.Background(), func() error {
 		resp, e := http.Get("http://localhost:18222/api/v1/ping")
 		if e != nil {
 			t.Logf("%+v", e)

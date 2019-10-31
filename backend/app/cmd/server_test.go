@@ -302,7 +302,7 @@ func TestServerApp_MainSignal(t *testing.T) {
 	require.Nil(t, err)
 	err = s.Execute(args)
 	assert.NoError(t, err, "execute failed")
-	assert.True(t, time.Since(st).Seconds() < 1, "should take about 500msec")
+	assert.True(t, time.Since(st).Seconds() < 1, "should take under sec", time.Since(st).Seconds())
 }
 
 func Test_ACMEEmail(t *testing.T) {

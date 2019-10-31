@@ -311,7 +311,6 @@ func TestRPC_admEnabledHndl(t *testing.T) {
 	assert.Equal(t, false, ok)
 }
 
-
 func TestRPC_admEventHndl(t *testing.T) {
 	_, port, teardown := prepTestStore(t)
 	defer teardown()
