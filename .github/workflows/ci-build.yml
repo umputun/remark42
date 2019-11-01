@@ -35,9 +35,9 @@ jobs:
         --build-arg CI="$GITHUB_WORKFLOW" \
         --build-arg GIT_BRANCH=$GIT_BRANCH \
         --build-arg GITHUB_REF=$GITHUB_REF \
-        --build-arg GITHUB_SHA=GITHUB_SHA \
-        --build-arg GITHUB_EVENT_NAME=GITHUB_EVENT_NAME \
-        --build-arg GITHUB_EVENT_PATH=GITHUB_EVENT_PATH \
+        --build-arg GITHUB_SHA=$GITHUB_SHA \
+        --build-arg GITHUB_EVENT_NAME=$GITHUB_EVENT_NAME \
+        --build-arg GITHUB_EVENT_PATH=$GITHUB_EVENT_PATH \
         --build-arg COVERALLS_TOKEN=$COVERALLS_TOKEN \
         .
       env:
