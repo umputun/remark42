@@ -48,6 +48,9 @@ jobs:
           --enable=megacheck --enable=structcheck --enable=gas --enable=gocyclo --enable=dupl --enable=misspell \
           --enable=unparam --enable=varcheck --enable=deadcode --enable=typecheck \
           --enable=ineffassign --enable=varcheck ./... ;
+
+    - name: submit coverage
+      run: |
         $(go env GOPATH)/bin/goveralls -coverprofile=$GITHUB_WORKSPACE/profile.cov -repotoken $COVERALLS_TOKEN
       env:
         COVERALLS_TOKEN: ${{secrets.COVERALLS_TOKEN}}
