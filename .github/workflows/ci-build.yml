@@ -10,10 +10,11 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
     - uses: actions/checkout@v1
 
-    - name: Debug if needed
+    - name: debug if needed
       run: |
         export DEBUG=${DEBUG:-false}
         if [[ "$DEBUG" == "true" ]]; then
@@ -42,6 +43,7 @@ jobs:
 
     - name: run backend linters
       run: |
+        cd backend/app
         $GITHUB_WORKSPACE/golangci-lint run --out-format=tab --disable-all --tests=false --enable=unconvert \
           --enable=megacheck --enable=structcheck --enable=gas --enable=gocyclo --enable=dupl --enable=misspell \
           --enable=unparam --enable=varcheck --enable=deadcode --enable=typecheck \
@@ -50,5 +52,5 @@ jobs:
       env:
         COVERALLS_TOKEN: ${{secrets.COVERALLS_TOKEN}}
 
-    - name: Build docker image
+    - name: build docker image
       run: docker build --build-arg SKIP_BACKEND_TEST=true --build-arg CI=github .
