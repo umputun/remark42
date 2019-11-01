@@ -1,4 +1,4 @@
-# remark42 [![Build Status](https://github.com/umputun/remark/workflows/build/badge.svg)](https://github.com/umputun/remark/actions) [![Go Report Card](https://goreportcard.com/badge/github.com/umputun/remark)](https://goreportcard.com/report/github.com/umputun/remark)  [![Coverage Status](https://coveralls.io/repos/github/umputun/remark/badge.svg?branch=master)](https://coveralls.io/github/umputun/remark?branch=master)
+# remark42 [![Build Status](https://github.com/umputun/remark/workflows/build/badge.svg)](https://github.com/umputun/remark/actions) [![Go Report Card](https://goreportcard.com/badge/github.com/umputun/remark)](https://goreportcard.com/report/github.com/umputun/remark) [![Coverage Status](https://coveralls.io/repos/github/umputun/remark/badge.svg?branch=master)](https://coveralls.io/github/umputun/remark?branch=master)
 
 
 
