@@ -30,8 +30,8 @@ jobs:
     - name: build and test backend
       run: |
         cd backend/app
-        go test -timeout=60s -covermode=count -coverprofile=/profile.cov_tmp ./...
-        cat /profile.cov_tmp | grep -v "_mock.go" > /profile.cov
+        go test -mod=vendor -timeout=60s -covermode=count -coverprofile=$GITHUB_WORKSPACE/profile.cov_tmp ./...
+        cat $GITHUB_WORKSPACE/profile.cov_tmp | grep -v "_mock.go" > $GITHUB_WORKSPACE/profile.cov
 
     - name: install golangci-lint and goveralls
       run: |
@@ -44,7 +44,7 @@ jobs:
           --enable=megacheck --enable=structcheck --enable=gas --enable=gocyclo --enable=dupl --enable=misspell \
           --enable=unparam --enable=varcheck --enable=deadcode --enable=typecheck \
           --enable=ineffassign --enable=varcheck ./... ;
-        goveralls -coverprofile=/profile.cov -service=github -repotoken $COVERALLS_TOKEN
+        goveralls -coverprofile=$GITHUB_WORKSPACE/profile.cov -service=github -repotoken $COVERALLS_TOKEN
       env:
         COVERALLS_TOKEN: ${{secrets.COVERALLS_TOKEN}}
 
