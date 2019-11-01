@@ -37,12 +37,12 @@ jobs:
         go get github.com/mattn/goveralls
 
     - name: run backend linters
-        run: |
-          /usr/local/bin/golangci-lint run --out-format=tab --disable-all --tests=false --enable=unconvert \
-            --enable=megacheck --enable=structcheck --enable=gas --enable=gocyclo --enable=dupl --enable=misspell \
-            --enable=unparam --enable=varcheck --enable=deadcode --enable=typecheck \
-            --enable=ineffassign --enable=varcheck ./... ;
-          goveralls -coverprofile=/profile.cov -service=github -repotoken $COVERALLS_TOKEN
+      run: |
+        /usr/local/bin/golangci-lint run --out-format=tab --disable-all --tests=false --enable=unconvert \
+          --enable=megacheck --enable=structcheck --enable=gas --enable=gocyclo --enable=dupl --enable=misspell \
+          --enable=unparam --enable=varcheck --enable=deadcode --enable=typecheck \
+          --enable=ineffassign --enable=varcheck ./... ;
+        goveralls -coverprofile=/profile.cov -service=github -repotoken $COVERALLS_TOKEN
       env:
         COVERALLS_TOKEN: ${{secrets.COVERALLS_TOKEN}}
 
