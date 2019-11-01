@@ -13,9 +13,6 @@ jobs:
     steps:
     - uses: actions/checkout@v1
 
-    - name: Docker version
-      run: docker version
-
     - name: Debug if needed
       run: |
         export DEBUG=${DEBUG:-false}
@@ -25,17 +22,27 @@ jobs:
       env:
         DEBUG: ${{secrets.DEBUG}}
 
-    - name: Build backend
-      uses: umputun/baseimage:buildgo-latest
+    - name: install go
+      uses: actions/setup-go@v1
+
+    - name: build and test backend
       run: |
         cd backend/app
         go test -timeout=60s -covermode=count -coverprofile=/profile.cov_tmp ./...
         cat /profile.cov_tmp | grep -v "_mock.go" > /profile.cov
-        golangci-lint run --out-format=tab --disable-all --tests=false --enable=unconvert \
+
+    - name: install golangci-lint and goveralls
+      run: |
+        curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh| sh -s -- -b /usr/local/bin v1.20.0
+        go get github.com/mattn/goveralls
+
+    - name: run backend linters
+        run: |
+          /usr/local/bin/golangci-lint run --out-format=tab --disable-all --tests=false --enable=unconvert \
             --enable=megacheck --enable=structcheck --enable=gas --enable=gocyclo --enable=dupl --enable=misspell \
             --enable=unparam --enable=varcheck --enable=deadcode --enable=typecheck \
             --enable=ineffassign --enable=varcheck ./... ;
-        goveralls -coverprofile=/profile.cov -service=github -repotoken $COVERALLS_TOKEN
+          goveralls -coverprofile=/profile.cov -service=github -repotoken $COVERALLS_TOKEN
       env:
         COVERALLS_TOKEN: ${{secrets.COVERALLS_TOKEN}}
 
