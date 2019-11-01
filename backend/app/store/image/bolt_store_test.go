@@ -75,7 +75,7 @@ func TestBoltStore_Cleanup(t *testing.T) {
 		require.NoError(t, err)
 
 		checkBoltImgData(t, svc.db, imagesStagedBktName, id, func(data []byte) error {
-			assert.NotNil(t, data)
+			require.NotNil(t, data)
 			assert.Equal(t, 1462, len(data))
 			return nil
 		})
@@ -84,13 +84,13 @@ func TestBoltStore_Cleanup(t *testing.T) {
 
 	// save 3 images to staging
 	img1 := save("blah_ff1.png", "user1")
+	img1ts := time.Now()
 	time.Sleep(100 * time.Millisecond)
 	img2 := save("blah_ff2.png", "user1")
 	time.Sleep(100 * time.Millisecond)
 	img3 := save("blah_ff3.png", "user2")
 
-	time.Sleep(100 * time.Millisecond) // make first image expired
-	err := svc.Cleanup(context.Background(), time.Millisecond*300)
+	err := svc.Cleanup(context.Background(), time.Since(img1ts)) // clean first images
 	assert.NoError(t, err)
 
 	assertBoltImgNil(t, svc.db, imagesStagedBktName, img1)
@@ -101,8 +101,7 @@ func TestBoltStore_Cleanup(t *testing.T) {
 	err = svc.Commit(img3)
 	require.NoError(t, err)
 
-	time.Sleep(200 * time.Millisecond) // make all images except commited expired
-	err = svc.Cleanup(context.Background(), time.Millisecond*300)
+	err = svc.Cleanup(context.Background(), time.Millisecond*10)
 	assert.NoError(t, err)
 
 	assertBoltImgNil(t, svc.db, imagesStagedBktName, img2)
@@ -113,14 +112,14 @@ func TestBoltStore_Cleanup(t *testing.T) {
 
 func assertBoltImgNil(t *testing.T, db *bolt.DB, bucket string, id string) {
 	checkBoltImgData(t, db, bucket, id, func(data []byte) error {
-		assert.Nil(t, data)
+		assert.Nil(t, data, id)
 		return nil
 	})
 }
 
 func assertBoltImgNotNil(t *testing.T, db *bolt.DB, bucket string, id string) {
 	checkBoltImgData(t, db, bucket, id, func(data []byte) error {
-		assert.NotNil(t, data)
+		assert.NotNil(t, data, id)
 		return nil
 	})
 }

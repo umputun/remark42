@@ -38,12 +38,12 @@ func Test_Main(t *testing.T) {
 	go func() {
 		st := time.Now()
 		main()
-		assert.True(t, time.Since(st).Seconds() >= 5, "should take about 5s")
+		assert.True(t, time.Since(st).Seconds() >= 4, "should take about 5s", time.Since(st))
 		wg.Done()
 	}()
 
 	var passed bool
-	err = repeater.NewDefault(10, time.Millisecond*500).Do(context.Background(), func() error {
+	err = repeater.NewDefault(10, time.Millisecond*1000).Do(context.Background(), func() error {
 		resp, e := http.Get("http://localhost:18222/api/v1/ping")
 		if e != nil {
 			t.Logf("%+v", e)
