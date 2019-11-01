@@ -50,12 +50,24 @@ jobs:
           --enable=unparam --enable=varcheck --enable=deadcode --enable=typecheck \
           --enable=ineffassign --enable=varcheck ./... ;
 
-    - name: submit coverage
-      run: |
-        cd backend
-        $(go env GOPATH)/bin/goveralls -service="GitHub Action" -coverprofile=$GITHUB_WORKSPACE/profile.cov -repotoken $COVERALLS_TOKEN
-      env:
-        COVERALLS_TOKEN: ${{secrets.COVERALLS_TOKEN}}
+    - name: convert coverage to lcov
+      uses: jandelgado/gcov2lcov-action@v1.0.0
+      with:
+        infile: $GITHUB_WORKSPACE/profile.cov
+        outfile: $GITHUB_WORKSPACE/coverage.lcov
+
+    - name: submit to coveralls
+      uses: coverallsapp/github-action@v1.0.1
+      with:
+        github-token: ${{ secrets.github_token }}
+        path-to-lcov: coverage.lcov
+#
+#    - name: submit coverage
+#      run: |
+#        cd backend
+#        $(go env GOPATH)/bin/goveralls -service="GitHub Action" -coverprofile=$GITHUB_WORKSPACE/profile.cov -repotoken $COVERALLS_TOKEN
+#      env:
+#        COVERALLS_TOKEN: ${{secrets.COVERALLS_TOKEN}}
 
     - name: build docker image
       run: docker build --build-arg SKIP_BACKEND_TEST=true --build-arg CI=github .
