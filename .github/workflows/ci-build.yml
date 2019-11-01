@@ -53,7 +53,7 @@ jobs:
     - name: convert coverage to lcov
       run: |
         cd backend
-        $(go env GOPATH)/bin/gcov2lcov -infile $GITHUB_WORKSPACE/profile.cov -outfile $GITHUB_WORKSPACE/profile.cov
+        $(go env GOPATH)/bin/gcov2lcov -infile $GITHUB_WORKSPACE/profile.cov -outfile $GITHUB_WORKSPACE/coverage.lcov
 
     - name: submit to coveralls
       uses: coverallsapp/github-action@v1.0.1
