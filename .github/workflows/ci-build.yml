@@ -29,6 +29,8 @@ jobs:
 
     - name: build and test backend
       run: |
+        echo "America/Chicago" > /etc/timezone
+        date
         cd backend/app
         go test -mod=vendor -timeout=60s -covermode=count -coverprofile=$GITHUB_WORKSPACE/profile.cov_tmp ./...
         cat $GITHUB_WORKSPACE/profile.cov_tmp | grep -v "_mock.go" > $GITHUB_WORKSPACE/profile.cov
