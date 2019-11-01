@@ -12,35 +12,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v1
+
     - name: Docker version
       run: docker version
+
     - name: Debug if needed
       run: |
         export DEBUG=${DEBUG:-false}
-
         if [[ "$DEBUG" == "true" ]]; then
           env
         fi
       env:
         DEBUG: ${{secrets.DEBUG}}
-    - name: Build image
+
+    - name: Build backend
+      uses: umputun/baseimage:buildgo-latest
       run: |
-        export GIT_BRANCH="${GITHUB_REF/refs\/heads\//}"
-        export GIT_TAG="${GITHUB_REF/refs\/tags\//}"
-
-        if [[ "$GIT_TAG" != "$GITHUB_REF" ]]; then
-          export GIT_BRANCH=$GIT_TAG
-        fi
-
-        docker build \
-        --build-arg CI=github \
-        --build-arg GIT_BRANCH=$GIT_BRANCH \
-        --build-arg GITHUB_REF=$GITHUB_REF \
-        --build-arg GITHUB_SHA=$GITHUB_SHA \
-        --build-arg GITHUB_EVENT_NAME=$GITHUB_EVENT_NAME \
-        --build-arg GITHUB_EVENT_PATH=$GITHUB_EVENT_PATH \
-        --build-arg GITHUB_REPOSITORY=$GITHUB_REPOSITORY \
-        --build-arg COVERALLS_TOKEN=$COVERALLS_TOKEN \
-        .
+        cd backend/app
+        go test -timeout=60s -covermode=count -coverprofile=/profile.cov_tmp ./...
+        cat /profile.cov_tmp | grep -v "_mock.go" > /profile.cov
+        golangci-lint run --out-format=tab --disable-all --tests=false --enable=unconvert \
+            --enable=megacheck --enable=structcheck --enable=gas --enable=gocyclo --enable=dupl --enable=misspell \
+            --enable=unparam --enable=varcheck --enable=deadcode --enable=typecheck \
+            --enable=ineffassign --enable=varcheck ./... ;
+        goveralls -coverprofile=/profile.cov -service=github -repotoken $COVERALLS_TOKEN
       env:
         COVERALLS_TOKEN: ${{secrets.COVERALLS_TOKEN}}
+
+    - name: Build docker image
+      run: docker build --build-arg SKIP_BACKEND_TEST=true --build-arg CI=github .

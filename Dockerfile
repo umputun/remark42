@@ -1,15 +1,6 @@
 FROM umputun/baseimage:buildgo-latest as build-backend
 
-ARG COVERALLS_TOKEN
 ARG CI
-ARG GIT_BRANCH
-
-ARG GITHUB_SHA
-ARG GITHUB_REF
-ARG GITHUB_REPOSITORY
-ARG GITHUB_EVENT_NAME
-ARG GITHUB_EVENT_PATH
-
 ARG DRONE
 ARG DRONE_TAG
 ARG DRONE_COMMIT
@@ -33,20 +24,11 @@ RUN \
     if [ -z "$SKIP_BACKEND_TEST" ] ; then \
         go test -p 1 -timeout="${BACKEND_TEST_TIMEOUT:-30s}" -covermode=count -coverprofile=/profile.cov_tmp ./... && \
         cat /profile.cov_tmp | grep -v "_mock.go" > /profile.cov ; \
-    else echo "skip backend test" ; fi
-
-# linters
-RUN if [ -z "$SKIP_BACKEND_TEST" ] ; then \
         golangci-lint run --out-format=tab --disable-all --tests=false --enable=unconvert \
         --enable=megacheck --enable=structcheck --enable=gas --enable=gocyclo --enable=dupl --enable=misspell \
         --enable=unparam --enable=varcheck --enable=deadcode --enable=typecheck \
         --enable=ineffassign --enable=varcheck ./... ; \
-    else echo "skip backend linters" ; fi
-
-# submit coverage to coverals if COVERALLS_TOKEN in env
-RUN if [ -z "$COVERALLS_TOKEN" ] ; then \
-    echo "coverall not enabled" ; \
-    else goveralls -coverprofile=/profile.cov -repotoken $COVERALLS_TOKEN || echo "coverall failed!"; fi
+    else echo "skip backend tests and linter" ; fi
 
 # if DRONE presented use DRONE_* git env to make version
 RUN \
