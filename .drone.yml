@@ -83,8 +83,8 @@ steps:
   - name: deploy
     image: docker.umputun.com/system/deploy-ci:master
     commands:
-      - ssh umputun@master.radio-t.com "cd /srv/remark && git pull"
-      - ssh umputun@master.radio-t.com "cd /srv/remark && docker-compose pull && docker-compose up -d"
+      - ssh umputun@remark42.com "cd /srv/remark && git pull"
+      - ssh umputun@remark42.com "cd /srv/remark && docker-compose pull && docker-compose up -d"
     when:
       branch: master
       event: push

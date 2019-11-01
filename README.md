@@ -1,4 +1,6 @@
-# remark42 [![Build Status](https://travis-ci.org/umputun/remark.svg?branch=master)](https://travis-ci.org/umputun/remark) [![Go Report Card](https://goreportcard.com/badge/github.com/umputun/remark)](https://goreportcard.com/report/github.com/umputun/remark)  [![Coverage Status](https://coveralls.io/repos/github/umputun/remark/badge.svg?branch=master)](https://coveralls.io/github/umputun/remark?branch=master)
+# remark42 [![Build Status](https://github.com/umputun/remark/workflows/build/badge.svg)](https://github.com/umputun/remark/actions) [![Go Report Card](https://goreportcard.com/badge/github.com/umputun/remark)](https://goreportcard.com/report/github.com/umputun/remark)  [![Coverage Status](https://coveralls.io/repos/github/umputun/remark/badge.svg?branch=master)](https://coveralls.io/github/umputun/remark?branch=master)
+
+
 
 Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engine, which doesn't spy on users. It can be embedded into blogs, articles or any other place where readers add comments.
 
