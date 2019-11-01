@@ -174,32 +174,32 @@ func (m *Migrator) remapCtrl(w http.ResponseWriter, r *http.Request) {
 		defer m.setBusy(siteID, false)
 
 		// do export
-		fh, err := ioutil.TempFile("", "remark42_convert")
-		if err != nil {
-			log.Printf("[WARN] failed to make temp file %+v", err)
+		fh, e := ioutil.TempFile("", "remark42_convert")
+		if e != nil {
+			log.Printf("[WARN] failed to make temp file %+v", e)
 			return
 		}
 		defer func() {
-			if err := os.Remove(fh.Name()); err != nil {
-				log.Printf("[WARN] failed to remove temp file %+v", err)
+			if e := os.Remove(fh.Name()); e != nil {
+				log.Printf("[WARN] failed to remove temp file %+v", e)
 			}
 		}()
 		log.Printf("[DEBUG] start export for site=%s", siteID)
-		if _, err := m.NativeExporter.Export(fh, siteID); err != nil {
-			log.Printf("[WARN] export failed with %+v", err)
+		if _, e := m.NativeExporter.Export(fh, siteID); e != nil {
+			log.Printf("[WARN] export failed with %+v", e)
 			return
 		}
 
-		if _, err = fh.Seek(0, 0); err != nil {
-			log.Printf("[WARN] failed to seek file %+v", err)
+		if _, e = fh.Seek(0, 0); e != nil {
+			log.Printf("[WARN] failed to seek file %+v", e)
 			return
 		}
 
 		log.Printf("[DEBUG] start import for site=%s", siteID)
 		mappedReader := migrator.WithMapper(fh, mapper)
-		size, err := m.NativeImporter.Import(mappedReader, siteID)
-		if err != nil {
-			log.Printf("[WARN] import failed with %+v", err)
+		size, e := m.NativeImporter.Import(mappedReader, siteID)
+		if e != nil {
+			log.Printf("[WARN] import failed with %+v", e)
 			return
 		}
 

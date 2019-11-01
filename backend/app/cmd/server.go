@@ -108,7 +108,7 @@ type AuthGroup struct {
 
 // StoreGroup defines options group for store params
 type StoreGroup struct {
-	Type string `long:"type" env:"TYPE" description:"type of storage" choice:"bolt" choice:"rpc" default:"bolt"`
+	Type string `long:"type" env:"TYPE" description:"type of storage" choice:"bolt" choice:"rpc" default:"bolt"` // nolint
 	Bolt struct {
 		Path    string        `long:"path" env:"PATH" default:"./var" description:"parent dir for bolt files"`
 		Timeout time.Duration `long:"timeout" env:"TIMEOUT" default:"30s" description:"bolt timeout"`
@@ -118,7 +118,7 @@ type StoreGroup struct {
 
 // ImageGroup defines options group for store pictures
 type ImageGroup struct {
-	Type string `long:"type" env:"TYPE" description:"type of storage" choice:"fs" choice:"bolt" default:"fs"`
+	Type string `long:"type" env:"TYPE" description:"type of storage" choice:"fs" choice:"bolt" default:"fs"` // nolint
 	FS   struct {
 		Path       string `long:"path" env:"PATH" default:"./var/pictures" description:"images location"`
 		Staging    string `long:"staging" env:"STAGING" default:"./var/pictures.staging" description:"staging location"`

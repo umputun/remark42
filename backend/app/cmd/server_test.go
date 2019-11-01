@@ -49,6 +49,7 @@ func TestServerApp(t *testing.T) {
 	req.SetBasicAuth("admin", "password")
 	resp, err = client.Do(req)
 	require.Nil(t, err)
+	defer resp.Body.Close()
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 	body, _ = ioutil.ReadAll(resp.Body)
 	t.Log(string(body))

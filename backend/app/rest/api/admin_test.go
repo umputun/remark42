@@ -47,7 +47,8 @@ func TestAdmin_Delete(t *testing.T) {
 
 	// check multi count
 	resp, err := post(t, ts.URL+"/api/v1/counts?site=remark42", `["https://radio-t.com/blah","https://radio-t.com/blah2"]`)
-	assert.Nil(t, err)
+	require.NoError(t, err)
+	defer resp.Body.Close()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	bb, err := ioutil.ReadAll(resp.Body)
 	assert.Nil(t, err)
@@ -60,7 +61,8 @@ func TestAdmin_Delete(t *testing.T) {
 	// delete a comment
 	req, err := http.NewRequest(http.MethodDelete,
 		fmt.Sprintf("%s/api/v1/admin/comment/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1), nil)
-	assert.Nil(t, err)
+	require.NoError(t, err)
+	defer resp.Body.Close()
 	requireAdminOnly(t, req)
 	resp, err = sendReq(t, req, adminUmputunToken)
 	assert.Nil(t, err)
