@@ -36,11 +36,10 @@ jobs:
         go test -mod=vendor -timeout=60s -covermode=count -coverprofile=$GITHUB_WORKSPACE/profile.cov_tmp ./...
         cat $GITHUB_WORKSPACE/profile.cov_tmp | grep -v "_mock.go" > $GITHUB_WORKSPACE/profile.cov
 
-    - name: install golangci-lint and coveralls support
+    - name: install golangci-lint and goveralls
       run: |
         curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh| sh -s -- -b $GITHUB_WORKSPACE v1.20.0
-        go get -u github.com/jandelgado/gcov2lcov
-
+        go get -u github.com/mattn/goveralls
 
     - name: run backend linters
       run: |
@@ -50,23 +49,21 @@ jobs:
           --enable=unparam --enable=varcheck --enable=deadcode --enable=typecheck \
           --enable=ineffassign --enable=varcheck ./... ;
 
-    - name: convert coverage to lcov
+    - name: submit coverage
       run: |
-        cd backend
-        $(go env GOPATH)/bin/gcov2lcov -infile $GITHUB_WORKSPACE/profile.cov -outfile $GITHUB_WORKSPACE/coverage.lcov
+        cat $GITHUB_EVENT_PATH
+        export GIT_BRANCH="${GITHUB_REF/refs\/heads\//}"
+        export GIT_TAG="${GITHUB_REF/refs\/tags\//}"
 
-    - name: submit to coveralls
-      uses: coverallsapp/github-action@v1.0.1
-      with:
-        github-token: ${{ secrets.github_token }}
-        path-to-lcov: coverage.lcov
-#
-#    - name: submit coverage
-#      run: |
-#        cd backend
-#        $(go env GOPATH)/bin/goveralls -service="GitHub Action" -coverprofile=$GITHUB_WORKSPACE/profile.cov -repotoken $COVERALLS_TOKEN
-#      env:
-#        COVERALLS_TOKEN: ${{secrets.COVERALLS_TOKEN}}
+        if [[ "$GIT_TAG" != "$GITHUB_REF" ]]; then
+          export GIT_BRANCH=$GIT_TAG
+        fi
+
+        cd backend
+        $(go env GOPATH)/bin/goveralls -service="GitHub Action" -coverprofile=$GITHUB_WORKSPACE/profile.cov -repotoken $COVERALLS_TOKEN
+      env:
+        COVERALLS_TOKEN: ${{secrets.COVERALLS_TOKEN}}
 
     - name: build docker image
       run: docker build --build-arg SKIP_BACKEND_TEST=true --build-arg CI=github .
+
