@@ -16,8 +16,6 @@ WORKDIR /build/backend
 
 ENV GOFLAGS="-mod=vendor"
 
-RUN env
-
 # run tests
 RUN \
     cd app && \
