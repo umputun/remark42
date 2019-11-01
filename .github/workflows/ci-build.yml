@@ -51,7 +51,6 @@ jobs:
 
     - name: submit coverage
       run: |
-        cat $GITHUB_EVENT_PATH
         export GIT_BRANCH="${GITHUB_REF/refs\/heads\//}"
         export GIT_TAG="${GITHUB_REF/refs\/tags\//}"
 
