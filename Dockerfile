@@ -3,16 +3,13 @@ FROM umputun/baseimage:buildgo-latest as build-backend
 ARG COVERALLS_TOKEN
 ARG CI
 ARG GIT_BRANCH
-ARG TRAVIS
-ARG TRAVIS_BRANCH
-ARG TRAVIS_COMMIT
-ARG TRAVIS_JOB_ID
-ARG TRAVIS_JOB_NUMBER
-ARG TRAVIS_OS_NAME
-ARG TRAVIS_PULL_REQUEST
-ARG TRAVIS_PULL_REQUEST_SHA
-ARG TRAVIS_REPO_SLUG
-ARG TRAVIS_TAG
+
+ARG GITHUB_REF
+ARG GITHUB_SHA
+ARG GITHUB_SHA
+ARG GITHUB_EVENT_NAME
+ARG GITHUB_EVENT_PATH
+
 ARG DRONE
 ARG DRONE_TAG
 ARG DRONE_COMMIT
@@ -47,7 +44,7 @@ RUN if [ -z "$SKIP_BACKEND_TEST" ] ; then \
 # submit coverage to coverals if COVERALLS_TOKEN in env
 RUN if [ -z "$COVERALLS_TOKEN" ] ; then \
     echo "coverall not enabled" ; \
-    else goveralls -coverprofile=/profile.cov -service=travis-ci -repotoken $COVERALLS_TOKEN || echo "coverall failed!"; fi
+    else goveralls -coverprofile=/profile.cov -service=github -repotoken $COVERALLS_TOKEN || echo "coverall failed!"; fi
 
 # if DRONE presented use DRONE_* git env to make version
 RUN \
