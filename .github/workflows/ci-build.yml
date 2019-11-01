@@ -32,7 +32,7 @@ jobs:
         fi
 
         docker build \
-        --build-arg CI="$GITHUB_WORKFLOW" \
+        --build-arg CI=github \
         --build-arg GIT_BRANCH=$GIT_BRANCH \
         --build-arg GITHUB_REF=$GITHUB_REF \
         --build-arg GITHUB_SHA=$GITHUB_SHA \

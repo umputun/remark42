@@ -46,7 +46,7 @@ RUN if [ -z "$SKIP_BACKEND_TEST" ] ; then \
 # submit coverage to coverals if COVERALLS_TOKEN in env
 RUN if [ -z "$COVERALLS_TOKEN" ] ; then \
     echo "coverall not enabled" ; \
-    else goveralls -coverprofile=/profile.cov -service=github -repotoken $COVERALLS_TOKEN || echo "coverall failed!"; fi
+    else goveralls -coverprofile=/profile.cov -repotoken $COVERALLS_TOKEN || echo "coverall failed!"; fi
 
 # if DRONE presented use DRONE_* git env to make version
 RUN \
