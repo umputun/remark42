@@ -5,4 +5,11 @@
   border-style: solid;
   border-width: 6px 12px 12px 12px;
   border-radius: 2px;
+
+  &__emoji-dropdown {
+    position: absolute;
+    padding-top: 12px;
+    left: 0;
+    top: 0;
+  }
 }

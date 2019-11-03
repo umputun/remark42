@@ -79,6 +79,9 @@ export class Input extends Component<Props, State> {
   emojiDropdown?: Dropdown;
   splittedEmoji = getSplittedEmoji();
 
+  caretDetector?: CaretDetector;
+  emojiDropdownContainer?: HTMLDivElement;
+
   constructor(props: Props) {
     super(props);
     textareaId = textareaId + 1;
@@ -115,6 +118,7 @@ export class Input extends Component<Props, State> {
     this.getDraftEmoji = this.getDraftEmoji.bind(this);
     this.prepareForEmojiAutocomplete = this.prepareForEmojiAutocomplete.bind(this);
     this.selectSelectableItem = this.selectSelectableItem.bind(this);
+    this.setEmojiContainerPosition = this.setEmojiContainerPosition.bind(this);
   }
 
   componentWillReceiveProps(nextProps: Props) {
@@ -133,6 +137,15 @@ export class Input extends Component<Props, State> {
       nextProps.errorMessage !== this.props.errorMessage ||
       nextState !== this.state
     );
+  }
+
+  setEmojiContainerPosition() {
+    if (!this.caretDetector || !this.emojiDropdownContainer) return;
+
+    const { top, left } = this.caretDetector.getCaretPosition();
+
+    this.emojiDropdownContainer.style.top = `${top}px`;
+    this.emojiDropdownContainer.style.left = `${left}px`;
   }
 
   freezeInput() {
@@ -264,6 +277,7 @@ export class Input extends Component<Props, State> {
 
     if (isColon) {
       this.emojiDropdown.forceOpen();
+      this.setEmojiContainerPosition();
       this.freezeInput();
     } else if (!isColon && !e.shiftKey) {
       this.emojiDropdown.forceClose();
@@ -338,6 +352,7 @@ export class Input extends Component<Props, State> {
 
     if (this.getDraftEmoji()) {
       this.emojiDropdown.forceOpen();
+      this.setEmojiContainerPosition();
       this.freezeInput();
     }
   }
@@ -636,7 +651,23 @@ export class Input extends Component<Props, State> {
             autofocus={!!props.autofocus}
             spellcheck={true}
           />
-          <CaretDetector text={this.state.text} caretPosition={this.state.cursorPosition} />
+          <div ref={ref => (this.emojiDropdownContainer = ref)} class="input__emoji-dropdown">
+            <Dropdown
+              title="Emoji"
+              titleClass={'emoji-dropdown'}
+              theme={this.props.theme}
+              getSelectableItems={this.getActualEmojiList}
+              ref={ref => (this.emojiDropdown = ref)}
+              onDropdownItemClick={this.onDropdownItemClick}
+              withSelectableItems={true}
+              isEmojiDropdown={true}
+            />
+          </div>
+          <CaretDetector
+            ref={ref => (this.caretDetector = ref)}
+            text={this.state.text}
+            caretPosition={this.state.cursorPosition}
+          />
           {charactersLeft < 100 && <span className="input__counter">{charactersLeft}</span>}
         </div>
 
@@ -660,19 +691,6 @@ export class Input extends Component<Props, State> {
           <button className={b('input__button', {}, { type: 'send' })} type="submit" disabled={isDisabled}>
             {label}
           </button>
-
-          <div class="input__emoji-dropdown">
-            <Dropdown
-              title="Emoji"
-              titleClass={'emoji-dropdown'}
-              theme={this.props.theme}
-              getSelectableItems={this.getActualEmojiList}
-              ref={ref => (this.emojiDropdown = ref)}
-              onDropdownItemClick={this.onDropdownItemClick}
-              withSelectableItems={true}
-              isEmojiDropdown={true}
-            />
-          </div>
 
           {props.mode === 'main' && (
             <div className="input__rss">

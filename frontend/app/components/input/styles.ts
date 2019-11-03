@@ -22,5 +22,7 @@ import './__markdown/input__markdown.scss';
 import './__markdown-link/input__markdown-link.scss';
 import './__markdown-toolbar/input__markdown-toolbar.scss';
 
+import './parts/caret-detector/caret-detector.scss';
+
 import './_theme/_dark/input_theme_dark.scss';
 import './_theme/_light/input_theme_light.scss';
