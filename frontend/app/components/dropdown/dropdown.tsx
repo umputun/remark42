@@ -1,6 +1,7 @@
 /** @jsx h */
 import { Component, h, RenderableProps } from 'preact';
 import b from 'bem-react-helper';
+import nodeEmoji from 'node-emoji';
 
 import { Button } from '@app/components/button';
 import { Theme } from '@app/common/types';
@@ -17,7 +18,6 @@ interface Props {
   theme: Theme;
   onOpen?: (root: HTMLDivElement) => {};
   onClose?: (root: HTMLDivElement) => {};
-  getSelectableItems?: (filter?: string) => string[];
   activeSelectableItemID?: number;
   onDropdownItemClick?: (e: Event) => void;
   withSelectableItems?: boolean;
@@ -43,9 +43,7 @@ export default class Dropdown extends Component<Props, State> {
     super(props);
 
     const { isActive, isEmojiDropdown } = this.props;
-    let selectableItems: string[] = [];
-
-    if (this.props.getSelectableItems) selectableItems = this.props.getSelectableItems();
+    const selectableItems: string[] = [];
 
     let { activeSelectableItemID } = this.props;
     if (activeSelectableItemID === undefined) {
@@ -148,23 +146,17 @@ export default class Dropdown extends Component<Props, State> {
 
   filterSelectableItems(): void {
     const { selectableItemsFilter } = this.state;
-    if (!this.props.getSelectableItems || !selectableItemsFilter) return;
+    if (!selectableItemsFilter) return;
 
-    const selectableItems = this.props.getSelectableItems(selectableItemsFilter);
-    let filteredSelectableItems;
+    let filteredEmoji = nodeEmoji.search(selectableItemsFilter);
+    filteredEmoji = filteredEmoji.slice(0, 5);
 
-    if (selectableItems) {
-      filteredSelectableItems = selectableItems.filter(selectableItem => {
-        return ~selectableItem.indexOf(selectableItemsFilter);
-      });
-    }
-
-    if (filteredSelectableItems) {
-      filteredSelectableItems = filteredSelectableItems.slice(0, 5);
-    }
+    const filteredEmojiStringList = filteredEmoji.map(el => {
+      return `:${el.key}:`;
+    });
 
     this.setState({
-      selectableItems: filteredSelectableItems,
+      selectableItems: filteredEmojiStringList,
     });
   }
 
@@ -187,7 +179,7 @@ export default class Dropdown extends Component<Props, State> {
           onClick={this.props.onDropdownItemClick}
           ref={isActive ? ref => (this.activeSelectableElement = ref) : undefined}
         >
-          {selectableItem}
+          {selectableItem.replace(/:/g, '')} {nodeEmoji.emojify(selectableItem)}
         </DropdownItem>
       );
     });
@@ -266,10 +258,7 @@ export default class Dropdown extends Component<Props, State> {
   }
 
   __onClose() {
-    let selectableItems: string[] = [];
-    if (this.props.getSelectableItems) {
-      selectableItems = this.props.getSelectableItems();
-    }
+    const selectableItems: string[] = [];
 
     window.clearInterval(this.checkInterval);
     if (this.storedDocumentHeightSet) {

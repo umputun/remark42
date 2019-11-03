@@ -21,8 +21,6 @@ import CaretDetector from './parts/caret-detector/caret-detector';
 import { sleep } from '@app/utils/sleep';
 import { replaceSelection } from '@app/utils/replaceSelection';
 
-import { getSplittedEmoji, getFirstNEmojiByLetter } from '@app/components/input/emoji/emoji';
-
 const RSS_THREAD_URL = `${BASE_URL}${API_BASE}/rss/post?site=${siteId}&url=${url}`;
 const RSS_SITE_URL = `${BASE_URL}${API_BASE}/rss/site?site=${siteId}`;
 const RSS_REPLIES_URL = `${BASE_URL}${API_BASE}/rss/reply?site=${siteId}&user=`;
@@ -77,7 +75,6 @@ export class Input extends Component<Props, State> {
   textareaId: string;
 
   emojiDropdown?: Dropdown;
-  splittedEmoji = getSplittedEmoji();
 
   caretDetector?: CaretDetector;
   emojiDropdownContainer?: HTMLDivElement;
@@ -114,7 +111,6 @@ export class Input extends Component<Props, State> {
     this.onDropdownItemClick = this.onDropdownItemClick.bind(this);
     this.freezeInput = this.freezeInput.bind(this);
     this.unfreezeInput = this.unfreezeInput.bind(this);
-    this.getActualEmojiList = this.getActualEmojiList.bind(this);
     this.getDraftEmoji = this.getDraftEmoji.bind(this);
     this.prepareForEmojiAutocomplete = this.prepareForEmojiAutocomplete.bind(this);
     this.selectSelectableItem = this.selectSelectableItem.bind(this);
@@ -393,22 +389,6 @@ export class Input extends Component<Props, State> {
     await this.uploadImages(files);
   }
 
-  getActualEmojiList(draftEmoji?: string) {
-    if (!draftEmoji || draftEmoji.length < 2) {
-      return getFirstNEmojiByLetter(this.splittedEmoji, 's', 30);
-    }
-
-    if (this.splittedEmoji[draftEmoji[1]]) {
-      if (draftEmoji.length === 2) {
-        return getFirstNEmojiByLetter(this.splittedEmoji, draftEmoji[1], 30);
-      } else if (draftEmoji.length > 2) {
-        return this.splittedEmoji[draftEmoji[1]][draftEmoji[2]];
-      }
-    }
-
-    return [];
-  }
-
   send(e: Event) {
     const text = this.state.text;
     const props = this.props;
@@ -656,7 +636,6 @@ export class Input extends Component<Props, State> {
               title="Emoji"
               titleClass={'emoji-dropdown'}
               theme={this.props.theme}
-              getSelectableItems={this.getActualEmojiList}
               ref={ref => (this.emojiDropdown = ref)}
               onDropdownItemClick={this.onDropdownItemClick}
               withSelectableItems={true}
