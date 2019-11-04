@@ -30,6 +30,7 @@ import (
 // Store defines interface for saving and loading pictures.
 // Declares two-stage save with commit
 type Store interface {
+	SaveWithID(id string, r io.Reader) (string, error)
 	Save(fileName string, userID string, r io.Reader) (id string, err error) // get name and reader and returns ID of stored image
 	Commit(id string) error                                                  // move image from staging to permanent
 	Load(id string) (io.ReadCloser, int64, error)                            // load image by ID. Caller has to close the reader.

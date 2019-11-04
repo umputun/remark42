@@ -36,17 +36,14 @@ type FileSystem struct {
 	}
 }
 
-// Save data from reader for given file name to local FS, staging directory. Returns id as user/uuid.ext
-// Files partitioned across multiple subdirectories and the final path includes part, i.e. /location/user1/03/123-4567.png
-func (f *FileSystem) Save(fileName string, userID string, r io.Reader) (id string, err error) {
+// SaveWithID saves data from reader with given id
+func (f *FileSystem) SaveWithID(id string, r io.Reader) (string, error) {
 	data, err := readAndValidateImage(r, f.MaxSize)
 	if err != nil {
-		return "", errors.Wrapf(err, "can't load image %s", fileName)
+		return "", errors.Wrapf(err, "can't load image with ID %s", id)
 	}
 
 	data, resized := resize(data, f.MaxWidth, f.MaxHeight)
-
-	id = path.Join(userID, guid()) + filepath.Ext(fileName) // make id as user/uuid.ext
 	dst := f.location(f.Staging, id)
 	if resized { // resized also converted to png
 		id = strings.TrimSuffix(id, filepath.Ext(id)) + ".png"
@@ -58,11 +55,22 @@ func (f *FileSystem) Save(fileName string, userID string, r io.Reader) (id strin
 	}
 
 	if err = ioutil.WriteFile(dst, data, 0600); err != nil {
-		return "", errors.Wrapf(err, "can't write image file %s", dst)
+		return "", errors.Wrapf(err, "can't write file")
 	}
 
-	log.Printf("[DEBUG] file %s saved for image %s, size=%d", dst, fileName, len(data))
+	log.Printf("[DEBUG] file %s saved for image %s, size=%d", dst, id, len(data))
 	return id, nil
+}
+
+// Save data from reader for given file name to local FS, staging directory. Returns id as user/uuid.ext
+// Files partitioned across multiple subdirectories and the final path includes part, i.e. /location/user1/03/123-4567.png
+func (f *FileSystem) Save(fileName string, userID string, r io.Reader) (id string, err error) {
+	id = path.Join(userID, guid()) + filepath.Ext(fileName) // make id as user/uuid.ext
+	finalID, err := f.SaveWithID(id, r)
+	if err != nil {
+		err = errors.Wrapf(err, "can't save file %s", fileName)
+	}
+	return finalID, err
 }
 
 // Commit file stored in staging location by moving it to permanent location

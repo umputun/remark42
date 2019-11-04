@@ -42,22 +42,23 @@ import (
 
 // ServerCommand with command line flags and env
 type ServerCommand struct {
-	Store  StoreGroup  `group:"store" namespace:"store" env-namespace:"STORE"`
-	Avatar AvatarGroup `group:"avatar" namespace:"avatar" env-namespace:"AVATAR"`
-	Cache  CacheGroup  `group:"cache" namespace:"cache" env-namespace:"CACHE"`
-	Admin  AdminGroup  `group:"admin" namespace:"admin" env-namespace:"ADMIN"`
-	Notify NotifyGroup `group:"notify" namespace:"notify" env-namespace:"NOTIFY"`
-	SMTP   SmtpGroup   `group:"smtp" namespace:"smtp" env-namespace:"SMTP"`
-	Image  ImageGroup  `group:"image" namespace:"image" env-namespace:"IMAGE"`
-	SSL    SSLGroup    `group:"ssl" namespace:"ssl" env-namespace:"SSL"`
-	Stream StreamGroup `group:"stream" namespace:"stream" env-namespace:"STREAM"`
+	Store      StoreGroup      `group:"store" namespace:"store" env-namespace:"STORE"`
+	Avatar     AvatarGroup     `group:"avatar" namespace:"avatar" env-namespace:"AVATAR"`
+	Cache      CacheGroup      `group:"cache" namespace:"cache" env-namespace:"CACHE"`
+	Admin      AdminGroup      `group:"admin" namespace:"admin" env-namespace:"ADMIN"`
+	Notify     NotifyGroup     `group:"notify" namespace:"notify" env-namespace:"NOTIFY"`
+	SMTP       SmtpGroup       `group:"smtp" namespace:"smtp" env-namespace:"SMTP"`
+	Image      ImageGroup      `group:"image" namespace:"image" env-namespace:"IMAGE"`
+	SSL        SSLGroup        `group:"ssl" namespace:"ssl" env-namespace:"SSL"`
+	Stream     StreamGroup     `group:"stream" namespace:"stream" env-namespace:"STREAM"`
+	ImageProxy ImageProxyGroup `group:"image-proxy" namespace:"image-proxy" env-namespace:"IMAGE_PROXY"`
 
-	Sites                  []string      `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
-	AnonymousVote          bool          `long:"anon-vote" env:"ANON_VOTE" description:"enable anonymous votes (works only with VOTES_IP enabled)"`
-	AdminPasswd            string        `long:"admin-passwd" env:"ADMIN_PASSWD" default:"" description:"admin basic auth password"`
-	BackupLocation         string        `long:"backup" env:"BACKUP_PATH" default:"./var/backup" description:"backups location"`
-	MaxBackupFiles         int           `long:"max-back" env:"MAX_BACKUP_FILES" default:"10" description:"max backups to keep"`
-	ImageProxy             bool          `long:"img-proxy" env:"IMG_PROXY" description:"enable image HTTP->HTTPS proxy"`
+	Sites          []string `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
+	AnonymousVote  bool     `long:"anon-vote" env:"ANON_VOTE" description:"enable anonymous votes (works only with VOTES_IP enabled)"`
+	AdminPasswd    string   `long:"admin-passwd" env:"ADMIN_PASSWD" default:"" description:"admin basic auth password"`
+	BackupLocation string   `long:"backup" env:"BACKUP_PATH" default:"./var/backup" description:"backups location"`
+	MaxBackupFiles int      `long:"max-back" env:"MAX_BACKUP_FILES" default:"10" description:"max backups to keep"`
+	// ImageProxy             bool          `long:"img-proxy" env:"IMG_PROXY" description:"enable image HTTP->HTTPS proxy"`
 	PreserveExternalImages bool          `long:"preserve-external-images" env:"PRESERVE_EXTERNAL_IMAGES" description:"enable preserving external images"`
 	MaxCommentSize         int           `long:"max-comment" env:"MAX_COMMENT_SIZE" default:"2048" description:"max comment size"`
 	MaxVotes               int           `long:"max-votes" env:"MAX_VOTES" default:"-1" description:"maximum number of votes per comment"`
@@ -103,6 +104,11 @@ type ServerCommand struct {
 	} `group:"auth" namespace:"auth" env-namespace:"AUTH"`
 
 	CommonOpts
+}
+
+type ImageProxyGroup struct {
+	HTTP2HTTPS    bool `long:"http2https" env:"HTTP2HTTPS" description:"enable HTTP->HTTPS proxy"`
+	CacheExternal bool `long:"cache-external" env:"CACHE_EXTERNAL" description:"enable caching for external images"`
 }
 
 // AuthGroup defines options group for auth params
@@ -380,7 +386,13 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		emailNotifications = false        // email notifications are not available in this case
 	}
 
-	imgProxy := &proxy.Image{Enabled: s.ImageProxy, RoutePath: "/api/v1/img", RemarkURL: s.RemarkURL}
+	imgProxy := &proxy.Image{
+		HTTP2HTTPS:    s.ImageProxy.HTTP2HTTPS,
+		CacheExternal: s.ImageProxy.CacheExternal,
+		RoutePath:     "/api/v1/img",
+		RemarkURL:     s.RemarkURL,
+		ImageService:  imageService,
+	}
 	emojiFmt := store.CommentConverterFunc(func(text string, userID string) string { return text })
 	if s.EnableEmoji {
 		emojiFmt = func(text string, userID string) string { return emoji.Sprint(text) }

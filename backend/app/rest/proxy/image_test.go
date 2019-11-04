@@ -46,11 +46,11 @@ func TestPicture_Extract(t *testing.T) {
 			[]string{},
 		},
 	}
-	img := Image{Enabled: true}
+	img := Image{HTTP2HTTPS: true}
 
 	for i, tt := range tbl {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			res, err := img.extract(tt.inp)
+			res, err := img.extract(tt.inp, func(src string) bool { return strings.HasPrefix(src, "http://") })
 			assert.NoError(t, err)
 			assert.Equal(t, tt.res, res)
 		})
@@ -58,14 +58,14 @@ func TestPicture_Extract(t *testing.T) {
 }
 
 func TestPicture_Replace(t *testing.T) {
-	img := Image{Enabled: true, RoutePath: "/img"}
+	img := Image{HTTP2HTTPS: true, RoutePath: "/img"}
 	r := img.replace(`<img src="http://radio-t.com/img3.png"/> xyz <img src="http://images.pexels.com/67636/img4.jpeg">`,
 		[]string{"http://radio-t.com/img3.png", "http://images.pexels.com/67636/img4.jpeg"})
 	assert.Equal(t, `<img src="/img?src=aHR0cDovL3JhZGlvLXQuY29tL2ltZzMucG5n"/> xyz <img src="/img?src=aHR0cDovL2ltYWdlcy5wZXhlbHMuY29tLzY3NjM2L2ltZzQuanBlZw==">`, r)
 }
 
 func TestImage_Routes(t *testing.T) {
-	img := Image{Enabled: true, RemarkURL: "https://demo.remark42.com", RoutePath: "/api/v1/proxy"}
+	img := Image{HTTP2HTTPS: true, RemarkURL: "https://demo.remark42.com", RoutePath: "/api/v1/proxy"}
 
 	ts := httptest.NewServer(http.HandlerFunc(img.Handler))
 	defer ts.Close()
@@ -79,7 +79,7 @@ func TestImage_Routes(t *testing.T) {
 	assert.Equal(t, 200, resp.StatusCode)
 	t.Logf("%+v", resp.Header)
 	assert.Equal(t, "123", resp.Header["Content-Length"][0])
-	assert.Equal(t, "image/png", resp.Header["Content-Type"][0])
+	assert.Equal(t, "image/*", resp.Header["Content-Type"][0])
 
 	encodedImgURL = base64.URLEncoding.EncodeToString([]byte(httpSrv.URL + "/image/no-such-image.png"))
 	resp, err = http.Get(ts.URL + "/?src=" + encodedImgURL)
@@ -93,7 +93,7 @@ func TestImage_Routes(t *testing.T) {
 }
 
 func TestImage_RoutesTimedOut(t *testing.T) {
-	img := Image{Enabled: true, RemarkURL: "https://demo.remark42.com", RoutePath: "/api/v1/proxy", Timeout: 50 * time.Millisecond}
+	img := Image{HTTP2HTTPS: true, RemarkURL: "https://demo.remark42.com", RoutePath: "/api/v1/proxy", Timeout: 50 * time.Millisecond}
 
 	ts := httptest.NewServer(http.HandlerFunc(img.Handler))
 	defer ts.Close()
@@ -103,7 +103,7 @@ func TestImage_RoutesTimedOut(t *testing.T) {
 	encodedImgURL := base64.URLEncoding.EncodeToString([]byte(httpSrv.URL + "/image/img-slow.png"))
 	resp, err := http.Get(ts.URL + "/?src=" + encodedImgURL)
 	require.NoError(t, err)
-	assert.Equal(t, 400, resp.StatusCode)
+	assert.Equal(t, 404, resp.StatusCode)
 	b, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	t.Log(string(b))
@@ -111,18 +111,18 @@ func TestImage_RoutesTimedOut(t *testing.T) {
 }
 
 func TestPicture_Convert(t *testing.T) {
-	img := Image{Enabled: true, RoutePath: "/img"}
+	img := Image{HTTP2HTTPS: true, RoutePath: "/img"}
 	r := img.Convert(`<img src="http://radio-t.com/img3.png"/> xyz <img src="http://images.pexels.com/67636/img4.jpeg">`, "userID")
 	assert.Equal(t, `<img src="/img?src=aHR0cDovL3JhZGlvLXQuY29tL2ltZzMucG5n"/> xyz <img src="/img?src=aHR0cDovL2ltYWdlcy5wZXhlbHMuY29tLzY3NjM2L2ltZzQuanBlZw==">`, r)
 
 	r = img.Convert(`<img src="https://radio-t.com/img3.png"/> xyz <img src="http://images.pexels.com/67636/img4.jpeg">`, "userID")
 	assert.Equal(t, `<img src="https://radio-t.com/img3.png"/> xyz <img src="/img?src=aHR0cDovL2ltYWdlcy5wZXhlbHMuY29tLzY3NjM2L2ltZzQuanBlZw==">`, r)
 
-	img = Image{Enabled: true, RoutePath: "/img", RemarkURL: "http://example.com"}
+	img = Image{HTTP2HTTPS: true, RoutePath: "/img", RemarkURL: "http://example.com"}
 	r = img.Convert(`<img src="http://radio-t.com/img3.png"/> xyz`, "userID")
 	assert.Equal(t, `<img src="http://radio-t.com/img3.png"/> xyz`, r, "http:// remark url, no proxy")
 
-	img = Image{Enabled: false, RoutePath: "/img"}
+	img = Image{HTTP2HTTPS: false, RoutePath: "/img"}
 	r = img.Convert(`<img src="http://radio-t.com/img3.png"/> xyz`, "userID")
 	assert.Equal(t, `<img src="http://radio-t.com/img3.png"/> xyz`, r, "disabled, no proxy")
 }
