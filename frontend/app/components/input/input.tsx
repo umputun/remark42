@@ -6,6 +6,7 @@ import './styles';
 
 import { h, Component, RenderableProps } from 'preact';
 import b, { Mix } from 'bem-react-helper';
+import { isEmpty } from 'lodash';
 
 import Dropdown from '@app/components/dropdown';
 
@@ -100,7 +101,6 @@ export class Input extends Component<Props, State> {
     this.getPreview = this.getPreview.bind(this);
     this.onBlur = this.onBlur.bind(this);
     this.onInput = this.onInput.bind(this);
-    this.onClick = this.onClick.bind(this);
     this.onKeyDown = this.onKeyDown.bind(this);
     this.onDragOver = this.onDragOver.bind(this);
     this.onDrop = this.onDrop.bind(this);
@@ -135,13 +135,22 @@ export class Input extends Component<Props, State> {
     );
   }
 
+  /** Emoji Dropdown is inside container. When we input
+   * some letters, container must move with caret. */
   setEmojiContainerPosition() {
+    // Go out, if no necessary components
     if (!this.caretDetector || !this.emojiDropdownContainer) return;
 
+    // Get caret position in pixels. Exit if top or left are undefined.
     const { top, left } = this.caretDetector.getCaretPosition();
+    if (top === undefined || left === undefined) return;
 
-    this.emojiDropdownContainer.style.top = `${top}px`;
-    this.emojiDropdownContainer.style.left = `${left}px`;
+    // Preparing styles values
+    const styleTop = `${top}px`;
+    const styleLeft = `${left}px`;
+
+    this.emojiDropdownContainer.style.top = styleTop;
+    this.emojiDropdownContainer.style.left = styleLeft;
   }
 
   freezeInput() {
@@ -157,10 +166,11 @@ export class Input extends Component<Props, State> {
   }
 
   /**
-   * Selects next or previous emoji
+   * Description conditions selecting emoji. Selects next or previous emoji.
    * @param e: KeyboardEvent - need stop default actions
    */
   selectSelectableItem(e: KeyboardEvent): boolean {
+    // Go out, if no necessary components
     if (!this.textAreaRef || !this.emojiDropdown) return false;
 
     const key = e.key;
@@ -198,33 +208,25 @@ export class Input extends Component<Props, State> {
    * Inserts emoji into text by cursor position (selections)
    */
   insertEmoji(): void {
+    // Go out, if no necessary components
     if (!this.textAreaRef || !this.emojiDropdown) return;
 
-    const { emojiDropdown } = this;
-    const emoji = emojiDropdown.getSelectedItem();
+    const emoji = this.emojiDropdown.getSelectedItem();
 
-    if (!emoji) return;
+    if (!emoji) return; // Go out, if no selected emoji
 
     const { text } = this.state;
+
     const [start] = this.textAreaRef.getSelection();
 
-    const startOfText = text.substr(0, start);
-    const endOfText = text.substring(start);
-    let [lastColonOfStartText, lastSpaceOfStartText] = this.getLastColonAndSpacePosition(startOfText);
-    let startTextWithoutLastColon;
-    let textWithEmoji;
+    const textStart = text.substr(0, start);
+    const textEnd = text.substring(start);
 
-    if (lastColonOfStartText > lastSpaceOfStartText) {
-      startTextWithoutLastColon = text.substr(0, lastColonOfStartText);
-      [lastColonOfStartText, lastSpaceOfStartText] = this.getLastColonAndSpacePosition(startTextWithoutLastColon);
+    const [lastColonPosition] = this.getLastColonAndSpacePosition(textStart);
 
-      if (lastColonOfStartText > lastSpaceOfStartText) {
-        startTextWithoutLastColon = startTextWithoutLastColon.substr(0, lastColonOfStartText);
-      }
-      textWithEmoji = `${startTextWithoutLastColon}${emoji}${endOfText}`;
-    } else {
-      textWithEmoji = `${startOfText}${emoji}${endOfText}`;
-    }
+    const startTextWithoutLastColon = text.substr(0, lastColonPosition);
+
+    const textWithEmoji = `${startTextWithoutLastColon}${emoji}${textEnd}`;
 
     this.setState({
       text: textWithEmoji,
@@ -257,7 +259,7 @@ export class Input extends Component<Props, State> {
       return;
     }
 
-    if (this.selectSelectableItem(e)) return;
+    if (this.selectSelectableItem(e) || !StaticStore.config.emoji_enabled) return;
     if (!this.textAreaRef || !this.emojiDropdown) return;
 
     const [cursorPosition] = this.textAreaRef.getSelection();
@@ -281,7 +283,9 @@ export class Input extends Component<Props, State> {
     }
   }
 
+  /** Saving cursor position */
   onBlur() {
+    // Go out, if no necessary components
     if (!this.textAreaRef) return;
 
     const [cursorPosition] = this.textAreaRef.getSelection();
@@ -291,47 +295,57 @@ export class Input extends Component<Props, State> {
     });
   }
 
+  /** Insert emoji when click on dropdown item */
   onDropdownItemClick(e: Event) {
     e.stopPropagation();
     e.preventDefault();
 
+    // Go out, if no necessary components
     if (!this.emojiDropdown) return;
 
+    // Getting selected emoji from emojiDropdown
     const emoji = this.emojiDropdown.getSelectedItem();
 
-    if (emoji) {
-      this.insertEmoji();
-      this.emojiDropdown.forceClose();
-    }
+    if (!emoji) return;
+
+    // Inserting emoji and closing dropdown menu
+    this.insertEmoji();
+    this.emojiDropdown.forceClose();
   }
 
   /**
    * Finds draft emoji and filter elements of emoji dropdown
    */
-  getDraftEmoji(): string | void {
+  getDraftEmoji(): string | undefined {
+    // Go out, if no necessary components
     if (!this.textAreaRef || !this.emojiDropdown) return;
 
-    const colon = ':';
     const space = ' ';
+    const lineFeed = '\n';
 
     const { text } = this.state;
     const [start] = this.textAreaRef.getSelection(); // Start of selection (cursor position)
 
-    const startOfText = text.substr(0, start); // Text before cursor position
+    const textStart = text.substr(0, start); // Text before cursor position
 
     // Find position of last space and colon
-    const lastSpacePosition = startOfText.lastIndexOf(space, startOfText.length);
-    const lastColonPosition = startOfText.lastIndexOf(colon, startOfText.length);
+    const [lastColonPosition, lastSpacePosition] = this.getLastColonAndSpacePosition(textStart);
 
-    let draftEmoji;
+    // Go out, if no colon
+    if (!~lastColonPosition) return;
 
-    // If colon printed after space
-    if (lastColonPosition > lastSpacePosition) {
-      draftEmoji = startOfText.substring(lastColonPosition);
+    // Go out, if space printed after colon
+    if (lastSpacePosition > lastColonPosition) return;
 
-      this.emojiDropdown.setSelectableItemsFilter(draftEmoji);
-      this.emojiDropdown.filterSelectableItems();
-    }
+    // Go out, if letter before colon is not space
+    const letterBeforeLastColon = textStart[lastColonPosition - 1];
+
+    if (lastColonPosition > 0 && letterBeforeLastColon !== space && letterBeforeLastColon !== lineFeed) return;
+
+    const draftEmoji = textStart.substring(lastColonPosition);
+
+    this.emojiDropdown.setSelectableItemsFilter(draftEmoji);
+    this.emojiDropdown.filterSelectableItems();
 
     return draftEmoji;
   }
@@ -341,20 +355,24 @@ export class Input extends Component<Props, State> {
    * @param e: Event - need stop default actions
    */
   prepareForEmojiAutocomplete(e: Event) {
+    // Go out, if no necessary components
     if (!this.emojiDropdown) return;
+    // Go out, if emoji is disabled in remark42 config
+    if (!StaticStore.config.emoji_enabled) return;
 
     e.stopPropagation();
     e.preventDefault();
 
-    if (this.getDraftEmoji()) {
-      this.emojiDropdown.forceOpen();
-      this.setEmojiContainerPosition();
-      this.freezeInput();
-    }
-  }
+    const isDraftEmoji = !isEmpty(this.getDraftEmoji());
 
-  onClick(e: Event) {
-    this.prepareForEmojiAutocomplete(e);
+    if (isDraftEmoji) {
+      this.emojiDropdown.forceOpen();
+      this.freezeInput();
+
+      return;
+    }
+
+    this.emojiDropdown.forceClose();
   }
 
   onInput(e: Event) {
@@ -626,7 +644,6 @@ export class Input extends Component<Props, State> {
             onBlur={this.onBlur}
             onInput={this.onInput}
             onKeyDown={this.onKeyDown}
-            onClick={this.onClick}
             disabled={isDisabled}
             autofocus={!!props.autofocus}
             spellcheck={true}

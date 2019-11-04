@@ -1,11 +1,13 @@
 .caret-detector {
   position: absolute;
-  top: 0;
+  top: -2px;
   left: -9999px;
   width: 100%;
   height: 100%;
   font-size: 16px;
+  line-height: 1.4;
   padding: 12px;
   box-sizing: border-box;
   white-space: pre-wrap;
+  font-family: 'PT Sans', Helvetica, Arial, sans-serif;
 }

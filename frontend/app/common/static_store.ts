@@ -26,6 +26,7 @@ export const StaticStore: StaticStoreType = {
     positive_score: false,
     readonly_age: 0,
     max_image_size: 0,
+    emoji_enabled: false,
   },
   query: querySettings as QuerySettingsType,
 };

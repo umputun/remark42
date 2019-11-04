@@ -110,6 +110,7 @@ export interface Config {
   positive_score: boolean;
   readonly_age: number;
   max_image_size: number;
+  emoji_enabled: boolean;
 }
 
 export interface RemarkConfig {

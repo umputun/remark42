@@ -38,6 +38,7 @@ export default class Dropdown extends Component<Props, State> {
   rootNode?: HTMLDivElement;
   dropdownContent?: HTMLDivElement;
   activeSelectableElement?: Component;
+  dropdownItems?: HTMLDivElement;
 
   constructor(props: Props) {
     super(props);
@@ -155,8 +156,10 @@ export default class Dropdown extends Component<Props, State> {
       return `:${el.key}:`;
     });
 
+    const listLength = filteredEmojiStringList.length;
+
     this.setState({
-      selectableItems: filteredEmojiStringList,
+      selectableItems: listLength ? filteredEmojiStringList : undefined,
     });
   }
 
@@ -179,7 +182,7 @@ export default class Dropdown extends Component<Props, State> {
           onClick={this.props.onDropdownItemClick}
           ref={isActive ? ref => (this.activeSelectableElement = ref) : undefined}
         >
-          {selectableItem.replace(/:/g, '')} {nodeEmoji.emojify(selectableItem)}
+          {nodeEmoji.emojify(selectableItem)} {selectableItem.replace(/:/g, '')}
         </DropdownItem>
       );
     });
@@ -339,6 +342,12 @@ export default class Dropdown extends Component<Props, State> {
     if (this.activeSelectableElement && !this.state.isHover) {
       this.scrollContentTo(this.activeSelectableElement);
     }
+
+    if (!this.dropdownItems) return;
+
+    if (!this.dropdownItems.children.length) {
+      this.forceClose();
+    }
   }
 
   componentDidMount() {
@@ -400,7 +409,9 @@ export default class Dropdown extends Component<Props, State> {
           ref={ref => (this.dropdownContent = ref)}
         >
           {heading && <div className="dropdown__heading">{heading}</div>}
-          <div className="dropdown__items">{children}</div>
+          <div ref={ref => (this.dropdownItems = ref)} className="dropdown__items">
+            {children}
+          </div>
         </div>
       </div>
     );
