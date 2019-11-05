@@ -76,7 +76,11 @@ module.exports = () => ({
   },
   resolve: {
     extensions: ['.tsx', '.ts', '.jsx', '.js'],
-    alias: { '@app': path.resolve(__dirname, 'app') },
+    alias: {
+      '@app': path.resolve(__dirname, 'app'),
+      react: 'preact/compat',
+      'react-dom': 'preact/compat',
+    },
     modules: [path.resolve(__dirname, 'node_modules')],
   },
   module: {

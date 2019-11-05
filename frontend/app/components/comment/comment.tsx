@@ -1,8 +1,8 @@
-/** @jsx h */
+/** @jsx createElement */
 
 import './styles';
 
-import { h, Component, RenderableProps } from 'preact';
+import { createElement, JSX, Component, createRef } from 'preact';
 import b from 'bem-react-helper';
 
 import { getHandleClickProps } from '@app/common/accessibility';
@@ -20,6 +20,7 @@ import { AvatarIcon } from '@app/components/avatar-icon';
 import Countdown from '../countdown';
 import { boundActions } from './connected-comment';
 import { getPreview, uploadImage } from '@app/common/api';
+import postMessage from '@app/utils/postMessage';
 
 export type Props = {
   user: User | null;
@@ -71,7 +72,7 @@ export interface State {
 export class Comment extends Component<Props, State> {
   votingPromise: Promise<unknown>;
   /** comment text node. Used in comment text copying */
-  textNode?: HTMLDivElement;
+  textNode = createRef<HTMLDivElement>();
 
   constructor(props: Props) {
     super(props);
@@ -288,7 +289,10 @@ export class Comment extends Component<Props, State> {
     const parentCommentNode = document.getElementById(`${COMMENT_NODE_CLASSNAME_PREFIX}${pid}`);
 
     if (parentCommentNode) {
-      parentCommentNode.scrollIntoView();
+      const top = parentCommentNode.getBoundingClientRect().top;
+      if (!postMessage({ scrollTo: top })) {
+        parentCommentNode.scrollIntoView();
+      }
     }
   };
 
@@ -301,7 +305,7 @@ export class Comment extends Component<Props, State> {
   copyComment = () => {
     const username = this.props.data.user.name;
     const time = this.props.data.time;
-    const text = this.textNode!.textContent || '';
+    const text = this.textNode.current!.textContent || '';
 
     copy(`<b>${username}</b>&nbsp;${time}<br>${text.replace(/\n+/g, '<br>')}`);
 
@@ -443,7 +447,7 @@ export class Comment extends Component<Props, State> {
     return controls;
   };
 
-  render(props: RenderableProps<Props>, state: State) {
+  render(props: Props, state: State) {
     const isAdmin = this.isAdmin();
     const isGuest = this.isGuest();
     const isCurrentUser = this.isCurrentUser();
@@ -543,7 +547,9 @@ export class Comment extends Component<Props, State> {
     }
 
     if (!props.editMode && this.props.inView === false) {
-      const [width, height] = this.base ? [this.base.scrollWidth, this.base.scrollHeight] : [100, 100];
+      const [width, height] = this.base
+        ? [(this.base as Element).scrollWidth, (this.base as Element).scrollHeight]
+        : [100, 100];
       return (
         <article
           id={props.disabled ? undefined : `${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}
@@ -666,7 +672,7 @@ export class Comment extends Component<Props, State> {
           {(!props.collapsed || props.view === 'pinned') && (
             <div
               className={b('comment__text', { mix: b('raw-content', {}, { theme: props.theme }) })}
-              ref={r => (this.textNode = r)}
+              ref={this.textNode}
               dangerouslySetInnerHTML={{ __html: o.text }}
             />
           )}

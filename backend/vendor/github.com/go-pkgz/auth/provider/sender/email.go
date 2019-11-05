@@ -1,3 +1,4 @@
+// Package sender provides email sender
 package sender
 
 import (

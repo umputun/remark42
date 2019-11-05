@@ -1,6 +1,6 @@
-/** @jsx h */
-import { h, Component, RenderableProps } from 'preact';
-import { connect } from 'preact-redux';
+/** @jsx createElement */
+import { createElement, Component, FunctionComponent } from 'preact';
+import { useSelector } from 'react-redux';
 import b from 'bem-react-helper';
 
 import { User, Sorting, AuthProvider } from '@app/common/types';
@@ -41,6 +41,8 @@ import { Thread } from '@app/components/thread';
 import { uploadImage, getPreview } from '@app/common/api';
 import { isUserAnonymous } from '@app/utils/isUserAnonymous';
 import { bindActions } from '@app/utils/actionBinder';
+import postMessage from '@app/utils/postMessage';
+import { useActions } from '@app/hooks/useAction';
 
 const mapStateToProps = (state: StoreState) => ({
   user: state.user,
@@ -141,7 +143,7 @@ export class Root extends Component<Props, State> {
 
       if (comment) {
         setTimeout(() => {
-          window.parent.postMessage(JSON.stringify({ scrollTo: comment.getBoundingClientRect().top }), '*');
+          postMessage({ scrollTo: comment.getBoundingClientRect().top });
         }, 500);
       }
     }
@@ -200,7 +202,7 @@ export class Root extends Component<Props, State> {
     return isUserAnonymous(this.props.user);
   }
 
-  render(props: RenderableProps<Props>, { isLoaded, isCommentsListLoading, commentsShown }: State) {
+  render(props: Props, { isLoaded, isCommentsListLoading, commentsShown }: State) {
     if (!isLoaded) {
       return (
         <div id={NODE_ID}>
@@ -324,7 +326,8 @@ export class Root extends Component<Props, State> {
 }
 
 /** Root component connected to redux */
-export const ConnectedRoot = connect(
-  mapStateToProps,
-  boundActions
-)(Root);
+export const ConnectedRoot: FunctionComponent = () => {
+  const props = useSelector(mapStateToProps);
+  const actions = useActions(boundActions);
+  return <Root {...props} {...actions} />;
+};

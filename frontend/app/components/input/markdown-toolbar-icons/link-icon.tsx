@@ -1,5 +1,5 @@
-/** @jsx h */
-import { h } from 'preact';
+/** @jsx createElement */
+import { createElement } from 'preact';
 
 export default function LinkIcon() {
   return (

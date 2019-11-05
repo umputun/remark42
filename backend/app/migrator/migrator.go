@@ -24,6 +24,16 @@ type Exporter interface {
 	Export(w io.Writer, siteID string) (int, error)
 }
 
+// Mapper defines interface to convert data in import procedure
+type Mapper interface {
+	URL(url string) string
+}
+
+// MapperMaker defines function that reads rules from reader and
+// returns new Mapper with loaded rules. If rules are not valid
+// it returns error.
+type MapperMaker func(reader io.Reader) (Mapper, error)
+
 // Store defines minimal interface needed to export and import comments
 type Store interface {
 	Create(comment store.Comment) (commentID string, err error)

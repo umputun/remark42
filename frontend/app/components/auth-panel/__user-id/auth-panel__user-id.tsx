@@ -1,20 +1,15 @@
-/** @jsx h */
-import { h } from 'preact';
+/** @jsx createElement */
+import { createElement, JSX, FunctionComponent } from 'preact';
 import b from 'bem-react-helper';
 import { Theme } from '@app/common/types';
-import { exclude } from '@app/utils/exclude';
 
-interface Props {
+type Props = {
   id: string;
   theme: Theme;
-}
+} & JSX.HTMLAttributes;
 
-export const UserID = (props: JSX.HTMLAttributes & Props) => (
-  <div
-    {...exclude(props, 'id', 'theme')}
-    className={b('auth-panel__user-id', {}, { theme: props.theme })}
-    title={props.id}
-  >
-    {props.id}
+export const UserID: FunctionComponent<Props> = ({ id, theme, ...props }) => (
+  <div {...props} className={b('auth-panel__user-id', {}, { theme })} title={id}>
+    {id}
   </div>
 );

@@ -1,20 +1,24 @@
-/** @jsx h */
-import { h, Component, RenderableProps } from 'preact';
+/** @jsx createElement */
+import { createElement, JSX, Component, FunctionComponent } from 'preact';
 import b from 'bem-react-helper';
-import { connect } from 'preact-redux';
+import { useSelector } from 'react-redux';
 
-import { StoreState, StoreDispatch } from '@app/store';
+import { StoreState } from '@app/store';
 import { Comment } from '@app/common/types';
 import { fetchInfo } from '@app/store/user-info/actions';
 import { userInfo } from '@app/common/user-info-settings';
 
 import LastCommentsList from './last-comments-list';
 import { AvatarIcon } from '../avatar-icon';
+import postMessage from '@app/utils/postMessage';
+import { bindActions } from '@app/utils/actionBinder';
+import { useActions } from '@app/hooks/useAction';
 
-interface Props {
+const boundActions = bindActions({ fetchInfo });
+
+type Props = {
   comments: Comment[] | null;
-  fetchInfo: () => Promise<Comment[] | null>;
-}
+} & typeof boundActions;
 
 interface State {
   isLoading: boolean;
@@ -43,9 +47,10 @@ class UserInfo extends Component<Props, State> {
     document.removeEventListener('keydown', UserInfo.onKeyDown);
   }
 
-  render(props: RenderableProps<Props>, state: State): JSX.Element | null {
+  render(): JSX.Element | null {
     const user = userInfo;
-    const { comments = [] } = props;
+    const { comments = [] } = this.props;
+    const { isLoading } = this.state;
 
     // TODO: handle
     if (!user) {
@@ -58,7 +63,7 @@ class UserInfo extends Component<Props, State> {
         <p className="user-info__title">Last comments by {user.name}</p>
         <p className="user-info__id">{user.id}</p>
 
-        {!!comments && <LastCommentsList isLoading={state.isLoading} comments={comments} />}
+        {!!comments && <LastCommentsList isLoading={isLoading} comments={comments} />}
       </div>
     );
   }
@@ -70,23 +75,15 @@ class UserInfo extends Component<Props, State> {
   static onKeyDown(e: KeyboardEvent): void {
     // ESCAPE key pressed
     if (e.keyCode === 27) {
-      const data = JSON.stringify({ isUserInfoShown: false });
-      window.parent.postMessage(data, '*');
+      postMessage({ isUserInfoShown: false });
     }
   }
 }
 
-const mapDispatchToProps = (dispatch: StoreDispatch) => ({
-  fetchInfo: () => dispatch(fetchInfo()),
-});
+const commentsSelector = (state: StoreState) => state.userComments![userInfo.id!];
 
-export const ConnectedUserInfo = connect(
-  (
-    state: StoreState
-  ): {
-    comments: Comment[] | null;
-  } => ({
-    comments: state.userComments![userInfo.id!],
-  }),
-  mapDispatchToProps
-)(UserInfo);
+export const ConnectedUserInfo: FunctionComponent = () => {
+  const comments = useSelector(commentsSelector);
+  const actions = useActions(boundActions);
+  return <UserInfo comments={comments} {...actions} />;
+};

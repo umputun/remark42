@@ -21,6 +21,7 @@ type Opts struct {
 	RestoreCmd cmd.RestoreCommand `command:"restore"`
 	AvatarCmd  cmd.AvatarCommand  `command:"avatar"`
 	CleanupCmd cmd.CleanupCommand `command:"cleanup"`
+	RemapCmd   cmd.RemapCommand   `command:"remap"`
 
 	RemarkURL    string `long:"url" env:"REMARK_URL" required:"true" description:"url to remark"`
 	SharedSecret string `long:"secret" env:"SECRET" required:"true" description:"shared secret key"`

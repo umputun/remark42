@@ -5,6 +5,7 @@ export const mockHeaders = {
   mock: () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (window as any).Headers = class {
+      // eslint-disable-next-line @typescript-eslint/no-empty-function
       append() {}
       has() {
         return false;

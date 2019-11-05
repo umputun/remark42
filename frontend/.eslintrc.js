@@ -22,7 +22,7 @@ module.exports = {
         // disabling because typescipt uses it's own lint (see next rule)
         'no-unused-vars': 0,
         // allow Rust-like var starting with _underscore
-        '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: /^_/ }],
+        '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
         // disabling because it's bad practice to mark accessibility in react classes
         '@typescript-eslint/explicit-member-accessibility': 0,
         // doesn't work in real world
@@ -33,8 +33,10 @@ module.exports = {
         '@typescript-eslint/camelcase': 0,
         // disabling because it's standard behaviour that function is hoisted to top
         '@typescript-eslint/no-use-before-define': 0,
-        // maybe good but I have just tired to type return types everywhere, especially with complex generic return types
-        '@typescript-eslint/explicit-function-return-type': 0,
+        // well
+        '@typescript-eslint/ban-ts-ignore': 0,
+        // better to be explicit here maybe?
+        '@typescript-eslint/no-inferrable-types': 0,
       },
     },
     {
@@ -117,5 +119,6 @@ module.exports = {
     'prefer-arrow-callback': 2,
     'prettier/prettier': 2,
     '@typescript-eslint/no-var-requires': 0,
+    '@typescript-eslint/explicit-function-return-type': 0,
   },
 };

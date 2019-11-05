@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-// type signature is wrong, but there is no way
-// in typescript to augment function return type currently
-export default function debounce<F extends (...args: any[]) => void>(func: F, wait: number): F {
+export default function debounce<T extends any[]>(
+  fn: (...args: T) => unknown,
+  wait: number = 1000
+): (...args: Parameters<typeof fn>) => void {
   let timeout: number | undefined;
-  return function(this: any): void {
-    const laterCall = (): void => func.apply(this, arguments as any);
+  return function(this: any, ...args): void {
+    const laterCall = (): unknown => fn.apply(this, args);
     window.clearTimeout(timeout);
     timeout = window.setTimeout(laterCall, wait);
-  } as any;
+  };
 }

@@ -13,6 +13,7 @@ import (
 	_ "image/jpeg"
 	"image/png"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"strings"
 	"sync"
@@ -193,6 +194,25 @@ func getProportionalSizes(srcW, srcH int, limitW, limitH int) (resW, resH int) {
 func isValidImage(b []byte) bool {
 	ct := http.DetectContentType(b)
 	return ct == "image/gif" || ct == "image/png" || ct == "image/jpeg" || ct == "image/webp"
+}
+
+func readAndValidateImage(r io.Reader, maxSize int) ([]byte, error) {
+	lr := io.LimitReader(r, int64(maxSize)+1)
+	data, err := ioutil.ReadAll(lr)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(data) > maxSize {
+		return nil, errors.Errorf("file is too large (limit=%d)", maxSize)
+	}
+
+	// read header first, needs it to check if data is valid png/gif/jpeg
+	if !isValidImage(data[:512]) {
+		return nil, errors.Errorf("file format is not allowed")
+	}
+
+	return data, nil
 }
 
 // guid makes a globally unique id

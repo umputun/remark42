@@ -55,7 +55,7 @@ func TestErrorDetailsMsgWithUser(t *testing.T) {
 		req = SetUserInfo(req, store.User{Name: "test", ID: "id"})
 		require.Nil(t, err)
 		msg := errDetailsMsg(req, 500, errors.New("error 500"), "error details 123456", 34567)
-		assert.Equal(t, "error details 123456 - error 500 - 500 (34567) - test/id - 127.0.0.1 - https://example." +
+		assert.Equal(t, "error details 123456 - error 500 - 500 (34567) - test/id - 127.0.0.1 - https://example."+
 			"com/test?k1=v1&k2=v2 [caused by app/rest/httperrors_test.go:61 rest.TestErrorDetailsMsgWithUser]", msg)
 	}
 	callerFn()

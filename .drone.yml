@@ -1,92 +1,103 @@
-workspace:
-  base: /go
-  path: src/github.com/umputun/remark
+kind: pipeline
+name: default
+type: docker
 
-pipeline:
-  
-  build:
-    image: golang:1.12-alpine
+steps:
+
+  - name: build server
+    image: umputun/baseimage:buildgo-latest
     commands:
       - cd backend/app
-      - go build -v ./...
+      - go build -mod=vendor
+      - echo "build completed"
 
-  docker_master:
+  - name: docker master
     image: plugins/docker
-    repo: umputun/remark42
-    secrets: [ docker_username, docker_password]
-    build_args:
-      - DRONE=${DRONE}
-      - DRONE_TAG=${DRONE_TAG}
-      - DRONE_COMMIT=${DRONE_COMMIT}
-      - DRONE_BRANCH=${DRONE_BRANCH}
-    tags:
-      - ${DRONE_COMMIT_BRANCH/\//-}
+    settings:
+      repo: umputun/remark42
+      username:
+        from_secret: docker_username
+      password:
+        from_secret: docker_password
+      build_args:
+        - DRONE=${DRONE}
+        - DRONE_TAG=${DRONE_TAG}
+        - DRONE_COMMIT=${DRONE_COMMIT}
+        - DRONE_BRANCH=${DRONE_BRANCH}
+      tags:
+        - ${DRONE_COMMIT_BRANCH/\//-}
     when:
-      branch: [master, release/*]
+      branch: [master]
       event: push
 
-  docker_tag:
+  - name: docker tag
     image: plugins/docker
-    repo: umputun/remark42
-    secrets: [ docker_username, docker_password ]
-    build_args:
-      - DRONE=${DRONE}
-      - DRONE_TAG=${DRONE_TAG}
-      - DRONE_COMMIT=${DRONE_COMMIT}
-    tags: 
-      - ${DRONE_TAG}
-      - latest
+    settings:
+      repo: umputun/remark42
+      username:
+        from_secret: docker_username
+      password:
+        from_secret: docker_password
+      build_args:
+        - DRONE=${DRONE}
+        - DRONE_TAG=${DRONE_TAG}
+        - DRONE_COMMIT=${DRONE_COMMIT}
+      tags:
+        - ${DRONE_TAG}
+        - latest
     when:
       event: tag
 
-  artifacts_tag:
+  - name: docker branch
     image: plugins/docker
-    dockerfile: Dockerfile.artifacts
-    build_args:
-      - DRONE=${DRONE}
-      - DRONE_TAG=${DRONE_TAG}
-      - DRONE_COMMIT=${DRONE_COMMIT}
-      - GITHUB_TOKEN=${GITHUB_TOKEN}
-    when:
-      event: tag
-
-  docker_branch:
-    image: plugins/docker
-    repo: umputun/remark42
-    secrets: [ docker_username, docker_password ]
-    build_args:
-      - DRONE=${DRONE}
-      - DRONE_COMMIT=${DRONE_COMMIT}
-      - DRONE_BRANCH=${DRONE_BRANCH}
-    tags:
-      - ${DRONE_COMMIT_BRANCH/\//-}
+    settings:
+      repo: umputun/remark42
+      username:
+        from_secret: docker_username
+      password:
+        from_secret: docker_password
+      build_args:
+        - DRONE=${DRONE}
+        - DRONE_COMMIT=${DRONE_COMMIT}
+        - DRONE_BRANCH=${DRONE_BRANCH}
+      tags:
+        - ${DRONE_COMMIT_BRANCH/\//-}
+      dry_run: true
     when:
       branch:
         exclude: [master, release/*]
         event: push
 
-  deploy:
-    image: appleboy/drone-ssh
-    host: remark42.com
-    username: umputun
-    port: 22
-    secrets: [ ssh_key ]
-    script:
-      - cd /srv/remark
-      - docker-compose pull
-      - docker-compose up -d
+  - name: artifacts tag
+    image: plugins/docker
+    settings:
+      dockerfile: Dockerfile.artifacts
+      build_args:
+        - DRONE=${DRONE}
+        - DRONE_TAG=${DRONE_TAG}
+        - DRONE_COMMIT=${DRONE_COMMIT}
+        - GITHUB_TOKEN=${GITHUB_TOKEN}
+    when:
+      event: tag
+
+  - name: deploy
+    image: docker.umputun.com/system/deploy-ci:master
+    commands:
+      - ssh umputun@remark42.com "cd /srv/remark && docker-compose pull"
+      - ssh umputun@remark42.com "cd /srv/remark && docker-compose up -d"
     when:
       branch: master
       event: push
 
-  notify:
+  - name: notify
     image: drillster/drone-email
-    host: smtp.mailgun.org
-    port: 25
-    username: email_username
-    password: email_password
-    from: drone@mg.umputun.com
-    recipients: [ umputun@gmail.com ]
-    secrets: [ email_username, email_password ]
+    settings:
+      host: smtp.mailgun.org
+      username:
+        from_secret: email_username
+      password:
+        from_secret: email_password
+      from: drone@mg.umputun.dev
+      recipients: [ sys@umputun.dev ]
     when:
       status: [ changed, failure ]

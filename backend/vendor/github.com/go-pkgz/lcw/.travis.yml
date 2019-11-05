@@ -9,7 +9,7 @@ go_import_path: github.com/go-pkgz/lcw
 
 before_install:
   - export TZ=America/Chicago
-  - curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(go env GOPATH)/bin v1.13.2
+  - curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(go env GOPATH)/bin v1.19.1
   - go get github.com/mattn/goveralls
   - export PATH=$(pwd)/bin:$PATH
 

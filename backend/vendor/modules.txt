@@ -1,8 +1,8 @@
-# cloud.google.com/go v0.44.3
+# cloud.google.com/go v0.47.0
 cloud.google.com/go/compute/metadata
 # github.com/PuerkitoBio/goquery v1.5.0
 github.com/PuerkitoBio/goquery
-# github.com/andybalholm/cascadia v1.0.0
+# github.com/andybalholm/cascadia v1.1.0
 github.com/andybalholm/cascadia
 # github.com/coreos/bbolt v1.3.3
 github.com/coreos/bbolt
@@ -20,12 +20,6 @@ github.com/didip/tollbooth/libstring
 github.com/didip/tollbooth/limiter
 # github.com/didip/tollbooth_chi v0.0.0-20170928041846-6ab5f3083f3d
 github.com/didip/tollbooth_chi
-# github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
-github.com/globalsign/mgo
-github.com/globalsign/mgo/bson
-github.com/globalsign/mgo/internal/json
-github.com/globalsign/mgo/internal/sasl
-github.com/globalsign/mgo/internal/scram
 # github.com/go-chi/chi v4.0.2+incompatible
 github.com/go-chi/chi
 github.com/go-chi/chi/middleware
@@ -33,7 +27,7 @@ github.com/go-chi/chi/middleware
 github.com/go-chi/cors
 # github.com/go-chi/render v1.0.1
 github.com/go-chi/render
-# github.com/go-pkgz/auth v0.8.3
+# github.com/go-pkgz/auth v0.9.0
 github.com/go-pkgz/auth
 github.com/go-pkgz/auth/avatar
 github.com/go-pkgz/auth/logger
@@ -43,13 +37,11 @@ github.com/go-pkgz/auth/provider/sender
 github.com/go-pkgz/auth/token
 # github.com/go-pkgz/jrpc v0.1.0
 github.com/go-pkgz/jrpc
-# github.com/go-pkgz/lcw v0.3.1
+# github.com/go-pkgz/lcw v0.4.0
 github.com/go-pkgz/lcw
 # github.com/go-pkgz/lgr v0.6.3
 github.com/go-pkgz/lgr
-# github.com/go-pkgz/mongo v1.1.2
-github.com/go-pkgz/mongo
-# github.com/go-pkgz/repeater v1.1.2
+# github.com/go-pkgz/repeater v1.1.3
 github.com/go-pkgz/repeater
 github.com/go-pkgz/repeater/strategy
 # github.com/go-pkgz/rest v1.4.1
@@ -58,8 +50,20 @@ github.com/go-pkgz/rest/cache
 github.com/go-pkgz/rest/logger
 # github.com/go-pkgz/syncs v1.1.1
 github.com/go-pkgz/syncs
+# github.com/go-redis/redis/v7 v7.0.0-beta.4
+github.com/go-redis/redis/v7
+github.com/go-redis/redis/v7/internal
+github.com/go-redis/redis/v7/internal/consistenthash
+github.com/go-redis/redis/v7/internal/hashtag
+github.com/go-redis/redis/v7/internal/pool
+github.com/go-redis/redis/v7/internal/proto
+github.com/go-redis/redis/v7/internal/util
+# github.com/go-stack/stack v1.8.0
+github.com/go-stack/stack
 # github.com/golang/protobuf v1.3.2
 github.com/golang/protobuf/proto
+# github.com/golang/snappy v0.0.1
+github.com/golang/snappy
 # github.com/google/uuid v1.1.1
 github.com/google/uuid
 # github.com/gorilla/feeds v1.1.1
@@ -97,13 +101,48 @@ github.com/stretchr/objx
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/mock
 github.com/stretchr/testify/require
-# golang.org/x/crypto v0.0.0-20190820162420-60c769a6c586
+# github.com/xdg/scram v0.0.0-20180814205039-7eeb5667e42c
+github.com/xdg/scram
+# github.com/xdg/stringprep v1.0.0
+github.com/xdg/stringprep
+# go.mongodb.org/mongo-driver v1.1.2
+go.mongodb.org/mongo-driver/bson
+go.mongodb.org/mongo-driver/bson/bsoncodec
+go.mongodb.org/mongo-driver/bson/bsonrw
+go.mongodb.org/mongo-driver/bson/bsontype
+go.mongodb.org/mongo-driver/bson/primitive
+go.mongodb.org/mongo-driver/event
+go.mongodb.org/mongo-driver/internal
+go.mongodb.org/mongo-driver/mongo
+go.mongodb.org/mongo-driver/mongo/gridfs
+go.mongodb.org/mongo-driver/mongo/options
+go.mongodb.org/mongo-driver/mongo/readconcern
+go.mongodb.org/mongo-driver/mongo/readpref
+go.mongodb.org/mongo-driver/mongo/writeconcern
+go.mongodb.org/mongo-driver/tag
+go.mongodb.org/mongo-driver/version
+go.mongodb.org/mongo-driver/x/bsonx
+go.mongodb.org/mongo-driver/x/bsonx/bsoncore
+go.mongodb.org/mongo-driver/x/mongo/driver
+go.mongodb.org/mongo-driver/x/mongo/driver/address
+go.mongodb.org/mongo-driver/x/mongo/driver/auth
+go.mongodb.org/mongo-driver/x/mongo/driver/auth/internal/gssapi
+go.mongodb.org/mongo-driver/x/mongo/driver/connstring
+go.mongodb.org/mongo-driver/x/mongo/driver/description
+go.mongodb.org/mongo-driver/x/mongo/driver/dns
+go.mongodb.org/mongo-driver/x/mongo/driver/operation
+go.mongodb.org/mongo-driver/x/mongo/driver/session
+go.mongodb.org/mongo-driver/x/mongo/driver/topology
+go.mongodb.org/mongo-driver/x/mongo/driver/uuid
+go.mongodb.org/mongo-driver/x/mongo/driver/wiremessage
+# golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550
 golang.org/x/crypto/acme
 golang.org/x/crypto/acme/autocert
-# golang.org/x/image v0.0.0-20190823064033-3a9bac650e44
+golang.org/x/crypto/pbkdf2
+# golang.org/x/image v0.0.0-20191009234506-e7c1f5e7dbb8
 golang.org/x/image/draw
 golang.org/x/image/math/f64
-# golang.org/x/net v0.0.0-20190813141303-74dc4d7220e7
+# golang.org/x/net v0.0.0-20191027093000-83d349e8ac1a
 golang.org/x/net/context
 golang.org/x/net/context/ctxhttp
 golang.org/x/net/html
@@ -118,16 +157,18 @@ golang.org/x/oauth2/internal
 golang.org/x/oauth2/jws
 golang.org/x/oauth2/jwt
 golang.org/x/oauth2/yandex
-# golang.org/x/sys v0.0.0-20190813064441-fde4db37ae7a
+# golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
+golang.org/x/sync/semaphore
+# golang.org/x/sys v0.0.0-20191026070338-33540a1f6037
 golang.org/x/sys/unix
 # golang.org/x/text v0.3.2
 golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
 golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
-# golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
+# golang.org/x/time v0.0.0-20191024005414-555d28b269f0
 golang.org/x/time/rate
-# google.golang.org/appengine v1.6.1
+# google.golang.org/appengine v1.6.5
 google.golang.org/appengine
 google.golang.org/appengine/internal
 google.golang.org/appengine/internal/app_identity
@@ -138,11 +179,11 @@ google.golang.org/appengine/internal/modules
 google.golang.org/appengine/internal/remote_api
 google.golang.org/appengine/internal/urlfetch
 google.golang.org/appengine/urlfetch
-# gopkg.in/oauth2.v3 v3.10.1
+# gopkg.in/oauth2.v3 v3.11.0
 gopkg.in/oauth2.v3
 gopkg.in/oauth2.v3/errors
 gopkg.in/oauth2.v3/server
 # gopkg.in/russross/blackfriday.v2 v2.0.1 => github.com/russross/blackfriday/v2 v2.0.1
 gopkg.in/russross/blackfriday.v2
-# gopkg.in/yaml.v2 v2.2.2
+# gopkg.in/yaml.v2 v2.2.4
 gopkg.in/yaml.v2

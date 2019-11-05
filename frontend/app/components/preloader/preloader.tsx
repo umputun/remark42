@@ -1,5 +1,5 @@
-/** @jsx h */
-import { h } from 'preact';
+/** @jsx createElement */
+import { createElement, JSX } from 'preact';
 import b, { Mix } from 'bem-react-helper';
 
 type Props = JSX.HTMLAttributes & {

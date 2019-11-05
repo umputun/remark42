@@ -1,5 +1,5 @@
-/** @jsx h */
-import { h } from 'preact';
+/** @jsx createElement */
+import { createElement, JSX } from 'preact';
 import b from 'bem-react-helper';
 import { Theme } from '@app/common/types';
 

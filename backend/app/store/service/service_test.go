@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -851,8 +852,10 @@ func TestService_UserReplies(t *testing.T) {
 	_, err = b.Create(c4)
 	require.NoError(t, err)
 
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
+	st := time.Now()
 	_, err = b.Create(c5)
+	t.Logf("time to create a record %v", time.Since(st))
 	require.NoError(t, err)
 
 	cc, u, err := b.UserReplies("radio-t", "u1", 10, time.Hour)
@@ -860,7 +863,8 @@ func TestService_UserReplies(t *testing.T) {
 	assert.Equal(t, 3, len(cc), "3 replies to u1")
 	assert.Equal(t, "developer one u1", u)
 
-	cc, u, err = b.UserReplies("radio-t", "u1", 10, time.Millisecond*50)
+	t.Logf("elpased %v", time.Since(st))
+	cc, u, err = b.UserReplies("radio-t", "u1", 10, time.Millisecond*100)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(cc), "1 reply to u1 in last 90ms")
 	assert.Equal(t, "developer one u1", u)
@@ -1060,6 +1064,31 @@ func TestService_Count(t *testing.T) {
 	assert.Equal(t, 0, c)
 }
 
+func TestService_UserComments(t *testing.T) {
+	defer teardown(t)
+
+	// two comments for https://radio-t.com, no reply
+	b := DataStore{Engine: prepStoreEngine(t), EditDuration: 100 * time.Millisecond,
+		AdminStore: admin.NewStaticStore("secret 123", nil, []string{"user2"}, "user@email.com")}
+
+	// add one more for user2
+	comment := store.Comment{
+		ID:        "id-3",
+		Timestamp: time.Date(2018, 12, 20, 15, 18, 22, 0, time.Local),
+		Text:      `some text, <a href="http://radio-t.com">link</a>`,
+		Locator:   store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"},
+		User:      store.User{ID: "user2", Name: "user name"},
+	}
+	_, err := b.Create(comment)
+	assert.NoError(t, err)
+
+	cc, err := b.User("radio-t", "user1", 0, 0, store.User{})
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(cc), "two recs for user1")
+	assert.Equal(t, "id-2", cc[0].ID, "reverse sort")
+	assert.Equal(t, "id-1", cc[1].ID, "reverse sort")
+}
+
 func TestService_UserCount(t *testing.T) {
 	defer teardown(t)
 	// two comments for https://radio-t.com, no reply
@@ -1173,11 +1202,32 @@ func TestService_alterComment(t *testing.T) {
 		Deleted: false}, r, "blocked")
 }
 
+func Benchmark_ServiceCreate(b *testing.B) {
+	dbFile := fmt.Sprintf("%s/test-remark42-%d.db", os.TempDir(), rand.Intn(9999999999))
+	defer os.Remove(dbFile)
+
+	boltStore, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: dbFile, SiteID: "radio-t"})
+	svc := DataStore{Engine: boltStore, EditDuration: 50 * time.Millisecond, AdminStore: admin.NewStaticKeyStore("secret 123")}
+	require.NoError(b, err)
+
+	for i := 0; i < b.N; i++ {
+		comment := store.Comment{
+			ID:        "id-" + strconv.Itoa(i),
+			Text:      `some text, <a href="http://radio-t.com">link</a>`,
+			Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
+			Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+			User:      store.User{ID: "user1", Name: "user name"},
+		}
+		_, err = svc.Create(comment)
+		require.NoError(b, err)
+	}
+}
+
 // makes new boltdb, put two records
 func prepStoreEngine(t *testing.T) engine.Interface {
 	_ = os.Remove(testDb)
-
-	boltStore, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/test-remark.db", SiteID: "radio-t"})
+	st := time.Now()
+	boltStore, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDb, SiteID: "radio-t"})
 	assert.NoError(t, err)
 	b := boltStore
 
@@ -1200,7 +1250,7 @@ func prepStoreEngine(t *testing.T) engine.Interface {
 	}
 	_, err = b.Create(comment)
 	assert.NoError(t, err)
-
+	t.Logf("prepared store engine in %v", time.Since(st))
 	return b
 }
 

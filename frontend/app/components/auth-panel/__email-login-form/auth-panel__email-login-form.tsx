@@ -1,10 +1,11 @@
-/** @jsx h */
-import { h, Component, RenderableProps } from 'preact';
+/** @jsx createElement */
+import { createElement, Component, createRef } from 'preact';
+import { forwardRef } from 'preact/compat';
 import b from 'bem-react-helper';
+import { useSelector } from 'react-redux';
 import { Theme, User } from '@app/common/types';
 import { sendEmailVerificationRequest } from '@app/common/api';
 import { extractErrorMessageFromResponse } from '@app/utils/errorUtils';
-import { connect } from 'preact-redux';
 import { getHandleClickProps } from '@app/common/accessibility';
 import { sleep } from '@app/utils/sleep';
 import TextareaAutosize from '@app/components/input/textarea-autosize';
@@ -13,12 +14,14 @@ const mapStateToProps = () => ({
   sendEmailVerification: sendEmailVerificationRequest,
 });
 
-export type Props = {
+interface OwnProps {
   onSignIn(token: string): Promise<User | null>;
   onSuccess?(user: User): Promise<void>;
   theme: Theme;
   className?: string;
-} & ReturnType<typeof mapStateToProps>;
+}
+
+export type Props = OwnProps & ReturnType<typeof mapStateToProps>;
 
 export interface State {
   usernameValue: string;
@@ -33,8 +36,8 @@ export class EmailLoginForm extends Component<Props, State> {
   static usernameRegex = /^[a-zA-Z][\w ]+$/;
   static emailRegex = /[^@]+@[^.]+\..+/;
 
-  inputRef?: HTMLInputElement;
-  tokenRef?: TextareaAutosize;
+  inputRef = createRef<HTMLInputElement>();
+  tokenRef = createRef<TextareaAutosize>();
 
   constructor(props: Props) {
     super(props);
@@ -59,11 +62,11 @@ export class EmailLoginForm extends Component<Props, State> {
 
   async focus() {
     await sleep(100);
-    if (this.inputRef) {
-      this.inputRef.focus();
+    if (this.inputRef.current) {
+      this.inputRef.current.focus();
       return;
     }
-    this.tokenRef && this.tokenRef.textareaRef && this.tokenRef.textareaRef.select();
+    this.tokenRef.current && this.tokenRef.current.textareaRef && this.tokenRef.current.textareaRef.select();
   }
 
   async onVerificationSubmit(e: Event) {
@@ -73,7 +76,7 @@ export class EmailLoginForm extends Component<Props, State> {
       await this.props.sendEmailVerification(this.state.usernameValue, this.state.addressValue);
       this.setState({ verificationSent: true });
       setTimeout(() => {
-        this.tokenRef && this.tokenRef.focus();
+        this.tokenRef.current && this.tokenRef.current.focus();
       }, 100);
     } catch (e) {
       this.setState({ error: extractErrorMessageFromResponse(e) });
@@ -119,7 +122,7 @@ export class EmailLoginForm extends Component<Props, State> {
       verificationSent: false,
     });
     setTimeout(() => {
-      this.inputRef && this.inputRef.focus();
+      this.inputRef.current && this.inputRef.current.focus();
     }, 100);
   }
 
@@ -141,11 +144,11 @@ export class EmailLoginForm extends Component<Props, State> {
 
   componentDidMount() {
     setTimeout(() => {
-      this.inputRef && this.inputRef.focus();
+      this.inputRef.current && this.inputRef.current.focus();
     }, 100);
   }
 
-  render(props: RenderableProps<Props>) {
+  render(props: Props) {
     // TODO: will be great to `b` to accept `string | undefined | (string|undefined)[]` as classname
     let className = b('auth-panel-email-login-form', {}, { theme: props.theme });
     if (props.className) {
@@ -173,7 +176,7 @@ export class EmailLoginForm extends Component<Props, State> {
           </span>
           <input
             className="auth-panel-email-login-form__input"
-            ref={ref => (this.inputRef = ref)}
+            ref={this.inputRef}
             type="text"
             placeholder="Username"
             value={this.state.usernameValue}
@@ -193,7 +196,7 @@ export class EmailLoginForm extends Component<Props, State> {
             title={form1InvalidReason || ''}
             disabled={form1InvalidReason !== null}
           />
-          {this.state.error && <div class="auth-panel-email-login-form__error">{this.state.error}</div>}
+          {this.state.error && <div className="auth-panel-email-login-form__error">{this.state.error}</div>}
         </form>
       );
 
@@ -207,7 +210,7 @@ export class EmailLoginForm extends Component<Props, State> {
         <TextareaAutosize
           autofocus={true}
           className="auth-panel-email-login-form__token-input"
-          ref={ref => (this.tokenRef = ref)}
+          ref={this.tokenRef}
           placeholder="Token"
           value={this.state.tokenValue}
           onInput={this.onTokenChange}
@@ -221,15 +224,15 @@ export class EmailLoginForm extends Component<Props, State> {
           title={form2InvalidReason || ''}
           disabled={form2InvalidReason !== null}
         />
-        {this.state.error && <div class="auth-panel-email-login-form__error">{this.state.error}</div>}
+        {this.state.error && <div className="auth-panel-email-login-form__error">{this.state.error}</div>}
       </form>
     );
   }
 }
 
-export const EmailLoginFormConnected = connect(
-  mapStateToProps,
-  null,
-  null,
-  { withRef: true }
-)(EmailLoginForm);
+export type EmailLoginFormRef = EmailLoginForm;
+
+export const EmailLoginFormConnected = forwardRef<EmailLoginForm, OwnProps>((props, ref) => {
+  const connectedProps = useSelector(mapStateToProps);
+  return <EmailLoginForm {...props} {...connectedProps} ref={ref} />;
+});

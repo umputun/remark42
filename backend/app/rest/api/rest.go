@@ -286,7 +286,8 @@ func (s *Rest) routes() chi.Router {
 			radmin.Get("/export", s.adminRest.migrator.exportCtrl)
 			radmin.Post("/import", s.adminRest.migrator.importCtrl)
 			radmin.Post("/import/form", s.adminRest.migrator.importFormCtrl)
-			radmin.Get("/import/wait", s.adminRest.migrator.importWaitCtrl)
+			radmin.Post("/remap", s.adminRest.migrator.remapCtrl)
+			radmin.Get("/wait", s.adminRest.migrator.waitCtrl)
 		})
 
 		// protected routes, throttled to 10/s by default, controlled by external UpdateLimiter param

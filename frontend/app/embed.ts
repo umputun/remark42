@@ -255,7 +255,7 @@ async function init(): Promise<void> {
         window.scrollTo(window.pageXOffset, data.scrollTo + iframe.getBoundingClientRect().top + window.pageYOffset);
       }
 
-      if (data.hasOwnProperty('isUserInfoShown')) {
+      if (Object.prototype.hasOwnProperty.call(data, 'isUserInfoShown')) {
         if (data.isUserInfoShown) {
           userInfo.init(data.user || {});
         } else {

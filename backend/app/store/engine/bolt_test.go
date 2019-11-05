@@ -595,7 +595,7 @@ func TestBolt_FlagListBlocked(t *testing.T) {
 		return res
 	}
 	assert.NoError(t, setBlocked("radio-t", "user1", FlagTrue, 0))
-	assert.NoError(t, setBlocked("radio-t", "user2", FlagTrue, 50*time.Millisecond))
+	assert.NoError(t, setBlocked("radio-t", "user2", FlagTrue, 150*time.Millisecond))
 	assert.NoError(t, setBlocked("radio-t", "user3", FlagFalse, 0))
 
 	vv, err := b.ListFlags(FlagRequest{Flag: Blocked, Locator: store.Locator{SiteID: "radio-t"}})
@@ -608,7 +608,7 @@ func TestBolt_FlagListBlocked(t *testing.T) {
 	t.Logf("%+v", blockedList)
 
 	// check block expiration
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(150 * time.Millisecond)
 	vv, err = b.ListFlags(FlagRequest{Flag: Blocked, Locator: store.Locator{SiteID: "radio-t"}})
 	assert.NoError(t, err)
 	blockedList = toBlocked(vv)

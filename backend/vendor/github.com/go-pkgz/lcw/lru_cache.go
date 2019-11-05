@@ -7,7 +7,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// LruCache wraps lru.LruCache with laoding cache Get and size limits
+// LruCache wraps lru.LruCache with loading cache Get and size limits
 type LruCache struct {
 	options
 	CacheStat

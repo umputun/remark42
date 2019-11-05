@@ -1,18 +1,6 @@
 FROM umputun/baseimage:buildgo-latest as build-backend
 
-ARG COVERALLS_TOKEN
 ARG CI
-ARG GIT_BRANCH
-ARG TRAVIS
-ARG TRAVIS_BRANCH
-ARG TRAVIS_COMMIT
-ARG TRAVIS_JOB_ID
-ARG TRAVIS_JOB_NUMBER
-ARG TRAVIS_OS_NAME
-ARG TRAVIS_PULL_REQUEST
-ARG TRAVIS_PULL_REQUEST_SHA
-ARG TRAVIS_REPO_SLUG
-ARG TRAVIS_TAG
 ARG DRONE
 ARG DRONE_TAG
 ARG DRONE_COMMIT
@@ -20,6 +8,7 @@ ARG DRONE_BRANCH
 ARG DRONE_PULL_REQUEST
 
 ARG SKIP_BACKEND_TEST
+ARG BACKEND_TEST_TIMEOUT
 
 ADD backend /build/backend
 ADD .git /build/.git
@@ -31,22 +20,13 @@ ENV GOFLAGS="-mod=vendor"
 RUN \
     cd app && \
     if [ -z "$SKIP_BACKEND_TEST" ] ; then \
-        go test -p 1 -timeout=30s -covermode=count -coverprofile=/profile.cov_tmp ./... && \
+        go test -p 1 -timeout="${BACKEND_TEST_TIMEOUT:-30s}" -covermode=count -coverprofile=/profile.cov_tmp ./... && \
         cat /profile.cov_tmp | grep -v "_mock.go" > /profile.cov ; \
-    else echo "skip backend test" ; fi
-
-# linters
-RUN if [ -z "$SKIP_BACKEND_TEST" ] ; then \
         golangci-lint run --out-format=tab --disable-all --tests=false --enable=unconvert \
         --enable=megacheck --enable=structcheck --enable=gas --enable=gocyclo --enable=dupl --enable=misspell \
         --enable=unparam --enable=varcheck --enable=deadcode --enable=typecheck \
         --enable=ineffassign --enable=varcheck ./... ; \
-    else echo "skip backend linters" ; fi
-
-# submit coverage to coverals if COVERALLS_TOKEN in env
-RUN if [ -z "$COVERALLS_TOKEN" ] ; then \
-    echo "coverall not enabled" ; \
-    else goveralls -coverprofile=/profile.cov -service=travis-ci -repotoken $COVERALLS_TOKEN || echo "coverall failed!"; fi
+    else echo "skip backend tests and linter" ; fi
 
 # if DRONE presented use DRONE_* git env to make version
 RUN \
