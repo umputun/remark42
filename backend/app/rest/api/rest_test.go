@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"errors"
@@ -27,6 +28,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/umputun/remark/backend/app/migrator"
+	"github.com/umputun/remark/backend/app/notify"
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/rest/proxy"
 	"github.com/umputun/remark/backend/app/store"
@@ -326,6 +328,7 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 		ImageProxy:       &proxy.Image{},
 		ReadOnlyAge:      10,
 		CommentFormatter: store.NewCommentFormatter(&proxy.Image{}),
+		EmailService:     emailMock{},
 		Migrator: &Migrator{
 			DisqusImporter:    &migrator.Disqus{DataStore: dataStore},
 			WordPressImporter: &migrator.WordPress{DataStore: dataStore},
@@ -454,4 +457,11 @@ func requireAdminOnly(t *testing.T, req *http.Request) {
 	resp, err = sendReq(t, req, devToken) // non-admin user
 	require.NoError(t, err)
 	assert.Equal(t, 403, resp.StatusCode)
+}
+
+type emailMock struct {
+}
+
+func (e emailMock) SendVerification(ctx context.Context, req notify.VerificationRequest) error {
+	return nil
 }

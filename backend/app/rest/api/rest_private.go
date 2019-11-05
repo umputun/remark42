@@ -227,7 +227,7 @@ func (s *private) voteCtrl(w http.ResponseWriter, r *http.Request) {
 // sendConfirmation gets address and siteID from query, makes confirmation token and sends it to user.
 // GET /email?site=site&address=someone@example.com
 func (s *private) sendConfirmation(w http.ResponseWriter, r *http.Request) {
-	if s.emailService != nil {
+	if s.emailService == nil {
 		rest.SendErrorJSON(w, r, http.StatusNotImplemented, errors.New("unavailable"), "email notifications disabled", rest.ErrNotificationsDisabled)
 		return
 	}
