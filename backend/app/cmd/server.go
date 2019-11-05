@@ -320,12 +320,42 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		KeyStore:          adminStore,
 	}
 
-	notifyService, err := s.makeNotify(dataService)
-	if err != nil {
-		log.Printf("[WARN] failed to make notify service, %s", err)
-		notifyService = notify.NopService // disable notifier
+	var emailService *notify.Email
+	var destinations []notify.Destination
+	for _, t := range s.Notify.Type {
+		switch t {
+		case "telegram":
+			tg, err := notify.NewTelegram(s.Notify.Telegram.Token, s.Notify.Telegram.Channel,
+				s.Notify.Telegram.Timeout, s.Notify.Telegram.API)
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to create telegram notification destination")
+			}
+			destinations = append(destinations, tg)
+		case "email":
+			emailParams := notify.EmailParams{
+				Host:          s.Notify.Email.Host,
+				Port:          s.Notify.Email.Port,
+				TLS:           s.Notify.Email.TLS,
+				From:          s.Notify.Email.From,
+				Username:      s.Notify.Email.Username,
+				Password:      s.Notify.Email.Password,
+				TimeOut:       s.Notify.Email.TimeOut,
+				BufferSize:    s.Notify.Email.BufferSize,
+				FlushDuration: s.Notify.Email.FlushDuration,
+			}
+			email, err := notify.NewEmail(emailParams)
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to create email notification destination")
+			}
+			emailService = email
+			destinations = append(destinations, email)
+		case "none":
+		default:
+			return nil, errors.Errorf("unsupported notification type %q", s.Notify.Type)
+		}
 	}
 
+	notifyService := s.makeNotify(dataService, destinations)
 	imgProxy := &proxy.Image{Enabled: s.ImageProxy, RoutePath: "/api/v1/img", RemarkURL: s.RemarkURL}
 	emojiFmt := store.CommentConverterFunc(func(text string) string { return text })
 	if s.EnableEmoji {
@@ -351,6 +381,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		Authenticator:    authenticator,
 		Cache:            loadingCache,
 		NotifyService:    notifyService,
+		EmailService:     emailService,
 		SSLConfig:        sslConfig,
 		UpdateLimiter:    s.UpdateLimit,
 		ImageService:     imageService,
@@ -672,42 +703,12 @@ func (s *ServerCommand) loadEmailTemplate() string {
 	return tmpl
 }
 
-func (s *ServerCommand) makeNotify(dataStore *service.DataStore) (*notify.Service, error) {
+func (s *ServerCommand) makeNotify(dataStore *service.DataStore, destinations []notify.Destination) *notify.Service {
 	log.Printf("[INFO] make notify, types=%s", s.Notify.Type)
-	var destinations []notify.Destination
-	for _, t := range s.Notify.Type {
-		switch t {
-		case "telegram":
-			tg, err := notify.NewTelegram(s.Notify.Telegram.Token, s.Notify.Telegram.Channel,
-				s.Notify.Telegram.Timeout, s.Notify.Telegram.API)
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to create telegram notification destination")
-			}
-			destinations = append(destinations, tg)
-		case "email":
-			emailParams := notify.EmailParams{
-				Host:          s.Notify.Email.Host,
-				Port:          s.Notify.Email.Port,
-				TLS:           s.Notify.Email.TLS,
-				From:          s.Notify.Email.From,
-				Username:      s.Notify.Email.Username,
-				Password:      s.Notify.Email.Password,
-				TimeOut:       s.Notify.Email.TimeOut,
-				BufferSize:    s.Notify.Email.BufferSize,
-				FlushDuration: s.Notify.Email.FlushDuration,
-			}
-			email, err := notify.NewEmail(emailParams)
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to create email notification destination")
-			}
-			destinations = append(destinations, email)
-		case "none":
-			return notify.NopService, nil
-		default:
-			return nil, errors.Errorf("unsupported notification type %q", s.Notify.Type)
-		}
+	if destinations == nil || len(destinations) == 0 {
+		return notify.NopService
 	}
-	return notify.NewService(dataStore, s.Notify.QueueSize, destinations...), nil
+	return notify.NewService(dataStore, s.Notify.QueueSize, destinations...)
 }
 
 func (s *ServerCommand) makeSSLConfig() (config api.SSLConfig, err error) {

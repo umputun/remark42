@@ -29,6 +29,12 @@ type Destination interface {
 	Send(ctx context.Context, req request) error
 }
 
+// VerificationDestination defines interface for a given destination service which supports verification sending
+type VerificationDestination interface {
+	fmt.Stringer
+	SendVerification(ctx context.Context, req VerificationRequest) error
+}
+
 type VerificationRequest struct {
 	Locator store.Locator
 	User    string

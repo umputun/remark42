@@ -340,8 +340,7 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 			TimeOut:   5 * time.Second,
 			MaxActive: 100,
 		},
-		EmojiEnabled:              true,
-		EmailNotificationsEnabled: true,
+		EmojiEnabled: true,
 	}
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = -5, -10
 
