@@ -51,12 +51,7 @@ jobs:
 
     - name: submit coverage
       run: |
-        export GIT_BRANCH="${GITHUB_REF/refs\/heads\//}"
-        export GIT_TAG="${GITHUB_REF/refs\/tags\//}"
-
-        if [[ "$GIT_TAG" != "$GITHUB_REF" ]]; then
-          export GIT_BRANCH=$GIT_TAG
-        fi
+        export GIT_BRANCH=$GITHUB_REF
 
         cd backend
         $(go env GOPATH)/bin/goveralls -service="GitHub Action" -coverprofile=$GITHUB_WORKSPACE/profile.cov -repotoken $GITHUB_TOKEN
