@@ -53,9 +53,9 @@ jobs:
       run: |
         export GIT_BRANCH=$GITHUB_REF
         cd backend
-        $(go env GOPATH)/bin/goveralls -service="github" -coverprofile=$GITHUB_WORKSPACE/profile.cov -repotoken $GITHUB_TOKEN
+        $(go env GOPATH)/bin/goveralls -service="github" -coverprofile=$GITHUB_WORKSPACE/profile.cov
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: build docker image
       run: docker build --build-arg SKIP_BACKEND_TEST=true --build-arg CI=github .
