@@ -55,9 +55,9 @@ jobs:
 
         cd backend
         env
-        $(go env GOPATH)/bin/goveralls -service="GitHub Action" -coverprofile=$GITHUB_WORKSPACE/profile.cov -repotoken $GITHUB_TOKEN
+        $(go env GOPATH)/bin/goveralls -service="github" -coverprofile=$GITHUB_WORKSPACE/profile.cov -repotoken $GITHUB_TOKEN
       env:
-        GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: build docker image
       run: docker build --build-arg SKIP_BACKEND_TEST=true --build-arg CI=github .
