@@ -321,6 +321,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 	}
 
 	var emailService *notify.Email
+	var notifyService *notify.Service
 	var destinations []notify.Destination
 	for _, t := range s.Notify.Type {
 		switch t {
@@ -343,19 +344,23 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 				BufferSize:    s.Notify.Email.BufferSize,
 				FlushDuration: s.Notify.Email.FlushDuration,
 			}
-			email, err := notify.NewEmail(emailParams)
+			emailService, err := notify.NewEmail(emailParams)
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to create email notification destination")
 			}
-			emailService = email
-			destinations = append(destinations, email)
+			destinations = append(destinations, emailService)
 		case "none":
+			notifyService = notify.NopService
 		default:
 			return nil, errors.Errorf("unsupported notification type %q", s.Notify.Type)
 		}
 	}
 
-	notifyService := s.makeNotify(dataService, destinations)
+	if len(destinations) != 0 {
+		log.Printf("[INFO] make notify, types=%s", s.Notify.Type)
+		notifyService = notify.NewService(dataService, s.Notify.QueueSize, destinations...)
+	}
+
 	imgProxy := &proxy.Image{Enabled: s.ImageProxy, RoutePath: "/api/v1/img", RemarkURL: s.RemarkURL}
 	emojiFmt := store.CommentConverterFunc(func(text string) string { return text })
 	if s.EnableEmoji {
@@ -701,14 +706,6 @@ func (s *ServerCommand) loadEmailTemplate() string {
 		}
 	}
 	return tmpl
-}
-
-func (s *ServerCommand) makeNotify(dataStore *service.DataStore, destinations []notify.Destination) *notify.Service {
-	log.Printf("[INFO] make notify, types=%s", s.Notify.Type)
-	if destinations == nil || len(destinations) == 0 {
-		return notify.NopService
-	}
-	return notify.NewService(dataStore, s.Notify.QueueSize, destinations...)
 }
 
 func (s *ServerCommand) makeSSLConfig() (config api.SSLConfig, err error) {
