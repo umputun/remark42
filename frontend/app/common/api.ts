@@ -6,7 +6,7 @@ import fetcher from './fetcher';
 /* common */
 
 const __loginAnonymously = (username: string): Promise<User | null> => {
-  const url = `/auth/anonymous/login?user=${encodeURIComponent(username)}&aud=${siteId}?from=${encodeURIComponent(
+  const url = `/auth/anonymous/login?user=${encodeURIComponent(username)}&aud=${siteId}&from=${encodeURIComponent(
     location.origin + location.pathname + '?selfClose'
   )}`;
   return fetcher.get<User>({ url, withCredentials: true, overriddenApiBase: '' });
