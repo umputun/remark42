@@ -69,6 +69,7 @@ type ServerCommand struct {
 	UpdateLimit     float64       `long:"update-limit" env:"UPDATE_LIMIT" default:"0.5" description:"updates/sec limit"`
 	RestrictedWords []string      `long:"restricted-words" env:"RESTRICTED_WORDS" description:"words prohibited to use in comments" env-delim:","`
 	EnableEmoji     bool          `long:"emoji" env:"EMOJI" description:"enable emoji"`
+	SimpleView      bool          `long:"simpler-view" env:"SIMPLE_VIEW" description:"minimal comment editor mode"`
 
 	Auth struct {
 		TTL struct {
@@ -349,6 +350,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 			MaxActive: int32(s.Stream.MaxActive),
 		},
 		EmojiEnabled: s.EnableEmoji,
+		SimpleView:   s.SimpleView,
 	}
 
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = s.LowScore, s.CriticalScore

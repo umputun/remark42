@@ -56,6 +56,7 @@ type Rest struct {
 	}
 	UpdateLimiter float64
 	EmojiEnabled  bool
+	SimpleView    bool
 
 	SSLConfig   SSLConfig
 	httpsServer *http.Server
@@ -395,6 +396,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		ReadOnlyAge    int      `json:"readonly_age"`
 		MaxImageSize   int      `json:"max_image_size"`
 		EmojiEnabled   bool     `json:"emoji_enabled"`
+		SimpleView     bool     `json:"simple_view"`
 	}{
 		Version:        s.Version,
 		EditDuration:   int(s.DataService.EditDuration.Seconds()),
@@ -407,6 +409,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		ReadOnlyAge:    s.ReadOnlyAge,
 		MaxImageSize:   s.ImageService.Store.SizeLimit(),
 		EmojiEnabled:   s.EmojiEnabled,
+		SimpleView:     s.SimpleView,
 	}
 
 	cnf.Auth = []string{}
