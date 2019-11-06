@@ -222,6 +222,47 @@ func TestRPC_listFlagsHndl(t *testing.T) {
 	assert.Equal(t, []interface{}{"u1"}, flags)
 }
 
+func TestRPC_userDetailHndl(t *testing.T) {
+	_, port, teardown := prepTestStore(t)
+	defer teardown()
+	api := fmt.Sprintf("http://localhost:%d/test", port)
+
+	re := engine.RPC{Client: jrpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
+
+	var testData = []struct {
+		req   engine.UserDetailRequest
+		error string
+		value string
+	}{
+		{req: engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, Detail: engine.Email}},
+		{req: engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, Detail: engine.Email, Update: "value"},
+			error: "UserID is not set"},
+		{req: engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, Detail: engine.Email, UserID: "user1"}},
+		{req: engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, Detail: engine.Email, UserID: "user1", Update: "test@example.com"},
+			value: "test@example.com"},
+		{req: engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, Detail: engine.Email, UserID: "user1"},
+			value: "test@example.com"},
+		{req: engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, Detail: engine.Email, UserID: "user1", Update: "test_other@example.com"},
+			value: "test_other@example.com"},
+		{req: engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, Detail: engine.Email, UserID: "user1"},
+			value: "test_other@example.com"},
+		{req: engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, Detail: engine.Email, UserID: "user1", Delete: true}},
+		{req: engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, Detail: engine.Email, UserID: "user1", Delete: true, Update: "value"},
+			error: "Both Delete and Update are set, pick one"},
+		{req: engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, Detail: engine.Email, UserID: "user1"}},
+	}
+
+	for i, x := range testData {
+		value, err := re.UserDetail(x.req)
+		if x.error != "" {
+			assert.EqualError(t, err, x.error, "Error should match expected for case %d", i)
+		} else {
+			assert.NoError(t, err, "Error is not expected expected for case %d", i)
+		}
+		assert.Equal(t, x.value, value, "Result should match expected for case %d", i)
+	}
+}
+
 func TestRPC_deleteHndl(t *testing.T) {
 	_, port, teardown := prepTestStore(t)
 	defer teardown()
@@ -346,7 +387,7 @@ func prepTestStore(t *testing.T) (s *RPC, port int, teardown func()) {
 	go func() {
 		t.Log(s.Run(port))
 	}()
-	time.Sleep(time.Millisecond * 10)
+	time.Sleep(time.Millisecond * 100)
 
 	return s, port, func() {
 		require.NoError(t, s.Shutdown())

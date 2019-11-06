@@ -23,9 +23,10 @@ const lastLimit = 1000
 
 // MemData implements in-memory data store
 type MemData struct {
-	posts     map[string][]store.Comment // key is siteID
-	metaUsers map[string]metaUser        // key is userID
-	metaPosts map[store.Locator]metaPost // key is post's locator
+	posts       map[string][]store.Comment // key is siteID
+	metaUsers   map[string]metaUser        // key is userID
+	metaPosts   map[store.Locator]metaPost // key is post's locator
+	userDetails map[string][]metaDetail    // key is siteID
 	sync.RWMutex
 }
 
@@ -43,13 +44,20 @@ type metaUser struct {
 	BlockedUntil time.Time
 }
 
+type metaDetail struct {
+	UserID string
+	Detail engine.UserDetail
+	Value  string
+}
+
 // NewMemData makes in-memory engine.
 func NewMemData() *MemData {
 
 	result := &MemData{
-		posts:     map[string][]store.Comment{},
-		metaUsers: map[string]metaUser{},
-		metaPosts: map[store.Locator]metaPost{},
+		posts:       map[string][]store.Comment{},
+		metaUsers:   map[string]metaUser{},
+		metaPosts:   map[store.Locator]metaPost{},
+		userDetails: map[string][]metaDetail{},
 	}
 	return result
 }
@@ -280,6 +288,19 @@ func (m *MemData) ListFlags(req engine.FlagRequest) (res []interface{}, err erro
 	return nil, errors.Errorf("flag %s not listable", req.Flag)
 }
 
+// UserDetail sets and gets detail values
+func (m *MemData) UserDetail(req engine.UserDetailRequest) (val string, err error) {
+	m.Lock()
+	defer m.Unlock()
+
+	if req.Update == "" && !req.Delete { // read detail value, no update requested
+		return m.checkUserDetail(req), nil
+	}
+
+	// write or delete detail value
+	return m.setUserDetail(req)
+}
+
 // Delete post(s) by id or by userID
 func (m *MemData) Delete(req engine.DeleteRequest) error {
 
@@ -399,6 +420,58 @@ func (m *MemData) setFlag(req engine.FlagRequest) (res bool, err error) {
 		m.metaPosts[req.Locator] = info
 	}
 	return status, errors.Wrapf(err, "failed to set flag %+v", req)
+}
+
+// checkUserDetail returns requested userDetail value
+func (m *MemData) checkUserDetail(req engine.UserDetailRequest) string {
+	if req.UserID == "" {
+		return "" // return nothing in case UserID is not set
+	}
+
+	if userDetails, ok := m.userDetails[req.Locator.SiteID]; ok {
+		for _, u := range userDetails {
+			if u.UserID == req.UserID && u.Detail == req.Detail {
+				return u.Value
+			}
+		}
+	}
+
+	return ""
+}
+
+// checkUserDetail sets requested userDetail, deletion of the absent entry doesn't produce error
+func (m *MemData) setUserDetail(req engine.UserDetailRequest) (string, error) {
+	if req.UserID == "" {
+		return "", errors.New("UserID is not set")
+	}
+	if req.Delete && req.Update != "" {
+		return "", errors.New("Both Delete and Update are set, pick one")
+	}
+
+	_, ok := m.userDetails[req.Locator.SiteID]
+	if !ok {
+		m.userDetails[req.Locator.SiteID] = []metaDetail{}
+	}
+
+	for i, u := range m.userDetails[req.Locator.SiteID] {
+		if u.UserID == req.UserID && u.Detail == req.Detail {
+			switch {
+			case req.Delete:
+				m.userDetails[req.Locator.SiteID] = append(m.userDetails[req.Locator.SiteID][:i], m.userDetails[req.Locator.SiteID][i+1:]...)
+				return "", nil
+			case req.Update != "":
+				m.userDetails[req.Locator.SiteID][i].Value = req.Update
+				return req.Update, nil
+			}
+		}
+	}
+	// Update request issued but did't found existing entry
+	if req.Update != "" {
+		m.userDetails[req.Locator.SiteID] = append(m.userDetails[req.Locator.SiteID], metaDetail{UserID: req.UserID, Detail: req.Detail, Value: req.Update})
+		return req.Update, nil
+	}
+
+	return "", nil
 }
 
 func (m *MemData) get(loc store.Locator, commentID string) (store.Comment, error) {
