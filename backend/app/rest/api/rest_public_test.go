@@ -631,8 +631,8 @@ func TestRest_InfoStreamCancel(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
 	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
-	srv.pubRest.streamer.Refresh = 10 * time.Millisecond
-	srv.pubRest.streamer.TimeOut = 500 * time.Millisecond
+	srv.pubRest.streamer.Refresh = 5 * time.Millisecond
+	srv.pubRest.streamer.TimeOut = 1500 * time.Millisecond
 	srv.pubRest.streamer.MaxActive = 100
 
 	postComment(t, ts.URL)
