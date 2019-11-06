@@ -25,6 +25,7 @@ type Interface interface {
 	Delete(req DeleteRequest) error                             // delete post(s) by id or by userID
 	Flag(req FlagRequest) (bool, error)                         // set and get flags
 	ListFlags(req FlagRequest) ([]interface{}, error)           // get list of flagged keys, like blocked & verified user
+	UserDetail(req UserDetailRequest) (string, error)           // set and get user details
 	Close() error                                               // close storage engine
 }
 
@@ -73,11 +74,12 @@ const (
 	FlagFalse  FlagStatus = -1
 )
 
-// Enum of all flags
+// Enum of all flags and details
 const (
 	ReadOnly = Flag("readonly")
 	Verified = Flag("verified")
 	Blocked  = Flag("blocked")
+	Email    = UserDetail("email")
 )
 
 // FlagRequest is the input for both get/set for flags, like blocked, verified and so on
@@ -87,6 +89,18 @@ type FlagRequest struct {
 	UserID  string        `json:"user_id,omitempty"` // for flags setting user status
 	Update  FlagStatus    `json:"update,omitempty"`  // if FlagNonSet it will be get op, if set will set the value
 	TTL     time.Duration `json:"ttl,omitempty"`     // ttl for time-sensitive flags only, like blocked for some period
+}
+
+// UserDetail defines name of the user detail
+type UserDetail string
+
+// UserDetailRequest is the input for both get/set for details, like email
+type UserDetailRequest struct {
+	Detail  UserDetail    `json:"detail"`           // detail name
+	Locator store.Locator `json:"locator"`          // post locator
+	UserID  string        `json:"user_id"`          // user id for get\set
+	Update  string        `json:"update,omitempty"` // update value
+	Delete  bool          `json:"delete,omitempty"` // update value
 }
 
 const (

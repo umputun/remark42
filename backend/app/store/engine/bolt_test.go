@@ -620,6 +620,55 @@ func TestBolt_FlagListBlocked(t *testing.T) {
 
 }
 
+func TestBoltDB_UserDetail(t *testing.T) {
+
+	b, teardown := prep(t)
+	defer teardown()
+
+	bucket, err := b.userDetailsBucket(nil, "bad_detail")
+	assert.EqualError(t, err, "unsupported detail bad_detail")
+	assert.Nil(t, bucket)
+
+	for _, detail := range []UserDetail{Email} {
+		readDetail := func(site, user string) string {
+			req := UserDetailRequest{Detail: detail, Locator: store.Locator{SiteID: site}, UserID: user}
+			v, err := b.UserDetail(req)
+			require.NoError(t, err)
+			return v
+		}
+
+		setDetail := func(site, user string, value string, delete bool) error {
+			req := UserDetailRequest{Detail: detail, Locator: store.Locator{SiteID: site}, UserID: user, Update: value, Delete: delete}
+			_, err := b.UserDetail(req)
+			return err
+		}
+
+		assert.Equal(t, "", readDetail("radio-t", "u1"), "no %s set yet", detail)
+
+		assert.NoError(t, setDetail("radio-t", "u1", "value1", false))
+		assert.Equal(t, "value1", readDetail("radio-t", "u1"), "u1 %s set", detail)
+
+		assert.Equal(t, "", readDetail("radio-t", "u2"), "u2 still don't have %s set", detail)
+		assert.NoError(t, setDetail("radio-t", "u1", "", true))
+		assert.Equal(t, "", readDetail("radio-t", "u1"), "u1 %s is not set anymore", detail)
+
+		assert.EqualError(t, setDetail("bad", "u1", "value2", false), `site "bad" not found`)
+		assert.NoError(t, setDetail("radio-t", "u1xyz", "", true))
+
+		assert.Equal(t, "", readDetail("radio-t-bad", "u1"), "nothing verified on wrong site")
+
+		assert.NoError(t, setDetail("radio-t", "u1", "value3", false))
+		assert.EqualError(t, setDetail("radio-t", "u2", "value4", true), "Both Delete and Update are set, pick one")
+		assert.NoError(t, setDetail("radio-t", "u3", "", false))
+	}
+	v, err := b.UserDetail(UserDetailRequest{Update: "new_value"})
+	require.EqualError(t, err, "UserID is not set")
+	require.Equal(t, "", v)
+	v, err = b.UserDetail(UserDetailRequest{})
+	require.NoError(t, err, "Unset UserID results in empty response")
+	require.Equal(t, "", v)
+}
+
 func TestBolt_DeleteComment(t *testing.T) {
 
 	b, teardown := prep(t)
