@@ -22,7 +22,7 @@ import (
 //    value is not full comment but a reference combined from post-url+commentID
 //  - user to comment references in "users" bucket. It used to get comments for user. Key is userID and value
 //    is a nested bucket named userID with kv as ts:reference
-//  - users details in "user_details" top-level bucket. Each detail makes its own bucket and each k:v pair is userID:value
+//  - users details in "user_details" bucket. Key is userID, value - UserDetailEntry.
 //  - blocking info sits in "block" bucket. Key is userID, value - ts
 //  - counts per post to keep number of comments. Key is post url, value - count
 //  - readonly per post to keep status of manually set RO posts. Key is post url, value - ts
