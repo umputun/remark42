@@ -42,12 +42,10 @@ jobs:
 
     - name: run backend linters
       uses: matoous/golangci-lint-action@v1.1.0
-      run: |
-        cd backend
-        golangci-lint run --out-format=tab --disable-all --tests=false --enable=unconvert \
-          --enable=megacheck --enable=structcheck --enable=gas --enable=gocyclo --enable=dupl --enable=misspell \
-          --enable=unparam --enable=varcheck --enable=deadcode --enable=typecheck \
-          --enable=ineffassign --enable=varcheck ./... ;
+      env:
+        # GitHub token for annotations (optional)
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_WORKSPACE: $GITHUB_WORKSPACE/backend
 
     - name: submit coverage
       run: |
