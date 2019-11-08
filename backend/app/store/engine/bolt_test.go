@@ -639,7 +639,7 @@ func TestBoltDB_UserDetail(t *testing.T) {
 		{site: "radio-t", user: "u1", expected: "value1"},
 		{site: "radio-t", user: "u1", delete: true},
 		{site: "radio-t", user: "u1"},
-		{site: "bad", user: "u1", update: "value1", error: `site "bad" not found`},
+		{site: "bad", user: "u1", update: "value2", error: `site "bad" not found`},
 		{site: "radio-t", user: "u1xyz", delete: true},
 		{site: "radio-t-bad", user: "u1", error: `site "radio-t-bad" not found`},
 		{site: "radio-t", user: "u1", update: "value3", expected: "value3"},
@@ -649,9 +649,6 @@ func TestBoltDB_UserDetail(t *testing.T) {
 		{site: "radio-t", user: "u1", delete: true, detail: "bad", error: `unsupported detail bad`},
 		{site: "radio-t", user: "u1", detail: "bad", error: `unsupported detail bad`},
 	}
-	bucket, err := b.userDetailsBucket(nil, "bad_detail")
-	assert.EqualError(t, err, "unsupported detail bad_detail")
-	assert.Nil(t, bucket)
 
 	for i, x := range testData {
 		if x.detail == UserDetail("") {

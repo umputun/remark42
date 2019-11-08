@@ -74,13 +74,15 @@ const (
 	FlagFalse  FlagStatus = -1
 )
 
-// Enum of all flags and details
+// Enum of all flags
 const (
 	ReadOnly = Flag("readonly")
 	Verified = Flag("verified")
 	Blocked  = Flag("blocked")
-	Email    = UserDetail("email")
 )
+
+// All possible user details
+const Email = UserDetail("email")
 
 // FlagRequest is the input for both get/set for flags, like blocked, verified and so on
 type FlagRequest struct {
@@ -93,6 +95,11 @@ type FlagRequest struct {
 
 // UserDetail defines name of the user detail
 type UserDetail string
+
+// UserDetailEntry contains user details entry which is stored per user
+type UserDetailEntry struct {
+	Email string `json:"email,omitempty"` // detail name
+}
 
 // UserDetailRequest is the input for both get/set for details, like email
 type UserDetailRequest struct {
