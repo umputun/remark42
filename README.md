@@ -4,7 +4,7 @@
 
 Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engine, which doesn't spy on users. It can be embedded into blogs, articles or any other place where readers add comments.
 
-* Social login via Google, Facebook, GitHub and Yandex
+* Social login via Google, Twitter, Facebook, GitHub and Yandex
 * Login via email
 * Optional anonymous access
 * Multi-level nested comments with both tree and plain presentations
@@ -136,6 +136,8 @@ _this is the recommended way to run remark42_
 | auth.facebook.csec      | AUTH_FACEBOOK_CSEC      |                          | Facebook OAuth client secret                    |
 | auth.github.cid         | AUTH_GITHUB_CID         |                          | Github OAuth client ID                          |
 | auth.github.csec        | AUTH_GITHUB_CSEC        |                          | Github OAuth client secret                      |
+| auth.twitter.cid        | AUTH_TWITTER_CID        |                          | Twitter Consumer API Key                        |
+| auth.twitter.csec       | AUTH_TWITTER_CSEC       |                          | Twitter Consumer API Secret key                 |
 | auth.yandex.cid         | AUTH_YANDEX_CID         |                          | Yandex OAuth client ID                          |
 | auth.yandex.csec        | AUTH_YANDEX_CSEC        |                          | Yandex OAuth client secret                      |
 | auth.dev                | AUTH_DEV                | `false`                  | local oauth2 server, development mode only      |
@@ -255,6 +257,13 @@ _instructions for google oauth2 setup borrowed from [oauth2_proxy](https://githu
 1.  Set "Site URL" to your domain, ex: `https://remark42.mysite.com`
 1.  Under **"Facebook login"** / **"Settings"** fill "Valid OAuth redirect URIs" with your callback url constructed as domain + `/auth/facebook/callback`
 1.  Select **"App Review"** and turn public flag on. This step may ask you to provide a link to your privacy policy.
+
+##### Twitter Auth Provider
+
+1.	Create a new twitter application https://developer.twitter.com/en/apps
+1.	Fill **App name**  and **Description** and **URL** of your site
+1.	In the field **Callback URLs** enter the correct url of your callback handler e.g. https://example.mysite.com/{route}/twitter/callback
+1.	Under **Key and tokens** take note of the **Consumer API Key** and **Consumer API Secret key**. Those will be used as `cid` and `csecret`
 
 ##### Yandex Auth Provider
 
