@@ -42,8 +42,9 @@ jobs:
 
     - name: run backend linters
       uses: matoous/golangci-lint-action@v1.1.0
+      with:
+        config: .golangci.yml
       env:
-        # GitHub token for annotations (optional)
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GITHUB_WORKSPACE: $GITHUB_WORKSPACE/backend
 
