@@ -625,48 +625,52 @@ func TestBoltDB_UserDetail(t *testing.T) {
 	b, teardown := prep(t)
 	defer teardown()
 
+	var testData = []struct {
+		site     string
+		user     string
+		update   string
+		delete   bool
+		expected string
+		error    string
+		detail   UserDetail
+	}{
+		{site: "radio-t", user: "u1"},
+		{site: "radio-t", user: "u1", update: "value1", expected: "value1"},
+		{site: "radio-t", user: "u1", expected: "value1"},
+		{site: "radio-t", user: "u1", delete: true},
+		{site: "radio-t", user: "u1"},
+		{site: "bad", user: "u1", update: "value1", error: `site "bad" not found`},
+		{site: "radio-t", user: "u1xyz", delete: true},
+		{site: "radio-t-bad", user: "u1", error: `site "radio-t-bad" not found`},
+		{site: "radio-t", user: "u1", update: "value3", expected: "value3"},
+		{site: "radio-t", user: "u2", update: "value4", delete: true, error: `both delete and update fields are set, pick one`},
+		{update: "new_value", error: `userid cannot be empty`},
+		{site: "radio-t", error: `userid cannot be empty`},
+		{site: "radio-t", user: "u1", delete: true, detail: "bad", error: `unsupported detail bad`},
+		{site: "radio-t", user: "u1", detail: "bad", error: `unsupported detail bad`},
+	}
 	bucket, err := b.userDetailsBucket(nil, "bad_detail")
 	assert.EqualError(t, err, "unsupported detail bad_detail")
 	assert.Nil(t, bucket)
 
-	for _, detail := range []UserDetail{Email} {
-		readDetail := func(site, user string) string {
-			req := UserDetailRequest{Detail: detail, Locator: store.Locator{SiteID: site}, UserID: user}
-			v, err := b.UserDetail(req)
-			require.NoError(t, err)
-			return v
+	for i, x := range testData {
+		if x.detail == UserDetail("") {
+			x.detail = Email
 		}
-
-		setDetail := func(site, user string, value string, delete bool) error {
-			req := UserDetailRequest{Detail: detail, Locator: store.Locator{SiteID: site}, UserID: user, Update: value, Delete: delete}
-			_, err := b.UserDetail(req)
-			return err
+		req := UserDetailRequest{
+			Detail:  x.detail,
+			Locator: store.Locator{SiteID: x.site},
+			UserID:  x.user,
+			Update:  x.update,
+			Delete:  x.delete}
+		result, err := b.UserDetail(req)
+		if x.error != "" {
+			assert.EqualError(t, err, x.error, i)
+		} else {
+			assert.NoError(t, err, i)
 		}
-
-		assert.Equal(t, "", readDetail("radio-t", "u1"), "no %s set yet", detail)
-
-		assert.NoError(t, setDetail("radio-t", "u1", "value1", false))
-		assert.Equal(t, "value1", readDetail("radio-t", "u1"), "u1 %s set", detail)
-
-		assert.Equal(t, "", readDetail("radio-t", "u2"), "u2 still don't have %s set", detail)
-		assert.NoError(t, setDetail("radio-t", "u1", "", true))
-		assert.Equal(t, "", readDetail("radio-t", "u1"), "u1 %s is not set anymore", detail)
-
-		assert.EqualError(t, setDetail("bad", "u1", "value2", false), `site "bad" not found`)
-		assert.NoError(t, setDetail("radio-t", "u1xyz", "", true))
-
-		assert.Equal(t, "", readDetail("radio-t-bad", "u1"), "nothing verified on wrong site")
-
-		assert.NoError(t, setDetail("radio-t", "u1", "value3", false))
-		assert.EqualError(t, setDetail("radio-t", "u2", "value4", true), "Both Delete and Update are set, pick one")
-		assert.NoError(t, setDetail("radio-t", "u3", "", false))
+		assert.Equal(t, x.expected, result, i)
 	}
-	v, err := b.UserDetail(UserDetailRequest{Update: "new_value"})
-	require.EqualError(t, err, "UserID is not set")
-	require.Equal(t, "", v)
-	v, err = b.UserDetail(UserDetailRequest{})
-	require.NoError(t, err, "Unset UserID results in empty response")
-	require.Equal(t, "", v)
 }
 
 func TestBolt_DeleteComment(t *testing.T) {

@@ -225,7 +225,7 @@ func (b *BoltDB) Flag(req FlagRequest) (val bool, err error) {
 // UserDetail sets and gets detail values
 func (b *BoltDB) UserDetail(req UserDetailRequest) (val string, err error) {
 	if req.Update == "" && !req.Delete { // read detail value, no update requested
-		return b.checkUserDetail(req), nil
+		return b.getUserDetail(req)
 	}
 
 	// write or delete detail value
@@ -645,19 +645,19 @@ func (b *BoltDB) flagBucket(tx *bolt.Tx, flag Flag) (bkt *bolt.Bucket, err error
 	return bkt, nil
 }
 
-// checkUserDetail returns requested userDetail
-func (b *BoltDB) checkUserDetail(req UserDetailRequest) (val string) {
+// getUserDetail returns requested userDetail
+func (b *BoltDB) getUserDetail(req UserDetailRequest) (val string, err error) {
 	key := req.UserID
 	if key == "" {
-		return "" // return nothing in case UserID is not set
+		return "", errors.New("userid cannot be empty")
 	}
 
-	bdb, err := b.db(req.Locator.SiteID)
-	if err != nil {
-		return ""
+	bdb, e := b.db(req.Locator.SiteID)
+	if e != nil {
+		return "", e
 	}
 
-	_ = bdb.View(func(tx *bolt.Tx) error {
+	err = bdb.View(func(tx *bolt.Tx) error {
 		var bucket *bolt.Bucket
 		if bucket, err = b.userDetailsBucket(tx, req.Detail); err != nil {
 			return err
@@ -667,17 +667,17 @@ func (b *BoltDB) checkUserDetail(req UserDetailRequest) (val string) {
 		return nil
 	})
 
-	return val
+	return val, err
 }
 
-// checkUserDetail sets requested userDetail
+// getUserDetail sets requested userDetail
 func (b *BoltDB) setUserDetail(req UserDetailRequest) (res string, err error) {
 	key := req.UserID
 	if key == "" {
-		return "", errors.New("UserID is not set")
+		return "", errors.New("userid cannot be empty")
 	}
 	if req.Delete && req.Update != "" {
-		return "", errors.New("Both Delete and Update are set, pick one")
+		return "", errors.New("both delete and update fields are set, pick one")
 	}
 
 	bdb, e := b.db(req.Locator.SiteID)
