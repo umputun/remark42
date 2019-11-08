@@ -50,6 +50,7 @@ For admin screenshots see [Admin UI wiki](https://github.com/umputun/remark/wiki
         - [Google Auth Provider](#google-auth-provider)
         - [GitHub Auth Provider](#github-auth-provider)
         - [Facebook Auth Provider](#facebook-auth-provider)
+        - [Twitter Auth Provider](#twitter-auth-provider)
         - [Yandex Auth Provider](#yandex-auth-provider)
       - [Initial import from Disqus](#initial-import-from-disqus)
       - [Initial import from WordPress](#initial-import-from-wordpress)
@@ -777,7 +778,7 @@ _returned id should be appended to load image url on caller side_
 * `GET /api/v1/admin/export?site=side-id&mode=[stream|file]` - export all comments to json stream or gz file.
 * `POST /api/v1/admin/import?site=side-id` - import comments from the backup, uses post body.
 * `POST /api/v1/admin/import/form?site=side-id` - import comments from the backup, user post form.
-* `POST /api/v1/admin/remap?site=side-id` - remap comments to different URLs. Expect list of "from-url new-url" pairs separated by \n. 
+* `POST /api/v1/admin/remap?site=side-id` - remap comments to different URLs. Expect list of "from-url new-url" pairs separated by \n.
 From-url and new-url parts separated by space. If urls end with asterisk (*) it means matching by prefix. Remap procedure based on
 export/import chain so make backup first.
     ```
