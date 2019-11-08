@@ -41,12 +41,12 @@ jobs:
         go get -u github.com/mattn/goveralls
 
     - name: run backend linters
-      uses: docker://matoous/golangci-lint-action:v1.1.0
+      uses: matoous/golangci-lint-action:v1.1.0
       with:
         config: .golangci.yml
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        GITHUB_WORKSPACE: $GITHUB_WORKSPACE/backend
+        GITHUB_WORKSPACE: "${GITHUB_WORKSPACE}/backend"
 
     - name: submit coverage
       run: |
