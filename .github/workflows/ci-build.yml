@@ -46,7 +46,6 @@ jobs:
         config: .golangci.yml
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        GITHUB_WORKSPACE: "${GITHUB_WORKSPACE}/backend"
 
     - name: submit coverage
       run: |
