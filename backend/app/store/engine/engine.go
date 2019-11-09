@@ -96,7 +96,7 @@ type FlagRequest struct {
 // UserDetail defines name of the user detail
 type UserDetail string
 
-// UserDetailEntry contains user details entry which is stored per user
+// UserDetailEntry contains single user details entry
 type UserDetailEntry struct {
 	Email string `json:"email,omitempty"` // detail name
 }

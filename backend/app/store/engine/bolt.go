@@ -666,7 +666,7 @@ func (b *BoltDB) getUserDetail(req UserDetailRequest) (val string, err error) {
 	return val, err
 }
 
-// getUserDetail sets requested userDetail
+// setUserDetail sets requested userDetail
 func (b *BoltDB) setUserDetail(req UserDetailRequest) (res string, err error) {
 	key := req.UserID
 	if key == "" {

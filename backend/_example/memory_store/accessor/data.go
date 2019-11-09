@@ -41,6 +41,7 @@ type metaUser struct {
 	Verified     bool
 	Blocked      bool
 	BlockedUntil time.Time
+	Details      engine.UserDetailEntry
 }
 
 // NewMemData makes in-memory engine.
@@ -280,6 +281,24 @@ func (m *MemData) ListFlags(req engine.FlagRequest) (res []interface{}, err erro
 	return nil, errors.Errorf("flag %s not listable", req.Flag)
 }
 
+// UserDetail sets and gets detail values
+func (m *MemData) UserDetail(req engine.UserDetailRequest) (val string, err error) {
+	switch req.Detail {
+	case engine.Email:
+	default:
+		return val, errors.Errorf("unsupported detail %s", req.Detail)
+	}
+	m.Lock()
+	defer m.Unlock()
+
+	if req.Update == "" && !req.Delete { // read detail value, no update requested
+		return m.getUserDetail(req)
+	}
+
+	// write or delete detail value
+	return m.setUserDetail(req)
+}
+
 // Delete post(s) by id or by userID
 func (m *MemData) Delete(req engine.DeleteRequest) error {
 
@@ -399,6 +418,67 @@ func (m *MemData) setFlag(req engine.FlagRequest) (res bool, err error) {
 		m.metaPosts[req.Locator] = info
 	}
 	return status, errors.Wrapf(err, "failed to set flag %+v", req)
+}
+
+// getUserDetail returns requested userDetail value
+func (m *MemData) getUserDetail(req engine.UserDetailRequest) (string, error) {
+	key := req.UserID
+	if key == "" {
+		return "", errors.New("userid cannot be empty")
+	}
+
+	if meta, ok := m.metaUsers[req.UserID]; ok {
+		if meta.SiteID != req.Locator.SiteID {
+			return "", nil
+		}
+		switch req.Detail {
+		case engine.Email:
+			return meta.Details.Email, nil
+		}
+	}
+
+	return "", nil
+}
+
+// setUserDetail sets requested userDetail, deletion of the absent entry doesn't produce error
+func (m *MemData) setUserDetail(req engine.UserDetailRequest) (string, error) {
+	key := req.UserID
+	if key == "" {
+		return "", errors.New("userid cannot be empty")
+	}
+	if req.Delete && req.Update != "" {
+		return "", errors.New("both delete and update fields are set, pick one")
+	}
+
+	if meta, ok := m.metaUsers[req.UserID]; ok {
+		if meta.SiteID != req.Locator.SiteID {
+			return "", nil
+		}
+		// assign UserDetail to req.Update both in case of update and delete,
+		// as with update we'll assign new value and with delete we'll assign empty string,
+		// effectively deleting the value
+		switch req.Detail {
+		case engine.Email:
+			meta.Details.Email = req.Update
+			m.metaUsers[req.UserID] = meta
+			return req.Update, nil
+		}
+	}
+
+	// Update request issued but did't found existing entry.
+	// In line with bolt storage, store this information instead of throwing error.
+	if req.Update != "" {
+		switch req.Detail {
+		case engine.Email:
+			newEntry := metaUser{UserID: req.UserID, SiteID: req.Locator.SiteID}
+			newEntry.Details.Email = req.Update
+			m.metaUsers[req.UserID] = newEntry
+			log.Printf("new user %v", m.metaUsers[req.UserID])
+			return req.Update, nil
+		}
+	}
+
+	return "", nil
 }
 
 func (m *MemData) get(loc store.Locator, commentID string) (store.Comment, error) {

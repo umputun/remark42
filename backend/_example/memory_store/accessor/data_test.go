@@ -555,6 +555,55 @@ func TestMem_FlagListBlocked(t *testing.T) {
 	assert.Equal(t, 0, len(vv))
 }
 
+func TestMem_UserDetail(t *testing.T) {
+
+	b := prepMem(t)
+
+	var testData = []struct {
+		site     string
+		user     string
+		update   string
+		delete   bool
+		expected string
+		error    string
+		detail   engine.UserDetail
+	}{
+		{site: "radio-t", user: "u1"},
+		{site: "radio-t", user: "u1", update: "value1", expected: "value1"},
+		{site: "radio-t", user: "u1", expected: "value1"},
+		{site: "bad", user: "u1", update: "value1", expected: ""},
+		{site: "bad", user: "u1", expected: ""},
+		{site: "radio-t", user: "u1", delete: true},
+		{site: "radio-t", user: "u1"},
+		{site: "radio-t", user: "u1xyz", delete: true},
+		{site: "radio-t", user: "u1", update: "value3", expected: "value3"},
+		{site: "radio-t", user: "u2", update: "value4", delete: true, error: `both delete and update fields are set, pick one`},
+		{update: "new_value", error: `userid cannot be empty`},
+		{site: "radio-t", error: `userid cannot be empty`},
+		{site: "radio-t", user: "u1", delete: true, detail: "bad", error: `unsupported detail bad`},
+		{site: "radio-t", user: "u1", detail: "bad", error: `unsupported detail bad`},
+	}
+
+	for i, x := range testData {
+		if x.detail == engine.UserDetail("") {
+			x.detail = engine.Email
+		}
+		req := engine.UserDetailRequest{
+			Detail:  x.detail,
+			Locator: store.Locator{SiteID: x.site},
+			UserID:  x.user,
+			Update:  x.update,
+			Delete:  x.delete}
+		result, err := b.UserDetail(req)
+		if x.error != "" {
+			assert.EqualError(t, err, x.error, i)
+		} else {
+			assert.NoError(t, err, i)
+		}
+		assert.Equal(t, x.expected, result, i)
+	}
+}
+
 func TestMem_DeleteComment(t *testing.T) {
 
 	b := prepMem(t)
