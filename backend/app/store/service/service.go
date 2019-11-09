@@ -51,14 +51,15 @@ type DataStore struct {
 	}
 }
 
-// UserMetaData keeps info about user flags
+// UserMetaData keeps info about user flags and details
 type UserMetaData struct {
 	ID      string `json:"id"`
 	Blocked struct {
 		Status bool      `json:"status"`
 		Until  time.Time `json:"until"`
 	} `json:"blocked"`
-	Verified bool `json:"verified"`
+	Verified bool                   `json:"verified"`
+	Details  engine.UserDetailEntry `json:"details,omitempty"`
 }
 
 // PostMetaData keeps info about post flags
