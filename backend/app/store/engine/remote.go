@@ -92,6 +92,17 @@ func (r *RPC) UserDetail(req UserDetailRequest) (value string, err error) {
 	return value, err
 }
 
+// ListFlags get list of flagged keys, like blocked & verified user
+func (r *RPC) ListDetails(loc store.Locator) (map[string]UserDetailEntry, error) {
+	resp, err := r.Call("store.list_details", loc)
+	if err != nil {
+		return nil, err
+	}
+	var detailsByUser map[string]UserDetailEntry
+	err = json.Unmarshal(*resp.Result, &detailsByUser)
+	return detailsByUser, err
+}
+
 // Count gets comments count by user or site
 func (r *RPC) Count(req FindRequest) (count int, err error) {
 	resp, err := r.Call("store.count", req)

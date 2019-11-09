@@ -666,7 +666,7 @@ func (s *DataStore) Metas(siteID string) (umetas []UserMetaData, pmetas []PostMe
 		}
 	}
 
-	// set users meta
+	// set users meta, key is userID
 	m := map[string]UserMetaData{}
 
 	// process blocked users
@@ -699,6 +699,20 @@ func (s *DataStore) Metas(siteID string) (umetas []UserMetaData, pmetas []PostMe
 		m[v] = val
 	}
 
+	// process user details
+	detailsByUser, err := s.Engine.ListDetails(store.Locator{SiteID: siteID})
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "can't get user details for %s", siteID)
+	}
+	for userID, details := range detailsByUser {
+		val, ok := m[userID]
+		if !ok {
+			val = UserMetaData{ID: userID}
+		}
+		val.Details = details
+		m[userID] = val
+	}
+
 	for _, u := range m {
 		umetas = append(umetas, u)
 	}
@@ -725,6 +739,12 @@ func (s *DataStore) SetMetas(siteID string, umetas []UserMetaData, pmetas []Post
 		}
 		if um.Verified {
 			errs = multierror.Append(errs, s.SetVerified(siteID, um.ID, true))
+		}
+		// This code doesn't delete user details in case they are not set in import but present in DB already
+		if um.Details != (engine.UserDetailEntry{}) && um.Details.Email != "" {
+			req := engine.UserDetailRequest{Locator: store.Locator{SiteID: siteID}, UserID: um.ID, Detail: engine.Email, Update: um.Details.Email}
+			_, err := s.Engine.UserDetail(req)
+			errs = multierror.Append(errs, err)
 		}
 	}
 

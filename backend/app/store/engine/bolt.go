@@ -386,6 +386,28 @@ func (b *BoltDB) ListFlags(req FlagRequest) (res []interface{}, err error) {
 	return nil, errors.Errorf("flag %s not listable", req.Flag)
 }
 
+// ListDetails lists all available users details. Map key is userID.
+func (b *BoltDB) ListDetails(loc store.Locator) (map[string]UserDetailEntry, error) {
+	bdb, e := b.db(loc.SiteID)
+	if e != nil {
+		return nil, e
+	}
+
+	var res = map[string]UserDetailEntry{}
+	err := bdb.View(func(tx *bolt.Tx) error {
+		var entry UserDetailEntry
+		bucket := tx.Bucket([]byte(userDetailsBucketName))
+		return bucket.ForEach(func(userID, value []byte) error {
+			if err := json.Unmarshal(value, &entry); err != nil {
+				return errors.Wrap(e, "failed to unmarshal entry")
+			}
+			res[string(userID)] = entry
+			return nil
+		})
+	})
+	return res, err
+}
+
 // Delete post(s) by id or by userID
 func (b *BoltDB) Delete(req DeleteRequest) error {
 
