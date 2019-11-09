@@ -660,7 +660,7 @@ func (b *BoltDB) getUserDetail(req UserDetailRequest) (val string, err error) {
 		case Email:
 			val = entry.Email
 		}
-		return e
+		return nil
 	})
 
 	return val, err
