@@ -56,14 +56,10 @@ func errDetailsMsg(r *http.Request, httpStatusCode int, err error, details strin
 	if pc, file, line, ok := runtime.Caller(2); ok {
 		fnameElems := strings.Split(file, "/")
 		funcNameElems := strings.Split(runtime.FuncForPC(pc).Name(), "/")
-		srcFileInfo = fmt.Sprintf(" [caused by %s:%d %s]", strings.Join(fnameElems[len(fnameElems)-3:], "/"),
+		srcFileInfo = fmt.Sprintf(" [%s:%d %s]", strings.Join(fnameElems[len(fnameElems)-3:], "/"),
 			line, funcNameElems[len(funcNameElems)-1])
 	}
 
-	remoteIP := r.RemoteAddr
-	if pos := strings.Index(remoteIP, ":"); pos >= 0 {
-		remoteIP = remoteIP[:pos]
-	}
 	return fmt.Sprintf("%s - %v - %d (%d) - %s%s - %s%s",
-		details, err, httpStatusCode, errCode, uinfoStr, remoteIP, q, srcFileInfo)
+		details, err, httpStatusCode, errCode, uinfoStr, q, srcFileInfo)
 }
