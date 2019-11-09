@@ -261,9 +261,10 @@ _instructions for google oauth2 setup borrowed from [oauth2_proxy](https://githu
 ##### Twitter Auth Provider
 
 1.	Create a new twitter application https://developer.twitter.com/en/apps
-1.	Fill **App name**  and **Description** and **URL** of your site
-1.	In the field **Callback URLs** enter the correct url of your callback handler e.g. https://example.mysite.com/{route}/twitter/callback
-1.	Under **Key and tokens** take note of the **Consumer API Key** and **Consumer API Secret key**. Those will be used as `cid` and `csecret`
+1.	Fill **App name**, **Description** and **URL** of your site
+1.	In the field **Callback URLs** enter the correct url of your callback handler e.g.  domain + `/auth/twitter/callback`
+1.	Under **Key and tokens** take note of the **Consumer API Key** and **Consumer API Secret key**. Those will be used as `AUTH_TWITTER_CID` and
+ `AUTH_TWITTER_CSEC`
 
 ##### Yandex Auth Provider
 
