@@ -37,7 +37,7 @@ const (
 
 // SendErrorJSON makes {error: blah, details: blah} json body and responds with error code
 func SendErrorJSON(w http.ResponseWriter, r *http.Request, httpStatusCode int, err error, details string, errCode int) {
-	log.Printf("[DEBUG] %s", errDetailsMsg(r, httpStatusCode, err, details, errCode))
+	log.Printf("[WARN] %s", errDetailsMsg(r, httpStatusCode, err, details, errCode))
 	render.Status(r, httpStatusCode)
 	render.JSON(w, r, rest.JSON{"error": err.Error(), "details": details, "code": errCode})
 }
