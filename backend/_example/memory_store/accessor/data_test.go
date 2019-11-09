@@ -20,7 +20,7 @@ import (
 	"github.com/umputun/remark/backend/app/store/engine"
 )
 
-func TestMem_CreateAndFind(t *testing.T) {
+func TestMemData_CreateAndFind(t *testing.T) {
 	m := prepMem(t) // adds two comments
 
 	req := engine.FindRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, Sort: "time"}
@@ -29,7 +29,6 @@ func TestMem_CreateAndFind(t *testing.T) {
 	require.Equal(t, 2, len(res))
 	assert.Equal(t, `some text, <a href="http://radio-t.com">link</a>`, res[0].Text)
 	assert.Equal(t, "user1", res[0].User.ID)
-	t.Log(res[0].ID)
 
 	_, err = m.Create(store.Comment{ID: res[0].ID, Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}})
 	require.NotNil(t, err)
@@ -44,7 +43,7 @@ func TestMem_CreateAndFind(t *testing.T) {
 	require.Equal(t, 1, len(res))
 }
 
-func TestMem_CreateFailedReadOnly(t *testing.T) {
+func TestMemData_CreateFailedReadOnly(t *testing.T) {
 	b := prepMem(t)
 	comment := store.Comment{
 		ID:        "id-ro",
@@ -72,7 +71,7 @@ func TestMem_CreateFailedReadOnly(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestMem_Get(t *testing.T) {
+func TestMemData_Get(t *testing.T) {
 	b := prepMem(t)
 	req := engine.FindRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, Sort: "time"}
 	res, err := b.Find(req)
@@ -90,7 +89,7 @@ func TestMem_Get(t *testing.T) {
 	assert.EqualError(t, err, `not found`)
 }
 
-func TestMem_Update(t *testing.T) {
+func TestMemData_Update(t *testing.T) {
 	b := prepMem(t)
 	req := engine.FindRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, Sort: "time"}
 	res, err := b.Find(req)
@@ -119,7 +118,7 @@ func TestMem_Update(t *testing.T) {
 	assert.EqualError(t, err, `not found`)
 }
 
-func TestMem_FindLast(t *testing.T) {
+func TestMemData_FindLast(t *testing.T) {
 	b := prepMem(t)
 	req := engine.FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Sort: "-time"}
 	res, err := b.Find(req)
@@ -139,7 +138,7 @@ func TestMem_FindLast(t *testing.T) {
 	assert.Equal(t, 0, len(res))
 }
 
-func TestMem_FindLastSince(t *testing.T) {
+func TestMemData_FindLastSince(t *testing.T) {
 	b := prepMem(t)
 	ts := time.Date(2017, 12, 20, 15, 18, 21, 0, time.Local)
 	req := engine.FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Sort: "-time", Since: ts}
@@ -160,7 +159,7 @@ func TestMem_FindLastSince(t *testing.T) {
 	assert.Equal(t, 0, len(res))
 }
 
-func TestMem_FindForUser(t *testing.T) {
+func TestMemData_FindForUser(t *testing.T) {
 	b := prepMem(t)
 	req := engine.FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Sort: "-time", UserID: "user1", Limit: 5}
 	res, err := b.Find(req)
@@ -191,7 +190,7 @@ func TestMem_FindForUser(t *testing.T) {
 	assert.Equal(t, 0, len(res), "no comments")
 }
 
-func TestMem_FindForUserPagination(t *testing.T) {
+func TestMemData_FindForUserPagination(t *testing.T) {
 	b := NewMemData()
 
 	c := store.Comment{
@@ -246,7 +245,7 @@ func TestMem_FindForUserPagination(t *testing.T) {
 	assert.Equal(t, 0, len(res))
 }
 
-func TestMem_CountPost(t *testing.T) {
+func TestMemData_CountPost(t *testing.T) {
 	b := prepMem(t)
 	req := engine.FindRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}}
 	c, err := b.Count(req)
@@ -262,9 +261,13 @@ func TestMem_CountPost(t *testing.T) {
 	c, err = b.Count(req)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, c)
+
+	c, err = b.Count(engine.FindRequest{})
+	assert.Error(t, err)
+	assert.Equal(t, 0, c)
 }
 
-func TestMem_CountUser(t *testing.T) {
+func TestMemData_CountUser(t *testing.T) {
 	b := prepMem(t)
 	req := engine.FindRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1"}
 	c, err := b.Count(req)
@@ -282,7 +285,7 @@ func TestMem_CountUser(t *testing.T) {
 	assert.Equal(t, 0, c)
 }
 
-func TestMem_InfoPost(t *testing.T) {
+func TestMemData_InfoPost(t *testing.T) {
 	b := prepMem(t)
 	ts := func(min int) time.Time { return time.Date(2017, 12, 20, 15, 18, min, 0, time.Local).In(time.UTC) }
 
@@ -321,6 +324,9 @@ func TestMem_InfoPost(t *testing.T) {
 	_, err = b.Info(req)
 	require.NotNil(t, err)
 
+	_, err = b.Info(engine.InfoRequest{})
+	require.Error(t, err)
+
 	fr := engine.FlagRequest{Flag: engine.ReadOnly,
 		Locator: store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"}, Update: engine.FlagTrue}
 	_, err = b.Flag(fr)
@@ -332,7 +338,7 @@ func TestMem_InfoPost(t *testing.T) {
 		ReadOnly: true}}, r)
 }
 
-func TestMem_InfoList(t *testing.T) {
+func TestMemData_InfoList(t *testing.T) {
 	b := prepMem(t)
 	// add one more for https://radio-t.com/2
 	comment := store.Comment{
@@ -375,7 +381,7 @@ func TestMem_InfoList(t *testing.T) {
 	assert.Equal(t, []store.PostInfo{}, res)
 }
 
-func TestMem_FlagBlockedUser(t *testing.T) {
+func TestMemData_FlagBlockedUser(t *testing.T) {
 
 	b := prepMem(t)
 	req := engine.FlagRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1"}
@@ -408,7 +414,7 @@ func TestMem_FlagBlockedUser(t *testing.T) {
 	assert.False(t, val, "user1 unblocked")
 }
 
-func TestMem_FlagReadOnlyPost(t *testing.T) {
+func TestMemData_FlagReadOnlyPost(t *testing.T) {
 
 	b := prepMem(t)
 	req := engine.FlagRequest{Locator: store.Locator{SiteID: "radio-t", URL: "url-1"}, Flag: engine.ReadOnly}
@@ -440,7 +446,7 @@ func TestMem_FlagReadOnlyPost(t *testing.T) {
 	assert.False(t, val, "url-1 writable")
 }
 
-func TestMem_FlagVerified(t *testing.T) {
+func TestMemData_FlagVerified(t *testing.T) {
 
 	b := prepMem(t)
 	isVerified := func(site, user string) bool {
@@ -475,7 +481,7 @@ func TestMem_FlagVerified(t *testing.T) {
 	assert.NoError(t, setVerified("radio-t", "u3", engine.FlagFalse))
 }
 
-func TestMem_FlagListVerified(t *testing.T) {
+func TestMemData_FlagListVerified(t *testing.T) {
 
 	b := prepMem(t)
 	toIDs := func(inp []interface{}) (res []string) {
@@ -508,9 +514,13 @@ func TestMem_FlagListVerified(t *testing.T) {
 	ids, err = b.ListFlags(engine.FlagRequest{Flag: engine.Verified, Locator: store.Locator{SiteID: "radio-t-bad"}})
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(ids))
+
+	ids, err = b.ListFlags(engine.FlagRequest{})
+	assert.Error(t, err)
+	assert.Equal(t, 0, len(ids))
 }
 
-func TestMem_FlagListBlocked(t *testing.T) {
+func TestMemData_FlagListBlocked(t *testing.T) {
 
 	b := prepMem(t)
 	setBlocked := func(site, user string, status engine.FlagStatus, ttl time.Duration) error {
@@ -555,7 +565,7 @@ func TestMem_FlagListBlocked(t *testing.T) {
 	assert.Equal(t, 0, len(vv))
 }
 
-func TestMem_UserDetail(t *testing.T) {
+func TestMemData_UserDetail(t *testing.T) {
 
 	b := prepMem(t)
 
@@ -652,9 +662,17 @@ func TestMem_DeleteComment(t *testing.T) {
 	delReq.Locator = store.Locator{URL: "https://radio-t.com/bad", SiteID: "radio-t"}
 	err = b.Delete(delReq)
 	assert.EqualError(t, err, `not found`)
+
+	err = b.Delete(engine.DeleteRequest{Locator: store.Locator{SiteID: "bad"}})
+	assert.Error(t, err)
 }
 
-func TestMem_DeleteHard(t *testing.T) {
+func TestMemData_Close(t *testing.T) {
+	b := prepMem(t)
+	assert.NoError(t, b.Close())
+}
+
+func TestMemData_DeleteHard(t *testing.T) {
 
 	b := prepMem(t)
 	reqReq := engine.FindRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, Sort: "time"}
@@ -675,7 +693,7 @@ func TestMem_DeleteHard(t *testing.T) {
 	assert.Equal(t, store.User{Name: "deleted", ID: "deleted", Picture: "", Admin: false, Blocked: false, IP: ""}, res[0].User)
 }
 
-func TestMem_DeleteAll(t *testing.T) {
+func TestMemData_DeleteAll(t *testing.T) {
 	b := prepMem(t)
 	delReq := engine.DeleteRequest{Locator: store.Locator{SiteID: "radio-t"}}
 	err := b.Delete(delReq)
@@ -686,7 +704,7 @@ func TestMem_DeleteAll(t *testing.T) {
 	assert.Equal(t, 0, len(comments), "nothing left")
 }
 
-func TestBoltAdmin_DeleteUserHard(t *testing.T) {
+func TestMemAdmin_DeleteUserHard(t *testing.T) {
 	b := prepMem(t)
 	err := b.Delete(engine.DeleteRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1",
 		DeleteMode: store.HardDelete})
@@ -711,7 +729,7 @@ func TestBoltAdmin_DeleteUserHard(t *testing.T) {
 	assert.Equal(t, 0, len(comments), "nothing left")
 }
 
-func TestBoltAdmin_DeleteUserSoft(t *testing.T) {
+func TestMemAdmin_DeleteUserSoft(t *testing.T) {
 
 	b := prepMem(t)
 	err := b.Delete(engine.DeleteRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1",

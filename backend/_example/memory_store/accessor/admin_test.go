@@ -21,9 +21,9 @@ func TestMemAdmin_Get(t *testing.T) {
 
 	adm.data = map[string]AdminRec{
 		"site1": {"site1", []string{"i11", "i12"}, "e1", true, 0},
-		"site2": {"site2", []string{"i21", "i22"}, "e2", true, 0},
-		"site3": {"site3", []string{"i21", "i22"}, "e3", false, 0},
 	}
+	adm.Set("site2", AdminRec{"site2", []string{"i21", "i22"}, "e2", true, 0})
+	adm.Set("site3", AdminRec{"site3", []string{"i21", "i22"}, "e3", false, 0})
 
 	admins, err := ms.Admins("site1")
 	assert.NoError(t, err)
@@ -61,4 +61,10 @@ func TestMemAdmin_Get(t *testing.T) {
 
 	enabled, err = ms.Enabled("no-site-in-db")
 	assert.EqualError(t, err, "site no-site-in-db not found")
+
+	err = ms.OnEvent("site1", admin.EvCreate)
+	assert.NoError(t, err)
+
+	err = ms.OnEvent("no-site-in-db", admin.EvCreate)
+	assert.Error(t, err)
 }
