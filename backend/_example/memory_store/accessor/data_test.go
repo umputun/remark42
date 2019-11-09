@@ -614,7 +614,43 @@ func TestMemData_UserDetail(t *testing.T) {
 	}
 }
 
-func TestMem_DeleteComment(t *testing.T) {
+func TestMemData_ListDetails(t *testing.T) {
+
+	b := prepMem(t)
+
+	req := engine.UserDetailRequest{
+		Detail:  engine.Email,
+		Locator: store.Locator{SiteID: "radio-t"},
+		UserID:  "u1",
+		Update:  "test@example.com"}
+	_, err := b.UserDetail(req)
+	assert.NoError(t, err)
+	req.UserID = "u2"
+	req.Update = "other@example.com"
+	_, err = b.UserDetail(req)
+	assert.NoError(t, err)
+
+	var testData = []struct {
+		site     string
+		expected map[string]engine.UserDetailEntry
+		error    string
+	}{
+		{site: "radio-t", expected: map[string]engine.UserDetailEntry{"u1": {Email: "test@example.com"}, "u2": {Email: "other@example.com"}}},
+		{site: "bad", expected: map[string]engine.UserDetailEntry{}},
+	}
+
+	for i, x := range testData {
+		result, err := b.ListDetails(store.Locator{SiteID: x.site})
+		if x.error != "" {
+			assert.EqualError(t, err, x.error, i)
+		} else {
+			assert.NoError(t, err, i)
+		}
+		assert.Equal(t, x.expected, result, i)
+	}
+}
+
+func TestMemData_DeleteComment(t *testing.T) {
 
 	b := prepMem(t)
 	reqReq := engine.FindRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, Sort: "time"}

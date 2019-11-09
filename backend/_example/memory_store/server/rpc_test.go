@@ -264,6 +264,27 @@ func TestRPC_userDetailHndl(t *testing.T) {
 	}
 }
 
+func TestRPC_listDetailsHndl(t *testing.T) {
+	_, port, teardown := prepTestStore(t)
+	defer teardown()
+	api := fmt.Sprintf("http://localhost:%d/test", port)
+
+	re := engine.RPC{Client: jrpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
+
+	req := engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "u1", Detail: engine.Email, Update: "test@example.org"}
+	value, err := re.UserDetail(req)
+	assert.NoError(t, err)
+	assert.Equal(t, "test@example.org", value)
+
+	flags, err := re.ListDetails(store.Locator{SiteID: "test-site"})
+	require.NoError(t, err)
+	assert.Equal(t, map[string]engine.UserDetailEntry{"u1": {Email: "test@example.org"}}, flags)
+
+	flags, err = re.ListDetails(store.Locator{SiteID: "bad-site"})
+	require.NoError(t, err)
+	assert.Equal(t, map[string]engine.UserDetailEntry{}, flags)
+}
+
 func TestRPC_deleteHndl(t *testing.T) {
 	_, port, teardown := prepTestStore(t)
 	defer teardown()
