@@ -281,6 +281,20 @@ func (m *MemData) ListFlags(req engine.FlagRequest) (res []interface{}, err erro
 	return nil, errors.Errorf("flag %s not listable", req.Flag)
 }
 
+// ListDetails lists all available users details. Map key is userID.
+func (m *MemData) ListDetails(loc store.Locator) (map[string]engine.UserDetailEntry, error) {
+	m.RLock()
+	defer m.RUnlock()
+
+	var res = map[string]engine.UserDetailEntry{}
+	for _, u := range m.metaUsers {
+		if u.SiteID == loc.SiteID {
+			res[u.UserID] = u.Details
+		}
+	}
+	return res, nil
+}
+
 // UserDetail sets and gets detail values
 func (m *MemData) UserDetail(req engine.UserDetailRequest) (val string, err error) {
 	switch req.Detail {
