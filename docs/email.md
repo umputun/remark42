@@ -22,9 +22,9 @@ This is an example of configuration using mailgun email service:
       - AUTH_EMAIL_HOST=smtp.mailgun.org
       - AUTH_EMAIL_PORT=465
       - AUTH_EMAIL_TLS=true
-      - AUTH_EMAIL_USER=postmaster@mg.exmaple.com
+      - AUTH_EMAIL_USER=postmaster@mg.example.com
       - AUTH_EMAIL_PASSWD=*********
-      - AUTH_EMAIL_FROM=confirmation@exmaple.com
+      - AUTH_EMAIL_FROM=confirmation@example.com
 ```
 
 For gmail:
