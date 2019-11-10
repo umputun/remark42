@@ -670,6 +670,43 @@ func TestBoltDB_UserDetail(t *testing.T) {
 	}
 }
 
+func TestBoltDB_ListDetails(t *testing.T) {
+
+	b, teardown := prep(t)
+	defer teardown()
+
+	req := UserDetailRequest{
+		Detail:  Email,
+		Locator: store.Locator{SiteID: "radio-t"},
+		UserID:  "u1",
+		Update:  "test@example.com"}
+	_, err := b.UserDetail(req)
+	assert.NoError(t, err)
+	req.UserID = "u2"
+	req.Update = "other@example.com"
+	_, err = b.UserDetail(req)
+	assert.NoError(t, err)
+
+	var testData = []struct {
+		site     string
+		expected map[string]UserDetailEntry
+		error    string
+	}{
+		{site: "radio-t", expected: map[string]UserDetailEntry{"u1": {Email: "test@example.com"}, "u2": {Email: "other@example.com"}}},
+		{site: "bad", error: `site "bad" not found`},
+	}
+
+	for i, x := range testData {
+		result, err := b.ListDetails(store.Locator{SiteID: x.site})
+		if x.error != "" {
+			assert.EqualError(t, err, x.error, i)
+		} else {
+			assert.NoError(t, err, i)
+		}
+		assert.Equal(t, x.expected, result, i)
+	}
+}
+
 func TestBolt_DeleteComment(t *testing.T) {
 
 	b, teardown := prep(t)

@@ -718,15 +718,29 @@ func TestService_GetMetas(t *testing.T) {
 	assert.NoError(t, b.SetBlock("radio-t", "user2", true, time.Hour))
 	assert.NoError(t, b.SetReadOnly(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, true))
 
+	// set email for one existing and one non-existing user
+	req := engine.UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user2", Detail: engine.Email, Update: "test@example.org"}
+	value, err := b.Engine.UserDetail(req)
+	assert.NoError(t, err)
+	assert.Equal(t, "test@example.org", value)
+	req.UserID = "user3"
+	value, err = b.Engine.UserDetail(req)
+	assert.NoError(t, err)
+	assert.Equal(t, "test@example.org", value)
+
 	um, pm, err = b.Metas("radio-t")
 	require.NoError(t, err)
 
-	assert.Equal(t, 2, len(um))
+	assert.Equal(t, 3, len(um))
 	assert.Equal(t, "user1", um[0].ID)
 	assert.Equal(t, true, um[0].Verified)
+	assert.Equal(t, engine.UserDetailEntry{Email: ""}, um[0].Details)
 	assert.Equal(t, true, um[0].Blocked.Status)
 	assert.Equal(t, false, um[1].Verified)
 	assert.Equal(t, true, um[1].Blocked.Status)
+	assert.Equal(t, "test@example.org", um[1].Details.Email)
+	assert.Equal(t, "user3", um[2].ID)
+	assert.Equal(t, "test@example.org", um[2].Details.Email)
 
 	assert.Equal(t, 1, len(pm))
 	assert.Equal(t, "https://radio-t.com", pm[0].URL)
@@ -738,12 +752,12 @@ func TestService_SetMetas(t *testing.T) {
 	// two comments for https://radio-t.com
 	b := DataStore{Engine: prepStoreEngine(t), EditDuration: 100 * time.Millisecond,
 		AdminStore: admin.NewStaticKeyStore("secret 123")}
-	umetas := []UserMetaData{}
-	pmetas := []PostMetaData{}
+	var umetas []UserMetaData
+	var pmetas []PostMetaData
 	err := b.SetMetas("radio-t", umetas, pmetas)
 	assert.NoError(t, err, "empty metas")
 
-	um1 := UserMetaData{ID: "user1", Verified: true}
+	um1 := UserMetaData{ID: "user1", Verified: true, Details: engine.UserDetailEntry{Email: "test@example.org"}}
 	um2 := UserMetaData{ID: "user2"}
 	um2.Blocked.Status = true
 	um2.Blocked.Until = time.Now().AddDate(0, 1, 1)
@@ -755,6 +769,9 @@ func TestService_SetMetas(t *testing.T) {
 	assert.True(t, b.IsReadOnly(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com"}))
 	assert.True(t, b.IsVerified("radio-t", "user1"))
 	assert.True(t, b.IsBlocked("radio-t", "user2"))
+	val, err := b.Engine.UserDetail(engine.UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", Detail: engine.Email})
+	assert.NoError(t, err)
+	assert.Equal(t, "test@example.org", val)
 }
 
 func TestService_IsAdmin(t *testing.T) {
