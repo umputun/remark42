@@ -27,7 +27,7 @@ This is an example of configuration using mailgun email service:
       - AUTH_EMAIL_FROM=confirmation@example.com
 ```
 
-For gmail:
+Configuration example for gmail:
 
 ```
       - AUTH_EMAIL_ENABLE=true
