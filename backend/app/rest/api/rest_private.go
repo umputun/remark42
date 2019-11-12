@@ -14,9 +14,9 @@ import (
 	"github.com/go-chi/render"
 	"github.com/go-pkgz/auth"
 	"github.com/go-pkgz/auth/token"
+	cache "github.com/go-pkgz/lcw"
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
-	"github.com/go-pkgz/rest/cache"
 	"github.com/hashicorp/go-multierror"
 
 	"github.com/umputun/remark/backend/app/notify"
@@ -28,7 +28,7 @@ import (
 
 type private struct {
 	dataService      privStore
-	cache            cache.LoadingCache
+	cache            LoadingCache
 	readOnlyAge      int
 	commentFormatter *store.CommentFormatter
 	imageService     *image.Service

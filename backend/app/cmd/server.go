@@ -26,7 +26,7 @@ import (
 	"github.com/go-pkgz/auth/provider"
 	"github.com/go-pkgz/auth/provider/sender"
 	"github.com/go-pkgz/auth/token"
-	"github.com/go-pkgz/rest/cache"
+	cache "github.com/go-pkgz/lcw"
 
 	"github.com/umputun/remark/backend/app/migrator"
 	"github.com/umputun/remark/backend/app/notify"
@@ -201,6 +201,12 @@ type RPCGroup struct {
 	TimeOut      time.Duration `long:"timeout" env:"TIMEOUT" default:"5s" description:"http timeout"`
 	AuthUser     string        `long:"auth_user" env:"AUTH_USER" description:"basic auth user name"`
 	AuthPassword string        `long:"auth_passwd" env:"AUTH_PASSWD" description:"basic auth user password"`
+}
+
+// LoadingCache defines interface for caching
+type LoadingCache interface {
+	Get(key cache.Key, fn func() ([]byte, error)) (data []byte, err error) // load from cache if found or put to cache and return
+	Flush(req cache.FlusherRequest)                                        // evict matched records
 }
 
 // serverApp holds all active objects
@@ -544,14 +550,18 @@ func (s *ServerCommand) makeAdminStore() (admin.Store, error) {
 	}
 }
 
-func (s *ServerCommand) makeCache() (cache.LoadingCache, error) {
+func (s *ServerCommand) makeCache() (LoadingCache, error) {
 	log.Printf("[INFO] make cache, type=%s", s.Cache.Type)
 	switch s.Cache.Type {
 	case "mem":
-		return cache.NewMemoryCache(cache.MaxCacheSize(s.Cache.Max.Size), cache.MaxValSize(s.Cache.Max.Value),
+		backend, err := cache.NewLruCache(cache.MaxCacheSize(s.Cache.Max.Size), cache.MaxValSize(s.Cache.Max.Value),
 			cache.MaxKeys(s.Cache.Max.Items))
+		if err != nil {
+			return nil, errors.Wrap(err, "cache backend initialization")
+		}
+		return cache.NewScache(backend), nil
 	case "none":
-		return &cache.Nop{}, nil
+		return cache.NewScache(&cache.Nop{}), nil
 	}
 	return nil, errors.Errorf("unsupported cache type %s", s.Cache.Type)
 }
