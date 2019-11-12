@@ -19,11 +19,9 @@ require (
 	github.com/go-chi/cors v1.0.0
 	github.com/go-chi/render v1.0.1
 	github.com/go-pkgz/auth v0.9.0
-	github.com/go-pkgz/auth/_example v0.0.0-20190722170031-705d3f732438 // indirect
 	github.com/go-pkgz/jrpc v0.1.0
-	github.com/go-pkgz/lcw v0.4.0
+	github.com/go-pkgz/lcw v0.5.0
 	github.com/go-pkgz/lgr v0.6.3
-	github.com/go-pkgz/mongo v1.1.2 // indirect
 	github.com/go-pkgz/repeater v1.1.3
 	github.com/go-pkgz/rest v1.4.1
 	github.com/go-pkgz/syncs v1.1.1

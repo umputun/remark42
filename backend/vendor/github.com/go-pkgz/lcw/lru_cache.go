@@ -104,6 +104,15 @@ func (c *LruCache) Delete(key string) {
 	c.backend.Remove(key)
 }
 
+func (c *LruCache) Keys() (res []string) {
+	keys := c.backend.Keys()
+	res = make([]string, 0, len(keys))
+	for _, key := range keys {
+		res = append(res, key.(string))
+	}
+	return res
+}
+
 // Stat returns cache statistics
 func (c *LruCache) Stat() CacheStat {
 	return CacheStat{
