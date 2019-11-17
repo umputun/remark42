@@ -658,6 +658,43 @@ func TestMemData_DeleteAll(t *testing.T) {
 	assert.Equal(t, 0, len(comments), "nothing left")
 }
 
+func TestMemData_DeleteUserDetail(t *testing.T) {
+	var (
+		createUser = engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "user1", Detail: engine.Email, Update: "value1"}
+		readUser   = engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "user1", Detail: engine.Email}
+		emailSet   = []engine.UserDetailEntry{{UserID: "user1", Email: "value1"}}
+		emailUnset = []engine.UserDetailEntry{{UserID: "user1", Email: ""}}
+	)
+
+	b := prepMem(t)
+
+	var testData = []struct {
+		delReq    engine.DeleteRequest
+		detailReq engine.UserDetailRequest
+		expected  []engine.UserDetailEntry
+	}{
+		{delReq: engine.DeleteRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "user1", UserDetail: engine.Email},
+			detailReq: createUser, expected: emailSet},
+		{delReq: engine.DeleteRequest{Locator: store.Locator{SiteID: "bad"}, UserID: "user1", UserDetail: engine.Email},
+			detailReq: readUser, expected: emailSet},
+		{delReq: engine.DeleteRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "user1", UserDetail: engine.Email},
+			detailReq: readUser, expected: emailUnset},
+		{delReq: engine.DeleteRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "user1", UserDetail: engine.All},
+			detailReq: createUser, expected: emailSet},
+		{delReq: engine.DeleteRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "user1", UserDetail: engine.All},
+			detailReq: readUser, expected: emailUnset},
+	}
+
+	for i, x := range testData {
+		err := b.Delete(x.delReq)
+		require.NoError(t, err, "delete request #%d error", i)
+
+		val, err := b.UserDetail(x.detailReq)
+		require.NoError(t, err, "user request #%d error", i)
+		require.Equal(t, x.expected, val, "user request #%d result", i)
+	}
+}
+
 func TestMemAdmin_DeleteUserHard(t *testing.T) {
 	b := prepMem(t)
 	err := b.Delete(engine.DeleteRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1",
