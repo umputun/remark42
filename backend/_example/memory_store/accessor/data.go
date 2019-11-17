@@ -311,17 +311,19 @@ func (m *MemData) UserDetail(req engine.UserDetailRequest) ([]engine.UserDetailE
 	}
 }
 
-// Delete post(s) by id or by userID
+// Delete post(s), user, comment, user details, or everything
 func (m *MemData) Delete(req engine.DeleteRequest) error {
 
 	m.Lock()
 	defer m.Unlock()
 
 	switch {
-	case req.Locator.URL != "" && req.CommentID != "": // delete comment
+	case req.UserDetail != "":
+		return m.deleteUserDetail(req.Locator, req.UserID, req.UserDetail)
+	case req.Locator.URL != "" && req.CommentID != "" && req.UserDetail == "": // delete comment
 		return m.deleteComment(req.Locator, req.CommentID, req.DeleteMode)
 
-	case req.Locator.SiteID != "" && req.UserID != "" && req.CommentID == "": // delete user
+	case req.Locator.SiteID != "" && req.UserID != "" && req.CommentID == "" && req.UserDetail == "": // delete user
 		comments := m.match(m.posts[req.Locator.SiteID], func(c store.Comment) bool {
 			return c.User.ID == req.UserID && !c.Deleted
 		})
@@ -332,7 +334,7 @@ func (m *MemData) Delete(req engine.DeleteRequest) error {
 		}
 		return nil
 
-	case req.Locator.SiteID != "" && req.Locator.URL == "" && req.CommentID == "" && req.UserID == "": // delete site
+	case req.Locator.SiteID != "" && req.Locator.URL == "" && req.CommentID == "" && req.UserID == "" && req.UserDetail == "": // delete site
 		if _, ok := m.posts[req.Locator.SiteID]; !ok {
 			return errors.New("not found")
 		}
@@ -484,6 +486,37 @@ func (m *MemData) listDetails(loc store.Locator) ([]engine.UserDetailEntry, erro
 		}
 	}
 	return res, nil
+}
+
+// deleteUserDetail deletes requested UserDetail or whole UserDetailEntry
+func (m *MemData) deleteUserDetail(locator store.Locator, userID string, userDetail engine.UserDetail) error {
+	var entry metaUser
+	if meta, ok := m.metaUsers[userID]; ok {
+		if meta.SiteID != locator.SiteID {
+			return nil
+		}
+		entry = meta
+	}
+
+	if entry == (metaUser{}) || entry.Details == (engine.UserDetailEntry{}) {
+		// absent entry means that we should not do anything
+		return nil
+	}
+
+	switch userDetail {
+	case engine.Email:
+		entry.Details.Email = ""
+	case engine.All:
+		entry.Details = engine.UserDetailEntry{UserID: userID}
+	}
+
+	if entry.Details == (engine.UserDetailEntry{UserID: userID}) {
+		// no user details are stored, empty details entry altogether
+		entry.Details = engine.UserDetailEntry{}
+	}
+
+	m.metaUsers[userID] = entry
+	return nil
 }
 
 func (m *MemData) get(loc store.Locator, commentID string) (store.Comment, error) {

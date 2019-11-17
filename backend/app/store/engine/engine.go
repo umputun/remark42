@@ -22,7 +22,7 @@ type Interface interface {
 	Find(req FindRequest) ([]store.Comment, error)               // find comments for locator or site
 	Info(req InfoRequest) ([]store.PostInfo, error)              // get post(s) meta info
 	Count(req FindRequest) (int, error)                          // get count for post or user
-	Delete(req DeleteRequest) error                              // delete post(s) by id or by userID
+	Delete(req DeleteRequest) error                              // Delete post(s), user, comment, user details, or everything
 	Flag(req FlagRequest) (bool, error)                          // set and get flags
 	ListFlags(req FlagRequest) ([]interface{}, error)            // get list of flagged keys, like blocked & verified user
 	UserDetail(req UserDetailRequest) ([]UserDetailEntry, error) // set and get user details
@@ -58,6 +58,7 @@ type DeleteRequest struct {
 	Locator    store.Locator    `json:"locator"` // lack of URL means site operation
 	CommentID  string           `json:"comment_id,omitempty"`
 	UserID     string           `json:"user_id,omitempty"`
+	UserDetail UserDetail       `json:"user_detail,omitempty"`
 	DeleteMode store.DeleteMode `json:"del_mode"`
 }
 

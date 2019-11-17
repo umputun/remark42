@@ -140,7 +140,7 @@ func (s *RPC) userDetailHndl(id uint64, params json.RawMessage) (rr jrpc.Respons
 	return jrpc.EncodeResponse(id, value, err)
 }
 
-// deleteHndl remove comment(s)
+// deleteHndl delete post(s), user, comment, user details, or everything
 func (s *RPC) deleteHndl(id uint64, params json.RawMessage) (rr jrpc.Response) {
 	req := engine.DeleteRequest{}
 	if err := json.Unmarshal(params, &req); err != nil {

@@ -102,7 +102,7 @@ func (r *RPC) Count(req FindRequest) (count int, err error) {
 	return count, err
 }
 
-// Delete post(s) by id or by userID
+// Delete post(s), user, comment, user details, or everything
 func (r *RPC) Delete(req DeleteRequest) error {
 	_, err := r.Call("store.delete", req)
 	return err
