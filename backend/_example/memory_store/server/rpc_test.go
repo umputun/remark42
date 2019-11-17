@@ -231,58 +231,47 @@ func TestRPC_userDetailHndl(t *testing.T) {
 	re := engine.RPC{Client: jrpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
 
 	var testData = []struct {
-		req   engine.UserDetailRequest
-		error string
-		value string
+		req      engine.UserDetailRequest
+		error    string
+		expected []engine.UserDetailEntry
 	}{
-		{req: engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, Detail: engine.Email}, error: "userid cannot be empty"},
-		{req: engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, Detail: engine.Email, Update: "value"},
-			error: "userid cannot be empty"},
-		{req: engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, Detail: engine.Email, UserID: "user1"}},
-		{req: engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, Detail: engine.Email, UserID: "user1", Update: "test@example.com"},
-			value: "test@example.com"},
-		{req: engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, Detail: engine.Email, UserID: "user1"},
-			value: "test@example.com"},
-		{req: engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, Detail: engine.Email, UserID: "user1", Update: "test_other@example.com"},
-			value: "test_other@example.com"},
-		{req: engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, Detail: engine.Email, UserID: "user1"},
-			value: "test_other@example.com"},
-		{req: engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, Detail: engine.Email, UserID: "user1", Delete: true}},
-		{req: engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, Detail: engine.Email, UserID: "user1", Delete: true, Update: "value"},
-			error: "both delete and update fields are set, pick one"},
-		{req: engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, Detail: engine.Email, UserID: "user1"}},
+		{req: engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "u1", Detail: engine.Email},
+			expected: []engine.UserDetailEntry{}},
+		{req: engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "u1", Detail: engine.Email, Update: "value1"},
+			expected: []engine.UserDetailEntry{{UserID: "u1", Email: "value1"}}},
+		{req: engine.UserDetailRequest{Locator: store.Locator{SiteID: "bad"}, UserID: "u1", Detail: engine.Email, Update: "value1"},
+			expected: []engine.UserDetailEntry{}},
+		{req: engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "u1", Detail: engine.Email},
+			expected: []engine.UserDetailEntry{{UserID: "u1", Email: "value1"}}},
+		{req: engine.UserDetailRequest{Locator: store.Locator{SiteID: "bad"}, UserID: "u1", Detail: engine.Email},
+			expected: []engine.UserDetailEntry{}},
+		{req: engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "u1xyz", Detail: engine.Email},
+			expected: []engine.UserDetailEntry{}},
+		{req: engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "u1", Detail: engine.Email, Update: "test@example.com"},
+			expected: []engine.UserDetailEntry{{UserID: "u1", Email: "test@example.com"}}},
+		{req: engine.UserDetailRequest{Detail: engine.Email, Update: "new_value"},
+			error: `userid cannot be empty in request for single detail`},
+		{req: engine.UserDetailRequest{Detail: engine.UserDetail("bad")},
+			error: `unsupported detail bad`},
+		{req: engine.UserDetailRequest{Update: "not_relevant"},
+			error: `unsupported request without detail field set`},
+		//{req: engine.UserDetailRequest{Locator: store.Locator{SiteID: "bad"}},
+		//	error: `site "bad" not found`},
+		{req: engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "u2", Detail: engine.Email, Update: "other@example.com"},
+			expected: []engine.UserDetailEntry{{UserID: "u2", Email: "other@example.com"}}},
+		{req: engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}},
+			expected: []engine.UserDetailEntry{{UserID: "u1", Email: "test@example.com"}, {UserID: "u2", Email: "other@example.com"}}},
 	}
 
 	for i, x := range testData {
-		value, err := re.UserDetail(x.req)
+		result, err := re.UserDetail(x.req)
 		if x.error != "" {
 			assert.EqualError(t, err, x.error, "Error should match expected for case %d", i)
 		} else {
 			assert.NoError(t, err, "Error is not expected expected for case %d", i)
 		}
-		assert.Equal(t, x.value, value, "Result should match expected for case %d", i)
+		assert.Equal(t, x.expected, result, "Result should match expected for case %d", i)
 	}
-}
-
-func TestRPC_listDetailsHndl(t *testing.T) {
-	_, port, teardown := prepTestStore(t)
-	defer teardown()
-	api := fmt.Sprintf("http://localhost:%d/test", port)
-
-	re := engine.RPC{Client: jrpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
-
-	req := engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "u1", Detail: engine.Email, Update: "test@example.org"}
-	value, err := re.UserDetail(req)
-	assert.NoError(t, err)
-	assert.Equal(t, "test@example.org", value)
-
-	flags, err := re.ListDetails(store.Locator{SiteID: "test-site"})
-	require.NoError(t, err)
-	assert.Equal(t, map[string]engine.UserDetailEntry{"u1": {Email: "test@example.org"}}, flags)
-
-	flags, err = re.ListDetails(store.Locator{SiteID: "bad-site"})
-	require.NoError(t, err)
-	assert.Equal(t, map[string]engine.UserDetailEntry{}, flags)
 }
 
 func TestRPC_deleteHndl(t *testing.T) {

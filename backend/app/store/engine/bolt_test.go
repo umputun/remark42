@@ -626,84 +626,42 @@ func TestBoltDB_UserDetail(t *testing.T) {
 	defer teardown()
 
 	var testData = []struct {
-		site     string
-		user     string
-		update   string
-		delete   bool
-		expected string
+		req      UserDetailRequest
 		error    string
-		detail   UserDetail
+		expected []UserDetailEntry
 	}{
-		{site: "radio-t", user: "u1"},
-		{site: "radio-t", user: "u1", update: "value1", expected: "value1"},
-		{site: "radio-t", user: "u1", expected: "value1"},
-		{site: "radio-t", user: "u1", delete: true},
-		{site: "radio-t", user: "u1"},
-		{site: "bad", user: "u1", update: "value2", error: `site "bad" not found`},
-		{site: "radio-t", user: "u1xyz", delete: true},
-		{site: "radio-t-bad", user: "u1", error: `site "radio-t-bad" not found`},
-		{site: "radio-t", user: "u1", update: "value3", expected: "value3"},
-		{site: "radio-t", user: "u2", update: "value4", delete: true, error: `both delete and update fields are set, pick one`},
-		{update: "new_value", error: `userid cannot be empty`},
-		{site: "radio-t", error: `userid cannot be empty`},
-		{site: "radio-t", user: "u1", delete: true, detail: "bad", error: `unsupported detail bad`},
-		{site: "radio-t", user: "u1", detail: "bad", error: `unsupported detail bad`},
+		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "u1", Detail: Email}},
+		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "u1", Detail: Email, Update: "value1"},
+			expected: []UserDetailEntry{{UserID: "u1", Email: "value1"}}},
+		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "u1", Detail: Email},
+			expected: []UserDetailEntry{{UserID: "u1", Email: "value1"}}},
+		{req: UserDetailRequest{Locator: store.Locator{SiteID: "bad"}, UserID: "u1", Detail: Email},
+			error: `site "bad" not found`},
+		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "u1xyz", Detail: Email}},
+		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "u1", Detail: Email, Update: "test@example.com"},
+			expected: []UserDetailEntry{{UserID: "u1", Email: "test@example.com"}}},
+		{req: UserDetailRequest{Detail: Email, Update: "new_value"},
+			error: `userid cannot be empty in request for single detail`},
+		{req: UserDetailRequest{Detail: UserDetail("bad")},
+			error: `unsupported detail bad`},
+		{req: UserDetailRequest{Update: "not_relevant"},
+			error: `unsupported request without detail field set`},
+		{req: UserDetailRequest{Locator: store.Locator{SiteID: "bad"}},
+			error: `site "bad" not found`},
+		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "u2", Detail: Email, Update: "other@example.com"},
+			expected: []UserDetailEntry{{UserID: "u2", Email: "other@example.com"}}},
+		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}},
+			expected: []UserDetailEntry{{UserID: "u1", Email: "test@example.com"}, {UserID: "u2", Email: "other@example.com"}}},
 	}
 
 	for i, x := range testData {
-		if x.detail == UserDetail("") {
-			x.detail = Email
-		}
-		req := UserDetailRequest{
-			Detail:  x.detail,
-			Locator: store.Locator{SiteID: x.site},
-			UserID:  x.user,
-			Update:  x.update,
-			Delete:  x.delete}
-		result, err := b.UserDetail(req)
+		result, err := b.UserDetail(x.req)
 		if x.error != "" {
-			assert.EqualError(t, err, x.error, i)
+			assert.EqualError(t, err, x.error, "Error should match expected for case %d", i)
 		} else {
-			assert.NoError(t, err, i)
+			assert.NoError(t, err, "Error is not expected expected for case %d", i)
 		}
-		assert.Equal(t, x.expected, result, i)
-	}
-}
-
-func TestBoltDB_ListDetails(t *testing.T) {
-
-	b, teardown := prep(t)
-	defer teardown()
-
-	req := UserDetailRequest{
-		Detail:  Email,
-		Locator: store.Locator{SiteID: "radio-t"},
-		UserID:  "u1",
-		Update:  "test@example.com"}
-	_, err := b.UserDetail(req)
-	assert.NoError(t, err)
-	req.UserID = "u2"
-	req.Update = "other@example.com"
-	_, err = b.UserDetail(req)
-	assert.NoError(t, err)
-
-	var testData = []struct {
-		site     string
-		expected map[string]UserDetailEntry
-		error    string
-	}{
-		{site: "radio-t", expected: map[string]UserDetailEntry{"u1": {Email: "test@example.com"}, "u2": {Email: "other@example.com"}}},
-		{site: "bad", error: `site "bad" not found`},
-	}
-
-	for i, x := range testData {
-		result, err := b.ListDetails(store.Locator{SiteID: x.site})
-		if x.error != "" {
-			assert.EqualError(t, err, x.error, i)
-		} else {
-			assert.NoError(t, err, i)
-		}
-		assert.Equal(t, x.expected, result, i)
+		assert.Equal(t, x.expected, result,"Result should match expected for case %d", i)
 	}
 }
 

@@ -281,36 +281,34 @@ func (m *MemData) ListFlags(req engine.FlagRequest) (res []interface{}, err erro
 	return nil, errors.Errorf("flag %s not listable", req.Flag)
 }
 
-// ListDetails lists all available users details. Map key is userID.
-func (m *MemData) ListDetails(loc store.Locator) (map[string]engine.UserDetailEntry, error) {
-	m.RLock()
-	defer m.RUnlock()
-
-	var res = map[string]engine.UserDetailEntry{}
-	for _, u := range m.metaUsers {
-		if u.SiteID == loc.SiteID {
-			res[u.UserID] = u.Details
-		}
-	}
-	return res, nil
-}
-
 // UserDetail sets and gets detail values
-func (m *MemData) UserDetail(req engine.UserDetailRequest) (val string, err error) {
+func (m *MemData) UserDetail(req engine.UserDetailRequest) ([]engine.UserDetailEntry, error) {
 	switch req.Detail {
 	case engine.Email:
+		if req.UserID == "" {
+			return nil, errors.New("userid cannot be empty in request for single detail")
+		}
+
+		m.Lock()
+		defer m.Unlock()
+
+		if req.Update == "" { // read detail value, no update requested
+			return m.getUserDetail(req)
+		}
+
+		return m.setUserDetail(req)
+	case "":
+		// list of all details returned in case request is a read request
+		// (Update is not set) and does not have UserID or Detail set
+		if req.Update == "" && req.UserID == "" { // read list of all details
+			m.Lock()
+			defer m.Unlock()
+			return m.listDetails(req.Locator)
+		}
+		return nil, errors.New("unsupported request without detail field set")
 	default:
-		return val, errors.Errorf("unsupported detail %s", req.Detail)
+		return nil, errors.Errorf("unsupported detail %s", req.Detail)
 	}
-	m.Lock()
-	defer m.Unlock()
-
-	if req.Update == "" && !req.Delete { // read detail value, no update requested
-		return m.getUserDetail(req)
-	}
-
-	// write or delete detail value
-	return m.setUserDetail(req)
 }
 
 // Delete post(s) by id or by userID
@@ -435,64 +433,57 @@ func (m *MemData) setFlag(req engine.FlagRequest) (res bool, err error) {
 }
 
 // getUserDetail returns requested userDetail value
-func (m *MemData) getUserDetail(req engine.UserDetailRequest) (string, error) {
-	key := req.UserID
-	if key == "" {
-		return "", errors.New("userid cannot be empty")
-	}
-
+func (m *MemData) getUserDetail(req engine.UserDetailRequest) ([]engine.UserDetailEntry, error) {
 	if meta, ok := m.metaUsers[req.UserID]; ok {
 		if meta.SiteID != req.Locator.SiteID {
-			return "", nil
+			return []engine.UserDetailEntry{}, nil
 		}
 		switch req.Detail {
 		case engine.Email:
-			return meta.Details.Email, nil
+			return []engine.UserDetailEntry{{UserID: req.UserID, Email: meta.Details.Email}}, nil
 		}
 	}
 
-	return "", nil
+	return []engine.UserDetailEntry{}, nil
 }
 
 // setUserDetail sets requested userDetail, deletion of the absent entry doesn't produce error
-func (m *MemData) setUserDetail(req engine.UserDetailRequest) (string, error) {
-	key := req.UserID
-	if key == "" {
-		return "", errors.New("userid cannot be empty")
-	}
-	if req.Delete && req.Update != "" {
-		return "", errors.New("both delete and update fields are set, pick one")
-	}
-
+func (m *MemData) setUserDetail(req engine.UserDetailRequest) ([]engine.UserDetailEntry, error) {
+	var entry metaUser
 	if meta, ok := m.metaUsers[req.UserID]; ok {
 		if meta.SiteID != req.Locator.SiteID {
-			return "", nil
+			return []engine.UserDetailEntry{}, nil
 		}
-		// assign UserDetail to req.Update both in case of update and delete,
-		// as with update we'll assign new value and with delete we'll assign empty string,
-		// effectively deleting the value
-		switch req.Detail {
-		case engine.Email:
-			meta.Details.Email = req.Update
-			m.metaUsers[req.UserID] = meta
-			return req.Update, nil
+		entry = meta
+	}
+
+	if entry == (metaUser{}) {
+		entry = metaUser{
+			UserID:  req.UserID,
+			SiteID:  req.Locator.SiteID,
+			Details: engine.UserDetailEntry{UserID: req.UserID},
 		}
 	}
 
-	// Update request issued but did't found existing entry.
-	// In line with bolt storage, store this information instead of throwing error.
-	if req.Update != "" {
-		switch req.Detail {
-		case engine.Email:
-			newEntry := metaUser{UserID: req.UserID, SiteID: req.Locator.SiteID}
-			newEntry.Details.Email = req.Update
-			m.metaUsers[req.UserID] = newEntry
-			log.Printf("new user %v", m.metaUsers[req.UserID])
-			return req.Update, nil
-		}
+	switch req.Detail {
+	case engine.Email:
+		entry.Details.Email = req.Update
+		m.metaUsers[req.UserID] = entry
+		return []engine.UserDetailEntry{{UserID: req.UserID, Email: req.Update}}, nil
 	}
 
-	return "", nil
+	return []engine.UserDetailEntry{}, nil
+}
+
+// listDetails lists all available users details. Map key is userID.
+func (m *MemData) listDetails(loc store.Locator) ([]engine.UserDetailEntry, error) {
+	var res []engine.UserDetailEntry
+	for _, u := range m.metaUsers {
+		if u.SiteID == loc.SiteID {
+			res = append(res, u.Details)
+		}
+	}
+	return res, nil
 }
 
 func (m *MemData) get(loc store.Locator, commentID string) (store.Comment, error) {

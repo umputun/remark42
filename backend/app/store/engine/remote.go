@@ -83,24 +83,13 @@ func (r *RPC) ListFlags(req FlagRequest) (list []interface{}, err error) {
 }
 
 // UserDetail sets and gets details
-func (r *RPC) UserDetail(req UserDetailRequest) (value string, err error) {
+func (r *RPC) UserDetail(req UserDetailRequest) (result []UserDetailEntry, err error) {
 	resp, err := r.Call("store.user_detail", req)
-	if err != nil {
-		return "", err
-	}
-	err = json.Unmarshal(*resp.Result, &value)
-	return value, err
-}
-
-// ListFlags get list of flagged keys, like blocked & verified user
-func (r *RPC) ListDetails(loc store.Locator) (map[string]UserDetailEntry, error) {
-	resp, err := r.Call("store.list_details", loc)
 	if err != nil {
 		return nil, err
 	}
-	var detailsByUser map[string]UserDetailEntry
-	err = json.Unmarshal(*resp.Result, &detailsByUser)
-	return detailsByUser, err
+	err = json.Unmarshal(*resp.Result, &result)
+	return result, err
 }
 
 // Count gets comments count by user or site

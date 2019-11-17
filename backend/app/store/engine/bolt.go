@@ -206,19 +206,29 @@ func (b *BoltDB) Flag(req FlagRequest) (val bool, err error) {
 	return b.setFlag(req)
 }
 
-// UserDetail sets and gets detail values
-func (b *BoltDB) UserDetail(req UserDetailRequest) (val string, err error) {
+// UserDetail sets and gets user details
+func (b *BoltDB) UserDetail(req UserDetailRequest) ([]UserDetailEntry, error) {
 	switch req.Detail {
 	case Email:
-	default:
-		return val, errors.Errorf("unsupported detail %s", req.Detail)
-	}
-	if req.Update == "" && !req.Delete { // read detail value, no update requested
-		return b.getUserDetail(req)
-	}
+		if req.UserID == "" {
+			return nil, errors.New("userid cannot be empty in request for single detail")
+		}
 
-	// write or delete detail value
-	return b.setUserDetail(req)
+		if req.Update == "" { // read detail value, no update requested
+			return b.getUserDetail(req)
+		}
+
+		return b.setUserDetail(req)
+	case "":
+		// list of all details returned in case request is a read request
+		// (Update is not set) and does not have UserID or Detail set
+		if req.Update == "" && req.UserID == "" { // read list of all details
+			return b.listDetails(req.Locator)
+		}
+		return nil, errors.New("unsupported request without detail field set")
+	default:
+		return nil, errors.Errorf("unsupported detail %s", req.Detail)
+	}
 }
 
 // Update for locator.URL with mutable part of comment
@@ -384,28 +394,6 @@ func (b *BoltDB) ListFlags(req FlagRequest) (res []interface{}, err error) {
 		return res, err
 	}
 	return nil, errors.Errorf("flag %s not listable", req.Flag)
-}
-
-// ListDetails lists all available users details. Map key is userID.
-func (b *BoltDB) ListDetails(loc store.Locator) (map[string]UserDetailEntry, error) {
-	bdb, e := b.db(loc.SiteID)
-	if e != nil {
-		return nil, e
-	}
-
-	var res = map[string]UserDetailEntry{}
-	err := bdb.View(func(tx *bolt.Tx) error {
-		var entry UserDetailEntry
-		bucket := tx.Bucket([]byte(userDetailsBucketName))
-		return bucket.ForEach(func(userID, value []byte) error {
-			if err := json.Unmarshal(value, &entry); err != nil {
-				return errors.Wrap(e, "failed to unmarshal entry")
-			}
-			res[string(userID)] = entry
-			return nil
-		})
-	})
-	return res, err
 }
 
 // Delete post(s) by id or by userID
@@ -656,57 +644,44 @@ func (b *BoltDB) flagBucket(tx *bolt.Tx, flag Flag) (bkt *bolt.Bucket, err error
 	return bkt, nil
 }
 
-// getUserDetail returns requested userDetail
-func (b *BoltDB) getUserDetail(req UserDetailRequest) (val string, err error) {
-	key := req.UserID
-	if key == "" {
-		return "", errors.New("userid cannot be empty")
-	}
-
+// getUserDetail returns UserDetailEntry with requested userDetail (omitting other details)
+func (b *BoltDB) getUserDetail(req UserDetailRequest) (result []UserDetailEntry, err error) {
 	bdb, e := b.db(req.Locator.SiteID)
 	if e != nil {
-		return "", e
+		return result, e
 	}
 
 	err = bdb.View(func(tx *bolt.Tx) error {
 		var entry UserDetailEntry
 		bucket := tx.Bucket([]byte(userDetailsBucketName))
-		value := bucket.Get([]byte(key))
+		value := bucket.Get([]byte(req.UserID))
 		// return no error in case of absent entry
 		if len(value) != 0 {
 			if err := json.Unmarshal(value, &entry); err != nil {
 				return errors.Wrap(e, "failed to unmarshal entry")
 			}
-		}
-		switch req.Detail {
-		case Email:
-			val = entry.Email
+			switch req.Detail {
+			case Email:
+				result = []UserDetailEntry{{UserID: req.UserID, Email: entry.Email}}
+			}
 		}
 		return nil
 	})
 
-	return val, err
+	return result, err
 }
 
 // setUserDetail sets requested userDetail
-func (b *BoltDB) setUserDetail(req UserDetailRequest) (res string, err error) {
-	key := req.UserID
-	if key == "" {
-		return "", errors.New("userid cannot be empty")
-	}
-	if req.Delete && req.Update != "" {
-		return "", errors.New("both delete and update fields are set, pick one")
-	}
-
+func (b *BoltDB) setUserDetail(req UserDetailRequest) (result []UserDetailEntry, err error) {
 	bdb, e := b.db(req.Locator.SiteID)
 	if e != nil {
-		return "", e
+		return result, e
 	}
 
 	var entry UserDetailEntry
 	err = bdb.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(userDetailsBucketName))
-		value := bucket.Get([]byte(key))
+		value := bucket.Get([]byte(req.UserID))
 		// return no error in case of absent entry
 		if len(value) != 0 {
 			if err := json.Unmarshal(value, &entry); err != nil {
@@ -716,34 +691,46 @@ func (b *BoltDB) setUserDetail(req UserDetailRequest) (res string, err error) {
 		return nil
 	})
 	if err != nil {
-		return "", err
+		return result, err
 	}
 
-	// absent entry in case of delete request means that we should not do anything
-	if req.Delete && entry == (UserDetailEntry{}) {
-		return "", nil
+	if entry.UserID == "" {
+		// new entry to be created, need to set UserID for it
+		entry.UserID = req.UserID
 	}
 
-	// assign UserDetail to req.Update both in case of update and delete,
-	// as with update we'll assign new value and with delete we'll assign empty string,
-	// effectively deleting the value
 	switch req.Detail {
 	case Email:
 		entry.Email = req.Update
 	}
 
 	err = bdb.Update(func(tx *bolt.Tx) error {
-		err := b.save(tx.Bucket([]byte(userDetailsBucketName)),
-			key,
-			entry)
-		if err != nil {
-			return errors.Wrapf(err, "failed to update detail %s for %s in %s", req.Detail, req.UserID, req.Locator.SiteID)
-		}
-		res = req.Update
-		return nil
+		err := b.save(tx.Bucket([]byte(userDetailsBucketName)), req.UserID, entry)
+		return errors.Wrapf(err, "failed to update detail %s for %s in %s", req.Detail, req.UserID, req.Locator.SiteID)
 	})
 
-	return res, err
+	return []UserDetailEntry{entry}, err
+}
+
+// listDetails lists all available users details. Map key is userID.
+func (b *BoltDB) listDetails(loc store.Locator) (result []UserDetailEntry, err error) {
+	bdb, e := b.db(loc.SiteID)
+	if e != nil {
+		return result, e
+	}
+
+	err = bdb.View(func(tx *bolt.Tx) error {
+		var entry UserDetailEntry
+		bucket := tx.Bucket([]byte(userDetailsBucketName))
+		return bucket.ForEach(func(userID, value []byte) error {
+			if err := json.Unmarshal(value, &entry); err != nil {
+				return errors.Wrap(e, "failed to unmarshal entry")
+			}
+			result = append(result, entry)
+			return nil
+		})
+	})
+	return result, err
 }
 
 func (b *BoltDB) deleteComment(bdb *bolt.DB, locator store.Locator, commentID string, mode store.DeleteMode) error {
@@ -851,7 +838,7 @@ func (b *BoltDB) deleteUser(bdb *bolt.DB, siteID string, userID string, mode sto
 		}
 	}
 
-	//  delete  user bucket in hard mode
+	// delete user bucket in hard mode
 	if mode == store.HardDelete {
 		err = bdb.Update(func(tx *bolt.Tx) error {
 			usersBkt := tx.Bucket([]byte(userBucketName))

@@ -168,29 +168,6 @@ func (_m *MockInterface) Info(req InfoRequest) ([]store.PostInfo, error) {
 	return r0, r1
 }
 
-// ListDetails provides a mock function with given fields: loc
-func (_m *MockInterface) ListDetails(loc store.Locator) (map[string]UserDetailEntry, error) {
-	ret := _m.Called(loc)
-
-	var r0 map[string]UserDetailEntry
-	if rf, ok := ret.Get(0).(func(store.Locator) map[string]UserDetailEntry); ok {
-		r0 = rf(loc)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(map[string]UserDetailEntry)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(store.Locator) error); ok {
-		r1 = rf(loc)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
 // ListFlags provides a mock function with given fields: req
 func (_m *MockInterface) ListFlags(req FlagRequest) ([]interface{}, error) {
 	ret := _m.Called(req)
@@ -229,14 +206,16 @@ func (_m *MockInterface) Update(comment store.Comment) error {
 }
 
 // UserDetail provides a mock function with given fields: req
-func (_m *MockInterface) UserDetail(req UserDetailRequest) (string, error) {
+func (_m *MockInterface) UserDetail(req UserDetailRequest) ([]UserDetailEntry, error) {
 	ret := _m.Called(req)
 
-	var r0 string
-	if rf, ok := ret.Get(0).(func(UserDetailRequest) string); ok {
+	var r0 []UserDetailEntry
+	if rf, ok := ret.Get(0).(func(UserDetailRequest) []UserDetailEntry); ok {
 		r0 = rf(req)
 	} else {
-		r0 = ret.Get(0).(string)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]UserDetailEntry)
+		}
 	}
 
 	var r1 error

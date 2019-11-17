@@ -16,18 +16,17 @@ import (
 
 // Interface defines methods provided by low-level storage engine
 type Interface interface {
-	Create(comment store.Comment) (commentID string, err error)        // create new comment, avoid dups by id
-	Update(comment store.Comment) error                                // update comment, mutable parts only
-	Get(req GetRequest) (store.Comment, error)                         // get comment by id
-	Find(req FindRequest) ([]store.Comment, error)                     // find comments for locator or site
-	Info(req InfoRequest) ([]store.PostInfo, error)                    // get post(s) meta info
-	Count(req FindRequest) (int, error)                                // get count for post or user
-	Delete(req DeleteRequest) error                                    // delete post(s) by id or by userID
-	Flag(req FlagRequest) (bool, error)                                // set and get flags
-	ListFlags(req FlagRequest) ([]interface{}, error)                  // get list of flagged keys, like blocked & verified user
-	UserDetail(req UserDetailRequest) (string, error)                  // set and get user details
-	ListDetails(loc store.Locator) (map[string]UserDetailEntry, error) // list all available users details
-	Close() error                                                      // close storage engine
+	Create(comment store.Comment) (commentID string, err error)  // create new comment, avoid dups by id
+	Update(comment store.Comment) error                          // update comment, mutable parts only
+	Get(req GetRequest) (store.Comment, error)                   // get comment by id
+	Find(req FindRequest) ([]store.Comment, error)               // find comments for locator or site
+	Info(req InfoRequest) ([]store.PostInfo, error)              // get post(s) meta info
+	Count(req FindRequest) (int, error)                          // get count for post or user
+	Delete(req DeleteRequest) error                              // delete post(s) by id or by userID
+	Flag(req FlagRequest) (bool, error)                          // set and get flags
+	ListFlags(req FlagRequest) ([]interface{}, error)            // get list of flagged keys, like blocked & verified user
+	UserDetail(req UserDetailRequest) ([]UserDetailEntry, error) // set and get user details
+	Close() error                                                // close storage engine
 }
 
 // GetRequest is the input for Get func
@@ -99,7 +98,8 @@ type UserDetail string
 
 // UserDetailEntry contains single user details entry
 type UserDetailEntry struct {
-	Email string `json:"email,omitempty"` // detail name
+	UserID string `json:"user_id"`         // duplicate user's id to use this structure not only embedded but separately
+	Email  string `json:"email,omitempty"` // detail name
 }
 
 // UserDetailRequest is the input for both get/set for details, like email
@@ -108,7 +108,6 @@ type UserDetailRequest struct {
 	Locator store.Locator `json:"locator"`          // post locator
 	UserID  string        `json:"user_id"`          // user id for get\set
 	Update  string        `json:"update,omitempty"` // update value
-	Delete  bool          `json:"delete,omitempty"` // update value
 }
 
 const (
