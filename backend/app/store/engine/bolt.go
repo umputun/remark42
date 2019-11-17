@@ -405,13 +405,13 @@ func (b *BoltDB) Delete(req DeleteRequest) error {
 	}
 
 	switch {
-	case req.UserDetail != "":
+	case req.UserDetail != "": // delete user detail
 		return b.deleteUserDetail(bdb, req.UserID, req.UserDetail)
-	case req.Locator.URL != "" && req.CommentID != "" && req.UserDetail == "":
+	case req.Locator.URL != "" && req.CommentID != "" && req.UserDetail == "": // delete comment
 		return b.deleteComment(bdb, req.Locator, req.CommentID, req.DeleteMode)
-	case req.Locator.SiteID != "" && req.UserID != "" && req.CommentID == "" && req.UserDetail == "":
+	case req.Locator.SiteID != "" && req.UserID != "" && req.CommentID == "" && req.UserDetail == "": // delete user
 		return b.deleteUser(bdb, req.Locator.SiteID, req.UserID, req.DeleteMode)
-	case req.Locator.SiteID != "" && req.Locator.URL == "" && req.CommentID == "" && req.UserID == "" && req.UserDetail == "":
+	case req.Locator.SiteID != "" && req.Locator.URL == "" && req.CommentID == "" && req.UserID == "" && req.UserDetail == "": // delete site
 		return b.deleteAll(bdb, req.Locator.SiteID)
 	}
 
@@ -838,7 +838,7 @@ func (b *BoltDB) deleteAll(bdb *bolt.DB, siteID string) error {
 	return errors.Wrapf(err, "failed to delete top level buckets from site %s", siteID)
 }
 
-// deleteUser removes all comments for given user. Everything will be market as deleted
+// deleteUser removes all comments and details for given user. Everything will be market as deleted
 // and user name and userID will be changed to "deleted". Also removes from last and from user buckets.
 func (b *BoltDB) deleteUser(bdb *bolt.DB, siteID string, userID string, mode store.DeleteMode) error {
 
@@ -854,7 +854,7 @@ func (b *BoltDB) deleteUser(bdb *bolt.DB, siteID string, userID string, mode sto
 	}
 
 	// get list of commentID for all user's comment
-	comments := []commentInfo{}
+	var comments []commentInfo
 	for _, postInfo := range posts {
 		err = bdb.View(func(tx *bolt.Tx) error {
 			postsBkt := tx.Bucket([]byte(postsBucketName))
@@ -906,7 +906,7 @@ func (b *BoltDB) deleteUser(bdb *bolt.DB, siteID string, userID string, mode sto
 		return errors.Errorf("unknown user %s", userID)
 	}
 
-	return err
+	return b.deleteUserDetail(bdb, userID, All)
 }
 
 // getPostBucket return bucket with all comments for postURL

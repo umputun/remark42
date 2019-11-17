@@ -318,7 +318,7 @@ func (m *MemData) Delete(req engine.DeleteRequest) error {
 	defer m.Unlock()
 
 	switch {
-	case req.UserDetail != "":
+	case req.UserDetail != "": // delete user detail
 		return m.deleteUserDetail(req.Locator, req.UserID, req.UserDetail)
 	case req.Locator.URL != "" && req.CommentID != "" && req.UserDetail == "": // delete comment
 		return m.deleteComment(req.Locator, req.CommentID, req.DeleteMode)
@@ -332,7 +332,7 @@ func (m *MemData) Delete(req engine.DeleteRequest) error {
 				return e
 			}
 		}
-		return nil
+		return m.deleteUserDetail(req.Locator, req.UserID, engine.All)
 
 	case req.Locator.SiteID != "" && req.Locator.URL == "" && req.CommentID == "" && req.UserID == "" && req.UserDetail == "": // delete site
 		if _, ok := m.posts[req.Locator.SiteID]; !ok {
