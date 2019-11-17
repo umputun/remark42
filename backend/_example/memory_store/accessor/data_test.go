@@ -547,9 +547,12 @@ func TestMemData_FlagListBlocked(t *testing.T) {
 	assert.NoError(t, err)
 
 	blockedList := toBlocked(vv)
+	var blockedIds []string
+	for _, x := range blockedList {
+		blockedIds = append(blockedIds, x.ID)
+	}
 	require.Equal(t, 2, len(blockedList), b.metaUsers)
-	assert.Equal(t, "user1", blockedList[0].ID)
-	assert.Equal(t, "user2", blockedList[1].ID)
+	assert.ElementsMatch(t, []string{"user1", "user2"}, blockedIds)
 	t.Logf("%+v", blockedList)
 
 	// check block expiration
