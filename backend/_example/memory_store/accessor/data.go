@@ -280,7 +280,7 @@ func (m *MemData) ListFlags(req engine.FlagRequest) (res []interface{}, err erro
 	return nil, errors.Errorf("flag %s not listable", req.Flag)
 }
 
-// Delete post(s) by id or by userID
+// Delete post(s), user, comment, or everything
 func (m *MemData) Delete(req engine.DeleteRequest) error {
 
 	m.Lock()

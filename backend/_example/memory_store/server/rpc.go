@@ -129,7 +129,7 @@ func (s *RPC) listFlagsHndl(id uint64, params json.RawMessage) (rr jrpc.Response
 	return jrpc.EncodeResponse(id, flags, err)
 }
 
-// deleteHndl remove comment(s)
+// deleteHndl delete post(s), user, comment, or everything
 func (s *RPC) deleteHndl(id uint64, params json.RawMessage) (rr jrpc.Response) {
 	req := engine.DeleteRequest{}
 	if err := json.Unmarshal(params, &req); err != nil {
