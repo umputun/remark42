@@ -722,11 +722,11 @@ func TestService_GetMetas(t *testing.T) {
 	req := engine.UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user2", Detail: engine.Email, Update: "test@example.org"}
 	value, err := b.Engine.UserDetail(req)
 	assert.NoError(t, err)
-	assert.Equal(t, "test@example.org", value)
+	assert.Equal(t, []engine.UserDetailEntry{{UserID: "user2", Email: "test@example.org"}}, value)
 	req.UserID = "user3"
 	value, err = b.Engine.UserDetail(req)
 	assert.NoError(t, err)
-	assert.Equal(t, "test@example.org", value)
+	assert.Equal(t, []engine.UserDetailEntry{{UserID: "user3", Email: "test@example.org"}}, value)
 
 	um, pm, err = b.Metas("radio-t")
 	require.NoError(t, err)
@@ -771,7 +771,7 @@ func TestService_SetMetas(t *testing.T) {
 	assert.True(t, b.IsBlocked("radio-t", "user2"))
 	val, err := b.Engine.UserDetail(engine.UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", Detail: engine.Email})
 	assert.NoError(t, err)
-	assert.Equal(t, "test@example.org", val)
+	assert.Equal(t, []engine.UserDetailEntry{{UserID: "user1", Email: "test@example.org"}}, val)
 }
 
 func TestService_IsAdmin(t *testing.T) {

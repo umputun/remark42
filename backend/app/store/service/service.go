@@ -699,18 +699,18 @@ func (s *DataStore) Metas(siteID string) (umetas []UserMetaData, pmetas []PostMe
 		m[v] = val
 	}
 
-	// process user details
-	detailsByUser, err := s.Engine.ListDetails(store.Locator{SiteID: siteID})
+	// process users details
+	usersDetails, err := s.Engine.UserDetail(engine.UserDetailRequest{Locator: store.Locator{SiteID: siteID}})
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "can't get user details for %s", siteID)
 	}
-	for userID, details := range detailsByUser {
-		val, ok := m[userID]
+	for _, entry := range usersDetails {
+		val, ok := m[entry.UserID]
 		if !ok {
-			val = UserMetaData{ID: userID}
+			val = UserMetaData{ID: entry.UserID}
 		}
-		val.Details = details
-		m[userID] = val
+		val.Details = entry
+		m[entry.UserID] = val
 	}
 
 	for _, u := range m {
