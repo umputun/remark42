@@ -80,9 +80,11 @@ const (
 	Verified = Flag("verified")
 	Blocked  = Flag("blocked")
 )
-
-// All possible user details
-const Email = UserDetail("email")
+const (
+	// All possible user details
+	Email = UserDetail("email")
+	All   = UserDetail("all") // for listing and deletion only
+)
 
 // FlagRequest is the input for both get/set for flags, like blocked, verified and so on
 type FlagRequest struct {

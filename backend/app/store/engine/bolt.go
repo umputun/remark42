@@ -219,15 +219,15 @@ func (b *BoltDB) UserDetail(req UserDetailRequest) ([]UserDetailEntry, error) {
 		}
 
 		return b.setUserDetail(req)
-	case "":
+	case All:
 		// list of all details returned in case request is a read request
-		// (Update is not set) and does not have UserID or Detail set
+		// (Update is not set) and does not have UserID
 		if req.Update == "" && req.UserID == "" { // read list of all details
 			return b.listDetails(req.Locator)
 		}
-		return nil, errors.New("unsupported request without detail field set")
+		return nil, errors.New("unsupported request with userdetail all")
 	default:
-		return nil, errors.Errorf("unsupported detail %s", req.Detail)
+		return nil, errors.Errorf("unsupported detail %q", req.Detail)
 	}
 }
 

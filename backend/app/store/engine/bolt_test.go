@@ -643,14 +643,14 @@ func TestBoltDB_UserDetail(t *testing.T) {
 		{req: UserDetailRequest{Detail: Email, Update: "new_value"},
 			error: `userid cannot be empty in request for single detail`},
 		{req: UserDetailRequest{Detail: UserDetail("bad")},
-			error: `unsupported detail bad`},
-		{req: UserDetailRequest{Update: "not_relevant"},
-			error: `unsupported request without detail field set`},
-		{req: UserDetailRequest{Locator: store.Locator{SiteID: "bad"}},
+			error: `unsupported detail "bad"`},
+		{req: UserDetailRequest{Update: "not_relevant", Detail: All},
+			error: `unsupported request with userdetail all`},
+		{req: UserDetailRequest{Locator: store.Locator{SiteID: "bad"}, Detail: All},
 			error: `site "bad" not found`},
 		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "u2", Detail: Email, Update: "other@example.com"},
 			expected: []UserDetailEntry{{UserID: "u2", Email: "other@example.com"}}},
-		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}},
+		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, Detail: All},
 			expected: []UserDetailEntry{{UserID: "u1", Email: "test@example.com"}, {UserID: "u2", Email: "other@example.com"}}},
 	}
 
@@ -661,7 +661,7 @@ func TestBoltDB_UserDetail(t *testing.T) {
 		} else {
 			assert.NoError(t, err, "Error is not expected expected for case %d", i)
 		}
-		assert.Equal(t, x.expected, result,"Result should match expected for case %d", i)
+		assert.Equal(t, x.expected, result, "Result should match expected for case %d", i)
 	}
 }
 

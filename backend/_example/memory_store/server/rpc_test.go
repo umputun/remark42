@@ -252,14 +252,12 @@ func TestRPC_userDetailHndl(t *testing.T) {
 		{req: engine.UserDetailRequest{Detail: engine.Email, Update: "new_value"},
 			error: `userid cannot be empty in request for single detail`},
 		{req: engine.UserDetailRequest{Detail: engine.UserDetail("bad")},
-			error: `unsupported detail bad`},
-		{req: engine.UserDetailRequest{Update: "not_relevant"},
-			error: `unsupported request without detail field set`},
-		//{req: engine.UserDetailRequest{Locator: store.Locator{SiteID: "bad"}},
-		//	error: `site "bad" not found`},
+			error: `unsupported detail "bad"`},
+		{req: engine.UserDetailRequest{Update: "not_relevant", Detail: engine.All},
+			error: `unsupported request with userdetail all`},
 		{req: engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "u2", Detail: engine.Email, Update: "other@example.com"},
 			expected: []engine.UserDetailEntry{{UserID: "u2", Email: "other@example.com"}}},
-		{req: engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}},
+		{req: engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, Detail: engine.All},
 			expected: []engine.UserDetailEntry{{UserID: "u1", Email: "test@example.com"}, {UserID: "u2", Email: "other@example.com"}}},
 	}
 
