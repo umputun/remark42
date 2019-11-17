@@ -268,7 +268,7 @@ func TestRPC_userDetailHndl(t *testing.T) {
 		} else {
 			assert.NoError(t, err, "Error is not expected expected for case %d", i)
 		}
-		assert.Equal(t, x.expected, result, "Result should match expected for case %d", i)
+		assert.ElementsMatch(t, x.expected, result, "Result should match expected for case %d", i)
 	}
 }
 
