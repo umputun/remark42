@@ -38,7 +38,7 @@ const (
 
 // SendErrorJSON makes {error: blah, details: blah} json body and responds with error code
 func SendErrorJSON(w http.ResponseWriter, r *http.Request, httpStatusCode int, err error, details string, errCode int) {
-	log.Printf("[DEBUG] %s", errDetailsMsg(r, httpStatusCode, err, details, errCode))
+	log.Printf("[WARN] %s", errDetailsMsg(r, httpStatusCode, err, details, errCode))
 	render.Status(r, httpStatusCode)
 	render.JSON(w, r, rest.JSON{"error": err.Error(), "details": details, "code": errCode})
 }
@@ -57,14 +57,10 @@ func errDetailsMsg(r *http.Request, httpStatusCode int, err error, details strin
 	if pc, file, line, ok := runtime.Caller(2); ok {
 		fnameElems := strings.Split(file, "/")
 		funcNameElems := strings.Split(runtime.FuncForPC(pc).Name(), "/")
-		srcFileInfo = fmt.Sprintf(" [caused by %s:%d %s]", strings.Join(fnameElems[len(fnameElems)-3:], "/"),
+		srcFileInfo = fmt.Sprintf("[%s:%d %s]", strings.Join(fnameElems[len(fnameElems)-3:], "/"),
 			line, funcNameElems[len(funcNameElems)-1])
 	}
 
-	remoteIP := r.RemoteAddr
-	if pos := strings.Index(remoteIP, ":"); pos >= 0 {
-		remoteIP = remoteIP[:pos]
-	}
-	return fmt.Sprintf("%s - %v - %d (%d) - %s%s - %s%s",
-		details, err, httpStatusCode, errCode, uinfoStr, remoteIP, q, srcFileInfo)
+	return fmt.Sprintf("%s - %v - %d (%d) - %s%s - %s",
+		details, err, httpStatusCode, errCode, uinfoStr, q, srcFileInfo)
 }

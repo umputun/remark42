@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
+	cache "github.com/go-pkgz/lcw"
 	log "github.com/go-pkgz/lgr"
-	"github.com/go-pkgz/rest/cache"
 	"github.com/gorilla/feeds"
 	"github.com/pkg/errors"
 
@@ -16,7 +16,7 @@ import (
 
 type rss struct {
 	dataService rssStore
-	cache       cache.LoadingCache
+	cache       LoadingCache
 }
 
 type rssStore interface {

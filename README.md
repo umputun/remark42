@@ -4,7 +4,7 @@
 
 Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engine, which doesn't spy on users. It can be embedded into blogs, articles or any other place where readers add comments.
 
-* Social login via Google, Facebook, GitHub and Yandex
+* Social login via Google, Twitter, Facebook, GitHub and Yandex
 * Login via email
 * Optional anonymous access
 * Multi-level nested comments with both tree and plain presentations
@@ -50,6 +50,7 @@ For admin screenshots see [Admin UI wiki](https://github.com/umputun/remark/wiki
         - [Google Auth Provider](#google-auth-provider)
         - [GitHub Auth Provider](#github-auth-provider)
         - [Facebook Auth Provider](#facebook-auth-provider)
+        - [Twitter Auth Provider](#twitter-auth-provider)
         - [Yandex Auth Provider](#yandex-auth-provider)
       - [Initial import from Disqus](#initial-import-from-disqus)
       - [Initial import from WordPress](#initial-import-from-wordpress)
@@ -136,6 +137,8 @@ _this is the recommended way to run remark42_
 | auth.facebook.csec      | AUTH_FACEBOOK_CSEC      |                          | Facebook OAuth client secret                    |
 | auth.github.cid         | AUTH_GITHUB_CID         |                          | Github OAuth client ID                          |
 | auth.github.csec        | AUTH_GITHUB_CSEC        |                          | Github OAuth client secret                      |
+| auth.twitter.cid        | AUTH_TWITTER_CID        |                          | Twitter Consumer API Key                        |
+| auth.twitter.csec       | AUTH_TWITTER_CSEC       |                          | Twitter Consumer API Secret key                 |
 | auth.yandex.cid         | AUTH_YANDEX_CID         |                          | Yandex OAuth client ID                          |
 | auth.yandex.csec        | AUTH_YANDEX_CSEC        |                          | Yandex OAuth client secret                      |
 | auth.dev                | AUTH_DEV                | `false`                  | local oauth2 server, development mode only      |
@@ -174,6 +177,7 @@ _this is the recommended way to run remark42_
 | read-age                | READONLY_AGE            |                          | read-only age of comments, days                 |
 | img-proxy               | IMG_PROXY               | `false`                  | enable http->https proxy for images             |
 | emoji                   | EMOJI                   | `false`                  | enable emoji support                            |
+| simple-view             | SIMPLE_VIEW             | `false`                  | minimized UI with basic info only               |
 | port                    | REMARK_PORT             | `8080`                   | web server port                                 |
 | web-root                | REMARK_WEB_ROOT         | `./web`                  | web server root directory                       |
 | update-limit            | UPDATE_LIMIT            | `0.5`                    | updates/sec limit                               |
@@ -254,6 +258,14 @@ _instructions for google oauth2 setup borrowed from [oauth2_proxy](https://githu
 1.  Set "Site URL" to your domain, ex: `https://remark42.mysite.com`
 1.  Under **"Facebook login"** / **"Settings"** fill "Valid OAuth redirect URIs" with your callback url constructed as domain + `/auth/facebook/callback`
 1.  Select **"App Review"** and turn public flag on. This step may ask you to provide a link to your privacy policy.
+
+##### Twitter Auth Provider
+
+1.	Create a new twitter application https://developer.twitter.com/en/apps
+1.	Fill **App name**, **Description** and **URL** of your site
+1.	In the field **Callback URLs** enter the correct url of your callback handler e.g.  domain + `/auth/twitter/callback`
+1.	Under **Key and tokens** take note of the **Consumer API Key** and **Consumer API Secret key**. Those will be used as `AUTH_TWITTER_CID` and
+ `AUTH_TWITTER_CSEC`
 
 ##### Yandex Auth Provider
 
@@ -767,7 +779,7 @@ _returned id should be appended to load image url on caller side_
 * `GET /api/v1/admin/export?site=side-id&mode=[stream|file]` - export all comments to json stream or gz file.
 * `POST /api/v1/admin/import?site=side-id` - import comments from the backup, uses post body.
 * `POST /api/v1/admin/import/form?site=side-id` - import comments from the backup, user post form.
-* `POST /api/v1/admin/remap?site=side-id` - remap comments to different URLs. Expect list of "from-url new-url" pairs separated by \n. 
+* `POST /api/v1/admin/remap?site=side-id` - remap comments to different URLs. Expect list of "from-url new-url" pairs separated by \n.
 From-url and new-url parts separated by space. If urls end with asterisk (*) it means matching by prefix. Remap procedure based on
 export/import chain so make backup first.
     ```

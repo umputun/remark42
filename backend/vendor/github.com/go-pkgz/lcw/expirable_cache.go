@@ -102,6 +102,15 @@ func (c *ExpirableCache) Delete(key string) {
 	c.backend.Delete(key)
 }
 
+func (c *ExpirableCache) Keys() (res []string) {
+	items := c.backend.Items()
+	res = make([]string, 0, len(items))
+	for key := range items {
+		res = append(res, key)
+	}
+	return res
+}
+
 // Stat returns cache statistics
 func (c *ExpirableCache) Stat() CacheStat {
 	return CacheStat{
