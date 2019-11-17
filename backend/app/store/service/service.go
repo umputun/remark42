@@ -700,7 +700,7 @@ func (s *DataStore) Metas(siteID string) (umetas []UserMetaData, pmetas []PostMe
 	}
 
 	// process users details
-	usersDetails, err := s.Engine.UserDetail(engine.UserDetailRequest{Locator: store.Locator{SiteID: siteID}})
+	usersDetails, err := s.Engine.UserDetail(engine.UserDetailRequest{Locator: store.Locator{SiteID: siteID}, Detail: engine.All})
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "can't get user details for %s", siteID)
 	}
