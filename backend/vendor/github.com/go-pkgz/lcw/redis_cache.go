@@ -103,6 +103,11 @@ func (c *RedisCache) Delete(key string) {
 	c.backend.Del(key)
 }
 
+// Keys gets all keys for the cache
+func (c *RedisCache) Keys() (res []string) {
+	return c.backend.Keys("*").Val()
+}
+
 // Stat returns cache statistics
 func (c *RedisCache) Stat() CacheStat {
 	return CacheStat{

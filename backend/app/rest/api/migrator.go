@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/go-chi/render"
+	cache "github.com/go-pkgz/lcw"
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
-	"github.com/go-pkgz/rest/cache"
 	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/backend/app/migrator"
@@ -23,7 +23,7 @@ import (
 
 // Migrator rest with import and export controllers
 type Migrator struct {
-	Cache             cache.LoadingCache
+	Cache             LoadingCache
 	NativeImporter    migrator.Importer
 	DisqusImporter    migrator.Importer
 	WordPressImporter migrator.Importer
