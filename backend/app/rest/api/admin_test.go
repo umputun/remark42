@@ -15,8 +15,8 @@ import (
 
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/go-pkgz/auth/token"
+	cache "github.com/go-pkgz/lcw"
 	R "github.com/go-pkgz/rest"
-	"github.com/go-pkgz/rest/cache"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -47,7 +47,8 @@ func TestAdmin_Delete(t *testing.T) {
 
 	// check multi count
 	resp, err := post(t, ts.URL+"/api/v1/counts?site=remark42", `["https://radio-t.com/blah","https://radio-t.com/blah2"]`)
-	assert.Nil(t, err)
+	require.NoError(t, err)
+	defer resp.Body.Close()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	bb, err := ioutil.ReadAll(resp.Body)
 	assert.Nil(t, err)
@@ -60,7 +61,8 @@ func TestAdmin_Delete(t *testing.T) {
 	// delete a comment
 	req, err := http.NewRequest(http.MethodDelete,
 		fmt.Sprintf("%s/api/v1/admin/comment/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1), nil)
-	assert.Nil(t, err)
+	require.NoError(t, err)
+	defer resp.Body.Close()
 	requireAdminOnly(t, req)
 	resp, err = sendReq(t, req, adminUmputunToken)
 	assert.Nil(t, err)
@@ -341,7 +343,8 @@ func TestAdmin_Block(t *testing.T) {
 	assert.Equal(t, "test test #1", comments.Comments[2].Text, "comment not removed and not cleared")
 	assert.False(t, comments.Comments[2].Deleted, "not deleted")
 
-	srv.pubRest.cache = &cache.Nop{} // TODO: with lru cache it won't be refreshed and invalidated for long time
+	srv.pubRest.cache = cache.NewScache(cache.NewNopCache()) // TODO: with lru cache it won't be refreshed and invalidated for long
+	// time
 	time.Sleep(50 * time.Millisecond)
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah&sort=+time")
 	assert.Equal(t, 200, code)
@@ -381,7 +384,7 @@ func TestAdmin_BlockedList(t *testing.T) {
 
 	// block user2
 	req, err = http.NewRequest(http.MethodPut,
-		fmt.Sprintf("%s/api/v1/admin/user/%s?site=remark42&block=%d&ttl=50ms", ts.URL, "user2", 1), nil)
+		fmt.Sprintf("%s/api/v1/admin/user/%s?site=remark42&block=%d&ttl=150ms", ts.URL, "user2", 1), nil)
 	assert.Nil(t, err)
 	res, err = sendReq(t, req, adminUmputunToken)
 	require.NoError(t, err)
@@ -401,7 +404,7 @@ func TestAdmin_BlockedList(t *testing.T) {
 	assert.Equal(t, "user2", users[1].ID)
 	assert.Equal(t, "user2 name", users[1].Name)
 	t.Logf("%+v", users)
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(150 * time.Millisecond)
 
 	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/blocked?site=remark42", nil)
 	require.NoError(t, err)
@@ -683,8 +686,8 @@ func TestAdmin_DeleteMeRequest(t *testing.T) {
 		},
 	}
 
-	require.NoError(t, os.MkdirAll("/tmp/ava-remark42/42", 0700))
-	require.NoError(t, ioutil.WriteFile("/tmp/ava-remark42/42/pic.image", []byte("some image data"), 0600))
+	require.NoError(t, os.MkdirAll(os.TempDir()+"/ava-remark42/42", 0700))
+	require.NoError(t, ioutil.WriteFile(os.TempDir()+"/ava-remark42/42/pic.image", []byte("some image data"), 0600))
 
 	tkn, err := srv.Authenticator.TokenService().Token(claims)
 	assert.Nil(t, err)

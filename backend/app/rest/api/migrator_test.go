@@ -136,7 +136,7 @@ func TestMigrator_ImportDouble(t *testing.T) {
 "ip":"ae12fe3b5f129b5cc4cdd2b136b7b7947c4d2741"},"locator":{"site":"remark42","url":"https://radio-t.com/blah1"},"score":0,
 "votes":{},"time":"2018-04-30T01:37:00.849053725-05:00"}`
 	recs := []string{}
-	for i := 0; i < 150; i++ {
+	for i := 0; i < 50; i++ {
 		recs = append(recs, fmt.Sprintf(tmpl, i))
 	}
 	r := strings.NewReader(`{"version":1}` + strings.Join(recs, "\n")) // reader with 10k records
@@ -149,7 +149,7 @@ func TestMigrator_ImportDouble(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, http.StatusAccepted, resp.StatusCode)
 
-	client = &http.Client{Timeout: 1 * time.Second}
+	client = &http.Client{Timeout: 5 * time.Second}
 	req, err = http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=native", r)
 	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
@@ -169,11 +169,11 @@ func TestMigrator_ImportWaitExpired(t *testing.T) {
 "ip":"ae12fe3b5f129b5cc4cdd2b136b7b7947c4d2741"},"locator":{"site":"remark42","url":"https://radio-t.com/blah1"},"score":0,
 "votes":{},"time":"2018-04-30T01:37:00.849053725-05:00"}`
 	recs := []string{}
-	for i := 0; i < 150; i++ {
+	for i := 0; i < 50; i++ {
 		recs = append(recs, fmt.Sprintf(tmpl, i))
 	}
 	r := strings.NewReader(`{"version":1}` + strings.Join(recs, "\n")) // reader with 10k records
-	client := &http.Client{Timeout: 1 * time.Second}
+	client := &http.Client{Timeout: 5 * time.Second}
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=native", r)
 	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
@@ -182,8 +182,8 @@ func TestMigrator_ImportWaitExpired(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, http.StatusAccepted, resp.StatusCode)
 
-	client = &http.Client{Timeout: 10 * time.Second}
-	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/wait?site=remark42&timeout=100ms", nil)
+	client = &http.Client{Timeout: 5 * time.Second}
+	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/wait?site=remark42&timeout=10ms", nil)
 	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
 	assert.NoError(t, err)

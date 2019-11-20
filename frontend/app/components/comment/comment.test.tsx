@@ -1,5 +1,5 @@
-/** @jsx h */
-import { h } from 'preact';
+/** @jsx createElement */
+import { createElement } from 'preact';
 import { mount } from 'enzyme';
 import { Props, Comment } from './comment';
 import { User, Comment as CommentType, PostInfo } from '@app/common/types';

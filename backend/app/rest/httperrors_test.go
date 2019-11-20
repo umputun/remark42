@@ -42,7 +42,7 @@ func TestErrorDetailsMsg(t *testing.T) {
 		require.Nil(t, err)
 		req.RemoteAddr = "1.2.3.4"
 		msg := errDetailsMsg(req, 500, errors.New("error 500"), "error details 123456", 123)
-		assert.Equal(t, "error details 123456 - error 500 - 500 (123) - 1.2.3.4 - https://example.com/test?k1=v1&k2=v2 [caused by app/rest/httperrors_test.go:47 rest.TestErrorDetailsMsg]", msg)
+		assert.Equal(t, "error details 123456 - error 500 - 500 (123) - https://example.com/test?k1=v1&k2=v2 - [app/rest/httperrors_test.go:47 rest.TestErrorDetailsMsg]", msg)
 	}
 	callerFn()
 }
@@ -55,8 +55,8 @@ func TestErrorDetailsMsgWithUser(t *testing.T) {
 		req = SetUserInfo(req, store.User{Name: "test", ID: "id"})
 		require.Nil(t, err)
 		msg := errDetailsMsg(req, 500, errors.New("error 500"), "error details 123456", 34567)
-		assert.Equal(t, "error details 123456 - error 500 - 500 (34567) - test/id - 127.0.0.1 - https://example." +
-			"com/test?k1=v1&k2=v2 [caused by app/rest/httperrors_test.go:61 rest.TestErrorDetailsMsgWithUser]", msg)
+		assert.Equal(t, "error details 123456 - error 500 - 500 (34567) - test/id - https://example."+
+			"com/test?k1=v1&k2=v2 - [app/rest/httperrors_test.go:61 rest.TestErrorDetailsMsgWithUser]", msg)
 	}
 	callerFn()
 }

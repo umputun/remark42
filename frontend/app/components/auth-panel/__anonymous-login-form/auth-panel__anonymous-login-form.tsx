@@ -1,5 +1,5 @@
-/** @jsx h */
-import { h, Component, RenderableProps } from 'preact';
+/** @jsx createElement */
+import { createElement, Component, createRef } from 'preact';
 import b from 'bem-react-helper';
 import { Theme } from '@app/common/types';
 
@@ -17,7 +17,7 @@ interface State {
 export class AnonymousLoginForm extends Component<Props, State> {
   static usernameRegex = /^[a-zA-Z][\w ]+$/;
 
-  inputRef?: HTMLInputElement;
+  inputRef = createRef<HTMLInputElement>();
 
   constructor(props: Props) {
     super(props);
@@ -60,11 +60,12 @@ export class AnonymousLoginForm extends Component<Props, State> {
 
   componentDidUpdate() {
     setTimeout(() => {
-      this.inputRef && this.inputRef.focus();
+      this.inputRef.current && this.inputRef.current.focus();
     }, 100);
   }
 
-  render(props: RenderableProps<Props>) {
+  render() {
+    const props = this.props;
     // TODO: will be great to `b` to accept `string | undefined | (string|undefined)[]` as classname
     let className = b('auth-panel-anonymous-login-form', {}, { theme: props.theme });
     if (props.className) {
@@ -77,7 +78,7 @@ export class AnonymousLoginForm extends Component<Props, State> {
       <form className={className} onSubmit={this.onSubmit}>
         <input
           className="auth-panel-anonymous-login-form__input"
-          ref={ref => (this.inputRef = ref)}
+          ref={this.inputRef}
           type="text"
           placeholder="Username"
           value={this.state.inputValue}

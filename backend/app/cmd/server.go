@@ -26,7 +26,7 @@ import (
 	"github.com/go-pkgz/auth/provider"
 	"github.com/go-pkgz/auth/provider/sender"
 	"github.com/go-pkgz/auth/token"
-	"github.com/go-pkgz/rest/cache"
+	cache "github.com/go-pkgz/lcw"
 
 	"github.com/umputun/remark/backend/app/migrator"
 	"github.com/umputun/remark/backend/app/notify"
@@ -69,6 +69,7 @@ type ServerCommand struct {
 	UpdateLimit     float64       `long:"update-limit" env:"UPDATE_LIMIT" default:"0.5" description:"updates/sec limit"`
 	RestrictedWords []string      `long:"restricted-words" env:"RESTRICTED_WORDS" description:"words prohibited to use in comments" env-delim:","`
 	EnableEmoji     bool          `long:"emoji" env:"EMOJI" description:"enable emoji"`
+	SimpleView      bool          `long:"simpler-view" env:"SIMPLE_VIEW" description:"minimal comment editor mode"`
 
 	Auth struct {
 		TTL struct {
@@ -108,7 +109,7 @@ type AuthGroup struct {
 
 // StoreGroup defines options group for store params
 type StoreGroup struct {
-	Type string `long:"type" env:"TYPE" description:"type of storage" choice:"bolt" choice:"rpc" default:"bolt"`
+	Type string `long:"type" env:"TYPE" description:"type of storage" choice:"bolt" choice:"rpc" default:"bolt"` // nolint
 	Bolt struct {
 		Path    string        `long:"path" env:"PATH" default:"./var" description:"parent dir for bolt files"`
 		Timeout time.Duration `long:"timeout" env:"TIMEOUT" default:"30s" description:"bolt timeout"`
@@ -118,7 +119,7 @@ type StoreGroup struct {
 
 // ImageGroup defines options group for store pictures
 type ImageGroup struct {
-	Type string `long:"type" env:"TYPE" description:"type of storage" choice:"fs" choice:"bolt" default:"fs"`
+	Type string `long:"type" env:"TYPE" description:"type of storage" choice:"fs" choice:"bolt" default:"fs"` // nolint
 	FS   struct {
 		Path       string `long:"path" env:"PATH" default:"./var/pictures" description:"images location"`
 		Staging    string `long:"staging" env:"STAGING" default:"./var/pictures.staging" description:"staging location"`
@@ -134,7 +135,7 @@ type ImageGroup struct {
 
 // AvatarGroup defines options group for avatar params
 type AvatarGroup struct {
-	Type string `long:"type" env:"TYPE" description:"type of avatar storage" choice:"fs" choice:"bolt" choice:"uri" default:"fs"`
+	Type string `long:"type" env:"TYPE" description:"type of avatar storage" choice:"fs" choice:"bolt" choice:"uri" default:"fs"` //nolint
 	FS   struct {
 		Path string `long:"path" env:"PATH" default:"./var/avatars" description:"avatars location"`
 	} `group:"fs" namespace:"fs" env-namespace:"FS"`
@@ -147,7 +148,7 @@ type AvatarGroup struct {
 
 // CacheGroup defines options group for cache params
 type CacheGroup struct {
-	Type string `long:"type" env:"TYPE" description:"type of cache" choice:"mem" choice:"none" default:"mem"`
+	Type string `long:"type" env:"TYPE" description:"type of cache" choice:"mem" choice:"none" default:"mem"` // nolint
 	Max  struct {
 		Items int   `long:"items" env:"ITEMS" default:"1000" description:"max cached items"`
 		Value int   `long:"value" env:"VALUE" default:"65536" description:"max size of cached value"`
@@ -157,7 +158,7 @@ type CacheGroup struct {
 
 // AdminGroup defines options group for admin params
 type AdminGroup struct {
-	Type   string `long:"type" env:"TYPE" description:"type of admin store" choice:"shared" choice:"rpc" default:"shared"`
+	Type   string `long:"type" env:"TYPE" description:"type of admin store" choice:"shared" choice:"rpc" default:"shared"` //nolint
 	Shared struct {
 		Admins []string `long:"id" env:"ID" description:"admin(s) ids" env-delim:","`
 		Email  string   `long:"email" env:"EMAIL" default:"" description:"admin email"`
@@ -167,7 +168,7 @@ type AdminGroup struct {
 
 // NotifyGroup defines options for notification
 type NotifyGroup struct {
-	Type      string `long:"type" env:"TYPE" description:"type of notification" choice:"none" choice:"telegram" default:"none"`
+	Type      string `long:"type" env:"TYPE" description:"type of notification" choice:"none" choice:"telegram" default:"none"` //nolint
 	QueueSize int    `long:"queue" env:"QUEUE" description:"size of notification queue" default:"100"`
 	Telegram  struct {
 		Token   string        `long:"token" env:"TOKEN" description:"telegram token"`
@@ -179,7 +180,7 @@ type NotifyGroup struct {
 
 // SSLGroup defines options group for server ssl params
 type SSLGroup struct {
-	Type         string `long:"type" env:"TYPE" description:"ssl (auto)support" choice:"none" choice:"static" choice:"auto" default:"none"`
+	Type         string `long:"type" env:"TYPE" description:"ssl (auto) support" choice:"none" choice:"static" choice:"auto" default:"none"` //nolint
 	Port         int    `long:"port" env:"PORT" description:"port number for https server" default:"8443"`
 	Cert         string `long:"cert" env:"CERT" description:"path to cert.pem file"`
 	Key          string `long:"key" env:"KEY" description:"path to key.pem file"`
@@ -200,6 +201,12 @@ type RPCGroup struct {
 	TimeOut      time.Duration `long:"timeout" env:"TIMEOUT" default:"5s" description:"http timeout"`
 	AuthUser     string        `long:"auth_user" env:"AUTH_USER" description:"basic auth user name"`
 	AuthPassword string        `long:"auth_passwd" env:"AUTH_PASSWD" description:"basic auth user password"`
+}
+
+// LoadingCache defines interface for caching
+type LoadingCache interface {
+	Get(key cache.Key, fn func() ([]byte, error)) (data []byte, err error) // load from cache if found or put to cache and return
+	Flush(req cache.FlusherRequest)                                        // evict matched records
 }
 
 // serverApp holds all active objects
@@ -349,6 +356,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 			MaxActive: int32(s.Stream.MaxActive),
 		},
 		EmojiEnabled: s.EnableEmoji,
+		SimpleView:   s.SimpleView,
 	}
 
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = s.LowScore, s.CriticalScore
@@ -482,6 +490,22 @@ func (s *ServerCommand) makeAvatarStore() (avatar.Store, error) {
 
 func (s *ServerCommand) makePicturesStore() (*image.Service, error) {
 	switch s.Image.Type {
+	case "bolt":
+		boltImageStore, err := image.NewBoltStorage(
+			s.Image.Bolt.File,
+			s.Image.MaxSize,
+			s.Image.ResizeHeight,
+			s.Image.ResizeWidth,
+			bolt.Options{},
+		)
+		if err != nil {
+			return nil, err
+		}
+		return &image.Service{
+			Store:    boltImageStore,
+			ImageAPI: s.RemarkURL + "/api/v1/picture/",
+			TTL:      5 * s.EditDuration, // add extra time to image TTL for staging
+		}, nil
 	case "fs":
 		if err := makeDirs(s.Image.FS.Path); err != nil {
 			return nil, err
@@ -526,14 +550,18 @@ func (s *ServerCommand) makeAdminStore() (admin.Store, error) {
 	}
 }
 
-func (s *ServerCommand) makeCache() (cache.LoadingCache, error) {
+func (s *ServerCommand) makeCache() (LoadingCache, error) {
 	log.Printf("[INFO] make cache, type=%s", s.Cache.Type)
 	switch s.Cache.Type {
 	case "mem":
-		return cache.NewMemoryCache(cache.MaxCacheSize(s.Cache.Max.Size), cache.MaxValSize(s.Cache.Max.Value),
+		backend, err := cache.NewLruCache(cache.MaxCacheSize(s.Cache.Max.Size), cache.MaxValSize(s.Cache.Max.Value),
 			cache.MaxKeys(s.Cache.Max.Items))
+		if err != nil {
+			return nil, errors.Wrap(err, "cache backend initialization")
+		}
+		return cache.NewScache(backend), nil
 	case "none":
-		return &cache.Nop{}, nil
+		return cache.NewScache(&cache.Nop{}), nil
 	}
 	return nil, errors.Errorf("unsupported cache type %s", s.Cache.Type)
 }

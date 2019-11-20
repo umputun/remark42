@@ -1,5 +1,5 @@
-/** @jsx h */
-import { Component, h, RenderableProps } from 'preact';
+/** @jsx createElement */
+import { createElement, Component, createRef } from 'preact';
 import b from 'bem-react-helper';
 import nodeEmoji from 'node-emoji';
 
@@ -35,7 +35,7 @@ interface State {
 }
 
 export default class Dropdown extends Component<Props, State> {
-  rootNode?: HTMLDivElement;
+  rootNode = createRef<HTMLDivElement>();
   dropdownContent?: HTMLDivElement;
   activeSelectableElement?: Component;
   dropdownItems?: HTMLDivElement;
@@ -200,10 +200,10 @@ export default class Dropdown extends Component<Props, State> {
         await this.__adjustDropDownContent();
         if (isActive) {
           this.__onOpen();
-          this.props.onOpen && this.props.onOpen(this.rootNode!);
+          this.props.onOpen && this.props.onOpen(this.rootNode.current!);
         } else {
           this.__onClose();
-          this.props.onClose && this.props.onClose(this.rootNode!);
+          this.props.onClose && this.props.onClose(this.rootNode.current!);
         }
 
         if (this.props.onTitleClick) {
@@ -219,8 +219,8 @@ export default class Dropdown extends Component<Props, State> {
 
   __onOpen() {
     const isChildOfDropDown = (() => {
-      if (!this.rootNode) return false;
-      let parent = this.rootNode.parentElement!;
+      if (!this.rootNode.current) return false;
+      let parent = this.rootNode.current.parentElement!;
       while (parent !== document.body) {
         if (parent.classList.contains('dropdown')) return true;
         parent = parent.parentElement!;
@@ -235,10 +235,10 @@ export default class Dropdown extends Component<Props, State> {
     let prevDcBottom: number | null = null;
 
     this.checkInterval = window.setInterval(() => {
-      if (!this.rootNode || !this.state.isActive) return;
+      if (!this.rootNode.current || !this.state.isActive) return;
       const windowHeight = window.innerHeight;
       const dcBottom = (() => {
-        const dc = Array.from(this.rootNode.children).find(c => c.classList.contains('dropdown__content'));
+        const dc = Array.from(this.rootNode.current.children).find(c => c.classList.contains('dropdown__content'));
         if (!dc) return 0;
         const rect = dc.getBoundingClientRect();
         return window.scrollY + Math.abs(rect.top) + dc.scrollHeight + 10;
@@ -285,8 +285,8 @@ export default class Dropdown extends Component<Props, State> {
   }
 
   async __adjustDropDownContent() {
-    if (!this.rootNode) return;
-    const dc = this.rootNode.querySelector<HTMLDivElement>('.dropdown__content');
+    if (!this.rootNode.current) return;
+    const dc = this.rootNode.current.querySelector<HTMLDivElement>('.dropdown__content');
     if (!dc) return;
     await sleep(10);
     const rect = dc.getBoundingClientRect();
@@ -318,14 +318,14 @@ export default class Dropdown extends Component<Props, State> {
         },
         () => {
           this.__onClose();
-          this.props.onClose && this.props.onClose(this.rootNode!);
+          this.props.onClose && this.props.onClose(this.rootNode.current!);
         }
       );
     } catch (e) {}
   }
 
   onOutsideClick(e: MouseEvent) {
-    if (!this.rootNode || this.rootNode.contains(e.target as Node) || !this.state.isActive) return;
+    if (!this.rootNode.current || this.rootNode.current.contains(e.target as Node) || !this.state.isActive) return;
     this.setState(
       {
         contentTranslateX: 0,
@@ -333,7 +333,7 @@ export default class Dropdown extends Component<Props, State> {
       },
       () => {
         this.__onClose();
-        this.props.onClose && this.props.onClose(this.rootNode!);
+        this.props.onClose && this.props.onClose(this.rootNode.current!);
       }
     );
   }
@@ -377,9 +377,10 @@ export default class Dropdown extends Component<Props, State> {
     }
   }
 
-  render(props: RenderableProps<Props>, { isActive }: State) {
-    let { children } = props;
-    const { title, titleClass, heading, mix } = props;
+  render() {
+    let { children } = this.props;
+    const { title, titleClass, heading, mix, theme } = this.props;
+    const { isActive } = this.state;
 
     {
       if (this.state.selectableItems && this.props.withSelectableItems) {
@@ -388,7 +389,7 @@ export default class Dropdown extends Component<Props, State> {
     }
 
     return (
-      <div className={b('dropdown', { mix }, { theme: props.theme, active: isActive })} ref={r => (this.rootNode = r)}>
+      <div className={b('dropdown', { mix }, { theme, active: isActive })} ref={this.rootNode}>
         <Button
           aria-haspopup="listbox"
           aria-expanded={isActive && 'true'}

@@ -20,9 +20,9 @@ import (
 	"github.com/go-pkgz/auth"
 	"github.com/go-pkgz/auth/avatar"
 	"github.com/go-pkgz/auth/token"
+	cache "github.com/go-pkgz/lcw"
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
-	"github.com/go-pkgz/rest/cache"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -36,8 +36,8 @@ import (
 	"github.com/umputun/remark/backend/app/store/service"
 )
 
-var testHTML = "/tmp/test-remark.html"
-var getStartedHTML = "/tmp/getstarted.html"
+var testHTML = os.TempDir() + "/test-remark.html"
+var getStartedHTML = os.TempDir() + "/getstarted.html"
 
 var devToken = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6Mzc4OTE5MTgyMiwianRpIjoicmFuZG9tIGlkIiwiaXNzIjoicmVtYXJrNDIiLCJuYmYiOjE1MjE4ODQyMjIsInVzZXIiOnsibmFtZSI6ImRldmVsb3BlciBvbmUiLCJpZCI6ImRldiIsInBpY3R1cmUiOiJodHRwOi8vZXhhbXBsZS5jb20vcGljLnBuZyIsImlwIjoiMTI3LjAuMC4xIiwiZW1haWwiOiJtZUBleGFtcGxlLmNvbSJ9fQ.aKUAXiZxXypgV7m1wEOgUcyPOvUDXHDi3A06YWKbcLg`
 
@@ -279,17 +279,19 @@ func TestRest_parseError(t *testing.T) {
 func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 	log.Setup(log.CallerFile, log.CallerFunc, log.Msec, log.LevelBraces)
 
-	testDb := fmt.Sprintf("/tmp/test-remark-%d.db", rand.Int31())
+	tmp := os.TempDir()
+	testDb := fmt.Sprintf("/%s/test-remark-%d.db", tmp, rand.Int31())
 	os.Remove(testDb)
 	os.Remove(testHTML)
-	os.RemoveAll("/tmp/ava-remark42")
-	os.RemoveAll("/tmp/pics-remark42")
+	os.RemoveAll(tmp + "/ava-remark42")
+	os.RemoveAll(tmp + "/pics-remark42")
 
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDb, SiteID: "remark42"})
 	require.Nil(t, err)
 
-	memCache, err := cache.NewMemoryCache()
-	assert.NoError(t, err)
+	cacheBackend, err := cache.NewExpirableCache()
+	require.NoError(t, err)
+	memCache := cache.NewScache(cacheBackend)
 
 	astore := adminstore.NewStaticStore("123456", []string{"remark42"}, []string{"a1", "a2"}, "admin@remark-42.com")
 	restrictedWordsMatcher := service.NewRestrictedWordsMatcher(service.StaticRestrictedWordsLister{Words: []string{"duck"}})
@@ -308,17 +310,17 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 		Authenticator: auth.NewService(auth.Opts{
 			AdminPasswd:  "password",
 			SecretReader: token.SecretFunc(func() (string, error) { return "secret", nil }),
-			AvatarStore:  avatar.NewLocalFS("/tmp/ava-remark42"),
+			AvatarStore:  avatar.NewLocalFS(tmp + "/ava-remark42"),
 		}),
 		Cache:     memCache,
-		WebRoot:   "/tmp",
+		WebRoot:   tmp,
 		RemarkURL: "https://demo.remark42.com",
 		ImageService: &image.Service{
 			Store: &image.FileSystem{
-				Location:   "/tmp/pics-remark42",
+				Location:   tmp + "/pics-remark42",
 				Partitions: 100,
 				MaxSize:    10000,
-				Staging:    "/tmp/pics-remark42/staging",
+				Staging:    tmp + "/pics-remark42/staging",
 			},
 			TTL: time.Millisecond * 100,
 		},
@@ -353,8 +355,8 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 		require.NoError(t, srv.DataService.Close())
 		os.Remove(testDb)
 		os.Remove(testHTML)
-		os.RemoveAll("/tmp/ava-remark42")
-		os.RemoveAll("/tmp/pics-remark42")
+		os.RemoveAll(tmp + "/ava-remark42")
+		os.RemoveAll(tmp + "/pics-remark42")
 	}
 
 	return ts, srv, teardown

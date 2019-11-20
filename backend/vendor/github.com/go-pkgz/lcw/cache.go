@@ -1,12 +1,14 @@
 // Package lcw adds a thin layer on top of lru cache and go-cache providing more limits and common interface.
-// The primary method to get (and set) data to/from the cache is LoadingCache.Get retruning stored data for a given key or
-// call provided func to retrive and store, similar to Guava loading cache.
+// The primary method to get (and set) data to/from the cache is LoadingCache.Get returning stored data for a given key or
+// call provided func to retrieve and store, similar to Guava loading cache.
 // Limits allow max values for key size, number of keys, value size and total size of values in the cache.
 // CacheStat gives general stats on cache performance.
-// 3 flavours of cache provided - NoP (do-nothing cache), ExpirableCache (TTL based), and LruCache
+// 3 flavors of cache provided - NoP (do-nothing cache), ExpirableCache (TTL based), and LruCache
 package lcw
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // Value type wraps interface{}
 type Value interface{}
@@ -25,6 +27,7 @@ type LoadingCache interface {
 	Delete(key string)                                               // delete by key
 	Purge()                                                          // clear cache
 	Stat() CacheStat                                                 // cache stats
+	Keys() []string                                                  // list of all keys
 }
 
 // CacheStat represent stats values
@@ -64,6 +67,9 @@ func (n *Nop) Purge() {}
 
 // Delete does nothing for nop cache
 func (n *Nop) Delete(key string) {}
+
+// Delete does nothing for nop cache
+func (n *Nop) Keys() []string { return nil }
 
 // Stat always 0s for nop cache
 func (n *Nop) Stat() CacheStat {

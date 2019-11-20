@@ -14,9 +14,9 @@ import (
 	"github.com/go-chi/render"
 	"github.com/go-pkgz/auth"
 	"github.com/go-pkgz/auth/token"
+	cache "github.com/go-pkgz/lcw"
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
-	"github.com/go-pkgz/rest/cache"
 	"github.com/hashicorp/go-multierror"
 
 	"github.com/umputun/remark/backend/app/notify"
@@ -28,7 +28,7 @@ import (
 
 type private struct {
 	dataService      privStore
-	cache            cache.LoadingCache
+	cache            LoadingCache
 	readOnlyAge      int
 	commentFormatter *store.CommentFormatter
 	imageService     *image.Service
@@ -62,7 +62,7 @@ func (s *private) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	user := rest.MustGetUserInfo(r)
 	if user.ID != "admin" && user.SiteID != comment.Locator.SiteID {
 		rest.SendErrorJSON(w, r, http.StatusForbidden,
-			errors.New("site mismatch, not allowed to post to "+comment.Locator.SiteID), "invalid site",
+			fmt.Errorf("site mismatch, %q not allowed to post to %s", user.SiteID, comment.Locator.SiteID), "invalid site",
 			rest.ErrCommentValidation)
 		return
 	}

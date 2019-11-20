@@ -14,12 +14,13 @@ import (
 	"time"
 
 	"github.com/go-pkgz/jrpc"
+	log "github.com/go-pkgz/lgr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/admin"
 	"github.com/umputun/remark/backend/app/store/engine"
+
 	"github.com/umputun/remark/memory_store/accessor"
 )
 
@@ -311,7 +312,6 @@ func TestRPC_admEnabledHndl(t *testing.T) {
 	assert.Equal(t, false, ok)
 }
 
-
 func TestRPC_admEventHndl(t *testing.T) {
 	_, port, teardown := prepTestStore(t)
 	defer teardown()
@@ -345,9 +345,10 @@ func prepTestStore(t *testing.T) (s *RPC, port int, teardown func()) {
 	adm.Set("test-site-disabled", admRecDisabled)
 
 	go func() {
-		t.Log(s.Run(port))
+		log.Printf("%v", s.Run(port))
 	}()
-	time.Sleep(time.Millisecond * 10)
+
+	time.Sleep(time.Millisecond * 50) // wait for server to start
 
 	return s, port, func() {
 		require.NoError(t, s.Shutdown())

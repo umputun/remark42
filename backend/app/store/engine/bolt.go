@@ -82,7 +82,6 @@ func NewBoltDB(options bolt.Options, sites ...BoltSite) (*BoltDB, error) {
 
 // Create saves new comment to store. Adds to posts bucket, reference to last and user bucket and increments count bucket
 func (b *BoltDB) Create(comment store.Comment) (commentID string, err error) {
-
 	bdb, err := b.db(comment.Locator.SiteID)
 	if err != nil {
 		return "", err

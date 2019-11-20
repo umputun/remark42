@@ -1,10 +1,10 @@
-/** @jsx h */
+/** @jsx createElement */
 
 /* styles imports */
 import '@app/components/raw-content';
 import './styles';
 
-import { h, Component, RenderableProps } from 'preact';
+import { createElement, Component, createRef } from 'preact';
 import b, { Mix } from 'bem-react-helper';
 import { isEmpty } from 'lodash';
 
@@ -72,7 +72,7 @@ const ImageMimeRegex = /image\//i;
 
 export class Input extends Component<Props, State> {
   /** reference to textarea element */
-  textAreaRef?: TextareaAutosize;
+  textAreaRef = createRef<TextareaAutosize>();
   textareaId: string;
 
   emojiDropdown?: Dropdown;
@@ -120,7 +120,7 @@ export class Input extends Component<Props, State> {
   componentWillReceiveProps(nextProps: Props) {
     if (nextProps.value !== this.props.value) {
       this.setState({ text: nextProps.value || '' });
-      this.props.autofocus && this.textAreaRef && this.textAreaRef.focus();
+      this.props.autofocus && this.textAreaRef.current && this.textAreaRef.current.focus();
     }
   }
 
@@ -504,14 +504,14 @@ export class Input extends Component<Props, State> {
   /** performs upload process */
   async uploadImages(files: File[]) {
     if (!this.props.uploadImage) return;
-    if (!this.textAreaRef) return;
+    if (!this.textAreaRef.current) return;
 
     /** Human readable image size limit, i.e 5MB */
     const maxImageSizeString = (StaticStore.config.max_image_size / 1024 / 1024).toFixed(2) + 'MB';
     /** upload delay to avoid server rate limiter */
     const uploadDelay = 5000;
 
-    const isSelectionSupported = this.textAreaRef.isSelectionSupported();
+    const isSelectionSupported = this.textAreaRef.current.isSelectionSupported();
 
     this.setState({
       errorLock: true,
@@ -559,7 +559,7 @@ export class Input extends Component<Props, State> {
 
       const uploadPlaceholder = `${placeholderStart}![uploading ${file.name}...]()`;
       const uploadPlaceholderLength = uploadPlaceholder.length;
-      const selection = this.textAreaRef.getSelection();
+      const selection = this.textAreaRef.current.getSelection();
       /** saved selection in case of error */
       const originalText = this.state.text;
       const restoreSelection = async () => {
@@ -568,7 +568,7 @@ export class Input extends Component<Props, State> {
         });
         /** sleeping awhile so textarea catch state change and its selection */
         await sleep(100);
-        this.textAreaRef!.setSelection(selection);
+        this.textAreaRef.current!.setSelection(selection);
       };
 
       if (file.size > StaticStore.config.max_image_size) {
@@ -597,16 +597,13 @@ export class Input extends Component<Props, State> {
       /** sleeping awhile so textarea catch state change and its selection */
       await sleep(100);
       const selectionPointer = selection[0] + markdownString.length;
-      this.textAreaRef.setSelection([selectionPointer, selectionPointer]);
+      this.textAreaRef.current.setSelection([selectionPointer, selectionPointer]);
     }
 
     this.setState({ errorLock: false, isDisabled: false, buttonText: null });
   }
 
-  render(
-    props: RenderableProps<Props>,
-    { isDisabled, isErrorShown, errorMessage, preview, maxLength, text, buttonText }: State
-  ) {
+  render(props: Props, { isDisabled, isErrorShown, errorMessage, preview, maxLength, text, buttonText }: State) {
     const charactersLeft = maxLength - text.length;
     errorMessage = props.errorMessage || errorMessage;
     const label = buttonText || Labels[props.mode || 'main'];
@@ -636,7 +633,7 @@ export class Input extends Component<Props, State> {
           <TextareaAutosize
             id={this.textareaId}
             onPaste={this.onPaste}
-            ref={ref => (this.textAreaRef = ref)}
+            ref={this.textAreaRef}
             className="input__field"
             placeholder="Your comment here"
             value={text}
@@ -690,7 +687,7 @@ export class Input extends Component<Props, State> {
 
           {props.mode === 'main' && (
             <div className="input__rss">
-              <div class="input__markdown">
+              <div className="input__markdown">
                 Styling with{' '}
                 <a className="input__markdown-link" target="_blank" href="markdown-help.html">
                   Markdown

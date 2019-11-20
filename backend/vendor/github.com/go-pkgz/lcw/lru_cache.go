@@ -7,7 +7,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// LruCache wraps lru.LruCache with laoding cache Get and size limits
+// LruCache wraps lru.LruCache with loading cache Get and size limits
 type LruCache struct {
 	options
 	CacheStat
@@ -102,6 +102,15 @@ func (c *LruCache) Invalidate(fn func(key string) bool) {
 // Delete cache item by key
 func (c *LruCache) Delete(key string) {
 	c.backend.Remove(key)
+}
+
+func (c *LruCache) Keys() (res []string) {
+	keys := c.backend.Keys()
+	res = make([]string, 0, len(keys))
+	for _, key := range keys {
+		res = append(res, key.(string))
+	}
+	return res
 }
 
 // Stat returns cache statistics

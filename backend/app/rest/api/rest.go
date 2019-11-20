@@ -17,9 +17,9 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/go-chi/render"
 	"github.com/go-pkgz/auth"
+	"github.com/go-pkgz/lcw"
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
-	"github.com/go-pkgz/rest/cache"
 	"github.com/go-pkgz/rest/logger"
 	"github.com/pkg/errors"
 	"github.com/rakyll/statik/fs"
@@ -38,7 +38,7 @@ type Rest struct {
 
 	DataService      *service.DataStore
 	Authenticator    *auth.Service
-	Cache            cache.LoadingCache
+	Cache            LoadingCache
 	ImageProxy       *proxy.Image
 	CommentFormatter *store.CommentFormatter
 	Migrator         *Migrator
@@ -56,6 +56,7 @@ type Rest struct {
 	}
 	UpdateLimiter float64
 	EmojiEnabled  bool
+	SimpleView    bool
 
 	SSLConfig   SSLConfig
 	httpsServer *http.Server
@@ -66,6 +67,12 @@ type Rest struct {
 	privRest  private
 	adminRest admin
 	rssRest   rss
+}
+
+// LoadingCache defines interface for caching
+type LoadingCache interface {
+	Get(key lcw.Key, fn func() ([]byte, error)) (data []byte, err error) // load from cache if found or put to cache and return
+	Flush(req lcw.FlusherRequest)                                        // evict matched records
 }
 
 const hardBodyLimit = 1024 * 64 // limit size of body
@@ -395,6 +402,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		ReadOnlyAge    int      `json:"readonly_age"`
 		MaxImageSize   int      `json:"max_image_size"`
 		EmojiEnabled   bool     `json:"emoji_enabled"`
+		SimpleView     bool     `json:"simple_view"`
 	}{
 		Version:        s.Version,
 		EditDuration:   int(s.DataService.EditDuration.Seconds()),
@@ -407,6 +415,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		ReadOnlyAge:    s.ReadOnlyAge,
 		MaxImageSize:   s.ImageService.Store.SizeLimit(),
 		EmojiEnabled:   s.EmojiEnabled,
+		SimpleView:     s.SimpleView,
 	}
 
 	cnf.Auth = []string{}

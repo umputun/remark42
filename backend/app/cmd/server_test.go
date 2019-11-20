@@ -30,7 +30,7 @@ func TestServerApp(t *testing.T) {
 	})
 
 	go func() { _ = app.run(ctx) }()
-	time.Sleep(250 * time.Millisecond) // let server start
+	time.Sleep(500 * time.Millisecond) // let server start
 
 	// send ping
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/ping", port))
@@ -49,6 +49,7 @@ func TestServerApp(t *testing.T) {
 	req.SetBasicAuth("admin", "password")
 	resp, err = client.Do(req)
 	require.Nil(t, err)
+	defer resp.Body.Close()
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 	body, _ = ioutil.ReadAll(resp.Body)
 	t.Log(string(body))
@@ -302,7 +303,7 @@ func TestServerApp_MainSignal(t *testing.T) {
 	require.Nil(t, err)
 	err = s.Execute(args)
 	assert.NoError(t, err, "execute failed")
-	assert.True(t, time.Since(st).Seconds() < 1, "should take about 500msec")
+	assert.True(t, time.Since(st).Seconds() < 1, "should take under sec", time.Since(st).Seconds())
 }
 
 func Test_ACMEEmail(t *testing.T) {

@@ -1,11 +1,11 @@
-/** @jsx h */
-import { Component, h, RenderableProps } from 'preact';
+/** @jsx createElement */
+import { createElement, JSX, Component } from 'preact';
 import b from 'bem-react-helper';
 
 import noop from '@app/utils/noop';
 import { Theme } from '@app/common/types';
 
-interface Props {
+type Props = {
   type?: string;
   kind?: string;
   theme: Theme;
@@ -14,14 +14,14 @@ interface Props {
   onClick?: (e: MouseEvent) => void;
   onFocus?: (e: FocusEvent) => void;
   onBlur?: (e: FocusEvent) => void;
-}
+} & JSX.HTMLAttributes;
 
 interface State {
   isClicked: boolean;
   isFocused: boolean;
 }
 
-export class Button extends Component<JSX.HTMLAttributes & Props, State> {
+export class Button extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
 
@@ -62,7 +62,7 @@ export class Button extends Component<JSX.HTMLAttributes & Props, State> {
     this.props.onFocus!(e);
   }
 
-  render(props: RenderableProps<JSX.HTMLAttributes & Props>, state: State) {
+  render(props: Props, state: State) {
     const { children, className } = props;
     const { isClicked, isFocused } = state;
 

@@ -39,19 +39,9 @@ type FileSystem struct {
 // Save data from reader for given file name to local FS, staging directory. Returns id as user/uuid.ext
 // Files partitioned across multiple subdirectories and the final path includes part, i.e. /location/user1/03/123-4567.png
 func (f *FileSystem) Save(fileName string, userID string, r io.Reader) (id string, err error) {
-
-	lr := io.LimitReader(r, int64(f.MaxSize)+1)
-	data, err := ioutil.ReadAll(lr)
+	data, err := readAndValidateImage(r, f.MaxSize)
 	if err != nil {
-		return "", errors.Wrapf(err, "can't read source data for image %s", fileName)
-	}
-	if len(data) > f.MaxSize {
-		return "", errors.Errorf("file %s is too large (limit=%d)", fileName, f.MaxSize)
-	}
-
-	// read header first, needs it to check if data is valid png/gif/jpeg
-	if !isValidImage(data[:512]) {
-		return "", errors.Errorf("file %s is not in allowed format", fileName)
+		return "", errors.Wrapf(err, "can't load image %s", fileName)
 	}
 
 	data, resized := resize(data, f.MaxWidth, f.MaxHeight)

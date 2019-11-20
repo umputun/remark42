@@ -1,5 +1,5 @@
-/** @jsx h */
-import { h, RenderableProps } from 'preact';
+/** @jsx createElement */
+import { createElement, JSX, RenderableProps } from 'preact';
 import b from 'bem-react-helper';
 
 interface Props {

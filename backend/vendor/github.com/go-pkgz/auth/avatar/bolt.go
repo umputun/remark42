@@ -2,8 +2,6 @@ package avatar
 
 import (
 	"bytes"
-	"crypto/sha1"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -58,7 +56,7 @@ func (b *BoltDB) Put(userID string, reader io.Reader) (avatar string, err error)
 			return errors.Wrapf(err, "can't put to bucket with %s", avatarID)
 		}
 		// store sha1 of the image
-		return tx.Bucket([]byte(metasBktName)).Put([]byte(avatarID), []byte(b.sha1(buf.Bytes(), avatarID)))
+		return tx.Bucket([]byte(metasBktName)).Put([]byte(avatarID), []byte(hash(buf.Bytes(), avatarID)))
 	})
 	return avatarID, err
 }
@@ -129,13 +127,4 @@ func (b *BoltDB) Close() error {
 
 func (b *BoltDB) String() string {
 	return fmt.Sprintf("boltdb, path=%s", b.fileName)
-}
-
-func (b *BoltDB) sha1(data []byte, avatarID string) (id string) {
-	h := sha1.New()
-	if _, err := h.Write(data); err != nil {
-		log.Printf("[DEBUG] can't apply sha1 for content of '%s', %s", avatarID, err)
-		return encodeID(avatarID)
-	}
-	return hex.EncodeToString(h.Sum(nil))
 }

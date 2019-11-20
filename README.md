@@ -1,8 +1,10 @@
-# remark42 [![Build Status](https://travis-ci.org/umputun/remark.svg?branch=master)](https://travis-ci.org/umputun/remark) [![Go Report Card](https://goreportcard.com/badge/github.com/umputun/remark)](https://goreportcard.com/report/github.com/umputun/remark)  [![Coverage Status](https://coveralls.io/repos/github/umputun/remark/badge.svg?branch=master)](https://coveralls.io/github/umputun/remark?branch=master)
+# remark42 [![Build Status](https://github.com/umputun/remark/workflows/build/badge.svg)](https://github.com/umputun/remark/actions) [![Go Report Card](https://goreportcard.com/badge/github.com/umputun/remark)](https://goreportcard.com/report/github.com/umputun/remark) [![Coverage Status](https://coveralls.io/repos/github/umputun/remark/badge.svg?branch=master)](https://coveralls.io/github/umputun/remark?branch=master)
+
+
 
 Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engine, which doesn't spy on users. It can be embedded into blogs, articles or any other place where readers add comments.
 
-* Social login via Google, Facebook, GitHub and Yandex
+* Social login via Google, Twitter, Facebook, GitHub and Yandex
 * Login via email
 * Optional anonymous access
 * Multi-level nested comments with both tree and plain presentations
@@ -48,6 +50,7 @@ For admin screenshots see [Admin UI wiki](https://github.com/umputun/remark/wiki
         - [Google Auth Provider](#google-auth-provider)
         - [GitHub Auth Provider](#github-auth-provider)
         - [Facebook Auth Provider](#facebook-auth-provider)
+        - [Twitter Auth Provider](#twitter-auth-provider)
         - [Yandex Auth Provider](#yandex-auth-provider)
       - [Initial import from Disqus](#initial-import-from-disqus)
       - [Initial import from WordPress](#initial-import-from-wordpress)
@@ -98,86 +101,88 @@ _this is the recommended way to run remark42_
 
 #### Parameters
 
-| Command line            | Environment             | Default                  | Description                                      |
-| ----------------------- | ----------------------- | ------------------------ | ------------------------------------------------ |
-| url                     | REMARK_URL              |                          | url to remark42 server, _required_               |
-| secret                  | SECRET                  |                          | secret key, _required_                           |
-| site                    | SITE                    | `remark`                 | site name(s), _multi_                            |
-| store.type              | STORE_TYPE              | `bolt`                   | type of storage, `bolt` or `mongo`               |
-| store.bolt.path         | STORE_BOLT_PATH         | `./var`                  | path to data directory                           |
-| store.bolt.timeout      | STORE_BOLT_TIMEOUT      | `30s`                    | boltdb access timeout                            |
-| mongo.url               | MONGO_URL               |                          | mongo url for all stores using mongodb           |
-| mongo.db                | MONGO_DB                |                          | mongo database                                   |
-| admin.shared.id         | ADMIN_SHARED_ID         |                          | admin names (list of user ids), _multi_          |
-| admin.shared.email      | ADMIN_SHARED_EMAIL      | `admin@${REMARK_URL}`    | admin email                                      |
-| backup                  | BACKUP_PATH             | `./var/backup`           | backups location                                 |
-| max-back                | MAX_BACKUP_FILES        | `10`                     | max backup files to keep                         |
-| cache.max.items         | CACHE_MAX_ITEMS         | `1000`                   | max number of cached items, `0` - unlimited      |
-| cache.max.value         | CACHE_MAX_VALUE         | `65536`                  | max size of cached value, `0` - unlimited        |
-| cache.max.size          | CACHE_MAX_SIZE          | `50000000`               | max size of all cached values, `0` - unlimited   |
-| avatar.type             | AVATAR_TYPE             | `fs`                     | type of avatar storage, `fs`, `bolt`, or `uri`   |
-| avatar.fs.path          | AVATAR_FS_PATH          | `./var/avatars`          | avatars location for `fs` store                  |
-| avatar.bolt.file        | AVATAR_BOLT_FILE        | `./var/avatars.db`       | file name for  `bolt` store                      |
-| avatar.uri              | AVATAR_URI              | `./var/avatars`          | avatar store uri                                 |
-| avatar.rsz-lmt          | AVATAR_RSZ_LMT          | `0` (disabled)           | max image size for resizing avatars on save      |
-| image.type              | IMAGE_TYPE              | `fs`                     | type of image storage, `fs`, `bolt`, or `mongo`  |
-| image.max-size          | IMAGE_MAX_SIZE          | `5000000`                | max size of image file                           |
-| image.fs.path           | IMAGE_FS_PATH           | `./var/pictures`         | permanent location of images                     |
-| image.fs.staging        | IMAGE_FS_STAGING        | `./var/pictures.staging` | staging location of images                       |
-| image.fs.partitions     | IMAGE_FS_PARTITIONS     | `100`                    | number of image partitions                       |
-| image.resize-width      | IMAGE_RESIZE_WIDTH      | `800`                    | width of resized image                           |
-| image.resize-height     | IMAGE_RESIZE_HEIGHT     | `300`                    | height of resized image                          |
-| auth.ttl.jwt            | AUTH_TTL_JWT            | `5m`                     | jwt TTL                                          |
-| auth.ttl.cookie         | AUTH_TTL_COOKIE         | `200h`                   | cookie TTL                                       |
-| auth.google.cid         | AUTH_GOOGLE_CID         |                          | Google OAuth client ID                           |
-| auth.google.csec        | AUTH_GOOGLE_CSEC        |                          | Google OAuth client secret                       |
-| auth.facebook.cid       | AUTH_FACEBOOK_CID       |                          | Facebook OAuth client ID                         |
-| auth.facebook.csec      | AUTH_FACEBOOK_CSEC      |                          | Facebook OAuth client secret                     |
-| auth.github.cid         | AUTH_GITHUB_CID         |                          | Github OAuth client ID                           |
-| auth.github.csec        | AUTH_GITHUB_CSEC        |                          | Github OAuth client secret                       |
-| auth.yandex.cid         | AUTH_YANDEX_CID         |                          | Yandex OAuth client ID                           |
-| auth.yandex.csec        | AUTH_YANDEX_CSEC        |                          | Yandex OAuth client secret                       |
-| auth.dev                | AUTH_DEV                | `false`                  | local oauth2 server, development mode only       |
-| auth.anon               | AUTH_ANON               | `false`                  | enable anonymous login                           |
-| auth.email.enable       | AUTH_EMAIL_ENABLE       | `false`                  | enable auth via email                            |
-| auth.email.host         | AUTH_EMAIL_HOST         |                          | smtp host                                        |
-| auth.email.port         | AUTH_EMAIL_PORT         | `25`                     | smtp port                                        |
-| auth.email.from         | AUTH_EMAIL_FROM         |                          | email from                                       |
-| auth.email.subj         | AUTH_EMAIL_SUBJ         | `remark42 confirmation`  | email subject                                    |
-| auth.email.content-type | AUTH_EMAIL_CONTENT_TYPE | `text/html`              | email content type                               |
-| auth.email.tls          | AUTH_EMAIL_TLS          | `false`                  | enable TLS                                       |
-| auth.email.user         | AUTH_EMAIL_USER         |                          | smtp user name                                   |
-| auth.email.passwd       | AUTH_EMAIL_PASSWD       |                          | smtp password                                    |
-| auth.email.timeout      | AUTH_EMAIL_TIMEOUT      | `10s`                    | smtp timeout                                     |
-| auth.email.template     | AUTH_EMAIL_TEMPLATE     | none (predefined)        | custom email message template file               |   
-| notify.type             | NOTIFY_TYPE             | none                     | type of notification (none or telegram)          |
-| notify.queue            | NOTIFY_QUEUE            | `100`                    | size of notification queue                       |
-| notify.telegram.token   | NOTIFY_TELEGRAM_TOKEN   |                          | telegram token                                   |
-| notify.telegram.chan    | NOTIFY_TELEGRAM_CHAN    |                          | telegram channel                                 |
-| notify.telegram.timeout | NOTIFY_TELEGRAM_TIMEOUT | `5s`                     | telegram timeout                                 |
-| ssl.type                | SSL_TYPE                | none                     | `none`-http, `static`-https, `auto`-https + le   |
-| ssl.port                | SSL_PORT                | `8443`                   | port for https server                            |
-| ssl.cert                | SSL_CERT                |                          | path to cert.pem file                            |
-| ssl.key                 | SSL_KEY                 |                          | path to key.pem file                             |
-| ssl.acme-location       | SSL_ACME_LOCATION       | `./var/acme`             | dir where obtained le-certs will be stored       |
-| ssl.acme-email          | SSL_ACME_EMAIL          |                          | admin email for receiving notifications from LE  |
-| max-comment             | MAX_COMMENT_SIZE        | `2048`                   | comment's size limit                             |
-| max-votes               | MAX_VOTES               | `-1`                     | votes limit per comment, `-1` - unlimited        |
-| votes-ip                | VOTES_IP                |`false`                   | restrict votes from the same ip                  |
-| votes-ip-time           | VOTES_IP_TIME           |`5m`                      | same ip vote restriction time, `0s` - unlimited  |
-| low-score               | LOW_SCORE               | `-5`                     | low score threshold                              |
-| critical-score          | CRITICAL_SCORE          | `-10`                    | critical score threshold                         |
-| positive-score          | POSITIVE_SCORE          | `false`                  | restricts comment's score to be only positive    |
-| restricted-words        | RESTRICTED_WORDS        |                          | words banned in comments (can use `*`), _multi_  |
-| edit-time               | EDIT_TIME               | `5m`                     | edit window                                      |
-| read-age                | READONLY_AGE            |                          | read-only age of comments, days                  |
-| img-proxy               | IMG_PROXY               | `false`                  | enable http->https proxy for images              |
-| emoji                   | EMOJI                   | `false`                  | enable emoji support                             |
-| port                    | REMARK_PORT             | `8080`                   | web server port                                  |
-| web-root                | REMARK_WEB_ROOT         | `./web`                  | web server root directory                        |
-| update-limit            | UPDATE_LIMIT            | `0.5`                    | updates/sec limit                                |
-| admin-passwd            | ADMIN_PASSWD            | none (disabled)          | password for `admin` basic auth                  |
-| dbg                     | DEBUG                   | `false`                  | debug mode                                       |
+| Command line            | Environment             | Default                  | Description                                     |
+| ----------------------- | ----------------------- | ------------------------ | ----------------------------------------------- |
+| url                     | REMARK_URL              |                          | url to remark42 server, _required_              |
+| secret                  | SECRET                  |                          | secret key, _required_                          |
+| site                    | SITE                    | `remark`                 | site name(s), _multi_                           |
+| store.type              | STORE_TYPE              | `bolt`                   | type of storage, `bolt` or `rpc`                |
+| store.bolt.path         | STORE_BOLT_PATH         | `./var`                  | path to data directory                          |
+| store.bolt.timeout      | STORE_BOLT_TIMEOUT      | `30s`                    | boltdb access timeout                           |
+| admin.shared.id         | ADMIN_SHARED_ID         |                          | admin names (list of user ids), _multi_         |
+| admin.shared.email      | ADMIN_SHARED_EMAIL      | `admin@${REMARK_URL}`    | admin email                                     |
+| backup                  | BACKUP_PATH             | `./var/backup`           | backups location                                |
+| max-back                | MAX_BACKUP_FILES        | `10`                     | max backup files to keep                        |
+| cache.max.items         | CACHE_MAX_ITEMS         | `1000`                   | max number of cached items, `0` - unlimited     |
+| cache.max.value         | CACHE_MAX_VALUE         | `65536`                  | max size of cached value, `0` - unlimited       |
+| cache.max.size          | CACHE_MAX_SIZE          | `50000000`               | max size of all cached values, `0` - unlimited  |
+| avatar.type             | AVATAR_TYPE             | `fs`                     | type of avatar storage, `fs`, `bolt`, or `uri`  |
+| avatar.fs.path          | AVATAR_FS_PATH          | `./var/avatars`          | avatars location for `fs` store                 |
+| avatar.bolt.file        | AVATAR_BOLT_FILE        | `./var/avatars.db`       | file name for  `bolt` store                     |
+| avatar.uri              | AVATAR_URI              | `./var/avatars`          | avatar store uri                                |
+| avatar.rsz-lmt          | AVATAR_RSZ_LMT          | `0` (disabled)           | max image size for resizing avatars on save     |
+| image.type              | IMAGE_TYPE              | `fs`                     | type of image storage, `fs`, `bolt`             |
+| image.max-size          | IMAGE_MAX_SIZE          | `5000000`                | max size of image file                          |
+| image.fs.path           | IMAGE_FS_PATH           | `./var/pictures`         | permanent location of images                    |
+| image.fs.staging        | IMAGE_FS_STAGING        | `./var/pictures.staging` | staging location of images                      |
+| image.fs.partitions     | IMAGE_FS_PARTITIONS     | `100`                    | number of image partitions                      |
+| image.bolt.file         | IMAGE_BOLT_FILE         | `/var/pictures.db`       | images bolt file location                       |
+| image.resize-width      | IMAGE_RESIZE_WIDTH      | `800`                    | width of resized image                          |
+| image.resize-height     | IMAGE_RESIZE_HEIGHT     | `300`                    | height of resized image                         |
+| auth.ttl.jwt            | AUTH_TTL_JWT            | `5m`                     | jwt TTL                                         |
+| auth.ttl.cookie         | AUTH_TTL_COOKIE         | `200h`                   | cookie TTL                                      |
+| auth.google.cid         | AUTH_GOOGLE_CID         |                          | Google OAuth client ID                          |
+| auth.google.csec        | AUTH_GOOGLE_CSEC        |                          | Google OAuth client secret                      |
+| auth.facebook.cid       | AUTH_FACEBOOK_CID       |                          | Facebook OAuth client ID                        |
+| auth.facebook.csec      | AUTH_FACEBOOK_CSEC      |                          | Facebook OAuth client secret                    |
+| auth.github.cid         | AUTH_GITHUB_CID         |                          | Github OAuth client ID                          |
+| auth.github.csec        | AUTH_GITHUB_CSEC        |                          | Github OAuth client secret                      |
+| auth.twitter.cid        | AUTH_TWITTER_CID        |                          | Twitter Consumer API Key                        |
+| auth.twitter.csec       | AUTH_TWITTER_CSEC       |                          | Twitter Consumer API Secret key                 |
+| auth.yandex.cid         | AUTH_YANDEX_CID         |                          | Yandex OAuth client ID                          |
+| auth.yandex.csec        | AUTH_YANDEX_CSEC        |                          | Yandex OAuth client secret                      |
+| auth.dev                | AUTH_DEV                | `false`                  | local oauth2 server, development mode only      |
+| auth.anon               | AUTH_ANON               | `false`                  | enable anonymous login                          |
+| auth.email.enable       | AUTH_EMAIL_ENABLE       | `false`                  | enable auth via email                           |
+| auth.email.host         | AUTH_EMAIL_HOST         |                          | smtp host                                       |
+| auth.email.port         | AUTH_EMAIL_PORT         | `25`                     | smtp port                                       |
+| auth.email.from         | AUTH_EMAIL_FROM         |                          | email from                                      |
+| auth.email.subj         | AUTH_EMAIL_SUBJ         | `remark42 confirmation`  | email subject                                   |
+| auth.email.content-type | AUTH_EMAIL_CONTENT_TYPE | `text/html`              | email content type                              |
+| auth.email.tls          | AUTH_EMAIL_TLS          | `false`                  | enable TLS                                      |
+| auth.email.user         | AUTH_EMAIL_USER         |                          | smtp user name                                  |
+| auth.email.passwd       | AUTH_EMAIL_PASSWD       |                          | smtp password                                   |
+| auth.email.timeout      | AUTH_EMAIL_TIMEOUT      | `10s`                    | smtp timeout                                    |
+| auth.email.template     | AUTH_EMAIL_TEMPLATE     | none (predefined)        | custom email message template file              |
+| notify.type             | NOTIFY_TYPE             | none                     | type of notification (none or telegram)         |
+| notify.queue            | NOTIFY_QUEUE            | `100`                    | size of notification queue                      |
+| notify.telegram.token   | NOTIFY_TELEGRAM_TOKEN   |                          | telegram token                                  |
+| notify.telegram.chan    | NOTIFY_TELEGRAM_CHAN    |                          | telegram channel                                |
+| notify.telegram.timeout | NOTIFY_TELEGRAM_TIMEOUT | `5s`                     | telegram timeout                                |
+| ssl.type                | SSL_TYPE                | none                     | `none`-http, `static`-https, `auto`-https + le  |
+| ssl.port                | SSL_PORT                | `8443`                   | port for https server                           |
+| ssl.cert                | SSL_CERT                |                          | path to cert.pem file                           |
+| ssl.key                 | SSL_KEY                 |                          | path to key.pem file                            |
+| ssl.acme-location       | SSL_ACME_LOCATION       | `./var/acme`             | dir where obtained le-certs will be stored      |
+| ssl.acme-email          | SSL_ACME_EMAIL          |                          | admin email for receiving notifications from LE |
+| max-comment             | MAX_COMMENT_SIZE        | `2048`                   | comment's size limit                            |
+| max-votes               | MAX_VOTES               | `-1`                     | votes limit per comment, `-1` - unlimited       |
+| votes-ip                | VOTES_IP                | `false`                  | restrict votes from the same ip                 |
+| votes-ip-time           | VOTES_IP_TIME           | `5m`                     | same ip vote restriction time, `0s` - unlimited |
+| low-score               | LOW_SCORE               | `-5`                     | low score threshold                             |
+| critical-score          | CRITICAL_SCORE          | `-10`                    | critical score threshold                        |
+| positive-score          | POSITIVE_SCORE          | `false`                  | restricts comment's score to be only positive   |
+| restricted-words        | RESTRICTED_WORDS        |                          | words banned in comments (can use `*`), _multi_ |
+| edit-time               | EDIT_TIME               | `5m`                     | edit window                                     |
+| read-age                | READONLY_AGE            |                          | read-only age of comments, days                 |
+| img-proxy               | IMG_PROXY               | `false`                  | enable http->https proxy for images             |
+| emoji                   | EMOJI                   | `false`                  | enable emoji support                            |
+| simple-view             | SIMPLE_VIEW             | `false`                  | minimized UI with basic info only               |
+| port                    | REMARK_PORT             | `8080`                   | web server port                                 |
+| web-root                | REMARK_WEB_ROOT         | `./web`                  | web server root directory                       |
+| update-limit            | UPDATE_LIMIT            | `0.5`                    | updates/sec limit                               |
+| admin-passwd            | ADMIN_PASSWD            | none (disabled)          | password for `admin` basic auth                 |
+| dbg                     | DEBUG                   | `false`                  | debug mode                                      |
 
 * command line parameters are long form `--<key>=value`, i.e. `--site=https://demo.remark42.com`
 * _multi_ parameters separated by `,` in the environment or repeated with command line key, like `--site=s1 --site=s2 ...`
@@ -253,6 +258,14 @@ _instructions for google oauth2 setup borrowed from [oauth2_proxy](https://githu
 1.  Set "Site URL" to your domain, ex: `https://remark42.mysite.com`
 1.  Under **"Facebook login"** / **"Settings"** fill "Valid OAuth redirect URIs" with your callback url constructed as domain + `/auth/facebook/callback`
 1.  Select **"App Review"** and turn public flag on. This step may ask you to provide a link to your privacy policy.
+
+##### Twitter Auth Provider
+
+1.	Create a new twitter application https://developer.twitter.com/en/apps
+1.	Fill **App name**, **Description** and **URL** of your site
+1.	In the field **Callback URLs** enter the correct url of your callback handler e.g.  domain + `/auth/twitter/callback`
+1.	Under **Key and tokens** take note of the **Consumer API Key** and **Consumer API Secret key**. Those will be used as `AUTH_TWITTER_CID` and
+ `AUTH_TWITTER_CSEC`
 
 ##### Yandex Auth Provider
 
@@ -535,12 +548,9 @@ Frontend docker compose config by default skips running backend related tests an
 
 In order to run backend locally (development mode, without docker) you have to have latest stable `go` toolchain [installed](https://golang.org/doc/install).
 
-To run backend - `go run backend/app/main.go --dbg --secret=12345 --dev-passwd=password --site=remark --url=http://127.0.0.1:8080`
+To run backend - `go run backend/app/main.go server --dbg --secret=12345 --url=http://127.0.0.1:8080 --admin-passwd=password --site=remark`
 It stars backend service with embedded bolt store on port `8080` with basic auth, allowing to authenticate and run requests directly, like this:
-`HTTP http://dev:password@127.0.0.1:8080/api/v1/find?site=remark&sort=-active&format=tree&url=http://127.0.0.1:8080`
-
-To run backend with mongodb store mongo container should be started first - `docker run -d -p 27017:27017 -name=mongo mongo:3.6 --smallfiles` and then
-`go run backend/app/main.go --dbg --secret=12345 --dev-passwd=password --site=remark --url=http://127.0.0.1:8080 --store.type=mongo --store.mongo.url=localhost`
+`HTTP http://admin:password@127.0.0.1:8080/api/v1/find?site=remark&sort=-active&format=tree&url=http://127.0.0.1:8080`
 
 ### Frontend development
 
@@ -769,7 +779,7 @@ _returned id should be appended to load image url on caller side_
 * `GET /api/v1/admin/export?site=side-id&mode=[stream|file]` - export all comments to json stream or gz file.
 * `POST /api/v1/admin/import?site=side-id` - import comments from the backup, uses post body.
 * `POST /api/v1/admin/import/form?site=side-id` - import comments from the backup, user post form.
-* `POST /api/v1/admin/remap?site=side-id` - remap comments to different URLs. Expect list of "from-url new-url" pairs separated by \n. 
+* `POST /api/v1/admin/remap?site=side-id` - remap comments to different URLs. Expect list of "from-url new-url" pairs separated by \n.
 From-url and new-url parts separated by space. If urls end with asterisk (*) it means matching by prefix. Remap procedure based on
 export/import chain so make backup first.
     ```

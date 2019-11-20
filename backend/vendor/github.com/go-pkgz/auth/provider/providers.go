@@ -1,3 +1,4 @@
+// Package provider implements all oauth2, oauth1 as well as custom and direct providers
 package provider
 
 import (
