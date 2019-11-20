@@ -209,7 +209,7 @@ export class Input extends Component<Props, State> {
    */
   insertEmoji(): void {
     // Go out, if no necessary components
-    if (!this.textAreaRef || !this.emojiDropdown) return;
+    if (!this.textAreaRef.current || !this.emojiDropdown) return;
 
     const emoji = this.emojiDropdown.getSelectedItem();
 
@@ -217,7 +217,7 @@ export class Input extends Component<Props, State> {
 
     const { text } = this.state;
 
-    const [start] = this.textAreaRef.getSelection();
+    const [start] = this.textAreaRef.current.getSelection();
 
     const textStart = text.substr(0, start);
     const textEnd = text.substring(start);
@@ -260,9 +260,9 @@ export class Input extends Component<Props, State> {
     }
 
     if (this.selectSelectableItem(e) || !StaticStore.config.emoji_enabled) return;
-    if (!this.textAreaRef || !this.emojiDropdown) return;
+    if (!this.textAreaRef.current || !this.emojiDropdown) return;
 
-    const [cursorPosition] = this.textAreaRef.getSelection();
+    const [cursorPosition] = this.textAreaRef.current.getSelection();
 
     this.setState({
       cursorPosition,
@@ -286,9 +286,9 @@ export class Input extends Component<Props, State> {
   /** Saving cursor position */
   onBlur() {
     // Go out, if no necessary components
-    if (!this.textAreaRef) return;
+    if (!this.textAreaRef.current) return;
 
-    const [cursorPosition] = this.textAreaRef.getSelection();
+    const [cursorPosition] = this.textAreaRef.current.getSelection();
 
     this.setState({
       cursorPosition,
@@ -318,13 +318,13 @@ export class Input extends Component<Props, State> {
    */
   getDraftEmoji(): string | undefined {
     // Go out, if no necessary components
-    if (!this.textAreaRef || !this.emojiDropdown) return;
+    if (!this.textAreaRef.current || !this.emojiDropdown) return;
 
     const space = ' ';
     const lineFeed = '\n';
 
     const { text } = this.state;
-    const [start] = this.textAreaRef.getSelection(); // Start of selection (cursor position)
+    const [start] = this.textAreaRef.current.getSelection(); // Start of selection (cursor position)
 
     const textStart = text.substr(0, start); // Text before cursor position
 
@@ -384,9 +384,9 @@ export class Input extends Component<Props, State> {
       return;
     }
 
-    if (!this.textAreaRef || !this.emojiDropdown) return;
+    if (!this.textAreaRef.current || !this.emojiDropdown) return;
 
-    const [cursorPosition] = this.textAreaRef.getSelection();
+    const [cursorPosition] = this.textAreaRef.current.getSelection();
 
     this.setState({
       isErrorShown: false,

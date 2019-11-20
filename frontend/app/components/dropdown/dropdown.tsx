@@ -2,6 +2,7 @@
 import { createElement, Component, createRef } from 'preact';
 import b from 'bem-react-helper';
 import nodeEmoji from 'node-emoji';
+import { get } from 'lodash';
 
 import { Button } from '@app/components/button';
 import { Theme } from '@app/common/types';
@@ -84,7 +85,7 @@ export default class Dropdown extends Component<Props, State> {
 
     const element = activeSelectableElement.base;
 
-    const elementOffsetTop = element.offsetTop;
+    const elementOffsetTop = get(element, 'offsetTop', 0);
     const contentOffsetTop = this.dropdownContent.offsetTop;
     const childOffsetTop = elementOffsetTop - contentOffsetTop;
 
@@ -380,7 +381,7 @@ export default class Dropdown extends Component<Props, State> {
   render() {
     let { children } = this.props;
     const { title, titleClass, heading, mix, theme } = this.props;
-    const { isActive } = this.state;
+    const { isActive, isEmojiDropdown } = this.state;
 
     {
       if (this.state.selectableItems && this.props.withSelectableItems) {
@@ -403,7 +404,7 @@ export default class Dropdown extends Component<Props, State> {
         </Button>
 
         <div
-          className="dropdown__content"
+          className={b('dropdown__content', undefined, { emoji: isEmojiDropdown })}
           tabIndex={-1}
           role="listbox"
           style={{ transform: `translateX(${this.state.contentTranslateX}px)` }}

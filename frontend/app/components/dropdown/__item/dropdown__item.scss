@@ -13,7 +13,7 @@
     width: 100%;
     box-sizing: border-box;
     padding: 4px 10px;
-    border-bottom: 1px solid #259c9a;
+    border-bottom: 1px solid #dfe2e5;
     cursor: pointer;
     white-space: nowrap;
 
@@ -23,7 +23,7 @@
   }
 
   &_active {
-    background-color: #259c9a;
+    background-color: rgba(37, 156, 154, 0.6);
   }
 
   &_separator {
