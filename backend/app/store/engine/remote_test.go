@@ -144,7 +144,7 @@ func TestRemote_UserDetail(t *testing.T) {
 	defer ts.Close()
 	c := RPC{Client: jrpc.Client{API: ts.URL, Client: http.Client{}}}
 
-	req := UserDetailRequest{Locator: store.Locator{URL: "http://example.com/url"}, UserID: "username", Detail: Email}
+	req := UserDetailRequest{Locator: store.Locator{URL: "http://example.com/url"}, UserID: "username", Detail: UserEmail}
 	res, err := c.UserDetail(req)
 	assert.NoError(t, err)
 	assert.Equal(t, []UserDetailEntry{{UserID: "u1", Email: "test_email@example.com"}}, res)
@@ -156,7 +156,7 @@ func TestRemote_UserDetailWithErrorResult(t *testing.T) {
 	defer ts.Close()
 	c := RPC{Client: jrpc.Client{API: ts.URL, Client: http.Client{}}}
 
-	req := UserDetailRequest{Locator: store.Locator{URL: "http://example.com/url"}, UserID: "username", Detail: Email, Update: "new_value@example.com"}
+	req := UserDetailRequest{Locator: store.Locator{URL: "http://example.com/url"}, UserID: "username", Detail: UserEmail, Update: "new_value@example.com"}
 	_, err := c.UserDetail(req)
 	assert.EqualError(t, err, "failed")
 }

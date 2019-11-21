@@ -660,8 +660,8 @@ func TestMemData_DeleteAll(t *testing.T) {
 
 func TestMemData_DeleteUserDetail(t *testing.T) {
 	var (
-		createUser = engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "user1", Detail: engine.Email, Update: "value1"}
-		readUser   = engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "user1", Detail: engine.Email}
+		createUser = engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "user1", Detail: engine.UserEmail, Update: "value1"}
+		readUser   = engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "user1", Detail: engine.UserEmail}
 		emailSet   = []engine.UserDetailEntry{{UserID: "user1", Email: "value1"}}
 		emailUnset = []engine.UserDetailEntry{{UserID: "user1", Email: ""}}
 	)
@@ -673,15 +673,15 @@ func TestMemData_DeleteUserDetail(t *testing.T) {
 		detailReq engine.UserDetailRequest
 		expected  []engine.UserDetailEntry
 	}{
-		{delReq: engine.DeleteRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "user1", UserDetail: engine.Email},
+		{delReq: engine.DeleteRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "user1", UserDetail: engine.UserEmail},
 			detailReq: createUser, expected: emailSet},
-		{delReq: engine.DeleteRequest{Locator: store.Locator{SiteID: "bad"}, UserID: "user1", UserDetail: engine.Email},
+		{delReq: engine.DeleteRequest{Locator: store.Locator{SiteID: "bad"}, UserID: "user1", UserDetail: engine.UserEmail},
 			detailReq: readUser, expected: emailSet},
-		{delReq: engine.DeleteRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "user1", UserDetail: engine.Email},
+		{delReq: engine.DeleteRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "user1", UserDetail: engine.UserEmail},
 			detailReq: readUser, expected: emailUnset},
-		{delReq: engine.DeleteRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "user1", UserDetail: engine.All},
+		{delReq: engine.DeleteRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "user1", UserDetail: engine.AllUserDetails},
 			detailReq: createUser, expected: emailSet},
-		{delReq: engine.DeleteRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "user1", UserDetail: engine.All},
+		{delReq: engine.DeleteRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "user1", UserDetail: engine.AllUserDetails},
 			detailReq: readUser, expected: emailUnset},
 	}
 

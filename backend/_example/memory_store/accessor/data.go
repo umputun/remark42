@@ -284,7 +284,7 @@ func (m *MemData) ListFlags(req engine.FlagRequest) (res []interface{}, err erro
 // UserDetail sets and gets detail values
 func (m *MemData) UserDetail(req engine.UserDetailRequest) ([]engine.UserDetailEntry, error) {
 	switch req.Detail {
-	case engine.Email:
+	case engine.UserEmail:
 		if req.UserID == "" {
 			return nil, errors.New("userid cannot be empty in request for single detail")
 		}
@@ -297,7 +297,7 @@ func (m *MemData) UserDetail(req engine.UserDetailRequest) ([]engine.UserDetailE
 		}
 
 		return m.setUserDetail(req)
-	case engine.All:
+	case engine.AllUserDetails:
 		// list of all details returned in case request is a read request
 		// (Update is not set) and does not have UserID or Detail set
 		if req.Update == "" && req.UserID == "" { // read list of all details
@@ -332,7 +332,7 @@ func (m *MemData) Delete(req engine.DeleteRequest) error {
 				return e
 			}
 		}
-		return m.deleteUserDetail(req.Locator, req.UserID, engine.All)
+		return m.deleteUserDetail(req.Locator, req.UserID, engine.AllUserDetails)
 
 	case req.Locator.SiteID != "" && req.Locator.URL == "" && req.CommentID == "" && req.UserID == "" && req.UserDetail == "": // delete site
 		if _, ok := m.posts[req.Locator.SiteID]; !ok {
@@ -441,7 +441,7 @@ func (m *MemData) getUserDetail(req engine.UserDetailRequest) ([]engine.UserDeta
 			return []engine.UserDetailEntry{}, nil
 		}
 		switch req.Detail {
-		case engine.Email:
+		case engine.UserEmail:
 			return []engine.UserDetailEntry{{UserID: req.UserID, Email: meta.Details.Email}}, nil
 		}
 	}
@@ -468,7 +468,7 @@ func (m *MemData) setUserDetail(req engine.UserDetailRequest) ([]engine.UserDeta
 	}
 
 	switch req.Detail {
-	case engine.Email:
+	case engine.UserEmail:
 		entry.Details.Email = req.Update
 		m.metaUsers[req.UserID] = entry
 		return []engine.UserDetailEntry{{UserID: req.UserID, Email: req.Update}}, nil
@@ -504,9 +504,9 @@ func (m *MemData) deleteUserDetail(locator store.Locator, userID string, userDet
 	}
 
 	switch userDetail {
-	case engine.Email:
+	case engine.UserEmail:
 		entry.Details.Email = ""
-	case engine.All:
+	case engine.AllUserDetails:
 		entry.Details = engine.UserDetailEntry{UserID: userID}
 	}
 

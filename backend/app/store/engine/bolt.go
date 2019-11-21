@@ -209,7 +209,7 @@ func (b *BoltDB) Flag(req FlagRequest) (val bool, err error) {
 // UserDetail sets and gets user details
 func (b *BoltDB) UserDetail(req UserDetailRequest) ([]UserDetailEntry, error) {
 	switch req.Detail {
-	case Email:
+	case UserEmail:
 		if req.UserID == "" {
 			return nil, errors.New("userid cannot be empty in request for single detail")
 		}
@@ -219,7 +219,7 @@ func (b *BoltDB) UserDetail(req UserDetailRequest) ([]UserDetailEntry, error) {
 		}
 
 		return b.setUserDetail(req)
-	case All:
+	case AllUserDetails:
 		// list of all details returned in case request is a read request
 		// (Update is not set) and does not have UserID
 		if req.Update == "" && req.UserID == "" { // read list of all details
@@ -663,7 +663,7 @@ func (b *BoltDB) getUserDetail(req UserDetailRequest) (result []UserDetailEntry,
 				return errors.Wrap(e, "failed to unmarshal entry")
 			}
 			switch req.Detail {
-			case Email:
+			case UserEmail:
 				result = []UserDetailEntry{{UserID: req.UserID, Email: entry.Email}}
 			}
 		}
@@ -702,7 +702,7 @@ func (b *BoltDB) setUserDetail(req UserDetailRequest) (result []UserDetailEntry,
 	}
 
 	switch req.Detail {
-	case Email:
+	case UserEmail:
 		entry.Email = req.Update
 	}
 
@@ -759,9 +759,9 @@ func (b *BoltDB) deleteUserDetail(bdb *bolt.DB, userID string, userDetail UserDe
 	}
 
 	switch userDetail {
-	case Email:
+	case UserEmail:
 		entry.Email = ""
-	case All:
+	case AllUserDetails:
 		entry = UserDetailEntry{UserID: userID}
 	}
 
@@ -906,7 +906,7 @@ func (b *BoltDB) deleteUser(bdb *bolt.DB, siteID string, userID string, mode sto
 		return errors.Errorf("unknown user %s", userID)
 	}
 
-	return b.deleteUserDetail(bdb, userID, All)
+	return b.deleteUserDetail(bdb, userID, AllUserDetails)
 }
 
 // getPostBucket return bucket with all comments for postURL

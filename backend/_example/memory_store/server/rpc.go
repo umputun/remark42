@@ -130,7 +130,7 @@ func (s *RPC) listFlagsHndl(id uint64, params json.RawMessage) (rr jrpc.Response
 	return jrpc.EncodeResponse(id, flags, err)
 }
 
-// userDetailHndl gets and sets user detail
+// userDetailHndl gets and sets user detail(s)
 func (s *RPC) userDetailHndl(id uint64, params json.RawMessage) (rr jrpc.Response) {
 	req := engine.UserDetailRequest{}
 	if err := json.Unmarshal(params, &req); err != nil {

@@ -719,7 +719,7 @@ func TestService_GetMetas(t *testing.T) {
 	assert.NoError(t, b.SetReadOnly(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, true))
 
 	// set email for one existing and one non-existing user
-	req := engine.UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user2", Detail: engine.Email, Update: "test@example.org"}
+	req := engine.UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user2", Detail: engine.UserEmail, Update: "test@example.org"}
 	value, err := b.Engine.UserDetail(req)
 	assert.NoError(t, err)
 	assert.Equal(t, []engine.UserDetailEntry{{UserID: "user2", Email: "test@example.org"}}, value)
@@ -769,7 +769,7 @@ func TestService_SetMetas(t *testing.T) {
 	assert.True(t, b.IsReadOnly(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com"}))
 	assert.True(t, b.IsVerified("radio-t", "user1"))
 	assert.True(t, b.IsBlocked("radio-t", "user2"))
-	val, err := b.Engine.UserDetail(engine.UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", Detail: engine.Email})
+	val, err := b.Engine.UserDetail(engine.UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", Detail: engine.UserEmail})
 	assert.NoError(t, err)
 	assert.Equal(t, []engine.UserDetailEntry{{UserID: "user1", Email: "test@example.org"}}, val)
 }

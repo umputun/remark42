@@ -700,7 +700,7 @@ func (s *DataStore) Metas(siteID string) (umetas []UserMetaData, pmetas []PostMe
 	}
 
 	// process users details
-	usersDetails, err := s.Engine.UserDetail(engine.UserDetailRequest{Locator: store.Locator{SiteID: siteID}, Detail: engine.All})
+	usersDetails, err := s.Engine.UserDetail(engine.UserDetailRequest{Locator: store.Locator{SiteID: siteID}, Detail: engine.AllUserDetails})
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "can't get user details for %s", siteID)
 	}
@@ -742,7 +742,7 @@ func (s *DataStore) SetMetas(siteID string, umetas []UserMetaData, pmetas []Post
 		}
 		// This code doesn't delete user details in case they are not set in import but present in DB already
 		if um.Details != (engine.UserDetailEntry{}) && um.Details.Email != "" {
-			req := engine.UserDetailRequest{Locator: store.Locator{SiteID: siteID}, UserID: um.ID, Detail: engine.Email, Update: um.Details.Email}
+			req := engine.UserDetailRequest{Locator: store.Locator{SiteID: siteID}, UserID: um.ID, Detail: engine.UserEmail, Update: um.Details.Email}
 			_, err := s.Engine.UserDetail(req)
 			errs = multierror.Append(errs, err)
 		}

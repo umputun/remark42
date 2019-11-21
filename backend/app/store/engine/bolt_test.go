@@ -630,27 +630,27 @@ func TestBoltDB_UserDetail(t *testing.T) {
 		error    string
 		expected []UserDetailEntry
 	}{
-		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "u1", Detail: Email}},
-		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "u1", Detail: Email, Update: "value1"},
+		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "u1", Detail: UserEmail}},
+		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "u1", Detail: UserEmail, Update: "value1"},
 			expected: []UserDetailEntry{{UserID: "u1", Email: "value1"}}},
-		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "u1", Detail: Email},
+		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "u1", Detail: UserEmail},
 			expected: []UserDetailEntry{{UserID: "u1", Email: "value1"}}},
-		{req: UserDetailRequest{Locator: store.Locator{SiteID: "bad"}, UserID: "u1", Detail: Email},
+		{req: UserDetailRequest{Locator: store.Locator{SiteID: "bad"}, UserID: "u1", Detail: UserEmail},
 			error: `site "bad" not found`},
-		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "u1xyz", Detail: Email}},
-		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "u1", Detail: Email, Update: "test@example.com"},
+		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "u1xyz", Detail: UserEmail}},
+		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "u1", Detail: UserEmail, Update: "test@example.com"},
 			expected: []UserDetailEntry{{UserID: "u1", Email: "test@example.com"}}},
-		{req: UserDetailRequest{Detail: Email, Update: "new_value"},
+		{req: UserDetailRequest{Detail: UserEmail, Update: "new_value"},
 			error: `userid cannot be empty in request for single detail`},
 		{req: UserDetailRequest{Detail: UserDetail("bad")},
 			error: `unsupported detail "bad"`},
-		{req: UserDetailRequest{Update: "not_relevant", Detail: All},
+		{req: UserDetailRequest{Update: "not_relevant", Detail: AllUserDetails},
 			error: `unsupported request with userdetail all`},
-		{req: UserDetailRequest{Locator: store.Locator{SiteID: "bad"}, Detail: All},
+		{req: UserDetailRequest{Locator: store.Locator{SiteID: "bad"}, Detail: AllUserDetails},
 			error: `site "bad" not found`},
-		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "u2", Detail: Email, Update: "other@example.com"},
+		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "u2", Detail: UserEmail, Update: "other@example.com"},
 			expected: []UserDetailEntry{{UserID: "u2", Email: "other@example.com"}}},
-		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, Detail: All},
+		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, Detail: AllUserDetails},
 			expected: []UserDetailEntry{{UserID: "u1", Email: "test@example.com"}, {UserID: "u2", Email: "other@example.com"}}},
 	}
 
@@ -760,8 +760,8 @@ func TestBolt_DeleteAll(t *testing.T) {
 
 func TestBolt_DeleteUserDetail(t *testing.T) {
 	var (
-		createUser = UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", Detail: Email, Update: "value1"}
-		readUser   = UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", Detail: Email}
+		createUser = UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", Detail: UserEmail, Update: "value1"}
+		readUser   = UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", Detail: UserEmail}
 		emailSet   = []UserDetailEntry{{UserID: "user1", Email: "value1"}}
 	)
 
@@ -774,15 +774,15 @@ func TestBolt_DeleteUserDetail(t *testing.T) {
 		expected  []UserDetailEntry
 		err       string
 	}{
-		{delReq: DeleteRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", UserDetail: Email},
+		{delReq: DeleteRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", UserDetail: UserEmail},
 			detailReq: createUser, expected: emailSet},
-		{delReq: DeleteRequest{Locator: store.Locator{SiteID: "bad"}, UserID: "user1", UserDetail: Email},
+		{delReq: DeleteRequest{Locator: store.Locator{SiteID: "bad"}, UserID: "user1", UserDetail: UserEmail},
 			detailReq: readUser, expected: emailSet, err: `site "bad" not found`},
-		{delReq: DeleteRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", UserDetail: Email},
+		{delReq: DeleteRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", UserDetail: UserEmail},
 			detailReq: readUser},
-		{delReq: DeleteRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", UserDetail: All},
+		{delReq: DeleteRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", UserDetail: AllUserDetails},
 			detailReq: createUser, expected: emailSet},
-		{delReq: DeleteRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", UserDetail: All},
+		{delReq: DeleteRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", UserDetail: AllUserDetails},
 			detailReq: readUser},
 	}
 

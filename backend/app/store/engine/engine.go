@@ -83,8 +83,8 @@ const (
 )
 const (
 	// All possible user details
-	Email = UserDetail("email")
-	All   = UserDetail("all") // for listing and deletion only
+	UserEmail      = UserDetail("email")
+	AllUserDetails = UserDetail("all") // used for listing and deletion requests
 )
 
 // FlagRequest is the input for both get/set for flags, like blocked, verified and so on
