@@ -740,7 +740,7 @@ func (s *DataStore) SetMetas(siteID string, umetas []UserMetaData, pmetas []Post
 		if um.Verified {
 			errs = multierror.Append(errs, s.SetVerified(siteID, um.ID, true))
 		}
-		// This code doesn't delete user details in case they are not set in import but present in DB already
+		// this code doesn't delete user details in case they are not set in import but present in DB already
 		if um.Details != (engine.UserDetailEntry{}) && um.Details.Email != "" {
 			req := engine.UserDetailRequest{Locator: store.Locator{SiteID: siteID}, UserID: um.ID, Detail: engine.UserEmail, Update: um.Details.Email}
 			_, err := s.Engine.UserDetail(req)

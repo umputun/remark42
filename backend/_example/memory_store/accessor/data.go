@@ -281,7 +281,7 @@ func (m *MemData) ListFlags(req engine.FlagRequest) (res []interface{}, err erro
 	return nil, errors.Errorf("flag %s not listable", req.Flag)
 }
 
-// UserDetail sets and gets detail values
+// UserDetail sets or gets single detail value, or gets all details for requested site
 func (m *MemData) UserDetail(req engine.UserDetailRequest) ([]engine.UserDetailEntry, error) {
 	switch req.Detail {
 	case engine.UserEmail:
@@ -449,7 +449,7 @@ func (m *MemData) getUserDetail(req engine.UserDetailRequest) ([]engine.UserDeta
 	return []engine.UserDetailEntry{}, nil
 }
 
-// setUserDetail sets requested userDetail, deletion of the absent entry doesn't produce error
+// setUserDetail sets requested userDetail
 func (m *MemData) setUserDetail(req engine.UserDetailRequest) ([]engine.UserDetailEntry, error) {
 	var entry metaUser
 	if meta, ok := m.metaUsers[req.UserID]; ok {
@@ -477,7 +477,7 @@ func (m *MemData) setUserDetail(req engine.UserDetailRequest) ([]engine.UserDeta
 	return []engine.UserDetailEntry{}, nil
 }
 
-// listDetails lists all available users details. Map key is userID.
+// listDetails lists all available users details for given siteID
 func (m *MemData) listDetails(loc store.Locator) ([]engine.UserDetailEntry, error) {
 	var res []engine.UserDetailEntry
 	for _, u := range m.metaUsers {
@@ -488,7 +488,9 @@ func (m *MemData) listDetails(loc store.Locator) ([]engine.UserDetailEntry, erro
 	return res, nil
 }
 
-// deleteUserDetail deletes requested UserDetail or whole UserDetailEntry
+// deleteUserDetail deletes requested UserDetail or whole UserDetailEntry,
+// deletion of the absent entry doesn't produce error.
+// Trying to delete user with wrong siteID doesn't to anything and doesn't produce error.
 func (m *MemData) deleteUserDetail(locator store.Locator, userID string, userDetail engine.UserDetail) error {
 	var entry metaUser
 	if meta, ok := m.metaUsers[userID]; ok {

@@ -102,7 +102,7 @@ type UserDetail string
 // UserDetailEntry contains single user details entry
 type UserDetailEntry struct {
 	UserID string `json:"user_id"`         // duplicate user's id to use this structure not only embedded but separately
-	Email  string `json:"email,omitempty"` // detail name
+	Email  string `json:"email,omitempty"` // UserEmail
 }
 
 // UserDetailRequest is the input for both get/set for details, like email

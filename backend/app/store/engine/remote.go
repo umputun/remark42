@@ -82,7 +82,7 @@ func (r *RPC) ListFlags(req FlagRequest) (list []interface{}, err error) {
 	return list, err
 }
 
-// UserDetail sets and gets details
+// UserDetail sets or gets single detail value, or gets all details for requested site
 func (r *RPC) UserDetail(req UserDetailRequest) (result []UserDetailEntry, err error) {
 	resp, err := r.Call("store.user_detail", req)
 	if err != nil {

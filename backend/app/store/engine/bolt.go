@@ -22,7 +22,7 @@ import (
 //    value is not full comment but a reference combined from post-url+commentID
 //  - user to comment references in "users" bucket. It used to get comments for user. Key is userID and value
 //    is a nested bucket named userID with kv as ts:reference
-//  - users details in "user_details" bucket. Key is userID, value - UserDetailEntry.
+//  - users details in "user_details" bucket. Key is userID, value - UserDetailEntry
 //  - blocking info sits in "block" bucket. Key is userID, value - ts
 //  - counts per post to keep number of comments. Key is post url, value - count
 //  - readonly per post to keep status of manually set RO posts. Key is post url, value - ts
@@ -206,7 +206,7 @@ func (b *BoltDB) Flag(req FlagRequest) (val bool, err error) {
 	return b.setFlag(req)
 }
 
-// UserDetail sets and gets user details
+// UserDetail sets or gets single detail value, or gets all details for requested site
 func (b *BoltDB) UserDetail(req UserDetailRequest) ([]UserDetailEntry, error) {
 	switch req.Detail {
 	case UserEmail:
@@ -714,7 +714,7 @@ func (b *BoltDB) setUserDetail(req UserDetailRequest) (result []UserDetailEntry,
 	return []UserDetailEntry{entry}, err
 }
 
-// listDetails lists all available users details. Map key is userID.
+// listDetails lists all available users details for given site
 func (b *BoltDB) listDetails(loc store.Locator) (result []UserDetailEntry, err error) {
 	bdb, e := b.db(loc.SiteID)
 	if e != nil {
@@ -854,7 +854,7 @@ func (b *BoltDB) deleteUser(bdb *bolt.DB, siteID string, userID string, mode sto
 	}
 
 	// get list of commentID for all user's comment
-	var comments []commentInfo
+	comments := []commentInfo{}
 	for _, postInfo := range posts {
 		err = bdb.View(func(tx *bolt.Tx) error {
 			postsBkt := tx.Bucket([]byte(postsBucketName))
