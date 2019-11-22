@@ -658,7 +658,7 @@ func (b *BoltDB) getUserDetail(req UserDetailRequest) (result []UserDetailEntry,
 		bucket := tx.Bucket([]byte(userDetailsBucketName))
 		value := bucket.Get([]byte(req.UserID))
 		// return no error in case of absent entry
-		if len(value) != 0 {
+		if value != nil {
 			if err := json.Unmarshal(value, &entry); err != nil {
 				return errors.Wrap(e, "failed to unmarshal entry")
 			}
@@ -685,7 +685,7 @@ func (b *BoltDB) setUserDetail(req UserDetailRequest) (result []UserDetailEntry,
 		bucket := tx.Bucket([]byte(userDetailsBucketName))
 		value := bucket.Get([]byte(req.UserID))
 		// return no error in case of absent entry
-		if len(value) != 0 {
+		if value != nil {
 			if err := json.Unmarshal(value, &entry); err != nil {
 				return errors.Wrap(e, "failed to unmarshal entry")
 			}
@@ -742,7 +742,7 @@ func (b *BoltDB) deleteUserDetail(bdb *bolt.DB, userID string, userDetail UserDe
 		bucket := tx.Bucket([]byte(userDetailsBucketName))
 		value := bucket.Get([]byte(userID))
 		// return no error in case of absent entry
-		if len(value) != 0 {
+		if value != nil {
 			if err := json.Unmarshal(value, &entry); err != nil {
 				return errors.Wrap(err, "failed to unmarshal entry")
 			}
