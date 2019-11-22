@@ -625,21 +625,25 @@ func TestBoltDB_UserDetail(t *testing.T) {
 	b, teardown := prep(t)
 	defer teardown()
 
+	// add to entries to DB before we start
+	result, err := b.UserDetail(UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "u1", Detail: UserEmail, Update: "test@example.com"})
+	assert.NoError(t, err, "No error inserting entry expected")
+	assert.ElementsMatch(t, []UserDetailEntry{{UserID: "u1", Email: "test@example.com"}}, result)
+	result, err = b.UserDetail(UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "u2", Detail: UserEmail, Update: "other@example.com"})
+	assert.NoError(t, err, "No error inserting entry expected")
+	assert.ElementsMatch(t, []UserDetailEntry{{UserID: "u2", Email: "other@example.com"}}, result)
+
+	// stateless tests without changing the state we set up before
 	var testData = []struct {
 		req      UserDetailRequest
 		error    string
 		expected []UserDetailEntry
 	}{
-		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "u1", Detail: UserEmail}},
-		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "u1", Detail: UserEmail, Update: "value1"},
-			expected: []UserDetailEntry{{UserID: "u1", Email: "value1"}}},
 		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "u1", Detail: UserEmail},
-			expected: []UserDetailEntry{{UserID: "u1", Email: "value1"}}},
+			expected: []UserDetailEntry{{UserID: "u1", Email: "test@example.com"}}},
 		{req: UserDetailRequest{Locator: store.Locator{SiteID: "bad"}, UserID: "u1", Detail: UserEmail},
 			error: `site "bad" not found`},
 		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "u1xyz", Detail: UserEmail}},
-		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "u1", Detail: UserEmail, Update: "test@example.com"},
-			expected: []UserDetailEntry{{UserID: "u1", Email: "test@example.com"}}},
 		{req: UserDetailRequest{Detail: UserEmail, Update: "new_value"},
 			error: `userid cannot be empty in request for single detail`},
 		{req: UserDetailRequest{Detail: UserDetail("bad")},
@@ -648,8 +652,6 @@ func TestBoltDB_UserDetail(t *testing.T) {
 			error: `unsupported request with userdetail all`},
 		{req: UserDetailRequest{Locator: store.Locator{SiteID: "bad"}, Detail: AllUserDetails},
 			error: `site "bad" not found`},
-		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "u2", Detail: UserEmail, Update: "other@example.com"},
-			expected: []UserDetailEntry{{UserID: "u2", Email: "other@example.com"}}},
 		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, Detail: AllUserDetails},
 			expected: []UserDetailEntry{{UserID: "u1", Email: "test@example.com"}, {UserID: "u2", Email: "other@example.com"}}},
 	}
