@@ -752,8 +752,8 @@ func TestService_SetMetas(t *testing.T) {
 	// two comments for https://radio-t.com
 	b := DataStore{Engine: prepStoreEngine(t), EditDuration: 100 * time.Millisecond,
 		AdminStore: admin.NewStaticKeyStore("secret 123")}
-	var umetas []UserMetaData
-	var pmetas []PostMetaData
+	umetas := []UserMetaData{}
+	pmetas := []PostMetaData{}
 	err := b.SetMetas("radio-t", umetas, pmetas)
 	assert.NoError(t, err, "empty metas")
 
