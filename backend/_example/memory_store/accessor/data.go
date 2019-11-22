@@ -281,7 +281,9 @@ func (m *MemData) ListFlags(req engine.FlagRequest) (res []interface{}, err erro
 	return nil, errors.Errorf("flag %s not listable", req.Flag)
 }
 
-// UserDetail sets or gets single detail value, or gets all details for requested site
+// UserDetail sets or gets single detail value, or gets all details fo§r requested site.
+// UserDetail returns list even for single entry request is a compromise in order to have both single detail getting and setting
+// and all site's details listing under the same function (and not to extend engine interface by two separate functions).
 func (m *MemData) UserDetail(req engine.UserDetailRequest) ([]engine.UserDetailEntry, error) {
 	switch req.Detail {
 	case engine.UserEmail:
@@ -434,7 +436,8 @@ func (m *MemData) setFlag(req engine.FlagRequest) (res bool, err error) {
 	return status, errors.Wrapf(err, "failed to set flag %+v", req)
 }
 
-// getUserDetail returns requested userDetail value
+// getUserDetail returns UserDetailEntry with requested userDetail (omitting other details)
+// as an only element of the slice.
 func (m *MemData) getUserDetail(req engine.UserDetailRequest) ([]engine.UserDetailEntry, error) {
 	if meta, ok := m.metaUsers[req.UserID]; ok {
 		if meta.SiteID != req.Locator.SiteID {
@@ -449,7 +452,8 @@ func (m *MemData) getUserDetail(req engine.UserDetailRequest) ([]engine.UserDeta
 	return []engine.UserDetailEntry{}, nil
 }
 
-// setUserDetail sets requested userDetail
+// setUserDetail sets requested userDetail, returning complete updated UserDetailEntry as an onlyIps
+// element of the slice in case of success
 func (m *MemData) setUserDetail(req engine.UserDetailRequest) ([]engine.UserDetailEntry, error) {
 	var entry metaUser
 	if meta, ok := m.metaUsers[req.UserID]; ok {

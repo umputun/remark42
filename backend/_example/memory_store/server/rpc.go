@@ -130,7 +130,9 @@ func (s *RPC) listFlagsHndl(id uint64, params json.RawMessage) (rr jrpc.Response
 	return jrpc.EncodeResponse(id, flags, err)
 }
 
-// userDetailHndl gets and sets user detail(s)
+// userDetailHndl sets or gets single detail value, or gets all details for requested site.
+// userDetailHndl returns list even for single entry request is a compromise in order to have both single detail getting and setting
+// and all site's details listing under the same function (and not to extend engine interface by two separate functions).
 func (s *RPC) userDetailHndl(id uint64, params json.RawMessage) (rr jrpc.Response) {
 	req := engine.UserDetailRequest{}
 	if err := json.Unmarshal(params, &req); err != nil {

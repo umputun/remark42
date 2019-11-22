@@ -25,8 +25,10 @@ type Interface interface {
 	Delete(req DeleteRequest) error                              // Delete post(s), user, comment, user details, or everything
 	Flag(req FlagRequest) (bool, error)                          // set and get flags
 	ListFlags(req FlagRequest) ([]interface{}, error)            // get list of flagged keys, like blocked & verified user
-	UserDetail(req UserDetailRequest) ([]UserDetailEntry, error) // set and get user details
-	Close() error                                                // close storage engine
+	UserDetail(req UserDetailRequest) ([]UserDetailEntry, error) // sets or gets single detail value, or gets all details for requested site.
+	// UserDetail returns list even for single entry request is a compromise in order to have both single detail getting and setting
+	// and all site's details listing under the same function (and not to extend interface by two separate functions).
+	Close() error // close storage engine
 }
 
 // GetRequest is the input for Get func

@@ -82,7 +82,9 @@ func (r *RPC) ListFlags(req FlagRequest) (list []interface{}, err error) {
 	return list, err
 }
 
-// UserDetail sets or gets single detail value, or gets all details for requested site
+// UserDetail sets or gets single detail value, or gets all details for requested site.
+// UserDetail returns list even for single entry request is a compromise in order to have both single detail getting and setting
+// and all site's details listing under the same function (and not to extend interface by two separate functions).
 func (r *RPC) UserDetail(req UserDetailRequest) (result []UserDetailEntry, err error) {
 	resp, err := r.Call("store.user_detail", req)
 	if err != nil {

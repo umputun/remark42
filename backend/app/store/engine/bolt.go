@@ -206,7 +206,9 @@ func (b *BoltDB) Flag(req FlagRequest) (val bool, err error) {
 	return b.setFlag(req)
 }
 
-// UserDetail sets or gets single detail value, or gets all details for requested site
+// UserDetail sets or gets single detail value, or gets all details for requested site.
+// UserDetail returns list even for single entry request is a compromise in order to have both single detail getting and setting
+// and all site's details listing under the same function (and not to extend interface by two separate functions).
 func (b *BoltDB) UserDetail(req UserDetailRequest) ([]UserDetailEntry, error) {
 	switch req.Detail {
 	case UserEmail:
@@ -647,6 +649,7 @@ func (b *BoltDB) flagBucket(tx *bolt.Tx, flag Flag) (bkt *bolt.Bucket, err error
 }
 
 // getUserDetail returns UserDetailEntry with requested userDetail (omitting other details)
+// as an only element of the slice.
 func (b *BoltDB) getUserDetail(req UserDetailRequest) (result []UserDetailEntry, err error) {
 	bdb, e := b.db(req.Locator.SiteID)
 	if e != nil {
@@ -673,7 +676,8 @@ func (b *BoltDB) getUserDetail(req UserDetailRequest) (result []UserDetailEntry,
 	return result, err
 }
 
-// setUserDetail sets requested userDetail
+// setUserDetail sets requested userDetail, returning complete updated UserDetailEntry as an onlyIps
+// element of the slice in case of success
 func (b *BoltDB) setUserDetail(req UserDetailRequest) (result []UserDetailEntry, err error) {
 	bdb, e := b.db(req.Locator.SiteID)
 	if e != nil {
