@@ -51,14 +51,15 @@ type DataStore struct {
 	}
 }
 
-// UserMetaData keeps info about user flags
+// UserMetaData keeps info about user flags and details
 type UserMetaData struct {
 	ID      string `json:"id"`
 	Blocked struct {
 		Status bool      `json:"status"`
 		Until  time.Time `json:"until"`
 	} `json:"blocked"`
-	Verified bool `json:"verified"`
+	Verified bool                   `json:"verified"`
+	Details  engine.UserDetailEntry `json:"details,omitempty"`
 }
 
 // PostMetaData keeps info about post flags
@@ -665,7 +666,7 @@ func (s *DataStore) Metas(siteID string) (umetas []UserMetaData, pmetas []PostMe
 		}
 	}
 
-	// set users meta
+	// set users meta, key is userID
 	m := map[string]UserMetaData{}
 
 	// process blocked users
@@ -698,6 +699,20 @@ func (s *DataStore) Metas(siteID string) (umetas []UserMetaData, pmetas []PostMe
 		m[v] = val
 	}
 
+	// process users details
+	usersDetails, err := s.Engine.UserDetail(engine.UserDetailRequest{Locator: store.Locator{SiteID: siteID}, Detail: engine.AllUserDetails})
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "can't get user details for %s", siteID)
+	}
+	for _, entry := range usersDetails {
+		val, ok := m[entry.UserID]
+		if !ok {
+			val = UserMetaData{ID: entry.UserID}
+		}
+		val.Details = entry
+		m[entry.UserID] = val
+	}
+
 	for _, u := range m {
 		umetas = append(umetas, u)
 	}
@@ -724,6 +739,12 @@ func (s *DataStore) SetMetas(siteID string, umetas []UserMetaData, pmetas []Post
 		}
 		if um.Verified {
 			errs = multierror.Append(errs, s.SetVerified(siteID, um.ID, true))
+		}
+		// this code doesn't delete user details in case they are not set in import but present in DB already
+		if um.Details.Email != "" {
+			req := engine.UserDetailRequest{Locator: store.Locator{SiteID: siteID}, UserID: um.ID, Detail: engine.UserEmail, Update: um.Details.Email}
+			_, err := s.Engine.UserDetail(req)
+			errs = multierror.Append(errs, err)
 		}
 	}
 

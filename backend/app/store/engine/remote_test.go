@@ -139,6 +139,28 @@ func TestRemote_ListFlag(t *testing.T) {
 	assert.Equal(t, []interface{}{map[string]interface{}{"ID": "id1"}, map[string]interface{}{"ID": "id2"}}, res)
 }
 
+func TestRemote_UserDetail(t *testing.T) {
+	ts := testServer(t, `{"method":"store.user_detail","params":{"detail":"email","locator":{"url":"http://example.com/url"},"user_id":"username"},"id":1}`, `{"result":[{"user_id":"u1","email":"test_email@example.com"}]}`)
+	defer ts.Close()
+	c := RPC{Client: jrpc.Client{API: ts.URL, Client: http.Client{}}}
+
+	req := UserDetailRequest{Locator: store.Locator{URL: "http://example.com/url"}, UserID: "username", Detail: UserEmail}
+	res, err := c.UserDetail(req)
+	assert.NoError(t, err)
+	assert.Equal(t, []UserDetailEntry{{UserID: "u1", Email: "test_email@example.com"}}, res)
+	t.Logf("%v %T", res, res)
+}
+
+func TestRemote_UserDetailWithErrorResult(t *testing.T) {
+	ts := testServer(t, `{"method":"store.user_detail","params":{"detail":"email","locator":{"url":"http://example.com/url"},"user_id":"username","update":"new_value@example.com"},"id":1}`, `{"error":"failed"}`)
+	defer ts.Close()
+	c := RPC{Client: jrpc.Client{API: ts.URL, Client: http.Client{}}}
+
+	req := UserDetailRequest{Locator: store.Locator{URL: "http://example.com/url"}, UserID: "username", Detail: UserEmail, Update: "new_value@example.com"}
+	_, err := c.UserDetail(req)
+	assert.EqualError(t, err, "failed")
+}
+
 func TestRemote_Count(t *testing.T) {
 	ts := testServer(t, `{"method":"store.count","params":{"locator":{"url":"http://example.com/url"},"since":"0001-01-01T00:00:00Z"},"id":1}`, `{"result":11}`)
 	defer ts.Close()
@@ -173,6 +195,6 @@ func testServer(t *testing.T, req, resp string) *httptest.Server {
 		require.NoError(t, err)
 		assert.Equal(t, req, string(body))
 		t.Logf("req: %s", string(body))
-		fmt.Fprintf(w, resp)
+		_, _ = fmt.Fprint(w, resp)
 	}))
 }

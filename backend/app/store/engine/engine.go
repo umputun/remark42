@@ -16,16 +16,19 @@ import (
 
 // Interface defines methods provided by low-level storage engine
 type Interface interface {
-	Create(comment store.Comment) (commentID string, err error) // create new comment, avoid dups by id
-	Update(comment store.Comment) error                         // update comment, mutable parts only
-	Get(req GetRequest) (store.Comment, error)                  // get comment by id
-	Find(req FindRequest) ([]store.Comment, error)              // find comments for locator or site
-	Info(req InfoRequest) ([]store.PostInfo, error)             // get post(s) meta info
-	Count(req FindRequest) (int, error)                         // get count for post or user
-	Delete(req DeleteRequest) error                             // delete post(s) by id or by userID
-	Flag(req FlagRequest) (bool, error)                         // set and get flags
-	ListFlags(req FlagRequest) ([]interface{}, error)           // get list of flagged keys, like blocked & verified user
-	Close() error                                               // close storage engine
+	Create(comment store.Comment) (commentID string, err error)  // create new comment, avoid dups by id
+	Update(comment store.Comment) error                          // update comment, mutable parts only
+	Get(req GetRequest) (store.Comment, error)                   // get comment by id
+	Find(req FindRequest) ([]store.Comment, error)               // find comments for locator or site
+	Info(req InfoRequest) ([]store.PostInfo, error)              // get post(s) meta info
+	Count(req FindRequest) (int, error)                          // get count for post or user
+	Delete(req DeleteRequest) error                              // Delete post(s), user, comment, user details, or everything
+	Flag(req FlagRequest) (bool, error)                          // set and get flags
+	ListFlags(req FlagRequest) ([]interface{}, error)            // get list of flagged keys, like blocked & verified user
+	UserDetail(req UserDetailRequest) ([]UserDetailEntry, error) // sets or gets single detail value, or gets all details for requested site.
+	// UserDetail returns list even for single entry request is a compromise in order to have both single detail getting and setting
+	// and all site's details listing under the same function (and not to extend interface by two separate functions).
+	Close() error // close storage engine
 }
 
 // GetRequest is the input for Get func
@@ -57,6 +60,7 @@ type DeleteRequest struct {
 	Locator    store.Locator    `json:"locator"` // lack of URL means site operation
 	CommentID  string           `json:"comment_id,omitempty"`
 	UserID     string           `json:"user_id,omitempty"`
+	UserDetail UserDetail       `json:"user_detail,omitempty"`
 	DeleteMode store.DeleteMode `json:"del_mode"`
 }
 
@@ -79,6 +83,11 @@ const (
 	Verified = Flag("verified")
 	Blocked  = Flag("blocked")
 )
+const (
+	// All possible user details
+	UserEmail      = UserDetail("email")
+	AllUserDetails = UserDetail("all") // used for listing and deletion requests
+)
 
 // FlagRequest is the input for both get/set for flags, like blocked, verified and so on
 type FlagRequest struct {
@@ -87,6 +96,23 @@ type FlagRequest struct {
 	UserID  string        `json:"user_id,omitempty"` // for flags setting user status
 	Update  FlagStatus    `json:"update,omitempty"`  // if FlagNonSet it will be get op, if set will set the value
 	TTL     time.Duration `json:"ttl,omitempty"`     // ttl for time-sensitive flags only, like blocked for some period
+}
+
+// UserDetail defines name of the user detail
+type UserDetail string
+
+// UserDetailEntry contains single user details entry
+type UserDetailEntry struct {
+	UserID string `json:"user_id"`         // duplicate user's id to use this structure not only embedded but separately
+	Email  string `json:"email,omitempty"` // UserEmail
+}
+
+// UserDetailRequest is the input for both get/set for details, like email
+type UserDetailRequest struct {
+	Detail  UserDetail    `json:"detail"`           // detail name
+	Locator store.Locator `json:"locator"`          // post locator
+	UserID  string        `json:"user_id"`          // user id for get\set
+	Update  string        `json:"update,omitempty"` // update value
 }
 
 const (
