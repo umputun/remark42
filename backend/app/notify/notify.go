@@ -16,7 +16,7 @@ import (
 type Service struct {
 	dataService  Store
 	destinations []Destination
-	queue        chan request
+	queue        chan Request
 
 	closed uint32 // non-zero means closed. uses uint instead of bool for atomic
 	ctx    context.Context
@@ -26,7 +26,7 @@ type Service struct {
 // Destination defines interface for a given destination service, like telegram, email and so on
 type Destination interface {
 	fmt.Stringer
-	Send(ctx context.Context, req request) error
+	Send(ctx context.Context, req Request) error
 }
 
 // Store defines the minimal interface accessing stored comments used by notifier
@@ -34,8 +34,8 @@ type Store interface {
 	Get(locator store.Locator, id string, user store.User) (store.Comment, error)
 }
 
-type request struct {
-	comment store.Comment
+type Request struct {
+	Comment store.Comment
 	parent  store.Comment
 }
 
@@ -50,7 +50,7 @@ func NewService(dataService Store, size int, destinations ...Destination) *Servi
 	ctx, cancel := context.WithCancel(context.Background())
 	res := Service{
 		dataService:  dataService,
-		queue:        make(chan request, size),
+		queue:        make(chan Request, size),
 		destinations: destinations,
 		ctx:          ctx,
 		cancel:       cancel,
@@ -62,21 +62,20 @@ func NewService(dataService Store, size int, destinations ...Destination) *Servi
 	return &res
 }
 
-// Submit comment to internal channel if not busy, drop if can't send
-func (s *Service) Submit(comment store.Comment) {
+// Submit Request to internal channel if not busy, drop if can't send
+func (s *Service) Submit(req Request) {
 	if len(s.destinations) == 0 || atomic.LoadUint32(&s.closed) != 0 {
 		return
 	}
-	parentComment := store.Comment{}
 	if s.dataService != nil {
-		if p, err := s.dataService.Get(comment.Locator, comment.ParentID, store.User{}); err == nil {
-			parentComment = p
+		if p, err := s.dataService.Get(req.Comment.Locator, req.Comment.ParentID, store.User{}); err == nil {
+			req.parent = p
 		}
 	}
 	select {
-	case s.queue <- request{comment: comment, parent: parentComment}:
+	case s.queue <- req:
 	default:
-		log.Printf("[WARN] can't send comment notification to queue, %+v", comment)
+		log.Printf("[WARN] can't send comment notification to queue, %+v", req.Comment)
 	}
 }
 

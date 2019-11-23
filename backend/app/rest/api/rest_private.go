@@ -109,7 +109,7 @@ func (s *private) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		Scopes(comment.Locator.URL, lastCommentsScope, comment.User.ID, comment.Locator.SiteID))
 
 	if s.notifyService != nil {
-		s.notifyService.Submit(finalComment)
+		s.notifyService.Submit(notify.Request{Comment: finalComment})
 	}
 
 	log.Printf("[DEBUG] created commend %+v", finalComment)
