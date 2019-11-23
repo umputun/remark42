@@ -37,6 +37,7 @@ type Store interface {
 type Request struct {
 	Comment store.Comment
 	parent  store.Comment
+	Email   string
 }
 
 const defaultQueueSize = 100
