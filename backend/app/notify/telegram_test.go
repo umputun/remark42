@@ -63,15 +63,15 @@ func TestTelegram_Send(t *testing.T) {
 	cp := store.Comment{Text: "some parent text"}
 	cp.User.Name = "to"
 
-	err = tb.Send(context.TODO(), request{comment: c, parent: cp})
+	err = tb.Send(context.TODO(), Request{Comment: c, parent: cp})
 	assert.NoError(t, err)
 	c.PostTitle = "test title"
-	err = tb.Send(context.TODO(), request{comment: c, parent: cp})
+	err = tb.Send(context.TODO(), Request{Comment: c, parent: cp})
 	assert.NoError(t, err)
 
 	tb, err = NewTelegram("non-json-resp", "remark_test", 2*time.Second, ts.URL+"/")
 	assert.NotNil(t, err, "should failed")
-	err = tb.Send(context.TODO(), request{comment: c, parent: cp})
+	err = tb.Send(context.TODO(), Request{Comment: c, parent: cp})
 	require.NotNil(t, err)
 	assert.Contains(t, err.Error(), "unexpected telegram status code 404", "send on broken tg")
 
