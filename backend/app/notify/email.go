@@ -16,8 +16,6 @@ import (
 	"github.com/go-pkgz/repeater"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
-
-	"github.com/umputun/remark/backend/app/store/service"
 )
 
 // EmailParams contain settings for email set up
@@ -38,7 +36,7 @@ type EmailParams struct {
 // Email implements notify.Destination for email
 type Email struct {
 	EmailParams
-	smtpClient
+	smtpClient // initialized only on sending, closed afterwards
 
 	msgTmpl    *template.Template // parsed request message template
 	verifyTmpl *template.Template // parsed verification message template
@@ -146,30 +144,33 @@ func NewEmail(params EmailParams) (*Email, error) {
 // do not returns sending error, only following:
 // 1. (likely impossible) template execution error from email message creation from Request
 // 2. message dropped without sending in case of closed ctx
-func (e *Email) Send(ctx context.Context, req Request) error {
-	if req.Email == "" || req.parent.User == req.Comment.User {
-		// don't send anything if there is no email to send information to
-		// or if user replied to his own Comment
+func (e *Email) Send(ctx context.Context, req Request) (err error) {
+	if req.Email == "" {
+		// this means we can't send this request via Email
 		return nil
 	}
-	log.Printf("[DEBUG] send notification via %s, comment id %s", e, req.Comment.ID)
-	msg, err := e.buildMessageFromRequest(req, req.Email)
-	if err != nil {
-		return err
-	}
-	return e.submitEmailMessage(ctx, emailMessage{msg, req.Email})
-}
+	var msg string
 
-// SendVerification sends email verification
-// do not returns sending error, only following:
-// 1. (likely impossible) template execution error from verify message template execution
-// 2. message dropped without sending in case of closed ctx
-func (e *Email) SendVerification(ctx context.Context, req service.VerificationRequest) error {
-	log.Printf("[DEBUG] send verification via %s, user %s", e, req.User)
-	msg, err := e.buildVerificationMessage(req.User, req.Email, req.Token, req.Locator.SiteID)
-	if err != nil {
-		return err
+	if req.Verification.Token != "" {
+		log.Printf("[DEBUG] send verification via %s, user %s", e, req.Verification.User)
+		msg, err = e.buildVerificationMessage(req.Verification.User, req.Email, req.Verification.Token, req.Verification.Locator.SiteID)
+		if err != nil {
+			return err
+		}
 	}
+
+	if req.Comment.ID != "" {
+		if req.parent.User == req.Comment.User {
+			// don't send anything if if user replied to their own Comment
+			return nil
+		}
+		log.Printf("[DEBUG] send notification via %s, comment id %s", e, req.Comment.ID)
+		msg, err = e.buildMessageFromRequest(req, req.Email)
+		if err != nil {
+			return err
+		}
+	}
+
 	return e.submitEmailMessage(ctx, emailMessage{msg, req.Email})
 }
 

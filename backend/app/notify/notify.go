@@ -35,9 +35,16 @@ type Store interface {
 }
 
 type Request struct {
-	Comment store.Comment
-	parent  store.Comment
-	Email   string
+	Comment      store.Comment
+	parent       store.Comment
+	Email        string
+	Verification VerificationMetadata
+}
+
+type VerificationMetadata struct {
+	Locator store.Locator
+	User    string
+	Token   string
 }
 
 const defaultQueueSize = 100
@@ -68,7 +75,8 @@ func (s *Service) Submit(req Request) {
 	if len(s.destinations) == 0 || atomic.LoadUint32(&s.closed) != 0 {
 		return
 	}
-	if s.dataService != nil {
+	// parent comment is fetched only if comment is present in the Request
+	if s.dataService != nil && req.Comment.ParentID != "" {
 		if p, err := s.dataService.Get(req.Comment.Locator, req.Comment.ParentID, store.User{}); err == nil {
 			req.parent = p
 		}
@@ -76,7 +84,7 @@ func (s *Service) Submit(req Request) {
 	select {
 	case s.queue <- req:
 	default:
-		log.Printf("[WARN] can't send comment notification to queue, %+v", req.Comment)
+		log.Printf("[WARN] can't send notification to queue, %+v", req.Comment)
 	}
 }
 

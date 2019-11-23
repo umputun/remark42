@@ -16,7 +16,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/umputun/remark/backend/app/store"
-	"github.com/umputun/remark/backend/app/store/service"
 )
 
 func TestEmailNew(t *testing.T) {
@@ -108,23 +107,21 @@ func TestEmailSendErrors(t *testing.T) {
 
 	e.verifyTmpl, err = template.New("test").Parse("{{.Test}}")
 	assert.NoError(t, err)
-	assert.EqualError(t, e.SendVerification(context.Background(), service.VerificationRequest{Email: "bad@example.org"}),
+	assert.EqualError(t, e.Send(context.Background(), Request{Email: "bad@example.org", Verification: VerificationMetadata{Token: "some"}}),
 		"error executing template to build verifying message from request: template: test:1:2: executing \"test\" at <.Test>: can't evaluate field Test in type notify.verifyTmplData")
 	e.verifyTmpl, err = template.New("test").Parse(defaultEmailVerificationTemplate)
 	assert.NoError(t, err)
 
 	e.msgTmpl, err = template.New("test").Parse("{{.Test}}")
 	assert.NoError(t, err)
-	assert.EqualError(t, e.Send(context.Background(), Request{parent: store.Comment{User: store.User{ID: "test"}}, Email: "bad@example.org"}),
+	assert.EqualError(t, e.Send(context.Background(), Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "test"}}, Email: "bad@example.org"}),
 		"error executing template to build message from request: template: test:1:2: executing \"test\" at <.Test>: can't evaluate field Test in type notify.msgTmplData")
 	e.msgTmpl, err = template.New("test").Parse(defaultEmailTemplate)
 	assert.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	assert.EqualError(t, e.Send(ctx, Request{parent: store.Comment{User: store.User{ID: "test"}}, Email: "bad@example.org"}),
-		"sending message to \"bad@example.org\" aborted due to canceled context")
-	assert.EqualError(t, e.SendVerification(ctx, service.VerificationRequest{Email: "bad@example.org"}),
+	assert.EqualError(t, e.Send(ctx, Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "test"}}, Email: "bad@example.org"}),
 		"sending message to \"bad@example.org\" aborted due to canceled context")
 }
 
@@ -161,20 +158,29 @@ func TestEmailSend(t *testing.T) {
 				}},
 			Email: "good_example@example.org",
 		}))
-	assert.NoError(t, email.SendVerification(context.Background(), service.VerificationRequest{
-		Locator: store.Locator{SiteID: "s"},
-		Email:   "another@example.org",
-		User:    "u",
-		Token:   "t",
+	assert.NoError(t, email.Send(context.Background(), Request{
+		Email: "another@example.org",
+		Verification: VerificationMetadata{
+			Locator: store.Locator{SiteID: "s"},
+			User:    "u",
+			Token:   "t",
+		},
 	}))
 	waitGroup.Wait()
 	assert.Equal(t, 2, len(testMessages))
 	assert.Equal(t, emailMessage{message: filledEmail, to: "good_example@example.org"}, testMessages[0])
 	assert.Equal(t, emailMessage{message: filledVerifyEmail, to: "another@example.org"}, testMessages[1])
-	emptyRequest := Request{}
+}
+
+func TestEmailSend_ExitConditions(t *testing.T) {
+	email, err := NewEmail(EmailParams{})
+	assert.Error(t, err, "error match expected")
+	assert.NotNil(t, email, "expecting email returned")
+	// prevent triggering e.autoFlush creation
+	emptyRequest := Request{Comment: store.Comment{ID: "999"}}
 	assert.Nil(t, email.Send(context.Background(), emptyRequest),
 		"Message without parent comment User.Email is not sent and returns nil")
-	requestWithEqualUsersWithEmails := Request{Email: "good_example@example.org"}
+	requestWithEqualUsersWithEmails := Request{Comment: store.Comment{ID: "999"}, Email: "good_example@example.org"}
 	assert.Nil(t, email.Send(context.Background(), requestWithEqualUsersWithEmails),
 		"Message with parent comment User equals comment User is not sent and returns nil")
 }
@@ -182,7 +188,7 @@ func TestEmailSend(t *testing.T) {
 func TestEmailSendAndAutoFlush(t *testing.T) {
 	const emptyEmail = "From: test_sender\nTo: test@example.org\nSubject: New comment\nMIME-version: 1.0;" +
 		"\nContent-Type: text/html; charset=\"UTF-8\";\n\n\n\n\n\n" +
-		"↦ <a href=\"#remark42__comment-\">original comment</a>\n"
+		"↦ <a href=\"#remark42__comment-999\">original comment</a>\n"
 	var testSet = map[int]struct {
 		smtp                *fakeTestSMTP
 		request             Request
@@ -192,17 +198,17 @@ func TestEmailSendAndAutoFlush(t *testing.T) {
 		waitForTicker       bool
 	}{
 		1: {smtp: &fakeTestSMTP{}, amount: 1, quitCount: 0,
-			request: Request{parent: store.Comment{User: store.User{ID: "test"}}, Email: "test@example.org"}}, // single message: still in buffer at the time context is closed, not sent
+			request: Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "test"}}, Email: "test@example.org"}}, // single message: still in buffer at the time context is closed, not sent
 		2: {smtp: &fakeTestSMTP{fail: map[string]bool{"data": true}}, amount: 4, quitCount: 1, mail: "test_sender", // four messages: three sent with failure, one discarded
-			rcpt: "test@example.org", request: Request{parent: store.Comment{User: store.User{ID: "test"}}, Email: "test@example.org"}},
+			rcpt: "test@example.org", request: Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "test"}}, Email: "test@example.org"}},
 		3: {smtp: &fakeTestSMTP{}, amount: 4, quitCount: 1, mail: "test_sender", // four messages: three sent, one discarded
-			rcpt: "test@example.org", request: Request{parent: store.Comment{User: store.User{ID: "test"}}, Email: "test@example.org"},
+			rcpt: "test@example.org", request: Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "test"}}, Email: "test@example.org"},
 			response: strings.Repeat(emptyEmail, 3)},
 		4: {smtp: &fakeTestSMTP{}, amount: 10, quitCount: 3, // 10 messages, 1 abandoned by context exit
-			rcpt: "test@example.org", request: Request{parent: store.Comment{User: store.User{ID: "test"}}, Email: "test@example.org"},
+			rcpt: "test@example.org", request: Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "test"}}, Email: "test@example.org"},
 			mail: "test_sender", response: strings.Repeat(emptyEmail, 9)},
 		5: {smtp: &fakeTestSMTP{}, amount: 1, quitCount: 0, waitForTicker: true, // one message sent by timer
-			request: Request{parent: store.Comment{User: store.User{ID: "test"}}, Email: "test@example.org"}},
+			request: Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "test"}}, Email: "test@example.org"}},
 	}
 	for i, d := range testSet {
 		email, err := NewEmail(EmailParams{BufferSize: 3, From: "test_sender", FlushDuration: time.Millisecond * 200})
