@@ -82,14 +82,16 @@ func (r *RPC) ListFlags(req FlagRequest) (list []interface{}, err error) {
 	return list, err
 }
 
-// UserDetail sets and gets details
-func (r *RPC) UserDetail(req UserDetailRequest) (value string, err error) {
+// UserDetail sets or gets single detail value, or gets all details for requested site.
+// UserDetail returns list even for single entry request is a compromise in order to have both single detail getting and setting
+// and all site's details listing under the same function (and not to extend interface by two separate functions).
+func (r *RPC) UserDetail(req UserDetailRequest) (result []UserDetailEntry, err error) {
 	resp, err := r.Call("store.user_detail", req)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	err = json.Unmarshal(*resp.Result, &value)
-	return value, err
+	err = json.Unmarshal(*resp.Result, &result)
+	return result, err
 }
 
 // Count gets comments count by user or site
@@ -102,7 +104,7 @@ func (r *RPC) Count(req FindRequest) (count int, err error) {
 	return count, err
 }
 
-// Delete post(s) by id or by userID
+// Delete post(s), user, comment, user details, or everything
 func (r *RPC) Delete(req DeleteRequest) error {
 	_, err := r.Call("store.delete", req)
 	return err
