@@ -47,7 +47,6 @@ jobs:
       env:
         WORKING_DIRECTORY: ${{ github.workspace }}/backend
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      entrypoint:
 
     - name: submit coverage
       run: |
