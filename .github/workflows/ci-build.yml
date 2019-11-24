@@ -45,16 +45,17 @@ jobs:
       with:
         config: .golangci.yml
       env:
-        GITHUB_WORKSPACE: ${{ github.workspace }}/backend
+        WORKING_DIRECTORY: ${{ github.workspace }}/backend
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      entrypoint:
 
     - name: submit coverage
       run: |
         export GIT_BRANCH=$GITHUB_REF
-        cd backend
         $(go env GOPATH)/bin/goveralls -service="github" -coverprofile=$GITHUB_WORKSPACE/profile.cov
       env:
         COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      working-directory: backend
 
     - name: build docker image
       run: docker build --build-arg SKIP_BACKEND_TEST=true --build-arg CI=github .
