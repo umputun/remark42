@@ -19,14 +19,16 @@ import (
 )
 
 func TestEmailNew(t *testing.T) {
-	var testSet = map[int]struct {
+	var testSet = []struct {
+		name     string
 		template bool
 		err      bool
 		errText  string
 		params   EmailParams
 	}{
-		1: {template: true, err: true},
-		2: {err: true, errText: "can't parse message template: template: messageFromRequest:1: unexpected unclosed action in command",
+		{name: "with connection error", template: true, err: true},
+		{name: "with template parse error",
+			err: true, errText: "can't parse message template: template: messageFromRequest:1: unexpected unclosed action in command",
 			params: EmailParams{
 				Host:          "test@host",
 				Port:          1000,
@@ -39,7 +41,8 @@ func TestEmailNew(t *testing.T) {
 				BufferSize:    10,
 				FlushDuration: time.Second,
 			}},
-		3: {err: true, errText: "can't parse verification template: template: messageFromRequest:1: unexpected unclosed action in command",
+		{name: "with verification template validation error",
+			err: true, errText: "can't parse verification template: template: messageFromRequest:1: unexpected unclosed action in command",
 			template: true,
 			params: EmailParams{
 				Host:                 "test@host",
@@ -54,50 +57,52 @@ func TestEmailNew(t *testing.T) {
 				FlushDuration:        time.Second,
 			}},
 	}
-	for i, d := range testSet {
-		email, err := NewEmail(d.params)
+	for _, d := range testSet {
+		t.Run(d.name, func(t *testing.T) {
+			email, err := NewEmail(d.params)
 
-		if d.err && d.errText == "" {
-			assert.Error(t, err, "error match expected on test run #%d", i)
-		} else if d.err && d.errText != "" {
-			assert.EqualError(t, err, d.errText, "error match expected on test run #%d", i)
-		} else {
-			assert.NoError(t, err, "error match expected on test run #%d", i)
-		}
+			if d.err && d.errText == "" {
+				assert.Error(t, err)
+			} else if d.err && d.errText != "" {
+				assert.EqualError(t, err, d.errText)
+			} else {
+				assert.NoError(t, err)
+			}
 
-		assert.NotNil(t, email, "email returned on test run #%d", i)
-		assert.NotNil(t, email.submit, "e.submit is created during initialisation on test run #%d", i)
-		if d.template {
-			assert.NotNil(t, email.msgTmpl, "e.template is set on test run #%d", i)
-		} else {
-			assert.Nil(t, email.msgTmpl, "e.template is not set on test run #%d", i)
-		}
-		if d.params.MsgTemplate == "" {
-			assert.Equal(t, defaultEmailTemplate, email.EmailParams.MsgTemplate, "empty params.MsgTemplate changed to default on test run #%d", i)
-		} else {
-			assert.Equal(t, d.params.MsgTemplate, email.EmailParams.MsgTemplate, "params.MsgTemplate unchanged after creation on test run #%d", i)
-		}
-		if d.params.FlushDuration == 0 {
-			assert.Equal(t, defaultFlushDuration, email.EmailParams.FlushDuration, "empty params.FlushDuration changed to default on test run #%d", i)
-		} else {
-			assert.Equal(t, d.params.FlushDuration, email.EmailParams.FlushDuration, "params.FlushDuration unchanged after creation on test run #%d", i)
-		}
-		if d.params.TimeOut == 0 {
-			assert.Equal(t, defaultEmailTimeout, email.EmailParams.TimeOut, "empty params.TimeOut changed to default on test run #%d", i)
-		} else {
-			assert.Equal(t, d.params.TimeOut, email.EmailParams.TimeOut, "params.TimOut unchanged after creation on test run #%d", i)
-		}
-		if d.params.BufferSize == 0 {
-			assert.Equal(t, 1, email.EmailParams.BufferSize, "empty params.BufferSize changed to default on test run #%d", i)
-		} else {
-			assert.Equal(t, d.params.BufferSize, email.EmailParams.BufferSize, "params.BufferSize unchanged after creation on test run #%d", i)
-		}
-		assert.Equal(t, d.params.From, email.EmailParams.From, "params.From unchanged after creation on test run #%d", i)
-		assert.Equal(t, d.params.Host, email.EmailParams.Host, "params.Host unchanged after creation on test run #%d", i)
-		assert.Equal(t, d.params.Username, email.EmailParams.Username, "params.Username unchanged after creation on test run #%d", i)
-		assert.Equal(t, d.params.Password, email.EmailParams.Password, "params.Password unchanged after creation on test run #%d", i)
-		assert.Equal(t, d.params.Port, email.EmailParams.Port, "params.Port unchanged after creation on test run #%d", i)
-		assert.Equal(t, d.params.TLS, email.EmailParams.TLS, "params.TLS unchanged after creation on test run #%d", i)
+			assert.NotNil(t, email, "email returned")
+			assert.NotNil(t, email.submit, "e.submit is created during initialisation")
+			if d.template {
+				assert.NotNil(t, email.msgTmpl, "e.template is set")
+			} else {
+				assert.Nil(t, email.msgTmpl, "e.template is not set")
+			}
+			if d.params.MsgTemplate == "" {
+				assert.Equal(t, defaultEmailTemplate, email.EmailParams.MsgTemplate, "empty params.MsgTemplate changed to default")
+			} else {
+				assert.Equal(t, d.params.MsgTemplate, email.EmailParams.MsgTemplate, "params.MsgTemplate unchanged after creation")
+			}
+			if d.params.FlushDuration == 0 {
+				assert.Equal(t, defaultFlushDuration, email.EmailParams.FlushDuration, "empty params.FlushDuration changed to default")
+			} else {
+				assert.Equal(t, d.params.FlushDuration, email.EmailParams.FlushDuration, "params.FlushDuration unchanged after creation")
+			}
+			if d.params.TimeOut == 0 {
+				assert.Equal(t, defaultEmailTimeout, email.EmailParams.TimeOut, "empty params.TimeOut changed to default")
+			} else {
+				assert.Equal(t, d.params.TimeOut, email.EmailParams.TimeOut, "params.TimOut unchanged after creation")
+			}
+			if d.params.BufferSize == 0 {
+				assert.Equal(t, 1, email.EmailParams.BufferSize, "empty params.BufferSize changed to default")
+			} else {
+				assert.Equal(t, d.params.BufferSize, email.EmailParams.BufferSize, "params.BufferSize unchanged after creation")
+			}
+			assert.Equal(t, d.params.From, email.EmailParams.From, "params.From unchanged after creation")
+			assert.Equal(t, d.params.Host, email.EmailParams.Host, "params.Host unchanged after creation")
+			assert.Equal(t, d.params.Username, email.EmailParams.Username, "params.Username unchanged after creation")
+			assert.Equal(t, d.params.Password, email.EmailParams.Password, "params.Password unchanged after creation")
+			assert.Equal(t, d.params.Port, email.EmailParams.Port, "params.Port unchanged after creation")
+			assert.Equal(t, d.params.TLS, email.EmailParams.TLS, "params.TLS unchanged after creation")
+		})
 	}
 }
 
@@ -189,7 +194,8 @@ func TestEmailSendAndAutoFlush(t *testing.T) {
 	const emptyEmail = "From: test_sender\nTo: test@example.org\nSubject: New comment\nMIME-version: 1.0;" +
 		"\nContent-Type: text/html; charset=\"UTF-8\";\n\n\n\n\n\n" +
 		"↦ <a href=\"#remark42__comment-999\">original comment</a>\n"
-	var testSet = map[int]struct {
+	var testSet = []struct {
+		name                string
 		smtp                *fakeTestSMTP
 		request             Request
 		amount, quitCount   int
@@ -197,81 +203,86 @@ func TestEmailSendAndAutoFlush(t *testing.T) {
 		response, response2 string
 		waitForTicker       bool
 	}{
-		1: {smtp: &fakeTestSMTP{}, amount: 1, quitCount: 0,
-			request: Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "test"}}, Email: "test@example.org"}}, // single message: still in buffer at the time context is closed, not sent
-		2: {smtp: &fakeTestSMTP{fail: map[string]bool{"data": true}}, amount: 4, quitCount: 1, mail: "test_sender", // four messages: three sent with failure, one discarded
+		{name: "single message: still in buffer at the time context is closed, not sent", smtp: &fakeTestSMTP{}, amount: 1, quitCount: 0,
+			request: Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "test"}}, Email: "test@example.org"}},
+		{name: "four messages: three sent with failure, one discarded", smtp: &fakeTestSMTP{fail: map[string]bool{"data": true}}, amount: 4, quitCount: 1, mail: "test_sender",
 			rcpt: "test@example.org", request: Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "test"}}, Email: "test@example.org"}},
-		3: {smtp: &fakeTestSMTP{}, amount: 4, quitCount: 1, mail: "test_sender", // four messages: three sent, one discarded
+		{name: "four messages: three sent, one discarded", smtp: &fakeTestSMTP{}, amount: 4, quitCount: 1, mail: "test_sender",
 			rcpt: "test@example.org", request: Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "test"}}, Email: "test@example.org"},
 			response: strings.Repeat(emptyEmail, 3)},
-		4: {smtp: &fakeTestSMTP{}, amount: 10, quitCount: 3, // 10 messages, 1 abandoned by context exit
+		{name: "10 messages: 1 abandoned by context exit", smtp: &fakeTestSMTP{}, amount: 10, quitCount: 3,
 			rcpt: "test@example.org", request: Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "test"}}, Email: "test@example.org"},
 			mail: "test_sender", response: strings.Repeat(emptyEmail, 9)},
-		5: {smtp: &fakeTestSMTP{}, amount: 1, quitCount: 0, waitForTicker: true, // one message sent by timer
+		{name: "one message: sent by timer", smtp: &fakeTestSMTP{}, amount: 1, quitCount: 0, waitForTicker: true,
 			request: Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "test"}}, Email: "test@example.org"}},
 	}
-	for i, d := range testSet {
-		email, err := NewEmail(EmailParams{BufferSize: 3, From: "test_sender", FlushDuration: time.Millisecond * 200})
-		assert.Error(t, err, "error match expected on test run #%d", i)
-		assert.NotNil(t, email, "email returned on test run #%d", i)
+	for _, d := range testSet {
+		t.Run(d.name, func(t *testing.T) {
+			email, err := NewEmail(EmailParams{BufferSize: 3, From: "test_sender", FlushDuration: time.Millisecond * 200})
+			assert.Error(t, err, "error match expected")
+			assert.NotNil(t, email, "email returned")
 
-		email.smtpClient = d.smtp
-		waitCh := make(chan int)
-		ctx, cancel := context.WithCancel(context.Background())
-		var waitGroup sync.WaitGroup
+			email.smtpClient = d.smtp
+			waitCh := make(chan int)
+			ctx, cancel := context.WithCancel(context.Background())
+			var waitGroup sync.WaitGroup
 
-		// accumulate messages in parallel
-		for i := 1; i <= d.amount; i++ {
-			waitGroup.Add(1)
-			i := i
-			go func() {
-				// will start once we close the channel
-				<-waitCh
-				assert.NoError(t, email.Send(ctx, d.request), fmt.Sprint(i))
-				waitGroup.Done()
-			}()
-		}
-		close(waitCh)
-		waitGroup.Wait()
-		readCount := d.smtp.readQuitCount()
-		assert.Equal(t, d.quitCount, d.smtp.readQuitCount(), "connection closed expected amount of times on test run #%d", i)
-		assert.Equal(t, d.rcpt, d.smtp.readRcpt(), "email receiver match expected on test run #%d", i)
-		assert.Equal(t, d.mail, d.smtp.readMail(), "email sender match expected  on test run #%d", i)
-		assert.Equal(t, d.response, d.smtp.buff.String(), "connection closed expected amount of times on test run #%d", i)
-		if !d.waitForTicker {
+			// accumulate messages in parallel
+			for i := 1; i <= d.amount; i++ {
+				waitGroup.Add(1)
+				i := i
+				go func() {
+					// will start once we close the channel
+					<-waitCh
+					assert.NoError(t, email.Send(ctx, d.request), fmt.Sprint(i))
+					waitGroup.Done()
+				}()
+			}
+			close(waitCh)
+			waitGroup.Wait()
+			readCount := d.smtp.readQuitCount()
+			assert.Equal(t, d.quitCount, d.smtp.readQuitCount(), "connection closed expected amount of times")
+			assert.Equal(t, d.rcpt, d.smtp.readRcpt(), "email receiver match expected")
+			assert.Equal(t, d.mail, d.smtp.readMail(), "email sender match expected ")
+			assert.Equal(t, d.response, d.smtp.buff.String(), "connection closed expected amount of times")
+			if !d.waitForTicker {
+				cancel()
+			}
+			// d.smtp.Quit() called either when context is closed or by timer
+			for d.smtp.readQuitCount() < readCount+1 {
+				time.Sleep(time.Millisecond * 100)
+				// wait for another batch of email being sent
+			}
+			assert.Equal(t, d.quitCount+1, d.smtp.readQuitCount(), "connection closed expected amount of times")
 			cancel()
-		}
-		// d.smtp.Quit() called either when context is closed or by timer
-		for d.smtp.readQuitCount() < readCount+1 {
-			time.Sleep(time.Millisecond * 100)
-			// wait for another batch of email being sent
-		}
-		assert.Equal(t, d.quitCount+1, d.smtp.readQuitCount(), "connection closed expected amount of times on test run #%d", i)
-		cancel()
-		assert.Equal(t, d.quitCount+1, d.smtp.readQuitCount(),
-			"second context cancel (or context cancel after timer sent messages) don't cause another try of sending messages on test run #%d", i)
+			assert.Equal(t, d.quitCount+1, d.smtp.readQuitCount(),
+				"second context cancel (or context cancel after timer sent messages) don't cause another try of sending messages")
+		})
 	}
 }
 
 func TestEmailSendBufferClientError(t *testing.T) {
-	var testSet = map[int]struct {
+	var testSet = []struct {
+		name string
 		smtp *fakeTestSMTP
 		err  string
 	}{
-		1: {smtp: &fakeTestSMTP{fail: map[string]bool{"mail": true}},
+		{name: "failed to verify receiver", smtp: &fakeTestSMTP{fail: map[string]bool{"mail": true}},
 			err: "problems with sending messages: 1 error occurred:\n\t* can't send message to : bad from address \"\": failed to verify sender\n\n"},
-		2: {smtp: &fakeTestSMTP{fail: map[string]bool{"rcpt": true}},
+		{name: "failed to verify sender", smtp: &fakeTestSMTP{fail: map[string]bool{"rcpt": true}},
 			err: "problems with sending messages: 1 error occurred:\n\t* can't send message to : bad to address \"\": failed to verify receiver\n\n"},
-		3: {smtp: &fakeTestSMTP{fail: map[string]bool{"quit": true, "close": true}},
+		{name: "failed to close connection", smtp: &fakeTestSMTP{fail: map[string]bool{"quit": true, "close": true}},
 			err: "problems with sending messages: 1 error occurred:\n\t* failed to close\n\n"},
-		4: {smtp: &fakeTestSMTP{fail: map[string]bool{"data": true}},
+		{name: "failed to make email writer", smtp: &fakeTestSMTP{fail: map[string]bool{"data": true}},
 			err: "problems with sending messages: 1 error occurred:\n\t* can't send message to : can't make email writer: failed to send\n\n"},
 	}
 	e := Email{}
-	for i, d := range testSet {
-		e.smtpClient = d.smtp
-		assert.EqualError(t, e.sendBuffer(context.Background(), []emailMessage{{}}), d.err,
-			"expected error for e.sendBuffer on test run #%d", i)
+	for _, d := range testSet {
+		t.Run(d.name, func(t *testing.T) {
+			e.smtpClient = d.smtp
+			assert.EqualError(t, e.sendBuffer(context.Background(), []emailMessage{{}}), d.err,
+				"expected error for e.sendBuffer")
+		})
 	}
 	e.smtpClient = nil
 	assert.Error(t, e.sendBuffer(context.Background(), []emailMessage{{}}),
