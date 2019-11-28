@@ -27,6 +27,7 @@ type EmailParams struct {
 	Username             string        // user name
 	Password             string        // password
 	TimeOut              time.Duration // TLS connection timeout
+	VerificationSubject  string        // verification message subject
 	MsgTemplate          string        // request message template
 	VerificationTemplate string        // verification message template
 	BufferSize           int           // email send buffer size
@@ -76,19 +77,21 @@ type verifyTmplData struct {
 	Site  string
 }
 
-const defaultEmailTimeout = 10 * time.Second
-const defaultFlushDuration = time.Second * 30
-const defaultEmailTemplate = `{{.From}}{{if .To}} → {{.To}}{{end}}
+const (
+	defaultVerificationSubject = "Email verification"
+	defaultEmailTimeout        = 10 * time.Second
+	defaultFlushDuration       = time.Second * 30
+	defaultEmailTemplate       = `{{.From}}{{if .To}} → {{.To}}{{end}}
 
 {{.Orig}}
 
 ↦ <a href="{{.Link}}">{{if .PostTitle}}{{.PostTitle}}{{else}}original comment{{end}}</a>
 `
-
-const defaultEmailVerificationTemplate = `Confirmation for {{.User}} {{.Email}}, site {{.Site}}
+	defaultEmailVerificationTemplate = `Confirmation for {{.User}} {{.Email}}, site {{.Site}}
 
 Token: {{.Token}}
 `
+)
 
 //NewEmail makes new Email object, returns it even in case of problems
 // (e.MsgTemplate parsing error or error while testing smtp connection by credentials provided in params)
@@ -109,6 +112,9 @@ func NewEmail(params EmailParams) (*Email, error) {
 	}
 	if res.VerificationTemplate == "" {
 		res.VerificationTemplate = defaultEmailVerificationTemplate
+	}
+	if res.VerificationSubject == "" {
+		res.VerificationSubject = defaultVerificationSubject
 	}
 	// unbuffered send channel for sending messages to autoFlush goroutine
 	res.submit = make(chan emailMessage)
@@ -192,6 +198,8 @@ func (e *Email) submitEmailMessage(ctx context.Context, msg emailMessage) error 
 // 1. buffer of size e.BufferSize + 1 is filled
 // 2. there are no new messages for e.FlushDuration and buffer is not empty
 // 3. ctx is closed
+// This function is blocking and should be running in goroutine.
+// Killed by canceling the provided context.
 func (e *Email) autoFlush(ctx context.Context) {
 	lastWriteTime := time.Time{}
 	msgBuffer := make([]emailMessage, 0, e.BufferSize+1)
@@ -276,13 +284,15 @@ func (e *Email) sendEmail(m emailMessage) error {
 	if err != nil {
 		return errors.Wrap(err, "can't make email writer")
 	}
+	defer func() {
+		if err = writer.Close(); err != nil {
+			log.Printf("[WARN] can't close smtp body writer, %v", err)
+		}
+	}()
 
 	buf := bytes.NewBufferString(m.message)
 	if _, err = buf.WriteTo(writer); err != nil {
 		return errors.Wrapf(err, "failed to send email body to %q", m.to)
-	}
-	if err = writer.Close(); err != nil {
-		log.Printf("[WARN] can't close smtp body writer, %v", err)
 	}
 	return nil
 }
@@ -309,7 +319,7 @@ func (e *Email) buildMessageFromRequest(req Request, to string) (string, error) 
 
 //buildVerificationMessage generates verification email message based on given input
 func (e *Email) buildVerificationMessage(user, address, token, site string) (string, error) {
-	subject := "Email verification"
+	subject := e.VerificationSubject
 	msg := bytes.Buffer{}
 	err := e.verifyTmpl.Execute(&msg, verifyTmplData{user, address, token, site})
 	if err != nil {
