@@ -26,7 +26,7 @@ type EmailParams struct {
 	From                 string        // From email field
 	Username             string        // user name
 	Password             string        // password
-	TimeOut              time.Duration // TLS connection timeout
+	TimeOut              time.Duration // TCP connection timeout
 	VerificationSubject  string        // verification message subject
 	MsgTemplate          string        // request message template
 	VerificationTemplate string        // verification message template
