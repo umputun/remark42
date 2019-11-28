@@ -34,15 +34,17 @@ type Store interface {
 	Get(locator store.Locator, id string, user store.User) (store.Comment, error)
 }
 
+// Request notification either about comment or about particular user verification
 type Request struct {
-	Comment      store.Comment
-	parent       store.Comment
-	Email        string
-	Verification VerificationMetadata
+	Comment      store.Comment        // if set sent notifications about new comment
+	parent       store.Comment        // fetched only in case Comment is set
+	Email        string               // if set (also) send email
+	Verification VerificationMetadata // if set sent verification notification
 }
 
+// VerificationMetadata required to send notify method verification message
 type VerificationMetadata struct {
-	Locator store.Locator
+	Locator store.Locator // only SiteID is used
 	User    string
 	Token   string
 }
