@@ -59,6 +59,7 @@ func TestEmailNew(t *testing.T) {
 	}
 	for _, d := range testSet {
 		t.Run(d.name, func(t *testing.T) {
+			t.Parallel()
 			email, err := NewEmail(d.params)
 
 			if d.err && d.errText == "" {
@@ -276,14 +277,16 @@ func TestEmailSendBufferClientError(t *testing.T) {
 		{name: "failed to make email writer", smtp: &fakeTestSMTP{fail: map[string]bool{"data": true}},
 			err: "problems with sending messages: 1 error occurred:\n\t* can't send message to : can't make email writer: failed to send\n\n"},
 	}
-	e := Email{}
 	for _, d := range testSet {
 		t.Run(d.name, func(t *testing.T) {
+			t.Parallel()
+			e := Email{}
 			e.smtpClient = d.smtp
 			assert.EqualError(t, e.sendBuffer(context.Background(), []emailMessage{{}}), d.err,
 				"expected error for e.sendBuffer")
 		})
 	}
+	e := Email{}
 	e.smtpClient = nil
 	assert.Error(t, e.sendBuffer(context.Background(), []emailMessage{{}}),
 		"nil smtpClient passed to sendBuffer calls for e.client which in turns should return error")
