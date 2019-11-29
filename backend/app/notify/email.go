@@ -112,7 +112,7 @@ Token: {{.Token}}
 `
 )
 
-//NewEmail makes new Email object, returns it even in case of problems
+// NewEmail makes new Email object, returns it even in case of problems
 // (e.MsgTemplate parsing error or error while testing smtp connection by credentials provided in emailParams)
 func NewEmail(emailParams EmailParams, smtpParams SmtpParams) (*Email, error) {
 	var err error
@@ -219,7 +219,7 @@ func (e *Email) submitEmailMessage(ctx context.Context, msg emailMessage) error 
 	}
 }
 
-//buildVerificationMessage generates verification email message based on given input
+// buildVerificationMessage generates verification email message based on given input
 func (e *Email) buildVerificationMessage(user, address, token, site string) (string, error) {
 	subject := e.VerificationSubject
 	msg := bytes.Buffer{}
@@ -230,7 +230,7 @@ func (e *Email) buildVerificationMessage(user, address, token, site string) (str
 	return e.buildMessage(subject, msg.String(), address, "text/html"), nil
 }
 
-//buildMessage generates email message to send with using net/smtp.Data()
+// buildMessage generates email message to send with using net/smtp.Data()
 func (e *Email) buildMessage(subject, body, to, contentType string) (message string) {
 	message += fmt.Sprintf("From: %s\n", e.From)
 	message += fmt.Sprintf("To: %s\n", to)
@@ -242,7 +242,7 @@ func (e *Email) buildMessage(subject, body, to, contentType string) (message str
 	return message
 }
 
-//buildMessageFromRequest generates email message based on Request using e.MsgTemplate
+// buildMessageFromRequest generates email message based on Request using e.MsgTemplate
 func (e *Email) buildMessageFromRequest(req Request, to string) (string, error) {
 	subject := "New comment"
 	if req.Comment.PostTitle != "" {
