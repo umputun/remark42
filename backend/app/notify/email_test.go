@@ -187,7 +187,6 @@ func TestEmailSend_ExitConditions(t *testing.T) {
 		"Message with parent comment User equals comment User is not sent and returns nil")
 }
 
-// fails with -race as concurrent setup of the test itself seems not safe
 func TestEmailSendAndAutoFlush(t *testing.T) {
 	const emptyEmail = "From: test_sender\nTo: test@example.org\nSubject: New comment\nMIME-version: 1.0;" +
 		"\nContent-Type: text/html; charset=\"UTF-8\";\n\n\n\n\n\n" +

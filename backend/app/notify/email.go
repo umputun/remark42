@@ -303,7 +303,7 @@ func (e *Email) autoFlush(ctx context.Context) {
 
 // sendMessages sends messages to server in a new connection, closing the connection after finishing.
 // Thread safe.
-func (e Email) sendMessages(ctx context.Context, messages []emailMessage) error {
+func (e *Email) sendMessages(ctx context.Context, messages []emailMessage) error {
 	if e.smtp == nil {
 		return errors.New("sendMessages called without smtpClient set")
 	}
