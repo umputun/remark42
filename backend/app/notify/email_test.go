@@ -55,7 +55,6 @@ func TestEmailNew(t *testing.T) {
 	for _, d := range testSet {
 		d := d // capture range variable
 		t.Run(d.name, func(t *testing.T) {
-			t.Parallel()
 			email, err := NewEmail(d.emailParams, d.smtpParams)
 
 			if d.err && d.errText == "" {
@@ -216,7 +215,6 @@ func TestEmailSendAndAutoFlush(t *testing.T) {
 	for _, d := range testSet {
 		d := d // capture range variable
 		t.Run(d.name, func(t *testing.T) {
-			t.Parallel()
 			email, err := NewEmail(EmailParams{BufferSize: 3, From: "test_sender", FlushDuration: time.Millisecond * 200}, SmtpParams{})
 			assert.Error(t, err, "error match expected")
 			assert.NotNil(t, email, "email returned")
@@ -278,7 +276,6 @@ func TestEmailSendBufferClientError(t *testing.T) {
 	for _, d := range testSet {
 		d := d // capture range variable
 		t.Run(d.name, func(t *testing.T) {
-			t.Parallel()
 			e := Email{smtp: d.smtp}
 			assert.EqualError(t, e.sendMessages(context.Background(), []emailMessage{{}}), d.err,
 				"expected error for e.sendMessages")

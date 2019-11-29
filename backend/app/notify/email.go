@@ -33,7 +33,7 @@ type Email struct {
 	EmailParams
 	SmtpParams
 
-	smtp       smtpClientWithMaker
+	smtp       smtpClientWithCreator
 	msgTmpl    *template.Template // parsed request message template
 	verifyTmpl *template.Template // parsed verification message template
 	submit     chan emailMessage  // unbuffered channel for email sending
@@ -51,11 +51,11 @@ type SmtpParams struct {
 }
 
 // default email client implementation
-type emailClient struct{ smtpClientWithMaker }
+type emailClient struct{ smtpClientWithCreator }
 
-type smtpClientWithMaker interface {
+type smtpClientWithCreator interface {
+	smtpClientCreator
 	smtpClient
-	smtpMaker
 }
 
 // smtpClient interface defines subset of net/smtp used by email client
@@ -68,8 +68,8 @@ type smtpClient interface {
 	Close() error
 }
 
-// smtpMaker interface defines function for creating new smtpClients
-type smtpMaker interface {
+// smtpClientCreator interface defines function for creating new smtpClients
+type smtpClientCreator interface {
 	Create(SmtpParams) (smtpClient, error)
 }
 
@@ -135,7 +135,7 @@ func NewEmail(emailParams EmailParams, smtpParams SmtpParams) (*Email, error) {
 	}
 
 	// set up SMTP emailParams
-	res.smtp = emailClient{}
+	res.smtp = &emailClient{}
 	res.SmtpParams = smtpParams
 	if res.TimeOut <= 0 {
 		res.TimeOut = defaultEmailTimeout
@@ -340,9 +340,9 @@ func (e *Email) String() string {
 	return fmt.Sprintf("email: from %q using '%s'@'%s':%d", e.From, e.Username, e.Host, e.Port)
 }
 
-// Create establish SMTP connection with server using credentials in smtpClientWithMaker.SmtpParams
+// Create establish SMTP connection with server using credentials in smtpClientWithCreator.SmtpParams
 // and returns pointer to it. Thread safe.
-func (s emailClient) Create(params SmtpParams) (smtpClient, error) {
+func (s *emailClient) Create(params SmtpParams) (smtpClient, error) {
 	var c *smtp.Client
 	srvAddress := fmt.Sprintf("%s:%d", params.Host, params.Port)
 	if params.TLS {
