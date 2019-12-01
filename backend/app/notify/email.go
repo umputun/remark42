@@ -8,7 +8,6 @@ import (
 	"io"
 	"net"
 	"net/smtp"
-	"sync"
 	"text/template"
 	"time"
 
@@ -46,8 +45,6 @@ type Email struct {
 	smtp       smtpClientWithCreator
 	msgTmpl    *template.Template // parsed request message template
 	verifyTmpl *template.Template // parsed verification message template
-	submit     chan emailMessage  // unbuffered channel for email sending
-	once       sync.Once
 }
 
 type smtpClientWithCreator interface {
@@ -141,9 +138,6 @@ func NewEmail(emailParams EmailParams, smtpParams SmtpParams) (*Email, error) {
 		res.TimeOut = defaultEmailTimeout
 	}
 
-	// unbuffered send channel for sending messages to autoFlush goroutine
-	res.submit = make(chan emailMessage)
-
 	log.Printf("[DEBUG] Create new email notifier for server %s with user %s, timeout=%s",
 		res.Host, res.Username, res.TimeOut)
 
@@ -180,6 +174,11 @@ func (e *Email) Send(ctx context.Context, req Request) (err error) {
 		// this means we can't send this request via Email
 		return nil
 	}
+	select {
+	case <-ctx.Done():
+		return errors.Errorf("sending message to %q aborted due to canceled context", req.Email)
+	default:
+	}
 	var msg string
 
 	if req.Verification.Token != "" {
@@ -202,21 +201,7 @@ func (e *Email) Send(ctx context.Context, req Request) (err error) {
 		}
 	}
 
-	return e.submitEmailMessage(ctx, emailMessage{from: e.From, to: req.Email, message: msg})
-}
-
-// submitEmailMessage submits message to buffered sender and returns error only in case context is closed.
-func (e *Email) submitEmailMessage(ctx context.Context, msg emailMessage) error {
-	// start auto flush once, as this is the first moment we see the context from caller
-	e.once.Do(func() {
-		go e.autoFlush(ctx)
-	})
-	select {
-	case e.submit <- msg:
-		return nil
-	case <-ctx.Done():
-		return errors.Errorf("sending message to %q aborted due to canceled context", msg.to)
-	}
+	return e.sendMessage(ctx, emailMessage{from: e.From, to: req.Email, message: msg})
 }
 
 // buildVerificationMessage generates verification email message based on given input
@@ -262,55 +247,12 @@ func (e *Email) buildMessageFromRequest(req Request, to string) (string, error) 
 	return e.buildMessage(subject, msg.String(), to, "text/html"), nil
 }
 
-// autoFlush flushes all in-fly records in case of:
-// 1. buffer of size e.BufferSize + 1 is filled
-// 2. there are no new messages for e.FlushDuration and buffer is not empty
-// 3. ctx is closed
-// This function is blocking and should be running in goroutine.
-// Killed by canceling the provided context.
-func (e *Email) autoFlush(ctx context.Context) {
-	lastWriteTime := time.Time{}
-	msgBuffer := make([]emailMessage, 0, e.BufferSize+1)
-	ticker := time.NewTicker(e.FlushDuration)
-	for {
-		select {
-		case m := <-e.submit:
-			lastWriteTime = time.Now()
-			msgBuffer = append(msgBuffer, m)
-			if len(msgBuffer) >= e.BufferSize {
-				if err := e.sendMessages(ctx, msgBuffer); err != nil {
-					log.Printf("[WARN] notification email(s) send failed, %s", err)
-				}
-				msgBuffer = msgBuffer[0:0]
-			}
-		case <-ticker.C:
-			shouldFlush := time.Now().After(lastWriteTime.Add(e.FlushDuration)) && len(msgBuffer) > 0
-			if shouldFlush {
-				if err := e.sendMessages(ctx, msgBuffer); err != nil {
-					log.Printf("[WARN] notification email(s) send failed, %s", err)
-				}
-				msgBuffer = msgBuffer[0:0]
-			}
-		case <-ctx.Done():
-			// e.sendMessages is context-aware and won't send messages, but will produce meaningful error message
-			if err := e.sendMessages(ctx, msgBuffer); err != nil {
-				log.Printf("[WARN] notification email(s) send failed, %s", err)
-			}
-			return
-		}
-	}
-}
-
-// sendMessages sends messages to server in a new connection, closing the connection after finishing.
+// sendMessage sends messages to server in a new connection, closing the connection after finishing.
 // Thread safe.
-func (e *Email) sendMessages(ctx context.Context, messages []emailMessage) error {
+func (e *Email) sendMessage(ctx context.Context, m emailMessage) error {
 	if e.smtp == nil {
-		return errors.New("sendMessages called without smtpClient set")
+		return errors.New("sendMessage called without smtpClient set")
 	}
-	if len(messages) == 0 {
-		return nil
-	}
-
 	smtpClient, err := e.smtp.Create(e.SmtpParams)
 	if err != nil {
 		return errors.Wrap(err, "failed to make smtp Create")
@@ -318,11 +260,9 @@ func (e *Email) sendMessages(ctx context.Context, messages []emailMessage) error
 
 	errs := new(multierror.Error)
 
-	for _, m := range messages {
-		err := repeater.NewDefault(5, time.Millisecond*250).Do(ctx, func() error { return smtpSend(m, smtpClient) })
-		if err != nil {
-			errs = multierror.Append(errs, errors.Wrapf(err, "can't send message to %s", m.to))
-		}
+	err = repeater.NewDefault(5, time.Millisecond*250).Do(ctx, func() error { return smtpSend(m, smtpClient) })
+	if err != nil {
+		errs = multierror.Append(errs, errors.Wrapf(err, "can't send message to %s", m.to))
 	}
 
 	if err := smtpClient.Quit(); err != nil {
@@ -332,7 +272,7 @@ func (e *Email) sendMessages(ctx context.Context, messages []emailMessage) error
 			errs = multierror.Append(errs, err)
 		}
 	}
-	return errors.Wrapf(errs.ErrorOrNil(), "problems with sending messages")
+	return errors.Wrapf(errs.ErrorOrNil(), "problems with sending message")
 }
 
 // String representation of Email object
