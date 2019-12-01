@@ -28,6 +28,16 @@ type EmailParams struct {
 	FlushDuration        time.Duration // maximum time after which email will me sent, 30s by default
 }
 
+// SmtpParams contain settings for smtp server connection
+type SmtpParams struct {
+	Host     string        // SMTP host
+	Port     int           // SMTP port
+	TLS      bool          // TLS auth
+	Username string        // user name
+	Password string        // password
+	TimeOut  time.Duration // TCP connection timeout
+}
+
 // Email implements notify.Destination for email
 type Email struct {
 	EmailParams
@@ -40,23 +50,13 @@ type Email struct {
 	once       sync.Once
 }
 
-// SmtpParams contain settings for smtp server connection
-type SmtpParams struct {
-	Host     string        // SMTP host
-	Port     int           // SMTP port
-	TLS      bool          // TLS auth
-	Username string        // user name
-	Password string        // password
-	TimeOut  time.Duration // TCP connection timeout
-}
-
-// default email client implementation
-type emailClient struct{ smtpClientWithCreator }
-
 type smtpClientWithCreator interface {
 	smtpClientCreator
 	smtpClient
 }
+
+// default email client implementation
+type emailClient struct{ smtpClientWithCreator }
 
 // smtpClient interface defines subset of net/smtp used by email client
 type smtpClient interface {
@@ -319,7 +319,7 @@ func (e *Email) sendMessages(ctx context.Context, messages []emailMessage) error
 	errs := new(multierror.Error)
 
 	for _, m := range messages {
-		err := repeater.NewDefault(5, time.Millisecond*250).Do(ctx, func() error { return sendEmail(m, smtpClient) })
+		err := repeater.NewDefault(5, time.Millisecond*250).Do(ctx, func() error { return smtpSend(m, smtpClient) })
 		if err != nil {
 			errs = multierror.Append(errs, errors.Wrapf(err, "can't send message to %s", m.to))
 		}
@@ -380,9 +380,9 @@ func (s *emailClient) Create(params SmtpParams) (smtpClient, error) {
 	return c, nil
 }
 
-// sendEmail to smtpClient by already established connection.
+// smtpSend sends message to smtpClient with already established connection.
 // Thread safe.
-func sendEmail(m emailMessage, smtpClient smtpClient) error {
+func smtpSend(m emailMessage, smtpClient smtpClient) error {
 	if smtpClient == nil {
 		return errors.New("send called without smtpClient set")
 	}

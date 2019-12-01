@@ -292,7 +292,7 @@ func TestEmailSendBufferClientError(t *testing.T) {
 	assert.NoError(t, e.sendMessages(context.Background(), []emailMessage{{}}), "",
 		"no error expected for e.sendMessages with failed smtpClient.Quit but successful smtpClient.Close")
 	e.smtp = nil
-	assert.EqualError(t, sendEmail(emailMessage{}, e.smtp), "send called without smtpClient set",
+	assert.EqualError(t, smtpSend(emailMessage{}, e.smtp), "send called without smtpClient set",
 		"e.send called without smtpClient set returns error")
 	e.smtp = &fakeTestSMTP{fail: map[string]bool{"create": true}}
 	assert.EqualError(t, e.sendMessages(context.Background(), []emailMessage{{}}), "failed to make smtp Create: failed to create client",
@@ -310,7 +310,7 @@ type fakeTestSMTP struct {
 	lock       sync.RWMutex
 }
 
-func (f *fakeTestSMTP) Create(params SmtpParams) (smtpClient, error) {
+func (f *fakeTestSMTP) Create(SmtpParams) (smtpClient, error) {
 	if f.fail["create"] {
 		return nil, errors.New("failed to create client")
 	}
