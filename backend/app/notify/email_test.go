@@ -174,25 +174,31 @@ func TestEmailSendBufferClientError(t *testing.T) {
 		"e.send called without smtpClient set returns error")
 }
 
-func TestEmail_buildMessageFromRequest(t *testing.T) {
+func TestEmail_Send(t *testing.T) {
 	const expectedAnswer = `From: from@example.org
 To: test@example.org
 Subject: New comment for "test_title"
 MIME-version: 1.0;
 Content-Type: text/html; charset="UTF-8";
 
+test_user
 
 
 
-
-↦ <a href="#remark42__comment-">test_title</a>
+↦ <a href="#remark42__comment-999">test_title</a>
 `
-	req := Request{Comment: store.Comment{PostTitle: "test_title"}}
-	to := "test@example.org"
+	req := Request{Comment: store.Comment{ID: "999", User: store.User{Name: "test_user"}, PostTitle: "test_title"}, Email: "test@example.org"}
 	e, err := NewEmail(EmailParams{From: "from@example.org"}, SmtpParams{})
 	assert.Error(t, err, "connection error expected")
 	assert.NotNil(t, e)
-	res, err := e.buildMessageFromRequest(req, to)
+	fakeSmtp := fakeTestSMTP{}
+	e.smtp = &fakeSmtp
+	assert.NoError(t, e.Send(context.TODO(), req))
+	assert.Equal(t, "from@example.org", fakeSmtp.readMail())
+	assert.Equal(t, 1, fakeSmtp.readQuitCount())
+	assert.Equal(t, "test@example.org", fakeSmtp.readRcpt())
+	// test buildMessageFromRequest separately for message text
+	res, err := e.buildMessageFromRequest(req, "test@example.org")
 	assert.NoError(t, err)
 	assert.Equal(t, expectedAnswer, res)
 }
