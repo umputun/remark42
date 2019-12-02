@@ -215,7 +215,7 @@ func (e *Email) buildVerificationMessage(user, address, token, site string) (str
 	return e.buildMessage(subject, msg.String(), address, "text/html"), nil
 }
 
-// buildMessage generates email message to send with using net/smtp.Data()
+// buildMessage generates email message to send using net/smtp.Data()
 func (e *Email) buildMessage(subject, body, to, contentType string) (message string) {
 	message += fmt.Sprintf("From: %s\n", e.From)
 	message += fmt.Sprintf("To: %s\n", to)
@@ -260,7 +260,30 @@ func (e *Email) sendMessage(ctx context.Context, m emailMessage) error {
 
 	errs := new(multierror.Error)
 
-	err = repeater.NewDefault(5, time.Millisecond*250).Do(ctx, func() error { return smtpSend(m, smtpClient) })
+	err = repeater.NewDefault(5, time.Millisecond*250).Do(ctx, func() error {
+		if err := smtpClient.Mail(m.from); err != nil {
+			return errors.Wrapf(err, "bad from address %q", m.from)
+		}
+		if err := smtpClient.Rcpt(m.to); err != nil {
+			return errors.Wrapf(err, "bad to address %q", m.to)
+		}
+
+		writer, err := smtpClient.Data()
+		if err != nil {
+			return errors.Wrap(err, "can't make email writer")
+		}
+		defer func() {
+			if err = writer.Close(); err != nil {
+				log.Printf("[WARN] can't close smtp body writer, %v", err)
+			}
+		}()
+
+		buf := bytes.NewBufferString(m.message)
+		if _, err = buf.WriteTo(writer); err != nil {
+			return errors.Wrapf(err, "failed to send email body to %q", m.to)
+		}
+		return nil
+	})
 	if err != nil {
 		errs = multierror.Append(errs, errors.Wrapf(err, "can't send message to %s", m.to))
 	}
@@ -318,34 +341,4 @@ func (s *emailClient) Create(params SmtpParams) (smtpClient, error) {
 	}
 
 	return c, nil
-}
-
-// smtpSend sends message to smtpClient with already established connection.
-// Thread safe.
-func smtpSend(m emailMessage, smtpClient smtpClient) error {
-	if smtpClient == nil {
-		return errors.New("send called without smtpClient set")
-	}
-	if err := smtpClient.Mail(m.from); err != nil {
-		return errors.Wrapf(err, "bad from address %q", m.from)
-	}
-	if err := smtpClient.Rcpt(m.to); err != nil {
-		return errors.Wrapf(err, "bad to address %q", m.to)
-	}
-
-	writer, err := smtpClient.Data()
-	if err != nil {
-		return errors.Wrap(err, "can't make email writer")
-	}
-	defer func() {
-		if err = writer.Close(); err != nil {
-			log.Printf("[WARN] can't close smtp body writer, %v", err)
-		}
-	}()
-
-	buf := bytes.NewBufferString(m.message)
-	if _, err = buf.WriteTo(writer); err != nil {
-		return errors.Wrapf(err, "failed to send email body to %q", m.to)
-	}
-	return nil
 }

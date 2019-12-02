@@ -123,33 +123,6 @@ func TestEmailSendErrors(t *testing.T) {
 		"sending message to \"bad@example.org\" aborted due to canceled context")
 }
 
-//func TestEmailSend(t *testing.T) {
-//	email, err := NewEmail(EmailParams{BufferSize: 3, From: "test_sender", FlushDuration: time.Millisecond * 200}, SmtpParams{})
-//	assert.Error(t, err, "error match expected")
-//	assert.NotNil(t, email, "expecting email returned")
-//	assert.NoError(t, email.Send(context.Background(),
-//		Request{
-//			Comment: store.Comment{
-//				ID: "1", Orig: "test comment orig",
-//				User:      store.User{Name: "test user name"},
-//				Locator:   store.Locator{URL: "http://test"},
-//				PostTitle: "test title"},
-//			parent: store.Comment{
-//				User: store.User{
-//					Name: "test parent user name",
-//				}},
-//			Email: "good_example@example.org",
-//		}))
-//	assert.NoError(t, email.Send(context.Background(), Request{
-//		Email: "another@example.org",
-//		Verification: VerificationMetadata{
-//			Locator: store.Locator{SiteID: "s"},
-//			User:    "u",
-//			Token:   "t",
-//		},
-//	}))
-//}
-
 func TestEmailSend_ExitConditions(t *testing.T) {
 	email, err := NewEmail(EmailParams{}, SmtpParams{})
 	assert.Error(t, err, "error match expected")
@@ -162,78 +135,6 @@ func TestEmailSend_ExitConditions(t *testing.T) {
 	assert.Nil(t, email.Send(context.Background(), requestWithEqualUsersWithEmails),
 		"Message with parent comment User equals comment User is not sent and returns nil")
 }
-
-//func TestEmailSendAndAutoFlush(t *testing.T) {
-//	const emptyEmail = "From: test_sender\nTo: test@example.org\nSubject: New comment\nMIME-version: 1.0;" +
-//		"\nContent-Type: text/html; charset=\"UTF-8\";\n\n\n\n\n\n" +
-//		"↦ <a href=\"#remark42__comment-999\">original comment</a>\n"
-//	var testSet = []struct {
-//		name                string
-//		smtp                *fakeTestSMTP
-//		request             Request
-//		amount, quitCount   int
-//		mail, rcpt          string
-//		response, response2 string
-//		waitForTicker       bool
-//	}{
-//		{name: "single message: still in buffer at the time context is closed, not sent", smtp: &fakeTestSMTP{}, amount: 1, quitCount: 0,
-//			request: Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "test"}}, Email: "test@example.org"}},
-//		{name: "four messages: three sent with failure, one discarded", smtp: &fakeTestSMTP{fail: map[string]bool{"data": true}}, amount: 4, quitCount: 1, mail: "test_sender",
-//			rcpt: "test@example.org", request: Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "test"}}, Email: "test@example.org"}},
-//		{name: "four messages: three sent, one discarded", smtp: &fakeTestSMTP{}, amount: 4, quitCount: 1, mail: "test_sender",
-//			rcpt: "test@example.org", request: Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "test"}}, Email: "test@example.org"},
-//			response: strings.Repeat(emptyEmail, 3)},
-//		{name: "10 messages: 1 abandoned by context exit", smtp: &fakeTestSMTP{}, amount: 10, quitCount: 3,
-//			rcpt: "test@example.org", request: Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "test"}}, Email: "test@example.org"},
-//			mail: "test_sender", response: strings.Repeat(emptyEmail, 9)},
-//		{name: "one message: sent by timer", smtp: &fakeTestSMTP{}, amount: 1, quitCount: 0, waitForTicker: true,
-//			request: Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "test"}}, Email: "test@example.org"}},
-//	}
-//	for _, d := range testSet {
-//		d := d // capture range variable
-//		t.Run(d.name, func(t *testing.T) {
-//			email, err := NewEmail(EmailParams{BufferSize: 3, From: "test_sender", FlushDuration: time.Millisecond * 200}, SmtpParams{})
-//			assert.Error(t, err, "error match expected")
-//			assert.NotNil(t, email, "email returned")
-//
-//			email.smtp = d.smtp
-//			waitCh := make(chan int)
-//			ctx, cancel := context.WithCancel(context.Background())
-//			var waitGroup sync.WaitGroup
-//
-//			// accumulate messages in parallel
-//			for i := 1; i <= d.amount; i++ {
-//				waitGroup.Add(1)
-//				i := i
-//				go func() {
-//					// will start once we close the channel
-//					<-waitCh
-//					assert.NoError(t, email.Send(ctx, d.request), fmt.Sprint(i))
-//					waitGroup.Done()
-//				}()
-//			}
-//			close(waitCh)
-//			waitGroup.Wait()
-//			readCount := d.smtp.readQuitCount()
-//			assert.Equal(t, d.quitCount, d.smtp.readQuitCount(), "connection closed expected amount of times")
-//			assert.Equal(t, d.rcpt, d.smtp.readRcpt(), "email receiver match expected")
-//			assert.Equal(t, d.mail, d.smtp.readMail(), "email sender match expected ")
-//			assert.Equal(t, d.response, d.smtp.buff.String(), "connection closed expected amount of times")
-//			if !d.waitForTicker {
-//				cancel()
-//			}
-//			// d.smtp.Quit() called either when context is closed or by timer
-//			for d.smtp.readQuitCount() < readCount+1 {
-//				time.Sleep(time.Millisecond * 100)
-//				// wait for another batch of email being sent
-//			}
-//			assert.Equal(t, d.quitCount+1, d.smtp.readQuitCount(), "connection closed expected amount of times")
-//			cancel()
-//			assert.Equal(t, d.quitCount+1, d.smtp.readQuitCount(),
-//				"second context cancel (or context cancel after timer sent messages) don't cause another try of sending messages")
-//		})
-//	}
-//}
 
 func TestEmailSendBufferClientError(t *testing.T) {
 	var testSet = []struct {
@@ -268,12 +169,32 @@ func TestEmailSendBufferClientError(t *testing.T) {
 	e.smtp = &fakeTestSMTP{fail: map[string]bool{"quit": true}}
 	assert.NoError(t, e.sendMessage(context.Background(), emailMessage{}), "",
 		"no error expected for e.sendMessage with failed smtpClient.Quit but successful smtpClient.Close")
-	e.smtp = nil
-	assert.EqualError(t, smtpSend(emailMessage{}, e.smtp), "send called without smtpClient set",
-		"e.send called without smtpClient set returns error")
 	e.smtp = &fakeTestSMTP{fail: map[string]bool{"create": true}}
 	assert.EqualError(t, e.sendMessage(context.Background(), emailMessage{}), "failed to make smtp Create: failed to create client",
 		"e.send called without smtpClient set returns error")
+}
+
+func TestEmail_buildMessageFromRequest(t *testing.T) {
+	const expectedAnswer = `From: from@example.org
+To: test@example.org
+Subject: New comment for "test_title"
+MIME-version: 1.0;
+Content-Type: text/html; charset="UTF-8";
+
+
+
+
+
+↦ <a href="#remark42__comment-">test_title</a>
+`
+	req := Request{Comment: store.Comment{PostTitle: "test_title"}}
+	to := "test@example.org"
+	e, err := NewEmail(EmailParams{From: "from@example.org"}, SmtpParams{})
+	assert.Error(t, err, "connection error expected")
+	assert.NotNil(t, e)
+	res, err := e.buildMessageFromRequest(req, to)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedAnswer, res)
 }
 
 type fakeTestSMTP struct {
