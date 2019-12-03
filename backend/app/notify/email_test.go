@@ -136,7 +136,7 @@ func TestEmailSend_ExitConditions(t *testing.T) {
 		"Message with parent comment User equals comment User is not sent and returns nil")
 }
 
-func TestEmailSendBufferClientError(t *testing.T) {
+func TestEmailSendClientError(t *testing.T) {
 	var testSet = []struct {
 		name string
 		smtp *fakeTestSMTP

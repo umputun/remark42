@@ -42,18 +42,13 @@ type Email struct {
 	EmailParams
 	SmtpParams
 
-	smtp       smtpClientWithCreator
+	smtp       smtpClientCreator
 	msgTmpl    *template.Template // parsed request message template
 	verifyTmpl *template.Template // parsed verification message template
 }
 
-type smtpClientWithCreator interface {
-	smtpClientCreator
-	smtpClient
-}
-
 // default email client implementation
-type emailClient struct{ smtpClientWithCreator }
+type emailClient struct{ smtpClientCreator }
 
 // smtpClient interface defines subset of net/smtp used by email client
 type smtpClient interface {
