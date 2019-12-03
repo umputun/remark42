@@ -19,7 +19,7 @@ type MockDest struct {
 	lock   sync.Mutex
 }
 
-func (m MockDest) Send(ctx context.Context, r Request) error {
+func (m *MockDest) Send(ctx context.Context, r Request) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	select {
@@ -33,14 +33,14 @@ func (m MockDest) Send(ctx context.Context, r Request) error {
 	return nil
 }
 
-func (m MockDest) get() []Request {
+func (m *MockDest) get() []Request {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	res := make([]Request, len(m.data))
 	copy(res, m.data)
 	return res
 }
-func (m MockDest) String() string { return fmt.Sprintf("mock id=%d, closed=%v", m.id, m.closed) }
+func (m *MockDest) String() string { return fmt.Sprintf("mock id=%d, closed=%v", m.id, m.closed) }
 
 type MockStore struct{ data map[string]store.Comment }
 

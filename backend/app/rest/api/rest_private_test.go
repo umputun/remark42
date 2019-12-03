@@ -518,7 +518,7 @@ func TestRest_Email(t *testing.T) {
 func TestRest_EmailNotification(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
-	mockDestination := notify.MockDest{}
+	mockDestination := &notify.MockDest{}
 	mockDataStore := notify.MockStore{}
 	srv.NotifyService = notify.NewService(mockDataStore, 1, mockDestination)
 
@@ -526,7 +526,7 @@ func TestRest_EmailNotification(t *testing.T) {
 
 	// create new comment from dev user
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(
-		`{"text": "test 123", "user": "dev::good@example.com", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`))
+		`{"text": "test 123", "user": {"name": "dev::good@example.com"}, "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`))
 	assert.Nil(t, err)
 	req.SetBasicAuth("admin", "password")
 	resp, err := client.Do(req)
@@ -535,9 +535,9 @@ func TestRest_EmailNotification(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
 
-	// TODO create child comment from another user, no email notification expected
+	// create child comment from another user, no email notification expected
 	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(
-		`{"text": "test 123", "user": "dev::good@example.com", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`))
+		`{"text": "test 456", "user": {"name": "other_user"}, "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`))
 	assert.Nil(t, err)
 	req.SetBasicAuth("admin", "password")
 	resp, err = client.Do(req)
@@ -545,6 +545,7 @@ func TestRest_EmailNotification(t *testing.T) {
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
+	// TODO check notification email, should be empty
 
 	// send confirmation token for email
 	req, err = http.NewRequest(http.MethodPost, ts.URL+"/api/v1/email/subscribe?site=remark42&address=good@example.com", nil)
@@ -558,7 +559,7 @@ func TestRest_EmailNotification(t *testing.T) {
 
 	// TODO read confirmation
 
-	// TODO confirm email with read confirmation
+	// TODO confirm email with confirmation we've read
 	req, err = http.NewRequest(http.MethodPost, ts.URL+fmt.Sprintf("/api/v1/email/confirm?site=remark42&tkn=%s", "token"), nil)
 	require.NoError(t, err)
 	req.Header.Add("X-JWT", devToken)
@@ -566,7 +567,19 @@ func TestRest_EmailNotification(t *testing.T) {
 	require.NoError(t, err)
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode, string(body))
+	//assert.Equal(t, http.StatusOK, resp.StatusCode, string(body))
+
+	// create child comment from another user, email notification expected
+	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(
+		`{"text": "test 789", "user": {"name": "other_user"}, "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`))
+	assert.Nil(t, err)
+	req.SetBasicAuth("admin", "password")
+	resp, err = client.Do(req)
+	assert.Nil(t, err)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
+	// TODO check notification email, should not be empty
 
 	// delete user's email
 	req, err = http.NewRequest(http.MethodDelete, ts.URL+"/api/v1/email?site=remark42", nil)
@@ -578,9 +591,9 @@ func TestRest_EmailNotification(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode, string(body))
 
-	// TODO create child comment from another user, no email notification expected
+	// create child comment from another user, no email notification expected
 	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(
-		`{"text": "test 123", "user": "dev::good@example.com", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`))
+		`{"text": "test 321", "user": {"name": "other_user"}, "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`))
 	assert.Nil(t, err)
 	req.SetBasicAuth("admin", "password")
 	resp, err = client.Do(req)
@@ -588,6 +601,7 @@ func TestRest_EmailNotification(t *testing.T) {
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
+	// TODO check notification email, should be empty
 }
 
 func TestRest_UserAllData(t *testing.T) {
