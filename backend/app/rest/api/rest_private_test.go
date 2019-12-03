@@ -491,7 +491,6 @@ func TestRest_Email(t *testing.T) {
 	}
 	client := http.Client{}
 	for _, x := range testData {
-		x := x
 		t.Run(x.description, func(t *testing.T) {
 			req, err := http.NewRequest(x.method, ts.URL+x.url, nil)
 			require.NoError(t, err)

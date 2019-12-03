@@ -49,7 +49,6 @@ func TestEmailNew(t *testing.T) {
 		},
 	}
 	for _, d := range testSet {
-		d := d // capture range variable
 		t.Run(d.name, func(t *testing.T) {
 			email, err := NewEmail(d.emailParams, d.smtpParams)
 
@@ -140,7 +139,6 @@ func TestEmailSendClientError(t *testing.T) {
 			err: "problems with sending message: 1 error occurred:\n\t* can't send message to : can't make email writer: failed to send\n\n"},
 	}
 	for _, d := range testSet {
-		d := d // capture range variable
 		t.Run(d.name, func(t *testing.T) {
 			e := Email{smtp: d.smtp}
 			assert.EqualError(t, e.sendMessage(context.Background(), emailMessage{}), d.err,
