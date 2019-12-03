@@ -490,28 +490,30 @@ func TestRest_Email(t *testing.T) {
 		{description: "delete user email", url: "/api/v1/email?site=remark42", method: http.MethodDelete, responseCode: http.StatusOK},
 		{description: "send another confirmation", url: "/api/v1/email?site=remark42&address=good@example.com", method: http.MethodGet, responseCode: http.StatusOK},
 	}
-
 	client := http.Client{}
 	for _, x := range testData {
-		req, err := http.NewRequest(x.method, ts.URL+x.url, nil)
-		require.NoError(t, err)
-		if !x.noAuth {
-			req.Header.Add("X-JWT", devToken)
-		}
-		b, err := client.Do(req)
-		require.NoError(t, err)
-		body, err := ioutil.ReadAll(b.Body)
-		require.NoError(t, err)
-		// read User.Email from the token in the cookie
-		for _, c := range b.Cookies() {
-			if c.Name == "JWT" {
-				claims, err := srv.Authenticator.TokenService().Parse(c.Value)
-				require.NoError(t, err)
-				log.Printf("%s:%v", x.description, claims)
-				assert.Equal(t, x.cookieEmail, claims.User.Email, x.description+": cookie email check failed")
+		x := x
+		t.Run(x.description, func(t *testing.T) {
+			req, err := http.NewRequest(x.method, ts.URL+x.url, nil)
+			require.NoError(t, err)
+			if !x.noAuth {
+				req.Header.Add("X-JWT", devToken)
 			}
-		}
-		assert.Equal(t, x.responseCode, b.StatusCode, x.description+": "+string(body))
+			b, err := client.Do(req)
+			require.NoError(t, err)
+			body, err := ioutil.ReadAll(b.Body)
+			require.NoError(t, err)
+			// read User.Email from the token in the cookie
+			for _, c := range b.Cookies() {
+				if c.Name == "JWT" {
+					claims, err := srv.Authenticator.TokenService().Parse(c.Value)
+					require.NoError(t, err)
+					log.Printf("%s:%v", x.description, claims)
+					assert.Equal(t, x.cookieEmail, claims.User.Email, x.description+": cookie email check failed")
+				}
+			}
+			assert.Equal(t, x.responseCode, b.StatusCode, x.description+": "+string(body))
+		})
 	}
 }
 
