@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -508,11 +507,10 @@ func TestRest_Email(t *testing.T) {
 				if c.Name == "JWT" {
 					claims, err := srv.Authenticator.TokenService().Parse(c.Value)
 					require.NoError(t, err)
-					log.Printf("%s:%v", x.description, claims)
-					assert.Equal(t, x.cookieEmail, claims.User.Email, x.description+": cookie email check failed")
+					assert.Equal(t, x.cookieEmail, claims.User.Email, "cookie email check failed")
 				}
 			}
-			assert.Equal(t, x.responseCode, b.StatusCode, x.description+": "+string(body))
+			assert.Equal(t, x.responseCode, b.StatusCode, string(body))
 		})
 	}
 }
