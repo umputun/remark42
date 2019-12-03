@@ -19,12 +19,10 @@ import (
 
 // EmailParams contain settings for email notifications
 type EmailParams struct {
-	From                 string        // From email field
-	MsgTemplate          string        // request message template
-	VerificationSubject  string        // verification message subject
-	VerificationTemplate string        // verification message template
-	BufferSize           int           // email send buffer size
-	FlushDuration        time.Duration // maximum time after which email will me sent, 30s by default
+	From                 string // from email address
+	MsgTemplate          string // request message template
+	VerificationSubject  string // verification message subject
+	VerificationTemplate string // verification message template
 }
 
 // SmtpParams contain settings for smtp server connection
@@ -91,7 +89,6 @@ type verifyTmplData struct {
 const (
 	defaultVerificationSubject = "Email verification"
 	defaultEmailTimeout        = 10 * time.Second
-	defaultFlushDuration       = time.Second * 30
 	defaultEmailTemplate       = `{{.From}}{{if .To}} → {{.To}}{{end}}
 
 {{.Orig}}
@@ -110,12 +107,6 @@ func NewEmail(emailParams EmailParams, smtpParams SmtpParams) (*Email, error) {
 	var err error
 	// set up Email emailParams
 	res := Email{EmailParams: emailParams}
-	if res.FlushDuration <= 0 {
-		res.FlushDuration = defaultFlushDuration
-	}
-	if res.BufferSize <= 0 {
-		res.BufferSize = 1
-	}
 	if res.MsgTemplate == "" {
 		res.MsgTemplate = defaultEmailTemplate
 	}

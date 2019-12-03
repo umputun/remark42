@@ -29,10 +29,8 @@ func TestEmailNew(t *testing.T) {
 		{name: "with template parse error",
 			err: true, errText: "can't parse message template: template: messageFromRequest:1: unexpected unclosed action in command",
 			emailParams: EmailParams{
-				From:          "test@from",
-				MsgTemplate:   "{{",
-				BufferSize:    10,
-				FlushDuration: time.Second,
+				From:        "test@from",
+				MsgTemplate: "{{",
 			}},
 		{name: "with verification template parse error",
 			err: true, errText: "can't parse verification template: template: messageFromRequest:1: unexpected unclosed action in command",
@@ -74,16 +72,6 @@ func TestEmailNew(t *testing.T) {
 			} else {
 				assert.Equal(t, d.emailParams.MsgTemplate, email.EmailParams.MsgTemplate, "emailParams.MsgTemplate unchanged after creation")
 			}
-			if d.emailParams.FlushDuration == 0 {
-				assert.Equal(t, defaultFlushDuration, email.EmailParams.FlushDuration, "empty emailParams.FlushDuration changed to default")
-			} else {
-				assert.Equal(t, d.emailParams.FlushDuration, email.EmailParams.FlushDuration, "emailParams.FlushDuration unchanged after creation")
-			}
-			if d.emailParams.BufferSize == 0 {
-				assert.Equal(t, 1, email.EmailParams.BufferSize, "empty emailParams.BufferSize changed to default")
-			} else {
-				assert.Equal(t, d.emailParams.BufferSize, email.EmailParams.BufferSize, "emailParams.BufferSize unchanged after creation")
-			}
 			assert.Equal(t, d.emailParams.From, email.EmailParams.From, "emailParams.From unchanged after creation")
 			if d.smtpParams.TimeOut == 0 {
 				assert.Equal(t, defaultEmailTimeout, email.TimeOut, "empty emailParams.TimeOut changed to default")
@@ -101,7 +89,7 @@ func TestEmailNew(t *testing.T) {
 
 func TestEmailSendErrors(t *testing.T) {
 	var err error
-	e := Email{EmailParams: EmailParams{FlushDuration: time.Second}}
+	e := Email{}
 
 	e.verifyTmpl, err = template.New("test").Parse("{{.Test}}")
 	assert.NoError(t, err)
