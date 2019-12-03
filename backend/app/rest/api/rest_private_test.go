@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/umputun/remark/backend/app/notify"
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/image"
 )
@@ -497,21 +498,96 @@ func TestRest_Email(t *testing.T) {
 			if !x.noAuth {
 				req.Header.Add("X-JWT", devToken)
 			}
-			b, err := client.Do(req)
+			resp, err := client.Do(req)
 			require.NoError(t, err)
-			body, err := ioutil.ReadAll(b.Body)
+			body, err := ioutil.ReadAll(resp.Body)
 			require.NoError(t, err)
 			// read User.Email from the token in the cookie
-			for _, c := range b.Cookies() {
+			for _, c := range resp.Cookies() {
 				if c.Name == "JWT" {
 					claims, err := srv.Authenticator.TokenService().Parse(c.Value)
 					require.NoError(t, err)
 					assert.Equal(t, x.cookieEmail, claims.User.Email, "cookie email check failed")
 				}
 			}
-			assert.Equal(t, x.responseCode, b.StatusCode, string(body))
+			assert.Equal(t, x.responseCode, resp.StatusCode, string(body))
 		})
 	}
+}
+
+func TestRest_EmailNotification(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+	mockDestination := notify.MockDest{}
+	mockDataStore := notify.MockStore{}
+	srv.NotifyService = notify.NewService(mockDataStore, 1, mockDestination)
+
+	client := http.Client{}
+
+	// create new comment from dev user
+	req, err := http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(
+		`{"text": "test 123", "user": "dev::good@example.com", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`))
+	assert.Nil(t, err)
+	req.SetBasicAuth("admin", "password")
+	resp, err := client.Do(req)
+	assert.Nil(t, err)
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
+
+	// TODO create child comment from another user, no email notification expected
+	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(
+		`{"text": "test 123", "user": "dev::good@example.com", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`))
+	assert.Nil(t, err)
+	req.SetBasicAuth("admin", "password")
+	resp, err = client.Do(req)
+	assert.Nil(t, err)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
+
+	// send confirmation token for email
+	req, err = http.NewRequest(http.MethodPost, ts.URL+"/api/v1/email/subscribe?site=remark42&address=good@example.com", nil)
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode, string(body))
+
+	// TODO read confirmation
+
+	// TODO confirm email with read confirmation
+	req, err = http.NewRequest(http.MethodPost, ts.URL+fmt.Sprintf("/api/v1/email/confirm?site=remark42&tkn=%s", "token"), nil)
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode, string(body))
+
+	// delete user's email
+	req, err = http.NewRequest(http.MethodDelete, ts.URL+"/api/v1/email?site=remark42", nil)
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode, string(body))
+
+	// TODO create child comment from another user, no email notification expected
+	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(
+		`{"text": "test 123", "user": "dev::good@example.com", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`))
+	assert.Nil(t, err)
+	req.SetBasicAuth("admin", "password")
+	resp, err = client.Do(req)
+	assert.Nil(t, err)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
 }
 
 func TestRest_UserAllData(t *testing.T) {

@@ -1,16 +1,12 @@
 package notify
 
 import (
-	"context"
-	"errors"
 	"fmt"
 	"math/rand"
-	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	log "github.com/go-pkgz/lgr"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/umputun/remark/backend/app/store"
@@ -27,7 +23,7 @@ func TestService_NoDestinations(t *testing.T) {
 }
 
 func TestService_WithDestinations(t *testing.T) {
-	d1, d2 := &mockDest{id: 1}, &mockDest{id: 2}
+	d1, d2 := &MockDest{id: 1}, &MockDest{id: 2}
 	s := NewService(nil, 1, d1, d2)
 	assert.NotNil(t, s)
 
@@ -48,7 +44,7 @@ func TestService_WithDestinations(t *testing.T) {
 }
 
 func TestService_WithDrops(t *testing.T) {
-	d1, d2 := &mockDest{id: 1}, &mockDest{id: 2}
+	d1, d2 := &MockDest{id: 1}, &MockDest{id: 2}
 	s := NewService(nil, 1, d1, d2)
 	assert.NotNil(t, s)
 
@@ -66,7 +62,7 @@ func TestService_WithDrops(t *testing.T) {
 }
 
 func TestService_Many(t *testing.T) {
-	d1, d2 := &mockDest{id: 1}, &mockDest{id: 2}
+	d1, d2 := &MockDest{id: 1}, &MockDest{id: 2}
 	s := NewService(nil, 5, d1, d2)
 	assert.NotNil(t, s)
 
@@ -85,8 +81,8 @@ func TestService_Many(t *testing.T) {
 }
 
 func TestService_WithParent(t *testing.T) {
-	dest := &mockDest{id: 1}
-	dataStore := &mockStore{data: map[string]store.Comment{}}
+	dest := &MockDest{id: 1}
+	dataStore := &MockStore{data: map[string]store.Comment{}}
 
 	dataStore.data["p1"] = store.Comment{ID: "p1"}
 	dataStore.data["p2"] = store.Comment{ID: "p2"}
@@ -113,44 +109,4 @@ func TestService_Nop(t *testing.T) {
 	s.Submit(Request{Comment: store.Comment{}})
 	s.Close()
 	assert.Equal(t, uint32(1), atomic.LoadUint32(&s.closed))
-}
-
-type mockDest struct {
-	data   []Request
-	id     int
-	closed bool
-	lock   sync.Mutex
-}
-
-func (m *mockDest) Send(ctx context.Context, r Request) error {
-	m.lock.Lock()
-	defer m.lock.Unlock()
-	select {
-	case <-time.After(100 * time.Millisecond):
-		m.data = append(m.data, r)
-		log.Printf("sent %s -> %d", r.Comment.ID, m.id)
-	case <-ctx.Done():
-		log.Printf("ctx closed %d", m.id)
-		m.closed = true
-	}
-	return nil
-}
-
-func (m *mockDest) get() []Request {
-	m.lock.Lock()
-	defer m.lock.Unlock()
-	res := make([]Request, len(m.data))
-	copy(res, m.data)
-	return res
-}
-func (m *mockDest) String() string { return fmt.Sprintf("mock id=%d, closed=%v", m.id, m.closed) }
-
-type mockStore struct{ data map[string]store.Comment }
-
-func (m *mockStore) Get(_ store.Locator, id string, user store.User) (store.Comment, error) {
-	res, ok := m.data[id]
-	if !ok {
-		return store.Comment{}, errors.New("no such id")
-	}
-	return res, nil
 }
