@@ -481,13 +481,13 @@ func TestRest_Email(t *testing.T) {
 		{description: "issue delete request without auth", url: "/api/v1/email", method: http.MethodDelete, responseCode: http.StatusUnauthorized, noAuth: true},
 		{description: "issue delete request without site_id", url: "/api/v1/email", method: http.MethodDelete, responseCode: http.StatusBadRequest},
 		{description: "delete non-existent user email", url: "/api/v1/email?site=remark42", method: http.MethodDelete, responseCode: http.StatusOK},
-		{description: "set user email, token not set", url: "/api/v1/email?site=remark42", method: http.MethodPut, responseCode: http.StatusBadRequest},
-		{description: "send confirmation without address", url: "/api/v1/email?site=remark42", method: http.MethodGet, responseCode: http.StatusBadRequest},
-		{description: "send confirmation", url: "/api/v1/email?site=remark42&address=good@example.com", method: http.MethodGet, responseCode: http.StatusOK},
-		{description: "set user email, token is good", url: fmt.Sprintf("/api/v1/email?site=remark42&tkn=%s", goodToken), method: http.MethodPut, responseCode: http.StatusOK, cookieEmail: "good@example.com"},
-		{description: "send confirmation with same address", url: "/api/v1/email?site=remark42&address=good@example.com", method: http.MethodGet, responseCode: http.StatusBadRequest},
+		{description: "set user email, token not set", url: "/api/v1/email/confirm?site=remark42", method: http.MethodPut, responseCode: http.StatusBadRequest},
+		{description: "send confirmation without address", url: "/api/v1/email/subscribe?site=remark42", method: http.MethodPut, responseCode: http.StatusBadRequest},
+		{description: "send confirmation", url: "/api/v1/email/subscribe?site=remark42&address=good@example.com", method: http.MethodPut, responseCode: http.StatusOK},
+		{description: "set user email, token is good", url: fmt.Sprintf("/api/v1/email/confirm?site=remark42&tkn=%s", goodToken), method: http.MethodPut, responseCode: http.StatusOK, cookieEmail: "good@example.com"},
+		{description: "send confirmation with same address", url: "/api/v1/email/confirm?site=remark42&address=good@example.com", method: http.MethodPut, responseCode: http.StatusBadRequest},
 		{description: "delete user email", url: "/api/v1/email?site=remark42", method: http.MethodDelete, responseCode: http.StatusOK},
-		{description: "send another confirmation", url: "/api/v1/email?site=remark42&address=good@example.com", method: http.MethodGet, responseCode: http.StatusOK},
+		{description: "send another confirmation", url: "/api/v1/email/subscribe?site=remark42&address=good@example.com", method: http.MethodPut, responseCode: http.StatusOK},
 	}
 	client := http.Client{}
 	for _, x := range testData {

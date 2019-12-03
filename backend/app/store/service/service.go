@@ -159,25 +159,26 @@ func (s *DataStore) Put(locator store.Locator, comment store.Comment) error {
 	return s.Engine.Update(comment)
 }
 
-// GetStringUserDetail gets string user detail
-func (s *DataStore) GetStringUserDetail(locator store.Locator, userID string, detail engine.UserDetail) (string, error) {
-	res, err := s.Engine.UserDetail(engine.UserDetailRequest{Detail: detail, Locator: locator, UserID: userID})
+// GetUserEmail gets user email
+func (s *DataStore) GetUserEmail(locator store.Locator, userID string) (string, error) {
+	res, err := s.Engine.UserDetail(engine.UserDetailRequest{
+		Detail:  engine.UserEmail,
+		Locator: locator,
+		UserID:  userID,
+	})
 	if err != nil {
 		return "", err
 	}
 	if len(res) == 1 {
-		switch detail {
-		case engine.UserEmail:
-			return res[0].Email, nil
-		}
+		return res[0].Email, nil
 	}
 	return "", nil
 }
 
-// SetStringUserDetail sets string user detail
-func (s *DataStore) SetStringUserDetail(locator store.Locator, userID string, detail engine.UserDetail, value string) (string, error) {
+// SetUserEmail sets user email
+func (s *DataStore) SetUserEmail(locator store.Locator, userID string, value string) (string, error) {
 	res, err := s.Engine.UserDetail(engine.UserDetailRequest{
-		Detail:  detail,
+		Detail:  engine.UserEmail,
 		Locator: locator,
 		UserID:  userID,
 		Update:  value,
@@ -186,10 +187,7 @@ func (s *DataStore) SetStringUserDetail(locator store.Locator, userID string, de
 		return "", err
 	}
 	if len(res) == 1 {
-		switch detail {
-		case engine.UserEmail:
-			return res[0].Email, nil
-		}
+		return res[0].Email, nil
 	}
 	return "", nil
 }

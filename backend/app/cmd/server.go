@@ -773,7 +773,11 @@ func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Sto
 			}
 			c.User.SetAdmin(ds.IsAdmin(c.Audience, c.User.ID))
 			c.User.SetBoolAttr("blocked", ds.IsBlocked(c.Audience, c.User.ID))
-			c.User.Email, _ = ds.GetStringUserDetail(store.Locator{SiteID: c.Audience}, c.User.ID, engine.UserEmail)
+			var err error
+			c.User.Email, err = ds.GetUserEmail(store.Locator{SiteID: c.Audience}, c.User.ID)
+			if err != nil {
+				log.Printf("[WARN] can't read email for %s, %v", c.User.Name, err)
+			}
 			return c
 		}),
 		AdminPasswd: s.AdminPasswd,
