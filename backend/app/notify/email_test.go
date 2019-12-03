@@ -25,7 +25,7 @@ func TestEmailNew(t *testing.T) {
 		emailParams EmailParams
 		smtpParams  SmtpParams
 	}{
-		{name: "with connection error", template: true, err: true},
+		{name: "empty", template: true},
 		{name: "with template parse error",
 			err: true, errText: "can't parse message template: template: messageFromRequest:1: unexpected unclosed action in command",
 			emailParams: EmailParams{
@@ -113,7 +113,7 @@ func TestEmailSendErrors(t *testing.T) {
 
 func TestEmailSend_ExitConditions(t *testing.T) {
 	email, err := NewEmail(EmailParams{}, SmtpParams{})
-	assert.Error(t, err, "error match expected")
+	assert.NoError(t, err)
 	assert.NotNil(t, email, "expecting email returned")
 	// prevent triggering e.autoFlush creation
 	emptyRequest := Request{Comment: store.Comment{ID: "999"}}
@@ -177,7 +177,7 @@ test_user
 `
 	req := Request{Comment: store.Comment{ID: "999", User: store.User{Name: "test_user"}, PostTitle: "test_title"}, Email: "test@example.org"}
 	e, err := NewEmail(EmailParams{From: "from@example.org"}, SmtpParams{})
-	assert.Error(t, err, "connection error expected")
+	assert.NoError(t, err)
 	assert.NotNil(t, e)
 	fakeSmtp := fakeTestSMTP{}
 	e.smtp = &fakeSmtp

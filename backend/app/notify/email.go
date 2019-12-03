@@ -102,9 +102,8 @@ Token: {{.Token}}
 )
 
 // NewEmail makes new Email object, returns it even in case of problems
-// (e.MsgTemplate parsing error or error while testing smtp connection by credentials provided in emailParams)
+// (e.g. e.MsgTemplate and e.VerificationTemplate parsing error)
 func NewEmail(emailParams EmailParams, smtpParams SmtpParams) (*Email, error) {
-	var err error
 	// set up Email emailParams
 	res := Email{EmailParams: emailParams}
 	if res.MsgTemplate == "" {
@@ -128,6 +127,7 @@ func NewEmail(emailParams EmailParams, smtpParams SmtpParams) (*Email, error) {
 		res.Host, res.Username, res.TimeOut)
 
 	// initialise templates
+	var err error
 	res.msgTmpl, err = template.New("messageFromRequest").Parse(res.MsgTemplate)
 	if err != nil {
 		return &res, errors.Wrapf(err, "can't parse message template")
@@ -135,18 +135,6 @@ func NewEmail(emailParams EmailParams, smtpParams SmtpParams) (*Email, error) {
 	res.verifyTmpl, err = template.New("messageFromRequest").Parse(res.VerificationTemplate)
 	if err != nil {
 		return &res, errors.Wrapf(err, "can't parse verification template")
-	}
-
-	// establish test connection
-	testSmtpClient, err := res.smtp.Create(res.SmtpParams)
-	if err != nil {
-		return &res, errors.Wrapf(err, "can't establish test connection")
-	}
-	if err = testSmtpClient.Quit(); err != nil {
-		log.Printf("[WARN] failed to send quit command to %s:%d, %v", res.Host, res.Port, err)
-		if err = testSmtpClient.Close(); err != nil {
-			return &res, errors.Wrapf(err, "can't close test smtp connection")
-		}
 	}
 	return &res, err
 }
