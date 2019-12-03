@@ -34,9 +34,19 @@ type Store interface {
 	Get(locator store.Locator, id string, user store.User) (store.Comment, error)
 }
 
+// Request notification either about comment or about particular user verification
 type Request struct {
-	Comment store.Comment
-	parent  store.Comment
+	Comment      store.Comment        // if set sent notifications about new comment
+	parent       store.Comment        // fetched only in case Comment is set
+	Email        string               // if set (also) send email
+	Verification VerificationMetadata // if set sent verification notification
+}
+
+// VerificationMetadata required to send notify method verification message
+type VerificationMetadata struct {
+	Locator store.Locator // only SiteID is used
+	User    string
+	Token   string
 }
 
 const defaultQueueSize = 100
@@ -67,7 +77,8 @@ func (s *Service) Submit(req Request) {
 	if len(s.destinations) == 0 || atomic.LoadUint32(&s.closed) != 0 {
 		return
 	}
-	if s.dataService != nil {
+	// parent comment is fetched only if comment is present in the Request
+	if s.dataService != nil && req.Comment.ParentID != "" {
 		if p, err := s.dataService.Get(req.Comment.Locator, req.Comment.ParentID, store.User{}); err == nil {
 			req.parent = p
 		}
@@ -75,7 +86,7 @@ func (s *Service) Submit(req Request) {
 	select {
 	case s.queue <- req:
 	default:
-		log.Printf("[WARN] can't send comment notification to queue, %+v", req.Comment)
+		log.Printf("[WARN] can't send notification to queue, %+v", req.Comment)
 	}
 }
 

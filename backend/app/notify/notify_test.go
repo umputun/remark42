@@ -17,7 +17,8 @@ import (
 )
 
 func TestService_NoDestinations(t *testing.T) {
-	s := NewService(nil, 1)
+	s := NewService(nil, 0)
+	assert.Equal(t, defaultQueueSize, cap(s.queue))
 	assert.NotNil(t, s)
 	s.Submit(Request{Comment: store.Comment{ID: "123"}})
 	s.Submit(Request{Comment: store.Comment{ID: "123"}})

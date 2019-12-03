@@ -86,6 +86,10 @@ func NewTelegram(token string, channelID string, timeout time.Duration, api stri
 
 // Send to telegram channel
 func (t *Telegram) Send(ctx context.Context, req Request) error {
+	if req.Comment.ID == "" {
+		// verification request received, send nothing
+		return nil
+	}
 	client := http.Client{Timeout: telegramTimeOut}
 	log.Printf("[DEBUG] send telegram notification to %s, comment id %s", t.channelID, req.Comment.ID)
 
