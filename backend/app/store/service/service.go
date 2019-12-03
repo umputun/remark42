@@ -175,13 +175,23 @@ func (s *DataStore) GetStringUserDetail(locator store.Locator, userID string, de
 }
 
 // SetStringUserDetail sets string user detail
-func (s *DataStore) SetStringUserDetail(locator store.Locator, userID string, detail engine.UserDetail, value string) ([]engine.UserDetailEntry, error) {
-	return s.Engine.UserDetail(engine.UserDetailRequest{
+func (s *DataStore) SetStringUserDetail(locator store.Locator, userID string, detail engine.UserDetail, value string) (string, error) {
+	res, err := s.Engine.UserDetail(engine.UserDetailRequest{
 		Detail:  detail,
 		Locator: locator,
 		UserID:  userID,
 		Update:  value,
 	})
+	if err != nil {
+		return "", err
+	}
+	if len(res) == 1 {
+		switch detail {
+		case engine.UserEmail:
+			return res[0].Email, nil
+		}
+	}
+	return "", nil
 }
 
 // DeleteUserDetail deletes user detail

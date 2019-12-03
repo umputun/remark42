@@ -45,7 +45,7 @@ type privStore interface {
 	Get(locator store.Locator, commentID string, user store.User) (store.Comment, error)
 	User(siteID, userID string, limit, skip int, user store.User) ([]store.Comment, error)
 	GetStringUserDetail(locator store.Locator, userID string, detail engine.UserDetail) (string, error)
-	SetStringUserDetail(locator store.Locator, userID string, detail engine.UserDetail, value string) ([]engine.UserDetailEntry, error)
+	SetStringUserDetail(locator store.Locator, userID string, detail engine.UserDetail, value string) (string, error)
 	DeleteUserDetail(locator store.Locator, userID string, detail engine.UserDetail) error
 	ValidateComment(c *store.Comment) error
 	IsVerified(siteID string, userID string) bool
