@@ -110,3 +110,23 @@ func TestService_Nop(t *testing.T) {
 	s.Close()
 	assert.Equal(t, uint32(1), atomic.LoadUint32(&s.closed))
 }
+
+type mockStore struct {
+	data  map[string]store.Comment
+	email bool
+}
+
+func (m mockStore) Get(_ store.Locator, id string, _ store.User) (store.Comment, error) {
+	res, ok := m.data[id]
+	if !ok {
+		return store.Comment{}, errors.New("no such id")
+	}
+	return res, nil
+}
+
+func (m mockStore) GetUserEmail(_ store.Locator, _ string) (string, error) {
+	if !m.email {
+		return "", errors.New("no such user")
+	}
+	return "test@example.org", nil
+}
