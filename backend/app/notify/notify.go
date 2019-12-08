@@ -84,7 +84,7 @@ func (s *Service) Submit(req Request) {
 			req.parent = p
 			req.Email, err = s.dataService.GetUserEmail(req.Comment.Locator, p.User.ID)
 			if err != nil {
-				log.Printf("[WARN] can't read email for %s, %v", p.User.Name, err)
+				log.Printf("[WARN] can't read email for %s, %v", p.User.ID, err)
 			}
 		}
 	}

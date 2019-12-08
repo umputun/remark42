@@ -776,7 +776,7 @@ func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Sto
 			var err error
 			c.User.Email, err = ds.GetUserEmail(store.Locator{SiteID: c.Audience}, c.User.ID)
 			if err != nil {
-				log.Printf("[WARN] can't read email for %s, %v", c.User.Name, err)
+				log.Printf("[WARN] can't read email for %s, %v", c.User.ID, err)
 			}
 			return c
 		}),

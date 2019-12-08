@@ -225,6 +225,19 @@ func (s *private) voteCtrl(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, R.JSON{"id": comment.ID, "score": comment.Score})
 }
 
+// getEmailCtrl gets email address for authenticated user.
+// GET /email?site=siteID
+func (s *private) getEmailCtrl(w http.ResponseWriter, r *http.Request) {
+	user := rest.MustGetUserInfo(r)
+	siteID := r.URL.Query().Get("site")
+	address, err := s.dataService.GetUserEmail(store.Locator{SiteID: siteID}, user.ID)
+	if err != nil {
+		log.Printf("[WARN] can't read email for %s, %v", user.ID, err)
+	}
+
+	render.JSON(w, r, R.JSON{"user": user, "address": address})
+}
+
 // sendEmailConfirmationCtrl gets address and siteID from query, makes confirmation token and sends it to user.
 // GET /email/subscribe?site=siteID&address=someone@example.com
 func (s *private) sendEmailConfirmationCtrl(w http.ResponseWriter, r *http.Request) {

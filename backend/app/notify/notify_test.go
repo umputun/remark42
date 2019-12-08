@@ -1,6 +1,7 @@
 package notify
 
 import (
+	"errors"
 	"fmt"
 	"math/rand"
 	"sync/atomic"
@@ -111,10 +112,7 @@ func TestService_Nop(t *testing.T) {
 	assert.Equal(t, uint32(1), atomic.LoadUint32(&s.closed))
 }
 
-type mockStore struct {
-	data  map[string]store.Comment
-	email bool
-}
+type mockStore struct{ data map[string]store.Comment }
 
 func (m mockStore) Get(_ store.Locator, id string, _ store.User) (store.Comment, error) {
 	res, ok := m.data[id]
@@ -125,8 +123,5 @@ func (m mockStore) Get(_ store.Locator, id string, _ store.User) (store.Comment,
 }
 
 func (m mockStore) GetUserEmail(_ store.Locator, _ string) (string, error) {
-	if !m.email {
-		return "", errors.New("no such user")
-	}
-	return "test@example.org", nil
+	return "", errors.New("no such user")
 }

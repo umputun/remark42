@@ -774,8 +774,9 @@ _returned id should be appended to load image url on caller side_
 
 ### Email subscription
 
-* `POST /api/v1/email/subscribe?site=side-id&address=user@example.org` -  makes confirmation token and sends it to user over email, _auth required_
-* `POST /api/v1/email/confirm?site=side-id&tkn=token` - uses provided token parameter to set email for the user, _auth required_
+* `GET /api/v1/email?site=site-id` - get user's email, _auth required_
+* `POST /api/v1/email/subscribe?site=site-id&address=user@example.org` -  makes confirmation token and sends it to user over email, _auth required_
+* `POST /api/v1/email/confirm?site=site-id&tkn=token` - uses provided token parameter to set email for the user, _auth required_
 * `DELETE /api/v1/email` - removes user's email, _auth required_
 
 Setting email subscribe user for all first-level replies to his messages.
