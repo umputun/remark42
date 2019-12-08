@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -529,7 +528,7 @@ func TestRest_EmailNotification(t *testing.T) {
 "locator":{"url": "https://radio-t.com/blah1",
 "site": "remark42"}}`))
 	assert.Nil(t, err)
-	req.SetBasicAuth("admin", "password")
+	req.Header.Add("X-JWT", devToken)
 	resp, err := client.Do(req)
 	assert.Nil(t, err)
 	body, err := ioutil.ReadAll(resp.Body)
@@ -550,7 +549,7 @@ func TestRest_EmailNotification(t *testing.T) {
 	"locator":{"url": "https://radio-t.com/blah1",
 	"site": "remark42"}}`, parentComment.ID)))
 	assert.Nil(t, err)
-	req.SetBasicAuth("admin", "password")
+	req.Header.Add("X-JWT", devToken)
 	resp, err = client.Do(req)
 	assert.Nil(t, err)
 	body, err = ioutil.ReadAll(resp.Body)
@@ -594,7 +593,7 @@ func TestRest_EmailNotification(t *testing.T) {
 	"locator":{"url": "https://radio-t.com/blah1",
 	"site": "remark42"}}`, parentComment.ID)))
 	assert.Nil(t, err)
-	req.SetBasicAuth("admin", "password")
+	req.Header.Add("X-JWT", devToken)
 	resp, err = client.Do(req)
 	assert.Nil(t, err)
 	body, err = ioutil.ReadAll(resp.Body)
@@ -603,7 +602,6 @@ func TestRest_EmailNotification(t *testing.T) {
 	// wait for mock notification Submit to kick off
 	time.Sleep(time.Millisecond * 5)
 	require.Equal(t, 4, len(mockDestination.Get()))
-	log.Printf("%v", mockDestination.Get())
 	assert.Equal(t, "good@example.com", mockDestination.Get()[3].Email)
 
 	// delete user's email
@@ -623,7 +621,7 @@ func TestRest_EmailNotification(t *testing.T) {
 	"locator":{"url": "https://radio-t.com/blah1",
 	"site": "remark42"}}`))
 	assert.Nil(t, err)
-	req.SetBasicAuth("admin", "password")
+	req.Header.Add("X-JWT", devToken)
 	resp, err = client.Do(req)
 	assert.Nil(t, err)
 	body, err = ioutil.ReadAll(resp.Body)

@@ -32,6 +32,7 @@ type Destination interface {
 // Store defines the minimal interface accessing stored comments used by notifier
 type Store interface {
 	Get(locator store.Locator, id string, user store.User) (store.Comment, error)
+	GetUserEmail(locator store.Locator, userID string) (string, error)
 }
 
 // Request notification either about comment or about particular user verification
@@ -81,6 +82,10 @@ func (s *Service) Submit(req Request) {
 	if s.dataService != nil && req.Comment.ParentID != "" {
 		if p, err := s.dataService.Get(req.Comment.Locator, req.Comment.ParentID, store.User{}); err == nil {
 			req.parent = p
+			req.Email, err = s.dataService.GetUserEmail(req.Comment.Locator, p.User.ID)
+			if err != nil {
+				log.Printf("[WARN] can't read email for %s, %v", p.User.Name, err)
+			}
 		}
 	}
 	select {
