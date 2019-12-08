@@ -23,7 +23,7 @@ func (m *MockDest) Send(ctx context.Context, r Request) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	select {
-	case <-time.After(100 * time.Millisecond):
+	case <-time.After(10 * time.Millisecond):
 		m.data = append(m.data, r)
 		log.Printf("sent %s -> %d", r.Comment.ID, m.id)
 	case <-ctx.Done():
@@ -33,7 +33,7 @@ func (m *MockDest) Send(ctx context.Context, r Request) error {
 	return nil
 }
 
-func (m *MockDest) get() []Request {
+func (m *MockDest) Get() []Request {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	res := make([]Request, len(m.data))
@@ -42,9 +42,9 @@ func (m *MockDest) get() []Request {
 }
 func (m *MockDest) String() string { return fmt.Sprintf("mock id=%d, closed=%v", m.id, m.closed) }
 
-type MockStore struct{ data map[string]store.Comment }
+type mockStore struct{ data map[string]store.Comment }
 
-func (m MockStore) Get(_ store.Locator, id string, _ store.User) (store.Comment, error) {
+func (m mockStore) Get(_ store.Locator, id string, _ store.User) (store.Comment, error) {
 	res, ok := m.data[id]
 	if !ok {
 		return store.Comment{}, errors.New("no such id")

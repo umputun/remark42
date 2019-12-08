@@ -47,7 +47,7 @@ var devTokenBadAud = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0M
 var adminUmputunToken = `eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6MTk1NDU5Nzk4MCwianRpIjoiOTdhMmUwYWM0ZGM3ZDVmNjkyNmQ1ZTg2MjBhY2VmOWE0MGMwIiwiaWF0IjoxNDU0NTk3NjgwLCJpc3MiOiJyZW1hcms0MiIsInVzZXIiOnsibmFtZSI6IlVtcHV0dW4iLCJpZCI6ImdpdGh1Yl9lZjBmNzA2YTciLCJwaWN0dXJlIjoiaHR0cHM6Ly9yZW1hcms0Mi5yYWRpby10LmNvbS9hcGkvdjEvYXZhdGFyL2NiNDJmZjQ5M2FkZTY5NmQ4OGEzYTU5MGYxMzZhZTllMzRkZTdjMWIuaW1hZ2UiLCJhdHRycyI6eyJhZG1pbiI6dHJ1ZSwiYmxvY2tlZCI6ZmFsc2V9fX0.dZiOjWHguo9f42XCMooMcv4EmYFzifl_-LEvPZHCtks`
 
 func TestRest_FileServer(t *testing.T) {
-	ts, _, teardown := startupT(t)
+	ts, _, _, teardown := startupT(t)
 	defer teardown()
 
 	body, code := get(t, ts.URL+"/web/test-remark.html")
@@ -56,7 +56,7 @@ func TestRest_FileServer(t *testing.T) {
 }
 
 func TestRest_GetStarted(t *testing.T) {
-	ts, _, teardown := startupT(t)
+	ts, _, _, teardown := startupT(t)
 	defer teardown()
 
 	err := ioutil.WriteFile(getStartedHTML, []byte("some html blah"), 0700)
@@ -282,7 +282,7 @@ func TestRest_parseError(t *testing.T) {
 	}
 }
 
-func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
+func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, dest *notify.MockDest, teardown func()) {
 	log.Setup(log.CallerFile, log.CallerFunc, log.Msec, log.LevelBraces)
 
 	tmp := os.TempDir()
@@ -311,6 +311,7 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 		RestrictedWordsMatcher: restrictedWordsMatcher,
 	}
 
+	mockDestination := &notify.MockDest{}
 	srv = &Rest{
 		DataService: dataStore,
 		Authenticator: auth.NewService(auth.Opts{
@@ -347,7 +348,7 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 			TimeOut:   5 * time.Second,
 			MaxActive: 100,
 		},
-		NotifyService: notify.NopService,
+		NotifyService: notify.NewService(dataStore, 1, mockDestination),
 		EmojiEnabled:  true,
 	}
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = -5, -10
@@ -366,7 +367,7 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 		os.RemoveAll(tmp + "/pics-remark42")
 	}
 
-	return ts, srv, teardown
+	return ts, srv, mockDestination, teardown
 }
 
 // fake auth middleware make user authenticated and uses query's fake_id for ID and fake_name for Name

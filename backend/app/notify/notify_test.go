@@ -35,12 +35,12 @@ func TestService_WithDestinations(t *testing.T) {
 	time.Sleep(time.Millisecond * 110)
 	s.Close()
 
-	assert.Equal(t, 3, len(d1.get()), "got all comments to d1")
-	assert.Equal(t, 3, len(d2.get()), "got all comments to d2")
+	assert.Equal(t, 3, len(d1.Get()), "got all comments to d1")
+	assert.Equal(t, 3, len(d2.Get()), "got all comments to d2")
 
-	assert.Equal(t, "100", d1.get()[0].Comment.ID)
-	assert.Equal(t, "101", d1.get()[1].Comment.ID)
-	assert.Equal(t, "102", d1.get()[2].Comment.ID)
+	assert.Equal(t, "100", d1.Get()[0].Comment.ID)
+	assert.Equal(t, "101", d1.Get()[1].Comment.ID)
+	assert.Equal(t, "102", d1.Get()[2].Comment.ID)
 }
 
 func TestService_WithDrops(t *testing.T) {
@@ -50,15 +50,15 @@ func TestService_WithDrops(t *testing.T) {
 
 	s.Submit(Request{Comment: store.Comment{ID: "100"}})
 	s.Submit(Request{Comment: store.Comment{ID: "101"}})
-	time.Sleep(time.Millisecond * 110)
+	time.Sleep(time.Millisecond * 11)
 	s.Submit(Request{Comment: store.Comment{ID: "102"}})
-	time.Sleep(time.Millisecond * 110)
+	time.Sleep(time.Millisecond * 11)
 	s.Close()
 
 	s.Submit(Request{Comment: store.Comment{ID: "111"}}) // safe to send after close
 
-	assert.Equal(t, 2, len(d1.get()), "one comment dropped from d1")
-	assert.Equal(t, 2, len(d2.get()), "one comment dropped from d2")
+	assert.Equal(t, 2, len(d1.Get()), "one comment dropped from d1")
+	assert.Equal(t, 2, len(d2.Get()), "one comment dropped from d2")
 }
 
 func TestService_Many(t *testing.T) {
@@ -68,13 +68,13 @@ func TestService_Many(t *testing.T) {
 
 	for i := 0; i < 10; i++ {
 		s.Submit(Request{Comment: store.Comment{ID: fmt.Sprintf("%d", 100+i)}})
-		time.Sleep(time.Millisecond * time.Duration(rand.Int31n(200)))
+		time.Sleep(time.Millisecond * time.Duration(rand.Int31n(20)))
 	}
 	s.Close()
 	time.Sleep(time.Millisecond * 10)
 
-	assert.NotEqual(t, 10, len(d1.get()), "some comments dropped from d1")
-	assert.NotEqual(t, 10, len(d2.get()), "some comments dropped from d2")
+	assert.NotEqual(t, 10, len(d1.Get()), "some comments dropped from d1")
+	assert.NotEqual(t, 10, len(d2.Get()), "some comments dropped from d2")
 
 	assert.True(t, d1.closed)
 	assert.True(t, d2.closed)
@@ -82,7 +82,7 @@ func TestService_Many(t *testing.T) {
 
 func TestService_WithParent(t *testing.T) {
 	dest := &MockDest{id: 1}
-	dataStore := &MockStore{data: map[string]store.Comment{}}
+	dataStore := &mockStore{data: map[string]store.Comment{}}
 
 	dataStore.data["p1"] = store.Comment{ID: "p1"}
 	dataStore.data["p2"] = store.Comment{ID: "p2"}
@@ -96,7 +96,7 @@ func TestService_WithParent(t *testing.T) {
 	time.Sleep(time.Millisecond * 110)
 	s.Close()
 
-	destRes := dest.get()
+	destRes := dest.Get()
 	assert.Equal(t, 2, len(destRes), "two comment notified")
 	assert.Equal(t, "p1", destRes[0].Comment.ParentID)
 	assert.Equal(t, "p1", destRes[0].parent.ID)

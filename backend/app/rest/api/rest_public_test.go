@@ -23,7 +23,7 @@ import (
 )
 
 func TestRest_Ping(t *testing.T) {
-	ts, _, teardown := startupT(t)
+	ts, _, _, teardown := startupT(t)
 	defer teardown()
 
 	res, code := get(t, ts.URL+"/api/v1/ping")
@@ -32,7 +32,7 @@ func TestRest_Ping(t *testing.T) {
 }
 
 func TestRest_Preview(t *testing.T) {
-	ts, _, teardown := startupT(t)
+	ts, _, _, teardown := startupT(t)
 	defer teardown()
 
 	resp, err := post(t, ts.URL+"/api/v1/preview", `{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
@@ -48,7 +48,7 @@ func TestRest_Preview(t *testing.T) {
 }
 
 func TestRest_PreviewWithMD(t *testing.T) {
-	ts, _, teardown := startupT(t)
+	ts, _, _, teardown := startupT(t)
 	defer teardown()
 
 	text := `
@@ -75,7 +75,7 @@ BKT
 }
 
 func TestRest_Find(t *testing.T) {
-	ts, _, teardown := startupT(t)
+	ts, _, _, teardown := startupT(t)
 	defer teardown()
 
 	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1")
@@ -134,7 +134,7 @@ func TestRest_Find(t *testing.T) {
 }
 
 func TestRest_FindAge(t *testing.T) {
-	ts, srv, teardown := startupT(t)
+	ts, srv, _, teardown := startupT(t)
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1", ParentID: "", Timestamp: time.Now().AddDate(0, 0, -5),
@@ -165,7 +165,7 @@ func TestRest_FindAge(t *testing.T) {
 }
 
 func TestRest_FindReadOnly(t *testing.T) {
-	ts, srv, teardown := startupT(t)
+	ts, srv, _, teardown := startupT(t)
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1", ParentID: "", Timestamp: time.Now().AddDate(0, 0, -1),
@@ -206,7 +206,7 @@ func TestRest_FindReadOnly(t *testing.T) {
 }
 
 func TestRest_FindUserView(t *testing.T) {
-	ts, _, teardown := startupT(t)
+	ts, _, _, teardown := startupT(t)
 	defer teardown()
 
 	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1&view=user")
@@ -242,7 +242,7 @@ func TestRest_FindUserView(t *testing.T) {
 }
 
 func TestRest_Last(t *testing.T) {
-	ts, srv, teardown := startupT(t)
+	ts, srv, _, teardown := startupT(t)
 	defer teardown()
 
 	res, code := get(t, ts.URL+"/api/v1/last/2?site=remark42")
@@ -315,7 +315,7 @@ func TestRest_Last(t *testing.T) {
 }
 
 func TestRest_FindUserComments(t *testing.T) {
-	ts, srv, teardown := startupT(t)
+	ts, srv, _, teardown := startupT(t)
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1",
@@ -355,7 +355,7 @@ func TestRest_FindUserComments(t *testing.T) {
 }
 
 func TestRest_UserInfo(t *testing.T) {
-	ts, _, teardown := startupT(t)
+	ts, _, _, teardown := startupT(t)
 	defer teardown()
 
 	body, code := getWithDevAuth(t, ts.URL+"/api/v1/user?site=remark42")
@@ -368,7 +368,7 @@ func TestRest_UserInfo(t *testing.T) {
 }
 
 func TestRest_Count(t *testing.T) {
-	ts, _, teardown := startupT(t)
+	ts, _, _, teardown := startupT(t)
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1",
@@ -400,7 +400,7 @@ func TestRest_Count(t *testing.T) {
 }
 
 func TestRest_Counts(t *testing.T) {
-	ts, _, teardown := startupT(t)
+	ts, _, _, teardown := startupT(t)
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1",
@@ -433,7 +433,7 @@ func TestRest_Counts(t *testing.T) {
 }
 
 func TestRest_List(t *testing.T) {
-	ts, _, teardown := startupT(t)
+	ts, _, _, teardown := startupT(t)
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1",
@@ -462,7 +462,7 @@ func TestRest_List(t *testing.T) {
 }
 
 func TestRest_ListWithSkipAndLimit(t *testing.T) {
-	ts, _, teardown := startupT(t)
+	ts, _, _, teardown := startupT(t)
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1",
@@ -493,7 +493,7 @@ func TestRest_ListWithSkipAndLimit(t *testing.T) {
 }
 
 func TestRest_Config(t *testing.T) {
-	ts, _, teardown := startupT(t)
+	ts, _, _, teardown := startupT(t)
 	defer teardown()
 
 	body, code := get(t, ts.URL+"/api/v1/config?site=remark42")
@@ -515,7 +515,7 @@ func TestRest_Config(t *testing.T) {
 }
 
 func TestRest_Info(t *testing.T) {
-	ts, srv, teardown := startupT(t)
+	ts, srv, _, teardown := startupT(t)
 	defer teardown()
 
 	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
@@ -552,7 +552,7 @@ func TestRest_Info(t *testing.T) {
 }
 
 func TestRest_InfoStream(t *testing.T) {
-	ts, srv, teardown := startupT(t)
+	ts, srv, _, teardown := startupT(t)
 	defer teardown()
 	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
 	srv.pubRest.streamer.Refresh = 1 * time.Millisecond
@@ -586,7 +586,7 @@ func TestRest_InfoStream(t *testing.T) {
 }
 
 func TestRest_InfoStreamTooMany(t *testing.T) {
-	ts, srv, teardown := startupT(t)
+	ts, srv, _, teardown := startupT(t)
 	defer teardown()
 	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
 	srv.pubRest.streamer.Refresh = 1 * time.Millisecond
@@ -612,7 +612,7 @@ func TestRest_InfoStreamTooMany(t *testing.T) {
 }
 
 func TestRest_InfoStreamTimeout(t *testing.T) {
-	ts, srv, teardown := startupT(t)
+	ts, srv, _, teardown := startupT(t)
 	defer teardown()
 	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
 	srv.pubRest.streamer.Refresh = 10 * time.Millisecond
@@ -628,7 +628,7 @@ func TestRest_InfoStreamTimeout(t *testing.T) {
 }
 
 func TestRest_InfoStreamCancel(t *testing.T) {
-	ts, srv, teardown := startupT(t)
+	ts, srv, _, teardown := startupT(t)
 	defer teardown()
 	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
 	srv.pubRest.streamer.Refresh = 5 * time.Millisecond
@@ -670,7 +670,7 @@ func TestRest_InfoStreamCancel(t *testing.T) {
 }
 
 func TestRest_InfoStreamSince(t *testing.T) {
-	ts, srv, teardown := startupT(t)
+	ts, srv, _, teardown := startupT(t)
 	defer teardown()
 	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
 	srv.pubRest.streamer.Refresh = 10 * time.Millisecond
@@ -699,7 +699,7 @@ func TestRest_InfoStreamSince(t *testing.T) {
 }
 
 func TestRest_Robots(t *testing.T) {
-	ts, _, teardown := startupT(t)
+	ts, _, _, teardown := startupT(t)
 	defer teardown()
 
 	body, code := get(t, ts.URL+"/robots.txt")
@@ -710,7 +710,7 @@ func TestRest_Robots(t *testing.T) {
 }
 
 func TestRest_LastCommentsStream(t *testing.T) {
-	ts, srv, teardown := startupT(t)
+	ts, srv, _, teardown := startupT(t)
 	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
 	srv.pubRest.streamer.Refresh = 10 * time.Millisecond
 	srv.pubRest.streamer.TimeOut = 500 * time.Millisecond
@@ -751,7 +751,7 @@ func TestRest_LastCommentsStream(t *testing.T) {
 }
 
 func TestRest_LastCommentsStreamTimeout(t *testing.T) {
-	ts, srv, teardown := startupT(t)
+	ts, srv, _, teardown := startupT(t)
 	defer teardown()
 	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
 	srv.pubRest.streamer.Refresh = 10 * time.Millisecond
@@ -767,7 +767,7 @@ func TestRest_LastCommentsStreamTimeout(t *testing.T) {
 }
 
 func TestRest_LastCommentsStreamCancel(t *testing.T) {
-	ts, srv, teardown := startupT(t)
+	ts, srv, _, teardown := startupT(t)
 	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
 	srv.pubRest.streamer.Refresh = 10 * time.Millisecond
 	srv.pubRest.streamer.TimeOut = 500 * time.Millisecond
@@ -806,7 +806,7 @@ func TestRest_LastCommentsStreamCancel(t *testing.T) {
 }
 
 func TestRest_LastCommentsStreamTooMany(t *testing.T) {
-	ts, srv, teardown := startupT(t)
+	ts, srv, _, teardown := startupT(t)
 	defer teardown()
 	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
 	srv.pubRest.streamer.Refresh = 1 * time.Millisecond
@@ -835,7 +835,7 @@ func TestRest_LastCommentsStreamTooMany(t *testing.T) {
 }
 
 func TestRest_LastCommentsStreamSince(t *testing.T) {
-	ts, srv, teardown := startupT(t)
+	ts, srv, _, teardown := startupT(t)
 	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
 	srv.pubRest.streamer.Refresh = 10 * time.Millisecond
 	srv.pubRest.streamer.TimeOut = 500 * time.Millisecond

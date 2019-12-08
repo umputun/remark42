@@ -16,13 +16,13 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/go-chi/render"
 	"github.com/go-pkgz/auth/token"
 	"github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/umputun/remark/backend/app/notify"
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/image"
 )
@@ -33,7 +33,7 @@ const gopher = `iVBORw0KGgoAAAANSUhEUgAAAEsAAAA8CAAAAAALAhhPAAAFfUlEQVRYw62XeWwU
 func gopherPNG() io.Reader { return base64.NewDecoder(base64.StdEncoding, strings.NewReader(gopher)) }
 
 func TestRest_Create(t *testing.T) {
-	ts, _, teardown := startupT(t)
+	ts, _, _, teardown := startupT(t)
 	defer teardown()
 
 	resp, err := post(t, ts.URL+"/api/v1/comment",
@@ -54,7 +54,7 @@ func TestRest_Create(t *testing.T) {
 }
 
 func TestRest_CreateOldPost(t *testing.T) {
-	ts, srv, teardown := startupT(t)
+	ts, srv, _, teardown := startupT(t)
 	defer teardown()
 
 	// make old, but not too old comment
@@ -87,7 +87,7 @@ func TestRest_CreateOldPost(t *testing.T) {
 }
 
 func TestRest_CreateTooBig(t *testing.T) {
-	ts, _, teardown := startupT(t)
+	ts, _, _, teardown := startupT(t)
 	defer teardown()
 
 	longComment := fmt.Sprintf(`{"text": "%4001s", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`, "Щ")
@@ -117,7 +117,7 @@ func TestRest_CreateTooBig(t *testing.T) {
 }
 
 func TestRest_CreateWithRestrictedWord(t *testing.T) {
-	ts, _, teardown := startupT(t)
+	ts, _, _, teardown := startupT(t)
 	defer teardown()
 
 	badComment := fmt.Sprintf(`{"text": "What the duck is that?", "locator":{"url": "https://radio-t.com/blah1", 
@@ -137,7 +137,7 @@ func TestRest_CreateWithRestrictedWord(t *testing.T) {
 
 func TestRest_CreateRejected(t *testing.T) {
 
-	ts, _, teardown := startupT(t)
+	ts, _, _, teardown := startupT(t)
 	defer teardown()
 	body := `{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`
 
@@ -157,7 +157,7 @@ func TestRest_CreateRejected(t *testing.T) {
 }
 
 func TestRest_CreateAndGet(t *testing.T) {
-	ts, _, teardown := startupT(t)
+	ts, _, _, teardown := startupT(t)
 	defer teardown()
 
 	// create comment
@@ -196,7 +196,7 @@ func TestRest_CreateAndGet(t *testing.T) {
 }
 
 func TestRest_Update(t *testing.T) {
-	ts, _, teardown := startupT(t)
+	ts, _, _, teardown := startupT(t)
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1", ParentID: "p1",
@@ -234,7 +234,7 @@ func TestRest_Update(t *testing.T) {
 }
 
 func TestRest_UpdateDelete(t *testing.T) {
-	ts, _, teardown := startupT(t)
+	ts, _, _, teardown := startupT(t)
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1", ParentID: "p1",
@@ -296,7 +296,7 @@ func TestRest_UpdateDelete(t *testing.T) {
 }
 
 func TestRest_UpdateNotOwner(t *testing.T) {
-	ts, srv, teardown := startupT(t)
+	ts, srv, _, teardown := startupT(t)
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1", ParentID: "p1",
@@ -327,7 +327,7 @@ func TestRest_UpdateNotOwner(t *testing.T) {
 }
 
 func TestRest_UpdateWrongAud(t *testing.T) {
-	ts, _, teardown := startupT(t)
+	ts, _, _, teardown := startupT(t)
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1", ParentID: "p1",
@@ -345,7 +345,7 @@ func TestRest_UpdateWrongAud(t *testing.T) {
 }
 
 func TestRest_UpdateWithRestrictedWords(t *testing.T) {
-	ts, _, teardown := startupT(t)
+	ts, _, _, teardown := startupT(t)
 	defer teardown()
 
 	c1 := store.Comment{Text: "What the quack is that?", ParentID: "p1",
@@ -370,7 +370,7 @@ func TestRest_UpdateWithRestrictedWords(t *testing.T) {
 }
 
 func TestRest_Vote(t *testing.T) {
-	ts, _, teardown := startupT(t)
+	ts, _, _, teardown := startupT(t)
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1",
@@ -454,7 +454,7 @@ func TestRest_Vote(t *testing.T) {
 }
 
 func TestRest_Email(t *testing.T) {
-	ts, srv, teardown := startupT(t)
+	ts, srv, _, teardown := startupT(t)
 	defer teardown()
 
 	// issue good token
@@ -516,17 +516,17 @@ func TestRest_Email(t *testing.T) {
 }
 
 func TestRest_EmailNotification(t *testing.T) {
-	ts, srv, teardown := startupT(t)
+	ts, _, mockDestination, teardown := startupT(t)
 	defer teardown()
-	mockDestination := &notify.MockDest{}
-	mockDataStore := notify.MockStore{}
-	srv.NotifyService = notify.NewService(mockDataStore, 1, mockDestination)
 
 	client := http.Client{}
 
 	// create new comment from dev user
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(
-		`{"text": "test 123", "user": {"name": "dev::good@example.com"}, "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`))
+		`{"text": "test 123",
+"user": {"name": "dev::good@example.com"},
+"locator":{"url": "https://radio-t.com/blah1",
+"site": "remark42"}}`))
 	assert.Nil(t, err)
 	req.SetBasicAuth("admin", "password")
 	resp, err := client.Do(req)
@@ -534,10 +534,20 @@ func TestRest_EmailNotification(t *testing.T) {
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
+	parentComment := store.Comment{}
+	require.NoError(t, render.DecodeJSON(strings.NewReader(string(body)), &parentComment))
+	// wait for mock notification Submit to kick off
+	time.Sleep(time.Millisecond * 5)
+	require.Equal(t, 1, len(mockDestination.Get()))
+	assert.Equal(t, "", mockDestination.Get()[0].Email)
 
 	// create child comment from another user, no email notification expected
-	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(
-		`{"text": "test 456", "user": {"name": "other_user"}, "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`))
+	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(fmt.Sprintf(
+		`{"text": "test 456",
+	"pid": "%s",
+	"user": {"name": "other_user"},
+	"locator":{"url": "https://radio-t.com/blah1",
+	"site": "remark42"}}`, parentComment.ID)))
 	assert.Nil(t, err)
 	req.SetBasicAuth("admin", "password")
 	resp, err = client.Do(req)
@@ -545,7 +555,10 @@ func TestRest_EmailNotification(t *testing.T) {
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
-	// TODO check notification email, should be empty
+	// wait for mock notification Submit to kick off
+	time.Sleep(time.Millisecond * 5)
+	require.Equal(t, 2, len(mockDestination.Get()))
+	assert.Equal(t, "", mockDestination.Get()[1].Email)
 
 	// send confirmation token for email
 	req, err = http.NewRequest(http.MethodPost, ts.URL+"/api/v1/email/subscribe?site=remark42&address=good@example.com", nil)
@@ -555,12 +568,14 @@ func TestRest_EmailNotification(t *testing.T) {
 	require.NoError(t, err)
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode, string(body))
+	require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
+	// wait for mock notification Submit to kick off
+	time.Sleep(time.Millisecond * 5)
+	require.Equal(t, 3, len(mockDestination.Get()))
+	require.NotEmpty(t, mockDestination.Get()[2].Verification)
+	verificationToken := mockDestination.Get()[2].Verification.Token
 
-	// TODO read confirmation
-
-	// TODO confirm email with confirmation we've read
-	req, err = http.NewRequest(http.MethodPost, ts.URL+fmt.Sprintf("/api/v1/email/confirm?site=remark42&tkn=%s", "token"), nil)
+	req, err = http.NewRequest(http.MethodPost, ts.URL+fmt.Sprintf("/api/v1/email/confirm?site=remark42&tkn=%s", verificationToken), nil)
 	require.NoError(t, err)
 	req.Header.Add("X-JWT", devToken)
 	resp, err = client.Do(req)
@@ -568,44 +583,25 @@ func TestRest_EmailNotification(t *testing.T) {
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	//assert.Equal(t, http.StatusOK, resp.StatusCode, string(body))
-
-	// create child comment from another user, email notification expected
-	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(
-		`{"text": "test 789", "user": {"name": "other_user"}, "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`))
-	assert.Nil(t, err)
-	req.SetBasicAuth("admin", "password")
-	resp, err = client.Do(req)
-	assert.Nil(t, err)
-	body, err = ioutil.ReadAll(resp.Body)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
-	// TODO check notification email, should not be empty
-
-	// delete user's email
-	req, err = http.NewRequest(http.MethodDelete, ts.URL+"/api/v1/email?site=remark42", nil)
-	require.NoError(t, err)
-	req.Header.Add("X-JWT", devToken)
-	resp, err = client.Do(req)
-	require.NoError(t, err)
-	body, err = ioutil.ReadAll(resp.Body)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode, string(body))
-
-	// create child comment from another user, no email notification expected
-	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(
-		`{"text": "test 321", "user": {"name": "other_user"}, "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`))
-	assert.Nil(t, err)
-	req.SetBasicAuth("admin", "password")
-	resp, err = client.Do(req)
-	assert.Nil(t, err)
-	body, err = ioutil.ReadAll(resp.Body)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
-	// TODO check notification email, should be empty
+	//
+	//// create child comment from another user, no email notification expected
+	//req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(
+	//	`{"text": "test 321",
+	//"user": {"name": "other_user"},
+	//"locator":{"url": "https://radio-t.com/blah1",
+	//"site": "remark42"}}`))
+	//assert.Nil(t, err)
+	//req.SetBasicAuth("admin", "password")
+	//resp, err = client.Do(req)
+	//assert.Nil(t, err)
+	//body, err = ioutil.ReadAll(resp.Body)
+	//require.NoError(t, err)
+	//require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
+	//// TODO check notification email, should be empty
 }
 
 func TestRest_UserAllData(t *testing.T) {
-	ts, srv, teardown := startupT(t)
+	ts, srv, _, teardown := startupT(t)
 	defer teardown()
 
 	// write 3 comments
@@ -661,7 +657,7 @@ func TestRest_UserAllData(t *testing.T) {
 }
 
 func TestRest_UserAllDataManyComments(t *testing.T) {
-	ts, srv, teardown := startupT(t)
+	ts, srv, _, teardown := startupT(t)
 	defer teardown()
 
 	user := store.User{ID: "dev", Name: "user name 1"}
@@ -694,7 +690,7 @@ func TestRest_UserAllDataManyComments(t *testing.T) {
 }
 
 func TestRest_DeleteMe(t *testing.T) {
-	ts, srv, teardown := startupT(t)
+	ts, srv, _, teardown := startupT(t)
 	defer teardown()
 
 	client := http.Client{}
@@ -727,7 +723,7 @@ func TestRest_DeleteMe(t *testing.T) {
 }
 
 func TestRest_SavePictureCtrl(t *testing.T) {
-	ts, _, teardown := startupT(t)
+	ts, _, _, teardown := startupT(t)
 	defer teardown()
 
 	// save picture
@@ -792,7 +788,7 @@ func TestRest_SavePictureCtrl(t *testing.T) {
 }
 
 func TestRest_CreateWithPictures(t *testing.T) {
-	ts, svc, teardown := startupT(t)
+	ts, svc, _, teardown := startupT(t)
 	defer func() {
 		teardown()
 		os.RemoveAll("/tmp/remark42")
