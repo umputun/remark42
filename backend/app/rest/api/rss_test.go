@@ -14,7 +14,7 @@ import (
 )
 
 func TestServer_RssPost(t *testing.T) {
-	ts, rst, _, teardown := startupT(t)
+	ts, rst, teardown := startupT(t)
 	defer teardown()
 
 	waitOnSecChange()
@@ -59,7 +59,7 @@ func TestServer_RssPost(t *testing.T) {
 }
 
 func TestServer_RssSite(t *testing.T) {
-	ts, rst, _, teardown := startupT(t)
+	ts, rst, teardown := startupT(t)
 	defer teardown()
 
 	waitOnSecChange()
@@ -122,7 +122,7 @@ func TestServer_RssSite(t *testing.T) {
 }
 
 func TestServer_RssWithReply(t *testing.T) {
-	ts, rst, _, teardown := startupT(t)
+	ts, rst, teardown := startupT(t)
 	defer teardown()
 
 	waitOnSecChange()
@@ -182,7 +182,7 @@ func TestServer_RssWithReply(t *testing.T) {
 }
 
 func TestServer_RssReplies(t *testing.T) {
-	ts, srv, _, teardown := startupT(t)
+	ts, srv, teardown := startupT(t)
 	defer teardown()
 
 	waitOnSecChange()

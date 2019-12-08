@@ -26,7 +26,7 @@ import (
 )
 
 func TestAdmin_Delete(t *testing.T) {
-	ts, _, _, teardown := startupT(t)
+	ts, _, teardown := startupT(t)
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1", User: store.User{ID: "id", Name: "name"},
@@ -108,7 +108,7 @@ func TestAdmin_Delete(t *testing.T) {
 }
 
 func TestAdmin_Title(t *testing.T) {
-	ts, srv, _, teardown := startupT(t)
+	ts, srv, teardown := startupT(t)
 	defer teardown()
 
 	srv.DataService.TitleExtractor = service.NewTitleExtractor(http.Client{Timeout: time.Second})
@@ -152,7 +152,7 @@ func TestAdmin_Title(t *testing.T) {
 }
 
 func TestAdmin_DeleteUser(t *testing.T) {
-	ts, srv, _, teardown := startupT(t)
+	ts, srv, teardown := startupT(t)
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1", Orig: "o test test #1", User: store.User{ID: "id1", Name: "name"},
@@ -204,7 +204,7 @@ func TestAdmin_DeleteUser(t *testing.T) {
 }
 
 func TestAdmin_Pin(t *testing.T) {
-	ts, _, _, teardown := startupT(t)
+	ts, _, teardown := startupT(t)
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1",
@@ -248,7 +248,7 @@ func TestAdmin_Pin(t *testing.T) {
 }
 
 func TestAdmin_Block(t *testing.T) {
-	ts, srv, _, teardown := startupT(t)
+	ts, srv, teardown := startupT(t)
 	defer teardown()
 
 	makeTwoComments := func() {
@@ -360,7 +360,7 @@ func TestAdmin_Block(t *testing.T) {
 }
 
 func TestAdmin_BlockedList(t *testing.T) {
-	ts, srv, _, teardown := startupT(t)
+	ts, srv, teardown := startupT(t)
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
@@ -418,7 +418,7 @@ func TestAdmin_BlockedList(t *testing.T) {
 }
 
 func TestAdmin_ReadOnly(t *testing.T) {
-	ts, srv, _, teardown := startupT(t)
+	ts, srv, teardown := startupT(t)
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
@@ -484,7 +484,7 @@ func TestAdmin_ReadOnly(t *testing.T) {
 }
 
 func TestAdmin_ReadOnlyNoComments(t *testing.T) {
-	ts, srv, _, teardown := startupT(t)
+	ts, srv, teardown := startupT(t)
 	defer teardown()
 
 	// set post to read-only
@@ -509,7 +509,7 @@ func TestAdmin_ReadOnlyNoComments(t *testing.T) {
 }
 
 func TestAdmin_ReadOnlyWithAge(t *testing.T) {
-	ts, srv, _, teardown := startupT(t)
+	ts, srv, teardown := startupT(t)
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
@@ -547,7 +547,7 @@ func TestAdmin_ReadOnlyWithAge(t *testing.T) {
 
 }
 func TestAdmin_Verify(t *testing.T) {
-	ts, srv, _, teardown := startupT(t)
+	ts, srv, teardown := startupT(t)
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
@@ -602,7 +602,7 @@ func TestAdmin_Verify(t *testing.T) {
 }
 
 func TestAdmin_ExportStream(t *testing.T) {
-	ts, _, _, teardown := startupT(t)
+	ts, _, teardown := startupT(t)
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1",
@@ -621,7 +621,7 @@ func TestAdmin_ExportStream(t *testing.T) {
 }
 
 func TestAdmin_ExportFile(t *testing.T) {
-	ts, _, _, teardown := startupT(t)
+	ts, _, teardown := startupT(t)
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1",
@@ -651,7 +651,7 @@ func TestAdmin_ExportFile(t *testing.T) {
 }
 
 func TestAdmin_DeleteMeRequest(t *testing.T) {
-	ts, srv, _, teardown := startupT(t)
+	ts, srv, teardown := startupT(t)
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
@@ -706,7 +706,7 @@ func TestAdmin_DeleteMeRequest(t *testing.T) {
 }
 
 func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
-	ts, srv, _, teardown := startupT(t)
+	ts, srv, teardown := startupT(t)
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
@@ -784,7 +784,7 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 }
 
 func TestAdmin_GetUserInfo(t *testing.T) {
-	ts, srv, _, teardown := startupT(t)
+	ts, srv, teardown := startupT(t)
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42",

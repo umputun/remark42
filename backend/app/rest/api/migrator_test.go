@@ -22,7 +22,7 @@ import (
 )
 
 func TestMigrator_Import(t *testing.T) {
-	ts, _, _, teardown := startupT(t)
+	ts, _, teardown := startupT(t)
 	defer teardown()
 
 	r := strings.NewReader(`{"version":1} {"id":"2aa0478c-df1b-46b1-b561-03d507cf482c","pid":"","text":"<p>test test #1</p>",
@@ -51,7 +51,7 @@ func TestMigrator_Import(t *testing.T) {
 }
 
 func TestMigrator_ImportForm(t *testing.T) {
-	ts, _, _, teardown := startupT(t)
+	ts, _, teardown := startupT(t)
 	defer teardown()
 
 	r := strings.NewReader(`{"version":1} {"id":"2aa0478c-df1b-46b1-b561-03d507cf482c","pid":"","text":"<p>test test #1</p>",
@@ -85,7 +85,7 @@ func TestMigrator_ImportForm(t *testing.T) {
 }
 
 func TestMigrator_ImportFromWP(t *testing.T) {
-	ts, _, _, teardown := startupT(t)
+	ts, _, teardown := startupT(t)
 	defer teardown()
 
 	r := strings.NewReader(strings.Replace(xmlTestWP, "'", "`", -1))
@@ -107,7 +107,7 @@ func TestMigrator_ImportFromWP(t *testing.T) {
 }
 
 func TestMigrator_ImportRejected(t *testing.T) {
-	ts, _, _, teardown := startupT(t)
+	ts, _, teardown := startupT(t)
 	defer teardown()
 
 	r := strings.NewReader(`{"version":1} {"id":"2aa0478c-df1b-46b1-b561-03d507cf482c","pid":"","text":"<p>test test #1</p>",
@@ -128,7 +128,7 @@ func TestMigrator_ImportRejected(t *testing.T) {
 }
 
 func TestMigrator_ImportDouble(t *testing.T) {
-	ts, _, _, teardown := startupT(t)
+	ts, _, teardown := startupT(t)
 	defer teardown()
 
 	tmpl := `{"id":"%d","pid":"","text":"<p>test test #1</p>","user":{"name":"developer one","id":"dev",
@@ -161,7 +161,7 @@ func TestMigrator_ImportDouble(t *testing.T) {
 }
 
 func TestMigrator_ImportWaitExpired(t *testing.T) {
-	ts, _, _, teardown := startupT(t)
+	ts, _, teardown := startupT(t)
 	defer teardown()
 
 	tmpl := `{"id":"%d","pid":"","text":"<p>test test #1</p>","user":{"name":"developer one","id":"dev",
@@ -195,7 +195,7 @@ func TestMigrator_ImportWaitExpired(t *testing.T) {
 }
 
 func TestMigrator_Export(t *testing.T) {
-	ts, _, _, teardown := startupT(t)
+	ts, _, teardown := startupT(t)
 	defer teardown()
 
 	r := strings.NewReader(`{"version":1} {"id":"2aa0478c-df1b-46b1-b561-03d507cf482c","pid":"","text":"<p>test test #1</p>",
@@ -257,7 +257,7 @@ func TestMigrator_Export(t *testing.T) {
 }
 
 func TestMigrator_Remap(t *testing.T) {
-	ts, srv, _, teardown := startupT(t)
+	ts, srv, teardown := startupT(t)
 	defer teardown()
 
 	// create 2 comments in https://remark42.com/demo/
@@ -341,7 +341,7 @@ func TestMigrator_Remap(t *testing.T) {
 }
 
 func TestMigrator_RemapReject(t *testing.T) {
-	ts, _, _, teardown := startupT(t)
+	ts, _, teardown := startupT(t)
 	defer teardown()
 
 	// without admin credentials

@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/umputun/remark/backend/app/notify"
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/image"
 )
@@ -33,7 +34,7 @@ const gopher = `iVBORw0KGgoAAAANSUhEUgAAAEsAAAA8CAAAAAALAhhPAAAFfUlEQVRYw62XeWwU
 func gopherPNG() io.Reader { return base64.NewDecoder(base64.StdEncoding, strings.NewReader(gopher)) }
 
 func TestRest_Create(t *testing.T) {
-	ts, _, _, teardown := startupT(t)
+	ts, _, teardown := startupT(t)
 	defer teardown()
 
 	resp, err := post(t, ts.URL+"/api/v1/comment",
@@ -54,7 +55,7 @@ func TestRest_Create(t *testing.T) {
 }
 
 func TestRest_CreateOldPost(t *testing.T) {
-	ts, srv, _, teardown := startupT(t)
+	ts, srv, teardown := startupT(t)
 	defer teardown()
 
 	// make old, but not too old comment
@@ -87,7 +88,7 @@ func TestRest_CreateOldPost(t *testing.T) {
 }
 
 func TestRest_CreateTooBig(t *testing.T) {
-	ts, _, _, teardown := startupT(t)
+	ts, _, teardown := startupT(t)
 	defer teardown()
 
 	longComment := fmt.Sprintf(`{"text": "%4001s", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`, "Щ")
@@ -117,7 +118,7 @@ func TestRest_CreateTooBig(t *testing.T) {
 }
 
 func TestRest_CreateWithRestrictedWord(t *testing.T) {
-	ts, _, _, teardown := startupT(t)
+	ts, _, teardown := startupT(t)
 	defer teardown()
 
 	badComment := fmt.Sprintf(`{"text": "What the duck is that?", "locator":{"url": "https://radio-t.com/blah1", 
@@ -137,7 +138,7 @@ func TestRest_CreateWithRestrictedWord(t *testing.T) {
 
 func TestRest_CreateRejected(t *testing.T) {
 
-	ts, _, _, teardown := startupT(t)
+	ts, _, teardown := startupT(t)
 	defer teardown()
 	body := `{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`
 
@@ -157,7 +158,7 @@ func TestRest_CreateRejected(t *testing.T) {
 }
 
 func TestRest_CreateAndGet(t *testing.T) {
-	ts, _, _, teardown := startupT(t)
+	ts, _, teardown := startupT(t)
 	defer teardown()
 
 	// create comment
@@ -196,7 +197,7 @@ func TestRest_CreateAndGet(t *testing.T) {
 }
 
 func TestRest_Update(t *testing.T) {
-	ts, _, _, teardown := startupT(t)
+	ts, _, teardown := startupT(t)
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1", ParentID: "p1",
@@ -234,7 +235,7 @@ func TestRest_Update(t *testing.T) {
 }
 
 func TestRest_UpdateDelete(t *testing.T) {
-	ts, _, _, teardown := startupT(t)
+	ts, _, teardown := startupT(t)
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1", ParentID: "p1",
@@ -296,7 +297,7 @@ func TestRest_UpdateDelete(t *testing.T) {
 }
 
 func TestRest_UpdateNotOwner(t *testing.T) {
-	ts, srv, _, teardown := startupT(t)
+	ts, srv, teardown := startupT(t)
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1", ParentID: "p1",
@@ -327,7 +328,7 @@ func TestRest_UpdateNotOwner(t *testing.T) {
 }
 
 func TestRest_UpdateWrongAud(t *testing.T) {
-	ts, _, _, teardown := startupT(t)
+	ts, _, teardown := startupT(t)
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1", ParentID: "p1",
@@ -345,7 +346,7 @@ func TestRest_UpdateWrongAud(t *testing.T) {
 }
 
 func TestRest_UpdateWithRestrictedWords(t *testing.T) {
-	ts, _, _, teardown := startupT(t)
+	ts, _, teardown := startupT(t)
 	defer teardown()
 
 	c1 := store.Comment{Text: "What the quack is that?", ParentID: "p1",
@@ -370,7 +371,7 @@ func TestRest_UpdateWithRestrictedWords(t *testing.T) {
 }
 
 func TestRest_Vote(t *testing.T) {
-	ts, _, _, teardown := startupT(t)
+	ts, _, teardown := startupT(t)
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1",
@@ -454,7 +455,7 @@ func TestRest_Vote(t *testing.T) {
 }
 
 func TestRest_Email(t *testing.T) {
-	ts, srv, _, teardown := startupT(t)
+	ts, srv, teardown := startupT(t)
 	defer teardown()
 
 	// issue good token
@@ -517,7 +518,8 @@ func TestRest_Email(t *testing.T) {
 }
 
 func TestRest_EmailNotification(t *testing.T) {
-	ts, _, mockDestination, teardown := startupT(t)
+	mockDestination := &notify.MockDest{}
+	ts, _, teardown := startupTWithDest(t, mockDestination)
 	defer teardown()
 
 	client := http.Client{}
@@ -635,7 +637,7 @@ func TestRest_EmailNotification(t *testing.T) {
 }
 
 func TestRest_UserAllData(t *testing.T) {
-	ts, srv, _, teardown := startupT(t)
+	ts, srv, teardown := startupT(t)
 	defer teardown()
 
 	// write 3 comments
@@ -691,7 +693,7 @@ func TestRest_UserAllData(t *testing.T) {
 }
 
 func TestRest_UserAllDataManyComments(t *testing.T) {
-	ts, srv, _, teardown := startupT(t)
+	ts, srv, teardown := startupT(t)
 	defer teardown()
 
 	user := store.User{ID: "dev", Name: "user name 1"}
@@ -724,7 +726,7 @@ func TestRest_UserAllDataManyComments(t *testing.T) {
 }
 
 func TestRest_DeleteMe(t *testing.T) {
-	ts, srv, _, teardown := startupT(t)
+	ts, srv, teardown := startupT(t)
 	defer teardown()
 
 	client := http.Client{}
@@ -757,7 +759,7 @@ func TestRest_DeleteMe(t *testing.T) {
 }
 
 func TestRest_SavePictureCtrl(t *testing.T) {
-	ts, _, _, teardown := startupT(t)
+	ts, _, teardown := startupT(t)
 	defer teardown()
 
 	// save picture
@@ -822,7 +824,7 @@ func TestRest_SavePictureCtrl(t *testing.T) {
 }
 
 func TestRest_CreateWithPictures(t *testing.T) {
-	ts, svc, _, teardown := startupT(t)
+	ts, svc, teardown := startupT(t)
 	defer func() {
 		teardown()
 		os.RemoveAll("/tmp/remark42")
