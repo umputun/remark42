@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -558,7 +559,7 @@ func TestRest_EmailNotification(t *testing.T) {
 	// wait for mock notification Submit to kick off
 	time.Sleep(time.Millisecond * 5)
 	require.Equal(t, 2, len(mockDestination.Get()))
-	assert.Equal(t, "", mockDestination.Get()[1].Email)
+	assert.Empty(t, mockDestination.Get()[1].Email)
 
 	// send confirmation token for email
 	req, err = http.NewRequest(http.MethodPost, ts.URL+"/api/v1/email/subscribe?site=remark42&address=good@example.com", nil)
@@ -575,6 +576,7 @@ func TestRest_EmailNotification(t *testing.T) {
 	require.NotEmpty(t, mockDestination.Get()[2].Verification)
 	verificationToken := mockDestination.Get()[2].Verification.Token
 
+	// verify email
 	req, err = http.NewRequest(http.MethodPost, ts.URL+fmt.Sprintf("/api/v1/email/confirm?site=remark42&tkn=%s", verificationToken), nil)
 	require.NoError(t, err)
 	req.Header.Add("X-JWT", devToken)
@@ -582,22 +584,55 @@ func TestRest_EmailNotification(t *testing.T) {
 	require.NoError(t, err)
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
-	//assert.Equal(t, http.StatusOK, resp.StatusCode, string(body))
-	//
-	//// create child comment from another user, no email notification expected
-	//req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(
-	//	`{"text": "test 321",
-	//"user": {"name": "other_user"},
-	//"locator":{"url": "https://radio-t.com/blah1",
-	//"site": "remark42"}}`))
-	//assert.Nil(t, err)
-	//req.SetBasicAuth("admin", "password")
-	//resp, err = client.Do(req)
-	//assert.Nil(t, err)
-	//body, err = ioutil.ReadAll(resp.Body)
-	//require.NoError(t, err)
-	//require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
-	//// TODO check notification email, should be empty
+	require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
+
+	// create child comment from another user, email notification expected
+	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(fmt.Sprintf(
+		`{"text": "test 789",
+	"pid": "%s",
+	"user": {"name": "other_user"},
+	"locator":{"url": "https://radio-t.com/blah1",
+	"site": "remark42"}}`, parentComment.ID)))
+	assert.Nil(t, err)
+	req.SetBasicAuth("admin", "password")
+	resp, err = client.Do(req)
+	assert.Nil(t, err)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
+	// wait for mock notification Submit to kick off
+	time.Sleep(time.Millisecond * 5)
+	require.Equal(t, 4, len(mockDestination.Get()))
+	log.Printf("%v", mockDestination.Get())
+	assert.Equal(t, "good@example.com", mockDestination.Get()[3].Email)
+
+	// delete user's email
+	req, err = http.NewRequest(http.MethodDelete, ts.URL+"/api/v1/email?site=remark42", nil)
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode, string(body))
+
+	// create child comment from another user, no email notification expected
+	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(
+		`{"text": "test 321",
+	"user": {"name": "other_user"},
+	"locator":{"url": "https://radio-t.com/blah1",
+	"site": "remark42"}}`))
+	assert.Nil(t, err)
+	req.SetBasicAuth("admin", "password")
+	resp, err = client.Do(req)
+	assert.Nil(t, err)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
+	// wait for mock notification Submit to kick off
+	time.Sleep(time.Millisecond * 5)
+	require.Equal(t, 5, len(mockDestination.Get()))
+	assert.Empty(t, mockDestination.Get()[4].Email)
 }
 
 func TestRest_UserAllData(t *testing.T) {
