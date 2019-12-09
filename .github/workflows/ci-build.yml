@@ -50,6 +50,11 @@ jobs:
           --enable=megacheck --enable=structcheck --enable=gas --enable=gocyclo --enable=dupl --enable=misspell \
           --enable=unparam --enable=varcheck --enable=deadcode --enable=typecheck \
           --enable=ineffassign --enable=varcheck ./... ;
+        cd ../_example/memory_store
+        $GITHUB_WORKSPACE/golangci-lint run --out-format=tab --disable-all --tests=false --enable=unconvert \
+          --enable=megacheck --enable=structcheck --enable=gas --enable=gocyclo --enable=dupl --enable=misspell \
+          --enable=unparam --enable=varcheck --enable=deadcode --enable=typecheck \
+          --enable=ineffassign --enable=varcheck ./... ;
 
     - name: submit coverage
       run: |
