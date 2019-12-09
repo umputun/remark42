@@ -50,7 +50,7 @@ Content-Type: application/json
 
 {
 	"text": "edit comment blah http://radio-t.com 12345",
-  	"summary": "fix blah"
+	"summary": "fix blah"
 }
 
 ### pin comment
@@ -83,9 +83,9 @@ POST {{host}}/api/v1/counts?site={{site}}
 Content-Type: application/json
 
 [
-    "https://radio-t.com/p/2017/12/02/podcast-574/",
-    "https://radio-t.com/p/2017/12/09/podcast-575/",
-    "{{url}}"
+	"https://radio-t.com/p/2017/12/02/podcast-574/",
+	"https://radio-t.com/p/2017/12/09/podcast-575/",
+	"{{url}}"
 ]
 
 ### list commented posts
@@ -118,8 +118,20 @@ GET {{host}}/api/v1/rss/reply?site={{site}}&user={{user}}
 ### get default avatar
 GET {{host}}/api/v1/avatar/blah
 
+### send confirmation token for current user to specified email
+POST {{host}}/api/v1/email/subscribe?site={{site}}&address={{email}}
+
+### add email for notifications for current user via token from email
+POST {{host}}/api/v1/email/confirm?site={{site}}&tkn={{token}}
+
+### get current user email
+GET {{host}}/api/v1/email?site={{site}}
+
+### delete current user email
+DELETE {{host}}/api/v1/email
+
 ### get config
-GET  {{host}}/api/v1/config?site={{site}}
+GET {{host}}/api/v1/config?site={{site}}
 
 ### deleteme (user's request). dev token for secret=secret, not admin
 POST {{host}}/api/v1/deleteme?site_id={{site}}
