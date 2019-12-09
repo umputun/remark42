@@ -367,7 +367,7 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 	return ts, srv, teardown
 }
 
-// fake auth middleware make user authed and uses query's fake_id for ID and fake_name for Name
+// fake auth middleware make user authenticated and uses query's fake_id for ID and fake_name for Name
 func fakeAuth(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get("fake_id") != "" {

@@ -40,7 +40,7 @@ func NewTelegram(token string, channelID string, timeout time.Duration, api stri
 	if res.timeout == 0 {
 		res.timeout = telegramTimeOut
 	}
-	log.Printf("[DEBUG] create new telegram notifier for cham %s, timeout=%s, api=%s", channelID, res.timeout, res.timeout)
+	log.Printf("[DEBUG] create new telegram notifier for chan %s, timeout=%s, api=%s", channelID, res.timeout, res.timeout)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
