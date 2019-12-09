@@ -50,6 +50,7 @@ For admin screenshots see [Admin UI wiki](https://github.com/umputun/remark/wiki
         - [Google Auth Provider](#google-auth-provider)
         - [GitHub Auth Provider](#github-auth-provider)
         - [Facebook Auth Provider](#facebook-auth-provider)
+        - [Twitter Auth Provider](#twitter-auth-provider)
         - [Yandex Auth Provider](#yandex-auth-provider)
       - [Initial import from Disqus](#initial-import-from-disqus)
       - [Initial import from WordPress](#initial-import-from-wordpress)
@@ -261,9 +262,10 @@ _instructions for google oauth2 setup borrowed from [oauth2_proxy](https://githu
 ##### Twitter Auth Provider
 
 1.	Create a new twitter application https://developer.twitter.com/en/apps
-1.	Fill **App name**  and **Description** and **URL** of your site
-1.	In the field **Callback URLs** enter the correct url of your callback handler e.g. https://example.mysite.com/{route}/twitter/callback
-1.	Under **Key and tokens** take note of the **Consumer API Key** and **Consumer API Secret key**. Those will be used as `cid` and `csecret`
+1.	Fill **App name**, **Description** and **URL** of your site
+1.	In the field **Callback URLs** enter the correct url of your callback handler e.g.  domain + `/auth/twitter/callback`
+1.	Under **Key and tokens** take note of the **Consumer API Key** and **Consumer API Secret key**. Those will be used as `AUTH_TWITTER_CID` and
+ `AUTH_TWITTER_CSEC`
 
 ##### Yandex Auth Provider
 
@@ -774,17 +776,17 @@ _returned id should be appended to load image url on caller side_
       Until     time.Time `json:"time"`
   }
   ```
-* `GET /api/v1/admin/export?site=side-id&mode=[stream|file]` - export all comments to json stream or gz file.
-* `POST /api/v1/admin/import?site=side-id` - import comments from the backup, uses post body.
-* `POST /api/v1/admin/import/form?site=side-id` - import comments from the backup, user post form.
-* `POST /api/v1/admin/remap?site=side-id` - remap comments to different URLs. Expect list of "from-url new-url" pairs separated by \n. 
+* `GET /api/v1/admin/export?site=site-id&mode=[stream|file]` - export all comments to json stream or gz file.
+* `POST /api/v1/admin/import?site=site-id` - import comments from the backup, uses post body.
+* `POST /api/v1/admin/import/form?site=site-id` - import comments from the backup, user post form.
+* `POST /api/v1/admin/remap?site=site-id` - remap comments to different URLs. Expect list of "from-url new-url" pairs separated by \n.
 From-url and new-url parts separated by space. If urls end with asterisk (*) it means matching by prefix. Remap procedure based on
 export/import chain so make backup first.
     ```
     http://oldsite.com* https://newsite.com*
     http://oldsite.com/from-old-page/1 https://newsite.com/to-new-page/1
     ```
-* `GET /api/v1/admin/wait?site=side-id` - wait for completion for any async migration ops (import or remap).
+* `GET /api/v1/admin/wait?site=site-id` - wait for completion for any async migration ops (import or remap).
 * `PUT /api/v1/admin/pin/{id}?site=site-id&url=post-url&pin=1` - pin or unpin comment.
 * `GET /api/v1/admin/user/{userid}?site=site-id` - get user's info.
 * `DELETE /api/v1/admin/user/{userid}?site=site-id` - delete all user's comments.

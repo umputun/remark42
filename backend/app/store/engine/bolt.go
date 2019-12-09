@@ -16,12 +16,13 @@ import (
 )
 
 // BoltDB implements store.Interface, represents multiple sites with multiplexing to different bolt dbs. Thread safe.
-// there are 5 types of top-level buckets:
+// there are 6 types of top-level buckets:
 //  - comments for post in "posts" top-level bucket. Each url (post) makes its own bucket and each k:v pair is commentID:comment
 //  - history of all comments. They all in a single "last" bucket (per site) and key is defined by ref struct as ts+commentID
 //    value is not full comment but a reference combined from post-url+commentID
 //  - user to comment references in "users" bucket. It used to get comments for user. Key is userID and value
 //    is a nested bucket named userID with kv as ts:reference
+//  - users details in "user_details" bucket. Key is userID, value - UserDetailEntry
 //  - blocking info sits in "block" bucket. Key is userID, value - ts
 //  - counts per post to keep number of comments. Key is post url, value - count
 //  - readonly per post to keep status of manually set RO posts. Key is post url, value - ts
@@ -31,13 +32,14 @@ type BoltDB struct {
 
 const (
 	// top level buckets
-	postsBucketName    = "posts"
-	lastBucketName     = "last"
-	userBucketName     = "users"
-	blocksBucketName   = "block"
-	infoBucketName     = "info"
-	readonlyBucketName = "readonly"
-	verifiedBucketName = "verified"
+	postsBucketName       = "posts"
+	lastBucketName        = "last"
+	userBucketName        = "users"
+	userDetailsBucketName = "user_details"
+	blocksBucketName      = "block"
+	infoBucketName        = "info"
+	readonlyBucketName    = "readonly"
+	verifiedBucketName    = "verified"
 
 	tsNano = "2006-01-02T15:04:05.000000000Z07:00"
 )
@@ -59,8 +61,8 @@ func NewBoltDB(options bolt.Options, sites ...BoltSite) (*BoltDB, error) {
 		}
 
 		// make top-level buckets
-		topBuckets := []string{postsBucketName, lastBucketName, userBucketName, blocksBucketName, infoBucketName,
-			readonlyBucketName, verifiedBucketName}
+		topBuckets := []string{postsBucketName, lastBucketName, userBucketName, userDetailsBucketName,
+			blocksBucketName, infoBucketName, readonlyBucketName, verifiedBucketName}
 		err = db.Update(func(tx *bolt.Tx) error {
 			for _, bktName := range topBuckets {
 				if _, e := tx.CreateBucketIfNotExists([]byte(bktName)); e != nil {
@@ -202,6 +204,33 @@ func (b *BoltDB) Flag(req FlagRequest) (val bool, err error) {
 
 	// write flag value
 	return b.setFlag(req)
+}
+
+// UserDetail sets or gets single detail value, or gets all details for requested site.
+// UserDetail returns list even for single entry request is a compromise in order to have both single detail getting and setting
+// and all site's details listing under the same function (and not to extend interface by two separate functions).
+func (b *BoltDB) UserDetail(req UserDetailRequest) ([]UserDetailEntry, error) {
+	switch req.Detail {
+	case UserEmail:
+		if req.UserID == "" {
+			return nil, errors.New("userid cannot be empty in request for single detail")
+		}
+
+		if req.Update == "" { // read detail value, no update requested
+			return b.getUserDetail(req)
+		}
+
+		return b.setUserDetail(req)
+	case AllUserDetails:
+		// list of all details returned in case request is a read request
+		// (Update is not set) and does not have UserID
+		if req.Update == "" && req.UserID == "" { // read list of all details
+			return b.listDetails(req.Locator)
+		}
+		return nil, errors.New("unsupported request with userdetail all")
+	default:
+		return nil, errors.Errorf("unsupported detail %q", req.Detail)
+	}
 }
 
 // Update for locator.URL with mutable part of comment
@@ -369,7 +398,7 @@ func (b *BoltDB) ListFlags(req FlagRequest) (res []interface{}, err error) {
 	return nil, errors.Errorf("flag %s not listable", req.Flag)
 }
 
-// Delete post(s) by id or by userID
+// Delete post(s), user, comment, user details, or everything
 func (b *BoltDB) Delete(req DeleteRequest) error {
 
 	bdb, e := b.db(req.Locator.SiteID)
@@ -378,11 +407,13 @@ func (b *BoltDB) Delete(req DeleteRequest) error {
 	}
 
 	switch {
-	case req.Locator.URL != "" && req.CommentID != "":
+	case req.UserDetail != "": // delete user detail
+		return b.deleteUserDetail(bdb, req.UserID, req.UserDetail)
+	case req.Locator.URL != "" && req.CommentID != "" && req.UserDetail == "": // delete comment
 		return b.deleteComment(bdb, req.Locator, req.CommentID, req.DeleteMode)
-	case req.Locator.SiteID != "" && req.UserID != "" && req.CommentID == "":
+	case req.Locator.SiteID != "" && req.UserID != "" && req.CommentID == "" && req.UserDetail == "": // delete user
 		return b.deleteUser(bdb, req.Locator.SiteID, req.UserID, req.DeleteMode)
-	case req.Locator.SiteID != "" && req.Locator.URL == "" && req.CommentID == "" && req.UserID == "":
+	case req.Locator.SiteID != "" && req.Locator.URL == "" && req.CommentID == "" && req.UserID == "" && req.UserDetail == "": // delete site
 		return b.deleteAll(bdb, req.Locator.SiteID)
 	}
 
@@ -617,6 +648,142 @@ func (b *BoltDB) flagBucket(tx *bolt.Tx, flag Flag) (bkt *bolt.Bucket, err error
 	return bkt, nil
 }
 
+// getUserDetail returns UserDetailEntry with requested userDetail (omitting other details)
+// as an only element of the slice.
+func (b *BoltDB) getUserDetail(req UserDetailRequest) (result []UserDetailEntry, err error) {
+	bdb, e := b.db(req.Locator.SiteID)
+	if e != nil {
+		return result, e
+	}
+
+	err = bdb.View(func(tx *bolt.Tx) error {
+		var entry UserDetailEntry
+		bucket := tx.Bucket([]byte(userDetailsBucketName))
+		value := bucket.Get([]byte(req.UserID))
+		// return no error in case of absent entry
+		if value != nil {
+			if err := json.Unmarshal(value, &entry); err != nil {
+				return errors.Wrap(e, "failed to unmarshal entry")
+			}
+			switch req.Detail {
+			case UserEmail:
+				result = []UserDetailEntry{{UserID: req.UserID, Email: entry.Email}}
+			}
+		}
+		return nil
+	})
+
+	return result, err
+}
+
+// setUserDetail sets requested userDetail, returning complete updated UserDetailEntry as an onlyIps
+// element of the slice in case of success
+func (b *BoltDB) setUserDetail(req UserDetailRequest) (result []UserDetailEntry, err error) {
+	bdb, e := b.db(req.Locator.SiteID)
+	if e != nil {
+		return result, e
+	}
+
+	var entry UserDetailEntry
+	err = bdb.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(userDetailsBucketName))
+		value := bucket.Get([]byte(req.UserID))
+		// return no error in case of absent entry
+		if value != nil {
+			if err := json.Unmarshal(value, &entry); err != nil {
+				return errors.Wrap(e, "failed to unmarshal entry")
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return result, err
+	}
+
+	if entry.UserID == "" {
+		// new entry to be created, need to set UserID for it
+		entry.UserID = req.UserID
+	}
+
+	switch req.Detail {
+	case UserEmail:
+		entry.Email = req.Update
+	}
+
+	err = bdb.Update(func(tx *bolt.Tx) error {
+		err := b.save(tx.Bucket([]byte(userDetailsBucketName)), req.UserID, entry)
+		return errors.Wrapf(err, "failed to update detail %s for %s in %s", req.Detail, req.UserID, req.Locator.SiteID)
+	})
+
+	return []UserDetailEntry{entry}, err
+}
+
+// listDetails lists all available users details for given site
+func (b *BoltDB) listDetails(loc store.Locator) (result []UserDetailEntry, err error) {
+	bdb, e := b.db(loc.SiteID)
+	if e != nil {
+		return result, e
+	}
+
+	err = bdb.View(func(tx *bolt.Tx) error {
+		var entry UserDetailEntry
+		bucket := tx.Bucket([]byte(userDetailsBucketName))
+		return bucket.ForEach(func(userID, value []byte) error {
+			if err := json.Unmarshal(value, &entry); err != nil {
+				return errors.Wrap(e, "failed to unmarshal entry")
+			}
+			result = append(result, entry)
+			return nil
+		})
+	})
+	return result, err
+}
+
+// deleteUserDetail deletes requested UserDetail or whole UserDetailEntry
+func (b *BoltDB) deleteUserDetail(bdb *bolt.DB, userID string, userDetail UserDetail) error {
+	var entry UserDetailEntry
+	err := bdb.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(userDetailsBucketName))
+		value := bucket.Get([]byte(userID))
+		// return no error in case of absent entry
+		if value != nil {
+			if err := json.Unmarshal(value, &entry); err != nil {
+				return errors.Wrap(err, "failed to unmarshal entry")
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	if entry == (UserDetailEntry{}) {
+		// absent entry means that we should not do anything
+		return nil
+	}
+
+	switch userDetail {
+	case UserEmail:
+		entry.Email = ""
+	case AllUserDetails:
+		entry = UserDetailEntry{UserID: userID}
+	}
+
+	if entry == (UserDetailEntry{UserID: userID}) {
+		// if entry doesn't have non-empty details, we should delete it
+		return bdb.Update(func(tx *bolt.Tx) error {
+			err := tx.Bucket([]byte(userDetailsBucketName)).Delete([]byte(userID))
+			return errors.Wrapf(err, "failed to delete user detail %s for %s", userDetail, userID)
+		})
+	}
+
+	return bdb.Update(func(tx *bolt.Tx) error {
+		// updated entry is not empty and we need to store it's updated copy
+		err := b.save(tx.Bucket([]byte(userDetailsBucketName)), userID, entry)
+		return errors.Wrapf(err, "failed to update detail %s for %s", userDetail, userID)
+	})
+}
+
 func (b *BoltDB) deleteComment(bdb *bolt.DB, locator store.Locator, commentID string, mode store.DeleteMode) error {
 
 	return bdb.Update(func(tx *bolt.Tx) error {
@@ -656,7 +823,7 @@ func (b *BoltDB) deleteComment(bdb *bolt.DB, locator store.Locator, commentID st
 func (b *BoltDB) deleteAll(bdb *bolt.DB, siteID string) error {
 
 	// delete all buckets except blocked users
-	toDelete := []string{postsBucketName, lastBucketName, userBucketName, infoBucketName}
+	toDelete := []string{postsBucketName, lastBucketName, userBucketName, userDetailsBucketName, infoBucketName}
 
 	// delete top-level buckets
 	err := bdb.Update(func(tx *bolt.Tx) error {
@@ -675,7 +842,7 @@ func (b *BoltDB) deleteAll(bdb *bolt.DB, siteID string) error {
 	return errors.Wrapf(err, "failed to delete top level buckets from site %s", siteID)
 }
 
-// deleteUser removes all comments for given user. Everything will be market as deleted
+// deleteUser removes all comments and details for given user. Everything will be market as deleted
 // and user name and userID will be changed to "deleted". Also removes from last and from user buckets.
 func (b *BoltDB) deleteUser(bdb *bolt.DB, siteID string, userID string, mode store.DeleteMode) error {
 
@@ -722,7 +889,7 @@ func (b *BoltDB) deleteUser(bdb *bolt.DB, siteID string, userID string, mode sto
 		}
 	}
 
-	//  delete  user bucket in hard mode
+	// delete user bucket in hard mode
 	if mode == store.HardDelete {
 		err = bdb.Update(func(tx *bolt.Tx) error {
 			usersBkt := tx.Bucket([]byte(userBucketName))
@@ -743,7 +910,7 @@ func (b *BoltDB) deleteUser(bdb *bolt.DB, siteID string, userID string, mode sto
 		return errors.Errorf("unknown user %s", userID)
 	}
 
-	return err
+	return b.deleteUserDetail(bdb, userID, AllUserDetails)
 }
 
 // getPostBucket return bucket with all comments for postURL

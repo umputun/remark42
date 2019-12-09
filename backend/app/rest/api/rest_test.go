@@ -20,9 +20,9 @@ import (
 	"github.com/go-pkgz/auth"
 	"github.com/go-pkgz/auth/avatar"
 	"github.com/go-pkgz/auth/token"
+	cache "github.com/go-pkgz/lcw"
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
-	"github.com/go-pkgz/rest/cache"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -73,15 +73,20 @@ func TestRest_GetStarted(t *testing.T) {
 
 func TestRest_Shutdown(t *testing.T) {
 	srv := Rest{Authenticator: &auth.Service{}, ImageProxy: &proxy.Image{}}
+	finished := make(chan bool)
 
+	// without waiting for channel close at the end goroutine will stay alive after test finish
+	// which would create data race with next test
 	go func() {
 		time.Sleep(200 * time.Millisecond)
 		srv.Shutdown()
+		close(finished)
 	}()
 
 	st := time.Now()
 	srv.Run(0)
 	assert.True(t, time.Since(st).Seconds() < 1, "should take about 100ms")
+	<-finished
 }
 
 func TestRest_filterComments(t *testing.T) {
@@ -289,8 +294,9 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDb, SiteID: "remark42"})
 	require.Nil(t, err)
 
-	memCache, err := cache.NewMemoryCache()
-	assert.NoError(t, err)
+	cacheBackend, err := cache.NewExpirableCache()
+	require.NoError(t, err)
+	memCache := cache.NewScache(cacheBackend)
 
 	astore := adminstore.NewStaticStore("123456", []string{"remark42"}, []string{"a1", "a2"}, "admin@remark-42.com")
 	restrictedWordsMatcher := service.NewRestrictedWordsMatcher(service.StaticRestrictedWordsLister{Words: []string{"duck"}})
@@ -361,7 +367,7 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 	return ts, srv, teardown
 }
 
-// fake auth middleware make user authed and uses query's fake_id for ID and fake_name for Name
+// fake auth middleware make user authenticated and uses query's fake_id for ID and fake_name for Name
 func fakeAuth(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get("fake_id") != "" {

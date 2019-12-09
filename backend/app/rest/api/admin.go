@@ -9,9 +9,9 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
 	"github.com/go-pkgz/auth"
+	cache "github.com/go-pkgz/lcw"
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
-	"github.com/go-pkgz/rest/cache"
 
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/store"
@@ -20,7 +20,7 @@ import (
 // admin provides router for all requests available for admin users only
 type admin struct {
 	dataService   adminStore
-	cache         cache.LoadingCache
+	cache         LoadingCache
 	authenticator *auth.Service
 	readOnlyAge   int
 	migrator      *Migrator
@@ -89,7 +89,7 @@ func (a *admin) getUserInfoCtrl(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, ucomments[0].User)
 }
 
-// GET /deleteme?token=jwt - delete all user comments by user's request. Gets info about deleted used from provided token
+// GET /deleteme?token=jwt - delete all user comments and details by user's request. Gets info about deleted used from provided token
 // request made GET to allow direct click from the email sent by user
 func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 

@@ -37,7 +37,7 @@ github.com/go-pkgz/auth/provider/sender
 github.com/go-pkgz/auth/token
 # github.com/go-pkgz/jrpc v0.1.0
 github.com/go-pkgz/jrpc
-# github.com/go-pkgz/lcw v0.4.0
+# github.com/go-pkgz/lcw v0.5.0
 github.com/go-pkgz/lcw
 # github.com/go-pkgz/lgr v0.6.3
 github.com/go-pkgz/lgr
@@ -46,7 +46,6 @@ github.com/go-pkgz/repeater
 github.com/go-pkgz/repeater/strategy
 # github.com/go-pkgz/rest v1.4.1
 github.com/go-pkgz/rest
-github.com/go-pkgz/rest/cache
 github.com/go-pkgz/rest/logger
 # github.com/go-pkgz/syncs v1.1.1
 github.com/go-pkgz/syncs

@@ -40,7 +40,7 @@ func NewTelegram(token string, channelID string, timeout time.Duration, api stri
 	if res.timeout == 0 {
 		res.timeout = telegramTimeOut
 	}
-	log.Printf("[DEBUG] create new telegram notifier for cham %s, timeout=%s, api=%s", channelID, res.timeout, res.timeout)
+	log.Printf("[DEBUG] create new telegram notifier for chan %s, timeout=%s, api=%s", channelID, res.timeout, res.timeout)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -85,23 +85,27 @@ func NewTelegram(token string, channelID string, timeout time.Duration, api stri
 }
 
 // Send to telegram channel
-func (t *Telegram) Send(ctx context.Context, req request) error {
+func (t *Telegram) Send(ctx context.Context, req Request) error {
+	if req.Comment.ID == "" {
+		// verification request received, send nothing
+		return nil
+	}
 	client := http.Client{Timeout: telegramTimeOut}
-	log.Printf("[DEBUG] send telegram notification to %s, comment id %s", t.channelID, req.comment.ID)
+	log.Printf("[DEBUG] send telegram notification to %s, comment id %s", t.channelID, req.Comment.ID)
 
-	from := req.comment.User.Name
-	if req.comment.ParentID != "" {
+	from := req.Comment.User.Name
+	if req.Comment.ParentID != "" {
 		from += " → " + req.parent.User.Name
 	}
 	from = "*" + from + "*"
-	link := fmt.Sprintf("↦ [original comment](%s)", req.comment.Locator.URL+uiNav+req.comment.ID)
-	if req.comment.PostTitle != "" {
-		link = fmt.Sprintf("↦ [%s](%s)", req.comment.PostTitle, req.comment.Locator.URL+uiNav+req.comment.ID)
+	link := fmt.Sprintf("↦ [original comment](%s)", req.Comment.Locator.URL+uiNav+req.Comment.ID)
+	if req.Comment.PostTitle != "" {
+		link = fmt.Sprintf("↦ [%s](%s)", req.Comment.PostTitle, req.Comment.Locator.URL+uiNav+req.Comment.ID)
 	}
 	u := fmt.Sprintf("%s%s/sendMessage?chat_id=%s&parse_mode=Markdown&disable_web_page_preview=true",
 		t.apiPrefix, t.token, t.channelID)
 
-	msg := fmt.Sprintf("%s\n\n%s\n\n%s", from, req.comment.Orig, link)
+	msg := fmt.Sprintf("%s\n\n%s\n\n%s", from, req.Comment.Orig, link)
 	msg = html.UnescapeString(msg)
 	body := struct {
 		Text string `json:"text"`
