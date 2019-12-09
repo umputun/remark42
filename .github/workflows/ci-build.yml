@@ -30,13 +30,14 @@ jobs:
 
     - name: build and test backend
       run: |
-        export TZ="America/Chicago"
         date
         cd backend/app
         go test -mod=vendor -timeout=60s -covermode=count -coverprofile=$GITHUB_WORKSPACE/profile.cov_tmp ./...
         cat $GITHUB_WORKSPACE/profile.cov_tmp | grep -v "_mock.go" > $GITHUB_WORKSPACE/profile.cov
         cd ../_example/memory_store
         go test -race ./...
+      env:
+        TZ: America/Chicago
 
     # - name: run backend linters
     #   uses: matoous/golangci-lint-action@v1.1.0
