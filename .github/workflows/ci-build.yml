@@ -38,13 +38,13 @@ jobs:
         cd ../_example/memory_store
         go test -race ./...
 
-    - name: run backend linters
-      uses: matoous/golangci-lint-action@v1.1.0
-      with:
-        config: .golangci.yml
-      env:
-        WORKING_DIRECTORY: ${{ github.workspace }}/backend
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    # - name: run backend linters
+    #   uses: matoous/golangci-lint-action@v1.1.0
+    #   with:
+    #     config: .golangci.yml
+    #   env:
+    #     WORKING_DIRECTORY: ${{ github.workspace }}/backend
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     - name: install golangci-lint and goveralls
       run: |
         curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $GITHUB_WORKSPACE v1.20.0
@@ -55,7 +55,7 @@ jobs:
         $GITHUB_WORKSPACE/golangci-lint run --out-format=tab --config ./../.golangci.yml ./...
       working-directory: ./backend
 
-    - name: run backend linters for example 
+    - name: run backend linters for example
       run: |
         $GITHUB_WORKSPACE/golangci-lint run --out-format=tab --config ./../.golangci.yml ./... ;
       working-directory: ./_example/memory_store
