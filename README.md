@@ -1,4 +1,4 @@
-# remark42 [![Build Status](https://github.com/umputun/remark/workflows/build/badge.svg)](https://github.com/umputun/remark/actions) [![Go Report Card](https://goreportcard.com/badge/github.com/umputun/remark)](https://goreportcard.com/report/github.com/umputun/remark) [![Coverage Status](https://coveralls.io/repos/github/umputun/remark/badge.svg?branch=master)](https://coveralls.io/github/umputun/remark?branch=master)
+# remark42 [![Financial Contributors on Open Collective](https://opencollective.com/remark42/all/badge.svg?label=financial+contributors)](https://opencollective.com/remark42) [![Build Status](https://github.com/umputun/remark/workflows/build/badge.svg)](https://github.com/umputun/remark/actions) [![Go Report Card](https://goreportcard.com/badge/github.com/umputun/remark)](https://goreportcard.com/report/github.com/umputun/remark) [![Coverage Status](https://coveralls.io/repos/github/umputun/remark/badge.svg?branch=master)](https://coveralls.io/github/umputun/remark?branch=master)
 
 
 
@@ -827,3 +827,33 @@ _all admin calls require auth and admin privilege_
 * All avatars resized and cached locally to prevent rate limiters from oauth providers, part of [go-pkgz/auth](https://github.com/go-pkgz/auth) functionality.
 * Images can be proxied (`IMG_PROXY=true`) to prevent mixed http/https.
 * Docker build uses [publicly available](https://github.com/umputun/baseimage) base images.
+
+## Contributors
+
+### Code Contributors
+
+This project exists thanks to all the people who contribute. [[Contribute](CONTRIBUTING.md)].
+<a href="https://github.com/umputun/remark/graphs/contributors"><img src="https://opencollective.com/remark42/contributors.svg?width=890&button=false" /></a>
+
+### Financial Contributors
+
+Become a financial contributor and help us sustain our community. [[Contribute](https://opencollective.com/remark42/contribute)]
+
+#### Individuals
+
+<a href="https://opencollective.com/remark42"><img src="https://opencollective.com/remark42/individuals.svg?width=890"></a>
+
+#### Organizations
+
+Support this project with your organization. Your logo will show up here with a link to your website. [[Contribute](https://opencollective.com/remark42/contribute)]
+
+<a href="https://opencollective.com/remark42/organization/0/website"><img src="https://opencollective.com/remark42/organization/0/avatar.svg"></a>
+<a href="https://opencollective.com/remark42/organization/1/website"><img src="https://opencollective.com/remark42/organization/1/avatar.svg"></a>
+<a href="https://opencollective.com/remark42/organization/2/website"><img src="https://opencollective.com/remark42/organization/2/avatar.svg"></a>
+<a href="https://opencollective.com/remark42/organization/3/website"><img src="https://opencollective.com/remark42/organization/3/avatar.svg"></a>
+<a href="https://opencollective.com/remark42/organization/4/website"><img src="https://opencollective.com/remark42/organization/4/avatar.svg"></a>
+<a href="https://opencollective.com/remark42/organization/5/website"><img src="https://opencollective.com/remark42/organization/5/avatar.svg"></a>
+<a href="https://opencollective.com/remark42/organization/6/website"><img src="https://opencollective.com/remark42/organization/6/avatar.svg"></a>
+<a href="https://opencollective.com/remark42/organization/7/website"><img src="https://opencollective.com/remark42/organization/7/avatar.svg"></a>
+<a href="https://opencollective.com/remark42/organization/8/website"><img src="https://opencollective.com/remark42/organization/8/avatar.svg"></a>
+<a href="https://opencollective.com/remark42/organization/9/website"><img src="https://opencollective.com/remark42/organization/9/avatar.svg"></a>
