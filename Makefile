@@ -24,6 +24,6 @@ deploy:
 	docker rm -f remark42.bin
 
 race_test:
-	cd backend/app && go test -race -mod=vendor -timeout=60s ./...
+	cd backend/app && go test -race -mod=vendor -timeout=60s -count 1 ./...
 
 .PHONY: bin
