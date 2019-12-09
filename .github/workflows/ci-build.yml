@@ -53,12 +53,12 @@ jobs:
 
     - name: run backend linters for backend code
       run: |
-        $GITHUB_WORKSPACE/golangci-lint run --config ./../.golangci.yml ./...
+        $GITHUB_WORKSPACE/golangci-lint run --config ${GITHUB_WORKSPACE}/.golangci.yml ./...
       working-directory: ./backend
 
     - name: run backend linters for example
       run: |
-        $GITHUB_WORKSPACE/golangci-lint run --config ./../../../.golangci.yml ./... ;
+        $GITHUB_WORKSPACE/golangci-lint run --config ${GITHUB_WORKSPACE}/.golangci.yml ./... ;
       working-directory: ./backend/_example/memory_store
 
     - name: submit coverage
