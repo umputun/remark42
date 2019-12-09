@@ -406,8 +406,7 @@ func (m *MemData) setFlag(req engine.FlagRequest) (res bool, err error) {
 				until = time.Now().Add(req.TTL)
 			}
 		}
-		meta := m.metaUsers[req.UserID]
-		meta = metaUser{
+		meta := metaUser{
 			UserID:       req.UserID,
 			SiteID:       req.Locator.SiteID,
 			Blocked:      status,
@@ -416,8 +415,7 @@ func (m *MemData) setFlag(req engine.FlagRequest) (res bool, err error) {
 		m.metaUsers[req.UserID] = meta
 
 	case engine.Verified:
-		meta := m.metaUsers[req.UserID]
-		meta = metaUser{
+		meta := metaUser{
 			UserID:   req.UserID,
 			SiteID:   req.Locator.SiteID,
 			Verified: status,

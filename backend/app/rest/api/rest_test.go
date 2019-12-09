@@ -73,15 +73,20 @@ func TestRest_GetStarted(t *testing.T) {
 
 func TestRest_Shutdown(t *testing.T) {
 	srv := Rest{Authenticator: &auth.Service{}, ImageProxy: &proxy.Image{}}
+	finished := make(chan bool)
 
+	// without waiting for channel close at the end goroutine will stay alive after test finish
+	// which would create data race with next test
 	go func() {
 		time.Sleep(200 * time.Millisecond)
 		srv.Shutdown()
+		close(finished)
 	}()
 
 	st := time.Now()
 	srv.Run(0)
 	assert.True(t, time.Since(st).Seconds() < 1, "should take about 100ms")
+	<-finished
 }
 
 func TestRest_filterComments(t *testing.T) {
@@ -362,7 +367,7 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 	return ts, srv, teardown
 }
 
-// fake auth middleware make user authed and uses query's fake_id for ID and fake_name for Name
+// fake auth middleware make user authenticated and uses query's fake_id for ID and fake_name for Name
 func fakeAuth(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get("fake_id") != "" {
