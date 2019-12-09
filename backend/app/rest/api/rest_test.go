@@ -283,10 +283,6 @@ func TestRest_parseError(t *testing.T) {
 }
 
 func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
-	return startupTWithDest(t, nil)
-}
-
-func startupTWithDest(t *testing.T, dest notify.Destination) (ts *httptest.Server, srv *Rest, teardown func()) {
 	log.Setup(log.CallerFile, log.CallerFunc, log.Msec, log.LevelBraces)
 
 	tmp := os.TempDir()
@@ -313,11 +309,6 @@ func startupTWithDest(t *testing.T, dest notify.Destination) (ts *httptest.Serve
 		AdminStore:             astore,
 		MaxVotes:               service.UnlimitedVotes,
 		RestrictedWordsMatcher: restrictedWordsMatcher,
-	}
-
-	notifyServ := notify.NopService
-	if dest != nil {
-		notifyServ = notify.NewService(dataStore, 1, dest)
 	}
 
 	srv = &Rest{
@@ -356,7 +347,7 @@ func startupTWithDest(t *testing.T, dest notify.Destination) (ts *httptest.Serve
 			TimeOut:   5 * time.Second,
 			MaxActive: 100,
 		},
-		NotifyService: notifyServ,
+		NotifyService: notify.NopService,
 		EmojiEnabled:  true,
 	}
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = -5, -10

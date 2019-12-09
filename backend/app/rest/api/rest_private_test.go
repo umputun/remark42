@@ -518,9 +518,11 @@ func TestRest_Email(t *testing.T) {
 }
 
 func TestRest_EmailNotification(t *testing.T) {
-	mockDestination := &notify.MockDest{}
-	ts, _, teardown := startupTWithDest(t, mockDestination)
+	ts, srv, teardown := startupT(t)
 	defer teardown()
+
+	mockDestination := &notify.MockDest{}
+	srv.privRest.notifyService = notify.NewService(srv.DataService, 1, mockDestination)
 
 	client := http.Client{}
 
