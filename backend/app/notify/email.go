@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
+	"mime/quotedprintable"
 	"net"
 	"net/smtp"
 	"text/template"
@@ -186,19 +187,7 @@ func (e *Email) buildVerificationMessage(user, address, token, site string) (str
 	if err != nil {
 		return "", errors.Wrapf(err, "error executing template to build verifying message from request")
 	}
-	return e.buildMessage(subject, msg.String(), address, "text/html"), nil
-}
-
-// buildMessage generates email message to send using net/smtp.Data()
-func (e *Email) buildMessage(subject, body, to, contentType string) (message string) {
-	message += fmt.Sprintf("From: %s\n", e.From)
-	message += fmt.Sprintf("To: %s\n", to)
-	message += fmt.Sprintf("Subject: %s\n", subject)
-	if contentType != "" {
-		message += fmt.Sprintf("MIME-version: 1.0;\nContent-Type: %s; charset=\"UTF-8\";\n", contentType)
-	}
-	message += "\n" + body
-	return message
+	return e.buildMessage(subject, msg.String(), address, "text/html")
 }
 
 // buildMessageFromRequest generates email message based on Request using e.MsgTemplate
@@ -218,7 +207,35 @@ func (e *Email) buildMessageFromRequest(req Request, to string) (string, error) 
 	if err != nil {
 		return "", errors.Wrapf(err, "error executing template to build message from request")
 	}
-	return e.buildMessage(subject, msg.String(), to, "text/html"), nil
+	return e.buildMessage(subject, msg.String(), to, "text/html")
+}
+
+// buildMessage generates email message to send using net/smtp.Data()
+func (e *Email) buildMessage(subject, body, to, contentType string) (message string, err error) {
+	addHeader := func(msg, h, v string) string {
+		msg += fmt.Sprintf("%s: %s\n", h, v)
+		return msg
+	}
+	message = addHeader(message, "From", e.From)
+	message = addHeader(message, "To", to)
+	message = addHeader(message, "Subject", subject)
+	message = addHeader(message, "Content-Transfer-Encoding", "quoted-printable")
+
+	if contentType != "" {
+		message = addHeader(message, "MIME-version", "1.0")
+		message = addHeader(message, "Content-Type", contentType+`; charset="UTF-8"`)
+	}
+	message = addHeader(message, "Date", time.Now().Format(time.RFC1123Z))
+
+	buff := &bytes.Buffer{}
+	qp := quotedprintable.NewWriter(buff)
+	if _, err := qp.Write([]byte(body)); err != nil {
+		return "", err
+	}
+	defer qp.Close()
+	m := buff.String()
+	message += "\n" + m
+	return message, nil
 }
 
 // sendMessage sends messages to server in a new connection, closing the connection after finishing.
@@ -274,7 +291,7 @@ func (e *Email) sendMessage(ctx context.Context, m emailMessage) error {
 
 // String representation of Email object
 func (e *Email) String() string {
-	return fmt.Sprintf("email: from %q using '%s'@'%s':%d", e.From, e.Username, e.Host, e.Port)
+	return fmt.Sprintf("email: from %q with username '%s' at server %s:%d", e.From, e.Username, e.Host, e.Port)
 }
 
 // Create establish SMTP connection with server using credentials in smtpClientWithCreator.SmtpParams

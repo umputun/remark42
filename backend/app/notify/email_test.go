@@ -161,18 +161,6 @@ func TestEmailSendClientError(t *testing.T) {
 }
 
 func TestEmail_Send(t *testing.T) {
-	const expectedAnswer = `From: from@example.org
-To: test@example.org
-Subject: New comment for "test_title"
-MIME-version: 1.0;
-Content-Type: text/html; charset="UTF-8";
-
-test_user
-
-
-
-↦ <a href="#remark42__comment-999">test_title</a>
-`
 	req := Request{Comment: store.Comment{ID: "999", User: store.User{Name: "test_user"}, PostTitle: "test_title"}, Email: "test@example.org"}
 	e, err := NewEmail(EmailParams{From: "from@example.org"}, SmtpParams{})
 	assert.NoError(t, err)
@@ -186,7 +174,13 @@ test_user
 	// test buildMessageFromRequest separately for message text
 	res, err := e.buildMessageFromRequest(req, "test@example.org")
 	assert.NoError(t, err)
-	assert.Equal(t, expectedAnswer, res)
+	assert.Contains(t, res, `From: from@example.org`)
+	assert.Contains(t, res, `To: test@example.org`)
+	assert.Contains(t, res, `Subject: New comment for "test_title"`)
+	assert.Contains(t, res, `Content-Transfer-Encoding: quoted-printable`)
+	assert.Contains(t, res, `MIME-version: 1.0`)
+	assert.Contains(t, res, `Content-Type: text/html; charset="UTF-8"`)
+	assert.Contains(t, res, `Date: `)
 }
 
 type fakeTestSMTP struct {
