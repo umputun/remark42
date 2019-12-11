@@ -95,9 +95,25 @@ const (
 
 ↦ <a href="{{.Link}}">{{if .PostTitle}}{{.PostTitle}}{{else}}original comment{{end}}</a>
 `
-	defaultEmailVerificationTemplate = `Confirmation for {{.User}} {{.Email}}, site {{.Site}}
-
-Token: {{.Token}}
+	defaultEmailVerificationTemplate = `<!DOCTYPE html>
+<html>
+<head>
+	<meta name="viewport" content="width=device-width" />
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+</head>
+<body>
+<div style="text-align: center; font-family: Arial, sans-serif; font-size: 18px;">
+	<h1 style="position: relative; color: #4fbbd6; margin-top: 0.2em;">Remark42</h1>
+	<p style="position: relative; max-width: 20em; margin: 0 auto 1em auto; line-height: 1.4em;">Confirmation&nbsp;for <b>{{.User}}</b> on&nbsp;site&nbsp;<b>{{.Site}}</b></p>
+	<div style="background-color: #eee; max-width: 20em; margin: 0 auto; border-radius: 0.4em; padding: 0.5em;">
+		<p style="position: relative; margin: 0 0 0.5em 0;">TOKEN</p>
+		<p style="position: relative; font-size: 0.7em; opacity: 0.8;"><i>Copy and&nbsp;paste this text into “token” field on&nbsp;comments page</i></p>
+		<p style="position: relative; font-family: monospace; background-color: #fff; margin: 0; padding: 0.5em; word-break: break-all; text-align: left; border-radius: 0.2em; -webkit-user-select: all; user-select: all;">{{.Token}}</p>
+	</div>
+	<p style="position: relative; margin-top: 2em; font-size: 0.8em; opacity: 0.8;"><i>Sent to {{.Email}}</i></p>
+</div>
+</body>
+</html>
 `
 )
 
