@@ -118,17 +118,21 @@ GET {{host}}/api/v1/rss/reply?site={{site}}&user={{user}}
 ### get default avatar
 GET {{host}}/api/v1/avatar/blah
 
-### send confirmation token for current user to specified email
+### send confirmation token for current user to specified email. auth token for dev user specified for test.
 POST {{host}}/api/v1/email/subscribe?site={{site}}&address={{email}}
+X-JWT: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6Mzc4OTE5MTgyMiwianRpIjoicmFuZG9tIGlkIiwiaXNzIjoicmVtYXJrNDIiLCJuYmYiOjE1MjE4ODQyMjIsInVzZXIiOnsibmFtZSI6ImRldmVsb3BlciBvbmUiLCJpZCI6ImRldiIsInBpY3R1cmUiOiJodHRwOi8vZXhhbXBsZS5jb20vcGljLnBuZyIsImlwIjoiMTI3LjAuMC4xIiwiZW1haWwiOiJtZUBleGFtcGxlLmNvbSJ9fQ.aKUAXiZxXypgV7m1wEOgUcyPOvUDXHDi3A06YWKbcLg
 
-### add email for notifications for current user via token from email
+### add email for notifications for current user via token from email. auth token for dev user specified for test.
 POST {{host}}/api/v1/email/confirm?site={{site}}&tkn={{token}}
+X-JWT: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6Mzc4OTE5MTgyMiwianRpIjoicmFuZG9tIGlkIiwiaXNzIjoicmVtYXJrNDIiLCJuYmYiOjE1MjE4ODQyMjIsInVzZXIiOnsibmFtZSI6ImRldmVsb3BlciBvbmUiLCJpZCI6ImRldiIsInBpY3R1cmUiOiJodHRwOi8vZXhhbXBsZS5jb20vcGljLnBuZyIsImlwIjoiMTI3LjAuMC4xIiwiZW1haWwiOiJtZUBleGFtcGxlLmNvbSJ9fQ.aKUAXiZxXypgV7m1wEOgUcyPOvUDXHDi3A06YWKbcLg
 
-### get current user email
+### get current user email. auth token for dev user specified for test.
 GET {{host}}/api/v1/email?site={{site}}
+X-JWT: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6Mzc4OTE5MTgyMiwianRpIjoicmFuZG9tIGlkIiwiaXNzIjoicmVtYXJrNDIiLCJuYmYiOjE1MjE4ODQyMjIsInVzZXIiOnsibmFtZSI6ImRldmVsb3BlciBvbmUiLCJpZCI6ImRldiIsInBpY3R1cmUiOiJodHRwOi8vZXhhbXBsZS5jb20vcGljLnBuZyIsImlwIjoiMTI3LjAuMC4xIiwiZW1haWwiOiJtZUBleGFtcGxlLmNvbSJ9fQ.aKUAXiZxXypgV7m1wEOgUcyPOvUDXHDi3A06YWKbcLg
 
-### delete current user email
+### delete current user email. auth token for dev user specified for test.
 DELETE {{host}}/api/v1/email
+X-JWT: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6Mzc4OTE5MTgyMiwianRpIjoicmFuZG9tIGlkIiwiaXNzIjoicmVtYXJrNDIiLCJuYmYiOjE1MjE4ODQyMjIsInVzZXIiOnsibmFtZSI6ImRldmVsb3BlciBvbmUiLCJpZCI6ImRldiIsInBpY3R1cmUiOiJodHRwOi8vZXhhbXBsZS5jb20vcGljLnBuZyIsImlwIjoiMTI3LjAuMC4xIiwiZW1haWwiOiJtZUBleGFtcGxlLmNvbSJ9fQ.aKUAXiZxXypgV7m1wEOgUcyPOvUDXHDi3A06YWKbcLg
 
 ### get config
 GET {{host}}/api/v1/config?site={{site}}
@@ -140,7 +144,6 @@ X-JWT: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6Mzc4
 ### deletme, admin. admin token for secret=secret
 GET {{host}}/api/v1/admin/deleteme?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1NjU2NjI4MDYsImlzcyI6InJlbWFyazQyIiwibmJmIjoxNTU3NzEzOTQ2LCJ1c2VyIjp7Im5hbWUiOiJkZXZlbG9wZXIgb25lIiwiaWQiOiJkZXYiLCJwaWN0dXJlIjoiIiwiYXR0cnMiOnsiYWRtaW4iOmZhbHNlLCJibG9ja2VkIjpmYWxzZSwiZGVsZXRlX21lIjp0cnVlfX19.qmnsQt_jilHzoauA9D7t1m3w69qvAJsZkuKVPWhpdik
 X-JWT: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcmsiLCJleHAiOjE2NTc3MDQ5NzksImp0aSI6Ijk4ZDNhOGFkMGNjZWU5M2Q1MWYwYjJiOTY1ZjU2YmE2NmJkNmZiNzYiLCJpYXQiOjE1NTc3MDQ2NzksImlzcyI6InJlbWFyazQyIiwidXNlciI6eyJuYW1lIjoiZGV2X3VzZXIiLCJpZCI6ImRldl91c2VyIiwicGljdHVyZSI6Imh0dHA6Ly8xMjcuMC4wLjE6ODA4MC9hcGkvdjEvYXZhdGFyL2NjZmEyYWJkMDE2Njc2MDViNGUxZmM0ZmNiOTFiMWUxYWYzMjMyNDAuaW1hZ2UiLCJhdHRycyI6eyJhZG1pbiI6dHJ1ZSwiYmxvY2tlZCI6ZmFsc2V9fX0.YIt9Zq3n0O8PMkR78pGAqyHI0exCU0vLKjcHgcXfLFw
-
 
 ### ping
 GET {{host}}/ping
