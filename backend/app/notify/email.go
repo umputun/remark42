@@ -183,14 +183,14 @@ func (e *Email) Send(ctx context.Context, req Request) (err error) {
 }
 
 // buildVerificationMessage generates verification email message based on given input
-func (e *Email) buildVerificationMessage(user, address, token, site string) (string, error) {
+func (e *Email) buildVerificationMessage(user, to, token, site string) (string, error) {
 	subject := e.VerificationSubject
 	msg := bytes.Buffer{}
-	err := e.verifyTmpl.Execute(&msg, verifyTmplData{user, address, token, site})
+	err := e.verifyTmpl.Execute(&msg, verifyTmplData{user, to, token, site})
 	if err != nil {
 		return "", errors.Wrapf(err, "error executing template to build verifying message from request")
 	}
-	return e.buildMessage(subject, msg.String(), address, "text/html")
+	return e.buildMessage(subject, msg.String(), to, "text/html")
 }
 
 // buildMessageFromRequest generates email message based on Request using e.MsgTemplate
