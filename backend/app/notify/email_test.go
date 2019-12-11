@@ -19,24 +19,36 @@ import (
 func TestEmailNew(t *testing.T) {
 	var testSet = []struct {
 		name        string
-		template    bool
 		err         bool
 		errText     string
 		emailParams EmailParams
 		smtpParams  SmtpParams
 	}{
-		{name: "empty", template: true},
+		{name: "empty"},
 		{name: "with template parse error",
 			err: true, errText: "can't parse message template: template: messageFromRequest:1: unexpected unclosed action in command",
 			emailParams: EmailParams{
-				From:        "test@from",
 				MsgTemplate: "{{",
 			}},
 		{name: "with verification template parse error",
 			err: true, errText: "can't parse verification template: template: messageFromRequest:1: unexpected unclosed action in command",
-			template: true,
 			emailParams: EmailParams{
+				From:                 "test@from",
 				VerificationTemplate: "{{",
+			},
+			smtpParams: SmtpParams{
+				Host:     "test@host",
+				Port:     1000,
+				TLS:      true,
+				Username: "test@username",
+				Password: "test@password",
+				TimeOut:  time.Second,
+			},
+		},
+		{name: "normal creation",
+			err: false, errText: "can't parse verification template: template: messageFromRequest:1: unexpected unclosed action in command",
+			emailParams: EmailParams{
+				From: "test@from",
 			},
 			smtpParams: SmtpParams{
 				Host:     "test@host",
@@ -54,34 +66,29 @@ func TestEmailNew(t *testing.T) {
 
 			if d.err && d.errText == "" {
 				assert.Error(t, err)
+				assert.Nil(t, email)
 			} else if d.err && d.errText != "" {
 				assert.EqualError(t, err, d.errText)
+				assert.Nil(t, email)
 			} else {
 				assert.NoError(t, err)
-			}
+				assert.NotNil(t, email, "email returned")
 
-			assert.NotNil(t, email, "email returned")
-			if d.template {
 				assert.NotNil(t, email.msgTmpl, "e.template is set")
-			} else {
-				assert.Nil(t, email.msgTmpl, "e.template is not set")
-			}
-			if d.emailParams.MsgTemplate == "" {
 				assert.Equal(t, defaultEmailTemplate, email.EmailParams.MsgTemplate, "empty emailParams.MsgTemplate changed to default")
-			} else {
-				assert.Equal(t, d.emailParams.MsgTemplate, email.EmailParams.MsgTemplate, "emailParams.MsgTemplate unchanged after creation")
+				assert.Equal(t, defaultEmailVerificationTemplate, email.EmailParams.VerificationTemplate, "empty emailParams.VerificationTemplate changed to default")
+				assert.Equal(t, d.emailParams.From, email.EmailParams.From, "emailParams.From unchanged after creation")
+				if d.smtpParams.TimeOut == 0 {
+					assert.Equal(t, defaultEmailTimeout, email.TimeOut, "empty emailParams.TimeOut changed to default")
+				} else {
+					assert.Equal(t, d.smtpParams.TimeOut, email.TimeOut, "emailParams.TimOut unchanged after creation")
+				}
+				assert.Equal(t, d.smtpParams.Host, email.Host, "emailParams.Host unchanged after creation")
+				assert.Equal(t, d.smtpParams.Username, email.Username, "emailParams.Username unchanged after creation")
+				assert.Equal(t, d.smtpParams.Password, email.Password, "emailParams.Password unchanged after creation")
+				assert.Equal(t, d.smtpParams.Port, email.Port, "emailParams.Port unchanged after creation")
+				assert.Equal(t, d.smtpParams.TLS, email.TLS, "emailParams.TLS unchanged after creation")
 			}
-			assert.Equal(t, d.emailParams.From, email.EmailParams.From, "emailParams.From unchanged after creation")
-			if d.smtpParams.TimeOut == 0 {
-				assert.Equal(t, defaultEmailTimeout, email.TimeOut, "empty emailParams.TimeOut changed to default")
-			} else {
-				assert.Equal(t, d.smtpParams.TimeOut, email.TimeOut, "emailParams.TimOut unchanged after creation")
-			}
-			assert.Equal(t, d.smtpParams.Host, email.Host, "emailParams.Host unchanged after creation")
-			assert.Equal(t, d.smtpParams.Username, email.Username, "emailParams.Username unchanged after creation")
-			assert.Equal(t, d.smtpParams.Password, email.Password, "emailParams.Password unchanged after creation")
-			assert.Equal(t, d.smtpParams.Port, email.Port, "emailParams.Port unchanged after creation")
-			assert.Equal(t, d.smtpParams.TLS, email.TLS, "emailParams.TLS unchanged after creation")
 		})
 	}
 }

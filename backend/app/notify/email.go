@@ -117,8 +117,7 @@ const (
 `
 )
 
-// NewEmail makes new Email object, returns it even in case of problems
-// (e.g. e.MsgTemplate and e.VerificationTemplate parsing error)
+// NewEmail makes new Email object, returns error in case of e.MsgTemplate or e.VerificationTemplate parsing error
 func NewEmail(emailParams EmailParams, smtpParams SmtpParams) (*Email, error) {
 	// set up Email emailParams
 	res := Email{EmailParams: emailParams}
@@ -144,13 +143,11 @@ func NewEmail(emailParams EmailParams, smtpParams SmtpParams) (*Email, error) {
 
 	// initialise templates
 	var err error
-	res.msgTmpl, err = template.New("messageFromRequest").Parse(res.MsgTemplate)
-	if err != nil {
-		return &res, errors.Wrapf(err, "can't parse message template")
+	if res.msgTmpl, err = template.New("messageFromRequest").Parse(res.MsgTemplate); err != nil {
+		return nil, errors.Wrapf(err, "can't parse message template")
 	}
-	res.verifyTmpl, err = template.New("messageFromRequest").Parse(res.VerificationTemplate)
-	if err != nil {
-		return &res, errors.Wrapf(err, "can't parse verification template")
+	if res.verifyTmpl, err = template.New("messageFromRequest").Parse(res.VerificationTemplate); err != nil {
+		return nil, errors.Wrapf(err, "can't parse verification template")
 	}
 	return &res, err
 }
