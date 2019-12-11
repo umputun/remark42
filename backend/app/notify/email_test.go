@@ -161,12 +161,12 @@ func TestEmailSendClientError(t *testing.T) {
 }
 
 func TestEmail_Send(t *testing.T) {
-	req := Request{Comment: store.Comment{ID: "999", User: store.User{Name: "test_user"}, PostTitle: "test_title"}, Email: "test@example.org"}
 	e, err := NewEmail(EmailParams{From: "from@example.org"}, SmtpParams{})
 	assert.NoError(t, err)
 	assert.NotNil(t, e)
 	fakeSmtp := fakeTestSMTP{}
 	e.smtp = &fakeSmtp
+	req := Request{Comment: store.Comment{ID: "999", User: store.User{Name: "test_user"}, PostTitle: "test_title"}, Email: "test@example.org"}
 	assert.NoError(t, e.Send(context.TODO(), req))
 	assert.Equal(t, "from@example.org", fakeSmtp.readMail())
 	assert.Equal(t, 1, fakeSmtp.readQuitCount())

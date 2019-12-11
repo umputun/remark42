@@ -14,7 +14,6 @@ import (
 
 	log "github.com/go-pkgz/lgr"
 	"github.com/go-pkgz/repeater"
-	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 )
 
@@ -176,7 +175,7 @@ func (e *Email) Send(ctx context.Context, req Request) (err error) {
 		}
 	}
 
-	return e.sendMessage(ctx, emailMessage{from: e.From, to: req.Email, message: msg})
+	return repeater.NewDefault(5, time.Millisecond*250).Do(ctx, func() error { return e.sendMessage(ctx, emailMessage{from: e.From, to: req.Email, message: msg}) })
 }
 
 // buildVerificationMessage generates verification email message based on given input
@@ -249,44 +248,39 @@ func (e *Email) sendMessage(ctx context.Context, m emailMessage) error {
 		return errors.Wrap(err, "failed to make smtp Create")
 	}
 
-	errs := new(multierror.Error)
-
-	err = repeater.NewDefault(5, time.Millisecond*250).Do(ctx, func() error {
-		if err := smtpClient.Mail(m.from); err != nil {
-			return errors.Wrapf(err, "bad from address %q", m.from)
-		}
-		if err := smtpClient.Rcpt(m.to); err != nil {
-			return errors.Wrapf(err, "bad to address %q", m.to)
-		}
-
-		writer, err := smtpClient.Data()
-		if err != nil {
-			return errors.Wrap(err, "can't make email writer")
-		}
-		defer func() {
-			if err = writer.Close(); err != nil {
-				log.Printf("[WARN] can't close smtp body writer, %v", err)
+	defer func() {
+		if err := smtpClient.Quit(); err != nil {
+			log.Printf("[WARN] failed to send quit command to %s:%d, %v", e.Host, e.Port, err)
+			if err := smtpClient.Close(); err != nil {
+				log.Printf("[WARN] can't close smtp connection, %v", err)
 			}
-		}()
-
-		buf := bytes.NewBufferString(m.message)
-		if _, err = buf.WriteTo(writer); err != nil {
-			return errors.Wrapf(err, "failed to send email body to %q", m.to)
 		}
-		return nil
-	})
+	}()
+
+	if err := smtpClient.Mail(m.from); err != nil {
+		return errors.Wrapf(err, "bad from address %q", m.from)
+	}
+	if err := smtpClient.Rcpt(m.to); err != nil {
+		return errors.Wrapf(err, "bad to address %q", m.to)
+	}
+
+	writer, err := smtpClient.Data()
 	if err != nil {
-		errs = multierror.Append(errs, errors.Wrapf(err, "can't send message to %s", m.to))
+		return errors.Wrap(err, "can't make email writer")
 	}
 
-	if err := smtpClient.Quit(); err != nil {
-		log.Printf("[WARN] failed to send quit command to %s:%d, %v", e.Host, e.Port, err)
-		if err := smtpClient.Close(); err != nil {
-			log.Printf("[WARN] can't close smtp connection, %v", err)
-			errs = multierror.Append(errs, err)
+	defer func() {
+		if err = writer.Close(); err != nil {
+			log.Printf("[WARN] can't close smtp body writer, %v", err)
 		}
+	}()
+
+	buf := bytes.NewBufferString(m.message)
+	if _, err = buf.WriteTo(writer); err != nil {
+		return errors.Wrapf(err, "failed to send email body to %q", m.to)
 	}
-	return errors.Wrapf(errs.ErrorOrNil(), "problems with sending message")
+
+	return nil
 }
 
 // String representation of Email object
