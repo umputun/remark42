@@ -295,6 +295,17 @@ func (e *Email) String() string {
 // Create establish SMTP connection with server using credentials in smtpClientWithCreator.SmtpParams
 // and returns pointer to it. Thread safe.
 func (s *emailClient) Create(params SmtpParams) (smtpClient, error) {
+	authenticate := func(c *smtp.Client) error {
+		if params.Username == "" || params.Password == "" {
+			return nil
+		}
+		auth := smtp.PlainAuth("", params.Username, params.Password, params.Host)
+		if err := c.Auth(auth); err != nil {
+			return errors.Wrapf(err, "failed to auth to smtp %s:%d", params.Host, params.Port)
+		}
+		return nil
+	}
+
 	var c *smtp.Client
 	srvAddress := fmt.Sprintf("%s:%d", params.Host, params.Port)
 	if params.TLS {
@@ -309,7 +320,7 @@ func (s *emailClient) Create(params SmtpParams) (smtpClient, error) {
 		if c, err = smtp.NewClient(conn, params.Host); err != nil {
 			return nil, errors.Wrapf(err, "failed to make smtp client for %s", srvAddress)
 		}
-		return c, nil
+		return c, authenticate(c)
 	}
 
 	conn, err := net.DialTimeout("tcp", srvAddress, params.TimeOut)
@@ -322,12 +333,5 @@ func (s *emailClient) Create(params SmtpParams) (smtpClient, error) {
 		return nil, errors.Wrap(err, "failed to dial")
 	}
 
-	if params.Username != "" && params.Password != "" {
-		auth := smtp.PlainAuth("", params.Username, params.Password, params.Host)
-		if err := c.Auth(auth); err != nil {
-			return nil, errors.Wrapf(err, "failed to auth to smtp %s:%d", params.Host, params.Port)
-		}
-	}
-
-	return c, nil
+	return c, authenticate(c)
 }
