@@ -175,7 +175,11 @@ func (e *Email) Send(ctx context.Context, req Request) (err error) {
 		}
 	}
 
-	return repeater.NewDefault(5, time.Millisecond*250).Do(ctx, func() error { return e.sendMessage(ctx, emailMessage{from: e.From, to: req.Email, message: msg}) })
+	return repeater.NewDefault(5, time.Millisecond*250).Do(
+		ctx,
+		func() error {
+			return e.sendMessage(emailMessage{from: e.From, to: req.Email, message: msg})
+		})
 }
 
 // buildVerificationMessage generates verification email message based on given input
@@ -239,7 +243,7 @@ func (e *Email) buildMessage(subject, body, to, contentType string) (message str
 
 // sendMessage sends messages to server in a new connection, closing the connection after finishing.
 // Thread safe.
-func (e *Email) sendMessage(ctx context.Context, m emailMessage) error {
+func (e *Email) sendMessage(m emailMessage) error {
 	if e.smtp == nil {
 		return errors.New("sendMessage called without smtpClient set")
 	}

@@ -130,33 +130,37 @@ func TestEmailSendClientError(t *testing.T) {
 		err  string
 	}{
 		{name: "failed to verify receiver", smtp: &fakeTestSMTP{fail: map[string]bool{"mail": true}},
-			err: "problems with sending message: 1 error occurred:\n\t* can't send message to : bad from address \"\": failed to verify sender\n\n"},
+			err: "bad from address \"\": failed to verify sender"},
 		{name: "failed to verify sender", smtp: &fakeTestSMTP{fail: map[string]bool{"rcpt": true}},
-			err: "problems with sending message: 1 error occurred:\n\t* can't send message to : bad to address \"\": failed to verify receiver\n\n"},
-		{name: "failed to close connection", smtp: &fakeTestSMTP{fail: map[string]bool{"quit": true, "close": true}},
-			err: "problems with sending message: 1 error occurred:\n\t* failed to close\n\n"},
+			err: "bad to address \"\": failed to verify receiver"},
+		{name: "failed to close connection", smtp: &fakeTestSMTP{fail: map[string]bool{"quit": true, "close": true}}},
 		{name: "failed to make email writer", smtp: &fakeTestSMTP{fail: map[string]bool{"data": true}},
-			err: "problems with sending message: 1 error occurred:\n\t* can't send message to : can't make email writer: failed to send\n\n"},
+			err: "can't make email writer: failed to send"},
 	}
 	for _, d := range testSet {
 		t.Run(d.name, func(t *testing.T) {
 			e := Email{smtp: d.smtp}
-			assert.EqualError(t, e.sendMessage(context.Background(), emailMessage{}), d.err,
-				"expected error for e.sendMessage")
+			if d.err != "" {
+				assert.EqualError(t, e.sendMessage(emailMessage{}), d.err,
+					"expected error for e.sendMessage")
+			} else {
+				assert.NoError(t, e.sendMessage(emailMessage{}),
+					"expected no error for e.sendMessage")
+			}
 		})
 	}
 	e := Email{}
 	e.smtp = nil
-	assert.Error(t, e.sendMessage(context.Background(), emailMessage{}),
+	assert.Error(t, e.sendMessage(emailMessage{}),
 		"nil e.smtp should return error")
 	e.smtp = &fakeTestSMTP{}
-	assert.NoError(t, e.sendMessage(context.Background(), emailMessage{}), "",
+	assert.NoError(t, e.sendMessage(emailMessage{}), "",
 		"no error expected for e.sendMessage in normal flow")
 	e.smtp = &fakeTestSMTP{fail: map[string]bool{"quit": true}}
-	assert.NoError(t, e.sendMessage(context.Background(), emailMessage{}), "",
+	assert.NoError(t, e.sendMessage(emailMessage{}), "",
 		"no error expected for e.sendMessage with failed smtpClient.Quit but successful smtpClient.Close")
 	e.smtp = &fakeTestSMTP{fail: map[string]bool{"create": true}}
-	assert.EqualError(t, e.sendMessage(context.Background(), emailMessage{}), "failed to make smtp Create: failed to create client",
+	assert.EqualError(t, e.sendMessage(emailMessage{}), "failed to make smtp Create: failed to create client",
 		"e.send called without smtpClient set returns error")
 }
 
