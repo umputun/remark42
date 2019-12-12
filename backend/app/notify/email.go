@@ -73,7 +73,7 @@ type emailMessage struct {
 type msgTmplData struct {
 	CommentUser string
 	ParentUser  string
-	Comment     string
+	CommentText string
 	CommentLink string
 	PostTitle   string
 	Email       string
@@ -83,8 +83,8 @@ type msgTmplData struct {
 // verifyTmplData store data for verification message template execution
 type verifyTmplData struct {
 	User  string
-	Email string
 	Token string
+	Email string
 	Site  string
 }
 
@@ -93,10 +93,10 @@ const (
 	defaultEmailTimeout        = 10 * time.Second
 	defaultEmailTemplate       = `{{.CommentUser}}{{if .ParentUser}} → {{.ParentUser}}{{end}}
 
-{{.Comment}}
+{{.CommentText}}
 
 ↦ <a href="{{.CommentLink}}">{{if .PostTitle}}{{.PostTitle}}{{else}}original comment{{end}}</a>
-`
+`  // TODO: add unsubscribe link? https://support.google.com/mail/answer/81126
 	defaultEmailVerificationTemplate = `<!DOCTYPE html>
 <html>
 <head>
@@ -180,7 +180,7 @@ func (e *Email) Send(ctx context.Context, req Request) (err error) {
 
 	if req.Comment.ID != "" {
 		if req.parent.User == req.Comment.User {
-			// don't send anything if if user replied to their own Comment
+			// don't send anything if if user replied to their own comment
 			return nil
 		}
 		log.Printf("[DEBUG] send notification via %s, comment id %s", e, req.Comment.ID)
