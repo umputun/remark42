@@ -71,11 +71,13 @@ type emailMessage struct {
 
 // msgTmplData store data for message from request template execution
 type msgTmplData struct {
-	From      string
-	To        string
-	Orig      string
-	Link      string
-	PostTitle string
+	CommentUser string
+	ParentUser  string
+	Comment     string
+	CommentLink string
+	PostTitle   string
+	Email       string
+	Site        string
 }
 
 // verifyTmplData store data for verification message template execution
@@ -89,11 +91,11 @@ type verifyTmplData struct {
 const (
 	defaultVerificationSubject = "Email verification"
 	defaultEmailTimeout        = 10 * time.Second
-	defaultEmailTemplate       = `{{.From}}{{if .To}} → {{.To}}{{end}}
+	defaultEmailTemplate       = `{{.CommentUser}}{{if .ParentUser}} → {{.ParentUser}}{{end}}
 
-{{.Orig}}
+{{.Comment}}
 
-↦ <a href="{{.Link}}">{{if .PostTitle}}{{.PostTitle}}{{else}}original comment{{end}}</a>
+↦ <a href="{{.CommentLink}}">{{if .PostTitle}}{{.PostTitle}}{{else}}original comment{{end}}</a>
 `
 	defaultEmailVerificationTemplate = `<!DOCTYPE html>
 <html>
@@ -182,7 +184,14 @@ func (e *Email) Send(ctx context.Context, req Request) (err error) {
 			return nil
 		}
 		log.Printf("[DEBUG] send notification via %s, comment id %s", e, req.Comment.ID)
-		msg, err = e.buildMessageFromRequest(req, req.Email)
+		msg, err = e.buildMessageFromRequest(
+			req.Comment.User.Name,
+			req.parent.User.Name,
+			req.Comment.Orig,
+			req.Comment.Locator.URL+uiNav+req.Comment.ID,
+			req.Comment.PostTitle,
+			req.Email,
+			req.Comment.Locator.SiteID)
 		if err != nil {
 			return err
 		}
@@ -196,34 +205,36 @@ func (e *Email) Send(ctx context.Context, req Request) (err error) {
 }
 
 // buildVerificationMessage generates verification email message based on given input
-func (e *Email) buildVerificationMessage(user, to, token, site string) (string, error) {
+func (e *Email) buildVerificationMessage(user, email, token, site string) (string, error) {
 	subject := e.VerificationSubject
 	msg := bytes.Buffer{}
-	err := e.verifyTmpl.Execute(&msg, verifyTmplData{user, to, token, site})
+	err := e.verifyTmpl.Execute(&msg, verifyTmplData{user, email, token, site})
 	if err != nil {
-		return "", errors.Wrapf(err, "error executing template to build verifying message from request")
+		return "", errors.Wrapf(err, "error executing template to build verification message")
 	}
-	return e.buildMessage(subject, msg.String(), to, "text/html")
+	return e.buildMessage(subject, msg.String(), email, "text/html")
 }
 
 // buildMessageFromRequest generates email message based on Request using e.MsgTemplate
-func (e *Email) buildMessageFromRequest(req Request, to string) (string, error) {
-	subject := "New comment"
-	if req.Comment.PostTitle != "" {
-		subject += fmt.Sprintf(" for \"%s\"", req.Comment.PostTitle)
+func (e *Email) buildMessageFromRequest(commentUser, parentUser, comment, commentLink, postTitle, email, site string) (string, error) {
+	subject := "New reply to your comment"
+	if postTitle != "" {
+		subject += fmt.Sprintf(" for \"%s\"", postTitle)
 	}
 	msg := bytes.Buffer{}
 	err := e.msgTmpl.Execute(&msg, msgTmplData{
-		req.Comment.User.Name,
-		req.parent.User.Name,
-		req.Comment.Orig,
-		req.Comment.Locator.URL + uiNav + req.Comment.ID,
-		req.Comment.PostTitle,
+		commentUser,
+		parentUser,
+		comment,
+		commentLink,
+		postTitle,
+		email,
+		site,
 	})
 	if err != nil {
-		return "", errors.Wrapf(err, "error executing template to build message from request")
+		return "", errors.Wrapf(err, "error executing template to build comment reply message")
 	}
-	return e.buildMessage(subject, msg.String(), to, "text/html")
+	return e.buildMessage(subject, msg.String(), email, "text/html")
 }
 
 // buildMessage generates email message to send using net/smtp.Data()

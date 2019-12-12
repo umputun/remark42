@@ -100,14 +100,14 @@ func TestEmailSendErrors(t *testing.T) {
 	e.verifyTmpl, err = template.New("test").Parse("{{.Test}}")
 	assert.NoError(t, err)
 	assert.EqualError(t, e.Send(context.Background(), Request{Email: "bad@example.org", Verification: VerificationMetadata{Token: "some"}}),
-		"error executing template to build verifying message from request: template: test:1:2: executing \"test\" at <.Test>: can't evaluate field Test in type notify.verifyTmplData")
+		"error executing template to build verification message: template: test:1:2: executing \"test\" at <.Test>: can't evaluate field Test in type notify.verifyTmplData")
 	e.verifyTmpl, err = template.New("test").Parse(defaultEmailVerificationTemplate)
 	assert.NoError(t, err)
 
 	e.msgTmpl, err = template.New("test").Parse("{{.Test}}")
 	assert.NoError(t, err)
 	assert.EqualError(t, e.Send(context.Background(), Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "test"}}, Email: "bad@example.org"}),
-		"error executing template to build message from request: template: test:1:2: executing \"test\" at <.Test>: can't evaluate field Test in type notify.msgTmplData")
+		"error executing template to build comment reply message: template: test:1:2: executing \"test\" at <.Test>: can't evaluate field Test in type notify.msgTmplData")
 	e.msgTmpl, err = template.New("test").Parse(defaultEmailTemplate)
 	assert.NoError(t, err)
 
@@ -183,15 +183,23 @@ func TestEmail_Send(t *testing.T) {
 	assert.Equal(t, 1, fakeSmtp.readQuitCount())
 	assert.Equal(t, "test@example.org", fakeSmtp.readRcpt())
 	// test buildMessageFromRequest separately for message text
-	res, err := e.buildMessageFromRequest(req, "test@example.org")
+	res, err := e.buildMessageFromRequest(req.Comment.User.Name,
+		req.parent.User.Name,
+		req.Comment.Orig,
+		req.Comment.Locator.URL+uiNav+req.Comment.ID,
+		req.Comment.PostTitle,
+		req.Email,
+		req.Comment.Locator.SiteID)
 	assert.NoError(t, err)
-	assert.Contains(t, res, `From: from@example.org`)
-	assert.Contains(t, res, `To: test@example.org`)
-	assert.Contains(t, res, `Subject: New comment for "test_title"`)
-	assert.Contains(t, res, `Content-Transfer-Encoding: quoted-printable`)
-	assert.Contains(t, res, `MIME-version: 1.0`)
-	assert.Contains(t, res, `Content-Type: text/html; charset="UTF-8"`)
-	assert.Contains(t, res, `Date: `)
+	assert.Contains(t, res, `From: from@example.org
+To: test@example.org
+Subject: New reply to your comment for "test_title"
+Content-Transfer-Encoding: quoted-printable
+MIME-version: 1.0
+Content-Type: text/html; charset="UTF-8"
+Date: `)
+	assert.Contains(t, res, "test_user")
+	assert.Contains(t, res, "#remark42__comment-999")
 }
 
 type fakeTestSMTP struct {
