@@ -199,7 +199,7 @@ MIME-version: 1.0
 Content-Type: text/html; charset="UTF-8"
 Date: `)
 	assert.Contains(t, res, "test_user")
-	assert.Contains(t, res, "#remark42__comment-999")
+	assert.Contains(t, res, "comment-999")
 }
 
 type fakeTestSMTP struct {
