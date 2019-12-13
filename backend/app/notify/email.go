@@ -214,7 +214,12 @@ func (e *Email) Send(ctx context.Context, req Request) (err error) {
 func (e *Email) buildVerificationMessage(user, email, token, site string) (string, error) {
 	subject := e.VerificationSubject
 	msg := bytes.Buffer{}
-	err := e.verifyTmpl.Execute(&msg, verifyTmplData{user, token, email, site})
+	err := e.verifyTmpl.Execute(&msg, verifyTmplData{
+		User:  user,
+		Token: token,
+		Email: email,
+		Site:  site,
+	})
 	if err != nil {
 		return "", errors.Wrapf(err, "error executing template to build verification message")
 	}
@@ -229,13 +234,13 @@ func (e *Email) buildMessageFromRequest(req Request) (string, error) {
 	}
 	msg := bytes.Buffer{}
 	err := e.msgTmpl.Execute(&msg, msgTmplData{
-		req.Comment.User.Name,
-		req.parent.User.Name,
-		req.Comment.Text,
-		req.Comment.Locator.URL + uiNav + req.Comment.ID,
-		req.Comment.PostTitle,
-		req.Email,
-		req.Comment.Locator.SiteID,
+		CommentUser: req.Comment.User.Name,
+		ParentUser:  req.parent.User.Name,
+		CommentText: req.Comment.Text,
+		CommentLink: req.Comment.Locator.URL + uiNav + req.Comment.ID,
+		PostTitle:   req.Comment.PostTitle,
+		Email:       req.Email,
+		Site:        req.Comment.Locator.SiteID,
 	})
 	if err != nil {
 		return "", errors.Wrapf(err, "error executing template to build comment reply message")
