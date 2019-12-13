@@ -197,14 +197,7 @@ func (e *Email) Send(ctx context.Context, req Request) (err error) {
 			return nil
 		}
 		log.Printf("[DEBUG] send notification via %s, comment id %s", e, req.Comment.ID)
-		msg, err = e.buildMessageFromRequest(
-			req.Comment.User.Name,
-			req.parent.User.Name,
-			req.Comment.Orig,
-			req.Comment.Locator.URL+uiNav+req.Comment.ID,
-			req.Comment.PostTitle,
-			req.Email,
-			req.Comment.Locator.SiteID)
+		msg, err = e.buildMessageFromRequest(req)
 		if err != nil {
 			return err
 		}
@@ -221,7 +214,7 @@ func (e *Email) Send(ctx context.Context, req Request) (err error) {
 func (e *Email) buildVerificationMessage(user, email, token, site string) (string, error) {
 	subject := e.VerificationSubject
 	msg := bytes.Buffer{}
-	err := e.verifyTmpl.Execute(&msg, verifyTmplData{user, email, token, site})
+	err := e.verifyTmpl.Execute(&msg, verifyTmplData{user, token, email, site})
 	if err != nil {
 		return "", errors.Wrapf(err, "error executing template to build verification message")
 	}
@@ -229,25 +222,25 @@ func (e *Email) buildVerificationMessage(user, email, token, site string) (strin
 }
 
 // buildMessageFromRequest generates email message based on Request using e.MsgTemplate
-func (e *Email) buildMessageFromRequest(commentUser, parentUser, comment, commentLink, postTitle, email, site string) (string, error) {
+func (e *Email) buildMessageFromRequest(req Request) (string, error) {
 	subject := "New reply to your comment"
-	if postTitle != "" {
-		subject += fmt.Sprintf(" for \"%s\"", postTitle)
+	if req.Comment.PostTitle != "" {
+		subject += fmt.Sprintf(" for \"%s\"", req.Comment.PostTitle)
 	}
 	msg := bytes.Buffer{}
 	err := e.msgTmpl.Execute(&msg, msgTmplData{
-		commentUser,
-		parentUser,
-		comment,
-		commentLink,
-		postTitle,
-		email,
-		site,
+		req.Comment.User.Name,
+		req.parent.User.Name,
+		req.Comment.Text,
+		req.Comment.Locator.URL + uiNav + req.Comment.ID,
+		req.Comment.PostTitle,
+		req.Email,
+		req.Comment.Locator.SiteID,
 	})
 	if err != nil {
 		return "", errors.Wrapf(err, "error executing template to build comment reply message")
 	}
-	return e.buildMessage(subject, msg.String(), email, "text/html")
+	return e.buildMessage(subject, msg.String(), req.Email, "text/html")
 }
 
 // buildMessage generates email message to send using net/smtp.Data()

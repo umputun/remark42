@@ -183,13 +183,7 @@ func TestEmail_Send(t *testing.T) {
 	assert.Equal(t, 1, fakeSmtp.readQuitCount())
 	assert.Equal(t, "test@example.org", fakeSmtp.readRcpt())
 	// test buildMessageFromRequest separately for message text
-	res, err := e.buildMessageFromRequest(req.Comment.User.Name,
-		req.parent.User.Name,
-		req.Comment.Orig,
-		req.Comment.Locator.URL+uiNav+req.Comment.ID,
-		req.Comment.PostTitle,
-		req.Email,
-		req.Comment.Locator.SiteID)
+	res, err := e.buildMessageFromRequest(req)
 	assert.NoError(t, err)
 	assert.Contains(t, res, `From: from@example.org
 To: test@example.org
