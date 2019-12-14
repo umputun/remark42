@@ -177,7 +177,10 @@ func TestEmail_Send(t *testing.T) {
 	assert.NotNil(t, e)
 	fakeSmtp := fakeTestSMTP{}
 	e.smtp = &fakeSmtp
-	req := Request{Comment: store.Comment{ID: "999", User: store.User{Name: "test_user"}, PostTitle: "test_title"}, Email: "test@example.org"}
+	req := Request{
+		Comment: store.Comment{ID: "999", User: store.User{Name: "test_user"}, PostTitle: "test_title"},
+		parent:  store.Comment{ID: "1", User: store.User{Name: "parent_user"}},
+		Email:   "test@example.org"}
 	assert.NoError(t, e.Send(context.TODO(), req))
 	assert.Equal(t, "from@example.org", fakeSmtp.readMail())
 	assert.Equal(t, 1, fakeSmtp.readQuitCount())
@@ -192,8 +195,6 @@ Content-Transfer-Encoding: quoted-printable
 MIME-version: 1.0
 Content-Type: text/html; charset="UTF-8"
 Date: `)
-	assert.Contains(t, res, "test_user")
-	assert.Contains(t, res, "comment-999")
 }
 
 type fakeTestSMTP struct {
