@@ -96,6 +96,7 @@ func TestEmailNew(t *testing.T) {
 func TestEmailSendErrors(t *testing.T) {
 	var err error
 	e := Email{}
+	e.TokenGenFn = TokenGenFn
 
 	e.verifyTmpl, err = template.New("test").Parse("{{.Test}}")
 	assert.NoError(t, err)
@@ -115,6 +116,12 @@ func TestEmailSendErrors(t *testing.T) {
 	cancel()
 	assert.EqualError(t, e.Send(ctx, Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "test"}}, Email: "bad@example.org"}),
 		"sending message to \"bad@example.org\" aborted due to canceled context")
+
+	e.smtp = &fakeTestSMTP{}
+	assert.EqualError(t, e.Send(context.Background(), Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "error"}}, Email: "bad@example.org"}),
+		"error creating token for unsubscribe link: token generation error")
+	e.msgTmpl, err = template.New("test").Parse(defaultEmailTemplate)
+	assert.NoError(t, err)
 }
 
 func TestEmailSend_ExitConditions(t *testing.T) {
@@ -177,6 +184,7 @@ func TestEmail_Send(t *testing.T) {
 	assert.NotNil(t, e)
 	fakeSmtp := fakeTestSMTP{}
 	e.smtp = &fakeSmtp
+	e.TokenGenFn = TokenGenFn
 	req := Request{
 		Comment: store.Comment{ID: "999", User: store.User{Name: "test_user"}, PostTitle: "test_title"},
 		parent:  store.Comment{ID: "1", User: store.User{Name: "parent_user"}},
@@ -278,6 +286,13 @@ func (f *fakeTestSMTP) readQuitCount() int {
 	f.lock.RLock()
 	defer f.lock.RUnlock()
 	return f.quitCount
+}
+
+func TokenGenFn(user, _ string) (string, error) {
+	if user == "error" {
+		return "", errors.New("token generation error")
+	}
+	return "token", nil
 }
 
 type nopCloser struct {

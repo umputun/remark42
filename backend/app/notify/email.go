@@ -23,6 +23,9 @@ type EmailParams struct {
 	MsgTemplate          string // request message template
 	VerificationSubject  string // verification message subject
 	VerificationTemplate string // verification message template
+	UnsubscribeLink      string // full unsubscribe handler URL
+
+	TokenGenFn func(userID, email string) (string, error) // Unsubscribe token generation function
 }
 
 // SmtpParams contain settings for smtp server connection
@@ -105,7 +108,7 @@ const (
 	<div style="background-color: #eee; width: 90%;	max-width: 800px; margin: 0 auto; border-radius: 0.4em; padding: 0.5em;">
 		<p style="margin: 1em 0 1.5em 0; color: #444444;"><b><a href="{{.CommentLink}}" style="color: #4fbbd6 !important;">New reply</a> from {{.CommentUser}} on your comment{{if .PostTitle}} to "{{.PostTitle}}"{{end}} on {{.Site}}:</b></p>
 		<div style="background-color: #fff; margin: 0; padding: 0.5em; word-break: break-all; text-align: left; border-radius: 0.2em;">{{.CommentText}}</div>
-		<p style="position: relative; margin-top: 2em; font-size: 0.8em; opacity: 0.8;"><i>Sent to <a style="color:inherit !important; text-decoration: none !important;" href="mailto:{{.Email}}">{{.Email}}</a> for {{.ParentUser}}</i>{{if .UnsubscribeLink}}<br><br><a style="color: #4fbbd6 !important;" href="{{.UnsubscribeLink}}">Unsubscribe</a>{{end}}</p>
+		<p style="position: relative; margin-top: 2em; font-size: 0.8em; opacity: 0.8;"><i>Sent to <a style="color:inherit !important; text-decoration: none !important;" href="mailto:{{.Email}}">{{.Email}}</a> for {{.ParentUser}}</i><br><br><a style="color: #4fbbd6 !important;" href="{{.UnsubscribeLink}}">Unsubscribe</a></p>
 	</div>
 </div>
 </body>
@@ -233,15 +236,20 @@ func (e *Email) buildMessageFromRequest(req Request) (string, error) {
 	if req.Comment.PostTitle != "" {
 		subject += fmt.Sprintf(" for \"%s\"", req.Comment.PostTitle)
 	}
+	token, err := e.TokenGenFn(req.parent.User.ID, req.Email)
+	if err != nil {
+		return "", errors.Wrapf(err, "error creating token for unsubscribe link")
+	}
 	msg := bytes.Buffer{}
-	err := e.msgTmpl.Execute(&msg, msgTmplData{
-		CommentUser: req.Comment.User.Name,
-		ParentUser:  req.parent.User.Name,
-		CommentText: req.Comment.Text,
-		CommentLink: req.Comment.Locator.URL + uiNav + req.Comment.ID,
-		PostTitle:   req.Comment.PostTitle,
-		Email:       req.Email,
-		Site:        req.Comment.Locator.SiteID,
+	err = e.msgTmpl.Execute(&msg, msgTmplData{
+		CommentUser:     req.Comment.User.Name,
+		ParentUser:      req.parent.User.Name,
+		CommentText:     req.Comment.Text,
+		CommentLink:     req.Comment.Locator.URL + uiNav + req.Comment.ID,
+		PostTitle:       req.Comment.PostTitle,
+		Email:           req.Email,
+		Site:            req.Comment.Locator.SiteID,
+		UnsubscribeLink: e.UnsubscribeLink + "?site=" + req.Comment.Locator.SiteID + "&tkn=" + token,
 	})
 	if err != nil {
 		return "", errors.Wrapf(err, "error executing template to build comment reply message")
