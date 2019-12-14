@@ -5,9 +5,9 @@ GET {{host}}/api/v1/find?site={{site}}&sort=-time&format=tree&url={{url}}
 ### find request with plain
 GET {{host}}/api/v1/find?site={{site}}&sort=-controversy&format=plain&url={{url}}
 
-### find request with plain. dev token for secret=secret, not admin
-GET http://127.0.0.1:8080/api/v1/find?site={{site}}&sort=-controversy&format=plain&url={{url}}
-X-JWT: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6Mzc4OTE5MTgyMiwianRpIjoicmFuZG9tIGlkIiwiaXNzIjoicmVtYXJrNDIiLCJuYmYiOjE1MjE4ODQyMjIsInVzZXIiOnsibmFtZSI6ImRldmVsb3BlciBvbmUiLCJpZCI6ImRldiIsInBpY3R1cmUiOiJodHRwOi8vZXhhbXBsZS5jb20vcGljLnBuZyIsImlwIjoiMTI3LjAuMC4xIiwiZW1haWwiOiJtZUBleGFtcGxlLmNvbSJ9fQ.aKUAXiZxXypgV7m1wEOgUcyPOvUDXHDi3A06YWKbcLg
+### find request with plain. dev token for secret=12345, not admin
+GET {{host}}/api/v1/find?site={{site}}&sort=-controversy&format=plain&url={{url}}
+X-JWT: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcmsiLCJleHAiOjE5NzYwNTY3NTYsImp0aSI6IjJlOGJmMTE5OTI0MjQxMDRjYjFhZGRlODllMWYwNGFiMTg4YWZjMzQiLCJpYXQiOjE1NzYwNTY0NTYsImlzcyI6InJlbWFyazQyIiwidXNlciI6eyJuYW1lIjoiZGV2X3VzZXIiLCJpZCI6ImRldl91c2VyIiwicGljdHVyZSI6Imh0dHA6Ly8xMjcuMC4wLjE6ODA4MC9hcGkvdjEvYXZhdGFyL2NjZmEyYWJkMDE2Njc2MDViNGUxZmM0ZmNiOTFiMWUxYWYzMjMyNDAuaW1hZ2UiLCJhdHRycyI6eyJhZG1pbiI6dHJ1ZSwiYmxvY2tlZCI6ZmFsc2V9fX0.6Qt5s2enBMRC-Jmsua01yViVYI95Dx6BPBMaNjj36d4
 
 ### last 50 comments
 GET {{host}}/api/v1/last/50?site={{site}}
@@ -57,8 +57,8 @@ Content-Type: application/json
 PUT {{host}}/api/v1/admin/pin/3665976683?site={{site}}&url={{url}}&pin=1
 
 ### vote for comment
-PUT http://127.0.0.1:8080/api/v1/vote/8a8c0b80-0d0a-41c3-84ad-f4034704e827?site={{site}}&url={{url}}&vote=-1
-X-JWT: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6Mzc4OTE5MTgyMiwianRpIjoicmFuZG9tIGlkIiwiaXNzIjoicmVtYXJrNDIiLCJuYmYiOjE1MjE4ODQyMjIsInVzZXIiOnsibmFtZSI6ImRldmVsb3BlciBvbmUiLCJpZCI6ImRldiIsInBpY3R1cmUiOiJodHRwOi8vZXhhbXBsZS5jb20vcGljLnBuZyIsImlwIjoiMTI3LjAuMC4xIiwiZW1haWwiOiJtZUBleGFtcGxlLmNvbSJ9fQ.aKUAXiZxXypgV7m1wEOgUcyPOvUDXHDi3A06YWKbcLg
+PUT {{host}}/api/v1/vote/8a8c0b80-0d0a-41c3-84ad-f4034704e827?site={{site}}&url={{url}}&vote=-1
+X-JWT: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcmsiLCJleHAiOjE5NzYwNTY3NTYsImp0aSI6IjJlOGJmMTE5OTI0MjQxMDRjYjFhZGRlODllMWYwNGFiMTg4YWZjMzQiLCJpYXQiOjE1NzYwNTY0NTYsImlzcyI6InJlbWFyazQyIiwidXNlciI6eyJuYW1lIjoiZGV2X3VzZXIiLCJpZCI6ImRldl91c2VyIiwicGljdHVyZSI6Imh0dHA6Ly8xMjcuMC4wLjE6ODA4MC9hcGkvdjEvYXZhdGFyL2NjZmEyYWJkMDE2Njc2MDViNGUxZmM0ZmNiOTFiMWUxYWYzMjMyNDAuaW1hZ2UiLCJhdHRycyI6eyJhZG1pbiI6dHJ1ZSwiYmxvY2tlZCI6ZmFsc2V9fX0.6Qt5s2enBMRC-Jmsua01yViVYI95Dx6BPBMaNjj36d4
 
 ### get user info
 GET {{host}}/api/v1/user
@@ -104,7 +104,7 @@ GET {{host}}/api/v1/admin/blocked?site={{site}}
 DELETE {{host}}/api/v1/admin/comment/3665976683?site={{site}}&url={{url}}
 
 ### get post info
-GET {{host}}/api/v1/info?site={{site}}&url={{url}
+GET {{host}}/api/v1/info?site={{site}}&url={{url}}
 
 ### post rss
 GET {{host}}/api/v1/rss/post?site={{site}}&url={{url}}
@@ -118,28 +118,28 @@ GET {{host}}/api/v1/rss/reply?site={{site}}&user={{user}}
 ### get default avatar
 GET {{host}}/api/v1/avatar/blah
 
-### send confirmation token for current user to specified email. auth token for dev user for secret=secret.
+### send confirmation token for current user to specified email. auth token for dev user for secret=12345.
 POST {{host}}/api/v1/email/subscribe?site={{site}}&address={{email}}
-X-JWT: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6Mzc4OTE5MTgyMiwianRpIjoicmFuZG9tIGlkIiwiaXNzIjoicmVtYXJrNDIiLCJuYmYiOjE1MjE4ODQyMjIsInVzZXIiOnsibmFtZSI6ImRldmVsb3BlciBvbmUiLCJpZCI6ImRldiIsInBpY3R1cmUiOiJodHRwOi8vZXhhbXBsZS5jb20vcGljLnBuZyIsImlwIjoiMTI3LjAuMC4xIiwiZW1haWwiOiJtZUBleGFtcGxlLmNvbSJ9fQ.aKUAXiZxXypgV7m1wEOgUcyPOvUDXHDi3A06YWKbcLg
+X-JWT: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcmsiLCJleHAiOjE5NzYwNTY3NTYsImp0aSI6IjJlOGJmMTE5OTI0MjQxMDRjYjFhZGRlODllMWYwNGFiMTg4YWZjMzQiLCJpYXQiOjE1NzYwNTY0NTYsImlzcyI6InJlbWFyazQyIiwidXNlciI6eyJuYW1lIjoiZGV2X3VzZXIiLCJpZCI6ImRldl91c2VyIiwicGljdHVyZSI6Imh0dHA6Ly8xMjcuMC4wLjE6ODA4MC9hcGkvdjEvYXZhdGFyL2NjZmEyYWJkMDE2Njc2MDViNGUxZmM0ZmNiOTFiMWUxYWYzMjMyNDAuaW1hZ2UiLCJhdHRycyI6eyJhZG1pbiI6dHJ1ZSwiYmxvY2tlZCI6ZmFsc2V9fX0.6Qt5s2enBMRC-Jmsua01yViVYI95Dx6BPBMaNjj36d4
 
-### add email for notifications for current user via token from email. auth token for dev user for secret=secret.
+### add email for notifications for current user via token from email. auth token for dev user for secret=12345.
 POST {{host}}/api/v1/email/confirm?site={{site}}&tkn={{token}}
-X-JWT: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6Mzc4OTE5MTgyMiwianRpIjoicmFuZG9tIGlkIiwiaXNzIjoicmVtYXJrNDIiLCJuYmYiOjE1MjE4ODQyMjIsInVzZXIiOnsibmFtZSI6ImRldmVsb3BlciBvbmUiLCJpZCI6ImRldiIsInBpY3R1cmUiOiJodHRwOi8vZXhhbXBsZS5jb20vcGljLnBuZyIsImlwIjoiMTI3LjAuMC4xIiwiZW1haWwiOiJtZUBleGFtcGxlLmNvbSJ9fQ.aKUAXiZxXypgV7m1wEOgUcyPOvUDXHDi3A06YWKbcLg
+X-JWT: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcmsiLCJleHAiOjE5NzYwNTY3NTYsImp0aSI6IjJlOGJmMTE5OTI0MjQxMDRjYjFhZGRlODllMWYwNGFiMTg4YWZjMzQiLCJpYXQiOjE1NzYwNTY0NTYsImlzcyI6InJlbWFyazQyIiwidXNlciI6eyJuYW1lIjoiZGV2X3VzZXIiLCJpZCI6ImRldl91c2VyIiwicGljdHVyZSI6Imh0dHA6Ly8xMjcuMC4wLjE6ODA4MC9hcGkvdjEvYXZhdGFyL2NjZmEyYWJkMDE2Njc2MDViNGUxZmM0ZmNiOTFiMWUxYWYzMjMyNDAuaW1hZ2UiLCJhdHRycyI6eyJhZG1pbiI6dHJ1ZSwiYmxvY2tlZCI6ZmFsc2V9fX0.6Qt5s2enBMRC-Jmsua01yViVYI95Dx6BPBMaNjj36d4
 
-### get current user email. auth token for dev user for secret=secret.
+### get current user email. auth token for dev user for secret=12345.
 GET {{host}}/api/v1/email?site={{site}}
-X-JWT: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6Mzc4OTE5MTgyMiwianRpIjoicmFuZG9tIGlkIiwiaXNzIjoicmVtYXJrNDIiLCJuYmYiOjE1MjE4ODQyMjIsInVzZXIiOnsibmFtZSI6ImRldmVsb3BlciBvbmUiLCJpZCI6ImRldiIsInBpY3R1cmUiOiJodHRwOi8vZXhhbXBsZS5jb20vcGljLnBuZyIsImlwIjoiMTI3LjAuMC4xIiwiZW1haWwiOiJtZUBleGFtcGxlLmNvbSJ9fQ.aKUAXiZxXypgV7m1wEOgUcyPOvUDXHDi3A06YWKbcLg
+X-JWT: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcmsiLCJleHAiOjE5NzYwNTY3NTYsImp0aSI6IjJlOGJmMTE5OTI0MjQxMDRjYjFhZGRlODllMWYwNGFiMTg4YWZjMzQiLCJpYXQiOjE1NzYwNTY0NTYsImlzcyI6InJlbWFyazQyIiwidXNlciI6eyJuYW1lIjoiZGV2X3VzZXIiLCJpZCI6ImRldl91c2VyIiwicGljdHVyZSI6Imh0dHA6Ly8xMjcuMC4wLjE6ODA4MC9hcGkvdjEvYXZhdGFyL2NjZmEyYWJkMDE2Njc2MDViNGUxZmM0ZmNiOTFiMWUxYWYzMjMyNDAuaW1hZ2UiLCJhdHRycyI6eyJhZG1pbiI6dHJ1ZSwiYmxvY2tlZCI6ZmFsc2V9fX0.6Qt5s2enBMRC-Jmsua01yViVYI95Dx6BPBMaNjj36d4
 
-### delete current user email. auth token for dev user for secret=secret.
+### delete current user email. auth token for dev user for secret=12345.
 DELETE {{host}}/api/v1/email?site={{site}}
-X-JWT: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6Mzc4OTE5MTgyMiwianRpIjoicmFuZG9tIGlkIiwiaXNzIjoicmVtYXJrNDIiLCJuYmYiOjE1MjE4ODQyMjIsInVzZXIiOnsibmFtZSI6ImRldmVsb3BlciBvbmUiLCJpZCI6ImRldiIsInBpY3R1cmUiOiJodHRwOi8vZXhhbXBsZS5jb20vcGljLnBuZyIsImlwIjoiMTI3LjAuMC4xIiwiZW1haWwiOiJtZUBleGFtcGxlLmNvbSJ9fQ.aKUAXiZxXypgV7m1wEOgUcyPOvUDXHDi3A06YWKbcLg
+X-JWT: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcmsiLCJleHAiOjE5NzYwNTY3NTYsImp0aSI6IjJlOGJmMTE5OTI0MjQxMDRjYjFhZGRlODllMWYwNGFiMTg4YWZjMzQiLCJpYXQiOjE1NzYwNTY0NTYsImlzcyI6InJlbWFyazQyIiwidXNlciI6eyJuYW1lIjoiZGV2X3VzZXIiLCJpZCI6ImRldl91c2VyIiwicGljdHVyZSI6Imh0dHA6Ly8xMjcuMC4wLjE6ODA4MC9hcGkvdjEvYXZhdGFyL2NjZmEyYWJkMDE2Njc2MDViNGUxZmM0ZmNiOTFiMWUxYWYzMjMyNDAuaW1hZ2UiLCJhdHRycyI6eyJhZG1pbiI6dHJ1ZSwiYmxvY2tlZCI6ZmFsc2V9fX0.6Qt5s2enBMRC-Jmsua01yViVYI95Dx6BPBMaNjj36d4
 
 ### get config
 GET {{host}}/api/v1/config?site={{site}}
 
-### deleteme (user's request). dev token for secret=secret, not admin
+### deleteme (user's request). dev token for secret=12345, not admin
 POST {{host}}/api/v1/deleteme?site_id={{site}}
-X-JWT: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6Mzc4OTE5MTgyMiwianRpIjoicmFuZG9tIGlkIiwiaXNzIjoicmVtYXJrNDIiLCJuYmYiOjE1MjE4ODQyMjIsInVzZXIiOnsibmFtZSI6ImRldmVsb3BlciBvbmUiLCJpZCI6ImRldiIsInBpY3R1cmUiOiJodHRwOi8vZXhhbXBsZS5jb20vcGljLnBuZyIsImlwIjoiMTI3LjAuMC4xIiwiZW1haWwiOiJtZUBleGFtcGxlLmNvbSJ9fQ.aKUAXiZxXypgV7m1wEOgUcyPOvUDXHDi3A06YWKbcLg
+X-JWT: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcmsiLCJleHAiOjE5NzYwNTY3NTYsImp0aSI6IjJlOGJmMTE5OTI0MjQxMDRjYjFhZGRlODllMWYwNGFiMTg4YWZjMzQiLCJpYXQiOjE1NzYwNTY0NTYsImlzcyI6InJlbWFyazQyIiwidXNlciI6eyJuYW1lIjoiZGV2X3VzZXIiLCJpZCI6ImRldl91c2VyIiwicGljdHVyZSI6Imh0dHA6Ly8xMjcuMC4wLjE6ODA4MC9hcGkvdjEvYXZhdGFyL2NjZmEyYWJkMDE2Njc2MDViNGUxZmM0ZmNiOTFiMWUxYWYzMjMyNDAuaW1hZ2UiLCJhdHRycyI6eyJhZG1pbiI6dHJ1ZSwiYmxvY2tlZCI6ZmFsc2V9fX0.6Qt5s2enBMRC-Jmsua01yViVYI95Dx6BPBMaNjj36d4
 
 ### deletme, admin. admin token for secret=secret
 GET {{host}}/api/v1/admin/deleteme?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1NjU2NjI4MDYsImlzcyI6InJlbWFyazQyIiwibmJmIjoxNTU3NzEzOTQ2LCJ1c2VyIjp7Im5hbWUiOiJkZXZlbG9wZXIgb25lIiwiaWQiOiJkZXYiLCJwaWN0dXJlIjoiIiwiYXR0cnMiOnsiYWRtaW4iOmZhbHNlLCJibG9ja2VkIjpmYWxzZSwiZGVsZXRlX21lIjp0cnVlfX19.qmnsQt_jilHzoauA9D7t1m3w69qvAJsZkuKVPWhpdik
