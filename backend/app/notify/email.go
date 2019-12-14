@@ -97,15 +97,15 @@ const (
 <head>
 	<meta name="viewport" content="width=device-width" />
 	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-	<style>img {max-width: 100%; max-height: 300px;}</style>
+	<style>img {max-width: 100%; max-height: 300px;} a {color: #4fbbd6;}</style>
 </head>
 <body>
 <div style="text-align: center; font-family: Arial, sans-serif; font-size: 18px;">
 	<h1 style="position: relative; color: #4fbbd6; margin-top: 0.2em;">Remark42</h1>
 	<div style="background-color: #eee; width: 90%;	max-width: 800px; margin: 0 auto; border-radius: 0.4em; padding: 0.5em;">
-		<p style="margin: 1em 0 1.5em 0; color: #444444;"><b><a href="{{.CommentLink}}" style="color:  #4fbbd6;">New reply</a> from {{.CommentUser}} on your comment{{if .PostTitle}} to "{{.PostTitle}}"{{end}} on {{.Site}}:</b></p>
+		<p style="margin: 1em 0 1.5em 0; color: #444444;"><b><a href="{{.CommentLink}}" style="color: #4fbbd6 !important;">New reply</a> from {{.CommentUser}} on your comment{{if .PostTitle}} to "{{.PostTitle}}"{{end}} on {{.Site}}:</b></p>
 		<div style="background-color: #fff; margin: 0; padding: 0.5em; word-break: break-all; text-align: left; border-radius: 0.2em;">{{.CommentText}}</div>
-		<p style="position: relative; margin-top: 2em; font-size: 0.8em; opacity: 0.8;"><i>Sent to {{.Email}} for {{.ParentUser}}</i></p>
+		<p style="position: relative; margin-top: 2em; font-size: 0.8em; opacity: 0.8;"><i>Sent to <a style="color:inherit !important; text-decoration: none !important;" href="mailto:{{.Email}}">{{.Email}}</a> for {{.ParentUser}}</i>{{if .UnsubscribeLink}}<br><br><a style="color: #4fbbd6 !important;" href="{{.UnsubscribeLink}}">Unsubscribe</a>{{end}}</p>
 	</div>
 </div>
 </body>
