@@ -71,13 +71,14 @@ type emailMessage struct {
 
 // msgTmplData store data for message from request template execution
 type msgTmplData struct {
-	CommentUser string
-	ParentUser  string
-	CommentText string
-	CommentLink string
-	PostTitle   string
-	Email       string
-	Site        string
+	CommentUser     string
+	ParentUser      string
+	CommentText     string
+	CommentLink     string
+	PostTitle       string
+	Email           string
+	Site            string
+	UnsubscribeLink string
 }
 
 // verifyTmplData store data for verification message template execution
@@ -109,7 +110,7 @@ const (
 </div>
 </body>
 </html>
-`  // TODO: add unsubscribe link? https://support.google.com/mail/answer/81126
+`
 	defaultEmailVerificationTemplate = `<!DOCTYPE html>
 <html>
 <head>
