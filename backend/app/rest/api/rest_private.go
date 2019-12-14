@@ -338,6 +338,69 @@ func (s *private) setConfirmedEmailCtrl(w http.ResponseWriter, r *http.Request) 
 	render.JSON(w, r, R.JSON{"updated": true, "address": val})
 }
 
+// POST/GET /email/unsubscribe?site=siteID&tkn=jwt - unsubscribe the user in token from email notifications
+func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
+	tkn := r.URL.Query().Get("tkn")
+	if tkn == "" {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, errors.New("missing parameter"), "token parameter is required", rest.ErrInternal)
+		return
+	}
+	locator := store.Locator{SiteID: r.URL.Query().Get("site")}
+
+	confClaims, err := s.authenticator.TokenService().Parse(tkn)
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusForbidden, err, "failed to verify confirmation token", rest.ErrInternal)
+		return
+	}
+
+	if s.authenticator.TokenService().IsExpired(confClaims) {
+		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("expired"), "failed to verify confirmation token", rest.ErrInternal)
+		return
+	}
+
+	elems := strings.Split(confClaims.Handshake.ID, "::")
+	if len(elems) != 2 {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, errors.New(confClaims.Handshake.ID), "invalid handshake token", rest.ErrInternal)
+		return
+	}
+	userID := elems[0]
+	address := elems[1]
+
+	existingAddress, err := s.dataService.GetUserEmail(locator, userID)
+	if err != nil {
+		log.Printf("[WARN] can't read email for %s, %v", userID, err)
+	}
+	if existingAddress == "" {
+		rest.SendErrorJSON(w, r, http.StatusConflict, errors.New("user is not subscribed"), "user does not have active email subscription", rest.ErrInternal)
+		return
+	}
+	if address != existingAddress {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, errors.New("wrong email unsubscription"), "email address in request does not match known for this user", rest.ErrInternal)
+		return
+	}
+
+	log.Printf("[DEBUG] unsubscribe user %s", userID)
+
+	if err := s.dataService.DeleteUserDetail(locator, userID, engine.UserEmail); err != nil {
+		code := parseError(err, rest.ErrInternal)
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete email for user", code)
+		return
+	}
+	// clean User.Email from the token, if user has the token
+	claims, _, err := s.authenticator.TokenService().Get(r)
+	if err != nil {
+		log.Printf("[DEBUG] unsubscribed user doesn't have valid JWT token to update %s, %v", userID, err)
+	}
+	if claims.User != nil && claims.User.Email != "" {
+		claims.User.Email = ""
+		if _, err = s.authenticator.TokenService().Set(w, claims); err != nil {
+			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to set token", rest.ErrInternal)
+			return
+		}
+	}
+	render.JSON(w, r, R.JSON{"unsubscribed": true})
+}
+
 // DELETE /email?site=siteID - removes user's email
 func (s *private) deleteEmailCtrl(w http.ResponseWriter, r *http.Request) {
 	user := rest.MustGetUserInfo(r)

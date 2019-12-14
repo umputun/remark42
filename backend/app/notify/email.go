@@ -23,9 +23,9 @@ type EmailParams struct {
 	MsgTemplate          string // request message template
 	VerificationSubject  string // verification message subject
 	VerificationTemplate string // verification message template
-	UnsubscribeLink      string // full unsubscribe handler URL
+	UnsubscribeURL       string // full unsubscribe handler URL
 
-	TokenGenFn func(userID, email string) (string, error) // Unsubscribe token generation function
+	TokenGenFn func(userID, email, site string) (string, error) // Unsubscribe token generation function
 }
 
 // SmtpParams contain settings for smtp server connection
@@ -227,7 +227,7 @@ func (e *Email) buildVerificationMessage(user, email, token, site string) (strin
 	if err != nil {
 		return "", errors.Wrapf(err, "error executing template to build verification message")
 	}
-	return e.buildMessage(subject, msg.String(), email, "text/html")
+	return e.buildMessage(subject, msg.String(), email, "text/html", "")
 }
 
 // buildMessageFromRequest generates email message based on Request using e.MsgTemplate
@@ -236,7 +236,8 @@ func (e *Email) buildMessageFromRequest(req Request) (string, error) {
 	if req.Comment.PostTitle != "" {
 		subject += fmt.Sprintf(" for \"%s\"", req.Comment.PostTitle)
 	}
-	token, err := e.TokenGenFn(req.parent.User.ID, req.Email)
+	token, err := e.TokenGenFn(req.parent.User.ID, req.Email, req.Comment.Locator.SiteID)
+	unsubscribeLink := e.UnsubscribeURL + "?site=" + req.Comment.Locator.SiteID + "&tkn=" + token
 	if err != nil {
 		return "", errors.Wrapf(err, "error creating token for unsubscribe link")
 	}
@@ -249,16 +250,16 @@ func (e *Email) buildMessageFromRequest(req Request) (string, error) {
 		PostTitle:       req.Comment.PostTitle,
 		Email:           req.Email,
 		Site:            req.Comment.Locator.SiteID,
-		UnsubscribeLink: e.UnsubscribeLink + "?site=" + req.Comment.Locator.SiteID + "&tkn=" + token,
+		UnsubscribeLink: unsubscribeLink,
 	})
 	if err != nil {
 		return "", errors.Wrapf(err, "error executing template to build comment reply message")
 	}
-	return e.buildMessage(subject, msg.String(), req.Email, "text/html")
+	return e.buildMessage(subject, msg.String(), req.Email, "text/html", unsubscribeLink)
 }
 
 // buildMessage generates email message to send using net/smtp.Data()
-func (e *Email) buildMessage(subject, body, to, contentType string) (message string, err error) {
+func (e *Email) buildMessage(subject, body, to, contentType, unsubscribeLink string) (message string, err error) {
 	addHeader := func(msg, h, v string) string {
 		msg += fmt.Sprintf("%s: %s\n", h, v)
 		return msg
@@ -272,6 +273,13 @@ func (e *Email) buildMessage(subject, body, to, contentType string) (message str
 		message = addHeader(message, "MIME-version", "1.0")
 		message = addHeader(message, "Content-Type", contentType+`; charset="UTF-8"`)
 	}
+
+	if unsubscribeLink != "" {
+		// https://support.google.com/mail/answer/81126 -> "Include option to unsubscribe"
+		message = addHeader(message, "List-Unsubscribe-Post", "List-Unsubscribe=One-Click")
+		message = addHeader(message, "List-Unsubscribe", "<"+unsubscribeLink+">")
+	}
+
 	message = addHeader(message, "Date", time.Now().Format(time.RFC1123Z))
 
 	buff := &bytes.Buffer{}

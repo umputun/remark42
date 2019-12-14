@@ -185,6 +185,7 @@ func TestEmail_Send(t *testing.T) {
 	fakeSmtp := fakeTestSMTP{}
 	e.smtp = &fakeSmtp
 	e.TokenGenFn = TokenGenFn
+	e.UnsubscribeURL = "https://remark42.com/api/v1/email/unsubscribe"
 	req := Request{
 		Comment: store.Comment{ID: "999", User: store.User{Name: "test_user"}, PostTitle: "test_title"},
 		parent:  store.Comment{ID: "1", User: store.User{Name: "parent_user"}},
@@ -202,6 +203,8 @@ Subject: New reply to your comment for "test_title"
 Content-Transfer-Encoding: quoted-printable
 MIME-version: 1.0
 Content-Type: text/html; charset="UTF-8"
+List-Unsubscribe-Post: List-Unsubscribe=One-Click
+List-Unsubscribe: <https://remark42.com/api/v1/email/unsubscribe?site=&tkn=token>
 Date: `)
 }
 
@@ -288,7 +291,7 @@ func (f *fakeTestSMTP) readQuitCount() int {
 	return f.quitCount
 }
 
-func TokenGenFn(user, _ string) (string, error) {
+func TokenGenFn(user, _, _ string) (string, error) {
 	if user == "error" {
 		return "", errors.New("token generation error")
 	}

@@ -235,6 +235,8 @@ func (s *Rest) routes() chi.Router {
 			ropen.Get("/list", s.pubRest.listCtrl)
 			ropen.Post("/preview", s.pubRest.previewCommentCtrl)
 			ropen.Get("/info", s.pubRest.infoCtrl)
+			ropen.Get("/email/unsubscribe", s.privRest.emailUnsubscribeCtrl)
+			ropen.Post("/email/unsubscribe", s.privRest.emailUnsubscribeCtrl)
 			ropen.Get("/img", s.ImageProxy.Handler)
 
 			ropen.Route("/rss", func(rrss chi.Router) {

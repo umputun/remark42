@@ -15,6 +15,7 @@ import (
 	"time"
 
 	bolt "github.com/coreos/bbolt"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/go-pkgz/jrpc"
 	log "github.com/go-pkgz/lgr"
 	"github.com/kyokomi/emoji"
@@ -326,7 +327,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		KeyStore:          adminStore,
 	}
 
-	notifyService, err := s.makeNotify(dataService)
+	notifyService, err := s.makeNotify(dataService, authenticator)
 	if err != nil {
 		log.Printf("[WARN] failed to make notify service, %s", err)
 		notifyService = notify.NopService // disable notifier
@@ -683,7 +684,7 @@ func (s *ServerCommand) loadEmailTemplate() string {
 	return tmpl
 }
 
-func (s *ServerCommand) makeNotify(dataStore *service.DataStore) (*notify.Service, error) {
+func (s *ServerCommand) makeNotify(dataStore *service.DataStore, authenticator *auth.Service) (*notify.Service, error) {
 	var notifyService *notify.Service
 	var destinations []notify.Destination
 	for _, t := range s.Notify.Type {
@@ -699,6 +700,23 @@ func (s *ServerCommand) makeNotify(dataStore *service.DataStore) (*notify.Servic
 			emailParams := notify.EmailParams{
 				From:                s.Notify.Email.From,
 				VerificationSubject: s.Notify.Email.VerificationSubject,
+				UnsubscribeURL:      s.RemarkURL + "/api/v1/email/unsubscribe",
+				TokenGenFn: func(userID, email, site string) (string, error) {
+					claims := token.Claims{
+						Handshake: &token.Handshake{ID: userID + "::" + email},
+						StandardClaims: jwt.StandardClaims{
+							Audience:  site,
+							ExpiresAt: time.Now().Add(100 * 365 * 24 * time.Hour).Unix(),
+							NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
+							Issuer:    "remark42",
+						},
+					}
+					tkn, err := authenticator.TokenService().Token(claims)
+					if err != nil {
+						return "", errors.Wrapf(err, "failed to make unsubscription token")
+					}
+					return tkn, nil
+				},
 			}
 			smtpParams := notify.SmtpParams{
 				Host:     s.Notify.Email.Host,
