@@ -16,7 +16,7 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 * Images upload with drag-and-drop
 * Extractor for recent comments, cross-post
 * RSS for all comments and each post
-* Telegram notifications
+* Telegram and email notifications
 * Export data to json with automatic backups
 * No external databases, everything embedded in a single data file
 * Fully dockerized and can be deployed in a single command
@@ -154,11 +154,19 @@ _this is the recommended way to run remark42_
 | auth.email.passwd       | AUTH_EMAIL_PASSWD       |                          | smtp password                                   |
 | auth.email.timeout      | AUTH_EMAIL_TIMEOUT      | `10s`                    | smtp timeout                                    |
 | auth.email.template     | AUTH_EMAIL_TEMPLATE     | none (predefined)        | custom email message template file              |
-| notify.type             | NOTIFY_TYPE             | none                     | type of notification (none or telegram)         |
+| notify.type             | NOTIFY_TYPE             | none                     | type of notification (telegram and/or email)    |
 | notify.queue            | NOTIFY_QUEUE            | `100`                    | size of notification queue                      |
 | notify.telegram.token   | NOTIFY_TELEGRAM_TOKEN   |                          | telegram token                                  |
 | notify.telegram.chan    | NOTIFY_TELEGRAM_CHAN    |                          | telegram channel                                |
 | notify.telegram.timeout | NOTIFY_TELEGRAM_TIMEOUT | `5s`                     | telegram timeout                                |
+| notify.email.host       | NOTIFY_EMAIL_HOST       |                          | SMTP host                                       |
+| notify.email.port       | NOTIFY_EMAIL_PORT       | `587`                    | SMTP port                                       |
+| notify.email.tls        | NOTIFY_EMAIL_TLS        |                          | enable TLS for SMTP                             |
+| notify.email.fromAddress | NOTIFY_EMAIL_FROM      |                          | from email address                              |
+| notify.email.username   | NOTIFY_EMAIL_USERNAME   |                          | SMTP user name                                  |
+| notify.email.password   | NOTIFY_EMAIL_PASSWORD   |                          | SMTP password                                   |
+| notify.email.timeout    | NOTIFY_EMAIL_TIMEOUT    | `10s`                    | SMTP TCP connection timeout                     |
+| notify.email.verification_subj | NOTIFY_EMAIL_VERIFICATION_SUBJ | `Email verification` | verification message subject          |
 | ssl.type                | SSL_TYPE                | none                     | `none`-http, `static`-https, `auto`-https + le  |
 | ssl.port                | SSL_PORT                | `8443`                   | port for https server                           |
 | ssl.cert                | SSL_CERT                |                          | path to cert.pem file                           |
@@ -763,6 +771,17 @@ data: {"url":"https://radio-t.com/blah1","count":9,"first_time":"2019-06-18T12:5
 * `POST /api/v1/picture` - upload and store image, uses post form with `FormFile("file")`. returns `{"id": user/imgid}` _auth required_
 
 _returned id should be appended to load image url on caller side_
+
+### Email subscription
+
+* `GET /api/v1/email?site=site-id` - get user's email, _auth required_
+* `POST /api/v1/email/subscribe?site=site-id&address=user@example.org` -  makes confirmation token and sends it to user over email, _auth required_
+
+  Trying to subscribe same email second time will return response code `409 Conflict` and explaining error message.
+* `POST /api/v1/email/confirm?site=site-id&tkn=token` - uses provided token parameter to set email for the user, _auth required_
+
+  Setting email subscribe user for all first-level replies to his messages.
+* `DELETE /api/v1/email?site=siteID` - removes user's email, _auth required_
 
 ### Admin
 

@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
+	"mime/quotedprintable"
 	"net"
 	"net/smtp"
 	"text/template"
@@ -13,18 +14,18 @@ import (
 
 	log "github.com/go-pkgz/lgr"
 	"github.com/go-pkgz/repeater"
-	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 )
 
 // EmailParams contain settings for email notifications
 type EmailParams struct {
-	From                 string        // From email field
-	MsgTemplate          string        // request message template
-	VerificationSubject  string        // verification message subject
-	VerificationTemplate string        // verification message template
-	BufferSize           int           // email send buffer size
-	FlushDuration        time.Duration // maximum time after which email will me sent, 30s by default
+	From                 string // from email address
+	MsgTemplate          string // request message template
+	VerificationSubject  string // verification message subject
+	VerificationTemplate string // verification message template
+	UnsubscribeURL       string // full unsubscribe handler URL
+
+	TokenGenFn func(userID, email, site string) (string, error) // Unsubscribe token generation function
 }
 
 // SmtpParams contain settings for smtp server connection
@@ -73,49 +74,71 @@ type emailMessage struct {
 
 // msgTmplData store data for message from request template execution
 type msgTmplData struct {
-	From      string
-	To        string
-	Orig      string
-	Link      string
-	PostTitle string
+	CommentUser     string
+	ParentUser      string
+	CommentText     string
+	CommentLink     string
+	PostTitle       string
+	Email           string
+	UnsubscribeLink string
 }
 
 // verifyTmplData store data for verification message template execution
 type verifyTmplData struct {
 	User  string
-	Email string
 	Token string
+	Email string
 	Site  string
 }
 
 const (
 	defaultVerificationSubject = "Email verification"
 	defaultEmailTimeout        = 10 * time.Second
-	defaultFlushDuration       = time.Second * 30
-	defaultEmailTemplate       = `{{.From}}{{if .To}} → {{.To}}{{end}}
-
-{{.Orig}}
-
-↦ <a href="{{.Link}}">{{if .PostTitle}}{{.PostTitle}}{{else}}original comment{{end}}</a>
+	defaultEmailTemplate       = `<!DOCTYPE html>
+<html>
+<head>
+	<meta name="viewport" content="width=device-width" />
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+	<style>img {max-width: 100%; max-height: 300px;} a {color: #4fbbd6;}</style>
+</head>
+<body>
+<div style="font-family: Arial, sans-serif; font-size: 18px;">
+	<h1 style="text-align: center; position: relative; color: #4fbbd6; margin-top: 0.2em;">Remark42</h1>
+	<div style="background-color: #eee; width: 90%; max-width: 800px; margin: 0 auto; border-radius: 0.4em; padding: 0.5em;">
+		<p style="margin: 0 0 0.5em 0; color: #444444;"><b><a href="{{.CommentLink}}" style="color: #4fbbd6 !important;">New reply</a> from {{.CommentUser}} on your comment{{if .PostTitle}} to "{{.PostTitle}}"{{end}}</b></p>
+		<div style="background-color: #fff; margin: 0; padding: 0.5em; word-break: break-all; border-radius: 0.2em;">{{.CommentText}}</div>
+		<p style="text-align: center; position: relative; margin: 0.5em 0 0 0; font-size: 0.8em; opacity: 0.8;"><i>Sent to <a style="color:inherit !important; text-decoration: none !important;" href="mailto:{{.Email}}">{{.Email}}</a> for {{.ParentUser}}</i><br/><br/><a style="color: #4fbbd6 !important;" href="{{.UnsubscribeLink}}">Unsubscribe</a></p>
+	</div>
+</div>
+</body>
+</html>
 `
-	defaultEmailVerificationTemplate = `Confirmation for {{.User}} {{.Email}}, site {{.Site}}
-
-Token: {{.Token}}
+	defaultEmailVerificationTemplate = `<!DOCTYPE html>
+<html>
+<head>
+	<meta name="viewport" content="width=device-width" />
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+</head>
+<body>
+<div style="text-align: center; font-family: Arial, sans-serif; font-size: 18px;">
+	<h1 style="position: relative; color: #4fbbd6; margin-top: 0.2em;">Remark42</h1>
+	<p style="position: relative; max-width: 20em; margin: 0 auto 1em auto; line-height: 1.4em;">Confirmation for <b>{{.User}}</b> on site <b>{{.Site}}</b></p>
+	<div style="background-color: #eee; max-width: 20em; margin: 0 auto; border-radius: 0.4em; padding: 0.5em;">
+		<p style="position: relative; margin: 0 0 0.5em 0;">TOKEN</p>
+		<p style="position: relative; font-size: 0.7em; opacity: 0.8;"><i>Copy and paste this text into “token” field on comments page</i></p>
+		<p style="position: relative; font-family: monospace; background-color: #fff; margin: 0; padding: 0.5em; word-break: break-all; text-align: left; border-radius: 0.2em; -webkit-user-select: all; user-select: all;">{{.Token}}</p>
+	</div>
+	<p style="position: relative; margin-top: 2em; font-size: 0.8em; opacity: 0.8;"><i>Sent to {{.Email}}</i></p>
+</div>
+</body>
+</html>
 `
 )
 
-// NewEmail makes new Email object, returns it even in case of problems
-// (e.MsgTemplate parsing error or error while testing smtp connection by credentials provided in emailParams)
+// NewEmail makes new Email object, returns error in case of e.MsgTemplate or e.VerificationTemplate parsing error
 func NewEmail(emailParams EmailParams, smtpParams SmtpParams) (*Email, error) {
-	var err error
 	// set up Email emailParams
 	res := Email{EmailParams: emailParams}
-	if res.FlushDuration <= 0 {
-		res.FlushDuration = defaultFlushDuration
-	}
-	if res.BufferSize <= 0 {
-		res.BufferSize = 1
-	}
 	if res.MsgTemplate == "" {
 		res.MsgTemplate = defaultEmailTemplate
 	}
@@ -137,25 +160,12 @@ func NewEmail(emailParams EmailParams, smtpParams SmtpParams) (*Email, error) {
 		res.Host, res.Username, res.TimeOut)
 
 	// initialise templates
-	res.msgTmpl, err = template.New("messageFromRequest").Parse(res.MsgTemplate)
-	if err != nil {
-		return &res, errors.Wrapf(err, "can't parse message template")
+	var err error
+	if res.msgTmpl, err = template.New("messageFromRequest").Parse(res.MsgTemplate); err != nil {
+		return nil, errors.Wrapf(err, "can't parse message template")
 	}
-	res.verifyTmpl, err = template.New("messageFromRequest").Parse(res.VerificationTemplate)
-	if err != nil {
-		return &res, errors.Wrapf(err, "can't parse verification template")
-	}
-
-	// establish test connection
-	testSmtpClient, err := res.smtp.Create(res.SmtpParams)
-	if err != nil {
-		return &res, errors.Wrapf(err, "can't establish test connection")
-	}
-	if err = testSmtpClient.Quit(); err != nil {
-		log.Printf("[WARN] failed to send quit command to %s:%d, %v", res.Host, res.Port, err)
-		if err = testSmtpClient.Close(); err != nil {
-			return &res, errors.Wrapf(err, "can't close test smtp connection")
-		}
+	if res.verifyTmpl, err = template.New("messageFromRequest").Parse(res.VerificationTemplate); err != nil {
+		return nil, errors.Wrapf(err, "can't parse verification template")
 	}
 	return &res, err
 }
@@ -186,65 +196,104 @@ func (e *Email) Send(ctx context.Context, req Request) (err error) {
 
 	if req.Comment.ID != "" {
 		if req.parent.User == req.Comment.User {
-			// don't send anything if if user replied to their own Comment
+			// don't send anything if if user replied to their own comment
 			return nil
 		}
 		log.Printf("[DEBUG] send notification via %s, comment id %s", e, req.Comment.ID)
-		msg, err = e.buildMessageFromRequest(req, req.Email)
+		msg, err = e.buildMessageFromRequest(req)
 		if err != nil {
 			return err
 		}
 	}
 
-	return e.sendMessage(ctx, emailMessage{from: e.From, to: req.Email, message: msg})
+	return repeater.NewDefault(5, time.Millisecond*250).Do(
+		ctx,
+		func() error {
+			return e.sendMessage(emailMessage{from: e.From, to: req.Email, message: msg})
+		})
 }
 
 // buildVerificationMessage generates verification email message based on given input
-func (e *Email) buildVerificationMessage(user, address, token, site string) (string, error) {
+func (e *Email) buildVerificationMessage(user, email, token, site string) (string, error) {
 	subject := e.VerificationSubject
 	msg := bytes.Buffer{}
-	err := e.verifyTmpl.Execute(&msg, verifyTmplData{user, address, token, site})
+	err := e.verifyTmpl.Execute(&msg, verifyTmplData{
+		User:  user,
+		Token: token,
+		Email: email,
+		Site:  site,
+	})
 	if err != nil {
-		return "", errors.Wrapf(err, "error executing template to build verifying message from request")
+		return "", errors.Wrapf(err, "error executing template to build verification message")
 	}
-	return e.buildMessage(subject, msg.String(), address, "text/html"), nil
-}
-
-// buildMessage generates email message to send using net/smtp.Data()
-func (e *Email) buildMessage(subject, body, to, contentType string) (message string) {
-	message += fmt.Sprintf("From: %s\n", e.From)
-	message += fmt.Sprintf("To: %s\n", to)
-	message += fmt.Sprintf("Subject: %s\n", subject)
-	if contentType != "" {
-		message += fmt.Sprintf("MIME-version: 1.0;\nContent-Type: %s; charset=\"UTF-8\";\n", contentType)
-	}
-	message += "\n" + body
-	return message
+	return e.buildMessage(subject, msg.String(), email, "text/html", "")
 }
 
 // buildMessageFromRequest generates email message based on Request using e.MsgTemplate
-func (e *Email) buildMessageFromRequest(req Request, to string) (string, error) {
-	subject := "New comment"
+func (e *Email) buildMessageFromRequest(req Request) (string, error) {
+	subject := "New reply to your comment"
 	if req.Comment.PostTitle != "" {
 		subject += fmt.Sprintf(" for \"%s\"", req.Comment.PostTitle)
 	}
+	token, err := e.TokenGenFn(req.parent.User.ID, req.Email, req.Comment.Locator.SiteID)
+	unsubscribeLink := e.UnsubscribeURL + "?site=" + req.Comment.Locator.SiteID + "&tkn=" + token
+	if err != nil {
+		return "", errors.Wrapf(err, "error creating token for unsubscribe link")
+	}
 	msg := bytes.Buffer{}
-	err := e.msgTmpl.Execute(&msg, msgTmplData{
-		req.Comment.User.Name,
-		req.parent.User.Name,
-		req.Comment.Orig,
-		req.Comment.Locator.URL + uiNav + req.Comment.ID,
-		req.Comment.PostTitle,
+	err = e.msgTmpl.Execute(&msg, msgTmplData{
+		CommentUser:     req.Comment.User.Name,
+		ParentUser:      req.parent.User.Name,
+		CommentText:     req.Comment.Text,
+		CommentLink:     req.Comment.Locator.URL + uiNav + req.Comment.ID,
+		PostTitle:       req.Comment.PostTitle,
+		Email:           req.Email,
+		UnsubscribeLink: unsubscribeLink,
 	})
 	if err != nil {
-		return "", errors.Wrapf(err, "error executing template to build message from request")
+		return "", errors.Wrapf(err, "error executing template to build comment reply message")
 	}
-	return e.buildMessage(subject, msg.String(), to, "text/html"), nil
+	return e.buildMessage(subject, msg.String(), req.Email, "text/html", unsubscribeLink)
+}
+
+// buildMessage generates email message to send using net/smtp.Data()
+func (e *Email) buildMessage(subject, body, to, contentType, unsubscribeLink string) (message string, err error) {
+	addHeader := func(msg, h, v string) string {
+		msg += fmt.Sprintf("%s: %s\n", h, v)
+		return msg
+	}
+	message = addHeader(message, "From", e.From)
+	message = addHeader(message, "To", to)
+	message = addHeader(message, "Subject", subject)
+	message = addHeader(message, "Content-Transfer-Encoding", "quoted-printable")
+
+	if contentType != "" {
+		message = addHeader(message, "MIME-version", "1.0")
+		message = addHeader(message, "Content-Type", contentType+`; charset="UTF-8"`)
+	}
+
+	if unsubscribeLink != "" {
+		// https://support.google.com/mail/answer/81126 -> "Include option to unsubscribe"
+		message = addHeader(message, "List-Unsubscribe-Post", "List-Unsubscribe=One-Click")
+		message = addHeader(message, "List-Unsubscribe", "<"+unsubscribeLink+">")
+	}
+
+	message = addHeader(message, "Date", time.Now().Format(time.RFC1123Z))
+
+	buff := &bytes.Buffer{}
+	qp := quotedprintable.NewWriter(buff)
+	if _, err := qp.Write([]byte(body)); err != nil {
+		return "", err
+	}
+	defer qp.Close()
+	m := buff.String()
+	message += "\n" + m
+	return message, nil
 }
 
 // sendMessage sends messages to server in a new connection, closing the connection after finishing.
 // Thread safe.
-func (e *Email) sendMessage(ctx context.Context, m emailMessage) error {
+func (e *Email) sendMessage(m emailMessage) error {
 	if e.smtp == nil {
 		return errors.New("sendMessage called without smtpClient set")
 	}
@@ -253,54 +302,60 @@ func (e *Email) sendMessage(ctx context.Context, m emailMessage) error {
 		return errors.Wrap(err, "failed to make smtp Create")
 	}
 
-	errs := new(multierror.Error)
-
-	err = repeater.NewDefault(5, time.Millisecond*250).Do(ctx, func() error {
-		if err := smtpClient.Mail(m.from); err != nil {
-			return errors.Wrapf(err, "bad from address %q", m.from)
-		}
-		if err := smtpClient.Rcpt(m.to); err != nil {
-			return errors.Wrapf(err, "bad to address %q", m.to)
-		}
-
-		writer, err := smtpClient.Data()
-		if err != nil {
-			return errors.Wrap(err, "can't make email writer")
-		}
-		defer func() {
-			if err = writer.Close(); err != nil {
-				log.Printf("[WARN] can't close smtp body writer, %v", err)
+	defer func() {
+		if err := smtpClient.Quit(); err != nil {
+			log.Printf("[WARN] failed to send quit command to %s:%d, %v", e.Host, e.Port, err)
+			if err := smtpClient.Close(); err != nil {
+				log.Printf("[WARN] can't close smtp connection, %v", err)
 			}
-		}()
-
-		buf := bytes.NewBufferString(m.message)
-		if _, err = buf.WriteTo(writer); err != nil {
-			return errors.Wrapf(err, "failed to send email body to %q", m.to)
 		}
-		return nil
-	})
+	}()
+
+	if err := smtpClient.Mail(m.from); err != nil {
+		return errors.Wrapf(err, "bad from address %q", m.from)
+	}
+	if err := smtpClient.Rcpt(m.to); err != nil {
+		return errors.Wrapf(err, "bad to address %q", m.to)
+	}
+
+	writer, err := smtpClient.Data()
 	if err != nil {
-		errs = multierror.Append(errs, errors.Wrapf(err, "can't send message to %s", m.to))
+		return errors.Wrap(err, "can't make email writer")
 	}
 
-	if err := smtpClient.Quit(); err != nil {
-		log.Printf("[WARN] failed to send quit command to %s:%d, %v", e.Host, e.Port, err)
-		if err := smtpClient.Close(); err != nil {
-			log.Printf("[WARN] can't close smtp connection, %v", err)
-			errs = multierror.Append(errs, err)
+	defer func() {
+		if err = writer.Close(); err != nil {
+			log.Printf("[WARN] can't close smtp body writer, %v", err)
 		}
+	}()
+
+	buf := bytes.NewBufferString(m.message)
+	if _, err = buf.WriteTo(writer); err != nil {
+		return errors.Wrapf(err, "failed to send email body to %q", m.to)
 	}
-	return errors.Wrapf(errs.ErrorOrNil(), "problems with sending message")
+
+	return nil
 }
 
 // String representation of Email object
 func (e *Email) String() string {
-	return fmt.Sprintf("email: from %q using '%s'@'%s':%d", e.From, e.Username, e.Host, e.Port)
+	return fmt.Sprintf("email: from %q with username '%s' at server %s:%d", e.From, e.Username, e.Host, e.Port)
 }
 
 // Create establish SMTP connection with server using credentials in smtpClientWithCreator.SmtpParams
 // and returns pointer to it. Thread safe.
 func (s *emailClient) Create(params SmtpParams) (smtpClient, error) {
+	authenticate := func(c *smtp.Client) error {
+		if params.Username == "" || params.Password == "" {
+			return nil
+		}
+		auth := smtp.PlainAuth("", params.Username, params.Password, params.Host)
+		if err := c.Auth(auth); err != nil {
+			return errors.Wrapf(err, "failed to auth to smtp %s:%d", params.Host, params.Port)
+		}
+		return nil
+	}
+
 	var c *smtp.Client
 	srvAddress := fmt.Sprintf("%s:%d", params.Host, params.Port)
 	if params.TLS {
@@ -315,7 +370,7 @@ func (s *emailClient) Create(params SmtpParams) (smtpClient, error) {
 		if c, err = smtp.NewClient(conn, params.Host); err != nil {
 			return nil, errors.Wrapf(err, "failed to make smtp client for %s", srvAddress)
 		}
-		return c, nil
+		return c, authenticate(c)
 	}
 
 	conn, err := net.DialTimeout("tcp", srvAddress, params.TimeOut)
@@ -328,12 +383,5 @@ func (s *emailClient) Create(params SmtpParams) (smtpClient, error) {
 		return nil, errors.Wrap(err, "failed to dial")
 	}
 
-	if params.Username != "" && params.Password != "" {
-		auth := smtp.PlainAuth("", params.Username, params.Password, params.Host)
-		if err := c.Auth(auth); err != nil {
-			return nil, errors.Wrapf(err, "failed to auth to smtp %s:%d", params.Host, params.Port)
-		}
-	}
-
-	return c, nil
+	return c, authenticate(c)
 }

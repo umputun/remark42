@@ -235,6 +235,8 @@ func (s *Rest) routes() chi.Router {
 			ropen.Get("/list", s.pubRest.listCtrl)
 			ropen.Post("/preview", s.pubRest.previewCommentCtrl)
 			ropen.Get("/info", s.pubRest.infoCtrl)
+			ropen.Get("/email/unsubscribe", s.privRest.emailUnsubscribeCtrl)
+			ropen.Post("/email/unsubscribe", s.privRest.emailUnsubscribeCtrl)
 			ropen.Get("/img", s.ImageProxy.Handler)
 
 			ropen.Route("/rss", func(rrss chi.Router) {
@@ -308,6 +310,10 @@ func (s *Rest) routes() chi.Router {
 			rauth.Post("/comment", s.privRest.createCommentCtrl)
 			rauth.With(rejectAnonUser).Put("/vote/{id}", s.privRest.voteCtrl)
 			rauth.With(rejectAnonUser).Post("/deleteme", s.privRest.deleteMeCtrl)
+			rauth.With(rejectAnonUser).Get("/email", s.privRest.getEmailCtrl)
+			rauth.With(rejectAnonUser).Post("/email/subscribe", s.privRest.sendEmailConfirmationCtrl)
+			rauth.With(rejectAnonUser).Post("/email/confirm", s.privRest.setConfirmedEmailCtrl)
+			rauth.With(rejectAnonUser).Delete("/email", s.privRest.deleteEmailCtrl)
 		})
 
 		// protected routes, anonymous rejected
