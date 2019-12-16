@@ -358,7 +358,7 @@ services:
         container_name: "remark42"
         environment:
             - APP_UID=2000                          # runs remark42 app with non-default UID
-            - TIME_ZINE=GTC                         # sets container time to UTC
+            - TIME_ZONE=GTC                         # sets container time to UTC
 
             - REMARK_URL=https://demo.remark42.com  # url pointing to your remark42 server
             - SITE=YOUR_SITE_ID                     # site ID, same as used for `site_id`, see "Setup on your website"
