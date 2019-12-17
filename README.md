@@ -591,7 +591,7 @@ Developer build running by `webpack-dev-server` supports devtools for [React](ht
 
 #### Frontend guide
 
-Frontend guide can be found here: [./frontend/README.md](./frontend/README.md)
+Frontend guide can be found here: [./frontend/Readme.md](./frontend/Readme.md)
 
 ## API
 

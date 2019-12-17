@@ -30,4 +30,4 @@
 
 ### Notes
 
-* Frontend part being bundled on docker env gets placed on `/src/web` and is available via `http://{host}/web`. for example `embed.js` entry point will be availabale at `http://{host}/web/embed.js`
+* Frontend part being bundled on docker env gets placed on `/src/web` and is available via `http://{host}/web`. for example `embed.js` entry point will be available at `http://{host}/web/embed.js`
