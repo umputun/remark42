@@ -9,10 +9,10 @@ services:
         restart: always
 
         logging:
-          driver: json-file
-          options:
-              max-size: "10m"
-              max-file: "5"
+            driver: json-file
+            options:
+                max-size: "10m"
+                max-file: "5"
 
         # uncomment to expose directly (no proxy)
         #ports:
