@@ -208,6 +208,13 @@ List-Unsubscribe: <https://remark42.com/api/v1/email/unsubscribe?site=&tkn=token
 Date: `)
 }
 
+func Test_emailClient_Create(t *testing.T) {
+	creator := emailClient{}
+	client, err := creator.Create(SmtpParams{})
+	assert.Error(t, err, "absence of address to connect results in error")
+	assert.Nil(t, client, "no client returned in case of error")
+}
+
 type fakeTestSMTP struct {
 	fail map[string]bool
 

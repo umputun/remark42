@@ -491,6 +491,11 @@ func TestRest_Email(t *testing.T) {
 		{description: "get user email", url: "/api/v1/email?site=remark42", method: http.MethodGet, responseCode: http.StatusOK},
 		{description: "delete user email", url: "/api/v1/email?site=remark42", method: http.MethodDelete, responseCode: http.StatusOK},
 		{description: "send another confirmation", url: "/api/v1/email/subscribe?site=remark42&address=good@example.com", method: http.MethodPost, responseCode: http.StatusOK},
+		{description: "set user email, token is good", url: fmt.Sprintf("/api/v1/email/confirm?site=remark42&tkn=%s", goodToken), method: http.MethodPost, responseCode: http.StatusOK, cookieEmail: "good@example.com"},
+		{description: "unsubscribe user, no token", url: "/api/v1/email/unsubscribe?site=remark42", method: http.MethodPost, responseCode: http.StatusBadRequest},
+		{description: "unsubscribe user, wrong token", url: "/api/v1/email/unsubscribe?site=remark42&tkn=jwt", method: http.MethodPost, responseCode: http.StatusForbidden},
+		{description: "unsubscribe user, good token", url: fmt.Sprintf("/api/v1/email/unsubscribe?site=remark42&tkn=%s", goodToken), method: http.MethodPost, responseCode: http.StatusOK},
+		{description: "unsubscribe user second time, good token", url: fmt.Sprintf("/api/v1/email/unsubscribe?site=remark42&tkn=%s", goodToken), method: http.MethodPost, responseCode: http.StatusConflict},
 	}
 	client := http.Client{}
 	for _, x := range testData {
