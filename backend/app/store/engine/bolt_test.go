@@ -625,7 +625,7 @@ func TestBoltDB_UserDetail(t *testing.T) {
 	b, teardown := prep(t)
 	defer teardown()
 
-	// add to entries to DB before we start
+	// add two entries to DB before we start
 	result, err := b.UserDetail(UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "u1", Detail: UserEmail, Update: "test@example.com"})
 	assert.NoError(t, err, "No error inserting entry expected")
 	assert.ElementsMatch(t, []UserDetailEntry{{UserID: "u1", Email: "test@example.com"}}, result)
