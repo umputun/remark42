@@ -477,28 +477,28 @@ func TestRest_AnonVote(t *testing.T) {
 		return resp.StatusCode
 	}
 
+	getWithAnonAuth := func(url string) (body string, code int) {
+		client := &http.Client{Timeout: 5 * time.Second}
+		req, err := http.NewRequest("GET", url, nil)
+		require.Nil(t, err)
+		req.Header.Add("X-JWT", anonToken)
+		r, err := client.Do(req)
+		require.Nil(t, err)
+		defer r.Body.Close()
+		b, err := ioutil.ReadAll(r.Body)
+		assert.Nil(t, err)
+		return string(b), r.StatusCode
+	}
+
 	assert.Equal(t, 403, vote(1), "vote is disallowed with anonVote false")
 	srv.privRest.anonVote = true
 	assert.Equal(t, 200, vote(1), "first vote allowed")
 	assert.Equal(t, 400, vote(1), "second vote rejected")
-	// get comments with anonymous user auth
-	client := &http.Client{Timeout: 5 * time.Second}
-	req, err := http.NewRequest(
-		"GET",
-		fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1),
-		nil)
-	require.Nil(t, err)
-	req.Header.Add("X-JWT", anonToken)
-	r, err := client.Do(req)
-	require.Nil(t, err)
-	defer r.Body.Close()
-	b, err := ioutil.ReadAll(r.Body)
+	body, code := getWithAnonAuth(fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1))
 
-	// compare results with expected
-	assert.Nil(t, err)
-	assert.Equal(t, 200, r.StatusCode)
+	assert.Equal(t, 200, code)
 	cr := store.Comment{}
-	err = json.Unmarshal([]byte(string(b)), &cr)
+	err := json.Unmarshal([]byte(body), &cr)
 	assert.Nil(t, err)
 	assert.Equal(t, 1, cr.Score)
 	assert.Equal(t, 1, cr.Vote)
