@@ -454,6 +454,57 @@ func TestRest_Vote(t *testing.T) {
 	assert.Equal(t, map[string]bool(nil), cr.Votes)
 }
 
+func TestRest_AnonVote(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	c1 := store.Comment{Text: "test test #1",
+		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
+	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
+		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
+
+	id1 := addComment(t, c1, ts)
+	addComment(t, c2, ts)
+
+	vote := func(val int) int {
+		client := http.Client{}
+		req, err := http.NewRequest(http.MethodPut,
+			fmt.Sprintf("%s/api/v1/vote/%s?site=remark42&url=https://radio-t.com/blah&vote=%d", ts.URL, id1, val), nil)
+		assert.Nil(t, err)
+		req.Header.Add("X-JWT", anonToken)
+		resp, err := client.Do(req)
+		assert.Nil(t, err)
+		return resp.StatusCode
+	}
+
+	assert.Equal(t, 403, vote(1), "vote is disallowed with anonVote false")
+	srv.privRest.anonVote = true
+	assert.Equal(t, 200, vote(1), "first vote allowed")
+	assert.Equal(t, 400, vote(1), "second vote rejected")
+	// get comments with anonymous user auth
+	client := &http.Client{Timeout: 5 * time.Second}
+	req, err := http.NewRequest(
+		"GET",
+		fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1),
+		nil)
+	require.Nil(t, err)
+	req.Header.Add("X-JWT", anonToken)
+	r, err := client.Do(req)
+	require.Nil(t, err)
+	defer r.Body.Close()
+	b, err := ioutil.ReadAll(r.Body)
+
+	// compare results with expected
+	assert.Nil(t, err)
+	assert.Equal(t, 200, r.StatusCode)
+	cr := store.Comment{}
+	err = json.Unmarshal([]byte(string(b)), &cr)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, cr.Score)
+	assert.Equal(t, 1, cr.Vote)
+	assert.Equal(t, map[string]bool(nil), cr.Votes)
+}
+
 func TestRest_Email(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
