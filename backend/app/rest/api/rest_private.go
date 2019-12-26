@@ -36,6 +36,7 @@ type private struct {
 	notifyService    *notify.Service
 	authenticator    *auth.Service
 	remarkURL        string
+	anonVote         bool
 }
 
 type privStore interface {
@@ -191,6 +192,10 @@ func (s *private) userInfoCtrl(w http.ResponseWriter, r *http.Request) {
 // PUT /vote/{id}?site=siteID&url=post-url&vote=1 - vote for/against comment
 func (s *private) voteCtrl(w http.ResponseWriter, r *http.Request) {
 	user := rest.MustGetUserInfo(r)
+	if !s.anonVote && strings.HasPrefix(user.ID, "anonymous_") {
+		http.Error(w, "Access denied", http.StatusForbidden)
+		return
+	}
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	id := chi.URLParam(r, "id")
 	log.Printf("[DEBUG] vote for comment %s", id)

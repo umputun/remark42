@@ -176,6 +176,7 @@ _this is the recommended way to run remark42_
 | max-comment             | MAX_COMMENT_SIZE        | `2048`                   | comment's size limit                            |
 | max-votes               | MAX_VOTES               | `-1`                     | votes limit per comment, `-1` - unlimited       |
 | votes-ip                | VOTES_IP                | `false`                  | restrict votes from the same ip                 |
+| anon-vote               | ANON_VOTE               | `false`                  | allow voting for anonymous users, require VOTES_IP to be enabled as well |
 | votes-ip-time           | VOTES_IP_TIME           | `5m`                     | same ip vote restriction time, `0s` - unlimited |
 | low-score               | LOW_SCORE               | `-5`                     | low score threshold                             |
 | critical-score          | CRITICAL_SCORE          | `-10`                    | critical score threshold                        |

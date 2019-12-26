@@ -51,6 +51,7 @@ services:
             - NOTIFY_EMAIL_PORT
             - NOTIFY_EMAIL_TLS
             - EMOJI=true
+            - ANON_VOTE=true
             - VOTES_IP=true
             - AUTH_EMAIL_ENABLE=true
             - AUTH_ANON=true
