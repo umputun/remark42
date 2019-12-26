@@ -1,7 +1,9 @@
 package rest
 
 import (
+	"bytes"
 	"fmt"
+	"html/template"
 	"net/http"
 	"net/url"
 	"runtime"
@@ -34,6 +36,29 @@ const (
 	ErrActionRejected     = 17 // general error for rejected actions
 	ErrAssetNotFound      = 18 // requested file not found
 )
+
+// ErrTmplData store data for error message
+type ErrTmplData struct {
+	Error   string
+	Details string
+	Code    int
+}
+
+// SendErrorHTML makes html body with provided template and responds with error code
+func SendErrorHTML(w http.ResponseWriter, r *http.Request, tmpl *template.Template, httpStatusCode int, err error, details string, errCode int) {
+	log.Printf("[WARN] %s", errDetailsMsg(r, httpStatusCode, err, details, errCode))
+	render.Status(r, httpStatusCode)
+	msg := bytes.Buffer{}
+	err = tmpl.Execute(&msg, ErrTmplData{
+		Error:   err.Error(),
+		Details: details,
+		Code:    errCode,
+	})
+	if err != nil {
+		panic(err)
+	}
+	render.HTML(w, r, msg.String())
+}
 
 // SendErrorJSON makes {error: blah, details: blah} json body and responds with error code
 func SendErrorJSON(w http.ResponseWriter, r *http.Request, httpStatusCode int, err error, details string, errCode int) {

@@ -235,8 +235,6 @@ func (s *Rest) routes() chi.Router {
 			ropen.Get("/list", s.pubRest.listCtrl)
 			ropen.Post("/preview", s.pubRest.previewCommentCtrl)
 			ropen.Get("/info", s.pubRest.infoCtrl)
-			ropen.Get("/email/unsubscribe", s.privRest.emailUnsubscribeCtrl)
-			ropen.Post("/email/unsubscribe", s.privRest.emailUnsubscribeCtrl)
 			ropen.Get("/img", s.ImageProxy.Handler)
 
 			ropen.Route("/rss", func(rrss chi.Router) {
@@ -333,6 +331,8 @@ func (s *Rest) routes() chi.Router {
 		rroot.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(50, nil)))
 		rroot.Get("/index.html", s.pubRest.getStartedCtrl)
 		rroot.Get("/robots.txt", s.pubRest.robotsCtrl)
+		rroot.Get("/email/unsubscribe.html", s.privRest.emailUnsubscribeCtrl)
+		rroot.Post("/email/unsubscribe.html", s.privRest.emailUnsubscribeCtrl)
 	})
 
 	// file server for static content from /web

@@ -700,7 +700,7 @@ func (s *ServerCommand) makeNotify(dataStore *service.DataStore, authenticator *
 			emailParams := notify.EmailParams{
 				From:                s.Notify.Email.From,
 				VerificationSubject: s.Notify.Email.VerificationSubject,
-				UnsubscribeURL:      s.RemarkURL + "/api/v1/email/unsubscribe",
+				UnsubscribeURL:      s.RemarkURL + "/email/unsubscribe.html",
 				TokenGenFn: func(userID, email, site string) (string, error) {
 					claims := token.Claims{
 						Handshake: &token.Handshake{ID: userID + "::" + email},
