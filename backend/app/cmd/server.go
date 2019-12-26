@@ -52,6 +52,7 @@ type ServerCommand struct {
 	Stream StreamGroup `group:"stream" namespace:"stream" env-namespace:"STREAM"`
 
 	Sites           []string      `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
+	AnonymousVote   bool          `long:"anon-vote" env:"ANON_VOTE" description:"enable anonymous votes (works only with VOTES_IP enabled)"`
 	AdminPasswd     string        `long:"admin-passwd" env:"ADMIN_PASSWD" default:"" description:"admin basic auth password"`
 	BackupLocation  string        `long:"backup" env:"BACKUP_PATH" default:"./var/backup" description:"backups location"`
 	MaxBackupFiles  int           `long:"max-back" env:"MAX_BACKUP_FILES" default:"10" description:"max backups to keep"`
@@ -367,6 +368,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 			MaxActive: int32(s.Stream.MaxActive),
 		},
 		EmojiEnabled: s.EnableEmoji,
+		AnonVote:     s.AnonymousVote && s.RestrictVoteIP,
 		SimpleView:   s.SimpleView,
 	}
 
