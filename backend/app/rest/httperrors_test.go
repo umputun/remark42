@@ -42,7 +42,7 @@ func TestSendErrorHTML(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/error" {
 			t.Log("http err request", r.URL)
-			SendErrorHTML(w, r, 500, errors.New("error 500"), "error details 123456", 123)
+			SendErrorHTML(w, r, 500, errors.New("error 500"), "error details 123456", 987)
 			return
 		}
 		w.WriteHeader(404)
@@ -58,7 +58,7 @@ func TestSendErrorHTML(t *testing.T) {
 	require.Nil(t, err)
 	assert.Equal(t, 500, resp.StatusCode)
 
-	assert.NotContains(t, `123`, string(body))
+	assert.NotContains(t, string(body), `987`, "user html should not contain internal error code")
 	assert.Contains(t, string(body), `error details 123456`)
 	assert.Contains(t, string(body), `error 500`)
 }
