@@ -1,7 +1,10 @@
 package rest
 
 import (
+	"bytes"
 	"fmt"
+	"html/template"
+	"io"
 	"net/http"
 	"net/url"
 	"runtime"
@@ -34,6 +37,48 @@ const (
 	ErrActionRejected     = 17 // general error for rejected actions
 	ErrAssetNotFound      = 18 // requested file not found
 )
+
+const errorHtml = `<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width"/>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+</head>
+<body>
+<div style="text-align: center; font-family: Arial, sans-serif; font-size: 18px;">
+    <h1 style="position: relative; color: #4fbbd6; margin-top: 0.2em;">Remark42</h1>
+	<p style="position: relative; max-width: 20em; margin: 0 auto 1em auto; line-height: 1.4em;">{{.Error}}: {{.Details}}.</p>
+</div>
+</body>
+</html>
+`
+
+// errTmplData store data for error message
+type errTmplData struct {
+	Error   string
+	Details string
+}
+
+// SendErrorHTML makes html body with provided template and responds with provided http status code,
+// error code is not included in render as it is intended for UI developers and not for the users
+func SendErrorHTML(w http.ResponseWriter, r *http.Request, httpStatusCode int, err error, details string, errCode int) {
+	// MustExecute behaves like template.Execute, but panics if an error occurs.
+	MustExecute := func(tmpl *template.Template, wr io.Writer, data interface{}) {
+		if err := tmpl.Execute(wr, data); err != nil {
+			panic(err)
+		}
+	}
+
+	tmpl := template.Must(template.New("error").Parse(errorHtml))
+	log.Printf("[WARN] %s", errDetailsMsg(r, httpStatusCode, err, details, errCode))
+	render.Status(r, httpStatusCode)
+	msg := bytes.Buffer{}
+	MustExecute(tmpl, &msg, errTmplData{
+		Error:   err.Error(),
+		Details: details,
+	})
+	render.HTML(w, r, msg.String())
+}
 
 // SendErrorJSON makes {error: blah, details: blah} json body and responds with error code
 func SendErrorJSON(w http.ResponseWriter, r *http.Request, httpStatusCode int, err error, details string, errCode int) {

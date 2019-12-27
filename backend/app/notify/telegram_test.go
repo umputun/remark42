@@ -58,24 +58,25 @@ func TestTelegram_Send(t *testing.T) {
 	tb, err := NewTelegram("good-token", "remark_test", 2*time.Second, ts.URL+"/")
 	assert.NoError(t, err)
 	assert.NotNil(t, tb)
-	c := store.Comment{Text: "some text", ParentID: "1"}
+	c := store.Comment{Text: "some text", ParentID: "1", ID: "999"}
 	c.User.Name = "from"
 	cp := store.Comment{Text: "some parent text"}
 	cp.User.Name = "to"
 
-	err = tb.Send(context.TODO(), request{comment: c, parent: cp})
+	err = tb.Send(context.TODO(), Request{Comment: c, parent: cp})
 	assert.NoError(t, err)
 	c.PostTitle = "test title"
-	err = tb.Send(context.TODO(), request{comment: c, parent: cp})
+	err = tb.Send(context.TODO(), Request{Comment: c, parent: cp})
 	assert.NoError(t, err)
 
 	tb, err = NewTelegram("non-json-resp", "remark_test", 2*time.Second, ts.URL+"/")
 	assert.NotNil(t, err, "should failed")
-	err = tb.Send(context.TODO(), request{comment: c, parent: cp})
+	err = tb.Send(context.TODO(), Request{Comment: c, parent: cp})
 	require.NotNil(t, err)
 	assert.Contains(t, err.Error(), "unexpected telegram status code 404", "send on broken tg")
 
 	assert.Equal(t, "telegram: @remark_test", tb.String())
+	require.Nil(t, tb.Send(context.TODO(), Request{}), "Empty Comment doesn't send anything")
 }
 
 func mockTelegramServer() *httptest.Server {

@@ -223,6 +223,59 @@ func TestRPC_listFlagsHndl(t *testing.T) {
 	assert.Equal(t, []interface{}{"u1"}, flags)
 }
 
+func TestRPC_userDetailHndl(t *testing.T) {
+	_, port, teardown := prepTestStore(t)
+	defer teardown()
+	api := fmt.Sprintf("http://localhost:%d/test", port)
+
+	re := engine.RPC{Client: jrpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
+
+	// add to entries to DB before we start
+	result, err := re.UserDetail(engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "u1", Detail: engine.UserEmail, Update: "test@example.com"})
+	assert.NoError(t, err, "No error inserting entry expected")
+	assert.ElementsMatch(t, []engine.UserDetailEntry{{UserID: "u1", Email: "test@example.com"}}, result)
+	result, err = re.UserDetail(engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "u2", Detail: engine.UserEmail, Update: "other@example.com"})
+	assert.NoError(t, err, "No error inserting entry expected")
+	assert.ElementsMatch(t, []engine.UserDetailEntry{{UserID: "u2", Email: "other@example.com"}}, result)
+
+	// try to change existing entry with wrong SiteID
+	result, err = re.UserDetail(engine.UserDetailRequest{Locator: store.Locator{SiteID: "bad"}, UserID: "u2", Detail: engine.UserEmail, Update: "not_relevant"})
+	assert.NoError(t, err, "Updating existing entry with wrong SiteID doesn't produce error")
+	assert.ElementsMatch(t, []engine.UserDetailEntry{}, result, "Updating existing entry with wrong SiteID doesn't change anything")
+
+	// stateless tests without changing the state we set up before
+	var testData = []struct {
+		req      engine.UserDetailRequest
+		error    string
+		expected []engine.UserDetailEntry
+	}{
+		{req: engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "u1", Detail: engine.UserEmail},
+			expected: []engine.UserDetailEntry{{UserID: "u1", Email: "test@example.com"}}},
+		{req: engine.UserDetailRequest{Locator: store.Locator{SiteID: "bad"}, UserID: "u1", Detail: engine.UserEmail},
+			expected: []engine.UserDetailEntry{}},
+		{req: engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "u1xyz", Detail: engine.UserEmail},
+			expected: []engine.UserDetailEntry{}},
+		{req: engine.UserDetailRequest{Detail: engine.UserEmail, Update: "new_value"},
+			error: `userid cannot be empty in request for single detail`},
+		{req: engine.UserDetailRequest{Detail: engine.UserDetail("bad")},
+			error: `unsupported detail "bad"`},
+		{req: engine.UserDetailRequest{Update: "not_relevant", Detail: engine.AllUserDetails},
+			error: `unsupported request with userdetail all`},
+		{req: engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, Detail: engine.AllUserDetails},
+			expected: []engine.UserDetailEntry{{UserID: "u1", Email: "test@example.com"}, {UserID: "u2", Email: "other@example.com"}}},
+	}
+
+	for i, x := range testData {
+		result, err := re.UserDetail(x.req)
+		if x.error != "" {
+			assert.EqualError(t, err, x.error, "Error should match expected for case %d", i)
+		} else {
+			assert.NoError(t, err, "Error is not expected expected for case %d", i)
+		}
+		assert.ElementsMatch(t, x.expected, result, "Result should match expected for case %d", i)
+	}
+}
+
 func TestRPC_deleteHndl(t *testing.T) {
 	_, port, teardown := prepTestStore(t)
 	defer teardown()

@@ -51,14 +51,15 @@ type DataStore struct {
 	}
 }
 
-// UserMetaData keeps info about user flags
+// UserMetaData keeps info about user flags and details
 type UserMetaData struct {
 	ID      string `json:"id"`
 	Blocked struct {
 		Status bool      `json:"status"`
 		Until  time.Time `json:"until"`
 	} `json:"blocked"`
-	Verified bool `json:"verified"`
+	Verified bool                   `json:"verified"`
+	Details  engine.UserDetailEntry `json:"details,omitempty"`
 }
 
 // PostMetaData keeps info about post flags
@@ -156,6 +157,48 @@ func (s *DataStore) Get(locator store.Locator, commentID string, user store.User
 func (s *DataStore) Put(locator store.Locator, comment store.Comment) error {
 	comment.Locator = locator
 	return s.Engine.Update(comment)
+}
+
+// GetUserEmail gets user email
+func (s *DataStore) GetUserEmail(locator store.Locator, userID string) (string, error) {
+	res, err := s.Engine.UserDetail(engine.UserDetailRequest{
+		Detail:  engine.UserEmail,
+		Locator: locator,
+		UserID:  userID,
+	})
+	if err != nil {
+		return "", err
+	}
+	if len(res) == 1 {
+		return res[0].Email, nil
+	}
+	return "", nil
+}
+
+// SetUserEmail sets user email
+func (s *DataStore) SetUserEmail(locator store.Locator, userID string, value string) (string, error) {
+	res, err := s.Engine.UserDetail(engine.UserDetailRequest{
+		Detail:  engine.UserEmail,
+		Locator: locator,
+		UserID:  userID,
+		Update:  value,
+	})
+	if err != nil {
+		return "", err
+	}
+	if len(res) == 1 {
+		return res[0].Email, nil
+	}
+	return "", nil
+}
+
+// DeleteUserDetail deletes user detail
+func (s *DataStore) DeleteUserDetail(locator store.Locator, userID string, detail engine.UserDetail) error {
+	return s.Engine.Delete(engine.DeleteRequest{
+		Locator:    locator,
+		UserID:     userID,
+		UserDetail: detail,
+	})
 }
 
 // submitImages initiated delayed commit of all images from the comment uploaded to remark42
@@ -665,7 +708,7 @@ func (s *DataStore) Metas(siteID string) (umetas []UserMetaData, pmetas []PostMe
 		}
 	}
 
-	// set users meta
+	// set users meta, key is userID
 	m := map[string]UserMetaData{}
 
 	// process blocked users
@@ -698,6 +741,20 @@ func (s *DataStore) Metas(siteID string) (umetas []UserMetaData, pmetas []PostMe
 		m[v] = val
 	}
 
+	// process users details
+	usersDetails, err := s.Engine.UserDetail(engine.UserDetailRequest{Locator: store.Locator{SiteID: siteID}, Detail: engine.AllUserDetails})
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "can't get user details for %s", siteID)
+	}
+	for _, entry := range usersDetails {
+		val, ok := m[entry.UserID]
+		if !ok {
+			val = UserMetaData{ID: entry.UserID}
+		}
+		val.Details = entry
+		m[entry.UserID] = val
+	}
+
 	for _, u := range m {
 		umetas = append(umetas, u)
 	}
@@ -724,6 +781,12 @@ func (s *DataStore) SetMetas(siteID string, umetas []UserMetaData, pmetas []Post
 		}
 		if um.Verified {
 			errs = multierror.Append(errs, s.SetVerified(siteID, um.ID, true))
+		}
+		// this code doesn't delete user details in case they are not set in import but present in DB already
+		if um.Details.Email != "" {
+			req := engine.UserDetailRequest{Locator: store.Locator{SiteID: siteID}, UserID: um.ID, Detail: engine.UserEmail, Update: um.Details.Email}
+			_, err := s.Engine.UserDetail(req)
+			errs = multierror.Append(errs, err)
 		}
 	}
 

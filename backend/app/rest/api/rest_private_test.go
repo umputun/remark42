@@ -15,11 +15,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dgrijalva/jwt-go"
+	"github.com/go-chi/render"
+	"github.com/go-pkgz/auth/token"
 	"github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/umputun/remark/backend/app/notify"
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/image"
 )
@@ -448,6 +452,246 @@ func TestRest_Vote(t *testing.T) {
 	assert.Equal(t, -1, cr.Score)
 	assert.Equal(t, 0, cr.Vote, "no vote info for different user")
 	assert.Equal(t, map[string]bool(nil), cr.Votes)
+}
+
+func TestRest_AnonVote(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	c1 := store.Comment{Text: "test test #1",
+		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
+	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
+		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
+
+	id1 := addComment(t, c1, ts)
+	addComment(t, c2, ts)
+
+	vote := func(val int) int {
+		client := http.Client{}
+		req, err := http.NewRequest(http.MethodPut,
+			fmt.Sprintf("%s/api/v1/vote/%s?site=remark42&url=https://radio-t.com/blah&vote=%d", ts.URL, id1, val), nil)
+		assert.Nil(t, err)
+		req.Header.Add("X-JWT", anonToken)
+		resp, err := client.Do(req)
+		assert.Nil(t, err)
+		return resp.StatusCode
+	}
+
+	getWithAnonAuth := func(url string) (body string, code int) {
+		client := &http.Client{Timeout: 5 * time.Second}
+		req, err := http.NewRequest("GET", url, nil)
+		require.Nil(t, err)
+		req.Header.Add("X-JWT", anonToken)
+		r, err := client.Do(req)
+		require.Nil(t, err)
+		defer r.Body.Close()
+		b, err := ioutil.ReadAll(r.Body)
+		assert.Nil(t, err)
+		return string(b), r.StatusCode
+	}
+
+	assert.Equal(t, 403, vote(1), "vote is disallowed with anonVote false")
+	srv.privRest.anonVote = true
+	assert.Equal(t, 200, vote(1), "first vote allowed")
+	assert.Equal(t, 400, vote(1), "second vote rejected")
+	body, code := getWithAnonAuth(fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1))
+
+	assert.Equal(t, 200, code)
+	cr := store.Comment{}
+	err := json.Unmarshal([]byte(body), &cr)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, cr.Score)
+	assert.Equal(t, 1, cr.Vote)
+	assert.Equal(t, map[string]bool(nil), cr.Votes)
+}
+
+func TestRest_Email(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	// issue good token
+	claims := token.Claims{
+		Handshake: &token.Handshake{ID: "dev::good@example.com"},
+		StandardClaims: jwt.StandardClaims{
+			Audience:  "remark42",
+			ExpiresAt: time.Now().Add(10 * time.Minute).Unix(),
+			NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
+			Issuer:    "remark42",
+		},
+	}
+	tkn, err := srv.Authenticator.TokenService().Token(claims)
+	require.NoError(t, err)
+	goodToken := tkn
+
+	var testData = []struct {
+		description  string
+		url          string
+		method       string
+		responseCode int
+		noAuth       bool
+		cookieEmail  string
+	}{
+		{description: "issue delete request without auth", url: "/api/v1/email", method: http.MethodDelete, responseCode: http.StatusUnauthorized, noAuth: true},
+		{description: "issue delete request without site_id", url: "/api/v1/email", method: http.MethodDelete, responseCode: http.StatusBadRequest},
+		{description: "delete non-existent user email", url: "/api/v1/email?site=remark42", method: http.MethodDelete, responseCode: http.StatusOK},
+		{description: "set user email, token not set", url: "/api/v1/email/confirm?site=remark42", method: http.MethodPost, responseCode: http.StatusBadRequest},
+		{description: "send confirmation without address", url: "/api/v1/email/subscribe?site=remark42", method: http.MethodPost, responseCode: http.StatusBadRequest},
+		{description: "send confirmation", url: "/api/v1/email/subscribe?site=remark42&address=good@example.com", method: http.MethodPost, responseCode: http.StatusOK},
+		{description: "set user email, token is good", url: fmt.Sprintf("/api/v1/email/confirm?site=remark42&tkn=%s", goodToken), method: http.MethodPost, responseCode: http.StatusOK, cookieEmail: "good@example.com"},
+		{description: "send confirmation with same address", url: "/api/v1/email/subscribe?site=remark42&address=good@example.com", method: http.MethodPost, responseCode: http.StatusConflict},
+		{description: "get user email", url: "/api/v1/email?site=remark42", method: http.MethodGet, responseCode: http.StatusOK},
+		{description: "delete user email", url: "/api/v1/email?site=remark42", method: http.MethodDelete, responseCode: http.StatusOK},
+		{description: "send another confirmation", url: "/api/v1/email/subscribe?site=remark42&address=good@example.com", method: http.MethodPost, responseCode: http.StatusOK},
+		{description: "set user email, token is good", url: fmt.Sprintf("/api/v1/email/confirm?site=remark42&tkn=%s", goodToken), method: http.MethodPost, responseCode: http.StatusOK, cookieEmail: "good@example.com"},
+		{description: "unsubscribe user, no token", url: "/email/unsubscribe.html?site=remark42", method: http.MethodPost, responseCode: http.StatusBadRequest},
+		{description: "unsubscribe user, wrong token", url: "/email/unsubscribe.html?site=remark42&tkn=jwt", method: http.MethodGet, responseCode: http.StatusForbidden},
+		{description: "unsubscribe user, good token", url: fmt.Sprintf("/email/unsubscribe.html?site=remark42&tkn=%s", goodToken), method: http.MethodPost, responseCode: http.StatusOK},
+		{description: "unsubscribe user second time, good token", url: fmt.Sprintf("/email/unsubscribe.html?site=remark42&tkn=%s", goodToken), method: http.MethodPost, responseCode: http.StatusConflict},
+	}
+	client := http.Client{}
+	for _, x := range testData {
+		t.Run(x.description, func(t *testing.T) {
+			req, err := http.NewRequest(x.method, ts.URL+x.url, nil)
+			require.NoError(t, err)
+			if !x.noAuth {
+				req.Header.Add("X-JWT", devToken)
+			}
+			resp, err := client.Do(req)
+			require.NoError(t, err)
+			body, err := ioutil.ReadAll(resp.Body)
+			require.NoError(t, err)
+			// read User.Email from the token in the cookie
+			for _, c := range resp.Cookies() {
+				if c.Name == "JWT" {
+					claims, err := srv.Authenticator.TokenService().Parse(c.Value)
+					require.NoError(t, err)
+					assert.Equal(t, x.cookieEmail, claims.User.Email, "cookie email check failed")
+				}
+			}
+			assert.Equal(t, x.responseCode, resp.StatusCode, string(body))
+		})
+	}
+}
+
+func TestRest_EmailNotification(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	mockDestination := &notify.MockDest{}
+	srv.privRest.notifyService = notify.NewService(srv.DataService, 1, mockDestination)
+
+	client := http.Client{}
+
+	// create new comment from dev user
+	req, err := http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(
+		`{"text": "test 123",
+"user": {"name": "dev::good@example.com"},
+"locator":{"url": "https://radio-t.com/blah1",
+"site": "remark42"}}`))
+	assert.Nil(t, err)
+	req.Header.Add("X-JWT", devToken)
+	resp, err := client.Do(req)
+	assert.Nil(t, err)
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
+	parentComment := store.Comment{}
+	require.NoError(t, render.DecodeJSON(strings.NewReader(string(body)), &parentComment))
+	// wait for mock notification Submit to kick off
+	time.Sleep(time.Millisecond * 5)
+	require.Equal(t, 1, len(mockDestination.Get()))
+	assert.Equal(t, "", mockDestination.Get()[0].Email)
+
+	// create child comment from another user, no email notification expected
+	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(fmt.Sprintf(
+		`{"text": "test 456",
+	"pid": "%s",
+	"user": {"name": "other_user"},
+	"locator":{"url": "https://radio-t.com/blah1",
+	"site": "remark42"}}`, parentComment.ID)))
+	assert.Nil(t, err)
+	req.Header.Add("X-JWT", devToken)
+	resp, err = client.Do(req)
+	assert.Nil(t, err)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
+	// wait for mock notification Submit to kick off
+	time.Sleep(time.Millisecond * 5)
+	require.Equal(t, 2, len(mockDestination.Get()))
+	assert.Empty(t, mockDestination.Get()[1].Email)
+
+	// send confirmation token for email
+	req, err = http.NewRequest(http.MethodPost, ts.URL+"/api/v1/email/subscribe?site=remark42&address=good@example.com", nil)
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
+	// wait for mock notification Submit to kick off
+	time.Sleep(time.Millisecond * 5)
+	require.Equal(t, 3, len(mockDestination.Get()))
+	require.NotEmpty(t, mockDestination.Get()[2].Verification)
+	verificationToken := mockDestination.Get()[2].Verification.Token
+
+	// verify email
+	req, err = http.NewRequest(http.MethodPost, ts.URL+fmt.Sprintf("/api/v1/email/confirm?site=remark42&tkn=%s", verificationToken), nil)
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
+
+	// create child comment from another user, email notification expected
+	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(fmt.Sprintf(
+		`{"text": "test 789",
+	"pid": "%s",
+	"user": {"name": "other_user"},
+	"locator":{"url": "https://radio-t.com/blah1",
+	"site": "remark42"}}`, parentComment.ID)))
+	assert.Nil(t, err)
+	req.Header.Add("X-JWT", devToken)
+	resp, err = client.Do(req)
+	assert.Nil(t, err)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
+	// wait for mock notification Submit to kick off
+	time.Sleep(time.Millisecond * 5)
+	require.Equal(t, 4, len(mockDestination.Get()))
+	assert.Equal(t, "good@example.com", mockDestination.Get()[3].Email)
+
+	// delete user's email
+	req, err = http.NewRequest(http.MethodDelete, ts.URL+"/api/v1/email?site=remark42", nil)
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode, string(body))
+
+	// create child comment from another user, no email notification expected
+	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(
+		`{"text": "test 321",
+	"user": {"name": "other_user"},
+	"locator":{"url": "https://radio-t.com/blah1",
+	"site": "remark42"}}`))
+	assert.Nil(t, err)
+	req.Header.Add("X-JWT", devToken)
+	resp, err = client.Do(req)
+	assert.Nil(t, err)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
+	// wait for mock notification Submit to kick off
+	time.Sleep(time.Millisecond * 5)
+	require.Equal(t, 5, len(mockDestination.Get()))
+	assert.Empty(t, mockDestination.Get()[4].Email)
 }
 
 func TestRest_UserAllData(t *testing.T) {

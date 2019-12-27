@@ -1,10 +1,13 @@
 package api
 
 import (
+	"bytes"
 	"compress/gzip"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -22,6 +25,7 @@ import (
 	"github.com/umputun/remark/backend/app/notify"
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/store"
+	"github.com/umputun/remark/backend/app/store/engine"
 	"github.com/umputun/remark/backend/app/store/image"
 	"github.com/umputun/remark/backend/app/store/service"
 )
@@ -35,6 +39,7 @@ type private struct {
 	notifyService    *notify.Service
 	authenticator    *auth.Service
 	remarkURL        string
+	anonVote         bool
 }
 
 type privStore interface {
@@ -43,12 +48,30 @@ type privStore interface {
 	Vote(req service.VoteReq) (comment store.Comment, err error)
 	Get(locator store.Locator, commentID string, user store.User) (store.Comment, error)
 	User(siteID, userID string, limit, skip int, user store.User) ([]store.Comment, error)
+	GetUserEmail(locator store.Locator, userID string) (string, error)
+	SetUserEmail(locator store.Locator, userID string, value string) (string, error)
+	DeleteUserDetail(locator store.Locator, userID string, detail engine.UserDetail) error
 	ValidateComment(c *store.Comment) error
 	IsVerified(siteID string, userID string) bool
 	IsReadOnly(locator store.Locator) bool
 	IsBlocked(siteID string, userID string) bool
 	Info(locator store.Locator, readonlyAge int) (store.PostInfo, error)
 }
+
+const unsubscribeHtml = `<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width"/>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+</head>
+<body>
+<div style="text-align: center; font-family: Arial, sans-serif; font-size: 18px;">
+    <h1 style="position: relative; color: #4fbbd6; margin-top: 0.2em;">Remark42</h1>
+	<p style="position: relative; max-width: 20em; margin: 0 auto 1em auto; line-height: 1.4em;">Successfully unsubscribed</p>
+</div>
+</body>
+</html>
+`
 
 // POST /comment - adds comment, resets all immutable fields
 func (s *private) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
@@ -109,7 +132,7 @@ func (s *private) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		Scopes(comment.Locator.URL, lastCommentsScope, comment.User.ID, comment.Locator.SiteID))
 
 	if s.notifyService != nil {
-		s.notifyService.Submit(finalComment)
+		s.notifyService.Submit(notify.Request{Comment: finalComment})
 	}
 
 	log.Printf("[DEBUG] created commend %+v", finalComment)
@@ -187,6 +210,10 @@ func (s *private) userInfoCtrl(w http.ResponseWriter, r *http.Request) {
 // PUT /vote/{id}?site=siteID&url=post-url&vote=1 - vote for/against comment
 func (s *private) voteCtrl(w http.ResponseWriter, r *http.Request) {
 	user := rest.MustGetUserInfo(r)
+	if !s.anonVote && strings.HasPrefix(user.ID, "anonymous_") {
+		http.Error(w, "Access denied", http.StatusForbidden)
+		return
+	}
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	id := chi.URLParam(r, "id")
 	log.Printf("[DEBUG] vote for comment %s", id)
@@ -219,6 +246,220 @@ func (s *private) voteCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	s.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL, comment.User.ID))
 	render.JSON(w, r, R.JSON{"id": comment.ID, "score": comment.Score})
+}
+
+// getEmailCtrl gets email address for authenticated user.
+// GET /email?site=siteID
+func (s *private) getEmailCtrl(w http.ResponseWriter, r *http.Request) {
+	user := rest.MustGetUserInfo(r)
+	siteID := r.URL.Query().Get("site")
+	address, err := s.dataService.GetUserEmail(store.Locator{SiteID: siteID}, user.ID)
+	if err != nil {
+		log.Printf("[WARN] can't read email for %s, %v", user.ID, err)
+	}
+
+	render.JSON(w, r, R.JSON{"user": user, "address": address})
+}
+
+// sendEmailConfirmationCtrl gets address and siteID from query, makes confirmation token and sends it to user.
+// GET /email/subscribe?site=siteID&address=someone@example.com
+func (s *private) sendEmailConfirmationCtrl(w http.ResponseWriter, r *http.Request) {
+	user := rest.MustGetUserInfo(r)
+	address := r.URL.Query().Get("address")
+	siteID := r.URL.Query().Get("site")
+	if address == "" {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, errors.New("missing parameter"), "address parameter is required", rest.ErrInternal)
+		return
+	}
+	existingAddress, err := s.dataService.GetUserEmail(store.Locator{SiteID: siteID}, user.ID)
+	if err != nil {
+		log.Printf("[WARN] can't read email for %s, %v", user.ID, err)
+	}
+	if address == existingAddress {
+		rest.SendErrorJSON(w, r, http.StatusConflict, errors.New("already verified"), "email address is already verified for this user", rest.ErrInternal)
+		return
+	}
+	claims := token.Claims{
+		Handshake: &token.Handshake{ID: user.ID + "::" + address},
+		StandardClaims: jwt.StandardClaims{
+			Audience:  r.URL.Query().Get("site"),
+			ExpiresAt: time.Now().Add(30 * time.Minute).Unix(),
+			NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
+			Issuer:    "remark42",
+		},
+	}
+
+	tkn, err := s.authenticator.TokenService().Token(claims)
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusForbidden, err, "failed to make verification token", rest.ErrInternal)
+		return
+	}
+
+	s.notifyService.Submit(
+		notify.Request{
+			Email: address,
+			Verification: notify.VerificationMetadata{
+				Locator: store.Locator{SiteID: siteID},
+				User:    user.Name,
+				Token:   tkn,
+			},
+		},
+	)
+
+	render.JSON(w, r, R.JSON{"user": user, "address": address})
+}
+
+// setConfirmedEmailCtrl uses provided token parameter (generated by sendEmailConfirmationCtrl) to set email and add it to user token
+// PUT /email/confirm?site=siteID&tkn=jwt
+func (s *private) setConfirmedEmailCtrl(w http.ResponseWriter, r *http.Request) {
+	tkn := r.URL.Query().Get("tkn")
+	if tkn == "" {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, errors.New("missing parameter"), "token parameter is required", rest.ErrInternal)
+		return
+	}
+	user := rest.MustGetUserInfo(r)
+	locator := store.Locator{SiteID: r.URL.Query().Get("site")}
+
+	confClaims, err := s.authenticator.TokenService().Parse(tkn)
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusForbidden, err, "failed to verify confirmation token", rest.ErrInternal)
+		return
+	}
+
+	if s.authenticator.TokenService().IsExpired(confClaims) {
+		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("expired"), "failed to verify confirmation token", rest.ErrInternal)
+		return
+	}
+
+	elems := strings.Split(confClaims.Handshake.ID, "::")
+	if len(elems) != 2 || elems[0] != user.ID {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, errors.New(confClaims.Handshake.ID), "invalid handshake token", rest.ErrInternal)
+		return
+	}
+	address := elems[1]
+
+	log.Printf("[DEBUG] set email for user %s", user.ID)
+
+	val, err := s.dataService.SetUserEmail(locator, user.ID, address)
+	if err != nil {
+		code := parseError(err, rest.ErrInternal)
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set email for user", code)
+		return
+	}
+
+	// update User.Email from the token
+	claims, _, err := s.authenticator.TokenService().Get(r)
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusForbidden, err, "failed to verify confirmation token", rest.ErrInternal)
+		return
+	}
+	claims.User.Email = address
+	if _, err = s.authenticator.TokenService().Set(w, claims); err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to set token", rest.ErrInternal)
+		return
+	}
+	render.JSON(w, r, R.JSON{"updated": true, "address": val})
+}
+
+// POST/GET /email/unsubscribe.html?site=siteID&tkn=jwt - unsubscribe the user in token from email notifications
+func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
+	tkn := r.URL.Query().Get("tkn")
+	if tkn == "" {
+		rest.SendErrorHTML(w, r, http.StatusBadRequest, errors.New("missing parameter"), "token parameter is required", rest.ErrInternal)
+		return
+	}
+	locator := store.Locator{SiteID: r.URL.Query().Get("site")}
+
+	confClaims, err := s.authenticator.TokenService().Parse(tkn)
+	if err != nil {
+		rest.SendErrorHTML(w, r, http.StatusForbidden, err, "failed to verify confirmation token", rest.ErrInternal)
+		return
+	}
+
+	if s.authenticator.TokenService().IsExpired(confClaims) {
+		rest.SendErrorHTML(w, r, http.StatusForbidden, errors.New("expired"), "failed to verify confirmation token", rest.ErrInternal)
+		return
+	}
+
+	elems := strings.Split(confClaims.Handshake.ID, "::")
+	if len(elems) != 2 {
+		rest.SendErrorHTML(w, r, http.StatusBadRequest, errors.New(confClaims.Handshake.ID), "invalid handshake token", rest.ErrInternal)
+		return
+	}
+	userID := elems[0]
+	address := elems[1]
+
+	existingAddress, err := s.dataService.GetUserEmail(locator, userID)
+	if err != nil {
+		log.Printf("[WARN] can't read email for %s, %v", userID, err)
+	}
+	if existingAddress == "" {
+		rest.SendErrorHTML(w, r, http.StatusConflict, errors.New("user is not subscribed"), "user does not have active email subscription", rest.ErrInternal)
+		return
+	}
+	if address != existingAddress {
+		rest.SendErrorHTML(w, r, http.StatusBadRequest, errors.New("wrong email unsubscription"), "email address in request does not match known for this user", rest.ErrInternal)
+		return
+	}
+
+	log.Printf("[DEBUG] unsubscribe user %s", userID)
+
+	if err := s.dataService.DeleteUserDetail(locator, userID, engine.UserEmail); err != nil {
+		code := parseError(err, rest.ErrInternal)
+		rest.SendErrorHTML(w, r, http.StatusBadRequest, err, "can't delete email for user", code)
+		return
+	}
+	// clean User.Email from the token, if user has the token
+	claims, _, err := s.authenticator.TokenService().Get(r)
+	if err != nil {
+		log.Printf("[DEBUG] unsubscribed user doesn't have valid JWT token to update %s, %v", userID, err)
+	}
+	if claims.User != nil && claims.User.Email != "" {
+		claims.User.Email = ""
+		if _, err = s.authenticator.TokenService().Set(w, claims); err != nil {
+			rest.SendErrorHTML(w, r, http.StatusInternalServerError, err, "failed to set token", rest.ErrInternal)
+			return
+		}
+	}
+
+	// MustExecute behaves like template.Execute, but panics if an error occurs.
+	MustExecute := func(tmpl *template.Template, wr io.Writer, data interface{}) {
+		if err := tmpl.Execute(wr, data); err != nil {
+			panic(err)
+		}
+	}
+
+	tmpl := template.Must(template.New("unsubscribe").Parse(unsubscribeHtml))
+	msg := bytes.Buffer{}
+	MustExecute(tmpl, &msg, nil)
+	render.HTML(w, r, msg.String())
+}
+
+// DELETE /email?site=siteID - removes user's email
+func (s *private) deleteEmailCtrl(w http.ResponseWriter, r *http.Request) {
+	user := rest.MustGetUserInfo(r)
+	locator := store.Locator{SiteID: r.URL.Query().Get("site")}
+	log.Printf("[DEBUG] remove email for user %s", user.ID)
+
+	if err := s.dataService.DeleteUserDetail(locator, user.ID, engine.UserEmail); err != nil {
+		code := parseError(err, rest.ErrInternal)
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete email for user", code)
+		return
+	}
+	// clean User.Email from the token
+	claims, _, err := s.authenticator.TokenService().Get(r)
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusForbidden, err, "failed to verify confirmation token", rest.ErrInternal)
+		return
+	}
+	if claims.User.Email != "" {
+		claims.User.Email = ""
+		if _, err = s.authenticator.TokenService().Set(w, claims); err != nil {
+			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to set token", rest.ErrInternal)
+			return
+		}
+	}
+	render.JSON(w, r, R.JSON{"deleted": true})
 }
 
 // GET /userdata?site=siteID - exports all data about the user as a json with user info and list of all comments

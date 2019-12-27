@@ -89,7 +89,7 @@ func (a *admin) getUserInfoCtrl(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, ucomments[0].User)
 }
 
-// GET /deleteme?token=jwt - delete all user comments by user's request. Gets info about deleted used from provided token
+// GET /deleteme?token=jwt - delete all user comments and details by user's request. Gets info about deleted used from provided token
 // request made GET to allow direct click from the email sent by user
 func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 

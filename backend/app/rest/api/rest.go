@@ -46,6 +46,7 @@ type Rest struct {
 	ImageService     *image.Service
 	Streamer         *Streamer
 
+	AnonVote        bool
 	WebRoot         string
 	RemarkURL       string
 	ReadOnlyAge     int
@@ -306,8 +307,12 @@ func (s *Rest) routes() chi.Router {
 
 			rauth.Put("/comment/{id}", s.privRest.updateCommentCtrl)
 			rauth.Post("/comment", s.privRest.createCommentCtrl)
-			rauth.With(rejectAnonUser).Put("/vote/{id}", s.privRest.voteCtrl)
+			rauth.Put("/vote/{id}", s.privRest.voteCtrl)
 			rauth.With(rejectAnonUser).Post("/deleteme", s.privRest.deleteMeCtrl)
+			rauth.With(rejectAnonUser).Get("/email", s.privRest.getEmailCtrl)
+			rauth.With(rejectAnonUser).Post("/email/subscribe", s.privRest.sendEmailConfirmationCtrl)
+			rauth.With(rejectAnonUser).Post("/email/confirm", s.privRest.setConfirmedEmailCtrl)
+			rauth.With(rejectAnonUser).Delete("/email", s.privRest.deleteEmailCtrl)
 		})
 
 		// protected routes, anonymous rejected
@@ -327,6 +332,8 @@ func (s *Rest) routes() chi.Router {
 		rroot.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(50, nil)))
 		rroot.Get("/index.html", s.pubRest.getStartedCtrl)
 		rroot.Get("/robots.txt", s.pubRest.robotsCtrl)
+		rroot.Get("/email/unsubscribe.html", s.privRest.emailUnsubscribeCtrl)
+		rroot.Post("/email/unsubscribe.html", s.privRest.emailUnsubscribeCtrl)
 	})
 
 	// file server for static content from /web
@@ -355,6 +362,7 @@ func (s *Rest) controllerGroups() (public, private, admin, rss) {
 		authenticator:    s.Authenticator,
 		notifyService:    s.NotifyService,
 		remarkURL:        s.RemarkURL,
+		anonVote:         s.AnonVote,
 	}
 
 	admGrp := admin{
@@ -396,6 +404,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		Admins         []string `json:"admins"`
 		AdminEmail     string   `json:"admin_email"`
 		Auth           []string `json:"auth_providers"`
+		AnonVote       bool     `json:"anon_vote"`
 		LowScore       int      `json:"low_score"`
 		CriticalScore  int      `json:"critical_score"`
 		PositiveScore  bool     `json:"positive_score"`
@@ -415,6 +424,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		ReadOnlyAge:    s.ReadOnlyAge,
 		MaxImageSize:   s.ImageService.Store.SizeLimit(),
 		EmojiEnabled:   s.EmojiEnabled,
+		AnonVote:       s.AnonVote,
 		SimpleView:     s.SimpleView,
 	}
 

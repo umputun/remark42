@@ -27,38 +27,45 @@ RUN cd /srv/frontend && \
     rm -rf ./node_modules
 
 
+
 FROM umputun/baseimage:buildgo-latest as build-backend
 
 ARG GITHUB_TOKEN
 ENV SKIP_BACKEND_TEST=true
 
-WORKDIR /go/src/github.com/umputun/remark/backend
-ADD backend /go/src/github.com/umputun/remark/backend
-ADD README.md /go/src/github.com/umputun/remark/
-ADD LICENSE /go/src/github.com/umputun/remark/
+RUN go get github.com/rakyll/statik
+
+WORKDIR /build/backend
+ADD backend /build/backend
+ADD README.md /build/
+ADD LICENSE /build/
+
+ADD .git/ /build/backend/.git/
+
 COPY --from=build-frontend /srv/frontend/public/ web
 
 RUN \
-    export WEB_ROOT=/go/src/github.com/umputun/remark/backend/web && \
+    export WEB_ROOT=/build/backend/web && \
     sed -i "s|https://demo.remark42.com|http://127.0.0.1:8080|g" ${WEB_ROOT}/*.js && \
     sed -i "/REMOVE-START/,/REMOVE-END/d" ${WEB_ROOT}/iframe.html && \
-    go get -v github.com/rakyll/statik && \
-    statik --src=${WEB_ROOT} --dest=/go/src/github.com/umputun/remark/backend/app/rest -p api -f && \
-    ls -la /go/src/github.com/umputun/remark/backend/app/rest/api/statik.go && \
-    ls -la /go/src/github.com/umputun/remark/backend/web/
+    statik --src=${WEB_ROOT} --dest=/build/backend/app/rest -p api -f && \
+    ls -la /build/backend/app/rest/api/statik.go && \
+    ls -la /build/backend/web/
 
 # if DRONE presented use DRONE_* git env to make version
 RUN \
     if [ -z "$DRONE" ] ; then \
-    echo "runs outside of drone" && version="local"; \
+    echo "runs outside of drone" && version=$(/script/git-rev.sh); \
     else version=${DRONE_TAG}${DRONE_BRANCH}${DRONE_PULL_REQUEST}-${DRONE_COMMIT:0:7}-$(date +%Y%m%d-%H:%M:%S); fi && \
     echo "version=$version" && \
+    export GOFLAGS="-mod=vendor" && \
     GOOS=linux GOARCH=amd64 go build -o remark42.linux-amd64 -ldflags "-X main.revision=${version} -s -w" ./app && \
     GOOS=linux GOARCH=386 go build -o remark42.linux-386 -ldflags "-X main.revision=${version} -s -w" ./app && \
     GOOS=linux GOARCH=arm go build -o remark42.linux-arm -ldflags "-X main.revision=${version} -s -w" ./app && \
     GOOS=linux GOARCH=arm64 go build -o remark42.linux-arm64 -ldflags "-X main.revision=${version} -s -w" ./app && \
     GOOS=windows GOARCH=amd64 go build -o remark42.windows-amd64.exe -ldflags "-X main.revision=${version} -s -w" ./app && \
-    GOOS=darwin GOARCH=amd64 go build -o remark42.darwin-amd64 -ldflags "-X main.revision=${version} -s -w" ./app
+    GOOS=darwin GOARCH=amd64 go build -o remark42.darwin-amd64 -ldflags "-X main.revision=${version} -s -w" ./app && \
+    GOOS=freebsd GOARCH=amd64 go build -o remark42.freebsd-amd64 -ldflags "-X main.revision=${version} -s -w" ./app
 
 RUN \
     if [ -z "$DRONE_TAG" ] ; then \
@@ -71,6 +78,7 @@ RUN \
     tar cvzf remark42${tag}.linux-arm.tar.gz remark42.linux-arm LICENSE README.md && \
     tar cvzf remark42${tag}.linux-arm64.tar.gz remark42.linux-arm64 LICENSE README.md && \
     tar cvzf remark42${tag}.darwin-amd64.tar.gz remark42.darwin-amd64 LICENSE README.md && \
+    tar cvzf remark42${tag}.freebsd-amd64.tar.gz remark42.freebsd-amd64 LICENSE README.md && \
     zip remark42${tag}.windows-amd64.zip remark42.windows-amd64.exe LICENSE README.md
 
 # upload to github
@@ -95,6 +103,6 @@ RUN \
 #    "https://uploads.github.com/repos/umputun/remark/releases/${DRONE_TAG}/assets?name=remark_${DRONE_TAG}.windows-amd64.zip"; fi
 
 FROM alpine
-COPY --from=build-backend /go/src/github.com/umputun/remark/backend/remark42.* /artifacts/
+COPY --from=build-backend /build/backend/remark42.* /artifacts/
 RUN ls -la /artifacts/*
 CMD ["sleep", "100"]

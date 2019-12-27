@@ -620,6 +620,53 @@ func TestBolt_FlagListBlocked(t *testing.T) {
 
 }
 
+func TestBoltDB_UserDetail(t *testing.T) {
+
+	b, teardown := prep(t)
+	defer teardown()
+
+	// add two entries to DB before we start
+	result, err := b.UserDetail(UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "u1", Detail: UserEmail, Update: "test@example.com"})
+	assert.NoError(t, err, "No error inserting entry expected")
+	assert.ElementsMatch(t, []UserDetailEntry{{UserID: "u1", Email: "test@example.com"}}, result)
+	result, err = b.UserDetail(UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "u2", Detail: UserEmail, Update: "other@example.com"})
+	assert.NoError(t, err, "No error inserting entry expected")
+	assert.ElementsMatch(t, []UserDetailEntry{{UserID: "u2", Email: "other@example.com"}}, result)
+
+	// stateless tests without changing the state we set up before
+	var testData = []struct {
+		req      UserDetailRequest
+		error    string
+		expected []UserDetailEntry
+	}{
+		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "u1", Detail: UserEmail},
+			expected: []UserDetailEntry{{UserID: "u1", Email: "test@example.com"}}},
+		{req: UserDetailRequest{Locator: store.Locator{SiteID: "bad"}, UserID: "u1", Detail: UserEmail},
+			error: `site "bad" not found`},
+		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "u1xyz", Detail: UserEmail}},
+		{req: UserDetailRequest{Detail: UserEmail, Update: "new_value"},
+			error: `userid cannot be empty in request for single detail`},
+		{req: UserDetailRequest{Detail: UserDetail("bad")},
+			error: `unsupported detail "bad"`},
+		{req: UserDetailRequest{Update: "not_relevant", Detail: AllUserDetails},
+			error: `unsupported request with userdetail all`},
+		{req: UserDetailRequest{Locator: store.Locator{SiteID: "bad"}, Detail: AllUserDetails},
+			error: `site "bad" not found`},
+		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, Detail: AllUserDetails},
+			expected: []UserDetailEntry{{UserID: "u1", Email: "test@example.com"}, {UserID: "u2", Email: "other@example.com"}}},
+	}
+
+	for i, x := range testData {
+		result, err := b.UserDetail(x.req)
+		if x.error != "" {
+			assert.EqualError(t, err, x.error, "Error should match expected for case %d", i)
+		} else {
+			assert.NoError(t, err, "Error is not expected expected for case %d", i)
+		}
+		assert.ElementsMatch(t, x.expected, result, "Result should match expected for case %d", i)
+	}
+}
+
 func TestBolt_DeleteComment(t *testing.T) {
 
 	b, teardown := prep(t)
@@ -711,6 +758,48 @@ func TestBolt_DeleteAll(t *testing.T) {
 	delReq = DeleteRequest{Locator: store.Locator{SiteID: "bad"}}
 	err = b.Delete(delReq)
 	assert.EqualError(t, err, `site "bad" not found`)
+}
+
+func TestBolt_DeleteUserDetail(t *testing.T) {
+	var (
+		createUser = UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", Detail: UserEmail, Update: "value1"}
+		readUser   = UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", Detail: UserEmail}
+		emailSet   = []UserDetailEntry{{UserID: "user1", Email: "value1"}}
+	)
+
+	b, teardown := prep(t)
+	defer teardown()
+
+	var testData = []struct {
+		delReq    DeleteRequest
+		detailReq UserDetailRequest
+		expected  []UserDetailEntry
+		err       string
+	}{
+		{delReq: DeleteRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", UserDetail: UserEmail},
+			detailReq: createUser, expected: emailSet},
+		{delReq: DeleteRequest{Locator: store.Locator{SiteID: "bad"}, UserID: "user1", UserDetail: UserEmail},
+			detailReq: readUser, expected: emailSet, err: `site "bad" not found`},
+		{delReq: DeleteRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", UserDetail: UserEmail},
+			detailReq: readUser},
+		{delReq: DeleteRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", UserDetail: AllUserDetails},
+			detailReq: createUser, expected: emailSet},
+		{delReq: DeleteRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", UserDetail: AllUserDetails},
+			detailReq: readUser},
+	}
+
+	for i, x := range testData {
+		err := b.Delete(x.delReq)
+		if x.err == "" {
+			require.NoError(t, err, "delete request #%d error", i)
+		} else {
+			require.EqualError(t, err, x.err, "delete request #%d error", i)
+		}
+
+		val, err := b.UserDetail(x.detailReq)
+		require.NoError(t, err, "user request #%d error", i)
+		require.Equal(t, x.expected, val, "user request #%d result", i)
+	}
 }
 
 func TestBoltAdmin_DeleteUserHard(t *testing.T) {

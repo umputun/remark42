@@ -15,6 +15,7 @@ import (
 	"time"
 
 	bolt "github.com/coreos/bbolt"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/go-pkgz/jrpc"
 	log "github.com/go-pkgz/lgr"
 	"github.com/kyokomi/emoji"
@@ -51,6 +52,7 @@ type ServerCommand struct {
 	Stream StreamGroup `group:"stream" namespace:"stream" env-namespace:"STREAM"`
 
 	Sites           []string      `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
+	AnonymousVote   bool          `long:"anon-vote" env:"ANON_VOTE" description:"enable anonymous votes (works only with VOTES_IP enabled)"`
 	AdminPasswd     string        `long:"admin-passwd" env:"ADMIN_PASSWD" default:"" description:"admin basic auth password"`
 	BackupLocation  string        `long:"backup" env:"BACKUP_PATH" default:"./var/backup" description:"backups location"`
 	MaxBackupFiles  int           `long:"max-back" env:"MAX_BACKUP_FILES" default:"10" description:"max backups to keep"`
@@ -168,14 +170,24 @@ type AdminGroup struct {
 
 // NotifyGroup defines options for notification
 type NotifyGroup struct {
-	Type      string `long:"type" env:"TYPE" description:"type of notification" choice:"none" choice:"telegram" default:"none"` //nolint
-	QueueSize int    `long:"queue" env:"QUEUE" description:"size of notification queue" default:"100"`
+	Type      []string `long:"type" env:"TYPE" description:"type of notification" choice:"none" choice:"telegram" choice:"email" default:"none" env-delim:","` //nolint
+	QueueSize int      `long:"queue" env:"QUEUE" description:"size of notification queue" default:"100"`
 	Telegram  struct {
 		Token   string        `long:"token" env:"TOKEN" description:"telegram token"`
 		Channel string        `long:"chan" env:"CHAN" description:"telegram channel"`
 		Timeout time.Duration `long:"timeout" env:"TIMEOUT" default:"5s" description:"telegram timeout"`
 		API     string        `long:"api" env:"API" default:"https://api.telegram.org/bot" description:"telegram api prefix"`
 	} `group:"telegram" namespace:"telegram" env-namespace:"TELEGRAM"`
+	Email struct {
+		Host                string        `long:"host" env:"HOST" description:"SMTP host"`
+		Port                int           `long:"port" env:"PORT" default:"587" description:"SMTP port"`
+		TLS                 bool          `long:"tls" env:"TLS" description:"enable TLS for SMTP"`
+		From                string        `long:"fromAddress" env:"FROM" description:"from email address"`
+		Username            string        `long:"username" env:"USERNAME" description:"SMTP user name"`
+		Password            string        `long:"password" env:"PASSWORD" description:"SMTP password"`
+		TimeOut             time.Duration `long:"timeout" env:"TIMEOUT" default:"10s" description:"SMTP TCP connection timeout"`
+		VerificationSubject string        `long:"verification_subj" env:"VERIFICATION_SUBJ" description:"verification message subject"`
+	} `group:"email" namespace:"email" env-namespace:"EMAIL"`
 }
 
 // SSLGroup defines options group for server ssl params
@@ -316,7 +328,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		KeyStore:          adminStore,
 	}
 
-	notifyService, err := s.makeNotify(dataService)
+	notifyService, err := s.makeNotify(dataService, authenticator)
 	if err != nil {
 		log.Printf("[WARN] failed to make notify service, %s", err)
 		notifyService = notify.NopService // disable notifier
@@ -356,6 +368,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 			MaxActive: int32(s.Stream.MaxActive),
 		},
 		EmojiEnabled: s.EnableEmoji,
+		AnonVote:     s.AnonymousVote && s.RestrictVoteIP,
 		SimpleView:   s.SimpleView,
 	}
 
@@ -576,10 +589,10 @@ var msgTemplate = `
 <body>
 <div style="text-align: center; font-family: Arial, sans-serif; font-size: 18px;">
 	<h1 style="position: relative; color: #4fbbd6; margin-top: 0.2em;">Remark42</h1>
-	<p style="position: relative; max-width: 20em; margin: 0 auto 1em auto; line-height: 1.4em;">Confirmation&nbsp;for <b>{{.User}}</b> on&nbsp;site&nbsp;<b>{{.Site}}</b></p>
+	<p style="position: relative; max-width: 20em; margin: 0 auto 1em auto; line-height: 1.4em;">Confirmation for <b>{{.User}}</b> on site <b>{{.Site}}</b></p>
 	<div style="background-color: #eee; max-width: 20em; margin: 0 auto; border-radius: 0.4em; padding: 0.5em;">
 		<p style="position: relative; margin: 0 0 0.5em 0;">TOKEN</p>
-		<p style="position: relative; font-size: 0.7em; opacity: 0.8;"><i>Copy and&nbsp;paste this text into “token” field on&nbsp;comments page</i></p>
+		<p style="position: relative; font-size: 0.7em; opacity: 0.8;"><i>Copy and paste this text into “token” field on comments page</i></p>
 		<p style="position: relative; font-family: monospace; background-color: #fff; margin: 0; padding: 0.5em; word-break: break-all; text-align: left; border-radius: 0.2em; -webkit-user-select: all; user-select: all;">{{.Token}}</p>
 	</div>
 	<p style="position: relative; margin-top: 2em; font-size: 0.8em; opacity: 0.8;"><i>Sent to {{.Address}}</i></p>
@@ -673,20 +686,65 @@ func (s *ServerCommand) loadEmailTemplate() string {
 	return tmpl
 }
 
-func (s *ServerCommand) makeNotify(dataStore *service.DataStore) (*notify.Service, error) {
-	log.Printf("[INFO] make notify, type=%s", s.Notify.Type)
-	switch s.Notify.Type {
-	case "telegram":
-		tg, err := notify.NewTelegram(s.Notify.Telegram.Token, s.Notify.Telegram.Channel,
-			s.Notify.Telegram.Timeout, s.Notify.Telegram.API)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to create telegram notification destination")
+func (s *ServerCommand) makeNotify(dataStore *service.DataStore, authenticator *auth.Service) (*notify.Service, error) {
+	var notifyService *notify.Service
+	var destinations []notify.Destination
+	for _, t := range s.Notify.Type {
+		switch t {
+		case "telegram":
+			tg, err := notify.NewTelegram(s.Notify.Telegram.Token, s.Notify.Telegram.Channel,
+				s.Notify.Telegram.Timeout, s.Notify.Telegram.API)
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to create telegram notification destination")
+			}
+			destinations = append(destinations, tg)
+		case "email":
+			emailParams := notify.EmailParams{
+				From:                s.Notify.Email.From,
+				VerificationSubject: s.Notify.Email.VerificationSubject,
+				UnsubscribeURL:      s.RemarkURL + "/email/unsubscribe.html",
+				TokenGenFn: func(userID, email, site string) (string, error) {
+					claims := token.Claims{
+						Handshake: &token.Handshake{ID: userID + "::" + email},
+						StandardClaims: jwt.StandardClaims{
+							Audience:  site,
+							ExpiresAt: time.Now().Add(100 * 365 * 24 * time.Hour).Unix(),
+							NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
+							Issuer:    "remark42",
+						},
+					}
+					tkn, err := authenticator.TokenService().Token(claims)
+					if err != nil {
+						return "", errors.Wrapf(err, "failed to make unsubscription token")
+					}
+					return tkn, nil
+				},
+			}
+			smtpParams := notify.SmtpParams{
+				Host:     s.Notify.Email.Host,
+				Port:     s.Notify.Email.Port,
+				TLS:      s.Notify.Email.TLS,
+				Username: s.Notify.Email.Username,
+				Password: s.Notify.Email.Password,
+				TimeOut:  s.Notify.Email.TimeOut,
+			}
+			emailService, err := notify.NewEmail(emailParams, smtpParams)
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to create email notification destination")
+			}
+			destinations = append(destinations, emailService)
+		case "none":
+			notifyService = notify.NopService
+		default:
+			return nil, errors.Errorf("unsupported notification type %q", s.Notify.Type)
 		}
-		return notify.NewService(dataStore, s.Notify.QueueSize, tg), nil
-	case "none":
-		return notify.NopService, nil
 	}
-	return nil, errors.Errorf("unsupported notification type %q", s.Notify.Type)
+
+	if len(destinations) != 0 {
+		log.Printf("[INFO] make notify, types=%s", s.Notify.Type)
+		notifyService = notify.NewService(dataStore, s.Notify.QueueSize, destinations...)
+	}
+	return notifyService, nil
 }
 
 func (s *ServerCommand) makeSSLConfig() (config api.SSLConfig, err error) {
@@ -735,6 +793,11 @@ func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Sto
 			}
 			c.User.SetAdmin(ds.IsAdmin(c.Audience, c.User.ID))
 			c.User.SetBoolAttr("blocked", ds.IsBlocked(c.Audience, c.User.ID))
+			var err error
+			c.User.Email, err = ds.GetUserEmail(store.Locator{SiteID: c.Audience}, c.User.ID)
+			if err != nil {
+				log.Printf("[WARN] can't read email for %s, %v", c.User.ID, err)
+			}
 			return c
 		}),
 		AdminPasswd: s.AdminPasswd,

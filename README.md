@@ -16,7 +16,7 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 * Images upload with drag-and-drop
 * Extractor for recent comments, cross-post
 * RSS for all comments and each post
-* Telegram notifications
+* Telegram and email notifications
 * Export data to json with automatic backups
 * No external databases, everything embedded in a single data file
 * Fully dockerized and can be deployed in a single command
@@ -154,11 +154,19 @@ _this is the recommended way to run remark42_
 | auth.email.passwd       | AUTH_EMAIL_PASSWD       |                          | smtp password                                   |
 | auth.email.timeout      | AUTH_EMAIL_TIMEOUT      | `10s`                    | smtp timeout                                    |
 | auth.email.template     | AUTH_EMAIL_TEMPLATE     | none (predefined)        | custom email message template file              |
-| notify.type             | NOTIFY_TYPE             | none                     | type of notification (none or telegram)         |
+| notify.type             | NOTIFY_TYPE             | none                     | type of notification (telegram and/or email)    |
 | notify.queue            | NOTIFY_QUEUE            | `100`                    | size of notification queue                      |
 | notify.telegram.token   | NOTIFY_TELEGRAM_TOKEN   |                          | telegram token                                  |
 | notify.telegram.chan    | NOTIFY_TELEGRAM_CHAN    |                          | telegram channel                                |
 | notify.telegram.timeout | NOTIFY_TELEGRAM_TIMEOUT | `5s`                     | telegram timeout                                |
+| notify.email.host       | NOTIFY_EMAIL_HOST       |                          | SMTP host                                       |
+| notify.email.port       | NOTIFY_EMAIL_PORT       | `587`                    | SMTP port                                       |
+| notify.email.tls        | NOTIFY_EMAIL_TLS        |                          | enable TLS for SMTP                             |
+| notify.email.fromAddress | NOTIFY_EMAIL_FROM      |                          | from email address                              |
+| notify.email.username   | NOTIFY_EMAIL_USERNAME   |                          | SMTP user name                                  |
+| notify.email.password   | NOTIFY_EMAIL_PASSWORD   |                          | SMTP password                                   |
+| notify.email.timeout    | NOTIFY_EMAIL_TIMEOUT    | `10s`                    | SMTP TCP connection timeout                     |
+| notify.email.verification_subj | NOTIFY_EMAIL_VERIFICATION_SUBJ | `Email verification` | verification message subject          |
 | ssl.type                | SSL_TYPE                | none                     | `none`-http, `static`-https, `auto`-https + le  |
 | ssl.port                | SSL_PORT                | `8443`                   | port for https server                           |
 | ssl.cert                | SSL_CERT                |                          | path to cert.pem file                           |
@@ -168,6 +176,7 @@ _this is the recommended way to run remark42_
 | max-comment             | MAX_COMMENT_SIZE        | `2048`                   | comment's size limit                            |
 | max-votes               | MAX_VOTES               | `-1`                     | votes limit per comment, `-1` - unlimited       |
 | votes-ip                | VOTES_IP                | `false`                  | restrict votes from the same ip                 |
+| anon-vote               | ANON_VOTE               | `false`                  | allow voting for anonymous users, require VOTES_IP to be enabled as well |
 | votes-ip-time           | VOTES_IP_TIME           | `5m`                     | same ip vote restriction time, `0s` - unlimited |
 | low-score               | LOW_SCORE               | `-5`                     | low score threshold                             |
 | critical-score          | CRITICAL_SCORE          | `-10`                    | critical score threshold                        |
@@ -358,7 +367,7 @@ services:
         container_name: "remark42"
         environment:
             - APP_UID=2000                          # runs remark42 app with non-default UID
-            - TIME_ZINE=GTC                         # sets container time to UTC
+            - TIME_ZONE=GTC                         # sets container time to UTC
 
             - REMARK_URL=https://demo.remark42.com  # url pointing to your remark42 server
             - SITE=YOUR_SITE_ID                     # site ID, same as used for `site_id`, see "Setup on your website"
@@ -583,7 +592,7 @@ Developer build running by `webpack-dev-server` supports devtools for [React](ht
 
 #### Frontend guide
 
-Frontend guide can be found here: [./frontend/README.md](./frontend/README.md)
+Frontend guide can be found here: [./frontend/Readme.md](./frontend/Readme.md)
 
 ## API
 
@@ -764,6 +773,17 @@ data: {"url":"https://radio-t.com/blah1","count":9,"first_time":"2019-06-18T12:5
 
 _returned id should be appended to load image url on caller side_
 
+### Email subscription
+
+* `GET /api/v1/email?site=site-id` - get user's email, _auth required_
+* `POST /api/v1/email/subscribe?site=site-id&address=user@example.org` -  makes confirmation token and sends it to user over email, _auth required_
+
+  Trying to subscribe same email second time will return response code `409 Conflict` and explaining error message.
+* `POST /api/v1/email/confirm?site=site-id&tkn=token` - uses provided token parameter to set email for the user, _auth required_
+
+  Setting email subscribe user for all first-level replies to his messages.
+* `DELETE /api/v1/email?site=siteID` - removes user's email, _auth required_
+
 ### Admin
 
 * `DELETE /api/v1/admin/comment/{id}?site=site-id&url=post-url` - delete comment by `id`.
@@ -776,17 +796,17 @@ _returned id should be appended to load image url on caller side_
       Until     time.Time `json:"time"`
   }
   ```
-* `GET /api/v1/admin/export?site=side-id&mode=[stream|file]` - export all comments to json stream or gz file.
-* `POST /api/v1/admin/import?site=side-id` - import comments from the backup, uses post body.
-* `POST /api/v1/admin/import/form?site=side-id` - import comments from the backup, user post form.
-* `POST /api/v1/admin/remap?site=side-id` - remap comments to different URLs. Expect list of "from-url new-url" pairs separated by \n.
+* `GET /api/v1/admin/export?site=site-id&mode=[stream|file]` - export all comments to json stream or gz file.
+* `POST /api/v1/admin/import?site=site-id` - import comments from the backup, uses post body.
+* `POST /api/v1/admin/import/form?site=site-id` - import comments from the backup, user post form.
+* `POST /api/v1/admin/remap?site=site-id` - remap comments to different URLs. Expect list of "from-url new-url" pairs separated by \n.
 From-url and new-url parts separated by space. If urls end with asterisk (*) it means matching by prefix. Remap procedure based on
 export/import chain so make backup first.
     ```
     http://oldsite.com* https://newsite.com*
     http://oldsite.com/from-old-page/1 https://newsite.com/to-new-page/1
     ```
-* `GET /api/v1/admin/wait?site=side-id` - wait for completion for any async migration ops (import or remap).
+* `GET /api/v1/admin/wait?site=site-id` - wait for completion for any async migration ops (import or remap).
 * `PUT /api/v1/admin/pin/{id}?site=site-id&url=post-url&pin=1` - pin or unpin comment.
 * `GET /api/v1/admin/user/{userid}?site=site-id` - get user's info.
 * `DELETE /api/v1/admin/user/{userid}?site=site-id` - delete all user's comments.

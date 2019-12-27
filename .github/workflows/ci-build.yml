@@ -36,7 +36,7 @@ jobs:
         go test -mod=vendor -timeout=60s -covermode=count -coverprofile=$GITHUB_WORKSPACE/profile.cov_tmp ./...
         cat $GITHUB_WORKSPACE/profile.cov_tmp | grep -v "_mock.go" > $GITHUB_WORKSPACE/profile.cov
         cd ../_example/memory_store
-        go test ./...
+        go test -race ./...
 
     - name: install golangci-lint and goveralls
       run: |
@@ -46,6 +46,11 @@ jobs:
     - name: run backend linters
       run: |
         cd backend
+        $GITHUB_WORKSPACE/golangci-lint run --out-format=tab --disable-all --tests=false --enable=unconvert \
+          --enable=megacheck --enable=structcheck --enable=gas --enable=gocyclo --enable=dupl --enable=misspell \
+          --enable=unparam --enable=varcheck --enable=deadcode --enable=typecheck \
+          --enable=ineffassign --enable=varcheck ./... ;
+        cd _example/memory_store
         $GITHUB_WORKSPACE/golangci-lint run --out-format=tab --disable-all --tests=false --enable=unconvert \
           --enable=megacheck --enable=structcheck --enable=gas --enable=gocyclo --enable=dupl --enable=misspell \
           --enable=unparam --enable=varcheck --enable=deadcode --enable=typecheck \

@@ -1,7 +1,9 @@
 # compose file for local development
 # starts backend on 8080 with basic auth "dev:password" and Dev oauth2 provider on port 8084
-# UI on https://127.0.0.1:8080/web
-
+# UI on http://127.0.0.1:8080/web
+#
+# build remark42 docker image - docker-compose -f compose-dev-frontend.yml build
+# start remark42 service - docker-compose -f compose-dev-frontend.yml up
 version: '2'
 
 services:
@@ -18,14 +20,14 @@ services:
         hostname: "remark42-dev"
 
         logging:
-          driver: json-file
-          options:
-              max-size: "10m"
-              max-file: "5"
+            driver: json-file
+            options:
+                max-size: "10m"
+                max-file: "5"
 
         ports:
-         - "8080:8080" # primary rest server
-         - "8084:8084" # local oauth2 server
+            - "8080:8080" # primary rest server
+            - "8084:8084" # local oauth2 server
 
         environment:
             - REMARK_URL=http://127.0.0.1:8080

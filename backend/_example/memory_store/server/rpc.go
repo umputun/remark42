@@ -28,16 +28,17 @@ func NewRPC(e engine.Interface, a admin.Store, r *jrpc.Server) *RPC {
 func (s *RPC) addHandlers() {
 	// data store handlers
 	s.Group("store", jrpc.HandlersGroup{
-		"create":     s.createHndl,
-		"find":       s.findHndl,
-		"get":        s.getHndl,
-		"update":     s.updateHndl,
-		"count":      s.countHndl,
-		"info":       s.infoHndl,
-		"flag":       s.flagHndl,
-		"list_flags": s.listFlagsHndl,
-		"delete":     s.deleteHndl,
-		"close":      s.closeHndl,
+		"create":      s.createHndl,
+		"find":        s.findHndl,
+		"get":         s.getHndl,
+		"update":      s.updateHndl,
+		"count":       s.countHndl,
+		"info":        s.infoHndl,
+		"flag":        s.flagHndl,
+		"list_flags":  s.listFlagsHndl,
+		"user_detail": s.userDetailHndl,
+		"delete":      s.deleteHndl,
+		"close":       s.closeHndl,
 	})
 
 	// admin store handlers
@@ -129,7 +130,19 @@ func (s *RPC) listFlagsHndl(id uint64, params json.RawMessage) (rr jrpc.Response
 	return jrpc.EncodeResponse(id, flags, err)
 }
 
-// deleteHndl delete post(s), user, comment, or everything
+// userDetailHndl sets or gets single detail value, or gets all details for requested site.
+// userDetailHndl returns list even for single entry request is a compromise in order to have both single detail getting and setting
+// and all site's details listing under the same function (and not to extend engine interface by two separate functions).
+func (s *RPC) userDetailHndl(id uint64, params json.RawMessage) (rr jrpc.Response) {
+	req := engine.UserDetailRequest{}
+	if err := json.Unmarshal(params, &req); err != nil {
+		return jrpc.Response{Error: err.Error()}
+	}
+	value, err := s.eng.UserDetail(req)
+	return jrpc.EncodeResponse(id, value, err)
+}
+
+// deleteHndl delete post(s), user, comment, user details, or everything
 func (s *RPC) deleteHndl(id uint64, params json.RawMessage) (rr jrpc.Response) {
 	req := engine.DeleteRequest{}
 	if err := json.Unmarshal(params, &req); err != nil {
