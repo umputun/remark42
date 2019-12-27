@@ -65,11 +65,7 @@ const unsubscribeHtml = `<!DOCTYPE html>
 <body>
 <div style="text-align: center; font-family: Arial, sans-serif; font-size: 18px;">
     <h1 style="position: relative; color: #4fbbd6; margin-top: 0.2em;">Remark42</h1>
-    {{if .Error}}
-        <p style="position: relative; max-width: 20em; margin: 0 auto 1em auto; line-height: 1.4em;">{{.Error}}: {{.Details}}.</p>
-    {{else}}
-        <p style="position: relative; max-width: 20em; margin: 0 auto 1em auto; line-height: 1.4em;">Successfully unsubscribed</p>
-    {{end}}
+	<p style="position: relative; max-width: 20em; margin: 0 auto 1em auto; line-height: 1.4em;">Successfully unsubscribed</p>
 </div>
 </body>
 </html>
@@ -361,28 +357,27 @@ func (s *private) setConfirmedEmailCtrl(w http.ResponseWriter, r *http.Request) 
 
 // POST/GET /email/unsubscribe.html?site=siteID&tkn=jwt - unsubscribe the user in token from email notifications
 func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
-	answerHtml := template.Must(template.New("unsubscribe").Parse(unsubscribeHtml))
 	tkn := r.URL.Query().Get("tkn")
 	if tkn == "" {
-		rest.SendErrorHTML(w, r, answerHtml, http.StatusBadRequest, errors.New("missing parameter"), "token parameter is required", rest.ErrInternal)
+		rest.SendErrorHTML(w, r, http.StatusBadRequest, errors.New("missing parameter"), "token parameter is required", rest.ErrInternal)
 		return
 	}
 	locator := store.Locator{SiteID: r.URL.Query().Get("site")}
 
 	confClaims, err := s.authenticator.TokenService().Parse(tkn)
 	if err != nil {
-		rest.SendErrorHTML(w, r, answerHtml, http.StatusForbidden, err, "failed to verify confirmation token", rest.ErrInternal)
+		rest.SendErrorHTML(w, r, http.StatusForbidden, err, "failed to verify confirmation token", rest.ErrInternal)
 		return
 	}
 
 	if s.authenticator.TokenService().IsExpired(confClaims) {
-		rest.SendErrorHTML(w, r, answerHtml, http.StatusForbidden, errors.New("expired"), "failed to verify confirmation token", rest.ErrInternal)
+		rest.SendErrorHTML(w, r, http.StatusForbidden, errors.New("expired"), "failed to verify confirmation token", rest.ErrInternal)
 		return
 	}
 
 	elems := strings.Split(confClaims.Handshake.ID, "::")
 	if len(elems) != 2 {
-		rest.SendErrorHTML(w, r, answerHtml, http.StatusBadRequest, errors.New(confClaims.Handshake.ID), "invalid handshake token", rest.ErrInternal)
+		rest.SendErrorHTML(w, r, http.StatusBadRequest, errors.New(confClaims.Handshake.ID), "invalid handshake token", rest.ErrInternal)
 		return
 	}
 	userID := elems[0]
@@ -393,11 +388,11 @@ func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[WARN] can't read email for %s, %v", userID, err)
 	}
 	if existingAddress == "" {
-		rest.SendErrorHTML(w, r, answerHtml, http.StatusConflict, errors.New("user is not subscribed"), "user does not have active email subscription", rest.ErrInternal)
+		rest.SendErrorHTML(w, r, http.StatusConflict, errors.New("user is not subscribed"), "user does not have active email subscription", rest.ErrInternal)
 		return
 	}
 	if address != existingAddress {
-		rest.SendErrorHTML(w, r, answerHtml, http.StatusBadRequest, errors.New("wrong email unsubscription"), "email address in request does not match known for this user", rest.ErrInternal)
+		rest.SendErrorHTML(w, r, http.StatusBadRequest, errors.New("wrong email unsubscription"), "email address in request does not match known for this user", rest.ErrInternal)
 		return
 	}
 
@@ -405,7 +400,7 @@ func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 
 	if err := s.dataService.DeleteUserDetail(locator, userID, engine.UserEmail); err != nil {
 		code := parseError(err, rest.ErrInternal)
-		rest.SendErrorHTML(w, r, answerHtml, http.StatusBadRequest, err, "can't delete email for user", code)
+		rest.SendErrorHTML(w, r, http.StatusBadRequest, err, "can't delete email for user", code)
 		return
 	}
 	// clean User.Email from the token, if user has the token
@@ -416,13 +411,14 @@ func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 	if claims.User != nil && claims.User.Email != "" {
 		claims.User.Email = ""
 		if _, err = s.authenticator.TokenService().Set(w, claims); err != nil {
-			rest.SendErrorHTML(w, r, answerHtml, http.StatusInternalServerError, err, "failed to set token", rest.ErrInternal)
+			rest.SendErrorHTML(w, r, http.StatusInternalServerError, err, "failed to set token", rest.ErrInternal)
 			return
 		}
 	}
 
+	tmpl := template.Must(template.New("unsubscribe").Parse(unsubscribeHtml))
 	msg := bytes.Buffer{}
-	err = answerHtml.Execute(&msg, rest.ErrTmplData{})
+	err = tmpl.Execute(&msg, nil)
 	if err != nil {
 		panic(err)
 	}
