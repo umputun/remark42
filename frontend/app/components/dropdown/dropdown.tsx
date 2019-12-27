@@ -30,7 +30,6 @@ interface State {
   contentTranslateX: number;
   activeSelectableItemID: number;
   selectableItems?: string[];
-  selectableItemsFilter?: string;
   isHover?: boolean;
   isEmojiDropdown?: boolean;
 }
@@ -40,6 +39,7 @@ export default class Dropdown extends Component<Props, State> {
   dropdownContent?: HTMLDivElement;
   activeSelectableElement?: Component;
   dropdownItems?: HTMLDivElement;
+  selectableItemsFilter?: string;
 
   constructor(props: Props) {
     super(props);
@@ -133,9 +133,7 @@ export default class Dropdown extends Component<Props, State> {
   }
 
   setSelectableItemsFilter(selectableItemsFilter?: string) {
-    this.setState({
-      selectableItemsFilter,
-    });
+    this.selectableItemsFilter = selectableItemsFilter;
   }
 
   getSelectedItem() {
@@ -147,7 +145,7 @@ export default class Dropdown extends Component<Props, State> {
   }
 
   filterSelectableItems(): void {
-    const { selectableItemsFilter } = this.state;
+    const { selectableItemsFilter } = this;
     if (!selectableItemsFilter) return;
 
     let filteredEmoji = nodeEmoji.search(selectableItemsFilter);
@@ -271,7 +269,6 @@ export default class Dropdown extends Component<Props, State> {
 
     this.setState({
       activeSelectableItemID: 0,
-      selectableItemsFilter: undefined,
       selectableItems,
     });
   }

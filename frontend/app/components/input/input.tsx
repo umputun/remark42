@@ -316,17 +316,17 @@ export class Input extends Component<Props, State> {
   /**
    * Finds draft emoji and filter elements of emoji dropdown
    */
-  getDraftEmoji(): string | undefined {
+  getDraftEmoji(text?: string): string | undefined {
     // Go out, if no necessary components
     if (!this.textAreaRef.current || !this.emojiDropdown) return;
 
     const space = ' ';
     const lineFeed = '\n';
 
-    const { text } = this.state;
+    const inputText = text || this.state.text;
     const [start] = this.textAreaRef.current.getSelection(); // Start of selection (cursor position)
 
-    const textStart = text.substr(0, start); // Text before cursor position
+    const textStart = inputText.substr(0, start); // Text before cursor position
 
     // Find position of last space and colon
     const [lastColonPosition, lastSpacePosition] = this.getLastColonAndSpacePosition(textStart);
@@ -354,7 +354,7 @@ export class Input extends Component<Props, State> {
    * If finds draft emoji, opens dropdown and freeze input
    * @param e: Event - need stop default actions
    */
-  prepareForEmojiAutocomplete(e: Event) {
+  prepareForEmojiAutocomplete(e: Event, text?: string) {
     // Go out, if no necessary components
     if (!this.emojiDropdown) return;
     // Go out, if emoji is disabled in remark42 config
@@ -363,7 +363,7 @@ export class Input extends Component<Props, State> {
     e.stopPropagation();
     e.preventDefault();
 
-    const isDraftEmoji = !isEmpty(this.getDraftEmoji());
+    const isDraftEmoji = !isEmpty(this.getDraftEmoji(text));
 
     if (isDraftEmoji) {
       this.emojiDropdown.forceOpen();
@@ -388,14 +388,16 @@ export class Input extends Component<Props, State> {
 
     const [cursorPosition] = this.textAreaRef.current.getSelection();
 
+    const text = (e.target as HTMLInputElement).value;
+
     this.setState({
       isErrorShown: false,
       errorMessage: null,
       preview: null,
-      text: (e.target as HTMLInputElement).value,
+      text,
       cursorPosition,
     });
-    this.prepareForEmojiAutocomplete(e);
+    this.prepareForEmojiAutocomplete(e, text);
   }
 
   async onPaste(e: ClipboardEvent) {
