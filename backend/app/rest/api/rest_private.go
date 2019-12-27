@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -416,12 +417,16 @@ func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// MustExecute behaves like template.Execute, but panics if an error occurs.
+	MustExecute := func(tmpl *template.Template, wr io.Writer, data interface{}) {
+		if err := tmpl.Execute(wr, data); err != nil {
+			panic(err)
+		}
+	}
+
 	tmpl := template.Must(template.New("unsubscribe").Parse(unsubscribeHtml))
 	msg := bytes.Buffer{}
-	err = tmpl.Execute(&msg, nil)
-	if err != nil {
-		panic(err)
-	}
+	MustExecute(tmpl, &msg, nil)
 	render.HTML(w, r, msg.String())
 }
 

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"html/template"
+	"io"
 	"net/http"
 	"net/url"
 	"runtime"
@@ -61,17 +62,21 @@ type errTmplData struct {
 // SendErrorHTML makes html body with provided template and responds with provided http status code,
 // error code is not included in render as it is intended for UI developers and not for the users
 func SendErrorHTML(w http.ResponseWriter, r *http.Request, httpStatusCode int, err error, details string, errCode int) {
+	// MustExecute behaves like template.Execute, but panics if an error occurs.
+	MustExecute := func(tmpl *template.Template, wr io.Writer, data interface{}) {
+		if err := tmpl.Execute(wr, data); err != nil {
+			panic(err)
+		}
+	}
+
 	tmpl := template.Must(template.New("error").Parse(errorHtml))
 	log.Printf("[WARN] %s", errDetailsMsg(r, httpStatusCode, err, details, errCode))
 	render.Status(r, httpStatusCode)
 	msg := bytes.Buffer{}
-	err = tmpl.Execute(&msg, errTmplData{
+	MustExecute(tmpl, &msg, errTmplData{
 		Error:   err.Error(),
 		Details: details,
 	})
-	if err != nil {
-		panic(err)
-	}
 	render.HTML(w, r, msg.String())
 }
 
