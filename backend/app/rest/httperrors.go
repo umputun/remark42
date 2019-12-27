@@ -61,7 +61,7 @@ type errTmplData struct {
 // SendErrorHTML makes html body with provided template and responds with provided http status code,
 // error code is not included in render as it is intended for UI developers and not for the users
 func SendErrorHTML(w http.ResponseWriter, r *http.Request, httpStatusCode int, err error, details string, errCode int) {
-	tmpl := template.Must(template.New("unsubscribe").Parse(errorHtml))
+	tmpl := template.Must(template.New("error").Parse(errorHtml))
 	log.Printf("[WARN] %s", errDetailsMsg(r, httpStatusCode, err, details, errCode))
 	render.Status(r, httpStatusCode)
 	msg := bytes.Buffer{}
