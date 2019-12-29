@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/rand"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -124,11 +125,31 @@ func TestRest_RunStaticSSLMode(t *testing.T) {
 		RemarkURL: "https://localhost:8443",
 	}
 
+	// check if port is in use before trying to start a new server on it
+	var port int
+	for i := 0; i < 10; i++ {
+		port = 40000 + int(rand.Int31n(10000))
+		conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), time.Millisecond*10)
+		if err != nil {
+			break
+		}
+		if conn != nil {
+			conn.Close()
+		}
+	}
 	go func() {
-		srv.Run(38080)
+		srv.Run(port)
 	}()
 
-	time.Sleep(100 * time.Millisecond) // let server start
+	// wait for up to 3 seconds for server to start
+	for i := 0; i < 300; i++ {
+		time.Sleep(time.Millisecond * 10)
+		conn, _ := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), time.Millisecond*10)
+		if conn != nil {
+			conn.Close()
+			break
+		}
+	}
 
 	client := http.Client{
 		// prevent http redirect
@@ -142,7 +163,7 @@ func TestRest_RunStaticSSLMode(t *testing.T) {
 		},
 	}
 
-	resp, err := client.Get("http://localhost:38080/blah?param=1")
+	resp, err := client.Get(fmt.Sprintf("http://localhost:%d/blah?param=1", port))
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 307, resp.StatusCode)
@@ -170,12 +191,32 @@ func TestRest_RunAutocertModeHTTPOnly(t *testing.T) {
 		RemarkURL: "https://localhost:8443",
 	}
 
+	// check if port is in use before trying to start a new server on it
+	var port int
+	for i := 0; i < 10; i++ {
+		port = 40000 + int(rand.Int31n(10000))
+		conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), time.Millisecond*10)
+		if err != nil {
+			break
+		}
+		if conn != nil {
+			conn.Close()
+		}
+	}
 	go func() {
 		// can't check https server locally, just only http server
-		srv.Run(38081)
+		srv.Run(port)
 	}()
 
-	time.Sleep(100 * time.Millisecond) // let server start
+	// wait for up to 3 seconds for server to start
+	for i := 0; i < 300; i++ {
+		time.Sleep(time.Millisecond * 10)
+		conn, _ := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), time.Millisecond*10)
+		if conn != nil {
+			conn.Close()
+			break
+		}
+	}
 
 	client := http.Client{
 		// prevent http redirect
@@ -184,7 +225,7 @@ func TestRest_RunAutocertModeHTTPOnly(t *testing.T) {
 		},
 	}
 
-	resp, err := client.Get("http://localhost:38081/blah?param=1")
+	resp, err := client.Get(fmt.Sprintf("http://localhost:%d/blah?param=1", port))
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 307, resp.StatusCode)
