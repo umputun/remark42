@@ -27,4 +27,10 @@ deploy:
 race_test:
 	cd backend/app && go test -race -mod=vendor -timeout=60s -count 1 ./...
 
-.PHONY: bin
+backend:
+	SKIP_BACKEND_TEST=true docker-compose -f compose-dev-backend.yml build
+
+rundev: backend
+	SKIP_BACKEND_TEST=true docker-compose -f compose-dev-backend.yml up
+
+.PHONY: bin backend
