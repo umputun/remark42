@@ -111,6 +111,7 @@ export interface Config {
   positive_score: boolean;
   readonly_age: number;
   max_image_size: number;
+  simple_view: boolean;
 }
 
 export interface RemarkConfig {

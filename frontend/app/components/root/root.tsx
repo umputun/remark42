@@ -249,6 +249,7 @@ export class Root extends Component<Props, State> {
                   onSubmit={(text, title) => this.props.addComment(text, title)}
                   getPreview={this.props.getPreview}
                   uploadImage={imageUploadHandler}
+                  simpleView={StaticStore.config.simple_view}
                 />
               )}
 
