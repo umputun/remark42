@@ -269,8 +269,14 @@ func TestFsStore_Cleanup(t *testing.T) {
 
 	_, err = os.Stat(img1)
 	assert.Error(t, err, "no file on staging anymore")
+	// sometimes two images for user1 are put into same directory, which means that
+	// after first image cleanup it's not empty and won't be deleted
 	_, err = os.Stat(path.Dir(img1))
-	assert.Error(t, err, "no dir %s on staging anymore", path.Dir(img1))
+	if path.Dir(img1) != path.Dir(img2) {
+		assert.Error(t, err, "no dir %s on staging anymore", path.Dir(img1))
+	} else {
+		assert.NoError(t, err, "dir %s still on staging", path.Dir(img1))
+	}
 
 	_, err = os.Stat(img2)
 	assert.NoError(t, err, "file on staging")
