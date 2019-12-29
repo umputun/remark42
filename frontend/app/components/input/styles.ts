@@ -1,6 +1,7 @@
 import '@app/components/raw-content';
 
 import './input.scss';
+import './_simple/input_simple.scss';
 
 import './__actions/input__actions.scss';
 

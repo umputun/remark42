@@ -354,6 +354,7 @@ export class Input extends Component<Props, State> {
           mods: {
             theme: props.theme || 'light',
             type: props.mode || 'reply',
+            simple: props.simpleView,
           },
           mix: props.mix,
         })}
