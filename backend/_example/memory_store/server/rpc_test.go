@@ -9,6 +9,7 @@ package server
 import (
 	"fmt"
 	"math/rand"
+	"net"
 	"net/http"
 	"testing"
 	"time"
@@ -398,8 +399,12 @@ func prepTestStore(t *testing.T) (s *RPC, port int, teardown func()) {
 	// check if port is in use before trying to start a new server on it
 	for i := 0; i < 10; i++ {
 		port = 40000 + int(rand.Int31n(10000))
-		if _, err := http.Get(fmt.Sprintf("http://localhost:%d", port)); err != nil {
+		conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), time.Millisecond*10)
+		if err != nil {
 			break
+		}
+		if conn != nil {
+			conn.Close()
 		}
 	}
 	go func() {
