@@ -14,7 +14,7 @@
     "hooks": {
       "pre-commit": "./node_modules/.bin/lint-staged",
       "post-commit": "git update-index --again",
-      "pre-push": "npm test"
+      "pre-push": "npm run check && npm test"
     }
   },
   "lint-staged": {

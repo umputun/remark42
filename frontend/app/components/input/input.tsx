@@ -32,7 +32,7 @@ export interface Props {
   mix?: Mix;
   mode?: 'main' | 'edit' | 'reply';
   theme: Theme;
-  simpleView: boolean;
+  simpleView?: boolean;
   autofocus?: boolean;
 
   onSubmit(text: string, pageTitle: string): Promise<void>;
