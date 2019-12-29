@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -65,7 +64,7 @@ func TestImport_ExecuteFailed(t *testing.T) {
 	err = cmd.Execute(nil)
 	t.Log(err)
 	assert.Error(t, err, "fail on no such file")
-	assert.True(t, strings.Contains(err.Error(), "no such file or directory"))
+	assert.Contains(t, err.Error(), "no such file or directory")
 
 	cmd = ImportCommand{}
 	cmd.SetCommon(CommonOpts{RemarkURL: "http://127.0.0.1:12345", SharedSecret: "123456"})
@@ -75,7 +74,7 @@ func TestImport_ExecuteFailed(t *testing.T) {
 	err = cmd.Execute(nil)
 	t.Log(err)
 	assert.Error(t, err, "fail on connection refused")
-	assert.True(t, strings.Contains(err.Error(), "connection refused"))
+	assert.Contains(t, err.Error(), "connection refused")
 
 	ts2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("%+v", r)
@@ -115,5 +114,5 @@ func TestImport_ExecuteTimeout(t *testing.T) {
 	require.NoError(t, err)
 	err = cmd.Execute(nil)
 	assert.Error(t, err)
-	assert.True(t, strings.Contains(err.Error(), "deadline exceeded"))
+	assert.Contains(t, err.Error(), "deadline exceeded")
 }
