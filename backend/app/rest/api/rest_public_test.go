@@ -36,14 +36,14 @@ func TestRest_Preview(t *testing.T) {
 	defer teardown()
 
 	resp, err := post(t, ts.URL+"/api/v1/preview", `{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	b, err := ioutil.ReadAll(resp.Body)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, "<p>test 123</p>\n", string(b))
 
 	resp, err = post(t, ts.URL+"/api/v1/preview", "bad")
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 400, resp.StatusCode)
 }
 
@@ -67,10 +67,10 @@ BKT
 	t.Log(j)
 
 	resp, err := post(t, ts.URL+"/api/v1/preview", j)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	b, err := ioutil.ReadAll(resp.Body)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, "<h1>h1</h1>\n\n<pre><code>func TestRest_Preview(t *testing.T) {\nsrv, ts := prep(t)\n  require.NotNil(t, srv)\n}\n</code></pre>\n", string(b))
 }
 
@@ -82,7 +82,7 @@ func TestRest_Find(t *testing.T) {
 	assert.Equal(t, 200, code)
 	comments := commentsWithInfo{}
 	err := json.Unmarshal([]byte(res), &comments)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 0, len(comments.Comments), "should have 0 comments")
 
 	c1 := store.Comment{Text: "test test #1", ParentID: "",
@@ -100,7 +100,7 @@ func TestRest_Find(t *testing.T) {
 	assert.Equal(t, 200, code)
 	comments = commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 2, len(comments.Comments), "should have 2 comments")
 	assert.Equal(t, id1, comments.Comments[0].ID)
 	assert.Equal(t, id2, comments.Comments[1].ID)
@@ -115,7 +115,7 @@ func TestRest_Find(t *testing.T) {
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1&sort=-time")
 	assert.Equal(t, 200, code)
 	err = json.Unmarshal([]byte(res), &comments)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 2, len(comments.Comments), "should have 2 comments")
 	assert.Equal(t, id1, comments.Comments[1].ID)
 	assert.Equal(t, id2, comments.Comments[0].ID)
@@ -125,7 +125,7 @@ func TestRest_Find(t *testing.T) {
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1&format=tree")
 	assert.Equal(t, 200, code)
 	err = json.Unmarshal([]byte(res), &tree)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 1, len(tree.Nodes))
 	assert.Equal(t, 1, len(tree.Nodes[0].Replies))
 	assert.Equal(t, 2, tree.Info.Count)
@@ -140,26 +140,26 @@ func TestRest_FindAge(t *testing.T) {
 	c1 := store.Comment{Text: "test test #1", ParentID: "", Timestamp: time.Now().AddDate(0, 0, -5),
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}, User: store.User{ID: "u1"}}
 	_, err := srv.DataService.Create(c1)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	c2 := store.Comment{Text: "test test #2", ParentID: "", Timestamp: time.Now().AddDate(0, 0, -15),
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah2"}, User: store.User{ID: "u1"}}
 	_, err = srv.DataService.Create(c2)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	tree := service.Tree{}
 
 	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1&format=tree")
 	assert.Equal(t, 200, code)
 	err = json.Unmarshal([]byte(res), &tree)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, "https://radio-t.com/blah1", tree.Info.URL)
 	assert.False(t, tree.Info.ReadOnly, "post is fresh")
 
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah2&format=tree")
 	assert.Equal(t, 200, code)
 	err = json.Unmarshal([]byte(res), &tree)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, "https://radio-t.com/blah2", tree.Info.URL)
 	assert.True(t, tree.Info.ReadOnly, "post is old")
 }
@@ -172,27 +172,27 @@ func TestRest_FindReadOnly(t *testing.T) {
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}, User: store.User{ID: "u1"}}
 	_, err := srv.DataService.Create(c1)
 
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	c2 := store.Comment{Text: "test test #2", ParentID: "", Timestamp: time.Now().AddDate(0, 0, -2),
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah2"}, User: store.User{ID: "u1"}}
 	_, err = srv.DataService.Create(c2)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// set post to read-only
 	client := http.Client{}
 	req, err := http.NewRequest(http.MethodPut,
 		fmt.Sprintf("%s/api/v1/admin/readonly?site=remark42&url=https://radio-t.com/blah1&ro=1", ts.URL), nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
 	_, err = client.Do(req)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	tree := service.Tree{}
 	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1&format=tree")
 	assert.Equal(t, 200, code)
 	err = json.Unmarshal([]byte(res), &tree)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "https://radio-t.com/blah1", tree.Info.URL)
 	assert.True(t, tree.Info.ReadOnly, "post is ro")
 
@@ -200,7 +200,7 @@ func TestRest_FindReadOnly(t *testing.T) {
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah2&format=tree")
 	assert.Equal(t, 200, code)
 	err = json.Unmarshal([]byte(res), &tree)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "https://radio-t.com/blah2", tree.Info.URL)
 	assert.False(t, tree.Info.ReadOnly, "post is writable")
 }
@@ -213,7 +213,7 @@ func TestRest_FindUserView(t *testing.T) {
 	assert.Equal(t, 200, code)
 	comments := commentsWithInfo{}
 	err := json.Unmarshal([]byte(res), &comments)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 0, len(comments.Comments), "should have 0 comments")
 
 	c1 := store.Comment{Text: "test test #1", ParentID: "",
@@ -231,7 +231,7 @@ func TestRest_FindUserView(t *testing.T) {
 	assert.Equal(t, 200, code)
 	comments = commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 2, len(comments.Comments), "should have 2 comments")
 	assert.Equal(t, id1, comments.Comments[0].ID)
 	assert.Equal(t, id2, comments.Comments[1].ID)
@@ -266,7 +266,7 @@ func TestRest_Last(t *testing.T) {
 	assert.Equal(t, 200, code)
 	comments := []store.Comment{}
 	err := json.Unmarshal([]byte(res), &comments)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 2, len(comments), "should have 2 comments")
 	assert.Equal(t, id1, comments[1].ID)
 	assert.Equal(t, id2, comments[0].ID)
@@ -275,7 +275,7 @@ func TestRest_Last(t *testing.T) {
 	assert.Equal(t, 200, code)
 	comments = []store.Comment{}
 	err = json.Unmarshal([]byte(res), &comments)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 2, len(comments), "should have 2 comments")
 	assert.Equal(t, id1, comments[1].ID)
 	assert.Equal(t, id2, comments[0].ID)
@@ -284,29 +284,29 @@ func TestRest_Last(t *testing.T) {
 	assert.Equal(t, 200, code)
 	comments = []store.Comment{}
 	err = json.Unmarshal([]byte(res), &comments)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 1, len(comments), "should have 1 comments")
 	assert.Equal(t, id2, comments[0].ID)
 
 	res, code = get(t, ts.URL+"/api/v1/last/5?site=remark42")
 	assert.Equal(t, 200, code)
 	err = json.Unmarshal([]byte(res), &comments)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 3, len(comments), "should have 3 comments")
 
 	res, code = get(t, ts.URL+"/api/v1/last/X?site=remark42")
 	assert.Equal(t, 200, code)
 	err = json.Unmarshal([]byte(res), &comments)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 3, len(comments), "should have 3 comments")
 
 	err = srv.DataService.Delete(store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}, id1, store.SoftDelete)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	srv.Cache.Flush(cache.FlusherRequest{})
 	res, code = get(t, ts.URL+"/api/v1/last/5?site=remark42")
 	assert.Equal(t, 200, code)
 	err = json.Unmarshal([]byte(res), &comments)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 2, len(comments), "should have 2 comments")
 	t.Logf("%+v", comments)
 
@@ -345,7 +345,7 @@ func TestRest_FindUserComments(t *testing.T) {
 	}{}
 
 	err = json.Unmarshal([]byte(res), &resp)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 3, len(resp.Comments), "should have 3 comments")
 	assert.Equal(t, 4, resp.Count, "should have 3 count")
 
@@ -362,7 +362,7 @@ func TestRest_UserInfo(t *testing.T) {
 	assert.Equal(t, 200, code)
 	user := store.User{}
 	err := json.Unmarshal([]byte(body), &user)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, store.User{Name: "developer one", ID: "dev", Picture: "http://example.com/pic.png",
 		IP: "127.0.0.1", SiteID: "remark42"}, user)
 }
@@ -386,13 +386,13 @@ func TestRest_Count(t *testing.T) {
 	assert.Equal(t, 200, code)
 	j := R.JSON{}
 	err := json.Unmarshal([]byte(body), &j)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 3.0, j["count"])
 
 	body, code = get(t, ts.URL+"/api/v1/count?site=remark42&url=https://radio-t.com/blah2")
 	assert.Equal(t, 200, code)
 	err = json.Unmarshal([]byte(body), &j)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 2.0, j["count"])
 
 	_, code = get(t, ts.URL+"/api/v1/count?site=remark42-BLAH&url=https://radio-t.com/blah1XXX")
@@ -415,15 +415,15 @@ func TestRest_Counts(t *testing.T) {
 	addComment(t, c2, ts)
 
 	resp, err := post(t, ts.URL+"/api/v1/counts?site=remark42", `["https://radio-t.com/blah1","https://radio-t.com/blah2"]`)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	body, err := ioutil.ReadAll(resp.Body)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	j := []store.PostInfo{}
 	err = json.Unmarshal(body, &j)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, []store.PostInfo([]store.PostInfo{{URL: "https://radio-t.com/blah1", Count: 3},
 		{URL: "https://radio-t.com/blah2", Count: 2}}), j)
 
@@ -451,7 +451,7 @@ func TestRest_List(t *testing.T) {
 	assert.Equal(t, 200, code)
 	pi := []store.PostInfo{}
 	err := json.Unmarshal([]byte(body), &pi)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, "https://radio-t.com/blah2", pi[0].URL)
 	assert.Equal(t, 2, pi[0].Count)
 	assert.Equal(t, "https://radio-t.com/blah1", pi[1].URL)
@@ -484,7 +484,7 @@ func TestRest_ListWithSkipAndLimit(t *testing.T) {
 	assert.Equal(t, 200, code)
 	pi := []store.PostInfo{}
 	err := json.Unmarshal([]byte(body), &pi)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	require.Equal(t, 2, len(pi))
 	assert.Equal(t, "https://radio-t.com/blah2", pi[0].URL)
 	assert.Equal(t, 2, pi[0].Count)
@@ -500,7 +500,7 @@ func TestRest_Config(t *testing.T) {
 	assert.Equal(t, 200, code)
 	j := R.JSON{}
 	err := json.Unmarshal([]byte(body), &j)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 300., j["edit_duration"])
 	assert.EqualValues(t, []interface{}([]interface{}{"a1", "a2"}), j["admins"])
 	assert.Equal(t, "admin@remark-42.com", j["admin_email"])
@@ -529,18 +529,18 @@ func TestRest_Info(t *testing.T) {
 		URL: "https://radio-t.com/blah1"}, Timestamp: time.Date(2018, 05, 27, 1, 14, 25, 0, time.Local)}
 
 	_, err := srv.DataService.Create(c1)
-	require.Nil(t, err, "%+v", err)
+	require.NoError(t, err, "%+v", err)
 	_, err = srv.DataService.Create(c2)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	_, err = srv.DataService.Create(c3)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	body, code := get(t, ts.URL+"/api/v1/info?site=remark42&url=https://radio-t.com/blah1")
 	assert.Equal(t, 200, code)
 
 	info := store.PostInfo{}
 	err = json.Unmarshal([]byte(body), &info)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	exp := store.PostInfo{URL: "https://radio-t.com/blah1", Count: 3,
 		FirstTS: time.Date(2018, 05, 27, 1, 14, 10, 0, time.Local), LastTS: time.Date(2018, 05, 27, 1, 14, 25, 0, time.Local)}
 	assert.Equal(t, exp, info)
@@ -731,12 +731,12 @@ func TestRest_LastCommentsStream(t *testing.T) {
 
 	client := http.Client{}
 	req, err := http.NewRequest("GET", ts.URL+"/api/v1/stream/last?site=remark42", nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	r, err := client.Do(req)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 200, r.StatusCode)
 
 	wg.Wait()
@@ -788,12 +788,12 @@ func TestRest_LastCommentsStreamCancel(t *testing.T) {
 
 	client := http.Client{}
 	req, err := http.NewRequest("GET", ts.URL+"/api/v1/stream/last?site=remark42", nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	ctx, cancel := context.WithTimeout(context.Background(), 290*time.Millisecond)
 	defer cancel()
 	req = req.WithContext(ctx)
 	r, err := client.Do(req)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
 	require.EqualError(t, err, "context deadline exceeded")
@@ -856,12 +856,12 @@ func TestRest_LastCommentsStreamSince(t *testing.T) {
 
 	client := http.Client{}
 	req, err := http.NewRequest("GET", ts.URL+"/api/v1/stream/last?site=remark42&since=123456", nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	r, err := client.Do(req)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 200, r.StatusCode)
 
 	wg.Wait()

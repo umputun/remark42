@@ -34,11 +34,11 @@ func TestServerApp(t *testing.T) {
 
 	// send ping
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/ping", port))
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 200, resp.StatusCode)
 	body, err := ioutil.ReadAll(resp.Body)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, "pong", string(body))
 
 	// add comment
@@ -48,7 +48,7 @@ func TestServerApp(t *testing.T) {
 	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
 	resp, err = client.Do(req)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 	body, _ = ioutil.ReadAll(resp.Body)
@@ -77,11 +77,11 @@ func TestServerApp_DevMode(t *testing.T) {
 	assert.Equal(t, "dev", app.restSrv.Authenticator.Providers()[4].Name(), "dev auth provider")
 	// send ping
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/ping", port))
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 200, resp.StatusCode)
 	body, err := ioutil.ReadAll(resp.Body)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, "pong", string(body))
 
 	app.Wait()
@@ -103,28 +103,28 @@ func TestServerApp_AnonMode(t *testing.T) {
 
 	// send ping
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/ping", port))
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	body, err := ioutil.ReadAll(resp.Body)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, "pong", string(body))
 
 	// try to login with good name
 	resp, err = http.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=blah123&aud=remark42", port))
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	// try to login with bad name
 	resp, err = http.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=**blah123&aud=remark42", port))
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 
 	// try to login with short name
 	resp, err = http.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=bl%20%20&aud=remark42", port))
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 
@@ -141,11 +141,11 @@ func TestServerApp_WithSSL(t *testing.T) {
 		"--avatar.type=bolt", "--avatar.bolt.file=/tmp/ava-test.db", "--notify.type=none",
 		"--ssl.type=static", "--ssl.cert=testdata/cert.pem", "--ssl.key=testdata/key.pem",
 		"--ssl.port=18443", "--image.fs.path=/tmp"})
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// create app
 	app, err := opts.newServerApp()
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
@@ -170,18 +170,18 @@ func TestServerApp_WithSSL(t *testing.T) {
 
 	// check http to https redirect response
 	resp, err := client.Get("http://localhost:18080/blah?param=1")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 307, resp.StatusCode)
 	assert.Equal(t, "https://localhost:18443/blah?param=1", resp.Header.Get("Location"))
 
 	// check https server
 	resp, err = client.Get("https://localhost:18443/ping")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 200, resp.StatusCode)
 	body, err := ioutil.ReadAll(resp.Body)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, "pong", string(body))
 
 	app.Wait()
@@ -197,13 +197,13 @@ func TestServerApp_WithRemote(t *testing.T) {
 	_, err := p.ParseArgs([]string{"--admin-passwd=password", "--cache.type=none",
 		"--store.type=rpc", "--store.rpc.api=http://127.0.0.1",
 		"--port=12345", "--admin.type=rpc", "--admin.rpc.api=http://127.0.0.1", "--avatar.fs.path=/tmp"})
-	require.Nil(t, err)
+	require.NoError(t, err)
 	opts.Auth.Github.CSEC, opts.Auth.Github.CID = "csec", "cid"
 	opts.BackupLocation, opts.Image.FS.Path = "/tmp", "/tmp"
 
 	// create app
 	app, err := opts.newServerApp()
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
@@ -216,11 +216,11 @@ func TestServerApp_WithRemote(t *testing.T) {
 
 	// send ping
 	resp, err := http.Get("http://localhost:12345/api/v1/ping")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 200, resp.StatusCode)
 	body, err := ioutil.ReadAll(resp.Body)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, "pong", string(body))
 
 	app.Wait()
@@ -234,7 +234,7 @@ func TestServerApp_Failed(t *testing.T) {
 
 	// RO bolt location
 	_, err := p.ParseArgs([]string{"--backup=/tmp", "--store.bolt.path=/dev/null", "--image.fs.path=/tmp"})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	_, err = opts.newServerApp()
 	assert.EqualError(t, err, "failed to make data store engine: failed to create bolt store: can't make directory /dev/null: mkdir /dev/null: not a directory")
 	t.Log(err)
@@ -244,7 +244,7 @@ func TestServerApp_Failed(t *testing.T) {
 	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
 
 	_, err = p.ParseArgs([]string{"--store.bolt.path=/tmp", "--backup=/dev/null/not-writable"})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	_, err = opts.newServerApp()
 	assert.EqualError(t, err, "can't make directory /dev/null/not-writable: mkdir /dev/null: not a directory")
 	t.Log(err)
@@ -254,7 +254,7 @@ func TestServerApp_Failed(t *testing.T) {
 	opts.SetCommon(CommonOpts{RemarkURL: "demo.remark42.com", SharedSecret: "123456"})
 
 	_, err = p.ParseArgs([]string{"--backup=/tmp", "----store.bolt.path=/tmp"})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	_, err = opts.newServerApp()
 	assert.EqualError(t, err, "invalid remark42 url demo.remark42.com")
 	t.Log(err)
@@ -263,7 +263,7 @@ func TestServerApp_Failed(t *testing.T) {
 	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
 
 	_, err = p.ParseArgs([]string{"--backup=/tmp", "--store.type=blah"})
-	assert.NotNil(t, err, "blah is invalid type")
+	assert.Error(t, err, "blah is invalid type")
 
 	opts.Store.Type = "blah"
 	_, err = opts.newServerApp()
@@ -278,7 +278,7 @@ func TestServerApp_Shutdown(t *testing.T) {
 	})
 	st := time.Now()
 	err := app.run(ctx)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.True(t, time.Since(st).Seconds() < 1, "should take about 500msec")
 	app.Wait()
 }
@@ -288,7 +288,7 @@ func TestServerApp_MainSignal(t *testing.T) {
 	go func() {
 		time.Sleep(250 * time.Millisecond)
 		err := syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
-		require.Nil(t, err)
+		require.NoError(t, err)
 	}()
 	st := time.Now()
 
@@ -300,7 +300,7 @@ func TestServerApp_MainSignal(t *testing.T) {
 		"--avatar.bolt.file=/tmp/ava-test.db", "--port=18100", "--notify.type=none", "--image.fs.path=/tmp"}
 	defer os.Remove("/tmp/ava-test.db")
 	_, err := p.ParseArgs(args)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	err = s.Execute(args)
 	assert.NoError(t, err, "execute failed")
 	assert.True(t, time.Since(st).Seconds() < 1, "should take under sec", time.Since(st).Seconds())
@@ -312,9 +312,9 @@ func Test_ACMEEmail(t *testing.T) {
 	p := flags.NewParser(&cmd, flags.Default)
 	args := []string{"--ssl.type=auto"}
 	_, err := p.ParseArgs(args)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	cfg, err := cmd.makeSSLConfig()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "admin@remark.com", cfg.ACMEEmail)
 
 	cmd = ServerCommand{}
@@ -322,9 +322,9 @@ func Test_ACMEEmail(t *testing.T) {
 	p = flags.NewParser(&cmd, flags.Default)
 	args = []string{"--ssl.type=auto", "--ssl.acme-email=adminname@adminhost.com"}
 	_, err = p.ParseArgs(args)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	cfg, err = cmd.makeSSLConfig()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "adminname@adminhost.com", cfg.ACMEEmail)
 
 	cmd = ServerCommand{}
@@ -332,9 +332,9 @@ func Test_ACMEEmail(t *testing.T) {
 	p = flags.NewParser(&cmd, flags.Default)
 	args = []string{"--ssl.type=auto", "--admin.type=shared", "--admin.shared.email=superadmin@admin.com"}
 	_, err = p.ParseArgs(args)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	cfg, err = cmd.makeSSLConfig()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "superadmin@admin.com", cfg.ACMEEmail)
 
 	cmd = ServerCommand{}
@@ -342,9 +342,9 @@ func Test_ACMEEmail(t *testing.T) {
 	p = flags.NewParser(&cmd, flags.Default)
 	args = []string{"--ssl.type=auto", "--admin.type=shared"}
 	_, err = p.ParseArgs(args)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	cfg, err = cmd.makeSSLConfig()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "admin@remark.com", cfg.ACMEEmail)
 }
 
@@ -417,7 +417,7 @@ func TestServerAuthHooks(t *testing.T) {
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "user dev blocked")
 	b, err := ioutil.ReadAll(resp.Body)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	t.Log(string(b))
 
 	// try add a comment with blocked user
@@ -426,7 +426,7 @@ func TestServerAuthHooks(t *testing.T) {
 	require.NoError(t, err)
 	req.Header.Set("X-JWT", tk)
 	resp, err = client.Do(req)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer resp.Body.Close()
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
@@ -458,7 +458,7 @@ func prepServerApp(t *testing.T, duration time.Duration, fn func(o ServerCommand
 	// prepare options
 	p := flags.NewParser(&cmd, flags.Default)
 	_, err := p.ParseArgs([]string{"--admin-passwd=password", "--site=remark"})
-	require.Nil(t, err)
+	require.NoError(t, err)
 	cmd.Avatar.FS.Path, cmd.Avatar.Type, cmd.BackupLocation, cmd.Image.FS.Path = "/tmp", "fs", "/tmp", "/tmp"
 	cmd.Store.Bolt.Path = fmt.Sprintf("/tmp/%d", cmd.Port)
 	cmd.Store.Bolt.Timeout = 10 * time.Second
@@ -485,7 +485,7 @@ func prepServerApp(t *testing.T, duration time.Duration, fn func(o ServerCommand
 
 	// create app
 	app, err := cmd.newServerApp()
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	time.AfterFunc(duration, func() {

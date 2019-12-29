@@ -19,16 +19,16 @@ func TestWordPress_Import(t *testing.T) {
 	siteID := "testWP"
 	defer func() { _ = os.Remove("/tmp/remark-test.db") }()
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: siteID})
-	assert.Nil(t, err, "create store")
+	assert.NoError(t, err, "create store")
 
 	dataStore := service.DataStore{Engine: b, AdminStore: admin.NewStaticStore("12345", nil, []string{}, "")}
 	wp := WordPress{DataStore: &dataStore}
 	size, err := wp.Import(strings.NewReader(xmlTestWP), siteID)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 3, size)
 
 	last, err := dataStore.Last(siteID, 10, time.Time{}, adminUser)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 3, len(last), "3 comments imported")
 
 	c := last[0]
@@ -42,14 +42,14 @@ func TestWordPress_Import(t *testing.T) {
 	assert.Equal(t, c.Text, "<p>Mekkatorque was over in that tent up to the right</p>\n")
 
 	posts, err := dataStore.List(siteID, 0, 0)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 1, len(posts))
 
 	p := posts[0]
 	assert.Equal(t, "https://realmenweardress.es/2010/07/do-you-rp/", p.URL)
 
 	count, err := dataStore.Count(store.Locator{URL: "https://realmenweardress.es/2010/07/do-you-rp/", SiteID: siteID})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 3, count)
 }
 

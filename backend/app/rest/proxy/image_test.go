@@ -51,7 +51,7 @@ func TestPicture_Extract(t *testing.T) {
 	for i, tt := range tbl {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			res, err := img.extract(tt.inp)
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			assert.Equal(t, tt.res, res)
 		})
 	}
@@ -75,7 +75,7 @@ func TestImage_Routes(t *testing.T) {
 	encodedImgURL := base64.URLEncoding.EncodeToString([]byte(httpSrv.URL + "/image/img1.png"))
 
 	resp, err := http.Get(ts.URL + "/?src=" + encodedImgURL)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 	t.Logf("%+v", resp.Header)
 	assert.Equal(t, "123", resp.Header["Content-Length"][0])
@@ -83,12 +83,12 @@ func TestImage_Routes(t *testing.T) {
 
 	encodedImgURL = base64.URLEncoding.EncodeToString([]byte(httpSrv.URL + "/image/no-such-image.png"))
 	resp, err = http.Get(ts.URL + "/?src=" + encodedImgURL)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 404, resp.StatusCode)
 
 	encodedImgURL = base64.URLEncoding.EncodeToString([]byte(httpSrv.URL + "bad encoding"))
 	resp, err = http.Get(ts.URL + "/?src=" + encodedImgURL)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 400, resp.StatusCode)
 }
 
@@ -102,10 +102,10 @@ func TestImage_RoutesTimedOut(t *testing.T) {
 
 	encodedImgURL := base64.URLEncoding.EncodeToString([]byte(httpSrv.URL + "/image/img-slow.png"))
 	resp, err := http.Get(ts.URL + "/?src=" + encodedImgURL)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 400, resp.StatusCode)
 	b, err := ioutil.ReadAll(resp.Body)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	t.Log(string(b))
 	assert.True(t, strings.Contains(string(b), "deadline exceeded"))
 }

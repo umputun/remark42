@@ -230,7 +230,7 @@ func TestService_Vote(t *testing.T) {
 		Val:       true,
 	}
 	c, err = b.Vote(req)
-	assert.NotNil(t, err, "self-voting not allowed")
+	assert.Error(t, err, "self-voting not allowed")
 
 	req = VoteReq{
 		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
@@ -240,7 +240,7 @@ func TestService_Vote(t *testing.T) {
 		Val:       true,
 	}
 	_, err = b.Vote(req)
-	assert.NotNil(t, err, "double-voting rejected")
+	assert.Error(t, err, "double-voting rejected")
 	assert.True(t, strings.HasPrefix(err.Error(), "user user1 already voted"))
 
 	// check in last as user1
@@ -292,7 +292,7 @@ func TestService_VoteLimit(t *testing.T) {
 
 	_, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-1",
 		UserID: "user4", Val: true})
-	assert.NotNil(t, err, "vote limit reached")
+	assert.Error(t, err, "vote limit reached")
 	assert.True(t, strings.HasPrefix(err.Error(), "maximum number of votes exceeded for comment id-1"))
 
 	_, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
@@ -385,7 +385,7 @@ func TestService_VoteConcurrent(t *testing.T) {
 	_, err := b.Create(comment)
 	assert.NoError(t, err)
 	res, err := b.Last("radio-t", 0, time.Time{}, store.User{})
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// concurrent vote +1 as multiple users for the same comment
 	var wg sync.WaitGroup
@@ -618,7 +618,7 @@ func TestService_EditCommentDurationFailed(t *testing.T) {
 
 	_, err = b.EditComment(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID,
 		EditRequest{Orig: "yyy", Text: "xxx", Summary: "my edit"})
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 }
 
 func TestService_EditCommentReplyFailed(t *testing.T) {

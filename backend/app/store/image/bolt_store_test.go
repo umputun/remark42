@@ -63,7 +63,7 @@ func TestBoltStore_LoadAfterSave(t *testing.T) {
 	assert.Equal(t, int64(1462), sz)
 
 	_, _, err = svc.Load("abcd")
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 }
 
 func TestBoltStore_Cleanup(t *testing.T) {
