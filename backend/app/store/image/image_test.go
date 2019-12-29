@@ -111,7 +111,7 @@ func TestService_resize(t *testing.T) {
 
 	for _, c := range cases {
 		img, err := ioutil.ReadFile(c.file)
-		require.Nil(t, err, "can't open test file %s", c.file)
+		require.NoError(t, err, "can't open test file %s", c.file)
 
 		// No need for resize, image dimensions are smaller than resize limit.
 		resized, ok = resize(img, 800, 800)
@@ -125,7 +125,7 @@ func TestService_resize(t *testing.T) {
 		assert.True(t, ok)
 
 		imgRz, format, err := image.Decode(bytes.NewBuffer(resized))
-		assert.Nil(t, err, "file %s", c.file)
+		assert.NoError(t, err, "file %s", c.file)
 		assert.Equal(t, "png", format, "file %s", c.file)
 		bounds := imgRz.Bounds()
 		assert.Equal(t, c.wr, bounds.Dx(), "file %s", c.file)

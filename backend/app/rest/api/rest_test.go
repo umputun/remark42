@@ -62,7 +62,7 @@ func TestRest_GetStarted(t *testing.T) {
 	defer teardown()
 
 	err := ioutil.WriteFile(getStartedHTML, []byte("some html blah"), 0700)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	body, code := get(t, ts.URL+"/index.html")
 	assert.Equal(t, 200, code)
@@ -143,17 +143,17 @@ func TestRest_RunStaticSSLMode(t *testing.T) {
 	}
 
 	resp, err := client.Get("http://localhost:38080/blah?param=1")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 307, resp.StatusCode)
 	assert.Equal(t, "https://localhost:8443/blah?param=1", resp.Header.Get("Location"))
 
 	resp, err = client.Get("https://localhost:8443/ping")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 200, resp.StatusCode)
 	body, err := ioutil.ReadAll(resp.Body)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, "pong", string(body))
 
 	srv.Shutdown()
@@ -185,7 +185,7 @@ func TestRest_RunAutocertModeHTTPOnly(t *testing.T) {
 	}
 
 	resp, err := client.Get("http://localhost:38081/blah?param=1")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 307, resp.StatusCode)
 	assert.Equal(t, "https://localhost:8443/blah?param=1", resp.Header.Get("Location"))
@@ -295,7 +295,7 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 	os.RemoveAll(tmp + "/pics-remark42")
 
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDb, SiteID: "remark42"})
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	cacheBackend, err := cache.NewExpirableCache()
 	require.NoError(t, err)
@@ -355,7 +355,7 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = -5, -10
 
 	err = ioutil.WriteFile(testHTML, []byte("some html"), 0700)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	ts = httptest.NewServer(srv.routes())
 
@@ -387,10 +387,10 @@ func fakeAuth(next http.Handler) http.Handler {
 
 func get(t *testing.T, url string) (string, int) {
 	r, err := http.Get(url)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	return string(body), r.StatusCode
 }
 
@@ -405,53 +405,53 @@ func sendReq(_ *testing.T, r *http.Request, token string) (*http.Response, error
 func getWithDevAuth(t *testing.T, url string) (body string, code int) {
 	client := &http.Client{Timeout: 5 * time.Second}
 	req, err := http.NewRequest("GET", url, nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	req.Header.Add("X-JWT", devToken)
 	r, err := client.Do(req)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer r.Body.Close()
 	b, err := ioutil.ReadAll(r.Body)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	return string(b), r.StatusCode
 }
 
 func getWithAdminAuth(t *testing.T, url string) (string, int) {
 	client := &http.Client{Timeout: 5 * time.Second}
 	req, err := http.NewRequest("GET", url, nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
 	r, err := client.Do(req)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	return string(body), r.StatusCode
 }
 func post(t *testing.T, url string, body string) (*http.Response, error) {
 	client := &http.Client{Timeout: 5 * time.Second}
 	req, err := http.NewRequest("POST", url, strings.NewReader(body))
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
 	return client.Do(req)
 }
 
 func addComment(t *testing.T, c store.Comment, ts *httptest.Server) string {
 	b, err := json.Marshal(c)
-	require.Nil(t, err, "can't marshal comment %+v", c)
+	require.NoError(t, err, "can't marshal comment %+v", c)
 
 	client := &http.Client{Timeout: 5 * time.Second}
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/comment", bytes.NewBuffer(b))
-	require.Nil(t, err)
+	require.NoError(t, err)
 	req.Header.Add("X-JWT", devToken)
 	resp, err := client.Do(req)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, http.StatusCreated, resp.StatusCode)
 	b, err = ioutil.ReadAll(resp.Body)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	crResp := R.JSON{}
 	err = json.Unmarshal(b, &crResp)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	time.Sleep(time.Nanosecond * 10)
 	return crResp["id"].(string)
 }

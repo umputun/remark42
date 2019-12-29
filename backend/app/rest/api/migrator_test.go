@@ -38,13 +38,13 @@ func TestMigrator_Import(t *testing.T) {
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=native", r)
 	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	resp, err := client.Do(req)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, http.StatusAccepted, resp.StatusCode)
 
 	b, err := ioutil.ReadAll(resp.Body)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, "{\"status\":\"import request accepted\"}\n", string(b))
 
 	waitForMigrationCompletion(t, ts)
@@ -74,11 +74,11 @@ func TestMigrator_ImportForm(t *testing.T) {
 
 	authts := strings.Replace(ts.URL, "http://", "http://admin:password@", 1)
 	resp, err := http.Post(authts+"/api/v1/admin/import/form?site=remark42&provider=native", contentType, bodyBuf)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, http.StatusAccepted, resp.StatusCode)
 
 	b, err := ioutil.ReadAll(resp.Body)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, "{\"status\":\"import request accepted\"}\n", string(b))
 
 	waitForMigrationCompletion(t, ts)
@@ -92,15 +92,15 @@ func TestMigrator_ImportFromWP(t *testing.T) {
 
 	client := &http.Client{Timeout: 1 * time.Second}
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=wordpress", r)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	req.Header.Add("Content-Type", "application/xml; charset=utf-8")
 	req.SetBasicAuth("admin", "password")
 	resp, err := client.Do(req)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, http.StatusAccepted, resp.StatusCode)
 
 	b, err := ioutil.ReadAll(resp.Body)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, "{\"status\":\"import request accepted\"}\n", string(b))
 
 	waitForMigrationCompletion(t, ts)
@@ -121,9 +121,9 @@ func TestMigrator_ImportRejected(t *testing.T) {
 
 	client := &http.Client{Timeout: 1 * time.Second}
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=native&secret=XYZ", r)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	resp, err := client.Do(req)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 }
 
@@ -144,18 +144,18 @@ func TestMigrator_ImportDouble(t *testing.T) {
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=native", r)
 	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	resp, err := client.Do(req)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, http.StatusAccepted, resp.StatusCode)
 
 	client = &http.Client{Timeout: 5 * time.Second}
 	req, err = http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=native", r)
 	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	resp, err = client.Do(req)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, http.StatusConflict, resp.StatusCode)
 	waitForMigrationCompletion(t, ts)
 }
@@ -177,9 +177,9 @@ func TestMigrator_ImportWaitExpired(t *testing.T) {
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=native", r)
 	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	resp, err := client.Do(req)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, http.StatusAccepted, resp.StatusCode)
 
 	client = &http.Client{Timeout: 5 * time.Second}
@@ -210,19 +210,19 @@ func TestMigrator_Export(t *testing.T) {
 	// import comments first
 	client := &http.Client{Timeout: 1 * time.Second}
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=native", r)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
 	resp, err := client.Do(req)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, http.StatusAccepted, resp.StatusCode)
 	waitForMigrationCompletion(t, ts)
 
 	// check file mode
 	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/export?mode=file&site=remark42", nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
 	resp, err = client.Do(req)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, 200, resp.StatusCode)
 	require.Equal(t, "application/gzip", resp.Header.Get("Content-Type"))
 
@@ -236,10 +236,10 @@ func TestMigrator_Export(t *testing.T) {
 
 	// check stream mode
 	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/export?mode=stream&site=remark42", nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
 	resp, err = client.Do(req)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, 200, resp.StatusCode)
 	require.Equal(t, "text/plain; charset=utf-8", resp.Header.Get("Content-Type"))
 
@@ -250,9 +250,9 @@ func TestMigrator_Export(t *testing.T) {
 	t.Logf("%s", string(body))
 
 	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/export?site=remark42", nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	resp, err = client.Do(req)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 }
 
@@ -288,7 +288,7 @@ func TestMigrator_Remap(t *testing.T) {
 	require.Equal(t, 200, code)
 	comments := commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, 2, comments.Info.Count)
 	require.False(t, comments.Info.ReadOnly)
 
@@ -296,14 +296,14 @@ func TestMigrator_Remap(t *testing.T) {
 	require.Equal(t, 200, code)
 	comments = commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, 1, comments.Info.Count)
 	require.True(t, comments.Info.ReadOnly)
 
 	// we want remap urls to another domain - www.remark42.com
 	rules := "https://remark42.com/* https://www.remark42.com/*"
 	resp, err := post(t, ts.URL+"/api/v1/admin/remap?site=remark42", rules) // auth as admin
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, http.StatusAccepted, resp.StatusCode)
 	waitForMigrationCompletion(t, ts)
 
@@ -312,7 +312,7 @@ func TestMigrator_Remap(t *testing.T) {
 	require.Equal(t, 200, code)
 	comments = commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, 2, comments.Info.Count)
 	require.False(t, comments.Info.ReadOnly)
 
@@ -320,7 +320,7 @@ func TestMigrator_Remap(t *testing.T) {
 	require.Equal(t, 200, code)
 	comments = commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, 1, comments.Info.Count)
 	require.True(t, comments.Info.ReadOnly)
 
@@ -329,14 +329,14 @@ func TestMigrator_Remap(t *testing.T) {
 	require.Equal(t, 200, code)
 	comments = commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, 0, comments.Info.Count)
 
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://remark42.com/demo-another/")
 	require.Equal(t, 200, code)
 	comments = commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, 0, comments.Info.Count)
 }
 
@@ -348,9 +348,9 @@ func TestMigrator_RemapReject(t *testing.T) {
 	client := &http.Client{Timeout: 1 * time.Second}
 	rules := strings.NewReader(`https://remark42.com/* https://www.remark42.com/*`)
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/remap?site=remark42", rules)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	resp, err := client.Do(req)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 }
 

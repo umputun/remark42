@@ -84,7 +84,7 @@ func TestUrlMapper_New(t *testing.T) {
 		if c.expectError {
 			assert.Error(t, err)
 		} else {
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 		}
 	}
 }

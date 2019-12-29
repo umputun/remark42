@@ -30,7 +30,7 @@ func TestTelegram_New(t *testing.T) {
 	assert.True(t, time.Since(st) >= 250*5*time.Millisecond)
 
 	_, err = NewTelegram("non-json-resp", "remark_test", 2*time.Second, ts.URL+"/")
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "can't decode response:")
 
 	_, err = NewTelegram("404", "remark_test", 2*time.Second, ts.URL+"/")
@@ -70,9 +70,9 @@ func TestTelegram_Send(t *testing.T) {
 	assert.NoError(t, err)
 
 	tb, err = NewTelegram("non-json-resp", "remark_test", 2*time.Second, ts.URL+"/")
-	assert.NotNil(t, err, "should failed")
+	assert.Error(t, err, "should failed")
 	err = tb.Send(context.TODO(), Request{Comment: c, parent: cp})
-	require.NotNil(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unexpected telegram status code 404", "send on broken tg")
 
 	assert.Equal(t, "telegram: @remark_test", tb.String())

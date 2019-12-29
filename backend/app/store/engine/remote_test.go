@@ -69,7 +69,7 @@ func TestRemote_GetWithErrorRemote(t *testing.T) {
 
 	req := GetRequest{Locator: store.Locator{URL: "http://example.com/url"}, CommentID: "site"}
 	_, err := c.Get(req)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 	assert.True(t, strings.Contains(err.Error(), "remote call failed for store.get:"), err.Error())
 }
 

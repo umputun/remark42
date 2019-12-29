@@ -18,7 +18,7 @@ func TestRemap_Execute(t *testing.T) {
 		assert.Equal(t, "POST", r.Method)
 		assert.Equal(t, "remark", r.URL.Query().Get("site"))
 		body, err := ioutil.ReadAll(r.Body)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.Equal(t, "http://oldsite.com* https://newsite.com*\nhttp://oldsite.com/from-old-page/1 https://newsite.com/to-new-page/1", string(body))
 
 		w.WriteHeader(202)
@@ -30,7 +30,7 @@ func TestRemap_Execute(t *testing.T) {
 
 	p := flags.NewParser(&cmd, flags.Default)
 	_, err := p.ParseArgs([]string{"--site=remark", "--file=testdata/remap_urls.txt", "--admin-passwd=secret"})
-	require.Nil(t, err)
+	require.NoError(t, err)
 	err = cmd.Execute(nil)
 	assert.NoError(t, err)
 }

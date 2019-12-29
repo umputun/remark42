@@ -68,7 +68,7 @@ func TestCleanup_postsInRange(t *testing.T) {
 	cmd.SetCommon(CommonOpts{RemarkURL: ts.URL, SharedSecret: "123456"})
 	p := flags.NewParser(&cmd, flags.Default)
 	_, err := p.ParseArgs([]string{"--site=remark", "--bword=bad1", "--bword=bad2", "--buser=bu_", "--admin-passwd=secret"})
-	require.Nil(t, err)
+	require.NoError(t, err)
 	posts, err := cmd.postsInRange("20181218", "20181219")
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(posts))
@@ -78,7 +78,7 @@ func TestCleanup_postsInRange(t *testing.T) {
 	assert.Equal(t, 3, len(posts))
 
 	_, err = cmd.postsInRange("xxx", "yyy")
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 }
 
 func TestCleanup_listComments(t *testing.T) {
@@ -91,7 +91,7 @@ func TestCleanup_listComments(t *testing.T) {
 	cmd.SetCommon(CommonOpts{RemarkURL: ts.URL, SharedSecret: "123456"})
 	p := flags.NewParser(&cmd, flags.Default)
 	_, err := p.ParseArgs([]string{"--site=remark", "--bword=bad1", "--bword=bad2", "--buser=bu_", "--admin-passwd=secret"})
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	comments, err := cmd.listComments("http://test.com/post1")
 	assert.NoError(t, err)
@@ -118,7 +118,7 @@ func TestCleanup_ExecuteSpam(t *testing.T) {
 	p := flags.NewParser(&cmd, flags.Default)
 	_, err := p.ParseArgs([]string{"--site=remark", "--bword=bad1", "--bword=bad2", "--buser=bu_",
 		"--from=20181217", "--to=20181218", "--admin-passwd=secret"})
-	require.Nil(t, err)
+	require.NoError(t, err)
 	err = cmd.Execute(nil)
 	assert.NoError(t, err)
 	t.Logf("deleted %+v", cleaned.ids)
@@ -136,7 +136,7 @@ func TestCleanup_ExecuteTitle(t *testing.T) {
 	cmd.SetCommon(CommonOpts{RemarkURL: ts.URL, SharedSecret: "123456"})
 	p := flags.NewParser(&cmd, flags.Default)
 	_, err := p.ParseArgs([]string{"--site=remark", "--title", "--from=20181217", "--to=20181218", "--admin-passwd=secret"})
-	require.Nil(t, err)
+	require.NoError(t, err)
 	err = cmd.Execute(nil)
 	assert.NoError(t, err)
 	t.Logf("set titles for %+v", titledComments.ids)

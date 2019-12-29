@@ -39,15 +39,15 @@ func TestRest_Create(t *testing.T) {
 
 	resp, err := post(t, ts.URL+"/api/v1/comment",
 		`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	b, err := ioutil.ReadAll(resp.Body)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	require.Equal(t, http.StatusCreated, resp.StatusCode, string(b))
 
 	t.Log(string(b))
 	c := R.JSON{}
 	err = json.Unmarshal(b, &c)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	loc := c["locator"].(map[string]interface{})
 	assert.Equal(t, "remark42", loc["site"])
 	assert.Equal(t, "https://radio-t.com/blah1", loc["url"])
@@ -62,16 +62,16 @@ func TestRest_CreateOldPost(t *testing.T) {
 	old := store.Comment{Text: "test test old", ParentID: "", Timestamp: time.Now().AddDate(0, 0, -5),
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}, User: store.User{ID: "u1"}}
 	_, err := srv.DataService.Create(old)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	comments, err := srv.DataService.Find(store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}, "time", store.User{})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 1, len(comments))
 
 	// try to add new comment to the same old post
 	resp, err := post(t, ts.URL+"/api/v1/comment",
 		`{"text": "test 123", "locator":{"site": "remark42","url": "https://radio-t.com/blah1"}}`)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
 	assert.Nil(t, srv.DataService.DeleteAll("remark42"))
@@ -79,11 +79,11 @@ func TestRest_CreateOldPost(t *testing.T) {
 	old = store.Comment{Text: "test test old", ParentID: "", Timestamp: time.Now().AddDate(0, 0, -15),
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}, User: store.User{ID: "u1"}}
 	_, err = srv.DataService.Create(old)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	resp, err = post(t, ts.URL+"/api/v1/comment",
 		`{"text": "test 123", "locator":{"site": "remark42","url": "https://radio-t.com/blah1"}}`)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 }
 
@@ -94,25 +94,25 @@ func TestRest_CreateTooBig(t *testing.T) {
 	longComment := fmt.Sprintf(`{"text": "%4001s", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`, "Щ")
 
 	resp, err := post(t, ts.URL+"/api/v1/comment", longComment)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	b, err := ioutil.ReadAll(resp.Body)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	c := R.JSON{}
 	err = json.Unmarshal(b, &c)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, "comment text exceeded max allowed size 4000 (4001)", c["error"])
 	assert.Equal(t, "invalid comment", c["details"])
 
 	veryLongComment := fmt.Sprintf(`{"text": "%70000s", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`, "Щ")
 	resp, err = post(t, ts.URL+"/api/v1/comment", veryLongComment)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	b, err = ioutil.ReadAll(resp.Body)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	c = R.JSON{}
 	err = json.Unmarshal(b, &c)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, "http: request body too large", c["error"])
 	assert.Equal(t, "can't bind comment", c["details"])
 }
@@ -125,13 +125,13 @@ func TestRest_CreateWithRestrictedWord(t *testing.T) {
 "site": "remark42"}}`)
 
 	resp, err := post(t, ts.URL+"/api/v1/comment", badComment)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	b, err := ioutil.ReadAll(resp.Body)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	c := R.JSON{}
 	err = json.Unmarshal(b, &c)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, "comment contains restricted words", c["error"])
 	assert.Equal(t, "invalid comment", c["details"])
 }
@@ -150,7 +150,7 @@ func TestRest_CreateRejected(t *testing.T) {
 	// try with wrong aud
 	client := &http.Client{Timeout: 5 * time.Second}
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(body))
-	require.Nil(t, err)
+	require.NoError(t, err)
 	req.Header.Add("X-JWT", devTokenBadAud)
 	resp, err = client.Do(req)
 	require.NoError(t, err)
@@ -164,13 +164,13 @@ func TestRest_CreateAndGet(t *testing.T) {
 	// create comment
 	resp, err := post(t, ts.URL+"/api/v1/comment",
 		`{"text": "**test** *123*\n\n http://radio-t.com", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, http.StatusCreated, resp.StatusCode)
 	b, err := ioutil.ReadAll(resp.Body)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	c := R.JSON{}
 	err = json.Unmarshal(b, &c)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	id := c["id"].(string)
 
@@ -179,7 +179,7 @@ func TestRest_CreateAndGet(t *testing.T) {
 	assert.Equal(t, 200, code)
 	comment := store.Comment{}
 	err = json.Unmarshal([]byte(res), &comment)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, "<p><strong>test</strong> <em>123</em></p>\n\n<p><a href=\"http://radio-t.com\" rel=\"nofollow\">http://radio-t.com</a></p>\n", comment.Text)
 	assert.Equal(t, "**test** *123*\n\n http://radio-t.com", comment.Orig)
 	assert.Equal(t, store.User{Name: "admin", ID: "admin", Admin: true, Blocked: false,
@@ -192,7 +192,7 @@ func TestRest_CreateAndGet(t *testing.T) {
 	assert.Equal(t, 200, code)
 	comment = store.Comment{}
 	err = json.Unmarshal([]byte(res), &comment)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, store.User{Name: "admin", ID: "admin", Admin: true, Blocked: false, IP: ""}, comment.User, "no ip")
 }
 
@@ -207,18 +207,18 @@ func TestRest_Update(t *testing.T) {
 	client := http.Client{}
 	req, err := http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/"+id+"?site=remark42&url=https://radio-t.com/blah1",
 		strings.NewReader(`{"text":"updated text", "summary":"my edit"}`))
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	req.Header.Add("X-JWT", devToken)
 	b, err := client.Do(req)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	body, err := ioutil.ReadAll(b.Body)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 200, b.StatusCode, string(body))
 
 	// comments returned by update
 	c2 := store.Comment{}
 	err = json.Unmarshal(body, &c2)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, id, c2.ID)
 	assert.Equal(t, "<p>updated text</p>\n", c2.Text)
 	assert.Equal(t, "updated text", c2.Orig)
@@ -230,7 +230,7 @@ func TestRest_Update(t *testing.T) {
 	assert.Equal(t, 200, code)
 	c3 := store.Comment{}
 	err = json.Unmarshal([]byte(res), &c3)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, c2, c3, "same as response from update")
 }
 
@@ -250,7 +250,7 @@ func TestRest_UpdateDelete(t *testing.T) {
 	require.NoError(t, err)
 	j := []store.PostInfo{}
 	err = json.Unmarshal(bb, &j)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, []store.PostInfo([]store.PostInfo{{URL: "https://radio-t.com/blah1", Count: 1},
 		{URL: "https://radio-t.com/blah2", Count: 0}}), j)
 
@@ -278,17 +278,17 @@ func TestRest_UpdateDelete(t *testing.T) {
 	assert.Equal(t, 200, code)
 	c3 := store.Comment{}
 	err = json.Unmarshal([]byte(res), &c3)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, "", c3.Text)
 	assert.Equal(t, "", c3.Orig)
 	assert.True(t, c3.Deleted)
 
 	// check multi count updated
 	resp, err = post(t, ts.URL+"/api/v1/counts?site=remark42", `["https://radio-t.com/blah1","https://radio-t.com/blah2"]`)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	bb, err = ioutil.ReadAll(resp.Body)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	j = []store.PostInfo{}
 	err = json.Unmarshal(bb, &j)
 	require.NoError(t, err)
@@ -303,27 +303,27 @@ func TestRest_UpdateNotOwner(t *testing.T) {
 	c1 := store.Comment{Text: "test test #1", ParentID: "p1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}, User: store.User{ID: "xyz"}}
 	id1, err := srv.DataService.Create(c1)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	client := http.Client{}
 	req, err := http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/"+id1+
 		"?site=remark42&url=https://radio-t.com/blah1", strings.NewReader(`{"text":"updated text", "summary":"my edit"}`))
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	req.Header.Add("X-JWT", devToken)
 	b, err := client.Do(req)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	body, err := ioutil.ReadAll(b.Body)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 403, b.StatusCode, string(body), "update from non-owner")
 	assert.Equal(t, `{"code":3,"details":"can not edit comments for other users","error":"rejected"}`+"\n", string(body))
 
 	client = http.Client{}
 	req, err = http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/"+id1+
 		"?site=remark42&url=https://radio-t.com/blah1", strings.NewReader(`ERRR "text":"updated text", "summary":"my"}`))
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	req.Header.Add("X-JWT", devToken)
 	b, err = client.Do(req)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 400, b.StatusCode, string(body), "update is not json")
 }
 
@@ -338,7 +338,7 @@ func TestRest_UpdateWrongAud(t *testing.T) {
 	client := http.Client{}
 	req, err := http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/"+id+"?site=remark42&url=https://radio-t.com/blah1",
 		strings.NewReader(`{"text":"updated text", "summary":"my edit"}`))
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	req.Header.Add("X-JWT", devTokenBadAud)
 	b, err := client.Do(req)
 	assert.NoError(t, err)
@@ -356,15 +356,15 @@ func TestRest_UpdateWithRestrictedWords(t *testing.T) {
 	client := http.Client{}
 	req, err := http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/"+id+"?site=remark42&url=https://radio-t.com/blah1",
 		strings.NewReader(`{"text":"What the duck is that?", "summary":"my edit"}`))
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	req.Header.Add("X-JWT", devToken)
 	b, err := client.Do(req)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	body, err := ioutil.ReadAll(b.Body)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	c := R.JSON{}
 	err = json.Unmarshal(body, &c)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 400, b.StatusCode, string(body))
 	assert.Equal(t, "comment contains restricted words", c["error"])
 	assert.Equal(t, "invalid comment", c["details"])
@@ -386,10 +386,10 @@ func TestRest_Vote(t *testing.T) {
 		client := http.Client{}
 		req, err := http.NewRequest(http.MethodPut,
 			fmt.Sprintf("%s/api/v1/vote/%s?site=remark42&url=https://radio-t.com/blah&vote=%d", ts.URL, id1, val), nil)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		req.Header.Add("X-JWT", devToken)
 		resp, err := client.Do(req)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		return resp.StatusCode
 	}
 
@@ -399,7 +399,7 @@ func TestRest_Vote(t *testing.T) {
 	assert.Equal(t, 200, code)
 	cr := store.Comment{}
 	err := json.Unmarshal([]byte(body), &cr)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 1, cr.Score)
 	assert.Equal(t, 1, cr.Vote)
 	assert.Equal(t, map[string]bool(nil), cr.Votes)
@@ -409,7 +409,7 @@ func TestRest_Vote(t *testing.T) {
 	assert.Equal(t, 200, code)
 	cr = store.Comment{}
 	err = json.Unmarshal([]byte(body), &cr)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 0, cr.Score)
 	assert.Equal(t, 0, cr.Vote)
 
@@ -418,7 +418,7 @@ func TestRest_Vote(t *testing.T) {
 	assert.Equal(t, 200, code)
 	cr = store.Comment{}
 	err = json.Unmarshal([]byte(body), &cr)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, -1, cr.Score)
 	assert.Equal(t, -1, cr.Vote)
 
@@ -427,7 +427,7 @@ func TestRest_Vote(t *testing.T) {
 	assert.Equal(t, 200, code)
 	cr = store.Comment{}
 	err = json.Unmarshal([]byte(body), &cr)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, -1, cr.Score)
 	assert.Equal(t, -1, cr.Vote)
 
@@ -435,7 +435,7 @@ func TestRest_Vote(t *testing.T) {
 	assert.Equal(t, 200, code)
 	cr = store.Comment{}
 	err = json.Unmarshal([]byte(body), &cr)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, -1, cr.Score)
 	assert.Equal(t, 0, cr.Vote, "no vote info for not authed user")
 	assert.Equal(t, map[string]bool(nil), cr.Votes)
@@ -448,7 +448,7 @@ func TestRest_Vote(t *testing.T) {
 	assert.Equal(t, 200, resp.StatusCode)
 	cr = store.Comment{}
 	err = json.NewDecoder(resp.Body).Decode(&cr)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, -1, cr.Score)
 	assert.Equal(t, 0, cr.Vote, "no vote info for different user")
 	assert.Equal(t, map[string]bool(nil), cr.Votes)
@@ -470,23 +470,23 @@ func TestRest_AnonVote(t *testing.T) {
 		client := http.Client{}
 		req, err := http.NewRequest(http.MethodPut,
 			fmt.Sprintf("%s/api/v1/vote/%s?site=remark42&url=https://radio-t.com/blah&vote=%d", ts.URL, id1, val), nil)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		req.Header.Add("X-JWT", anonToken)
 		resp, err := client.Do(req)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		return resp.StatusCode
 	}
 
 	getWithAnonAuth := func(url string) (body string, code int) {
 		client := &http.Client{Timeout: 5 * time.Second}
 		req, err := http.NewRequest("GET", url, nil)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		req.Header.Add("X-JWT", anonToken)
 		r, err := client.Do(req)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		defer r.Body.Close()
 		b, err := ioutil.ReadAll(r.Body)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		return string(b), r.StatusCode
 	}
 
@@ -499,7 +499,7 @@ func TestRest_AnonVote(t *testing.T) {
 	assert.Equal(t, 200, code)
 	cr := store.Comment{}
 	err := json.Unmarshal([]byte(body), &cr)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 1, cr.Score)
 	assert.Equal(t, 1, cr.Vote)
 	assert.Equal(t, map[string]bool(nil), cr.Votes)
@@ -588,10 +588,10 @@ func TestRest_EmailNotification(t *testing.T) {
 "user": {"name": "dev::good@example.com"},
 "locator":{"url": "https://radio-t.com/blah1",
 "site": "remark42"}}`))
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	req.Header.Add("X-JWT", devToken)
 	resp, err := client.Do(req)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
@@ -609,10 +609,10 @@ func TestRest_EmailNotification(t *testing.T) {
 	"user": {"name": "other_user"},
 	"locator":{"url": "https://radio-t.com/blah1",
 	"site": "remark42"}}`, parentComment.ID)))
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	req.Header.Add("X-JWT", devToken)
 	resp, err = client.Do(req)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
@@ -653,10 +653,10 @@ func TestRest_EmailNotification(t *testing.T) {
 	"user": {"name": "other_user"},
 	"locator":{"url": "https://radio-t.com/blah1",
 	"site": "remark42"}}`, parentComment.ID)))
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	req.Header.Add("X-JWT", devToken)
 	resp, err = client.Do(req)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
@@ -681,10 +681,10 @@ func TestRest_EmailNotification(t *testing.T) {
 	"user": {"name": "other_user"},
 	"locator":{"url": "https://radio-t.com/blah1",
 	"site": "remark42"}}`))
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	req.Header.Add("X-JWT", devToken)
 	resp, err = client.Do(req)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
@@ -707,18 +707,18 @@ func TestRest_UserAllData(t *testing.T) {
 	c3 := store.Comment{User: user, Text: "test test #3", ParentID: "p1", Locator: store.Locator{SiteID: "remark42",
 		URL: "https://radio-t.com/blah1"}, Timestamp: time.Date(2018, 05, 27, 1, 14, 25, 0, time.Local)}
 	_, err := srv.DataService.Create(c1)
-	require.Nil(t, err, "%+v", err)
+	require.NoError(t, err, "%+v", err)
 	_, err = srv.DataService.Create(c2)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	_, err = srv.DataService.Create(c3)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	client := &http.Client{Timeout: 1 * time.Second}
 	req, err := http.NewRequest("GET", ts.URL+"/api/v1/userdata?site=remark42", nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	req.Header.Add("X-JWT", devToken)
 	resp, err := client.Do(req)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, 200, resp.StatusCode)
 	require.Equal(t, "application/gzip", resp.Header.Get("Content-Type"))
 
@@ -738,15 +738,15 @@ func TestRest_UserAllData(t *testing.T) {
 	}{}
 
 	err = json.Unmarshal(ungzBody, &parsed)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, store.User{Name: "developer one", ID: "dev",
 		Picture: "http://example.com/pic.png", IP: "127.0.0.1", SiteID: "remark42"}, parsed.Info)
 	assert.Equal(t, 3, len(parsed.Comments))
 
 	req, err = http.NewRequest("GET", ts.URL+"/api/v1/userdata?site=remark42", nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	resp, err = client.Do(req)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, 401, resp.StatusCode)
 }
 
@@ -762,14 +762,14 @@ func TestRest_UserAllDataManyComments(t *testing.T) {
 		c.ID = fmt.Sprintf("id-%03d", i)
 		c.Timestamp = c.Timestamp.Add(time.Second)
 		_, err := srv.DataService.Create(c)
-		require.Nil(t, err)
+		require.NoError(t, err)
 	}
 	client := &http.Client{Timeout: 1 * time.Second}
 	req, err := http.NewRequest("GET", ts.URL+"/api/v1/userdata?site=remark42", nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	req.Header.Add("X-JWT", devToken)
 	resp, err := client.Do(req)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, 200, resp.StatusCode)
 	require.Equal(t, "application/gzip", resp.Header.Get("Content-Type"))
 
@@ -789,30 +789,30 @@ func TestRest_DeleteMe(t *testing.T) {
 
 	client := http.Client{}
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/api/v1/deleteme?site=remark42", ts.URL), nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	req.Header.Add("X-JWT", devToken)
 	resp, err := client.Do(req)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 	body, err := ioutil.ReadAll(resp.Body)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	m := map[string]string{}
 	err = json.Unmarshal(body, &m)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, "remark42", m["site"])
 	assert.Equal(t, "dev", m["user_id"])
 
 	token := m["token"]
 	claims, err := srv.Authenticator.TokenService().Parse(token)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, "dev", claims.User.ID)
 	assert.Equal(t, "https://demo.remark42.com/web/deleteme.html?token="+token, m["link"])
 
 	req, err = http.NewRequest(http.MethodPost, fmt.Sprintf("%s/api/v1/deleteme?site=remark42", ts.URL), nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	resp, err = client.Do(req)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 401, resp.StatusCode)
 }
 
@@ -837,10 +837,10 @@ func TestRest_SavePictureCtrl(t *testing.T) {
 		req.Header.Add("Content-Type", contentType)
 		req.Header.Add("X-JWT", devToken)
 		resp, err := client.Do(req)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.Equal(t, 200, resp.StatusCode)
 		body, err := ioutil.ReadAll(resp.Body)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		m := map[string]string{}
 		err = json.Unmarshal(body, &m)
@@ -854,7 +854,7 @@ func TestRest_SavePictureCtrl(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 	body, err := ioutil.ReadAll(resp.Body)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 1462, len(body))
 	assert.Equal(t, "image/png", resp.Header.Get("Content-Type"))
 
@@ -920,11 +920,11 @@ func TestRest_CreateWithPictures(t *testing.T) {
 		req.Header.Add("Content-Type", contentType)
 		req.Header.Add("X-JWT", devToken)
 		resp, err := client.Do(req)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.Equal(t, 200, resp.StatusCode)
 
 		body, err := ioutil.ReadAll(resp.Body)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		m := map[string]string{}
 		err = json.Unmarshal(body, &m)
 		assert.NoError(t, err)
@@ -941,13 +941,13 @@ func TestRest_CreateWithPictures(t *testing.T) {
 	body := fmt.Sprintf(`{"text": "%s", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`, text)
 
 	resp, err := post(t, ts.URL+"/api/v1/comment", body)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	b, err := ioutil.ReadAll(resp.Body)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	require.Equal(t, http.StatusCreated, resp.StatusCode, string(b))
 
 	_, err = os.Stat("/tmp/remark42/images/" + id1)
-	assert.NotNil(t, err, "not moved from staging yet")
+	assert.Error(t, err, "not moved from staging yet")
 
 	time.Sleep(500 * time.Millisecond)
 	_, err = os.Stat("/tmp/remark42/images/" + id1)
