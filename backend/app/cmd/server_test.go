@@ -484,7 +484,7 @@ func waitForHTTPSServerStart(port int) {
 	// wait for up to 3 seconds for HTTPS server to start
 	for i := 0; i < 300; i++ {
 		time.Sleep(time.Millisecond * 10)
-		conn, _ := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", sslPort), time.Millisecond*10)
+		conn, _ := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), time.Millisecond*10)
 		if conn != nil {
 			_ = conn.Close()
 			break
