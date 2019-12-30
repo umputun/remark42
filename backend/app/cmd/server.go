@@ -53,28 +53,26 @@ type ServerCommand struct {
 	Stream     StreamGroup     `group:"stream" namespace:"stream" env-namespace:"STREAM"`
 	ImageProxy ImageProxyGroup `group:"image-proxy" namespace:"image-proxy" env-namespace:"IMAGE_PROXY"`
 
-	Sites          []string `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
-	AnonymousVote  bool     `long:"anon-vote" env:"ANON_VOTE" description:"enable anonymous votes (works only with VOTES_IP enabled)"`
-	AdminPasswd    string   `long:"admin-passwd" env:"ADMIN_PASSWD" default:"" description:"admin basic auth password"`
-	BackupLocation string   `long:"backup" env:"BACKUP_PATH" default:"./var/backup" description:"backups location"`
-	MaxBackupFiles int      `long:"max-back" env:"MAX_BACKUP_FILES" default:"10" description:"max backups to keep"`
-	// ImageProxy             bool          `long:"img-proxy" env:"IMG_PROXY" description:"enable image HTTP->HTTPS proxy"`
-	PreserveExternalImages bool          `long:"preserve-external-images" env:"PRESERVE_EXTERNAL_IMAGES" description:"enable preserving external images"`
-	MaxCommentSize         int           `long:"max-comment" env:"MAX_COMMENT_SIZE" default:"2048" description:"max comment size"`
-	MaxVotes               int           `long:"max-votes" env:"MAX_VOTES" default:"-1" description:"maximum number of votes per comment"`
-	RestrictVoteIP         bool          `long:"votes-ip" env:"VOTES_IP" description:"restrict votes from the same ip"`
-	DurationVoteIP         time.Duration `long:"votes-ip-time" env:"VOTES_IP_TIME" default:"5m" description:"same ip vote duration"`
-	LowScore               int           `long:"low-score" env:"LOW_SCORE" default:"-5" description:"low score threshold"`
-	CriticalScore          int           `long:"critical-score" env:"CRITICAL_SCORE" default:"-10" description:"critical score threshold"`
-	PositiveScore          bool          `long:"positive-score" env:"POSITIVE_SCORE" description:"enable positive score only"`
-	ReadOnlyAge            int           `long:"read-age" env:"READONLY_AGE" default:"0" description:"read-only age of comments, days"`
-	EditDuration           time.Duration `long:"edit-time" env:"EDIT_TIME" default:"5m" description:"edit window"`
-	Port                   int           `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
-	WebRoot                string        `long:"web-root" env:"REMARK_WEB_ROOT" default:"./web" description:"web root directory"`
-	UpdateLimit            float64       `long:"update-limit" env:"UPDATE_LIMIT" default:"0.5" description:"updates/sec limit"`
-	RestrictedWords        []string      `long:"restricted-words" env:"RESTRICTED_WORDS" description:"words prohibited to use in comments" env-delim:","`
-	EnableEmoji            bool          `long:"emoji" env:"EMOJI" description:"enable emoji"`
-	SimpleView             bool          `long:"simpler-view" env:"SIMPLE_VIEW" description:"minimal comment editor mode"`
+	Sites           []string      `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
+	AnonymousVote   bool          `long:"anon-vote" env:"ANON_VOTE" description:"enable anonymous votes (works only with VOTES_IP enabled)"`
+	AdminPasswd     string        `long:"admin-passwd" env:"ADMIN_PASSWD" default:"" description:"admin basic auth password"`
+	BackupLocation  string        `long:"backup" env:"BACKUP_PATH" default:"./var/backup" description:"backups location"`
+	MaxBackupFiles  int           `long:"max-back" env:"MAX_BACKUP_FILES" default:"10" description:"max backups to keep"`
+	MaxCommentSize  int           `long:"max-comment" env:"MAX_COMMENT_SIZE" default:"2048" description:"max comment size"`
+	MaxVotes        int           `long:"max-votes" env:"MAX_VOTES" default:"-1" description:"maximum number of votes per comment"`
+	RestrictVoteIP  bool          `long:"votes-ip" env:"VOTES_IP" description:"restrict votes from the same ip"`
+	DurationVoteIP  time.Duration `long:"votes-ip-time" env:"VOTES_IP_TIME" default:"5m" description:"same ip vote duration"`
+	LowScore        int           `long:"low-score" env:"LOW_SCORE" default:"-5" description:"low score threshold"`
+	CriticalScore   int           `long:"critical-score" env:"CRITICAL_SCORE" default:"-10" description:"critical score threshold"`
+	PositiveScore   bool          `long:"positive-score" env:"POSITIVE_SCORE" description:"enable positive score only"`
+	ReadOnlyAge     int           `long:"read-age" env:"READONLY_AGE" default:"0" description:"read-only age of comments, days"`
+	EditDuration    time.Duration `long:"edit-time" env:"EDIT_TIME" default:"5m" description:"edit window"`
+	Port            int           `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
+	WebRoot         string        `long:"web-root" env:"REMARK_WEB_ROOT" default:"./web" description:"web root directory"`
+	UpdateLimit     float64       `long:"update-limit" env:"UPDATE_LIMIT" default:"0.5" description:"updates/sec limit"`
+	RestrictedWords []string      `long:"restricted-words" env:"RESTRICTED_WORDS" description:"words prohibited to use in comments" env-delim:","`
+	EnableEmoji     bool          `long:"emoji" env:"EMOJI" description:"enable emoji"`
+	SimpleView      bool          `long:"simpler-view" env:"SIMPLE_VIEW" description:"minimal comment editor mode"`
 
 	Auth struct {
 		TTL struct {
@@ -397,9 +395,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 	if s.EnableEmoji {
 		emojiFmt = func(text string, userID string) string { return emoji.Sprint(text) }
 	}
-	imgPreserver := image.Preserver{Enabled: s.PreserveExternalImages, RemarkURL: s.RemarkURL, ImageService: imageService}
-	// `imgPreserver` should go before `imgProxy` so we can still proxy an image if preserving has failed for some reason
-	commentFormatter := store.NewCommentFormatter(imgPreserver, imgProxy, emojiFmt)
+	commentFormatter := store.NewCommentFormatter(imgProxy, emojiFmt)
 
 	sslConfig, err := s.makeSSLConfig()
 	if err != nil {
