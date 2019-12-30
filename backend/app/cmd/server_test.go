@@ -26,7 +26,7 @@ import (
 
 func TestServerApp(t *testing.T) {
 	port := chooseRandomUnusedPort()
-	app, ctx := prepServerApp(t, 1500*time.Millisecond, func(o ServerCommand) ServerCommand {
+	app, ctx, done := prepServerApp(t, func(o ServerCommand) ServerCommand {
 		o.Port = port
 		return o
 	})
@@ -60,12 +60,13 @@ func TestServerApp(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "admin@demo.remark42.com", email, "default admin email")
 
+	close(done)
 	app.Wait()
 }
 
 func TestServerApp_DevMode(t *testing.T) {
 	port := chooseRandomUnusedPort()
-	app, ctx := prepServerApp(t, 500*time.Millisecond, func(o ServerCommand) ServerCommand {
+	app, ctx, done := prepServerApp(t, func(o ServerCommand) ServerCommand {
 		o.Port = port
 		o.AdminPasswd = "password"
 		o.Auth.Dev = true
@@ -86,12 +87,13 @@ func TestServerApp_DevMode(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "pong", string(body))
 
+	close(done)
 	app.Wait()
 }
 
 func TestServerApp_AnonMode(t *testing.T) {
 	port := chooseRandomUnusedPort()
-	app, ctx := prepServerApp(t, 1000*time.Millisecond, func(o ServerCommand) ServerCommand {
+	app, ctx, done := prepServerApp(t, func(o ServerCommand) ServerCommand {
 		o.Port = port
 		o.Auth.Anonymous = true
 		return o
@@ -130,6 +132,7 @@ func TestServerApp_AnonMode(t *testing.T) {
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 
+	close(done)
 	app.Wait()
 }
 
@@ -281,14 +284,17 @@ func TestServerApp_Failed(t *testing.T) {
 }
 
 func TestServerApp_Shutdown(t *testing.T) {
-	app, ctx := prepServerApp(t, 500*time.Millisecond, func(o ServerCommand) ServerCommand {
+	app, ctx, done := prepServerApp(t, func(o ServerCommand) ServerCommand {
 		o.Port = chooseRandomUnusedPort()
 		return o
+	})
+	time.AfterFunc(100*time.Millisecond, func() {
+		close(done)
 	})
 	st := time.Now()
 	err := app.run(ctx)
 	assert.NoError(t, err)
-	assert.True(t, time.Since(st).Seconds() < 1, "should take about 500msec")
+	assert.True(t, time.Since(st).Seconds() < 1, "should take about 100msec")
 	app.Wait()
 }
 
@@ -360,7 +366,7 @@ func Test_ACMEEmail(t *testing.T) {
 
 func TestServerAuthHooks(t *testing.T) {
 	port := chooseRandomUnusedPort()
-	app, ctx := prepServerApp(t, 5*time.Second, func(o ServerCommand) ServerCommand {
+	app, ctx, done := prepServerApp(t, func(o ServerCommand) ServerCommand {
 		o.Port = port
 		return o
 	})
@@ -443,6 +449,7 @@ func TestServerAuthHooks(t *testing.T) {
 	assert.True(t, resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusUnauthorized,
 		"blocked user can't post, \n"+tk+"\n"+string(body))
 
+	close(done)
 	app.Wait()
 }
 
@@ -496,7 +503,7 @@ func waitForHTTPSServerStart(port int) {
 	}
 }
 
-func prepServerApp(t *testing.T, duration time.Duration, fn func(o ServerCommand) ServerCommand) (*serverApp, context.Context) {
+func prepServerApp(t *testing.T, fn func(o ServerCommand) ServerCommand) (*serverApp, context.Context, chan struct{}) {
 	cmd := ServerCommand{}
 	cmd.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "secret"})
 
@@ -533,10 +540,12 @@ func prepServerApp(t *testing.T, duration time.Duration, fn func(o ServerCommand
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	time.AfterFunc(duration, func() {
+	done := make(chan struct{})
+	go func() {
+		<-done
 		log.Print("[TEST] terminate app")
 		cancel()
-	})
+	}()
 	rand.Seed(time.Now().UnixNano())
-	return app, ctx
+	return app, ctx, done
 }
