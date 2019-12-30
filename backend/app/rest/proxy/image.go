@@ -3,7 +3,7 @@ package proxy
 import (
 	"bytes"
 	"context"
-	"crypto/sha1"
+	"crypto/sha1" // nolint
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -205,7 +205,7 @@ func (p Image) downloadImage(ctx context.Context, imgURL string) (io.ReadCloser,
 }
 
 func sha1Str(s string) string {
-	return fmt.Sprintf("%x", sha1.Sum([]byte(s)))
+	return fmt.Sprintf("%x", sha1.Sum([]byte(s))) // nolint
 }
 
 // generates ID for a cached image.
