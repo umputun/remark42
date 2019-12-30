@@ -886,7 +886,6 @@ func TestService_UserReplies(t *testing.T) {
 		Locator:  store.Locator{URL: "https://radio-t.com/blah10", SiteID: "radio-t"},
 		User:     store.User{ID: "u4", Name: "developer one u4"},
 	}
-
 	c5 := store.Comment{
 		ID:       "comment-id-5",
 		ParentID: "comment-id-1",
@@ -905,9 +904,7 @@ func TestService_UserReplies(t *testing.T) {
 	require.NoError(t, err)
 
 	time.Sleep(200 * time.Millisecond)
-	st := time.Now()
 	_, err = b.Create(c5)
-	t.Logf("time to create a record %v", time.Since(st))
 	require.NoError(t, err)
 
 	cc, u, err := b.UserReplies("radio-t", "u1", 10, time.Hour)
@@ -915,10 +912,9 @@ func TestService_UserReplies(t *testing.T) {
 	assert.Equal(t, 3, len(cc), "3 replies to u1")
 	assert.Equal(t, "developer one u1", u)
 
-	t.Logf("elpased %v", time.Since(st))
-	cc, u, err = b.UserReplies("radio-t", "u1", 10, time.Millisecond*100)
+	cc, u, err = b.UserReplies("radio-t", "u1", 10, time.Millisecond*150)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(cc), "1 reply to u1 in last 90ms")
+	assert.Equal(t, 1, len(cc), "1 reply to u1 in last 150ms")
 	assert.Equal(t, "developer one u1", u)
 
 	cc, u, err = b.UserReplies("radio-t", "u2", 10, time.Hour)
