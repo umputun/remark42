@@ -9,6 +9,7 @@ package server
 import (
 	"fmt"
 	"math/rand"
+	"net"
 	"net/http"
 	"testing"
 	"time"
@@ -379,8 +380,6 @@ func TestRPC_admEventHndl(t *testing.T) {
 }
 
 func prepTestStore(t *testing.T) (s *RPC, port int, teardown func()) {
-	port = 40000 + int(rand.Int31n(10000))
-
 	mg := accessor.NewMemData()
 	adm := accessor.NewMemAdminStore("secret")
 	s = NewRPC(mg, adm, &jrpc.Server{API: "/test", Logger: jrpc.NoOpLogger})
@@ -397,6 +396,17 @@ func prepTestStore(t *testing.T) (s *RPC, port int, teardown func()) {
 	admRecDisabled.Enabled = false
 	adm.Set("test-site-disabled", admRecDisabled)
 
+	// check if port is in use before trying to start a new server on it
+	for i := 0; i < 10; i++ {
+		port = 40000 + int(rand.Int31n(10000))
+		conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), time.Millisecond*10)
+		if err != nil {
+			break
+		}
+		if conn != nil {
+			conn.Close()
+		}
+	}
 	go func() {
 		log.Printf("%v", s.Run(port))
 	}()
