@@ -125,31 +125,12 @@ func TestRest_RunStaticSSLMode(t *testing.T) {
 		RemarkURL: "https://localhost:8443",
 	}
 
-	// check if port is in use before trying to start a new server on it
-	var port int
-	for i := 0; i < 10; i++ {
-		port = 40000 + int(rand.Int31n(10000))
-		conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), time.Millisecond*10)
-		if err != nil {
-			break
-		}
-		if conn != nil {
-			conn.Close()
-		}
-	}
+	port := chooseRandomUnusedPort()
 	go func() {
 		srv.Run(port)
 	}()
 
-	// wait for up to 3 seconds for server to start
-	for i := 0; i < 300; i++ {
-		time.Sleep(time.Millisecond * 10)
-		conn, _ := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), time.Millisecond*10)
-		if conn != nil {
-			conn.Close()
-			break
-		}
-	}
+	waitForHTTPServerStart(port)
 
 	client := http.Client{
 		// prevent http redirect
@@ -191,32 +172,13 @@ func TestRest_RunAutocertModeHTTPOnly(t *testing.T) {
 		RemarkURL: "https://localhost:8443",
 	}
 
-	// check if port is in use before trying to start a new server on it
-	var port int
-	for i := 0; i < 10; i++ {
-		port = 40000 + int(rand.Int31n(10000))
-		conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), time.Millisecond*10)
-		if err != nil {
-			break
-		}
-		if conn != nil {
-			conn.Close()
-		}
-	}
+	port := chooseRandomUnusedPort()
 	go func() {
 		// can't check https server locally, just only http server
 		srv.Run(port)
 	}()
 
-	// wait for up to 3 seconds for server to start
-	for i := 0; i < 300; i++ {
-		time.Sleep(time.Millisecond * 10)
-		conn, _ := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), time.Millisecond*10)
-		if conn != nil {
-			conn.Close()
-			break
-		}
-	}
+	waitForHTTPServerStart(port)
 
 	client := http.Client{
 		// prevent http redirect
@@ -505,4 +467,27 @@ func requireAdminOnly(t *testing.T, req *http.Request) {
 	resp, err = sendReq(t, req, devToken) // non-admin user
 	require.NoError(t, err)
 	assert.Equal(t, 403, resp.StatusCode)
+}
+
+func chooseRandomUnusedPort() (port int) {
+	for i := 0; i < 10; i++ {
+		port = 40000 + int(rand.Int31n(10000))
+		if ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port)); err == nil {
+			_ = ln.Close()
+			break
+		}
+	}
+	return port
+}
+
+func waitForHTTPServerStart(port int) {
+	// wait for up to 3 seconds for server to start before returning it
+	client := http.Client{Timeout: time.Second}
+	for i := 0; i < 300; i++ {
+		time.Sleep(time.Millisecond * 10)
+		if resp, err := client.Get(fmt.Sprintf("http://localhost:%d", port)); err == nil {
+			_ = resp.Body.Close()
+			return
+		}
+	}
 }

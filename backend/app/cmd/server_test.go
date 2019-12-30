@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/rand"
+	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"syscall"
 	"testing"
@@ -23,14 +25,14 @@ import (
 )
 
 func TestServerApp(t *testing.T) {
-	port := rand.Intn(40000) + 10000
+	port := chooseRandomUnusedPort()
 	app, ctx := prepServerApp(t, 1500*time.Millisecond, func(o ServerCommand) ServerCommand {
 		o.Port = port
 		return o
 	})
 
 	go func() { _ = app.run(ctx) }()
-	time.Sleep(500 * time.Millisecond) // let server start
+	waitForHTTPServerStart(port)
 
 	// send ping
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/ping", port))
@@ -62,7 +64,7 @@ func TestServerApp(t *testing.T) {
 }
 
 func TestServerApp_DevMode(t *testing.T) {
-	port := rand.Intn(40000) + 10000
+	port := chooseRandomUnusedPort()
 	app, ctx := prepServerApp(t, 500*time.Millisecond, func(o ServerCommand) ServerCommand {
 		o.Port = port
 		o.AdminPasswd = "password"
@@ -71,7 +73,7 @@ func TestServerApp_DevMode(t *testing.T) {
 	})
 
 	go func() { _ = app.run(ctx) }()
-	time.Sleep(100 * time.Millisecond) // let server start
+	waitForHTTPServerStart(port)
 
 	assert.Equal(t, 5+1, len(app.restSrv.Authenticator.Providers()), "extra auth provider")
 	assert.Equal(t, "dev", app.restSrv.Authenticator.Providers()[4].Name(), "dev auth provider")
@@ -88,7 +90,7 @@ func TestServerApp_DevMode(t *testing.T) {
 }
 
 func TestServerApp_AnonMode(t *testing.T) {
-	port := rand.Intn(40000) + 10000
+	port := chooseRandomUnusedPort()
 	app, ctx := prepServerApp(t, 1000*time.Millisecond, func(o ServerCommand) ServerCommand {
 		o.Port = port
 		o.Auth.Anonymous = true
@@ -96,7 +98,7 @@ func TestServerApp_AnonMode(t *testing.T) {
 	})
 
 	go func() { _ = app.run(ctx) }()
-	time.Sleep(100 * time.Millisecond) // let server start
+	waitForHTTPServerStart(port)
 
 	assert.Equal(t, 5+1, len(app.restSrv.Authenticator.Providers()), "extra auth provider for anon")
 	assert.Equal(t, "anonymous", app.restSrv.Authenticator.Providers()[5].Name(), "anon auth provider")
@@ -137,10 +139,12 @@ func TestServerApp_WithSSL(t *testing.T) {
 
 	// prepare options
 	p := flags.NewParser(&opts, flags.Default)
-	_, err := p.ParseArgs([]string{"--admin-passwd=password", "--port=18080", "--store.bolt.path=/tmp/xyz", "--backup=/tmp",
+	port := chooseRandomUnusedPort()
+	sslPort := chooseRandomUnusedPort()
+	_, err := p.ParseArgs([]string{"--admin-passwd=password", "--port=" + strconv.Itoa(port), "--store.bolt.path=/tmp/xyz", "--backup=/tmp",
 		"--avatar.type=bolt", "--avatar.bolt.file=/tmp/ava-test.db", "--notify.type=none",
 		"--ssl.type=static", "--ssl.cert=testdata/cert.pem", "--ssl.key=testdata/key.pem",
-		"--ssl.port=18443", "--image.fs.path=/tmp"})
+		"--ssl.port=" + strconv.Itoa(sslPort), "--image.fs.path=/tmp"})
 	require.NoError(t, err)
 
 	// create app
@@ -154,7 +158,7 @@ func TestServerApp_WithSSL(t *testing.T) {
 		cancel()
 	}()
 	go func() { _ = app.run(ctx) }()
-	time.Sleep(100 * time.Millisecond) // let server start
+	waitForHTTPSServerStart(sslPort)
 
 	client := http.Client{
 		// prevent http redirect
@@ -169,14 +173,14 @@ func TestServerApp_WithSSL(t *testing.T) {
 	}
 
 	// check http to https redirect response
-	resp, err := client.Get("http://localhost:18080/blah?param=1")
+	resp, err := client.Get(fmt.Sprintf("http://localhost:%d/blah?param=1", port))
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 307, resp.StatusCode)
 	assert.Equal(t, "https://localhost:18443/blah?param=1", resp.Header.Get("Location"))
 
 	// check https server
-	resp, err = client.Get("https://localhost:18443/ping")
+	resp, err = client.Get(fmt.Sprintf("https://localhost:%d/ping", sslPort))
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 200, resp.StatusCode)
@@ -194,9 +198,10 @@ func TestServerApp_WithRemote(t *testing.T) {
 
 	// prepare options
 	p := flags.NewParser(&opts, flags.Default)
+	port := chooseRandomUnusedPort()
 	_, err := p.ParseArgs([]string{"--admin-passwd=password", "--cache.type=none",
 		"--store.type=rpc", "--store.rpc.api=http://127.0.0.1",
-		"--port=12345", "--admin.type=rpc", "--admin.rpc.api=http://127.0.0.1", "--avatar.fs.path=/tmp"})
+		"--port=" + strconv.Itoa(port), "--admin.type=rpc", "--admin.rpc.api=http://127.0.0.1", "--avatar.fs.path=/tmp"})
 	require.NoError(t, err)
 	opts.Auth.Github.CSEC, opts.Auth.Github.CID = "csec", "cid"
 	opts.BackupLocation, opts.Image.FS.Path = "/tmp", "/tmp"
@@ -212,10 +217,10 @@ func TestServerApp_WithRemote(t *testing.T) {
 		cancel()
 	}()
 	go func() { _ = app.run(ctx) }()
-	time.Sleep(100 * time.Millisecond) // let server start
+	waitForHTTPServerStart(port)
 
 	// send ping
-	resp, err := http.Get("http://localhost:12345/api/v1/ping")
+	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/ping", port))
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 200, resp.StatusCode)
@@ -273,7 +278,7 @@ func TestServerApp_Failed(t *testing.T) {
 
 func TestServerApp_Shutdown(t *testing.T) {
 	app, ctx := prepServerApp(t, 500*time.Millisecond, func(o ServerCommand) ServerCommand {
-		o.Port = rand.Intn(40000) + 10000
+		o.Port = chooseRandomUnusedPort()
 		return o
 	})
 	st := time.Now()
@@ -296,8 +301,9 @@ func TestServerApp_MainSignal(t *testing.T) {
 	s.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
 
 	p := flags.NewParser(&s, flags.Default)
+	port := chooseRandomUnusedPort()
 	args := []string{"test", "--store.bolt.path=/tmp/xyz", "--backup=/tmp", "--avatar.type=bolt",
-		"--avatar.bolt.file=/tmp/ava-test.db", "--port=18100", "--notify.type=none", "--image.fs.path=/tmp"}
+		"--avatar.bolt.file=/tmp/ava-test.db", "--port=" + strconv.Itoa(port), "--notify.type=none", "--image.fs.path=/tmp"}
 	defer os.Remove("/tmp/ava-test.db")
 	_, err := p.ParseArgs(args)
 	require.NoError(t, err)
@@ -349,14 +355,14 @@ func Test_ACMEEmail(t *testing.T) {
 }
 
 func TestServerAuthHooks(t *testing.T) {
-	port := rand.Intn(40000) + 10000
+	port := chooseRandomUnusedPort()
 	app, ctx := prepServerApp(t, 5*time.Second, func(o ServerCommand) ServerCommand {
 		o.Port = port
 		return o
 	})
 
 	go func() { _ = app.run(ctx) }()
-	time.Sleep(150 * time.Millisecond) // let server start
+	waitForHTTPServerStart(port)
 
 	// make a token for user dev
 	tkService := app.restSrv.Authenticator.TokenService()
@@ -449,6 +455,41 @@ func TestServer_loadEmailTemplate(t *testing.T) {
 	cmd.Auth.Email.MsgTemplate = "bad-file"
 	r = cmd.loadEmailTemplate()
 	assert.Contains(t, r, "Remark42</h1>")
+}
+
+func chooseRandomUnusedPort() (port int) {
+	for i := 0; i < 10; i++ {
+		port = 40000 + int(rand.Int31n(10000))
+		if ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port)); err == nil {
+			_ = ln.Close()
+			break
+		}
+	}
+	return port
+}
+
+func waitForHTTPServerStart(port int) {
+	// wait for up to 3 seconds for server to start before returning it
+	client := http.Client{Timeout: time.Second}
+	for i := 0; i < 300; i++ {
+		time.Sleep(time.Millisecond * 10)
+		if resp, err := client.Get(fmt.Sprintf("http://localhost:%d", port)); err == nil {
+			_ = resp.Body.Close()
+			return
+		}
+	}
+}
+
+func waitForHTTPSServerStart(port int) {
+	// wait for up to 3 seconds for HTTPS server to start
+	for i := 0; i < 300; i++ {
+		time.Sleep(time.Millisecond * 10)
+		conn, _ := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), time.Millisecond*10)
+		if conn != nil {
+			_ = conn.Close()
+			break
+		}
+	}
 }
 
 func prepServerApp(t *testing.T, duration time.Duration, fn func(o ServerCommand) ServerCommand) (*serverApp, context.Context) {
