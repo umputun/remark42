@@ -637,7 +637,7 @@ func TestRest_InfoStreamCancel(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		for i := 0; i < 5; i++ {
-			time.Sleep(200 * time.Millisecond)
+			time.Sleep(300 * time.Millisecond)
 			postComment(t, ts.URL)
 		}
 	}()
@@ -645,12 +645,13 @@ func TestRest_InfoStreamCancel(t *testing.T) {
 	client := http.Client{}
 	req, err := http.NewRequest("GET", ts.URL+"/api/v1/stream/info?site=remark42&url=https://radio-t.com/blah1", nil)
 	require.NoError(t, err)
-	ctx, cancel := context.WithTimeout(context.Background(), 350*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()
 	req = req.WithContext(ctx)
 	r, err := client.Do(req)
 	require.NoError(t, err)
 	defer r.Body.Close()
+	<-ctx.Done()
 	body, err := ioutil.ReadAll(r.Body)
 	require.EqualError(t, err, "context deadline exceeded")
 	assert.Equal(t, 200, r.StatusCode)
@@ -658,7 +659,7 @@ func TestRest_InfoStreamCancel(t *testing.T) {
 	wg.Wait()
 
 	recs := strings.Count(string(body), "data:")
-	require.Equal(t, 1, recs, "should have 1 events")
+	require.Equal(t, 1, recs, "should have 1 event:\n", string(body))
 	assert.Contains(t, string(body), `"count":2`)
 }
 
