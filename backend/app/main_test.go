@@ -76,10 +76,10 @@ func chooseRandomUnusedPort() (port int) {
 }
 
 func waitForHTTPServerStart(port int) {
-	// wait for up to 5 seconds for server to start before returning it
+	// wait for up to 10 seconds for server to start before returning it
 	client := http.Client{Timeout: time.Second}
-	for i := 0; i < 500; i++ {
-		time.Sleep(time.Millisecond * 10)
+	for i := 0; i < 100; i++ {
+		time.Sleep(time.Millisecond * 100)
 		if resp, err := client.Get(fmt.Sprintf("http://localhost:%d", port)); err == nil {
 			_ = resp.Body.Close()
 			return
