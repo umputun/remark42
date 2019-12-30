@@ -20,4 +20,6 @@ remark42
 /bin/
 /backend/var/
 compose-private-backend.yml
+compose-private-frontend.yml
+compose-private.yml
 /backend/_example/*/vendor
