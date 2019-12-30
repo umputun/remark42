@@ -43,12 +43,8 @@ func (f *FileSystem) SaveWithID(id string, r io.Reader) (string, error) {
 		return "", errors.Wrapf(err, "can't load image with ID %s", id)
 	}
 
-	data, resized := resize(data, f.MaxWidth, f.MaxHeight)
+	data, _ = resize(data, f.MaxWidth, f.MaxHeight)
 	dst := f.location(f.Staging, id)
-	if resized { // resized also converted to png
-		id = strings.TrimSuffix(id, filepath.Ext(id)) + ".png"
-		dst = f.location(f.Staging, id)
-	}
 
 	if err = os.MkdirAll(path.Dir(dst), 0700); err != nil {
 		return "", errors.Wrap(err, "can't make image directory")
@@ -62,10 +58,10 @@ func (f *FileSystem) SaveWithID(id string, r io.Reader) (string, error) {
 	return id, nil
 }
 
-// Save data from reader for given file name to local FS, staging directory. Returns id as user/uuid.ext
-// Files partitioned across multiple subdirectories and the final path includes part, i.e. /location/user1/03/123-4567.png
+// Save data from reader for given file name to local FS, staging directory. Returns id as user/uuid
+// Files partitioned across multiple subdirectories and the final path includes part, i.e. /location/user1/03/123-4567
 func (f *FileSystem) Save(fileName string, userID string, r io.Reader) (id string, err error) {
-	id = path.Join(userID, guid()) + filepath.Ext(fileName) // make id as user/uuid.ext
+	id = path.Join(userID, guid()) // make id as user/uuid
 	finalID, err := f.SaveWithID(id, r)
 	if err != nil {
 		err = errors.Wrapf(err, "can't save file %s", fileName)
