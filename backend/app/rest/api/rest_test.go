@@ -38,9 +38,6 @@ import (
 	"github.com/umputun/remark/backend/app/store/service"
 )
 
-var testHTML = os.TempDir() + "/test-remark.html"
-var getStartedHTML = os.TempDir() + "/getstarted.html"
-
 var devToken = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6Mzc4OTE5MTgyMiwianRpIjoicmFuZG9tIGlkIiwiaXNzIjoicmVtYXJrNDIiLCJuYmYiOjE1MjE4ODQyMjIsInVzZXIiOnsibmFtZSI6ImRldmVsb3BlciBvbmUiLCJpZCI6ImRldiIsInBpY3R1cmUiOiJodHRwOi8vZXhhbXBsZS5jb20vcGljLnBuZyIsImlwIjoiMTI3LjAuMC4xIiwiZW1haWwiOiJtZUBleGFtcGxlLmNvbSJ9fQ.aKUAXiZxXypgV7m1wEOgUcyPOvUDXHDi3A06YWKbcLg`
 
 var anonToken = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6Mzc4OTE5MTgyMiwianRpIjoicmFuZG9tIGlkIiwiaXNzIjoicmVtYXJrNDIiLCJuYmYiOjE1MjE4ODQyMjIsInVzZXIiOnsibmFtZSI6ImFub255bW91cyB0ZXN0IHVzZXIiLCJpZCI6ImFub255bW91c190ZXN0X3VzZXIiLCJwaWN0dXJlIjoiaHR0cDovL2V4YW1wbGUuY29tL3BpYy5wbmciLCJpcCI6IjEyNy4wLjAuMSIsImVtYWlsIjoiYW5vbkBleGFtcGxlLmNvbSJ9fQ.gAae2WMxZNZE5ebVboptPEyQ7Nk6EQxciNnGJ_mPOuU`
@@ -53,15 +50,22 @@ func TestRest_FileServer(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
 
-	body, code := get(t, ts.URL+"/web/test-remark.html")
+	testHtmlName := "test-remark.html"
+	testHTMLFile := os.TempDir() + "/" + testHtmlName
+	err := ioutil.WriteFile(testHTMLFile, []byte("some html"), 0700)
+	assert.NoError(t, err)
+
+	body, code := get(t, ts.URL+"/web/"+testHtmlName)
 	assert.Equal(t, 200, code)
 	assert.Equal(t, "some html", body)
+	_ = os.Remove(testHTMLFile)
 }
 
 func TestRest_GetStarted(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
 
+	getStartedHTML := os.TempDir() + "/getstarted.html"
 	err := ioutil.WriteFile(getStartedHTML, []byte("some html blah"), 0700)
 	assert.NoError(t, err)
 
@@ -293,11 +297,17 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 	log.Setup(log.CallerFile, log.CallerFunc, log.Msec, log.LevelBraces)
 
 	tmp := os.TempDir()
-	testDb := fmt.Sprintf("/%s/test-remark-%d.db", tmp, rand.Int31())
-	os.Remove(testDb)
-	os.Remove(testHTML)
-	os.RemoveAll(tmp + "/ava-remark42")
-	os.RemoveAll(tmp + "/pics-remark42")
+	var testDb string
+	// pick a file name which is not in use for sure
+	for i := 0; i < 10; i++ {
+		testDb = fmt.Sprintf("/%s/test-remark-%d.db", tmp, rand.Int31())
+		_, err := os.Stat(testDb)
+		if err != nil {
+			break
+		}
+	}
+	_ = os.RemoveAll(tmp + "/ava-remark42")
+	_ = os.RemoveAll(tmp + "/pics-remark42")
 
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDb, SiteID: "remark42"})
 	require.NoError(t, err)
@@ -359,18 +369,14 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 	}
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = -5, -10
 
-	err = ioutil.WriteFile(testHTML, []byte("some html"), 0700)
-	assert.NoError(t, err)
-
 	ts = httptest.NewServer(srv.routes())
 
 	teardown = func() {
 		ts.Close()
 		require.NoError(t, srv.DataService.Close())
-		os.Remove(testDb)
-		os.Remove(testHTML)
-		os.RemoveAll(tmp + "/ava-remark42")
-		os.RemoveAll(tmp + "/pics-remark42")
+		_ = os.Remove(testDb)
+		_ = os.RemoveAll(tmp + "/ava-remark42")
+		_ = os.RemoveAll(tmp + "/pics-remark42")
 	}
 
 	return ts, srv, teardown

@@ -206,5 +206,8 @@ func prep(t *testing.T) (*service.DataStore, func()) {
 	_, err = b.Create(comment)
 	assert.NoError(t, err)
 
-	return b, func() { os.Remove(testDb) }
+	return b, func() {
+		require.NoError(t, b.Close())
+		_ = os.Remove(testDb)
+	}
 }
