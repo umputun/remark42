@@ -195,7 +195,11 @@ func (p Image) downloadImage(ctx context.Context, imgURL string) (io.ReadCloser,
 		return nil, errors.Errorf("got unsuccessful response status %d while fetching %s", resp.StatusCode, imgURL)
 	}
 
-	return resp.Body, nil
+	imgData, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.Errorf("unable to read image body")
+	}
+	return ioutil.NopCloser(bytes.NewBuffer(imgData)), nil
 }
 
 func sha1Str(s string) string {
