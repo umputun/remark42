@@ -833,7 +833,7 @@ func TestRest_LastCommentsStreamSince(t *testing.T) {
 	go func() {
 		defer close(done)
 		for i := 1; i < 10; i++ {
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(300 * time.Millisecond)
 			postComment(t, ts.URL)
 		}
 	}()
@@ -852,7 +852,7 @@ func TestRest_LastCommentsStreamSince(t *testing.T) {
 	assert.Equal(t, "text/event-stream", r.Header.Get("content-type"))
 
 	recs := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
-	require.Equal(t, 10*3, len(recs), "10 events, includes first record")
+	require.Equal(t, 10*3, len(recs), "should be 10 events, including first record:\n", recs)
 }
 
 func postComment(t *testing.T, url string) {
