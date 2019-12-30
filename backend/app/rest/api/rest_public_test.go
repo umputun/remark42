@@ -650,11 +650,10 @@ func TestRest_InfoStreamCancel(t *testing.T) {
 	require.NoError(t, err)
 	defer r.Body.Close()
 	<-ctx.Done()
+	<-done
 	body, err := ioutil.ReadAll(r.Body)
 	require.EqualError(t, err, "context deadline exceeded")
 	assert.Equal(t, 200, r.StatusCode)
-
-	<-done
 
 	recs := strings.Count(string(body), "data:")
 	require.Equal(t, 1, recs, "should have 1 event:\n", string(body))
@@ -723,11 +722,11 @@ func TestRest_LastCommentsStream(t *testing.T) {
 	r, err := client.Do(req)
 	require.NoError(t, err)
 	defer r.Body.Close()
+	<-done
 	body, err := ioutil.ReadAll(r.Body)
 	require.NoError(t, err)
 	assert.Equal(t, 200, r.StatusCode)
 
-	<-done
 	assert.Equal(t, "text/event-stream", r.Header.Get("content-type"))
 	assert.Equal(t, "keep-alive", r.Header.Get("connection"))
 
@@ -779,12 +778,11 @@ func TestRest_LastCommentsStreamCancel(t *testing.T) {
 	req = req.WithContext(ctx)
 	r, err := client.Do(req)
 	require.NoError(t, err)
+	<-done
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
 	require.EqualError(t, err, "context deadline exceeded")
 	assert.Equal(t, 200, r.StatusCode)
-
-	<-done
 
 	recs := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
 	assert.True(t, len(recs) < 30, "less 10 events")
