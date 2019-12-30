@@ -113,7 +113,7 @@ func TestImage_Routes_CachingImage(t *testing.T) {
 	encodedImgURL := base64.URLEncoding.EncodeToString([]byte(imgURL))
 
 	imageStore.On("Load", mock.Anything).Once().Return(nil, int64(0), nil)
-	imageStore.On("SaveWithID", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) { ioutil.ReadAll(args.Get(1).(io.Reader)) }).Return("", nil)
+	imageStore.On("SaveWithID", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) { _, _ = ioutil.ReadAll(args.Get(1).(io.Reader)) }).Return("", nil)
 	imageStore.On("Commit", mock.Anything).Once().Return(nil)
 
 	resp, err := http.Get(ts.URL + "/?src=" + encodedImgURL)

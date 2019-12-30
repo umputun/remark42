@@ -107,10 +107,8 @@ func (p Image) Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if p.CacheExternal {
-		imgReader, _, err = p.ImageService.Load(imgID)
-		if err != nil {
-			// Image hasn't been cached yet
-		}
+		// ignorring return error because it means that image hasn't been just cached yet
+		imgReader, _, _ = p.ImageService.Load(imgID)
 	}
 	if imgReader == nil {
 		imgReader, err = p.downloadImage(context.Background(), imgURL)
@@ -174,7 +172,8 @@ func (p Image) downloadImage(ctx context.Context, imgURL string) (io.ReadCloser,
 		timeout = p.Timeout
 	}
 
-	ctx, _ = context.WithTimeout(ctx, timeout)
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
 
 	client := http.Client{Timeout: 30 * time.Second}
 	var resp *http.Response
