@@ -557,10 +557,9 @@ func TestRest_InfoStream(t *testing.T) {
 
 	postComment(t, ts.URL)
 
-	wg := sync.WaitGroup{}
-	wg.Add(1)
+	done := make(chan struct{})
 	go func() {
-		defer wg.Done()
+		defer close(done)
 		for i := 0; i < 10; i++ {
 			time.Sleep(10 * time.Millisecond)
 			postComment(t, ts.URL)
@@ -569,7 +568,7 @@ func TestRest_InfoStream(t *testing.T) {
 
 	body, code := get(t, ts.URL+"/api/v1/stream/info?site=remark42&url=https://radio-t.com/blah1")
 	assert.Equal(t, 200, code)
-	wg.Wait()
+	<-done
 
 	recs := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
 	require.Equal(t, 10*3, len(recs), "10 records. each 2 lines +1 emty line")
@@ -632,10 +631,9 @@ func TestRest_InfoStreamCancel(t *testing.T) {
 
 	postComment(t, ts.URL)
 
-	wg := sync.WaitGroup{}
-	wg.Add(1)
+	done := make(chan struct{})
 	go func() {
-		defer wg.Done()
+		defer close(done)
 		for i := 0; i < 5; i++ {
 			time.Sleep(300 * time.Millisecond)
 			postComment(t, ts.URL)
@@ -656,7 +654,7 @@ func TestRest_InfoStreamCancel(t *testing.T) {
 	require.EqualError(t, err, "context deadline exceeded")
 	assert.Equal(t, 200, r.StatusCode)
 
-	wg.Wait()
+	<-done
 
 	recs := strings.Count(string(body), "data:")
 	require.Equal(t, 1, recs, "should have 1 event:\n", string(body))
@@ -673,10 +671,9 @@ func TestRest_InfoStreamSince(t *testing.T) {
 
 	postComment(t, ts.URL)
 
-	wg := sync.WaitGroup{}
-	wg.Add(1)
+	done := make(chan struct{})
 	go func() {
-		defer wg.Done()
+		defer close(done)
 		for i := 0; i < 10; i++ {
 			time.Sleep(15 * time.Millisecond)
 			postComment(t, ts.URL)
@@ -685,7 +682,7 @@ func TestRest_InfoStreamSince(t *testing.T) {
 
 	body, code := get(t, ts.URL+"/api/v1/stream/info?site=remark42&url=https://radio-t.com/blah1&since=12345678")
 	assert.Equal(t, 200, code)
-	wg.Wait()
+	<-done
 	recs := strings.Split(strings.TrimSuffix(body, "\n"), "\n")
 	require.Equal(t, 11*3, len(recs), "include first record, total 11 records. each 2 lines +1 empty line")
 }
@@ -711,10 +708,9 @@ func TestRest_LastCommentsStream(t *testing.T) {
 	postComment(t, ts.URL)
 
 	defer teardown()
-	wg := sync.WaitGroup{}
-	wg.Add(1)
+	done := make(chan struct{})
 	go func() {
-		defer wg.Done()
+		defer close(done)
 		for i := 1; i < 10; i++ {
 			time.Sleep(100 * time.Millisecond)
 			postComment(t, ts.URL)
@@ -731,7 +727,7 @@ func TestRest_LastCommentsStream(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 200, r.StatusCode)
 
-	wg.Wait()
+	<-done
 	assert.Equal(t, "text/event-stream", r.Header.Get("content-type"))
 	assert.Equal(t, "keep-alive", r.Header.Get("connection"))
 
@@ -766,10 +762,9 @@ func TestRest_LastCommentsStreamCancel(t *testing.T) {
 	postComment(t, ts.URL)
 
 	defer teardown()
-	wg := sync.WaitGroup{}
-	wg.Add(1)
+	done := make(chan struct{})
 	go func() {
-		defer wg.Done()
+		defer close(done)
 		for i := 1; i < 10; i++ {
 			time.Sleep(100 * time.Millisecond)
 			postComment(t, ts.URL)
@@ -789,7 +784,7 @@ func TestRest_LastCommentsStreamCancel(t *testing.T) {
 	require.EqualError(t, err, "context deadline exceeded")
 	assert.Equal(t, 200, r.StatusCode)
 
-	wg.Wait()
+	<-done
 
 	recs := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
 	assert.True(t, len(recs) < 30, "less 10 events")
@@ -834,10 +829,9 @@ func TestRest_LastCommentsStreamSince(t *testing.T) {
 	postComment(t, ts.URL)
 
 	defer teardown()
-	wg := sync.WaitGroup{}
-	wg.Add(1)
+	done := make(chan struct{})
 	go func() {
-		defer wg.Done()
+		defer close(done)
 		for i := 1; i < 10; i++ {
 			time.Sleep(100 * time.Millisecond)
 			postComment(t, ts.URL)
@@ -854,7 +848,7 @@ func TestRest_LastCommentsStreamSince(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 200, r.StatusCode)
 
-	wg.Wait()
+	<-done
 	assert.Equal(t, "text/event-stream", r.Header.Get("content-type"))
 
 	recs := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
