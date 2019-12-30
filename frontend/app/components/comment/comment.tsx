@@ -17,7 +17,8 @@ import { isUserAnonymous } from '@app/utils/isUserAnonymous';
 
 import { Input } from '@app/components/input';
 import { AvatarIcon } from '@app/components/avatar-icon';
-import Countdown from '../countdown';
+import { UIButton } from '@app/components/ui-button';
+import Countdown from '@app/components/countdown';
 import { boundActions } from './connected-comment';
 import { getPreview, uploadImage } from '@app/common/api';
 import postMessage from '@app/utils/postMessage';
@@ -388,33 +389,33 @@ export class Comment extends Component<Props, State> {
         this.state.isCopied ? (
           <span className="comment__control comment__control_view_inactive">Copied!</span>
         ) : (
-          <span {...getHandleClickProps(this.copyComment)} className="comment__control">
+          <UIButton kind="link" {...getHandleClickProps(this.copyComment)} mix="comment__control">
             Copy
-          </span>
+          </UIButton>
         )
       );
 
       controls.push(
-        <span {...getHandleClickProps(this.togglePin)} className="comment__control">
+        <UIButton kind="link" {...getHandleClickProps(this.togglePin)} mix="comment__control">
           {this.props.data.pin ? 'Unpin' : 'Pin'}
-        </span>
+        </UIButton>
       );
     }
 
     if (!isCurrentUser) {
       controls.push(
-        <span {...getHandleClickProps(this.hideUser)} className="comment__control">
+        <UIButton kind="link" {...getHandleClickProps(this.hideUser)} mix="comment__control">
           Hide
-        </span>
+        </UIButton>
       );
     }
 
     if (isAdmin) {
       if (this.props.isUserBanned) {
         controls.push(
-          <span {...getHandleClickProps(this.onUnblockUserClick)} className="comment__control">
+          <UIButton kind="link" {...getHandleClickProps(this.onUnblockUserClick)} mix="comment__control">
             Unblock
-          </span>
+          </UIButton>
         );
       }
 
@@ -437,9 +438,9 @@ export class Comment extends Component<Props, State> {
 
       if (!this.props.data.delete) {
         controls.push(
-          <span {...getHandleClickProps(this.deleteComment)} className="comment__control">
+          <UIButton kind="link" {...getHandleClickProps(this.deleteComment)} mix="comment__control">
             Delete
-          </span>
+          </UIButton>
         );
       }
     }
@@ -678,9 +679,9 @@ export class Comment extends Component<Props, State> {
           {(!props.collapsed || props.view === 'pinned') && (
             <div className="comment__actions">
               {!props.data.delete && !props.isCommentsDisabled && !props.disabled && !isGuest && props.view === 'main' && (
-                <span {...getHandleClickProps(this.toggleReplying)} className="comment__action">
+                <UIButton kind="link" {...getHandleClickProps(this.toggleReplying)} mix="comment__action">
                   {isReplying ? 'Cancel' : 'Reply'}
-                </span>
+                </UIButton>
               )}
               {!props.data.delete &&
                 !props.disabled &&
@@ -688,19 +689,21 @@ export class Comment extends Component<Props, State> {
                 isCurrentUser &&
                 (editable || isEditing) &&
                 props.view === 'main' && [
-                  <span
+                  <UIButton
+                    kind="link"
                     {...getHandleClickProps(this.toggleEditing)}
-                    className="comment__action comment__action_type_edit"
+                    mix={['comment__action', 'comment__action_type_edit']}
                   >
                     {isEditing ? 'Cancel' : 'Edit'}
-                  </span>,
+                  </UIButton>,
                   !isAdmin && (
-                    <span
+                    <UIButton
+                      kind="link"
                       {...getHandleClickProps(this.deleteComment)}
-                      className="comment__action comment__action_type_delete"
+                      mix={['comment__action', 'comment__action_type_delete']}
                     >
                       Delete
-                    </span>
+                    </UIButton>
                   ),
                   state.editDeadline && (
                     <Countdown

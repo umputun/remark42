@@ -1,13 +1,7 @@
 .comment__action {
   font-size: 14px;
   vertical-align: middle;
-  cursor: pointer;
-  user-select: none;
-  color: #259c9a;
-
-  &:hover {
-    color: #31c7c5;
-  }
+  font-weight: normal;
 
   + .comment__action {
     margin-left: 8px;

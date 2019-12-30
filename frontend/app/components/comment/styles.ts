@@ -4,8 +4,6 @@ import './comment.scss';
 
 import './__action/comment__action.scss';
 import './__action/_type/_collapse/comment__action_type_collapse.scss';
-import './__action/_type/_edit/comment__action_type_edit.scss';
-import './__action/_type/_delete/comment__action_type_delete.scss';
 
 import './__edit-timer/comment__edit-timer.scss';
 
