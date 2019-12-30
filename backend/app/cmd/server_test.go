@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/rand"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -449,6 +450,32 @@ func TestServer_loadEmailTemplate(t *testing.T) {
 	cmd.Auth.Email.MsgTemplate = "bad-file"
 	r = cmd.loadEmailTemplate()
 	assert.Contains(t, r, "Remark42</h1>")
+}
+
+func chooseOpenRandomPort(start, random int) (port int) {
+	for i := 0; i < 10; i++ {
+		port = start + int(rand.Int31n(int32(random)))
+		conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), time.Millisecond*10)
+		if err != nil {
+			break
+		}
+		if conn != nil {
+			_ = conn.Close()
+		}
+	}
+	return port
+}
+
+func waitForHTTPServerStart(port int) {
+	// wait for up to 3 seconds for server to start before returning it
+	client := http.Client{Timeout: time.Second}
+	for i := 0; i < 300; i++ {
+		time.Sleep(time.Millisecond * 10)
+		if resp, err := client.Get(fmt.Sprintf("http://localhost:%d", port)); err == nil {
+			_ = resp.Body.Close()
+			return
+		}
+	}
 }
 
 func prepServerApp(t *testing.T, duration time.Duration, fn func(o ServerCommand) ServerCommand) (*serverApp, context.Context) {
