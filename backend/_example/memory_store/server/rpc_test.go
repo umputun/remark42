@@ -412,9 +412,11 @@ func prepTestStore(t *testing.T) (s *RPC, port int, teardown func()) {
 	}()
 
 	// wait for up to 3 seconds for server to start before returning it
+	client := http.Client{Timeout: time.Second}
 	for i := 0; i < 300; i++ {
 		time.Sleep(time.Millisecond * 10)
-		if _, err := http.Get(fmt.Sprintf("http://localhost:%d", port)); err == nil {
+		if resp, err := client.Get(fmt.Sprintf("http://localhost:%d", port)); err == nil {
+			_ = resp.Body.Close()
 			break
 		}
 	}
