@@ -25,7 +25,7 @@ import (
 )
 
 func TestServerApp(t *testing.T) {
-	port := chooseOpenRandomPort(40000, 10000)
+	port := chooseRandomUnusedPort()
 	app, ctx := prepServerApp(t, 1500*time.Millisecond, func(o ServerCommand) ServerCommand {
 		o.Port = port
 		return o
@@ -64,7 +64,7 @@ func TestServerApp(t *testing.T) {
 }
 
 func TestServerApp_DevMode(t *testing.T) {
-	port := chooseOpenRandomPort(40000, 10000)
+	port := chooseRandomUnusedPort()
 	app, ctx := prepServerApp(t, 500*time.Millisecond, func(o ServerCommand) ServerCommand {
 		o.Port = port
 		o.AdminPasswd = "password"
@@ -90,7 +90,7 @@ func TestServerApp_DevMode(t *testing.T) {
 }
 
 func TestServerApp_AnonMode(t *testing.T) {
-	port := chooseOpenRandomPort(40000, 10000)
+	port := chooseRandomUnusedPort()
 	app, ctx := prepServerApp(t, 1000*time.Millisecond, func(o ServerCommand) ServerCommand {
 		o.Port = port
 		o.Auth.Anonymous = true
@@ -139,8 +139,8 @@ func TestServerApp_WithSSL(t *testing.T) {
 
 	// prepare options
 	p := flags.NewParser(&opts, flags.Default)
-	port := chooseOpenRandomPort(40000, 10000)
-	sslPort := chooseOpenRandomPort(40000, 10000)
+	port := chooseRandomUnusedPort()
+	sslPort := chooseRandomUnusedPort()
 	_, err := p.ParseArgs([]string{"--admin-passwd=password", "--port=" + strconv.Itoa(port), "--store.bolt.path=/tmp/xyz", "--backup=/tmp",
 		"--avatar.type=bolt", "--avatar.bolt.file=/tmp/ava-test.db", "--notify.type=none",
 		"--ssl.type=static", "--ssl.cert=testdata/cert.pem", "--ssl.key=testdata/key.pem",
@@ -198,7 +198,7 @@ func TestServerApp_WithRemote(t *testing.T) {
 
 	// prepare options
 	p := flags.NewParser(&opts, flags.Default)
-	port := chooseOpenRandomPort(40000, 10000)
+	port := chooseRandomUnusedPort()
 	_, err := p.ParseArgs([]string{"--admin-passwd=password", "--cache.type=none",
 		"--store.type=rpc", "--store.rpc.api=http://127.0.0.1",
 		"--port=" + strconv.Itoa(port), "--admin.type=rpc", "--admin.rpc.api=http://127.0.0.1", "--avatar.fs.path=/tmp"})
@@ -278,7 +278,7 @@ func TestServerApp_Failed(t *testing.T) {
 
 func TestServerApp_Shutdown(t *testing.T) {
 	app, ctx := prepServerApp(t, 500*time.Millisecond, func(o ServerCommand) ServerCommand {
-		o.Port = chooseOpenRandomPort(40000, 10000)
+		o.Port = chooseRandomUnusedPort()
 		return o
 	})
 	st := time.Now()
@@ -301,7 +301,7 @@ func TestServerApp_MainSignal(t *testing.T) {
 	s.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
 
 	p := flags.NewParser(&s, flags.Default)
-	port := chooseOpenRandomPort(40000, 10000)
+	port := chooseRandomUnusedPort()
 	args := []string{"test", "--store.bolt.path=/tmp/xyz", "--backup=/tmp", "--avatar.type=bolt",
 		"--avatar.bolt.file=/tmp/ava-test.db", "--port=" + strconv.Itoa(port), "--notify.type=none", "--image.fs.path=/tmp"}
 	defer os.Remove("/tmp/ava-test.db")
@@ -355,7 +355,7 @@ func Test_ACMEEmail(t *testing.T) {
 }
 
 func TestServerAuthHooks(t *testing.T) {
-	port := chooseOpenRandomPort(40000, 10000)
+	port := chooseRandomUnusedPort()
 	app, ctx := prepServerApp(t, 5*time.Second, func(o ServerCommand) ServerCommand {
 		o.Port = port
 		return o
@@ -457,15 +457,12 @@ func TestServer_loadEmailTemplate(t *testing.T) {
 	assert.Contains(t, r, "Remark42</h1>")
 }
 
-func chooseOpenRandomPort(start, random int) (port int) {
+func chooseRandomUnusedPort() (port int) {
 	for i := 0; i < 10; i++ {
-		port = start + int(rand.Int31n(int32(random)))
-		conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), time.Millisecond*10)
-		if err != nil {
+		port = 40000 + int(rand.Int31n(10000))
+		if ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port)); err == nil {
+			_ = ln.Close()
 			break
-		}
-		if conn != nil {
-			_ = conn.Close()
 		}
 	}
 	return port

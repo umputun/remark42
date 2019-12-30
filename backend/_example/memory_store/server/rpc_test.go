@@ -379,15 +379,12 @@ func TestRPC_admEventHndl(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func chooseOpenRandomPort(start, random int) (port int) {
+func chooseRandomUnusedPort() (port int) {
 	for i := 0; i < 10; i++ {
-		port = start + int(rand.Int31n(int32(random)))
-		conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), time.Millisecond*10)
-		if err != nil {
+		port = 40000 + int(rand.Int31n(10000))
+		if ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port)); err == nil {
+			_ = ln.Close()
 			break
-		}
-		if conn != nil {
-			_ = conn.Close()
 		}
 	}
 	return port
@@ -422,7 +419,7 @@ func prepTestStore(t *testing.T) (s *RPC, port int, teardown func()) {
 	admRecDisabled.Enabled = false
 	adm.Set("test-site-disabled", admRecDisabled)
 
-	port = chooseOpenRandomPort(40000, 10000)
+	port = chooseRandomUnusedPort()
 	go func() {
 		log.Printf("%v", s.Run(port))
 	}()

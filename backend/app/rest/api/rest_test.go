@@ -125,7 +125,7 @@ func TestRest_RunStaticSSLMode(t *testing.T) {
 		RemarkURL: "https://localhost:8443",
 	}
 
-	port := chooseOpenRandomPort(40000, 10000)
+	port := chooseRandomUnusedPort()
 	go func() {
 		srv.Run(port)
 	}()
@@ -172,7 +172,7 @@ func TestRest_RunAutocertModeHTTPOnly(t *testing.T) {
 		RemarkURL: "https://localhost:8443",
 	}
 
-	port := chooseOpenRandomPort(40000, 10000)
+	port := chooseRandomUnusedPort()
 	go func() {
 		// can't check https server locally, just only http server
 		srv.Run(port)
@@ -469,15 +469,12 @@ func requireAdminOnly(t *testing.T, req *http.Request) {
 	assert.Equal(t, 403, resp.StatusCode)
 }
 
-func chooseOpenRandomPort(start, random int) (port int) {
+func chooseRandomUnusedPort() (port int) {
 	for i := 0; i < 10; i++ {
-		port = start + int(rand.Int31n(int32(random)))
-		conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), time.Millisecond*10)
-		if err != nil {
+		port = 40000 + int(rand.Int31n(10000))
+		if ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port)); err == nil {
+			_ = ln.Close()
 			break
-		}
-		if conn != nil {
-			_ = conn.Close()
 		}
 	}
 	return port
