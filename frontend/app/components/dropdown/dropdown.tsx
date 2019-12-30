@@ -2,9 +2,9 @@
 import { createElement, Component, createRef } from 'preact';
 import b from 'bem-react-helper';
 
-import { Button } from '@app/components/button';
 import { Theme } from '@app/common/types';
 import { sleep } from '@app/utils/sleep';
+import { UIButton } from '@app/components/ui-button';
 
 interface Props {
   title: string;
@@ -25,6 +25,9 @@ interface State {
 
 export default class Dropdown extends Component<Props, State> {
   rootNode = createRef<HTMLDivElement>();
+  storedDocumentHeight: string | null = null;
+  storedDocumentHeightSet: boolean = false;
+  checkInterval: number | undefined = undefined;
 
   constructor(props: Props) {
     super(props);
@@ -40,7 +43,7 @@ export default class Dropdown extends Component<Props, State> {
     this.__onClose = this.__onClose.bind(this);
   }
 
-  onTitleClick() {
+  onTitleClick = () => {
     const isActive = !this.state.isActive;
     const contentTranslateX = isActive ? this.state.contentTranslateX : 0;
     this.setState(
@@ -63,11 +66,7 @@ export default class Dropdown extends Component<Props, State> {
         }
       }
     );
-  }
-
-  storedDocumentHeight: string | null = null;
-  storedDocumentHeightSet: boolean = false;
-  checkInterval: number | undefined = undefined;
+  };
 
   __onOpen() {
     const isChildOfDropDown = (() => {
@@ -90,6 +89,7 @@ export default class Dropdown extends Component<Props, State> {
       if (!this.rootNode.current || !this.state.isActive) return;
       const windowHeight = window.innerHeight;
       const dcBottom = (() => {
+        // TODO: use ref
         const dc = Array.from(this.rootNode.current.children).find(c => c.classList.contains('dropdown__content'));
         if (!dc) return 0;
         const rect = dc.getBoundingClientRect();
@@ -112,6 +112,7 @@ export default class Dropdown extends Component<Props, State> {
 
   async __adjustDropDownContent() {
     if (!this.rootNode.current) return;
+    // TODO: use ref
     const dc = this.rootNode.current.querySelector<HTMLDivElement>('.dropdown__content');
     if (!dc) return;
     await sleep(10);
@@ -182,17 +183,16 @@ export default class Dropdown extends Component<Props, State> {
 
     return (
       <div className={b('dropdown', { mix }, { theme, active: isActive })} ref={this.rootNode}>
-        <Button
+        <UIButton
           aria-haspopup="listbox"
           aria-expanded={isActive && 'true'}
-          mix="dropdown__title"
-          type="button"
-          onClick={() => this.onTitleClick()}
-          theme="light"
-          className={titleClass}
+          onClick={this.onTitleClick}
+          theme={theme || 'light'}
+          mix={['dropdown__title', titleClass]}
+          kind="link"
         >
           {title}
-        </Button>
+        </UIButton>
 
         <div
           className="dropdown__content"
