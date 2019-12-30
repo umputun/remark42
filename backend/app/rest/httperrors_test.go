@@ -27,11 +27,11 @@ func TestSendErrorJSON(t *testing.T) {
 	defer ts.Close()
 
 	resp, err := http.Get(ts.URL + "/error")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 500, resp.StatusCode)
 
 	assert.Equal(t, `{"code":123,"details":"error details 123456","error":"error 500"}`+"\n", string(body))
@@ -51,11 +51,11 @@ func TestSendErrorHTML(t *testing.T) {
 	defer ts.Close()
 
 	resp, err := http.Get(ts.URL + "/error")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 500, resp.StatusCode)
 
 	assert.NotContains(t, string(body), `987`, "user html should not contain internal error code")
@@ -66,7 +66,7 @@ func TestSendErrorHTML(t *testing.T) {
 func TestErrorDetailsMsg(t *testing.T) {
 	callerFn := func() {
 		req, err := http.NewRequest("GET", "https://example.com/test?k1=v1&k2=v2", nil)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		req.RemoteAddr = "1.2.3.4"
 		msg := errDetailsMsg(req, 500, errors.New("error 500"), "error details 123456", 123)
 		assert.Contains(t, msg, "error details 123456 - error 500 - 500 (123) - https://example.com/test?k1=v1&k2=v2 - [app/rest/httperrors_test.go:")
@@ -82,7 +82,7 @@ func TestErrorDetailsMsgWithUser(t *testing.T) {
 		require.NoError(t, err)
 		req.RemoteAddr = "127.0.0.1:1234"
 		req = SetUserInfo(req, store.User{Name: "test", ID: "id"})
-		require.Nil(t, err)
+		require.NoError(t, err)
 		msg := errDetailsMsg(req, 500, errors.New("error 500"), "error details 123456", 34567)
 		assert.Contains(t, msg, "error details 123456 - error 500 - 500 (34567) - test/id - https://example.com/test?k1=v1&k2=v2 - [app/rest/httperrors_test.go:")
 		// error line in the middle of the message is not checked

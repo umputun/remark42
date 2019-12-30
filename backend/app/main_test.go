@@ -32,8 +32,8 @@ func Test_Main(t *testing.T) {
 	done := make(chan struct{})
 	go func() {
 		<-done
-		e := syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
-		require.Nil(t, e)
+		err := syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
+		require.NoError(t, err)
 	}()
 
 	wg := sync.WaitGroup{}

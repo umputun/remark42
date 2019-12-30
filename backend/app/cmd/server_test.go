@@ -418,12 +418,12 @@ func TestServerAuthHooks(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "user without aud claim rejected, \n"+tkNoAud+"\n"+string(body))
 
 	// block user dev as admin
-	req, e := http.NewRequest(http.MethodPut,
+	req, err = http.NewRequest(http.MethodPut,
 		fmt.Sprintf("http://localhost:%d/api/v1/admin/user/dev?site=remark&block=1&ttl=10d", port), nil)
-	assert.Nil(t, e)
+	assert.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
-	resp, e = client.Do(req)
-	require.Nil(t, e)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "user dev blocked")
 	b, err := ioutil.ReadAll(resp.Body)

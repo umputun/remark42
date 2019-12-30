@@ -663,13 +663,13 @@ func TestService_ValidateComment(t *testing.T) {
 	}
 
 	for n, tt := range tbl {
-		e := b.ValidateComment(&tt.inp)
+		err := b.ValidateComment(&tt.inp)
 		if tt.err == nil {
-			assert.NoError(t, e, "check #%d", n)
+			assert.NoError(t, err, "check #%d", n)
 			continue
 		}
-		require.NotNil(t, e)
-		assert.EqualError(t, tt.err, e.Error(), "check #%d", n)
+		require.Error(t, err)
+		assert.EqualError(t, tt.err, err.Error(), "check #%d", n)
 	}
 }
 

@@ -25,13 +25,13 @@ func TestBackup_Execute(t *testing.T) {
 	cmd.SetCommon(CommonOpts{RemarkURL: ts.URL, SharedSecret: "123456"})
 	p := flags.NewParser(&cmd, flags.Default)
 	_, err := p.ParseArgs([]string{"--site=remark", "--path=/tmp", "--file={{.SITE}}-test.export", "--admin-passwd=secret"})
-	require.Nil(t, err)
+	require.NoError(t, err)
 	err = cmd.Execute(nil)
 	assert.NoError(t, err)
 	defer os.Remove("/tmp/remark-test.export")
 
 	data, err := ioutil.ReadFile("/tmp/remark-test.export")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "blah\nblah2\n12345678\n", string(data))
 }
 
@@ -49,7 +49,7 @@ func TestBackup_ExecuteFailedStatus(t *testing.T) {
 
 	p := flags.NewParser(&cmd, flags.Default)
 	_, err := p.ParseArgs([]string{"--site=remark", "--path=/tmp", "--file={{.SITE}}-test.export", "--admin-passwd=secret"})
-	require.Nil(t, err)
+	require.NoError(t, err)
 	err = cmd.Execute(nil)
 	assert.EqualError(t, err, `error response "400 Bad Request", some error`)
 }
@@ -68,7 +68,7 @@ func TestBackup_ExecuteFailedWrite(t *testing.T) {
 	p := flags.NewParser(&cmd, flags.Default)
 	_, err := p.ParseArgs([]string{"--site=remark", "--path=/tmp",
 		"--file=/tmp/no-such-dir/{{.SITE}}-test.export", "--admin-passwd=secret"})
-	require.Nil(t, err)
+	require.NoError(t, err)
 	err = cmd.Execute(nil)
 	assert.EqualError(t, err, `can't create backup file /tmp/no-such-dir/remark-test.export: open /tmp/no-such-dir/remark-test.export: no such file or directory`)
 }

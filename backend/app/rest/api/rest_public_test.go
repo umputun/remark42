@@ -13,7 +13,6 @@ import (
 	"time"
 
 	cache "github.com/go-pkgz/lcw"
-	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -640,7 +639,6 @@ func TestRest_InfoStreamCancel(t *testing.T) {
 		for i := 0; i < 5; i++ {
 			time.Sleep(200 * time.Millisecond)
 			postComment(t, ts.URL)
-			log.Printf("write #%d", i)
 		}
 	}()
 
@@ -863,10 +861,10 @@ func TestRest_LastCommentsStreamSince(t *testing.T) {
 }
 
 func postComment(t *testing.T, url string) {
-	resp, e := post(t, url+"/api/v1/comment",
+	resp, err := post(t, url+"/api/v1/comment",
 		`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`)
-	require.Nil(t, e)
-	b, e := ioutil.ReadAll(resp.Body)
-	require.Nil(t, e)
+	require.NoError(t, err)
+	b, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
 	require.Equal(t, http.StatusCreated, resp.StatusCode, string(b))
 }
