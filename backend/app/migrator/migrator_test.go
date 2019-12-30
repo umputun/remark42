@@ -28,6 +28,7 @@ func TestMigrator_ImportDisqus(t *testing.T) {
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "test"})
 	require.NoError(t, err, "create store")
 	dataStore := &service.DataStore{Engine: b, AdminStore: admin.NewStaticStore("12345", nil, []string{}, "")}
+	defer dataStore.Close()
 	size, err := ImportComments(ImportParams{
 		DataStore: dataStore,
 		InputFile: "/tmp/disqus-test.xml",
@@ -54,6 +55,7 @@ func TestMigrator_ImportWordPress(t *testing.T) {
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "test"})
 	require.NoError(t, err, "create store")
 	dataStore := &service.DataStore{Engine: b, AdminStore: admin.NewStaticStore("12345", nil, []string{}, "")}
+	defer dataStore.Close()
 	size, err := ImportComments(ImportParams{
 		DataStore: dataStore,
 		InputFile: "/tmp/wordpress-test.xml",
@@ -83,6 +85,7 @@ func TestMigrator_ImportNative(t *testing.T) {
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "radio-t"})
 	require.NoError(t, err, "create store")
 	dataStore := &service.DataStore{Engine: b, AdminStore: admin.NewStaticStore("12345", nil, []string{}, "")}
+	defer dataStore.Close()
 
 	size, err := ImportComments(ImportParams{
 		DataStore: dataStore,
@@ -103,6 +106,7 @@ func TestMigrator_ImportFailed(t *testing.T) {
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "test"})
 	require.NoError(t, err, "create store")
 	dataStore := &service.DataStore{Engine: b}
+	defer dataStore.Close()
 	_, err = ImportComments(ImportParams{
 		DataStore: dataStore,
 		InputFile: "/tmp/disqus-test.xml",

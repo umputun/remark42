@@ -22,6 +22,7 @@ func TestWordPress_Import(t *testing.T) {
 	assert.NoError(t, err, "create store")
 
 	dataStore := service.DataStore{Engine: b, AdminStore: admin.NewStaticStore("12345", nil, []string{}, "")}
+	defer dataStore.Close()
 	wp := WordPress{DataStore: &dataStore}
 	size, err := wp.Import(strings.NewReader(xmlTestWP), siteID)
 	assert.NoError(t, err)
