@@ -833,7 +833,7 @@ func TestRest_LastCommentsStreamSince(t *testing.T) {
 	go func() {
 		defer close(done)
 		for i := 1; i < 10; i++ {
-			time.Sleep(300 * time.Millisecond)
+			time.Sleep(50 * time.Millisecond)
 			postComment(t, ts.URL)
 		}
 	}()
@@ -843,12 +843,12 @@ func TestRest_LastCommentsStreamSince(t *testing.T) {
 	require.NoError(t, err)
 	r, err := client.Do(req)
 	require.NoError(t, err)
+	<-done
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
 	require.NoError(t, err)
 	assert.Equal(t, 200, r.StatusCode)
 
-	<-done
 	assert.Equal(t, "text/event-stream", r.Header.Get("content-type"))
 
 	recs := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
