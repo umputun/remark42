@@ -34,7 +34,7 @@ type Image struct {
 }
 
 // Convert img src links to proxied links depends on enabled options
-func (p Image) Convert(commentHTML string, userID string) string {
+func (p Image) Convert(commentHTML string) string {
 	if p.CacheExternal {
 		imgs, err := p.extract(commentHTML, func(img string) bool { return !strings.HasPrefix(img, p.RemarkURL) })
 		if err != nil {

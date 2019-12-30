@@ -54,7 +54,7 @@ func (w *wpTime) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 }
 
 // Convert satisfies formatter.CommentConverter
-func (w *WordPress) Convert(text string, userID string) string {
+func (w *WordPress) Convert(text string) string {
 	return html.UnescapeString(text) // sanitize remains on comment create
 }
 

@@ -176,39 +176,39 @@ func TestImage_RoutesTimedOut(t *testing.T) {
 
 func TestPicture_Convert_ProxyMode(t *testing.T) {
 	img := Image{HTTP2HTTPS: true, RoutePath: "/img"}
-	r := img.Convert(`<img src="http://radio-t.com/img3.png"/> xyz <img src="http://images.pexels.com/67636/img4.jpeg">`, "userID")
+	r := img.Convert(`<img src="http://radio-t.com/img3.png"/> xyz <img src="http://images.pexels.com/67636/img4.jpeg">`)
 	assert.Equal(t, `<img src="/img?src=aHR0cDovL3JhZGlvLXQuY29tL2ltZzMucG5n"/> xyz <img src="/img?src=aHR0cDovL2ltYWdlcy5wZXhlbHMuY29tLzY3NjM2L2ltZzQuanBlZw==">`, r)
 
-	r = img.Convert(`<img src="https://radio-t.com/img3.png"/> xyz <img src="http://images.pexels.com/67636/img4.jpeg">`, "userID")
+	r = img.Convert(`<img src="https://radio-t.com/img3.png"/> xyz <img src="http://images.pexels.com/67636/img4.jpeg">`)
 	assert.Equal(t, `<img src="https://radio-t.com/img3.png"/> xyz <img src="/img?src=aHR0cDovL2ltYWdlcy5wZXhlbHMuY29tLzY3NjM2L2ltZzQuanBlZw==">`, r)
 
 	img = Image{HTTP2HTTPS: true, RoutePath: "/img", RemarkURL: "http://example.com"}
-	r = img.Convert(`<img src="http://radio-t.com/img3.png"/> xyz`, "userID")
+	r = img.Convert(`<img src="http://radio-t.com/img3.png"/> xyz`)
 	assert.Equal(t, `<img src="http://radio-t.com/img3.png"/> xyz`, r, "http:// remark url, no proxy")
 
 	img = Image{HTTP2HTTPS: false, RoutePath: "/img"}
-	r = img.Convert(`<img src="http://radio-t.com/img3.png"/> xyz`, "userID")
+	r = img.Convert(`<img src="http://radio-t.com/img3.png"/> xyz`)
 	assert.Equal(t, `<img src="http://radio-t.com/img3.png"/> xyz`, r, "disabled, no proxy")
 }
 
 func TestPicture_Convert_CachingMode(t *testing.T) {
 	img := Image{CacheExternal: true, RoutePath: "/img", RemarkURL: "https://remark42.com"}
-	r := img.Convert(`<img src="http://radio-t.com/img3.png"/> xyz <img src="http://images.pexels.com/67636/img4.jpeg">`, "userID")
+	r := img.Convert(`<img src="http://radio-t.com/img3.png"/> xyz <img src="http://images.pexels.com/67636/img4.jpeg">`)
 	assert.Equal(t, `<img src="https://remark42.com/img?src=aHR0cDovL3JhZGlvLXQuY29tL2ltZzMucG5n"/> xyz <img src="https://remark42.com/img?src=aHR0cDovL2ltYWdlcy5wZXhlbHMuY29tLzY3NjM2L2ltZzQuanBlZw==">`, r)
 
-	r = img.Convert(`<img src="https://radio-t.com/img3.png"/> xyz <img src="https://images.pexels.com/67636/img4.jpeg">`, "userID")
+	r = img.Convert(`<img src="https://radio-t.com/img3.png"/> xyz <img src="https://images.pexels.com/67636/img4.jpeg">`)
 	assert.Equal(t, `<img src="https://remark42.com/img?src=aHR0cHM6Ly9yYWRpby10LmNvbS9pbWczLnBuZw=="/> xyz <img src="https://remark42.com/img?src=aHR0cHM6Ly9pbWFnZXMucGV4ZWxzLmNvbS82NzYzNi9pbWc0LmpwZWc=">`, r)
 
-	r = img.Convert(`<img src="https://remark42.com/pictures/1.png"/>`, "userID")
+	r = img.Convert(`<img src="https://remark42.com/pictures/1.png"/>`)
 	assert.Equal(t, `<img src="https://remark42.com/pictures/1.png"/>`, r)
 
 	img = Image{CacheExternal: false, RoutePath: "/img", RemarkURL: "https://remark42.com"}
-	r = img.Convert(`<img src="http://radio-t.com/img3.png"/>`, "userID")
+	r = img.Convert(`<img src="http://radio-t.com/img3.png"/>`)
 	assert.Equal(t, `<img src="http://radio-t.com/img3.png"/>`, r)
 
 	// both Caching and Proxy are enabled
 	img = Image{CacheExternal: true, HTTP2HTTPS: true, RoutePath: "/img", RemarkURL: "https://remark42.com"}
-	r = img.Convert(`<img src="http://radio-t.com/img3.png"/> xyz <img src="http://images.pexels.com/67636/img4.jpeg">`, "userID")
+	r = img.Convert(`<img src="http://radio-t.com/img3.png"/> xyz <img src="http://images.pexels.com/67636/img4.jpeg">`)
 	assert.Equal(t, `<img src="https://remark42.com/img?src=aHR0cDovL3JhZGlvLXQuY29tL2ltZzMucG5n"/> xyz <img src="https://remark42.com/img?src=aHR0cDovL2ltYWdlcy5wZXhlbHMuY29tLzY3NjM2L2ltZzQuanBlZw==">`, r)
 }
 

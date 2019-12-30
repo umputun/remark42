@@ -391,9 +391,9 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		RemarkURL:     s.RemarkURL,
 		ImageService:  imageService,
 	}
-	emojiFmt := store.CommentConverterFunc(func(text string, userID string) string { return text })
+	emojiFmt := store.CommentConverterFunc(func(text string) string { return text })
 	if s.EnableEmoji {
-		emojiFmt = func(text string, userID string) string { return emoji.Sprint(text) }
+		emojiFmt = func(text string) string { return emoji.Sprint(text) }
 	}
 	commentFormatter := store.NewCommentFormatter(imgProxy, emojiFmt)
 
