@@ -9,6 +9,8 @@ import { extractErrorMessageFromResponse } from '@app/utils/errorUtils';
 import { getHandleClickProps } from '@app/common/accessibility';
 import { sleep } from '@app/utils/sleep';
 import TextareaAutosize from '@app/components/input/textarea-autosize';
+import { UIInput } from '@app/components/ui-input';
+import { UIButton } from '@app/components/ui-button';
 
 const mapStateToProps = () => ({
   sendEmailVerification: sendEmailVerificationRequest,
@@ -168,34 +170,35 @@ export class EmailLoginForm extends Component<Props, State> {
            */}
           <span
             className="auth-panel-email-login-form__back-button"
-            role="button"
             {...getHandleClickProps(this.goBack)}
             style={{ display: 'none' }}
           >
             {'< Back'}
           </span>
-          <input
-            className="auth-panel-email-login-form__input"
+          <UIInput
+            mix="auth-panel-email-login-form__input"
             ref={this.inputRef}
-            type="text"
             placeholder="Username"
             value={this.state.usernameValue}
             onInput={this.onUsernameChange}
           />
-          <input
-            className="auth-panel-email-login-form__input"
+          <UIInput
+            mix="auth-panel-email-login-form__input"
             type="email"
             placeholder="Email Address"
             value={this.state.addressValue}
             onInput={this.onAddressChange}
           />
-          <input
-            className="auth-panel-email-login-form__submit"
+          <UIButton
+            mix="auth-panel-email-login-form__submit"
+            kind="primary"
+            size="middle"
             type="submit"
-            value="Send Verification"
             title={form1InvalidReason || ''}
             disabled={form1InvalidReason !== null}
-          />
+          >
+            Send Verification
+          </UIButton>
           {this.state.error && <div className="auth-panel-email-login-form__error">{this.state.error}</div>}
         </form>
       );
@@ -204,7 +207,7 @@ export class EmailLoginForm extends Component<Props, State> {
 
     return (
       <form className={className} onSubmit={this.onSubmit}>
-        <span className="auth-panel-email-login-form__back-button" role="button" {...getHandleClickProps(this.goBack)}>
+        <span className="auth-panel-email-login-form__back-button" {...getHandleClickProps(this.goBack)}>
           {'< Back'}
         </span>
         <TextareaAutosize
@@ -217,13 +220,15 @@ export class EmailLoginForm extends Component<Props, State> {
           spellcheck={false}
           autocomplete="off"
         />
-        <input
-          className="auth-panel-email-login-form__submit"
+        <UIButton
+          mix="auth-panel-email-login-form__submit"
           type="submit"
-          value="Confirm"
+          kind="primary"
           title={form2InvalidReason || ''}
           disabled={form2InvalidReason !== null}
-        />
+        >
+          Confirm
+        </UIButton>
         {this.state.error && <div className="auth-panel-email-login-form__error">{this.state.error}</div>}
       </form>
     );
