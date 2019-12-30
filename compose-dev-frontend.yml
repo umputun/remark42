@@ -42,6 +42,5 @@ services:
             - EDIT_TIME=5m # edit window
             - AUTH_ANON=true
             - AUTH_EMAIL_ENABLE=true
-            - SIMPLE_VIEW=true
         volumes:
             - ./var:/srv/var
