@@ -359,7 +359,6 @@ func waitForMigrationCompletion(t *testing.T, ts *httptest.Server) {
 	req, err := http.NewRequest("GET", ts.URL+"/api/v1/admin/wait?site=remark42", nil)
 	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
-	assert.NoError(t, err)
 	resp, err := client.Do(req)
 	require.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
