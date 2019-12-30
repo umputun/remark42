@@ -135,12 +135,12 @@ func TestServerApp_AnonMode(t *testing.T) {
 
 func TestServerApp_WithSSL(t *testing.T) {
 	opts := ServerCommand{}
-	opts.SetCommon(CommonOpts{RemarkURL: "https://localhost:18443", SharedSecret: "123456"})
+	sslPort := chooseRandomUnusedPort()
+	opts.SetCommon(CommonOpts{RemarkURL: fmt.Sprintf("https://localhost:%d", sslPort), SharedSecret: "123456"})
 
 	// prepare options
 	p := flags.NewParser(&opts, flags.Default)
 	port := chooseRandomUnusedPort()
-	sslPort := chooseRandomUnusedPort()
 	_, err := p.ParseArgs([]string{"--admin-passwd=password", "--port=" + strconv.Itoa(port), "--store.bolt.path=/tmp/xyz", "--backup=/tmp",
 		"--avatar.type=bolt", "--avatar.bolt.file=/tmp/ava-test.db", "--notify.type=none",
 		"--ssl.type=static", "--ssl.cert=testdata/cert.pem", "--ssl.key=testdata/key.pem",
@@ -152,8 +152,9 @@ func TestServerApp_WithSSL(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
 	go func() {
-		time.Sleep(1 * time.Second)
+		<-done
 		log.Print("[TEST] terminate app")
 		cancel()
 	}()
@@ -177,7 +178,7 @@ func TestServerApp_WithSSL(t *testing.T) {
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 307, resp.StatusCode)
-	assert.Equal(t, "https://localhost:18443/blah?param=1", resp.Header.Get("Location"))
+	assert.Equal(t, fmt.Sprintf("https://localhost:%d/blah?param=1", sslPort), resp.Header.Get("Location"))
 
 	// check https server
 	resp, err = client.Get(fmt.Sprintf("https://localhost:%d/ping", sslPort))
@@ -188,6 +189,7 @@ func TestServerApp_WithSSL(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "pong", string(body))
 
+	close(done)
 	app.Wait()
 }
 
@@ -211,8 +213,9 @@ func TestServerApp_WithRemote(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
 	go func() {
-		time.Sleep(5 * time.Second)
+		<-done
 		log.Print("[TEST] terminate app")
 		cancel()
 	}()
@@ -228,6 +231,7 @@ func TestServerApp_WithRemote(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "pong", string(body))
 
+	close(done)
 	app.Wait()
 }
 
