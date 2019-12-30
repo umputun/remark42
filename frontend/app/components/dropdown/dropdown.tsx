@@ -106,7 +106,7 @@ export default class Dropdown extends Component<Props, State> {
   __onClose() {
     window.clearInterval(this.checkInterval);
     if (this.storedDocumentHeightSet) {
-      document.body.style.minHeight = this.storedDocumentHeight;
+      document.body.style.minHeight = typeof this.storedDocumentHeight === 'string' ? this.storedDocumentHeight : '';
     }
   }
 
