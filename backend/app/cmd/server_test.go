@@ -17,7 +17,6 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-pkgz/auth/token"
-	log "github.com/go-pkgz/lgr"
 	"github.com/jessevdk/go-flags"
 
 	"github.com/stretchr/testify/assert"
@@ -26,7 +25,7 @@ import (
 
 func TestServerApp(t *testing.T) {
 	port := chooseRandomUnusedPort()
-	app, ctx, done := prepServerApp(t, func(o ServerCommand) ServerCommand {
+	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
 		o.Port = port
 		return o
 	})
@@ -60,13 +59,13 @@ func TestServerApp(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "admin@demo.remark42.com", email, "default admin email")
 
-	close(done)
+	cancel()
 	app.Wait()
 }
 
 func TestServerApp_DevMode(t *testing.T) {
 	port := chooseRandomUnusedPort()
-	app, ctx, done := prepServerApp(t, func(o ServerCommand) ServerCommand {
+	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
 		o.Port = port
 		o.AdminPasswd = "password"
 		o.Auth.Dev = true
@@ -87,13 +86,13 @@ func TestServerApp_DevMode(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "pong", string(body))
 
-	close(done)
+	cancel()
 	app.Wait()
 }
 
 func TestServerApp_AnonMode(t *testing.T) {
 	port := chooseRandomUnusedPort()
-	app, ctx, done := prepServerApp(t, func(o ServerCommand) ServerCommand {
+	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
 		o.Port = port
 		o.Auth.Anonymous = true
 		return o
@@ -132,7 +131,7 @@ func TestServerApp_AnonMode(t *testing.T) {
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 
-	close(done)
+	cancel()
 	app.Wait()
 }
 
@@ -155,12 +154,6 @@ func TestServerApp_WithSSL(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	done := make(chan struct{})
-	go func() {
-		<-done
-		log.Print("[TEST] terminate app")
-		cancel()
-	}()
 	go func() { _ = app.run(ctx) }()
 	waitForHTTPSServerStart(sslPort)
 
@@ -192,7 +185,7 @@ func TestServerApp_WithSSL(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "pong", string(body))
 
-	close(done)
+	cancel()
 	app.Wait()
 }
 
@@ -216,12 +209,6 @@ func TestServerApp_WithRemote(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	done := make(chan struct{})
-	go func() {
-		<-done
-		log.Print("[TEST] terminate app")
-		cancel()
-	}()
 	go func() { _ = app.run(ctx) }()
 	waitForHTTPServerStart(port)
 
@@ -234,7 +221,7 @@ func TestServerApp_WithRemote(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "pong", string(body))
 
-	close(done)
+	cancel()
 	app.Wait()
 }
 
@@ -284,12 +271,12 @@ func TestServerApp_Failed(t *testing.T) {
 }
 
 func TestServerApp_Shutdown(t *testing.T) {
-	app, ctx, done := prepServerApp(t, func(o ServerCommand) ServerCommand {
+	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
 		o.Port = chooseRandomUnusedPort()
 		return o
 	})
 	time.AfterFunc(100*time.Millisecond, func() {
-		close(done)
+		cancel()
 	})
 	st := time.Now()
 	err := app.run(ctx)
@@ -366,7 +353,7 @@ func Test_ACMEEmail(t *testing.T) {
 
 func TestServerAuthHooks(t *testing.T) {
 	port := chooseRandomUnusedPort()
-	app, ctx, done := prepServerApp(t, func(o ServerCommand) ServerCommand {
+	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
 		o.Port = port
 		return o
 	})
@@ -449,7 +436,7 @@ func TestServerAuthHooks(t *testing.T) {
 	assert.True(t, resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusUnauthorized,
 		"blocked user can't post, \n"+tk+"\n"+string(body))
 
-	close(done)
+	cancel()
 	app.Wait()
 }
 
@@ -503,7 +490,7 @@ func waitForHTTPSServerStart(port int) {
 	}
 }
 
-func prepServerApp(t *testing.T, fn func(o ServerCommand) ServerCommand) (*serverApp, context.Context, chan struct{}) {
+func prepServerApp(t *testing.T, fn func(o ServerCommand) ServerCommand) (*serverApp, context.Context, context.CancelFunc) {
 	cmd := ServerCommand{}
 	cmd.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "secret"})
 
@@ -540,12 +527,6 @@ func prepServerApp(t *testing.T, fn func(o ServerCommand) ServerCommand) (*serve
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	done := make(chan struct{})
-	go func() {
-		<-done
-		log.Print("[TEST] terminate app")
-		cancel()
-	}()
 	rand.Seed(time.Now().UnixNano())
-	return app, ctx, done
+	return app, ctx, cancel
 }
