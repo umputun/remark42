@@ -17,7 +17,6 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-pkgz/auth/token"
-	log "github.com/go-pkgz/lgr"
 	"github.com/jessevdk/go-flags"
 
 	"github.com/stretchr/testify/assert"
@@ -26,7 +25,7 @@ import (
 
 func TestServerApp(t *testing.T) {
 	port := chooseRandomUnusedPort()
-	app, ctx := prepServerApp(t, 1500*time.Millisecond, func(o ServerCommand) ServerCommand {
+	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
 		o.Port = port
 		return o
 	})
@@ -60,12 +59,13 @@ func TestServerApp(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "admin@demo.remark42.com", email, "default admin email")
 
+	cancel()
 	app.Wait()
 }
 
 func TestServerApp_DevMode(t *testing.T) {
 	port := chooseRandomUnusedPort()
-	app, ctx := prepServerApp(t, 500*time.Millisecond, func(o ServerCommand) ServerCommand {
+	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
 		o.Port = port
 		o.AdminPasswd = "password"
 		o.Auth.Dev = true
@@ -86,12 +86,13 @@ func TestServerApp_DevMode(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "pong", string(body))
 
+	cancel()
 	app.Wait()
 }
 
 func TestServerApp_AnonMode(t *testing.T) {
 	port := chooseRandomUnusedPort()
-	app, ctx := prepServerApp(t, 1000*time.Millisecond, func(o ServerCommand) ServerCommand {
+	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
 		o.Port = port
 		o.Auth.Anonymous = true
 		return o
@@ -130,6 +131,7 @@ func TestServerApp_AnonMode(t *testing.T) {
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 
+	cancel()
 	app.Wait()
 }
 
@@ -152,12 +154,6 @@ func TestServerApp_WithSSL(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	done := make(chan struct{})
-	go func() {
-		<-done
-		log.Print("[TEST] terminate app")
-		cancel()
-	}()
 	go func() { _ = app.run(ctx) }()
 	waitForHTTPSServerStart(sslPort)
 
@@ -189,7 +185,7 @@ func TestServerApp_WithSSL(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "pong", string(body))
 
-	close(done)
+	cancel()
 	app.Wait()
 }
 
@@ -213,12 +209,6 @@ func TestServerApp_WithRemote(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	done := make(chan struct{})
-	go func() {
-		<-done
-		log.Print("[TEST] terminate app")
-		cancel()
-	}()
 	go func() { _ = app.run(ctx) }()
 	waitForHTTPServerStart(port)
 
@@ -231,7 +221,7 @@ func TestServerApp_WithRemote(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "pong", string(body))
 
-	close(done)
+	cancel()
 	app.Wait()
 }
 
@@ -281,14 +271,17 @@ func TestServerApp_Failed(t *testing.T) {
 }
 
 func TestServerApp_Shutdown(t *testing.T) {
-	app, ctx := prepServerApp(t, 500*time.Millisecond, func(o ServerCommand) ServerCommand {
+	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
 		o.Port = chooseRandomUnusedPort()
 		return o
+	})
+	time.AfterFunc(100*time.Millisecond, func() {
+		cancel()
 	})
 	st := time.Now()
 	err := app.run(ctx)
 	assert.NoError(t, err)
-	assert.True(t, time.Since(st).Seconds() < 1, "should take about 500msec")
+	assert.True(t, time.Since(st).Seconds() < 1, "should take about 100msec")
 	app.Wait()
 }
 
@@ -360,7 +353,7 @@ func Test_ACMEEmail(t *testing.T) {
 
 func TestServerAuthHooks(t *testing.T) {
 	port := chooseRandomUnusedPort()
-	app, ctx := prepServerApp(t, 5*time.Second, func(o ServerCommand) ServerCommand {
+	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
 		o.Port = port
 		return o
 	})
@@ -418,12 +411,12 @@ func TestServerAuthHooks(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "user without aud claim rejected, \n"+tkNoAud+"\n"+string(body))
 
 	// block user dev as admin
-	req, e := http.NewRequest(http.MethodPut,
+	req, err = http.NewRequest(http.MethodPut,
 		fmt.Sprintf("http://localhost:%d/api/v1/admin/user/dev?site=remark&block=1&ttl=10d", port), nil)
-	assert.Nil(t, e)
+	assert.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
-	resp, e = client.Do(req)
-	require.Nil(t, e)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "user dev blocked")
 	b, err := ioutil.ReadAll(resp.Body)
@@ -443,6 +436,7 @@ func TestServerAuthHooks(t *testing.T) {
 	assert.True(t, resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusUnauthorized,
 		"blocked user can't post, \n"+tk+"\n"+string(body))
 
+	cancel()
 	app.Wait()
 }
 
@@ -496,7 +490,7 @@ func waitForHTTPSServerStart(port int) {
 	}
 }
 
-func prepServerApp(t *testing.T, duration time.Duration, fn func(o ServerCommand) ServerCommand) (*serverApp, context.Context) {
+func prepServerApp(t *testing.T, fn func(o ServerCommand) ServerCommand) (*serverApp, context.Context, context.CancelFunc) {
 	cmd := ServerCommand{}
 	cmd.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "secret"})
 
@@ -533,10 +527,6 @@ func prepServerApp(t *testing.T, duration time.Duration, fn func(o ServerCommand
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	time.AfterFunc(duration, func() {
-		log.Print("[TEST] terminate app")
-		cancel()
-	})
 	rand.Seed(time.Now().UnixNano())
-	return app, ctx
+	return app, ctx, cancel
 }

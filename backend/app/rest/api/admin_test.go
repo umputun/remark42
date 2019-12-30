@@ -268,14 +268,14 @@ func TestAdmin_Block(t *testing.T) {
 		if ttl != "" {
 			url = url + "&ttl=" + ttl
 		}
-		req, e := http.NewRequest(http.MethodPut, url, nil)
-		assert.Nil(t, e)
+		req, err := http.NewRequest(http.MethodPut, url, nil)
+		assert.NoError(t, err)
 		requireAdminOnly(t, req)
-		resp, e := sendReq(t, req, adminUmputunToken)
-		require.Nil(t, e)
-		body, e = ioutil.ReadAll(resp.Body)
-		assert.Nil(t, e)
-		require.Nil(t, resp.Body.Close())
+		resp, err := sendReq(t, req, adminUmputunToken)
+		require.NoError(t, err)
+		body, err = ioutil.ReadAll(resp.Body)
+		assert.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
 		return resp.StatusCode, body
 	}
 

@@ -130,10 +130,10 @@ func TestEmailSend_ExitConditions(t *testing.T) {
 	assert.NotNil(t, email, "expecting email returned")
 	// prevent triggering e.autoFlush creation
 	emptyRequest := Request{Comment: store.Comment{ID: "999"}}
-	assert.Nil(t, email.Send(context.Background(), emptyRequest),
+	assert.NoError(t, email.Send(context.Background(), emptyRequest),
 		"Message without parent comment User.Email is not sent and returns nil")
 	requestWithEqualUsersWithEmails := Request{Comment: store.Comment{ID: "999"}, Email: "good_example@example.org"}
-	assert.Nil(t, email.Send(context.Background(), requestWithEqualUsersWithEmails),
+	assert.NoError(t, email.Send(context.Background(), requestWithEqualUsersWithEmails),
 		"Message with parent comment User equals comment User is not sent and returns nil")
 }
 
@@ -179,23 +179,23 @@ func TestEmailSendClientError(t *testing.T) {
 }
 
 func TestEmail_Send(t *testing.T) {
-	e, err := NewEmail(EmailParams{From: "from@example.org"}, SmtpParams{})
+	email, err := NewEmail(EmailParams{From: "from@example.org"}, SmtpParams{})
 	assert.NoError(t, err)
-	assert.NotNil(t, e)
+	assert.NotNil(t, email)
 	fakeSmtp := fakeTestSMTP{}
-	e.smtp = &fakeSmtp
-	e.TokenGenFn = TokenGenFn
-	e.UnsubscribeURL = "https://remark42.com/api/v1/email/unsubscribe"
+	email.smtp = &fakeSmtp
+	email.TokenGenFn = TokenGenFn
+	email.UnsubscribeURL = "https://remark42.com/api/v1/email/unsubscribe"
 	req := Request{
 		Comment: store.Comment{ID: "999", User: store.User{Name: "test_user"}, PostTitle: "test_title"},
 		parent:  store.Comment{ID: "1", User: store.User{Name: "parent_user"}},
 		Email:   "test@example.org"}
-	assert.NoError(t, e.Send(context.TODO(), req))
+	assert.NoError(t, email.Send(context.TODO(), req))
 	assert.Equal(t, "from@example.org", fakeSmtp.readMail())
 	assert.Equal(t, 1, fakeSmtp.readQuitCount())
 	assert.Equal(t, "test@example.org", fakeSmtp.readRcpt())
 	// test buildMessageFromRequest separately for message text
-	res, err := e.buildMessageFromRequest(req)
+	res, err := email.buildMessageFromRequest(req)
 	assert.NoError(t, err)
 	assert.Contains(t, res, `From: from@example.org
 To: test@example.org

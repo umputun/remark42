@@ -30,7 +30,7 @@ func TestMemData_CreateAndFind(t *testing.T) {
 	assert.Equal(t, "user1", res[0].User.ID)
 
 	_, err = m.Create(store.Comment{ID: res[0].ID, Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}})
-	require.NotNil(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "dup key")
 
 	id, err := m.Create(store.Comment{ID: "id-3", Locator: store.Locator{URL: "https://radio-t2.com", SiteID: "radio-t2"}})
@@ -58,7 +58,7 @@ func TestMemData_CreateFailedReadOnly(t *testing.T) {
 	assert.Equal(t, true, v)
 
 	_, err = b.Create(comment)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 	assert.Equal(t, "post https://radio-t.com/ro is read-only", err.Error())
 
 	flagReq = engine.FlagRequest{Locator: comment.Locator, Flag: engine.ReadOnly, Update: engine.FlagFalse}
@@ -317,11 +317,11 @@ func TestMemData_InfoPost(t *testing.T) {
 
 	req = engine.InfoRequest{Locator: store.Locator{URL: "https://radio-t.com/error", SiteID: "radio-t"}, ReadOnlyAge: 0}
 	_, err = b.Info(req)
-	require.NotNil(t, err)
+	require.Error(t, err)
 
 	req = engine.InfoRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t-error"}, ReadOnlyAge: 0}
 	_, err = b.Info(req)
-	require.NotNil(t, err)
+	require.Error(t, err)
 
 	_, err = b.Info(engine.InfoRequest{})
 	require.Error(t, err)
@@ -605,7 +605,7 @@ func TestMemData_DeleteComment(t *testing.T) {
 
 	delReq.CommentID = "123456"
 	err = b.Delete(delReq)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 
 	delReq.Locator.SiteID = "bad"
 	delReq.CommentID = res[0].ID

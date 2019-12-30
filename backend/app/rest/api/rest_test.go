@@ -109,6 +109,7 @@ func TestRest_filterComments(t *testing.T) {
 }
 
 func TestRest_RunStaticSSLMode(t *testing.T) {
+	sslPort := chooseRandomUnusedPort()
 	srv := Rest{
 		Authenticator: auth.NewService(auth.Opts{
 			AvatarStore:       avatar.NewLocalFS("/tmp"),
@@ -118,11 +119,11 @@ func TestRest_RunStaticSSLMode(t *testing.T) {
 		ImageProxy: &proxy.Image{},
 		SSLConfig: SSLConfig{
 			SSLMode: Static,
-			Port:    8443,
+			Port:    sslPort,
 			Key:     "../../cmd/testdata/key.pem",
 			Cert:    "../../cmd/testdata/cert.pem",
 		},
-		RemarkURL: "https://localhost:8443",
+		RemarkURL: fmt.Sprintf("https://localhost:%d", sslPort),
 	}
 
 	port := chooseRandomUnusedPort()
@@ -130,7 +131,7 @@ func TestRest_RunStaticSSLMode(t *testing.T) {
 		srv.Run(port)
 	}()
 
-	waitForHTTPServerStart(port)
+	waitForHTTPSServerStart(sslPort)
 
 	client := http.Client{
 		// prevent http redirect
@@ -148,9 +149,9 @@ func TestRest_RunStaticSSLMode(t *testing.T) {
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 307, resp.StatusCode)
-	assert.Equal(t, "https://localhost:8443/blah?param=1", resp.Header.Get("Location"))
+	assert.Equal(t, fmt.Sprintf("https://localhost:%d/blah?param=1", sslPort), resp.Header.Get("Location"))
 
-	resp, err = client.Get("https://localhost:8443/ping")
+	resp, err = client.Get(fmt.Sprintf("https://localhost:%d/ping", sslPort))
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 200, resp.StatusCode)
@@ -162,14 +163,15 @@ func TestRest_RunStaticSSLMode(t *testing.T) {
 }
 
 func TestRest_RunAutocertModeHTTPOnly(t *testing.T) {
+	sslPort := chooseRandomUnusedPort()
 	srv := Rest{
 		Authenticator: &auth.Service{},
 		ImageProxy:    &proxy.Image{},
 		SSLConfig: SSLConfig{
 			SSLMode: Auto,
-			Port:    8443,
+			Port:    sslPort,
 		},
-		RemarkURL: "https://localhost:8443",
+		RemarkURL: fmt.Sprintf("https://localhost:%d", sslPort),
 	}
 
 	port := chooseRandomUnusedPort()
@@ -178,7 +180,7 @@ func TestRest_RunAutocertModeHTTPOnly(t *testing.T) {
 		srv.Run(port)
 	}()
 
-	waitForHTTPServerStart(port)
+	waitForHTTPSServerStart(sslPort)
 
 	client := http.Client{
 		// prevent http redirect
@@ -191,7 +193,7 @@ func TestRest_RunAutocertModeHTTPOnly(t *testing.T) {
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 307, resp.StatusCode)
-	assert.Equal(t, "https://localhost:8443/blah?param=1", resp.Header.Get("Location"))
+	assert.Equal(t, fmt.Sprintf("https://localhost:%d/blah?param=1", sslPort), resp.Header.Get("Location"))
 
 	srv.Shutdown()
 }
@@ -480,14 +482,14 @@ func chooseRandomUnusedPort() (port int) {
 	return port
 }
 
-func waitForHTTPServerStart(port int) {
-	// wait for up to 3 seconds for server to start before returning it
-	client := http.Client{Timeout: time.Second}
+func waitForHTTPSServerStart(port int) {
+	// wait for up to 3 seconds for HTTPS server to start
 	for i := 0; i < 300; i++ {
 		time.Sleep(time.Millisecond * 10)
-		if resp, err := client.Get(fmt.Sprintf("http://localhost:%d", port)); err == nil {
-			_ = resp.Body.Close()
-			return
+		conn, _ := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), time.Millisecond*10)
+		if conn != nil {
+			_ = conn.Close()
+			break
 		}
 	}
 }

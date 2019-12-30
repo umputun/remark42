@@ -44,7 +44,6 @@ func TestRest_Create(t *testing.T) {
 	assert.NoError(t, err)
 	require.Equal(t, http.StatusCreated, resp.StatusCode, string(b))
 
-	t.Log(string(b))
 	c := R.JSON{}
 	err = json.Unmarshal(b, &c)
 	assert.NoError(t, err)
@@ -74,7 +73,7 @@ func TestRest_CreateOldPost(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
-	assert.Nil(t, srv.DataService.DeleteAll("remark42"))
+	assert.NoError(t, srv.DataService.DeleteAll("remark42"))
 	// make too old comment
 	old = store.Comment{Text: "test test old", ParentID: "", Timestamp: time.Now().AddDate(0, 0, -15),
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}, User: store.User{ID: "u1"}}
@@ -185,7 +184,6 @@ func TestRest_CreateAndGet(t *testing.T) {
 	assert.Equal(t, store.User{Name: "admin", ID: "admin", Admin: true, Blocked: false,
 		IP: "dbc7c999343f003f189f70aaf52cc04443f90790"},
 		comment.User)
-	t.Logf("%+v", comment)
 
 	// get created comment by id as non-admin
 	res, code = getWithDevAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah1", ts.URL, id))
@@ -730,7 +728,6 @@ func TestRest_UserAllData(t *testing.T) {
 	assert.True(t, strings.HasPrefix(strUungzBody,
 		`{"info": {"name":"developer one","id":"dev","picture":"http://example.com/pic.png","ip":"127.0.0.1","admin":false,"site_id":"remark42"}, "comments":[{`))
 	assert.Equal(t, 3, strings.Count(strUungzBody, `"text":`), "3 comments inside")
-	t.Logf("%s", strUungzBody)
 
 	parsed := struct {
 		Info     store.User      `json:"info"`
@@ -895,13 +892,12 @@ func TestRest_CreateWithPictures(t *testing.T) {
 		Location: "/tmp/remark42/images",
 		MaxSize:  2000,
 	}
-	imageService.TTL = 300 * time.Millisecond
+	imageService.TTL = 50 * time.Millisecond
 
 	svc.privRest.imageService = imageService
 	svc.ImageService = imageService
 
 	dataService := svc.DataService
-	dataService.EditDuration = time.Millisecond * 300
 	dataService.ImageService = svc.ImageService
 	svc.privRest.dataService = dataService
 
@@ -929,15 +925,16 @@ func TestRest_CreateWithPictures(t *testing.T) {
 		err = json.Unmarshal(body, &m)
 		assert.NoError(t, err)
 		assert.Contains(t, m["id"], ".png")
-		t.Logf(string(body))
 		return m["id"]
 	}
 
-	id1 := uploadPicture("pic1.png")
-	id2 := uploadPicture("pic2.png")
-	id3 := uploadPicture("pic3.png")
+	var ids [3]string
 
-	text := fmt.Sprintf(`text 123  ![](/api/v1/picture/%s) *xxx* ![](/api/v1/picture/%s) ![](/api/v1/picture/%s)`, id1, id2, id3)
+	for i := range ids {
+		ids[i] = uploadPicture(fmt.Sprintf("pic%d.png", i))
+	}
+
+	text := fmt.Sprintf(`text 123  ![](/api/v1/picture/%s) *xxx* ![](/api/v1/picture/%s) ![](/api/v1/picture/%s)`, ids[0], ids[1], ids[2])
 	body := fmt.Sprintf(`{"text": "%s", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`, text)
 
 	resp, err := post(t, ts.URL+"/api/v1/comment", body)
@@ -946,14 +943,15 @@ func TestRest_CreateWithPictures(t *testing.T) {
 	assert.NoError(t, err)
 	require.Equal(t, http.StatusCreated, resp.StatusCode, string(b))
 
-	_, err = os.Stat("/tmp/remark42/images/" + id1)
-	assert.Error(t, err, "not moved from staging yet")
+	for i := range ids {
+		_, err = os.Stat("/tmp/remark42/images/" + ids[i])
+		assert.Error(t, err, "picture %d not moved from staging yet", i)
+	}
 
 	time.Sleep(500 * time.Millisecond)
-	_, err = os.Stat("/tmp/remark42/images/" + id1)
-	assert.NoError(t, err, "moved from staging")
-	_, err = os.Stat("/tmp/remark42/images/" + id2)
-	assert.NoError(t, err, "moved from staging")
-	_, err = os.Stat("/tmp/remark42/images/" + id3)
-	assert.NoError(t, err, "moved from staging")
+
+	for i := range ids {
+		_, err = os.Stat("/tmp/remark42/images/" + ids[i])
+		assert.NoError(t, err, "picture %d moved from staging and available in permanent location", i)
+	}
 }

@@ -41,7 +41,7 @@ func TestMakeTree(t *testing.T) {
 
 	res := MakeTree(comments, "time", 0)
 	resJSON, err := json.Marshal(&res)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	expJSON := mustLoadJSONFile(t, "testdata/tree.json")
 	assert.Equal(t, expJSON, resJSON)
@@ -83,7 +83,7 @@ func TestMakeEmptySubtree(t *testing.T) {
 
 	res := MakeTree(comments, "time", 0)
 	resJSON, err := json.Marshal(&res)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	log.Print(string(resJSON))
 
 	expJSON := mustLoadJSONFile(t, "testdata/tree_del.json")
@@ -162,9 +162,9 @@ func TestTreeSortNodes(t *testing.T) {
 func BenchmarkTree(b *testing.B) {
 	comments := []store.Comment{}
 	data, err := ioutil.ReadFile("testdata/tree_bench.json")
-	assert.Nil(b, err)
+	assert.NoError(b, err)
 	err = json.Unmarshal(data, &comments)
-	assert.Nil(b, err)
+	assert.NoError(b, err)
 
 	for i := 0; i < b.N; i++ {
 		res := MakeTree(comments, "time", 0)
@@ -175,11 +175,11 @@ func BenchmarkTree(b *testing.B) {
 // loadJsonFile read fixtrue file and clear any custom json formatting
 func mustLoadJSONFile(t *testing.T, file string) []byte {
 	expJSON, err := ioutil.ReadFile(file)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	expTree := Tree{}
 	err = json.Unmarshal(expJSON, &expTree)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	expJSON, err = json.Marshal(expTree)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	return expJSON
 }
