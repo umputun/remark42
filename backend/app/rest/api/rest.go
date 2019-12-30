@@ -55,9 +55,10 @@ type Rest struct {
 		Low      int
 		Critical int
 	}
-	UpdateLimiter float64
-	EmojiEnabled  bool
-	SimpleView    bool
+	UpdateLimiter      float64
+	EmailNotifications bool
+	EmojiEnabled       bool
+	SimpleView         bool
 
 	SSLConfig   SSLConfig
 	httpsServer *http.Server
@@ -398,34 +399,36 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 	emails, _ := s.DataService.AdminStore.Email(siteID)
 
 	cnf := struct {
-		Version        string   `json:"version"`
-		EditDuration   int      `json:"edit_duration"`
-		MaxCommentSize int      `json:"max_comment_size"`
-		Admins         []string `json:"admins"`
-		AdminEmail     string   `json:"admin_email"`
-		Auth           []string `json:"auth_providers"`
-		AnonVote       bool     `json:"anon_vote"`
-		LowScore       int      `json:"low_score"`
-		CriticalScore  int      `json:"critical_score"`
-		PositiveScore  bool     `json:"positive_score"`
-		ReadOnlyAge    int      `json:"readonly_age"`
-		MaxImageSize   int      `json:"max_image_size"`
-		EmojiEnabled   bool     `json:"emoji_enabled"`
-		SimpleView     bool     `json:"simple_view"`
+		Version            string   `json:"version"`
+		EditDuration       int      `json:"edit_duration"`
+		MaxCommentSize     int      `json:"max_comment_size"`
+		Admins             []string `json:"admins"`
+		AdminEmail         string   `json:"admin_email"`
+		Auth               []string `json:"auth_providers"`
+		AnonVote           bool     `json:"anon_vote"`
+		LowScore           int      `json:"low_score"`
+		CriticalScore      int      `json:"critical_score"`
+		PositiveScore      bool     `json:"positive_score"`
+		ReadOnlyAge        int      `json:"readonly_age"`
+		MaxImageSize       int      `json:"max_image_size"`
+		EmailNotifications bool     `json:"email_notifications"`
+		EmojiEnabled       bool     `json:"emoji_enabled"`
+		SimpleView         bool     `json:"simple_view"`
 	}{
-		Version:        s.Version,
-		EditDuration:   int(s.DataService.EditDuration.Seconds()),
-		MaxCommentSize: s.DataService.MaxCommentSize,
-		Admins:         admins,
-		AdminEmail:     emails,
-		LowScore:       s.ScoreThresholds.Low,
-		CriticalScore:  s.ScoreThresholds.Critical,
-		PositiveScore:  s.DataService.PositiveScore,
-		ReadOnlyAge:    s.ReadOnlyAge,
-		MaxImageSize:   s.ImageService.Store.SizeLimit(),
-		EmojiEnabled:   s.EmojiEnabled,
-		AnonVote:       s.AnonVote,
-		SimpleView:     s.SimpleView,
+		Version:            s.Version,
+		EditDuration:       int(s.DataService.EditDuration.Seconds()),
+		MaxCommentSize:     s.DataService.MaxCommentSize,
+		Admins:             admins,
+		AdminEmail:         emails,
+		LowScore:           s.ScoreThresholds.Low,
+		CriticalScore:      s.ScoreThresholds.Critical,
+		PositiveScore:      s.DataService.PositiveScore,
+		ReadOnlyAge:        s.ReadOnlyAge,
+		MaxImageSize:       s.ImageService.Store.SizeLimit(),
+		EmailNotifications: s.EmailNotifications,
+		EmojiEnabled:       s.EmojiEnabled,
+		AnonVote:           s.AnonVote,
+		SimpleView:         s.SimpleView,
 	}
 
 	cnf.Auth = []string{}

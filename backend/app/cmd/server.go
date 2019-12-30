@@ -328,10 +328,20 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		KeyStore:          adminStore,
 	}
 
+	var emailNotifications bool
 	notifyService, err := s.makeNotify(dataService, authenticator)
+
+	for _, t := range s.Notify.Type {
+		switch t {
+		case "email":
+			emailNotifications = true
+		}
+	}
+
 	if err != nil {
 		log.Printf("[WARN] failed to make notify service, %s", err)
 		notifyService = notify.NopService // disable notifier
+		emailNotifications = false        // email notifications are not available in this case
 	}
 
 	imgProxy := &proxy.Image{Enabled: s.ImageProxy, RoutePath: "/api/v1/img", RemarkURL: s.RemarkURL}
@@ -367,9 +377,10 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 			Refresh:   s.Stream.RefreshInterval,
 			MaxActive: int32(s.Stream.MaxActive),
 		},
-		EmojiEnabled: s.EnableEmoji,
-		AnonVote:     s.AnonymousVote && s.RestrictVoteIP,
-		SimpleView:   s.SimpleView,
+		EmailNotifications: emailNotifications,
+		EmojiEnabled:       s.EnableEmoji,
+		AnonVote:           s.AnonymousVote && s.RestrictVoteIP,
+		SimpleView:         s.SimpleView,
 	}
 
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = s.LowScore, s.CriticalScore
