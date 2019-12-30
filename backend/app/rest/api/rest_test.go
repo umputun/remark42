@@ -134,7 +134,7 @@ func TestRest_RunStaticSSLMode(t *testing.T) {
 			break
 		}
 		if conn != nil {
-			conn.Close()
+			_ = conn.Close()
 		}
 	}
 	go func() {
@@ -146,7 +146,7 @@ func TestRest_RunStaticSSLMode(t *testing.T) {
 		time.Sleep(time.Millisecond * 10)
 		conn, _ := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), time.Millisecond*10)
 		if conn != nil {
-			conn.Close()
+			_ = conn.Close()
 			break
 		}
 	}
@@ -200,7 +200,7 @@ func TestRest_RunAutocertModeHTTPOnly(t *testing.T) {
 			break
 		}
 		if conn != nil {
-			conn.Close()
+			_ = conn.Close()
 		}
 	}
 	go func() {
@@ -213,7 +213,7 @@ func TestRest_RunAutocertModeHTTPOnly(t *testing.T) {
 		time.Sleep(time.Millisecond * 10)
 		conn, _ := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), time.Millisecond*10)
 		if conn != nil {
-			conn.Close()
+			_ = conn.Close()
 			break
 		}
 	}

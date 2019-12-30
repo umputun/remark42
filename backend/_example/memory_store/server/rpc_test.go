@@ -404,7 +404,7 @@ func prepTestStore(t *testing.T) (s *RPC, port int, teardown func()) {
 			break
 		}
 		if conn != nil {
-			conn.Close()
+			_ = conn.Close()
 		}
 	}
 	go func() {
