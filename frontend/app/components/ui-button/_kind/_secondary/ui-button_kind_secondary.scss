@@ -1,0 +1,8 @@
+.ui-button_kind_secondary {
+  background: #fff;
+  color: inherit;
+
+  &:hover {
+    box-shadow: inset 0 0 0 2px #06c5c5;
+  }
+}
