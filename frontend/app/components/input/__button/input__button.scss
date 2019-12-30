@@ -1,7 +1,4 @@
 .input__button {
-  margin-top: 8px;
-
-  & + .input__button {
-    margin-left: 8px;
-  }
+  margin: 8px 8px 0 0;
+  align-self: flex-start;
 }
