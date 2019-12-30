@@ -207,9 +207,9 @@ export class EmailLoginForm extends Component<Props, State> {
 
     return (
       <form className={className} onSubmit={this.onSubmit}>
-        <span className="auth-panel-email-login-form__back-button" {...getHandleClickProps(this.goBack)}>
-          {'< Back'}
-        </span>
+        <UIButton kind="link" mix="auth-panel-email-login-form__back-button" {...getHandleClickProps(this.goBack)}>
+          Back
+        </UIButton>
         <TextareaAutosize
           autofocus={true}
           className="auth-panel-email-login-form__token-input"
@@ -224,6 +224,7 @@ export class EmailLoginForm extends Component<Props, State> {
           mix="auth-panel-email-login-form__submit"
           type="submit"
           kind="primary"
+          size="middle"
           title={form2InvalidReason || ''}
           disabled={form2InvalidReason !== null}
         >
