@@ -120,6 +120,8 @@ func (p Image) Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		if p.CacheExternal {
 			var buf bytes.Buffer
+			// We need to duplicate data into a new buffer because `cacheImage` would read provider Reader
+			// and we would need another one to read data for response
 			p.cacheImage(io.TeeReader(imgReader, &buf), imgID)
 			if err := imgReader.Close(); err != nil {
 				log.Printf("[WARN] can't close image reader, %s", err)
