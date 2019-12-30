@@ -64,7 +64,6 @@ BKT
 	text = strings.Replace(text, "BKT", "```", -1)
 	j := fmt.Sprintf(`{"text": "%s", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, text)
 	j = strings.Replace(j, "\n", "\\n", -1)
-	t.Log(j)
 
 	resp, err := post(t, ts.URL+"/api/v1/preview", j)
 	assert.NoError(t, err)
@@ -308,7 +307,6 @@ func TestRest_Last(t *testing.T) {
 	err = json.Unmarshal([]byte(res), &comments)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(comments), "should have 2 comments")
-	t.Logf("%+v", comments)
 
 	_, code = get(t, ts.URL+"/api/v1/last/2?site=remark42-BLAH")
 	assert.Equal(t, 500, code)
@@ -511,7 +509,6 @@ func TestRest_Config(t *testing.T) {
 	assert.Equal(t, 10., j["readonly_age"])
 	assert.Equal(t, 10000., j["max_image_size"])
 	assert.Equal(t, true, j["emoji_enabled"].(bool))
-	t.Logf("%+v", j)
 }
 
 func TestRest_Info(t *testing.T) {
@@ -575,7 +572,6 @@ func TestRest_InfoStream(t *testing.T) {
 	assert.Equal(t, 200, code)
 	wg.Wait()
 
-	t.Logf(string(body))
 	recs := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
 	require.Equal(t, 10*3, len(recs), "10 records. each 2 lines +1 emty line")
 	assert.True(t, strings.Contains(recs[0+1], `"count":2`), recs[0])
@@ -664,7 +660,6 @@ func TestRest_InfoStreamCancel(t *testing.T) {
 	wg.Wait()
 
 	recs := strings.Count(string(body), "data:")
-	t.Logf("%s", string(body))
 	require.Equal(t, 1, recs, "should have 1 events")
 	assert.Contains(t, string(body), `"count":2`)
 }
@@ -684,7 +679,7 @@ func TestRest_InfoStreamSince(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		for i := 0; i < 10; i++ {
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(15 * time.Millisecond)
 			postComment(t, ts.URL)
 		}
 	}()
@@ -692,9 +687,7 @@ func TestRest_InfoStreamSince(t *testing.T) {
 	body, code := get(t, ts.URL+"/api/v1/stream/info?site=remark42&url=https://radio-t.com/blah1&since=12345678")
 	assert.Equal(t, 200, code)
 	wg.Wait()
-
-	t.Logf(string(body))
-	recs := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
+	recs := strings.Split(strings.TrimSuffix(body, "\n"), "\n")
 	require.Equal(t, 11*3, len(recs), "include first record, total 11 records. each 2 lines +1 empty line")
 }
 
@@ -740,13 +733,11 @@ func TestRest_LastCommentsStream(t *testing.T) {
 	assert.Equal(t, 200, r.StatusCode)
 
 	wg.Wait()
-	t.Logf("headers: %+v", r.Header)
 	assert.Equal(t, "text/event-stream", r.Header.Get("content-type"))
 	assert.Equal(t, "keep-alive", r.Header.Get("connection"))
 
 	recs := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
 	require.Equal(t, 9*3, len(recs), "9 events")
-	t.Logf("%s", string(body))
 	assert.True(t, strings.Contains(recs[1], `test 123`), recs[1])
 }
 
@@ -865,12 +856,10 @@ func TestRest_LastCommentsStreamSince(t *testing.T) {
 	assert.Equal(t, 200, r.StatusCode)
 
 	wg.Wait()
-	t.Logf("headers: %+v", r.Header)
 	assert.Equal(t, "text/event-stream", r.Header.Get("content-type"))
 
 	recs := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
 	require.Equal(t, 10*3, len(recs), "10 events, includes first record")
-	t.Logf("%v", recs)
 }
 
 func postComment(t *testing.T, url string) {
