@@ -9,7 +9,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -36,11 +35,10 @@ func Test_Main(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	wg := sync.WaitGroup{}
-	wg.Add(1)
+	finished := make(chan struct{})
 	go func() {
 		main()
-		wg.Done()
+		close(finished)
 	}()
 
 	waitForHTTPServerStart(port)
@@ -53,7 +51,7 @@ func Test_Main(t *testing.T) {
 	assert.Equal(t, "pong", string(body))
 
 	close(done)
-	wg.Wait()
+	<-finished
 }
 
 func TestGetDump(t *testing.T) {

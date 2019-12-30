@@ -43,7 +43,7 @@ func TestServerApp(t *testing.T) {
 	assert.Equal(t, "pong", string(body))
 
 	// add comment
-	client := http.Client{Timeout: 5 * time.Second}
+	client := http.Client{Timeout: 10 * time.Second}
 	req, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
 		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "remark"}}`))
 	require.NoError(t, err)
