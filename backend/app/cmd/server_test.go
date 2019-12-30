@@ -152,8 +152,9 @@ func TestServerApp_WithSSL(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
 	go func() {
-		time.Sleep(1 * time.Second)
+		<-done
 		log.Print("[TEST] terminate app")
 		cancel()
 	}()
@@ -188,6 +189,7 @@ func TestServerApp_WithSSL(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "pong", string(body))
 
+	close(done)
 	app.Wait()
 }
 
@@ -211,8 +213,9 @@ func TestServerApp_WithRemote(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
 	go func() {
-		time.Sleep(5 * time.Second)
+		<-done
 		log.Print("[TEST] terminate app")
 		cancel()
 	}()
@@ -228,6 +231,7 @@ func TestServerApp_WithRemote(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "pong", string(body))
 
+	close(done)
 	app.Wait()
 }
 
