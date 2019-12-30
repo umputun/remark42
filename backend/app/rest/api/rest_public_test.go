@@ -625,7 +625,7 @@ func TestRest_InfoStreamCancel(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
 	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
-	srv.pubRest.streamer.Refresh = 5 * time.Millisecond
+	srv.pubRest.streamer.Refresh = 10 * time.Millisecond
 	srv.pubRest.streamer.TimeOut = 1500 * time.Millisecond
 	srv.pubRest.streamer.MaxActive = 100
 
@@ -643,7 +643,7 @@ func TestRest_InfoStreamCancel(t *testing.T) {
 	client := http.Client{}
 	req, err := http.NewRequest("GET", ts.URL+"/api/v1/stream/info?site=remark42&url=https://radio-t.com/blah1", nil)
 	require.NoError(t, err)
-	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 1000*time.Millisecond)
 	defer cancel()
 	req = req.WithContext(ctx)
 	r, err := client.Do(req)
