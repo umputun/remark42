@@ -1,14 +1,7 @@
 .input__button {
-  box-sizing: border-box;
-  margin: 0 8px 0 0;
-  padding: 8px 12px;
-  font-size: 16px;
-  border: 0;
-  border-radius: 2px;
-  cursor: pointer;
+  margin-top: 8px;
 
-  &:disabled {
-    opacity: 0.5;
-    pointer-events: none;
+  & + .input__button {
+    margin-left: 8px;
   }
 }

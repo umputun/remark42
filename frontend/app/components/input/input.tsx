@@ -12,11 +12,12 @@ import { BASE_URL, API_BASE } from '@app/common/constants';
 import { StaticStore } from '@app/common/static_store';
 import { siteId, url, pageTitle } from '@app/common/settings';
 import { extractErrorMessageFromResponse } from '@app/utils/errorUtils';
+import { sleep } from '@app/utils/sleep';
+import { replaceSelection } from '@app/utils/replaceSelection';
+import { UIButton } from '@app/components/ui-button';
 
 import MarkdownToolbar from './markdown-toolbar';
 import TextareaAutosize from './textarea-autosize';
-import { sleep } from '@app/utils/sleep';
-import { replaceSelection } from '@app/utils/replaceSelection';
 
 const RSS_THREAD_URL = `${BASE_URL}${API_BASE}/rss/post?site=${siteId}&url=${url}`;
 const RSS_SITE_URL = `${BASE_URL}${API_BASE}/rss/site?site=${siteId}`;
@@ -400,19 +401,20 @@ export class Input extends Component<Props, State> {
 
         <div className="input__actions">
           {!props.simpleView && (
-            <button
-              className={b('input__button', {}, { type: 'preview' })}
-              type="button"
+            <UIButton
+              kind="secondary"
+              theme={props.theme || 'light'}
+              size="large"
+              mix="input__button"
               disabled={isDisabled}
               onClick={this.getPreview}
             >
               Preview
-            </button>
+            </UIButton>
           )}
-
-          <button className={b('input__button', {}, { type: 'send' })} type="submit" disabled={isDisabled}>
+          <UIButton kind="primary" size="large" mix="input__button" type="submit" disabled={isDisabled}>
             {label}
-          </button>
+          </UIButton>
 
           {!props.simpleView && props.mode === 'main' && (
             <div className="input__rss">
