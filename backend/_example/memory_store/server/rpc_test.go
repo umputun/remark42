@@ -379,6 +379,32 @@ func TestRPC_admEventHndl(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func chooseOpenRandomPort(start, random int) (port int) {
+	for i := 0; i < 10; i++ {
+		port = start + int(rand.Int31n(int32(random)))
+		conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), time.Millisecond*10)
+		if err != nil {
+			break
+		}
+		if conn != nil {
+			_ = conn.Close()
+		}
+	}
+	return port
+}
+
+func waitForHTTPServerStart(port int) {
+	// wait for up to 3 seconds for server to start before returning it
+	client := http.Client{Timeout: time.Second}
+	for i := 0; i < 300; i++ {
+		time.Sleep(time.Millisecond * 10)
+		if resp, err := client.Get(fmt.Sprintf("http://localhost:%d", port)); err == nil {
+			_ = resp.Body.Close()
+			return
+		}
+	}
+}
+
 func prepTestStore(t *testing.T) (s *RPC, port int, teardown func()) {
 	mg := accessor.NewMemData()
 	adm := accessor.NewMemAdminStore("secret")
@@ -396,30 +422,12 @@ func prepTestStore(t *testing.T) (s *RPC, port int, teardown func()) {
 	admRecDisabled.Enabled = false
 	adm.Set("test-site-disabled", admRecDisabled)
 
-	// check if port is in use before trying to start a new server on it
-	for i := 0; i < 10; i++ {
-		port = 40000 + int(rand.Int31n(10000))
-		conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), time.Millisecond*10)
-		if err != nil {
-			break
-		}
-		if conn != nil {
-			_ = conn.Close()
-		}
-	}
+	port = chooseOpenRandomPort(40000, 10000)
 	go func() {
 		log.Printf("%v", s.Run(port))
 	}()
 
-	// wait for up to 3 seconds for server to start before returning it
-	client := http.Client{Timeout: time.Second}
-	for i := 0; i < 300; i++ {
-		time.Sleep(time.Millisecond * 10)
-		if resp, err := client.Get(fmt.Sprintf("http://localhost:%d", port)); err == nil {
-			_ = resp.Body.Close()
-			break
-		}
-	}
+	waitForHTTPServerStart(port)
 
 	return s, port, func() {
 		require.NoError(t, s.Shutdown())

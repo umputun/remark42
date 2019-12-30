@@ -158,15 +158,7 @@ func TestServerApp_WithSSL(t *testing.T) {
 		cancel()
 	}()
 	go func() { _ = app.run(ctx) }()
-	// wait for up to 1 seconds for HTTPS server to start
-	for i := 0; i < 100; i++ {
-		time.Sleep(time.Millisecond * 10)
-		conn, _ := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", sslPort), time.Millisecond*10)
-		if conn != nil {
-			_ = conn.Close()
-			break
-		}
-	}
+	waitForHTTPSServerStart(sslPort)
 
 	client := http.Client{
 		// prevent http redirect
@@ -487,6 +479,18 @@ func waitForHTTPServerStart(port int) {
 		if resp, err := client.Get(fmt.Sprintf("http://localhost:%d", port)); err == nil {
 			_ = resp.Body.Close()
 			return
+		}
+	}
+}
+
+func waitForHTTPSServerStart(port int) {
+	// wait for up to 3 seconds for HTTPS server to start
+	for i := 0; i < 300; i++ {
+		time.Sleep(time.Millisecond * 10)
+		conn, _ := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", sslPort), time.Millisecond*10)
+		if conn != nil {
+			_ = conn.Close()
+			break
 		}
 	}
 }
