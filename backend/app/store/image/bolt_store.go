@@ -67,7 +67,7 @@ func (b *Bolt) SaveWithID(id string, r io.Reader) (string, error) {
 		return "", errors.Wrapf(err, "can't load image with ID %s", id)
 	}
 
-	data, _ = resize(data, b.MaxWidth, b.MaxHeight)
+	data = resize(data, b.MaxWidth, b.MaxHeight)
 
 	err = b.db.Update(func(tx *bolt.Tx) error {
 		if err = tx.Bucket([]byte(imagesStagedBktName)).Put([]byte(id), data); err != nil {

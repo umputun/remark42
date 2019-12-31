@@ -43,7 +43,7 @@ func (f *FileSystem) SaveWithID(id string, r io.Reader) (string, error) {
 		return "", errors.Wrapf(err, "can't load image with ID %s", id)
 	}
 
-	data, _ = resize(data, f.MaxWidth, f.MaxHeight)
+	data = resize(data, f.MaxWidth, f.MaxHeight)
 	dst := f.location(f.Staging, id)
 
 	if err = os.MkdirAll(path.Dir(dst), 0700); err != nil {
