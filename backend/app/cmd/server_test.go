@@ -382,7 +382,7 @@ func TestServerAuthHooks(t *testing.T) {
 	t.Log(tk)
 
 	// add comment
-	client := http.Client{Timeout: 2 * time.Second}
+	client := http.Client{Timeout: 10 * time.Second}
 	req, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
 		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/p/2018/12/29/podcast-630/", "site": "remark"}}`))
 	require.NoError(t, err)
