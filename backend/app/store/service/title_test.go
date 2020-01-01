@@ -51,6 +51,7 @@ func TestTitle_Get(t *testing.T) {
 		}
 		w.WriteHeader(404)
 	}))
+	defer ts.Close()
 
 	title, err := ex.Get(ts.URL + "/good")
 	require.NoError(t, err)
@@ -83,6 +84,7 @@ func TestTitle_GetConcurrent(t *testing.T) {
 		}
 		w.WriteHeader(404)
 	}))
+	defer ts.Close()
 
 	g := syncs.NewSizedGroup(10)
 
@@ -105,6 +107,7 @@ func TestTitle_GetFailed(t *testing.T) {
 		atomic.AddInt32(&hits, 1)
 		w.WriteHeader(404)
 	}))
+	defer ts.Close()
 
 	_, err := ex.Get(ts.URL + "/bad")
 	require.Error(t, err)
