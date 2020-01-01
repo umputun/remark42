@@ -81,20 +81,20 @@ func TestRest_GetStarted(t *testing.T) {
 
 func TestRest_Shutdown(t *testing.T) {
 	srv := Rest{Authenticator: &auth.Service{}, ImageProxy: &proxy.Image{}}
-	finished := make(chan bool)
+	done := make(chan bool)
 
 	// without waiting for channel close at the end goroutine will stay alive after test finish
 	// which would create data race with next test
 	go func() {
 		time.Sleep(200 * time.Millisecond)
 		srv.Shutdown()
-		close(finished)
+		close(done)
 	}()
 
 	st := time.Now()
 	srv.Run(0)
 	assert.True(t, time.Since(st).Seconds() < 1, "should take about 100ms")
-	<-finished
+	<-done
 }
 
 func TestRest_filterComments(t *testing.T) {

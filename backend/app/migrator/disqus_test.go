@@ -29,7 +29,7 @@ func TestDisqus_Import(t *testing.T) {
 
 	last, err := dataStore.Last("test", 10, time.Time{}, adminUser)
 	assert.NoError(t, err)
-	assert.Equal(t, 4, len(last), "4 comments imported")
+	require.Equal(t, 4, len(last), "4 comments imported")
 
 	c := last[len(last)-1] // last reverses, get first one
 	assert.True(t, strings.HasPrefix(c.Text, "<p>The quick brown fox"))
@@ -57,7 +57,7 @@ func TestDisqus_Convert(t *testing.T) {
 	for comment := range ch {
 		res = append(res, comment)
 	}
-	assert.Equal(t, 4, len(res), "4 comments total, 1 spam excluded, 1 bad excluded")
+	require.Equal(t, 4, len(res), "4 comments total, 1 spam excluded, 1 bad excluded")
 
 	exp0 := store.Comment{
 		ID: "299619020",

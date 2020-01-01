@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBackup_RemoveOldBackupFiles(t *testing.T) {
@@ -31,7 +32,7 @@ func TestBackup_RemoveOldBackupFiles(t *testing.T) {
 	bk.removeOldBackupFiles()
 	ff, err := ioutil.ReadDir(loc)
 	assert.NoError(t, err)
-	assert.Equal(t, 4, len(ff), "should keep 4 files - 3 kept for sit1, and one for site2")
+	require.Equal(t, 4, len(ff), "should keep 4 files - 3 kept for sit1, and one for site2")
 	assert.Equal(t, "backup-site1-20171208.gz", ff[0].Name())
 	assert.Equal(t, "backup-site1-20171209.gz", ff[1].Name())
 	assert.Equal(t, "backup-site1-20171210.gz", ff[2].Name())

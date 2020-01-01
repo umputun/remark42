@@ -8,6 +8,7 @@ import (
 
 	bolt "github.com/coreos/bbolt"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/admin"
@@ -30,7 +31,7 @@ func TestWordPress_Import(t *testing.T) {
 
 	last, err := dataStore.Last(siteID, 10, time.Time{}, adminUser)
 	assert.NoError(t, err)
-	assert.Equal(t, 3, len(last), "3 comments imported")
+	require.Equal(t, 3, len(last), "3 comments imported")
 
 	c := last[0]
 	assert.Equal(t, "14", c.ID)
@@ -44,7 +45,7 @@ func TestWordPress_Import(t *testing.T) {
 
 	posts, err := dataStore.List(siteID, 0, 0)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(posts))
+	require.Equal(t, 1, len(posts))
 
 	p := posts[0]
 	assert.Equal(t, "https://realmenweardress.es/2010/07/do-you-rp/", p.URL)
@@ -62,7 +63,7 @@ func TestWordPress_Convert(t *testing.T) {
 	for c := range ch {
 		comments = append(comments, c)
 	}
-	assert.Equal(t, 3, len(comments), "3 comments exported, 1 excluded")
+	require.Equal(t, 3, len(comments), "3 comments exported, 1 excluded")
 
 	exp1 := store.Comment{
 		ID: "13",
@@ -89,7 +90,7 @@ func TestWP_Convert_MD(t *testing.T) {
 	for c := range ch {
 		comments = append(comments, c)
 	}
-	assert.Equal(t, 3, len(comments), "3 comments exported")
+	require.Equal(t, 3, len(comments), "3 comments exported")
 
 	assert.Equal(t, "<p>Row1<br/>\nRow2</p>\n\n<p>Row4</p>\n", comments[0].Text)
 

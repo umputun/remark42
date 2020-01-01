@@ -198,7 +198,7 @@ func TestService_Vote(t *testing.T) {
 	res, err := b.Last("radio-t", 0, time.Time{}, store.User{})
 	t.Logf("%+v", res[0])
 	assert.NoError(t, err)
-	assert.Equal(t, 3, len(res))
+	require.Equal(t, 3, len(res))
 	assert.Equal(t, 0, res[0].Score)
 	assert.Equal(t, 0, res[0].Vote)
 	assert.Equal(t, map[string]bool(nil), res[0].Votes, "no votes initially")
@@ -254,7 +254,7 @@ func TestService_Vote(t *testing.T) {
 	res, err = b.Last("radio-t", 0, time.Time{}, store.User{ID: "user1"})
 	assert.NoError(t, err)
 	t.Logf("%+v", res[0])
-	assert.Equal(t, 3, len(res))
+	require.Equal(t, 3, len(res))
 	assert.Equal(t, 1, res[0].Score)
 	assert.Equal(t, 1, res[0].Vote)
 	assert.Equal(t, 0.0, res[0].Controversy)
@@ -263,7 +263,7 @@ func TestService_Vote(t *testing.T) {
 	res, err = b.Last("radio-t", 0, time.Time{}, store.User{ID: "user2"})
 	assert.NoError(t, err)
 	t.Logf("%+v", res[0])
-	assert.Equal(t, 3, len(res))
+	require.Equal(t, 3, len(res))
 	assert.Equal(t, 1, res[0].Score)
 	assert.Equal(t, 0, res[0].Vote)
 	assert.Equal(t, 0.0, res[0].Controversy)
@@ -279,7 +279,7 @@ func TestService_Vote(t *testing.T) {
 	assert.NoError(t, err, "vote reset")
 	res, err = b.Last("radio-t", 0, time.Time{}, store.User{})
 	assert.NoError(t, err)
-	assert.Equal(t, 3, len(res))
+	require.Equal(t, 3, len(res))
 	assert.Equal(t, 0, res[0].Score)
 	assert.Equal(t, 0, res[0].Vote)
 	assert.Equal(t, map[string]bool(nil), res[0].Votes, "vote reset ok")
@@ -334,7 +334,7 @@ func TestService_VoteAggressive(t *testing.T) {
 	res, err := b.Last("radio-t", 0, time.Time{}, store.User{})
 	require.NoError(t, err)
 	t.Logf("%+v", res[0])
-	assert.Equal(t, 3, len(res))
+	require.Equal(t, 3, len(res))
 	assert.Equal(t, 0, res[0].Score)
 	assert.Equal(t, map[string]bool(nil), res[0].Votes, "no votes initially")
 
@@ -358,7 +358,7 @@ func TestService_VoteAggressive(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Logf("%+v", res[0])
-	assert.Equal(t, 3, len(res))
+	require.Equal(t, 3, len(res))
 	assert.Equal(t, 2, res[0].Score, "add single +1")
 	assert.Equal(t, 1, res[0].Vote, "user1 voted +1")
 	assert.Equal(t, 0, len(res[0].Votes), "votes hidden")
@@ -377,7 +377,7 @@ func TestService_VoteAggressive(t *testing.T) {
 	wg.Wait()
 	res, err = b.Last("radio-t", 0, time.Time{}, store.User{})
 	require.NoError(t, err)
-	assert.Equal(t, 3, len(res))
+	require.Equal(t, 3, len(res))
 	t.Logf("%+v %d", res[0], res[0].Score)
 	assert.True(t, res[0].Score >= 0 && res[0].Score <= 2, "unexpected score %d", res[0].Score)
 }
@@ -500,7 +500,7 @@ func TestService_VoteSameIPWithDuration(t *testing.T) {
 		MaxVotes: -1}
 	defer b.Close()
 	b.RestrictSameIPVotes.Enabled = true
-	b.RestrictSameIPVotes.Duration = 50 * time.Millisecond
+	b.RestrictSameIPVotes.Duration = 500 * time.Millisecond
 
 	c, err := b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
 		UserID: "user2", UserIP: "123", Val: true})
@@ -517,7 +517,7 @@ func TestService_VoteSameIPWithDuration(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 2, c.Score, "have 2 score")
 
-	time.Sleep(51 * time.Millisecond)
+	time.Sleep(501 * time.Millisecond)
 
 	c, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
 		UserID: "user3", UserIP: "123", Val: true})
@@ -557,7 +557,7 @@ func TestService_Pin(t *testing.T) {
 	res, err := b.Last("radio-t", 0, time.Time{}, store.User{})
 	t.Logf("%+v", res[0])
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(res))
+	require.Equal(t, 2, len(res))
 	assert.Equal(t, false, res[0].Pin)
 
 	err = b.SetPin(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, true)
@@ -582,7 +582,7 @@ func TestService_EditComment(t *testing.T) {
 	res, err := b.Last("radio-t", 0, time.Time{}, store.User{})
 	t.Logf("%+v", res[0])
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(res))
+	require.Equal(t, 2, len(res))
 	assert.Nil(t, res[0].Edit)
 
 	comment, err := b.EditComment(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID,
@@ -610,7 +610,7 @@ func TestService_DeleteComment(t *testing.T) {
 	res, err := b.Last("radio-t", 0, time.Time{}, store.User{})
 	t.Logf("%+v", res[0])
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(res))
+	require.Equal(t, 2, len(res))
 	assert.Nil(t, res[0].Edit)
 
 	_, err = b.EditComment(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, EditRequest{Delete: true})
@@ -631,7 +631,7 @@ func TestService_EditCommentDurationFailed(t *testing.T) {
 	res, err := b.Last("radio-t", 0, time.Time{}, store.User{})
 	t.Logf("%+v", res[0])
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(res))
+	require.Equal(t, 2, len(res))
 	assert.Nil(t, res[0].Edit)
 
 	time.Sleep(time.Second)
@@ -649,7 +649,7 @@ func TestService_EditCommentReplyFailed(t *testing.T) {
 	res, err := b.Last("radio-t", 0, time.Time{}, store.User{})
 	t.Logf("%+v", res[1])
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(res))
+	require.Equal(t, 2, len(res))
 	assert.Nil(t, res[1].Edit)
 
 	reply := store.Comment{
@@ -754,7 +754,7 @@ func TestService_GetMetas(t *testing.T) {
 	um, pm, err = b.Metas("radio-t")
 	require.NoError(t, err)
 
-	assert.Equal(t, 3, len(um))
+	require.Equal(t, 3, len(um))
 	assert.Equal(t, "user1", um[0].ID)
 	assert.Equal(t, true, um[0].Verified)
 	assert.Equal(t, engine.UserDetailEntry{Email: ""}, um[0].Details)
@@ -765,7 +765,7 @@ func TestService_GetMetas(t *testing.T) {
 	assert.Equal(t, "user3", um[2].ID)
 	assert.Equal(t, "test@example.org", um[2].Details.Email)
 
-	assert.Equal(t, 1, len(pm))
+	require.Equal(t, 1, len(pm))
 	assert.Equal(t, "https://radio-t.com", pm[0].URL)
 	assert.Equal(t, true, pm[0].ReadOnly)
 }
@@ -937,12 +937,12 @@ func TestService_UserReplies(t *testing.T) {
 
 	cc, u, err := b.UserReplies("radio-t", "u1", 10, time.Hour)
 	assert.NoError(t, err)
-	assert.Equal(t, 3, len(cc), "3 replies to u1")
+	require.Equal(t, 3, len(cc), "3 replies to u1")
 	assert.Equal(t, "developer one u1", u)
 
-	cc, u, err = b.UserReplies("radio-t", "u1", 10, time.Millisecond*150)
+	cc, u, err = b.UserReplies("radio-t", "u1", 10, time.Millisecond*199)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(cc), "1 reply to u1 in last 150ms")
+	require.Equal(t, 1, len(cc), "1 reply to u1 in last 200ms")
 	assert.Equal(t, "developer one u1", u)
 
 	cc, u, err = b.UserReplies("radio-t", "u2", 10, time.Hour)
@@ -985,7 +985,7 @@ func TestService_Find(t *testing.T) {
 	// make sure Controversy altered
 	res, err = b.Find(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "-controversy", store.User{})
 	require.NoError(t, err)
-	assert.Equal(t, 3, len(res))
+	require.Equal(t, 3, len(res))
 	assert.Equal(t, "123456", res[0].ID)
 	assert.InDelta(t, 1.73, res[0].Controversy, 0.01)
 	assert.Equal(t, "id-1", res[1].ID)
@@ -1000,13 +1000,13 @@ func TestService_FindSince(t *testing.T) {
 
 	res, err := b.FindSince(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "time", store.User{}, time.Time{})
 	require.NoError(t, err)
-	assert.Equal(t, 2, len(res))
+	require.Equal(t, 2, len(res))
 	assert.Equal(t, "id-1", res[0].ID)
 
 	res, err = b.FindSince(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "time", store.User{},
 		time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local))
 	require.NoError(t, err)
-	assert.Equal(t, 1, len(res))
+	require.Equal(t, 1, len(res))
 	assert.Equal(t, "id-2", res[0].ID)
 }
 
@@ -1041,7 +1041,7 @@ func TestService_Delete(t *testing.T) {
 	defer b.Close()
 
 	res, err := b.Last("radio-t", 0, time.Time{}, store.User{})
-	assert.Equal(t, 2, len(res))
+	require.Equal(t, 2, len(res))
 	assert.NoError(t, err)
 
 	err = b.Delete(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, store.SoftDelete)
@@ -1079,7 +1079,7 @@ func TestService_DeleteUser(t *testing.T) {
 	assert.NoError(t, err)
 
 	res, err = b.Last("radio-t", 0, time.Time{}, store.User{})
-	assert.Equal(t, 1, len(res), "only one comment left for user2")
+	require.Equal(t, 1, len(res), "only one comment left for user2")
 	assert.NoError(t, err)
 	assert.Equal(t, "user2", res[0].User.ID)
 }
@@ -1104,7 +1104,7 @@ func TestService_List(t *testing.T) {
 
 	res, err := b.List("radio-t", 0, 0)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(res), "2 posts")
+	require.Equal(t, 2, len(res), "2 posts")
 	assert.Equal(t, "https://radio-t.com/2", res[0].URL)
 	assert.Equal(t, 1, res[0].Count)
 	assert.Equal(t, time.Date(2018, 12, 20, 15, 18, 22, 0, time.Local), res[0].FirstTS)
@@ -1168,7 +1168,7 @@ func TestService_UserComments(t *testing.T) {
 
 	cc, err := b.User("radio-t", "user1", 0, 0, store.User{})
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(cc), "two recs for user1")
+	require.Equal(t, 2, len(cc), "two recs for user1")
 	assert.Equal(t, "id-2", cc[0].ID, "reverse sort")
 	assert.Equal(t, "id-1", cc[1].ID, "reverse sort")
 }

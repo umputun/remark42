@@ -47,7 +47,7 @@ func TestNative_Export(t *testing.T) {
 
 	require.NoError(t, dec.Decode(&m), "decode meta")
 
-	assert.Equal(t, 2, len(m.Users))
+	require.Equal(t, 2, len(m.Users))
 	assert.Equal(t, "user1", m.Users[0].ID)
 	assert.Equal(t, false, m.Users[0].Blocked.Status)
 	assert.Equal(t, true, m.Users[0].Verified)
@@ -55,7 +55,7 @@ func TestNative_Export(t *testing.T) {
 	assert.Equal(t, true, m.Users[1].Blocked.Status)
 	assert.Equal(t, false, m.Users[1].Verified)
 
-	assert.Equal(t, 1, len(m.Posts))
+	require.Equal(t, 1, len(m.Posts))
 	assert.Equal(t, "https://radio-t.com", m.Posts[0].URL)
 	assert.Equal(t, true, m.Posts[0].ReadOnly)
 
@@ -84,7 +84,7 @@ func TestNative_Import(t *testing.T) {
 
 	comments, err := b.Last("radio-t", 10, time.Time{}, store.User{})
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(comments))
+	require.Equal(t, 2, len(comments))
 	assert.Equal(t, "f863bd79-fec6-4a75-b308-61fe5dd02aa1", comments[0].ID)
 	assert.Equal(t, "1234", comments[0].ParentID)
 	assert.Equal(t, false, b.IsReadOnly(comments[0].Locator))
@@ -122,7 +122,7 @@ func TestNative_ImportWithMapper(t *testing.T) {
 
 	comments, err := b.Last("radio-t", 10, time.Time{}, store.User{})
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(comments))
+	require.Equal(t, 2, len(comments))
 	assert.Equal(t, "f863bd79-fec6-4a75-b308-61fe5dd02aa1", comments[0].ID)
 	assert.Equal(t, "1234", comments[0].ParentID)
 	assert.Equal(t, false, b.IsReadOnly(comments[0].Locator))

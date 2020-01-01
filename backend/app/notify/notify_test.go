@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/umputun/remark/backend/app/store"
 )
@@ -36,8 +37,8 @@ func TestService_WithDestinations(t *testing.T) {
 	time.Sleep(time.Millisecond * 110)
 	s.Close()
 
-	assert.Equal(t, 3, len(d1.Get()), "got all comments to d1")
-	assert.Equal(t, 3, len(d2.Get()), "got all comments to d2")
+	require.Equal(t, 3, len(d1.Get()), "got all comments to d1")
+	require.Equal(t, 3, len(d2.Get()), "got all comments to d2")
 
 	assert.Equal(t, "100", d1.Get()[0].Comment.ID)
 	assert.Equal(t, "101", d1.Get()[1].Comment.ID)
@@ -98,7 +99,7 @@ func TestService_WithParent(t *testing.T) {
 	s.Close()
 
 	destRes := dest.Get()
-	assert.Equal(t, 2, len(destRes), "two comment notified")
+	require.Equal(t, 2, len(destRes), "two comment notified")
 	assert.Equal(t, "p1", destRes[0].Comment.ParentID)
 	assert.Equal(t, "p1", destRes[0].parent.ID)
 	assert.Equal(t, "p11", destRes[1].Comment.ParentID)

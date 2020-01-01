@@ -892,7 +892,7 @@ func TestRest_CreateWithPictures(t *testing.T) {
 		Location: "/tmp/remark42/images",
 		MaxSize:  2000,
 	}
-	imageService.TTL = 50 * time.Millisecond
+	imageService.TTL = 100 * time.Millisecond
 
 	svc.privRest.imageService = imageService
 	svc.ImageService = imageService
@@ -948,7 +948,7 @@ func TestRest_CreateWithPictures(t *testing.T) {
 		assert.Error(t, err, "picture %d not moved from staging yet", i)
 	}
 
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(1500 * time.Millisecond)
 
 	for i := range ids {
 		_, err = os.Stat("/tmp/remark42/images/" + ids[i])

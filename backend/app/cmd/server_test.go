@@ -75,7 +75,7 @@ func TestServerApp_DevMode(t *testing.T) {
 	go func() { _ = app.run(ctx) }()
 	waitForHTTPServerStart(port)
 
-	assert.Equal(t, 5+1, len(app.restSrv.Authenticator.Providers()), "extra auth provider")
+	require.Equal(t, 5+1, len(app.restSrv.Authenticator.Providers()), "extra auth provider")
 	assert.Equal(t, "dev", app.restSrv.Authenticator.Providers()[4].Name(), "dev auth provider")
 	// send ping
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/ping", port))
@@ -101,7 +101,7 @@ func TestServerApp_AnonMode(t *testing.T) {
 	go func() { _ = app.run(ctx) }()
 	waitForHTTPServerStart(port)
 
-	assert.Equal(t, 5+1, len(app.restSrv.Authenticator.Providers()), "extra auth provider for anon")
+	require.Equal(t, 5+1, len(app.restSrv.Authenticator.Providers()), "extra auth provider for anon")
 	assert.Equal(t, "anonymous", app.restSrv.Authenticator.Providers()[5].Name(), "anon auth provider")
 
 	// send ping
@@ -382,7 +382,7 @@ func TestServerAuthHooks(t *testing.T) {
 	t.Log(tk)
 
 	// add comment
-	client := http.Client{Timeout: 2 * time.Second}
+	client := http.Client{Timeout: 10 * time.Second}
 	req, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
 		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/p/2018/12/29/podcast-630/", "site": "remark"}}`))
 	require.NoError(t, err)
