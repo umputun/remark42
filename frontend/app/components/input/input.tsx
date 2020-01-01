@@ -353,7 +353,7 @@ export class Input extends Component<Props, State> {
       <form
         className={b('input', {
           mods: {
-            theme: props.theme || 'light',
+            theme: props.theme,
             type: props.mode || 'reply',
             simple: props.simpleView,
           },
