@@ -734,6 +734,7 @@ export class Comment extends Component<Props, State> {
             getPreview={this.props.getPreview!}
             autofocus={true}
             uploadImage={uploadImageHandler}
+            simpleView={StaticStore.config.simple_view}
           />
         )}
 
@@ -749,6 +750,7 @@ export class Comment extends Component<Props, State> {
             errorMessage={state.editDeadline === null ? 'Editing time has expired.' : undefined}
             autofocus={true}
             uploadImage={uploadImageHandler}
+            simpleView={StaticStore.config.simple_view}
           />
         )}
       </article>
