@@ -500,7 +500,7 @@ func TestService_VoteSameIPWithDuration(t *testing.T) {
 		MaxVotes: -1}
 	defer b.Close()
 	b.RestrictSameIPVotes.Enabled = true
-	b.RestrictSameIPVotes.Duration = 300 * time.Millisecond
+	b.RestrictSameIPVotes.Duration = 500 * time.Millisecond
 
 	c, err := b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
 		UserID: "user2", UserIP: "123", Val: true})
@@ -517,7 +517,7 @@ func TestService_VoteSameIPWithDuration(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 2, c.Score, "have 2 score")
 
-	time.Sleep(301 * time.Millisecond)
+	time.Sleep(501 * time.Millisecond)
 
 	c, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
 		UserID: "user3", UserIP: "123", Val: true})
