@@ -41,6 +41,12 @@ func Test_Main(t *testing.T) {
 		close(finished)
 	}()
 
+	// defer cleanup because require check below can fail
+	defer func() {
+		close(done)
+		<-finished
+	}()
+
 	waitForHTTPServerStart(port)
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/ping", port))
 	require.NoError(t, err)
@@ -49,9 +55,6 @@ func Test_Main(t *testing.T) {
 	body, err := ioutil.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	assert.Equal(t, "pong", string(body))
-
-	close(done)
-	<-finished
 }
 
 func TestGetDump(t *testing.T) {
