@@ -25,7 +25,7 @@ export interface Props {
   isCommentsDisabled: boolean;
   theme: Theme;
   postInfo: PostInfo;
-  providers: (AuthProvider['name'])[];
+  providers: AuthProvider['name'][];
   provider: ProviderState;
 
   onSortChange(s: Sorting): Promise<void>;
@@ -233,7 +233,7 @@ export class AuthPanel extends Component<Props, State> {
     );
   };
 
-  renderOther = (providers: (AuthProvider['name'])[]) => {
+  renderOther = (providers: AuthProvider['name'][]) => {
     return (
       <Dropdown title="Other" theme={this.props.theme} onTitleClick={this.onEmailTitleClick}>
         {providers.map(provider => (

@@ -24,9 +24,9 @@ interface State {
    * reapply block on unblocked user
    */
   blockedUsers: BlockedUser[];
-  unblockedUsers: (User['id'])[];
+  unblockedUsers: User['id'][];
   hiddenUsers: { [id: string]: User };
-  unhiddenUsers: (User['id'])[];
+  unhiddenUsers: User['id'][];
 }
 
 export default class Settings extends Component<Props, State> {

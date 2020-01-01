@@ -105,7 +105,7 @@ export interface Config {
   max_comment_size: number;
   admins: string[];
   admin_email: string;
-  auth_providers: (AuthProvider['name'])[];
+  auth_providers: AuthProvider['name'][];
   low_score: number;
   critical_score: number;
   positive_score: boolean;

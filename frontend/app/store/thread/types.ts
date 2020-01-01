@@ -3,7 +3,7 @@ import { Comment } from '@app/common/types';
 export const THREAD_RESTORE_COLLAPSE = 'THREAD/COLLAPSE_RESTORE';
 export interface THREAD_RESTORE_COLLAPSE_ACTION {
   type: typeof THREAD_RESTORE_COLLAPSE;
-  ids: (Comment['id'])[];
+  ids: Comment['id'][];
 }
 
 export const THREAD_SET_COLLAPSE = 'THREAD/COLLAPSE_SET';

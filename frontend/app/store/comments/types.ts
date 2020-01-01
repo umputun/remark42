@@ -26,7 +26,7 @@ export const COMMENTS_PATCH = 'COMMENTS/PATCH';
 
 export interface COMMENTS_PATCH_ACTION {
   type: typeof COMMENTS_PATCH;
-  ids: (Comment['id'])[];
+  ids: Comment['id'][];
   patch: Partial<Comment>;
 }
 
