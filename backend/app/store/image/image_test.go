@@ -20,7 +20,7 @@ func TestService_ExtractPictures(t *testing.T) {
 <img src="/blah/user2/pic3.png"/> xyz <p>123</p> <img src="/pic3.png"/> <img src="https://i.ibb.co/0cqqqnD/ezgif-5-3b07b6b97610.png" alt="">`
 	ids, err := svc.ExtractPictures(html)
 	require.NoError(t, err)
-	assert.Equal(t, 2, len(ids), "two images")
+	require.Equal(t, 2, len(ids), "two images")
 	assert.Equal(t, "user1/pic1.png", ids[0])
 	assert.Equal(t, "user2/pic3.png", ids[1])
 }
@@ -31,7 +31,7 @@ func TestService_ExtractPictures2(t *testing.T) {
 		"</p>\n\n<p>Пакеты в го это средство организации кода, они могут быть связанны друг с другом в рамках одной библиотеки (модуля). Например одна из моих вот так выглядит на libraries.io:</p>\n\n<p><img src=\"https://remark42.radio-t.com/api/v1/picture/github_ef0f706a79cc24b17bbbb374cd234a691d034128/bjttt8ahajfmrhsula10.png\" alt=\"bjtr0-201906-08110846-i324c.png\"/></p>\n\n<p>По форме все верно, это все packages, но по сути это все одна библиотека организованная таким образом. При ее импорте, например посредством go mod, она выглядит как один модуль, т.е. <code>github.com/go-pkgz/auth v0.5.2</code>.</p>\n"
 	ids, err := svc.ExtractPictures(html)
 	require.NoError(t, err)
-	assert.Equal(t, 1, len(ids), "one image in")
+	require.Equal(t, 1, len(ids), "one image in")
 	assert.Equal(t, "github_ef0f706a79cc24b17bbbb374cd234a691d034128/bjttt8ahajfmrhsula10.png", ids[0])
 }
 

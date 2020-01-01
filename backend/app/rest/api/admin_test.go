@@ -183,7 +183,7 @@ func TestAdmin_DeleteUser(t *testing.T) {
 	cmntWithInfo := commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &cmntWithInfo)
 	assert.NoError(t, err)
-	assert.Equal(t, 3, len(cmntWithInfo.Comments), "should have 3 comment")
+	require.Equal(t, 3, len(cmntWithInfo.Comments), "should have 3 comment")
 
 	// id1 comment untouched
 	assert.Equal(t, id1, cmntWithInfo.Comments[0].ID)
@@ -317,7 +317,7 @@ func TestAdmin_Block(t *testing.T) {
 	comments := commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(comments.Comments), "should have 2 comments")
+	require.Equal(t, 2, len(comments.Comments), "should have 2 comments")
 	assert.Equal(t, "", comments.Comments[0].Text, "permanent block clear comment")
 	assert.True(t, comments.Comments[0].Deleted, "permanent block set deleted comment's status")
 
@@ -339,7 +339,7 @@ func TestAdmin_Block(t *testing.T) {
 	comments = commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
 	assert.NoError(t, err)
-	assert.Equal(t, 4, len(comments.Comments), "should have 4 comments")
+	require.Equal(t, 4, len(comments.Comments), "should have 4 comments")
 	assert.Equal(t, "test test #1", comments.Comments[2].Text, "comment not removed and not cleared")
 	assert.False(t, comments.Comments[2].Deleted, "not deleted")
 
@@ -351,7 +351,7 @@ func TestAdmin_Block(t *testing.T) {
 	comments = commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
 	assert.NoError(t, err)
-	assert.Equal(t, 4, len(comments.Comments), "should have 4 comments")
+	require.Equal(t, 4, len(comments.Comments), "should have 4 comments")
 	assert.Equal(t, "test test #1", comments.Comments[2].Text, "restored")
 	assert.False(t, comments.Comments[2].Deleted)
 
@@ -398,7 +398,7 @@ func TestAdmin_BlockedList(t *testing.T) {
 	users := []store.BlockedUser{}
 	err = json.NewDecoder(res.Body).Decode(&users)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(users), "two users blocked")
+	require.Equal(t, 2, len(users), "two users blocked")
 	assert.Equal(t, "user1", users[0].ID)
 	assert.Equal(t, "user1 name", users[0].Name)
 	assert.Equal(t, "user2", users[1].ID)
@@ -578,7 +578,7 @@ func TestAdmin_Verify(t *testing.T) {
 	comments := commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(comments.Comments), "should have 2 comments")
+	require.Equal(t, 2, len(comments.Comments), "should have 2 comments")
 	assert.Equal(t, "test test #1", comments.Comments[0].Text)
 	assert.True(t, comments.Comments[0].User.Verified)
 
@@ -596,7 +596,7 @@ func TestAdmin_Verify(t *testing.T) {
 	comments = commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(comments.Comments), "should have 2 comments")
+	require.Equal(t, 2, len(comments.Comments), "should have 2 comments")
 	assert.Equal(t, "test test #1", comments.Comments[0].Text)
 	assert.False(t, comments.Comments[0].User.Verified)
 }

@@ -99,7 +99,7 @@ func TestRest_Find(t *testing.T) {
 	comments = commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(comments.Comments), "should have 2 comments")
+	require.Equal(t, 2, len(comments.Comments), "should have 2 comments")
 	assert.Equal(t, id1, comments.Comments[0].ID)
 	assert.Equal(t, id2, comments.Comments[1].ID)
 	assert.Equal(t, "<p>test test #1</p>\n", comments.Comments[0].Text)
@@ -114,7 +114,7 @@ func TestRest_Find(t *testing.T) {
 	assert.Equal(t, 200, code)
 	err = json.Unmarshal([]byte(res), &comments)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(comments.Comments), "should have 2 comments")
+	require.Equal(t, 2, len(comments.Comments), "should have 2 comments")
 	assert.Equal(t, id1, comments.Comments[1].ID)
 	assert.Equal(t, id2, comments.Comments[0].ID)
 
@@ -124,7 +124,7 @@ func TestRest_Find(t *testing.T) {
 	assert.Equal(t, 200, code)
 	err = json.Unmarshal([]byte(res), &tree)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(tree.Nodes))
+	require.Equal(t, 1, len(tree.Nodes))
 	assert.Equal(t, 1, len(tree.Nodes[0].Replies))
 	assert.Equal(t, 2, tree.Info.Count)
 	assert.Equal(t, "https://radio-t.com/blah1", tree.Info.URL)
@@ -230,7 +230,7 @@ func TestRest_FindUserView(t *testing.T) {
 	comments = commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(comments.Comments), "should have 2 comments")
+	require.Equal(t, 2, len(comments.Comments), "should have 2 comments")
 	assert.Equal(t, id1, comments.Comments[0].ID)
 	assert.Equal(t, id2, comments.Comments[1].ID)
 	assert.Equal(t, "dev", comments.Comments[0].User.ID)
@@ -265,7 +265,7 @@ func TestRest_Last(t *testing.T) {
 	comments := []store.Comment{}
 	err := json.Unmarshal([]byte(res), &comments)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(comments), "should have 2 comments")
+	require.Equal(t, 2, len(comments), "should have 2 comments")
 	assert.Equal(t, id1, comments[1].ID)
 	assert.Equal(t, id2, comments[0].ID)
 
@@ -274,7 +274,7 @@ func TestRest_Last(t *testing.T) {
 	comments = []store.Comment{}
 	err = json.Unmarshal([]byte(res), &comments)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(comments), "should have 2 comments")
+	require.Equal(t, 2, len(comments), "should have 2 comments")
 	assert.Equal(t, id1, comments[1].ID)
 	assert.Equal(t, id2, comments[0].ID)
 
@@ -283,7 +283,7 @@ func TestRest_Last(t *testing.T) {
 	comments = []store.Comment{}
 	err = json.Unmarshal([]byte(res), &comments)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(comments), "should have 1 comments")
+	require.Equal(t, 1, len(comments), "should have 1 comments")
 	assert.Equal(t, id2, comments[0].ID)
 
 	res, code = get(t, ts.URL+"/api/v1/last/5?site=remark42")
@@ -343,7 +343,7 @@ func TestRest_FindUserComments(t *testing.T) {
 
 	err = json.Unmarshal([]byte(res), &resp)
 	assert.NoError(t, err)
-	assert.Equal(t, 3, len(resp.Comments), "should have 3 comments")
+	require.Equal(t, 3, len(resp.Comments), "should have 3 comments")
 	assert.Equal(t, 4, resp.Count, "should have 3 count")
 
 	// user comment sorted with -time

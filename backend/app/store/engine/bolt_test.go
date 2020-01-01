@@ -25,7 +25,7 @@ func TestBoltDB_CreateAndFind(t *testing.T) {
 	req := FindRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, Sort: "time"}
 	res, err := b.Find(req)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(res))
+	require.Equal(t, 2, len(res))
 	assert.Equal(t, `some text, <a href="http://radio-t.com">link</a>`, res[0].Text)
 	assert.Equal(t, "user1", res[0].User.ID)
 	t.Log(res[0].ID)
@@ -98,7 +98,7 @@ func TestBoltDB_Update(t *testing.T) {
 	req := FindRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, Sort: "time"}
 	res, err := b.Find(req)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(res), "2 records initially")
+	require.Equal(t, 2, len(res), "2 records initially")
 
 	comment := res[0]
 	comment.Text = "abc 123"
@@ -129,13 +129,13 @@ func TestBoltDB_FindLast(t *testing.T) {
 	req := FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Sort: "-time"}
 	res, err := b.Find(req)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(res))
+	require.Equal(t, 2, len(res))
 	assert.Equal(t, "some text2", res[0].Text)
 
 	req.Limit = 1
 	res, err = b.Find(req)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(res))
+	require.Equal(t, 1, len(res))
 	assert.Equal(t, "some text2", res[0].Text)
 
 	req.Locator.SiteID = "bad"
@@ -151,13 +151,13 @@ func TestBoltDB_FindLastSince(t *testing.T) {
 	req := FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Sort: "-time", Since: ts}
 	res, err := b.Find(req)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(res))
+	require.Equal(t, 2, len(res))
 	assert.Equal(t, "some text2", res[0].Text)
 
 	req.Since = time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local)
 	res, err = b.Find(req)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(res))
+	require.Equal(t, 1, len(res))
 	assert.Equal(t, "some text2", res[0].Text)
 
 	req.Since = time.Date(2017, 12, 20, 16, 18, 22, 0, time.Local)
@@ -174,13 +174,13 @@ func TestBoltDB_FindInPostSince(t *testing.T) {
 	req := FindRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, Sort: "-time", Since: ts}
 	res, err := b.Find(req)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(res))
+	require.Equal(t, 2, len(res))
 	assert.Equal(t, "some text2", res[0].Text)
 
 	req.Since = time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local)
 	res, err = b.Find(req)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(res))
+	require.Equal(t, 1, len(res))
 	assert.Equal(t, "some text2", res[0].Text)
 
 	req.Since = time.Date(2017, 12, 20, 16, 18, 22, 0, time.Local)
@@ -196,19 +196,19 @@ func TestBoltDB_FindForUser(t *testing.T) {
 	req := FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Sort: "-time", UserID: "user1", Limit: 5}
 	res, err := b.Find(req)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(res))
+	require.Equal(t, 2, len(res))
 	assert.Equal(t, "some text2", res[0].Text, "sorted by -time")
 
 	req = FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Sort: "-time", UserID: "user1", Limit: 1}
 	res, err = b.Find(req)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(res), "allow 1 comment")
+	require.Equal(t, 1, len(res), "allow 1 comment")
 	assert.Equal(t, "some text2", res[0].Text, "sorted by -time")
 
 	req = FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Sort: "-time", UserID: "user1", Limit: 1, Skip: 1}
 	res, err = b.Find(req)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(res), "allow 1 comment")
+	require.Equal(t, 1, len(res), "allow 1 comment")
 	assert.Equal(t, `some text, <a href="http://radio-t.com">link</a>`, res[0].Text, "second comment")
 
 	req = FindRequest{Locator: store.Locator{SiteID: "bad"}, Sort: "-time", UserID: "user1", Limit: 1, Skip: 1}
@@ -255,7 +255,7 @@ func TestBoltDB_FindForUserPagination(t *testing.T) {
 	req.Limit = 5
 	res, err = b.Find(req)
 	assert.NoError(t, err)
-	assert.Equal(t, 5, len(res))
+	require.Equal(t, 5, len(res))
 	assert.Equal(t, "id-199", res[0].ID)
 	assert.Equal(t, "id-195", res[4].ID)
 
@@ -263,7 +263,7 @@ func TestBoltDB_FindForUserPagination(t *testing.T) {
 	req.Skip, req.Limit = 10, 3
 	res, err = b.Find(req)
 	assert.NoError(t, err)
-	assert.Equal(t, 3, len(res))
+	require.Equal(t, 3, len(res))
 	assert.Equal(t, "id-189", res[0].ID)
 	assert.Equal(t, "id-187", res[2].ID)
 
@@ -271,7 +271,7 @@ func TestBoltDB_FindForUserPagination(t *testing.T) {
 	req.Skip, req.Limit = 195, 10
 	res, err = b.Find(req)
 	assert.NoError(t, err)
-	assert.Equal(t, 5, len(res))
+	require.Equal(t, 5, len(res))
 	assert.Equal(t, "id-4", res[0].ID)
 	assert.Equal(t, "id-0", res[4].ID)
 
@@ -602,7 +602,7 @@ func TestBolt_FlagListBlocked(t *testing.T) {
 	assert.NoError(t, err)
 
 	blockedList := toBlocked(vv)
-	assert.Equal(t, 2, len(blockedList))
+	require.Equal(t, 2, len(blockedList))
 	assert.Equal(t, "user1", blockedList[0].ID)
 	assert.Equal(t, "user2", blockedList[1].ID)
 	t.Logf("%+v", blockedList)
@@ -612,7 +612,7 @@ func TestBolt_FlagListBlocked(t *testing.T) {
 	vv, err = b.ListFlags(FlagRequest{Flag: Blocked, Locator: store.Locator{SiteID: "radio-t"}})
 	assert.NoError(t, err)
 	blockedList = toBlocked(vv)
-	assert.Equal(t, 1, len(blockedList))
+	require.Equal(t, 1, len(blockedList))
 	assert.Equal(t, "user1", blockedList[0].ID)
 
 	_, err = b.ListFlags(FlagRequest{Flag: Blocked, Locator: store.Locator{SiteID: "bad"}})
@@ -689,7 +689,7 @@ func TestBolt_DeleteComment(t *testing.T) {
 
 	res, err = b.Find(reqReq)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(res))
+	require.Equal(t, 2, len(res))
 	assert.Equal(t, "", res[0].Text)
 	assert.True(t, res[0].Deleted, "marked deleted")
 	assert.Equal(t, store.User{Name: "user name", ID: "user1", Picture: "", Admin: false, Blocked: false, IP: ""}, res[0].User)
@@ -727,7 +727,7 @@ func TestBolt_DeleteHard(t *testing.T) {
 	reqReq := FindRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, Sort: "time"}
 	res, err := b.Find(reqReq)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(res), "initially 2 comments")
+	require.Equal(t, 2, len(res), "initially 2 comments")
 
 	delReq := DeleteRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
 		CommentID: res[0].ID, DeleteMode: store.HardDelete}
@@ -736,7 +736,7 @@ func TestBolt_DeleteHard(t *testing.T) {
 
 	res, err = b.Find(reqReq)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(res))
+	require.Equal(t, 2, len(res))
 	assert.Equal(t, "", res[0].Text)
 	assert.True(t, res[0].Deleted, "marked deleted")
 	assert.Equal(t, store.User{Name: "deleted", ID: "deleted", Picture: "", Admin: false, Blocked: false, IP: ""}, res[0].User)
@@ -812,7 +812,7 @@ func TestBoltAdmin_DeleteUserHard(t *testing.T) {
 
 	comments, err := b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com"}, Sort: "time"})
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(comments), "2 comments with deleted info")
+	require.Equal(t, 2, len(comments), "2 comments with deleted info")
 	assert.Equal(t, store.User{Name: "deleted", ID: "deleted", Picture: "", Admin: false, Blocked: false, IP: ""}, comments[0].User)
 	assert.Equal(t, store.User{Name: "deleted", ID: "deleted", Picture: "", Admin: false, Blocked: false, IP: ""}, comments[1].User)
 
@@ -841,7 +841,7 @@ func TestBoltAdmin_DeleteUserSoft(t *testing.T) {
 
 	comments, err := b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com"}, Sort: "time"})
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(comments), "2 comments with deleted info")
+	require.Equal(t, 2, len(comments), "2 comments with deleted info")
 	assert.Equal(t, store.User{Name: "user name", ID: "user1", Picture: "", Admin: false, Blocked: false, IP: ""}, comments[0].User)
 	assert.Equal(t, store.User{Name: "user name", ID: "user1", Picture: "", Admin: false, Blocked: false, IP: ""}, comments[1].User)
 
@@ -851,7 +851,7 @@ func TestBoltAdmin_DeleteUserSoft(t *testing.T) {
 
 	comments, err = b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", Limit: 5})
 	assert.NoError(t, err, "no comments for user user1 in store")
-	assert.Equal(t, 2, len(comments), "2 comments with deleted info")
+	require.Equal(t, 2, len(comments), "2 comments with deleted info")
 	assert.True(t, comments[0].Deleted)
 	assert.True(t, comments[1].Deleted)
 	assert.Equal(t, "", comments[0].Text)
