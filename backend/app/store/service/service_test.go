@@ -101,26 +101,39 @@ func TestService_CreateFromPartialWithTitle(t *testing.T) {
 	b := DataStore{Engine: prepStoreEngine(t), AdminStore: ks,
 		TitleExtractor: NewTitleExtractor(http.Client{Timeout: 5 * time.Second})}
 	defer b.Close()
+
+	postPath := "/post/42"
+	postTitle := "Post Title 42"
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.String() == postPath {
+			_, err := w.Write([]byte(fmt.Sprintf("<html><title>%s</title><body>...</body></html>", postTitle)))
+			assert.NoError(t, err)
+			return
+		}
+		w.WriteHeader(404)
+	}))
+	defer ts.Close()
+
 	comment := store.Comment{
 		Text:      "text",
 		Timestamp: time.Date(2018, 3, 25, 16, 34, 33, 0, time.UTC),
 		Votes:     map[string]bool{"u1": true, "u2": false},
 		User:      store.User{IP: "192.168.1.1", ID: "user", Name: "name"},
-		Locator:   store.Locator{URL: "https://radio-t.com/p/2018/12/29/podcast-630/", SiteID: "radio-t"},
+		Locator:   store.Locator{URL: ts.URL + postPath, SiteID: "radio-t"},
 	}
 	id, err := b.Create(comment)
 	assert.NoError(t, err)
 	assert.True(t, id != "", id)
 
-	res, err := b.Engine.Get(getReq(store.Locator{URL: "https://radio-t.com/p/2018/12/29/podcast-630/", SiteID: "radio-t"}, id))
+	res, err := b.Engine.Get(getReq(store.Locator{URL: ts.URL + postPath, SiteID: "radio-t"}, id))
 	assert.NoError(t, err)
 	t.Logf("%+v", res)
-	assert.Equal(t, "Радио-Т 630 — Радио-Т Подкаст", res.PostTitle)
+	assert.Equal(t, postTitle, res.PostTitle)
 
 	comment.PostTitle = "post blah"
 	id, err = b.Create(comment)
 	assert.NoError(t, err)
-	res, err = b.Engine.Get(getReq(store.Locator{URL: "https://radio-t.com/p/2018/12/29/podcast-630/", SiteID: "radio-t"}, id))
+	res, err = b.Engine.Get(getReq(store.Locator{URL: ts.URL + postPath, SiteID: "radio-t"}, id))
 	assert.NoError(t, err)
 	t.Logf("%+v", res)
 	assert.Equal(t, "post blah", res.PostTitle, "keep comment title")
