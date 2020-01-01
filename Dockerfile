@@ -20,7 +20,7 @@ ENV GOFLAGS="-mod=vendor"
 RUN \
     cd app && \
     if [ -z "$SKIP_BACKEND_TEST" ] ; then \
-        go test -p 1 -timeout="${BACKEND_TEST_TIMEOUT:-30s}" -covermode=count -coverprofile=/profile.cov_tmp ./... && \
+        go test -p 1 -timeout="${BACKEND_TEST_TIMEOUT:-300s}" -covermode=count -coverprofile=/profile.cov_tmp ./... && \
         cat /profile.cov_tmp | grep -v "_mock.go" > /profile.cov ; \
         golangci-lint run --out-format=tab --disable-all --tests=false --enable=unconvert \
         --enable=megacheck --enable=structcheck --enable=gas --enable=gocyclo --enable=dupl --enable=misspell \
