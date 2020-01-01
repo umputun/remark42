@@ -948,7 +948,7 @@ func TestRest_CreateWithPictures(t *testing.T) {
 		assert.Error(t, err, "picture %d not moved from staging yet", i)
 	}
 
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(800 * time.Millisecond)
 
 	for i := range ids {
 		_, err = os.Stat("/tmp/remark42/images/" + ids[i])
