@@ -35,7 +35,7 @@ import { addComment, updateComment } from '@app/store/comments/actions';
 import { AuthPanel } from '@app/components/auth-panel';
 import Settings from '@app/components/settings';
 import { ConnectedComment as Comment } from '@app/components/comment/connected-comment';
-import { Input } from '@app/components/input';
+import { CommentForm } from '@app/components/comment-form';
 import Preloader from '@app/components/preloader';
 import { Thread } from '@app/components/thread';
 import { uploadImage, getPreview } from '@app/common/api';
@@ -241,7 +241,7 @@ export class Root extends Component<Props, State> {
           {!this.props.isSettingsVisible && (
             <div className="root__main">
               {!isGuest && !isCommentsDisabled && (
-                <Input
+                <CommentForm
                   theme={props.theme}
                   mix="root__input"
                   mode="main"

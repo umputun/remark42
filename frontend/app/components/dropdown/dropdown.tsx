@@ -4,7 +4,7 @@ import b from 'bem-react-helper';
 
 import { Theme } from '@app/common/types';
 import { sleep } from '@app/utils/sleep';
-import { UIButton } from '@app/components/ui-button';
+import { Button } from '@app/components/button';
 
 interface Props {
   title: string;
@@ -183,7 +183,7 @@ export default class Dropdown extends Component<Props, State> {
 
     return (
       <div className={b('dropdown', { mix }, { theme, active: isActive })} ref={this.rootNode}>
-        <UIButton
+        <Button
           aria-haspopup="listbox"
           aria-expanded={isActive && 'true'}
           onClick={this.onTitleClick}
@@ -192,7 +192,7 @@ export default class Dropdown extends Component<Props, State> {
           kind="link"
         >
           {title}
-        </UIButton>
+        </Button>
 
         <div
           className="dropdown__content"

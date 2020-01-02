@@ -1,0 +1,38 @@
+.comment-form_theme_light {
+  border-color: #eee;
+  background: #fff; /* try to fix textarea blinking in Safari */
+
+  .comment-form__actions {
+    background: #eee;
+  }
+
+  .comment-form__button_type_preview {
+    background: #fff;
+    color: #000;
+  }
+
+  .comment-form__button_type_send {
+    color: #fff;
+  }
+
+  .comment-form__error {
+    border-top: 8px solid #eee;
+    background: #ffd7d7;
+    color: #9a0000;
+  }
+
+  .comment-form__field {
+    background: #fff;
+    color: #000;
+  }
+
+  .comment-form__preview {
+    border-color: #eee;
+    background: #fff;
+    color: #333;
+  }
+
+  .comment-form__preview-wrapper {
+    background: #eee;
+  }
+}

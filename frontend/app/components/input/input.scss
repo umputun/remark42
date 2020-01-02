@@ -1,8 +1,13 @@
 .input {
-  position: relative;
-  display: block;
-  font-size: 0;
-  border-style: solid;
-  border-width: 6px 12px 12px 12px;
-  border-radius: 2px;
+  font-size: 16px;
+  font-family: inherit;
+  padding: 4px 8px;
+  border: 1px solid #c4c4c4;
+  margin: 0;
+
+  &:focus {
+    box-shadow: 0 0 0 2px rgba(37, 156, 154, 0.4);
+    border-color: #259c9a;
+    outline: none;
+  }
 }

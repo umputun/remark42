@@ -3,8 +3,8 @@ import { createElement, Component, createRef } from 'preact';
 import b from 'bem-react-helper';
 import { Theme } from '@app/common/types';
 
-import { UIInput } from '@app/components/ui-input';
-import { UIButton } from '@app/components/ui-button';
+import { Input } from '@app/components/input';
+import { Button } from '@app/components/button';
 
 interface Props {
   onSubmit(username: string): Promise<void>;
@@ -79,7 +79,7 @@ export class AnonymousLoginForm extends Component<Props, State> {
 
     return (
       <form className={className} onSubmit={this.onSubmit}>
-        <UIInput
+        <Input
           ref={this.inputRef}
           mix="auth-panel-anonymous-login-form__input"
           placeholder="Username"
@@ -95,7 +95,7 @@ export class AnonymousLoginForm extends Component<Props, State> {
           onChange={this.onCheckedChange}
           checked={this.state.honeyPotValue}
         />
-        <UIButton
+        <Button
           mix="auth-panel-anonymous-login-form__submit"
           type="submit"
           kind="primary"
@@ -104,7 +104,7 @@ export class AnonymousLoginForm extends Component<Props, State> {
           disabled={usernameInvalidReason !== null}
         >
           Log in
-        </UIButton>
+        </Button>
       </form>
     );
   }

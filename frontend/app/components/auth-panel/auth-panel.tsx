@@ -12,7 +12,7 @@ import postMessage from '@app/utils/postMessage';
 import { StoreState } from '@app/store';
 import { ProviderState } from '@app/store/provider/reducers';
 import Dropdown, { DropdownItem } from '@app/components/dropdown';
-import { UIButton } from '@app/components/ui-button';
+import { Button } from '@app/components/button';
 
 import { AnonymousLoginForm } from './__anonymous-login-form';
 import { EmailLoginFormConnected } from './__email-login-form';
@@ -169,15 +169,15 @@ export class AuthPanel extends Component<Props, State> {
 
           {!isUserAnonymous && (
             <DropdownItem>
-              <UIButton theme={theme} onClick={() => requestDeletion().then(onSignOut)}>
+              <Button theme={theme} onClick={() => requestDeletion().then(onSignOut)}>
                 Request my data removal
-              </UIButton>
+              </Button>
             </DropdownItem>
           )}
         </Dropdown>{' '}
-        <UIButton kind="link" theme={theme} onClick={onSignOut}>
+        <Button kind="link" theme={theme} onClick={onSignOut}>
           Sign out?
-        </UIButton>
+        </Button>
       </div>
     );
   };
@@ -221,7 +221,7 @@ export class AuthPanel extends Component<Props, State> {
     }
 
     return (
-      <UIButton
+      <Button
         mix={dropdown ? 'auth-panel__dropdown-provider' : ''}
         kind="link"
         data-provider={provider}
@@ -229,7 +229,7 @@ export class AuthPanel extends Component<Props, State> {
         role="link"
       >
         {PROVIDER_NAMES[provider]}
-      </UIButton>
+      </Button>
     );
   };
 
@@ -320,28 +320,28 @@ export class AuthPanel extends Component<Props, State> {
 
   renderSettingsLabel = () => {
     return (
-      <UIButton
+      <Button
         kind="link"
         mix="auth-panel__admin-action"
         {...getHandleClickProps(() => this.toggleBlockedVisibility())}
         role="link"
       >
         {this.state.isBlockedVisible ? 'Hide' : 'Show'} settings
-      </UIButton>
+      </Button>
     );
   };
 
   renderReadOnlySwitch = () => {
     const { isCommentsDisabled } = this.props;
     return (
-      <UIButton
+      <Button
         kind="link"
         mix="auth-panel__admin-action"
         {...getHandleClickProps(() => this.toggleCommentsAvailability())}
         role="link"
       >
         {isCommentsDisabled ? 'Enable' : 'Disable'} comments
-      </UIButton>
+      </Button>
     );
   };
 

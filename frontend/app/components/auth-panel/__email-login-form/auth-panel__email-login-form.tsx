@@ -8,9 +8,9 @@ import { sendEmailVerificationRequest } from '@app/common/api';
 import { extractErrorMessageFromResponse } from '@app/utils/errorUtils';
 import { getHandleClickProps } from '@app/common/accessibility';
 import { sleep } from '@app/utils/sleep';
-import TextareaAutosize from '@app/components/input/textarea-autosize';
-import { UIInput } from '@app/components/ui-input';
-import { UIButton } from '@app/components/ui-button';
+import TextareaAutosize from '@app/components/comment-form/textarea-autosize';
+import { Input } from '@app/components/input';
+import { Button } from '@app/components/button';
 
 const mapStateToProps = () => ({
   sendEmailVerification: sendEmailVerificationRequest,
@@ -175,21 +175,21 @@ export class EmailLoginForm extends Component<Props, State> {
           >
             {'< Back'}
           </span>
-          <UIInput
+          <Input
             mix="auth-panel-email-login-form__input"
             ref={this.inputRef}
             placeholder="Username"
             value={this.state.usernameValue}
             onInput={this.onUsernameChange}
           />
-          <UIInput
+          <Input
             mix="auth-panel-email-login-form__input"
             type="email"
             placeholder="Email Address"
             value={this.state.addressValue}
             onInput={this.onAddressChange}
           />
-          <UIButton
+          <Button
             mix="auth-panel-email-login-form__submit"
             kind="primary"
             size="middle"
@@ -198,7 +198,7 @@ export class EmailLoginForm extends Component<Props, State> {
             disabled={form1InvalidReason !== null}
           >
             Send Verification
-          </UIButton>
+          </Button>
           {this.state.error && <div className="auth-panel-email-login-form__error">{this.state.error}</div>}
         </form>
       );
@@ -207,9 +207,9 @@ export class EmailLoginForm extends Component<Props, State> {
 
     return (
       <form className={className} onSubmit={this.onSubmit}>
-        <UIButton kind="link" mix="auth-panel-email-login-form__back-button" {...getHandleClickProps(this.goBack)}>
+        <Button kind="link" mix="auth-panel-email-login-form__back-button" {...getHandleClickProps(this.goBack)}>
           Back
-        </UIButton>
+        </Button>
         <TextareaAutosize
           autofocus={true}
           className="auth-panel-email-login-form__token-input"
@@ -220,7 +220,7 @@ export class EmailLoginForm extends Component<Props, State> {
           spellcheck={false}
           autocomplete="off"
         />
-        <UIButton
+        <Button
           mix="auth-panel-email-login-form__submit"
           type="submit"
           kind="primary"
@@ -229,7 +229,7 @@ export class EmailLoginForm extends Component<Props, State> {
           disabled={form2InvalidReason !== null}
         >
           Confirm
-        </UIButton>
+        </Button>
         {this.state.error && <div className="auth-panel-email-login-form__error">{this.state.error}</div>}
       </form>
     );

@@ -1,0 +1,31 @@
+.comment-form__field {
+  $lineHeight: 1.4;
+  $fontSize: 16px;
+  $paddingVrt: 10px;
+  $lines: 4;
+  $height: calc($fontSize * $lineHeight * $lines + $paddingVrt * 2);
+
+  box-sizing: border-box;
+  width: 100%;
+  height: $height;
+  min-height: $height;
+  padding: $paddingVrt 12px;
+  margin: 0;
+  font-family: 'PT Sans', Helvetica, Arial, sans-serif;
+  font-size: $fontSize;
+  line-height: $lineHeight;
+  border: 0;
+  resize: none;
+  backface-visibility: hidden; /* let's try to fix blinking in Safari */
+  transform: translateZ(0); /* let's try to fix blinking in Safari, again */
+
+  &:focus {
+    box-shadow: 0 0 0 2px rgba(37, 156, 154, 0.4);
+    border-color: #259c9a;
+    outline: none;
+  }
+
+  &:disabled {
+    color: #777;
+  }
+}
