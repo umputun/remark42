@@ -63,6 +63,6 @@ jobs:
       env:
         COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: build docker image
+    - name: build docker image with frontend tests
       run: docker build --build-arg SKIP_BACKEND_TEST=true --build-arg CI=github .
 
