@@ -2,10 +2,12 @@ package service
 
 import (
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path"
 	"strconv"
 	"strings"
 	"sync"
@@ -26,13 +28,12 @@ import (
 	"github.com/umputun/remark/backend/app/store/image"
 )
 
-var testDb = "/tmp/test-remark.db"
-
 func TestService_CreateFromEmpty(t *testing.T) {
-	defer teardown(t)
+
 	ks := admin.NewStaticKeyStore("secret 123")
-	b := DataStore{Engine: prepStoreEngine(t), AdminStore: ks}
-	defer b.Close()
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: ks}
 	comment := store.Comment{
 		Text:    "text",
 		User:    store.User{IP: "192.168.1.1", ID: "user", Name: "name"},
@@ -54,10 +55,11 @@ func TestService_CreateFromEmpty(t *testing.T) {
 }
 
 func TestService_CreateSiteDisabled(t *testing.T) {
-	defer teardown(t)
+
 	ks := admin.NewStaticStore("secret 123", []string{"xxx"}, nil, "email")
-	b := DataStore{Engine: prepStoreEngine(t), AdminStore: ks}
-	defer b.Close()
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: ks}
 	comment := store.Comment{
 		Text:    "text",
 		User:    store.User{IP: "192.168.1.1", ID: "user", Name: "name"},
@@ -68,10 +70,11 @@ func TestService_CreateSiteDisabled(t *testing.T) {
 }
 
 func TestService_CreateFromPartial(t *testing.T) {
-	defer teardown(t)
+
 	ks := admin.NewStaticKeyStore("secret 123")
-	b := DataStore{Engine: prepStoreEngine(t), AdminStore: ks}
-	defer b.Close()
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: ks}
 	comment := store.Comment{
 		Text:      "text",
 		Timestamp: time.Date(2018, 3, 25, 16, 34, 33, 0, time.UTC),
@@ -96,11 +99,12 @@ func TestService_CreateFromPartial(t *testing.T) {
 }
 
 func TestService_CreateFromPartialWithTitle(t *testing.T) {
-	defer teardown(t)
+
 	ks := admin.NewStaticKeyStore("secret 123")
-	b := DataStore{Engine: prepStoreEngine(t), AdminStore: ks,
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: ks,
 		TitleExtractor: NewTitleExtractor(http.Client{Timeout: 5 * time.Second})}
-	defer b.Close()
 
 	postPath := "/post/42"
 	postTitle := "Post Title 42"
@@ -140,7 +144,6 @@ func TestService_CreateFromPartialWithTitle(t *testing.T) {
 }
 
 func TestService_SetTitle(t *testing.T) {
-	defer teardown(t)
 
 	var titleEnable int32
 	tss := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -162,9 +165,10 @@ func TestService_SetTitle(t *testing.T) {
 	defer tss.Close()
 
 	ks := admin.NewStaticKeyStore("secret 123")
-	b := DataStore{Engine: prepStoreEngine(t), AdminStore: ks,
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: ks,
 		TitleExtractor: NewTitleExtractor(http.Client{Timeout: 5 * time.Second})}
-	defer b.Close()
 	comment := store.Comment{
 		Text:      "text",
 		Timestamp: time.Date(2018, 3, 25, 16, 34, 33, 0, time.UTC),
@@ -189,16 +193,16 @@ func TestService_SetTitle(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "post1 blah 123", c.PostTitle)
 
-	b = DataStore{Engine: prepStoreEngine(t), AdminStore: ks}
-	defer b.Close()
+	b = DataStore{Engine: eng, AdminStore: ks}
 	_, err = b.SetTitle(store.Locator{URL: tss.URL + "/post1", SiteID: "radio-t"}, id)
 	require.EqualError(t, err, "no title extractor")
 }
 
 func TestService_Vote(t *testing.T) {
-	defer teardown(t)
-	b := DataStore{Engine: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: -1}
-	defer b.Close()
+
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: -1}
 
 	comment := store.Comment{
 		Text:    "text",
@@ -299,9 +303,10 @@ func TestService_Vote(t *testing.T) {
 }
 
 func TestService_VoteLimit(t *testing.T) {
-	defer teardown(t)
-	b := DataStore{Engine: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: 2}
-	defer b.Close()
+
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: 2}
 
 	_, err := b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-1",
 		UserID: "user2", Val: true})
@@ -322,9 +327,10 @@ func TestService_VoteLimit(t *testing.T) {
 }
 
 func TestService_VotesDisabled(t *testing.T) {
-	defer teardown(t)
-	b := DataStore{Engine: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: 0}
-	defer b.Close()
+
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: 0}
 
 	_, err := b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-1",
 		UserID: "user2", Val: true})
@@ -332,9 +338,10 @@ func TestService_VotesDisabled(t *testing.T) {
 }
 
 func TestService_VoteAggressive(t *testing.T) {
-	defer teardown(t)
-	b := DataStore{Engine: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: -1}
-	defer b.Close()
+
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: -1}
 
 	comment := store.Comment{
 		Text:    "text",
@@ -397,9 +404,9 @@ func TestService_VoteAggressive(t *testing.T) {
 
 func TestService_VoteConcurrent(t *testing.T) {
 
-	defer teardown(t)
-	b := DataStore{Engine: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: -1}
-	defer b.Close()
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: -1}
 
 	comment := store.Comment{
 		Text:    "text",
@@ -431,33 +438,40 @@ func TestService_VoteConcurrent(t *testing.T) {
 }
 
 func TestService_VotePositive(t *testing.T) {
-	defer teardown(t)
-	b := DataStore{Engine: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123"),
-		MaxVotes: -1, PositiveScore: true}
-	defer b.Close()
+
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"),
+		MaxVotes: -1, PositiveScore: true} // allow positive voting only
 
 	_, err := b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-1",
 		UserID: "user2", Val: false})
 	assert.EqualError(t, err, "minimal score reached for comment id-1")
 
-	_, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-1",
+	c, err := b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-1",
 		UserID: "user3", Val: true})
 	assert.NoError(t, err, "minimal score doesn't affect positive vote")
+	assert.Equal(t, 1, c.Score)
 
-	b = DataStore{Engine: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123"),
-		MaxVotes: -1, PositiveScore: false}
-	defer b.Close()
-	c, err := b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-1",
+	b.PositiveScore = false // allow negative voting
+	c, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-1",
 		UserID: "user2", Val: false})
 	assert.NoError(t, err, "minimal score ignored")
+	assert.Equal(t, 0, c.Score)
+	assert.Equal(t, 2.0, c.Controversy)
+
+	c, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-1",
+		UserID: "user4", Val: false})
+	assert.NoError(t, err, "minimal score ignored")
 	assert.Equal(t, -1, c.Score)
-	assert.Equal(t, 0.0, c.Controversy)
+
 }
 
 func TestService_VoteControversy(t *testing.T) {
-	defer teardown(t)
-	b := DataStore{Engine: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: -1}
-	defer b.Close()
+
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: -1}
 
 	c, err := b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
 		UserID: "user2", Val: false})
@@ -485,10 +499,11 @@ func TestService_VoteControversy(t *testing.T) {
 }
 
 func TestService_VoteSameIP(t *testing.T) {
-	defer teardown(t)
-	b := DataStore{Engine: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123"),
+
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"),
 		MaxVotes: -1}
-	defer b.Close()
 	b.RestrictSameIPVotes.Enabled = true
 
 	c, err := b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
@@ -508,10 +523,11 @@ func TestService_VoteSameIP(t *testing.T) {
 }
 
 func TestService_VoteSameIPWithDuration(t *testing.T) {
-	defer teardown(t)
-	b := DataStore{Engine: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123"),
+
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"),
 		MaxVotes: -1}
-	defer b.Close()
 	b.RestrictSameIPVotes.Enabled = true
 	b.RestrictSameIPVotes.Duration = 500 * time.Millisecond
 
@@ -563,9 +579,10 @@ func TestService_Controversy(t *testing.T) {
 }
 
 func TestService_Pin(t *testing.T) {
-	defer teardown(t)
-	b := DataStore{Engine: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123")}
-	defer b.Close()
+
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123")}
 
 	res, err := b.Last("radio-t", 0, time.Time{}, store.User{})
 	t.Logf("%+v", res[0])
@@ -588,9 +605,10 @@ func TestService_Pin(t *testing.T) {
 }
 
 func TestService_EditComment(t *testing.T) {
-	defer teardown(t)
-	b := DataStore{Engine: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123")}
-	defer b.Close()
+
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123")}
 
 	res, err := b.Last("radio-t", 0, time.Time{}, store.User{})
 	t.Logf("%+v", res[0])
@@ -616,9 +634,10 @@ func TestService_EditComment(t *testing.T) {
 }
 
 func TestService_DeleteComment(t *testing.T) {
-	defer teardown(t)
-	b := DataStore{Engine: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123")}
-	defer b.Close()
+
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123")}
 
 	res, err := b.Last("radio-t", 0, time.Time{}, store.User{})
 	t.Logf("%+v", res[0])
@@ -636,10 +655,11 @@ func TestService_DeleteComment(t *testing.T) {
 }
 
 func TestService_EditCommentDurationFailed(t *testing.T) {
-	defer teardown(t)
-	b := DataStore{Engine: prepStoreEngine(t), EditDuration: 100 * time.Millisecond,
+
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, EditDuration: 100 * time.Millisecond,
 		AdminStore: admin.NewStaticKeyStore("secret 123")}
-	defer b.Close()
 
 	res, err := b.Last("radio-t", 0, time.Time{}, store.User{})
 	t.Logf("%+v", res[0])
@@ -655,9 +675,10 @@ func TestService_EditCommentDurationFailed(t *testing.T) {
 }
 
 func TestService_EditCommentReplyFailed(t *testing.T) {
-	defer teardown(t)
-	b := DataStore{Engine: prepStoreEngine(t), AdminStore: admin.NewStaticKeyStore("secret 123")}
-	defer b.Close()
+
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123")}
 
 	res, err := b.Last("radio-t", 0, time.Time{}, store.User{})
 	t.Logf("%+v", res[1])
@@ -708,9 +729,9 @@ func TestService_ValidateComment(t *testing.T) {
 }
 
 func TestService_Counts(t *testing.T) {
-	defer teardown(t)
-	b := prepStoreEngine(t) // two comments for https://radio-t.com
-	defer b.Close()
+
+	b, teardown := prepStoreEngine(t) // two comments for https://radio-t.com
+	defer teardown()
 
 	// add one more for https://radio-t.com/2
 	comment := store.Comment{
@@ -738,11 +759,12 @@ func TestService_Counts(t *testing.T) {
 }
 
 func TestService_GetMetas(t *testing.T) {
-	defer teardown(t)
+
 	// two comments for https://radio-t.com
-	b := DataStore{Engine: prepStoreEngine(t), EditDuration: 100 * time.Millisecond,
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, EditDuration: 100 * time.Millisecond,
 		AdminStore: admin.NewStaticKeyStore("secret 123")}
-	defer b.Close()
 
 	um, pm, err := b.Metas("radio-t")
 	require.NoError(t, err)
@@ -784,11 +806,12 @@ func TestService_GetMetas(t *testing.T) {
 }
 
 func TestService_SetMetas(t *testing.T) {
-	defer teardown(t)
+
 	// two comments for https://radio-t.com
-	b := DataStore{Engine: prepStoreEngine(t), EditDuration: 100 * time.Millisecond,
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, EditDuration: 100 * time.Millisecond,
 		AdminStore: admin.NewStaticKeyStore("secret 123")}
-	defer b.Close()
 	umetas := []UserMetaData{}
 	pmetas := []PostMetaData{}
 	err := b.SetMetas("radio-t", umetas, pmetas)
@@ -812,10 +835,11 @@ func TestService_SetMetas(t *testing.T) {
 }
 
 func TestService_UserDetailsOperations(t *testing.T) {
-	defer teardown(t)
-	b := DataStore{Engine: prepStoreEngine(t), EditDuration: 100 * time.Millisecond,
+
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, EditDuration: 100 * time.Millisecond,
 		AdminStore: admin.NewStaticKeyStore("secret 123")}
-	defer b.Close()
 
 	// add single valid entry
 	result, err := b.SetUserEmail(store.Locator{SiteID: "radio-t"}, "u1", "test@example.com")
@@ -848,11 +872,12 @@ func TestService_UserDetailsOperations(t *testing.T) {
 }
 
 func TestService_IsAdmin(t *testing.T) {
-	defer teardown(t)
+
 	// two comments for https://radio-t.com
-	b := DataStore{Engine: prepStoreEngine(t), EditDuration: 100 * time.Millisecond,
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, EditDuration: 100 * time.Millisecond,
 		AdminStore: admin.NewStaticStore("secret 123", []string{"radio-t"}, []string{"user2"}, "user@email.com")}
-	defer b.Close()
 
 	assert.False(t, b.IsAdmin("radio-t", "user1"))
 	assert.True(t, b.IsAdmin("radio-t", "user2"))
@@ -861,12 +886,12 @@ func TestService_IsAdmin(t *testing.T) {
 }
 
 func TestService_HasReplies(t *testing.T) {
-	defer teardown(t)
 
 	// two comments for https://radio-t.com, no reply
-	b := DataStore{Engine: prepStoreEngine(t), EditDuration: 100 * time.Millisecond,
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, EditDuration: 100 * time.Millisecond,
 		AdminStore: admin.NewStaticStore("secret 123", []string{"radio-t"}, []string{"user2"}, "user@email.com")}
-	defer b.Close()
 
 	comment := store.Comment{
 		ID:        "id-1",
@@ -893,12 +918,11 @@ func TestService_HasReplies(t *testing.T) {
 
 func TestService_UserReplies(t *testing.T) {
 
-	defer teardown(t)
-
 	// two comments for https://radio-t.com, no reply
-	b := DataStore{Engine: prepStoreEngine(t),
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng,
 		AdminStore: admin.NewStaticStore("secret 123", nil, []string{"user2"}, "user@email.com")}
-	defer b.Close()
 
 	c1 := store.Comment{
 		ID:      "comment-id-1",
@@ -971,12 +995,12 @@ func TestService_UserReplies(t *testing.T) {
 }
 
 func TestService_Find(t *testing.T) {
-	defer teardown(t)
 
 	// two comments for https://radio-t.com, no reply
-	b := DataStore{Engine: prepStoreEngine(t), EditDuration: 100 * time.Millisecond,
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, EditDuration: 100 * time.Millisecond,
 		AdminStore: admin.NewStaticStore("secret 123", nil, []string{"user2"}, "user@email.com")}
-	defer b.Close()
 
 	res, err := b.Find(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "time", store.User{})
 	require.NoError(t, err)
@@ -1007,9 +1031,10 @@ func TestService_Find(t *testing.T) {
 
 func TestService_FindSince(t *testing.T) {
 	// two comments for https://radio-t.com, no reply
-	b := DataStore{Engine: prepStoreEngine(t), EditDuration: 100 * time.Millisecond,
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, EditDuration: 100 * time.Millisecond,
 		AdminStore: admin.NewStaticStore("secret 123", nil, []string{"user2"}, "user@email.com")}
-	defer b.Close()
 
 	res, err := b.FindSince(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "time", store.User{}, time.Time{})
 	require.NoError(t, err)
@@ -1024,12 +1049,12 @@ func TestService_FindSince(t *testing.T) {
 }
 
 func TestService_Info(t *testing.T) {
-	defer teardown(t)
 
 	// two comments for https://radio-t.com, no reply
-	b := DataStore{Engine: prepStoreEngine(t), EditDuration: 100 * time.Millisecond,
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, EditDuration: 100 * time.Millisecond,
 		AdminStore: admin.NewStaticStore("secret 123", nil, []string{"user2"}, "user@email.com")}
-	defer b.Close()
 
 	info, err := b.Info(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, 0)
 	require.NoError(t, err)
@@ -1046,12 +1071,12 @@ func TestService_Info(t *testing.T) {
 }
 
 func TestService_Delete(t *testing.T) {
-	defer teardown(t)
 
 	// two comments for https://radio-t.com, no reply
-	b := DataStore{Engine: prepStoreEngine(t), EditDuration: 100 * time.Millisecond,
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, EditDuration: 100 * time.Millisecond,
 		AdminStore: admin.NewStaticStore("secret 123", nil, []string{"user2"}, "user@email.com")}
-	defer b.Close()
 
 	res, err := b.Last("radio-t", 0, time.Time{}, store.User{})
 	require.Equal(t, 2, len(res))
@@ -1067,11 +1092,12 @@ func TestService_Delete(t *testing.T) {
 
 // DeleteUser removes all comments from user
 func TestService_DeleteUser(t *testing.T) {
-	defer teardown(t)
+
 	// two comments for https://radio-t.com, no reply
-	b := DataStore{Engine: prepStoreEngine(t), EditDuration: 100 * time.Millisecond,
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, EditDuration: 100 * time.Millisecond,
 		AdminStore: admin.NewStaticStore("secret 123", nil, []string{"user2"}, "user@email.com")}
-	defer b.Close()
 
 	// add one more for user2
 	comment := store.Comment{
@@ -1098,11 +1124,12 @@ func TestService_DeleteUser(t *testing.T) {
 }
 
 func TestService_List(t *testing.T) {
-	defer teardown(t)
+
 	// two comments for https://radio-t.com, no reply
-	b := DataStore{Engine: prepStoreEngine(t), EditDuration: 100 * time.Millisecond,
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, EditDuration: 100 * time.Millisecond,
 		AdminStore: admin.NewStaticStore("secret 123", nil, []string{"user2"}, "user@email.com")}
-	defer b.Close()
 
 	// add one more for user2
 	comment := store.Comment{
@@ -1130,11 +1157,12 @@ func TestService_List(t *testing.T) {
 }
 
 func TestService_Count(t *testing.T) {
-	defer teardown(t)
+
 	// two comments for https://radio-t.com, no reply
-	b := DataStore{Engine: prepStoreEngine(t), EditDuration: 100 * time.Millisecond,
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, EditDuration: 100 * time.Millisecond,
 		AdminStore: admin.NewStaticStore("secret 123", nil, []string{"user2"}, "user@email.com")}
-	defer b.Close()
 
 	// add one more for user2
 	comment := store.Comment{
@@ -1161,12 +1189,12 @@ func TestService_Count(t *testing.T) {
 }
 
 func TestService_UserComments(t *testing.T) {
-	defer teardown(t)
 
 	// two comments for https://radio-t.com, no reply
-	b := DataStore{Engine: prepStoreEngine(t), EditDuration: 100 * time.Millisecond,
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, EditDuration: 100 * time.Millisecond,
 		AdminStore: admin.NewStaticStore("secret 123", nil, []string{"user2"}, "user@email.com")}
-	defer b.Close()
 
 	// add one more for user2
 	comment := store.Comment{
@@ -1187,11 +1215,12 @@ func TestService_UserComments(t *testing.T) {
 }
 
 func TestService_UserCount(t *testing.T) {
-	defer teardown(t)
+
 	// two comments for https://radio-t.com, no reply
-	b := DataStore{Engine: prepStoreEngine(t), EditDuration: 100 * time.Millisecond,
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, EditDuration: 100 * time.Millisecond,
 		AdminStore: admin.NewStaticStore("secret 123", nil, []string{"user2"}, "user@email.com")}
-	defer b.Close()
 
 	// add one more for user2
 	comment := store.Comment{
@@ -1217,11 +1246,12 @@ func TestService_UserCount(t *testing.T) {
 }
 
 func TestService_DeleteAll(t *testing.T) {
-	defer teardown(t)
+
 	// two comments for https://radio-t.com, no reply
-	b := DataStore{Engine: prepStoreEngine(t), EditDuration: 100 * time.Millisecond,
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, EditDuration: 100 * time.Millisecond,
 		AdminStore: admin.NewStaticStore("secret 123", nil, []string{"user2"}, "user@email.com")}
-	defer b.Close()
 
 	// add one more for user2
 	comment := store.Comment{
@@ -1243,7 +1273,7 @@ func TestService_DeleteAll(t *testing.T) {
 }
 
 func TestService_submitImages(t *testing.T) {
-	defer teardown(t)
+
 	lgr.Setup(lgr.Debug, lgr.CallerFile, lgr.CallerFunc)
 
 	mockStore := image.MockStore{}
@@ -1251,9 +1281,10 @@ func TestService_submitImages(t *testing.T) {
 	imgSvc := &image.Service{Store: &mockStore, TTL: time.Millisecond * 50}
 
 	// two comments for https://radio-t.com
-	b := DataStore{Engine: prepStoreEngine(t), EditDuration: 50 * time.Millisecond,
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, EditDuration: 50 * time.Millisecond,
 		AdminStore: admin.NewStaticKeyStore("secret 123"), ImageService: imgSvc}
-	defer b.Close()
 
 	c := store.Comment{
 		ID:        "id-22",
@@ -1270,7 +1301,6 @@ func TestService_submitImages(t *testing.T) {
 }
 
 func TestService_alterComment(t *testing.T) {
-	defer teardown(t)
 
 	engineMock := engine.MockInterface{}
 	engineMock.On("Flag", engine.FlagRequest{Flag: engine.Blocked, UserID: "devid"}).Return(false, nil)
@@ -1304,12 +1334,12 @@ func TestService_alterComment(t *testing.T) {
 
 func Benchmark_ServiceCreate(b *testing.B) {
 	dbFile := fmt.Sprintf("%s/test-remark42-%d.db", os.TempDir(), rand.Intn(9999999999))
-	defer os.Remove(dbFile)
+	defer func() { _ = os.Remove(dbFile) }()
 
 	boltStore, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: dbFile, SiteID: "radio-t"})
 	svc := DataStore{Engine: boltStore, EditDuration: 50 * time.Millisecond, AdminStore: admin.NewStaticKeyStore("secret 123")}
 	require.NoError(b, err)
-	defer svc.Close()
+	defer func() { assert.NoError(b, svc.Close()) }()
 
 	for i := 0; i < b.N; i++ {
 		comment := store.Comment{
@@ -1325,8 +1355,12 @@ func Benchmark_ServiceCreate(b *testing.B) {
 }
 
 // makes new boltdb, put two records
-func prepStoreEngine(t *testing.T) engine.Interface {
+func prepStoreEngine(t *testing.T) (engine.Interface, func()) {
+	testDbLoc, err := ioutil.TempDir("", "test_image_r42")
+	require.NoError(t, err)
+	testDb := path.Join(testDbLoc, "test.db")
 	_ = os.Remove(testDb)
+
 	st := time.Now()
 	boltStore, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDb, SiteID: "radio-t"})
 	assert.NoError(t, err)
@@ -1351,11 +1385,10 @@ func prepStoreEngine(t *testing.T) engine.Interface {
 	_, err = boltStore.Create(comment)
 	assert.NoError(t, err)
 	t.Logf("prepared store engine in %v", time.Since(st))
-	return boltStore
-}
-
-func teardown(_ *testing.T) {
-	_ = os.Remove(testDb)
+	return boltStore, func() {
+		assert.NoError(t, boltStore.Close())
+		_ = os.Remove(testDb)
+	}
 }
 
 func getReq(locator store.Locator, commentID string) engine.GetRequest {
