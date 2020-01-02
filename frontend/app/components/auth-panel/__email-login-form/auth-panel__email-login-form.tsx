@@ -71,7 +71,7 @@ export class EmailLoginForm extends Component<Props, State> {
 
   async onVerificationSubmit(e: Event) {
     e.preventDefault();
-    this.setState({ loading: true });
+    this.setState({ loading: true, error: null });
     try {
       await this.props.sendEmailVerification(this.state.usernameValue, this.state.addressValue);
       this.setState({ verificationSent: true });
