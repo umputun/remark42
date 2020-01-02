@@ -287,12 +287,13 @@ func TestServerApp_Shutdown(t *testing.T) {
 
 func TestServerApp_MainSignal(t *testing.T) {
 
+	done := make(chan struct{})
 	go func() {
+		<-done
 		time.Sleep(250 * time.Millisecond)
 		err := syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
 		require.NoError(t, err)
 	}()
-	st := time.Now()
 
 	s := ServerCommand{}
 	s.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
@@ -304,9 +305,11 @@ func TestServerApp_MainSignal(t *testing.T) {
 	defer os.Remove("/tmp/ava-test.db")
 	_, err := p.ParseArgs(args)
 	require.NoError(t, err)
+	st := time.Now()
+	close(done)
 	err = s.Execute(args)
-	assert.NoError(t, err, "execute failed")
-	assert.True(t, time.Since(st).Seconds() < 1, "should take under sec", time.Since(st).Seconds())
+	assert.NoError(t, err, "execute should be without errors")
+	assert.True(t, time.Since(st).Seconds() < 5, "should take under five sec", time.Since(st).Seconds())
 }
 
 func Test_ACMEEmail(t *testing.T) {
