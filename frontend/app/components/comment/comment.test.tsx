@@ -1,9 +1,10 @@
 /** @jsx createElement */
 import { createElement } from 'preact';
-import { mount } from 'enzyme';
+import { mount, shallow, HTMLAttributes } from 'enzyme';
 import { Props, Comment } from './comment';
 import { User, Comment as CommentType, PostInfo } from '@app/common/types';
 import { sleep } from '@app/utils/sleep';
+import { StaticStore } from '@app/common/static_store';
 
 const DefaultProps: Partial<Props> = {
   post_info: {
@@ -25,6 +26,7 @@ const DefaultProps: Partial<Props> = {
   user: {
     admin: false,
     id: 'testuser',
+    picture: 'somepicture-url',
   } as User,
 };
 
@@ -220,6 +222,60 @@ describe('<Comment />', () => {
 
       const controls = element.find('.comment__verification').first();
       expect(controls.hasClass('comment__verification_clickable')).toEqual(false);
+    });
+
+    it('should be editable', () => {
+      const initTime = new Date().toString();
+      const changedTime = new Date(Date.now() + 10 * 1000).toString();
+      const props: Partial<Props> = {
+        ...DefaultProps,
+        user: DefaultProps.user as User,
+        data: {
+          ...DefaultProps.data,
+          id: '100',
+          user: DefaultProps.user as User,
+          vote: 1,
+          time: initTime,
+          delete: false,
+          orig: 'test',
+        } as CommentType,
+        repliesCount: 0,
+      };
+      StaticStore.config.edit_duration = 300;
+
+      const component = shallow(<Comment {...(props as Props)} />);
+
+      expect((component.state('editDeadline') as Date).getTime()).toBe(
+        new Date(new Date(initTime).getTime() + 300 * 1000).getTime()
+      );
+
+      component.setProps<Props & HTMLAttributes>({
+        data: { ...props.data, time: changedTime },
+      });
+
+      expect((component.state('editDeadline') as Date).getTime()).toBe(
+        new Date(new Date(changedTime).getTime() + 300 * 1000).getTime()
+      );
+    });
+
+    it('shoud not be editable', () => {
+      const props: Partial<Props> = {
+        ...DefaultProps,
+        user: DefaultProps.user as User,
+        data: {
+          ...DefaultProps.data,
+          id: '100',
+          user: DefaultProps.user as User,
+          vote: 1,
+          time: new Date(new Date().getDate() - 300).toString(),
+          orig: 'test',
+        } as CommentType,
+      };
+      StaticStore.config.edit_duration = 300;
+
+      const component = shallow(<Comment {...(props as Props)} />);
+
+      expect(component.state('editDeadline')).toBe(null);
     });
   });
 });

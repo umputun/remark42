@@ -84,11 +84,10 @@ export class Comment extends Component<Props, State> {
       scoreDelta: 0,
       cachedScore: props.data.score,
       initial: true,
+      ...this.updateState(props),
     };
 
     this.votingPromise = Promise.resolve();
-
-    this.updateState(props);
 
     this.toggleEditing = this.toggleEditing.bind(this);
     this.toggleReplying = this.toggleReplying.bind(this);
@@ -102,7 +101,7 @@ export class Comment extends Component<Props, State> {
   // };
 
   componentWillReceiveProps(nextProps: Props) {
-    this.updateState(nextProps);
+    this.setState(this.updateState(nextProps));
   }
 
   componentDidMount() {
@@ -110,25 +109,25 @@ export class Comment extends Component<Props, State> {
   }
 
   updateState = (props: Props) => {
-    this.setState({
+    const newState: Partial<State> = {
       scoreDelta: props.data.vote,
       cachedScore: props.data.score,
-    });
+    };
 
-    if (props.user) {
-      const userId = props.user!.id;
+    // set comment edit timer
+    if (props.user && props.user.id === props.data.user.id) {
+      const editDuration = StaticStore.config.edit_duration;
+      const timeDiff = StaticStore.serverClientTimeDiff || 0;
+      const editDeadline = new Date(new Date(props.data.time).getTime() + timeDiff + editDuration * 1000);
 
-      // set comment edit timer
-      if (userId === props.data.user.id) {
-        const editDuration = StaticStore.config.edit_duration;
-        const timeDiff = StaticStore.serverClientTimeDiff || 0;
-        let editDeadline: Date | null = new Date(new Date(props.data.time).getTime() + timeDiff + editDuration * 1000);
-        if (editDeadline < new Date()) editDeadline = null;
-        this.setState({
-          editDeadline,
-        });
+      if (editDeadline < new Date()) {
+        newState.editDeadline = null;
+      } else {
+        newState.editDeadline = editDeadline;
       }
     }
+
+    return newState;
   };
 
   toggleReplying = () => {
@@ -454,7 +453,6 @@ export class Comment extends Component<Props, State> {
 
     const isReplying = props.editMode === CommentMode.Reply;
     const isEditing = props.editMode === CommentMode.Edit;
-
     const lowCommentScore = StaticStore.config.low_score;
     const downvotingDisabledReason = this.getDownvoteDisabledReason();
     const isDownvotingDisabled = downvotingDisabledReason !== null;
@@ -684,7 +682,6 @@ export class Comment extends Component<Props, State> {
                   {isReplying ? 'Cancel' : 'Reply'}
                 </span>
               )}
-
               {!props.data.delete &&
                 !props.disabled &&
                 !!o.orig &&
