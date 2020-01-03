@@ -38,6 +38,7 @@ import { ConnectedComment as Comment } from '@app/components/comment/connected-c
 import { CommentForm } from '@app/components/comment-form';
 import Preloader from '@app/components/preloader';
 import { Thread } from '@app/components/thread';
+import { Button } from '@app/components/button';
 import { uploadImage, getPreview } from '@app/common/api';
 import { isUserAnonymous } from '@app/utils/isUserAnonymous';
 import { bindActions } from '@app/utils/actionBinder';
@@ -284,9 +285,9 @@ export class Root extends Component<Props, State> {
                   ))}
 
                   {commentsShown < this.props.topComments.length && IS_MOBILE && (
-                    <button className="root__show-more" onClick={this.showMore}>
+                    <Button kind="primary" size="middle" mix="root__show-more" onClick={this.showMore}>
                       Show more
-                    </button>
+                    </Button>
                   )}
                 </div>
               )}
