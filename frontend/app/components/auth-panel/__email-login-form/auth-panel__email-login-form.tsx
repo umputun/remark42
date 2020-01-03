@@ -38,7 +38,7 @@ export class EmailLoginForm extends Component<Props, State> {
   static usernameRegex = /^[a-zA-Z][\w ]+$/;
   static emailRegex = /[^@]+@[^.]+\..+/;
 
-  inputRef = createRef<HTMLInputElement>();
+  usernameInputRef = createRef<HTMLInputElement>();
   tokenRef = createRef<TextareaAutosize>();
 
   constructor(props: Props) {
@@ -64,8 +64,8 @@ export class EmailLoginForm extends Component<Props, State> {
 
   async focus() {
     await sleep(100);
-    if (this.inputRef.current) {
-      this.inputRef.current.focus();
+    if (this.usernameInputRef.current) {
+      this.usernameInputRef.current.focus();
       return;
     }
     this.tokenRef.current && this.tokenRef.current.textareaRef && this.tokenRef.current.textareaRef.select();
@@ -117,15 +117,23 @@ export class EmailLoginForm extends Component<Props, State> {
     this.setState({ error: null, tokenValue: (e.target as HTMLInputElement).value });
   }
 
-  goBack() {
+  async goBack() {
+    // Wait for finding back button in DOM by dropbox
+    // It prevents dropdown from closing, because if dropdown doesn't find clicked element it closes
+    await sleep(0);
+
     this.setState({
       tokenValue: '',
       error: null,
       verificationSent: false,
     });
-    setTimeout(() => {
-      this.inputRef.current && this.inputRef.current.focus();
-    }, 100);
+
+    // Wait for rendering username+email step to find user input
+    await sleep(0);
+
+    if (this.usernameInputRef.current) {
+      this.usernameInputRef.current.focus();
+    }
   }
 
   getForm1InvalidReason(): string | null {
@@ -144,12 +152,6 @@ export class EmailLoginForm extends Component<Props, State> {
     return null;
   }
 
-  componentDidMount() {
-    setTimeout(() => {
-      this.inputRef.current && this.inputRef.current.focus();
-    }, 100);
-  }
-
   render(props: Props) {
     // TODO: will be great to `b` to accept `string | undefined | (string|undefined)[]` as classname
     let className = b('auth-panel-email-login-form', {}, { theme: props.theme });
@@ -162,22 +164,10 @@ export class EmailLoginForm extends Component<Props, State> {
     if (!this.state.verificationSent)
       return (
         <form className={className} onSubmit={this.onVerificationSubmit}>
-          {/*
-           * We adding hidden span element to bear with DropDown's onOutSideClick handler.
-           * This function checks if element that was clicked is a children of it's root component.
-           * And the problem is that by the time handler gets executed our target element is not a
-           * part of a dom, so handler suggests that we clicked somewhere outside and hides dropdown
-           */}
-          <span
-            className="auth-panel-email-login-form__back-button"
-            {...getHandleClickProps(this.goBack)}
-            style={{ display: 'none' }}
-          >
-            {'< Back'}
-          </span>
           <Input
+            autoFocus
             mix="auth-panel-email-login-form__input"
-            ref={this.inputRef}
+            ref={this.usernameInputRef}
             placeholder="Username"
             value={this.state.usernameValue}
             onInput={this.onUsernameChange}
