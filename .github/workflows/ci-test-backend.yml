@@ -1,0 +1,71 @@
+name: test_backend
+
+on:
+  push:
+    branches:
+    tags:
+    paths:
+    - '.github/workflows/ci-test-backend.yml'
+    - 'backend/**'
+    - '!backend/scripts/**'
+  pull_request:
+    paths:
+    - '.github/workflows/ci-test-backend.yml'
+    - 'backend/**'
+    - '!backend/scripts/**'
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+
+    - name: debug if needed
+      run: |
+        export DEBUG=${DEBUG:-false}
+        if [[ "$DEBUG" == "true" ]]; then
+          env
+        fi
+      env:
+        DEBUG: ${{secrets.DEBUG}}
+
+    - name: install go
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.13
+
+    - name: test backend
+      run: |
+        export TZ="America/Chicago"
+        date
+        cd backend/app
+        go test -mod=vendor -timeout=60s -covermode=count -coverprofile=$GITHUB_WORKSPACE/profile.cov_tmp ./...
+        cat $GITHUB_WORKSPACE/profile.cov_tmp | grep -v "_mock.go" > $GITHUB_WORKSPACE/profile.cov
+        cd ../_example/memory_store
+        go test -race ./...
+
+    - name: install golangci-lint and goveralls
+      run: |
+        curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh| sh -s -- -b $GITHUB_WORKSPACE v1.20.0
+        go get -u github.com/mattn/goveralls
+
+    - name: run backend linters
+      run: |
+        cd backend
+        $GITHUB_WORKSPACE/golangci-lint run --out-format=tab --disable-all --tests=false --enable=unconvert \
+          --enable=megacheck --enable=structcheck --enable=gas --enable=gocyclo --enable=dupl --enable=misspell \
+          --enable=unparam --enable=varcheck --enable=deadcode --enable=typecheck \
+          --enable=ineffassign --enable=varcheck ./... ;
+        cd _example/memory_store
+        $GITHUB_WORKSPACE/golangci-lint run --out-format=tab --disable-all --tests=false --enable=unconvert \
+          --enable=megacheck --enable=structcheck --enable=gas --enable=gocyclo --enable=dupl --enable=misspell \
+          --enable=unparam --enable=varcheck --enable=deadcode --enable=typecheck \
+          --enable=ineffassign --enable=varcheck ./... ;
+
+    - name: submit coverage
+      run: |
+        cd backend
+        $(go env GOPATH)/bin/goveralls -service="github" -coverprofile=$GITHUB_WORKSPACE/profile.cov
+      env:
+        COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
