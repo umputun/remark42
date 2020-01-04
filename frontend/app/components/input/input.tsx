@@ -24,7 +24,7 @@ const RSS_REPLIES_URL = `${BASE_URL}${API_BASE}/rss/reply?site=${siteId}&user=`;
 
 let textareaId = 0;
 
-interface Props {
+export interface Props {
   /** user id for rss link generation */
   userId?: User['id'];
   errorMessage?: string;
@@ -32,6 +32,7 @@ interface Props {
   mix?: Mix;
   mode?: 'main' | 'edit' | 'reply';
   theme: Theme;
+  simpleView: boolean | undefined;
   autofocus?: boolean;
 
   onSubmit(text: string, pageTitle: string): Promise<void>;
@@ -353,6 +354,7 @@ export class Input extends Component<Props, State> {
           mods: {
             theme: props.theme || 'light',
             type: props.mode || 'reply',
+            simple: props.simpleView,
           },
           mix: props.mix,
         })}
@@ -361,13 +363,15 @@ export class Input extends Component<Props, State> {
         onDragOver={this.onDragOver}
         onDrop={this.onDrop}
       >
-        <div className="input__control-panel">
-          <MarkdownToolbar
-            allowUpload={Boolean(this.props.uploadImage)}
-            uploadImages={this.uploadImages}
-            textareaId={this.textareaId}
-          />
-        </div>
+        {!props.simpleView && (
+          <div className="input__control-panel">
+            <MarkdownToolbar
+              allowUpload={Boolean(this.props.uploadImage)}
+              uploadImages={this.uploadImages}
+              textareaId={this.textareaId}
+            />
+          </div>
+        )}
         <div className="input__field-wrapper">
           <TextareaAutosize
             id={this.textareaId}
@@ -395,20 +399,22 @@ export class Input extends Component<Props, State> {
           ))}
 
         <div className="input__actions">
-          <button
-            className={b('input__button', {}, { type: 'preview' })}
-            type="button"
-            disabled={isDisabled}
-            onClick={this.getPreview}
-          >
-            Preview
-          </button>
+          {!props.simpleView && (
+            <button
+              className={b('input__button', {}, { type: 'preview' })}
+              type="button"
+              disabled={isDisabled}
+              onClick={this.getPreview}
+            >
+              Preview
+            </button>
+          )}
 
           <button className={b('input__button', {}, { type: 'send' })} type="submit" disabled={isDisabled}>
             {label}
           </button>
 
-          {props.mode === 'main' && (
+          {!props.simpleView && props.mode === 'main' && (
             <div className="input__rss">
               <div className="input__markdown">
                 Styling with{' '}
