@@ -59,8 +59,8 @@ func TestService_WithDrops(t *testing.T) {
 
 	s.Submit(Request{Comment: store.Comment{ID: "111"}}) // safe to send after close
 
-	assert.Equal(t, 2, len(d1.Get()), "one comment dropped from d1")
-	assert.Equal(t, 2, len(d2.Get()), "one comment dropped from d2")
+	assert.Equal(t, 2, len(d1.Get()), "one comment from three dropped from d1, got: %v", d1.Get())
+	assert.Equal(t, 2, len(d2.Get()), "one comment from three dropped from d2, got: %v", d2.Get())
 }
 
 func TestService_Many(t *testing.T) {
