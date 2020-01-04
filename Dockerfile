@@ -35,7 +35,6 @@ RUN \
     echo "version=$version" && \
     go build -o remark42 -ldflags "-X main.revision=${version} -s -w" ./app
 
-
 FROM node:10.11-alpine as build-frontend-deps
 
 ARG CI
@@ -58,7 +57,6 @@ RUN cd /srv/frontend && \
     if [ -z "$SKIP_FRONTEND_TEST" ] ; then npx run-p lint test build ; \
     else echo "skip frontend tests and lint" ; npm run build ; fi && \
     rm -rf ./node_modules
-
 
 FROM umputun/baseimage:app
 

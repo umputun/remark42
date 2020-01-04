@@ -26,8 +26,6 @@ RUN cd /srv/frontend && \
     npm run build && \
     rm -rf ./node_modules
 
-
-
 FROM umputun/baseimage:buildgo-latest as build-backend
 
 ARG GITHUB_TOKEN
