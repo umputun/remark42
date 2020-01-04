@@ -66,12 +66,6 @@ export default class TextareaAutosize extends Component<Props> {
     }
   }
   render(props: Props) {
-    return (
-      // We set text as a child of textarea and not in value property for a reason.
-      // It's a workaround for the bug described here https://github.com/developit/preact/issues/326
-      <textarea {...props} ref={this.onRef}>
-        {props.value}
-      </textarea>
-    );
+    return <textarea {...props} ref={this.onRef} />;
   }
 }
