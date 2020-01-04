@@ -28,9 +28,13 @@ race_test:
 	cd backend/app && go test -race -mod=vendor -timeout=60s -count 1 ./...
 
 backend:
-	SKIP_BACKEND_TEST=true docker-compose -f compose-dev-backend.yml build
+	docker-compose -f compose-dev-backend.yml build
 
-rundev: backend
-	SKIP_BACKEND_TEST=true docker-compose -f compose-dev-backend.yml up
+frontend:
+	docker-compose -f compose-dev-frontend.yml build
+
+rundev:
+	SKIP_BACKEND_TEST=true SKIP_FRONTEND_TEST=true docker-compose -f compose-private.yml build
+	docker-compose -f compose-private.yml up
 
 .PHONY: bin backend
