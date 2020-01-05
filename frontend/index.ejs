@@ -10,6 +10,13 @@
         padding: 0;
         margin: 0;
         font-family: -system-ui, sans-serif;
+        color: #333;
+        background: #fff;
+      }
+
+      a {
+        color: #0aa;
+        text-decoration: none;
       }
 
       .container {
@@ -20,10 +27,6 @@
       .document_theme_dark {
         background: #22201c;
         color: #ddd;
-      }
-
-      .document_theme_dark a {
-        color: #5e5eff;
       }
 
       .widgets {
@@ -59,22 +62,6 @@
         }
       }
     </style>
-
-    <script>
-      function toggleTheme() {
-        var body = document.querySelector('body');
-
-        if (body.classList.contains('document_theme_dark')) {
-          body.classList.add('document_theme_light');
-          body.classList.remove('document_theme_dark');
-          window.REMARK42.changeTheme('light');
-        } else {
-          body.classList.add('document_theme_dark');
-          body.classList.remove('document_theme_light');
-          window.REMARK42.changeTheme('dark');
-        }
-      }
-    </script>
   </head>
   <body>
     <div class="container">
@@ -93,26 +80,64 @@
           <div class="widget__frame widget__counter-frame">Comments count: <span class="remark42__counter"></span></div>
         </div>
       </div>
-      <p><button onclick="toggleTheme()">Toggle theme</button></p>
+      <p><button id="toggle-theme">Toggle theme</button></p>
       <div id="remark42"></div>
     </div>
 
     <script>
+      var body = document.querySelector('body');
+      var theme = 'light';
+
+      if ('matchMedia' in window) {
+        var mq = window.matchMedia('(prefers-color-scheme: dark)');
+
+        if (mq.matches) {
+          body.classList.add('document_theme_dark');
+        }
+
+        function getTheme() {
+          return mq.matches ? 'dark' : 'light';
+        }
+
+        theme = getTheme();
+
+        mq.addListener(function() {
+          REMARK42.changeTheme(getTheme());
+        });
+      }
+
+      document.getElementById('toggle-theme').addEventListener('click', function(e) {
+        e.preventDefault();
+
+        if (body.classList.contains('document_theme_dark')) {
+          body.classList.add('document_theme_light');
+          body.classList.remove('document_theme_dark');
+          window.REMARK42.changeTheme('light');
+          return;
+        }
+
+        body.classList.add('document_theme_dark');
+        body.classList.remove('document_theme_light');
+        window.REMARK42.changeTheme('dark');
+      });
+
       var remark_config = {
         site_id: 'remark',
         host: window.location.origin,
         url: 'https://remark42.com/demo/',
-        components: ['embed', 'counter']
+        components: ['embed', 'counter'],
+        theme: theme
       };
 
-      (function(c) {
+      (function(c, d) {
         for (var i = 0; i < c.length; i++) {
-          var d = document,
-            s = d.createElement('script');
+          var s = d.createElement('script');
+
           s.src = remark_config.host + '/web/' + c[i] + '.js';
+
           (d.head || d.body).appendChild(s);
         }
-      })(remark_config.components || ['embed']);
+      })(remark_config.components || ['embed'], document);
     </script>
     <noscript>
       Please enable JavaScript to view the comments powered by Remark.
