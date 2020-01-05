@@ -5,27 +5,27 @@ on:
     branches:
     tags:
     paths:
-    - '.github/workflows/ci-build.yml'
-    - 'backend/**'
-    - 'frontend/**'
-    - '.dockerignore'
-    - 'docker-init.sh'
-    - 'Dockerfile'
+      - '.github/workflows/ci-build.yml'
+      - 'backend/**'
+      - 'frontend/**'
+      - '.dockerignore'
+      - 'docker-init.sh'
+      - 'Dockerfile'
   pull_request:
     paths:
-    - '.github/workflows/ci-build.yml'
-    - 'backend/**'
-    - 'frontend/**'
-    - '.dockerignore'
-    - 'docker-init.sh'
-    - 'Dockerfile'
+      - '.github/workflows/ci-build.yml'
+      - 'backend/**'
+      - 'frontend/**'
+      - '.dockerignore'
+      - 'docker-init.sh'
+      - 'Dockerfile'
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v1
+      - uses: actions/checkout@v1
 
-    - name: build docker image
-      run: docker build --build-arg SKIP_BACKEND_TEST=true --build-arg SKIP_FRONTEND_TEST=true --build-arg CI=github .
+      - name: build docker image
+        run: docker build --build-arg SKIP_BACKEND_TEST=true --build-arg SKIP_FRONTEND_TEST=true --build-arg CI=github .
