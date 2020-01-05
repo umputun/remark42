@@ -644,6 +644,21 @@ func TestRest_EmailNotification(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
 
+	// get user information to verify the subscription
+	req, err = http.NewRequest(http.MethodGet, ts.URL+"/api/v1/user?site=remark42", nil)
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
+	var user store.User
+	err = json.Unmarshal(body, &user)
+	assert.NoError(t, err)
+	assert.Equal(t, store.User{Name: "developer one", ID: "dev", EmailSubscription: true,
+		Picture: "http://example.com/pic.png", IP: "127.0.0.1", SiteID: "remark42"}, user)
+
 	// create child comment from another user, email notification expected
 	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(fmt.Sprintf(
 		`{"text": "test 789",
