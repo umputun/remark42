@@ -1,107 +1,26 @@
 /** @jsx createElement */
-import { createElement, JSX, Component } from 'preact';
-import b from 'bem-react-helper';
-
-import noop from '@app/utils/noop';
+import { createElement, JSX } from 'preact';
+import { forwardRef } from 'preact/compat';
+import b, { Mods, Mix } from 'bem-react-helper';
 import { Theme } from '@app/common/types';
 
-type Props = {
+interface Props extends Omit<JSX.HTMLAttributes, 'size'> {
+  kind?: 'primary' | 'secondary' | 'link';
+  size?: 'middle' | 'large';
+  theme?: Theme;
+  mods?: Mods;
+  mix?: Mix;
   type?: string;
-  kind?: string;
-  theme: Theme;
-  mix?: string;
-
-  onClick?: (e: MouseEvent) => void;
-  onFocus?: (e: FocusEvent) => void;
-  onBlur?: (e: FocusEvent) => void;
-} & JSX.HTMLAttributes;
-
-interface State {
-  isClicked: boolean;
-  isFocused: boolean;
 }
 
-export class Button extends Component<Props, State> {
-  constructor(props: Props) {
-    super(props);
-
-    this.state = {
-      isClicked: false,
-      isFocused: false,
-    };
-
-    this.onMouseDown = this.onMouseDown.bind(this);
-    this.onFocus = this.onFocus.bind(this);
-    this.onBlur = this.onBlur.bind(this);
-  }
-
-  onMouseDown() {
-    this.setState({
-      isClicked: true,
-    });
-  }
-
-  onClick(e: MouseEvent) {
-    this.props.onClick!(e);
-  }
-
-  onBlur(e: FocusEvent) {
-    this.setState({
-      isClicked: false,
-      isFocused: false,
-    });
-
-    this.props.onBlur!(e);
-  }
-
-  onFocus(e: FocusEvent) {
-    this.setState({
-      isFocused: true,
-    });
-
-    this.props.onFocus!(e);
-  }
-
-  render(props: Props, state: State) {
-    const { children, className } = props;
-    const { isClicked, isFocused } = state;
-
-    let rclassName = b(
-      'button',
-      { mix: props.mix },
-      { theme: props.theme, type: props.type, kind: props.kind, clicked: isClicked, focused: isFocused }
-    );
-    if (className) {
-      rclassName +=
-        ' ' +
-        b(
-          className,
-          {},
-          { theme: props.theme, type: props.type, kind: props.kind, clicked: isClicked, focused: isFocused }
-        );
-    }
-
-    const localProps = { ...props };
-    delete localProps.children;
-    delete localProps.mix;
+export const Button = forwardRef<HTMLButtonElement, Props>(
+  ({ children, theme, mods, mix, kind, type = 'button', size, ...props }) => {
+    const className = b('button', { mods: { kind, size }, mix }, { theme, ...mods });
 
     return (
-      <button
-        {...localProps}
-        className={rclassName}
-        onMouseDown={this.onMouseDown}
-        onBlur={this.onBlur}
-        onFocus={this.onFocus}
-      >
+      <button className={className} type={type} {...props}>
         {children}
       </button>
     );
   }
-}
-
-Button.defaultProps = {
-  type: 'button',
-  onClick: noop,
-  onBlur: noop,
-  onFocus: noop,
-};
+);

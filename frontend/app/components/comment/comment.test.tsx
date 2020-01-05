@@ -182,7 +182,8 @@ describe('<Comment />', () => {
         <Comment {...({ ...DefaultProps, user: { ...DefaultProps.user, admin: true } } as Props)} />
       );
 
-      const controls = element.find('.comment__controls > span');
+      const controls = element.find('.comment__controls').children();
+
       expect(controls.length).toBe(5);
       expect(controls.at(0).text()).toEqual('Copy');
       expect(controls.at(1).text()).toEqual('Pin');
@@ -196,7 +197,7 @@ describe('<Comment />', () => {
         <Comment {...({ ...DefaultProps, user: { ...DefaultProps.user, admin: false } } as Props)} />
       );
 
-      const controls = element.find('.comment__controls > span');
+      const controls = element.find('.comment__controls').children();
       expect(controls.length).toBe(1);
       expect(controls.at(0).text()).toEqual('Hide');
     });

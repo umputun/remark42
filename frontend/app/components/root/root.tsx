@@ -35,9 +35,10 @@ import { addComment, updateComment } from '@app/store/comments/actions';
 import { AuthPanel } from '@app/components/auth-panel';
 import Settings from '@app/components/settings';
 import { ConnectedComment as Comment } from '@app/components/comment/connected-comment';
-import { Input } from '@app/components/input';
+import { CommentForm } from '@app/components/comment-form';
 import Preloader from '@app/components/preloader';
 import { Thread } from '@app/components/thread';
+import { Button } from '@app/components/button';
 import { uploadImage, getPreview } from '@app/common/api';
 import { isUserAnonymous } from '@app/utils/isUserAnonymous';
 import { bindActions } from '@app/utils/actionBinder';
@@ -241,7 +242,7 @@ export class Root extends Component<Props, State> {
           {!this.props.isSettingsVisible && (
             <div className="root__main">
               {!isGuest && !isCommentsDisabled && (
-                <Input
+                <CommentForm
                   theme={props.theme}
                   mix="root__input"
                   mode="main"
@@ -284,9 +285,9 @@ export class Root extends Component<Props, State> {
                   ))}
 
                   {commentsShown < this.props.topComments.length && IS_MOBILE && (
-                    <button className="root__show-more" onClick={this.showMore}>
+                    <Button kind="primary" size="middle" mix="root__show-more" onClick={this.showMore}>
                       Show more
-                    </button>
+                    </Button>
                   )}
                 </div>
               )}

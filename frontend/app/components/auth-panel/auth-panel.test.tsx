@@ -1,8 +1,11 @@
 /** @jsx createElement */
 import { createElement } from 'preact';
 import { mount } from 'enzyme';
+
+import { Button } from '@app/components/button';
+import { User, PostInfo } from '@app/common/types';
+
 import { Props, AuthPanel } from './auth-panel';
-import { User, PostInfo } from '../../common/types';
 
 const DefaultProps: Partial<Props> = {
   sort: '-score',
@@ -29,7 +32,7 @@ describe('<AuthPanel />', () => {
 
       expect(authForm.text()).toEqual(expect.stringContaining('Sign in to comment using'));
 
-      const providerLinks = authForm.find('.auth-panel__pseudo-link');
+      const providerLinks = authForm.find(Button);
 
       expect(providerLinks.at(0).text()).toEqual('Google');
       expect(providerLinks.at(1).text()).toEqual('GitHub');
@@ -49,7 +52,7 @@ describe('<AuthPanel />', () => {
         const providerLinks = element
           .find('.auth-panel__column')
           .first()
-          .find('.auth-panel__pseudo-link');
+          .find(Button);
 
         expect(providerLinks.at(0).text()).toEqual('GitHub');
         expect(providerLinks.at(1).text()).toEqual('Google');
@@ -69,7 +72,7 @@ describe('<AuthPanel />', () => {
         const providerLinks = element
           .find('.auth-panel__column')
           .first()
-          .find('.auth-panel__pseudo-link');
+          .find(Button);
 
         expect(providerLinks.at(0).text()).toEqual('Google');
         expect(providerLinks.at(1).text()).toEqual('GitHub');
@@ -94,7 +97,7 @@ describe('<AuthPanel />', () => {
 
       expect(authForm.text()).toEqual(expect.stringContaining('Sign in using Google or GitHub'));
 
-      const providerLinks = authForm.find('.auth-panel__pseudo-link');
+      const providerLinks = authForm.find(Button);
 
       expect(providerLinks.at(0).text()).toEqual('Google');
       expect(providerLinks.at(1).text()).toEqual('GitHub');

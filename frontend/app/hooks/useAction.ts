@@ -12,13 +12,10 @@ export const useActions = <Actions extends { [key: string]: Function }>(
 
   return useMemo(
     () =>
-      Object.entries(actions).reduce<BoundActionCreator<Actions>>(
-        (result, [key, fn]) => {
-          (result as any)[key] = (...args: any[]) => dispatch(fn(...args));
-          return result;
-        },
-        {} as any
-      ),
+      Object.entries(actions).reduce<BoundActionCreator<Actions>>((result, [key, fn]) => {
+        (result as any)[key] = (...args: any[]) => dispatch(fn(...args));
+        return result;
+      }, {} as any),
     [dispatch, ...Object.values(actions)]
   ) as any;
 };

@@ -15,9 +15,10 @@ import { Theme, BlockTTL, Comment as CommentType, PostInfo, User, CommentMode } 
 import { extractErrorMessageFromResponse, FetcherError } from '@app/utils/errorUtils';
 import { isUserAnonymous } from '@app/utils/isUserAnonymous';
 
-import { Input } from '@app/components/input';
+import { CommentForm } from '@app/components/comment-form';
 import { AvatarIcon } from '@app/components/avatar-icon';
-import Countdown from '../countdown';
+import { Button } from '@app/components/button';
+import Countdown from '@app/components/countdown';
 import { boundActions } from './connected-comment';
 import { getPreview, uploadImage } from '@app/common/api';
 import postMessage from '@app/utils/postMessage';
@@ -388,33 +389,33 @@ export class Comment extends Component<Props, State> {
         this.state.isCopied ? (
           <span className="comment__control comment__control_view_inactive">Copied!</span>
         ) : (
-          <span {...getHandleClickProps(this.copyComment)} className="comment__control">
+          <Button kind="link" {...getHandleClickProps(this.copyComment)} mix="comment__control">
             Copy
-          </span>
+          </Button>
         )
       );
 
       controls.push(
-        <span {...getHandleClickProps(this.togglePin)} className="comment__control">
+        <Button kind="link" {...getHandleClickProps(this.togglePin)} mix="comment__control">
           {this.props.data.pin ? 'Unpin' : 'Pin'}
-        </span>
+        </Button>
       );
     }
 
     if (!isCurrentUser) {
       controls.push(
-        <span {...getHandleClickProps(this.hideUser)} className="comment__control">
+        <Button kind="link" {...getHandleClickProps(this.hideUser)} mix="comment__control">
           Hide
-        </span>
+        </Button>
       );
     }
 
     if (isAdmin) {
       if (this.props.isUserBanned) {
         controls.push(
-          <span {...getHandleClickProps(this.onUnblockUserClick)} className="comment__control">
+          <Button kind="link" {...getHandleClickProps(this.onUnblockUserClick)} mix="comment__control">
             Unblock
-          </span>
+          </Button>
         );
       }
 
@@ -437,9 +438,9 @@ export class Comment extends Component<Props, State> {
 
       if (!this.props.data.delete) {
         controls.push(
-          <span {...getHandleClickProps(this.deleteComment)} className="comment__control">
+          <Button kind="link" {...getHandleClickProps(this.deleteComment)} mix="comment__control">
             Delete
-          </span>
+          </Button>
         );
       }
     }
@@ -678,9 +679,9 @@ export class Comment extends Component<Props, State> {
           {(!props.collapsed || props.view === 'pinned') && (
             <div className="comment__actions">
               {!props.data.delete && !props.isCommentsDisabled && !props.disabled && !isGuest && props.view === 'main' && (
-                <span {...getHandleClickProps(this.toggleReplying)} className="comment__action">
+                <Button kind="link" {...getHandleClickProps(this.toggleReplying)} mix="comment__action">
                   {isReplying ? 'Cancel' : 'Reply'}
-                </span>
+                </Button>
               )}
               {!props.data.delete &&
                 !props.disabled &&
@@ -688,19 +689,21 @@ export class Comment extends Component<Props, State> {
                 isCurrentUser &&
                 (editable || isEditing) &&
                 props.view === 'main' && [
-                  <span
+                  <Button
+                    kind="link"
                     {...getHandleClickProps(this.toggleEditing)}
-                    className="comment__action comment__action_type_edit"
+                    mix={['comment__action', 'comment__action_type_edit']}
                   >
                     {isEditing ? 'Cancel' : 'Edit'}
-                  </span>,
+                  </Button>,
                   !isAdmin && (
-                    <span
+                    <Button
+                      kind="link"
                       {...getHandleClickProps(this.deleteComment)}
-                      className="comment__action comment__action_type_delete"
+                      mix={['comment__action', 'comment__action_type_delete']}
                     >
                       Delete
-                    </span>
+                    </Button>
                   ),
                   state.editDeadline && (
                     <Countdown
@@ -721,7 +724,7 @@ export class Comment extends Component<Props, State> {
         </div>
 
         {isReplying && props.view === 'main' && (
-          <Input
+          <CommentForm
             theme={props.theme}
             value=""
             mode="reply"
@@ -736,7 +739,7 @@ export class Comment extends Component<Props, State> {
         )}
 
         {isEditing && props.view === 'main' && (
-          <Input
+          <CommentForm
             theme={props.theme}
             value={o.orig}
             mode="edit"

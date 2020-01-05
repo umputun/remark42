@@ -1,6 +1,21 @@
 .button {
-  cursor: pointer;
-  outline-width: 0;
-  font-size: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  border-radius: 2px;
   font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+
+  &:focus {
+    box-shadow: 0 0 0 2px rgba(37, 156, 154, 0.4);
+    outline: none;
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
 }
