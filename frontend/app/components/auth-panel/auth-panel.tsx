@@ -11,7 +11,7 @@ import debounce from '@app/utils/debounce';
 import postMessage from '@app/utils/postMessage';
 import { StoreState } from '@app/store';
 import { ProviderState } from '@app/store/provider/reducers';
-import Dropdown, { DropdownItem } from '@app/components/dropdown';
+import { Dropdown, DropdownItem } from '@app/components/dropdown';
 import { Button } from '@app/components/button';
 
 import { AnonymousLoginForm } from './__anonymous-login-form';

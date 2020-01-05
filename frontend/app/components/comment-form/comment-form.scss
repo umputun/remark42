@@ -6,3 +6,11 @@
   border-width: 6px 12px 12px 12px;
   border-radius: 2px;
 }
+
+.comment-form__dropdown_rss {
+  text-align: left;
+
+  .dropdown__content {
+    width: 8em;
+  }
+}

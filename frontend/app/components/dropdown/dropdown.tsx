@@ -23,7 +23,7 @@ interface State {
   contentTranslateX: number;
 }
 
-export default class Dropdown extends Component<Props, State> {
+export class Dropdown extends Component<Props, State> {
   rootNode = createRef<HTMLDivElement>();
   storedDocumentHeight: string | null = null;
   storedDocumentHeightSet: boolean = false;
@@ -115,7 +115,7 @@ export default class Dropdown extends Component<Props, State> {
     // TODO: use ref
     const dc = this.rootNode.current.querySelector<HTMLDivElement>('.dropdown__content');
     if (!dc) return;
-    await sleep(10);
+    await sleep(0);
     const rect = dc.getBoundingClientRect();
     if (rect.left > 0) {
       const wWindow = window.innerWidth;
@@ -193,16 +193,17 @@ export default class Dropdown extends Component<Props, State> {
         >
           {title}
         </Button>
-
-        <div
-          className="dropdown__content"
-          tabIndex={-1}
-          role="listbox"
-          style={{ transform: `translateX(${this.state.contentTranslateX}px)` }}
-        >
-          {heading && <div className="dropdown__heading">{heading}</div>}
-          <div className="dropdown__items">{children}</div>
-        </div>
+        {isActive && (
+          <div
+            className="dropdown__content"
+            tabIndex={-1}
+            role="listbox"
+            style={{ transform: `translateX(${this.state.contentTranslateX}px)` }}
+          >
+            {heading && <div className="dropdown__heading">{heading}</div>}
+            <div className="dropdown__items">{children}</div>
+          </div>
+        )}
       </div>
     );
   }

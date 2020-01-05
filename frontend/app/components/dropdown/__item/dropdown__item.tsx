@@ -1,13 +1,11 @@
 /** @jsx createElement */
-import { createElement, JSX, RenderableProps } from 'preact';
+import { createElement, JSX, FunctionComponent } from 'preact';
 import b from 'bem-react-helper';
 
-interface Props {
+export interface Props extends JSX.HTMLAttributes {
   separator?: boolean;
 }
 
-export default function DropdownItem(props: RenderableProps<Props> & JSX.HTMLAttributes & { separator?: boolean }) {
-  const { children, separator = false } = props;
-
-  return <div className={b('dropdown__item', {}, { separator })}>{children}</div>;
-}
+export const DropdownItem: FunctionComponent<Props> = ({ children, separator = false }) => (
+  <div className={b('dropdown__item', {}, { separator })}>{children}</div>
+);

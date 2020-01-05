@@ -1,8 +1,5 @@
-import Dropdown from './dropdown';
-
-export default Dropdown;
-
-export { default as DropdownItem } from './__item';
+export { Dropdown } from './dropdown';
+export { DropdownItem } from './__item';
 
 import './dropdown.scss';
 import './_active/dropdown_active.scss';
