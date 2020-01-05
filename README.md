@@ -178,6 +178,7 @@ _this is the recommended way to run remark42_
 | restricted-words        | RESTRICTED_WORDS        |                          | words banned in comments (can use `*`), _multi_ |
 | edit-time               | EDIT_TIME               | `5m`                     | edit window                                     |
 | read-age                | READONLY_AGE            |                          | read-only age of comments, days                 |
+| img-proxy               | IMG_PROXY               | `false`                  | enable http->https proxy for images (*deprecated*, please use image-proxy.http2https |
 | image-proxy.http2https  | IMAGE_PROXY_HTTP2HTTPS  | `false`                  | enable http->https proxy for images             |≈
 | imgage-proxy.cache-external | IMAGE_PROXY_CACHE_EXTERNAL | `false`                  | enable caching external images to current image storage |
 | emoji                   | EMOJI                   | `false`                  | enable emoji support                            |
