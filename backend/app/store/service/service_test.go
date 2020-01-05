@@ -842,31 +842,31 @@ func TestService_UserDetailsOperations(t *testing.T) {
 		AdminStore: admin.NewStaticKeyStore("secret 123")}
 
 	// add single valid entry
-	result, err := b.SetUserEmail(store.Locator{SiteID: "radio-t"}, "u1", "test@example.com")
+	result, err := b.SetUserEmail("radio-t", "u1", "test@example.com")
 	assert.NoError(t, err, "No error inserting entry expected")
 	assert.Equal(t, "test@example.com", result)
 
 	// read valid entry back
-	result, err = b.GetUserEmail(store.Locator{SiteID: "radio-t"}, "u1")
+	result, err = b.GetUserEmail("radio-t", "u1")
 	assert.NoError(t, err, "No error reading entry expected")
 	assert.Equal(t, "test@example.com", result)
 
 	// delete existing entry
-	err = b.DeleteUserDetail(store.Locator{SiteID: "radio-t"}, "u1", engine.UserEmail)
+	err = b.DeleteUserDetail("radio-t", "u1", engine.UserEmail)
 	assert.NoError(t, err, "No error deleting entry expected")
 
 	// read deleted entry
-	result, err = b.GetUserEmail(store.Locator{SiteID: "radio-t"}, "u1")
+	result, err = b.GetUserEmail("radio-t", "u1")
 	assert.NoError(t, err, "No error reading entry expected")
 	assert.Empty(t, result)
 
 	// insert entry with invalid site_id
-	result, err = b.SetUserEmail(store.Locator{SiteID: "bad-site"}, "u3", "does_not_matter@example.com")
+	result, err = b.SetUserEmail("bad-site", "u3", "does_not_matter@example.com")
 	assert.Error(t, err, "Site not found")
 	assert.Empty(t, result)
 
 	// read entry with invalid site_id
-	result, err = b.GetUserEmail(store.Locator{SiteID: "bad-site"}, "u3")
+	result, err = b.GetUserEmail("bad-site", "u3")
 	assert.Error(t, err, "Site not found")
 	assert.Empty(t, result)
 }

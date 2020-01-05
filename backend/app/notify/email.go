@@ -188,7 +188,7 @@ func (e *Email) Send(ctx context.Context, req Request) (err error) {
 
 	if req.Verification.Token != "" {
 		log.Printf("[DEBUG] send verification via %s, user %s", e, req.Verification.User)
-		msg, err = e.buildVerificationMessage(req.Verification.User, req.Email, req.Verification.Token, req.Verification.Locator.SiteID)
+		msg, err = e.buildVerificationMessage(req.Verification.User, req.Email, req.Verification.Token, req.Verification.SiteID)
 		if err != nil {
 			return err
 		}

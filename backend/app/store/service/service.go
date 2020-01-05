@@ -160,10 +160,10 @@ func (s *DataStore) Put(locator store.Locator, comment store.Comment) error {
 }
 
 // GetUserEmail gets user email
-func (s *DataStore) GetUserEmail(locator store.Locator, userID string) (string, error) {
+func (s *DataStore) GetUserEmail(siteID string, userID string) (string, error) {
 	res, err := s.Engine.UserDetail(engine.UserDetailRequest{
 		Detail:  engine.UserEmail,
-		Locator: locator,
+		Locator: store.Locator{SiteID: siteID},
 		UserID:  userID,
 	})
 	if err != nil {
@@ -176,10 +176,10 @@ func (s *DataStore) GetUserEmail(locator store.Locator, userID string) (string, 
 }
 
 // SetUserEmail sets user email
-func (s *DataStore) SetUserEmail(locator store.Locator, userID string, value string) (string, error) {
+func (s *DataStore) SetUserEmail(siteID string, userID string, value string) (string, error) {
 	res, err := s.Engine.UserDetail(engine.UserDetailRequest{
 		Detail:  engine.UserEmail,
-		Locator: locator,
+		Locator: store.Locator{SiteID: siteID},
 		UserID:  userID,
 		Update:  value,
 	})
@@ -193,9 +193,9 @@ func (s *DataStore) SetUserEmail(locator store.Locator, userID string, value str
 }
 
 // DeleteUserDetail deletes user detail
-func (s *DataStore) DeleteUserDetail(locator store.Locator, userID string, detail engine.UserDetail) error {
+func (s *DataStore) DeleteUserDetail(siteID string, userID string, detail engine.UserDetail) error {
 	return s.Engine.Delete(engine.DeleteRequest{
-		Locator:    locator,
+		Locator:    store.Locator{SiteID: siteID},
 		UserID:     userID,
 		UserDetail: detail,
 	})

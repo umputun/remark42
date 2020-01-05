@@ -48,9 +48,9 @@ type privStore interface {
 	Vote(req service.VoteReq) (comment store.Comment, err error)
 	Get(locator store.Locator, commentID string, user store.User) (store.Comment, error)
 	User(siteID, userID string, limit, skip int, user store.User) ([]store.Comment, error)
-	GetUserEmail(locator store.Locator, userID string) (string, error)
-	SetUserEmail(locator store.Locator, userID string, value string) (string, error)
-	DeleteUserDetail(locator store.Locator, userID string, detail engine.UserDetail) error
+	GetUserEmail(siteID string, userID string) (string, error)
+	SetUserEmail(siteID string, userID string, value string) (string, error)
+	DeleteUserDetail(siteID string, userID string, detail engine.UserDetail) error
 	ValidateComment(c *store.Comment) error
 	IsVerified(siteID string, userID string) bool
 	IsReadOnly(locator store.Locator) bool
@@ -202,6 +202,14 @@ func (s *private) userInfoCtrl(w http.ResponseWriter, r *http.Request) {
 	user := rest.MustGetUserInfo(r)
 	if siteID := r.URL.Query().Get("site"); siteID != "" {
 		user.Verified = s.dataService.IsVerified(siteID, user.ID)
+
+		email, err := s.dataService.GetUserEmail(siteID, user.ID)
+		if err != nil {
+			log.Printf("[WARN] can't read email for %s, %v", user.ID, err)
+		}
+		if len(email) > 0 {
+			user.EmailSubscription = true
+		}
 	}
 
 	render.JSON(w, r, user)
@@ -253,7 +261,7 @@ func (s *private) voteCtrl(w http.ResponseWriter, r *http.Request) {
 func (s *private) getEmailCtrl(w http.ResponseWriter, r *http.Request) {
 	user := rest.MustGetUserInfo(r)
 	siteID := r.URL.Query().Get("site")
-	address, err := s.dataService.GetUserEmail(store.Locator{SiteID: siteID}, user.ID)
+	address, err := s.dataService.GetUserEmail(siteID, user.ID)
 	if err != nil {
 		log.Printf("[WARN] can't read email for %s, %v", user.ID, err)
 	}
@@ -271,7 +279,7 @@ func (s *private) sendEmailConfirmationCtrl(w http.ResponseWriter, r *http.Reque
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, errors.New("missing parameter"), "address parameter is required", rest.ErrInternal)
 		return
 	}
-	existingAddress, err := s.dataService.GetUserEmail(store.Locator{SiteID: siteID}, user.ID)
+	existingAddress, err := s.dataService.GetUserEmail(siteID, user.ID)
 	if err != nil {
 		log.Printf("[WARN] can't read email for %s, %v", user.ID, err)
 	}
@@ -299,9 +307,9 @@ func (s *private) sendEmailConfirmationCtrl(w http.ResponseWriter, r *http.Reque
 		notify.Request{
 			Email: address,
 			Verification: notify.VerificationMetadata{
-				Locator: store.Locator{SiteID: siteID},
-				User:    user.Name,
-				Token:   tkn,
+				SiteID: siteID,
+				User:   user.Name,
+				Token:  tkn,
 			},
 		},
 	)
@@ -318,7 +326,7 @@ func (s *private) setConfirmedEmailCtrl(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	user := rest.MustGetUserInfo(r)
-	locator := store.Locator{SiteID: r.URL.Query().Get("site")}
+	siteID := r.URL.Query().Get("site")
 
 	confClaims, err := s.authenticator.TokenService().Parse(tkn)
 	if err != nil {
@@ -340,7 +348,7 @@ func (s *private) setConfirmedEmailCtrl(w http.ResponseWriter, r *http.Request) 
 
 	log.Printf("[DEBUG] set email for user %s", user.ID)
 
-	val, err := s.dataService.SetUserEmail(locator, user.ID, address)
+	val, err := s.dataService.SetUserEmail(siteID, user.ID, address)
 	if err != nil {
 		code := parseError(err, rest.ErrInternal)
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set email for user", code)
@@ -368,7 +376,7 @@ func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorHTML(w, r, http.StatusBadRequest, errors.New("missing parameter"), "token parameter is required", rest.ErrInternal)
 		return
 	}
-	locator := store.Locator{SiteID: r.URL.Query().Get("site")}
+	siteID := r.URL.Query().Get("site")
 
 	confClaims, err := s.authenticator.TokenService().Parse(tkn)
 	if err != nil {
@@ -389,7 +397,7 @@ func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 	userID := elems[0]
 	address := elems[1]
 
-	existingAddress, err := s.dataService.GetUserEmail(locator, userID)
+	existingAddress, err := s.dataService.GetUserEmail(siteID, userID)
 	if err != nil {
 		log.Printf("[WARN] can't read email for %s, %v", userID, err)
 	}
@@ -404,7 +412,7 @@ func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[DEBUG] unsubscribe user %s", userID)
 
-	if err := s.dataService.DeleteUserDetail(locator, userID, engine.UserEmail); err != nil {
+	if err := s.dataService.DeleteUserDetail(siteID, userID, engine.UserEmail); err != nil {
 		code := parseError(err, rest.ErrInternal)
 		rest.SendErrorHTML(w, r, http.StatusBadRequest, err, "can't delete email for user", code)
 		return
@@ -438,10 +446,10 @@ func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 // DELETE /email?site=siteID - removes user's email
 func (s *private) deleteEmailCtrl(w http.ResponseWriter, r *http.Request) {
 	user := rest.MustGetUserInfo(r)
-	locator := store.Locator{SiteID: r.URL.Query().Get("site")}
+	siteID := r.URL.Query().Get("site")
 	log.Printf("[DEBUG] remove email for user %s", user.ID)
 
-	if err := s.dataService.DeleteUserDetail(locator, user.ID, engine.UserEmail); err != nil {
+	if err := s.dataService.DeleteUserDetail(siteID, user.ID, engine.UserEmail); err != nil {
 		code := parseError(err, rest.ErrInternal)
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete email for user", code)
 		return
