@@ -202,6 +202,14 @@ func (s *private) userInfoCtrl(w http.ResponseWriter, r *http.Request) {
 	user := rest.MustGetUserInfo(r)
 	if siteID := r.URL.Query().Get("site"); siteID != "" {
 		user.Verified = s.dataService.IsVerified(siteID, user.ID)
+
+		email, err := s.dataService.GetUserEmail(siteID, user.ID)
+		if err != nil {
+			log.Printf("[WARN] can't read email for %s, %v", user.ID, err)
+		}
+		if len(email) > 0 {
+			user.EmailSubscription = true
+		}
 	}
 
 	render.JSON(w, r, user)
