@@ -6,6 +6,7 @@ export interface User {
   admin: boolean;
   block: boolean;
   verified: boolean;
+  email_subscription?: boolean;
 }
 
 /** data which is used on user-info page */
@@ -113,6 +114,7 @@ export interface Config {
   max_image_size: number;
   simple_view: boolean;
   anon_vote: boolean;
+  email_notifications: boolean;
 }
 
 export interface RemarkConfig {
