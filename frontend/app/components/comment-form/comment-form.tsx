@@ -8,6 +8,7 @@ import { pageTitle } from '@app/common/settings';
 import { extractErrorMessageFromResponse } from '@app/utils/errorUtils';
 import { sleep } from '@app/utils/sleep';
 import { replaceSelection } from '@app/utils/replaceSelection';
+import { Dropdown } from '@app/components/dropdown';
 import { Button } from '@app/components/button';
 
 import { SubscribeByEmail } from './__subscribe-by-email';
@@ -420,8 +421,12 @@ export class CommentForm extends Component<Props, State> {
               </div>
               {'Subscribe by '}
               <SubscribeByRSS />
-              {' or '}
-              <SubscribeByEmail />
+              {StaticStore.config.email_notifications && [
+                ' or ',
+                <Dropdown title="Email" theme={props.theme}>
+                  <SubscribeByEmail />
+                </Dropdown>,
+              ]}
             </div>
           )}
         </div>

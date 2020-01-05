@@ -47,7 +47,8 @@ export type FetcherError =
     };
 
 export function extractErrorMessageFromResponse(response: FetcherError): string {
-  const defaultErrorMessage = 'Something went wrong. Please try again a bit later.';
+  const defaultErrorMessage = errorMessageForCodes.get(0) as string;
+
   if (!response) {
     return defaultErrorMessage;
   }
@@ -60,12 +61,12 @@ export function extractErrorMessageFromResponse(response: FetcherError): string 
     return response.error;
   }
 
-  if (typeof response.code === 'number' && errorMessageForCodes.has(response.code)) {
-    return errorMessageForCodes.get(response.code)!;
+  if (typeof response.details === 'string') {
+    return response.details.charAt(0).toUpperCase() + response.details.substring(1);
   }
 
-  if (typeof response.details === 'string') {
-    return response.details;
+  if (typeof response.code === 'number' && errorMessageForCodes.has(response.code)) {
+    return errorMessageForCodes.get(response.code)!;
   }
 
   return defaultErrorMessage;
