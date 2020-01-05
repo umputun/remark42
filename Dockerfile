@@ -11,7 +11,7 @@ ARG SKIP_BACKEND_TEST
 ARG BACKEND_TEST_TIMEOUT
 
 ADD backend /build/backend
-ADD .git /build/.git
+ADD .git/ /build/backend/.git/
 WORKDIR /build/backend
 
 ENV GOFLAGS="-mod=vendor"
@@ -30,7 +30,7 @@ RUN \
 
 # if DRONE presented use DRONE_* git env to make version
 RUN \
-    if [ -z "$DRONE" ] ; then echo "runs outside of drone" && version="local"; \
+    if [ -z "$DRONE" ] ; then echo "runs outside of drone" && version="$(/script/git-rev.sh);"; \
     else version=${DRONE_TAG}${DRONE_BRANCH}${DRONE_PULL_REQUEST}-${DRONE_COMMIT:0:7}-$(date +%Y%m%d-%H:%M:%S); fi && \
     echo "version=$version" && \
     go build -o remark42 -ldflags "-X main.revision=${version} -s -w" ./app
