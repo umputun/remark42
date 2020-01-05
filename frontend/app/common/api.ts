@@ -279,7 +279,7 @@ export const uploadImage = (image: File): Promise<Image> => {
  * Start process of email subscription to updates
  * @param emailAddress email for subscription
  */
-export const sendEmailVerificationForSubscribe = (emailAddress: string) =>
+export const emailVerificationForSubscribe = (emailAddress: string) =>
   fetcher.post({
     url: `/email/subscribe?site=${siteId}&address=${emailAddress}`,
     withCredentials: true,
@@ -289,8 +289,10 @@ export const sendEmailVerificationForSubscribe = (emailAddress: string) =>
  * Conformation of email subscription to updates
  * @param token conformation token from email
  */
-export const sendEmailConformationForSubscribe = (token: string) =>
+export const emailConformationForSubscribe = (token: string) =>
   fetcher.post({ url: `/email/confirm?site=${siteId}&tkn=${encodeURIComponent(token)}`, withCredentials: true });
+
+export const unsubscribeFromEmailUpdates = () => fetcher.delete({ url: `/email`, withCredentials: true });
 
 export default {
   logIn,
