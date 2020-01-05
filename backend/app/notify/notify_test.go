@@ -123,6 +123,6 @@ func (m mockStore) Get(_ store.Locator, id string, _ store.User) (store.Comment,
 	return res, nil
 }
 
-func (m mockStore) GetUserEmail(_ store.Locator, _ string) (string, error) {
+func (m mockStore) GetUserEmail(_ string, _ string) (string, error) {
 	return "", errors.New("no such user")
 }
