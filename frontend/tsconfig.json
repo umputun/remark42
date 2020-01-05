@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-		"incremental": true,
+    "incremental": true,
     "lib": ["es2017", "dom"],
     "target": "es2017",
     "jsx": "react",
@@ -19,7 +19,7 @@
     "forceConsistentCasingInFileNames": true,
     "paths": {
       "*": ["@types/*"],
-      "@app/*": ["app/*"],
+      "@app/*": ["app/*"]
     }
   },
   "include": ["app/**/*"],

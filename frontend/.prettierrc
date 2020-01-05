@@ -5,11 +5,13 @@
   "singleQuote": true,
   "trailingComma": "es5",
   "bracketSpacing": true,
-	"arrowParens": "avoid",
-	"overrides": [{
-		"files": ["*.ejs"],
-		"options": {
-			"trailingComma": "none"
-		}
-	}]
+  "arrowParens": "avoid",
+  "overrides": [
+    {
+      "files": ["*.ejs", "*.html"],
+      "options": {
+        "trailingComma": "none"
+      }
+    }
+  ]
 }
