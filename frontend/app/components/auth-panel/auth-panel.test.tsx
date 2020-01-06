@@ -30,7 +30,7 @@ describe('<AuthPanel />', () => {
 
       const authForm = authPanelColumn.first();
 
-      expect(authForm.text()).toEqual(expect.stringContaining('Sign in to comment using'));
+      expect(authForm.text()).toEqual(expect.stringContaining('Login:'));
 
       const providerLinks = authForm.find(Button);
 
@@ -95,7 +95,7 @@ describe('<AuthPanel />', () => {
 
       const authForm = authPanelColumn.first();
 
-      expect(authForm.text()).toEqual(expect.stringContaining('Sign in using Google or GitHub'));
+      expect(authForm.text()).toEqual(expect.stringContaining('Login: Google or GitHub'));
 
       const providerLinks = authForm.find(Button);
 
@@ -142,7 +142,7 @@ describe('<AuthPanel />', () => {
 
       const userInfo = authPanelColumn.first();
 
-      expect(userInfo.text()).toEqual(expect.stringContaining('You signed in as John'));
+      expect(userInfo.text()).toEqual(expect.stringContaining('You logged in as John'));
     });
   });
   describe('For admin user', () => {
