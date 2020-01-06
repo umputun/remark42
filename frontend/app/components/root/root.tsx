@@ -36,7 +36,7 @@ import { AuthPanel } from '@app/components/auth-panel';
 import Settings from '@app/components/settings';
 import { ConnectedComment as Comment } from '@app/components/comment/connected-comment';
 import { CommentForm } from '@app/components/comment-form';
-import Preloader from '@app/components/preloader';
+import { Preloader } from '@app/components/preloader';
 import { Thread } from '@app/components/thread';
 import { Button } from '@app/components/button';
 import { uploadImage, getPreview } from '@app/common/api';

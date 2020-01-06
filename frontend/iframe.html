@@ -20,50 +20,52 @@
         -moz-osx-font-smoothing: grayscale;
       }
 
-    .preloader {
-      width: 60px;
-      text-align: center;
-      font-size: 0;
+      @keyframes bouncing {
+        0%,
+        80%,
+        100% {
+          box-shadow: 0 10px 0 -10px;
         }
-
-    .preloader_view_iframe {
-      margin: 0 auto;
+        40% {
+          box-shadow: 0 10px 0 0;
         }
+      }
 
-    .preloader__bounce {
-      display: inline-block;
+      .preloader,
+      .preloader:before,
+      .preloader:after {
+        border-radius: 50%;
         width: 10px;
         height: 10px;
-      margin-right: 3px;
-      background-color: #888;
-      border-radius: 100%;
-      animation: iframePreloaderBounce 1.4s infinite ease-in-out both;
+        text-align: left;
+        animation-fill-mode: both;
+        animation: bouncing 1.8s infinite ease-in-out;
       }
 
-    .preloader__bounce:first-child {
-      animation-delay: -.32s;
+      .preloader {
+        color: #fff;
+        position: relative;
+        transform: translate3d(0, -10px, 0);
+        animation-delay: -0.16s;
       }
 
-    .preloader__bounce:nth-child(2) {
-      animation-delay: -.16s;
-    }
-
-    .preloader__bounce:last-child {
-      margin-right: 0;
+      .preloader:before,
+      .preloader:after {
+        content: '';
+        position: absolute;
+        top: 0;
+      }
+      .preloader:before {
+        transform: translate3d(-15px, 0, 0);
+        animation-delay: -0.32s;
+      }
+      .preloader:after {
+        transform: translate3d(15px, 0, 0);
       }
 
-    @keyframes iframePreloaderBounce {
-      0% {
-        transform: scale(0);
-      }
-
-      40% {
-        transform: scale(1);
-      }
-
-      80%, 100% {
-        transform: scale(0);
-      }
+      .preloader_view_iframe {
+        margin: 0 auto;
+        color: #888;
       }
 
       :focus:not(.focus-visible):not(.button) {
@@ -73,11 +75,7 @@
   </head>
   <body>
     <div id="remark42">
-    <div class="preloader preloader_view_iframe">
-      <div class="preloader__bounce"></div>
-      <div class="preloader__bounce"></div>
-      <div class="preloader__bounce"></div>
-    </div>
+      <div class="preloader preloader_view_iframe"></div>
     </div>
     <script>
       /* REMOVE-START */
