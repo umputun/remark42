@@ -512,14 +512,14 @@ func prepServerApp(t *testing.T, fn func(o ServerCommand) ServerCommand) (*serve
 	cmd.Auth.Email.MsgTemplate = "testdata/email.tmpl"
 	cmd.BackupLocation = "/tmp"
 	cmd.Notify.Type = []string{"email"}
-	cmd.Notify.Email.Host = "127.0.0.1"
-	cmd.Notify.Email.Port = 25
-	cmd.Notify.Email.TLS = false
 	cmd.Notify.Email.From = "from@example.org"
-	cmd.Notify.Email.Username = "test_user"
-	cmd.Notify.Email.Password = "test_password"
-	cmd.Notify.Email.TimeOut = time.Second
 	cmd.Notify.Email.VerificationSubject = "test verification email subject"
+	cmd.SMTP.Host = "127.0.0.1"
+	cmd.SMTP.Port = 25
+	cmd.SMTP.TLS = false
+	cmd.SMTP.Username = "test_user"
+	cmd.SMTP.Password = "test_password"
+	cmd.SMTP.TimeOut = time.Second
 	cmd.UpdateLimit = 10
 	cmd = fn(cmd)
 
