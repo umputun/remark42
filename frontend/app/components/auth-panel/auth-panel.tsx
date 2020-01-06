@@ -155,7 +155,7 @@ export class AuthPanel extends Component<Props, State> {
 
     return (
       <div className="auth-panel__column">
-        You signed in as{' '}
+        You logged in as{' '}
         <Dropdown title={user.name} titleClass="auth-panel__user-dropdown-title" theme={theme}>
           <DropdownItem separator={!isUserAnonymous}>
             <div
@@ -176,7 +176,7 @@ export class AuthPanel extends Component<Props, State> {
           )}
         </Dropdown>{' '}
         <Button kind="link" theme={theme} onClick={onSignOut}>
-          Sign out?
+          Logout?
         </Button>
       </div>
     );
@@ -244,11 +244,10 @@ export class AuthPanel extends Component<Props, State> {
   };
 
   renderUnauthorized = () => {
-    const { user, providers = [], postInfo } = this.props;
+    const { user, providers = [] } = this.props;
     const { threshold } = this.state;
     if (user || !IS_STORAGE_AVAILABLE) return null;
 
-    const signInMessage = postInfo.read_only ? 'Sign in using ' : 'Sign in to comment using ';
     const sortedProviders = ((): typeof providers => {
       if (!this.props.provider.name) return providers;
       const lastProviderIndex = providers.indexOf(this.props.provider.name as typeof providers[0]);
@@ -264,7 +263,7 @@ export class AuthPanel extends Component<Props, State> {
 
     return (
       <div className="auth-panel__column">
-        {signInMessage}
+        {'Login: '}
         {!isAboveThreshold &&
           sortedProviders.map((provider, i) => {
             const comma = i === 0 ? '' : i === sortedProviders.length - 1 ? ' or ' : ', ';
@@ -301,7 +300,7 @@ export class AuthPanel extends Component<Props, State> {
     if (IS_STORAGE_AVAILABLE || !IS_THIRD_PARTY) return null;
     return (
       <div className="auth-panel__column">
-        Disable third-party cookies blocking to sign in or open comments in{' '}
+        Disable third-party cookies blocking to login or open comments in{' '}
         <a
           className="auth-panel__pseudo-link"
           href={`${window.location.origin}/web/comments.html${window.location.search}`}
@@ -315,7 +314,7 @@ export class AuthPanel extends Component<Props, State> {
 
   renderCookiesWarning = () => {
     if (IS_STORAGE_AVAILABLE || IS_THIRD_PARTY) return null;
-    return <div className="auth-panel__column">Allow cookies to sign in and comment</div>;
+    return <div className="auth-panel__column">Allow cookies to login and comment</div>;
   };
 
   renderSettingsLabel = () => {
