@@ -286,12 +286,15 @@ export const emailVerificationForSubscribe = (emailAddress: string) =>
   });
 
 /**
- * Conformation of email subscription to updates
- * @param token conformation token from email
+ * Confirmation of email subscription to updates
+ * @param token confirmation token from email
  */
-export const emailConformationForSubscribe = (token: string) =>
+export const emailConfirmationForSubscribe = (token: string) =>
   fetcher.post({ url: `/email/confirm?site=${siteId}&tkn=${encodeURIComponent(token)}`, withCredentials: true });
 
+/**
+ * Decline current subscription to updates
+ */
 export const unsubscribeFromEmailUpdates = () => fetcher.delete({ url: `/email`, withCredentials: true });
 
 export default {

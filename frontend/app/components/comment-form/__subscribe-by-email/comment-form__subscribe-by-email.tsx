@@ -11,7 +11,7 @@ import useTheme from '@app/hooks/useTheme';
 import { getHandleClickProps } from '@app/common/accessibility';
 import {
   emailVerificationForSubscribe,
-  emailConformationForSubscribe,
+  emailConfirmationForSubscribe,
   unsubscribeFromEmailUpdates,
 } from '@app/common/api';
 import { Input } from '@app/components/input';
@@ -109,7 +109,7 @@ export const SubscribeByEmail: FunctionComponent = () => {
           setStep(Step.Token);
           break;
         case Step.Token:
-          await emailConformationForSubscribe(token);
+          await emailConfirmationForSubscribe(token);
           previousStep.current = Step.Token;
           setStep(Step.Final);
           break;
@@ -151,13 +151,14 @@ export const SubscribeByEmail: FunctionComponent = () => {
       try {
         await unsubscribeFromEmailUpdates();
         previousStep.current = Step.Subscribed;
-        setStep(Step.Email);
+        setStep(Step.Final);
       } catch (e) {
         setError(extractErrorMessageFromResponse(e));
       } finally {
         setLoading(false);
       }
     };
+
     return (
       <div className={b('comment-form__subscribe-by-email', { mods: { subscribed: true } })}>
         You are subscribed on updates by email.

@@ -423,7 +423,7 @@ export class CommentForm extends Component<Props, State> {
               <SubscribeByRSS />
               {StaticStore.config.email_notifications && [
                 ' or ',
-                <Dropdown title="Email" theme={props.theme}>
+                <Dropdown mix="comment-form__email-dropdown" title="Email" theme={props.theme}>
                   <SubscribeByEmail />
                 </Dropdown>,
               ]}
