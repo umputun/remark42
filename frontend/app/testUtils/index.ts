@@ -22,5 +22,6 @@ beforeEach(() => {
     readonly_age: 100,
     version: 'jest-test',
     simple_view: false,
+    anon_vote: false,
   };
 });
