@@ -187,8 +187,8 @@ func TestEmail_Send(t *testing.T) {
 	email.TokenGenFn = TokenGenFn
 	email.UnsubscribeURL = "https://remark42.com/api/v1/email/unsubscribe"
 	req := Request{
-		Comment: store.Comment{ID: "999", User: store.User{Name: "test_user"}, PostTitle: "test_title"},
-		parent:  store.Comment{ID: "1", User: store.User{Name: "parent_user"}},
+		Comment: store.Comment{ID: "999", User: store.User{ID: "1", Name: "test_user"}, PostTitle: "test_title"},
+		parent:  store.Comment{ID: "1", User: store.User{ID: "999", Name: "parent_user"}},
 		Email:   "test@example.org"}
 	assert.NoError(t, email.Send(context.TODO(), req))
 	assert.Equal(t, "from@example.org", fakeSmtp.readMail())
