@@ -668,6 +668,14 @@ func TestAdmin_DeleteMeRequest(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(comments), "a comment for user1")
 
+	email, err := srv.DataService.SetUserEmail("remark42", "user1", "test@example.org")
+	assert.NoError(t, err)
+	assert.Equal(t, "test@example.org", email, "new email for user1")
+
+	email, err = srv.DataService.GetUserEmail("remark42", "user1")
+	assert.NoError(t, err)
+	assert.Equal(t, "test@example.org", email, "new email for user1 is readable")
+
 	claims := token.Claims{
 		SessionOnly: true,
 		StandardClaims: jwt.StandardClaims{
@@ -703,6 +711,11 @@ func TestAdmin_DeleteMeRequest(t *testing.T) {
 
 	_, err = srv.DataService.User("remark42", "user1", 0, 0, store.User{})
 	assert.EqualError(t, err, "no comments for user user1 in store")
+
+	email, err = srv.DataService.GetUserEmail("remark42", "user1")
+	assert.NoError(t, err)
+	assert.Empty(t, email, "user1 email was deleted")
+
 }
 
 func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
