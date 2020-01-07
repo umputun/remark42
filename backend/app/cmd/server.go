@@ -169,6 +169,7 @@ type AdminGroup struct {
 	RPC RPCGroup `group:"rpc" namespace:"rpc" env-namespace:"RPC"`
 }
 
+// SmtpGroup defines options for SMTP server connection, used in auth and notify modules
 type SmtpGroup struct {
 	Host     string        `long:"host" env:"HOST" description:"SMTP host"`
 	Port     int           `long:"port" env:"PORT" default:"587" description:"SMTP port"`
