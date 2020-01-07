@@ -1,1 +1,1 @@
-export { SubscribeByRSS } from './comment-form__subscribe-by-rss';
+export { SubscribeByRSS, createSubscribeUrl } from './comment-form__subscribe-by-rss';
