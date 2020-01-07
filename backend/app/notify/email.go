@@ -195,7 +195,7 @@ func (e *Email) Send(ctx context.Context, req Request) (err error) {
 	}
 
 	if req.Comment.ID != "" {
-		if req.parent.User == req.Comment.User {
+		if req.parent.User.ID == req.Comment.User.ID {
 			// don't send anything if if user replied to their own comment
 			return nil
 		}
