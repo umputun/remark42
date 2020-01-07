@@ -12,7 +12,8 @@
   padding-top: 0;
 }
 
-.comment-form__subscribe-by-email_final {
+.comment-form__subscribe-by-email_subscribed,
+.comment-form__subscribe-by-email_unsubscribed {
   width: 170px;
   padding: 8px 12px;
   text-align: left;

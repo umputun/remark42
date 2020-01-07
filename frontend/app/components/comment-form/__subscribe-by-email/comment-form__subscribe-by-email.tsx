@@ -1,10 +1,11 @@
 /** @jsx createElement */
 import { createElement, FunctionComponent } from 'preact';
 import { useState, useCallback, useEffect, useRef } from 'preact/hooks';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import b from 'bem-react-helper';
 
 import { StoreState } from '@app/store';
+import { setUserSubscribed } from '@app/store/user/actions';
 import { sleep } from '@app/utils/sleep';
 import { extractErrorMessageFromResponse } from '@app/utils/errorUtils';
 import useTheme from '@app/hooks/useTheme';
@@ -27,6 +28,7 @@ enum Step {
   Final,
   Close,
   Subscribed,
+  Unsubscribed,
 }
 
 const renderEmailPart = (
@@ -67,6 +69,7 @@ const renderTokenPart = (
 
 export const SubscribeByEmail: FunctionComponent = () => {
   const theme = useTheme();
+  const dispatch = useDispatch();
   const subscribed = useSelector<StoreState, boolean>(({ user }) =>
     user === null ? false : Boolean(user.email_subscription)
   );
@@ -110,8 +113,9 @@ export const SubscribeByEmail: FunctionComponent = () => {
           break;
         case Step.Token:
           await emailConfirmationForSubscribe(token);
+          dispatch(setUserSubscribed(true));
           previousStep.current = Step.Token;
-          setStep(Step.Final);
+          setStep(Step.Subscribed);
           break;
         default:
           break;
@@ -140,28 +144,33 @@ export const SubscribeByEmail: FunctionComponent = () => {
    * It needs for dropdown closing by click on button
    * More info below
    */
-
   if (step === Step.Close) {
     return null;
   }
 
   if (step === Step.Subscribed) {
-    const handleUnsubscribe = async () => {
+    const handleUnsubscribe = useCallback(async () => {
       setLoading(true);
       try {
         await unsubscribeFromEmailUpdates();
+        dispatch(setUserSubscribed(false));
         previousStep.current = Step.Subscribed;
-        setStep(Step.Final);
+        setStep(Step.Unsubscribed);
       } catch (e) {
         setError(extractErrorMessageFromResponse(e));
       } finally {
         setLoading(false);
       }
-    };
+    }, [setLoading, setStep, setError]);
+
+    const text =
+      previousStep.current === Step.Token
+        ? 'You have been subscribed on updates by email'
+        : 'You are subscribed on updates by email';
 
     return (
       <div className={b('comment-form__subscribe-by-email', { mods: { subscribed: true } })}>
-        You are subscribed on updates by email.
+        {text}
         <Button
           kind="primary"
           size="middle"
@@ -175,25 +184,22 @@ export const SubscribeByEmail: FunctionComponent = () => {
     );
   }
 
-  if (step === Step.Final) {
+  if (step === Step.Unsubscribed) {
     /**
-     * This is not memoized because it renrers only one time
      * It works because click on button changes step
      * And dropdown doesn't find event target in rerendered view
      * NOTE: If you can suggest more elegant solve you can open issue or PR
      */
-    const handleClose = () => setStep(Step.Close);
-    const actionText = previousStep.current === Step.Token ? 'subscribed' : 'unsubscribed';
 
     return (
-      <div className={b('comment-form__subscribe-by-email', { mods: { final: true } })}>
-        You have been {actionText} by email to notifications
+      <div className={b('comment-form__subscribe-by-email', { mods: { unsubscribed: true } })}>
+        You have been unsubscribed by email to updates
         <Button
           kind="primary"
           size="middle"
           mix="comment-form__subscribe-by-email__button"
           theme={theme}
-          onClick={handleClose}
+          onClick={() => setStep(Step.Close)}
         >
           Close
         </Button>
