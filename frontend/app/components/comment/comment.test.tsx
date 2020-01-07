@@ -32,6 +32,33 @@ const DefaultProps: Partial<Props> = {
 
 describe('<Comment />', () => {
   describe('voting', () => {
+    it('should be disabled for an anonymous user', () => {
+      const props = { ...DefaultProps, user: { id: 'anonymous_1' } } as Props;
+      const wrapper = shallow(<Comment {...props} />);
+      const voteButtons = wrapper.find('.comment__vote');
+
+      expect(voteButtons.length).toEqual(2);
+
+      voteButtons.forEach(button => {
+        expect(button.prop('aria-disabled')).toEqual('true');
+        expect(button.prop('title')).toEqual("Anonymous users can't vote");
+      });
+    });
+
+    it('should be enabled for an anonymous user when it was allowed from server', () => {
+      StaticStore.config.anon_vote = true;
+
+      const props = { ...DefaultProps, user: { id: 'anonymous_1' } } as Props;
+      const wrapper = shallow(<Comment {...props} />);
+      const voteButtons = wrapper.find('.comment__vote');
+
+      expect(voteButtons.length).toEqual(2);
+
+      voteButtons.forEach(button => {
+        expect(button.prop('aria-disabled')).toEqual('false');
+      });
+    });
+
     it('disabled on user info widget', () => {
       const element = mount(<Comment {...({ ...DefaultProps, view: 'user' } as Props)} />);
 

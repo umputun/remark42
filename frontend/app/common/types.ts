@@ -112,6 +112,7 @@ export interface Config {
   readonly_age: number;
   max_image_size: number;
   simple_view: boolean;
+  anon_vote: boolean;
 }
 
 export interface RemarkConfig {

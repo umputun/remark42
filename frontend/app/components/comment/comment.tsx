@@ -354,7 +354,7 @@ export class Comment extends Component<Props, State> {
     if (this.isCurrentUser()) return "Can't vote for your own comment";
     if (StaticStore.config.positive_score && this.props.data.score < 1) return 'Only positive score allowed';
     if (this.isGuest()) return 'Sign in to vote';
-    if (this.isAnonymous()) return "Anonymous users can't vote";
+    if (this.isAnonymous() && !StaticStore.config.anon_vote) return "Anonymous users can't vote";
     return null;
   };
 
@@ -367,7 +367,7 @@ export class Comment extends Component<Props, State> {
     if (this.props.data.delete) return "Can't vote for deleted comment";
     if (this.isCurrentUser()) return "Can't vote for your own comment";
     if (this.isGuest()) return 'Sign in to vote';
-    if (this.isAnonymous()) return "Anonymous users can't vote";
+    if (this.isAnonymous() && !StaticStore.config.anon_vote) return "Anonymous users can't vote";
     return null;
   };
 
