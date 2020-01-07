@@ -17,7 +17,7 @@ import {
 } from '@app/common/api';
 import { Input } from '@app/components/input';
 import { Button } from '@app/components/button';
-import Preloader from '@app/components/preloader';
+import { Preloader } from '@app/components/preloader';
 import TextareaAutosize from '@app/components/comment-form/textarea-autosize';
 
 const emailRegex = /[^@]+@[^.]+\..+/;

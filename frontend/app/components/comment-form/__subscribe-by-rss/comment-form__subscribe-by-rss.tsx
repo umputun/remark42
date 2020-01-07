@@ -10,7 +10,7 @@ import { Dropdown, DropdownItem } from '@app/components/dropdown';
 export const createSubscribeUrl = (type: 'post' | 'site' | 'reply', urlParams: string = '') =>
   `${BASE_URL}${API_BASE}/rss/${type}?site=${siteId}${urlParams}`;
 
-export const SubscribeByRSS: FunctionComponent<{ userId?: string }> = ({ userId }) => {
+export const SubscribeByRSS: FunctionComponent<{ userId: string | null }> = ({ userId }) => {
   const theme = useTheme();
   const items: Array<[string, string]> = useMemo(
     () => [

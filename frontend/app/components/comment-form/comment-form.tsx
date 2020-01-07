@@ -16,12 +16,12 @@ import { SubscribeByRSS } from './__subscribe-by-rss';
 
 import MarkdownToolbar from './markdown-toolbar';
 import TextareaAutosize from './textarea-autosize';
+import { isUserAnonymous } from '@app/utils/isUserAnonymous';
 
 let textareaId = 0;
 
 export interface Props {
-  /** user id for rss link generation */
-  userId?: User['id'];
+  user: User | null;
   errorMessage?: string;
   value?: string;
   mix?: Mix;
@@ -100,10 +100,13 @@ export class CommentForm extends Component<Props, State> {
   }
 
   shouldComponentUpdate(nextProps: Props, nextState: State) {
+    const userId = this.props.user !== null && this.props.user.id;
+    const nextUserId = nextProps.user !== null && nextProps.user.id;
+
     return (
+      nextUserId !== userId ||
       nextProps.mode !== this.props.mode ||
       nextProps.theme !== this.props.theme ||
-      nextProps.userId !== this.props.userId ||
       nextProps.value !== this.props.value ||
       nextProps.errorMessage !== this.props.errorMessage ||
       nextState !== this.state
@@ -420,13 +423,14 @@ export class CommentForm extends Component<Props, State> {
                 {' is supported'}
               </div>
               {'Subscribe by '}
-              <SubscribeByRSS userId={props.userId} />
-              {StaticStore.config.email_notifications && [
-                ' or ',
-                <Dropdown mix="comment-form__email-dropdown" title="Email" theme={props.theme}>
-                  <SubscribeByEmail />
-                </Dropdown>,
-              ]}
+              <SubscribeByRSS userId={props.user !== null ? props.user.id : null} />
+              {StaticStore.config.email_notifications &&
+                !isUserAnonymous(props.user) && [
+                  ' or ',
+                  <Dropdown mix="comment-form__email-dropdown" title="Email" theme={props.theme}>
+                    <SubscribeByEmail />
+                  </Dropdown>,
+                ]}
             </div>
           )}
         </div>

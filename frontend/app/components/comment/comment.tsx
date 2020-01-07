@@ -725,6 +725,7 @@ export class Comment extends Component<Props, State> {
 
         {isReplying && props.view === 'main' && (
           <CommentForm
+            user={props.user}
             theme={props.theme}
             value=""
             mode="reply"
@@ -740,6 +741,7 @@ export class Comment extends Component<Props, State> {
 
         {isEditing && props.view === 'main' && (
           <CommentForm
+            user={props.user}
             theme={props.theme}
             value={o.orig}
             mode="edit"
