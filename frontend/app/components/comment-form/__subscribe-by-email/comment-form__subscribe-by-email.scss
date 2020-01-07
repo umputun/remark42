@@ -3,7 +3,8 @@
   flex-wrap: wrap;
   flex-direction: column;
   padding: 8px;
-  min-width: 170px;
+  width: 200px;
+  box-sizing: border-box;
   line-height: 1.2;
   text-align: left;
 }
@@ -14,7 +15,6 @@
 
 .comment-form__subscribe-by-email_subscribed,
 .comment-form__subscribe-by-email_unsubscribed {
-  width: 170px;
   padding: 8px 12px;
   text-align: left;
   font-size: 14px;
