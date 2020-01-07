@@ -516,7 +516,6 @@ func prepServerApp(t *testing.T, fn func(o ServerCommand) ServerCommand) (*serve
 	cmd.Notify.Email.VerificationSubject = "test verification email subject"
 	cmd.SMTP.Host = "127.0.0.1"
 	cmd.SMTP.Port = 25
-	cmd.SMTP.TLS = false
 	cmd.SMTP.Username = "test_user"
 	cmd.SMTP.Password = "test_password"
 	cmd.SMTP.TimeOut = time.Second
