@@ -4,7 +4,7 @@ import { forwardRef } from 'preact/compat';
 import b, { Mods, Mix } from 'bem-react-helper';
 import { Theme } from '@app/common/types';
 
-interface Props extends JSX.HTMLAttributes {
+interface Props extends Omit<JSX.HTMLAttributes, 'className'> {
   kind?: 'primary' | 'secondary';
   theme?: Theme;
   mods?: Mods;

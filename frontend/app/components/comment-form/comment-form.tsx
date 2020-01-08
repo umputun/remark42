@@ -1,28 +1,25 @@
 /** @jsx createElement */
-import { createElement, Component, createRef } from 'preact';
+import { createElement, Component, createRef, Fragment } from 'preact';
 import b, { Mix } from 'bem-react-helper';
 
 import { User, Theme, Image, ApiError } from '@app/common/types';
-import { BASE_URL, API_BASE } from '@app/common/constants';
 import { StaticStore } from '@app/common/static_store';
-import { siteId, url, pageTitle } from '@app/common/settings';
+import { pageTitle } from '@app/common/settings';
 import { extractErrorMessageFromResponse } from '@app/utils/errorUtils';
 import { sleep } from '@app/utils/sleep';
 import { replaceSelection } from '@app/utils/replaceSelection';
 import { Button } from '@app/components/button';
 
+import { SubscribeByEmail } from './__subscribe-by-email';
+import { SubscribeByRSS } from './__subscribe-by-rss';
+
 import MarkdownToolbar from './markdown-toolbar';
 import TextareaAutosize from './textarea-autosize';
-
-const RSS_THREAD_URL = `${BASE_URL}${API_BASE}/rss/post?site=${siteId}&url=${url}`;
-const RSS_SITE_URL = `${BASE_URL}${API_BASE}/rss/site?site=${siteId}`;
-const RSS_REPLIES_URL = `${BASE_URL}${API_BASE}/rss/reply?site=${siteId}&user=`;
 
 let textareaId = 0;
 
 export interface Props {
-  /** user id for rss link generation */
-  userId?: User['id'];
+  user: User | null;
   errorMessage?: string;
   value?: string;
   mix?: Mix;
@@ -101,10 +98,13 @@ export class CommentForm extends Component<Props, State> {
   }
 
   shouldComponentUpdate(nextProps: Props, nextState: State) {
+    const userId = this.props.user !== null && this.props.user.id;
+    const nextUserId = nextProps.user !== null && nextProps.user.id;
+
     return (
+      nextUserId !== userId ||
       nextProps.mode !== this.props.mode ||
       nextProps.theme !== this.props.theme ||
-      nextProps.userId !== this.props.userId ||
       nextProps.value !== this.props.value ||
       nextProps.errorMessage !== this.props.errorMessage ||
       nextState !== this.state
@@ -417,22 +417,17 @@ export class CommentForm extends Component<Props, State> {
                 Styling with{' '}
                 <a className="comment-form__markdown-link" target="_blank" href="markdown-help.html">
                   Markdown
-                </a>{' '}
-                is supported
+                </a>
+                {' is supported'}
               </div>
-              Subscribe to&nbsp;the{' '}
-              <a className="comment-form__rss-link" href={RSS_THREAD_URL} target="_blank">
-                Thread
-              </a>
-              {', '}
-              <a className="comment-form__rss-link" href={RSS_SITE_URL} target="_blank">
-                Site
-              </a>{' '}
-              or&nbsp;
-              <a className="comment-form__rss-link" href={RSS_REPLIES_URL + props.userId} target="_blank">
-                Replies
-              </a>{' '}
-              by&nbsp;RSS
+              {'Subscribe by '}
+              <SubscribeByRSS userId={props.user !== null ? props.user.id : null} />
+              {StaticStore.config.email_notifications && (
+                <Fragment>
+                  {' or '}
+                  <SubscribeByEmail />
+                </Fragment>
+              )}
             </div>
           )}
         </div>

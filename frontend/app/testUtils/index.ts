@@ -23,5 +23,6 @@ beforeEach(() => {
     version: 'jest-test',
     simple_view: false,
     anon_vote: false,
+    email_notifications: false,
   };
 });

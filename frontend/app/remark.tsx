@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 /** @jsx createElement */
 import loadPolyfills from '@app/common/polyfills';
 import { createElement, render } from 'preact';
@@ -34,7 +33,7 @@ async function init(): Promise<void> {
   const node = document.getElementById(NODE_ID);
 
   if (!node) {
-    console.error("Remark42: Can't find root node.");
+    console.error("Remark42: Can't find root node."); // eslint-disable-line no-console
     return;
   }
 
@@ -60,7 +59,7 @@ async function init(): Promise<void> {
   StaticStore.config = await api.getConfig();
 
   if (params.page === 'user-info') {
-    render(
+    return render(
       <div id={NODE_ID}>
         <div className="root root_user-info">
           <Provider store={reduxStore}>
@@ -70,12 +69,12 @@ async function init(): Promise<void> {
       </div>,
       node
     );
-  } else {
-    render(
-      <Provider store={reduxStore}>
-        <ConnectedRoot />
-      </Provider>,
-      node
-    );
   }
+
+  render(
+    <Provider store={reduxStore}>
+      <ConnectedRoot />
+    </Provider>,
+    node
+  );
 }

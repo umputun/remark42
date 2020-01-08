@@ -1,0 +1,14 @@
+.comment-form__rss-dropdown {
+  text-align: left;
+}
+.comment-form__rss-dropdown__link {
+  font-weight: 700;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  color: #0aa;
+
+  &:hover {
+    color: #06c5c5;
+  }
+}

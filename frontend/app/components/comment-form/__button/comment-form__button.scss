@@ -1,4 +1,8 @@
 .comment-form__button {
   margin: 8px 8px 0 0;
   align-self: flex-start;
+
+  & + .comment-form__button {
+    margin-right: 20px;
+  }
 }

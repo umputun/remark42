@@ -246,7 +246,7 @@ export class Root extends Component<Props, State> {
                   theme={props.theme}
                   mix="root__input"
                   mode="main"
-                  userId={this.props.user!.id}
+                  user={props.user}
                   onSubmit={(text, title) => this.props.addComment(text, title)}
                   getPreview={this.props.getPreview}
                   uploadImage={imageUploadHandler}
