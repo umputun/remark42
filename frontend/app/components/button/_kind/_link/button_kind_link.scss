@@ -6,4 +6,9 @@
   &:hover {
     color: #06c5c5;
   }
+
+  &:disabled,
+  &:hover:disabled {
+    color: #0aa;
+  }
 }

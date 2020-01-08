@@ -1,22 +1,24 @@
 /** @jsx createElement */
-import { createElement, Component, createRef } from 'preact';
+import { createElement, Component, createRef, RenderableProps } from 'preact';
 import b from 'bem-react-helper';
 
 import { Theme } from '@app/common/types';
 import { sleep } from '@app/utils/sleep';
 import { Button } from '@app/components/button';
 
-interface Props {
+type Props = RenderableProps<{
   title: string;
   titleClass?: string;
   heading?: string;
   isActive?: boolean;
+  disabled?: boolean;
+  buttonTitle?: string;
   onTitleClick?: () => void;
   mix?: string;
   theme: Theme;
   onOpen?: (root: HTMLDivElement) => unknown;
   onClose?: (root: HTMLDivElement) => unknown;
-}
+}>;
 
 interface State {
   isActive: boolean;
@@ -177,10 +179,7 @@ export class Dropdown extends Component<Props, State> {
     window.removeEventListener('message', this.receiveMessage);
   }
 
-  render() {
-    const { title, titleClass, heading, children, mix, theme } = this.props;
-    const { isActive } = this.state;
-
+  render({ title, titleClass, heading, children, mix, theme, disabled, buttonTitle }: Props, { isActive }: State) {
     return (
       <div className={b('dropdown', { mix }, { theme, active: isActive })} ref={this.rootNode}>
         <Button
@@ -190,6 +189,8 @@ export class Dropdown extends Component<Props, State> {
           theme={theme}
           mix={['dropdown__title', titleClass]}
           kind="link"
+          disabled={disabled}
+          title={buttonTitle}
         >
           {title}
         </Button>

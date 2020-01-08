@@ -1,5 +1,5 @@
 /** @jsx createElement */
-import { createElement, Component, createRef } from 'preact';
+import { createElement, Component, createRef, Fragment } from 'preact';
 import b, { Mix } from 'bem-react-helper';
 
 import { User, Theme, Image, ApiError } from '@app/common/types';
@@ -8,7 +8,6 @@ import { pageTitle } from '@app/common/settings';
 import { extractErrorMessageFromResponse } from '@app/utils/errorUtils';
 import { sleep } from '@app/utils/sleep';
 import { replaceSelection } from '@app/utils/replaceSelection';
-import { Dropdown } from '@app/components/dropdown';
 import { Button } from '@app/components/button';
 
 import { SubscribeByEmail } from './__subscribe-by-email';
@@ -16,7 +15,6 @@ import { SubscribeByRSS } from './__subscribe-by-rss';
 
 import MarkdownToolbar from './markdown-toolbar';
 import TextareaAutosize from './textarea-autosize';
-import { isUserAnonymous } from '@app/utils/isUserAnonymous';
 
 let textareaId = 0;
 
@@ -424,13 +422,12 @@ export class CommentForm extends Component<Props, State> {
               </div>
               {'Subscribe by '}
               <SubscribeByRSS userId={props.user !== null ? props.user.id : null} />
-              {StaticStore.config.email_notifications &&
-                !isUserAnonymous(props.user) && [
-                  ' or ',
-                  <Dropdown mix="comment-form__email-dropdown" title="Email" theme={props.theme}>
-                    <SubscribeByEmail />
-                  </Dropdown>,
-                ]}
+              {StaticStore.config.email_notifications && (
+                <Fragment>
+                  {' or '}
+                  <SubscribeByEmail />
+                </Fragment>
+              )}
             </div>
           )}
         </div>

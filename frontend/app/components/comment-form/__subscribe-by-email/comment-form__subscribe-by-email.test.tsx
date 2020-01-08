@@ -7,24 +7,32 @@ import { Middleware } from 'redux';
 import createMockStore from 'redux-mock-store';
 
 import '@app/testUtils/mockApi';
+import { user, anonymousUser } from '@app/testUtils/mocks/user';
+
 import * as api from '@app/common/api';
 import { sleep } from '@app/utils/sleep';
 import { Input } from '@app/components/input';
 import { Button } from '@app/components/button';
+import { Dropdown } from '@app/components/dropdown';
 import TextareaAutosize from '@app/components/comment-form/textarea-autosize';
 
-import { SubscribeByEmail } from './';
+import { SubscribeByEmail, SubscribeByEmailForm } from './';
 
-describe('<SubscribeByEmail>', () => {
-  const initialStore = {
-    user: {
-      email_subscription: false,
-    },
-    theme: 'light',
-  } as const;
+const initialStore = {
+  user,
+  theme: 'light',
+} as const;
 
-  const mockStore = createMockStore([] as Middleware[]);
+const mockStore = createMockStore([] as Middleware[]);
 
+const makeInputEvent = (value: string) => ({
+  preventDefault: jest.fn(),
+  target: {
+    value,
+  },
+});
+
+describe('<SubscribeByEmail', () => {
   const createWrapper = (store: ReturnType<typeof mockStore> = mockStore(initialStore)) =>
     mount(
       <Provider store={store}>
@@ -32,13 +40,32 @@ describe('<SubscribeByEmail>', () => {
       </Provider>
     );
 
-  const makeInputEvent = (value: string) => ({
-    preventDefault: jest.fn(),
-    target: {
-      value,
-    },
+  it('should be rendered with disabled email button when user is anonymous', () => {
+    const store = mockStore({ ...initialStore, user: anonymousUser });
+    const wrapper = createWrapper(store);
+    const dropdown = wrapper.find(Dropdown);
+
+    expect(dropdown.prop('disabled')).toEqual(true);
+    expect(dropdown.prop('buttonTitle')).toEqual('Available only for registered users');
   });
 
+  it('should be rendered with enabled email button when user is registrated', () => {
+    const store = mockStore(initialStore);
+    const wrapper = createWrapper(store);
+    const dropdown = wrapper.find(Dropdown);
+
+    expect(dropdown.prop('disabled')).toEqual(false);
+    expect(dropdown.prop('buttonTitle')).toEqual('Subscribe by Email');
+  });
+});
+
+describe('<SubscribeByEmailForm>', () => {
+  const createWrapper = (store: ReturnType<typeof mockStore> = mockStore(initialStore)) =>
+    mount(
+      <Provider store={store}>
+        <SubscribeByEmailForm />
+      </Provider>
+    );
   it('should render email form by default', () => {
     const store = mockStore(initialStore);
     const wrapper = createWrapper(store);

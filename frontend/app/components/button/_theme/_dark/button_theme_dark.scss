@@ -2,3 +2,10 @@
   background: #22201c;
   color: #ddd;
 }
+
+.button_theme_dark.button_kind_link {
+  &:disabled,
+  &:hover:disabled {
+    color: #fff;
+  }
+}

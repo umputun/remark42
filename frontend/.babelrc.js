@@ -14,7 +14,7 @@ module.exports = {
       '@babel/preset-react',
       {
         pragma: 'h',
-        pragmaFrag: 'div',
+        pragmaFrag: 'Fragment',
       },
     ],
   ],

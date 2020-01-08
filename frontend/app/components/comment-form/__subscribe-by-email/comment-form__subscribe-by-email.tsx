@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'preact/hooks';
 import { useSelector, useDispatch } from 'react-redux';
 import b from 'bem-react-helper';
 
+import { User } from '@app/common/types';
 import { StoreState } from '@app/store';
 import { setUserSubscribed } from '@app/store/user/actions';
 import { sleep } from '@app/utils/sleep';
@@ -17,8 +18,10 @@ import {
 } from '@app/common/api';
 import { Input } from '@app/components/input';
 import { Button } from '@app/components/button';
+import { Dropdown } from '@app/components/dropdown';
 import { Preloader } from '@app/components/preloader';
 import TextareaAutosize from '@app/components/comment-form/textarea-autosize';
+import { isUserAnonymous } from '@app/utils/isUserAnonymous';
 
 const emailRegex = /[^@]+@[^.]+\..+/;
 
@@ -67,7 +70,7 @@ const renderTokenPart = (
   />,
 ];
 
-export const SubscribeByEmail: FunctionComponent = () => {
+export const SubscribeByEmailForm: FunctionComponent = () => {
   const theme = useTheme();
   const dispatch = useDispatch();
   const subscribed = useSelector<StoreState, boolean>(({ user }) =>
@@ -228,5 +231,24 @@ export const SubscribeByEmail: FunctionComponent = () => {
         {loading ? <Preloader mix="comment-form__subscribe-by-email__preloader" /> : buttonLabel}
       </Button>
     </form>
+  );
+};
+
+export const SubscribeByEmail: FunctionComponent = () => {
+  const theme = useTheme();
+  const user = useSelector<StoreState, User | null>(({ user }) => user);
+  const isAnonymous = isUserAnonymous(user);
+  const buttonTitle = isAnonymous ? 'Available only for registered users' : 'Subscribe by Email';
+
+  return (
+    <Dropdown
+      mix="comment-form__email-dropdown"
+      title="Email"
+      theme={theme}
+      disabled={isAnonymous}
+      buttonTitle={buttonTitle}
+    >
+      <SubscribeByEmailForm />
+    </Dropdown>
   );
 };

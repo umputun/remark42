@@ -22,7 +22,13 @@ export const SubscribeByRSS: FunctionComponent<{ userId: string | null }> = ({ u
   );
 
   return (
-    <Dropdown title="RSS" titleClass="comment-form__rss-dropdown__title" mix="comment-form__rss-dropdown" theme={theme}>
+    <Dropdown
+      title="RSS"
+      titleClass="comment-form__rss-dropdown__title"
+      buttonTitle="Subscribe by RSS"
+      mix="comment-form__rss-dropdown"
+      theme={theme}
+    >
       {items.map(([href, label]) => (
         <DropdownItem>
           <a href={href} className="comment-form__rss-dropdown__link" target="_blank">
