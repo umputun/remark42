@@ -1,18 +1,14 @@
 /** @jsx createElement */
-import { createElement, RenderableProps } from 'preact';
+import { createElement, RenderableProps, Fragment } from 'preact';
+import { StaticStore } from '@app/common/static_store';
 import { useEffect, useRef } from 'preact/hooks';
-import nodeEmoji from 'node-emoji';
 import '@github/text-expander-element';
 
-export function TextExpander({ children }: RenderableProps<void>) {
-  const expanderRef = useRef<HTMLElement>();
-  useEffect(() => {
-    if (expanderRef.current) {
-      const expander = expanderRef.current;
-      expander.setAttribute(`keys`, ':');
+function find(key: string, text: string) {
+  return (
+    import(/* webpackChunkName: "node-emoji" */ `node-emoji`)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      expander.addEventListener('text-expander-change', (event: any) => {
-        const { key, provide, text } = event.detail;
+      .then((nodeEmoji: any) => {
         if (key === ':') {
           const emojiList = nodeEmoji.search(text);
           if (emojiList.length === 0) {
@@ -32,9 +28,24 @@ export function TextExpander({ children }: RenderableProps<void>) {
               menu.append(item);
             }
           }
-
-          provide(Promise.resolve({ matched: true, fragment: menu }));
+          return Promise.resolve({ matched: true, fragment: menu });
         }
+        return Promise.resolve({ matched: false });
+      })
+      .catch(() => Promise.resolve({ matched: false }))
+  );
+}
+
+export function TextExpander({ children }: RenderableProps<void>) {
+  const expanderRef = useRef<HTMLElement>();
+  useEffect(() => {
+    if (expanderRef.current) {
+      const expander = expanderRef.current;
+      expander.setAttribute(`keys`, ':');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expander.addEventListener('text-expander-change', (event: any) => {
+        const { provide, key, text } = event.detail;
+        provide(find(key, text));
       });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       expander.addEventListener('text-expander-value', (event: any) => {
@@ -45,5 +56,9 @@ export function TextExpander({ children }: RenderableProps<void>) {
       });
     }
   }, []);
-  return <text-expander ref={expanderRef}>{children}</text-expander>;
+  if (StaticStore.config.emoji_enabled) {
+    return <text-expander ref={expanderRef}>{children}</text-expander>;
+  }
+
+  return <Fragment>{children}</Fragment>;
 }
