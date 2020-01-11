@@ -24,7 +24,12 @@ function find(key: string, text: string) {
               const item = document.createElement('li');
               item.setAttribute('role', 'option');
               item.dataset.emojiKey = emoji.key;
-              item.textContent = emoji.emoji + ` ` + emoji.key;
+              const emojiResult = document.createElement('span');
+              emojiResult.classList.add('emoji-result');
+              emojiResult.textContent = emoji.emoji;
+              item.append(emojiResult);
+              const emojiKey = document.createTextNode(` ${emoji.key}`);
+              item.append(emojiKey);
               menu.append(item);
             }
           }
