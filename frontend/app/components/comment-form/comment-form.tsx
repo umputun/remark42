@@ -15,6 +15,7 @@ import { SubscribeByRSS } from './__subscribe-by-rss';
 
 import MarkdownToolbar from './markdown-toolbar';
 import TextareaAutosize from './textarea-autosize';
+import { TextExpander } from './text-expander';
 
 let textareaId = 0;
 
@@ -144,7 +145,7 @@ export class CommentForm extends Component<Props, State> {
   }
 
   send(e: Event) {
-    const text = this.state.text;
+    const text = this.textAreaRef.current ? this.textAreaRef.current.getValue() : this.state.text;
     const props = this.props;
 
     if (e) e.preventDefault();
@@ -156,7 +157,7 @@ export class CommentForm extends Component<Props, State> {
       this.setState({ preview: null, text: '' });
     }
 
-    this.setState({ isDisabled: true, isErrorShown: false });
+    this.setState({ isDisabled: true, isErrorShown: false, text });
 
     props
       .onSubmit(text, pageTitle || document.title)
@@ -172,11 +173,11 @@ export class CommentForm extends Component<Props, State> {
   }
 
   getPreview() {
-    const text = this.state.text;
+    const text = this.textAreaRef.current ? this.textAreaRef.current.getValue() : this.state.text;
 
     if (!text || !text.trim()) return;
 
-    this.setState({ isErrorShown: false, errorMessage: null });
+    this.setState({ isErrorShown: false, errorMessage: null, text });
 
     this.props
       .getPreview(text)
@@ -369,21 +370,22 @@ export class CommentForm extends Component<Props, State> {
           </div>
         )}
         <div className="comment-form__field-wrapper">
-          <TextareaAutosize
-            id={this.textareaId}
-            onPaste={this.onPaste}
-            ref={this.textAreaRef}
-            className="comment-form__field"
-            placeholder="Your comment here"
-            value={text}
-            maxLength={maxLength}
-            onInput={this.onInput}
-            onKeyDown={this.onKeyDown}
-            disabled={isDisabled}
-            autofocus={!!props.autofocus}
-            spellcheck={true}
-          />
-
+          <TextExpander>
+            <TextareaAutosize
+              id={this.textareaId}
+              onPaste={this.onPaste}
+              ref={this.textAreaRef}
+              className="comment-form__field"
+              placeholder="Your comment here"
+              value={text}
+              maxLength={maxLength}
+              onInput={this.onInput}
+              onKeyDown={this.onKeyDown}
+              disabled={isDisabled}
+              autofocus={!!props.autofocus}
+              spellcheck={true}
+            />
+          </TextExpander>
           {charactersLeft < 100 && <span className="comment-form__counter">{charactersLeft}</span>}
         </div>
 

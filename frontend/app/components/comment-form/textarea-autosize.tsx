@@ -58,7 +58,9 @@ export default class TextareaAutosize extends Component<Props> {
   onRef(node: HTMLTextAreaElement) {
     this.textareaRef = node;
   }
-
+  getValue() {
+    return this.textareaRef ? this.textareaRef.value : '';
+  }
   autoResize() {
     if (this.textareaRef) {
       this.textareaRef.style.height = '';

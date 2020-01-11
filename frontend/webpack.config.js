@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-
+require('dotenv').config();
 const path = require('path');
 
 const webpack = require('webpack');
@@ -27,7 +27,7 @@ console.log(`REMARK_ENV = ${remarkUrl}`);
  * so we have to exclude from ignore these modules
  */
 function getExcluded() {
-  const modules = ['@github/markdown-toolbar-element'];
+  const modules = ['@github/markdown-toolbar-element', '@github/text-expander-element', '@github/combobox-nav'];
   const exclude = new RegExp(`node_modules\\/(?!(${modules.map(m => m.replace(/\//g, '\\/')).join('|')})\\/).*`);
 
   return {
