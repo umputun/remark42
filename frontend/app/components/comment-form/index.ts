@@ -29,5 +29,3 @@ import './_theme/_dark/comment-form_theme_dark.scss';
 import './_theme/_light/comment-form_theme_light.scss';
 
 import './_simple/comment-form_simple.scss';
-
-import './text-expander.scss';

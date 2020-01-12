@@ -38,24 +38,23 @@ function getExcluded() {
 // console.log(getExcluded())
 // process.exit(1)
 
-const commonStyleLoaders = [
-  'css-loader',
-  {
-    loader: 'postcss-loader',
-    options: {
-      plugins: [
-        require('postcss-for'),
-        require('postcss-simple-vars'),
-        require('postcss-nested'),
-        require('postcss-calc'),
-        require('autoprefixer')({ overrideBrowserslist: ['> 1%'] }),
-        require('postcss-url')({ url: 'inline', maxSize: 5 }),
-        require('postcss-wrap')({ selector: `#${NODE_ID}` }),
-        require('postcss-csso'),
-      ],
-    },
+const postCssLoader = wrap => ({
+  loader: 'postcss-loader',
+  options: {
+    plugins: [
+      require('postcss-for'),
+      require('postcss-simple-vars'),
+      require('postcss-nested'),
+      require('postcss-calc'),
+      require('autoprefixer')({ overrideBrowserslist: ['> 1%'] }),
+      require('postcss-url')({ url: 'inline', maxSize: 5 }),
+      wrap ? require('postcss-wrap')({ selector: `#${NODE_ID}` }) : false,
+      require('postcss-csso'),
+    ].filter(plugin => plugin),
   },
-];
+});
+
+const commonStyleLoaders = ['css-loader', postCssLoader(true)];
 
 const babelConfigPath = path.resolve(__dirname, './.babelrc.js');
 
@@ -102,6 +101,21 @@ module.exports = () => ({
             loader: MiniCssExtractPlugin.loader,
           },
           ...commonStyleLoaders,
+        ],
+      },
+      {
+        test: /\.module\.pcss$/,
+        use: [
+          {
+            loader: MiniCssExtractPlugin.loader,
+          },
+          {
+            loader: 'css-loader',
+            options: {
+              modules: true,
+            },
+          },
+          postCssLoader(false),
         ],
       },
       {

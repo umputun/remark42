@@ -1,66 +1,99 @@
 /** @jsx createElement */
-import { createElement, RenderableProps, Fragment } from 'preact';
+import { createElement, RenderableProps, Fragment, render } from 'preact';
 import { StaticStore } from '@app/common/static_store';
 import { useEffect, useRef } from 'preact/hooks';
 import '@github/text-expander-element';
+import styles from './text-expander.module.pcss';
+import cx from 'classnames';
+import { Theme } from '@app/common/types';
+import useTheme from '@app/hooks/useTheme';
 
-function find(key: string, text: string) {
+type Emoji = {
+  key: string;
+  emoji: string;
+};
+
+function SuggestionList({ items, theme }: { items: Array<Emoji>; theme: Theme }) {
+  const isDarkTheme = theme === `dark`;
+  const suggesterClass = cx(styles.suggester, { [styles.suggesterDark]: isDarkTheme });
+  const suggesterItemClass = cx(styles.suggesterItem, { [styles.suggesterItemDark]: isDarkTheme });
   return (
-    import(/* webpackChunkName: "node-emoji" */ `node-emoji`)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .then((nodeEmoji: any) => {
-        if (key === ':') {
-          const emojiList = nodeEmoji.search(text);
-          if (emojiList.length === 0) {
-            return;
-          }
-          const menu = document.createElement('ul');
-          menu.classList.add('suggester-container');
-          menu.classList.add('suggester');
-          menu.style.fontSize = `14px`;
-          for (let i = 0; i < 5; i++) {
-            const emoji = emojiList[i];
-            if (emoji) {
-              const item = document.createElement('li');
-              item.setAttribute('role', 'option');
-              item.dataset.emojiKey = emoji.key;
-              const emojiResult = document.createElement('span');
-              emojiResult.classList.add('emoji-result');
-              emojiResult.textContent = emoji.emoji;
-              item.append(emojiResult);
-              const emojiKey = document.createTextNode(` ${emoji.key}`);
-              item.append(emojiKey);
-              menu.append(item);
-            }
-          }
-          return Promise.resolve({ matched: true, fragment: menu });
-        }
-        return Promise.resolve({ matched: false });
-      })
-      .catch(() => Promise.resolve({ matched: false }))
+    <ul className={suggesterClass}>
+      {items.map(({ key, emoji }: Emoji) => {
+        return (
+          // eslint-disable-next-line jsx-a11y/role-has-required-aria-props
+          <li role="option" className={suggesterItemClass} data-value={key}>
+            <span className={styles.emojiResult}>{emoji}</span> {key}
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
+function searchEmoji(key: string, text: string, theme: Theme) {
+  return import(/* webpackChunkName: "node-emoji" */ `node-emoji`)
+    .then(nodeEmoji => {
+      if (key === ':') {
+        const emojiList = nodeEmoji.search(text);
+        if (emojiList.length === 0) {
+          return Promise.resolve({ matched: false });
+        }
+        const fragment = document.createDocumentFragment();
+        render(<SuggestionList theme={theme} items={emojiList.slice(0, 5)} />, fragment);
+        return Promise.resolve({ matched: true, fragment: fragment.firstChild });
+      }
+      return Promise.resolve({ matched: false });
+    })
+    .catch(() => Promise.resolve({ matched: false }));
+}
+
+type ChangeListerEvent = Event & {
+  detail: {
+    key: string;
+    text: string;
+    provide(value: Promise<{ matched: boolean }>): void;
+  };
+};
+
+type ValueListerEvent = Event & {
+  detail: {
+    key: string;
+    value: string;
+    item: HTMLLIElement;
+  };
+};
+
 export function TextExpander({ children }: RenderableProps<void>) {
   const expanderRef = useRef<HTMLElement>();
+  const theme = useTheme();
   useEffect(() => {
-    if (expanderRef.current) {
-      const expander = expanderRef.current;
-      expander.setAttribute(`keys`, ':');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      expander.addEventListener('text-expander-change', (event: any) => {
-        const { provide, key, text } = event.detail;
-        provide(find(key, text));
-      });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      expander.addEventListener('text-expander-value', (event: any) => {
-        const { key, item } = event.detail;
-        if (key === ':') {
-          event.detail.value = `:${item.dataset.emojiKey}:`;
-        }
-      });
+    if (!expanderRef.current) {
+      return () => {};
     }
-  }, []);
+
+    const expander = expanderRef.current;
+    expander.setAttribute(`keys`, ':');
+
+    const textExpanderChangeLister: EventListener = (event: Event) => {
+      const { provide, key, text } = (event as ChangeListerEvent).detail;
+      provide(searchEmoji(key, text, theme));
+    };
+
+    const textExpanderValueListener = (event: Event) => {
+      const { key, item } = (event as ValueListerEvent).detail;
+      if (key === ':') {
+        (event as ValueListerEvent).detail.value = `:${item.dataset.value}:`;
+      }
+    };
+
+    expander.addEventListener('text-expander-change', textExpanderChangeLister);
+    expander.addEventListener('text-expander-value', textExpanderValueListener);
+    return () => {
+      expander.removeEventListener('text-expander-change', textExpanderChangeLister);
+      expander.removeEventListener('text-expander-value', textExpanderValueListener);
+    };
+  }, [theme]);
   if (StaticStore.config.emoji_enabled) {
     return <text-expander ref={expanderRef}>{children}</text-expander>;
   }
