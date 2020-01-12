@@ -2,7 +2,8 @@ run:
   tests: false
   output:
     format: tab
-  modules-download-mode: vendor
+  skip-dirs:
+    - vendor
 linters:
   enable:
     - unconvert
