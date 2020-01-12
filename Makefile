@@ -20,10 +20,21 @@ deploy:
 	docker cp remark42.bin:/artifacts/remark42.linux-386.tar.gz bin/remark42.linux-386.tar.gz
 	docker cp remark42.bin:/artifacts/remark42.linux-arm64.tar.gz bin/remark42.linux-arm64.tar.gz
 	docker cp remark42.bin:/artifacts/remark42.darwin-amd64.tar.gz bin/remark42.darwin-amd64.tar.gz
+	docker cp remark42.bin:/artifacts/remark42.freebsd-amd64.tar.gz bin/remark42.freebsd-amd64.tar.gz
 	docker cp remark42.bin:/artifacts/remark42.windows-amd64.zip bin/remark42.windows-amd64.zip
 	docker rm -f remark42.bin
 
 race_test:
 	cd backend/app && go test -race -mod=vendor -timeout=60s -count 1 ./...
 
-.PHONY: bin
+backend:
+	docker-compose -f compose-dev-backend.yml build
+
+frontend:
+	docker-compose -f compose-dev-frontend.yml build
+
+rundev:
+	SKIP_BACKEND_TEST=true SKIP_FRONTEND_TEST=true docker-compose -f compose-private.yml build
+	docker-compose -f compose-private.yml up
+
+.PHONY: bin backend

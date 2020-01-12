@@ -1,6 +1,15 @@
 .auth-panel__user-id {
   overflow: hidden;
   text-overflow: ellipsis;
-  padding: 5px 15px;
+  padding: 5px;
   cursor: pointer;
+}
+
+.auth-panel__user-dropdown-title {
+  color: inherit;
+
+  &:hover {
+    color: inherit;
+    opacity: 0.9;
+  }
 }

@@ -1,0 +1,64 @@
+.comment-form__subscribe-by-email {
+  display: flex;
+  flex-wrap: wrap;
+  flex-direction: column;
+  padding: 8px;
+  width: 200px;
+  box-sizing: border-box;
+  line-height: 1.2;
+  text-align: left;
+}
+
+.comment-form__subscribe-by-email_token {
+  padding-top: 0;
+}
+
+.comment-form__subscribe-by-email_subscribed,
+.comment-form__subscribe-by-email_unsubscribed {
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 14px;
+}
+
+.comment-form__subscribe-by-email__title {
+  margin-bottom: 12px;
+}
+
+.comment-form__subscribe-by-email__button {
+  margin-top: 10px;
+  flex-grow: 1;
+}
+.comment-form__subscribe-by-email__preloader {
+  margin: 0 auto;
+}
+.comment-form__subscribe-by-email__token-input {
+  resize: vertical;
+  border: 1px solid #c4c4c4;
+  padding: 4px;
+  font-family: inherit;
+  font-size: 0.8em;
+  font-weight: normal;
+  line-height: 1.5;
+
+  &:focus {
+    box-shadow: 0 0 0 2px rgba(37, 156, 154, 0.4);
+    border-color: #259c9a;
+    outline: none;
+  }
+}
+
+.comment-form__subscribe-by-email__error {
+  margin-top: 8px;
+  padding: 6px 8px;
+  line-height: 1.2;
+}
+
+.comment-form__subscribe-by-email_theme_dark .comment-form__subscribe-by-email__error {
+  background: #672323;
+  color: #f98989;
+}
+
+.comment-form__subscribe-by-email_theme_light .comment-form__subscribe-by-email__error {
+  background: #ffd7d7;
+  color: #9a0000;
+}

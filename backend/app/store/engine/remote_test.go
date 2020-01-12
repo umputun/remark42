@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -69,8 +68,8 @@ func TestRemote_GetWithErrorRemote(t *testing.T) {
 
 	req := GetRequest{Locator: store.Locator{URL: "http://example.com/url"}, CommentID: "site"}
 	_, err := c.Get(req)
-	assert.NotNil(t, err)
-	assert.True(t, strings.Contains(err.Error(), "remote call failed for store.get:"), err.Error())
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "remote call failed for store.get:")
 }
 
 func TestRemote_FailedStatus(t *testing.T) {

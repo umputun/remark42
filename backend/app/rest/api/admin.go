@@ -15,6 +15,7 @@ import (
 
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/store"
+	"github.com/umputun/remark/backend/app/store/engine"
 )
 
 // admin provides router for all requests available for admin users only
@@ -29,6 +30,7 @@ type admin struct {
 type adminStore interface {
 	Delete(locator store.Locator, commentID string, mode store.DeleteMode) error
 	DeleteUser(siteID string, userID string, mode store.DeleteMode) error
+	DeleteUserDetail(siteID string, userID string, detail engine.UserDetail) error
 	User(siteID, userID string, limit, skip int, user store.User) ([]store.Comment, error)
 	IsBlocked(siteID string, userID string) bool
 	SetBlock(siteID string, userID string, status bool, ttl time.Duration) error
@@ -106,6 +108,12 @@ func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 	// deleteme set by deleteMeCtrl, this check just to make sure we not trying to delete with leaked token
 	if !claims.User.BoolAttr("delete_me") {
 		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("forbidden"), "can't use provided token", rest.ErrNoAccess)
+		return
+	}
+
+	if err := a.dataService.DeleteUserDetail(claims.Audience, claims.User.ID, engine.UserEmail); err != nil {
+		code := parseError(err, rest.ErrInternal)
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete email for user", code)
 		return
 	}
 

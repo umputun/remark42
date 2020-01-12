@@ -11,12 +11,23 @@ import {
   USER_HIDELIST_SET,
   USER_HIDE,
   USER_UNHIDE,
+  USER_SUBSCRIPTION_SET,
 } from './types';
 
 export const user = (state: User | null = null, action: USER_ACTIONS): User | null => {
   switch (action.type) {
     case USER_SET: {
       return action.user;
+    }
+    case USER_SUBSCRIPTION_SET: {
+      if (state === null) {
+        return state;
+      }
+
+      return {
+        ...state,
+        email_subscription: action.payload,
+      };
     }
     default:
       return state;

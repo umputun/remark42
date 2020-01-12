@@ -1,9 +1,10 @@
 /** @jsx createElement */
 import { createElement } from 'preact';
-import { mount } from 'enzyme';
+import { mount, shallow, HTMLAttributes } from 'enzyme';
 import { Props, Comment } from './comment';
 import { User, Comment as CommentType, PostInfo } from '@app/common/types';
 import { sleep } from '@app/utils/sleep';
+import { StaticStore } from '@app/common/static_store';
 
 const DefaultProps: Partial<Props> = {
   post_info: {
@@ -25,11 +26,39 @@ const DefaultProps: Partial<Props> = {
   user: {
     admin: false,
     id: 'testuser',
+    picture: 'somepicture-url',
   } as User,
 };
 
 describe('<Comment />', () => {
   describe('voting', () => {
+    it('should be disabled for an anonymous user', () => {
+      const props = { ...DefaultProps, user: { id: 'anonymous_1' } } as Props;
+      const wrapper = shallow(<Comment {...props} />);
+      const voteButtons = wrapper.find('.comment__vote');
+
+      expect(voteButtons.length).toEqual(2);
+
+      voteButtons.forEach(button => {
+        expect(button.prop('aria-disabled')).toEqual('true');
+        expect(button.prop('title')).toEqual("Anonymous users can't vote");
+      });
+    });
+
+    it('should be enabled for an anonymous user when it was allowed from server', () => {
+      StaticStore.config.anon_vote = true;
+
+      const props = { ...DefaultProps, user: { id: 'anonymous_1' } } as Props;
+      const wrapper = shallow(<Comment {...props} />);
+      const voteButtons = wrapper.find('.comment__vote');
+
+      expect(voteButtons.length).toEqual(2);
+
+      voteButtons.forEach(button => {
+        expect(button.prop('aria-disabled')).toEqual('false');
+      });
+    });
+
     it('disabled on user info widget', () => {
       const element = mount(<Comment {...({ ...DefaultProps, view: 'user' } as Props)} />);
 
@@ -180,7 +209,8 @@ describe('<Comment />', () => {
         <Comment {...({ ...DefaultProps, user: { ...DefaultProps.user, admin: true } } as Props)} />
       );
 
-      const controls = element.find('.comment__controls > span');
+      const controls = element.find('.comment__controls').children();
+
       expect(controls.length).toBe(5);
       expect(controls.at(0).text()).toEqual('Copy');
       expect(controls.at(1).text()).toEqual('Pin');
@@ -194,7 +224,7 @@ describe('<Comment />', () => {
         <Comment {...({ ...DefaultProps, user: { ...DefaultProps.user, admin: false } } as Props)} />
       );
 
-      const controls = element.find('.comment__controls > span');
+      const controls = element.find('.comment__controls').children();
       expect(controls.length).toBe(1);
       expect(controls.at(0).text()).toEqual('Hide');
     });
@@ -220,6 +250,60 @@ describe('<Comment />', () => {
 
       const controls = element.find('.comment__verification').first();
       expect(controls.hasClass('comment__verification_clickable')).toEqual(false);
+    });
+
+    it('should be editable', () => {
+      const initTime = new Date().toString();
+      const changedTime = new Date(Date.now() + 10 * 1000).toString();
+      const props: Partial<Props> = {
+        ...DefaultProps,
+        user: DefaultProps.user as User,
+        data: {
+          ...DefaultProps.data,
+          id: '100',
+          user: DefaultProps.user as User,
+          vote: 1,
+          time: initTime,
+          delete: false,
+          orig: 'test',
+        } as CommentType,
+        repliesCount: 0,
+      };
+      StaticStore.config.edit_duration = 300;
+
+      const component = shallow(<Comment {...(props as Props)} />);
+
+      expect((component.state('editDeadline') as Date).getTime()).toBe(
+        new Date(new Date(initTime).getTime() + 300 * 1000).getTime()
+      );
+
+      component.setProps<Props & HTMLAttributes>({
+        data: { ...props.data, time: changedTime },
+      });
+
+      expect((component.state('editDeadline') as Date).getTime()).toBe(
+        new Date(new Date(changedTime).getTime() + 300 * 1000).getTime()
+      );
+    });
+
+    it('shoud not be editable', () => {
+      const props: Partial<Props> = {
+        ...DefaultProps,
+        user: DefaultProps.user as User,
+        data: {
+          ...DefaultProps.data,
+          id: '100',
+          user: DefaultProps.user as User,
+          vote: 1,
+          time: new Date(new Date().getDate() - 300).toString(),
+          orig: 'test',
+        } as CommentType,
+      };
+      StaticStore.config.edit_duration = 300;
+
+      const component = shallow(<Comment {...(props as Props)} />);
+
+      expect(component.state('editDeadline')).toBe(null);
     });
   });
 });

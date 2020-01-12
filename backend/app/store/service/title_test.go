@@ -51,17 +51,18 @@ func TestTitle_Get(t *testing.T) {
 		}
 		w.WriteHeader(404)
 	}))
+	defer ts.Close()
 
 	title, err := ex.Get(ts.URL + "/good")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "blah 123", title)
 
 	_, err = ex.Get(ts.URL + "/bad")
-	require.NotNil(t, err)
+	require.Error(t, err)
 
 	for i := 0; i < 100; i++ {
-		r, e := ex.Get(ts.URL + "/good")
-		require.Nil(t, e)
+		r, err := ex.Get(ts.URL + "/good")
+		require.NoError(t, err)
 		assert.Equal(t, "blah 123", r)
 	}
 	assert.Equal(t, int32(1), atomic.LoadInt32(&hits))
@@ -83,6 +84,7 @@ func TestTitle_GetConcurrent(t *testing.T) {
 		}
 		w.WriteHeader(404)
 	}))
+	defer ts.Close()
 
 	g := syncs.NewSizedGroup(10)
 
@@ -90,7 +92,7 @@ func TestTitle_GetConcurrent(t *testing.T) {
 		ii := i
 		g.Go(func(_ context.Context) {
 			title, err := ex.Get(ts.URL + "/good/" + strconv.Itoa(ii))
-			require.Nil(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, "blah 123 "+"/good/"+strconv.Itoa(ii), title)
 		})
 	}
@@ -105,13 +107,14 @@ func TestTitle_GetFailed(t *testing.T) {
 		atomic.AddInt32(&hits, 1)
 		w.WriteHeader(404)
 	}))
+	defer ts.Close()
 
 	_, err := ex.Get(ts.URL + "/bad")
-	require.NotNil(t, err)
+	require.Error(t, err)
 
 	for i := 0; i < 100; i++ {
-		r, e := ex.Get(ts.URL + "/bad")
-		require.Nil(t, e)
+		r, err := ex.Get(ts.URL + "/bad")
+		require.NoError(t, err)
 		assert.Equal(t, "", r)
 	}
 	assert.Equal(t, int32(1), atomic.LoadInt32(&hits), "hit once, errors cached")

@@ -32,6 +32,7 @@ type Destination interface {
 // Store defines the minimal interface accessing stored comments used by notifier
 type Store interface {
 	Get(locator store.Locator, id string, user store.User) (store.Comment, error)
+	GetUserEmail(siteID string, userID string) (string, error)
 }
 
 // Request notification either about comment or about particular user verification
@@ -44,9 +45,9 @@ type Request struct {
 
 // VerificationMetadata required to send notify method verification message
 type VerificationMetadata struct {
-	Locator store.Locator // only SiteID is used
-	User    string
-	Token   string
+	SiteID string
+	User   string
+	Token  string
 }
 
 const defaultQueueSize = 100
@@ -81,6 +82,10 @@ func (s *Service) Submit(req Request) {
 	if s.dataService != nil && req.Comment.ParentID != "" {
 		if p, err := s.dataService.Get(req.Comment.Locator, req.Comment.ParentID, store.User{}); err == nil {
 			req.parent = p
+			req.Email, err = s.dataService.GetUserEmail(req.Comment.Locator.SiteID, p.User.ID)
+			if err != nil {
+				log.Printf("[WARN] can't read email for %s, %v", p.User.ID, err)
+			}
 		}
 	}
 	select {

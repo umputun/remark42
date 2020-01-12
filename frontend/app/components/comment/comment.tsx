@@ -15,9 +15,10 @@ import { Theme, BlockTTL, Comment as CommentType, PostInfo, User, CommentMode } 
 import { extractErrorMessageFromResponse, FetcherError } from '@app/utils/errorUtils';
 import { isUserAnonymous } from '@app/utils/isUserAnonymous';
 
-import { Input } from '@app/components/input';
+import { CommentForm } from '@app/components/comment-form';
 import { AvatarIcon } from '@app/components/avatar-icon';
-import Countdown from '../countdown';
+import { Button } from '@app/components/button';
+import Countdown from '@app/components/countdown';
 import { boundActions } from './connected-comment';
 import { getPreview, uploadImage } from '@app/common/api';
 import postMessage from '@app/utils/postMessage';
@@ -84,11 +85,10 @@ export class Comment extends Component<Props, State> {
       scoreDelta: 0,
       cachedScore: props.data.score,
       initial: true,
+      ...this.updateState(props),
     };
 
     this.votingPromise = Promise.resolve();
-
-    this.updateState(props);
 
     this.toggleEditing = this.toggleEditing.bind(this);
     this.toggleReplying = this.toggleReplying.bind(this);
@@ -102,7 +102,7 @@ export class Comment extends Component<Props, State> {
   // };
 
   componentWillReceiveProps(nextProps: Props) {
-    this.updateState(nextProps);
+    this.setState(this.updateState(nextProps));
   }
 
   componentDidMount() {
@@ -110,25 +110,25 @@ export class Comment extends Component<Props, State> {
   }
 
   updateState = (props: Props) => {
-    this.setState({
+    const newState: Partial<State> = {
       scoreDelta: props.data.vote,
       cachedScore: props.data.score,
-    });
+    };
 
-    if (props.user) {
-      const userId = props.user!.id;
+    // set comment edit timer
+    if (props.user && props.user.id === props.data.user.id) {
+      const editDuration = StaticStore.config.edit_duration;
+      const timeDiff = StaticStore.serverClientTimeDiff || 0;
+      const editDeadline = new Date(new Date(props.data.time).getTime() + timeDiff + editDuration * 1000);
 
-      // set comment edit timer
-      if (userId === props.data.user.id) {
-        const editDuration = StaticStore.config.edit_duration;
-        const timeDiff = StaticStore.serverClientTimeDiff || 0;
-        let editDeadline: Date | null = new Date(new Date(props.data.time).getTime() + timeDiff + editDuration * 1000);
-        if (editDeadline < new Date()) editDeadline = null;
-        this.setState({
-          editDeadline,
-        });
+      if (editDeadline < new Date()) {
+        newState.editDeadline = null;
+      } else {
+        newState.editDeadline = editDeadline;
       }
     }
+
+    return newState;
   };
 
   toggleReplying = () => {
@@ -354,7 +354,7 @@ export class Comment extends Component<Props, State> {
     if (this.isCurrentUser()) return "Can't vote for your own comment";
     if (StaticStore.config.positive_score && this.props.data.score < 1) return 'Only positive score allowed';
     if (this.isGuest()) return 'Sign in to vote';
-    if (this.isAnonymous()) return "Anonymous users can't vote";
+    if (this.isAnonymous() && !StaticStore.config.anon_vote) return "Anonymous users can't vote";
     return null;
   };
 
@@ -367,7 +367,7 @@ export class Comment extends Component<Props, State> {
     if (this.props.data.delete) return "Can't vote for deleted comment";
     if (this.isCurrentUser()) return "Can't vote for your own comment";
     if (this.isGuest()) return 'Sign in to vote';
-    if (this.isAnonymous()) return "Anonymous users can't vote";
+    if (this.isAnonymous() && !StaticStore.config.anon_vote) return "Anonymous users can't vote";
     return null;
   };
 
@@ -389,33 +389,33 @@ export class Comment extends Component<Props, State> {
         this.state.isCopied ? (
           <span className="comment__control comment__control_view_inactive">Copied!</span>
         ) : (
-          <span {...getHandleClickProps(this.copyComment)} className="comment__control">
+          <Button kind="link" {...getHandleClickProps(this.copyComment)} mix="comment__control">
             Copy
-          </span>
+          </Button>
         )
       );
 
       controls.push(
-        <span {...getHandleClickProps(this.togglePin)} className="comment__control">
+        <Button kind="link" {...getHandleClickProps(this.togglePin)} mix="comment__control">
           {this.props.data.pin ? 'Unpin' : 'Pin'}
-        </span>
+        </Button>
       );
     }
 
     if (!isCurrentUser) {
       controls.push(
-        <span {...getHandleClickProps(this.hideUser)} className="comment__control">
+        <Button kind="link" {...getHandleClickProps(this.hideUser)} mix="comment__control">
           Hide
-        </span>
+        </Button>
       );
     }
 
     if (isAdmin) {
       if (this.props.isUserBanned) {
         controls.push(
-          <span {...getHandleClickProps(this.onUnblockUserClick)} className="comment__control">
+          <Button kind="link" {...getHandleClickProps(this.onUnblockUserClick)} mix="comment__control">
             Unblock
-          </span>
+          </Button>
         );
       }
 
@@ -438,9 +438,9 @@ export class Comment extends Component<Props, State> {
 
       if (!this.props.data.delete) {
         controls.push(
-          <span {...getHandleClickProps(this.deleteComment)} className="comment__control">
+          <Button kind="link" {...getHandleClickProps(this.deleteComment)} mix="comment__control">
             Delete
-          </span>
+          </Button>
         );
       }
     }
@@ -454,7 +454,6 @@ export class Comment extends Component<Props, State> {
 
     const isReplying = props.editMode === CommentMode.Reply;
     const isEditing = props.editMode === CommentMode.Edit;
-
     const lowCommentScore = StaticStore.config.low_score;
     const downvotingDisabledReason = this.getDownvoteDisabledReason();
     const isDownvotingDisabled = downvotingDisabledReason !== null;
@@ -680,30 +679,31 @@ export class Comment extends Component<Props, State> {
           {(!props.collapsed || props.view === 'pinned') && (
             <div className="comment__actions">
               {!props.data.delete && !props.isCommentsDisabled && !props.disabled && !isGuest && props.view === 'main' && (
-                <span {...getHandleClickProps(this.toggleReplying)} className="comment__action">
+                <Button kind="link" {...getHandleClickProps(this.toggleReplying)} mix="comment__action">
                   {isReplying ? 'Cancel' : 'Reply'}
-                </span>
+                </Button>
               )}
-
               {!props.data.delete &&
                 !props.disabled &&
                 !!o.orig &&
                 isCurrentUser &&
                 (editable || isEditing) &&
                 props.view === 'main' && [
-                  <span
+                  <Button
+                    kind="link"
                     {...getHandleClickProps(this.toggleEditing)}
-                    className="comment__action comment__action_type_edit"
+                    mix={['comment__action', 'comment__action_type_edit']}
                   >
                     {isEditing ? 'Cancel' : 'Edit'}
-                  </span>,
+                  </Button>,
                   !isAdmin && (
-                    <span
+                    <Button
+                      kind="link"
                       {...getHandleClickProps(this.deleteComment)}
-                      className="comment__action comment__action_type_delete"
+                      mix={['comment__action', 'comment__action_type_delete']}
                     >
                       Delete
-                    </span>
+                    </Button>
                   ),
                   state.editDeadline && (
                     <Countdown
@@ -724,7 +724,8 @@ export class Comment extends Component<Props, State> {
         </div>
 
         {isReplying && props.view === 'main' && (
-          <Input
+          <CommentForm
+            user={props.user}
             theme={props.theme}
             value=""
             mode="reply"
@@ -734,11 +735,13 @@ export class Comment extends Component<Props, State> {
             getPreview={this.props.getPreview!}
             autofocus={true}
             uploadImage={uploadImageHandler}
+            simpleView={StaticStore.config.simple_view}
           />
         )}
 
         {isEditing && props.view === 'main' && (
-          <Input
+          <CommentForm
+            user={props.user}
             theme={props.theme}
             value={o.orig}
             mode="edit"
@@ -749,6 +752,7 @@ export class Comment extends Component<Props, State> {
             errorMessage={state.editDeadline === null ? 'Editing time has expired.' : undefined}
             autofocus={true}
             uploadImage={uploadImageHandler}
+            simpleView={StaticStore.config.simple_view}
           />
         )}
       </article>

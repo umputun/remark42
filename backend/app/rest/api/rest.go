@@ -46,6 +46,7 @@ type Rest struct {
 	ImageService     *image.Service
 	Streamer         *Streamer
 
+	AnonVote        bool
 	WebRoot         string
 	RemarkURL       string
 	ReadOnlyAge     int
@@ -54,9 +55,10 @@ type Rest struct {
 		Low      int
 		Critical int
 	}
-	UpdateLimiter float64
-	EmojiEnabled  bool
-	SimpleView    bool
+	UpdateLimiter      float64
+	EmailNotifications bool
+	EmojiEnabled       bool
+	SimpleView         bool
 
 	SSLConfig   SSLConfig
 	httpsServer *http.Server
@@ -306,8 +308,12 @@ func (s *Rest) routes() chi.Router {
 
 			rauth.Put("/comment/{id}", s.privRest.updateCommentCtrl)
 			rauth.Post("/comment", s.privRest.createCommentCtrl)
-			rauth.With(rejectAnonUser).Put("/vote/{id}", s.privRest.voteCtrl)
+			rauth.Put("/vote/{id}", s.privRest.voteCtrl)
 			rauth.With(rejectAnonUser).Post("/deleteme", s.privRest.deleteMeCtrl)
+			rauth.With(rejectAnonUser).Get("/email", s.privRest.getEmailCtrl)
+			rauth.With(rejectAnonUser).Post("/email/subscribe", s.privRest.sendEmailConfirmationCtrl)
+			rauth.With(rejectAnonUser).Post("/email/confirm", s.privRest.setConfirmedEmailCtrl)
+			rauth.With(rejectAnonUser).Delete("/email", s.privRest.deleteEmailCtrl)
 		})
 
 		// protected routes, anonymous rejected
@@ -327,6 +333,8 @@ func (s *Rest) routes() chi.Router {
 		rroot.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(50, nil)))
 		rroot.Get("/index.html", s.pubRest.getStartedCtrl)
 		rroot.Get("/robots.txt", s.pubRest.robotsCtrl)
+		rroot.Get("/email/unsubscribe.html", s.privRest.emailUnsubscribeCtrl)
+		rroot.Post("/email/unsubscribe.html", s.privRest.emailUnsubscribeCtrl)
 	})
 
 	// file server for static content from /web
@@ -355,6 +363,7 @@ func (s *Rest) controllerGroups() (public, private, admin, rss) {
 		authenticator:    s.Authenticator,
 		notifyService:    s.NotifyService,
 		remarkURL:        s.RemarkURL,
+		anonVote:         s.AnonVote,
 	}
 
 	admGrp := admin{
@@ -390,32 +399,36 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 	emails, _ := s.DataService.AdminStore.Email(siteID)
 
 	cnf := struct {
-		Version        string   `json:"version"`
-		EditDuration   int      `json:"edit_duration"`
-		MaxCommentSize int      `json:"max_comment_size"`
-		Admins         []string `json:"admins"`
-		AdminEmail     string   `json:"admin_email"`
-		Auth           []string `json:"auth_providers"`
-		LowScore       int      `json:"low_score"`
-		CriticalScore  int      `json:"critical_score"`
-		PositiveScore  bool     `json:"positive_score"`
-		ReadOnlyAge    int      `json:"readonly_age"`
-		MaxImageSize   int      `json:"max_image_size"`
-		EmojiEnabled   bool     `json:"emoji_enabled"`
-		SimpleView     bool     `json:"simple_view"`
+		Version            string   `json:"version"`
+		EditDuration       int      `json:"edit_duration"`
+		MaxCommentSize     int      `json:"max_comment_size"`
+		Admins             []string `json:"admins"`
+		AdminEmail         string   `json:"admin_email"`
+		Auth               []string `json:"auth_providers"`
+		AnonVote           bool     `json:"anon_vote"`
+		LowScore           int      `json:"low_score"`
+		CriticalScore      int      `json:"critical_score"`
+		PositiveScore      bool     `json:"positive_score"`
+		ReadOnlyAge        int      `json:"readonly_age"`
+		MaxImageSize       int      `json:"max_image_size"`
+		EmailNotifications bool     `json:"email_notifications"`
+		EmojiEnabled       bool     `json:"emoji_enabled"`
+		SimpleView         bool     `json:"simple_view"`
 	}{
-		Version:        s.Version,
-		EditDuration:   int(s.DataService.EditDuration.Seconds()),
-		MaxCommentSize: s.DataService.MaxCommentSize,
-		Admins:         admins,
-		AdminEmail:     emails,
-		LowScore:       s.ScoreThresholds.Low,
-		CriticalScore:  s.ScoreThresholds.Critical,
-		PositiveScore:  s.DataService.PositiveScore,
-		ReadOnlyAge:    s.ReadOnlyAge,
-		MaxImageSize:   s.ImageService.Store.SizeLimit(),
-		EmojiEnabled:   s.EmojiEnabled,
-		SimpleView:     s.SimpleView,
+		Version:            s.Version,
+		EditDuration:       int(s.DataService.EditDuration.Seconds()),
+		MaxCommentSize:     s.DataService.MaxCommentSize,
+		Admins:             admins,
+		AdminEmail:         emails,
+		LowScore:           s.ScoreThresholds.Low,
+		CriticalScore:      s.ScoreThresholds.Critical,
+		PositiveScore:      s.DataService.PositiveScore,
+		ReadOnlyAge:        s.ReadOnlyAge,
+		MaxImageSize:       s.ImageService.Store.SizeLimit(),
+		EmailNotifications: s.EmailNotifications,
+		EmojiEnabled:       s.EmojiEnabled,
+		AnonVote:           s.AnonVote,
+		SimpleView:         s.SimpleView,
 	}
 
 	cnf.Auth = []string{}

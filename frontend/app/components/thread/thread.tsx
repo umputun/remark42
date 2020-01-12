@@ -22,7 +22,7 @@ const mapStateToProps = (state: StoreState, props: { id: CommentInterface['id'] 
 
 interface OwnProps {
   id: CommentInterface['id'];
-  childs?: (CommentInterface['id'])[];
+  childs?: CommentInterface['id'][];
   level: number;
   mix?: string;
 

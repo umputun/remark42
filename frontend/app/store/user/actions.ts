@@ -11,6 +11,7 @@ import {
   USER_HIDELIST_SET,
   USER_HIDE,
   USER_UNHIDE,
+  USER_SUBSCRIPTION_SET,
   SETTINGS_VISIBLE_SET,
 } from './types';
 import { unsetCommentMode } from '../comments/actions';
@@ -155,3 +156,8 @@ export const setSettingsVisibility = (state: boolean): StoreAction<boolean> => d
   });
   return state;
 };
+
+export const setUserSubscribed = (isSubscribed: boolean) => ({
+  type: USER_SUBSCRIPTION_SET,
+  payload: isSubscribed,
+});

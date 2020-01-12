@@ -1,0 +1,28 @@
+name: test_frontend
+
+on:
+  push:
+    branches:
+    tags:
+    paths:
+      - '.github/workflows/ci-test-frontend.yml'
+      - 'frontend/**'
+  pull_request:
+    paths:
+      - '.github/workflows/ci-test-frontend.yml'
+      - 'frontend/**'
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v1
+
+      - uses: actions/setup-node@v1
+
+      - run: npm ci
+        working-directory: ./frontend
+
+      - run: npx run-p check lint test
+        working-directory: ./frontend

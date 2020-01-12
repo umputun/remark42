@@ -9,6 +9,7 @@ package server
 import (
 	"fmt"
 	"math/rand"
+	"net"
 	"net/http"
 	"testing"
 	"time"
@@ -378,9 +379,30 @@ func TestRPC_admEventHndl(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func prepTestStore(t *testing.T) (s *RPC, port int, teardown func()) {
-	port = 40000 + int(rand.Int31n(10000))
+func chooseRandomUnusedPort() (port int) {
+	for i := 0; i < 10; i++ {
+		port = 40000 + int(rand.Int31n(10000))
+		if ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port)); err == nil {
+			_ = ln.Close()
+			break
+		}
+	}
+	return port
+}
 
+func waitForHTTPServerStart(port int) {
+	// wait for up to 3 seconds for server to start before returning it
+	client := http.Client{Timeout: time.Second}
+	for i := 0; i < 300; i++ {
+		time.Sleep(time.Millisecond * 10)
+		if resp, err := client.Get(fmt.Sprintf("http://localhost:%d", port)); err == nil {
+			_ = resp.Body.Close()
+			return
+		}
+	}
+}
+
+func prepTestStore(t *testing.T) (s *RPC, port int, teardown func()) {
 	mg := accessor.NewMemData()
 	adm := accessor.NewMemAdminStore("secret")
 	s = NewRPC(mg, adm, &jrpc.Server{API: "/test", Logger: jrpc.NoOpLogger})
@@ -397,11 +419,12 @@ func prepTestStore(t *testing.T) (s *RPC, port int, teardown func()) {
 	admRecDisabled.Enabled = false
 	adm.Set("test-site-disabled", admRecDisabled)
 
+	port = chooseRandomUnusedPort()
 	go func() {
 		log.Printf("%v", s.Run(port))
 	}()
 
-	time.Sleep(time.Millisecond * 50) // wait for server to start
+	waitForHTTPServerStart(port)
 
 	return s, port, func() {
 		require.NoError(t, s.Shutdown())

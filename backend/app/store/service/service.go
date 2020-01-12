@@ -159,6 +159,48 @@ func (s *DataStore) Put(locator store.Locator, comment store.Comment) error {
 	return s.Engine.Update(comment)
 }
 
+// GetUserEmail gets user email
+func (s *DataStore) GetUserEmail(siteID string, userID string) (string, error) {
+	res, err := s.Engine.UserDetail(engine.UserDetailRequest{
+		Detail:  engine.UserEmail,
+		Locator: store.Locator{SiteID: siteID},
+		UserID:  userID,
+	})
+	if err != nil {
+		return "", err
+	}
+	if len(res) == 1 {
+		return res[0].Email, nil
+	}
+	return "", nil
+}
+
+// SetUserEmail sets user email
+func (s *DataStore) SetUserEmail(siteID string, userID string, value string) (string, error) {
+	res, err := s.Engine.UserDetail(engine.UserDetailRequest{
+		Detail:  engine.UserEmail,
+		Locator: store.Locator{SiteID: siteID},
+		UserID:  userID,
+		Update:  value,
+	})
+	if err != nil {
+		return "", err
+	}
+	if len(res) == 1 {
+		return res[0].Email, nil
+	}
+	return "", nil
+}
+
+// DeleteUserDetail deletes user detail
+func (s *DataStore) DeleteUserDetail(siteID string, userID string, detail engine.UserDetail) error {
+	return s.Engine.Delete(engine.DeleteRequest{
+		Locator:    store.Locator{SiteID: siteID},
+		UserID:     userID,
+		UserDetail: detail,
+	})
+}
+
 // submitImages initiated delayed commit of all images from the comment uploaded to remark42
 func (s *DataStore) submitImages(comment store.Comment) {
 

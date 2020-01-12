@@ -31,7 +31,7 @@ func TestNative_Export(t *testing.T) {
 
 	buf := &bytes.Buffer{}
 	size, err := r.Export(buf, "radio-t")
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 2, size)
 
 	c1 := buf.String()
@@ -47,7 +47,7 @@ func TestNative_Export(t *testing.T) {
 
 	require.NoError(t, dec.Decode(&m), "decode meta")
 
-	assert.Equal(t, 2, len(m.Users))
+	require.Equal(t, 2, len(m.Users))
 	assert.Equal(t, "user1", m.Users[0].ID)
 	assert.Equal(t, false, m.Users[0].Blocked.Status)
 	assert.Equal(t, true, m.Users[0].Verified)
@@ -55,7 +55,7 @@ func TestNative_Export(t *testing.T) {
 	assert.Equal(t, true, m.Users[1].Blocked.Status)
 	assert.Equal(t, false, m.Users[1].Verified)
 
-	assert.Equal(t, 1, len(m.Posts))
+	require.Equal(t, 1, len(m.Posts))
 	assert.Equal(t, "https://radio-t.com", m.Posts[0].URL)
 	assert.Equal(t, true, m.Posts[0].ReadOnly)
 
@@ -79,12 +79,12 @@ func TestNative_Import(t *testing.T) {
 	b.AdminStore = admin.NewStaticStore("12345", nil, []string{}, "")
 	r := Native{DataStore: b}
 	size, err := r.Import(strings.NewReader(inp), "radio-t")
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 2, size)
 
 	comments, err := b.Last("radio-t", 10, time.Time{}, store.User{})
-	assert.Nil(t, err)
-	assert.Equal(t, 2, len(comments))
+	assert.NoError(t, err)
+	require.Equal(t, 2, len(comments))
 	assert.Equal(t, "f863bd79-fec6-4a75-b308-61fe5dd02aa1", comments[0].ID)
 	assert.Equal(t, "1234", comments[0].ParentID)
 	assert.Equal(t, false, b.IsReadOnly(comments[0].Locator))
@@ -117,12 +117,12 @@ func TestNative_ImportWithMapper(t *testing.T) {
 	b.AdminStore = admin.NewStaticStore("12345", nil, []string{}, "")
 	r := Native{DataStore: b}
 	size, err := r.Import(mappedReader, "radio-t")
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 2, size)
 
 	comments, err := b.Last("radio-t", 10, time.Time{}, store.User{})
-	assert.Nil(t, err)
-	assert.Equal(t, 2, len(comments))
+	assert.NoError(t, err)
+	require.Equal(t, 2, len(comments))
 	assert.Equal(t, "f863bd79-fec6-4a75-b308-61fe5dd02aa1", comments[0].ID)
 	assert.Equal(t, "1234", comments[0].ParentID)
 	assert.Equal(t, false, b.IsReadOnly(comments[0].Locator))
@@ -174,7 +174,7 @@ func TestNative_ImportManyWithError(t *testing.T) {
 	assert.EqualError(t, err, "failed to save 2 comments")
 	assert.Equal(t, 100, n)
 	comments, err := b.Find(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com"}, "time", store.User{})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 100, len(comments))
 }
 
@@ -184,7 +184,7 @@ func prep(t *testing.T) (*service.DataStore, func()) {
 	testDb := fmt.Sprintf("/tmp/migrator-%d.db", rand.Intn(999999999))
 
 	boltStore, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{SiteID: "radio-t", FileName: testDb})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	b := &service.DataStore{Engine: boltStore, AdminStore: admin.NewStaticStore("12345", nil, []string{}, "")}
 
@@ -196,7 +196,7 @@ func prep(t *testing.T) (*service.DataStore, func()) {
 		User:      store.User{ID: "user1", Name: "user name"},
 	}
 	_, err = b.Create(comment)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	comment = store.Comment{
 		Text: "some text2", Timestamp: time.Date(2017, 12, 20, 15, 18, 23, 0, time.Local),
@@ -204,7 +204,10 @@ func prep(t *testing.T) (*service.DataStore, func()) {
 		User:    store.User{ID: "user2", Name: "user name"},
 	}
 	_, err = b.Create(comment)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
-	return b, func() { os.Remove(testDb) }
+	return b, func() {
+		require.NoError(t, b.Close())
+		_ = os.Remove(testDb)
+	}
 }

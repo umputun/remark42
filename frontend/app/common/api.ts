@@ -275,6 +275,28 @@ export const uploadImage = (image: File): Promise<Image> => {
     }));
 };
 
+/**
+ * Start process of email subscription to updates
+ * @param emailAddress email for subscription
+ */
+export const emailVerificationForSubscribe = (emailAddress: string) =>
+  fetcher.post({
+    url: `/email/subscribe?site=${siteId}&address=${emailAddress}`,
+    withCredentials: true,
+  });
+
+/**
+ * Confirmation of email subscription to updates
+ * @param token confirmation token from email
+ */
+export const emailConfirmationForSubscribe = (token: string) =>
+  fetcher.post({ url: `/email/confirm?site=${siteId}&tkn=${encodeURIComponent(token)}`, withCredentials: true });
+
+/**
+ * Decline current subscription to updates
+ */
+export const unsubscribeFromEmailUpdates = () => fetcher.delete({ url: `/email`, withCredentials: true });
+
 export default {
   logIn,
   logOut,

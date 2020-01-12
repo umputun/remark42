@@ -7,15 +7,15 @@ import { requestDeletion } from '@app/utils/email';
 import { getHandleClickProps } from '@app/common/accessibility';
 import { User, AuthProvider, Sorting, Theme, PostInfo } from '@app/common/types';
 
-import Dropdown, { DropdownItem } from '@app/components/dropdown';
-import { Button } from '@app/components/button';
-import { UserID } from './__user-id';
-import { AnonymousLoginForm } from './__anonymous-login-form';
-import { EmailLoginFormConnected } from './__email-login-form';
-import { StoreState } from '@app/store';
-import { ProviderState } from '@app/store/provider/reducers';
 import debounce from '@app/utils/debounce';
 import postMessage from '@app/utils/postMessage';
+import { StoreState } from '@app/store';
+import { ProviderState } from '@app/store/provider/reducers';
+import { Dropdown, DropdownItem } from '@app/components/dropdown';
+import { Button } from '@app/components/button';
+
+import { AnonymousLoginForm } from './__anonymous-login-form';
+import { EmailLoginFormConnected } from './__email-login-form';
 import { EmailLoginFormRef } from './__email-login-form/auth-panel__email-login-form';
 
 export interface Props {
@@ -25,7 +25,7 @@ export interface Props {
   isCommentsDisabled: boolean;
   theme: Theme;
   postInfo: PostInfo;
-  providers: (AuthProvider['name'])[];
+  providers: AuthProvider['name'][];
   provider: ProviderState;
 
   onSortChange(s: Sorting): Promise<void>;
@@ -129,11 +129,6 @@ export class AuthPanel extends Component<Props, State> {
     }
   }
 
-  getUserTitle() {
-    const { user } = this.props;
-    return <span className="auth-panel__username">{user!.name}</span>;
-  }
-
   /** wrapper function to handle both oauth and anonymous providers*/
   onSignIn(provider: AuthProvider) {
     this.props.onSignIn(provider);
@@ -153,29 +148,35 @@ export class AuthPanel extends Component<Props, State> {
   }
 
   renderAuthorized = () => {
-    const { user, onSignOut } = this.props;
+    const { user, onSignOut, theme } = this.props;
     if (!user) return null;
 
     const isUserAnonymous = user && user.id.substr(0, 10) === 'anonymous_';
 
     return (
       <div className="auth-panel__column">
-        You signed in as{' '}
-        <Dropdown title={user.name} theme={this.props.theme}>
+        You logged in as{' '}
+        <Dropdown title={user.name} titleClass="auth-panel__user-dropdown-title" theme={theme}>
           <DropdownItem separator={!isUserAnonymous}>
-            <UserID id={user.id} theme={this.props.theme} {...getHandleClickProps(this.toggleUserInfoVisibility)} />
+            <div
+              id={user.id}
+              className={b('auth-panel__user-id', {}, { theme })}
+              {...getHandleClickProps(this.toggleUserInfoVisibility)}
+            >
+              {user.id}
+            </div>
           </DropdownItem>
 
           {!isUserAnonymous && (
             <DropdownItem>
-              <Button kind="link" theme={this.props.theme} onClick={() => requestDeletion().then(onSignOut)}>
+              <Button theme={theme} onClick={() => requestDeletion().then(onSignOut)}>
                 Request my data removal
               </Button>
             </DropdownItem>
           )}
         </Dropdown>{' '}
-        <Button className="auth-panel__sign-out" kind="link" theme={this.props.theme} onClick={onSignOut}>
-          Sign out?
+        <Button kind="link" theme={theme} onClick={onSignOut}>
+          Logout?
         </Button>
       </div>
     );
@@ -186,7 +187,7 @@ export class AuthPanel extends Component<Props, State> {
       return (
         <Dropdown
           title={PROVIDER_NAMES['anonymous']}
-          titleClass={`${dropdown ? 'auth-panel__dropdown-provider' : ''} auth-panel__pseudo-link`}
+          titleClass={dropdown ? 'auth-panel__dropdown-provider' : ''}
           theme={this.props.theme}
         >
           <DropdownItem>
@@ -203,7 +204,7 @@ export class AuthPanel extends Component<Props, State> {
       return (
         <Dropdown
           title={PROVIDER_NAMES['email']}
-          titleClass={`${dropdown ? 'auth-panel__dropdown-provider' : ''} auth-panel__pseudo-link`}
+          titleClass={dropdown ? 'auth-panel__dropdown-provider' : ''}
           theme={this.props.theme}
           onTitleClick={this.onEmailTitleClick}
         >
@@ -220,25 +221,21 @@ export class AuthPanel extends Component<Props, State> {
     }
 
     return (
-      <span
-        className={`${dropdown ? 'auth-panel__dropdown-provider' : ''} auth-panel__pseudo-link`}
+      <Button
+        mix={dropdown ? 'auth-panel__dropdown-provider' : ''}
+        kind="link"
         data-provider={provider}
         {...getHandleClickProps(this.handleOAuthLogin)}
         role="link"
       >
         {PROVIDER_NAMES[provider]}
-      </span>
+      </Button>
     );
   };
 
-  renderOther = (providers: (AuthProvider['name'])[]) => {
+  renderOther = (providers: AuthProvider['name'][]) => {
     return (
-      <Dropdown
-        title="Other"
-        titleClass="auth-panel__pseudo-link"
-        theme={this.props.theme}
-        onTitleClick={this.onEmailTitleClick}
-      >
+      <Dropdown title="Other" theme={this.props.theme} onTitleClick={this.onEmailTitleClick}>
         {providers.map(provider => (
           <DropdownItem>{this.renderProvider(provider, true)}</DropdownItem>
         ))}
@@ -247,11 +244,10 @@ export class AuthPanel extends Component<Props, State> {
   };
 
   renderUnauthorized = () => {
-    const { user, providers = [], postInfo } = this.props;
+    const { user, providers = [] } = this.props;
     const { threshold } = this.state;
     if (user || !IS_STORAGE_AVAILABLE) return null;
 
-    const signInMessage = postInfo.read_only ? 'Sign in using ' : 'Sign in to comment using ';
     const sortedProviders = ((): typeof providers => {
       if (!this.props.provider.name) return providers;
       const lastProviderIndex = providers.indexOf(this.props.provider.name as typeof providers[0]);
@@ -267,7 +263,7 @@ export class AuthPanel extends Component<Props, State> {
 
     return (
       <div className="auth-panel__column">
-        {signInMessage}
+        {'Login: '}
         {!isAboveThreshold &&
           sortedProviders.map((provider, i) => {
             const comma = i === 0 ? '' : i === sortedProviders.length - 1 ? ' or ' : ', ';
@@ -304,7 +300,7 @@ export class AuthPanel extends Component<Props, State> {
     if (IS_STORAGE_AVAILABLE || !IS_THIRD_PARTY) return null;
     return (
       <div className="auth-panel__column">
-        Disable third-party cookies blocking to sign in or open comments in{' '}
+        Disable third-party cookies blocking to login or open comments in{' '}
         <a
           className="auth-panel__pseudo-link"
           href={`${window.location.origin}/web/comments.html${window.location.search}`}
@@ -318,31 +314,33 @@ export class AuthPanel extends Component<Props, State> {
 
   renderCookiesWarning = () => {
     if (IS_STORAGE_AVAILABLE || IS_THIRD_PARTY) return null;
-    return <div className="auth-panel__column">Allow cookies to sign in and comment</div>;
+    return <div className="auth-panel__column">Allow cookies to login and comment</div>;
   };
 
   renderSettingsLabel = () => {
     return (
-      <span
-        className="auth-panel__pseudo-link auth-panel__admin-action"
+      <Button
+        kind="link"
+        mix="auth-panel__admin-action"
         {...getHandleClickProps(() => this.toggleBlockedVisibility())}
         role="link"
       >
         {this.state.isBlockedVisible ? 'Hide' : 'Show'} settings
-      </span>
+      </Button>
     );
   };
 
   renderReadOnlySwitch = () => {
     const { isCommentsDisabled } = this.props;
     return (
-      <span
-        className="auth-panel__pseudo-link auth-panel__admin-action"
+      <Button
+        kind="link"
+        mix="auth-panel__admin-action"
         {...getHandleClickProps(() => this.toggleCommentsAvailability())}
         role="link"
       >
         {isCommentsDisabled ? 'Enable' : 'Disable'} comments
-      </span>
+      </Button>
     );
   };
 

@@ -1,15 +1,10 @@
 # compose file for local development
-# starts backend on 8080 with basic auth "dev:password" and Dev oauth2 provider on port 8084, UI on http://127.0.0.1:8080/web
+# starts backend on 8080 with basic auth "dev:password" and Dev oauth2 provider on port 8084
+# UI on http://127.0.0.1:8080/web
 #
-# mongo-related tests needs mongodb container running - docker run -d -name=mongo mongo:3.6 --smallfiles
-# start build with backend tests:
-# MONGO_REMARK_TEST=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' mongo) \
-#  docker-compose -f compose-dev-backend.yml build
-#
-# to skip mongo test set MONGO_REMARK_TEST=skip
-#
+# build remark42 docker image - docker-compose -f compose-dev-backend.yml build
 # start remark42 service - docker-compose -f compose-dev-backend.yml up
-version: "2"
+version: '2'
 
 services:
     remark42:
@@ -49,7 +44,14 @@ services:
             - NOTIFY_TYPE
             - NOTIFY_TELEGRAM_TOKEN
             - NOTIFY_TELEGRAM_CHAN
+            - NOTIFY_EMAIL_HOST
+            - NOTIFY_EMAIL_USERNAME
+            - NOTIFY_EMAIL_PASSWORD
+            - NOTIFY_EMAIL_FROM
+            - NOTIFY_EMAIL_PORT
+            - NOTIFY_EMAIL_TLS
             - EMOJI=true
+            - ANON_VOTE=true
             - VOTES_IP=true
             - AUTH_EMAIL_ENABLE=true
             - AUTH_ANON=true

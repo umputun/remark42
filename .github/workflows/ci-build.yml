@@ -4,69 +4,28 @@ on:
   push:
     branches:
     tags:
+    paths:
+      - '.github/workflows/ci-build.yml'
+      - 'backend/**'
+      - 'frontend/**'
+      - '.dockerignore'
+      - 'docker-init.sh'
+      - 'Dockerfile'
   pull_request:
-
+    paths:
+      - '.github/workflows/ci-build.yml'
+      - 'backend/**'
+      - 'frontend/**'
+      - '.dockerignore'
+      - 'docker-init.sh'
+      - 'Dockerfile'
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
 
-    - name: debug if needed
-      run: |
-        export DEBUG=${DEBUG:-false}
-        if [[ "$DEBUG" == "true" ]]; then
-          env
-        fi
-      env:
-        DEBUG: ${{secrets.DEBUG}}
-
-    - name: install go
-      uses: actions/setup-go@v1
-      with:
-        go-version: 1.13
-
-    - name: build and test backend
-      run: |
-        date
-        cd backend/app
-        go test -mod=vendor -timeout=60s -covermode=count -coverprofile=$GITHUB_WORKSPACE/profile.cov_tmp ./...
-        cat $GITHUB_WORKSPACE/profile.cov_tmp | grep -v "_mock.go" > $GITHUB_WORKSPACE/profile.cov
-        cd ../_example/memory_store
-        go test -race ./...
-      env:
-        TZ: America/Chicago
-
-    # - name: run backend linters
-    #   uses: matoous/golangci-lint-action@v1.1.0
-    #   with:
-    #     config: .golangci.yml
-    #   env:
-    #     WORKING_DIRECTORY: ${{ github.workspace }}/backend
-    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    - name: install golangci-lint and goveralls
-      run: |
-        curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $GITHUB_WORKSPACE v1.20.0
-        go get -u github.com/mattn/goveralls
-
-    - name: run backend linters for backend code
-      run: |
-        $GITHUB_WORKSPACE/golangci-lint run --config ${GITHUB_WORKSPACE}/.golangci.yml ./...
-      working-directory: ./backend
-
-    - name: run backend linters for example
-      run: |
-        $GITHUB_WORKSPACE/golangci-lint run --config ${GITHUB_WORKSPACE}/.golangci.yml ./... ;
-      working-directory: ./backend/_example/memory_store
-
-    - name: submit coverage
-      run: |
-        $(go env GOPATH)/bin/goveralls -service="github" -coverprofile=$GITHUB_WORKSPACE/profile.cov
-      env:
-        COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      working-directory: backend
-
-    - name: build docker image
-      run: docker build --build-arg SKIP_BACKEND_TEST=true --build-arg CI=github .
+      - name: build docker image
+        run: docker build --build-arg SKIP_BACKEND_TEST=true --build-arg SKIP_FRONTEND_TEST=true --build-arg CI=github .

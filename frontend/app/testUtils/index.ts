@@ -21,5 +21,8 @@ beforeEach(() => {
     positive_score: false,
     readonly_age: 100,
     version: 'jest-test',
+    simple_view: false,
+    anon_vote: false,
+    email_notifications: false,
   };
 });

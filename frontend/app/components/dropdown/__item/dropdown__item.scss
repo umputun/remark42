@@ -1,10 +1,10 @@
 .dropdown__item {
+  & > button,
   & > a,
-  & > button {
-    display: block;
-    width: 100%;
+  & > .dropdown {
+    display: inline-block;
     text-align: left;
-    padding: 5px 15px;
+    padding: 5px;
   }
 
   &_separator {

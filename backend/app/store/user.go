@@ -15,14 +15,15 @@ import (
 
 // User holds user-related info
 type User struct {
-	Name     string `json:"name"`
-	ID       string `json:"id"`
-	Picture  string `json:"picture"`
-	IP       string `json:"ip,omitempty"`
-	Admin    bool   `json:"admin"`
-	Blocked  bool   `json:"block,omitempty"`
-	Verified bool   `json:"verified,omitempty"`
-	SiteID   string `json:"site_id,omitempty"`
+	Name              string `json:"name"`
+	ID                string `json:"id"`
+	Picture           string `json:"picture"`
+	IP                string `json:"ip,omitempty"`
+	Admin             bool   `json:"admin"`
+	Blocked           bool   `json:"block,omitempty"`
+	Verified          bool   `json:"verified,omitempty"`
+	EmailSubscription bool   `json:"email_subscription,omitempty"`
+	SiteID            string `json:"site_id,omitempty"`
 }
 
 var reValidSha = regexp.MustCompile("^[a-fA-F0-9]{40}$")

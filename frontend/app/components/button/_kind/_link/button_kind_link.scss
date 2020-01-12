@@ -1,13 +1,14 @@
 .button_kind_link {
-  border: none;
   background: transparent;
-  padding: 0;
-
-  font-weight: 700;
-  white-space: nowrap;
+  font-weight: bold;
   color: #0aa;
 
   &:hover {
     color: #06c5c5;
+  }
+
+  &:disabled,
+  &:hover:disabled {
+    color: #0aa;
   }
 }

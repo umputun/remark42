@@ -13,35 +13,33 @@
 
 .auth-panel-email-login-form__token-input {
   resize: vertical;
-  font: inherit;
-  font-weight: normal;
+  border: 1px solid #c4c4c4;
+  padding: 4px;
+  font-family: inherit;
   font-size: 0.8em;
+  font-weight: normal;
+  line-height: 1.5;
+
+  &:focus {
+    box-shadow: 0 0 0 2px rgba(37, 156, 154, 0.4);
+    border-color: #259c9a;
+    outline: none;
+  }
 }
 
 .auth-panel-email-login-form__submit {
-  background: none;
-  border: none;
-  padding: 0;
-  padding: 0.1em;
-  margin-top: 0.2em;
-  color: currentColor;
-  font: inherit;
-  cursor: pointer;
-}
-
-.auth-panel-email-login-form__submit:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
+  margin: 0.3rem 0.15rem 0.15rem;
 }
 
 .auth-panel-email-login-form__back-button {
-  color: #259c9a;
-  cursor: pointer;
+  text-align: left;
   margin-left: 0.1rem;
   margin-bottom: 0.5rem;
 
-  &:hover {
-    opacity: 0.8;
+  &:before {
+    content: '◄';
+    display: inline-block;
+    margin-right: 3px;
   }
 }
 
@@ -49,4 +47,5 @@
   color: #9a0000;
   text-align: center;
   margin-top: 1em;
+  font-weight: normal;
 }

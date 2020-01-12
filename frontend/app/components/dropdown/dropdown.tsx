@@ -1,30 +1,35 @@
 /** @jsx createElement */
-import { createElement, Component, createRef } from 'preact';
+import { createElement, Component, createRef, RenderableProps } from 'preact';
 import b from 'bem-react-helper';
 
-import { Button } from '@app/components/button';
 import { Theme } from '@app/common/types';
 import { sleep } from '@app/utils/sleep';
+import { Button } from '@app/components/button';
 
-interface Props {
+type Props = RenderableProps<{
   title: string;
   titleClass?: string;
   heading?: string;
   isActive?: boolean;
+  disabled?: boolean;
+  buttonTitle?: string;
   onTitleClick?: () => void;
   mix?: string;
   theme: Theme;
   onOpen?: (root: HTMLDivElement) => unknown;
   onClose?: (root: HTMLDivElement) => unknown;
-}
+}>;
 
 interface State {
   isActive: boolean;
   contentTranslateX: number;
 }
 
-export default class Dropdown extends Component<Props, State> {
+export class Dropdown extends Component<Props, State> {
   rootNode = createRef<HTMLDivElement>();
+  storedDocumentHeight: string | null = null;
+  storedDocumentHeightSet: boolean = false;
+  checkInterval: number | undefined = undefined;
 
   constructor(props: Props) {
     super(props);
@@ -40,7 +45,7 @@ export default class Dropdown extends Component<Props, State> {
     this.__onClose = this.__onClose.bind(this);
   }
 
-  onTitleClick() {
+  onTitleClick = () => {
     const isActive = !this.state.isActive;
     const contentTranslateX = isActive ? this.state.contentTranslateX : 0;
     this.setState(
@@ -63,11 +68,7 @@ export default class Dropdown extends Component<Props, State> {
         }
       }
     );
-  }
-
-  storedDocumentHeight: string | null = null;
-  storedDocumentHeightSet: boolean = false;
-  checkInterval: number | undefined = undefined;
+  };
 
   __onOpen() {
     const isChildOfDropDown = (() => {
@@ -90,6 +91,7 @@ export default class Dropdown extends Component<Props, State> {
       if (!this.rootNode.current || !this.state.isActive) return;
       const windowHeight = window.innerHeight;
       const dcBottom = (() => {
+        // TODO: use ref
         const dc = Array.from(this.rootNode.current.children).find(c => c.classList.contains('dropdown__content'));
         if (!dc) return 0;
         const rect = dc.getBoundingClientRect();
@@ -106,15 +108,16 @@ export default class Dropdown extends Component<Props, State> {
   __onClose() {
     window.clearInterval(this.checkInterval);
     if (this.storedDocumentHeightSet) {
-      document.body.style.minHeight = this.storedDocumentHeight;
+      document.body.style.minHeight = typeof this.storedDocumentHeight === 'string' ? this.storedDocumentHeight : '';
     }
   }
 
   async __adjustDropDownContent() {
     if (!this.rootNode.current) return;
+    // TODO: use ref
     const dc = this.rootNode.current.querySelector<HTMLDivElement>('.dropdown__content');
     if (!dc) return;
-    await sleep(10);
+    await sleep(0);
     const rect = dc.getBoundingClientRect();
     if (rect.left > 0) {
       const wWindow = window.innerWidth;
@@ -176,33 +179,32 @@ export default class Dropdown extends Component<Props, State> {
     window.removeEventListener('message', this.receiveMessage);
   }
 
-  render() {
-    const { title, titleClass, heading, children, mix, theme } = this.props;
-    const { isActive } = this.state;
-
+  render({ title, titleClass, heading, children, mix, theme, disabled, buttonTitle }: Props, { isActive }: State) {
     return (
       <div className={b('dropdown', { mix }, { theme, active: isActive })} ref={this.rootNode}>
         <Button
           aria-haspopup="listbox"
           aria-expanded={isActive && 'true'}
-          mix="dropdown__title"
-          type="button"
-          onClick={() => this.onTitleClick()}
-          theme="light"
-          className={titleClass}
+          onClick={this.onTitleClick}
+          theme={theme}
+          mix={['dropdown__title', titleClass]}
+          kind="link"
+          disabled={disabled}
+          title={buttonTitle}
         >
           {title}
         </Button>
-
-        <div
-          className="dropdown__content"
-          tabIndex={-1}
-          role="listbox"
-          style={{ transform: `translateX(${this.state.contentTranslateX}px)` }}
-        >
-          {heading && <div className="dropdown__heading">{heading}</div>}
-          <div className="dropdown__items">{children}</div>
-        </div>
+        {isActive && (
+          <div
+            className="dropdown__content"
+            tabIndex={-1}
+            role="listbox"
+            style={{ transform: `translateX(${this.state.contentTranslateX}px)` }}
+          >
+            {heading && <div className="dropdown__heading">{heading}</div>}
+            <div className="dropdown__items">{children}</div>
+          </div>
+        )}
       </div>
     );
   }

@@ -8,7 +8,9 @@ import { sendEmailVerificationRequest } from '@app/common/api';
 import { extractErrorMessageFromResponse } from '@app/utils/errorUtils';
 import { getHandleClickProps } from '@app/common/accessibility';
 import { sleep } from '@app/utils/sleep';
-import TextareaAutosize from '@app/components/input/textarea-autosize';
+import TextareaAutosize from '@app/components/comment-form/textarea-autosize';
+import { Input } from '@app/components/input';
+import { Button } from '@app/components/button';
 
 const mapStateToProps = () => ({
   sendEmailVerification: sendEmailVerificationRequest,
@@ -36,7 +38,7 @@ export class EmailLoginForm extends Component<Props, State> {
   static usernameRegex = /^[a-zA-Z][\w ]+$/;
   static emailRegex = /[^@]+@[^.]+\..+/;
 
-  inputRef = createRef<HTMLInputElement>();
+  usernameInputRef = createRef<HTMLInputElement>();
   tokenRef = createRef<TextareaAutosize>();
 
   constructor(props: Props) {
@@ -62,8 +64,8 @@ export class EmailLoginForm extends Component<Props, State> {
 
   async focus() {
     await sleep(100);
-    if (this.inputRef.current) {
-      this.inputRef.current.focus();
+    if (this.usernameInputRef.current) {
+      this.usernameInputRef.current.focus();
       return;
     }
     this.tokenRef.current && this.tokenRef.current.textareaRef && this.tokenRef.current.textareaRef.select();
@@ -71,7 +73,7 @@ export class EmailLoginForm extends Component<Props, State> {
 
   async onVerificationSubmit(e: Event) {
     e.preventDefault();
-    this.setState({ loading: true });
+    this.setState({ loading: true, error: null });
     try {
       await this.props.sendEmailVerification(this.state.usernameValue, this.state.addressValue);
       this.setState({ verificationSent: true });
@@ -115,15 +117,23 @@ export class EmailLoginForm extends Component<Props, State> {
     this.setState({ error: null, tokenValue: (e.target as HTMLInputElement).value });
   }
 
-  goBack() {
+  async goBack() {
+    // Wait for finding back button in DOM by dropbox
+    // It prevents dropdown from closing, because if dropdown doesn't find clicked element it closes
+    await sleep(0);
+
     this.setState({
       tokenValue: '',
       error: null,
       verificationSent: false,
     });
-    setTimeout(() => {
-      this.inputRef.current && this.inputRef.current.focus();
-    }, 100);
+
+    // Wait for rendering username+email step to find user input
+    await sleep(0);
+
+    if (this.usernameInputRef.current) {
+      this.usernameInputRef.current.focus();
+    }
   }
 
   getForm1InvalidReason(): string | null {
@@ -142,12 +152,6 @@ export class EmailLoginForm extends Component<Props, State> {
     return null;
   }
 
-  componentDidMount() {
-    setTimeout(() => {
-      this.inputRef.current && this.inputRef.current.focus();
-    }, 100);
-  }
-
   render(props: Props) {
     // TODO: will be great to `b` to accept `string | undefined | (string|undefined)[]` as classname
     let className = b('auth-panel-email-login-form', {}, { theme: props.theme });
@@ -160,42 +164,31 @@ export class EmailLoginForm extends Component<Props, State> {
     if (!this.state.verificationSent)
       return (
         <form className={className} onSubmit={this.onVerificationSubmit}>
-          {/*
-           * We adding hidden span element to bear with DropDown's onOutSideClick handler.
-           * This function checks if element that was clicked is a children of it's root component.
-           * And the problem is that by the time handler gets executed our target element is not a
-           * part of a dom, so handler suggests that we clicked somewhere outside and hides dropdown
-           */}
-          <span
-            className="auth-panel-email-login-form__back-button"
-            role="button"
-            {...getHandleClickProps(this.goBack)}
-            style={{ display: 'none' }}
-          >
-            {'< Back'}
-          </span>
-          <input
-            className="auth-panel-email-login-form__input"
-            ref={this.inputRef}
-            type="text"
+          <Input
+            autoFocus
+            mix="auth-panel-email-login-form__input"
+            ref={this.usernameInputRef}
             placeholder="Username"
             value={this.state.usernameValue}
             onInput={this.onUsernameChange}
           />
-          <input
-            className="auth-panel-email-login-form__input"
+          <Input
+            mix="auth-panel-email-login-form__input"
             type="email"
             placeholder="Email Address"
             value={this.state.addressValue}
             onInput={this.onAddressChange}
           />
-          <input
-            className="auth-panel-email-login-form__submit"
+          <Button
+            mix="auth-panel-email-login-form__submit"
+            kind="primary"
+            size="middle"
             type="submit"
-            value="Send Verification"
             title={form1InvalidReason || ''}
             disabled={form1InvalidReason !== null}
-          />
+          >
+            Send Verification
+          </Button>
           {this.state.error && <div className="auth-panel-email-login-form__error">{this.state.error}</div>}
         </form>
       );
@@ -204,9 +197,9 @@ export class EmailLoginForm extends Component<Props, State> {
 
     return (
       <form className={className} onSubmit={this.onSubmit}>
-        <span className="auth-panel-email-login-form__back-button" role="button" {...getHandleClickProps(this.goBack)}>
-          {'< Back'}
-        </span>
+        <Button kind="link" mix="auth-panel-email-login-form__back-button" {...getHandleClickProps(this.goBack)}>
+          Back
+        </Button>
         <TextareaAutosize
           autofocus={true}
           className="auth-panel-email-login-form__token-input"
@@ -217,13 +210,16 @@ export class EmailLoginForm extends Component<Props, State> {
           spellcheck={false}
           autocomplete="off"
         />
-        <input
-          className="auth-panel-email-login-form__submit"
+        <Button
+          mix="auth-panel-email-login-form__submit"
           type="submit"
-          value="Confirm"
+          kind="primary"
+          size="middle"
           title={form2InvalidReason || ''}
           disabled={form2InvalidReason !== null}
-        />
+        >
+          Confirm
+        </Button>
         {this.state.error && <div className="auth-panel-email-login-form__error">{this.state.error}</div>}
       </form>
     );

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/rand"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -27,6 +28,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/umputun/remark/backend/app/migrator"
+	"github.com/umputun/remark/backend/app/notify"
 	"github.com/umputun/remark/backend/app/rest"
 	"github.com/umputun/remark/backend/app/rest/proxy"
 	"github.com/umputun/remark/backend/app/store"
@@ -36,10 +38,9 @@ import (
 	"github.com/umputun/remark/backend/app/store/service"
 )
 
-var testHTML = os.TempDir() + "/test-remark.html"
-var getStartedHTML = os.TempDir() + "/getstarted.html"
-
 var devToken = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6Mzc4OTE5MTgyMiwianRpIjoicmFuZG9tIGlkIiwiaXNzIjoicmVtYXJrNDIiLCJuYmYiOjE1MjE4ODQyMjIsInVzZXIiOnsibmFtZSI6ImRldmVsb3BlciBvbmUiLCJpZCI6ImRldiIsInBpY3R1cmUiOiJodHRwOi8vZXhhbXBsZS5jb20vcGljLnBuZyIsImlwIjoiMTI3LjAuMC4xIiwiZW1haWwiOiJtZUBleGFtcGxlLmNvbSJ9fQ.aKUAXiZxXypgV7m1wEOgUcyPOvUDXHDi3A06YWKbcLg`
+
+var anonToken = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6Mzc4OTE5MTgyMiwianRpIjoicmFuZG9tIGlkIiwiaXNzIjoicmVtYXJrNDIiLCJuYmYiOjE1MjE4ODQyMjIsInVzZXIiOnsibmFtZSI6ImFub255bW91cyB0ZXN0IHVzZXIiLCJpZCI6ImFub255bW91c190ZXN0X3VzZXIiLCJwaWN0dXJlIjoiaHR0cDovL2V4YW1wbGUuY29tL3BpYy5wbmciLCJpcCI6IjEyNy4wLjAuMSIsImVtYWlsIjoiYW5vbkBleGFtcGxlLmNvbSJ9fQ.gAae2WMxZNZE5ebVboptPEyQ7Nk6EQxciNnGJ_mPOuU`
 
 var devTokenBadAud = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0Ml9iYWQiLCJleHAiOjM3ODkxOTE4MjIsImp0aSI6InJhbmRvbSBpZCIsImlzcyI6InJlbWFyazQyIiwibmJmIjoxNTIxODg0MjIyLCJ1c2VyIjp7Im5hbWUiOiJkZXZlbG9wZXIgb25lIiwiaWQiOiJkZXYiLCJwaWN0dXJlIjoiaHR0cDovL2V4YW1wbGUuY29tL3BpYy5wbmciLCJpcCI6IjEyNy4wLjAuMSIsImVtYWlsIjoibWVAZXhhbXBsZS5jb20ifX0.FuTTocVtcxr4VjpfIICvU2yOb3su28VkDzj94H9Q3xY`
 
@@ -49,17 +50,24 @@ func TestRest_FileServer(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
 
-	body, code := get(t, ts.URL+"/web/test-remark.html")
+	testHtmlName := "test-remark.html"
+	testHTMLFile := os.TempDir() + "/" + testHtmlName
+	err := ioutil.WriteFile(testHTMLFile, []byte("some html"), 0700)
+	assert.NoError(t, err)
+
+	body, code := get(t, ts.URL+"/web/"+testHtmlName)
 	assert.Equal(t, 200, code)
 	assert.Equal(t, "some html", body)
+	_ = os.Remove(testHTMLFile)
 }
 
 func TestRest_GetStarted(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
 
+	getStartedHTML := os.TempDir() + "/getstarted.html"
 	err := ioutil.WriteFile(getStartedHTML, []byte("some html blah"), 0700)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	body, code := get(t, ts.URL+"/index.html")
 	assert.Equal(t, 200, code)
@@ -73,20 +81,20 @@ func TestRest_GetStarted(t *testing.T) {
 
 func TestRest_Shutdown(t *testing.T) {
 	srv := Rest{Authenticator: &auth.Service{}, ImageProxy: &proxy.Image{}}
-	finished := make(chan bool)
+	done := make(chan bool)
 
 	// without waiting for channel close at the end goroutine will stay alive after test finish
 	// which would create data race with next test
 	go func() {
 		time.Sleep(200 * time.Millisecond)
 		srv.Shutdown()
-		close(finished)
+		close(done)
 	}()
 
 	st := time.Now()
 	srv.Run(0)
 	assert.True(t, time.Since(st).Seconds() < 1, "should take about 100ms")
-	<-finished
+	<-done
 }
 
 func TestRest_filterComments(t *testing.T) {
@@ -105,6 +113,7 @@ func TestRest_filterComments(t *testing.T) {
 }
 
 func TestRest_RunStaticSSLMode(t *testing.T) {
+	sslPort := chooseRandomUnusedPort()
 	srv := Rest{
 		Authenticator: auth.NewService(auth.Opts{
 			AvatarStore:       avatar.NewLocalFS("/tmp"),
@@ -114,18 +123,19 @@ func TestRest_RunStaticSSLMode(t *testing.T) {
 		ImageProxy: &proxy.Image{},
 		SSLConfig: SSLConfig{
 			SSLMode: Static,
-			Port:    8443,
+			Port:    sslPort,
 			Key:     "../../cmd/testdata/key.pem",
 			Cert:    "../../cmd/testdata/cert.pem",
 		},
-		RemarkURL: "https://localhost:8443",
+		RemarkURL: fmt.Sprintf("https://localhost:%d", sslPort),
 	}
 
+	port := chooseRandomUnusedPort()
 	go func() {
-		srv.Run(38080)
+		srv.Run(port)
 	}()
 
-	time.Sleep(100 * time.Millisecond) // let server start
+	waitForHTTPSServerStart(sslPort)
 
 	client := http.Client{
 		// prevent http redirect
@@ -139,40 +149,42 @@ func TestRest_RunStaticSSLMode(t *testing.T) {
 		},
 	}
 
-	resp, err := client.Get("http://localhost:38080/blah?param=1")
-	require.Nil(t, err)
+	resp, err := client.Get(fmt.Sprintf("http://localhost:%d/blah?param=1", port))
+	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 307, resp.StatusCode)
-	assert.Equal(t, "https://localhost:8443/blah?param=1", resp.Header.Get("Location"))
+	assert.Equal(t, fmt.Sprintf("https://localhost:%d/blah?param=1", sslPort), resp.Header.Get("Location"))
 
-	resp, err = client.Get("https://localhost:8443/ping")
-	require.Nil(t, err)
+	resp, err = client.Get(fmt.Sprintf("https://localhost:%d/ping", sslPort))
+	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 200, resp.StatusCode)
 	body, err := ioutil.ReadAll(resp.Body)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, "pong", string(body))
 
 	srv.Shutdown()
 }
 
 func TestRest_RunAutocertModeHTTPOnly(t *testing.T) {
+	sslPort := chooseRandomUnusedPort()
 	srv := Rest{
 		Authenticator: &auth.Service{},
 		ImageProxy:    &proxy.Image{},
 		SSLConfig: SSLConfig{
 			SSLMode: Auto,
-			Port:    8443,
+			Port:    sslPort,
 		},
-		RemarkURL: "https://localhost:8443",
+		RemarkURL: fmt.Sprintf("https://localhost:%d", sslPort),
 	}
 
+	port := chooseRandomUnusedPort()
 	go func() {
 		// can't check https server locally, just only http server
-		srv.Run(38081)
+		srv.Run(port)
 	}()
 
-	time.Sleep(100 * time.Millisecond) // let server start
+	waitForHTTPSServerStart(sslPort)
 
 	client := http.Client{
 		// prevent http redirect
@@ -181,11 +193,11 @@ func TestRest_RunAutocertModeHTTPOnly(t *testing.T) {
 		},
 	}
 
-	resp, err := client.Get("http://localhost:38081/blah?param=1")
-	require.Nil(t, err)
+	resp, err := client.Get(fmt.Sprintf("http://localhost:%d/blah?param=1", port))
+	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 307, resp.StatusCode)
-	assert.Equal(t, "https://localhost:8443/blah?param=1", resp.Header.Get("Location"))
+	assert.Equal(t, fmt.Sprintf("https://localhost:%d/blah?param=1", sslPort), resp.Header.Get("Location"))
 
 	srv.Shutdown()
 }
@@ -285,14 +297,20 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 	log.Setup(log.CallerFile, log.CallerFunc, log.Msec, log.LevelBraces)
 
 	tmp := os.TempDir()
-	testDb := fmt.Sprintf("/%s/test-remark-%d.db", tmp, rand.Int31())
-	os.Remove(testDb)
-	os.Remove(testHTML)
-	os.RemoveAll(tmp + "/ava-remark42")
-	os.RemoveAll(tmp + "/pics-remark42")
+	var testDb string
+	// pick a file name which is not in use for sure
+	for i := 0; i < 10; i++ {
+		testDb = fmt.Sprintf("/%s/test-remark-%d.db", tmp, rand.Int31())
+		_, err := os.Stat(testDb)
+		if err != nil {
+			break
+		}
+	}
+	_ = os.RemoveAll(tmp + "/ava-remark42")
+	_ = os.RemoveAll(tmp + "/pics-remark42")
 
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDb, SiteID: "remark42"})
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	cacheBackend, err := cache.NewExpirableCache()
 	require.NoError(t, err)
@@ -346,22 +364,19 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 			TimeOut:   5 * time.Second,
 			MaxActive: 100,
 		},
-		EmojiEnabled: true,
+		NotifyService: notify.NopService,
+		EmojiEnabled:  true,
 	}
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = -5, -10
-
-	err = ioutil.WriteFile(testHTML, []byte("some html"), 0700)
-	assert.Nil(t, err)
 
 	ts = httptest.NewServer(srv.routes())
 
 	teardown = func() {
 		ts.Close()
 		require.NoError(t, srv.DataService.Close())
-		os.Remove(testDb)
-		os.Remove(testHTML)
-		os.RemoveAll(tmp + "/ava-remark42")
-		os.RemoveAll(tmp + "/pics-remark42")
+		_ = os.Remove(testDb)
+		_ = os.RemoveAll(tmp + "/ava-remark42")
+		_ = os.RemoveAll(tmp + "/pics-remark42")
 	}
 
 	return ts, srv, teardown
@@ -383,10 +398,10 @@ func fakeAuth(next http.Handler) http.Handler {
 
 func get(t *testing.T, url string) (string, int) {
 	r, err := http.Get(url)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	return string(body), r.StatusCode
 }
 
@@ -401,53 +416,53 @@ func sendReq(_ *testing.T, r *http.Request, token string) (*http.Response, error
 func getWithDevAuth(t *testing.T, url string) (body string, code int) {
 	client := &http.Client{Timeout: 5 * time.Second}
 	req, err := http.NewRequest("GET", url, nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	req.Header.Add("X-JWT", devToken)
 	r, err := client.Do(req)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer r.Body.Close()
 	b, err := ioutil.ReadAll(r.Body)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	return string(b), r.StatusCode
 }
 
 func getWithAdminAuth(t *testing.T, url string) (string, int) {
 	client := &http.Client{Timeout: 5 * time.Second}
 	req, err := http.NewRequest("GET", url, nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
 	r, err := client.Do(req)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	return string(body), r.StatusCode
 }
 func post(t *testing.T, url string, body string) (*http.Response, error) {
 	client := &http.Client{Timeout: 5 * time.Second}
 	req, err := http.NewRequest("POST", url, strings.NewReader(body))
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
 	return client.Do(req)
 }
 
 func addComment(t *testing.T, c store.Comment, ts *httptest.Server) string {
 	b, err := json.Marshal(c)
-	require.Nil(t, err, "can't marshal comment %+v", c)
+	require.NoError(t, err, "can't marshal comment %+v", c)
 
 	client := &http.Client{Timeout: 5 * time.Second}
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/comment", bytes.NewBuffer(b))
-	require.Nil(t, err)
+	require.NoError(t, err)
 	req.Header.Add("X-JWT", devToken)
 	resp, err := client.Do(req)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, http.StatusCreated, resp.StatusCode)
 	b, err = ioutil.ReadAll(resp.Body)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	crResp := R.JSON{}
 	err = json.Unmarshal(b, &crResp)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	time.Sleep(time.Nanosecond * 10)
 	return crResp["id"].(string)
 }
@@ -460,4 +475,27 @@ func requireAdminOnly(t *testing.T, req *http.Request) {
 	resp, err = sendReq(t, req, devToken) // non-admin user
 	require.NoError(t, err)
 	assert.Equal(t, 403, resp.StatusCode)
+}
+
+func chooseRandomUnusedPort() (port int) {
+	for i := 0; i < 10; i++ {
+		port = 40000 + int(rand.Int31n(10000))
+		if ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port)); err == nil {
+			_ = ln.Close()
+			break
+		}
+	}
+	return port
+}
+
+func waitForHTTPSServerStart(port int) {
+	// wait for up to 3 seconds for HTTPS server to start
+	for i := 0; i < 300; i++ {
+		time.Sleep(time.Millisecond * 10)
+		conn, _ := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), time.Millisecond*10)
+		if conn != nil {
+			_ = conn.Close()
+			break
+		}
+	}
 }

@@ -1,0 +1,39 @@
+.comment-form__toolbar {
+  display: block;
+  float: right;
+}
+
+.comment-form__toolbar-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.comment-form__toolbar-item {
+  background: none;
+  border: 0;
+  color: #586069;
+  display: block;
+  float: left;
+  padding: 4px 5px;
+
+  &:hover {
+    color: #0aa;
+  }
+}
+
+.comment-form__toolbar-icon {
+  display: inline-block;
+  fill: currentColor;
+}
+
+.comment-form__toolbar-group {
+  display: inline-block;
+  margin-left: 20px;
+}
+
+.comment-form__toolbar-group:first-child {
+  margin-left: 0;
+}

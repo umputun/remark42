@@ -13,7 +13,6 @@ import (
 	"time"
 
 	cache "github.com/go-pkgz/lcw"
-	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -36,14 +35,14 @@ func TestRest_Preview(t *testing.T) {
 	defer teardown()
 
 	resp, err := post(t, ts.URL+"/api/v1/preview", `{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	b, err := ioutil.ReadAll(resp.Body)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, "<p>test 123</p>\n", string(b))
 
 	resp, err = post(t, ts.URL+"/api/v1/preview", "bad")
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 400, resp.StatusCode)
 }
 
@@ -64,13 +63,12 @@ BKT
 	text = strings.Replace(text, "BKT", "```", -1)
 	j := fmt.Sprintf(`{"text": "%s", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, text)
 	j = strings.Replace(j, "\n", "\\n", -1)
-	t.Log(j)
 
 	resp, err := post(t, ts.URL+"/api/v1/preview", j)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	b, err := ioutil.ReadAll(resp.Body)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, "<h1>h1</h1>\n\n<pre><code>func TestRest_Preview(t *testing.T) {\nsrv, ts := prep(t)\n  require.NotNil(t, srv)\n}\n</code></pre>\n", string(b))
 }
 
@@ -82,7 +80,7 @@ func TestRest_Find(t *testing.T) {
 	assert.Equal(t, 200, code)
 	comments := commentsWithInfo{}
 	err := json.Unmarshal([]byte(res), &comments)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 0, len(comments.Comments), "should have 0 comments")
 
 	c1 := store.Comment{Text: "test test #1", ParentID: "",
@@ -100,8 +98,8 @@ func TestRest_Find(t *testing.T) {
 	assert.Equal(t, 200, code)
 	comments = commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
-	assert.Nil(t, err)
-	assert.Equal(t, 2, len(comments.Comments), "should have 2 comments")
+	assert.NoError(t, err)
+	require.Equal(t, 2, len(comments.Comments), "should have 2 comments")
 	assert.Equal(t, id1, comments.Comments[0].ID)
 	assert.Equal(t, id2, comments.Comments[1].ID)
 	assert.Equal(t, "<p>test test #1</p>\n", comments.Comments[0].Text)
@@ -115,8 +113,8 @@ func TestRest_Find(t *testing.T) {
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1&sort=-time")
 	assert.Equal(t, 200, code)
 	err = json.Unmarshal([]byte(res), &comments)
-	assert.Nil(t, err)
-	assert.Equal(t, 2, len(comments.Comments), "should have 2 comments")
+	assert.NoError(t, err)
+	require.Equal(t, 2, len(comments.Comments), "should have 2 comments")
 	assert.Equal(t, id1, comments.Comments[1].ID)
 	assert.Equal(t, id2, comments.Comments[0].ID)
 
@@ -125,8 +123,8 @@ func TestRest_Find(t *testing.T) {
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1&format=tree")
 	assert.Equal(t, 200, code)
 	err = json.Unmarshal([]byte(res), &tree)
-	assert.Nil(t, err)
-	assert.Equal(t, 1, len(tree.Nodes))
+	assert.NoError(t, err)
+	require.Equal(t, 1, len(tree.Nodes))
 	assert.Equal(t, 1, len(tree.Nodes[0].Replies))
 	assert.Equal(t, 2, tree.Info.Count)
 	assert.Equal(t, "https://radio-t.com/blah1", tree.Info.URL)
@@ -140,26 +138,26 @@ func TestRest_FindAge(t *testing.T) {
 	c1 := store.Comment{Text: "test test #1", ParentID: "", Timestamp: time.Now().AddDate(0, 0, -5),
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}, User: store.User{ID: "u1"}}
 	_, err := srv.DataService.Create(c1)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	c2 := store.Comment{Text: "test test #2", ParentID: "", Timestamp: time.Now().AddDate(0, 0, -15),
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah2"}, User: store.User{ID: "u1"}}
 	_, err = srv.DataService.Create(c2)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	tree := service.Tree{}
 
 	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1&format=tree")
 	assert.Equal(t, 200, code)
 	err = json.Unmarshal([]byte(res), &tree)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, "https://radio-t.com/blah1", tree.Info.URL)
 	assert.False(t, tree.Info.ReadOnly, "post is fresh")
 
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah2&format=tree")
 	assert.Equal(t, 200, code)
 	err = json.Unmarshal([]byte(res), &tree)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, "https://radio-t.com/blah2", tree.Info.URL)
 	assert.True(t, tree.Info.ReadOnly, "post is old")
 }
@@ -172,27 +170,27 @@ func TestRest_FindReadOnly(t *testing.T) {
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}, User: store.User{ID: "u1"}}
 	_, err := srv.DataService.Create(c1)
 
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	c2 := store.Comment{Text: "test test #2", ParentID: "", Timestamp: time.Now().AddDate(0, 0, -2),
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah2"}, User: store.User{ID: "u1"}}
 	_, err = srv.DataService.Create(c2)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// set post to read-only
 	client := http.Client{}
 	req, err := http.NewRequest(http.MethodPut,
 		fmt.Sprintf("%s/api/v1/admin/readonly?site=remark42&url=https://radio-t.com/blah1&ro=1", ts.URL), nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
 	_, err = client.Do(req)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	tree := service.Tree{}
 	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1&format=tree")
 	assert.Equal(t, 200, code)
 	err = json.Unmarshal([]byte(res), &tree)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "https://radio-t.com/blah1", tree.Info.URL)
 	assert.True(t, tree.Info.ReadOnly, "post is ro")
 
@@ -200,7 +198,7 @@ func TestRest_FindReadOnly(t *testing.T) {
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah2&format=tree")
 	assert.Equal(t, 200, code)
 	err = json.Unmarshal([]byte(res), &tree)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "https://radio-t.com/blah2", tree.Info.URL)
 	assert.False(t, tree.Info.ReadOnly, "post is writable")
 }
@@ -213,7 +211,7 @@ func TestRest_FindUserView(t *testing.T) {
 	assert.Equal(t, 200, code)
 	comments := commentsWithInfo{}
 	err := json.Unmarshal([]byte(res), &comments)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 0, len(comments.Comments), "should have 0 comments")
 
 	c1 := store.Comment{Text: "test test #1", ParentID: "",
@@ -231,8 +229,8 @@ func TestRest_FindUserView(t *testing.T) {
 	assert.Equal(t, 200, code)
 	comments = commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
-	assert.Nil(t, err)
-	assert.Equal(t, 2, len(comments.Comments), "should have 2 comments")
+	assert.NoError(t, err)
+	require.Equal(t, 2, len(comments.Comments), "should have 2 comments")
 	assert.Equal(t, id1, comments.Comments[0].ID)
 	assert.Equal(t, id2, comments.Comments[1].ID)
 	assert.Equal(t, "dev", comments.Comments[0].User.ID)
@@ -266,8 +264,8 @@ func TestRest_Last(t *testing.T) {
 	assert.Equal(t, 200, code)
 	comments := []store.Comment{}
 	err := json.Unmarshal([]byte(res), &comments)
-	assert.Nil(t, err)
-	assert.Equal(t, 2, len(comments), "should have 2 comments")
+	assert.NoError(t, err)
+	require.Equal(t, 2, len(comments), "should have 2 comments")
 	assert.Equal(t, id1, comments[1].ID)
 	assert.Equal(t, id2, comments[0].ID)
 
@@ -275,8 +273,8 @@ func TestRest_Last(t *testing.T) {
 	assert.Equal(t, 200, code)
 	comments = []store.Comment{}
 	err = json.Unmarshal([]byte(res), &comments)
-	assert.Nil(t, err)
-	assert.Equal(t, 2, len(comments), "should have 2 comments")
+	assert.NoError(t, err)
+	require.Equal(t, 2, len(comments), "should have 2 comments")
 	assert.Equal(t, id1, comments[1].ID)
 	assert.Equal(t, id2, comments[0].ID)
 
@@ -284,31 +282,30 @@ func TestRest_Last(t *testing.T) {
 	assert.Equal(t, 200, code)
 	comments = []store.Comment{}
 	err = json.Unmarshal([]byte(res), &comments)
-	assert.Nil(t, err)
-	assert.Equal(t, 1, len(comments), "should have 1 comments")
+	assert.NoError(t, err)
+	require.Equal(t, 1, len(comments), "should have 1 comments")
 	assert.Equal(t, id2, comments[0].ID)
 
 	res, code = get(t, ts.URL+"/api/v1/last/5?site=remark42")
 	assert.Equal(t, 200, code)
 	err = json.Unmarshal([]byte(res), &comments)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 3, len(comments), "should have 3 comments")
 
 	res, code = get(t, ts.URL+"/api/v1/last/X?site=remark42")
 	assert.Equal(t, 200, code)
 	err = json.Unmarshal([]byte(res), &comments)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 3, len(comments), "should have 3 comments")
 
 	err = srv.DataService.Delete(store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}, id1, store.SoftDelete)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	srv.Cache.Flush(cache.FlusherRequest{})
 	res, code = get(t, ts.URL+"/api/v1/last/5?site=remark42")
 	assert.Equal(t, 200, code)
 	err = json.Unmarshal([]byte(res), &comments)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 2, len(comments), "should have 2 comments")
-	t.Logf("%+v", comments)
 
 	_, code = get(t, ts.URL+"/api/v1/last/2?site=remark42-BLAH")
 	assert.Equal(t, 500, code)
@@ -345,8 +342,8 @@ func TestRest_FindUserComments(t *testing.T) {
 	}{}
 
 	err = json.Unmarshal([]byte(res), &resp)
-	assert.Nil(t, err)
-	assert.Equal(t, 3, len(resp.Comments), "should have 3 comments")
+	assert.NoError(t, err)
+	require.Equal(t, 3, len(resp.Comments), "should have 3 comments")
 	assert.Equal(t, 4, resp.Count, "should have 3 count")
 
 	// user comment sorted with -time
@@ -362,7 +359,7 @@ func TestRest_UserInfo(t *testing.T) {
 	assert.Equal(t, 200, code)
 	user := store.User{}
 	err := json.Unmarshal([]byte(body), &user)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, store.User{Name: "developer one", ID: "dev", Picture: "http://example.com/pic.png",
 		IP: "127.0.0.1", SiteID: "remark42"}, user)
 }
@@ -386,13 +383,13 @@ func TestRest_Count(t *testing.T) {
 	assert.Equal(t, 200, code)
 	j := R.JSON{}
 	err := json.Unmarshal([]byte(body), &j)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 3.0, j["count"])
 
 	body, code = get(t, ts.URL+"/api/v1/count?site=remark42&url=https://radio-t.com/blah2")
 	assert.Equal(t, 200, code)
 	err = json.Unmarshal([]byte(body), &j)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 2.0, j["count"])
 
 	_, code = get(t, ts.URL+"/api/v1/count?site=remark42-BLAH&url=https://radio-t.com/blah1XXX")
@@ -415,15 +412,15 @@ func TestRest_Counts(t *testing.T) {
 	addComment(t, c2, ts)
 
 	resp, err := post(t, ts.URL+"/api/v1/counts?site=remark42", `["https://radio-t.com/blah1","https://radio-t.com/blah2"]`)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	body, err := ioutil.ReadAll(resp.Body)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	j := []store.PostInfo{}
 	err = json.Unmarshal(body, &j)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, []store.PostInfo([]store.PostInfo{{URL: "https://radio-t.com/blah1", Count: 3},
 		{URL: "https://radio-t.com/blah2", Count: 2}}), j)
 
@@ -451,7 +448,7 @@ func TestRest_List(t *testing.T) {
 	assert.Equal(t, 200, code)
 	pi := []store.PostInfo{}
 	err := json.Unmarshal([]byte(body), &pi)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, "https://radio-t.com/blah2", pi[0].URL)
 	assert.Equal(t, 2, pi[0].Count)
 	assert.Equal(t, "https://radio-t.com/blah1", pi[1].URL)
@@ -484,7 +481,7 @@ func TestRest_ListWithSkipAndLimit(t *testing.T) {
 	assert.Equal(t, 200, code)
 	pi := []store.PostInfo{}
 	err := json.Unmarshal([]byte(body), &pi)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	require.Equal(t, 2, len(pi))
 	assert.Equal(t, "https://radio-t.com/blah2", pi[0].URL)
 	assert.Equal(t, 2, pi[0].Count)
@@ -500,7 +497,7 @@ func TestRest_Config(t *testing.T) {
 	assert.Equal(t, 200, code)
 	j := R.JSON{}
 	err := json.Unmarshal([]byte(body), &j)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 300., j["edit_duration"])
 	assert.EqualValues(t, []interface{}([]interface{}{"a1", "a2"}), j["admins"])
 	assert.Equal(t, "admin@remark-42.com", j["admin_email"])
@@ -511,7 +508,6 @@ func TestRest_Config(t *testing.T) {
 	assert.Equal(t, 10., j["readonly_age"])
 	assert.Equal(t, 10000., j["max_image_size"])
 	assert.Equal(t, true, j["emoji_enabled"].(bool))
-	t.Logf("%+v", j)
 }
 
 func TestRest_Info(t *testing.T) {
@@ -529,18 +525,18 @@ func TestRest_Info(t *testing.T) {
 		URL: "https://radio-t.com/blah1"}, Timestamp: time.Date(2018, 05, 27, 1, 14, 25, 0, time.Local)}
 
 	_, err := srv.DataService.Create(c1)
-	require.Nil(t, err, "%+v", err)
+	require.NoError(t, err, "%+v", err)
 	_, err = srv.DataService.Create(c2)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	_, err = srv.DataService.Create(c3)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	body, code := get(t, ts.URL+"/api/v1/info?site=remark42&url=https://radio-t.com/blah1")
 	assert.Equal(t, 200, code)
 
 	info := store.PostInfo{}
 	err = json.Unmarshal([]byte(body), &info)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	exp := store.PostInfo{URL: "https://radio-t.com/blah1", Count: 3,
 		FirstTS: time.Date(2018, 05, 27, 1, 14, 10, 0, time.Local), LastTS: time.Date(2018, 05, 27, 1, 14, 25, 0, time.Local)}
 	assert.Equal(t, exp, info)
@@ -561,10 +557,9 @@ func TestRest_InfoStream(t *testing.T) {
 
 	postComment(t, ts.URL)
 
-	wg := sync.WaitGroup{}
-	wg.Add(1)
+	done := make(chan struct{})
 	go func() {
-		defer wg.Done()
+		defer close(done)
 		for i := 0; i < 10; i++ {
 			time.Sleep(10 * time.Millisecond)
 			postComment(t, ts.URL)
@@ -573,9 +568,8 @@ func TestRest_InfoStream(t *testing.T) {
 
 	body, code := get(t, ts.URL+"/api/v1/stream/info?site=remark42&url=https://radio-t.com/blah1")
 	assert.Equal(t, 200, code)
-	wg.Wait()
+	<-done
 
-	t.Logf(string(body))
 	recs := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
 	require.Equal(t, 10*3, len(recs), "10 records. each 2 lines +1 emty line")
 	assert.True(t, strings.Contains(recs[0+1], `"count":2`), recs[0])
@@ -631,41 +625,38 @@ func TestRest_InfoStreamCancel(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
 	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
-	srv.pubRest.streamer.Refresh = 5 * time.Millisecond
+	srv.pubRest.streamer.Refresh = 10 * time.Millisecond
 	srv.pubRest.streamer.TimeOut = 1500 * time.Millisecond
 	srv.pubRest.streamer.MaxActive = 100
 
 	postComment(t, ts.URL)
 
-	wg := sync.WaitGroup{}
-	wg.Add(1)
+	done := make(chan struct{})
 	go func() {
-		defer wg.Done()
+		defer close(done)
 		for i := 0; i < 5; i++ {
-			time.Sleep(200 * time.Millisecond)
+			time.Sleep(300 * time.Millisecond)
 			postComment(t, ts.URL)
-			log.Printf("write #%d", i)
 		}
 	}()
 
 	client := http.Client{}
 	req, err := http.NewRequest("GET", ts.URL+"/api/v1/stream/info?site=remark42&url=https://radio-t.com/blah1", nil)
 	require.NoError(t, err)
-	ctx, cancel := context.WithTimeout(context.Background(), 350*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 1000*time.Millisecond)
 	defer cancel()
 	req = req.WithContext(ctx)
 	r, err := client.Do(req)
 	require.NoError(t, err)
 	defer r.Body.Close()
+	<-ctx.Done()
+	<-done
 	body, err := ioutil.ReadAll(r.Body)
 	require.EqualError(t, err, "context deadline exceeded")
 	assert.Equal(t, 200, r.StatusCode)
 
-	wg.Wait()
-
 	recs := strings.Count(string(body), "data:")
-	t.Logf("%s", string(body))
-	require.Equal(t, 1, recs, "should have 1 events")
+	require.Equal(t, 1, recs, "should have 1 event:\n", string(body))
 	assert.Contains(t, string(body), `"count":2`)
 }
 
@@ -679,22 +670,19 @@ func TestRest_InfoStreamSince(t *testing.T) {
 
 	postComment(t, ts.URL)
 
-	wg := sync.WaitGroup{}
-	wg.Add(1)
+	done := make(chan struct{})
 	go func() {
-		defer wg.Done()
+		defer close(done)
 		for i := 0; i < 10; i++ {
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(15 * time.Millisecond)
 			postComment(t, ts.URL)
 		}
 	}()
 
 	body, code := get(t, ts.URL+"/api/v1/stream/info?site=remark42&url=https://radio-t.com/blah1&since=12345678")
 	assert.Equal(t, 200, code)
-	wg.Wait()
-
-	t.Logf(string(body))
-	recs := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
+	<-done
+	recs := strings.Split(strings.TrimSuffix(body, "\n"), "\n")
 	require.Equal(t, 11*3, len(recs), "include first record, total 11 records. each 2 lines +1 empty line")
 }
 
@@ -719,10 +707,9 @@ func TestRest_LastCommentsStream(t *testing.T) {
 	postComment(t, ts.URL)
 
 	defer teardown()
-	wg := sync.WaitGroup{}
-	wg.Add(1)
+	done := make(chan struct{})
 	go func() {
-		defer wg.Done()
+		defer close(done)
 		for i := 1; i < 10; i++ {
 			time.Sleep(100 * time.Millisecond)
 			postComment(t, ts.URL)
@@ -731,22 +718,20 @@ func TestRest_LastCommentsStream(t *testing.T) {
 
 	client := http.Client{}
 	req, err := http.NewRequest("GET", ts.URL+"/api/v1/stream/last?site=remark42", nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	r, err := client.Do(req)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer r.Body.Close()
+	<-done
 	body, err := ioutil.ReadAll(r.Body)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 200, r.StatusCode)
 
-	wg.Wait()
-	t.Logf("headers: %+v", r.Header)
 	assert.Equal(t, "text/event-stream", r.Header.Get("content-type"))
 	assert.Equal(t, "keep-alive", r.Header.Get("connection"))
 
 	recs := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
 	require.Equal(t, 9*3, len(recs), "9 events")
-	t.Logf("%s", string(body))
 	assert.True(t, strings.Contains(recs[1], `test 123`), recs[1])
 }
 
@@ -776,10 +761,9 @@ func TestRest_LastCommentsStreamCancel(t *testing.T) {
 	postComment(t, ts.URL)
 
 	defer teardown()
-	wg := sync.WaitGroup{}
-	wg.Add(1)
+	done := make(chan struct{})
 	go func() {
-		defer wg.Done()
+		defer close(done)
 		for i := 1; i < 10; i++ {
 			time.Sleep(100 * time.Millisecond)
 			postComment(t, ts.URL)
@@ -788,18 +772,17 @@ func TestRest_LastCommentsStreamCancel(t *testing.T) {
 
 	client := http.Client{}
 	req, err := http.NewRequest("GET", ts.URL+"/api/v1/stream/last?site=remark42", nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	ctx, cancel := context.WithTimeout(context.Background(), 290*time.Millisecond)
 	defer cancel()
 	req = req.WithContext(ctx)
 	r, err := client.Do(req)
-	require.Nil(t, err)
+	require.NoError(t, err)
+	<-done
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
 	require.EqualError(t, err, "context deadline exceeded")
 	assert.Equal(t, 200, r.StatusCode)
-
-	wg.Wait()
 
 	recs := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
 	assert.True(t, len(recs) < 30, "less 10 events")
@@ -844,40 +827,37 @@ func TestRest_LastCommentsStreamSince(t *testing.T) {
 	postComment(t, ts.URL)
 
 	defer teardown()
-	wg := sync.WaitGroup{}
-	wg.Add(1)
+	done := make(chan struct{})
 	go func() {
-		defer wg.Done()
+		defer close(done)
 		for i := 1; i < 10; i++ {
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(50 * time.Millisecond)
 			postComment(t, ts.URL)
 		}
 	}()
 
 	client := http.Client{}
 	req, err := http.NewRequest("GET", ts.URL+"/api/v1/stream/last?site=remark42&since=123456", nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	r, err := client.Do(req)
-	require.Nil(t, err)
+	require.NoError(t, err)
+	<-done
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 200, r.StatusCode)
 
-	wg.Wait()
-	t.Logf("headers: %+v", r.Header)
 	assert.Equal(t, "text/event-stream", r.Header.Get("content-type"))
 
 	recs := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
-	require.Equal(t, 10*3, len(recs), "10 events, includes first record")
-	t.Logf("%v", recs)
+	require.Equal(t, 10*3, len(recs), "should be 10 events, including first record:\n", recs)
 }
 
 func postComment(t *testing.T, url string) {
-	resp, e := post(t, url+"/api/v1/comment",
+	resp, err := post(t, url+"/api/v1/comment",
 		`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`)
-	require.Nil(t, e)
-	b, e := ioutil.ReadAll(resp.Body)
-	require.Nil(t, e)
+	require.NoError(t, err)
+	b, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
 	require.Equal(t, http.StatusCreated, resp.StatusCode, string(b))
 }

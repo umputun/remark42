@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBackup_RemoveOldBackupFiles(t *testing.T) {
@@ -21,17 +22,17 @@ func TestBackup_RemoveOldBackupFiles(t *testing.T) {
 	for i := 1; i <= 10; i++ {
 		fname := fmt.Sprintf("%s/backup-site1-201712%02d.gz", loc, i)
 		err := ioutil.WriteFile(fname, []byte("blah"), 0600)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 	}
 	fname := fmt.Sprintf("%s/backup-site2-20171210.gz", loc)
 	err := ioutil.WriteFile(fname, []byte("blah"), 0600)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	bk := AutoBackup{BackupLocation: loc, SiteID: "site1", KeepMax: 3}
 	bk.removeOldBackupFiles()
 	ff, err := ioutil.ReadDir(loc)
-	assert.Nil(t, err)
-	assert.Equal(t, 4, len(ff), "should keep 4 files - 3 kept for sit1, and one for site2")
+	assert.NoError(t, err)
+	require.Equal(t, 4, len(ff), "should keep 4 files - 3 kept for sit1, and one for site2")
 	assert.Equal(t, "backup-site1-20171208.gz", ff[0].Name())
 	assert.Equal(t, "backup-site1-20171209.gz", ff[1].Name())
 	assert.Equal(t, "backup-site1-20171210.gz", ff[2].Name())

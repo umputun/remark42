@@ -31,7 +31,7 @@ func TestExport_ParseFileName(t *testing.T) {
 	for i, tt := range tbl {
 		r, err := tt.p.parse(now)
 		if tt.err {
-			assert.NotNil(t, err)
+			assert.Error(t, err)
 			continue
 		}
 		assert.Equal(t, tt.res, r, "check #%d", i)

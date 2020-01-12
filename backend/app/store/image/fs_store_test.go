@@ -138,7 +138,7 @@ func TestFsStore_SaveAndCommit(t *testing.T) {
 
 	imgStaging := svc.location(svc.Staging, id)
 	_, err = os.Stat(imgStaging)
-	assert.NotNil(t, err, "no file on staging anymore")
+	assert.Error(t, err, "no file on staging anymore")
 
 	img := svc.location(svc.Location, id)
 	t.Log(img)
@@ -173,7 +173,7 @@ func TestFsStore_LoadAfterSave(t *testing.T) {
 	assert.Equal(t, 1462, len(data))
 	assert.Equal(t, int64(1462), sz)
 	_, _, err = svc.Load("abcd")
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 }
 
 func TestFsStore_LoadAfterCommit(t *testing.T) {
@@ -195,7 +195,7 @@ func TestFsStore_LoadAfterCommit(t *testing.T) {
 	assert.Equal(t, 1462, len(data))
 	assert.Equal(t, int64(1462), sz)
 	_, _, err = svc.Load("abcd")
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 }
 
 func TestFsStore_location(t *testing.T) {
@@ -268,9 +268,15 @@ func TestFsStore_Cleanup(t *testing.T) {
 	assert.NoError(t, err)
 
 	_, err = os.Stat(img1)
-	assert.NotNil(t, err, "no file on staging anymore")
+	assert.Error(t, err, "no file on staging anymore")
+	// sometimes two images for user1 are put into same directory, which means that
+	// after first image cleanup it's not empty and won't be deleted
 	_, err = os.Stat(path.Dir(img1))
-	assert.NotNil(t, err, "no dir %s on staging anymore", path.Dir(img1))
+	if path.Dir(img1) != path.Dir(img2) {
+		assert.Error(t, err, "no dir %s on staging anymore", path.Dir(img1))
+	} else {
+		assert.NoError(t, err, "dir %s still on staging", path.Dir(img1))
+	}
 
 	_, err = os.Stat(img2)
 	assert.NoError(t, err, "file on staging")
@@ -282,9 +288,9 @@ func TestFsStore_Cleanup(t *testing.T) {
 	assert.NoError(t, err)
 
 	_, err = os.Stat(img2)
-	assert.NotNil(t, err, "no file on staging anymore")
+	assert.Error(t, err, "no file on staging anymore")
 	_, err = os.Stat(img3)
-	assert.NotNil(t, err, "no file on staging anymore")
+	assert.Error(t, err, "no file on staging anymore")
 }
 
 func prepareImageTest(t *testing.T) (svc *FileSystem, teardown func()) {
