@@ -59,6 +59,7 @@ jobs:
 
       - name: run backend linters for examples
         run: |
+          pwd && ls -alt
           $GITHUB_WORKSPACE/golangci-lint run --config ${GITHUB_WORKSPACE}/.golangci.yml ./...
         working-directory: _example/memory_store
 
