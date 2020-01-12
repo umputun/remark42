@@ -112,7 +112,10 @@ module.exports = () => ({
           {
             loader: 'css-loader',
             options: {
-              modules: true,
+              modules: {
+                mode: `local`,
+                localIdentName: `${NODE_ID}__[name]__[local]`,
+              },
             },
           },
           postCssLoader(false),

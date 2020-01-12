@@ -1,5 +1,5 @@
 /** @jsx createElement */
-import { createElement, RenderableProps, Fragment, render } from 'preact';
+import { createElement, Fragment, render, FunctionalComponent } from 'preact';
 import { StaticStore } from '@app/common/static_store';
 import { useEffect, useRef } from 'preact/hooks';
 import '@github/text-expander-element';
@@ -64,7 +64,7 @@ type ValueListerEvent = Event & {
   };
 };
 
-export function TextExpander({ children }: RenderableProps<void>) {
+export const TextExpander: FunctionalComponent = ({ children }) => {
   const expanderRef = useRef<HTMLElement>();
   const theme = useTheme();
   useEffect(() => {
@@ -99,4 +99,4 @@ export function TextExpander({ children }: RenderableProps<void>) {
   }
 
   return <Fragment>{children}</Fragment>;
-}
+};
