@@ -49,28 +49,13 @@ jobs:
         run: |
           curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh| sh -s -- -b $GITHUB_WORKSPACE v1.20.0
           go get -u github.com/mattn/goveralls
-      - name: run backend linters for backend code
+
+      - name: run backend linters
         run: |
+          cd backend
           $GITHUB_WORKSPACE/golangci-lint run --config ${GITHUB_WORKSPACE}/.golangci.yml ./...
-        working-directory: ./backend
-
-      - name: run backend linters for example
-        run: |
-          $GITHUB_WORKSPACE/golangci-lint run --config ${GITHUB_WORKSPACE}/.golangci.yml ./... ;
-        working-directory: ./backend/_example/memory_store
-
-      # - name: run backend linters
-      #   run: |
-      #     cd backend
-      #     $GITHUB_WORKSPACE/golangci-lint run --out-format=tab --disable-all --tests=false --enable=unconvert \
-      #       --enable=megacheck --enable=structcheck --enable=gas --enable=gocyclo --enable=dupl --enable=misspell \
-      #       --enable=unparam --enable=varcheck --enable=deadcode --enable=typecheck \
-      #       --enable=ineffassign --enable=varcheck ./... ;
-      #     cd _example/memory_store
-      #     $GITHUB_WORKSPACE/golangci-lint run --out-format=tab --disable-all --tests=false --enable=unconvert \
-      #       --enable=megacheck --enable=structcheck --enable=gas --enable=gocyclo --enable=dupl --enable=misspell \
-      #       --enable=unparam --enable=varcheck --enable=deadcode --enable=typecheck \
-      #       --enable=ineffassign --enable=varcheck ./... ;
+          cd _example/memory_store
+          $GITHUB_WORKSPACE/golangci-lint run --config ${GITHUB_WORKSPACE}/.golangci.yml ./...
 
       - name: submit coverage
         run: |
