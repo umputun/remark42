@@ -52,13 +52,16 @@ jobs:
           curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh| sh -s -- -b $GITHUB_WORKSPACE v1.20.0
           go get -u github.com/mattn/goveralls
 
-      - name: run backend linters
+      - name: run backend linters for backend
         run: |
-          cd backend
           $GITHUB_WORKSPACE/golangci-lint run --config ${GITHUB_WORKSPACE}/.golangci.yml ./...
-          cd _example/memory_store
-          $GITHUB_WORKSPACE/golangci-lint run --config ${GITHUB_WORKSPACE}/.golangci.yml ./...
+        working-directory: backend
 
+      - name: run backend linters for examples
+        run: |
+          $GITHUB_WORKSPACE/golangci-lint run --config ${GITHUB_WORKSPACE}/.golangci.yml ./...
+        working-directory:  _example/memory_store
+        
       - name: submit coverage
         run: |
           cd backend
