@@ -26,15 +26,15 @@ func TestEmailNew(t *testing.T) {
 	}{
 		{name: "empty"},
 		{name: "with template parse error",
-			err: true, errText: "can't parse message template: template: messageFromRequest:1: unexpected unclosed action in command",
+			err: true, errText: "can't parse message template: open ./reply.html.tmpl: no such file or directory",
 			emailParams: EmailParams{
-				MsgTemplate: "{{",
+				MsgTemplatePath: "./reply.html.tmpl",
 			}},
 		{name: "with verification template parse error",
-			err: true, errText: "can't parse verification template: template: messageFromRequest:1: unexpected unclosed action in command",
+			err: true, errText: "can't parse verification template: open ./verification.html.tmpl: no such file or directory",
 			emailParams: EmailParams{
-				From:                 "test@from",
-				VerificationTemplate: "{{",
+				From:                     "test@from",
+				VerificationTemplatePath: "./verification.html.tmpl",
 			},
 			smtpParams: SmtpParams{
 				Host:     "test@host",
@@ -74,9 +74,9 @@ func TestEmailNew(t *testing.T) {
 				assert.NoError(t, err)
 				assert.NotNil(t, email, "email returned")
 
+				assert.Equal(t, defaultEmailTemplatePath, email.EmailParams.MsgTemplatePath, "empty emailParams.MsgTemplatePath changed to default")
+				// assert.Equal(t, defaultEmailVerificationTemplatePath, email.EmailParams.VerificationTemplatePath, "empty emailParams.VerificationTemplatePath changed to default")
 				assert.NotNil(t, email.msgTmpl, "e.template is set")
-				assert.Equal(t, defaultEmailTemplate, email.EmailParams.MsgTemplate, "empty emailParams.MsgTemplate changed to default")
-				assert.Equal(t, defaultEmailVerificationTemplate, email.EmailParams.VerificationTemplate, "empty emailParams.VerificationTemplate changed to default")
 				assert.Equal(t, d.emailParams.From, email.EmailParams.From, "emailParams.From unchanged after creation")
 				if d.smtpParams.TimeOut == 0 {
 					assert.Equal(t, defaultEmailTimeout, email.TimeOut, "empty emailParams.TimeOut changed to default")
@@ -102,14 +102,14 @@ func TestEmailSendErrors(t *testing.T) {
 	assert.NoError(t, err)
 	assert.EqualError(t, e.Send(context.Background(), Request{Email: "bad@example.org", Verification: VerificationMetadata{Token: "some"}}),
 		"error executing template to build verification message: template: test:1:2: executing \"test\" at <.Test>: can't evaluate field Test in type notify.verifyTmplData")
-	e.verifyTmpl, err = template.New("test").Parse(defaultEmailVerificationTemplate)
+	e.verifyTmpl, err = template.ParseFiles(defaultEmailVerificationTemplatePath)
 	assert.NoError(t, err)
 
 	e.msgTmpl, err = template.New("test").Parse("{{.Test}}")
 	assert.NoError(t, err)
 	assert.EqualError(t, e.Send(context.Background(), Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "test"}}, Email: "bad@example.org"}),
 		"error executing template to build comment reply message: template: test:1:2: executing \"test\" at <.Test>: can't evaluate field Test in type notify.msgTmplData")
-	e.msgTmpl, err = template.New("test").Parse(defaultEmailTemplate)
+	e.msgTmpl, err = template.New("test").Parse(defaultEmailTemplatePath)
 	assert.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -120,7 +120,7 @@ func TestEmailSendErrors(t *testing.T) {
 	e.smtp = &fakeTestSMTP{}
 	assert.EqualError(t, e.Send(context.Background(), Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "error"}}, Email: "bad@example.org"}),
 		"error creating token for unsubscribe link: token generation error")
-	e.msgTmpl, err = template.New("test").Parse(defaultEmailTemplate)
+	e.msgTmpl, err = template.New("test").Parse(defaultEmailTemplatePath)
 	assert.NoError(t, err)
 }
 

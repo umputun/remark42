@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <style>
+      img {
+        max-width: 100%;
+        max-height: 250px;
+        margin: 5px 0;
+        display: block;
+      }
+      a {
+        text-decoration: none;
+        color: #8cd4d4;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      style="font-family: Helvetica, Arial, sans-serif; font-size: 18px; width: 100%; max-width: 640px; margin: auto;"
+    >
+      <h2
+        style="text-align: center; position: relative; color: #0aa; margin-top: 10px; margin-bottom: 10px;"
+      >
+        Remark42
+      </h2>
+      <div style="font-size: 16px; margin-bottom: 10px;">
+        New reply from {{.UserName}} on your comment{{if .PostTitle}} to
+        «{{.PostTitle}}»{{end}}
+      </div>
+      <div
+        style="background-color: #eee; padding: 15px 20px 20px 20px; border-radius: 3px;"
+      >
+        <div>
+          <div style="overflow: auto; margin-bottom: 6px;">
+            <img
+              src="{{.ParentUserPicture}}"
+              style="width: 24px; height: 24px; float: left; margin-right: 8px; border-radius: 3px; background-color: #ccc;"
+            />
+            <span
+              style="font-size: 14px; font-weight: bold; line-height: 24px; color: #777"
+              >{{.ParentUserName}}</span
+            >
+            <span
+              style="color: #999; font-size: 14px; line-height: 24px; margin: 0 8px;"
+              >{{.CommentDate}}</span
+            >
+            <a
+              href="{{.ParentCommentLink}}"
+              style="font-size: 14px; line-height: 24px;"
+              ><b>Show</b></a
+            >
+          </div>
+          <div
+            style="font-size: 16px; background-color: #fff; margin: 0; padding: 8px; word-break: break-all; border-radius: 3px; line-height: 1.3;"
+          >
+            {{.ParentCommentText}}
+          </div>
+        </div>
+        <div
+          style="padding-left: 20px; border-left: 1px dotted rgba(0,0,0,0.15); margin-top: 15px; padding-top: 5px; padding-bottom: 10px;"
+        >
+          <div style="overflow: auto; margin-bottom: 6px;">
+            <img
+              src="{{.UserPicture}}"
+              style="width: 24px; height: 24px; float: left; margin-right: 8px; border-radius: 3px; background-color: #ccc;"
+            />
+            <div
+              style="float: left; font-size: 14px; font-weight: bold; line-height: 24px; color: #777"
+            >
+              {{.UserName}}
+            </div>
+            <div
+              style="color: #999; font-size: 14px; line-height: 24px; margin: 0 8px; float: left;"
+            >
+              {{.CommentDate}}
+            </div>
+            <a
+              href="{{.CommentLink}}"
+              style="font-size: 14px; line-height: 24px;"
+              ><b>Reply</b></a
+            >
+          </div>
+          <div
+            style="font-size: 16px; background-color: #fff; margin: 0; padding: 8px; word-break: break-all; border-radius: 3px;  line-height: 1.3;"
+          >
+            {{.CommentText}}
+          </div>
+        </div>
+      </div>
+      <div style="text-align: center; font-size: 16px; margin-top: 15px;">
+        <i
+          >Sent to<a
+            style="color:inherit; text-decoration: none"
+            href="mailto:{{.Email}}"
+            >{{.Email}}</a
+          >
+          for {{.ParentUserName}}</i
+        >
+        <div
+          style=" margin: auto; width: 150px; border-top: 1px solid rgba(0, 0, 0, 0.15); padding-top: 15px; margin-top: 15px;"
+        >
+          <a href="{{.UnsubscribeLink}}">Unsubscribe</a>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

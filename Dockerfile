@@ -68,6 +68,7 @@ ADD backend/scripts/restore.sh /usr/local/bin/restore
 ADD backend/scripts/import.sh /usr/local/bin/import
 RUN chmod +x /entrypoint.sh /usr/local/bin/backup /usr/local/bin/restore /usr/local/bin/import
 
+COPY --from=build-backend /build/backend/app/notify/templates /srv/templates
 COPY --from=build-backend /build/backend/remark42 /srv/remark42
 COPY --from=build-frontend /srv/frontend/public/ /srv/web
 RUN chown -R app:app /srv
