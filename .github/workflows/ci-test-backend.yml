@@ -8,11 +8,13 @@ on:
       - '.github/workflows/ci-test-backend.yml'
       - 'backend/**'
       - '!backend/scripts/**'
+      - '.golangci.yml'
   pull_request:
     paths:
       - '.github/workflows/ci-test-backend.yml'
       - 'backend/**'
       - '!backend/scripts/**'
+      - '.golangci.yml'
 
 jobs:
   backend:
