@@ -1,3 +1,11 @@
 .thread_theme_dark {
-  border-left-color: rgba(255, 255, 255, 0.35);
+  .thread__collapse {
+    &:after {
+      border-color: #505050;
+    }
+
+    &:hover:after {
+      border-color: #fff;
+    }
+  }
 }

@@ -22,7 +22,6 @@ import {
   putVote,
   setCommentMode,
 } from '@app/store/comments/actions';
-import { setCollapse } from '@app/store/thread/actions';
 import { blockUser, unblockUser, hideUser, setVerifiedStatus } from '@app/store/user/actions';
 
 import { Comment, Props } from './comment';
@@ -65,7 +64,6 @@ export const boundActions = bindActions({
   updateComment,
   removeComment,
   setReplyEditState: setCommentMode,
-  setCollapse,
   setPinState,
   putCommentVote: putVote,
   blockUser,

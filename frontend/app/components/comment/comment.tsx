@@ -296,12 +296,6 @@ export class Comment extends Component<Props, State> {
     }
   };
 
-  toggleCollapse = () => {
-    this.props.setReplyEditState!({ id: this.props.data.id, state: CommentMode.None });
-
-    this.props.setCollapse!(this.props.data.id, !this.props.collapsed);
-  };
-
   copyComment = () => {
     const username = this.props.data.user.name;
     const time = this.props.data.time;
@@ -514,6 +508,7 @@ export class Comment extends Component<Props, State> {
       editing: props.view === 'main' && isEditing,
       theme: props.view === 'preview' ? null : props.theme,
       level: props.level,
+      collapsed: props.collapsed,
     };
 
     if (props.view === 'preview') {
@@ -572,96 +567,88 @@ export class Comment extends Component<Props, State> {
             </a>
           </div>
         )}
-        <div className="comment__body">
-          <div className="comment__info">
-            {props.view !== 'user' && <AvatarIcon theme={this.props.theme} picture={o.user.picture} />}
+        <div className="comment__info">
+          {props.view !== 'user' && (
+            <AvatarIcon mix="comment__avatar" theme={this.props.theme} picture={o.user.picture} />
+          )}
 
-            {props.view !== 'user' && (
-              <span
-                {...getHandleClickProps(this.toggleUserInfoVisibility)}
-                className="comment__username"
-                title={o.user.id}
-              >
-                {o.user.name}
-              </span>
-            )}
-
-            {isAdmin && props.view !== 'user' && (
-              <span
-                {...getHandleClickProps(this.toggleVerify)}
-                aria-label="Toggle verification"
-                title={o.user.verified ? 'Verified user' : 'Unverified user'}
-                className={b('comment__verification', {}, { active: o.user.verified, clickable: true })}
-              />
-            )}
-
-            {!isAdmin && !!o.user.verified && props.view !== 'user' && (
-              <span title="Verified user" className={b('comment__verification', {}, { active: true })} />
-            )}
-
-            <a href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`} className="comment__time">
-              {o.time}
-            </a>
-
-            {!!props.level && props.level > 0 && props.view === 'main' && (
-              <a
-                className="comment__link-to-parent"
-                href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.pid}`}
-                aria-label="Go to parent comment"
-                title="Go to parent comment"
-                onClick={e => this.scrollToParent(e)}
-              >
-                {' '}
-              </a>
-            )}
-
-            {props.isUserBanned && props.view !== 'user' && <span className="comment__status">Blocked</span>}
-
-            {isAdmin && !props.isUserBanned && props.data.delete && <span className="comment__status">Deleted</span>}
-
-            {!props.disabled && props.view === 'main' && (
-              <span
-                {...getHandleClickProps(this.toggleCollapse)}
-                className={b('comment__action', {}, { type: 'collapse', selected: props.collapsed })}
-              >
-                {props.collapsed ? '+' : '−'}
-              </span>
-            )}
-
-            <span className={b('comment__score', {}, { view: o.score.view })}>
-              <span
-                className={b(
-                  'comment__vote',
-                  {},
-                  { type: 'up', selected: state.scoreDelta === 1, disabled: isUpvotingDisabled }
-                )}
-                aria-disabled={state.scoreDelta === 1 || isUpvotingDisabled ? 'true' : 'false'}
-                {...getHandleClickProps(isUpvotingDisabled ? undefined : this.increaseScore)}
-                title={upvotingDisabledReason || undefined}
-              >
-                Vote up
-              </span>
-
-              <span className="comment__score-value" title={o.controversyText}>
-                {o.score.sign}
-                {o.score.value}
-              </span>
-
-              <span
-                className={b(
-                  'comment__vote',
-                  {},
-                  { type: 'down', selected: state.scoreDelta === -1, disabled: isDownvotingDisabled }
-                )}
-                aria-disabled={state.scoreDelta === -1 || isUpvotingDisabled ? 'true' : 'false'}
-                {...getHandleClickProps(isDownvotingDisabled ? undefined : this.decreaseScore)}
-                title={downvotingDisabledReason || undefined}
-              >
-                Vote down
-              </span>
+          {props.view !== 'user' && (
+            <span
+              {...getHandleClickProps(this.toggleUserInfoVisibility)}
+              className="comment__username"
+              title={o.user.id}
+            >
+              {o.user.name}
             </span>
-          </div>
+          )}
 
+          {isAdmin && props.view !== 'user' && (
+            <span
+              {...getHandleClickProps(this.toggleVerify)}
+              aria-label="Toggle verification"
+              title={o.user.verified ? 'Verified user' : 'Unverified user'}
+              className={b('comment__verification', {}, { active: o.user.verified, clickable: true })}
+            />
+          )}
+
+          {!isAdmin && !!o.user.verified && props.view !== 'user' && (
+            <span title="Verified user" className={b('comment__verification', {}, { active: true })} />
+          )}
+
+          <a href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`} className="comment__time">
+            {o.time}
+          </a>
+
+          {!!props.level && props.level > 0 && props.view === 'main' && (
+            <a
+              className="comment__link-to-parent"
+              href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.pid}`}
+              aria-label="Go to parent comment"
+              title="Go to parent comment"
+              onClick={e => this.scrollToParent(e)}
+            >
+              {' '}
+            </a>
+          )}
+
+          {props.isUserBanned && props.view !== 'user' && <span className="comment__status">Blocked</span>}
+
+          {isAdmin && !props.isUserBanned && props.data.delete && <span className="comment__status">Deleted</span>}
+
+          <span className={b('comment__score', {}, { view: o.score.view })}>
+            <span
+              className={b(
+                'comment__vote',
+                {},
+                { type: 'up', selected: state.scoreDelta === 1, disabled: isUpvotingDisabled }
+              )}
+              aria-disabled={state.scoreDelta === 1 || isUpvotingDisabled ? 'true' : 'false'}
+              {...getHandleClickProps(isUpvotingDisabled ? undefined : this.increaseScore)}
+              title={upvotingDisabledReason || undefined}
+            >
+              Vote up
+            </span>
+
+            <span className="comment__score-value" title={o.controversyText}>
+              {o.score.sign}
+              {o.score.value}
+            </span>
+
+            <span
+              className={b(
+                'comment__vote',
+                {},
+                { type: 'down', selected: state.scoreDelta === -1, disabled: isDownvotingDisabled }
+              )}
+              aria-disabled={state.scoreDelta === -1 || isUpvotingDisabled ? 'true' : 'false'}
+              {...getHandleClickProps(isDownvotingDisabled ? undefined : this.decreaseScore)}
+              title={downvotingDisabledReason || undefined}
+            >
+              Vote down
+            </span>
+          </span>
+        </div>
+        <div className="comment__body">
           {!!state.voteErrorMessage && (
             <div className="voting__error" role="alert">
               Voting error: {state.voteErrorMessage}
