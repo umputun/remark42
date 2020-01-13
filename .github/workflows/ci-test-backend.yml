@@ -53,8 +53,7 @@ jobs:
           go get -u github.com/mattn/goveralls
 
       - name: run backend linters
-        run: |
-          $GITHUB_WORKSPACE/golangci-lint run --config .golangci.yml ./...
+        run: $GITHUB_WORKSPACE/golangci-lint run --config .golangci.yml ./...
         working-directory: backend
 
       - name: run linters for examples
