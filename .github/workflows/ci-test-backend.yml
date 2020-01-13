@@ -8,18 +8,20 @@ on:
       - '.github/workflows/ci-test-backend.yml'
       - 'backend/**'
       - '!backend/scripts/**'
+      - '.golangci.yml'
   pull_request:
     paths:
       - '.github/workflows/ci-test-backend.yml'
       - 'backend/**'
       - '!backend/scripts/**'
+      - '.golangci.yml'
 
 jobs:
   backend:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
 
       - name: debug if needed
         run: |
@@ -51,21 +53,15 @@ jobs:
           go get -u github.com/mattn/goveralls
 
       - name: run backend linters
-        run: |
-          cd backend
-          $GITHUB_WORKSPACE/golangci-lint run --out-format=tab --disable-all --tests=false --enable=unconvert \
-            --enable=megacheck --enable=structcheck --enable=gas --enable=gocyclo --enable=dupl --enable=misspell \
-            --enable=unparam --enable=varcheck --enable=deadcode --enable=typecheck \
-            --enable=ineffassign --enable=varcheck ./... ;
-          cd _example/memory_store
-          $GITHUB_WORKSPACE/golangci-lint run --out-format=tab --disable-all --tests=false --enable=unconvert \
-            --enable=megacheck --enable=structcheck --enable=gas --enable=gocyclo --enable=dupl --enable=misspell \
-            --enable=unparam --enable=varcheck --enable=deadcode --enable=typecheck \
-            --enable=ineffassign --enable=varcheck ./... ;
+        run: $GITHUB_WORKSPACE/golangci-lint run --config .golangci.yml ./...
+        working-directory: backend
+
+      - name: run linters for examples
+        run: $GITHUB_WORKSPACE/golangci-lint run --config ${GITHUB_WORKSPACE}/backend/.golangci.yml ./...
+        working-directory: backend/_example/memory_store
 
       - name: submit coverage
-        run: |
-          cd backend
-          $(go env GOPATH)/bin/goveralls -service="github" -coverprofile=$GITHUB_WORKSPACE/profile.cov
+        run: $(go env GOPATH)/bin/goveralls -service="github" -coverprofile=$GITHUB_WORKSPACE/profile.cov
+        working-directory: backend
         env:
           COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}

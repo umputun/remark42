@@ -1,0 +1,22 @@
+run:
+  tests: false
+  output:
+    format: tab
+  skip-dirs:
+    - vendor
+linters:
+  enable:
+    - unconvert
+    - megacheck
+    - structcheck
+    - gas
+    - gocyclo
+    - dupl
+    - misspell
+    - unparam
+    - varcheck
+    - deadcode
+    - typecheck
+    - ineffassign
+    - varcheck
+  disable-all: true
