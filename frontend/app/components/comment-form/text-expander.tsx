@@ -68,31 +68,27 @@ export const TextExpander: FunctionalComponent = ({ children }) => {
   const expanderRef = useRef<HTMLElement>();
   const theme = useTheme();
   useEffect(() => {
-    if (!expanderRef.current) {
-      return () => {};
+    if (expanderRef.current) {
+      const expander = expanderRef.current;
+      expander.setAttribute(`keys`, ':');
+      const textExpanderChangeLister: EventListener = (event: Event) => {
+        const { provide, key, text } = (event as ChangeListerEvent).detail;
+        provide(searchEmoji(key, text, theme));
+      };
+      const textExpanderValueListener = (event: Event) => {
+        const { key, item } = (event as ValueListerEvent).detail;
+        if (key === ':') {
+          (event as ValueListerEvent).detail.value = `:${item.dataset.value}:`;
+        }
+      };
+      expander.addEventListener('text-expander-change', textExpanderChangeLister);
+      expander.addEventListener('text-expander-value', textExpanderValueListener);
+      return () => {
+        expander.removeEventListener('text-expander-change', textExpanderChangeLister);
+        expander.removeEventListener('text-expander-value', textExpanderValueListener);
+      };
     }
-
-    const expander = expanderRef.current;
-    expander.setAttribute(`keys`, ':');
-
-    const textExpanderChangeLister: EventListener = (event: Event) => {
-      const { provide, key, text } = (event as ChangeListerEvent).detail;
-      provide(searchEmoji(key, text, theme));
-    };
-
-    const textExpanderValueListener = (event: Event) => {
-      const { key, item } = (event as ValueListerEvent).detail;
-      if (key === ':') {
-        (event as ValueListerEvent).detail.value = `:${item.dataset.value}:`;
-      }
-    };
-
-    expander.addEventListener('text-expander-change', textExpanderChangeLister);
-    expander.addEventListener('text-expander-value', textExpanderValueListener);
-    return () => {
-      expander.removeEventListener('text-expander-change', textExpanderChangeLister);
-      expander.removeEventListener('text-expander-value', textExpanderValueListener);
-    };
+    return () => {};
   }, [theme]);
   if (StaticStore.config.emoji_enabled) {
     return <text-expander ref={expanderRef}>{children}</text-expander>;
