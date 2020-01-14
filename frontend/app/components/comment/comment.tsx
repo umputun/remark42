@@ -568,7 +568,7 @@ export class Comment extends Component<Props, State> {
           </div>
         )}
         <div className="comment__info">
-          {props.view !== 'user' && (
+          {props.view !== 'user' && !props.collapsed && (
             <AvatarIcon mix="comment__avatar" theme={this.props.theme} picture={o.user.picture} />
           )}
 
