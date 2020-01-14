@@ -312,6 +312,37 @@ func TestServerApp_MainSignal(t *testing.T) {
 	assert.True(t, time.Since(st).Seconds() < 5, "should take under five sec", time.Since(st).Seconds())
 }
 
+func TestServerApp_DeprecatedArgs(t *testing.T) {
+	s := ServerCommand{}
+	s.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+
+	p := flags.NewParser(&s, flags.Default)
+	args := []string{
+		"test",
+		"--auth.email.host=smtp.example.org",
+		"--auth.email.port=666",
+		"--auth.email.tls",
+		"--auth.email.user=test_user",
+		"--auth.email.passwd=test_password",
+		"--auth.email.timeout=15s",
+	}
+	assert.Empty(t, s.SMTP.Host)
+	assert.Empty(t, s.SMTP.Port)
+	assert.Empty(t, s.SMTP.TLS)
+	assert.Empty(t, s.SMTP.Username)
+	assert.Empty(t, s.SMTP.Password)
+	assert.Empty(t, s.SMTP.TimeOut)
+	_, err := p.ParseArgs(args)
+	require.NoError(t, err)
+	s.handleDeprecatedFlags()
+	assert.Equal(t, "smtp.example.org", s.SMTP.Host)
+	assert.Equal(t, 666, s.SMTP.Port)
+	assert.Equal(t, true, s.SMTP.TLS)
+	assert.Equal(t, "test_user", s.SMTP.Username)
+	assert.Equal(t, "test_password", s.SMTP.Password)
+	assert.Equal(t, 15*time.Second, s.SMTP.TimeOut)
+}
+
 func Test_ACMEEmail(t *testing.T) {
 	cmd := ServerCommand{}
 	cmd.SetCommon(CommonOpts{RemarkURL: "https://remark.com:443", SharedSecret: "123456"})
