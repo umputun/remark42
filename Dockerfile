@@ -22,7 +22,7 @@ RUN \
     if [ -z "$SKIP_BACKEND_TEST" ] ; then \
         go test -p 1 -timeout="${BACKEND_TEST_TIMEOUT:-300s}" -covermode=count -coverprofile=/profile.cov_tmp ./... && \
         cat /profile.cov_tmp | grep -v "_mock.go" > /profile.cov ; \
-        golangci-lint run --config .golangci.yml ./... ; \
+        golangci-lint run --config ../.golangci.yml ./... ; \
     else echo "skip backend tests and linter" ; fi
 
 # if DRONE presented use DRONE_* git env to make version
