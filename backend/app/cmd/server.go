@@ -172,7 +172,7 @@ type AdminGroup struct {
 // SmtpGroup defines options for SMTP server connection, used in auth and notify modules
 type SmtpGroup struct {
 	Host     string        `long:"host" env:"HOST" description:"SMTP host"`
-	Port     int           `long:"port" env:"PORT" default:"587" description:"SMTP port"`
+	Port     int           `long:"port" env:"PORT" description:"SMTP port"`
 	Username string        `long:"username" env:"USERNAME" description:"SMTP user name"`
 	Password string        `long:"password" env:"PASSWORD" description:"SMTP password"`
 	TLS      bool          `long:"tls" env:"TLS" description:"enable TLS"`

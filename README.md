@@ -156,7 +156,7 @@ _this is the recommended way to run remark42_
 | notify.email.fromAddress | NOTIFY_EMAIL_FROM      |                          | from email address                              |
 | notify.email.verification_subj | NOTIFY_EMAIL_VERIFICATION_SUBJ | `Email verification` | verification message subject          |
 | smtp.host               | SMTP_HOST               |                          | SMTP host                                       |
-| smtp.port               | SMTP_PORT               | `587`                    | SMTP port                                       |
+| smtp.port               | SMTP_PORT               |                          | SMTP port                                       |
 | smtp.username           | SMTP_USERNAME           |                          | SMTP user name                                  |
 | smtp.password           | SMTP_PASSWORD           |                          | SMTP password                                   |
 | smtp.tls                | SMTP_TLS                |                          | enable TLS for SMTP                             |
@@ -197,7 +197,7 @@ _this is the recommended way to run remark42_
 | Command line       | Replacement   | Environment        | Replacement   | Default | Description    | Deprecation version |
 | ------------------ | ------------- | ------------------ | ------------- | ------- | -------------- | ------------------- |
 | auth.email.host    | smtp.host     | AUTH_EMAIL_HOST    | SMTP_HOST     |         | smtp host      | 1.5.0               |
-| auth.email.port    | smtp.port     | AUTH_EMAIL_PORT    | SMTP_PORT     | `25`    | smtp port      | 1.5.0               |
+| auth.email.port    | smtp.port     | AUTH_EMAIL_PORT    | SMTP_PORT     |         | smtp port      | 1.5.0               |
 | auth.email.user    | smtp.username | AUTH_EMAIL_USER    | SMTP_USERNAME |         | smtp user name | 1.5.0               |
 | auth.email.passwd  | smtp.password | AUTH_EMAIL_PASSWD  | SMTP_PASSWORD |         | smtp password  | 1.5.0               |
 | auth.email.tls     | smtp.tls      | AUTH_EMAIL_TLS     | SMTP_TLS      | `false` | enable TLS     | 1.5.0               |
