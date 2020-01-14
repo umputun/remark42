@@ -124,21 +124,17 @@ const (
 <!-- Some of blocks on this page have color: #000 because GMail can wrap block in his own tags which can change text color -->
 <body>
 	<div style="font-family: Helvetica, Arial, sans-serif; font-size: 18px; width: 100%; max-width: 640px; margin: auto;">
-		<h2 style="text-align: center; position: relative; color: #0aa; margin-top: 10px; margin-bottom: 10px;">
-			Remark42
-		</h2>
-		<div style="font-size: 16px; margin-bottom: 10px; color:#000!important;">
-			New reply from {{.UserName}} on your comment{{if .PostTitle}} to «{{.PostTitle}}»{{ end }}
-		</div>
+		<h2 style="text-align: center; position: relative; color: #0aa; margin-top: 10px; margin-bottom: 10px;">Remark42</h2>
+		<div style="font-size: 16px; text-align: center; margin-bottom: 10px; color:#000!important;">New reply from {{.UserName}} on your comment{{if .PostTitle}} to «{{.PostTitle}}»{{ end }}</div>
 		<div style="background-color: #eee; padding: 15px 20px 20px 20px; border-radius: 3px;">
 			<div>
-				<div style="margin-bottom: 8px; line-height: 24px;">
+				<div style="margin-bottom: 12px; line-height: 24px;">
 					<img src="{{.ParentUserPicture}}" style="width: 24px; height: 24px; float: left; margin: 0 8px 0 0; border-radius: 3px; background-color: #ccc;"/>
 					<span style="font-size: 14px; font-weight: bold; color: #777">{{.ParentUserName}}</span>
 					<span style="color: #999; font-size: 14px; margin: 0 8px;">{{.CommentDate}}</span>
 					<a href="{{.ParentCommentLink}}" style="color: #8cd4d4; font-size: 14px;"><b>Show</b></a>
 				</div>
-				<div style="font-size: 16px; background-color: #fff; color:#000!important; padding: 14px 14px 2px 14px; word-break: break-all; border-radius: 3px; line-height: 1.4;">
+				<div style="font-size: 14px; color:#333!important; padding: 0 14px 0 2px; word-break: break-all; border-radius: 3px; line-height: 1.4;">
 					{{.ParentCommentText}}
 				</div>
 			</div>
