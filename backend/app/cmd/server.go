@@ -267,33 +267,34 @@ func (s *ServerCommand) Execute(args []string) error {
 	return nil
 }
 
-// HandleDeprecatedFlags sets new flags from deprecated and prints warnings about deprecated flags usage
-func (s *ServerCommand) HandleDeprecatedFlags() {
+// HandleDeprecatedFlags sets new flags from deprecated returns their list
+func (s *ServerCommand) HandleDeprecatedFlags() (result []DeprecatedFlag) {
 	// 1.5.0
 	if s.Auth.Email.Host != "" && s.SMTP.Host == "" {
 		s.SMTP.Host = s.Auth.Email.Host
-		log.Print("[WARN] --auth.email.host is deprecated since 1.5.0 and will be removed in 1.7.0, please use --smtp.host instead")
+		result = append(result, DeprecatedFlag{Old: "auth.email.host", New: "smtp.host", RemoveVersion: "1.7.0"})
 	}
 	if s.Auth.Email.Port != 0 && s.SMTP.Port == 0 {
 		s.SMTP.Port = s.Auth.Email.Port
-		log.Print("[WARN] --auth.email.port is deprecated since 1.5.0 and will be removed in 1.7.0, please use --smtp.port instead")
+		result = append(result, DeprecatedFlag{Old: "auth.email.port", New: "smtp.port", RemoveVersion: "1.7.0"})
 	}
 	if s.Auth.Email.TLS && !s.SMTP.TLS {
 		s.SMTP.TLS = s.Auth.Email.TLS
-		log.Print("[WARN] --auth.email.tls is deprecated since 1.5.0 and will be removed in 1.7.0, please use --smtp.tls instead")
+		result = append(result, DeprecatedFlag{Old: "auth.email.tls", New: "smtp.tls", RemoveVersion: "1.7.0"})
 	}
 	if s.Auth.Email.SMTPUserName != "" && s.SMTP.Username == "" {
 		s.SMTP.Username = s.Auth.Email.SMTPUserName
-		log.Print("[WARN] --auth.email.user is deprecated since 1.5.0 and will be removed in 1.7.0, please use --smtp.username instead")
+		result = append(result, DeprecatedFlag{Old: "auth.email.user", New: "smtp.username", RemoveVersion: "1.7.0"})
 	}
 	if s.Auth.Email.SMTPPassword != "" && s.SMTP.Password == "" {
 		s.SMTP.Password = s.Auth.Email.SMTPPassword
-		log.Print("[WARN] --auth.email.passwd is deprecated since 1.5.0 and will be removed in 1.7.0, please use --smtp.password instead")
+		result = append(result, DeprecatedFlag{Old: "auth.email.passwd", New: "smtp.password", RemoveVersion: "1.7.0"})
 	}
 	if s.Auth.Email.TimeOut != 10*time.Second && s.SMTP.TimeOut == 10*time.Second {
 		s.SMTP.TimeOut = s.Auth.Email.TimeOut
-		log.Print("[WARN] --auth.email.timeout is deprecated since 1.5.0 and will be removed in 1.7.0, please use --smtp.timeout instead")
+		result = append(result, DeprecatedFlag{Old: "auth.email.timeout", New: "smtp.timeout", RemoveVersion: "1.7.0"})
 	}
+	return result
 }
 
 // newServerApp prepares application and return it with all active parts
