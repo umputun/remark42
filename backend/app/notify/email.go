@@ -134,7 +134,7 @@ const (
 					<span style="color: #999; font-size: 14px; margin: 0 8px;">{{.CommentDate}}</span>
 					<a href="{{.ParentCommentLink}}" style="color: #0aa; font-size: 14px;"><b>Show</b></a>
 				</div>
-				<div style="font-size: 14px; color:#333!important; padding: 0 14px 0 2px; word-break: break-all; border-radius: 3px; line-height: 1.4;">
+				<div style="font-size: 14px; color:#333!important; padding: 0 14px 0 2px; border-radius: 3px; line-height: 1.4;">
 					{{.ParentCommentText}}
 				</div>
 			</div>
@@ -149,7 +149,7 @@ const (
 					</div>
 					<a href="{{.CommentLink}}" style="color: #0aa; font-size: 14px;"><b>Reply</b></a>
 				</div>
-				<div style="font-size: 16px; background-color: #fff; color:#000!important; padding: 14px 14px 2px 14px; word-break: break-all; border-radius: 3px; line-height: 1.4;">
+				<div style="font-size: 16px; background-color: #fff; color:#000!important; padding: 14px 14px 2px 14px; border-radius: 3px; line-height: 1.4;">
 					{{.CommentText}}
 				</div>
 			</div>
