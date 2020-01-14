@@ -96,7 +96,7 @@ type ServerCommand struct {
 			SMTPPassword string        `long:"passwd" env:"PASSWD" description:"[deprecated, use --smtp.password] SMTP port"`
 			SMTPUserName string        `long:"user" env:"USER" description:"[deprecated, use --smtp.username] enable TLS"`
 			TLS          bool          `long:"tls" env:"TLS" description:"[deprecated, use --smtp.tls] SMTP TCP connection timeout"`
-			TimeOut      time.Duration `long:"timeout" env:"TIMEOUT" default:"10s" description:"deprecated, use --smtp.timeout] SMTP TCP connection timeout"`
+			TimeOut      time.Duration `long:"timeout" env:"TIMEOUT" default:"10s" description:"[deprecated, use --smtp.timeout] SMTP TCP connection timeout"`
 			MsgTemplate  string        `long:"template" env:"TEMPLATE" description:"message template file"`
 		} `group:"email" namespace:"email" env-namespace:"EMAIL"`
 	} `group:"auth" namespace:"auth" env-namespace:"AUTH"`
