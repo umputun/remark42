@@ -45,6 +45,7 @@ func main() {
 			SharedSecret: opts.SharedSecret,
 			Revision:     revision,
 		})
+		c.HandleDeprecatedFlags()
 		err := c.Execute(args)
 		if err != nil {
 			log.Printf("[ERROR] failed with %+v", err)

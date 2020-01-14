@@ -21,6 +21,7 @@ import (
 type CommonOptionsCommander interface {
 	SetCommon(commonOpts CommonOpts)
 	Execute(args []string) error
+	HandleDeprecatedFlags()
 }
 
 // CommonOpts sets externally from main, shared across all commands
@@ -37,6 +38,9 @@ func (c *CommonOpts) SetCommon(commonOpts CommonOpts) {
 	c.SharedSecret = commonOpts.SharedSecret
 	c.Revision = commonOpts.Revision
 }
+
+// HandleDeprecatedFlags sets new flags from deprecated and prints warnings about deprecated flags usage
+func (c *CommonOpts) HandleDeprecatedFlags() {}
 
 // fileParser used to convert template strings like blah-{{.SITE}}-{{.YYYYMMDD}} the final format
 type fileParser struct {

@@ -242,7 +242,6 @@ type serverApp struct {
 
 // Execute is the entry point for "server" command, called by flag parser
 func (s *ServerCommand) Execute(args []string) error {
-	s.handleDeprecatedFlags()
 	log.Printf("[INFO] start server on port %d", s.Port)
 	resetEnv("SECRET", "AUTH_GOOGLE_CSEC", "AUTH_GITHUB_CSEC", "AUTH_FACEBOOK_CSEC", "AUTH_YANDEX_CSEC", "ADMIN_PASSWD")
 
@@ -268,8 +267,8 @@ func (s *ServerCommand) Execute(args []string) error {
 	return nil
 }
 
-// handleDeprecatedFlags sets new flags instead of deprecated ones and shows deprecation warnings
-func (s *ServerCommand) handleDeprecatedFlags() {
+// HandleDeprecatedFlags sets new flags from deprecated and prints warnings about deprecated flags usage
+func (s *ServerCommand) HandleDeprecatedFlags() {
 	// 1.5.0
 	if s.Auth.Email.Host != "" && s.SMTP.Host == "" {
 		s.SMTP.Host = s.Auth.Email.Host

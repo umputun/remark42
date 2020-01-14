@@ -334,7 +334,7 @@ func TestServerApp_DeprecatedArgs(t *testing.T) {
 	assert.Empty(t, s.SMTP.TimeOut)
 	_, err := p.ParseArgs(args)
 	require.NoError(t, err)
-	s.handleDeprecatedFlags()
+	s.HandleDeprecatedFlags()
 	assert.Equal(t, "smtp.example.org", s.SMTP.Host)
 	assert.Equal(t, 666, s.SMTP.Port)
 	assert.Equal(t, true, s.SMTP.TLS)
