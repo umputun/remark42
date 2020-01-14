@@ -144,29 +144,23 @@ _this is the recommended way to run remark42_
 | auth.dev                | AUTH_DEV                | `false`                  | local oauth2 server, development mode only      |
 | auth.anon               | AUTH_ANON               | `false`                  | enable anonymous login                          |
 | auth.email.enable       | AUTH_EMAIL_ENABLE       | `false`                  | enable auth via email                           |
-| auth.email.host         | AUTH_EMAIL_HOST         |                          | smtp host                                       |
-| auth.email.port         | AUTH_EMAIL_PORT         | `25`                     | smtp port                                       |
 | auth.email.from         | AUTH_EMAIL_FROM         |                          | email from                                      |
 | auth.email.subj         | AUTH_EMAIL_SUBJ         | `remark42 confirmation`  | email subject                                   |
 | auth.email.content-type | AUTH_EMAIL_CONTENT_TYPE | `text/html`              | email content type                              |
-| auth.email.tls          | AUTH_EMAIL_TLS          | `false`                  | enable TLS                                      |
-| auth.email.user         | AUTH_EMAIL_USER         |                          | smtp user name                                  |
-| auth.email.passwd       | AUTH_EMAIL_PASSWD       |                          | smtp password                                   |
-| auth.email.timeout      | AUTH_EMAIL_TIMEOUT      | `10s`                    | smtp timeout                                    |
 | auth.email.template     | AUTH_EMAIL_TEMPLATE     | none (predefined)        | custom email message template file              |
 | notify.type             | NOTIFY_TYPE             | none                     | type of notification (telegram and/or email)    |
 | notify.queue            | NOTIFY_QUEUE            | `100`                    | size of notification queue                      |
 | notify.telegram.token   | NOTIFY_TELEGRAM_TOKEN   |                          | telegram token                                  |
 | notify.telegram.chan    | NOTIFY_TELEGRAM_CHAN    |                          | telegram channel                                |
 | notify.telegram.timeout | NOTIFY_TELEGRAM_TIMEOUT | `5s`                     | telegram timeout                                |
-| notify.email.host       | NOTIFY_EMAIL_HOST       |                          | SMTP host                                       |
-| notify.email.port       | NOTIFY_EMAIL_PORT       | `587`                    | SMTP port                                       |
-| notify.email.tls        | NOTIFY_EMAIL_TLS        |                          | enable TLS for SMTP                             |
 | notify.email.fromAddress | NOTIFY_EMAIL_FROM      |                          | from email address                              |
-| notify.email.username   | NOTIFY_EMAIL_USERNAME   |                          | SMTP user name                                  |
-| notify.email.password   | NOTIFY_EMAIL_PASSWORD   |                          | SMTP password                                   |
-| notify.email.timeout    | NOTIFY_EMAIL_TIMEOUT    | `10s`                    | SMTP TCP connection timeout                     |
 | notify.email.verification_subj | NOTIFY_EMAIL_VERIFICATION_SUBJ | `Email verification` | verification message subject          |
+| smtp.host               | SMTP_HOST               |                          | SMTP host                                       |
+| smtp.port               | SMTP_PORT               |                          | SMTP port                                       |
+| smtp.username           | SMTP_USERNAME           |                          | SMTP user name                                  |
+| smtp.password           | SMTP_PASSWORD           |                          | SMTP password                                   |
+| smtp.tls                | SMTP_TLS                |                          | enable TLS for SMTP                             |
+| smtp.timeout            | SMTP_TIMEOUT            | `10s`                    | SMTP TCP connection timeout                     |
 | ssl.type                | SSL_TYPE                | none                     | `none`-http, `static`-https, `auto`-https + le  |
 | ssl.port                | SSL_PORT                | `8443`                   | port for https server                           |
 | ssl.cert                | SSL_CERT                |                          | path to cert.pem file                           |
@@ -196,6 +190,19 @@ _this is the recommended way to run remark42_
 * command line parameters are long form `--<key>=value`, i.e. `--site=https://demo.remark42.com`
 * _multi_ parameters separated by `,` in the environment or repeated with command line key, like `--site=s1 --site=s2 ...`
 * _required_ parameters have to be presented in the environment or provided in command line
+
+##### Deprecated
+
+<details><summary>deprecated options</summary>
+| Command line       | Replacement   | Environment        | Replacement   | Default | Description    | Deprecation version |
+| ------------------ | ------------- | ------------------ | ------------- | ------- | -------------- | ------------------- |
+| auth.email.host    | smtp.host     | AUTH_EMAIL_HOST    | SMTP_HOST     |         | smtp host      | 1.5.0               |
+| auth.email.port    | smtp.port     | AUTH_EMAIL_PORT    | SMTP_PORT     |         | smtp port      | 1.5.0               |
+| auth.email.user    | smtp.username | AUTH_EMAIL_USER    | SMTP_USERNAME |         | smtp user name | 1.5.0               |
+| auth.email.passwd  | smtp.password | AUTH_EMAIL_PASSWD  | SMTP_PASSWORD |         | smtp password  | 1.5.0               |
+| auth.email.tls     | smtp.tls      | AUTH_EMAIL_TLS     | SMTP_TLS      | `false` | enable TLS     | 1.5.0               |
+| auth.email.timeout | smtp.timeout  | AUTH_EMAIL_TIMEOUT | SMTP_TIMEOUT  | `10s`   | smtp timeout   | 1.5.0               |
+</details>
 
 ##### Required parameters
 

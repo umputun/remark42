@@ -44,12 +44,12 @@ services:
             - NOTIFY_TYPE
             - NOTIFY_TELEGRAM_TOKEN
             - NOTIFY_TELEGRAM_CHAN
-            - NOTIFY_EMAIL_HOST
-            - NOTIFY_EMAIL_USERNAME
-            - NOTIFY_EMAIL_PASSWORD
             - NOTIFY_EMAIL_FROM
-            - NOTIFY_EMAIL_PORT
-            - NOTIFY_EMAIL_TLS
+            - SMTP_HOST
+            - SMTP_USERNAME
+            - SMTP_PASSWORD
+            - SMTP_PORT
+            - SMTP_TLS
             - EMOJI=true
             - ANON_VOTE=true
             - VOTES_IP=true

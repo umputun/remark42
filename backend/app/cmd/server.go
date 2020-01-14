@@ -47,6 +47,7 @@ type ServerCommand struct {
 	Cache  CacheGroup  `group:"cache" namespace:"cache" env-namespace:"CACHE"`
 	Admin  AdminGroup  `group:"admin" namespace:"admin" env-namespace:"ADMIN"`
 	Notify NotifyGroup `group:"notify" namespace:"notify" env-namespace:"NOTIFY"`
+	SMTP   SmtpGroup   `group:"smtp" namespace:"smtp" env-namespace:"SMTP"`
 	Image  ImageGroup  `group:"image" namespace:"image" env-namespace:"IMAGE"`
 	SSL    SSLGroup    `group:"ssl" namespace:"ssl" env-namespace:"SSL"`
 	Stream StreamGroup `group:"stream" namespace:"stream" env-namespace:"STREAM"`
@@ -87,15 +88,15 @@ type ServerCommand struct {
 		Anonymous bool      `long:"anon" env:"ANON" description:"enable anonymous login"`
 		Email     struct {
 			Enable       bool          `long:"enable" env:"ENABLE" description:"enable auth via email"`
-			Host         string        `long:"host" env:"HOST" description:"smtp host"`
-			Port         int           `long:"port" env:"PORT" description:"smtp port"`
-			From         string        `long:"from" env:"FROM" description:"email's from"`
+			From         string        `long:"from" env:"FROM" description:"from email address"`
 			Subject      string        `long:"subj" env:"SUBJ" default:"remark42 confirmation" description:"email's subject"`
 			ContentType  string        `long:"content-type" env:"CONTENT_TYPE" default:"text/html" description:"content type"`
-			TLS          bool          `long:"tls" env:"TLS" description:"enable TLS"`
-			SMTPUserName string        `long:"user" env:"USER" description:"smtp user name"`
-			SMTPPassword string        `long:"passwd" env:"PASSWD" description:"smtp password"`
-			TimeOut      time.Duration `long:"timeout" env:"TIMEOUT" default:"10s" description:"smtp timeout"`
+			Host         string        `long:"host" env:"HOST" description:"[deprecated, use --smtp.host] SMTP host"`
+			Port         int           `long:"port" env:"PORT" description:"[deprecated, use --smtp.port] SMTP password"`
+			SMTPPassword string        `long:"passwd" env:"PASSWD" description:"[deprecated, use --smtp.password] SMTP port"`
+			SMTPUserName string        `long:"user" env:"USER" description:"[deprecated, use --smtp.username] enable TLS"`
+			TLS          bool          `long:"tls" env:"TLS" description:"[deprecated, use --smtp.tls] SMTP TCP connection timeout"`
+			TimeOut      time.Duration `long:"timeout" env:"TIMEOUT" default:"10s" description:"[deprecated, use --smtp.timeout] SMTP TCP connection timeout"`
 			MsgTemplate  string        `long:"template" env:"TEMPLATE" description:"message template file"`
 		} `group:"email" namespace:"email" env-namespace:"EMAIL"`
 	} `group:"auth" namespace:"auth" env-namespace:"AUTH"`
@@ -168,6 +169,16 @@ type AdminGroup struct {
 	RPC RPCGroup `group:"rpc" namespace:"rpc" env-namespace:"RPC"`
 }
 
+// SmtpGroup defines options for SMTP server connection, used in auth and notify modules
+type SmtpGroup struct {
+	Host     string        `long:"host" env:"HOST" description:"SMTP host"`
+	Port     int           `long:"port" env:"PORT" description:"SMTP port"`
+	Username string        `long:"username" env:"USERNAME" description:"SMTP user name"`
+	Password string        `long:"password" env:"PASSWORD" description:"SMTP password"`
+	TLS      bool          `long:"tls" env:"TLS" description:"enable TLS"`
+	TimeOut  time.Duration `long:"timeout" env:"TIMEOUT" default:"10s" description:"SMTP TCP connection timeout"`
+}
+
 // NotifyGroup defines options for notification
 type NotifyGroup struct {
 	Type      []string `long:"type" env:"TYPE" description:"type of notification" choice:"none" choice:"telegram" choice:"email" default:"none" env-delim:","` //nolint
@@ -179,14 +190,8 @@ type NotifyGroup struct {
 		API     string        `long:"api" env:"API" default:"https://api.telegram.org/bot" description:"telegram api prefix"`
 	} `group:"telegram" namespace:"telegram" env-namespace:"TELEGRAM"`
 	Email struct {
-		Host                string        `long:"host" env:"HOST" description:"SMTP host"`
-		Port                int           `long:"port" env:"PORT" default:"587" description:"SMTP port"`
-		TLS                 bool          `long:"tls" env:"TLS" description:"enable TLS for SMTP"`
-		From                string        `long:"fromAddress" env:"FROM" description:"from email address"`
-		Username            string        `long:"username" env:"USERNAME" description:"SMTP user name"`
-		Password            string        `long:"password" env:"PASSWORD" description:"SMTP password"`
-		TimeOut             time.Duration `long:"timeout" env:"TIMEOUT" default:"10s" description:"SMTP TCP connection timeout"`
-		VerificationSubject string        `long:"verification_subj" env:"VERIFICATION_SUBJ" description:"verification message subject"`
+		From                string `long:"fromAddress" env:"FROM" description:"from email address"`
+		VerificationSubject string `long:"verification_subj" env:"VERIFICATION_SUBJ" description:"verification message subject"`
 	} `group:"email" namespace:"email" env-namespace:"EMAIL"`
 }
 
@@ -260,6 +265,36 @@ func (s *ServerCommand) Execute(args []string) error {
 	}
 	log.Printf("[INFO] remark terminated")
 	return nil
+}
+
+// HandleDeprecatedFlags sets new flags from deprecated returns their list
+func (s *ServerCommand) HandleDeprecatedFlags() (result []DeprecatedFlag) {
+	// 1.5.0
+	if s.Auth.Email.Host != "" && s.SMTP.Host == "" {
+		s.SMTP.Host = s.Auth.Email.Host
+		result = append(result, DeprecatedFlag{Old: "auth.email.host", New: "smtp.host", RemoveVersion: "1.7.0"})
+	}
+	if s.Auth.Email.Port != 0 && s.SMTP.Port == 0 {
+		s.SMTP.Port = s.Auth.Email.Port
+		result = append(result, DeprecatedFlag{Old: "auth.email.port", New: "smtp.port", RemoveVersion: "1.7.0"})
+	}
+	if s.Auth.Email.TLS && !s.SMTP.TLS {
+		s.SMTP.TLS = s.Auth.Email.TLS
+		result = append(result, DeprecatedFlag{Old: "auth.email.tls", New: "smtp.tls", RemoveVersion: "1.7.0"})
+	}
+	if s.Auth.Email.SMTPUserName != "" && s.SMTP.Username == "" {
+		s.SMTP.Username = s.Auth.Email.SMTPUserName
+		result = append(result, DeprecatedFlag{Old: "auth.email.user", New: "smtp.username", RemoveVersion: "1.7.0"})
+	}
+	if s.Auth.Email.SMTPPassword != "" && s.SMTP.Password == "" {
+		s.SMTP.Password = s.Auth.Email.SMTPPassword
+		result = append(result, DeprecatedFlag{Old: "auth.email.passwd", New: "smtp.password", RemoveVersion: "1.7.0"})
+	}
+	if s.Auth.Email.TimeOut != 10*time.Second && s.SMTP.TimeOut == 10*time.Second {
+		s.SMTP.TimeOut = s.Auth.Email.TimeOut
+		result = append(result, DeprecatedFlag{Old: "auth.email.timeout", New: "smtp.timeout", RemoveVersion: "1.7.0"})
+	}
+	return result
 }
 
 // newServerApp prepares application and return it with all active parts
@@ -644,15 +679,15 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) {
 
 	if s.Auth.Email.Enable {
 		params := sender.EmailParams{
-			Host:         s.Auth.Email.Host,
-			Port:         s.Auth.Email.Port,
+			Host:         s.SMTP.Host,
+			Port:         s.SMTP.Port,
+			SMTPUserName: s.SMTP.Username,
+			SMTPPassword: s.SMTP.Password,
+			TimeOut:      s.SMTP.TimeOut,
+			TLS:          s.SMTP.TLS,
 			From:         s.Auth.Email.From,
 			Subject:      s.Auth.Email.Subject,
 			ContentType:  s.Auth.Email.ContentType,
-			TLS:          s.Auth.Email.TLS,
-			SMTPUserName: s.Auth.Email.SMTPUserName,
-			SMTPPassword: s.Auth.Email.SMTPPassword,
-			TimeOut:      s.Auth.Email.TimeOut,
 		}
 		sndr := sender.NewEmailClient(params, log.Default())
 		authenticator.AddVerifProvider("email", s.loadEmailTemplate(), sndr)
@@ -732,12 +767,12 @@ func (s *ServerCommand) makeNotify(dataStore *service.DataStore, authenticator *
 				},
 			}
 			smtpParams := notify.SmtpParams{
-				Host:     s.Notify.Email.Host,
-				Port:     s.Notify.Email.Port,
-				TLS:      s.Notify.Email.TLS,
-				Username: s.Notify.Email.Username,
-				Password: s.Notify.Email.Password,
-				TimeOut:  s.Notify.Email.TimeOut,
+				Host:     s.SMTP.Host,
+				Port:     s.SMTP.Port,
+				TLS:      s.SMTP.TLS,
+				Username: s.SMTP.Username,
+				Password: s.SMTP.Password,
+				TimeOut:  s.SMTP.TimeOut,
 			}
 			emailService, err := notify.NewEmail(emailParams, smtpParams)
 			if err != nil {

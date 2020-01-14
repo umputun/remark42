@@ -45,6 +45,10 @@ func main() {
 			SharedSecret: opts.SharedSecret,
 			Revision:     revision,
 		})
+		for _, entry := range c.HandleDeprecatedFlags() {
+			log.Printf("[WARN] --%s is deprecated and will be removed in v%s, please use --%s instead",
+				entry.Old, entry.RemoveVersion, entry.New)
+		}
 		err := c.Execute(args)
 		if err != nil {
 			log.Printf("[ERROR] failed with %+v", err)
