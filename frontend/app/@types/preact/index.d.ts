@@ -19,6 +19,10 @@ declare module 'preact/src/jsx' {
       'md-link': any;
       'md-unordered-list': any;
       'md-ordered-list': any;
+      'text-expander': {
+        ref: any;
+        children: any;
+      };
     }
   }
 }

@@ -1,0 +1,61 @@
+.suggester {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 30;
+  min-width: 180px;
+  padding: 0;
+  margin: 24px 0 0;
+  list-style: none;
+  cursor: pointer;
+  background: #fff;
+  border: 1px solid #dfe2e5;
+  border-radius: 3px;
+  box-shadow: 0 1px 5px rgba(27, 31, 35, 0.15);
+}
+
+.suggesterDark {
+  background: #22201c;
+  color: #ddd;
+  border: 1px solid #333;
+}
+
+.suggesterItem {
+  display: block;
+  padding: 4px 8px;
+  font-size: 14px;
+  font-weight: 600;
+  border-bottom: 1px solid #dfe2e5;
+}
+
+
+
+.suggesterItemDark {
+  border-bottom: 1px solid #333;
+}
+
+.suggesterItem:hover,
+.suggesterItem[aria-selected='true'] {
+  color: #fff;
+  text-decoration: none;
+  background-color: rgba(37, 156, 154, 0.6);
+}
+
+.suggesterItem:first-child {
+  border-top-left-radius: 3px;
+  border-top-right-radius: 3px;
+}
+.suggesterItem:last-child {
+  border-bottom-left-radius: 3px;
+  border-bottom-right-radius: 3px;
+  border-bottom: none;
+}
+
+.emojiResult {
+  margin-right: 0;
+  display: inline-block;
+  line-height: 20px;
+  font-size: 20px;
+  height: 20px;
+  vertical-align: middle;
+}

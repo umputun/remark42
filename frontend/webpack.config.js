@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-
+require('dotenv').config();
 const path = require('path');
 
 const webpack = require('webpack');
@@ -27,7 +27,7 @@ console.log(`REMARK_ENV = ${remarkUrl}`);
  * so we have to exclude from ignore these modules
  */
 function getExcluded() {
-  const modules = ['@github/markdown-toolbar-element'];
+  const modules = ['@github/markdown-toolbar-element', '@github/text-expander-element', '@github/combobox-nav'];
   const exclude = new RegExp(`node_modules\\/(?!(${modules.map(m => m.replace(/\//g, '\\/')).join('|')})\\/).*`);
 
   return {
@@ -38,24 +38,23 @@ function getExcluded() {
 // console.log(getExcluded())
 // process.exit(1)
 
-const commonStyleLoaders = [
-  'css-loader',
-  {
-    loader: 'postcss-loader',
-    options: {
-      plugins: [
-        require('postcss-for'),
-        require('postcss-simple-vars'),
-        require('postcss-nested'),
-        require('postcss-calc'),
-        require('autoprefixer')({ overrideBrowserslist: ['> 1%'] }),
-        require('postcss-url')({ url: 'inline', maxSize: 5 }),
-        require('postcss-wrap')({ selector: `#${NODE_ID}` }),
-        require('postcss-csso'),
-      ],
-    },
+const postCssLoader = wrap => ({
+  loader: 'postcss-loader',
+  options: {
+    plugins: [
+      require('postcss-for'),
+      require('postcss-simple-vars'),
+      require('postcss-nested'),
+      require('postcss-calc'),
+      require('autoprefixer')({ overrideBrowserslist: ['> 1%'] }),
+      require('postcss-url')({ url: 'inline', maxSize: 5 }),
+      wrap ? require('postcss-wrap')({ selector: `#${NODE_ID}` }) : false,
+      require('postcss-csso'),
+    ].filter(plugin => plugin),
   },
-];
+});
+
+const commonStyleLoaders = ['css-loader', postCssLoader(true)];
 
 const babelConfigPath = path.resolve(__dirname, './.babelrc.js');
 
@@ -102,6 +101,24 @@ module.exports = () => ({
             loader: MiniCssExtractPlugin.loader,
           },
           ...commonStyleLoaders,
+        ],
+      },
+      {
+        test: /\.module\.pcss$/,
+        use: [
+          {
+            loader: MiniCssExtractPlugin.loader,
+          },
+          {
+            loader: 'css-loader',
+            options: {
+              modules: {
+                mode: `local`,
+                localIdentName: `${NODE_ID}__[name]__[local]`,
+              },
+            },
+          },
+          postCssLoader(false),
         ],
       },
       {

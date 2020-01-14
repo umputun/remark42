@@ -24,5 +24,6 @@ beforeEach(() => {
     simple_view: false,
     anon_vote: false,
     email_notifications: false,
+    emoji_enabled: true,
   };
 });

@@ -8,6 +8,7 @@ module.exports = {
   testRegex: '(\\.|/)(test|spec)\\.(j|t)s(x?)$',
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   moduleNameMapper: {
+    '\\.module.pcss': `identity-obj-proxy`,
     '\\.scss$': '<rootDir>/app/testUtils/mockStyles.js',
     '@app/(.*)': '<rootDir>/app/$1',
     '^react$': 'preact/compat',
