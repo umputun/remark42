@@ -279,7 +279,7 @@ func (s *ServerCommand) handleDeprecatedFlags() {
 		s.SMTP.Port = s.Auth.Email.Port
 		log.Print("[WARN] --auth.email.port is deprecated since 1.5.0 and will be removed in 1.7.0, please use --smtp.port instead")
 	}
-	if s.Auth.Email.TLS != false && s.SMTP.TLS == false {
+	if s.Auth.Email.TLS && !s.SMTP.TLS {
 		s.SMTP.TLS = s.Auth.Email.TLS
 		log.Print("[WARN] --auth.email.tls is deprecated since 1.5.0 and will be removed in 1.7.0, please use --smtp.tls instead")
 	}
