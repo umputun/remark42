@@ -305,7 +305,7 @@ func (e *Email) buildMessageFromRequest(req Request) (string, error) {
 		ParentUserName:    req.parent.User.Name,
 		ParentUserPicture: req.parent.User.Picture,
 		ParentCommentText: req.parent.Text,
-		ParentCommentLink: req.parent.Locator.URL + uiNav + req.parent.ID,
+		ParentCommentLink: commentUrlPrefix + req.parent.ID,
 		PostTitle:         req.Comment.PostTitle,
 		Email:             req.Email,
 		UnsubscribeLink:   unsubscribeLink,
