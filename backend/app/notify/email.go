@@ -114,7 +114,7 @@ const (
 		}
 		a {
 			text-decoration: none;
-			color: #8cd4d4;
+			color: #0aa;
 		}
 		p {
 			margin: 0 0 12px;
@@ -124,7 +124,7 @@ const (
 <!-- Some of blocks on this page have color: #000 because GMail can wrap block in his own tags which can change text color -->
 <body>
 	<div style="font-family: Helvetica, Arial, sans-serif; font-size: 18px; width: 100%; max-width: 640px; margin: auto;">
-		<h2 style="text-align: center; position: relative; color: #0aa; margin-top: 10px; margin-bottom: 10px;">Remark42</h2>
+		<h1 style="text-align: center; position: relative; color: #4fbbd6; margin-top: 10px; margin-bottom: 10px;">Remark42</h1>
 		<div style="font-size: 16px; text-align: center; margin-bottom: 10px; color:#000!important;">New reply from {{.UserName}} on your comment{{if .PostTitle}} to «{{.PostTitle}}»{{ end }}</div>
 		<div style="background-color: #eee; padding: 15px 20px 20px 20px; border-radius: 3px;">
 			<div>
@@ -132,7 +132,7 @@ const (
 					<img src="{{.ParentUserPicture}}" style="width: 24px; height: 24px; float: left; margin: 0 8px 0 0; border-radius: 3px; background-color: #ccc;"/>
 					<span style="font-size: 14px; font-weight: bold; color: #777">{{.ParentUserName}}</span>
 					<span style="color: #999; font-size: 14px; margin: 0 8px;">{{.CommentDate}}</span>
-					<a href="{{.ParentCommentLink}}" style="color: #8cd4d4; font-size: 14px;"><b>Show</b></a>
+					<a href="{{.ParentCommentLink}}" style="color: #0aa; font-size: 14px;"><b>Show</b></a>
 				</div>
 				<div style="font-size: 14px; color:#333!important; padding: 0 14px 0 2px; word-break: break-all; border-radius: 3px; line-height: 1.4;">
 					{{.ParentCommentText}}
@@ -147,7 +147,7 @@ const (
 					<div style="color: #999; font-size: 14px; margin: 0 8px; float: left;">
 						{{.CommentDate}}
 					</div>
-					<a href="{{.CommentLink}}" style="color: #8cd4d4; font-size: 14px;"><b>Reply</b></a>
+					<a href="{{.CommentLink}}" style="color: #0aa; font-size: 14px;"><b>Reply</b></a>
 				</div>
 				<div style="font-size: 16px; background-color: #fff; color:#000!important; padding: 14px 14px 2px 14px; word-break: break-all; border-radius: 3px; line-height: 1.4;">
 					{{.CommentText}}
@@ -157,7 +157,7 @@ const (
 		<div style="text-align: center; font-size: 14px; margin-top: 32px;">
 			<i style="color: #000!important;">Sent to <a style="color:inherit; text-decoration: none" href="mailto:{{.Email}}">{{.Email}}</a> for {{.ParentUserName}}</i>
 			<div style="margin: auto; width: 150px; border-top: 1px solid rgba(0, 0, 0, 0.15); padding-top: 15px; margin-top: 15px;">
-				<a style="color: #8cd4d4;" href="{{.UnsubscribeLink}}">Unsubscribe</a>
+				<a style="color: #0aa;" href="{{.UnsubscribeLink}}">Unsubscribe</a>
 				<!-- This is hack for remove collapser in Gmail which can collapse end of the message -->
 				<div style="opacity: 0;">[{{.CommentDate}}]</div>
 			</div>
@@ -168,23 +168,23 @@ const (
 `
 	defaultEmailVerificationTemplate = `<!DOCTYPE html>
 <html>
-	<head>
-		<meta name="viewport" content="width=device-width" />
-		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-	</head>
-	<body>
-		<!-- Some of blocks on this page have color: #000 because GMail can wrap block in his own tags which can change text color -->
-		<div style="text-align: center; font-family: Arial, sans-serif; font-size: 18px;">
-			<h1 style="position: relative; color: #4fbbd6; margin-top: 0.2em;">Remark42</h1>
-			<p style="position: relative; max-width: 20em; margin: 0 auto 1em auto; line-height: 1.4em; color:#000!important;">Confirmation for <b>{{.User}}</b> on site <b>{{.Site}}</b></p>
-			<div style="background-color: #eee; max-width: 20em; margin: 0 auto; border-radius: 0.4em; padding: 0.5em;">
-				<p style="position: relative; margin: 0 0 0.5em 0;color:#000!important;">TOKEN</p>
-				<p style="position: relative; font-size: 0.7em; opacity: 0.8;"><i style="color:#000!important;">Copy and paste this text into “token” field on comments page</i></p>
-				<p style="position: relative; font-family: monospace; background-color: #fff; margin: 0; padding: 0.5em; word-break: break-all; text-align: left; border-radius: 0.2em; -webkit-user-select: all; user-select: all;">{{.Token}}</p>
-			</div>
-			<p style="position: relative; margin-top: 2em; font-size: 0.8em; opacity: 0.8;"><i style="color:#000!important;">Sent to {{.Email}}</i></p>
+<head>
+	<meta name="viewport" content="width=device-width" />
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+</head>
+<body>
+	<!-- Some of blocks on this page have color: #000 because GMail can wrap block in his own tags which can change text color -->
+	<div style="text-align: center; font-family: Helvetica, Arial, sans-serif; font-size: 18px;">
+		<h1 style="position: relative; color: #4fbbd6; margin-top: 0.2em;">Remark42</h1>
+		<p style="position: relative; max-width: 20em; margin: 0 auto 1em auto; line-height: 1.4em; color:#000!important;">Confirmation for <b>{{.User}}</b> on site <b>{{.Site}}</b></p>
+		<div style="background-color: #eee; max-width: 20em; margin: 0 auto; border-radius: 0.4em; padding: 0.5em;">
+			<p style="position: relative; margin: 0 0 0.5em 0;color:#000!important;">TOKEN</p>
+			<p style="position: relative; font-size: 0.7em; opacity: 0.8;"><i style="color:#000!important;">Copy and paste this text into “token” field on comments page</i></p>
+			<p style="position: relative; font-family: monospace; background-color: #fff; margin: 0; padding: 0.5em; word-break: break-all; text-align: left; border-radius: 0.2em; -webkit-user-select: all; user-select: all;">{{.Token}}</p>
 		</div>
-	</body>
+		<p style="position: relative; margin-top: 2em; font-size: 0.8em; opacity: 0.8;"><i style="color:#000!important;">Sent to {{.Email}}</i></p>
+	</div>
+</body>
 </html>
 `
 )
