@@ -242,6 +242,7 @@ type serverApp struct {
 
 // Execute is the entry point for "server" command, called by flag parser
 func (s *ServerCommand) Execute(args []string) error {
+	s.handleDeprecatedFlags()
 	log.Printf("[INFO] start server on port %d", s.Port)
 	resetEnv("SECRET", "AUTH_GOOGLE_CSEC", "AUTH_GITHUB_CSEC", "AUTH_FACEBOOK_CSEC", "AUTH_YANDEX_CSEC", "ADMIN_PASSWD")
 
@@ -265,6 +266,35 @@ func (s *ServerCommand) Execute(args []string) error {
 	}
 	log.Printf("[INFO] remark terminated")
 	return nil
+}
+
+// handleDeprecatedFlags sets new flags instead of deprecated ones and shows deprecation warnings
+func (s *ServerCommand) handleDeprecatedFlags() {
+	// 1.5.0
+	if s.Auth.Email.Host != "" && s.SMTP.Host == "" {
+		s.SMTP.Host = s.Auth.Email.Host
+		log.Print("[WARN] --auth.email.host is deprecated since 1.5.0 and will be removed in 1.7.0, please use --smtp.host instead")
+	}
+	if s.Auth.Email.Port != 0 && s.SMTP.Port == 0 {
+		s.SMTP.Port = s.Auth.Email.Port
+		log.Print("[WARN] --auth.email.port is deprecated since 1.5.0 and will be removed in 1.7.0, please use --smtp.port instead")
+	}
+	if s.Auth.Email.TLS != false && s.SMTP.TLS == false {
+		s.SMTP.TLS = s.Auth.Email.TLS
+		log.Print("[WARN] --auth.email.tls is deprecated since 1.5.0 and will be removed in 1.7.0, please use --smtp.tls instead")
+	}
+	if s.Auth.Email.SMTPUserName != "" && s.SMTP.Username == "" {
+		s.SMTP.Username = s.Auth.Email.SMTPUserName
+		log.Print("[WARN] --auth.email.user is deprecated since 1.5.0 and will be removed in 1.7.0, please use --smtp.username instead")
+	}
+	if s.Auth.Email.SMTPPassword != "" && s.SMTP.Password == "" {
+		s.SMTP.Password = s.Auth.Email.SMTPPassword
+		log.Print("[WARN] --auth.email.passwd is deprecated since 1.5.0 and will be removed in 1.7.0, please use --smtp.password instead")
+	}
+	if s.Auth.Email.TimeOut != 10*time.Second && s.SMTP.TimeOut == 10*time.Second {
+		s.SMTP.TimeOut = s.Auth.Email.TimeOut
+		log.Print("[WARN] --auth.email.timeout is deprecated since 1.5.0 and will be removed in 1.7.0, please use --smtp.timeout instead")
+	}
 }
 
 // newServerApp prepares application and return it with all active parts
