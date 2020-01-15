@@ -10,6 +10,7 @@
   .comment__info {
     margin-bottom: 0;
     opacity: 0.8;
+    min-height: 20px;
   }
   .comment__avatar {
     width: 20px;
@@ -23,6 +24,6 @@
   }
 
   .comment__score {
-    top: 2px;
+    top: 3px;
   }
 }

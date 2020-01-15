@@ -1,11 +1,12 @@
 .comment__score {
   position: absolute;
-  top: 4px;
+  top: 5px;
   right: 0;
   min-width: 60px;
   font-size: 0;
   font-weight: 700;
   text-align: right;
+  line-height: 14px;
   user-select: none;
   cursor: default;
 }
