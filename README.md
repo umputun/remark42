@@ -193,7 +193,9 @@ _this is the recommended way to run remark42_
 
 ##### Deprecated
 
-<details><summary>deprecated options</summary>
+<details>
+<summary>deprecated options</summary>
+
 | Command line       | Replacement   | Environment        | Replacement   | Default | Description    | Deprecation version |
 | ------------------ | ------------- | ------------------ | ------------- | ------- | -------------- | ------------------- |
 | auth.email.host    | smtp.host     | AUTH_EMAIL_HOST    | SMTP_HOST     |         | smtp host      | 1.5.0               |
@@ -209,7 +211,7 @@ _this is the recommended way to run remark42_
 Most of the parameters have sane defaults and don't require customization. There are only a few parameters user has to define:
 
 1. `SECRET` - secret key, can be any long and hard-to-guess string.
-2. `REMARK_URL` - url pointing to your remark42 server, i.e. `https://demo.reamark42.com`
+2. `REMARK_URL` - url pointing to your remark42 server, i.e. `https://demo.remark42.com`
 3. At least one pair of `AUTH_<PROVIDER>_CID` and `AUTH_<PROVIDER>_CSEC` defining oauth2 provider(s)
 
 The minimal `docker-compose.yml` has to include all required parameters:
