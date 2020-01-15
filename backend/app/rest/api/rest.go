@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -338,7 +339,7 @@ func (s *Rest) routes() chi.Router {
 	})
 
 	// file server for static content from /web
-	addFileServer(router, "/web", http.Dir(s.WebRoot))
+	addFileServer(router, "/web", http.Dir(s.WebRoot), s.Version)
 	return router
 }
 
@@ -444,7 +445,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 }
 
 // serves static files from /web or embedded by statik
-func addFileServer(r chi.Router, path string, root http.FileSystem) {
+func addFileServer(r chi.Router, path string, root http.FileSystem, version string) {
 
 	var webFS http.Handler
 
@@ -466,15 +467,17 @@ func addFileServer(r chi.Router, path string, root http.FileSystem) {
 	}
 	path += "*"
 
-	r.With(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(20, nil)), middleware.Timeout(10*time.Second)).
-		Get(path, func(w http.ResponseWriter, r *http.Request) {
-			// don't show dirs, just serve files
-			if strings.HasSuffix(r.URL.Path, "/") && len(r.URL.Path) > 1 && r.URL.Path != (origPath+"/") {
-				http.NotFound(w, r)
-				return
-			}
-			webFS.ServeHTTP(w, r)
-		})
+	r.With(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(20, nil)),
+		middleware.Timeout(10*time.Second),
+		cacheControl(time.Hour*24, version),
+	).Get(path, func(w http.ResponseWriter, r *http.Request) {
+		// don't show dirs, just serve files
+		if strings.HasSuffix(r.URL.Path, "/") && len(r.URL.Path) > 1 && r.URL.Path != (origPath+"/") {
+			http.NotFound(w, r)
+			return
+		}
+		webFS.ServeHTTP(w, r)
+	})
 }
 
 func encodeJSONWithHTML(v interface{}) ([]byte, error) {
@@ -564,6 +567,32 @@ func matchSiteID(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	}
 	return http.HandlerFunc(fn)
+}
+
+// cacheControl is a middleware setting cache expiration. Using url+version as etag
+func cacheControl(expiration time.Duration, version string) func(http.Handler) http.Handler {
+
+	etag := func(r *http.Request, version string) string {
+		s := version + ":" + r.URL.String()
+		return store.EncodeID(s)
+	}
+
+	return func(h http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			e := `"` + etag(r, version) + `"`
+			w.Header().Set("Etag", e)
+			w.Header().Set("Cache-Control", "max-age="+strconv.Itoa(int(expiration.Seconds())))
+
+			if match := r.Header.Get("If-None-Match"); match != "" {
+				if strings.Contains(match, e) {
+					w.WriteHeader(http.StatusNotModified)
+					return
+				}
+			}
+			h.ServeHTTP(w, r)
+		}
+		return http.HandlerFunc(fn)
+	}
 }
 
 func parseError(err error, defaultCode int) (code int) {
