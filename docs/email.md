@@ -3,41 +3,41 @@
 To allow email auth `AUTH_EMAIL_ENABLE` should be set to `true`. In addition, user needs to configure SMTP details with
 
 ```
-AUTH_EMAIL_HOST         
-AUTH_EMAIL_PORT         
-AUTH_EMAIL_FROM         
-AUTH_EMAIL_SUBJ         
-AUTH_EMAIL_CONTENT_TYPE 
-AUTH_EMAIL_TLS          
-AUTH_EMAIL_USER         
-AUTH_EMAIL_PASSWD       
-AUTH_EMAIL_TIMEOUT      
+AUTH_EMAIL_FROM
+AUTH_EMAIL_SUBJ
+AUTH_EMAIL_CONTENT_TYPE
 AUTH_EMAIL_TEMPLATE
+SMTP_HOST
+SMTP_PORT
+SMTP_TLS
+SMTP_USERNAME
+SMTP_PASSWORD
+SMTP_TIMEOUT
 ```
 
-This is an example of configuration using mailgun email service:
-
-```
-      - AUTH_EMAIL_ENABLE=true
-      - AUTH_EMAIL_HOST=smtp.mailgun.org
-      - AUTH_EMAIL_PORT=465
-      - AUTH_EMAIL_TLS=true
-      - AUTH_EMAIL_USER=postmaster@mg.example.com
-      - AUTH_EMAIL_PASSWD=*********
-      - AUTH_EMAIL_FROM=confirmation@example.com
-```
-
-Configuration example for gmail:
+This is an example of configuration using [Mailgun](https://www.mailgun.com/) email service:
 
 ```
       - AUTH_EMAIL_ENABLE=true
-      - AUTH_EMAIL_HOST=smtp.gmail.com
-      - AUTH_EMAIL_PORT=465
+      - AUTH_EMAIL_FROM=notify@example.com
+      - SMTP_HOST=smtp.eu.mailgun.org
+      - SMTP_PORT=465
+      - SMTP_TLS=true
+      - SMTP_USERNAME=postmaster@mg.example.com
+      - SMTP_PASSWORD=*********
+```
+
+Configuration example for Gmail:
+
+```
+      - AUTH_EMAIL_ENABLE=true
       - AUTH_EMAIL_FROM=example.user@gmail.com
       - AUTH_EMAIL_SUBJ=Comments email confirmation
-      - AUTH_EMAIL_TLS=true
-      - AUTH_EMAIL_USER=example.user@gmail.com
-      - AUTH_EMAIL_PASSWD=secretpassword
+      - SMTP_HOST=smtp.gmail.com
+      - SMTP_PORT=465
+      - SMTP_TLS=true
+      - SMTP_USERNAME=example.user@gmail.com
+      - SMTP_PASSWORD=secretpassword
 ```
 
 Usually you don't need to change/set anything else. In case if you want to use a different email template set `AUTH_EMAIL_TEMPLATE`, for instance
