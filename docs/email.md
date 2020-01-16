@@ -1,22 +1,22 @@
 ## Overview
 
-This documentation describes how to enable email-related capabilities of Remark. Currently following is possible:
+This documentation describes how to enable the email-related capabilities of Remark.
 
 - email authentication for users:
 
-    enabling this will let user log in using their emails;
+    enabling this will let the user log in using their emails:
 
     ![Email authentication](/docs/images/email_auth.png?raw=true)
 
 - email notifications for any users except anonymous:
 
-    GitHub or Google or Twitter or any other kind of user gets ability to get email notifications about new relies to their comments.
+    GitHub or Google or Twitter or any other kind of user gets the ability to get email notifications about new replies to their comments:
 
     ![Email notifications subscription](/docs/images/email_notifications.png?raw=true)
 
 ## Setup email server connection
 
-In order to enable any of email functionality you need to set up email (SMTP) server connection using these variables:
+To enable any of email functionality you need to set up email (SMTP) server connection using these variables:
 
 ```
 SMTP_HOST
@@ -29,7 +29,7 @@ SMTP_TIMEOUT
 
 ### Mailgun
 
-This is an example of configuration using [Mailgun](https://www.mailgun.com/) email service:
+This is an example of a configuration using [Mailgun](https://www.mailgun.com/) email service:
 
 ```
       - SMTP_HOST=smtp.eu.mailgun.org
@@ -74,7 +74,7 @@ After `SMTP_` variables are set, you can allow email authentication by setting t
 ```
 
 
-Usually you don't need to change/set anything else. In case if you want to use a different email template set `AUTH_EMAIL_TEMPLATE`, for instance
+Usually, you don't need to change/set anything else. In case if you want to use a different email template set `AUTH_EMAIL_TEMPLATE`, for instance
 `- AUTH_EMAIL_TEMPLATE="Confirmation email, token: {{.Token}}"`. See [verified-authentication](https://github.com/go-pkgz/auth#verified-authentication) for more details.
 
 ## Setup email notifications
