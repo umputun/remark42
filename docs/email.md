@@ -8,7 +8,7 @@ This documentation describes how to enable email-related capabilities of Remark.
 
 - email notifications for any users except anonymous:
 
-    GitHub or Google or Twitter or any other kind of user gets ability to get email notifications about new relies to his comments.
+    GitHub or Google or Twitter or any other kind of user gets ability to get email notifications about new relies to their comments.
 
 ## Setup email server connection
 
@@ -72,3 +72,23 @@ After `SMTP_` variables are set, you can allow email authentication by setting t
 
 Usually you don't need to change/set anything else. In case if you want to use a different email template set `AUTH_EMAIL_TEMPLATE`, for instance
 `- AUTH_EMAIL_TEMPLATE="Confirmation email, token: {{.Token}}"`. See [verified-authentication](https://github.com/go-pkgz/auth#verified-authentication) for more details.
+
+
+## Setup email notifications
+
+Here is the list of variables which affect email notifications:
+
+```
+NOTIFY_TYPE
+NOTIFY_EMAIL_FROM
+NOTIFY_EMAIL_VERIFICATION_SUBJ
+```
+
+After `SMTP_` variables are set, you can allow email notifications by setting these two variables:
+
+```
+      - NOTIFY_TYPE=email
+      # - NOTIFY_TYPE=email,telegram # this is in case you want to have both email and telegram notifications enabled
+      - NOTIFY_EMAIL_FROM=notify@example.com
+```
+
