@@ -3,5 +3,5 @@
 - [How to configure remark42 with nginx reverse proxy](nginx-proxy.md)
 - [How to configure remark42 without a subdomain](subdomain.md)
 - [Telegram notifications](telegram.md)
-- [Setup email authentication](email.md)
+- [Setup email authentication and\or email notifications](email.md)
  
