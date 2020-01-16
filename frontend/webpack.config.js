@@ -165,7 +165,7 @@ module.exports = () => ({
       inject: false,
     }),
     new MiniCssExtractPlugin({
-      filename: '[name].css',
+      filename: '[name].css?[contenthash:6]',
     }),
     new webpack.optimize.ModuleConcatenationPlugin(),
     ...(process.env.CI
