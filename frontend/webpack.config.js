@@ -70,8 +70,8 @@ module.exports = () => ({
   },
   output: {
     path: publicFolder,
-    filename: `[name].js`,
-    chunkFilename: '[name].js',
+    filename: `[name].js?[contenthash:6]`,
+    chunkFilename: '[name].js?[contenthash:6]',
   },
   resolve: {
     extensions: ['.tsx', '.ts', '.jsx', '.js'],
@@ -140,7 +140,13 @@ module.exports = () => ({
       'process.env.REMARK_URL': env === 'production' ? JSON.stringify(remarkUrl) : 'window.location.origin',
     }),
     new Html({
+      template: path.resolve(__dirname, 'iframe.html'),
+      filename: 'iframe.html',
+      chunks: ['remark'],
+    }),
+    new Html({
       template: path.resolve(__dirname, 'index.ejs'),
+      filename: 'index.html',
       inject: false,
     }),
     new Html({
@@ -174,7 +180,7 @@ module.exports = () => ({
             openAnalyzer: false,
           }),
         ]),
-    new Copy(['./iframe.html', './deleteme.html', './markdown-help.html']),
+    new Copy(['./deleteme.html', './markdown-help.html']),
   ],
   watchOptions: {
     ignored: /(node_modules|\.vendor\.js$)/,
