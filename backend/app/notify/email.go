@@ -78,11 +78,12 @@ type msgTmplData struct {
 	UserPicture       string
 	CommentText       string
 	CommentLink       string
-	CommentDate       string
+	CommentDate       time.Time
 	ParentUserName    string
 	ParentUserPicture string
 	ParentCommentText string
 	ParentCommentLink string
+	ParentCommentDate time.Time
 	PostTitle         string
 	Email             string
 	UnsubscribeLink   string
@@ -131,7 +132,7 @@ const (
 				<div style="margin-bottom: 12px; line-height: 24px;">
 					<img src="{{.ParentUserPicture}}" style="width: 24px; height: 24px; float: left; margin: 0 8px 0 0; border-radius: 3px; background-color: #ccc;"/>
 					<span style="font-size: 14px; font-weight: bold; color: #777">{{.ParentUserName}}</span>
-					<span style="color: #999; font-size: 14px; margin: 0 8px;">{{.CommentDate}}</span>
+					<span style="color: #999; font-size: 14px; margin: 0 8px;">{{.ParentCommentDate.Format "02.01.2006 at 15:04"}}</span>
 					<a href="{{.ParentCommentLink}}" style="color: #0aa; font-size: 14px;"><b>Show</b></a>
 				</div>
 				<div style="font-size: 14px; color:#333!important; padding: 0 14px 0 2px; border-radius: 3px; line-height: 1.4;">
@@ -145,7 +146,7 @@ const (
 						{{.UserName}}
 					</div>
 					<div style="color: #999; font-size: 14px; margin: 0 8px; float: left;">
-						{{.CommentDate}}
+						{{.CommentDate.Format "02.01.2006 at 15:04"}}
 					</div>
 					<a href="{{.CommentLink}}" style="color: #0aa; font-size: 14px;"><b>Reply</b></a>
 				</div>
@@ -159,7 +160,7 @@ const (
 			<div style="margin: auto; width: 150px; border-top: 1px solid rgba(0, 0, 0, 0.15); padding-top: 15px; margin-top: 15px;">
 				<a style="color: #0aa;" href="{{.UnsubscribeLink}}">Unsubscribe</a>
 				<!-- This is hack for remove collapser in Gmail which can collapse end of the message -->
-				<div style="opacity: 0;">[{{.CommentDate}}]</div>
+				<div style="opacity: 0;">[{{.CommentDate.Format "02.01.2006 at 15:04"}}]</div>
 			</div>
 		</div>
 	</div>
@@ -301,11 +302,12 @@ func (e *Email) buildMessageFromRequest(req Request) (string, error) {
 		UserPicture:       req.Comment.User.Picture,
 		CommentText:       req.Comment.Text,
 		CommentLink:       commentUrlPrefix + req.Comment.ID,
-		CommentDate:       req.Comment.Timestamp.Format("02.01.2006 at 15:04"),
+		CommentDate:       req.Comment.Timestamp,
 		ParentUserName:    req.parent.User.Name,
 		ParentUserPicture: req.parent.User.Picture,
 		ParentCommentText: req.parent.Text,
 		ParentCommentLink: commentUrlPrefix + req.parent.ID,
+		ParentCommentDate: req.parent.Timestamp,
 		PostTitle:         req.Comment.PostTitle,
 		Email:             req.Email,
 		UnsubscribeLink:   unsubscribeLink,
