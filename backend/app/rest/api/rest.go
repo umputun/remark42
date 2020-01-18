@@ -469,7 +469,7 @@ func addFileServer(r chi.Router, path string, root http.FileSystem, version stri
 
 	r.With(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(20, nil)),
 		middleware.Timeout(10*time.Second),
-		cacheControl(time.Hour*24, version),
+		cacheControl(time.Hour, version),
 	).Get(path, func(w http.ResponseWriter, r *http.Request) {
 		// don't show dirs, just serve files
 		if strings.HasSuffix(r.URL.Path, "/") && len(r.URL.Path) > 1 && r.URL.Path != (origPath+"/") {
