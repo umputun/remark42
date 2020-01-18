@@ -52,6 +52,7 @@ export type Props = {
 } & Partial<typeof boundActions>;
 
 export interface State {
+  renderDummy: boolean;
   isCopied: boolean;
   editDeadline: Date | null;
   voteErrorMessage: string | null;
@@ -79,6 +80,7 @@ export class Comment extends Component<Props, State> {
     super(props);
 
     this.state = {
+      renderDummy: typeof props.inView === 'boolean' ? !props.inView : false,
       isCopied: false,
       editDeadline: null,
       voteErrorMessage: null,
@@ -114,6 +116,10 @@ export class Comment extends Component<Props, State> {
       scoreDelta: props.data.vote,
       cachedScore: props.data.score,
     };
+
+    if (props.inView) {
+      newState.renderDummy = false;
+    }
 
     // set comment edit timer
     if (props.user && props.user.id === props.data.user.id) {
@@ -540,7 +546,7 @@ export class Comment extends Component<Props, State> {
       );
     }
 
-    if (!props.editMode && this.props.inView === false) {
+    if (this.state.renderDummy && !props.editMode) {
       const [width, height] = this.base
         ? [(this.base as Element).scrollWidth, (this.base as Element).scrollHeight]
         : [100, 100];
