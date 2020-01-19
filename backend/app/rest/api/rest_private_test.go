@@ -868,19 +868,19 @@ func TestRest_SavePictureCtrl(t *testing.T) {
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	assert.Equal(t, 1462, len(body))
-	assert.Equal(t, "image/png", resp.Header.Get("Content-Type"))
+	assert.Equal(t, "image/*", resp.Header.Get("Content-Type"))
 
 	id = savePic("picture.gif")
 	resp, err = http.Get(fmt.Sprintf("%s/api/v1/picture/%s", ts.URL, id))
 	require.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
-	assert.Equal(t, "image/gif", resp.Header.Get("Content-Type"))
+	assert.Equal(t, "image/*", resp.Header.Get("Content-Type"))
 
 	id = savePic("picture.jpg")
 	resp, err = http.Get(fmt.Sprintf("%s/api/v1/picture/%s", ts.URL, id))
 	require.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
-	assert.Equal(t, "image/jpeg", resp.Header.Get("Content-Type"))
+	assert.Equal(t, "image/*", resp.Header.Get("Content-Type"))
 
 	id = savePic("picture.blah")
 	resp, err = http.Get(fmt.Sprintf("%s/api/v1/picture/%s", ts.URL, id))
@@ -939,7 +939,6 @@ func TestRest_CreateWithPictures(t *testing.T) {
 		m := map[string]string{}
 		err = json.Unmarshal(body, &m)
 		assert.NoError(t, err)
-		assert.Contains(t, m["id"], ".png")
 		return m["id"]
 	}
 

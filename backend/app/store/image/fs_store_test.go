@@ -47,7 +47,6 @@ func TestFsStore_Save(t *testing.T) {
 	id, err := svc.Save("file1.png", "user1", gopherPNG())
 	assert.NoError(t, err)
 	assert.Contains(t, id, "user1/")
-	assert.Contains(t, id, ".png")
 	t.Log(id)
 
 	img := svc.location(svc.Staging, id)
@@ -65,7 +64,6 @@ func TestFsStore_SaveWithResize(t *testing.T) {
 	id, err := svc.Save("file1.png", "user1", gopherPNG())
 	assert.NoError(t, err)
 	assert.Contains(t, id, "user1/")
-	assert.Contains(t, id, ".png")
 	t.Log(id)
 
 	img := svc.location(svc.Staging, id)
@@ -87,7 +85,6 @@ func TestFsStore_SaveWithResizeJpeg(t *testing.T) {
 	id, err := svc.Save("circles.jpg", "user1", fh)
 	assert.NoError(t, err)
 	assert.Contains(t, id, "user1/")
-	assert.Contains(t, id, ".png")
 	t.Log(id)
 
 	img := svc.location(svc.Staging, id)
@@ -109,7 +106,6 @@ func TestFsStore_SaveNoResizeJpeg(t *testing.T) {
 	id, err := svc.Save("circles.jpg", "user1", fh)
 	assert.NoError(t, err)
 	assert.Contains(t, id, "user1/")
-	assert.Contains(t, id, ".jpg")
 	t.Log(id)
 
 	img := svc.location(svc.Staging, id)
@@ -124,7 +120,7 @@ func TestFsStore_WrongFormat(t *testing.T) {
 	defer teardown()
 
 	_, err := svc.Save("file1.png", "user1", strings.NewReader("blah blah bad image"))
-	assert.EqualError(t, err, "can't load image file1.png: file format is not allowed")
+	assert.Error(t, err)
 }
 
 func TestFsStore_SaveAndCommit(t *testing.T) {

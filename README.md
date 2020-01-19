@@ -178,7 +178,8 @@ _this is the recommended way to run remark42_
 | restricted-words        | RESTRICTED_WORDS        |                          | words banned in comments (can use `*`), _multi_ |
 | edit-time               | EDIT_TIME               | `5m`                     | edit window                                     |
 | read-age                | READONLY_AGE            |                          | read-only age of comments, days                 |
-| img-proxy               | IMG_PROXY               | `false`                  | enable http->https proxy for images             |
+| image-proxy.http2https  |   | `false`                  | enable http->https proxy for images             |≈
+| imgage-proxy.cache-external | IMAGE_PROXY_CACHE_EXTERNAL | `false`                  | enable caching external images to current image storage |
 | emoji                   | EMOJI                   | `false`                  | enable emoji support                            |
 | simple-view             | SIMPLE_VIEW             | `false`                  | minimized UI with basic info only               |
 | port                    | REMARK_PORT             | `8080`                   | web server port                                 |
@@ -204,6 +205,7 @@ _this is the recommended way to run remark42_
 | auth.email.passwd  | smtp.password | AUTH_EMAIL_PASSWD  | SMTP_PASSWORD |         | smtp password  | 1.5.0               |
 | auth.email.tls     | smtp.tls      | AUTH_EMAIL_TLS     | SMTP_TLS      | `false` | enable TLS     | 1.5.0               |
 | auth.email.timeout | smtp.timeout  | AUTH_EMAIL_TIMEOUT | SMTP_TIMEOUT  | `10s`   | smtp timeout   | 1.5.0               |
+| img-proxy          | image-proxy.http2https | IMG_PROXY | IMAGE_PROXY_HTTP2HTTPS  | `false`   | enable http->https proxy for images   | 1.5.0               |
 </details>
 
 ##### Required parameters

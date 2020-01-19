@@ -1,0 +1,2 @@
+service:
+  golangci-lint-version: 1.19.1

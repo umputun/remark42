@@ -30,6 +30,7 @@ import (
 // Store defines interface for saving and loading pictures.
 // Declares two-stage save with commit
 type Store interface {
+	SaveWithID(id string, r io.Reader) (string, error)
 	Save(fileName string, userID string, r io.Reader) (id string, err error) // get name and reader and returns ID of stored image
 	Commit(id string) error                                                  // move image from staging to permanent
 	Load(id string) (io.ReadCloser, int64, error)                            // load image by ID. Caller has to close the reader.
@@ -139,23 +140,23 @@ func (s *Service) Close() {
 // resize an image of supported format (PNG, JPG, GIF) to the size of "limit" px of the
 // biggest side (width or height) preserving aspect ratio.
 // Returns original data if resizing is not needed or failed.
-// If resized the result will be for png format and ok flag will be true.
-func resize(data []byte, limitW, limitH int) ([]byte, bool) {
+// If resized the result will be for png format
+func resize(data []byte, limitW, limitH int) []byte {
 	if data == nil || limitW <= 0 || limitH <= 0 {
-		return data, false
+		return data
 	}
 
 	src, _, err := image.Decode(bytes.NewBuffer(data))
 	if err != nil {
 		log.Printf("[WARN] can't decode image, %s", err)
-		return data, false
+		return data
 	}
 
 	bounds := src.Bounds()
 	w, h := bounds.Dx(), bounds.Dy()
 	if w <= limitW && h <= limitH || w <= 0 || h <= 0 {
 		log.Printf("[DEBUG] resizing image is smaller that the limit or has 0 size")
-		return data, false
+		return data
 	}
 
 	newW, newH := getProportionalSizes(w, h, limitW, limitH)
@@ -165,9 +166,9 @@ func resize(data []byte, limitW, limitH int) ([]byte, bool) {
 	var out bytes.Buffer
 	if err = png.Encode(&out, m); err != nil {
 		log.Printf("[WARN] can't encode resized image to png, %s", err)
-		return data, false
+		return data
 	}
-	return out.Bytes(), true
+	return out.Bytes()
 }
 
 // getProportionalSizes returns width and height resized by both dimensions proportionally

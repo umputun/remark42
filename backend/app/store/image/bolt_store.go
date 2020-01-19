@@ -60,16 +60,14 @@ func NewBoltStorage(fileName string, maxSize int, maxHeight int, maxWidth int, o
 	}, nil
 }
 
-// Save data from reader to staging bucket in DB
-func (b *Bolt) Save(fileName string, userID string, r io.Reader) (id string, err error) {
+// SaveWithID saves data from reader with given id
+func (b *Bolt) SaveWithID(id string, r io.Reader) (string, error) {
 	data, err := readAndValidateImage(r, b.MaxSize)
 	if err != nil {
-		return "", errors.Wrapf(err, "can't load image %s", fileName)
+		return "", errors.Wrapf(err, "can't load image with ID %s", id)
 	}
 
-	data, _ = resize(data, b.MaxWidth, b.MaxHeight)
-
-	id = path.Join(userID, guid())
+	data = resize(data, b.MaxWidth, b.MaxHeight)
 
 	err = b.db.Update(func(tx *bolt.Tx) error {
 		if err = tx.Bucket([]byte(imagesStagedBktName)).Put([]byte(id), data); err != nil {
@@ -86,6 +84,12 @@ func (b *Bolt) Save(fileName string, userID string, r io.Reader) (id string, err
 	})
 
 	return id, err
+}
+
+// Save data from reader to staging bucket in DB
+func (b *Bolt) Save(fileName string, userID string, r io.Reader) (id string, err error) {
+	id = path.Join(userID, guid())
+	return b.SaveWithID(id, r)
 }
 
 // Commit file stored in staging bucket by copying it to permanent bucket
