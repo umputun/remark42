@@ -22,6 +22,7 @@ type RemapCommand struct {
 	CommonOpts
 }
 
+// Execute runs (re)mapper with RemapCommand parameters, entry point for "remap" command
 func (rc *RemapCommand) Execute(args []string) error {
 	log.Printf("[INFO] start remap, site %s, file with rules %s", rc.Site, rc.InputFile)
 	resetEnv("SECRET", "ADMIN_PASSWD")
