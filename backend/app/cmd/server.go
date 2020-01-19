@@ -199,6 +199,7 @@ type NotifyGroup struct {
 	Email struct {
 		From                string `long:"fromAddress" env:"FROM" description:"from email address"`
 		VerificationSubject string `long:"verification_subj" env:"VERIFICATION_SUBJ" description:"verification message subject"`
+		SubscribeURL        string `long:"subscribe-url" env:"SUBSCRIBE_URL" description:"URL parameters to add to SITE in order to include to subscription email instead of plain token"`
 	} `group:"email" namespace:"email" env-namespace:"EMAIL"`
 }
 
@@ -782,6 +783,9 @@ func (s *ServerCommand) makeNotify(dataStore *service.DataStore, authenticator *
 					}
 					return tkn, nil
 				},
+			}
+			if s.Notify.Email.SubscribeURL != "" {
+				emailParams.SubscribeURL = s.RemarkURL + s.Notify.Email.SubscribeURL
 			}
 			smtpParams := notify.SmtpParams{
 				Host:     s.SMTP.Host,

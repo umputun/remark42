@@ -23,6 +23,7 @@ type EmailParams struct {
 	MsgTemplate          string // request message template
 	VerificationSubject  string // verification message subject
 	VerificationTemplate string // verification message template
+	SubscribeURL         string // full subscribe handler URL
 	UnsubscribeURL       string // full unsubscribe handler URL
 
 	TokenGenFn func(userID, email, site string) (string, error) // Unsubscribe token generation function
@@ -91,10 +92,11 @@ type msgTmplData struct {
 
 // verifyTmplData store data for verification message template execution
 type verifyTmplData struct {
-	User  string
-	Token string
-	Email string
-	Site  string
+	User         string
+	Token        string
+	Email        string
+	Site         string
+	SubscribeURL string
 }
 
 const (
@@ -178,11 +180,15 @@ const (
 	<div style="text-align: center; font-family: Helvetica, Arial, sans-serif; font-size: 18px;">
 		<h1 style="position: relative; color: #4fbbd6; margin-top: 0.2em;">Remark42</h1>
 		<p style="position: relative; max-width: 20em; margin: 0 auto 1em auto; line-height: 1.4em; color:#000!important;">Confirmation for <b>{{.User}}</b> on site <b>{{.Site}}</b></p>
+		{{if .SubscribeURL}}
+		<p style="position: relative; margin: 0 0 0.5em 0;color:#000!important;"><a href="{{.SubscribeURL}}{{.Token}}">Click here to subscribe to email notifications</a></p>
+		{{ else }}
 		<div style="background-color: #eee; max-width: 20em; margin: 0 auto; border-radius: 0.4em; padding: 0.5em;">
 			<p style="position: relative; margin: 0 0 0.5em 0;color:#000!important;">TOKEN</p>
 			<p style="position: relative; font-size: 0.7em; opacity: 0.8;"><i style="color:#000!important;">Copy and paste this text into “token” field on comments page</i></p>
 			<p style="position: relative; font-family: monospace; background-color: #fff; margin: 0; padding: 0.5em; word-break: break-all; text-align: left; border-radius: 0.2em; -webkit-user-select: all; user-select: all;">{{.Token}}</p>
 		</div>
+		{{ end }}
 		<p style="position: relative; margin-top: 2em; font-size: 0.8em; opacity: 0.8;"><i style="color:#000!important;">Sent to {{.Email}}</i></p>
 	</div>
 </body>
@@ -273,10 +279,11 @@ func (e *Email) buildVerificationMessage(user, email, token, site string) (strin
 	subject := e.VerificationSubject
 	msg := bytes.Buffer{}
 	err := e.verifyTmpl.Execute(&msg, verifyTmplData{
-		User:  user,
-		Token: token,
-		Email: email,
-		Site:  site,
+		User:         user,
+		Token:        token,
+		Email:        email,
+		Site:         site,
+		SubscribeURL: e.SubscribeURL,
 	})
 	if err != nil {
 		return "", errors.Wrapf(err, "error executing template to build verification message")
