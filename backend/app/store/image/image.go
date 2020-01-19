@@ -140,7 +140,7 @@ func (s *Service) Close() {
 // resize an image of supported format (PNG, JPG, GIF) to the size of "limit" px of the
 // biggest side (width or height) preserving aspect ratio.
 // Returns original data if resizing is not needed or failed.
-// If resized the result will be for png format and ok flag will be true.
+// If resized the result will be for png format
 func resize(data []byte, limitW, limitH int) []byte {
 	if data == nil || limitW <= 0 || limitH <= 0 {
 		return data
