@@ -300,7 +300,7 @@ func (s *ServerCommand) HandleDeprecatedFlags() (result []DeprecatedFlag) {
 		s.SMTP.TimeOut = s.Auth.Email.TimeOut
 		result = append(result, DeprecatedFlag{Old: "auth.email.timeout", New: "smtp.timeout", RemoveVersion: "1.7.0"})
 	}
-	if s.LegacyImageProxy != false && s.ImageProxy.HTTP2HTTPS == false {
+	if s.LegacyImageProxy && s.ImageProxy.HTTP2HTTPS == false {
 		s.ImageProxy.HTTP2HTTPS = s.LegacyImageProxy
 		result = append(result, DeprecatedFlag{Old: "img-proxy", New: "image-proxy.http2https", RemoveVersion: "1.7.0"})
 	}
@@ -390,7 +390,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 	}
 
 	imgProxy := &proxy.Image{
-		HTTP2HTTPS:    s.ImageProxy.HTTP2HTTPS || s.LegacyImageProxy,
+		HTTP2HTTPS:    s.ImageProxy.HTTP2HTTPS,
 		CacheExternal: s.ImageProxy.CacheExternal,
 		RoutePath:     "/api/v1/img",
 		RemarkURL:     s.RemarkURL,
