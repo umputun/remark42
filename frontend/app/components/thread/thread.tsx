@@ -1,6 +1,6 @@
 /** @jsx createElement */
 import { createElement, FunctionComponent } from 'preact';
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector, useDispatch, shallowEqual } from 'react-redux';
 import { useCallback } from 'preact/hooks';
 import b from 'bem-react-helper';
 
@@ -32,7 +32,7 @@ const commentSelector = (id: string) => (state: StoreState) => {
 
 export const Thread: FunctionComponent<Props> = ({ id, level, mix, getPreview }) => {
   const dispatch = useDispatch();
-  const { collapsed, comment, childs, theme } = useSelector(commentSelector(id));
+  const { collapsed, comment, childs, theme } = useSelector(commentSelector(id), shallowEqual);
   const collapse = useCallback(() => {
     dispatch(setCollapse(id, !collapsed));
   }, [id, collapsed]);
