@@ -182,13 +182,13 @@ const (
 		<p style="position: relative; max-width: 20em; margin: 0 auto 1em auto; line-height: 1.4em; color:#000!important;">Confirmation for <b>{{.User}}</b> on site <b>{{.Site}}</b></p>
 		{{if .SubscribeURL}}
 		<p style="position: relative; margin: 0 0 0.5em 0;color:#000!important;"><a href="{{.SubscribeURL}}{{.Token}}">Click here to subscribe to email notifications</a></p>
-		{{ else }}
+		<p style="position: relative; margin: 0 0 0.5em 0;color:#000!important;">Alternatively, you can use code below for subscription.</p>
+		{{ end }}
 		<div style="background-color: #eee; max-width: 20em; margin: 0 auto; border-radius: 0.4em; padding: 0.5em;">
 			<p style="position: relative; margin: 0 0 0.5em 0;color:#000!important;">TOKEN</p>
 			<p style="position: relative; font-size: 0.7em; opacity: 0.8;"><i style="color:#000!important;">Copy and paste this text into “token” field on comments page</i></p>
 			<p style="position: relative; font-family: monospace; background-color: #fff; margin: 0; padding: 0.5em; word-break: break-all; text-align: left; border-radius: 0.2em; -webkit-user-select: all; user-select: all;">{{.Token}}</p>
 		</div>
-		{{ end }}
 		<p style="position: relative; margin-top: 2em; font-size: 0.8em; opacity: 0.8;"><i style="color:#000!important;">Sent to {{.Email}}</i></p>
 	</div>
 </body>
