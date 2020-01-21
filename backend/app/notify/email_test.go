@@ -189,7 +189,8 @@ func TestEmail_Send(t *testing.T) {
 	req := Request{
 		Comment: store.Comment{ID: "999", User: store.User{ID: "1", Name: "test_user"}, PostTitle: "test_title"},
 		parent:  store.Comment{ID: "1", User: store.User{ID: "999", Name: "parent_user"}},
-		Email:   "test@example.org"}
+		Email:   "test@example.org",
+	}
 	assert.NoError(t, email.Send(context.TODO(), req))
 	assert.Equal(t, "from@example.org", fakeSmtp.readMail())
 	assert.Equal(t, 1, fakeSmtp.readQuitCount())
@@ -206,6 +207,50 @@ Content-Type: text/html; charset="UTF-8"
 List-Unsubscribe-Post: List-Unsubscribe=One-Click
 List-Unsubscribe: <https://remark42.com/api/v1/email/unsubscribe?site=&tkn=token>
 Date: `)
+}
+
+func TestEmail_SendVerification(t *testing.T) {
+	email, err := NewEmail(EmailParams{From: "from@example.org"}, SmtpParams{})
+	assert.NoError(t, err)
+	assert.NotNil(t, email)
+	fakeSmtp := fakeTestSMTP{}
+	email.smtp = &fakeSmtp
+	email.TokenGenFn = TokenGenFn
+	req := Request{
+		Email: "test@example.org",
+		Verification: VerificationMetadata{
+			SiteID: "remark",
+			User:   "test_username",
+			Token:  "secret_",
+		},
+	}
+	assert.NoError(t, email.Send(context.TODO(), req))
+	assert.Equal(t, "from@example.org", fakeSmtp.readMail())
+	assert.Equal(t, 1, fakeSmtp.readQuitCount())
+	assert.Equal(t, "test@example.org", fakeSmtp.readRcpt())
+	// test buildMessageFromRequest separately for message text
+	res, err := email.buildVerificationMessage(req.Verification.User, req.Email, req.Verification.Token, req.Verification.SiteID)
+	assert.NoError(t, err)
+	assert.Contains(t, res, `From: from@example.org
+To: test@example.org
+Subject: Email verification
+Content-Transfer-Encoding: quoted-printable
+MIME-version: 1.0
+Content-Type: text/html; charset="UTF-8"
+Date: `)
+	assert.Contains(t, res, `secret_`)
+	assert.NotContains(t, res, `https://example.org/`)
+	email.SubscribeURL = "https://example.org/subscribe.html?token="
+	res, err = email.buildVerificationMessage(req.Verification.User, req.Email, req.Verification.Token, req.Verification.SiteID)
+	assert.NoError(t, err)
+	assert.Contains(t, res, `From: from@example.org
+To: test@example.org
+Subject: Email verification
+Content-Transfer-Encoding: quoted-printable
+MIME-version: 1.0
+Content-Type: text/html; charset="UTF-8"
+Date: `)
+	assert.Contains(t, res, `https://example.org/subscribe.html?token=3Dsecret_`)
 }
 
 func Test_emailClient_Create(t *testing.T) {

@@ -766,6 +766,8 @@ func (s *ServerCommand) makeNotify(dataStore *service.DataStore, authenticator *
 				From:                s.Notify.Email.From,
 				VerificationSubject: s.Notify.Email.VerificationSubject,
 				UnsubscribeURL:      s.RemarkURL + "/email/unsubscribe.html",
+				// TODO: uncomment after #560 frontend part is ready and URL is known
+				//SubscribeURL:        s.RemarkURL + "/subscribe.html?token=",
 				TokenGenFn: func(userID, email, site string) (string, error) {
 					claims := token.Claims{
 						Handshake: &token.Handshake{ID: userID + "::" + email},
