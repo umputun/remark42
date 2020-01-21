@@ -155,7 +155,6 @@ _this is the recommended way to run remark42_
 | notify.telegram.timeout | NOTIFY_TELEGRAM_TIMEOUT | `5s`                     | telegram timeout                                |
 | notify.email.fromAddress | NOTIFY_EMAIL_FROM      |                          | from email address                              |
 | notify.email.verification_subj | NOTIFY_EMAIL_VERIFICATION_SUBJ | `Email verification` | verification message subject          |
-| notify.email.subscribe-url | NOTIFY_EMAIL_SUBSCRIBE_URL | `` | URL parameters to add to SITE in order to include to subscription email instead of plain token |
 | smtp.host               | SMTP_HOST               |                          | SMTP host                                       |
 | smtp.port               | SMTP_PORT               |                          | SMTP port                                       |
 | smtp.username           | SMTP_USERNAME           |                          | SMTP user name                                  |

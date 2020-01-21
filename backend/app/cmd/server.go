@@ -199,7 +199,6 @@ type NotifyGroup struct {
 	Email struct {
 		From                string `long:"fromAddress" env:"FROM" description:"from email address"`
 		VerificationSubject string `long:"verification_subj" env:"VERIFICATION_SUBJ" description:"verification message subject"`
-		SubscribeURL        string `long:"subscribe-url" env:"SUBSCRIBE_URL" description:"URL parameters to add to SITE in order to include to subscription email instead of plain token"`
 	} `group:"email" namespace:"email" env-namespace:"EMAIL"`
 }
 
@@ -767,6 +766,8 @@ func (s *ServerCommand) makeNotify(dataStore *service.DataStore, authenticator *
 				From:                s.Notify.Email.From,
 				VerificationSubject: s.Notify.Email.VerificationSubject,
 				UnsubscribeURL:      s.RemarkURL + "/email/unsubscribe.html",
+				// TODO: uncomment after #560 frontend part is ready and URL is known
+				//SubscribeURL:        s.RemarkURL + "/subscribe.html?token=",
 				TokenGenFn: func(userID, email, site string) (string, error) {
 					claims := token.Claims{
 						Handshake: &token.Handshake{ID: userID + "::" + email},
@@ -783,9 +784,6 @@ func (s *ServerCommand) makeNotify(dataStore *service.DataStore, authenticator *
 					}
 					return tkn, nil
 				},
-			}
-			if s.Notify.Email.SubscribeURL != "" {
-				emailParams.SubscribeURL = s.RemarkURL + s.Notify.Email.SubscribeURL
 			}
 			smtpParams := notify.SmtpParams{
 				Host:     s.SMTP.Host,
