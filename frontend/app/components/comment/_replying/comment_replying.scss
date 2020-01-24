@@ -1,5 +1,7 @@
 .comment_replying {
   padding-bottom: 0;
+  position: relative;
+  z-index: 1;
 
   .comment__score {
     top: 4px;
@@ -10,6 +12,9 @@
   @media (-moz-touch-enabled: 1) and (max-width: 768px), (pointer: coarse) and (max-width: 768px) {
     border: 8px solid;
 
+    .comment__info {
+      padding-left: 8px;
+    }
     .comment__body {
       padding: 8px 8px 0;
     }
@@ -22,7 +27,7 @@
     }
 
     .comment__score {
-      top: 12px;
+      top: 5px;
       right: 8px;
     }
   }
