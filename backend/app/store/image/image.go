@@ -1,6 +1,6 @@
 // Package image handles storing, resizing and retrieval of images
-// Provides Store with Save and Load and one implementation on top of local file system.
-// Service object encloses Store and add common methods, this is the one consumer should use
+// Provides Store with Save and Load and implementations on top of local file system and bolt db.
+// Service object encloses Store and add common methods, this is the one consumer should use.
 package image
 
 //go:generate sh -c "mockery -inpkg -name Store -print > /tmp/mock.tmp && mv /tmp/mock.tmp image_mock.go"
@@ -28,17 +28,20 @@ import (
 )
 
 // Store defines interface for saving and loading pictures.
-// Declares two-stage save with commit
+// Declares two-stage save with commit. Save stores to staging area and Commit moves to the final location
 type Store interface {
-	SaveWithID(id string, r io.Reader) (string, error)
-	Save(fileName string, userID string, r io.Reader) (id string, err error) // get name and reader and returns ID of stored image
-	Commit(id string) error                                                  // move image from staging to permanent
+	Save(fileName string, userID string, r io.Reader) (id string, err error) // get name and reader and returns ID of stored (staging) image
+	SaveWithID(id string, r io.Reader) (string, error)                       // store image for passed id to staging
 	Load(id string) (io.ReadCloser, int64, error)                            // load image by ID. Caller has to close the reader.
-	Cleanup(ctx context.Context, ttl time.Duration) error                    // run removal loop for old images on staging
 	SizeLimit() int                                                          // max image size
+
+	commit(id string) error                               // move image from staging to permanent
+	cleanup(ctx context.Context, ttl time.Duration) error // run removal loop for old images on staging
 }
 
-// Service extends Store with common functions needed for any store implementation
+// Service wrap Store with common functions needed for any store implementation
+// It also provides async Submit with func param retrieving all submitting ids.
+// Submitted ids committed (i.e. moved from staging to final) on TTL expiration.
 type Service struct {
 	Store
 	TTL      time.Duration // for how long file allowed on staging
@@ -121,7 +124,7 @@ func (s *Service) Cleanup(ctx context.Context) {
 			log.Printf("[INFO] cleanup terminated, %v", ctx.Err())
 			return
 		case <-time.After(s.TTL / 2):
-			if err := s.Store.Cleanup(ctx, s.TTL); err != nil {
+			if err := s.Store.cleanup(ctx, s.TTL); err != nil {
 				log.Printf("[WARN] failed to cleanup, %v", err)
 			}
 		}
@@ -199,12 +202,7 @@ func getProportionalSizes(srcW, srcH int, limitW, limitH int) (resW, resH int) {
 	return limitW, int(propH)
 }
 
-// check if file f is a valid image format, i.e. gif, png, jpeg or webp
-func isValidImage(b []byte) bool {
-	ct := http.DetectContentType(b)
-	return ct == "image/gif" || ct == "image/png" || ct == "image/jpeg" || ct == "image/webp"
-}
-
+// check if file f is a valid image format, i.e. gif, png, jpeg or webp and reads up to maxSize.
 func readAndValidateImage(r io.Reader, maxSize int) ([]byte, error) {
 
 	isValidImage := func(b []byte) bool {
@@ -224,7 +222,7 @@ func readAndValidateImage(r io.Reader, maxSize int) ([]byte, error) {
 
 	// read header first, needs it to check if data is valid png/gif/jpeg
 	if !isValidImage(data[:512]) {
-		return nil, errors.Errorf("file format is not allowed")
+		return nil, errors.Errorf("file format not allowed")
 	}
 
 	return data, nil

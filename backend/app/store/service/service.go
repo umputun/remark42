@@ -102,7 +102,7 @@ func (s *DataStore) Create(comment store.Comment) (commentID string, err error) 
 		comment.PostTitle = title
 	}()
 
-	s.submitImages(comment)
+	s.submitImages(comment.Locator, comment.ID)
 	if e := s.AdminStore.OnEvent(comment.Locator.SiteID, admin.EvCreate); e != nil {
 		log.Printf("[WARN] failed to send create event, %s", e)
 	}
@@ -202,23 +202,22 @@ func (s *DataStore) DeleteUserDetail(siteID string, userID string, detail engine
 }
 
 // submitImages initiated delayed commit of all images from the comment uploaded to remark42
-func (s *DataStore) submitImages(comment store.Comment) {
+func (s *DataStore) submitImages(locator store.Locator, commentID string) {
 
-	s.ImageService.Submit(func() []string {
-		c := comment
+	s.ImageService.Submit(func() []string { // get all ids from comment's text
 		// this can be called after last edit, we have to retrieve fresh comment
-		cc, err := s.Engine.Get(engine.GetRequest{Locator: c.Locator, CommentID: c.ID})
+		cc, err := s.Engine.Get(engine.GetRequest{Locator: locator, CommentID: commentID})
 		if err != nil {
-			log.Printf("[WARN] can't get comment's %s text for image extraction, %v", c.ID, err)
+			log.Printf("[WARN] can't get comment's %s text for image extraction, %v", commentID, err)
 			return nil
 		}
 		imgIds, err := s.ImageService.ExtractPictures(cc.Text)
 		if err != nil {
-			log.Printf("[WARN] can't get extract pictures from %s, %v", c.ID, err)
+			log.Printf("[WARN] can't get extract pictures from %s, %v", commentID, err)
 			return nil
 		}
 		if len(imgIds) > 0 {
-			log.Printf("[DEBUG] image ids extracted from %s - %+v", c.ID, imgIds)
+			log.Printf("[DEBUG] image ids extracted from %s - %+v", commentID, imgIds)
 		}
 		return imgIds
 	})

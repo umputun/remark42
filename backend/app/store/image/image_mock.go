@@ -16,34 +16,6 @@ type MockStore struct {
 	mock.Mock
 }
 
-// Cleanup provides a mock function with given fields: ctx, ttl
-func (_m *MockStore) Cleanup(ctx context.Context, ttl time.Duration) error {
-	ret := _m.Called(ctx, ttl)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, time.Duration) error); ok {
-		r0 = rf(ctx, ttl)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// Commit provides a mock function with given fields: id
-func (_m *MockStore) Commit(id string) error {
-	ret := _m.Called(id)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(string) error); ok {
-		r0 = rf(id)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
 // Load provides a mock function with given fields: id
 func (_m *MockStore) Load(id string) (io.ReadCloser, int64, error) {
 	ret := _m.Called(id)
@@ -125,6 +97,34 @@ func (_m *MockStore) SizeLimit() int {
 		r0 = rf()
 	} else {
 		r0 = ret.Get(0).(int)
+	}
+
+	return r0
+}
+
+// cleanup provides a mock function with given fields: ctx, ttl
+func (_m *MockStore) cleanup(ctx context.Context, ttl time.Duration) error {
+	ret := _m.Called(ctx, ttl)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, time.Duration) error); ok {
+		r0 = rf(ctx, ttl)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// commit provides a mock function with given fields: id
+func (_m *MockStore) commit(id string) error {
+	ret := _m.Called(id)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string) error); ok {
+		r0 = rf(id)
+	} else {
+		r0 = ret.Error(0)
 	}
 
 	return r0

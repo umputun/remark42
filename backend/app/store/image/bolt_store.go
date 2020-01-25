@@ -29,7 +29,7 @@ type Bolt struct {
 	MaxWidth  int
 }
 
-// Create Bolt Store.
+// NewBoltStorage create bolt image store
 func NewBoltStorage(fileName string, maxSize int, maxHeight int, maxWidth int, options bolt.Options) (*Bolt, error) {
 	db, err := bolt.Open(fileName, 0600, &options)
 	if err != nil {
@@ -60,7 +60,7 @@ func NewBoltStorage(fileName string, maxSize int, maxHeight int, maxWidth int, o
 	}, nil
 }
 
-// SaveWithID saves data from reader with given id
+// SaveWithID saves data from a reader, for given id
 func (b *Bolt) SaveWithID(id string, r io.Reader) (string, error) {
 	data, err := readAndValidateImage(r, b.MaxSize)
 	if err != nil {
@@ -87,14 +87,14 @@ func (b *Bolt) SaveWithID(id string, r io.Reader) (string, error) {
 }
 
 // Save data from reader to staging bucket in DB
-func (b *Bolt) Save(fileName string, userID string, r io.Reader) (id string, err error) {
+func (b *Bolt) Save(_ string, userID string, r io.Reader) (id string, err error) {
 	id = path.Join(userID, guid())
 	return b.SaveWithID(id, r)
 }
 
 // Commit file stored in staging bucket by copying it to permanent bucket
 // Data from staging bucket not removed immediately, but would be removed on cleanup
-func (b *Bolt) Commit(id string) error {
+func (b *Bolt) commit(id string) error {
 	err := b.db.Update(func(tx *bolt.Tx) error {
 		data := tx.Bucket([]byte(imagesStagedBktName)).Get([]byte(id))
 		if data == nil {
@@ -127,7 +127,7 @@ func (b *Bolt) Load(id string) (io.ReadCloser, int64, error) {
 }
 
 // Cleanup runs scan of staging and removes old data based on ttl
-func (b *Bolt) Cleanup(ctx context.Context, ttl time.Duration) error {
+func (b *Bolt) cleanup(_ context.Context, ttl time.Duration) error {
 	err := b.db.Update(func(tx *bolt.Tx) error {
 		c := tx.Bucket([]byte(insertTimeBktName)).Cursor()
 
