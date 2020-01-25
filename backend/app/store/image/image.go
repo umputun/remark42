@@ -75,10 +75,11 @@ func (s *Service) Submit(idsFn func() []string) {
 					time.Sleep(time.Millisecond * 10) // small sleep to relive busy wait but keep reactive for term (close)
 				}
 				for _, id := range req.idsFn() {
-					if err := s.Commit(id); err != nil {
+					if err := s.commit(id); err != nil {
 						log.Printf("[WARN] failed to commit image %s", id)
 					}
 				}
+				atomic.StoreInt32(&s.term, 0) // indicates completion of ids commits
 			}
 			log.Printf("[INFO] image submitter terminated")
 		}()
@@ -130,7 +131,14 @@ func (s *Service) Cleanup(ctx context.Context) {
 // Close flushes all in-progress submits and enforces waiting commits
 func (s *Service) Close() {
 	log.Printf("[INFO] close image service ")
-	atomic.AddInt32(&s.term, 1) // enforce non-delayed commits for all ids left in submitCh
+	atomic.StoreInt32(&s.term, 1) // enforce non-delayed commits for all ids left in submitCh
+	for {
+		// set to 0 by commit goroutine after everything waited on TTL sent
+		if atomic.LoadInt32(&s.term) == 0 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
 	if s.submitCh != nil {
 		close(s.submitCh)
 	}
