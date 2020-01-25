@@ -159,10 +159,7 @@ func (p Image) cacheImage(r io.Reader, imgID string) {
 	if err != nil {
 		log.Printf("[WARN] unable to save image to the storage: %+v", err)
 	}
-	// In the future we can do something smarter than just committing everything (eg, some kind of LFU/LRU)
-	if err := p.ImageService.Commit(id); err != nil {
-		log.Printf("[WARN] unable to commit image %s", imgID)
-	}
+	p.ImageService.Submit(func() []string { return []string{id} })
 }
 
 // download an image. Returns a Reader which has to be closed by a caller
