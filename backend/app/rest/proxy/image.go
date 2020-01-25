@@ -186,8 +186,7 @@ func (p Image) downloadImage(ctx context.Context, imgURL string) (io.ReadCloser,
 		return e
 	})
 	if err != nil {
-		log.Print(err.Error())
-		return nil, err
+		return nil, errors.Wrapf(err, "can't download image %s", imgURL)
 	}
 
 	if resp.StatusCode != http.StatusOK {

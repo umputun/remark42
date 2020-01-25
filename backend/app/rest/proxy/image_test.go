@@ -19,7 +19,7 @@ import (
 	"github.com/umputun/remark/backend/app/store/image"
 )
 
-func TestPicture_Extract(t *testing.T) {
+func TestImage_Extract(t *testing.T) {
 
 	tbl := []struct {
 		inp string
@@ -61,7 +61,7 @@ func TestPicture_Extract(t *testing.T) {
 	}
 }
 
-func TestPicture_Replace(t *testing.T) {
+func TestImage_Replace(t *testing.T) {
 	img := Image{HTTP2HTTPS: true, RoutePath: "/img"}
 	r := img.replace(`<img src="http://radio-t.com/img3.png"/> xyz <img src="http://images.pexels.com/67636/img4.jpeg">`,
 		[]string{"http://radio-t.com/img3.png", "http://images.pexels.com/67636/img4.jpeg"})
@@ -73,7 +73,7 @@ func TestImage_Routes(t *testing.T) {
 
 	ts := httptest.NewServer(http.HandlerFunc(img.Handler))
 	defer ts.Close()
-	httpSrv := imgHTTPServer(t)
+	httpSrv := imgHTTPTestsServer(t)
 	defer httpSrv.Close()
 
 	encodedImgURL := base64.URLEncoding.EncodeToString([]byte(httpSrv.URL + "/image/img1.png"))
@@ -95,7 +95,7 @@ func TestImage_Routes(t *testing.T) {
 	assert.Equal(t, 400, resp.StatusCode)
 }
 
-func TestImage_Routes_CachingImage(t *testing.T) {
+func TestImage_RoutesCachingImage(t *testing.T) {
 	imageStore := image.MockStore{}
 	img := Image{
 		CacheExternal: true,
@@ -106,7 +106,7 @@ func TestImage_Routes_CachingImage(t *testing.T) {
 
 	ts := httptest.NewServer(http.HandlerFunc(img.Handler))
 	defer ts.Close()
-	httpSrv := imgHTTPServer(t)
+	httpSrv := imgHTTPTestsServer(t)
 	defer httpSrv.Close()
 
 	imgURL := httpSrv.URL + "/image/img1.png"
@@ -127,7 +127,7 @@ func TestImage_Routes_CachingImage(t *testing.T) {
 	imageStore.AssertCalled(t, "commit", mock.Anything)
 }
 
-func TestImage_Routes_Using_Cachded_Image(t *testing.T) {
+func TestImage_RoutesUsingCachedImage(t *testing.T) {
 	imageStore := image.MockStore{}
 	img := Image{
 		CacheExternal: true,
@@ -138,12 +138,12 @@ func TestImage_Routes_Using_Cachded_Image(t *testing.T) {
 
 	ts := httptest.NewServer(http.HandlerFunc(img.Handler))
 	defer ts.Close()
-	httpSrv := imgHTTPServer(t)
+	httpSrv := imgHTTPTestsServer(t)
 	defer httpSrv.Close()
 
 	encodedImgURL := base64.URLEncoding.EncodeToString([]byte(httpSrv.URL + "/image/img1.png"))
 
-	// In order to validate that cached data is used cache "will return" some other data from what http server would
+	// In order to validate that cached data used cache "will return" some other data from what http server would
 	imageReader := ioutil.NopCloser(bytes.NewReader([]byte(fmt.Sprintf("%256s", "X"))))
 	imageStore.On("Load", mock.Anything).Once().Return(imageReader, int64(256), nil)
 
@@ -161,7 +161,7 @@ func TestImage_RoutesTimedOut(t *testing.T) {
 
 	ts := httptest.NewServer(http.HandlerFunc(img.Handler))
 	defer ts.Close()
-	httpSrv := imgHTTPServer(t)
+	httpSrv := imgHTTPTestsServer(t)
 	defer httpSrv.Close()
 
 	encodedImgURL := base64.URLEncoding.EncodeToString([]byte(httpSrv.URL + "/image/img-slow.png"))
@@ -174,7 +174,7 @@ func TestImage_RoutesTimedOut(t *testing.T) {
 	assert.True(t, strings.Contains(string(b), "deadline exceeded"))
 }
 
-func TestPicture_Convert_ProxyMode(t *testing.T) {
+func TestImage_ConvertProxyMode(t *testing.T) {
 	img := Image{HTTP2HTTPS: true, RoutePath: "/img"}
 	r := img.Convert(`<img src="http://radio-t.com/img3.png"/> xyz <img src="http://images.pexels.com/67636/img4.jpeg">`)
 	assert.Equal(t, `<img src="/img?src=aHR0cDovL3JhZGlvLXQuY29tL2ltZzMucG5n"/> xyz <img src="/img?src=aHR0cDovL2ltYWdlcy5wZXhlbHMuY29tLzY3NjM2L2ltZzQuanBlZw==">`, r)
@@ -191,7 +191,7 @@ func TestPicture_Convert_ProxyMode(t *testing.T) {
 	assert.Equal(t, `<img src="http://radio-t.com/img3.png"/> xyz`, r, "disabled, no proxy")
 }
 
-func TestPicture_Convert_CachingMode(t *testing.T) {
+func TestImage_ConvertCachingMode(t *testing.T) {
 	img := Image{CacheExternal: true, RoutePath: "/img", RemarkURL: "https://remark42.com"}
 	r := img.Convert(`<img src="http://radio-t.com/img3.png"/> xyz <img src="http://images.pexels.com/67636/img4.jpeg">`)
 	assert.Equal(t, `<img src="https://remark42.com/img?src=aHR0cDovL3JhZGlvLXQuY29tL2ltZzMucG5n"/> xyz <img src="https://remark42.com/img?src=aHR0cDovL2ltYWdlcy5wZXhlbHMuY29tLzY3NjM2L2ltZzQuanBlZw==">`, r)
@@ -206,13 +206,13 @@ func TestPicture_Convert_CachingMode(t *testing.T) {
 	r = img.Convert(`<img src="http://radio-t.com/img3.png"/>`)
 	assert.Equal(t, `<img src="http://radio-t.com/img3.png"/>`, r)
 
-	// both Caching and Proxy are enabled
+	// both Caching and Proxy enabled
 	img = Image{CacheExternal: true, HTTP2HTTPS: true, RoutePath: "/img", RemarkURL: "https://remark42.com"}
 	r = img.Convert(`<img src="http://radio-t.com/img3.png"/> xyz <img src="http://images.pexels.com/67636/img4.jpeg">`)
 	assert.Equal(t, `<img src="https://remark42.com/img?src=aHR0cDovL3JhZGlvLXQuY29tL2ltZzMucG5n"/> xyz <img src="https://remark42.com/img?src=aHR0cDovL2ltYWdlcy5wZXhlbHMuY29tLzY3NjM2L2ltZzQuanBlZw==">`, r)
 }
 
-func imgHTTPServer(t *testing.T) *httptest.Server {
+func imgHTTPTestsServer(t *testing.T) *httptest.Server {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/image/img1.png" {
 			t.Log("http img request", r.URL)
