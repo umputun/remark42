@@ -61,12 +61,12 @@ func (f *FileSystem) SaveWithID(id string, r io.Reader) (string, error) {
 // Save data from a reader for given file name to local FS, staging directory. Returns id as user/uuid
 // Files partitioned across multiple subdirectories, and the final path includes part, i.e. /location/user1/03/123-4567
 func (f *FileSystem) Save(fileName string, userID string, r io.Reader) (id string, err error) {
-	id = path.Join(userID, guid()) // make id as user/uuid
-	finalID, err := f.SaveWithID(id, r)
+	tempId := path.Join(userID, guid()) // make id as user/uuid
+	id, err = f.SaveWithID(tempId, r)
 	if err != nil {
 		err = errors.Wrapf(err, "can't save file %s", fileName)
 	}
-	return finalID, err
+	return id, err
 }
 
 // Commit file stored in staging location by moving it to permanent location
