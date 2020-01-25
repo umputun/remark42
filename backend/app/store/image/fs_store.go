@@ -51,7 +51,7 @@ func (f *FileSystem) SaveWithID(id string, r io.Reader) (string, error) {
 	}
 
 	if err = ioutil.WriteFile(dst, data, 0600); err != nil {
-		return "", errors.Wrapf(err, "can't write image file")
+		return "", errors.Wrapf(err, "can't write image file with id %s", id)
 	}
 
 	log.Printf("[DEBUG] file %s saved for image %s, size=%d", dst, id, len(data))
@@ -64,7 +64,7 @@ func (f *FileSystem) Save(fileName string, userID string, r io.Reader) (id strin
 	id = path.Join(userID, guid()) // make id as user/uuid
 	finalID, err := f.SaveWithID(id, r)
 	if err != nil {
-		err = errors.Wrapf(err, "can't save file %s", fileName)
+		err = errors.Wrapf(err, "can't save image file %s", fileName)
 	}
 	return finalID, err
 }
@@ -116,6 +116,7 @@ func (f *FileSystem) cleanup(_ context.Context, ttl time.Duration) error {
 		return nil
 	}
 
+	// we can ignore context as on local FS remove is relatively fast operation
 	err := filepath.Walk(f.Staging, func(fpath string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err

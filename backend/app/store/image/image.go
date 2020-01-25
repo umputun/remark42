@@ -1,5 +1,5 @@
 // Package image handles storing, resizing and retrieval of images
-// Provides Store with Save and Load and implementations on top of local file system and bolt db.
+// Provides Store with Save and Load implementations on top of local file system and bolt db.
 // Service object encloses Store and add common methods, this is the one consumer should use.
 package image
 
@@ -27,19 +27,7 @@ import (
 	"golang.org/x/image/draw"
 )
 
-// Store defines interface for saving and loading pictures.
-// Declares two-stage save with commit. Save stores to staging area and Commit moves to the final location
-type Store interface {
-	Save(fileName string, userID string, r io.Reader) (id string, err error) // get name and reader and returns ID of stored (staging) image
-	SaveWithID(id string, r io.Reader) (string, error)                       // store image for passed id to staging
-	Load(id string) (io.ReadCloser, int64, error)                            // load image by ID. Caller has to close the reader.
-	SizeLimit() int                                                          // max image size
-
-	commit(id string) error                               // move image from staging to permanent
-	cleanup(ctx context.Context, ttl time.Duration) error // run removal loop for old images on staging
-}
-
-// Service wrap Store with common functions needed for any store implementation
+// Service wraps Store with common functions needed for any store implementation
 // It also provides async Submit with func param retrieving all submitting ids.
 // Submitted ids committed (i.e. moved from staging to final) on TTL expiration.
 type Service struct {
@@ -50,7 +38,19 @@ type Service struct {
 	wg       sync.WaitGroup
 	submitCh chan submitReq
 	once     sync.Once
-	term     int32
+	term     int32 // term value used atomically to detect emergency termination
+}
+
+// Store defines interface for saving and loading pictures.
+// Declares two-stage save with commit. Save stores to staging area and Commit moves to the final location
+type Store interface {
+	Save(fileName string, userID string, r io.Reader) (id string, err error) // get name and reader and returns ID of stored (staging) image
+	SaveWithID(id string, r io.Reader) (string, error)                       // store image for passed id to staging
+	Load(id string) (io.ReadCloser, int64, error)                            // load image by ID. Caller has to close the reader.
+	SizeLimit() int                                                          // max image size
+
+	commit(id string) error                               // move image from staging to permanent
+	cleanup(ctx context.Context, ttl time.Duration) error // run removal loop for old images on staging
 }
 
 const submitQueueSize = 5000
@@ -148,8 +148,8 @@ func (s *Service) Close() {
 	s.wg.Wait()
 }
 
-// resize an image of supported format (PNG, JPG, GIF) to the size of "limit" px of the
-// biggest side (width or height) preserving aspect ratio.
+// resize an image of supported format (PNG, JPG, GIF) to the size of "limit" px of
+// the biggest side (width or height) preserving aspect ratio.
 // Returns original data if resizing is not needed or failed.
 // If resized the result will be for png format
 func resize(data []byte, limitW, limitH int) []byte {
