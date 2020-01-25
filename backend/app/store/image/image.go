@@ -206,6 +206,12 @@ func isValidImage(b []byte) bool {
 }
 
 func readAndValidateImage(r io.Reader, maxSize int) ([]byte, error) {
+
+	isValidImage := func(b []byte) bool {
+		ct := http.DetectContentType(b)
+		return ct == "image/gif" || ct == "image/png" || ct == "image/jpeg" || ct == "image/webp"
+	}
+
 	lr := io.LimitReader(r, int64(maxSize)+1)
 	data, err := ioutil.ReadAll(lr)
 	if err != nil {
