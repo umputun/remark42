@@ -11,6 +11,7 @@ import { sleep } from '@app/utils/sleep';
 import TextareaAutosize from '@app/components/comment-form/textarea-autosize';
 import { Input } from '@app/components/input';
 import { Button } from '@app/components/button';
+import { isJwtExpired } from '@app/utils/jwt';
 
 const mapStateToProps = () => ({
   sendEmailVerification: sendEmailVerificationRequest,
@@ -41,37 +42,25 @@ export class EmailLoginForm extends Component<Props, State> {
   usernameInputRef = createRef<HTMLInputElement>();
   tokenRef = createRef<TextareaAutosize>();
 
-  constructor(props: Props) {
-    super(props);
+  state = {
+    usernameValue: '',
+    addressValue: '',
+    tokenValue: '',
+    verificationSent: false,
+    loading: false,
+    error: null,
+  };
 
-    this.state = {
-      usernameValue: '',
-      addressValue: '',
-      tokenValue: '',
-      verificationSent: false,
-      loading: false,
-      error: null,
-    };
-
-    this.focus = this.focus.bind(this);
-    this.onVerificationSubmit = this.onVerificationSubmit.bind(this);
-    this.onSubmit = this.onSubmit.bind(this);
-    this.onUsernameChange = this.onUsernameChange.bind(this);
-    this.onAddressChange = this.onAddressChange.bind(this);
-    this.onTokenChange = this.onTokenChange.bind(this);
-    this.goBack = this.goBack.bind(this);
-  }
-
-  async focus() {
+  focus = async () => {
     await sleep(100);
     if (this.usernameInputRef.current) {
       this.usernameInputRef.current.focus();
       return;
     }
     this.tokenRef.current && this.tokenRef.current.textareaRef && this.tokenRef.current.textareaRef.select();
-  }
+  };
 
-  async onVerificationSubmit(e: Event) {
+  onVerificationSubmit = async (e: Event) => {
     e.preventDefault();
     this.setState({ loading: true, error: null });
     try {
@@ -85,13 +74,12 @@ export class EmailLoginForm extends Component<Props, State> {
     } finally {
       this.setState({ loading: false });
     }
-  }
+  };
 
-  async onSubmit(e: Event) {
-    e.preventDefault();
+  async sendForm(token: string = this.state.tokenValue) {
     try {
       this.setState({ loading: true });
-      const user = await this.props.onSignIn(this.state.tokenValue);
+      const user = await this.props.onSignIn(token);
       if (!user) {
         this.setState({ error: 'No user was found' });
         return;
@@ -105,19 +93,34 @@ export class EmailLoginForm extends Component<Props, State> {
     }
   }
 
-  onUsernameChange(e: Event) {
+  onSubmit = async (e: Event) => {
+    e.preventDefault();
+    this.sendForm();
+  };
+
+  onUsernameChange = (e: Event) => {
     this.setState({ error: null, usernameValue: (e.target as HTMLInputElement).value });
-  }
+  };
 
-  onAddressChange(e: Event) {
+  onAddressChange = (e: Event) => {
     this.setState({ error: null, addressValue: (e.target as HTMLInputElement).value });
-  }
+  };
 
-  onTokenChange(e: Event) {
-    this.setState({ error: null, tokenValue: (e.target as HTMLInputElement).value });
-  }
+  onTokenChange = (e: Event) => {
+    const { value } = e.target as HTMLInputElement;
 
-  async goBack() {
+    this.setState({ error: null, tokenValue: value });
+
+    try {
+      if (value.length > 0 && isJwtExpired(value)) {
+        this.setState({ error: 'Token is expired' });
+        return;
+      }
+      this.sendForm(value);
+    } catch (e) {}
+  };
+
+  goBack = async () => {
     // Wait for finding back button in DOM by dropbox
     // It prevents dropdown from closing, because if dropdown doesn't find clicked element it closes
     await sleep(0);
@@ -134,7 +137,7 @@ export class EmailLoginForm extends Component<Props, State> {
     if (this.usernameInputRef.current) {
       this.usernameInputRef.current.focus();
     }
-  }
+  };
 
   getForm1InvalidReason(): string | null {
     if (this.state.loading) return 'Loading...';
@@ -179,6 +182,7 @@ export class EmailLoginForm extends Component<Props, State> {
             value={this.state.addressValue}
             onInput={this.onAddressChange}
           />
+          {this.state.error && <div className="auth-panel-email-login-form__error">{this.state.error}</div>}
           <Button
             mix="auth-panel-email-login-form__submit"
             kind="primary"
@@ -189,7 +193,6 @@ export class EmailLoginForm extends Component<Props, State> {
           >
             Send Verification
           </Button>
-          {this.state.error && <div className="auth-panel-email-login-form__error">{this.state.error}</div>}
         </form>
       );
 
@@ -210,6 +213,7 @@ export class EmailLoginForm extends Component<Props, State> {
           spellcheck={false}
           autocomplete="off"
         />
+        {this.state.error && <div className="auth-panel-email-login-form__error">{this.state.error}</div>}
         <Button
           mix="auth-panel-email-login-form__submit"
           type="submit"
@@ -220,7 +224,6 @@ export class EmailLoginForm extends Component<Props, State> {
         >
           Confirm
         </Button>
-        {this.state.error && <div className="auth-panel-email-login-form__error">{this.state.error}</div>}
       </form>
     );
   }

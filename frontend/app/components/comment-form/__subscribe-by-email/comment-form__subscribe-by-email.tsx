@@ -1,5 +1,5 @@
 /** @jsx createElement */
-import { createElement, FunctionComponent } from 'preact';
+import { createElement, FunctionComponent, Fragment } from 'preact';
 import { useState, useCallback, useEffect, useRef } from 'preact/hooks';
 import { useSelector, useDispatch } from 'react-redux';
 import b from 'bem-react-helper';
@@ -22,6 +22,7 @@ import { Dropdown } from '@app/components/dropdown';
 import { Preloader } from '@app/components/preloader';
 import TextareaAutosize from '@app/components/comment-form/textarea-autosize';
 import { isUserAnonymous } from '@app/utils/isUserAnonymous';
+import { isJwtExpired } from '@app/utils/jwt';
 
 const emailRegex = /[^@]+@[^.]+\..+/;
 
@@ -39,36 +40,40 @@ const renderEmailPart = (
   emailAddress: string,
   handleChangeEmail: (e: Event) => void,
   emailAddressRef: ReturnType<typeof useRef>
-) => [
-  <div className="comment-form__subscribe-by-email__title">Subscribe to replies</div>,
-  <Input
-    ref={emailAddressRef}
-    mix="comment-form__subscribe-by-email__input"
-    placeholder="Email"
-    value={emailAddress}
-    onInput={handleChangeEmail}
-    disabled={loading}
-  />,
-];
+) => (
+  <Fragment>
+    <div className="comment-form__subscribe-by-email__title">Subscribe to replies</div>
+    <Input
+      ref={emailAddressRef}
+      mix="comment-form__subscribe-by-email__input"
+      placeholder="Email"
+      value={emailAddress}
+      onInput={handleChangeEmail}
+      disabled={loading}
+    />
+  </Fragment>
+);
 
 const renderTokenPart = (
   loading: boolean,
   token: string,
   handleChangeToken: (e: Event) => void,
   setEmailStep: () => void
-) => [
-  <Button kind="link" mix="auth-panel-email-login-form__back-button" {...getHandleClickProps(setEmailStep)}>
-    Back
-  </Button>,
-  <TextareaAutosize
-    className="comment-form__subscribe-by-email__token-input"
-    placeholder="Token"
-    autofocus
-    onInput={handleChangeToken}
-    disabled={loading}
-    value={token}
-  />,
-];
+) => (
+  <Fragment>
+    <Button kind="link" mix="auth-panel-email-login-form__back-button" {...getHandleClickProps(setEmailStep)}>
+      Back
+    </Button>
+    <TextareaAutosize
+      className="comment-form__subscribe-by-email__token-input"
+      placeholder="Token"
+      autofocus
+      onInput={handleChangeToken}
+      disabled={loading}
+      value={token}
+    />
+  </Fragment>
+);
 
 export const SubscribeByEmailForm: FunctionComponent = () => {
   const theme = useTheme();
@@ -87,61 +92,85 @@ export const SubscribeByEmailForm: FunctionComponent = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const sendForm = useCallback(
+    async (currentToken: string = token) => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        switch (step) {
+          case Step.Email:
+            await emailVerificationForSubscribe(emailAddress);
+            setToken('');
+            setStep(Step.Token);
+            break;
+          case Step.Token:
+            await emailConfirmationForSubscribe(currentToken);
+            dispatch(setUserSubscribed(true));
+            previousStep.current = Step.Token;
+            setStep(Step.Subscribed);
+            break;
+          default:
+            break;
+        }
+      } catch (e) {
+        setError(extractErrorMessageFromResponse(e));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [setLoading, setError, setStep, step, emailAddress, token]
+  );
+
   const handleChangeEmail = useCallback((e: Event) => {
-    const value = (e.target as HTMLInputElement).value;
+    const { value } = e.target as HTMLInputElement;
 
     e.preventDefault();
     setError(null);
     setEmailAddress(value);
   }, []);
 
-  const handleChangeToken = useCallback((e: Event) => {
-    const value = (e.target as HTMLInputElement).value;
+  const handleChangeToken = useCallback(
+    (e: Event) => {
+      const { value } = e.target as HTMLInputElement;
 
-    e.preventDefault();
-    setError(null);
-    setToken(value);
-  }, []);
+      e.preventDefault();
+      setError(null);
 
-  const handleSubmit = async (e: Event) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
+      try {
+        if (value.length > 0 && isJwtExpired(value)) {
+          setError('Token is expired');
+        } else {
+          sendForm(value);
+        }
+      } catch (e) {}
 
-    try {
-      switch (step) {
-        case Step.Email:
-          await emailVerificationForSubscribe(emailAddress);
-          setStep(Step.Token);
-          break;
-        case Step.Token:
-          await emailConfirmationForSubscribe(token);
-          dispatch(setUserSubscribed(true));
-          previousStep.current = Step.Token;
-          setStep(Step.Subscribed);
-          break;
-        default:
-          break;
-      }
-    } catch (e) {
-      setError(extractErrorMessageFromResponse(e));
-    } finally {
-      setLoading(false);
-    }
-  };
+      setToken(value);
+    },
+    [sendForm, setError, setToken]
+  );
+
+  const handleSubmit = useCallback(
+    async (e: Event) => {
+      e.preventDefault();
+      sendForm();
+    },
+    [sendForm]
+  );
 
   const isValidEmailAddress = emailRegex.test(emailAddress);
+
+  const setEmailStep = useCallback(async () => {
+    await sleep(0);
+    setError(null);
+    setStep(Step.Email);
+  }, [setStep]);
 
   useEffect(() => {
     if (emailAddressRef.current) {
       emailAddressRef.current.focus();
     }
   }, []);
-
-  const setEmailStep = useCallback(async () => {
-    await sleep(0);
-    setStep(Step.Email);
-  }, [setStep]);
 
   /**
    * It needs for dropdown closing by click on button
