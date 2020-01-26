@@ -1,6 +1,6 @@
 /** @jsx createElement */
 import { createElement } from 'preact';
-import { mount, shallow, HTMLAttributes } from 'enzyme';
+import { mount, shallow } from 'enzyme';
 import { Props, Comment } from './comment';
 import { User, Comment as CommentType, PostInfo } from '@app/common/types';
 import { sleep } from '@app/utils/sleep';
@@ -277,7 +277,7 @@ describe('<Comment />', () => {
         new Date(new Date(initTime).getTime() + 300 * 1000).getTime()
       );
 
-      component.setProps<Props & HTMLAttributes>({
+      component.setProps({
         data: { ...props.data, time: changedTime },
       });
 
