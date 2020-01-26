@@ -161,7 +161,7 @@ func resize(data []byte, limitW, limitH int) []byte {
 
 	newW, newH := getProportionalSizes(w, h, limitW, limitH)
 	m := image.NewRGBA(image.Rect(0, 0, newW, newH))
-	draw.BiLinear.Scale(m, m.Bounds(), src, src.Bounds(), draw.Src, nil)
+	draw.CatmullRom.Scale(m, m.Bounds(), src, src.Bounds(), draw.Src, nil)
 
 	var out bytes.Buffer
 	if err = png.Encode(&out, m); err != nil {
