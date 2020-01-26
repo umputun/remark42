@@ -70,7 +70,7 @@ func TestFsStore_SaveWithResize(t *testing.T) {
 	t.Log(img)
 	data, err := ioutil.ReadFile(img)
 	assert.NoError(t, err)
-	assert.Equal(t, 1142, len(data))
+	assert.Equal(t, 1135, len(data))
 }
 
 func TestFsStore_SaveWithResizeJpeg(t *testing.T) {
@@ -91,7 +91,7 @@ func TestFsStore_SaveWithResizeJpeg(t *testing.T) {
 	t.Log(img)
 	data, err := ioutil.ReadFile(img)
 	assert.NoError(t, err)
-	assert.Equal(t, 10786, len(data))
+	assert.Equal(t, 10918, len(data))
 }
 
 func TestFsStore_SaveNoResizeJpeg(t *testing.T) {
