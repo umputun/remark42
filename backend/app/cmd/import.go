@@ -69,7 +69,7 @@ func (ic *ImportCommand) Execute(args []string) error {
 
 // reader returns reader for file. For .gz file wraps with gunzip
 func (ic *ImportCommand) reader(inp string) (reader io.Reader, err error) {
-	inpFile, err := os.Open(inp)
+	inpFile, err := os.Open(inp) // nolint
 	if err != nil {
 		return nil, errors.Wrapf(err, "import failed, can't open %s", inp)
 	}

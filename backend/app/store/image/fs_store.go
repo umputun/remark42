@@ -102,7 +102,7 @@ func (f *FileSystem) Load(id string) (io.ReadCloser, int64, error) {
 		return nil, 0, errors.Wrapf(err, "can't get image file for %s", id)
 	}
 
-	fh, err := os.Open(imgFile)
+	fh, err := os.Open(imgFile) // nolint
 	if err != nil {
 		return nil, 0, errors.Wrapf(err, "can't load image %s", id)
 	}

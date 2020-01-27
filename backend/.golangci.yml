@@ -20,3 +20,5 @@ linters:
     - ineffassign
     - varcheck
   disable-all: true
+issues:
+  exclude-use-default: false

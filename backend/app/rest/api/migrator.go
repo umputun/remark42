@@ -233,7 +233,7 @@ func (m *Migrator) runImport(siteID string, provider string, tmpfile string) {
 	}
 	log.Printf("[DEBUG] import request for site=%s, provider=%s", siteID, provider)
 
-	fh, err := os.Open(tmpfile)
+	fh, err := os.Open(tmpfile) // nolint
 	if err != nil {
 		log.Printf("[WARN] import failed, %v", err)
 		return
