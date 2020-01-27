@@ -74,7 +74,7 @@ func (s *Service) Submit(idsFn func() []string) {
 			defer s.wg.Done()
 			for req := range s.submitCh {
 				// wait for TTL expiration with emergency pass on term
-				for atomic.LoadInt32(&s.term) == 0 && time.Since(req.TS) <= s.TTL {
+				for atomic.LoadInt32(&s.term) == 0 && time.Since(req.TS) <= s.TTL/2 { // commit on a half of TTL
 					time.Sleep(time.Millisecond * 10) // small sleep to relive busy wait but keep reactive for term (close)
 				}
 				for _, id := range req.idsFn() {
@@ -123,7 +123,7 @@ func (s *Service) Cleanup(ctx context.Context) {
 		case <-ctx.Done():
 			log.Printf("[INFO] cleanup terminated, %v", ctx.Err())
 			return
-		case <-time.After(s.TTL / 2):
+		case <-time.After(s.TTL / 2): // cleanup call on every 1/2 TTL
 			if err := s.Store.cleanup(ctx, s.TTL); err != nil {
 				log.Printf("[WARN] failed to cleanup, %v", err)
 			}

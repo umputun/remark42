@@ -259,7 +259,7 @@ func TestFsStore_Cleanup(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 	img3 := save("blah_ff3.png", "user2")
 
-	time.Sleep(100 * time.Millisecond) // make first image expired
+	time.Sleep(200 * time.Millisecond) // make first image expired
 	err := svc.cleanup(context.Background(), time.Millisecond*300)
 	assert.NoError(t, err)
 

@@ -125,7 +125,7 @@ func (f *FileSystem) cleanup(_ context.Context, ttl time.Duration) error {
 			return nil
 		}
 		age := time.Since(info.ModTime())
-		if age > ttl {
+		if age > (ttl + 100*time.Millisecond) { // delay cleanup triggering to allow commit
 			log.Printf("[INFO] remove staging image %s, age %v", fpath, age)
 			rmErr := os.Remove(fpath)
 			_ = os.Remove(path.Dir(fpath)) // try to remove directory
