@@ -37,63 +37,63 @@ func TestService_ExtractPictures2(t *testing.T) {
 
 func TestService_Cleanup(t *testing.T) {
 	store := MockStore{}
-	store.On("Cleanup", mock.Anything, mock.Anything).Times(10).Return(nil)
+	store.On("cleanup", mock.Anything, mock.Anything).Times(10).Return(nil)
 
 	svc := Service{Store: &store, TTL: 100 * time.Millisecond}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*549)
 	defer cancel()
 	svc.Cleanup(ctx)
-	store.AssertNumberOfCalls(t, "Cleanup", 10)
+	store.AssertNumberOfCalls(t, "cleanup", 10)
 }
 
 func TestService_Submit(t *testing.T) {
 	store := MockStore{}
-	store.On("Commit", mock.Anything, mock.Anything).Times(5).Return(nil)
+	store.On("commit", mock.Anything, mock.Anything).Times(5).Return(nil)
 	svc := Service{Store: &store, ImageAPI: "/blah/", TTL: time.Millisecond * 100}
 	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
 	svc.Submit(func() []string { return []string{"id4", "id5"} })
 	svc.Submit(nil)
-	store.AssertNumberOfCalls(t, "Commit", 0)
+	store.AssertNumberOfCalls(t, "commit", 0)
 	time.Sleep(time.Millisecond * 150)
-	store.AssertNumberOfCalls(t, "Commit", 5)
+	store.AssertNumberOfCalls(t, "commit", 5)
 }
 
 func TestService_Close(t *testing.T) {
 	store := MockStore{}
-	store.On("Commit", mock.Anything, mock.Anything).Times(5).Return(nil)
+	store.On("commit", mock.Anything, mock.Anything).Times(5).Return(nil)
 	svc := Service{Store: &store, ImageAPI: "/blah/", TTL: time.Millisecond * 500}
 	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
 	svc.Submit(func() []string { return []string{"id4", "id5"} })
 	svc.Submit(nil)
 	svc.Close()
-	store.AssertNumberOfCalls(t, "Commit", 5)
+	store.AssertNumberOfCalls(t, "commit", 5)
 }
 
 func TestService_SubmitDelay(t *testing.T) {
 	store := MockStore{}
-	store.On("Commit", mock.Anything, mock.Anything).Times(5).Return(nil)
+	store.On("commit", mock.Anything, mock.Anything).Times(5).Return(nil)
 	svc := Service{Store: &store, ImageAPI: "/blah/", TTL: time.Millisecond * 100}
 	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
 	time.Sleep(150 * time.Millisecond) // let first batch to pass TTL
 	svc.Submit(func() []string { return []string{"id4", "id5"} })
 	svc.Submit(nil)
-	store.AssertNumberOfCalls(t, "Commit", 3)
+	store.AssertNumberOfCalls(t, "commit", 3)
 	svc.Close()
-	store.AssertNumberOfCalls(t, "Commit", 5)
+	store.AssertNumberOfCalls(t, "commit", 5)
 }
 
 func TestService_resize(t *testing.T) {
 
-	// Reader is nil.
+	// reader is nil
 	resized := resize(nil, 100, 100)
 	assert.Nil(t, resized)
 
-	// Negative limit error.
+	// negative limit error
 	resized = resize([]byte("some picture bin data"), -1, -1)
 	require.NotNil(t, resized)
 	assert.Equal(t, resized, []byte("some picture bin data"))
 
-	// Decode error.
+	// decode error
 	resized = resize([]byte("invalid image content"), 100, 100)
 	assert.NotNil(t, resized)
 	assert.Equal(t, resized, []byte("invalid image content"))
@@ -110,15 +110,14 @@ func TestService_resize(t *testing.T) {
 		img, err := ioutil.ReadFile(c.file)
 		require.NoError(t, err, "can't open test file %s", c.file)
 
-		// No need for resize, image dimensions are smaller than resize limit.
+		// no need for resize, image dimensions are smaller than resize limit
 		resized = resize(img, 800, 800)
 		assert.NotNil(t, resized, "file %s", c.file)
 		assert.Equal(t, resized, img)
 
-		// Resizing to half of width. Check resized image format PNG.
+		// resizing to half of width
 		resized = resize(img, 400, 400)
 		assert.NotNil(t, resized, "file %s", c.file)
-
 		imgRz, format, err := image.Decode(bytes.NewBuffer(resized))
 		assert.NoError(t, err, "file %s", c.file)
 		assert.Equal(t, "png", format, "file %s", c.file)

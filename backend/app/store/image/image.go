@@ -1,6 +1,6 @@
 // Package image handles storing, resizing and retrieval of images
-// Provides Store with Save and Load and one implementation on top of local file system.
-// Service object encloses Store and add common methods, this is the one consumer should use
+// Provides Store with Save and Load implementations on top of local file system and bolt db.
+// Service object encloses Store and add common methods, this is the one consumer should use.
 package image
 
 //go:generate sh -c "mockery -inpkg -name Store -print > /tmp/mock.tmp && mv /tmp/mock.tmp image_mock.go"
@@ -27,18 +27,9 @@ import (
 	"golang.org/x/image/draw"
 )
 
-// Store defines interface for saving and loading pictures.
-// Declares two-stage save with commit
-type Store interface {
-	SaveWithID(id string, r io.Reader) (string, error)
-	Save(fileName string, userID string, r io.Reader) (id string, err error) // get name and reader and returns ID of stored image
-	Commit(id string) error                                                  // move image from staging to permanent
-	Load(id string) (io.ReadCloser, int64, error)                            // load image by ID. Caller has to close the reader.
-	Cleanup(ctx context.Context, ttl time.Duration) error                    // run removal loop for old images on staging
-	SizeLimit() int                                                          // max image size
-}
-
-// Service extends Store with common functions needed for any store implementation
+// Service wraps Store with common functions needed for any store implementation
+// It also provides async Submit with func param retrieving all submitting ids.
+// Submitted ids committed (i.e. moved from staging to final) on TTL expiration.
 type Service struct {
 	Store
 	TTL      time.Duration // for how long file allowed on staging
@@ -47,7 +38,19 @@ type Service struct {
 	wg       sync.WaitGroup
 	submitCh chan submitReq
 	once     sync.Once
-	term     int32
+	term     int32 // term value used atomically to detect emergency termination
+}
+
+// Store defines interface for saving and loading pictures.
+// Declares two-stage save with commit. Save stores to staging area and Commit moves to the final location
+type Store interface {
+	Save(fileName string, userID string, r io.Reader) (id string, err error) // get name and reader and returns ID of stored (staging) image
+	SaveWithID(id string, r io.Reader) (string, error)                       // store image for passed id to staging
+	Load(id string) (io.ReadCloser, int64, error)                            // load image by ID. Caller has to close the reader.
+	SizeLimit() int                                                          // max image size
+
+	commit(id string) error                               // move image from staging to permanent
+	cleanup(ctx context.Context, ttl time.Duration) error // run removal loop for old images on staging
 }
 
 const submitQueueSize = 5000
@@ -71,14 +74,15 @@ func (s *Service) Submit(idsFn func() []string) {
 			defer s.wg.Done()
 			for req := range s.submitCh {
 				// wait for TTL expiration with emergency pass on term
-				for atomic.LoadInt32(&s.term) == 0 && time.Since(req.TS) <= s.TTL {
+				for atomic.LoadInt32(&s.term) == 0 && time.Since(req.TS) <= s.TTL/2 { // commit on a half of TTL
 					time.Sleep(time.Millisecond * 10) // small sleep to relive busy wait but keep reactive for term (close)
 				}
 				for _, id := range req.idsFn() {
-					if err := s.Commit(id); err != nil {
+					if err := s.commit(id); err != nil {
 						log.Printf("[WARN] failed to commit image %s", id)
 					}
 				}
+				atomic.StoreInt32(&s.term, 0) // indicates completion of ids commits
 			}
 			log.Printf("[INFO] image submitter terminated")
 		}()
@@ -119,8 +123,8 @@ func (s *Service) Cleanup(ctx context.Context) {
 		case <-ctx.Done():
 			log.Printf("[INFO] cleanup terminated, %v", ctx.Err())
 			return
-		case <-time.After(s.TTL / 2):
-			if err := s.Store.Cleanup(ctx, s.TTL); err != nil {
+		case <-time.After(s.TTL / 2): // cleanup call on every 1/2 TTL
+			if err := s.Store.cleanup(ctx, s.TTL); err != nil {
 				log.Printf("[WARN] failed to cleanup, %v", err)
 			}
 		}
@@ -130,15 +134,22 @@ func (s *Service) Cleanup(ctx context.Context) {
 // Close flushes all in-progress submits and enforces waiting commits
 func (s *Service) Close() {
 	log.Printf("[INFO] close image service ")
-	atomic.AddInt32(&s.term, 1) // enforce non-delayed commits for all ids left in submitCh
+	atomic.StoreInt32(&s.term, 1) // enforce non-delayed commits for all ids left in submitCh
+	for {
+		// set to 0 by commit goroutine after everything waited on TTL sent
+		if atomic.LoadInt32(&s.term) == 0 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
 	if s.submitCh != nil {
 		close(s.submitCh)
 	}
 	s.wg.Wait()
 }
 
-// resize an image of supported format (PNG, JPG, GIF) to the size of "limit" px of the
-// biggest side (width or height) preserving aspect ratio.
+// resize an image of supported format (PNG, JPG, GIF) to the size of "limit" px of
+// the biggest side (width or height) preserving aspect ratio.
 // Returns original data if resizing is not needed or failed.
 // If resized the result will be for png format
 func resize(data []byte, limitW, limitH int) []byte {
@@ -191,13 +202,14 @@ func getProportionalSizes(srcW, srcH int, limitW, limitH int) (resW, resH int) {
 	return limitW, int(propH)
 }
 
-// check if file f is a valid image format, i.e. gif, png, jpeg or webp
-func isValidImage(b []byte) bool {
-	ct := http.DetectContentType(b)
-	return ct == "image/gif" || ct == "image/png" || ct == "image/jpeg" || ct == "image/webp"
-}
-
+// check if file f is a valid image format, i.e. gif, png, jpeg or webp and reads up to maxSize.
 func readAndValidateImage(r io.Reader, maxSize int) ([]byte, error) {
+
+	isValidImage := func(b []byte) bool {
+		ct := http.DetectContentType(b)
+		return ct == "image/gif" || ct == "image/png" || ct == "image/jpeg" || ct == "image/webp"
+	}
+
 	lr := io.LimitReader(r, int64(maxSize)+1)
 	data, err := ioutil.ReadAll(lr)
 	if err != nil {
@@ -210,7 +222,7 @@ func readAndValidateImage(r io.Reader, maxSize int) ([]byte, error) {
 
 	// read header first, needs it to check if data is valid png/gif/jpeg
 	if !isValidImage(data[:512]) {
-		return nil, errors.Errorf("file format is not allowed")
+		return nil, errors.Errorf("file format not allowed")
 	}
 
 	return data, nil

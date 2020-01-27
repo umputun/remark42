@@ -1277,7 +1277,7 @@ func TestService_submitImages(t *testing.T) {
 	lgr.Setup(lgr.Debug, lgr.CallerFile, lgr.CallerFunc)
 
 	mockStore := image.MockStore{}
-	mockStore.On("Commit", mock.Anything, mock.Anything).Times(2).Return(nil)
+	mockStore.On("commit", mock.Anything, mock.Anything).Times(2).Return(nil)
 	imgSvc := &image.Service{Store: &mockStore, TTL: time.Millisecond * 50}
 
 	// two comments for https://radio-t.com
@@ -1296,7 +1296,7 @@ func TestService_submitImages(t *testing.T) {
 	_, err := b.Engine.Create(c) // create directly with engine, doesn't call submitImages
 	assert.NoError(t, err)
 
-	b.submitImages(c)
+	b.submitImages(c.Locator, c.ID)
 	time.Sleep(250 * time.Millisecond)
 }
 

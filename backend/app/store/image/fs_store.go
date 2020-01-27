@@ -36,7 +36,7 @@ type FileSystem struct {
 	}
 }
 
-// SaveWithID saves data from reader with given id
+// SaveWithID saves data from a reader, with given id
 func (f *FileSystem) SaveWithID(id string, r io.Reader) (string, error) {
 	data, err := readAndValidateImage(r, f.MaxSize)
 	if err != nil {
@@ -51,26 +51,26 @@ func (f *FileSystem) SaveWithID(id string, r io.Reader) (string, error) {
 	}
 
 	if err = ioutil.WriteFile(dst, data, 0600); err != nil {
-		return "", errors.Wrapf(err, "can't write file")
+		return "", errors.Wrapf(err, "can't write image file with id %s", id)
 	}
 
 	log.Printf("[DEBUG] file %s saved for image %s, size=%d", dst, id, len(data))
 	return id, nil
 }
 
-// Save data from reader for given file name to local FS, staging directory. Returns id as user/uuid
-// Files partitioned across multiple subdirectories and the final path includes part, i.e. /location/user1/03/123-4567
+// Save data from a reader for given file name to local FS, staging directory. Returns id as user/uuid
+// Files partitioned across multiple subdirectories, and the final path includes part, i.e. /location/user1/03/123-4567
 func (f *FileSystem) Save(fileName string, userID string, r io.Reader) (id string, err error) {
-	id = path.Join(userID, guid()) // make id as user/uuid
-	finalID, err := f.SaveWithID(id, r)
+	tempId := path.Join(userID, guid()) // make id as user/uuid
+	id, err = f.SaveWithID(tempId, r)
 	if err != nil {
-		err = errors.Wrapf(err, "can't save file %s", fileName)
+		err = errors.Wrapf(err, "can't save image file %s", fileName)
 	}
-	return finalID, err
+	return id, err
 }
 
 // Commit file stored in staging location by moving it to permanent location
-func (f *FileSystem) Commit(id string) error {
+func (f *FileSystem) commit(id string) error {
 	log.Printf("[DEBUG] commit image %s", id)
 	stagingImage, permImage := f.location(f.Staging, id), f.location(f.Location, id)
 
@@ -110,12 +110,13 @@ func (f *FileSystem) Load(id string) (io.ReadCloser, int64, error) {
 }
 
 // Cleanup runs scan of staging and removes old files based on ttl
-func (f *FileSystem) Cleanup(ctx context.Context, ttl time.Duration) error {
+func (f *FileSystem) cleanup(_ context.Context, ttl time.Duration) error {
 
 	if _, err := os.Stat(f.Staging); os.IsNotExist(err) {
 		return nil
 	}
 
+	// we can ignore context as on local FS remove is relatively fast operation
 	err := filepath.Walk(f.Staging, func(fpath string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -124,7 +125,7 @@ func (f *FileSystem) Cleanup(ctx context.Context, ttl time.Duration) error {
 			return nil
 		}
 		age := time.Since(info.ModTime())
-		if age > ttl {
+		if age > (ttl + 100*time.Millisecond) { // delay cleanup triggering to allow commit
 			log.Printf("[INFO] remove staging image %s, age %v", fpath, age)
 			rmErr := os.Remove(fpath)
 			_ = os.Remove(path.Dir(fpath)) // try to remove directory

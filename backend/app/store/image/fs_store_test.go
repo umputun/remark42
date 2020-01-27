@@ -129,7 +129,7 @@ func TestFsStore_SaveAndCommit(t *testing.T) {
 
 	id, err := svc.Save("file1.png", "user1", gopherPNG())
 	require.NoError(t, err)
-	err = svc.Commit(id)
+	err = svc.commit(id)
 	require.NoError(t, err)
 
 	imgStaging := svc.location(svc.Staging, id)
@@ -180,7 +180,7 @@ func TestFsStore_LoadAfterCommit(t *testing.T) {
 	id, err := svc.Save("blah_ff1.png", "user1", gopherPNG())
 	assert.NoError(t, err)
 	t.Log(id)
-	err = svc.Commit(id)
+	err = svc.commit(id)
 	require.NoError(t, err)
 
 	r, sz, err := svc.Load(id)
@@ -259,8 +259,8 @@ func TestFsStore_Cleanup(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 	img3 := save("blah_ff3.png", "user2")
 
-	time.Sleep(100 * time.Millisecond) // make first image expired
-	err := svc.Cleanup(context.Background(), time.Millisecond*300)
+	time.Sleep(200 * time.Millisecond) // make first image expired
+	err := svc.cleanup(context.Background(), time.Millisecond*300)
 	assert.NoError(t, err)
 
 	_, err = os.Stat(img1)
@@ -280,7 +280,7 @@ func TestFsStore_Cleanup(t *testing.T) {
 	assert.NoError(t, err, "file on staging")
 
 	time.Sleep(200 * time.Millisecond) // make all images expired
-	err = svc.Cleanup(context.Background(), time.Millisecond*300)
+	err = svc.cleanup(context.Background(), time.Millisecond*300)
 	assert.NoError(t, err)
 
 	_, err = os.Stat(img2)
