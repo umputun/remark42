@@ -8,6 +8,7 @@ import createMockStore from 'redux-mock-store';
 
 import '@app/testUtils/mockApi';
 import { user, anonymousUser } from '@app/testUtils/mocks/user';
+import { validToken } from '@app/testUtils/mocks/jwt';
 
 import * as api from '@app/common/api';
 import { sleep } from '@app/utils/sleep';
@@ -32,7 +33,11 @@ const makeInputEvent = (value: string) => ({
   },
 });
 
-describe('<SubscribeByEmail', () => {
+jest.mock('@app/utils/jwt', () => ({
+  isJwtExpired: jest.fn(() => false),
+}));
+
+describe('<SubscribeByEmail/>', () => {
   const createWrapper = (store: ReturnType<typeof mockStore> = mockStore(initialStore)) =>
     mount(
       <Provider store={store}>
@@ -59,7 +64,7 @@ describe('<SubscribeByEmail', () => {
   });
 });
 
-describe('<SubscribeByEmailForm>', () => {
+describe('<SubscribeByEmailForm/>', () => {
   const createWrapper = (store: ReturnType<typeof mockStore> = mockStore(initialStore)) =>
     mount(
       <Provider store={store}>
@@ -120,6 +125,32 @@ describe('<SubscribeByEmailForm>', () => {
     wrapper.find('form').simulate('submit');
 
     expect(emailConfirmationForSubscribe).toHaveBeenCalledWith('tokentokentoken');
+
+    await sleep(0);
+    wrapper.update();
+
+    expect(wrapper.text()).toStartWith('You have been subscribed on updates by email');
+    expect(wrapper.find(Button).prop('children')).toEqual('Unsubscribe');
+  });
+
+  it('should send form by paste valid token', async () => {
+    const wrapper = createWrapper();
+    const onInputEmail = wrapper.find(Input).prop('onInput');
+    const form = wrapper.find('form');
+
+    expect(onInputEmail).toBeFunction();
+
+    act(() => onInputEmail(makeInputEvent('some@email.com')));
+
+    form.simulate('submit');
+
+    await sleep(0);
+    wrapper.update();
+
+    const textarea = wrapper.find(TextareaAutosize);
+    const onInputToken = textarea.prop('onInput') as (e: any) => void;
+
+    act(() => onInputToken(makeInputEvent(validToken)));
 
     await sleep(0);
     wrapper.update();

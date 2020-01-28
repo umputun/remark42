@@ -8,7 +8,7 @@
 .auth-panel-email-login-form__input,
 .auth-panel-email-login-form__token-input {
   width: 12rem;
-  margin: 0.15rem;
+  margin: 2px;
 }
 
 .auth-panel-email-login-form__token-input {
@@ -28,7 +28,7 @@
 }
 
 .auth-panel-email-login-form__submit {
-  margin: 0.3rem 0.15rem 0.15rem;
+  margin: 0.3rem 2px 2px;
 }
 
 .auth-panel-email-login-form__back-button {
@@ -44,8 +44,18 @@
 }
 
 .auth-panel-email-login-form__error {
-  color: #9a0000;
-  text-align: center;
-  margin-top: 1em;
+  margin: 4px 2px;
+  padding: 6px 8px;
   font-weight: normal;
+  line-height: 1.2;
+}
+
+.auth-panel-email-login-form_theme_dark .auth-panel-email-login-form__error {
+  background: #672323;
+  color: #f98989;
+}
+
+.auth-panel-email-login-form_theme_light .auth-panel-email-login-form__error {
+  background: #ffd7d7;
+  color: #9a0000;
 }
