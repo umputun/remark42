@@ -4,14 +4,21 @@ import { mount } from 'enzyme';
 import { EmailLoginForm, Props, State } from './auth-panel__email-login-form';
 import { User } from '@app/common/types';
 import { sleep } from '@app/utils/sleep';
-// import { validToken } from '@app/testUtils/mocks/jwt';
+import { validToken } from '@app/testUtils/mocks/jwt';
+
+jest.mock('@app/utils/jwt', () => ({
+  isJwtExpired: jest
+    .fn()
+    .mockImplementationOnce(() => false)
+    .mockImplementationOnce(() => true),
+}));
 
 describe('EmailLoginForm', () => {
   const testUser = ({} as any) as User;
   const onSuccess = jest.fn(async () => {});
+  const onSignIn = jest.fn(async () => testUser);
 
   it('works', async () => {
-    const onSignIn = jest.fn(async () => testUser);
     const sendEmailVerification = jest.fn(async () => {});
 
     const el = mount<Props, State>(
@@ -44,7 +51,7 @@ describe('EmailLoginForm', () => {
     const sendEmailVerification = jest.fn(async () => {});
     const onSignIn = jest.fn(async () => testUser);
 
-    const el = mount<Props, State>(
+    const wrapper = mount<Props, State>(
       <EmailLoginForm
         sendEmailVerification={sendEmailVerification}
         onSignIn={onSignIn}
@@ -53,12 +60,39 @@ describe('EmailLoginForm', () => {
       />
     );
     await new Promise(resolve =>
-      el.setState({ usernameValue: 'someone', addressValue: 'someone@example.com' } as State, resolve)
+      wrapper.setState({ usernameValue: 'someone', addressValue: 'someone@example.com' } as State, resolve)
     );
-    el.find('form').simulate('submit');
+    wrapper.find('form').simulate('submit');
     await sleep(100);
-    el.update();
-    // el.find('textarea').simulate('change', { target: { value: validToken } });
-    // expect(onSignIn).toBeCalledWith(validToken);
+    wrapper.update();
+
+    wrapper.find('textarea').getDOMNode<HTMLTextAreaElement>().value = validToken;
+    wrapper.find('textarea').simulate('input');
+
+    expect(onSignIn).toBeCalledWith(validToken);
+  });
+
+  it('should show error "Token is expired" on paste', async () => {
+    const sendEmailVerification = jest.fn(async () => {});
+    const onSignIn = jest.fn(async () => testUser);
+
+    const wrapper = mount<Props, State>(
+      <EmailLoginForm
+        sendEmailVerification={sendEmailVerification}
+        onSignIn={onSignIn}
+        onSuccess={onSuccess}
+        theme="light"
+      />
+    );
+    await new Promise(resolve =>
+      wrapper.setState({ usernameValue: 'someone', addressValue: 'someone@example.com' } as State, resolve)
+    );
+    wrapper.find('form').simulate('submit');
+    await sleep(100);
+    wrapper.update();
+    wrapper.find('textarea').getDOMNode<HTMLTextAreaElement>().value = validToken;
+    wrapper.find('textarea').simulate('input');
+
+    expect(wrapper.find('.auth-panel-email-login-form__error').text()).toBe('Token is expired');
   });
 });
