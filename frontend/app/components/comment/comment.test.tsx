@@ -211,22 +211,24 @@ describe('<Comment />', () => {
 
       const controls = element.find('.comment__controls').children();
 
-      expect(controls.length).toBe(5);
-      expect(controls.at(0).text()).toEqual('Copy');
-      expect(controls.at(1).text()).toEqual('Pin');
-      expect(controls.at(2).text()).toEqual('Hide');
-      expect(controls.at(3).getDOMNode().childNodes[0].textContent).toEqual('Block');
-      expect(controls.at(4).text()).toEqual('Delete');
+      expect(controls.length).toBe(6);
+      expect(controls.at(0).text()).toEqual('Collapse');
+      expect(controls.at(1).text()).toEqual('Copy');
+      expect(controls.at(2).text()).toEqual('Pin');
+      expect(controls.at(3).text()).toEqual('Hide');
+      expect(controls.at(4).getDOMNode().childNodes[0].textContent).toEqual('Block');
+      expect(controls.at(5).text()).toEqual('Delete');
     });
 
-    it('for regular user it shows only "hide"', () => {
+    it('for regular user it shows only "collapse" and "hide"', () => {
       const element = mount(
         <Comment {...({ ...DefaultProps, user: { ...DefaultProps.user, admin: false } } as Props)} />
       );
 
       const controls = element.find('.comment__controls').children();
-      expect(controls.length).toBe(1);
-      expect(controls.at(0).text()).toEqual('Hide');
+      expect(controls.length).toBe(2);
+      expect(controls.at(0).text()).toEqual('Collapse');
+      expect(controls.at(1).text()).toEqual('Hide');
     });
 
     it('verification badge clickable for admin', () => {

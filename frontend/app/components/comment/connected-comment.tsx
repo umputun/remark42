@@ -23,6 +23,7 @@ import {
   setCommentMode,
 } from '@app/store/comments/actions';
 import { blockUser, unblockUser, hideUser, setVerifiedStatus } from '@app/store/user/actions';
+import { setCollapse } from '@app/store/thread/actions';
 
 import { Comment, Props } from './comment';
 import { getCommentMode } from '@app/store/comments/getters';
@@ -69,6 +70,7 @@ export const boundActions = bindActions({
   blockUser,
   unblockUser,
   hideUser,
+  setCollapse,
   setVerifyStatus: setVerifiedStatus,
 });
 

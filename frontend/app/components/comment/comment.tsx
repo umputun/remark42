@@ -226,6 +226,10 @@ export class Comment extends Component<Props, State> {
     }
   };
 
+  collapseThread = () => {
+    this.props.setCollapse!(this.props.data.id, true);
+  };
+
   hideUser = () => {
     if (!confirm(`Do you want to hide comments of ${this.props.data.user.name}?`)) return;
     this.props.hideUser!(this.props.data.user);
@@ -383,6 +387,12 @@ export class Comment extends Component<Props, State> {
     if (!(this.props.view === 'main' || this.props.view === 'pinned')) {
       return controls;
     }
+
+    controls.push(
+      <Button kind="link" {...getHandleClickProps(this.collapseThread)} mix="comment__control">
+        Collapse
+      </Button>
+    );
 
     if (isAdmin) {
       controls.push(
