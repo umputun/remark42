@@ -4,6 +4,7 @@ go 1.13
 
 require (
 	cloud.google.com/go v0.47.0 // indirect
+	github.com/Depado/bfchroma v1.2.0
 	github.com/PuerkitoBio/goquery v1.5.0
 	github.com/ajg/form v1.5.1 // indirect
 	github.com/andybalholm/cascadia v1.1.0 // indirect

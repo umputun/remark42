@@ -25,6 +25,9 @@ func TestFormatter_FormatText(t *testing.T) {
 				"1/some-long-link/12345/6789012...</a></p>\n!converted", "links",
 		},
 		{"&mdash; not translated #354", "<p>— not translated #354</p>\n!converted", "mdash"},
+		{"smth\n```go\nfunc main(aa string) int {return 0}\n```", `<p>smth</p>
+<pre style="color:#f8f8f2;background-color:#272822"><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">main</span>(<span style="color:#a6e22e">aa</span> <span style="color:#66d9ef">string</span>) <span style="color:#66d9ef">int</span> {<span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>}
+</pre>!converted`, "code"},
 	}
 	f := NewCommentFormatter(mockConverter{})
 	for _, tt := range tbl {
