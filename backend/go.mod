@@ -7,6 +7,7 @@ require (
 	github.com/Depado/bfchroma v1.2.0
 	github.com/PuerkitoBio/goquery v1.5.0
 	github.com/ajg/form v1.5.1 // indirect
+	github.com/alecthomas/chroma v0.6.0
 	github.com/andybalholm/cascadia v1.1.0 // indirect
 	github.com/coreos/bbolt v1.3.3
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
