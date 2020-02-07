@@ -12,5 +12,3 @@ require (
 )
 
 replace github.com/umputun/remark/backend => ../../
-
-replace gopkg.in/russross/blackfriday.v2 => github.com/russross/blackfriday/v2 v2.0.1
