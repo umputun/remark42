@@ -2,8 +2,6 @@ module github.com/umputun/remark/backend
 
 go 1.13
 
-replace gopkg.in/russross/blackfriday.v2 => github.com/russross/blackfriday/v2 v2.0.1
-
 require (
 	cloud.google.com/go v0.47.0 // indirect
 	github.com/PuerkitoBio/goquery v1.5.0
@@ -43,6 +41,7 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/rakyll/statik v0.1.6
 	github.com/rs/xid v1.2.1
+	github.com/russross/blackfriday/v2 v2.0.1
 	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
 	github.com/smartystreets/assertions v1.0.1 // indirect
 	github.com/stretchr/objx v0.2.0 // indirect
@@ -61,6 +60,5 @@ require (
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
 	google.golang.org/appengine v1.6.5 // indirect
 	gopkg.in/oauth2.v3 v3.11.0 // indirect
-	gopkg.in/russross/blackfriday.v2 v2.0.1
 	gopkg.in/yaml.v2 v2.2.4 // indirect
 )
