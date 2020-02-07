@@ -109,7 +109,8 @@ func (c *Comment) SetDeleted(mode DeleteMode) {
 // Sanitize clean dangerous html/js from the comment
 func (c *Comment) Sanitize() {
 	p := bluemonday.UGCPolicy()
-	p.AllowAttrs("class").Matching(regexp.MustCompile("^language-[a-zA-Z0-9]+$")).OnElements("code")
+	p.AllowAttrs("class").Matching(regexp.MustCompile("^chroma$")).OnElements("pre")
+	p.AllowAttrs("class").Matching(regexp.MustCompile(".")).OnElements("span")
 	c.Text = p.Sanitize(c.Text)
 	c.Orig = p.Sanitize(c.Orig)
 	c.User.ID = template.HTMLEscapeString(c.User.ID)
