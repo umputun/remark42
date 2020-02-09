@@ -4,8 +4,10 @@ go 1.13
 
 require (
 	cloud.google.com/go v0.47.0 // indirect
+	github.com/Depado/bfchroma v1.2.0
 	github.com/PuerkitoBio/goquery v1.5.0
 	github.com/ajg/form v1.5.1 // indirect
+	github.com/alecthomas/chroma v0.6.0
 	github.com/andybalholm/cascadia v1.1.0 // indirect
 	github.com/coreos/bbolt v1.3.3
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
@@ -42,7 +44,6 @@ require (
 	github.com/rakyll/statik v0.1.6
 	github.com/rs/xid v1.2.1
 	github.com/russross/blackfriday/v2 v2.0.1
-	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
 	github.com/smartystreets/assertions v1.0.1 // indirect
 	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/stretchr/testify v1.4.0

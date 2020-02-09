@@ -109,7 +109,14 @@ func (c *Comment) SetDeleted(mode DeleteMode) {
 // Sanitize clean dangerous html/js from the comment
 func (c *Comment) Sanitize() {
 	p := bluemonday.UGCPolicy()
-	p.AllowAttrs("class").Matching(regexp.MustCompile("^language-[a-zA-Z0-9]+$")).OnElements("code")
+	p.AllowAttrs("class").Matching(regexp.MustCompile("^chroma$")).OnElements("pre")
+	// this is list of <span> tag classes which could be produced by chroma code renderer
+	// source: https://github.com/alecthomas/chroma/blob/022b6f4fc2c4aa819aac18363c8de3f70619200b/types.go#L221-L316
+	const codeSpanClassRegex = "^(chroma|ln|lnt|hl|lntable|lntd|w|err|x|esc|k|kc" +
+		"|kd|kn|kp|kr|kt|n|na|nb|bp|nc|no|nd|ni|ne|nf|fm|py|nl|nn|nx|nt|nv|vc|vg" +
+		"|vi|vm|l|ld|s|sa|sb|sc|dl|sd|s2|se|sh|si|sx|sr|s1|ss|m|mb|mf|mh|mi|il" +
+		"|mo|o|ow|p|c|ch|cm|cp|cpf|c1|cs|g|gd|ge|gr|gh|gi|go|gp|gs|gu|gt|gl)$"
+	p.AllowAttrs("class").Matching(regexp.MustCompile(codeSpanClassRegex)).OnElements("span")
 	c.Text = p.Sanitize(c.Text)
 	c.Orig = p.Sanitize(c.Orig)
 	c.User.ID = template.HTMLEscapeString(c.User.ID)

@@ -4,7 +4,9 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/Depado/bfchroma"
 	"github.com/PuerkitoBio/goquery"
+	"github.com/alecthomas/chroma/formatters/html"
 	bf "github.com/russross/blackfriday/v2"
 )
 
@@ -48,7 +50,9 @@ func (f *CommentFormatter) FormatText(txt string) (res string) {
 		Flags: bf.Smartypants | bf.SmartypantsFractions | bf.SmartypantsDashes | bf.SmartypantsAngledQuotes,
 	})
 
-	res = string(bf.Run([]byte(txt), bf.WithExtensions(mdExt), bf.WithRenderer(rend)))
+	extRend := bfchroma.NewRenderer(bfchroma.Extend(rend), bfchroma.ChromaOptions(html.WithClasses()))
+
+	res = string(bf.Run([]byte(txt), bf.WithExtensions(mdExt), bf.WithRenderer(extRend)))
 	res = f.unEscape(res)
 
 	for _, conv := range f.converters {

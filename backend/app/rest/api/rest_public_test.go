@@ -69,7 +69,35 @@ BKT
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	b, err := ioutil.ReadAll(resp.Body)
 	assert.NoError(t, err)
-	assert.Equal(t, "<h1>h1</h1>\n\n<pre><code>func TestRest_Preview(t *testing.T) {\nsrv, ts := prep(t)\n  require.NotNil(t, srv)\n}\n</code></pre>\n", string(b))
+	assert.Equal(t,
+		`<h1>h1</h1>
+<pre class="chroma">func TestRest_Preview(t *testing.T) {
+srv, ts := prep(t)
+  require.NotNil(t, srv)
+}
+</pre>`,
+		string(b))
+}
+
+func TestRest_PreviewCode(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	text := `BKTgo
+func main(aa string) int {return 0}
+BKT
+`
+	text = strings.Replace(text, "BKT", "```", -1)
+	j := fmt.Sprintf(`{"text": "%s", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, text)
+	j = strings.Replace(j, "\n", "\\n", -1)
+
+	resp, err := post(t, ts.URL+"/api/v1/preview", j)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	b, err := ioutil.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	assert.Equal(t, `<pre class="chroma"><span class="kd">func</span> <span class="nf">main</span><span class="p">(</span><span class="nx">aa</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span><span class="k">return</span> <span class="mi">0</span><span class="p">}</span>
+</pre>`, string(b))
 }
 
 func TestRest_Find(t *testing.T) {
