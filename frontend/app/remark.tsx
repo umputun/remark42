@@ -1,20 +1,22 @@
 /** @jsx createElement */
 import loadPolyfills from '@app/common/polyfills';
+
 import { createElement, render } from 'preact';
 import 'preact/debug';
-
+import { bindActionCreators } from 'redux';
 import { Provider } from 'react-redux';
+
 import { ConnectedRoot } from '@app/components/root';
 import { UserInfo } from '@app/components/user-info';
 import reduxStore from '@app/store';
 
 // importing css
+import '@app/styles/code-highlight.scss';
 import '@app/components/list-comments';
 
 import { NODE_ID, BASE_URL } from '@app/common/constants';
 import { StaticStore } from '@app/common/static_store';
 import api from '@app/common/api';
-import { bindActionCreators } from 'redux';
 import { fetchHiddenUsers } from './store/user/actions';
 import { restoreProvider } from './store/provider/actions';
 import { restoreCollapsedThreads } from './store/thread/actions';
