@@ -478,7 +478,7 @@ func (s *public) getStartedCtrl(w http.ResponseWriter, r *http.Request) {
 
 // GET /robots.txt
 func (s *public) robotsCtrl(w http.ResponseWriter, r *http.Request) {
-	allowed := []string{"/find", "/last", "/id", "/count", "/counts", "/list", "/config",
+	allowed := []string{"/find", "/last", "/id", "/count", "/counts", "/list", "/config", "/user",
 		"/img", "/avatar", "/picture"}
 	for i := range allowed {
 		allowed[i] = "Allow: /api/v1" + allowed[i]

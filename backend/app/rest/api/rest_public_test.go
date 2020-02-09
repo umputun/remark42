@@ -722,7 +722,8 @@ func TestRest_Robots(t *testing.T) {
 	assert.Equal(t, 200, code)
 	assert.Equal(t, "User-agent: *\nDisallow: /auth/\nDisallow: /api/\nAllow: /api/v1/find\n"+
 		"Allow: /api/v1/last\nAllow: /api/v1/id\nAllow: /api/v1/count\nAllow: /api/v1/counts\n"+
-		"Allow: /api/v1/list\nAllow: /api/v1/config\nAllow: /api/v1/img\nAllow: /api/v1/avatar\nAllow: /api/v1/picture\n", string(body))
+		"Allow: /api/v1/list\nAllow: /api/v1/config\nAllow: /api/v1/user\nAllow: /api/v1/img\n"+
+		"Allow: /api/v1/avatar\nAllow: /api/v1/picture\n", string(body))
 }
 
 func TestRest_LastCommentsStream(t *testing.T) {
