@@ -11,7 +11,6 @@ import { UserInfo } from '@app/components/user-info';
 import reduxStore from '@app/store';
 
 // importing css
-import '@app/styles/code-highlight.scss';
 import '@app/components/list-comments';
 
 import { NODE_ID, BASE_URL } from '@app/common/constants';

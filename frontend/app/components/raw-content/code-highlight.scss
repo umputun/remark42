@@ -1,26 +1,4 @@
 .chroma {
-  --chroma-bg: rgba(0, 0, 0, 0.05);
-  --chroma-base: #586e75;
-  --chroma-c: #7d7d7d;
-  --chroma-01: #589000;
-  --chroma-02: #cb4b16;
-  --chroma-03: #268bd2;
-  --chroma-04: #2aa198;
-  --chroma-05: #859900;
-  --chroma-06: #d33682;
-  --chroma-07: #00aee2;
-
-  .root_theme_dark & {
-    --chroma-bg: rgba(255, 255, 255, 0.1);
-    --chroma-base: #93a1a1;
-    --chroma-c: #586e75;
-    --chroma-01: #8ad200;
-    --chroma-03: #3af;
-    --chroma-05: #8eca03;
-    --chroma-06: #dc322f;
-    --chroma-07: #95d5e8;
-  }
-
   color: var(--chroma-base);
   background-color: var(--chroma-bg);
 
