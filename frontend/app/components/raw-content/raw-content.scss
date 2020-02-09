@@ -1,4 +1,26 @@
 .raw-content {
+  --chroma-bg: rgba(0, 0, 0, 0.05);
+  --chroma-base: #586e75;
+  --chroma-c: #7d7d7d;
+  --chroma-01: #589000;
+  --chroma-02: #cb4b16;
+  --chroma-03: #268bd2;
+  --chroma-04: #2aa198;
+  --chroma-05: #859900;
+  --chroma-06: #d33682;
+  --chroma-07: #00aee2;
+
+  .root_theme_dark & {
+    --chroma-bg: rgba(255, 255, 255, 0.1);
+    --chroma-base: #93a1a1;
+    --chroma-c: #586e75;
+    --chroma-01: #8ad200;
+    --chroma-03: #3af;
+    --chroma-05: #8eca03;
+    --chroma-06: #dc322f;
+    --chroma-07: #95d5e8;
+  }
+
   word-break: break-word;
 
   p {
@@ -74,11 +96,18 @@
   }
 
   code {
-    padding: 0.2em 0.4em;
-    margin: 0;
-    font-size: 85%;
-    background-color: rgba(#1b1f23, 0.05);
+    background-color: var(--chroma-bg);
     border-radius: 3px;
+    color: var(--chroma-base);
+    display: inline-block;
+    font-size: 85%;
+    line-height: 1.45;
+    margin: 0;
+    overflow: visible;
+    padding: 0 0.4em;
+    white-space: pre;
+    word-break: normal;
+    word-wrap: normal;
   }
 
   pre {
@@ -97,20 +126,6 @@
 
     &:last-child {
       margin-bottom: 0;
-    }
-
-    > code {
-      display: inline;
-      padding: 0;
-      margin: 0;
-      overflow: visible;
-      word-break: normal;
-      white-space: pre;
-      word-wrap: normal;
-      font-size: 100%;
-      line-height: inherit;
-      background: transparent;
-      border-radius: 0;
     }
   }
 
