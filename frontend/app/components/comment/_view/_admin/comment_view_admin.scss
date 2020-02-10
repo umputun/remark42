@@ -3,7 +3,7 @@
   &.comment_theme_light,
   &.comment_theme_dark {
     .comment__username {
-      color: #0e7e9d;
+      color: var(--color29);
     }
   }
 }

@@ -1,19 +1,19 @@
 .root_theme_light {
-  color: #000;
+  color: var(--color0);
 
   .root__copyright {
-    color: #aaa;
+    color: var(--color1);
   }
 
   .root__copyright-link {
-    color: #aaa;
+    color: var(--color1);
   }
 
   .root__pinned-comment {
-    border-bottom-color: #e2efef;
+    border-bottom-color: var(--color3);
   }
 
   .root__pinned-comments {
-    background: #edf6f7;
+    background: var(--color4);
   }
 }

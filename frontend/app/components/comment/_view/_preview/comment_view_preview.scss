@@ -9,11 +9,11 @@
       overflow: hidden;
       white-space: nowrap;
       text-overflow: ellipsis;
-      color: #0aa;
+      color: var(--color9);
     }
 
     .comment__title-link {
-      color: #0aa;
+      color: var(--color9);
       text-decoration: none;
 
       &:hover {
@@ -25,7 +25,7 @@
       display: inline;
       padding-right: 0;
       font-weight: 700;
-      color: #777;
+      color: var(--color10);
 
       &::after {
         content: ' ';
@@ -33,7 +33,7 @@
     }
 
     .comment__username {
-      color: #0aa;
+      color: var(--color9);
     }
 
     .comment__text {

@@ -1,11 +1,11 @@
 .button_theme_dark.button_kind_secondary {
-  background: #22201c;
-  color: #ddd;
+  background: var(--color8);
+  color: var(--color20);
 }
 
 .button_theme_dark.button_kind_link {
   &:disabled,
   &:hover:disabled {
-    color: #fff;
+    color: var(--color6);
   }
 }

@@ -1,23 +1,23 @@
 .comment_theme_light {
   .comment__action_type_collapse {
-    border-color: #ddd;
-    color: #ddd;
+    border-color: var(--color20);
+    color: var(--color20);
 
     &.comment__action_selected {
-      background: #ddd;
-      color: #fff;
+      background: var(--color20);
+      color: var(--color6);
     }
   }
 
   .comment__action_type_delete,
   .comment__action_type_edit {
-    color: #a6a6a6;
+    color: var(--color32);
   }
 
   .comment__action {
     + .comment__controls {
       &::before {
-        color: #777;
+        color: var(--color10);
       }
     }
   }
@@ -26,72 +26,72 @@
     &,
     &:hover,
     &:focus {
-      color: #999;
+      color: var(--color11);
     }
   }
 
   .comment__edit-timer {
-    color: #a6a6a6;
+    color: var(--color32);
 
     + .comment__controls {
       &::before {
-        color: #777;
+        color: var(--color10);
       }
     }
   }
 
   .comment__score {
-    color: #c4c4c4;
+    color: var(--color31);
   }
 
   .comment__score_view_negative {
-    color: #cc0606;
+    color: var(--color30);
   }
 
   .comment__score_view_positive {
-    color: #259e06;
+    color: var(--color12);
   }
 
   .comment__status {
-    color: #999;
+    color: var(--color11);
   }
 
   .comment__time {
-    color: #999;
+    color: var(--color11);
   }
 
   .comment__user-id {
-    color: #888;
+    color: var(--color13);
   }
 
   .comment__username {
-    color: #777;
+    color: var(--color10);
   }
 
   &.comment_editing {
     .comment__input {
-      border-color: #eee;
+      border-color: var(--color5);
     }
 
     @media (-moz-touch-enabled: 1) and (max-width: 768px), (pointer: coarse) and (max-width: 768px) {
-      border-color: #eee;
+      border-color: var(--color5);
     }
   }
 
   &.comment_replying {
     .comment__input {
-      border-color: #eee;
+      border-color: var(--color5);
     }
 
     @media (-moz-touch-enabled: 1) and (max-width: 768px), (pointer: coarse) and (max-width: 768px) {
-      border-color: #eee;
+      border-color: var(--color5);
     }
   }
 
   &.comment_view_preview {
     .comment__info {
       &::after {
-        color: #777;
+        color: var(--color10);
       }
     }
   }

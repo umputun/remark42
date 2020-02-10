@@ -1,24 +1,24 @@
 .raw-content_theme_dark {
   blockquote {
-    border-left-color: rgba(255, 255, 255, 0.3);
+    border-left-color: var(--color44);
   }
 
   table {
     th,
     td {
-      border: 1px solid #313133;
+      border: 1px solid var(--color24);
     }
 
     tr {
-      background-color: #22201c;
+      background-color: var(--color8);
 
       &:nth-child(2n) {
-        background-color: #393734;
+        background-color: var(--color23);
       }
     }
   }
 
   hr {
-    border-color: #2d2d2c;
+    border-color: var(--color22);
   }
 }

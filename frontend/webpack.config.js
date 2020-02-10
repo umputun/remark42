@@ -14,6 +14,7 @@ const publicFolder = path.resolve(__dirname, 'public');
 const env = process.env.NODE_ENV || 'development';
 const remarkUrl = process.env.REMARK_URL || 'https://demo.remark42.com';
 const NODE_ID = 'remark42';
+const pathToCustomCssProperties = './app/custom-properties.css';
 
 // let's log some env variables because we can
 console.log(`NODE_ENV = ${env}`);
@@ -49,13 +50,16 @@ const postCssLoader = wrap => ({
   loader: 'postcss-loader',
   options: {
     plugins: [
+      require('postcss-custom-properties')({
+        importFrom: path.resolve(__dirname, pathToCustomCssProperties),
+      }),
       require('postcss-for'),
       require('postcss-simple-vars'),
       require('postcss-nested'),
       require('postcss-calc'),
       require('autoprefixer')({ overrideBrowserslist: ['> 1%'] }),
       require('postcss-url')({ url: 'inline', maxSize: 5 }),
-      wrap ? require('postcss-wrap')({ selector: `#${NODE_ID}` }) : false,
+      wrap ? require('postcss-prefixwrap')(`#${NODE_ID}`, { ignoredSelectors: [':root'] }) : false,
       require('postcss-csso'),
     ].filter(plugin => plugin),
   },
@@ -71,8 +75,8 @@ module.exports = () => ({
   entry: {
     embed: './app/embed.ts',
     counter: './app/counter.ts',
-    'last-comments': './app/last-comments.tsx',
-    remark: './app/remark.tsx',
+    'last-comments': [pathToCustomCssProperties, './app/last-comments.tsx'],
+    remark: [pathToCustomCssProperties, './app/remark.tsx'],
     deleteme: './app/deleteme.ts',
   },
   output: {
@@ -117,7 +121,8 @@ module.exports = () => ({
             ...getExcluded(),
           },
           {
-            test: /\.s?css$/,
+            test: /\.(s?css|pcss)$/,
+            exclude: /\.module\.pcss$/,
             use: [
               {
                 loader: MiniCssExtractPlugin.loader,

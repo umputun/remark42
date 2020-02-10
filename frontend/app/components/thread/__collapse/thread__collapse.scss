@@ -12,13 +12,13 @@
     position: absolute;
     left: 5px;
     top: 0;
-    border-left: 1px dotted #d9d9d9;
+    border-left: 1px dotted var(--color35);
     height: 100%;
   }
 
   &:hover::after {
     transform: translateX(-1px);
-    border-left: 3px solid #777;
+    border-left: 3px solid var(--color10);
     z-index: 10;
   }
 }
