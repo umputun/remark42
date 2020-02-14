@@ -19,6 +19,38 @@ function removeDomNode(node: HTMLElement | null) {
   }
 }
 
+function createFrame({
+   host,
+   query,
+   height,
+   __colors__ = {},
+}: {
+  host: string;
+  query: string;
+  height?: string;
+  __colors__?: any;
+}) {
+  const iframe = document.createElement('iframe');
+  iframe.src = `${host}/web/iframe.html?${query}`;
+  iframe.name = JSON.stringify({ __colors__ });
+  iframe.setAttribute('width', '100%');
+  if (height) {
+    iframe.setAttribute('height', height);
+  }
+  iframe.setAttribute('frameborder', '0');
+  iframe.setAttribute('allowtransparency', 'true');
+  iframe.setAttribute('scrolling', 'no');
+  iframe.setAttribute('tabindex', '0');
+  iframe.setAttribute('title', 'Remark42');
+  iframe.setAttribute('horizontalscrolling', 'no');
+  iframe.setAttribute('verticalscrolling', 'no');
+  iframe.setAttribute(
+    'style',
+    'width: 1px !important; min-width: 100% !important; border: none !important; overflow: hidden !important;'
+  );
+  return iframe;
+}
+
 function init(): void {
   const node = document.getElementById(remark_config.node || NODE_ID);
 
@@ -45,25 +77,14 @@ function init(): void {
   (window as any).REMARK42.changeTheme = changeTheme;
 
   const query = Object.keys(remark_config)
-    .map((key: any) => `${encodeURIComponent(key)}=${encodeURIComponent((remark_config as any)[key])}`)
+    .filter((key: any) => key !== `__colors__`)
+    .map((key: any) => {
+      return `${encodeURIComponent(key)}=${encodeURIComponent((remark_config as any)[key])}`;
+    })
     .join('&');
+  const iframe = createFrame({ host: HOST, query, __colors__: remark_config.__colors__ });
 
-  node.innerHTML = `
-    <iframe
-      src="${HOST}/web/iframe.html?${query}"
-      width="100%"
-      frameborder="0"
-      allowtransparency="true"
-      scrolling="no"
-      tabindex="0"
-      title="Remark42"
-      style="width: 1px !important; min-width: 100% !important; border: none !important; overflow: hidden !important;"
-      horizontalscrolling="no"
-      verticalscrolling="no"
-    ></iframe>
-  `;
-
-  const iframe = node.getElementsByTagName('iframe')[0];
+  node.appendChild(iframe);
 
   window.addEventListener('message', receiveMessages);
   window.addEventListener('hashchange', postHashToIframe);
@@ -174,20 +195,9 @@ function init(): void {
         query +
         '&page=user-info&' +
         `&id=${user.id}&name=${user.name}&picture=${user.picture || ''}&isDefaultPicture=${user.isDefaultPicture || 0}`;
-      this.node.innerHTML = `
-      <iframe
-        src="${HOST}/web/iframe.html?${queryUserInfo}"
-        width="100%"
-        height="100%"
-        frameborder="0"
-        allowtransparency="true"
-        scrolling="no"
-        tabindex="0"
-        title="Remark42"
-        verticalscrolling="no"
-        horizontalscrolling="no"
-      />`;
-      this.iframe = this.node.querySelector('iframe');
+      const iframe = createFrame({ host: HOST, query: queryUserInfo, height: '100%' });
+      this.node.appendChild(iframe);
+      this.iframe = iframe;
       this.node.appendChild(this.closeEl);
       document.body.appendChild(this.style);
       document.body.appendChild(this.back);
@@ -201,6 +211,9 @@ function init(): void {
     },
     close() {
       if (this.node) {
+        if (this.iframe) {
+          this.node.removeChild(this.iframe);
+        }
         this.onAnimationClose();
         this.node.removeAttribute('data-animation');
       }

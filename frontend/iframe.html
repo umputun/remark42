@@ -9,6 +9,28 @@
       if (window.location.search === '?selfClose') {
         window.close();
       }
+      (function() {
+        function isCSSVariablesSupported() {
+          if (typeof window === `undefined`) {
+            return true;
+          }
+
+          return window.CSS && window.CSS.supports && window.CSS.supports(`color`, `var(--fake-var)`);
+        }
+        if (isCSSVariablesSupported()) {
+          var name;
+          try {
+            name = JSON.parse(window.name);
+            if (name.__colors__) {
+              const colors = name.__colors__;
+              for (var color in colors) {
+                var root = document.documentElement;
+                root.style.setProperty(color, colors[color]);
+              }
+            }
+          } catch (e) {}
+        }
+      })();
     </script>
     <link rel="stylesheet" href="remark.css" />
     <style>
@@ -47,7 +69,9 @@
       }
 
       .preloader {
+        /* stylelint-disable-next-line */
         color: #fff;
+        color: var(--color6, #fff);
         position: relative;
         transform: translate3d(0, -10px, 0);
         animation-delay: -0.16s;
@@ -71,7 +95,9 @@
 
       .preloader_view_iframe {
         margin: 0 auto;
+        /* stylelint-disable-next-line */
         color: #888;
+        color: var(--color13, #888);
       }
 
       :focus:not(.focus-visible):not(.button) {

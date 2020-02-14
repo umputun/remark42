@@ -47,7 +47,6 @@
     "babel-jest": "^24.9.0",
     "babel-loader": "^8.0.6",
     "clean-webpack-plugin": "^3.0.0",
-    "color": "^3.1.2",
     "copy-webpack-plugin": "^5.1.1",
     "css-loader": "^3.2.0",
     "document-register-element": "^1.14.3",
