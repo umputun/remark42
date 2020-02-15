@@ -1,10 +1,10 @@
 .thread_theme_dark {
   .thread__collapse {
-    &:after {
+    &::after {
       border-color: #505050;
     }
 
-    &:hover:after {
+    &:hover::after {
       border-color: #fff;
     }
   }

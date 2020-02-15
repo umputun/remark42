@@ -6,7 +6,7 @@
   left: -4px;
   cursor: pointer;
 
-  &:after {
+  &::after {
     display: block;
     content: '';
     position: absolute;
@@ -16,7 +16,7 @@
     height: 100%;
   }
 
-  &:hover:after {
+  &:hover::after {
     transform: translateX(-1px);
     border-left: 3px solid #777;
     z-index: 10;
@@ -29,13 +29,12 @@
   top: 12px;
   left: 0;
   display: flex;
-  border-radius: 2px;
   text-align: center;
   opacity: 0.8;
   border-radius: 2px;
   border: 1px solid;
 
-  &:after {
+  &::after {
     display: none;
   }
 
@@ -43,7 +42,7 @@
     opacity: 1;
   }
 
-  &:hover:after {
+  &:hover::after {
     transform: translateX(0);
   }
 }
@@ -56,8 +55,8 @@
   height: 2px;
   border-bottom: 2px solid;
 
-  &:before,
-  &:after {
+  &::before,
+  &::after {
     content: '';
     width: 100%;
     height: 2px;
@@ -66,7 +65,8 @@
     top: -4px;
     left: 0;
   }
-  &:after {
+
+  &::after {
     top: 4px !important;
   }
 }
