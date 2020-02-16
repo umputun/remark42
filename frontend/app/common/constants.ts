@@ -1,12 +1,11 @@
 import { Sorting, AuthProvider, BlockingDuration, Theme } from './types';
+import * as configConstant from './constants.config';
 
-export const BASE_URL: string =
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ((window as any).remark_config && (window as any).remark_config.host) || process.env.REMARK_URL!;
+export const BASE_URL = configConstant.BASE_URL;
 export const API_BASE = '/api/v1';
-export const NODE_ID: string = process.env.REMARK_NODE!;
+export const NODE_ID = configConstant.NODE_ID;
 export const COUNTER_NODE_CLASSNAME = 'remark42__counter';
-export const COMMENT_NODE_CLASSNAME_PREFIX = 'remark42__comment-';
+export const COMMENT_NODE_CLASSNAME_PREFIX = configConstant.COMMENT_NODE_CLASSNAME_PREFIX;
 export const LAST_COMMENTS_NODE_CLASSNAME = 'remark42__last-comments';
 export const DEFAULT_LAST_COMMENTS_MAX = 15;
 export const DEFAULT_MAX_COMMENT_SIZE = 1000;
