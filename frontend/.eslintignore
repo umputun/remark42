@@ -3,3 +3,5 @@ public
 !.prettierrc.js
 !.eslintrc.js
 !.babelrc.js
+!.lintstagedrc.js
+!.stylelintrc.js

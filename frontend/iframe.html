@@ -26,20 +26,24 @@
         100% {
           box-shadow: 0 10px 0 -10px;
         }
+
         40% {
           box-shadow: 0 10px 0 0;
         }
       }
 
       .preloader,
-      .preloader:before,
-      .preloader:after {
+      .preloader::before,
+      .preloader::after {
         border-radius: 50%;
         width: 10px;
         height: 10px;
         text-align: left;
+        animation-name: bouncing;
+        animation-timing-function: ease-in-out;
         animation-fill-mode: both;
-        animation: bouncing 1.8s infinite ease-in-out;
+        animation-duration: 1.8s;
+        animation-iteration-count: infinite;
       }
 
       .preloader {
@@ -49,17 +53,19 @@
         animation-delay: -0.16s;
       }
 
-      .preloader:before,
-      .preloader:after {
+      .preloader::before,
+      .preloader::after {
         content: '';
         position: absolute;
         top: 0;
       }
-      .preloader:before {
+
+      .preloader::before {
         transform: translate3d(-15px, 0, 0);
         animation-delay: -0.32s;
       }
-      .preloader:after {
+
+      .preloader::after {
         transform: translate3d(15px, 0, 0);
       }
 

@@ -51,7 +51,7 @@ ARG NODE_ENV=production
 COPY --from=build-frontend-deps /srv/frontend/node_modules /srv/frontend/node_modules
 ADD frontend /srv/frontend
 RUN cd /srv/frontend && \
-    if [ -z "$SKIP_FRONTEND_TEST" ] ; then npx run-p check lint test build ; \
+    if [ -z "$SKIP_FRONTEND_TEST" ] ; then npx run-p check lint lint:style test build ; \
     else echo "skip frontend tests and lint" ; npm run build ; fi && \
     rm -rf ./node_modules
 

@@ -24,5 +24,5 @@ jobs:
       - run: npm ci
         working-directory: ./frontend
 
-      - run: npx run-p check lint test
+      - run: npx run-p check lint lint:style test
         working-directory: ./frontend

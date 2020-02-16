@@ -28,12 +28,13 @@
     margin: 1rem 0;
 
     &:first-child {
-      margin-top: 0rem;
+      margin-top: 0;
     }
 
     &:last-child {
-      margin-bottom: 0rem;
+      margin-bottom: 0;
     }
+
     /* imported comments have br instead of p */
     br {
       content: '';
@@ -66,7 +67,7 @@
       margin-top: 0;
     }
   }
-
+  /* stylelint-disable-next-line no-descending-specificity */
   blockquote {
     padding: 12px 8px 12px 16px;
     border-left: 2px solid;

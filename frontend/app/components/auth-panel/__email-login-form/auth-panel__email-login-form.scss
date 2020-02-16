@@ -36,7 +36,7 @@
   margin-left: 0.1rem;
   margin-bottom: 0.5rem;
 
-  &:before {
+  &::before {
     content: '◄';
     display: inline-block;
     margin-right: 3px;
