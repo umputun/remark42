@@ -25,7 +25,7 @@
     "@babel/plugin-transform-react-jsx": "^7.3.0",
     "@babel/preset-env": "^7.6.3",
     "@babel/preset-react": "^7.6.3",
-    "@size-limit/preset-app": "^4.0.1",
+    "@size-limit/file": "^4.0.1",
     "@types/cheerio": "^0.22.13",
     "@types/core-js": "^2.5.2",
     "@types/enzyme": "^3.10.4",
