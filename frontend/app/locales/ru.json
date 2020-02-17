@@ -3,10 +3,15 @@
   "commentForm.save": "Сохранить",
   "commentForm.replay": "Ответить",
   "comment.hide": "Спрятать",
-  "comment.time": "{day} в {time}",
-  "comment.delete": "Удалить комментарий?",
+  "comment.delete-message": "Удалить комментарий?",
   "commentForm.preview": "Предпросмотр",
   "authPanel.logout": "Выйти?",
   "authPanel.login": "Вход:",
-  "authPanel.logged-as": "Вы вошли как"
+  "authPanel.logged-as": "Вы вошли как",
+  "comment.hide-user-comment": "Do you want to hide comments of {userName}?",
+  "comment.cancel": "Отменить",
+  "comment.reply": "Ответить",
+  "comment.edit": "Редактировать",
+  "comment.delete": "Удалить",
+  "comment.time": "{day} в {time}"
 }

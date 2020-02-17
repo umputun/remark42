@@ -237,7 +237,12 @@ describe('<Comment />', () => {
           .props()
       ).toEqual(expect.objectContaining({ defaultMessage: 'Hide' }));
       expect(controls.at(3).getDOMNode().childNodes[0].textContent).toEqual('Block');
-      expect(controls.at(4).text()).toEqual('Delete');
+      expect(
+        controls
+          .at(4)
+          .find('FormattedMessage')
+          .props()
+      ).toEqual(expect.objectContaining({ defaultMessage: 'Delete' }));
     });
 
     it('for regular user it shows only "hide"', () => {

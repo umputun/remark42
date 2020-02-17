@@ -3,10 +3,15 @@
   "commentForm.save": "Save",
   "commentForm.replay": "Replay",
   "comment.hide": "Hide",
-  "comment.time": "{day} at {time}",
-  "comment.delete": "Do you want to delete this comment?",
   "commentForm.preview": "Preview",
   "authPanel.logout": "Logout?",
   "authPanel.login": "Login:",
-  "authPanel.logged-as": "You logged in as"
+  "authPanel.logged-as": "You logged in as",
+  "comment.hide-user-comment": "Do you want to hide comments of {userName}?",
+  "comment.reply": "Reply",
+  "comment.edit": "Edit",
+  "comment.delete-message": "Do you want to delete this comment?",
+  "comment.delete": "Delete",
+  "comment.time": "{day} at {time}",
+  "comment.cancel": "Cancel"
 }

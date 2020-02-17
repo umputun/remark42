@@ -25,9 +25,13 @@ import postMessage from '@app/utils/postMessage';
 import { FormattedMessage, useIntl, IntlShape, defineMessages } from 'react-intl';
 
 defineMessages({
-  'comment.delete': {
-    id: 'comment.delete',
+  'comment.delete-message': {
+    id: 'comment.delete-message',
     defaultMessage: 'Do you want to delete this comment?',
+  },
+  'comment.hide-user-comment': {
+    id: 'comment.hide-user-comment',
+    defaultMessage: 'Do you want to hide comments of {userName}?',
   },
 });
 
@@ -230,8 +234,8 @@ export class Comment extends Component<Props, State> {
 
   deleteComment = () => {
     const deleteComment = this.props.intl.formatMessage({
-      id: 'comment.delete',
-      defaultMessage: 'comment.delete',
+      id: 'comment.delete-message',
+      defaultMessage: 'comment.delete-message',
     });
     if (confirm(deleteComment)) {
       this.props.setReplyEditState!({ id: this.props.data.id, state: CommentMode.None });
@@ -241,7 +245,14 @@ export class Comment extends Component<Props, State> {
   };
 
   hideUser = () => {
-    if (!confirm(`Do you want to hide comments of ${this.props.data.user.name}?`)) return;
+    const hideUserComment = this.props.intl.formatMessage(
+      {
+        id: 'comment.hide-user-comment',
+        defaultMessage: 'comment.hide-user-comment',
+      },
+      { userName: this.props.data.user.name }
+    );
+    if (!confirm(hideUserComment)) return;
     this.props.hideUser!(this.props.data.user);
   };
 
@@ -453,7 +464,7 @@ export class Comment extends Component<Props, State> {
       if (!this.props.data.delete) {
         controls.push(
           <Button kind="link" {...getHandleClickProps(this.deleteComment)} mix="comment__control">
-            Delete
+            <FormattedMessage id="comment.delete" defaultMessage="Delete" />
           </Button>
         );
       }
@@ -689,7 +700,11 @@ export class Comment extends Component<Props, State> {
             <div className="comment__actions">
               {!props.data.delete && !props.isCommentsDisabled && !props.disabled && !isGuest && props.view === 'main' && (
                 <Button kind="link" {...getHandleClickProps(this.toggleReplying)} mix="comment__action">
-                  {isReplying ? 'Cancel' : 'Reply'}
+                  {isReplying ? (
+                    <FormattedMessage id="comment.cancel" defaultMessage="Cancel" />
+                  ) : (
+                    <FormattedMessage id="comment.reply" defaultMessage="Reply" />
+                  )}
                 </Button>
               )}
               {!props.data.delete &&
@@ -703,7 +718,11 @@ export class Comment extends Component<Props, State> {
                     {...getHandleClickProps(this.toggleEditing)}
                     mix={['comment__action', 'comment__action_type_edit']}
                   >
-                    {isEditing ? 'Cancel' : 'Edit'}
+                    {isEditing ? (
+                      <FormattedMessage id="comment.cancel" defaultMessage="Cancel" />
+                    ) : (
+                      <FormattedMessage id="comment.edit" defaultMessage="Edit" />
+                    )}
                   </Button>,
                   !isAdmin && (
                     <Button
@@ -711,7 +730,7 @@ export class Comment extends Component<Props, State> {
                       {...getHandleClickProps(this.deleteComment)}
                       mix={['comment__action', 'comment__action_type_delete']}
                     >
-                      Delete
+                      <FormattedMessage id="comment.delete" defaultMessage="Delete" />
                     </Button>
                   ),
                   state.editDeadline && (
