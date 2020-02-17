@@ -22,8 +22,17 @@ import Countdown from '@app/components/countdown';
 import { boundActions } from './connected-comment';
 import { getPreview, uploadImage } from '@app/common/api';
 import postMessage from '@app/utils/postMessage';
+import { FormattedMessage, useIntl, IntlShape, defineMessages } from 'react-intl';
+
+defineMessages({
+  'comment.delete': {
+    id: 'comment.delete',
+    defaultMessage: 'Do you want to delete this comment?',
+  },
+});
 
 export type Props = {
+  intl: IntlShape;
   user: User | null;
   CommentForm: ComponentType<CommentFormProps> | null;
   data: CommentType;
@@ -220,7 +229,11 @@ export class Comment extends Component<Props, State> {
   };
 
   deleteComment = () => {
-    if (confirm('Do you want to delete this comment?')) {
+    const deleteComment = this.props.intl.formatMessage({
+      id: 'comment.delete',
+      defaultMessage: 'comment.delete',
+    });
+    if (confirm(deleteComment)) {
       this.props.setReplyEditState!({ id: this.props.data.id, state: CommentMode.None });
 
       this.props.removeComment!(this.props.data.id);
@@ -406,7 +419,7 @@ export class Comment extends Component<Props, State> {
     if (!isCurrentUser) {
       controls.push(
         <Button kind="link" {...getHandleClickProps(this.hideUser)} mix="comment__control">
-          Hide
+          <FormattedMessage id="comment.hide" defaultMessage="Hide" />
         </Button>
       );
     }
@@ -479,7 +492,7 @@ export class Comment extends Component<Props, State> {
           : props.data.delete
           ? 'This comment was deleted'
           : props.data.text,
-      time: formatTime(new Date(props.data.time)),
+      time: new Date(props.data.time),
       orig: isEditing
         ? props.data.orig &&
           props.data.orig.replace(/&[#A-Za-z0-9]+;/gi, entity => {
@@ -605,7 +618,7 @@ export class Comment extends Component<Props, State> {
           )}
 
           <a href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`} className="comment__time">
-            {o.time}
+            <FormatTime time={o.time} />
           </a>
 
           {!!props.level && props.level > 0 && props.view === 'main' && (
@@ -767,13 +780,16 @@ function getTextSnippet(html: string) {
   return snippet.length === LENGTH && result.length !== LENGTH ? `${snippet}...` : snippet;
 }
 
-function formatTime(time: Date) {
-  // 'ru-RU' adds a dot as a separator
-  const date = time.toLocaleDateString(['ru-RU'], { day: '2-digit', month: '2-digit', year: '2-digit' });
-
-  // do it manually because Intl API doesn't add leading zeros to hours; idk why
-  const hours = `0${time.getHours()}`.slice(-2);
-  const mins = `0${time.getMinutes()}`.slice(-2);
-
-  return `${date} at ${hours}:${mins}`;
+function FormatTime({ time }: { time: Date }) {
+  const intl = useIntl();
+  return (
+    <FormattedMessage
+      id="comment.time"
+      defaultMessage="{day} at {time}"
+      values={{
+        day: intl.formatDate(time),
+        time: intl.formatTime(time),
+      }}
+    />
+  );
 }

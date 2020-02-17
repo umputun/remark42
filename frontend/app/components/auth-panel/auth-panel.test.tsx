@@ -6,6 +6,7 @@ import { Button } from '@app/components/button';
 import { User, PostInfo } from '@app/common/types';
 
 import { Props, AuthPanel } from './auth-panel';
+import { IntlProvider } from 'react-intl';
 
 const DefaultProps: Partial<Props> = {
   sort: '-score',
@@ -22,7 +23,11 @@ const DefaultProps: Partial<Props> = {
 describe('<AuthPanel />', () => {
   describe('For not authorized user', () => {
     it('should render login form with google and github provider', () => {
-      const element = mount(<AuthPanel {...(DefaultProps as Props)} user={null} />);
+      const element = mount(
+        <IntlProvider locale="en">
+          <AuthPanel {...(DefaultProps as Props)} user={null} />
+        </IntlProvider>
+      );
 
       const authPanelColumn = element.find('.auth-panel__column');
 
@@ -41,12 +46,14 @@ describe('<AuthPanel />', () => {
     describe('sorting', () => {
       it('should place selected provider first', () => {
         const element = mount(
-          <AuthPanel
-            {...(DefaultProps as Props)}
-            providers={['google', 'github', 'yandex']}
-            provider={{ name: 'github' }}
-            user={null}
-          />
+          <IntlProvider locale="en">
+            <AuthPanel
+              {...(DefaultProps as Props)}
+              providers={['google', 'github', 'yandex']}
+              provider={{ name: 'github' }}
+              user={null}
+            />
+          </IntlProvider>
         );
 
         const providerLinks = element
@@ -61,12 +68,14 @@ describe('<AuthPanel />', () => {
 
       it('should do nothing if provider not found', () => {
         const element = mount(
-          <AuthPanel
-            {...(DefaultProps as Props)}
-            providers={['google', 'github', 'yandex']}
-            provider={{ name: 'baidu' }}
-            user={null}
-          />
+          <IntlProvider locale="en">
+            <AuthPanel
+              {...(DefaultProps as Props)}
+              providers={['google', 'github', 'yandex']}
+              provider={{ name: 'baidu' }}
+              user={null}
+            />
+          </IntlProvider>
         );
 
         const providerLinks = element
@@ -82,11 +91,13 @@ describe('<AuthPanel />', () => {
 
     it('should render login form with google and github provider for read-only post', () => {
       const element = mount(
-        <AuthPanel
-          {...(DefaultProps as Props)}
-          user={null}
-          postInfo={{ ...DefaultProps.postInfo, read_only: true } as PostInfo}
-        />
+        <IntlProvider locale="en">
+          <AuthPanel
+            {...(DefaultProps as Props)}
+            user={null}
+            postInfo={{ ...DefaultProps.postInfo, read_only: true } as PostInfo}
+          />
+        </IntlProvider>
       );
 
       const authPanelColumn = element.find('.auth-panel__column');
@@ -105,11 +116,13 @@ describe('<AuthPanel />', () => {
 
     it('should not render settings if there is no hidden users', () => {
       const element = mount(
-        <AuthPanel
-          {...(DefaultProps as Props)}
-          user={null}
-          postInfo={{ ...DefaultProps.postInfo, read_only: true } as PostInfo}
-        />
+        <IntlProvider locale="en">
+          <AuthPanel
+            {...(DefaultProps as Props)}
+            user={null}
+            postInfo={{ ...DefaultProps.postInfo, read_only: true } as PostInfo}
+          />
+        </IntlProvider>
       );
 
       const adminAction = element.find('.auth-panel__admin-action');
@@ -119,12 +132,14 @@ describe('<AuthPanel />', () => {
 
     it('should render settings if there is some hidden users', () => {
       const element = mount(
-        <AuthPanel
-          {...(DefaultProps as Props)}
-          user={null}
-          postInfo={{ ...DefaultProps.postInfo, read_only: true } as PostInfo}
-          hiddenUsers={{ hidden_joe: {} as any }}
-        />
+        <IntlProvider locale="en">
+          <AuthPanel
+            {...(DefaultProps as Props)}
+            user={null}
+            postInfo={{ ...DefaultProps.postInfo, read_only: true } as PostInfo}
+            hiddenUsers={{ hidden_joe: {} as any }}
+          />
+        </IntlProvider>
       );
 
       const adminAction = element.find('.auth-panel__admin-action');
@@ -134,7 +149,11 @@ describe('<AuthPanel />', () => {
   });
   describe('For authorized user', () => {
     it('should render info about current user', () => {
-      const element = mount(<AuthPanel {...(DefaultProps as Props)} user={{ id: `john`, name: 'John' } as User} />);
+      const element = mount(
+        <IntlProvider locale="en">
+          <AuthPanel {...(DefaultProps as Props)} user={{ id: `john`, name: 'John' } as User} />
+        </IntlProvider>
+      );
 
       const authPanelColumn = element.find('.auth-panel__column');
 
@@ -148,7 +167,9 @@ describe('<AuthPanel />', () => {
   describe('For admin user', () => {
     it('should render admin action', () => {
       const element = mount(
-        <AuthPanel {...(DefaultProps as Props)} user={{ id: `test`, admin: true, name: 'John' } as User} />
+        <IntlProvider locale="en">
+          <AuthPanel {...(DefaultProps as Props)} user={{ id: `test`, admin: true, name: 'John' } as User} />{' '}
+        </IntlProvider>
       );
 
       const adminAction = element.find('.auth-panel__admin-action').first();

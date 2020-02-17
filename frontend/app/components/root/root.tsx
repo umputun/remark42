@@ -2,6 +2,7 @@
 import { createElement, Component, FunctionComponent } from 'preact';
 import { useSelector } from 'react-redux';
 import b from 'bem-react-helper';
+import { IntlShape, useIntl } from 'react-intl';
 
 import { User, Sorting, AuthProvider } from '@app/common/types';
 import {
@@ -79,7 +80,7 @@ const boundActions = bindActions({
   updateComment,
 });
 
-type Props = ReturnType<typeof mapStateToProps> & typeof boundActions;
+type Props = ReturnType<typeof mapStateToProps> & typeof boundActions & { intl: IntlShape };
 
 interface State {
   isLoaded: boolean;
@@ -259,6 +260,7 @@ export class Root extends Component<Props, State> {
                   {this.props.pinnedComments.map(comment => (
                     <Comment
                       CommentForm={CommentForm}
+                      intl={this.props.intl}
                       key={`pinned-comment-${comment.id}`}
                       view="pinned"
                       data={comment}
@@ -332,5 +334,6 @@ export class Root extends Component<Props, State> {
 export const ConnectedRoot: FunctionComponent = () => {
   const props = useSelector(mapStateToProps);
   const actions = useActions(boundActions);
-  return <Root {...props} {...actions} />;
+  const intl = useIntl();
+  return <Root {...props} {...actions} intl={intl} />;
 };

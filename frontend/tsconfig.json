@@ -16,6 +16,7 @@
     "baseUrl": "./",
     "alwaysStrict": true,
     "sourceMap": true,
+    "resolveJsonModule": true,
     "forceConsistentCasingInFileNames": true,
     "paths": {
       "*": ["@types/*"],

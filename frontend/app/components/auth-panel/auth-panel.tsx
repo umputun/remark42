@@ -13,6 +13,7 @@ import { StoreState } from '@app/store';
 import { ProviderState } from '@app/store/provider/reducers';
 import { Dropdown, DropdownItem } from '@app/components/dropdown';
 import { Button } from '@app/components/button';
+import { FormattedMessage } from 'react-intl';
 
 import { AnonymousLoginForm } from './__anonymous-login-form';
 import { EmailLoginFormConnected } from './__email-login-form';
@@ -155,7 +156,7 @@ export class AuthPanel extends Component<Props, State> {
 
     return (
       <div className="auth-panel__column">
-        You logged in as{' '}
+        <FormattedMessage id="authPanel.logged-as" defaultMessage="You logged in as" />{' '}
         <Dropdown title={user.name} titleClass="auth-panel__user-dropdown-title" theme={theme}>
           <DropdownItem separator={!isUserAnonymous}>
             <div
@@ -176,7 +177,7 @@ export class AuthPanel extends Component<Props, State> {
           )}
         </Dropdown>{' '}
         <Button kind="link" theme={theme} onClick={onSignOut}>
-          Logout?
+          <FormattedMessage id="authPanel.logout" defaultMessage="Logout?" />
         </Button>
       </div>
     );
@@ -263,7 +264,7 @@ export class AuthPanel extends Component<Props, State> {
 
     return (
       <div className="auth-panel__column">
-        {'Login: '}
+        <FormattedMessage id="authPanel.login" defaultMessage="Login:" />{' '}
         {!isAboveThreshold &&
           sortedProviders.map((provider, i) => {
             const comma = i === 0 ? '' : i === sortedProviders.length - 1 ? ' or ' : ', ';

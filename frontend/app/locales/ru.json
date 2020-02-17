@@ -1,0 +1,12 @@
+{
+  "commentForm.send": "Отправить",
+  "commentForm.save": "Сохранить",
+  "commentForm.replay": "Ответить",
+  "comment.hide": "Спрятать",
+  "comment.time": "{day} в {time}",
+  "comment.delete": "Удалить комментарий?",
+  "commentForm.preview": "Предпросмотр",
+  "authPanel.logout": "Выйти?",
+  "authPanel.login": "Вход:",
+  "authPanel.logged-as": "Вы вошли как"
+}

@@ -1,5 +1,6 @@
 /** @jsx createElement */
 import { createElement, Component, createRef, Fragment } from 'preact';
+import { FormattedMessage } from 'react-intl';
 import b, { Mix } from 'bem-react-helper';
 
 import { User, Theme, Image, ApiError } from '@app/common/types';
@@ -50,12 +51,6 @@ interface State {
   /** override main button text */
   buttonText: null | string;
 }
-
-const Labels = {
-  main: 'Send',
-  edit: 'Save',
-  reply: 'Reply',
-};
 
 const ImageMimeRegex = /image\//i;
 
@@ -343,6 +338,11 @@ export class CommentForm extends Component<Props, State> {
   render(props: Props, { isDisabled, isErrorShown, errorMessage, preview, maxLength, text, buttonText }: State) {
     const charactersLeft = maxLength - text.length;
     errorMessage = props.errorMessage || errorMessage;
+    const Labels = {
+      main: <FormattedMessage id="commentForm.send" defaultMessage="Send" />,
+      edit: <FormattedMessage id="commentForm.save" defaultMessage="Save" />,
+      reply: <FormattedMessage id="commentForm.replay" defaultMessage="Replay" />,
+    };
     const label = buttonText || Labels[props.mode || 'main'];
 
     return (
@@ -406,7 +406,7 @@ export class CommentForm extends Component<Props, State> {
               disabled={isDisabled}
               onClick={this.getPreview}
             >
-              Preview
+              <FormattedMessage id="commentForm.preview" defaultMessage="Preview" />
             </Button>
           )}
           <Button kind="primary" size="large" mix="comment-form__button" type="submit" disabled={isDisabled}>
@@ -439,7 +439,9 @@ export class CommentForm extends Component<Props, State> {
         !!preview && (
           <div className="comment-form__preview-wrapper">
             <div
-              className={b('comment-form__preview', { mix: b('raw-content', {}, { theme: props.theme }) })}
+              className={b('comment-form__preview', {
+                mix: b('raw-content', {}, { theme: props.theme }),
+              })}
               dangerouslySetInnerHTML={{ __html: preview }}
             />
           </div>

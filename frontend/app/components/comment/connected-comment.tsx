@@ -30,6 +30,7 @@ import { uploadImage, getPreview } from '@app/common/api';
 import { getThreadIsCollapsed } from '@app/store/thread/getters';
 import { bindActions } from '@app/utils/actionBinder';
 import { useActions } from '@app/hooks/useAction';
+import { useIntl } from 'react-intl';
 
 type ProvidedProps = Pick<
   Props,
@@ -75,5 +76,6 @@ export const boundActions = bindActions({
 export const ConnectedComment: FunctionComponent<Omit<Props, keyof (ProvidedProps & typeof bindActions)>> = props => {
   const providedProps = mapStateToProps(useStore().getState(), props);
   const actions = useActions(boundActions);
-  return <Comment {...props} {...providedProps} {...actions} />;
+  const intl = useIntl();
+  return <Comment {...props} {...providedProps} {...actions} intl={intl} />;
 };

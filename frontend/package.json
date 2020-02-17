@@ -6,10 +6,12 @@
     "start": "webpack-dev-server --mode development",
     "check": "tsc -p tsconfig.json --noEmit --skipLibCheck",
     "lint": "eslint --max-warnings=0 --ext=.ts,.tsx,.js,.jsx .",
-    "lint:style": "stylelint \"**/*.scss\" \"**/*.pcss\" \"**/*.css\" \"iframe.html\"",
+    "lint:style": "stylelint '**/*.scss' '**/*.pcss' '**/*.css' 'iframe.html'",
     "test": "jest",
     "test:coverage": "jest --coverage",
-    "prettier": "prettier --write \"./**/*.{js,jsx,ts,tsx,scss}\"",
+    "prettier": "prettier --write './**/*.{js,jsx,ts,tsx,scss}'",
+    "extract-messages": "formatjs extract --out-file=./extracted-messages/messages.json './app/**/*.js' './app/**/*.jsx' './app/**/*.tsx' './app/**/*.ts'",
+    "generate-langs": "npm run extract-messages && node ./tasks/generateDictionary.js",
     "size": "NODE_ENV=production npm run build && size-limit"
   },
   "husky": {
@@ -25,6 +27,7 @@
     "@babel/plugin-transform-react-jsx": "^7.3.0",
     "@babel/preset-env": "^7.6.3",
     "@babel/preset-react": "^7.6.3",
+    "@formatjs/cli": "^1.1.20",
     "@size-limit/file": "^4.0.1",
     "@types/cheerio": "^0.22.13",
     "@types/core-js": "^2.5.2",
@@ -107,6 +110,7 @@
     "lodash-es": "^4.17.15",
     "node-emoji": "^1.10.0",
     "preact": "^10.0.1",
+    "react-intl": "^3.12.0",
     "react-redux": "^7.1.1",
     "redux": "^4.0.4",
     "redux-thunk": "^2.3.0"
