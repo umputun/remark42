@@ -244,6 +244,7 @@ export class Root extends Component<Props, State> {
             <div className="root__main">
               {!isGuest && !isCommentsDisabled && (
                 <CommentForm
+                  intl={this.props.intl}
                   theme={props.theme}
                   mix="root__input"
                   mode="main"

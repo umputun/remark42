@@ -8,7 +8,7 @@ import { StaticStore } from '@app/common/static_store';
 import { CommentForm, Props } from './comment-form';
 import { SubscribeByEmail } from './__subscribe-by-email';
 
-const DEFAULT_PROPS: Readonly<Props> = {
+const DEFAULT_PROPS: Readonly<Omit<Props, 'intl'>> = {
   mode: 'main',
   theme: 'light',
   onSubmit: () => Promise.resolve(),
@@ -16,9 +16,15 @@ const DEFAULT_PROPS: Readonly<Props> = {
   user: null,
 };
 
+const intl = {
+  formatMessage() {
+    return '';
+  },
+} as any;
+
 describe('<CommentForm />', () => {
   it('should render without control panel, preview button, and rss links in "simple view" mode', () => {
-    const props = { ...DEFAULT_PROPS, simpleView: true };
+    const props = { ...DEFAULT_PROPS, simpleView: true, intl };
     const wrapper = shallow(<CommentForm {...props} />);
 
     expect(wrapper.exists('.comment-form__control-panel')).toEqual(false);
@@ -29,7 +35,7 @@ describe('<CommentForm />', () => {
   it('should be rendered with email subscription button', () => {
     StaticStore.config.email_notifications = true;
 
-    const props = { ...DEFAULT_PROPS, user };
+    const props = { ...DEFAULT_PROPS, user, intl };
     const wrapper = shallow(<CommentForm {...props} />);
 
     expect(wrapper.exists(SubscribeByEmail)).toEqual(true);
@@ -38,7 +44,7 @@ describe('<CommentForm />', () => {
   it('should be rendered without email subscription button when email_notifications disabled', () => {
     StaticStore.config.email_notifications = false;
 
-    const props = { ...DEFAULT_PROPS, user };
+    const props = { ...DEFAULT_PROPS, user, intl };
     const wrapper = shallow(<CommentForm {...props} />);
 
     expect(wrapper.exists(SubscribeByEmail)).toEqual(false);

@@ -37,5 +37,8 @@
   "comment.pin-comment": "Do you want to pin this comment?",
   "comment.unpin-comment": "Do you want to unpin this comment?",
   "comment.verify-user": "Do you want to verify {userName}?",
-  "comment.unverify-user": "Do you want to unverify {userName}?"
+  "comment.unverify-user": "Do you want to unverify {userName}?",
+  "commentForm.input-placeholder": "Your comment here",
+  "commentForm.notice-about-styling": "Styling with <a>Markdown</a> is supported",
+  "commentForm.subscribe-by": "Subscribe by"
 }

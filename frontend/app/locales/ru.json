@@ -37,5 +37,8 @@
   "comment.pin-comment": "Закрепить комментарий?",
   "comment.unpin-comment": "Открепить комментарий?",
   "comment.verify-user": "Do you want to verify {userName}?",
-  "comment.unverify-user": "Do you want to unverify {userName}?"
+  "comment.unverify-user": "Do you want to unverify {userName}?",
+  "commentForm.input-placeholder": "Написать комментарий",
+  "commentForm.notice-about-styling": "Поддерживается <a>Markdown</a> форматирование",
+  "commentForm.subscribe-by": "Подписаться"
 }

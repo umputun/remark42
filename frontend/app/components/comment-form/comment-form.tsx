@@ -1,6 +1,6 @@
 /** @jsx createElement */
 import { createElement, Component, createRef, Fragment } from 'preact';
-import { FormattedMessage } from 'react-intl';
+import { FormattedMessage, IntlShape, defineMessages } from 'react-intl';
 import b, { Mix } from 'bem-react-helper';
 
 import { User, Theme, Image, ApiError } from '@app/common/types';
@@ -35,6 +35,7 @@ export interface Props {
   /** action on cancel. optional as root input has no cancel option */
   onCancel?: () => void;
   uploadImage?: (image: File) => Promise<Image>;
+  intl: IntlShape;
 }
 
 interface State {
@@ -53,6 +54,13 @@ interface State {
 }
 
 const ImageMimeRegex = /image\//i;
+
+defineMessages({
+  'commentForm.input-placeholder': {
+    id: 'commentForm.input-placeholder',
+    defaultMessage: 'Your comment here',
+  },
+});
 
 export class CommentForm extends Component<Props, State> {
   /** reference to textarea element */
@@ -344,7 +352,10 @@ export class CommentForm extends Component<Props, State> {
       reply: <FormattedMessage id="commentForm.replay" defaultMessage="Replay" />,
     };
     const label = buttonText || Labels[props.mode || 'main'];
-
+    const placeholderMessage = this.props.intl.formatMessage({
+      id: 'commentForm.input-placeholder',
+      defaultMessage: 'commentForm.input-placeholder',
+    });
     return (
       <form
         className={b('comment-form', {
@@ -376,7 +387,7 @@ export class CommentForm extends Component<Props, State> {
               onPaste={this.onPaste}
               ref={this.textAreaRef}
               className="comment-form__field"
-              placeholder="Your comment here"
+              placeholder={placeholderMessage}
               value={text}
               maxLength={maxLength}
               onInput={this.onInput}
@@ -416,13 +427,19 @@ export class CommentForm extends Component<Props, State> {
           {!props.simpleView && props.mode === 'main' && (
             <div className="comment-form__rss">
               <div className="comment-form__markdown">
-                Styling with{' '}
-                <a className="comment-form__markdown-link" target="_blank" href="markdown-help.html">
-                  Markdown
-                </a>
-                {' is supported'}
+                <FormattedMessage
+                  id="commentForm.notice-about-styling"
+                  defaultMessage="Styling with <a>Markdown</a> is supported"
+                  values={{
+                    a: (title: string) => (
+                      <a class="comment-form__markdown-link" target="_blank" href="markdown-help.html">
+                        {title}
+                      </a>
+                    ),
+                  }}
+                />
               </div>
-              {'Subscribe by '}
+              <FormattedMessage id="commentForm.subscribe-by" defaultMessage="Subscribe by" />{' '}
               <SubscribeByRSS userId={props.user !== null ? props.user.id : null} />
               {StaticStore.config.email_notifications && (
                 <Fragment>
