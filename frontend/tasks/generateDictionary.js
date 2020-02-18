@@ -26,5 +26,5 @@ locales.forEach(locale => {
       currentDict[key] = defaultMessage;
     }
   });
-  fs.writeFileSync(pathToDict, JSON.stringify(removeAbandonedKeys(keysSet, currentDict), null, 2));
+  fs.writeFileSync(pathToDict, JSON.stringify(removeAbandonedKeys(keysSet, currentDict), null, 2) + '\n');
 });
