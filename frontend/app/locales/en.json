@@ -40,5 +40,12 @@
   "comment.unverify-user": "Do you want to unverify {userName}?",
   "commentForm.input-placeholder": "Your comment here",
   "commentForm.notice-about-styling": "Styling with <a>Markdown</a> is supported",
-  "commentForm.subscribe-by": "Subscribe by"
+  "commentForm.subscribe-by": "Subscribe by",
+  "vote.own-comment": "Can't vote for your own comment",
+  "vote.guest": "Sign in to vote",
+  "vote.only-post-page": "Voting allowed only on post's page",
+  "vote.readonly": "Can't vote on read-only topics",
+  "vote.deleted": "Can't vote for deleted comment",
+  "vote.anonymous": "Anonymous users can't vote",
+  "vote.only_positive": "Only positive score allowed"
 }

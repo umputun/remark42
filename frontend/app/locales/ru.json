@@ -24,7 +24,7 @@
   "authPanel.show-settings": "Показать настройки",
   "authPanel.enable-comments": "Включить комментарии",
   "authPanel.disable-comments": "Выключить комментарии",
-  "authPanel.read-only": "Только чтение",
+  "authPanel.read-only": "Только для чтение",
   "commentsSort.best": "Лучшие",
   "commentsSort.worst": "Худшие",
   "commentsSort.newest": "Новые",
@@ -40,5 +40,12 @@
   "comment.unverify-user": "Do you want to unverify {userName}?",
   "commentForm.input-placeholder": "Написать комментарий",
   "commentForm.notice-about-styling": "Поддерживается <a>Markdown</a> форматирование",
-  "commentForm.subscribe-by": "Подписаться"
+  "commentForm.subscribe-by": "Подписаться",
+  "vote.own-comment": "Вы не можете голосовать за свои комментарии",
+  "vote.guest": "Войдите в систему для голосование",
+  "vote.only-post-page": "Голосование возожно только для статей",
+  "vote.readonly": "Нельзя головать за комментарии, которые в режиме только для чтения",
+  "vote.deleted": "Нельзя головать за удаленный комментарий",
+  "vote.anonymous": "Нельзя головать анонимному пользователю",
+  "vote.only_positive": "Разрешены только положительные оценки"
 }
