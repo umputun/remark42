@@ -33,6 +33,22 @@ defineMessages({
     id: 'comment.hide-user-comment',
     defaultMessage: 'Do you want to hide comments of {userName}?',
   },
+  'comment.pin-comment': {
+    id: 'comment.pin-comment',
+    defaultMessage: 'Do you want to pin this comment?',
+  },
+  'comment.unpin-comment': {
+    id: 'comment.unpin-comment',
+    defaultMessage: 'Do you want to unpin this comment?',
+  },
+  'comment.verify-user': {
+    id: 'comment.verify-user',
+    defaultMessage: 'Do you want to verify {userName}?',
+  },
+  'comment.unverify-user': {
+    id: 'comment.unverify-user',
+    defaultMessage: 'Do you want to unverify {userName}?',
+  },
 });
 
 export type Props = {
@@ -179,7 +195,16 @@ export class Comment extends Component<Props, State> {
 
   togglePin = () => {
     const value = !this.props.data.pin;
-    const promptMessage = `Do you want to ${value ? 'pin' : 'unpin'} this comment?`;
+    const intl = this.props.intl;
+    const promptMessage = value
+      ? intl.formatMessage({
+          id: 'comment.pin-comment',
+          defaultMessage: 'comment.pin-comment',
+        })
+      : intl.formatMessage({
+          id: 'comment.unpin-comment',
+          defaultMessage: 'comment.unpin-comment',
+        });
 
     if (confirm(promptMessage)) {
       this.props.setPinState!(this.props.data.id, value);
@@ -189,7 +214,23 @@ export class Comment extends Component<Props, State> {
   toggleVerify = () => {
     const value = !this.props.data.user.verified;
     const userId = this.props.data.user.id;
-    const promptMessage = `Do you want to ${value ? 'verify' : 'unverify'} ${this.props.data.user.name}?`;
+    const intl = this.props.intl;
+    const userName = this.props.data.user.name;
+    const promptMessage = value
+      ? intl.formatMessage(
+          {
+            id: 'comment.verify-user',
+            defaultMessage: 'comment.verify-user',
+          },
+          { userName }
+        )
+      : intl.formatMessage(
+          {
+            id: 'comment.unverify-user',
+            defaultMessage: 'unverify-user',
+          },
+          { userName }
+        );
 
     if (confirm(promptMessage)) {
       this.props.setVerifyStatus!(userId, value);

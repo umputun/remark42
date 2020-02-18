@@ -33,5 +33,9 @@
   "commentsSort.least-recently-updated": "Least recently updated",
   "commentsSort.most-controversial": "Most controversial",
   "commentsSort.least-controversial": "Least controversial",
-  "commentSort.sort-by": "Sort by"
+  "commentSort.sort-by": "Sort by",
+  "comment.pin-comment": "Do you want to pin this comment?",
+  "comment.unpin-comment": "Do you want to unpin this comment?",
+  "comment.verify-user": "Do you want to verify {userName}?",
+  "comment.unverify-user": "Do you want to unverify {userName}?"
 }
