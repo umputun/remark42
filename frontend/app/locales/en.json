@@ -47,5 +47,22 @@
   "vote.readonly": "Can't vote on read-only topics",
   "vote.deleted": "Can't vote for deleted comment",
   "vote.anonymous": "Anonymous users can't vote",
-  "vote.only_positive": "Only positive score allowed"
+  "vote.only_positive": "Only positive score allowed",
+  "comment.block-user": "Do you want to verify {userName}?",
+  "comment.unblock-user": "Do you want to unblock this user?",
+  "blockingDuration.permanently": "Permanently",
+  "blockingDuration.month": "For a month",
+  "blockingDuration.week": "For a week",
+  "blockingDuration.day": "For a day",
+  "comment.blocking-period": "Blocking period",
+  "comment.blocked-user": "Blocked",
+  "comment.deleted-user": "Deleted",
+  "comment.deleted-comment": "This comment was deleted",
+  "comment.controversy": "Controversy: {value}",
+  "comment.unpin": "Unpin",
+  "comment.pin": "Pin",
+  "comment.copied": "Copied!",
+  "comment.copy": "Copy",
+  "comment.unblock": "Unblock",
+  "comment.block": "Block"
 }

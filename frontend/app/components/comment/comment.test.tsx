@@ -1,28 +1,22 @@
 /** @jsx createElement */
 import { createElement } from 'preact';
-import { mount, shallow } from 'enzyme';
+import { mount as enzymeMount } from 'enzyme';
 import { Props, Comment } from './comment';
 import { User, Comment as CommentType, PostInfo } from '@app/common/types';
 import { sleep } from '@app/utils/sleep';
 import { StaticStore } from '@app/common/static_store';
-import { defineMessages, useIntl, FormattedMessage } from 'react-intl';
+import { IntlProvider } from 'react-intl';
+import enMessages from '../../locales/en.json';
 
-jest.mock('react-intl');
-(defineMessages as any).mockImplementation(() => '');
-(useIntl as any).mockImplementation(() => ({ formatDate: jest.fn(), formatTime: jest.fn() }));
-(FormattedMessage as any).mockImplementation(({ defaultMessage }: { defaultMessage: any }) => {
-  return defaultMessage;
-});
-
-const intl: any = {
-  formatMessage() {
-    return '';
-  },
-};
+const mount = (component: any) =>
+  enzymeMount(
+    <IntlProvider locale="en" messages={enMessages}>
+      {component}
+    </IntlProvider>
+  );
 
 const DefaultProps: Partial<Props> = {
   CommentForm: null,
-  intl,
   post_info: {
     read_only: false,
   } as PostInfo,
@@ -34,6 +28,7 @@ const DefaultProps: Partial<Props> = {
       id: 'someone',
       picture: 'somepicture-url',
     },
+    time: new Date().toString(),
     locator: {
       url: 'somelocatorurl',
       site: 'remark',
@@ -50,7 +45,7 @@ describe('<Comment />', () => {
   describe('voting', () => {
     it('should be disabled for an anonymous user', () => {
       const props = { ...DefaultProps, user: { id: 'anonymous_1' } } as Props;
-      const wrapper = shallow(<Comment {...props} />);
+      const wrapper = mount(<Comment {...props} />);
       const voteButtons = wrapper.find('.comment__vote');
 
       expect(voteButtons.length).toEqual(2);
@@ -65,7 +60,7 @@ describe('<Comment />', () => {
       StaticStore.config.anon_vote = true;
 
       const props = { ...DefaultProps, user: { id: 'anonymous_1' } } as Props;
-      const wrapper = shallow(<Comment {...props} />);
+      const wrapper = mount(<Comment {...props} />);
       const voteButtons = wrapper.find('.comment__vote');
 
       expect(voteButtons.length).toEqual(2);
@@ -230,19 +225,9 @@ describe('<Comment />', () => {
       expect(controls.length).toBe(5);
       expect(controls.at(0).text()).toEqual('Copy');
       expect(controls.at(1).text()).toEqual('Pin');
-      expect(
-        controls
-          .at(2)
-          .find('FormattedMessage')
-          .props()
-      ).toEqual(expect.objectContaining({ defaultMessage: 'Hide' }));
+      expect(controls.at(2).text()).toEqual('Hide');
       expect(controls.at(3).getDOMNode().childNodes[0].textContent).toEqual('Block');
-      expect(
-        controls
-          .at(4)
-          .find('FormattedMessage')
-          .props()
-      ).toEqual(expect.objectContaining({ defaultMessage: 'Delete' }));
+      expect(controls.at(4).text()).toEqual('Delete');
     });
 
     it('for regular user it shows only "hide"', () => {
@@ -252,12 +237,7 @@ describe('<Comment />', () => {
 
       const controls = element.find('.comment__controls').children();
       expect(controls.length).toBe(1);
-      expect(
-        controls
-          .at(0)
-          .find('FormattedMessage')
-          .props()
-      ).toEqual(expect.objectContaining({ defaultMessage: 'Hide' }));
+      expect(controls.at(0).text()).toEqual('Hide');
     });
 
     it('verification badge clickable for admin', () => {
@@ -285,7 +265,7 @@ describe('<Comment />', () => {
 
     it('should be editable', () => {
       const initTime = new Date().toString();
-      const changedTime = new Date(Date.now() + 10 * 1000);
+      const changedTime = new Date(Date.now() + 10 * 1000).toString();
       const props: Partial<Props> = {
         ...DefaultProps,
         user: DefaultProps.user as User,
@@ -301,10 +281,14 @@ describe('<Comment />', () => {
         repliesCount: 0,
       };
       StaticStore.config.edit_duration = 300;
+      const WrappedComponent = (props: Props) => (
+        <IntlProvider locale="en" messages={enMessages}>
+          <Comment {...props} />
+        </IntlProvider>
+      );
+      const component = enzymeMount(<WrappedComponent {...(props as Props)} />);
 
-      const component = shallow(<Comment {...(props as Props)} />);
-
-      expect((component.state('editDeadline') as Date).getTime()).toBe(
+      expect((component.find(`Comment`).state('editDeadline') as Date).getTime()).toBe(
         new Date(new Date(initTime).getTime() + 300 * 1000).getTime()
       );
 
@@ -312,7 +296,7 @@ describe('<Comment />', () => {
         data: { ...props.data, time: changedTime },
       });
 
-      expect((component.state('editDeadline') as Date).getTime()).toBe(
+      expect((component.find(`Comment`).state('editDeadline') as Date).getTime()).toBe(
         new Date(new Date(changedTime).getTime() + 300 * 1000).getTime()
       );
     });
@@ -332,9 +316,9 @@ describe('<Comment />', () => {
       };
       StaticStore.config.edit_duration = 300;
 
-      const component = shallow(<Comment {...(props as Props)} />);
+      const component = mount(<Comment {...(props as Props)} />);
 
-      expect(component.state('editDeadline')).toBe(null);
+      expect(component.find('Comment').state('editDeadline')).toBe(null);
     });
   });
 });

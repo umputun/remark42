@@ -1,4 +1,4 @@
-import { Sorting, AuthProvider, BlockingDuration, Theme } from './types';
+import { Sorting, AuthProvider, Theme } from './types';
 import * as configConstant from './constants.config';
 
 export const BASE_URL = configConstant.BASE_URL;
@@ -32,25 +32,6 @@ export const LS_HIDDEN_USERS_KEY = '__remarkHiddenUsers';
 
 /** cookie key under which sort preference resides */
 export const COOKIE_SORT_KEY = 'remarkSort';
-
-export const BLOCKING_DURATIONS: BlockingDuration[] = [
-  {
-    label: 'Permanently',
-    value: 'permanently',
-  },
-  {
-    label: 'For a month',
-    value: '43200m',
-  },
-  {
-    label: 'For a week',
-    value: '10080m',
-  },
-  {
-    label: 'For a day',
-    value: '1440m',
-  },
-];
 
 export const THEMES: Theme[] = ['light', 'dark'];
 
