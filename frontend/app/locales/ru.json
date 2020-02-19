@@ -73,5 +73,9 @@
   "comment.vote-error": "Ошибка голосования: {voteErrorMessage}",
   "commentForm.upload-file-fail": "{fileName} невозможно загрузить из-за ошибки: \"{errorMessage}\"",
   "commentForm.uploading": "Загрузка...",
-  "commentForm.uploading-file": "Загрузка {fileName}..."
+  "commentForm.uploading-file": "Загрузка {fileName}...",
+  "commentForm.exceeded-size": "Размер файла {fileName} должен быть меньше чем {maxImageSize}",
+  "commentForm.new-comment": "New comment",
+  "commentForm.unexpected-error": "Something went wrong. Please try again a bit later.",
+  "commentForm.subscribe-or": "или"
 }

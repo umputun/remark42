@@ -73,5 +73,9 @@
   "comment.vote-error": "Voting error: {voteErrorMessage}",
   "commentForm.upload-file-fail": "{fileName} upload failed with \"{errorMessage}\"",
   "commentForm.uploading": "Uploading...",
-  "commentForm.uploading-file": "uploading {fileName}..."
+  "commentForm.uploading-file": "uploading {fileName}...",
+  "commentForm.exceeded-size": "{fileName} exceeds size limit of {maxImageSize}",
+  "commentForm.new-comment": "New comment",
+  "commentForm.unexpected-error": "Something went wrong. Please try again a bit later.",
+  "commentForm.subscribe-or": "or"
 }

@@ -72,6 +72,18 @@ const messages = defineMessages({
     id: 'commentForm.uploading-file',
     defaultMessage: 'uploading {fileName}...',
   },
+  exceededSize: {
+    id: 'commentForm.exceeded-size',
+    defaultMessage: '{fileName} exceeds size limit of {maxImageSize}',
+  },
+  newComment: {
+    id: 'commentForm.new-comment',
+    defaultMessage: 'New comment',
+  },
+  unexpectedError: {
+    id: 'commentForm.unexpected-error',
+    defaultMessage: 'Something went wrong. Please try again a bit later.',
+  },
 });
 
 export class CommentForm extends Component<Props, State> {
@@ -282,7 +294,12 @@ export class CommentForm extends Component<Props, State> {
         const placeholderStart = this.state.text.length === 0 ? '' : '\n';
 
         if (file.size > StaticStore.config.max_image_size) {
-          this.appendError(`${file.name} exceeds size limit of ${maxImageSizeString}`);
+          this.appendError(
+            intl.formatMessage(messages.exceededSize, {
+              fileName: file.name,
+              maxImageSize: maxImageSizeString,
+            })
+          );
           continue;
         }
 
@@ -327,7 +344,12 @@ export class CommentForm extends Component<Props, State> {
       };
 
       if (file.size > StaticStore.config.max_image_size) {
-        this.appendError(`${file.name} exceeds size limit of ${maxImageSizeString}`);
+        this.appendError(
+          intl.formatMessage(messages.exceededSize, {
+            fileName: file.name,
+            maxImageSize: maxImageSizeString,
+          })
+        );
         continue;
       }
 
@@ -367,7 +389,8 @@ export class CommentForm extends Component<Props, State> {
       reply: <FormattedMessage id="commentForm.replay" defaultMessage="Replay" />,
     };
     const label = buttonText || Labels[props.mode || 'main'];
-    const placeholderMessage = this.props.intl.formatMessage(messages.placeholder);
+    const intl = this.props.intl;
+    const placeholderMessage = intl.formatMessage(messages.placeholder);
     return (
       <form
         className={b('comment-form', {
@@ -379,7 +402,7 @@ export class CommentForm extends Component<Props, State> {
           mix: props.mix,
         })}
         onSubmit={this.send}
-        aria-label="New comment"
+        aria-label={intl.formatMessage(messages.newComment)}
         onDragOver={this.onDragOver}
         onDrop={this.onDrop}
       >
@@ -413,7 +436,7 @@ export class CommentForm extends Component<Props, State> {
         </div>
 
         {(isErrorShown || !!errorMessage) &&
-          (errorMessage || 'Something went wrong. Please try again a bit later.').split('\n').map(e => (
+          (errorMessage || intl.formatMessage(messages.unexpectedError)).split('\n').map(e => (
             <p className="comment-form__error" role="alert" key={e}>
               {e}
             </p>
@@ -455,8 +478,8 @@ export class CommentForm extends Component<Props, State> {
               <SubscribeByRSS userId={props.user !== null ? props.user.id : null} />
               {StaticStore.config.email_notifications && (
                 <Fragment>
-                  {' or '}
-                  <SubscribeByEmail />
+                  {' '}
+                  <FormattedMessage id="commentForm.subscribe-or" defaultMessage="or" /> <SubscribeByEmail />
                 </Fragment>
               )}
             </div>
