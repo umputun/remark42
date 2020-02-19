@@ -1,9 +1,7 @@
 /* eslint-disable no-console, @typescript-eslint/no-explicit-any */
-
 declare let remark_config: CommentsConfig;
 
-import loadPolyfills from '@app/common/polyfills';
-import { BASE_URL, NODE_ID, COMMENT_NODE_CLASSNAME_PREFIX } from '@app/common/constants';
+import { BASE_URL, NODE_ID, COMMENT_NODE_CLASSNAME_PREFIX } from '@app/common/constants.config';
 import { UserInfo, Theme } from '@app/common/types';
 import { CommentsConfig } from '@app/common/config-types';
 
@@ -15,10 +13,13 @@ if (document.readyState === 'loading') {
   init();
 }
 
-async function init(): Promise<void> {
-  __webpack_public_path__ = HOST + '/web/';
-  await loadPolyfills();
+function removeDomNode(node: HTMLElement | null) {
+  if (node && node.parentNode) {
+    node.parentNode.removeChild(node);
+  }
+}
 
+function init(): void {
   const node = document.getElementById(remark_config.node || NODE_ID);
 
   if (!node) {
@@ -238,9 +239,9 @@ async function init(): Promise<void> {
     },
     remove() {
       const t = userInfo;
-      t.node && t.node.remove();
-      t.back && t.back.remove();
-      t.style && t.style.remove();
+      removeDomNode(t.node);
+      removeDomNode(t.back);
+      removeDomNode(t.style);
     },
   };
 

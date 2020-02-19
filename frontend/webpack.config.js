@@ -85,50 +85,67 @@ module.exports = () => ({
   module: {
     rules: [
       {
-        test: /\.js(x?)$/,
-        use: [{ loader: 'babel-loader', options: { configFile: babelConfigPath } }],
-        ...getExcluded(),
-      },
-      {
-        test: /\.ts(x?)$/,
-        use: [{ loader: 'babel-loader', options: { configFile: babelConfigPath } }, 'ts-loader'],
-        ...getExcluded(),
-      },
-      {
-        test: /\.s?css$/,
-        use: [
+        oneOf: [
           {
-            loader: MiniCssExtractPlugin.loader,
-          },
-          ...commonStyleLoaders,
-        ],
-      },
-      {
-        test: /\.module\.pcss$/,
-        use: [
-          {
-            loader: MiniCssExtractPlugin.loader,
-          },
-          {
-            loader: 'css-loader',
-            options: {
-              modules: {
-                mode: `local`,
-                localIdentName: `${NODE_ID}__[name]__[local]`,
+            include: [path.resolve(__dirname, './app/embed.ts')],
+            use: {
+              loader: 'ts-loader',
+              options: {
+                compilerOptions: {
+                  lib: ['es5', 'dom'],
+                  target: 'es5',
+                  downlevelIteration: true,
+                },
               },
             },
           },
-          postCssLoader(false),
-        ],
-      },
-      {
-        test: /\.(png|jpg|jpeg|gif|svg)$/,
-        use: {
-          loader: 'file-loader',
-          options: {
-            name: `files/[name].[hash].[ext]`,
+          {
+            test: /\.js(x?)$/,
+            use: [{ loader: 'babel-loader', options: { configFile: babelConfigPath } }],
+            ...getExcluded(),
           },
-        },
+          {
+            test: /\.ts(x?)$/,
+            use: [{ loader: 'babel-loader', options: { configFile: babelConfigPath } }, 'ts-loader'],
+            ...getExcluded(),
+          },
+          {
+            test: /\.s?css$/,
+            use: [
+              {
+                loader: MiniCssExtractPlugin.loader,
+              },
+              ...commonStyleLoaders,
+            ],
+          },
+          {
+            test: /\.module\.pcss$/,
+            use: [
+              {
+                loader: MiniCssExtractPlugin.loader,
+              },
+              {
+                loader: 'css-loader',
+                options: {
+                  modules: {
+                    mode: `local`,
+                    localIdentName: `${NODE_ID}__[name]__[local]`,
+                  },
+                },
+              },
+              postCssLoader(false),
+            ],
+          },
+          {
+            test: /\.(png|jpg|jpeg|gif|svg)$/,
+            use: {
+              loader: 'file-loader',
+              options: {
+                name: `files/[name].[hash].[ext]`,
+              },
+            },
+          },
+        ],
       },
     ],
   },

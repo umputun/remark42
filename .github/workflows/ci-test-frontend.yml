@@ -26,3 +26,6 @@ jobs:
 
       - run: npx run-p check lint lint:style test
         working-directory: ./frontend
+
+      - run: npm run size
+        working-directory: ./frontend
