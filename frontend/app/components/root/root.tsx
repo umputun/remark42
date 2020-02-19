@@ -2,7 +2,7 @@
 import { createElement, Component, FunctionComponent } from 'preact';
 import { useSelector } from 'react-redux';
 import b from 'bem-react-helper';
-import { IntlShape, useIntl } from 'react-intl';
+import { IntlShape, useIntl, FormattedMessage, defineMessages } from 'react-intl';
 
 import { User, Sorting, AuthProvider } from '@app/common/types';
 import {
@@ -88,6 +88,13 @@ interface State {
   commentsShown: number;
   wasSomeoneUnblocked: boolean;
 }
+
+const messages = defineMessages({
+  pinnedComments: {
+    id: `root.pinned-comments`,
+    defaultMessage: 'Pinned comments',
+  },
+});
 
 /** main component fr main comments widget */
 export class Root extends Component<Props, State> {
@@ -257,7 +264,11 @@ export class Root extends Component<Props, State> {
               )}
 
               {this.props.pinnedComments.length > 0 && (
-                <div className="root__pinned-comments" role="region" aria-label="Pinned comments">
+                <div
+                  className="root__pinned-comments"
+                  role="region"
+                  aria-label={this.props.intl.formatMessage(messages.pinnedComments)}
+                >
                   {this.props.pinnedComments.map(comment => (
                     <Comment
                       CommentForm={CommentForm}
@@ -290,7 +301,7 @@ export class Root extends Component<Props, State> {
 
                   {commentsShown < this.props.topComments.length && IS_MOBILE && (
                     <Button kind="primary" size="middle" mix="root__show-more" onClick={this.showMore}>
-                      Show more
+                      <FormattedMessage id="root.show-more" defaultMessage="Show more" />
                     </Button>
                   )}
                 </div>
@@ -320,10 +331,17 @@ export class Root extends Component<Props, State> {
           )}
 
           <p className="root__copyright" role="contentinfo">
-            Powered by{' '}
-            <a href="https://remark42.com/" className="root__copyright-link">
-              Remark42
-            </a>
+            <FormattedMessage
+              id="root.powered-by"
+              defaultMessage="Powered by <a>Remark42</a>"
+              values={{
+                a: (title: string) => (
+                  <a class="root__copyright-link" href="https://remark42.com/">
+                    {title}
+                  </a>
+                ),
+              }}
+            />
           </p>
         </div>
       </div>

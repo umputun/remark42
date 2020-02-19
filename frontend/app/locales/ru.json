@@ -77,5 +77,8 @@
   "commentForm.exceeded-size": "Размер файла {fileName} должен быть меньше чем {maxImageSize}",
   "commentForm.new-comment": "New comment",
   "commentForm.unexpected-error": "Something went wrong. Please try again a bit later.",
-  "commentForm.subscribe-or": "или"
+  "commentForm.subscribe-or": "или",
+  "root.show-more": "Показать ещё",
+  "root.pinned-comments": "Закреплённые комментарии",
+  "root.powered-by": "Powered by <a>Remark42</a>"
 }

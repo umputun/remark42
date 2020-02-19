@@ -77,5 +77,8 @@
   "commentForm.exceeded-size": "{fileName} exceeds size limit of {maxImageSize}",
   "commentForm.new-comment": "New comment",
   "commentForm.unexpected-error": "Something went wrong. Please try again a bit later.",
-  "commentForm.subscribe-or": "or"
+  "commentForm.subscribe-or": "or",
+  "root.show-more": "Show more",
+  "root.pinned-comments": "Pinned comments",
+  "root.powered-by": "Powered by <a>Remark42</a>"
 }
