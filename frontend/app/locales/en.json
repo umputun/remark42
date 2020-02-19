@@ -64,5 +64,8 @@
   "comment.copied": "Copied!",
   "comment.copy": "Copy",
   "comment.unblock": "Unblock",
-  "comment.block": "Block"
+  "comment.block": "Block",
+  "comment.toggle-verification": "Toggle verification",
+  "comment.verified-user": "Verified user",
+  "comment.unverified-user": "Unverified user"
 }

@@ -64,5 +64,8 @@
   "comment.copied": "Скопировано!",
   "comment.copy": "Копировать",
   "comment.unblock": "Разблокировать",
-  "comment.block": "Блокировать"
+  "comment.block": "Блокировать",
+  "comment.toggle-verification": "Toggle verification",
+  "comment.verified-user": "Verified user",
+  "comment.unverified-user": "Unverified user"
 }

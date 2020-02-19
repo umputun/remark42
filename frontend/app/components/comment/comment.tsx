@@ -67,6 +67,18 @@ const messages = defineMessages({
     id: 'comment.controversy',
     defaultMessage: 'Controversy: {value}',
   },
+  toggleVerification: {
+    id: 'comment.toggle-verification',
+    defaultMessage: 'Toggle verification',
+  },
+  verifiedUser: {
+    id: 'comment.verified-user',
+    defaultMessage: 'Verified user',
+  },
+  unverifiedUser: {
+    id: 'comment.unverified-user',
+    defaultMessage: 'Unverified user',
+  },
 });
 
 type PropsWithoutIntl = {
@@ -665,14 +677,21 @@ class Comment extends Component<Props, State> {
           {isAdmin && props.view !== 'user' && (
             <span
               {...getHandleClickProps(this.toggleVerify)}
-              aria-label="Toggle verification"
-              title={o.user.verified ? 'Verified user' : 'Unverified user'}
+              aria-label={intl.formatMessage(messages.toggleVerification)}
+              title={
+                o.user.verified
+                  ? intl.formatMessage(messages.verifiedUser)
+                  : intl.formatMessage(messages.unverifiedUser)
+              }
               className={b('comment__verification', {}, { active: o.user.verified, clickable: true })}
             />
           )}
 
           {!isAdmin && !!o.user.verified && props.view !== 'user' && (
-            <span title="Verified user" className={b('comment__verification', {}, { active: true })} />
+            <span
+              title={intl.formatMessage(messages.verifiedUser)}
+              className={b('comment__verification', {}, { active: true })}
+            />
           )}
 
           <a href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`} className="comment__time">
