@@ -15,6 +15,14 @@ function removeAbandonedKeys(existKeys, dictionary) {
   return Object.fromEntries(Object.entries(dictionary).filter(([key]) => existKeys.has(key)));
 }
 
+function sortDict(dict) {
+  return Object.fromEntries(
+    Object.entries(dict).sort(([a], [b]) => {
+      return a.localeCompare(b);
+    })
+  );
+}
+
 locales.forEach(locale => {
   let currentDict = {};
   const pathToDict = path.resolve(__dirname, `../app/locales/${locale}.json`);
@@ -26,5 +34,7 @@ locales.forEach(locale => {
       currentDict[key] = defaultMessage;
     }
   });
-  fs.writeFileSync(pathToDict, JSON.stringify(removeAbandonedKeys(keysSet, currentDict), null, 2) + '\n');
+  currentDict = removeAbandonedKeys(keysSet, currentDict);
+  currentDict = sortDict(currentDict);
+  fs.writeFileSync(pathToDict, JSON.stringify(currentDict, null, 2) + '\n');
 });
