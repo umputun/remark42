@@ -318,6 +318,7 @@ export class Root extends Component<Props, State> {
           {this.props.isSettingsVisible && (
             <div className="root__main">
               <Settings
+                intl={this.props.intl}
                 user={this.props.user}
                 hiddenUsers={this.props.hiddenUsers}
                 blockedUsers={this.props.blockedUsers}

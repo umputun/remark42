@@ -563,7 +563,9 @@ class Comment extends Component<Props, State> {
 
     const o = {
       ...props.data,
-      controversyText: intl.formatMessage(messages.controversy, { value: (props.data.controversy || 0).toFixed(2) }),
+      controversyText: intl.formatMessage(messages.controversy, {
+        value: (props.data.controversy || 0).toFixed(2),
+      }),
       text:
         props.view === 'preview'
           ? getTextSnippet(props.data.text)

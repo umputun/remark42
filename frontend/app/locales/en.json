@@ -82,5 +82,11 @@
   "root.pinned-comments": "Pinned comments",
   "root.powered-by": "Powered by <a>Remark42</a>",
   "user-info.unexpected-error": "Something went wrong",
-  "user-info.last-comments": "Last comments by {userName}"
+  "user-info.last-comments": "Last comments by {userName}",
+  "settings.block-user": "Do you want to block {userName}?",
+  "settings.unblock-user": "Do you want to unblock {userName}?",
+  "settings.block": "block",
+  "settings.unblock": "unblock",
+  "settings.permanently": "permanently",
+  "settings.block-time": "until {day} at {time}"
 }

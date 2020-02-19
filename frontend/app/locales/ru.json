@@ -82,5 +82,11 @@
   "root.pinned-comments": "Закреплённые комментарии",
   "root.powered-by": "Powered by <a>Remark42</a>",
   "user-info.unexpected-error": "Something went wrong",
-  "user-info.last-comments": "Последние комментарии {userName}"
+  "user-info.last-comments": "Последние комментарии {userName}",
+  "settings.block-user": "Заблокировать пользователя {userName}?",
+  "settings.unblock-user": "Разблокировать пользователя {userName}?",
+  "settings.block": "блокировать",
+  "settings.unblock": "разблокировать",
+  "settings.permanently": "навсегда",
+  "settings.block-time": "до {day} в {time}"
 }
