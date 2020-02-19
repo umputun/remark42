@@ -88,5 +88,14 @@
   "settings.block": "block",
   "settings.unblock": "unblock",
   "settings.permanently": "permanently",
-  "settings.block-time": "until {day} at {time}"
+  "settings.block-time": "until {day} at {time}",
+  "settings.hidden-users-title": "Hidden users",
+  "settings.hidden-user-header": "Hidden users:",
+  "settings.unknown": "unknown",
+  "settings.show": "show",
+  "settings.hide": "hide",
+  "settings.blocked-users-title": "Blocked users",
+  "settings.no-hidden-users": "There are no hidden users.",
+  "settings.no-blocked-users": "There are no blocked users.",
+  "settings.blocked-users-header": "Blocked users:"
 }

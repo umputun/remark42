@@ -88,5 +88,14 @@
   "settings.block": "блокировать",
   "settings.unblock": "разблокировать",
   "settings.permanently": "навсегда",
-  "settings.block-time": "до {day} в {time}"
+  "settings.block-time": "до {day} в {time}",
+  "settings.hidden-users-title": "Скрытые пользователи",
+  "settings.hidden-user-header": "Скрытые пользователи:",
+  "settings.no-hidden-users": "Нет скрытых пользователей.",
+  "settings.unknown": "безымянный",
+  "settings.show": "Показать",
+  "settings.hide": "Спрятать",
+  "settings.blocked-users-title": "Заблокированные пользователи",
+  "settings.blocked-users-header": "Заблокированные пользователи:",
+  "settings.no-blocked-users": "Нет заблокированных пользователей."
 }

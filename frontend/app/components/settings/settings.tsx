@@ -40,6 +40,14 @@ const messages = defineMessages({
     id: 'settings.unblock-user',
     defaultMessage: 'Do you want to unblock {userName}?',
   },
+  hiddenUsers: {
+    id: 'settings.hidden-users-title',
+    defaultMessage: 'Hidden users',
+  },
+  blockedUsers: {
+    id: 'settings.blocked-users-title',
+    defaultMessage: 'Blocked users',
+  },
 });
 
 export default class Settings extends Component<Props, State> {
@@ -89,11 +97,22 @@ export default class Settings extends Component<Props, State> {
 
   render({ user, theme }: Props, { blockedUsers, unblockedUsers, unhiddenUsers }: State) {
     const hiddenUsersList = Object.values(this.state.hiddenUsers);
+    const intl = this.props.intl;
     return (
       <div className={b('settings', {}, { theme })}>
-        <div className="settings__section settings__hidden-users" role="region" aria-label="Hidden users">
-          <h3>Hidden users:</h3>
-          {!hiddenUsersList.length && <h4 className="settings__dimmed">There are no hidden users.</h4>}
+        <div
+          className="settings__section settings__hidden-users"
+          role="region"
+          aria-label={intl.formatMessage(messages.hiddenUsers)}
+        >
+          <h3>
+            <FormattedMessage id="settings.hidden-user-header" defaultMessage="Hidden users:" />
+          </h3>
+          {!hiddenUsersList.length && (
+            <h4 className="settings__dimmed">
+              <FormattedMessage id="settings.no-hidden-users" defaultMessage="There are no hidden users." />
+            </h4>
+          )}
           {!!hiddenUsersList.length && (
             <ul className="settings__list">
               {hiddenUsersList.map(user => {
@@ -105,15 +124,15 @@ export default class Settings extends Component<Props, State> {
                       className={['settings__username', isUserUnhidden ? 'settings__invisible' : null].join(' ')}
                       title={user.id}
                     >
-                      {user.name || 'unknown'}
+                      {user.name ? user.name : <FormattedMessage id="settings.unknown" defaultMessage="unknown" />}
                     </span>
                     {this.__isUserHidden(user) ? (
                       <span className="settings__action" {...getHandleClickProps(() => this.unhide(user))}>
-                        show
+                        <FormattedMessage id="settings.show" defaultMessage="show" />
                       </span>
                     ) : (
                       <span className="settings__action" {...getHandleClickProps(() => this.hide(user))}>
-                        hide
+                        <FormattedMessage id="settings.hide" defaultMessage="hide" />
                       </span>
                     )}
                     <div>
@@ -128,10 +147,20 @@ export default class Settings extends Component<Props, State> {
           )}
         </div>
         {user && user.admin && (
-          <div className="settings__section settings__blocked-users" role="region" aria-label="Blocked users">
-            <h3>Blocked users:</h3>
+          <div
+            className="settings__section settings__blocked-users"
+            role="region"
+            aria-label={intl.formatMessage(messages.blockedUsers)}
+          >
+            <h3>
+              <FormattedMessage id="settings.blocked-users-header" defaultMessage="Blocked users:" />
+            </h3>
 
-            {!blockedUsers.length && <h4 className="settings__dimmed">There are no blocked users.</h4>}
+            {!blockedUsers.length && (
+              <h4 className="settings__dimmed">
+                <FormattedMessage id="settings.no-blocked-users" defaultMessage="There are no blocked users." />
+              </h4>
+            )}
 
             {!!blockedUsers.length && (
               <ul className="settings__list settings__blocked-users-list">
@@ -144,7 +173,7 @@ export default class Settings extends Component<Props, State> {
                         className={['settings__username', isUserUnblocked ? 'settings__invisible' : null].join(' ')}
                         title={user.id}
                       >
-                        {user.name || 'unknown'}
+                        {user.name ? user.name : <FormattedMessage id="settings.unknown" defaultMessage="unknown" />}
                       </span>
                       <span className="settings__blocked-users-user-block-ttl">
                         {' '}
