@@ -55,8 +55,8 @@ interface State {
 
 const ImageMimeRegex = /image\//i;
 
-defineMessages({
-  'commentForm.input-placeholder': {
+const messages = defineMessages({
+  placeholder: {
     id: 'commentForm.input-placeholder',
     defaultMessage: 'Your comment here',
   },
@@ -352,10 +352,7 @@ export class CommentForm extends Component<Props, State> {
       reply: <FormattedMessage id="commentForm.replay" defaultMessage="Replay" />,
     };
     const label = buttonText || Labels[props.mode || 'main'];
-    const placeholderMessage = this.props.intl.formatMessage({
-      id: 'commentForm.input-placeholder',
-      defaultMessage: 'commentForm.input-placeholder',
-    });
+    const placeholderMessage = this.props.intl.formatMessage(messages.placeholder);
     return (
       <form
         className={b('comment-form', {
