@@ -97,5 +97,14 @@
   "settings.hide": "Спрятать",
   "settings.blocked-users-title": "Заблокированные пользователи",
   "settings.blocked-users-header": "Заблокированные пользователи:",
-  "settings.no-blocked-users": "Нет заблокированных пользователей."
+  "settings.no-blocked-users": "Нет заблокированных пользователей.",
+  "toolbar.bold": "Жирный <cmd-b>",
+  "toolbar.header": "Заголовок",
+  "toolbar.italic": "Курсив <cmd-i>",
+  "toolbar.quote": "Цитата",
+  "toolbar.code": "Код",
+  "toolbar.link": "Ссылка <cmd-k>",
+  "toolbar.unordered-list": "Неупорядоченный список",
+  "toolbar.ordered-list": "Упорядоченный список",
+  "toolbar.attach-image": "Attach the image, drag & drop or paste from clipboard"
 }

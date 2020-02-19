@@ -409,6 +409,7 @@ export class CommentForm extends Component<Props, State> {
         {!props.simpleView && (
           <div className="comment-form__control-panel">
             <MarkdownToolbar
+              intl={intl}
               allowUpload={Boolean(this.props.uploadImage)}
               uploadImages={this.uploadImages}
               textareaId={this.textareaId}

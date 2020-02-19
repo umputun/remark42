@@ -1,6 +1,7 @@
 /** @jsx createElement */
 import { createElement, Component } from 'preact';
 import '@github/markdown-toolbar-element';
+import { defineMessages, IntlShape } from 'react-intl';
 import BoldIcon from './markdown-toolbar-icons/bold-icon';
 import HeaderIcon from './markdown-toolbar-icons/header-icon';
 import ItalicIcon from './markdown-toolbar-icons/italic-icon';
@@ -12,6 +13,7 @@ import UnorderedListIcon from './markdown-toolbar-icons/unordered-list-icon';
 import OrderedListIcon from './markdown-toolbar-icons/ordered-list-icon';
 
 interface Props {
+  intl: IntlShape;
   textareaId: string;
   uploadImages: (files: File[]) => Promise<void>;
   allowUpload: boolean;
@@ -26,15 +28,44 @@ interface FileInputEvent extends Event {
   readonly currentTarget: FileEventTarget | null;
 }
 
-const boldLabel = 'Add bold text <cmd-b>';
-const headerLabel = 'Add header text';
-const italicLabel = 'Add italic text <cmd-i>';
-const quoteLabel = 'Insert a quote';
-const codeLabel = 'Insert a code';
-const linkLabel = 'Add a link <cmd-k>';
-const unorderedListLabel = 'Add a bulleted list';
-const orderedListLabel = 'Add a numbered list';
-const attachImageLabel = 'Attach the image, drag & drop or paste from clipboard';
+const messages = defineMessages({
+  bold: {
+    id: 'toolbar.bold',
+    defaultMessage: 'Add bold text <cmd-b>',
+  },
+  header: {
+    id: 'toolbar.header',
+    defaultMessage: 'Add header text',
+  },
+  italic: {
+    id: 'toolbar.italic',
+    defaultMessage: 'Add italic text <cmd-i>',
+  },
+  quote: {
+    id: 'toolbar.quote',
+    defaultMessage: 'Insert a quote',
+  },
+  code: {
+    id: 'toolbar.code',
+    defaultMessage: 'Insert a code',
+  },
+  link: {
+    id: 'toolbar.link',
+    defaultMessage: 'Add a link <cmd-k>',
+  },
+  unorderedList: {
+    id: 'toolbar.unordered-list',
+    defaultMessage: 'Add a bulleted list',
+  },
+  orderedList: {
+    id: 'toolbar.ordered-list',
+    defaultMessage: 'Add a numbered list',
+  },
+  attachImage: {
+    id: 'toolbar.attach-image',
+    defaultMessage: 'Attach the image, drag & drop or paste from clipboard',
+  },
+});
 
 export default class MarkdownToolbar extends Component<Props> {
   constructor(props: Props) {
@@ -49,6 +80,17 @@ export default class MarkdownToolbar extends Component<Props> {
     currentTarget.value = null;
   }
   render(props: Props) {
+    const intl = props.intl;
+
+    const boldLabel = intl.formatMessage(messages.bold);
+    const headerLabel = intl.formatMessage(messages.header);
+    const italicLabel = intl.formatMessage(messages.italic);
+    const quoteLabel = intl.formatMessage(messages.quote);
+    const codeLabel = intl.formatMessage(messages.code);
+    const linkLabel = intl.formatMessage(messages.link);
+    const unorderedListLabel = intl.formatMessage(messages.unorderedList);
+    const orderedListLabel = intl.formatMessage(messages.orderedList);
+    const attachImageLabel = intl.formatMessage(messages.attachImage);
     return (
       <markdown-toolbar className="comment-form__toolbar" for={props.textareaId}>
         <div className="comment-form__toolbar-group">

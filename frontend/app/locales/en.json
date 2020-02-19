@@ -97,5 +97,14 @@
   "settings.blocked-users-title": "Blocked users",
   "settings.no-hidden-users": "There are no hidden users.",
   "settings.no-blocked-users": "There are no blocked users.",
-  "settings.blocked-users-header": "Blocked users:"
+  "settings.blocked-users-header": "Blocked users:",
+  "toolbar.bold": "Add bold text <cmd-b>",
+  "toolbar.header": "Add header text",
+  "toolbar.italic": "Add italic text <cmd-i>",
+  "toolbar.quote": "Insert a quote",
+  "toolbar.code": "Insert a code",
+  "toolbar.link": "Add a link <cmd-k>",
+  "toolbar.unordered-list": "Add a bulleted list",
+  "toolbar.ordered-list": "Add a numbered list",
+  "toolbar.attach-image": "Attach the image, drag & drop or paste from clipboard"
 }
