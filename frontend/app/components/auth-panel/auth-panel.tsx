@@ -47,22 +47,16 @@ interface State {
   sortSelectFocused: boolean;
 }
 
-defineMessages({
-  'authPanel.other-provider': {
+const authPanelMessages = defineMessages({
+  otherProvider: {
     id: 'authPanel.other-provider',
     defaultMessage: 'Other',
   },
-});
-
-defineMessages({
-  'authPanel.anonymous-provider': {
+  anonymousProvider: {
     id: 'authPanel.anonymous-provider',
     defaultMessage: 'Anonymous',
   },
-});
-
-defineMessages({
-  'authPanel.or-provider': {
+  orProvider: {
     id: 'authPanel.or-provider',
     defaultMessage: 'or',
   },
@@ -208,10 +202,7 @@ export class AuthPanel extends Component<Props, State> {
 
   renderProvider = (provider: AuthProvider['name'], dropdown = false) => {
     if (provider === 'anonymous') {
-      const anonymous = this.props.intl.formatMessage({
-        id: 'authPanel.anonymous-provider',
-        defaultMessage: 'authPanel.anonymous-provider',
-      });
+      const anonymous = this.props.intl.formatMessage(authPanelMessages.anonymousProvider);
       return (
         <Dropdown
           title={anonymous}
@@ -262,10 +253,7 @@ export class AuthPanel extends Component<Props, State> {
   };
 
   renderOther = (providers: AuthProvider['name'][]) => {
-    const other = this.props.intl.formatMessage({
-      id: 'authPanel.other-provider',
-      defaultMessage: 'authPanel.other-provider',
-    });
+    const other = this.props.intl.formatMessage(authPanelMessages.otherProvider);
     return (
       <Dropdown title={other} theme={this.props.theme} onTitleClick={this.onEmailTitleClick}>
         {providers.map(provider => (
@@ -292,10 +280,7 @@ export class AuthPanel extends Component<Props, State> {
     })();
 
     const isAboveThreshold = sortedProviders.length > threshold;
-    const or = this.props.intl.formatMessage({
-      id: 'authPanel.or-provider',
-      defaultMessage: 'authPanel.or-provider',
-    });
+    const or = this.props.intl.formatMessage(authPanelMessages.orProvider);
     return (
       <div className="auth-panel__column">
         <FormattedMessage id="authPanel.login" defaultMessage="Login:" />{' '}
@@ -459,36 +444,36 @@ export class AuthPanel extends Component<Props, State> {
   }
 }
 
-defineMessages({
-  'commentsSort.best': {
+const sortMessages = defineMessages({
+  best: {
     id: 'commentsSort.best',
     defaultMessage: 'Best',
   },
-  'commentsSort.worst': {
+  worst: {
     id: 'commentsSort.worst',
     defaultMessage: 'Worst',
   },
-  'commentsSort.newest': {
+  newest: {
     id: 'commentsSort.newest',
     defaultMessage: 'Newest',
   },
-  'commentsSort.oldest': {
+  oldest: {
     id: 'commentsSort.oldest',
     defaultMessage: 'Oldest',
   },
-  'commentsSort.recently-updated': {
+  recentlyUpdated: {
     id: 'commentsSort.recently-updated',
     defaultMessage: 'Recently updated',
   },
-  'commentsSort.least-recently-updated': {
+  leastRecentlyUpdated: {
     id: 'commentsSort.least-recently-updated',
     defaultMessage: 'Least recently updated',
   },
-  'commentsSort.most-controversial': {
+  mostControversial: {
     id: 'commentsSort.most-controversial',
     defaultMessage: 'Most controversial',
   },
-  'commentsSort.least-controversial': {
+  leastControversial: {
     id: 'commentsSort.least-controversial',
     defaultMessage: 'Least controversial',
   },
@@ -502,59 +487,35 @@ function getSortArray(currentSort: Sorting, intl: IntlShape) {
   }[] = [
     {
       value: '-score',
-      label: intl.formatMessage({
-        id: 'commentsSort.best',
-        defaultMessage: 'commentsSort.best',
-      }),
+      label: intl.formatMessage(sortMessages.best),
     },
     {
       value: '+score',
-      label: intl.formatMessage({
-        id: 'commentsSort.worst',
-        defaultMessage: 'commentsSort.worst',
-      }),
+      label: intl.formatMessage(sortMessages.worst),
     },
     {
       value: '-time',
-      label: intl.formatMessage({
-        id: 'commentsSort.newest',
-        defaultMessage: 'commentsSort.newest',
-      }),
+      label: intl.formatMessage(sortMessages.newest),
     },
     {
       value: '+time',
-      label: intl.formatMessage({
-        id: 'commentsSort.oldest',
-        defaultMessage: 'commentsSort.oldest',
-      }),
+      label: intl.formatMessage(sortMessages.oldest),
     },
     {
       value: '-active',
-      label: intl.formatMessage({
-        id: 'commentsSort.recently-updated',
-        defaultMessage: 'commentsSort.recently-updated',
-      }),
+      label: intl.formatMessage(sortMessages.recentlyUpdated),
     },
     {
       value: '+active',
-      label: intl.formatMessage({
-        id: 'commentsSort.least-recently-updated',
-        defaultMessage: 'commentsSort.least-recently-updated',
-      }),
+      label: intl.formatMessage(sortMessages.leastRecentlyUpdated),
     },
     {
       value: '-controversy',
-      label: intl.formatMessage({
-        id: 'commentsSort.most-controversial',
-        defaultMessage: 'commentsSort.most-controversial',
-      }),
+      label: intl.formatMessage(sortMessages.mostControversial),
     },
     {
       value: '+controversy',
-      label: intl.formatMessage({
-        id: 'commentsSort.least-controversial',
-        defaultMessage: 'commentsSort.least-controversial',
-      }),
+      label: intl.formatMessage(sortMessages.leastControversial),
     },
   ];
 
