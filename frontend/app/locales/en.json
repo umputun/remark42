@@ -48,7 +48,7 @@
   "vote.deleted": "Can't vote for deleted comment",
   "vote.anonymous": "Anonymous users can't vote",
   "vote.only-positive": "Only positive score allowed",
-  "comment.block-user": "Do you want to verify {userName}?",
+  "comment.block-user": "Do you want to block {userName} {duration}?",
   "comment.unblock-user": "Do you want to unblock this user?",
   "blockingDuration.permanently": "Permanently",
   "blockingDuration.month": "For a month",
@@ -70,5 +70,8 @@
   "comment.unverified-user": "Unverified user",
   "comment.go-to-parent": "Go to parent comment",
   "comment.expired-time": "Editing time has expired.",
-  "comment.vote-error": "Voting error: {voteErrorMessage}"
+  "comment.vote-error": "Voting error: {voteErrorMessage}",
+  "commentForm.upload-file-fail": "{fileName} upload failed with \"{errorMessage}\"",
+  "commentForm.uploading": "Uploading...",
+  "commentForm.uploading-file": "uploading {fileName}..."
 }

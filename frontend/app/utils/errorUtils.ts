@@ -3,6 +3,7 @@
  * to client readable version
  */
 const errorMessageForCodes = new Map([
+  [-2, 'Failed to fetch. Please check your internet connection.'],
   [0, 'Something went wrong. Please try again a bit later.'],
   [1, 'Comment cannot be found. Please refresh the page and try again.'],
   [2, 'Failed to unmarshal incoming request.'],
@@ -32,6 +33,10 @@ export const httpErrorMap = new Map([
   [403, 'Forbidden.'],
   [429, 'You have reached maximum request limit.'],
 ]);
+
+export function isFailedFetch(e?: Error): boolean {
+  return Boolean(e && e.message && e.message === `Failed to fetch`);
+}
 
 export type FetcherError =
   | string

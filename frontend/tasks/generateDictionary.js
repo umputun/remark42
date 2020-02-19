@@ -22,7 +22,7 @@ locales.forEach(locale => {
     currentDict = require(pathToDict);
   }
   keyMessagePairs.forEach(([key, defaultMessage]) => {
-    if (!currentDict[key]) {
+    if (!currentDict[key] || locale === `en`) {
       currentDict[key] = defaultMessage;
     }
   });

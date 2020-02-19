@@ -60,6 +60,18 @@ const messages = defineMessages({
     id: 'commentForm.input-placeholder',
     defaultMessage: 'Your comment here',
   },
+  uploadFileFail: {
+    id: 'commentForm.upload-file-fail',
+    defaultMessage: '{fileName} upload failed with "{errorMessage}"',
+  },
+  uploading: {
+    id: 'commentForm.uploading',
+    defaultMessage: 'Uploading...',
+  },
+  uploadingFile: {
+    id: 'commentForm.uploading-file',
+    defaultMessage: 'uploading {fileName}...',
+  },
 });
 
 export class CommentForm extends Component<Props, State> {
@@ -168,7 +180,6 @@ export class CommentForm extends Component<Props, State> {
         this.setState({ preview: null, text: '' });
       })
       .catch(e => {
-        console.error(e); // eslint-disable-line no-console
         const errorMessage = extractErrorMessageFromResponse(e);
         this.setState({ isErrorShown: true, errorMessage });
       })
@@ -231,18 +242,20 @@ export class CommentForm extends Component<Props, State> {
 
   /** wrapper with error handling for props.uploadImage */
   uploadImage(file: File): Promise<Image | Error> {
-    return this.props.uploadImage!(file).catch(
-      (e: ApiError | string) =>
-        new Error(
-          typeof e === 'string'
-            ? `${file.name} upload failed with "${e}"`
-            : `${file.name} upload failed with "${e.error}"`
-        )
-    );
+    const intl = this.props.intl;
+    return this.props.uploadImage!(file).catch((e: ApiError | string) => {
+      return new Error(
+        intl.formatMessage(messages.uploadFileFail, {
+          fileName: file.name,
+          errorMessage: extractErrorMessageFromResponse(e),
+        })
+      );
+    });
   }
 
   /** performs upload process */
   async uploadImages(files: File[]) {
+    const intl = this.props.intl;
     if (!this.props.uploadImage) return;
     if (!this.textAreaRef.current) return;
 
@@ -258,7 +271,7 @@ export class CommentForm extends Component<Props, State> {
       errorMessage: null,
       isErrorShown: false,
       isDisabled: true,
-      buttonText: 'Uploading...',
+      buttonText: intl.formatMessage(messages.uploading),
     });
 
     // fallback for ie < 9
@@ -297,7 +310,9 @@ export class CommentForm extends Component<Props, State> {
       const isFirst = i === 0;
       const placeholderStart = this.state.text.length === 0 ? '' : '\n';
 
-      const uploadPlaceholder = `${placeholderStart}![uploading ${file.name}...]()`;
+      const uploadPlaceholder = `${placeholderStart}![${intl.formatMessage(messages.uploadingFile, {
+        fileName: file.name,
+      })}]()`;
       const uploadPlaceholderLength = uploadPlaceholder.length;
       const selection = this.textAreaRef.current.getSelection();
       /** saved selection in case of error */
