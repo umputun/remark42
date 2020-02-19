@@ -67,5 +67,8 @@
   "comment.block": "Блокировать",
   "comment.toggle-verification": "Toggle verification",
   "comment.verified-user": "Verified user",
-  "comment.unverified-user": "Unverified user"
+  "comment.unverified-user": "Unverified user",
+  "comment.go-to-parent": "Go to parent comment",
+  "comment.expired-time": "Время редактирования истекло.",
+  "comment.vote-error": "Ошибка голосования: {voteErrorMessage}"
 }

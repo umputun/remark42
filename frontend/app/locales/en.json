@@ -67,5 +67,8 @@
   "comment.block": "Block",
   "comment.toggle-verification": "Toggle verification",
   "comment.verified-user": "Verified user",
-  "comment.unverified-user": "Unverified user"
+  "comment.unverified-user": "Unverified user",
+  "comment.go-to-parent": "Go to parent comment",
+  "comment.expired-time": "Editing time has expired.",
+  "comment.vote-error": "Voting error: {voteErrorMessage}"
 }

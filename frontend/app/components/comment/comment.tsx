@@ -79,6 +79,14 @@ const messages = defineMessages({
     id: 'comment.unverified-user',
     defaultMessage: 'Unverified user',
   },
+  goToParent: {
+    id: 'comment.go-to-parent',
+    defaultMessage: 'Go to parent comment',
+  },
+  expiredTime: {
+    id: 'comment.expired-time',
+    defaultMessage: 'Editing time has expired.',
+  },
 });
 
 type PropsWithoutIntl = {
@@ -646,7 +654,7 @@ class Comment extends Component<Props, State> {
         />
       );
     }
-
+    const goToParentMessage = intl.formatMessage(messages.goToParent);
     return (
       <article
         className={b('comment', { mix: this.props.mix }, defaultMods)}
@@ -702,8 +710,8 @@ class Comment extends Component<Props, State> {
             <a
               className="comment__link-to-parent"
               href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.pid}`}
-              aria-label="Go to parent comment"
-              title="Go to parent comment"
+              aria-label={goToParentMessage}
+              title={goToParentMessage}
               onClick={e => this.scrollToParent(e)}
             >
               {' '}
@@ -758,7 +766,11 @@ class Comment extends Component<Props, State> {
         <div className="comment__body">
           {!!state.voteErrorMessage && (
             <div className="voting__error" role="alert">
-              Voting error: {state.voteErrorMessage}
+              <FormattedMessage
+                id="comment.vote-error"
+                defaultMessage="Voting error: {voteErrorMessage}"
+                values={{ voteErrorMessage: state.voteErrorMessage }}
+              />
             </div>
           )}
 
@@ -853,7 +865,7 @@ class Comment extends Component<Props, State> {
             onSubmit={(text, _title) => this.updateComment(props.data.id, text)}
             onCancel={this.toggleEditing}
             getPreview={this.props.getPreview!}
-            errorMessage={state.editDeadline === null ? 'Editing time has expired.' : undefined}
+            errorMessage={state.editDeadline === null ? intl.formatMessage(messages.expiredTime) : undefined}
             autofocus={true}
             uploadImage={uploadImageHandler}
             simpleView={StaticStore.config.simple_view}
