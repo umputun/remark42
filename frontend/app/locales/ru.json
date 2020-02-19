@@ -47,7 +47,7 @@
   "vote.readonly": "Нельзя головать за комментарии, которые в режиме только для чтения",
   "vote.deleted": "Нельзя головать за удалённый комментарий",
   "vote.anonymous": "Нельзя головать анонимному пользователю",
-  "vote.only_positive": "Разрешены только положительные оценки",
+  "vote.only-positive": "Разрешены только положительные оценки",
   "comment.block-user": "Заблокировать пользователя {userName} {duration}?",
   "comment.unblock-user": "Разбокировать пользователя?",
   "blockingDuration.permanently": "Навсегда",

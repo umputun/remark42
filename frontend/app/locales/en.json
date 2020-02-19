@@ -47,7 +47,7 @@
   "vote.readonly": "Can't vote on read-only topics",
   "vote.deleted": "Can't vote for deleted comment",
   "vote.anonymous": "Anonymous users can't vote",
-  "vote.only_positive": "Only positive score allowed",
+  "vote.only-positive": "Only positive score allowed",
   "comment.block-user": "Do you want to verify {userName}?",
   "comment.unblock-user": "Do you want to unblock this user?",
   "blockingDuration.permanently": "Permanently",
