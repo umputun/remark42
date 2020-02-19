@@ -27,39 +27,39 @@ import { getVoteMessage, VoteMessagesTypes } from './getVoteMessage';
 import { getBlockingDurations } from './getBlockingDurations';
 
 const messages = defineMessages({
-  'comment.delete-message': {
+  deleteMessage: {
     id: 'comment.delete-message',
     defaultMessage: 'Do you want to delete this comment?',
   },
-  'comment.hide-user-comment': {
+  hideUserComments: {
     id: 'comment.hide-user-comment',
     defaultMessage: 'Do you want to hide comments of {userName}?',
   },
-  'comment.pin-comment': {
+  pinComment: {
     id: 'comment.pin-comment',
     defaultMessage: 'Do you want to pin this comment?',
   },
-  'comment.unpin-comment': {
+  unpinComment: {
     id: 'comment.unpin-comment',
     defaultMessage: 'Do you want to unpin this comment?',
   },
-  'comment.verify-user': {
+  verifyUser: {
     id: 'comment.verify-user',
     defaultMessage: 'Do you want to verify {userName}?',
   },
-  'comment.unverify-user': {
+  unverifyUser: {
     id: 'comment.unverify-user',
     defaultMessage: 'Do you want to unverify {userName}?',
   },
-  'comment.block-user': {
+  blockUser: {
     id: 'comment.block-user',
     defaultMessage: 'Do you want to block {userName} {duration}?',
   },
-  'comment.unblock-user': {
+  unblockUser: {
     id: 'comment.unblock-user',
     defaultMessage: 'Do you want to unblock this user?',
   },
-  'comment.deleted-comment': {
+  deletedComment: {
     id: 'comment.deleted-comment',
     defaultMessage: 'This comment was deleted',
   },
@@ -215,15 +215,7 @@ class Comment extends Component<Props, State> {
   togglePin = () => {
     const value = !this.props.data.pin;
     const intl = this.props.intl;
-    const promptMessage = value
-      ? intl.formatMessage({
-          id: 'comment.pin-comment',
-          defaultMessage: 'comment.pin-comment',
-        })
-      : intl.formatMessage({
-          id: 'comment.unpin-comment',
-          defaultMessage: 'comment.unpin-comment',
-        });
+    const promptMessage = value ? intl.formatMessage(messages.pinComment) : intl.formatMessage(messages.unpinComment);
 
     if (confirm(promptMessage)) {
       this.props.setPinState!(this.props.data.id, value);
@@ -236,20 +228,8 @@ class Comment extends Component<Props, State> {
     const intl = this.props.intl;
     const userName = this.props.data.user.name;
     const promptMessage = value
-      ? intl.formatMessage(
-          {
-            id: 'comment.verify-user',
-            defaultMessage: 'comment.verify-user',
-          },
-          { userName }
-        )
-      : intl.formatMessage(
-          {
-            id: 'comment.unverify-user',
-            defaultMessage: 'unverify-user',
-          },
-          { userName }
-        );
+      ? intl.formatMessage(messages.verifyUser, { userName })
+      : intl.formatMessage(messages.unverifyUser, { userName });
 
     if (confirm(promptMessage)) {
       this.props.setVerifyStatus!(userId, value);
@@ -277,16 +257,10 @@ class Comment extends Component<Props, State> {
     if (!blockDuration) return;
 
     const duration = blockDuration.label;
-    const blockUser = this.props.intl.formatMessage(
-      {
-        id: 'comment.block-user',
-        defaultMessage: 'comment.block-user',
-      },
-      {
-        userName: user.name,
-        duration: duration.toLowerCase(),
-      }
-    );
+    const blockUser = this.props.intl.formatMessage(messages.blockUser, {
+      userName: user.name,
+      duration: duration.toLowerCase(),
+    });
     if (confirm(blockUser)) {
       this.props.blockUser!(user.id, user.name, ttl);
     }
@@ -294,10 +268,7 @@ class Comment extends Component<Props, State> {
 
   onUnblockUserClick = () => {
     const { user } = this.props.data;
-    const unblockUser = this.props.intl.formatMessage({
-      id: 'comment.unblock-user',
-      defaultMessage: 'comment.unblock-user',
-    });
+    const unblockUser = this.props.intl.formatMessage(messages.unblockUser);
 
     if (confirm(unblockUser)) {
       this.props.unblockUser!(user.id);
@@ -305,10 +276,7 @@ class Comment extends Component<Props, State> {
   };
 
   deleteComment = () => {
-    const deleteComment = this.props.intl.formatMessage({
-      id: 'comment.delete-message',
-      defaultMessage: 'comment.delete-message',
-    });
+    const deleteComment = this.props.intl.formatMessage(messages.deleteMessage);
     if (confirm(deleteComment)) {
       this.props.setReplyEditState!({ id: this.props.data.id, state: CommentMode.None });
 
@@ -317,13 +285,9 @@ class Comment extends Component<Props, State> {
   };
 
   hideUser = () => {
-    const hideUserComment = this.props.intl.formatMessage(
-      {
-        id: 'comment.hide-user-comment',
-        defaultMessage: 'comment.hide-user-comment',
-      },
-      { userName: this.props.data.user.name }
-    );
+    const hideUserComment = this.props.intl.formatMessage(messages.hideUserComments, {
+      userName: this.props.data.user.name,
+    });
     if (!confirm(hideUserComment)) return;
     this.props.hideUser!(this.props.data.user);
   };
@@ -584,10 +548,7 @@ class Comment extends Component<Props, State> {
         props.view === 'preview'
           ? getTextSnippet(props.data.text)
           : props.data.delete
-          ? intl.formatMessage({
-              id: 'comment.deleted-comment',
-              defaultMessage: 'comment.deleted-comment',
-            })
+          ? intl.formatMessage(messages.deletedComment)
           : props.data.text,
       time: new Date(props.data.time),
       orig: isEditing
