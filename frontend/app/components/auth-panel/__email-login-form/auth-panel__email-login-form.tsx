@@ -12,6 +12,7 @@ import TextareaAutosize from '@app/components/comment-form/textarea-autosize';
 import { Input } from '@app/components/input';
 import { Button } from '@app/components/button';
 import { isJwtExpired } from '@app/utils/jwt';
+import { IntlShape, useIntl } from 'react-intl';
 
 const mapStateToProps = () => ({
   sendEmailVerification: sendEmailVerificationRequest,
@@ -24,7 +25,7 @@ interface OwnProps {
   className?: string;
 }
 
-export type Props = OwnProps & ReturnType<typeof mapStateToProps>;
+export type Props = OwnProps & ReturnType<typeof mapStateToProps> & { intl: IntlShape };
 
 export interface State {
   usernameValue: string;
@@ -70,7 +71,7 @@ export class EmailLoginForm extends Component<Props, State> {
         this.tokenRef.current && this.tokenRef.current.focus();
       }, 100);
     } catch (e) {
-      this.setState({ error: extractErrorMessageFromResponse(e) });
+      this.setState({ error: extractErrorMessageFromResponse(e, this.props.intl) });
     } finally {
       this.setState({ loading: false });
     }
@@ -87,7 +88,7 @@ export class EmailLoginForm extends Component<Props, State> {
       this.setState({ verificationSent: false, tokenValue: '' });
       this.props.onSuccess && this.props.onSuccess(user);
     } catch (e) {
-      this.setState({ error: extractErrorMessageFromResponse(e) });
+      this.setState({ error: extractErrorMessageFromResponse(e, this.props.intl) });
     } finally {
       this.setState({ loading: false });
     }
@@ -233,5 +234,6 @@ export type EmailLoginFormRef = EmailLoginForm;
 
 export const EmailLoginFormConnected = forwardRef<EmailLoginForm, OwnProps>((props, ref) => {
   const connectedProps = useSelector(mapStateToProps);
-  return <EmailLoginForm {...props} {...connectedProps} ref={ref} />;
+  const intl = useIntl();
+  return <EmailLoginForm {...props} {...connectedProps} intl={intl} ref={ref} />;
 });

@@ -5,6 +5,8 @@ import { EmailLoginForm, Props, State } from './auth-panel__email-login-form';
 import { User } from '@app/common/types';
 import { sleep } from '@app/utils/sleep';
 import { validToken } from '@app/testUtils/mocks/jwt';
+import { createIntl } from 'react-intl';
+import enMessages from '../../../locales/en.json';
 
 jest.mock('@app/utils/jwt', () => ({
   isJwtExpired: jest
@@ -12,6 +14,11 @@ jest.mock('@app/utils/jwt', () => ({
     .mockImplementationOnce(() => false)
     .mockImplementationOnce(() => true),
 }));
+
+const intl = createIntl({
+  locale: `en`,
+  messages: enMessages,
+});
 
 describe('EmailLoginForm', () => {
   const testUser = ({} as any) as User;
@@ -27,6 +34,7 @@ describe('EmailLoginForm', () => {
         onSignIn={onSignIn}
         onSuccess={onSuccess}
         theme="light"
+        intl={intl}
       />
     );
 
@@ -57,6 +65,7 @@ describe('EmailLoginForm', () => {
         onSignIn={onSignIn}
         onSuccess={onSuccess}
         theme="light"
+        intl={intl}
       />
     );
     await new Promise(resolve =>
@@ -82,6 +91,7 @@ describe('EmailLoginForm', () => {
         onSignIn={onSignIn}
         onSuccess={onSuccess}
         theme="light"
+        intl={intl}
       />
     );
     await new Promise(resolve =>

@@ -192,7 +192,7 @@ export class CommentForm extends Component<Props, State> {
         this.setState({ preview: null, text: '' });
       })
       .catch(e => {
-        const errorMessage = extractErrorMessageFromResponse(e);
+        const errorMessage = extractErrorMessageFromResponse(e, this.props.intl);
         this.setState({ isErrorShown: true, errorMessage });
       })
       .finally(() => this.setState({ isDisabled: false }));
@@ -259,7 +259,7 @@ export class CommentForm extends Component<Props, State> {
       return new Error(
         intl.formatMessage(messages.uploadFileFail, {
           fileName: file.name,
-          errorMessage: extractErrorMessageFromResponse(e),
+          errorMessage: extractErrorMessageFromResponse(e, this.props.intl),
         })
       );
     });

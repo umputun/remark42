@@ -91,6 +91,7 @@ export default class MarkdownToolbar extends Component<Props> {
     const unorderedListLabel = intl.formatMessage(messages.unorderedList);
     const orderedListLabel = intl.formatMessage(messages.orderedList);
     const attachImageLabel = intl.formatMessage(messages.attachImage);
+
     return (
       <markdown-toolbar className="comment-form__toolbar" for={props.textareaId}>
         <div className="comment-form__toolbar-group">

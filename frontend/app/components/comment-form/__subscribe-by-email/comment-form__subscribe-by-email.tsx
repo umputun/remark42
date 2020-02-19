@@ -23,6 +23,7 @@ import { Preloader } from '@app/components/preloader';
 import TextareaAutosize from '@app/components/comment-form/textarea-autosize';
 import { isUserAnonymous } from '@app/utils/isUserAnonymous';
 import { isJwtExpired } from '@app/utils/jwt';
+import { useIntl } from 'react-intl';
 
 const emailRegex = /[^@]+@[^.]+\..+/;
 
@@ -78,6 +79,7 @@ const renderTokenPart = (
 export const SubscribeByEmailForm: FunctionComponent = () => {
   const theme = useTheme();
   const dispatch = useDispatch();
+  const intl = useIntl();
   const subscribed = useSelector<StoreState, boolean>(({ user }) =>
     user === null ? false : Boolean(user.email_subscription)
   );
@@ -114,7 +116,7 @@ export const SubscribeByEmailForm: FunctionComponent = () => {
             break;
         }
       } catch (e) {
-        setError(extractErrorMessageFromResponse(e));
+        setError(extractErrorMessageFromResponse(e, intl));
       } finally {
         setLoading(false);
       }
@@ -189,7 +191,7 @@ export const SubscribeByEmailForm: FunctionComponent = () => {
         previousStep.current = Step.Subscribed;
         setStep(Step.Unsubscribed);
       } catch (e) {
-        setError(extractErrorMessageFromResponse(e));
+        setError(extractErrorMessageFromResponse(e, intl));
       } finally {
         setLoading(false);
       }

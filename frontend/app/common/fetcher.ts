@@ -2,7 +2,7 @@ import { BASE_URL, API_BASE } from './constants';
 import { siteId } from './settings';
 import { StaticStore } from './static_store';
 import { getCookie } from './cookies';
-import { httpErrorMap, isFailedFetch } from '@app/utils/errorUtils';
+import { httpErrorMap, isFailedFetch, httpMessages } from '@app/utils/errorUtils';
 
 export type FetcherMethod = 'get' | 'post' | 'put' | 'patch' | 'delete' | 'head';
 const methods: FetcherMethod[] = ['get', 'post', 'put', 'patch', 'delete', 'head'];
@@ -82,11 +82,10 @@ const fetcher = methods.reduce<Partial<FetcherObject>>((acc, method) => {
 
         if (res.status >= 400) {
           if (httpErrorMap.has(res.status)) {
-            const errString = httpErrorMap.get(res.status)!;
+            const descriptor = httpErrorMap.get(res.status) || httpMessages.unexpectedError;
             throw {
-              code: -1,
-              error: errString,
-              details: errString,
+              code: descriptor ? res.status : 500,
+              error: descriptor.defaultMessage,
             };
           }
           return res.text().then(text => {
@@ -99,9 +98,8 @@ const fetcher = methods.reduce<Partial<FetcherObject>>((acc, method) => {
                 console.error(err);
               }
               throw {
-                code: -1,
-                error: 'Something went wrong.',
-                details: text,
+                code: 500,
+                error: httpMessages.unexpectedError.defaultMessage,
               };
             }
             throw err;
