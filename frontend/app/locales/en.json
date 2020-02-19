@@ -80,5 +80,7 @@
   "commentForm.subscribe-or": "or",
   "root.show-more": "Show more",
   "root.pinned-comments": "Pinned comments",
-  "root.powered-by": "Powered by <a>Remark42</a>"
+  "root.powered-by": "Powered by <a>Remark42</a>",
+  "user-info.unexpected-error": "Something went wrong",
+  "user-info.last-comments": "Last comments by {userName}"
 }
