@@ -10,22 +10,30 @@ interface State {
   ref: Element | undefined;
 }
 
-const instance_map: WeakMap<Element, Component<Props, State>> = new WeakMap();
+let instanceMap: WeakMap<Element, Component<Props, State>>;
+let observer: IntersectionObserver;
 
-const observer = new IntersectionObserver(
-  entries => {
-    entries.forEach(e => {
-      const instance = instance_map.get(e.target);
-      if (!instance) return;
-      instance.setState({
-        inView: e.isIntersecting,
-      });
-    });
-  },
-  {
-    rootMargin: '50px',
+function getObserver(): { observer: IntersectionObserver; instanceMap: WeakMap<Element, Component<Props, State>> } {
+  if (observer && instanceMap) {
+    return { observer, instanceMap };
   }
-);
+  instanceMap = new WeakMap<Element, Component<Props, State>>();
+  observer = new window.IntersectionObserver(
+    entries => {
+      entries.forEach(e => {
+        const instance = instanceMap.get(e.target);
+        if (!instance) return;
+        instance.setState({
+          inView: e.isIntersecting,
+        });
+      });
+    },
+    {
+      rootMargin: '50px',
+    }
+  );
+  return { observer, instanceMap };
+}
 
 export class InView extends Component<Props, State> {
   state: State = {
@@ -37,13 +45,15 @@ export class InView extends Component<Props, State> {
     if (this.state.ref === nextState.ref) return;
 
     if (this.state.ref instanceof Element) {
+      const { observer, instanceMap } = getObserver();
       observer.unobserve(this.state.ref);
-      instance_map.delete(this.state.ref);
+      instanceMap.delete(this.state.ref);
     }
 
     if (nextState.ref instanceof Element) {
+      const { observer, instanceMap } = getObserver();
       observer.observe(nextState.ref);
-      instance_map.set(nextState.ref, this);
+      instanceMap.set(nextState.ref, this);
     }
   }
 
@@ -58,9 +68,9 @@ export class InView extends Component<Props, State> {
 
   componentWillUnmount() {
     if (!(this.state.ref instanceof Element)) return;
-
+    const { observer, instanceMap } = getObserver();
     observer.unobserve(this.state.ref);
-    instance_map.delete(this.state.ref);
+    instanceMap.delete(this.state.ref);
   }
 
   render() {

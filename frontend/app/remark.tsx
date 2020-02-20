@@ -1,8 +1,13 @@
 /** @jsx createElement */
+// Must be the first import
+if (process.env.NODE_ENV === 'development') {
+  // Must use require here as import statements are only allowed
+  // to exist at the top of a file.
+  require('preact/debug');
+}
 import loadPolyfills from '@app/common/polyfills';
 
 import { createElement, render } from 'preact';
-import 'preact/debug';
 import { bindActionCreators } from 'redux';
 import { Provider } from 'react-redux';
 

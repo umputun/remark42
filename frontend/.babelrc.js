@@ -6,8 +6,6 @@ module.exports = {
         targets: {
           browsers: ['> 1%', 'android >= 4.4.4', 'ios >= 9', 'IE >= 11'],
         },
-        useBuiltIns: 'usage',
-        corejs: 3,
       },
     ],
     [
@@ -18,5 +16,4 @@ module.exports = {
       },
     ],
   ],
-  plugins: ['@babel/plugin-syntax-dynamic-import', ['@babel/plugin-transform-react-jsx', { pragma: 'h' }]],
 };
