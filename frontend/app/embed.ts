@@ -20,10 +20,10 @@ function removeDomNode(node: HTMLElement | null) {
 }
 
 function createFrame({
-   host,
-   query,
-   height,
-   __colors__ = {},
+  host,
+  query,
+  height,
+  __colors__ = {},
 }: {
   host: string;
   query: string;
