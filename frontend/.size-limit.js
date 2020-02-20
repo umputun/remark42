@@ -4,7 +4,7 @@ module.exports = [
     limit: '2.55 KB',
   },
   {
-    limit: '68 KB',
+    limit: '111 KB',
     path: 'public/remark.js',
   },
   {
@@ -13,7 +13,7 @@ module.exports = [
   },
   {
     path: 'public/deleteme.js',
-    limit: '18 KB',
+    limit: '33 KB',
   },
   {
     path: 'public/counter.js',
