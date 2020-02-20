@@ -87,7 +87,7 @@ module.exports = () => ({
       {
         oneOf: [
           {
-            include: [path.resolve(__dirname, './app/embed.ts')],
+            include: [path.resolve(__dirname, './app/embed.ts'), path.resolve(__dirname, './app/counter.ts')],
             use: {
               loader: 'ts-loader',
               options: {

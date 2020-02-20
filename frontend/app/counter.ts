@@ -1,9 +1,6 @@
 /* eslint-disable no-console */
 declare let remark_config: CounterConfig;
-
-import loadPolyfills from '@app/common/polyfills';
-import api from './common/api';
-import { COUNTER_NODE_CLASSNAME, BASE_URL } from '@app/common/constants';
+import { COUNTER_NODE_CLASSNAME, BASE_URL, API_BASE } from '@app/common/constants.config';
 import { CounterConfig } from '@app/common/config-types';
 
 if (document.readyState === 'loading') {
@@ -12,11 +9,7 @@ if (document.readyState === 'loading') {
   init();
 }
 
-async function init(): Promise<void> {
-  __webpack_public_path__ = BASE_URL + '/web/';
-
-  await loadPolyfills();
-
+function init(): void {
   const nodes: HTMLElement[] = [].slice.call(document.getElementsByClassName(COUNTER_NODE_CLASSNAME));
 
   if (!nodes) {
@@ -43,7 +36,16 @@ async function init(): Promise<void> {
     return acc;
   }, {});
 
-  api.getCommentsCount(remark_config.site_id, Object.keys(map)).then(res => {
-    res.forEach(item => map[item.url].map(n => (n.innerHTML = item.count.toString(10))));
-  });
+  const oReq = new XMLHttpRequest();
+  oReq.onreadystatechange = function(this: XMLHttpRequest) {
+    if (this.readyState === XMLHttpRequest.DONE && this.status === 200) {
+      try {
+        const res = JSON.parse(this.responseText) as { url: string; count: number }[];
+        res.forEach(item => map[item.url].map(n => (n.innerHTML = item.count.toString(10))));
+      } catch (e) {}
+    }
+  };
+  oReq.open('POST', `${BASE_URL}${API_BASE}/counts?site=${remark_config.site_id}`, true);
+  oReq.setRequestHeader('Content-Type', 'application/json');
+  oReq.send(JSON.stringify(Object.keys(map)));
 }

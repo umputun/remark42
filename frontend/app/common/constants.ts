@@ -2,9 +2,8 @@ import { Sorting, AuthProvider, BlockingDuration, Theme } from './types';
 import * as configConstant from './constants.config';
 
 export const BASE_URL = configConstant.BASE_URL;
-export const API_BASE = '/api/v1';
+export const API_BASE = configConstant.API_BASE;
 export const NODE_ID = configConstant.NODE_ID;
-export const COUNTER_NODE_CLASSNAME = 'remark42__counter';
 export const COMMENT_NODE_CLASSNAME_PREFIX = configConstant.COMMENT_NODE_CLASSNAME_PREFIX;
 export const LAST_COMMENTS_NODE_CLASSNAME = 'remark42__last-comments';
 export const DEFAULT_LAST_COMMENTS_MAX = 15;

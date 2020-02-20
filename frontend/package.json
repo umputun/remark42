@@ -29,9 +29,10 @@
     "@types/cheerio": "^0.22.13",
     "@types/core-js": "^2.5.2",
     "@types/enzyme": "^3.10.4",
+    "@types/es6-promise": "^3.3.0",
     "@types/fetch-mock": "^7.3.1",
     "@types/jest": "^24.0.20",
-    "@types/lodash": "^4.14.144",
+    "@types/lodash-es": "^4.17.3",
     "@types/node": "^12.11.7",
     "@types/react-redux": "^7.1.5",
     "@types/redux-mock-store": "^1.0.1",
@@ -64,7 +65,6 @@
     "jest-extended": "^0.11.2",
     "jest-localstorage-mock": "^2.4.0",
     "lint-staged": "^9.4.2",
-    "lodash": "^4.17.15",
     "mini-css-extract-plugin": "^0.8.0",
     "node-fetch": "^2.6.0",
     "npm-run-all": "^4.1.5",
@@ -101,17 +101,16 @@
     "bem-react-helper": "^1.1.2",
     "classnames": "^2.2.6",
     "core-js": "^3.2.1",
+    "es6-promise": "^4.2.8",
     "focus-visible": "^5.0.2",
     "intersection-observer": "^0.7.0",
+    "lodash-es": "^4.17.15",
     "node-emoji": "^1.10.0",
     "preact": "^10.0.1",
     "react-redux": "^7.1.1",
     "redux": "^4.0.4",
     "redux-thunk": "^2.3.0"
   },
-  "eslintIgnore": [
-    "public"
-  ],
   "engines": {
     "node": ">=8"
   }

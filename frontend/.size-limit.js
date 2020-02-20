@@ -4,19 +4,19 @@ module.exports = [
     limit: '2.5 KB',
   },
   {
-    limit: '92 KB',
+    limit: '68 KB',
     path: 'public/remark.js',
   },
   {
-    limit: '77 KB',
+    limit: '55 KB',
     path: 'public/last-comments.js',
   },
   {
     path: 'public/deleteme.js',
-    limit: '32 KB',
+    limit: '18 KB',
   },
   {
     path: 'public/counter.js',
-    limit: '32.5 KB',
+    limit: '1.05 KB',
   },
 ];
