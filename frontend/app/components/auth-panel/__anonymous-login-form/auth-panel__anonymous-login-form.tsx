@@ -19,7 +19,7 @@ interface State {
   honeyPotValue: boolean;
 }
 
-const messages = defineMessages({
+export const messages = defineMessages({
   lengthLimit: {
     id: 'anonymousLoginForm.length-limit',
     defaultMessage: 'Username must be at least 3 characters long',
