@@ -1,4 +1,8 @@
 {
+  "anonymousLoginForm.length-limit": "Длина имени должна быть больше 3 символов",
+  "anonymousLoginForm.log-in": "Войти",
+  "anonymousLoginForm.symbol-limit": "Username must start from the letter and contain only latin letters, numbers, underscores, and spaces",
+  "anonymousLoginForm.user-name": "Username",
   "authPanel.anonymous-provider": "Анонимно",
   "authPanel.disable-comments": "Выключить комментарии",
   "authPanel.disabled-cookies": "Disable third-party cookies blocking to login or open comments in",

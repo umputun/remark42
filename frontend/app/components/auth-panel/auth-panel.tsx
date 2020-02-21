@@ -214,6 +214,7 @@ export class AuthPanel extends Component<Props, State> {
               onSubmit={this.handleAnonymousLoginFormSubmut}
               theme={this.props.theme}
               className="auth-panel__anonymous-login-form"
+              intl={this.props.intl}
             />
           </DropdownItem>
         </Dropdown>
