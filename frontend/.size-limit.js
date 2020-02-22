@@ -8,7 +8,7 @@ module.exports = [
     path: 'public/remark.js',
   },
   {
-    limit: '30 KB',
+    limit: '48 KB',
     path: 'public/last-comments.js',
   },
   {
