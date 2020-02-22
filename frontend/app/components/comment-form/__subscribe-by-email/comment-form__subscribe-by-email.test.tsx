@@ -136,7 +136,7 @@ describe('<SubscribeByEmailForm/>', () => {
     wrapper.update();
 
     expect(wrapper.text()).toStartWith('You have been subscribed on updates by email');
-    expect(wrapper.find(Button).prop('children')).toEqual('Unsubscribe');
+    expect(wrapper.find(Button).text()).toEqual('Unsubscribe');
   });
 
   it('should send form by paste valid token', async () => {
@@ -162,7 +162,7 @@ describe('<SubscribeByEmailForm/>', () => {
     wrapper.update();
 
     expect(wrapper.text()).toStartWith('You have been subscribed on updates by email');
-    expect(wrapper.find(Button).prop('children')).toEqual('Unsubscribe');
+    expect(wrapper.find(Button).text()).toEqual('Unsubscribe');
   });
 
   it('should pass throw unsubscribe process', async () => {
@@ -181,6 +181,6 @@ describe('<SubscribeByEmailForm/>', () => {
     wrapper.update();
 
     expect(wrapper.text()).toStartWith('You have been unsubscribed by email to updates');
-    expect(wrapper.find(Button).prop('children')).toEqual('Close');
+    expect(wrapper.find(Button).text()).toEqual('Close');
   });
 });
