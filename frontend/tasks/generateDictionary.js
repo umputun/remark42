@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const defaultMessages = require('../extracted-messages/messages');
 
-const locales = ['en', 'ru'];
+const locales = ['en', 'ru', 'de'];
 
 const keyMessagePairs = [];
 const keysSet = new Set();
