@@ -15,6 +15,7 @@ export const ListComments = ({ comments = [] }: Props) => (
     <div className="list-comments">
       {comments.map(comment => (
         <Comment
+          CommentForm={null}
           data={comment}
           level={0}
           view="preview"

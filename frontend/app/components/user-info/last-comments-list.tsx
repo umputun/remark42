@@ -15,6 +15,7 @@ const LastCommentsList = ({ comments, isLoading }: { comments: CommentType[]; is
     <div>
       {comments.map(comment => (
         <Comment
+          CommentForm={null}
           data={comment}
           level={0}
           view="user"

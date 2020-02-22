@@ -1,4 +1,4 @@
-export { CommentForm } from './comment-form';
+export { CommentForm, Props } from './comment-form';
 
 import '@app/components/raw-content';
 

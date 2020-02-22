@@ -7,6 +7,7 @@ import { sleep } from '@app/utils/sleep';
 import { StaticStore } from '@app/common/static_store';
 
 const DefaultProps: Partial<Props> = {
+  CommentForm: null,
   post_info: {
     read_only: false,
   } as PostInfo,

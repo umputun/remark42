@@ -258,6 +258,7 @@ export class Root extends Component<Props, State> {
                 <div className="root__pinned-comments" role="region" aria-label="Pinned comments">
                   {this.props.pinnedComments.map(comment => (
                     <Comment
+                      CommentForm={CommentForm}
                       key={`pinned-comment-${comment.id}`}
                       view="pinned"
                       data={comment}
