@@ -2,7 +2,7 @@
 
 import './styles';
 
-import { createElement, JSX, Component, createRef } from 'preact';
+import { createElement, JSX, Component, createRef, ComponentType } from 'preact';
 import b from 'bem-react-helper';
 
 import { getHandleClickProps } from '@app/common/accessibility';
@@ -15,7 +15,7 @@ import { Theme, BlockTTL, Comment as CommentType, PostInfo, User, CommentMode } 
 import { extractErrorMessageFromResponse, FetcherError } from '@app/utils/errorUtils';
 import { isUserAnonymous } from '@app/utils/isUserAnonymous';
 
-import { CommentForm } from '@app/components/comment-form';
+import { Props as CommentFormProps } from '@app/components/comment-form';
 import { AvatarIcon } from '@app/components/avatar-icon';
 import { Button } from '@app/components/button';
 import Countdown from '@app/components/countdown';
@@ -25,6 +25,7 @@ import postMessage from '@app/utils/postMessage';
 
 export type Props = {
   user: User | null;
+  CommentForm: ComponentType<CommentFormProps> | null;
   data: CommentType;
   repliesCount?: number;
   post_info: PostInfo | null;
@@ -464,6 +465,8 @@ export class Comment extends Component<Props, State> {
     const uploadImageHandler = this.isAnonymous() ? undefined : this.props.uploadImage;
     const commentControls = this.getCommentControls();
 
+    const CommentForm = this.props.CommentForm;
+
     /**
      * CommentType adapted for rendering
      */
@@ -716,7 +719,7 @@ export class Comment extends Component<Props, State> {
           )}
         </div>
 
-        {isReplying && props.view === 'main' && (
+        {CommentForm && isReplying && props.view === 'main' && (
           <CommentForm
             user={props.user}
             theme={props.theme}
@@ -732,7 +735,7 @@ export class Comment extends Component<Props, State> {
           />
         )}
 
-        {isEditing && props.view === 'main' && (
+        {CommentForm && isEditing && props.view === 'main' && (
           <CommentForm
             user={props.user}
             theme={props.theme}

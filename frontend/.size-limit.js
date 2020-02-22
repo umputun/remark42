@@ -1,14 +1,14 @@
 module.exports = [
   {
     path: 'public/embed.js',
-    limit: '2.5 KB',
+    limit: '2.55 KB',
   },
   {
     limit: '68 KB',
     path: 'public/remark.js',
   },
   {
-    limit: '55 KB',
+    limit: '30 KB',
     path: 'public/last-comments.js',
   },
   {

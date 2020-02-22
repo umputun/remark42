@@ -11,6 +11,7 @@ import { setCollapse } from '@app/store/thread/actions';
 import { getThreadIsCollapsed } from '@app/store/thread/getters';
 import { InView } from '@app/components/root/in-view/in-view';
 import { ConnectedComment as Comment } from '@app/components/comment/connected-comment';
+import { CommentForm } from '@app/components/comment-form';
 
 interface Props {
   id: CommentInterface['id'];
@@ -51,6 +52,7 @@ export const Thread: FunctionComponent<Props> = ({ id, level, mix, getPreview })
       <InView>
         {inviewProps => (
           <Comment
+            CommentForm={CommentForm}
             ref={ref => inviewProps.ref(ref)}
             key={`comment-${id}`}
             view="main"
