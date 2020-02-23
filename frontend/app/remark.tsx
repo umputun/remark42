@@ -9,6 +9,7 @@ import loadPolyfills from '@app/common/polyfills';
 
 import { IntlProvider } from 'react-intl';
 import { loadLocale } from './utils/loadLocale';
+import { getLocale } from './utils/getLocale';
 
 import { createElement, render } from 'preact';
 import { bindActionCreators } from 'redux';
@@ -64,7 +65,7 @@ async function init(): Promise<void> {
       }
       return memo;
     }, {});
-  const locale = params.locale || `en`;
+  const locale = getLocale(params);
   const messages = await loadLocale(locale).catch(() => ({}));
   StaticStore.config = await api.getConfig();
 

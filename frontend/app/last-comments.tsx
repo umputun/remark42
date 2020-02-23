@@ -16,6 +16,7 @@ import { BASE_URL, DEFAULT_LAST_COMMENTS_MAX, LAST_COMMENTS_NODE_CLASSNAME } fro
 import { ListComments } from '@app/components/list-comments';
 import { IntlProvider } from 'react-intl';
 import { loadLocale } from './utils/loadLocale';
+import { getLocale } from './utils/getLocale';
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
@@ -57,7 +58,7 @@ async function init(): Promise<void> {
       (node.dataset.max && parseInt(node.dataset.max, 10)) ||
       remark_config.max_last_comments ||
       DEFAULT_LAST_COMMENTS_MAX;
-    const locale = remark_config.locale || 'en';
+    const locale = getLocale(remark_config);
     Promise.all([getLastComments(remark_config.site_id!, max), loadLocale(locale)]).then(([comments, messages]) => {
       try {
         render(

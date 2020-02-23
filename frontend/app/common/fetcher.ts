@@ -84,7 +84,7 @@ const fetcher = methods.reduce<Partial<FetcherObject>>((acc, method) => {
           if (httpErrorMap.has(res.status)) {
             const descriptor = httpErrorMap.get(res.status) || httpMessages.unexpectedError;
             throw {
-              code: descriptor ? res.status : 500,
+              code: res.status,
               error: descriptor.defaultMessage,
             };
           }
@@ -98,7 +98,7 @@ const fetcher = methods.reduce<Partial<FetcherObject>>((acc, method) => {
                 console.error(err);
               }
               throw {
-                code: 500,
+                code: 0,
                 error: httpMessages.unexpectedError.defaultMessage,
               };
             }

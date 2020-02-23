@@ -76,7 +76,7 @@ describe('fetcher', () => {
           fail(data);
         })
         .catch(e => {
-          expect(e.code).toBe(500);
+          expect(e.code).toBe(0);
           expect(e.error).toBe('Something went wrong.');
         });
     });
