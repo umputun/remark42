@@ -1,8 +1,10 @@
 const fs = require('fs');
 const path = require('path');
 const defaultMessages = require('../extracted-messages/messages');
+const { renderLoadLocale } = require('./localeLoadTemplate');
+const { getSupportedLocales } = require('./getSupportedLocales');
 
-const locales = ['en', 'ru', 'de'];
+const locales = getSupportedLocales();
 
 const keyMessagePairs = [];
 const keysSet = new Set();
@@ -37,4 +39,8 @@ locales.forEach(locale => {
   currentDict = removeAbandonedKeys(keysSet, currentDict);
   currentDict = sortDict(currentDict);
   fs.writeFileSync(pathToDict, JSON.stringify(currentDict, null, 2) + '\n');
+  fs.writeFileSync(
+    path.resolve(__dirname, `../app/utils/loadLocale.ts`),
+    renderLoadLocale(locales.filter(locale => locale !== 'en'))
+  );
 });
