@@ -386,7 +386,7 @@ export class CommentForm extends Component<Props, State> {
     const Labels = {
       main: <FormattedMessage id="commentForm.send" defaultMessage="Send" />,
       edit: <FormattedMessage id="commentForm.save" defaultMessage="Save" />,
-      reply: <FormattedMessage id="commentForm.replay" defaultMessage="Replay" />,
+      reply: <FormattedMessage id="commentForm.reply" defaultMessage="Reply" />,
     };
     const label = buttonText || Labels[props.mode || 'main'];
     const intl = this.props.intl;
