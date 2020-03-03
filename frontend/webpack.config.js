@@ -210,7 +210,7 @@ module.exports = () => ({
   },
   devServer: {
     host: '0.0.0.0',
-    port: 9000,
+    port: process.env.PORT || 9000,
     contentBase: publicFolder,
     publicPath: '/web',
     disableHostCheck: true,

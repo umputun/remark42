@@ -1,5 +1,6 @@
 /** this is generated file by "npm run generate-langs" **/
-import enMessages from '../locales/en.json';
+// it is ok that is empty. Default messages from code will be used.
+const enMessages = {};
 
 export async function loadLocale(locale: string): Promise<Record<string, string>> {
   if (locale === 'ru') {
