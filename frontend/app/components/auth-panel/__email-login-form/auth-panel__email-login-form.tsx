@@ -35,7 +35,7 @@ export interface State {
 
 const messages = defineMessages({
   expiredToken: {
-    id: 'emailLoginForm.expiredToken',
+    id: 'emailLoginForm.expired-token',
     defaultMessage: 'Token is expired',
   },
   userNotFound: {

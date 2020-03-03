@@ -79,7 +79,7 @@
   "emailLoginForm.confirm": "Confirm",
   "emailLoginForm.email-address": "Email Address",
   "emailLoginForm.empty-token": "Token field must not be empty",
-  "emailLoginForm.expiredToken": "Token is expired",
+  "emailLoginForm.expired-token": "Token is expired",
   "emailLoginForm.invalid-email": "Address should be valid email address",
   "emailLoginForm.loading": "Loading...",
   "emailLoginForm.send-verification": "Send Verification",
