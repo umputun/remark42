@@ -10,7 +10,7 @@
     "test": "jest",
     "test:coverage": "jest --coverage",
     "prettier": "prettier --write './**/*.{js,jsx,ts,tsx,scss}'",
-    "extract-messages": "formatjs extract --out-file=./extracted-messages/messages.json './app/**/*.js' './app/**/*.jsx' './app/**/*.tsx' './app/**/*.ts'",
+    "extract-messages": "formatjs extract --out-file=./extracted-messages/messages.json './app/**/*.{js,jsx,ts,tsx}'",
     "generate-langs": "npm run extract-messages && node ./tasks/generateDictionary.js",
     "size": "NODE_ENV=production npm run build && size-limit"
   },
