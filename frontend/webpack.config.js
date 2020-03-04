@@ -27,7 +27,14 @@ console.log(`REMARK_ENV = ${remarkUrl}`);
  * so we have to exclude from ignore these modules
  */
 function getExcluded() {
-  const modules = ['@github/markdown-toolbar-element', '@github/text-expander-element', '@github/combobox-nav'];
+  const modules = [
+    '@github/markdown-toolbar-element',
+    '@github/text-expander-element',
+    '@github/combobox-nav',
+    'react-intl',
+    'intl-messageformat',
+    'intl-messageformat-parser',
+  ];
   const exclude = new RegExp(`node_modules\\/(?!(${modules.map(m => m.replace(/\//g, '\\/')).join('|')})\\/).*`);
 
   return {
@@ -203,7 +210,7 @@ module.exports = () => ({
   },
   devServer: {
     host: '0.0.0.0',
-    port: 9000,
+    port: process.env.PORT || 9000,
     contentBase: publicFolder,
     publicPath: '/web',
     disableHostCheck: true,

@@ -4,11 +4,11 @@ module.exports = [
     limit: '2.55 KB',
   },
   {
-    limit: '68 KB',
+    limit: '83 KB',
     path: 'public/remark.js',
   },
   {
-    limit: '30 KB',
+    limit: '45 KB',
     path: 'public/last-comments.js',
   },
   {

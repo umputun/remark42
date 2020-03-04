@@ -13,12 +13,20 @@ import { AvatarIcon } from '../avatar-icon';
 import postMessage from '@app/utils/postMessage';
 import { bindActions } from '@app/utils/actionBinder';
 import { useActions } from '@app/hooks/useAction';
+import { useIntl, defineMessages, FormattedMessage, IntlShape } from 'react-intl';
 
 const boundActions = bindActions({ fetchInfo });
 
+const messages = defineMessages({
+  unexpectedError: {
+    id: 'user-info.unexpected-error',
+    defaultMessage: 'Something went wrong',
+  },
+});
+
 type Props = {
   comments: Comment[] | null;
-} & typeof boundActions;
+} & typeof boundActions & { intl: IntlShape };
 
 interface State {
   isLoading: boolean;
@@ -36,7 +44,7 @@ class UserInfo extends Component<Props, State> {
           this.setState({ isLoading: false });
         })
         .catch(() => {
-          this.setState({ isLoading: false, error: 'Something went wrong' });
+          this.setState({ isLoading: false, error: this.props.intl.formatMessage(messages.unexpectedError) });
         });
     }
 
@@ -60,7 +68,13 @@ class UserInfo extends Component<Props, State> {
     return (
       <div className={b('user-info', {})}>
         <AvatarIcon mix="user-info__avatar" picture={user.picture} />
-        <p className="user-info__title">Last comments by {user.name}</p>
+        <p className="user-info__title">
+          <FormattedMessage
+            id="user-info.last-comments"
+            defaultMessage="Last comments by {userName}"
+            values={{ userName: user.name }}
+          />
+        </p>
         <p className="user-info__id">{user.id}</p>
 
         {!!comments && <LastCommentsList isLoading={isLoading} comments={comments} />}
@@ -85,5 +99,6 @@ const commentsSelector = (state: StoreState) => state.userComments![userInfo.id!
 export const ConnectedUserInfo: FunctionComponent = () => {
   const comments = useSelector(commentsSelector);
   const actions = useActions(boundActions);
-  return <UserInfo comments={comments} {...actions} />;
+  const intl = useIntl();
+  return <UserInfo comments={comments} {...actions} intl={intl} />;
 };

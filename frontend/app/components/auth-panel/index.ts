@@ -1,4 +1,4 @@
-export { AuthPanel } from './auth-panel';
+export { AuthPanelWithIntl as AuthPanel } from './auth-panel';
 
 import './auth-panel.scss';
 

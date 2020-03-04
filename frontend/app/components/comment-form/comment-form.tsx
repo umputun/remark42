@@ -1,5 +1,6 @@
 /** @jsx createElement */
 import { createElement, Component, createRef, Fragment } from 'preact';
+import { FormattedMessage, IntlShape, defineMessages } from 'react-intl';
 import b, { Mix } from 'bem-react-helper';
 
 import { User, Theme, Image, ApiError } from '@app/common/types';
@@ -34,6 +35,7 @@ export interface Props {
   /** action on cancel. optional as root input has no cancel option */
   onCancel?: () => void;
   uploadImage?: (image: File) => Promise<Image>;
+  intl: IntlShape;
 }
 
 interface State {
@@ -51,13 +53,38 @@ interface State {
   buttonText: null | string;
 }
 
-const Labels = {
-  main: 'Send',
-  edit: 'Save',
-  reply: 'Reply',
-};
-
 const ImageMimeRegex = /image\//i;
+
+const messages = defineMessages({
+  placeholder: {
+    id: 'commentForm.input-placeholder',
+    defaultMessage: 'Your comment here',
+  },
+  uploadFileFail: {
+    id: 'commentForm.upload-file-fail',
+    defaultMessage: '{fileName} upload failed with "{errorMessage}"',
+  },
+  uploading: {
+    id: 'commentForm.uploading',
+    defaultMessage: 'Uploading...',
+  },
+  uploadingFile: {
+    id: 'commentForm.uploading-file',
+    defaultMessage: 'uploading {fileName}...',
+  },
+  exceededSize: {
+    id: 'commentForm.exceeded-size',
+    defaultMessage: '{fileName} exceeds size limit of {maxImageSize}',
+  },
+  newComment: {
+    id: 'commentForm.new-comment',
+    defaultMessage: 'New comment',
+  },
+  unexpectedError: {
+    id: 'commentForm.unexpected-error',
+    defaultMessage: 'Something went wrong. Please try again a bit later.',
+  },
+});
 
 export class CommentForm extends Component<Props, State> {
   /** reference to textarea element */
@@ -165,8 +192,7 @@ export class CommentForm extends Component<Props, State> {
         this.setState({ preview: null, text: '' });
       })
       .catch(e => {
-        console.error(e); // eslint-disable-line no-console
-        const errorMessage = extractErrorMessageFromResponse(e);
+        const errorMessage = extractErrorMessageFromResponse(e, this.props.intl);
         this.setState({ isErrorShown: true, errorMessage });
       })
       .finally(() => this.setState({ isDisabled: false }));
@@ -228,18 +254,20 @@ export class CommentForm extends Component<Props, State> {
 
   /** wrapper with error handling for props.uploadImage */
   uploadImage(file: File): Promise<Image | Error> {
-    return this.props.uploadImage!(file).catch(
-      (e: ApiError | string) =>
-        new Error(
-          typeof e === 'string'
-            ? `${file.name} upload failed with "${e}"`
-            : `${file.name} upload failed with "${e.error}"`
-        )
-    );
+    const intl = this.props.intl;
+    return this.props.uploadImage!(file).catch((e: ApiError | string) => {
+      return new Error(
+        intl.formatMessage(messages.uploadFileFail, {
+          fileName: file.name,
+          errorMessage: extractErrorMessageFromResponse(e, this.props.intl),
+        })
+      );
+    });
   }
 
   /** performs upload process */
   async uploadImages(files: File[]) {
+    const intl = this.props.intl;
     if (!this.props.uploadImage) return;
     if (!this.textAreaRef.current) return;
 
@@ -255,7 +283,7 @@ export class CommentForm extends Component<Props, State> {
       errorMessage: null,
       isErrorShown: false,
       isDisabled: true,
-      buttonText: 'Uploading...',
+      buttonText: intl.formatMessage(messages.uploading),
     });
 
     // fallback for ie < 9
@@ -266,7 +294,12 @@ export class CommentForm extends Component<Props, State> {
         const placeholderStart = this.state.text.length === 0 ? '' : '\n';
 
         if (file.size > StaticStore.config.max_image_size) {
-          this.appendError(`${file.name} exceeds size limit of ${maxImageSizeString}`);
+          this.appendError(
+            intl.formatMessage(messages.exceededSize, {
+              fileName: file.name,
+              maxImageSize: maxImageSizeString,
+            })
+          );
           continue;
         }
 
@@ -294,7 +327,9 @@ export class CommentForm extends Component<Props, State> {
       const isFirst = i === 0;
       const placeholderStart = this.state.text.length === 0 ? '' : '\n';
 
-      const uploadPlaceholder = `${placeholderStart}![uploading ${file.name}...]()`;
+      const uploadPlaceholder = `${placeholderStart}![${intl.formatMessage(messages.uploadingFile, {
+        fileName: file.name,
+      })}]()`;
       const uploadPlaceholderLength = uploadPlaceholder.length;
       const selection = this.textAreaRef.current.getSelection();
       /** saved selection in case of error */
@@ -309,7 +344,12 @@ export class CommentForm extends Component<Props, State> {
       };
 
       if (file.size > StaticStore.config.max_image_size) {
-        this.appendError(`${file.name} exceeds size limit of ${maxImageSizeString}`);
+        this.appendError(
+          intl.formatMessage(messages.exceededSize, {
+            fileName: file.name,
+            maxImageSize: maxImageSizeString,
+          })
+        );
         continue;
       }
 
@@ -343,8 +383,14 @@ export class CommentForm extends Component<Props, State> {
   render(props: Props, { isDisabled, isErrorShown, errorMessage, preview, maxLength, text, buttonText }: State) {
     const charactersLeft = maxLength - text.length;
     errorMessage = props.errorMessage || errorMessage;
+    const Labels = {
+      main: <FormattedMessage id="commentForm.send" defaultMessage="Send" />,
+      edit: <FormattedMessage id="commentForm.save" defaultMessage="Save" />,
+      reply: <FormattedMessage id="commentForm.reply" defaultMessage="Reply" />,
+    };
     const label = buttonText || Labels[props.mode || 'main'];
-
+    const intl = this.props.intl;
+    const placeholderMessage = intl.formatMessage(messages.placeholder);
     return (
       <form
         className={b('comment-form', {
@@ -356,13 +402,14 @@ export class CommentForm extends Component<Props, State> {
           mix: props.mix,
         })}
         onSubmit={this.send}
-        aria-label="New comment"
+        aria-label={intl.formatMessage(messages.newComment)}
         onDragOver={this.onDragOver}
         onDrop={this.onDrop}
       >
         {!props.simpleView && (
           <div className="comment-form__control-panel">
             <MarkdownToolbar
+              intl={intl}
               allowUpload={Boolean(this.props.uploadImage)}
               uploadImages={this.uploadImages}
               textareaId={this.textareaId}
@@ -376,7 +423,7 @@ export class CommentForm extends Component<Props, State> {
               onPaste={this.onPaste}
               ref={this.textAreaRef}
               className="comment-form__field"
-              placeholder="Your comment here"
+              placeholder={placeholderMessage}
               value={text}
               maxLength={maxLength}
               onInput={this.onInput}
@@ -390,7 +437,7 @@ export class CommentForm extends Component<Props, State> {
         </div>
 
         {(isErrorShown || !!errorMessage) &&
-          (errorMessage || 'Something went wrong. Please try again a bit later.').split('\n').map(e => (
+          (errorMessage || intl.formatMessage(messages.unexpectedError)).split('\n').map(e => (
             <p className="comment-form__error" role="alert" key={e}>
               {e}
             </p>
@@ -406,7 +453,7 @@ export class CommentForm extends Component<Props, State> {
               disabled={isDisabled}
               onClick={this.getPreview}
             >
-              Preview
+              <FormattedMessage id="commentForm.preview" defaultMessage="Preview" />
             </Button>
           )}
           <Button kind="primary" size="large" mix="comment-form__button" type="submit" disabled={isDisabled}>
@@ -416,18 +463,24 @@ export class CommentForm extends Component<Props, State> {
           {!props.simpleView && props.mode === 'main' && (
             <div className="comment-form__rss">
               <div className="comment-form__markdown">
-                Styling with{' '}
-                <a className="comment-form__markdown-link" target="_blank" href="markdown-help.html">
-                  Markdown
-                </a>
-                {' is supported'}
+                <FormattedMessage
+                  id="commentForm.notice-about-styling"
+                  defaultMessage="Styling with <a>Markdown</a> is supported"
+                  values={{
+                    a: (title: string) => (
+                      <a class="comment-form__markdown-link" target="_blank" href="markdown-help.html">
+                        {title}
+                      </a>
+                    ),
+                  }}
+                />
               </div>
-              {'Subscribe by '}
+              <FormattedMessage id="commentForm.subscribe-by" defaultMessage="Subscribe by" />{' '}
               <SubscribeByRSS userId={props.user !== null ? props.user.id : null} />
               {StaticStore.config.email_notifications && (
                 <Fragment>
-                  {' or '}
-                  <SubscribeByEmail />
+                  {' '}
+                  <FormattedMessage id="commentForm.subscribe-or" defaultMessage="or" /> <SubscribeByEmail />
                 </Fragment>
               )}
             </div>
@@ -439,7 +492,9 @@ export class CommentForm extends Component<Props, State> {
         !!preview && (
           <div className="comment-form__preview-wrapper">
             <div
-              className={b('comment-form__preview', { mix: b('raw-content', {}, { theme: props.theme }) })}
+              className={b('comment-form__preview', {
+                mix: b('raw-content', {}, { theme: props.theme }),
+              })}
               dangerouslySetInnerHTML={{ __html: preview }}
             />
           </div>

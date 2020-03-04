@@ -10,7 +10,6 @@ const LastCommentsList = ({ comments, isLoading }: { comments: CommentType[]; is
   if (isLoading) {
     return <Preloader mix="user-info__preloader" />;
   }
-
   return (
     <div>
       {comments.map(comment => (

@@ -56,9 +56,8 @@ describe('fetcher', () => {
           fail(data);
         })
         .catch(e => {
-          expect(e.code).toBe(-1);
+          expect(e.code).toBe(401);
           expect(e.error).toBe('Not authorized.');
-          expect(e.details).toBe('Not authorized.');
         });
     });
     it('should throw "Something went wrong." object on unknown status', async () => {
@@ -77,9 +76,8 @@ describe('fetcher', () => {
           fail(data);
         })
         .catch(e => {
-          expect(e.code).toBe(-1);
+          expect(e.code).toBe(0);
           expect(e.error).toBe('Something went wrong.');
-          expect(e.details).toBe('you given me something wrong');
         });
     });
   });

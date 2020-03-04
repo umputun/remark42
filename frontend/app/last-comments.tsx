@@ -14,6 +14,9 @@ import { getLastComments } from './common/api';
 import { LastCommentsConfig } from '@app/common/config-types';
 import { BASE_URL, DEFAULT_LAST_COMMENTS_MAX, LAST_COMMENTS_NODE_CLASSNAME } from '@app/common/constants';
 import { ListComments } from '@app/components/list-comments';
+import { IntlProvider } from 'react-intl';
+import { loadLocale } from './utils/loadLocale';
+import { getLocale } from './utils/getLocale';
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
@@ -55,9 +58,15 @@ async function init(): Promise<void> {
       (node.dataset.max && parseInt(node.dataset.max, 10)) ||
       remark_config.max_last_comments ||
       DEFAULT_LAST_COMMENTS_MAX;
-    getLastComments(remark_config.site_id!, max).then(comments => {
+    const locale = getLocale(remark_config);
+    Promise.all([getLastComments(remark_config.site_id!, max), loadLocale(locale)]).then(([comments, messages]) => {
       try {
-        render(<ListComments comments={comments} />, node);
+        render(
+          <IntlProvider locale={locale} messages={messages}>
+            <ListComments comments={comments} />
+          </IntlProvider>,
+          node
+        );
       } catch (e) {
         console.error('Remark42: Something went wrong with last comments rendering');
         console.error(e);

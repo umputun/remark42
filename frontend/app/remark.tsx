@@ -7,6 +7,10 @@ if (process.env.NODE_ENV === 'development') {
 }
 import loadPolyfills from '@app/common/polyfills';
 
+import { IntlProvider } from 'react-intl';
+import { loadLocale } from './utils/loadLocale';
+import { getLocale } from './utils/getLocale';
+
 import { createElement, render } from 'preact';
 import { bindActionCreators } from 'redux';
 import { Provider } from 'react-redux';
@@ -61,26 +65,31 @@ async function init(): Promise<void> {
       }
       return memo;
     }, {});
-
+  const locale = getLocale(params);
+  const messages = await loadLocale(locale).catch(() => ({}));
   StaticStore.config = await api.getConfig();
 
   if (params.page === 'user-info') {
     return render(
-      <div id={NODE_ID}>
-        <div className="root root_user-info">
-          <Provider store={reduxStore}>
-            <UserInfo />
-          </Provider>
+      <IntlProvider locale={locale} messages={messages}>
+        <div id={NODE_ID}>
+          <div className="root root_user-info">
+            <Provider store={reduxStore}>
+              <UserInfo />
+            </Provider>
+          </div>
         </div>
-      </div>,
+      </IntlProvider>,
       node
     );
   }
 
   render(
-    <Provider store={reduxStore}>
-      <ConnectedRoot />
-    </Provider>,
+    <IntlProvider locale={locale} messages={messages}>
+      <Provider store={reduxStore}>
+        <ConnectedRoot />
+      </Provider>
+    </IntlProvider>,
     node
   );
 }

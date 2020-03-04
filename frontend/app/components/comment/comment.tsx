@@ -6,7 +6,7 @@ import { createElement, JSX, Component, createRef, ComponentType } from 'preact'
 import b from 'bem-react-helper';
 
 import { getHandleClickProps } from '@app/common/accessibility';
-import { API_BASE, BASE_URL, COMMENT_NODE_CLASSNAME_PREFIX, BLOCKING_DURATIONS } from '@app/common/constants';
+import { API_BASE, BASE_URL, COMMENT_NODE_CLASSNAME_PREFIX } from '@app/common/constants';
 
 import { StaticStore } from '@app/common/static_store';
 import debounce from '@app/utils/debounce';
@@ -22,8 +22,74 @@ import Countdown from '@app/components/countdown';
 import { boundActions } from './connected-comment';
 import { getPreview, uploadImage } from '@app/common/api';
 import postMessage from '@app/utils/postMessage';
+import { FormattedMessage, useIntl, IntlShape, defineMessages } from 'react-intl';
+import { getVoteMessage, VoteMessagesTypes } from './getVoteMessage';
+import { getBlockingDurations } from './getBlockingDurations';
 
-export type Props = {
+const messages = defineMessages({
+  deleteMessage: {
+    id: 'comment.delete-message',
+    defaultMessage: 'Do you want to delete this comment?',
+  },
+  hideUserComments: {
+    id: 'comment.hide-user-comment',
+    defaultMessage: 'Do you want to hide comments of {userName}?',
+  },
+  pinComment: {
+    id: 'comment.pin-comment',
+    defaultMessage: 'Do you want to pin this comment?',
+  },
+  unpinComment: {
+    id: 'comment.unpin-comment',
+    defaultMessage: 'Do you want to unpin this comment?',
+  },
+  verifyUser: {
+    id: 'comment.verify-user',
+    defaultMessage: 'Do you want to verify {userName}?',
+  },
+  unverifyUser: {
+    id: 'comment.unverify-user',
+    defaultMessage: 'Do you want to unverify {userName}?',
+  },
+  blockUser: {
+    id: 'comment.block-user',
+    defaultMessage: 'Do you want to block {userName} {duration}?',
+  },
+  unblockUser: {
+    id: 'comment.unblock-user',
+    defaultMessage: 'Do you want to unblock this user?',
+  },
+  deletedComment: {
+    id: 'comment.deleted-comment',
+    defaultMessage: 'This comment was deleted',
+  },
+  controversy: {
+    id: 'comment.controversy',
+    defaultMessage: 'Controversy: {value}',
+  },
+  toggleVerification: {
+    id: 'comment.toggle-verification',
+    defaultMessage: 'Toggle verification',
+  },
+  verifiedUser: {
+    id: 'comment.verified-user',
+    defaultMessage: 'Verified user',
+  },
+  unverifiedUser: {
+    id: 'comment.unverified-user',
+    defaultMessage: 'Unverified user',
+  },
+  goToParent: {
+    id: 'comment.go-to-parent',
+    defaultMessage: 'Go to parent comment',
+  },
+  expiredTime: {
+    id: 'comment.expired-time',
+    defaultMessage: 'Editing time has expired.',
+  },
+});
+
+type PropsWithoutIntl = {
   user: User | null;
   CommentForm: ComponentType<CommentFormProps> | null;
   data: CommentType;
@@ -52,6 +118,8 @@ export type Props = {
   uploadImage?: typeof uploadImage;
 } & Partial<typeof boundActions>;
 
+export type Props = PropsWithoutIntl & { intl: IntlShape };
+
 export interface State {
   renderDummy: boolean;
   isCopied: boolean;
@@ -72,7 +140,7 @@ export interface State {
   initial: boolean;
 }
 
-export class Comment extends Component<Props, State> {
+class Comment extends Component<Props, State> {
   votingPromise: Promise<unknown>;
   /** comment text node. Used in comment text copying */
   textNode = createRef<HTMLDivElement>();
@@ -166,7 +234,8 @@ export class Comment extends Component<Props, State> {
 
   togglePin = () => {
     const value = !this.props.data.pin;
-    const promptMessage = `Do you want to ${value ? 'pin' : 'unpin'} this comment?`;
+    const intl = this.props.intl;
+    const promptMessage = value ? intl.formatMessage(messages.pinComment) : intl.formatMessage(messages.unpinComment);
 
     if (confirm(promptMessage)) {
       this.props.setPinState!(this.props.data.id, value);
@@ -176,7 +245,11 @@ export class Comment extends Component<Props, State> {
   toggleVerify = () => {
     const value = !this.props.data.user.verified;
     const userId = this.props.data.user.id;
-    const promptMessage = `Do you want to ${value ? 'verify' : 'unverify'} ${this.props.data.user.name}?`;
+    const intl = this.props.intl;
+    const userName = this.props.data.user.name;
+    const promptMessage = value
+      ? intl.formatMessage(messages.verifyUser, { userName })
+      : intl.formatMessage(messages.unverifyUser, { userName });
 
     if (confirm(promptMessage)) {
       this.props.setVerifyStatus!(userId, value);
@@ -197,30 +270,34 @@ export class Comment extends Component<Props, State> {
 
   blockUser = (ttl: BlockTTL) => {
     const { user } = this.props.data;
-
-    const block_duration = BLOCKING_DURATIONS.find(el => el.value === ttl);
+    const blockingDurations = getBlockingDurations(this.props.intl);
+    const blockDuration = blockingDurations.find(el => el.value === ttl);
     // blocking duration may be undefined if user hasn't selected anything
     // and ttl equals "Blocking period"
-    if (!block_duration) return;
+    if (!blockDuration) return;
 
-    const duration = block_duration.label;
-    if (confirm(`Do you want to block ${user.name} ${duration.toLowerCase()}?`)) {
+    const duration = blockDuration.label;
+    const blockUser = this.props.intl.formatMessage(messages.blockUser, {
+      userName: user.name,
+      duration: duration.toLowerCase(),
+    });
+    if (confirm(blockUser)) {
       this.props.blockUser!(user.id, user.name, ttl);
     }
   };
 
   onUnblockUserClick = () => {
     const { user } = this.props.data;
+    const unblockUser = this.props.intl.formatMessage(messages.unblockUser);
 
-    const promptMessage = `Do you want to unblock this user?`;
-
-    if (confirm(promptMessage)) {
+    if (confirm(unblockUser)) {
       this.props.unblockUser!(user.id);
     }
   };
 
   deleteComment = () => {
-    if (confirm('Do you want to delete this comment?')) {
+    const deleteComment = this.props.intl.formatMessage(messages.deleteMessage);
+    if (confirm(deleteComment)) {
       this.props.setReplyEditState!({ id: this.props.data.id, state: CommentMode.None });
 
       this.props.removeComment!(this.props.data.id);
@@ -228,7 +305,10 @@ export class Comment extends Component<Props, State> {
   };
 
   hideUser = () => {
-    if (!confirm(`Do you want to hide comments of ${this.props.data.user.name}?`)) return;
+    const hideUserComment = this.props.intl.formatMessage(messages.hideUserComments, {
+      userName: this.props.data.user.name,
+    });
+    if (!confirm(hideUserComment)) return;
     this.props.hideUser!(this.props.data.user);
   };
 
@@ -236,7 +316,7 @@ export class Comment extends Component<Props, State> {
     this.setState({
       scoreDelta: originalDelta,
       cachedScore: originalScore,
-      voteErrorMessage: extractErrorMessageFromResponse(e),
+      voteErrorMessage: extractErrorMessageFromResponse(e, this.props.intl),
     });
   };
 
@@ -349,13 +429,16 @@ export class Comment extends Component<Props, State> {
    * returns reason for disabled downvoting
    */
   getDownvoteDisabledReason = (): string | null => {
-    if (!(this.props.view === 'main' || this.props.view === 'pinned')) return "Voting allowed only on post's page";
-    if (this.props.post_info!.read_only) return "Can't vote on read-only topics";
-    if (this.props.data.delete) return "Can't vote for deleted comment";
-    if (this.isCurrentUser()) return "Can't vote for your own comment";
-    if (StaticStore.config.positive_score && this.props.data.score < 1) return 'Only positive score allowed';
-    if (this.isGuest()) return 'Sign in to vote';
-    if (this.isAnonymous() && !StaticStore.config.anon_vote) return "Anonymous users can't vote";
+    const intl = this.props.intl;
+    if (!(this.props.view === 'main' || this.props.view === 'pinned'))
+      return getVoteMessage(VoteMessagesTypes.ONLY_POST_PAGE, intl);
+    if (this.props.post_info!.read_only) return getVoteMessage(VoteMessagesTypes.READONLY, intl);
+    if (this.props.data.delete) return getVoteMessage(VoteMessagesTypes.DELETED, intl);
+    if (this.isCurrentUser()) return getVoteMessage(VoteMessagesTypes.OWN_COMMENT, intl);
+    if (StaticStore.config.positive_score && this.props.data.score < 1)
+      return getVoteMessage(VoteMessagesTypes.ONLY_POSITIVE, intl);
+    if (this.isGuest()) return getVoteMessage(VoteMessagesTypes.GUEST, intl);
+    if (this.isAnonymous() && !StaticStore.config.anon_vote) return getVoteMessage(VoteMessagesTypes.ANONYMOUS, intl);
     return null;
   };
 
@@ -363,12 +446,14 @@ export class Comment extends Component<Props, State> {
    * returns reason for disabled upvoting
    */
   getUpvoteDisabledReason = (): string | null => {
-    if (!(this.props.view === 'main' || this.props.view === 'pinned')) return "Voting allowed only on post's page";
-    if (this.props.post_info!.read_only) return "Can't vote on read-only topics";
-    if (this.props.data.delete) return "Can't vote for deleted comment";
-    if (this.isCurrentUser()) return "Can't vote for your own comment";
-    if (this.isGuest()) return 'Sign in to vote';
-    if (this.isAnonymous() && !StaticStore.config.anon_vote) return "Anonymous users can't vote";
+    const intl = this.props.intl;
+    if (!(this.props.view === 'main' || this.props.view === 'pinned'))
+      return getVoteMessage(VoteMessagesTypes.ONLY_POST_PAGE, intl);
+    if (this.props.post_info!.read_only) return getVoteMessage(VoteMessagesTypes.READONLY, intl);
+    if (this.props.data.delete) return getVoteMessage(VoteMessagesTypes.DELETED, intl);
+    if (this.isCurrentUser()) return getVoteMessage(VoteMessagesTypes.OWN_COMMENT, intl);
+    if (this.isGuest()) return getVoteMessage(VoteMessagesTypes.GUEST, intl);
+    if (this.isAnonymous() && !StaticStore.config.anon_vote) return getVoteMessage(VoteMessagesTypes.ANONYMOUS, intl);
     return null;
   };
 
@@ -388,17 +473,23 @@ export class Comment extends Component<Props, State> {
     if (isAdmin) {
       controls.push(
         this.state.isCopied ? (
-          <span className="comment__control comment__control_view_inactive">Copied!</span>
+          <span className="comment__control comment__control_view_inactive">
+            <FormattedMessage id="comment.copied" defaultMessage="Copied!" />
+          </span>
         ) : (
           <Button kind="link" {...getHandleClickProps(this.copyComment)} mix="comment__control">
-            Copy
+            <FormattedMessage id="comment.copy" defaultMessage="Copy" />
           </Button>
         )
       );
 
       controls.push(
         <Button kind="link" {...getHandleClickProps(this.togglePin)} mix="comment__control">
-          {this.props.data.pin ? 'Unpin' : 'Pin'}
+          {this.props.data.pin ? (
+            <FormattedMessage id="comment.unpin" defaultMessage="Unpin" />
+          ) : (
+            <FormattedMessage id="comment.pin" defaultMessage="Pin" />
+          )}
         </Button>
       );
     }
@@ -406,7 +497,7 @@ export class Comment extends Component<Props, State> {
     if (!isCurrentUser) {
       controls.push(
         <Button kind="link" {...getHandleClickProps(this.hideUser)} mix="comment__control">
-          Hide
+          <FormattedMessage id="comment.hide" defaultMessage="Hide" />
         </Button>
       );
     }
@@ -415,21 +506,20 @@ export class Comment extends Component<Props, State> {
       if (this.props.isUserBanned) {
         controls.push(
           <Button kind="link" {...getHandleClickProps(this.onUnblockUserClick)} mix="comment__control">
-            Unblock
+            <FormattedMessage id="comment.unblock" defaultMessage="Unblock" />
           </Button>
         );
       }
-
+      const blockingDurations = getBlockingDurations(this.props.intl);
       if (this.props.user!.id !== this.props.data.user.id && !this.props.isUserBanned) {
         controls.push(
           <span className="comment__control comment__control_select-label">
-            Block
+            <FormattedMessage id="comment.block" defaultMessage="Block" />
             <select className="comment__control_select" onBlur={this.onBlockUserClick} onChange={this.onBlockUserClick}>
               <option disabled selected value={undefined}>
-                {' '}
-                Blocking period{' '}
+                <FormattedMessage id="comment.blocking-period" defaultMessage="Blocking period" />
               </option>
-              {BLOCKING_DURATIONS.map(block => (
+              {blockingDurations.map(block => (
                 <option value={block.value}>{block.label}</option>
               ))}
             </select>
@@ -440,7 +530,7 @@ export class Comment extends Component<Props, State> {
       if (!this.props.data.delete) {
         controls.push(
           <Button kind="link" {...getHandleClickProps(this.deleteComment)} mix="comment__control">
-            Delete
+            <FormattedMessage id="comment.delete" defaultMessage="Delete" />
           </Button>
         );
       }
@@ -464,22 +554,25 @@ export class Comment extends Component<Props, State> {
     const scoreSignEnabled = !StaticStore.config.positive_score;
     const uploadImageHandler = this.isAnonymous() ? undefined : this.props.uploadImage;
     const commentControls = this.getCommentControls();
-
+    const intl = props.intl;
     const CommentForm = this.props.CommentForm;
 
     /**
      * CommentType adapted for rendering
      */
+
     const o = {
       ...props.data,
-      controversyText: `Controversy: ${(props.data.controversy || 0).toFixed(2)}`,
+      controversyText: intl.formatMessage(messages.controversy, {
+        value: (props.data.controversy || 0).toFixed(2),
+      }),
       text:
         props.view === 'preview'
           ? getTextSnippet(props.data.text)
           : props.data.delete
-          ? 'This comment was deleted'
+          ? intl.formatMessage(messages.deletedComment)
           : props.data.text,
-      time: formatTime(new Date(props.data.time)),
+      time: new Date(props.data.time),
       orig: isEditing
         ? props.data.orig &&
           props.data.orig.replace(/&[#A-Za-z0-9]+;/gi, entity => {
@@ -563,7 +656,7 @@ export class Comment extends Component<Props, State> {
         />
       );
     }
-
+    const goToParentMessage = intl.formatMessage(messages.goToParent);
     return (
       <article
         className={b('comment', { mix: this.props.mix }, defaultMods)}
@@ -594,35 +687,50 @@ export class Comment extends Component<Props, State> {
           {isAdmin && props.view !== 'user' && (
             <span
               {...getHandleClickProps(this.toggleVerify)}
-              aria-label="Toggle verification"
-              title={o.user.verified ? 'Verified user' : 'Unverified user'}
+              aria-label={intl.formatMessage(messages.toggleVerification)}
+              title={
+                o.user.verified
+                  ? intl.formatMessage(messages.verifiedUser)
+                  : intl.formatMessage(messages.unverifiedUser)
+              }
               className={b('comment__verification', {}, { active: o.user.verified, clickable: true })}
             />
           )}
 
           {!isAdmin && !!o.user.verified && props.view !== 'user' && (
-            <span title="Verified user" className={b('comment__verification', {}, { active: true })} />
+            <span
+              title={intl.formatMessage(messages.verifiedUser)}
+              className={b('comment__verification', {}, { active: true })}
+            />
           )}
 
           <a href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`} className="comment__time">
-            {o.time}
+            <FormatTime time={o.time} />
           </a>
 
           {!!props.level && props.level > 0 && props.view === 'main' && (
             <a
               className="comment__link-to-parent"
               href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.pid}`}
-              aria-label="Go to parent comment"
-              title="Go to parent comment"
+              aria-label={goToParentMessage}
+              title={goToParentMessage}
               onClick={e => this.scrollToParent(e)}
             >
               {' '}
             </a>
           )}
 
-          {props.isUserBanned && props.view !== 'user' && <span className="comment__status">Blocked</span>}
+          {props.isUserBanned && props.view !== 'user' && (
+            <span className="comment__status">
+              <FormattedMessage id="comment.blocked-user" defaultMessage="Blocked" />
+            </span>
+          )}
 
-          {isAdmin && !props.isUserBanned && props.data.delete && <span className="comment__status">Deleted</span>}
+          {isAdmin && !props.isUserBanned && props.data.delete && (
+            <span className="comment__status">
+              <FormattedMessage id="comment.deleted-user" defaultMessage="Deleted" />
+            </span>
+          )}
 
           <span className={b('comment__score', {}, { view: o.score.view })}>
             <span
@@ -660,7 +768,11 @@ export class Comment extends Component<Props, State> {
         <div className="comment__body">
           {!!state.voteErrorMessage && (
             <div className="voting__error" role="alert">
-              Voting error: {state.voteErrorMessage}
+              <FormattedMessage
+                id="comment.vote-error"
+                defaultMessage="Voting error: {voteErrorMessage}"
+                values={{ voteErrorMessage: state.voteErrorMessage }}
+              />
             </div>
           )}
 
@@ -676,7 +788,11 @@ export class Comment extends Component<Props, State> {
             <div className="comment__actions">
               {!props.data.delete && !props.isCommentsDisabled && !props.disabled && !isGuest && props.view === 'main' && (
                 <Button kind="link" {...getHandleClickProps(this.toggleReplying)} mix="comment__action">
-                  {isReplying ? 'Cancel' : 'Reply'}
+                  {isReplying ? (
+                    <FormattedMessage id="comment.cancel" defaultMessage="Cancel" />
+                  ) : (
+                    <FormattedMessage id="comment.reply" defaultMessage="Reply" />
+                  )}
                 </Button>
               )}
               {!props.data.delete &&
@@ -690,7 +806,11 @@ export class Comment extends Component<Props, State> {
                     {...getHandleClickProps(this.toggleEditing)}
                     mix={['comment__action', 'comment__action_type_edit']}
                   >
-                    {isEditing ? 'Cancel' : 'Edit'}
+                    {isEditing ? (
+                      <FormattedMessage id="comment.cancel" defaultMessage="Cancel" />
+                    ) : (
+                      <FormattedMessage id="comment.edit" defaultMessage="Edit" />
+                    )}
                   </Button>,
                   !isAdmin && (
                     <Button
@@ -698,7 +818,7 @@ export class Comment extends Component<Props, State> {
                       {...getHandleClickProps(this.deleteComment)}
                       mix={['comment__action', 'comment__action_type_delete']}
                     >
-                      Delete
+                      <FormattedMessage id="comment.delete" defaultMessage="Delete" />
                     </Button>
                   ),
                   state.editDeadline && (
@@ -721,6 +841,7 @@ export class Comment extends Component<Props, State> {
 
         {CommentForm && isReplying && props.view === 'main' && (
           <CommentForm
+            intl={this.props.intl}
             user={props.user}
             theme={props.theme}
             value=""
@@ -737,6 +858,7 @@ export class Comment extends Component<Props, State> {
 
         {CommentForm && isEditing && props.view === 'main' && (
           <CommentForm
+            intl={this.props.intl}
             user={props.user}
             theme={props.theme}
             value={o.orig}
@@ -745,7 +867,7 @@ export class Comment extends Component<Props, State> {
             onSubmit={(text, _title) => this.updateComment(props.data.id, text)}
             onCancel={this.toggleEditing}
             getPreview={this.props.getPreview!}
-            errorMessage={state.editDeadline === null ? 'Editing time has expired.' : undefined}
+            errorMessage={state.editDeadline === null ? intl.formatMessage(messages.expiredTime) : undefined}
             autofocus={true}
             uploadImage={uploadImageHandler}
             simpleView={StaticStore.config.simple_view}
@@ -767,13 +889,23 @@ function getTextSnippet(html: string) {
   return snippet.length === LENGTH && result.length !== LENGTH ? `${snippet}...` : snippet;
 }
 
-function formatTime(time: Date) {
-  // 'ru-RU' adds a dot as a separator
-  const date = time.toLocaleDateString(['ru-RU'], { day: '2-digit', month: '2-digit', year: '2-digit' });
-
-  // do it manually because Intl API doesn't add leading zeros to hours; idk why
-  const hours = `0${time.getHours()}`.slice(-2);
-  const mins = `0${time.getMinutes()}`.slice(-2);
-
-  return `${date} at ${hours}:${mins}`;
+function FormatTime({ time }: { time: Date }) {
+  const intl = useIntl();
+  return (
+    <FormattedMessage
+      id="comment.time"
+      defaultMessage="{day} at {time}"
+      values={{
+        day: intl.formatDate(time),
+        time: intl.formatTime(time),
+      }}
+    />
+  );
 }
+
+const CommentWithIntl = (props: PropsWithoutIntl) => {
+  const intl = useIntl();
+  return <Comment intl={intl} {...props} />;
+};
+
+export { CommentWithIntl as Comment };

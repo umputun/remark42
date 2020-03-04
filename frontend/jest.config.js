@@ -15,4 +15,5 @@ module.exports = {
     '^react-dom$': 'preact/compat',
   },
   setupFilesAfterEnv: ['<rootDir>/app/testUtils/index.ts'],
+  transformIgnorePatterns: ['/node_modules/(?!intl-messageformat|intl-messageformat-parser).+\\.js$'],
 };

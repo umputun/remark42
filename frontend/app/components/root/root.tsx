@@ -2,6 +2,7 @@
 import { createElement, Component, FunctionComponent } from 'preact';
 import { useSelector } from 'react-redux';
 import b from 'bem-react-helper';
+import { IntlShape, useIntl, FormattedMessage, defineMessages } from 'react-intl';
 
 import { User, Sorting, AuthProvider } from '@app/common/types';
 import {
@@ -79,7 +80,7 @@ const boundActions = bindActions({
   updateComment,
 });
 
-type Props = ReturnType<typeof mapStateToProps> & typeof boundActions;
+type Props = ReturnType<typeof mapStateToProps> & typeof boundActions & { intl: IntlShape };
 
 interface State {
   isLoaded: boolean;
@@ -87,6 +88,13 @@ interface State {
   commentsShown: number;
   wasSomeoneUnblocked: boolean;
 }
+
+const messages = defineMessages({
+  pinnedComments: {
+    id: `root.pinned-comments`,
+    defaultMessage: 'Pinned comments',
+  },
+});
 
 /** main component fr main comments widget */
 export class Root extends Component<Props, State> {
@@ -243,6 +251,7 @@ export class Root extends Component<Props, State> {
             <div className="root__main">
               {!isGuest && !isCommentsDisabled && (
                 <CommentForm
+                  intl={this.props.intl}
                   theme={props.theme}
                   mix="root__input"
                   mode="main"
@@ -255,10 +264,15 @@ export class Root extends Component<Props, State> {
               )}
 
               {this.props.pinnedComments.length > 0 && (
-                <div className="root__pinned-comments" role="region" aria-label="Pinned comments">
+                <div
+                  className="root__pinned-comments"
+                  role="region"
+                  aria-label={this.props.intl.formatMessage(messages.pinnedComments)}
+                >
                   {this.props.pinnedComments.map(comment => (
                     <Comment
                       CommentForm={CommentForm}
+                      intl={this.props.intl}
                       key={`pinned-comment-${comment.id}`}
                       view="pinned"
                       data={comment}
@@ -287,7 +301,7 @@ export class Root extends Component<Props, State> {
 
                   {commentsShown < this.props.topComments.length && IS_MOBILE && (
                     <Button kind="primary" size="middle" mix="root__show-more" onClick={this.showMore}>
-                      Show more
+                      <FormattedMessage id="root.show-more" defaultMessage="Show more" />
                     </Button>
                   )}
                 </div>
@@ -304,6 +318,7 @@ export class Root extends Component<Props, State> {
           {this.props.isSettingsVisible && (
             <div className="root__main">
               <Settings
+                intl={this.props.intl}
                 user={this.props.user}
                 hiddenUsers={this.props.hiddenUsers}
                 blockedUsers={this.props.blockedUsers}
@@ -317,10 +332,17 @@ export class Root extends Component<Props, State> {
           )}
 
           <p className="root__copyright" role="contentinfo">
-            Powered by{' '}
-            <a href="https://remark42.com/" className="root__copyright-link">
-              Remark42
-            </a>
+            <FormattedMessage
+              id="root.powered-by"
+              defaultMessage="Powered by <a>Remark42</a>"
+              values={{
+                a: (title: string) => (
+                  <a class="root__copyright-link" href="https://remark42.com/">
+                    {title}
+                  </a>
+                ),
+              }}
+            />
           </p>
         </div>
       </div>
@@ -332,5 +354,6 @@ export class Root extends Component<Props, State> {
 export const ConnectedRoot: FunctionComponent = () => {
   const props = useSelector(mapStateToProps);
   const actions = useActions(boundActions);
-  return <Root {...props} {...actions} />;
+  const intl = useIntl();
+  return <Root {...props} {...actions} intl={intl} />;
 };

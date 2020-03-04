@@ -13,12 +13,13 @@ import { StoreState } from '@app/store';
 import { ProviderState } from '@app/store/provider/reducers';
 import { Dropdown, DropdownItem } from '@app/components/dropdown';
 import { Button } from '@app/components/button';
+import { FormattedMessage, defineMessages, IntlShape, useIntl } from 'react-intl';
 
 import { AnonymousLoginForm } from './__anonymous-login-form';
 import { EmailLoginFormConnected } from './__email-login-form';
 import { EmailLoginFormRef } from './__email-login-form/auth-panel__email-login-form';
 
-export interface Props {
+interface PropsWithoutIntl {
   user: User | null;
   hiddenUsers: StoreState['hiddenUsers'];
   sort: Sorting;
@@ -37,12 +38,29 @@ export interface Props {
   onBlockedUsersHide(): void;
 }
 
+export type Props = PropsWithoutIntl & { intl: IntlShape };
+
 interface State {
   isBlockedVisible: boolean;
   anonymousUsernameInputValue: string;
   threshold: number;
   sortSelectFocused: boolean;
 }
+
+const authPanelMessages = defineMessages({
+  otherProvider: {
+    id: 'authPanel.other-provider',
+    defaultMessage: 'Other',
+  },
+  anonymousProvider: {
+    id: 'authPanel.anonymous-provider',
+    defaultMessage: 'Anonymous',
+  },
+  orProvider: {
+    id: 'authPanel.or-provider',
+    defaultMessage: 'or',
+  },
+});
 
 export class AuthPanel extends Component<Props, State> {
   emailLoginRef = createRef<EmailLoginFormRef>();
@@ -155,7 +173,7 @@ export class AuthPanel extends Component<Props, State> {
 
     return (
       <div className="auth-panel__column">
-        You logged in as{' '}
+        <FormattedMessage id="authPanel.logged-as" defaultMessage="You logged in as" />{' '}
         <Dropdown title={user.name} titleClass="auth-panel__user-dropdown-title" theme={theme}>
           <DropdownItem separator={!isUserAnonymous}>
             <div
@@ -170,13 +188,13 @@ export class AuthPanel extends Component<Props, State> {
           {!isUserAnonymous && (
             <DropdownItem>
               <Button theme={theme} onClick={() => requestDeletion().then(onSignOut)}>
-                Request my data removal
+                <FormattedMessage id="authPanel.request-to-delete-data" defaultMessage="Request my data removal" />
               </Button>
             </DropdownItem>
           )}
         </Dropdown>{' '}
         <Button kind="link" theme={theme} onClick={onSignOut}>
-          Logout?
+          <FormattedMessage id="authPanel.logout" defaultMessage="Logout?" />
         </Button>
       </div>
     );
@@ -184,9 +202,10 @@ export class AuthPanel extends Component<Props, State> {
 
   renderProvider = (provider: AuthProvider['name'], dropdown = false) => {
     if (provider === 'anonymous') {
+      const anonymous = this.props.intl.formatMessage(authPanelMessages.anonymousProvider);
       return (
         <Dropdown
-          title={PROVIDER_NAMES['anonymous']}
+          title={anonymous}
           titleClass={dropdown ? 'auth-panel__dropdown-provider' : ''}
           theme={this.props.theme}
         >
@@ -195,6 +214,7 @@ export class AuthPanel extends Component<Props, State> {
               onSubmit={this.handleAnonymousLoginFormSubmut}
               theme={this.props.theme}
               className="auth-panel__anonymous-login-form"
+              intl={this.props.intl}
             />
           </DropdownItem>
         </Dropdown>
@@ -234,8 +254,9 @@ export class AuthPanel extends Component<Props, State> {
   };
 
   renderOther = (providers: AuthProvider['name'][]) => {
+    const other = this.props.intl.formatMessage(authPanelMessages.otherProvider);
     return (
-      <Dropdown title="Other" theme={this.props.theme} onTitleClick={this.onEmailTitleClick}>
+      <Dropdown title={other} theme={this.props.theme} onTitleClick={this.onEmailTitleClick}>
         {providers.map(provider => (
           <DropdownItem>{this.renderProvider(provider, true)}</DropdownItem>
         ))}
@@ -260,13 +281,13 @@ export class AuthPanel extends Component<Props, State> {
     })();
 
     const isAboveThreshold = sortedProviders.length > threshold;
-
+    const or = this.props.intl.formatMessage(authPanelMessages.orProvider);
     return (
       <div className="auth-panel__column">
-        {'Login: '}
+        <FormattedMessage id="authPanel.login" defaultMessage="Login:" />{' '}
         {!isAboveThreshold &&
           sortedProviders.map((provider, i) => {
-            const comma = i === 0 ? '' : i === sortedProviders.length - 1 ? ' or ' : ', ';
+            const comma = i === 0 ? '' : i === sortedProviders.length - 1 ? ` ${or} ` : ', ';
 
             return (
               <span>
@@ -288,7 +309,7 @@ export class AuthPanel extends Component<Props, State> {
           })}
         {isAboveThreshold && (
           <span>
-            {' or '}
+            {` ${or} `}
             {this.renderOther(sortedProviders.slice(threshold - 1))}
           </span>
         )}
@@ -300,7 +321,10 @@ export class AuthPanel extends Component<Props, State> {
     if (IS_STORAGE_AVAILABLE || !IS_THIRD_PARTY) return null;
     return (
       <div className="auth-panel__column">
-        Disable third-party cookies blocking to login or open comments in{' '}
+        <FormattedMessage
+          id="authPanel.disabled-cookies"
+          defaultMessage="Disable third-party cookies blocking to login or open comments in"
+        />{' '}
         <a
           className="auth-panel__pseudo-link"
           href={`${window.location.origin}/web/comments.html${window.location.search}`}
@@ -314,7 +338,11 @@ export class AuthPanel extends Component<Props, State> {
 
   renderCookiesWarning = () => {
     if (IS_STORAGE_AVAILABLE || IS_THIRD_PARTY) return null;
-    return <div className="auth-panel__column">Allow cookies to login and comment</div>;
+    return (
+      <div className="auth-panel__column">
+        <FormattedMessage id="authPanel.enable-cookies" defaultMessage="Allow cookies to login and comment" />
+      </div>
+    );
   };
 
   renderSettingsLabel = () => {
@@ -325,7 +353,11 @@ export class AuthPanel extends Component<Props, State> {
         {...getHandleClickProps(() => this.toggleBlockedVisibility())}
         role="link"
       >
-        {this.state.isBlockedVisible ? 'Hide' : 'Show'} settings
+        {this.state.isBlockedVisible ? (
+          <FormattedMessage id="authPanel.hide-settings" defaultMessage="Hide settings" />
+        ) : (
+          <FormattedMessage id="authPanel.show-settings" defaultMessage="Show settings" />
+        )}
       </Button>
     );
   };
@@ -339,7 +371,11 @@ export class AuthPanel extends Component<Props, State> {
         {...getHandleClickProps(() => this.toggleCommentsAvailability())}
         role="link"
       >
-        {isCommentsDisabled ? 'Enable' : 'Disable'} comments
+        {isCommentsDisabled ? (
+          <FormattedMessage id="authPanel.enable-comments" defaultMessage="Enable comments" />
+        ) : (
+          <FormattedMessage id="authPanel.disable-comments" defaultMessage="Disable comments" />
+        )}
       </Button>
     );
   };
@@ -347,10 +383,10 @@ export class AuthPanel extends Component<Props, State> {
   renderSort = () => {
     const { sort } = this.props;
     const { sortSelectFocused } = this.state;
-    const sortArray = getSortArray(sort);
+    const sortArray = getSortArray(sort, this.props.intl);
     return (
       <span className="auth-panel__sort">
-        Sort by{' '}
+        <FormattedMessage id="commentSort.sort-by" defaultMessage="Sort by" />{' '}
         <span className="auth-panel__select-label">
           <span className={b('auth-panel__select-label-value', {}, { focused: sortSelectFocused })}>
             {sortArray.find(x => 'selected' in x && x.selected!)!.label}
@@ -396,7 +432,11 @@ export class AuthPanel extends Component<Props, State> {
 
           {isAdmin && ' • '}
 
-          {!isAdmin && read_only && <span className="auth-panel__readonly-label">Read-only</span>}
+          {!isAdmin && read_only && (
+            <span className="auth-panel__readonly-label">
+              <FormattedMessage id="authPanel.read-only" defaultMessage="Read-only" />
+            </span>
+          )}
 
           {this.renderSort()}
         </div>
@@ -405,7 +445,42 @@ export class AuthPanel extends Component<Props, State> {
   }
 }
 
-function getSortArray(currentSort: Sorting) {
+const sortMessages = defineMessages({
+  best: {
+    id: 'commentsSort.best',
+    defaultMessage: 'Best',
+  },
+  worst: {
+    id: 'commentsSort.worst',
+    defaultMessage: 'Worst',
+  },
+  newest: {
+    id: 'commentsSort.newest',
+    defaultMessage: 'Newest',
+  },
+  oldest: {
+    id: 'commentsSort.oldest',
+    defaultMessage: 'Oldest',
+  },
+  recentlyUpdated: {
+    id: 'commentsSort.recently-updated',
+    defaultMessage: 'Recently updated',
+  },
+  leastRecentlyUpdated: {
+    id: 'commentsSort.least-recently-updated',
+    defaultMessage: 'Least recently updated',
+  },
+  mostControversial: {
+    id: 'commentsSort.most-controversial',
+    defaultMessage: 'Most controversial',
+  },
+  leastControversial: {
+    id: 'commentsSort.least-controversial',
+    defaultMessage: 'Least controversial',
+  },
+});
+
+function getSortArray(currentSort: Sorting, intl: IntlShape) {
   const sortArray: {
     value: Sorting;
     label: string;
@@ -413,35 +488,35 @@ function getSortArray(currentSort: Sorting) {
   }[] = [
     {
       value: '-score',
-      label: 'Best',
+      label: intl.formatMessage(sortMessages.best),
     },
     {
       value: '+score',
-      label: 'Worst',
+      label: intl.formatMessage(sortMessages.worst),
     },
     {
       value: '-time',
-      label: 'Newest',
+      label: intl.formatMessage(sortMessages.newest),
     },
     {
       value: '+time',
-      label: 'Oldest',
+      label: intl.formatMessage(sortMessages.oldest),
     },
     {
       value: '-active',
-      label: 'Recently updated',
+      label: intl.formatMessage(sortMessages.recentlyUpdated),
     },
     {
       value: '+active',
-      label: 'Least recently updated',
+      label: intl.formatMessage(sortMessages.leastRecentlyUpdated),
     },
     {
       value: '-controversy',
-      label: 'Most controversial',
+      label: intl.formatMessage(sortMessages.mostControversial),
     },
     {
       value: '+controversy',
-      label: 'Least controversial',
+      label: intl.formatMessage(sortMessages.leastControversial),
     },
   ];
 
@@ -453,3 +528,8 @@ function getSortArray(currentSort: Sorting) {
     return sort;
   });
 }
+
+export const AuthPanelWithIntl = (props: PropsWithoutIntl) => {
+  const intl = useIntl();
+  return <AuthPanel intl={intl} {...props} />;
+};

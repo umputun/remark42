@@ -434,7 +434,8 @@ Add this snippet to the bottom of web page:
                      // in well defined order
     max_shown_comments: 10, // optional param; if it isn't defined default value (15) will be used
     theme: 'dark', // optional param; if it isn't defined default value ('light') will be used
-    page_title: 'Moving to Remark42' // optional param; if it isn't defined `document.title` will be used
+    page_title: 'Moving to Remark42', // optional param; if it isn't defined `document.title` will be used
+    locale: 'en' // set up locale and language, if it isn't defined default value ('en') will be used
   };
 
   (function(c) {
@@ -468,6 +469,12 @@ Just call this function and pass a name of the theme that you want to turn on:
 ```js
 window.REMARK42.changeTheme('light');
 ```
+
+##### Locales
+
+Right now Remark has support three locales en, ru (partial translated), de(not translated).
+You can pick one using configuration object.
+Do you want support other locale? Please create [issue](https://github.com/umputun/remark42/issues).
 
 #### Last comments
 

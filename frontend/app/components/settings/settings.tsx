@@ -5,9 +5,11 @@ import b from 'bem-react-helper';
 import { User, BlockedUser, Theme, BlockTTL } from '@app/common/types';
 import { getHandleClickProps } from '@app/common/accessibility';
 import { StoreState } from '@app/store';
+import { defineMessages, IntlShape, FormattedMessage, useIntl } from 'react-intl';
 
 interface Props {
   theme: Theme;
+  intl: IntlShape;
   user: StoreState['user'];
   blockedUsers: BlockedUser[];
   hiddenUsers: StoreState['hiddenUsers'];
@@ -29,6 +31,25 @@ interface State {
   unhiddenUsers: User['id'][];
 }
 
+const messages = defineMessages({
+  blockUser: {
+    id: 'settings.block-user',
+    defaultMessage: 'Do you want to block {userName}?',
+  },
+  unblockUser: {
+    id: 'settings.unblock-user',
+    defaultMessage: 'Do you want to unblock {userName}?',
+  },
+  hiddenUsers: {
+    id: 'settings.hidden-users-title',
+    defaultMessage: 'Hidden users',
+  },
+  blockedUsers: {
+    id: 'settings.blocked-users-title',
+    defaultMessage: 'Blocked users',
+  },
+});
+
 export default class Settings extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
@@ -42,7 +63,7 @@ export default class Settings extends Component<Props, State> {
   }
 
   block = (user: BlockedUser) => {
-    if (!confirm(`Do you want to block ${user.name}?`)) return;
+    if (!confirm(this.props.intl.formatMessage(messages.blockUser, { userName: user.name }))) return;
     this.setState({
       unblockedUsers: this.state.unblockedUsers.filter(x => x !== user.id),
     });
@@ -50,7 +71,7 @@ export default class Settings extends Component<Props, State> {
   };
 
   unblock = (user: BlockedUser) => {
-    if (!confirm(`Do you want to unblock ${user.name}?`)) return;
+    if (!confirm(this.props.intl.formatMessage(messages.unblockUser, { userName: user.name }))) return;
     this.setState({ unblockedUsers: this.state.unblockedUsers.concat([user.id]) });
     this.props.unblockUser(user.id);
     this.props.onUnblockSomeone();
@@ -76,11 +97,22 @@ export default class Settings extends Component<Props, State> {
 
   render({ user, theme }: Props, { blockedUsers, unblockedUsers, unhiddenUsers }: State) {
     const hiddenUsersList = Object.values(this.state.hiddenUsers);
+    const intl = this.props.intl;
     return (
       <div className={b('settings', {}, { theme })}>
-        <div className="settings__section settings__hidden-users" role="region" aria-label="Hidden users">
-          <h3>Hidden users:</h3>
-          {!hiddenUsersList.length && <h4 className="settings__dimmed">There are no hidden users.</h4>}
+        <div
+          className="settings__section settings__hidden-users"
+          role="region"
+          aria-label={intl.formatMessage(messages.hiddenUsers)}
+        >
+          <h3>
+            <FormattedMessage id="settings.hidden-user-header" defaultMessage="Hidden users:" />
+          </h3>
+          {!hiddenUsersList.length && (
+            <h4 className="settings__dimmed">
+              <FormattedMessage id="settings.no-hidden-users" defaultMessage="There are no hidden users." />
+            </h4>
+          )}
           {!!hiddenUsersList.length && (
             <ul className="settings__list">
               {hiddenUsersList.map(user => {
@@ -92,15 +124,15 @@ export default class Settings extends Component<Props, State> {
                       className={['settings__username', isUserUnhidden ? 'settings__invisible' : null].join(' ')}
                       title={user.id}
                     >
-                      {user.name || 'unknown'}
+                      {user.name ? user.name : <FormattedMessage id="settings.unknown" defaultMessage="unknown" />}
                     </span>
                     {this.__isUserHidden(user) ? (
                       <span className="settings__action" {...getHandleClickProps(() => this.unhide(user))}>
-                        show
+                        <FormattedMessage id="settings.show" defaultMessage="show" />
                       </span>
                     ) : (
                       <span className="settings__action" {...getHandleClickProps(() => this.hide(user))}>
-                        hide
+                        <FormattedMessage id="settings.hide" defaultMessage="hide" />
                       </span>
                     )}
                     <div>
@@ -115,10 +147,20 @@ export default class Settings extends Component<Props, State> {
           )}
         </div>
         {user && user.admin && (
-          <div className="settings__section settings__blocked-users" role="region" aria-label="Blocked users">
-            <h3>Blocked users:</h3>
+          <div
+            className="settings__section settings__blocked-users"
+            role="region"
+            aria-label={intl.formatMessage(messages.blockedUsers)}
+          >
+            <h3>
+              <FormattedMessage id="settings.blocked-users-header" defaultMessage="Blocked users:" />
+            </h3>
 
-            {!blockedUsers.length && <h4 className="settings__dimmed">There are no blocked users.</h4>}
+            {!blockedUsers.length && (
+              <h4 className="settings__dimmed">
+                <FormattedMessage id="settings.no-blocked-users" defaultMessage="There are no blocked users." />
+              </h4>
+            )}
 
             {!!blockedUsers.length && (
               <ul className="settings__list settings__blocked-users-list">
@@ -131,17 +173,20 @@ export default class Settings extends Component<Props, State> {
                         className={['settings__username', isUserUnblocked ? 'settings__invisible' : null].join(' ')}
                         title={user.id}
                       >
-                        {user.name || 'unknown'}
+                        {user.name ? user.name : <FormattedMessage id="settings.unknown" defaultMessage="unknown" />}
                       </span>
-                      <span className="settings__blocked-users-user-block-ttl"> {formatTime(new Date(user.time))}</span>
+                      <span className="settings__blocked-users-user-block-ttl">
+                        {' '}
+                        <FormatTime time={new Date(user.time)} />
+                      </span>
                       {isUserUnblocked && (
                         <span {...getHandleClickProps(() => this.block(user))} className="settings__action">
-                          block
+                          <FormattedMessage id="settings.block" defaultMessage="block" />
                         </span>
                       )}
                       {!isUserUnblocked && (
                         <span {...getHandleClickProps(() => this.unblock(user))} className="settings__action">
-                          unblock
+                          <FormattedMessage id="settings.unblock" defaultMessage="unblock" />
                         </span>
                       )}
                       <div>
@@ -163,16 +208,20 @@ export default class Settings extends Component<Props, State> {
 
 const currentYear = new Date().getFullYear();
 
-function formatTime(time: Date): string {
+function FormatTime({ time }: { time: Date }) {
+  const intl = useIntl();
   // let's assume that if block ttl is more than 50 years then user blocked permanently
-  if (time.getFullYear() - currentYear >= 50) return 'permanently';
+  if (time.getFullYear() - currentYear >= 50)
+    return <FormattedMessage id="settings.permanently" defaultMessage="permanently" />;
 
-  // 'ru-RU' adds a dot as a separator
-  const date = time.toLocaleDateString(['ru-RU'], { day: '2-digit', month: '2-digit', year: '2-digit' });
-
-  // do it manually because Intl API doesn't add leading zeros to hours; idk why
-  const hours = `0${time.getHours()}`.slice(-2);
-  const mins = `0${time.getMinutes()}`.slice(-2);
-
-  return `until ${date} at ${hours}:${mins}`;
+  return (
+    <FormattedMessage
+      id="settings.block-time"
+      defaultMessage="until {day} at {time}"
+      values={{
+        day: intl.formatDate(time),
+        time: intl.formatTime(time),
+      }}
+    />
+  );
 }

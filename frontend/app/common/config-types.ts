@@ -16,10 +16,12 @@ export interface CommentsConfig {
   theme?: Theme;
   page_title?: string;
   node?: string;
+  locale?: string;
 }
 
 export interface LastCommentsConfig {
   host: string;
   site_id: string;
   max_last_comments: number;
+  locale?: string;
 }

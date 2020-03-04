@@ -16,6 +16,8 @@ import { Input } from '@app/components/input';
 import { Button } from '@app/components/button';
 import { Dropdown } from '@app/components/dropdown';
 import TextareaAutosize from '@app/components/comment-form/textarea-autosize';
+import { IntlProvider } from 'react-intl';
+import enMessages from '../../../locales/en.json';
 
 import { SubscribeByEmail, SubscribeByEmailForm } from './';
 
@@ -40,9 +42,11 @@ jest.mock('@app/utils/jwt', () => ({
 describe('<SubscribeByEmail/>', () => {
   const createWrapper = (store: ReturnType<typeof mockStore> = mockStore(initialStore)) =>
     mount(
-      <Provider store={store}>
-        <SubscribeByEmail />
-      </Provider>
+      <IntlProvider locale="en" messages={enMessages}>
+        <Provider store={store}>
+          <SubscribeByEmail />
+        </Provider>
+      </IntlProvider>
     );
 
   it('should be rendered with disabled email button when user is anonymous', () => {
@@ -67,9 +71,11 @@ describe('<SubscribeByEmail/>', () => {
 describe('<SubscribeByEmailForm/>', () => {
   const createWrapper = (store: ReturnType<typeof mockStore> = mockStore(initialStore)) =>
     mount(
-      <Provider store={store}>
-        <SubscribeByEmailForm />
-      </Provider>
+      <IntlProvider locale="en" messages={enMessages}>
+        <Provider store={store}>
+          <SubscribeByEmailForm />
+        </Provider>
+      </IntlProvider>
     );
   it('should render email form by default', () => {
     const store = mockStore(initialStore);
@@ -130,7 +136,7 @@ describe('<SubscribeByEmailForm/>', () => {
     wrapper.update();
 
     expect(wrapper.text()).toStartWith('You have been subscribed on updates by email');
-    expect(wrapper.find(Button).prop('children')).toEqual('Unsubscribe');
+    expect(wrapper.find(Button).text()).toEqual('Unsubscribe');
   });
 
   it('should send form by paste valid token', async () => {
@@ -156,7 +162,7 @@ describe('<SubscribeByEmailForm/>', () => {
     wrapper.update();
 
     expect(wrapper.text()).toStartWith('You have been subscribed on updates by email');
-    expect(wrapper.find(Button).prop('children')).toEqual('Unsubscribe');
+    expect(wrapper.find(Button).text()).toEqual('Unsubscribe');
   });
 
   it('should pass throw unsubscribe process', async () => {
@@ -175,6 +181,6 @@ describe('<SubscribeByEmailForm/>', () => {
     wrapper.update();
 
     expect(wrapper.text()).toStartWith('You have been unsubscribed by email to updates');
-    expect(wrapper.find(Button).prop('children')).toEqual('Close');
+    expect(wrapper.find(Button).text()).toEqual('Close');
   });
 });

@@ -2,7 +2,7 @@ import { BASE_URL, API_BASE } from './constants';
 import { siteId } from './settings';
 import { StaticStore } from './static_store';
 import { getCookie } from './cookies';
-import { httpErrorMap } from '@app/utils/errorUtils';
+import { httpErrorMap, isFailedFetch, httpMessages } from '@app/utils/errorUtils';
 
 export type FetcherMethod = 'get' | 'post' | 'put' | 'patch' | 'delete' | 'head';
 const methods: FetcherMethod[] = ['get', 'post', 'put', 'patch', 'delete', 'head'];
@@ -73,46 +73,54 @@ const fetcher = methods.reduce<Partial<FetcherObject>>((acc, method) => {
       rurl += (rurl.includes('?') ? '&' : '?') + `site=${siteId}`;
     }
 
-    return fetch(rurl, parameters).then(res => {
-      const date = (res.headers.has('date') && res.headers.get('date')) || '';
-      const timestamp = isNaN(Date.parse(date)) ? 0 : Date.parse(date);
-      const timeDiff = (new Date().getTime() - timestamp) / 1000;
-      StaticStore.serverClientTimeDiff = timeDiff;
+    return fetch(rurl, parameters)
+      .then(res => {
+        const date = (res.headers.has('date') && res.headers.get('date')) || '';
+        const timestamp = isNaN(Date.parse(date)) ? 0 : Date.parse(date);
+        const timeDiff = (new Date().getTime() - timestamp) / 1000;
+        StaticStore.serverClientTimeDiff = timeDiff;
 
-      if (res.status >= 400) {
-        if (httpErrorMap.has(res.status)) {
-          const errString = httpErrorMap.get(res.status)!;
-          throw {
-            code: -1,
-            error: errString,
-            details: errString,
-          };
-        }
-        return res.text().then(text => {
-          let err;
-          try {
-            err = JSON.parse(text);
-          } catch (e) {
-            if (logError) {
-              // eslint-disable-next-line no-console
-              console.error(err);
-            }
+        if (res.status >= 400) {
+          if (httpErrorMap.has(res.status)) {
+            const descriptor = httpErrorMap.get(res.status) || httpMessages.unexpectedError;
             throw {
-              code: -1,
-              error: 'Something went wrong.',
-              details: text,
+              code: res.status,
+              error: descriptor.defaultMessage,
             };
           }
-          throw err;
-        });
-      }
+          return res.text().then(text => {
+            let err;
+            try {
+              err = JSON.parse(text);
+            } catch (e) {
+              if (logError) {
+                // eslint-disable-next-line no-console
+                console.error(err);
+              }
+              throw {
+                code: 0,
+                error: httpMessages.unexpectedError.defaultMessage,
+              };
+            }
+            throw err;
+          });
+        }
 
-      if (res.headers.has('Content-Type') && res.headers.get('Content-Type')!.indexOf('application/json') === 0) {
-        return res.json();
-      }
+        if (res.headers.has('Content-Type') && res.headers.get('Content-Type')!.indexOf('application/json') === 0) {
+          return res.json();
+        }
 
-      return res.text();
-    });
+        return res.text();
+      })
+      .catch(e => {
+        if (isFailedFetch(e)) {
+          throw {
+            code: -2,
+            error: e.message,
+          };
+        }
+        throw e;
+      });
   };
   return acc;
 }, {}) as FetcherObject;

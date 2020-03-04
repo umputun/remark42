@@ -2,7 +2,6 @@
 import { createElement, Component, createRef } from 'preact';
 import { forwardRef } from 'preact/compat';
 import b from 'bem-react-helper';
-import { useSelector } from 'react-redux';
 import { Theme, User } from '@app/common/types';
 import { sendEmailVerificationRequest } from '@app/common/api';
 import { extractErrorMessageFromResponse } from '@app/utils/errorUtils';
@@ -12,10 +11,9 @@ import TextareaAutosize from '@app/components/comment-form/textarea-autosize';
 import { Input } from '@app/components/input';
 import { Button } from '@app/components/button';
 import { isJwtExpired } from '@app/utils/jwt';
+import { defineMessages, IntlShape, useIntl, FormattedMessage } from 'react-intl';
 
-const mapStateToProps = () => ({
-  sendEmailVerification: sendEmailVerificationRequest,
-});
+import { messages as loginForm } from '../__anonymous-login-form/auth-panel__anonymous-login-form';
 
 interface OwnProps {
   onSignIn(token: string): Promise<User | null>;
@@ -24,7 +22,7 @@ interface OwnProps {
   className?: string;
 }
 
-export type Props = OwnProps & ReturnType<typeof mapStateToProps>;
+export type Props = OwnProps & { intl: IntlShape; sendEmailVerification: typeof sendEmailVerificationRequest };
 
 export interface State {
   usernameValue: string;
@@ -34,6 +32,37 @@ export interface State {
   loading: boolean;
   error: string | null;
 }
+
+const messages = defineMessages({
+  expiredToken: {
+    id: 'emailLoginForm.expired-token',
+    defaultMessage: 'Token is expired',
+  },
+  userNotFound: {
+    id: 'emailLoginForm.user-not-found',
+    defaultMessage: 'No user was found',
+  },
+  loading: {
+    id: 'emailLoginForm.loading',
+    defaultMessage: 'Loading...',
+  },
+  invalidEmail: {
+    id: 'emailLoginForm.invalid-email',
+    defaultMessage: 'Address should be valid email address',
+  },
+  emptyToken: {
+    id: 'emailLoginForm.empty-token',
+    defaultMessage: 'Token field must not be empty',
+  },
+  emailAddress: {
+    id: 'emailLoginForm.email-address',
+    defaultMessage: 'Email Address',
+  },
+  token: {
+    id: 'emailLoginForm.token',
+    defaultMessage: 'Token',
+  },
+});
 
 export class EmailLoginForm extends Component<Props, State> {
   static usernameRegex = /^[a-zA-Z][\w ]+$/;
@@ -70,24 +99,27 @@ export class EmailLoginForm extends Component<Props, State> {
         this.tokenRef.current && this.tokenRef.current.focus();
       }, 100);
     } catch (e) {
-      this.setState({ error: extractErrorMessageFromResponse(e) });
+      this.setState({ error: extractErrorMessageFromResponse(e, this.props.intl) });
     } finally {
       this.setState({ loading: false });
     }
   };
 
   async sendForm(token: string = this.state.tokenValue) {
+    const intl = this.props.intl;
     try {
       this.setState({ loading: true });
       const user = await this.props.onSignIn(token);
       if (!user) {
-        this.setState({ error: 'No user was found' });
+        this.setState({ error: intl.formatMessage(messages.userNotFound) });
         return;
       }
       this.setState({ verificationSent: false, tokenValue: '' });
-      this.props.onSuccess && this.props.onSuccess(user);
+      if (this.props.onSuccess) {
+        await this.props.onSuccess(user);
+      }
     } catch (e) {
-      this.setState({ error: extractErrorMessageFromResponse(e) });
+      this.setState({ error: extractErrorMessageFromResponse(e, this.props.intl) });
     } finally {
       this.setState({ loading: false });
     }
@@ -107,13 +139,14 @@ export class EmailLoginForm extends Component<Props, State> {
   };
 
   onTokenChange = (e: Event) => {
+    const intl = this.props.intl;
     const { value } = e.target as HTMLInputElement;
 
     this.setState({ error: null, tokenValue: value });
 
     try {
       if (value.length > 0 && isJwtExpired(value)) {
-        this.setState({ error: 'Token is expired' });
+        this.setState({ error: intl.formatMessage(messages.expiredToken) });
         return;
       }
       this.sendForm(value);
@@ -140,22 +173,24 @@ export class EmailLoginForm extends Component<Props, State> {
   };
 
   getForm1InvalidReason(): string | null {
-    if (this.state.loading) return 'Loading...';
+    const intl = this.props.intl;
+    if (this.state.loading) return intl.formatMessage(messages.loading);
     const username = this.state.usernameValue;
-    if (username.length < 3) return 'Username must be at least 3 characters long';
-    if (!EmailLoginForm.usernameRegex.test(username))
-      return 'Username must start from the letter and contain only latin letters, numbers, underscores, and spaces';
-    if (!EmailLoginForm.emailRegex.test(this.state.addressValue)) return 'Address should be valid email address';
+    if (username.length < 3) return intl.formatMessage(loginForm.lengthLimit);
+    if (!EmailLoginForm.usernameRegex.test(username)) return intl.formatMessage(loginForm.symbolLimit);
+    if (!EmailLoginForm.emailRegex.test(this.state.addressValue)) return intl.formatMessage(messages.invalidEmail);
     return null;
   }
 
   getForm2InvalidReason(): string | null {
-    if (this.state.loading) return 'Loading...';
-    if (this.state.tokenValue.length === 0) return 'Token field must not be empty';
+    const intl = this.props.intl;
+    if (this.state.loading) return intl.formatMessage(messages.loading);
+    if (this.state.tokenValue.length === 0) return intl.formatMessage(messages.emptyToken);
     return null;
   }
 
   render(props: Props) {
+    const intl = props.intl;
     // TODO: will be great to `b` to accept `string | undefined | (string|undefined)[]` as classname
     let className = b('auth-panel-email-login-form', {}, { theme: props.theme });
     if (props.className) {
@@ -169,16 +204,18 @@ export class EmailLoginForm extends Component<Props, State> {
         <form className={className} onSubmit={this.onVerificationSubmit}>
           <Input
             autoFocus
+            name="username"
             mix="auth-panel-email-login-form__input"
             ref={this.usernameInputRef}
-            placeholder="Username"
+            placeholder={intl.formatMessage(loginForm.userName)}
             value={this.state.usernameValue}
             onInput={this.onUsernameChange}
           />
           <Input
             mix="auth-panel-email-login-form__input"
             type="email"
-            placeholder="Email Address"
+            name="email"
+            placeholder={intl.formatMessage(messages.emailAddress)}
             value={this.state.addressValue}
             onInput={this.onAddressChange}
           />
@@ -191,7 +228,7 @@ export class EmailLoginForm extends Component<Props, State> {
             title={form1InvalidReason || ''}
             disabled={form1InvalidReason !== null}
           >
-            Send Verification
+            <FormattedMessage id="emailLoginForm.send-verification" defaultMessage="Send Verification" />
           </Button>
         </form>
       );
@@ -201,13 +238,14 @@ export class EmailLoginForm extends Component<Props, State> {
     return (
       <form className={className} onSubmit={this.onSubmit}>
         <Button kind="link" mix="auth-panel-email-login-form__back-button" {...getHandleClickProps(this.goBack)}>
-          Back
+          <FormattedMessage id="emailLoginForm.back" defaultMessage="Back" />
         </Button>
         <TextareaAutosize
           autofocus={true}
+          name="token"
           className="auth-panel-email-login-form__token-input"
           ref={this.tokenRef}
-          placeholder="Token"
+          placeholder={intl.formatMessage(messages.token)}
           value={this.state.tokenValue}
           onInput={this.onTokenChange}
           spellcheck={false}
@@ -222,7 +260,7 @@ export class EmailLoginForm extends Component<Props, State> {
           title={form2InvalidReason || ''}
           disabled={form2InvalidReason !== null}
         >
-          Confirm
+          <FormattedMessage id="emailLoginForm.confirm" defaultMessage="Confirm" />
         </Button>
       </form>
     );
@@ -232,6 +270,6 @@ export class EmailLoginForm extends Component<Props, State> {
 export type EmailLoginFormRef = EmailLoginForm;
 
 export const EmailLoginFormConnected = forwardRef<EmailLoginForm, OwnProps>((props, ref) => {
-  const connectedProps = useSelector(mapStateToProps);
-  return <EmailLoginForm {...props} {...connectedProps} ref={ref} />;
+  const intl = useIntl();
+  return <EmailLoginForm {...props} sendEmailVerification={sendEmailVerificationRequest} intl={intl} ref={ref} />;
 });
