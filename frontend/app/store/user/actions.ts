@@ -12,7 +12,6 @@ import {
   USER_HIDE,
   USER_UNHIDE,
   USER_SUBSCRIPTION_SET,
-  SETTINGS_VISIBLE_SET,
 } from './types';
 import { unsetCommentMode } from '../comments/actions';
 import { IS_STORAGE_AVAILABLE, LS_HIDDEN_USERS_KEY } from '@app/common/constants';
@@ -147,14 +146,6 @@ export const setVerifiedStatus = (id: User['id'], status: boolean): StoreAction<
     ids: comments.map(c => c.id),
     patch: { user: { ...user, verified: status } },
   });
-};
-
-export const setSettingsVisibility = (state: boolean): StoreAction<boolean> => dispatch => {
-  dispatch({
-    type: SETTINGS_VISIBLE_SET,
-    state,
-  });
-  return state;
 };
 
 export const setUserSubscribed = (isSubscribed: boolean) => ({

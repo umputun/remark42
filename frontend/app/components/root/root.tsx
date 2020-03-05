@@ -1,5 +1,5 @@
 /** @jsx createElement */
-import { createElement, Component, FunctionComponent } from 'preact';
+import { createElement, Component, FunctionComponent, Fragment } from 'preact';
 import { useSelector } from 'react-redux';
 import b from 'bem-react-helper';
 import { IntlShape, useIntl, FormattedMessage, defineMessages } from 'react-intl';
@@ -23,7 +23,6 @@ import {
   blockUser,
   unblockUser,
   fetchBlockedUsers,
-  setSettingsVisibility,
   hideUser,
   unhideUser,
 } from '@app/store/user/actions';
@@ -49,7 +48,6 @@ import { useActions } from '@app/hooks/useAction';
 const mapStateToProps = (state: StoreState) => ({
   user: state.user,
   sort: state.sort,
-  isSettingsVisible: state.isSettingsVisible,
   topComments: state.topComments,
   pinnedComments: state.pinnedComments.map(id => state.comments[id]).filter(c => !c.hidden),
   provider: state.provider,
@@ -65,7 +63,6 @@ const boundActions = bindActions({
   fetchComments,
   fetchUser,
   fetchBlockedUsers,
-  setSettingsVisibility,
   logIn,
   logOut: logout,
   setTheme,
@@ -83,8 +80,9 @@ const boundActions = bindActions({
 type Props = ReturnType<typeof mapStateToProps> & typeof boundActions & { intl: IntlShape };
 
 interface State {
-  isLoaded: boolean;
+  isUserLoading: boolean;
   isCommentsListLoading: boolean;
+  isSettingsVisible: boolean;
   commentsShown: number;
   wasSomeoneUnblocked: boolean;
 }
@@ -98,28 +96,20 @@ const messages = defineMessages({
 
 /** main component fr main comments widget */
 export class Root extends Component<Props, State> {
-  constructor(props: Props) {
-    super(props);
+  state = {
+    isUserLoading: true,
+    isCommentsListLoading: true,
+    commentsShown: maxShownComments,
+    wasSomeoneUnblocked: false,
+    isSettingsVisible: false,
+  };
 
-    this.state = {
-      isLoaded: false,
-      isCommentsListLoading: false,
-      commentsShown: maxShownComments,
-      wasSomeoneUnblocked: false,
-    };
+  componentWillMount() {
+    const userloading = this.props.fetchUser().finally(() => this.setState({ isUserLoading: false }));
 
-    this.onBlockedUsersShow = this.onBlockedUsersShow.bind(this);
-    this.onBlockedUsersHide = this.onBlockedUsersHide.bind(this);
-    this.onUnblockSomeone = this.onUnblockSomeone.bind(this);
-    this.showMore = this.showMore.bind(this);
-  }
-
-  async componentWillMount() {
-    Promise.all([this.props.fetchUser(), this.props.fetchComments(this.props.sort)]).finally(() => {
-      this.setState({
-        isLoaded: true,
-      });
-
+    Promise.all([userloading, this.props.fetchComments(this.props.sort)]).finally(() => {
+      postMessage({ remarkIframeHeight: document.body.offsetHeight });
+      this.setState({ isCommentsListLoading: false });
       setTimeout(this.checkUrlHash);
       window.addEventListener('hashchange', this.checkUrlHash);
     });
@@ -127,9 +117,11 @@ export class Root extends Component<Props, State> {
     window.addEventListener('message', this.onMessage.bind(this));
   }
 
-  logIn = async (p: AuthProvider): Promise<User | null> => {
-    const user = await this.props.logIn(p);
+  logIn = async (provider: AuthProvider): Promise<User | null> => {
+    const user = await this.props.logIn(provider);
+
     await this.props.fetchComments(this.props.sort);
+
     return user;
   };
 
@@ -169,23 +161,23 @@ export class Root extends Component<Props, State> {
     }
   }
 
-  async onBlockedUsersShow() {
+  onBlockedUsersShow = async () => {
     if (this.props.user && this.props.user.admin) {
       await this.props.fetchBlockedUsers();
     }
-    this.props.setSettingsVisibility(true);
-  }
+    this.setState({ isSettingsVisible: true });
+  };
 
-  async onBlockedUsersHide() {
+  onBlockedUsersHide = async () => {
     // if someone was unblocked let's reload comments
     if (this.state.wasSomeoneUnblocked) {
       this.props.fetchComments(this.props.sort);
     }
-    this.props.setSettingsVisibility(false);
     this.setState({
       wasSomeoneUnblocked: false,
+      isSettingsVisible: false,
     });
-  }
+  };
 
   async changeSort(sort: Sorting) {
     if (sort === this.props.sort) return;
@@ -194,15 +186,15 @@ export class Root extends Component<Props, State> {
     this.setState({ isCommentsListLoading: false });
   }
 
-  onUnblockSomeone() {
+  onUnblockSomeone = () => {
     this.setState({ wasSomeoneUnblocked: true });
-  }
+  };
 
-  showMore() {
+  showMore = () => {
     this.setState({
       commentsShown: this.state.commentsShown + MAX_SHOWN_ROOT_COMMENTS,
     });
-  }
+  };
 
   /**
    * Defines whether current client is logged in via `Anonymous provider`
@@ -211,13 +203,11 @@ export class Root extends Component<Props, State> {
     return isUserAnonymous(this.props.user);
   }
 
-  render(props: Props, { isLoaded, isCommentsListLoading, commentsShown }: State) {
-    if (!isLoaded) {
+  render(props: Props, { isUserLoading, isCommentsListLoading, commentsShown, isSettingsVisible }: State) {
+    if (isUserLoading) {
       return (
-        <div id={NODE_ID}>
-          <div className={b('root', {}, { theme: props.theme })}>
-            <Preloader mix="root__preloader" />
-          </div>
+        <div id={NODE_ID} className={b('root', {}, { theme: props.theme })}>
+          <Preloader mix="root__preloader" />
         </div>
       );
     }
@@ -227,28 +217,40 @@ export class Root extends Component<Props, State> {
     const imageUploadHandler = this.isAnonymous() ? undefined : this.props.uploadImage;
 
     return (
-      <div id={NODE_ID}>
-        <div className={b('root', {}, { theme: props.theme })}>
-          <AuthPanel
-            theme={this.props.theme}
-            user={this.props.user}
-            hiddenUsers={this.props.hiddenUsers}
-            sort={this.props.sort}
-            isCommentsDisabled={isCommentsDisabled}
-            postInfo={this.props.info}
-            providers={StaticStore.config.auth_providers}
-            provider={this.props.provider}
-            onSignIn={this.logIn}
-            onSignOut={this.logOut}
-            onBlockedUsersShow={this.onBlockedUsersShow}
-            onBlockedUsersHide={this.onBlockedUsersHide}
-            onCommentsEnable={this.props.enableComments}
-            onCommentsDisable={this.props.disableComments}
-            onSortChange={this.props.changeSort}
-          />
+      <div id={NODE_ID} className={b('root', {}, { theme: props.theme })}>
+        <AuthPanel
+          theme={this.props.theme}
+          user={this.props.user}
+          hiddenUsers={this.props.hiddenUsers}
+          sort={this.props.sort}
+          isCommentsDisabled={isCommentsDisabled}
+          postInfo={this.props.info}
+          providers={StaticStore.config.auth_providers}
+          provider={this.props.provider}
+          onSignIn={this.logIn}
+          onSignOut={this.logOut}
+          onBlockedUsersShow={this.onBlockedUsersShow}
+          onBlockedUsersHide={this.onBlockedUsersHide}
+          onCommentsEnable={this.props.enableComments}
+          onCommentsDisable={this.props.disableComments}
+          onSortChange={this.props.changeSort}
+        />
 
-          {!this.props.isSettingsVisible && (
-            <div className="root__main">
+        <div className="root__main">
+          {isSettingsVisible ? (
+            <Settings
+              intl={this.props.intl}
+              user={this.props.user}
+              hiddenUsers={this.props.hiddenUsers}
+              blockedUsers={this.props.blockedUsers}
+              blockUser={this.props.blockUser}
+              unblockUser={this.props.unblockUser}
+              hideUser={this.props.hideUser}
+              unhideUser={this.props.unhideUser}
+              onUnblockSomeone={this.onUnblockSomeone}
+            />
+          ) : (
+            <Fragment>
               {!isGuest && !isCommentsDisabled && (
                 <CommentForm
                   intl={this.props.intl}
@@ -312,39 +314,23 @@ export class Root extends Component<Props, State> {
                   <Preloader mix="root__preloader" />
                 </div>
               )}
-            </div>
+            </Fragment>
           )}
-
-          {this.props.isSettingsVisible && (
-            <div className="root__main">
-              <Settings
-                intl={this.props.intl}
-                user={this.props.user}
-                hiddenUsers={this.props.hiddenUsers}
-                blockedUsers={this.props.blockedUsers}
-                blockUser={this.props.blockUser}
-                unblockUser={this.props.unblockUser}
-                hideUser={this.props.hideUser}
-                unhideUser={this.props.unhideUser}
-                onUnblockSomeone={this.onUnblockSomeone}
-              />
-            </div>
-          )}
-
-          <p className="root__copyright" role="contentinfo">
-            <FormattedMessage
-              id="root.powered-by"
-              defaultMessage="Powered by <a>Remark42</a>"
-              values={{
-                a: (title: string) => (
-                  <a class="root__copyright-link" href="https://remark42.com/">
-                    {title}
-                  </a>
-                ),
-              }}
-            />
-          </p>
         </div>
+
+        <p className="root__copyright" role="contentinfo">
+          <FormattedMessage
+            id="root.powered-by"
+            defaultMessage="Powered by <a>Remark42</a>"
+            values={{
+              a: (title: string) => (
+                <a class="root__copyright-link" href="https://remark42.com/">
+                  {title}
+                </a>
+              ),
+            }}
+          />
+        </p>
       </div>
     );
   }
