@@ -5,27 +5,27 @@ import '@webcomponents/custom-elements';
 import './closest-polyfill';
 
 export default async function loadPolyfills() {
-  const fillCoreJs = async () => {
+  function fillCoreJs() {
     if (
       'startsWith' in String.prototype &&
       'endsWith' in String.prototype &&
       'includes' in Array.prototype &&
       'assign' in Object &&
       'keys' in Object
-    )
+    ) {
       return;
+    }
 
-    await import(/* webpackChunkName: "core-js" */ 'core-js').then();
-    return;
-  };
+    return import(/* webpackChunkName: "core-js" */ 'core-js');
+  }
 
-  const fillFetch = async () => {
+  function fillFetch() {
     if ('fetch' in window) return;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await import(/* webpackChunkName: "whatwg-fetch" */ 'whatwg-fetch' as any).then();
-  };
 
-  const fillIntersectionObserver = async () => {
+    return import(/* webpackChunkName: "whatwg-fetch" */ 'whatwg-fetch');
+  }
+
+  function fillIntersectionObserver() {
     if (
       'IntersectionObserver' in window &&
       'IntersectionObserverEntry' in window &&
@@ -34,9 +34,8 @@ export default async function loadPolyfills() {
       return;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await import(/* webpackChunkName: "intersection-observer" */ 'intersection-observer' as any).then();
-  };
+    return import(/* webpackChunkName: "intersection-observer" */ 'intersection-observer');
+  }
 
   await Promise.all([fillCoreJs(), fillFetch(), fillIntersectionObserver()]);
   return;
