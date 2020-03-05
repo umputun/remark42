@@ -444,21 +444,23 @@ export class CommentForm extends Component<Props, State> {
           ))}
 
         <div className="comment-form__actions">
-          {!props.simpleView && (
-            <Button
-              kind="secondary"
-              theme={props.theme}
-              size="large"
-              mix="comment-form__button"
-              disabled={isDisabled}
-              onClick={this.getPreview}
-            >
-              <FormattedMessage id="commentForm.preview" defaultMessage="Preview" />
+          <div>
+            {!props.simpleView && (
+              <Button
+                kind="secondary"
+                theme={props.theme}
+                size="large"
+                mix="comment-form__button"
+                disabled={isDisabled}
+                onClick={this.getPreview}
+              >
+                <FormattedMessage id="commentForm.preview" defaultMessage="Preview" />
+              </Button>
+            )}
+            <Button kind="primary" size="large" mix="comment-form__button" type="submit" disabled={isDisabled}>
+              {label}
             </Button>
-          )}
-          <Button kind="primary" size="large" mix="comment-form__button" type="submit" disabled={isDisabled}>
-            {label}
-          </Button>
+          </div>
 
           {!props.simpleView && props.mode === 'main' && (
             <div className="comment-form__rss">
