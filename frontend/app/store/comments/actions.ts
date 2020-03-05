@@ -1,5 +1,5 @@
 import api from '@app/common/api';
-import { Tree, Comment, Sorting, CommentMode, Node } from '@app/common/types';
+import { Tree, Comment, CommentMode, Node } from '@app/common/types';
 
 import { StoreAction, StoreState } from '../index';
 import { POST_INFO_SET } from '../post_info/types';
@@ -67,16 +67,21 @@ export const removeComment = (id: Comment['id']): StoreAction<Promise<void>> => 
 };
 
 /** fetches comments from server */
-export const fetchComments = (sort: Sorting): StoreAction<Promise<Tree>> => async (dispatch, getState) => {
+export const fetchComments = (): StoreAction<Promise<Tree>> => async (dispatch, getState) => {
+  const { hiddenUsers, sort } = getState();
   const data = await api.getPostComments(sort);
-  const hiddenUsersIds = Object.keys(getState().hiddenUsers);
-  if (hiddenUsersIds.length > 0)
+  const hiddenUsersIds = Object.keys(hiddenUsers);
+
+  if (hiddenUsersIds.length > 0) {
     data.comments = filterTree(data.comments, node => hiddenUsersIds.indexOf(node.comment.user.id) === -1);
+  }
+
   dispatch(setComments(data.comments));
   dispatch({
     type: POST_INFO_SET,
     info: data.info,
   });
+
   return data;
 };
 

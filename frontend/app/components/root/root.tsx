@@ -23,7 +23,7 @@ import {
 import { fetchComments } from '@app/store/comments/actions';
 import { setCommentsReadOnlyState } from '@app/store/post_info/actions';
 import { setTheme } from '@app/store/theme/actions';
-import { setSort } from '@app/store/sort/actions';
+import { changeSort } from '@app/store/sort/actions';
 import { addComment, updateComment } from '@app/store/comments/actions';
 
 import { AuthPanel } from '@app/components/auth-panel';
@@ -62,7 +62,7 @@ const boundActions = bindActions({
   setTheme,
   enableComments: () => setCommentsReadOnlyState(false),
   disableComments: () => setCommentsReadOnlyState(true),
-  changeSort: setSort,
+  changeSort,
   blockUser,
   unblockUser,
   hideUser,
@@ -101,7 +101,7 @@ export class Root extends Component<Props, State> {
   componentWillMount() {
     const userloading = this.props.fetchUser().finally(() => this.setState({ isUserLoading: false }));
 
-    Promise.all([userloading, this.props.fetchComments(this.props.sort)]).finally(() => {
+    Promise.all([userloading, this.props.fetchComments()]).finally(() => {
       postMessage({ remarkIframeHeight: document.body.offsetHeight });
       this.setState({ isCommentsListLoading: false });
       setTimeout(this.checkUrlHash);
@@ -114,14 +114,14 @@ export class Root extends Component<Props, State> {
   logIn = async (provider: AuthProvider): Promise<User | null> => {
     const user = await this.props.logIn(provider);
 
-    await this.props.fetchComments(this.props.sort);
+    await this.props.fetchComments();
 
     return user;
   };
 
   logOut = async (): Promise<void> => {
     await this.props.logOut();
-    await this.props.fetchComments(this.props.sort);
+    await this.props.fetchComments();
   };
 
   checkUrlHash(
@@ -165,7 +165,7 @@ export class Root extends Component<Props, State> {
   onBlockedUsersHide = async () => {
     // if someone was unblocked let's reload comments
     if (this.state.wasSomeoneUnblocked) {
-      this.props.fetchComments(this.props.sort);
+      this.props.fetchComments();
     }
     this.setState({
       wasSomeoneUnblocked: false,

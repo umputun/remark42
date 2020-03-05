@@ -14,27 +14,23 @@ function setSortCookie(sort: Sorting) {
   }
 }
 
-export const setSort = (sort: Sorting): StoreAction<Promise<void>> => async (dispatch, getState) => {
-  const originalSort = getState().sort;
-  setSortCookie(sort);
+function setSort(sort: Sorting): SORT_SET_ACTION {
+  return {
+    type: SORT_SET,
+    sort,
+  };
+}
+
+export const changeSort = (sort: Sorting): StoreAction<Promise<void>> => async (dispatch, getState) => {
+  const { sort: originalSort } = getState();
 
   try {
-    const action: SORT_SET_ACTION = {
-      type: SORT_SET,
-      sort,
-    };
-
-    await dispatch(action);
-    await dispatch(fetchComments(sort));
+    setSortCookie(sort);
+    dispatch(setSort(sort));
+    await dispatch(fetchComments());
   } catch {
     // restore sort in case of error, probably network error
-
-    const action: SORT_SET_ACTION = {
-      type: SORT_SET,
-      sort: originalSort,
-    };
-
     setSortCookie(originalSort);
-    await dispatch(action);
+    dispatch(setSort(originalSort));
   }
 };
