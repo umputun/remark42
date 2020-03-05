@@ -28,6 +28,7 @@ import api from '@app/common/api';
 import { fetchHiddenUsers } from './store/user/actions';
 import { restoreProvider } from './store/provider/actions';
 import { restoreCollapsedThreads } from './store/thread/actions';
+import parseQuery from './utils/parseQuery';
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
@@ -55,16 +56,7 @@ async function init(): Promise<void> {
   boundActions.restoreProvider();
   boundActions.restoreCollapsedThreads();
 
-  const params = window.location.search
-    .replace(/^\?/, '')
-    .split('&')
-    .reduce<{ [key: string]: string }>((memo, value) => {
-      const vals = value.split('=');
-      if (vals.length === 2) {
-        memo[vals[0]] = vals[1];
-      }
-      return memo;
-    }, {});
+  const params = parseQuery();
   const locale = getLocale(params);
   const messages = await loadLocale(locale).catch(() => ({}));
   StaticStore.config = await api.getConfig();
