@@ -64,12 +64,10 @@ async function init(): Promise<void> {
   if (params.page === 'user-info') {
     return render(
       <IntlProvider locale={locale} messages={messages}>
-        <div id={NODE_ID}>
-          <div className="root root_user-info">
-            <Provider store={reduxStore}>
-              <UserInfo />
-            </Provider>
-          </div>
+        <div className="root root_user-info">
+          <Provider store={reduxStore}>
+            <UserInfo />
+          </Provider>
         </div>
       </IntlProvider>,
       node

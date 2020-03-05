@@ -5,13 +5,7 @@ import b from 'bem-react-helper';
 import { IntlShape, useIntl, FormattedMessage, defineMessages } from 'react-intl';
 
 import { User, Sorting, AuthProvider } from '@app/common/types';
-import {
-  NODE_ID,
-  COMMENT_NODE_CLASSNAME_PREFIX,
-  MAX_SHOWN_ROOT_COMMENTS,
-  THEMES,
-  IS_MOBILE,
-} from '@app/common/constants';
+import { COMMENT_NODE_CLASSNAME_PREFIX, MAX_SHOWN_ROOT_COMMENTS, THEMES, IS_MOBILE } from '@app/common/constants';
 import { maxShownComments } from '@app/common/settings';
 
 import { StaticStore } from '@app/common/static_store';
@@ -205,11 +199,7 @@ export class Root extends Component<Props, State> {
 
   render(props: Props, { isUserLoading, isCommentsListLoading, commentsShown, isSettingsVisible }: State) {
     if (isUserLoading) {
-      return (
-        <div id={NODE_ID} className={b('root', {}, { theme: props.theme })}>
-          <Preloader mix="root__preloader" />
-        </div>
-      );
+      return <Preloader mix="root__preloader" />;
     }
 
     const isGuest = !props.user;
@@ -217,7 +207,7 @@ export class Root extends Component<Props, State> {
     const imageUploadHandler = this.isAnonymous() ? undefined : this.props.uploadImage;
 
     return (
-      <div id={NODE_ID} className={b('root', {}, { theme: props.theme })}>
+      <Fragment>
         <AuthPanel
           theme={this.props.theme}
           user={this.props.user}
@@ -235,7 +225,6 @@ export class Root extends Component<Props, State> {
           onCommentsDisable={this.props.disableComments}
           onSortChange={this.props.changeSort}
         />
-
         <div className="root__main">
           {isSettingsVisible ? (
             <Settings
@@ -317,21 +306,7 @@ export class Root extends Component<Props, State> {
             </Fragment>
           )}
         </div>
-
-        <p className="root__copyright" role="contentinfo">
-          <FormattedMessage
-            id="root.powered-by"
-            defaultMessage="Powered by <a>Remark42</a>"
-            values={{
-              a: (title: string) => (
-                <a class="root__copyright-link" href="https://remark42.com/">
-                  {title}
-                </a>
-              ),
-            }}
-          />
-        </p>
-      </div>
+      </Fragment>
     );
   }
 }
@@ -341,5 +316,23 @@ export const ConnectedRoot: FunctionComponent = () => {
   const props = useSelector(mapStateToProps);
   const actions = useActions(boundActions);
   const intl = useIntl();
-  return <Root {...props} {...actions} intl={intl} />;
+
+  return (
+    <div className={b('root', {}, { theme: props.theme })}>
+      <Root {...props} {...actions} intl={intl} />
+      <p className="root__copyright" role="contentinfo">
+        <FormattedMessage
+          id="root.powered-by"
+          defaultMessage="Powered by <a>Remark42</a>"
+          values={{
+            a: (title: string) => (
+              <a class="root__copyright-link" href="https://remark42.com/">
+                {title}
+              </a>
+            ),
+          }}
+        />
+      </p>
+    </div>
+  );
 };
