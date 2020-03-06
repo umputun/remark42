@@ -14,13 +14,13 @@
   cursor: pointer;
 
   &:hover {
-    border-color: #0aa;
-    color: #0aa;
+    border-color: var(--color9);
+    color: var(--color9);
   }
 
   &.comment__action_selected {
     &:hover {
-      background: #0aa;
+      background: var(--color9);
     }
   }
 }

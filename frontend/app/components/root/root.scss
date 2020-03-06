@@ -3,7 +3,7 @@
   font-family: 'PT Sans', Helvetica, Arial, sans-serif;
 
   ::selection {
-    background: #c6efef;
+    background: var(--color42);
   }
 
   &_user-info {

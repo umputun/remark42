@@ -1,11 +1,11 @@
 .settings_theme_dark {
   .settings__action {
     &::before {
-      color: #ddd;
+      color: var(--color20);
     }
   }
 
   .settings__blocked-users-username {
-    color: #eee;
+    color: var(--color5);
   }
 }

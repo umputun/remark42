@@ -1,15 +1,4 @@
 .raw-content {
-  --chroma-bg: rgba(0, 0, 0, 0.05);
-  --chroma-base: #586e75;
-  --chroma-c: #7d7d7d;
-  --chroma-01: #589000;
-  --chroma-02: #cb4b16;
-  --chroma-03: #268bd2;
-  --chroma-04: #2aa198;
-  --chroma-05: #859900;
-  --chroma-06: #d33682;
-  --chroma-07: #00aee2;
-
   .root_theme_dark & {
     --chroma-bg: rgba(255, 255, 255, 0.1);
     --chroma-base: #93a1a1;
@@ -44,10 +33,10 @@
   }
 
   a {
-    color: #0aa;
+    color: var(--color9);
 
     &:hover {
-      color: #06c5c5;
+      color: var(--color33);
       text-decoration: none;
     }
   }
@@ -90,7 +79,7 @@
     }
 
     tr {
-      border-top: 1px solid #b7dddd;
+      border-top: 1px solid var(--color43);
     }
   }
 

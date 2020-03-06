@@ -13,7 +13,7 @@ import './__button/_type/_send/comment-form__button_type_send.scss';
 import './__control-panel/comment-form__control-panel.scss';
 import './__counter/comment-form__counter.scss';
 import './__error/comment-form__error.scss';
-import './__field/comment-form__field.scss';
+import './__field/comment-form__field.pcss';
 import './__field-wrapper/comment-form__field-wrapper.scss';
 import './__preview/comment-form__preview.scss';
 import './__preview-wrapper/comment-form__preview-wrapper.scss';

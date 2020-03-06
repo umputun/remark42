@@ -1,14 +1,14 @@
 .button_kind_link {
   background: transparent;
   font-weight: bold;
-  color: #0aa;
+  color: var(--color9);
 
   &:hover {
-    color: #06c5c5;
+    color: var(--color33);
   }
 
   &:disabled,
   &:hover:disabled {
-    color: #0aa;
+    color: var(--color9);
   }
 }

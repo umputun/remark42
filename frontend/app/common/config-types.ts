@@ -17,6 +17,8 @@ export interface CommentsConfig {
   page_title?: string;
   node?: string;
   locale?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  __colors__?: any;
 }
 
 export interface LastCommentsConfig {
