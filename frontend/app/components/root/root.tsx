@@ -127,18 +127,23 @@ export class Root extends Component<Props, State> {
     window.addEventListener('message', this.onMessage.bind(this));
   }
 
-  fetchComments(sort = this.state.sort) {
-    return this.props.fetchComments(sort);
+  fetchComments() {
+    return this.props.fetchComments(this.state.sort);
   }
 
-  async changeSort(sort: Sorting) {
+  changeSort = async (sort: Sorting) => {
     if (sort === this.state.sort) return;
-    this.setState({ isCommentsListLoading: true });
-    await this.fetchComments(sort).catch(() => {});
-    this.setState({ sort });
-    localStorage.setItem(LS_SORT_KEY, sort);
-    this.setState({ isCommentsListLoading: false });
-  }
+    const prevSort = this.state.sort;
+
+    this.setState({ isCommentsListLoading: true, sort });
+    try {
+      await this.fetchComments();
+      localStorage.setItem(LS_SORT_KEY, sort);
+      this.setState({ isCommentsListLoading: false });
+    } catch (e) {
+      this.setState({ sort: prevSort, isCommentsListLoading: false });
+    }
+  };
 
   logIn = async (provider: AuthProvider): Promise<User | null> => {
     const user = await this.props.logIn(provider);
@@ -153,11 +158,7 @@ export class Root extends Component<Props, State> {
     await this.fetchComments();
   };
 
-  checkUrlHash(
-    e: Event & {
-      newURL?: string;
-    }
-  ) {
+  checkUrlHash(e: Event & { newURL?: string }) {
     const hash = e ? `#${e.newURL!.split('#')[1]}` : window.location.hash;
 
     if (hash.indexOf(`#${COMMENT_NODE_CLASSNAME_PREFIX}`) === 0) {
