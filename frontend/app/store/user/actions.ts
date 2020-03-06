@@ -12,6 +12,7 @@ import {
   USER_HIDE,
   USER_UNHIDE,
   USER_SUBSCRIPTION_SET,
+  USER_SET_ACTION,
 } from './types';
 import { unsetCommentMode } from '../comments/actions';
 import { IS_STORAGE_AVAILABLE, LS_HIDDEN_USERS_KEY } from '@app/common/constants';
@@ -19,32 +20,32 @@ import { getItem } from '@app/common/local-storage';
 import { updateProvider } from '../provider/actions';
 import { COMMENTS_PATCH } from '../comments/types';
 
-export const fetchUser = (): StoreAction<Promise<User | null>> => async dispatch => {
-  const user = await api.getUser();
-  dispatch({
+function setUser(user: User | null = null) {
+  return {
     type: USER_SET,
     user,
-  });
+  } as USER_SET_ACTION;
+}
+
+export const fetchUser = (): StoreAction<Promise<User | null>> => async dispatch => {
+  const user = await api.getUser();
+  dispatch(setUser(user));
   return user;
 };
 
 export const logIn = (provider: AuthProvider): StoreAction<Promise<User | null>> => async dispatch => {
   const user = await api.logIn(provider);
+
   dispatch(updateProvider({ name: provider.name }));
-  dispatch({
-    type: USER_SET,
-    user,
-  });
+  dispatch(setUser(user));
+
   return user;
 };
 
 export const logout = (): StoreAction<Promise<void>> => async dispatch => {
   await api.logOut();
   dispatch(unsetCommentMode());
-  dispatch({
-    type: USER_SET,
-    user: null,
-  });
+  dispatch(setUser());
 };
 
 export const fetchBlockedUsers = (): StoreAction<Promise<BlockedUser[]>> => async dispatch => {

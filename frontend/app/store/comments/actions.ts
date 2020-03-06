@@ -2,9 +2,9 @@ import api from '@app/common/api';
 import { Tree, Comment, CommentMode, Node, Sorting } from '@app/common/types';
 
 import { StoreAction, StoreState } from '../index';
-import { POST_INFO_SET } from '../post_info/types';
+import { setPostInfo } from '../post_info/actions';
 import { filterTree } from './utils';
-import { COMMENTS_SET, COMMENT_MODE_SET, COMMENTS_APPEND, COMMENTS_EDIT } from './types';
+import { COMMENTS_SET, COMMENT_MODE_SET, COMMENTS_APPEND, COMMENTS_EDIT, COMMENT_MODE_SET_ACTION } from './types';
 
 /** sets comments, and put pinned comments in cache */
 export const setComments = (comments: Node[]): StoreAction<void> => dispatch => {
@@ -77,10 +77,7 @@ export const fetchComments = (sort: Sorting): StoreAction<Promise<Tree>> => asyn
   }
 
   dispatch(setComments(data.comments));
-  dispatch({
-    type: POST_INFO_SET,
-    info: data.info,
-  });
+  dispatch(setPostInfo(data.info));
 
   return data;
 };
@@ -90,16 +87,13 @@ export const setCommentMode = (mode: StoreState['activeComment']): StoreAction<v
   if (mode !== null && mode.state === CommentMode.None) {
     mode = null;
   }
-  dispatch({
-    type: COMMENT_MODE_SET,
-    mode,
-  });
+  dispatch(unsetCommentMode(mode));
 };
 
 /** unsets comment mode */
-export const unsetCommentMode = (): StoreAction<void> => dispatch => {
-  dispatch({
+export function unsetCommentMode(mode: StoreState['activeComment'] = null) {
+  return {
     type: COMMENT_MODE_SET,
-    mode: null,
-  });
-};
+    mode,
+  } as COMMENT_MODE_SET_ACTION;
+}
