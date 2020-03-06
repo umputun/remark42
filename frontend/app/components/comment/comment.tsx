@@ -252,7 +252,7 @@ class Comment extends Component<Props, State> {
       : intl.formatMessage(messages.unverifyUser, { userName });
 
     if (confirm(promptMessage)) {
-      this.props.setVerifyStatus!(userId, value);
+      this.props.setVerifiedStatus!(userId, value);
     }
   };
 

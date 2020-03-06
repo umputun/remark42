@@ -1,4 +1,4 @@
-import api from '@app/common/api';
+import { getUserComments } from '@app/common/api';
 import { Comment } from '@app/common/types';
 import { userInfo } from '@app/common/user-info-settings';
 
@@ -10,7 +10,7 @@ export const fetchInfo = (): StoreAction<Promise<Comment[] | null>> => async dis
     return null;
   }
   // TODO: limit
-  const info = await api.getUserComments(userInfo.id, 10);
+  const info = await getUserComments(userInfo.id, 10);
   dispatch({
     type: USER_INFO_SET,
     id: userInfo.id,

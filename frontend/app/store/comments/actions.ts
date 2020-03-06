@@ -1,4 +1,4 @@
-import api from '@app/common/api';
+import * as api from '@app/common/api';
 import { Tree, Comment, CommentMode, Node, Sorting } from '@app/common/types';
 
 import { StoreAction, StoreState } from '../index';

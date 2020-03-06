@@ -24,7 +24,7 @@ import '@app/components/list-comments';
 
 import { NODE_ID, BASE_URL } from '@app/common/constants';
 import { StaticStore } from '@app/common/static_store';
-import api from '@app/common/api';
+import { getConfig } from '@app/common/api';
 import { fetchHiddenUsers } from './store/user/actions';
 import { restoreProvider } from './store/provider/actions';
 import { restoreCollapsedThreads } from './store/thread/actions';
@@ -59,7 +59,7 @@ async function init(): Promise<void> {
   const params = parseQuery();
   const locale = getLocale(params);
   const messages = await loadLocale(locale).catch(() => ({}));
-  StaticStore.config = await api.getConfig();
+  StaticStore.config = await getConfig();
 
   if (params.page === 'user-info') {
     return render(

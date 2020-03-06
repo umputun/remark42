@@ -292,31 +292,3 @@ export const emailConfirmationForSubscribe = (token: string) =>
  * Decline current subscription to updates
  */
 export const unsubscribeFromEmailUpdates = () => fetcher.delete({ url: `/email`, withCredentials: true });
-
-export default {
-  logIn,
-  logOut,
-  getConfig,
-  getPostComments,
-  getCommentsCount,
-  getComment,
-  getUserComments,
-  putCommentVote,
-  addComment,
-  updateComment,
-  removeMyComment,
-  getUser,
-  getPreview,
-
-  pinComment,
-  unpinComment,
-  setVerifyStatus: setVerifiedStatus,
-  removeVerifyStatus: removeVerifiedStatus,
-  removeComment,
-  blockUser,
-  unblockUser,
-  getBlocked,
-  disableComments,
-  enableComments,
-  uploadImage,
-};

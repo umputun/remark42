@@ -1,4 +1,4 @@
-import api from '@app/common/api';
+import * as api from '@app/common/api';
 import { User, BlockedUser, AuthProvider, BlockTTL } from '@app/common/types';
 import { ttlToTime } from '@app/utils/ttl-to-time';
 
@@ -134,9 +134,9 @@ export const setVerifiedStatus = (id: User['id'], status: boolean): StoreAction<
   getState
 ) => {
   if (status) {
-    await api.setVerifyStatus(id);
+    await api.setVerifiedStatus(id);
   } else {
-    await api.removeVerifyStatus(id);
+    await api.removeVerifiedStatus(id);
   }
   const comments = Object.values(getState().comments).filter(c => c.user.id === id);
   if (!comments.length) return;
