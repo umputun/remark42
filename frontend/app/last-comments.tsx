@@ -9,14 +9,17 @@ if (process.env.NODE_ENV === 'development') {
 }
 import loadPolyfills from '@app/common/polyfills';
 import { createElement, render } from 'preact';
-import 'preact/debug';
-import { getLastComments } from './common/api';
-import { LastCommentsConfig } from '@app/common/config-types';
-import { BASE_URL, DEFAULT_LAST_COMMENTS_MAX, LAST_COMMENTS_NODE_CLASSNAME } from '@app/common/constants';
-import { ListComments } from '@app/components/list-comments';
 import { IntlProvider } from 'react-intl';
-import { loadLocale } from './utils/loadLocale';
-import { getLocale } from './utils/getLocale';
+
+import getLastComments from '@app/common/api.getLastComments';
+import { LastCommentsConfig } from '@app/common/config-types';
+import { BASE_URL } from '@app/common/constants.config';
+import { loadLocale } from '@app/utils/loadLocale';
+import { getLocale } from '@app/utils/getLocale';
+import { ListComments } from '@app/components/list-comments';
+
+const LAST_COMMENTS_NODE_CLASSNAME = 'remark42__last-comments';
+const DEFAULT_LAST_COMMENTS_MAX = 15;
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);

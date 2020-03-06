@@ -6,8 +6,6 @@ export const API_BASE = configConstant.API_BASE;
 export const NODE_ID = configConstant.NODE_ID;
 export const COMMENT_NODE_CLASSNAME_PREFIX = configConstant.COMMENT_NODE_CLASSNAME_PREFIX;
 export const LAST_COMMENTS_NODE_CLASSNAME = 'remark42__last-comments';
-export const DEFAULT_LAST_COMMENTS_MAX = 15;
-export const DEFAULT_MAX_COMMENT_SIZE = 1000;
 export const MAX_SHOWN_ROOT_COMMENTS = 10;
 
 export const DEFAULT_SORT: Sorting = '-active';

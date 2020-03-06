@@ -1,20 +1,16 @@
 /** @jsx createElement */
-import { createElement } from 'preact';
+import { createElement, FunctionComponent } from 'preact';
 
 import { NODE_ID } from '@app/common/constants';
 import { Comment as CommentType } from '@app/common/types';
-
 import { Comment } from '@app/components/comment';
 
-interface Props {
-  comments: CommentType[];
-}
-
-export const ListComments = ({ comments = [] }: Props) => (
+export const ListComments: FunctionComponent<{ comments: CommentType[] }> = ({ comments = [] }) => (
   <div id={NODE_ID}>
     <div className="list-comments">
       {comments.map(comment => (
         <Comment
+          key={comment.id}
           CommentForm={null}
           data={comment}
           level={0}

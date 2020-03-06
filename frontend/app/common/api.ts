@@ -4,7 +4,6 @@ import { Config, Comment, Tree, User, BlockedUser, Sorting, AuthProvider, BlockT
 import fetcher from './fetcher';
 
 /* common */
-
 const __loginAnonymously = (username: string): Promise<User | null> => {
   const url = `/auth/anonymous/login?user=${encodeURIComponent(username)}&aud=${siteId}&from=${encodeURIComponent(
     location.origin + location.pathname + '?selfClose'
@@ -75,9 +74,6 @@ export const getPostComments = (sort: Sorting): Promise<Tree> =>
     url: `/find?site=${siteId}&url=${url}&sort=${sort}&format=tree`,
     withCredentials: true,
   });
-
-export const getLastComments = (siteId: string, max: number): Promise<Comment[]> =>
-  fetcher.get(`/last/${max}?site=${siteId}`);
 
 export const getCommentsCount = (siteId: string, urls: string[]): Promise<{ url: string; count: number }[]> =>
   fetcher.post({
@@ -302,7 +298,6 @@ export default {
   logOut,
   getConfig,
   getPostComments,
-  getLastComments,
   getCommentsCount,
   getComment,
   getUserComments,
