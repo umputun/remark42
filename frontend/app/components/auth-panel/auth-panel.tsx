@@ -108,9 +108,7 @@ export class AuthPanel extends Component<Props, State> {
   }
 
   onSortChange(e: Event) {
-    if (this.props.onSortChange) {
-      this.props.onSortChange((e.target! as HTMLOptionElement).value as Sorting);
-    }
+    this.props.onSortChange((e.target! as HTMLOptionElement).value as Sorting);
   }
 
   onSortFocus = () => {
@@ -384,6 +382,7 @@ export class AuthPanel extends Component<Props, State> {
     const { sort } = this.props;
     const { sortSelectFocused } = this.state;
     const sortArray = getSortArray(sort, this.props.intl);
+
     return (
       <span className="auth-panel__sort">
         <FormattedMessage id="commentSort.sort-by" defaultMessage="Sort by" />{' '}

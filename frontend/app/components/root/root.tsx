@@ -5,7 +5,14 @@ import b from 'bem-react-helper';
 import { IntlShape, useIntl, FormattedMessage, defineMessages } from 'react-intl';
 
 import { User, Sorting, AuthProvider } from '@app/common/types';
-import { COMMENT_NODE_CLASSNAME_PREFIX, MAX_SHOWN_ROOT_COMMENTS, THEMES, IS_MOBILE } from '@app/common/constants';
+import {
+  COMMENT_NODE_CLASSNAME_PREFIX,
+  MAX_SHOWN_ROOT_COMMENTS,
+  THEMES,
+  IS_MOBILE,
+  LS_SORT_KEY,
+  DEFAULT_SORT,
+} from '@app/common/constants';
 import { maxShownComments } from '@app/common/settings';
 
 import { StaticStore } from '@app/common/static_store';
@@ -23,7 +30,6 @@ import {
 import { fetchComments } from '@app/store/comments/actions';
 import { setCommentsReadOnlyState } from '@app/store/post_info/actions';
 import { setTheme } from '@app/store/theme/actions';
-import { changeSort } from '@app/store/sort/actions';
 import { addComment, updateComment } from '@app/store/comments/actions';
 
 import { AuthPanel } from '@app/components/auth-panel';
@@ -38,10 +44,10 @@ import { isUserAnonymous } from '@app/utils/isUserAnonymous';
 import { bindActions } from '@app/utils/actionBinder';
 import postMessage from '@app/utils/postMessage';
 import { useActions } from '@app/hooks/useAction';
+import * as localStorage from '@app/common/local-storage';
 
 const mapStateToProps = (state: StoreState) => ({
   user: state.user,
-  sort: state.sort,
   topComments: state.topComments,
   pinnedComments: state.pinnedComments.map(id => state.comments[id]).filter(c => !c.hidden),
   provider: state.provider,
@@ -62,7 +68,6 @@ const boundActions = bindActions({
   setTheme,
   enableComments: () => setCommentsReadOnlyState(false),
   disableComments: () => setCommentsReadOnlyState(true),
-  changeSort,
   blockUser,
   unblockUser,
   hideUser,
@@ -74,6 +79,7 @@ const boundActions = bindActions({
 type Props = ReturnType<typeof mapStateToProps> & typeof boundActions & { intl: IntlShape };
 
 interface State {
+  sort: string;
   isUserLoading: boolean;
   isCommentsListLoading: boolean;
   isSettingsVisible: boolean;
@@ -88,9 +94,20 @@ const messages = defineMessages({
   },
 });
 
+function getInitialSort() {
+  const sort = localStorage.getItem(LS_SORT_KEY) as Sorting;
+
+  if (sort) {
+    return sort;
+  }
+
+  return DEFAULT_SORT;
+}
+
 /** main component fr main comments widget */
 export class Root extends Component<Props, State> {
   state = {
+    sort: getInitialSort(),
     isUserLoading: true,
     isCommentsListLoading: true,
     commentsShown: maxShownComments,
@@ -101,7 +118,7 @@ export class Root extends Component<Props, State> {
   componentWillMount() {
     const userloading = this.props.fetchUser().finally(() => this.setState({ isUserLoading: false }));
 
-    Promise.all([userloading, this.props.fetchComments()]).finally(() => {
+    Promise.all([userloading, this.fetchComments()]).finally(() => {
       postMessage({ remarkIframeHeight: document.body.offsetHeight });
       this.setState({ isCommentsListLoading: false });
       setTimeout(this.checkUrlHash);
@@ -111,17 +128,30 @@ export class Root extends Component<Props, State> {
     window.addEventListener('message', this.onMessage.bind(this));
   }
 
+  fetchComments(sort = this.state.sort) {
+    return this.props.fetchComments(sort);
+  }
+
+  async changeSort(sort: Sorting) {
+    if (sort === this.state.sort) return;
+    this.setState({ isCommentsListLoading: true });
+    await this.fetchComments(sort).catch(() => {});
+    this.setState({ sort });
+    localStorage.setItem(LS_SORT_KEY, sort);
+    this.setState({ isCommentsListLoading: false });
+  }
+
   logIn = async (provider: AuthProvider): Promise<User | null> => {
     const user = await this.props.logIn(provider);
 
-    await this.props.fetchComments();
+    await this.fetchComments();
 
     return user;
   };
 
   logOut = async (): Promise<void> => {
     await this.props.logOut();
-    await this.props.fetchComments();
+    await this.fetchComments();
   };
 
   checkUrlHash(
@@ -165,20 +195,13 @@ export class Root extends Component<Props, State> {
   onBlockedUsersHide = async () => {
     // if someone was unblocked let's reload comments
     if (this.state.wasSomeoneUnblocked) {
-      this.props.fetchComments();
+      this.fetchComments();
     }
     this.setState({
       wasSomeoneUnblocked: false,
       isSettingsVisible: false,
     });
   };
-
-  async changeSort(sort: Sorting) {
-    if (sort === this.props.sort) return;
-    this.setState({ isCommentsListLoading: true });
-    await this.props.changeSort(sort).catch(() => {});
-    this.setState({ isCommentsListLoading: false });
-  }
 
   onUnblockSomeone = () => {
     this.setState({ wasSomeoneUnblocked: true });
@@ -212,7 +235,7 @@ export class Root extends Component<Props, State> {
           theme={this.props.theme}
           user={this.props.user}
           hiddenUsers={this.props.hiddenUsers}
-          sort={this.props.sort}
+          sort={this.state.sort}
           isCommentsDisabled={isCommentsDisabled}
           postInfo={this.props.info}
           providers={StaticStore.config.auth_providers}
@@ -223,7 +246,7 @@ export class Root extends Component<Props, State> {
           onBlockedUsersHide={this.onBlockedUsersHide}
           onCommentsEnable={this.props.enableComments}
           onCommentsDisable={this.props.disableComments}
-          onSortChange={this.props.changeSort}
+          onSortChange={this.changeSort}
         />
         <div className="root__main">
           {isSettingsVisible ? (

@@ -28,8 +28,8 @@ export const LS_COLLAPSE_KEY = '__remarkCollapsed';
 /** locastorage key for hidden users */
 export const LS_HIDDEN_USERS_KEY = '__remarkHiddenUsers';
 
-/** cookie key under which sort preference resides */
-export const COOKIE_SORT_KEY = 'remarkSort';
+/** localstorage key under which sort preference resides */
+export const LS_SORT_KEY = '__remarkSort';
 
 export const THEMES: Theme[] = ['light', 'dark'];
 
