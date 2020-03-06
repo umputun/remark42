@@ -13,27 +13,12 @@ export function setPostInfo(info: PostInfo) {
 }
 
 /** set state of post: readonly or not */
-export const setCommentsReadOnlyState = (read_only: boolean): StoreAction<Promise<boolean>> => async (
-  dispatch,
-  getState
-) => {
-  const { info } = getState();
+export function setCommentsReadOnlyState(read_only: boolean): StoreAction<Promise<void>> {
+  return async (dispatch, getState) => {
+    const { info } = getState();
 
-  await (read_only ? disableComments() : enableComments());
-  dispatch(unsetCommentMode());
-  dispatch(setPostInfo({ ...info, read_only }));
-
-  return read_only;
-};
-
-/** toggles state of post: readonly or not */
-export const toggleCommentsReadOnlyState = (): StoreAction<Promise<boolean>> => async (dispatch, getState) => {
-  const { info } = getState();
-  const { read_only } = info;
-
-  await (read_only ? disableComments() : enableComments());
-  dispatch(unsetCommentMode());
-  dispatch(setPostInfo({ ...info, read_only }));
-
-  return read_only!;
-};
+    await (read_only ? disableComments() : enableComments());
+    dispatch(unsetCommentMode());
+    dispatch(setPostInfo({ ...info, read_only }));
+  };
+}

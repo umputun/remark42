@@ -32,8 +32,7 @@ interface PropsWithoutIntl {
   onSortChange(s: Sorting): Promise<void>;
   onSignIn(p: AuthProvider): Promise<User | null>;
   onSignOut(): Promise<void>;
-  onCommentsEnable(): Promise<boolean>;
-  onCommentsDisable(): Promise<boolean>;
+  onCommentsChangeReadOnlyMode(readOnly: boolean): Promise<void>;
   onBlockedUsersShow(): void;
   onBlockedUsersHide(): void;
 }
@@ -76,7 +75,6 @@ export class AuthPanel extends Component<Props, State> {
     };
 
     this.toggleBlockedVisibility = this.toggleBlockedVisibility.bind(this);
-    this.toggleCommentsAvailability = this.toggleCommentsAvailability.bind(this);
     this.onSortChange = this.onSortChange.bind(this);
     this.onSignIn = this.onSignIn.bind(this);
     this.onEmailSignIn = this.onEmailSignIn.bind(this);
@@ -129,13 +127,9 @@ export class AuthPanel extends Component<Props, State> {
     this.setState({ isBlockedVisible: !this.state.isBlockedVisible });
   }
 
-  toggleCommentsAvailability() {
-    if (this.props.isCommentsDisabled) {
-      this.props.onCommentsEnable && this.props.onCommentsEnable();
-    } else {
-      this.props.onCommentsDisable && this.props.onCommentsDisable();
-    }
-  }
+  toggleCommentsAvailability = () => {
+    this.props.onCommentsChangeReadOnlyMode(!this.props.isCommentsDisabled);
+  };
 
   toggleUserInfoVisibility() {
     const user = this.props.user;
@@ -366,7 +360,7 @@ export class AuthPanel extends Component<Props, State> {
       <Button
         kind="link"
         mix="auth-panel__admin-action"
-        {...getHandleClickProps(() => this.toggleCommentsAvailability())}
+        {...getHandleClickProps(this.toggleCommentsAvailability)}
         role="link"
       >
         {isCommentsDisabled ? (

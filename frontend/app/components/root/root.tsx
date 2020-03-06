@@ -66,8 +66,7 @@ const boundActions = bindActions({
   logIn,
   logOut: logout,
   setTheme,
-  enableComments: () => setCommentsReadOnlyState(false),
-  disableComments: () => setCommentsReadOnlyState(true),
+  setCommentsReadOnlyState,
   blockUser,
   unblockUser,
   hideUser,
@@ -226,7 +225,7 @@ export class Root extends Component<Props, State> {
     }
 
     const isGuest = !props.user;
-    const isCommentsDisabled = !!props.info.read_only;
+    const isCommentsDisabled = props.info.read_only!;
     const imageUploadHandler = this.isAnonymous() ? undefined : this.props.uploadImage;
 
     return (
@@ -244,8 +243,7 @@ export class Root extends Component<Props, State> {
           onSignOut={this.logOut}
           onBlockedUsersShow={this.onBlockedUsersShow}
           onBlockedUsersHide={this.onBlockedUsersHide}
-          onCommentsEnable={this.props.enableComments}
-          onCommentsDisable={this.props.disableComments}
+          onCommentsChangeReadOnlyMode={this.props.setCommentsReadOnlyState}
           onSortChange={this.changeSort}
         />
         <div className="root__main">
