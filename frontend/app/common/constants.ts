@@ -1,10 +1,6 @@
 import { Sorting, AuthProvider, Theme } from './types';
-import * as configConstant from './constants.config';
 
-export const BASE_URL = configConstant.BASE_URL;
-export const API_BASE = configConstant.API_BASE;
-export const NODE_ID = configConstant.NODE_ID;
-export const COMMENT_NODE_CLASSNAME_PREFIX = configConstant.COMMENT_NODE_CLASSNAME_PREFIX;
+export { BASE_URL, API_BASE, NODE_ID, COMMENT_NODE_CLASSNAME_PREFIX } from './constants.config';
 export const LAST_COMMENTS_NODE_CLASSNAME = 'remark42__last-comments';
 export const MAX_SHOWN_ROOT_COMMENTS = 10;
 
@@ -28,8 +24,8 @@ export const LS_COLLAPSE_KEY = '__remarkCollapsed';
 /** locastorage key for hidden users */
 export const LS_HIDDEN_USERS_KEY = '__remarkHiddenUsers';
 
-/** cookie key under which sort preference resides */
-export const COOKIE_SORT_KEY = 'remarkSort';
+/** localstorage key under which sort preference resides */
+export const LS_SORT_KEY = '__remarkSort';
 
 export const THEMES: Theme[] = ['light', 'dark'];
 

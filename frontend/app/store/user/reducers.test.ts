@@ -1,4 +1,4 @@
-import api from '@app/common/api';
+import * as api from '@app/common/api';
 import { User } from '@app/common/types';
 
 import { fetchUser, logIn, logout } from './actions';

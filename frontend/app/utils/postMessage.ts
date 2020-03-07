@@ -7,7 +7,8 @@ export type Message =
       user: User;
     }
   | { isUserInfoShown: false }
-  | { scrollTo: number };
+  | { scrollTo: number }
+  | { remarkIframeHeight: number };
 
 /**
  * Sends message to parent window

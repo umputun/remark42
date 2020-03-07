@@ -69,7 +69,7 @@ export const boundActions = bindActions({
   blockUser,
   unblockUser,
   hideUser,
-  setVerifyStatus: setVerifiedStatus,
+  setVerifiedStatus,
 });
 
 export const ConnectedComment: FunctionComponent<Omit<Props, keyof (ProvidedProps & typeof bindActions)>> = props => {

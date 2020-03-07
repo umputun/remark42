@@ -1,11 +1,6 @@
-/* eslint-disable no-console, @typescript-eslint/no-explicit-any */
-declare let remark_config: CommentsConfig;
-
+/* eslint-disable no-console */
 import { BASE_URL, NODE_ID, COMMENT_NODE_CLASSNAME_PREFIX } from '@app/common/constants.config';
 import { UserInfo, Theme } from '@app/common/types';
-import { CommentsConfig } from '@app/common/config-types';
-
-const HOST = remark_config.host || BASE_URL;
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
@@ -28,7 +23,7 @@ function createFrame({
   host: string;
   query: string;
   height?: string;
-  __colors__?: any;
+  __colors__?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
 }) {
   const iframe = document.createElement('iframe');
   iframe.src = `${host}/web/iframe.html?${query}`;
@@ -51,8 +46,8 @@ function createFrame({
   return iframe;
 }
 
-function init(): void {
-  const node = document.getElementById(remark_config.node || NODE_ID);
+function init() {
+  const node = document.getElementById(window.remark_config.node || NODE_ID);
 
   if (!node) {
     console.error("Remark42: Can't find root node.");
@@ -60,29 +55,33 @@ function init(): void {
   }
 
   try {
-    remark_config = remark_config || {};
+    window.remark_config = window.remark_config || {};
   } catch (e) {
     console.error('Remark42: Config object is undefined.');
     return;
   }
 
-  if (!remark_config.site_id) {
+  if (!window.remark_config.site_id) {
     console.error('Remark42: Site ID is undefined.');
     return;
   }
 
-  remark_config.url = (remark_config.url || window.location.origin + window.location.pathname).split('#')[0];
+  window.remark_config.url = (window.remark_config.url || window.location.origin + window.location.pathname).split(
+    '#'
+  )[0];
 
-  (window as any).REMARK42 = (window as any).REMARK42 || {};
-  (window as any).REMARK42.changeTheme = changeTheme;
+  window.REMARK42 = window.REMARK42 || {};
+  window.REMARK42.changeTheme = changeTheme;
 
-  const query = Object.keys(remark_config)
-    .filter((key: any) => key !== `__colors__`)
-    .map((key: any) => {
-      return `${encodeURIComponent(key)}=${encodeURIComponent((remark_config as any)[key])}`;
+  const query = Object.keys(window.remark_config)
+    .filter(key => key !== '__colors__')
+    .map(key => {
+      return `${encodeURIComponent(key)}=${encodeURIComponent(
+        window.remark_config[key as keyof typeof window.remark_config]
+      )}`;
     })
     .join('&');
-  const iframe = createFrame({ host: HOST, query, __colors__: remark_config.__colors__ });
+  const iframe = createFrame({ host: BASE_URL, query, __colors__: window.remark_config.__colors__ });
 
   node.appendChild(iframe);
 
@@ -195,7 +194,7 @@ function init(): void {
         query +
         '&page=user-info&' +
         `&id=${user.id}&name=${user.name}&picture=${user.picture || ''}&isDefaultPicture=${user.isDefaultPicture || 0}`;
-      const iframe = createFrame({ host: HOST, query: queryUserInfo, height: '100%' });
+      const iframe = createFrame({ host: BASE_URL, query: queryUserInfo, height: '100%' });
       this.node.appendChild(iframe);
       this.iframe = iframe;
       this.node.appendChild(this.closeEl);
@@ -284,11 +283,7 @@ function init(): void {
     } catch (e) {}
   }
 
-  function postHashToIframe(
-    e?: Event & {
-      newURL: string;
-    }
-  ): void {
+  function postHashToIframe(e?: Event & { newURL: string }) {
     const hash = e ? `#${e.newURL.split('#')[1]}` : window.location.hash;
 
     if (hash.indexOf(`#${COMMENT_NODE_CLASSNAME_PREFIX}`) === 0) {
@@ -298,17 +293,17 @@ function init(): void {
     }
   }
 
-  function postTitleToIframe(title: string): void {
+  function postTitleToIframe(title: string) {
     iframe.contentWindow!.postMessage(JSON.stringify({ title }), '*');
   }
 
-  function postClickOutsideToIframe(e: MouseEvent): void {
+  function postClickOutsideToIframe(e: MouseEvent) {
     if (!iframe.contains(e.target as Node)) {
       iframe.contentWindow!.postMessage(JSON.stringify({ clickOutside: true }), '*');
     }
   }
 
-  function changeTheme(theme: Theme): void {
+  function changeTheme(theme: Theme) {
     iframe.contentWindow!.postMessage(JSON.stringify({ theme }), '*');
   }
 }

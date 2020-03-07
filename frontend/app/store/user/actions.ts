@@ -1,4 +1,4 @@
-import api from '@app/common/api';
+import * as api from '@app/common/api';
 import { User, BlockedUser, AuthProvider, BlockTTL } from '@app/common/types';
 import { ttlToTime } from '@app/utils/ttl-to-time';
 
@@ -12,7 +12,7 @@ import {
   USER_HIDE,
   USER_UNHIDE,
   USER_SUBSCRIPTION_SET,
-  SETTINGS_VISIBLE_SET,
+  USER_SET_ACTION,
 } from './types';
 import { unsetCommentMode } from '../comments/actions';
 import { IS_STORAGE_AVAILABLE, LS_HIDDEN_USERS_KEY } from '@app/common/constants';
@@ -20,32 +20,32 @@ import { getItem } from '@app/common/local-storage';
 import { updateProvider } from '../provider/actions';
 import { COMMENTS_PATCH } from '../comments/types';
 
-export const fetchUser = (): StoreAction<Promise<User | null>> => async dispatch => {
-  const user = await api.getUser();
-  dispatch({
+function setUser(user: User | null = null) {
+  return {
     type: USER_SET,
     user,
-  });
+  } as USER_SET_ACTION;
+}
+
+export const fetchUser = (): StoreAction<Promise<User | null>> => async dispatch => {
+  const user = await api.getUser();
+  dispatch(setUser(user));
   return user;
 };
 
 export const logIn = (provider: AuthProvider): StoreAction<Promise<User | null>> => async dispatch => {
   const user = await api.logIn(provider);
+
   dispatch(updateProvider({ name: provider.name }));
-  dispatch({
-    type: USER_SET,
-    user,
-  });
+  dispatch(setUser(user));
+
   return user;
 };
 
 export const logout = (): StoreAction<Promise<void>> => async dispatch => {
   await api.logOut();
   dispatch(unsetCommentMode());
-  dispatch({
-    type: USER_SET,
-    user: null,
-  });
+  dispatch(setUser());
 };
 
 export const fetchBlockedUsers = (): StoreAction<Promise<BlockedUser[]>> => async dispatch => {
@@ -134,9 +134,9 @@ export const setVerifiedStatus = (id: User['id'], status: boolean): StoreAction<
   getState
 ) => {
   if (status) {
-    await api.setVerifyStatus(id);
+    await api.setVerifiedStatus(id);
   } else {
-    await api.removeVerifyStatus(id);
+    await api.removeVerifiedStatus(id);
   }
   const comments = Object.values(getState().comments).filter(c => c.user.id === id);
   if (!comments.length) return;
@@ -147,14 +147,6 @@ export const setVerifiedStatus = (id: User['id'], status: boolean): StoreAction<
     ids: comments.map(c => c.id),
     patch: { user: { ...user, verified: status } },
   });
-};
-
-export const setSettingsVisibility = (state: boolean): StoreAction<boolean> => dispatch => {
-  dispatch({
-    type: SETTINGS_VISIBLE_SET,
-    state,
-  });
-  return state;
 };
 
 export const setUserSubscribed = (isSubscribed: boolean) => ({

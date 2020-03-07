@@ -1,40 +1,24 @@
 import { PostInfo } from '@app/common/types';
 
 import { StoreAction } from '../index';
-import { POST_INFO_SET } from './types';
-import api from '@app/common/api';
+import { POST_INFO_SET, POST_INFO_SET_ACTION } from './types';
+import { disableComments, enableComments } from '@app/common/api';
 import { unsetCommentMode } from '../comments/actions';
 
-export const setPostInfo = (info: PostInfo): StoreAction<void> => dispatch =>
-  dispatch({
+export function setPostInfo(info: PostInfo) {
+  return {
     type: POST_INFO_SET,
     info,
-  });
+  } as POST_INFO_SET_ACTION;
+}
 
 /** set state of post: readonly or not */
-export const setCommentsReadOnlyState = (state: boolean): StoreAction<Promise<boolean>> => async (
-  dispatch,
-  getState
-) => {
-  await (!state ? api.enableComments() : api.disableComments());
-  const storeState = getState();
-  dispatch(unsetCommentMode());
-  dispatch({
-    type: POST_INFO_SET,
-    info: { ...storeState.info, read_only: state },
-  });
-  return state;
-};
+export function setCommentsReadOnlyState(read_only: boolean): StoreAction<Promise<void>> {
+  return async (dispatch, getState) => {
+    const { info } = getState();
 
-/** toggles state of post: readonly or not */
-export const toggleCommentsReadOnlyState = (): StoreAction<Promise<boolean>> => async (dispatch, getState) => {
-  const storeState = getState();
-  const state = !storeState.info.read_only!;
-  await (state ? api.enableComments() : api.disableComments());
-  dispatch(unsetCommentMode());
-  dispatch({
-    type: POST_INFO_SET,
-    info: { ...storeState.info, read_only: !state },
-  });
-  return !state;
-};
+    await (read_only ? disableComments() : enableComments());
+    dispatch(unsetCommentMode());
+    dispatch(setPostInfo({ ...info, read_only }));
+  };
+}

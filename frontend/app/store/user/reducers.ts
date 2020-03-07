@@ -5,8 +5,6 @@ import {
   USER_BAN,
   USER_UNBAN,
   USER_ACTIONS,
-  SETTINGS_VISIBLE_SET_ACTION,
-  SETTINGS_VISIBLE_SET,
   USER_BANLIST_SET,
   USER_HIDELIST_SET,
   USER_HIDE,
@@ -76,14 +74,4 @@ export const hiddenUsers = (state: { [id: string]: User } = {}, action: USER_ACT
   }
 };
 
-export const isSettingsVisible = (state: boolean = false, action: SETTINGS_VISIBLE_SET_ACTION): boolean => {
-  switch (action.type) {
-    case SETTINGS_VISIBLE_SET: {
-      return action.state;
-    }
-    default:
-      return state;
-  }
-};
-
-export default { user, bannedUsers, hiddenUsers, isSettingsVisible };
+export default { user, bannedUsers, hiddenUsers };

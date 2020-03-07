@@ -24,10 +24,11 @@ import '@app/components/list-comments';
 
 import { NODE_ID, BASE_URL } from '@app/common/constants';
 import { StaticStore } from '@app/common/static_store';
-import api from '@app/common/api';
+import { getConfig } from '@app/common/api';
 import { fetchHiddenUsers } from './store/user/actions';
 import { restoreProvider } from './store/provider/actions';
 import { restoreCollapsedThreads } from './store/thread/actions';
+import parseQuery from './utils/parseQuery';
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
@@ -55,29 +56,18 @@ async function init(): Promise<void> {
   boundActions.restoreProvider();
   boundActions.restoreCollapsedThreads();
 
-  const params = window.location.search
-    .replace(/^\?/, '')
-    .split('&')
-    .reduce<{ [key: string]: string }>((memo, value) => {
-      const vals = value.split('=');
-      if (vals.length === 2) {
-        memo[vals[0]] = vals[1];
-      }
-      return memo;
-    }, {});
+  const params = parseQuery();
   const locale = getLocale(params);
   const messages = await loadLocale(locale).catch(() => ({}));
-  StaticStore.config = await api.getConfig();
+  StaticStore.config = await getConfig();
 
   if (params.page === 'user-info') {
     return render(
       <IntlProvider locale={locale} messages={messages}>
-        <div id={NODE_ID}>
-          <div className="root root_user-info">
-            <Provider store={reduxStore}>
-              <UserInfo />
-            </Provider>
-          </div>
+        <div className="root root_user-info">
+          <Provider store={reduxStore}>
+            <UserInfo />
+          </Provider>
         </div>
       </IntlProvider>,
       node

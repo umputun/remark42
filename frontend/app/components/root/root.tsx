@@ -1,16 +1,17 @@
 /** @jsx createElement */
-import { createElement, Component, FunctionComponent } from 'preact';
+import { createElement, Component, FunctionComponent, Fragment } from 'preact';
 import { useSelector } from 'react-redux';
 import b from 'bem-react-helper';
 import { IntlShape, useIntl, FormattedMessage, defineMessages } from 'react-intl';
 
 import { User, Sorting, AuthProvider } from '@app/common/types';
 import {
-  NODE_ID,
   COMMENT_NODE_CLASSNAME_PREFIX,
   MAX_SHOWN_ROOT_COMMENTS,
   THEMES,
   IS_MOBILE,
+  LS_SORT_KEY,
+  DEFAULT_SORT,
 } from '@app/common/constants';
 import { maxShownComments } from '@app/common/settings';
 
@@ -23,14 +24,12 @@ import {
   blockUser,
   unblockUser,
   fetchBlockedUsers,
-  setSettingsVisibility,
   hideUser,
   unhideUser,
 } from '@app/store/user/actions';
 import { fetchComments } from '@app/store/comments/actions';
 import { setCommentsReadOnlyState } from '@app/store/post_info/actions';
 import { setTheme } from '@app/store/theme/actions';
-import { setSort } from '@app/store/sort/actions';
 import { addComment, updateComment } from '@app/store/comments/actions';
 
 import { AuthPanel } from '@app/components/auth-panel';
@@ -45,11 +44,10 @@ import { isUserAnonymous } from '@app/utils/isUserAnonymous';
 import { bindActions } from '@app/utils/actionBinder';
 import postMessage from '@app/utils/postMessage';
 import { useActions } from '@app/hooks/useAction';
+import * as localStorage from '@app/common/local-storage';
 
 const mapStateToProps = (state: StoreState) => ({
   user: state.user,
-  sort: state.sort,
-  isSettingsVisible: state.isSettingsVisible,
   topComments: state.topComments,
   pinnedComments: state.pinnedComments.map(id => state.comments[id]).filter(c => !c.hidden),
   provider: state.provider,
@@ -65,13 +63,10 @@ const boundActions = bindActions({
   fetchComments,
   fetchUser,
   fetchBlockedUsers,
-  setSettingsVisibility,
   logIn,
   logOut: logout,
   setTheme,
-  enableComments: () => setCommentsReadOnlyState(false),
-  disableComments: () => setCommentsReadOnlyState(true),
-  changeSort: setSort,
+  setCommentsReadOnlyState,
   blockUser,
   unblockUser,
   hideUser,
@@ -83,8 +78,10 @@ const boundActions = bindActions({
 type Props = ReturnType<typeof mapStateToProps> & typeof boundActions & { intl: IntlShape };
 
 interface State {
-  isLoaded: boolean;
+  sort: string;
+  isUserLoading: boolean;
   isCommentsListLoading: boolean;
+  isSettingsVisible: boolean;
   commentsShown: number;
   wasSomeoneUnblocked: boolean;
 }
@@ -96,30 +93,33 @@ const messages = defineMessages({
   },
 });
 
-/** main component fr main comments widget */
-export class Root extends Component<Props, State> {
-  constructor(props: Props) {
-    super(props);
+function getInitialSort() {
+  const sort = localStorage.getItem(LS_SORT_KEY) as Sorting;
 
-    this.state = {
-      isLoaded: false,
-      isCommentsListLoading: false,
-      commentsShown: maxShownComments,
-      wasSomeoneUnblocked: false,
-    };
-
-    this.onBlockedUsersShow = this.onBlockedUsersShow.bind(this);
-    this.onBlockedUsersHide = this.onBlockedUsersHide.bind(this);
-    this.onUnblockSomeone = this.onUnblockSomeone.bind(this);
-    this.showMore = this.showMore.bind(this);
+  if (sort) {
+    return sort;
   }
 
-  async componentWillMount() {
-    Promise.all([this.props.fetchUser(), this.props.fetchComments(this.props.sort)]).finally(() => {
-      this.setState({
-        isLoaded: true,
-      });
+  return DEFAULT_SORT;
+}
 
+/** main component fr main comments widget */
+export class Root extends Component<Props, State> {
+  state = {
+    sort: getInitialSort(),
+    isUserLoading: true,
+    isCommentsListLoading: true,
+    commentsShown: maxShownComments,
+    wasSomeoneUnblocked: false,
+    isSettingsVisible: false,
+  };
+
+  componentWillMount() {
+    const userloading = this.props.fetchUser().finally(() => this.setState({ isUserLoading: false }));
+
+    Promise.all([userloading, this.fetchComments()]).finally(() => {
+      postMessage({ remarkIframeHeight: document.body.offsetHeight });
+      this.setState({ isCommentsListLoading: false });
       setTimeout(this.checkUrlHash);
       window.addEventListener('hashchange', this.checkUrlHash);
     });
@@ -127,22 +127,38 @@ export class Root extends Component<Props, State> {
     window.addEventListener('message', this.onMessage.bind(this));
   }
 
-  logIn = async (p: AuthProvider): Promise<User | null> => {
-    const user = await this.props.logIn(p);
-    await this.props.fetchComments(this.props.sort);
+  fetchComments() {
+    return this.props.fetchComments(this.state.sort);
+  }
+
+  changeSort = async (sort: Sorting) => {
+    if (sort === this.state.sort) return;
+    const prevSort = this.state.sort;
+
+    this.setState({ isCommentsListLoading: true, sort });
+    try {
+      await this.fetchComments();
+      localStorage.setItem(LS_SORT_KEY, sort);
+      this.setState({ isCommentsListLoading: false });
+    } catch (e) {
+      this.setState({ sort: prevSort, isCommentsListLoading: false });
+    }
+  };
+
+  logIn = async (provider: AuthProvider): Promise<User | null> => {
+    const user = await this.props.logIn(provider);
+
+    await this.fetchComments();
+
     return user;
   };
 
   logOut = async (): Promise<void> => {
     await this.props.logOut();
-    await this.props.fetchComments(this.props.sort);
+    await this.fetchComments();
   };
 
-  checkUrlHash(
-    e: Event & {
-      newURL?: string;
-    }
-  ) {
+  checkUrlHash(e: Event & { newURL?: string }) {
     const hash = e ? `#${e.newURL!.split('#')[1]}` : window.location.hash;
 
     if (hash.indexOf(`#${COMMENT_NODE_CLASSNAME_PREFIX}`) === 0) {
@@ -169,40 +185,33 @@ export class Root extends Component<Props, State> {
     }
   }
 
-  async onBlockedUsersShow() {
+  onBlockedUsersShow = async () => {
     if (this.props.user && this.props.user.admin) {
       await this.props.fetchBlockedUsers();
     }
-    this.props.setSettingsVisibility(true);
-  }
+    this.setState({ isSettingsVisible: true });
+  };
 
-  async onBlockedUsersHide() {
+  onBlockedUsersHide = async () => {
     // if someone was unblocked let's reload comments
     if (this.state.wasSomeoneUnblocked) {
-      this.props.fetchComments(this.props.sort);
+      this.fetchComments();
     }
-    this.props.setSettingsVisibility(false);
     this.setState({
       wasSomeoneUnblocked: false,
+      isSettingsVisible: false,
     });
-  }
+  };
 
-  async changeSort(sort: Sorting) {
-    if (sort === this.props.sort) return;
-    this.setState({ isCommentsListLoading: true });
-    await this.props.changeSort(sort).catch(() => {});
-    this.setState({ isCommentsListLoading: false });
-  }
-
-  onUnblockSomeone() {
+  onUnblockSomeone = () => {
     this.setState({ wasSomeoneUnblocked: true });
-  }
+  };
 
-  showMore() {
+  showMore = () => {
     this.setState({
       commentsShown: this.state.commentsShown + MAX_SHOWN_ROOT_COMMENTS,
     });
-  }
+  };
 
   /**
    * Defines whether current client is logged in via `Anonymous provider`
@@ -211,44 +220,48 @@ export class Root extends Component<Props, State> {
     return isUserAnonymous(this.props.user);
   }
 
-  render(props: Props, { isLoaded, isCommentsListLoading, commentsShown }: State) {
-    if (!isLoaded) {
-      return (
-        <div id={NODE_ID}>
-          <div className={b('root', {}, { theme: props.theme })}>
-            <Preloader mix="root__preloader" />
-          </div>
-        </div>
-      );
+  render(props: Props, { isUserLoading, isCommentsListLoading, commentsShown, isSettingsVisible }: State) {
+    if (isUserLoading) {
+      return <Preloader mix="root__preloader" />;
     }
 
     const isGuest = !props.user;
-    const isCommentsDisabled = !!props.info.read_only;
+    const isCommentsDisabled = props.info.read_only!;
     const imageUploadHandler = this.isAnonymous() ? undefined : this.props.uploadImage;
 
     return (
-      <div id={NODE_ID}>
-        <div className={b('root', {}, { theme: props.theme })}>
-          <AuthPanel
-            theme={this.props.theme}
-            user={this.props.user}
-            hiddenUsers={this.props.hiddenUsers}
-            sort={this.props.sort}
-            isCommentsDisabled={isCommentsDisabled}
-            postInfo={this.props.info}
-            providers={StaticStore.config.auth_providers}
-            provider={this.props.provider}
-            onSignIn={this.logIn}
-            onSignOut={this.logOut}
-            onBlockedUsersShow={this.onBlockedUsersShow}
-            onBlockedUsersHide={this.onBlockedUsersHide}
-            onCommentsEnable={this.props.enableComments}
-            onCommentsDisable={this.props.disableComments}
-            onSortChange={this.props.changeSort}
-          />
-
-          {!this.props.isSettingsVisible && (
-            <div className="root__main">
+      <Fragment>
+        <AuthPanel
+          theme={this.props.theme}
+          user={this.props.user}
+          hiddenUsers={this.props.hiddenUsers}
+          sort={this.state.sort}
+          isCommentsDisabled={isCommentsDisabled}
+          postInfo={this.props.info}
+          providers={StaticStore.config.auth_providers}
+          provider={this.props.provider}
+          onSignIn={this.logIn}
+          onSignOut={this.logOut}
+          onBlockedUsersShow={this.onBlockedUsersShow}
+          onBlockedUsersHide={this.onBlockedUsersHide}
+          onCommentsChangeReadOnlyMode={this.props.setCommentsReadOnlyState}
+          onSortChange={this.changeSort}
+        />
+        <div className="root__main">
+          {isSettingsVisible ? (
+            <Settings
+              intl={this.props.intl}
+              user={this.props.user}
+              hiddenUsers={this.props.hiddenUsers}
+              blockedUsers={this.props.blockedUsers}
+              blockUser={this.props.blockUser}
+              unblockUser={this.props.unblockUser}
+              hideUser={this.props.hideUser}
+              unhideUser={this.props.unhideUser}
+              onUnblockSomeone={this.onUnblockSomeone}
+            />
+          ) : (
+            <Fragment>
               {!isGuest && !isCommentsDisabled && (
                 <CommentForm
                   intl={this.props.intl}
@@ -312,40 +325,10 @@ export class Root extends Component<Props, State> {
                   <Preloader mix="root__preloader" />
                 </div>
               )}
-            </div>
+            </Fragment>
           )}
-
-          {this.props.isSettingsVisible && (
-            <div className="root__main">
-              <Settings
-                intl={this.props.intl}
-                user={this.props.user}
-                hiddenUsers={this.props.hiddenUsers}
-                blockedUsers={this.props.blockedUsers}
-                blockUser={this.props.blockUser}
-                unblockUser={this.props.unblockUser}
-                hideUser={this.props.hideUser}
-                unhideUser={this.props.unhideUser}
-                onUnblockSomeone={this.onUnblockSomeone}
-              />
-            </div>
-          )}
-
-          <p className="root__copyright" role="contentinfo">
-            <FormattedMessage
-              id="root.powered-by"
-              defaultMessage="Powered by <a>Remark42</a>"
-              values={{
-                a: (title: string) => (
-                  <a class="root__copyright-link" href="https://remark42.com/">
-                    {title}
-                  </a>
-                ),
-              }}
-            />
-          </p>
         </div>
-      </div>
+      </Fragment>
     );
   }
 }
@@ -355,5 +338,23 @@ export const ConnectedRoot: FunctionComponent = () => {
   const props = useSelector(mapStateToProps);
   const actions = useActions(boundActions);
   const intl = useIntl();
-  return <Root {...props} {...actions} intl={intl} />;
+
+  return (
+    <div className={b('root', {}, { theme: props.theme })}>
+      <Root {...props} {...actions} intl={intl} />
+      <p className="root__copyright" role="contentinfo">
+        <FormattedMessage
+          id="root.powered-by"
+          defaultMessage="Powered by <a>Remark42</a>"
+          values={{
+            a: (title: string) => (
+              <a class="root__copyright-link" href="https://remark42.com/">
+                {title}
+              </a>
+            ),
+          }}
+        />
+      </p>
+    </div>
+  );
 };

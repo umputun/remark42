@@ -1,5 +1,6 @@
 import { Theme } from './types';
 import { THEMES, MAX_SHOWN_ROOT_COMMENTS } from './constants';
+import parseQuery from '@app/utils/parseQuery';
 
 export interface QuerySettingsType {
   site_id?: string;
@@ -11,15 +12,7 @@ export interface QuerySettingsType {
   token?: string;
 }
 
-export const querySettings: Partial<QuerySettingsType> =
-  window.location.search
-    .substr(1)
-    .split('&')
-    .reduce<{ [key: string]: string }>((acc, param) => {
-      const pair = param.split('=');
-      acc[pair[0]] = decodeURIComponent(pair[1]);
-      return acc;
-    }, {}) || {};
+export const querySettings: Partial<QuerySettingsType> = parseQuery();
 
 if (querySettings.max_shown_comments) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
