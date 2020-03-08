@@ -135,14 +135,15 @@ export class Root extends Component<Props, State> {
     if (sort === this.state.sort) return;
     const prevSort = this.state.sort;
 
-    this.setState({ isCommentsListLoading: true, sort });
-    try {
-      await this.fetchComments();
-      localStorage.setItem(LS_SORT_KEY, sort);
-      this.setState({ isCommentsListLoading: false });
-    } catch (e) {
-      this.setState({ sort: prevSort, isCommentsListLoading: false });
-    }
+    this.setState({ isCommentsListLoading: true, sort }, async () => {
+      try {
+        await this.fetchComments();
+        localStorage.setItem(LS_SORT_KEY, sort);
+        this.setState({ isCommentsListLoading: false });
+      } catch (e) {
+        this.setState({ sort: prevSort, isCommentsListLoading: false });
+      }
+    });
   };
 
   logIn = async (provider: AuthProvider): Promise<User | null> => {
