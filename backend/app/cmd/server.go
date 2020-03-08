@@ -244,6 +244,7 @@ type serverApp struct {
 	avatarStore   avatar.Store
 	notifyService *notify.Service
 	imageService  *image.Service
+	authenticator *auth.Service
 	terminated    chan struct{}
 }
 
@@ -456,6 +457,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		avatarStore:   avatarStore,
 		notifyService: notifyService,
 		imageService:  imageService,
+		authenticator: authenticator,
 		terminated:    make(chan struct{}),
 	}, nil
 }
@@ -863,6 +865,21 @@ func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Sto
 			if err != nil {
 				log.Printf("[WARN] can't read email for %s, %v", c.User.ID, err)
 			}
+
+			// don't allow anonymous with admin's name
+			if strings.HasPrefix(c.User.ID, "anonymous_") {
+				admins, err := admns.Admins(c.Audience)
+				if err != nil {
+					log.Printf("[WARN] can't get admins for %s, %v", c.Audience, err)
+				}
+				for _, a := range admins {
+					if strings.EqualFold(c.User.Name, a) {
+						c.User.SetBoolAttr("blocked", true)
+						break
+					}
+				}
+			}
+
 			return c
 		}),
 		AdminPasswd: s.AdminPasswd,
