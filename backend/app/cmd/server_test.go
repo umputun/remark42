@@ -114,25 +114,72 @@ func TestServerApp_AnonMode(t *testing.T) {
 	assert.Equal(t, "pong", string(body))
 
 	// try to login with good name
-	resp, err = http.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=blah123&aud=remark42", port))
+	resp, err = http.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=blah123&aud=remark", port))
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
+	// try to add a comment as good anonymous
+	client := http.Client{Timeout: 10 * time.Second}
+	req, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
+		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "remark"}}`))
+	require.NoError(t, err)
+
+	tkn, claims := getAuthFromCookie(t, app, resp)
+	require.NotEmpty(t, tkn)
+	req.Header.Add("X-JWT", tkn)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusCreated, resp.StatusCode)
+
 	// try to login with bad name
-	resp, err = http.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=**blah123&aud=remark42", port))
+	resp, err = http.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=**blah123&aud=remark", port))
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 
 	// try to login with short name
-	resp, err = http.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=bl%20%20&aud=remark42", port))
+	resp, err = http.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=bl%20%20&aud=remark", port))
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 
+	// try to login with admin name
+	resp, err = http.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=umputun&aud=remark", port))
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	// try to add a comment as anonymous with admin name
+	client = http.Client{Timeout: 10 * time.Second}
+	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
+		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "remark"}}`))
+	require.NoError(t, err)
+
+	tkn, claims = getAuthFromCookie(t, app, resp)
+	require.NotEmpty(t, tkn)
+	assert.True(t, claims.User.BoolAttr("blocked"), "should be blocked")
+	req.Header.Add("X-JWT", tkn)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+
 	cancel()
 	app.Wait()
+}
+
+func getAuthFromCookie(t *testing.T, app *serverApp, resp *http.Response) (token string, claims token.Claims) {
+	var err error
+	for _, c := range resp.Cookies() {
+		if c.Name == "JWT" {
+			token = c.Value
+			claims, err = app.restSrv.Authenticator.TokenService().Parse(c.Value)
+			require.NoError(t, err)
+		}
+	}
+	return token, claims
 }
 
 func TestServerApp_WithSSL(t *testing.T) {
@@ -561,6 +608,8 @@ func prepServerApp(t *testing.T, fn func(o ServerCommand) ServerCommand) (*serve
 	cmd.SMTP.Password = "test_password"
 	cmd.SMTP.TimeOut = time.Second
 	cmd.UpdateLimit = 10
+	cmd.Admin.Type = "shared"
+	cmd.Admin.Shared.Admins = []string{"umputun", "bobuk"}
 	cmd = fn(cmd)
 
 	os.Remove(cmd.Store.Bolt.Path + "/remark.db")
