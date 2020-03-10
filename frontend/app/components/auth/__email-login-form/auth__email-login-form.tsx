@@ -13,7 +13,7 @@ import { Button } from '@app/components/button';
 import { isJwtExpired } from '@app/utils/jwt';
 import { defineMessages, IntlShape, useIntl, FormattedMessage } from 'react-intl';
 
-import { messages as loginForm } from '../__anonymous-login-form/auth-panel__anonymous-login-form';
+import { messages as loginForm } from '../__anonymous-login-form/auth__anonymous-login-form';
 
 interface OwnProps {
   onSignIn(token: string): Promise<User | null>;
@@ -192,9 +192,9 @@ export class EmailLoginForm extends Component<Props, State> {
   render(props: Props) {
     const intl = props.intl;
     // TODO: will be great to `b` to accept `string | undefined | (string|undefined)[]` as classname
-    let className = b('auth-panel-email-login-form', {}, { theme: props.theme });
+    let className = b('auth-email-login-form', {}, { theme: props.theme });
     if (props.className) {
-      className += ' ' + b('auth-panel-email-login-form', {}, { theme: props.theme });
+      className += ' ' + b('auth-email-login-form', {}, { theme: props.theme });
     }
 
     const form1InvalidReason = this.getForm1InvalidReason();
@@ -205,23 +205,23 @@ export class EmailLoginForm extends Component<Props, State> {
           <Input
             autoFocus
             name="username"
-            mix="auth-panel-email-login-form__input"
+            mix="auth-email-login-form__input"
             ref={this.usernameInputRef}
             placeholder={intl.formatMessage(loginForm.userName)}
             value={this.state.usernameValue}
             onInput={this.onUsernameChange}
           />
           <Input
-            mix="auth-panel-email-login-form__input"
+            mix="auth-email-login-form__input"
             type="email"
             name="email"
             placeholder={intl.formatMessage(messages.emailAddress)}
             value={this.state.addressValue}
             onInput={this.onAddressChange}
           />
-          {this.state.error && <div className="auth-panel-email-login-form__error">{this.state.error}</div>}
+          {this.state.error && <div className="auth-email-login-form__error">{this.state.error}</div>}
           <Button
-            mix="auth-panel-email-login-form__submit"
+            mix="auth-email-login-form__submit"
             kind="primary"
             size="middle"
             type="submit"
@@ -237,13 +237,13 @@ export class EmailLoginForm extends Component<Props, State> {
 
     return (
       <form className={className} onSubmit={this.onSubmit}>
-        <Button kind="link" mix="auth-panel-email-login-form__back-button" {...getHandleClickProps(this.goBack)}>
+        <Button kind="link" mix="auth-email-login-form__back-button" {...getHandleClickProps(this.goBack)}>
           <FormattedMessage id="emailLoginForm.back" defaultMessage="Back" />
         </Button>
         <TextareaAutosize
           autofocus={true}
           name="token"
-          className="auth-panel-email-login-form__token-input"
+          className="auth-email-login-form__token-input"
           ref={this.tokenRef}
           placeholder={intl.formatMessage(messages.token)}
           value={this.state.tokenValue}
@@ -251,9 +251,9 @@ export class EmailLoginForm extends Component<Props, State> {
           spellcheck={false}
           autocomplete="off"
         />
-        {this.state.error && <div className="auth-panel-email-login-form__error">{this.state.error}</div>}
+        {this.state.error && <div className="auth-email-login-form__error">{this.state.error}</div>}
         <Button
-          mix="auth-panel-email-login-form__submit"
+          mix="auth-email-login-form__submit"
           type="submit"
           kind="primary"
           size="middle"

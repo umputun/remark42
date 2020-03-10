@@ -1,4 +1,5 @@
-import { Node, Comment, CommentMode } from '@app/common/types';
+import { Node, Comment, CommentMode, Sorting } from '@app/common/types';
+import { combineReducers } from 'redux';
 
 import {
   COMMENTS_SET,
@@ -11,8 +12,14 @@ import {
   COMMENTS_EDIT,
   COMMENTS_PATCH,
   COMMENTS_PATCH_ACTION,
+  COMMENTS_SET_SORT,
+  COMMENTS_SET_SORT_ACTION,
+  COMMENTS_REQUEST_FETCHING,
+  COMMENTS_REQUEST_SUCCESS,
+  COMMENTS_REQUEST_FAILURE,
+  COMMENTS_REQUEST_ACTIONS,
 } from './types';
-import { getPinnedComments } from './utils';
+import { getPinnedComments, getInitialSort } from './utils';
 import { cmpRef } from '@app/utils/cmpRef';
 
 export const topComments = (
@@ -87,7 +94,7 @@ const reduceComments = (c: Record<Comment['id'], Comment>, x: Node): Record<Comm
   return c;
 };
 
-export const comments = (
+export const allComments = (
   state: Record<Comment['id'], Comment> = {},
   action: COMMENTS_SET_ACTION | COMMENTS_APPEND_ACTION | COMMENTS_EDIT_ACTION | COMMENTS_PATCH_ACTION
 ): Record<Comment['id'], Comment> => {
@@ -170,4 +177,33 @@ export const pinnedComments = (
   }
 };
 
-export default { topComments, childComments, comments, activeComment, pinnedComments };
+function isFetching(state: boolean = false, action: COMMENTS_REQUEST_ACTIONS): boolean {
+  switch (action.type) {
+    case COMMENTS_REQUEST_FETCHING:
+      return true;
+    case COMMENTS_REQUEST_SUCCESS:
+    case COMMENTS_REQUEST_FAILURE:
+      return false;
+    default:
+      return state;
+  }
+}
+
+function sort(state: Sorting = getInitialSort(), action: COMMENTS_SET_SORT_ACTION): Sorting {
+  switch (action.type) {
+    case COMMENTS_SET_SORT:
+      return action.payload;
+    default:
+      return state;
+  }
+}
+
+export default combineReducers({
+  sort,
+  isFetching,
+  topComments,
+  childComments,
+  allComments,
+  activeComment,
+  pinnedComments,
+});

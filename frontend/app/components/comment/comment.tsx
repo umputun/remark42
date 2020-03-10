@@ -141,44 +141,9 @@ export interface State {
 }
 
 class Comment extends Component<Props, State> {
-  votingPromise: Promise<unknown>;
+  votingPromise: Promise<unknown> = Promise.resolve();
   /** comment text node. Used in comment text copying */
   textNode = createRef<HTMLDivElement>();
-
-  constructor(props: Props) {
-    super(props);
-
-    this.state = {
-      renderDummy: typeof props.inView === 'boolean' ? !props.inView : false,
-      isCopied: false,
-      editDeadline: null,
-      voteErrorMessage: null,
-      scoreDelta: 0,
-      cachedScore: props.data.score,
-      initial: true,
-      ...this.updateState(props),
-    };
-
-    this.votingPromise = Promise.resolve();
-
-    this.toggleEditing = this.toggleEditing.bind(this);
-    this.toggleReplying = this.toggleReplying.bind(this);
-    this.blockUser = debounce(this.blockUser, 100).bind(this);
-  }
-
-  // getHandleClickProps = (handler?: (e: KeyboardEvent | MouseEvent) => void) => {
-  //   if (this.state.initial) return null;
-  //   if (this.props.inView === false) return null;
-  //   return getHandleClickProps(handler);
-  // };
-
-  componentWillReceiveProps(nextProps: Props) {
-    this.setState(this.updateState(nextProps));
-  }
-
-  componentDidMount() {
-    this.setState({ initial: false });
-  }
 
   updateState = (props: Props) => {
     const newState: Partial<State> = {
@@ -205,6 +170,31 @@ class Comment extends Component<Props, State> {
 
     return newState;
   };
+
+  state = {
+    renderDummy: typeof this.props.inView === 'boolean' ? !this.props.inView : false,
+    isCopied: false,
+    editDeadline: null,
+    voteErrorMessage: null,
+    scoreDelta: 0,
+    cachedScore: this.props.data.score,
+    initial: true,
+    ...this.updateState(this.props),
+  };
+
+  // getHandleClickProps = (handler?: (e: KeyboardEvent | MouseEvent) => void) => {
+  //   if (this.state.initial) return null;
+  //   if (this.props.inView === false) return null;
+  //   return getHandleClickProps(handler);
+  // };
+
+  componentWillReceiveProps(nextProps: Props) {
+    this.setState(this.updateState(nextProps));
+  }
+
+  componentDidMount() {
+    this.setState({ initial: false });
+  }
 
   toggleReplying = () => {
     const { editMode } = this.props;
@@ -268,7 +258,7 @@ class Comment extends Component<Props, State> {
     this.blockUser((e.target as HTMLOptionElement).value as BlockTTL);
   };
 
-  blockUser = (ttl: BlockTTL) => {
+  blockUser = debounce((ttl: BlockTTL) => {
     const { user } = this.props.data;
     const blockingDurations = getBlockingDurations(this.props.intl);
     const blockDuration = blockingDurations.find(el => el.value === ttl);
@@ -284,7 +274,7 @@ class Comment extends Component<Props, State> {
     if (confirm(blockUser)) {
       this.props.blockUser!(user.id, user.name, ttl);
     }
-  };
+  }, 100);
 
   onUnblockUserClick = () => {
     const { user } = this.props.data;
@@ -786,7 +776,7 @@ class Comment extends Component<Props, State> {
 
           {(!props.collapsed || props.view === 'pinned') && (
             <div className="comment__actions">
-              {!props.data.delete && !props.isCommentsDisabled && !props.disabled && !isGuest && props.view === 'main' && (
+              {!props.data.delete && !props.isCommentsDisabled && !props.disabled && props.view === 'main' && (
                 <Button kind="link" {...getHandleClickProps(this.toggleReplying)} mix="comment__action">
                   {isReplying ? (
                     <FormattedMessage id="comment.cancel" defaultMessage="Cancel" />
@@ -841,6 +831,7 @@ class Comment extends Component<Props, State> {
 
         {CommentForm && isReplying && props.view === 'main' && (
           <CommentForm
+            id={o.id}
             intl={this.props.intl}
             user={props.user}
             theme={props.theme}
@@ -858,6 +849,7 @@ class Comment extends Component<Props, State> {
 
         {CommentForm && isEditing && props.view === 'main' && (
           <CommentForm
+            id={o.id}
             intl={this.props.intl}
             user={props.user}
             theme={props.theme}

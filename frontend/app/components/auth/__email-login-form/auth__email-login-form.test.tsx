@@ -1,7 +1,7 @@
 /** @jsx createElement */
 import { createElement } from 'preact';
 import { mount, ReactWrapper } from 'enzyme';
-import { EmailLoginFormConnected as EmailLoginForm, Props, State } from './auth-panel__email-login-form';
+import { EmailLoginFormConnected as EmailLoginForm, Props, State } from './auth__email-login-form';
 import { User } from '@app/common/types';
 import { sleep } from '@app/utils/sleep';
 import { validToken } from '@app/testUtils/mocks/jwt';
@@ -91,6 +91,6 @@ describe('EmailLoginForm', () => {
     wrapper.find('textarea').getDOMNode<HTMLTextAreaElement>().value = validToken;
     wrapper.find('textarea').simulate('input');
 
-    expect(wrapper.find('.auth-panel-email-login-form__error').text()).toBe('Token is expired');
+    expect(wrapper.find('.auth-email-login-form__error').text()).toBe('Token is expired');
   });
 });

@@ -4,7 +4,16 @@ import { Tree, Comment, CommentMode, Node, Sorting } from '@app/common/types';
 import { StoreAction, StoreState } from '../index';
 import { setPostInfo } from '../post_info/actions';
 import { filterTree } from './utils';
-import { COMMENTS_SET, COMMENT_MODE_SET, COMMENTS_APPEND, COMMENTS_EDIT, COMMENT_MODE_SET_ACTION } from './types';
+import {
+  COMMENTS_SET,
+  COMMENT_MODE_SET,
+  COMMENTS_APPEND,
+  COMMENTS_EDIT,
+  COMMENT_MODE_SET_ACTION,
+  COMMENTS_SET_SORT,
+  COMMENTS_REQUEST_FETCHING,
+  COMMENTS_REQUEST_SUCCESS,
+} from './types';
 
 /** sets comments, and put pinned comments in cache */
 export const setComments = (comments: Node[]): StoreAction<void> => dispatch => {
@@ -47,7 +56,7 @@ export const setPinState = (id: Comment['id'], value: boolean): StoreAction<Prom
   } else {
     await api.unpinComment(id);
   }
-  let comment = getState().comments[id];
+  let comment = getState().comments.allComments[id];
   comment = { ...comment, pin: value, edit: { summary: '', time: new Date().toISOString() } };
   dispatch({ type: COMMENTS_EDIT, comment });
 };
@@ -61,17 +70,18 @@ export const removeComment = (id: Comment['id']): StoreAction<Promise<void>> => 
   } else {
     await api.removeMyComment(id);
   }
-  let comment = getState().comments[id];
+  let comment = getState().comments.allComments[id];
   comment = { ...comment, delete: true, edit: { summary: '', time: new Date().toISOString() } };
   dispatch({ type: COMMENTS_EDIT, comment });
 };
 
 /** fetches comments from server */
-export const fetchComments = (sort: Sorting): StoreAction<Promise<Tree>> => async (dispatch, getState) => {
-  const { hiddenUsers } = getState();
+export const fetchComments = (sort?: Sorting): StoreAction<Promise<Tree>> => async (dispatch, getState) => {
+  const { hiddenUsers, comments } = getState();
   const hiddenUsersIds = Object.keys(hiddenUsers);
-  const data = await api.getPostComments(sort);
-
+  dispatch({ type: COMMENTS_REQUEST_FETCHING });
+  const data = await api.getPostComments(sort || comments.sort);
+  dispatch({ type: COMMENTS_REQUEST_SUCCESS });
   if (hiddenUsersIds.length > 0) {
     data.comments = filterTree(data.comments, node => hiddenUsersIds.indexOf(node.comment.user.id) === -1);
   }
@@ -83,7 +93,7 @@ export const fetchComments = (sort: Sorting): StoreAction<Promise<Tree>> => asyn
 };
 
 /** sets mode for comment, either reply or edit */
-export const setCommentMode = (mode: StoreState['activeComment']): StoreAction<void> => dispatch => {
+export const setCommentMode = (mode: StoreState['comments']['activeComment']): StoreAction<void> => dispatch => {
   if (mode !== null && mode.state === CommentMode.None) {
     mode = null;
   }
@@ -91,9 +101,23 @@ export const setCommentMode = (mode: StoreState['activeComment']): StoreAction<v
 };
 
 /** unsets comment mode */
-export function unsetCommentMode(mode: StoreState['activeComment'] = null) {
+export function unsetCommentMode(mode: StoreState['comments']['activeComment'] = null) {
   return {
     type: COMMENT_MODE_SET,
     mode,
   } as COMMENT_MODE_SET_ACTION;
+}
+
+export function updateSorting(sort: Sorting): StoreAction<void> {
+  return async (dispath, getState) => {
+    const { sort: prevSort } = getState().comments;
+    dispath({ type: COMMENTS_REQUEST_FETCHING });
+    dispath({ type: COMMENTS_SET_SORT, payload: sort });
+
+    try {
+      await dispath(fetchComments(sort));
+    } catch (e) {
+      dispath({ type: COMMENTS_SET_SORT, payload: prevSort });
+    }
+  };
 }

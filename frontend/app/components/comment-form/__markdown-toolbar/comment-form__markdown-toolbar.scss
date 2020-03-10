@@ -15,9 +15,12 @@
   background: none;
   border: 0;
   color: var(--color37);
-  display: block;
+  display: flex;
   float: left;
-  padding: 4px 5px;
+  height: 24px;
+  width: 24px;
+  justify-content: center;
+  align-items: center;
 
   &:hover {
     color: var(--color9);

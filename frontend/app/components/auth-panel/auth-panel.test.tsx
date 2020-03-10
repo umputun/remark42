@@ -1,16 +1,18 @@
 /** @jsx createElement */
 import { createElement } from 'preact';
 import { mount } from 'enzyme';
-
-import { Button } from '@app/components/button';
-import { User, PostInfo } from '@app/common/types';
-
-import { Props, AuthPanelWithIntl as AuthPanel } from './auth-panel';
+import createMockStore from 'redux-mock-store';
+import { Middleware } from 'redux';
+import { Provider } from 'react-redux';
 import { IntlProvider } from 'react-intl';
-import enMessages from '../../locales/en.json';
 
-const DefaultProps: Partial<Props> = {
-  sort: '-score',
+import enMessages from '@app/locales/en.json';
+
+import AuthPanel, { Props } from './auth-panel';
+import { Button } from '../button';
+import { StaticStore } from '@app/common/static_store';
+
+const DefaultProps = {
   providers: ['google', 'github'],
   provider: { name: null },
   postInfo: {
@@ -19,112 +21,36 @@ const DefaultProps: Partial<Props> = {
     count: 3,
   },
   hiddenUsers: {},
-};
+} as Props;
+
+const initialStore = {
+  user: null,
+  theme: 'light',
+  comments: {
+    sort: '-score',
+  },
+  provider: { name: 'google' },
+} as const;
+
+const mockStore = createMockStore([] as Middleware[]);
 
 describe('<AuthPanel />', () => {
-  describe('For not authorized user', () => {
-    it('should render login form with google and github provider', () => {
-      const element = mount(
-        <IntlProvider locale="en" messages={enMessages}>
-          <AuthPanel {...(DefaultProps as Props)} user={null} />
-        </IntlProvider>
-      );
+  const createWrapper = (props: Props = DefaultProps, store: ReturnType<typeof mockStore> = mockStore(initialStore)) =>
+    mount(
+      <IntlProvider locale="en" messages={enMessages}>
+        <Provider store={store}>
+          <AuthPanel {...props} />
+        </Provider>
+      </IntlProvider>
+    );
 
-      const authPanelColumn = element.find('.auth-panel__column');
-
-      expect(authPanelColumn.length).toEqual(2);
-
-      const authForm = authPanelColumn.first();
-
-      expect(authForm.text()).toEqual(expect.stringContaining('Login:'));
-
-      const providerLinks = authForm.find(Button);
-
-      expect(providerLinks.at(0).text()).toEqual('Google');
-      expect(providerLinks.at(1).text()).toEqual('GitHub');
-    });
-
-    describe('sorting', () => {
-      it('should place selected provider first', () => {
-        const element = mount(
-          <IntlProvider locale="en" messages={enMessages}>
-            <AuthPanel
-              {...(DefaultProps as Props)}
-              providers={['google', 'github', 'yandex']}
-              provider={{ name: 'github' }}
-              user={null}
-            />
-          </IntlProvider>
-        );
-
-        const providerLinks = element
-          .find('.auth-panel__column')
-          .first()
-          .find(Button);
-
-        expect(providerLinks.at(0).text()).toEqual('GitHub');
-        expect(providerLinks.at(1).text()).toEqual('Google');
-        expect(providerLinks.at(2).text()).toEqual('Yandex');
-      });
-
-      it('should do nothing if provider not found', () => {
-        const element = mount(
-          <IntlProvider locale="en" messages={enMessages}>
-            <AuthPanel
-              {...(DefaultProps as Props)}
-              providers={['google', 'github', 'yandex']}
-              provider={{ name: 'baidu' }}
-              user={null}
-            />
-          </IntlProvider>
-        );
-
-        const providerLinks = element
-          .find('.auth-panel__column')
-          .first()
-          .find(Button);
-
-        expect(providerLinks.at(0).text()).toEqual('Google');
-        expect(providerLinks.at(1).text()).toEqual('GitHub');
-        expect(providerLinks.at(2).text()).toEqual('Yandex');
-      });
-    });
-
-    it('should render login form with google and github provider for read-only post', () => {
-      const element = mount(
-        <IntlProvider locale="en" messages={enMessages}>
-          <AuthPanel
-            {...(DefaultProps as Props)}
-            user={null}
-            postInfo={{ ...DefaultProps.postInfo, read_only: true } as PostInfo}
-          />
-        </IntlProvider>
-      );
-
-      const authPanelColumn = element.find('.auth-panel__column');
-
-      expect(authPanelColumn.length).toEqual(2);
-
-      const authForm = authPanelColumn.first();
-
-      expect(authForm.text()).toEqual(expect.stringContaining('Login: Google or GitHub'));
-
-      const providerLinks = authForm.find(Button);
-
-      expect(providerLinks.at(0).text()).toEqual('Google');
-      expect(providerLinks.at(1).text()).toEqual('GitHub');
-    });
-
+  describe('For not authorized : null', () => {
     it('should not render settings if there is no hidden users', () => {
-      const element = mount(
-        <IntlProvider locale="en" messages={enMessages}>
-          <AuthPanel
-            {...(DefaultProps as Props)}
-            user={null}
-            postInfo={{ ...DefaultProps.postInfo, read_only: true } as PostInfo}
-          />
-        </IntlProvider>
-      );
+      const element = createWrapper({
+        ...DefaultProps,
+        user: null,
+        postInfo: { ...DefaultProps.postInfo, read_only: true },
+      } as Props);
 
       const adminAction = element.find('.auth-panel__admin-action');
 
@@ -132,29 +58,43 @@ describe('<AuthPanel />', () => {
     });
 
     it('should render settings if there is some hidden users', () => {
-      const element = mount(
-        <IntlProvider locale="en" messages={enMessages}>
-          <AuthPanel
-            {...(DefaultProps as Props)}
-            user={null}
-            postInfo={{ ...DefaultProps.postInfo, read_only: true } as PostInfo}
-            hiddenUsers={{ hidden_joe: {} as any }}
-          />
-        </IntlProvider>
-      );
+      const element = createWrapper({
+        ...DefaultProps,
+        user: null,
+        postInfo: { ...DefaultProps.postInfo, read_only: true },
+        hiddenUsers: { hidden_joe: {} as any },
+      } as Props);
 
       const adminAction = element.find('.auth-panel__admin-action');
 
       expect(adminAction.text()).toEqual('Show settings');
     });
+
+    it('should render auth for read only post', () => {
+      StaticStore.config.auth_providers = ['google', 'github'];
+
+      const element = createWrapper({
+        ...DefaultProps,
+        user: null,
+        postInfo: { ...DefaultProps.postInfo, read_only: true },
+        hiddenUsers: { hidden_joe: {} as any },
+      } as Props);
+
+      const firstCol = element.find('.auth-panel__column').first();
+      const providerButtons = firstCol.find(Button);
+
+      expect(firstCol.text()).toStartWith('Login:');
+      expect(providerButtons.at(0).text()).toBe('Google');
+      expect(providerButtons.at(1).text()).toBe('GitHub');
+    });
   });
+
   describe('For authorized user', () => {
     it('should render info about current user', () => {
-      const element = mount(
-        <IntlProvider locale="en" messages={enMessages}>
-          <AuthPanel {...(DefaultProps as Props)} user={{ id: `john`, name: 'John' } as User} />
-        </IntlProvider>
-      );
+      const element = createWrapper({
+        ...DefaultProps,
+        user: { id: 'john', name: 'John' },
+      } as Props);
 
       const authPanelColumn = element.find('.auth-panel__column');
 
@@ -167,11 +107,10 @@ describe('<AuthPanel />', () => {
   });
   describe('For admin user', () => {
     it('should render admin action', () => {
-      const element = mount(
-        <IntlProvider locale="en" messages={enMessages}>
-          <AuthPanel {...(DefaultProps as Props)} user={{ id: `test`, admin: true, name: 'John' } as User} />{' '}
-        </IntlProvider>
-      );
+      const element = createWrapper({
+        ...DefaultProps,
+        user: { id: 'test', admin: true, name: 'John' },
+      } as Props);
 
       const adminAction = element.find('.auth-panel__admin-action').first();
 
