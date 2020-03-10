@@ -8,7 +8,7 @@ import provider from './provider/reducers';
 
 /** Merged store reducers */
 export default {
-  ...comments,
+  comments,
   ...postinfo,
   ...theme,
   ...user,

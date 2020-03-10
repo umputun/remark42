@@ -1,33 +1,28 @@
 /** @jsx createElement */
-import { createElement, Component, createRef } from 'preact';
+import { createElement, Component, Fragment } from 'preact';
+import { useSelector } from 'react-redux';
+import { FormattedMessage, defineMessages, IntlShape, useIntl } from 'react-intl';
 import b from 'bem-react-helper';
 
-import { PROVIDER_NAMES, IS_STORAGE_AVAILABLE, IS_THIRD_PARTY } from '@app/common/constants';
-import { requestDeletion } from '@app/utils/email';
-import { getHandleClickProps } from '@app/common/accessibility';
 import { User, AuthProvider, Sorting, Theme, PostInfo } from '@app/common/types';
-
-import debounce from '@app/utils/debounce';
+import { IS_STORAGE_AVAILABLE, IS_THIRD_PARTY } from '@app/common/constants';
+import { requestDeletion } from '@app/utils/email';
 import postMessage from '@app/utils/postMessage';
+import { getHandleClickProps } from '@app/common/accessibility';
 import { StoreState } from '@app/store';
 import { ProviderState } from '@app/store/provider/reducers';
 import { Dropdown, DropdownItem } from '@app/components/dropdown';
 import { Button } from '@app/components/button';
-import { FormattedMessage, defineMessages, IntlShape, useIntl } from 'react-intl';
+import Auth from '@app/components/auth';
 
-import { AnonymousLoginForm } from './__anonymous-login-form';
-import { EmailLoginFormConnected } from './__email-login-form';
-import { EmailLoginFormRef } from './__email-login-form/auth-panel__email-login-form';
+import useTheme from '@app/hooks/useTheme';
+import { StaticStore } from '@app/common/static_store';
 
-interface PropsWithoutIntl {
+export interface OwnProps {
   user: User | null;
   hiddenUsers: StoreState['hiddenUsers'];
-  sort: Sorting;
   isCommentsDisabled: boolean;
-  theme: Theme;
   postInfo: PostInfo;
-  providers: AuthProvider['name'][];
-  provider: ProviderState;
 
   onSortChange(s: Sorting): Promise<void>;
   onSignIn(p: AuthProvider): Promise<User | null>;
@@ -37,77 +32,31 @@ interface PropsWithoutIntl {
   onBlockedUsersHide(): void;
 }
 
-export type Props = PropsWithoutIntl & { intl: IntlShape };
+export interface Props extends OwnProps {
+  intl: IntlShape;
+  theme: Theme;
+  providers: AuthProvider['name'][];
+  provider: ProviderState;
+  sort: Sorting;
+}
 
 interface State {
   isBlockedVisible: boolean;
   anonymousUsernameInputValue: string;
-  threshold: number;
   sortSelectFocused: boolean;
 }
 
-const authPanelMessages = defineMessages({
-  otherProvider: {
-    id: 'authPanel.other-provider',
-    defaultMessage: 'Other',
-  },
-  anonymousProvider: {
-    id: 'authPanel.anonymous-provider',
-    defaultMessage: 'Anonymous',
-  },
-  orProvider: {
-    id: 'authPanel.or-provider',
-    defaultMessage: 'or',
-  },
-});
-
 export class AuthPanel extends Component<Props, State> {
-  emailLoginRef = createRef<EmailLoginFormRef>();
+  state = {
+    isBlockedVisible: false,
+    anonymousUsernameInputValue: 'anon',
+    sortSelectFocused: false,
+  };
 
-  constructor(props: Props) {
-    super(props);
-
-    this.state = {
-      isBlockedVisible: false,
-      anonymousUsernameInputValue: 'anon',
-      threshold: 3,
-      sortSelectFocused: false,
-    };
-
-    this.toggleBlockedVisibility = this.toggleBlockedVisibility.bind(this);
-    this.onSortChange = this.onSortChange.bind(this);
-    this.onSignIn = this.onSignIn.bind(this);
-    this.onEmailSignIn = this.onEmailSignIn.bind(this);
-    this.handleAnonymousLoginFormSubmut = this.handleAnonymousLoginFormSubmut.bind(this);
-    this.handleOAuthLogin = this.handleOAuthLogin.bind(this);
-    this.toggleUserInfoVisibility = this.toggleUserInfoVisibility.bind(this);
-    this.onEmailTitleClick = this.onEmailTitleClick.bind(this);
-  }
-
-  componentWillMount() {
-    this.resizeHandler();
-    window.addEventListener('resize', this.resizeHandler);
-  }
-
-  componentWillUnmount() {
-    window.removeEventListener('resize', this.resizeHandler);
-  }
-
-  singInMessageAndSortWidth = 255;
-
-  resizeHandler = debounce(() => {
-    this.setState({
-      threshold: Math.max(3, Math.round((window.innerWidth - this.singInMessageAndSortWidth) / 80)),
-    });
-  }, 100);
-
-  onEmailTitleClick() {
-    this.emailLoginRef.current && this.emailLoginRef.current.focus();
-  }
-
-  onSortChange(e: Event) {
-    this.props.onSortChange((e.target! as HTMLOptionElement).value as Sorting);
-  }
+  onSortChange = (e: Event) => {
+    const { value } = e.target as HTMLOptionElement;
+    this.props.onSortChange(value as Sorting);
+  };
 
   onSortFocus = () => {
     this.setState({ sortSelectFocused: true });
@@ -115,56 +64,35 @@ export class AuthPanel extends Component<Props, State> {
 
   onSortBlur = (e: Event) => {
     this.setState({ sortSelectFocused: false });
-
     this.onSortChange(e);
   };
 
-  toggleBlockedVisibility() {
+  toggleBlockedVisibility = () => {
     if (!this.state.isBlockedVisible) {
       if (this.props.onBlockedUsersShow) this.props.onBlockedUsersShow();
     } else if (this.props.onBlockedUsersHide) this.props.onBlockedUsersHide();
 
     this.setState({ isBlockedVisible: !this.state.isBlockedVisible });
-  }
+  };
 
   toggleCommentsAvailability = () => {
     this.props.onCommentsChangeReadOnlyMode(!this.props.isCommentsDisabled);
   };
 
-  toggleUserInfoVisibility() {
-    const user = this.props.user;
+  toggleUserInfoVisibility = () => {
+    const { user } = this.props;
+
     if (window.parent && user) {
-      const data = { isUserInfoShown: true, user };
-      postMessage(data);
+      postMessage({ isUserInfoShown: true, user });
     }
-  }
+  };
 
-  /** wrapper function to handle both oauth and anonymous providers*/
-  onSignIn(provider: AuthProvider) {
-    this.props.onSignIn(provider);
-  }
-
-  onEmailSignIn(token: string) {
-    return this.props.onSignIn({ name: 'email', token });
-  }
-
-  async handleAnonymousLoginFormSubmut(username: string) {
-    this.onSignIn({ name: 'anonymous', username });
-  }
-
-  async handleOAuthLogin(e: MouseEvent | KeyboardEvent) {
-    const p = (e.target as HTMLButtonElement).dataset.provider! as AuthProvider['name'];
-    this.onSignIn({ name: p } as AuthProvider);
-  }
-
-  renderAuthorized = () => {
-    const { user, onSignOut, theme } = this.props;
-    if (!user) return null;
-
+  renderAuthorized = (user: User) => {
+    const { onSignOut, theme } = this.props;
     const isUserAnonymous = user && user.id.substr(0, 10) === 'anonymous_';
 
     return (
-      <div className="auth-panel__column">
+      <Fragment>
         <FormattedMessage id="authPanel.logged-as" defaultMessage="You logged in as" />{' '}
         <Dropdown title={user.name} titleClass="auth-panel__user-dropdown-title" theme={theme}>
           <DropdownItem separator={!isUserAnonymous}>
@@ -188,124 +116,7 @@ export class AuthPanel extends Component<Props, State> {
         <Button kind="link" theme={theme} onClick={onSignOut}>
           <FormattedMessage id="authPanel.logout" defaultMessage="Logout?" />
         </Button>
-      </div>
-    );
-  };
-
-  renderProvider = (provider: AuthProvider['name'], dropdown = false) => {
-    if (provider === 'anonymous') {
-      const anonymous = this.props.intl.formatMessage(authPanelMessages.anonymousProvider);
-      return (
-        <Dropdown
-          title={anonymous}
-          titleClass={dropdown ? 'auth-panel__dropdown-provider' : ''}
-          theme={this.props.theme}
-        >
-          <DropdownItem>
-            <AnonymousLoginForm
-              onSubmit={this.handleAnonymousLoginFormSubmut}
-              theme={this.props.theme}
-              className="auth-panel__anonymous-login-form"
-              intl={this.props.intl}
-            />
-          </DropdownItem>
-        </Dropdown>
-      );
-    }
-    if (provider === 'email') {
-      return (
-        <Dropdown
-          title={PROVIDER_NAMES['email']}
-          titleClass={dropdown ? 'auth-panel__dropdown-provider' : ''}
-          theme={this.props.theme}
-          onTitleClick={this.onEmailTitleClick}
-        >
-          <DropdownItem>
-            <EmailLoginFormConnected
-              ref={this.emailLoginRef}
-              onSignIn={this.onEmailSignIn}
-              theme={this.props.theme}
-              className="auth-panel__email-login-form"
-            />
-          </DropdownItem>
-        </Dropdown>
-      );
-    }
-
-    return (
-      <Button
-        mix={dropdown ? 'auth-panel__dropdown-provider' : ''}
-        kind="link"
-        data-provider={provider}
-        {...getHandleClickProps(this.handleOAuthLogin)}
-        role="link"
-      >
-        {PROVIDER_NAMES[provider]}
-      </Button>
-    );
-  };
-
-  renderOther = (providers: AuthProvider['name'][]) => {
-    const other = this.props.intl.formatMessage(authPanelMessages.otherProvider);
-    return (
-      <Dropdown title={other} theme={this.props.theme} onTitleClick={this.onEmailTitleClick}>
-        {providers.map(provider => (
-          <DropdownItem>{this.renderProvider(provider, true)}</DropdownItem>
-        ))}
-      </Dropdown>
-    );
-  };
-
-  renderUnauthorized = () => {
-    const { user, providers = [] } = this.props;
-    const { threshold } = this.state;
-    if (user || !IS_STORAGE_AVAILABLE) return null;
-
-    const sortedProviders = ((): typeof providers => {
-      if (!this.props.provider.name) return providers;
-      const lastProviderIndex = providers.indexOf(this.props.provider.name as typeof providers[0]);
-      if (lastProviderIndex < 1) return providers;
-      return [
-        this.props.provider.name as typeof providers[0],
-        ...providers.slice(0, lastProviderIndex),
-        ...providers.slice(lastProviderIndex + 1),
-      ];
-    })();
-
-    const isAboveThreshold = sortedProviders.length > threshold;
-    const or = this.props.intl.formatMessage(authPanelMessages.orProvider);
-    return (
-      <div className="auth-panel__column">
-        <FormattedMessage id="authPanel.login" defaultMessage="Login:" />{' '}
-        {!isAboveThreshold &&
-          sortedProviders.map((provider, i) => {
-            const comma = i === 0 ? '' : i === sortedProviders.length - 1 ? ` ${or} ` : ', ';
-
-            return (
-              <span>
-                {comma}
-                {this.renderProvider(provider)}
-              </span>
-            );
-          })}
-        {isAboveThreshold &&
-          sortedProviders.slice(0, threshold - 1).map((provider, i) => {
-            const comma = i === 0 ? '' : ', ';
-
-            return (
-              <span>
-                {comma}
-                {this.renderProvider(provider)}
-              </span>
-            );
-          })}
-        {isAboveThreshold && (
-          <span>
-            {` ${or} `}
-            {this.renderOther(sortedProviders.slice(threshold - 1))}
-          </span>
-        )}
-      </div>
+      </Fragment>
     );
   };
 
@@ -342,7 +153,7 @@ export class AuthPanel extends Component<Props, State> {
       <Button
         kind="link"
         mix="auth-panel__admin-action"
-        {...getHandleClickProps(() => this.toggleBlockedVisibility())}
+        {...getHandleClickProps(this.toggleBlockedVisibility)}
         role="link"
       >
         {this.state.isBlockedVisible ? (
@@ -401,30 +212,21 @@ export class AuthPanel extends Component<Props, State> {
     );
   };
 
-  render(props: Props, { isBlockedVisible }: State) {
-    const {
-      user,
-      postInfo: { read_only },
-      theme,
-    } = props;
+  render({ user, postInfo, theme }: Props, { isBlockedVisible }: State) {
+    const { read_only } = postInfo;
     const isAdmin = user && user.admin;
     const isSettingsLabelVisible = Object.keys(this.props.hiddenUsers).length > 0 || isAdmin || isBlockedVisible;
 
     return (
       <div className={b('auth-panel', {}, { theme, loggedIn: !!user })}>
-        {this.renderAuthorized()}
-        {this.renderUnauthorized()}
+        <div className="auth-panel__column">{user ? this.renderAuthorized(user) : read_only && <Auth />}</div>
         {this.renderThirdPartyWarning()}
         {this.renderCookiesWarning()}
         <div className="auth-panel__column">
           {isSettingsLabelVisible && this.renderSettingsLabel()}
-
           {isSettingsLabelVisible && ' • '}
-
           {isAdmin && this.renderReadOnlySwitch()}
-
           {isAdmin && ' • '}
-
           {!isAdmin && read_only && (
             <span className="auth-panel__readonly-label">
               <FormattedMessage id="authPanel.read-only" defaultMessage="Read-only" />
@@ -522,7 +324,20 @@ function getSortArray(currentSort: Sorting, intl: IntlShape) {
   });
 }
 
-export const AuthPanelWithIntl = (props: PropsWithoutIntl) => {
+export default function(props: OwnProps) {
   const intl = useIntl();
-  return <AuthPanel intl={intl} {...props} />;
-};
+  const theme = useTheme();
+  const provider = useSelector<StoreState, ProviderState>(state => state.provider);
+  const sort = useSelector<StoreState, Sorting>(state => state.comments.sort);
+
+  return (
+    <AuthPanel
+      intl={intl}
+      theme={theme}
+      providers={StaticStore.config.auth_providers}
+      provider={provider}
+      sort={sort}
+      {...props}
+    />
+  );
+}

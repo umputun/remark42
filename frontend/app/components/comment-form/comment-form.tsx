@@ -10,6 +10,9 @@ import { extractErrorMessageFromResponse } from '@app/utils/errorUtils';
 import { sleep } from '@app/utils/sleep';
 import { replaceSelection } from '@app/utils/replaceSelection';
 import { Button } from '@app/components/button';
+import Auth from '@app/components/auth';
+import { getItem, setItem } from '@app/common/local-storage';
+import { LS_SAVED_COMMENT_VALUE } from '@app/common/constants';
 
 import { SubscribeByEmail } from './__subscribe-by-email';
 import { SubscribeByRSS } from './__subscribe-by-rss';
@@ -21,6 +24,7 @@ import { TextExpander } from './text-expander';
 let textareaId = 0;
 
 export interface Props {
+  id: string;
   user: User | null;
   errorMessage?: string;
   value?: string;
@@ -95,6 +99,15 @@ export class CommentForm extends Component<Props, State> {
     super(props);
     textareaId = textareaId + 1;
     this.textareaId = `textarea_${textareaId}`;
+
+    const savedCommentsJSON = getItem(LS_SAVED_COMMENT_VALUE);
+    let savedValue = '';
+    try {
+      if (typeof savedCommentsJSON === 'string') {
+        savedValue = JSON.parse(savedCommentsJSON)[this.props.id] || '';
+      }
+    } catch (e) {}
+
     this.state = {
       preview: null,
       isErrorShown: false,
@@ -102,7 +115,7 @@ export class CommentForm extends Component<Props, State> {
       errorLock: false,
       isDisabled: false,
       maxLength: StaticStore.config.max_comment_size,
-      text: props.value || '',
+      text: props.value || savedValue,
       buttonText: null,
     };
 
@@ -147,10 +160,16 @@ export class CommentForm extends Component<Props, State> {
   }
 
   onInput(e: Event) {
+    const { value } = e.target as HTMLInputElement;
+
+    try {
+      setItem(LS_SAVED_COMMENT_VALUE, JSON.stringify({ [this.props.id]: value }));
+    } catch (e) {}
+
     if (this.state.errorLock) {
       this.setState({
         preview: null,
-        text: (e.target as HTMLInputElement).value,
+        text: value,
       });
       return;
     }
@@ -158,7 +177,7 @@ export class CommentForm extends Component<Props, State> {
       isErrorShown: false,
       errorMessage: null,
       preview: null,
-      text: (e.target as HTMLInputElement).value,
+      text: value,
     });
   }
 
@@ -380,6 +399,22 @@ export class CommentForm extends Component<Props, State> {
     this.setState({ errorLock: false, isDisabled: false, buttonText: null });
   }
 
+  renderMarkdownTip = () => (
+    <div className="comment-form__markdown">
+      <FormattedMessage
+        id="commentForm.notice-about-styling"
+        defaultMessage="Styling with <a>Markdown</a> is supported"
+        values={{
+          a: (title: string) => (
+            <a class="comment-form__markdown-link" target="_blank" href="markdown-help.html">
+              {title}
+            </a>
+          ),
+        }}
+      />
+    </div>
+  );
+
   render(props: Props, { isDisabled, isErrorShown, errorMessage, preview, maxLength, text, buttonText }: State) {
     const charactersLeft = maxLength - text.length;
     errorMessage = props.errorMessage || errorMessage;
@@ -444,48 +479,45 @@ export class CommentForm extends Component<Props, State> {
           ))}
 
         <div className="comment-form__actions">
-          <div>
-            {!props.simpleView && (
-              <Button
-                kind="secondary"
-                theme={props.theme}
-                size="large"
-                mix="comment-form__button"
-                disabled={isDisabled}
-                onClick={this.getPreview}
-              >
-                <FormattedMessage id="commentForm.preview" defaultMessage="Preview" />
-              </Button>
-            )}
-            <Button kind="primary" size="large" mix="comment-form__button" type="submit" disabled={isDisabled}>
-              {label}
-            </Button>
-          </div>
-
-          {!props.simpleView && props.mode === 'main' && (
-            <div className="comment-form__rss">
-              <div className="comment-form__markdown">
-                <FormattedMessage
-                  id="commentForm.notice-about-styling"
-                  defaultMessage="Styling with <a>Markdown</a> is supported"
-                  values={{
-                    a: (title: string) => (
-                      <a class="comment-form__markdown-link" target="_blank" href="markdown-help.html">
-                        {title}
-                      </a>
-                    ),
-                  }}
-                />
+          {this.props.user ? (
+            <Fragment>
+              <div>
+                {!props.simpleView && (
+                  <Button
+                    kind="secondary"
+                    theme={props.theme}
+                    size="large"
+                    mix="comment-form__button"
+                    disabled={isDisabled}
+                    onClick={this.getPreview}
+                  >
+                    <FormattedMessage id="commentForm.preview" defaultMessage="Preview" />
+                  </Button>
+                )}
+                <Button kind="primary" size="large" mix="comment-form__button" type="submit" disabled={isDisabled}>
+                  {label}
+                </Button>
               </div>
-              <FormattedMessage id="commentForm.subscribe-by" defaultMessage="Subscribe by" />{' '}
-              <SubscribeByRSS userId={props.user !== null ? props.user.id : null} />
-              {StaticStore.config.email_notifications && (
-                <Fragment>
-                  {' '}
-                  <FormattedMessage id="commentForm.subscribe-or" defaultMessage="or" /> <SubscribeByEmail />
-                </Fragment>
+
+              {!props.simpleView && props.mode === 'main' && (
+                <div className="comment-form__rss">
+                  {this.renderMarkdownTip()}
+                  <FormattedMessage id="commentForm.subscribe-by" defaultMessage="Subscribe by" />{' '}
+                  <SubscribeByRSS userId={props.user !== null ? props.user.id : null} />
+                  {StaticStore.config.email_notifications && (
+                    <Fragment>
+                      {' '}
+                      <FormattedMessage id="commentForm.subscribe-or" defaultMessage="or" /> <SubscribeByEmail />
+                    </Fragment>
+                  )}
+                </div>
               )}
-            </div>
+            </Fragment>
+          ) : (
+            <Fragment>
+              <Auth />
+              {this.renderMarkdownTip()}
+            </Fragment>
           )}
         </div>
 

@@ -24,8 +24,9 @@ interface Props {
 }
 
 const commentSelector = (id: string) => (state: StoreState) => {
-  const { theme, comments, childComments } = state;
-  const comment = comments[id];
+  const { theme, comments } = state;
+  const { allComments, childComments } = comments;
+  const comment = allComments[id];
   const childs = childComments[id];
   const collapsed = getThreadIsCollapsed(comment)(state);
 

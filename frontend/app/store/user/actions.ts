@@ -14,7 +14,7 @@ import {
   USER_SUBSCRIPTION_SET,
   USER_SET_ACTION,
 } from './types';
-import { unsetCommentMode } from '../comments/actions';
+import { unsetCommentMode, fetchComments } from '../comments/actions';
 import { IS_STORAGE_AVAILABLE, LS_HIDDEN_USERS_KEY } from '@app/common/constants';
 import { getItem } from '@app/common/local-storage';
 import { updateProvider } from '../provider/actions';
@@ -38,6 +38,7 @@ export const logIn = (provider: AuthProvider): StoreAction<Promise<User | null>>
 
   dispatch(updateProvider({ name: provider.name }));
   dispatch(setUser(user));
+  dispatch(fetchComments());
 
   return user;
 };

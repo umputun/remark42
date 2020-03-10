@@ -1,17 +1,17 @@
-.auth-panel-email-login-form {
+.auth-email-login-form {
   padding: 0.35em 0.55em;
   display: flex;
   flex-direction: column;
   flex-wrap: nowrap;
 }
 
-.auth-panel-email-login-form__input,
-.auth-panel-email-login-form__token-input {
+.auth-email-login-form__input,
+.auth-email-login-form__token-input {
   width: 12rem;
   margin: 2px;
 }
 
-.auth-panel-email-login-form__token-input {
+.auth-email-login-form__token-input {
   resize: vertical;
   border: 1px solid var(--color31);
   padding: 4px;
@@ -27,11 +27,11 @@
   }
 }
 
-.auth-panel-email-login-form__submit {
+.auth-email-login-form__submit {
   margin: 0.3rem 2px 2px;
 }
 
-.auth-panel-email-login-form__back-button {
+.auth-email-login-form__back-button {
   text-align: left;
   margin-left: 0.1rem;
   margin-bottom: 0.5rem;
@@ -43,19 +43,19 @@
   }
 }
 
-.auth-panel-email-login-form__error {
+.auth-email-login-form__error {
   margin: 4px 2px;
   padding: 6px 8px;
   font-weight: normal;
   line-height: 1.2;
 }
 
-.auth-panel-email-login-form_theme_dark .auth-panel-email-login-form__error {
+.auth-email-login-form_theme_dark .auth-email-login-form__error {
   background: var(--color28);
   color: var(--color27);
 }
 
-.auth-panel-email-login-form_theme_light .auth-panel-email-login-form__error {
+.auth-email-login-form_theme_light .auth-email-login-form__error {
   background: var(--color26);
   color: var(--color25);
 }

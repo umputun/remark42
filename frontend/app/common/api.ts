@@ -69,8 +69,8 @@ export const logOut = (): Promise<void> =>
 
 export const getConfig = (): Promise<Config> => fetcher.get(`/config`);
 
-export const getPostComments = (sort: Sorting): Promise<Tree> =>
-  fetcher.get({
+export const getPostComments = (sort: Sorting) =>
+  fetcher.get<Tree>({
     url: `/find?site=${siteId}&url=${url}&sort=${sort}&format=tree`,
     withCredentials: true,
   });

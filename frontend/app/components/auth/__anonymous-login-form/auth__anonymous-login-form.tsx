@@ -89,9 +89,9 @@ export class AnonymousLoginForm extends Component<Props, State> {
     const props = this.props;
     const intl = props.intl;
     // TODO: will be great to `b` to accept `string | undefined | (string|undefined)[]` as classname
-    let className = b('auth-panel-anonymous-login-form', {}, { theme: props.theme });
+    let className = b('auth-anonymous-login-form', {}, { theme: props.theme });
     if (props.className) {
-      className += ' ' + b('auth-panel-anonymous-login-form', {}, { theme: props.theme });
+      className += ' ' + b('auth-anonymous-login-form', {}, { theme: props.theme });
     }
 
     const usernameInvalidReason = this.getUsernameInvalidReason();
@@ -100,14 +100,14 @@ export class AnonymousLoginForm extends Component<Props, State> {
       <form className={className} onSubmit={this.onSubmit}>
         <Input
           ref={this.inputRef}
-          mix="auth-panel-anonymous-login-form__input"
+          mix="auth-anonymous-login-form__input"
           placeholder={intl.formatMessage(messages.userName)}
           value={this.state.inputValue}
           onInput={this.onChange}
         />
         {/* honeypot input */}
         <input
-          className="auth-panel-anonymous-login-form__remember-me"
+          className="auth-anonymous-login-form__remember-me"
           type="checkbox"
           tabIndex={-1}
           autocomplete="off"
@@ -115,7 +115,7 @@ export class AnonymousLoginForm extends Component<Props, State> {
           checked={this.state.honeyPotValue}
         />
         <Button
-          mix="auth-panel-anonymous-login-form__submit"
+          mix="auth-anonymous-login-form__submit"
           type="submit"
           kind="primary"
           size="middle"

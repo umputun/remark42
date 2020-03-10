@@ -14,6 +14,7 @@ const DEFAULT_PROPS: Readonly<Omit<Props, 'intl'>> = {
   onSubmit: () => Promise.resolve(),
   getPreview: () => Promise.resolve(''),
   user: null,
+  id: '1',
 };
 
 const intl = {

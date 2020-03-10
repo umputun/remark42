@@ -1,7 +1,8 @@
 .comment-form__actions {
   display: flex;
   align-items: center;
-  padding-top: 8px;
+  padding-top: 12px;
   flex-wrap: wrap;
   justify-content: space-between;
+  min-height: 30px;
 }

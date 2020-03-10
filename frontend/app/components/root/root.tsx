@@ -4,16 +4,9 @@ import { useSelector } from 'react-redux';
 import b from 'bem-react-helper';
 import { IntlShape, useIntl, FormattedMessage, defineMessages } from 'react-intl';
 
-import { User, Sorting, AuthProvider } from '@app/common/types';
-import {
-  COMMENT_NODE_CLASSNAME_PREFIX,
-  MAX_SHOWN_ROOT_COMMENTS,
-  THEMES,
-  IS_MOBILE,
-  LS_SORT_KEY,
-  DEFAULT_SORT,
-} from '@app/common/constants';
-import { maxShownComments } from '@app/common/settings';
+import { AuthProvider, Sorting } from '@app/common/types';
+import { COMMENT_NODE_CLASSNAME_PREFIX, MAX_SHOWN_ROOT_COMMENTS, THEMES, IS_MOBILE } from '@app/common/constants';
+import { maxShownComments, url } from '@app/common/settings';
 
 import { StaticStore } from '@app/common/static_store';
 import { StoreState } from '@app/store';
@@ -27,12 +20,12 @@ import {
   hideUser,
   unhideUser,
 } from '@app/store/user/actions';
-import { fetchComments } from '@app/store/comments/actions';
+import { fetchComments, updateSorting } from '@app/store/comments/actions';
 import { setCommentsReadOnlyState } from '@app/store/post_info/actions';
 import { setTheme } from '@app/store/theme/actions';
 import { addComment, updateComment } from '@app/store/comments/actions';
 
-import { AuthPanel } from '@app/components/auth-panel';
+import AuthPanel from '@app/components/auth-panel';
 import Settings from '@app/components/settings';
 import { ConnectedComment as Comment } from '@app/components/comment/connected-comment';
 import { CommentForm } from '@app/components/comment-form';
@@ -44,13 +37,13 @@ import { isUserAnonymous } from '@app/utils/isUserAnonymous';
 import { bindActions } from '@app/utils/actionBinder';
 import postMessage from '@app/utils/postMessage';
 import { useActions } from '@app/hooks/useAction';
-import * as localStorage from '@app/common/local-storage';
 
 const mapStateToProps = (state: StoreState) => ({
+  sort: state.comments.sort,
+  isCommentsLoading: state.comments.isFetching,
   user: state.user,
-  topComments: state.topComments,
-  pinnedComments: state.pinnedComments.map(id => state.comments[id]).filter(c => !c.hidden),
-  provider: state.provider,
+  topComments: state.comments.topComments,
+  pinnedComments: state.comments.pinnedComments.map(id => state.comments.allComments[id]).filter(c => !c.hidden),
   theme: state.theme,
   info: state.info,
   hiddenUsers: state.hiddenUsers,
@@ -60,6 +53,7 @@ const mapStateToProps = (state: StoreState) => ({
 });
 
 const boundActions = bindActions({
+  updateSorting,
   fetchComments,
   fetchUser,
   fetchBlockedUsers,
@@ -78,9 +72,7 @@ const boundActions = bindActions({
 type Props = ReturnType<typeof mapStateToProps> & typeof boundActions & { intl: IntlShape };
 
 interface State {
-  sort: string;
   isUserLoading: boolean;
-  isCommentsListLoading: boolean;
   isSettingsVisible: boolean;
   commentsShown: number;
   wasSomeoneUnblocked: boolean;
@@ -93,22 +85,10 @@ const messages = defineMessages({
   },
 });
 
-function getInitialSort() {
-  const sort = localStorage.getItem(LS_SORT_KEY) as Sorting;
-
-  if (sort) {
-    return sort;
-  }
-
-  return DEFAULT_SORT;
-}
-
 /** main component fr main comments widget */
 export class Root extends Component<Props, State> {
   state = {
-    sort: getInitialSort(),
     isUserLoading: true,
-    isCommentsListLoading: true,
     commentsShown: maxShownComments,
     wasSomeoneUnblocked: false,
     isSettingsVisible: false,
@@ -117,9 +97,8 @@ export class Root extends Component<Props, State> {
   componentWillMount() {
     const userloading = this.props.fetchUser().finally(() => this.setState({ isUserLoading: false }));
 
-    Promise.all([userloading, this.fetchComments()]).finally(() => {
+    Promise.all([userloading, this.props.fetchComments()]).finally(() => {
       postMessage({ remarkIframeHeight: document.body.offsetHeight });
-      this.setState({ isCommentsListLoading: false });
       setTimeout(this.checkUrlHash);
       window.addEventListener('hashchange', this.checkUrlHash);
     });
@@ -127,36 +106,23 @@ export class Root extends Component<Props, State> {
     window.addEventListener('message', this.onMessage.bind(this));
   }
 
-  fetchComments() {
-    return this.props.fetchComments(this.state.sort);
-  }
-
   changeSort = async (sort: Sorting) => {
-    if (sort === this.state.sort) return;
-    const prevSort = this.state.sort;
+    if (sort === this.props.sort) return;
 
-    this.setState({ isCommentsListLoading: true, sort }, async () => {
-      try {
-        await this.fetchComments();
-        localStorage.setItem(LS_SORT_KEY, sort);
-        this.setState({ isCommentsListLoading: false });
-      } catch (e) {
-        this.setState({ sort: prevSort, isCommentsListLoading: false });
-      }
-    });
+    await this.props.updateSorting(sort);
   };
 
-  logIn = async (provider: AuthProvider): Promise<User | null> => {
+  logIn = async (provider: AuthProvider) => {
     const user = await this.props.logIn(provider);
 
-    await this.fetchComments();
+    await this.props.fetchComments();
 
     return user;
   };
 
-  logOut = async (): Promise<void> => {
+  logOut = async () => {
     await this.props.logOut();
-    await this.fetchComments();
+    await this.props.fetchComments();
   };
 
   checkUrlHash(e: Event & { newURL?: string }) {
@@ -196,7 +162,7 @@ export class Root extends Component<Props, State> {
   onBlockedUsersHide = async () => {
     // if someone was unblocked let's reload comments
     if (this.state.wasSomeoneUnblocked) {
-      this.fetchComments();
+      this.props.fetchComments();
     }
     this.setState({
       wasSomeoneUnblocked: false,
@@ -217,36 +183,29 @@ export class Root extends Component<Props, State> {
   /**
    * Defines whether current client is logged in via `Anonymous provider`
    */
-  isAnonymous(): boolean {
-    return isUserAnonymous(this.props.user);
-  }
+  isAnonymous = () => isUserAnonymous(this.props.user);
 
-  render(props: Props, { isUserLoading, isCommentsListLoading, commentsShown, isSettingsVisible }: State) {
+  render(props: Props, { isUserLoading, commentsShown, isSettingsVisible }: State) {
     if (isUserLoading) {
       return <Preloader mix="root__preloader" />;
     }
 
-    const isGuest = !props.user;
     const isCommentsDisabled = props.info.read_only!;
     const imageUploadHandler = this.isAnonymous() ? undefined : this.props.uploadImage;
 
     return (
       <Fragment>
         <AuthPanel
-          theme={this.props.theme}
           user={this.props.user}
           hiddenUsers={this.props.hiddenUsers}
-          sort={this.state.sort}
+          onSortChange={this.changeSort}
           isCommentsDisabled={isCommentsDisabled}
           postInfo={this.props.info}
-          providers={StaticStore.config.auth_providers}
-          provider={this.props.provider}
           onSignIn={this.logIn}
           onSignOut={this.logOut}
           onBlockedUsersShow={this.onBlockedUsersShow}
           onBlockedUsersHide={this.onBlockedUsersHide}
           onCommentsChangeReadOnlyMode={this.props.setCommentsReadOnlyState}
-          onSortChange={this.changeSort}
         />
         <div className="root__main">
           {isSettingsVisible ? (
@@ -263,8 +222,9 @@ export class Root extends Component<Props, State> {
             />
           ) : (
             <Fragment>
-              {!isGuest && !isCommentsDisabled && (
+              {!isCommentsDisabled && (
                 <CommentForm
+                  id={encodeURI(url || '')}
                   intl={this.props.intl}
                   theme={props.theme}
                   mix="root__input"
@@ -298,7 +258,7 @@ export class Root extends Component<Props, State> {
                 </div>
               )}
 
-              {!!this.props.topComments.length && !isCommentsListLoading && (
+              {!!this.props.topComments.length && !props.isCommentsLoading && (
                 <div className="root__threads" role="list">
                   {(IS_MOBILE && commentsShown < this.props.topComments.length
                     ? this.props.topComments.slice(0, commentsShown)
@@ -321,7 +281,7 @@ export class Root extends Component<Props, State> {
                 </div>
               )}
 
-              {isCommentsListLoading && (
+              {props.isCommentsLoading && (
                 <div className="root__threads" role="list">
                   <Preloader mix="root__preloader" />
                 </div>
