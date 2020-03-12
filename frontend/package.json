@@ -65,8 +65,8 @@
     "html-webpack-plugin": "^3.2.0",
     "husky": "^3.0.9",
     "identity-obj-proxy": "^3.0.0",
-    "jest": "^24.9.0",
-    "jest-enzyme": "^7.1.1",
+    "jest": "^25.1.0",
+    "jest-enzyme": "^7.1.2",
     "jest-extended": "^0.11.2",
     "jest-localstorage-mock": "^2.4.0",
     "lint-staged": "^9.4.2",
@@ -91,11 +91,11 @@
     "stylelint-config-prettier": "^8.0.1",
     "stylelint-config-standard": "^20.0.0",
     "stylelint-value-no-unknown-custom-properties": "^2.0.0",
-    "ts-jest": "^24.1.0",
+    "ts-jest": "^25.2.1",
     "ts-loader": "^6.2.1",
     "typescript": "^3.6.4",
     "webpack": "^4.41.2",
-    "webpack-bundle-analyzer": "^3.6.0",
+    "webpack-bundle-analyzer": "^3.6.1",
     "webpack-cli": "^3.3.9",
     "webpack-dev-server": "^3.9.0",
     "whatwg-fetch": "^3.0.0"
@@ -121,6 +121,6 @@
     "redux-thunk": "^2.3.0"
   },
   "engines": {
-    "node": ">=8"
+    "node": ">=12"
   }
 }
