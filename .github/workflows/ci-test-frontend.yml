@@ -29,3 +29,6 @@ jobs:
 
       - run: npm run size
         working-directory: ./frontend
+
+      - run: npm run check:translation
+        working-directory: ./frontend
