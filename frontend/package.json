@@ -1,6 +1,7 @@
 {
   "name": "remark-ui",
   "version": "0.1.0",
+  "license": "MIT",
   "scripts": {
     "build": "webpack --mode production && es-check es5 './public/*.js'",
     "start": "webpack-dev-server --mode development",
