@@ -1,20 +1,14 @@
 const fs = require('fs');
 const path = require('path');
-const defaultMessages = require('../extracted-messages/messages');
+const { keyMessagePairs, keys } = require('./getTranslationKeys');
+const { getLocalePath } = require('./getLocalePath');
 const { renderLoadLocale } = require('./localeLoadTemplate');
 const { getSupportedLocales } = require('./getSupportedLocales');
 
 const locales = getSupportedLocales();
 
-const keyMessagePairs = [];
-const keysSet = new Set();
-defaultMessages.forEach(({ id, defaultMessage }) => {
-  keyMessagePairs.push([id, defaultMessage]);
-  keysSet.add(id);
-});
-
 function removeAbandonedKeys(existKeys, dictionary) {
-  return Object.fromEntries(Object.entries(dictionary).filter(([key]) => existKeys.has(key)));
+  return Object.fromEntries(Object.entries(dictionary).filter(([key]) => existKeys.includes(key)));
 }
 
 function sortDict(dict) {
@@ -27,7 +21,7 @@ function sortDict(dict) {
 
 locales.forEach(locale => {
   let currentDict = {};
-  const pathToDict = path.resolve(__dirname, `../app/locales/${locale}.json`);
+  const pathToDict = getLocalePath({ locale });
   if (fs.existsSync(pathToDict)) {
     currentDict = require(pathToDict);
   }
@@ -36,7 +30,7 @@ locales.forEach(locale => {
       currentDict[key] = defaultMessage;
     }
   });
-  currentDict = removeAbandonedKeys(keysSet, currentDict);
+  currentDict = removeAbandonedKeys(keys, currentDict);
   currentDict = sortDict(currentDict);
   fs.writeFileSync(pathToDict, JSON.stringify(currentDict, null, 2) + '\n');
   fs.writeFileSync(

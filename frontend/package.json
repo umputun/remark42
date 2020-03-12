@@ -5,6 +5,7 @@
     "build": "webpack --mode production && es-check es5 './public/*.js'",
     "start": "webpack-dev-server --mode development",
     "check": "tsc -p tsconfig.json --noEmit --skipLibCheck",
+    "check:translation": "npm run extract-messages && node ./tasks/checkTranslation.js",
     "lint": "eslint --max-warnings=0 --ext=.ts,.tsx,.js,.jsx .",
     "lint:style": "stylelint '**/*.scss' '**/*.pcss' '**/*.css' 'iframe.html'",
     "test": "jest",
