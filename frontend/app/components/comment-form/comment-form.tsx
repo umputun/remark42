@@ -89,7 +89,7 @@ const messages = defineMessages({
     defaultMessage: 'Something went wrong. Please try again a bit later.',
   },
   anonymousUploadingDisabled: {
-    id: 'commentForm.unexpected-error',
+    id: 'commentForm.anonymous-uploading-disabled',
     defaultMessage: 'Image uploading is disabled for unauthorized users. You should login before uploading.',
   },
 });
