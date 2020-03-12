@@ -140,6 +140,12 @@ export class CommentForm extends Component<Props, State> {
       this.setState({ text: nextProps.value || '' });
       this.props.autofocus && this.textAreaRef.current && this.textAreaRef.current.focus();
     }
+    if (nextProps.user && !this.props.value) {
+      this.setState({
+        isErrorShown: false,
+        errorMessage: null,
+      });
+    }
   }
 
   shouldComponentUpdate(nextProps: Props, nextState: State) {
