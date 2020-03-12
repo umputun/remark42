@@ -88,6 +88,10 @@ const messages = defineMessages({
     id: 'commentForm.unexpected-error',
     defaultMessage: 'Something went wrong. Please try again a bit later.',
   },
+  anonymousUploadingDisabled: {
+    id: 'commentForm.unexpected-error',
+    defaultMessage: 'Image uploading is disabled for unauthorized users. You should login before uploading.',
+  },
 });
 
 export class CommentForm extends Component<Props, State> {
@@ -248,6 +252,7 @@ export class CommentForm extends Component<Props, State> {
   }
 
   onDragOver(e: DragEvent) {
+    if (!this.props.user) e.preventDefault();
     if (!this.props.uploadImage) return;
     if (StaticStore.config.max_image_size === 0) return;
     if (!this.textAreaRef) return;
@@ -259,6 +264,14 @@ export class CommentForm extends Component<Props, State> {
   }
 
   onDrop(e: DragEvent) {
+    if (!this.props.user) {
+      this.setState({
+        isErrorShown: true,
+        errorMessage: this.props.intl.formatMessage(messages.anonymousUploadingDisabled),
+      });
+      e.preventDefault();
+      return;
+    }
     if (!this.props.uploadImage) return;
     if (StaticStore.config.max_image_size === 0) return;
     if (!e.dataTransfer) return;
