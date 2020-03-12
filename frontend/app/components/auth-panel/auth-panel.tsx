@@ -324,7 +324,7 @@ function getSortArray(currentSort: Sorting, intl: IntlShape) {
   });
 }
 
-export default function(props: OwnProps) {
+export default function AuthPanelConnected(props: OwnProps) {
   const intl = useIntl();
   const theme = useTheme();
   const provider = useSelector<StoreState, ProviderState>(state => state.provider);
