@@ -52,7 +52,7 @@
   "comment.verified-user": "Подлинная учетная запись",
   "comment.verify-user": "Подвердить подлинность учетной записи для {userName}?",
   "comment.vote-error": "Ошибка голосования: {voteErrorMessage}",
-  "commentForm.anonymous-uploading-disabled": "Загрузка изображений не доступна для не авторизированных пользователей. Авторизуйтесь для загрузки изображений.",
+  "commentForm.anonymous-uploading-disabled": "Загрузка изображений не доступна для неавторизированных пользователей. Авторизуйтесь для загрузки изображений.",
   "commentForm.exceeded-size": "Размер файла {fileName} должен быть меньше чем {maxImageSize}",
   "commentForm.input-placeholder": "Написать комментарий",
   "commentForm.new-comment": "Новый комментарий",
