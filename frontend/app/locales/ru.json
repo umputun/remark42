@@ -78,7 +78,7 @@
   "commentsSort.worst": "Худшие",
   "emailLoginForm.back": "Назад",
   "emailLoginForm.confirm": "Подтвердить",
-  "emailLoginForm.email-address": "Email адресс",
+  "emailLoginForm.email-address": "Email адрес",
   "emailLoginForm.empty-token": "Поле токен должно не должно быть пустым",
   "emailLoginForm.expired-token": "Время действия токена истекло",
   "emailLoginForm.invalid-email": "Введен не корректный email адрес",
