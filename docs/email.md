@@ -53,6 +53,21 @@ Configuration example for Gmail:
       - AUTH_EMAIL_FROM=example.user@gmail.com
 ```
 
+### AWS SES
+
+Configuration example for [AWS SES](https://aws.amazon.com/ses/) (us-east-1 region):
+```
+      - SMTP_HOST=email-smtp.us-east-1.amazonaws.com
+      - SMTP_PORT=465
+      - SMTP_TLS=true
+      - SMTP_USERNAME=access_key_id
+      - SMTP_PASSWORD=secret_access_key
+      - AUTH_EMAIL_FROM=example.user@gmail.com
+
+```
+
+A domain or an email that will be used in `AUTH_EMAIL_FROM` or `NOTIFY_EMAIL_FROM` must first be [verified](https://docs.aws.amazon.com/ses/latest/DeveloperGuide//verify-domain-procedure.html).
+[SMTP Credentials](https://docs.aws.amazon.com/ses/latest/DeveloperGuide/smtp-credentials.html) must first be obtained from [AWS SES Console](https://console.aws.amazon.com/ses/home?region=us-east-1#smtp-settings:):
 
 ## Setup email authentication
 
