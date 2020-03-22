@@ -1,8 +1,11 @@
 import 'jest-extended';
 import 'jest-enzyme';
-import { StaticStore } from '@app/common/static_store';
 import { configure } from 'enzyme';
 import PreactAdapter from 'enzyme-adapter-preact-pure';
+
+import { StaticStore } from '@app/common/static_store';
+
+import './mockHeaders';
 
 configure({ adapter: new PreactAdapter() });
 

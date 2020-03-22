@@ -1,19 +1,6 @@
 import fetcher from './fetcher';
-import { mockHeaders } from '@app/testUtils/mockHeaders';
 
 describe('fetcher', () => {
-  beforeAll(() => {
-    mockHeaders.mock();
-  });
-
-  afterAll(() => {
-    mockHeaders.restore();
-  });
-
-  afterEach(() => {
-    (window.fetch as any).mockRestore();
-  });
-
   describe('errors', () => {
     it('should throw json on api json response with >= 400 status code', async () => {
       const response = {

@@ -8,4 +8,12 @@ declare global {
       changeTheme(theme: Theme): void;
     };
   }
+
+  namespace NodeJS {
+    interface Global {
+      Headers: typeof Headers;
+      localStorage: typeof Storage;
+      fetch: typeof fetch;
+    }
+  }
 }
