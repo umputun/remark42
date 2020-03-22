@@ -14,6 +14,8 @@ import {
   COMMENTS_REQUEST_FETCHING,
   COMMENTS_REQUEST_SUCCESS,
 } from './types';
+import { setItem } from '@app/common/local-storage';
+import { LS_SORT_KEY } from '@app/common/constants';
 
 /** sets comments, and put pinned comments in cache */
 export const setComments = (comments: Node[]): StoreAction<void> => dispatch => {
@@ -111,11 +113,11 @@ export function unsetCommentMode(mode: StoreState['comments']['activeComment'] =
 export function updateSorting(sort: Sorting): StoreAction<void> {
   return async (dispath, getState) => {
     const { sort: prevSort } = getState().comments;
-    dispath({ type: COMMENTS_REQUEST_FETCHING });
     dispath({ type: COMMENTS_SET_SORT, payload: sort });
 
     try {
       await dispath(fetchComments(sort));
+      setItem(LS_SORT_KEY, sort);
     } catch (e) {
       dispath({ type: COMMENTS_SET_SORT, payload: prevSort });
     }

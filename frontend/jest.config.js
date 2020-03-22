@@ -15,6 +15,6 @@ module.exports = {
     '^react$': 'preact/compat',
     '^react-dom$': 'preact/compat',
   },
-  setupFilesAfterEnv: ['<rootDir>/app/testUtils/index.ts'],
+  setupFilesAfterEnv: ['<rootDir>/app/testUtils/index.ts', 'jest-localstorage-mock'],
   transformIgnorePatterns: ['/node_modules/(?!intl-messageformat|intl-messageformat-parser).+\\.js$'],
 };
