@@ -41,16 +41,19 @@ type Service struct {
 	term     int32 // term value used atomically to detect emergency termination
 }
 
+// To regenerate mock run from this directory:
+// sh -c "mockery -inpkg -name Store -print > /tmp/image-mock.tmp && mv /tmp/image-mock.tmp image_mock.go"
+
 // Store defines interface for saving and loading pictures.
-// Declares two-stage save with commit. Save stores to staging area and Commit moves to the final location
+// Declares two-stage save with Commit. Save stores to staging area and Commit moves to the final location
 type Store interface {
 	Save(fileName string, userID string, r io.Reader) (id string, err error) // get name and reader and returns ID of stored (staging) image
 	SaveWithID(id string, r io.Reader) (string, error)                       // store image for passed id to staging
 	Load(id string) (io.ReadCloser, int64, error)                            // load image by ID. Caller has to close the reader.
 	SizeLimit() int                                                          // max image size
 
-	commit(id string) error                               // move image from staging to permanent
-	cleanup(ctx context.Context, ttl time.Duration) error // run removal loop for old images on staging
+	Commit(id string) error                               // move image from staging to permanent
+	Cleanup(ctx context.Context, ttl time.Duration) error // run removal loop for old images on staging
 }
 
 const submitQueueSize = 5000
@@ -78,7 +81,7 @@ func (s *Service) Submit(idsFn func() []string) {
 					time.Sleep(time.Millisecond * 10) // small sleep to relive busy wait but keep reactive for term (close)
 				}
 				for _, id := range req.idsFn() {
-					if err := s.commit(id); err != nil {
+					if err := s.Commit(id); err != nil {
 						log.Printf("[WARN] failed to commit image %s", id)
 					}
 				}
@@ -124,7 +127,7 @@ func (s *Service) Cleanup(ctx context.Context) {
 			log.Printf("[INFO] cleanup terminated, %v", ctx.Err())
 			return
 		case <-time.After(s.TTL / 2): // cleanup call on every 1/2 TTL
-			if err := s.Store.cleanup(ctx, s.TTL); err != nil {
+			if err := s.Store.Cleanup(ctx, s.TTL); err != nil {
 				log.Printf("[WARN] failed to cleanup, %v", err)
 			}
 		}
@@ -136,7 +139,7 @@ func (s *Service) Close() {
 	log.Printf("[INFO] close image service ")
 	atomic.StoreInt32(&s.term, 1) // enforce non-delayed commits for all ids left in submitCh
 	for {
-		// set to 0 by commit goroutine after everything waited on TTL sent
+		// set to 0 by Commit goroutine after everything waited on TTL sent
 		if atomic.LoadInt32(&s.term) == 0 {
 			break
 		}

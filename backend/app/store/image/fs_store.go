@@ -70,8 +70,8 @@ func (f *FileSystem) Save(fileName string, userID string, r io.Reader) (id strin
 }
 
 // Commit file stored in staging location by moving it to permanent location
-func (f *FileSystem) commit(id string) error {
-	log.Printf("[DEBUG] commit image %s", id)
+func (f *FileSystem) Commit(id string) error {
+	log.Printf("[DEBUG] Commit image %s", id)
 	stagingImage, permImage := f.location(f.Staging, id), f.location(f.Location, id)
 
 	if err := os.MkdirAll(path.Dir(permImage), 0700); err != nil {
@@ -110,7 +110,7 @@ func (f *FileSystem) Load(id string) (io.ReadCloser, int64, error) {
 }
 
 // Cleanup runs scan of staging and removes old files based on ttl
-func (f *FileSystem) cleanup(_ context.Context, ttl time.Duration) error {
+func (f *FileSystem) Cleanup(_ context.Context, ttl time.Duration) error {
 
 	if _, err := os.Stat(f.Staging); os.IsNotExist(err) {
 		return nil

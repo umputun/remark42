@@ -114,7 +114,7 @@ func TestImage_RoutesCachingImage(t *testing.T) {
 
 	imageStore.On("Load", mock.Anything).Once().Return(nil, int64(0), nil)
 	imageStore.On("SaveWithID", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) { _, _ = ioutil.ReadAll(args.Get(1).(io.Reader)) }).Return("", nil)
-	imageStore.On("commit", mock.Anything).Once().Return(nil)
+	imageStore.On("Commit", mock.Anything).Once().Return(nil)
 
 	resp, err := http.Get(ts.URL + "/?src=" + encodedImgURL)
 	require.Nil(t, err)
@@ -124,7 +124,7 @@ func TestImage_RoutesCachingImage(t *testing.T) {
 
 	imageStore.AssertCalled(t, "Load", mock.Anything)
 	imageStore.AssertCalled(t, "SaveWithID", "cached_images/4b84b15bff6ee5796152495a230e45e3d7e947d9-"+sha1Str(imgURL), mock.Anything)
-	imageStore.AssertCalled(t, "commit", mock.Anything)
+	imageStore.AssertCalled(t, "Commit", mock.Anything)
 }
 
 func TestImage_RoutesUsingCachedImage(t *testing.T) {

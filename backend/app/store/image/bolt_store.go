@@ -93,8 +93,8 @@ func (b *Bolt) Save(_ string, userID string, r io.Reader) (id string, err error)
 }
 
 // Commit file stored in staging bucket by copying it to permanent bucket
-// Data from staging bucket not removed immediately, but would be removed on cleanup
-func (b *Bolt) commit(id string) error {
+// Data from staging bucket not removed immediately, but would be removed on Cleanup
+func (b *Bolt) Commit(id string) error {
 	err := b.db.Update(func(tx *bolt.Tx) error {
 		data := tx.Bucket([]byte(imagesStagedBktName)).Get([]byte(id))
 		if data == nil {
@@ -127,7 +127,7 @@ func (b *Bolt) Load(id string) (io.ReadCloser, int64, error) {
 }
 
 // Cleanup runs scan of staging and removes old data based on ttl
-func (b *Bolt) cleanup(_ context.Context, ttl time.Duration) error {
+func (b *Bolt) Cleanup(_ context.Context, ttl time.Duration) error {
 	err := b.db.Update(func(tx *bolt.Tx) error {
 		c := tx.Bucket([]byte(insertTimeBktName)).Cursor()
 

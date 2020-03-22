@@ -129,7 +129,7 @@ func TestFsStore_SaveAndCommit(t *testing.T) {
 
 	id, err := svc.Save("file1.png", "user1", gopherPNG())
 	require.NoError(t, err)
-	err = svc.commit(id)
+	err = svc.Commit(id)
 	require.NoError(t, err)
 
 	imgStaging := svc.location(svc.Staging, id)
@@ -180,7 +180,7 @@ func TestFsStore_LoadAfterCommit(t *testing.T) {
 	id, err := svc.Save("blah_ff1.png", "user1", gopherPNG())
 	assert.NoError(t, err)
 	t.Log(id)
-	err = svc.commit(id)
+	err = svc.Commit(id)
 	require.NoError(t, err)
 
 	r, sz, err := svc.Load(id)
@@ -260,13 +260,13 @@ func TestFsStore_Cleanup(t *testing.T) {
 	img3 := save("blah_ff3.png", "user2")
 
 	time.Sleep(200 * time.Millisecond) // make first image expired
-	err := svc.cleanup(context.Background(), time.Millisecond*300)
+	err := svc.Cleanup(context.Background(), time.Millisecond*300)
 	assert.NoError(t, err)
 
 	_, err = os.Stat(img1)
 	assert.Error(t, err, "no file on staging anymore")
 	// sometimes two images for user1 are put into same directory, which means that
-	// after first image cleanup it's not empty and won't be deleted
+	// after first image Cleanup it's not empty and won't be deleted
 	_, err = os.Stat(path.Dir(img1))
 	if path.Dir(img1) != path.Dir(img2) {
 		assert.Error(t, err, "no dir %s on staging anymore", path.Dir(img1))
@@ -280,7 +280,7 @@ func TestFsStore_Cleanup(t *testing.T) {
 	assert.NoError(t, err, "file on staging")
 
 	time.Sleep(200 * time.Millisecond) // make all images expired
-	err = svc.cleanup(context.Background(), time.Millisecond*300)
+	err = svc.Cleanup(context.Background(), time.Millisecond*300)
 	assert.NoError(t, err)
 
 	_, err = os.Stat(img2)
