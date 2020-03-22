@@ -3,7 +3,7 @@ package proxy
 import (
 	"bytes"
 	"context"
-	"crypto/sha1" // nolint
+	"crypto/sha1" //nolint:gosec // not used for cryptography
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -100,40 +100,25 @@ func (p Image) Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	imgURL := string(src)
-	var imgReader io.ReadCloser
+	var img []byte
 	imgID, err := cachedImgID(imgURL)
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't parse image url "+imgURL, rest.ErrAssetNotFound)
 		return
 	}
 	if p.CacheExternal {
-		imgReader, _, err = p.ImageService.Load(imgID)
-		if err != nil {
-			imgReader = nil
-		}
+		img, _ = p.ImageService.Load(imgID)
 	}
-	if imgReader == nil {
-		imgReader, err = p.downloadImage(context.Background(), imgURL)
+	if img == nil {
+		img, err = p.downloadImage(context.Background(), imgURL)
 		if err != nil {
 			rest.SendErrorJSON(w, r, http.StatusNotFound, err, "can't get image "+imgURL, rest.ErrAssetNotFound)
 			return
 		}
 		if p.CacheExternal {
-			var buf bytes.Buffer
-			// We need to duplicate data into a new buffer because `cacheImage` would read provider Reader
-			// and we would need another one to read data for response
-			p.cacheImage(io.TeeReader(imgReader, &buf), imgID)
-			if err := imgReader.Close(); err != nil {
-				log.Printf("[WARN] can't close image reader, %s", err)
-			}
-			imgReader = ioutil.NopCloser(&buf)
+			p.cacheImage(bytes.NewReader(img), imgID)
 		}
 	}
-	defer func() {
-		if e := imgReader.Close(); e != nil {
-			log.Printf("[WARN] can't close image reader, %s", e)
-		}
-	}()
 
 	// enforce client-side caching
 	etag := `"` + r.URL.Query().Get("src") + `"`
@@ -147,7 +132,7 @@ func (p Image) Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Add("Content-Type", "image/*")
-	_, err = io.Copy(w, imgReader)
+	_, err = io.Copy(w, bytes.NewReader(img))
 	if err != nil {
 		log.Printf("[WARN] can't copy image stream, %s", err)
 	}
@@ -162,8 +147,8 @@ func (p Image) cacheImage(r io.Reader, imgID string) {
 	p.ImageService.Submit(func() []string { return []string{id} })
 }
 
-// download an image. Returns a Reader which has to be closed by a caller
-func (p Image) downloadImage(ctx context.Context, imgURL string) (io.ReadCloser, error) {
+// download an image.
+func (p Image) downloadImage(ctx context.Context, imgURL string) ([]byte, error) {
 	log.Printf("[DEBUG] downloading image %s", imgURL)
 
 	timeout := 60 * time.Second // default
@@ -197,11 +182,11 @@ func (p Image) downloadImage(ctx context.Context, imgURL string) (io.ReadCloser,
 	if err != nil {
 		return nil, errors.Errorf("unable to read image body")
 	}
-	return ioutil.NopCloser(bytes.NewBuffer(imgData)), nil
+	return imgData, nil
 }
 
 func sha1Str(s string) string {
-	return fmt.Sprintf("%x", sha1.Sum([]byte(s))) // nolint
+	return fmt.Sprintf("%x", sha1.Sum([]byte(s))) //nolint:gosec // not used for cryptography
 }
 
 // generates ID for a cached image.

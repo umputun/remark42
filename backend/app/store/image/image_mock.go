@@ -41,33 +41,26 @@ func (_m *MockStore) Commit(id string) error {
 }
 
 // Load provides a mock function with given fields: id
-func (_m *MockStore) Load(id string) (io.ReadCloser, int64, error) {
+func (_m *MockStore) Load(id string) ([]byte, error) {
 	ret := _m.Called(id)
 
-	var r0 io.ReadCloser
-	if rf, ok := ret.Get(0).(func(string) io.ReadCloser); ok {
+	var r0 []byte
+	if rf, ok := ret.Get(0).(func(string) []byte); ok {
 		r0 = rf(id)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(io.ReadCloser)
+			r0 = ret.Get(0).([]byte)
 		}
 	}
 
-	var r1 int64
-	if rf, ok := ret.Get(1).(func(string) int64); ok {
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string) error); ok {
 		r1 = rf(id)
 	} else {
-		r1 = ret.Get(1).(int64)
+		r1 = ret.Error(1)
 	}
 
-	var r2 error
-	if rf, ok := ret.Get(2).(func(string) error); ok {
-		r2 = rf(id)
-	} else {
-		r2 = ret.Error(2)
-	}
-
-	return r0, r1, r2
+	return r0, r1
 }
 
 // Save provides a mock function with given fields: fileName, userID, r

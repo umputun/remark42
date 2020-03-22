@@ -161,14 +161,10 @@ func TestFsStore_LoadAfterSave(t *testing.T) {
 	assert.NoError(t, err)
 	t.Log(id)
 
-	r, sz, err := svc.Load(id)
-	assert.NoError(t, err)
-	defer func() { assert.NoError(t, r.Close()) }()
-	data, err := ioutil.ReadAll(r)
+	data, err := svc.Load(id)
 	assert.NoError(t, err)
 	assert.Equal(t, 1462, len(data))
-	assert.Equal(t, int64(1462), sz)
-	_, _, err = svc.Load("abcd")
+	_, err = svc.Load("abcd")
 	assert.Error(t, err)
 }
 
@@ -183,14 +179,10 @@ func TestFsStore_LoadAfterCommit(t *testing.T) {
 	err = svc.Commit(id)
 	require.NoError(t, err)
 
-	r, sz, err := svc.Load(id)
-	assert.NoError(t, err)
-	defer func() { assert.NoError(t, r.Close()) }()
-	data, err := ioutil.ReadAll(r)
+	data, err := svc.Load(id)
 	assert.NoError(t, err)
 	assert.Equal(t, 1462, len(data))
-	assert.Equal(t, int64(1462), sz)
-	_, _, err = svc.Load("abcd")
+	_, err = svc.Load("abcd")
 	assert.Error(t, err)
 }
 

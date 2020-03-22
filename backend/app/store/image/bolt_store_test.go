@@ -53,16 +53,11 @@ func TestBoltStore_LoadAfterSave(t *testing.T) {
 	assert.Contains(t, id, "user1")
 	t.Log(id)
 
-	r, sz, err := svc.Load(id)
-	assert.NoError(t, err)
-	defer func() { assert.NoError(t, r.Close()) }()
-	data, err := ioutil.ReadAll(r)
-
+	data, err := svc.Load(id)
 	assert.NoError(t, err)
 	assert.Equal(t, 1462, len(data))
-	assert.Equal(t, int64(1462), sz)
 
-	_, _, err = svc.Load("abcd")
+	_, err = svc.Load("abcd")
 	assert.Error(t, err)
 }
 

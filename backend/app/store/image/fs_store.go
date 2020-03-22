@@ -83,30 +83,29 @@ func (f *FileSystem) Commit(id string) error {
 }
 
 // Load image from FS. Uses id to get partition subdirectory.
-// returns ReadCloser and caller should call close after processing completed.
-func (f *FileSystem) Load(id string) (io.ReadCloser, int64, error) {
+func (f *FileSystem) Load(id string) ([]byte, error) {
 
 	// get image file by id. first try permanent location and if not found - staging
-	img := func(id string) (file string, st os.FileInfo, err error) {
+	img := func(id string) (file string, err error) {
 		file = f.location(f.Location, id)
-		st, err = os.Stat(file)
+		_, err = os.Stat(file)
 		if err != nil {
 			file = f.location(f.Staging, id)
-			st, err = os.Stat(file)
+			_, err = os.Stat(file)
 		}
-		return file, st, errors.Wrapf(err, "can't get image stats for %s", id)
+		return file, errors.Wrapf(err, "can't get image stats for %s", id)
 	}
 
-	imgFile, st, err := img(id)
+	imgFile, err := img(id)
 	if err != nil {
-		return nil, 0, errors.Wrapf(err, "can't get image file for %s", id)
+		return nil, errors.Wrapf(err, "can't get image file for %s", id)
 	}
 
-	fh, err := os.Open(imgFile) // nolint
+	fh, err := os.Open(imgFile) //nolint:gosec
 	if err != nil {
-		return nil, 0, errors.Wrapf(err, "can't load image %s", id)
+		return nil, errors.Wrapf(err, "can't load image %s", id)
 	}
-	return fh, st.Size(), nil
+	return ioutil.ReadAll(fh)
 }
 
 // Cleanup runs scan of staging and removes old files based on ttl

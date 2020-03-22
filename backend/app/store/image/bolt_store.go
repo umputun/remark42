@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/binary"
 	"io"
-	"io/ioutil"
 	"path"
 	"time"
 
@@ -107,23 +106,23 @@ func (b *Bolt) Commit(id string) error {
 }
 
 // Load image from DB
-// returns ReadCloser and caller should call close after processing completed.
-func (b *Bolt) Load(id string) (io.ReadCloser, int64, error) {
-	buf := &bytes.Buffer{}
-	var size int = 0
+func (b *Bolt) Load(id string) ([]byte, error) {
+	var data []byte
 	err := b.db.View(func(tx *bolt.Tx) error {
-		data := tx.Bucket([]byte(imagesBktName)).Get([]byte(id))
+		data = tx.Bucket([]byte(imagesBktName)).Get([]byte(id))
 		if data == nil {
 			data = tx.Bucket([]byte(imagesStagedBktName)).Get([]byte(id))
 		}
 		if data == nil {
 			return errors.Errorf("can't load image %s", id)
 		}
-		var err error
-		size, err = buf.Write(data)
-		return errors.Wrapf(err, "failed to write for %s", id)
+		return nil
 	})
-	return ioutil.NopCloser(buf), int64(size), err
+	if err != nil {
+		// separate error handler to return nil and not empty []byte
+		return nil, err
+	}
+	return data, nil
 }
 
 // Cleanup runs scan of staging and removes old data based on ttl

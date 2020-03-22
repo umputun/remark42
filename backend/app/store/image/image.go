@@ -49,7 +49,7 @@ type Service struct {
 type Store interface {
 	Save(fileName string, userID string, r io.Reader) (id string, err error) // get name and reader and returns ID of stored (staging) image
 	SaveWithID(id string, r io.Reader) (string, error)                       // store image for passed id to staging
-	Load(id string) (io.ReadCloser, int64, error)                            // load image by ID. Caller has to close the reader.
+	Load(id string) ([]byte, error)                                          // load image by ID. Caller has to close the reader.
 	SizeLimit() int                                                          // max image size
 
 	Commit(id string) error                               // move image from staging to permanent
