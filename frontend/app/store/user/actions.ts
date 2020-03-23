@@ -16,7 +16,7 @@ import {
 } from './types';
 import { unsetCommentMode, fetchComments } from '../comments/actions';
 import { IS_STORAGE_AVAILABLE, LS_HIDDEN_USERS_KEY } from '@app/common/constants';
-import { getItem } from '@app/common/local-storage';
+import { setItem, getItem } from '@app/common/local-storage';
 import { updateProvider } from '../provider/actions';
 import { COMMENTS_PATCH } from '../comments/types';
 
@@ -76,18 +76,16 @@ export const blockUser = (
 
 export const unblockUser = (id: User['id']): StoreAction<Promise<void>> => async (dispatch, getState) => {
   await api.unblockUser(id);
-  dispatch({
-    type: USER_UNBAN,
-    id,
-  });
-  const comments = Object.values(getState().comments).filter(c => c.user.id === id);
+  dispatch({ type: USER_UNBAN, id });
+  const comments = Object.values(getState().comments.allComments);
+  const userComments = comments.filter(comment => comment.user.id === id);
 
-  if (!comments.length) return;
+  if (!userComments.length) return;
   const user = comments[0].user;
 
   dispatch({
     type: COMMENTS_PATCH,
-    ids: comments.map(c => c.id),
+    ids: userComments.map(c => c.id),
     patch: { user: { ...user, block: false } },
   });
 };
@@ -100,30 +98,26 @@ export const fetchHiddenUsers = (): StoreAction<void> => dispatch => {
 };
 
 export const hideUser = (user: User): StoreAction<void> => (dispatch, getState) => {
-  if (IS_STORAGE_AVAILABLE) {
-    const hiddenUsers = JSON.parse(getItem(LS_HIDDEN_USERS_KEY) || '{}');
-    hiddenUsers[user.id] = user;
-    localStorage.setItem(LS_HIDDEN_USERS_KEY, JSON.stringify(hiddenUsers));
-  }
-  dispatch({ type: USER_HIDE, user });
+  const hiddenUsers = JSON.parse(getItem(LS_HIDDEN_USERS_KEY) || '{}');
 
-  dispatch({
-    type: COMMENTS_PATCH,
-    ids: Object.values(getState().comments)
-      .filter(c => c.user.id === user.id)
-      .map(c => c.id),
-    patch: { hidden: true },
-  });
+  hiddenUsers[user.id] = user;
+  setItem(LS_HIDDEN_USERS_KEY, JSON.stringify(hiddenUsers));
+
+  const ids = Object.values(getState().comments.allComments)
+    .filter(c => c.user.id === user.id)
+    .map(c => c.id);
+
+  dispatch({ type: USER_HIDE, user });
+  dispatch({ type: COMMENTS_PATCH, ids, patch: { hidden: true } });
 };
 
 export const unhideUser = (userId: string): StoreAction<void> => (dispatch, _getState) => {
-  if (IS_STORAGE_AVAILABLE) {
-    const hiddenUsers = JSON.parse(getItem(LS_HIDDEN_USERS_KEY) || '{}');
-    if (Object.prototype.hasOwnProperty.call(hiddenUsers, userId)) {
-      delete hiddenUsers[userId];
-    }
-    localStorage.setItem(LS_HIDDEN_USERS_KEY, JSON.stringify(hiddenUsers));
+  const hiddenUsers = JSON.parse(getItem(LS_HIDDEN_USERS_KEY) || '{}');
+
+  if (Object.prototype.hasOwnProperty.call(hiddenUsers, userId)) {
+    delete hiddenUsers[userId];
   }
+  setItem(LS_HIDDEN_USERS_KEY, JSON.stringify(hiddenUsers));
 
   dispatch({ type: USER_UNHIDE, id: userId });
 
@@ -139,13 +133,15 @@ export const setVerifiedStatus = (id: User['id'], status: boolean): StoreAction<
   } else {
     await api.removeVerifiedStatus(id);
   }
-  const comments = Object.values(getState().comments).filter(c => c.user.id === id);
-  if (!comments.length) return;
-  const user = comments[0].user;
+  const comments = Object.values(getState().comments.allComments);
+  const userComments = comments.filter(c => c.user.id === id);
+
+  if (!userComments.length) return;
+  const user = userComments[0].user;
 
   dispatch({
     type: COMMENTS_PATCH,
-    ids: comments.map(c => c.id),
+    ids: userComments.map(c => c.id),
     patch: { user: { ...user, verified: status } },
   });
 };

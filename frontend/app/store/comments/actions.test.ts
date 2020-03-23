@@ -1,8 +1,8 @@
 import { mockStore } from '@app/testUtils/mockStore';
+import { LS_SORT_KEY } from '@app/common/constants';
 
 import { updateSorting } from './actions';
 import { COMMENTS_SET_SORT } from './types';
-import { LS_SORT_KEY } from '@app/common/constants';
 
 describe('Store comments actions', () => {
   beforeAll(() => {
