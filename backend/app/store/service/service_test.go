@@ -1277,7 +1277,7 @@ func TestService_submitImages(t *testing.T) {
 	lgr.Setup(lgr.Debug, lgr.CallerFile, lgr.CallerFunc)
 
 	mockStore := image.MockStore{}
-	mockStore.On("commit", mock.Anything, mock.Anything).Times(2).Return(nil)
+	mockStore.On("Commit", mock.Anything, mock.Anything).Times(2).Return(nil)
 	imgSvc := &image.Service{Store: &mockStore, TTL: time.Millisecond * 50}
 
 	// two comments for https://radio-t.com

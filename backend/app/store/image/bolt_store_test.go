@@ -31,7 +31,7 @@ func TestBoltStore_SaveCommit(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	err = svc.commit(id)
+	err = svc.Commit(id)
 	require.NoError(t, err)
 
 	err = svc.db.View(func(tx *bolt.Tx) error {
@@ -53,16 +53,11 @@ func TestBoltStore_LoadAfterSave(t *testing.T) {
 	assert.Contains(t, id, "user1")
 	t.Log(id)
 
-	r, sz, err := svc.Load(id)
-	assert.NoError(t, err)
-	defer func() { assert.NoError(t, r.Close()) }()
-	data, err := ioutil.ReadAll(r)
-
+	data, err := svc.Load(id)
 	assert.NoError(t, err)
 	assert.Equal(t, 1462, len(data))
-	assert.Equal(t, int64(1462), sz)
 
-	_, _, err = svc.Load("abcd")
+	_, err = svc.Load("abcd")
 	assert.Error(t, err)
 }
 
@@ -90,7 +85,7 @@ func TestBoltStore_Cleanup(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 	img3 := save("blah_ff3.png", "user2")
 
-	err := svc.cleanup(context.Background(), time.Since(img1ts)) // clean first images
+	err := svc.Cleanup(context.Background(), time.Since(img1ts)) // clean first images
 	assert.NoError(t, err)
 
 	assertBoltImgNil(t, svc.db, imagesStagedBktName, img1)
@@ -98,10 +93,10 @@ func TestBoltStore_Cleanup(t *testing.T) {
 	assertBoltImgNotNil(t, svc.db, imagesStagedBktName, img2)
 	assertBoltImgNotNil(t, svc.db, imagesStagedBktName, img3)
 
-	err = svc.commit(img3)
+	err = svc.Commit(img3)
 	require.NoError(t, err)
 
-	err = svc.cleanup(context.Background(), time.Millisecond*10)
+	err = svc.Cleanup(context.Background(), time.Millisecond*10)
 	assert.NoError(t, err)
 
 	assertBoltImgNil(t, svc.db, imagesStagedBktName, img2)

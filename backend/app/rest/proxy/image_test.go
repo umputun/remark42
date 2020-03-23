@@ -1,7 +1,6 @@
 package proxy
 
 import (
-	"bytes"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -16,6 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
 	"github.com/umputun/remark/backend/app/store/image"
 )
 
@@ -112,9 +112,9 @@ func TestImage_RoutesCachingImage(t *testing.T) {
 	imgURL := httpSrv.URL + "/image/img1.png"
 	encodedImgURL := base64.URLEncoding.EncodeToString([]byte(imgURL))
 
-	imageStore.On("Load", mock.Anything).Once().Return(nil, int64(0), nil)
+	imageStore.On("Load", mock.Anything).Once().Return(nil, nil)
 	imageStore.On("SaveWithID", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) { _, _ = ioutil.ReadAll(args.Get(1).(io.Reader)) }).Return("", nil)
-	imageStore.On("commit", mock.Anything).Once().Return(nil)
+	imageStore.On("Commit", mock.Anything).Once().Return(nil)
 
 	resp, err := http.Get(ts.URL + "/?src=" + encodedImgURL)
 	require.Nil(t, err)
@@ -124,7 +124,7 @@ func TestImage_RoutesCachingImage(t *testing.T) {
 
 	imageStore.AssertCalled(t, "Load", mock.Anything)
 	imageStore.AssertCalled(t, "SaveWithID", "cached_images/4b84b15bff6ee5796152495a230e45e3d7e947d9-"+sha1Str(imgURL), mock.Anything)
-	imageStore.AssertCalled(t, "commit", mock.Anything)
+	imageStore.AssertCalled(t, "Commit", mock.Anything)
 }
 
 func TestImage_RoutesUsingCachedImage(t *testing.T) {
@@ -144,8 +144,8 @@ func TestImage_RoutesUsingCachedImage(t *testing.T) {
 	encodedImgURL := base64.URLEncoding.EncodeToString([]byte(httpSrv.URL + "/image/img1.png"))
 
 	// In order to validate that cached data used cache "will return" some other data from what http server would
-	imageReader := ioutil.NopCloser(bytes.NewReader([]byte(fmt.Sprintf("%256s", "X"))))
-	imageStore.On("Load", mock.Anything).Once().Return(imageReader, int64(256), nil)
+	testImage := []byte(fmt.Sprintf("%256s", "X"))
+	imageStore.On("Load", mock.Anything).Once().Return(testImage, nil)
 
 	resp, err := http.Get(ts.URL + "/?src=" + encodedImgURL)
 	require.Nil(t, err)

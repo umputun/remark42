@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"crypto/sha1" // nolint
 	"encoding/base64"
 	"io"
@@ -436,7 +437,7 @@ func (s *public) loadPictureCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "user") + "/" + chi.URLParam(r, "id")
-	imgRdr, size, err := s.imageService.Load(id)
+	img, err := s.imageService.Load(id)
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get image "+id, rest.ErrAssetNotFound)
 		return
@@ -452,16 +453,10 @@ func (s *public) loadPictureCtrl(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	defer func() {
-		if e := imgRdr.Close(); e != nil {
-			log.Printf("[WARN] failed to close reader for picture %s, %v", id, e)
-		}
-	}()
-
 	w.Header().Set("Content-Type", imgContentType(id))
-	w.Header().Set("Content-Length", strconv.Itoa(int(size)))
+	w.Header().Set("Content-Length", strconv.Itoa(len(img)))
 	w.WriteHeader(http.StatusOK)
-	if _, err = io.Copy(w, imgRdr); err != nil {
+	if _, err = io.Copy(w, bytes.NewReader(img)); err != nil {
 		log.Printf("[WARN] can't send response to %s, %s", r.RemoteAddr, err)
 	}
 }
