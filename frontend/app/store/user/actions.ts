@@ -1,6 +1,9 @@
 import * as api from '@app/common/api';
 import { User, BlockedUser, AuthProvider, BlockTTL } from '@app/common/types';
 import { ttlToTime } from '@app/utils/ttl-to-time';
+import getHiddenUsers from '@app/utils/get-hidden-users';
+import { LS_HIDDEN_USERS_KEY } from '@app/common/constants';
+import { setItem } from '@app/common/local-storage';
 
 import { StoreAction } from '../index';
 import {
@@ -15,8 +18,6 @@ import {
   USER_SET_ACTION,
 } from './types';
 import { unsetCommentMode, fetchComments } from '../comments/actions';
-import { IS_STORAGE_AVAILABLE, LS_HIDDEN_USERS_KEY } from '@app/common/constants';
-import { setItem, getItem } from '@app/common/local-storage';
 import { updateProvider } from '../provider/actions';
 import { COMMENTS_PATCH } from '../comments/types';
 
@@ -51,10 +52,9 @@ export const logout = (): StoreAction<Promise<void>> => async dispatch => {
 
 export const fetchBlockedUsers = (): StoreAction<Promise<BlockedUser[]>> => async dispatch => {
   const list = (await api.getBlocked()) || [];
-  dispatch({
-    type: USER_BANLIST_SET,
-    list,
-  });
+
+  dispatch({ type: USER_BANLIST_SET, list });
+
   return list;
 };
 
@@ -91,14 +91,13 @@ export const unblockUser = (id: User['id']): StoreAction<Promise<void>> => async
 };
 
 export const fetchHiddenUsers = (): StoreAction<void> => dispatch => {
-  if (!IS_STORAGE_AVAILABLE) return;
+  const hiddenUsers = getHiddenUsers();
 
-  const hiddenUsers = JSON.parse(getItem(LS_HIDDEN_USERS_KEY) || '{}');
   dispatch({ type: USER_HIDELIST_SET, payload: hiddenUsers });
 };
 
 export const hideUser = (user: User): StoreAction<void> => (dispatch, getState) => {
-  const hiddenUsers = JSON.parse(getItem(LS_HIDDEN_USERS_KEY) || '{}');
+  const hiddenUsers = getHiddenUsers();
 
   hiddenUsers[user.id] = user;
   setItem(LS_HIDDEN_USERS_KEY, JSON.stringify(hiddenUsers));
@@ -112,13 +111,13 @@ export const hideUser = (user: User): StoreAction<void> => (dispatch, getState) 
 };
 
 export const unhideUser = (userId: string): StoreAction<void> => (dispatch, _getState) => {
-  const hiddenUsers = JSON.parse(getItem(LS_HIDDEN_USERS_KEY) || '{}');
+  const hiddenUsers = getHiddenUsers();
 
   if (Object.prototype.hasOwnProperty.call(hiddenUsers, userId)) {
     delete hiddenUsers[userId];
   }
-  setItem(LS_HIDDEN_USERS_KEY, JSON.stringify(hiddenUsers));
 
+  setItem(LS_HIDDEN_USERS_KEY, JSON.stringify(hiddenUsers));
   dispatch({ type: USER_UNHIDE, id: userId });
 
   // no need for comments patch as comments will be refetched after action
