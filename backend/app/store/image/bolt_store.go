@@ -86,7 +86,7 @@ func (b *Bolt) SaveWithID(id string, r io.Reader) (string, error) {
 }
 
 // Save data from reader to staging bucket in DB
-func (b *Bolt) Save(_ string, userID string, r io.Reader) (id string, err error) {
+func (b *Bolt) Save(userID string, r io.Reader) (id string, err error) {
 	id = path.Join(userID, guid())
 	return b.SaveWithID(id, r)
 }

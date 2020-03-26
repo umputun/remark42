@@ -63,20 +63,20 @@ func (_m *MockStore) Load(id string) ([]byte, error) {
 	return r0, r1
 }
 
-// Save provides a mock function with given fields: fileName, userID, r
-func (_m *MockStore) Save(fileName string, userID string, r io.Reader) (string, error) {
-	ret := _m.Called(fileName, userID, r)
+// Save provides a mock function with given fields: userID, r
+func (_m *MockStore) Save(userID string, r io.Reader) (string, error) {
+	ret := _m.Called(userID, r)
 
 	var r0 string
-	if rf, ok := ret.Get(0).(func(string, string, io.Reader) string); ok {
-		r0 = rf(fileName, userID, r)
+	if rf, ok := ret.Get(0).(func(string, io.Reader) string); ok {
+		r0 = rf(userID, r)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(string, string, io.Reader) error); ok {
-		r1 = rf(fileName, userID, r)
+	if rf, ok := ret.Get(1).(func(string, io.Reader) error); ok {
+		r1 = rf(userID, r)
 	} else {
 		r1 = ret.Error(1)
 	}

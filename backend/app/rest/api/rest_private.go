@@ -568,14 +568,14 @@ func (s *private) savePictureCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	file, header, err := r.FormFile("file")
+	file, _, err := r.FormFile("file")
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't get image file from the request", rest.ErrInternal)
 		return
 	}
 	defer func() { _ = file.Close() }()
 
-	id, err := s.imageService.Save(header.Filename, user.ID, file)
+	id, err := s.imageService.Save(user.ID, file)
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't save image", rest.ErrInternal)
 		return

@@ -18,7 +18,7 @@ func TestBoltStore_SaveCommit(t *testing.T) {
 	svc, teardown := prepareBoltImageStorageTest(t)
 	defer teardown()
 
-	id, err := svc.Save("file1.png", "user1", gopherPNG())
+	id, err := svc.Save("user1", gopherPNG())
 	assert.NoError(t, err)
 	assert.Contains(t, id, "user1")
 	t.Log(id)
@@ -48,7 +48,7 @@ func TestBoltStore_LoadAfterSave(t *testing.T) {
 	svc, teardown := prepareBoltImageStorageTest(t)
 	defer teardown()
 
-	id, err := svc.Save("file1.png", "user1", gopherPNG())
+	id, err := svc.Save("user1", gopherPNG())
 	assert.NoError(t, err)
 	assert.Contains(t, id, "user1")
 	t.Log(id)
@@ -66,7 +66,7 @@ func TestBoltStore_Cleanup(t *testing.T) {
 	defer teardown()
 
 	save := func(file string, user string) (id string) {
-		id, err := svc.Save(file, user, gopherPNG())
+		id, err := svc.Save(user, gopherPNG())
 		require.NoError(t, err)
 
 		checkBoltImgData(t, svc.db, imagesStagedBktName, id, func(data []byte) error {
