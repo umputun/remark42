@@ -47,10 +47,10 @@ type Service struct {
 // Store defines interface for saving and loading pictures.
 // Declares two-stage save with Commit. Save stores to staging area and Commit moves to the final location
 type Store interface {
-	Save(fileName string, userID string, r io.Reader) (id string, err error) // get name and reader and returns ID of stored (staging) image
-	SaveWithID(id string, r io.Reader) (string, error)                       // store image for passed id to staging
-	Load(id string) ([]byte, error)                                          // load image by ID. Caller has to close the reader.
-	SizeLimit() int                                                          // max image size
+	Save(userID string, r io.Reader) (id string, err error) // get name and reader and returns ID of stored (staging) image
+	SaveWithID(id string, r io.Reader) (string, error)      // store image for passed id to staging
+	Load(id string) ([]byte, error)                         // load image by ID. Caller has to close the reader.
+	SizeLimit() int                                         // max image size
 
 	Commit(id string) error                               // move image from staging to permanent
 	Cleanup(ctx context.Context, ttl time.Duration) error // run removal loop for old images on staging
