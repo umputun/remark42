@@ -1278,7 +1278,7 @@ func TestService_submitImages(t *testing.T) {
 
 	mockStore := image.MockStore{}
 	mockStore.On("Commit", mock.Anything, mock.Anything).Times(2).Return(nil)
-	imgSvc := &image.Service{Store: &mockStore, TTL: time.Millisecond * 50}
+	imgSvc := image.NewService(&mockStore, image.ServiceParams{TTL: 50 * time.Millisecond * 50})
 
 	// two comments for https://radio-t.com
 	eng, teardown := prepStoreEngine(t)

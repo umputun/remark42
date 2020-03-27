@@ -31,17 +31,22 @@ import (
 // It also provides async Submit with func param retrieving all submitting ids.
 // Submitted ids committed (i.e. moved from staging to final) on TTL expiration.
 type Service struct {
-	Store
+	ServiceParams
+
+	store    Store
+	wg       sync.WaitGroup
+	submitCh chan submitReq
+	once     sync.Once
+	term     int32 // term value used atomically to detect emergency termination
+}
+
+// ServiceParams contains externally adjustable parameters of Service
+type ServiceParams struct {
 	TTL       time.Duration // for how long file allowed on staging
 	ImageAPI  string        // image api matching path
 	MaxSize   int
 	MaxHeight int
 	MaxWidth  int
-
-	wg       sync.WaitGroup
-	submitCh chan submitReq
-	once     sync.Once
-	term     int32 // term value used atomically to detect emergency termination
 }
 
 // To regenerate mock run from this directory:
@@ -67,6 +72,10 @@ type submitReq struct {
 	TS    time.Time
 }
 
+func NewService(s Store, p ServiceParams) *Service {
+	return &Service{ServiceParams: p, store: s}
+}
+
 // Submit multiple ids via function for delayed commit
 func (s *Service) Submit(idsFn func() []string) {
 	if idsFn == nil || s == nil {
@@ -85,7 +94,7 @@ func (s *Service) Submit(idsFn func() []string) {
 					time.Sleep(time.Millisecond * 10) // small sleep to relive busy wait but keep reactive for term (close)
 				}
 				for _, id := range req.idsFn() {
-					if err := s.Commit(id); err != nil {
+					if err := s.store.Commit(id); err != nil {
 						log.Printf("[WARN] failed to commit image %s", id)
 					}
 				}
@@ -131,7 +140,7 @@ func (s *Service) Cleanup(ctx context.Context) {
 			log.Printf("[INFO] cleanup terminated, %v", ctx.Err())
 			return
 		case <-time.After(s.TTL / 2): // cleanup call on every 1/2 TTL
-			if err := s.Store.Cleanup(ctx, s.TTL); err != nil {
+			if err := s.store.Cleanup(ctx, s.TTL); err != nil {
 				log.Printf("[WARN] failed to cleanup, %v", err)
 			}
 		}
@@ -155,13 +164,18 @@ func (s *Service) Close() {
 	s.wg.Wait()
 }
 
+// Load wraps storage Load function.
+func (s *Service) Load(id string) ([]byte, error) {
+	return s.store.Load(id)
+}
+
 // Save wraps storage Save function, validating and resizing the image before calling it.
 func (s *Service) Save(userID string, r io.Reader) (id string, err error) {
 	img, err := s.prepareImage(r)
 	if err != nil {
 		return "", err
 	}
-	return s.Store.Save(userID, img)
+	return s.store.Save(userID, img)
 }
 
 // SaveWithID wraps storage SaveWithID function, validating and resizing the image before calling it.
@@ -170,12 +184,7 @@ func (s *Service) SaveWithID(id string, r io.Reader) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return s.Store.SaveWithID(id, img)
-}
-
-// SizeLimit returns max size of allowed image
-func (s *Service) SizeLimit() int {
-	return s.MaxSize
+	return s.store.SaveWithID(id, img)
 }
 
 // prepareImage calls readAndValidateImage and resize on provided image.
