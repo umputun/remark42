@@ -3,7 +3,6 @@
 package image
 
 import context "context"
-import io "io"
 import mock "github.com/stretchr/testify/mock"
 import time "time"
 
@@ -63,20 +62,20 @@ func (_m *MockStore) Load(id string) ([]byte, error) {
 	return r0, r1
 }
 
-// Save provides a mock function with given fields: userID, r
-func (_m *MockStore) Save(userID string, r io.Reader) (string, error) {
-	ret := _m.Called(userID, r)
+// Save provides a mock function with given fields: userID, img
+func (_m *MockStore) Save(userID string, img []byte) (string, error) {
+	ret := _m.Called(userID, img)
 
 	var r0 string
-	if rf, ok := ret.Get(0).(func(string, io.Reader) string); ok {
-		r0 = rf(userID, r)
+	if rf, ok := ret.Get(0).(func(string, []byte) string); ok {
+		r0 = rf(userID, img)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(string, io.Reader) error); ok {
-		r1 = rf(userID, r)
+	if rf, ok := ret.Get(1).(func(string, []byte) error); ok {
+		r1 = rf(userID, img)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -84,37 +83,23 @@ func (_m *MockStore) Save(userID string, r io.Reader) (string, error) {
 	return r0, r1
 }
 
-// SaveWithID provides a mock function with given fields: id, r
-func (_m *MockStore) SaveWithID(id string, r io.Reader) (string, error) {
-	ret := _m.Called(id, r)
+// SaveWithID provides a mock function with given fields: id, img
+func (_m *MockStore) SaveWithID(id string, img []byte) (string, error) {
+	ret := _m.Called(id, img)
 
 	var r0 string
-	if rf, ok := ret.Get(0).(func(string, io.Reader) string); ok {
-		r0 = rf(id, r)
+	if rf, ok := ret.Get(0).(func(string, []byte) string); ok {
+		r0 = rf(id, img)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(string, io.Reader) error); ok {
-		r1 = rf(id, r)
+	if rf, ok := ret.Get(1).(func(string, []byte) error); ok {
+		r1 = rf(id, img)
 	} else {
 		r1 = ret.Error(1)
 	}
 
 	return r0, r1
-}
-
-// SizeLimit provides a mock function with given fields:
-func (_m *MockStore) SizeLimit() int {
-	ret := _m.Called()
-
-	var r0 int
-	if rf, ok := ret.Get(0).(func() int); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(int)
-	}
-
-	return r0
 }

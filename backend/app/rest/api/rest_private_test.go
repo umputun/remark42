@@ -905,9 +905,9 @@ func TestRest_CreateWithPictures(t *testing.T) {
 	imageService.Store = &image.FileSystem{
 		Staging:  "/tmp/remark42/images.staging",
 		Location: "/tmp/remark42/images",
-		MaxSize:  2000,
 	}
 	imageService.TTL = 100 * time.Millisecond
+	imageService.MaxSize = 2000
 
 	svc.privRest.imageService = imageService
 	svc.ImageService = imageService
