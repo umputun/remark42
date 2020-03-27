@@ -567,7 +567,7 @@ func (s *ServerCommand) makeAvatarStore() (avatar.Store, error) {
 }
 
 func (s *ServerCommand) makePicturesStore() (*image.Service, error) {
-	imageService := &image.Service{
+	imageServiceParams := image.ServiceParams{
 		ImageAPI:  s.RemarkURL + "/api/v1/picture/",
 		TTL:       5 * s.EditDuration, // add extra time to image TTL for staging
 		MaxSize:   s.Image.MaxSize,
@@ -580,18 +580,16 @@ func (s *ServerCommand) makePicturesStore() (*image.Service, error) {
 		if err != nil {
 			return nil, err
 		}
-		imageService.Store = boltImageStore
-		return imageService, nil
+		return image.NewService(boltImageStore, imageServiceParams), nil
 	case "fs":
 		if err := makeDirs(s.Image.FS.Path); err != nil {
 			return nil, err
 		}
-		imageService.Store = &image.FileSystem{
+		return image.NewService(&image.FileSystem{
 			Location:   s.Image.FS.Path,
 			Staging:    s.Image.FS.Staging,
 			Partitions: s.Image.FS.Partitions,
-		}
-		return imageService, nil
+		}, imageServiceParams), nil
 	}
 	return nil, errors.Errorf("unsupported pictures store type %s", s.Image.Type)
 }

@@ -128,7 +128,7 @@ func TestImage_RoutesCachingImage(t *testing.T) {
 		CacheExternal: true,
 		RemarkURL:     "https://demo.remark42.com",
 		RoutePath:     "/api/v1/proxy",
-		ImageService:  &image.Service{Store: &imageStore, MaxSize: 1500},
+		ImageService:  image.NewService(&imageStore, image.ServiceParams{MaxSize: 1500}),
 	}
 
 	ts := httptest.NewServer(http.HandlerFunc(img.Handler))
@@ -160,7 +160,7 @@ func TestImage_RoutesUsingCachedImage(t *testing.T) {
 		CacheExternal: true,
 		RemarkURL:     "https://demo.remark42.com",
 		RoutePath:     "/api/v1/proxy",
-		ImageService:  &image.Service{Store: &imageStore},
+		ImageService:  image.NewService(&imageStore, image.ServiceParams{}),
 	}
 
 	ts := httptest.NewServer(http.HandlerFunc(img.Handler))

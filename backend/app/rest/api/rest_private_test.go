@@ -901,13 +901,13 @@ func TestRest_CreateWithPictures(t *testing.T) {
 	}()
 	lgr.Setup(lgr.Debug, lgr.CallerFile, lgr.CallerFunc)
 
-	imageService := svc.ImageService
-	imageService.Store = &image.FileSystem{
+	imageService := image.NewService(&image.FileSystem{
 		Staging:  "/tmp/remark42/images.staging",
 		Location: "/tmp/remark42/images",
-	}
-	imageService.TTL = 100 * time.Millisecond
-	imageService.MaxSize = 2000
+	}, image.ServiceParams{
+		TTL:     100 * time.Millisecond,
+		MaxSize: 2000,
+	})
 
 	svc.privRest.imageService = imageService
 	svc.ImageService = imageService

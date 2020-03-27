@@ -425,7 +425,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		CriticalScore:      s.ScoreThresholds.Critical,
 		PositiveScore:      s.DataService.PositiveScore,
 		ReadOnlyAge:        s.ReadOnlyAge,
-		MaxImageSize:       s.ImageService.SizeLimit(),
+		MaxImageSize:       s.ImageService.MaxSize,
 		EmailNotifications: s.EmailNotifications,
 		EmojiEnabled:       s.EmojiEnabled,
 		AnonVote:           s.AnonVote,
