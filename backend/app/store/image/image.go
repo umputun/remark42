@@ -48,7 +48,9 @@ type Service struct {
 // sh -c "mockery -inpkg -name Store -print > /tmp/image-mock.tmp && mv /tmp/image-mock.tmp image_mock.go"
 
 // Store defines interface for saving and loading pictures.
-// Declares two-stage save with Commit. Save stores to staging area and Commit moves to the final location
+// Declares two-stage save with Commit. Save stores to staging area and Commit moves to the final location.
+// Two-stage commit scheme is used for not storing images which are uploaded but later never used in the comments,
+// e.g. when somebody uploaded a picture but did not sent the comment.
 type Store interface {
 	Save(userID string, img []byte) (id string, err error) // get name and reader and returns ID of stored (staging) image
 	SaveWithID(id string, img []byte) (string, error)      // store image for passed id to staging
