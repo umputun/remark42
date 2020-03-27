@@ -32,8 +32,11 @@ import (
 // Submitted ids committed (i.e. moved from staging to final) on TTL expiration.
 type Service struct {
 	Store
-	TTL      time.Duration // for how long file allowed on staging
-	ImageAPI string        // image api matching path
+	TTL       time.Duration // for how long file allowed on staging
+	ImageAPI  string        // image api matching path
+	MaxSize   int
+	MaxHeight int
+	MaxWidth  int
 
 	wg       sync.WaitGroup
 	submitCh chan submitReq
@@ -47,10 +50,9 @@ type Service struct {
 // Store defines interface for saving and loading pictures.
 // Declares two-stage save with Commit. Save stores to staging area and Commit moves to the final location
 type Store interface {
-	Save(userID string, r io.Reader) (id string, err error) // get name and reader and returns ID of stored (staging) image
-	SaveWithID(id string, r io.Reader) (string, error)      // store image for passed id to staging
-	Load(id string) ([]byte, error)                         // load image by ID. Caller has to close the reader.
-	SizeLimit() int                                         // max image size
+	Save(userID string, img []byte) (id string, err error) // get name and reader and returns ID of stored (staging) image
+	SaveWithID(id string, img []byte) (string, error)      // store image for passed id to staging
+	Load(id string) ([]byte, error)                        // load image by ID. Caller has to close the reader.
 
 	Commit(id string) error                               // move image from staging to permanent
 	Cleanup(ctx context.Context, ttl time.Duration) error // run removal loop for old images on staging
@@ -149,6 +151,40 @@ func (s *Service) Close() {
 		close(s.submitCh)
 	}
 	s.wg.Wait()
+}
+
+// Save wraps storage Save function, validating and resizing the image before calling it.
+func (s *Service) Save(userID string, r io.Reader) (id string, err error) {
+	img, err := s.prepareImage(r)
+	if err != nil {
+		return "", err
+	}
+	return s.Store.Save(userID, img)
+}
+
+// SaveWithID wraps storage SaveWithID function, validating and resizing the image before calling it.
+func (s *Service) SaveWithID(id string, r io.Reader) (string, error) {
+	img, err := s.prepareImage(r)
+	if err != nil {
+		return "", err
+	}
+	return s.Store.SaveWithID(id, img)
+}
+
+// SizeLimit returns max size of allowed image
+func (s *Service) SizeLimit() int {
+	return s.MaxSize
+}
+
+// prepareImage calls readAndValidateImage and resize on provided image.
+func (s *Service) prepareImage(r io.Reader) ([]byte, error) {
+	data, err := readAndValidateImage(r, s.MaxSize)
+	if err != nil {
+		return nil, errors.Wrapf(err, "can't load image")
+	}
+
+	data = resize(data, s.MaxWidth, s.MaxHeight)
+	return data, nil
 }
 
 // resize an image of supported format (PNG, JPG, GIF) to the size of "limit" px of

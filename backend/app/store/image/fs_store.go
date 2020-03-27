@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"hash/crc64"
-	"io"
 	"io/ioutil"
 	"math"
 	"os"
@@ -23,10 +22,7 @@ import (
 type FileSystem struct {
 	Location   string
 	Staging    string
-	MaxSize    int
 	Partitions int
-	MaxHeight  int
-	MaxWidth   int
 
 	crc struct {
 		*crc64.Table
@@ -37,32 +33,26 @@ type FileSystem struct {
 }
 
 // SaveWithID saves data from a reader, with given id
-func (f *FileSystem) SaveWithID(id string, r io.Reader) (string, error) {
-	data, err := readAndValidateImage(r, f.MaxSize)
-	if err != nil {
-		return "", errors.Wrapf(err, "can't load image with ID %s", id)
-	}
-
-	data = resize(data, f.MaxWidth, f.MaxHeight)
+func (f *FileSystem) SaveWithID(id string, img []byte) (string, error) {
 	dst := f.location(f.Staging, id)
 
-	if err = os.MkdirAll(path.Dir(dst), 0700); err != nil {
+	if err := os.MkdirAll(path.Dir(dst), 0700); err != nil {
 		return "", errors.Wrap(err, "can't make image directory")
 	}
 
-	if err = ioutil.WriteFile(dst, data, 0600); err != nil {
+	if err := ioutil.WriteFile(dst, img, 0600); err != nil {
 		return "", errors.Wrapf(err, "can't write image file with id %s", id)
 	}
 
-	log.Printf("[DEBUG] file %s saved for image %s, size=%d", dst, id, len(data))
+	log.Printf("[DEBUG] file %s saved for image %s, size=%d", dst, id, len(img))
 	return id, nil
 }
 
 // Save data from a reader to local FS, staging directory. Returns id as user/uuid
 // Files partitioned across multiple subdirectories, and the final path includes part, i.e. /location/user1/03/123-4567
-func (f *FileSystem) Save(userID string, r io.Reader) (id string, err error) {
+func (f *FileSystem) Save(userID string, img []byte) (id string, err error) {
 	tempId := path.Join(userID, guid()) // make id as user/uuid
-	return f.SaveWithID(tempId, r)
+	return f.SaveWithID(tempId, img)
 }
 
 // Commit file stored in staging location by moving it to permanent location
@@ -129,11 +119,6 @@ func (f *FileSystem) Cleanup(_ context.Context, ttl time.Duration) error {
 		return nil
 	})
 	return errors.Wrap(err, "failed to cleanup images")
-}
-
-// SizeLimit returns max size of allowed image
-func (f *FileSystem) SizeLimit() int {
-	return f.MaxSize
 }
 
 // location gets full path for id by adding partition to the final path in order to keep files in different subdirectories

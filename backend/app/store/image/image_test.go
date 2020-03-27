@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"context"
 	"image"
+	"io"
 	"io/ioutil"
+	"os"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -13,6 +16,70 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
+
+func TestService_Save(t *testing.T) {
+	store := MockStore{}
+	svc := Service{Store: &store}
+	svc.MaxSize = 1500
+	svc.MaxWidth, svc.MaxHeight = 32, 32
+
+	store.On("Save", "user1", mock.Anything).Return("user1/test_id", nil)
+	id, err := svc.Save("user1", gopherPNG())
+	assert.NoError(t, err)
+	assert.Equal(t, "user1/test_id", id)
+
+	store.On("SaveWithID", "test_id", mock.Anything).Return("test_id", nil)
+	id, err = svc.SaveWithID("test_id", gopherPNG())
+	assert.NoError(t, err)
+	assert.Equal(t, "test_id", id)
+}
+
+func TestService_Resize(t *testing.T) {
+	img, err := readAndValidateImage(gopherPNG(), 1500)
+	assert.NoError(t, err)
+	assert.Equal(t, 1462, len(img))
+
+	img = resize(img, 32, 32)
+	assert.Equal(t, 1135, len(img))
+}
+
+func TestService_ResizeJpeg(t *testing.T) {
+	fh, err := os.Open("testdata/circles.jpg")
+	defer func() { assert.NoError(t, fh.Close()) }()
+	assert.NoError(t, err)
+
+	img, err := readAndValidateImage(fh, 32000)
+	assert.NoError(t, err)
+	assert.Equal(t, 23983, len(img))
+
+	img = resize(img, 400, 300)
+	assert.Equal(t, 10918, len(img))
+}
+
+func TestService_SaveTooLarge(t *testing.T) {
+	svc := Service{ImageAPI: "/blah/"}
+	svc.MaxSize = 2000
+	_, err := svc.Save("user2", io.MultiReader(gopherPNG(), gopherPNG()))
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "is too large")
+	_, err = svc.SaveWithID("test_id", io.MultiReader(gopherPNG(), gopherPNG()))
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "is too large")
+}
+
+func TestService_WrongFormat(t *testing.T) {
+	svc := Service{ImageAPI: "/blah/"}
+
+	_, err := svc.Save("user1", strings.NewReader("blah blah bad image"))
+	assert.Error(t, err)
+}
+
+func TestService_SizeLimit(t *testing.T) {
+	svc := Service{MaxSize: 666}
+
+	size := svc.SizeLimit()
+	assert.Equal(t, 666, size)
+}
 
 func TestService_ExtractPictures(t *testing.T) {
 	svc := Service{ImageAPI: "/blah/"}
