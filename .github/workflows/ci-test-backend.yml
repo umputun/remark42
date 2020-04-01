@@ -33,7 +33,6 @@ jobs:
 
       - name: test backend
         run: |
-          go env
           date
           cd backend/app
           go test -mod=vendor -timeout=60s -covermode=count -coverprofile=$GITHUB_WORKSPACE/profile.cov_tmp ./...
@@ -47,7 +46,6 @@ jobs:
       - name: install golangci-lint and goveralls
         run: |
           curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh| sh -s -- -b $GITHUB_WORKSPACE v1.20.0
-          go get -u github.com/mattn/goveralls
 
       - name: run backend linters
         run: $GITHUB_WORKSPACE/golangci-lint run --config .golangci.yml ./...
@@ -65,9 +63,3 @@ jobs:
           working-directory: backend
         env:
           GOPATH: ${{ github.workspace }}
-
-      # - name: submit coverage
-      #   run: $(go env GOPATH)/bin/goveralls -service="github" -coverprofile=$GITHUB_WORKSPACE/profile.cov
-      #   working-directory: backend
-      #   env:
-      #     COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
