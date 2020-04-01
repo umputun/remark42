@@ -11,7 +11,7 @@ import { sleep } from '@app/utils/sleep';
 import { replaceSelection } from '@app/utils/replaceSelection';
 import { Button } from '@app/components/button';
 import Auth from '@app/components/auth';
-import { getItem, setItem } from '@app/common/local-storage';
+import { getJsonItem, updateJsonItem } from '@app/common/local-storage';
 import { LS_SAVED_COMMENT_VALUE } from '@app/common/constants';
 
 import { SubscribeByEmail } from './__subscribe-by-email';
@@ -42,7 +42,7 @@ export interface Props {
   intl: IntlShape;
 }
 
-interface State {
+export interface State {
   preview: string | null;
   isErrorShown: boolean;
   /** error message, if contains newlines, it will be splitted to multiple errors */
@@ -104,13 +104,16 @@ export class CommentForm extends Component<Props, State> {
     textareaId = textareaId + 1;
     this.textareaId = `textarea_${textareaId}`;
 
-    const savedCommentsJSON = getItem(LS_SAVED_COMMENT_VALUE);
-    let savedValue = '';
-    try {
-      if (typeof savedCommentsJSON === 'string') {
-        savedValue = JSON.parse(savedCommentsJSON)[this.props.id] || '';
-      }
-    } catch (e) {}
+    const savedComments = getJsonItem(LS_SAVED_COMMENT_VALUE);
+    let text = '';
+
+    if (savedComments !== null && savedComments[props.id]) {
+      text = savedComments[props.id];
+    }
+
+    if (props.value) {
+      text = props.value;
+    }
 
     this.state = {
       preview: null,
@@ -119,13 +122,11 @@ export class CommentForm extends Component<Props, State> {
       errorLock: false,
       isDisabled: false,
       maxLength: StaticStore.config.max_comment_size,
-      text: props.value || savedValue,
+      text,
       buttonText: null,
     };
 
-    this.send = this.send.bind(this);
     this.getPreview = this.getPreview.bind(this);
-    this.onInput = this.onInput.bind(this);
     this.onKeyDown = this.onKeyDown.bind(this);
     this.onDragOver = this.onDragOver.bind(this);
     this.onDrop = this.onDrop.bind(this);
@@ -169,12 +170,10 @@ export class CommentForm extends Component<Props, State> {
     }
   }
 
-  onInput(e: Event) {
+  onInput = (e: Event) => {
     const { value } = e.target as HTMLInputElement;
 
-    try {
-      setItem(LS_SAVED_COMMENT_VALUE, JSON.stringify({ [this.props.id]: value }));
-    } catch (e) {}
+    updateJsonItem(LS_SAVED_COMMENT_VALUE, { [this.props.id]: value });
 
     if (this.state.errorLock) {
       this.setState({
@@ -183,13 +182,14 @@ export class CommentForm extends Component<Props, State> {
       });
       return;
     }
+
     this.setState({
       isErrorShown: false,
       errorMessage: null,
       preview: null,
       text: value,
     });
-  }
+  };
 
   async onPaste(e: ClipboardEvent) {
     if (!(e.clipboardData && e.clipboardData.files.length > 0)) {
@@ -200,32 +200,35 @@ export class CommentForm extends Component<Props, State> {
     await this.uploadImages(files);
   }
 
-  send(e: Event) {
-    const text = this.textAreaRef.current ? this.textAreaRef.current.getValue() : this.state.text;
-    const props = this.props;
+  send = async (e: Event) => {
+    const { text } = this.state;
 
     if (e) e.preventDefault();
 
     if (!text || !text.trim()) return;
-
     if (text === this.props.value) {
       this.props.onCancel && this.props.onCancel();
       this.setState({ preview: null, text: '' });
     }
 
     this.setState({ isDisabled: true, isErrorShown: false, text });
+    try {
+      await this.props.onSubmit(text, pageTitle || document.title);
+      updateJsonItem<Record<string, string>>(LS_SAVED_COMMENT_VALUE, data => {
+        delete data[this.props.id];
 
-    props
-      .onSubmit(text, pageTitle || document.title)
-      .then(() => {
-        this.setState({ preview: null, text: '' });
-      })
-      .catch(e => {
-        const errorMessage = extractErrorMessageFromResponse(e, this.props.intl);
-        this.setState({ isErrorShown: true, errorMessage });
-      })
-      .finally(() => this.setState({ isDisabled: false }));
-  }
+        return data;
+      });
+      this.setState({ preview: null, text: '' });
+    } catch (e) {
+      this.setState({
+        isErrorShown: true,
+        errorMessage: extractErrorMessageFromResponse(e, this.props.intl),
+      });
+    }
+
+    this.setState({ isDisabled: false });
+  };
 
   getPreview() {
     const text = this.textAreaRef.current ? this.textAreaRef.current.getValue() : this.state.text;
