@@ -55,8 +55,13 @@ jobs:
         run: $GITHUB_WORKSPACE/golangci-lint run --config ${GITHUB_WORKSPACE}/backend/.golangci.yml ./...
         working-directory: backend/_example/memory_store
 
-      - name: submit coverage
-        run: $(go env GOPATH)/bin/goveralls -service="github" -coverprofile=$GITHUB_WORKSPACE/profile.cov
-        working-directory: backend
-        env:
-          COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Send coverage
+        uses: shogo82148/actions-goveralls@v1
+        with:
+          path-to-profile: profile.cov
+          parallel: true
+      # - name: submit coverage
+      #   run: $(go env GOPATH)/bin/goveralls -service="github" -coverprofile=$GITHUB_WORKSPACE/profile.cov
+      #   working-directory: backend
+      #   env:
+      #     COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
