@@ -8,13 +8,11 @@ on:
       - '.github/workflows/ci-test-backend.yml'
       - 'backend/**'
       - '!backend/scripts/**'
-      - '.golangci.yml'
   pull_request:
     paths:
       - '.github/workflows/ci-test-backend.yml'
       - 'backend/**'
       - '!backend/scripts/**'
-      - '.golangci.yml'
 
 jobs:
   backend:
@@ -24,11 +22,7 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: debug if needed
-        run: |
-          export DEBUG=${DEBUG:-false}
-          if [[ "$DEBUG" == "true" ]]; then
-            env
-          fi
+        run: if [[ "$DEBUG" == "true" ]]; then docker version && env; fi
         env:
           DEBUG: ${{secrets.DEBUG}}
 
@@ -39,13 +33,14 @@ jobs:
 
       - name: test backend
         run: |
-          export TZ="America/Chicago"
           date
           cd backend/app
           go test -mod=vendor -timeout=60s -covermode=count -coverprofile=$GITHUB_WORKSPACE/profile.cov_tmp ./...
           cat $GITHUB_WORKSPACE/profile.cov_tmp | grep -v "_mock.go" > $GITHUB_WORKSPACE/profile.cov
           cd ../_example/memory_store
           go test -race ./...
+        env:
+          TZ: "America/Chicago"
 
       - name: install golangci-lint and goveralls
         run: |
