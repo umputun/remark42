@@ -835,7 +835,6 @@ class Comment extends Component<Props, State> {
             intl={this.props.intl}
             user={props.user}
             theme={props.theme}
-            value=""
             mode="reply"
             mix="comment__input"
             onSubmit={(text, title) => this.addComment(text, title, o.id)}
