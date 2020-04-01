@@ -41,6 +41,7 @@ jobs:
           go test -race ./...
         env:
           TZ: "America/Chicago"
+          GOPATH: ${{ github.workspace }}
 
       - name: install golangci-lint and goveralls
         run: |
@@ -60,6 +61,8 @@ jobs:
         with:
           path-to-profile: profile.cov
           parallel: true
+        env:
+          GOPATH: ${{ github.workspace }}
       # - name: submit coverage
       #   run: $(go env GOPATH)/bin/goveralls -service="github" -coverprofile=$GITHUB_WORKSPACE/profile.cov
       #   working-directory: backend
