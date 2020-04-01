@@ -62,8 +62,10 @@ jobs:
         with:
           path-to-profile: profile.cov
           parallel: true
+          working-directory: backend
         env:
           GOPATH: ${{ github.workspace }}
+
       # - name: submit coverage
       #   run: $(go env GOPATH)/bin/goveralls -service="github" -coverprofile=$GITHUB_WORKSPACE/profile.cov
       #   working-directory: backend
