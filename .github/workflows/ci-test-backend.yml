@@ -22,7 +22,7 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: debug if needed
-        run: if [[ "$DEBUG" == "true" ]]; then docker version && env; fi
+        run: if [[ "$DEBUG" == "true" ]]; then env; fi
         env:
           DEBUG: ${{secrets.DEBUG}}
 
@@ -33,6 +33,7 @@ jobs:
 
       - name: test backend
         run: |
+          go env
           date
           cd backend/app
           go test -mod=vendor -timeout=60s -covermode=count -coverprofile=$GITHUB_WORKSPACE/profile.cov_tmp ./...
