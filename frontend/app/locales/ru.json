@@ -79,7 +79,7 @@
   "emailLoginForm.back": "Назад",
   "emailLoginForm.confirm": "Подтвердить",
   "emailLoginForm.email-address": "Email адрес",
-  "emailLoginForm.empty-token": "Поле ввода токена должно не должно быть пустым",
+  "emailLoginForm.empty-token": "Поле ввода токена не должно быть пустым",
   "emailLoginForm.expired-token": "Время действия токена истекло",
   "emailLoginForm.invalid-email": "Введен некорректный email адрес",
   "emailLoginForm.loading": "Загрузка...",
