@@ -41,7 +41,6 @@ jobs:
           go test -race ./...
         env:
           TZ: "America/Chicago"
-          GOPATH: ${{ github.workspace }}
 
       - name: install golangci-lint and goveralls
         run: |
@@ -55,7 +54,7 @@ jobs:
         run: $GITHUB_WORKSPACE/golangci-lint run --config ${GITHUB_WORKSPACE}/backend/.golangci.yml ./...
         working-directory: backend/_example/memory_store
 
-      - name: Send coverage
+      - name: submit coverage
         uses: shogo82148/actions-goveralls@v1
         with:
           path-to-profile: ${{ github.workspace }}/profile.cov
