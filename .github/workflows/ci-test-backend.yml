@@ -60,5 +60,3 @@ jobs:
           path-to-profile: ${{ github.workspace }}/profile.cov
           parallel: true
           working-directory: backend
-        env:
-          GOPATH: ${{ github.workspace }}
