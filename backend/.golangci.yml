@@ -6,6 +6,8 @@ run:
     - vendor
 linters:
   enable:
+    - golint
+    - gofmt
     - unconvert
     - megacheck
     - structcheck
@@ -19,6 +21,5 @@ linters:
     - typecheck
     - ineffassign
     - varcheck
-  disable-all: true
 issues:
   exclude-use-default: false
