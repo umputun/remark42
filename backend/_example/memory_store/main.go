@@ -55,9 +55,10 @@ func main() {
 	srv := server.NewRPC(dataStore, adminStore, imgStore, &rpcServer)
 
 	admRec := accessor.AdminRec{
-		SiteID: "remark",
-		IDs:    []string{"dev_user"},
-		Email:  "admin@example.com",
+		SiteID:  "remark",
+		Enabled: true,
+		IDs:     []string{"dev_user"},
+		Email:   "admin@example.com",
 	}
 	adminStore.Set("remark", admRec)
 
