@@ -47,7 +47,8 @@ func waitForHTTPServerStart(port int) {
 func prepTestStore(t *testing.T) (s *RPC, port int, teardown func()) {
 	mg := accessor.NewMemData()
 	adm := accessor.NewMemAdminStore("secret")
-	s = NewRPC(mg, adm, &jrpc.Server{API: "/test", Logger: jrpc.NoOpLogger})
+	img := accessor.NewMemImageStore()
+	s = NewRPC(mg, adm, img, &jrpc.Server{API: "/test", Logger: jrpc.NoOpLogger})
 
 	admRec := accessor.AdminRec{
 		SiteID:  "test-site",

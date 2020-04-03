@@ -33,6 +33,8 @@ services:
       - ADMIN_RPC_API=http://mem_store.r42:8080/cmd
       - STORE_TYPE=rpc
       - STORE_RPC_API=http://mem_store.r42:8080/cmd
+      - IMAGE_TYPE=rpc
+      - IMAGE_RPC_API=http://mem_store.r42:8080/cmd
 
   mem_store.r42:
     image: umputun/mem_store.r42

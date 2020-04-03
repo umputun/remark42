@@ -8,6 +8,7 @@ package server
 
 import (
 	"github.com/go-pkgz/jrpc"
+	"github.com/umputun/remark/backend/app/store/image"
 
 	"github.com/umputun/remark/backend/app/store/admin"
 	"github.com/umputun/remark/backend/app/store/engine"
@@ -19,11 +20,12 @@ type RPC struct {
 	*jrpc.Server
 	eng engine.Interface
 	adm admin.Store
+	img image.Store
 }
 
 // NewRPC makes RPC instance and register handlers
-func NewRPC(e engine.Interface, a admin.Store, r *jrpc.Server) *RPC {
-	res := &RPC{eng: e, adm: a, Server: r}
+func NewRPC(e engine.Interface, a admin.Store, i image.Store, r *jrpc.Server) *RPC {
+	res := &RPC{eng: e, adm: a, img: i, Server: r}
 	res.addHandlers()
 	return res
 }
@@ -51,5 +53,14 @@ func (s *RPC) addHandlers() {
 		"email":   s.admEmailHndl,
 		"enabled": s.admEnabledHndl,
 		"event":   s.admEventHndl,
+	})
+
+	// image store handlers
+	s.Group("image", jrpc.HandlersGroup{
+		"save":         s.imgSaveHndl,
+		"save_with_id": s.imgSaveWithIDHndl,
+		"load":         s.imgLoadHndl,
+		"commit":       s.imgCommitHndl,
+		"cleanup":      s.imgCleanupHndl,
 	})
 }
