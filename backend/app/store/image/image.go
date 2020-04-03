@@ -31,26 +31,35 @@ import (
 // It also provides async Submit with func param retrieving all submitting ids.
 // Submitted ids committed (i.e. moved from staging to final) on TTL expiration.
 type Service struct {
-	Store
-	TTL      time.Duration // for how long file allowed on staging
-	ImageAPI string        // image api matching path
+	ServiceParams
 
+	store    Store
 	wg       sync.WaitGroup
 	submitCh chan submitReq
 	once     sync.Once
 	term     int32 // term value used atomically to detect emergency termination
 }
 
+// ServiceParams contains externally adjustable parameters of Service
+type ServiceParams struct {
+	TTL       time.Duration // for how long file allowed on staging
+	ImageAPI  string        // image api matching path
+	MaxSize   int
+	MaxHeight int
+	MaxWidth  int
+}
+
 // To regenerate mock run from this directory:
 // sh -c "mockery -inpkg -name Store -print > /tmp/image-mock.tmp && mv /tmp/image-mock.tmp image_mock.go"
 
 // Store defines interface for saving and loading pictures.
-// Declares two-stage save with Commit. Save stores to staging area and Commit moves to the final location
+// Declares two-stage save with Commit. Save stores to staging area and Commit moves to the final location.
+// Two-stage commit scheme is used for not storing images which are uploaded but later never used in the comments,
+// e.g. when somebody uploaded a picture but did not sent the comment.
 type Store interface {
-	Save(fileName string, userID string, r io.Reader) (id string, err error) // get name and reader and returns ID of stored (staging) image
-	SaveWithID(id string, r io.Reader) (string, error)                       // store image for passed id to staging
-	Load(id string) ([]byte, error)                                          // load image by ID. Caller has to close the reader.
-	SizeLimit() int                                                          // max image size
+	Save(userID string, img []byte) (id string, err error) // get name and reader and returns ID of stored (staging) image
+	SaveWithID(id string, img []byte) (string, error)      // store image for passed id to staging
+	Load(id string) ([]byte, error)                        // load image by ID. Caller has to close the reader.
 
 	Commit(id string) error                               // move image from staging to permanent
 	Cleanup(ctx context.Context, ttl time.Duration) error // run removal loop for old images on staging
@@ -61,6 +70,10 @@ const submitQueueSize = 5000
 type submitReq struct {
 	idsFn func() (ids []string)
 	TS    time.Time
+}
+
+func NewService(s Store, p ServiceParams) *Service {
+	return &Service{ServiceParams: p, store: s}
 }
 
 // Submit multiple ids via function for delayed commit
@@ -81,7 +94,7 @@ func (s *Service) Submit(idsFn func() []string) {
 					time.Sleep(time.Millisecond * 10) // small sleep to relive busy wait but keep reactive for term (close)
 				}
 				for _, id := range req.idsFn() {
-					if err := s.Commit(id); err != nil {
+					if err := s.store.Commit(id); err != nil {
 						log.Printf("[WARN] failed to commit image %s", id)
 					}
 				}
@@ -127,7 +140,7 @@ func (s *Service) Cleanup(ctx context.Context) {
 			log.Printf("[INFO] cleanup terminated, %v", ctx.Err())
 			return
 		case <-time.After(s.TTL / 2): // cleanup call on every 1/2 TTL
-			if err := s.Store.Cleanup(ctx, s.TTL); err != nil {
+			if err := s.store.Cleanup(ctx, s.TTL); err != nil {
 				log.Printf("[WARN] failed to cleanup, %v", err)
 			}
 		}
@@ -149,6 +162,40 @@ func (s *Service) Close() {
 		close(s.submitCh)
 	}
 	s.wg.Wait()
+}
+
+// Load wraps storage Load function.
+func (s *Service) Load(id string) ([]byte, error) {
+	return s.store.Load(id)
+}
+
+// Save wraps storage Save function, validating and resizing the image before calling it.
+func (s *Service) Save(userID string, r io.Reader) (id string, err error) {
+	img, err := s.prepareImage(r)
+	if err != nil {
+		return "", err
+	}
+	return s.store.Save(userID, img)
+}
+
+// SaveWithID wraps storage SaveWithID function, validating and resizing the image before calling it.
+func (s *Service) SaveWithID(id string, r io.Reader) (string, error) {
+	img, err := s.prepareImage(r)
+	if err != nil {
+		return "", err
+	}
+	return s.store.SaveWithID(id, img)
+}
+
+// prepareImage calls readAndValidateImage and resize on provided image.
+func (s *Service) prepareImage(r io.Reader) ([]byte, error) {
+	data, err := readAndValidateImage(r, s.MaxSize)
+	if err != nil {
+		return nil, errors.Wrapf(err, "can't load image")
+	}
+
+	data = resize(data, s.MaxWidth, s.MaxHeight)
+	return data, nil
 }
 
 // resize an image of supported format (PNG, JPG, GIF) to the size of "limit" px of
