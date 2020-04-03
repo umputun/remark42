@@ -7,15 +7,21 @@ services:
 
   remark42:
     build:
-      context: .
+      context: ../../..
       dockerfile: Dockerfile
       args:
         - SKIP_BACKEND_TEST=true
         - SKIP_FRONTEND_TEST=true
     image: umputun/remark42:dev
-    container_name: "remark42"
-    hostname: "remark42"
+    container_name: "remark42-dev"
+    hostname: "remark42-dev"
     restart: always
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
 
     ports:
       - "8080:8080" # primary rest server
@@ -36,13 +42,23 @@ services:
       - IMAGE_TYPE=rpc
       - IMAGE_RPC_API=http://mem_store.r42:8080/cmd
 
+    volumes:
+      - ../../../var:/srv/var
+
   mem_store.r42:
     image: umputun/mem_store.r42
     build:
-      context: .
+      context: ../../..
       dockerfile: backend/_example/memory_store/Dockerfile
     container_name: "mem_store.r42"
     hostname: "mem_store.r42"
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
     environment:
       - API=/cmd
       - SECRET=123456
