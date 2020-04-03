@@ -56,6 +56,7 @@ func TestBoltStore_LoadAfterSave(t *testing.T) {
 	data, err := svc.Load(id)
 	assert.NoError(t, err)
 	assert.Equal(t, 1462, len(data))
+	assert.Equal(t, gopherPNGBytes(), data)
 
 	_, err = svc.Load("abcd")
 	assert.Error(t, err)
