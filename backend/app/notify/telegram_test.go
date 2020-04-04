@@ -37,7 +37,9 @@ func TestTelegram_New(t *testing.T) {
 	assert.EqualError(t, err, "unexpected telegram status code 404")
 
 	_, err = NewTelegram("no-such-thing", "remark_test", 2*time.Second, "http://127.0.0.1:4321/")
-	assert.EqualError(t, err, "can't initialize telegram notifications: Get http://127.0.0.1:4321/no-such-thing/getMe: dial tcp 127.0.0.1:4321: connect: connection refused")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "can't initialize telegram notifications")
+	assert.Contains(t, err.Error(), "dial tcp 127.0.0.1:4321: connect: connection refused")
 
 	_, err = NewTelegram("good-token", "remark_test", 2*time.Second, "")
 	assert.Error(t, err, "empty api url not allowed")
