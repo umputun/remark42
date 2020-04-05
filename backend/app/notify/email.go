@@ -14,6 +14,7 @@ import (
 
 	log "github.com/go-pkgz/lgr"
 	"github.com/go-pkgz/repeater"
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 )
 
@@ -227,47 +228,70 @@ func NewEmail(emailParams EmailParams, smtpParams SmtpParams) (*Email, error) {
 	return &res, err
 }
 
-// Send email about reply to Request.Email if it's set, otherwise do nothing and return nil, thread safe
-// do not returns sending error, only following:
-// 1. (likely impossible) template execution error from email message creation from Request
-// 2. message dropped without sending in case of closed ctx
+// Send email about comment reply to Request.Email if it's set,
+// also sends email to site administrator if appropriate option is set.
+// Thread safe
 func (e *Email) Send(ctx context.Context, req Request) (err error) {
-	if req.Email == "" {
-		// this means we can't send this request via Email
-		return nil
-	}
 	select {
 	case <-ctx.Done():
 		return errors.Errorf("sending message to %q aborted due to canceled context", req.Email)
 	default:
 	}
+
+	var emails []emailMessage
+
+	email, err := e.createUserEmail(req)
+	if err != nil {
+		return err
+	}
+	if email != nil {
+		emails = append(emails, *email)
+	}
+
+	errs := new(multierror.Error)
+	for _, email := range emails {
+		errs = multierror.Append(errs, repeater.NewDefault(5, time.Millisecond*250).Do(
+			ctx,
+			func() error {
+				return e.sendMessage(email)
+			}))
+	}
+	return errs.ErrorOrNil()
+}
+
+// construct email for user if it's necessary:
+// 1. in case user requested validation message
+// 2. in case comment have is a reply and parent message owner subscribed for email notifications
+func (e *Email) createUserEmail(req Request) (*emailMessage, error) {
+	if req.Email == "" {
+		// this means we can't send this request via Email
+		return nil, nil
+	}
+
 	var msg string
+	var err error
 
 	if req.Verification.Token != "" {
 		log.Printf("[DEBUG] send verification via %s, user %s", e, req.Verification.User)
 		msg, err = e.buildVerificationMessage(req.Verification.User, req.Email, req.Verification.Token, req.Verification.SiteID)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
 	if req.Comment.ID != "" {
 		if req.parent.User.ID == req.Comment.User.ID {
 			// don't send anything if if user replied to their own comment
-			return nil
+			return nil, nil
 		}
 		log.Printf("[DEBUG] send notification via %s, comment id %s", e, req.Comment.ID)
 		msg, err = e.buildMessageFromRequest(req)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	return repeater.NewDefault(5, time.Millisecond*250).Do(
-		ctx,
-		func() error {
-			return e.sendMessage(emailMessage{from: e.From, to: req.Email, message: msg})
-		})
+	return &emailMessage{from: e.From, to: req.Email, message: msg}, nil
 }
 
 // buildVerificationMessage generates verification email message based on given input
