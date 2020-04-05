@@ -472,9 +472,10 @@ window.REMARK42.changeTheme('light');
 
 ##### Locales
 
-Right now Remark has support three locales en, ru (partial translated), de and fi.
-You can pick one using configuration object.
-Do you want support other locale? Please create [issue](https://github.com/umputun/remark42/issues).
+Right now Remark is translated to en, ru (partially), de, and fi languages.
+You can pick one using [configuration object](#setup-on-your-website).
+
+Do you want translate remark42 to other locale? Please see [this documentation](https://github.com/umputun/remark42/blob/master/docs/translation.md) for details.
 
 #### Last comments
 

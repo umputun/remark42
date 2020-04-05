@@ -28,12 +28,9 @@
 - tests are running on push attempt
 - example tests can be found in `./app/store/user/reducers.test.ts`, `./app/components/auth-panel/auth-panel.test.tsx`
 
-### how to add new locale.
+### How to add new locale
 
-- add new item to `./tasks/supportedLocales.json`
-- run `npm run generate-langs`
-- commit all changed files
-- translate all string in new generated dictionary `./app/locale/<new-locale>.json`
+Please see [this documentation](https://github.com/umputun/remark42/blob/master/docs/translation.md).
 
 ### Notes
 
