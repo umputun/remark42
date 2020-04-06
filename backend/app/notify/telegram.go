@@ -90,6 +90,11 @@ func (t *Telegram) Send(ctx context.Context, req Request) error {
 		// verification request received, send nothing
 		return nil
 	}
+	if req.ForAdmin {
+		// request for administrator received, do nothing with it
+		// as we already sent message on request without this flag set
+		return nil
+	}
 	client := http.Client{Timeout: telegramTimeOut}
 	log.Printf("[DEBUG] send telegram notification to %s, comment id %s", t.channelID, req.Comment.ID)
 

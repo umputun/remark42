@@ -368,9 +368,10 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 			SecretReader: token.SecretFunc(func() (string, error) { return "secret", nil }),
 			AvatarStore:  avatar.NewLocalFS(tmp + "/ava-remark42"),
 		}),
-		Cache:     memCache,
-		WebRoot:   tmp,
-		RemarkURL: "https://demo.remark42.com",
+		Cache:      memCache,
+		WebRoot:    tmp,
+		RemarkURL:  "https://demo.remark42.com",
+		AdminEmail: "admin@example.org",
 		ImageService: image.NewService(&image.FileSystem{
 			Location:   tmp + "/pics-remark42",
 			Partitions: 100,
