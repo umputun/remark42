@@ -155,6 +155,7 @@ _this is the recommended way to run remark42_
 | notify.telegram.timeout | NOTIFY_TELEGRAM_TIMEOUT | `5s`                     | telegram timeout                                |
 | notify.email.fromAddress | NOTIFY_EMAIL_FROM      |                          | from email address                              |
 | notify.email.verification_subj | NOTIFY_EMAIL_VERIFICATION_SUBJ | `Email verification` | verification message subject          |
+| notify.email.notify_admin | NOTIFY_EMAIL_ADMIN    | `false`                  | notify admin on new comments via ADMIN_SHARED_EMAIL |
 | smtp.host               | SMTP_HOST               |                          | SMTP host                                       |
 | smtp.port               | SMTP_PORT               |                          | SMTP port                                       |
 | smtp.username           | SMTP_USERNAME           |                          | SMTP user name                                  |
