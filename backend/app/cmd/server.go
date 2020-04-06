@@ -200,6 +200,7 @@ type NotifyGroup struct {
 	Email struct {
 		From                string `long:"fromAddress" env:"FROM" description:"from email address"`
 		VerificationSubject string `long:"verification_subj" env:"VERIFICATION_SUBJ" description:"verification message subject"`
+		AdminNotifications  bool   `long:"notify_admin" env:"ADMIN" description:"notify admin on new comments via ADMIN_SHARED_EMAIL"`
 	} `group:"email" namespace:"email" env-namespace:"EMAIL"`
 }
 
@@ -785,6 +786,10 @@ func (s *ServerCommand) makeNotify(dataStore *service.DataStore, authenticator *
 					}
 					return tkn, nil
 				},
+			}
+			// enable admin notifications only if admin email is set
+			if s.Notify.Email.AdminNotifications && s.Admin.Shared.Email != "" {
+				emailParams.AdminEmail = s.Admin.Shared.Email
 			}
 			smtpParams := notify.SmtpParams{
 				Host:     s.SMTP.Host,

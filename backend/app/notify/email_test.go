@@ -100,15 +100,17 @@ func TestEmailSendErrors(t *testing.T) {
 
 	e.verifyTmpl, err = template.New("test").Parse("{{.Test}}")
 	assert.NoError(t, err)
-	assert.EqualError(t, e.Send(context.Background(), Request{Email: "bad@example.org", Verification: VerificationMetadata{Token: "some"}}),
-		"error executing template to build verification message: template: test:1:2: executing \"test\" at <.Test>: can't evaluate field Test in type notify.verifyTmplData")
+	err = e.Send(context.Background(), Request{Email: "bad@example.org", Verification: VerificationMetadata{Token: "some"}})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "error executing template to build verification message: template: test:1:2: executing \"test\" at <.Test>: can't evaluate field Test in type notify.verifyTmplData")
 	e.verifyTmpl, err = template.New("test").Parse(defaultEmailVerificationTemplate)
 	assert.NoError(t, err)
 
 	e.msgTmpl, err = template.New("test").Parse("{{.Test}}")
 	assert.NoError(t, err)
-	assert.EqualError(t, e.Send(context.Background(), Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "test"}}, Email: "bad@example.org"}),
-		"error executing template to build comment reply message: template: test:1:2: executing \"test\" at <.Test>: can't evaluate field Test in type notify.msgTmplData")
+	err = e.Send(context.Background(), Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "test"}}, Email: "bad@example.org"})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "error executing template to build comment reply message: template: test:1:2: executing \"test\" at <.Test>: can't evaluate field Test in type notify.msgTmplData")
 	e.msgTmpl, err = template.New("test").Parse(defaultEmailTemplate)
 	assert.NoError(t, err)
 
@@ -118,8 +120,9 @@ func TestEmailSendErrors(t *testing.T) {
 		"sending message to \"bad@example.org\" aborted due to canceled context")
 
 	e.smtp = &fakeTestSMTP{}
-	assert.EqualError(t, e.Send(context.Background(), Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "error"}}, Email: "bad@example.org"}),
-		"error creating token for unsubscribe link: token generation error")
+	err = e.Send(context.Background(), Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "error"}}, Email: "bad@example.org"})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "error creating token for unsubscribe link: token generation error")
 	e.msgTmpl, err = template.New("test").Parse(defaultEmailTemplate)
 	assert.NoError(t, err)
 }
@@ -187,7 +190,7 @@ func TestEmail_Send(t *testing.T) {
 	email.TokenGenFn = TokenGenFn
 	email.UnsubscribeURL = "https://remark42.com/api/v1/email/unsubscribe"
 	req := Request{
-		Comment: store.Comment{ID: "999", User: store.User{ID: "1", Name: "test_user"}, PostTitle: "test_title"},
+		Comment: store.Comment{ID: "999", User: store.User{ID: "1", Name: "test_user"}, ParentID: "1", PostTitle: "test_title"},
 		parent:  store.Comment{ID: "1", User: store.User{ID: "999", Name: "parent_user"}},
 		Email:   "test@example.org",
 	}
@@ -196,7 +199,7 @@ func TestEmail_Send(t *testing.T) {
 	assert.Equal(t, 1, fakeSmtp.readQuitCount())
 	assert.Equal(t, "test@example.org", fakeSmtp.readRcpt())
 	// test buildMessageFromRequest separately for message text
-	res, err := email.buildMessageFromRequest(req)
+	res, err := email.buildMessageFromRequest(req, false)
 	assert.NoError(t, err)
 	assert.Contains(t, res, `From: from@example.org
 To: test@example.org
@@ -206,6 +209,47 @@ MIME-version: 1.0
 Content-Type: text/html; charset="UTF-8"
 List-Unsubscribe-Post: List-Unsubscribe=One-Click
 List-Unsubscribe: <https://remark42.com/api/v1/email/unsubscribe?site=&tkn=token>
+Date: `)
+}
+
+func TestEmail_SendAdmin(t *testing.T) {
+	email, err := NewEmail(EmailParams{From: "from@example.org", AdminEmail: "admin@example.org"}, SmtpParams{})
+	assert.NoError(t, err)
+	assert.NotNil(t, email)
+	fakeSmtp := fakeTestSMTP{}
+	email.smtp = &fakeSmtp
+	email.TokenGenFn = TokenGenFn
+	req := Request{
+		Comment: store.Comment{ID: "999", User: store.User{ID: "1", Name: "test_user"}, ParentID: "1", PostTitle: "test_title"},
+		parent:  store.Comment{ID: "1", User: store.User{ID: "999", Name: "parent_user"}},
+	}
+	assert.NoError(t, email.Send(context.TODO(), req))
+	assert.Equal(t, "from@example.org", fakeSmtp.readMail())
+	assert.Equal(t, 1, fakeSmtp.readQuitCount())
+	assert.Equal(t, "admin@example.org", fakeSmtp.readRcpt())
+	// test buildMessageFromRequest separately for message text
+	res, err := email.buildMessageFromRequest(req, true)
+	assert.NoError(t, err)
+	assert.Contains(t, res, `From: from@example.org
+To: admin@example.org
+Subject: New comment to your site for "test_title"
+Content-Transfer-Encoding: quoted-printable
+MIME-version: 1.0
+Content-Type: text/html; charset="UTF-8"
+Date: `)
+	// send email to admin without parent set
+	req = Request{
+		Comment: store.Comment{ID: "999", User: store.User{ID: "1", Name: "test_user"}, PostTitle: "test_title"},
+	}
+	assert.NoError(t, email.Send(context.TODO(), req))
+	res, err = email.buildMessageFromRequest(req, true)
+	assert.NoError(t, err)
+	assert.Contains(t, res, `From: from@example.org
+To: admin@example.org
+Subject: New comment to your site for "test_title"
+Content-Transfer-Encoding: quoted-printable
+MIME-version: 1.0
+Content-Type: text/html; charset="UTF-8"
 Date: `)
 }
 
