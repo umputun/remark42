@@ -18,7 +18,7 @@ func TestBoltStore_SaveCommit(t *testing.T) {
 	svc, teardown := prepareBoltImageStorageTest(t)
 	defer teardown()
 
-	id, err := svc.Save("file1.png", "user1", gopherPNG())
+	id, err := svc.Save("user1", gopherPNGBytes())
 	assert.NoError(t, err)
 	assert.Contains(t, id, "user1")
 	t.Log(id)
@@ -48,7 +48,7 @@ func TestBoltStore_LoadAfterSave(t *testing.T) {
 	svc, teardown := prepareBoltImageStorageTest(t)
 	defer teardown()
 
-	id, err := svc.Save("file1.png", "user1", gopherPNG())
+	id, err := svc.Save("user1", gopherPNGBytes())
 	assert.NoError(t, err)
 	assert.Contains(t, id, "user1")
 	t.Log(id)
@@ -56,6 +56,7 @@ func TestBoltStore_LoadAfterSave(t *testing.T) {
 	data, err := svc.Load(id)
 	assert.NoError(t, err)
 	assert.Equal(t, 1462, len(data))
+	assert.Equal(t, gopherPNGBytes(), data)
 
 	_, err = svc.Load("abcd")
 	assert.Error(t, err)
@@ -66,7 +67,7 @@ func TestBoltStore_Cleanup(t *testing.T) {
 	defer teardown()
 
 	save := func(file string, user string) (id string) {
-		id, err := svc.Save(file, user, gopherPNG())
+		id, err := svc.Save(user, gopherPNGBytes())
 		require.NoError(t, err)
 
 		checkBoltImgData(t, svc.db, imagesStagedBktName, id, func(data []byte) error {
@@ -133,7 +134,7 @@ func prepareBoltImageStorageTest(t *testing.T) (svc *Bolt, teardown func()) {
 	loc, err := ioutil.TempDir("", "test_image_r42")
 	require.NoError(t, err, "failed to make temp dir")
 
-	svc, err = NewBoltStorage(path.Join(loc, "picture.db"), 1500, 0, 0, bolt.Options{})
+	svc, err = NewBoltStorage(path.Join(loc, "picture.db"), bolt.Options{})
 	assert.NoError(t, err, "new bolt storage")
 
 	teardown = func() {

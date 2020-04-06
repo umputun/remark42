@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"context"
 	"image"
+	"io"
 	"io/ioutil"
+	"os"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -14,8 +17,68 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestService_SaveAndLoad(t *testing.T) {
+	store := MockStore{}
+	svc := NewService(&store, ServiceParams{MaxSize: 1500, MaxWidth: 32, MaxHeight: 32})
+
+	store.On("Save", "user1", mock.Anything).Return("user1/test_id", nil)
+	id, err := svc.Save("user1", gopherPNG())
+	assert.NoError(t, err)
+	assert.Equal(t, "user1/test_id", id)
+
+	store.On("SaveWithID", "test_id", mock.Anything).Return("test_id", nil)
+	id, err = svc.SaveWithID("test_id", gopherPNG())
+	assert.NoError(t, err)
+	assert.Equal(t, "test_id", id)
+
+	store.On("Load", "test_id", mock.Anything).Return(nil, nil)
+	img, err := svc.Load("test_id")
+	assert.NoError(t, err)
+	assert.Nil(t, img)
+}
+
+func TestService_Resize(t *testing.T) {
+	img, err := readAndValidateImage(gopherPNG(), 1500)
+	assert.NoError(t, err)
+	assert.Equal(t, 1462, len(img))
+
+	img = resize(img, 32, 32)
+	assert.Equal(t, 1135, len(img))
+}
+
+func TestService_ResizeJpeg(t *testing.T) {
+	fh, err := os.Open("testdata/circles.jpg")
+	defer func() { assert.NoError(t, fh.Close()) }()
+	assert.NoError(t, err)
+
+	img, err := readAndValidateImage(fh, 32000)
+	assert.NoError(t, err)
+	assert.Equal(t, 23983, len(img))
+
+	img = resize(img, 400, 300)
+	assert.Equal(t, 10918, len(img))
+}
+
+func TestService_SaveTooLarge(t *testing.T) {
+	svc := Service{ServiceParams: ServiceParams{ImageAPI: "/blah/"}}
+	svc.MaxSize = 2000
+	_, err := svc.Save("user2", io.MultiReader(gopherPNG(), gopherPNG()))
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "is too large")
+	_, err = svc.SaveWithID("test_id", io.MultiReader(gopherPNG(), gopherPNG()))
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "is too large")
+}
+
+func TestService_WrongFormat(t *testing.T) {
+	svc := Service{ServiceParams: ServiceParams{ImageAPI: "/blah/"}}
+
+	_, err := svc.Save("user1", strings.NewReader("blah blah bad image"))
+	assert.Error(t, err)
+}
+
 func TestService_ExtractPictures(t *testing.T) {
-	svc := Service{ImageAPI: "/blah/"}
+	svc := Service{ServiceParams: ServiceParams{ImageAPI: "/blah/"}}
 	html := `blah <img src="/blah/user1/pic1.png"/> foo 
 <img src="/blah/user2/pic3.png"/> xyz <p>123</p> <img src="/pic3.png"/> <img src="https://i.ibb.co/0cqqqnD/ezgif-5-3b07b6b97610.png" alt="">`
 	ids, err := svc.ExtractPictures(html)
@@ -26,7 +89,7 @@ func TestService_ExtractPictures(t *testing.T) {
 }
 
 func TestService_ExtractPictures2(t *testing.T) {
-	svc := Service{ImageAPI: "https://remark42.radio-t.com/api/v1/picture/"}
+	svc := Service{ServiceParams: ServiceParams{ImageAPI: "https://remark42.radio-t.com/api/v1/picture/"}}
 	html := "<p>TLDR: такое в go пока правильно посчитать трудно. То, что они считают это общее количество go packages в коде." +
 		"</p>\n\n<p>Пакеты в го это средство организации кода, они могут быть связанны друг с другом в рамках одной библиотеки (модуля). Например одна из моих вот так выглядит на libraries.io:</p>\n\n<p><img src=\"https://remark42.radio-t.com/api/v1/picture/github_ef0f706a79cc24b17bbbb374cd234a691d034128/bjttt8ahajfmrhsula10.png\" alt=\"bjtr0-201906-08110846-i324c.png\"/></p>\n\n<p>По форме все верно, это все packages, но по сути это все одна библиотека организованная таким образом. При ее импорте, например посредством go mod, она выглядит как один модуль, т.е. <code>github.com/go-pkgz/auth v0.5.2</code>.</p>\n"
 	ids, err := svc.ExtractPictures(html)
@@ -39,7 +102,7 @@ func TestService_Cleanup(t *testing.T) {
 	store := MockStore{}
 	store.On("Cleanup", mock.Anything, mock.Anything).Times(10).Return(nil)
 
-	svc := Service{Store: &store, TTL: 100 * time.Millisecond}
+	svc := Service{store: &store, ServiceParams: ServiceParams{TTL: 100 * time.Millisecond}}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*549)
 	defer cancel()
 	svc.Cleanup(ctx)
@@ -49,7 +112,7 @@ func TestService_Cleanup(t *testing.T) {
 func TestService_Submit(t *testing.T) {
 	store := MockStore{}
 	store.On("Commit", mock.Anything, mock.Anything).Times(5).Return(nil)
-	svc := Service{Store: &store, ImageAPI: "/blah/", TTL: time.Millisecond * 100}
+	svc := Service{store: &store, ServiceParams: ServiceParams{ImageAPI: "/blah/", TTL: time.Millisecond * 100}}
 	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
 	svc.Submit(func() []string { return []string{"id4", "id5"} })
 	svc.Submit(nil)
@@ -61,7 +124,7 @@ func TestService_Submit(t *testing.T) {
 func TestService_Close(t *testing.T) {
 	store := MockStore{}
 	store.On("Commit", mock.Anything, mock.Anything).Times(5).Return(nil)
-	svc := Service{Store: &store, ImageAPI: "/blah/", TTL: time.Millisecond * 500}
+	svc := Service{store: &store, ServiceParams: ServiceParams{ImageAPI: "/blah/", TTL: time.Millisecond * 500}}
 	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
 	svc.Submit(func() []string { return []string{"id4", "id5"} })
 	svc.Submit(nil)
@@ -72,7 +135,7 @@ func TestService_Close(t *testing.T) {
 func TestService_SubmitDelay(t *testing.T) {
 	store := MockStore{}
 	store.On("Commit", mock.Anything, mock.Anything).Times(5).Return(nil)
-	svc := Service{Store: &store, ImageAPI: "/blah/", TTL: time.Millisecond * 100}
+	svc := Service{store: &store, ServiceParams: ServiceParams{ImageAPI: "/blah/", TTL: time.Millisecond * 100}}
 	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
 	time.Sleep(150 * time.Millisecond) // let first batch to pass TTL
 	svc.Submit(func() []string { return []string{"id4", "id5"} })

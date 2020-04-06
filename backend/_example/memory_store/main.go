@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Umputun. All rights reserved.
+ * Copyright 2020 Umputun. All rights reserved.
  * Use of this source code is governed by a MIT-style
  * license that can be found in the LICENSE file.
  */
@@ -41,6 +41,7 @@ func main() {
 
 	dataStore := accessor.NewMemData()
 	adminStore := accessor.NewMemAdminStore(opts.Secret)
+	imgStore := accessor.NewMemImageStore()
 
 	rpcServer := jrpc.Server{
 		API:        opts.API,
@@ -51,12 +52,13 @@ func main() {
 		Logger:     log.Default(),
 	}
 
-	srv := server.NewRPC(dataStore, adminStore, &rpcServer)
+	srv := server.NewRPC(dataStore, adminStore, imgStore, &rpcServer)
 
 	admRec := accessor.AdminRec{
-		SiteID: "remark",
-		IDs:    []string{"dev_user"},
-		Email:  "admin@example.com",
+		SiteID:  "remark",
+		Enabled: true,
+		IDs:     []string{"dev_user"},
+		Email:   "admin@example.com",
 	}
 	adminStore.Set("remark", admRec)
 

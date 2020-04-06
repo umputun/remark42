@@ -129,7 +129,7 @@ type StoreGroup struct {
 
 // ImageGroup defines options group for store pictures
 type ImageGroup struct {
-	Type string `long:"type" env:"TYPE" description:"type of storage" choice:"fs" choice:"bolt" default:"fs"` // nolint
+	Type string `long:"type" env:"TYPE" description:"type of storage" choice:"fs" choice:"bolt" choice:"rpc" default:"fs"` // nolint
 	FS   struct {
 		Path       string `long:"path" env:"PATH" default:"./var/pictures" description:"images location"`
 		Staging    string `long:"staging" env:"STAGING" default:"./var/pictures.staging" description:"staging location"`
@@ -138,9 +138,10 @@ type ImageGroup struct {
 	Bolt struct {
 		File string `long:"file" env:"FILE" default:"./var/pictures.db" description:"images bolt file location"`
 	} `group:"bolt" namespace:"bolt" env-namespace:"bolt"`
-	MaxSize      int `long:"max-size" env:"MAX_SIZE" default:"5000000" description:"max size of image file"`
-	ResizeWidth  int `long:"resize-width" env:"RESIZE_WIDTH" default:"2400" description:"width of resized image"`
-	ResizeHeight int `long:"resize-height" env:"RESIZE_HEIGHT" default:"900" description:"height of resized image"`
+	MaxSize      int      `long:"max-size" env:"MAX_SIZE" default:"5000000" description:"max size of image file"`
+	ResizeWidth  int      `long:"resize-width" env:"RESIZE_WIDTH" default:"2400" description:"width of resized image"`
+	ResizeHeight int      `long:"resize-height" env:"RESIZE_HEIGHT" default:"900" description:"height of resized image"`
+	RPC          RPCGroup `group:"rpc" namespace:"rpc" env-namespace:"RPC"`
 }
 
 // AvatarGroup defines options group for avatar params
@@ -567,39 +568,37 @@ func (s *ServerCommand) makeAvatarStore() (avatar.Store, error) {
 }
 
 func (s *ServerCommand) makePicturesStore() (*image.Service, error) {
+	imageServiceParams := image.ServiceParams{
+		ImageAPI:  s.RemarkURL + "/api/v1/picture/",
+		TTL:       5 * s.EditDuration, // add extra time to image TTL for staging
+		MaxSize:   s.Image.MaxSize,
+		MaxHeight: s.Image.ResizeHeight,
+		MaxWidth:  s.Image.ResizeWidth,
+	}
 	switch s.Image.Type {
 	case "bolt":
-		boltImageStore, err := image.NewBoltStorage(
-			s.Image.Bolt.File,
-			s.Image.MaxSize,
-			s.Image.ResizeHeight,
-			s.Image.ResizeWidth,
-			bolt.Options{},
-		)
+		boltImageStore, err := image.NewBoltStorage(s.Image.Bolt.File, bolt.Options{})
 		if err != nil {
 			return nil, err
 		}
-		return &image.Service{
-			Store:    boltImageStore,
-			ImageAPI: s.RemarkURL + "/api/v1/picture/",
-			TTL:      5 * s.EditDuration, // add extra time to image TTL for staging
-		}, nil
+		return image.NewService(boltImageStore, imageServiceParams), nil
 	case "fs":
 		if err := makeDirs(s.Image.FS.Path); err != nil {
 			return nil, err
 		}
-		return &image.Service{
-			Store: &image.FileSystem{
-				Location:   s.Image.FS.Path,
-				Staging:    s.Image.FS.Staging,
-				Partitions: s.Image.FS.Partitions,
-				MaxSize:    s.Image.MaxSize,
-				MaxHeight:  s.Image.ResizeHeight,
-				MaxWidth:   s.Image.ResizeWidth,
-			},
-			ImageAPI: s.RemarkURL + "/api/v1/picture/",
-			TTL:      5 * s.EditDuration, // add extra time to image TTL for staging
-		}, nil
+		return image.NewService(&image.FileSystem{
+			Location:   s.Image.FS.Path,
+			Staging:    s.Image.FS.Staging,
+			Partitions: s.Image.FS.Partitions,
+		}, imageServiceParams), nil
+	case "rpc":
+		return image.NewService(&image.RPC{
+			Client: jrpc.Client{
+				API:        s.Image.RPC.API,
+				Client:     http.Client{Timeout: s.Image.RPC.TimeOut},
+				AuthUser:   s.Image.RPC.AuthUser,
+				AuthPasswd: s.Image.RPC.AuthPassword,
+			}}, imageServiceParams), nil
 	}
 	return nil, errors.Errorf("unsupported pictures store type %s", s.Image.Type)
 }
@@ -769,7 +768,7 @@ func (s *ServerCommand) makeNotify(dataStore *service.DataStore, authenticator *
 				VerificationSubject: s.Notify.Email.VerificationSubject,
 				UnsubscribeURL:      s.RemarkURL + "/email/unsubscribe.html",
 				// TODO: uncomment after #560 frontend part is ready and URL is known
-				//SubscribeURL:        s.RemarkURL + "/subscribe.html?token=",
+				// SubscribeURL:        s.RemarkURL + "/subscribe.html?token=",
 				TokenGenFn: func(userID, email, site string) (string, error) {
 					claims := token.Claims{
 						Handshake: &token.Handshake{ID: userID + "::" + email},

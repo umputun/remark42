@@ -22,3 +22,6 @@ linters:
   disable-all: true
 issues:
   exclude-use-default: false
+
+service:
+  golangci-lint-version: 1.24.x
