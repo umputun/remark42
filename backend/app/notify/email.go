@@ -14,7 +14,6 @@ import (
 
 	log "github.com/go-pkgz/lgr"
 	"github.com/go-pkgz/repeater"
-	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 )
 
@@ -26,7 +25,6 @@ type EmailParams struct {
 	VerificationTemplate string // verification message template
 	SubscribeURL         string // full subscribe handler URL
 	UnsubscribeURL       string // full unsubscribe handler URL
-	AdminEmail           string // admin email for sending notifications about new messages
 
 	TokenGenFn func(userID, email, site string) (string, error) // Unsubscribe token generation function
 }
@@ -242,91 +240,42 @@ func NewEmail(emailParams EmailParams, smtpParams SmtpParams) (*Email, error) {
 // also sends email to site administrator if appropriate option is set.
 // Thread safe
 func (e *Email) Send(ctx context.Context, req Request) (err error) {
+	if req.Email == "" {
+		// this means we can't send this request via Email
+		return nil
+	}
 	select {
 	case <-ctx.Done():
 		return errors.Errorf("sending message to %q aborted due to canceled context", req.Email)
 	default:
 	}
-
-	var emails []emailMessage
-	errs := new(multierror.Error)
-
-	emailMsg, err := e.createUserEmail(req)
-	errs = multierror.Append(errs, errors.Wrap(err, "problem creating email notification on comment for user"))
-	if emailMsg != nil {
-		emails = append(emails, *emailMsg)
-	}
-
-	emailMsg, err = e.createAdminEmail(req)
-	errs = multierror.Append(errs, errors.Wrap(err, "problem creating email notification on comment for admin"))
-	if emailMsg != nil {
-		emails = append(emails, *emailMsg)
-	}
-
-	for _, msg := range emails {
-		err = repeater.NewDefault(5, time.Millisecond*250).
-			Do(ctx, func() error { return e.sendMessage(msg) })
-		errs = multierror.Append(errs, err)
-	}
-	return errs.ErrorOrNil()
-}
-
-// construct email for user if it's necessary:
-// 1. in case user requested validation message
-// 2. in case comment have is a reply and parent message owner subscribed for email notifications
-func (e *Email) createUserEmail(req Request) (*emailMessage, error) {
-	if req.Email == "" {
-		// this means we can't send this request via Email
-		return nil, nil
-	}
-
 	var msg string
-	var err error
 
 	if req.Verification.Token != "" {
 		log.Printf("[DEBUG] send verification via %s, user %s", e, req.Verification.User)
 		msg, err = e.buildVerificationMessage(req.Verification.User, req.Email, req.Verification.Token, req.Verification.SiteID)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 
 	if req.Comment.ID != "" {
-		if req.parent.User.ID == req.Comment.User.ID {
+		if req.parent.User.ID == req.Comment.User.ID && !req.ForAdmin {
 			// don't send anything if if user replied to their own comment
-			return nil, nil
+			return nil
 		}
 		log.Printf("[DEBUG] send notification via %s, comment id %s", e, req.Comment.ID)
-		msg, err = e.buildMessageFromRequest(req, false)
+		msg, err = e.buildMessageFromRequest(req, req.ForAdmin)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 
-	return &emailMessage{from: e.From, to: req.Email, message: msg}, nil
-}
-
-// construct email for admin if it's enabled
-func (e *Email) createAdminEmail(req Request) (*emailMessage, error) {
-	if req.Verification.Token != "" {
-		// don't notify admin on verification request
-		return nil, nil
-	}
-	if e.AdminEmail == "" {
-		// don't send anything if notifications to admin are disabled
-		return nil, nil
-	}
-
-	var msg string
-	var err error
-
-	log.Printf("[DEBUG] send admin notification via %s, comment id %s", e, req.Comment.ID)
-	msg, err = e.buildMessageFromRequest(req, true)
-	if err != nil {
-		return nil, err
-	}
-
-	return &emailMessage{from: e.From, to: e.AdminEmail, message: msg}, nil
+	return repeater.NewDefault(5, time.Millisecond*250).Do(
+		ctx,
+		func() error {
+			return e.sendMessage(emailMessage{from: e.From, to: req.Email, message: msg})
+		})
 }
 
 // buildVerificationMessage generates verification email message based on given input
@@ -365,11 +314,6 @@ func (e *Email) buildMessageFromRequest(req Request, forAdmin bool) (string, err
 		unsubscribeLink = ""
 	}
 
-	email := req.Email
-	if forAdmin {
-		email = e.AdminEmail
-	}
-
 	commentUrlPrefix := req.Comment.Locator.URL + uiNav
 	msg := bytes.Buffer{}
 	tmplData := msgTmplData{
@@ -379,7 +323,7 @@ func (e *Email) buildMessageFromRequest(req Request, forAdmin bool) (string, err
 		CommentLink:     commentUrlPrefix + req.Comment.ID,
 		CommentDate:     req.Comment.Timestamp,
 		PostTitle:       req.Comment.PostTitle,
-		Email:           email,
+		Email:           req.Email,
 		UnsubscribeLink: unsubscribeLink,
 		ForAdmin:        forAdmin,
 	}
@@ -395,7 +339,7 @@ func (e *Email) buildMessageFromRequest(req Request, forAdmin bool) (string, err
 	if err != nil {
 		return "", errors.Wrapf(err, "error executing template to build comment reply message")
 	}
-	return e.buildMessage(subject, msg.String(), email, "text/html", unsubscribeLink)
+	return e.buildMessage(subject, msg.String(), req.Email, "text/html", unsubscribeLink)
 }
 
 // buildMessage generates email message to send using net/smtp.Data()

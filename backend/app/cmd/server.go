@@ -438,6 +438,11 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		SimpleView:         s.SimpleView,
 	}
 
+	// enable admin notifications only if admin email is set
+	if s.Notify.Email.AdminNotifications && s.Admin.Shared.Email != "" {
+		srv.AdminEmail = s.Admin.Shared.Email
+	}
+
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = s.LowScore, s.CriticalScore
 
 	var devAuth *provider.DevAuthServer
@@ -786,10 +791,6 @@ func (s *ServerCommand) makeNotify(dataStore *service.DataStore, authenticator *
 					}
 					return tkn, nil
 				},
-			}
-			// enable admin notifications only if admin email is set
-			if s.Notify.Email.AdminNotifications && s.Admin.Shared.Email != "" {
-				emailParams.AdminEmail = s.Admin.Shared.Email
 			}
 			smtpParams := notify.SmtpParams{
 				Host:     s.SMTP.Host,
