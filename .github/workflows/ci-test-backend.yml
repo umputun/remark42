@@ -58,5 +58,4 @@ jobs:
         uses: shogo82148/actions-goveralls@v1
         with:
           path-to-profile: ${{ github.workspace }}/profile.cov
-          parallel: true
           working-directory: backend
