@@ -58,9 +58,12 @@ jobs:
 
       - name: run linters for examples
         run: |
+          -mod=mod
           cp ${GITHUB_WORKSPACE}/backend/.golangci.yml .golangci.yml
           $GITHUB_WORKSPACE/golangci-lint run ./...
         working-directory: backend/_example/memory_store
+        env:
+          GOFLAGS: "-mod=mod"
 
       - name: submit coverage
         run: $(go env GOPATH)/bin/goveralls -service="github" -coverprofile=$GITHUB_WORKSPACE/profile.cov
