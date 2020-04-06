@@ -53,11 +53,13 @@ jobs:
           go get -u github.com/mattn/goveralls
 
       - name: run backend linters
-        run: $GITHUB_WORKSPACE/golangci-lint run --config .golangci.yml ./...
+        run: $GITHUB_WORKSPACE/golangci-lint run ./...
         working-directory: backend
 
       - name: run linters for examples
-        run: $GITHUB_WORKSPACE/golangci-lint run --config ${GITHUB_WORKSPACE}/backend/.golangci.yml ./...
+        run: |
+          cp ${GITHUB_WORKSPACE}/backend/.golangci.yml .golangci.yml
+          $GITHUB_WORKSPACE/golangci-lint run ./...
         working-directory: backend/_example/memory_store
 
       - name: submit coverage
