@@ -133,7 +133,7 @@ export class AuthPanel extends Component<Props, State> {
           href={`${window.location.origin}/web/comments.html${window.location.search}`}
           target="_blank"
         >
-          new page
+          <FormattedMessage id="authPanel.new-page" defaultMessage="new page" />
         </a>
       </div>
     );
