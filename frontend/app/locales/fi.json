@@ -12,6 +12,7 @@
   "authPanel.logged-as": "Olet kirjautunut sisään nimellä",
   "authPanel.login": "Kirjaudu sisään:",
   "authPanel.logout": "Kirjaudu ulos?",
+  "authPanel.new-page": "uusi sivu",
   "authPanel.or-provider": "tai",
   "authPanel.other-provider": "Muu",
   "authPanel.read-only": "Vain luku",

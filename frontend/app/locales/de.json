@@ -12,6 +12,7 @@
   "authPanel.logged-as": "Du hast dich angemeldet als",
   "authPanel.login": "Anmelden:",
   "authPanel.logout": "Abmelden?",
+  "authPanel.new-page": "neue Seite",
   "authPanel.or-provider": "oder",
   "authPanel.other-provider": "Andere",
   "authPanel.read-only": "Nur-Lesen",
