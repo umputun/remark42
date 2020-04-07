@@ -60,7 +60,7 @@ jobs:
           $GITHUB_WORKSPACE/golangci-lint --config ${GITHUB_WORKSPACE}/backend/.golangci.yml run ./...
         working-directory: backend/_example/memory_store
         env:
-          GOFLAGS: "-mod=mod"
+#          GOFLAGS: "-mod=mod"
           TZ: "America/Chicago"
 
       - name: submit coverage
