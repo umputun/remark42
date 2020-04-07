@@ -26,8 +26,7 @@ export const messages = defineMessages({
   },
   symbolLimit: {
     id: 'anonymousLoginForm.symbol-limit',
-    defaultMessage:
-      'Username must start from the letter and contain only latin letters, numbers, underscores, and spaces',
+    defaultMessage: 'Username must start with a letter and contain only latin letters, numbers, underscores, or spaces',
   },
   userName: {
     id: 'anonymousLoginForm.user-name',
