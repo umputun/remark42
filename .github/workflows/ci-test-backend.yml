@@ -37,28 +37,26 @@ jobs:
         with:
           go-version: 1.14
 
-      - name: test backend
-        run: |
-          export TZ="America/Chicago"
-          cd backend/app
-          go test -mod=vendor -timeout=60s -covermode=count -coverprofile=$GITHUB_WORKSPACE/profile.cov_tmp ./...
-          cat $GITHUB_WORKSPACE/profile.cov_tmp | grep -v "_mock.go" > $GITHUB_WORKSPACE/profile.cov
-
       - name: install golangci-lint and goveralls
         run: |
           curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh| sh -s -- -b $GITHUB_WORKSPACE v1.24.0
           go get -u github.com/mattn/goveralls
 
-      - name: run backend linters
-        run: $GITHUB_WORKSPACE/golangci-lint run ./...
-        working-directory: backend
+      - name: test and lint backend
+        run: |
+          go test -timeout=60s -covermode=count -coverprofile=$GITHUB_WORKSPACE/profile.cov_tmp ./...
+          cat $GITHUB_WORKSPACE/profile.cov_tmp | grep -v "_mock.go" > $GITHUB_WORKSPACE/profile.cov
+          $GITHUB_WORKSPACE/golangci-lint -config=${GITHUB_WORKSPACE}/backend/.golangci.yml run  ./...
+        working-directory: backend/app
+        env:
+          GOFLAGS: "-mod=vendor"
+          TZ: "America/Chicago"
 
       - name: tast and lint examples
         run: |
           export TZ="America/Chicago"
           go test -race ./...
-          cp ${GITHUB_WORKSPACE}/backend/.golangci.yml .golangci.yml
-          $GITHUB_WORKSPACE/golangci-lint run ./...
+          $GITHUB_WORKSPACE/golangci-lint -config=${GITHUB_WORKSPACE}/backend/.golangci.yml run ./...
         working-directory: backend/_example/memory_store
         env:
           GOFLAGS: "-mod=mod"
