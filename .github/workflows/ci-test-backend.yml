@@ -54,7 +54,6 @@ jobs:
 
       - name: tast and lint examples
         run: |
-          export TZ="America/Chicago"
           go test -race ./...
           $GITHUB_WORKSPACE/golangci-lint --config ${GITHUB_WORKSPACE}/backend/.golangci.yml run ./...
         working-directory: backend/_example/memory_store
