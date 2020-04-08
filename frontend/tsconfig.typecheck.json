@@ -1,26 +1,6 @@
 {
+  "extends": "./tsconfig.json",
   "compilerOptions": {
-    "lib": ["es2017", "dom"],
-    "target": "es2017",
-    "jsx": "react",
-    "jsxFactory": "h",
-    "module": "esnext",
-    "esModuleInterop": true,
-    "moduleResolution": "node",
-    "noImplicitReturns": true,
-    "noImplicitAny": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "strict": true,
-    "baseUrl": "./",
-    "alwaysStrict": true,
-    "resolveJsonModule": true,
-    "forceConsistentCasingInFileNames": true,
-    "paths": {
-      "*": ["@types/*"],
-      "@app/*": ["app/*"]
-    }
-  },
-  "include": ["app/**/*"],
-  "exclude": ["node_modules"]
+    "incremental": false
+  }
 }
