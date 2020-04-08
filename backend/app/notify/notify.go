@@ -90,6 +90,10 @@ func (s *Service) Submit(req Request) {
 				req.Email, err = s.dataService.GetUserEmail(req.Comment.Locator.SiteID, p.User.ID)
 				if err != nil {
 					log.Printf("[WARN] can't read email for %s, %v", p.User.ID, err)
+				} else if req.Email == "" {
+					log.Printf("[DEBUG] got empty email for %s", p.User.ID)
+				} else {
+					log.Printf("[DEBUG] got email %s for %s", req.Email, p.User.ID)
 				}
 			}
 		}
@@ -120,6 +124,8 @@ func (s *Service) do() {
 			go func(d Destination) {
 				if err := d.Send(s.ctx, c); err != nil {
 					log.Printf("[WARN] failed to send to %s, %s", d, err)
+				} else {
+					log.Printf("[DEBUG] notify mail send to %s successfully via destination: %s", c.Email, d)
 				}
 				wg.Done()
 			}(dest)

@@ -34,6 +34,7 @@ require (
 	github.com/klauspost/compress v1.7.6 // indirect
 	github.com/klauspost/cpuid v1.2.1 // indirect
 	github.com/kyokomi/emoji v2.1.0+incompatible
+	github.com/mailgun/mailgun-go/v4 v4.0.1
 	github.com/mattn/go-colorable v0.1.2 // indirect
 	github.com/mattn/go-isatty v0.0.9 // indirect
 	github.com/microcosm-cc/bluemonday v1.0.2
@@ -44,6 +45,8 @@ require (
 	github.com/rakyll/statik v0.1.6
 	github.com/rs/xid v1.2.1
 	github.com/russross/blackfriday/v2 v2.0.1
+	github.com/sendgrid/rest v2.4.1+incompatible // indirect
+	github.com/sendgrid/sendgrid-go v3.5.0+incompatible
 	github.com/smartystreets/assertions v1.0.1 // indirect
 	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/stretchr/testify v1.4.0

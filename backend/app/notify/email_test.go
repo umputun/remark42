@@ -13,6 +13,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/umputun/remark/backend/app/emailprovider"
 	"github.com/umputun/remark/backend/app/store"
 )
 
@@ -22,7 +23,7 @@ func TestEmailNew(t *testing.T) {
 		err         bool
 		errText     string
 		emailParams EmailParams
-		smtpParams  SmtpParams
+		smtpParams  emailprovider.SmtpParams
 	}{
 		{name: "empty"},
 		{name: "with template parse error",
@@ -36,7 +37,7 @@ func TestEmailNew(t *testing.T) {
 				From:                 "test@from",
 				VerificationTemplate: "{{",
 			},
-			smtpParams: SmtpParams{
+			smtpParams: emailprovider.SmtpParams{
 				Host:     "test@host",
 				Port:     1000,
 				TLS:      true,
@@ -50,7 +51,7 @@ func TestEmailNew(t *testing.T) {
 			emailParams: EmailParams{
 				From: "test@from",
 			},
-			smtpParams: SmtpParams{
+			smtpParams: emailprovider.SmtpParams{
 				Host:     "test@host",
 				Port:     1000,
 				TLS:      true,
@@ -62,7 +63,9 @@ func TestEmailNew(t *testing.T) {
 	}
 	for _, d := range testSet {
 		t.Run(d.name, func(t *testing.T) {
-			email, err := NewEmail(d.emailParams, d.smtpParams)
+			sndr := emailprovider.NewSMTPSender(&d.smtpParams, nil)
+			smtpSndr := sndr.(*emailprovider.SMTPSender)
+			email, err := NewEmail(d.emailParams, sndr)
 
 			if d.err && d.errText == "" {
 				assert.Error(t, err)
@@ -79,15 +82,15 @@ func TestEmailNew(t *testing.T) {
 				assert.Equal(t, defaultEmailVerificationTemplate, email.EmailParams.VerificationTemplate, "empty emailParams.VerificationTemplate changed to default")
 				assert.Equal(t, d.emailParams.From, email.EmailParams.From, "emailParams.From unchanged after creation")
 				if d.smtpParams.TimeOut == 0 {
-					assert.Equal(t, defaultEmailTimeout, email.TimeOut, "empty emailParams.TimeOut changed to default")
+					assert.Equal(t, emailprovider.DefaultEmailTimeout, smtpSndr.SmtpParams.TimeOut, "empty emailParams.TimeOut changed to default")
 				} else {
-					assert.Equal(t, d.smtpParams.TimeOut, email.TimeOut, "emailParams.TimOut unchanged after creation")
+					assert.Equal(t, d.smtpParams.TimeOut, smtpSndr.SmtpParams.TimeOut, "emailParams.TimOut unchanged after creation")
 				}
-				assert.Equal(t, d.smtpParams.Host, email.Host, "emailParams.Host unchanged after creation")
-				assert.Equal(t, d.smtpParams.Username, email.Username, "emailParams.Username unchanged after creation")
-				assert.Equal(t, d.smtpParams.Password, email.Password, "emailParams.Password unchanged after creation")
-				assert.Equal(t, d.smtpParams.Port, email.Port, "emailParams.Port unchanged after creation")
-				assert.Equal(t, d.smtpParams.TLS, email.TLS, "emailParams.TLS unchanged after creation")
+				assert.Equal(t, d.smtpParams.Host, smtpSndr.SmtpParams.Host, "emailParams.Host unchanged after creation")
+				assert.Equal(t, d.smtpParams.Username, smtpSndr.SmtpParams.Username, "emailParams.Username unchanged after creation")
+				assert.Equal(t, d.smtpParams.Password, smtpSndr.SmtpParams.Password, "emailParams.Password unchanged after creation")
+				assert.Equal(t, d.smtpParams.Port, smtpSndr.SmtpParams.Port, "emailParams.Port unchanged after creation")
+				assert.Equal(t, d.smtpParams.TLS, smtpSndr.SmtpParams.TLS, "emailParams.TLS unchanged after creation")
 			}
 		})
 	}
@@ -97,6 +100,7 @@ func TestEmailSendErrors(t *testing.T) {
 	var err error
 	e := Email{}
 	e.TokenGenFn = TokenGenFn
+	e.sender = emailprovider.NewSMTPSender(&emailprovider.SmtpParams{}, nil)
 
 	e.verifyTmpl, err = template.New("test").Parse("{{.Test}}")
 	assert.NoError(t, err)
@@ -117,7 +121,7 @@ func TestEmailSendErrors(t *testing.T) {
 	assert.EqualError(t, e.Send(ctx, Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "test"}}, Email: "bad@example.org"}),
 		"sending message to \"bad@example.org\" aborted due to canceled context")
 
-	e.smtp = &fakeTestSMTP{}
+	e.sender = emailprovider.NewSMTPSender(&emailprovider.SmtpParams{}, &fakeTestSMTP{})
 	assert.EqualError(t, e.Send(context.Background(), Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "error"}}, Email: "bad@example.org"}),
 		"error creating token for unsubscribe link: token generation error")
 	e.msgTmpl, err = template.New("test").Parse(defaultEmailTemplate)
@@ -125,7 +129,8 @@ func TestEmailSendErrors(t *testing.T) {
 }
 
 func TestEmailSend_ExitConditions(t *testing.T) {
-	email, err := NewEmail(EmailParams{}, SmtpParams{})
+	sender := emailprovider.NewSMTPSender(&emailprovider.SmtpParams{}, nil)
+	email, err := NewEmail(EmailParams{}, sender)
 	assert.NoError(t, err)
 	assert.NotNil(t, email, "expecting email returned")
 	// prevent triggering e.autoFlush creation
@@ -153,37 +158,36 @@ func TestEmailSendClientError(t *testing.T) {
 	}
 	for _, d := range testSet {
 		t.Run(d.name, func(t *testing.T) {
-			e := Email{smtp: d.smtp}
+			sender := emailprovider.NewSMTPSender(&emailprovider.SmtpParams{}, d.smtp)
 			if d.err != "" {
-				assert.EqualError(t, e.sendMessage(emailMessage{}), d.err,
+				assert.EqualError(t, sender.Send("", ""), d.err,
 					"expected error for e.sendMessage")
 			} else {
-				assert.NoError(t, e.sendMessage(emailMessage{}),
+				assert.NoError(t, sender.Send("", ""),
 					"expected no error for e.sendMessage")
 			}
 		})
 	}
 	e := Email{}
-	e.smtp = nil
-	assert.Error(t, e.sendMessage(emailMessage{}),
+	e.sender = nil
+	assert.Error(t, e.Send(context.Background(), Request{}),
 		"nil e.smtp should return error")
-	e.smtp = &fakeTestSMTP{}
-	assert.NoError(t, e.sendMessage(emailMessage{}), "",
+	e.sender = emailprovider.NewSMTPSender(&emailprovider.SmtpParams{}, &fakeTestSMTP{})
+	assert.NoError(t, e.Send(context.Background(), Request{}), "",
 		"no error expected for e.sendMessage in normal flow")
-	e.smtp = &fakeTestSMTP{fail: map[string]bool{"quit": true}}
-	assert.NoError(t, e.sendMessage(emailMessage{}), "",
+	e.sender = emailprovider.NewSMTPSender(&emailprovider.SmtpParams{}, &fakeTestSMTP{fail: map[string]bool{"quit": true}})
+	assert.NoError(t, e.Send(context.Background(), Request{}), "",
 		"no error expected for e.sendMessage with failed smtpClient.Quit but successful smtpClient.Close")
-	e.smtp = &fakeTestSMTP{fail: map[string]bool{"create": true}}
-	assert.EqualError(t, e.sendMessage(emailMessage{}), "failed to make smtp Create: failed to create client",
-		"e.send called without smtpClient set returns error")
+	e.sender = emailprovider.NewSMTPSender(&emailprovider.SmtpParams{}, &fakeTestSMTP{fail: map[string]bool{"create": true}})
+	assert.EqualError(t, e.Send(context.Background(), Request{Email:"foo@example.org"}), "failed to make smtp Create: failed to create client",
+		"sendMessage called without smtpCreator set")
 }
 
 func TestEmail_Send(t *testing.T) {
-	email, err := NewEmail(EmailParams{From: "from@example.org"}, SmtpParams{})
+	fakeSmtp := fakeTestSMTP{}
+	email, err := NewEmail(EmailParams{From: "from@example.org"}, emailprovider.NewSMTPSender(&emailprovider.SmtpParams{}, &fakeSmtp))
 	assert.NoError(t, err)
 	assert.NotNil(t, email)
-	fakeSmtp := fakeTestSMTP{}
-	email.smtp = &fakeSmtp
 	email.TokenGenFn = TokenGenFn
 	email.UnsubscribeURL = "https://remark42.com/api/v1/email/unsubscribe"
 	req := Request{
@@ -198,14 +202,16 @@ func TestEmail_Send(t *testing.T) {
 	// test buildMessageFromRequest separately for message text
 	res, err := email.buildMessageFromRequest(req, req.ForAdmin)
 	assert.NoError(t, err)
+	res, err = email.sender.(*emailprovider.SMTPSender).BuildMessage(req.Email, res, "text/html")
+	assert.NoError(t, err)
 	assert.Contains(t, res, `From: from@example.org
 To: test@example.org
 Subject: New reply to your comment for "test_title"
 Content-Transfer-Encoding: quoted-printable
 MIME-version: 1.0
 Content-Type: text/html; charset="UTF-8"
-List-Unsubscribe-Post: List-Unsubscribe=One-Click
 List-Unsubscribe: <https://remark42.com/api/v1/email/unsubscribe?site=&tkn=token>
+List-Unsubscribe-Post: List-Unsubscribe=One-Click
 Date: `)
 
 	// send email to admin without parent set
@@ -217,6 +223,8 @@ Date: `)
 	assert.NoError(t, email.Send(context.TODO(), req))
 	res, err = email.buildMessageFromRequest(req, req.ForAdmin)
 	assert.NoError(t, err)
+	res, err = email.sender.(*emailprovider.SMTPSender).BuildMessage(req.Email, res, "text/html")
+	assert.NoError(t, err)
 	assert.Contains(t, res, `From: from@example.org
 To: admin@example.org
 Subject: New comment to your site for "test_title"
@@ -227,11 +235,10 @@ Date: `)
 }
 
 func TestEmail_SendVerification(t *testing.T) {
-	email, err := NewEmail(EmailParams{From: "from@example.org"}, SmtpParams{})
+	fakeSmtp := fakeTestSMTP{}
+	email, err := NewEmail(EmailParams{From: "from@example.org"}, emailprovider.NewSMTPSender(&emailprovider.SmtpParams{}, &fakeSmtp))
 	assert.NoError(t, err)
 	assert.NotNil(t, email)
-	fakeSmtp := fakeTestSMTP{}
-	email.smtp = &fakeSmtp
 	email.TokenGenFn = TokenGenFn
 	req := Request{
 		Email: "test@example.org",
@@ -248,6 +255,8 @@ func TestEmail_SendVerification(t *testing.T) {
 	// test buildMessageFromRequest separately for message text
 	res, err := email.buildVerificationMessage(req.Verification.User, req.Email, req.Verification.Token, req.Verification.SiteID)
 	assert.NoError(t, err)
+	res, err = email.sender.(*emailprovider.SMTPSender).BuildMessage(req.Email, res, "text/html")
+	assert.NoError(t, err)
 	assert.Contains(t, res, `From: from@example.org
 To: test@example.org
 Subject: Email verification
@@ -260,6 +269,8 @@ Date: `)
 	email.SubscribeURL = "https://example.org/subscribe.html?token="
 	res, err = email.buildVerificationMessage(req.Verification.User, req.Email, req.Verification.Token, req.Verification.SiteID)
 	assert.NoError(t, err)
+	res, err = email.sender.(*emailprovider.SMTPSender).BuildMessage(req.Email, res, "text/html")
+	assert.NoError(t, err)
 	assert.Contains(t, res, `From: from@example.org
 To: test@example.org
 Subject: Email verification
@@ -271,8 +282,8 @@ Date: `)
 }
 
 func Test_emailClient_Create(t *testing.T) {
-	creator := emailClient{}
-	client, err := creator.Create(SmtpParams{})
+	creator := emailprovider.SmtpCreator{}
+	client, err := creator.Create(&emailprovider.SmtpParams{})
 	assert.Error(t, err, "absence of address to connect results in error")
 	assert.Nil(t, client, "no client returned in case of error")
 }
@@ -288,7 +299,7 @@ type fakeTestSMTP struct {
 	lock       sync.RWMutex
 }
 
-func (f *fakeTestSMTP) Create(SmtpParams) (smtpClient, error) {
+func (f *fakeTestSMTP) Create(*emailprovider.SmtpParams) (emailprovider.SmtpClient, error) {
 	if f.fail["create"] {
 		return nil, errors.New("failed to create client")
 	}

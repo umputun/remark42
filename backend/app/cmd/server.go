@@ -25,10 +25,10 @@ import (
 	"github.com/go-pkgz/auth"
 	"github.com/go-pkgz/auth/avatar"
 	"github.com/go-pkgz/auth/provider"
-	"github.com/go-pkgz/auth/provider/sender"
 	"github.com/go-pkgz/auth/token"
 	cache "github.com/go-pkgz/lcw"
 
+	"github.com/umputun/remark/backend/app/emailprovider"
 	"github.com/umputun/remark/backend/app/migrator"
 	"github.com/umputun/remark/backend/app/notify"
 	"github.com/umputun/remark/backend/app/rest/api"
@@ -47,7 +47,8 @@ type ServerCommand struct {
 	Cache      CacheGroup      `group:"cache" namespace:"cache" env-namespace:"CACHE"`
 	Admin      AdminGroup      `group:"admin" namespace:"admin" env-namespace:"ADMIN"`
 	Notify     NotifyGroup     `group:"notify" namespace:"notify" env-namespace:"NOTIFY"`
-	SMTP       SmtpGroup       `group:"smtp" namespace:"smtp" env-namespace:"SMTP"`
+	EmailProvider EmailProviderGroup `group:"email-provider" namespace:"email-provider" env-namespace:"EMAIL_PROVIDER"`
+	SMTP       SmtpGroup       `group:"smtp" namespace:"smtp" env-namespace:"SMTP"` //deprecated
 	Image      ImageGroup      `group:"image" namespace:"image" env-namespace:"IMAGE"`
 	SSL        SSLGroup        `group:"ssl" namespace:"ssl" env-namespace:"SSL"`
 	Stream     StreamGroup     `group:"stream" namespace:"stream" env-namespace:"STREAM"`
@@ -177,6 +178,30 @@ type AdminGroup struct {
 	RPC RPCGroup `group:"rpc" namespace:"rpc" env-namespace:"RPC"`
 }
 
+type EmailProviderGroup struct {
+	Provider     string `long:"provider" env:"TYPE" description:"type of email provider" choice:"smtp" choice:"mailgun" choice:"sendgrid" default:"smtp" env-delim:","` //nolint
+	// Smtp defines options for SMTP server connection, used in auth and notify modules
+	SMTP struct {
+		Host     string        `long:"host" env:"HOST" description:"SMTP host"`
+		Port     int           `long:"port" env:"PORT" description:"SMTP port"`
+		Username string        `long:"username" env:"USERNAME" description:"SMTP user name"`
+		Password string        `long:"password" env:"PASSWORD" description:"SMTP password"`
+		TLS      bool          `long:"tls" env:"TLS" description:"enable TLS"`
+		TimeOut  time.Duration `long:"timeout" env:"TIMEOUT" default:"10s" description:"SMTP TCP connection timeout"`
+	} `group:"smtp" namespace:"smtp" env-namespace:"SMTP"`
+	// Mailgun defines options for Mailgun Email API service, used in auth and notify modules
+	Mailgun  struct {
+		Domain   string        `long:"domain" env:"DOMAIN" description:"mailgun domain"`
+		PrivateAPIKey string    `long:"private_api_key" env:"PRIVATE_API_KEY" description:"mailgun private API key"`
+		Timeout time.Duration 	`long:"timeout" env:"TIMEOUT" default:"5s" description:"mailgun timeout"`
+	} `group:"mailgun" namespace:"mailgun" env-namespace:"MG"`
+	// Sendgrid defines options for SendGrid Email API service, used in auth and notify modules
+	Sendgrid  struct {
+		APIKey string    `long:"api_key" env:"API_KEY" description:"SendGrid API key"`
+		Timeout time.Duration 	`long:"timeout" env:"TIMEOUT" default:"5s" description:"SendGrid timeout"`
+	} `group:"sendgrid" namespace:"sendgrid" env-namespace:"SG"`
+}
+
 // SmtpGroup defines options for SMTP server connection, used in auth and notify modules
 type SmtpGroup struct {
 	Host     string        `long:"host" env:"HOST" description:"SMTP host"`
@@ -279,6 +304,31 @@ func (s *ServerCommand) Execute(args []string) error {
 
 // HandleDeprecatedFlags sets new flags from deprecated returns their list
 func (s *ServerCommand) HandleDeprecatedFlags() (result []DeprecatedFlag) {
+	// 1.5.1
+	if s.SMTP.Host != "" && s.EmailProvider.SMTP.Host == "" {
+		s.EmailProvider.SMTP.Host = s.SMTP.Host
+		result = append(result, DeprecatedFlag{Old: "smtp.host", New: "email-provider.smtp.host", RemoveVersion: "1.7.0"})
+	}
+	if s.SMTP.Port != 0 && s.EmailProvider.SMTP.Port == 0 {
+		s.EmailProvider.SMTP.Port = s.SMTP.Port
+		result = append(result, DeprecatedFlag{Old: "smtp.port", New: "email-provider.smtp.port", RemoveVersion: "1.7.0"})
+	}
+	if s.SMTP.TLS && !s.EmailProvider.SMTP.TLS {
+		s.EmailProvider.SMTP.TLS = s.SMTP.TLS
+		result = append(result, DeprecatedFlag{Old: "smtp.tls", New: "email-provider.smtp.tls", RemoveVersion: "1.7.0"})
+	}
+	if s.SMTP.Username != "" && s.EmailProvider.SMTP.Username == "" {
+		s.EmailProvider.SMTP.Username = s.SMTP.Username
+		result = append(result, DeprecatedFlag{Old: "smtp.username", New: "email-provider.smtp.username", RemoveVersion: "1.7.0"})
+	}
+	if s.SMTP.Password != "" && s.EmailProvider.SMTP.Password == "" {
+		s.EmailProvider.SMTP.Password = s.SMTP.Password
+		result = append(result, DeprecatedFlag{Old: "smtp.password", New: "email-provider.smtp.password", RemoveVersion: "1.7.0"})
+	}
+	if s.SMTP.TimeOut != 10*time.Second && s.EmailProvider.SMTP.TimeOut == 10*time.Second {
+		s.EmailProvider.SMTP.TimeOut = s.SMTP.TimeOut
+		result = append(result, DeprecatedFlag{Old: "smtp.timeout", New: "email-provider.smtp.timeout", RemoveVersion: "1.7.0"})
+	}
 	// 1.5.0
 	if s.Auth.Email.Host != "" && s.SMTP.Host == "" {
 		s.SMTP.Host = s.Auth.Email.Host
@@ -702,18 +752,29 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) {
 	}
 
 	if s.Auth.Email.Enable {
-		params := sender.EmailParams{
-			Host:         s.SMTP.Host,
-			Port:         s.SMTP.Port,
-			SMTPUserName: s.SMTP.Username,
-			SMTPPassword: s.SMTP.Password,
-			TimeOut:      s.SMTP.TimeOut,
-			TLS:          s.SMTP.TLS,
-			From:         s.Auth.Email.From,
-			Subject:      s.Auth.Email.Subject,
-			ContentType:  s.Auth.Email.ContentType,
+		var sndr emailprovider.EmailSender
+		switch s.EmailProvider.Provider {
+		case "mailgun":
+			sndr = emailprovider.NewMailgunSender(s.EmailProvider.Mailgun.Domain,
+				s.EmailProvider.Mailgun.PrivateAPIKey,
+				s.EmailProvider.Mailgun.Timeout)
+		case "sendgrid":
+			sndr = emailprovider.NewSendgridSender(s.EmailProvider.Sendgrid.APIKey, s.EmailProvider.Sendgrid.Timeout)
+		case "smtp":
+			fallthrough
+		default:
+			params := emailprovider.SmtpParams{
+				Host:     s.EmailProvider.SMTP.Host,
+				Port:     s.EmailProvider.SMTP.Port,
+				Username: s.EmailProvider.SMTP.Username,
+				Password: s.EmailProvider.SMTP.Password,
+				TimeOut:  s.EmailProvider.SMTP.TimeOut,
+				TLS:      s.EmailProvider.SMTP.TLS,
+			}
+			sndr = emailprovider.NewSMTPSender(&params, nil)
 		}
-		sndr := sender.NewEmailClient(params, log.Default())
+		sndr.SetFrom(s.Auth.Email.From)
+		sndr.SetSubject(s.Auth.Email.Subject)
 		authenticator.AddVerifProvider("email", s.loadEmailTemplate(), sndr)
 	}
 
@@ -769,6 +830,28 @@ func (s *ServerCommand) makeNotify(dataStore *service.DataStore, authenticator *
 			}
 			destinations = append(destinations, tg)
 		case "email":
+			var sndr emailprovider.EmailSender
+			if s.EmailProvider.Provider == "mailgun" {
+				sndr = emailprovider.NewMailgunSender(s.EmailProvider.Mailgun.Domain,
+					s.EmailProvider.Mailgun.PrivateAPIKey,
+					s.EmailProvider.Mailgun.Timeout)
+			} else if s.EmailProvider.Provider == "sendgrid" {
+				sndr = emailprovider.NewSendgridSender(s.EmailProvider.Sendgrid.APIKey, s.EmailProvider.Sendgrid.Timeout)
+			} else {
+				//if s.EmailProvider.Provider == "smtp"
+				params := emailprovider.SmtpParams{
+					Host:     s.EmailProvider.SMTP.Host,
+					Port:     s.EmailProvider.SMTP.Port,
+					TLS:      s.EmailProvider.SMTP.TLS,
+					Username: s.EmailProvider.SMTP.Username,
+					Password: s.EmailProvider.SMTP.Password,
+					TimeOut:  s.EmailProvider.SMTP.TimeOut,
+				}
+				sndr = emailprovider.NewSMTPSender(&params, nil)
+			}
+			sndr.SetFrom(s.Auth.Email.From)
+			sndr.SetSubject(s.Auth.Email.Subject)
+
 			emailParams := notify.EmailParams{
 				From:                s.Notify.Email.From,
 				VerificationSubject: s.Notify.Email.VerificationSubject,
@@ -792,15 +875,7 @@ func (s *ServerCommand) makeNotify(dataStore *service.DataStore, authenticator *
 					return tkn, nil
 				},
 			}
-			smtpParams := notify.SmtpParams{
-				Host:     s.SMTP.Host,
-				Port:     s.SMTP.Port,
-				TLS:      s.SMTP.TLS,
-				Username: s.SMTP.Username,
-				Password: s.SMTP.Password,
-				TimeOut:  s.SMTP.TimeOut,
-			}
-			emailService, err := notify.NewEmail(emailParams, smtpParams)
+			emailService, err := notify.NewEmail(emailParams, sndr)
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to create email notification destination")
 			}

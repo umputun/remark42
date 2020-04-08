@@ -400,6 +400,49 @@ func TestServerApp_DeprecatedArgs(t *testing.T) {
 	assert.Equal(t, 15*time.Second, s.SMTP.TimeOut)
 }
 
+
+func TestServerApp_DeprecatedArgsSMTP(t *testing.T) {
+	s := ServerCommand{}
+	s.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+
+	p := flags.NewParser(&s, flags.Default)
+	args := []string{
+		"test",
+		"--smtp.host=smtp.example.org",
+		"--smtp.port=666",
+		"--smtp.tls",
+		"--smtp.username=test_user",
+		"--smtp.password=test_password",
+		"--smtp.timeout=15s",
+	}
+	assert.Empty(t, s.EmailProvider.SMTP.Host)
+	assert.Empty(t, s.EmailProvider.SMTP.Port)
+	assert.Empty(t, s.EmailProvider.SMTP.TLS)
+	assert.Empty(t, s.EmailProvider.SMTP.Username)
+	assert.Empty(t, s.EmailProvider.SMTP.Password)
+	assert.Empty(t, s.EmailProvider.SMTP.TimeOut)
+	_, err := p.ParseArgs(args)
+	require.NoError(t, err)
+	deprecatedFlags := s.HandleDeprecatedFlags()
+	t.Logf("got deprecatedFlags: %#v", deprecatedFlags)
+	assert.ElementsMatch(t,
+		[]DeprecatedFlag{
+			{Old: "smtp.host", New: "email-provider.smtp.host", RemoveVersion: "1.7.0"},
+			{Old: "smtp.port", New: "email-provider.smtp.port", RemoveVersion: "1.7.0"},
+			{Old: "smtp.tls", New: "email-provider.smtp.tls", RemoveVersion: "1.7.0"},
+			{Old: "smtp.username", New: "email-provider.smtp.username", RemoveVersion: "1.7.0"},
+			{Old: "smtp.password", New: "email-provider.smtp.password", RemoveVersion: "1.7.0"},
+			{Old: "smtp.timeout", New: "email-provider.smtp.timeout", RemoveVersion: "1.7.0"},
+		},
+		deprecatedFlags)
+	assert.Equal(t, "smtp.example.org", s.EmailProvider.SMTP.Host)
+	assert.Equal(t, 666, s.EmailProvider.SMTP.Port)
+	assert.Equal(t, true, s.EmailProvider.SMTP.TLS)
+	assert.Equal(t, "test_user", s.EmailProvider.SMTP.Username)
+	assert.Equal(t, "test_password", s.EmailProvider.SMTP.Password)
+	assert.Equal(t, 15*time.Second, s.EmailProvider.SMTP.TimeOut)
+}
+
 func Test_ACMEEmail(t *testing.T) {
 	cmd := ServerCommand{}
 	cmd.SetCommon(CommonOpts{RemarkURL: "https://remark.com:443", SharedSecret: "123456"})
@@ -602,11 +645,11 @@ func prepServerApp(t *testing.T, fn func(o ServerCommand) ServerCommand) (*serve
 	cmd.Notify.Type = []string{"email"}
 	cmd.Notify.Email.From = "from@example.org"
 	cmd.Notify.Email.VerificationSubject = "test verification email subject"
-	cmd.SMTP.Host = "127.0.0.1"
-	cmd.SMTP.Port = 25
-	cmd.SMTP.Username = "test_user"
-	cmd.SMTP.Password = "test_password"
-	cmd.SMTP.TimeOut = time.Second
+	cmd.EmailProvider.SMTP.Host = "127.0.0.1"
+	cmd.EmailProvider.SMTP.Port = 25
+	cmd.EmailProvider.SMTP.Username = "test_user"
+	cmd.EmailProvider.SMTP.Password = "test_password"
+	cmd.EmailProvider.SMTP.TimeOut = time.Second
 	cmd.UpdateLimit = 10
 	cmd.Admin.Type = "shared"
 	cmd.Admin.Shared.Admins = []string{"umputun", "bobuk"}

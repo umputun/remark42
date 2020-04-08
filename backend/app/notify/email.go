@@ -3,18 +3,14 @@ package notify
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
 	"fmt"
-	"io"
-	"mime/quotedprintable"
-	"net"
-	"net/smtp"
 	"text/template"
 	"time"
 
 	log "github.com/go-pkgz/lgr"
 	"github.com/go-pkgz/repeater"
 	"github.com/pkg/errors"
+	"github.com/umputun/remark/backend/app/emailprovider"
 )
 
 // EmailParams contain settings for email notifications
@@ -29,48 +25,13 @@ type EmailParams struct {
 	TokenGenFn func(userID, email, site string) (string, error) // Unsubscribe token generation function
 }
 
-// SmtpParams contain settings for smtp server connection
-type SmtpParams struct {
-	Host     string        // SMTP host
-	Port     int           // SMTP port
-	TLS      bool          // TLS auth
-	Username string        // user name
-	Password string        // password
-	TimeOut  time.Duration // TCP connection timeout
-}
-
 // Email implements notify.Destination for email
 type Email struct {
 	EmailParams
-	SmtpParams
 
-	smtp       smtpClientCreator
+	sender     emailprovider.EmailSender
 	msgTmpl    *template.Template // parsed request message template
 	verifyTmpl *template.Template // parsed verification message template
-}
-
-// default email client implementation
-type emailClient struct{ smtpClientCreator }
-
-// smtpClient interface defines subset of net/smtp used by email client
-type smtpClient interface {
-	Mail(string) error
-	Auth(smtp.Auth) error
-	Rcpt(string) error
-	Data() (io.WriteCloser, error)
-	Quit() error
-	Close() error
-}
-
-// smtpClientCreator interface defines function for creating new smtpClients
-type smtpClientCreator interface {
-	Create(SmtpParams) (smtpClient, error)
-}
-
-type emailMessage struct {
-	from    string
-	to      string
-	message string
 }
 
 // msgTmplData store data for message from request template execution
@@ -102,7 +63,6 @@ type verifyTmplData struct {
 
 const (
 	defaultVerificationSubject = "Email verification"
-	defaultEmailTimeout        = 10 * time.Second
 	defaultEmailTemplate       = `<!DOCTYPE html>
 <html>
 <head>
@@ -202,7 +162,7 @@ const (
 )
 
 // NewEmail makes new Email object, returns error in case of e.MsgTemplate or e.VerificationTemplate parsing error
-func NewEmail(emailParams EmailParams, smtpParams SmtpParams) (*Email, error) {
+func NewEmail(emailParams EmailParams, sender emailprovider.EmailSender) (*Email, error) {
 	// set up Email emailParams
 	res := Email{EmailParams: emailParams}
 	if res.MsgTemplate == "" {
@@ -215,15 +175,12 @@ func NewEmail(emailParams EmailParams, smtpParams SmtpParams) (*Email, error) {
 		res.VerificationSubject = defaultVerificationSubject
 	}
 
-	// set up SMTP emailParams
-	res.smtp = &emailClient{}
-	res.SmtpParams = smtpParams
-	if res.TimeOut <= 0 {
-		res.TimeOut = defaultEmailTimeout
-	}
+	sender.SetFrom(emailParams.From)
+	// set up client
+	res.sender = sender
 
-	log.Printf("[DEBUG] Create new email notifier for server %s with user %s, timeout=%s",
-		res.Host, res.Username, res.TimeOut)
+	log.Printf("[DEBUG] Create new email notifier for sender: %s",
+		res.sender)
 
 	// initialise templates
 	var err error
@@ -240,6 +197,9 @@ func NewEmail(emailParams EmailParams, smtpParams SmtpParams) (*Email, error) {
 // also sends email to site administrator if appropriate option is set.
 // Thread safe
 func (e *Email) Send(ctx context.Context, req Request) (err error) {
+	if e.sender == nil {
+		return fmt.Errorf("Email.Send() called without valid sender set")
+	}
 	if req.Email == "" {
 		// this means we can't send this request via Email
 		return nil
@@ -274,7 +234,7 @@ func (e *Email) Send(ctx context.Context, req Request) (err error) {
 	return repeater.NewDefault(5, time.Millisecond*250).Do(
 		ctx,
 		func() error {
-			return e.sendMessage(emailMessage{from: e.From, to: req.Email, message: msg})
+			return e.sender.Send(req.Email, msg)
 		})
 }
 
@@ -292,7 +252,8 @@ func (e *Email) buildVerificationMessage(user, email, token, site string) (strin
 	if err != nil {
 		return "", errors.Wrapf(err, "error executing template to build verification message")
 	}
-	return e.buildMessage(subject, msg.String(), email, "text/html", "")
+	e.sender.SetSubject(subject)
+	return msg.String(), nil
 }
 
 // buildMessageFromRequest generates email message based on Request using e.MsgTemplate
@@ -339,135 +300,17 @@ func (e *Email) buildMessageFromRequest(req Request, forAdmin bool) (string, err
 	if err != nil {
 		return "", errors.Wrapf(err, "error executing template to build comment reply message")
 	}
-	return e.buildMessage(subject, msg.String(), req.Email, "text/html", unsubscribeLink)
-}
-
-// buildMessage generates email message to send using net/smtp.Data()
-func (e *Email) buildMessage(subject, body, to, contentType, unsubscribeLink string) (message string, err error) {
-	addHeader := func(msg, h, v string) string {
-		msg += fmt.Sprintf("%s: %s\n", h, v)
-		return msg
-	}
-	message = addHeader(message, "From", e.From)
-	message = addHeader(message, "To", to)
-	message = addHeader(message, "Subject", subject)
-	message = addHeader(message, "Content-Transfer-Encoding", "quoted-printable")
-
-	if contentType != "" {
-		message = addHeader(message, "MIME-version", "1.0")
-		message = addHeader(message, "Content-Type", contentType+`; charset="UTF-8"`)
-	}
-
+	e.sender.SetSubject(subject)
 	if unsubscribeLink != "" {
-		// https://support.google.com/mail/answer/81126 -> "Include option to unsubscribe"
-		message = addHeader(message, "List-Unsubscribe-Post", "List-Unsubscribe=One-Click")
-		message = addHeader(message, "List-Unsubscribe", "<"+unsubscribeLink+">")
+		e.sender.AddHeader("List-Unsubscribe-Post", "List-Unsubscribe=One-Click")
+		e.sender.AddHeader("List-Unsubscribe", "<"+unsubscribeLink+">")
+	} else {
+		e.sender.ResetHeaders()
 	}
-
-	message = addHeader(message, "Date", time.Now().Format(time.RFC1123Z))
-
-	buff := &bytes.Buffer{}
-	qp := quotedprintable.NewWriter(buff)
-	if _, err := qp.Write([]byte(body)); err != nil {
-		return "", err
-	}
-	defer qp.Close()
-	m := buff.String()
-	message += "\n" + m
-	return message, nil
-}
-
-// sendMessage sends messages to server in a new connection, closing the connection after finishing.
-// Thread safe.
-func (e *Email) sendMessage(m emailMessage) error {
-	if e.smtp == nil {
-		return errors.New("sendMessage called without smtpClient set")
-	}
-	smtpClient, err := e.smtp.Create(e.SmtpParams)
-	if err != nil {
-		return errors.Wrap(err, "failed to make smtp Create")
-	}
-
-	defer func() {
-		if err := smtpClient.Quit(); err != nil {
-			log.Printf("[WARN] failed to send quit command to %s:%d, %v", e.Host, e.Port, err)
-			if err := smtpClient.Close(); err != nil {
-				log.Printf("[WARN] can't close smtp connection, %v", err)
-			}
-		}
-	}()
-
-	if err := smtpClient.Mail(m.from); err != nil {
-		return errors.Wrapf(err, "bad from address %q", m.from)
-	}
-	if err := smtpClient.Rcpt(m.to); err != nil {
-		return errors.Wrapf(err, "bad to address %q", m.to)
-	}
-
-	writer, err := smtpClient.Data()
-	if err != nil {
-		return errors.Wrap(err, "can't make email writer")
-	}
-
-	defer func() {
-		if err = writer.Close(); err != nil {
-			log.Printf("[WARN] can't close smtp body writer, %v", err)
-		}
-	}()
-
-	buf := bytes.NewBufferString(m.message)
-	if _, err = buf.WriteTo(writer); err != nil {
-		return errors.Wrapf(err, "failed to send email body to %q", m.to)
-	}
-
-	return nil
+	return msg.String(), nil
 }
 
 // String representation of Email object
 func (e *Email) String() string {
-	return fmt.Sprintf("email: from %q with username '%s' at server %s:%d", e.From, e.Username, e.Host, e.Port)
-}
-
-// Create establish SMTP connection with server using credentials in smtpClientWithCreator.SmtpParams
-// and returns pointer to it. Thread safe.
-func (s *emailClient) Create(params SmtpParams) (smtpClient, error) {
-	authenticate := func(c *smtp.Client) error {
-		if params.Username == "" || params.Password == "" {
-			return nil
-		}
-		auth := smtp.PlainAuth("", params.Username, params.Password, params.Host)
-		if err := c.Auth(auth); err != nil {
-			return errors.Wrapf(err, "failed to auth to smtp %s:%d", params.Host, params.Port)
-		}
-		return nil
-	}
-
-	var c *smtp.Client
-	srvAddress := fmt.Sprintf("%s:%d", params.Host, params.Port)
-	if params.TLS {
-		tlsConf := &tls.Config{
-			InsecureSkipVerify: false,
-			ServerName:         params.Host,
-		}
-		conn, err := tls.Dial("tcp", srvAddress, tlsConf)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to dial smtp tls to %s", srvAddress)
-		}
-		if c, err = smtp.NewClient(conn, params.Host); err != nil {
-			return nil, errors.Wrapf(err, "failed to make smtp client for %s", srvAddress)
-		}
-		return c, authenticate(c)
-	}
-
-	conn, err := net.DialTimeout("tcp", srvAddress, params.TimeOut)
-	if err != nil {
-		return nil, errors.Wrapf(err, "timeout connecting to %s", srvAddress)
-	}
-
-	c, err = smtp.NewClient(conn, srvAddress)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to dial")
-	}
-
-	return c, authenticate(c)
+	return e.sender.String()
 }

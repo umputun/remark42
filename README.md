@@ -156,12 +156,18 @@ _this is the recommended way to run remark42_
 | notify.email.fromAddress | NOTIFY_EMAIL_FROM      |                          | from email address                              |
 | notify.email.verification_subj | NOTIFY_EMAIL_VERIFICATION_SUBJ | `Email verification` | verification message subject          |
 | notify.email.notify_admin | NOTIFY_EMAIL_ADMIN    | `false`                  | notify admin on new comments via ADMIN_SHARED_EMAIL |
-| smtp.host               | SMTP_HOST               |                          | SMTP host                                       |
-| smtp.port               | SMTP_PORT               |                          | SMTP port                                       |
-| smtp.username           | SMTP_USERNAME           |                          | SMTP user name                                  |
-| smtp.password           | SMTP_PASSWORD           |                          | SMTP password                                   |
-| smtp.tls                | SMTP_TLS                |                          | enable TLS for SMTP                             |
-| smtp.timeout            | SMTP_TIMEOUT            | `10s`                    | SMTP TCP connection timeout                     |
+| email-provider.provider                | EMAIL_PROVIDER_PROVIDER             | smtp         | email service provider (smtp or mailgun or sendgrid)|
+| email-provider.smtp.host               | EMAIL_PROVIDER_SMTP_HOST            |              | SMTP host                        |
+| email-provider.smtp.port               | EMAIL_PROVIDER_SMTP_PORT            |              | SMTP port                        |
+| email-provider.smtp.username           | EMAIL_PROVIDER_SMTP_USERNAME        |              | SMTP user name                   |
+| email-provider.smtp.password           | EMAIL_PROVIDER_SMTP_PASSWORD        |              | SMTP password                    |
+| email-provider.smtp.tls                | EMAIL_PROVIDER_SMTP_TLS             | `false`      | enable TLS for SMTP              |
+| email-provider.smtp.timeout            | EMAIL_PROVIDER_SMTP_TIMEOUT         | `10s`        | SMTP TCP connection timeout      |
+| email-provider.mailgun.domain          | EMAIL_PROVIDER_MG_DOMAIN            |              | mailgun domain                   |
+| email-provider.mailgun.private_api_key | EMAIL_PROVIDER_MG_PRIVATE_API_KEY   |              | mailgun private API key          |
+| email-provider.mailgun.timeout         | EMAIL_PROVIDER_MG_TIMEOUT           | `10s`        |mailgun connection timeout        |
+| email-provider.sendgrid.api_key        | EMAIL_PROVIDER_SG_API_KEY           |              | SMTP TCP connection timeout      |
+| email-provider.sendgrid.timeout        | EMAIL_PROVIDER_SG_TIMEOUT           | `10s`        | SMTP TCP connection timeout      |
 | ssl.type                | SSL_TYPE                | none                     | `none`-http, `static`-https, `auto`-https + le  |
 | ssl.port                | SSL_PORT                | `8443`                   | port for https server                           |
 | ssl.cert                | SSL_CERT                |                          | path to cert.pem file                           |
@@ -202,6 +208,19 @@ trouble with unrecognized command-line options in the future.
 <details>
 <summary>deprecated options</summary>
 
+| Command line       | Replacement                 | Environment        | Replacement                    | Default | Description    | Deprecation version |
+| ------------------ | --------------------------- | ------------------ | ------------------------------ | ------- | -------------- | ------------------- |
+| smtp.host          | email-provider.smtp.host    | SMTP_HOST          | EMAIL_PROVIDER_SMTP_HOST       |         | smtp host      | 1.5.1               |
+| smtp.port          | email-provider.smtp.port    | SMTP_PORT          | EMAIL_PROVIDER_SMTP_PORT       |         | smtp port      | 1.5.1               |
+| smtp.username      | email-provider.smtp.username| SMTP_USERNAME      | EMAIL_PROVIDER_SMTP_USERNAME   |         | smtp user name | 1.5.1               |
+| smtp.password      | email-provider.smtp.password| SMTP_PASSWORD      | EMAIL_PROVIDER_SMTP_PASSWORD   |         | smtp password  | 1.5.1               |
+| smtp.tls           | email-provider.smtp.tls     | SMTP_TLS           | EMAIL_PROVIDER_SMTP_TLS        | `false` | enable TLS     | 1.5.1               |
+| smtp.timeout       | email-provider.smtp.timeout | SMTP_TIMEOUT       | EMAIL_PROVIDER_SMTP_TIMEOUT    | `10s`   | smtp timeout   | 1.5.1               |
+</details>
+
+<details>
+<summary>old deprecated options</summary>
+
 | Command line       | Replacement   | Environment        | Replacement   | Default | Description    | Deprecation version |
 | ------------------ | ------------- | ------------------ | ------------- | ------- | -------------- | ------------------- |
 | auth.email.host    | smtp.host     | AUTH_EMAIL_HOST    | SMTP_HOST     |         | smtp host      | 1.5.0               |
@@ -212,6 +231,7 @@ trouble with unrecognized command-line options in the future.
 | auth.email.timeout | smtp.timeout  | AUTH_EMAIL_TIMEOUT | SMTP_TIMEOUT  | `10s`   | smtp timeout   | 1.5.0               |
 | img-proxy          | image-proxy.http2https | IMG_PROXY | IMAGE_PROXY_HTTP2HTTPS | `false` | enable http->https proxy for images | 1.5.0 |
 </details>
+
 
 ##### Required parameters
 
