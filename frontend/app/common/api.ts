@@ -277,7 +277,7 @@ export const uploadImage = (image: File): Promise<Image> => {
  */
 export const emailVerificationForSubscribe = (emailAddress: string) =>
   fetcher.post({
-    url: `/email/subscribe?site=${siteId}&address=${emailAddress}`,
+    url: `/email/subscribe?site=${siteId}&address=${encodeURIComponent(emailAddress)}`,
     withCredentials: true,
   });
 
