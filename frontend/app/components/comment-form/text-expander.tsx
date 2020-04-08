@@ -88,7 +88,7 @@ export const TextExpander: FunctionalComponent = ({ children }) => {
         expander.removeEventListener('text-expander-value', textExpanderValueListener);
       };
     }
-    return () => {};
+    return () => undefined;
   }, [theme]);
   if (StaticStore.config.emoji_enabled) {
     return <text-expander ref={expanderRef}>{children}</text-expander>;

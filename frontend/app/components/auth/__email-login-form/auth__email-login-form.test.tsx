@@ -26,7 +26,7 @@ function simulateInput(input: ReactWrapper, value: string) {
 
 describe('EmailLoginForm', () => {
   const testUser = ({} as any) as User;
-  const onSuccess = jest.fn(async () => {});
+  const onSuccess = jest.fn(async () => undefined);
   const onSignIn = jest.fn(async () => testUser);
 
   beforeEach(() => {
