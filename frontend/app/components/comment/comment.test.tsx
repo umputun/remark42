@@ -146,7 +146,7 @@ describe('<Comment />', () => {
     });
 
     it('disabled for already upvoted comment', async () => {
-      const voteSpy = jest.fn(async () => {});
+      const voteSpy = jest.fn(async () => undefined);
       const element = mount(
         <Comment
           {...(DefaultProps as Props)}
@@ -180,7 +180,7 @@ describe('<Comment />', () => {
     }, 30000);
 
     it('disabled for already downvoted comment', async () => {
-      const voteSpy = jest.fn(async () => {});
+      const voteSpy = jest.fn(async () => undefined);
       const element = mount(
         <Comment
           {...(DefaultProps as Props)}
