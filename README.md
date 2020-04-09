@@ -589,8 +589,8 @@ It stars backend service with embedded bolt store on port `8080` with basic auth
 
 #### Build
 
-* install [Node.js 8](https://nodejs.org/en/) or higher;
-* install [NPM 6.1.0](https://www.npmjs.com/package/npm);
+* install [Node.js 12.11](https://nodejs.org/en/) or higher;
+* install [NPM 6.13.4](https://www.npmjs.com/package/npm);
 * run `npm install` inside `./frontend`;
 * run `npm run build` there;
 * result files will be saved in `./frontend/public`.
