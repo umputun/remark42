@@ -37,9 +37,11 @@ type Store interface {
 
 // Request notification either about comment or about particular user verification
 type Request struct {
-	Comment      store.Comment        // if set sent notifications about new comment
-	parent       store.Comment        // fetched only in case Comment is set
-	Email        string               // if set (also) send email
+	Comment  store.Comment // if set sent notifications about new comment
+	parent   store.Comment // fetched only in case Comment is set
+	Email    string        // if set (also) send email
+	ForAdmin bool          // if set, message supposed to be sent to administrator
+
 	Verification VerificationMetadata // if set sent verification notification
 }
 
@@ -82,9 +84,13 @@ func (s *Service) Submit(req Request) {
 	if s.dataService != nil && req.Comment.ParentID != "" {
 		if p, err := s.dataService.Get(req.Comment.Locator, req.Comment.ParentID, store.User{}); err == nil {
 			req.parent = p
-			req.Email, err = s.dataService.GetUserEmail(req.Comment.Locator.SiteID, p.User.ID)
-			if err != nil {
-				log.Printf("[WARN] can't read email for %s, %v", p.User.ID, err)
+			// user notification, should fetch email for it.
+			// administrator notification comes with pre-set email
+			if req.Email == "" {
+				req.Email, err = s.dataService.GetUserEmail(req.Comment.Locator.SiteID, p.User.ID)
+				if err != nil {
+					log.Printf("[WARN] can't read email for %s, %v", p.User.ID, err)
+				}
 			}
 		}
 	}

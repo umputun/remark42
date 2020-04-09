@@ -18,6 +18,11 @@ export async function loadLocale(locale: string): Promise<Record<string, string>
       .then(res => res.default)
       .catch(() => enMessages);
   }
+  if (locale === 'es') {
+    return import(/* webpackChunkName: "es" */ '../locales/es.json')
+      .then(res => res.default)
+      .catch(() => enMessages);
+  }
 
   return enMessages;
 }

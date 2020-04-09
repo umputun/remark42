@@ -5,7 +5,7 @@
   "scripts": {
     "build": "webpack --mode production && es-check es5 './public/*.js'",
     "start": "webpack-dev-server --mode development",
-    "check": "tsc -p tsconfig.json --noEmit --skipLibCheck",
+    "check": "tsc -p tsconfig.typecheck.json --noEmit --skipLibCheck",
     "check:translation": "npm run extract-messages && node ./tasks/checkTranslation.js",
     "lint": "eslint --max-warnings=0 --ext=.ts,.tsx,.js,.jsx .",
     "lint:style": "stylelint '**/*.scss' '**/*.pcss' '**/*.css' 'iframe.html'",
@@ -39,10 +39,10 @@
     "@types/fetch-mock": "^7.3.1",
     "@types/jest": "^24.0.20",
     "@types/lodash-es": "^4.17.3",
-    "@types/node": "^12.11.7",
+    "@types/node": "^12.12.34",
     "@types/react-redux": "^7.1.5",
     "@types/redux-mock-store": "^1.0.1",
-    "@typescript-eslint/eslint-plugin": "^2.5.0",
+    "@typescript-eslint/eslint-plugin": "^2.27.0",
     "@typescript-eslint/parser": "^2.5.0",
     "autoprefixer": "^9.7.0",
     "babel-eslint": "^10.0.3",
@@ -94,8 +94,8 @@
     "stylelint-config-standard": "^20.0.0",
     "stylelint-value-no-unknown-custom-properties": "^2.0.0",
     "ts-jest": "^25.2.1",
-    "ts-loader": "^6.2.1",
-    "typescript": "^3.6.4",
+    "ts-loader": "^6.2.2",
+    "typescript": "^3.8.3",
     "webpack": "^4.41.2",
     "webpack-bundle-analyzer": "^3.6.1",
     "webpack-cli": "^3.3.9",
@@ -123,6 +123,7 @@
     "redux-thunk": "^2.3.0"
   },
   "engines": {
-    "node": ">=12"
+    "node": ">=12.11",
+    "npm": ">=6.13.4"
   }
 }

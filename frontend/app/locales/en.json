@@ -1,7 +1,7 @@
 {
   "anonymousLoginForm.length-limit": "Username must be at least 3 characters long",
   "anonymousLoginForm.log-in": "Log in",
-  "anonymousLoginForm.symbol-limit": "Username must start from the letter and contain only latin letters, numbers, underscores, and spaces",
+  "anonymousLoginForm.symbol-limit": "Username must start with a letter and contain only latin letters, numbers, underscores, or spaces",
   "anonymousLoginForm.user-name": "Username",
   "authPanel.anonymous-provider": "Anonymous",
   "authPanel.disable-comments": "Disable comments",
@@ -12,6 +12,7 @@
   "authPanel.logged-as": "You logged in as",
   "authPanel.login": "Login:",
   "authPanel.logout": "Logout?",
+  "authPanel.new-page": "new page",
   "authPanel.or-provider": "or",
   "authPanel.other-provider": "Other",
   "authPanel.read-only": "Read-only",

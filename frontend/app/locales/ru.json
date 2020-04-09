@@ -12,6 +12,7 @@
   "authPanel.logged-as": "Вы вошли как",
   "authPanel.login": "Вход:",
   "authPanel.logout": "Выйти?",
+  "authPanel.new-page": "новая страница",
   "authPanel.or-provider": "или",
   "authPanel.other-provider": "Другой",
   "authPanel.read-only": "Только для чтение",

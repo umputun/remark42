@@ -101,6 +101,9 @@ Here is the list of variables which affect email notifications:
 NOTIFY_TYPE
 NOTIFY_EMAIL_FROM
 NOTIFY_EMAIL_VERIFICATION_SUBJ
+# for administrator notifications for new comments on their site
+ADMIN_SHARED_EMAIL
+NOTIFY_EMAIL_ADMIN
 ```
 
 After `SMTP_` variables are set, you can allow email notifications by setting these two variables:

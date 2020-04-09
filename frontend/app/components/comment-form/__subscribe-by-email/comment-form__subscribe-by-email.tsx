@@ -105,7 +105,7 @@ const renderTokenPart = (
   setEmailStep: () => void
 ) => (
   <Fragment>
-    <Button kind="link" mix="auth-panel-email-login-form__back-button" {...getHandleClickProps(setEmailStep)}>
+    <Button kind="link" mix="auth-email-login-form__back-button" {...getHandleClickProps(setEmailStep)}>
       <FormattedMessage id="subscribeByEmail.back" defaultMessage="Back" />
     </Button>
     <TextareaAutosize

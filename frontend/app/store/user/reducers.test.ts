@@ -70,12 +70,12 @@ describe('user', () => {
     );
     const dispatch = jest.fn();
     const getState = jest.fn();
-    await logIn({ name: 'google' })(dispatch, getState, undefined).catch(() => {});
+    await logIn({ name: 'google' })(dispatch, getState, undefined).catch(() => undefined);
     expect(dispatch).not.toBeCalled();
   });
 
   it('should unset user on logOut', async () => {
-    (api.logOut as any).mockImplementation(async (): Promise<void> => {});
+    (api.logOut as any).mockImplementation(async (): Promise<void> => undefined);
     const dispatch = jest.fn();
     const getState = jest.fn();
     await logout()(dispatch, getState, undefined);

@@ -187,7 +187,7 @@ func TestEmail_Send(t *testing.T) {
 	email.TokenGenFn = TokenGenFn
 	email.UnsubscribeURL = "https://remark42.com/api/v1/email/unsubscribe"
 	req := Request{
-		Comment: store.Comment{ID: "999", User: store.User{ID: "1", Name: "test_user"}, PostTitle: "test_title"},
+		Comment: store.Comment{ID: "999", User: store.User{ID: "1", Name: "test_user"}, ParentID: "1", PostTitle: "test_title"},
 		parent:  store.Comment{ID: "1", User: store.User{ID: "999", Name: "parent_user"}},
 		Email:   "test@example.org",
 	}
@@ -196,7 +196,7 @@ func TestEmail_Send(t *testing.T) {
 	assert.Equal(t, 1, fakeSmtp.readQuitCount())
 	assert.Equal(t, "test@example.org", fakeSmtp.readRcpt())
 	// test buildMessageFromRequest separately for message text
-	res, err := email.buildMessageFromRequest(req)
+	res, err := email.buildMessageFromRequest(req, req.ForAdmin)
 	assert.NoError(t, err)
 	assert.Contains(t, res, `From: from@example.org
 To: test@example.org
@@ -206,6 +206,23 @@ MIME-version: 1.0
 Content-Type: text/html; charset="UTF-8"
 List-Unsubscribe-Post: List-Unsubscribe=One-Click
 List-Unsubscribe: <https://remark42.com/api/v1/email/unsubscribe?site=&tkn=token>
+Date: `)
+
+	// send email to admin without parent set
+	req = Request{
+		Comment:  store.Comment{ID: "999", User: store.User{ID: "1", Name: "test_user"}, PostTitle: "test_title"},
+		Email:    "admin@example.org",
+		ForAdmin: true,
+	}
+	assert.NoError(t, email.Send(context.TODO(), req))
+	res, err = email.buildMessageFromRequest(req, req.ForAdmin)
+	assert.NoError(t, err)
+	assert.Contains(t, res, `From: from@example.org
+To: admin@example.org
+Subject: New comment to your site for "test_title"
+Content-Transfer-Encoding: quoted-printable
+MIME-version: 1.0
+Content-Type: text/html; charset="UTF-8"
 Date: `)
 }
 

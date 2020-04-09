@@ -29,33 +29,35 @@ jobs:
       - name: install go
         uses: actions/setup-go@v1
         with:
-          go-version: 1.14
-
-      - name: test backend
-        run: |
-          date
-          cd backend/app
-          go test -mod=vendor -timeout=60s -covermode=count -coverprofile=$GITHUB_WORKSPACE/profile.cov_tmp ./...
-          cat $GITHUB_WORKSPACE/profile.cov_tmp | grep -v "_mock.go" > $GITHUB_WORKSPACE/profile.cov
-          cd ../_example/memory_store
-          go test -race ./...
-        env:
-          TZ: "America/Chicago"
+          go-version: 1.13
 
       - name: install golangci-lint and goveralls
         run: |
-          curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh| sh -s -- -b $GITHUB_WORKSPACE v1.20.0
+          curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh| sh -s -- -b $GITHUB_WORKSPACE v1.23.0
+          go get -u github.com/mattn/goveralls
 
-      - name: run backend linters
-        run: $GITHUB_WORKSPACE/golangci-lint run --config .golangci.yml ./...
-        working-directory: backend
+      - name: test and lint backend
+        run: |
+          go test -timeout=60s -covermode=count -coverprofile=$GITHUB_WORKSPACE/profile.cov_tmp ./...
+          cat $GITHUB_WORKSPACE/profile.cov_tmp | grep -v "_mock.go" > $GITHUB_WORKSPACE/profile.cov
+          $GITHUB_WORKSPACE/golangci-lint --config ${GITHUB_WORKSPACE}/backend/.golangci.yml run  ./...
+        working-directory: backend/app
+        env:
+          GOFLAGS: "-mod=vendor"
+          TZ: "America/Chicago"
 
-      - name: run linters for examples
-        run: $GITHUB_WORKSPACE/golangci-lint run --config ${GITHUB_WORKSPACE}/backend/.golangci.yml ./...
+      - name: test and lint examples
+        run: |
+          go version
+          $GITHUB_WORKSPACE/golangci-lint version
+          go test -race ./...
+          $GITHUB_WORKSPACE/golangci-lint --config ${GITHUB_WORKSPACE}/backend/.golangci.yml run ./...
         working-directory: backend/_example/memory_store
+        env:
+          TZ: "America/Chicago"
 
       - name: submit coverage
-        uses: shogo82148/actions-goveralls@v1
-        with:
-          path-to-profile: ${{ github.workspace }}/profile.cov
-          working-directory: backend
+        run: $(go env GOPATH)/bin/goveralls -service="github" -coverprofile=$GITHUB_WORKSPACE/profile.cov
+        working-directory: backend
+        env:
+          COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}

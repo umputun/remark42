@@ -88,6 +88,7 @@ type msgTmplData struct {
 	PostTitle         string
 	Email             string
 	UnsubscribeLink   string
+	ForAdmin          bool
 }
 
 // verifyTmplData store data for verification message template execution
@@ -133,8 +134,13 @@ const (
 <body>
 	<div style="font-family: Helvetica, Arial, sans-serif; font-size: 18px; width: 100%; max-width: 640px; margin: auto;">
 		<h1 style="text-align: center; position: relative; color: #4fbbd6; margin-top: 10px; margin-bottom: 10px;">Remark42</h1>
+        {{- if .ForAdmin}}
+		<div style="font-size: 16px; text-align: center; margin-bottom: 10px; color:#000!important;">New comment from {{.UserName}} on your site {{if .PostTitle}} to «{{.PostTitle}}»{{ end }}</div>
+        {{- else }}
 		<div style="font-size: 16px; text-align: center; margin-bottom: 10px; color:#000!important;">New reply from {{.UserName}} on your comment{{if .PostTitle}} to «{{.PostTitle}}»{{ end }}</div>
+        {{- end }}
 		<div style="background-color: #eee; padding: 15px 20px 20px 20px; border-radius: 3px;">
+            {{- if .ParentCommentText}}
 			<div style="margin-bottom: 12px; line-height: 24px; word-break: break-all;">
 				<img src="{{.ParentUserPicture}}" style="width: 24px; height: 24px; display: inline; vertical-align: middle; margin: 0 8px 0 0; border-radius: 3px; background-color: #ccc;"/>
 				<span style="font-size: 14px; font-weight: bold; color: #777">{{.ParentUserName}}</span>
@@ -144,6 +150,7 @@ const (
 			<div style="font-size: 14px; color:#333!important; padding: 0 14px 0 2px; border-radius: 3px; line-height: 1.4;">
 				{{.ParentCommentText}}
 			</div>
+            {{- end }}
 			<div style="padding-left: 20px; border-left: 1px dotted rgba(0,0,0,0.15); margin-top: 15px; padding-top: 5px;">
 				<div style="margin-bottom: 12px;" line-height: 24px;word-break: break-all;>
 					<img src="{{.UserPicture}}" style="width: 24px; height: 24px; display:inline; vertical-align:middle; margin: 0 8px 0 0; border-radius: 3px; background-color: #ccc;"/>
@@ -155,9 +162,11 @@ const (
 			</div>
 		</div>
 		<div style="text-align: center; font-size: 14px; margin-top: 32px;">
-			<i style="color: #000!important;">Sent to <a style="color:inherit; text-decoration: none" href="mailto:{{.Email}}">{{.Email}}</a> for {{.ParentUserName}}</i>
+			<i style="color: #000!important;">Sent to <a style="color:inherit; text-decoration: none" href="mailto:{{.Email}}">{{.Email}}</a>{{if not .ForAdmin}} for {{.ParentUserName}}{{ end }}</i>
 			<div style="margin: auto; width: 150px; border-top: 1px solid rgba(0, 0, 0, 0.15); padding-top: 15px; margin-top: 15px;"></div>
+			{{- if .UnsubscribeLink}}
 			<a style="color: #0aa;" href="{{.UnsubscribeLink}}">Unsubscribe</a>
+			{{- end }}
 			<!-- This is hack for remove collapser in Gmail which can collapse end of the message -->
 			<div style="opacity: 0;font-size: 1;">[{{.CommentDate.Format "02.01.2006 at 15:04"}}]</div>
 		</div>
@@ -176,10 +185,10 @@ const (
 	<div style="text-align: center; font-family: Helvetica, Arial, sans-serif; font-size: 18px;">
 		<h1 style="position: relative; color: #4fbbd6; margin-top: 0.2em;">Remark42</h1>
 		<p style="position: relative; max-width: 20em; margin: 0 auto 1em auto; line-height: 1.4em; color:#000!important;">Confirmation for <b>{{.User}}</b> on site <b>{{.Site}}</b></p>
-		{{if .SubscribeURL}}
+		{{- if .SubscribeURL}}
 		<p style="position: relative; margin: 0 0 0.5em 0;color:#000!important;"><a href="{{.SubscribeURL}}{{.Token}}">Click here to subscribe to email notifications</a></p>
 		<p style="position: relative; margin: 0 0 0.5em 0;color:#000!important;">Alternatively, you can use code below for subscription.</p>
-		{{ end }}
+		{{- end }}
 		<div style="background-color: #eee; max-width: 20em; margin: 0 auto; border-radius: 0.4em; padding: 0.5em;">
 			<p style="position: relative; margin: 0 0 0.5em 0;color:#000!important;">TOKEN</p>
 			<p style="position: relative; font-size: 0.7em; opacity: 0.8;"><i style="color:#000!important;">Copy and paste this text into “token” field on comments page</i></p>
@@ -227,10 +236,9 @@ func NewEmail(emailParams EmailParams, smtpParams SmtpParams) (*Email, error) {
 	return &res, err
 }
 
-// Send email about reply to Request.Email if it's set, otherwise do nothing and return nil, thread safe
-// do not returns sending error, only following:
-// 1. (likely impossible) template execution error from email message creation from Request
-// 2. message dropped without sending in case of closed ctx
+// Send email about comment reply to Request.Email if it's set,
+// also sends email to site administrator if appropriate option is set.
+// Thread safe
 func (e *Email) Send(ctx context.Context, req Request) (err error) {
 	if req.Email == "" {
 		// this means we can't send this request via Email
@@ -252,12 +260,12 @@ func (e *Email) Send(ctx context.Context, req Request) (err error) {
 	}
 
 	if req.Comment.ID != "" {
-		if req.parent.User.ID == req.Comment.User.ID {
+		if req.parent.User.ID == req.Comment.User.ID && !req.ForAdmin {
 			// don't send anything if if user replied to their own comment
 			return nil
 		}
 		log.Printf("[DEBUG] send notification via %s, comment id %s", e, req.Comment.ID)
-		msg, err = e.buildMessageFromRequest(req)
+		msg, err = e.buildMessageFromRequest(req, req.ForAdmin)
 		if err != nil {
 			return err
 		}
@@ -288,33 +296,46 @@ func (e *Email) buildVerificationMessage(user, email, token, site string) (strin
 }
 
 // buildMessageFromRequest generates email message based on Request using e.MsgTemplate
-func (e *Email) buildMessageFromRequest(req Request) (string, error) {
+func (e *Email) buildMessageFromRequest(req Request, forAdmin bool) (string, error) {
 	subject := "New reply to your comment"
+	if forAdmin {
+		subject = "New comment to your site"
+	}
 	if req.Comment.PostTitle != "" {
 		subject += fmt.Sprintf(" for \"%s\"", req.Comment.PostTitle)
 	}
+
 	token, err := e.TokenGenFn(req.parent.User.ID, req.Email, req.Comment.Locator.SiteID)
-	unsubscribeLink := e.UnsubscribeURL + "?site=" + req.Comment.Locator.SiteID + "&tkn=" + token
 	if err != nil {
 		return "", errors.Wrapf(err, "error creating token for unsubscribe link")
 	}
+	unsubscribeLink := e.UnsubscribeURL + "?site=" + req.Comment.Locator.SiteID + "&tkn=" + token
+	if forAdmin {
+		unsubscribeLink = ""
+	}
+
 	commentUrlPrefix := req.Comment.Locator.URL + uiNav
 	msg := bytes.Buffer{}
-	err = e.msgTmpl.Execute(&msg, msgTmplData{
-		UserName:          req.Comment.User.Name,
-		UserPicture:       req.Comment.User.Picture,
-		CommentText:       req.Comment.Text,
-		CommentLink:       commentUrlPrefix + req.Comment.ID,
-		CommentDate:       req.Comment.Timestamp,
-		ParentUserName:    req.parent.User.Name,
-		ParentUserPicture: req.parent.User.Picture,
-		ParentCommentText: req.parent.Text,
-		ParentCommentLink: commentUrlPrefix + req.parent.ID,
-		ParentCommentDate: req.parent.Timestamp,
-		PostTitle:         req.Comment.PostTitle,
-		Email:             req.Email,
-		UnsubscribeLink:   unsubscribeLink,
-	})
+	tmplData := msgTmplData{
+		UserName:        req.Comment.User.Name,
+		UserPicture:     req.Comment.User.Picture,
+		CommentText:     req.Comment.Text,
+		CommentLink:     commentUrlPrefix + req.Comment.ID,
+		CommentDate:     req.Comment.Timestamp,
+		PostTitle:       req.Comment.PostTitle,
+		Email:           req.Email,
+		UnsubscribeLink: unsubscribeLink,
+		ForAdmin:        forAdmin,
+	}
+	// in case of message to admin, parent message might be empty
+	if req.Comment.ParentID != "" {
+		tmplData.ParentUserName = req.parent.User.Name
+		tmplData.ParentUserPicture = req.parent.User.Picture
+		tmplData.ParentCommentText = req.parent.Text
+		tmplData.ParentCommentLink = commentUrlPrefix + req.parent.ID
+		tmplData.ParentCommentDate = req.parent.Timestamp
+	}
+	err = e.msgTmpl.Execute(&msg, tmplData)
 	if err != nil {
 		return "", errors.Wrapf(err, "error executing template to build comment reply message")
 	}

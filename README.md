@@ -155,6 +155,7 @@ _this is the recommended way to run remark42_
 | notify.telegram.timeout | NOTIFY_TELEGRAM_TIMEOUT | `5s`                     | telegram timeout                                |
 | notify.email.fromAddress | NOTIFY_EMAIL_FROM      |                          | from email address                              |
 | notify.email.verification_subj | NOTIFY_EMAIL_VERIFICATION_SUBJ | `Email verification` | verification message subject          |
+| notify.email.notify_admin | NOTIFY_EMAIL_ADMIN    | `false`                  | notify admin on new comments via ADMIN_SHARED_EMAIL |
 | smtp.host               | SMTP_HOST               |                          | SMTP host                                       |
 | smtp.port               | SMTP_PORT               |                          | SMTP port                                       |
 | smtp.username           | SMTP_USERNAME           |                          | SMTP user name                                  |
@@ -472,9 +473,10 @@ window.REMARK42.changeTheme('light');
 
 ##### Locales
 
-Right now Remark has support three locales en, ru (partial translated), de and fi.
-You can pick one using configuration object.
-Do you want support other locale? Please create [issue](https://github.com/umputun/remark42/issues).
+Right now Remark is translated to en, ru (partially), de, and fi languages.
+You can pick one using [configuration object](#setup-on-your-website).
+
+Do you want translate remark42 to other locale? Please see [this documentation](https://github.com/umputun/remark42/blob/master/docs/translation.md) for details.
 
 #### Last comments
 
@@ -587,8 +589,8 @@ It stars backend service with embedded bolt store on port `8080` with basic auth
 
 #### Build
 
-* install [Node.js 8](https://nodejs.org/en/) or higher;
-* install [NPM 6.1.0](https://www.npmjs.com/package/npm);
+* install [Node.js 12.11](https://nodejs.org/en/) or higher;
+* install [NPM 6.13.4](https://www.npmjs.com/package/npm);
 * run `npm install` inside `./frontend`;
 * run `npm run build` there;
 * result files will be saved in `./frontend/public`.

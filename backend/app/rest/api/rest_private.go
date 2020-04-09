@@ -39,6 +39,7 @@ type private struct {
 	notifyService    *notify.Service
 	authenticator    *auth.Service
 	remarkURL        string
+	adminEmail       string
 	anonVote         bool
 }
 
@@ -131,8 +132,13 @@ func (s *private) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	s.cache.Flush(cache.Flusher(comment.Locator.SiteID).
 		Scopes(comment.Locator.URL, lastCommentsScope, comment.User.ID, comment.Locator.SiteID))
 
+	// user notification
 	if s.notifyService != nil {
 		s.notifyService.Submit(notify.Request{Comment: finalComment})
+	}
+	// admin notification
+	if s.notifyService != nil && s.adminEmail != "" {
+		s.notifyService.Submit(notify.Request{Comment: finalComment, Email: s.adminEmail, ForAdmin: true})
 	}
 
 	log.Printf("[DEBUG] created commend %+v", finalComment)
