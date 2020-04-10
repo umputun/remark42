@@ -556,7 +556,7 @@ Also script can use `url` property from `remark_config` object, or `window.locat
 
 ## Development
 
-You can use fully functional local version to develop and test both frontend & backend.
+You can use fully functional local version to develop and test both frontend & backend. It requires at least 2GB RAM or swap enabled
 
 To bring it up run:
 
@@ -588,6 +588,7 @@ It stars backend service with embedded bolt store on port `8080` with basic auth
 ### Frontend development
 
 #### Build
+You should have at least 2GB RAM or swap enabled for building
 
 * install [Node.js 12.11](https://nodejs.org/en/) or higher;
 * install [NPM 6.13.4](https://www.npmjs.com/package/npm);
