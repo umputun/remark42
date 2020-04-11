@@ -88,9 +88,10 @@ func (s *Service) Submit(idsFn func() []string) {
 		s.wg.Add(1)
 		go func() {
 			defer s.wg.Done()
+			atomic.StoreInt32(&s.term, 1)
 			for req := range s.submitCh {
 				// wait for TTL expiration with emergency pass on term
-				for atomic.LoadInt32(&s.term) == 0 && time.Since(req.TS) <= s.TTL/2 { // commit on a half of TTL
+				for atomic.LoadInt32(&s.term) == 1 && time.Since(req.TS) <= s.TTL/2 { // commit on a half of TTL
 					time.Sleep(time.Millisecond * 10) // small sleep to relive busy wait but keep reactive for term (close)
 				}
 				for _, id := range req.idsFn() {
@@ -98,7 +99,7 @@ func (s *Service) Submit(idsFn func() []string) {
 						log.Printf("[WARN] failed to commit image %s", id)
 					}
 				}
-				atomic.StoreInt32(&s.term, 0) // indicates completion of ids commits
+				atomic.StoreInt32(&s.term, 1) // indicates completion of ids commits
 			}
 			log.Printf("[INFO] image submitter terminated")
 		}()
@@ -150,13 +151,16 @@ func (s *Service) Cleanup(ctx context.Context) {
 // Close flushes all in-progress submits and enforces waiting commits
 func (s *Service) Close() {
 	log.Printf("[INFO] close image service ")
-	atomic.StoreInt32(&s.term, 1) // enforce non-delayed commits for all ids left in submitCh
-	for {
-		// set to 0 by Commit goroutine after everything waited on TTL sent
-		if atomic.LoadInt32(&s.term) == 0 {
-			break
+	// terminate commit goroutine using s.term only if it is started
+	if atomic.LoadInt32(&s.term) == 1 {
+		atomic.StoreInt32(&s.term, 0) // enforce non-delayed commits for all ids left in submitCh
+		for {
+			// set to 1 by commit goroutine after everything waited on TTL sent
+			if atomic.LoadInt32(&s.term) == 1 {
+				break
+			}
+			time.Sleep(10 * time.Millisecond)
 		}
-		time.Sleep(10 * time.Millisecond)
 	}
 	if s.submitCh != nil {
 		close(s.submitCh)
