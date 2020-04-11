@@ -136,6 +136,10 @@ export class Root extends Component<Props, State> {
       if (comment) {
         setTimeout(() => {
           postMessage({ scrollTo: comment.getBoundingClientRect().top });
+          comment.classList.add('comment_highlighting');
+          setTimeout(() => {
+            comment.classList.remove('comment_highlighting');
+          }, 5e3);
         }, 500);
       }
     }
