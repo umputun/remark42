@@ -169,6 +169,12 @@ module.exports = () => ({
       'process.env.REMARK_URL': env === 'production' ? JSON.stringify(remarkUrl) : 'window.location.origin',
     }),
     new Html({
+      template: path.resolve(__dirname, 'iframe.html'),
+      filename: 'iframe.html',
+      inject: false,
+      env,
+    }),
+    new Html({
       template: path.resolve(__dirname, 'index.ejs'),
       inject: false,
     }),
@@ -203,7 +209,7 @@ module.exports = () => ({
             openAnalyzer: false,
           }),
         ]),
-    new Copy(['./iframe.html', './deleteme.html', './markdown-help.html']),
+    new Copy(['./deleteme.html', './markdown-help.html']),
   ],
   watchOptions: {
     ignored: /(node_modules|\.vendor\.js$)/,
