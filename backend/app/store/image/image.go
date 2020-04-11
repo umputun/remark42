@@ -201,6 +201,15 @@ func (s *Service) SaveWithID(id string, r io.Reader) (string, error) {
 	return s.store.SaveWithID(id, img)
 }
 
+func (s *Service) ImgContentType(img []byte) string {
+	contentType := http.DetectContentType(img)
+	if contentType == "application/octet-stream" {
+		// replace generic fallback with one which make sense in our scenario
+		return "image/*"
+	}
+	return contentType
+}
+
 // prepareImage calls readAndValidateImage and resize on provided image.
 func (s *Service) prepareImage(r io.Reader) ([]byte, error) {
 	data, err := readAndValidateImage(r, s.MaxSize)

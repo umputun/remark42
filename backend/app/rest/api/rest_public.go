@@ -422,20 +422,6 @@ func (s *public) listCtrl(w http.ResponseWriter, r *http.Request) {
 
 // GET /picture/{user}/{id} - get picture
 func (s *public) loadPictureCtrl(w http.ResponseWriter, r *http.Request) {
-
-	imgContentType := func(img string) string {
-		img = strings.ToLower(img)
-		switch {
-		case strings.HasSuffix(img, ".png"):
-			return "image/png"
-		case strings.HasSuffix(img, ".jpg") || strings.HasSuffix(img, ".jpeg"):
-			return "image/jpeg"
-		case strings.HasSuffix(img, ".gif"):
-			return "image/gif"
-		}
-		return "image/*"
-	}
-
 	id := chi.URLParam(r, "user") + "/" + chi.URLParam(r, "id")
 	img, err := s.imageService.Load(id)
 	if err != nil {
@@ -453,7 +439,7 @@ func (s *public) loadPictureCtrl(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	w.Header().Set("Content-Type", imgContentType(id))
+	w.Header().Set("Content-Type", s.imageService.ImgContentType(img))
 	w.Header().Set("Content-Length", strconv.Itoa(len(img)))
 	w.WriteHeader(http.StatusOK)
 	if _, err = io.Copy(w, bytes.NewReader(img)); err != nil {

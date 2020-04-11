@@ -131,7 +131,7 @@ func (p Image) Handler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	w.Header().Add("Content-Type", "image/*")
+	w.Header().Add("Content-Type", p.ImageService.ImgContentType(img))
 	_, err = io.Copy(w, bytes.NewReader(img))
 	if err != nil {
 		log.Printf("[WARN] can't copy image stream, %s", err)

@@ -109,7 +109,7 @@ func TestImage_Routes(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 	assert.Equal(t, "1462", resp.Header["Content-Length"][0])
-	assert.Equal(t, "image/*", resp.Header["Content-Type"][0])
+	assert.Equal(t, "image/png", resp.Header["Content-Type"][0])
 
 	encodedImgURL = base64.URLEncoding.EncodeToString([]byte(httpSrv.URL + "/image/no-such-image.png"))
 	resp, err = http.Get(ts.URL + "/?src=" + encodedImgURL)
@@ -147,10 +147,10 @@ func TestImage_RoutesCachingImage(t *testing.T) {
 	require.Nil(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 	assert.Equal(t, "1462", resp.Header["Content-Length"][0])
-	assert.Equal(t, "image/*", resp.Header["Content-Type"][0])
+	assert.Equal(t, "image/png", resp.Header["Content-Type"][0])
 
 	imageStore.AssertCalled(t, "Load", mock.Anything)
-	imageStore.AssertCalled(t, "SaveWithID", "cached_images/4b84b15bff6ee5796152495a230e45e3d7e947d9-"+sha1Str(imgURL), mock.Anything)
+	imageStore.AssertCalled(t, "SaveWithID", "cached_images/4b84b15bff6ee5796152495a230e45e3d7e947d9-"+sha1Str(imgURL), gopherPNGBytes())
 	imageStore.AssertCalled(t, "Commit", mock.Anything)
 }
 
@@ -178,7 +178,8 @@ func TestImage_RoutesUsingCachedImage(t *testing.T) {
 	require.Nil(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 	assert.Equal(t, "256", resp.Header["Content-Length"][0])
-	assert.Equal(t, "image/*", resp.Header["Content-Type"][0])
+	assert.Equal(t, "text/plain; charset=utf-8", resp.Header["Content-Type"][0],
+		"if you save text you receive text/plain in response, that's only fair option you got")
 
 	imageStore.AssertCalled(t, "Load", mock.Anything)
 }
