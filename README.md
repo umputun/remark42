@@ -42,7 +42,7 @@ For admin screenshots see [Admin UI wiki](https://github.com/umputun/remark/wiki
   - [Install](#install)
     - [Backend](#backend)
       - [With Docker](#with-docker)
-      - [Without docker](#without-docker)
+      - [Without Docker](#without-docker)
       - [Parameters](#parameters)
         - [Required parameters](#required-parameters)
       - [Quick installation test](#quick-installation-test)
@@ -89,10 +89,10 @@ _this is the recommended way to run remark42_
 
 * copy provided `docker-compose.yml` and customize for your needs
 * make sure you **don't keep** `ADMIN_PASSWD=something...` for any non-development deployments
-* pull prepared images from the docker hub and start - `docker-compose pull && docker-compose up -d`
+* pull prepared images from the DockerHub and start - `docker-compose pull && docker-compose up -d`
 * alternatively compile from the sources - `docker-compose build && docker-compose up -d`
 
-#### Without docker
+#### Without Docker
 
 * download archive for [stable release](https://github.com/umputun/remark/releases) or [development version](https://remark42.com/downloads)
 * unpack with `gunzip` (Linux, macOS) or with `zip` (Windows)
@@ -364,14 +364,14 @@ It will expand login info and show full user ID.
 
 #### Docker parameters
 
-Two parameters allow to customize docker container on the system level:
+Two parameters allow customizing Docker container on the system level:
 
 - `APP_UID` - sets UID to run remark42 application in container (default=1001)
 - `TIME_ZONE` - sets time zone of remark42 container (default=America/Chicago)
 
 _see [umputun/baseimage](https://github.com/umputun/baseimage) for more details_
 
-example of compose:
+example of `docker-compose.yml`:
 
 ```yaml
 version: '2'
@@ -550,7 +550,7 @@ Also script can use `url` property from `remark_config` object, or `window.locat
 
 ## Build from the source
 
-- to build docker container - `make docker`. This command will produce container `umputun/remark42`.
+- to build Docker container - `make docker`. This command will produce container `umputun/remark42`.
 - to build a single binary for direct execution - `make OS=<linux|windows|darwin> ARCH=<amd64|386>`. This step will produce executable
  `remark42` file with everything embedded.
 
@@ -574,14 +574,14 @@ To access UI demo page go to `127.0.0.1:8080/web`.
 By default, you would be logged in as `dev_user` which defined as admin.
 You can tweak any of [supported parameters](#Parameters) in corresponded yml file.
 
-Backend docker compose config by default skips running frontend related tests.
-Frontend docker compose config by default skips running backend related tests and sets `NODE_ENV=development` for frontend build.
+Backend Docker Compose config by default skips running frontend related tests.
+Frontend Docker Compose config by default skips running backend related tests and sets `NODE_ENV=development` for frontend build.
 
 ### Backend development
 
-In order to run backend locally (development mode, without docker) you have to have latest stable `go` toolchain [installed](https://golang.org/doc/install).
+In order to run backend locally (development mode, without Docker) you have to have the latest stable `go` toolchain [installed](https://golang.org/doc/install).
 
-To run backend - `go run backend/app/main.go server --dbg --secret=12345 --url=http://127.0.0.1:8080 --admin-passwd=password --site=remark`
+To run backend - `cd backend; go run app/main.go server --dbg --secret=12345 --url=http://127.0.0.1:8080 --admin-passwd=password --site=remark`
 It stars backend service with embedded bolt store on port `8080` with basic auth, allowing to authenticate and run requests directly, like this:
 `HTTP http://admin:password@127.0.0.1:8080/api/v1/find?site=remark&sort=-active&format=tree&url=http://127.0.0.1:8080`
 
