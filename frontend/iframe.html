@@ -109,14 +109,16 @@
     <div id="remark42">
       <div class="preloader preloader_view_iframe"></div>
     </div>
+    <% if (htmlWebpackPlugin.options.env === 'development') { %>
     <script>
-      /* REMOVE-START */
       if (window.parent !== window) {
         try {
           window.__REACT_DEVTOOLS_GLOBAL_HOOK__ = window.parent.__REACT_DEVTOOLS_GLOBAL_HOOK__;
         } catch (e) {}
       }
-      /* REMOVE-END */
+    </script>
+    <% } %>
+    <script>
       var lastHeight = 0;
       setInterval(function() {
         if (document.body.offsetHeight !== lastHeight && document.body.offsetHeight > 10) {
