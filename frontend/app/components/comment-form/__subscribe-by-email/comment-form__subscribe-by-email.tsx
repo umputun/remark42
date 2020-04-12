@@ -1,6 +1,6 @@
 /** @jsx createElement */
 import { createElement, FunctionComponent, Fragment } from 'preact';
-import { useState, useCallback, useEffect, useRef } from 'preact/hooks';
+import { useState, useCallback, useEffect, useRef, PropRef } from 'preact/hooks';
 import { useSelector, useDispatch } from 'react-redux';
 import b from 'bem-react-helper';
 
@@ -80,7 +80,7 @@ const renderEmailPart = (
   intl: IntlShape,
   emailAddress: string,
   handleChangeEmail: (e: Event) => void,
-  emailAddressRef: ReturnType<typeof useRef>
+  emailAddressRef: PropRef<HTMLInputElement>
 ) => (
   <Fragment>
     <div className="comment-form__subscribe-by-email__title">

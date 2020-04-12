@@ -327,6 +327,7 @@ export class CommentForm extends Component<Props, State> {
       buttonText: intl.formatMessage(messages.uploading),
     });
 
+    // TODO: remove legacy code, now we don't support IE
     // fallback for ie < 9
     if (!isSelectionSupported) {
       for (let i = 0; i < files.length; i++) {

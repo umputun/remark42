@@ -1,18 +1,14 @@
 /** @jsx createElement */
-import { createElement, JSX, Component } from 'preact';
+import { createElement, JSX, Component, createRef, RefObject } from 'preact';
 
-type Props = JSX.HTMLAttributes & {
+export interface Props extends Omit<JSX.HTMLAttributes, 'ref'> {
   autofocus: boolean;
-};
+  ref?: RefObject<TextareaAutosize>;
+}
 
+// TODO: rewrite it to functional component and add ref forwarding
 export default class TextareaAutosize extends Component<Props> {
-  textareaRef?: HTMLTextAreaElement;
-
-  constructor(props: Props) {
-    super(props);
-
-    this.onRef = this.onRef.bind(this);
-  }
+  textareaRef = createRef<HTMLTextAreaElement>();
 
   componentDidMount() {
     this.autoResize();
@@ -28,46 +24,67 @@ export default class TextareaAutosize extends Component<Props> {
 
   focus(): void {
     setTimeout(() => {
-      if (this.textareaRef) {
-        this.textareaRef.focus();
-        this.textareaRef.selectionStart = this.textareaRef.selectionEnd = this.textareaRef.value.length;
+      const { current: textarea } = this.textareaRef;
+
+      if (textarea) {
+        textarea.focus();
+        textarea.selectionStart = textarea.value.length;
+        textarea.selectionEnd = textarea.value.length;
       }
     }, 100);
   }
 
   /** returns whether selectionStart api supported */
-  isSelectionSupported(): boolean {
-    if (!this.textareaRef) throw new Error('No textarea element reference exists');
-    return 'selectionStart' in this.textareaRef;
+  isSelectionSupported() {
+    const { current: textarea } = this.textareaRef;
+
+    if (textarea) {
+      return 'selectionStart' in textarea;
+    }
+
+    throw new Error('No textarea element reference exists');
   }
 
   /** returns selection range of a textarea */
   getSelection(): [number, number] {
-    if (!this.textareaRef) throw new Error('No textarea element reference exists');
+    const { current: textarea } = this.textareaRef;
 
-    return [this.textareaRef.selectionStart, this.textareaRef.selectionEnd];
+    if (textarea) {
+      return [textarea.selectionStart, textarea.selectionEnd];
+    }
+
+    throw new Error('No textarea element reference exists');
   }
 
   /** sets selection range of a textarea */
   setSelection(selection: [number, number]) {
-    if (!this.textareaRef) throw new Error('No textarea element reference exists');
-    this.textareaRef.selectionStart = selection[0];
-    this.textareaRef.selectionEnd = selection[1];
+    const { current: textarea } = this.textareaRef;
+
+    if (textarea) {
+      textarea.selectionStart = selection[0];
+      textarea.selectionEnd = selection[1];
+      return;
+    }
+
+    throw new Error('No textarea element reference exists');
   }
 
-  onRef(node: HTMLTextAreaElement) {
-    this.textareaRef = node;
-  }
   getValue() {
-    return this.textareaRef ? this.textareaRef.value : '';
+    const { current: textarea } = this.textareaRef;
+
+    return textarea ? textarea.value : '';
   }
+
   autoResize() {
-    if (this.textareaRef) {
-      this.textareaRef.style.height = '';
-      this.textareaRef.style.height = `${this.textareaRef.scrollHeight}px`;
+    const { current: textarea } = this.textareaRef;
+
+    if (textarea) {
+      textarea.style.height = '';
+      textarea.style.height = `${textarea.scrollHeight}px`;
     }
   }
+
   render(props: Props) {
-    return <textarea {...props} ref={this.onRef} />;
+    return <textarea {...props} ref={this.textareaRef} />;
   }
 }
