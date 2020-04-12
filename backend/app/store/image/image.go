@@ -149,14 +149,20 @@ func (s *Service) Cleanup(ctx context.Context) {
 }
 
 // Close flushes all in-progress submits and enforces waiting commits
-func (s *Service) Close() {
+func (s *Service) Close(ctx context.Context) {
 	log.Printf("[INFO] close image service ")
 	// terminate commit goroutine using s.term only if it is started
 	if atomic.LoadInt32(&s.term) == 1 {
 		atomic.StoreInt32(&s.term, 0) // enforce non-delayed commits for all ids left in submitCh
+		var ctxCancel bool
 		for {
+			select {
+			case <-ctx.Done():
+				ctxCancel = true
+			default:
+			}
 			// set to 1 by commit goroutine after everything waited on TTL sent
-			if atomic.LoadInt32(&s.term) == 1 {
+			if atomic.LoadInt32(&s.term) == 1 || ctxCancel {
 				break
 			}
 			time.Sleep(10 * time.Millisecond)

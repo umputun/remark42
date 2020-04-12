@@ -128,7 +128,7 @@ func TestService_Close(t *testing.T) {
 	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
 	svc.Submit(func() []string { return []string{"id4", "id5"} })
 	svc.Submit(nil)
-	svc.Close()
+	svc.Close(context.TODO())
 	store.AssertNumberOfCalls(t, "Commit", 5)
 }
 
@@ -141,7 +141,7 @@ func TestService_SubmitDelay(t *testing.T) {
 	svc.Submit(func() []string { return []string{"id4", "id5"} })
 	svc.Submit(nil)
 	store.AssertNumberOfCalls(t, "Commit", 3)
-	svc.Close()
+	svc.Close(context.TODO())
 	store.AssertNumberOfCalls(t, "Commit", 5)
 }
 
