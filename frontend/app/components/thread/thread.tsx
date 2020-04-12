@@ -56,7 +56,7 @@ export const Thread: FunctionComponent<Props> = ({ id, level, mix, getPreview })
         {inviewProps => (
           <Comment
             CommentForm={CommentForm}
-            ref={ref => inviewProps.ref(ref)}
+            ref={inviewProps.ref}
             key={`comment-${id}`}
             view="main"
             intl={intl}
