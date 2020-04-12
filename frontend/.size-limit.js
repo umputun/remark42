@@ -13,7 +13,7 @@ module.exports = [
   },
   {
     path: 'public/deleteme.js',
-    limit: '18 KB',
+    limit: '34 KB',
   },
   {
     path: 'public/counter.js',
