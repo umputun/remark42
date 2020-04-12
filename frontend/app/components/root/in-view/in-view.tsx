@@ -1,31 +1,25 @@
-import { Component, JSX } from 'preact';
-import { sleep } from '@app/utils/sleep';
+/** @jsx createElement */
+import { JSX } from 'preact';
+import { useState, useEffect, useRef, PropRef } from 'preact/hooks';
 
 interface Props {
-  children: (props: { inView: boolean; ref: (ref: Component) => unknown }) => JSX.Element;
+  children: <T>(props: { inView: boolean; ref: PropRef<T> }) => JSX.Element;
 }
 
-interface State {
-  inView: boolean;
-  ref: Element | undefined;
-}
-
-let instanceMap: WeakMap<Element, Component<Props, State>>;
+let instanceMap: WeakMap<Element, (inView: boolean) => void>;
 let observer: IntersectionObserver;
 
-function getObserver(): { observer: IntersectionObserver; instanceMap: WeakMap<Element, Component<Props, State>> } {
+function getObserver(): { observer: IntersectionObserver; instanceMap: WeakMap<Element, (inView: boolean) => void> } {
   if (observer && instanceMap) {
     return { observer, instanceMap };
   }
-  instanceMap = new WeakMap<Element, Component<Props, State>>();
+  instanceMap = new WeakMap<Element, (inView: boolean) => void>();
   observer = new window.IntersectionObserver(
     entries => {
       entries.forEach(e => {
-        const instance = instanceMap.get(e.target);
-        if (!instance) return;
-        instance.setState({
-          inView: e.isIntersecting,
-        });
+        const setInView = instanceMap.get(e.target);
+        if (!setInView) return;
+        setInView(e.isIntersecting);
       });
     },
     {
@@ -35,47 +29,24 @@ function getObserver(): { observer: IntersectionObserver; instanceMap: WeakMap<E
   return { observer, instanceMap };
 }
 
-export class InView extends Component<Props, State> {
-  state: State = {
-    inView: false,
-    ref: undefined,
-  };
+export function InView({ children }: Props) {
+  const [inView, setInView] = useState(false);
+  const ref = useRef<any>(); // eslint-disable-line
 
-  componentWillUpdate(_nextProps: Props, nextState: State) {
-    if (this.state.ref === nextState.ref) return;
-
-    if (this.state.ref instanceof Element) {
-      const { observer, instanceMap } = getObserver();
-      observer.unobserve(this.state.ref);
-      instanceMap.delete(this.state.ref);
-    }
-
-    if (nextState.ref instanceof Element) {
-      const { observer, instanceMap } = getObserver();
-      observer.observe(nextState.ref);
-      instanceMap.set(nextState.ref, this);
-    }
-  }
-
-  refSetter = async (ref: Component | null) => {
-    await sleep(1);
-    const el = ref ? ref.base : undefined;
-    if (el === this.state.ref) return;
-    this.setState({
-      ref: ref ? (ref.base as Element) : undefined,
-    });
-  };
-
-  componentWillUnmount() {
-    if (!(this.state.ref instanceof Element)) return;
+  useEffect(() => {
     const { observer, instanceMap } = getObserver();
-    observer.unobserve(this.state.ref);
-    instanceMap.delete(this.state.ref);
-  }
+    if (ref.current) {
+      observer.observe(ref.current.base);
+      instanceMap.set(ref.current.base, setInView);
+    }
 
-  render() {
-    const props = { inView: this.state.inView, ref: this.refSetter };
-    const r = this.props.children(props);
-    return r;
-  }
+    return () => {
+      if (ref.current) {
+        observer.unobserve(ref.current.base);
+        instanceMap.delete(ref.current.base);
+      }
+    };
+  });
+
+  return children({ inView, ref });
 }

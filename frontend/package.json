@@ -115,7 +115,7 @@
     "intersection-observer": "^0.7.0",
     "lodash-es": "^4.17.15",
     "node-emoji": "^1.10.0",
-    "preact": "^10.0.1",
+    "preact": "^10.4.0",
     "react-intl": "^3.12.0",
     "react-redux": "^7.1.1",
     "redux": "^4.0.5",
