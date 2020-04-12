@@ -17,7 +17,7 @@ export const Input = forwardRef<HTMLInputElement, Props>(
     const className = b('input', { mix }, { theme, ...mods });
 
     return (
-      <input ref={ref} className={className} type={type} {...props}>
+      <input className={className} type={type} {...props} ref={ref}>
         {children}
       </input>
     );

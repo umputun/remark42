@@ -14,11 +14,11 @@ interface Props extends Omit<JSX.HTMLAttributes, 'size' | 'className'> {
 }
 
 export const Button = forwardRef<HTMLButtonElement, Props>(
-  ({ children, theme, mods, mix, kind, type = 'button', size, ...props }) => {
+  ({ children, theme, mods, mix, kind, type = 'button', size, ...props }, ref) => {
     const className = b('button', { mods: { kind, size }, mix }, { theme, ...mods });
 
     return (
-      <button className={className} type={type} {...props}>
+      <button className={className} type={type} {...props} ref={ref}>
         {children}
       </button>
     );

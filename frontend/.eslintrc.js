@@ -19,6 +19,8 @@ module.exports = {
         tsconfigRootDir: __dirname,
       },
       rules: {
+        // needs for using optional chaining
+        'no-undef': 0,
         'jsx-a11y/no-autofocus': 0,
         // disabling because typescipt uses it's own lint (see next rule)
         'no-unused-vars': 0,

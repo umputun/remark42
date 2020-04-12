@@ -86,7 +86,9 @@ export class EmailLoginForm extends Component<Props, State> {
       this.usernameInputRef.current.focus();
       return;
     }
-    this.tokenRef.current && this.tokenRef.current.textareaRef && this.tokenRef.current.textareaRef.select();
+    if (this.tokenRef.current?.textareaRef?.current) {
+      this.tokenRef.current.textareaRef.current.select();
+    }
   };
 
   onVerificationSubmit = async (e: Event) => {

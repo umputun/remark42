@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-
 import * as preact from 'preact/src/jsx';
 
 declare module 'preact/src/jsx' {
