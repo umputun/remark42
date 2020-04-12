@@ -1,4 +1,4 @@
-## REST helpers and middleware [![Build Status](https://travis-ci.org/go-pkgz/rest.svg?branch=master)](https://travis-ci.org/go-pkgz/rest) [![Go Report Card](https://goreportcard.com/badge/github.com/go-pkgz/rest)](https://goreportcard.com/report/github.com/go-pkgz/rest) [![Coverage Status](https://coveralls.io/repos/github/go-pkgz/rest/badge.svg?branch=master)](https://coveralls.io/github/go-pkgz/rest?branch=master) [![godoc](https://godoc.org/github.com/go-pkgz/rest?status.svg)](https://godoc.org/github.com/go-pkgz/rest)
+## REST helpers and middleware [![Build Status](https://github.com/go-pkgz/rest/workflows/build/badge.svg)](https://github.com/go-pkgz/rest/actions) [![Go Report Card](https://goreportcard.com/badge/github.com/go-pkgz/rest)](https://goreportcard.com/report/github.com/go-pkgz/rest) [![Coverage Status](https://coveralls.io/repos/github/go-pkgz/rest/badge.svg?branch=master)](https://coveralls.io/github/go-pkgz/rest?branch=master) [![godoc](https://godoc.org/github.com/go-pkgz/rest?status.svg)](https://godoc.org/github.com/go-pkgz/rest)
 
 
 ## Install and update
@@ -90,7 +90,4 @@ It looks for `X-Request-ID` header and makes it as a random id
 - `rest.RenderJSONFromBytes` - renders json response from `[]byte`
 - `rest.RenderJSONWithHTML` -  renders json response with html tags and forced `charset=utf-8`
 - `rest.SendErrorJSON` - makes `{error: blah, details: blah}` json body and responds with given error code. Also adds context to logged message
-
-## Caching
-
-Cache wrapper provides loading cache for rest/http responses. See [cache readme](https://github.com/go-pkgz/rest/tree/master/cache) for more details and examples.
+- `rest.NewErrorLogger(l logger.Backend)` creates a struct providing shorter form of logger call

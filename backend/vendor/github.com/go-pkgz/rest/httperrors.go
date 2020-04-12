@@ -11,6 +11,29 @@ import (
 	"github.com/go-pkgz/rest/logger"
 )
 
+// ErrorLogger wraps logger.Backend
+type ErrorLogger struct {
+	l logger.Backend
+}
+
+// NewErrorLogger creates ErrorLogger for given Backend
+func NewErrorLogger(l logger.Backend) *ErrorLogger {
+	return &ErrorLogger{l: l}
+}
+
+// Log sends json error message {error: msg} with error code and logging error and caller
+func (e *ErrorLogger) Log(w http.ResponseWriter, r *http.Request, httpCode int, err error, msg ...string) {
+	m := ""
+	if len(msg) > 0 {
+		m = strings.Join(msg, ". ")
+	}
+	if e.l != nil {
+		e.l.Logf("%s", errDetailsMsg(r, httpCode, err, m))
+	}
+	w.WriteHeader(httpCode)
+	RenderJSON(w, r, JSON{"error": m})
+}
+
 // SendErrorJSON sends {error: msg} with error code and logging error and caller
 func SendErrorJSON(w http.ResponseWriter, r *http.Request, l logger.Backend, code int, err error, msg string) {
 	if l != nil {

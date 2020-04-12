@@ -11,12 +11,13 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/go-pkgz/auth/avatar"
-	"github.com/go-pkgz/auth/logger"
-	"github.com/go-pkgz/auth/token"
 	"github.com/microcosm-cc/bluemonday"
 	"golang.org/x/oauth2"
 	goauth2 "gopkg.in/oauth2.v3/server"
+
+	"github.com/go-pkgz/auth/avatar"
+	"github.com/go-pkgz/auth/logger"
+	"github.com/go-pkgz/auth/token"
 )
 
 // CustomHandlerOpt are options to initialize a handler for oauth2 server

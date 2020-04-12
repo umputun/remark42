@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	bolt "github.com/coreos/bbolt"
+	bolt "go.etcd.io/bbolt"
 	log "github.com/go-pkgz/lgr"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"

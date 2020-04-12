@@ -14,7 +14,7 @@ import (
 	"syscall"
 	"time"
 
-	bolt "github.com/coreos/bbolt"
+	bolt "go.etcd.io/bbolt"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-pkgz/jrpc"
 	log "github.com/go-pkgz/lgr"
@@ -860,7 +860,7 @@ func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Sto
 		TokenDuration:  s.Auth.TTL.JWT,
 		CookieDuration: s.Auth.TTL.Cookie,
 		SecureCookies:  strings.HasPrefix(s.RemarkURL, "https://"),
-		SecretReader: token.SecretFunc(func() (string, error) { // get secret per site
+		SecretReader: token.SecretFunc(func(aud string) (string, error) { // get secret per site
 			return admns.Key()
 		}),
 		ClaimsUpd: token.ClaimsUpdFunc(func(c token.Claims) token.Claims { // set attributes, on new token or refresh

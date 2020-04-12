@@ -28,7 +28,7 @@ included some useful/optional subpackages: [middleware](/middleware), [render](h
 * **Fast** - yes, see [benchmarks](#benchmarks)
 * **100% compatible with net/http** - use any http or middleware pkg in the ecosystem that is also compatible with `net/http`
 * **Designed for modular/composable APIs** - middlewares, inline middlewares, route groups and subrouter mounting
-* **Context control** - built on new `context` package, providing value chaining, cancelations and timeouts
+* **Context control** - built on new `context` package, providing value chaining, cancellations and timeouts
 * **Robust** - in production at Pressly, CloudFlare, Heroku, 99Designs, and many others (see [discussion](https://github.com/go-chi/chi/issues/91))
 * **Doc generation** - `docgen` auto-generates routing documentation from your source to JSON or Markdown
 * **No external dependencies** - plain ol' Go stdlib + net/http
@@ -179,7 +179,7 @@ type Router interface {
 	http.Handler
 	Routes
 
-	// Use appends one of more middlewares onto the Router stack.
+	// Use appends one or more middlewares onto the Router stack.
 	Use(middlewares ...func(http.Handler) http.Handler)
 
 	// With adds inline middlewares for an endpoint handler.
@@ -312,9 +312,10 @@ with `net/http` can be used with chi's mux.
 ### Core middlewares
 
 -----------------------------------------------------------------------------------------------------------
-| chi/middleware Handler | description                                                                     |
+| chi/middleware Handler | description                                                                    |
 |:----------------------|:---------------------------------------------------------------------------------
 | AllowContentType      | Explicit whitelist of accepted request Content-Types                            |
+| BasicAuth             | Basic HTTP authentication                                                       |
 | Compress              | Gzip compression for clients that accept compressed responses                   |
 | GetHead               | Automatically route undefined HEAD requests to GET handlers                     |
 | Heartbeat             | Monitoring endpoint to check the servers pulse                                  |
@@ -412,18 +413,15 @@ We'll be more than happy to see [your contributions](./CONTRIBUTING.md)!
 ## Beyond REST
 
 chi is just a http router that lets you decompose request handling into many smaller layers.
-Many companies including Pressly.com (of course) use chi to write REST services for their public
-APIs. But, REST is just a convention for managing state via HTTP, and there's a lot of other pieces
-required to write a complete client-server system or network of microservices.
+Many companies use chi to write REST services for their public APIs. But, REST is just a convention
+for managing state via HTTP, and there's a lot of other pieces required to write a complete client-server
+system or network of microservices.
 
-Looking ahead beyond REST, I also recommend some newer works in the field coming from
-[gRPC](https://github.com/grpc/grpc-go), [NATS](https://nats.io), [go-kit](https://github.com/go-kit/kit)
-and even [graphql](https://github.com/graphql-go/graphql). They're all pretty cool with their
-own unique approaches and benefits. Specifically, I'd look at gRPC since it makes client-server
-communication feel like a single program on a single computer, no need to hand-write a client library
-and the request/response payloads are typed contracts. NATS is pretty amazing too as a super
-fast and lightweight pub-sub transport that can speak protobufs, with nice service discovery -
-an excellent combination with gRPC.
+Looking beyond REST, I also recommend some newer works in the field:
+* [webrpc](https://github.com/webrpc/webrpc) - Web-focused RPC client+server framework with code-gen
+* [gRPC](https://github.com/grpc/grpc-go) - Google's RPC framework via protobufs
+* [graphql](https://github.com/99designs/gqlgen) - Declarative query language
+* [NATS](https://nats.io) - lightweight pub-sub
 
 
 ## License

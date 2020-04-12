@@ -10,9 +10,10 @@ import (
 
 	"github.com/dghubble/oauth1"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/go-pkgz/rest"
+
 	"github.com/go-pkgz/auth/logger"
 	"github.com/go-pkgz/auth/token"
-	"github.com/go-pkgz/rest"
 )
 
 // Oauth1Handler implements /login, /callback and /logout handlers for oauth1 flow

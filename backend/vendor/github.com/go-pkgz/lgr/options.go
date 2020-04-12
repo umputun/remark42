@@ -68,3 +68,11 @@ func CallerFile(l *Logger) {
 func Msec(l *Logger) {
 	l.msec = true
 }
+
+// Secret sets list of substring to be hidden, i.e. replaced by "******"
+// Useful to prevent passwords or other sensitive tokens to be logged.
+func Secret(vals ...string) Option {
+	return func(l *Logger) {
+		l.secrets = vals
+	}
+}

@@ -99,7 +99,8 @@ func (x *Context) RoutePattern() string {
 // RouteContext returns chi's routing Context object from a
 // http.Request Context.
 func RouteContext(ctx context.Context) *Context {
-	return ctx.Value(RouteCtxKey).(*Context)
+	val, _ := ctx.Value(RouteCtxKey).(*Context)
+	return val
 }
 
 // URLParam returns the url parameter from a http.Request object.
@@ -125,8 +126,8 @@ type RouteParams struct {
 
 // Add will append a URL parameter to the end of the route param
 func (s *RouteParams) Add(key, value string) {
-	(*s).Keys = append((*s).Keys, key)
-	(*s).Values = append((*s).Values, value)
+	s.Keys = append(s.Keys, key)
+	s.Values = append(s.Values, value)
 }
 
 // ServerBaseContext wraps an http.Handler to set the request context to the

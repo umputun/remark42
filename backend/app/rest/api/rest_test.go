@@ -17,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	bolt "github.com/coreos/bbolt"
+	bolt "go.etcd.io/bbolt"
 	"github.com/go-pkgz/auth"
 	"github.com/go-pkgz/auth/avatar"
 	"github.com/go-pkgz/auth/token"
@@ -365,7 +365,7 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 		DataService: dataStore,
 		Authenticator: auth.NewService(auth.Opts{
 			AdminPasswd:  "password",
-			SecretReader: token.SecretFunc(func() (string, error) { return "secret", nil }),
+			SecretReader: token.SecretFunc(func(aud string) (string, error) { return "secret", nil }),
 			AvatarStore:  avatar.NewLocalFS(tmp + "/ava-remark42"),
 		}),
 		Cache:      memCache,
