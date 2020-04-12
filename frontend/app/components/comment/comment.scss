@@ -3,6 +3,7 @@
   padding: 12px 0 8px;
   font-size: 16px;
   line-height: 1.2;
+  transition: background 0.3s ease-in-out;
 
   @media (hover: hover) {
     &:hover {
