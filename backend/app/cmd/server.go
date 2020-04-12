@@ -502,7 +502,9 @@ func (a *serverApp) run(ctx context.Context) error {
 		log.Printf("[WARN] failed to close avatar store, %s", e)
 	}
 	a.notifyService.Close()
-	a.imageService.Close()
+	// call potentially infinite loop with cancellation after a minute as a safeguard
+	minuteCtx, _ := context.WithTimeout(context.Background(), time.Minute)
+	a.imageService.Close(minuteCtx)
 
 	close(a.terminated)
 	return nil
