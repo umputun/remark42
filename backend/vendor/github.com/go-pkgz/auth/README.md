@@ -1,5 +1,5 @@
 # auth - authentication via oauth2, direct and email 
-[![Build Status](https://travis-ci.org/go-pkgz/auth.svg?branch=master)](https://travis-ci.org/go-pkgz/auth) [![Coverage Status](https://coveralls.io/repos/github/go-pkgz/auth/badge.svg?branch=master)](https://coveralls.io/github/go-pkgz/auth?branch=master) [![godoc](https://godoc.org/github.com/go-pkgz/auth?status.svg)](https://godoc.org/github.com/go-pkgz/auth)
+[![Build Status](https://github.com/go-pkgz/auth/workflows/build/badge.svg)](https://github.com/go-pkgz/auth/actions) [![Coverage Status](https://coveralls.io/repos/github/go-pkgz/auth/badge.svg?branch=master)](https://coveralls.io/github/go-pkgz/auth?branch=master) [![godoc](https://godoc.org/github.com/go-pkgz/auth?status.svg)](https://pkg.go.dev/github.com/go-pkgz/auth?tab=doc)
 
 
 
@@ -125,7 +125,7 @@ Direct links to avatars won't survive any real-life usage if they linked from a 
 - API for avatar removal provided as a part of `AvatarStore`
 - User can leverage one of the provided stores:
     - `avatar.LocalFS` - file system, each avatar in a separate file
-    - `avatar.BoltDB`  - single [boltdb](https://github.com/coreos/bbolt) file (embedded KV store).
+    - `avatar.BoltDB`  - single [boltdb](https://go.etcd.io/bbolt) file (embedded KV store).
     - `avatar.GridFS` - external [GridFS](https://docs.mongodb.com/manual/core/gridfs/) (mongo db).
 - In case of need custom implementations of other stores can be passed in and used by `auth` library. Each store has to implement `avatar.Store` [interface](https://github.com/go-pkgz/auth/blob/master/avatar/store.go#L25).
 - All avatar-related setup done as a part of `auth.Opts` and needs:

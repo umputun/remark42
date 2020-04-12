@@ -3,7 +3,7 @@ package cmd
 import (
 	"path"
 
-	bolt "github.com/coreos/bbolt"
+	bolt "go.etcd.io/bbolt"
 	log "github.com/go-pkgz/lgr"
 	"github.com/pkg/errors"
 

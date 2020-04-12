@@ -1,3 +1,4 @@
+// Package logger implements logging middleware
 package logger
 
 import (
@@ -58,6 +59,7 @@ func New(options ...Option) *Middleware {
 }
 
 // Handler middleware prints http log
+//nolint gosec
 func (l *Middleware) Handler(next http.Handler) http.Handler {
 
 	fn := func(w http.ResponseWriter, r *http.Request) {

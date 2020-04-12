@@ -65,6 +65,7 @@ type Opts struct {
 	JWTQuery       string
 	AudienceReader Audience // allowed aud values
 	Issuer         string   // optional value for iss claim, usually application name
+	AudSecrets     bool     // uses different secret for differed auds. important: adds pre-parsing of unverified token
 }
 
 // NewService makes JWT service
@@ -115,7 +116,7 @@ func (j *Service) Token(claims Claims) (string, error) {
 		return "", errors.Wrap(err, "aud rejected")
 	}
 
-	secret, err := j.SecretReader.Get() // get secret via consumer defined SecretReader
+	secret, err := j.SecretReader.Get(claims.Audience) // get secret via consumer defined SecretReader
 	if err != nil {
 		return "", errors.Wrap(err, "can't get secret")
 	}
@@ -135,7 +136,16 @@ func (j *Service) Parse(tokenString string) (Claims, error) {
 		return Claims{}, errors.New("secret reader not defined")
 	}
 
-	secret, err := j.SecretReader.Get()
+	aud := "ignore"
+	if j.AudSecrets {
+		var err error
+		aud, err = j.aud(tokenString)
+		if err != nil {
+			return Claims{}, errors.New("can't retrieve audience from the token")
+		}
+	}
+
+	secret, err := j.SecretReader.Get(aud)
 	if err != nil {
 		return Claims{}, errors.Wrap(err, "can't get secret")
 	}
@@ -159,6 +169,24 @@ func (j *Service) Parse(tokenString string) (Claims, error) {
 		return Claims{}, errors.Wrap(err, "aud rejected")
 	}
 	return *claims, j.validate(claims)
+}
+
+// aud pre-parse token and extracts aud from the claim
+// important! this step ignores token verification, should not be used for any validations
+func (j *Service) aud(tokenString string) (string, error) {
+	parser := jwt.Parser{}
+	token, _, err := parser.ParseUnverified(tokenString, &Claims{})
+	if err != nil {
+		return "", errors.Wrap(err, "can't pre-parse token")
+	}
+	claims, ok := token.Claims.(*Claims)
+	if !ok {
+		return "", errors.New("invalid token")
+	}
+	if strings.TrimSpace(claims.Audience) == "" {
+		return "", errors.New("empty aud")
+	}
+	return claims.Audience, nil
 }
 
 func (j *Service) validate(claims *Claims) error {
@@ -312,16 +340,16 @@ func (c Claims) String() string {
 
 // Secret defines interface returning secret key for given id (aud)
 type Secret interface {
-	Get() (string, error)
+	Get(aud string) (string, error) // aud matching is optional. Implementation may decide if supported or ignored
 }
 
 // SecretFunc type is an adapter to allow the use of ordinary functions as Secret. If f is a function
 // with the appropriate signature, SecretFunc(f) is a Handler that calls f.
-type SecretFunc func() (string, error)
+type SecretFunc func(aud string) (string, error)
 
 // Get calls f()
-func (f SecretFunc) Get() (string, error) {
-	return f()
+func (f SecretFunc) Get(aud string) (string, error) {
+	return f(aud)
 }
 
 // ClaimsUpdater defines interface adding extras to claims

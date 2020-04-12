@@ -13,6 +13,7 @@ import (
 
 	"github.com/dghubble/oauth1"
 	"github.com/dghubble/oauth1/twitter"
+
 	"github.com/go-pkgz/auth/token"
 )
 

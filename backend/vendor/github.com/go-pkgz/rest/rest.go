@@ -1,3 +1,4 @@
+// Package rest provides common middlewares and helpers for rest services
 package rest
 
 import (

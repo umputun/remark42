@@ -7,8 +7,8 @@ import (
 	"io/ioutil"
 	"log"
 
-	bolt "github.com/coreos/bbolt"
 	"github.com/pkg/errors"
+	bolt "go.etcd.io/bbolt"
 )
 
 // BoltDB implements avatar store with bolt

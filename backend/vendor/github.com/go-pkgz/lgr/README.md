@@ -1,4 +1,4 @@
-# lgr - simple logger with some extras [![Build Status](https://travis-ci.org/go-pkgz/lgr.svg?branch=master)](https://travis-ci.org/go-pkgz/lgr) [![Coverage Status](https://coveralls.io/repos/github/go-pkgz/lgr/badge.svg?branch=master)](https://coveralls.io/github/go-pkgz/lgr?branch=master) [![godoc](https://godoc.org/github.com/go-pkgz/lgr?status.svg)](https://godoc.org/github.com/go-pkgz/lgr)
+# lgr - simple logger with some extras [![Build Status](https://github.com/go-pkgz/lgr/workflows/build/badge.svg)](https://github.com/go-pkgz/lgr/actions) [![Coverage Status](https://coveralls.io/repos/github/go-pkgz/lgr/badge.svg?branch=master)](https://coveralls.io/github/go-pkgz/lgr?branch=master) [![godoc](https://godoc.org/github.com/go-pkgz/lgr?status.svg)](https://godoc.org/github.com/go-pkgz/lgr)
 
 ## install
 
@@ -33,6 +33,7 @@ _Without `lgr.Caller*` it will drop `{caller}` part_
 `lgr.New` call accepts functional options:
 
 - `lgr.Debug` - turn debug mode on to allow messages with "DEBUG" level (filtered otherwise)
+- `lgr.Trace` - turn trace mode on to allow messages with "TRACE" abd "DEBUG" levels both (filtered otherwise)
 - `lgr.Out(io.Writer)` - sets the output writer, default `os.Stdout`
 - `lgr.Err(io.Writer)` - sets the error writer, default `os.Stderr`
 - `lgr.CallerFile` - adds the caller file info
@@ -41,6 +42,7 @@ _Without `lgr.Caller*` it will drop `{caller}` part_
 - `lgr.LevelBraces` - wraps levels with "[" and "]"
 - `lgr.Msec` - adds milliseconds to timestamp
 - `lgr.Format` - sets custom template, overwrite all other formatting modifiers.
+- `lgr.Secret(secret ...)` - sets list of the secrets to hide from the logging outputs.
 
 example: `l := lgr.New(lgr.Debug, lgr.Msec)`
 

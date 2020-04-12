@@ -34,6 +34,8 @@ const (
 	FullDebug  = `{{.DT.Format "2006/01/02 15:04:05.000"}} {{.Level}} ({{.CallerFile}}:{{.CallerLine}} {{.CallerFunc}}) {{.Message}}`
 )
 
+var secretReplacement = []byte("******")
+
 // Logger provided simple logger with basic support of levels. Thread safe
 type Logger struct {
 	// set with Option calls
@@ -46,6 +48,7 @@ type Logger struct {
 	levelBraces    bool      // encloses level with [], i.e. [INFO]
 	callerDepth    int       // how many stack frames to skip, relative to the real (reported) frame
 	format         string    // layout template
+	secrets        []string  // sub-strings to secrets by matching
 
 	// internal use
 	now           nowFn
@@ -163,6 +166,7 @@ func (l *Logger) logf(format string, args ...interface{}) {
 		data = bytes.Replace(data, []byte("[WARN ]"), []byte("[WARN] "), 1)
 		data = bytes.Replace(data, []byte("[INFO ]"), []byte("[INFO] "), 1)
 	}
+	data = l.hideSecrets(data)
 
 	l.lock.Lock()
 	_, _ = l.stdout.Write(data)
@@ -187,6 +191,13 @@ func (l *Logger) logf(format string, args ...interface{}) {
 	}
 
 	l.lock.Unlock()
+}
+
+func (l *Logger) hideSecrets(data []byte) []byte {
+	for _, h := range l.secrets {
+		data = bytes.Replace(data, []byte(h), secretReplacement, -1)
+	}
+	return data
 }
 
 type callerInfo struct {
