@@ -6,3 +6,4 @@ public
 !.lintstagedrc.js
 !.stylelintrc.js
 !.size-limit.js
+!.huskyrc.js
