@@ -17,7 +17,7 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-pkgz/auth/token"
-	"github.com/jessevdk/go-flags"
+	"github.com/umputun/go-flags"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

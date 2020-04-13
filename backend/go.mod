@@ -22,7 +22,6 @@ require (
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/feeds v1.1.1
 	github.com/hashicorp/go-multierror v1.1.0
-	github.com/jessevdk/go-flags v0.0.0-20180331124232-1c38ed7ad0cc
 	github.com/kyokomi/emoji v2.2.1+incompatible
 	github.com/microcosm-cc/bluemonday v1.0.2
 	github.com/patrickmn/go-cache v2.1.0+incompatible
@@ -31,6 +30,7 @@ require (
 	github.com/rs/xid v1.2.1
 	github.com/russross/blackfriday/v2 v2.0.1
 	github.com/stretchr/testify v1.5.1
+	github.com/umputun/go-flags v1.5.1
 	go.etcd.io/bbolt v1.3.4
 	golang.org/x/crypto v0.0.0-20200406173513-056763e48d71
 	golang.org/x/image v0.0.0-20200119044424-58c23975cae1

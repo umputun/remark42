@@ -280,8 +280,8 @@ func (option *Option) set(value *string) error {
 	return convert("", option.value, option.tag)
 }
 
-func (option *Option) canCli() bool {
-	return option.ShortName != 0 || len(option.LongName) != 0
+func (option *Option) showInHelp() bool {
+	return !option.Hidden && (option.ShortName != 0 || len(option.LongName) != 0)
 }
 
 func (option *Option) canArgument() bool {
@@ -376,6 +376,30 @@ func (option *Option) isUnmarshaler() Unmarshaler {
 		i := v.Interface()
 
 		if u, ok := i.(Unmarshaler); ok {
+			return u
+		}
+
+		if !v.CanAddr() {
+			break
+		}
+
+		v = v.Addr()
+	}
+
+	return nil
+}
+
+func (option *Option) isValueValidator() ValueValidator {
+	v := option.value
+
+	for {
+		if !v.CanInterface() {
+			break
+		}
+
+		i := v.Interface()
+
+		if u, ok := i.(ValueValidator); ok {
 			return u
 		}
 
@@ -506,4 +530,14 @@ func (option *Option) shortAndLongName() string {
 	}
 
 	return ret.String()
+}
+
+func (option *Option) isValidValue(arg string) error {
+	if validator := option.isValueValidator(); validator != nil {
+		return validator.IsValidValue(arg)
+	}
+	if argumentIsOption(arg) && !(option.isSignedNumber() && len(arg) > 1 && arg[0] == '-' && arg[1] >= '0' && arg[1] <= '9') {
+		return fmt.Errorf("expected argument for flag `%s', but got option `%s'", option, arg)
+	}
+	return nil
 }

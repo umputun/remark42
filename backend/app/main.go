@@ -8,7 +8,7 @@ import (
 	"syscall"
 
 	log "github.com/go-pkgz/lgr"
-	"github.com/jessevdk/go-flags"
+	"github.com/umputun/go-flags"
 
 	"github.com/umputun/remark/backend/app/cmd"
 )

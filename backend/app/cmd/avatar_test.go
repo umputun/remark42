@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	"github.com/go-pkgz/auth/avatar"
-	flags "github.com/jessevdk/go-flags"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/umputun/go-flags"
 )
 
 func TestAvatar_Execute(t *testing.T) {

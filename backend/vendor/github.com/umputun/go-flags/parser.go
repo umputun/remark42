@@ -241,6 +241,7 @@ func (p *Parser) ParseArgs(args []string) ([]string, error) {
 	p.fillParseState(s)
 
 	for !s.eof() {
+		var err error
 		arg := s.pop()
 
 		// When PassDoubleDash is set and we encounter a --, then
@@ -251,6 +252,20 @@ func (p *Parser) ParseArgs(args []string) ([]string, error) {
 		}
 
 		if !argumentIsOption(arg) {
+			if (p.Options&PassAfterNonOption) != None && s.lookup.commands[arg] == nil {
+				// If PassAfterNonOption is set then all remaining arguments
+				// are considered positional
+				if err = s.addArgs(s.arg); err != nil {
+					break
+				}
+
+				if err = s.addArgs(s.args...); err != nil {
+					break
+				}
+
+				break
+			}
+
 			// Note: this also sets s.err, so we can just check for
 			// nil here and use s.err later
 			if p.parseNonOption(s) != nil {
@@ -259,8 +274,6 @@ func (p *Parser) ParseArgs(args []string) ([]string, error) {
 
 			continue
 		}
-
-		var err error
 
 		prefix, optname, islong := stripOptionPrefix(arg)
 		optname, _, argument := splitOption(prefix, optname, islong)
@@ -519,8 +532,8 @@ func (p *Parser) parseOption(s *parseState, name string, option *Option, canarg 
 		} else {
 			arg = s.pop()
 
-			if argumentIsOption(arg) && !(option.isSignedNumber() && len(arg) > 1 && arg[0] == '-' && arg[1] >= '0' && arg[1] <= '9') {
-				return newErrorf(ErrExpectedArgument, "expected argument for flag `%s', but got option `%s'", option, arg)
+			if validationErr := option.isValidValue(arg); validationErr != nil {
+				return newErrorf(ErrExpectedArgument, validationErr.Error())
 			} else if p.Options&PassDoubleDash != 0 && arg == "--" {
 				return newErrorf(ErrExpectedArgument, "expected argument for flag `%s', but got double dash `--'", option)
 			}
@@ -653,23 +666,7 @@ func (p *Parser) parseNonOption(s *parseState) error {
 		}
 	}
 
-	if (p.Options & PassAfterNonOption) != None {
-		// If PassAfterNonOption is set then all remaining arguments
-		// are considered positional
-		if err := s.addArgs(s.arg); err != nil {
-			return err
-		}
-
-		if err := s.addArgs(s.args...); err != nil {
-			return err
-		}
-
-		s.args = []string{}
-	} else {
-		return s.addArgs(s.arg)
-	}
-
-	return nil
+	return s.addArgs(s.arg)
 }
 
 func (p *Parser) showBuiltinHelp() error {

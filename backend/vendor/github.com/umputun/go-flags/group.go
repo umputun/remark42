@@ -168,6 +168,18 @@ func (g *Group) optionByName(name string, namematch func(*Option, string) bool) 
 	return retopt
 }
 
+func (g *Group) showInHelp() bool {
+	if g.Hidden {
+		return false
+	}
+	for _, opt := range g.options {
+		if opt.showInHelp() {
+			return true
+		}
+	}
+	return false
+}
+
 func (g *Group) eachGroup(f func(*Group)) {
 	f(g)
 

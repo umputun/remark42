@@ -12,7 +12,7 @@ import (
 
 	"github.com/go-pkgz/jrpc"
 	log "github.com/go-pkgz/lgr"
-	"github.com/jessevdk/go-flags"
+	"github.com/umputun/go-flags"
 
 	"github.com/umputun/remark/memory_store/accessor"
 	"github.com/umputun/remark/memory_store/server"

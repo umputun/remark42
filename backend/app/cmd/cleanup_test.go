@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/go-chi/chi"
-	flags "github.com/jessevdk/go-flags"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/umputun/go-flags"
 
 	"github.com/umputun/remark/backend/app/store"
 )
