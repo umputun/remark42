@@ -371,7 +371,10 @@ func (e *Email) buildMessage(subject, body, to, contentType, unsubscribeLink str
 	if _, err := qp.Write([]byte(body)); err != nil {
 		return "", err
 	}
-	defer qp.Close()
+	// flush now, must NOT use defer, for small body, defer may cause buff.String() got empty body
+	if err := qp.Close(); err != nil {
+		return "", fmt.Errorf("quotedprintable Write failed: %w", err)
+	}
 	m := buff.String()
 	message += "\n" + m
 	return message, nil
