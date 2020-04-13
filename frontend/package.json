@@ -52,7 +52,7 @@
     "@babel/plugin-transform-react-jsx": "^7.9.4",
     "@babel/preset-env": "^7.9.5",
     "@babel/preset-react": "^7.9.4",
-    "@formatjs/cli": "^1.6.2",
+    "@formatjs/cli": "^1.1.20",
     "@mavrin/stylelint-declaration-use-css-custom-properties": "1.0.0-alpha.1",
     "@size-limit/file": "^4.4.5",
     "@types/cheerio": "^0.22.17",
