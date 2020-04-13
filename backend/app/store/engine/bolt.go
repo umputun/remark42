@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	bolt "go.etcd.io/bbolt"
 	log "github.com/go-pkgz/lgr"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
+	bolt "go.etcd.io/bbolt"
 
 	"github.com/umputun/remark/backend/app/store"
 )

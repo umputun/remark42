@@ -14,6 +14,7 @@ import (
 
 	"github.com/go-pkgz/jrpc"
 	"github.com/stretchr/testify/assert"
+
 	"github.com/umputun/remark/backend/app/store/admin"
 )
 

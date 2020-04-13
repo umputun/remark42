@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/go-pkgz/auth/token"
 	cache "github.com/go-pkgz/lcw"
 	R "github.com/go-pkgz/rest"
