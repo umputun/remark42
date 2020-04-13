@@ -3,22 +3,22 @@
 ### Code Style
 
 - project uses typescript to statically analyze code
-- project uses `eslint` to check frontend code. You can manually run via `npm run lint`.
+- project uses `eslint` and `stylelint` to check frontend code. You can manually run via `npm run lint`.
 - git hooks (via husky) installed automatically on `npm install` and check and try to fix code style if possible, otherwise commit will be rejected
-- if you want IDE integration, you need `eslint` plugin to be installed.
+- if you want IDE integration, you need `eslint` and `stylelint` plugin to be installed.
 
 ### CSS Styles
-
 - although styles have `scss` extension, it is actually pack of post-css plugins, so syntax differs, for example in `calc` function.
-- component styles use BEM notation (at least it should): `block__element_modifier`. Also there are `mix` classes: `block_modifier`.
-- component base style resides in the component's root directory with name of component converted to kebab-case. For example `ListComments` style is located in `./app/components/list-comments/list-comments/scss`
-- component's element style resides in its own subdirectory, with name consisting of full elements selector, for example `ListComments` `item` element is placed in `__item` directory under name `./list-comments__item.scss`
-- each style should be `require`d in `index.ts` of component's root directory
+- now we are migrating to css-modules and this is recomended way to stylization. A file with styles should be named like `component.module.css`
+- old component styles use BEM notation (at least it should): `block__element_modifier`. Also there are `mix` classes: `block_modifier`.
+- new way to naming CSS selectors is camel-case like `blockElemenModifier` and use `classnames` to combine it
+- component base style resides in the component's root directory with name of component converted to kebab-case. For example `ListComments` style is located in `./app/components/list-comments/list-component.tsx`
+- any other files should be named also in kebab-case. For example `./app/utils/get-param.ts`
 
 ### Imports
 
 - imports for typescript, javascript files should be without extension: `./index`, not `./index.ts`
-- if file resides in same directory or in subdirectory import should be relative: `./types/something`
+- if file resides in the same directory or in subdirectory import should be relative: `./types/something`
 - otherwise it should start from `@app` namespace: `@app/common/store` which mapped to `/app/common/store.ts` in webpack, tsconfig and jest
 
 ### Testing

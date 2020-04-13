@@ -587,6 +587,10 @@ It stars backend service with embedded bolt store on port `8080` with basic auth
 
 ### Frontend development
 
+#### Developer guide
+
+Frontend guide can be found here: [./frontend/Readme.md](./frontend/Readme.md)
+
 #### Build
 You should have at least 2GB RAM or swap enabled for building
 
@@ -597,7 +601,7 @@ You should have at least 2GB RAM or swap enabled for building
 * result files will be saved in `./frontend/public`.
 
 **Note** Running `npm install` will set up precommit hooks into your git repository.
-It used to reformat your frontend code using `prettier` and lint with `eslint` before every commit.
+It used to reformat your frontend code using `prettier` and lint with `eslint` and `stylelint` before every commit.
 
 #### Devserver
 
@@ -612,12 +616,17 @@ You can attach to locally running backend by providing `REMARK_URL` environment 
 npx cross-env REMARK_URL=http://127.0.0.1:8080 npm start
 ```
 
+The best way for start local developer enviroment:
+```sh
+cp compose-dev-frontend.yml compose-private-frontend.yml
+docker-compose -f compose-private-frontend.yml up --build
+cd frontend
+npm run dev
+```
+
 Developer build running by `webpack-dev-server` supports devtools for [React](https://github.com/facebook/react-devtools) and
 [Redux](https://github.com/zalmoxisus/redux-devtools-extension).
 
-#### Frontend guide
-
-Frontend guide can be found here: [./frontend/Readme.md](./frontend/Readme.md)
 
 ## API
 

@@ -28,7 +28,7 @@ pull the latest changes from the upstream master branch. It could be done like t
 1. add new locale with [two-letter code](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes)
 of the language you want to make the translation into to list in
 [frontend/tasks/supportedLocales.json](https://github.com/umputun/remark42/blob/master/frontend/tasks/supportedLocales.json)
-1. run `npm run generate-langs` in `frontend` folder
+1. run `npm run translation:generate` in `frontend` folder
 1. translate all values in the newly created json file in
 [frontend/app/locales/](https://github.com/umputun/remark42/blob/master/frontend/app/locales/)
 1. commit all changes above in your fork

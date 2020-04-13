@@ -3,25 +3,46 @@
   "version": "0.1.0",
   "license": "MIT",
   "scripts": {
-    "build": "webpack --mode production && es-check es5 './public/*.js'",
+    "build": "webpack --mode production",
     "start": "webpack-dev-server --mode development",
-    "check": "tsc -p tsconfig.typecheck.json --noEmit --skipLibCheck",
-    "check:translation": "npm run extract-messages && node ./tasks/checkTranslation.js",
-    "lint": "eslint --max-warnings=0 --ext=.ts,.tsx,.js,.jsx .",
-    "lint:style": "stylelint '**/*.scss' '**/*.pcss' '**/*.css' 'iframe.html'",
+    "dev": "cross-env REMARK_URL=http://127.0.0.1:8080 npm start",
     "test": "jest",
+    "check": "NODE_ENV=production npm run build && run-p check:*",
+    "check:types": "tsc -p tsconfig.typecheck.json --noEmit --skipLibCheck",
+    "check:translation": "run-s translation:extract translation:check",
+    "check:size": "size-limit",
+    "check:es": "es-check es5 './public/*.js'",
+    "lint": "run-p lint:*",
+    "lint:eslint": "eslint --max-warnings=0 --ext=.ts,.tsx,.js,.jsx .",
+    "lint:stylelint": "stylelint '**/*.scss' '**/*.pcss' '**/*.css' 'iframe.html'",
     "test:coverage": "jest --coverage",
     "prettier": "prettier --write './**/*.{js,jsx,ts,tsx,scss}'",
-    "extract-messages": "formatjs extract --out-file=./extracted-messages/messages.json './app/**/*.{js,jsx,ts,tsx}'",
-    "generate-langs": "npm run extract-messages && node ./tasks/generateDictionary.js",
-    "size": "NODE_ENV=production npm run build && size-limit"
+    "translation:extract": "formatjs extract --out-file=./extracted-messages/messages.json './app/**/*.{js,jsx,ts,tsx}'",
+    "translation:generate": "node ./tasks/generateDictionary.js",
+    "translation:check": "node ./tasks/checkTranslation.js"
   },
-  "husky": {
-    "hooks": {
-      "pre-commit": "./node_modules/.bin/lint-staged",
-      "post-commit": "git update-index --again",
-      "pre-push": "npm run check && npm test"
-    }
+  "engines": {
+    "node": ">=12.11",
+    "npm": ">=6.13.4"
+  },
+  "dependencies": {
+    "@github/markdown-toolbar-element": "^1.2.0",
+    "@github/text-expander-element": "^1.0.2",
+    "@webcomponents/custom-elements": "^1.4.1",
+    "bem-react-helper": "^1.1.2",
+    "classnames": "^2.2.6",
+    "core-js": "^3.6.5",
+    "es6-promise": "^4.2.8",
+    "focus-visible": "^5.1.0",
+    "intersection-observer": "^0.7.0",
+    "lodash-es": "^4.17.15",
+    "node-emoji": "^1.10.0",
+    "preact": "^10.4.0",
+    "react-intl": "^3.12.0",
+    "react-redux": "^7.1.1",
+    "redux": "^4.0.5",
+    "redux-thunk": "^2.3.0",
+    "whatwg-fetch": "^3.0.0"
   },
   "devDependencies": {
     "@babel/core": "^7.6.4",
@@ -51,6 +72,7 @@
     "babel-loader": "^8.0.6",
     "clean-webpack-plugin": "^3.0.0",
     "copy-webpack-plugin": "^5.1.1",
+    "cross-env": "^7.0.2",
     "css-loader": "^3.2.0",
     "document-register-element": "^1.14.3",
     "dotenv": "^8.2.0",
@@ -100,29 +122,30 @@
     "webpack": "^4.41.2",
     "webpack-bundle-analyzer": "^3.6.1",
     "webpack-cli": "^3.3.9",
-    "webpack-dev-server": "^3.9.0",
-    "whatwg-fetch": "^3.0.0"
+    "webpack-dev-server": "^3.9.0"
   },
-  "dependencies": {
-    "@github/markdown-toolbar-element": "^1.2.0",
-    "@github/text-expander-element": "^1.0.2",
-    "@webcomponents/custom-elements": "^1.4.1",
-    "bem-react-helper": "^1.1.2",
-    "classnames": "^2.2.6",
-    "core-js": "^3.6.5",
-    "es6-promise": "^4.2.8",
-    "focus-visible": "^5.1.0",
-    "intersection-observer": "^0.7.0",
-    "lodash-es": "^4.17.15",
-    "node-emoji": "^1.10.0",
-    "preact": "^10.4.0",
-    "react-intl": "^3.12.0",
-    "react-redux": "^7.1.1",
-    "redux": "^4.0.5",
-    "redux-thunk": "^2.3.0"
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged",
+      "post-commit": "git update-index --again",
+      "pre-push": "run-s check test"
+    }
   },
-  "engines": {
-    "node": ">=12.11",
-    "npm": ">=6.13.4"
+  "lint-staged": {
+    "./**/*.{ts,tsx,js,jsx}": [
+      "eslint --fix --max-warnings=0",
+      "prettier --write",
+      "git add"
+    ],
+    "./**/*.{scss,pcss,css}": [
+      "prettier --write",
+      "stylelint",
+      "git add"
+    ],
+    "./iframe.html": [
+      "prettier --write",
+      "stylelint",
+      "git add"
+    ]
   }
 }
