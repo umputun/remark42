@@ -1,10 +1,13 @@
 # cloud.google.com/go v0.40.0
 cloud.google.com/go/compute/metadata
 # github.com/Depado/bfchroma v1.2.0
+## explicit
 github.com/Depado/bfchroma
 # github.com/PuerkitoBio/goquery v1.5.1
+## explicit
 github.com/PuerkitoBio/goquery
 # github.com/alecthomas/chroma v0.7.2
+## explicit
 github.com/alecthomas/chroma
 github.com/alecthomas/chroma/formatters/html
 github.com/alecthomas/chroma/lexers
@@ -45,25 +48,32 @@ github.com/davecgh/go-spew/spew
 github.com/dghubble/oauth1
 github.com/dghubble/oauth1/twitter
 # github.com/dgrijalva/jwt-go v3.2.0+incompatible
+## explicit
 github.com/dgrijalva/jwt-go
 # github.com/didip/tollbooth v4.0.2+incompatible
+## explicit
 github.com/didip/tollbooth
 github.com/didip/tollbooth/errors
 github.com/didip/tollbooth/libstring
 github.com/didip/tollbooth/limiter
 # github.com/didip/tollbooth_chi v0.0.0-20170928041846-6ab5f3083f3d
+## explicit
 github.com/didip/tollbooth_chi
 # github.com/dlclark/regexp2 v1.1.6
 github.com/dlclark/regexp2
 github.com/dlclark/regexp2/syntax
 # github.com/go-chi/chi v4.1.0+incompatible
+## explicit
 github.com/go-chi/chi
 github.com/go-chi/chi/middleware
 # github.com/go-chi/cors v1.1.1
+## explicit
 github.com/go-chi/cors
 # github.com/go-chi/render v1.0.1
+## explicit
 github.com/go-chi/render
 # github.com/go-pkgz/auth v0.10.1
+## explicit
 github.com/go-pkgz/auth
 github.com/go-pkgz/auth/avatar
 github.com/go-pkgz/auth/logger
@@ -72,18 +82,24 @@ github.com/go-pkgz/auth/provider
 github.com/go-pkgz/auth/provider/sender
 github.com/go-pkgz/auth/token
 # github.com/go-pkgz/jrpc v0.1.0
+## explicit
 github.com/go-pkgz/jrpc
 # github.com/go-pkgz/lcw v0.5.0
+## explicit
 github.com/go-pkgz/lcw
 # github.com/go-pkgz/lgr v0.7.0
+## explicit
 github.com/go-pkgz/lgr
 # github.com/go-pkgz/repeater v1.1.3
+## explicit
 github.com/go-pkgz/repeater
 github.com/go-pkgz/repeater/strategy
 # github.com/go-pkgz/rest v1.5.0
+## explicit
 github.com/go-pkgz/rest
 github.com/go-pkgz/rest/logger
 # github.com/go-pkgz/syncs v1.1.1
+## explicit
 github.com/go-pkgz/syncs
 # github.com/go-redis/redis/v7 v7.0.0-beta.4
 github.com/go-redis/redis/v7
@@ -100,49 +116,62 @@ github.com/golang/protobuf/proto
 # github.com/golang/snappy v0.0.1
 github.com/golang/snappy
 # github.com/google/uuid v1.1.1
+## explicit
 github.com/google/uuid
 # github.com/gorilla/feeds v1.1.1
+## explicit
 github.com/gorilla/feeds
 # github.com/hashicorp/errwrap v1.0.0
 github.com/hashicorp/errwrap
 # github.com/hashicorp/go-multierror v1.1.0
+## explicit
 github.com/hashicorp/go-multierror
 # github.com/hashicorp/golang-lru v0.5.3
 github.com/hashicorp/golang-lru
 github.com/hashicorp/golang-lru/simplelru
 # github.com/kyokomi/emoji v2.2.1+incompatible
+## explicit
 github.com/kyokomi/emoji
 # github.com/microcosm-cc/bluemonday v1.0.2
+## explicit
 github.com/microcosm-cc/bluemonday
 # github.com/nullrocks/identicon v0.0.0-20180626043057-7875f45b0022
 github.com/nullrocks/identicon
 # github.com/patrickmn/go-cache v2.1.0+incompatible
+## explicit
 github.com/patrickmn/go-cache
 # github.com/pkg/errors v0.9.1
+## explicit
 github.com/pkg/errors
 # github.com/pmezard/go-difflib v1.0.0
 github.com/pmezard/go-difflib/difflib
 # github.com/rakyll/statik v0.1.7
+## explicit
 github.com/rakyll/statik/fs
 # github.com/rs/xid v1.2.1
+## explicit
 github.com/rs/xid
 # github.com/russross/blackfriday/v2 v2.0.1
+## explicit
 github.com/russross/blackfriday/v2
 # github.com/shurcooL/sanitized_anchor_name v1.0.0
 github.com/shurcooL/sanitized_anchor_name
 # github.com/stretchr/objx v0.1.0
 github.com/stretchr/objx
 # github.com/stretchr/testify v1.5.1
+## explicit
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/mock
 github.com/stretchr/testify/require
 # github.com/umputun/go-flags v1.5.1
+## explicit
 github.com/umputun/go-flags
 # github.com/xdg/scram v0.0.0-20180814205039-7eeb5667e42c
 github.com/xdg/scram
 # github.com/xdg/stringprep v1.0.0
 github.com/xdg/stringprep
 # go.etcd.io/bbolt v1.3.4
+## explicit
 go.etcd.io/bbolt
 # go.mongodb.org/mongo-driver v1.1.1
 go.mongodb.org/mongo-driver/bson
@@ -175,13 +204,16 @@ go.mongodb.org/mongo-driver/x/mongo/driver/topology
 go.mongodb.org/mongo-driver/x/mongo/driver/uuid
 go.mongodb.org/mongo-driver/x/mongo/driver/wiremessage
 # golang.org/x/crypto v0.0.0-20200406173513-056763e48d71
+## explicit
 golang.org/x/crypto/acme
 golang.org/x/crypto/acme/autocert
 golang.org/x/crypto/pbkdf2
 # golang.org/x/image v0.0.0-20200119044424-58c23975cae1
+## explicit
 golang.org/x/image/draw
 golang.org/x/image/math/f64
 # golang.org/x/net v0.0.0-20200202094626-16171245cfb2
+## explicit
 golang.org/x/net/context
 golang.org/x/net/context/ctxhttp
 golang.org/x/net/html
