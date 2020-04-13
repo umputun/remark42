@@ -63,7 +63,7 @@ func prepTestStore(t *testing.T) (s *RPC, port int, teardown func()) {
 
 	port = chooseRandomUnusedPort()
 	go func() {
-		t.Logf("%v", s.Run(port))
+		_ = s.Run(port)
 	}()
 
 	waitForHTTPServerStart(port)
