@@ -467,7 +467,7 @@ func (s *emailClient) Create(params SmtpParams) (smtpClient, error) {
 		return nil, errors.Wrapf(err, "timeout connecting to %s", srvAddress)
 	}
 
-	c, err = smtp.NewClient(conn, srvAddress)
+	c, err = smtp.NewClient(conn, params.Host)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to dial")
 	}
