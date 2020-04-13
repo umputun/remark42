@@ -97,7 +97,7 @@ _this is the recommended way to run remark42_
 * download archive for [stable release](https://github.com/umputun/remark/releases) or [development version](https://remark42.com/downloads)
 * unpack with `gunzip` (Linux, macOS) or with `zip` (Windows)
 * run as `remark42.{os}-{arch} server {parameters...}`, i.e. `remark42.linux-amd64 server --secret=12345 --url=http://127.0.0.1:8080`
-* alternatively compile from the sources - `make OS=[linux|darwin|windows] ARCH=[amd64,386,arm64,arm32]`
+* alternatively compile from the sources - `make OS=[linux|darwin|windows] ARCH=[amd64,386,arm64,arm]`
 
 #### Parameters
 
