@@ -119,12 +119,13 @@ func TestService_Submit(t *testing.T) {
 	store.AssertNumberOfCalls(t, "Commit", 0)
 	time.Sleep(time.Millisecond * 150)
 	store.AssertNumberOfCalls(t, "Commit", 5)
+	svc.Close(context.TODO())
 }
 
 func TestService_Close(t *testing.T) {
 	store := MockStore{}
 	store.On("Commit", mock.Anything, mock.Anything).Times(5).Return(nil)
-	svc := Service{store: &store, ServiceParams: ServiceParams{ImageAPI: "/blah/", TTL: time.Millisecond * 500}}
+	svc := Service{store: &store, ServiceParams: ServiceParams{ImageAPI: "/blah/", TTL: time.Hour * 24}}
 	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
 	svc.Submit(func() []string { return []string{"id4", "id5"} })
 	svc.Submit(nil)
