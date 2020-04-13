@@ -40,7 +40,7 @@ ENV HUSKY_SKIP_INSTALL=true
 RUN apk add --no-cache --update git
 ADD frontend/package.json /srv/frontend/package.json
 ADD frontend/package-lock.json /srv/frontend/package-lock.json
-RUN cd /srv/frontend && CI=true npm ci
+RUN cd /srv/frontend && CI=true npm ci --loglevel warn
 
 FROM node:10.11-alpine as build-frontend
 
