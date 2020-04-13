@@ -7,7 +7,7 @@
     "start": "webpack-dev-server --mode development",
     "dev": "cross-env REMARK_URL=http://127.0.0.1:8080 npm start",
     "test": "jest",
-    "check": "NODE_ENV=production npm run build && run-p check:*",
+    "check": "cross-env NODE_ENV=production npm run build && run-p check:*",
     "check:types": "tsc -p tsconfig.typecheck.json --noEmit --skipLibCheck",
     "check:translation": "run-s translation:extract translation:check",
     "check:size": "size-limit",
