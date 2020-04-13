@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/go-pkgz/jrpc"
-	log "github.com/go-pkgz/lgr"
 	"github.com/stretchr/testify/require"
 
 	"github.com/umputun/remark/memory_store/accessor"
@@ -64,7 +63,7 @@ func prepTestStore(t *testing.T) (s *RPC, port int, teardown func()) {
 
 	port = chooseRandomUnusedPort()
 	go func() {
-		log.Printf("%v", s.Run(port))
+		t.Logf("%v", s.Run(port))
 	}()
 
 	waitForHTTPServerStart(port)

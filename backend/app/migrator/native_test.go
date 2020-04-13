@@ -10,10 +10,9 @@ import (
 	"testing"
 	"time"
 
-	bolt "go.etcd.io/bbolt"
-	log "github.com/go-pkgz/lgr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	bolt "go.etcd.io/bbolt"
 
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/admin"
@@ -35,7 +34,7 @@ func TestNative_Export(t *testing.T) {
 	assert.Equal(t, 2, size)
 
 	c1 := buf.String()
-	log.Print(c1)
+	t.Log(c1)
 
 	dec := json.NewDecoder(strings.NewReader(c1))
 

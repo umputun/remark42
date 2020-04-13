@@ -3,9 +3,9 @@ package cmd
 import (
 	"path"
 
-	bolt "go.etcd.io/bbolt"
 	log "github.com/go-pkgz/lgr"
 	"github.com/pkg/errors"
+	bolt "go.etcd.io/bbolt"
 
 	"github.com/go-pkgz/auth/avatar"
 )

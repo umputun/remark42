@@ -14,13 +14,13 @@ import (
 	"syscall"
 	"time"
 
-	bolt "go.etcd.io/bbolt"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-pkgz/jrpc"
 	log "github.com/go-pkgz/lgr"
 	"github.com/kyokomi/emoji"
 	authcache "github.com/patrickmn/go-cache"
 	"github.com/pkg/errors"
+	bolt "go.etcd.io/bbolt"
 
 	"github.com/go-pkgz/auth"
 	"github.com/go-pkgz/auth/avatar"

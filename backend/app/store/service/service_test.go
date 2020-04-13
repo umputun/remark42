@@ -15,12 +15,12 @@ import (
 	"testing"
 	"time"
 
-	bolt "go.etcd.io/bbolt"
 	"github.com/go-pkgz/lgr"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	bolt "go.etcd.io/bbolt"
 
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/admin"

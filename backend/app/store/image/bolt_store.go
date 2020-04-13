@@ -7,9 +7,9 @@ import (
 	"path"
 	"time"
 
-	bolt "go.etcd.io/bbolt"
 	log "github.com/go-pkgz/lgr"
 	"github.com/pkg/errors"
+	bolt "go.etcd.io/bbolt"
 )
 
 const imagesStagedBktName = "imagesStaged"

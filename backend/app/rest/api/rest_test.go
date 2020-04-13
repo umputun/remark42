@@ -17,15 +17,14 @@ import (
 	"testing"
 	"time"
 
-	bolt "go.etcd.io/bbolt"
 	"github.com/go-pkgz/auth"
 	"github.com/go-pkgz/auth/avatar"
 	"github.com/go-pkgz/auth/token"
 	cache "github.com/go-pkgz/lcw"
-	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	bolt "go.etcd.io/bbolt"
 
 	"github.com/umputun/remark/backend/app/migrator"
 	"github.com/umputun/remark/backend/app/notify"
@@ -327,8 +326,6 @@ func TestRest_cacheControl(t *testing.T) {
 }
 
 func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
-	log.Setup(log.CallerFile, log.CallerFunc, log.Msec, log.LevelBraces)
-
 	tmp := os.TempDir()
 	var testDb string
 	// pick a file name which is not in use for sure

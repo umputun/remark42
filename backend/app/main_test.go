@@ -13,7 +13,6 @@ import (
 	"testing"
 	"time"
 
-	log "github.com/go-pkgz/lgr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -62,7 +61,7 @@ func TestGetDump(t *testing.T) {
 	assert.True(t, strings.Contains(dump, "goroutine"))
 	assert.True(t, strings.Contains(dump, "[running]"))
 	assert.True(t, strings.Contains(dump, "backend/app/main.go"))
-	log.Printf("\n dump: %s", dump)
+	t.Logf("\n dump: %s", dump)
 }
 
 func chooseRandomUnusedPort() (port int) {
