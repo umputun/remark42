@@ -59,7 +59,7 @@ RUN \
     export GOFLAGS="-mod=vendor" && \
     GOOS=linux GOARCH=amd64 go build -o remark42.linux-amd64 -ldflags "-X main.revision=${version} -s -w" ./app && \
     GOOS=linux GOARCH=386 go build -o remark42.linux-386 -ldflags "-X main.revision=${version} -s -w" ./app && \
-    GOOS=linux GOARCH=arm go build -o remark42.linux-arm32 -ldflags "-X main.revision=${version} -s -w" ./app && \
+    GOOS=linux GOARCH=arm go build -o remark42.linux-arm -ldflags "-X main.revision=${version} -s -w" ./app && \
     GOOS=linux GOARCH=arm64 go build -o remark42.linux-arm64 -ldflags "-X main.revision=${version} -s -w" ./app && \
     GOOS=windows GOARCH=amd64 go build -o remark42.windows-amd64.exe -ldflags "-X main.revision=${version} -s -w" ./app && \
     GOOS=darwin GOARCH=amd64 go build -o remark42.darwin-amd64 -ldflags "-X main.revision=${version} -s -w" ./app && \
@@ -73,7 +73,7 @@ RUN \
     cp ../LICENSE ./LICENSE && cp ../README.md ./README.md && \
     tar cvzf remark42${tag}.linux-amd64.tar.gz remark42.linux-amd64 LICENSE README.md && \
     tar cvzf remark42${tag}.linux-386.tar.gz remark42.linux-386 LICENSE README.md && \
-    tar cvzf remark42${tag}.linux-arm32.tar.gz remark42.linux-arm32 LICENSE README.md && \
+    tar cvzf remark42${tag}.linux-arm.tar.gz remark42.linux-arm LICENSE README.md && \
     tar cvzf remark42${tag}.linux-arm64.tar.gz remark42.linux-arm64 LICENSE README.md && \
     tar cvzf remark42${tag}.darwin-amd64.tar.gz remark42.darwin-amd64 LICENSE README.md && \
     tar cvzf remark42${tag}.freebsd-amd64.tar.gz remark42.freebsd-amd64 LICENSE README.md && \
