@@ -499,7 +499,7 @@ func (s *Server) heartbeat(conn *connection) (description.Server, *connection) {
 
 			conn.connect(ctx)
 
-			err := conn.wait()
+			err := conn.connectWait()
 			if err == nil {
 				descPtr = &conn.desc
 			}

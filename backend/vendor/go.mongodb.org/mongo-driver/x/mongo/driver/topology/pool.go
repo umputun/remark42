@@ -116,11 +116,7 @@ func connectionCloseFunc(v interface{}) {
 		return
 	}
 
-	go func() {
-		// wait for connection to finish trying to connect
-		_ = c.wait()
-		_ = c.pool.closeConnection(c)
-	}()
+	go func() { _ = c.pool.closeConnection(c) }()
 }
 
 // connectionInitFunc returns an init function for the resource pool that will make new connections for this pool
@@ -333,7 +329,7 @@ func (p *pool) get(ctx context.Context) (*connection, error) {
 			c.connect(ctx)
 		}
 
-		err := c.wait()
+		err := c.connectWait()
 		if err != nil {
 			if p.monitor != nil {
 				p.monitor.Event(&event.PoolEvent{
@@ -381,7 +377,7 @@ func (p *pool) get(ctx context.Context) (*connection, error) {
 
 		c.connect(ctx)
 		// wait for conn to be connected
-		err = c.wait()
+		err = c.connectWait()
 		if err != nil {
 			if p.monitor != nil {
 				p.monitor.Event(&event.PoolEvent{
@@ -417,14 +413,10 @@ func (p *pool) closeConnection(c *connection) error {
 	if !atomic.CompareAndSwapInt32(&c.connected, connected, disconnected) {
 		return nil // We're closing an already closed connection
 	}
-
-	if c.nc != nil {
-		err := c.nc.Close()
-		if err != nil {
-			return ConnectionError{ConnectionID: c.id, Wrapped: err, message: "failed to close net.Conn"}
-		}
+	err := c.nc.Close()
+	if err != nil {
+		return ConnectionError{ConnectionID: c.id, Wrapped: err, message: "failed to closeConnection net.Conn"}
 	}
-
 	return nil
 }
 

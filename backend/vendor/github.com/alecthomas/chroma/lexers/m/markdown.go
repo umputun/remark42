@@ -2,11 +2,12 @@ package m
 
 import (
 	. "github.com/alecthomas/chroma" // nolint
+	"github.com/alecthomas/chroma/lexers/h"
 	"github.com/alecthomas/chroma/lexers/internal"
 )
 
 // Markdown lexer.
-var Markdown = internal.Register(MustNewLexer(
+var Markdown = internal.Register(DelegatingLexer(h.HTML, MustNewLexer(
 	&Config{
 		Name:      "markdown",
 		Aliases:   []string{"md", "mkd"},
@@ -15,8 +16,8 @@ var Markdown = internal.Register(MustNewLexer(
 	},
 	Rules{
 		"root": {
-			{`^(#)([^#].+\n)`, ByGroups(GenericHeading, Text), nil},
-			{`^(#{2,6})(.+\n)`, ByGroups(GenericSubheading, Text), nil},
+			{`^(#[^#].+\n)`, ByGroups(GenericHeading), nil},
+			{`^(#{2,6}.+\n)`, ByGroups(GenericSubheading), nil},
 			{`^(\s*)([*-] )(\[[ xX]\])( .+\n)`, ByGroups(Text, Keyword, Keyword, UsingSelf("inline")), nil},
 			{`^(\s*)([*-])(\s)(.+\n)`, ByGroups(Text, Keyword, Text, UsingSelf("inline")), nil},
 			{`^(\s*)([0-9]+\.)( .+\n)`, ByGroups(Text, Keyword, UsingSelf("inline")), nil},
@@ -35,13 +36,13 @@ var Markdown = internal.Register(MustNewLexer(
 		"inline": {
 			{`\\.`, Text, nil},
 			{`(\s)([*_][^*_]+[*_])(\W|\n)`, ByGroups(Text, GenericEmph, Text), nil},
-			{`(\s)((\*\*|__).*\3)((?=\W|\n))`, ByGroups(Text, GenericStrong, None, Text), nil},
+			{`(\s)((\*\*|__).*?)\3((?=\W|\n))`, ByGroups(Text, GenericStrong, GenericStrong, Text), nil},
 			{`(\s)(~~[^~]+~~)((?=\W|\n))`, ByGroups(Text, GenericDeleted, Text), nil},
 			{"`[^`]+`", LiteralStringBacktick, nil},
 			{`[@#][\w/:]+`, NameEntity, nil},
 			{`(!?\[)([^]]+)(\])(\()([^)]+)(\))`, ByGroups(Text, NameTag, Text, Text, NameAttribute, Text), nil},
-			{`[^\\\s]+`, Text, nil},
-			{`.`, Text, nil},
+			{`[^\\\s]+`, Other, nil},
+			{`.|\n`, Other, nil},
 		},
 	},
-))
+)))

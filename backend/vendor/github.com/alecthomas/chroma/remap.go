@@ -2,11 +2,11 @@ package chroma
 
 type remappingLexer struct {
 	lexer  Lexer
-	mapper func(*Token) []*Token
+	mapper func(Token) []Token
 }
 
 // RemappingLexer remaps a token to a set of, potentially empty, tokens.
-func RemappingLexer(lexer Lexer, mapper func(*Token) []*Token) Lexer {
+func RemappingLexer(lexer Lexer, mapper func(Token) []Token) Lexer {
 	return &remappingLexer{lexer, mapper}
 }
 
@@ -19,8 +19,8 @@ func (r *remappingLexer) Tokenise(options *TokeniseOptions, text string) (Iterat
 	if err != nil {
 		return nil, err
 	}
-	buffer := []*Token{}
-	return func() *Token {
+	var buffer []Token
+	return func() Token {
 		for {
 			if len(buffer) > 0 {
 				t := buffer[0]
@@ -28,7 +28,7 @@ func (r *remappingLexer) Tokenise(options *TokeniseOptions, text string) (Iterat
 				return t
 			}
 			t := it()
-			if t == nil {
+			if t == EOF {
 				return t
 			}
 			buffer = r.mapper(t)
@@ -36,6 +36,7 @@ func (r *remappingLexer) Tokenise(options *TokeniseOptions, text string) (Iterat
 	}, nil
 }
 
+// TypeMapping defines type maps for the TypeRemappingLexer.
 type TypeMapping []struct {
 	From, To TokenType
 	Words    []string
@@ -65,9 +66,8 @@ func TypeRemappingLexer(lexer Lexer, mapping TypeMapping) Lexer {
 				km[k] = rt.To
 			}
 		}
-
 	}
-	return RemappingLexer(lexer, func(t *Token) []*Token {
+	return RemappingLexer(lexer, func(t Token) []Token {
 		if k, ok := lut[t.Type]; ok {
 			if tt, ok := k[t.Value]; ok {
 				t.Type = tt
@@ -75,6 +75,6 @@ func TypeRemappingLexer(lexer Lexer, mapping TypeMapping) Lexer {
 				t.Type = tt
 			}
 		}
-		return []*Token{t}
+		return []Token{t}
 	})
 }

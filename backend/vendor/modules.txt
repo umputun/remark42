@@ -1,15 +1,12 @@
-# cloud.google.com/go v0.47.0
-## explicit
+# cloud.google.com/go v0.40.0
 cloud.google.com/go/compute/metadata
 # github.com/Depado/bfchroma v1.2.0
 ## explicit
 github.com/Depado/bfchroma
-# github.com/PuerkitoBio/goquery v1.5.0
+# github.com/PuerkitoBio/goquery v1.5.1
 ## explicit
 github.com/PuerkitoBio/goquery
-# github.com/ajg/form v1.5.1
-## explicit
-# github.com/alecthomas/chroma v0.6.0
+# github.com/alecthomas/chroma v0.7.2
 ## explicit
 github.com/alecthomas/chroma
 github.com/alecthomas/chroma/formatters/html
@@ -42,7 +39,6 @@ github.com/alecthomas/chroma/lexers/x
 github.com/alecthomas/chroma/lexers/y
 github.com/alecthomas/chroma/styles
 # github.com/andybalholm/cascadia v1.1.0
-## explicit
 github.com/andybalholm/cascadia
 # github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964
 github.com/danwakefield/fnmatch
@@ -66,10 +62,6 @@ github.com/didip/tollbooth_chi
 # github.com/dlclark/regexp2 v1.1.6
 github.com/dlclark/regexp2
 github.com/dlclark/regexp2/syntax
-# github.com/fasthttp-contrib/websocket v0.0.0-20160511215533-1f3b11f56072
-## explicit
-# github.com/gavv/httpexpect v2.0.0+incompatible
-## explicit
 # github.com/go-chi/chi v4.1.0+incompatible
 ## explicit
 github.com/go-chi/chi
@@ -126,16 +118,12 @@ github.com/golang/snappy
 # github.com/google/uuid v1.1.1
 ## explicit
 github.com/google/uuid
-# github.com/gopherjs/gopherjs v0.0.0-20190812055157-5d271430af9f
-## explicit
 # github.com/gorilla/feeds v1.1.1
 ## explicit
 github.com/gorilla/feeds
-# github.com/gorilla/websocket v1.4.0
-## explicit
 # github.com/hashicorp/errwrap v1.0.0
 github.com/hashicorp/errwrap
-# github.com/hashicorp/go-multierror v1.0.0
+# github.com/hashicorp/go-multierror v1.1.0
 ## explicit
 github.com/hashicorp/go-multierror
 # github.com/hashicorp/golang-lru v0.5.3
@@ -144,26 +132,14 @@ github.com/hashicorp/golang-lru/simplelru
 # github.com/jessevdk/go-flags v0.0.0-20180331124232-1c38ed7ad0cc
 ## explicit
 github.com/jessevdk/go-flags
-# github.com/klauspost/compress v1.7.6
-## explicit
-# github.com/klauspost/cpuid v1.2.1
-## explicit
-# github.com/kyokomi/emoji v2.1.0+incompatible
+# github.com/kyokomi/emoji v2.2.1+incompatible
 ## explicit
 github.com/kyokomi/emoji
-# github.com/mattn/go-colorable v0.1.2
-## explicit
-# github.com/mattn/go-isatty v0.0.9
-## explicit
 # github.com/microcosm-cc/bluemonday v1.0.2
 ## explicit
 github.com/microcosm-cc/bluemonday
 # github.com/nullrocks/identicon v0.0.0-20180626043057-7875f45b0022
 github.com/nullrocks/identicon
-# github.com/onsi/ginkgo v1.9.0
-## explicit
-# github.com/onsi/gomega v1.6.0
-## explicit
 # github.com/patrickmn/go-cache v2.1.0+incompatible
 ## explicit
 github.com/patrickmn/go-cache
@@ -172,7 +148,7 @@ github.com/patrickmn/go-cache
 github.com/pkg/errors
 # github.com/pmezard/go-difflib v1.0.0
 github.com/pmezard/go-difflib/difflib
-# github.com/rakyll/statik v0.1.6
+# github.com/rakyll/statik v0.1.7
 ## explicit
 github.com/rakyll/statik/fs
 # github.com/rs/xid v1.2.1
@@ -183,35 +159,21 @@ github.com/rs/xid
 github.com/russross/blackfriday/v2
 # github.com/shurcooL/sanitized_anchor_name v1.0.0
 github.com/shurcooL/sanitized_anchor_name
-# github.com/smartystreets/assertions v1.0.1
-## explicit
-# github.com/stretchr/objx v0.2.0
-## explicit
+# github.com/stretchr/objx v0.1.0
 github.com/stretchr/objx
-# github.com/stretchr/testify v1.4.0
+# github.com/stretchr/testify v1.5.1
 ## explicit
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/mock
 github.com/stretchr/testify/require
-# github.com/tidwall/buntdb v1.1.0
-## explicit
-# github.com/tidwall/gjson v1.3.2
-## explicit
-# github.com/valyala/fasthttp v1.4.0
-## explicit
 # github.com/xdg/scram v0.0.0-20180814205039-7eeb5667e42c
 github.com/xdg/scram
 # github.com/xdg/stringprep v1.0.0
 github.com/xdg/stringprep
-# github.com/xeipuuv/gojsonpointer v0.0.0-20190809123943-df4f5c81cb3b
-## explicit
-# github.com/xeipuuv/gojsonschema v1.1.0
-## explicit
 # go.etcd.io/bbolt v1.3.4
 ## explicit
 go.etcd.io/bbolt
-# go.mongodb.org/mongo-driver v1.1.2
-## explicit
+# go.mongodb.org/mongo-driver v1.1.1
 go.mongodb.org/mongo-driver/bson
 go.mongodb.org/mongo-driver/bson/bsoncodec
 go.mongodb.org/mongo-driver/bson/bsonrw
@@ -241,16 +203,16 @@ go.mongodb.org/mongo-driver/x/mongo/driver/session
 go.mongodb.org/mongo-driver/x/mongo/driver/topology
 go.mongodb.org/mongo-driver/x/mongo/driver/uuid
 go.mongodb.org/mongo-driver/x/mongo/driver/wiremessage
-# golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550
+# golang.org/x/crypto v0.0.0-20200406173513-056763e48d71
 ## explicit
 golang.org/x/crypto/acme
 golang.org/x/crypto/acme/autocert
 golang.org/x/crypto/pbkdf2
-# golang.org/x/image v0.0.0-20191009234506-e7c1f5e7dbb8
+# golang.org/x/image v0.0.0-20200119044424-58c23975cae1
 ## explicit
 golang.org/x/image/draw
 golang.org/x/image/math/f64
-# golang.org/x/net v0.0.0-20191027093000-83d349e8ac1a
+# golang.org/x/net v0.0.0-20200202094626-16171245cfb2
 ## explicit
 golang.org/x/net/context
 golang.org/x/net/context/ctxhttp
@@ -266,8 +228,7 @@ golang.org/x/oauth2/internal
 golang.org/x/oauth2/jws
 golang.org/x/oauth2/jwt
 golang.org/x/oauth2/yandex
-# golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
-## explicit
+# golang.org/x/sync v0.0.0-20190423024810-112230192c58
 golang.org/x/sync/semaphore
 # golang.org/x/sys v0.0.0-20200202164722-d101bd2416d5
 golang.org/x/sys/unix
@@ -276,11 +237,9 @@ golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
 golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
-# golang.org/x/time v0.0.0-20191024005414-555d28b269f0
-## explicit
+# golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
 golang.org/x/time/rate
-# google.golang.org/appengine v1.6.5
-## explicit
+# google.golang.org/appengine v1.6.1
 google.golang.org/appengine
 google.golang.org/appengine/internal
 google.golang.org/appengine/internal/app_identity
@@ -291,11 +250,9 @@ google.golang.org/appengine/internal/modules
 google.golang.org/appengine/internal/remote_api
 google.golang.org/appengine/internal/urlfetch
 google.golang.org/appengine/urlfetch
-# gopkg.in/oauth2.v3 v3.11.0
-## explicit
+# gopkg.in/oauth2.v3 v3.10.1
 gopkg.in/oauth2.v3
 gopkg.in/oauth2.v3/errors
 gopkg.in/oauth2.v3/server
-# gopkg.in/yaml.v2 v2.2.4
-## explicit
+# gopkg.in/yaml.v2 v2.2.2
 gopkg.in/yaml.v2

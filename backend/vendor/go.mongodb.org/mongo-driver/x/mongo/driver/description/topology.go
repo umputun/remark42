@@ -7,6 +7,9 @@
 package description
 
 import (
+	"sort"
+	"strings"
+
 	"go.mongodb.org/mongo-driver/x/mongo/driver/address"
 )
 
@@ -38,24 +41,39 @@ type TopologyDiff struct {
 func DiffTopology(old, new Topology) TopologyDiff {
 	var diff TopologyDiff
 
-	oldServers := make(map[string]bool)
-	for _, s := range old.Servers {
-		oldServers[s.Addr.String()] = true
-	}
+	// TODO: do this without sorting...
+	oldServers := serverSorter(old.Servers)
+	newServers := serverSorter(new.Servers)
 
-	for _, s := range new.Servers {
-		addr := s.Addr.String()
-		if oldServers[addr] {
-			delete(oldServers, addr)
+	sort.Sort(oldServers)
+	sort.Sort(newServers)
+
+	i := 0
+	j := 0
+	for {
+		if i < len(oldServers) && j < len(newServers) {
+			comp := strings.Compare(oldServers[i].Addr.String(), newServers[j].Addr.String())
+			switch comp {
+			case 1:
+				//left is bigger than
+				diff.Added = append(diff.Added, newServers[j])
+				j++
+			case -1:
+				// right is bigger
+				diff.Removed = append(diff.Removed, oldServers[i])
+				i++
+			case 0:
+				i++
+				j++
+			}
+		} else if i < len(oldServers) {
+			diff.Removed = append(diff.Removed, oldServers[i])
+			i++
+		} else if j < len(newServers) {
+			diff.Added = append(diff.Added, newServers[j])
+			j++
 		} else {
-			diff.Added = append(diff.Added, s)
-		}
-	}
-
-	for _, s := range old.Servers {
-		addr := s.Addr.String()
-		if oldServers[addr] {
-			diff.Removed = append(diff.Removed, s)
+			break
 		}
 	}
 
@@ -72,22 +90,47 @@ type HostlistDiff struct {
 func (t Topology) DiffHostlist(hostlist []string) HostlistDiff {
 	var diff HostlistDiff
 
-	oldServers := make(map[string]bool)
-	for _, s := range t.Servers {
-		oldServers[s.Addr.String()] = true
-	}
+	oldServers := serverSorter(t.Servers)
+	sort.Sort(oldServers)
+	sort.Strings(hostlist)
 
-	for _, addr := range hostlist {
-		if oldServers[addr] {
-			delete(oldServers, addr)
+	i := 0
+	j := 0
+	for {
+		if i < len(oldServers) && j < len(hostlist) {
+			oldServer := oldServers[i].Addr.String()
+			comp := strings.Compare(oldServer, hostlist[j])
+			switch comp {
+			case 1:
+				// oldServers[i] is bigger
+				diff.Added = append(diff.Added, hostlist[j])
+				j++
+			case -1:
+				// hostlist[j] is bigger
+				diff.Removed = append(diff.Removed, oldServer)
+				i++
+			case 0:
+				i++
+				j++
+			}
+		} else if i < len(oldServers) {
+			diff.Removed = append(diff.Removed, oldServers[i].Addr.String())
+			i++
+		} else if j < len(hostlist) {
+			diff.Added = append(diff.Added, hostlist[j])
+			j++
 		} else {
-			diff.Added = append(diff.Added, addr)
+			break
 		}
 	}
 
-	for addr := range oldServers {
-		diff.Removed = append(diff.Removed, addr)
-	}
-
 	return diff
+}
+
+type serverSorter []Server
+
+func (ss serverSorter) Len() int      { return len(ss) }
+func (ss serverSorter) Swap(i, j int) { ss[i], ss[j] = ss[j], ss[i] }
+func (ss serverSorter) Less(i, j int) bool {
+	return strings.Compare(ss[i].Addr.String(), ss[j].Addr.String()) < 0
 }

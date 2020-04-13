@@ -58,18 +58,13 @@ func newDatabase(client *Client, name string, opts ...*options.DatabaseOptions) 
 		wc = dbOpt.WriteConcern
 	}
 
-	reg := client.registry
-	if dbOpt.Registry != nil {
-		reg = dbOpt.Registry
-	}
-
 	db := &Database{
 		client:         client,
 		name:           name,
 		readPreference: rp,
 		readConcern:    rc,
 		writeConcern:   wc,
-		registry:       reg,
+		registry:       client.registry,
 	}
 
 	db.readSelector = description.CompositeSelector([]description.ServerSelector{
@@ -278,11 +273,7 @@ func (db *Database) ListCollections(ctx context.Context, filter interface{}, opt
 		return nil, err
 	}
 
-	selector := description.CompositeSelector([]description.ServerSelector{
-		description.ReadPrefSelector(readpref.Primary()),
-		description.LatencySelector(db.client.localThreshold),
-	})
-	selector = makeReadPrefSelector(sess, selector, db.client.localThreshold)
+	selector := makePinnedSelector(sess, db.readSelector)
 
 	lco := options.MergeListCollectionsOptions(opts...)
 	op := operation.NewListCollections(filterDoc).
@@ -322,8 +313,6 @@ func (db *Database) ListCollectionNames(ctx context.Context, filter interface{},
 		return nil, err
 	}
 
-	defer res.Close(ctx)
-
 	names := make([]string, 0)
 	for res.Next(ctx) {
 		next := &bsonx.Doc{}
@@ -345,7 +334,6 @@ func (db *Database) ListCollectionNames(ctx context.Context, filter interface{},
 		names = append(names, elemName)
 	}
 
-	res.Close(ctx)
 	return names, nil
 }
 

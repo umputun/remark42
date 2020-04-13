@@ -30,7 +30,7 @@ var Kotlin = internal.Register(MustNewLexer(
 			{`"""[^"]*"""`, LiteralString, nil},
 			{`"(\\\\|\\"|[^"\n])*["\n]`, LiteralString, nil},
 			{`'\\.'|'[^\\]'`, LiteralStringChar, nil},
-			{`[0-9](\.[0-9]*)?([eE][+-][0-9]+)?[flFL]?|0[xX][0-9a-fA-F]+[Ll]?`, LiteralNumber, nil},
+			{`0[xX][0-9a-fA-F]+[Uu]?[Ll]?|[0-9]+(\.[0-9]*)?([eE][+-][0-9]+)?[fF]?[Uu]?[Ll]?`, LiteralNumber, nil},
 			{`(companion)(\s+)(object)`, ByGroups(Keyword, Text, Keyword), nil},
 			{`(class|interface|object)(\s+)`, ByGroups(Keyword, Text), Push("class")},
 			{`(package|import)(\s+)`, ByGroups(Keyword, Text), Push("package")},
