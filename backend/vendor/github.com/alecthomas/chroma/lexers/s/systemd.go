@@ -7,12 +7,12 @@ import (
 
 var SYSTEMD = internal.Register(MustNewLexer(
 	&Config{
-		Name: "SYSTEMD",
+		Name:      "SYSTEMD",
 		Aliases:   []string{"systemd"},
 		Filenames: []string{"*.service"},
 		MimeTypes: []string{"text/plain"},
 	},
-	Rules {
+	Rules{
 		"root": {
 			{`\s+`, Text, nil},
 			{`[;#].*`, Comment, nil},
@@ -26,4 +26,3 @@ var SYSTEMD = internal.Register(MustNewLexer(
 		},
 	},
 ))
-

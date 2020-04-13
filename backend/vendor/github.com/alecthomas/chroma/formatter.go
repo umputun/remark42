@@ -17,7 +17,7 @@ type Formatter interface {
 // Guards against iterator panics.
 type FormatterFunc func(w io.Writer, style *Style, iterator Iterator) error
 
-func (f FormatterFunc) Format(w io.Writer, s *Style, it Iterator) (err error) {
+func (f FormatterFunc) Format(w io.Writer, s *Style, it Iterator) (err error) { // nolint
 	defer func() {
 		if perr := recover(); perr != nil {
 			err = perr.(error)

@@ -8,6 +8,7 @@ import (
 // Trilean value for StyleEntry value inheritance.
 type Trilean uint8
 
+// Trilean states.
 const (
 	Pass Trilean = iota
 	Yes
@@ -25,6 +26,7 @@ func (t Trilean) String() string {
 	}
 }
 
+// Prefix returns s with "no" as a prefix if Trilean is no.
 func (t Trilean) Prefix(s string) string {
 	if t == Yes {
 		return s
@@ -73,6 +75,7 @@ func (s StyleEntry) String() string {
 	return strings.Join(out, " ")
 }
 
+// Sub subtracts e from s where elements match.
 func (s StyleEntry) Sub(e StyleEntry) StyleEntry {
 	out := StyleEntry{}
 	if e.Colour != s.Colour {
@@ -247,15 +250,7 @@ func (s *Style) Builder() *StyleBuilder {
 //
 // This is distinct from Get() which will merge parent tokens.
 func (s *Style) Has(ttype TokenType) bool {
-	return !s.get(ttype).IsZero()
-}
-
-func (s *Style) get(ttype TokenType) StyleEntry {
-	out := s.entries[ttype]
-	if out.IsZero() && s.parent != nil {
-		return s.parent.get(ttype)
-	}
-	return out
+	return !s.get(ttype).IsZero() || s.synthesisable(ttype)
 }
 
 // Get a style entry. Will try sub-category or category if an exact match is not found, and
@@ -266,6 +261,38 @@ func (s *Style) Get(ttype TokenType) StyleEntry {
 		s.get(Text),
 		s.get(ttype.Category()),
 		s.get(ttype.SubCategory()))
+}
+
+func (s *Style) get(ttype TokenType) StyleEntry {
+	out := s.entries[ttype]
+	if out.IsZero() && s.synthesisable(ttype) {
+		out = s.synthesise(ttype)
+	}
+	if out.IsZero() && s.parent != nil {
+		return s.parent.get(ttype)
+	}
+	return out
+}
+
+func (s *Style) synthesise(ttype TokenType) StyleEntry {
+	bg := s.get(Background)
+	text := StyleEntry{Colour: bg.Colour}
+	text.Colour = text.Colour.BrightenOrDarken(0.5)
+
+	switch ttype {
+	// If we don't have a line highlight colour, make one that is 10% brighter/darker than the background.
+	case LineHighlight:
+		return StyleEntry{Background: bg.Background.BrightenOrDarken(0.1)}
+
+	// If we don't have line numbers, use the text colour but 20% brighter/darker
+	case LineNumbers, LineNumbersTable:
+		return text
+	}
+	return StyleEntry{}
+}
+
+func (s *Style) synthesisable(ttype TokenType) bool {
+	return ttype == LineHighlight || ttype == LineNumbers || ttype == LineNumbersTable
 }
 
 // ParseStyleEntry parses a Pygments style entry.

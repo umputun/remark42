@@ -22,6 +22,30 @@ func CodeMap() map[string]string {
 	return emojiCodeMap
 }
 
+// RevCodeMap gets the underlying map of emoji.
+func RevCodeMap() map[string][]string {
+	return emojiRevCodeMap
+}
+
+func AliasList(shortCode string) []string {
+	return emojiRevCodeMap[emojiCodeMap[shortCode]]
+}
+
+// HasAlias flags if the given `shortCode` has multiple aliases with other
+// codes.
+func HasAlias(shortCode string) bool {
+	return len(AliasList(shortCode)) > 1
+}
+
+// NormalizeShortCode normalizes a given `shortCode` to a deterministic alias.
+func NormalizeShortCode(shortCode string) string {
+	shortLists := AliasList(shortCode)
+	if len(shortLists) == 0 {
+		return shortCode
+	}
+	return shortLists[0]
+}
+
 // regular expression that matches :flag-[countrycode]:
 var flagRegexp = regexp.MustCompile(":flag-([a-z]{2}):")
 
@@ -87,67 +111,47 @@ func compile(x string) string {
 	return output.String()
 }
 
-func compileValues(a *[]interface{}) {
-	for i, x := range *a {
-		if str, ok := x.(string); ok {
-			(*a)[i] = compile(str)
-		}
-	}
-}
-
 // Print is fmt.Print which supports emoji
 func Print(a ...interface{}) (int, error) {
-	compileValues(&a)
-	return fmt.Print(a...)
+	return fmt.Print(compile(fmt.Sprint(a...)))
 }
 
 // Println is fmt.Println which supports emoji
 func Println(a ...interface{}) (int, error) {
-	compileValues(&a)
-	return fmt.Println(a...)
+	return fmt.Println(compile(fmt.Sprint(a...)))
 }
 
 // Printf is fmt.Printf which supports emoji
 func Printf(format string, a ...interface{}) (int, error) {
-	format = compile(format)
-	compileValues(&a)
-	return fmt.Printf(format, a...)
+	return fmt.Print(compile(fmt.Sprintf(format, a...)))
 }
 
 // Fprint is fmt.Fprint which supports emoji
 func Fprint(w io.Writer, a ...interface{}) (int, error) {
-	compileValues(&a)
-	return fmt.Fprint(w, a...)
+	return fmt.Fprint(w, compile(fmt.Sprint(a...)))
 }
 
 // Fprintln is fmt.Fprintln which supports emoji
 func Fprintln(w io.Writer, a ...interface{}) (int, error) {
-	compileValues(&a)
-	return fmt.Fprintln(w, a...)
+	return fmt.Fprintln(w, compile(fmt.Sprint(a...)))
 }
 
 // Fprintf is fmt.Fprintf which supports emoji
 func Fprintf(w io.Writer, format string, a ...interface{}) (int, error) {
-	format = compile(format)
-	compileValues(&a)
-	return fmt.Fprintf(w, format, a...)
+	return fmt.Fprint(w, compile(fmt.Sprintf(format, a...)))
 }
 
 // Sprint is fmt.Sprint which supports emoji
 func Sprint(a ...interface{}) string {
-	compileValues(&a)
-	return fmt.Sprint(a...)
+	return compile(fmt.Sprint(a...))
 }
 
 // Sprintf is fmt.Sprintf which supports emoji
 func Sprintf(format string, a ...interface{}) string {
-	format = compile(format)
-	compileValues(&a)
-	return fmt.Sprintf(format, a...)
+	return compile(fmt.Sprintf(format, a...))
 }
 
 // Errorf is fmt.Errorf which supports emoji
 func Errorf(format string, a ...interface{}) error {
-	compileValues(&a)
-	return errors.New(Sprintf(format, a...))
+	return errors.New(compile(Sprintf(format, a...)))
 }

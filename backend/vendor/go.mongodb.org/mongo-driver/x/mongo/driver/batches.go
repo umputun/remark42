@@ -39,13 +39,16 @@ func (b *Batches) AdvanceBatch(maxCount, targetBatchSize int) error {
 	if len(b.Current) > 0 {
 		return nil
 	}
+	if targetBatchSize > reservedCommandBufferBytes {
+		targetBatchSize -= reservedCommandBufferBytes
+	}
 
 	if maxCount <= 0 {
 		maxCount = 1
 	}
 
 	splitAfter := 0
-	size := 0
+	size := 1
 	for i, doc := range b.Documents {
 		if i == maxCount {
 			break

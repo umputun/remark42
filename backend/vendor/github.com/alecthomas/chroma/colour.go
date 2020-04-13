@@ -92,6 +92,14 @@ func (c Colour) Brighten(factor float64) Colour {
 	return NewColour(uint8(r), uint8(g), uint8(b))
 }
 
+// BrightenOrDarken brightens a colour if it is < 0.5 brighteness or darkens if > 0.5 brightness.
+func (c Colour) BrightenOrDarken(factor float64) Colour {
+	if c.Brightness() < 0.5 {
+		return c.Brighten(factor)
+	}
+	return c.Brighten(-factor)
+}
+
 // Brightness of the colour (roughly) in the range 0.0 to 1.0
 func (c Colour) Brightness() float64 {
 	return (float64(c.Red()) + float64(c.Green()) + float64(c.Blue())) / 255.0 / 3.0
@@ -119,6 +127,7 @@ func MustParseColour(colour string) Colour {
 	return parsed
 }
 
+// IsSet returns true if the colour is set.
 func (c Colour) IsSet() bool { return c != 0 }
 
 func (c Colour) String() string   { return fmt.Sprintf("#%06x", int(c-1)) }

@@ -18,6 +18,7 @@ var Systemverilog = internal.Register(MustNewLexer(
 		"root": {
 			{"^\\s*`define", CommentPreproc, Push("macro")},
 			{`^(\s*)(package)(\s+)`, ByGroups(Text, KeywordNamespace, Text), nil},
+			{`^(\s*)(import)(\s+)("DPI(?:-C)?")(\s+)`, ByGroups(Text, KeywordNamespace, Text, LiteralString, Text), nil},
 			{`^(\s*)(import)(\s+)`, ByGroups(Text, KeywordNamespace, Text), Push("import")},
 			{`\n`, Text, nil},
 			{`\s+`, Text, nil},

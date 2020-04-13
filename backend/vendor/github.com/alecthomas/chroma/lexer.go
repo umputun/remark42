@@ -6,7 +6,8 @@ import (
 
 var (
 	defaultOptions = &TokeniseOptions{
-		State: "root",
+		State:    "root",
+		EnsureLF: true,
 	}
 )
 
@@ -66,17 +67,24 @@ type Token struct {
 func (t *Token) String() string   { return t.Value }
 func (t *Token) GoString() string { return fmt.Sprintf("&Token{%s, %q}", t.Type, t.Value) }
 
-func (t *Token) Clone() *Token {
-	clone := &Token{}
-	*clone = *t
-	return clone
+// Clone returns a clone of the Token.
+func (t *Token) Clone() Token {
+	return *t
 }
 
+// EOF is returned by lexers at the end of input.
+var EOF Token
+
+// TokeniseOptions contains options for tokenisers.
 type TokeniseOptions struct {
 	// State to start tokenisation in. Defaults to "root".
 	State string
 	// Nested tokenisation.
 	Nested bool
+
+	// If true, all EOLs are converted into LF
+	// by replacing CRLF and CR
+	EnsureLF bool
 }
 
 // A Lexer for tokenising source code.
