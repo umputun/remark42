@@ -342,9 +342,7 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDb, SiteID: "remark42"})
 	require.NoError(t, err)
 
-	cacheBackend, err := cache.NewExpirableCache()
-	require.NoError(t, err)
-	memCache := cache.NewScache(cacheBackend)
+	memCache := cache.NewScache(cache.NewNopCache())
 
 	astore := adminstore.NewStaticStore("123456", []string{"remark42"}, []string{"a1", "a2"}, "admin@remark-42.com")
 	restrictedWordsMatcher := service.NewRestrictedWordsMatcher(service.StaticRestrictedWordsLister{Words: []string{"duck"}})
