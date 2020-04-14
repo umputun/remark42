@@ -879,5 +879,6 @@ _all admin calls require auth and admin privilege_
 * User can edit comments in 5 mins (configurable) window after creation.
 * User ID hashed and prefixed by oauth provider name to avoid collisions and potential abuse.
 * All avatars resized and cached locally to prevent rate limiters from oauth providers, part of [go-pkgz/auth](https://github.com/go-pkgz/auth) functionality.
-* Images can be proxied (`IMG_PROXY=true`) to prevent mixed http/https.
+* Images can be proxied (`IMAGE_PROXY_HTTP2HTTPS=true`) to prevent mixed http/https.
+* All images can be proxied and saved (`IMAGE_PROXY_CACHE_EXTERNAL=true`) instead of serving from original location. Beware, images which are posted with this parameter enabled will be served from proxy even after it will be disabled.
 * Docker build uses [publicly available](https://github.com/umputun/baseimage) base images.
