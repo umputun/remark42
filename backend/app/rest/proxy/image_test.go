@@ -96,7 +96,13 @@ func TestImage_Replace(t *testing.T) {
 }
 
 func TestImage_Routes(t *testing.T) {
-	img := Image{HTTP2HTTPS: true, RemarkURL: "https://demo.remark42.com", RoutePath: "/api/v1/proxy"}
+	imageStore := image.MockStore{}
+	img := Image{
+		HTTP2HTTPS:   true,
+		RemarkURL:    "https://demo.remark42.com",
+		RoutePath:    "/api/v1/proxy",
+		ImageService: image.NewService(&imageStore, image.ServiceParams{}),
+	}
 
 	ts := httptest.NewServer(http.HandlerFunc(img.Handler))
 	defer ts.Close()
@@ -105,21 +111,50 @@ func TestImage_Routes(t *testing.T) {
 
 	encodedImgURL := base64.URLEncoding.EncodeToString([]byte(httpSrv.URL + "/image/img1.png"))
 
+	// no image supposed to be cached
+	imageStore.On("Load", mock.Anything).Times(2).Return(nil, nil)
+
 	resp, err := http.Get(ts.URL + "/?src=" + encodedImgURL)
 	require.NoError(t, err)
-	assert.Equal(t, 200, resp.StatusCode)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, "1462", resp.Header["Content-Length"][0])
 	assert.Equal(t, "image/png", resp.Header["Content-Type"][0])
 
 	encodedImgURL = base64.URLEncoding.EncodeToString([]byte(httpSrv.URL + "/image/no-such-image.png"))
 	resp, err = http.Get(ts.URL + "/?src=" + encodedImgURL)
 	require.NoError(t, err)
-	assert.Equal(t, 404, resp.StatusCode)
+	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
 
 	encodedImgURL = base64.URLEncoding.EncodeToString([]byte(httpSrv.URL + "bad encoding"))
 	resp, err = http.Get(ts.URL + "/?src=" + encodedImgURL)
 	require.NoError(t, err)
-	assert.Equal(t, 400, resp.StatusCode)
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+}
+
+func TestImage_DisabledCachingAndHTTP2HTTPS(t *testing.T) {
+	imageStore := image.MockStore{}
+	img := Image{
+		RemarkURL:    "https://demo.remark42.com",
+		RoutePath:    "/api/v1/proxy",
+		ImageService: image.NewService(&imageStore, image.ServiceParams{}),
+	}
+
+	ts := httptest.NewServer(http.HandlerFunc(img.Handler))
+	defer ts.Close()
+	httpSrv := imgHTTPTestsServer(t)
+	defer httpSrv.Close()
+
+	encodedImgURL := base64.URLEncoding.EncodeToString([]byte(httpSrv.URL + "/image/img1.png"))
+
+	imageStore.On("Load", mock.Anything).Once().Return(nil, nil)
+
+	resp, err := http.Get(ts.URL + "/?src=" + encodedImgURL)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "1462", resp.Header["Content-Length"][0])
+	assert.Equal(t, "image/png", resp.Header["Content-Type"][0])
+
+	imageStore.AssertCalled(t, "Load", mock.Anything)
 }
 
 func TestImage_RoutesCachingImage(t *testing.T) {
@@ -145,7 +180,7 @@ func TestImage_RoutesCachingImage(t *testing.T) {
 
 	resp, err := http.Get(ts.URL + "/?src=" + encodedImgURL)
 	require.Nil(t, err)
-	assert.Equal(t, 200, resp.StatusCode)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, "1462", resp.Header["Content-Length"][0])
 	assert.Equal(t, "image/png", resp.Header["Content-Type"][0])
 
@@ -176,7 +211,7 @@ func TestImage_RoutesUsingCachedImage(t *testing.T) {
 
 	resp, err := http.Get(ts.URL + "/?src=" + encodedImgURL)
 	require.Nil(t, err)
-	assert.Equal(t, 200, resp.StatusCode)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, "256", resp.Header["Content-Length"][0])
 	assert.Equal(t, "text/plain; charset=utf-8", resp.Header["Content-Type"][0],
 		"if you save text you receive text/plain in response, that's only fair option you got")
@@ -185,7 +220,14 @@ func TestImage_RoutesUsingCachedImage(t *testing.T) {
 }
 
 func TestImage_RoutesTimedOut(t *testing.T) {
-	img := Image{HTTP2HTTPS: true, RemarkURL: "https://demo.remark42.com", RoutePath: "/api/v1/proxy", Timeout: 50 * time.Millisecond}
+	imageStore := image.MockStore{}
+	img := Image{
+		HTTP2HTTPS:   true,
+		RemarkURL:    "https://demo.remark42.com",
+		RoutePath:    "/api/v1/proxy",
+		Timeout:      50 * time.Millisecond,
+		ImageService: image.NewService(&imageStore, image.ServiceParams{}),
+	}
 
 	ts := httptest.NewServer(http.HandlerFunc(img.Handler))
 	defer ts.Close()
@@ -193,9 +235,13 @@ func TestImage_RoutesTimedOut(t *testing.T) {
 	defer httpSrv.Close()
 
 	encodedImgURL := base64.URLEncoding.EncodeToString([]byte(httpSrv.URL + "/image/img-slow.png"))
+
+	// no image supposed to be cached
+	imageStore.On("Load", mock.Anything).Once().Return(nil, nil)
+
 	resp, err := http.Get(ts.URL + "/?src=" + encodedImgURL)
 	require.NoError(t, err)
-	assert.Equal(t, 404, resp.StatusCode)
+	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
 	b, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	t.Log(string(b))

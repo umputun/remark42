@@ -84,15 +84,6 @@ func (p Image) replace(commentHTML string, imgs []string) string {
 
 // Handler returns http handler respond to proxied request
 func (p Image) Handler(w http.ResponseWriter, r *http.Request) {
-	if !p.HTTP2HTTPS && !p.CacheExternal {
-		// TODO: we might need to find a better way to handle it. If admin enables caching/proxy and disables it later on
-		// all comments that got converted will lose their images. We can't just return a redirect (it will open an ability
-		// to redirect anywhere). We can probably continue proxying these images (but need to make sure this behavior is
-		// documented) or, better, provide a way to migrate back converted comments.
-		http.Error(w, "none of the proxy features are enabled", http.StatusNotImplemented)
-		return
-	}
-
 	src, err := base64.URLEncoding.DecodeString(r.URL.Query().Get("src"))
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't decode image url", rest.ErrDecode)
@@ -106,9 +97,8 @@ func (p Image) Handler(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't parse image url "+imgURL, rest.ErrAssetNotFound)
 		return
 	}
-	if p.CacheExternal {
-		img, _ = p.ImageService.Load(imgID)
-	}
+	// try to load from cache for case it was saved when CacheExternal was enabled
+	img, _ = p.ImageService.Load(imgID)
 	if img == nil {
 		img, err = p.downloadImage(context.Background(), imgURL)
 		if err != nil {
