@@ -733,6 +733,13 @@ func TestRest_LastCommentsStream(t *testing.T) {
 	srv.pubRest.streamer.TimeOut = 500 * time.Millisecond
 	srv.pubRest.streamer.MaxActive = 100
 
+	// stream endpoint currently relies on real cache being present
+	cacheBackend, err := cache.NewExpirableCache()
+	require.NoError(t, err)
+	memCache := cache.NewScache(cacheBackend)
+	srv.privRest.cache = memCache
+	srv.pubRest.cache = memCache
+
 	postComment(t, ts.URL)
 
 	defer teardown()
@@ -787,6 +794,13 @@ func TestRest_LastCommentsStreamCancel(t *testing.T) {
 	srv.pubRest.streamer.Refresh = 10 * time.Millisecond
 	srv.pubRest.streamer.TimeOut = 500 * time.Millisecond
 	srv.pubRest.streamer.MaxActive = 100
+
+	// stream endpoint currently relies on real cache being present
+	cacheBackend, err := cache.NewExpirableCache()
+	require.NoError(t, err)
+	memCache := cache.NewScache(cacheBackend)
+	srv.privRest.cache = memCache
+	srv.pubRest.cache = memCache
 
 	postComment(t, ts.URL)
 
@@ -853,6 +867,13 @@ func TestRest_LastCommentsStreamSince(t *testing.T) {
 	srv.pubRest.streamer.Refresh = 10 * time.Millisecond
 	srv.pubRest.streamer.TimeOut = 500 * time.Millisecond
 	srv.pubRest.streamer.MaxActive = 100
+
+	// stream endpoint currently relies on real cache being present
+	cacheBackend, err := cache.NewExpirableCache()
+	require.NoError(t, err)
+	memCache := cache.NewScache(cacheBackend)
+	srv.privRest.cache = memCache
+	srv.pubRest.cache = memCache
 
 	postComment(t, ts.URL)
 
