@@ -193,7 +193,6 @@ func (s *public) infoStreamCtrl(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				return "info", data, false, err
 			}
-
 			return "info", data, upd, nil
 		}
 	}
@@ -264,11 +263,11 @@ func (s *public) lastCommentsStreamCtrl(w http.ResponseWriter, r *http.Request) 
 				if e != nil {
 					return nil, e
 				}
+				sinceTime = time.Now()
 				if len(comments) > 0 {
 					sinceTime = comments[0].Timestamp
 					upd = true
 				}
-				sinceTime = time.Now()
 				return encodeJSONWithHTML(comments)
 			})
 			return "last", data, upd, err

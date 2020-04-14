@@ -729,7 +729,7 @@ func TestRest_Robots(t *testing.T) {
 func TestRest_LastCommentsStream(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
-	srv.pubRest.streamer.Refresh = 10 * time.Millisecond
+	srv.pubRest.streamer.Refresh = 50 * time.Millisecond
 	srv.pubRest.streamer.TimeOut = 500 * time.Millisecond
 	srv.pubRest.streamer.MaxActive = 100
 
@@ -740,9 +740,10 @@ func TestRest_LastCommentsStream(t *testing.T) {
 	go func() {
 		defer close(done)
 		for i := 1; i < 10; i++ {
-			time.Sleep(100 * time.Millisecond)
 			postComment(t, ts.URL)
+			time.Sleep(100 * time.Millisecond)
 		}
+		t.Log("wrote 10 records")
 	}()
 
 	client := http.Client{}
