@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"path"
 	"time"
 
 	log "github.com/go-pkgz/lgr"
@@ -52,8 +51,8 @@ func NewBoltStorage(fileName string, options bolt.Options) (*Bolt, error) {
 	}, nil
 }
 
-// SaveWithID saves data from a reader, for given id
-func (b *Bolt) SaveWithID(id string, img []byte) (string, error) {
+// SaveWithID saves image for given id to staging bucket in DB
+func (b *Bolt) SaveWithID(id string, img []byte) error {
 	err := b.db.Update(func(tx *bolt.Tx) error {
 		if err := tx.Bucket([]byte(imagesStagedBktName)).Put([]byte(id), img); err != nil {
 			return errors.Wrapf(err, "can't put to bucket with %s", id)
@@ -68,13 +67,7 @@ func (b *Bolt) SaveWithID(id string, img []byte) (string, error) {
 		return nil
 	})
 
-	return id, err
-}
-
-// Save data from reader to staging bucket in DB
-func (b *Bolt) Save(userID string, img []byte) (id string, err error) {
-	id = path.Join(userID, guid())
-	return b.SaveWithID(id, img)
+	return err
 }
 
 // Commit file stored in staging bucket by copying it to permanent bucket

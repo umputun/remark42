@@ -48,13 +48,11 @@ func TestFsStore_Save(t *testing.T) {
 	svc, teardown := prepareImageTest(t)
 	defer teardown()
 
-	id, err := svc.Save("user1", gopherPNGBytes())
+	id := "test_img"
+	err := svc.SaveWithID(id, gopherPNGBytes())
 	assert.NoError(t, err)
-	assert.Contains(t, id, "user1/")
-	t.Log(id)
 
 	img := svc.location(svc.Staging, id)
-	t.Log(img)
 	data, err := ioutil.ReadFile(img)
 	assert.NoError(t, err)
 	assert.Equal(t, 1462, len(data))
@@ -69,10 +67,9 @@ func TestFsStore_SaveNoResizeJpeg(t *testing.T) {
 	assert.NoError(t, err)
 	img, err := ioutil.ReadAll(fh)
 	assert.NoError(t, err)
-	id, err := svc.Save("user1", img)
+	id := "test_img"
+	err = svc.SaveWithID(id, img)
 	assert.NoError(t, err)
-	assert.Contains(t, id, "user1/")
-	t.Log(id)
 
 	imgPath := svc.location(svc.Staging, id)
 	t.Log(imgPath)
@@ -85,7 +82,8 @@ func TestFsStore_SaveAndCommit(t *testing.T) {
 	svc, teardown := prepareImageTest(t)
 	defer teardown()
 
-	id, err := svc.Save("user1", gopherPNGBytes())
+	id := "test_img"
+	err := svc.SaveWithID(id, gopherPNGBytes())
 	require.NoError(t, err)
 	err = svc.Commit(id)
 	require.NoError(t, err)
@@ -106,7 +104,8 @@ func TestFsStore_LoadAfterSave(t *testing.T) {
 	svc, teardown := prepareImageTest(t)
 	defer teardown()
 
-	id, err := svc.Save("user1", gopherPNGBytes())
+	id := "test_img"
+	err := svc.SaveWithID(id, gopherPNGBytes())
 	assert.NoError(t, err)
 	t.Log(id)
 
@@ -123,7 +122,8 @@ func TestFsStore_LoadAfterCommit(t *testing.T) {
 	svc, teardown := prepareImageTest(t)
 	defer teardown()
 
-	id, err := svc.Save("user1", gopherPNGBytes())
+	id := "test_img"
+	err := svc.SaveWithID(id, gopherPNGBytes())
 	assert.NoError(t, err)
 	t.Log(id)
 	err = svc.Commit(id)
@@ -184,8 +184,9 @@ func TestFsStore_Cleanup(t *testing.T) {
 	svc, teardown := prepareImageTest(t)
 	defer teardown()
 
-	save := func(file string, user string) (path string) {
-		id, err := svc.Save(user, gopherPNGBytes())
+	save := func(file string, user string) (filePath string) {
+		id := path.Join(user, file)
+		err := svc.SaveWithID(id, gopherPNGBytes())
 		require.NoError(t, err)
 		img := svc.location(svc.Staging, id)
 		data, err := ioutil.ReadFile(img)

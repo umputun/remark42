@@ -18,10 +18,10 @@ func TestBoltStore_SaveCommit(t *testing.T) {
 	svc, teardown := prepareBoltImageStorageTest(t)
 	defer teardown()
 
-	id, err := svc.Save("user1", gopherPNGBytes())
+	id := "test_img"
+
+	err := svc.SaveWithID(id, gopherPNGBytes())
 	assert.NoError(t, err)
-	assert.Contains(t, id, "user1")
-	t.Log(id)
 
 	err = svc.db.View(func(tx *bolt.Tx) error {
 		data := tx.Bucket([]byte(imagesStagedBktName)).Get([]byte(id))
@@ -48,10 +48,9 @@ func TestBoltStore_LoadAfterSave(t *testing.T) {
 	svc, teardown := prepareBoltImageStorageTest(t)
 	defer teardown()
 
-	id, err := svc.Save("user1", gopherPNGBytes())
+	id := "test_img"
+	err := svc.SaveWithID(id, gopherPNGBytes())
 	assert.NoError(t, err)
-	assert.Contains(t, id, "user1")
-	t.Log(id)
 
 	data, err := svc.Load(id)
 	assert.NoError(t, err)
@@ -66,25 +65,25 @@ func TestBoltStore_Cleanup(t *testing.T) {
 	svc, teardown := prepareBoltImageStorageTest(t)
 	defer teardown()
 
-	save := func(file string, user string) (id string) {
-		id, err := svc.Save(user, gopherPNGBytes())
+	save := func(file string) (id string) {
+		err := svc.SaveWithID(file, gopherPNGBytes())
 		require.NoError(t, err)
 
-		checkBoltImgData(t, svc.db, imagesStagedBktName, id, func(data []byte) error {
+		checkBoltImgData(t, svc.db, imagesStagedBktName, file, func(data []byte) error {
 			require.NotNil(t, data)
 			assert.Equal(t, 1462, len(data))
 			return nil
 		})
-		return id
+		return file
 	}
 
 	// save 3 images to staging
-	img1 := save("blah_ff1.png", "user1")
+	img1 := save("blah_ff1.png")
 	img1ts := time.Now()
 	time.Sleep(100 * time.Millisecond)
-	img2 := save("blah_ff2.png", "user1")
+	img2 := save("blah_ff2.png")
 	time.Sleep(100 * time.Millisecond)
-	img3 := save("blah_ff3.png", "user2")
+	img3 := save("blah_ff3.png")
 
 	err := svc.Cleanup(context.Background(), time.Since(img1ts)) // clean first images
 	assert.NoError(t, err)

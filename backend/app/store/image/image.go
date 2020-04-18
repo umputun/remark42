@@ -15,6 +15,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"path"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -58,9 +59,8 @@ type ServiceParams struct {
 // Two-stage commit scheme is used for not storing images which are uploaded but later never used in the comments,
 // e.g. when somebody uploaded a picture but did not sent the comment.
 type Store interface {
-	Save(userID string, img []byte) (id string, err error) // get name and reader and returns ID of stored (staging) image
-	SaveWithID(id string, img []byte) (string, error)      // store image for passed id to staging
-	Load(id string) ([]byte, error)                        // load image by ID. Caller has to close the reader.
+	SaveWithID(id string, img []byte) error // store image with passed id to staging
+	Load(id string) ([]byte, error)         // load image by ID. Caller has to close the reader.
 
 	Commit(id string) error                               // move image from staging to permanent
 	Cleanup(ctx context.Context, ttl time.Duration) error // run removal loop for old images on staging
@@ -116,20 +116,19 @@ func (s *Service) ExtractPictures(commentHTML string) (ids []string, err error) 
 	if err != nil {
 		return nil, errors.Wrap(err, "can't create document")
 	}
-	result := []string{}
 	doc.Find("img").Each(func(i int, sl *goquery.Selection) {
 		if im, ok := sl.Attr("src"); ok {
 			if strings.Contains(im, s.ImageAPI) {
 				elems := strings.Split(im, "/")
 				if len(elems) >= 2 {
 					id := elems[len(elems)-2] + "/" + elems[len(elems)-1]
-					result = append(result, id)
+					ids = append(ids, id)
 				}
 			}
 		}
 	})
 
-	return result, nil
+	return ids, nil
 }
 
 // Cleanup runs periodic cleanup with TTL. Blocking loop, should be called inside of goroutine by consumer
@@ -183,18 +182,15 @@ func (s *Service) Load(id string) ([]byte, error) {
 
 // Save wraps storage Save function, validating and resizing the image before calling it.
 func (s *Service) Save(userID string, r io.Reader) (id string, err error) {
-	img, err := s.prepareImage(r)
-	if err != nil {
-		return "", err
-	}
-	return s.store.Save(userID, img)
+	id = path.Join(userID, guid())
+	return id, s.SaveWithID(id, r)
 }
 
 // SaveWithID wraps storage SaveWithID function, validating and resizing the image before calling it.
-func (s *Service) SaveWithID(id string, r io.Reader) (string, error) {
+func (s *Service) SaveWithID(id string, r io.Reader) error {
 	img, err := s.prepareImage(r)
 	if err != nil {
-		return "", err
+		return err
 	}
 	return s.store.SaveWithID(id, img)
 }

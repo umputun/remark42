@@ -41,20 +41,6 @@ const gopher = "iVBORw0KGgoAAAANSUhEUgAAAEsAAAA8CAAAAAALAhhPAAAFfUlEQVRYw62XeWwU
 
 func gopherPNG() io.Reader { return base64.NewDecoder(base64.StdEncoding, strings.NewReader(gopher)) }
 
-func TestMemImage_Save(t *testing.T) {
-	svc := NewMemImageStore()
-	id, err := svc.Save("user1", []byte(gopher))
-	assert.NoError(t, err)
-	assert.Contains(t, id, "user1/")
-}
-
-func TestMemImage_SaveWithIDFail(t *testing.T) {
-	svc := NewMemImageStore()
-	id, err := svc.SaveWithID("test_id", []byte(gopher))
-	assert.NoError(t, err)
-	assert.Equal(t, id, "test_id")
-}
-
 func TestMemImage_LoadAfterSave(t *testing.T) {
 	svc := NewMemImageStore()
 	gopher, err := ioutil.ReadAll(gopherPNG())
@@ -64,7 +50,8 @@ func TestMemImage_LoadAfterSave(t *testing.T) {
 	assert.EqualError(t, err, "image test_id not found")
 	assert.Empty(t, img)
 
-	id, err := svc.Save("user1", gopher)
+	id := "test_img"
+	err = svc.SaveWithID(id, gopher)
 	assert.NoError(t, err)
 
 	img, err = svc.Load(id)

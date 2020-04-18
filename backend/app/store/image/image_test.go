@@ -21,15 +21,9 @@ func TestService_SaveAndLoad(t *testing.T) {
 	store := MockStore{}
 	svc := NewService(&store, ServiceParams{MaxSize: 1500, MaxWidth: 32, MaxHeight: 32})
 
-	store.On("Save", "user1", mock.Anything).Return("user1/test_id", nil)
-	id, err := svc.Save("user1", gopherPNG())
+	store.On("SaveWithID", "test_id", mock.Anything).Return(nil)
+	err := svc.SaveWithID("test_id", gopherPNG())
 	assert.NoError(t, err)
-	assert.Equal(t, "user1/test_id", id)
-
-	store.On("SaveWithID", "test_id", mock.Anything).Return("test_id", nil)
-	id, err = svc.SaveWithID("test_id", gopherPNG())
-	assert.NoError(t, err)
-	assert.Equal(t, "test_id", id)
 
 	store.On("Load", "test_id", mock.Anything).Return(nil, nil)
 	img, err := svc.Load("test_id")
@@ -65,7 +59,7 @@ func TestService_SaveTooLarge(t *testing.T) {
 	_, err := svc.Save("user2", io.MultiReader(gopherPNG(), gopherPNG()))
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "is too large")
-	_, err = svc.SaveWithID("test_id", io.MultiReader(gopherPNG(), gopherPNG()))
+	err = svc.SaveWithID("test_id", io.MultiReader(gopherPNG(), gopherPNG()))
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "is too large")
 }
@@ -147,7 +141,6 @@ func TestService_SubmitDelay(t *testing.T) {
 }
 
 func TestService_resize(t *testing.T) {
-
 	// reader is nil
 	resized := resize(nil, 100, 100)
 	assert.Nil(t, resized)

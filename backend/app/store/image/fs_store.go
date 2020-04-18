@@ -32,27 +32,21 @@ type FileSystem struct {
 	}
 }
 
-// SaveWithID saves data from a reader, with given id
-func (f *FileSystem) SaveWithID(id string, img []byte) (string, error) {
+// SaveWithID saves image with given id to local FS, staging directory.
+// Files partitioned across multiple subdirectories, and the final path includes part, i.e. /location/user1/03/123-4567
+func (f *FileSystem) SaveWithID(id string, img []byte) error {
 	dst := f.location(f.Staging, id)
 
 	if err := os.MkdirAll(path.Dir(dst), 0700); err != nil {
-		return "", errors.Wrap(err, "can't make image directory")
+		return errors.Wrap(err, "can't make image directory")
 	}
 
 	if err := ioutil.WriteFile(dst, img, 0600); err != nil {
-		return "", errors.Wrapf(err, "can't write image file with id %s", id)
+		return errors.Wrapf(err, "can't write image file with id %s", id)
 	}
 
 	log.Printf("[DEBUG] file %s saved for image %s, size=%d", dst, id, len(img))
-	return id, nil
-}
-
-// Save data from a reader to local FS, staging directory. Returns id as user/uuid
-// Files partitioned across multiple subdirectories, and the final path includes part, i.e. /location/user1/03/123-4567
-func (f *FileSystem) Save(userID string, img []byte) (id string, err error) {
-	tempId := path.Join(userID, guid()) // make id as user/uuid
-	return f.SaveWithID(tempId, img)
+	return nil
 }
 
 // Commit file stored in staging location by moving it to permanent location

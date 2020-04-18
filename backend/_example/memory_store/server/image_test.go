@@ -50,31 +50,6 @@ func gopherPNGBytes() []byte {
 	return img
 }
 
-func TestRPC_imgSaveHndl(t *testing.T) {
-	_, port, teardown := prepTestStore(t)
-	defer teardown()
-	api := fmt.Sprintf("http://localhost:%d/test", port)
-
-	ri := image.RPC{Client: jrpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
-	id, err := ri.Save("admin", gopherPNGBytes())
-	assert.NoError(t, err)
-	assert.Contains(t, id, "admin/", "id contains username")
-
-	err = ri.Commit(id)
-	assert.NoError(t, err)
-}
-
-func TestRPC_imgSaveWithIDHndl(t *testing.T) {
-	_, port, teardown := prepTestStore(t)
-	defer teardown()
-	api := fmt.Sprintf("http://localhost:%d/test", port)
-
-	ri := image.RPC{Client: jrpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
-	id, err := ri.SaveWithID("test_id", gopherPNGBytes())
-	assert.NoError(t, err)
-	assert.Equal(t, id, "test_id")
-}
-
 func TestRPC_imgLoadHndl(t *testing.T) {
 	_, port, teardown := prepTestStore(t)
 	defer teardown()
@@ -82,7 +57,8 @@ func TestRPC_imgLoadHndl(t *testing.T) {
 
 	ri := image.RPC{Client: jrpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
 	// save
-	id, err := ri.Save("admin", gopherPNGBytes())
+	id := "test_img"
+	err := ri.SaveWithID(id, gopherPNGBytes())
 	assert.NoError(t, err)
 
 	// load
@@ -96,6 +72,16 @@ func TestRPC_imgLoadHndl(t *testing.T) {
 	assert.NoError(t, err)
 
 	// load after commit
+	img, err = ri.Load(id)
+	assert.NoError(t, err)
+	assert.Equal(t, 1462, len(img))
+	assert.Equal(t, gopherPNGBytes(), img)
+
+	// cleanup
+	err = ri.Cleanup(nil, time.Second)
+	assert.NoError(t, err)
+
+	// load after cleanup
 	img, err = ri.Load(id)
 	assert.NoError(t, err)
 	assert.Equal(t, 1462, len(img))
@@ -120,12 +106,15 @@ func TestRPC_imgCleanupHndl(t *testing.T) {
 	ri := image.RPC{Client: jrpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
 
 	// save
-	id, err := ri.Save("admin", gopherPNGBytes())
+	id := "test_img"
+	err := ri.SaveWithID(id, gopherPNGBytes())
 	assert.NoError(t, err)
 
 	// load
-	_, err = ri.Load(id)
+	img, err := ri.Load(id)
 	assert.NoError(t, err)
+	assert.Equal(t, 1462, len(img))
+	assert.Equal(t, gopherPNGBytes(), img)
 
 	// cleanup
 	err = ri.Cleanup(context.TODO(), time.Nanosecond)
@@ -133,7 +122,5 @@ func TestRPC_imgCleanupHndl(t *testing.T) {
 
 	// load after cleanup should fail
 	_, err = ri.Load(id)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "image admin/")
-	assert.Contains(t, err.Error(), "not found")
+	assert.EqualError(t, err, "image test_img not found")
 }
