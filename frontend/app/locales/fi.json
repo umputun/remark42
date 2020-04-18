@@ -53,7 +53,7 @@
   "comment.verified-user": "Vahvistettu käyttäjä",
   "comment.verify-user": "Haluatko vahvistaa käyttäjän {userName}?",
   "comment.vote-error": "Äänestysvirhe: {voteErrorMessage}",
-  "commentForm.anonymous-uploading-disabled": "Kuvien lataus on poistettu käytöstä luvattomilta käyttäjiltä. Kirjaudu sisään ennen lähettämistä.",
+  "commentForm.unauthorized-uploading-disabled": "Kuvien lataus on poistettu käytöstä luvattomilta käyttäjiltä. Kirjaudu sisään ennen lähettämistä.",
   "commentForm.exceeded-size": "{fileName} ylittää {maxImageSize}",
   "commentForm.input-placeholder": "Kirjoita kommenttisi tähän",
   "commentForm.new-comment": "Uusi kommentti",

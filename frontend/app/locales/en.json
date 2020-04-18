@@ -53,7 +53,7 @@
   "comment.verified-user": "Verified user",
   "comment.verify-user": "Do you want to verify {userName}?",
   "comment.vote-error": "Voting error: {voteErrorMessage}",
-  "commentForm.anonymous-uploading-disabled": "Image uploading is disabled for unauthorized users. You should login before uploading.",
+  "commentForm.unauthorized-uploading-disabled": "Image uploading is disabled for unauthorized users. You should login before uploading.",
   "commentForm.exceeded-size": "{fileName} exceeds size limit of {maxImageSize}",
   "commentForm.input-placeholder": "Your comment here",
   "commentForm.new-comment": "New comment",

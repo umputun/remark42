@@ -53,7 +53,7 @@
   "comment.verified-user": "Bestätigter Benutzer",
   "comment.verify-user": "Möchtest du den Benutzer {userName} wirklich bestätigen?",
   "comment.vote-error": "Fehler beim Abstimmen: {voteErrorMessage}",
-  "commentForm.anonymous-uploading-disabled": "Der Upload von Bildern ist nur für registrierte Benutzer möglich. Bitte melde dich zuvor an.",
+  "commentForm.unauthorized-uploading-disabled": "Der Upload von Bildern ist nur für registrierte Benutzer möglich. Bitte melde dich zuvor an.",
   "commentForm.exceeded-size": "Die Datei {fileName} überschreitet das Größenlimit von {maxImageSize}",
   "commentForm.input-placeholder": "Gib hier deinen Kommentar ein",
   "commentForm.new-comment": "Neuer Kommentar",
