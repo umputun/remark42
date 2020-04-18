@@ -8,13 +8,11 @@ package accessor
 
 import (
 	"context"
-	"path"
 	"sync"
 	"time"
 
 	log "github.com/go-pkgz/lgr"
 	"github.com/pkg/errors"
-	"github.com/rs/xid"
 )
 
 // MemImage implements image.Store with memory backend
@@ -35,18 +33,13 @@ func NewMemImageStore() *MemImage {
 	}
 }
 
-func (m *MemImage) Save(userID string, img []byte) (id string, err error) {
-	id = path.Join(userID, guid())
-	return m.SaveWithID(id, img)
-}
-
-func (m *MemImage) SaveWithID(id string, img []byte) (string, error) {
+func (m *MemImage) SaveWithID(id string, img []byte) error {
 	m.Lock()
 	m.imagesStaging[id] = img
 	m.insertTime[id] = time.Now()
 	m.Unlock()
 
-	return id, nil
+	return nil
 }
 
 func (m *MemImage) Load(id string) ([]byte, error) {
@@ -97,9 +90,4 @@ func (m *MemImage) Cleanup(_ context.Context, ttl time.Duration) error {
 	}
 	m.Unlock()
 	return nil
-}
-
-// guid makes a globally unique id
-func guid() string {
-	return xid.New().String()
 }

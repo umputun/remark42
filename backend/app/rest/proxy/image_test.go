@@ -175,7 +175,7 @@ func TestImage_RoutesCachingImage(t *testing.T) {
 	encodedImgURL := base64.URLEncoding.EncodeToString([]byte(imgURL))
 
 	imageStore.On("Load", mock.Anything).Once().Return(nil, nil)
-	imageStore.On("SaveWithID", mock.Anything, mock.Anything).Once().Return("", nil)
+	imageStore.On("SaveWithID", mock.Anything, mock.Anything).Once().Return(nil)
 	imageStore.On("Commit", mock.Anything).Once().Return(nil)
 
 	resp, err := http.Get(ts.URL + "/?src=" + encodedImgURL)

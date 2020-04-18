@@ -16,23 +16,9 @@ type RPC struct {
 	jrpc.Client
 }
 
-func (r *RPC) Save(userID string, img []byte) (id string, err error) {
-	resp, err := r.Call("image.save", userID, img)
-	if err != nil {
-		return "", err
-	}
-	err = json.Unmarshal(*resp.Result, &id)
-	return id, err
-}
-
-func (r *RPC) SaveWithID(id string, img []byte) (string, error) {
-	resp, err := r.Call("image.save_with_id", id, img)
-	if err != nil {
-		return "", err
-	}
-	var newID string
-	err = json.Unmarshal(*resp.Result, &newID)
-	return newID, err
+func (r *RPC) SaveWithID(id string, img []byte) error {
+	_, err := r.Call("image.save_with_id", id, img)
+	return err
 }
 
 func (r *RPC) Load(id string) ([]byte, error) {

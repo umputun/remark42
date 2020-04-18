@@ -14,32 +14,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRemote_Save(t *testing.T) {
-	ts := testServer(t, fmt.Sprintf(`{"method":"image.save","params":["admin","%s"],"id":1}`, gopher),
-		`{"result":"12345","id":1}`)
-	defer ts.Close()
-	c := RPC{Client: jrpc.Client{API: ts.URL, Client: http.Client{}}}
-
-	var a Store = &c
-	_ = a
-
-	res, err := c.Save("admin", gopherPNGBytes())
-	assert.NoError(t, err)
-	assert.Equal(t, "12345", res)
-}
-
 func TestRemote_SaveWithID(t *testing.T) {
 	ts := testServer(t, fmt.Sprintf(`{"method":"image.save_with_id","params":["54321","%s"],"id":1}`, gopher),
-		`{"result":"12345","id":1}`)
+		`{"id":1}`)
 	defer ts.Close()
 	c := RPC{Client: jrpc.Client{API: ts.URL, Client: http.Client{}}}
 
 	var a Store = &c
 	_ = a
 
-	res, err := c.SaveWithID("54321", gopherPNGBytes())
+	err := c.SaveWithID("54321", gopherPNGBytes())
 	assert.NoError(t, err)
-	assert.Equal(t, "12345", res)
 }
 
 func TestRemote_Load(t *testing.T) {

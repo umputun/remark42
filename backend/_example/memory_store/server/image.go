@@ -15,19 +15,6 @@ import (
 	"github.com/go-pkgz/jrpc"
 )
 
-func (s *RPC) imgSaveHndl(id uint64, params json.RawMessage) (rr jrpc.Response) {
-	var req [2]string
-	if err := json.Unmarshal(params, &req); err != nil {
-		return jrpc.Response{Error: err.Error()}
-	}
-	img, err := base64.StdEncoding.DecodeString(req[1])
-	if err != nil {
-		return jrpc.Response{Error: err.Error()}
-	}
-	value, err := s.img.Save(req[0], img)
-	return jrpc.EncodeResponse(id, value, err)
-}
-
 func (s *RPC) imgSaveWithIDHndl(id uint64, params json.RawMessage) (rr jrpc.Response) {
 	var req [2]string
 	if err := json.Unmarshal(params, &req); err != nil {
@@ -37,8 +24,8 @@ func (s *RPC) imgSaveWithIDHndl(id uint64, params json.RawMessage) (rr jrpc.Resp
 	if err != nil {
 		return jrpc.Response{Error: err.Error()}
 	}
-	value, err := s.img.SaveWithID(req[0], img)
-	return jrpc.EncodeResponse(id, value, err)
+	err = s.img.SaveWithID(req[0], img)
+	return jrpc.EncodeResponse(id, nil, err)
 }
 
 func (s *RPC) imgLoadHndl(id uint64, params json.RawMessage) (rr jrpc.Response) {

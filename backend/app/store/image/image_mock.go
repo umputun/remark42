@@ -62,44 +62,16 @@ func (_m *MockStore) Load(id string) ([]byte, error) {
 	return r0, r1
 }
 
-// Save provides a mock function with given fields: userID, img
-func (_m *MockStore) Save(userID string, img []byte) (string, error) {
-	ret := _m.Called(userID, img)
-
-	var r0 string
-	if rf, ok := ret.Get(0).(func(string, []byte) string); ok {
-		r0 = rf(userID, img)
-	} else {
-		r0 = ret.Get(0).(string)
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(string, []byte) error); ok {
-		r1 = rf(userID, img)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
 // SaveWithID provides a mock function with given fields: id, img
-func (_m *MockStore) SaveWithID(id string, img []byte) (string, error) {
+func (_m *MockStore) SaveWithID(id string, img []byte) error {
 	ret := _m.Called(id, img)
 
-	var r0 string
-	if rf, ok := ret.Get(0).(func(string, []byte) string); ok {
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, []byte) error); ok {
 		r0 = rf(id, img)
 	} else {
-		r0 = ret.Get(0).(string)
+		r0 = ret.Error(0)
 	}
 
-	var r1 error
-	if rf, ok := ret.Get(1).(func(string, []byte) error); ok {
-		r1 = rf(id, img)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
+	return r0
 }

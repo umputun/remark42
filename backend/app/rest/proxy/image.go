@@ -130,11 +130,11 @@ func (p Image) Handler(w http.ResponseWriter, r *http.Request) {
 
 // cache image from provided Reader using given ID
 func (p Image) cacheImage(r io.Reader, imgID string) {
-	id, err := p.ImageService.SaveWithID(imgID, r)
+	err := p.ImageService.SaveWithID(imgID, r)
 	if err != nil {
 		log.Printf("[WARN] unable to save image to the storage: %+v", err)
 	}
-	p.ImageService.Submit(func() []string { return []string{id} })
+	p.ImageService.Submit(func() []string { return []string{imgID} })
 }
 
 // download an image.
