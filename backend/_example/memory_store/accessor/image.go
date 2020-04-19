@@ -33,7 +33,7 @@ func NewMemImageStore() *MemImage {
 	}
 }
 
-func (m *MemImage) SaveWithID(id string, img []byte) error {
+func (m *MemImage) Save(id string, img []byte) error {
 	m.Lock()
 	m.imagesStaging[id] = img
 	m.insertTime[id] = time.Now()

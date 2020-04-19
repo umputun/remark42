@@ -23,7 +23,7 @@ func TestRemote_SaveWithID(t *testing.T) {
 	var a Store = &c
 	_ = a
 
-	err := c.SaveWithID("54321", gopherPNGBytes())
+	err := c.Save("54321", gopherPNGBytes())
 	assert.NoError(t, err)
 }
 

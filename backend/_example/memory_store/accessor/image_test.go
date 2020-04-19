@@ -51,7 +51,7 @@ func TestMemImage_LoadAfterSave(t *testing.T) {
 	assert.Empty(t, img)
 
 	id := "test_img"
-	err = svc.SaveWithID(id, gopher)
+	err = svc.Save(id, gopher)
 	assert.NoError(t, err)
 
 	img, err = svc.Load(id)

@@ -59,8 +59,8 @@ type ServiceParams struct {
 // Two-stage commit scheme is used for not storing images which are uploaded but later never used in the comments,
 // e.g. when somebody uploaded a picture but did not sent the comment.
 type Store interface {
-	SaveWithID(id string, img []byte) error // store image with passed id to staging
-	Load(id string) ([]byte, error)         // load image by ID. Caller has to close the reader.
+	Save(id string, img []byte) error // store image with passed id to staging
+	Load(id string) ([]byte, error)   // load image by ID. Caller has to close the reader.
 
 	Commit(id string) error                               // move image from staging to permanent
 	Cleanup(ctx context.Context, ttl time.Duration) error // run removal loop for old images on staging
@@ -186,13 +186,13 @@ func (s *Service) Save(userID string, r io.Reader) (id string, err error) {
 	return id, s.SaveWithID(id, r)
 }
 
-// SaveWithID wraps storage SaveWithID function, validating and resizing the image before calling it.
+// Save wraps storage Save function, validating and resizing the image before calling it.
 func (s *Service) SaveWithID(id string, r io.Reader) error {
 	img, err := s.prepareImage(r)
 	if err != nil {
 		return err
 	}
-	return s.store.SaveWithID(id, img)
+	return s.store.Save(id, img)
 }
 
 func (s *Service) ImgContentType(img []byte) string {

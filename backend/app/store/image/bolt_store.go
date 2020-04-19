@@ -51,8 +51,8 @@ func NewBoltStorage(fileName string, options bolt.Options) (*Bolt, error) {
 	}, nil
 }
 
-// SaveWithID saves image for given id to staging bucket in DB
-func (b *Bolt) SaveWithID(id string, img []byte) error {
+// Save saves image for given id to staging bucket in DB
+func (b *Bolt) Save(id string, img []byte) error {
 	err := b.db.Update(func(tx *bolt.Tx) error {
 		if err := tx.Bucket([]byte(imagesStagedBktName)).Put([]byte(id), img); err != nil {
 			return errors.Wrapf(err, "can't put to bucket with %s", id)

@@ -32,9 +32,9 @@ type FileSystem struct {
 	}
 }
 
-// SaveWithID saves image with given id to local FS, staging directory.
+// Save saves image with given id to local FS, staging directory.
 // Files partitioned across multiple subdirectories, and the final path includes part, i.e. /location/user1/03/123-4567
-func (f *FileSystem) SaveWithID(id string, img []byte) error {
+func (f *FileSystem) Save(id string, img []byte) error {
 	dst := f.location(f.Staging, id)
 
 	if err := os.MkdirAll(path.Dir(dst), 0700); err != nil {

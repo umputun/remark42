@@ -49,7 +49,7 @@ func TestFsStore_Save(t *testing.T) {
 	defer teardown()
 
 	id := "test_img"
-	err := svc.SaveWithID(id, gopherPNGBytes())
+	err := svc.Save(id, gopherPNGBytes())
 	assert.NoError(t, err)
 
 	img := svc.location(svc.Staging, id)
@@ -68,7 +68,7 @@ func TestFsStore_SaveNoResizeJpeg(t *testing.T) {
 	img, err := ioutil.ReadAll(fh)
 	assert.NoError(t, err)
 	id := "test_img"
-	err = svc.SaveWithID(id, img)
+	err = svc.Save(id, img)
 	assert.NoError(t, err)
 
 	imgPath := svc.location(svc.Staging, id)
@@ -83,7 +83,7 @@ func TestFsStore_SaveAndCommit(t *testing.T) {
 	defer teardown()
 
 	id := "test_img"
-	err := svc.SaveWithID(id, gopherPNGBytes())
+	err := svc.Save(id, gopherPNGBytes())
 	require.NoError(t, err)
 	err = svc.Commit(id)
 	require.NoError(t, err)
@@ -105,7 +105,7 @@ func TestFsStore_LoadAfterSave(t *testing.T) {
 	defer teardown()
 
 	id := "test_img"
-	err := svc.SaveWithID(id, gopherPNGBytes())
+	err := svc.Save(id, gopherPNGBytes())
 	assert.NoError(t, err)
 	t.Log(id)
 
@@ -123,7 +123,7 @@ func TestFsStore_LoadAfterCommit(t *testing.T) {
 	defer teardown()
 
 	id := "test_img"
-	err := svc.SaveWithID(id, gopherPNGBytes())
+	err := svc.Save(id, gopherPNGBytes())
 	assert.NoError(t, err)
 	t.Log(id)
 	err = svc.Commit(id)
@@ -186,7 +186,7 @@ func TestFsStore_Cleanup(t *testing.T) {
 
 	save := func(file string, user string) (filePath string) {
 		id := path.Join(user, file)
-		err := svc.SaveWithID(id, gopherPNGBytes())
+		err := svc.Save(id, gopherPNGBytes())
 		require.NoError(t, err)
 		img := svc.location(svc.Staging, id)
 		data, err := ioutil.ReadFile(img)
