@@ -38,7 +38,7 @@ const (
 	ErrAssetNotFound      = 18 // requested file not found
 )
 
-const errorHtml = `<!DOCTYPE html>
+const errorHTML = `<!DOCTYPE html>
 <html>
 <head>
     <meta name="viewport" content="width=device-width"/>
@@ -64,12 +64,12 @@ type errTmplData struct {
 func SendErrorHTML(w http.ResponseWriter, r *http.Request, httpStatusCode int, err error, details string, errCode int) {
 	// MustExecute behaves like template.Execute, but panics if an error occurs.
 	MustExecute := func(tmpl *template.Template, wr io.Writer, data interface{}) {
-		if err := tmpl.Execute(wr, data); err != nil {
+		if err = tmpl.Execute(wr, data); err != nil {
 			panic(err)
 		}
 	}
 
-	tmpl := template.Must(template.New("error").Parse(errorHtml))
+	tmpl := template.Must(template.New("error").Parse(errorHTML))
 	log.Printf("[WARN] %s", errDetailsMsg(r, httpStatusCode, err, details, errCode))
 	render.Status(r, httpStatusCode)
 	msg := bytes.Buffer{}

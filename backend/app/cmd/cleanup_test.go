@@ -144,7 +144,7 @@ func TestCleanup_ExecuteTitle(t *testing.T) {
 }
 
 func cleanupRoutes(t *testing.T, r *chi.Mux, c *cleanedComments) {
-	r.HandleFunc("/api/v1/list", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	r.HandleFunc("/api/v1/list", func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "GET", r.Method)
 		require.Equal(t, "site=remark&limit=10000", r.URL.RawQuery)
 		list := []store.PostInfo{
@@ -165,9 +165,9 @@ func cleanupRoutes(t *testing.T, r *chi.Mux, c *cleanedComments) {
 			},
 		}
 		require.NoError(t, json.NewEncoder(w).Encode(list))
-	}))
+	})
 
-	r.HandleFunc("/api/v1/find", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	r.HandleFunc("/api/v1/find", func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "GET", r.Method)
 		require.Equal(t, "remark", r.URL.Query().Get("site"))
 		require.Equal(t, "plain", r.URL.Query().Get("format"))
@@ -193,22 +193,22 @@ func cleanupRoutes(t *testing.T, r *chi.Mux, c *cleanedComments) {
 		}
 
 		require.NoError(t, json.NewEncoder(w).Encode(commentsWithInfo))
-	}))
+	})
 
-	r.HandleFunc("/api/v1/admin/comment/{id}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	r.HandleFunc("/api/v1/admin/comment/{id}", func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "DELETE", r.Method)
 		t.Log("delete ", r.URL.Path)
 		c.lock.Lock()
 		c.ids = append(c.ids, r.URL.Path)
 		c.lock.Unlock()
-	}))
+	})
 
-	r.HandleFunc("/api/v1/admin/title/{id}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	r.HandleFunc("/api/v1/admin/title/{id}", func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "PUT", r.Method)
 		t.Log("title for ", r.URL.Path)
 		c.lock.Lock()
 		c.ids = append(c.ids, r.URL.Path)
 		c.lock.Unlock()
-	}))
+	})
 
 }

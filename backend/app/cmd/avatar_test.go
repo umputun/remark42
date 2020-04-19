@@ -42,7 +42,7 @@ type avatarMigratorMock struct {
 	retCount int
 }
 
-func (a *avatarMigratorMock) Migrate(dst, src avatar.Store) (int, error) {
+func (a *avatarMigratorMock) Migrate(_, _ avatar.Store) (int, error) {
 	a.called++
 	return a.retCount, a.retError
 }

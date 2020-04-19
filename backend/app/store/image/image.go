@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"context"
 	"image"
+	// support gif and jpeg images decoding
 	_ "image/gif"
 	_ "image/jpeg"
 	"image/png"
@@ -60,7 +61,7 @@ type ServiceParams struct {
 // e.g. when somebody uploaded a picture but did not sent the comment.
 type Store interface {
 	Save(id string, img []byte) error // store image with passed id to staging
-	Load(id string) ([]byte, error)   // load image by ID. Caller has to close the reader.
+	Load(id string) ([]byte, error)   // load image by ID
 
 	Commit(id string) error                               // move image from staging to permanent
 	Cleanup(ctx context.Context, ttl time.Duration) error // run removal loop for old images on staging
@@ -73,6 +74,7 @@ type submitReq struct {
 	TS    time.Time
 }
 
+// NewService returns new Service instance
 func NewService(s Store, p ServiceParams) *Service {
 	return &Service{ServiceParams: p, store: s}
 }
@@ -186,7 +188,7 @@ func (s *Service) Save(userID string, r io.Reader) (id string, err error) {
 	return id, s.SaveWithID(id, r)
 }
 
-// Save wraps storage Save function, validating and resizing the image before calling it.
+// SaveWithID wraps storage Save function, validating and resizing the image before calling it.
 func (s *Service) SaveWithID(id string, r io.Reader) error {
 	img, err := s.prepareImage(r)
 	if err != nil {
@@ -195,6 +197,7 @@ func (s *Service) SaveWithID(id string, r io.Reader) error {
 	return s.store.Save(id, img)
 }
 
+// ImgContentType returns content type for provided image
 func (s *Service) ImgContentType(img []byte) string {
 	contentType := http.DetectContentType(img)
 	if contentType == "application/octet-stream" {

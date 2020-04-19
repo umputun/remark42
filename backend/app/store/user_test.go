@@ -60,8 +60,8 @@ func TestUser_HashFailed(t *testing.T) {
 
 type mockHash struct{}
 
-func (mock mockHash) Sum(b []byte) []byte               { return nil }
+func (mock mockHash) Sum(_ []byte) []byte               { return nil }
 func (mock mockHash) Reset()                            {}
 func (mock mockHash) Size() int                         { return 0 }
 func (mock mockHash) BlockSize() int                    { return 0 }
-func (mock mockHash) Write(p []byte) (n int, err error) { return 0, errors.New("error") }
+func (mock mockHash) Write(_ []byte) (n int, err error) { return 0, errors.New("error") }

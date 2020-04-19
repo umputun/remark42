@@ -662,7 +662,7 @@ func (b *BoltDB) getUserDetail(req UserDetailRequest) (result []UserDetailEntry,
 		value := bucket.Get([]byte(req.UserID))
 		// return no error in case of absent entry
 		if value != nil {
-			if err := json.Unmarshal(value, &entry); err != nil {
+			if err = json.Unmarshal(value, &entry); err != nil {
 				return errors.Wrap(e, "failed to unmarshal entry")
 			}
 			switch req.Detail {
@@ -690,7 +690,7 @@ func (b *BoltDB) setUserDetail(req UserDetailRequest) (result []UserDetailEntry,
 		value := bucket.Get([]byte(req.UserID))
 		// return no error in case of absent entry
 		if value != nil {
-			if err := json.Unmarshal(value, &entry); err != nil {
+			if err = json.Unmarshal(value, &entry); err != nil {
 				return errors.Wrap(e, "failed to unmarshal entry")
 			}
 		}
@@ -711,7 +711,7 @@ func (b *BoltDB) setUserDetail(req UserDetailRequest) (result []UserDetailEntry,
 	}
 
 	err = bdb.Update(func(tx *bolt.Tx) error {
-		err := b.save(tx.Bucket([]byte(userDetailsBucketName)), req.UserID, entry)
+		err = b.save(tx.Bucket([]byte(userDetailsBucketName)), req.UserID, entry)
 		return errors.Wrapf(err, "failed to update detail %s for %s in %s", req.Detail, req.UserID, req.Locator.SiteID)
 	})
 
@@ -729,7 +729,7 @@ func (b *BoltDB) listDetails(loc store.Locator) (result []UserDetailEntry, err e
 		var entry UserDetailEntry
 		bucket := tx.Bucket([]byte(userDetailsBucketName))
 		return bucket.ForEach(func(userID, value []byte) error {
-			if err := json.Unmarshal(value, &entry); err != nil {
+			if err = json.Unmarshal(value, &entry); err != nil {
 				return errors.Wrap(e, "failed to unmarshal entry")
 			}
 			result = append(result, entry)
@@ -860,6 +860,7 @@ func (b *BoltDB) deleteUser(bdb *bolt.DB, siteID string, userID string, mode sto
 	// get list of commentID for all user's comment
 	comments := []commentInfo{}
 	for _, postInfo := range posts {
+		postInfo := postInfo
 		err = bdb.View(func(tx *bolt.Tx) error {
 			postsBkt := tx.Bucket([]byte(postsBucketName))
 			postBkt := postsBkt.Bucket([]byte(postInfo.URL))

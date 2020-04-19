@@ -16,7 +16,7 @@ https://radio-t.com/p/2018/09/22////podcast-616/ https://www.radio-t.com/p/2018/
 https://radio-t.com/p/2018/09/22/podcast-616/?with_query=1 https://www.radio-t.com/p/2018/09/22/podcast-616/
 `)
 
-	mapper, err := NewUrlMapper(rules)
+	mapper, err := NewURLMapper(rules)
 	assert.NoError(t, err)
 
 	// if url not matched mapper should return given url
@@ -30,7 +30,7 @@ https://radio-t.com/p/2018/09/22/podcast-616/?with_query=1 https://www.radio-t.c
 
 	// want remap from http to https
 	rules = strings.NewReader(`http://anysite.com/p/123 https://anysite.com/p/321`)
-	mapper, err = NewUrlMapper(rules)
+	mapper, err = NewURLMapper(rules)
 	assert.NoError(t, err)
 	assert.Equal(t, "https://anysite.com/p/321", mapper.URL("http://anysite.com/p/123"))
 	assert.Equal(t, "https://notexist", mapper.URL("https://notexist"))
@@ -38,7 +38,7 @@ https://radio-t.com/p/2018/09/22/podcast-616/?with_query=1 https://www.radio-t.c
 
 	// want remap from http to https by pattern
 	rules = strings.NewReader(`http://anysite.com* https://anysite.com*`)
-	mapper, err = NewUrlMapper(rules)
+	mapper, err = NewURLMapper(rules)
 	assert.NoError(t, err)
 	assert.Equal(t, "https://anysite.com/p/1", mapper.URL("http://anysite.com/p/1"))
 	assert.Equal(t, "https://anysite.com/", mapper.URL("http://anysite.com/"))
@@ -80,7 +80,7 @@ func TestUrlMapper_New(t *testing.T) {
 		},
 	}
 	for _, c := range cases {
-		_, err := NewUrlMapper(strings.NewReader(c.rules))
+		_, err := NewURLMapper(strings.NewReader(c.rules))
 		if c.expectError {
 			assert.Error(t, err)
 		} else {

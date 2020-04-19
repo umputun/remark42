@@ -75,7 +75,7 @@ func (m *MemAdmin) OnEvent(siteID string, ev admin.EventType) error {
 		return errors.Errorf("site %s not found", siteID)
 	}
 	if ev == admin.EvCreate {
-		resp.CountCreated += 1 // not a good idea, just for demo
+		resp.CountCreated++ // not a good idea, just for demo
 		m.data[siteID] = resp
 	}
 	return nil

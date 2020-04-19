@@ -29,8 +29,8 @@ type EmailParams struct {
 	TokenGenFn func(userID, email, site string) (string, error) // Unsubscribe token generation function
 }
 
-// SmtpParams contain settings for smtp server connection
-type SmtpParams struct {
+// SMTPParams contain settings for smtp server connection
+type SMTPParams struct {
 	Host     string        // SMTP host
 	Port     int           // SMTP port
 	TLS      bool          // TLS auth
@@ -42,7 +42,7 @@ type SmtpParams struct {
 // Email implements notify.Destination for email
 type Email struct {
 	EmailParams
-	SmtpParams
+	SMTPParams
 
 	smtp       smtpClientCreator
 	msgTmpl    *template.Template // parsed request message template
@@ -64,7 +64,7 @@ type smtpClient interface {
 
 // smtpClientCreator interface defines function for creating new smtpClients
 type smtpClientCreator interface {
-	Create(SmtpParams) (smtpClient, error)
+	Create(SMTPParams) (smtpClient, error)
 }
 
 type emailMessage struct {
@@ -202,7 +202,7 @@ const (
 )
 
 // NewEmail makes new Email object, returns error in case of e.MsgTemplate or e.VerificationTemplate parsing error
-func NewEmail(emailParams EmailParams, smtpParams SmtpParams) (*Email, error) {
+func NewEmail(emailParams EmailParams, smtpParams SMTPParams) (*Email, error) {
 	// set up Email emailParams
 	res := Email{EmailParams: emailParams}
 	if res.MsgTemplate == "" {
@@ -217,7 +217,7 @@ func NewEmail(emailParams EmailParams, smtpParams SmtpParams) (*Email, error) {
 
 	// set up SMTP emailParams
 	res.smtp = &emailClient{}
-	res.SmtpParams = smtpParams
+	res.SMTPParams = smtpParams
 	if res.TimeOut <= 0 {
 		res.TimeOut = defaultEmailTimeout
 	}
@@ -225,7 +225,7 @@ func NewEmail(emailParams EmailParams, smtpParams SmtpParams) (*Email, error) {
 	log.Printf("[DEBUG] Create new email notifier for server %s with user %s, timeout=%s",
 		res.Host, res.Username, res.TimeOut)
 
-	// initialise templates
+	// initialize templates
 	var err error
 	if res.msgTmpl, err = template.New("messageFromRequest").Parse(res.MsgTemplate); err != nil {
 		return nil, errors.Wrapf(err, "can't parse message template")
@@ -314,13 +314,13 @@ func (e *Email) buildMessageFromRequest(req Request, forAdmin bool) (string, err
 		unsubscribeLink = ""
 	}
 
-	commentUrlPrefix := req.Comment.Locator.URL + uiNav
+	commentURLPrefix := req.Comment.Locator.URL + uiNav
 	msg := bytes.Buffer{}
 	tmplData := msgTmplData{
 		UserName:        req.Comment.User.Name,
 		UserPicture:     req.Comment.User.Picture,
 		CommentText:     req.Comment.Text,
-		CommentLink:     commentUrlPrefix + req.Comment.ID,
+		CommentLink:     commentURLPrefix + req.Comment.ID,
 		CommentDate:     req.Comment.Timestamp,
 		PostTitle:       req.Comment.PostTitle,
 		Email:           req.Email,
@@ -332,7 +332,7 @@ func (e *Email) buildMessageFromRequest(req Request, forAdmin bool) (string, err
 		tmplData.ParentUserName = req.parent.User.Name
 		tmplData.ParentUserPicture = req.parent.User.Picture
 		tmplData.ParentCommentText = req.parent.Text
-		tmplData.ParentCommentLink = commentUrlPrefix + req.parent.ID
+		tmplData.ParentCommentLink = commentURLPrefix + req.parent.ID
 		tmplData.ParentCommentDate = req.parent.Timestamp
 	}
 	err = e.msgTmpl.Execute(&msg, tmplData)
@@ -384,30 +384,30 @@ func (e *Email) buildMessage(subject, body, to, contentType, unsubscribeLink str
 // Thread safe.
 func (e *Email) sendMessage(m emailMessage) error {
 	if e.smtp == nil {
-		return errors.New("sendMessage called without smtpClient set")
+		return errors.New("sendMessage called without client set")
 	}
-	smtpClient, err := e.smtp.Create(e.SmtpParams)
+	client, err := e.smtp.Create(e.SMTPParams)
 	if err != nil {
 		return errors.Wrap(err, "failed to make smtp Create")
 	}
 
 	defer func() {
-		if err := smtpClient.Quit(); err != nil {
+		if err = client.Quit(); err != nil {
 			log.Printf("[WARN] failed to send quit command to %s:%d, %v", e.Host, e.Port, err)
-			if err := smtpClient.Close(); err != nil {
+			if err = client.Close(); err != nil {
 				log.Printf("[WARN] can't close smtp connection, %v", err)
 			}
 		}
 	}()
 
-	if err := smtpClient.Mail(m.from); err != nil {
+	if err = client.Mail(m.from); err != nil {
 		return errors.Wrapf(err, "bad from address %q", m.from)
 	}
-	if err := smtpClient.Rcpt(m.to); err != nil {
+	if err = client.Rcpt(m.to); err != nil {
 		return errors.Wrapf(err, "bad to address %q", m.to)
 	}
 
-	writer, err := smtpClient.Data()
+	writer, err := client.Data()
 	if err != nil {
 		return errors.Wrap(err, "can't make email writer")
 	}
@@ -431,9 +431,9 @@ func (e *Email) String() string {
 	return fmt.Sprintf("email: from %q with username '%s' at server %s:%d", e.From, e.Username, e.Host, e.Port)
 }
 
-// Create establish SMTP connection with server using credentials in smtpClientWithCreator.SmtpParams
+// Create establish SMTP connection with server using credentials in smtpClientWithCreator.SMTPParams
 // and returns pointer to it. Thread safe.
-func (s *emailClient) Create(params SmtpParams) (smtpClient, error) {
+func (s *emailClient) Create(params SMTPParams) (smtpClient, error) {
 	authenticate := func(c *smtp.Client) error {
 		if params.Username == "" || params.Password == "" {
 			return nil

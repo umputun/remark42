@@ -33,6 +33,7 @@ func NewMemImageStore() *MemImage {
 	}
 }
 
+// Save stores image with passed id to staging
 func (m *MemImage) Save(id string, img []byte) error {
 	m.Lock()
 	m.imagesStaging[id] = img
@@ -42,6 +43,7 @@ func (m *MemImage) Save(id string, img []byte) error {
 	return nil
 }
 
+// Load image by ID
 func (m *MemImage) Load(id string) ([]byte, error) {
 	m.RLock()
 	img, ok := m.images[id]
@@ -55,6 +57,7 @@ func (m *MemImage) Load(id string) ([]byte, error) {
 	return img, nil
 }
 
+// Commit moves image from staging to permanent
 func (m *MemImage) Commit(id string) error {
 	m.RLock()
 	img, ok := m.imagesStaging[id]
@@ -70,6 +73,7 @@ func (m *MemImage) Commit(id string) error {
 	return nil
 }
 
+// Cleanup runs removal loop for old images on staging
 func (m *MemImage) Cleanup(_ context.Context, ttl time.Duration) error {
 	var idsToRemove []string
 

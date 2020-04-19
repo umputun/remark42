@@ -4,8 +4,34 @@ run:
     format: tab
   skip-dirs:
     - vendor
+
+linters-settings:
+  govet:
+    check-shadowing: true
+  golint:
+    min-confidence: 0.1
+  maligned:
+    suggest-new: true
+  goconst:
+    min-len: 2
+    min-occurrences: 2
+  misspell:
+    locale: US
+  lll:
+    line-length: 140
+  gocritic:
+    enabled-tags:
+      - performance
+      - style
+      - experimental
+    disabled-checks:
+      - wrapperFunc
+
 linters:
   enable:
+    - megacheck
+    - golint
+    - govet
     - unconvert
     - megacheck
     - structcheck
@@ -19,9 +45,24 @@ linters:
     - typecheck
     - ineffassign
     - varcheck
+    - stylecheck
+    - gochecknoinits
+    - scopelint
+    - nakedret
+    - gosimple
+    - prealloc
+  fast: false
   disable-all: true
+
 issues:
+  exclude-rules:
+    - text: "at least one file in a package should have a package comment"
+      linters:
+        - stylecheck
+    - text: "should have a package comment, unless it's in another file for this package"
+      linters:
+        - golint
   exclude-use-default: false
 
 service:
-  golangci-lint-version: 1.24.x
+  golangci-lint-version: 1.23.x

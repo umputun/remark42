@@ -34,7 +34,7 @@ func (a avatarMigrator) Migrate(dst, src avatar.Store) (int, error) {
 }
 
 // Execute runs  with AvatarCommand parameters, entry point for "avatar" command
-func (ac *AvatarCommand) Execute(args []string) error {
+func (ac *AvatarCommand) Execute(_ []string) error {
 	log.Printf("[INFO] migrate avatars from %s to %s", ac.AvatarSrc.Type, ac.AvatarDst.Type)
 
 	src, err := ac.makeAvatarStore(ac.AvatarSrc)

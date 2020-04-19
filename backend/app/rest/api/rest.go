@@ -464,7 +464,7 @@ func addFileServer(r chi.Router, path string, root http.FileSystem, version stri
 	origPath := path
 	webFS = http.StripPrefix(path, webFS)
 	if path != "/" && path[len(path)-1] != '/' {
-		r.Get(path, http.RedirectHandler(path+"/", 301).ServeHTTP)
+		r.Get(path, http.RedirectHandler(path+"/", http.StatusMovedPermanently).ServeHTTP)
 		path += "/"
 	}
 	path += "*"

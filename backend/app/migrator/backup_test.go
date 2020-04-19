@@ -77,7 +77,7 @@ func TestBackup_Do(t *testing.T) {
 
 type mockExporter struct{}
 
-func (mock *mockExporter) Export(w io.Writer, siteID string) (int, error) {
+func (mock *mockExporter) Export(w io.Writer, _ string) (int, error) {
 	_, err := w.Write([]byte("some export blah blah 1234567890"))
 	return 1000, err
 }
