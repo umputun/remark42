@@ -281,11 +281,10 @@ export class CommentForm extends Component<Props, State> {
   onDrop(e: DragEvent) {
     const isAnonymous = this.props.user && isUserAnonymous(this.props.user);
     if (!this.props.user || isAnonymous) {
+      const message = isAnonymous ? messages.anonymousUploadingDisabled : messages.unauthorizedUploadingDisabled;
       this.setState({
         isErrorShown: true,
-        errorMessage: this.props.intl.formatMessage(
-          messages[isAnonymous ? 'anonymousUploadingDisabled' : 'unauthorizedUploadingDisabled']
-        ),
+        errorMessage: this.props.intl.formatMessage(message),
       });
       e.preventDefault();
       return;
