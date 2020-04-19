@@ -16,7 +16,7 @@ type RPC struct {
 	jrpc.Client
 }
 
-func (r *RPC) SaveWithID(id string, img []byte) error {
+func (r *RPC) Save(id string, img []byte) error {
 	_, err := r.Call("image.save_with_id", id, img)
 	return err
 }

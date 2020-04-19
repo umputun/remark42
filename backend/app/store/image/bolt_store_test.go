@@ -20,7 +20,7 @@ func TestBoltStore_SaveCommit(t *testing.T) {
 
 	id := "test_img"
 
-	err := svc.SaveWithID(id, gopherPNGBytes())
+	err := svc.Save(id, gopherPNGBytes())
 	assert.NoError(t, err)
 
 	err = svc.db.View(func(tx *bolt.Tx) error {
@@ -49,7 +49,7 @@ func TestBoltStore_LoadAfterSave(t *testing.T) {
 	defer teardown()
 
 	id := "test_img"
-	err := svc.SaveWithID(id, gopherPNGBytes())
+	err := svc.Save(id, gopherPNGBytes())
 	assert.NoError(t, err)
 
 	data, err := svc.Load(id)
@@ -66,7 +66,7 @@ func TestBoltStore_Cleanup(t *testing.T) {
 	defer teardown()
 
 	save := func(file string) (id string) {
-		err := svc.SaveWithID(file, gopherPNGBytes())
+		err := svc.Save(file, gopherPNGBytes())
 		require.NoError(t, err)
 
 		checkBoltImgData(t, svc.db, imagesStagedBktName, file, func(data []byte) error {

@@ -21,7 +21,7 @@ func TestService_SaveAndLoad(t *testing.T) {
 	store := MockStore{}
 	svc := NewService(&store, ServiceParams{MaxSize: 1500, MaxWidth: 32, MaxHeight: 32})
 
-	store.On("SaveWithID", "test_id", mock.Anything).Return(nil)
+	store.On("Save", "test_id", mock.Anything).Return(nil)
 	err := svc.SaveWithID("test_id", gopherPNG())
 	assert.NoError(t, err)
 

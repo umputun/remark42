@@ -62,8 +62,8 @@ func (_m *MockStore) Load(id string) ([]byte, error) {
 	return r0, r1
 }
 
-// SaveWithID provides a mock function with given fields: id, img
-func (_m *MockStore) SaveWithID(id string, img []byte) error {
+// Save provides a mock function with given fields: id, img
+func (_m *MockStore) Save(id string, img []byte) error {
 	ret := _m.Called(id, img)
 
 	var r0 error

@@ -58,7 +58,7 @@ func TestRPC_imgLoadHndl(t *testing.T) {
 	ri := image.RPC{Client: jrpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
 	// save
 	id := "test_img"
-	err := ri.SaveWithID(id, gopherPNGBytes())
+	err := ri.Save(id, gopherPNGBytes())
 	assert.NoError(t, err)
 
 	// load
@@ -107,7 +107,7 @@ func TestRPC_imgCleanupHndl(t *testing.T) {
 
 	// save
 	id := "test_img"
-	err := ri.SaveWithID(id, gopherPNGBytes())
+	err := ri.Save(id, gopherPNGBytes())
 	assert.NoError(t, err)
 
 	// load

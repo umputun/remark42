@@ -24,7 +24,7 @@ func (s *RPC) imgSaveWithIDHndl(id uint64, params json.RawMessage) (rr jrpc.Resp
 	if err != nil {
 		return jrpc.Response{Error: err.Error()}
 	}
-	err = s.img.SaveWithID(req[0], img)
+	err = s.img.Save(req[0], img)
 	return jrpc.EncodeResponse(id, nil, err)
 }
 
