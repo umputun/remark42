@@ -249,8 +249,8 @@ func TestRest_UpdateDelete(t *testing.T) {
 	j := []store.PostInfo{}
 	err = json.Unmarshal(bb, &j)
 	assert.NoError(t, err)
-	assert.Equal(t, []store.PostInfo([]store.PostInfo{{URL: "https://radio-t.com/blah1", Count: 1},
-		{URL: "https://radio-t.com/blah2", Count: 0}}), j)
+	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/blah1", Count: 1},
+		{URL: "https://radio-t.com/blah2", Count: 0}}, j)
 
 	// delete a comment
 	client := http.Client{}
@@ -290,8 +290,8 @@ func TestRest_UpdateDelete(t *testing.T) {
 	j = []store.PostInfo{}
 	err = json.Unmarshal(bb, &j)
 	require.NoError(t, err)
-	assert.Equal(t, []store.PostInfo([]store.PostInfo{{URL: "https://radio-t.com/blah1", Count: 0},
-		{URL: "https://radio-t.com/blah2", Count: 0}}), j)
+	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/blah1", Count: 0},
+		{URL: "https://radio-t.com/blah2", Count: 0}}, j)
 }
 
 func TestRest_UpdateNotOwner(t *testing.T) {

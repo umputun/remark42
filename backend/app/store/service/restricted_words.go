@@ -19,7 +19,7 @@ type StaticRestrictedWordsLister struct {
 }
 
 // List provides restricted words in comments (ignores siteID)
-func (l StaticRestrictedWordsLister) List(siteID string) (restricted []string, err error) {
+func (l StaticRestrictedWordsLister) List(_ string) (restricted []string, err error) {
 	return l.Words, nil
 }
 

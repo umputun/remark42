@@ -105,7 +105,7 @@ func TestNative_ImportWithMapper(t *testing.T) {
 
 	// want to remap comments to https://rdt.c
 	rules := `https://radio-t.com* https://rdt.c*`
-	mapper, err := NewUrlMapper(strings.NewReader(rules))
+	mapper, err := NewURLMapper(strings.NewReader(rules))
 	assert.NoError(t, err)
 
 	inp := `{"version":1,"users":[{"id":"user1","blocked":{"status":false,"until":"0001-01-01T00:00:00Z"},"verified":true},{"id":"user2","blocked":{"status":true,"until":"2018-12-23T02:55:22.472041-06:00"},"verified":false}],"posts":[{"url":"https://radio-t.com","read_only":true}]}

@@ -9,6 +9,7 @@ import (
 	log "github.com/go-pkgz/lgr"
 )
 
+// MockDest is a destination mock
 type MockDest struct {
 	data   []Request
 	id     int
@@ -16,6 +17,7 @@ type MockDest struct {
 	lock   sync.Mutex
 }
 
+// Send mock
 func (m *MockDest) Send(ctx context.Context, r Request) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
@@ -30,6 +32,7 @@ func (m *MockDest) Send(ctx context.Context, r Request) error {
 	return nil
 }
 
+// Get mock
 func (m *MockDest) Get() []Request {
 	m.lock.Lock()
 	defer m.lock.Unlock()

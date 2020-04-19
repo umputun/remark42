@@ -7,15 +7,15 @@ import (
 	"strings"
 )
 
-// UrlMapper implements Mapper interface
-type UrlMapper struct {
+// URLMapper implements Mapper interface
+type URLMapper struct {
 	rules map[string]string
 }
 
-// NewUrlMapper reads rules from given reader and returns initialised UrlMapper
+// NewURLMapper reads rules from given reader and returns initialized URLMapper
 // if given rules are valid.
-func NewUrlMapper(reader io.Reader) (Mapper, error) {
-	u := &UrlMapper{}
+func NewURLMapper(reader io.Reader) (Mapper, error) {
+	u := &URLMapper{}
 	if err := u.loadRules(reader); err != nil {
 		return u, err
 	}
@@ -29,7 +29,7 @@ func NewUrlMapper(reader io.Reader) (Mapper, error) {
 // Example:
 // https://www.myblog.com/blog/1/ https://myblog.com/blog/1/
 // https://www.myblog.com/* https://myblog.com/*
-func (u *UrlMapper) loadRules(reader io.Reader) error {
+func (u *URLMapper) loadRules(reader io.Reader) error {
 	data, err := ioutil.ReadAll(reader)
 	if err != nil {
 		return err
@@ -54,19 +54,19 @@ func (u *UrlMapper) loadRules(reader io.Reader) error {
 
 // URL maps given url to another url according loaded url-rules.
 // If not matched returns given url.
-func (u *UrlMapper) URL(url string) string {
-	if newUrl, ok := u.rules[url]; ok {
-		return newUrl
+func (u *URLMapper) URL(url string) string {
+	if newURL, ok := u.rules[url]; ok {
+		return newURL
 	}
 	// try to match by prefix
-	for oldUrl, newUrl := range u.rules {
-		if !strings.HasSuffix(oldUrl, "*") {
+	for oldURL, newURL := range u.rules {
+		if !strings.HasSuffix(oldURL, "*") {
 			continue
 		}
-		oldUrl = strings.TrimSuffix(oldUrl, "*")
-		newUrl = strings.TrimSuffix(newUrl, "*")
-		if strings.HasPrefix(url, oldUrl) {
-			return newUrl + strings.TrimPrefix(url, oldUrl)
+		oldURL = strings.TrimSuffix(oldURL, "*")
+		newURL = strings.TrimSuffix(newURL, "*")
+		if strings.HasPrefix(url, oldURL) {
+			return newURL + strings.TrimPrefix(url, oldURL)
 		}
 	}
 	// search failed, return given url

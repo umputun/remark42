@@ -449,8 +449,8 @@ func TestRest_Counts(t *testing.T) {
 	j := []store.PostInfo{}
 	err = json.Unmarshal(body, &j)
 	assert.NoError(t, err)
-	assert.Equal(t, []store.PostInfo([]store.PostInfo{{URL: "https://radio-t.com/blah1", Count: 3},
-		{URL: "https://radio-t.com/blah2", Count: 2}}), j)
+	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/blah1", Count: 3},
+		{URL: "https://radio-t.com/blah2", Count: 2}}, j)
 
 	resp, err = post(t, ts.URL+"/api/v1/counts?site=radio-XXX", `{}`)
 	require.NoError(t, err)
@@ -527,7 +527,7 @@ func TestRest_Config(t *testing.T) {
 	err := json.Unmarshal([]byte(body), &j)
 	assert.NoError(t, err)
 	assert.Equal(t, 300., j["edit_duration"])
-	assert.EqualValues(t, []interface{}([]interface{}{"a1", "a2"}), j["admins"])
+	assert.EqualValues(t, []interface{}{"a1", "a2"}, j["admins"])
 	assert.Equal(t, "admin@remark-42.com", j["admin_email"])
 	assert.Equal(t, 4000., j["max_comment_size"])
 	assert.Equal(t, -5., j["low_score"])
@@ -598,7 +598,7 @@ func TestRest_InfoStream(t *testing.T) {
 	assert.Equal(t, 200, code)
 	<-done
 
-	recs := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
+	recs := strings.Split(strings.TrimSuffix(body, "\n"), "\n")
 	require.Equal(t, 10*3, len(recs), "10 records. each 2 lines +1 emty line")
 	assert.True(t, strings.Contains(recs[0+1], `"count":2`), recs[0])
 	assert.True(t, strings.Contains(recs[9*3+1], `"count":11`), recs[9])
@@ -723,10 +723,11 @@ func TestRest_Robots(t *testing.T) {
 	assert.Equal(t, "User-agent: *\nDisallow: /auth/\nDisallow: /api/\nAllow: /api/v1/find\n"+
 		"Allow: /api/v1/last\nAllow: /api/v1/id\nAllow: /api/v1/count\nAllow: /api/v1/counts\n"+
 		"Allow: /api/v1/list\nAllow: /api/v1/config\nAllow: /api/v1/user\nAllow: /api/v1/img\n"+
-		"Allow: /api/v1/avatar\nAllow: /api/v1/picture\n", string(body))
+		"Allow: /api/v1/avatar\nAllow: /api/v1/picture\n", body)
 }
 
 func TestRest_LastCommentsStream(t *testing.T) {
+	t.Skip() // TODO: enable after cache is migrated to https://github.com/dgraph-io/ristretto
 	ts, srv, teardown := startupT(t)
 	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
 	srv.pubRest.streamer.Refresh = 50 * time.Millisecond

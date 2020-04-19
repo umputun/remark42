@@ -83,10 +83,13 @@ const (
 	Verified = Flag("verified")
 	Blocked  = Flag("blocked")
 )
+
+// All possible user details
 const (
-	// All possible user details
-	UserEmail      = UserDetail("email")
-	AllUserDetails = UserDetail("all") // used for listing and deletion requests
+	// UserEmail is a user email
+	UserEmail = UserDetail("email")
+	// AllUserDetails used for listing and deletion requests
+	AllUserDetails = UserDetail("all")
 )
 
 // FlagRequest is the input for both get/set for flags, like blocked, verified and so on

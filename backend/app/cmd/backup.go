@@ -24,7 +24,7 @@ type BackupCommand struct {
 }
 
 // Execute runs export with ExportCommand parameters, entry point for "export" command
-func (ec *BackupCommand) Execute(args []string) error {
+func (ec *BackupCommand) Execute(_ []string) error {
 	log.Printf("[INFO] export to %s, site %s", ec.ExportPath, ec.Site)
 	resetEnv("SECRET", "ADMIN_PASSWD")
 

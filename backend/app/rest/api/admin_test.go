@@ -55,8 +55,8 @@ func TestAdmin_Delete(t *testing.T) {
 	j := []store.PostInfo{}
 	err = json.Unmarshal(bb, &j)
 	assert.NoError(t, err)
-	assert.Equal(t, []store.PostInfo([]store.PostInfo{{URL: "https://radio-t.com/blah", Count: 2},
-		{URL: "https://radio-t.com/blah2", Count: 0}}), j)
+	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/blah", Count: 2},
+		{URL: "https://radio-t.com/blah2", Count: 0}}, j)
 
 	// delete a comment
 	req, err := http.NewRequest(http.MethodDelete,
@@ -103,8 +103,8 @@ func TestAdmin_Delete(t *testing.T) {
 	j = []store.PostInfo{}
 	err = json.Unmarshal(bb, &j)
 	assert.NoError(t, err)
-	assert.Equal(t, []store.PostInfo([]store.PostInfo{{URL: "https://radio-t.com/blah", Count: 1},
-		{URL: "https://radio-t.com/blah2", Count: 0}}), j)
+	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/blah", Count: 1},
+		{URL: "https://radio-t.com/blah2", Count: 0}}, j)
 }
 
 func TestAdmin_Title(t *testing.T) {
@@ -310,7 +310,7 @@ func TestAdmin_Block(t *testing.T) {
 	pi = []store.PostInfo{}
 	err = json.Unmarshal(body, &pi)
 	assert.NoError(t, err)
-	assert.Equal(t, []store.PostInfo([]store.PostInfo{{URL: "https://radio-t.com/blah", Count: 1}}), pi)
+	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/blah", Count: 1}}, pi)
 
 	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah&sort=+time")
 	assert.Equal(t, 200, code)

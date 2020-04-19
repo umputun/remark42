@@ -16,11 +16,13 @@ type RPC struct {
 	jrpc.Client
 }
 
+// Save saves image with given id to staging.
 func (r *RPC) Save(id string, img []byte) error {
 	_, err := r.Call("image.save_with_id", id, img)
 	return err
 }
 
+// Load image with given id
 func (r *RPC) Load(id string) ([]byte, error) {
 	resp, err := r.Call("image.load", id)
 	if err != nil {
@@ -33,11 +35,13 @@ func (r *RPC) Load(id string) ([]byte, error) {
 	return ioutil.ReadAll(base64.NewDecoder(base64.StdEncoding, strings.NewReader(rawImg)))
 }
 
+// Commit file stored in staging location by moving it to permanent location
 func (r *RPC) Commit(id string) error {
 	_, err := r.Call("image.commit", id)
 	return err
 }
 
+// Cleanup runs scan of staging and removes old files based on ttl
 func (r *RPC) Cleanup(_ context.Context, ttl time.Duration) error {
 	_, err := r.Call("image.cleanup", ttl)
 	return err

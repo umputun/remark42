@@ -22,7 +22,7 @@ func TestEmailNew(t *testing.T) {
 		err         bool
 		errText     string
 		emailParams EmailParams
-		smtpParams  SmtpParams
+		smtpParams  SMTPParams
 	}{
 		{name: "empty"},
 		{name: "with template parse error",
@@ -36,7 +36,7 @@ func TestEmailNew(t *testing.T) {
 				From:                 "test@from",
 				VerificationTemplate: "{{",
 			},
-			smtpParams: SmtpParams{
+			smtpParams: SMTPParams{
 				Host:     "test@host",
 				Port:     1000,
 				TLS:      true,
@@ -50,7 +50,7 @@ func TestEmailNew(t *testing.T) {
 			emailParams: EmailParams{
 				From: "test@from",
 			},
-			smtpParams: SmtpParams{
+			smtpParams: SMTPParams{
 				Host:     "test@host",
 				Port:     1000,
 				TLS:      true,
@@ -125,7 +125,7 @@ func TestEmailSendErrors(t *testing.T) {
 }
 
 func TestEmailSend_ExitConditions(t *testing.T) {
-	email, err := NewEmail(EmailParams{}, SmtpParams{})
+	email, err := NewEmail(EmailParams{}, SMTPParams{})
 	assert.NoError(t, err)
 	assert.NotNil(t, email, "expecting email returned")
 	// prevent triggering e.autoFlush creation
@@ -179,7 +179,7 @@ func TestEmailSendClientError(t *testing.T) {
 }
 
 func TestEmail_Send(t *testing.T) {
-	email, err := NewEmail(EmailParams{From: "from@example.org"}, SmtpParams{})
+	email, err := NewEmail(EmailParams{From: "from@example.org"}, SMTPParams{})
 	assert.NoError(t, err)
 	assert.NotNil(t, email)
 	fakeSmtp := fakeTestSMTP{}
@@ -227,7 +227,7 @@ Date: `)
 }
 
 func TestEmail_SendVerification(t *testing.T) {
-	email, err := NewEmail(EmailParams{From: "from@example.org"}, SmtpParams{})
+	email, err := NewEmail(EmailParams{From: "from@example.org"}, SMTPParams{})
 	assert.NoError(t, err)
 	assert.NotNil(t, email)
 	fakeSmtp := fakeTestSMTP{}
@@ -272,7 +272,7 @@ Date: `)
 
 func Test_emailClient_Create(t *testing.T) {
 	creator := emailClient{}
-	client, err := creator.Create(SmtpParams{})
+	client, err := creator.Create(SMTPParams{})
 	assert.Error(t, err, "absence of address to connect results in error")
 	assert.Nil(t, client, "no client returned in case of error")
 }
@@ -288,7 +288,7 @@ type fakeTestSMTP struct {
 	lock       sync.RWMutex
 }
 
-func (f *fakeTestSMTP) Create(SmtpParams) (smtpClient, error) {
+func (f *fakeTestSMTP) Create(SMTPParams) (smtpClient, error) {
 	if f.fail["create"] {
 		return nil, errors.New("failed to create client")
 	}

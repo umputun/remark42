@@ -84,6 +84,7 @@ func getDump() string {
 	return string(stacktrace[:length])
 }
 
+// nolint:gochecknoinits
 func init() {
 	// catch SIGQUIT and print stack traces
 	sigChan := make(chan os.Signal)

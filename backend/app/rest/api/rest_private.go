@@ -59,7 +59,7 @@ type privStore interface {
 	Info(locator store.Locator, readonlyAge int) (store.PostInfo, error)
 }
 
-const unsubscribeHtml = `<!DOCTYPE html>
+const unsubscribeHTML = `<!DOCTYPE html>
 <html>
 <head>
     <meta name="viewport" content="width=device-width"/>
@@ -418,7 +418,7 @@ func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[DEBUG] unsubscribe user %s", userID)
 
-	if err := s.dataService.DeleteUserDetail(siteID, userID, engine.UserEmail); err != nil {
+	if err = s.dataService.DeleteUserDetail(siteID, userID, engine.UserEmail); err != nil {
 		code := parseError(err, rest.ErrInternal)
 		rest.SendErrorHTML(w, r, http.StatusBadRequest, err, "can't delete email for user", code)
 		return
@@ -443,7 +443,7 @@ func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	tmpl := template.Must(template.New("unsubscribe").Parse(unsubscribeHtml))
+	tmpl := template.Must(template.New("unsubscribe").Parse(unsubscribeHTML))
 	msg := bytes.Buffer{}
 	MustExecute(tmpl, &msg, nil)
 	render.HTML(w, r, msg.String())

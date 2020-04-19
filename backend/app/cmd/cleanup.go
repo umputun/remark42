@@ -34,7 +34,7 @@ var (
 
 // Execute runs cleanup with CleanupCommand parameters, entry point for "cleanup" command
 // This command uses provided flags to detect and remove junk comments
-func (cc *CleanupCommand) Execute(args []string) error {
+func (cc *CleanupCommand) Execute(_ []string) error {
 	log.Printf("[INFO] cleanup for site %s", cc.Site)
 
 	posts, err := cc.postsInRange(cc.From, cc.To)

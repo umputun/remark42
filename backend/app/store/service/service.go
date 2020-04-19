@@ -1,6 +1,5 @@
 // Package service wraps engine interfaces with common logic unrelated to any particular engine implementation.
 // All consumers should be using service.DataStore and not the naked engine!
-
 package service
 
 import (

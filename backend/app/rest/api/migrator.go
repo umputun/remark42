@@ -28,7 +28,7 @@ type Migrator struct {
 	DisqusImporter    migrator.Importer
 	WordPressImporter migrator.Importer
 	NativeExporter    migrator.Exporter
-	UrlMapperMaker    migrator.MapperMaker
+	URLMapperMaker    migrator.MapperMaker
 	KeyStore          KeyStore
 
 	busy map[string]bool
@@ -161,7 +161,7 @@ func (m *Migrator) remapCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 
 	// create new url-mapper from given rules in body
-	mapper, err := m.UrlMapperMaker(r.Body)
+	mapper, err := m.URLMapperMaker(r.Body)
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "remap failed, bad given rules", rest.ErrDecode)
 		return
@@ -180,12 +180,12 @@ func (m *Migrator) remapCtrl(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		defer func() {
-			if e := os.Remove(fh.Name()); e != nil {
+			if e = os.Remove(fh.Name()); e != nil {
 				log.Printf("[WARN] failed to remove temp file %+v", e)
 			}
 		}()
 		log.Printf("[DEBUG] start export for site=%s", siteID)
-		if _, e := m.NativeExporter.Export(fh, siteID); e != nil {
+		if _, e = m.NativeExporter.Export(fh, siteID); e != nil {
 			log.Printf("[WARN] export failed with %+v", e)
 			return
 		}

@@ -47,7 +47,7 @@ type ServerCommand struct {
 	Cache      CacheGroup      `group:"cache" namespace:"cache" env-namespace:"CACHE"`
 	Admin      AdminGroup      `group:"admin" namespace:"admin" env-namespace:"ADMIN"`
 	Notify     NotifyGroup     `group:"notify" namespace:"notify" env-namespace:"NOTIFY"`
-	SMTP       SmtpGroup       `group:"smtp" namespace:"smtp" env-namespace:"SMTP"`
+	SMTP       SMTPGroup       `group:"smtp" namespace:"smtp" env-namespace:"SMTP"`
 	Image      ImageGroup      `group:"image" namespace:"image" env-namespace:"IMAGE"`
 	SSL        SSLGroup        `group:"ssl" namespace:"ssl" env-namespace:"SSL"`
 	Stream     StreamGroup     `group:"stream" namespace:"stream" env-namespace:"STREAM"`
@@ -177,8 +177,8 @@ type AdminGroup struct {
 	RPC RPCGroup `group:"rpc" namespace:"rpc" env-namespace:"RPC"`
 }
 
-// SmtpGroup defines options for SMTP server connection, used in auth and notify modules
-type SmtpGroup struct {
+// SMTPGroup defines options for SMTP server connection, used in auth and notify modules
+type SMTPGroup struct {
 	Host     string        `long:"host" env:"HOST" description:"SMTP host"`
 	Port     int           `long:"port" env:"PORT" description:"SMTP port"`
 	Username string        `long:"username" env:"USERNAME" description:"SMTP user name"`
@@ -251,7 +251,7 @@ type serverApp struct {
 }
 
 // Execute is the entry point for "server" command, called by flag parser
-func (s *ServerCommand) Execute(args []string) error {
+func (s *ServerCommand) Execute(_ []string) error {
 	log.Printf("[INFO] start server on port %d", s.Port)
 	resetEnv("SECRET", "AUTH_GOOGLE_CSEC", "AUTH_GITHUB_CSEC", "AUTH_FACEBOOK_CSEC", "AUTH_YANDEX_CSEC", "ADMIN_PASSWD")
 
@@ -373,7 +373,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		DisqusImporter:    &migrator.Disqus{DataStore: dataService},
 		WordPressImporter: &migrator.WordPress{DataStore: dataService},
 		NativeExporter:    &migrator.Native{DataStore: dataService},
-		UrlMapperMaker:    migrator.NewUrlMapper,
+		URLMapperMaker:    migrator.NewURLMapper,
 		KeyStore:          adminStore,
 	}
 
@@ -503,7 +503,8 @@ func (a *serverApp) run(ctx context.Context) error {
 	}
 	a.notifyService.Close()
 	// call potentially infinite loop with cancellation after a minute as a safeguard
-	minuteCtx, _ := context.WithTimeout(context.Background(), time.Minute)
+	minuteCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
 	a.imageService.Close(minuteCtx)
 
 	close(a.terminated)
@@ -796,7 +797,7 @@ func (s *ServerCommand) makeNotify(dataStore *service.DataStore, authenticator *
 					return tkn, nil
 				},
 			}
-			smtpParams := notify.SmtpParams{
+			smtpParams := notify.SMTPParams{
 				Host:     s.SMTP.Host,
 				Port:     s.SMTP.Port,
 				TLS:      s.SMTP.TLS,
