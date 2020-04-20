@@ -7,7 +7,7 @@ import { StaticStore } from '@app/common/static_store';
 import { LS_SAVED_COMMENT_VALUE } from '@app/common/constants';
 import * as localStorageModule from '@app/common/local-storage';
 
-import { CommentForm, Props } from './comment-form';
+import { CommentForm, Props, messages } from './comment-form';
 import { SubscribeByEmail } from './__subscribe-by-email';
 import TextareaAutosize from './textarea-autosize';
 
@@ -29,8 +29,8 @@ const DEFAULT_PROPS: Readonly<Omit<Props, 'intl'>> = {
 };
 
 const intl = {
-  formatMessage() {
-    return '';
+  formatMessage(message: { defaultMessage: string }) {
+    return message.defaultMessage || '';
   },
 } as any;
 
@@ -133,13 +133,14 @@ describe('<CommentForm />', () => {
   });
 
   it('should show error message of image upload try by anonymous user', () => {
-    const props = { ...DEFAULT_PROPS, anonymousUser, intl };
+    const props = { ...DEFAULT_PROPS, user: anonymousUser, intl };
     const wrapper = shallow(<CommentForm {...props} />);
     // @ts-ignore
     const instance: CommentForm = wrapper.instance();
 
     instance.onDrop(new Event('drag') as DragEvent);
     expect(wrapper.exists('.comment-form__error')).toEqual(true);
+    expect(wrapper.find('.comment-form__error').text()).toEqual(messages.anonymousUploadingDisabled.defaultMessage);
   });
 
   it('should show error message of image upload try by unauthorized user', () => {
@@ -150,5 +151,6 @@ describe('<CommentForm />', () => {
 
     instance.onDrop(new Event('drag') as DragEvent);
     expect(wrapper.exists('.comment-form__error')).toEqual(true);
+    expect(wrapper.find('.comment-form__error').text()).toEqual(messages.unauthorizedUploadingDisabled.defaultMessage);
   });
 });

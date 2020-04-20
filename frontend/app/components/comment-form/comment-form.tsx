@@ -60,7 +60,7 @@ export interface State {
 
 const ImageMimeRegex = /image\//i;
 
-const messages = defineMessages({
+export const messages = defineMessages({
   placeholder: {
     id: 'commentForm.input-placeholder',
     defaultMessage: 'Your comment here',
