@@ -7,6 +7,7 @@ import { User, Theme, Image, ApiError } from '@app/common/types';
 import { StaticStore } from '@app/common/static_store';
 import { pageTitle } from '@app/common/settings';
 import { extractErrorMessageFromResponse } from '@app/utils/errorUtils';
+import { isUserAnonymous } from '@app/utils/isUserAnonymous';
 import { sleep } from '@app/utils/sleep';
 import { replaceSelection } from '@app/utils/replaceSelection';
 import { Button } from '@app/components/button';
@@ -59,7 +60,7 @@ export interface State {
 
 const ImageMimeRegex = /image\//i;
 
-const messages = defineMessages({
+export const messages = defineMessages({
   placeholder: {
     id: 'commentForm.input-placeholder',
     defaultMessage: 'Your comment here',
@@ -88,9 +89,14 @@ const messages = defineMessages({
     id: 'commentForm.unexpected-error',
     defaultMessage: 'Something went wrong. Please try again a bit later.',
   },
+  unauthorizedUploadingDisabled: {
+    id: 'commentForm.unauthorized-uploading-disabled',
+    defaultMessage: 'Image uploading is disabled for unauthorized users. You should login before uploading.',
+  },
   anonymousUploadingDisabled: {
     id: 'commentForm.anonymous-uploading-disabled',
-    defaultMessage: 'Image uploading is disabled for unauthorized users. You should login before uploading.',
+    defaultMessage:
+      'Image uploading is disabled for anonymous users. Please log in not as anonymous user to be able to attach images.',
   },
 });
 
@@ -273,10 +279,12 @@ export class CommentForm extends Component<Props, State> {
   }
 
   onDrop(e: DragEvent) {
-    if (!this.props.user) {
+    const isAnonymous = this.props.user && isUserAnonymous(this.props.user);
+    if (!this.props.user || isAnonymous) {
+      const message = isAnonymous ? messages.anonymousUploadingDisabled : messages.unauthorizedUploadingDisabled;
       this.setState({
         isErrorShown: true,
-        errorMessage: this.props.intl.formatMessage(messages.anonymousUploadingDisabled),
+        errorMessage: this.props.intl.formatMessage(message),
       });
       e.preventDefault();
       return;
