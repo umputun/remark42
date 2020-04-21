@@ -43,11 +43,11 @@ func waitForHTTPServerStart(port int) {
 	}
 }
 
-func prepTestStore(t *testing.T) (s *RPC, port int, teardown func()) {
+func prepTestStore(t *testing.T) (port int, teardown func()) {
 	mg := accessor.NewMemData()
 	adm := accessor.NewMemAdminStore("secret")
 	img := accessor.NewMemImageStore()
-	s = NewRPC(mg, adm, img, &jrpc.Server{API: "/test", Logger: jrpc.NoOpLogger})
+	s := NewRPC(mg, adm, img, &jrpc.Server{API: "/test", Logger: jrpc.NoOpLogger})
 
 	admRec := accessor.AdminRec{
 		SiteID:  "test-site",
@@ -68,7 +68,7 @@ func prepTestStore(t *testing.T) (s *RPC, port int, teardown func()) {
 
 	waitForHTTPServerStart(port)
 
-	return s, port, func() {
+	return port, func() {
 		require.NoError(t, s.Shutdown())
 	}
 }

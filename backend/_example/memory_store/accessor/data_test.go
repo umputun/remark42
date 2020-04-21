@@ -425,6 +425,7 @@ func TestMemData_FlagReadOnlyPost(t *testing.T) {
 		Update: engine.FlagTrue}
 	val, err = b.Flag(req)
 	assert.NoError(t, err)
+	assert.True(t, val)
 	req = engine.FlagRequest{Locator: store.Locator{SiteID: "radio-t", URL: "url-1"}, Flag: engine.ReadOnly}
 	val, err = b.Flag(req)
 	assert.NoError(t, err)
@@ -546,9 +547,9 @@ func TestMemData_FlagListBlocked(t *testing.T) {
 	assert.NoError(t, err)
 
 	blockedList := toBlocked(vv)
-	var blockedIds []string
-	for _, x := range blockedList {
-		blockedIds = append(blockedIds, x.ID)
+	var blockedIds = make([]string, len(blockedList))
+	for i, x := range blockedList {
+		blockedIds[i] = x.ID
 	}
 	require.Equal(t, 2, len(blockedList), b.metaUsers)
 	assert.ElementsMatch(t, []string{"user1", "user2"}, blockedIds)

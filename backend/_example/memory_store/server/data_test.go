@@ -21,7 +21,7 @@ import (
 )
 
 func TestRPC_createHndl(t *testing.T) {
-	_, port, teardown := prepTestStore(t)
+	port, teardown := prepTestStore(t)
 	defer teardown()
 	api := fmt.Sprintf("http://localhost:%d/test", port)
 
@@ -33,7 +33,7 @@ func TestRPC_createHndl(t *testing.T) {
 }
 
 func TestRPC_findHndl(t *testing.T) {
-	_, port, teardown := prepTestStore(t)
+	port, teardown := prepTestStore(t)
 	defer teardown()
 	api := fmt.Sprintf("http://localhost:%d/test", port)
 
@@ -56,7 +56,7 @@ func TestRPC_findHndl(t *testing.T) {
 }
 
 func TestRPC_getHndl(t *testing.T) {
-	_, port, teardown := prepTestStore(t)
+	port, teardown := prepTestStore(t)
 	defer teardown()
 	api := fmt.Sprintf("http://localhost:%d/test", port)
 
@@ -80,7 +80,7 @@ func TestRPC_getHndl(t *testing.T) {
 }
 
 func TestRPC_updateHndl(t *testing.T) {
-	_, port, teardown := prepTestStore(t)
+	port, teardown := prepTestStore(t)
 	defer teardown()
 	api := fmt.Sprintf("http://localhost:%d/test", port)
 
@@ -108,7 +108,7 @@ func TestRPC_updateHndl(t *testing.T) {
 }
 
 func TestRPC_countHndl(t *testing.T) {
-	_, port, teardown := prepTestStore(t)
+	port, teardown := prepTestStore(t)
 	defer teardown()
 	api := fmt.Sprintf("http://localhost:%d/test", port)
 
@@ -130,7 +130,7 @@ func TestRPC_countHndl(t *testing.T) {
 }
 
 func TestRPC_infoHndl(t *testing.T) {
-	_, port, teardown := prepTestStore(t)
+	port, teardown := prepTestStore(t)
 	defer teardown()
 	api := fmt.Sprintf("http://localhost:%d/test", port)
 
@@ -151,7 +151,7 @@ func TestRPC_infoHndl(t *testing.T) {
 }
 
 func TestRPC_flagHndl(t *testing.T) {
-	_, port, teardown := prepTestStore(t)
+	port, teardown := prepTestStore(t)
 	defer teardown()
 	api := fmt.Sprintf("http://localhost:%d/test", port)
 
@@ -186,7 +186,7 @@ func TestRPC_flagHndl(t *testing.T) {
 }
 
 func TestRPC_listFlagsHndl(t *testing.T) {
-	_, port, teardown := prepTestStore(t)
+	port, teardown := prepTestStore(t)
 	defer teardown()
 	api := fmt.Sprintf("http://localhost:%d/test", port)
 
@@ -220,7 +220,7 @@ func TestRPC_listFlagsHndl(t *testing.T) {
 }
 
 func TestRPC_userDetailHndl(t *testing.T) {
-	_, port, teardown := prepTestStore(t)
+	port, teardown := prepTestStore(t)
 	defer teardown()
 	api := fmt.Sprintf("http://localhost:%d/test", port)
 
@@ -273,7 +273,7 @@ func TestRPC_userDetailHndl(t *testing.T) {
 }
 
 func TestRPC_deleteHndl(t *testing.T) {
-	_, port, teardown := prepTestStore(t)
+	port, teardown := prepTestStore(t)
 	defer teardown()
 	api := fmt.Sprintf("http://localhost:%d/test", port)
 
@@ -296,7 +296,7 @@ func TestRPC_deleteHndl(t *testing.T) {
 }
 
 func TestRPC_closeHndl(t *testing.T) {
-	_, port, teardown := prepTestStore(t)
+	port, teardown := prepTestStore(t)
 	defer teardown()
 	api := fmt.Sprintf("http://localhost:%d/test", port)
 

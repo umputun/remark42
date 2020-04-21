@@ -51,7 +51,7 @@ func gopherPNGBytes() []byte {
 }
 
 func TestRPC_imgLoadHndl(t *testing.T) {
-	_, port, teardown := prepTestStore(t)
+	port, teardown := prepTestStore(t)
 	defer teardown()
 	api := fmt.Sprintf("http://localhost:%d/test", port)
 
@@ -78,7 +78,7 @@ func TestRPC_imgLoadHndl(t *testing.T) {
 	assert.Equal(t, gopherPNGBytes(), img)
 
 	// cleanup
-	err = ri.Cleanup(nil, time.Second)
+	err = ri.Cleanup(context.TODO(), time.Second)
 	assert.NoError(t, err)
 
 	// load after cleanup
@@ -89,7 +89,7 @@ func TestRPC_imgLoadHndl(t *testing.T) {
 }
 
 func TestRPC_imgCommitHndlFail(t *testing.T) {
-	_, port, teardown := prepTestStore(t)
+	port, teardown := prepTestStore(t)
 	defer teardown()
 	api := fmt.Sprintf("http://localhost:%d/test", port)
 
@@ -99,7 +99,7 @@ func TestRPC_imgCommitHndlFail(t *testing.T) {
 }
 
 func TestRPC_imgCleanupHndl(t *testing.T) {
-	_, port, teardown := prepTestStore(t)
+	port, teardown := prepTestStore(t)
 	defer teardown()
 	api := fmt.Sprintf("http://localhost:%d/test", port)
 

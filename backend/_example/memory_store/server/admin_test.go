@@ -19,7 +19,7 @@ import (
 )
 
 func TestRPC_admKeyHndl(t *testing.T) {
-	_, port, teardown := prepTestStore(t)
+	port, teardown := prepTestStore(t)
 	defer teardown()
 	api := fmt.Sprintf("http://localhost:%d/test", port)
 
@@ -30,7 +30,7 @@ func TestRPC_admKeyHndl(t *testing.T) {
 }
 
 func TestRPC_admAdminsHndl(t *testing.T) {
-	_, port, teardown := prepTestStore(t)
+	port, teardown := prepTestStore(t)
 	defer teardown()
 	api := fmt.Sprintf("http://localhost:%d/test", port)
 
@@ -44,7 +44,7 @@ func TestRPC_admAdminsHndl(t *testing.T) {
 }
 
 func TestRPC_admEmailHndl(t *testing.T) {
-	_, port, teardown := prepTestStore(t)
+	port, teardown := prepTestStore(t)
 	defer teardown()
 	api := fmt.Sprintf("http://localhost:%d/test", port)
 
@@ -58,7 +58,7 @@ func TestRPC_admEmailHndl(t *testing.T) {
 }
 
 func TestRPC_admEnabledHndl(t *testing.T) {
-	_, port, teardown := prepTestStore(t)
+	port, teardown := prepTestStore(t)
 	defer teardown()
 	api := fmt.Sprintf("http://localhost:%d/test", port)
 
@@ -76,7 +76,7 @@ func TestRPC_admEnabledHndl(t *testing.T) {
 }
 
 func TestRPC_admEventHndl(t *testing.T) {
-	_, port, teardown := prepTestStore(t)
+	port, teardown := prepTestStore(t)
 	defer teardown()
 	api := fmt.Sprintf("http://localhost:%d/test", port)
 
