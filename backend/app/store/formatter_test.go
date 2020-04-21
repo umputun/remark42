@@ -33,6 +33,7 @@ func TestFormatter_FormatText(t *testing.T) {
 	}
 	f := NewCommentFormatter(mockConverter{})
 	for _, tt := range tbl {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.out, f.FormatText(tt.in))
 		})

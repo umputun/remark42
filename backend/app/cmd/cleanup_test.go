@@ -46,6 +46,7 @@ func TestCleanup_IsSpam(t *testing.T) {
 	}
 
 	for n, tt := range tbl {
+		tt := tt
 		checkName := fmt.Sprintf("check-%d-%s", n, tt.name)
 		t.Run(checkName, func(t *testing.T) {
 			c := store.Comment{ID: checkName, Text: tt.text, Score: tt.score}

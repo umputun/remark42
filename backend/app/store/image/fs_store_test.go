@@ -153,6 +153,7 @@ func TestFsStore_location(t *testing.T) {
 		{0, "user/12345", "/tmp/user/12345"},
 	}
 	for n, tt := range tbl {
+		tt := tt
 		t.Run(strconv.Itoa(n), func(t *testing.T) {
 			svc := FileSystem{Location: "/tmp", Partitions: tt.partitions}
 			assert.Equal(t, tt.res, svc.location("/tmp", tt.id))

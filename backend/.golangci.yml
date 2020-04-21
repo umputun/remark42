@@ -1,5 +1,4 @@
 run:
-  tests: false
   output:
     format: tab
   skip-dirs:
@@ -62,6 +61,10 @@ issues:
     - text: "should have a package comment, unless it's in another file for this package"
       linters:
         - golint
+    - path: _test\.go
+      linters:
+        - gosec
+        - dupl
   exclude-use-default: false
 
 service:

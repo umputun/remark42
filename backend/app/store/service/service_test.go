@@ -572,6 +572,7 @@ func TestService_Controversy(t *testing.T) {
 
 	b := DataStore{}
 	for i, tt := range tbl {
+		tt := tt
 		t.Run(fmt.Sprintf("check-%d-%d:%d", i, tt.ups, tt.downs), func(t *testing.T) {
 			assert.InDelta(t, tt.res, b.controversy(tt.ups, tt.downs), 0.01)
 		})

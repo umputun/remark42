@@ -198,6 +198,7 @@ func TestGetProportionalSizes(t *testing.T) {
 	}
 
 	for i, tt := range tbl {
+		tt := tt
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			resW, resH := getProportionalSizes(tt.inpW, tt.inpH, tt.limitW, tt.limitH)
 			assert.Equal(t, tt.resW, resW, "width")

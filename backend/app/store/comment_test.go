@@ -148,6 +148,7 @@ func TestComment_Snippet(t *testing.T) {
 	}
 
 	for i, tt := range tbl {
+		tt := tt
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			c := Comment{Text: tt.inp}
 			out := c.Snippet(tt.limit)
