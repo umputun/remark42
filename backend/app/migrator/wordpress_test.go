@@ -190,7 +190,7 @@ var xmlTestWP = `
 		<category domain="post_tag" nicename="alts"><![CDATA[alts]]></category>
 		<category domain="post_tag" nicename="role-playing"><![CDATA[role playing]]></category>
 		<category domain="category" nicename="stuff"><![CDATA[Stuff]]></category>
-		<category domain="post_tag" nicename="wierd-in-a-cant-quite-help-myself-way"><![CDATA[wierd in a can't quite help myself way]]></category>
+		<category domain="post_tag" nicename="weird-in-a-cant-quite-help-myself-way"><![CDATA[weird in a can't quite help myself way]]></category>
 		<wp:postmeta>
 			<wp:meta_key><![CDATA[_edit_last]]></wp:meta_key>
 			<wp:meta_value><![CDATA[2]]></wp:meta_value>

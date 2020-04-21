@@ -31,6 +31,7 @@ func TestTitle_GetTitle(t *testing.T) {
 
 	ex := NewTitleExtractor(http.Client{Timeout: 5 * time.Second})
 	for i, tt := range tbl {
+		tt := tt
 		t.Run(fmt.Sprintf("check-%d", i), func(t *testing.T) {
 			title, ok := ex.getTitle(strings.NewReader(tt.page))
 			assert.Equal(t, tt.ok, ok)

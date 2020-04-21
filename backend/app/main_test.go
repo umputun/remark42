@@ -30,8 +30,8 @@ func Test_Main(t *testing.T) {
 	done := make(chan struct{})
 	go func() {
 		<-done
-		err := syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
-		require.NoError(t, err)
+		e := syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
+		require.NoError(t, e)
 	}()
 
 	finished := make(chan struct{})

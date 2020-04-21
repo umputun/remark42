@@ -80,6 +80,7 @@ func TestImage_Extract(t *testing.T) {
 	img := Image{HTTP2HTTPS: true}
 
 	for i, tt := range tbl {
+		tt := tt
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			res, err := img.extract(tt.inp, func(src string) bool { return strings.HasPrefix(src, "http://") })
 			assert.NoError(t, err)

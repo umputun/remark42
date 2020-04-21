@@ -61,6 +61,7 @@ func TestEmailNew(t *testing.T) {
 		},
 	}
 	for _, d := range testSet {
+		d := d
 		t.Run(d.name, func(t *testing.T) {
 			email, err := NewEmail(d.emailParams, d.smtpParams)
 
@@ -152,6 +153,7 @@ func TestEmailSendClientError(t *testing.T) {
 			err: "can't make email writer: failed to send"},
 	}
 	for _, d := range testSet {
+		d := d
 		t.Run(d.name, func(t *testing.T) {
 			e := Email{smtp: d.smtp}
 			if d.err != "" {
@@ -182,8 +184,8 @@ func TestEmail_Send(t *testing.T) {
 	email, err := NewEmail(EmailParams{From: "from@example.org"}, SMTPParams{})
 	assert.NoError(t, err)
 	assert.NotNil(t, email)
-	fakeSmtp := fakeTestSMTP{}
-	email.smtp = &fakeSmtp
+	fakeSMTP := fakeTestSMTP{}
+	email.smtp = &fakeSMTP
 	email.TokenGenFn = TokenGenFn
 	email.UnsubscribeURL = "https://remark42.com/api/v1/email/unsubscribe"
 	req := Request{
@@ -192,9 +194,9 @@ func TestEmail_Send(t *testing.T) {
 		Email:   "test@example.org",
 	}
 	assert.NoError(t, email.Send(context.TODO(), req))
-	assert.Equal(t, "from@example.org", fakeSmtp.readMail())
-	assert.Equal(t, 1, fakeSmtp.readQuitCount())
-	assert.Equal(t, "test@example.org", fakeSmtp.readRcpt())
+	assert.Equal(t, "from@example.org", fakeSMTP.readMail())
+	assert.Equal(t, 1, fakeSMTP.readQuitCount())
+	assert.Equal(t, "test@example.org", fakeSMTP.readRcpt())
 	// test buildMessageFromRequest separately for message text
 	res, err := email.buildMessageFromRequest(req, req.ForAdmin)
 	assert.NoError(t, err)
@@ -230,8 +232,8 @@ func TestEmail_SendVerification(t *testing.T) {
 	email, err := NewEmail(EmailParams{From: "from@example.org"}, SMTPParams{})
 	assert.NoError(t, err)
 	assert.NotNil(t, email)
-	fakeSmtp := fakeTestSMTP{}
-	email.smtp = &fakeSmtp
+	fakeSMTP := fakeTestSMTP{}
+	email.smtp = &fakeSMTP
 	email.TokenGenFn = TokenGenFn
 	req := Request{
 		Email: "test@example.org",
@@ -242,9 +244,9 @@ func TestEmail_SendVerification(t *testing.T) {
 		},
 	}
 	assert.NoError(t, email.Send(context.TODO(), req))
-	assert.Equal(t, "from@example.org", fakeSmtp.readMail())
-	assert.Equal(t, 1, fakeSmtp.readQuitCount())
-	assert.Equal(t, "test@example.org", fakeSmtp.readRcpt())
+	assert.Equal(t, "from@example.org", fakeSMTP.readMail())
+	assert.Equal(t, 1, fakeSMTP.readQuitCount())
+	assert.Equal(t, "test@example.org", fakeSMTP.readRcpt())
 	// test buildMessageFromRequest separately for message text
 	res, err := email.buildVerificationMessage(req.Verification.User, req.Email, req.Verification.Token, req.Verification.SiteID)
 	assert.NoError(t, err)

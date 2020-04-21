@@ -49,12 +49,12 @@ func TestRest_FileServer(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
 
-	testHtmlName := "test-remark.html"
-	testHTMLFile := os.TempDir() + "/" + testHtmlName
+	testHTMLName := "test-remark.html"
+	testHTMLFile := os.TempDir() + "/" + testHTMLName
 	err := ioutil.WriteFile(testHTMLFile, []byte("some html"), 0700)
 	assert.NoError(t, err)
 
-	body, code := get(t, ts.URL+"/web/"+testHtmlName)
+	body, code := get(t, ts.URL+"/web/"+testHTMLName)
 	assert.Equal(t, 200, code)
 	assert.Equal(t, "some html", body)
 	_ = os.Remove(testHTMLFile)
@@ -233,6 +233,7 @@ func Test_URLKey(t *testing.T) {
 	}
 
 	for i, tt := range tbl {
+		tt := tt
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			r, err := http.NewRequest("GET", tt.url, nil)
 			require.NoError(t, err)
@@ -258,6 +259,7 @@ func Test_URLKeyWithUser(t *testing.T) {
 	}
 
 	for i, tt := range tbl {
+		tt := tt
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			r, err := http.NewRequest("GET", tt.url, nil)
 			require.NoError(t, err)
@@ -285,6 +287,7 @@ func TestRest_parseError(t *testing.T) {
 	}
 
 	for n, tt := range tbl {
+		tt := tt
 		t.Run(strconv.Itoa(n), func(t *testing.T) {
 			res := parseError(tt.err, rest.ErrInternal)
 			assert.Equal(t, tt.res, res)
@@ -308,6 +311,7 @@ func TestRest_cacheControl(t *testing.T) {
 	}
 
 	for i, tt := range tbl {
+		tt := tt
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			req := httptest.NewRequest("GET", tt.url, nil)
 			w := httptest.NewRecorder()
