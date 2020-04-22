@@ -46,3 +46,16 @@ func (r *RPC) Cleanup(_ context.Context, ttl time.Duration) error {
 	_, err := r.Call("image.cleanup", ttl)
 	return err
 }
+
+// Info returns meta information about storage
+func (r *RPC) Info() (StoreInfo, error) {
+	resp, err := r.Call("image.info")
+	if err != nil {
+		return StoreInfo{}, err
+	}
+	info := StoreInfo{}
+	if err = json.Unmarshal(*resp.Result, &info); err != nil {
+		return StoreInfo{}, err
+	}
+	return info, err
+}

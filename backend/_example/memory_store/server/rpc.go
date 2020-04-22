@@ -61,5 +61,6 @@ func (s *RPC) addHandlers() {
 		"load":         s.imgLoadHndl,
 		"commit":       s.imgCommitHndl,
 		"cleanup":      s.imgCleanupHndl,
+		"info":         s.imgInfoHndl,
 	})
 }

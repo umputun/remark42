@@ -140,6 +140,17 @@ func TestService_SubmitDelay(t *testing.T) {
 	store.AssertNumberOfCalls(t, "Commit", 5)
 }
 
+func TestService_Info(t *testing.T) {
+	store := MockStore{}
+	store.On("Info", mock.Anything, mock.Anything).Once().Return(StoreInfo{}, nil)
+
+	svc := Service{store: &store, ServiceParams: ServiceParams{}}
+	info, err := svc.Info()
+	assert.NoError(t, err)
+	assert.True(t, info.FirstStagingImageTS.IsZero())
+	store.AssertNumberOfCalls(t, "Info", 1)
+}
+
 func TestService_resize(t *testing.T) {
 	// reader is nil
 	resized := resize(nil, 100, 100)

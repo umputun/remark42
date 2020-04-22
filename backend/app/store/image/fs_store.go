@@ -115,6 +115,33 @@ func (f *FileSystem) Cleanup(_ context.Context, ttl time.Duration) error {
 	return errors.Wrap(err, "failed to cleanup images")
 }
 
+// Info returns meta information about storage
+func (f *FileSystem) Info() (StoreInfo, error) {
+	if _, err := os.Stat(f.Staging); os.IsNotExist(err) {
+		return StoreInfo{}, nil
+	}
+
+	var ts time.Time
+	err := filepath.Walk(f.Staging, func(fpath string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+
+		created := info.ModTime()
+		if ts.IsZero() || created.Before(ts) {
+			ts = created
+		}
+		return nil
+	})
+	if err != nil {
+		return StoreInfo{}, errors.Wrapf(err, "problem retrieving first timestamp from staging images on fs")
+	}
+	return StoreInfo{FirstStagingImageTS: ts}, nil
+}
+
 // location gets full path for id by adding partition to the final path in order to keep files in different subdirectories
 // and avoid too many files in a single place.
 // the end result is a full path like this - /tmp/images/user1/92/xxx-yyy.png.

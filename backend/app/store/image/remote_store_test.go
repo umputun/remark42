@@ -65,6 +65,20 @@ func TestRemote_Cleanup(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestRemote_Info(t *testing.T) {
+	ts := testServer(t, `{"method":"image.info","id":1}`,
+		`{"result":{"FirstStagingImageTS":"0001-01-01T00:00:01Z"},"id":1}`)
+	defer ts.Close()
+	c := RPC{Client: jrpc.Client{API: ts.URL, Client: http.Client{}}}
+
+	var a Store = &c
+	_ = a
+
+	info, err := c.Info()
+	assert.NoError(t, err)
+	assert.False(t, info.FirstStagingImageTS.IsZero())
+}
+
 func testServer(t *testing.T, req, resp string) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, err := ioutil.ReadAll(r.Body)
