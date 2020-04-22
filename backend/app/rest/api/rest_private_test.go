@@ -908,8 +908,8 @@ func TestRest_CreateWithPictures(t *testing.T) {
 		Staging:  "/tmp/remark42/images.staging",
 		Location: "/tmp/remark42/images",
 	}, image.ServiceParams{
-		TTL:     100 * time.Millisecond,
-		MaxSize: 2000,
+		EditDuration: 100 * time.Millisecond,
+		MaxSize:      2000,
 	})
 
 	svc.privRest.imageService = imageService

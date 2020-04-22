@@ -338,7 +338,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to make pictures store")
 	}
-	log.Printf("[DEBUG] image service for url=%s, ttl=%v", imageService.ImageAPI, imageService.TTL)
+	log.Printf("[DEBUG] image service for url=%s, EditDuration=%v", imageService.ImageAPI, imageService.EditDuration)
 
 	dataService := &service.DataStore{
 		Engine:                 storeEngine,
@@ -580,11 +580,11 @@ func (s *ServerCommand) makeAvatarStore() (avatar.Store, error) {
 
 func (s *ServerCommand) makePicturesStore() (*image.Service, error) {
 	imageServiceParams := image.ServiceParams{
-		ImageAPI:  s.RemarkURL + "/api/v1/picture/",
-		TTL:       5 * s.EditDuration, // add extra time to image TTL for staging
-		MaxSize:   s.Image.MaxSize,
-		MaxHeight: s.Image.ResizeHeight,
-		MaxWidth:  s.Image.ResizeWidth,
+		ImageAPI:     s.RemarkURL + "/api/v1/picture/",
+		EditDuration: s.EditDuration,
+		MaxSize:      s.Image.MaxSize,
+		MaxHeight:    s.Image.ResizeHeight,
+		MaxWidth:     s.Image.ResizeWidth,
 	}
 	switch s.Image.Type {
 	case "bolt":
