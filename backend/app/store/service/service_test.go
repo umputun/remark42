@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -1300,6 +1301,105 @@ func TestService_submitImages(t *testing.T) {
 
 	b.submitImages(c.Locator, c.ID)
 	time.Sleep(250 * time.Millisecond)
+}
+
+func TestService_ResubmitStagingImages(t *testing.T) {
+	mockStore := image.MockStore{}
+	imgSvc := image.NewService(&mockStore,
+		image.ServiceParams{
+			EditDuration: 10 * time.Millisecond,
+			ImageAPI:     "http://127.0.0.1:8080/api/v1/picture/",
+		})
+	defer imgSvc.Close(context.TODO())
+
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, EditDuration: 10 * time.Millisecond, ImageService: imgSvc}
+
+	// create comment with three images without preparing it properly
+	comment := store.Comment{
+		ID: "id-0",
+		Text: `<img src="http://127.0.0.1:8080/api/v1/picture/dev_user/bqf122eq9r8ad657n3ng" alt="startrails_01.jpg"><br/>
+               <img src="http://127.0.0.1:8080/api/v1/picture/dev_user/bqf321eq9r8ad657n3ng" alt="cat.png"><br/>
+               <img src="https://homepages.cae.wisc.edu/~ece533/images/boat.png" alt="boat.png">`,
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
+		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+		User:      store.User{ID: "user1", Name: "user name"},
+	}
+	_, err := b.Engine.Create(comment)
+	require.NoError(t, err)
+
+	// resubmit single comment with three images, of which two are in staging storage
+	mockStore.On("Info").Once().Return(image.StoreInfo{FirstStagingImageTS: time.Time{}.Add(time.Second)}, nil)
+	err = b.ResubmitStagingImages([]string{"radio-t"})
+	assert.NoError(t, err)
+
+	// wait for Submit goroutine to commit image
+	mockStore.On("Commit", "dev_user/bqf122eq9r8ad657n3ng").Once().Return(nil)
+	mockStore.On("Commit", "dev_user/bqf321eq9r8ad657n3ng").Once().Return(nil)
+	time.Sleep(time.Millisecond * 100)
+
+	mockStore.AssertNumberOfCalls(t, "Info", 1)
+	mockStore.AssertNumberOfCalls(t, "Commit", 2)
+
+	// empty answer
+	mockStoreEmpty := image.MockStore{}
+	imgSvcEmpty := image.NewService(&mockStoreEmpty,
+		image.ServiceParams{
+			EditDuration: 10 * time.Millisecond,
+			ImageAPI:     "http://127.0.0.1:8080/api/v1/picture/",
+		})
+	defer imgSvcEmpty.Close(context.TODO())
+	bEmpty := DataStore{Engine: eng, EditDuration: 10 * time.Millisecond, ImageService: imgSvcEmpty}
+
+	// resubmit receive empty timestamp and should do nothing
+	mockStoreEmpty.On("Info").Once().Return(image.StoreInfo{FirstStagingImageTS: time.Time{}}, nil)
+	err = bEmpty.ResubmitStagingImages([]string{"radio-t", "non_existent"})
+	assert.NoError(t, err)
+
+	mockStoreEmpty.AssertNumberOfCalls(t, "Info", 1)
+
+	// 	error from image storage
+	mockStoreError := image.MockStore{}
+	imgSvcError := image.NewService(&mockStoreError,
+		image.ServiceParams{
+			EditDuration: 10 * time.Millisecond,
+			ImageAPI:     "http://127.0.0.1:8080/api/v1/picture/",
+		})
+	defer imgSvcError.Close(context.TODO())
+	bError := DataStore{Engine: eng, EditDuration: 10 * time.Millisecond, ImageService: imgSvcError}
+
+	// resubmit will receive error from image storage and should return it
+	mockStoreError.On("Info").Once().Return(image.StoreInfo{}, errors.New("mock_err"))
+	err = bError.ResubmitStagingImages([]string{"radio-t"})
+	assert.EqualError(t, err, "mock_err")
+
+	mockStoreError.AssertNumberOfCalls(t, "Info", 1)
+}
+
+func TestService_ResubmitStagingImages_EngineError(t *testing.T) {
+	mockStore := image.MockStore{}
+	imgSvc := image.NewService(&mockStore,
+		image.ServiceParams{
+			EditDuration: 10 * time.Millisecond,
+			ImageAPI:     "http://127.0.0.1:8080/api/v1/picture/",
+		})
+	defer imgSvc.Close(context.TODO())
+
+	engineMock := engine.MockInterface{}
+	site1Req := engine.FindRequest{Locator: store.Locator{SiteID: "site1", URL: ""}, Sort: "time", Since: time.Time{}.Add(time.Second)}
+	site2Req := engine.FindRequest{Locator: store.Locator{SiteID: "site2", URL: ""}, Sort: "time", Since: time.Time{}.Add(time.Second)}
+	engineMock.On("Find", site1Req).Return(nil, nil)
+	engineMock.On("Find", site2Req).Return(nil, errors.New("mockError"))
+	b := DataStore{Engine: &engineMock, EditDuration: 10 * time.Millisecond, ImageService: imgSvc}
+
+	// One call without error and one with error
+	mockStore.On("Info").Once().Return(image.StoreInfo{FirstStagingImageTS: time.Time{}.Add(time.Second)}, nil)
+	err := b.ResubmitStagingImages([]string{"site1", "site2"})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "problem finding comments for site site2: mockError")
+
+	mockStore.AssertNumberOfCalls(t, "Info", 1)
 }
 
 func TestService_alterComment(t *testing.T) {

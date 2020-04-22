@@ -487,6 +487,11 @@ func (a *serverApp) run(ctx context.Context) error {
 		go a.devAuth.Run(context.Background()) // dev oauth2 server on :8084
 	}
 
+	// staging images resubmit after restart of the app
+	if e := a.dataService.ResubmitStagingImages(a.Sites); e != nil {
+		log.Printf("[WARN] failed to resubmit comments with staging images, %s", e)
+	}
+
 	go a.imageService.Cleanup(ctx) // pictures cleanup for staging images
 
 	a.restSrv.Run(a.Port)
