@@ -31,7 +31,7 @@ import (
 
 // Service wraps Store with common functions needed for any store implementation
 // It also provides async Submit with func param retrieving all submitting ids.
-// Submitted ids committed (i.e. moved from staging to final) on TTL expiration.
+// Submitted ids committed (i.e. moved from staging to final) on commitTTL expiration.
 type Service struct {
 	ServiceParams
 
@@ -45,11 +45,22 @@ type Service struct {
 
 // ServiceParams contains externally adjustable parameters of Service
 type ServiceParams struct {
-	TTL       time.Duration // for how long file allowed on staging
-	ImageAPI  string        // image api matching path
-	MaxSize   int
-	MaxHeight int
-	MaxWidth  int
+	EditDuration time.Duration // edit period for comments
+	ImageAPI     string        // image api matching path
+	MaxSize      int
+	MaxHeight    int
+	MaxWidth     int
+
+	// duration of time after which images are checked and committed if still
+	// present in the submitted comment after it's EditDuration is expired
+	commitTTL time.Duration
+	// duration of time after which images are deleted from staging
+	cleanupTTL time.Duration
+}
+
+// StoreInfo contains image store meta information
+type StoreInfo struct {
+	FirstStagingImageTS time.Time
 }
 
 // To regenerate mock run from this directory:
@@ -60,6 +71,7 @@ type ServiceParams struct {
 // Two-stage commit scheme is used for not storing images which are uploaded but later never used in the comments,
 // e.g. when somebody uploaded a picture but did not sent the comment.
 type Store interface {
+	Info() (StoreInfo, error)         // get meta information about storage
 	Save(id string, img []byte) error // store image with passed id to staging
 	Load(id string) ([]byte, error)   // load image by ID
 
@@ -76,6 +88,10 @@ type submitReq struct {
 
 // NewService returns new Service instance
 func NewService(s Store, p ServiceParams) *Service {
+	p.commitTTL = p.EditDuration * 15 / 10  // Commit call on every 1.5 * EditDuration
+	p.cleanupTTL = p.EditDuration * 25 / 10 // Cleanup call on every 2.5 * EditDuration
+	// In case Cleanup and Submit start at the same time (case of stale staging images check
+	// on the program start) these TTL values guarantee that Commit will happen before Cleanup.
 	return &Service{ServiceParams: p, store: s}
 }
 
@@ -92,8 +108,8 @@ func (s *Service) Submit(idsFn func() []string) {
 		go func() {
 			defer s.wg.Done()
 			for req := range s.submitCh {
-				// wait for TTL expiration with emergency pass on term
-				for atomic.LoadInt32(&s.term) == 0 && time.Since(req.TS) <= s.TTL/2 { // commit on a half of TTL
+				// wait for commitTTL expiration with emergency pass on term
+				for atomic.LoadInt32(&s.term) == 0 && time.Since(req.TS) <= s.commitTTL {
 					time.Sleep(time.Millisecond * 10) // small sleep to relive busy wait but keep reactive for term (close)
 				}
 				for _, id := range req.idsFn() {
@@ -133,21 +149,26 @@ func (s *Service) ExtractPictures(commentHTML string) (ids []string, err error) 
 	return ids, nil
 }
 
-// Cleanup runs periodic cleanup with TTL. Blocking loop, should be called inside of goroutine by consumer
+// Cleanup runs periodic cleanup with cleanupTTL. Blocking loop, should be called inside of goroutine by consumer
 func (s *Service) Cleanup(ctx context.Context) {
-	log.Printf("[INFO] start pictures cleanup, staging ttl=%v", s.TTL)
+	log.Printf("[INFO] start pictures cleanup, staging ttl=%v", s.cleanupTTL)
 
 	for {
 		select {
 		case <-ctx.Done():
 			log.Printf("[INFO] cleanup terminated, %v", ctx.Err())
 			return
-		case <-time.After(s.TTL / 2): // cleanup call on every 1/2 TTL
-			if err := s.store.Cleanup(ctx, s.TTL); err != nil {
+		case <-time.After(s.cleanupTTL):
+			if err := s.store.Cleanup(ctx, s.cleanupTTL); err != nil {
 				log.Printf("[WARN] failed to cleanup, %v", err)
 			}
 		}
 	}
+}
+
+// Info returns meta information about storage
+func (s *Service) Info() (StoreInfo, error) {
+	return s.store.Info()
 }
 
 // Close flushes all in-progress submits and enforces waiting commits

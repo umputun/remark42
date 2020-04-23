@@ -105,6 +105,25 @@ func TestBoltStore_Cleanup(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestBolt_Info(t *testing.T) {
+	svc, teardown := prepareBoltImageStorageTest(t)
+	defer teardown()
+
+	// get info on empty storage, should be zero
+	info, err := svc.Info()
+	assert.NoError(t, err)
+	assert.True(t, info.FirstStagingImageTS.IsZero())
+
+	// save image
+	err = svc.Save("test_img", gopherPNGBytes())
+	assert.NoError(t, err)
+
+	// get info after saving, should be non-zero
+	info, err = svc.Info()
+	assert.NoError(t, err)
+	assert.False(t, info.FirstStagingImageTS.IsZero())
+}
+
 func assertBoltImgNil(t *testing.T, db *bolt.DB, bucket string, id string) {
 	checkBoltImgData(t, db, bucket, id, func(data []byte) error {
 		assert.Nil(t, data, id)

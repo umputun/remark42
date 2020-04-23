@@ -376,8 +376,8 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 			Partitions: 100,
 			Staging:    tmp + "/pics-remark42/staging",
 		}, image.ServiceParams{
-			TTL:     100 * time.Millisecond,
-			MaxSize: 10000,
+			EditDuration: 100 * time.Millisecond,
+			MaxSize:      10000,
 		}),
 		ImageProxy:       &proxy.Image{},
 		ReadOnlyAge:      10,

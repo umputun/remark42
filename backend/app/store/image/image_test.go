@@ -96,7 +96,7 @@ func TestService_Cleanup(t *testing.T) {
 	store := MockStore{}
 	store.On("Cleanup", mock.Anything, mock.Anything).Times(10).Return(nil)
 
-	svc := Service{store: &store, ServiceParams: ServiceParams{TTL: 100 * time.Millisecond}}
+	svc := NewService(&store, ServiceParams{EditDuration: 20 * time.Millisecond})
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*549)
 	defer cancel()
 	svc.Cleanup(ctx)
@@ -106,7 +106,7 @@ func TestService_Cleanup(t *testing.T) {
 func TestService_Submit(t *testing.T) {
 	store := MockStore{}
 	store.On("Commit", mock.Anything, mock.Anything).Times(5).Return(nil)
-	svc := Service{store: &store, ServiceParams: ServiceParams{ImageAPI: "/blah/", TTL: time.Millisecond * 100}}
+	svc := Service{store: &store, ServiceParams: ServiceParams{ImageAPI: "/blah/", EditDuration: time.Millisecond * 100}}
 	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
 	svc.Submit(func() []string { return []string{"id4", "id5"} })
 	svc.Submit(nil)
@@ -119,7 +119,7 @@ func TestService_Submit(t *testing.T) {
 func TestService_Close(t *testing.T) {
 	store := MockStore{}
 	store.On("Commit", mock.Anything, mock.Anything).Times(5).Return(nil)
-	svc := Service{store: &store, ServiceParams: ServiceParams{ImageAPI: "/blah/", TTL: time.Hour * 24}}
+	svc := Service{store: &store, ServiceParams: ServiceParams{ImageAPI: "/blah/", EditDuration: time.Hour * 24}}
 	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
 	svc.Submit(func() []string { return []string{"id4", "id5"} })
 	svc.Submit(nil)
@@ -130,7 +130,7 @@ func TestService_Close(t *testing.T) {
 func TestService_SubmitDelay(t *testing.T) {
 	store := MockStore{}
 	store.On("Commit", mock.Anything, mock.Anything).Times(5).Return(nil)
-	svc := Service{store: &store, ServiceParams: ServiceParams{ImageAPI: "/blah/", TTL: time.Millisecond * 100}}
+	svc := NewService(&store, ServiceParams{EditDuration: 20 * time.Millisecond})
 	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
 	time.Sleep(150 * time.Millisecond) // let first batch to pass TTL
 	svc.Submit(func() []string { return []string{"id4", "id5"} })
@@ -138,6 +138,17 @@ func TestService_SubmitDelay(t *testing.T) {
 	store.AssertNumberOfCalls(t, "Commit", 3)
 	svc.Close(context.TODO())
 	store.AssertNumberOfCalls(t, "Commit", 5)
+}
+
+func TestService_Info(t *testing.T) {
+	store := MockStore{}
+	store.On("Info", mock.Anything, mock.Anything).Once().Return(StoreInfo{}, nil)
+
+	svc := Service{store: &store, ServiceParams: ServiceParams{}}
+	info, err := svc.Info()
+	assert.NoError(t, err)
+	assert.True(t, info.FirstStagingImageTS.IsZero())
+	store.AssertNumberOfCalls(t, "Info", 1)
 }
 
 func TestService_resize(t *testing.T) {

@@ -54,3 +54,8 @@ func (s *RPC) imgCleanupHndl(id uint64, params json.RawMessage) (rr jrpc.Respons
 	err := s.img.Cleanup(context.TODO(), ttl)
 	return jrpc.EncodeResponse(id, nil, err)
 }
+
+func (s *RPC) imgInfoHndl(id uint64, _ json.RawMessage) (rr jrpc.Response) {
+	info, err := s.img.Info()
+	return jrpc.EncodeResponse(id, info, err)
+}
