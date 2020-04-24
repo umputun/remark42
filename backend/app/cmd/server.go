@@ -586,6 +586,7 @@ func (s *ServerCommand) makeAvatarStore() (avatar.Store, error) {
 func (s *ServerCommand) makePicturesStore() (*image.Service, error) {
 	imageServiceParams := image.ServiceParams{
 		ImageAPI:     s.RemarkURL + "/api/v1/picture/",
+		ProxyAPI:     s.RemarkURL + "/api/v1/img",
 		EditDuration: s.EditDuration,
 		MaxSize:      s.Image.MaxSize,
 		MaxHeight:    s.Image.ResizeHeight,
