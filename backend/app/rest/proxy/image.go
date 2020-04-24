@@ -3,13 +3,10 @@ package proxy
 import (
 	"bytes"
 	"context"
-	"crypto/sha1" //nolint:gosec // not used for cryptography
 	"encoding/base64"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -92,7 +89,7 @@ func (p Image) Handler(w http.ResponseWriter, r *http.Request) {
 
 	imgURL := string(src)
 	var img []byte
-	imgID, err := cachedImgID(imgURL)
+	imgID, err := image.CachedImgID(imgURL)
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't parse image url "+imgURL, rest.ErrAssetNotFound)
 		return
@@ -173,21 +170,4 @@ func (p Image) downloadImage(ctx context.Context, imgURL string) ([]byte, error)
 		return nil, errors.Errorf("unable to read image body")
 	}
 	return imgData, nil
-}
-
-func sha1Str(s string) string {
-	return fmt.Sprintf("%x", sha1.Sum([]byte(s))) //nolint:gosec // not used for cryptography
-}
-
-// generates ID for a cached image.
-// ID would look like: "cached_images/<sha1-of-image-url-hostname>-<sha1-of-image-entire-url>"
-// <sha1-of-image-url-hostname> - would allow us to identify all images from particular site if ever needed
-// <sha1-of-image-entire-url> - would allow us to avoid storing duplicates of the same image
-//                              (as accurate as deduplication based on potentially mutable url can be)
-func cachedImgID(imgURL string) (string, error) {
-	parsedURL, err := url.Parse(imgURL)
-	if err != nil {
-		return "", errors.Wrapf(err, "can parse url %s", imgURL)
-	}
-	return fmt.Sprintf("cached_images/%s-%s", sha1Str(parsedURL.Hostname()), sha1Str(imgURL)), nil
 }

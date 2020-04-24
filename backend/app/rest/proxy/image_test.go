@@ -186,7 +186,7 @@ func TestImage_RoutesCachingImage(t *testing.T) {
 	assert.Equal(t, "image/png", resp.Header["Content-Type"][0])
 
 	imageStore.AssertCalled(t, "Load", mock.Anything)
-	imageStore.AssertCalled(t, "Save", "cached_images/4b84b15bff6ee5796152495a230e45e3d7e947d9-"+sha1Str(imgURL), gopherPNGBytes())
+	imageStore.AssertCalled(t, "Save", "cached_images/4b84b15bff6ee5796152495a230e45e3d7e947d9-"+image.Sha1Str(imgURL), gopherPNGBytes())
 	imageStore.AssertCalled(t, "Commit", mock.Anything)
 }
 

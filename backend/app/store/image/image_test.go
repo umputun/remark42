@@ -217,3 +217,13 @@ func TestGetProportionalSizes(t *testing.T) {
 		})
 	}
 }
+
+func TestCachedImgID(t *testing.T) {
+	img, err := CachedImgID(" http://foo.com")
+	assert.Error(t, err)
+	assert.Empty(t, img)
+	imgURL := "http://example.org/img/1.png"
+	img, err = CachedImgID(imgURL)
+	assert.NoError(t, err)
+	assert.Equal(t, "cached_images/"+Sha1Str("example.org")+"-"+Sha1Str(imgURL), img)
+}

@@ -8,6 +8,8 @@ package image
 import (
 	"bytes"
 	"context"
+	"crypto/sha1" //nolint:gosec // not used for cryptography
+	"fmt"
 	"image"
 	// support gif and jpeg images decoding
 	_ "image/gif"
@@ -16,6 +18,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"path"
 	"strings"
 	"sync"
@@ -322,4 +325,22 @@ func readAndValidateImage(r io.Reader, maxSize int) ([]byte, error) {
 // guid makes a globally unique id
 func guid() string {
 	return xid.New().String()
+}
+
+// Sha1Str converts provided string to sha1
+func Sha1Str(s string) string {
+	return fmt.Sprintf("%x", sha1.Sum([]byte(s))) //nolint:gosec // not used for cryptography
+}
+
+// CachedImgID generates ID for a cached image.
+// ID would look like: "cached_images/<sha1-of-image-url-hostname>-<sha1-of-image-entire-url>"
+// <sha1-of-image-url-hostname> - would allow us to identify all images from particular site if ever needed
+// <sha1-of-image-entire-url> - would allow us to avoid storing duplicates of the same image
+//                              (as accurate as deduplication based on potentially mutable url can be)
+func CachedImgID(imgURL string) (string, error) {
+	parsedURL, err := url.Parse(imgURL)
+	if err != nil {
+		return "", errors.Wrapf(err, "can parse url %s", imgURL)
+	}
+	return fmt.Sprintf("cached_images/%s-%s", Sha1Str(parsedURL.Hostname()), Sha1Str(imgURL)), nil
 }
