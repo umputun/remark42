@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha1" //nolint:gosec // not used for cryptography
+	"encoding/base64"
 	"fmt"
 	"image"
 	// support gif and jpeg images decoding
@@ -50,6 +51,7 @@ type Service struct {
 type ServiceParams struct {
 	EditDuration time.Duration // edit period for comments
 	ImageAPI     string        // image api matching path
+	ProxyAPI     string        // proxy api matching path
 	MaxSize      int
 	MaxHeight    int
 	MaxWidth     int
@@ -145,6 +147,21 @@ func (s *Service) ExtractPictures(commentHTML string) (ids []string, err error) 
 					id := elems[len(elems)-2] + "/" + elems[len(elems)-1]
 					ids = append(ids, id)
 				}
+			}
+			if strings.Contains(im, s.ProxyAPI) {
+				proxiedURL, err := url.Parse(im)
+				if err != nil {
+					return
+				}
+				imgURL, err := base64.URLEncoding.DecodeString(proxiedURL.Query().Get("src"))
+				if err != nil {
+					return
+				}
+				imgID, err := CachedImgID(string(imgURL))
+				if err != nil {
+					return
+				}
+				ids = append(ids, imgID)
 			}
 		}
 	})

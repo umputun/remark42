@@ -19,7 +19,6 @@ import (
 	"github.com/go-pkgz/lgr"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	bolt "go.etcd.io/bbolt"
 
@@ -100,7 +99,6 @@ func TestService_CreateFromPartial(t *testing.T) {
 }
 
 func TestService_CreateFromPartialWithTitle(t *testing.T) {
-
 	ks := admin.NewStaticKeyStore("secret 123")
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
@@ -1279,8 +1277,14 @@ func TestService_submitImages(t *testing.T) {
 	lgr.Setup(lgr.Debug, lgr.CallerFile, lgr.CallerFunc)
 
 	mockStore := image.MockStore{}
-	mockStore.On("Commit", mock.Anything).Times(2).Return(nil)
-	imgSvc := image.NewService(&mockStore, image.ServiceParams{EditDuration: 50 * time.Millisecond})
+	mockStore.On("Commit", "dev/pic1.png").Once().Return(nil)
+	mockStore.On("Commit", "dev/pic2.png").Once().Return(nil)
+	imgSvc := image.NewService(&mockStore,
+		image.ServiceParams{
+			EditDuration: 50 * time.Millisecond,
+			ImageAPI:     "/",
+			ProxyAPI:     "/non_existent",
+		})
 	defer imgSvc.Close(context.TODO())
 
 	// two comments for https://radio-t.com
@@ -1301,6 +1305,7 @@ func TestService_submitImages(t *testing.T) {
 
 	b.submitImages(c.Locator, c.ID)
 	time.Sleep(250 * time.Millisecond)
+	mockStore.AssertNumberOfCalls(t, "Commit", 2)
 }
 
 func TestService_ResubmitStagingImages(t *testing.T) {
@@ -1309,6 +1314,7 @@ func TestService_ResubmitStagingImages(t *testing.T) {
 		image.ServiceParams{
 			EditDuration: 10 * time.Millisecond,
 			ImageAPI:     "http://127.0.0.1:8080/api/v1/picture/",
+			ProxyAPI:     "http://127.0.0.1:8080/api/v1/img",
 		})
 	defer imgSvc.Close(context.TODO())
 
@@ -1321,6 +1327,7 @@ func TestService_ResubmitStagingImages(t *testing.T) {
 		ID: "id-0",
 		Text: `<img src="http://127.0.0.1:8080/api/v1/picture/dev_user/bqf122eq9r8ad657n3ng" alt="startrails_01.jpg"><br/>
                <img src="http://127.0.0.1:8080/api/v1/picture/dev_user/bqf321eq9r8ad657n3ng" alt="cat.png"><br/>
+               <img src="http://127.0.0.1:8080/api/v1/img?src=aHR0cHM6Ly9ob21lcGFnZXMuY2FlLndpc2MuZWR1L35lY2U1MzMvaW1hZ2VzL2JvYXQucG5n" alt="cat.png"><br/>
                <img src="https://homepages.cae.wisc.edu/~ece533/images/boat.png" alt="boat.png">`,
 		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
 		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
@@ -1337,10 +1344,11 @@ func TestService_ResubmitStagingImages(t *testing.T) {
 	// wait for Submit goroutine to commit image
 	mockStore.On("Commit", "dev_user/bqf122eq9r8ad657n3ng").Once().Return(nil)
 	mockStore.On("Commit", "dev_user/bqf321eq9r8ad657n3ng").Once().Return(nil)
+	mockStore.On("Commit", "cached_images/12318fbd4c55e9d177b8b5ae197bc89c5afd8e07-a41fcb00643f28d700504256ec81cbf2e1aac53e").Once().Return(nil)
 	time.Sleep(time.Millisecond * 100)
 
 	mockStore.AssertNumberOfCalls(t, "Info", 1)
-	mockStore.AssertNumberOfCalls(t, "Commit", 2)
+	mockStore.AssertNumberOfCalls(t, "Commit", 3)
 
 	// empty answer
 	mockStoreEmpty := image.MockStore{}

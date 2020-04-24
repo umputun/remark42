@@ -131,7 +131,6 @@ func (p Image) cacheImage(r io.Reader, imgID string) {
 	if err != nil {
 		log.Printf("[WARN] unable to save image to the storage: %+v", err)
 	}
-	p.ImageService.Submit(func() []string { return []string{imgID} })
 }
 
 // download an image.
