@@ -47,7 +47,6 @@ func gopherPNGBytes() []byte {
 }
 
 func TestImage_Extract(t *testing.T) {
-
 	tbl := []struct {
 		inp string
 		res []string
@@ -117,6 +116,7 @@ func TestImage_Routes(t *testing.T) {
 
 	resp, err := http.Get(ts.URL + "/?src=" + encodedImgURL)
 	require.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, "1462", resp.Header["Content-Length"][0])
 	assert.Equal(t, "image/png", resp.Header["Content-Type"][0])
@@ -124,11 +124,13 @@ func TestImage_Routes(t *testing.T) {
 	encodedImgURL = base64.URLEncoding.EncodeToString([]byte(httpSrv.URL + "/image/no-such-image.png"))
 	resp, err = http.Get(ts.URL + "/?src=" + encodedImgURL)
 	require.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
 
 	encodedImgURL = base64.URLEncoding.EncodeToString([]byte(httpSrv.URL + "bad encoding"))
 	resp, err = http.Get(ts.URL + "/?src=" + encodedImgURL)
 	require.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 }
 
@@ -151,6 +153,7 @@ func TestImage_DisabledCachingAndHTTP2HTTPS(t *testing.T) {
 
 	resp, err := http.Get(ts.URL + "/?src=" + encodedImgURL)
 	require.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, "1462", resp.Header["Content-Length"][0])
 	assert.Equal(t, "image/png", resp.Header["Content-Type"][0])
@@ -181,6 +184,7 @@ func TestImage_RoutesCachingImage(t *testing.T) {
 
 	resp, err := http.Get(ts.URL + "/?src=" + encodedImgURL)
 	require.Nil(t, err)
+	assert.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, "1462", resp.Header["Content-Length"][0])
 	assert.Equal(t, "image/png", resp.Header["Content-Type"][0])
@@ -212,6 +216,7 @@ func TestImage_RoutesUsingCachedImage(t *testing.T) {
 
 	resp, err := http.Get(ts.URL + "/?src=" + encodedImgURL)
 	require.Nil(t, err)
+	assert.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, "256", resp.Header["Content-Length"][0])
 	assert.Equal(t, "text/plain; charset=utf-8", resp.Header["Content-Type"][0],
@@ -244,6 +249,7 @@ func TestImage_RoutesTimedOut(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
 	b, err := ioutil.ReadAll(resp.Body)
+	assert.NoError(t, resp.Body.Close())
 	require.NoError(t, err)
 	t.Log(string(b))
 	assert.True(t, strings.Contains(string(b), "deadline exceeded"))
