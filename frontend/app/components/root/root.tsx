@@ -42,6 +42,13 @@ const mapStateToProps = (state: StoreState) => ({
   sort: state.comments.sort,
   isCommentsLoading: state.comments.isFetching,
   user: state.user,
+  childToParentComments: Object.entries(state.comments.childComments).reduce(
+    (accumulator: Record<string, string>, [key, children]) => {
+      children.forEach(child => (accumulator[child] = key));
+      return accumulator;
+    },
+    {}
+  ),
   topComments: state.comments.topComments,
   pinnedComments: state.comments.pinnedComments.map(id => state.comments.allComments[id]).filter(c => !c.hidden),
   theme: state.theme,
@@ -85,6 +92,18 @@ const messages = defineMessages({
   },
 });
 
+const getVisibleParentComment = (hash: string, childToParentComments: Record<string, string>) => {
+  let comment;
+  let id = hash.replace(`#${COMMENT_NODE_CLASSNAME_PREFIX}`, '');
+
+  while (childToParentComments[id] && !comment) {
+    id = childToParentComments[id];
+    comment = document.querySelector(`#${COMMENT_NODE_CLASSNAME_PREFIX}` + id);
+  }
+
+  return comment;
+};
+
 /** main component fr main comments widget */
 export class Root extends Component<Props, State> {
   state = {
@@ -125,13 +144,13 @@ export class Root extends Component<Props, State> {
     await this.props.fetchComments();
   };
 
-  checkUrlHash(e: Event & { newURL?: string }) {
+  checkUrlHash = (e: Event & { newURL?: string }) => {
     const hash = e ? `#${e.newURL!.split('#')[1]}` : window.location.hash;
 
     if (hash.indexOf(`#${COMMENT_NODE_CLASSNAME_PREFIX}`) === 0) {
       if (e) e.preventDefault();
 
-      const comment = document.querySelector(hash);
+      const comment = document.querySelector(hash) || getVisibleParentComment(hash, this.props.childToParentComments);
 
       if (comment) {
         setTimeout(() => {
@@ -143,7 +162,7 @@ export class Root extends Component<Props, State> {
         }, 500);
       }
     }
-  }
+  };
 
   onMessage(event: { data: string | object }) {
     try {
