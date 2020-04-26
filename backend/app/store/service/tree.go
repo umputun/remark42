@@ -79,7 +79,7 @@ func MakeTree(comments []store.Comment, sortType string, readOnlyAge int) *Tree 
 }
 
 // proc makes tree for one top-level comment recursively
-func (t *Tree) proc(comments []store.Comment, node *Node, rd *recurData, parentID string) (*Node, time.Time, time.Time) {
+func (t *Tree) proc(comments []store.Comment, node *Node, rd *recurData, parentID string) (result *Node, modified, created time.Time) {
 
 	if rd.tsModified.IsZero() || rd.tsCreated.IsZero() {
 		rd.tsModified, rd.tsCreated = node.Comment.Timestamp, node.Comment.Timestamp

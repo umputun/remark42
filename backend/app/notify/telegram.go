@@ -27,7 +27,7 @@ const telegramTimeOut = 5000 * time.Millisecond
 const telegramAPIPrefix = "https://api.telegram.org/bot"
 
 // NewTelegram makes telegram bot for notifications
-func NewTelegram(token string, channelID string, timeout time.Duration, api string) (*Telegram, error) {
+func NewTelegram(token, channelID string, timeout time.Duration, api string) (*Telegram, error) {
 
 	if _, err := strconv.ParseInt(channelID, 10, 64); err != nil {
 		channelID = "@" + channelID // if channelID not a number enforce @ prefix

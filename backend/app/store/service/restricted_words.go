@@ -34,7 +34,7 @@ func NewRestrictedWordsMatcher(lister RestrictedWordsLister) *RestrictedWordsMat
 }
 
 // Match matches comment text against restricted words for specified site
-func (m *RestrictedWordsMatcher) Match(siteID string, text string) bool {
+func (m *RestrictedWordsMatcher) Match(siteID, text string) bool {
 	restrictedWords, err := m.lister.List(siteID)
 	if err != nil {
 		log.Printf("[WARN] failed to get restricted patterns for site %s: %v", siteID, err)
@@ -127,7 +127,7 @@ func (trie *wildcardTrie) addPattern(pattern string) {
 
 // check tests if any pattern stored in trie matches the token. Recursive. Max depth is longest pattern in trie.
 func (trie *wildcardTrie) check(token string) bool {
-	if len(token) == 0 {
+	if token == "" {
 		if trie.terminal {
 			return true
 		}
@@ -162,7 +162,7 @@ func (trie *wildcardTrie) check(token string) bool {
 func (trie *wildcardTrie) checkAllSuffixes(token string) bool {
 	suffix := token
 	for {
-		if len(suffix) == 0 {
+		if suffix == "" {
 			return false
 		}
 

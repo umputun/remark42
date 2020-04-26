@@ -140,8 +140,8 @@ func (n *Native) Import(reader io.Reader, siteID string) (size int, err error) {
 		return 0, errors.Errorf("unexpected import file version %d", m.Version)
 	}
 
-	if err = n.DataStore.DeleteAll(siteID); err != nil {
-		return 0, err
+	if e := n.DataStore.DeleteAll(siteID); e != nil {
+		return 0, e
 	}
 
 	var failed, total, comments int64

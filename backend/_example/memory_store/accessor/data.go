@@ -535,18 +535,19 @@ func (m *MemData) get(loc store.Locator, commentID string) (store.Comment, error
 func (m *MemData) updateComment(comment store.Comment) error {
 	comments := m.posts[comment.Locator.SiteID]
 	for i, c := range comments {
-		if c.ID == comment.ID && c.Locator == comment.Locator {
-			c.Text = comment.Text
-			c.Orig = comment.Orig
-			c.Score = comment.Score
-			c.Votes = comment.Votes
-			c.Pin = comment.Pin
-			c.Deleted = comment.Deleted
-			c.User = comment.User
-			comments[i] = c
-			m.posts[comment.Locator.SiteID] = comments
-			return nil
+		if c.ID != comment.ID || c.Locator != comment.Locator {
+			continue
 		}
+		c.Text = comment.Text
+		c.Orig = comment.Orig
+		c.Score = comment.Score
+		c.Votes = comment.Votes
+		c.Pin = comment.Pin
+		c.Deleted = comment.Deleted
+		c.User = comment.User
+		comments[i] = c
+		m.posts[comment.Locator.SiteID] = comments
+		return nil
 	}
 	return errors.New("not found")
 }

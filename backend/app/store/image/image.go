@@ -294,7 +294,7 @@ func resize(data []byte, limitW, limitH int) []byte {
 }
 
 // getProportionalSizes returns width and height resized by both dimensions proportionally
-func getProportionalSizes(srcW, srcH int, limitW, limitH int) (resW, resH int) {
+func getProportionalSizes(srcW, srcH, limitW, limitH int) (resW, resH int) {
 
 	if srcW <= limitW && srcH <= limitH {
 		return srcW, srcH

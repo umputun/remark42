@@ -234,7 +234,7 @@ func (cc *CleanupCommand) setTitle(c store.Comment) error {
 }
 
 // isSpam calculates spam's probability as a score
-func (cc *CleanupCommand) isSpam(comment store.Comment) (bool, float64) {
+func (cc *CleanupCommand) isSpam(comment store.Comment) (isSpam bool, spamScore float64) {
 
 	badWord := func(txt string) float64 {
 		res := 0.0

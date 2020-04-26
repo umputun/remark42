@@ -178,7 +178,7 @@ func TestNative_ImportManyWithError(t *testing.T) {
 }
 
 // makes new boltdb, put two records
-func prep(t *testing.T) (*service.DataStore, func()) {
+func prep(t *testing.T) (ds *service.DataStore, teardown func()) {
 
 	testDb := fmt.Sprintf("/tmp/migrator-%d.db", rand.Intn(999999999))
 

@@ -1465,7 +1465,7 @@ func Benchmark_ServiceCreate(b *testing.B) {
 }
 
 // makes new boltdb, put two records
-func prepStoreEngine(t *testing.T) (engine.Interface, func()) {
+func prepStoreEngine(t *testing.T) (e engine.Interface, teardown func()) {
 	testDbLoc, err := ioutil.TempDir("", "test_image_r42")
 	require.NoError(t, err)
 	testDb := path.Join(testDbLoc, "test.db")

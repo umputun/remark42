@@ -55,7 +55,7 @@ func NewBoltDB(options bolt.Options, sites ...BoltSite) (*BoltDB, error) {
 	log.Printf("[INFO] bolt store for sites %+v, options %+v", sites, options)
 	result := BoltDB{dbs: make(map[string]*bolt.DB)}
 	for _, site := range sites {
-		db, err := bolt.Open(site.FileName, 0600, &options)
+		db, err := bolt.Open(site.FileName, 0600, &options) //nolint:gocritic //octalLiteral is OK as FileMode
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to make boltdb for %s", site.FileName)
 		}
@@ -844,7 +844,7 @@ func (b *BoltDB) deleteAll(bdb *bolt.DB, siteID string) error {
 
 // deleteUser removes all comments and details for given user. Everything will be market as deleted
 // and user name and userID will be changed to "deleted". Also removes from last and from user buckets.
-func (b *BoltDB) deleteUser(bdb *bolt.DB, siteID string, userID string, mode store.DeleteMode) error {
+func (b *BoltDB) deleteUser(bdb *bolt.DB, siteID, userID string, mode store.DeleteMode) error {
 
 	// get list of all comments outside of transaction loop
 	posts, err := b.Info(InfoRequest{Locator: store.Locator{SiteID: siteID}})
@@ -1008,7 +1008,8 @@ func (b *BoltDB) setInfo(tx *bolt.Tx, comment store.Comment) (store.PostInfo, er
 	}
 	info.Count++
 	info.LastTS = comment.Timestamp
-	return info, b.save(infoBkt, comment.Locator.URL, &info)
+	err := b.save(infoBkt, comment.Locator.URL, &info)
+	return info, err
 }
 
 func (b *BoltDB) db(siteID string) (*bolt.DB, error) {
@@ -1024,7 +1025,7 @@ func (b *BoltDB) makeRef(comment store.Comment) []byte {
 }
 
 // parseRef gets parts of reference
-func (b *BoltDB) parseRef(val []byte) (url string, id string, err error) {
+func (b *BoltDB) parseRef(val []byte) (url, id string, err error) {
 	elems := strings.Split(string(val), "!!")
 	if len(elems) != 2 {
 		return "", "", errors.Errorf("invalid reference value %s", string(val))
