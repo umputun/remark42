@@ -37,6 +37,7 @@ import { isUserAnonymous } from '@app/utils/isUserAnonymous';
 import { bindActions } from '@app/utils/actionBinder';
 import postMessage from '@app/utils/postMessage';
 import { useActions } from '@app/hooks/useAction';
+import { setCollapse } from '@app/store/thread/actions';
 
 const mapStateToProps = (state: StoreState) => ({
   sort: state.comments.sort,
@@ -49,6 +50,7 @@ const mapStateToProps = (state: StoreState) => ({
     },
     {}
   ),
+  collapsedThreads: state.collapsedThreads,
   topComments: state.comments.topComments,
   pinnedComments: state.comments.pinnedComments.map(id => state.comments.allComments[id]).filter(c => !c.hidden),
   theme: state.theme,
@@ -74,6 +76,7 @@ const boundActions = bindActions({
   unhideUser,
   addComment,
   updateComment,
+  setCollapse,
 });
 
 type Props = ReturnType<typeof mapStateToProps> & typeof boundActions & { intl: IntlShape };
@@ -92,16 +95,22 @@ const messages = defineMessages({
   },
 });
 
-const getVisibleParentComment = (hash: string, childToParentComments: Record<string, string>) => {
-  let comment;
+const getCollapsedParents = (
+  hash: string,
+  childToParentComments: Record<string, string>,
+  collapsedThreads: Record<string, boolean>
+) => {
+  const collapsedParents = [];
   let id = hash.replace(`#${COMMENT_NODE_CLASSNAME_PREFIX}`, '');
 
-  while (childToParentComments[id] && !comment) {
+  while (childToParentComments[id]) {
     id = childToParentComments[id];
-    comment = document.querySelector(`#${COMMENT_NODE_CLASSNAME_PREFIX}` + id);
+    if (collapsedThreads[id]) {
+      collapsedParents.push(id);
+    }
   }
 
-  return comment;
+  return collapsedParents;
 };
 
 /** main component fr main comments widget */
@@ -150,17 +159,21 @@ export class Root extends Component<Props, State> {
     if (hash.indexOf(`#${COMMENT_NODE_CLASSNAME_PREFIX}`) === 0) {
       if (e) e.preventDefault();
 
-      const comment = document.querySelector(hash) || getVisibleParentComment(hash, this.props.childToParentComments);
+      if (!document.querySelector(hash)) {
+        const ids = getCollapsedParents(hash, this.props.childToParentComments, this.props.collapsedThreads);
+        ids.forEach(id => this.props.setCollapse(id, false));
+      }
 
-      if (comment) {
-        setTimeout(() => {
+      setTimeout(() => {
+        const comment = document.querySelector(hash);
+        if (comment) {
           postMessage({ scrollTo: comment.getBoundingClientRect().top });
           comment.classList.add('comment_highlighting');
           setTimeout(() => {
             comment.classList.remove('comment_highlighting');
           }, 5e3);
-        }, 500);
-      }
+        }
+      }, 500);
     }
   };
 
