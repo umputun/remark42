@@ -279,7 +279,7 @@ func waitOnSecChange() {
 }
 
 // clean formatting, i.e. multiple spaces, \t, \n
-func cleanRssFormatting(expected, actual string) (string, string) {
+func cleanRssFormatting(expected, actual string) (cleanExp, cleanAct string) {
 	reSpaces := regexp.MustCompile(`[\s\p{Zs}]{2,}`)
 
 	expected = strings.Replace(expected, "\n", " ", -1)

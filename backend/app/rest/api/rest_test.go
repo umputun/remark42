@@ -99,11 +99,11 @@ func TestRest_Shutdown(t *testing.T) {
 func TestRest_filterComments(t *testing.T) {
 	user := store.User{ID: "user1", Name: "user name 1"}
 	c1 := store.Comment{User: user, Text: "test test #1", Locator: store.Locator{SiteID: "radio-t",
-		URL: "https://radio-t.com/blah1"}, Timestamp: time.Date(2018, 05, 27, 1, 14, 10, 0, time.Local)}
+		URL: "https://radio-t.com/blah1"}, Timestamp: time.Date(2018, 5, 27, 1, 14, 10, 0, time.Local)}
 	c2 := store.Comment{User: user, Text: "test test #2", ParentID: "p1", Locator: store.Locator{SiteID: "radio-t",
-		URL: "https://radio-t.com/blah1"}, Timestamp: time.Date(2018, 05, 27, 1, 14, 20, 0, time.Local)}
+		URL: "https://radio-t.com/blah1"}, Timestamp: time.Date(2018, 5, 27, 1, 14, 20, 0, time.Local)}
 	c3 := store.Comment{User: user, Text: "test test #3", ParentID: "p1", Locator: store.Locator{SiteID: "radio-t",
-		URL: "https://radio-t.com/blah1"}, Timestamp: time.Date(2018, 05, 27, 1, 14, 25, 0, time.Local)}
+		URL: "https://radio-t.com/blah1"}, Timestamp: time.Date(2018, 5, 27, 1, 14, 25, 0, time.Local)}
 
 	r := filterComments([]store.Comment{c1, c2, c3}, func(c store.Comment) bool {
 		return c.Text == "test test #1" || c.Text == "test test #3"
@@ -428,7 +428,7 @@ func fakeAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(fn)
 }
 
-func get(t *testing.T, url string) (string, int) {
+func get(t *testing.T, url string) (response string, statusCode int) {
 	r, err := http.Get(url)
 	require.NoError(t, err)
 	defer r.Body.Close()
@@ -437,10 +437,10 @@ func get(t *testing.T, url string) (string, int) {
 	return string(body), r.StatusCode
 }
 
-func sendReq(_ *testing.T, r *http.Request, token string) (*http.Response, error) {
+func sendReq(_ *testing.T, r *http.Request, tkn string) (*http.Response, error) {
 	client := http.Client{Timeout: 5 * time.Second}
-	if token != "" {
-		r.Header.Set("X-JWT", token)
+	if tkn != "" {
+		r.Header.Set("X-JWT", tkn)
 	}
 	return client.Do(r)
 }
@@ -458,7 +458,7 @@ func getWithDevAuth(t *testing.T, url string) (body string, code int) {
 	return string(b), r.StatusCode
 }
 
-func getWithAdminAuth(t *testing.T, url string) (string, int) {
+func getWithAdminAuth(t *testing.T, url string) (response string, statusCode int) {
 	client := &http.Client{Timeout: 5 * time.Second}
 	req, err := http.NewRequest("GET", url, nil)
 	require.NoError(t, err)
@@ -470,7 +470,7 @@ func getWithAdminAuth(t *testing.T, url string) (string, int) {
 	assert.NoError(t, err)
 	return string(body), r.StatusCode
 }
-func post(t *testing.T, url string, body string) (*http.Response, error) {
+func post(t *testing.T, url, body string) (*http.Response, error) {
 	client := &http.Client{Timeout: 5 * time.Second}
 	req, err := http.NewRequest("POST", url, strings.NewReader(body))
 	assert.NoError(t, err)

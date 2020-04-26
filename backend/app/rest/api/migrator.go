@@ -212,7 +212,7 @@ func (m *Migrator) remapCtrl(w http.ResponseWriter, r *http.Request) {
 }
 
 // runImport reads from tmpfile and import for given siteID and provider
-func (m *Migrator) runImport(siteID string, provider string, tmpfile string) {
+func (m *Migrator) runImport(siteID, provider, tmpfile string) {
 	m.setBusy(siteID, true)
 
 	defer func() {

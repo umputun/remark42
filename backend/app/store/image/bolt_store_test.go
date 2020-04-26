@@ -124,21 +124,21 @@ func TestBolt_Info(t *testing.T) {
 	assert.False(t, info.FirstStagingImageTS.IsZero())
 }
 
-func assertBoltImgNil(t *testing.T, db *bolt.DB, bucket string, id string) {
+func assertBoltImgNil(t *testing.T, db *bolt.DB, bucket, id string) {
 	checkBoltImgData(t, db, bucket, id, func(data []byte) error {
 		assert.Nil(t, data, id)
 		return nil
 	})
 }
 
-func assertBoltImgNotNil(t *testing.T, db *bolt.DB, bucket string, id string) {
+func assertBoltImgNotNil(t *testing.T, db *bolt.DB, bucket, id string) {
 	checkBoltImgData(t, db, bucket, id, func(data []byte) error {
 		assert.NotNil(t, data, id)
 		return nil
 	})
 }
 
-func checkBoltImgData(t *testing.T, db *bolt.DB, bucket string, id string, callback func([]byte) error) {
+func checkBoltImgData(t *testing.T, db *bolt.DB, bucket, id string, callback func([]byte) error) {
 	err := db.View(func(tx *bolt.Tx) error {
 		bkt := tx.Bucket([]byte(bucket))
 		assert.NotNil(t, bkt, "bucket %s not found", bucket)

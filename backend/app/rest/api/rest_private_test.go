@@ -717,11 +717,11 @@ func TestRest_UserAllData(t *testing.T) {
 	// write 3 comments
 	user := store.User{ID: "dev", Name: "user name 1"}
 	c1 := store.Comment{User: user, Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
-		URL: "https://radio-t.com/blah1"}, Timestamp: time.Date(2018, 05, 27, 1, 14, 10, 0, time.Local)}
+		URL: "https://radio-t.com/blah1"}, Timestamp: time.Date(2018, 5, 27, 1, 14, 10, 0, time.Local)}
 	c2 := store.Comment{User: user, Text: "test test #2", ParentID: "p1", Locator: store.Locator{SiteID: "remark42",
-		URL: "https://radio-t.com/blah1"}, Timestamp: time.Date(2018, 05, 27, 1, 14, 20, 0, time.Local)}
+		URL: "https://radio-t.com/blah1"}, Timestamp: time.Date(2018, 5, 27, 1, 14, 20, 0, time.Local)}
 	c3 := store.Comment{User: user, Text: "test test #3", ParentID: "p1", Locator: store.Locator{SiteID: "remark42",
-		URL: "https://radio-t.com/blah1"}, Timestamp: time.Date(2018, 05, 27, 1, 14, 25, 0, time.Local)}
+		URL: "https://radio-t.com/blah1"}, Timestamp: time.Date(2018, 5, 27, 1, 14, 25, 0, time.Local)}
 	_, err := srv.DataService.Create(c1)
 	require.NoError(t, err, "%+v", err)
 	_, err = srv.DataService.Create(c2)
@@ -771,7 +771,7 @@ func TestRest_UserAllDataManyComments(t *testing.T) {
 
 	user := store.User{ID: "dev", Name: "user name 1"}
 	c := store.Comment{User: user, Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
-		URL: "https://radio-t.com/blah1"}, Timestamp: time.Date(2018, 05, 27, 1, 14, 10, 0, time.Local)}
+		URL: "https://radio-t.com/blah1"}, Timestamp: time.Date(2018, 5, 27, 1, 14, 10, 0, time.Local)}
 
 	for i := 0; i < 51; i++ {
 		c.ID = fmt.Sprintf("id-%03d", i)
@@ -818,11 +818,11 @@ func TestRest_DeleteMe(t *testing.T) {
 	assert.Equal(t, "remark42", m["site"])
 	assert.Equal(t, "dev", m["user_id"])
 
-	token := m["token"]
-	claims, err := srv.Authenticator.TokenService().Parse(token)
+	tkn := m["token"]
+	claims, err := srv.Authenticator.TokenService().Parse(tkn)
 	assert.NoError(t, err)
 	assert.Equal(t, "dev", claims.User.ID)
-	assert.Equal(t, "https://demo.remark42.com/web/deleteme.html?token="+token, m["link"])
+	assert.Equal(t, "https://demo.remark42.com/web/deleteme.html?token="+tkn, m["link"])
 
 	req, err = http.NewRequest(http.MethodPost, fmt.Sprintf("%s/api/v1/deleteme?site=remark42", ts.URL), nil)
 	assert.NoError(t, err)

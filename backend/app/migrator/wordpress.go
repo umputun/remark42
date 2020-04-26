@@ -61,8 +61,8 @@ func (w *WordPress) Convert(text string) string {
 // Import comments from WP and save to store
 func (w *WordPress) Import(r io.Reader, siteID string) (size int, err error) {
 
-	if err = w.DataStore.DeleteAll(siteID); err != nil {
-		return 0, err
+	if e := w.DataStore.DeleteAll(siteID); e != nil {
+		return 0, e
 	}
 
 	commentsCh := w.convert(r, siteID)

@@ -111,13 +111,13 @@ func (s *DataStore) Create(comment store.Comment) (commentID string, err error) 
 
 // Find wraps engine's Find call and alter results if needed. User used to alter comments
 // in order to differentiate between user's comments vs others comments.
-func (s *DataStore) Find(locator store.Locator, sort string, user store.User) ([]store.Comment, error) {
-	return s.FindSince(locator, sort, user, time.Time{})
+func (s *DataStore) Find(locator store.Locator, sortMethod string, user store.User) ([]store.Comment, error) {
+	return s.FindSince(locator, sortMethod, user, time.Time{})
 }
 
 // FindSince wraps engine's Find call and alter results if needed. Returns comments after since tx
-func (s *DataStore) FindSince(locator store.Locator, sort string, user store.User, since time.Time) ([]store.Comment, error) {
-	req := engine.FindRequest{Locator: locator, Sort: sort, Since: since}
+func (s *DataStore) FindSince(locator store.Locator, sortMethod string, user store.User, since time.Time) ([]store.Comment, error) {
+	req := engine.FindRequest{Locator: locator, Sort: sortMethod, Since: since}
 	comments, err := s.Engine.Find(req)
 	if err != nil {
 		return comments, err
@@ -128,7 +128,7 @@ func (s *DataStore) FindSince(locator store.Locator, sort string, user store.Use
 	for i, c := range comments {
 		if c.Controversy == 0 && len(c.Votes) > 0 {
 			c.Controversy = s.controversy(s.upsAndDowns(c))
-			if !changedSort && strings.Contains(sort, "controversy") { // trigger sort change
+			if !changedSort && strings.Contains(sortMethod, "controversy") { // trigger sort change
 				changedSort = true
 			}
 		}
@@ -137,7 +137,7 @@ func (s *DataStore) FindSince(locator store.Locator, sort string, user store.Use
 
 	// resort commits if altered
 	if changedSort {
-		comments = engine.SortComments(comments, sort)
+		comments = engine.SortComments(comments, sortMethod)
 	}
 
 	return comments, nil
@@ -159,7 +159,7 @@ func (s *DataStore) Put(locator store.Locator, comment store.Comment) error {
 }
 
 // GetUserEmail gets user email
-func (s *DataStore) GetUserEmail(siteID string, userID string) (string, error) {
+func (s *DataStore) GetUserEmail(siteID, userID string) (string, error) {
 	res, err := s.Engine.UserDetail(engine.UserDetailRequest{
 		Detail:  engine.UserEmail,
 		Locator: store.Locator{SiteID: siteID},
@@ -175,7 +175,7 @@ func (s *DataStore) GetUserEmail(siteID string, userID string) (string, error) {
 }
 
 // SetUserEmail sets user email
-func (s *DataStore) SetUserEmail(siteID string, userID string, value string) (string, error) {
+func (s *DataStore) SetUserEmail(siteID, userID, value string) (string, error) {
 	res, err := s.Engine.UserDetail(engine.UserDetailRequest{
 		Detail:  engine.UserEmail,
 		Locator: store.Locator{SiteID: siteID},
@@ -192,7 +192,7 @@ func (s *DataStore) SetUserEmail(siteID string, userID string, value string) (st
 }
 
 // DeleteUserDetail deletes user detail
-func (s *DataStore) DeleteUserDetail(siteID string, userID string, detail engine.UserDetail) error {
+func (s *DataStore) DeleteUserDetail(siteID, userID string, detail engine.UserDetail) error {
 	return s.Engine.Delete(engine.DeleteRequest{
 		Locator:    store.Locator{SiteID: siteID},
 		UserID:     userID,
@@ -590,7 +590,7 @@ func (s *DataStore) ValidateComment(c *store.Comment) error {
 }
 
 // IsAdmin checks if usesID in the list of admins
-func (s *DataStore) IsAdmin(siteID string, userID string) bool {
+func (s *DataStore) IsAdmin(siteID, userID string) bool {
 	admins, err := s.AdminStore.Admins(siteID)
 	if err != nil {
 		log.Printf("[WARN] can't get admins for %s, %v", siteID, err)
@@ -624,14 +624,14 @@ func (s *DataStore) SetReadOnly(locator store.Locator, status bool) error {
 }
 
 // IsVerified checks if user verified
-func (s *DataStore) IsVerified(siteID string, userID string) bool {
+func (s *DataStore) IsVerified(siteID, userID string) bool {
 	req := engine.FlagRequest{Locator: store.Locator{SiteID: siteID}, UserID: userID, Flag: engine.Verified}
 	ro, err := s.Engine.Flag(req)
 	return err == nil && ro
 }
 
 // SetVerified set/reset verified status for user
-func (s *DataStore) SetVerified(siteID string, userID string, status bool) error {
+func (s *DataStore) SetVerified(siteID, userID string, status bool) error {
 	roStatus := engine.FlagFalse
 	if status {
 		roStatus = engine.FlagTrue
@@ -642,14 +642,14 @@ func (s *DataStore) SetVerified(siteID string, userID string, status bool) error
 }
 
 // IsBlocked checks if user blocked
-func (s *DataStore) IsBlocked(siteID string, userID string) bool {
+func (s *DataStore) IsBlocked(siteID, userID string) bool {
 	req := engine.FlagRequest{Locator: store.Locator{SiteID: siteID}, UserID: userID, Flag: engine.Blocked}
 	ro, err := s.Engine.Flag(req)
 	return err == nil && ro
 }
 
 // SetBlock set/reset verified status for user
-func (s *DataStore) SetBlock(siteID string, userID string, status bool, ttl time.Duration) error {
+func (s *DataStore) SetBlock(siteID, userID string, status bool, ttl time.Duration) error {
 	roStatus := engine.FlagFalse
 	if status {
 		roStatus = engine.FlagTrue
@@ -695,13 +695,13 @@ func (s *DataStore) Delete(locator store.Locator, commentID string, mode store.D
 }
 
 // DeleteUser removes all comments from user
-func (s *DataStore) DeleteUser(siteID string, userID string, mode store.DeleteMode) error {
+func (s *DataStore) DeleteUser(siteID, userID string, mode store.DeleteMode) error {
 	req := engine.DeleteRequest{Locator: store.Locator{SiteID: siteID}, UserID: userID, DeleteMode: mode}
 	return s.Engine.Delete(req)
 }
 
 // List of commented posts
-func (s *DataStore) List(siteID string, limit int, skip int) ([]store.PostInfo, error) {
+func (s *DataStore) List(siteID string, limit, skip int) ([]store.PostInfo, error) {
 	req := engine.InfoRequest{Locator: store.Locator{SiteID: siteID}, Limit: limit, Skip: skip}
 	return s.Engine.Info(req)
 }

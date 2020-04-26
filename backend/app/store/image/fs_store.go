@@ -81,7 +81,7 @@ func (f *FileSystem) Load(id string) ([]byte, error) {
 		return nil, errors.Wrapf(err, "can't get image file for %s", id)
 	}
 
-	fh, err := os.Open(imgFile) //nolint:gosec
+	fh, err := os.Open(imgFile) //nolint:gosec // we open file from known location
 	if err != nil {
 		return nil, errors.Wrapf(err, "can't load image %s", id)
 	}
@@ -146,7 +146,7 @@ func (f *FileSystem) Info() (StoreInfo, error) {
 // and avoid too many files in a single place.
 // the end result is a full path like this - /tmp/images/user1/92/xxx-yyy.png.
 // Number of partitions defined by FileSystem.Partitions
-func (f *FileSystem) location(base string, id string) string {
+func (f *FileSystem) location(base, id string) string {
 
 	partition := func(id string) string {
 		f.crc.Do(func() {

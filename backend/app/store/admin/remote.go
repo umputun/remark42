@@ -35,7 +35,7 @@ func (r *RPC) Admins(siteID string) (ids []string, err error) {
 		return []string{}, err
 	}
 
-	if err = json.Unmarshal(*resp.Result, &ids); err != nil {
+	if err := json.Unmarshal(*resp.Result, &ids); err != nil {
 		return []string{}, err
 	}
 	return ids, nil
@@ -48,7 +48,7 @@ func (r *RPC) Email(siteID string) (email string, err error) {
 		return "", err
 	}
 
-	if err = json.Unmarshal(*resp.Result, &email); err != nil {
+	if err := json.Unmarshal(*resp.Result, &email); err != nil {
 		return "", err
 	}
 	return email, nil
@@ -61,7 +61,7 @@ func (r *RPC) Enabled(siteID string) (ok bool, err error) {
 		return false, err
 	}
 
-	if err = json.Unmarshal(*resp.Result, &ok); err != nil {
+	if err := json.Unmarshal(*resp.Result, &ok); err != nil {
 		return false, err
 	}
 	return ok, nil

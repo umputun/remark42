@@ -170,16 +170,16 @@ func TestServerApp_AnonMode(t *testing.T) {
 	app.Wait()
 }
 
-func getAuthFromCookie(t *testing.T, app *serverApp, resp *http.Response) (token string, claims token.Claims) {
+func getAuthFromCookie(t *testing.T, app *serverApp, resp *http.Response) (tkn string, claims token.Claims) {
 	var err error
 	for _, c := range resp.Cookies() {
 		if c.Name == "JWT" {
-			token = c.Value
+			tkn = c.Value
 			claims, err = app.restSrv.Authenticator.TokenService().Parse(c.Value)
 			require.NoError(t, err)
 		}
 	}
-	return token, claims
+	return tkn, claims
 }
 
 func TestServerApp_WithSSL(t *testing.T) {

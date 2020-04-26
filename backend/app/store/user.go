@@ -35,7 +35,7 @@ func (u *User) HashIP(secret string) {
 }
 
 // HashValue makes hmac with secret
-func HashValue(val string, secret string) string {
+func HashValue(val, secret string) string {
 	key := []byte(secret)
 	return hashWithFallback(hmac.New(sha1.New, key), val)
 }

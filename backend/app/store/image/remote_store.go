@@ -29,7 +29,7 @@ func (r *RPC) Load(id string) ([]byte, error) {
 		return nil, err
 	}
 	var rawImg string
-	if err = json.Unmarshal(*resp.Result, &rawImg); err != nil {
+	if err := json.Unmarshal(*resp.Result, &rawImg); err != nil {
 		return nil, err
 	}
 	return ioutil.ReadAll(base64.NewDecoder(base64.StdEncoding, strings.NewReader(rawImg)))
@@ -54,8 +54,8 @@ func (r *RPC) Info() (StoreInfo, error) {
 		return StoreInfo{}, err
 	}
 	info := StoreInfo{}
-	if err = json.Unmarshal(*resp.Result, &info); err != nil {
-		return StoreInfo{}, err
+	if e := json.Unmarshal(*resp.Result, &info); e != nil {
+		return StoreInfo{}, e
 	}
 	return info, err
 }

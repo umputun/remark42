@@ -52,9 +52,8 @@ type uid struct {
 
 // Import from disqus and save to store
 func (d *Disqus) Import(r io.Reader, siteID string) (size int, err error) {
-
-	if err = d.DataStore.DeleteAll(siteID); err != nil {
-		return 0, err
+	if e := d.DataStore.DeleteAll(siteID); e != nil {
+		return 0, e
 	}
 
 	commentsCh := d.convert(r, siteID)
