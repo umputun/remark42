@@ -526,15 +526,15 @@ func TestRest_Config(t *testing.T) {
 	j := R.JSON{}
 	err := json.Unmarshal([]byte(body), &j)
 	assert.NoError(t, err)
-	assert.Equal(t, 300., j["edit_duration"])
+	assert.Equal(t, 300.0, j["edit_duration"])
 	assert.EqualValues(t, []interface{}{"a1", "a2"}, j["admins"])
 	assert.Equal(t, "admin@remark-42.com", j["admin_email"])
-	assert.Equal(t, 4000., j["max_comment_size"])
-	assert.Equal(t, -5., j["low_score"])
-	assert.Equal(t, -10., j["critical_score"])
+	assert.Equal(t, 4000.0, j["max_comment_size"])
+	assert.Equal(t, -5.0, j["low_score"])
+	assert.Equal(t, -10.0, j["critical_score"])
 	assert.False(t, j["positive_score"].(bool))
-	assert.Equal(t, 10., j["readonly_age"])
-	assert.Equal(t, 10000., j["max_image_size"])
+	assert.Equal(t, 10.0, j["readonly_age"])
+	assert.Equal(t, 10000.0, j["max_image_size"])
 	assert.Equal(t, true, j["emoji_enabled"].(bool))
 }
 

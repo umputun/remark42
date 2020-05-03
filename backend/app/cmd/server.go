@@ -823,7 +823,7 @@ func (s *ServerCommand) makeNotify(dataStore *service.DataStore, authenticator *
 		}
 	}
 
-	if len(destinations) != 0 {
+	if len(destinations) > 0 {
 		log.Printf("[INFO] make notify, types=%s", s.Notify.Type)
 		notifyService = notify.NewService(dataStore, s.Notify.QueueSize, destinations...)
 	}
