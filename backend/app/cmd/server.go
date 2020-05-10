@@ -1,9 +1,9 @@
 package cmd
 
 import (
+	"io/ioutil"
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -37,6 +37,7 @@ import (
 	"github.com/umputun/remark/backend/app/store/engine"
 	"github.com/umputun/remark/backend/app/store/image"
 	"github.com/umputun/remark/backend/app/store/service"
+	"github.com/umputun/remark/backend/app/templates"
 )
 
 // ServerCommand with command line flags and env
@@ -97,7 +98,7 @@ type ServerCommand struct {
 			SMTPUserName string        `long:"user" env:"USER" description:"[deprecated, use --smtp.username] enable TLS"`
 			TLS          bool          `long:"tls" env:"TLS" description:"[deprecated, use --smtp.tls] SMTP TCP connection timeout"`
 			TimeOut      time.Duration `long:"timeout" env:"TIMEOUT" default:"10s" description:"[deprecated, use --smtp.timeout] SMTP TCP connection timeout"`
-			MsgTemplate  string        `long:"template" env:"TEMPLATE" description:"message template file"`
+			MsgTemplate  string        `long:"template" env:"TEMPLATE" description:"[deprecated, message template file]" default:"email_confirmation_login.html.tmpl"`
 		} `group:"email" namespace:"email" env-namespace:"EMAIL"`
 	} `group:"auth" namespace:"auth" env-namespace:"AUTH"`
 
@@ -303,6 +304,9 @@ func (s *ServerCommand) HandleDeprecatedFlags() (result []DeprecatedFlag) {
 		s.SMTP.TimeOut = s.Auth.Email.TimeOut
 		result = append(result, DeprecatedFlag{Old: "auth.email.timeout", New: "smtp.timeout", RemoveVersion: "1.7.0"})
 	}
+	if s.Auth.Email.MsgTemplate != "email_confirmation_login.html.tmpl" {
+		result = append(result, DeprecatedFlag{Old: "auth.email.template", RemoveVersion: "1.9.0"})
+	}
 	if s.LegacyImageProxy && !s.ImageProxy.HTTP2HTTPS {
 		s.ImageProxy.HTTP2HTTPS = s.LegacyImageProxy
 		result = append(result, DeprecatedFlag{Old: "img-proxy", New: "image-proxy.http2https", RemoveVersion: "1.7.0"})
@@ -362,7 +366,10 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to make avatar store")
 	}
-	authenticator := s.makeAuthenticator(dataService, avatarStore, adminStore)
+	authenticator, err := s.makeAuthenticator(dataService, avatarStore, adminStore)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to make authenticator")
+	}
 
 	exporter := &migrator.Native{DataStore: dataService}
 
@@ -659,29 +666,7 @@ func (s *ServerCommand) makeCache() (LoadingCache, error) {
 	return nil, errors.Errorf("unsupported cache type %s", s.Cache.Type)
 }
 
-var msgTemplate = `
-<!DOCTYPE html>
-<html>
-<head>
-	<meta name="viewport" content="width=device-width" />
-	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-</head>
-<body>
-<div style="text-align: center; font-family: Arial, sans-serif; font-size: 18px;">
-	<h1 style="position: relative; color: #4fbbd6; margin-top: 0.2em;">Remark42</h1>
-	<p style="position: relative; max-width: 20em; margin: 0 auto 1em auto; line-height: 1.4em;">Confirmation for <b>{{.User}}</b> on site <b>{{.Site}}</b></p>
-	<div style="background-color: #eee; max-width: 20em; margin: 0 auto; border-radius: 0.4em; padding: 0.5em;">
-		<p style="position: relative; margin: 0 0 0.5em 0;">TOKEN</p>
-		<p style="position: relative; font-size: 0.7em; opacity: 0.8;"><i>Copy and paste this text into “token” field on comments page</i></p>
-		<p style="position: relative; font-family: monospace; background-color: #fff; margin: 0; padding: 0.5em; word-break: break-all; text-align: left; border-radius: 0.2em; -webkit-user-select: all; user-select: all;">{{.Token}}</p>
-	</div>
-	<p style="position: relative; margin-top: 2em; font-size: 0.8em; opacity: 0.8;"><i>Sent to {{.Address}}</i></p>
-</div>
-</body>
-</html>
-`
-
-func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) {
+func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 
 	providers := 0
 	if s.Auth.Google.CID != "" && s.Auth.Google.CSEC != "" {
@@ -724,7 +709,11 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) {
 			ContentType:  s.Auth.Email.ContentType,
 		}
 		sndr := sender.NewEmailClient(params, log.Default())
-		authenticator.AddVerifProvider("email", s.loadEmailTemplate(), sndr)
+		tmpl, err := s.loadEmailTemplate()
+		if err != nil {
+			return err
+		}
+		authenticator.AddVerifProvider("email", tmpl, sndr)
 	}
 
 	if s.Auth.Anonymous {
@@ -748,22 +737,29 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) {
 	if providers == 0 {
 		log.Printf("[WARN] no auth providers defined")
 	}
+
+	return nil
 }
 
-// loadEmailTemplate trying to get template from opts MsgTemplate and default to embedded
-// if not defined or failed to load
-func (s *ServerCommand) loadEmailTemplate() string {
-	tmpl := msgTemplate
-	if s.Auth.Email.MsgTemplate != "" {
-		log.Printf("[DEBUG] load email template from %s", s.Auth.Email.MsgTemplate)
-		b, err := ioutil.ReadFile(s.Auth.Email.MsgTemplate)
-		if err == nil {
-			tmpl = string(b)
-		} else {
-			log.Printf("[WARN] failed to load email template from %s, %v", s.Auth.Email.MsgTemplate, err)
-		}
+// loadEmailTemplate trying to get template from statik
+func (s *ServerCommand) loadEmailTemplate() (string, error) {
+	var file []byte
+	var err error
+
+	if s.Auth.Email.MsgTemplate == "email_confirmation_login.html.tmpl" {
+		fs := templates.NewFS()
+		file, err = fs.ReadFile(s.Auth.Email.MsgTemplate)
+	} else {
+		// deprecated loading from an external file, should be removed before v1.9.0
+		file, err = ioutil.ReadFile(s.Auth.Email.MsgTemplate)
+		log.Printf("[INFO] template %s will be read from disk", s.Auth.Email.MsgTemplate)
 	}
-	return tmpl
+
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to read file %s", s.Auth.Email.MsgTemplate)
+	}
+
+	return string(file), nil
 }
 
 func (s *ServerCommand) makeNotify(dataStore *service.DataStore, authenticator *auth.Service) (*notify.Service, error) {
@@ -859,7 +855,7 @@ func (s *ServerCommand) makeSSLConfig() (config api.SSLConfig, err error) {
 	return config, err
 }
 
-func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Store, admns admin.Store) *auth.Service {
+func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Store, admns admin.Store) (*auth.Service, error) {
 	authenticator := auth.NewService(auth.Opts{
 		URL:            strings.TrimSuffix(s.RemarkURL, "/"),
 		Issuer:         "remark42",
@@ -915,8 +911,12 @@ func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Sto
 		RefreshCache:      newAuthRefreshCache(),
 		UseGravatar:       true,
 	})
-	s.addAuthProviders(authenticator)
-	return authenticator
+
+	if err := s.addAuthProviders(authenticator); err != nil {
+		return nil, err
+	}
+
+	return authenticator, nil
 }
 
 // authRefreshCache used by authenticator to minimize repeatable token refreshes

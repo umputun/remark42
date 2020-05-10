@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta name="viewport" content="width=device-width" />
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+</head>
+<body>
+	<!-- Some of blocks on this page have color: #000 because GMail can wrap block in his own tags which can change text color -->
+	<div style="text-align: center; font-family: Helvetica, Arial, sans-serif; font-size: 18px;">
+		<h1 style="position: relative; color: #4fbbd6; margin-top: 0.2em;">Remark42</h1>
+		<p style="position: relative; max-width: 20em; margin: 0 auto 1em auto; line-height: 1.4em; color:#000!important;">Confirmation for <b>{{.User}}</b> on site <b>{{.Site}}</b></p>
+		{{- if .SubscribeURL}}
+		<p style="position: relative; margin: 0 0 0.5em 0;color:#000!important;"><a href="{{.SubscribeURL}}{{.Token}}">Click here to subscribe to email notifications</a></p>
+		<p style="position: relative; margin: 0 0 0.5em 0;color:#000!important;">Alternatively, you can use code below for subscription.</p>
+		{{- end }}
+		<div style="background-color: #eee; max-width: 20em; margin: 0 auto; border-radius: 0.4em; padding: 0.5em;">
+			<p style="position: relative; margin: 0 0 0.5em 0;color:#000!important;">TOKEN</p>
+			<p style="position: relative; font-size: 0.7em; opacity: 0.8;"><i style="color:#000!important;">Copy and paste this text into “token” field on comments page</i></p>
+			<p style="position: relative; font-family: monospace; background-color: #fff; margin: 0; padding: 0.5em; word-break: break-all; text-align: left; border-radius: 0.2em; -webkit-user-select: all; user-select: all;">{{.Token}}</p>
+		</div>
+		<p style="position: relative; margin-top: 2em; font-size: 0.8em; opacity: 0.8;"><i style="color:#000!important;">Sent to {{.Email}}</i></p>
+	</div>
+</body>
+</html>

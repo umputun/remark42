@@ -15,16 +15,18 @@ import (
 	log "github.com/go-pkgz/lgr"
 	"github.com/go-pkgz/repeater"
 	"github.com/pkg/errors"
+
+	"github.com/umputun/remark/backend/app/templates"
 )
 
 // EmailParams contain settings for email notifications
 type EmailParams struct {
-	From                 string // from email address
-	MsgTemplate          string // request message template
-	VerificationSubject  string // verification message subject
-	VerificationTemplate string // verification message template
-	SubscribeURL         string // full subscribe handler URL
-	UnsubscribeURL       string // full unsubscribe handler URL
+	From                     string // from email address
+	MsgTemplatePath          string // path to request message template
+	VerificationSubject      string // verification message sub
+	VerificationTemplatePath string // path to verification template
+	SubscribeURL             string // full subscribe handler URL
+	UnsubscribeURL           string // full unsubscribe handler URL
 
 	TokenGenFn func(userID, email, site string) (string, error) // Unsubscribe token generation function
 }
@@ -101,139 +103,65 @@ type verifyTmplData struct {
 }
 
 const (
-	defaultVerificationSubject = "Email verification"
-	defaultEmailTimeout        = 10 * time.Second
-	defaultEmailTemplate       = `<!DOCTYPE html>
-<html>
-<head>
-	<meta name="viewport" content="width=device-width" />
-	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-	<style type="text/css">
-		img {
-			max-width: 100%;
-			max-height: 250px;
-			margin: 5px 0;
-			display: block;
-			color: #000;
-		}
-		a {
-			text-decoration: none;
-			color: #0aa;
-		}
-		p {
-			margin: 0 0 12px;
-		}
-		blockquote {
-			margin: 10px 0;
-			padding: 12px 12px 1px 12px;
-			background: rgba(255,255,255,.5)
-		}
-	</style>
-</head>
-<!-- Some of blocks on this page have color: #000 because GMail can wrap block in his own tags which can change text color -->
-<body>
-	<div style="font-family: Helvetica, Arial, sans-serif; font-size: 18px; width: 100%; max-width: 640px; margin: auto;">
-		<h1 style="text-align: center; position: relative; color: #4fbbd6; margin-top: 10px; margin-bottom: 10px;">Remark42</h1>
-        {{- if .ForAdmin}}
-		<div style="font-size: 16px; text-align: center; margin-bottom: 10px; color:#000!important;">New comment from {{.UserName}} on your site {{if .PostTitle}} to «{{.PostTitle}}»{{ end }}</div>
-        {{- else }}
-		<div style="font-size: 16px; text-align: center; margin-bottom: 10px; color:#000!important;">New reply from {{.UserName}} on your comment{{if .PostTitle}} to «{{.PostTitle}}»{{ end }}</div>
-        {{- end }}
-		<div style="background-color: #eee; padding: 15px 20px 20px 20px; border-radius: 3px;">
-            {{- if .ParentCommentText}}
-			<div style="margin-bottom: 12px; line-height: 24px; word-break: break-all;">
-				<img src="{{.ParentUserPicture}}" style="width: 24px; height: 24px; display: inline; vertical-align: middle; margin: 0 8px 0 0; border-radius: 3px; background-color: #ccc;"/>
-				<span style="font-size: 14px; font-weight: bold; color: #777">{{.ParentUserName}}</span>
-				<span style="color: #999; font-size: 14px; margin: 0 8px;">{{.ParentCommentDate.Format "02.01.2006 at 15:04"}}</span>
-				<a href="{{.ParentCommentLink}}" style="color: #0aa; font-size: 14px;"><b>Show</b></a>
-			</div>
-			<div style="font-size: 14px; color:#333!important; padding: 0 14px 0 2px; border-radius: 3px; line-height: 1.4;">
-				{{.ParentCommentText}}
-			</div>
-            {{- end }}
-			<div style="padding-left: 20px; border-left: 1px dotted rgba(0,0,0,0.15); margin-top: 15px; padding-top: 5px;">
-				<div style="margin-bottom: 12px;" line-height: 24px;word-break: break-all;>
-					<img src="{{.UserPicture}}" style="width: 24px; height: 24px; display:inline; vertical-align:middle; margin: 0 8px 0 0; border-radius: 3px; background-color: #ccc;"/>
-					<span style="font-size: 14px; font-weight: bold; color: #777">{{.UserName}}</span>
-					<span style="color: #999; font-size: 14px; margin: 0 8px;">{{.CommentDate.Format "02.01.2006 at 15:04"}}</span>
-					<a href="{{.CommentLink}}" style="color: #0aa; font-size: 14px;"><b>Reply</b></a>
-				</div>
-				<div style="font-size: 16px; background-color: #fff; color:#000!important; padding: 14px 14px 2px 14px; border-radius: 3px; line-height: 1.4;">{{.CommentText}}</div>
-			</div>
-		</div>
-		<div style="text-align: center; font-size: 14px; margin-top: 32px;">
-			<i style="color: #000!important;">Sent to <a style="color:inherit; text-decoration: none" href="mailto:{{.Email}}">{{.Email}}</a>{{if not .ForAdmin}} for {{.ParentUserName}}{{ end }}</i>
-			<div style="margin: auto; width: 150px; border-top: 1px solid rgba(0, 0, 0, 0.15); padding-top: 15px; margin-top: 15px;"></div>
-			{{- if .UnsubscribeLink}}
-			<a style="color: #0aa;" href="{{.UnsubscribeLink}}">Unsubscribe</a>
-			{{- end }}
-			<!-- This is hack for remove collapser in Gmail which can collapse end of the message -->
-			<div style="opacity: 0;font-size: 1;">[{{.CommentDate.Format "02.01.2006 at 15:04"}}]</div>
-		</div>
-	</div>
-</body>
-</html>
-`
-	defaultEmailVerificationTemplate = `<!DOCTYPE html>
-<html>
-<head>
-	<meta name="viewport" content="width=device-width" />
-	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-</head>
-<body>
-	<!-- Some of blocks on this page have color: #000 because GMail can wrap block in his own tags which can change text color -->
-	<div style="text-align: center; font-family: Helvetica, Arial, sans-serif; font-size: 18px;">
-		<h1 style="position: relative; color: #4fbbd6; margin-top: 0.2em;">Remark42</h1>
-		<p style="position: relative; max-width: 20em; margin: 0 auto 1em auto; line-height: 1.4em; color:#000!important;">Confirmation for <b>{{.User}}</b> on site <b>{{.Site}}</b></p>
-		{{- if .SubscribeURL}}
-		<p style="position: relative; margin: 0 0 0.5em 0;color:#000!important;"><a href="{{.SubscribeURL}}{{.Token}}">Click here to subscribe to email notifications</a></p>
-		<p style="position: relative; margin: 0 0 0.5em 0;color:#000!important;">Alternatively, you can use code below for subscription.</p>
-		{{- end }}
-		<div style="background-color: #eee; max-width: 20em; margin: 0 auto; border-radius: 0.4em; padding: 0.5em;">
-			<p style="position: relative; margin: 0 0 0.5em 0;color:#000!important;">TOKEN</p>
-			<p style="position: relative; font-size: 0.7em; opacity: 0.8;"><i style="color:#000!important;">Copy and paste this text into “token” field on comments page</i></p>
-			<p style="position: relative; font-family: monospace; background-color: #fff; margin: 0; padding: 0.5em; word-break: break-all; text-align: left; border-radius: 0.2em; -webkit-user-select: all; user-select: all;">{{.Token}}</p>
-		</div>
-		<p style="position: relative; margin-top: 2em; font-size: 0.8em; opacity: 0.8;"><i style="color:#000!important;">Sent to {{.Email}}</i></p>
-	</div>
-</body>
-</html>
-`
+	defaultVerificationSubject           = "Email verification"
+	defaultEmailTimeout                  = 10 * time.Second
+	defaultEmailTemplatePath             = "email_reply.html.tmpl"
+	defaultEmailVerificationTemplatePath = "email_confirmation_subscription.html.tmpl"
 )
 
 // NewEmail makes new Email object, returns error in case of e.MsgTemplate or e.VerificationTemplate parsing error
 func NewEmail(emailParams EmailParams, smtpParams SMTPParams) (*Email, error) {
 	// set up Email emailParams
 	res := Email{EmailParams: emailParams}
-	if res.MsgTemplate == "" {
-		res.MsgTemplate = defaultEmailTemplate
-	}
-	if res.VerificationTemplate == "" {
-		res.VerificationTemplate = defaultEmailVerificationTemplate
-	}
-	if res.VerificationSubject == "" {
-		res.VerificationSubject = defaultVerificationSubject
-	}
-
-	// set up SMTP emailParams
 	res.smtp = &emailClient{}
 	res.SMTPParams = smtpParams
 	if res.TimeOut <= 0 {
 		res.TimeOut = defaultEmailTimeout
 	}
 
+	if res.VerificationSubject == "" {
+		res.VerificationSubject = defaultVerificationSubject
+	}
+
+	// initialize templates
+	err := res.setTemplates()
+	if err != nil {
+		return nil, errors.Wrap(err, "can't set templates")
+	}
+
 	log.Printf("[DEBUG] Create new email notifier for server %s with user %s, timeout=%s",
 		res.Host, res.Username, res.TimeOut)
 
-	// initialize templates
+	return &res, nil
+}
+
+func (e *Email) setTemplates() error {
 	var err error
-	if res.msgTmpl, err = template.New("messageFromRequest").Parse(res.MsgTemplate); err != nil {
-		return nil, errors.Wrapf(err, "can't parse message template")
+	var msgTmplFile, verifyTmplFile []byte
+	fs := templates.NewFS()
+
+	if e.VerificationTemplatePath == "" {
+		e.VerificationTemplatePath = defaultEmailVerificationTemplatePath
 	}
-	if res.verifyTmpl, err = template.New("messageFromRequest").Parse(res.VerificationTemplate); err != nil {
-		return nil, errors.Wrapf(err, "can't parse verification template")
+
+	if e.MsgTemplatePath == "" {
+		e.MsgTemplatePath = defaultEmailTemplatePath
 	}
-	return &res, err
+
+	if msgTmplFile, err = fs.ReadFile(e.MsgTemplatePath); err != nil {
+		return errors.Wrapf(err, "can't read message template")
+	}
+	if verifyTmplFile, err = fs.ReadFile(e.VerificationTemplatePath); err != nil {
+		return errors.Wrapf(err, "can't read verification template")
+	}
+	if e.msgTmpl, err = template.New("msgTmpl").Parse(string(msgTmplFile)); err != nil {
+		return errors.Wrapf(err, "can't parse message template")
+	}
+	if e.verifyTmpl, err = template.New("verifyTmpl").Parse(string(verifyTmplFile)); err != nil {
+		return errors.Wrapf(err, "can't parse verification template")
+	}
+
+	return nil
 }
 
 // Send email about comment reply to Request.Email if it's set,

@@ -26,7 +26,7 @@ RUN cd /srv/frontend && \
     npm run build && \
     rm -rf ./node_modules
 
-FROM umputun/baseimage:buildgo-latest as build-backend
+FROM umputun/baseimage:buildgo as build-backend
 
 ARG GITHUB_TOKEN
 ENV SKIP_BACKEND_TEST=true
@@ -46,6 +46,8 @@ RUN \
     export WEB_ROOT=/build/backend/web && \
     sed -i "s|https://demo.remark42.com|http://127.0.0.1:8080|g" ${WEB_ROOT}/*.js && \
     statik --src=${WEB_ROOT} --dest=/build/backend/app/rest -p api -f && \
+    statik --src=/build/backend/templates --dest=/build/backend/app -p templates -ns templates -f && \
+    ls -la /build/backend/app/templates/statik.go && \
     ls -la /build/backend/app/rest/api/statik.go && \
     ls -la /build/backend/web/
 

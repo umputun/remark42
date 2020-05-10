@@ -120,7 +120,7 @@ func TestRest_CreateWithRestrictedWord(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
 
-	badComment := fmt.Sprintf(`{"text": "What the duck is that?", "locator":{"url": "https://radio-t.com/blah1", 
+	badComment := fmt.Sprintf(`{"text": "What the duck is that?", "locator":{"url": "https://radio-t.com/blah1",
 "site": "remark42"}}`)
 
 	resp, err := post(t, ts.URL+"/api/v1/comment", badComment)
@@ -503,9 +503,16 @@ func TestRest_AnonVote(t *testing.T) {
 	assert.Equal(t, map[string]bool(nil), cr.Votes)
 }
 
+type MockFS struct {}
+func (fs *MockFS) ReadFile(path string) ([]byte, error) {
+	return []byte(fmt.Sprintf("template %s", path)), nil
+}
+
 func TestRest_Email(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
+
+	srv.privRest.templates = &MockFS{}
 
 	// issue good token
 	claims := token.Claims{

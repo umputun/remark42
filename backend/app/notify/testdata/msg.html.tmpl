@@ -1,0 +1,20 @@
+{{- if .ForAdmin}}
+New comment from {{.UserName}} on your site {{if .PostTitle}} to «{{.PostTitle}}»{{ end }}
+{{- else }}
+	New reply from {{.UserName}} on your comment{{if .PostTitle}} to «{{.PostTitle}}»{{ end }}
+{{- end }}
+{{- if .ParentCommentText}}
+	{{.ParentUserPicture}}
+	{{.ParentUserName}}
+	{{.ParentCommentDate.Format "02.01.2006 at 15:04"}}
+	Parent comment link: {{.ParentCommentLink}}
+	{{.ParentCommentText}}
+{{- end }}
+
+User: {{.UserName}}
+{{.CommentDate.Format "02.01.2006 at 15:04"}}
+Comment: {{.CommentText}}
+{{.Email}} {{if not .ForAdmin}} for {{.ParentUserName}}{{ end }}
+{{- if .UnsubscribeLink}}
+Unsubscribe link: {{.UnsubscribeLink}}
+{{- end }}

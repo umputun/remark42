@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta name="viewport" content="width=device-width" />
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+	<style type="text/css">
+		img {
+			max-width: 100%;
+			max-height: 250px;
+			margin: 5px 0;
+			display: block;
+			color: #000;
+		}
+		a {
+			text-decoration: none;
+			color: #0aa;
+		}
+		p {
+			margin: 0 0 12px;
+		}
+		blockquote {
+			margin: 10px 0;
+			padding: 12px 12px 1px 12px;
+			background: rgba(255,255,255,.5)
+		}
+	</style>
+</head>
+<!-- Some of blocks on this page have color: #000 because GMail can wrap block in his own tags which can change text color -->
+<body>
+	<div style="font-family: Helvetica, Arial, sans-serif; font-size: 18px; width: 100%; max-width: 640px; margin: auto;">
+		<h1 style="text-align: center; position: relative; color: #4fbbd6; margin-top: 10px; margin-bottom: 10px;">Remark42</h1>
+		{{- if .ForAdmin}}
+		<div style="font-size: 16px; text-align: center; margin-bottom: 10px; color:#000!important;">New comment from {{.UserName}} on your site {{if .PostTitle}} to «{{.PostTitle}}»{{ end }}</div>
+		{{- else }}
+		<div style="font-size: 16px; text-align: center; margin-bottom: 10px; color:#000!important;">New reply from {{.UserName}} on your comment{{if .PostTitle}} to «{{.PostTitle}}»{{ end }}</div>
+		{{- end }}
+		<div style="background-color: #eee; padding: 15px 20px 20px 20px; border-radius: 3px;">
+			{{- if .ParentCommentText}}
+				<div style="margin-bottom: 12px; line-height: 24px; word-break: break-all;">
+					<img src="{{.ParentUserPicture}}" style="width: 24px; height: 24px; display: inline-block; vertical-align: middle; margin: 0 8px 0 0; border-radius: 3px; background-color: #ccc;"/>
+					<span style="font-size: 14px; font-weight: bold; color: #777">{{.ParentUserName}}</span>
+					<span style="color: #999; font-size: 14px; margin: 0 8px;">{{.ParentCommentDate.Format "02.01.2006 at 15:04"}}</span>
+					<a href="{{.ParentCommentLink}}" style="color: #0aa; font-size: 14px;"><b>Show</b></a>
+				</div>
+				<div style="font-size: 14px; color:#333!important; padding: 0 14px 0 2px; border-radius: 3px; line-height: 1.4;">{{.ParentCommentText}}</div>
+			{{- end }}
+			<div style="padding-left: 20px; border-left: 1px dotted rgba(0,0,0,0.15); margin-top: 15px; padding-top: 5px;">
+				<div style="margin-bottom: 12px; line-height: 24px;word-break: break-all;">
+					<img src="{{.UserPicture}}" style="width: 24px; height: 24px; display:inline-block; vertical-align:middle; margin: 0 8px 0 0; border-radius: 3px; background-color: #ccc;"/>
+					<span style="font-size: 14px; font-weight: bold; color: #777">{{.UserName}}</span>
+					<span style="color: #999; font-size: 14px; margin: 0 8px;">{{.CommentDate.Format "02.01.2006 at 15:04"}}</span>
+					<a href="{{.CommentLink}}" style="color: #0aa; font-size: 14px;"><b>Reply</b></a>
+				</div>
+				<div style="font-size: 16px; background-color: #fff; color:#000!important; padding: 14px 14px 2px 14px; border-radius: 3px; line-height: 1.4;">{{.CommentText}}</div>
+			</div>
+		</div>
+		<div style="text-align: center; font-size: 14px; margin-top: 32px;">
+			<i style="color: #000!important;">Sent to <a style="color:inherit; text-decoration: none" href="mailto:{{.Email}}">{{.Email}}</a>{{if not .ForAdmin}} for {{.ParentUserName}}{{ end }}</i>
+			<div style="width: 150px; border-top: 1px solid rgba(0, 0, 0, 0.15); padding-top: 15px; margin: 15px auto 0;"></div>
+			{{- if .UnsubscribeLink}}
+			<a style="color: #0aa;" href="{{.UnsubscribeLink}}">Unsubscribe</a>
+			{{- end }}
+			<!-- This is hack for remove collapser in Gmail which can collapse end of the message -->
+			<div style="opacity: 0;">[{{.CommentDate.Format "02.01.2006 at 15:04"}}]</div>
+		</div>
+	</div>
+</body>
+</html>

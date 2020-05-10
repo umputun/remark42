@@ -1,4 +1,4 @@
-FROM umputun/baseimage:buildgo-latest as build-backend
+FROM umputun/baseimage:buildgo as build-backend
 
 ARG CI
 ARG DRONE
@@ -30,6 +30,8 @@ RUN \
     if [ -z "$DRONE" ] ; then echo "runs outside of drone" && version="$(/script/git-rev.sh)" ; \
     else version=${DRONE_TAG}${DRONE_BRANCH}${DRONE_PULL_REQUEST}-${DRONE_COMMIT:0:7}-$(date +%Y%m%d-%H:%M:%S) ; fi && \
     echo "version=$version" && \
+    statik --src=/build/backend/templates --dest=/build/backend/app -p templates -ns templates -f && \
+    ls -la /build/backend/app/templates/statik.go && \
     go build -o remark42 -ldflags "-X main.revision=${version} -s -w" ./app
 
 FROM node:10.11-alpine as build-frontend-deps
