@@ -27,21 +27,22 @@ Examples: https://godoc.org/github.com/go-redis/redis#pkg-examples.
 
 ## Installation
 
-Install:
+go-redis requires a Go version with [Modules](https://github.com/golang/go/wiki/Modules) support and uses import versioning. So please make sure to initialize a Go module before installing go-redis:
 
-```shell
-go get -u github.com/go-redis/redis
+``` shell
+go mod init github.com/my/repo
+go get github.com/go-redis/redis/v7
 ```
 
 Import:
 
-```go
-import "github.com/go-redis/redis"
+``` go
+import "github.com/go-redis/redis/v7"
 ```
 
 ## Quickstart
 
-```go
+``` go
 func ExampleNewClient() {
 	client := redis.NewClient(&redis.Options{
 		Addr:     "localhost:6379",
@@ -55,6 +56,11 @@ func ExampleNewClient() {
 }
 
 func ExampleClient() {
+	client := redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "", // no password set
+		DB:       0,  // use default DB
+	})
 	err := client.Set("key", "value", 0).Err()
 	if err != nil {
 		panic(err)
@@ -87,12 +93,12 @@ Please go through [examples](https://godoc.org/github.com/go-redis/redis#pkg-exa
 
 Some corner cases:
 
-```go
+``` go
 // SET key value EX 10 NX
 set, err := client.SetNX("key", "value", 10*time.Second).Result()
 
 // SORT list LIMIT 0 2 ASC
-vals, err := client.Sort("list", redis.Sort{Offset: 0, Count: 2, Order: "ASC"}).Result()
+vals, err := client.Sort("list", &redis.Sort{Offset: 0, Count: 2, Order: "ASC"}).Result()
 
 // ZRANGEBYSCORE zset -inf +inf WITHSCORES LIMIT 0 2
 vals, err := client.ZRangeByScoreWithScores("zset", redis.ZRangeBy{
@@ -109,7 +115,7 @@ vals, err := client.ZInterStore("out", redis.ZStore{Weights: []int64{2, 3}}, "zs
 vals, err := client.Eval("return {KEYS[1],ARGV[1]}", []string{"key"}, "hello").Result()
 
 // custom command
-res, err := client.Do("set", "key", "value")
+res, err := client.Do("set", "key", "value").Result()
 ```
 
 ## See also

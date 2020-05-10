@@ -696,7 +696,7 @@ func (c *ClusterClient) WithContext(ctx context.Context) *ClusterClient {
 	}
 	clone := *c
 	clone.cmdable = clone.Process
-	clone.hooks.Lock()
+	clone.hooks.lock()
 	clone.ctx = ctx
 	return &clone
 }
@@ -743,7 +743,7 @@ func (c *ClusterClient) ProcessContext(ctx context.Context, cmd Cmder) error {
 func (c *ClusterClient) process(ctx context.Context, cmd Cmder) error {
 	err := c._process(ctx, cmd)
 	if err != nil {
-		cmd.setErr(err)
+		cmd.SetErr(err)
 		return err
 	}
 	return nil
@@ -773,13 +773,13 @@ func (c *ClusterClient) _process(ctx context.Context, cmd Cmder) error {
 
 		if ask {
 			pipe := node.Client.Pipeline()
-			_ = pipe.Process(NewCmd("ASKING"))
+			_ = pipe.Process(NewCmd("asking"))
 			_ = pipe.Process(cmd)
 			_, lastErr = pipe.ExecContext(ctx)
 			_ = pipe.Close()
 			ask = false
 		} else {
-			lastErr = node.Client._process(ctx, cmd)
+			lastErr = node.Client.ProcessContext(ctx, cmd)
 		}
 
 		// If there is no error - we are done.
@@ -840,6 +840,7 @@ func (c *ClusterClient) ForEachMaster(fn func(client *Client) error) error {
 
 	var wg sync.WaitGroup
 	errCh := make(chan error, 1)
+
 	for _, master := range state.Masters {
 		wg.Add(1)
 		go func(node *clusterNode) {
@@ -853,6 +854,7 @@ func (c *ClusterClient) ForEachMaster(fn func(client *Client) error) error {
 			}
 		}(master)
 	}
+
 	wg.Wait()
 
 	select {
@@ -873,6 +875,7 @@ func (c *ClusterClient) ForEachSlave(fn func(client *Client) error) error {
 
 	var wg sync.WaitGroup
 	errCh := make(chan error, 1)
+
 	for _, slave := range state.Slaves {
 		wg.Add(1)
 		go func(node *clusterNode) {
@@ -886,6 +889,7 @@ func (c *ClusterClient) ForEachSlave(fn func(client *Client) error) error {
 			}
 		}(slave)
 	}
+
 	wg.Wait()
 
 	select {
@@ -906,6 +910,7 @@ func (c *ClusterClient) ForEachNode(fn func(client *Client) error) error {
 
 	var wg sync.WaitGroup
 	errCh := make(chan error, 1)
+
 	worker := func(node *clusterNode) {
 		defer wg.Done()
 		err := fn(node.Client)
@@ -927,6 +932,7 @@ func (c *ClusterClient) ForEachNode(fn func(client *Client) error) error {
 	}
 
 	wg.Wait()
+
 	select {
 	case err := <-errCh:
 		return err
@@ -1046,7 +1052,7 @@ func (c *ClusterClient) processPipeline(ctx context.Context, cmds []Cmder) error
 
 func (c *ClusterClient) _processPipeline(ctx context.Context, cmds []Cmder) error {
 	cmdsMap := newCmdsMap()
-	err := c.mapCmdsByNode(cmds, cmdsMap)
+	err := c.mapCmdsByNode(cmdsMap, cmds)
 	if err != nil {
 		setCmdsErr(cmds, err)
 		return err
@@ -1068,23 +1074,16 @@ func (c *ClusterClient) _processPipeline(ctx context.Context, cmds []Cmder) erro
 			go func(node *clusterNode, cmds []Cmder) {
 				defer wg.Done()
 
-				err := node.Client.withConn(ctx, func(ctx context.Context, cn *pool.Conn) error {
-					err := cn.WithWriter(ctx, c.opt.WriteTimeout, func(wr *proto.Writer) error {
-						return writeCmd(wr, cmds...)
-					})
-					if err != nil {
-						return err
-					}
-
-					return cn.WithReader(ctx, c.opt.ReadTimeout, func(rd *proto.Reader) error {
-						return c.pipelineReadCmds(node, rd, cmds, failedCmds)
-					})
-				})
-				if err != nil {
-					err = c.mapCmdsByNode(cmds, failedCmds)
-					if err != nil {
+				err := c._processPipelineNode(ctx, node, cmds, failedCmds)
+				if err == nil {
+					return
+				}
+				if attempt < c.opt.MaxRedirects {
+					if err := c.mapCmdsByNode(failedCmds, cmds); err != nil {
 						setCmdsErr(cmds, err)
 					}
+				} else {
+					setCmdsErr(cmds, err)
 				}
 			}(node, cmds)
 		}
@@ -1099,41 +1098,27 @@ func (c *ClusterClient) _processPipeline(ctx context.Context, cmds []Cmder) erro
 	return cmdsFirstErr(cmds)
 }
 
-type cmdsMap struct {
-	mu sync.Mutex
-	m  map[*clusterNode][]Cmder
-}
-
-func newCmdsMap() *cmdsMap {
-	return &cmdsMap{
-		m: make(map[*clusterNode][]Cmder),
-	}
-}
-
-func (m *cmdsMap) Add(node *clusterNode, cmds ...Cmder) {
-	m.mu.Lock()
-	m.m[node] = append(m.m[node], cmds...)
-	m.mu.Unlock()
-}
-
-func (c *ClusterClient) mapCmdsByNode(cmds []Cmder, cmdsMap *cmdsMap) error {
+func (c *ClusterClient) mapCmdsByNode(cmdsMap *cmdsMap, cmds []Cmder) error {
 	state, err := c.state.Get()
 	if err != nil {
 		return err
 	}
 
-	cmdsAreReadOnly := c.opt.ReadOnly && c.cmdsAreReadOnly(cmds)
+	if c.opt.ReadOnly && c.cmdsAreReadOnly(cmds) {
+		for _, cmd := range cmds {
+			slot := c.cmdSlot(cmd)
+			node, err := c.slotReadOnlyNode(state, slot)
+			if err != nil {
+				return err
+			}
+			cmdsMap.Add(node, cmd)
+		}
+		return nil
+	}
+
 	for _, cmd := range cmds {
 		slot := c.cmdSlot(cmd)
-
-		var node *clusterNode
-		var err error
-		if cmdsAreReadOnly {
-			cmdInfo := c.cmdInfo(cmd.Name())
-			node, err = c.cmdNode(cmdInfo, slot)
-		} else {
-			node, err = state.slotMasterNode(slot)
-		}
+		node, err := state.slotMasterNode(slot)
 		if err != nil {
 			return err
 		}
@@ -1150,6 +1135,25 @@ func (c *ClusterClient) cmdsAreReadOnly(cmds []Cmder) bool {
 		}
 	}
 	return true
+}
+
+func (c *ClusterClient) _processPipelineNode(
+	ctx context.Context, node *clusterNode, cmds []Cmder, failedCmds *cmdsMap,
+) error {
+	return node.Client.hooks.processPipeline(ctx, cmds, func(ctx context.Context, cmds []Cmder) error {
+		return node.Client.withConn(ctx, func(ctx context.Context, cn *pool.Conn) error {
+			err := cn.WithWriter(ctx, c.opt.WriteTimeout, func(wr *proto.Writer) error {
+				return writeCmds(wr, cmds)
+			})
+			if err != nil {
+				return err
+			}
+
+			return cn.WithReader(ctx, c.opt.ReadTimeout, func(rd *proto.Reader) error {
+				return c.pipelineReadCmds(node, rd, cmds, failedCmds)
+			})
+		})
+	})
 }
 
 func (c *ClusterClient) pipelineReadCmds(
@@ -1196,7 +1200,7 @@ func (c *ClusterClient) checkMovedErr(
 	}
 
 	if ask {
-		failedCmds.Add(node, NewCmd("ASKING"), cmd)
+		failedCmds.Add(node, NewCmd("asking"), cmd)
 		return true
 	}
 
@@ -1253,32 +1257,16 @@ func (c *ClusterClient) _processTxPipeline(ctx context.Context, cmds []Cmder) er
 				go func(node *clusterNode, cmds []Cmder) {
 					defer wg.Done()
 
-					err := node.Client.withConn(ctx, func(ctx context.Context, cn *pool.Conn) error {
-						err := cn.WithWriter(ctx, c.opt.WriteTimeout, func(wr *proto.Writer) error {
-							return txPipelineWriteMulti(wr, cmds)
-						})
-						if err != nil {
-							return err
-						}
-
-						err = cn.WithReader(ctx, c.opt.ReadTimeout, func(rd *proto.Reader) error {
-							err := c.txPipelineReadQueued(rd, cmds, failedCmds)
-							if err != nil {
-								moved, ask, addr := isMovedError(err)
-								if moved || ask {
-									return c.cmdsMoved(cmds, moved, ask, addr, failedCmds)
-								}
-								return err
-							}
-							return pipelineReadCmds(rd, cmds)
-						})
-						return err
-					})
-					if err != nil {
-						err = c.mapCmdsByNode(cmds, failedCmds)
-						if err != nil {
+					err := c._processTxPipelineNode(ctx, node, cmds, failedCmds)
+					if err == nil {
+						return
+					}
+					if attempt < c.opt.MaxRedirects {
+						if err := c.mapCmdsByNode(failedCmds, cmds); err != nil {
 							setCmdsErr(cmds, err)
 						}
+					} else {
+						setCmdsErr(cmds, err)
 					}
 				}(node, cmds)
 			}
@@ -1303,11 +1291,42 @@ func (c *ClusterClient) mapCmdsBySlot(cmds []Cmder) map[int][]Cmder {
 	return cmdsMap
 }
 
+func (c *ClusterClient) _processTxPipelineNode(
+	ctx context.Context, node *clusterNode, cmds []Cmder, failedCmds *cmdsMap,
+) error {
+	return node.Client.hooks.processTxPipeline(ctx, cmds, func(ctx context.Context, cmds []Cmder) error {
+		return node.Client.withConn(ctx, func(ctx context.Context, cn *pool.Conn) error {
+			err := cn.WithWriter(ctx, c.opt.WriteTimeout, func(wr *proto.Writer) error {
+				return writeCmds(wr, cmds)
+			})
+			if err != nil {
+				return err
+			}
+
+			return cn.WithReader(ctx, c.opt.ReadTimeout, func(rd *proto.Reader) error {
+				statusCmd := cmds[0].(*StatusCmd)
+				// Trim multi and exec.
+				cmds = cmds[1 : len(cmds)-1]
+
+				err := c.txPipelineReadQueued(rd, statusCmd, cmds, failedCmds)
+				if err != nil {
+					moved, ask, addr := isMovedError(err)
+					if moved || ask {
+						return c.cmdsMoved(cmds, moved, ask, addr, failedCmds)
+					}
+					return err
+				}
+
+				return pipelineReadCmds(rd, cmds)
+			})
+		})
+	})
+}
+
 func (c *ClusterClient) txPipelineReadQueued(
-	rd *proto.Reader, cmds []Cmder, failedCmds *cmdsMap,
+	rd *proto.Reader, statusCmd *StatusCmd, cmds []Cmder, failedCmds *cmdsMap,
 ) error {
 	// Parse queued replies.
-	var statusCmd StatusCmd
 	if err := statusCmd.readReply(rd); err != nil {
 		return err
 	}
@@ -1359,7 +1378,7 @@ func (c *ClusterClient) cmdsMoved(
 
 	if ask {
 		for _, cmd := range cmds {
-			failedCmds.Add(node, NewCmd("ASKING"), cmd)
+			failedCmds.Add(node, NewCmd("asking"), cmd)
 		}
 		return nil
 	}
@@ -1561,16 +1580,19 @@ func (c *ClusterClient) cmdNode(cmdInfo *CommandInfo, slot int) (*clusterNode, e
 	}
 
 	if c.opt.ReadOnly && cmdInfo != nil && cmdInfo.ReadOnly {
-		if c.opt.RouteByLatency {
-			return state.slotClosestNode(slot)
-		}
-		if c.opt.RouteRandomly {
-			return state.slotRandomNode(slot)
-		}
-		return state.slotSlaveNode(slot)
+		return c.slotReadOnlyNode(state, slot)
 	}
-
 	return state.slotMasterNode(slot)
+}
+
+func (c *clusterClient) slotReadOnlyNode(state *clusterState, slot int) (*clusterNode, error) {
+	if c.opt.RouteByLatency {
+		return state.slotClosestNode(slot)
+	}
+	if c.opt.RouteRandomly {
+		return state.slotRandomNode(slot)
+	}
+	return state.slotSlaveNode(slot)
 }
 
 func (c *ClusterClient) slotMasterNode(slot int) (*clusterNode, error) {
@@ -1578,12 +1600,7 @@ func (c *ClusterClient) slotMasterNode(slot int) (*clusterNode, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	nodes := state.slotNodes(slot)
-	if len(nodes) > 0 {
-		return nodes[0], nil
-	}
-	return c.nodes.Random()
+	return state.slotMasterNode(slot)
 }
 
 func appendUniqueNode(nodes []*clusterNode, node *clusterNode) []*clusterNode {
@@ -1621,4 +1638,23 @@ func remove(ss []string, es ...string) []string {
 		}
 	}
 	return ss
+}
+
+//------------------------------------------------------------------------------
+
+type cmdsMap struct {
+	mu sync.Mutex
+	m  map[*clusterNode][]Cmder
+}
+
+func newCmdsMap() *cmdsMap {
+	return &cmdsMap{
+		m: make(map[*clusterNode][]Cmder),
+	}
+}
+
+func (m *cmdsMap) Add(node *clusterNode, cmds ...Cmder) {
+	m.mu.Lock()
+	m.m[node] = append(m.m[node], cmds...)
+	m.mu.Unlock()
 }

@@ -17,7 +17,6 @@ type LruCache struct {
 
 // NewLruCache makes LRU LoadingCache implementation, 1000 max keys by default
 func NewLruCache(opts ...Option) (*LruCache, error) {
-
 	res := LruCache{
 		options: options{
 			maxKeys:      1000,
@@ -51,7 +50,6 @@ func NewLruCache(opts ...Option) (*LruCache, error) {
 
 // Get gets value by key or load with fn if not found in cache
 func (c *LruCache) Get(key string, fn func() (Value, error)) (data Value, err error) {
-
 	if v, ok := c.backend.Get(key); ok {
 		atomic.AddInt64(&c.Hits, 1)
 		return v, nil
@@ -104,6 +102,7 @@ func (c *LruCache) Delete(key string) {
 	c.backend.Remove(key)
 }
 
+// Keys returns cache keys
 func (c *LruCache) Keys() (res []string) {
 	keys := c.backend.Keys()
 	res = make([]string, 0, len(keys))
@@ -122,6 +121,11 @@ func (c *LruCache) Stat() CacheStat {
 		Keys:   c.keys(),
 		Errors: c.Errors,
 	}
+}
+
+// Close does nothing for this type of cache
+func (c *LruCache) Close() error {
+	return nil
 }
 
 func (c *LruCache) size() int64 {

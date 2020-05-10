@@ -21,8 +21,8 @@ type Limiter interface {
 	// If operation is allowed client must ReportResult of the operation
 	// whether it is a success or a failure.
 	Allow() error
-	// ReportResult reports the result of previously allowed operation.
-	// nil indicates a success, non-nil error indicates a failure.
+	// ReportResult reports the result of the previously allowed operation.
+	// nil indicates a success, non-nil error usually indicates a failure.
 	ReportResult(result error)
 }
 
@@ -96,14 +96,21 @@ type Options struct {
 
 	// TLS Config to use. When set TLS will be negotiated.
 	TLSConfig *tls.Config
+
+	// Limiter interface used to implemented circuit breaker or rate limiter.
+	Limiter Limiter
 }
 
 func (opt *Options) init() {
-	if opt.Network == "" {
-		opt.Network = "tcp"
-	}
 	if opt.Addr == "" {
 		opt.Addr = "localhost:6379"
+	}
+	if opt.Network == "" {
+		if strings.HasPrefix(opt.Addr, "/") {
+			opt.Network = "unix"
+		} else {
+			opt.Network = "tcp"
+		}
 	}
 	if opt.Dialer == nil {
 		opt.Dialer = func(ctx context.Context, network, addr string) (net.Conn, error) {
@@ -145,6 +152,9 @@ func (opt *Options) init() {
 		opt.IdleCheckFrequency = time.Minute
 	}
 
+	if opt.MaxRetries == -1 {
+		opt.MaxRetries = 0
+	}
 	switch opt.MinRetryBackoff {
 	case -1:
 		opt.MinRetryBackoff = 0
@@ -157,6 +167,11 @@ func (opt *Options) init() {
 	case 0:
 		opt.MaxRetryBackoff = 512 * time.Millisecond
 	}
+}
+
+func (opt *Options) clone() *Options {
+	clone := *opt
+	return &clone
 }
 
 // ParseURL parses an URL into Options that can be used to connect to Redis.

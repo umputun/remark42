@@ -4,7 +4,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	redis "github.com/go-redis/redis/v7"
+	"github.com/go-redis/redis/v7"
 	"github.com/pkg/errors"
 )
 
@@ -20,7 +20,6 @@ type RedisCache struct {
 
 // NewRedisCache makes Redis LoadingCache implementation.
 func NewRedisCache(backend *redis.Client, opts ...Option) (*RedisCache, error) {
-
 	res := RedisCache{
 		options: options{
 			ttl: 5 * time.Minute,
@@ -43,7 +42,6 @@ func NewRedisCache(backend *redis.Client, opts ...Option) (*RedisCache, error) {
 
 // Get gets value by key or load with fn if not found in cache
 func (c *RedisCache) Get(key string, fn func() (Value, error)) (data Value, err error) {
-
 	v, getErr := c.backend.Get(key).Result()
 	switch getErr {
 	// RedisClient returns nil when find a key in DB
@@ -69,7 +67,6 @@ func (c *RedisCache) Get(key string, fn func() (Value, error)) (data Value, err 
 			atomic.AddInt64(&c.Errors, 1)
 			return data, setErr
 		}
-
 	}
 	return data, nil
 }
@@ -117,6 +114,11 @@ func (c *RedisCache) Stat() CacheStat {
 		Keys:   c.keys(),
 		Errors: c.Errors,
 	}
+}
+
+// Close closes underlying connections
+func (c *RedisCache) Close() error {
+	return c.backend.Close()
 }
 
 func (c *RedisCache) size() int64 {

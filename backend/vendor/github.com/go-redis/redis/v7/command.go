@@ -15,19 +15,20 @@ import (
 type Cmder interface {
 	Name() string
 	Args() []interface{}
+	String() string
 	stringArg(int) string
 
 	readTimeout() *time.Duration
 	readReply(rd *proto.Reader) error
 
-	setErr(error)
+	SetErr(error)
 	Err() error
 }
 
 func setCmdsErr(cmds []Cmder, e error) {
 	for _, cmd := range cmds {
 		if cmd.Err() == nil {
-			cmd.setErr(e)
+			cmd.SetErr(e)
 		}
 	}
 }
@@ -41,14 +42,17 @@ func cmdsFirstErr(cmds []Cmder) error {
 	return nil
 }
 
-func writeCmd(wr *proto.Writer, cmds ...Cmder) error {
+func writeCmds(wr *proto.Writer, cmds []Cmder) error {
 	for _, cmd := range cmds {
-		err := wr.WriteArgs(cmd.Args())
-		if err != nil {
+		if err := writeCmd(wr, cmd); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func writeCmd(wr *proto.Writer, cmd Cmder) error {
+	return wr.WriteArgs(cmd.Args())
 }
 
 func cmdString(cmd Cmder, val interface{}) string {
@@ -119,7 +123,7 @@ func (cmd *baseCmd) stringArg(pos int) string {
 	return s
 }
 
-func (cmd *baseCmd) setErr(e error) {
+func (cmd *baseCmd) SetErr(e error) {
 	cmd.err = e
 }
 
@@ -149,6 +153,10 @@ func NewCmd(args ...interface{}) *Cmd {
 	}
 }
 
+func (cmd *Cmd) String() string {
+	return cmdString(cmd, cmd.val)
+}
+
 func (cmd *Cmd) Val() interface{} {
 	return cmd.val
 }
@@ -157,7 +165,7 @@ func (cmd *Cmd) Result() (interface{}, error) {
 	return cmd.val, cmd.err
 }
 
-func (cmd *Cmd) String() (string, error) {
+func (cmd *Cmd) Text() (string, error) {
 	if cmd.err != nil {
 		return "", cmd.err
 	}
@@ -383,6 +391,10 @@ func (cmd *IntCmd) Val() int64 {
 
 func (cmd *IntCmd) Result() (int64, error) {
 	return cmd.val, cmd.err
+}
+
+func (cmd *IntCmd) Uint64() (uint64, error) {
+	return uint64(cmd.val), cmd.err
 }
 
 func (cmd *IntCmd) String() string {
@@ -999,14 +1011,20 @@ func xMessageSliceParser(rd *proto.Reader, n int64) (interface{}, error) {
 				return nil, err
 			}
 
+			var values map[string]interface{}
+
 			v, err := rd.ReadArrayReply(stringInterfaceMapParser)
 			if err != nil {
-				return nil, err
+				if err != proto.Nil {
+					return nil, err
+				}
+			} else {
+				values = v.(map[string]interface{})
 			}
 
 			msgs[i] = XMessage{
 				ID:     id,
-				Values: v.(map[string]interface{}),
+				Values: values,
 			}
 			return nil, nil
 		})
@@ -1281,6 +1299,96 @@ func (cmd *XPendingExtCmd) readReply(rd *proto.Reader) error {
 		return nil, nil
 	})
 	return cmd.err
+}
+
+//------------------------------------------------------------------------------
+
+type XInfoGroupsCmd struct {
+	baseCmd
+	val []XInfoGroups
+}
+
+type XInfoGroups struct {
+	Name            string
+	Consumers       int64
+	Pending         int64
+	LastDeliveredID string
+}
+
+var _ Cmder = (*XInfoGroupsCmd)(nil)
+
+func NewXInfoGroupsCmd(stream string) *XInfoGroupsCmd {
+	return &XInfoGroupsCmd{
+		baseCmd: baseCmd{args: []interface{}{"xinfo", "groups", stream}},
+	}
+}
+
+func (cmd *XInfoGroupsCmd) Val() []XInfoGroups {
+	return cmd.val
+}
+
+func (cmd *XInfoGroupsCmd) Result() ([]XInfoGroups, error) {
+	return cmd.val, cmd.err
+}
+
+func (cmd *XInfoGroupsCmd) String() string {
+	return cmdString(cmd, cmd.val)
+}
+
+func (cmd *XInfoGroupsCmd) readReply(rd *proto.Reader) error {
+	_, cmd.err = rd.ReadArrayReply(
+		func(rd *proto.Reader, n int64) (interface{}, error) {
+			for i := int64(0); i < n; i++ {
+				v, err := rd.ReadReply(xGroupInfoParser)
+				if err != nil {
+					return nil, err
+				}
+				cmd.val = append(cmd.val, v.(XInfoGroups))
+			}
+			return nil, nil
+		})
+	return nil
+}
+
+func xGroupInfoParser(rd *proto.Reader, n int64) (interface{}, error) {
+	if n != 8 {
+		return nil, fmt.Errorf("redis: got %d elements in XINFO GROUPS reply,"+
+			"wanted 8", n)
+	}
+	var (
+		err error
+		grp XInfoGroups
+		key string
+		val string
+	)
+
+	for i := 0; i < 4; i++ {
+		key, err = rd.ReadString()
+		if err != nil {
+			return nil, err
+		}
+		val, err = rd.ReadString()
+		if err != nil {
+			return nil, err
+		}
+		switch key {
+		case "name":
+			grp.Name = val
+		case "consumers":
+			grp.Consumers, err = strconv.ParseInt(val, 0, 64)
+		case "pending":
+			grp.Pending, err = strconv.ParseInt(val, 0, 64)
+		case "last-delivered-id":
+			grp.LastDeliveredID = val
+		default:
+			return nil, fmt.Errorf("redis: unexpected content %s "+
+				"in XINFO GROUPS reply", key)
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+	return grp, err
 }
 
 //------------------------------------------------------------------------------
@@ -1769,7 +1877,6 @@ func (cmd *GeoPosCmd) readReply(rd *proto.Reader) error {
 		return nil, nil
 	})
 	return cmd.err
-
 }
 
 //------------------------------------------------------------------------------
@@ -1912,6 +2019,15 @@ func (c *cmdsInfoCache) Get() (map[string]*CommandInfo, error) {
 		if err != nil {
 			return err
 		}
+
+		// Extensions have cmd names in upper case. Convert them to lower case.
+		for k, v := range cmds {
+			lower := internal.ToLower(k)
+			if lower != k {
+				cmds[lower] = v
+			}
+		}
+
 		c.cmds = cmds
 		return nil
 	})

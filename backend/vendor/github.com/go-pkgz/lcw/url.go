@@ -52,7 +52,6 @@ func New(uri string) (LoadingCache, error) {
 }
 
 func optionsFromQuery(q url.Values) (opts []Option, err error) {
-
 	errs := new(multierror.Error)
 
 	if v := q.Get("max_val_size"); v != "" {

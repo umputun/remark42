@@ -34,9 +34,15 @@ func formatSec(dur time.Duration) int64 {
 
 func appendArgs(dst, src []interface{}) []interface{} {
 	if len(src) == 1 {
-		if ss, ok := src[0].([]string); ok {
-			for _, s := range ss {
+		switch v := src[0].(type) {
+		case []string:
+			for _, s := range v {
 				dst = append(dst, s)
+			}
+			return dst
+		case map[string]interface{}:
+			for k, v := range v {
+				dst = append(dst, k, v)
 			}
 			return dst
 		}
@@ -107,8 +113,8 @@ type Cmdable interface {
 	IncrBy(key string, value int64) *IntCmd
 	IncrByFloat(key string, value float64) *FloatCmd
 	MGet(keys ...string) *SliceCmd
-	MSet(pairs ...interface{}) *StatusCmd
-	MSetNX(pairs ...interface{}) *BoolCmd
+	MSet(values ...interface{}) *StatusCmd
+	MSetNX(values ...interface{}) *BoolCmd
 	Set(key string, value interface{}, expiration time.Duration) *StatusCmd
 	SetBit(key string, offset int64, value int) *IntCmd
 	SetNX(key string, value interface{}, expiration time.Duration) *BoolCmd
@@ -124,8 +130,8 @@ type Cmdable interface {
 	HKeys(key string) *StringSliceCmd
 	HLen(key string) *IntCmd
 	HMGet(key string, fields ...string) *SliceCmd
-	HMSet(key string, fields map[string]interface{}) *StatusCmd
-	HSet(key, field string, value interface{}) *BoolCmd
+	HSet(key string, values ...interface{}) *IntCmd
+	HMSet(key string, values ...interface{}) *BoolCmd
 	HSetNX(key, field string, value interface{}) *BoolCmd
 	HVals(key string) *StringSliceCmd
 	BLPop(timeout time.Duration, keys ...string) *StringSliceCmd
@@ -186,6 +192,7 @@ type Cmdable interface {
 	XClaimJustID(a *XClaimArgs) *StringSliceCmd
 	XTrim(key string, maxLen int64) *IntCmd
 	XTrimApprox(key string, maxLen int64) *IntCmd
+	XInfoGroups(key string) *XInfoGroupsCmd
 	BZPopMax(timeout time.Duration, keys ...string) *ZWithKeyCmd
 	BZPopMin(timeout time.Duration, keys ...string) *ZWithKeyCmd
 	ZAdd(key string, members ...*Z) *IntCmd
@@ -799,19 +806,27 @@ func (c cmdable) MGet(keys ...string) *SliceCmd {
 	return cmd
 }
 
-func (c cmdable) MSet(pairs ...interface{}) *StatusCmd {
-	args := make([]interface{}, 1, 1+len(pairs))
+// MSet is like Set but accepts multiple values:
+//   - MSet("key1", "value1", "key2", "value2")
+//   - MSet([]string{"key1", "value1", "key2", "value2"})
+//   - MSet(map[string]interface{}{"key1": "value1", "key2": "value2"})
+func (c cmdable) MSet(values ...interface{}) *StatusCmd {
+	args := make([]interface{}, 1, 1+len(values))
 	args[0] = "mset"
-	args = appendArgs(args, pairs)
+	args = appendArgs(args, values)
 	cmd := NewStatusCmd(args...)
 	_ = c(cmd)
 	return cmd
 }
 
-func (c cmdable) MSetNX(pairs ...interface{}) *BoolCmd {
-	args := make([]interface{}, 1, 1+len(pairs))
+// MSetNX is like SetNX but accepts multiple values:
+//   - MSetNX("key1", "value1", "key2", "value2")
+//   - MSetNX([]string{"key1", "value1", "key2", "value2"})
+//   - MSetNX(map[string]interface{}{"key1": "value1", "key2": "value2"})
+func (c cmdable) MSetNX(values ...interface{}) *BoolCmd {
+	args := make([]interface{}, 1, 1+len(values))
 	args[0] = "msetnx"
-	args = appendArgs(args, pairs)
+	args = appendArgs(args, values)
 	cmd := NewBoolCmd(args...)
 	_ = c(cmd)
 	return cmd
@@ -822,7 +837,7 @@ func (c cmdable) MSetNX(pairs ...interface{}) *BoolCmd {
 // Use expiration for `SETEX`-like behavior.
 // Zero expiration means the key has no expiration time.
 func (c cmdable) Set(key string, value interface{}, expiration time.Duration) *StatusCmd {
-	args := make([]interface{}, 3, 4)
+	args := make([]interface{}, 3, 5)
 	args[0] = "set"
 	args[1] = key
 	args[2] = value
@@ -954,6 +969,8 @@ func (c cmdable) HLen(key string) *IntCmd {
 	return cmd
 }
 
+// HMGet returns the values for the specified fields in the hash stored at key.
+// It returns an interface{} to distinguish between empty string and nil value.
 func (c cmdable) HMGet(key string, fields ...string) *SliceCmd {
 	args := make([]interface{}, 2+len(fields))
 	args[0] = "hmget"
@@ -966,23 +983,29 @@ func (c cmdable) HMGet(key string, fields ...string) *SliceCmd {
 	return cmd
 }
 
-func (c cmdable) HMSet(key string, fields map[string]interface{}) *StatusCmd {
-	args := make([]interface{}, 2+len(fields)*2)
-	args[0] = "hmset"
+// HSet accepts values in following formats:
+//   - HMSet("myhash", "key1", "value1", "key2", "value2")
+//   - HMSet("myhash", []string{"key1", "value1", "key2", "value2"})
+//   - HMSet("myhash", map[string]interface{}{"key1": "value1", "key2": "value2"})
+//
+// Note that it requires Redis v4 for multiple field/value pairs support.
+func (c cmdable) HSet(key string, values ...interface{}) *IntCmd {
+	args := make([]interface{}, 2, 2+len(values))
+	args[0] = "hset"
 	args[1] = key
-	i := 2
-	for k, v := range fields {
-		args[i] = k
-		args[i+1] = v
-		i += 2
-	}
-	cmd := NewStatusCmd(args...)
+	args = appendArgs(args, values)
+	cmd := NewIntCmd(args...)
 	_ = c(cmd)
 	return cmd
 }
 
-func (c cmdable) HSet(key, field string, value interface{}) *BoolCmd {
-	cmd := NewBoolCmd("hset", key, field, value)
+// HMSet is a deprecated version of HSet left for compatibility with Redis 3.
+func (c cmdable) HMSet(key string, values ...interface{}) *BoolCmd {
+	args := make([]interface{}, 2, 2+len(values))
+	args[0] = "hmset"
+	args[1] = key
+	args = appendArgs(args, values)
+	cmd := NewBoolCmd(args...)
 	_ = c(cmd)
 	return cmd
 }
@@ -1387,7 +1410,7 @@ func (c cmdable) XRevRangeN(stream, start, stop string, count int64) *XMessageSl
 }
 
 type XReadArgs struct {
-	Streams []string
+	Streams []string // list of streams and ids, e.g. stream1 stream2 id1 id2
 	Count   int64
 	Block   time.Duration
 }
@@ -1403,6 +1426,7 @@ func (c cmdable) XRead(a *XReadArgs) *XStreamSliceCmd {
 		args = append(args, "block")
 		args = append(args, int64(a.Block/time.Millisecond))
 	}
+
 	args = append(args, "streams")
 	for _, s := range a.Streams {
 		args = append(args, s)
@@ -1567,6 +1591,12 @@ func (c cmdable) XTrim(key string, maxLen int64) *IntCmd {
 
 func (c cmdable) XTrimApprox(key string, maxLen int64) *IntCmd {
 	cmd := NewIntCmd("xtrim", key, "maxlen", "~", maxLen)
+	_ = c(cmd)
+	return cmd
+}
+
+func (c cmdable) XInfoGroups(key string) *XInfoGroupsCmd {
+	cmd := NewXInfoGroupsCmd(key)
 	_ = c(cmd)
 	return cmd
 }
@@ -2512,7 +2542,7 @@ func (c cmdable) GeoAdd(key string, geoLocation ...*GeoLocation) *IntCmd {
 func (c cmdable) GeoRadius(key string, longitude, latitude float64, query *GeoRadiusQuery) *GeoLocationCmd {
 	cmd := NewGeoLocationCmd(query, "georadius_ro", key, longitude, latitude)
 	if query.Store != "" || query.StoreDist != "" {
-		cmd.setErr(errors.New("GeoRadius does not support Store or StoreDist"))
+		cmd.SetErr(errors.New("GeoRadius does not support Store or StoreDist"))
 		return cmd
 	}
 	_ = c(cmd)
@@ -2524,7 +2554,7 @@ func (c cmdable) GeoRadiusStore(key string, longitude, latitude float64, query *
 	args := geoLocationArgs(query, "georadius", key, longitude, latitude)
 	cmd := NewIntCmd(args...)
 	if query.Store == "" && query.StoreDist == "" {
-		cmd.setErr(errors.New("GeoRadiusStore requires Store or StoreDist"))
+		cmd.SetErr(errors.New("GeoRadiusStore requires Store or StoreDist"))
 		return cmd
 	}
 	_ = c(cmd)
@@ -2535,7 +2565,7 @@ func (c cmdable) GeoRadiusStore(key string, longitude, latitude float64, query *
 func (c cmdable) GeoRadiusByMember(key, member string, query *GeoRadiusQuery) *GeoLocationCmd {
 	cmd := NewGeoLocationCmd(query, "georadiusbymember_ro", key, member)
 	if query.Store != "" || query.StoreDist != "" {
-		cmd.setErr(errors.New("GeoRadiusByMember does not support Store or StoreDist"))
+		cmd.SetErr(errors.New("GeoRadiusByMember does not support Store or StoreDist"))
 		return cmd
 	}
 	_ = c(cmd)
@@ -2547,7 +2577,7 @@ func (c cmdable) GeoRadiusByMemberStore(key, member string, query *GeoRadiusQuer
 	args := geoLocationArgs(query, "georadiusbymember", key, member)
 	cmd := NewIntCmd(args...)
 	if query.Store == "" && query.StoreDist == "" {
-		cmd.setErr(errors.New("GeoRadiusByMemberStore requires Store or StoreDist"))
+		cmd.SetErr(errors.New("GeoRadiusByMemberStore requires Store or StoreDist"))
 		return cmd
 	}
 	_ = c(cmd)

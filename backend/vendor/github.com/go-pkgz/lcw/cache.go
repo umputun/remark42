@@ -1,4 +1,4 @@
-// Package lcw adds a thin layer on top of lru cache and go-cache providing more limits and common interface.
+// Package lcw adds a thin layer on top of lru and expirable cache providing more limits and common interface.
 // The primary method to get (and set) data to/from the cache is LoadingCache.Get returning stored data for a given key or
 // call provided func to retrieve and store, similar to Guava loading cache.
 // Limits allow max values for key size, number of keys, value size and total size of values in the cache.
@@ -28,6 +28,7 @@ type LoadingCache interface {
 	Purge()                                                          // clear cache
 	Stat() CacheStat                                                 // cache stats
 	Keys() []string                                                  // list of all keys
+	Close() error                                                    // close open connections
 }
 
 // CacheStat represent stats values
@@ -68,10 +69,15 @@ func (n *Nop) Purge() {}
 // Delete does nothing for nop cache
 func (n *Nop) Delete(key string) {}
 
-// Delete does nothing for nop cache
+// Keys does nothing for nop cache
 func (n *Nop) Keys() []string { return nil }
 
 // Stat always 0s for nop cache
 func (n *Nop) Stat() CacheStat {
 	return CacheStat{}
+}
+
+// Close does nothing for nop cache
+func (n *Nop) Close() error {
+	return nil
 }
