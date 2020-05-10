@@ -9,10 +9,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-pkgz/lcw"
 	log "github.com/go-pkgz/lgr"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
-	"github.com/patrickmn/go-cache"
 	"github.com/pkg/errors"
 
 	"github.com/umputun/remark/backend/app/store"
@@ -45,7 +45,7 @@ type DataStore struct {
 	}
 
 	repliesCache struct {
-		*cache.Cache
+		lcw.LoadingCache
 		once sync.Once
 	}
 }
@@ -475,11 +475,11 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 func (s *DataStore) HasReplies(comment store.Comment) bool {
 
 	s.repliesCache.once.Do(func() {
-		//  default expiration time of 5 minutes, purge every 10 minutes
-		s.repliesCache.Cache = cache.New(5*time.Minute, 10*time.Minute)
+		// default expiration time of 5 minutes and cleanup time of 2.5 minutes
+		s.repliesCache.LoadingCache, _ = lcw.NewExpirableCache(lcw.TTL(5 * time.Minute))
 	})
 
-	if _, found := s.repliesCache.Get(comment.ID); found {
+	if _, found := s.repliesCache.Peek(comment.ID); found {
 		return true
 	}
 
@@ -493,7 +493,10 @@ func (s *DataStore) HasReplies(comment store.Comment) bool {
 	for _, c := range comments {
 		if c.ParentID != "" && !c.Deleted {
 			if c.ParentID == comment.ID {
-				s.repliesCache.Set(comment.ID, true, cache.DefaultExpiration)
+				// When this code is reached, key "comment.ID" is not in cache.
+				// Calling cache.Get on it will put it in cache with 5 minutes TTL.
+				// We call it with empty struct as value as we care about keys and not values.
+				_, _ = s.repliesCache.Get(comment.ID, func() (lcw.Value, error) { return struct{}{}, nil })
 				return true
 			}
 		}

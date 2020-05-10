@@ -18,7 +18,6 @@ import (
 	"github.com/go-pkgz/jrpc"
 	log "github.com/go-pkgz/lgr"
 	"github.com/kyokomi/emoji"
-	authcache "github.com/patrickmn/go-cache"
 	"github.com/pkg/errors"
 	bolt "go.etcd.io/bbolt"
 
@@ -922,19 +921,20 @@ func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Sto
 
 // authRefreshCache used by authenticator to minimize repeatable token refreshes
 type authRefreshCache struct {
-	*authcache.Cache
+	cache.LoadingCache
 }
 
 func newAuthRefreshCache() *authRefreshCache {
-	return &authRefreshCache{Cache: authcache.New(5*time.Minute, 10*time.Minute)}
+	expirableCache, _ := cache.NewExpirableCache(cache.TTL(5 * time.Minute))
+	return &authRefreshCache{LoadingCache: expirableCache}
 }
 
 // Get implements cache getter with key converted to string
 func (c *authRefreshCache) Get(key interface{}) (interface{}, bool) {
-	return c.Cache.Get(key.(string))
+	return c.LoadingCache.Peek(key.(string))
 }
 
 // Set implements cache setter with key converted to string
 func (c *authRefreshCache) Set(key, value interface{}) {
-	c.Cache.Set(key.(string), value, authcache.DefaultExpiration)
+	_, _ = c.LoadingCache.Get(key.(string), func() (cache.Value, error) { return value, nil })
 }
