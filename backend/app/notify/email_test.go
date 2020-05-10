@@ -17,79 +17,86 @@ import (
 )
 
 func TestEmailNew(t *testing.T) {
-	var testSet = []struct {
-		name        string
-		err         bool
-		errText     string
+	emailParams := EmailParams{
+		From: "test@from",
+		VerificationTemplatePath: "testdata/verification.html.tmpl",
+		MsgTemplatePath: "testdata/msg.html.tmpl",
+	}
+	smtpParams := SMTPParams{
+		Host:     "test@host",
+		Port:     1000,
+		TLS:      true,
+		Username: "test@username",
+		Password: "test@password",
+		TimeOut:  time.Second,
+	}
+
+	email, err := NewEmail(emailParams, smtpParams)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, email, "email returned")
+
+	assert.NotNil(t, email.msgTmpl, "e.template is set")
+	assert.Equal(t, emailParams.From, email.EmailParams.From, "emailParams.From unchanged after creation")
+	if smtpParams.TimeOut == 0 {
+		assert.Equal(t, defaultEmailTimeout, email.TimeOut, "empty emailParams.TimeOut changed to default")
+	} else {
+		assert.Equal(t, smtpParams.TimeOut, email.TimeOut, "emailParams.TimOut unchanged after creation")
+	}
+	assert.Equal(t, smtpParams.Host, email.Host, "emailParams.Host unchanged after creation")
+	assert.Equal(t, smtpParams.Username, email.Username, "emailParams.Username unchanged after creation")
+	assert.Equal(t, smtpParams.Password, email.Password, "emailParams.Password unchanged after creation")
+	assert.Equal(t, smtpParams.Port, email.Port, "emailParams.Port unchanged after creation")
+	assert.Equal(t, smtpParams.TLS, email.TLS, "emailParams.TLS unchanged after creation")
+}
+
+func Test_initTemplates(t *testing.T) {
+	testSet := []struct{
+		name string
+		errText string
 		emailParams EmailParams
-		smtpParams  SMTPParams
 	}{
-		{name: "empty"},
-		{name: "with template parse error",
-			err: true, errText: "can't parse message template: template: messageFromRequest:1: unexpected unclosed action in command",
+		{
+			name: "with wrong path to verification template",
+			errText: "can't read verification template: open notfount.tmpl: no such file or directory",
 			emailParams: EmailParams{
-				MsgTemplate: "{{",
-			}},
-		{name: "with verification template parse error",
-			err: true, errText: "can't parse verification template: template: messageFromRequest:1: unexpected unclosed action in command",
-			emailParams: EmailParams{
-				From:                 "test@from",
-				VerificationTemplate: "{{",
-			},
-			smtpParams: SMTPParams{
-				Host:     "test@host",
-				Port:     1000,
-				TLS:      true,
-				Username: "test@username",
-				Password: "test@password",
-				TimeOut:  time.Second,
+				VerificationTemplatePath: "notfount.tmpl",
+				MsgTemplatePath: "testdata/msg.html.tmpl",
 			},
 		},
-		{name: "normal creation",
-			err: false, errText: "can't parse verification template: template: messageFromRequest:1: unexpected unclosed action in command",
+		{
+			name: "with wrong path to message template",
+			errText: "can't read message template: open notfount.tmpl: no such file or directory",
 			emailParams: EmailParams{
-				From: "test@from",
+				VerificationTemplatePath: "testdata/verification.html.tmpl",
+				MsgTemplatePath: "notfount.tmpl",
 			},
-			smtpParams: SMTPParams{
-				Host:     "test@host",
-				Port:     1000,
-				TLS:      true,
-				Username: "test@username",
-				Password: "test@password",
-				TimeOut:  time.Second,
+		},
+		{
+			name: "with error on read verification template",
+			errText: "can't parse verification template: template: verifyTmpl:1: unexpected unclosed action in command",
+			emailParams: EmailParams{
+				VerificationTemplatePath: "testdata/bad.html.tmpl",
+				MsgTemplatePath: "testdata/msg.html.tmpl",
+			},
+		},
+		{
+			name: "with error on read message template",
+			errText: "can't parse message template: template: msgTmpl:1: unexpected unclosed action in command",
+			emailParams: EmailParams{
+				VerificationTemplatePath: "testdata/verification.html.tmpl",
+				MsgTemplatePath: "testdata/bad.html.tmpl",
 			},
 		},
 	}
+
 	for _, d := range testSet {
 		d := d
 		t.Run(d.name, func(t *testing.T) {
-			email, err := NewEmail(d.emailParams, d.smtpParams)
+			e := Email{EmailParams: d.emailParams}
+			err := e.setTemplates()
 
-			if d.err && d.errText == "" {
-				assert.Error(t, err)
-				assert.Nil(t, email)
-			} else if d.err && d.errText != "" {
-				assert.EqualError(t, err, d.errText)
-				assert.Nil(t, email)
-			} else {
-				assert.NoError(t, err)
-				assert.NotNil(t, email, "email returned")
-
-				assert.NotNil(t, email.msgTmpl, "e.template is set")
-				assert.Equal(t, defaultEmailTemplate, email.EmailParams.MsgTemplate, "empty emailParams.MsgTemplate changed to default")
-				assert.Equal(t, defaultEmailVerificationTemplate, email.EmailParams.VerificationTemplate, "empty emailParams.VerificationTemplate changed to default")
-				assert.Equal(t, d.emailParams.From, email.EmailParams.From, "emailParams.From unchanged after creation")
-				if d.smtpParams.TimeOut == 0 {
-					assert.Equal(t, defaultEmailTimeout, email.TimeOut, "empty emailParams.TimeOut changed to default")
-				} else {
-					assert.Equal(t, d.smtpParams.TimeOut, email.TimeOut, "emailParams.TimOut unchanged after creation")
-				}
-				assert.Equal(t, d.smtpParams.Host, email.Host, "emailParams.Host unchanged after creation")
-				assert.Equal(t, d.smtpParams.Username, email.Username, "emailParams.Username unchanged after creation")
-				assert.Equal(t, d.smtpParams.Password, email.Password, "emailParams.Password unchanged after creation")
-				assert.Equal(t, d.smtpParams.Port, email.Port, "emailParams.Port unchanged after creation")
-				assert.Equal(t, d.smtpParams.TLS, email.TLS, "emailParams.TLS unchanged after creation")
-			}
+			assert.EqualError(t, err, d.errText)
 		})
 	}
 }
@@ -103,15 +110,11 @@ func TestEmailSendErrors(t *testing.T) {
 	assert.NoError(t, err)
 	assert.EqualError(t, e.Send(context.Background(), Request{Email: "bad@example.org", Verification: VerificationMetadata{Token: "some"}}),
 		"error executing template to build verification message: template: test:1:2: executing \"test\" at <.Test>: can't evaluate field Test in type notify.verifyTmplData")
-	e.verifyTmpl, err = template.New("test").Parse(defaultEmailVerificationTemplate)
-	assert.NoError(t, err)
 
 	e.msgTmpl, err = template.New("test").Parse("{{.Test}}")
 	assert.NoError(t, err)
 	assert.EqualError(t, e.Send(context.Background(), Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "test"}}, Email: "bad@example.org"}),
 		"error executing template to build comment reply message: template: test:1:2: executing \"test\" at <.Test>: can't evaluate field Test in type notify.msgTmplData")
-	e.msgTmpl, err = template.New("test").Parse(defaultEmailTemplate)
-	assert.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -121,12 +124,13 @@ func TestEmailSendErrors(t *testing.T) {
 	e.smtp = &fakeTestSMTP{}
 	assert.EqualError(t, e.Send(context.Background(), Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "error"}}, Email: "bad@example.org"}),
 		"error creating token for unsubscribe link: token generation error")
-	e.msgTmpl, err = template.New("test").Parse(defaultEmailTemplate)
-	assert.NoError(t, err)
 }
 
 func TestEmailSend_ExitConditions(t *testing.T) {
-	email, err := NewEmail(EmailParams{}, SMTPParams{})
+	email, err := NewEmail(EmailParams{
+		VerificationTemplatePath: "testdata/verification.html.tmpl",
+		MsgTemplatePath: "testdata/msg.html.tmpl",
+	}, SMTPParams{})
 	assert.NoError(t, err)
 	assert.NotNil(t, email, "expecting email returned")
 	// prevent triggering e.autoFlush creation
@@ -181,7 +185,11 @@ func TestEmailSendClientError(t *testing.T) {
 }
 
 func TestEmail_Send(t *testing.T) {
-	email, err := NewEmail(EmailParams{From: "from@example.org"}, SMTPParams{})
+	email, err := NewEmail(EmailParams{
+		From: "from@example.org",
+		VerificationTemplatePath: "testdata/verification.html.tmpl",
+		MsgTemplatePath: "testdata/msg.html.tmpl",
+	}, SMTPParams{})
 	assert.NoError(t, err)
 	assert.NotNil(t, email)
 	fakeSMTP := fakeTestSMTP{}
@@ -229,7 +237,11 @@ Date: `)
 }
 
 func TestEmail_SendVerification(t *testing.T) {
-	email, err := NewEmail(EmailParams{From: "from@example.org"}, SMTPParams{})
+	email, err := NewEmail(EmailParams{
+		From: "from@example.org",
+		VerificationTemplatePath: "testdata/verification.html.tmpl",
+		MsgTemplatePath: "testdata/msg.html.tmpl",
+	}, SMTPParams{})
 	assert.NoError(t, err)
 	assert.NotNil(t, email)
 	fakeSMTP := fakeTestSMTP{}
@@ -247,7 +259,7 @@ func TestEmail_SendVerification(t *testing.T) {
 	assert.Equal(t, "from@example.org", fakeSMTP.readMail())
 	assert.Equal(t, 1, fakeSMTP.readQuitCount())
 	assert.Equal(t, "test@example.org", fakeSMTP.readRcpt())
-	// test buildMessageFromRequest separately for message text
+	// test buildVerificationMessage separately for message text
 	res, err := email.buildVerificationMessage(req.Verification.User, req.Email, req.Verification.Token, req.Verification.SiteID)
 	assert.NoError(t, err)
 	assert.Contains(t, res, `From: from@example.org

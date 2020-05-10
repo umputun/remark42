@@ -372,6 +372,7 @@ func TestServerApp_DeprecatedArgs(t *testing.T) {
 		"--auth.email.user=test_user",
 		"--auth.email.passwd=test_password",
 		"--auth.email.timeout=15s",
+		"--auth.email.template=file.tmpl",
 	}
 	assert.Empty(t, s.SMTP.Host)
 	assert.Empty(t, s.SMTP.Port)
@@ -390,6 +391,7 @@ func TestServerApp_DeprecatedArgs(t *testing.T) {
 			{Old: "auth.email.user", New: "smtp.username", RemoveVersion: "1.7.0"},
 			{Old: "auth.email.passwd", New: "smtp.password", RemoveVersion: "1.7.0"},
 			{Old: "auth.email.timeout", New: "smtp.timeout", RemoveVersion: "1.7.0"},
+			{Old: "auth.email.template", RemoveVersion: "1.9.0"},
 		},
 		deprecatedFlags)
 	assert.Equal(t, "smtp.example.org", s.SMTP.Host)
@@ -490,7 +492,7 @@ func TestServerAuthHooks(t *testing.T) {
 	require.NoError(t, err)
 	t.Logf("no-aud claims: %s", tkNoAud)
 	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
-		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/p/2018/12/29/podcast-631/", 
+		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/p/2018/12/29/podcast-631/",
 "site": "remark"}}`))
 	require.NoError(t, err)
 	req.Header.Set("X-JWT", tkNoAud)
@@ -534,16 +536,14 @@ func TestServerAuthHooks(t *testing.T) {
 func TestServer_loadEmailTemplate(t *testing.T) {
 	cmd := ServerCommand{}
 	cmd.Auth.Email.MsgTemplate = "testdata/email.tmpl"
-	r := cmd.loadEmailTemplate()
+	r, err := cmd.loadEmailTemplate()
+	assert.NoError(t, err)
 	assert.Equal(t, "The token is {{.Token}}", r)
 
-	cmd.Auth.Email.MsgTemplate = ""
-	r = cmd.loadEmailTemplate()
-	assert.Contains(t, r, "Remark42</h1>")
-
-	cmd.Auth.Email.MsgTemplate = "bad-file"
-	r = cmd.loadEmailTemplate()
-	assert.Contains(t, r, "Remark42</h1>")
+	cmd.Auth.Email.MsgTemplate = "badpath.tmpl"
+	r, err = cmd.loadEmailTemplate()
+	assert.EqualError(t, err, "failed to read file badpath.tmpl: open badpath.tmpl: no such file or directory")
+	assert.Equal(t, r, "")
 }
 
 func chooseRandomUnusedPort() (port int) {

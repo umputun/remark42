@@ -2,6 +2,7 @@ package rest
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -37,12 +38,18 @@ func TestSendErrorJSON(t *testing.T) {
 	assert.Equal(t, `{"code":123,"details":"error details 123456","error":"error 500"}`+"\n", string(body))
 }
 
-func TestSendErrorHTML(t *testing.T) {
+type MockFS struct {}
+func (fs *MockFS) ReadFile(path string) ([]byte, error) {
+	return []byte(fmt.Sprintf("{{.Error}}{{.Details}} %s", path)), nil
+}
 
+
+func TestSendErrorHTML(t *testing.T) {
+	fs := &MockFS{}
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/error" {
 			t.Log("http err request", r.URL)
-			SendErrorHTML(w, r, 500, errors.New("error 500"), "error details 123456", 987)
+			SendErrorHTML(w, r, 500, errors.New("error 500"), "error details 123456", 987, fs)
 			return
 		}
 		w.WriteHeader(404)

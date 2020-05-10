@@ -31,6 +31,7 @@ import (
 	"github.com/umputun/remark/backend/app/store"
 	"github.com/umputun/remark/backend/app/store/image"
 	"github.com/umputun/remark/backend/app/store/service"
+	"github.com/umputun/remark/backend/app/templates"
 )
 
 // Rest is a rest access server
@@ -367,6 +368,7 @@ func (s *Rest) controllerGroups() (public, private, admin, rss) {
 		remarkURL:        s.RemarkURL,
 		adminEmail:       s.AdminEmail,
 		anonVote:         s.AnonVote,
+		templates:        templates.NewFS(),
 	}
 
 	admGrp := admin{
