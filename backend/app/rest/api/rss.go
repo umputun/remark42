@@ -10,8 +10,8 @@ import (
 	"github.com/gorilla/feeds"
 	"github.com/pkg/errors"
 
-	"github.com/umputun/remark/backend/app/rest"
-	"github.com/umputun/remark/backend/app/store"
+	"github.com/umputun/remark42/backend/app/rest"
+	"github.com/umputun/remark42/backend/app/store"
 )
 
 type rss struct {

@@ -14,7 +14,7 @@ import (
 	log "github.com/go-pkgz/lgr"
 	"github.com/go-pkgz/rest"
 
-	"github.com/umputun/remark/backend/app/templates"
+	"github.com/umputun/remark42/backend/app/templates"
 )
 
 // All error codes for UI mapping and translation

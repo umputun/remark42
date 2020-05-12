@@ -1,4 +1,4 @@
-module github.com/umputun/remark/backend
+module github.com/umputun/remark42/backend
 
 go 1.14
 

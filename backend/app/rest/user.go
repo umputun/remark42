@@ -6,7 +6,7 @@ import (
 	"github.com/go-pkgz/auth/token"
 	"github.com/pkg/errors"
 
-	"github.com/umputun/remark/backend/app/store"
+	"github.com/umputun/remark42/backend/app/store"
 )
 
 // MustGetUserInfo fails if can't extract user data from the request.

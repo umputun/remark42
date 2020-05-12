@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/umputun/remark/backend/app/store"
+	"github.com/umputun/remark42/backend/app/store"
 )
 
 // NOTE: mockery works from linked to go-path and with GOFLAGS='-mod=vendor' go generate

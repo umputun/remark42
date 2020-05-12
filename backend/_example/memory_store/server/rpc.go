@@ -9,9 +9,9 @@ package server
 import (
 	"github.com/go-pkgz/jrpc"
 
-	"github.com/umputun/remark/backend/app/store/admin"
-	"github.com/umputun/remark/backend/app/store/engine"
-	"github.com/umputun/remark/backend/app/store/image"
+	"github.com/umputun/remark42/backend/app/store/admin"
+	"github.com/umputun/remark42/backend/app/store/engine"
+	"github.com/umputun/remark42/backend/app/store/image"
 )
 
 // RPC handler wraps both engine and remote server and implements all handlers for data store and admin store

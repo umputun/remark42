@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/umputun/remark/backend/app/store"
+	"github.com/umputun/remark42/backend/app/store"
 )
 
 func TestSendErrorJSON(t *testing.T) {
@@ -38,11 +38,11 @@ func TestSendErrorJSON(t *testing.T) {
 	assert.Equal(t, `{"code":123,"details":"error details 123456","error":"error 500"}`+"\n", string(body))
 }
 
-type MockFS struct {}
+type MockFS struct{}
+
 func (fs *MockFS) ReadFile(path string) ([]byte, error) {
 	return []byte(fmt.Sprintf("{{.Error}}{{.Details}} %s", path)), nil
 }
-
 
 func TestSendErrorHTML(t *testing.T) {
 	fs := &MockFS{}

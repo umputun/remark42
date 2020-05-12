@@ -13,14 +13,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/umputun/remark/backend/app/store"
+	"github.com/umputun/remark42/backend/app/store"
 )
 
 func TestEmailNew(t *testing.T) {
 	emailParams := EmailParams{
-		From: "test@from",
+		From:                     "test@from",
 		VerificationTemplatePath: "testdata/verification.html.tmpl",
-		MsgTemplatePath: "testdata/msg.html.tmpl",
+		MsgTemplatePath:          "testdata/msg.html.tmpl",
 	}
 	smtpParams := SMTPParams{
 		Host:     "test@host",
@@ -51,41 +51,41 @@ func TestEmailNew(t *testing.T) {
 }
 
 func Test_initTemplates(t *testing.T) {
-	testSet := []struct{
-		name string
-		errText string
+	testSet := []struct {
+		name        string
+		errText     string
 		emailParams EmailParams
 	}{
 		{
-			name: "with wrong path to verification template",
+			name:    "with wrong path to verification template",
 			errText: "can't read verification template: open notfount.tmpl: no such file or directory",
 			emailParams: EmailParams{
 				VerificationTemplatePath: "notfount.tmpl",
-				MsgTemplatePath: "testdata/msg.html.tmpl",
+				MsgTemplatePath:          "testdata/msg.html.tmpl",
 			},
 		},
 		{
-			name: "with wrong path to message template",
+			name:    "with wrong path to message template",
 			errText: "can't read message template: open notfount.tmpl: no such file or directory",
 			emailParams: EmailParams{
 				VerificationTemplatePath: "testdata/verification.html.tmpl",
-				MsgTemplatePath: "notfount.tmpl",
+				MsgTemplatePath:          "notfount.tmpl",
 			},
 		},
 		{
-			name: "with error on read verification template",
+			name:    "with error on read verification template",
 			errText: "can't parse verification template: template: verifyTmpl:1: unexpected unclosed action in command",
 			emailParams: EmailParams{
 				VerificationTemplatePath: "testdata/bad.html.tmpl",
-				MsgTemplatePath: "testdata/msg.html.tmpl",
+				MsgTemplatePath:          "testdata/msg.html.tmpl",
 			},
 		},
 		{
-			name: "with error on read message template",
+			name:    "with error on read message template",
 			errText: "can't parse message template: template: msgTmpl:1: unexpected unclosed action in command",
 			emailParams: EmailParams{
 				VerificationTemplatePath: "testdata/verification.html.tmpl",
-				MsgTemplatePath: "testdata/bad.html.tmpl",
+				MsgTemplatePath:          "testdata/bad.html.tmpl",
 			},
 		},
 	}
@@ -129,7 +129,7 @@ func TestEmailSendErrors(t *testing.T) {
 func TestEmailSend_ExitConditions(t *testing.T) {
 	email, err := NewEmail(EmailParams{
 		VerificationTemplatePath: "testdata/verification.html.tmpl",
-		MsgTemplatePath: "testdata/msg.html.tmpl",
+		MsgTemplatePath:          "testdata/msg.html.tmpl",
 	}, SMTPParams{})
 	assert.NoError(t, err)
 	assert.NotNil(t, email, "expecting email returned")
@@ -186,9 +186,9 @@ func TestEmailSendClientError(t *testing.T) {
 
 func TestEmail_Send(t *testing.T) {
 	email, err := NewEmail(EmailParams{
-		From: "from@example.org",
+		From:                     "from@example.org",
 		VerificationTemplatePath: "testdata/verification.html.tmpl",
-		MsgTemplatePath: "testdata/msg.html.tmpl",
+		MsgTemplatePath:          "testdata/msg.html.tmpl",
 	}, SMTPParams{})
 	assert.NoError(t, err)
 	assert.NotNil(t, email)
@@ -238,9 +238,9 @@ Date: `)
 
 func TestEmail_SendVerification(t *testing.T) {
 	email, err := NewEmail(EmailParams{
-		From: "from@example.org",
+		From:                     "from@example.org",
 		VerificationTemplatePath: "testdata/verification.html.tmpl",
-		MsgTemplatePath: "testdata/msg.html.tmpl",
+		MsgTemplatePath:          "testdata/msg.html.tmpl",
 	}, SMTPParams{})
 	assert.NoError(t, err)
 	assert.NotNil(t, email)

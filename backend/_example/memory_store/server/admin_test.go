@@ -15,7 +15,7 @@ import (
 	"github.com/go-pkgz/jrpc"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/umputun/remark/backend/app/store/admin"
+	"github.com/umputun/remark42/backend/app/store/admin"
 )
 
 func TestRPC_admKeyHndl(t *testing.T) {

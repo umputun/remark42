@@ -1,4 +1,4 @@
-module github.com/umputun/remark/memory_store
+module github.com/umputun/remark42/memory_store
 
 go 1.14
 
@@ -8,7 +8,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.5.1
 	github.com/umputun/go-flags v1.5.1
-	github.com/umputun/remark/backend v1.5.0
+	github.com/umputun/remark42/backend v1.6.0
 )
 
-replace github.com/umputun/remark/backend => ../../
+replace github.com/umputun/remark42/backend => ../../

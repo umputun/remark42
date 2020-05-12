@@ -17,7 +17,7 @@ import (
 	"github.com/go-pkgz/jrpc"
 	"github.com/stretchr/testify/require"
 
-	"github.com/umputun/remark/memory_store/accessor"
+	"github.com/umputun/remark42/memory_store/accessor"
 )
 
 func chooseRandomUnusedPort() (port int) {

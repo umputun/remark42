@@ -1,9 +1,9 @@
 package cmd
 
 import (
-	"io/ioutil"
 	"context"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -28,16 +28,16 @@ import (
 	"github.com/go-pkgz/auth/token"
 	cache "github.com/go-pkgz/lcw"
 
-	"github.com/umputun/remark/backend/app/migrator"
-	"github.com/umputun/remark/backend/app/notify"
-	"github.com/umputun/remark/backend/app/rest/api"
-	"github.com/umputun/remark/backend/app/rest/proxy"
-	"github.com/umputun/remark/backend/app/store"
-	"github.com/umputun/remark/backend/app/store/admin"
-	"github.com/umputun/remark/backend/app/store/engine"
-	"github.com/umputun/remark/backend/app/store/image"
-	"github.com/umputun/remark/backend/app/store/service"
-	"github.com/umputun/remark/backend/app/templates"
+	"github.com/umputun/remark42/backend/app/migrator"
+	"github.com/umputun/remark42/backend/app/notify"
+	"github.com/umputun/remark42/backend/app/rest/api"
+	"github.com/umputun/remark42/backend/app/rest/proxy"
+	"github.com/umputun/remark42/backend/app/store"
+	"github.com/umputun/remark42/backend/app/store/admin"
+	"github.com/umputun/remark42/backend/app/store/engine"
+	"github.com/umputun/remark42/backend/app/store/image"
+	"github.com/umputun/remark42/backend/app/store/service"
+	"github.com/umputun/remark42/backend/app/templates"
 )
 
 // ServerCommand with command line flags and env

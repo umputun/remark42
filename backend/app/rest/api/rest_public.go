@@ -19,10 +19,10 @@ import (
 	R "github.com/go-pkgz/rest"
 	"github.com/pkg/errors"
 
-	"github.com/umputun/remark/backend/app/rest"
-	"github.com/umputun/remark/backend/app/store"
-	"github.com/umputun/remark/backend/app/store/image"
-	"github.com/umputun/remark/backend/app/store/service"
+	"github.com/umputun/remark42/backend/app/rest"
+	"github.com/umputun/remark42/backend/app/store"
+	"github.com/umputun/remark42/backend/app/store/image"
+	"github.com/umputun/remark42/backend/app/store/service"
 )
 
 type public struct {

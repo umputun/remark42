@@ -25,13 +25,13 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rakyll/statik/fs"
 
-	"github.com/umputun/remark/backend/app/notify"
-	"github.com/umputun/remark/backend/app/rest"
-	"github.com/umputun/remark/backend/app/rest/proxy"
-	"github.com/umputun/remark/backend/app/store"
-	"github.com/umputun/remark/backend/app/store/image"
-	"github.com/umputun/remark/backend/app/store/service"
-	"github.com/umputun/remark/backend/app/templates"
+	"github.com/umputun/remark42/backend/app/notify"
+	"github.com/umputun/remark42/backend/app/rest"
+	"github.com/umputun/remark42/backend/app/rest/proxy"
+	"github.com/umputun/remark42/backend/app/store"
+	"github.com/umputun/remark42/backend/app/store/image"
+	"github.com/umputun/remark42/backend/app/store/service"
+	"github.com/umputun/remark42/backend/app/templates"
 )
 
 // Rest is a rest access server

@@ -17,8 +17,8 @@ import (
 	R "github.com/go-pkgz/rest"
 	"github.com/pkg/errors"
 
-	"github.com/umputun/remark/backend/app/migrator"
-	"github.com/umputun/remark/backend/app/rest"
+	"github.com/umputun/remark42/backend/app/migrator"
+	"github.com/umputun/remark42/backend/app/rest"
 )
 
 // Migrator rest with import and export controllers

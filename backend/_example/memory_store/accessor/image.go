@@ -14,7 +14,7 @@ import (
 	log "github.com/go-pkgz/lgr"
 	"github.com/pkg/errors"
 
-	"github.com/umputun/remark/backend/app/store/image"
+	"github.com/umputun/remark42/backend/app/store/image"
 )
 
 // MemImage implements image.Store with memory backend

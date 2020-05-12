@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/umputun/remark/backend/app/store"
+	"github.com/umputun/remark42/backend/app/store"
 )
 
 // Tree is formatter making tree from the list of comments

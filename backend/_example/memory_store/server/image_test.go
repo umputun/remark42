@@ -20,7 +20,7 @@ import (
 	"github.com/go-pkgz/jrpc"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/umputun/remark/backend/app/store/image"
+	"github.com/umputun/remark42/backend/app/store/image"
 )
 
 // gopher png for test, from https://golang.org/src/image/png/example_test.go

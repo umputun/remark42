@@ -10,7 +10,7 @@ import (
 	log "github.com/go-pkgz/lgr"
 	"github.com/umputun/go-flags"
 
-	"github.com/umputun/remark/backend/app/cmd"
+	"github.com/umputun/remark42/backend/app/cmd"
 )
 
 // Opts with all cli commands and flags

@@ -23,9 +23,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/umputun/remark/backend/app/notify"
-	"github.com/umputun/remark/backend/app/store"
-	"github.com/umputun/remark/backend/app/store/image"
+	"github.com/umputun/remark42/backend/app/notify"
+	"github.com/umputun/remark42/backend/app/store"
+	"github.com/umputun/remark42/backend/app/store/image"
 )
 
 // gopher png for test, from https://golang.org/src/image/png/example_test.go
@@ -503,7 +503,8 @@ func TestRest_AnonVote(t *testing.T) {
 	assert.Equal(t, map[string]bool(nil), cr.Votes)
 }
 
-type MockFS struct {}
+type MockFS struct{}
+
 func (fs *MockFS) ReadFile(path string) ([]byte, error) {
 	return []byte(fmt.Sprintf("template %s", path)), nil
 }

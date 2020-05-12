@@ -16,7 +16,7 @@ import (
 	"github.com/go-pkgz/repeater"
 	"github.com/pkg/errors"
 
-	"github.com/umputun/remark/backend/app/templates"
+	"github.com/umputun/remark42/backend/app/templates"
 )
 
 // EmailParams contain settings for email notifications
