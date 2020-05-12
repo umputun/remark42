@@ -34,5 +34,5 @@ func (f *FS) ReadFile(path string) ([]byte, error) {
 	if f.statik != nil {
 		return fs.ReadFile(f.statik, filepath.Join("/", path))
 	}
-	return ioutil.ReadFile(filepath.Join("./",filepath.Clean(path)))
+	return ioutil.ReadFile(filepath.Join("./", filepath.Clean(path)))
 }

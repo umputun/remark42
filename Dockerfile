@@ -1,4 +1,4 @@
-FROM umputun/baseimage:buildgo as build-backend
+FROM umputun/baseimage:buildgo-latest as build-backend
 
 ARG CI
 ARG DRONE
@@ -57,7 +57,7 @@ RUN cd /srv/frontend && \
     else echo "skip frontend tests and lint" ; npm run build ; fi && \
     rm -rf ./node_modules
 
-FROM umputun/baseimage:app
+FROM umputun/baseimage-latest:app
 
 WORKDIR /srv
 
