@@ -57,7 +57,7 @@ RUN cd /srv/frontend && \
     else echo "skip frontend tests and lint" ; npm run build ; fi && \
     rm -rf ./node_modules
 
-FROM umputun/baseimage-latest:app
+FROM umputun/baseimage:app-latest
 
 WORKDIR /srv
 
