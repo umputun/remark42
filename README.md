@@ -1,4 +1,4 @@
-# remark42 [![Build Status](https://github.com/umputun/remark/workflows/build/badge.svg)](https://github.com/umputun/remark/actions) [![Go Report Card](https://goreportcard.com/badge/github.com/umputun/remark)](https://goreportcard.com/report/github.com/umputun/remark) [![Coverage Status](https://coveralls.io/repos/github/umputun/remark/badge.svg?branch=master)](https://coveralls.io/github/umputun/remark?branch=master)
+# remark42 [![Build Status](https://github.com/umputun/remark42/workflows/build/badge.svg)](https://github.com/umputun/remark42/actions) [![Go Report Card](https://goreportcard.com/badge/github.com/umputun/remark42)](https://goreportcard.com/report/github.com/umputun/remark42) [![Coverage Status](https://coveralls.io/repos/github/umputun/remark42/badge.svg?branch=master)](https://coveralls.io/github/umputun/remark42?branch=master)
 
 
 
@@ -31,9 +31,9 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 <details><summary>Screenshots</summary>
 
 Comments example:
-![](https://github.com/umputun/remark/blob/master/screenshots/comments.png)
+![](https://github.com/umputun/remark42/blob/master/screenshots/comments.png)
 
-For admin screenshots see [Admin UI wiki](https://github.com/umputun/remark/wiki/Admin-UI)
+For admin screenshots see [Admin UI wiki](https://github.com/umputun/remark42/wiki/Admin-UI)
 </details>
 
 
@@ -94,7 +94,7 @@ _this is the recommended way to run remark42_
 
 #### Without Docker
 
-* download archive for [stable release](https://github.com/umputun/remark/releases) or [development version](https://remark42.com/downloads)
+* download archive for [stable release](https://github.com/umputun/remark42/releases) or [development version](https://remark42.com/downloads)
 * unpack with `gunzip` (Linux, macOS) or with `zip` (Windows)
 * run as `remark42.{os}-{arch} server {parameters...}`, i.e. `remark42.linux-amd64 server --secret=12345 --url=http://127.0.0.1:8080`
 * alternatively compile from the sources - `make OS=[linux|darwin|windows] ARCH=[amd64,386,arm64,arm]`
