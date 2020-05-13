@@ -306,8 +306,7 @@ func (s *Rest) routes() chi.Router {
 			rauth.Use(middleware.Timeout(10 * time.Second))
 			rauth.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(s.updateLimiter(), nil)))
 			rauth.Use(authMiddleware.Auth, matchSiteID)
-			rauth.Use(middleware.NoCache)
-			rauth.Use(logger.New(logger.Log(log.Default()), logger.WithBody, logger.Prefix("[DEBUG]"), logger.IPfn(ipFn)).Handler)
+			rauth.Use(middleware.NoCache, logInfoWithBody)
 
 			rauth.Put("/comment/{id}", s.privRest.updateCommentCtrl)
 			rauth.Post("/comment", s.privRest.createCommentCtrl)
