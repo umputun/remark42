@@ -356,9 +356,10 @@ func (s *public) countCtrl(w http.ResponseWriter, r *http.Request) {
 
 // POST /counts?site=siteID - get number of comments for posts from post body
 func (s *public) countMultiCtrl(w http.ResponseWriter, r *http.Request) {
+	const countBodyLimit int64 = 1024 * 128 // count request can be big for some site because it lists all urls
 	siteID := r.URL.Query().Get("site")
 	posts := []string{}
-	if err := render.DecodeJSON(http.MaxBytesReader(w, r.Body, hardBodyLimit), &posts); err != nil {
+	if err := render.DecodeJSON(http.MaxBytesReader(w, r.Body, countBodyLimit), &posts); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get list of posts from request", rest.ErrSiteNotFound)
 		return
 	}
