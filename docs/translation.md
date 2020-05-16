@@ -28,6 +28,8 @@ pull the latest changes from the upstream master branch. It could be done like t
 1. add new locale with [two-letter code](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes)
 of the language you want to make the translation into to list in
 [frontend/tasks/supportedLocales.json](https://github.com/umputun/remark42/blob/master/frontend/tasks/supportedLocales.json)
+1. run `npm install` in `frontend` folder
+1. run `npm run translation:extract` in `frontend` folder
 1. run `npm run translation:generate` in `frontend` folder
 1. translate all values in the newly created json file in
 [frontend/app/locales/](https://github.com/umputun/remark42/blob/master/frontend/app/locales/)
@@ -42,7 +44,7 @@ of the language you want to make the translation into to list in
         docker-compose -f compose-dev-frontend.yml build
         docker-compose -f compose-dev-frontend.yml up
         ```
-    1. open [http://127.0.0.1:8080](http://127.0.0.1:8080), log in, make a comment, make a reply to a comment,
+    1. open [http://127.0.0.1:8080/web](http://127.0.0.1:8080/web), log in, make a comment, make a reply to a comment,
     and make sure that your translation looks as you expect it to look
     1. make a screenshot from [http://127.0.0.1:8080](http://127.0.0.1:8080) with your translation in place
 1. after all previous steps are done, create a [Pull Request](https://github.com/umputun/remark42/pulls) to umputun/remark42
