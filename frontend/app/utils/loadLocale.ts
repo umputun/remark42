@@ -28,6 +28,11 @@ export async function loadLocale(locale: string): Promise<Record<string, string>
       .then(res => res.default)
       .catch(() => enMessages);
   }
+  if (locale === 'tr') {
+    return import(/* webpackChunkName: "tr" */ '../locales/tr.json')
+      .then(res => res.default)
+      .catch(() => enMessages);
+  }
 
   return enMessages;
 }
