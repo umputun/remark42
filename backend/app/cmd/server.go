@@ -718,11 +718,15 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 
 	if s.Auth.Anonymous {
 		log.Print("[INFO] anonymous access enabled")
-		var isValidAnonName = regexp.MustCompile(`^[a-zA-Z][\w ]+$`).MatchString
+		var isValidAnonName = regexp.MustCompile(`^[\p{L}\d_ ]+$`).MatchString
 		authenticator.AddDirectProvider("anonymous", provider.CredCheckerFunc(func(user, _ string) (ok bool, err error) {
 			user = strings.TrimSpace(user)
 			if len(user) < 3 {
 				log.Printf("[WARN] name %q is too short, should be at least 3 characters", user)
+				return false, nil
+			}
+			if len(user) > 64 {
+				log.Printf("[WARN] name %q is too long, should be up to 64 characters", user)
 				return false, nil
 			}
 
