@@ -13,6 +13,8 @@ import { Button } from '@app/components/button';
 import { isJwtExpired } from '@app/utils/jwt';
 import { defineMessages, IntlShape, useIntl, FormattedMessage } from 'react-intl';
 
+import { validateUserName } from '../validateUserName';
+
 import { messages as loginForm } from '../__anonymous-login-form/auth__anonymous-login-form';
 
 interface OwnProps {
@@ -65,7 +67,6 @@ const messages = defineMessages({
 });
 
 export class EmailLoginForm extends Component<Props, State> {
-  static usernameRegex = /^[a-zA-Z][\w ]+$/;
   static emailRegex = /[^@]+@[^.]+\..+/;
 
   usernameInputRef = createRef<HTMLInputElement>();
@@ -179,7 +180,7 @@ export class EmailLoginForm extends Component<Props, State> {
     if (this.state.loading) return intl.formatMessage(messages.loading);
     const username = this.state.usernameValue;
     if (username.length < 3) return intl.formatMessage(loginForm.lengthLimit);
-    if (!EmailLoginForm.usernameRegex.test(username)) return intl.formatMessage(loginForm.symbolLimit);
+    if (!validateUserName(username)) return intl.formatMessage(loginForm.symbolLimit);
     if (!EmailLoginForm.emailRegex.test(this.state.addressValue)) return intl.formatMessage(messages.invalidEmail);
     return null;
   }
