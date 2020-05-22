@@ -84,7 +84,7 @@ github.com/go-pkgz/auth/token
 # github.com/go-pkgz/jrpc v0.1.0
 ## explicit
 github.com/go-pkgz/jrpc
-# github.com/go-pkgz/lcw v0.5.1-0.20200509170726-dc283cfc28cf
+# github.com/go-pkgz/lcw v0.6.0
 ## explicit
 github.com/go-pkgz/lcw
 github.com/go-pkgz/lcw/internal/cache

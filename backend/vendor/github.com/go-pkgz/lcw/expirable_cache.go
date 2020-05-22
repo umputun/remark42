@@ -68,16 +68,19 @@ func (c *ExpirableCache) Get(key string, fn func() (Value, error)) (data Value, 
 	}
 	atomic.AddInt64(&c.Misses, 1)
 
-	if c.allowed(key, data) {
-		if s, ok := data.(Sizer); ok {
-			if c.maxCacheSize > 0 && atomic.LoadInt64(&c.currentSize)+int64(s.Size()) >= c.maxCacheSize {
-				c.backend.DeleteExpired()
-				return data, nil
-			}
-			atomic.AddInt64(&c.currentSize, int64(s.Size()))
-		}
-		c.backend.Set(key, data)
+	if !c.allowed(key, data) {
+		return data, nil
 	}
+
+	if s, ok := data.(Sizer); ok {
+		if c.maxCacheSize > 0 && atomic.LoadInt64(&c.currentSize)+int64(s.Size()) >= c.maxCacheSize {
+			c.backend.DeleteExpired()
+			return data, nil
+		}
+		atomic.AddInt64(&c.currentSize, int64(s.Size()))
+	}
+
+	c.backend.Set(key, data)
 
 	return data, nil
 }

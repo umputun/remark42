@@ -61,13 +61,16 @@ func (c *RedisCache) Get(key string, fn func() (Value, error)) (data Value, err 
 	}
 	atomic.AddInt64(&c.Misses, 1)
 
-	if c.allowed(key, data) {
-		_, setErr := c.backend.Set(key, data, c.ttl).Result()
-		if setErr != nil {
-			atomic.AddInt64(&c.Errors, 1)
-			return data, setErr
-		}
+	if !c.allowed(key, data) {
+		return data, nil
 	}
+
+	_, setErr := c.backend.Set(key, data, c.ttl).Result()
+	if setErr != nil {
+		atomic.AddInt64(&c.Errors, 1)
+		return data, setErr
+	}
+
 	return data, nil
 }
 

@@ -14,7 +14,7 @@ require (
 	github.com/go-chi/render v1.0.1
 	github.com/go-pkgz/auth v0.10.1
 	github.com/go-pkgz/jrpc v0.1.0
-	github.com/go-pkgz/lcw v0.5.1-0.20200509170726-dc283cfc28cf
+	github.com/go-pkgz/lcw v0.6.0
 	github.com/go-pkgz/lgr v0.7.0
 	github.com/go-pkgz/repeater v1.1.3
 	github.com/go-pkgz/rest v1.5.0

@@ -237,6 +237,6 @@ func (c *LoadingCache) purge(maxKeys int64) {
 }
 
 type cacheItem struct {
-	expiresAt  time.Time
-	data       interface{}
+	expiresAt time.Time
+	data      interface{}
 }

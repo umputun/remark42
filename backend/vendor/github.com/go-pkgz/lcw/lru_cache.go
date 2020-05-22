@@ -62,18 +62,21 @@ func (c *LruCache) Get(key string, fn func() (Value, error)) (data Value, err er
 
 	atomic.AddInt64(&c.Misses, 1)
 
-	if c.allowed(key, data) {
-		c.backend.Add(key, data)
+	if !c.allowed(key, data) {
+		return data, nil
+	}
 
-		if s, ok := data.(Sizer); ok {
-			atomic.AddInt64(&c.currentSize, int64(s.Size()))
-			if c.maxCacheSize > 0 && atomic.LoadInt64(&c.currentSize) > c.maxCacheSize {
-				for atomic.LoadInt64(&c.currentSize) > c.maxCacheSize {
-					c.backend.RemoveOldest()
-				}
+	c.backend.Add(key, data)
+
+	if s, ok := data.(Sizer); ok {
+		atomic.AddInt64(&c.currentSize, int64(s.Size()))
+		if c.maxCacheSize > 0 && atomic.LoadInt64(&c.currentSize) > c.maxCacheSize {
+			for atomic.LoadInt64(&c.currentSize) > c.maxCacheSize {
+				c.backend.RemoveOldest()
 			}
 		}
 	}
+
 	return data, nil
 }
 
