@@ -7,6 +7,8 @@ import { Theme } from '@app/common/types';
 import { Input } from '@app/components/input';
 import { Button } from '@app/components/button';
 
+import { validateUserName } from '../validateUserName';
+
 interface Props {
   onSubmit(username: string): Promise<void>;
   theme: Theme;
@@ -26,7 +28,7 @@ export const messages = defineMessages({
   },
   symbolLimit: {
     id: 'anonymousLoginForm.symbol-limit',
-    defaultMessage: 'Username must start with a letter and contain only latin letters, numbers, underscores, or spaces',
+    defaultMessage: 'Username must contain only letters, numbers, underscores or spaces',
   },
   userName: {
     id: 'anonymousLoginForm.user-name',
@@ -35,13 +37,10 @@ export const messages = defineMessages({
 });
 
 export class AnonymousLoginForm extends Component<Props, State> {
-  static usernameRegex = /^[a-zA-Z][\w ]+$/;
-
   inputRef = createRef<HTMLInputElement>();
 
   constructor(props: Props) {
     super(props);
-
     this.state = {
       inputValue: '',
       honeyPotValue: false,
@@ -70,7 +69,7 @@ export class AnonymousLoginForm extends Component<Props, State> {
     const value = this.state.inputValue;
     const intl = this.props.intl;
     if (value.length < 3) return intl.formatMessage(messages.lengthLimit);
-    if (!AnonymousLoginForm.usernameRegex.test(value)) return intl.formatMessage(messages.symbolLimit);
+    if (!validateUserName(value)) return intl.formatMessage(messages.symbolLimit);
     return null;
   }
 

@@ -4,7 +4,7 @@ module.exports = [
     limit: '2.55 KB',
   },
   {
-    limit: '83 KB',
+    limit: '86 KB',
     path: 'public/remark.js',
   },
   {
