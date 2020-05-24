@@ -116,7 +116,9 @@ func connectionCloseFunc(v interface{}) {
 		return
 	}
 
-	go func() { _ = c.pool.closeConnection(c) }()
+	go func() {
+		_ = c.pool.closeConnection(c)
+	}()
 }
 
 // connectionInitFunc returns an init function for the resource pool that will make new connections for this pool
@@ -329,7 +331,7 @@ func (p *pool) get(ctx context.Context) (*connection, error) {
 			c.connect(ctx)
 		}
 
-		err := c.connectWait()
+		err := c.wait()
 		if err != nil {
 			if p.monitor != nil {
 				p.monitor.Event(&event.PoolEvent{
@@ -377,7 +379,7 @@ func (p *pool) get(ctx context.Context) (*connection, error) {
 
 		c.connect(ctx)
 		// wait for conn to be connected
-		err = c.connectWait()
+		err = c.wait()
 		if err != nil {
 			if p.monitor != nil {
 				p.monitor.Event(&event.PoolEvent{
@@ -410,13 +412,34 @@ func (p *pool) closeConnection(c *connection) error {
 	delete(p.opened, c.poolID)
 	p.Unlock()
 
+	if atomic.LoadInt32(&c.connected) == connected {
+		c.closeConnectContext()
+		_ = c.wait() // Make sure that the connection has finished connecting
+	}
+
 	if !atomic.CompareAndSwapInt32(&c.connected, connected, disconnected) {
 		return nil // We're closing an already closed connection
 	}
-	err := c.nc.Close()
-	if err != nil {
-		return ConnectionError{ConnectionID: c.id, Wrapped: err, message: "failed to closeConnection net.Conn"}
+
+	if c.nc != nil {
+		err := c.nc.Close()
+		if err != nil {
+			return ConnectionError{ConnectionID: c.id, Wrapped: err, message: "failed to close net.Conn"}
+		}
 	}
+
+	return nil
+}
+
+// removeConnection removes a connection from the pool.
+func (p *pool) removeConnection(c *connection) error {
+	if c.pool != p {
+		return ErrWrongPool
+	}
+	p.Lock()
+	delete(p.opened, c.poolID)
+	p.Unlock()
+
 	return nil
 }
 

@@ -7,7 +7,7 @@ import (
 )
 
 // Scache wraps LoadingCache with partitions (sub-system), and scopes.
-// Simplified interface with just 3 funcs - Get, Flush and Stats
+// Simplified interface with just 4 funcs - Get, Flush, Stats and Close
 type Scache struct {
 	lc LoadingCache
 }
@@ -29,6 +29,11 @@ func (m *Scache) Get(key Key, fn func() ([]byte, error)) (data []byte, err error
 // Stat delegates the call to the underlying cache backend
 func (m *Scache) Stat() CacheStat {
 	return m.lc.Stat()
+}
+
+// Close calls Close function of the underlying cache
+func (m *Scache) Close() error {
+	return m.lc.Close()
 }
 
 // Flush clears cache and calls postFlushFn async

@@ -44,23 +44,20 @@ type (
 )
 
 // ClientFormHandler get client data from form
-func ClientFormHandler(r *http.Request) (clientID, clientSecret string, err error) {
-	clientID = r.Form.Get("client_id")
-	clientSecret = r.Form.Get("client_secret")
+func ClientFormHandler(r *http.Request) (string, string, error) {
+	clientID := r.Form.Get("client_id")
+	clientSecret := r.Form.Get("client_secret")
 	if clientID == "" || clientSecret == "" {
-		err = errors.ErrInvalidClient
+		return "", "", errors.ErrInvalidClient
 	}
-	return
+	return clientID, clientSecret, nil
 }
 
 // ClientBasicHandler get client data from basic authorization
-func ClientBasicHandler(r *http.Request) (clientID, clientSecret string, err error) {
+func ClientBasicHandler(r *http.Request) (string, string, error) {
 	username, password, ok := r.BasicAuth()
 	if !ok {
-		err = errors.ErrInvalidClient
-		return
+		return "", "", errors.ErrInvalidClient
 	}
-	clientID = username
-	clientSecret = password
-	return
+	return username, password, nil
 }

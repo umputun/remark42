@@ -727,7 +727,6 @@ func TestRest_Robots(t *testing.T) {
 }
 
 func TestRest_LastCommentsStream(t *testing.T) {
-	t.Skip() // TODO: enable after cache is migrated to https://github.com/dgraph-io/ristretto
 	ts, srv, teardown := startupT(t)
 	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
 	srv.pubRest.streamer.Refresh = 50 * time.Millisecond

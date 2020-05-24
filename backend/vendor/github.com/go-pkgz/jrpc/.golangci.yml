@@ -25,7 +25,6 @@ linters-settings:
       - wrapperFunc
 
 linters:
-  disable-all: true
   enable:
     - megacheck
     - golint
@@ -47,24 +46,21 @@ linters:
     - gochecknoinits
     - scopelint
     - gocritic
-    - golint
     - nakedret
     - gosimple
     - prealloc
   fast: false
-
+  disable-all: true
 
 run:
-#  modules-download-mode: vendor
+  output:
+    format: tab
   skip-dirs:
     - vendor
-  tests: true
 
 issues:
   exclude-rules:
-    - text: "weak cryptographic primitive"
+    - text: "should have a package comment, unless it's in another file for this package"
       linters:
-        - gosec
-
-service:
-  golangci-lint-version: 1.17.x
+        - golint
+  exclude-use-default: false

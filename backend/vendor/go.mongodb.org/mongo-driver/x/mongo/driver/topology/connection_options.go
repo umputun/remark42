@@ -35,10 +35,6 @@ var DefaultDialer Dialer = &net.Dialer{}
 // initialization. Implementations must be goroutine safe.
 type Handshaker = driver.Handshaker
 
-// HandshakerFunc is an adapter to allow the use of ordinary functions as
-// connection handshakers.
-type HandshakerFunc = driver.HandshakerFunc
-
 type connectionConfig struct {
 	appName        string
 	connectTimeout time.Duration
@@ -52,6 +48,7 @@ type connectionConfig struct {
 	tlsConfig      *tls.Config
 	compressors    []string
 	zlibLevel      *int
+	zstdLevel      *int
 	descCallback   func(description.Server)
 }
 
@@ -87,9 +84,9 @@ func withServerDescriptionCallback(callback func(description.Server), opts ...Co
 // ConnectionOption is used to configure a connection.
 type ConnectionOption func(*connectionConfig) error
 
-// WithAppName sets the application name which gets sent to MongoDB when it
+// WithConnectionAppName sets the application name which gets sent to MongoDB when it
 // first connects.
-func WithAppName(fn func(string) string) ConnectionOption {
+func WithConnectionAppName(fn func(string) string) ConnectionOption {
 	return func(c *connectionConfig) error {
 		c.appName = fn(c.appName)
 		return nil
@@ -182,6 +179,14 @@ func WithMonitor(fn func(*event.CommandMonitor) *event.CommandMonitor) Connectio
 func WithZlibLevel(fn func(*int) *int) ConnectionOption {
 	return func(c *connectionConfig) error {
 		c.zlibLevel = fn(c.zlibLevel)
+		return nil
+	}
+}
+
+// WithZstdLevel sets the zstd compression level.
+func WithZstdLevel(fn func(*int) *int) ConnectionOption {
+	return func(c *connectionConfig) error {
+		c.zstdLevel = fn(c.zstdLevel)
 		return nil
 	}
 }

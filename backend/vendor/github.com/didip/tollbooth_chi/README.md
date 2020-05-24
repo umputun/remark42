@@ -18,7 +18,7 @@ import (
 
 func main() {
     // Create a limiter struct.
-    limiter := tollbooth.NewLimiter(1, time.Second, nil)
+    limiter := tollbooth.NewLimiter(1, nil)
 
     r := chi.NewRouter()
 

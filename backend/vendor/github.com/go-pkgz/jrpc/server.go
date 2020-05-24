@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/didip/tollbooth"
+	"github.com/didip/tollbooth/v6"
 	"github.com/didip/tollbooth_chi"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
@@ -25,6 +25,7 @@ type Server struct {
 	AuthPasswd string // basic auth password, should match Client.AuthPasswd, optional
 	Version    string // server version, injected from main and used for informational headers only
 	AppName    string // plugin name, injected from main and used for informational headers only
+	Limits     Limits // all max values and timeouts for the server
 	Logger     L      // logger, if nil will default to NoOpLogger
 
 	funcs struct {
@@ -36,6 +37,16 @@ type Server struct {
 		*http.Server
 		sync.Mutex
 	}
+}
+
+// Limits includes all max values and timeouts for the server
+type Limits struct {
+	ServerThrottle    int           // max number of parallel calls for the server
+	ClientLimit       float64       // max number of call/sec per client
+	CallTimeout       time.Duration // max time allowed to finish the call
+	ReadHeaderTimeout time.Duration // amount of time allowed to read request headers
+	WriteTimeout      time.Duration // max duration before timing out writes of the response
+	IdleTimeout       time.Duration // max amount of time to wait for the next request when keep-alive enabled
 }
 
 // ServerFn handler registered for each method with Add or Group.
@@ -53,13 +64,14 @@ func (s *Server) Run(port int) error {
 	if s.funcs.m == nil && len(s.funcs.m) == 0 {
 		return errors.Errorf("nothing mapped for dispatch, Add has to be called prior to Run")
 	}
+	s.setDefaultLimits()
 
 	router := chi.NewRouter()
-	router.Use(middleware.Throttle(1000), middleware.RealIP, rest.Recoverer(s.Logger))
+	router.Use(middleware.Throttle(s.Limits.ServerThrottle), middleware.RealIP, rest.Recoverer(s.Logger))
 	router.Use(rest.AppInfo(s.AppName, "umputun", s.Version), rest.Ping)
-	logInfoWithBody := logger.New(logger.Log(s.Logger), logger.WithBody, logger.Prefix("[INFO]")).Handler
-	router.Use(middleware.Timeout(5 * time.Second))
-	router.Use(logInfoWithBody, tollbooth_chi.LimitHandler(tollbooth.NewLimiter(1000, nil)), middleware.NoCache)
+	logInfoWithBody := logger.New(logger.Log(s.Logger), logger.WithBody, logger.Prefix("[DEBUG]")).Handler
+	router.Use(middleware.Timeout(s.Limits.CallTimeout))
+	router.Use(logInfoWithBody, tollbooth_chi.LimitHandler(tollbooth.NewLimiter(s.Limits.ClientLimit, nil)), middleware.NoCache)
 	router.Use(s.basicAuth)
 
 	router.Post(s.API, s.handler)
@@ -68,9 +80,9 @@ func (s *Server) Run(port int) error {
 	s.httpServer.Server = &http.Server{
 		Addr:              fmt.Sprintf(":%d", port),
 		Handler:           router,
-		ReadHeaderTimeout: 5 * time.Second,
-		WriteTimeout:      10 * time.Second,
-		IdleTimeout:       30 * time.Second,
+		ReadHeaderTimeout: s.Limits.ReadHeaderTimeout,
+		WriteTimeout:      s.Limits.WriteTimeout,
+		IdleTimeout:       s.Limits.IdleTimeout,
 	}
 	s.httpServer.Unlock()
 
@@ -160,6 +172,32 @@ func (s *Server) basicAuth(h http.Handler) http.Handler {
 		}
 		h.ServeHTTP(w, r)
 	})
+}
+
+func (s *Server) setDefaultLimits() {
+	if s.Limits.CallTimeout == 0 {
+		s.Limits.CallTimeout = 30 * time.Second
+	}
+
+	if s.Limits.ClientLimit == 0 {
+		s.Limits.ClientLimit = 100
+	}
+
+	if s.Limits.IdleTimeout == 0 {
+		s.Limits.IdleTimeout = 5 * time.Second
+	}
+
+	if s.Limits.ReadHeaderTimeout == 0 {
+		s.Limits.ReadHeaderTimeout = 5 * time.Second
+	}
+
+	if s.Limits.ServerThrottle == 0 {
+		s.Limits.ServerThrottle = 1000
+	}
+
+	if s.Limits.WriteTimeout == 0 {
+		s.Limits.WriteTimeout = 10 * time.Second
+	}
 }
 
 // L defined logger interface used for an optional rest logging

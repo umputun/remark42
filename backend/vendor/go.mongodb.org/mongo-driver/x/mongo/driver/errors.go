@@ -15,6 +15,9 @@ var (
 	nodeIsRecoveringCodes   = []int32{11600, 11602, 13436, 189, 91}
 	notMasterCodes          = []int32{10107, 13435}
 	nodeIsShuttingDownCodes = []int32{11600, 91}
+
+	unknownReplWriteConcernCode   = int32(79)
+	unsatisfiableWriteConcernCode = int32(100)
 )
 
 var (
@@ -190,6 +193,7 @@ type Error struct {
 	Message string
 	Labels  []string
 	Name    string
+	Wrapped error
 }
 
 // UnsupportedStorageEngine returns whether e came as a result of an unsupported storage engine

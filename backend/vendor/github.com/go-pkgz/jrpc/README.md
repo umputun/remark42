@@ -73,6 +73,7 @@ if err = json.Unmarshal(*resp.Result, &message); err != nil {
         }
      ```
  </details>
+ 
 * Params can be a struct, primitive type or slice of values, even with different types.
 * Server defines `ServerFn` handler function to react on a POST request. The handler provided by the user.
 * Communication between the server and the caller can be protected with basic auth.
@@ -89,6 +90,7 @@ if err = json.Unmarshal(*resp.Result, &message); err != nil {
     }
    ```
  </details>
+ 
 * User should encode and decode json payloads on the application level, see provided [examples](https://github.com/go-pkgz/jrpc/tree/master/_example)
 * `jrpc.Server` doesn't support https internally (yet). If used on exposed or non-private networks, should be proxied with something providing https termination (nginx and others). 
 
