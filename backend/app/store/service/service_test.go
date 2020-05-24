@@ -1466,13 +1466,13 @@ func Benchmark_ServiceCreate(b *testing.B) {
 
 // makes new boltdb, put two records
 func prepStoreEngine(t *testing.T) (e engine.Interface, teardown func()) {
-	testDbLoc, err := ioutil.TempDir("", "test_image_r42")
+	testDBLoc, err := ioutil.TempDir("", "test_image_r42")
 	require.NoError(t, err)
-	testDb := path.Join(testDbLoc, "test.db")
-	_ = os.Remove(testDb)
+	testDB := path.Join(testDBLoc, "test.db")
+	_ = os.Remove(testDB)
 
 	st := time.Now()
-	boltStore, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDb, SiteID: "radio-t"})
+	boltStore, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDB, SiteID: "radio-t"})
 	assert.NoError(t, err)
 
 	comment := store.Comment{
@@ -1497,7 +1497,7 @@ func prepStoreEngine(t *testing.T) (e engine.Interface, teardown func()) {
 	t.Logf("prepared store engine in %v", time.Since(st))
 	return boltStore, func() {
 		assert.NoError(t, boltStore.Close())
-		_ = os.Remove(testDb)
+		_ = os.Remove(testDB)
 	}
 }
 

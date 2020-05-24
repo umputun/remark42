@@ -180,9 +180,9 @@ func TestNative_ImportManyWithError(t *testing.T) {
 // makes new boltdb, put two records
 func prep(t *testing.T) (ds *service.DataStore, teardown func()) {
 
-	testDb := fmt.Sprintf("/tmp/migrator-%d.db", rand.Intn(999999999))
+	testDB := fmt.Sprintf("/tmp/migrator-%d.db", rand.Intn(999999999))
 
-	boltStore, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{SiteID: "radio-t", FileName: testDb})
+	boltStore, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{SiteID: "radio-t", FileName: testDB})
 	assert.NoError(t, err)
 
 	b := &service.DataStore{Engine: boltStore, AdminStore: admin.NewStaticStore("12345", nil, []string{}, "")}
@@ -207,6 +207,6 @@ func prep(t *testing.T) (ds *service.DataStore, teardown func()) {
 
 	return b, func() {
 		require.NoError(t, b.Close())
-		_ = os.Remove(testDb)
+		_ = os.Remove(testDB)
 	}
 }
