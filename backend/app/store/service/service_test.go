@@ -104,6 +104,7 @@ func TestService_CreateFromPartialWithTitle(t *testing.T) {
 	defer teardown()
 	b := DataStore{Engine: eng, AdminStore: ks,
 		TitleExtractor: NewTitleExtractor(http.Client{Timeout: 5 * time.Second})}
+	defer b.Close()
 
 	postPath := "/post/42"
 	postTitle := "Post Title 42"
@@ -168,6 +169,7 @@ func TestService_SetTitle(t *testing.T) {
 	defer teardown()
 	b := DataStore{Engine: eng, AdminStore: ks,
 		TitleExtractor: NewTitleExtractor(http.Client{Timeout: 5 * time.Second})}
+	defer b.Close()
 	comment := store.Comment{
 		Text:      "text",
 		Timestamp: time.Date(2018, 3, 25, 16, 34, 33, 0, time.UTC),
@@ -192,8 +194,9 @@ func TestService_SetTitle(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "post1 blah 123", c.PostTitle)
 
-	b = DataStore{Engine: eng, AdminStore: ks}
-	_, err = b.SetTitle(store.Locator{URL: tss.URL + "/post1", SiteID: "radio-t"}, id)
+	bErr := DataStore{Engine: eng, AdminStore: ks}
+	defer bErr.Close()
+	_, err = bErr.SetTitle(store.Locator{URL: tss.URL + "/post1", SiteID: "radio-t"}, id)
 	require.EqualError(t, err, "no title extractor")
 }
 
@@ -609,6 +612,7 @@ func TestService_EditComment(t *testing.T) {
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
 	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123")}
+	defer b.Close()
 
 	res, err := b.Last("radio-t", 0, time.Time{}, store.User{})
 	t.Logf("%+v", res[0])
@@ -638,6 +642,7 @@ func TestService_DeleteComment(t *testing.T) {
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
 	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123")}
+	defer b.Close()
 
 	res, err := b.Last("radio-t", 0, time.Time{}, store.User{})
 	t.Logf("%+v", res[0])
@@ -679,6 +684,7 @@ func TestService_EditCommentReplyFailed(t *testing.T) {
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
 	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123")}
+	defer b.Close()
 
 	res, err := b.Last("radio-t", 0, time.Time{}, store.User{})
 	t.Logf("%+v", res[1])
@@ -892,6 +898,7 @@ func TestService_HasReplies(t *testing.T) {
 	defer teardown()
 	b := DataStore{Engine: eng, EditDuration: 100 * time.Millisecond,
 		AdminStore: admin.NewStaticStore("secret 123", []string{"radio-t"}, []string{"user2"}, "user@email.com")}
+	defer b.Close()
 
 	comment := store.Comment{
 		ID:        "id-1",

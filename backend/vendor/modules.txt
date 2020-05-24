@@ -212,6 +212,10 @@ go.mongodb.org/mongo-driver/x/mongo/driver/session
 go.mongodb.org/mongo-driver/x/mongo/driver/topology
 go.mongodb.org/mongo-driver/x/mongo/driver/uuid
 go.mongodb.org/mongo-driver/x/mongo/driver/wiremessage
+# go.uber.org/goleak v1.0.0
+## explicit
+go.uber.org/goleak
+go.uber.org/goleak/internal/stack
 # golang.org/x/crypto v0.0.0-20200406173513-056763e48d71
 ## explicit
 golang.org/x/crypto/acme
@@ -221,6 +225,9 @@ golang.org/x/crypto/pbkdf2
 ## explicit
 golang.org/x/image/draw
 golang.org/x/image/math/f64
+# golang.org/x/lint v0.0.0-20190930215403-16217165b5de
+golang.org/x/lint
+golang.org/x/lint/golint
 # golang.org/x/net v0.0.0-20200520182314-0ba52f642ac2
 ## explicit
 golang.org/x/net/context
@@ -248,6 +255,10 @@ golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
 # golang.org/x/time v0.0.0-20200416051211-89c76fbcd5d1
 golang.org/x/time/rate
+# golang.org/x/tools v0.0.0-20191108193012-7d206e10da11
+golang.org/x/tools/go/ast/astutil
+golang.org/x/tools/go/gcexportdata
+golang.org/x/tools/go/internal/gcimporter
 # google.golang.org/appengine v1.4.0
 google.golang.org/appengine
 google.golang.org/appengine/internal

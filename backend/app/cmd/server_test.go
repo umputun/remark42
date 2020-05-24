@@ -18,6 +18,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-pkgz/auth/token"
 	"github.com/umputun/go-flags"
+	"go.uber.org/goleak"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -80,10 +81,10 @@ func TestServerApp_DevMode(t *testing.T) {
 	// send ping
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/ping", port))
 	require.NoError(t, err)
-	defer resp.Body.Close()
 	assert.Equal(t, 200, resp.StatusCode)
 	body, err := ioutil.ReadAll(resp.Body)
 	assert.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
 	assert.Equal(t, "pong", string(body))
 
 	cancel()
@@ -495,7 +496,7 @@ func TestServerAuthHooks(t *testing.T) {
 	req.Header.Set("X-JWT", tk)
 	resp, err := client.Do(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusCreated, resp.StatusCode, "non-blocked user able to post")
 
 	// add comment with no-aud claim
@@ -506,14 +507,14 @@ func TestServerAuthHooks(t *testing.T) {
 	t.Logf("no-aud claims: %s", tkNoAud)
 	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
 		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/p/2018/12/29/podcast-631/",
-"site": "remark"}}`))
+	"site": "remark"}}`))
 	require.NoError(t, err)
 	req.Header.Set("X-JWT", tkNoAud)
 	resp, err = client.Do(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "user without aud claim rejected, \n"+tkNoAud+"\n"+string(body))
 
 	// block user dev as admin
@@ -523,10 +524,10 @@ func TestServerAuthHooks(t *testing.T) {
 	req.SetBasicAuth("admin", "password")
 	resp, err = client.Do(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "user dev blocked")
 	b, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
 	t.Log(string(b))
 
 	// try add a comment with blocked user
@@ -536,14 +537,15 @@ func TestServerAuthHooks(t *testing.T) {
 	req.Header.Set("X-JWT", tk)
 	resp, err = client.Do(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
 	assert.True(t, resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusUnauthorized,
 		"blocked user can't post, \n"+tk+"\n"+string(body))
 
 	cancel()
 	app.Wait()
+	client.CloseIdleConnections()
 }
 
 func TestServer_loadEmailTemplate(t *testing.T) {
@@ -634,4 +636,9 @@ func prepServerApp(t *testing.T, fn func(o ServerCommand) ServerCommand) (*serve
 	ctx, cancel := context.WithCancel(context.Background())
 	rand.Seed(time.Now().UnixNano())
 	return app, ctx, cancel
+}
+
+func TestMain(m *testing.M) {
+	// ignore is added only for GitHub Actions, can't reproduce locally
+	goleak.VerifyTestMain(m, goleak.IgnoreTopFunction("net/http.(*Server).Shutdown"))
 }

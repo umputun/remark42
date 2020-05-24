@@ -233,6 +233,7 @@ type RPCGroup struct {
 type LoadingCache interface {
 	Get(key cache.Key, fn func() ([]byte, error)) (data []byte, err error) // load from cache if found or put to cache and return
 	Flush(req cache.FlusherRequest)                                        // evict matched records
+	Close() error
 }
 
 // serverApp holds all active objects
@@ -248,6 +249,8 @@ type serverApp struct {
 	imageService  *image.Service
 	authenticator *auth.Service
 	terminated    chan struct{}
+
+	authRefreshCache *authRefreshCache // stored only to close it properly on shutdown
 }
 
 // Execute is the entry point for "server" command, called by flag parser
@@ -366,7 +369,8 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to make avatar store")
 	}
-	authenticator, err := s.makeAuthenticator(dataService, avatarStore, adminStore)
+	authRefreshCache := newAuthRefreshCache()
+	authenticator, err := s.makeAuthenticator(dataService, avatarStore, adminStore, authRefreshCache)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to make authenticator")
 	}
@@ -462,16 +466,17 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 
 	return &serverApp{
 		ServerCommand: s,
-		restSrv:       srv,
-		migratorSrv:   migr,
-		exporter:      exporter,
-		devAuth:       devAuth,
-		dataService:   dataService,
-		avatarStore:   avatarStore,
-		notifyService: notifyService,
-		imageService:  imageService,
-		authenticator: authenticator,
-		terminated:    make(chan struct{}),
+		restSrv:          srv,
+		migratorSrv:      migr,
+		exporter:         exporter,
+		devAuth:          devAuth,
+		dataService:      dataService,
+		avatarStore:      avatarStore,
+		notifyService:    notifyService,
+		imageService:     imageService,
+		authenticator:    authenticator,
+		terminated:       make(chan struct{}),
+		authRefreshCache: authRefreshCache,
 	}, nil
 }
 
@@ -490,7 +495,7 @@ func (a *serverApp) run(ctx context.Context) error {
 
 	a.activateBackup(ctx) // runs in goroutine for each site
 	if a.Auth.Dev {
-		go a.devAuth.Run(context.Background()) // dev oauth2 server on :8084
+		go a.devAuth.Run(ctx) // dev oauth2 server on :8084
 	}
 
 	// staging images resubmit after restart of the app
@@ -511,6 +516,12 @@ func (a *serverApp) run(ctx context.Context) error {
 	}
 	if e := a.avatarStore.Close(); e != nil {
 		log.Printf("[WARN] failed to close avatar store, %s", e)
+	}
+	if e := a.restSrv.Cache.Close(); e != nil {
+		log.Printf("[WARN] failed to close rest server cache, %s", e)
+	}
+	if e := a.authRefreshCache.Close(); e != nil {
+		log.Printf("[WARN] failed to close auth authRefreshCache, %s", e)
 	}
 	a.notifyService.Close()
 	// call potentially infinite loop with cancellation after a minute as a safeguard
@@ -859,7 +870,7 @@ func (s *ServerCommand) makeSSLConfig() (config api.SSLConfig, err error) {
 	return config, err
 }
 
-func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Store, admns admin.Store) (*auth.Service, error) {
+func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Store, admns admin.Store, authRefreshCache *authRefreshCache) (*auth.Service, error) {
 	authenticator := auth.NewService(auth.Opts{
 		URL:            strings.TrimSuffix(s.RemarkURL, "/"),
 		Issuer:         "remark42",
@@ -912,7 +923,7 @@ func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Sto
 		AvatarResizeLimit: s.Avatar.RszLmt,
 		AvatarRoutePath:   "/api/v1/avatar",
 		Logger:            log.Default(),
-		RefreshCache:      newAuthRefreshCache(),
+		RefreshCache:      authRefreshCache,
 		UseGravatar:       true,
 	})
 

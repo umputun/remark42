@@ -31,6 +31,7 @@ require (
 	github.com/stretchr/testify v1.5.1
 	github.com/umputun/go-flags v1.5.1
 	go.etcd.io/bbolt v1.3.4
+	go.uber.org/goleak v1.0.0
 	golang.org/x/crypto v0.0.0-20200406173513-056763e48d71
 	golang.org/x/image v0.0.0-20200119044424-58c23975cae1
 	golang.org/x/net v0.0.0-20200520182314-0ba52f642ac2

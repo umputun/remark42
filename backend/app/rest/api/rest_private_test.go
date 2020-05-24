@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -71,6 +72,7 @@ func TestRest_CreateOldPost(t *testing.T) {
 	resp, err := post(t, ts.URL+"/api/v1/comment",
 		`{"text": "test 123", "locator":{"site": "remark42","url": "https://radio-t.com/blah1"}}`)
 	assert.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
 	assert.NoError(t, srv.DataService.DeleteAll("remark42"))
@@ -83,6 +85,7 @@ func TestRest_CreateOldPost(t *testing.T) {
 	resp, err = post(t, ts.URL+"/api/v1/comment",
 		`{"text": "test 123", "locator":{"site": "remark42","url": "https://radio-t.com/blah1"}}`)
 	assert.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 }
 
@@ -144,6 +147,7 @@ func TestRest_CreateRejected(t *testing.T) {
 	// try to create without auth
 	resp, err := http.Post(ts.URL+"/api/v1/comment", "", strings.NewReader(body))
 	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, 401, resp.StatusCode)
 
 	// try with wrong aud
@@ -153,6 +157,7 @@ func TestRest_CreateRejected(t *testing.T) {
 	req.Header.Add("X-JWT", devTokenBadAud)
 	resp, err = client.Do(req)
 	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
 	require.Equal(t, http.StatusForbidden, resp.StatusCode, "reject wrong aud")
 }
 
@@ -312,6 +317,7 @@ func TestRest_UpdateNotOwner(t *testing.T) {
 	assert.NoError(t, err)
 	body, err := ioutil.ReadAll(b.Body)
 	assert.NoError(t, err)
+	assert.NoError(t, b.Body.Close())
 	assert.Equal(t, 403, b.StatusCode, string(body), "update from non-owner")
 	assert.Equal(t, `{"code":3,"details":"can not edit comments for other users","error":"rejected"}`+"\n", string(body))
 
@@ -322,6 +328,7 @@ func TestRest_UpdateNotOwner(t *testing.T) {
 	req.Header.Add("X-JWT", devToken)
 	b, err = client.Do(req)
 	assert.NoError(t, err)
+	assert.NoError(t, b.Body.Close())
 	assert.Equal(t, 400, b.StatusCode, string(body), "update is not json")
 }
 
@@ -340,6 +347,7 @@ func TestRest_UpdateWrongAud(t *testing.T) {
 	req.Header.Add("X-JWT", devTokenBadAud)
 	b, err := client.Do(req)
 	assert.NoError(t, err)
+	assert.NoError(t, b.Body.Close())
 	assert.Equal(t, http.StatusForbidden, b.StatusCode, "reject update with wrong aut in jwt")
 }
 
@@ -388,6 +396,7 @@ func TestRest_Vote(t *testing.T) {
 		req.Header.Add("X-JWT", devToken)
 		resp, err := client.Do(req)
 		assert.NoError(t, err)
+		assert.NoError(t, resp.Body.Close())
 		return resp.StatusCode
 	}
 
@@ -472,6 +481,7 @@ func TestRest_AnonVote(t *testing.T) {
 		req.Header.Add("X-JWT", anonToken)
 		resp, err := client.Do(req)
 		assert.NoError(t, err)
+		assert.NoError(t, resp.Body.Close())
 		return resp.StatusCode
 	}
 
@@ -586,6 +596,7 @@ func TestRest_EmailNotification(t *testing.T) {
 
 	mockDestination := &notify.MockDest{}
 	srv.privRest.notifyService = notify.NewService(srv.DataService, 1, mockDestination)
+	defer srv.privRest.notifyService.Close()
 
 	client := http.Client{}
 
@@ -601,6 +612,7 @@ func TestRest_EmailNotification(t *testing.T) {
 	assert.NoError(t, err)
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
 	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
 	parentComment := store.Comment{}
 	require.NoError(t, render.DecodeJSON(strings.NewReader(string(body)), &parentComment))
@@ -623,6 +635,7 @@ func TestRest_EmailNotification(t *testing.T) {
 	assert.NoError(t, err)
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
 	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
 	// wait for mock notification Submit to kick off
 	time.Sleep(time.Millisecond * 30)
@@ -638,6 +651,7 @@ func TestRest_EmailNotification(t *testing.T) {
 	require.NoError(t, err)
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
 	require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
 	// wait for mock notification Submit to kick off
 	time.Sleep(time.Millisecond * 30)
@@ -653,6 +667,7 @@ func TestRest_EmailNotification(t *testing.T) {
 	require.NoError(t, err)
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
 	require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
 
 	// get user information to verify the subscription
@@ -663,6 +678,7 @@ func TestRest_EmailNotification(t *testing.T) {
 	require.NoError(t, err)
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
 	require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
 	var user store.User
 	err = json.Unmarshal(body, &user)
@@ -683,6 +699,7 @@ func TestRest_EmailNotification(t *testing.T) {
 	assert.NoError(t, err)
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
 	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
 	// wait for mock notification Submit to kick off
 	time.Sleep(time.Millisecond * 30)
@@ -697,6 +714,7 @@ func TestRest_EmailNotification(t *testing.T) {
 	require.NoError(t, err)
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusOK, resp.StatusCode, string(body))
 
 	// create child comment from another user, no email notification expected except for admin
@@ -711,6 +729,7 @@ func TestRest_EmailNotification(t *testing.T) {
 	assert.NoError(t, err)
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
 	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
 	// wait for mock notification Submit to kick off
 	time.Sleep(time.Millisecond * 30)
@@ -748,6 +767,7 @@ func TestRest_UserAllData(t *testing.T) {
 
 	ungzReader, err := gzip.NewReader(resp.Body)
 	assert.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
 	ungzBody, err := ioutil.ReadAll(ungzReader)
 	assert.NoError(t, err)
 	strUungzBody := string(ungzBody)
@@ -770,6 +790,7 @@ func TestRest_UserAllData(t *testing.T) {
 	require.NoError(t, err)
 	resp, err = client.Do(req)
 	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
 	require.Equal(t, 401, resp.StatusCode)
 }
 
@@ -818,6 +839,7 @@ func TestRest_DeleteMe(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 	body, err := ioutil.ReadAll(resp.Body)
+	assert.NoError(t, resp.Body.Close())
 	assert.NoError(t, err)
 
 	m := map[string]string{}
@@ -837,6 +859,7 @@ func TestRest_DeleteMe(t *testing.T) {
 	resp, err = client.Do(req)
 	assert.NoError(t, err)
 	assert.Equal(t, 401, resp.StatusCode)
+	assert.NoError(t, resp.Body.Close())
 }
 
 func TestRest_SavePictureCtrl(t *testing.T) {
@@ -864,6 +887,7 @@ func TestRest_SavePictureCtrl(t *testing.T) {
 		assert.Equal(t, 200, resp.StatusCode)
 		body, err := ioutil.ReadAll(resp.Body)
 		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
 
 		m := map[string]string{}
 		err = json.Unmarshal(body, &m)
@@ -878,29 +902,34 @@ func TestRest_SavePictureCtrl(t *testing.T) {
 	assert.Equal(t, 200, resp.StatusCode)
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, 1462, len(body))
 	assert.Equal(t, "image/png", resp.Header.Get("Content-Type"))
 
 	id = savePic("picture.gif")
 	resp, err = http.Get(fmt.Sprintf("%s/api/v1/picture/%s", ts.URL, id))
 	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, 200, resp.StatusCode)
 	assert.Equal(t, "image/png", resp.Header.Get("Content-Type"))
 
 	id = savePic("picture.jpg")
 	resp, err = http.Get(fmt.Sprintf("%s/api/v1/picture/%s", ts.URL, id))
 	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, 200, resp.StatusCode)
 	assert.Equal(t, "image/png", resp.Header.Get("Content-Type"))
 
 	id = savePic("picture.blah")
 	resp, err = http.Get(fmt.Sprintf("%s/api/v1/picture/%s", ts.URL, id))
 	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, 200, resp.StatusCode)
 	assert.Equal(t, "image/png", resp.Header.Get("Content-Type"))
 
 	resp, err = http.Get(fmt.Sprintf("%s/api/v1/picture/blah/pic.blah", ts.URL))
 	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, 400, resp.StatusCode)
 }
 
@@ -919,6 +948,7 @@ func TestRest_CreateWithPictures(t *testing.T) {
 		EditDuration: 100 * time.Millisecond,
 		MaxSize:      2000,
 	})
+	defer imageService.Close(context.Background())
 
 	svc.privRest.imageService = imageService
 	svc.ImageService = imageService

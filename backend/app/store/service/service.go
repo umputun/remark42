@@ -846,7 +846,15 @@ func (s *DataStore) Last(siteID string, limit int, since time.Time, user store.U
 
 // Close store service
 func (s *DataStore) Close() error {
-	return s.Engine.Close()
+	errs := new(multierror.Error)
+	if s.repliesCache.LoadingCache != nil {
+		errs = multierror.Append(errs, s.repliesCache.LoadingCache.Close())
+	}
+	if s.TitleExtractor != nil {
+		errs = multierror.Append(errs, s.TitleExtractor.Close())
+	}
+	errs = multierror.Append(errs, s.Engine.Close())
+	return errs.ErrorOrNil()
 }
 
 func (s *DataStore) upsAndDowns(c store.Comment) (ups, downs int) {

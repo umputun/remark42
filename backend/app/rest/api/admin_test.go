@@ -17,7 +17,6 @@ import (
 	"github.com/go-pkgz/auth/token"
 	cache "github.com/go-pkgz/lcw"
 	R "github.com/go-pkgz/rest"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -48,9 +47,9 @@ func TestAdmin_Delete(t *testing.T) {
 	// check multi count
 	resp, err := post(t, ts.URL+"/api/v1/counts?site=remark42", `["https://radio-t.com/blah","https://radio-t.com/blah2"]`)
 	require.NoError(t, err)
-	defer resp.Body.Close()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	bb, err := ioutil.ReadAll(resp.Body)
+	assert.NoError(t, resp.Body.Close())
 	assert.NoError(t, err)
 	j := []store.PostInfo{}
 	err = json.Unmarshal(bb, &j)
@@ -62,10 +61,10 @@ func TestAdmin_Delete(t *testing.T) {
 	req, err := http.NewRequest(http.MethodDelete,
 		fmt.Sprintf("%s/api/v1/admin/comment/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1), nil)
 	require.NoError(t, err)
-	defer resp.Body.Close()
 	requireAdminOnly(t, req)
 	resp, err = sendReq(t, req, adminUmputunToken)
 	assert.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
 	assert.Equal(t, 200, resp.StatusCode)
 
 	body, code := getWithDevAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1))
@@ -99,6 +98,7 @@ func TestAdmin_Delete(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	bb, err = ioutil.ReadAll(resp.Body)
+	assert.NoError(t, resp.Body.Close())
 	assert.NoError(t, err)
 	j = []store.PostInfo{}
 	err = json.Unmarshal(bb, &j)
@@ -141,6 +141,7 @@ func TestAdmin_Title(t *testing.T) {
 	requireAdminOnly(t, req)
 	resp, err := sendReq(t, req, adminUmputunToken)
 	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, 200, resp.StatusCode)
 
 	body, code := get(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=%s/post1", ts.URL, id1, tss.URL))
@@ -175,6 +176,7 @@ func TestAdmin_DeleteUser(t *testing.T) {
 	requireAdminOnly(t, req)
 	resp, err := sendReq(t, req, adminUmputunToken)
 	assert.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, 200, resp.StatusCode)
 
 	// all 3 comments here, but for id2 they deleted
@@ -224,6 +226,7 @@ func TestAdmin_Pin(t *testing.T) {
 		req.SetBasicAuth("admin", "password")
 		resp, err := client.Do(req)
 		assert.NoError(t, err)
+		assert.NoError(t, resp.Body.Close())
 		return resp.StatusCode
 	}
 
@@ -380,6 +383,7 @@ func TestAdmin_BlockedList(t *testing.T) {
 	assert.NoError(t, err)
 	res, err := sendReq(t, req, adminUmputunToken)
 	require.NoError(t, err)
+	require.NoError(t, res.Body.Close())
 	assert.Equal(t, 200, res.StatusCode)
 
 	// block user2
@@ -388,6 +392,7 @@ func TestAdmin_BlockedList(t *testing.T) {
 	assert.NoError(t, err)
 	res, err = sendReq(t, req, adminUmputunToken)
 	require.NoError(t, err)
+	require.NoError(t, res.Body.Close())
 	assert.Equal(t, 200, res.StatusCode)
 
 	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/blocked?site=remark42", nil)
@@ -398,6 +403,7 @@ func TestAdmin_BlockedList(t *testing.T) {
 	users := []store.BlockedUser{}
 	err = json.NewDecoder(res.Body).Decode(&users)
 	assert.NoError(t, err)
+	require.NoError(t, res.Body.Close())
 	require.Equal(t, 2, len(users), "two users blocked")
 	assert.Equal(t, "user1", users[0].ID)
 	assert.Equal(t, "user1 name", users[0].Name)
@@ -414,6 +420,7 @@ func TestAdmin_BlockedList(t *testing.T) {
 	users = []store.BlockedUser{}
 	err = json.NewDecoder(res.Body).Decode(&users)
 	assert.NoError(t, err)
+	require.NoError(t, res.Body.Close())
 	assert.Equal(t, 1, len(users), "one user left blocked")
 }
 
@@ -441,9 +448,11 @@ func TestAdmin_ReadOnly(t *testing.T) {
 	assert.NoError(t, err)
 	resp, err := sendReq(t, req, "") // non-admin user
 	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, 401, resp.StatusCode)
 	resp, err = sendReq(t, req, adminUmputunToken)
 	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, 200, resp.StatusCode)
 	info, err = srv.DataService.Info(store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}, 0)
 	assert.NoError(t, err)
@@ -458,6 +467,7 @@ func TestAdmin_ReadOnly(t *testing.T) {
 	require.NoError(t, err)
 	resp, err = sendReq(t, req, adminUmputunToken)
 	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 
 	// reset post's read-only
@@ -466,6 +476,7 @@ func TestAdmin_ReadOnly(t *testing.T) {
 	assert.NoError(t, err)
 	resp, err = sendReq(t, req, adminUmputunToken)
 	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, 200, resp.StatusCode)
 	info, err = srv.DataService.Info(store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}, 0)
 	assert.NoError(t, err)
@@ -480,6 +491,7 @@ func TestAdmin_ReadOnly(t *testing.T) {
 	require.NoError(t, err)
 	resp, err = sendReq(t, req, adminUmputunToken)
 	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 }
 
@@ -494,6 +506,7 @@ func TestAdmin_ReadOnlyNoComments(t *testing.T) {
 	requireAdminOnly(t, req)
 	resp, err := sendReq(t, req, adminUmputunToken)
 	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, 200, resp.StatusCode)
 	_, err = srv.DataService.Info(store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}, 0)
 	assert.Error(t, err)
@@ -529,6 +542,7 @@ func TestAdmin_ReadOnlyWithAge(t *testing.T) {
 	requireAdminOnly(t, req)
 	resp, err := sendReq(t, req, adminUmputunToken)
 	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, 200, resp.StatusCode)
 	info, err = srv.DataService.Info(store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}, 0)
 	assert.NoError(t, err)
@@ -540,6 +554,7 @@ func TestAdmin_ReadOnlyWithAge(t *testing.T) {
 	assert.NoError(t, err)
 	resp, err = sendReq(t, req, adminUmputunToken)
 	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, 403, resp.StatusCode)
 	info, err = srv.DataService.Info(store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}, 0)
 	assert.NoError(t, err)
@@ -569,6 +584,7 @@ func TestAdmin_Verify(t *testing.T) {
 	requireAdminOnly(t, req)
 	resp, err := sendReq(t, req, adminUmputunToken)
 	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, 200, resp.StatusCode)
 	verified = srv.DataService.IsVerified("remark42", "user1")
 	assert.True(t, verified)
@@ -587,6 +603,7 @@ func TestAdmin_Verify(t *testing.T) {
 	assert.NoError(t, err)
 	resp, err = sendReq(t, req, adminUmputunToken)
 	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, 200, resp.StatusCode)
 	verified = srv.DataService.IsVerified("remark42", "user1")
 	assert.False(t, verified)
@@ -707,6 +724,7 @@ func TestAdmin_DeleteMeRequest(t *testing.T) {
 	req.SetBasicAuth("admin", "password")
 	resp, err := client.Do(req)
 	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, 200, resp.StatusCode)
 
 	_, err = srv.DataService.User("remark42", "user1", 0, 0, store.User{})
@@ -739,6 +757,7 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 	req.SetBasicAuth("admin", "password")
 	resp, err := client.Do(req)
 	assert.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
 	assert.Equal(t, 400, resp.StatusCode)
 
 	// try with bad auth
@@ -766,6 +785,7 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 	req.SetBasicAuth("admin", "bad-password")
 	resp, err = client.Do(req)
 	assert.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
 	assert.Equal(t, 403, resp.StatusCode)
 
 	// try bad user
@@ -778,6 +798,7 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 	req.SetBasicAuth("admin", "password")
 	resp, err = client.Do(req)
 	assert.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
 	assert.Equal(t, 400, resp.StatusCode, resp.Status)
 
 	// try without deleteme flag
@@ -793,6 +814,7 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 	assert.Equal(t, 403, resp.StatusCode)
 	b, err := ioutil.ReadAll(resp.Body)
 	assert.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
 	assert.True(t, strings.Contains(string(b), "can't use provided token"))
 }
 
