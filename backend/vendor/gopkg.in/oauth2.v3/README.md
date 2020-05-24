@@ -170,6 +170,7 @@ if !ok || !token.Valid {
 * [DynamoDB](https://github.com/contamobi/go-oauth2-dynamodb)
 * [XORM](https://github.com/techknowlogick/go-oauth2-xorm)
 * [GORM](https://github.com/techknowlogick/go-oauth2-gorm)
+* [Firestore](https://github.com/tslamic/go-oauth2-firestore)
 
 ## MIT License
 

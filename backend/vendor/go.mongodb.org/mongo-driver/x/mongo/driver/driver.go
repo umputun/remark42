@@ -14,6 +14,30 @@ type Deployment interface {
 	Kind() description.TopologyKind
 }
 
+// Connector represents a type that can connect to a server.
+type Connector interface {
+	Connect() error
+}
+
+// Disconnector represents a type that can disconnect from a server.
+type Disconnector interface {
+	Disconnect(context.Context) error
+}
+
+// Subscription represents a subscription to topology updates. A subscriber can receive updates through the
+// Updates field.
+type Subscription struct {
+	Updates <-chan description.Topology
+	ID      uint64
+}
+
+// Subscriber represents a type to which another type can subscribe. A subscription contains a channel that
+// is updated with topology descriptions.
+type Subscriber interface {
+	Subscribe() (*Subscription, error)
+	Unsubscribe(*Subscription) error
+}
+
 // Server represents a MongoDB server. Implementations should pool connections and handle the
 // retrieving and returning of connections.
 type Server interface {
@@ -59,16 +83,8 @@ type ErrorProcessor interface {
 // handshake over a provided driver.Connection. This is used during connection
 // initialization. Implementations must be goroutine safe.
 type Handshaker interface {
-	Handshake(context.Context, address.Address, Connection) (description.Server, error)
-}
-
-// HandshakerFunc is an adapter to allow the use of ordinary functions as
-// connection handshakers.
-type HandshakerFunc func(context.Context, address.Address, Connection) (description.Server, error)
-
-// Handshake implements the Handshaker interface.
-func (hf HandshakerFunc) Handshake(ctx context.Context, addr address.Address, conn Connection) (description.Server, error) {
-	return hf(ctx, addr, conn)
+	GetDescription(context.Context, address.Address, Connection) (description.Server, error)
+	FinishHandshake(context.Context, Connection) error
 }
 
 // SingleServerDeployment is an implementation of Deployment that always returns a single server.

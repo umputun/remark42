@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/didip/tollbooth"
+	"github.com/didip/tollbooth/v6"
 	"github.com/didip/tollbooth_chi"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"

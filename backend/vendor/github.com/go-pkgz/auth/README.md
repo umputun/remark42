@@ -1,9 +1,7 @@
-# auth - authentication via oauth2, direct and email 
+# auth - authentication via oauth2, direct and email
 [![Build Status](https://github.com/go-pkgz/auth/workflows/build/badge.svg)](https://github.com/go-pkgz/auth/actions) [![Coverage Status](https://coveralls.io/repos/github/go-pkgz/auth/badge.svg?branch=master)](https://coveralls.io/github/go-pkgz/auth?branch=master) [![godoc](https://godoc.org/github.com/go-pkgz/auth?status.svg)](https://pkg.go.dev/github.com/go-pkgz/auth?tab=doc)
 
-
-
-This library provides "social login" with Github, Google, Facebook, Twitter and Yandex as well as custom auth providers and email verification.  
+This library provides "social login" with Github, Google, Facebook, Twitter and Yandex as well as custom auth providers and email verification.
 
 - Multiple oauth2 providers can be used at the same time
 - Special `dev` provider allows local testing and development
@@ -12,14 +10,14 @@ This library provides "social login" with Github, Google, Facebook, Twitter and 
 - Direct authentication with user's provided credential checker
 - Verified authentication with user's provided sender (email, im, etc)
 - Custom oauth2 server and ability to use any third party provider
-- Integrated avatar proxy with FS, boltdb and gridfs storage
+- Integrated avatar proxy with an FS, boltdb and gridfs storage
 - Support of user-defined storage for avatars
-- Identicon for default avatars  
+- Identicon for default avatars
 - Black list with user-defined validator
 - Multiple aud (audience) supported
 - Secure key with customizable `SecretReader`
 - Ability to store an extra information to token and retrieve on login
-- Pre-auth and post-auth hooks to handle custom use cases. 
+- Pre-auth and post-auth hooks to handle custom use cases.
 - Middleware for easy integration into http routers
 - Wrappers to extract user info from the request
 
@@ -77,7 +75,7 @@ func main() {
 `github.com/go-pkgz/auth/middleware` provides ready-to-use middleware.
 
 - `middleware.Auth` - requires authenticated user
-- `middleware.Admin` - requires authenticated and admin user
+- `middleware.Admin` - requires authenticated admin user
 - `middleware.Trace` - doesn't require authenticated user, but adds user info to request
 
 ## Details
@@ -86,7 +84,7 @@ Generally, adding support of `auth` includes a few relatively simple steps:
 
 1. Setup `auth.Opts` structure with all parameters. Each of them [documented](https://github.com/go-pkgz/auth/blob/master/auth.go#L29) and most of parameters are optional and have sane defaults.
 2. [Create](https://github.com/go-pkgz/auth/blob/master/auth.go#L56) the new `auth.Service` with provided options.
-3. [Add all](https://github.com/go-pkgz/auth/blob/master/auth.go#L149) desirable authentication providers. Currently supported Github, Google, Facebook and Yandex 
+3. [Add all](https://github.com/go-pkgz/auth/blob/master/auth.go#L149) desirable authentication providers. Currently supported Github, Google, Facebook and Yandex
 4. Retrieve [middleware](https://github.com/go-pkgz/auth/blob/master/auth.go#L144) and [http handlers](https://github.com/go-pkgz/auth/blob/master/auth.go#L105) from `auth.Service`
 5. Wire auth and avatar handlers into http router as sub–routes.
 
@@ -97,7 +95,7 @@ For the example above authentication handlers wired as `/auth` and provides:
 - `/auth/<provider>/login?site=<site_id>&from=<redirect_url>` - site_id used as `aud` claim for the token and can be processed by `SecretReader` to load/retrieve/define different secrets. redirect_url is the url to redirect after successful login.
 - `/avatar/<avatar_id>` - returns the avatar (image). Links to those pictures added into user info automatically, for details see "Avatar proxy"
 - `/auth/<provider>/logout` and `/auth/logout` - invalidate "session" by removing JWT cookie
-- `/auth/list` - gives a json list of active providers 
+- `/auth/list` - gives a json list of active providers
 - `/auth/user` - returns `token.User` (json)
 
 ### User info
@@ -114,8 +112,7 @@ It also has placeholders for fields application can populate with custom `token.
 - `IP`  - hash of user's IP address
 - `Email` - user's email
 - `Attributes` - map of string:any-value. To simplify management of this map some setters and getters provided, for example `users.StrAttr`, `user.SetBoolAttr` and so on. See [user.go](https://github.com/go-pkgz/auth/blob/master/token/user.go) for more details.
- 
-   
+
 ### Avatar proxy
 
 Direct links to avatars won't survive any real-life usage if they linked from a public page. For example, page [like this](https://remark42.com/demo/) may have hundreds of avatars and, most likely, will trigger throttling on provider's side. To eliminate such restriction `auth` library provides an automatic proxy
@@ -134,30 +131,30 @@ Direct links to avatars won't survive any real-life usage if they linked from a 
         - boltdb - `bolt://tmp/avatars.bdb`
         - mongo - `"mongodb://127.0.0.1:27017/test?ava_db=db1&ava_coll=coll1`
     - `AvatarRoutePath` - route prefix for direct links to proxied avatar. For example `/api/v1/avatars` will make full links like this - `http://example.com/api/v1/avatars/1234567890123.image`. The url will be stored in user's token and retrieved by middleware (see "User Info")
-    - `AvatarResizeLimit` - size (in pixels) used to resize the avatar. Pls note - resize happens once as a part of `Put` call, i.e. on login. 0 size (default) disables resizing.      
+    - `AvatarResizeLimit` - size (in pixels) used to resize the avatar. Pls note - resize happens once as a part of `Put` call, i.e. on login. 0 size (default) disables resizing.
 
 ### Direct authentication
 
-In addition to oauth2 providers `auth.Service` allows to use direct user-defined authentication. This is done by adding direct provider with `auth.AddDirectProvider`. 
+In addition to oauth2 providers `auth.Service` allows to use direct user-defined authentication. This is done by adding direct provider with `auth.AddDirectProvider`.
 
 ```go
 	service.AddDirectProvider("local", provider.CredCheckerFunc(func(user, password string) (ok bool, err error) {
-		ok, err := checkUserSomehow(user, password) 
+		ok, err := checkUserSomehow(user, password)
 		return ok, err
 	}))
 ```
 
-Such provider acts like any other, i.e. will be registered as `/auth/local/login`. 
+Such provider acts like any other, i.e. will be registered as `/auth/local/login`.
 
 The API for this provider - `GET /auth/<name>/login?user=<user>&passwd=<password>&aud=<site_id>&session=[1|0]`
 
-_note: password parameter doesn't have to be naked/real password and can be any kind of password hash prepared by caller._ 
+_note: password parameter doesn't have to be naked/real password and can be any kind of password hash prepared by caller._
 
 ### Verified authentication
 
-Another non-oauth2 provider allowing user-confirmed authentication, for example by email or slack or telegram. This is 
+Another non-oauth2 provider allowing user-confirmed authentication, for example by email or slack or telegram. This is
 done by adding confirmed provider with `auth.AddVerifProvider`.
- 
+
 ```go
     msgTemplate := "Confirmation email, token: {{.Token}}"
 	service.AddVerifProvider("email", msgTemplate, sender)
@@ -178,7 +175,7 @@ type Sender interface {
 }
 ```
 
-For convenience a functional wrapper `SenderFunc` provided. Email sender provided in `provider/sender` package and can be 
+For convenience a functional wrapper `SenderFunc` provided. Email sender provided in `provider/sender` package and can be
 used as `Sender`.
 
 The API for this provider:
@@ -187,7 +184,7 @@ The API for this provider:
  - `GET /auth/<name>/login?token=<conf.token>&sess=[1|0]` - authorize with confirmation token
 
 The provider acts like any other, i.e. will be registered as `/auth/email/login`.
-  
+
 ### Custom oauth2
 
 This provider brings two extra functions:
@@ -224,7 +221,7 @@ In order to add a new oauth2 provider following input is required:
 	})
 	```
 2.  Adds local oauth2 server user can fully customize. It uses [`gopkg.in/oauth2.v3`](https://github.com/go-oauth2/oauth2) library and example shows how [to initialize](https://github.com/go-pkgz/auth/blob/master/_example/main.go#L227) the server and [setup a provider](https://github.com/go-pkgz/auth/blob/master/_example/main.go#L100).
-	*  to start local oauth2 server following options are required: 
+	*  to start local oauth2 server following options are required:
 		* `URL` - url of oauth2 server with port
 		* `WithLoginPage` - flag to define whether login page should be shown
 		* `LoginPageHandler` - function to handle login request. If not specified default login page will be shown
@@ -262,16 +259,16 @@ All of the interfaces above have corresponding Func adapters - `SecretFunc`, `Cl
 Restricting some users or some tokens is two step process:
 
 - `ClaimsUpdater` sets an attribute, like `blocked` (or `allowed`)
-- `Validator` checks the attribute and returns true/false 
+- `Validator` checks the attribute and returns true/false
 
-_This technic used in the [example](https://github.com/go-pkgz/auth/blob/master/_example/backend/main.go#L36) code_
+_This technique used in the [example](https://github.com/go-pkgz/auth/blob/master/_example/main.go#L56) code_
 
 The process can be simplified by doing all checks directly in `Validator`, but depends on particular case such solution
 can be too expensive because `Validator` runs on each request as a part of auth middleware. In contrast, `ClaimsUpdater` called on token creation/refresh only.
 
-### Multi-tenant services and support for different audiences 
+### Multi-tenant services and support for different audiences
 
-For complex systems a single authenticator may serve multiple distinct subsystems or multiple set of independent users. For example some SaaS offerings may need to provide different authentications for different customers and prevent use of tokens/cookies made by another customer. 
+For complex systems a single authenticator may serve multiple distinct subsystems or multiple set of independent users. For example some SaaS offerings may need to provide different authentications for different customers and prevent use of tokens/cookies made by another customer.
 
 Such functionality can be implemented in 3 different ways:
 
@@ -280,7 +277,6 @@ Such functionality can be implemented in 3 different ways:
 - Using the standard JWT `aud` claim. This method conceptually very similar to the previous one, but done by library internally and consumer don't need to define special  `ClaimsUpdater` and `Validator` logic.
 
 In order to allow `aud` support the list of allowed audiences should be passed in as `opts.Audiences` parameter. Non-empty value will trigger internal checks for token generation (will reject token creation for alien `aud`) as well as `Auth` middleware.
-
 
 ### Dev provider
 
@@ -297,7 +293,7 @@ Working with oauth2 providers can be a pain, especially during development phase
 	}()
 ```
 
-It will run fake aouth2 "server" on port :8084 and user could login with any user name. See [example](https://github.com/go-pkgz/auth/blob/master/_example/backend/main.go) for more details. 
+It will run fake aouth2 "server" on port :8084 and user could login with any user name. See [example](https://github.com/go-pkgz/auth/blob/master/_example/main.go) for more details.
 
 _Warning: this is not the real oauth2 server but just a small fake thing for development and testing only. Don't use `dev` provider with any production code._
 
@@ -311,8 +307,7 @@ In addition to the primary method (i.e. JWT cookie with XSRF header) there are t
 
 ### Logging
 
-By default this library doesn't print anything to stdout/stderr, however user can pass a logger implementing `logger.L` interface with a single method `Logf(format string, args ...interface{})`. Functional adapter for this interface included as `logger.Func`. There are two predefined implementations in the `logger` package - `NoOp` (prints nothing, default) and `Std` wrapping `log.Printf` from stdlib.
-
+By default, this library doesn't print anything to stdout/stderr, however user can pass a logger implementing `logger.L` interface with a single method `Logf(format string, args ...interface{})`. Functional adapter for this interface included as `logger.Func`. There are two predefined implementations in the `logger` package - `NoOp` (prints nothing, default) and `Std` wrapping `log.Printf` from stdlib.
 
 ## Register oauth2 providers
 
@@ -371,8 +366,8 @@ For more details refer to [Yandex OAuth](https://tech.yandex.com/oauth/doc/dg/co
 1.	Fill **App name**  and **Description** and **URL** of your site
 1.	In the field **Callback URLs** enter the correct url of your callback handler e.g. https://example.mysite.com/{route}/twitter/callback
 1.	Under **Key and tokens** take note of the **Consumer API Key** and **Consumer API Secret key**. Those will be used as `cid` and `csecret`
-## Status 
+## Status
 
-The library extracted from [remark42](https://github.com/umputun/remark) project. The original code in production use on multiple sites and seems to work fine. 
+The library extracted from [remark42](https://github.com/umputun/remark) project. The original code in production use on multiple sites and seems to work fine.
 
 `go-pkgz/auth` library still in development and until version 1 released some breaking changes possible.

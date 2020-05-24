@@ -138,7 +138,7 @@ func (em *Email) client() (c *smtp.Client, err error) {
 		return nil, errors.Wrapf(err, "timeout connecting to %s", srvAddress)
 	}
 
-	c, err = smtp.NewClient(conn, srvAddress)
+	c, err = smtp.NewClient(conn, em.Host)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to dial")
 	}
@@ -166,7 +166,10 @@ func (em *Email) buildMessage(msg, to string) (message string, err error) {
 	if _, err := qp.Write([]byte(msg)); err != nil {
 		return "", err
 	}
-	defer qp.Close()
+	// flush now, must NOT use defer, for small body, defer may cause buff.String() got empty body
+	if err := qp.Close(); err != nil {
+		return "", errors.Wrapf(err, "quotedprintable Write failed")
+	}
 	m := buff.String()
 	message += "\n" + m
 	return message, nil

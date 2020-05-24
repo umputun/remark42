@@ -1,0 +1,37 @@
+linters:
+  enable:
+    - megacheck
+    - golint
+    - govet
+    - unconvert
+    - megacheck
+    - structcheck
+    - gas
+    - gocyclo
+    - dupl
+    - misspell
+    - unparam
+    - varcheck
+    - deadcode
+    - typecheck
+    - ineffassign
+    - varcheck
+    - stylecheck
+    - gochecknoinits
+    - scopelint
+    - gocritic
+    - nakedret
+    - gosimple
+    - prealloc
+  fast: false
+  disable-all: true
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - dupl
+    - text: "Errors unhandled"
+      linters:
+        - gosec
+  exclude-use-default: false

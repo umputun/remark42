@@ -189,9 +189,9 @@ func (c *LoadingCache) Close() {
 	close(c.done)
 }
 
-// keysWithTs includes list of keys with ts. This is for sorting keys
+// keysWithTS includes list of keys with ts. This is for sorting keys
 // in order to provide least recently added sorting for size-based eviction
-type keysWithTs []struct {
+type keysWithTS []struct {
 	key string
 	ts  time.Time
 }
@@ -199,7 +199,7 @@ type keysWithTs []struct {
 // purge records > maxKeys. Has to be called with lock!
 // call with maxKeys 0 will only clear expired entries.
 func (c *LoadingCache) purge(maxKeys int64) {
-	kts := keysWithTs{}
+	kts := keysWithTS{}
 
 	for key, value := range c.data {
 		// ttl eviction
@@ -210,7 +210,7 @@ func (c *LoadingCache) purge(maxKeys int64) {
 			}
 		}
 
-		// prepare list of keysWithTs for size eviction
+		// prepare list of keysWithTS for size eviction
 		if maxKeys > 0 && int64(len(c.data)) > maxKeys {
 			ts := c.data[key].expiresAt
 

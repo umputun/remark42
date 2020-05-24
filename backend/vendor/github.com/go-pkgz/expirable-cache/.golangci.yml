@@ -1,0 +1,64 @@
+linters-settings:
+  govet:
+    check-shadowing: true
+  golint:
+    min-confidence: 0
+  gocyclo:
+    min-complexity: 15
+  maligned:
+    suggest-new: true
+  goconst:
+    min-len: 2
+    min-occurrences: 2
+  misspell:
+    locale: US
+  lll:
+    line-length: 140
+  gocritic:
+    enabled-tags:
+      - performance
+      - style
+      - experimental
+    disabled-checks:
+      - wrapperFunc
+
+linters:
+  enable:
+    - megacheck
+    - golint
+    - govet
+    - unconvert
+    - megacheck
+    - structcheck
+    - gas
+    - gocyclo
+    - dupl
+    - misspell
+    - unparam
+    - varcheck
+    - deadcode
+    - typecheck
+    - ineffassign
+    - varcheck
+    - stylecheck
+    - gochecknoinits
+    - scopelint
+    - gocritic
+    - nakedret
+    - gosimple
+    - prealloc
+  fast: false
+  disable-all: true
+
+run:
+  output:
+    format: tab
+  skip-dirs:
+    - vendor
+
+issues:
+  exclude-rules:
+    - text: "should have a package comment, unless it's in another file for this package"
+      linters:
+        - golint
+  exclude-use-default: false

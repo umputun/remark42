@@ -36,7 +36,7 @@ type DevAuthServer struct {
 // Run oauth2 dev server on port devAuthPort
 func (d *DevAuthServer) Run(ctx context.Context) { //nolint (gocyclo)
 	d.username = "dev_user"
-	d.Logf("[INFO] run local oauth2 dev server on %d, redir url=%s", devAuthPort, d.Provider.conf.RedirectURL)
+	d.Logf("[INFO] run local oauth2 dev server on %d, redirect url=%s", devAuthPort, d.Provider.conf.RedirectURL)
 	d.lock.Lock()
 	var err error
 
