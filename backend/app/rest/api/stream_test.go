@@ -29,7 +29,9 @@ func TestStream_Timeout(t *testing.T) {
 	}
 
 	buf := bytes.Buffer{}
-	err := s.Activate(context.Background(), eventFn, &buf)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	err := s.Activate(ctx, eventFn, &buf)
 	assert.NoError(t, err)
 	assert.Equal(t, "event: test\ndata: some data 1\n\nevent: test\ndata: some data 3\n\nevent: test\ndata: some data 5\n\nevent: test\ndata: some data 7\n\nevent: test\ndata: some data 9\n\n", buf.String())
 }

@@ -70,6 +70,11 @@ func (t *TitleExtractor) Get(url string) (string, error) {
 	return b.(string), nil
 }
 
+// Close title extractor
+func (t *TitleExtractor) Close() error {
+	return t.cache.Close()
+}
+
 // get title from body reader, traverse recursively
 func (t *TitleExtractor) getTitle(r io.Reader) (string, bool) {
 	doc, err := html.Parse(r)

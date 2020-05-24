@@ -15,6 +15,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/goleak"
 )
 
 func Test_Main(t *testing.T) {
@@ -85,4 +86,8 @@ func waitForHTTPServerStart(port int) {
 			return
 		}
 	}
+}
+
+func TestMain(m *testing.M) {
+	goleak.VerifyTestMain(m, goleak.IgnoreTopFunction("github.com/umputun/remark42/backend/app.init.0.func1"))
 }

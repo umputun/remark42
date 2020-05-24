@@ -30,6 +30,7 @@ func TestTitle_GetTitle(t *testing.T) {
 	}
 
 	ex := NewTitleExtractor(http.Client{Timeout: 5 * time.Second})
+	defer ex.Close()
 	for i, tt := range tbl {
 		tt := tt
 		t.Run(fmt.Sprintf("check-%d", i), func(t *testing.T) {
@@ -42,6 +43,7 @@ func TestTitle_GetTitle(t *testing.T) {
 
 func TestTitle_Get(t *testing.T) {
 	ex := NewTitleExtractor(http.Client{Timeout: 5 * time.Second})
+	defer ex.Close()
 	var hits int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.String() == "/good" {
@@ -75,6 +77,7 @@ func TestTitle_GetConcurrent(t *testing.T) {
 		body += "something something blah blah\n"
 	}
 	ex := NewTitleExtractor(http.Client{Timeout: 5 * time.Second})
+	defer ex.Close()
 	var hits int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.String(), "/good") {
@@ -103,6 +106,7 @@ func TestTitle_GetConcurrent(t *testing.T) {
 
 func TestTitle_GetFailed(t *testing.T) {
 	ex := NewTitleExtractor(http.Client{Timeout: 5 * time.Second})
+	defer ex.Close()
 	var hits int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		atomic.AddInt32(&hits, 1)
