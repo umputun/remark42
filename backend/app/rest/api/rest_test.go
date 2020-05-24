@@ -331,11 +331,11 @@ func TestRest_cacheControl(t *testing.T) {
 
 func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 	tmp := os.TempDir()
-	var testDb string
+	var testDB string
 	// pick a file name which is not in use for sure
 	for i := 0; i < 10; i++ {
-		testDb = fmt.Sprintf("/%s/test-remark-%d.db", tmp, rand.Int31())
-		_, err := os.Stat(testDb)
+		testDB = fmt.Sprintf("/%s/test-remark-%d.db", tmp, rand.Int31())
+		_, err := os.Stat(testDB)
 		if err != nil {
 			break
 		}
@@ -343,7 +343,7 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 	_ = os.RemoveAll(tmp + "/ava-remark42")
 	_ = os.RemoveAll(tmp + "/pics-remark42")
 
-	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDb, SiteID: "remark42"})
+	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDB, SiteID: "remark42"})
 	require.NoError(t, err)
 
 	memCache := cache.NewScache(cache.NewNopCache())
@@ -406,7 +406,7 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 	teardown = func() {
 		ts.Close()
 		require.NoError(t, srv.DataService.Close())
-		_ = os.Remove(testDb)
+		_ = os.Remove(testDB)
 		_ = os.RemoveAll(tmp + "/ava-remark42")
 		_ = os.RemoveAll(tmp + "/pics-remark42")
 	}

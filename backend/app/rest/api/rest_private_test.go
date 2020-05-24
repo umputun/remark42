@@ -120,8 +120,8 @@ func TestRest_CreateWithRestrictedWord(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
 
-	badComment := fmt.Sprintf(`{"text": "What the duck is that?", "locator":{"url": "https://radio-t.com/blah1",
-"site": "remark42"}}`)
+	badComment := `{"text": "What the duck is that?", "locator":{"url": "https://radio-t.com/blah1",
+"site": "remark42"}}`
 
 	resp, err := post(t, ts.URL+"/api/v1/comment", badComment)
 	assert.NoError(t, err)

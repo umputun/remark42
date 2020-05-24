@@ -164,14 +164,14 @@ func (s *public) infoStreamCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	log.Printf("[DEBUG] start stream for %+v, timeout=%v, refresh=%v", locator, s.streamer.TimeOut, s.streamer.Refresh)
 
-	sinceTs, err := s.parseSince(r)
+	sinceTS, err := s.parseSince(r)
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't translate since parameter", rest.ErrDecode)
 		return
 	}
 
 	fn := func() steamEventFn {
-		lastTS := sinceTs
+		lastTS := sinceTS
 		lastCount := 0
 
 		return func() (event string, data []byte, upd bool, err error) {
@@ -245,17 +245,17 @@ func (s *public) lastCommentsStreamCtrl(w http.ResponseWriter, r *http.Request) 
 	siteID := r.URL.Query().Get("site")
 	log.Printf("[DEBUG] get last comments stream for %s", siteID)
 
-	sinceTs, err := s.parseSince(r)
+	sinceTS, err := s.parseSince(r)
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't translate since parameter", rest.ErrDecode)
 		return
 	}
-	if sinceTs.IsZero() {
-		sinceTs = time.Now()
+	if sinceTS.IsZero() {
+		sinceTS = time.Now()
 	}
 
 	fn := func() steamEventFn {
-		sinceTime := sinceTs
+		sinceTime := sinceTS
 		return func() (event string, data []byte, upd bool, err error) {
 			key := cache.NewKey(siteID).ID(URLKey(r)).Scopes(lastCommentsScope)
 			data, err = s.cache.Get(key, func() ([]byte, error) {
@@ -483,13 +483,13 @@ func (s *public) applyView(comments []store.Comment, view string) []store.Commen
 }
 
 func (s *public) parseSince(r *http.Request) (time.Time, error) {
-	sinceTs := time.Time{}
+	sinceTS := time.Time{}
 	if since := r.URL.Query().Get("since"); since != "" {
 		unixTS, e := strconv.ParseInt(since, 10, 64)
 		if e != nil {
 			return time.Time{}, errors.Wrap(e, "can't translate since parameter")
 		}
-		sinceTs = time.Unix(unixTS/1000, 1000000*(unixTS%1000)) // since param in msec timestamp
+		sinceTS = time.Unix(unixTS/1000, 1000000*(unixTS%1000)) // since param in msec timestamp
 	}
-	return sinceTs, nil
+	return sinceTS, nil
 }
