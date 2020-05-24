@@ -33,6 +33,11 @@ export async function loadLocale(locale: string): Promise<Record<string, string>
       .then(res => res.default)
       .catch(() => enMessages);
   }
+  if (locale === 'bg') {
+    return import(/* webpackChunkName: "bg" */ '../locales/bg.json')
+      .then(res => res.default)
+      .catch(() => enMessages);
+  }
 
   return enMessages;
 }
