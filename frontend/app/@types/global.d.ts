@@ -6,6 +6,7 @@ declare global {
     remark_config: CommentsConfig;
     REMARK42: {
       changeTheme(theme: Theme): void;
+      destroy(): void;
     };
   }
 

@@ -25,6 +25,11 @@ function createFrame({
   height?: string;
   __colors__?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
 }) {
+  const oldIframe = document.querySelector('iframe[title=Remark42]') as HTMLIFrameElement;
+  if (oldIframe) {
+    return oldIframe;
+  }
+
   const iframe = document.createElement('iframe');
   iframe.src = `${host}/web/iframe.html?${query}`;
   iframe.name = JSON.stringify({ __colors__ });
@@ -72,6 +77,12 @@ function init() {
 
   window.REMARK42 = window.REMARK42 || {};
   window.REMARK42.changeTheme = changeTheme;
+  window.REMARK42.destroy = () => {
+    window.removeEventListener('message', receiveMessages);
+    window.removeEventListener('hashchange', postHashToIframe);
+    document.removeEventListener('click', postClickOutsideToIframe);
+    iframe.remove();
+  };
 
   const query = Object.keys(window.remark_config)
     .filter(key => key !== '__colors__')
@@ -203,9 +214,9 @@ function init() {
       document.body.appendChild(this.node);
       document.addEventListener('keydown', this.onKeyDown);
       setTimeout(() => {
-        this.back!.setAttribute('data-animation', '');
-        this.node!.setAttribute('data-animation', '');
-        this.iframe!.focus();
+        this.back?.setAttribute('data-animation', '');
+        this.node?.setAttribute('data-animation', '');
+        this.iframe?.focus();
       }, 400);
     },
     close() {
@@ -246,7 +257,7 @@ function init() {
         clearTimeout(t.delay);
         t.delay = null;
       }
-      t.events.forEach(event => t.node!.removeEventListener(event, t.animationStop, false));
+      t.events.forEach(event => t.node?.removeEventListener(event, t.animationStop, false));
       return t.remove();
     },
     remove() {
@@ -289,21 +300,21 @@ function init() {
     if (hash.indexOf(`#${COMMENT_NODE_CLASSNAME_PREFIX}`) === 0) {
       if (e) e.preventDefault();
 
-      iframe.contentWindow!.postMessage(JSON.stringify({ hash }), '*');
+      iframe.contentWindow?.postMessage(JSON.stringify({ hash }), '*');
     }
   }
 
   function postTitleToIframe(title: string) {
-    iframe.contentWindow!.postMessage(JSON.stringify({ title }), '*');
+    iframe.contentWindow?.postMessage(JSON.stringify({ title }), '*');
   }
 
   function postClickOutsideToIframe(e: MouseEvent) {
     if (!iframe.contains(e.target as Node)) {
-      iframe.contentWindow!.postMessage(JSON.stringify({ clickOutside: true }), '*');
+      iframe.contentWindow?.postMessage(JSON.stringify({ clickOutside: true }), '*');
     }
   }
 
   function changeTheme(theme: Theme) {
-    iframe.contentWindow!.postMessage(JSON.stringify({ theme }), '*');
+    iframe.contentWindow?.postMessage(JSON.stringify({ theme }), '*');
   }
 }
