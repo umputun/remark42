@@ -315,7 +315,7 @@ func (s *DataStore) Vote(req VoteReq) (comment store.Comment, err error) {
 	}
 
 	v, voted := comment.Votes[req.UserID]
-	if voted && v == req.Val {
+	if voted && v == req.Val { // voted before and same vote (+/-) again. Change allowed, i.e. +, - or -, + is fine
 		return comment, errors.Errorf("user %s already voted for %s", req.UserID, req.CommentID)
 	}
 
@@ -341,22 +341,22 @@ func (s *DataStore) Vote(req VoteReq) (comment store.Comment, err error) {
 		return comment, errors.Errorf("minimal score reached for comment %s", req.CommentID)
 	}
 
-	// reset vote if user changed to opposite
+	// add ip hash to voted ip map
+	if comment.VotedIPs == nil {
+		comment.VotedIPs = map[string]store.VotedIPInfo{}
+	}
+	comment.VotedIPs[userIPHash] = store.VotedIPInfo{Timestamp: time.Now(), Value: req.Val}
+
+	// reset vote if user changed to opposite. Effectively it is "forget about prev votes" to allow "+ - -" or "- + +" corrections
 	if voted && v != req.Val {
 		delete(comment.Votes, req.UserID)
+		delete(comment.VotedIPs, userIPHash)
 	}
 
 	// add to voted map if first vote
 	if !voted {
 		comment.Votes[req.UserID] = req.Val
 	}
-
-	// add ip hash to voted ip map
-	if comment.VotedIPs == nil {
-		comment.VotedIPs = map[string]store.VotedIPInfo{}
-	}
-
-	comment.VotedIPs[userIPHash] = store.VotedIPInfo{Timestamp: time.Now(), Value: req.Val}
 
 	// update score
 	if req.Val {
