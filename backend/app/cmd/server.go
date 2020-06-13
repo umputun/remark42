@@ -322,7 +322,7 @@ func (s *ServerCommand) HandleDeprecatedFlags() (result []DeprecatedFlag) {
 func (s *ServerCommand) newServerApp() (*serverApp, error) {
 
 	if err := makeDirs(s.BackupLocation); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to create backup store")
 	}
 
 	if !strings.HasPrefix(s.RemarkURL, "http://") && !strings.HasPrefix(s.RemarkURL, "https://") {
@@ -362,16 +362,19 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 
 	loadingCache, err := s.makeCache()
 	if err != nil {
+		_ = dataService.Close()
 		return nil, errors.Wrap(err, "failed to make cache")
 	}
 
 	avatarStore, err := s.makeAvatarStore()
 	if err != nil {
+		_ = dataService.Close()
 		return nil, errors.Wrap(err, "failed to make avatar store")
 	}
 	authRefreshCache := newAuthRefreshCache()
 	authenticator, err := s.makeAuthenticator(dataService, avatarStore, adminStore, authRefreshCache)
 	if err != nil {
+		_ = dataService.Close()
 		return nil, errors.Wrap(err, "failed to make authenticator")
 	}
 
@@ -418,6 +421,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 
 	sslConfig, err := s.makeSSLConfig()
 	if err != nil {
+		_ = dataService.Close()
 		return nil, errors.Wrap(err, "failed to make config of ssl server params")
 	}
 
@@ -459,13 +463,14 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 	if s.Auth.Dev {
 		da, errDevAuth := authenticator.DevAuth()
 		if errDevAuth != nil {
+			_ = dataService.Close()
 			return nil, errors.Wrap(errDevAuth, "can't make dev oauth2 server")
 		}
 		devAuth = da
 	}
 
 	return &serverApp{
-		ServerCommand: s,
+		ServerCommand:    s,
 		restSrv:          srv,
 		migratorSrv:      migr,
 		exporter:         exporter,
@@ -586,12 +591,12 @@ func (s *ServerCommand) makeAvatarStore() (avatar.Store, error) {
 	switch s.Avatar.Type {
 	case "fs":
 		if err := makeDirs(s.Avatar.FS.Path); err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "failed to create avatar store")
 		}
 		return avatar.NewLocalFS(s.Avatar.FS.Path), nil
 	case "bolt":
 		if err := makeDirs(path.Dir(s.Avatar.Bolt.File)); err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "failed to create avatar store")
 		}
 		return avatar.NewBoltDB(s.Avatar.Bolt.File, bolt.Options{})
 	case "uri":
@@ -618,7 +623,7 @@ func (s *ServerCommand) makePicturesStore() (*image.Service, error) {
 		return image.NewService(boltImageStore, imageServiceParams), nil
 	case "fs":
 		if err := makeDirs(s.Image.FS.Path); err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "failed to create pictures store")
 		}
 		return image.NewService(&image.FileSystem{
 			Location:   s.Image.FS.Path,
