@@ -306,7 +306,7 @@ func TestServerApp_Failed(t *testing.T) {
 	_, err = p.ParseArgs([]string{"--store.bolt.path=/tmp", "--backup=/dev/null/not-writable"})
 	assert.NoError(t, err)
 	_, err = opts.newServerApp()
-	assert.EqualError(t, err, "can't make directory /dev/null/not-writable: mkdir /dev/null: not a directory")
+	assert.EqualError(t, err, "failed to create backup store: can't make directory /dev/null/not-writable: mkdir /dev/null: not a directory")
 	t.Log(err)
 
 	// invalid url
