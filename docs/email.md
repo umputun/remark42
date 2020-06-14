@@ -191,6 +191,10 @@ NOTIFY_EMAIL_VERIFICATION_SUBJ
 # for administrator notifications for new comments on their site
 ADMIN_SHARED_EMAIL
 NOTIFY_EMAIL_ADMIN
+# for enabling email notifications for admin only.
+# Beware, this disables UI access to user subscriptions but existing subscriptions will continue to work,
+# and subscription API endpoints would be still working
+NOTIFY_EMAIL_DISABLE_USER_NOTIFICATIONS
 ```
 
 After you set `SMTP_` variables, you can allow email notifications by setting these two variables:

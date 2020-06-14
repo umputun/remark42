@@ -198,9 +198,10 @@ type NotifyGroup struct {
 		API     string        `long:"api" env:"API" default:"https://api.telegram.org/bot" description:"telegram api prefix"`
 	} `group:"telegram" namespace:"telegram" env-namespace:"TELEGRAM"`
 	Email struct {
-		From                string `long:"from_address" env:"FROM" description:"from email address"`
-		VerificationSubject string `long:"verification_subj" env:"VERIFICATION_SUBJ" description:"verification message subject"`
-		AdminNotifications  bool   `long:"notify_admin" env:"ADMIN" description:"notify admin on new comments via ADMIN_SHARED_EMAIL"`
+		From                     string `long:"from_address" env:"FROM" description:"from email address"`
+		VerificationSubject      string `long:"verification_subj" env:"VERIFICATION_SUBJ" description:"verification message subject"`
+		AdminNotifications       bool   `long:"notify_admin" env:"ADMIN" description:"notify admin on new comments via ADMIN_SHARED_EMAIL"`
+		DisableUserNotifications bool   `long:"disable_user_notifications" env:"DISABLE_USER_NOTIFICATIONS" description:"disable email notifications other than for admin"`
 	} `group:"email" namespace:"email" env-namespace:"EMAIL"`
 }
 
@@ -446,7 +447,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 			Refresh:   s.Stream.RefreshInterval,
 			MaxActive: int32(s.Stream.MaxActive),
 		},
-		EmailNotifications: emailNotifications,
+		EmailNotifications: !s.Notify.Email.DisableUserNotifications && emailNotifications,
 		EmojiEnabled:       s.EnableEmoji,
 		AnonVote:           s.AnonymousVote && s.RestrictVoteIP,
 		SimpleView:         s.SimpleView,
