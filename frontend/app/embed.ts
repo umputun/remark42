@@ -2,8 +2,6 @@
 import { BASE_URL, NODE_ID, COMMENT_NODE_CLASSNAME_PREFIX } from '@app/common/constants.config';
 import { UserInfo, Theme } from '@app/common/types';
 
-let initDataAnimationTimeout: NodeJS.Timeout | null = null;
-
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
 } else {
@@ -49,6 +47,7 @@ function createFrame({
 }
 
 function init() {
+  let initDataAnimationTimeout: NodeJS.Timeout | null = null;
   const node = document.getElementById(window.remark_config.node || NODE_ID);
 
   if (!node) {
