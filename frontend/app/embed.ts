@@ -2,6 +2,8 @@
 import { BASE_URL, NODE_ID, COMMENT_NODE_CLASSNAME_PREFIX } from '@app/common/constants.config';
 import { UserInfo, Theme } from '@app/common/types';
 
+let initDataAnimationTimeout: NodeJS.Timeout | null = null;
+
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
 } else {
@@ -25,11 +27,6 @@ function createFrame({
   height?: string;
   __colors__?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
 }) {
-  const oldIframe = document.querySelector('iframe[title=Remark42]') as HTMLIFrameElement;
-  if (oldIframe) {
-    return oldIframe;
-  }
-
   const iframe = document.createElement('iframe');
   iframe.src = `${host}/web/iframe.html?${query}`;
   iframe.name = JSON.stringify({ __colors__ });
@@ -78,6 +75,10 @@ function init() {
   window.REMARK42 = window.REMARK42 || {};
   window.REMARK42.changeTheme = changeTheme;
   window.REMARK42.destroy = () => {
+    if (initDataAnimationTimeout) {
+      clearTimeout(initDataAnimationTimeout);
+    }
+
     window.removeEventListener('message', receiveMessages);
     window.removeEventListener('hashchange', postHashToIframe);
     document.removeEventListener('click', postClickOutsideToIframe);
@@ -92,7 +93,9 @@ function init() {
       )}`;
     })
     .join('&');
-  const iframe = createFrame({ host: BASE_URL, query, __colors__: window.remark_config.__colors__ });
+  const iframe =
+    (document.querySelector('iframe[title=Remark42]') as HTMLIFrameElement) ||
+    createFrame({ host: BASE_URL, query, __colors__: window.remark_config.__colors__ });
 
   node.appendChild(iframe);
 
@@ -205,7 +208,9 @@ function init() {
         query +
         '&page=user-info&' +
         `&id=${user.id}&name=${user.name}&picture=${user.picture || ''}&isDefaultPicture=${user.isDefaultPicture || 0}`;
-      const iframe = createFrame({ host: BASE_URL, query: queryUserInfo, height: '100%' });
+      const iframe =
+        (document.querySelector('iframe[title=Remark42]') as HTMLIFrameElement) ||
+        createFrame({ host: BASE_URL, query: queryUserInfo, height: '100%' });
       this.node.appendChild(iframe);
       this.iframe = iframe;
       this.node.appendChild(this.closeEl);
@@ -213,10 +218,10 @@ function init() {
       document.body.appendChild(this.back);
       document.body.appendChild(this.node);
       document.addEventListener('keydown', this.onKeyDown);
-      setTimeout(() => {
-        this.back?.setAttribute('data-animation', '');
-        this.node?.setAttribute('data-animation', '');
-        this.iframe?.focus();
+      initDataAnimationTimeout = setTimeout(() => {
+        this.back!.setAttribute('data-animation', '');
+        this.node!.setAttribute('data-animation', '');
+        iframe.focus();
       }, 400);
     },
     close() {
