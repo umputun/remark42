@@ -580,11 +580,14 @@ To bring it up run:
 
 ```bash
 # if you mainly work on backend
-docker-compose -f compose-dev-backend.yml build
-docker-compose -f compose-dev-backend.yml up
+cp compose-dev-backend.yml compose-private.yml
 # if you mainly work on frontend
-docker-compose -f compose-dev-frontend.yml build
-docker-compose -f compose-dev-frontend.yml up
+cp compose-dev-frontend.yml compose-private.yml
+# now, edit / debug `compose-private.yml` to your heart's content.
+
+# build and run
+docker-compose -f compose-private.yml build
+docker-compose -f compose-private.yml up
 ```
 
 It starts Remark42 on `127.0.0.1:8080` and adds local OAuth2 provider “Dev”.
