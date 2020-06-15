@@ -84,7 +84,7 @@ type ServerCommand struct {
 		Github    AuthGroup `group:"github" namespace:"github" env-namespace:"GITHUB" description:"Github OAuth"`
 		Facebook  AuthGroup `group:"facebook" namespace:"facebook" env-namespace:"FACEBOOK" description:"Facebook OAuth"`
 		Yandex    AuthGroup `group:"yandex" namespace:"yandex" env-namespace:"YANDEX" description:"Yandex OAuth"`
-		BattleNet AuthGroup `group:"battlenet" namespace:"battlenet" env-namespace:"BATTLENET" description:"Battle.net OAuth"`
+		Battlenet AuthGroup `group:"battlenet" namespace:"battlenet" env-namespace:"BATTLENET" description:"Battle.net OAuth"`
 		Twitter   AuthGroup `group:"twitter" namespace:"twitter" env-namespace:"TWITTER" description:"Twitter OAuth"`
 		Dev       bool      `long:"dev" env:"DEV" description:"enable dev (local) oauth2"`
 		Anonymous bool      `long:"anon" env:"ANON" description:"enable anonymous login"`
@@ -257,7 +257,7 @@ type serverApp struct {
 // Execute is the entry point for "server" command, called by flag parser
 func (s *ServerCommand) Execute(_ []string) error {
 	log.Printf("[INFO] start server on port %d", s.Port)
-	resetEnv("SECRET", "AUTH_GOOGLE_CSEC", "AUTH_GITHUB_CSEC", "AUTH_FACEBOOK_CSEC", "AUTH_YANDEX_CSEC", "ADMIN_PASSWD")
+	resetEnv("SECRET", "AUTH_GOOGLE_CSEC", "AUTH_GITHUB_CSEC", "AUTH_FACEBOOK_CSEC", "AUTH_YANDEX_CSEC", "ADMIN_PASSWD", "AUTH_BATTLENET_CSEC")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() { // catch signal and invoke graceful termination
@@ -697,8 +697,8 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 		authenticator.AddProvider("yandex", s.Auth.Yandex.CID, s.Auth.Yandex.CSEC)
 		providers++
 	}
-	if s.Auth.BattleNet.CID != "" && s.Auth.BattleNet.CSEC != "" {
-		authenticator.AddProvider("battlenet", s.Auth.BattleNet.CID, s.Auth.BattleNet.CSEC)
+	if s.Auth.Battlenet.CID != "" && s.Auth.Battlenet.CSEC != "" {
+		authenticator.AddProvider("battlenet", s.Auth.Battlenet.CID, s.Auth.Battlenet.CSEC)
 		providers++
 	}
 	if s.Auth.Twitter.CID != "" && s.Auth.Twitter.CSEC != "" {

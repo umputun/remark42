@@ -52,6 +52,7 @@ For admin screenshots see [Admin UI wiki](https://github.com/umputun/remark42/wi
         - [Facebook Auth Provider](#facebook-auth-provider)
         - [Twitter Auth Provider](#twitter-auth-provider)
         - [Yandex Auth Provider](#yandex-auth-provider)
+        - [Battle.net Auth Provider](#battlenet-auth-provider)
       - [Initial import from Disqus](#initial-import-from-disqus)
       - [Initial import from WordPress](#initial-import-from-wordpress)
       - [Backup and restore](#backup-and-restore)

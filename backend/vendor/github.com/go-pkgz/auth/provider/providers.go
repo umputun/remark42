@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/facebook"
 	"golang.org/x/oauth2/github"
 	"golang.org/x/oauth2/google"
@@ -153,8 +154,8 @@ func NewBattleNet(p Params) Oauth2Handler {
 	return initOauth2Handler(p, Oauth2Handler{
 		name:     "battlenet",
 		endpoint: oauth2.Endpoint{
-			AuthUrl : "https://eu.battle.net/oauth/authorize",
-			TokenUrl: "https://eu.battle.net/oauth/token",
+			AuthURL : "https://eu.battle.net/oauth/authorize",
+			TokenURL: "https://eu.battle.net/oauth/token",
 			AuthStyle: oauth2.AuthStyleInHeader,
 		},
 		scopes:   []string{},

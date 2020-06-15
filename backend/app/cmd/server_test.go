@@ -611,7 +611,7 @@ func prepServerApp(t *testing.T, fn func(o ServerCommand) ServerCommand) (*serve
 	cmd.Auth.Google.CSEC, cmd.Auth.Google.CID = "csec", "cid"
 	cmd.Auth.Facebook.CSEC, cmd.Auth.Facebook.CID = "csec", "cid"
 	cmd.Auth.Yandex.CSEC, cmd.Auth.Yandex.CID = "csec", "cid"
-	cmd.Auth.BattleNet.CSEC, cmd.Auth.BattleNet.CID = "csec", "cid"
+	cmd.Auth.Battlenet.CSEC, cmd.Auth.Battlenet.CID = "csec", "cid"
 	cmd.Auth.Email.Enable = true
 	cmd.Auth.Email.MsgTemplate = "testdata/email.tmpl"
 	cmd.BackupLocation = "/tmp"
