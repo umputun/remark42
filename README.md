@@ -310,9 +310,16 @@ For more details refer to [Yandex OAuth](https://tech.yandex.com/oauth/doc/dg/co
 
 ##### Battle.net Auth Provider
 
-1.  Create a new **client**: https://develop.battle.net/access/clients/create
+1. Log into Battle.net as a developer: https://develop.battle.net/nav/login-redirect
+1.  Click "+ CREATE CLIENT" https://develop.battle.net/access/clients/create
+1. For "Client name", enter whatever you want
+1. For "Redirect URLs", one of the lines must be "http\[s\]://your_remark_installation:port//auth/battlenet/callback", e.g. https://localhost:8443/auth/battlenet/callback or https://remark.mysite.com/auth/battlenet/callback
+1. For "Service URL", enter the URL to your site or check "I do not have a service URL for this client." checkbox if you don't have any
+1. For "Intended use", describe the application you're developing
+1. Click "Save".
+1. You can see your client ID and client secret at https://develop.battle.net/access/clients by clicking the client you created
 
-For more details refer to [Complete Guide of Battle.net OAuth API and Login Button](https://hakanu.net/oauth/2017/01/26/complete-guide-of-battle-net-oauth-api-and-login-button/)
+For more details refer to [Complete Guide of Battle.net OAuth API and Login Button](https://hakanu.net/oauth/2017/01/26/complete-guide-of-battle-net-oauth-api-and-login-button/) or [the official Battle.net OAuth2 guide](https://develop.battle.net/documentation/guides/using-oauth)
 
 ##### Anonymous Auth Provider
 
