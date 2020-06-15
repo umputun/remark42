@@ -147,3 +147,26 @@ func NewTwitter(p Params) Oauth1Handler {
 		},
 	})
 }
+
+// NewBattleNet makes Battle.net oauth2 provider
+func NewBattleNet(p Params) Oauth2Handler {
+	return initOauth2Handler(p, Oauth2Handler{
+		name:     "battlenet",
+		endpoint: oauth2.Endpoint{
+			AuthUrl : "https://eu.battle.net/oauth/authorize",
+			TokenUrl: "https://eu.battle.net/oauth/token",
+			AuthStyle: oauth2.AuthStyleInHeader,
+		},
+		scopes:   []string{},
+		// See https://tech.yandex.com/passport/doc/dg/reference/response-docpage/
+		infoURL: "https://eu.battle.net/oauth/userinfo",
+		mapUser: func(data UserData, _ []byte) token.User {
+			userInfo := token.User{
+				ID:   "battlenet_" + token.HashID(sha1.New(), data.Value("id")),
+				Name: data.Value("battletag"),
+			}
+
+			return userInfo
+		},
+	})
+}

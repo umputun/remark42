@@ -4,7 +4,7 @@
 
 Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engine, which doesn't spy on users. It can be embedded into blogs, articles or any other place where readers add comments.
 
-* Social login via Google, Twitter, Facebook, GitHub and Yandex
+* Social login via Google, Twitter, Facebook, GitHub, Yandex and Battle.net
 * Login via email
 * Optional anonymous access
 * Multi-level nested comments with both tree and plain presentations
@@ -141,6 +141,8 @@ _this is the recommended way to run remark42_
 | auth.twitter.csec       | AUTH_TWITTER_CSEC       |                          | Twitter Consumer API Secret key                 |
 | auth.yandex.cid         | AUTH_YANDEX_CID         |                          | Yandex OAuth client ID                          |
 | auth.yandex.csec        | AUTH_YANDEX_CSEC        |                          | Yandex OAuth client secret                      |
+| auth.battlenet.cid      | AUTH_BATTLENET_CID      |                          | Battle.net OAuth client ID                          |
+| auth.battlenet.csec     | AUTH_BATTLENET_CSEC     |                          | Battle.net OAuth client secret                      |
 | auth.dev                | AUTH_DEV                | `false`                  | local oauth2 server, development mode only      |
 | auth.anon               | AUTH_ANON               | `false`                  | enable anonymous login                          |
 | auth.email.enable       | AUTH_EMAIL_ENABLE       | `false`                  | enable auth via email                           |
@@ -304,6 +306,12 @@ _instructions for google oauth2 setup borrowed from [oauth2_proxy](https://githu
 1.  Take note of the **ID** and **Password**
 
 For more details refer to [Yandex OAuth](https://tech.yandex.com/oauth/doc/dg/concepts/about-docpage/) and [Yandex.Passport](https://tech.yandex.com/passport/doc/dg/index-docpage/) API documentation.
+
+##### Battle.net Auth Provider
+
+1.  Create a new **client**: https://develop.battle.net/access/clients/create
+
+For more details refer to [Complete Guide of Battle.net OAuth API and Login Button](https://hakanu.net/oauth/2017/01/26/complete-guide-of-battle-net-oauth-api-and-login-button/)
 
 ##### Anonymous Auth Provider
 
@@ -646,7 +654,7 @@ type User struct {
 }
 ```
 
-_currently supported providers are `google`, `facebook`, `github` and `yandex`_
+_currently supported providers are `google`, `facebook`, `github`, `yandex`and `battlenet`
 
 ### Commenting
 

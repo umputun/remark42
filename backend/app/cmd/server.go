@@ -84,6 +84,7 @@ type ServerCommand struct {
 		Github    AuthGroup `group:"github" namespace:"github" env-namespace:"GITHUB" description:"Github OAuth"`
 		Facebook  AuthGroup `group:"facebook" namespace:"facebook" env-namespace:"FACEBOOK" description:"Facebook OAuth"`
 		Yandex    AuthGroup `group:"yandex" namespace:"yandex" env-namespace:"YANDEX" description:"Yandex OAuth"`
+		BattleNet AuthGroup `group:"battlenet" namespace:"battlenet" env-namespace:"BATTLENET" description:"Battle.net OAuth"`
 		Twitter   AuthGroup `group:"twitter" namespace:"twitter" env-namespace:"TWITTER" description:"Twitter OAuth"`
 		Dev       bool      `long:"dev" env:"DEV" description:"enable dev (local) oauth2"`
 		Anonymous bool      `long:"anon" env:"ANON" description:"enable anonymous login"`
@@ -465,7 +466,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 	}
 
 	return &serverApp{
-		ServerCommand: s,
+		ServerCommand:    s,
 		restSrv:          srv,
 		migratorSrv:      migr,
 		exporter:         exporter,
@@ -694,6 +695,10 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 	}
 	if s.Auth.Yandex.CID != "" && s.Auth.Yandex.CSEC != "" {
 		authenticator.AddProvider("yandex", s.Auth.Yandex.CID, s.Auth.Yandex.CSEC)
+		providers++
+	}
+	if s.Auth.BattleNet.CID != "" && s.Auth.BattleNet.CSEC != "" {
+		authenticator.AddProvider("battlenet", s.Auth.BattleNet.CID, s.Auth.BattleNet.CSEC)
 		providers++
 	}
 	if s.Auth.Twitter.CID != "" && s.Auth.Twitter.CSEC != "" {
