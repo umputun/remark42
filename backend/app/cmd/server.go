@@ -257,7 +257,7 @@ type serverApp struct {
 // Execute is the entry point for "server" command, called by flag parser
 func (s *ServerCommand) Execute(_ []string) error {
 	log.Printf("[INFO] start server on port %d", s.Port)
-	resetEnv("SECRET", "AUTH_GOOGLE_CSEC", "AUTH_GITHUB_CSEC", "AUTH_FACEBOOK_CSEC", "AUTH_YANDEX_CSEC", "ADMIN_PASSWD", "AUTH_BATTLENET_CSEC")
+	resetEnv("SECRET", "AUTH_GOOGLE_CSEC", "AUTH_GITHUB_CSEC", "AUTH_FACEBOOK_CSEC", "AUTH_YANDEX_CSEC", "AUTH_BATTLENET_CSEC", "ADMIN_PASSWD")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() { // catch signal and invoke graceful termination
