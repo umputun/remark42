@@ -46,6 +46,7 @@ github.com/go-chi/cors v1.1.1/go.mod h1:K2Yje0VW/SJzxiyMYu6iPQYa7hMjQX2i/F491VCh
 github.com/go-chi/render v1.0.1 h1:4/5tis2cKaNdnv9zFLfXzcquC9HbeZgCnxGnKrltBS8=
 github.com/go-chi/render v1.0.1/go.mod h1:pq4Rr7HbnsdaeHagklXub+p6Wd16Af5l9koip1OvJns=
 github.com/go-pkgz/auth v0.10.2/go.mod h1:w4Z1qaYvuh2P3T2gNh0f8GcKCH0HHAoQtQ8iv+9+WGg=
+github.com/go-pkgz/auth v0.10.3-0.20200615230206-4150d016cbbf/go.mod h1:w4Z1qaYvuh2P3T2gNh0f8GcKCH0HHAoQtQ8iv+9+WGg=
 github.com/go-pkgz/expirable-cache v0.0.3 h1:rTh6qNPp78z0bQE6HDhXBHUwqnV9i09Vm6dksJLXQDc=
 github.com/go-pkgz/expirable-cache v0.0.3/go.mod h1:+IauqN00R2FqNRLCLA+X5YljQJrwB179PfiAoMPlTlQ=
 github.com/go-pkgz/jrpc v0.2.0 h1:CLy/eZyekjraVrxZV18N2R1mYLMJ/nWrgdfyIOGPY/E=

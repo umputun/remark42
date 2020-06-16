@@ -1,7 +1,7 @@
 # auth - authentication via oauth2, direct and email
 [![Build Status](https://github.com/go-pkgz/auth/workflows/build/badge.svg)](https://github.com/go-pkgz/auth/actions) [![Coverage Status](https://coveralls.io/repos/github/go-pkgz/auth/badge.svg?branch=master)](https://coveralls.io/github/go-pkgz/auth?branch=master) [![godoc](https://godoc.org/github.com/go-pkgz/auth?status.svg)](https://pkg.go.dev/github.com/go-pkgz/auth?tab=doc)
 
-This library provides "social login" with Github, Google, Facebook, Twitter and Yandex as well as custom auth providers and email verification.
+This library provides "social login" with Github, Google, Facebook, Twitter, Yandex and Battle.net as well as custom auth providers and email verification.
 
 - Multiple oauth2 providers can be used at the same time
 - Special `dev` provider allows local testing and development
@@ -77,6 +77,8 @@ func main() {
 - `middleware.Auth` - requires authenticated user
 - `middleware.Admin` - requires authenticated admin user
 - `middleware.Trace` - doesn't require authenticated user, but adds user info to request
+
+Also, there is a special middleware `middleware.UpdateUser` for population and modifying UserInfo in every request. See "Customization" for more details.
 
 ## Details
 
@@ -249,10 +251,11 @@ In order to add a new oauth2 provider following input is required:
 There are several ways to adjust functionality of the library:
 
 1. `SecretReader` - interface with a single method `Get(aud string) string` to return the secret used for JWT signing and verification
-2. `ClaimsUpdater` - interface with `Update(claims Claims) Claims` method. This is the primary way to alter a token at login time and add any attributes, set ip, email, admin status and so on.
-3. `Validator` - interface with `Validate(token string, claims Claims) bool` method. This is post-token hook and will be called on **each request** wrapped with `Auth` middleware. This will be the place for special logic to reject some tokens or users.
+1. `ClaimsUpdater` - interface with `Update(claims Claims) Claims` method. This is the primary way to alter a token at login time and add any attributes, set ip, email, admin status and so on.
+1. `Validator` - interface with `Validate(token string, claims Claims) bool` method. This is post-token hook and will be called on **each request** wrapped with `Auth` middleware. This will be the place for special logic to reject some tokens or users.
+1. `UserUpdater` - interface with `Update(claims token.User) token.User` method.  This method will be called on **each request** wrapped with `UpdateUser` middleware. This will be the place for special logic modify User Info in request context. [Example of usage.]((https://github.com/go-pkgz/auth/blob/master/_example/main.go#L148))
 
-All of the interfaces above have corresponding Func adapters - `SecretFunc`, `ClaimsUpdFunc` and `ValidatorFunc`.
+All of the interfaces above have corresponding Func adapters - `SecretFunc`, `ClaimsUpdFunc`, `ValidatorFunc` and `UserUpdFunc`.
 
 ### Implementing black list logic or some other filters
 
@@ -360,6 +363,20 @@ _instructions for google oauth2 setup borrowed from [oauth2_proxy](https://githu
 1.  Take note of the **ID** and **Password**
 
 For more details refer to [Yandex OAuth](https://tech.yandex.com/oauth/doc/dg/concepts/about-docpage/) and [Yandex.Passport](https://tech.yandex.com/passport/doc/dg/index-docpage/) API documentation.
+
+##### Battle.net Auth Provider
+
+1. Log into Battle.net as a developer: https://develop.battle.net/nav/login-redirect
+1.  Click "+ CREATE CLIENT" https://develop.battle.net/access/clients/create
+1. For "Client name", enter whatever you want
+1. For "Redirect URLs", one of the lines must be "http\[s\]://your_remark_installation:port//auth/battlenet/callback", e.g. https://localhost:8443/auth/battlenet/callback or https://remark.mysite.com/auth/battlenet/callback
+1. For "Service URL", enter the URL to your site or check "I do not have a service URL for this client." checkbox if you don't have any
+1. For "Intended use", describe the application you're developing
+1. Click "Save".
+1. You can see your client ID and client secret at https://develop.battle.net/access/clients by clicking the client you created
+
+For more details refer to [Complete Guide of Battle.net OAuth API and Login Button](https://hakanu.net/oauth/2017/01/26/complete-guide-of-battle-net-oauth-api-and-login-button/) or [the official Battle.net OAuth2 guide](https://develop.battle.net/documentation/guides/using-oauth)
+
 
 #### Twitter Auth Provider
 1.	Create a new twitter application https://developer.twitter.com/en/apps

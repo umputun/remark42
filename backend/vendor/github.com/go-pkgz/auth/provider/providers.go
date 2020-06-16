@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/facebook"
 	"golang.org/x/oauth2/github"
 	"golang.org/x/oauth2/google"
@@ -143,6 +144,28 @@ func NewTwitter(p Params) Oauth1Handler {
 			if userInfo.Name == "" {
 				userInfo.Name = data.Value("name")
 			}
+			return userInfo
+		},
+	})
+}
+
+// NewBattlenet makes Battle.net oauth2 provider
+func NewBattlenet(p Params) Oauth2Handler {
+	return initOauth2Handler(p, Oauth2Handler{
+		name: "battlenet",
+		endpoint: oauth2.Endpoint{
+			AuthURL:   "https://eu.battle.net/oauth/authorize",
+			TokenURL:  "https://eu.battle.net/oauth/token",
+			AuthStyle: oauth2.AuthStyleInParams,
+		},
+		scopes:  []string{},
+		infoURL: "https://eu.battle.net/oauth/userinfo",
+		mapUser: func(data UserData, _ []byte) token.User {
+			userInfo := token.User{
+				ID:   "battlenet_" + token.HashID(sha1.New(), data.Value("id")),
+				Name: data.Value("battletag"),
+			}
+
 			return userInfo
 		},
 	})
