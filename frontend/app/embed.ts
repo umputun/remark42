@@ -62,28 +62,30 @@ function init() {
 
   function createInstance(remark_config: CommentsConfig) {
     let initDataAnimationTimeout: NodeJS.Timeout | null = null;
-    const node = document.getElementById(window.remark_config.node || NODE_ID);
-
-    if (!node) {
-      console.error("Remark42: Can't find root node.");
-      return;
-    }
 
     try {
-      window.remark_config = window.remark_config || {};
+      remark_config = remark_config || {};
     } catch (e) {
       console.error('Remark42: Config object is undefined.');
       return;
     }
 
-    if (!window.remark_config.site_id) {
+    if (!remark_config.site_id) {
       console.error('Remark42: Site ID is undefined.');
       return;
     }
 
-    window.remark_config.url = (window.remark_config.url || window.location.origin + window.location.pathname).split(
-      '#'
-    )[0];
+    remark_config.url = (remark_config.url || window.location.origin + window.location.pathname).split('#')[0];
+
+    const node =
+      remark_config.node instanceof HTMLElement
+        ? remark_config.node
+        : document.getElementById(remark_config.node || NODE_ID);
+
+    if (!node) {
+      console.error("Remark42: Can't find root node.");
+      return;
+    }
 
     const query = Object.keys(remark_config)
       .filter(key => key !== '__colors__')
