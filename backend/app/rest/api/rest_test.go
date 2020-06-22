@@ -25,6 +25,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	bolt "go.etcd.io/bbolt"
+	"go.uber.org/goleak"
 
 	"github.com/umputun/remark42/backend/app/migrator"
 	"github.com/umputun/remark42/backend/app/notify"
@@ -210,14 +211,17 @@ func TestRest_rejectAnonUser(t *testing.T) {
 
 	resp, err := http.Get(ts.URL)
 	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "use not logged in")
 
 	resp, err = http.Get(ts.URL + "?fake_id=anonymous_user123&fake_name=test")
 	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusForbidden, resp.StatusCode, "anon rejected")
 
 	resp, err = http.Get(ts.URL + "?fake_id=real_user123&fake_name=test")
 	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "real user")
 }
 
@@ -431,9 +435,9 @@ func fakeAuth(next http.Handler) http.Handler {
 func get(t *testing.T, url string) (response string, statusCode int) {
 	r, err := http.Get(url)
 	require.NoError(t, err)
-	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
 	require.NoError(t, err)
+	require.NoError(t, r.Body.Close())
 	return string(body), r.StatusCode
 }
 
@@ -452,9 +456,9 @@ func getWithDevAuth(t *testing.T, url string) (body string, code int) {
 	req.Header.Add("X-JWT", devToken)
 	r, err := client.Do(req)
 	require.NoError(t, err)
-	defer r.Body.Close()
 	b, err := ioutil.ReadAll(r.Body)
 	assert.NoError(t, err)
+	require.NoError(t, r.Body.Close())
 	return string(b), r.StatusCode
 }
 
@@ -465,9 +469,9 @@ func getWithAdminAuth(t *testing.T, url string) (response string, statusCode int
 	req.SetBasicAuth("admin", "password")
 	r, err := client.Do(req)
 	require.NoError(t, err)
-	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
 	assert.NoError(t, err)
+	require.NoError(t, r.Body.Close())
 	return string(body), r.StatusCode
 }
 func post(t *testing.T, url, body string) (*http.Response, error) {
@@ -490,6 +494,7 @@ func addComment(t *testing.T, c store.Comment, ts *httptest.Server) string {
 	require.NoError(t, err)
 	require.Equal(t, http.StatusCreated, resp.StatusCode)
 	b, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, resp.Body.Close())
 	require.NoError(t, err)
 
 	crResp := R.JSON{}
@@ -502,10 +507,12 @@ func addComment(t *testing.T, c store.Comment, ts *httptest.Server) string {
 func requireAdminOnly(t *testing.T, req *http.Request) {
 	resp, err := sendReq(t, req, "") // no-auth user
 	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, 401, resp.StatusCode)
 
 	resp, err = sendReq(t, req, devToken) // non-admin user
 	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, 403, resp.StatusCode)
 }
 
@@ -530,4 +537,8 @@ func waitForHTTPSServerStart(port int) {
 			break
 		}
 	}
+}
+
+func TestMain(m *testing.M) {
+	goleak.VerifyTestMain(m)
 }

@@ -78,6 +78,7 @@ type Rest struct {
 type LoadingCache interface {
 	Get(key lcw.Key, fn func() ([]byte, error)) (data []byte, err error) // load from cache if found or put to cache and return
 	Flush(req lcw.FlusherRequest)                                        // evict matched records
+	Close() error
 }
 
 const hardBodyLimit = 1024 * 64 // limit size of body

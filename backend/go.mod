@@ -12,7 +12,7 @@ require (
 	github.com/go-chi/chi v4.1.1+incompatible
 	github.com/go-chi/cors v1.1.1
 	github.com/go-chi/render v1.0.1
-	github.com/go-pkgz/auth v0.10.2
+	github.com/go-pkgz/auth v0.11.0
 	github.com/go-pkgz/jrpc v0.2.0
 	github.com/go-pkgz/lcw v0.6.1
 	github.com/go-pkgz/lgr v0.7.0
@@ -31,6 +31,7 @@ require (
 	github.com/stretchr/testify v1.5.1
 	github.com/umputun/go-flags v1.5.1
 	go.etcd.io/bbolt v1.3.4
+	go.uber.org/goleak v1.0.0
 	golang.org/x/crypto v0.0.0-20200406173513-056763e48d71
 	golang.org/x/image v0.0.0-20200119044424-58c23975cae1
 	golang.org/x/net v0.0.0-20200520182314-0ba52f642ac2

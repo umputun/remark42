@@ -1,5 +1,7 @@
 module github.com/go-pkgz/auth
 
+go 1.14
+
 require (
 	github.com/dghubble/oauth1 v0.6.0
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
@@ -14,5 +16,3 @@ require (
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 	gopkg.in/oauth2.v3 v3.12.0
 )
-
-go 1.13

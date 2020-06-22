@@ -4,7 +4,7 @@
 
 Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engine, which doesn't spy on users. It can be embedded into blogs, articles or any other place where readers add comments.
 
-* Social login via Google, Twitter, Facebook, GitHub and Yandex
+* Social login via Google, Twitter, Facebook, Microsoft, GitHub and Yandex
 * Login via email
 * Optional anonymous access
 * Multi-level nested comments with both tree and plain presentations
@@ -135,6 +135,8 @@ _this is the recommended way to run remark42_
 | auth.google.csec        | AUTH_GOOGLE_CSEC        |                          | Google OAuth client secret                      |
 | auth.facebook.cid       | AUTH_FACEBOOK_CID       |                          | Facebook OAuth client ID                        |
 | auth.facebook.csec      | AUTH_FACEBOOK_CSEC      |                          | Facebook OAuth client secret                    |
+| auth.microsoft.cid      | AUTH_MICROSOFT_CID      |                          | Microsoft OAuth client ID                       |
+| auth.microsoft.csec     | AUTH_MICROSOFT_CSEC     |                          | Microsoft OAuth client secret                   |
 | auth.github.cid         | AUTH_GITHUB_CID         |                          | Github OAuth client ID                          |
 | auth.github.csec        | AUTH_GITHUB_CSEC        |                          | Github OAuth client secret                      |
 | auth.twitter.cid        | AUTH_TWITTER_CID        |                          | Twitter Consumer API Key                        |
@@ -283,6 +285,14 @@ _instructions for google oauth2 setup borrowed from [oauth2_proxy](https://githu
 1.  Set "Site URL" to your domain, ex: `https://remark42.mysite.com`
 1.  Under **"Facebook login"** / **"Settings"** fill "Valid OAuth redirect URIs" with your callback url constructed as domain + `/auth/facebook/callback`
 1.  Select **"App Review"** and turn public flag on. This step may ask you to provide a link to your privacy policy.
+
+#### Microsoft Auth Provider
+
+1.  Register a new application [using the Azure portal](https://docs.microsoft.com/en-us/graph/auth-register-app-v2).
+2.  Under **"Authentication/Platform configurations/Web"** enter the correct url constructed as domain + `/auth/microsoft/callback`. i.e. `https://example.mysite.com/auth/microsoft/callback`
+3.  In "Overview" take note of the **Application (client) ID** 
+4.  Choose the new project from the top right project dropdown (only if another project is selected)
+5.  Select "Certificates & secrets" and click on "+ New Client Secret". 
 
 ##### Twitter Auth Provider
 

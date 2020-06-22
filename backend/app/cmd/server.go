@@ -83,6 +83,7 @@ type ServerCommand struct {
 		Google    AuthGroup `group:"google" namespace:"google" env-namespace:"GOOGLE" description:"Google OAuth"`
 		Github    AuthGroup `group:"github" namespace:"github" env-namespace:"GITHUB" description:"Github OAuth"`
 		Facebook  AuthGroup `group:"facebook" namespace:"facebook" env-namespace:"FACEBOOK" description:"Facebook OAuth"`
+		Microsoft AuthGroup `group:"microsoft" namespace:"microsoft" env-namespace:"MICROSOFT" description:"Microsoft OAuth"`
 		Yandex    AuthGroup `group:"yandex" namespace:"yandex" env-namespace:"YANDEX" description:"Yandex OAuth"`
 		Twitter   AuthGroup `group:"twitter" namespace:"twitter" env-namespace:"TWITTER" description:"Twitter OAuth"`
 		Dev       bool      `long:"dev" env:"DEV" description:"enable dev (local) oauth2"`
@@ -198,7 +199,7 @@ type NotifyGroup struct {
 		API     string        `long:"api" env:"API" default:"https://api.telegram.org/bot" description:"telegram api prefix"`
 	} `group:"telegram" namespace:"telegram" env-namespace:"TELEGRAM"`
 	Email struct {
-		From                string `long:"fromAddress" env:"FROM" description:"from email address"`
+		From                string `long:"from_address" env:"FROM" description:"from email address"`
 		VerificationSubject string `long:"verification_subj" env:"VERIFICATION_SUBJ" description:"verification message subject"`
 		AdminNotifications  bool   `long:"notify_admin" env:"ADMIN" description:"notify admin on new comments via ADMIN_SHARED_EMAIL"`
 	} `group:"email" namespace:"email" env-namespace:"EMAIL"`
@@ -233,6 +234,7 @@ type RPCGroup struct {
 type LoadingCache interface {
 	Get(key cache.Key, fn func() ([]byte, error)) (data []byte, err error) // load from cache if found or put to cache and return
 	Flush(req cache.FlusherRequest)                                        // evict matched records
+	Close() error
 }
 
 // serverApp holds all active objects
@@ -248,6 +250,8 @@ type serverApp struct {
 	imageService  *image.Service
 	authenticator *auth.Service
 	terminated    chan struct{}
+
+	authRefreshCache *authRefreshCache // stored only to close it properly on shutdown
 }
 
 // Execute is the entry point for "server" command, called by flag parser
@@ -319,7 +323,7 @@ func (s *ServerCommand) HandleDeprecatedFlags() (result []DeprecatedFlag) {
 func (s *ServerCommand) newServerApp() (*serverApp, error) {
 
 	if err := makeDirs(s.BackupLocation); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to create backup store")
 	}
 
 	if !strings.HasPrefix(s.RemarkURL, "http://") && !strings.HasPrefix(s.RemarkURL, "https://") {
@@ -359,15 +363,19 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 
 	loadingCache, err := s.makeCache()
 	if err != nil {
+		_ = dataService.Close()
 		return nil, errors.Wrap(err, "failed to make cache")
 	}
 
 	avatarStore, err := s.makeAvatarStore()
 	if err != nil {
+		_ = dataService.Close()
 		return nil, errors.Wrap(err, "failed to make avatar store")
 	}
-	authenticator, err := s.makeAuthenticator(dataService, avatarStore, adminStore)
+	authRefreshCache := newAuthRefreshCache()
+	authenticator, err := s.makeAuthenticator(dataService, avatarStore, adminStore, authRefreshCache)
 	if err != nil {
+		_ = dataService.Close()
 		return nil, errors.Wrap(err, "failed to make authenticator")
 	}
 
@@ -414,6 +422,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 
 	sslConfig, err := s.makeSSLConfig()
 	if err != nil {
+		_ = dataService.Close()
 		return nil, errors.Wrap(err, "failed to make config of ssl server params")
 	}
 
@@ -455,23 +464,25 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 	if s.Auth.Dev {
 		da, errDevAuth := authenticator.DevAuth()
 		if errDevAuth != nil {
+			_ = dataService.Close()
 			return nil, errors.Wrap(errDevAuth, "can't make dev oauth2 server")
 		}
 		devAuth = da
 	}
 
 	return &serverApp{
-		ServerCommand: s,
-		restSrv:       srv,
-		migratorSrv:   migr,
-		exporter:      exporter,
-		devAuth:       devAuth,
-		dataService:   dataService,
-		avatarStore:   avatarStore,
-		notifyService: notifyService,
-		imageService:  imageService,
-		authenticator: authenticator,
-		terminated:    make(chan struct{}),
+		ServerCommand:    s,
+		restSrv:          srv,
+		migratorSrv:      migr,
+		exporter:         exporter,
+		devAuth:          devAuth,
+		dataService:      dataService,
+		avatarStore:      avatarStore,
+		notifyService:    notifyService,
+		imageService:     imageService,
+		authenticator:    authenticator,
+		terminated:       make(chan struct{}),
+		authRefreshCache: authRefreshCache,
 	}, nil
 }
 
@@ -490,7 +501,7 @@ func (a *serverApp) run(ctx context.Context) error {
 
 	a.activateBackup(ctx) // runs in goroutine for each site
 	if a.Auth.Dev {
-		go a.devAuth.Run(context.Background()) // dev oauth2 server on :8084
+		go a.devAuth.Run(ctx) // dev oauth2 server on :8084
 	}
 
 	// staging images resubmit after restart of the app
@@ -511,6 +522,12 @@ func (a *serverApp) run(ctx context.Context) error {
 	}
 	if e := a.avatarStore.Close(); e != nil {
 		log.Printf("[WARN] failed to close avatar store, %s", e)
+	}
+	if e := a.restSrv.Cache.Close(); e != nil {
+		log.Printf("[WARN] failed to close rest server cache, %s", e)
+	}
+	if e := a.authRefreshCache.Close(); e != nil {
+		log.Printf("[WARN] failed to close auth authRefreshCache, %s", e)
 	}
 	a.notifyService.Close()
 	// call potentially infinite loop with cancellation after a minute as a safeguard
@@ -575,12 +592,12 @@ func (s *ServerCommand) makeAvatarStore() (avatar.Store, error) {
 	switch s.Avatar.Type {
 	case "fs":
 		if err := makeDirs(s.Avatar.FS.Path); err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "failed to create avatar store")
 		}
 		return avatar.NewLocalFS(s.Avatar.FS.Path), nil
 	case "bolt":
 		if err := makeDirs(path.Dir(s.Avatar.Bolt.File)); err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "failed to create avatar store")
 		}
 		return avatar.NewBoltDB(s.Avatar.Bolt.File, bolt.Options{})
 	case "uri":
@@ -607,7 +624,7 @@ func (s *ServerCommand) makePicturesStore() (*image.Service, error) {
 		return image.NewService(boltImageStore, imageServiceParams), nil
 	case "fs":
 		if err := makeDirs(s.Image.FS.Path); err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "failed to create pictures store")
 		}
 		return image.NewService(&image.FileSystem{
 			Location:   s.Image.FS.Path,
@@ -679,6 +696,10 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 	}
 	if s.Auth.Facebook.CID != "" && s.Auth.Facebook.CSEC != "" {
 		authenticator.AddProvider("facebook", s.Auth.Facebook.CID, s.Auth.Facebook.CSEC)
+		providers++
+	}
+	if s.Auth.Microsoft.CID != "" && s.Auth.Microsoft.CSEC != "" {
+		authenticator.AddProvider("microsoft", s.Auth.Microsoft.CID, s.Auth.Microsoft.CSEC)
 		providers++
 	}
 	if s.Auth.Yandex.CID != "" && s.Auth.Yandex.CSEC != "" {
@@ -859,7 +880,7 @@ func (s *ServerCommand) makeSSLConfig() (config api.SSLConfig, err error) {
 	return config, err
 }
 
-func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Store, admns admin.Store) (*auth.Service, error) {
+func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Store, admns admin.Store, authRefreshCache *authRefreshCache) (*auth.Service, error) {
 	authenticator := auth.NewService(auth.Opts{
 		URL:            strings.TrimSuffix(s.RemarkURL, "/"),
 		Issuer:         "remark42",
@@ -912,7 +933,7 @@ func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Sto
 		AvatarResizeLimit: s.Avatar.RszLmt,
 		AvatarRoutePath:   "/api/v1/avatar",
 		Logger:            log.Default(),
-		RefreshCache:      newAuthRefreshCache(),
+		RefreshCache:      authRefreshCache,
 		UseGravatar:       true,
 	})
 

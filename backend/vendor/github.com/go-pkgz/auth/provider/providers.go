@@ -6,9 +6,11 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/facebook"
 	"golang.org/x/oauth2/github"
 	"golang.org/x/oauth2/google"
+	"golang.org/x/oauth2/microsoft"
 	"golang.org/x/oauth2/yandex"
 
 	"github.com/dghubble/oauth1"
@@ -142,6 +144,48 @@ func NewTwitter(p Params) Oauth1Handler {
 			}
 			if userInfo.Name == "" {
 				userInfo.Name = data.Value("name")
+			}
+			return userInfo
+		},
+	})
+}
+
+// NewBattlenet makes Battle.net oauth2 provider
+func NewBattlenet(p Params) Oauth2Handler {
+	return initOauth2Handler(p, Oauth2Handler{
+		name: "battlenet",
+		endpoint: oauth2.Endpoint{
+			AuthURL:   "https://eu.battle.net/oauth/authorize",
+			TokenURL:  "https://eu.battle.net/oauth/token",
+			AuthStyle: oauth2.AuthStyleInParams,
+		},
+		scopes:  []string{},
+		infoURL: "https://eu.battle.net/oauth/userinfo",
+		mapUser: func(data UserData, _ []byte) token.User {
+			userInfo := token.User{
+				ID:   "battlenet_" + token.HashID(sha1.New(), data.Value("id")),
+				Name: data.Value("battletag"),
+			}
+
+			return userInfo
+		},
+	})
+}
+
+// NewMicrosoft makes microsoft azure oauth2 provider
+func NewMicrosoft(p Params) Oauth2Handler {
+	return initOauth2Handler(p, Oauth2Handler{
+		name:     "microsoft",
+		endpoint: microsoft.AzureADEndpoint("consumers"),
+		scopes:   []string{"User.Read"},
+		infoURL:  "https://graph.microsoft.com/v1.0/me",
+		// non-beta doesn't provide photo for consumers yet
+		// see https://github.com/microsoftgraph/microsoft-graph-docs/issues/3990
+		mapUser: func(data UserData, b []byte) token.User {
+			userInfo := token.User{
+				ID:      "microsoft_" + token.HashID(sha1.New(), data.Value("id")),
+				Name:    data.Value("displayName"),
+				Picture: "https://graph.microsoft.com/beta/me/photo/$value",
 			}
 			return userInfo
 		},

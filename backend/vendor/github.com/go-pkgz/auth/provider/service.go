@@ -30,7 +30,7 @@ func NewService(p Provider) Service {
 
 // AvatarSaver defines minimal interface to save avatar
 type AvatarSaver interface {
-	Put(u token.User) (avatarURL string, err error)
+	Put(u token.User, client *http.Client) (avatarURL string, err error)
 }
 
 // TokenService defines interface accessing tokens
@@ -72,9 +72,9 @@ func (p Service) Handler(w http.ResponseWriter, r *http.Request) {
 }
 
 // setAvatar saves avatar and puts proxied URL to u.Picture
-func setAvatar(ava AvatarSaver, u token.User) (token.User, error) {
+func setAvatar(ava AvatarSaver, u token.User, client *http.Client) (token.User, error) {
 	if ava != nil {
-		avatarURL, e := ava.Put(u)
+		avatarURL, e := ava.Put(u, client)
 		if e != nil {
 			return u, errors.Wrap(e, "failed to save avatar for")
 		}

@@ -104,6 +104,7 @@ func TestService_CreateFromPartialWithTitle(t *testing.T) {
 	defer teardown()
 	b := DataStore{Engine: eng, AdminStore: ks,
 		TitleExtractor: NewTitleExtractor(http.Client{Timeout: 5 * time.Second})}
+	defer b.Close()
 
 	postPath := "/post/42"
 	postTitle := "Post Title 42"
@@ -168,6 +169,7 @@ func TestService_SetTitle(t *testing.T) {
 	defer teardown()
 	b := DataStore{Engine: eng, AdminStore: ks,
 		TitleExtractor: NewTitleExtractor(http.Client{Timeout: 5 * time.Second})}
+	defer b.Close()
 	comment := store.Comment{
 		Text:      "text",
 		Timestamp: time.Date(2018, 3, 25, 16, 34, 33, 0, time.UTC),
@@ -192,8 +194,9 @@ func TestService_SetTitle(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "post1 blah 123", c.PostTitle)
 
-	b = DataStore{Engine: eng, AdminStore: ks}
-	_, err = b.SetTitle(store.Locator{URL: tss.URL + "/post1", SiteID: "radio-t"}, id)
+	bErr := DataStore{Engine: eng, AdminStore: ks}
+	defer bErr.Close()
+	_, err = bErr.SetTitle(store.Locator{URL: tss.URL + "/post1", SiteID: "radio-t"}, id)
 	require.EqualError(t, err, "no title extractor")
 }
 
@@ -452,7 +455,29 @@ func TestService_VotePositive(t *testing.T) {
 	assert.NoError(t, err, "minimal score doesn't affect positive vote")
 	assert.Equal(t, 1, c.Score)
 
-	b.PositiveScore = false // allow negative voting
+	c, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-1",
+		UserID: "user2", Val: true})
+	assert.NoError(t, err, "vote set to +2")
+	assert.Equal(t, 2, c.Score)
+
+	// check +, -, -
+	c, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-1",
+		UserID: "user5", Val: true})
+	assert.NoError(t, err, "user5 +1, score 3")
+	assert.Equal(t, 3, c.Score)
+
+	c, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-1",
+		UserID: "user5", Val: false})
+	assert.NoError(t, err, "user5 -1, score reset to 2")
+	assert.Equal(t, 2, c.Score)
+
+	c, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-1",
+		UserID: "user5", Val: false})
+	assert.NoError(t, err, "user5 -1, score 1")
+	assert.Equal(t, 1, c.Score)
+
+	// allow negative voting
+	b.PositiveScore = false
 	c, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-1",
 		UserID: "user2", Val: false})
 	assert.NoError(t, err, "minimal score ignored")
@@ -501,8 +526,7 @@ func TestService_VoteSameIP(t *testing.T) {
 
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
-	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"),
-		MaxVotes: -1}
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: -1}
 	b.RestrictSameIPVotes.Enabled = true
 
 	c, err := b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
@@ -513,12 +537,17 @@ func TestService_VoteSameIP(t *testing.T) {
 	c, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
 		UserID: "user3", UserIP: "123", Val: true})
 	assert.EqualError(t, err, "the same ip cce61be6e0a692420ae0de31dceca179123c3b8a already voted for id-2")
-	assert.Equal(t, 1, c.Score, "still have 1 score")
+	assert.Equal(t, 1, c.Score, "still have 1 score, rejected")
 
 	c, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
-		UserID: "user3", UserIP: "123", Val: false})
+		UserID: "user2", UserIP: "123", Val: false})
 	assert.NoError(t, err)
 	assert.Equal(t, 0, c.Score, "reset to 0 score, opposite vote allowed")
+
+	c, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
+		UserID: "user2", UserIP: "123", Val: false})
+	assert.NoError(t, err)
+	assert.Equal(t, -1, c.Score, "set to -1 score, correction vote allowed")
 }
 
 func TestService_VoteSameIPWithDuration(t *testing.T) {
@@ -609,6 +638,7 @@ func TestService_EditComment(t *testing.T) {
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
 	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123")}
+	defer b.Close()
 
 	res, err := b.Last("radio-t", 0, time.Time{}, store.User{})
 	t.Logf("%+v", res[0])
@@ -638,6 +668,7 @@ func TestService_DeleteComment(t *testing.T) {
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
 	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123")}
+	defer b.Close()
 
 	res, err := b.Last("radio-t", 0, time.Time{}, store.User{})
 	t.Logf("%+v", res[0])
@@ -679,6 +710,7 @@ func TestService_EditCommentReplyFailed(t *testing.T) {
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
 	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123")}
+	defer b.Close()
 
 	res, err := b.Last("radio-t", 0, time.Time{}, store.User{})
 	t.Logf("%+v", res[1])
@@ -892,6 +924,7 @@ func TestService_HasReplies(t *testing.T) {
 	defer teardown()
 	b := DataStore{Engine: eng, EditDuration: 100 * time.Millisecond,
 		AdminStore: admin.NewStaticStore("secret 123", []string{"radio-t"}, []string{"user2"}, "user@email.com")}
+	defer b.Close()
 
 	comment := store.Comment{
 		ID:        "id-1",
