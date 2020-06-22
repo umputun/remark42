@@ -5,8 +5,16 @@ declare global {
   interface Window {
     remark_config: CommentsConfig;
     REMARK42: {
-      changeTheme(theme: Theme): void;
-      destroy(): void;
+      changeTheme?: (theme: Theme) => void;
+      destroy?: () => void;
+      createInstance: (
+        remark_config: CommentsConfig
+      ) =>
+        | {
+            changeTheme(theme: Theme): void;
+            destroy(): void;
+          }
+        | undefined;
     };
   }
 
