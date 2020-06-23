@@ -77,10 +77,4 @@ HEALTHCHECK --interval=30s --timeout=3s CMD curl --fail http://localhost:8080/pi
 
 COPY docker-init.sh /srv/init.sh
 RUN chmod +x /srv/init.sh
-COPY backend/app/cmd/testdata/cert.pem /cert.pem
-COPY backend/app/cmd/testdata/key.pem /key.pem
-RUN chmod 0400 /cert.pem
-RUN chmod 0400 /key.pem
-RUN chown app /cert.pem
-RUN chown app /key.pem
 CMD ["/srv/remark42", "server"]
