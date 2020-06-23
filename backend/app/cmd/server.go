@@ -83,6 +83,7 @@ type ServerCommand struct {
 		Google    AuthGroup `group:"google" namespace:"google" env-namespace:"GOOGLE" description:"Google OAuth"`
 		Github    AuthGroup `group:"github" namespace:"github" env-namespace:"GITHUB" description:"Github OAuth"`
 		Facebook  AuthGroup `group:"facebook" namespace:"facebook" env-namespace:"FACEBOOK" description:"Facebook OAuth"`
+		Microsoft AuthGroup `group:"microsoft" namespace:"microsoft" env-namespace:"MICROSOFT" description:"Microsoft OAuth"`
 		Yandex    AuthGroup `group:"yandex" namespace:"yandex" env-namespace:"YANDEX" description:"Yandex OAuth"`
 		Battlenet AuthGroup `group:"battlenet" namespace:"battlenet" env-namespace:"BATTLENET" description:"Battle.net OAuth"`
 		Twitter   AuthGroup `group:"twitter" namespace:"twitter" env-namespace:"TWITTER" description:"Twitter OAuth"`
@@ -323,7 +324,7 @@ func (s *ServerCommand) HandleDeprecatedFlags() (result []DeprecatedFlag) {
 func (s *ServerCommand) newServerApp() (*serverApp, error) {
 
 	if err := makeDirs(s.BackupLocation); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to create backup store")
 	}
 
 	if !strings.HasPrefix(s.RemarkURL, "http://") && !strings.HasPrefix(s.RemarkURL, "https://") {
@@ -363,16 +364,19 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 
 	loadingCache, err := s.makeCache()
 	if err != nil {
+		_ = dataService.Close()
 		return nil, errors.Wrap(err, "failed to make cache")
 	}
 
 	avatarStore, err := s.makeAvatarStore()
 	if err != nil {
+		_ = dataService.Close()
 		return nil, errors.Wrap(err, "failed to make avatar store")
 	}
 	authRefreshCache := newAuthRefreshCache()
 	authenticator, err := s.makeAuthenticator(dataService, avatarStore, adminStore, authRefreshCache)
 	if err != nil {
+		_ = dataService.Close()
 		return nil, errors.Wrap(err, "failed to make authenticator")
 	}
 
@@ -419,6 +423,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 
 	sslConfig, err := s.makeSSLConfig()
 	if err != nil {
+		_ = dataService.Close()
 		return nil, errors.Wrap(err, "failed to make config of ssl server params")
 	}
 
@@ -460,6 +465,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 	if s.Auth.Dev {
 		da, errDevAuth := authenticator.DevAuth()
 		if errDevAuth != nil {
+			_ = dataService.Close()
 			return nil, errors.Wrap(errDevAuth, "can't make dev oauth2 server")
 		}
 		devAuth = da
@@ -587,12 +593,12 @@ func (s *ServerCommand) makeAvatarStore() (avatar.Store, error) {
 	switch s.Avatar.Type {
 	case "fs":
 		if err := makeDirs(s.Avatar.FS.Path); err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "failed to create avatar store")
 		}
 		return avatar.NewLocalFS(s.Avatar.FS.Path), nil
 	case "bolt":
 		if err := makeDirs(path.Dir(s.Avatar.Bolt.File)); err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "failed to create avatar store")
 		}
 		return avatar.NewBoltDB(s.Avatar.Bolt.File, bolt.Options{})
 	case "uri":
@@ -619,7 +625,7 @@ func (s *ServerCommand) makePicturesStore() (*image.Service, error) {
 		return image.NewService(boltImageStore, imageServiceParams), nil
 	case "fs":
 		if err := makeDirs(s.Image.FS.Path); err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "failed to create pictures store")
 		}
 		return image.NewService(&image.FileSystem{
 			Location:   s.Image.FS.Path,
@@ -691,6 +697,10 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 	}
 	if s.Auth.Facebook.CID != "" && s.Auth.Facebook.CSEC != "" {
 		authenticator.AddProvider("facebook", s.Auth.Facebook.CID, s.Auth.Facebook.CSEC)
+		providers++
+	}
+	if s.Auth.Microsoft.CID != "" && s.Auth.Microsoft.CSEC != "" {
+		authenticator.AddProvider("microsoft", s.Auth.Microsoft.CID, s.Auth.Microsoft.CSEC)
 		providers++
 	}
 	if s.Auth.Yandex.CID != "" && s.Auth.Yandex.CSEC != "" {

@@ -98,7 +98,7 @@ func (e VerifyHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if u, err = setAvatar(e.AvatarSaver, u); err != nil {
+	if u, err = setAvatar(e.AvatarSaver, u, &http.Client{Timeout: 5 * time.Second}); err != nil {
 		rest.SendErrorJSON(w, r, e.L, http.StatusInternalServerError, err, "failed to save avatar to proxy")
 		return
 	}

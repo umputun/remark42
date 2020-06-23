@@ -1,7 +1,7 @@
 # auth - authentication via oauth2, direct and email
 [![Build Status](https://github.com/go-pkgz/auth/workflows/build/badge.svg)](https://github.com/go-pkgz/auth/actions) [![Coverage Status](https://coveralls.io/repos/github/go-pkgz/auth/badge.svg?branch=master)](https://coveralls.io/github/go-pkgz/auth?branch=master) [![godoc](https://godoc.org/github.com/go-pkgz/auth?status.svg)](https://pkg.go.dev/github.com/go-pkgz/auth?tab=doc)
 
-This library provides "social login" with Github, Google, Facebook, Twitter, Yandex and Battle.net as well as custom auth providers and email verification.
+This library provides "social login" with Github, Google, Facebook, Microsoft, Twitter, Yandex and Battle.net as well as custom auth providers and email verification.
 
 - Multiple oauth2 providers can be used at the same time
 - Special `dev` provider allows local testing and development
@@ -334,6 +334,15 @@ Authentication handled by external providers. You should setup oauth2 for all (o
 7.  Take note of the **Client ID** and **Client Secret**
 
 _instructions for google oauth2 setup borrowed from [oauth2_proxy](https://github.com/bitly/oauth2_proxy)_
+
+#### Microsoft Auth Provider
+
+1 .Register a new application [using the Azure portal](https://docs.microsoft.com/en-us/graph/auth-register-app-v2).
+2.  Under **"Authentication/Platform configurations/Web"** enter the correct url constructed as domain + `/auth/microsoft/callback`. i.e. `https://example.mysite.com/auth/microsoft/callback`
+3. In "Overview" take note of the **Application (client) ID** 
+4. Choose the new project from the top right project dropdown (only if another project is selected)
+5.  Select "Certificates & secrets" and click on "+ New Client Secret". 
+
 
 #### GitHub Auth Provider
 

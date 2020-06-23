@@ -4,6 +4,7 @@ import (
 	"crypto/sha1"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-pkgz/rest"
@@ -63,7 +64,7 @@ func (p DirectHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		Name: user,
 		ID:   p.ProviderName + "_" + token.HashID(sha1.New(), user),
 	}
-	u, err = setAvatar(p.AvatarSaver, u)
+	u, err = setAvatar(p.AvatarSaver, u, &http.Client{Timeout: 5 * time.Second})
 	if err != nil {
 		rest.SendErrorJSON(w, r, p.L, http.StatusInternalServerError, err, "failed to save avatar to proxy")
 		return

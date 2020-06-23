@@ -72,12 +72,12 @@ func (ac *AvatarCommand) makeAvatarStore(gr AvatarGroup) (avatar.Store, error) {
 	switch gr.Type {
 	case "fs":
 		if err := makeDirs(gr.FS.Path); err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "failed to create avatar store")
 		}
 		return avatar.NewLocalFS(gr.FS.Path), nil
 	case "bolt":
 		if err := makeDirs(path.Dir(gr.Bolt.File)); err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "failed to create avatar store")
 		}
 		return avatar.NewBoltDB(gr.Bolt.File, bolt.Options{})
 	}

@@ -1,4 +1,4 @@
-// Package auth provides "social login" with Github, Google, Facebook, Yandex and Battle.net as well as custom auth providers.
+// Package auth provides "social login" with Github, Google, Facebook, Microsoft, Yandex and Battle.net as well as custom auth providers.
 package auth
 
 import (
@@ -224,6 +224,8 @@ func (s *Service) AddProvider(name, cid, csecret string) {
 		s.providers = append(s.providers, provider.NewService(provider.NewYandex(p)))
 	case "battlenet":
 		s.providers = append(s.providers, provider.NewService(provider.NewBattlenet(p)))
+	case "microsoft":
+		s.providers = append(s.providers, provider.NewService(provider.NewMicrosoft(p)))
 	case "twitter":
 		s.providers = append(s.providers, provider.NewService(provider.NewTwitter(p)))
 	case "dev":

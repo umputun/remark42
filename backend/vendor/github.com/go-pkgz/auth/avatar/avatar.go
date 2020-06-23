@@ -34,7 +34,7 @@ type Proxy struct {
 }
 
 // Put stores retrieved avatar to avatar.Store. Gets image from user info. Returns proxied url
-func (p *Proxy) Put(u token.User) (avatarURL string, err error) {
+func (p *Proxy) Put(u token.User, client *http.Client) (avatarURL string, err error) {
 
 	// no picture for user, try to generate identicon avatar
 	if u.Picture == "" {
@@ -52,35 +52,45 @@ func (p *Proxy) Put(u token.User) (avatarURL string, err error) {
 		return p.URL + p.RoutePath + "/" + avatarID, nil
 	}
 
-	// load avatar from remote location
-	client := http.Client{Timeout: 10 * time.Second}
-	var resp *http.Response
-	err = retry(5, time.Second, func() error {
-		var e error
-		resp, e = client.Get(u.Picture)
-		return e
-	})
+	body, err := p.load(u.Picture, client)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to fetch avatar from the orig")
 	}
 
 	defer func() {
-		if e := resp.Body.Close(); e != nil {
+		if e := body.Close(); e != nil {
 			p.Logf("[WARN] can't close response body, %s", e)
 		}
 	}()
 
-	if resp.StatusCode != http.StatusOK {
-		return "", errors.Errorf("failed to get avatar from the orig, status %s", resp.Status)
-	}
-
-	avatarID, err := p.Store.Put(u.ID, p.resize(resp.Body, p.ResizeLimit)) // put returns avatar base name, like 123456.image
+	avatarID, err := p.Store.Put(u.ID, p.resize(body, p.ResizeLimit)) // put returns avatar base name, like 123456.image
 	if err != nil {
 		return "", err
 	}
 
 	p.Logf("[DEBUG] saved avatar from %s to %s, user %q", u.Picture, avatarID, u.Name)
 	return p.URL + p.RoutePath + "/" + avatarID, nil
+}
+
+// load avatar from remote url and return body. Caller has to close the reader
+func (p *Proxy) load(url string, client *http.Client) (rc io.ReadCloser, err error) {
+	// load avatar from remote location
+	var resp *http.Response
+	err = retry(5, time.Second, func() error {
+		var e error
+		resp, e = client.Get(url)
+		return e
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to fetch avatar from the orig")
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		_ = resp.Body.Close() // caller won't close on error
+		return nil, errors.Errorf("failed to get avatar from the orig, status %s", resp.Status)
+	}
+
+	return resp.Body, nil
 }
 
 // Handler returns token routes for given provider
