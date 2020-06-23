@@ -662,7 +662,7 @@ type User struct {
 }
 ```
 
-_currently supported providers are `google`, `facebook`, `github`, `yandex`and `battlenet`
+_currently supported providers are `google`, `facebook`, `github`, `yandex`and `battlenet`_
 
 ### Commenting
 
