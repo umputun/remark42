@@ -27,8 +27,11 @@ Main features:
 
 ## Usage
 
-```
-cache := lcw.NewLruCache(lcw.MaxKeys(500), lcw.MaxCacheSize(65536), lcw.MaxValSize(200), lcw.MaxKeySize(32))
+```go
+cache, err := lcw.NewLruCache(lcw.MaxKeys(500), lcw.MaxCacheSize(65536), lcw.MaxValSize(200), lcw.MaxKeySize(32))
+if err != nil {
+    panic("failed to create cache")
+}
 defer cache.Close()
 
 val, err := cache.Get("key123", func() (lcw.Value, error) {
@@ -59,7 +62,7 @@ Cache can be created with URIs:
 1. Key is not a string, but a composed type made from partition, key-id and list of scopes (tags). 
 1. Value type limited to `[]byte`
 1. Added `Flush` method for scoped/tagged invalidation of multiple records in a given partition
-1. A simplified interface with Get, Stat and Flush only.
+1. A simplified interface with Get, Stat, Flush and Close only.
 
 ## Details
 

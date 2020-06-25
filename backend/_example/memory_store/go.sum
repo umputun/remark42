@@ -45,12 +45,12 @@ github.com/go-chi/chi v4.1.1+incompatible/go.mod h1:eB3wogJHnLi3x/kFX2A+IbTBlXxm
 github.com/go-chi/cors v1.1.1/go.mod h1:K2Yje0VW/SJzxiyMYu6iPQYa7hMjQX2i/F491VChg1I=
 github.com/go-chi/render v1.0.1 h1:4/5tis2cKaNdnv9zFLfXzcquC9HbeZgCnxGnKrltBS8=
 github.com/go-chi/render v1.0.1/go.mod h1:pq4Rr7HbnsdaeHagklXub+p6Wd16Af5l9koip1OvJns=
-github.com/go-pkgz/auth v0.10.2/go.mod h1:w4Z1qaYvuh2P3T2gNh0f8GcKCH0HHAoQtQ8iv+9+WGg=
+github.com/go-pkgz/auth v0.11.0/go.mod h1:NzVqlTW0E9JXVdAaWRq81XZjICgHnNaNdUfE3CbS2T4=
 github.com/go-pkgz/expirable-cache v0.0.3 h1:rTh6qNPp78z0bQE6HDhXBHUwqnV9i09Vm6dksJLXQDc=
 github.com/go-pkgz/expirable-cache v0.0.3/go.mod h1:+IauqN00R2FqNRLCLA+X5YljQJrwB179PfiAoMPlTlQ=
 github.com/go-pkgz/jrpc v0.2.0 h1:CLy/eZyekjraVrxZV18N2R1mYLMJ/nWrgdfyIOGPY/E=
 github.com/go-pkgz/jrpc v0.2.0/go.mod h1:wd8vtQ4CgtCnuqua6x2b1SKIgv0VSOh5Dn0uUITbiUE=
-github.com/go-pkgz/lcw v0.6.1/go.mod h1:vovP88gZLeuIWn5cm0NlgPYFyGGkv3m2OcKMOOaHhj0=
+github.com/go-pkgz/lcw v0.7.1/go.mod h1:3P6g9QrJsDePXEMe42ywO+tW08L17tBJGwIDdI7lZ6g=
 github.com/go-pkgz/lgr v0.7.0 h1:S/AAPwt/RE9a5mNJskA7dGVp+Dq6SMIW6LYjG3ITxY8=
 github.com/go-pkgz/lgr v0.7.0/go.mod h1:yMgxU+GobMRJgIEbSzDKy/67W18S7qmGx/7BVL5AB8Q=
 github.com/go-pkgz/repeater v1.1.3/go.mod h1:hVTavuO5x3Gxnu8zW7d6sQBfAneKV8X2FjU48kGfpKw=

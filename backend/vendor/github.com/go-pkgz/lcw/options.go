@@ -3,6 +3,8 @@ package lcw
 import (
 	"errors"
 	"time"
+
+	"github.com/go-pkgz/lcw/eventbus"
 )
 
 type options struct {
@@ -12,6 +14,7 @@ type options struct {
 	maxCacheSize int64
 	ttl          time.Duration
 	onEvicted    func(key string, value Value)
+	eventBus     eventbus.PubSub
 }
 
 // Option func type
@@ -81,6 +84,14 @@ func TTL(ttl time.Duration) Option {
 func OnEvicted(fn func(key string, value Value)) Option {
 	return func(o *options) error {
 		o.onEvicted = fn
+		return nil
+	}
+}
+
+// EventBus sets PubSub for distributed cache invalidation
+func EventBus(pubSub eventbus.PubSub) Option {
+	return func(o *options) error {
+		o.eventBus = pubSub
 		return nil
 	}
 }

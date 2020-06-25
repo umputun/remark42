@@ -3,8 +3,11 @@ package lcw
 import (
 	"sync/atomic"
 
+	"github.com/google/uuid"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/pkg/errors"
+
+	"github.com/go-pkgz/lcw/eventbus"
 )
 
 // LruCache wraps lru.LruCache with loading cache Get and size limits
@@ -13,6 +16,7 @@ type LruCache struct {
 	CacheStat
 	backend     *lru.Cache
 	currentSize int64
+	id          string // uuid identifying cache instance
 }
 
 // NewLruCache makes LRU LoadingCache implementation, 1000 max keys by default
@@ -21,7 +25,9 @@ func NewLruCache(opts ...Option) (*LruCache, error) {
 		options: options{
 			maxKeys:      1000,
 			maxValueSize: 0,
+			eventBus:     &eventbus.NopPubSub{},
 		},
+		id: uuid.New().String(),
 	}
 	for _, opt := range opts {
 		if err := opt(&res.options); err != nil {
@@ -29,23 +35,33 @@ func NewLruCache(opts ...Option) (*LruCache, error) {
 		}
 	}
 
+	err := res.init()
+	return &res, err
+}
+
+func (c *LruCache) init() error {
+	if err := c.eventBus.Subscribe(c.onBusEvent); err != nil {
+		return errors.Wrapf(err, "can't subscribe to event bus")
+	}
+
 	onEvicted := func(key interface{}, value interface{}) {
-		if res.onEvicted != nil {
-			res.onEvicted(key.(string), value)
+		if c.onEvicted != nil {
+			c.onEvicted(key.(string), value)
 		}
 		if s, ok := value.(Sizer); ok {
 			size := s.Size()
-			atomic.AddInt64(&res.currentSize, -1*int64(size))
+			atomic.AddInt64(&c.currentSize, -1*int64(size))
 		}
+		_ = c.eventBus.Publish(c.id, key.(string)) // signal invalidation to other nodes
 	}
 
 	var err error
 	// OnEvicted called automatically for expired and manually deleted
-	if res.backend, err = lru.NewWithEvict(res.maxKeys, onEvicted); err != nil {
-		return nil, errors.Wrap(err, "failed to make lru cache backend")
+	if c.backend, err = lru.NewWithEvict(c.maxKeys, onEvicted); err != nil {
+		return errors.Wrap(err, "failed to make lru cache backend")
 	}
 
-	return &res, nil
+	return nil
 }
 
 // Get gets value by key or load with fn if not found in cache
@@ -129,6 +145,13 @@ func (c *LruCache) Stat() CacheStat {
 // Close does nothing for this type of cache
 func (c *LruCache) Close() error {
 	return nil
+}
+
+// onBusEvent reacts on invalidation message triggered by event bus from another cache instance
+func (c *LruCache) onBusEvent(id, key string) {
+	if id != c.id && c.backend.Contains(key) { // prevent reaction on event from this cache
+		c.backend.Remove(key)
+	}
 }
 
 func (c *LruCache) size() int64 {
