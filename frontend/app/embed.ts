@@ -62,7 +62,7 @@ function init() {
 }
 
 function createInstance(config: CommentsConfig) {
-  let initDataAnimationTimeout: NodeJS.Timeout | null = null;
+  let initDataAnimationTimeout: number | null = null;
 
   try {
     config = config || {};
@@ -206,9 +206,7 @@ function createInstance(config: CommentsConfig) {
         query +
         '&page=user-info&' +
         `&id=${user.id}&name=${user.name}&picture=${user.picture || ''}&isDefaultPicture=${user.isDefaultPicture || 0}`;
-      const iframe =
-        (document.querySelector('iframe[title=Remark42]') as HTMLIFrameElement) ||
-        createFrame({ host: BASE_URL, query: queryUserInfo, height: '100%' });
+      const iframe = createFrame({ host: BASE_URL, query: queryUserInfo, height: '100%' });
       this.node.appendChild(iframe);
       this.iframe = iframe;
       this.node.appendChild(this.closeEl);
@@ -216,7 +214,7 @@ function createInstance(config: CommentsConfig) {
       document.body.appendChild(this.back);
       document.body.appendChild(this.node);
       document.addEventListener('keydown', this.onKeyDown);
-      initDataAnimationTimeout = setTimeout(() => {
+      initDataAnimationTimeout = window.setTimeout(() => {
         this.back!.setAttribute('data-animation', '');
         this.node!.setAttribute('data-animation', '');
         iframe.focus();
@@ -260,7 +258,7 @@ function createInstance(config: CommentsConfig) {
         clearTimeout(t.delay);
         t.delay = null;
       }
-      t.events.forEach(event => t.node?.removeEventListener(event, t.animationStop, false));
+      t.events.forEach(event => t.node!.removeEventListener(event, t.animationStop, false));
       return t.remove();
     },
     remove() {
