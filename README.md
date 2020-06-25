@@ -113,6 +113,8 @@ _this is the recommended way to run remark42_
 | admin.shared.email      | ADMIN_SHARED_EMAIL      | `admin@${REMARK_URL}`    | admin email                                     |
 | backup                  | BACKUP_PATH             | `./var/backup`           | backups location                                |
 | max-back                | MAX_BACKUP_FILES        | `10`                     | max backup files to keep                        |
+| cache.type              | CACHE_TYPE              | `mem`                    | type of cache, `redis_pub_sub` or `mem` or `none`       |
+| cache.redis_addr        | CACHE_REDIS_ADDR        | `127.0.0.1:6379`         | address of redis PubSub instance, turn `redis_pub_sub` cache on for distributed cache |
 | cache.max.items         | CACHE_MAX_ITEMS         | `1000`                   | max number of cached items, `0` - unlimited     |
 | cache.max.value         | CACHE_MAX_VALUE         | `65536`                  | max size of cached value, `0` - unlimited       |
 | cache.max.size          | CACHE_MAX_SIZE          | `50000000`               | max size of all cached values, `0` - unlimited  |

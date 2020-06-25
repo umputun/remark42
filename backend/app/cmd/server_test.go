@@ -329,6 +329,19 @@ func TestServerApp_Failed(t *testing.T) {
 	_, err = opts.newServerApp()
 	assert.EqualError(t, err, "failed to make data store engine: unsupported store type blah")
 	t.Log(err)
+
+	// wrong redis location
+	opts = ServerCommand{}
+	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+	p = flags.NewParser(&opts, flags.Default)
+	_, err = p.ParseArgs([]string{"--store.bolt.path=/tmp", "--cache.type=redis_pub_sub", "--cache.redis_addr=wrong_address"})
+	assert.NoError(t, err)
+	_, err = opts.newServerApp()
+	assert.EqualError(t, err,
+		"failed to make cache: cache backend initialization, redis PubSub initialisation: "+
+			"problem subscribing to channel remark42-cache on address wrong_address: "+
+			"dial tcp: address wrong_address: missing port in address")
+	t.Log(err)
 }
 
 func TestServerApp_Shutdown(t *testing.T) {
