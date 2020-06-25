@@ -301,22 +301,22 @@ function createInstance(config: CommentsConfig) {
     if (hash.indexOf(`#${COMMENT_NODE_CLASSNAME_PREFIX}`) === 0) {
       if (e) e.preventDefault();
 
-      iframe.contentWindow?.postMessage(JSON.stringify({ hash }), '*');
+      iframe.contentWindow!.postMessage(JSON.stringify({ hash }), '*');
     }
   }
 
   function postTitleToIframe(title: string) {
-    iframe.contentWindow?.postMessage(JSON.stringify({ title }), '*');
+    iframe.contentWindow!.postMessage(JSON.stringify({ title }), '*');
   }
 
   function postClickOutsideToIframe(e: MouseEvent) {
     if (!iframe.contains(e.target as Node)) {
-      iframe.contentWindow?.postMessage(JSON.stringify({ clickOutside: true }), '*');
+      iframe.contentWindow!.postMessage(JSON.stringify({ clickOutside: true }), '*');
     }
   }
 
   function changeTheme(theme: Theme) {
-    iframe.contentWindow?.postMessage(JSON.stringify({ theme }), '*');
+    iframe.contentWindow!.postMessage(JSON.stringify({ theme }), '*');
   }
 
   function destroy() {
