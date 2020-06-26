@@ -32,8 +32,7 @@ Originally tested on [Nuxt.js](https://nuxtjs.org/), but it should be applicable
 
       window.REMARK42.createInstance({
         node: this.$refs.remark42 as HTMLElement,
-        host: config.host,
-        site_id: config.siteId
+        ...remark42_config  // See <https://github.com/patarapolw/remark42#setup-on-your-website>
       })
     }
   }
