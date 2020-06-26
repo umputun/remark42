@@ -61,10 +61,8 @@ Originally tested on [Nuxt.js](https://nuxtjs.org/), but it should be applicable
 
 ```ts
   beforeRouteLeave() {
-    if (process.client) {
-      if (window.REMARK42 && window.REMARK42.destroy) {
-        window.REMARK42.destroy()
-      }
+    if (window.REMARK42 && window.REMARK42.destroy) {
+      window.REMARK42.destroy()
     }
   }
 ```
