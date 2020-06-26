@@ -59,6 +59,8 @@ function init() {
       window.REMARK42.destroy = remark42Instance.destroy;
     }
   }
+
+  window.dispatchEvent(new Event('REMARK42::ready'));
 }
 
 function createInstance(config: CommentsConfig) {
