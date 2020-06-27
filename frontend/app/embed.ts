@@ -52,12 +52,7 @@ function init() {
   window.REMARK42.createInstance = createInstance;
 
   if (window.remark_config) {
-    const remark42Instance = createInstance(window.remark_config);
-
-    if (remark42Instance) {
-      window.REMARK42.changeTheme = remark42Instance.changeTheme;
-      window.REMARK42.destroy = remark42Instance.destroy;
-    }
+    createInstance(window.remark_config);
   }
 
   window.dispatchEvent(new Event('REMARK42::ready'));
@@ -65,6 +60,7 @@ function init() {
 
 function createInstance(config: CommentsConfig) {
   let initDataAnimationTimeout: number | null = null;
+  let titleObserver: MutationObserver | null = null;
 
   try {
     config = config || {};
@@ -105,7 +101,8 @@ function createInstance(config: CommentsConfig) {
 
   const titleElement = document.querySelector('title');
   if (titleElement) {
-    new MutationObserver(mutations => postTitleToIframe(mutations[0].target.textContent!)).observe(titleElement, {
+    titleObserver = new MutationObserver(mutations => postTitleToIframe(mutations[0].target.textContent!));
+    titleObserver.observe(titleElement, {
       subtree: true,
       characterData: true,
       childList: true,
@@ -329,8 +326,21 @@ function createInstance(config: CommentsConfig) {
     window.removeEventListener('message', receiveMessages);
     window.removeEventListener('hashchange', postHashToIframe);
     document.removeEventListener('click', postClickOutsideToIframe);
+
+    if (titleObserver) {
+      titleObserver.disconnect();
+    }
+
     iframe.remove();
   }
+
+  // TODO: These do not appear in Chrome DevTools
+  window.REMARK42.changeTheme = changeTheme;
+  window.REMARK42.destroy = () => {
+    destroy();
+    delete window.REMARK42.changeTheme;
+    delete window.REMARK42.destroy;
+  };
 
   return {
     changeTheme,
