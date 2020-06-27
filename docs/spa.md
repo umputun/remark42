@@ -26,11 +26,11 @@ Originally tested on [Nuxt.js](https://nuxtjs.org/), but it should be applicable
 ```ts
   initRemark42() {
     if (window.REMARK42) {
-      if (window.REMARK42.destroy) {
-        window.REMARK42.destroy()
+      if (this.remark42Instance) {
+        this.remark42Instance.destroy()
       }
 
-      window.REMARK42.createInstance({
+      this.remark42Instance = window.REMARK42.createInstance({
         node: this.$refs.remark42 as HTMLElement,
         ...remark42_config  // See <https://github.com/patarapolw/remark42#setup-on-your-website>
       })
@@ -61,8 +61,8 @@ Originally tested on [Nuxt.js](https://nuxtjs.org/), but it should be applicable
 
 ```ts
   beforeRouteLeave() {
-    if (window.REMARK42 && window.REMARK42.destroy) {
-      window.REMARK42.destroy()
+    if (this.remark42Instance) {
+      this.remark42Instance.destroy()
     }
   }
 ```
