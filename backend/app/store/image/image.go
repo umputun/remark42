@@ -102,7 +102,7 @@ func NewService(s Store, p ServiceParams) *Service {
 }
 
 // Submit multiple ids via function for delayed commit
-func (s *Service) Submit(idsFn func() []string) {
+func (s *Service) Submit(idsFn func() []string, ts time.Time) {
 	if idsFn == nil || s == nil {
 		return
 	}
@@ -130,7 +130,12 @@ func (s *Service) Submit(idsFn func() []string) {
 	})
 
 	atomic.AddInt32(&s.submitCount, 1)
-	s.submitCh <- submitReq{idsFn: idsFn, TS: time.Now()}
+
+	now := time.Now()
+	if ts.IsZero() || ts.After(now) {
+		ts = now
+	}
+	s.submitCh <- submitReq{idsFn: idsFn, TS: ts}
 }
 
 // ExtractPictures gets list of images from the doc html and convert from urls to ids, i.e. user/pic.png

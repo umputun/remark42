@@ -1336,7 +1336,7 @@ func TestService_submitImages(t *testing.T) {
 	_, err := b.Engine.Create(c) // create directly with engine, doesn't call submitImages
 	assert.NoError(t, err)
 
-	b.submitImages(c.Locator, c.ID)
+	b.submitImages(c)
 	time.Sleep(250 * time.Millisecond)
 	mockStore.AssertNumberOfCalls(t, "Commit", 2)
 }
