@@ -101,7 +101,7 @@ func (s *DataStore) Create(comment store.Comment) (commentID string, err error) 
 		comment.PostTitle = title
 	}()
 
-	s.submitImages(comment.Locator, comment.ID)
+	s.submitImages(comment)
 	if e := s.AdminStore.OnEvent(comment.Locator.SiteID, admin.EvCreate); e != nil {
 		log.Printf("[WARN] failed to send create event, %s", e)
 	}
@@ -217,32 +217,32 @@ func (s *DataStore) ResubmitStagingImages(sites []string) error {
 		comments, err := s.FindSince(locator, "time", store.User{}, ts)
 		result = multierror.Append(result, errors.Wrapf(err, "problem finding comments for site %s", site))
 		for _, c := range comments {
-			s.submitImages(c.Locator, c.ID)
+			s.submitImages(c)
 		}
 	}
 	return result.ErrorOrNil()
 }
 
 // submitImages initiated delayed commit of all images from the comment uploaded to remark42
-func (s *DataStore) submitImages(locator store.Locator, commentID string) {
+func (s *DataStore) submitImages(comment store.Comment) {
 
 	s.ImageService.Submit(func() []string { // get all ids from comment's text
 		// this can be called after last edit, we have to retrieve fresh comment
-		cc, err := s.Engine.Get(engine.GetRequest{Locator: locator, CommentID: commentID})
+		cc, err := s.Engine.Get(engine.GetRequest{Locator: comment.Locator, CommentID: comment.ID})
 		if err != nil {
-			log.Printf("[WARN] can't get comment's %s text for image extraction, %v", commentID, err)
+			log.Printf("[WARN] can't get comment's %s text for image extraction, %v", comment.ID, err)
 			return nil
 		}
 		imgIds, err := s.ImageService.ExtractPictures(cc.Text)
 		if err != nil {
-			log.Printf("[WARN] can't get extract pictures from %s, %v", commentID, err)
+			log.Printf("[WARN] can't get extract pictures from %s, %v", comment.ID, err)
 			return nil
 		}
 		if len(imgIds) > 0 {
-			log.Printf("[DEBUG] image ids extracted from %s - %+v", commentID, imgIds)
+			log.Printf("[DEBUG] image ids extracted from %s - %+v", comment.ID, imgIds)
 		}
 		return imgIds
-	})
+	}, comment.Timestamp)
 }
 
 // prepareNewComment sets new comment fields, hashing and sanitizing data
