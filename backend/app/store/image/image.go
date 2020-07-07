@@ -101,8 +101,17 @@ func NewService(s Store, p ServiceParams) *Service {
 	return &Service{ServiceParams: p, store: s}
 }
 
+// SubmitAndCommit multiple ids immediately
+func (s *Service) SubmitAndCommit(idsFn func() []string) {
+	for _, id := range idsFn() {
+		if err := s.store.Commit(id); err != nil {
+			log.Printf("[WARN] failed to commit image %s", id)
+		}
+	}
+}
+
 // Submit multiple ids via function for delayed commit
-func (s *Service) Submit(idsFn func() []string, ts time.Time) {
+func (s *Service) Submit(idsFn func() []string) {
 	if idsFn == nil || s == nil {
 		return
 	}
@@ -118,11 +127,7 @@ func (s *Service) Submit(idsFn func() []string, ts time.Time) {
 				for atomic.LoadInt32(&s.term) == 0 && time.Since(req.TS) <= s.commitTTL {
 					time.Sleep(time.Millisecond * 10) // small sleep to relive busy wait but keep reactive for term (close)
 				}
-				for _, id := range req.idsFn() {
-					if err := s.store.Commit(id); err != nil {
-						log.Printf("[WARN] failed to commit image %s", id)
-					}
-				}
+				s.SubmitAndCommit(req.idsFn)
 				atomic.AddInt32(&s.submitCount, -1)
 			}
 			log.Printf("[INFO] image submitter terminated")
@@ -131,11 +136,7 @@ func (s *Service) Submit(idsFn func() []string, ts time.Time) {
 
 	atomic.AddInt32(&s.submitCount, 1)
 
-	now := time.Now()
-	if ts.IsZero() || ts.After(now) {
-		ts = now
-	}
-	s.submitCh <- submitReq{idsFn: idsFn, TS: ts}
+	s.submitCh <- submitReq{idsFn: idsFn, TS: time.Now()}
 }
 
 // ExtractPictures gets list of images from the doc html and convert from urls to ids, i.e. user/pic.png

@@ -155,6 +155,7 @@ func (n *Native) Import(reader io.Reader, siteID string) (size int, err error) {
 	for {
 		comment := store.Comment{}
 		err = dec.Decode(&comment)
+		comment.Imported = true
 		if err == io.EOF {
 			break
 		}

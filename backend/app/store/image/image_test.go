@@ -135,14 +135,15 @@ func TestService_Cleanup(t *testing.T) {
 
 func TestService_Submit(t *testing.T) {
 	store := MockStore{}
-	store.On("Commit", mock.Anything, mock.Anything).Times(5).Return(nil)
+	store.On("Commit", mock.Anything, mock.Anything).Times(7).Return(nil)
 	svc := Service{store: &store, ServiceParams: ServiceParams{ImageAPI: "/blah/", EditDuration: time.Millisecond * 100}}
-	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} }, time.Now())
-	svc.Submit(func() []string { return []string{"id4", "id5"} }, time.Now())
-	svc.Submit(nil, time.Now())
-	store.AssertNumberOfCalls(t, "Commit", 0)
+	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
+	svc.SubmitAndCommit(func() []string { return []string{"id4", "id5"} })
+	svc.Submit(func() []string { return []string{"id6", "id7"} })
+	svc.Submit(nil)
+	store.AssertNumberOfCalls(t, "Commit", 2)
 	time.Sleep(time.Millisecond * 150)
-	store.AssertNumberOfCalls(t, "Commit", 5)
+	store.AssertNumberOfCalls(t, "Commit", 7)
 	svc.Close(context.TODO())
 }
 
@@ -150,9 +151,9 @@ func TestService_Close(t *testing.T) {
 	store := MockStore{}
 	store.On("Commit", mock.Anything, mock.Anything).Times(5).Return(nil)
 	svc := Service{store: &store, ServiceParams: ServiceParams{ImageAPI: "/blah/", EditDuration: time.Hour * 24}}
-	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} }, time.Now())
-	svc.Submit(func() []string { return []string{"id4", "id5"} }, time.Now())
-	svc.Submit(nil, time.Now())
+	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
+	svc.Submit(func() []string { return []string{"id4", "id5"} })
+	svc.Submit(nil)
 	svc.Close(context.TODO())
 	store.AssertNumberOfCalls(t, "Commit", 5)
 }
@@ -161,10 +162,10 @@ func TestService_SubmitDelay(t *testing.T) {
 	store := MockStore{}
 	store.On("Commit", mock.Anything, mock.Anything).Times(5).Return(nil)
 	svc := NewService(&store, ServiceParams{EditDuration: 20 * time.Millisecond})
-	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} }, time.Now())
+	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
 	time.Sleep(150 * time.Millisecond) // let first batch to pass TTL
-	svc.Submit(func() []string { return []string{"id4", "id5"} }, time.Now())
-	svc.Submit(nil, time.Now())
+	svc.Submit(func() []string { return []string{"id4", "id5"} })
+	svc.Submit(nil)
 	store.AssertNumberOfCalls(t, "Commit", 3)
 	svc.Close(context.TODO())
 	store.AssertNumberOfCalls(t, "Commit", 5)

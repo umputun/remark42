@@ -139,6 +139,7 @@ func (w *WordPress) convert(r io.Reader, siteID string) chan store.Comment {
 								Text:      comment.Content,
 								Timestamp: comment.Date.time,
 								ParentID:  comment.PID,
+								Imported:  true,
 							}
 							commentsCh <- commentFormatter.Format(c)
 							stats.inpComments++

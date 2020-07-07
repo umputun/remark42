@@ -26,6 +26,7 @@ type Comment struct {
 	Edit        *Edit                  `json:"edit,omitempty" bson:"edit,omitempty"` // pointer to have empty default in json response
 	Pin         bool                   `json:"pin,omitempty" bson:"pin,omitempty"`
 	Deleted     bool                   `json:"delete,omitempty" bson:"delete"`
+	Imported    bool                   `json:"imported,omitempty" bson:"imported"`
 	PostTitle   string                 `json:"title,omitempty" bson:"title"`
 }
 

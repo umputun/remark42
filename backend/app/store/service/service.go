@@ -225,8 +225,7 @@ func (s *DataStore) ResubmitStagingImages(sites []string) error {
 
 // submitImages initiated delayed commit of all images from the comment uploaded to remark42
 func (s *DataStore) submitImages(comment store.Comment) {
-
-	s.ImageService.Submit(func() []string { // get all ids from comment's text
+	idsFn := func() []string { // get all ids from comment's text
 		// this can be called after last edit, we have to retrieve fresh comment
 		cc, err := s.Engine.Get(engine.GetRequest{Locator: comment.Locator, CommentID: comment.ID})
 		if err != nil {
@@ -242,7 +241,13 @@ func (s *DataStore) submitImages(comment store.Comment) {
 			log.Printf("[DEBUG] image ids extracted from %s - %+v", comment.ID, imgIds)
 		}
 		return imgIds
-	}, comment.Timestamp)
+	}
+
+	if comment.Imported {
+		s.ImageService.SubmitAndCommit(idsFn)
+	} else {
+		s.ImageService.Submit(idsFn)
+	}
 }
 
 // prepareNewComment sets new comment fields, hashing and sanitizing data
