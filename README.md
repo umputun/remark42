@@ -292,9 +292,9 @@ _instructions for google oauth2 setup borrowed from [oauth2_proxy](https://githu
 
 1.  Register a new application [using the Azure portal](https://docs.microsoft.com/en-us/graph/auth-register-app-v2).
 2.  Under **"Authentication/Platform configurations/Web"** enter the correct url constructed as domain + `/auth/microsoft/callback`. i.e. `https://example.mysite.com/auth/microsoft/callback`
-3.  In "Overview" take note of the **Application (client) ID** 
+3.  In "Overview" take note of the **Application (client) ID**
 4.  Choose the new project from the top right project dropdown (only if another project is selected)
-5.  Select "Certificates & secrets" and click on "+ New Client Secret". 
+5.  Select "Certificates & secrets" and click on "+ New Client Secret".
 
 ##### Twitter Auth Provider
 
@@ -323,6 +323,11 @@ Optionally, anonymous access can be turned on. In this case an extra `anonymous`
 
 - name should be at least 3 characters long
 - name has to start from the letter and contains letters, numbers, underscores and spaces only.
+
+### Importing comments
+
+Remark supports importing comments from Disqus, WordPress or native backup format.
+All imported comments has `Imported` field set to `true`.
 
 #### Initial import from Disqus
 
