@@ -29,6 +29,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	log "github.com/go-pkgz/lgr"
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/rs/xid"
 	"golang.org/x/image/draw"
@@ -102,12 +103,15 @@ func NewService(s Store, p ServiceParams) *Service {
 }
 
 // SubmitAndCommit multiple ids immediately
-func (s *Service) SubmitAndCommit(idsFn func() []string) {
+func (s *Service) SubmitAndCommit(idsFn func() []string) error {
+	errs := new(multierror.Error)
 	for _, id := range idsFn() {
-		if err := s.store.Commit(id); err != nil {
-			log.Printf("[WARN] failed to commit image %s", id)
+		err := s.store.Commit(id)
+		if err != nil {
+			errs = multierror.Append(errs, errors.Wrapf(err, "failed to commit image %s", id))
 		}
 	}
+	return errs.ErrorOrNil()
 }
 
 // Submit multiple ids via function for delayed commit
@@ -127,7 +131,11 @@ func (s *Service) Submit(idsFn func() []string) {
 				for atomic.LoadInt32(&s.term) == 0 && time.Since(req.TS) <= s.commitTTL {
 					time.Sleep(time.Millisecond * 10) // small sleep to relive busy wait but keep reactive for term (close)
 				}
-				s.SubmitAndCommit(req.idsFn)
+				err := s.SubmitAndCommit(req.idsFn)
+				if err != nil {
+					log.Printf("[WARN] image commit error %v", err)
+				}
+
 				atomic.AddInt32(&s.submitCount, -1)
 			}
 			log.Printf("[INFO] image submitter terminated")
