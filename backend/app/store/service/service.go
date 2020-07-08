@@ -101,13 +101,13 @@ func (s *DataStore) Create(comment store.Comment) (commentID string, err error) 
 		comment.PostTitle = title
 	}()
 
-	defer s.submitImages(comment) // submit images only after creation in Engine
+	commentID, err = s.Engine.Create(comment)
+	s.submitImages(comment)
 
 	if e := s.AdminStore.OnEvent(comment.Locator.SiteID, admin.EvCreate); e != nil {
 		log.Printf("[WARN] failed to send create event, %s", e)
 	}
-
-	return s.Engine.Create(comment)
+	return commentID, err
 }
 
 // Find wraps engine's Find call and alter results if needed. User used to alter comments
@@ -244,10 +244,15 @@ func (s *DataStore) submitImages(comment store.Comment) {
 		return imgIds
 	}
 
+	var err error
 	if comment.Imported {
-		s.ImageService.SubmitAndCommit(idsFn)
+		err = s.ImageService.SubmitAndCommit(idsFn)
 	} else {
 		s.ImageService.Submit(idsFn)
+	}
+
+	if err != nil {
+		log.Printf("[WARN] failed to commit comment's images: %v", err)
 	}
 }
 

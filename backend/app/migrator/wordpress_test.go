@@ -42,6 +42,7 @@ func TestWordPress_Import(t *testing.T) {
 	ts, _ := time.Parse(wpTimeLayout, "2010-08-18 15:19:14")
 	assert.Equal(t, ts, c.Timestamp)
 	assert.Equal(t, c.Text, "<p>Mekkatorque was over in that tent up to the right</p>\n")
+	assert.True(t, c.Imported)
 
 	posts, err := dataStore.List(siteID, 0, 0)
 	assert.NoError(t, err)
@@ -77,6 +78,7 @@ func TestWordPress_Convert(t *testing.T) {
 			ID:   "wordpress_" + store.EncodeID("Wednesday Reading &laquo; Cynwise&#039;s Battlefield Manual"),
 			IP:   "74.200.244.101",
 		},
+		Imported: true,
 	}
 	exp1.Timestamp, _ = time.Parse(wpTimeLayout, "2010-07-21 14:02:08")
 	assert.Equal(t, exp1, comments[1])

@@ -136,13 +136,14 @@ func TestService_Cleanup(t *testing.T) {
 func TestService_Submit(t *testing.T) {
 	store := MockStore{}
 	store.On("Commit", mock.Anything, mock.Anything).Times(7).Return(nil)
-	svc := Service{store: &store, ServiceParams: ServiceParams{ImageAPI: "/blah/", EditDuration: time.Millisecond * 100}}
+	svc := NewService(&store, ServiceParams{ImageAPI: "/blah/", EditDuration: time.Millisecond * 100})
 	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
-	svc.SubmitAndCommit(func() []string { return []string{"id4", "id5"} })
+	err := svc.SubmitAndCommit(func() []string { return []string{"id4", "id5"} })
+	assert.NoError(t, err)
 	svc.Submit(func() []string { return []string{"id6", "id7"} })
 	svc.Submit(nil)
 	store.AssertNumberOfCalls(t, "Commit", 2)
-	time.Sleep(time.Millisecond * 150)
+	time.Sleep(time.Millisecond * 175)
 	store.AssertNumberOfCalls(t, "Commit", 7)
 	svc.Close(context.TODO())
 }

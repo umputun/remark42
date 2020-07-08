@@ -39,6 +39,7 @@ func TestDisqus_Import(t *testing.T) {
 	assert.Equal(t, "Alexander Blah", c.User.Name)
 	assert.Equal(t, "disqus_328c8b68974aef73785f6b38c3d3fedfdf941434", c.User.ID)
 	assert.Equal(t, "2ba6b71dbf9750ae3356cce14cac6c1b1962747c", c.User.IP)
+	assert.True(t, c.Imported)
 
 	posts, err := dataStore.List("test", 0, 0)
 	assert.NoError(t, err)
@@ -71,6 +72,7 @@ func TestDisqus_Convert(t *testing.T) {
 			ID:   "disqus_328c8b68974aef73785f6b38c3d3fedfdf941434",
 			IP:   "178.178.178.178",
 		},
+		Imported: true,
 	}
 	exp0.Timestamp, _ = time.Parse("2006-01-02T15:04:05Z", "2011-08-31T15:16:29Z")
 	assert.Equal(t, exp0, res[0])
