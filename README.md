@@ -633,7 +633,7 @@ You can attach to locally running backend by providing `REMARK_URL` environment 
 npx cross-env REMARK_URL=http://127.0.0.1:8080 npm start
 ```
 
-The best way for start local developer enviroment:
+The best way for start local developer environment:
 ```sh
 cp compose-dev-frontend.yml compose-private-frontend.yml
 docker-compose -f compose-private-frontend.yml up --build
