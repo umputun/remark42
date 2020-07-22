@@ -2,7 +2,7 @@
 
 Example of nginx configuration (reverse proxy) running remark42 service on remark42.example.com
 
-```
+```nginx
 server {
     listen      443;
     server_name remark42.example.com;
