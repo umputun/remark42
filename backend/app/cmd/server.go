@@ -75,6 +75,7 @@ type ServerCommand struct {
 	RestrictedWords  []string      `long:"restricted-words" env:"RESTRICTED_WORDS" description:"words prohibited to use in comments" env-delim:","`
 	EnableEmoji      bool          `long:"emoji" env:"EMOJI" description:"enable emoji"`
 	SimpleView       bool          `long:"simpler-view" env:"SIMPLE_VIEW" description:"minimal comment editor mode"`
+	ProxyCORS        bool          `long:"proxy-cors" env:"PROXY_CORS" description:"disable internal CORS and delegate it to proxy"`
 
 	Auth struct {
 		TTL struct {
@@ -453,6 +454,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		EmojiEnabled:       s.EnableEmoji,
 		AnonVote:           s.AnonymousVote && s.RestrictVoteIP,
 		SimpleView:         s.SimpleView,
+		ProxyCORS:          s.ProxyCORS,
 	}
 
 	// enable admin notifications only if admin email is set

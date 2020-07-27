@@ -187,6 +187,7 @@ _this is the recommended way to run remark42_
 | image-proxy.cache-external | IMAGE_PROXY_CACHE_EXTERNAL | `false`            | enable caching external images to current image storage |
 | emoji                   | EMOJI                   | `false`                  | enable emoji support                            |
 | simple-view             | SIMPLE_VIEW             | `false`                  | minimized UI with basic info only               |
+| proxy-cors              | PROXY_CORS              | `false`                  | disable internal CORS and delegate it to proxy  |
 | port                    | REMARK_PORT             | `8080`                   | web server port                                 |
 | web-root                | REMARK_WEB_ROOT         | `./web`                  | web server root directory                       |
 | update-limit            | UPDATE_LIMIT            | `0.5`                    | updates/sec limit                               |
