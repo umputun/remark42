@@ -15,7 +15,7 @@ export interface CommentsConfig {
   max_shown_comments?: number;
   theme?: Theme;
   page_title?: string;
-  node?: string;
+  node?: string | HTMLElement;
   locale?: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   __colors__?: any;

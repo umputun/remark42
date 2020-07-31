@@ -1,7 +1,7 @@
 module.exports = [
   {
     path: 'public/embed.js',
-    limit: '2.55 KB',
+    limit: '2.7 KB',
   },
   {
     limit: '86 KB',

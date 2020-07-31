@@ -476,6 +476,8 @@ And then add this node in the place where you want to see Remark42 widget:
 
 After that widget will be rendered inside this node.
 
+If you want to set this up on a Single Page App, see [/docs/spa.md](/docs/spa.md).
+
 ##### Themes
 
 Right now Remark has two themes: light and dark.
