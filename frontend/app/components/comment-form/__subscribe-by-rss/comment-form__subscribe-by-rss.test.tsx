@@ -32,11 +32,8 @@ describe('<SubscribeByRSS/>', () => {
   });
 
   it('should have userId in site link', () => {
-    expect(
-      wrapper
-        .find('.comment-form__rss-dropdown__link')
-        .at(1)
-        .prop('href')
-    ).toEqual(createSubscribeUrl('site', '&user=user-1'));
+    expect(wrapper.find('.comment-form__rss-dropdown__link').at(1).prop('href')).toEqual(
+      createSubscribeUrl('site', '&user=user-1')
+    );
   });
 });

@@ -110,7 +110,7 @@
     "postcss-simple-vars": "^5.0.2",
     "postcss-url": "^8.0.0",
     "postcss-wrap": "0.0.4",
-    "prettier": "^1.19.1",
+    "prettier": "^2.0.5",
     "redux-mock-store": "^1.5.4",
     "size-limit": "^4.4.5",
     "style-loader": "^1.1.3",
