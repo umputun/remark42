@@ -756,6 +756,13 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 		log.Print("[INFO] anonymous access enabled")
 		var isValidAnonName = regexp.MustCompile(`^[\p{L}\d_ ]+$`).MatchString
 		authenticator.AddDirectProvider("anonymous", provider.CredCheckerFunc(func(user, _ string) (ok bool, err error) {
+
+			// don't allow anon with space prefix or suffix
+			if strings.HasPrefix(user, " ") || strings.HasSuffix(user, " ") {
+				log.Printf("[WARN] name %q has space as a suffix or prefix", user)
+				return false, nil
+			}
+
 			user = strings.TrimSpace(user)
 			if len(user) < 3 {
 				log.Printf("[WARN] name %q is too short, should be at least 3 characters", user)
@@ -924,8 +931,9 @@ func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Sto
 					log.Printf("[WARN] can't get admins for %s, %v", c.Audience, err)
 				}
 				for _, a := range admins {
-					if strings.EqualFold(c.User.Name, a) {
+					if strings.EqualFold(strings.TrimSpace(c.User.Name), a) {
 						c.User.SetBoolAttr("blocked", true)
+						log.Printf("[INFO] blocked %+v, attempt to impersonate admin", c.User)
 						break
 					}
 				}
