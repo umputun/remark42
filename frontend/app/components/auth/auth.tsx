@@ -186,7 +186,7 @@ const authPanelMessages = defineMessages({
   },
 });
 
-export default function() {
+export default function () {
   const dispatch = useDispatch();
   const provider = useSelector<StoreState, ProviderState>(store => store.provider);
   const user = useSelector<StoreState, User | null>(store => store.user);

@@ -552,18 +552,20 @@ export class CommentForm extends Component<Props, State> {
           )}
         </div>
 
-        {// TODO: it can be more elegant;
-        // for example it can render full comment component here (or above textarea on mobile)
-        !!preview && (
-          <div className="comment-form__preview-wrapper">
-            <div
-              className={b('comment-form__preview', {
-                mix: b('raw-content', {}, { theme: props.theme }),
-              })}
-              dangerouslySetInnerHTML={{ __html: preview }}
-            />
-          </div>
-        )}
+        {
+          // TODO: it can be more elegant;
+          // for example it can render full comment component here (or above textarea on mobile)
+          !!preview && (
+            <div className="comment-form__preview-wrapper">
+              <div
+                className={b('comment-form__preview', {
+                  mix: b('raw-content', {}, { theme: props.theme }),
+                })}
+                dangerouslySetInnerHTML={{ __html: preview }}
+              />
+            </div>
+          )
+        }
       </form>
     );
   }

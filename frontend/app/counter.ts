@@ -37,7 +37,7 @@ function init(): void {
   }, {});
 
   const oReq = new XMLHttpRequest();
-  oReq.onreadystatechange = function(this: XMLHttpRequest) {
+  oReq.onreadystatechange = function (this: XMLHttpRequest) {
     if (this.readyState === XMLHttpRequest.DONE && this.status === 200) {
       try {
         const res = JSON.parse(this.responseText) as { url: string; count: number }[];

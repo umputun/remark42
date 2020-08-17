@@ -158,22 +158,12 @@ describe('<Comment />', () => {
       const voteButtons = element.find('.comment__vote');
       expect(voteButtons.length).toStrictEqual(2);
 
-      expect(
-        voteButtons
-          .at(0)
-          .getDOMNode()
-          .getAttribute('aria-disabled')
-      ).toStrictEqual('true');
+      expect(voteButtons.at(0).getDOMNode().getAttribute('aria-disabled')).toStrictEqual('true');
       voteButtons.at(0).simulate('click');
       await sleep(100);
       expect(voteSpy).not.toBeCalled();
 
-      expect(
-        voteButtons
-          .at(1)
-          .getDOMNode()
-          .getAttribute('aria-disabled')
-      ).toStrictEqual('false');
+      expect(voteButtons.at(1).getDOMNode().getAttribute('aria-disabled')).toStrictEqual('false');
       voteButtons.at(1).simulate('click');
       await sleep(100);
       expect(voteSpy).toBeCalled();
@@ -192,22 +182,12 @@ describe('<Comment />', () => {
       const voteButtons = element.find('.comment__vote');
       expect(voteButtons.length).toStrictEqual(2);
 
-      expect(
-        voteButtons
-          .at(1)
-          .getDOMNode()
-          .getAttribute('aria-disabled')
-      ).toStrictEqual('true');
+      expect(voteButtons.at(1).getDOMNode().getAttribute('aria-disabled')).toStrictEqual('true');
       voteButtons.at(1).simulate('click');
       await sleep(100);
       expect(voteSpy).not.toBeCalled();
 
-      expect(
-        voteButtons
-          .at(0)
-          .getDOMNode()
-          .getAttribute('aria-disabled')
-      ).toStrictEqual('false');
+      expect(voteButtons.at(0).getDOMNode().getAttribute('aria-disabled')).toStrictEqual('false');
       voteButtons.at(0).simulate('click');
       await sleep(100);
       expect(voteSpy).toBeCalled();
