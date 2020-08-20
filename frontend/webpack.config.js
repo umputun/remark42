@@ -209,7 +209,12 @@ module.exports = () => ({
             openAnalyzer: false,
           }),
         ]),
-    new Copy(['./deleteme.html', './markdown-help.html']),
+    new Copy({
+      patterns: [
+        { from: './deleteme.html', to: 'deleteme.html' },
+        { from: './markdown-help.html', to: 'markdown-help.html' },
+      ],
+    }),
   ],
   watchOptions: {
     ignored: /(node_modules|\.vendor\.js$)/,
