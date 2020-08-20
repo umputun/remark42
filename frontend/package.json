@@ -73,7 +73,7 @@
     "babel-jest": "^24.9.0",
     "babel-loader": "^8.1.0",
     "clean-webpack-plugin": "^3.0.0",
-    "copy-webpack-plugin": "^5.1.1",
+    "copy-webpack-plugin": "^6.0.3",
     "cross-env": "^7.0.2",
     "css-loader": "^3.5.2",
     "document-register-element": "^1.14.3",
