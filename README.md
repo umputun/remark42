@@ -455,6 +455,10 @@ Add this snippet to the bottom of web page:
     theme: 'dark', // optional param; if it isn't defined default value ('light') will be used
     page_title: 'Moving to Remark42', // optional param; if it isn't defined `document.title` will be used
     locale: 'en' // set up locale and language, if it isn't defined default value ('en') will be used
+    show_email_subscription: false // optional param; by default it is `true` and you can see email subscription feature
+                                   // in interface when enable it from backend side
+                                   // if you set this param in `false` you will get notifications email notifications as admin
+                                   // but your users won't have interface for subscription
   };
 
   (function(c) {

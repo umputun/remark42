@@ -535,7 +535,7 @@ export class CommentForm extends Component<Props, State> {
                   {this.renderMarkdownTip()}
                   <FormattedMessage id="commentForm.subscribe-by" defaultMessage="Subscribe by" />{' '}
                   <SubscribeByRSS userId={props.user !== null ? props.user.id : null} />
-                  {StaticStore.config.email_notifications && (
+                  {StaticStore.config.email_notifications && StaticStore.query.show_email_subscription && (
                     <Fragment>
                       {' '}
                       <FormattedMessage id="commentForm.subscribe-or" defaultMessage="or" /> <SubscribeByEmail />
