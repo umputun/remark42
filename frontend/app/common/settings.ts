@@ -10,6 +10,7 @@ export interface QuerySettingsType {
   theme: Theme;
   /* used in delete users data page */
   token?: string;
+  show_email_subscription?: boolean;
 }
 
 export const querySettings: Partial<QuerySettingsType> = parseQuery();
@@ -24,6 +25,9 @@ if (querySettings.max_shown_comments) {
 if (!querySettings.theme || THEMES.indexOf(querySettings.theme) === -1) {
   querySettings.theme = THEMES[0];
 }
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+querySettings.show_email_subscription = (querySettings.show_email_subscription as any) !== 'false';
 
 export const siteId = querySettings.site_id;
 export const pageTitle = querySettings.page_title;
