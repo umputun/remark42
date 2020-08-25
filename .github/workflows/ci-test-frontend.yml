@@ -13,7 +13,7 @@ on:
       - 'frontend/**'
 
 jobs:
-  frontend:
+  frontend-check:
     runs-on: ubuntu-latest
 
     steps:
@@ -24,7 +24,39 @@ jobs:
       - run: npm ci --loglevel warn
         working-directory: ./frontend
 
-      - run: npx run-p check lint
+      - uses: actions/cache@v2
+        with:
+          path: ${{ github.workspace }}/frontend/node_modules/.cache
+          key: ${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - run: npx run-p check
+        working-directory: ./frontend
+
+  frontend-lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/setup-node@v1
+
+      - run: npm ci --loglevel warn
+        working-directory: ./frontend
+
+      - run: npx run-p lint
+        working-directory: ./frontend
+
+  frontend-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/setup-node@v1
+
+      - run: npm ci --loglevel warn
         working-directory: ./frontend
 
       - run: npm run test
