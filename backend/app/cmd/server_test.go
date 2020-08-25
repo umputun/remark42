@@ -642,7 +642,10 @@ func prepServerApp(t *testing.T, fn func(o ServerCommand) ServerCommand) (*serve
 
 	os.Remove(cmd.Store.Bolt.Path + "/remark.db")
 
-	// create app
+	return createAppFromCmd(t, cmd)
+}
+
+func createAppFromCmd(t *testing.T, cmd ServerCommand) (*serverApp, context.Context, context.CancelFunc) {
 	app, err := cmd.newServerApp()
 	require.NoError(t, err)
 
