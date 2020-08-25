@@ -112,12 +112,15 @@ module.exports = () => ({
           },
           {
             test: /\.js(x?)$/,
-            use: [{ loader: 'babel-loader', options: { configFile: babelConfigPath } }],
+            use: [{ loader: 'babel-loader', options: { cacheDirectory: true, configFile: babelConfigPath } }],
             ...getExcluded(),
           },
           {
             test: /\.ts(x?)$/,
-            use: [{ loader: 'babel-loader', options: { configFile: babelConfigPath } }, 'ts-loader'],
+            use: [
+              { loader: 'babel-loader', options: { cacheDirectory: true, configFile: babelConfigPath } },
+              'ts-loader',
+            ],
             ...getExcluded(),
           },
           {
