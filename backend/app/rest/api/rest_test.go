@@ -333,17 +333,24 @@ func TestRest_cacheControl(t *testing.T) {
 
 }
 
-func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
-	tmp := os.TempDir()
-	var testDB string
-	// pick a file name which is not in use for sure
+// randomPath pick a file or folder name which is not in use for sure
+func randomPath(tempDir, basename, suffix string) (string, error) {
 	for i := 0; i < 10; i++ {
-		testDB = fmt.Sprintf("/%s/test-remark-%d.db", tmp, rand.Int31())
-		_, err := os.Stat(testDB)
+		fname := fmt.Sprintf("/%s/%s-%d%s", tempDir, basename, rand.Int31(), suffix)
+		fmt.Printf("fname %q", fname)
+		_, err := os.Stat(fname)
 		if err != nil {
-			break
+			return fname, nil
 		}
 	}
+	return "", errors.New("cannot create temp file")
+}
+
+func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
+	tmp := os.TempDir()
+	testDB, err := randomPath(tmp, "test-remark", ".db")
+	require.NoError(t, err)
+
 	_ = os.RemoveAll(tmp + "/ava-remark42")
 	_ = os.RemoveAll(tmp + "/pics-remark42")
 
