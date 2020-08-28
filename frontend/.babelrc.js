@@ -3,9 +3,8 @@ module.exports = {
     [
       '@babel/preset-env',
       {
-        targets: {
-          browsers: ['> 1%', 'android >= 4.4.4', 'ios >= 9', 'IE >= 11'],
-        },
+        bugfixes: true,
+        loose: true,
       },
     ],
     [
