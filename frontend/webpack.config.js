@@ -57,7 +57,7 @@ const postCssLoader = wrap => ({
       require('postcss-simple-vars'),
       require('postcss-nested'),
       require('postcss-calc'),
-      require('autoprefixer')({ overrideBrowserslist: ['> 1%'] }),
+      require('autoprefixer'),
       require('postcss-url')({ url: 'inline', maxSize: 5 }),
       wrap ? require('postcss-prefixwrap')(`#${NODE_ID}`, { ignoredSelectors: [':root'] }) : false,
       require('postcss-csso'),
