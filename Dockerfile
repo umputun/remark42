@@ -34,7 +34,7 @@ RUN \
     ls -la /build/backend/app/templates/statik.go && \
     go build -o remark42 -ldflags "-X main.revision=${version} -s -w" ./app
 
-FROM node:10.11-alpine as build-frontend-deps
+FROM node:12.16-alpine as build-frontend-deps
 
 ARG CI
 ENV HUSKY_SKIP_INSTALL=true
@@ -44,7 +44,7 @@ ADD frontend/package.json /srv/frontend/package.json
 ADD frontend/package-lock.json /srv/frontend/package-lock.json
 RUN cd /srv/frontend && CI=true npm ci --loglevel warn
 
-FROM node:10.11-alpine as build-frontend
+FROM node:12.16-alpine as build-frontend
 
 ARG CI
 ARG SKIP_FRONTEND_TEST
