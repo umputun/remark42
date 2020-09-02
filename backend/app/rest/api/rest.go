@@ -51,7 +51,7 @@ type Rest struct {
 	AnonVote        bool
 	WebRoot         string
 	RemarkURL       string
-	AdminEmail      string
+	AdminEmail      []string
 	ReadOnlyAge     int
 	SharedSecret    string
 	ScoreThresholds struct {
