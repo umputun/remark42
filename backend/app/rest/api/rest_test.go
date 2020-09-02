@@ -381,7 +381,7 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 		Cache:      memCache,
 		WebRoot:    tmp,
 		RemarkURL:  "https://demo.remark42.com",
-		AdminEmail: "admin@example.org",
+		AdminEmail: []string{"admin@example.org"},
 		ImageService: image.NewService(&image.FileSystem{
 			Location:   tmp + "/pics-remark42",
 			Partitions: 100,

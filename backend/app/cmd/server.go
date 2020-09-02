@@ -176,7 +176,7 @@ type AdminGroup struct {
 	Type   string `long:"type" env:"TYPE" description:"type of admin store" choice:"shared" choice:"rpc" default:"shared"` //nolint
 	Shared struct {
 		Admins []string `long:"id" env:"ID" description:"admin(s) ids" env-delim:","`
-		Email  string   `long:"email" env:"EMAIL" default:"" description:"admin email"`
+		Email  []string `long:"email" env:"EMAIL" description:"admin emails" env-delim:","`
 	} `group:"shared" namespace:"shared" env-namespace:"SHARED"`
 	RPC RPCGroup `group:"rpc" namespace:"rpc" env-namespace:"RPC"`
 }
@@ -457,8 +457,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		ProxyCORS:          s.ProxyCORS,
 	}
 
-	// enable admin notifications only if admin email is set
-	if s.Notify.Email.AdminNotifications && s.Admin.Shared.Email != "" {
+	if s.Notify.Email.AdminNotifications {
 		srv.AdminEmail = s.Admin.Shared.Email
 	}
 
@@ -652,12 +651,15 @@ func (s *ServerCommand) makeAdminStore() (admin.Store, error) {
 
 	switch s.Admin.Type {
 	case "shared":
-		if s.Admin.Shared.Email == "" { // no admin email, use admin@domain
+		sharedAdminEmail := ""
+		if len(s.Admin.Shared.Email) == 0 { // no admin email, use admin@domain
 			if u, err := url.Parse(s.RemarkURL); err == nil {
-				s.Admin.Shared.Email = "admin@" + u.Host
+				sharedAdminEmail = "admin@" + u.Host
 			}
+		} else {
+			sharedAdminEmail = s.Admin.Shared.Email[0]
 		}
-		return admin.NewStaticStore(s.SharedSecret, s.Sites, s.Admin.Shared.Admins, s.Admin.Shared.Email), nil
+		return admin.NewStaticStore(s.SharedSecret, s.Sites, s.Admin.Shared.Admins, sharedAdminEmail), nil
 	case "rpc":
 		r := &admin.RPC{Client: jrpc.Client{
 			API:        s.Admin.RPC.API,
@@ -893,8 +895,8 @@ func (s *ServerCommand) makeSSLConfig() (config api.SSLConfig, err error) {
 		config.ACMELocation = s.SSL.ACMELocation
 		if s.SSL.ACMEEmail != "" {
 			config.ACMEEmail = s.SSL.ACMEEmail
-		} else if s.Admin.Type == "shared" && s.Admin.Shared.Email != "" {
-			config.ACMEEmail = s.Admin.Shared.Email
+		} else if s.Admin.Type == "shared" && len(s.Admin.Shared.Email) != 0 {
+			config.ACMEEmail = s.Admin.Shared.Email[0]
 		} else if u, e := url.Parse(s.RemarkURL); e == nil {
 			config.ACMEEmail = "admin@" + u.Hostname()
 		}

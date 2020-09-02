@@ -40,7 +40,7 @@ type private struct {
 	notifyService    *notify.Service
 	authenticator    *auth.Service
 	remarkURL        string
-	adminEmail       string
+	adminEmail       []string
 	anonVote         bool
 	templates        templates.FileReader
 }
@@ -119,13 +119,13 @@ func (s *private) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	s.cache.Flush(cache.Flusher(comment.Locator.SiteID).
 		Scopes(comment.Locator.URL, lastCommentsScope, comment.User.ID, comment.Locator.SiteID))
 
-	// user notification
 	if s.notifyService != nil {
+		// user notification
 		s.notifyService.Submit(notify.Request{Comment: finalComment})
-	}
-	// admin notification
-	if s.notifyService != nil && s.adminEmail != "" {
-		s.notifyService.Submit(notify.Request{Comment: finalComment, Email: s.adminEmail, ForAdmin: true})
+		// admin notification
+		for _, adminEmail := range s.adminEmail {
+			s.notifyService.Submit(notify.Request{Comment: finalComment, Email: adminEmail, ForAdmin: true})
+		}
 	}
 
 	log.Printf("[DEBUG] created commend %+v", finalComment)
