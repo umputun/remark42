@@ -15,13 +15,15 @@ on:
 jobs:
   frontend-check:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [12.16]
 
     steps:
       - uses: actions/checkout@v2
-
       - uses: actions/setup-node@v1
         with:
-          node-version: '12.16'
+          node-version: ${{ matrix.node }}
 
       - run: npm ci --loglevel warn
         working-directory: ./frontend
@@ -38,11 +40,15 @@ jobs:
 
   frontend-lint:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [12.16]
 
     steps:
       - uses: actions/checkout@v2
-
       - uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node }}
 
       - run: npm ci --loglevel warn
         working-directory: ./frontend
@@ -52,11 +58,15 @@ jobs:
 
   frontend-test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [12.16]
 
     steps:
       - uses: actions/checkout@v2
-
       - uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node }}
 
       - run: npm ci --loglevel warn
         working-directory: ./frontend
