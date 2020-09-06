@@ -17,4 +17,5 @@ module.exports = {
   },
   setupFilesAfterEnv: ['<rootDir>/app/testUtils/index.ts', 'jest-localstorage-mock'],
   transformIgnorePatterns: ['/node_modules/(?!intl-messageformat|intl-messageformat-parser).+\\.js$'],
+  collectCoverageFrom: ['!app/testUtils/**', '!app/locales/**'],
 };
