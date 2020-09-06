@@ -71,5 +71,10 @@ jobs:
       - run: npm ci --loglevel warn
         working-directory: ./frontend
 
-      - run: npm run test
+      - run: npm run test:coverage
         working-directory: ./frontend
+
+      - name: submit coverage
+        run: node ${{ github.workspace }}/frontend/node_modules/.bin/codecov
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
