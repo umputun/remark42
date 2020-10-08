@@ -33,8 +33,6 @@ RUN \
     if [ -z "$DRONE" ] ; then echo "runs outside of drone" && version="$(/script/git-rev.sh)" ; \
     else version=${DRONE_TAG}${DRONE_BRANCH}${DRONE_PULL_REQUEST}-${DRONE_COMMIT:0:7}-$(date +%Y%m%d-%H:%M:%S) ; fi && \
     echo "version=$version" && \
-    statik --src=/build/backend/templates --dest=/build/backend/app -p templates -ns templates -f && \
-    ls -la /build/backend/app/templates/statik.go && \
     go build -o remark42 -ldflags "-X main.revision=${version} -s -w" ./app
 
 FROM node:12.16-alpine as build-frontend-deps
@@ -71,6 +69,7 @@ ADD backend/scripts/import.sh /usr/local/bin/import
 RUN chmod +x /entrypoint.sh /usr/local/bin/backup /usr/local/bin/restore /usr/local/bin/import
 
 COPY --from=build-backend /build/backend/remark42 /srv/remark42
+COPY --from=build-backend /build/backend/templates /srv
 COPY --from=build-frontend /srv/frontend/public/ /srv/web
 RUN chown -R app:app /srv
 RUN ln -s /srv/remark42 /usr/bin/remark42
