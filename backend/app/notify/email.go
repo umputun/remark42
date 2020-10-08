@@ -379,6 +379,7 @@ func (s *emailClient) Create(params SMTPParams) (smtpClient, error) {
 		tlsConf := &tls.Config{
 			InsecureSkipVerify: false,
 			ServerName:         params.Host,
+			MinVersion:         tls.VersionTLS12,
 		}
 		conn, err := tls.Dial("tcp", srvAddress, tlsConf)
 		if err != nil {
