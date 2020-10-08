@@ -1,4 +1,4 @@
-FROM node:10.11-alpine as build-frontend-deps
+FROM node:12.16-alpine as build-frontend-deps
 
 ARG CI
 ARG DRONE
@@ -13,7 +13,7 @@ ADD frontend/package.json /srv/frontend/package.json
 ADD frontend/package-lock.json /srv/frontend/package-lock.json
 RUN cd /srv/frontend && CI=true npm ci
 
-FROM node:10.11-alpine as build-frontend
+FROM node:12.16-alpine as build-frontend
 
 ARG CI
 ARG NODE_ENV=production
@@ -26,12 +26,10 @@ RUN cd /srv/frontend && \
     npm run build && \
     rm -rf ./node_modules
 
-FROM umputun/baseimage:buildgo as build-backend
+FROM umputun/baseimage:buildgo-latest as build-backend
 
 ARG GITHUB_TOKEN
 ENV SKIP_BACKEND_TEST=true
-
-RUN go get github.com/rakyll/statik
 
 WORKDIR /build/backend
 ADD backend /build/backend
