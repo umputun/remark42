@@ -1,4 +1,4 @@
-FROM umputun/baseimage:buildgo-v1.4.1 as build-backend
+FROM umputun/baseimage:buildgo-v1.6.1 as build-backend
 
 ARG CI
 ARG DRONE
@@ -16,11 +16,14 @@ WORKDIR /build/backend
 
 ENV GOFLAGS="-mod=vendor"
 
+# install gcc in order to be able to go test package with -race
+RUN apk --no-cache add gcc libc-dev
+
 # run tests
 RUN \
     cd app && \
     if [ -z "$SKIP_BACKEND_TEST" ] ; then \
-        go test -race -p 1 -timeout="${BACKEND_TEST_TIMEOUT:-300s}" -covermode=atomic -coverprofile=/profile.cov_tmp ./... && \
+        CGO_ENABLED=1 go test -race -p 1 -timeout="${BACKEND_TEST_TIMEOUT:-300s}" -covermode=atomic -coverprofile=/profile.cov_tmp ./... && \
         cat /profile.cov_tmp | grep -v "_mock.go" > /profile.cov ; \
         golangci-lint run --config ../.golangci.yml ./... ; \
     else echo "skip backend tests and linter" ; fi
@@ -57,7 +60,7 @@ RUN cd /srv/frontend && \
     else echo "skip frontend tests and lint" ; npm run build ; fi && \
     rm -rf ./node_modules
 
-FROM umputun/baseimage:app-v1.4.1
+FROM umputun/baseimage:app-v1.6.1
 
 WORKDIR /srv
 
