@@ -32,7 +32,7 @@ func NewFS() *FS {
 // ReadFile depends on statik achieve exists
 func (f *FS) ReadFile(path string) ([]byte, error) {
 	if f.statik != nil {
-		return fs.ReadFile(f.statik, filepath.Join("/", path))
+		return fs.ReadFile(f.statik, filepath.Join("/", path)) //nolint:gocritic // root folder is a requirement for statik
 	}
-	return ioutil.ReadFile(filepath.Join("./", filepath.Clean(path)))
+	return ioutil.ReadFile(filepath.Clean(path))
 }
