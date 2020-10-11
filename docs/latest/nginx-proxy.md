@@ -1,3 +1,7 @@
+---
+title: Nginx
+---
+
 ## How to configure remark42 with nginx reverse proxy
 
 Example of nginx configuration (reverse proxy) running remark42 service on remark42.example.com
