@@ -63,6 +63,35 @@ func TestService_WithDrops(t *testing.T) {
 	assert.Equal(t, 2, len(d2.Get()), "one comment from three dropped from d2, got: %v", d2.Get())
 }
 
+func TestService_SubmitVerificationWithDrops(t *testing.T) {
+	d1, d2 := &MockDest{id: 1}, &MockDest{id: 2}
+	s := NewService(nil, 1, d1, d2)
+	assert.NotNil(t, s)
+
+	s.SubmitVerification(VerificationRequest{
+		SiteID: "remark",
+		User:   "testUser",
+		Email:  "test@example.org",
+		Token:  "testToken",
+	})
+	s.SubmitVerification(VerificationRequest{})
+	time.Sleep(time.Millisecond * 11)
+	s.SubmitVerification(VerificationRequest{})
+	time.Sleep(time.Millisecond * 11)
+	s.Close()
+
+	s.SubmitVerification(VerificationRequest{}) // safe to send after close
+
+	assert.Equal(t, 2, len(d2.GetVerify()), "one request from three dropped from d2, got: %v", d2.GetVerify())
+
+	verifyDest := d1.GetVerify()
+	require.Equal(t, 2, len(verifyDest), "one request from three dropped from d1, got: %v", verifyDest)
+	assert.Equal(t, "remark", verifyDest[0].SiteID)
+	assert.Equal(t, "testUser", verifyDest[0].User)
+	assert.Equal(t, "test@example.org", verifyDest[0].Email)
+	assert.Equal(t, "testToken", verifyDest[0].Token)
+}
+
 func TestService_Many(t *testing.T) {
 	d1, d2 := &MockDest{id: 1}, &MockDest{id: 2}
 	s := NewService(nil, 5, d1, d2)
@@ -70,16 +99,20 @@ func TestService_Many(t *testing.T) {
 
 	for i := 0; i < 10; i++ {
 		s.Submit(Request{Comment: store.Comment{ID: fmt.Sprintf("%d", 100+i)}})
+		s.SubmitVerification(VerificationRequest{User: fmt.Sprintf("%d", 100+i)})
 		time.Sleep(time.Millisecond * time.Duration(rand.Int31n(20)))
 	}
 	s.Close()
 	time.Sleep(time.Millisecond * 10)
 
 	assert.NotEqual(t, 10, len(d1.Get()), "some comments dropped from d1")
+	assert.NotEqual(t, 10, len(d1.GetVerify()), "some verifications dropped from d1")
 	assert.NotEqual(t, 10, len(d2.Get()), "some comments dropped from d2")
+	assert.NotEqual(t, 10, len(d2.GetVerify()), "some verifications dropped from d2")
 
 	assert.True(t, d1.closed)
 	assert.True(t, d2.closed)
+	assert.Equal(t, "mock id=1, closed=true", d1.String())
 }
 
 func TestService_WithParent(t *testing.T) {

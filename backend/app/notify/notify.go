@@ -14,9 +14,10 @@ import (
 
 // Service delivers notifications to multiple destinations
 type Service struct {
-	dataService  Store
-	destinations []Destination
-	queue        chan Request
+	dataService       Store
+	destinations      []Destination
+	queue             chan Request
+	verificationQueue chan VerificationRequest
 
 	closed uint32 // non-zero means closed. uses uint instead of bool for atomic
 	ctx    context.Context
@@ -26,7 +27,8 @@ type Service struct {
 // Destination defines interface for a given destination service, like telegram, email and so on
 type Destination interface {
 	fmt.Stringer
-	Send(ctx context.Context, req Request) error
+	Send(context.Context, Request) error
+	SendVerification(context.Context, VerificationRequest) error
 }
 
 // Store defines the minimal interface accessing stored comments used by notifier
@@ -41,14 +43,13 @@ type Request struct {
 	parent   store.Comment // fetched only in case Comment is set
 	Email    string        // if set (also) send email
 	ForAdmin bool          // if set, message supposed to be sent to administrator
-
-	Verification VerificationMetadata // if set sent verification notification
 }
 
-// VerificationMetadata required to send notify method verification message
-type VerificationMetadata struct {
+// VerificationRequest notification for user
+type VerificationRequest struct {
 	SiteID string
 	User   string
+	Email  string // if set, send email only
 	Token  string
 }
 
@@ -62,11 +63,12 @@ func NewService(dataService Store, size int, destinations ...Destination) *Servi
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	res := Service{
-		dataService:  dataService,
-		queue:        make(chan Request, size),
-		destinations: destinations,
-		ctx:          ctx,
-		cancel:       cancel,
+		dataService:       dataService,
+		queue:             make(chan Request, size),
+		verificationQueue: make(chan VerificationRequest, size),
+		destinations:      destinations,
+		ctx:               ctx,
+		cancel:            cancel,
 	}
 	if len(destinations) > 0 {
 		go res.do()
@@ -101,11 +103,24 @@ func (s *Service) Submit(req Request) {
 	}
 }
 
+// SubmitVerification to internal channel if not busy, drop if can't send
+func (s *Service) SubmitVerification(req VerificationRequest) {
+	if len(s.destinations) == 0 || atomic.LoadUint32(&s.closed) != 0 {
+		return
+	}
+	select {
+	case s.verificationQueue <- req:
+	default:
+		log.Printf("[WARN] can't send verification to queue, %s for %s", req.User, req.Email)
+	}
+}
+
 // Close queue channel and wait for completion
 func (s *Service) Close() {
 	if s.queue != nil {
 		log.Print("[DEBUG] close notifier")
 		close(s.queue)
+		close(s.verificationQueue)
 		s.cancel()
 		<-s.ctx.Done()
 	}
@@ -125,6 +140,20 @@ func (s *Service) do() {
 			for _, dest := range s.destinations {
 				go func(d Destination) {
 					if err := d.Send(s.ctx, c); err != nil {
+						log.Printf("[WARN] failed to send to %s, %s", d, err)
+					}
+					wg.Done()
+				}(dest)
+			}
+			wg.Wait()
+		case v, ok := <-s.verificationQueue:
+			if !ok {
+				return
+			}
+			wg.Add(len(s.destinations))
+			for _, dest := range s.destinations {
+				go func(d Destination) {
+					if err := d.SendVerification(s.ctx, v); err != nil {
 						log.Printf("[WARN] failed to send to %s, %s", d, err)
 					}
 					wg.Done()

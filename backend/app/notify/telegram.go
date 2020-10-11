@@ -28,7 +28,6 @@ const telegramAPIPrefix = "https://api.telegram.org/bot"
 
 // NewTelegram makes telegram bot for notifications
 func NewTelegram(token, channelID string, timeout time.Duration, api string) (*Telegram, error) {
-
 	if _, err := strconv.ParseInt(channelID, 10, 64); err != nil {
 		channelID = "@" + channelID // if channelID not a number enforce @ prefix
 	}
@@ -86,10 +85,6 @@ func NewTelegram(token, channelID string, timeout time.Duration, api string) (*T
 
 // Send to telegram channel
 func (t *Telegram) Send(ctx context.Context, req Request) error {
-	if req.Comment.ID == "" {
-		// verification request received, send nothing
-		return nil
-	}
 	if req.ForAdmin {
 		// request for administrator received, do nothing with it
 		// as we already sent message on request without this flag set
@@ -149,6 +144,11 @@ func (t *Telegram) Send(ctx context.Context, req Request) error {
 	if err = json.NewDecoder(resp.Body).Decode(&tgResp); err != nil {
 		return errors.Wrap(err, "can't decode telegram response")
 	}
+	return nil
+}
+
+// SendVerification is not implemented for telegram
+func (t *Telegram) SendVerification(_ context.Context, _ VerificationRequest) error {
 	return nil
 }
 
