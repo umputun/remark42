@@ -167,7 +167,7 @@ func (e *Email) setTemplates() error {
 // Send email about comment reply to Request.Email if it's set,
 // also sends email to site administrator if appropriate option is set.
 // Thread safe
-func (e *Email) Send(ctx context.Context, req Request) (err error) {
+func (e *Email) Send(ctx context.Context, req Request) error {
 	if req.Email == "" {
 		// this means we can't send this request via Email
 		return nil
@@ -177,26 +177,41 @@ func (e *Email) Send(ctx context.Context, req Request) (err error) {
 		return errors.Errorf("sending message to %q aborted due to canceled context", req.Email)
 	default:
 	}
-	var msg string
 
-	if req.Verification.Token != "" {
-		log.Printf("[DEBUG] send verification via %s, user %s", e, req.Verification.User)
-		msg, err = e.buildVerificationMessage(req.Verification.User, req.Email, req.Verification.Token, req.Verification.SiteID)
-		if err != nil {
-			return err
-		}
+	if req.parent.User.ID == req.Comment.User.ID && !req.ForAdmin {
+		// don't send anything if if user replied to their own comment
+		return nil
+	}
+	log.Printf("[DEBUG] send notification via %s, comment id %s", e, req.Comment.ID)
+	msg, err := e.buildMessageFromRequest(req, req.ForAdmin)
+	if err != nil {
+		return err
 	}
 
-	if req.Comment.ID != "" {
-		if req.parent.User.ID == req.Comment.User.ID && !req.ForAdmin {
-			// don't send anything if if user replied to their own comment
-			return nil
-		}
-		log.Printf("[DEBUG] send notification via %s, comment id %s", e, req.Comment.ID)
-		msg, err = e.buildMessageFromRequest(req, req.ForAdmin)
-		if err != nil {
-			return err
-		}
+	return repeater.NewDefault(5, time.Millisecond*250).Do(
+		ctx,
+		func() error {
+			return e.sendMessage(emailMessage{from: e.From, to: req.Email, message: msg})
+		})
+}
+
+// SendVerification email verification VerificationRequest.Email if it's set.
+// Thread safe
+func (e *Email) SendVerification(ctx context.Context, req VerificationRequest) error {
+	if req.Email == "" {
+		// this means we can't send this request via Email
+		return nil
+	}
+	select {
+	case <-ctx.Done():
+		return errors.Errorf("sending message to %q aborted due to canceled context", req.Email)
+	default:
+	}
+
+	log.Printf("[DEBUG] send verification via %s, user %s", e, req.User)
+	msg, err := e.buildVerificationMessage(req.User, req.Email, req.Token, req.SiteID)
+	if err != nil {
+		return err
 	}
 
 	return repeater.NewDefault(5, time.Millisecond*250).Do(

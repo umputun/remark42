@@ -655,9 +655,9 @@ func TestRest_EmailNotification(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
 	// wait for mock notification Submit to kick off
 	time.Sleep(time.Millisecond * 30)
-	require.Equal(t, 5, len(mockDestination.Get()))
-	require.NotEmpty(t, mockDestination.Get()[4].Verification)
-	verificationToken := mockDestination.Get()[4].Verification.Token
+	require.Equal(t, 1, len(mockDestination.GetVerify()))
+	assert.Equal(t, "good@example.com", mockDestination.GetVerify()[0].Email)
+	verificationToken := mockDestination.GetVerify()[0].Token
 
 	// verify email
 	req, err = http.NewRequest(http.MethodPost, ts.URL+fmt.Sprintf("/api/v1/email/confirm?site=remark42&tkn=%s", verificationToken), nil)
@@ -703,8 +703,9 @@ func TestRest_EmailNotification(t *testing.T) {
 	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
 	// wait for mock notification Submit to kick off
 	time.Sleep(time.Millisecond * 30)
-	require.Equal(t, 7, len(mockDestination.Get()))
-	assert.Equal(t, "good@example.com", mockDestination.Get()[5].Email)
+	require.Equal(t, 6, len(mockDestination.Get()))
+	assert.Equal(t, "good@example.com", mockDestination.Get()[4].Email)
+	assert.Equal(t, "admin@example.org", mockDestination.Get()[5].Email)
 
 	// delete user's email
 	req, err = http.NewRequest(http.MethodDelete, ts.URL+"/api/v1/email?site=remark42", nil)
@@ -733,8 +734,8 @@ func TestRest_EmailNotification(t *testing.T) {
 	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
 	// wait for mock notification Submit to kick off
 	time.Sleep(time.Millisecond * 30)
-	require.Equal(t, 9, len(mockDestination.Get()))
-	assert.Empty(t, mockDestination.Get()[7].Email)
+	require.Equal(t, 8, len(mockDestination.Get()))
+	assert.Empty(t, mockDestination.Get()[6].Email)
 }
 
 func TestRest_UserAllData(t *testing.T) {

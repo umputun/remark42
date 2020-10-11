@@ -78,7 +78,18 @@ func TestTelegram_Send(t *testing.T) {
 	assert.Contains(t, err.Error(), "unexpected telegram status code 404", "send on broken tg")
 
 	assert.Equal(t, "telegram: @remark_test", tb.String())
-	require.NoError(t, tb.Send(context.TODO(), Request{}), "Empty Comment doesn't send anything")
+}
+
+func TestTelegram_SendVerification(t *testing.T) {
+	ts := mockTelegramServer()
+	defer ts.Close()
+
+	tb, err := NewTelegram("good-token", "remark_test", 2*time.Second, ts.URL+"/")
+	assert.NoError(t, err)
+	assert.NotNil(t, tb)
+
+	err = tb.SendVerification(context.TODO(), VerificationRequest{})
+	assert.NoError(t, err)
 }
 
 func mockTelegramServer() *httptest.Server {

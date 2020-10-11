@@ -296,14 +296,12 @@ func (s *private) sendEmailConfirmationCtrl(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	s.notifyService.Submit(
-		notify.Request{
-			Email: address,
-			Verification: notify.VerificationMetadata{
-				SiteID: siteID,
-				User:   user.Name,
-				Token:  tkn,
-			},
+	s.notifyService.SubmitVerification(
+		notify.VerificationRequest{
+			SiteID: siteID,
+			User:   user.Name,
+			Email:  address,
+			Token:  tkn,
 		},
 	)
 

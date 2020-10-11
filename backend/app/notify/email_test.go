@@ -108,7 +108,7 @@ func TestEmailSendErrors(t *testing.T) {
 
 	e.verifyTmpl, err = template.New("test").Parse("{{.Test}}")
 	assert.NoError(t, err)
-	assert.EqualError(t, e.Send(context.Background(), Request{Email: "bad@example.org", Verification: VerificationMetadata{Token: "some"}}),
+	assert.EqualError(t, e.SendVerification(context.Background(), VerificationRequest{Email: "bad@example.org", Token: "some"}),
 		"error executing template to build verification message: template: test:1:2: executing \"test\" at <.Test>: can't evaluate field Test in type notify.verifyTmplData")
 
 	e.msgTmpl, err = template.New("test").Parse("{{.Test}}")
@@ -247,20 +247,31 @@ func TestEmail_SendVerification(t *testing.T) {
 	fakeSMTP := fakeTestSMTP{}
 	email.smtp = &fakeSMTP
 	email.TokenGenFn = TokenGenFn
-	req := Request{
-		Email: "test@example.org",
-		Verification: VerificationMetadata{
-			SiteID: "remark",
-			User:   "test_username",
-			Token:  "secret_",
-		},
+	// proper VerificationRequest without email
+	req := VerificationRequest{
+		SiteID: "remark",
+		User:   "test_username",
+		Token:  "secret_",
 	}
-	assert.NoError(t, email.Send(context.TODO(), req))
+	assert.NoError(t, email.SendVerification(context.TODO(), req))
+	assert.Equal(t, "", fakeSMTP.readMail())
+	assert.Equal(t, 0, fakeSMTP.readQuitCount())
+	assert.Equal(t, "", fakeSMTP.readRcpt())
+
+	// proper VerificationRequest with email
+	req.Email = "test@example.org"
+	assert.NoError(t, email.SendVerification(context.TODO(), req))
 	assert.Equal(t, "from@example.org", fakeSMTP.readMail())
 	assert.Equal(t, 1, fakeSMTP.readQuitCount())
 	assert.Equal(t, "test@example.org", fakeSMTP.readRcpt())
+
+	// VerificationRequest with canceled context
+	ctx, cancel := context.WithCancel(context.TODO())
+	cancel()
+	assert.EqualError(t, email.SendVerification(ctx, req), "sending message to \"test@example.org\" aborted due to canceled context")
+
 	// test buildVerificationMessage separately for message text
-	res, err := email.buildVerificationMessage(req.Verification.User, req.Email, req.Verification.Token, req.Verification.SiteID)
+	res, err := email.buildVerificationMessage(req.User, req.Email, req.Token, req.SiteID)
 	assert.NoError(t, err)
 	assert.Contains(t, res, `From: from@example.org
 To: test@example.org
@@ -272,7 +283,7 @@ Date: `)
 	assert.Contains(t, res, `secret_`)
 	assert.NotContains(t, res, `https://example.org/`)
 	email.SubscribeURL = "https://example.org/subscribe.html?token="
-	res, err = email.buildVerificationMessage(req.Verification.User, req.Email, req.Verification.Token, req.Verification.SiteID)
+	res, err = email.buildVerificationMessage(req.User, req.Email, req.Token, req.SiteID)
 	assert.NoError(t, err)
 	assert.Contains(t, res, `From: from@example.org
 To: test@example.org
