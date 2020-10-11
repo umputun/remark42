@@ -113,20 +113,28 @@ func (s *Service) Close() {
 }
 
 func (s *Service) do() {
-	for c := range s.queue {
-		var wg sync.WaitGroup
-		wg.Add(len(s.destinations))
-		for _, dest := range s.destinations {
-			go func(d Destination) {
-				if err := d.Send(s.ctx, c); err != nil {
-					log.Printf("[WARN] failed to send to %s, %s", d, err)
-				}
-				wg.Done()
-			}(dest)
+	defer log.Print("[WARN] terminated notifier")
+	var wg sync.WaitGroup
+	for {
+		select {
+		case c, ok := <-s.queue:
+			if !ok {
+				return
+			}
+			wg.Add(len(s.destinations))
+			for _, dest := range s.destinations {
+				go func(d Destination) {
+					if err := d.Send(s.ctx, c); err != nil {
+						log.Printf("[WARN] failed to send to %s, %s", d, err)
+					}
+					wg.Done()
+				}(dest)
+			}
+			wg.Wait()
+		case <-s.ctx.Done():
+			return
 		}
-		wg.Wait()
 	}
-	log.Print("[WARN] terminated notifier")
 }
 
 // NopService is do-nothing notifier, without destinations
