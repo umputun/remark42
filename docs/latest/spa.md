@@ -1,3 +1,7 @@
+---
+title: SPA
+---
+
 ## How to configure remark42 for Single Page Apps (SPA)
 
 Originally tested on [Nuxt.js](https://nuxtjs.org/), but it should be applicable to all SPAs.

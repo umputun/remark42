@@ -1,18 +1,22 @@
+---
+title: Email
+---
+
 ## Overview
 
 This documentation describes how to enable the email-related capabilities of Remark.
 
 - email authentication for users:
 
-    enabling this will let the user log in using their emails:
+  enabling this will let the user log in using their emails:
 
-    ![Email authentication](/docs/images/email_auth.png?raw=true)
+  ![Email authentication](/docs/images/email_auth.png?raw=true)
 
 - email notifications for any users except anonymous:
 
-    GitHub or Google or Twitter or any other kind of user gets the ability to get email notifications about new replies to their comments:
+  GitHub or Google or Twitter or any other kind of user gets the ability to get email notifications about new replies to their comments:
 
-    ![Email notifications subscription](/docs/images/email_notifications.png?raw=true)
+  ![Email notifications subscription](/docs/images/email_notifications.png?raw=true)
 
 ## Setup email server connection
 
@@ -58,21 +62,22 @@ To use any of containers below with in remark42 environment set following two `S
 
 Here is `docker-compose.yml` configuration part spinning up a container for
 [stevenolen/mailgun-smtp-server](https://hub.docker.com/r/stevenolen/mailgun-smtp-server):
+
 ```yaml
-    mailgun:
-        image: stevenolen/mailgun-smtp-server
-        container_name: "mail"
-        hostname: "mail"
+mailgun:
+  image: stevenolen/mailgun-smtp-server
+  container_name: 'mail'
+  hostname: 'mail'
 
-        logging:
-            driver: json-file
-            options:
-                max-size: "10m"
-                max-file: "5"
+  logging:
+    driver: json-file
+    options:
+      max-size: '10m'
+      max-file: '5'
 
-        environment:
-            - MG_KEY=key-123456789
-            - MG_DOMAIN=example.com
+  environment:
+    - MG_KEY=key-123456789
+    - MG_DOMAIN=example.com
 ```
 
 Please note that before
@@ -110,20 +115,21 @@ To use any of containers below with in remark42 environment set following two `S
 
 Here is `docker-compose.yml` configuration part spinning up a container for
 [fgribreau/smtp-to-sendgrid-gateway](https://hub.docker.com/r/fgribreau/smtp-to-sendgrid-gateway):
+
 ```yaml
-    sendgrid:
-        image: fgribreau/smtp-to-sendgrid-gateway
-        container_name: "mail"
-        hostname: "mail"
+sendgrid:
+  image: fgribreau/smtp-to-sendgrid-gateway
+  container_name: 'mail'
+  hostname: 'mail'
 
-        logging:
-            driver: json-file
-            options:
-                max-size: "10m"
-                max-file: "5"
+  logging:
+    driver: json-file
+    options:
+      max-size: '10m'
+      max-file: '5'
 
-        environment:
-            - SENDGRID_API=key-123456789
+  environment:
+    - SENDGRID_API=key-123456789
 ```
 
 ### Gmail
@@ -143,6 +149,7 @@ Configuration example for Gmail:
 ### Amazon SES
 
 Configuration example for [Amazon SES](https://aws.amazon.com/ses/) (us-east-1 region):
+
 ```yaml
 - SMTP_HOST=email-smtp.us-east-1.amazonaws.com
 - SMTP_PORT=465
@@ -175,7 +182,6 @@ After you set `SMTP_` variables, you can allow email authentication by setting t
 - AUTH_EMAIL_ENABLE=true
 - AUTH_EMAIL_FROM=notify@example.com
 ```
-
 
 Usually, you don't need to change/set anything else. In case if you want to use a different email template set `AUTH_EMAIL_TEMPLATE`, for instance
 `- AUTH_EMAIL_TEMPLATE="Confirmation email, token: {{.Token}}"`. See [verified-authentication](https://github.com/go-pkgz/auth#verified-authentication) for more details.
