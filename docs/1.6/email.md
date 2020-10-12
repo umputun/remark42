@@ -10,13 +10,13 @@ This documentation describes how to enable the email-related capabilities of Rem
 
   enabling this will let the user log in using their emails:
 
-  ![Email authentication](/docs/images/email_auth.png?raw=true)
+  ![Email authentication](/docs/1.6/images/email_auth.png?raw=true)
 
 - email notifications for any users except anonymous:
 
   GitHub or Google or Twitter or any other kind of user gets the ability to get email notifications about new replies to their comments:
 
-  ![Email notifications subscription](/docs/images/email_notifications.png?raw=true)
+  ![Email notifications subscription](/docs/1.6/images/email_notifications.png?raw=true)
 
 ## Setup email server connection
 
