@@ -85,6 +85,8 @@ steps:
     commands:
       - ssh umputun@remark42.com "cd /srv/remark && docker-compose pull"
       - ssh umputun@remark42.com "cd /srv/remark && docker-compose up -d"
+      - ssh umputun@remark42.com "cd /srv/remark-site && git pull && git submodule update --recursive --remote"
+      - ssh umputun@remark42.com "cd /srv/remark-site && docker-compose build && docker-compose up"
     when:
       branch: master
       event: push
