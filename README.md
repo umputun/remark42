@@ -140,8 +140,8 @@ _this is the recommended way to run remark42_
 | auth.facebook.csec      | AUTH_FACEBOOK_CSEC      |                          | Facebook OAuth client secret                    |
 | auth.microsoft.cid      | AUTH_MICROSOFT_CID      |                          | Microsoft OAuth client ID                       |
 | auth.microsoft.csec     | AUTH_MICROSOFT_CSEC     |                          | Microsoft OAuth client secret                   |
-| auth.github.cid         | AUTH_GITHUB_CID         |                          | Github OAuth client ID                          |
-| auth.github.csec        | AUTH_GITHUB_CSEC        |                          | Github OAuth client secret                      |
+| auth.github.cid         | AUTH_GITHUB_CID         |                          | GitHub OAuth client ID                          |
+| auth.github.csec        | AUTH_GITHUB_CSEC        |                          | GitHub OAuth client secret                      |
 | auth.twitter.cid        | AUTH_TWITTER_CID        |                          | Twitter Consumer API Key                        |
 | auth.twitter.csec       | AUTH_TWITTER_CSEC       |                          | Twitter Consumer API Secret key                 |
 | auth.yandex.cid         | AUTH_YANDEX_CID         |                          | Yandex OAuth client ID                          |
