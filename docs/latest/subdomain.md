@@ -13,7 +13,7 @@ All README examples show configurations with remark42 on its own subdomain, i.e.
 - And you also need to slightly modify the callback URL for the social media login API's:
   - Facebook Valid OAuth Redirect URIs: `https://example.com/remark42/auth/facebook/callback`
   - Google Authorized redirect URIs: `https://example.com/remark42/auth/google/callback`
-  - Github Authorised callback URL: `https://example.com/remark42/auth/github/callback`
+  - GitHub Authorised callback URL: `https://example.com/remark42/auth/github/callback`
 
 ### docker-compose configuration
 
