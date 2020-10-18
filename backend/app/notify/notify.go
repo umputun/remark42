@@ -84,7 +84,7 @@ func (s *Service) Submit(req Request) {
 	if s.dataService != nil && req.Comment.ParentID != "" {
 		if p, err := s.dataService.Get(req.Comment.Locator, req.Comment.ParentID, store.User{}); err == nil {
 			req.parent = p
-			req.Emails = s.getNotificationEmails(req, p)
+			req.Emails = deduplicateStrings(s.getNotificationEmails(req, p))
 		}
 	}
 	select {
@@ -180,3 +180,20 @@ func (s *Service) do() {
 
 // NopService is do-nothing notifier, without destinations
 var NopService = &Service{}
+
+// deduplicateStrings returns provided slice of strings will all duplicates removed.
+// Resulting slice is not sorted.
+func deduplicateStrings(source []string) []string {
+	set := make(map[string]struct{})
+
+	for _, k := range source {
+		set[k] = struct{}{}
+	}
+
+	result := make([]string, 0, len(set))
+	for k := range set {
+		result = append(result, k)
+	}
+
+	return result
+}
