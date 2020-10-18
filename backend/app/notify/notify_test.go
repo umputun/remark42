@@ -182,7 +182,7 @@ func TestService_EmailRetrieval(t *testing.T) {
 	assert.Equal(t, "p3", destRes[2].Comment.ID)
 	assert.Equal(t, "p1", destRes[2].parent.ID)
 	assert.Equal(t, "u1", destRes[2].parent.User.ID)
-	assert.Equal(t, []string{"u1@example.com"}, destRes[2].Emails)
+	assert.ElementsMatch(t, []string{"u1@example.com"}, destRes[2].Emails)
 
 	// reply to the last comment by another user, should trigger email retrieval error
 	s.Submit(Request{Comment: dataStore.data["p4"]})
@@ -206,6 +206,7 @@ func TestService_Recursive(t *testing.T) {
 	dataStore.data["p2"] = store.Comment{ID: "p2", ParentID: "p1", User: store.User{ID: "u2"}}
 	dataStore.data["p3"] = store.Comment{ID: "p3", ParentID: "p2", User: store.User{ID: "u3"}}
 	dataStore.data["p4"] = store.Comment{ID: "p4", ParentID: "p3", User: store.User{ID: "u1"}}
+	dataStore.data["p5"] = store.Comment{ID: "p5", ParentID: "p4", User: store.User{ID: "u4"}}
 	dataStore.emailData["u1"] = "u1@example.com"
 	// second comment goes without email address for notification
 	dataStore.emailData["u3"] = "u3@example.com"
@@ -213,7 +214,7 @@ func TestService_Recursive(t *testing.T) {
 	s := NewService(dataStore, 1, dest)
 	assert.NotNil(t, s)
 
-	// one comment, one notification
+	// one comment from u1 with email set
 	s.Submit(Request{Comment: dataStore.data["p1"]})
 	time.Sleep(time.Millisecond * 110)
 
@@ -223,7 +224,7 @@ func TestService_Recursive(t *testing.T) {
 	assert.Empty(t, destRes[0].parent)
 	assert.Empty(t, destRes[0].Emails)
 
-	// reply to the first comment, one notification
+	// reply to the first comment from u2 without email set
 	s.Submit(Request{Comment: dataStore.data["p2"]})
 	time.Sleep(time.Millisecond * 110)
 
@@ -232,9 +233,9 @@ func TestService_Recursive(t *testing.T) {
 	assert.Equal(t, "p2", destRes[1].Comment.ID)
 	assert.Equal(t, "p1", destRes[1].parent.ID)
 	assert.Equal(t, "u1", destRes[1].parent.User.ID)
-	assert.Equal(t, []string{"u1@example.com"}, destRes[1].Emails)
+	assert.ElementsMatch(t, []string{"u1@example.com"}, destRes[1].Emails)
 
-	// reply to the second comment, plus one notification for it and one recursive up the chain
+	// reply to the second comment from u3 with email set
 	s.Submit(Request{Comment: dataStore.data["p3"]})
 	time.Sleep(time.Millisecond * 110)
 
@@ -243,9 +244,9 @@ func TestService_Recursive(t *testing.T) {
 	assert.Equal(t, "p3", destRes[2].Comment.ID)
 	assert.Equal(t, "p2", destRes[2].parent.ID)
 	assert.Equal(t, "u2", destRes[2].parent.User.ID)
-	assert.Equal(t, []string{"u1@example.com"}, destRes[2].Emails)
+	assert.ElementsMatch(t, []string{"u1@example.com"}, destRes[2].Emails)
 
-	// reply to the third comment, plus one notification for it and two recursive up the chain
+	// reply to the third comment from u1 (author of the first comment), only u3 should be notified
 	s.Submit(Request{Comment: dataStore.data["p4"]})
 	time.Sleep(time.Millisecond * 110)
 
@@ -254,7 +255,18 @@ func TestService_Recursive(t *testing.T) {
 	assert.Equal(t, "p4", destRes[3].Comment.ID)
 	assert.Equal(t, "p3", destRes[3].parent.ID)
 	assert.Equal(t, "u3", destRes[3].parent.User.ID)
-	assert.Equal(t, []string{"u3@example.com"}, destRes[3].Emails, "u1 is not notified they are the one who left the comment")
+	assert.ElementsMatch(t, []string{"u3@example.com"}, destRes[3].Emails, "u1 is not notified they are the one who left the comment")
+
+	// reply to the fourth comment from u4, u1 and u3 should be notified once as a result
+	s.Submit(Request{Comment: dataStore.data["p5"]})
+	time.Sleep(time.Millisecond * 110)
+
+	destRes = dest.Get()
+	require.Equal(t, 5, len(destRes), "four comment notified once each")
+	assert.Equal(t, "p5", destRes[4].Comment.ID)
+	assert.Equal(t, "p4", destRes[4].parent.ID)
+	assert.Equal(t, "u1", destRes[4].parent.User.ID)
+	assert.ElementsMatch(t, []string{"u1@example.com", "u3@example.com"}, destRes[4].Emails, "u3 and u1 notified once")
 
 	s.Close()
 }
