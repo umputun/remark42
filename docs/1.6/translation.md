@@ -29,7 +29,7 @@ below in order to have your translation start being available to all remark42 us
     git rebase upstream/master
     git push
     ```
-1.  add new locale with [two-letter code](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes)
+1.  add a new locale with [two-letter code](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes)
     of the language you want to make the translation into to list in
     [frontend/tasks/supportedLocales.json](https://github.com/umputun/remark42/blob/master/frontend/tasks/supportedLocales.json)
 1.  run `npm run translation:generate` in `frontend` folder
@@ -49,7 +49,7 @@ below in order to have your translation start being available to all remark42 us
             ```
 
     1.  open [http://127.0.0.1:8080](http://127.0.0.1:8080), log in, make a comment, make a reply to a comment,
-        and make sure that your translation looks as you expect it to look
+        and make sure your translation looks as you expect it to look
     1.  make a screenshot from [http://127.0.0.1:8080](http://127.0.0.1:8080) with your translation in place
 
 1.  after all previous steps are done, create a [Pull Request](https://github.com/umputun/remark42/pulls) to umputun/remark42

@@ -1,7 +1,7 @@
 ### Email templating
 
 We use golang templates for email templating.
-templates located in `backend/templates` and embeded into binary by statik
+templates located in `backend/templates` and embedded into binary by statik
 
 For getting access to files you can use package `templates` from `backend/app/templates`
 
