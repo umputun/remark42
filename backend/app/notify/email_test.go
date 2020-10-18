@@ -113,16 +113,16 @@ func TestEmailSendErrors(t *testing.T) {
 
 	e.msgTmpl, err = template.New("test").Parse("{{.Test}}")
 	assert.NoError(t, err)
-	assert.EqualError(t, e.Send(context.Background(), Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "test"}}, Email: "bad@example.org"}),
+	assert.EqualError(t, e.Send(context.Background(), Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "test"}}, Emails: []string{"bad@example.org"}}),
 		"error executing template to build comment reply message: template: test:1:2: executing \"test\" at <.Test>: can't evaluate field Test in type notify.msgTmplData")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	assert.EqualError(t, e.Send(ctx, Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "test"}}, Email: "bad@example.org"}),
-		"sending message to \"bad@example.org\" aborted due to canceled context")
+	assert.EqualError(t, e.Send(ctx, Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "test"}}, Emails: []string{"bad@example.org"}}),
+		"sending email messages about comment \"999\" aborted due to canceled context")
 
 	e.smtp = &fakeTestSMTP{}
-	assert.EqualError(t, e.Send(context.Background(), Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "error"}}, Email: "bad@example.org"}),
+	assert.EqualError(t, e.Send(context.Background(), Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "error"}}, Emails: []string{"bad@example.org"}}),
 		"error creating token for unsubscribe link: token generation error")
 }
 
@@ -136,10 +136,7 @@ func TestEmailSend_ExitConditions(t *testing.T) {
 	// prevent triggering e.autoFlush creation
 	emptyRequest := Request{Comment: store.Comment{ID: "999"}}
 	assert.NoError(t, email.Send(context.Background(), emptyRequest),
-		"Message without parent comment User.Email is not sent and returns nil")
-	requestWithEqualUsersWithEmails := Request{Comment: store.Comment{ID: "999"}, Email: "good_example@example.org"}
-	assert.NoError(t, email.Send(context.Background(), requestWithEqualUsersWithEmails),
-		"Message with parent comment User equals comment User is not sent and returns nil")
+		"Message without Emails and AdminEmails is not sent and returns nil")
 }
 
 func TestEmailSendClientError(t *testing.T) {
@@ -184,6 +181,15 @@ func TestEmailSendClientError(t *testing.T) {
 		"e.send called without smtpClient set returns error")
 }
 
+func TestEmail_DefaultTemplates(t *testing.T) {
+	email, err := NewEmail(EmailParams{}, SMTPParams{})
+	assert.Error(t, err)
+	assert.Nil(t, email)
+	email, err = NewEmail(EmailParams{VerificationTemplatePath: "testdata/verification.html.tmpl"}, SMTPParams{})
+	assert.Error(t, err)
+	assert.Nil(t, email)
+}
+
 func TestEmail_Send(t *testing.T) {
 	email, err := NewEmail(EmailParams{
 		From:                     "from@example.org",
@@ -199,14 +205,14 @@ func TestEmail_Send(t *testing.T) {
 	req := Request{
 		Comment: store.Comment{ID: "999", User: store.User{ID: "1", Name: "test_user"}, ParentID: "1", PostTitle: "test_title"},
 		parent:  store.Comment{ID: "1", User: store.User{ID: "999", Name: "parent_user"}},
-		Email:   "test@example.org",
+		Emails:  []string{"test@example.org"},
 	}
 	assert.NoError(t, email.Send(context.TODO(), req))
 	assert.Equal(t, "from@example.org", fakeSMTP.readMail())
 	assert.Equal(t, 1, fakeSMTP.readQuitCount())
 	assert.Equal(t, "test@example.org", fakeSMTP.readRcpt())
 	// test buildMessageFromRequest separately for message text
-	res, err := email.buildMessageFromRequest(req, req.ForAdmin)
+	res, err := email.buildMessageFromRequest(req, req.Emails[0], false)
 	assert.NoError(t, err)
 	assert.Contains(t, res, `From: from@example.org
 To: test@example.org
@@ -218,14 +224,17 @@ List-Unsubscribe-Post: List-Unsubscribe=One-Click
 List-Unsubscribe: <https://remark42.com/api/v1/email/unsubscribe?site=&tkn=token>
 Date: `)
 
-	// send email to admin without parent set
+	// send email to both user and admin, without parent set
 	req = Request{
-		Comment:  store.Comment{ID: "999", User: store.User{ID: "1", Name: "test_user"}, PostTitle: "test_title"},
-		Email:    "admin@example.org",
-		ForAdmin: true,
+		Comment:     store.Comment{ID: "999", User: store.User{ID: "1", Name: "test_user"}, PostTitle: "test_title"},
+		Emails:      []string{"test@example.org"},
+		AdminEmails: []string{"admin@example.org"},
 	}
 	assert.NoError(t, email.Send(context.TODO(), req))
-	res, err = email.buildMessageFromRequest(req, req.ForAdmin)
+	assert.Equal(t, "from@example.org", fakeSMTP.readMail())
+	assert.Equal(t, 3, fakeSMTP.readQuitCount(), "plus two emails: one for user and one for admin")
+	assert.Equal(t, "admin@example.org", fakeSMTP.readRcpt())
+	res, err = email.buildMessageFromRequest(req, req.AdminEmails[0], true)
 	assert.NoError(t, err)
 	assert.Contains(t, res, `From: from@example.org
 To: admin@example.org
@@ -268,7 +277,7 @@ func TestEmail_SendVerification(t *testing.T) {
 	// VerificationRequest with canceled context
 	ctx, cancel := context.WithCancel(context.TODO())
 	cancel()
-	assert.EqualError(t, email.SendVerification(ctx, req), "sending message to \"test@example.org\" aborted due to canceled context")
+	assert.EqualError(t, email.SendVerification(ctx, req), "sending message to \"test_username\" aborted due to canceled context")
 
 	// test buildVerificationMessage separately for message text
 	res, err := email.buildVerificationMessage(req.User, req.Email, req.Token, req.SiteID)

@@ -37,12 +37,12 @@ type Store interface {
 	GetUserEmail(siteID string, userID string) (string, error)
 }
 
-// Request notification either about comment or about particular user verification
+// Request notification either about comment
 type Request struct {
-	Comment  store.Comment // if set sent notifications about new comment
-	parent   store.Comment // fetched only in case Comment is set
-	Email    string        // if set (also) send email
-	ForAdmin bool          // if set, message supposed to be sent to administrator
+	Comment     store.Comment
+	parent      store.Comment
+	Emails      []string
+	AdminEmails []string
 }
 
 // VerificationRequest notification for user
@@ -82,18 +82,10 @@ func (s *Service) Submit(req Request) {
 	if len(s.destinations) == 0 || atomic.LoadUint32(&s.closed) != 0 {
 		return
 	}
-	// parent comment is fetched only if comment is present in the Request
 	if s.dataService != nil && req.Comment.ParentID != "" {
 		if p, err := s.dataService.Get(req.Comment.Locator, req.Comment.ParentID, store.User{}); err == nil {
 			req.parent = p
-			// user notification, should fetch email for it.
-			// administrator notification comes with pre-set email
-			if req.Email == "" {
-				req.Email, err = s.dataService.GetUserEmail(req.Comment.Locator.SiteID, p.User.ID)
-				if err != nil {
-					log.Printf("[WARN] can't read email for %s, %v", p.User.ID, err)
-				}
-			}
+			req.Emails = s.getNotificationEmails(req, p)
 		}
 	}
 	select {
@@ -101,6 +93,22 @@ func (s *Service) Submit(req Request) {
 	default:
 		log.Printf("[WARN] can't send notification to queue, %+v", req.Comment)
 	}
+}
+
+// getNotificationEmails returns list of emails for notifications for provided comment.
+// Emails is not added to the returned list in case original message is from the same user as the notification receiver.
+func (s *Service) getNotificationEmails(req Request, notifyComment store.Comment) (result []string) {
+	// add current user email only if the user is not the one who wrote the original comment
+	if notifyComment.User.ID != req.Comment.User.ID {
+		email, err := s.dataService.GetUserEmail(req.Comment.Locator.SiteID, notifyComment.User.ID)
+		if err != nil {
+			log.Printf("[WARN] can't read email for %s, %v", notifyComment.User.ID, err)
+		}
+		if email != "" {
+			result = append(result, email)
+		}
+	}
+	return result
 }
 
 // SubmitVerification to internal channel if not busy, drop if can't send

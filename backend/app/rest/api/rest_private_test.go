@@ -618,9 +618,9 @@ func TestRest_EmailNotification(t *testing.T) {
 	require.NoError(t, render.DecodeJSON(strings.NewReader(string(body)), &parentComment))
 	// wait for mock notification Submit to kick off
 	time.Sleep(time.Millisecond * 30)
-	require.Equal(t, 2, len(mockDestination.Get()))
-	assert.Empty(t, mockDestination.Get()[0].Email)
-	assert.Equal(t, "admin@example.org", mockDestination.Get()[1].Email)
+	require.Equal(t, 1, len(mockDestination.Get()))
+	assert.Empty(t, mockDestination.Get()[0].Emails)
+	assert.Equal(t, []string{"admin@example.org"}, mockDestination.Get()[0].AdminEmails)
 
 	// create child comment from another user, email notification only to admin expected
 	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(fmt.Sprintf(
@@ -630,7 +630,7 @@ func TestRest_EmailNotification(t *testing.T) {
 	"locator":{"url": "https://radio-t.com/blah1",
 	"site": "remark42"}}`, parentComment.ID)))
 	assert.NoError(t, err)
-	req.Header.Add("X-JWT", devToken)
+	req.Header.Add("X-JWT", anonToken)
 	resp, err = client.Do(req)
 	assert.NoError(t, err)
 	body, err = ioutil.ReadAll(resp.Body)
@@ -639,9 +639,9 @@ func TestRest_EmailNotification(t *testing.T) {
 	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
 	// wait for mock notification Submit to kick off
 	time.Sleep(time.Millisecond * 30)
-	require.Equal(t, 4, len(mockDestination.Get()))
-	assert.Empty(t, mockDestination.Get()[2].Email)
-	assert.Equal(t, "admin@example.org", mockDestination.Get()[3].Email)
+	require.Equal(t, 2, len(mockDestination.Get()))
+	assert.Empty(t, mockDestination.Get()[1].Emails)
+	assert.Equal(t, []string{"admin@example.org"}, mockDestination.Get()[1].AdminEmails)
 
 	// send confirmation token for email
 	req, err = http.NewRequest(http.MethodPost, ts.URL+"/api/v1/email/subscribe?site=remark42&address=good@example.com", nil)
@@ -694,7 +694,7 @@ func TestRest_EmailNotification(t *testing.T) {
 	"locator":{"url": "https://radio-t.com/blah1",
 	"site": "remark42"}}`, parentComment.ID)))
 	assert.NoError(t, err)
-	req.Header.Add("X-JWT", devToken)
+	req.Header.Add("X-JWT", anonToken)
 	resp, err = client.Do(req)
 	assert.NoError(t, err)
 	body, err = ioutil.ReadAll(resp.Body)
@@ -703,9 +703,9 @@ func TestRest_EmailNotification(t *testing.T) {
 	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
 	// wait for mock notification Submit to kick off
 	time.Sleep(time.Millisecond * 30)
-	require.Equal(t, 6, len(mockDestination.Get()))
-	assert.Equal(t, "good@example.com", mockDestination.Get()[4].Email)
-	assert.Equal(t, "admin@example.org", mockDestination.Get()[5].Email)
+	require.Equal(t, 3, len(mockDestination.Get()))
+	assert.Equal(t, []string{"good@example.com"}, mockDestination.Get()[2].Emails)
+	assert.Equal(t, []string{"admin@example.org"}, mockDestination.Get()[2].AdminEmails)
 
 	// delete user's email
 	req, err = http.NewRequest(http.MethodDelete, ts.URL+"/api/v1/email?site=remark42", nil)
@@ -734,8 +734,9 @@ func TestRest_EmailNotification(t *testing.T) {
 	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
 	// wait for mock notification Submit to kick off
 	time.Sleep(time.Millisecond * 30)
-	require.Equal(t, 8, len(mockDestination.Get()))
-	assert.Empty(t, mockDestination.Get()[6].Email)
+	require.Equal(t, 4, len(mockDestination.Get()))
+	assert.Empty(t, mockDestination.Get()[3].Emails)
+	assert.Equal(t, []string{"admin@example.org"}, mockDestination.Get()[3].AdminEmails)
 }
 
 func TestRest_UserAllData(t *testing.T) {

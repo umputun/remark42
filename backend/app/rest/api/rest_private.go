@@ -120,12 +120,12 @@ func (s *private) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		Scopes(comment.Locator.URL, lastCommentsScope, comment.User.ID, comment.Locator.SiteID))
 
 	if s.notifyService != nil {
-		// user notification
-		s.notifyService.Submit(notify.Request{Comment: finalComment})
-		// admin notification
-		for _, adminEmail := range s.adminEmail {
-			s.notifyService.Submit(notify.Request{Comment: finalComment, Email: adminEmail, ForAdmin: true})
-		}
+		s.notifyService.Submit(
+			notify.Request{
+				Comment:     finalComment,
+				AdminEmails: s.adminEmail,
+			},
+		)
 	}
 
 	log.Printf("[DEBUG] created commend %+v", finalComment)
