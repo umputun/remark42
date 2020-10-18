@@ -107,6 +107,11 @@ func (s *Service) getNotificationEmails(req Request, notifyComment store.Comment
 			result = append(result, email)
 		}
 	}
+	if notifyComment.ParentID != "" {
+		if p, err := s.dataService.Get(req.Comment.Locator, notifyComment.ParentID, store.User{}); err == nil {
+			result = append(result, s.getNotificationEmails(req, p)...)
+		}
+	}
 	return result
 }
 
