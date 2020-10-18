@@ -198,6 +198,67 @@ func TestService_EmailRetrieval(t *testing.T) {
 	s.Close()
 }
 
+func TestService_Recursive(t *testing.T) {
+	dest := &MockDest{id: 1}
+	dataStore := &mockStore{data: map[string]store.Comment{}, emailData: map[string]string{}}
+
+	dataStore.data["p1"] = store.Comment{ID: "p1", User: store.User{ID: "u1"}}
+	dataStore.data["p2"] = store.Comment{ID: "p2", ParentID: "p1", User: store.User{ID: "u2"}}
+	dataStore.data["p3"] = store.Comment{ID: "p3", ParentID: "p2", User: store.User{ID: "u3"}}
+	dataStore.data["p4"] = store.Comment{ID: "p4", ParentID: "p3", User: store.User{ID: "u1"}}
+	dataStore.emailData["u1"] = "u1@example.com"
+	// second comment goes without email address for notification
+	dataStore.emailData["u3"] = "u3@example.com"
+
+	s := NewService(dataStore, 1, dest)
+	assert.NotNil(t, s)
+
+	// one comment, one notification
+	s.Submit(Request{Comment: dataStore.data["p1"]})
+	time.Sleep(time.Millisecond * 110)
+
+	destRes := dest.Get()
+	require.Equal(t, 1, len(destRes), "one comment notified")
+	assert.Equal(t, "p1", destRes[0].Comment.ID)
+	assert.Empty(t, destRes[0].parent)
+	assert.Empty(t, destRes[0].Emails)
+
+	// reply to the first comment, one notification
+	s.Submit(Request{Comment: dataStore.data["p2"]})
+	time.Sleep(time.Millisecond * 110)
+
+	destRes = dest.Get()
+	require.Equal(t, 2, len(destRes), "two comment notified")
+	assert.Equal(t, "p2", destRes[1].Comment.ID)
+	assert.Equal(t, "p1", destRes[1].parent.ID)
+	assert.Equal(t, "u1", destRes[1].parent.User.ID)
+	assert.Equal(t, []string{"u1@example.com"}, destRes[1].Emails)
+
+	// reply to the second comment, plus one notification for it and one recursive up the chain
+	s.Submit(Request{Comment: dataStore.data["p3"]})
+	time.Sleep(time.Millisecond * 110)
+
+	destRes = dest.Get()
+	require.Equal(t, 3, len(destRes), "three comment notified")
+	assert.Equal(t, "p3", destRes[2].Comment.ID)
+	assert.Equal(t, "p2", destRes[2].parent.ID)
+	assert.Equal(t, "u2", destRes[2].parent.User.ID)
+	assert.Equal(t, []string{"u1@example.com"}, destRes[2].Emails)
+
+	// reply to the third comment, plus one notification for it and two recursive up the chain
+	s.Submit(Request{Comment: dataStore.data["p4"]})
+	time.Sleep(time.Millisecond * 110)
+
+	destRes = dest.Get()
+	require.Equal(t, 4, len(destRes), "four comment notified once each")
+	assert.Equal(t, "p4", destRes[3].Comment.ID)
+	assert.Equal(t, "p3", destRes[3].parent.ID)
+	assert.Equal(t, "u3", destRes[3].parent.User.ID)
+	assert.Equal(t, []string{"u3@example.com"}, destRes[3].Emails, "u1 is not notified they are the one who left the comment")
+
+	s.Close()
+}
+
 func TestService_Nop(t *testing.T) {
 	s := NopService
 	s.Submit(Request{Comment: store.Comment{}})
