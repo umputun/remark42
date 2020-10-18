@@ -114,7 +114,10 @@ func TestEmailSendErrors(t *testing.T) {
 	e.msgTmpl, err = template.New("test").Parse("{{.Test}}")
 	assert.NoError(t, err)
 	assert.EqualError(t, e.Send(context.Background(), Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "test"}}, Emails: []string{"bad@example.org"}}),
-		"error executing template to build comment reply message: template: test:1:2: executing \"test\" at <.Test>: can't evaluate field Test in type notify.msgTmplData")
+		"1 error occurred:\n\t* problem sending user email notification to \"bad@example.org\": " +
+		"error executing template to build comment reply message: " +
+		"template: test:1:2: executing \"test\" at <.Test>: " +
+		"can't evaluate field Test in type notify.msgTmplData\n\n")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -123,7 +126,8 @@ func TestEmailSendErrors(t *testing.T) {
 
 	e.smtp = &fakeTestSMTP{}
 	assert.EqualError(t, e.Send(context.Background(), Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "error"}}, Emails: []string{"bad@example.org"}}),
-		"error creating token for unsubscribe link: token generation error")
+		"1 error occurred:\n\t* problem sending user email notification to \"bad@example.org\":" +
+		" error creating token for unsubscribe link: token generation error\n\n")
 }
 
 func TestEmailSend_ExitConditions(t *testing.T) {

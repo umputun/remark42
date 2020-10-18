@@ -37,7 +37,7 @@ type Store interface {
 	GetUserEmail(siteID string, userID string) (string, error)
 }
 
-// Request notification either about comment
+// Request notification for a Comment
 type Request struct {
 	Comment     store.Comment
 	parent      store.Comment

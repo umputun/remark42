@@ -177,43 +177,31 @@ func (e *Email) Send(ctx context.Context, req Request) error {
 
 	result := new(multierror.Error)
 
-	// send user notifications
 	for _, email := range req.Emails {
-		email := email
-		log.Printf("[DEBUG] send user notification via %s, comment id %s", e, req.Comment.ID)
-		msg, err := e.buildMessageFromRequest(req, email, false)
-		if err != nil {
-			return err
-		}
-
-		err = repeater.NewDefault(5, time.Millisecond*250).Do(
-			ctx,
-			func() error {
-				return e.sendMessage(emailMessage{from: e.From, to: email, message: msg})
-			})
-
+		err := e.buildAndSendMessage(ctx, req, email, false)
 		result = multierror.Append(errors.Wrapf(err, "problem sending user email notification to %q", email))
 	}
 
-	// send admin notifications
 	for _, email := range req.AdminEmails {
-		email := email
-		log.Printf("[DEBUG] send admin notification via %s, comment id %s", e, req.Comment.ID)
-		msg, err := e.buildMessageFromRequest(req, email, true)
-		if err != nil {
-			return err
-		}
-
-		err = repeater.NewDefault(5, time.Millisecond*250).Do(
-			ctx,
-			func() error {
-				return e.sendMessage(emailMessage{from: e.From, to: email, message: msg})
-			})
-
+		err := e.buildAndSendMessage(ctx, req, email, true)
 		result = multierror.Append(errors.Wrapf(err, "problem sending admin email notification to %q", email))
 	}
 
 	return result.ErrorOrNil()
+}
+
+func (e *Email) buildAndSendMessage(ctx context.Context, req Request, email string, forAdmin bool) error {
+	log.Printf("[DEBUG] send notification via %s, comment id %s", e, req.Comment.ID)
+	msg, err := e.buildMessageFromRequest(req, email, forAdmin)
+	if err != nil {
+		return err
+	}
+
+	return repeater.NewDefault(5, time.Millisecond*250).Do(
+		ctx,
+		func() error {
+			return e.sendMessage(emailMessage{from: e.From, to: email, message: msg})
+		})
 }
 
 // SendVerification email verification VerificationRequest.Email if it's set.
