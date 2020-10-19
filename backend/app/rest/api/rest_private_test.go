@@ -620,7 +620,6 @@ func TestRest_EmailNotification(t *testing.T) {
 	time.Sleep(time.Millisecond * 30)
 	require.Equal(t, 1, len(mockDestination.Get()))
 	assert.Empty(t, mockDestination.Get()[0].Emails)
-	assert.Equal(t, []string{"admin@example.org"}, mockDestination.Get()[0].AdminEmails)
 
 	// create child comment from another user, email notification only to admin expected
 	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(fmt.Sprintf(
@@ -641,7 +640,6 @@ func TestRest_EmailNotification(t *testing.T) {
 	time.Sleep(time.Millisecond * 30)
 	require.Equal(t, 2, len(mockDestination.Get()))
 	assert.Empty(t, mockDestination.Get()[1].Emails)
-	assert.Equal(t, []string{"admin@example.org"}, mockDestination.Get()[1].AdminEmails)
 
 	// send confirmation token for email
 	req, err = http.NewRequest(http.MethodPost, ts.URL+"/api/v1/email/subscribe?site=remark42&address=good@example.com", nil)
@@ -705,7 +703,6 @@ func TestRest_EmailNotification(t *testing.T) {
 	time.Sleep(time.Millisecond * 30)
 	require.Equal(t, 3, len(mockDestination.Get()))
 	assert.Equal(t, []string{"good@example.com"}, mockDestination.Get()[2].Emails)
-	assert.Equal(t, []string{"admin@example.org"}, mockDestination.Get()[2].AdminEmails)
 
 	// delete user's email
 	req, err = http.NewRequest(http.MethodDelete, ts.URL+"/api/v1/email?site=remark42", nil)
@@ -718,7 +715,7 @@ func TestRest_EmailNotification(t *testing.T) {
 	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusOK, resp.StatusCode, string(body))
 
-	// create child comment from another user, no email notification expected except for admin
+	// create child comment from another user, no email notification
 	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(
 		`{"text": "test 321",
 	"user": {"name": "other_user"},
@@ -736,7 +733,6 @@ func TestRest_EmailNotification(t *testing.T) {
 	time.Sleep(time.Millisecond * 30)
 	require.Equal(t, 4, len(mockDestination.Get()))
 	assert.Empty(t, mockDestination.Get()[3].Emails)
-	assert.Equal(t, []string{"admin@example.org"}, mockDestination.Get()[3].AdminEmails)
 }
 
 func TestRest_UserAllData(t *testing.T) {

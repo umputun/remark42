@@ -22,12 +22,13 @@ import (
 
 // EmailParams contain settings for email notifications
 type EmailParams struct {
-	From                     string // from email address
-	MsgTemplatePath          string // path to request message template
-	VerificationSubject      string // verification message sub
-	VerificationTemplatePath string // path to verification template
-	SubscribeURL             string // full subscribe handler URL
-	UnsubscribeURL           string // full unsubscribe handler URL
+	From                     string   // from email address
+	AdminEmails              []string // administrator emails to send copy of comment notification to
+	MsgTemplatePath          string   // path to request message template
+	VerificationSubject      string   // verification message sub
+	VerificationTemplatePath string   // path to verification template
+	SubscribeURL             string   // full subscribe handler URL
+	UnsubscribeURL           string   // full unsubscribe handler URL
 
 	TokenGenFn func(userID, email, site string) (string, error) // Unsubscribe token generation function
 }
@@ -165,7 +166,7 @@ func (e *Email) setTemplates() error {
 	return nil
 }
 
-// Send email about comment reply to Request.Emails and Request.AdminEmails
+// Send email about comment reply to Request.Emails and Email.AdminEmails
 // if they're set.
 // Thread safe
 func (e *Email) Send(ctx context.Context, req Request) error {
@@ -182,7 +183,7 @@ func (e *Email) Send(ctx context.Context, req Request) error {
 		result = multierror.Append(errors.Wrapf(err, "problem sending user email notification to %q", email))
 	}
 
-	for _, email := range req.AdminEmails {
+	for _, email := range e.AdminEmails {
 		err := e.buildAndSendMessage(ctx, req, email, true)
 		result = multierror.Append(errors.Wrapf(err, "problem sending admin email notification to %q", email))
 	}

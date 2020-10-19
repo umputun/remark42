@@ -114,10 +114,10 @@ func TestEmailSendErrors(t *testing.T) {
 	e.msgTmpl, err = template.New("test").Parse("{{.Test}}")
 	assert.NoError(t, err)
 	assert.EqualError(t, e.Send(context.Background(), Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "test"}}, Emails: []string{"bad@example.org"}}),
-		"1 error occurred:\n\t* problem sending user email notification to \"bad@example.org\": " +
-		"error executing template to build comment reply message: " +
-		"template: test:1:2: executing \"test\" at <.Test>: " +
-		"can't evaluate field Test in type notify.msgTmplData\n\n")
+		"1 error occurred:\n\t* problem sending user email notification to \"bad@example.org\": "+
+			"error executing template to build comment reply message: "+
+			"template: test:1:2: executing \"test\" at <.Test>: "+
+			"can't evaluate field Test in type notify.msgTmplData\n\n")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -126,8 +126,8 @@ func TestEmailSendErrors(t *testing.T) {
 
 	e.smtp = &fakeTestSMTP{}
 	assert.EqualError(t, e.Send(context.Background(), Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "error"}}, Emails: []string{"bad@example.org"}}),
-		"1 error occurred:\n\t* problem sending user email notification to \"bad@example.org\":" +
-		" error creating token for unsubscribe link: token generation error\n\n")
+		"1 error occurred:\n\t* problem sending user email notification to \"bad@example.org\":"+
+			" error creating token for unsubscribe link: token generation error\n\n")
 }
 
 func TestEmailSend_ExitConditions(t *testing.T) {
@@ -229,16 +229,16 @@ List-Unsubscribe: <https://remark42.com/api/v1/email/unsubscribe?site=&tkn=token
 Date: `)
 
 	// send email to both user and admin, without parent set
+	email.AdminEmails = []string{"admin@example.org"}
 	req = Request{
-		Comment:     store.Comment{ID: "999", User: store.User{ID: "1", Name: "test_user"}, PostTitle: "test_title"},
-		Emails:      []string{"test@example.org"},
-		AdminEmails: []string{"admin@example.org"},
+		Comment: store.Comment{ID: "999", User: store.User{ID: "1", Name: "test_user"}, PostTitle: "test_title"},
+		Emails:  []string{"test@example.org"},
 	}
 	assert.NoError(t, email.Send(context.TODO(), req))
 	assert.Equal(t, "from@example.org", fakeSMTP.readMail())
 	assert.Equal(t, 3, fakeSMTP.readQuitCount(), "plus two emails: one for user and one for admin")
 	assert.Equal(t, "admin@example.org", fakeSMTP.readRcpt())
-	res, err = email.buildMessageFromRequest(req, req.AdminEmails[0], true)
+	res, err = email.buildMessageFromRequest(req, email.AdminEmails[0], true)
 	assert.NoError(t, err)
 	assert.Contains(t, res, `From: from@example.org
 To: admin@example.org
