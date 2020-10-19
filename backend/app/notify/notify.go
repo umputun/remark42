@@ -42,7 +42,6 @@ type Request struct {
 	Comment     store.Comment
 	parent      store.Comment
 	Emails      []string
-	AdminEmails []string
 }
 
 // VerificationRequest notification for user

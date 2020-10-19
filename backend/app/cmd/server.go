@@ -457,10 +457,6 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		ProxyCORS:          s.ProxyCORS,
 	}
 
-	if s.Notify.Email.AdminNotifications {
-		srv.AdminEmail = s.Admin.Shared.Email
-	}
-
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = s.LowScore, s.CriticalScore
 
 	var devAuth *provider.DevAuthServer
@@ -846,6 +842,9 @@ func (s *ServerCommand) makeNotify(dataStore *service.DataStore, authenticator *
 					}
 					return tkn, nil
 				},
+			}
+			if s.Notify.Email.AdminNotifications {
+				emailParams.AdminEmails = s.Admin.Shared.Email
 			}
 			smtpParams := notify.SMTPParams{
 				Host:     s.SMTP.Host,

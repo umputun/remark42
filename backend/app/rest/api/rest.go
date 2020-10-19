@@ -51,7 +51,6 @@ type Rest struct {
 	AnonVote        bool
 	WebRoot         string
 	RemarkURL       string
-	AdminEmail      []string
 	ReadOnlyAge     int
 	SharedSecret    string
 	ScoreThresholds struct {
@@ -371,7 +370,6 @@ func (s *Rest) controllerGroups() (public, private, admin, rss) {
 		authenticator:    s.Authenticator,
 		notifyService:    s.NotifyService,
 		remarkURL:        s.RemarkURL,
-		adminEmail:       s.AdminEmail,
 		anonVote:         s.AnonVote,
 		templates:        templates.NewFS(),
 	}
