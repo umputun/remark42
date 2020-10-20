@@ -23,6 +23,7 @@ import TextareaAutosize from './textarea-autosize';
 import { TextExpander } from './text-expander';
 
 let textareaId = 0;
+const MAX_LENGTH = StaticStore.config.max_comment_size;
 
 export interface Props {
   id: string;
@@ -51,7 +52,6 @@ export interface State {
   /** prevents error hiding on input event */
   errorLock: boolean;
   isDisabled: boolean;
-  maxLength: number;
   /** main input value */
   text: string;
   /** override main button text */
@@ -127,7 +127,6 @@ export class CommentForm extends Component<Props, State> {
       errorMessage: null,
       errorLock: false,
       isDisabled: false,
-      maxLength: StaticStore.config.max_comment_size,
       text,
       buttonText: null,
     };
@@ -178,13 +177,14 @@ export class CommentForm extends Component<Props, State> {
 
   onInput = (e: Event) => {
     const { value } = e.target as HTMLInputElement;
+    const text = value.substr(0, MAX_LENGTH);
 
     updateJsonItem(LS_SAVED_COMMENT_VALUE, { [this.props.id]: value });
 
     if (this.state.errorLock) {
       this.setState({
         preview: null,
-        text: value,
+        text,
       });
       return;
     }
@@ -193,7 +193,7 @@ export class CommentForm extends Component<Props, State> {
       isErrorShown: false,
       errorMessage: null,
       preview: null,
-      text: value,
+      text,
     });
   };
 
@@ -446,8 +446,9 @@ export class CommentForm extends Component<Props, State> {
     </div>
   );
 
-  render(props: Props, { isDisabled, isErrorShown, errorMessage, preview, maxLength, text, buttonText }: State) {
-    const charactersLeft = maxLength - text.length;
+  render(props: Props, { isDisabled, isErrorShown, errorMessage, preview, text, buttonText }: State) {
+    const charactersLeft = MAX_LENGTH - text.length;
+
     errorMessage = props.errorMessage || errorMessage;
     const Labels = {
       main: <FormattedMessage id="commentForm.send" defaultMessage="Send" />,
@@ -491,7 +492,6 @@ export class CommentForm extends Component<Props, State> {
               className="comment-form__field"
               placeholder={placeholderMessage}
               value={text}
-              maxLength={maxLength}
               onInput={this.onInput}
               onKeyDown={this.onKeyDown}
               disabled={isDisabled}
