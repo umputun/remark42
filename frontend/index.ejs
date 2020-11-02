@@ -123,7 +123,7 @@
 
       var remark_config = {
         site_id: 'remark',
-        host: window.location.origin,
+        host: '<%= REMARK_URL %>' || window.location.origin,
         url: 'https://remark42.com/demo/',
         components: ['embed', 'counter'],
         // __colors__: {
