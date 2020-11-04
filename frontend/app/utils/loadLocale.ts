@@ -38,6 +38,11 @@ export async function loadLocale(locale: string): Promise<Record<string, string>
       .then(res => res.default)
       .catch(() => enMessages);
   }
+  if (locale === 'ua') {
+    return import(/* webpackChunkName: "ua" */ '../locales/ua.json')
+      .then(res => res.default)
+      .catch(() => enMessages);
+  }
 
   return enMessages;
 }
