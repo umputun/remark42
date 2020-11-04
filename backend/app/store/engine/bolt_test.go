@@ -694,6 +694,10 @@ func TestBolt_DeleteComment(t *testing.T) {
 	assert.True(t, res[0].Deleted, "marked deleted")
 	assert.Equal(t, store.User{Name: "user name", ID: "user1", Picture: "", Admin: false, Blocked: false, IP: ""}, res[0].User)
 
+	// repeated deletion should not decrease comments count
+	err = b.Delete(delReq)
+	assert.NoError(t, err)
+
 	assert.Equal(t, "some text2", res[1].Text)
 	assert.False(t, res[1].Deleted)
 
@@ -807,10 +811,22 @@ func TestBoltAdmin_DeleteUserHard(t *testing.T) {
 	b, teardown := prep(t)
 	defer teardown()
 
-	err := b.Delete(DeleteRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", DeleteMode: store.HardDelete})
+	comments, err := b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com"}, Sort: "time"})
+	assert.NoError(t, err)
+
+	// soft delete one comment
+	delReq := DeleteRequest{
+		Locator:    store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+		CommentID:  comments[0].ID,
+		DeleteMode: store.SoftDelete,
+	}
+	err = b.Delete(delReq)
+	assert.NoError(t, err)
+
+	err = b.Delete(DeleteRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", DeleteMode: store.HardDelete})
 	require.NoError(t, err)
 
-	comments, err := b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com"}, Sort: "time"})
+	comments, err = b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com"}, Sort: "time"})
 	assert.NoError(t, err)
 	require.Equal(t, 2, len(comments), "2 comments with deleted info")
 	assert.Equal(t, store.User{Name: "deleted", ID: "deleted", Picture: "", Admin: false, Blocked: false, IP: ""}, comments[0].User)
@@ -836,10 +852,22 @@ func TestBoltAdmin_DeleteUserSoft(t *testing.T) {
 	b, teardown := prep(t)
 	defer teardown()
 
-	err := b.Delete(DeleteRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", DeleteMode: store.SoftDelete})
+	comments, err := b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com"}, Sort: "time"})
+	assert.NoError(t, err)
+
+	// soft delete one comment
+	delReq := DeleteRequest{
+		Locator:    store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+		CommentID:  comments[0].ID,
+		DeleteMode: store.SoftDelete,
+	}
+	err = b.Delete(delReq)
+	assert.NoError(t, err)
+
+	err = b.Delete(DeleteRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", DeleteMode: store.SoftDelete})
 	require.NoError(t, err)
 
-	comments, err := b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com"}, Sort: "time"})
+	comments, err = b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com"}, Sort: "time"})
 	assert.NoError(t, err)
 	require.Equal(t, 2, len(comments), "2 comments with deleted info")
 	assert.Equal(t, store.User{Name: "user name", ID: "user1", Picture: "", Admin: false, Blocked: false, IP: ""}, comments[0].User)
