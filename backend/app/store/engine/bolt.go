@@ -797,6 +797,14 @@ func (b *BoltDB) deleteComment(bdb *bolt.DB, locator store.Locator, commentID st
 		if e = b.load(postBkt, commentID, &comment); e != nil {
 			return errors.Wrapf(e, "can't load key %s from bucket %s", commentID, locator.URL)
 		}
+
+		if !comment.Deleted {
+			// decrement comments count for post url
+			if _, e = b.count(tx, comment.Locator.URL, -1); e != nil {
+				return errors.Wrapf(e, "failed to decrement count for %s", comment.Locator)
+			}
+		}
+
 		// set deleted status and clear fields
 		comment.SetDeleted(mode)
 
@@ -808,11 +816,6 @@ func (b *BoltDB) deleteComment(bdb *bolt.DB, locator store.Locator, commentID st
 		lastBkt := tx.Bucket([]byte(lastBucketName))
 		if e = lastBkt.Delete([]byte(commentID)); e != nil {
 			return errors.Wrapf(e, "can't delete key %s from bucket %s", commentID, lastBucketName)
-		}
-
-		// decrement comments count for post url
-		if _, e = b.count(tx, comment.Locator.URL, -1); e != nil {
-			return errors.Wrapf(e, "failed to decrement count for %s", comment.Locator)
 		}
 
 		return nil
