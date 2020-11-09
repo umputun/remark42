@@ -31,8 +31,8 @@ describe('<SubscribeByRSS/>', () => {
     expect(wrapper.find('.comment-form__rss-dropdown__link')).toHaveLength(3);
   });
 
-  it('should have userId in Replies link', () => {
-    expect(wrapper.find('.comment-form__rss-dropdown__link').at(2).prop('href')).toEqual(
+  it('should have userId in replies link', () => {
+    expect(wrapper.find('.comment-form__rss-dropdown__link').at(2).prop('href')).toBe(
       createSubscribeUrl('reply', '&user=user-1')
     );
   });
