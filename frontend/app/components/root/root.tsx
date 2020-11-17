@@ -5,7 +5,13 @@ import b from 'bem-react-helper';
 import { IntlShape, useIntl, FormattedMessage, defineMessages } from 'react-intl';
 
 import { AuthProvider, Sorting } from '@app/common/types';
-import { COMMENT_NODE_CLASSNAME_PREFIX, MAX_SHOWN_ROOT_COMMENTS, THEMES, IS_MOBILE } from '@app/common/constants';
+import {
+  COMMENT_NODE_CLASSNAME_PREFIX,
+  MAX_SHOWN_ROOT_COMMENTS,
+  THEMES,
+  IS_MOBILE,
+  LS_EMAIL_KEY,
+} from '@app/common/constants';
 import { maxShownComments, url } from '@app/common/settings';
 
 import { StaticStore } from '@app/common/static_store';
@@ -150,6 +156,7 @@ export class Root extends Component<Props, State> {
 
   logOut = async () => {
     await this.props.logOut();
+    localStorage.removeItem(LS_EMAIL_KEY);
     await this.props.fetchComments();
   };
 

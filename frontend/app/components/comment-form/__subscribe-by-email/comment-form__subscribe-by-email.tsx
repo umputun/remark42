@@ -24,6 +24,7 @@ import TextareaAutosize from '@app/components/comment-form/textarea-autosize';
 import { isUserAnonymous } from '@app/utils/isUserAnonymous';
 import { isJwtExpired } from '@app/utils/jwt';
 import { useIntl, defineMessages, IntlShape, FormattedMessage } from 'react-intl';
+import { LS_EMAIL_KEY } from '@app/common/constants';
 
 const emailRegex = /[^@]+@[^.]+\..+/;
 
@@ -132,7 +133,7 @@ export const SubscribeByEmailForm: FunctionComponent = () => {
   const [step, setStep] = useState(subscribed ? Step.Subscribed : Step.Email);
 
   const [token, setToken] = useState('');
-  const [emailAddress, setEmailAddress] = useState('');
+  const [emailAddress, setEmailAddress] = useState(localStorage.getItem(LS_EMAIL_KEY) || '');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

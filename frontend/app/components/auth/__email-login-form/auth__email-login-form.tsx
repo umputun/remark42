@@ -16,6 +16,7 @@ import { defineMessages, IntlShape, useIntl, FormattedMessage } from 'react-intl
 import { validateUserName } from '../validateUserName';
 
 import { messages as loginForm } from '../__anonymous-login-form/auth__anonymous-login-form';
+import { LS_EMAIL_KEY } from '@app/common/constants';
 
 interface OwnProps {
   onSignIn(token: string): Promise<User | null>;
@@ -118,6 +119,7 @@ export class EmailLoginForm extends Component<Props, State> {
         return;
       }
       this.setState({ verificationSent: false, tokenValue: '' });
+      localStorage.setItem(LS_EMAIL_KEY, this.state.addressValue);
       if (this.props.onSuccess) {
         await this.props.onSuccess(user);
       }

@@ -30,6 +30,9 @@ export const LS_HIDDEN_USERS_KEY = '__remarkHiddenUsers';
 /** localstorage key under which sort preference resides */
 export const LS_SORT_KEY = '__remarkSort';
 
+/** localstorage key for email of logged in user */
+export const LS_EMAIL_KEY = '__remarkEmail';
+
 export const THEMES: Theme[] = ['light', 'dark'];
 
 export const IS_MOBILE = /Android|webOS|iPhone|iPad|iPod|Opera Mini|Windows Phone/i.test(navigator.userAgent);
