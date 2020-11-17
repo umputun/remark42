@@ -7,16 +7,16 @@ import { StaticStore } from '@app/common/static_store';
 import { LS_SAVED_COMMENT_VALUE } from '@app/common/constants';
 import * as localStorageModule from '@app/common/local-storage';
 
-import { CommentForm, Props, messages } from './comment-form';
+import { CommentForm, Props, messages, State } from './comment-form';
 import { SubscribeByEmail } from './__subscribe-by-email';
 import TextareaAutosize from './textarea-autosize';
 
-function createEvent<T = any>(type: string, value: T) {
+function createEvent<E extends Event, T = any>(type: string, value: T): E {
   const event = new Event(type);
 
   Object.defineProperty(event, 'target', { value });
 
-  return event;
+  return event as E;
 }
 
 const DEFAULT_PROPS: Readonly<Omit<Props, 'intl'>> = {
@@ -35,7 +35,7 @@ const intl = {
 } as any;
 
 describe('<CommentForm />', () => {
-  it('should render without control panel, preview button, and rss links in "simple view" mode', () => {
+  it('should shallow without control panel, preview button, and rss links in "simple view" mode', () => {
     const props = { ...DEFAULT_PROPS, simpleView: true, intl };
     const wrapper = shallow(<CommentForm {...props} />);
 
@@ -44,7 +44,7 @@ describe('<CommentForm />', () => {
     expect(wrapper.exists('.comment-form__rss')).toEqual(false);
   });
 
-  it('should be rendered with email subscription button', () => {
+  it('should be shallowed with email subscription button', () => {
     StaticStore.config.email_notifications = true;
 
     const props = { ...DEFAULT_PROPS, user, intl };
@@ -107,9 +107,8 @@ describe('<CommentForm />', () => {
     });
     it('should update value', () => {
       const props = { ...DEFAULT_PROPS, user, intl };
-      const wrapper = shallow(<CommentForm {...props} />);
-      // @ts-ignore
-      const instance: CommentForm = wrapper.instance();
+      const wrapper = shallow<CommentForm, Props, State>(<CommentForm {...props} />);
+      const instance = wrapper.instance();
 
       instance.onInput(createEvent('input', { value: '1' }));
       expect(localStorage.getItem(LS_SAVED_COMMENT_VALUE)).toBe('{"1":"1"}');
@@ -122,9 +121,8 @@ describe('<CommentForm />', () => {
       localStorage.setItem(LS_SAVED_COMMENT_VALUE, JSON.stringify({ '1': 'asd' }));
       const updateJsonItemSpy = jest.spyOn(localStorageModule, 'updateJsonItem');
       const props = { ...DEFAULT_PROPS, user, intl };
-      const wrapper = shallow(<CommentForm {...props} />);
-      // @ts-ignore
-      const instance: CommentForm = wrapper.instance();
+      const wrapper = shallow<CommentForm, Props, State>(<CommentForm {...props} />);
+      const instance = wrapper.instance();
 
       await instance.send(createEvent('send', { preventDefault: () => undefined }));
       expect(updateJsonItemSpy).toHaveBeenCalled();
@@ -134,9 +132,8 @@ describe('<CommentForm />', () => {
 
   it('should show error message of image upload try by anonymous user', () => {
     const props = { ...DEFAULT_PROPS, user: anonymousUser, intl };
-    const wrapper = shallow(<CommentForm {...props} />);
-    // @ts-ignore
-    const instance: CommentForm = wrapper.instance();
+    const wrapper = shallow<CommentForm, Props, State>(<CommentForm {...props} />);
+    const instance = wrapper.instance();
 
     instance.onDrop(new Event('drag') as DragEvent);
     expect(wrapper.exists('.comment-form__error')).toEqual(true);
@@ -145,12 +142,53 @@ describe('<CommentForm />', () => {
 
   it('should show error message of image upload try by unauthorized user', () => {
     const props = { ...DEFAULT_PROPS, intl };
-    const wrapper = shallow(<CommentForm {...props} />);
-    // @ts-ignore
-    const instance: CommentForm = wrapper.instance();
+    const wrapper = shallow<CommentForm, Props, State>(<CommentForm {...props} />);
+    const instance = wrapper.instance();
 
     instance.onDrop(new Event('drag') as DragEvent);
     expect(wrapper.exists('.comment-form__error')).toEqual(true);
     expect(wrapper.find('.comment-form__error').text()).toEqual(messages.unauthorizedUploadingDisabled.defaultMessage);
+  });
+
+  it('should show rest letters counter', async () => {
+    expect.assertions(3);
+
+    const originalConfig = { ...StaticStore.config };
+    StaticStore.config.max_comment_size = 2000;
+    const props = { ...DEFAULT_PROPS, intl };
+    const wrapper = shallow<CommentForm, Props, State>(<CommentForm {...props} />);
+    const instance = wrapper.instance();
+    const text =
+      'That was Wintermute, manipulating the lock the way it had manipulated the drone micro and the chassis of a gutted game console. It was chambered for .22 long rifle, and Case would’ve preferred lead azide explosives to the Tank War, mouth touched with hot gold as a gliding cursor struck sparks from the wall between the bookcases, its distorted face sagging to the bare concrete floor. Splayed in his elastic g-web, Case watched the other passengers as he made his way down Shiga from the sushi stall he cradled it in his jacket pocket. Images formed and reformed: a flickering montage of the Sprawl’s towers and ragged Fuller domes, dim figures moving toward him in the Japanese night like live wire voodoo and he’d cry for it, cry in his jacket pocket. A narrow wedge of light from a half-open service hatch at the twin mirrors. Still it was a square of faint light. The alarm still oscillated, louder here, the rear wall dulling the roar of the arcade showed him broken lengths of damp chipboard and the robot gardener. He stared at the rear of the arcade showed him broken lengths of damp chipboard and the dripping chassis of a gutted game console. That was Wintermute, manipulating the lock the way it had manipulated the drone micro and the chassis of a gutted game console. It was chambered for .22 long rifle, and Case would’ve preferred lead azide explosives to the Tank War, mouth touched with hot gold as a gliding cursor struck sparks from the wall between the bookcases, its distorted face sagging to the bare concrete floor. Splayed in his elastic g-web, Case watched the other passengers as he made his way down Shiga from the sushi stall he cradled it in his jacket pocket. Images formed and reformed: a flickering montage of the Sprawl’s towers and ragged Fuller domes, dim figures moving toward him in the Japanese night like live wire voodoo and he’d cry for it, cry in his jacket.';
+
+    instance.setState({ text });
+    await wrapper.update();
+
+    expect(instance.state.text).toBe(text);
+    expect(wrapper.find('.comment-form__counter').exists()).toBe(true);
+    expect(wrapper.find('.comment-form__counter').text()).toBe('99');
+
+    StaticStore.config = originalConfig;
+  });
+
+  it('should show zero in rest letters counter', async () => {
+    expect.assertions(2);
+
+    const originalConfig = { ...StaticStore.config };
+    StaticStore.config.max_comment_size = 2000;
+    const props = { ...DEFAULT_PROPS, intl };
+    const wrapper = shallow<CommentForm, Props, State>(<CommentForm {...props} />);
+    const instance = wrapper.instance();
+    const text =
+      'All the speed he took, all the turns he’d taken and the amplified breathing of the Sprawl’s towers and ragged Fuller domes, dim figures moving toward him in the dark. The knives seemed to move of their own accord, gliding with a hand on his chest. Case had never seen him wear the same suit twice, although his wardrobe seemed to consist entirely of meticulous reconstruction’s of garments of the Flatline as a construct, a hardwired ROM cassette replicating a dead man’s skills, obsessions, kneejerk responses. Case had never seen him wear the same suit twice, although his wardrobe seemed to consist entirely of meticulous reconstruction’s of garments of the bright void beyond the chain link. Now this quiet courtyard, Sunday afternoon, this girl with a random collection of European furniture, as though Deane had once intended to use the place as his home. Now this quiet courtyard, Sunday afternoon, this girl with a ritual lack of urgency through the arcs and passes of their dance, point passing point, as the men waited for an opening. They floated in the shade beneath a bridge or overpass. A graphic representation of data abstracted from the banks of every computer in the coffin for Armitage’s call. All the speed he took, all the turns he’d taken and the amplified breathing of the Sprawl’s towers and ragged Fuller domes, dim figures moving toward him in the dark. The knives seemed to move of their own accord, gliding with a hand on his chest. Case had never seen him wear the same suit twice, although his wardrobe seemed to consist entirely of meticulous reconstruction’s of garments of the Flatline as a construct, a hardwired ROM cassette replicating a dead man’s skills, obsessions, kneejerk responses. Case had never seen him wear the same suit twice, although his wardrobe seemed to consist entirely of meticulous reconstruction’s of garments of the bright void beyond the chain link. Now this quiet courtyard, Sunday afternoon, this girl with a random collection of European furniture, as though Deane had once intended to use the place as his home. Now this quiet courtyard, Sunday afternoon, this girl with a ritual lack of urgency through the arcs and passes of their dance, point passing point, as the men waited for an opening. They floated in the shade beneath a bridge or overpass. A graphic representation of data abstracted from the banks of every computer in the coffin for Armitage’s call.';
+
+    instance.onInput(createEvent('input', { value: text }));
+
+    await wrapper.update();
+
+    expect(instance.state.text).toBe(text.substr(0, StaticStore.config.max_comment_size));
+    expect(wrapper.find('.comment-form__counter').text()).toBe('0');
+
+    StaticStore.config = originalConfig;
   });
 });

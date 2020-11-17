@@ -39,9 +39,9 @@ export const SubscribeByRSS: FunctionComponent<{ userId: string | null }> = ({ u
   const intl = useIntl();
   const items: Array<[string, string]> = useMemo(
     () => [
-      [createSubscribeUrl('post'), intl.formatMessage(messages.thread)],
-      [createSubscribeUrl('site', `&user=${userId}`), intl.formatMessage(messages.site)],
-      [createSubscribeUrl('reply', `&url=${url}`), intl.formatMessage(messages.replies)],
+      [createSubscribeUrl('post', `&url=${url}`), intl.formatMessage(messages.thread)],
+      [createSubscribeUrl('site'), intl.formatMessage(messages.site)],
+      [createSubscribeUrl('reply', `&user=${userId}`), intl.formatMessage(messages.replies)],
     ],
     [userId]
   );

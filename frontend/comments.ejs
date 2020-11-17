@@ -68,7 +68,7 @@
 
         var remark_config = {
           site_id: query.site_id,
-          host: window.location.origin,
+          host: '<%= htmlWebpackPlugin.options.remarkUrl %>',
           url: query.url
         };
 

@@ -51,7 +51,6 @@ export interface State {
   /** prevents error hiding on input event */
   errorLock: boolean;
   isDisabled: boolean;
-  maxLength: number;
   /** main input value */
   text: string;
   /** override main button text */
@@ -127,7 +126,6 @@ export class CommentForm extends Component<Props, State> {
       errorMessage: null,
       errorLock: false,
       isDisabled: false,
-      maxLength: StaticStore.config.max_comment_size,
       text,
       buttonText: null,
     };
@@ -178,13 +176,14 @@ export class CommentForm extends Component<Props, State> {
 
   onInput = (e: Event) => {
     const { value } = e.target as HTMLInputElement;
+    const text = value.substr(0, StaticStore.config.max_comment_size);
 
     updateJsonItem(LS_SAVED_COMMENT_VALUE, { [this.props.id]: value });
 
     if (this.state.errorLock) {
       this.setState({
         preview: null,
-        text: value,
+        text,
       });
       return;
     }
@@ -193,7 +192,7 @@ export class CommentForm extends Component<Props, State> {
       isErrorShown: false,
       errorMessage: null,
       preview: null,
-      text: value,
+      text,
     });
   };
 
@@ -446,37 +445,38 @@ export class CommentForm extends Component<Props, State> {
     </div>
   );
 
-  render(props: Props, { isDisabled, isErrorShown, errorMessage, preview, maxLength, text, buttonText }: State) {
-    const charactersLeft = maxLength - text.length;
-    errorMessage = props.errorMessage || errorMessage;
+  render() {
+    const { theme, mode, simpleView, mix, uploadImage, autofocus, user, intl } = this.props;
+    const { isDisabled, isErrorShown, preview, text, buttonText } = this.state;
+    const charactersLeft = StaticStore.config.max_comment_size - text.length;
+    const errorMessage = this.props.errorMessage || this.state.errorMessage;
     const Labels = {
       main: <FormattedMessage id="commentForm.send" defaultMessage="Send" />,
       edit: <FormattedMessage id="commentForm.save" defaultMessage="Save" />,
       reply: <FormattedMessage id="commentForm.reply" defaultMessage="Reply" />,
     };
-    const label = buttonText || Labels[props.mode || 'main'];
-    const intl = this.props.intl;
+    const label = buttonText || Labels[mode || 'main'];
     const placeholderMessage = intl.formatMessage(messages.placeholder);
     return (
       <form
         className={b('comment-form', {
           mods: {
-            theme: props.theme,
-            type: props.mode || 'reply',
-            simple: props.simpleView,
+            theme,
+            type: mode || 'reply',
+            simple: simpleView,
           },
-          mix: props.mix,
+          mix,
         })}
         onSubmit={this.send}
         aria-label={intl.formatMessage(messages.newComment)}
         onDragOver={this.onDragOver}
         onDrop={this.onDrop}
       >
-        {!props.simpleView && (
+        {!simpleView && (
           <div className="comment-form__control-panel">
             <MarkdownToolbar
               intl={intl}
-              allowUpload={Boolean(this.props.uploadImage)}
+              allowUpload={Boolean(uploadImage)}
               uploadImages={this.uploadImages}
               textareaId={this.textareaId}
             />
@@ -491,11 +491,10 @@ export class CommentForm extends Component<Props, State> {
               className="comment-form__field"
               placeholder={placeholderMessage}
               value={text}
-              maxLength={maxLength}
               onInput={this.onInput}
               onKeyDown={this.onKeyDown}
               disabled={isDisabled}
-              autofocus={!!props.autofocus}
+              autofocus={!!autofocus}
               spellcheck={true}
             />
           </TextExpander>
@@ -510,13 +509,13 @@ export class CommentForm extends Component<Props, State> {
           ))}
 
         <div className="comment-form__actions">
-          {this.props.user ? (
+          {user ? (
             <Fragment>
               <div>
-                {!props.simpleView && (
+                {!simpleView && (
                   <Button
                     kind="secondary"
-                    theme={props.theme}
+                    theme={theme}
                     size="large"
                     mix="comment-form__button"
                     disabled={isDisabled}
@@ -530,11 +529,11 @@ export class CommentForm extends Component<Props, State> {
                 </Button>
               </div>
 
-              {!props.simpleView && props.mode === 'main' && (
+              {!simpleView && mode === 'main' && (
                 <div className="comment-form__rss">
                   {this.renderMarkdownTip()}
                   <FormattedMessage id="commentForm.subscribe-by" defaultMessage="Subscribe by" />{' '}
-                  <SubscribeByRSS userId={props.user !== null ? props.user.id : null} />
+                  <SubscribeByRSS userId={user !== null ? user.id : null} />
                   {StaticStore.config.email_notifications && StaticStore.query.show_email_subscription && (
                     <Fragment>
                       {' '}
@@ -559,7 +558,7 @@ export class CommentForm extends Component<Props, State> {
             <div className="comment-form__preview-wrapper">
               <div
                 className={b('comment-form__preview', {
-                  mix: b('raw-content', {}, { theme: props.theme }),
+                  mix: b('raw-content', {}, { theme }),
                 })}
                 dangerouslySetInnerHTML={{ __html: preview }}
               />

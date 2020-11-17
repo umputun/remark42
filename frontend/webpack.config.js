@@ -180,21 +180,25 @@ module.exports = () => ({
     new Html({
       template: path.resolve(__dirname, 'index.ejs'),
       inject: false,
+      remarkUrl,
     }),
     new Html({
       template: path.resolve(__dirname, 'counter.ejs'),
       filename: 'counter.html',
       inject: false,
+      remarkUrl,
     }),
     new Html({
       template: path.resolve(__dirname, 'last-comments.ejs'),
       filename: 'last-comments.html',
       inject: false,
+      remarkUrl,
     }),
     new Html({
       template: path.resolve(__dirname, 'comments.ejs'),
       filename: 'comments.html',
       inject: false,
+      remarkUrl,
     }),
     new MiniCssExtractPlugin({
       filename: '[name].css',
