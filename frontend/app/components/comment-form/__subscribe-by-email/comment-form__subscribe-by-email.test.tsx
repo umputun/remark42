@@ -20,6 +20,7 @@ import { IntlProvider } from 'react-intl';
 import enMessages from '../../../locales/en.json';
 
 import { SubscribeByEmail, SubscribeByEmailForm } from './';
+import { LS_EMAIL_KEY } from '@app/common/constants';
 
 const initialStore = {
   user,
@@ -137,6 +138,13 @@ describe('<SubscribeByEmailForm/>', () => {
 
     expect(wrapper.text()).toStartWith('You have been subscribed on updates by email');
     expect(wrapper.find(Button).text()).toEqual('Unsubscribe');
+  });
+
+  it('should fill in email from local storage', async () => {
+    localStorage.setItem(LS_EMAIL_KEY, 'someone@email.com');
+    const wrapper = createWrapper();
+    const form = wrapper.find('form');
+    expect(form.find('input').props().value).toEqual('someone@email.com');
   });
 
   it('should send form by paste valid token', async () => {

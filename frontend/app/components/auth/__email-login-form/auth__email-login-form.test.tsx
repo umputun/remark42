@@ -8,6 +8,7 @@ import { validToken } from '@app/testUtils/mocks/jwt';
 import { sendEmailVerificationRequest } from '@app/common/api';
 import { IntlProvider } from 'react-intl';
 import enMessages from '../../../locales/en.json';
+import { LS_EMAIL_KEY } from '@app/common/constants';
 
 jest.mock('@app/utils/jwt', () => ({
   isJwtExpired: jest
@@ -52,6 +53,8 @@ describe('EmailLoginForm', () => {
     await sleep(100);
     expect(onSignIn).toBeCalledWith('abcd');
     expect(onSuccess).toBeCalledWith(testUser);
+    //test that email is saved in local storage after email login
+    expect(localStorage.getItem(LS_EMAIL_KEY)).toEqual('someone@example.com');
   });
 
   it('should send form by pasting token', async () => {
