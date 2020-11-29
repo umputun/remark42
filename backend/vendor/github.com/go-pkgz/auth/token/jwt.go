@@ -66,6 +66,7 @@ type Opts struct {
 	AudienceReader Audience // allowed aud values
 	Issuer         string   // optional value for iss claim, usually application name
 	AudSecrets     bool     // uses different secret for differed auds. important: adds pre-parsing of unverified token
+	SendJWTHeader  bool     // if enabled send JWT as a header instead of cookie
 }
 
 // NewService makes JWT service
@@ -224,6 +225,11 @@ func (j *Service) Set(w http.ResponseWriter, claims Claims) (Claims, error) {
 	tokenString, err := j.Token(claims)
 	if err != nil {
 		return Claims{}, errors.Wrap(err, "failed to make token token")
+	}
+
+	if j.SendJWTHeader {
+		w.Header().Set(j.JWTHeaderKey, tokenString)
+		return claims, nil
 	}
 
 	cookieExpiration := 0 // session cookie

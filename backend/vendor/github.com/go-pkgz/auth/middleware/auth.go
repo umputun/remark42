@@ -7,6 +7,7 @@ package middleware
 import (
 	"crypto/subtle"
 	"net/http"
+	"strings"
 
 	"github.com/pkg/errors"
 
@@ -186,4 +187,34 @@ func (a *Authenticator) basicAdminUser(r *http.Request) bool {
 	}
 
 	return true
+}
+
+// RBAC middleware allows role based control for routes
+// this handler internally wrapped with auth(true) to avoid situation if RBAC defined without prior Auth
+func (a *Authenticator) RBAC(roles ...string) func(http.Handler) http.Handler {
+
+	f := func(h http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			user, err := token.GetUserInfo(r)
+			if err != nil {
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+
+			var matched bool
+			for _, role := range roles {
+				if strings.EqualFold(role, user.Role) {
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				http.Error(w, "Access denied", http.StatusForbidden)
+				return
+			}
+			h.ServeHTTP(w, r)
+		}
+		return a.auth(true)(http.HandlerFunc(fn)) // enforce auth
+	}
+	return f
 }

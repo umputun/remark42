@@ -78,11 +78,13 @@ func (c *CustomServer) Run(ctx context.Context) {
 	u, err := url.Parse(c.URL)
 	if err != nil {
 		c.Logf("[ERROR] failed to parse service base URL=%s", c.URL)
+		return
 	}
 
 	_, port, err := net.SplitHostPort(u.Host)
 	if err != nil {
 		c.Logf("[ERROR] failed to get port from URL=%s", c.URL)
+		return
 	}
 
 	c.httpServer = &http.Server{

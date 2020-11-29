@@ -1,7 +1,7 @@
 # auth - authentication via oauth2, direct and email
 [![Build Status](https://github.com/go-pkgz/auth/workflows/build/badge.svg)](https://github.com/go-pkgz/auth/actions) [![Coverage Status](https://coveralls.io/repos/github/go-pkgz/auth/badge.svg?branch=master)](https://coveralls.io/github/go-pkgz/auth?branch=master) [![godoc](https://godoc.org/github.com/go-pkgz/auth?status.svg)](https://pkg.go.dev/github.com/go-pkgz/auth?tab=doc)
 
-This library provides "social login" with Github, Google, Facebook, Microsoft, Twitter, Yandex and Battle.net as well as custom auth providers and email verification.
+This library provides "social login" with Github, Google, Facebook, Microsoft, Twitter, Yandex, Battle.net and Telegram as well as custom auth providers and email verification.
 
 - Multiple oauth2 providers can be used at the same time
 - Special `dev` provider allows local testing and development
@@ -20,6 +20,7 @@ This library provides "social login" with Github, Google, Facebook, Microsoft, T
 - Pre-auth and post-auth hooks to handle custom use cases.
 - Middleware for easy integration into http routers
 - Wrappers to extract user info from the request
+- Role based access control
 
 ## Install
 
@@ -77,6 +78,7 @@ func main() {
 - `middleware.Auth` - requires authenticated user
 - `middleware.Admin` - requires authenticated admin user
 - `middleware.Trace` - doesn't require authenticated user, but adds user info to request
+- `middleware.RBAC` - requires authenticated user with passed role(s)
 
 Also, there is a special middleware `middleware.UpdateUser` for population and modifying UserInfo in every request. See "Customization" for more details.
 
@@ -86,7 +88,7 @@ Generally, adding support of `auth` includes a few relatively simple steps:
 
 1. Setup `auth.Opts` structure with all parameters. Each of them [documented](https://github.com/go-pkgz/auth/blob/master/auth.go#L29) and most of parameters are optional and have sane defaults.
 2. [Create](https://github.com/go-pkgz/auth/blob/master/auth.go#L56) the new `auth.Service` with provided options.
-3. [Add all](https://github.com/go-pkgz/auth/blob/master/auth.go#L149) desirable authentication providers. Currently supported Github, Google, Facebook and Yandex
+3. [Add all](https://github.com/go-pkgz/auth/blob/master/auth.go#L149) desirable authentication providers.
 4. Retrieve [middleware](https://github.com/go-pkgz/auth/blob/master/auth.go#L144) and [http handlers](https://github.com/go-pkgz/auth/blob/master/auth.go#L105) from `auth.Service`
 5. Wire auth and avatar handlers into http router as sub–routes.
 
@@ -148,7 +150,27 @@ In addition to oauth2 providers `auth.Service` allows to use direct user-defined
 
 Such provider acts like any other, i.e. will be registered as `/auth/local/login`.
 
-The API for this provider - `GET /auth/<name>/login?user=<user>&passwd=<password>&aud=<site_id>&session=[1|0]`
+The API for this provider supports both GET and POST requests:
+
+* GET request with user credentials provided as query params:
+  ```
+  GET /auth/<name>/login?user=<user>&passwd=<password>&aud=<site_id>&session=[1|0]
+  ```
+* POST request could be encoded as application/x-www-form-urlencoded or application/json:
+  ```
+  POST /auth/<name>/login?session=[1|0]
+  body: application/x-www-form-urlencoded
+  user=<user>&passwd=<password>&aud=<site_id>
+  ```
+  ```
+  POST /auth/<name>/login?session=[1|0]
+  body: application/json
+  {
+    "user": "name",
+    "passwd": "xyz",
+    "aud": "bar",
+  }
+  ```
 
 _note: password parameter doesn't have to be naked/real password and can be any kind of password hash prepared by caller._
 
@@ -186,6 +208,57 @@ The API for this provider:
  - `GET /auth/<name>/login?token=<conf.token>&sess=[1|0]` - authorize with confirmation token
 
 The provider acts like any other, i.e. will be registered as `/auth/email/login`.
+
+### Telegram
+
+Telegram provider allows your users to log in with Telegram account. First, you will need to create your bot.
+Contact [@BotFather](https://t.me/botfather) and follow his instructions to create your own bot (call it, for example, "My site auth bot")
+
+Next initialize TelegramHandler with following parameters:
+* `ProviderName` - Any unique name to distinguish between providers
+* `SuccessMsg` - Message sent to user on successfull authentication
+* `ErrorMsg` - Message sent on errors (e.g. login request expired)
+* `Telegram` - Telegram API implementation. Use provider.NewTelegramAPI with following arguments
+	1. The secret token bot father gave you
+	2. An http.Client for accessing Telegram API's
+
+```go
+token := os.Getenv("TELEGRAM_TOKEN")
+
+telegram := provider.TelegramHandler{
+	ProviderName: "telegram",
+	ErrorMsg:     "❌ Invalid auth request. Please try clicking link again.",
+	SuccessMsg:   "✅ You have successfully authenticated!",
+	Telegram:     provider.NewTelegramAPI(token, http.DefaultClient),
+
+	L:            log.Default(),
+	TokenService: service.TokenService(),
+	AvatarSaver:  service.AvatarProxy(),
+}
+```
+
+After that run provider and register it's handlers:
+```go
+// Run Telegram provider in the background
+go func() {
+	err := telegram.Run(context.Background())
+	if err != nil {
+		log.Fatalf("[PANIC] failed to start telegram: %v", err)
+	}
+}()
+
+// Register Telegram provider
+service.AddCustomHandler(&telegram)
+```
+
+Now all your users have to do is click one of the following links and press **start**
+`tg://resolve?domain=<botname>&start=<token>` or `https://t.me/<botname>/?start=<token>`
+
+Use the following routes to interact with provider:
+1. `/auth/<providerName>/login` - Obtain auth token. Returns JSON object with `bot` (bot username) and `token` (token itself) fields.
+2. `/auth/<providerName>/login?token=<token>` - Check if auth request has been confirmed (i.e. user pressed start). Sets session cookie and returns user info on success, errors with 404 otherwise.
+
+3. `/auth/<providerName>/logout` - Invalidate user session.
 
 ### Custom oauth2
 
@@ -234,7 +307,7 @@ In order to add a new oauth2 provider following input is required:
 			WithLoginPage: true,
 		}
 		prov := provider.NewCustomServer(srv, sopts)
-		
+
 		// Start server
 		go prov.Run(context.Background())
 		```
@@ -246,12 +319,22 @@ In order to add a new oauth2 provider following input is required:
 		service.AddCustomProvider("custom123", auth.Client{Cid: "cid", Csecret: "csecret"}, prov.HandlerOpt)
 		```
 
+### Self-implemented auth handler
+Additionally it is possible to implement own auth handler. It may be useful if auth provider does not conform to oauth standard. Self-implemented handler has to implement `provider.Provider` interface.
+```go
+// customHandler implements provider.Provider interface
+c := customHandler{}
+
+// add customHandler to stack of auth handlers
+service.AddCustomHandler(c)
+```
+
 ### Customization
 
 There are several ways to adjust functionality of the library:
 
 1. `SecretReader` - interface with a single method `Get(aud string) string` to return the secret used for JWT signing and verification
-1. `ClaimsUpdater` - interface with `Update(claims Claims) Claims` method. This is the primary way to alter a token at login time and add any attributes, set ip, email, admin status and so on.
+1. `ClaimsUpdater` - interface with `Update(claims Claims) Claims` method. This is the primary way to alter a token at login time and add any attributes, set ip, email, admin status, roles and so on.
 1. `Validator` - interface with `Validate(token string, claims Claims) bool` method. This is post-token hook and will be called on **each request** wrapped with `Auth` middleware. This will be the place for special logic to reject some tokens or users.
 1. `UserUpdater` - interface with `Update(claims token.User) token.User` method.  This method will be called on **each request** wrapped with `UpdateUser` middleware. This will be the place for special logic modify User Info in request context. [Example of usage.]((https://github.com/go-pkgz/auth/blob/master/_example/main.go#L148))
 
@@ -337,11 +420,11 @@ _instructions for google oauth2 setup borrowed from [oauth2_proxy](https://githu
 
 #### Microsoft Auth Provider
 
-1 .Register a new application [using the Azure portal](https://docs.microsoft.com/en-us/graph/auth-register-app-v2).
-2.  Under **"Authentication/Platform configurations/Web"** enter the correct url constructed as domain + `/auth/microsoft/callback`. i.e. `https://example.mysite.com/auth/microsoft/callback`
-3. In "Overview" take note of the **Application (client) ID** 
+1. Register a new application [using the Azure portal](https://docs.microsoft.com/en-us/graph/auth-register-app-v2).
+2. Under **"Authentication/Platform configurations/Web"** enter the correct url constructed as domain + `/auth/microsoft/callback`. i.e. `https://example.mysite.com/auth/microsoft/callback`
+3. In "Overview" take note of the **Application (client) ID**
 4. Choose the new project from the top right project dropdown (only if another project is selected)
-5.  Select "Certificates & secrets" and click on "+ New Client Secret". 
+5.  Select "Certificates & secrets" and click on "+ New Client Secret".
 
 
 #### GitHub Auth Provider

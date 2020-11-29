@@ -79,8 +79,9 @@ type ServerCommand struct {
 
 	Auth struct {
 		TTL struct {
-			JWT    time.Duration `long:"jwt" env:"JWT" default:"5m" description:"jwt TTL"`
-			Cookie time.Duration `long:"cookie" env:"COOKIE" default:"200h" description:"auth cookie TTL"`
+			JWT           time.Duration `long:"jwt" env:"JWT" default:"5m" description:"jwt TTL"`
+			SendJWTHeader bool          `long:"send-jwt-header" env:"SEND_JWT_HEADER" description:"send JWT as a header instead of cookie"`
+			Cookie        time.Duration `long:"cookie" env:"COOKIE" default:"200h" description:"auth cookie TTL"`
 		} `group:"ttl" namespace:"ttl" env-namespace:"TTL"`
 		Google    AuthGroup `group:"google" namespace:"google" env-namespace:"GOOGLE" description:"Google OAuth"`
 		Github    AuthGroup `group:"github" namespace:"github" env-namespace:"GITHUB" description:"Github OAuth"`
@@ -455,6 +456,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		AnonVote:           s.AnonymousVote && s.RestrictVoteIP,
 		SimpleView:         s.SimpleView,
 		ProxyCORS:          s.ProxyCORS,
+		SendJWTHeader:      s.Auth.TTL.SendJWTHeader,
 	}
 
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = s.LowScore, s.CriticalScore
@@ -908,6 +910,7 @@ func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Sto
 		URL:            strings.TrimSuffix(s.RemarkURL, "/"),
 		Issuer:         "remark42",
 		TokenDuration:  s.Auth.TTL.JWT,
+		SendJWTHeader:  s.Auth.TTL.SendJWTHeader,
 		CookieDuration: s.Auth.TTL.Cookie,
 		SecureCookies:  strings.HasPrefix(s.RemarkURL, "https://"),
 		SecretReader: token.SecretFunc(func(aud string) (string, error) { // get secret per site

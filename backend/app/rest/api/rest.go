@@ -62,6 +62,7 @@ type Rest struct {
 	EmojiEnabled       bool
 	SimpleView         bool
 	ProxyCORS          bool
+	SendJWTHeader      bool
 
 	SSLConfig   SSLConfig
 	httpsServer *http.Server
@@ -422,6 +423,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		EmailNotifications bool     `json:"email_notifications"`
 		EmojiEnabled       bool     `json:"emoji_enabled"`
 		SimpleView         bool     `json:"simple_view"`
+		SendJWTHeader      bool     `json:"send_jwt_header"`
 	}{
 		Version:            s.Version,
 		EditDuration:       int(s.DataService.EditDuration.Seconds()),
@@ -437,6 +439,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		EmojiEnabled:       s.EmojiEnabled,
 		AnonVote:           s.AnonVote,
 		SimpleView:         s.SimpleView,
+		SendJWTHeader:      s.SendJWTHeader,
 	}
 
 	cnf.Auth = []string{}
