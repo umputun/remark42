@@ -53,6 +53,8 @@ type Opts struct {
 	XSRFHeaderKey  string // default "X-XSRF-TOKEN"
 	JWTQuery       string // default "token"
 
+	SendJWTHeader bool // if enabled send JWT as a header instead of cookie
+
 	Issuer string // optional value for iss claim, usually the application name, default "go-pkgz/auth"
 
 	URL       string          // root url for the rest service, i.e. http://blah.example.com, required
@@ -105,6 +107,7 @@ func NewService(opts Opts) (res *Service) {
 		JWTHeaderKey:   opts.JWTHeaderKey,
 		XSRFCookieName: opts.XSRFCookieName,
 		XSRFHeaderKey:  opts.XSRFHeaderKey,
+		SendJWTHeader:  opts.SendJWTHeader,
 		JWTQuery:       opts.JWTQuery,
 		Issuer:         res.issuer,
 		AudienceReader: opts.AudienceReader,
@@ -281,6 +284,12 @@ func (s *Service) AddVerifProvider(name, msgTmpl string, sender provider.Sender)
 		UseGravatar:  s.useGravatar,
 	}
 	s.providers = append(s.providers, provider.NewService(dh))
+	s.authMiddleware.Providers = s.providers
+}
+
+// AddCustomHandler adds user-defined self-implemented handler of auth provider
+func (s *Service) AddCustomHandler(handler provider.Provider) {
+	s.providers = append(s.providers, provider.NewService(handler))
 	s.authMiddleware.Providers = s.providers
 }
 

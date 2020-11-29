@@ -21,7 +21,7 @@ func (f UserUpdFunc) Update(user token.User) token.User {
 }
 
 // UpdateUser update user info with UserUpdater if it exists in request's context. Otherwise do nothing.
-// should be places after either Auth, Trace or AdminOnly middleware.
+// should be placed after either Auth, Trace. AdminOnly or RBAC middleware.
 func (a *Authenticator) UpdateUser(upd UserUpdater) func(http.Handler) http.Handler {
 	f := func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {

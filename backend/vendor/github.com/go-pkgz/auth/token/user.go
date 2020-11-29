@@ -30,6 +30,7 @@ type User struct {
 	IP         string                 `json:"ip,omitempty"`
 	Email      string                 `json:"email,omitempty"`
 	Attributes map[string]interface{} `json:"attrs,omitempty"`
+	Role       string                 `json:"role,omitempty"`
 }
 
 // SetBoolAttr sets boolean attribute
@@ -144,4 +145,14 @@ func SetUserInfo(r *http.Request, user User) *http.Request {
 	ctx := r.Context()
 	ctx = context.WithValue(ctx, contextKey("user"), user)
 	return r.WithContext(ctx)
+}
+
+// SetRole sets user role for RBAC
+func (u *User) SetRole(role string) {
+	u.Role = role
+}
+
+// GetRole gets user role
+func (u *User) GetRole() string {
+	return u.Role
 }
