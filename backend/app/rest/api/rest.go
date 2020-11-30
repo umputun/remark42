@@ -46,7 +46,6 @@ type Rest struct {
 	Migrator         *Migrator
 	NotifyService    *notify.Service
 	ImageService     *image.Service
-	Streamer         *Streamer
 
 	AnonVote        bool
 	WebRoot         string
@@ -256,14 +255,6 @@ func (s *Rest) routes() chi.Router {
 
 		})
 
-		// open routes, streams, no send timeout
-		rapi.Route("/stream", func(rstream chi.Router) {
-			rstream.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
-			rstream.Use(authMiddleware.Trace, middleware.NoCache, logInfoWithBody)
-			rstream.Get("/info", s.pubRest.infoStreamCtrl)
-			rstream.Get("/last", s.pubRest.lastCommentsStreamCtrl)
-		})
-
 		// open routes, cached
 		rapi.Group(func(ropen chi.Router) {
 			ropen.Use(middleware.Timeout(30 * time.Second))
@@ -359,7 +350,6 @@ func (s *Rest) controllerGroups() (public, private, admin, rss) {
 		commentFormatter: s.CommentFormatter,
 		readOnlyAge:      s.ReadOnlyAge,
 		webRoot:          s.WebRoot,
-		streamer:         s.Streamer,
 	}
 
 	privGrp := private{

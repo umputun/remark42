@@ -51,7 +51,6 @@ type ServerCommand struct {
 	SMTP       SMTPGroup       `group:"smtp" namespace:"smtp" env-namespace:"SMTP"`
 	Image      ImageGroup      `group:"image" namespace:"image" env-namespace:"IMAGE"`
 	SSL        SSLGroup        `group:"ssl" namespace:"ssl" env-namespace:"SSL"`
-	Stream     StreamGroup     `group:"stream" namespace:"stream" env-namespace:"STREAM"`
 	ImageProxy ImageProxyGroup `group:"image-proxy" namespace:"image-proxy" env-namespace:"IMAGE_PROXY"`
 
 	Sites            []string      `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
@@ -217,13 +216,6 @@ type SSLGroup struct {
 	Key          string `long:"key" env:"KEY" description:"path to key.pem file"`
 	ACMELocation string `long:"acme-location" env:"ACME_LOCATION" description:"dir where certificates will be stored by autocert manager" default:"./var/acme"`
 	ACMEEmail    string `long:"acme-email" env:"ACME_EMAIL" description:"admin email for certificate notifications"`
-}
-
-// StreamGroup define options for streaming apis
-type StreamGroup struct {
-	RefreshInterval time.Duration `long:"refresh" env:"REFRESH" default:"5s" description:"refresh interval for streams"`
-	TimeOut         time.Duration `long:"timeout" env:"TIMEOUT" default:"15m" description:"timeout to close streams on inactivity"`
-	MaxActive       int           `long:"max" env:"MAX" default:"500" description:"max number of parallel streams"`
 }
 
 // RPCGroup defines options for remote modules (plugins)
@@ -431,26 +423,21 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 	}
 
 	srv := &api.Rest{
-		Version:          s.Revision,
-		DataService:      dataService,
-		WebRoot:          s.WebRoot,
-		RemarkURL:        s.RemarkURL,
-		ImageProxy:       imgProxy,
-		CommentFormatter: commentFormatter,
-		Migrator:         migr,
-		ReadOnlyAge:      s.ReadOnlyAge,
-		SharedSecret:     s.SharedSecret,
-		Authenticator:    authenticator,
-		Cache:            loadingCache,
-		NotifyService:    notifyService,
-		SSLConfig:        sslConfig,
-		UpdateLimiter:    s.UpdateLimit,
-		ImageService:     imageService,
-		Streamer: &api.Streamer{
-			TimeOut:   s.Stream.TimeOut,
-			Refresh:   s.Stream.RefreshInterval,
-			MaxActive: int32(s.Stream.MaxActive),
-		},
+		Version:            s.Revision,
+		DataService:        dataService,
+		WebRoot:            s.WebRoot,
+		RemarkURL:          s.RemarkURL,
+		ImageProxy:         imgProxy,
+		CommentFormatter:   commentFormatter,
+		Migrator:           migr,
+		ReadOnlyAge:        s.ReadOnlyAge,
+		SharedSecret:       s.SharedSecret,
+		Authenticator:      authenticator,
+		Cache:              loadingCache,
+		NotifyService:      notifyService,
+		SSLConfig:          sslConfig,
+		UpdateLimiter:      s.UpdateLimit,
+		ImageService:       imageService,
 		EmailNotifications: emailNotifications,
 		EmojiEnabled:       s.EnableEmoji,
 		AnonVote:           s.AnonymousVote && s.RestrictVoteIP,

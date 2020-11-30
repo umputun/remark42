@@ -31,7 +31,6 @@ type public struct {
 	readOnlyAge      int
 	commentFormatter *store.CommentFormatter
 	imageService     *image.Service
-	streamer         *Streamer
 	webRoot          string
 }
 
@@ -159,49 +158,6 @@ func (s *public) infoCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// GET /stream/info?site=siteID&url=post-url&since=unix_ts_msec - get info stream about the post
-func (s *public) infoStreamCtrl(w http.ResponseWriter, r *http.Request) {
-	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
-	log.Printf("[DEBUG] start stream for %+v, timeout=%v, refresh=%v", locator, s.streamer.TimeOut, s.streamer.Refresh)
-
-	sinceTS, err := s.parseSince(r)
-	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't translate since parameter", rest.ErrDecode)
-		return
-	}
-
-	fn := func() steamEventFn {
-		lastTS := sinceTS
-		lastCount := 0
-
-		return func() (event string, data []byte, upd bool, err error) {
-			key := cache.NewKey(locator.SiteID).ID(URLKey(r)).Scopes(locator.SiteID, locator.URL)
-			data, err = s.cache.Get(key, func() ([]byte, error) {
-				info, e := s.dataService.Info(locator, s.readOnlyAge)
-				if e != nil {
-					return nil, e
-				}
-				// cache update used as indication of post update. comparing lastTS for no-cache.
-				// removal won't update lastTS, count check will catch it.
-				if !lastTS.IsZero() && (info.LastTS != lastTS || info.Count != lastCount) {
-					upd = true
-				}
-				lastTS = info.LastTS
-				lastCount = info.Count
-				return encodeJSONWithHTML(info)
-			})
-			if err != nil {
-				return "info", data, false, err
-			}
-			return "info", data, upd, nil
-		}
-	}
-
-	if e := s.streamer.Activate(r.Context(), fn, w); e != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, e, "can't stream", rest.ErrInternal)
-	}
-}
-
 // GET /last/{limit}?site=siteID&since=unix_ts_msec - last comments for the siteID, across all posts, sorted by time, optionally
 // limited with "since" param
 func (s *public) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
@@ -237,45 +193,6 @@ func (s *public) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	if err = R.RenderJSONFromBytes(w, r, data); err != nil {
 		log.Printf("[WARN] can't render last comments for site %s", siteID)
-	}
-}
-
-// GET /stream/last?site=siteID&since=unix_ts_ms - stream of last comments last comments for the siteID, across all posts
-func (s *public) lastCommentsStreamCtrl(w http.ResponseWriter, r *http.Request) {
-	siteID := r.URL.Query().Get("site")
-	log.Printf("[DEBUG] get last comments stream for %s", siteID)
-
-	sinceTS, err := s.parseSince(r)
-	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't translate since parameter", rest.ErrDecode)
-		return
-	}
-	if sinceTS.IsZero() {
-		sinceTS = time.Now()
-	}
-
-	fn := func() steamEventFn {
-		sinceTime := sinceTS
-		return func() (event string, data []byte, upd bool, err error) {
-			key := cache.NewKey(siteID).ID(URLKey(r)).Scopes(lastCommentsScope)
-			data, err = s.cache.Get(key, func() ([]byte, error) {
-				comments, e := s.dataService.Last(siteID, 1, sinceTime, rest.GetUserOrEmpty(r))
-				if e != nil {
-					return nil, e
-				}
-				sinceTime = time.Now()
-				if len(comments) > 0 {
-					sinceTime = comments[0].Timestamp
-					upd = true
-				}
-				return encodeJSONWithHTML(comments)
-			})
-			return "last", data, upd, err
-		}
-	}
-
-	if e := s.streamer.Activate(r.Context(), fn, w); e != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, e, "can't stream", rest.ErrInternal)
 	}
 }
 
