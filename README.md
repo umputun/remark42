@@ -455,7 +455,7 @@ Add this snippet to the bottom of web page:
     max_shown_comments: 10, // optional param; if it isn't defined default value (15) will be used
     theme: 'dark', // optional param; if it isn't defined default value ('light') will be used
     page_title: 'Moving to Remark42', // optional param; if it isn't defined `document.title` will be used
-    locale: 'en' // set up locale and language, if it isn't defined default value ('en') will be used
+    locale: 'en', // set up locale and language, if it isn't defined default value ('en') will be used
     show_email_subscription: false // optional param; by default it is `true` and you can see email subscription feature
                                    // in interface when enable it from backend side
                                    // if you set this param in `false` you will get notifications email notifications as admin
@@ -481,7 +481,7 @@ And then add this node in the place where you want to see Remark42 widget:
 
 After that widget will be rendered inside this node.
 
-If you want to set this up on a Single Page App, see [/docs/spa.md](/docs/spa.md).
+If you want to set this up on a Single Page App, see [appropriate doc page](https://remark42.com/docs/latest/spa/).
 
 ##### Themes
 
