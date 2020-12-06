@@ -1,9 +1,10 @@
-### Email templating
+---
+title: Email templating
+---
 
-We use golang templates for email templating.
-templates located in `backend/templates` and embedded into binary by statik
+Remark42 uses golang templates for email templating. Templates are located in `backend/templates` and embedded into binary by statik
 
-For getting access to files you can use package `templates` from `backend/app/templates`
+For getting access to the files you can use package `templates` from `backend/app/templates`
 
 Now we have following templates:
 - `email_confirmation_login.html.tmpl` – used for confirmation of login
