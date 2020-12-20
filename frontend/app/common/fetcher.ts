@@ -1,4 +1,4 @@
-import { BASE_URL, API_BASE } from './constants';
+import { BASE_URL, API_BASE, LS_JWT, HEADER_X_JWT } from './constants';
 import { siteId } from './settings';
 import { StaticStore } from './static_store';
 import { getCookie } from './cookies';
@@ -50,6 +50,10 @@ const fetcher = methods.reduce<Partial<FetcherObject>>((acc, method) => {
       headers.append('Content-Type', contentType);
     }
 
+    if (localStorage.getItem(LS_JWT)) {
+      headers.append(HEADER_X_JWT, localStorage.getItem(LS_JWT) as string);
+    }
+
     let rurl = `${basename}${url}`;
 
     const parameters: RequestInit = {
@@ -79,6 +83,15 @@ const fetcher = methods.reduce<Partial<FetcherObject>>((acc, method) => {
         const timestamp = isNaN(Date.parse(date)) ? 0 : Date.parse(date);
         const timeDiff = (new Date().getTime() - timestamp) / 1000;
         StaticStore.serverClientTimeDiff = timeDiff;
+
+        // backend could update jwt in any time. so, we should handle it
+        if (res.headers.has(HEADER_X_JWT)) {
+          localStorage.setItem(LS_JWT, res.headers.get(HEADER_X_JWT) as string);
+        }
+
+        if (res.status === 403 && localStorage.getItem(LS_JWT)) {
+          localStorage.removeItem(LS_JWT);
+        }
 
         if (res.status >= 400) {
           if (httpErrorMap.has(res.status)) {

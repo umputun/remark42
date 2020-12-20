@@ -2,7 +2,7 @@ import * as api from '@app/common/api';
 import { User, BlockedUser, AuthProvider, BlockTTL } from '@app/common/types';
 import { ttlToTime } from '@app/utils/ttl-to-time';
 import getHiddenUsers from '@app/utils/get-hidden-users';
-import { LS_HIDDEN_USERS_KEY } from '@app/common/constants';
+import { LS_HIDDEN_USERS_KEY, LS_JWT } from '@app/common/constants';
 import { setItem } from '@app/common/local-storage';
 
 import { StoreAction } from '../index';
@@ -46,6 +46,8 @@ export const logIn = (provider: AuthProvider): StoreAction<Promise<User | null>>
 
 export const logout = (): StoreAction<Promise<void>> => async dispatch => {
   await api.logOut();
+  localStorage.removeItem(LS_JWT);
+
   dispatch(unsetCommentMode());
   dispatch(setUser());
 };
