@@ -1,4 +1,4 @@
-import { BASE_URL, API_BASE, LS_JWT, HEADER_X_JWT } from './constants';
+import { BASE_URL, API_BASE, HEADER_X_JWT } from './constants';
 import { siteId } from './settings';
 import { StaticStore } from './static_store';
 import { getCookie } from './cookies';
@@ -29,6 +29,9 @@ type FetcherInit = string | FetcherInitJSON | FetcherInitMultipart;
 
 type FetcherObject = { [K in FetcherMethod]: <T = unknown>(data: FetcherInit) => Promise<T> };
 
+/** JWT token received from server and will be send by each request, if it present */
+let activeJwtToken: string | undefined;
+
 const fetcher = methods.reduce<Partial<FetcherObject>>((acc, method) => {
   acc[method] = <T = unknown>(data: FetcherInit): Promise<T> => {
     const {
@@ -50,8 +53,8 @@ const fetcher = methods.reduce<Partial<FetcherObject>>((acc, method) => {
       headers.append('Content-Type', contentType);
     }
 
-    if (localStorage.getItem(LS_JWT)) {
-      headers.append(HEADER_X_JWT, localStorage.getItem(LS_JWT) as string);
+    if (activeJwtToken) {
+      headers.append(HEADER_X_JWT, activeJwtToken);
     }
 
     let rurl = `${basename}${url}`;
@@ -86,11 +89,11 @@ const fetcher = methods.reduce<Partial<FetcherObject>>((acc, method) => {
 
         // backend could update jwt in any time. so, we should handle it
         if (res.headers.has(HEADER_X_JWT)) {
-          localStorage.setItem(LS_JWT, res.headers.get(HEADER_X_JWT) as string);
+          activeJwtToken = res.headers.get(HEADER_X_JWT) as string;
         }
 
-        if (res.status === 403 && localStorage.getItem(LS_JWT)) {
-          localStorage.removeItem(LS_JWT);
+        if (res.status === 403 && activeJwtToken) {
+          activeJwtToken = undefined;
         }
 
         if (res.status >= 400) {

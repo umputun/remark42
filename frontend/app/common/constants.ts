@@ -33,9 +33,6 @@ export const LS_SORT_KEY = '__remarkSort';
 /** localstorage key for email of logged in user */
 export const LS_EMAIL_KEY = '__remarkEmail';
 
-/** localstorage key for JWT token */
-export const LS_JWT = '__JWT';
-
 /** Header name for jwt token */
 export const HEADER_X_JWT = 'X-JWT';
 
