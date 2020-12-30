@@ -333,6 +333,35 @@ func TestRest_cacheControl(t *testing.T) {
 
 }
 
+func TestRest_frameAncestors(t *testing.T) {
+
+	tbl := []struct {
+		hosts  []string
+		header string
+	}{
+		{[]string{"http://example.com"}, "frame-ancestors http://example.com;"},
+		{[]string{}, ""},
+		{[]string{"http://example.com", "http://example2.com"}, "frame-ancestors http://example.com http://example2.com;"},
+	}
+
+	for i, tt := range tbl {
+		tt := tt
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			req := httptest.NewRequest("GET", "http://example.com", nil)
+			w := httptest.NewRecorder()
+
+			h := frameAncestors(tt.hosts)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+			h.ServeHTTP(w, req)
+			resp := w.Result()
+			assert.Equal(t, http.StatusOK, resp.StatusCode)
+			t.Logf("%+v", resp.Header)
+			assert.Equal(t, tt.header, resp.Header.Get("Content-Security-Policy"))
+
+		})
+	}
+
+}
+
 // randomPath pick a file or folder name which is not in use for sure
 func randomPath(tempDir, basename, suffix string) (string, error) {
 	for i := 0; i < 10; i++ {
