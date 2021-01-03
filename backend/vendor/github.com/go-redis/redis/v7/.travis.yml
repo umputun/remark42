@@ -1,12 +1,10 @@
 dist: xenial
-sudo: false
 language: go
 
 services:
   - redis-server
 
 go:
-  - 1.11.x
   - 1.12.x
   - 1.13.x
   - tip

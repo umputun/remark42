@@ -977,5 +977,5 @@ func (c *authRefreshCache) Get(key interface{}) (interface{}, bool) {
 
 // Set implements cache setter with key converted to string
 func (c *authRefreshCache) Set(key, value interface{}) {
-	_, _ = c.LoadingCache.Get(key.(string), func() (cache.Value, error) { return value, nil })
+	_, _ = c.LoadingCache.Get(key.(string), func() (interface{}, error) { return value, nil })
 }

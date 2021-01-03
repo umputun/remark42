@@ -73,6 +73,20 @@ func Msec(l *Logger) {
 // Useful to prevent passwords or other sensitive tokens to be logged.
 func Secret(vals ...string) Option {
 	return func(l *Logger) {
-		l.secrets = vals
+		for _, v := range vals {
+			l.secrets = append(l.secrets, []byte(v))
+		}
 	}
+}
+
+// Map sets mapper functions to change elements of the logged message based on levels.
+func Map(m Mapper) Option {
+	return func(l *Logger) {
+		l.mapper = m
+	}
+}
+
+// StackTraceOnError turns on stack trace for ERROR level.
+func StackTraceOnError(l *Logger) {
+	l.errorDump = true
 }

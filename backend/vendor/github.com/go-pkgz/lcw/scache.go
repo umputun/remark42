@@ -20,7 +20,7 @@ func NewScache(lc LoadingCache) *Scache {
 // Get retrieves a key from underlying backend
 func (m *Scache) Get(key Key, fn func() ([]byte, error)) (data []byte, err error) {
 	keyStr := key.String()
-	val, err := m.lc.Get(keyStr, func() (value Value, e error) {
+	val, err := m.lc.Get(keyStr, func() (value interface{}, e error) {
 		return fn()
 	})
 	return val.([]byte), err

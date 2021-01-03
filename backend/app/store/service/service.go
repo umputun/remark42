@@ -507,7 +507,7 @@ func (s *DataStore) HasReplies(comment store.Comment) bool {
 				// When this code is reached, key "comment.ID" is not in cache.
 				// Calling cache.Get on it will put it in cache with 5 minutes TTL.
 				// We call it with empty struct as value as we care about keys and not values.
-				_, _ = s.repliesCache.Get(comment.ID, func() (lcw.Value, error) { return struct{}{}, nil })
+				_, _ = s.repliesCache.Get(comment.ID, func() (interface{}, error) { return struct{}{}, nil })
 				return true
 			}
 		}

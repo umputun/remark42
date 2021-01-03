@@ -23,11 +23,12 @@ linters-settings:
       - experimental
     disabled-checks:
       - wrapperFunc
+      - hugeParam
 
 linters:
-  disable-all: true
   enable:
     - megacheck
+    - golint
     - govet
     - unconvert
     - megacheck
@@ -42,19 +43,28 @@ linters:
     - typecheck
     - ineffassign
     - varcheck
+    - stylecheck
+    - gochecknoinits
+    - scopelint
+    - gocritic
+    - nakedret
+    - gosimple
+    - prealloc
   fast: false
-
+  disable-all: true
 
 run:
-#  modules-download-mode: vendor
+  output:
+    format: tab
   skip-dirs:
     - vendor
 
 issues:
   exclude-rules:
-    - text: "weak cryptographic primitive"
+    - text: "should have a package comment, unless it's in another file for this package"
       linters:
-        - gosec
-
-service:
-  golangci-lint-version: 1.16.x
+        - golint
+    - text: "at least one file in a package should have a package comment"
+      linters:
+        - stylecheck
+  exclude-use-default: false

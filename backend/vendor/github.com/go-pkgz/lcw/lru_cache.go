@@ -65,7 +65,7 @@ func (c *LruCache) init() error {
 }
 
 // Get gets value by key or load with fn if not found in cache
-func (c *LruCache) Get(key string, fn func() (Value, error)) (data Value, err error) {
+func (c *LruCache) Get(key string, fn func() (interface{}, error)) (data interface{}, err error) {
 	if v, ok := c.backend.Get(key); ok {
 		atomic.AddInt64(&c.Hits, 1)
 		return v, nil
@@ -97,7 +97,7 @@ func (c *LruCache) Get(key string, fn func() (Value, error)) (data Value, err er
 }
 
 // Peek returns the key value (or undefined if not found) without updating the "recently used"-ness of the key.
-func (c *LruCache) Peek(key string) (Value, bool) {
+func (c *LruCache) Peek(key string) (interface{}, bool) {
 	return c.backend.Peek(key)
 }
 
@@ -162,7 +162,7 @@ func (c *LruCache) keys() int {
 	return c.backend.Len()
 }
 
-func (c *LruCache) allowed(key string, data Value) bool {
+func (c *LruCache) allowed(key string, data interface{}) bool {
 	if c.maxKeySize > 0 && len(key) > c.maxKeySize {
 		return false
 	}

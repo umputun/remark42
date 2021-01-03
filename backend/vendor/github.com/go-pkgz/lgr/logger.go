@@ -6,7 +6,6 @@
 // Debug and trace levels can be filtered based on lgr.Trace and lgr.Debug options.
 // ERROR, FATAL and PANIC levels send to err as well. FATAL terminate caller application with os.Exit(1)
 // and PANIC also prints stack trace.
-
 package lgr
 
 import (
@@ -15,6 +14,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -26,15 +26,26 @@ import (
 var levels = []string{"TRACE", "DEBUG", "INFO", "WARN", "ERROR", "PANIC", "FATAL"}
 
 const (
-	Short      = `{{.DT.Format "2006/01/02 15:04:05"}} {{.Level}} {{.Message}}`
-	WithMsec   = `{{.DT.Format "2006/01/02 15:04:05.000"}} {{.Level}} {{.Message}}`
-	WithPkg    = `{{.DT.Format "2006/01/02 15:04:05.000"}} {{.Level}} ({{.CallerPkg}}) {{.Message}}`
+	// Short logging format
+	Short = `{{.DT.Format "2006/01/02 15:04:05"}} {{.Level}} {{.Message}}`
+	// WithMsec is a logging format with milliseconds
+	WithMsec = `{{.DT.Format "2006/01/02 15:04:05.000"}} {{.Level}} {{.Message}}`
+	// WithPkg is WithMsec logging format with caller package
+	WithPkg = `{{.DT.Format "2006/01/02 15:04:05.000"}} {{.Level}} ({{.CallerPkg}}) {{.Message}}`
+	// ShortDebug is WithMsec logging format with caller file and line
 	ShortDebug = `{{.DT.Format "2006/01/02 15:04:05.000"}} {{.Level}} ({{.CallerFile}}:{{.CallerLine}}) {{.Message}}`
-	FuncDebug  = `{{.DT.Format "2006/01/02 15:04:05.000"}} {{.Level}} ({{.CallerFunc}}) {{.Message}}`
-	FullDebug  = `{{.DT.Format "2006/01/02 15:04:05.000"}} {{.Level}} ({{.CallerFile}}:{{.CallerLine}} {{.CallerFunc}}) {{.Message}}`
+	// FuncDebug is WithMsec logging format with caller function
+	FuncDebug = `{{.DT.Format "2006/01/02 15:04:05.000"}} {{.Level}} ({{.CallerFunc}}) {{.Message}}`
+	// FullDebug is WithMsec logging format with caller file, line and function
+	FullDebug = `{{.DT.Format "2006/01/02 15:04:05.000"}} {{.Level}} ({{.CallerFile}}:{{.CallerLine}} {{.CallerFunc}}) {{.Message}}`
 )
 
 var secretReplacement = []byte("******")
+
+var (
+	reTraceDefault = regexp.MustCompile(`.*/lgr/logger\.go.*\n`)
+	reTraceStd     = regexp.MustCompile(`.*/log/log\.go.*\n`)
+)
 
 // Logger provided simple logger with basic support of levels. Thread safe
 type Logger struct {
@@ -48,7 +59,8 @@ type Logger struct {
 	levelBraces    bool      // encloses level with [], i.e. [INFO]
 	callerDepth    int       // how many stack frames to skip, relative to the real (reported) frame
 	format         string    // layout template
-	secrets        []string  // sub-strings to secrets by matching
+	secrets        [][]byte  // sub-strings to secrets by matching
+	mapper         Mapper    // map (alter) output based on levels
 
 	// internal use
 	now           nowFn
@@ -57,7 +69,9 @@ type Logger struct {
 	lock          sync.Mutex
 	callerOn      bool
 	levelBracesOn bool
+	errorDump     bool
 	templ         *template.Template
+	reTrace       *regexp.Regexp
 }
 
 // can be redefined internally for testing
@@ -85,6 +99,8 @@ func New(options ...Option) *Logger {
 		stdout:      os.Stdout,
 		stderr:      os.Stderr,
 		callerDepth: 0,
+		mapper:      nopMapper,
+		reTrace:     reTraceDefault,
 	}
 	for _, opt := range options {
 		opt(&res)
@@ -124,9 +140,16 @@ func (l *Logger) Logf(format string, args ...interface{}) {
 	l.logf(format, args...)
 }
 
+//nolint gocyclo
 func (l *Logger) logf(format string, args ...interface{}) {
 
-	lv, msg := l.extractLevel(fmt.Sprintf(format, args...))
+	var lv, msg string
+	if len(args) == 0 {
+		lv, msg = l.extractLevel(format)
+	} else {
+		lv, msg = l.extractLevel(fmt.Sprintf(format, args...))
+	}
+
 	if lv == "DEBUG" && !l.dbg {
 		return
 	}
@@ -177,6 +200,15 @@ func (l *Logger) logf(format string, args ...interface{}) {
 		if l.stderr != l.stdout {
 			_, _ = l.stderr.Write(data)
 		}
+		if l.errorDump {
+			stackInfo := make([]byte, 1024*1024)
+			if stackSize := runtime.Stack(stackInfo, false); stackSize > 0 {
+				traceLines := l.reTrace.Split(string(stackInfo[:stackSize]), -1)
+				if len(traceLines) > 0 {
+					_, _ = l.stdout.Write([]byte(">>> stack trace:\n" + traceLines[len(traceLines)-1]))
+				}
+			}
+		}
 	case "FATAL":
 		if l.stderr != l.stdout {
 			_, _ = l.stderr.Write(data)
@@ -195,7 +227,7 @@ func (l *Logger) logf(format string, args ...interface{}) {
 
 func (l *Logger) hideSecrets(data []byte) []byte {
 	for _, h := range l.secrets {
-		data = bytes.Replace(data, []byte(h), secretReplacement, -1)
+		data = bytes.Replace(data, h, secretReplacement, -1)
 	}
 	return data
 }
@@ -268,15 +300,17 @@ func (l *Logger) formatWithOptions(elems layout) (res string) {
 
 	parts := make([]string, 0, 4)
 
-	parts = append(parts, orElse(l.msec,
-		func() string { return elems.DT.Format("2006/01/02 15:04:05.000") },
-		func() string { return elems.DT.Format("2006/01/02 15:04:05") },
-	))
-
-	parts = append(parts, orElse(l.levelBraces,
-		func() string { return `[` + elems.Level + `]` },
-		func() string { return elems.Level },
-	))
+	parts = append(
+		parts,
+		l.mapper.TimeFunc(orElse(l.msec,
+			func() string { return elems.DT.Format("2006/01/02 15:04:05.000") },
+			func() string { return elems.DT.Format("2006/01/02 15:04:05") },
+		)),
+		l.levelMapper(elems.Level)(orElse(l.levelBraces,
+			func() string { return `[` + elems.Level + `]` },
+			func() string { return elems.Level },
+		)),
+	)
 
 	if l.callerFile || l.callerFunc || l.callerPkg {
 		var callerParts []string
@@ -290,10 +324,20 @@ func (l *Logger) formatWithOptions(elems layout) (res string) {
 		if v := orElse(l.callerPkg, func() string { return elems.CallerPkg }, nothing); v != "" {
 			callerParts = append(callerParts, v)
 		}
-		parts = append(parts, "{"+strings.Join(callerParts, " ")+"}")
+
+		caller := "{" + strings.Join(callerParts, " ") + "}"
+		if l.mapper.CallerFunc != nil {
+			caller = l.mapper.CallerFunc(caller)
+		}
+		parts = append(parts, caller)
 	}
 
-	parts = append(parts, elems.Message)
+	msg := elems.Message
+	if l.mapper.MessageFunc != nil {
+		msg = l.mapper.MessageFunc(elems.Message)
+	}
+
+	parts = append(parts, l.levelMapper(elems.Level)(msg))
 	return strings.Join(parts, " ")
 }
 
@@ -318,6 +362,37 @@ func (l *Logger) extractLevel(line string) (level, msg string) {
 		}
 	}
 	return "INFO", line
+}
+
+func (l *Logger) levelMapper(level string) mapFunc {
+
+	nop := func(s string) string {
+		return s
+	}
+
+	switch level {
+	case "TRACE", "DEBUG":
+		if l.mapper.DebugFunc == nil {
+			return nop
+		}
+		return l.mapper.DebugFunc
+	case "INFO ":
+		if l.mapper.InfoFunc == nil {
+			return nop
+		}
+		return l.mapper.InfoFunc
+	case "WARN ":
+		if l.mapper.WarnFunc == nil {
+			return nop
+		}
+		return l.mapper.WarnFunc
+	case "ERROR", "PANIC", "FATAL":
+		if l.mapper.ErrorFunc == nil {
+			return nop
+		}
+		return l.mapper.ErrorFunc
+	}
+	return func(s string) string { return s }
 }
 
 // getDump reads runtime stack and returns as a string

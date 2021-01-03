@@ -41,7 +41,7 @@ func NewRedisCache(backend *redis.Client, opts ...Option) (*RedisCache, error) {
 }
 
 // Get gets value by key or load with fn if not found in cache
-func (c *RedisCache) Get(key string, fn func() (Value, error)) (data Value, err error) {
+func (c *RedisCache) Get(key string, fn func() (interface{}, error)) (data interface{}, err error) {
 	v, getErr := c.backend.Get(key).Result()
 	switch getErr {
 	// RedisClient returns nil when find a key in DB
@@ -84,7 +84,7 @@ func (c *RedisCache) Invalidate(fn func(key string) bool) {
 }
 
 // Peek returns the key value (or undefined if not found) without updating the "recently used"-ness of the key.
-func (c *RedisCache) Peek(key string) (Value, bool) {
+func (c *RedisCache) Peek(key string) (interface{}, bool) {
 	ret, err := c.backend.Get(key).Result()
 	if err != nil {
 		return nil, false
@@ -132,7 +132,7 @@ func (c *RedisCache) keys() int {
 	return int(c.backend.DBSize().Val())
 }
 
-func (c *RedisCache) allowed(key string, data Value) bool {
+func (c *RedisCache) allowed(key string, data interface{}) bool {
 	if c.maxKeys > 0 && c.backend.DBSize().Val() >= int64(c.maxKeys) {
 		return false
 	}
