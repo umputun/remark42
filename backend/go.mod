@@ -12,7 +12,7 @@ require (
 	github.com/go-chi/chi v4.1.1+incompatible
 	github.com/go-chi/cors v1.1.1
 	github.com/go-chi/render v1.0.1
-	github.com/go-pkgz/auth v1.13.0
+	github.com/go-pkgz/auth v1.13.1
 	github.com/go-pkgz/jrpc v0.2.0
 	github.com/go-pkgz/lcw v0.7.1
 	github.com/go-pkgz/lgr v0.7.0
@@ -28,7 +28,7 @@ require (
 	github.com/rakyll/statik v0.1.7
 	github.com/rs/xid v1.2.1
 	github.com/russross/blackfriday/v2 v2.0.1
-	github.com/stretchr/testify v1.5.1
+	github.com/stretchr/testify v1.6.1
 	github.com/umputun/go-flags v1.5.1
 	go.etcd.io/bbolt v1.3.4
 	go.uber.org/goleak v1.0.0

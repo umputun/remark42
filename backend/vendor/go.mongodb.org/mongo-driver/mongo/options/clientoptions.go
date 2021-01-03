@@ -41,8 +41,8 @@ type ContextDialer interface {
 // Credential can be used to provide authentication options when configuring a Client.
 //
 // AuthMechanism: the mechanism to use for authentication. Supported values include "SCRAM-SHA-256", "SCRAM-SHA-1",
-// "MONGODB-CR", "PLAIN", "GSSAPI", and "MONGODB-X509". This can also be set through the "authMechanism" URI option.
-// (e.g. "authMechanism=PLAIN"). For more information, see
+// "MONGODB-CR", "PLAIN", "GSSAPI", "MONGODB-X509", and "MONGODB-AWS". This can also be set through the "authMechanism"
+// URI option. (e.g. "authMechanism=PLAIN"). For more information, see
 // https://docs.mongodb.com/manual/core/authentication-mechanisms/.
 //
 // AuthMechanismProperties can be used to specify additional configuration options for certain mechanisms. They can also
@@ -58,6 +58,9 @@ type ContextDialer interface {
 //
 // 4. SERVICE_HOST: The host name to use for GSSAPI authentication. This should be specified if the host name to use for
 // authentication is different than the one given for Client construction.
+//
+// 4. AWS_SESSION_TOKEN: The AWS token for MONGODB-AWS authentication. This is optional and used for authentication with
+// temporary credentials.
 //
 // The SERVICE_HOST and CANONICALIZE_HOST_NAME properties must not be used at the same time on Linux and Darwin
 // systems.
@@ -89,41 +92,50 @@ type Credential struct {
 // ClientOptions contains options to configure a Client instance. Each option can be set through setter functions. See
 // documentation for each setter function for an explanation of the option.
 type ClientOptions struct {
-	AppName                *string
-	Auth                   *Credential
-	ConnectTimeout         *time.Duration
-	Compressors            []string
-	Dialer                 ContextDialer
-	HeartbeatInterval      *time.Duration
-	Hosts                  []string
-	LocalThreshold         *time.Duration
-	MaxConnIdleTime        *time.Duration
-	MaxPoolSize            *uint64
-	MinPoolSize            *uint64
-	PoolMonitor            *event.PoolMonitor
-	Monitor                *event.CommandMonitor
-	ReadConcern            *readconcern.ReadConcern
-	ReadPreference         *readpref.ReadPref
-	Registry               *bsoncodec.Registry
-	ReplicaSet             *string
-	RetryWrites            *bool
-	RetryReads             *bool
-	ServerSelectionTimeout *time.Duration
-	Direct                 *bool
-	SocketTimeout          *time.Duration
-	TLSConfig              *tls.Config
-	WriteConcern           *writeconcern.WriteConcern
-	ZlibLevel              *int
-	ZstdLevel              *int
-	AutoEncryptionOptions  *AutoEncryptionOptions
+	AppName                  *string
+	Auth                     *Credential
+	AutoEncryptionOptions    *AutoEncryptionOptions
+	ConnectTimeout           *time.Duration
+	Compressors              []string
+	Dialer                   ContextDialer
+	Direct                   *bool
+	DisableOCSPEndpointCheck *bool
+	HeartbeatInterval        *time.Duration
+	Hosts                    []string
+	LocalThreshold           *time.Duration
+	MaxConnIdleTime          *time.Duration
+	MaxPoolSize              *uint64
+	MinPoolSize              *uint64
+	PoolMonitor              *event.PoolMonitor
+	Monitor                  *event.CommandMonitor
+	ReadConcern              *readconcern.ReadConcern
+	ReadPreference           *readpref.ReadPref
+	Registry                 *bsoncodec.Registry
+	ReplicaSet               *string
+	RetryReads               *bool
+	RetryWrites              *bool
+	ServerSelectionTimeout   *time.Duration
+	SocketTimeout            *time.Duration
+	TLSConfig                *tls.Config
+	WriteConcern             *writeconcern.WriteConcern
+	ZlibLevel                *int
+	ZstdLevel                *int
 
 	err error
 	uri string
+	cs  *connstring.ConnString
 
-	// These options are for internal use only and should not be set. They are deprecated and are
-	// not part of the stability guarantee. They may be removed in the future.
+	// AuthenticateToAnything skips server type checks when deciding if authentication is possible.
+	//
+	// Deprecated: This option is for internal use only and should not be set. It may be changed or removed in any
+	// release.
 	AuthenticateToAnything *bool
-	Deployment             driver.Deployment
+
+	// Deployment specifies a custom deployment to use for the new Client.
+	//
+	// Deprecated: This option is for internal use only and should not be set. It may be changed or removed in any
+	// release.
+	Deployment driver.Deployment
 }
 
 // Client creates a new ClientOptions instance.
@@ -132,7 +144,28 @@ func Client() *ClientOptions {
 }
 
 // Validate validates the client options. This method will return the first error found.
-func (c *ClientOptions) Validate() error { return c.err }
+func (c *ClientOptions) Validate() error {
+	c.validateAndSetError()
+	return c.err
+}
+
+func (c *ClientOptions) validateAndSetError() {
+	if c.err != nil {
+		return
+	}
+
+	// Direct connections cannot be made if multiple hosts are specified or an SRV URI is used.
+	if c.Direct != nil && *c.Direct {
+		if len(c.Hosts) > 1 {
+			c.err = errors.New("a direct connection cannot be made if multiple hosts are specified")
+			return
+		}
+		if c.cs != nil && c.cs.Scheme == connstring.SchemeMongoDBSRV {
+			c.err = errors.New("a direct connection cannot be made if an SRV URI is used")
+			return
+		}
+	}
+}
 
 // GetURI returns the original URI used to configure the ClientOptions instance. If ApplyURI was not called during
 // construction, this returns "".
@@ -160,18 +193,19 @@ func (c *ClientOptions) ApplyURI(uri string) *ClientOptions {
 	}
 
 	c.uri = uri
-	cs, err := connstring.Parse(uri)
+	cs, err := connstring.ParseAndValidate(uri)
 	if err != nil {
 		c.err = err
 		return c
 	}
+	c.cs = &cs
 
 	if cs.AppName != "" {
 		c.AppName = &cs.AppName
 	}
 
-	if cs.AuthMechanism != "" || cs.AuthMechanismProperties != nil || cs.AuthSource != "" ||
-		cs.Username != "" || cs.PasswordSet {
+	// Only create a Credential if there is a request for authentication via non-empty credentials in the URI.
+	if cs.HasAuthParameters() {
 		c.Auth = &Credential{
 			AuthMechanism:           cs.AuthMechanism,
 			AuthMechanismProperties: cs.AuthMechanismProperties,
@@ -185,6 +219,10 @@ func (c *ClientOptions) ApplyURI(uri string) *ClientOptions {
 	if cs.ConnectSet {
 		direct := cs.Connect == connstring.SingleConnect
 		c.Direct = &direct
+	}
+
+	if cs.DirectConnectionSet {
+		c.Direct = &cs.DirectConnection
 	}
 
 	if cs.ConnectTimeoutSet {
@@ -341,6 +379,10 @@ func (c *ClientOptions) ApplyURI(uri string) *ClientOptions {
 		c.ZstdLevel = &cs.ZstdLevel
 	}
 
+	if cs.SSLDisableOCSPEndpointCheckSet {
+		c.DisableOCSPEndpointCheck = &cs.SSLDisableOCSPEndpointCheck
+	}
+
 	return c
 }
 
@@ -369,11 +411,10 @@ func (c *ClientOptions) SetAuth(auth Credential) *ClientOptions {
 // 3. "zstd" - requires server version >= 4.2, and driver version >= 1.2.0 with cgo support enabled or driver version >= 1.3.0
 //    without cgo
 //
-// To use compression, it must be enabled on the server as well. If this option is specified, the driver will perform a
-// negotiation with the server to determine a common list of of compressors and will use the first one in that list when
-// performing operations. See
+// If this option is specified, the driver will perform a negotiation with the server to determine a common list of of
+// compressors and will use the first one in that list when performing operations. See
 // https://docs.mongodb.com/manual/reference/program/mongod/#cmdoption-mongod-networkmessagecompressors for more
-// information about how to enable this feature on the server.
+// information about configuring compression on the server and the server-side defaults.
 //
 // This can also be set through the "compressors" URI option (e.g. "compressors=zstd,zlib,snappy"). The default is
 // an empty slice, meaning no compression will be enabled.
@@ -393,22 +434,28 @@ func (c *ClientOptions) SetConnectTimeout(d time.Duration) *ClientOptions {
 }
 
 // SetDialer specifies a custom ContextDialer to be used to create new connections to the server. The default is a
-// net.Dialer instance with a 300 second keepalive time.
+// net.Dialer with the Timeout field set to ConnectTimeout. See https://golang.org/pkg/net/#Dialer for more information
+// about the net.Dialer type.
 func (c *ClientOptions) SetDialer(d ContextDialer) *ClientOptions {
 	c.Dialer = d
 	return c
 }
 
-// SetDirect specifies whether or not a direct connect should be made. To use this option, a URI with a single host must
-// be specified through ApplyURI. If set to true, the driver will only connect to the host provided in the URI and will
-// not discover other hosts in the cluster. This can also be set through the "connect" URI option with the following
-// values:
+// SetDirect specifies whether or not a direct connect should be made. If set to true, the driver will only connect to
+// the host provided in the URI and will not discover other hosts in the cluster. This can also be set through the
+// "directConnection" URI option. This option cannot be set to true if multiple hosts are specified, either through
+// ApplyURI or SetHosts, or an SRV URI is used.
 //
-// 1. "connect=direct" for direct connections
+// As of driver version 1.4, the "connect" URI option has been deprecated and replaced with "directConnection". The
+// "connect" URI option has two values:
 //
-// 2. "connect=automatic" for automatic discovery.
+// 1. "connect=direct" for direct connections. This corresponds to "directConnection=true".
 //
-// The default is false ("automatic" in the connection string).
+// 2. "connect=automatic" for automatic discovery. This corresponds to "directConnection=false"
+//
+// If the "connect" and "directConnection" URI options are both specified in the connection string, their values must
+// not conflict. Direct connections are not valid if multiple hosts are specified or an SRV URI is used. The default
+// value for this option is false.
 func (c *ClientOptions) SetDirect(b bool) *ClientOptions {
 	c.Direct = &b
 	return c
@@ -643,6 +690,20 @@ func (c *ClientOptions) SetAutoEncryptionOptions(opts *AutoEncryptionOptions) *C
 	return c
 }
 
+// SetDisableOCSPEndpointCheck specifies whether or not the driver should reach out to OCSP responders to verify the
+// certificate status for certificates presented by the server that contain a list of OCSP responders.
+//
+// If set to true, the driver will verify the status of the certificate using a response stapled by the server, if there
+// is one, but will not send an HTTP request to any responders if there is no staple. In this case, the driver will
+// continue the connection even though the certificate status is not known.
+//
+// This can also be set through the tlsDisableOCSPEndpointCheck URI option. Both this URI option and tlsInsecure must
+// not be set at the same time and will error if they are. The default value is false.
+func (c *ClientOptions) SetDisableOCSPEndpointCheck(disableCheck bool) *ClientOptions {
+	c.DisableOCSPEndpointCheck = &disableCheck
+	return c
+}
+
 // MergeClientOptions combines the given *ClientOptions into a single *ClientOptions in a last one wins fashion.
 // The specified options are merged with the existing options on the collection, with the specified options taking
 // precedence.
@@ -741,6 +802,9 @@ func MergeClientOptions(opts ...*ClientOptions) *ClientOptions {
 		if opt.Deployment != nil {
 			c.Deployment = opt.Deployment
 		}
+		if opt.DisableOCSPEndpointCheck != nil {
+			c.DisableOCSPEndpointCheck = opt.DisableOCSPEndpointCheck
+		}
 		if opt.err != nil {
 			c.err = opt.err
 		}
@@ -758,51 +822,14 @@ func addCACertFromFile(cfg *tls.Config, file string) error {
 		return err
 	}
 
-	certBytes, err := loadCert(data)
-	if err != nil {
-		return err
-	}
-
-	cert, err := x509.ParseCertificate(certBytes)
-	if err != nil {
-		return err
-	}
-
 	if cfg.RootCAs == nil {
 		cfg.RootCAs = x509.NewCertPool()
 	}
-
-	cfg.RootCAs.AddCert(cert)
-
-	return nil
-}
-
-func loadCert(data []byte) ([]byte, error) {
-	var certBlock *pem.Block
-
-	for certBlock == nil {
-		if data == nil || len(data) == 0 {
-			return nil, errors.New(".pem file must have both a CERTIFICATE and an RSA PRIVATE KEY section")
-		}
-
-		block, rest := pem.Decode(data)
-		if block == nil {
-			return nil, errors.New("invalid .pem file")
-		}
-
-		switch block.Type {
-		case "CERTIFICATE":
-			if certBlock != nil {
-				return nil, errors.New("multiple CERTIFICATE sections in .pem file")
-			}
-
-			certBlock = block
-		}
-
-		data = rest
+	if !cfg.RootCAs.AppendCertsFromPEM(data) {
+		return errors.New("the specified CA file does not contain any valid certificates")
 	}
 
-	return certBlock.Bytes, nil
+	return nil
 }
 
 func addClientCertFromSeparateFiles(cfg *tls.Config, keyFile, certFile, keyPassword string) (string, error) {

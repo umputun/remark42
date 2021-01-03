@@ -126,6 +126,20 @@ func (p DirectHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 // getCredentials extracts user and password from request
 func (p DirectHandler) getCredentials(w http.ResponseWriter, r *http.Request) (credentials, error) {
+
+	// GET /something?user=name&passwd=xyz&aud=bar
+	if r.Method == "GET" {
+		return credentials{
+			User:     r.URL.Query().Get("user"),
+			Password: r.URL.Query().Get("passwd"),
+			Audience: r.URL.Query().Get("aud"),
+		}, nil
+	}
+
+	if r.Method != "POST" {
+		return credentials{}, errors.Errorf("method %s not supported", r.Method)
+	}
+
 	if r.Body != nil {
 		r.Body = http.MaxBytesReader(w, r.Body, MaxHTTPBodySize)
 	}
@@ -138,6 +152,7 @@ func (p DirectHandler) getCredentials(w http.ResponseWriter, r *http.Request) (c
 		contentType = mt
 	}
 
+	// POST with json body
 	if contentType == "application/json" {
 		var creds credentials
 		if err := json.NewDecoder(r.Body).Decode(&creds); err != nil {
@@ -146,6 +161,7 @@ func (p DirectHandler) getCredentials(w http.ResponseWriter, r *http.Request) (c
 		return creds, nil
 	}
 
+	// POST with form
 	if err := r.ParseForm(); err != nil {
 		return credentials{}, errors.Wrap(err, "failed to parse request")
 	}

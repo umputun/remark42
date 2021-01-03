@@ -13,6 +13,20 @@ import (
 // CreateIndexesOptions represents options that can be used to configure IndexView.CreateOne and IndexView.CreateMany
 // operations.
 type CreateIndexesOptions struct {
+	// The number of data-bearing members of a replica set, including the primary, that must complete the index builds
+	// successfully before the primary marks the indexes as ready. This should either be a string or int32 value. The
+	// semantics of the values are as follows:
+	//
+	// 1. String: specifies a tag. All members with that tag must complete the build.
+	// 2. int: the number of members that must complete the build.
+	// 3. "majority": A special value to indicate that more than half the nodes must complete the build.
+	// 4. "votingMembers": A special value to indicate that all voting data-bearing nodes must complete.
+	//
+	// This option is only available on MongoDB versions >= 4.4. A client-side error will be returned if the option
+	// is specified for MongoDB versions <= 4.2. The default value is nil, meaning that the server-side default will be
+	// used. See dochub.mongodb.org/core/index-commit-quorum for more information.
+	CommitQuorum interface{}
+
 	// The maximum amount of time that the query can run on the server. The default value is nil, meaning that there
 	// is no time limit for query execution.
 	MaxTime *time.Duration
@@ -29,6 +43,30 @@ func (c *CreateIndexesOptions) SetMaxTime(d time.Duration) *CreateIndexesOptions
 	return c
 }
 
+// SetCommitQuorumInt sets the value for the CommitQuorum field as an int32.
+func (c *CreateIndexesOptions) SetCommitQuorumInt(quorum int32) *CreateIndexesOptions {
+	c.CommitQuorum = quorum
+	return c
+}
+
+// SetCommitQuorumString sets the value for the CommitQuorum field as a string.
+func (c *CreateIndexesOptions) SetCommitQuorumString(quorum string) *CreateIndexesOptions {
+	c.CommitQuorum = quorum
+	return c
+}
+
+// SetCommitQuorumMajority sets the value for the CommitQuorum to special "majority" value.
+func (c *CreateIndexesOptions) SetCommitQuorumMajority() *CreateIndexesOptions {
+	c.CommitQuorum = "majority"
+	return c
+}
+
+// SetCommitQuorumVotingMembers sets the value for the CommitQuorum to special "votingMembers" value.
+func (c *CreateIndexesOptions) SetCommitQuorumVotingMembers() *CreateIndexesOptions {
+	c.CommitQuorum = "votingMembers"
+	return c
+}
+
 // MergeCreateIndexesOptions combines the given CreateIndexesOptions into a single CreateIndexesOptions in a last one
 // wins fashion.
 func MergeCreateIndexesOptions(opts ...*CreateIndexesOptions) *CreateIndexesOptions {
@@ -39,6 +77,9 @@ func MergeCreateIndexesOptions(opts ...*CreateIndexesOptions) *CreateIndexesOpti
 		}
 		if opt.MaxTime != nil {
 			c.MaxTime = opt.MaxTime
+		}
+		if opt.CommitQuorum != nil {
+			c.CommitQuorum = opt.CommitQuorum
 		}
 	}
 
@@ -131,6 +172,8 @@ func MergeListIndexesOptions(opts ...*ListIndexesOptions) *ListIndexesOptions {
 type IndexOptions struct {
 	// If true, the index will be built in the background on the server and will not block other tasks. The default
 	// value is false.
+	//
+	// Deprecated: This option has been deprecated in MongoDB version 4.2.
 	Background *bool
 
 	// The length of time, in seconds, for documents to remain in the collection. The default value is 0, which means
@@ -208,6 +251,10 @@ type IndexOptions struct {
 
 	// A document that defines the wildcard projection for the index.
 	WildcardProjection interface{}
+
+	// If true, the index will exist on the target collection but will not be used by the query planner when executing
+	// operations. This option is only valid for MongoDB versions >= 4.4. The default value is false.
+	Hidden *bool
 }
 
 // Index creates a new IndexOptions instance.
@@ -216,6 +263,8 @@ func Index() *IndexOptions {
 }
 
 // SetBackground sets value for the Background field.
+//
+// Deprecated: This option has been deprecated in MongoDB version 4.2.
 func (i *IndexOptions) SetBackground(background bool) *IndexOptions {
 	i.Background = &background
 	return i
@@ -329,6 +378,12 @@ func (i *IndexOptions) SetWildcardProjection(wildcardProjection interface{}) *In
 	return i
 }
 
+// SetHidden sets the value for the Hidden field.
+func (i *IndexOptions) SetHidden(hidden bool) *IndexOptions {
+	i.Hidden = &hidden
+	return i
+}
+
 // MergeIndexOptions combines the given IndexOptions into a single IndexOptions in a last-one-wins fashion.
 func MergeIndexOptions(opts ...*IndexOptions) *IndexOptions {
 	i := Index()
@@ -390,6 +445,9 @@ func MergeIndexOptions(opts ...*IndexOptions) *IndexOptions {
 		}
 		if opt.WildcardProjection != nil {
 			i.WildcardProjection = opt.WildcardProjection
+		}
+		if opt.Hidden != nil {
+			i.Hidden = opt.Hidden
 		}
 	}
 

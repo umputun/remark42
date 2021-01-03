@@ -12,6 +12,13 @@ type DeleteOptions struct {
 	// versions >= 3.4. For previous server versions, the driver will return an error if this option is used. The
 	// default value is nil, which means the default collation of the collection will be used.
 	Collation *Collation
+
+	// The index to use for the operation. This should either be the index name as a string or the index specification
+	// as a document. This option is only valid for MongoDB versions >= 4.4. Server versions >= 3.4 will return an error
+	// if this option is specified. For server versions < 3.4, the driver will return a client-side error if this option
+	// is specified. The driver will return an error if this option is specified during an unacknowledged write
+	// operation. The default value is nil, which means that no hint will be sent.
+	Hint interface{}
 }
 
 // Delete creates a new DeleteOptions instance.
@@ -25,6 +32,12 @@ func (do *DeleteOptions) SetCollation(c *Collation) *DeleteOptions {
 	return do
 }
 
+// SetHint sets the value for the Hint field.
+func (do *DeleteOptions) SetHint(hint interface{}) *DeleteOptions {
+	do.Hint = hint
+	return do
+}
+
 // MergeDeleteOptions combines the given DeleteOptions instances into a single DeleteOptions in a last-one-wins fashion.
 func MergeDeleteOptions(opts ...*DeleteOptions) *DeleteOptions {
 	dOpts := Delete()
@@ -34,6 +47,9 @@ func MergeDeleteOptions(opts ...*DeleteOptions) *DeleteOptions {
 		}
 		if do.Collation != nil {
 			dOpts.Collation = do.Collation
+		}
+		if do.Hint != nil {
+			dOpts.Hint = do.Hint
 		}
 	}
 
