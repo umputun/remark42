@@ -157,7 +157,7 @@ func TestTelegram_escapeTitle(t *testing.T) {
 
 	tb := Telegram{}
 	for i, tt := range tbl {
-		tt = tt
+		tt := tt
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			assert.Equal(t, tt.out, tb.escapeTitle(tt.inp))
 		})
