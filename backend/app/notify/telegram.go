@@ -8,6 +8,7 @@ import (
 	"html"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	log "github.com/go-pkgz/lgr"
@@ -95,7 +96,7 @@ func (t *Telegram) Send(ctx context.Context, req Request) error {
 	from = "*" + from + "*"
 	link := fmt.Sprintf("↦ [original comment](%s)", req.Comment.Locator.URL+uiNav+req.Comment.ID)
 	if req.Comment.PostTitle != "" {
-		link = fmt.Sprintf("↦ [%s](%s)", req.Comment.PostTitle, req.Comment.Locator.URL+uiNav+req.Comment.ID)
+		link = fmt.Sprintf("↦ [%s](%s)", t.escapeTitle(req.Comment.PostTitle), req.Comment.Locator.URL+uiNav+req.Comment.ID)
 	}
 	u := fmt.Sprintf("%s%s/sendMessage?chat_id=%s&parse_mode=Markdown&disable_web_page_preview=true",
 		t.apiPrefix, t.token, t.channelID)
@@ -140,6 +141,15 @@ func (t *Telegram) Send(ctx context.Context, req Request) error {
 		return errors.Wrap(err, "can't decode telegram response")
 	}
 	return nil
+}
+
+func (t *Telegram) escapeTitle(title string) string {
+	escSymbols := []string{"[", "]", "(", ")"}
+	res := title
+	for _, esc := range escSymbols {
+		res = strings.Replace(res, esc, "\\"+esc, -1)
+	}
+	return res
 }
 
 // SendVerification is not implemented for telegram
