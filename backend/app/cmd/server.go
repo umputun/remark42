@@ -75,6 +75,7 @@ type ServerCommand struct {
 	EnableEmoji      bool          `long:"emoji" env:"EMOJI" description:"enable emoji"`
 	SimpleView       bool          `long:"simpler-view" env:"SIMPLE_VIEW" description:"minimal comment editor mode"`
 	ProxyCORS        bool          `long:"proxy-cors" env:"PROXY_CORS" description:"disable internal CORS and delegate it to proxy"`
+	AllowedHosts     []string      `long:"allowed-hosts" env:"ALLOWED_HOSTS" description:"limit hosts/sources allowed to embed comments"`
 
 	Auth struct {
 		TTL struct {
@@ -443,6 +444,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		AnonVote:           s.AnonymousVote && s.RestrictVoteIP,
 		SimpleView:         s.SimpleView,
 		ProxyCORS:          s.ProxyCORS,
+		AllowedAncestors:   s.AllowedHosts,
 		SendJWTHeader:      s.Auth.TTL.SendJWTHeader,
 	}
 

@@ -62,6 +62,7 @@ type Rest struct {
 	SimpleView         bool
 	ProxyCORS          bool
 	SendJWTHeader      bool
+	AllowedAncestors   []string // sets Content-Security-Policy "frame-ancestors ..."
 
 	SSLConfig   SSLConfig
 	httpsServer *http.Server
@@ -199,6 +200,11 @@ func (s *Rest) routes() chi.Router {
 			MaxAge:           300,
 		})
 		router.Use(corsMiddleware.Handler)
+	}
+
+	if len(s.AllowedAncestors) > 0 {
+		log.Printf("[INFO] allowed from %+v only", s.AllowedAncestors)
+		router.Use(frameAncestors(s.AllowedAncestors))
 	}
 
 	ipFn := func(ip string) string { return store.HashValue(ip, s.SharedSecret)[:12] } // logger uses it for anonymization
@@ -589,6 +595,22 @@ func cacheControl(expiration time.Duration, version string) func(http.Handler) h
 					return
 				}
 			}
+			h.ServeHTTP(w, r)
+		}
+		return http.HandlerFunc(fn)
+	}
+}
+
+// frameAncestors is a middleware setting Content-Security-Policy "frame-ancestors host1 host2 ..."
+// prevents loading of comments widgets from any other origins. In case if the list of allowed empty, ignored.
+func frameAncestors(hosts []string) func(http.Handler) http.Handler {
+	return func(h http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			if len(hosts) == 0 {
+				h.ServeHTTP(w, r)
+				return
+			}
+			w.Header().Set("Content-Security-Policy", "frame-ancestors "+strings.Join(hosts, " ")+";")
 			h.ServeHTTP(w, r)
 		}
 		return http.HandlerFunc(fn)
