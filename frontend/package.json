@@ -1,5 +1,4 @@
 {
-  "private": true,
   "name": "remark42",
   "version": "0.16.0",
   "license": "MIT",
@@ -18,7 +17,7 @@
     "lint:eslint": "eslint --max-warnings=0 '**/*.{ts?(x),js}'",
     "lint:stylelint": "stylelint 'app/**/*.css' 'templates/**'",
     "size": "cross-env NODE_ENV=production run-s build check:size",
-    "prettier": "prettier --write './**/*.{js,ts,tsx,css}'",
+    "prettier": "prettier --write './**/*.{js,ts,tsx,css,html}'",
     "translation:extract": "formatjs extract --out-file=./extracted-messages/messages.json '**/!(*.d).ts?(x)'",
     "translation:generate": "node ./tasks/generateTranslations.js",
     "translation:check": "node ./tasks/checkTranslations.js"
