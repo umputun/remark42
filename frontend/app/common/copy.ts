@@ -1,62 +1,50 @@
 // based on https://github.com/sindresorhus/copy-text-to-clipboard, but improved to copy text styles too
 export default function copy(input: string): boolean {
-  const el = document.createElement('div');
+  const element = document.createElement('textarea') as HTMLTextAreaElement;
+  const previouslyFocusedElement = document.activeElement as HTMLElement;
 
-  el.innerHTML = input;
+  element.value = input;
 
-  Object.assign(el.style, {
+  // Prevent keyboard from showing on mobile
+  element.setAttribute('readonly', '');
+
+  Object.assign(element.style, {
     contain: 'strict',
     position: 'absolute',
     left: '-9999px',
     fontSize: '12pt', // Prevent zooming on iOS
   });
 
-  document.body.appendChild(el);
+  const selection = document.getSelection();
+  let originalRange: boolean | Range = false;
 
-  const currentSelection = document.getSelection();
-  if (!currentSelection) return true;
-
-  let originalRange = null;
-  if (currentSelection.rangeCount > 0) {
-    originalRange = currentSelection.getRangeAt(0);
+  if (selection && selection.rangeCount > 0) {
+    originalRange = selection.getRangeAt(0);
   }
 
-  let range, selection;
+  document.body.append(element);
+  element.select();
 
-  if ((document.body as any).createTextRange) {
-    range = (document.body as any).createTextRange();
-    range.moveToElement(el);
-    range.select();
-  } else if (window.getSelection) {
-    selection = window.getSelection();
+  // Explicit selection workaround for iOS
+  element.selectionStart = 0;
+  element.selectionEnd = input.length;
 
-    range = document.createRange();
-    range.selectNodeContents(el);
-
-    if (selection) {
-      selection.removeAllRanges();
-      selection.addRange(range);
-    }
-  }
-
-  document.execCommand('copy');
-
-  let success = false;
+  let isSuccess = false;
   try {
-    success = document.execCommand('copy');
-  } catch (err) {}
+    isSuccess = document.execCommand('copy');
+  } catch (_) {}
 
-  if (!(document.body as any).createTextRange && window.getSelection) {
-    const selection = window.getSelection();
-    selection && selection.removeAllRanges();
+  element.remove();
+
+  if (selection && originalRange) {
+    selection.removeAllRanges();
+    selection.addRange(originalRange);
   }
 
-  document.body.removeChild(el);
-
-  if (originalRange) {
-    (selection as any).removeAllRanges();
-    (selection as any).addRange(originalRange);
+  // Get the focus back on the previously focused element, if any
+  if (previouslyFocusedElement) {
+    previouslyFocusedElement.focus();
   }
 
-  return success;
+  return isSuccess;
 }
