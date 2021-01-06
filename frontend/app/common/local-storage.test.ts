@@ -12,7 +12,7 @@ describe('getJsonItem', () => {
   });
 
   it('should update json in localStoeage', () => {
-    setJsonItem<any[]>(LS_KEY, []);
+    setJsonItem(LS_KEY, []);
     expect(localStorage.getItem(LS_KEY)).toBe('[]');
   });
 });
@@ -88,7 +88,7 @@ describe('updateJsonItem', () => {
 
   it('should update data in localStorage with merge', () => {
     localStorage.setItem(LS_KEY, JSON.stringify([3, 4, 5]));
-    updateJsonItem<any[]>(LS_KEY, data => [1, 2, ...data]);
+    updateJsonItem(LS_KEY, (data: unknown[]) => [1, 2, ...data]);
 
     expect(localStorage.getItem(LS_KEY)).toBe(JSON.stringify([1, 2, 3, 4, 5]));
   });

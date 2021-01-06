@@ -21,12 +21,14 @@ module.exports = {
         'no-undef': 'off',
         'no-redeclare': 'off',
         'no-unused-vars': 'off',
+        '@typescript-eslint/no-explicit-any': 'error',
       },
     },
     {
       files: ['*.d.ts'],
       rules: {
         '@typescript-eslint/no-unused-vars': 'off',
+        '@typescript-eslint/no-explicit-any': 'off',
       },
     },
     {

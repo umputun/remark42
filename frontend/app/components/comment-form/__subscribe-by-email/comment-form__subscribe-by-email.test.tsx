@@ -15,7 +15,6 @@ import { sleep } from 'utils/sleep';
 import { Input } from 'components/input';
 import { Button } from 'components/button';
 import { Dropdown } from 'components/dropdown';
-import TextareaAutosize from 'components/comment-form/textarea-autosize';
 import enMessages from 'locales/en.json';
 import { LS_EMAIL_KEY } from 'common/constants';
 
@@ -161,10 +160,10 @@ describe('<SubscribeByEmailForm/>', () => {
     await sleep(0);
     wrapper.update();
 
-    const textarea = wrapper.find(TextareaAutosize);
-    const onInputToken = textarea.prop('onInput') as (e: any) => void;
+    const textarea = wrapper.find('textarea');
 
-    act(() => onInputToken(makeInputEvent(validToken)));
+    textarea.getDOMNode<HTMLTextAreaElement>().value = validToken;
+    textarea.simulate('input');
 
     await sleep(0);
     wrapper.update();

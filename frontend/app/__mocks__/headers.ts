@@ -16,7 +16,7 @@ global.Headers = class HeadersMock extends Headers implements Headers {
   delete(key: string) {
     this.headers.delete(key);
   }
-  forEach(callbackfn: (value: string, key: string, parent: Headers) => void, thisArg?: any) {
+  forEach(callbackfn: (value: string, key: string, parent: Headers) => void, thisArg?: unknown) {
     this.headers.forEach((value, key) => {
       callbackfn.call(thisArg || this, value, key, this);
     });

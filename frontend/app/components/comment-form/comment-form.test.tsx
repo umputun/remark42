@@ -9,8 +9,9 @@ import * as localStorageModule from 'common/local-storage';
 import { CommentForm, CommentFormProps, messages } from './comment-form';
 import { SubscribeByEmail } from './__subscribe-by-email';
 import TextareaAutosize from './textarea-autosize';
+import { IntlShape } from 'react-intl';
 
-function createEvent<E extends Event, T = any>(type: string, value: T): E {
+function createEvent<E extends Event, T = unknown>(type: string, value: T): E {
   const event = new Event(type);
 
   Object.defineProperty(event, 'target', { value });
@@ -31,7 +32,7 @@ const intl = {
   formatMessage(message: { defaultMessage: string }) {
     return message.defaultMessage || '';
   },
-} as any;
+} as IntlShape;
 
 describe('<CommentForm />', () => {
   it('should shallow without control panel, preview button, and rss links in "simple view" mode', () => {

@@ -1,4 +1,5 @@
 import { Comment } from 'common/types';
+import { StoreState } from 'store';
 
 import { setCollapse } from './actions';
 import { THREAD_SET_COLLAPSE } from './types';
@@ -6,11 +7,11 @@ import { THREAD_SET_COLLAPSE } from './types';
 describe('collapsedThreads', () => {
   it('should set collapsed to true', () => {
     const comment = { id: 'some-id' } as Comment;
-    const node = { comment, replies: [] };
-    const state = { collapsedThreads: {}, comments: [node] };
+    const state = { collapsedThreads: {} } as StoreState;
 
     const dispatch = jest.fn();
-    const getState = jest.fn(() => state) as any;
+    const getState = jest.fn(() => state);
+
     setCollapse(comment.id, true)(dispatch, getState, undefined);
     expect(dispatch).toBeCalledWith({
       type: THREAD_SET_COLLAPSE,

@@ -28,9 +28,9 @@ describe('fetcher', () => {
     });
     it('should throw special error object on 401 status', async () => {
       const response = '<html>unauthorized nginx response</html>';
-      (window.fetch as any) = jest.fn().mockImplementation(async () => ({
+      window.fetch = jest.fn().mockImplementation(async () => ({
         status: 401,
-        headers: new (window as any).Headers(),
+        headers: new Headers(),
         json: async () => {
           throw new Error('json parse error');
         },
@@ -48,9 +48,9 @@ describe('fetcher', () => {
         });
     });
     it('should throw "Something went wrong." object on unknown status', async () => {
-      (jest.spyOn(window, 'fetch') as any).mockImplementation(async () => ({
+      window.fetch = jest.fn().mockImplementation(async () => ({
         status: 400,
-        headers: new (window as any).Headers(),
+        headers: new Headers(),
         async json() {
           throw new Error('json parse error');
         },
