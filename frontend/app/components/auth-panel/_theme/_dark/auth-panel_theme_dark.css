@@ -1,0 +1,5 @@
+.auth-panel_theme_dark {
+  & .auth-panel__user-id {
+    color: var(--color5);
+  }
+}

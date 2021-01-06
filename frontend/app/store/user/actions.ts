@@ -1,9 +1,9 @@
-import * as api from '@app/common/api';
-import { User, BlockedUser, AuthProvider, BlockTTL } from '@app/common/types';
-import { ttlToTime } from '@app/utils/ttl-to-time';
-import getHiddenUsers from '@app/utils/get-hidden-users';
-import { LS_HIDDEN_USERS_KEY } from '@app/common/constants';
-import { setItem } from '@app/common/local-storage';
+import * as api from 'common/api';
+import { User, BlockedUser, AuthProvider, BlockTTL } from 'common/types';
+import { ttlToTime } from 'utils/ttl-to-time';
+import getHiddenUsers from 'utils/get-hidden-users';
+import { LS_HIDDEN_USERS_KEY } from 'common/constants';
+import { setItem } from 'common/local-storage';
 
 import { StoreAction } from '../index';
 import {
@@ -21,11 +21,11 @@ import { unsetCommentMode, fetchComments } from '../comments/actions';
 import { updateProvider } from '../provider/actions';
 import { COMMENTS_PATCH } from '../comments/types';
 
-function setUser(user: User | null = null) {
+function setUser(user: User | null = null): USER_SET_ACTION {
   return {
     type: USER_SET,
     user,
-  } as USER_SET_ACTION;
+  };
 }
 
 export const fetchUser = (): StoreAction<Promise<User | null>> => async dispatch => {

@@ -118,13 +118,6 @@ export interface Config {
   emoji_enabled: boolean;
 }
 
-export interface RemarkConfig {
-  site_id: string;
-  url: string;
-  /** used in last comments widget */
-  max_last_comments?: number;
-}
-
 export type Sorting = '-time' | '+time' | '-active' | '+active' | '-score' | '+score' | '-controversy' | '+controversy';
 
 export type AuthProvider =

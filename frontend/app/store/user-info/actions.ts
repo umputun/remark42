@@ -1,6 +1,6 @@
-import { getUserComments } from '@app/common/api';
-import { Comment } from '@app/common/types';
-import { userInfo } from '@app/common/user-info-settings';
+import { getUserComments } from 'common/api';
+import { Comment } from 'common/types';
+import { userInfo } from 'common/user-info-settings';
 
 import { StoreAction } from '../index';
 import { USER_INFO_SET } from './types';

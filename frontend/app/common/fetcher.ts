@@ -1,8 +1,9 @@
+import { httpErrorMap, isFailedFetch, httpMessages, RequestError } from 'utils/errorUtils';
+
 import { BASE_URL, API_BASE, HEADER_X_JWT } from './constants';
 import { siteId } from './settings';
-import { StaticStore } from './static_store';
+import { StaticStore } from './static-store';
 import { getCookie } from './cookies';
-import { httpErrorMap, isFailedFetch, httpMessages } from '@app/utils/errorUtils';
 
 export type FetcherMethod = 'get' | 'post' | 'put' | 'patch' | 'delete' | 'head';
 const methods: FetcherMethod[] = ['get', 'post', 'put', 'patch', 'delete', 'head'];
@@ -33,7 +34,7 @@ type FetcherObject = { [K in FetcherMethod]: <T = unknown>(data: FetcherInit) =>
 let activeJwtToken: string | undefined;
 
 const fetcher = methods.reduce<Partial<FetcherObject>>((acc, method) => {
-  acc[method] = <T = unknown>(data: FetcherInit): Promise<T> => {
+  acc[method] = async <T = unknown>(data: FetcherInit): Promise<T> => {
     const {
       url,
       body = undefined,
@@ -77,7 +78,7 @@ const fetcher = methods.reduce<Partial<FetcherObject>>((acc, method) => {
     }
 
     if (siteId && method !== 'post' && !rurl.includes('?site=') && !rurl.includes('&site=')) {
-      rurl += (rurl.includes('?') ? '&' : '?') + `site=${siteId}`;
+      rurl += `${rurl.includes('?') ? '&' : '?'}site=${siteId}`;
     }
 
     return fetch(rurl, parameters)
@@ -99,10 +100,8 @@ const fetcher = methods.reduce<Partial<FetcherObject>>((acc, method) => {
         if (res.status >= 400) {
           if (httpErrorMap.has(res.status)) {
             const descriptor = httpErrorMap.get(res.status) || httpMessages.unexpectedError;
-            throw {
-              code: res.status,
-              error: descriptor.defaultMessage,
-            };
+
+            throw new RequestError(descriptor.defaultMessage, res.status);
           }
           return res.text().then(text => {
             let err;
@@ -110,13 +109,10 @@ const fetcher = methods.reduce<Partial<FetcherObject>>((acc, method) => {
               err = JSON.parse(text);
             } catch (e) {
               if (logError) {
-                // eslint-disable-next-line no-console
                 console.error(err);
               }
-              throw {
-                code: 0,
-                error: httpMessages.unexpectedError.defaultMessage,
-              };
+
+              throw new RequestError(httpMessages.unexpectedError.defaultMessage, 0);
             }
             throw err;
           });
@@ -130,11 +126,9 @@ const fetcher = methods.reduce<Partial<FetcherObject>>((acc, method) => {
       })
       .catch(e => {
         if (isFailedFetch(e)) {
-          throw {
-            code: -2,
-            error: e.message,
-          };
+          throw new RequestError(e.message, -2);
         }
+
         throw e;
       });
   };

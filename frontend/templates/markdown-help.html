@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html class="no-js" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <title>How to use Markdown in Remark</title>
+    <meta name="description" content="" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      /* stylelint-disable mavrin/stylelint-declaration-use-css-custom-properties */
+      html {
+        color: #222;
+        font-size: 1em;
+        line-height: 1.4;
+      }
+
+      hr {
+        display: block;
+        height: 1px;
+        border: 0;
+        border-top: 1px solid #ccc;
+        margin: 1em 0;
+        padding: 0;
+      }
+
+      a {
+        color: #4183c4;
+      }
+
+      audio,
+      canvas,
+      iframe,
+      img,
+      svg,
+      video {
+        vertical-align: middle;
+      }
+
+      fieldset {
+        border: 0;
+        margin: 0;
+        padding: 0;
+      }
+
+      textarea {
+        resize: vertical;
+      }
+
+      .browserupgrade {
+        margin: 0.2em 0;
+        background: #eee;
+        color: #000;
+        padding: 0.2em 0;
+      }
+
+      body {
+        font: 16px/26px Helvetica, Helvetica Neue, Arial, sans-serif;
+      }
+
+      .wrapper {
+        width: 90%;
+        margin: 0 5%;
+      }
+
+      .title {
+        color: #222;
+        margin: 40px 0 0 0;
+      }
+
+      nav ul {
+        margin: 0;
+        padding: 0;
+        list-style-type: none;
+      }
+
+      nav a {
+        display: block;
+        margin-bottom: 10px;
+        padding: 15px 0;
+        font-weight: bold;
+        text-align: center;
+        text-decoration: none;
+        color: #222;
+      }
+
+      nav a:hover,
+      nav a:visited {
+        color: #222;
+      }
+
+      nav a:hover {
+        text-decoration: underline;
+      }
+
+      .main {
+        padding: 30px 0;
+      }
+
+      .main article h1 {
+        font-size: 2em;
+      }
+
+      .main aside {
+        color: #222;
+        padding: 20px 40px;
+      }
+
+      .main aside p {
+        margin: 0 0 20px 0;
+        padding: 0;
+        font-size: 1.2em;
+      }
+
+      .main aside p:last-child {
+        margin-bottom: 0;
+      }
+
+      .footer-container footer {
+        color: #222;
+        padding: 20px 0;
+      }
+
+      .ie7 .title {
+        padding-top: 20px;
+      }
+
+      @media only screen and (min-width: 480px) {
+        nav a {
+          float: left;
+          width: 27%;
+          margin: 0 1.7%;
+          padding: 25px 2%;
+          margin-bottom: 0;
+        }
+
+        .oldie nav a {
+          margin: 0 0.7%;
+        }
+
+        nav li:first-child a {
+          margin-left: 0;
+        }
+
+        nav li:last-child a {
+          margin-right: 0;
+        }
+
+        nav ul li {
+          display: inline;
+        }
+      }
+
+      @media only screen and (min-width: 768px) {
+        nav {
+          float: right;
+          width: 38%;
+        }
+
+        .main article {
+          float: left;
+          width: 57%;
+        }
+
+        .main aside {
+          float: right;
+          width: 28%;
+        }
+      }
+
+      @media only screen and (min-width: 1140px) {
+        .wrapper {
+          /* 1140px - 10% for margins */
+          width: 1026px;
+          margin: 0 auto;
+        }
+      }
+
+      .hidden {
+        display: none !important;
+        visibility: hidden;
+      }
+
+      .visuallyhidden {
+        border: 0;
+        clip: rect(0 0 0 0);
+        height: 1px;
+        margin: -1px;
+        overflow: hidden;
+        padding: 0;
+        position: absolute;
+        width: 1px;
+      }
+
+      .visuallyhidden.focusable:active,
+      .visuallyhidden.focusable:focus {
+        clip: auto;
+        height: auto;
+        margin: 0;
+        overflow: visible;
+        position: static;
+        width: auto;
+      }
+
+      .invisible {
+        visibility: hidden;
+      }
+
+      .clearfix::before,
+      .clearfix::after {
+        content: ' ';
+        display: table;
+      }
+
+      .clearfix::after {
+        clear: both;
+      }
+
+      .clearfix {
+        *zoom: 1;
+      }
+
+      @media print {
+        *,
+        *::before,
+        *::after {
+          background: transparent !important;
+          color: #000 !important;
+          box-shadow: none !important;
+          text-shadow: none !important;
+        }
+
+        aside {
+          display: none;
+        }
+
+        a,
+        a:visited {
+          text-decoration: underline;
+        }
+
+        a[href]::after {
+          content: ' (' attr(href) ')';
+        }
+
+        abbr[title]::after {
+          content: ' (' attr(title) ')';
+        }
+
+        a[href^='#']::after,
+        a[href^='javascript:']::after {
+          content: '';
+        }
+
+        pre,
+        blockquote {
+          border: 1px solid #999;
+          page-break-inside: avoid;
+        }
+
+        thead {
+          display: table-header-group;
+        }
+
+        tr,
+        img {
+          page-break-inside: avoid;
+        }
+
+        img {
+          max-width: 100% !important;
+        }
+
+        p,
+        h2,
+        h3 {
+          orphans: 3;
+          widows: 3;
+        }
+
+        h2,
+        h3 {
+          page-break-after: avoid;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="header-container">
+      <header class="wrapper clearfix">
+        <a id="Introduction"></a>
+        <h1 class="title">How to use Markdown in Remark</h1>
+      </header>
+    </div>
+
+    <div class="main-container">
+      <div class="main wrapper clearfix">
+        <article>
+          <p>
+            Markdown is a lightweight and easy-to-use syntax for styling Remark comments. You control the display of the
+            comment, formatting words as bold or italic, adding images, and creating lists are just a few of the things
+            we can do with Markdown.
+          </p>
+
+          <h2 id="Headers-Quotes">Headers & Quotes</h2>
+          <p>
+            Sometimes it's useful to have different levels of headings to structure your comments. Start lines with a
+            `#` to create headings.
+          </p>
+
+          <p>You can use one `#` all the way up to `######` six for different heading sizes.</p>
+
+          <p>If you’d like to quote someone, use the > character before the line</p>
+
+          <h2 id="Text">Text</h2>
+
+          <p>
+            It's very easy to make some words <strong>bold</strong>: surround them with double asterisks ** and other
+            words <em>italic</em>: surround them with one asterisk *.
+          </p>
+          <p>
+            You can even <a href="http://google.com" target="_blank">link to Google!</a> using this syntax:<br />
+            [link to Google!](http://google.com)
+          </p>
+
+          <h2 id="Lists">Lists</h2>
+
+          <p>If you want numbered lists:</p>
+          <p>
+            1. One<br />
+            2. Two<br />
+            3. Three<br />
+            3.1. Item 3.1<br />
+            3.2. Item 3.2<br />
+          </p>
+
+          <p>If you want bullet point</p>
+
+          <p>
+            * Item 1<br />
+            * Item 2<br />
+            * Item 2a<br />
+            * Item 2b<br />
+          </p>
+
+          <h2 id="Images">Images</h2>
+
+          <p>If you want to embed images, this is how you do it:</p>
+          <pre>![Image of my cat](https://placekitten.com/400/400)</pre>
+          <p>
+            <img src="https://placekitten.com/400/400" width="400" height="400" alt="" />
+          </p>
+
+          <h2 id="Code">Code</h2>
+
+          <p>You can create code span by wrapping text in backtick quotes: <strong>`your code`</strong></p>
+
+          <h2 id="Tables">Tables</h2>
+
+          <p>
+            You can create tables by assembling a list of words and dividing them with hyphens - (for the first row),
+            and then separating each column with a pipe |:
+          </p>
+
+          <pre>
+|First Header | Second Header|
+|------------ | -------------|
+|Content from cell 1 | Content from cell 2|
+|Content in the first column | Content in the second column|
+                </pre
+          >
+        </article>
+
+        <aside>
+          <p>
+            <a href="#Introduction">Introduction</a>
+          </p>
+          <p>
+            <a href="#Headers-Quotes">Headers &amp; Quotes</a>
+          </p>
+          <p>
+            <a href="#Text">Text</a>
+          </p>
+          <p>
+            <a href="#Lists">Lists</a>
+          </p>
+          <p>
+            <a href="#Images">Images</a>
+          </p>
+          <p>
+            <a href="#Code">Code</a>
+          </p>
+          <p>
+            <a href="#Tables">Tables</a>
+          </p>
+        </aside>
+      </div>
+    </div>
+  </body>
+</html>

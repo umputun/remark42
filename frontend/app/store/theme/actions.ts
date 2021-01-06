@@ -1,4 +1,4 @@
-import { Theme } from '@app/common/types';
+import { Theme } from 'common/types';
 
 import { StoreAction } from '../';
 import { THEME_SET } from './types';

@@ -1,7 +1,6 @@
-/** @jsx createElement */
-import { createElement, JSX } from 'preact';
+import { h, JSX } from 'preact';
 import b from 'bem-react-helper';
-import { Theme } from '@app/common/types';
+import { Theme } from 'common/types';
 
 interface Props {
   picture?: string;

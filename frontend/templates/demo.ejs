@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Demo | Remark42</title>
+    <style>
+      /* stylelint-disable mavrin/stylelint-declaration-use-css-custom-properties */
+      body {
+        padding: 0;
+        margin: 0;
+        font-family: -system-ui, sans-serif;
+        color: #333;
+        background: #fff;
+      }
+
+      a {
+        color: #0aa;
+        text-decoration: none;
+      }
+
+      .container {
+        max-width: 800px;
+        padding: 40px;
+      }
+
+      .document_theme_dark {
+        background: #22201c;
+        color: #ddd;
+      }
+
+      .widgets {
+        display: flex;
+        flex-wrap: nowrap;
+      }
+
+      .widget {
+        margin-top: 1rem;
+      }
+
+      .widget__comments-frame {
+        border: 1px dashed #aaa;
+        width: 35rem;
+        max-width: 100%;
+      }
+
+      .widgets__counter-widget {
+        margin-left: 1em;
+      }
+
+      @media screen and (max-width: 800px) {
+        .container {
+          padding: 1em;
+        }
+
+        .widgets {
+          flex-direction: column;
+        }
+
+        .widgets__counter-widget {
+          margin-left: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Demo page</h1>
+      <p>
+        To install widgets on your website, follow the
+        <a href="https://github.com/umputun/remark42#setup-on-your-website">instructions</a>.
+      </p>
+      <div class="widgets">
+        <div class="widget widgets__widget widgets__comments-widget">
+          <a class="widget__link" href="/web/last-comments.html">Last comments widget page</a><br />
+          <iframe class="widget__frame widget__comments-frame" src="/web/last-comments.html" frameborder="0"></iframe>
+        </div>
+        <div class="widget widgets__widget widgets__counter-widget">
+          <a class="widget__link" href="/web/counter.html">Counter widget page</a><br />
+          <div class="widget__frame widget__counter-frame">Comments count: <span class="remark42__counter"></span></div>
+        </div>
+      </div>
+      <p><button id="toggle-theme">Toggle theme</button></p>
+      <div id="remark42"></div>
+    </div>
+
+    <script>
+      var body = document.querySelector('body');
+      var theme = 'light';
+
+      if ('matchMedia' in window) {
+        var mq = window.matchMedia('(prefers-color-scheme: dark)');
+
+        if (mq.matches) {
+          body.classList.add('document_theme_dark');
+        }
+
+        function getTheme() {
+          return mq.matches ? 'dark' : 'light';
+        }
+
+        theme = getTheme();
+
+        mq.addListener(function () {
+          REMARK42.changeTheme(getTheme());
+        });
+      }
+
+      document.getElementById('toggle-theme').addEventListener('click', function (e) {
+        e.preventDefault();
+
+        if (body.classList.contains('document_theme_dark')) {
+          body.classList.add('document_theme_light');
+          body.classList.remove('document_theme_dark');
+          window.REMARK42.changeTheme('light');
+          return;
+        }
+
+        body.classList.add('document_theme_dark');
+        body.classList.remove('document_theme_light');
+        window.REMARK42.changeTheme('dark');
+      });
+
+      var remark_config = {
+        site_id: 'remark',
+        host: '<%= htmlWebpackPlugin.options.REMARK_URL %>',
+        url: window.location.location,
+        components: ['embed', 'counter'],
+        // __colors__: {
+        //   "--color0": "red",
+        // },
+        theme: theme
+        // locale: "ru"
+      };
+
+      (function (c, d) {
+        for (var i = 0; i < c.length; i++) {
+          var s = d.createElement('script');
+          var e = '.js';
+          var r = d.head || d.body;
+
+          if ('noModule' in s) {
+            s.type = 'module';
+            e = '.mjs';
+          } else {
+            s.async = true;
+          }
+
+          s.defer = true;
+          s.src = remark_config.host + '/web/' + c[i] + e;
+
+          r.appendChild(s);
+        }
+      })(remark_config.components || ['embed'], document);
+    </script>
+    <noscript> Please enable JavaScript to view the comments powered by Remark. </noscript>
+  </body>
+</html>

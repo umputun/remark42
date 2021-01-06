@@ -1,6 +1,6 @@
-import { User } from '@app/common/types';
-import { getItem } from '@app/common/local-storage';
-import { LS_HIDDEN_USERS_KEY } from '@app/common/constants';
+import { User } from 'common/types';
+import { getItem } from 'common/local-storage';
+import { LS_HIDDEN_USERS_KEY } from 'common/constants';
 
 export default function getHiddenUsers() {
   try {

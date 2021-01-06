@@ -1,6 +1,5 @@
-/** @jsx createElement */
-import { createElement, JSX, Component, createRef } from 'preact';
-import { exclude } from '@app/utils/exclude';
+import { h, JSX, Component, createRef } from 'preact';
+import { exclude } from 'utils/exclude';
 
 type Props = {
   time: Date;

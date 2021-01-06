@@ -1,7 +1,5 @@
-/* eslint-disable no-console */
-import { BASE_URL, NODE_ID, COMMENT_NODE_CLASSNAME_PREFIX } from '@app/common/constants.config';
-import { UserInfo, Theme } from '@app/common/types';
-import { CommentsConfig } from './common/config-types';
+import type { UserInfo, Theme } from 'common/types';
+import { BASE_URL, NODE_ID, COMMENT_NODE_CLASSNAME_PREFIX } from 'common/constants.config';
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
@@ -24,26 +22,29 @@ function createFrame({
   host: string;
   query: string;
   height?: string;
-  __colors__?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  __colors__?: Record<string, string>;
 }) {
   const iframe = document.createElement('iframe');
+
   iframe.src = `${host}/web/iframe.html?${query}`;
   iframe.name = JSON.stringify({ __colors__ });
   iframe.setAttribute('width', '100%');
-  if (height) {
-    iframe.setAttribute('height', height);
-  }
   iframe.setAttribute('frameborder', '0');
   iframe.setAttribute('allowtransparency', 'true');
   iframe.setAttribute('scrolling', 'no');
   iframe.setAttribute('tabindex', '0');
-  iframe.setAttribute('title', 'Remark42');
+  iframe.setAttribute('title', 'Comments | Remark42');
   iframe.setAttribute('horizontalscrolling', 'no');
   iframe.setAttribute('verticalscrolling', 'no');
   iframe.setAttribute(
     'style',
     'width: 1px !important; min-width: 100% !important; border: none !important; overflow: hidden !important;'
   );
+
+  if (height) {
+    iframe.setAttribute('height', height);
+  }
+
   return iframe;
 }
 
@@ -51,49 +52,44 @@ function init() {
   window.REMARK42 = window.REMARK42 || {};
   window.REMARK42.createInstance = createInstance;
 
-  if (window.remark_config) {
-    createInstance(window.remark_config);
-  }
+  createInstance(window.remark_config);
 
   window.dispatchEvent(new Event('REMARK42::ready'));
 }
 
-function createInstance(config: CommentsConfig) {
+function createInstance(config: typeof window.remark_config) {
+  const root = document.getElementById(NODE_ID);
+
+  if (!root) {
+    throw new Error("Remark42: Can't find root node.");
+  }
+  if (!window.remark_config) {
+    throw new Error('Remark42: Config object is undefined.');
+  }
+  if (!window.remark_config.site_id) {
+    throw new Error('Remark42: Site ID is undefined.');
+  }
+
   let initDataAnimationTimeout: number | null = null;
   let titleObserver: MutationObserver | null = null;
 
-  try {
-    config = config || {};
-  } catch (e) {
-    console.error('Remark42: Config object is undefined.');
-    return;
-  }
-
-  if (!config.site_id) {
-    console.error('Remark42: Site ID is undefined.');
-    return;
-  }
-
-  config.url = (config.url || window.location.origin + window.location.pathname).split('#')[0];
-
-  const node = config.node instanceof HTMLElement ? config.node : document.getElementById(config.node || NODE_ID);
-
-  if (!node) {
-    console.error("Remark42: Can't find root node.");
-    return;
-  }
+  config.url = (config.url || `${window.location.origin}${window.location.pathname}`).split('#')[0];
 
   const query = Object.keys(config)
     .filter(key => key !== '__colors__')
-    .map(key => {
-      return `${encodeURIComponent(key)}=${encodeURIComponent(config[key as keyof typeof config])}`;
-    })
+    .map(
+      key =>
+        `${encodeURIComponent(key)}=${encodeURIComponent(
+          config[key as keyof Omit<typeof window.remark_config, '__colors__'>] as string | number | boolean
+        )}`
+    )
     .join('&');
+
   const iframe =
-    (document.querySelector('iframe[title=Remark42]') as HTMLIFrameElement) ||
+    (root.firstElementChild as HTMLIFrameElement) ||
     createFrame({ host: BASE_URL, query, __colors__: config.__colors__ });
 
-  node.appendChild(iframe);
+  root.appendChild(iframe);
 
   window.addEventListener('message', receiveMessages);
   window.addEventListener('hashchange', postHashToIframe);
@@ -188,23 +184,22 @@ function createInstance(config: CommentsConfig) {
       }
       if (!this.node) {
         this.node = document.createElement('div');
-        this.node.id = remarkRootId + '-node';
+        this.node.id = `${remarkRootId}-node`;
       }
       if (!this.back) {
         this.back = document.createElement('div');
-        this.back.id = remarkRootId + '-back';
+        this.back.id = `${remarkRootId}-back`;
         this.back.onclick = () => this.close();
       }
       if (!this.closeEl) {
         this.closeEl = document.createElement('button');
-        this.closeEl.id = remarkRootId + '-close';
+        this.closeEl.id = `${remarkRootId}-close`;
         this.closeEl.innerHTML = '&#10006;';
         this.closeEl.onclick = () => this.close();
       }
-      const queryUserInfo =
-        query +
-        '&page=user-info&' +
-        `&id=${user.id}&name=${user.name}&picture=${user.picture || ''}&isDefaultPicture=${user.isDefaultPicture || 0}`;
+      const queryUserInfo = `${query}&page=user-info&&id=${user.id}&name=${user.name}&picture=${
+        user.picture || ''
+      }&isDefaultPicture=${user.isDefaultPicture || 0}`;
       const iframe = createFrame({ host: BASE_URL, query: queryUserInfo, height: '100%' });
       this.node.appendChild(iframe);
       this.iframe = iframe;

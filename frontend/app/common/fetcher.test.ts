@@ -8,9 +8,9 @@ describe('fetcher', () => {
         error: 'you just cant',
         details: 'you just cant at all',
       };
-      (window.fetch as any) = jest.fn().mockImplementation(async () => ({
+      window.fetch = jest.fn().mockImplementation(async () => ({
         status: 400,
-        headers: new (window as any).Headers(),
+        headers: new Headers(),
         json: async () => response,
         text: async () => JSON.stringify(response),
       }));
@@ -18,7 +18,7 @@ describe('fetcher', () => {
       return fetcher
         .get('/api/some')
         .then(data => {
-          fail(data);
+          throw new Error('Request should be failed');
         })
         .catch(e => {
           expect(e.code).toBe(2);
@@ -40,7 +40,7 @@ describe('fetcher', () => {
       return fetcher
         .get('/api/some')
         .then(data => {
-          fail(data);
+          throw new Error('Request should be failed');
         })
         .catch(e => {
           expect(e.code).toBe(401);
@@ -51,16 +51,18 @@ describe('fetcher', () => {
       (jest.spyOn(window, 'fetch') as any).mockImplementation(async () => ({
         status: 400,
         headers: new (window as any).Headers(),
-        json: async () => {
+        async json() {
           throw new Error('json parse error');
         },
-        text: async () => 'you given me something wrong',
+        async text() {
+          return 'you given me something wrong';
+        },
       }));
 
       return fetcher
         .get({ url: '/api/some', logError: false })
         .then(data => {
-          fail(data);
+          throw new Error('Request should be failed');
         })
         .catch(e => {
           expect(e.code).toBe(0);

@@ -1,28 +1,21 @@
 {
   "compilerOptions": {
     "incremental": true,
-    "lib": ["es2017", "dom"],
-    "target": "es2017",
-    "jsx": "react",
-    "jsxFactory": "h",
+    "target": "es6",
     "module": "esnext",
-    "esModuleInterop": true,
-    "moduleResolution": "node",
-    "noImplicitReturns": true,
-    "noImplicitAny": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    "lib": ["es2018", "dom"],
+    "jsx": "preserve",
+    "jsxFactory": "h",
+    "jsxFragmentFactory": "Fragment",
+    "noEmit": true,
     "strict": true,
-    "baseUrl": "./",
-    "alwaysStrict": true,
-    "sourceMap": true,
+    "allowJs": true,
+    "moduleResolution": "node",
     "resolveJsonModule": true,
-    "forceConsistentCasingInFileNames": true,
-    "paths": {
-      "*": ["@types/*"],
-      "@app/*": ["app/*"]
-    }
+    "baseUrl": "app" ,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
   },
-  "include": ["app/**/*"],
+  "include": ["app/typings", "app/**/*.tsx", "app/**/*.ts"],
   "exclude": ["node_modules"]
 }

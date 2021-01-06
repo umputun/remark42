@@ -1,9 +1,9 @@
-import reducer from './reducers';
+import { provider } from './reducers';
 import { PROVIDER_UPDATE } from './types';
 
 describe('provider reducer', () => {
   it('should set name of provider', () => {
-    const result = reducer.provider(
+    const result = provider(
       { name: null },
       {
         type: PROVIDER_UPDATE,

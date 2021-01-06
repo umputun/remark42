@@ -1,11 +1,10 @@
-/** @jsx createElement */
-import { createElement, Component, createRef } from 'preact';
+import { h, Component, createRef } from 'preact';
 import b from 'bem-react-helper';
 import { IntlShape, defineMessages, FormattedMessage } from 'react-intl';
-import { Theme } from '@app/common/types';
+import { Theme } from 'common/types';
 
-import { Input } from '@app/components/input';
-import { Button } from '@app/components/button';
+import { Input } from 'components/input';
+import { Button } from 'components/button';
 
 import { validateUserName } from '../validateUserName';
 
@@ -89,7 +88,7 @@ export class AnonymousLoginForm extends Component<Props, State> {
     // TODO: will be great to `b` to accept `string | undefined | (string|undefined)[]` as classname
     let className = b('auth-anonymous-login-form', {}, { theme: props.theme });
     if (props.className) {
-      className += ' ' + b('auth-anonymous-login-form', {}, { theme: props.theme });
+      className += ` ${b('auth-anonymous-login-form', {}, { theme: props.theme })}`;
     }
 
     const usernameInvalidReason = this.getUsernameInvalidReason();

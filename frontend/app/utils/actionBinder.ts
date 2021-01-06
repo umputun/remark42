@@ -1,4 +1,4 @@
-import { StoreAction } from '@app/store';
+import { StoreAction } from 'store';
 import { Action } from 'redux';
 
 /** Helper type which is used to convert actionCreator to redux `connect` bound prop */

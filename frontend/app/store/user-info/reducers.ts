@@ -1,4 +1,4 @@
-import { Comment } from '@app/common/types';
+import type { Comment } from 'common/types';
 
 import { USER_INFO_SET, USER_INFO_ACTIONS } from './types';
 
@@ -6,7 +6,7 @@ export interface UserCommentsState {
   [key: string]: Comment[];
 }
 
-export const userComments = (state: UserCommentsState = {}, action: USER_INFO_ACTIONS): UserCommentsState => {
+export function userComments(state: UserCommentsState = {}, action: USER_INFO_ACTIONS): UserCommentsState {
   switch (action.type) {
     case USER_INFO_SET: {
       return {
@@ -17,6 +17,4 @@ export const userComments = (state: UserCommentsState = {}, action: USER_INFO_AC
     default:
       return state;
   }
-};
-
-export default { userComments };
+}

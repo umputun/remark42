@@ -3,36 +3,28 @@
  * and should be importded explicitly
  */
 
-/** @jsx createElement */
-
 import './styles';
 
-import { createElement, FunctionComponent } from 'preact';
+import { h, FunctionComponent } from 'preact';
 
-import { Comment as CommentType } from '@app/common/types';
+import { Comment as CommentType } from 'common/types';
 
 import { useStore } from 'react-redux';
 
-import { StoreState } from '@app/store';
-import {
-  addComment,
-  removeComment,
-  updateComment,
-  setPinState,
-  putVote,
-  setCommentMode,
-} from '@app/store/comments/actions';
-import { blockUser, unblockUser, hideUser, setVerifiedStatus } from '@app/store/user/actions';
+import { StoreState } from 'store';
+import { addComment, removeComment, updateComment, setPinState, putVote, setCommentMode } from 'store/comments/actions';
+import { blockUser, unblockUser, hideUser, setVerifiedStatus } from 'store/user/actions';
 
-import { Comment, Props } from './comment';
-import { getCommentMode } from '@app/store/comments/getters';
-import { uploadImage, getPreview } from '@app/common/api';
-import { getThreadIsCollapsed } from '@app/store/thread/getters';
-import { bindActions } from '@app/utils/actionBinder';
-import { useActions } from '@app/hooks/useAction';
+import Comment, { CommentProps } from './comment';
+import { getCommentMode } from 'store/comments/getters';
+import { uploadImage, getPreview } from 'common/api';
+import { getThreadIsCollapsed } from 'store/thread/getters';
+import { bindActions } from 'utils/actionBinder';
+import { useActions } from 'hooks/useAction';
+import { useIntl } from 'react-intl';
 
 type ProvidedProps = Pick<
-  Props,
+  CommentProps,
   | 'editMode'
   | 'user'
   | 'isUserBanned'
@@ -72,8 +64,12 @@ export const boundActions = bindActions({
   setVerifiedStatus,
 });
 
-export const ConnectedComment: FunctionComponent<Omit<Props, keyof (ProvidedProps & typeof bindActions)>> = props => {
+export const ConnectedComment: FunctionComponent<
+  Omit<CommentProps, keyof (ProvidedProps & typeof bindActions)>
+> = props => {
   const providedProps = mapStateToProps(useStore().getState(), props);
   const actions = useActions(boundActions);
-  return <Comment {...props} {...providedProps} {...actions} />;
+  const intl = useIntl();
+
+  return <Comment {...props} {...providedProps} {...actions} intl={intl} />;
 };

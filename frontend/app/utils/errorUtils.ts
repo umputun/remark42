@@ -219,3 +219,15 @@ export function extractErrorMessageFromResponse(response: FetcherError, intl: In
 
   return defaultErrorMessage;
 }
+
+export class RequestError extends Error {
+  code: number;
+  error: string;
+
+  constructor(message: string, code: number) {
+    super(message);
+
+    this.code = code;
+    this.error = message;
+  }
+}

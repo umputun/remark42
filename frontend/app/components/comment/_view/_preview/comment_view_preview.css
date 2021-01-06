@@ -1,0 +1,44 @@
+.comment_view_preview {
+  &,
+  &.comment_theme_light,
+  &.comment_theme_dark {
+    font-size: 14px;
+    padding-bottom: 0;
+
+    & .comment__title {
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      color: var(--color9);
+    }
+
+    & .comment__title-link {
+      color: var(--color9);
+      text-decoration: none;
+
+      &:hover {
+        opacity: 0.75;
+      }
+    }
+
+    & .comment__info {
+      display: inline;
+      padding-right: 0;
+      font-weight: 700;
+      color: var(--color10);
+
+      &::after {
+        content: ' ';
+      }
+    }
+
+    & .comment__username {
+      color: var(--color9);
+    }
+
+    & .comment__text {
+      display: inline;
+      vertical-align: bottom;
+    }
+  }
+}

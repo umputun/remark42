@@ -4,7 +4,7 @@ export interface CollapsedThreadsState {
   [key: string]: boolean;
 }
 
-export const collapsedThreads = (state: CollapsedThreadsState = {}, action: THREAD_ACTIONS): CollapsedThreadsState => {
+export function collapsedThreads(state: CollapsedThreadsState = {}, action: THREAD_ACTIONS): CollapsedThreadsState {
   switch (action.type) {
     case THREAD_RESTORE_COLLAPSE: {
       return action.ids.reduce<CollapsedThreadsState>((acc, id) => {
@@ -21,8 +21,4 @@ export const collapsedThreads = (state: CollapsedThreadsState = {}, action: THRE
     default:
       return state;
   }
-};
-
-export default {
-  collapsedThreads,
-};
+}

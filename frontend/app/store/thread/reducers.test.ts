@@ -1,4 +1,4 @@
-import { Comment } from '@app/common/types';
+import { Comment } from 'common/types';
 
 import { setCollapse } from './actions';
 import { THREAD_SET_COLLAPSE } from './types';

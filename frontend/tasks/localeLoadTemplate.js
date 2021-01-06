@@ -1,14 +1,15 @@
 function renderLoadLocale(locales) {
-  return `/** this is generated file by "npm run generate-langs" **/
+  return `/** this is generated file by "npm run translation:generate" **/
 // it is ok that is empty. Default messages from code will be used.
 const enMessages = {};
 
 export async function loadLocale(locale: string): Promise<Record<string, string>> {
 ${locales
   .map(
-    locale => `  if (locale === '${locale}') {
-    return import(/* webpackChunkName: "${locale}" */ '../locales/${locale}.json')
-      .then(res => res.default)
+    locale =>
+      `  if (locale === '${locale}') {
+    return import(/* webpackChunkName: "${locale}.locale" */ '../locales/${locale}.json')
+      .then(m => m.default)
       .catch(() => enMessages);
   }
 `
@@ -18,4 +19,4 @@ ${locales
 }\n`;
 }
 
-module.exports = { renderLoadLocale };
+module.exports = renderLoadLocale;

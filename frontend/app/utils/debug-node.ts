@@ -1,4 +1,4 @@
-import { Node } from '@app/common/types';
+import { Node } from 'common/types';
 
 /**
  * Function to debug node tree.

@@ -1,5 +1,4 @@
-/** @jsx createElement */
-import { createElement, JSX, FunctionComponent } from 'preact';
+import { h, JSX, FunctionComponent } from 'preact';
 import b from 'bem-react-helper';
 
 export interface Props extends JSX.HTMLAttributes {

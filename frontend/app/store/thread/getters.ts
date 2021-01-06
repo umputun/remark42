@@ -1,5 +1,5 @@
-import { Comment } from '@app/common/types';
-import { StaticStore } from '@app/common/static_store';
+import type { Comment } from 'common/types';
+import { StaticStore } from 'common/static-store';
 
 import { StoreState } from '../index';
 

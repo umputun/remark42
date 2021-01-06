@@ -1,21 +1,30 @@
 module.exports = {
-  roots: ['<rootDir>/app/'],
   transform: {
-    '^.+\\.ts(x?)$': 'ts-jest',
-    '^.+\\.js(x?)$': 'babel-jest',
+    '^.+\\.tsx?$': 'ts-jest',
+    '^.+\\.jsx?$': 'babel-jest',
   },
-  testMatch: null,
-  testRegex: '(\\.|/)(test|spec)\\.(j|t)s(x?)$',
-  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
+  moduleDirectories: ['node_modules', 'app'],
   moduleNameMapper: {
-    '\\.module.pcss': `identity-obj-proxy`,
-    '\\.pcss': `identity-obj-proxy`,
-    '\\.scss$': '<rootDir>/app/testUtils/mockStyles.js',
-    '@app/(.*)': '<rootDir>/app/$1',
+    '\\.css': 'identity-obj-proxy',
     '^react$': 'preact/compat',
     '^react-dom$': 'preact/compat',
+    /**
+     * "transformIgnorePatterns" just don't work for modules down below
+     * If you know how to handle it better PR welcome
+     */
+    '^@github/markdown-toolbar-element$': 'identity-obj-proxy',
+    '^@github/text-expander-element$': 'identity-obj-proxy',
   },
-  setupFilesAfterEnv: ['<rootDir>/app/testUtils/index.ts', 'jest-localstorage-mock'],
-  transformIgnorePatterns: ['/node_modules/(?!intl-messageformat|intl-messageformat-parser).+\\.js$'],
-  collectCoverageFrom: ['!app/testUtils/**', '!app/locales/**'],
+  setupFiles: ['<rootDir>/jest.setup.ts'],
+  setupFilesAfterEnv: [
+    'jest-localstorage-mock',
+    '<rootDir>/app/__mocks__/headers.ts',
+    '<rootDir>/app/__stubs__/static-config.ts',
+  ],
+  collectCoverageFrom: ['!**/__mocks__/**', '!**/__stubs__/**', '!app/locales/**'],
+  globals: {
+    'ts-jest': {
+      babelConfig: true,
+    },
+  },
 };

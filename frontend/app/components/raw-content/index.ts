@@ -1,5 +1,5 @@
-import './raw-content.scss';
-import './code-highlight.scss';
+import './raw-content.css';
+import './code-highlight.css';
 
-import './_theme/_dark/raw-content_theme_dark.scss';
-import './_theme/_light/raw-content_theme_light.scss';
+import './_theme/_dark/raw-content_theme_dark.css';
+import './_theme/_light/raw-content_theme_light.css';

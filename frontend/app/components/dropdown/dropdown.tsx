@@ -1,10 +1,9 @@
-/** @jsx createElement */
-import { createElement, Component, createRef, RenderableProps } from 'preact';
+import { h, Component, createRef, RenderableProps } from 'preact';
 import b from 'bem-react-helper';
 
-import { Theme } from '@app/common/types';
-import { sleep } from '@app/utils/sleep';
-import { Button } from '@app/components/button';
+import { Theme } from 'common/types';
+import { sleep } from 'utils/sleep';
+import { Button } from 'components/button';
 
 type Props = RenderableProps<{
   title: string;
@@ -28,7 +27,7 @@ interface State {
 export class Dropdown extends Component<Props, State> {
   rootNode = createRef<HTMLDivElement>();
   storedDocumentHeight: string | null = null;
-  storedDocumentHeightSet: boolean = false;
+  storedDocumentHeightSet = false;
   checkInterval: number | undefined = undefined;
 
   constructor(props: Props) {
@@ -100,7 +99,7 @@ export class Dropdown extends Component<Props, State> {
       if (prevDcBottom === null && dcBottom <= windowHeight) return;
       if (dcBottom !== prevDcBottom) {
         prevDcBottom = dcBottom;
-        document.body.style.minHeight = dcBottom + 'px';
+        document.body.style.minHeight = `${dcBottom}px`;
       }
     }, 100);
   }
@@ -179,7 +178,7 @@ export class Dropdown extends Component<Props, State> {
     window.removeEventListener('message', this.receiveMessage);
   }
 
-  render({ title, titleClass, heading, children, mix, theme, disabled, buttonTitle }: Props, { isActive }: State) {
+  render({ title, titleClass = '', heading, children, mix, theme, disabled, buttonTitle }: Props, { isActive }: State) {
     return (
       <div className={b('dropdown', { mix }, { theme, active: isActive })} ref={this.rootNode}>
         <Button

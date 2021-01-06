@@ -1,0 +1,9 @@
+.comment_useless {
+  & .comment__body {
+    opacity: 0.35;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+}

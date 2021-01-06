@@ -1,0 +1,9 @@
+.auth-panel_logged-in {
+  font-size: 12px;
+
+  & .auth-panel__column {
+    &:first-child {
+      font-weight: 400;
+    }
+  }
+}

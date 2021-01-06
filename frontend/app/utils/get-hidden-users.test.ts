@@ -1,4 +1,4 @@
-import { LS_HIDDEN_USERS_KEY } from '@app/common/constants';
+import { LS_HIDDEN_USERS_KEY } from 'common/constants';
 
 import getHiddenUsers from './get-hidden-users';
 

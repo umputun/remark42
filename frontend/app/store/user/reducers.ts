@@ -1,4 +1,4 @@
-import { User, BlockedUser } from '@app/common/types';
+import type { User, BlockedUser } from 'common/types';
 
 import {
   USER_SET,
@@ -73,5 +73,3 @@ export const hiddenUsers = (state: { [id: string]: User } = {}, action: USER_ACT
       return state;
   }
 };
-
-export default { user, bannedUsers, hiddenUsers };

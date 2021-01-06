@@ -1,4 +1,4 @@
-export function bench<T>(fn: () => T, label: string = 'bench'): T {
+export function bench<T>(fn: () => T, label = 'bench'): T {
   const d = performance.now();
   const r = fn();
   const dd = performance.now();

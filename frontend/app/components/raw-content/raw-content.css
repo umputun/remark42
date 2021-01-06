@@ -1,0 +1,136 @@
+.raw-content {
+  & .root_theme_dark {
+    --chroma-bg: rgba(255, 255, 255, 0.1);
+    --chroma-base: #93a1a1;
+    --chroma-c: #586e75;
+    --chroma-01: #8ad200;
+    --chroma-03: #3af;
+    --chroma-05: #8eca03;
+    --chroma-06: #dc322f;
+    --chroma-07: #95d5e8;
+  }
+
+  word-break: break-word;
+
+  & p,
+  & blockquote {
+    margin: 1rem 0;
+
+    &:first-child {
+      margin-top: 0;
+    }
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+
+    /* imported comments have br instead of p */
+    & br {
+      content: '';
+      display: block;
+      margin-top: 1rem;
+    }
+  }
+
+  & a {
+    color: var(--color9);
+
+    &:hover {
+      color: var(--color33);
+      text-decoration: none;
+    }
+  }
+
+  & img {
+    max-width: 100%;
+    max-height: 300px;
+  }
+
+  & h1,
+  & h2,
+  & h3,
+  & h4,
+  & h5,
+  & h6 {
+    &:first-child {
+      margin-top: 0;
+    }
+  }
+  /* stylelint-disable-next-line no-descending-specificity */
+  & blockquote {
+    padding: 12px 8px 12px 16px;
+    border-left: 2px solid;
+  }
+
+  & table {
+    display: block;
+    overflow: auto;
+    border-spacing: 0;
+    border-collapse: collapse;
+
+    & th {
+      text-align: left;
+      font-weight: 600;
+    }
+
+    & th,
+    & td {
+      padding: 6px 13px;
+    }
+
+    & tr {
+      border-top: 1px solid var(--color43);
+    }
+  }
+
+  & code {
+    background-color: var(--chroma-bg);
+    border-radius: 3px;
+    color: var(--chroma-base);
+    display: inline-block;
+    font-size: 85%;
+    line-height: 1.45;
+    margin: 0;
+    overflow: visible;
+    padding: 0 0.4em;
+    white-space: pre;
+    word-break: normal;
+    word-wrap: normal;
+  }
+
+  & pre {
+    padding: 12px 16px 12px 18px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    tab-size: 2;
+    word-wrap: normal;
+    font-size: 85%;
+    line-height: 1.45;
+    border-radius: 3px;
+
+    &:first-child {
+      margin-top: 0;
+    }
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+
+    & > code {
+      background-color: transparent;
+      padding: 0;
+    }
+  }
+
+  & sup,
+  & sub {
+    & sup,
+    & sub {
+      vertical-align: middle; /* to prevent some visual cheats */
+    }
+  }
+
+  & hr {
+    border-width: 0 0 1px 0;
+  }
+}

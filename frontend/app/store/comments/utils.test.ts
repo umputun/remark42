@@ -1,5 +1,5 @@
 import { getInitialSort } from './utils';
-import { DEFAULT_SORT, LS_SORT_KEY } from '@app/common/constants';
+import { DEFAULT_SORT, LS_SORT_KEY } from 'common/constants';
 
 describe('store comments utils', () => {
   beforeEach(() => {

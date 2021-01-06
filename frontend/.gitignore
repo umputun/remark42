@@ -1,2 +1,6 @@
-.env
+node_modules
 extracted-messages
+/public
+/*.log
+.env
+tsconfig.tsbuildinfo

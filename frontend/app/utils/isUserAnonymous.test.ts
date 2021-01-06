@@ -1,5 +1,5 @@
 import { isUserAnonymous } from './isUserAnonymous';
-import { User } from '@app/common/types';
+import { User } from 'common/types';
 
 describe('isUserAnonymous', () => {
   test('user is anonymous', () => {

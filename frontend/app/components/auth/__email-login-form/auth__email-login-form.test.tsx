@@ -1,16 +1,16 @@
-/** @jsx createElement */
-import { createElement } from 'preact';
+import { h } from 'preact';
 import { mount, ReactWrapper } from 'enzyme';
 import { EmailLoginFormConnected as EmailLoginForm, Props, State } from './auth__email-login-form';
-import { User } from '@app/common/types';
-import { sleep } from '@app/utils/sleep';
-import { validToken } from '@app/testUtils/mocks/jwt';
-import { sendEmailVerificationRequest } from '@app/common/api';
 import { IntlProvider } from 'react-intl';
-import enMessages from '../../../locales/en.json';
-import { LS_EMAIL_KEY } from '@app/common/constants';
 
-jest.mock('@app/utils/jwt', () => ({
+import { validToken } from '__stubs__/jwt';
+import { LS_EMAIL_KEY } from 'common/constants';
+import { User } from 'common/types';
+import { sleep } from 'utils/sleep';
+import { sendEmailVerificationRequest } from 'common/api';
+import enMessages from 'locales/en.json';
+
+jest.mock('utils/jwt', () => ({
   isJwtExpired: jest
     .fn()
     .mockImplementationOnce(() => true)
@@ -18,7 +18,7 @@ jest.mock('@app/utils/jwt', () => ({
     .mockImplementationOnce(() => true),
 }));
 
-jest.mock('@app/common/api');
+jest.mock('common/api');
 
 function simulateInput(input: ReactWrapper, value: string) {
   input.getDOMNode<HTMLTextAreaElement>().value = value;

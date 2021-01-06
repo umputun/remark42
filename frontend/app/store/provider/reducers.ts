@@ -4,7 +4,7 @@ export interface ProviderState {
   name: string | null;
 }
 
-function provider(state: ProviderState = { name: null }, action: PROVIDER_ACTIONS): ProviderState {
+export function provider(state: ProviderState = { name: null }, action: PROVIDER_ACTIONS): ProviderState {
   switch (action.type) {
     case PROVIDER_UPDATE: {
       return { ...state, ...action.payload };
@@ -13,5 +13,3 @@ function provider(state: ProviderState = { name: null }, action: PROVIDER_ACTION
       return state;
   }
 }
-
-export default { provider };

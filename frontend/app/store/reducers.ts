@@ -1,18 +1,20 @@
 import comments from './comments/reducers';
-import postinfo from './post_info/reducers';
-import theme from './theme/reducers';
-import user from './user/reducers';
-import userInfo from './user-info/reducers';
-import thread from './thread/reducers';
-import provider from './provider/reducers';
+import * as postInfo from './post-info/reducers';
+import * as theme from './theme/reducers';
+import * as user from './user/reducers';
+import * as userInfo from './user-info/reducers';
+import * as thread from './thread/reducers';
+import * as provider from './provider/reducers';
 
 /** Merged store reducers */
-export default {
+const rootProvider = {
   comments,
-  ...postinfo,
   ...theme,
-  ...user,
+  ...postInfo,
+  ...provider,
   ...userInfo,
   ...thread,
-  ...provider,
+  ...user,
 };
+
+export default rootProvider;

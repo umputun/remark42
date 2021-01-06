@@ -1,6 +1,6 @@
+import { setItem, getItem } from 'common/local-storage';
+import { StoreAction } from 'store';
 import { PROVIDER_UPDATE_ACTION, PROVIDER_UPDATE } from './types';
-import { StoreAction } from '..';
-import { setItem, getItem } from '@app/common/local-storage';
 
 const PROVIDER_LOCALSTORAGE_KEY = '__remarkProvider';
 

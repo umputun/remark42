@@ -1,5 +1,5 @@
-import { Comment } from '@app/common/types';
-import { siteId, url } from '@app/common/settings';
+import { Comment } from 'common/types';
+import { siteId, url } from 'common/settings';
 
 import { StoreAction } from '../index';
 import { THREAD_SET_COLLAPSE, THREAD_RESTORE_COLLAPSE_ACTION, THREAD_RESTORE_COLLAPSE } from './types';

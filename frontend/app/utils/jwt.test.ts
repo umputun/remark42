@@ -1,4 +1,5 @@
-import { validToken, invalidToken } from '@app/testUtils/mocks/jwt';
+import { validToken, invalidToken } from '__stubs__/jwt';
+
 import { parseJwt, isJwtExpired } from './jwt';
 
 describe('JWT', () => {
@@ -16,12 +17,7 @@ describe('JWT', () => {
     });
 
     it('should throw error', () => {
-      expect.assertions(1);
-      try {
-        parseJwt(invalidToken);
-      } catch (e) {
-        expect(e.message).toBe('The string to be decoded contains invalid characters.');
-      }
+      expect(() => parseJwt(invalidToken)).toThrowError('The string to be decoded contains invalid characters.');
     });
   });
 
