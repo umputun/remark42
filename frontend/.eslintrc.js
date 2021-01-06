@@ -30,7 +30,7 @@ module.exports = {
       },
     },
     {
-      files: ['*.(spec|test).ts?(x)'],
+      files: ['*.@(test|spec).ts?(x)'],
       extends: ['react-app/jest'],
       rules: {
         'import/first': 'off',
