@@ -1,5 +1,4 @@
-// @ts-ignore
-const mock: typeof import('common/settings') = {
+const settingsMock: typeof import('common/settings') = {
   ...jest.requireActual('common/settings'),
   siteId: 'remark',
   pageTitle: 'remark test',
@@ -17,4 +16,4 @@ const mock: typeof import('common/settings') = {
   },
 };
 
-module.exports = mock;
+module.exports = settingsMock;

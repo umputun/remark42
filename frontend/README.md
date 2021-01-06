@@ -9,7 +9,6 @@
 
 ### CSS Styles
 
-- although styles have `scss` extension, it is actually pack of post-css plugins, so syntax differs, for example in `calc` function.
 - now we are migrating to css-modules and this is recomended way to stylization. A file with styles should be named like `component.module.css`
 - old component styles use BEM notation (at least it should): `block__element_modifier`. Also there are `mix` classes: `block_modifier`.
 - new way to naming CSS selectors is camel-case like `blockElemenModifier` and use `classnames` to combine it
@@ -20,12 +19,12 @@
 
 - imports for typescript, javascript files should be without extension: `./index`, not `./index.ts`
 - if file resides in the same directory or in subdirectory import should be relative: `./types/something`
-- otherwise it should start from ``namespace:`common/store`which mapped to`/appcommon/store.ts` in webpack, tsconfig and jest
+- otherwise it should be imported by absolute path relative to `src` folder like `common/store` which mapped to `./app/common/store.ts` in webpack, tsconfig and jest
 
 ### Testing
 
 - project uses `jest` as test harness.
-- jest check files that match regex `\.test\.(j|t)s(x?)$`, i.e `comment.test.tsx`, `comment.test.js`
+- jest check files that match regex `\.(test|spec)\.ts(x?)$`, i.e `comment.test.tsx`, `comment.spec.ts`
 - tests are running on push attempt
 - example tests can be found in `./app/store/user/reducers.test.ts`, `./app/components/auth-panel/auth-panel.test.tsx`
 
