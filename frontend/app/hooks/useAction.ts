@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback, useMemo } from 'preact/compat';
 import { useDispatch } from 'react-redux';
 import { BoundActionCreator, BoundActionCreators } from 'utils/actionBinder';

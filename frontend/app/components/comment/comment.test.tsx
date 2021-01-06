@@ -1,6 +1,6 @@
 import { h } from 'preact';
 import { mount as enzymeMount } from 'enzyme';
-import { IntlProvider } from 'react-intl';
+import { IntlProvider, IntlShape } from 'react-intl';
 
 import enMessages from 'locales/en.json';
 import type { User, Comment as CommentType, PostInfo } from 'common/types';
@@ -9,7 +9,7 @@ import { sleep } from 'utils/sleep';
 
 import Comment, { CommentProps } from './comment';
 
-const mount = (component: any) =>
+const mount = <T extends JSX.Element>(component: T) =>
   enzymeMount(
     <IntlProvider locale="en" messages={enMessages}>
       {component}
@@ -20,7 +20,7 @@ const intl = {
   formatMessage(message: { defaultMessage: string }) {
     return message.defaultMessage || '';
   },
-} as any;
+} as IntlShape;
 
 const DefaultProps: Partial<CommentProps> = {
   CommentForm: null,

@@ -1,11 +1,15 @@
-import * as api from 'common/api';
+import { getUser, logIn as logInApi, logOut } from 'common/api';
 import { User } from 'common/types';
 
 import { fetchUser, logIn, logout } from './actions';
 import { user } from './reducers';
-import { USER_SET } from './types';
+import { USER_ACTIONS, USER_SET } from './types';
 
 jest.mock('common/api');
+
+const getUserMock = (getUser as unknown) as jest.Mock<ReturnType<typeof getUser>>;
+const logInMock = (logInApi as unknown) as jest.Mock<ReturnType<typeof logInApi>>;
+const logOutMock = (logOut as unknown) as jest.Mock<ReturnType<typeof logOut>>;
 
 afterEach(() => {
   jest.resetModules();
@@ -14,12 +18,13 @@ afterEach(() => {
 describe('user', () => {
   it('should return null by default', () => {
     const action = { type: 'OTHER' };
-    const newState = user(null, action as any);
+    const newState = user(null, action as USER_ACTIONS);
+
     expect(newState).toEqual(null);
   });
 
   it('should set state of user on fetchUser', async () => {
-    (api.getUser as any).mockImplementation(
+    getUserMock.mockImplementation(
       async (): Promise<User> =>
         ({
           id: 'john',
@@ -41,7 +46,7 @@ describe('user', () => {
   });
 
   it('should set state of user on logIn', async () => {
-    (api.logIn as any).mockImplementation(
+    logInMock.mockImplementation(
       async (): Promise<User> =>
         ({
           id: 'john',
@@ -63,7 +68,7 @@ describe('user', () => {
   });
 
   it('should NOT set state of user on failed logIn', async () => {
-    (api.logIn as any).mockImplementation(
+    logInMock.mockImplementation(
       async (): Promise<User> => {
         throw new Error('Unauthorized');
       }
@@ -75,7 +80,7 @@ describe('user', () => {
   });
 
   it('should unset user on logOut', async () => {
-    (api.logOut as any).mockImplementation(async (): Promise<void> => undefined);
+    logOutMock.mockImplementation(async (): Promise<void> => undefined);
     const dispatch = jest.fn();
     const getState = jest.fn();
     await logout()(dispatch, getState, undefined);

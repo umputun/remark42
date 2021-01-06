@@ -6,7 +6,7 @@ export default function debounce<T extends unknown[]>(
 ): (...args: Parameters<FnType<T>>) => void {
   let timeout: number | undefined;
 
-  return function (this: any, ...args): void {
+  return function (this: unknown, ...args): void {
     const laterCall = (): unknown => fn.apply(this, args);
     window.clearTimeout(timeout);
     timeout = window.setTimeout(laterCall, wait);

@@ -20,22 +20,26 @@ jest.mock('utils/jwt', () => ({
 
 jest.mock('common/api');
 
+const sendEmailVerificationRequestMock = sendEmailVerificationRequest as jest.Mock<
+  ReturnType<typeof sendEmailVerificationRequest>
+>;
+
 function simulateInput(input: ReactWrapper, value: string) {
   input.getDOMNode<HTMLTextAreaElement>().value = value;
   input.simulate('input');
 }
 
 describe('EmailLoginForm', () => {
-  const testUser = ({} as any) as User;
+  const testUser = {} as User;
   const onSuccess = jest.fn(async () => undefined);
   const onSignIn = jest.fn(async () => testUser);
 
   beforeEach(() => {
-    (sendEmailVerificationRequest as any).mockReset();
+    sendEmailVerificationRequestMock.mockReset();
   });
 
   it('works', async () => {
-    (sendEmailVerificationRequest as any).mockResolvedValueOnce({});
+    sendEmailVerificationRequestMock.mockResolvedValueOnce();
     const el = mount<Props, State>(
       <IntlProvider locale="en" messages={enMessages}>
         <EmailLoginForm onSignIn={onSignIn} onSuccess={onSuccess} theme="light" />
@@ -45,7 +49,7 @@ describe('EmailLoginForm', () => {
     simulateInput(el.find(`input[name="username"]`), 'someone');
     el.find('form').simulate('submit');
     await sleep(100);
-    expect(sendEmailVerificationRequest).toBeCalledWith('someone', 'someone@example.com');
+    expect(sendEmailVerificationRequestMock).toBeCalledWith('someone', 'someone@example.com');
     el.update();
     simulateInput(el.find(`textarea[name="token"]`), 'abcd');
 
@@ -58,7 +62,7 @@ describe('EmailLoginForm', () => {
   });
 
   it('should send form by pasting token', async () => {
-    (sendEmailVerificationRequest as any).mockResolvedValueOnce({});
+    sendEmailVerificationRequestMock.mockResolvedValueOnce();
     const onSignIn = jest.fn(async () => testUser);
 
     const wrapper = mount<Props, State>(
@@ -78,7 +82,7 @@ describe('EmailLoginForm', () => {
   });
 
   it('should show error "Token is expired" on paste', async () => {
-    (sendEmailVerificationRequest as any).mockResolvedValueOnce({});
+    sendEmailVerificationRequestMock.mockResolvedValueOnce();
     const onSignIn = jest.fn(async () => testUser);
 
     const wrapper = mount<Props, State>(

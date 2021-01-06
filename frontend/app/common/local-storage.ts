@@ -21,7 +21,7 @@ export const removeItem = IS_STORAGE_AVAILABLE
       console.error(failMessage); // eslint-disable-line no-console
     };
 
-export function getJsonItem<T = any>(key: string): T | null {
+export function getJsonItem<T = unknown>(key: string): T | null {
   try {
     const json = getItem(key);
 
@@ -38,7 +38,7 @@ export function getJsonItem<T = any>(key: string): T | null {
   }
 }
 
-export function setJsonItem<T = any>(key: string, data: T) {
+export function setJsonItem<T = unknown>(key: string, data: T) {
   try {
     setItem(key, JSON.stringify(data));
   } catch (e) {
@@ -48,10 +48,11 @@ export function setJsonItem<T = any>(key: string, data: T) {
 
 export function updateJsonItem<T extends {}>(key: string, value: (data: T) => T): void;
 export function updateJsonItem<T extends {}>(key: string, value: T): void;
-export function updateJsonItem<T = Record<string, unknown>>(key: string, value: T) {
-  const savedData = getJsonItem<any>(key);
+export function updateJsonItem<T extends unknown[]>(key: string, value: T): void;
+export function updateJsonItem<T>(key: string, value: T) {
+  const savedData = getJsonItem<T>(key);
 
-  if (Array.isArray(value)) {
+  if (Array.isArray(value) && Array.isArray(savedData)) {
     setJsonItem(key, [...savedData, ...value]);
     return;
   }

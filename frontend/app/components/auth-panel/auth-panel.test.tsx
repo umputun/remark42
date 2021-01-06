@@ -5,6 +5,7 @@ import { Middleware } from 'redux';
 import { Provider } from 'react-redux';
 import { IntlProvider } from 'react-intl';
 
+import type { User } from 'common/types';
 import enMessages from 'locales/en.json';
 
 import AuthPanel, { Props } from './auth-panel';
@@ -61,7 +62,7 @@ describe('<AuthPanel />', () => {
         ...DefaultProps,
         user: null,
         postInfo: { ...DefaultProps.postInfo, read_only: true },
-        hiddenUsers: { hidden_joe: {} as any },
+        hiddenUsers: { hidden_joe: {} as User },
       } as Props);
 
       const adminAction = element.find('.auth-panel__admin-action');
@@ -76,7 +77,7 @@ describe('<AuthPanel />', () => {
         ...DefaultProps,
         user: null,
         postInfo: { ...DefaultProps.postInfo, read_only: true },
-        hiddenUsers: { hidden_joe: {} as any },
+        hiddenUsers: { hidden_joe: {} as User },
       } as Props);
 
       const firstCol = element.find('.auth-panel__column').first();
