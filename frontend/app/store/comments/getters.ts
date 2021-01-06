@@ -1,4 +1,4 @@
-import { Comment, CommentMode } from '@app/common/types';
+import { Comment, CommentMode } from 'common/types';
 import { StoreState } from '../index';
 
 export const getCommentMode = (id: Comment['id']) => (state: StoreState): CommentMode => {

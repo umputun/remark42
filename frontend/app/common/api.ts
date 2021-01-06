@@ -6,7 +6,7 @@ import fetcher from './fetcher';
 /* common */
 const __loginAnonymously = (username: string): Promise<User | null> => {
   const url = `/auth/anonymous/login?user=${encodeURIComponent(username)}&aud=${siteId}&from=${encodeURIComponent(
-    location.origin + location.pathname + '?selfClose'
+    `${window.location.origin}${window.location.pathname}?selfClose`
   )}`;
   return fetcher.get<User>({ url, withCredentials: true, overriddenApiBase: '' });
 };
@@ -35,7 +35,7 @@ export const logIn = (provider: AuthProvider): Promise<User | null> => {
 
   return new Promise<User | null>((resolve, reject) => {
     const url = `${BASE_URL}/auth/${provider.name}/login?from=${encodeURIComponent(
-      location.origin + location.pathname + '?selfClose'
+      `${window.location.origin}${window.location.pathname}?selfClose`
     )}&site=${siteId}`;
 
     const newWindow = window.open(url);
@@ -267,7 +267,7 @@ export const uploadImage = (image: File): Promise<Image> => {
       name: image.name,
       size: image.size,
       type: image.type,
-      url: BASE_URL + API_BASE + '/picture/' + resp.id,
+      url: `${BASE_URL + API_BASE}/picture/${resp.id}`,
     }));
 };
 

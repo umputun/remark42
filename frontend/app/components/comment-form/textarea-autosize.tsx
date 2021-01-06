@@ -1,13 +1,11 @@
-/** @jsx createElement */
-import { createElement, JSX, Component, createRef, RefObject } from 'preact';
+import { h, JSX, Component, createRef, RefObject } from 'preact';
 
-export interface Props extends Omit<JSX.HTMLAttributes, 'ref'> {
-  autofocus: boolean;
+export type TextareaAutosizeProps = {
   ref?: RefObject<TextareaAutosize>;
-}
+} & Omit<JSX.HTMLAttributes<HTMLTextAreaElement>, 'ref'>;
 
 // TODO: rewrite it to functional component and add ref forwarding
-export default class TextareaAutosize extends Component<Props> {
+export default class TextareaAutosize extends Component<TextareaAutosizeProps> {
   textareaRef = createRef<HTMLTextAreaElement>();
 
   componentDidMount() {
@@ -16,7 +14,7 @@ export default class TextareaAutosize extends Component<Props> {
     if (this.props.autofocus) this.focus();
   }
 
-  componentDidUpdate(prevProps: Props) {
+  componentDidUpdate(prevProps: TextareaAutosizeProps) {
     if (prevProps.value !== this.props.value) {
       this.autoResize();
     }
@@ -84,7 +82,7 @@ export default class TextareaAutosize extends Component<Props> {
     }
   }
 
-  render(props: Props) {
-    return <textarea {...props} ref={this.textareaRef} />;
+  render() {
+    return <textarea {...this.props} ref={this.textareaRef} />;
   }
 }

@@ -1,4 +1,4 @@
-import { Comment, User } from '@app/common/types';
+import { Comment, User } from 'common/types';
 
 export const USER_INFO_SET = 'USER-INFO/SET';
 

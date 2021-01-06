@@ -1,12 +1,13 @@
-/** @jsx createElement */
-import { createElement, Fragment, render, FunctionalComponent } from 'preact';
-import { StaticStore } from '@app/common/static_store';
-import { useEffect, useRef } from 'preact/hooks';
 import '@github/text-expander-element';
-import styles from './text-expander.module.pcss';
+import { h, Fragment, render, FunctionalComponent } from 'preact';
+import { useEffect, useRef } from 'preact/hooks';
 import cx from 'classnames';
-import { Theme } from '@app/common/types';
-import useTheme from '@app/hooks/useTheme';
+
+import { StaticStore } from 'common/static-store';
+import { Theme } from 'common/types';
+import useTheme from 'hooks/useTheme';
+
+import styles from './text-expander.module.css';
 
 type Emoji = {
   key: string;

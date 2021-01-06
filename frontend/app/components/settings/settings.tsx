@@ -1,10 +1,9 @@
-/** @jsx createElement */
-import { createElement, Component } from 'preact';
+import { h, Component } from 'preact';
 import b from 'bem-react-helper';
 
-import { User, BlockedUser, Theme, BlockTTL } from '@app/common/types';
-import { getHandleClickProps } from '@app/common/accessibility';
-import { StoreState } from '@app/store';
+import { User, BlockedUser, Theme, BlockTTL } from 'common/types';
+import { getHandleClickProps } from 'common/accessibility';
+import { StoreState } from 'store';
 import { defineMessages, IntlShape, FormattedMessage, useIntl } from 'react-intl';
 
 interface Props {
@@ -63,7 +62,7 @@ export default class Settings extends Component<Props, State> {
   }
 
   block = (user: BlockedUser) => {
-    if (!confirm(this.props.intl.formatMessage(messages.blockUser, { userName: user.name }))) return;
+    if (!window.confirm(this.props.intl.formatMessage(messages.blockUser, { userName: user.name }))) return;
     this.setState({
       unblockedUsers: this.state.unblockedUsers.filter(x => x !== user.id),
     });
@@ -71,7 +70,7 @@ export default class Settings extends Component<Props, State> {
   };
 
   unblock = (user: BlockedUser) => {
-    if (!confirm(this.props.intl.formatMessage(messages.unblockUser, { userName: user.name }))) return;
+    if (!window.confirm(this.props.intl.formatMessage(messages.unblockUser, { userName: user.name }))) return;
     this.setState({ unblockedUsers: this.state.unblockedUsers.concat([user.id]) });
     this.props.unblockUser(user.id);
     this.props.onUnblockSomeone();

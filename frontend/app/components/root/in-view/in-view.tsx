@@ -1,10 +1,5 @@
-/** @jsx createElement */
-import { JSX } from 'preact';
+import { Component, VNode } from 'preact';
 import { useState, useEffect, useRef, PropRef } from 'preact/hooks';
-
-interface Props {
-  children: <T>(props: { inView: boolean; ref: PropRef<T> }) => JSX.Element;
-}
 
 let instanceMap: WeakMap<Element, (inView: boolean) => void>;
 let observer: IntersectionObserver;
@@ -29,24 +24,35 @@ function getObserver(): { observer: IntersectionObserver; instanceMap: WeakMap<E
   return { observer, instanceMap };
 }
 
-export function InView({ children }: Props) {
+type InViewProps = {
+  children: <T>(props: { inView: boolean; ref: PropRef<T> }) => VNode;
+};
+
+const InView = ({ children }: InViewProps) => {
   const [inView, setInView] = useState(false);
-  const ref = useRef<any>(); // eslint-disable-line
+  const ref = useRef<Component<unknown, unknown>>(null);
 
   useEffect(() => {
+    const element = ref.current;
     const { observer, instanceMap } = getObserver();
-    if (ref.current) {
-      observer.observe(ref.current.base);
-      instanceMap.set(ref.current.base, setInView);
+
+    if (!(element.base instanceof Element)) {
+      return;
     }
 
+    observer.observe(element.base);
+    instanceMap.set(element.base, setInView);
+
     return () => {
-      if (ref.current) {
-        observer.unobserve(ref.current.base);
-        instanceMap.delete(ref.current.base);
+      if (!(element.base instanceof Element)) {
+        return;
       }
+      observer.unobserve(element.base);
+      instanceMap.delete(element.base);
     };
-  });
+  }, []);
 
   return children({ inView, ref });
-}
+};
+
+export default InView;

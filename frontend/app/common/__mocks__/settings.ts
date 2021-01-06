@@ -1,6 +1,6 @@
 // @ts-ignore
-const mock: typeof import('@app/common/settings') = {
-  ...jest.requireActual('@app/common/settings'),
+const mock: typeof import('common/settings') = {
+  ...jest.requireActual('common/settings'),
   siteId: 'remark',
   pageTitle: 'remark test',
   url: 'https://remark42.com/test',

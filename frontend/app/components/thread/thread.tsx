@@ -1,18 +1,17 @@
-/** @jsx createElement */
-import { createElement, FunctionComponent } from 'preact';
+import { h, FunctionComponent } from 'preact';
 import { useSelector, useDispatch, shallowEqual } from 'react-redux';
 import { useCallback } from 'preact/hooks';
 import b from 'bem-react-helper';
-
-import { Comment as CommentInterface } from '@app/common/types';
-import { getHandleClickProps } from '@app/common/accessibility';
-import { StoreState } from '@app/store';
-import { setCollapse } from '@app/store/thread/actions';
-import { getThreadIsCollapsed } from '@app/store/thread/getters';
-import { InView } from '@app/components/root/in-view/in-view';
-import { ConnectedComment as Comment } from '@app/components/comment/connected-comment';
-import { CommentForm } from '@app/components/comment-form';
 import { useIntl } from 'react-intl';
+
+import { Comment as CommentInterface } from 'common/types';
+import { getHandleClickProps } from 'common/accessibility';
+import { StoreState } from 'store';
+import { setCollapse } from 'store/thread/actions';
+import { getThreadIsCollapsed } from 'store/thread/getters';
+import InView from 'components/root/in-view/in-view';
+import { ConnectedComment as Comment } from 'components/comment/connected-comment';
+import { CommentForm } from 'components/comment-form';
 
 interface Props {
   id: CommentInterface['id'];
@@ -39,7 +38,7 @@ export const Thread: FunctionComponent<Props> = ({ id, level, mix, getPreview })
   const { collapsed, comment, childs, theme } = useSelector(commentSelector(id), shallowEqual);
   const collapse = useCallback(() => {
     dispatch(setCollapse(id, !collapsed));
-  }, [id, collapsed]);
+  }, [id, collapsed, dispatch]);
 
   if (comment.hidden) return null;
 
@@ -75,12 +74,8 @@ export const Thread: FunctionComponent<Props> = ({ id, level, mix, getPreview })
           <Thread key={`thread-${currentId}`} id={currentId} level={Math.min(level + 1, 6)} getPreview={getPreview} />
         ))}
       {level < 6 && (
-        <div
-          className={b('thread__collapse', { mods: { collapsed } })}
-          role="button"
-          {...getHandleClickProps(collapse)}
-        >
-          <div></div>
+        <div className={b('thread__collapse', { mods: { collapsed } })} {...getHandleClickProps(collapse)}>
+          <div />
         </div>
       )}
     </div>

@@ -1,30 +1,28 @@
-/** @jsx createElement */
-
 import './styles';
 
-import { createElement, JSX, Component, createRef, ComponentType } from 'preact';
+import { h, JSX, Component, createRef, ComponentType } from 'preact';
 import b from 'bem-react-helper';
 
-import { getHandleClickProps } from '@app/common/accessibility';
-import { API_BASE, BASE_URL, COMMENT_NODE_CLASSNAME_PREFIX } from '@app/common/constants';
+import { getHandleClickProps } from 'common/accessibility';
+import { API_BASE, BASE_URL, COMMENT_NODE_CLASSNAME_PREFIX } from 'common/constants';
 
-import { StaticStore } from '@app/common/static_store';
-import debounce from '@app/utils/debounce';
-import copy from '@app/common/copy';
-import { Theme, BlockTTL, Comment as CommentType, PostInfo, User, CommentMode } from '@app/common/types';
-import { extractErrorMessageFromResponse, FetcherError } from '@app/utils/errorUtils';
-import { isUserAnonymous } from '@app/utils/isUserAnonymous';
+import { StaticStore } from 'common/static-store';
+import debounce from 'utils/debounce';
+import copy from 'common/copy';
+import { Theme, BlockTTL, Comment as CommentType, PostInfo, User, CommentMode } from 'common/types';
+import { extractErrorMessageFromResponse, FetcherError } from 'utils/errorUtils';
+import { isUserAnonymous } from 'utils/isUserAnonymous';
 
-import { Props as CommentFormProps } from '@app/components/comment-form';
-import { AvatarIcon } from '@app/components/avatar-icon';
-import { Button } from '@app/components/button';
-import Countdown from '@app/components/countdown';
-import { boundActions } from './connected-comment';
-import { getPreview, uploadImage } from '@app/common/api';
-import postMessage from '@app/utils/postMessage';
+import { CommentFormProps } from 'components/comment-form';
+import { AvatarIcon } from 'components/avatar-icon';
+import { Button } from 'components/button';
+import Countdown from 'components/countdown';
+import { getPreview, uploadImage } from 'common/api';
+import postMessage from 'utils/postMessage';
 import { FormattedMessage, useIntl, IntlShape, defineMessages } from 'react-intl';
 import { getVoteMessage, VoteMessagesTypes } from './getVoteMessage';
 import { getBlockingDurations } from './getBlockingDurations';
+import { boundActions } from './connected-comment';
 
 const messages = defineMessages({
   deleteMessage: {
@@ -89,7 +87,7 @@ const messages = defineMessages({
   },
 });
 
-type PropsWithoutIntl = {
+export type CommentProps = {
   user: User | null;
   CommentForm: ComponentType<CommentFormProps> | null;
   data: CommentType;
@@ -116,9 +114,8 @@ type PropsWithoutIntl = {
   mix?: string;
   getPreview?: typeof getPreview;
   uploadImage?: typeof uploadImage;
+  intl: IntlShape;
 } & Partial<typeof boundActions>;
-
-export type Props = PropsWithoutIntl & { intl: IntlShape };
 
 export interface State {
   renderDummy: boolean;
@@ -140,12 +137,12 @@ export interface State {
   initial: boolean;
 }
 
-class Comment extends Component<Props, State> {
+class Comment extends Component<CommentProps, State> {
   votingPromise: Promise<unknown> = Promise.resolve();
   /** comment text node. Used in comment text copying */
   textNode = createRef<HTMLDivElement>();
 
-  updateState = (props: Props) => {
+  updateState = (props: CommentProps) => {
     const newState: Partial<State> = {
       scoreDelta: props.data.vote,
       cachedScore: props.data.score,
@@ -188,38 +185,36 @@ class Comment extends Component<Props, State> {
   //   return getHandleClickProps(handler);
   // };
 
-  componentWillReceiveProps(nextProps: Props) {
+  componentWillReceiveProps(nextProps: CommentProps) {
     this.setState(this.updateState(nextProps));
   }
 
   componentDidMount() {
+    // eslint-disable-next-line react/no-did-mount-set-state
     this.setState({ initial: false });
   }
 
   toggleReplying = () => {
-    const { editMode } = this.props;
-    if (editMode === CommentMode.Reply) {
-      this.props.setReplyEditState!({ id: this.props.data.id, state: CommentMode.None });
-    } else {
-      this.props.setReplyEditState!({ id: this.props.data.id, state: CommentMode.Reply });
-    }
+    const { editMode, setReplyEditState, data } = this.props;
+
+    setReplyEditState?.({ id: data.id, state: editMode === CommentMode.Reply ? CommentMode.None : CommentMode.Reply });
   };
 
   toggleEditing = () => {
-    const { editMode } = this.props;
-    if (editMode === CommentMode.Edit) {
-      this.props.setReplyEditState!({ id: this.props.data.id, state: CommentMode.None });
-    } else {
-      this.props.setReplyEditState!({ id: this.props.data.id, state: CommentMode.Edit });
-    }
+    const { editMode, setReplyEditState, data } = this.props;
+
+    setReplyEditState?.({ id: data.id, state: editMode === CommentMode.Edit ? CommentMode.None : CommentMode.Edit });
   };
 
   toggleUserInfoVisibility = () => {
-    if (window.parent) {
-      const { user } = this.props.data;
-      const data = JSON.stringify({ isUserInfoShown: true, user });
-      window.parent.postMessage(data, '*');
+    if (!window.parent) {
+      return;
     }
+
+    const { user } = this.props.data;
+    const data = JSON.stringify({ isUserInfoShown: true, user });
+
+    window.parent.postMessage(data, '*');
   };
 
   togglePin = () => {
@@ -227,7 +222,7 @@ class Comment extends Component<Props, State> {
     const intl = this.props.intl;
     const promptMessage = value ? intl.formatMessage(messages.pinComment) : intl.formatMessage(messages.unpinComment);
 
-    if (confirm(promptMessage)) {
+    if (window.confirm(promptMessage)) {
       this.props.setPinState!(this.props.data.id, value);
     }
   };
@@ -241,24 +236,25 @@ class Comment extends Component<Props, State> {
       ? intl.formatMessage(messages.verifyUser, { userName })
       : intl.formatMessage(messages.unverifyUser, { userName });
 
-    if (confirm(promptMessage)) {
+    if (window.confirm(promptMessage)) {
       this.props.setVerifiedStatus!(userId, value);
     }
   };
 
   onBlockUserClick = (e: Event) => {
+    const target = e.target as HTMLOptionElement;
     // blur event will be triggered by the confirm pop-up which will start
     // infinite loop of blur -> confirm -> blur -> ...
     // so we trigger the blur event manually and have debounce mechanism to prevent it
     if (e.type === 'change') {
-      (e.target as HTMLElement).blur();
+      target.blur();
     }
     // we have to debounce the blockUser function calls otherwise it will be
     // called 2 times (by change event and by blur event)
-    this.blockUser((e.target as HTMLOptionElement).value as BlockTTL);
+    this.blockUser(target.value as BlockTTL);
   };
 
-  blockUser = debounce((ttl: BlockTTL) => {
+  blockUser = debounce((ttl: BlockTTL): void => {
     const { user } = this.props.data;
     const blockingDurations = getBlockingDurations(this.props.intl);
     const blockDuration = blockingDurations.find(el => el.value === ttl);
@@ -271,7 +267,7 @@ class Comment extends Component<Props, State> {
       userName: user.name,
       duration: duration.toLowerCase(),
     });
-    if (confirm(blockUser)) {
+    if (window.confirm(blockUser)) {
       this.props.blockUser!(user.id, user.name, ttl);
     }
   }, 100);
@@ -280,14 +276,15 @@ class Comment extends Component<Props, State> {
     const { user } = this.props.data;
     const unblockUser = this.props.intl.formatMessage(messages.unblockUser);
 
-    if (confirm(unblockUser)) {
+    if (window.confirm(unblockUser)) {
       this.props.unblockUser!(user.id);
     }
   };
 
   deleteComment = () => {
     const deleteComment = this.props.intl.formatMessage(messages.deleteMessage);
-    if (confirm(deleteComment)) {
+
+    if (window.confirm(deleteComment)) {
       this.props.setReplyEditState!({ id: this.props.data.id, state: CommentMode.None });
 
       this.props.removeComment!(this.props.data.id);
@@ -298,7 +295,7 @@ class Comment extends Component<Props, State> {
     const hideUserComment = this.props.intl.formatMessage(messages.hideUserComments, {
       userName: this.props.data.user.name,
     });
-    if (!confirm(hideUserComment)) return;
+    if (!window.confirm(hideUserComment)) return;
     this.props.hideUser!(this.props.data.user);
   };
 
@@ -528,7 +525,7 @@ class Comment extends Component<Props, State> {
     return controls;
   };
 
-  render(props: Props, state: State) {
+  render(props: CommentProps, state: State) {
     const isAdmin = this.isAdmin();
     const isGuest = this.isGuest();
     const isCurrentUser = this.isCurrentUser();
@@ -574,7 +571,7 @@ class Comment extends Component<Props, State> {
       score: {
         value: Math.abs(state.cachedScore),
         sign: !scoreSignEnabled ? '' : state.cachedScore > 0 ? '+' : state.cachedScore < 0 ? '−' : null,
-        view: state.cachedScore > 0 ? 'positive' : state.cachedScore < 0 ? 'negative' : null,
+        view: state.cachedScore > 0 ? 'positive' : state.cachedScore < 0 ? 'negative' : undefined,
       },
       user: {
         ...props.data.user,
@@ -598,7 +595,7 @@ class Comment extends Component<Props, State> {
       view: props.view === 'main' || props.view === 'pinned' ? props.data.user.admin && 'admin' : props.view,
       replying: props.view === 'main' && isReplying,
       editing: props.view === 'main' && isEditing,
-      theme: props.view === 'preview' ? null : props.theme,
+      theme: props.view === 'preview' ? undefined : props.theme,
       level: props.level,
       collapsed: props.collapsed,
     };
@@ -625,6 +622,7 @@ class Comment extends Component<Props, State> {
             </div>{' '}
             <div
               className={b('comment__text', { mix: b('raw-content', {}, { theme: props.theme }) })}
+              // eslint-disable-next-line react/no-danger
               dangerouslySetInnerHTML={{ __html: o.text }}
             />
           </div>
@@ -770,6 +768,7 @@ class Comment extends Component<Props, State> {
             <div
               className={b('comment__text', { mix: b('raw-content', {}, { theme: props.theme }) })}
               ref={this.textNode}
+              // eslint-disable-next-line react/no-danger
               dangerouslySetInnerHTML={{ __html: o.text }}
             />
           )}
@@ -837,7 +836,7 @@ class Comment extends Component<Props, State> {
             theme={props.theme}
             mode="reply"
             mix="comment__input"
-            onSubmit={(text, title) => this.addComment(text, title, o.id)}
+            onSubmit={(text: string, title: string) => this.addComment(text, title, o.id)}
             onCancel={this.toggleReplying}
             getPreview={this.props.getPreview!}
             autofocus={true}
@@ -855,7 +854,7 @@ class Comment extends Component<Props, State> {
             value={o.orig}
             mode="edit"
             mix="comment__input"
-            onSubmit={(text, _title) => this.updateComment(props.data.id, text)}
+            onSubmit={(text: string) => this.updateComment(props.data.id, text)}
             onCancel={this.toggleEditing}
             getPreview={this.props.getPreview!}
             errorMessage={state.editDeadline === null ? intl.formatMessage(messages.expiredTime) : undefined}
@@ -882,6 +881,7 @@ function getTextSnippet(html: string) {
 
 function FormatTime({ time }: { time: Date }) {
   const intl = useIntl();
+
   return (
     <FormattedMessage
       id="comment.time"
@@ -894,9 +894,4 @@ function FormatTime({ time }: { time: Date }) {
   );
 }
 
-const CommentWithIntl = (props: PropsWithoutIntl) => {
-  const intl = useIntl();
-  return <Comment intl={intl} {...props} />;
-};
-
-export { CommentWithIntl as Comment };
+export default Comment;

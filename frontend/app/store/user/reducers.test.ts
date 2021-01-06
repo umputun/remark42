@@ -1,11 +1,11 @@
-import * as api from '@app/common/api';
-import { User } from '@app/common/types';
+import * as api from 'common/api';
+import { User } from 'common/types';
 
 import { fetchUser, logIn, logout } from './actions';
 import { user } from './reducers';
 import { USER_SET } from './types';
 
-jest.mock('@app/common/api');
+jest.mock('common/api');
 
 afterEach(() => {
   jest.resetModules();

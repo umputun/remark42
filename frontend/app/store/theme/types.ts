@@ -1,4 +1,4 @@
-import { Theme } from '@app/common/types';
+import { Theme } from 'common/types';
 
 export const THEME_SET = 'THEME/SET';
 

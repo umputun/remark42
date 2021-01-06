@@ -1,6 +1,7 @@
-import { Theme } from './types';
+import parseQuery from 'utils/parseQuery';
+
+import type { Theme } from './types';
 import { THEMES, MAX_SHOWN_ROOT_COMMENTS } from './constants';
-import parseQuery from '@app/utils/parseQuery';
 
 export interface QuerySettingsType {
   site_id?: string;
@@ -29,9 +30,9 @@ if (!querySettings.theme || THEMES.indexOf(querySettings.theme) === -1) {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 querySettings.show_email_subscription = (querySettings.show_email_subscription as any) !== 'false';
 
-export const siteId = querySettings.site_id;
+export const siteId = querySettings.site_id!;
 export const pageTitle = querySettings.page_title;
 export const url = querySettings.url;
 export const maxShownComments = querySettings.max_shown_comments;
-export const token = querySettings.token;
+export const token = querySettings.token!;
 export const theme = querySettings.theme;

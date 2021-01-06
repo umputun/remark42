@@ -1,4 +1,4 @@
-import { Node, Comment, CommentMode, Sorting } from '@app/common/types';
+import { Node, Comment, CommentMode, Sorting } from 'common/types';
 import { combineReducers } from 'redux';
 
 import {
@@ -20,7 +20,7 @@ import {
   COMMENTS_REQUEST_ACTIONS,
 } from './types';
 import { getPinnedComments, getInitialSort } from './utils';
-import { cmpRef } from '@app/utils/cmpRef';
+import { cmpRef } from 'utils/cmpRef';
 
 export const topComments = (
   state: Comment['id'][] = [],
@@ -177,7 +177,7 @@ export const pinnedComments = (
   }
 };
 
-function isFetching(state: boolean = false, action: COMMENTS_REQUEST_ACTIONS): boolean {
+function isFetching(state = false, action: COMMENTS_REQUEST_ACTIONS): boolean {
   switch (action.type) {
     case COMMENTS_REQUEST_FETCHING:
       return true;

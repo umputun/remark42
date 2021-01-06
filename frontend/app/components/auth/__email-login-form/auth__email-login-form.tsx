@@ -1,22 +1,20 @@
-/** @jsx createElement */
-import { createElement, Component, createRef } from 'preact';
+import { h, Component, createRef } from 'preact';
 import { forwardRef } from 'preact/compat';
 import b from 'bem-react-helper';
-import { Theme, User } from '@app/common/types';
-import { sendEmailVerificationRequest } from '@app/common/api';
-import { extractErrorMessageFromResponse } from '@app/utils/errorUtils';
-import { getHandleClickProps } from '@app/common/accessibility';
-import { sleep } from '@app/utils/sleep';
-import TextareaAutosize from '@app/components/comment-form/textarea-autosize';
-import { Input } from '@app/components/input';
-import { Button } from '@app/components/button';
-import { isJwtExpired } from '@app/utils/jwt';
+import { Theme, User } from 'common/types';
+import { LS_EMAIL_KEY } from 'common/constants';
+import { sendEmailVerificationRequest } from 'common/api';
+import { extractErrorMessageFromResponse } from 'utils/errorUtils';
+import { getHandleClickProps } from 'common/accessibility';
+import { sleep } from 'utils/sleep';
+import TextareaAutosize from 'components/comment-form/textarea-autosize';
+import { Input } from 'components/input';
+import { Button } from 'components/button';
+import { isJwtExpired } from 'utils/jwt';
 import { defineMessages, IntlShape, useIntl, FormattedMessage } from 'react-intl';
 
 import { validateUserName } from '../validateUserName';
-
 import { messages as loginForm } from '../__anonymous-login-form/auth__anonymous-login-form';
-import { LS_EMAIL_KEY } from '@app/common/constants';
 
 interface OwnProps {
   onSignIn(token: string): Promise<User | null>;
@@ -199,7 +197,7 @@ export class EmailLoginForm extends Component<Props, State> {
     // TODO: will be great to `b` to accept `string | undefined | (string|undefined)[]` as classname
     let className = b('auth-email-login-form', {}, { theme: props.theme });
     if (props.className) {
-      className += ' ' + b('auth-email-login-form', {}, { theme: props.theme });
+      className += ` ${b('auth-email-login-form', {}, { theme: props.theme })}`;
     }
 
     const form1InvalidReason = this.getForm1InvalidReason();
@@ -208,7 +206,7 @@ export class EmailLoginForm extends Component<Props, State> {
       return (
         <form className={className} onSubmit={this.onVerificationSubmit}>
           <Input
-            autoFocus
+            autofocus
             name="username"
             mix="auth-email-login-form__input"
             ref={this.usernameInputRef}

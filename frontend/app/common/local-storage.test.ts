@@ -67,7 +67,7 @@ describe('updateJsonItem', () => {
   });
 
   it('should set data to empty localStorage', () => {
-    updateJsonItem<Record<string, string>>(LS_KEY, {});
+    updateJsonItem(LS_KEY, {});
 
     expect(localStorage.getItem(LS_KEY)).toBe(JSON.stringify({}));
   });

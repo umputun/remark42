@@ -1,3 +1,3 @@
-export { AnonymousLoginForm } from './auth__anonymous-login-form';
+import './auth__anonymous-login-form.css';
 
-import './auth__anonymous-login-form.scss';
+export { AnonymousLoginForm } from './auth__anonymous-login-form';

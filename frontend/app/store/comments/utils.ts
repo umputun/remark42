@@ -1,6 +1,6 @@
-import { Comment, Node, Sorting } from '@app/common/types';
-import { LS_SORT_KEY, DEFAULT_SORT } from '@app/common/constants';
-import { getItem } from '@app/common/local-storage';
+import { Comment, Node, Sorting } from 'common/types';
+import { LS_SORT_KEY, DEFAULT_SORT } from 'common/constants';
+import { getItem } from 'common/local-storage';
 
 /**
  * Filters tree node

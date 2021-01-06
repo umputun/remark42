@@ -1,0 +1,35 @@
+.comment_replying {
+  padding-bottom: 0;
+  position: relative;
+  z-index: 1;
+
+  & .comment__score {
+    top: 4px;
+    right: 0;
+  }
+
+  /* it isn't mobile first, but it's fine here */
+  @media (-moz-touch-enabled: 1) and (max-width: 768px), (pointer: coarse) and (max-width: 768px) {
+    border: 8px solid;
+
+    & .comment__info {
+      padding-left: 8px;
+    }
+
+    & .comment__body {
+      padding: 8px 8px 0;
+    }
+
+    & .comment__input {
+      border-left-width: 0;
+      border-right-width: 0;
+      border-bottom-width: 0;
+      border-top-width: 8px;
+    }
+
+    & .comment__score {
+      top: 5px;
+      right: 8px;
+    }
+  }
+}

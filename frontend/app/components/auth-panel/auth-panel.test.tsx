@@ -1,16 +1,15 @@
-/** @jsx createElement */
-import { createElement } from 'preact';
+import { h } from 'preact';
 import { mount } from 'enzyme';
 import createMockStore from 'redux-mock-store';
 import { Middleware } from 'redux';
 import { Provider } from 'react-redux';
 import { IntlProvider } from 'react-intl';
 
-import enMessages from '@app/locales/en.json';
+import enMessages from 'locales/en.json';
 
 import AuthPanel, { Props } from './auth-panel';
 import { Button } from '../button';
-import { StaticStore } from '@app/common/static_store';
+import { StaticStore } from 'common/static-store';
 
 const DefaultProps = {
   providers: ['google', 'github'],
@@ -83,7 +82,7 @@ describe('<AuthPanel />', () => {
       const firstCol = element.find('.auth-panel__column').first();
       const providerButtons = firstCol.find(Button);
 
-      expect(firstCol.text()).toStartWith('Login:');
+      expect(firstCol.text().startsWith('Login:')).toBe(true);
       expect(providerButtons.at(0).text()).toBe('Google');
       expect(providerButtons.at(1).text()).toBe('GitHub');
     });

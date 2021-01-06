@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Counter</title>
+    <style>
+      body {
+        padding: 0;
+        margin: 0;
+      }
+
+      .container {
+        max-width: 800px;
+        margin: 40px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <p>
+        First counter with url from data-attribute:
+        <span class="remark42__counter" data-url="https://remark42.com/demo/"></span>
+        (<a href="http://127.0.0.1:8080/web/" target="_blank">note</a>)
+      </p>
+
+      <p>
+        Second counter with url from global remark config:
+        <span class="remark42__counter"></span>
+        (<a href="http://127.0.0.1:8080/web/" target="_blank">note</a>)
+      </p>
+
+      <p>If it can't get url from data-attribute or remark config, it will try to use window.location.href for it.</p>
+    </div>
+
+    <script>
+      var remark_config = {
+        site_id: 'remark',
+        host: '<%= htmlWebpackPlugin.options.REMARK_URL %>',
+        url: 'https://remark42.com/demo/',
+        components: ['counter']
+      };
+
+      (function (c, d) {
+        for (var i = 0; i < c.length; i++) {
+          var s = d.createElement('script');
+          var e = '.js';
+          var r = d.head || d.body;
+
+          if ('noModule' in s) {
+            s.type = 'module';
+            e = '.mjs';
+          } else {
+            s.async = true;
+          }
+
+          s.defer = true;
+          s.src = remark_config.host + '/web/' + c[i] + e;
+
+          r.appendChild(s);
+        }
+      })(remark_config.components || ['embed'], document);
+    </script>
+    <noscript> Please enable JavaScript to view the comments powered by Remark. </noscript>
+  </body>
+</html>

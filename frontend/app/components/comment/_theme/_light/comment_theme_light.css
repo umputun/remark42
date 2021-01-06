@@ -1,0 +1,102 @@
+.comment_theme_light {
+  & .comment__action_type_collapse {
+    border-color: var(--color20);
+    color: var(--color20);
+
+    &.comment__action_selected {
+      background: var(--color20);
+      color: var(--color6);
+    }
+  }
+
+  & .comment__action_type_delete,
+  & .comment__action_type_edit {
+    color: var(--color32);
+  }
+
+  & .comment__action {
+    & + .comment__controls {
+      &::before {
+        color: var(--color10);
+      }
+    }
+  }
+
+  & .comment__control_view_inactive {
+    &,
+    &:hover,
+    &:focus {
+      color: var(--color11);
+    }
+  }
+
+  & .comment__edit-timer {
+    color: var(--color32);
+
+    & + .comment__controls {
+      &::before {
+        color: var(--color10);
+      }
+    }
+  }
+
+  & .comment__score {
+    color: var(--color31);
+  }
+
+  & .comment__score_view_negative {
+    color: var(--color30);
+  }
+
+  & .comment__score_view_positive {
+    color: var(--color12);
+  }
+
+  & .comment__status {
+    color: var(--color11);
+  }
+
+  & .comment__time {
+    color: var(--color11);
+  }
+
+  & .comment__user-id {
+    color: var(--color13);
+  }
+
+  & .comment__username {
+    color: var(--color10);
+  }
+
+  &.comment_editing {
+    & .comment__input {
+      border-color: var(--color5);
+    }
+
+    @media (-moz-touch-enabled: 1) and (max-width: 768px), (pointer: coarse) and (max-width: 768px) {
+      border-color: var(--color5);
+    }
+  }
+
+  &.comment_replying {
+    & .comment__input {
+      border-color: var(--color5);
+    }
+
+    @media (-moz-touch-enabled: 1) and (max-width: 768px), (pointer: coarse) and (max-width: 768px) {
+      border-color: var(--color5);
+    }
+  }
+
+  &.comment_view_preview {
+    & .comment__info {
+      &::after {
+        color: var(--color10);
+      }
+    }
+  }
+
+  &.comment_highlighting {
+    background: var(--color4);
+  }
+}

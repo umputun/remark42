@@ -1,2 +1,4 @@
 node_modules
 public
+package.json
+package-lock.json

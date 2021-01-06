@@ -1,0 +1,11 @@
+.thread_theme_dark {
+  & .thread__collapse {
+    &::after {
+      border-color: var(--color36);
+    }
+
+    &:hover::after {
+      border-color: var(--color6);
+    }
+  }
+}

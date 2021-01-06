@@ -1,5 +1,4 @@
-/** @jsx createElement */
-import { createElement } from 'preact';
+import { h } from 'preact';
 
 export default function LinkIcon() {
   return (

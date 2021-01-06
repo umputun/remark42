@@ -1,4 +1,4 @@
-import { Comment } from '@app/common/types';
+import { Comment } from 'common/types';
 
 export const THREAD_RESTORE_COLLAPSE = 'THREAD/COLLAPSE_RESTORE';
 export interface THREAD_RESTORE_COLLAPSE_ACTION {

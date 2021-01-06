@@ -1,4 +1,4 @@
-import { Node, Comment, Sorting } from '@app/common/types';
+import { Node, Comment, Sorting } from 'common/types';
 import { StoreState } from '../index';
 
 export const COMMENTS_SET = 'COMMENTS/SET';

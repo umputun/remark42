@@ -1,3 +1,4 @@
-import './auth__email-login-form.scss';
+import './auth__email-login-form.css';
 
-export { EmailLoginForm, EmailLoginFormConnected, EmailLoginFormRef } from './auth__email-login-form';
+export { EmailLoginForm, EmailLoginFormConnected } from './auth__email-login-form';
+export type { EmailLoginFormRef } from './auth__email-login-form';

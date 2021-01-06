@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { IS_STORAGE_AVAILABLE } from './constants';
 
 const failMessage = 'remark42: localStorage access denied, check browser preferences';
@@ -47,9 +46,9 @@ export function setJsonItem<T = any>(key: string, data: T) {
   }
 }
 
-export function updateJsonItem<T = Record<string, any> | any[]>(key: string, value: (data: T) => T): void;
-export function updateJsonItem<T = any[]>(key: string, value: T): void;
-export function updateJsonItem<T = Record<string, any>>(key: string, value: T) {
+export function updateJsonItem<T extends {}>(key: string, value: (data: T) => T): void;
+export function updateJsonItem<T extends {}>(key: string, value: T): void;
+export function updateJsonItem<T = Record<string, unknown>>(key: string, value: T) {
   const savedData = getJsonItem<any>(key);
 
   if (Array.isArray(value)) {

@@ -1,0 +1,11 @@
+.settings_theme_light {
+  & .settings__action {
+    &::before {
+      color: var(--color10);
+    }
+  }
+
+  & .settings__blocked-users-username {
+    color: var(--color13);
+  }
+}

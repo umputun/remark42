@@ -1,19 +1,18 @@
-/** @jsx createElement */
-import { createElement, Component, createRef, Fragment } from 'preact';
+import { h, Component, createRef, Fragment } from 'preact';
 import { FormattedMessage, IntlShape, defineMessages } from 'react-intl';
 import b, { Mix } from 'bem-react-helper';
 
-import { User, Theme, Image, ApiError } from '@app/common/types';
-import { StaticStore } from '@app/common/static_store';
-import { pageTitle } from '@app/common/settings';
-import { extractErrorMessageFromResponse } from '@app/utils/errorUtils';
-import { isUserAnonymous } from '@app/utils/isUserAnonymous';
-import { sleep } from '@app/utils/sleep';
-import { replaceSelection } from '@app/utils/replaceSelection';
-import { Button } from '@app/components/button';
-import Auth from '@app/components/auth';
-import { getJsonItem, updateJsonItem } from '@app/common/local-storage';
-import { LS_SAVED_COMMENT_VALUE } from '@app/common/constants';
+import { User, Theme, Image, ApiError } from 'common/types';
+import { StaticStore } from 'common/static-store';
+import { pageTitle } from 'common/settings';
+import { extractErrorMessageFromResponse } from 'utils/errorUtils';
+import { isUserAnonymous } from 'utils/isUserAnonymous';
+import { sleep } from 'utils/sleep';
+import { replaceSelection } from 'utils/replaceSelection';
+import { Button } from 'components/button';
+import Auth from 'components/auth';
+import { getJsonItem, updateJsonItem } from 'common/local-storage';
+import { LS_SAVED_COMMENT_VALUE } from 'common/constants';
 
 import { SubscribeByEmail } from './__subscribe-by-email';
 import { SubscribeByRSS } from './__subscribe-by-rss';
@@ -24,7 +23,7 @@ import { TextExpander } from './text-expander';
 
 let textareaId = 0;
 
-export interface Props {
+export type CommentFormProps = {
   id: string;
   user: User | null;
   errorMessage?: string;
@@ -41,9 +40,9 @@ export interface Props {
   onCancel?: () => void;
   uploadImage?: (image: File) => Promise<Image>;
   intl: IntlShape;
-}
+};
 
-export interface State {
+export type CommentFormState = {
   preview: string | null;
   isErrorShown: boolean;
   /** error message, if contains newlines, it will be splitted to multiple errors */
@@ -55,7 +54,7 @@ export interface State {
   text: string;
   /** override main button text */
   buttonText: null | string;
-}
+};
 
 const ImageMimeRegex = /image\//i;
 
@@ -99,12 +98,12 @@ export const messages = defineMessages({
   },
 });
 
-export class CommentForm extends Component<Props, State> {
+export class CommentForm extends Component<CommentFormProps, CommentFormState> {
   /** reference to textarea element */
   textAreaRef = createRef<TextareaAutosize>();
   textareaId: string;
 
-  constructor(props: Props) {
+  constructor(props: CommentFormProps) {
     super(props);
     textareaId = textareaId + 1;
     this.textareaId = `textarea_${textareaId}`;
@@ -140,7 +139,7 @@ export class CommentForm extends Component<Props, State> {
     this.onPaste = this.onPaste.bind(this);
   }
 
-  componentWillReceiveProps(nextProps: Props) {
+  componentWillReceiveProps(nextProps: CommentFormProps) {
     if (nextProps.value !== this.props.value) {
       this.setState({ text: nextProps.value || '' });
       this.props.autofocus && this.textAreaRef.current && this.textAreaRef.current.focus();
@@ -153,7 +152,7 @@ export class CommentForm extends Component<Props, State> {
     }
   }
 
-  shouldComponentUpdate(nextProps: Props, nextState: State) {
+  shouldComponentUpdate(nextProps: CommentFormProps, nextState: CommentFormState) {
     const userId = this.props.user !== null && this.props.user.id;
     const nextUserId = nextProps.user !== null && nextProps.user.id;
 
@@ -260,7 +259,7 @@ export class CommentForm extends Component<Props, State> {
       return;
     }
     this.setState({
-      errorMessage: this.state.errorMessage + '\n' + errors.join('\n'),
+      errorMessage: `${this.state.errorMessage}\n${errors.join('\n')}`,
       isErrorShown: true,
     });
   }
@@ -320,7 +319,7 @@ export class CommentForm extends Component<Props, State> {
     if (!this.textAreaRef.current) return;
 
     /** Human readable image size limit, i.e 5MB */
-    const maxImageSizeString = (StaticStore.config.max_image_size / 1024 / 1024).toFixed(2) + 'MB';
+    const maxImageSizeString = `${(StaticStore.config.max_image_size / 1024 / 1024).toFixed(2)}MB`;
     /** upload delay to avoid server rate limiter */
     const uploadDelay = 5000;
 
@@ -560,6 +559,7 @@ export class CommentForm extends Component<Props, State> {
                 className={b('comment-form__preview', {
                   mix: b('raw-content', {}, { theme }),
                 })}
+                // eslint-disable-next-line react/no-danger
                 dangerouslySetInnerHTML={{ __html: preview }}
               />
             </div>

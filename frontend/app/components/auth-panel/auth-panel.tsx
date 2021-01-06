@@ -1,22 +1,21 @@
-/** @jsx createElement */
-import { createElement, Component, Fragment } from 'preact';
+import { h, Component, Fragment } from 'preact';
 import { useSelector } from 'react-redux';
 import { FormattedMessage, defineMessages, IntlShape, useIntl } from 'react-intl';
 import b from 'bem-react-helper';
 
-import { User, AuthProvider, Sorting, Theme, PostInfo } from '@app/common/types';
-import { IS_STORAGE_AVAILABLE, IS_THIRD_PARTY } from '@app/common/constants';
-import { requestDeletion } from '@app/utils/email';
-import postMessage from '@app/utils/postMessage';
-import { getHandleClickProps } from '@app/common/accessibility';
-import { StoreState } from '@app/store';
-import { ProviderState } from '@app/store/provider/reducers';
-import { Dropdown, DropdownItem } from '@app/components/dropdown';
-import { Button } from '@app/components/button';
-import Auth from '@app/components/auth';
+import { User, AuthProvider, Sorting, Theme, PostInfo } from 'common/types';
+import { IS_STORAGE_AVAILABLE, IS_THIRD_PARTY } from 'common/constants';
+import { requestDeletion } from 'utils/email';
+import postMessage from 'utils/postMessage';
+import { getHandleClickProps } from 'common/accessibility';
+import { StoreState } from 'store';
+import { ProviderState } from 'store/provider/reducers';
+import { Dropdown, DropdownItem } from 'components/dropdown';
+import { Button } from 'components/button';
+import Auth from 'components/auth';
 
-import useTheme from '@app/hooks/useTheme';
-import { StaticStore } from '@app/common/static_store';
+import useTheme from 'hooks/useTheme';
+import { StaticStore } from 'common/static-store';
 
 export interface OwnProps {
   user: User | null;
@@ -132,6 +131,7 @@ export class AuthPanel extends Component<Props, State> {
           className="auth-panel__pseudo-link"
           href={`${window.location.origin}/web/comments.html${window.location.search}`}
           target="_blank"
+          rel="noreferrer"
         >
           <FormattedMessage id="authPanel.new-page" defaultMessage="new page" />
         </a>

@@ -1,8 +1,8 @@
-import * as api from '@app/common/api';
-import { Tree, Comment, CommentMode, Node, Sorting } from '@app/common/types';
+import * as api from 'common/api';
+import { Tree, Comment, CommentMode, Node, Sorting } from 'common/types';
 
 import { StoreAction, StoreState } from '../index';
-import { setPostInfo } from '../post_info/actions';
+import { setPostInfo } from '../post-info/actions';
 import { filterTree } from './utils';
 import {
   COMMENTS_SET,
@@ -14,8 +14,8 @@ import {
   COMMENTS_REQUEST_FETCHING,
   COMMENTS_REQUEST_SUCCESS,
 } from './types';
-import { setItem } from '@app/common/local-storage';
-import { LS_SORT_KEY } from '@app/common/constants';
+import { setItem } from 'common/local-storage';
+import { LS_SORT_KEY } from 'common/constants';
 
 /** sets comments, and put pinned comments in cache */
 export const setComments = (comments: Node[]): StoreAction<void> => dispatch => {

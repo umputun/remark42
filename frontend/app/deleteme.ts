@@ -1,9 +1,8 @@
 /* eslint-disable no-console */
-import loadPolyfills from '@app/common/polyfills';
-import { NODE_ID } from '@app/common/constants';
-import { approveDeleteMe, getUser } from '@app/common/api';
-import { token } from '@app/common/settings';
-import { ApiError } from './common/types';
+import { NODE_ID } from 'common/constants';
+import { approveDeleteMe, getUser } from 'common/api';
+import { token } from 'common/settings';
+import { ApiError } from 'common/types';
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
@@ -12,9 +11,7 @@ if (document.readyState === 'loading') {
 }
 
 async function init(): Promise<void> {
-  __webpack_public_path__ = window.location.origin + '/web/';
-
-  await loadPolyfills();
+  __webpack_public_path__ = `${window.location.origin}/web/`;
 
   const node = document.getElementById(NODE_ID);
 
@@ -29,7 +26,7 @@ async function init(): Promise<void> {
       return;
     }
 
-    approveDeleteMe(token!).then(
+    approveDeleteMe(token).then(
       data => {
         node.innerHTML = `
             <h3>User deleted successfully</h3>

@@ -1,26 +1,25 @@
-/** @jsx createElement */
-import { createElement, Component, createRef } from 'preact';
+import { h, Component, createRef } from 'preact';
 import { useCallback } from 'preact/hooks';
 import { IntlShape, FormattedMessage, defineMessages, useIntl } from 'react-intl';
 
-import { AuthProvider, Theme, User } from '@app/common/types';
-import { PROVIDER_NAMES, IS_STORAGE_AVAILABLE } from '@app/common/constants';
-import { getHandleClickProps } from '@app/common/accessibility';
-import { Button } from '@app/components/button';
-import { Dropdown, DropdownItem } from '@app/components/dropdown';
+import { AuthProvider, Theme, User } from 'common/types';
+import { PROVIDER_NAMES, IS_STORAGE_AVAILABLE } from 'common/constants';
+import { getHandleClickProps } from 'common/accessibility';
+import { Button } from 'components/button';
+import { Dropdown, DropdownItem } from 'components/dropdown';
 
-import debounce from '@app/utils/debounce';
-import { ProviderState } from '@app/store/provider/reducers';
-import { StaticStore } from '@app/common/static_store';
+import debounce from 'utils/debounce';
+import { ProviderState } from 'store/provider/reducers';
+import { StaticStore } from 'common/static-store';
 import { useSelector, useDispatch } from 'react-redux';
-import { StoreState } from '@app/store';
-import useTheme from '@app/hooks/useTheme';
-import { logIn } from '@app/store/user/actions';
+import { StoreState } from 'store';
+import useTheme from 'hooks/useTheme';
+import { logIn } from 'store/user/actions';
 
 import { AnonymousLoginForm } from './__anonymous-login-form';
 import { EmailLoginFormConnected, EmailLoginFormRef } from './__email-login-form';
 
-import styles from './auth.module.pcss';
+import styles from './auth.module.css';
 
 interface Props {
   intl: IntlShape;
@@ -186,13 +185,13 @@ const authPanelMessages = defineMessages({
   },
 });
 
-export default function () {
+export default function AuthWrapper() {
   const dispatch = useDispatch();
   const provider = useSelector<StoreState, ProviderState>(store => store.provider);
   const user = useSelector<StoreState, User | null>(store => store.user);
   const theme = useTheme();
   const intl = useIntl();
-  const handleSignin = useCallback((provider: AuthProvider) => dispatch(logIn(provider)), []);
+  const handleSignin = useCallback((provider: AuthProvider) => dispatch(logIn(provider)), [dispatch]);
 
   return <Auth provider={provider} theme={theme} onSignIn={handleSignin} intl={intl} user={user} />;
 }

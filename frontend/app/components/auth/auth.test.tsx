@@ -1,16 +1,15 @@
-/** @jsx createElement */
-import { createElement } from 'preact';
+import { h } from 'preact';
 import { IntlProvider } from 'react-intl';
 import { Provider } from 'react-redux';
 
-import enMessages from '@app/locales/en.json';
-import { mockStore } from '@app/testUtils/mockStore';
-import { StaticStore } from '@app/common/static_store';
+import enMessages from 'locales/en.json';
+import stubStore from '__stubs__/store';
+import { StaticStore } from 'common/static-store';
 
 import Auth from './auth';
 import { mount } from 'enzyme';
 import { Button } from '../button';
-import { StoreState } from '@app/store';
+import { StoreState } from 'store';
 
 const initialStore = {
   provider: { name: 'google' },
@@ -24,7 +23,7 @@ describe('<Auth/>', () => {
   const createWrapper = (store?: Partial<StoreState>) =>
     mount(
       <IntlProvider locale="en" messages={enMessages}>
-        <Provider store={mockStore(store || initialStore)}>
+        <Provider store={stubStore(store || initialStore)}>
           <Auth />
         </Provider>
       </IntlProvider>

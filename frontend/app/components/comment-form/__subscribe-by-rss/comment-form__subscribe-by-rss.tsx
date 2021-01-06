@@ -1,14 +1,13 @@
-/** @jsx createElement */
-import { createElement, FunctionComponent } from 'preact';
+import { h, FunctionComponent } from 'preact';
 import { useMemo } from 'preact/hooks';
 import { useIntl, defineMessages } from 'react-intl';
 
-import useTheme from '@app/hooks/useTheme';
-import { siteId, url } from '@app/common/settings';
-import { BASE_URL, API_BASE } from '@app/common/constants';
-import { Dropdown, DropdownItem } from '@app/components/dropdown';
+import useTheme from 'hooks/useTheme';
+import { siteId, url } from 'common/settings';
+import { BASE_URL, API_BASE } from 'common/constants';
+import { Dropdown, DropdownItem } from 'components/dropdown';
 
-export const createSubscribeUrl = (type: 'post' | 'site' | 'reply', urlParams: string = '') =>
+export const createSubscribeUrl = (type: 'post' | 'site' | 'reply', urlParams = '') =>
   `${BASE_URL}${API_BASE}/rss/${type}?site=${siteId}${urlParams}`;
 
 const messages = defineMessages({
@@ -43,7 +42,7 @@ export const SubscribeByRSS: FunctionComponent<{ userId: string | null }> = ({ u
       [createSubscribeUrl('site'), intl.formatMessage(messages.site)],
       [createSubscribeUrl('reply', `&user=${userId}`), intl.formatMessage(messages.replies)],
     ],
-    [userId]
+    [userId, intl]
   );
 
   return (
@@ -56,7 +55,7 @@ export const SubscribeByRSS: FunctionComponent<{ userId: string | null }> = ({ u
     >
       {items.map(([href, label]) => (
         <DropdownItem>
-          <a href={href} className="comment-form__rss-dropdown__link" target="_blank">
+          <a href={href} className="comment-form__rss-dropdown__link" target="_blank" rel="noreferrer">
             {label}
           </a>
         </DropdownItem>

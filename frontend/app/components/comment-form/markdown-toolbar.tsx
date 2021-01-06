@@ -1,7 +1,9 @@
-/** @jsx createElement */
-import { createElement, Component } from 'preact';
+import '@ungap/custom-elements';
 import '@github/markdown-toolbar-element';
+import { h, Component } from 'preact';
 import { defineMessages, IntlShape } from 'react-intl';
+
+// TODO: Use SVGR
 import BoldIcon from './markdown-toolbar-icons/bold-icon';
 import HeaderIcon from './markdown-toolbar-icons/header-icon';
 import ItalicIcon from './markdown-toolbar-icons/italic-icon';

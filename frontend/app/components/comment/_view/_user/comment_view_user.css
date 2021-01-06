@@ -1,0 +1,30 @@
+.comment_view_user {
+  &.comment_collapsed {
+    & .comment__text,
+    & .comment__actions {
+      display: block;
+    }
+  }
+
+  & .comment__title {
+    margin-bottom: 0.2rem;
+  }
+
+  & .comment__body {
+    padding-left: 0;
+  }
+
+  & .comment__title-link {
+    color: var(--color29);
+    font-weight: bold;
+    text-decoration: none;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+    display: block;
+
+    &:hover {
+      opacity: 0.75;
+    }
+  }
+}

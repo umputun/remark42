@@ -1,4 +1,4 @@
-import { User } from '@app/common/types';
+import { User } from 'common/types';
 
 export type Message =
   | { inited: true }

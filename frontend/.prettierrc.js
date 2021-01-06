@@ -1,6 +1,7 @@
 module.exports = {
   printWidth: 120,
   useTabs: false,
+  tabWidth: 2,
   semi: true,
   singleQuote: true,
   trailingComma: 'es5',
@@ -8,7 +9,7 @@ module.exports = {
   arrowParens: 'avoid',
   overrides: [
     {
-      files: ['*.ejs', '*.html'],
+      files: ['*.html'],
       options: {
         trailingComma: 'none',
       },

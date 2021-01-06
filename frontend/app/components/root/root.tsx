@@ -1,21 +1,20 @@
-/** @jsx createElement */
-import { createElement, Component, FunctionComponent, Fragment } from 'preact';
+import { h, Component, FunctionComponent, Fragment } from 'preact';
 import { useSelector } from 'react-redux';
 import b from 'bem-react-helper';
 import { IntlShape, useIntl, FormattedMessage, defineMessages } from 'react-intl';
 
-import { AuthProvider, Sorting } from '@app/common/types';
+import type { AuthProvider, Sorting } from 'common/types';
 import {
   COMMENT_NODE_CLASSNAME_PREFIX,
   MAX_SHOWN_ROOT_COMMENTS,
   THEMES,
   IS_MOBILE,
   LS_EMAIL_KEY,
-} from '@app/common/constants';
-import { maxShownComments, url } from '@app/common/settings';
+} from 'common/constants';
+import { maxShownComments, url } from 'common/settings';
 
-import { StaticStore } from '@app/common/static_store';
-import { StoreState } from '@app/store';
+import { StaticStore } from 'common/static-store';
+import { StoreState } from 'store';
 import {
   fetchUser,
   logout,
@@ -25,25 +24,24 @@ import {
   fetchBlockedUsers,
   hideUser,
   unhideUser,
-} from '@app/store/user/actions';
-import { fetchComments, updateSorting } from '@app/store/comments/actions';
-import { setCommentsReadOnlyState } from '@app/store/post_info/actions';
-import { setTheme } from '@app/store/theme/actions';
-import { addComment, updateComment } from '@app/store/comments/actions';
+} from 'store/user/actions';
+import { fetchComments, updateSorting, addComment, updateComment } from 'store/comments/actions';
+import { setCommentsReadOnlyState } from 'store/post-info/actions';
+import { setTheme } from 'store/theme/actions';
 
-import AuthPanel from '@app/components/auth-panel';
-import Settings from '@app/components/settings';
-import { ConnectedComment as Comment } from '@app/components/comment/connected-comment';
-import { CommentForm } from '@app/components/comment-form';
-import { Preloader } from '@app/components/preloader';
-import { Thread } from '@app/components/thread';
-import { Button } from '@app/components/button';
-import { uploadImage, getPreview } from '@app/common/api';
-import { isUserAnonymous } from '@app/utils/isUserAnonymous';
-import { bindActions } from '@app/utils/actionBinder';
-import postMessage from '@app/utils/postMessage';
-import { useActions } from '@app/hooks/useAction';
-import { setCollapse } from '@app/store/thread/actions';
+import AuthPanel from 'components/auth-panel';
+import Settings from 'components/settings';
+import { ConnectedComment as Comment } from 'components/comment/connected-comment';
+import { CommentForm } from 'components/comment-form';
+import Preloader from 'components/preloader';
+import { Thread } from 'components/thread';
+import { Button } from 'components/button';
+import { uploadImage, getPreview } from 'common/api';
+import { isUserAnonymous } from 'utils/isUserAnonymous';
+import { bindActions } from 'utils/actionBinder';
+import postMessage from 'utils/postMessage';
+import { useActions } from 'hooks/useAction';
+import { setCollapse } from 'store/thread/actions';
 
 const mapStateToProps = (state: StoreState) => ({
   sort: state.comments.sort,
@@ -160,8 +158,8 @@ export class Root extends Component<Props, State> {
     await this.props.fetchComments();
   };
 
-  checkUrlHash = (e: Event & { newURL?: string }) => {
-    const hash = e ? `#${e.newURL!.split('#')[1]}` : window.location.hash;
+  checkUrlHash = (e: Event & { newURL: string }) => {
+    const hash = e ? `#${e.newURL.split('#')[1]}` : window.location.hash;
 
     if (hash.indexOf(`#${COMMENT_NODE_CLASSNAME_PREFIX}`) === 0) {
       if (e) e.preventDefault();
@@ -273,7 +271,7 @@ export class Root extends Component<Props, State> {
                   mix="root__input"
                   mode="main"
                   user={props.user}
-                  onSubmit={(text, title) => this.props.addComment(text, title)}
+                  onSubmit={(text: string, title: string) => this.props.addComment(text, title)}
                   getPreview={this.props.getPreview}
                   uploadImage={imageUploadHandler}
                   simpleView={StaticStore.config.simple_view}
@@ -337,6 +335,12 @@ export class Root extends Component<Props, State> {
   }
 }
 
+const CopyrightLink = (title: string) => (
+  <a class="root__copyright-link" href="https://remark42.com/">
+    {title}
+  </a>
+);
+
 /** Root component connected to redux */
 export const ConnectedRoot: FunctionComponent = () => {
   const props = useSelector(mapStateToProps);
@@ -350,13 +354,7 @@ export const ConnectedRoot: FunctionComponent = () => {
         <FormattedMessage
           id="root.powered-by"
           defaultMessage="Powered by <a>Remark42</a>"
-          values={{
-            a: (title: string) => (
-              <a class="root__copyright-link" href="https://remark42.com/">
-                {title}
-              </a>
-            ),
-          }}
+          values={{ a: CopyrightLink }}
         />
       </p>
     </div>

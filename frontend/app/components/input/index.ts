@@ -1,3 +1,3 @@
-export { Input } from './input';
+import './input.css';
 
-import './input.scss';
+export { Input } from './input';

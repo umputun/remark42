@@ -1,6 +1,6 @@
-import { siteId } from '@app/common/settings';
-import { deleteMe } from '@app/common/api';
-import { StaticStore } from '@app/common/static_store';
+import { siteId } from 'common/settings';
+import { deleteMe } from 'common/api';
+import { StaticStore } from 'common/static-store';
 
 /**
  *  The right line breaks code in the body of inline email
@@ -37,7 +37,8 @@ link: ${link}
 
 export async function requestDeletion(): Promise<void> {
   const data = await deleteMe();
-  const email = StaticStore.config!.admin_email;
-  const { subject, message } = getDeleteInformationMessage(data.user_id, siteId!, data.link);
+  const email = StaticStore.config.admin_email;
+  const { subject, message } = getDeleteInformationMessage(data.user_id, siteId, data.link);
+
   window.location.href = `mailto:${email}?subject=${subject}&body=${message}`;
 }

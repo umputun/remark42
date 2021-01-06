@@ -1,19 +1,19 @@
-/** @jsx createElement */
-import { createElement, JSX, Component, FunctionComponent } from 'preact';
+import { h, JSX, Component, FunctionComponent } from 'preact';
 import b from 'bem-react-helper';
 import { useSelector } from 'react-redux';
-
-import { StoreState } from '@app/store';
-import { Comment } from '@app/common/types';
-import { fetchInfo } from '@app/store/user-info/actions';
-import { userInfo } from '@app/common/user-info-settings';
-
-import LastCommentsList from './last-comments-list';
-import { AvatarIcon } from '../avatar-icon';
-import postMessage from '@app/utils/postMessage';
-import { bindActions } from '@app/utils/actionBinder';
-import { useActions } from '@app/hooks/useAction';
 import { useIntl, defineMessages, FormattedMessage, IntlShape } from 'react-intl';
+
+import { StoreState } from 'store';
+import { Comment } from 'common/types';
+import { fetchInfo } from 'store/user-info/actions';
+import { userInfo } from 'common/user-info-settings';
+
+import postMessage from 'utils/postMessage';
+import { bindActions } from 'utils/actionBinder';
+import { useActions } from 'hooks/useAction';
+
+import { AvatarIcon } from '../avatar-icon';
+import LastCommentsList from './last-comments-list';
 
 const boundActions = bindActions({ fetchInfo });
 
@@ -76,7 +76,6 @@ class UserInfo extends Component<Props, State> {
           />
         </p>
         <p className="user-info__id">{user.id}</p>
-
         {!!comments && <LastCommentsList isLoading={isLoading} comments={comments} />}
       </div>
     );
@@ -94,7 +93,7 @@ class UserInfo extends Component<Props, State> {
   }
 }
 
-const commentsSelector = (state: StoreState) => state.userComments![userInfo.id!];
+const commentsSelector = (state: StoreState) => state.userComments[userInfo.id];
 
 export const ConnectedUserInfo: FunctionComponent = () => {
   const comments = useSelector(commentsSelector);

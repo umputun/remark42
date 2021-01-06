@@ -1,4 +1,4 @@
-import { BlockingDuration } from '@app/common/types';
+import { BlockingDuration } from 'common/types';
 import { IntlShape, defineMessages } from 'react-intl';
 
 const blockingMessages = defineMessages({

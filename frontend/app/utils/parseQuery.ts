@@ -1,6 +1,8 @@
 /** converts widnow.location.search into object */
-export default function parseQuery(search: string = window.location.search) {
-  if (search.length < 2) return {};
+export default function parseQuery<T extends {}>(search: string = window.location.search): T {
+  if (search.length < 2) {
+    return {} as T;
+  }
 
   return search
     .substr(1)
@@ -12,5 +14,5 @@ export default function parseQuery(search: string = window.location.search) {
         ...accum,
         [key]: value ? decodeURIComponent(value) : '',
       };
-    }, {} as Record<string, string>);
+    }, {} as T);
 }

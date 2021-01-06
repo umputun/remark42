@@ -1,4 +1,3 @@
-import { LastCommentsConfig } from '@app/common/config-types';
-export function getLocale(params: { [key: string]: string } | LastCommentsConfig): string {
+export function getLocale(params: { locale?: string; [key: string]: unknown }): string {
   return params.locale || 'en';
 }

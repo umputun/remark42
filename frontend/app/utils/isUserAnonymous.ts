@@ -1,4 +1,4 @@
-import { User } from '@app/common/types';
+import { User } from 'common/types';
 
 /**
  * Defines whether current client is logged in via `Anonymous provider`
