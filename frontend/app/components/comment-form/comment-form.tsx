@@ -108,12 +108,8 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
     textareaId = textareaId + 1;
     this.textareaId = `textarea_${textareaId}`;
 
-    const savedComments = getJsonItem(LS_SAVED_COMMENT_VALUE);
-    let text = '';
-
-    if (savedComments !== null && savedComments[props.id]) {
-      text = savedComments[props.id];
-    }
+    const savedComments = getJsonItem<Record<string, string>>(LS_SAVED_COMMENT_VALUE);
+    let text = savedComments?.[props.id] ?? '';
 
     if (props.value) {
       text = props.value;
