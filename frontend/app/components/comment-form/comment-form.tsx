@@ -505,7 +505,7 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
 
         <div className="comment-form__actions">
           {user ? (
-            <Fragment>
+            <>
               <div>
                 {!simpleView && (
                   <Button
@@ -530,19 +530,19 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
                   <FormattedMessage id="commentForm.subscribe-by" defaultMessage="Subscribe by" />{' '}
                   <SubscribeByRSS userId={user !== null ? user.id : null} />
                   {StaticStore.config.email_notifications && StaticStore.query.show_email_subscription && (
-                    <Fragment>
+                    <>
                       {' '}
                       <FormattedMessage id="commentForm.subscribe-or" defaultMessage="or" /> <SubscribeByEmail />
-                    </Fragment>
+                    </>
                   )}
                 </div>
               )}
-            </Fragment>
+            </>
           ) : (
-            <Fragment>
+            <>
               <Auth />
               {this.renderMarkdownTip()}
-            </Fragment>
+            </>
           )}
         </div>
 

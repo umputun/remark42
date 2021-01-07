@@ -262,7 +262,7 @@ export class Root extends Component<Props, State> {
               onUnblockSomeone={this.onUnblockSomeone}
             />
           ) : (
-            <Fragment>
+            <>
               {!isCommentsDisabled && (
                 <CommentForm
                   id={encodeURI(url || '')}
@@ -327,7 +327,7 @@ export class Root extends Component<Props, State> {
                   <Preloader mix="root__preloader" />
                 </div>
               )}
-            </Fragment>
+            </>
           )}
         </div>
       </Fragment>
