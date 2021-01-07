@@ -1,5 +1,5 @@
 .raw-content_theme_light {
-  blockquote {
+  & blockquote {
     border-left-color: var(--color45);
   }
 

@@ -6,9 +6,9 @@
     text-align: left;
     padding: 5px;
   }
+}
 
-  &_separator {
-    border-bottom: 1px solid var(--color15);
-    margin-bottom: 5px;
-  }
+.dropdown__item_separator {
+  border-bottom: 1px solid var(--color15);
+  margin-bottom: 5px;
 }

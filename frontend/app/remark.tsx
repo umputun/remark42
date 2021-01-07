@@ -3,9 +3,6 @@ import { bindActionCreators } from 'redux';
 import { Provider } from 'react-redux';
 import { IntlProvider } from 'react-intl';
 
-// importing css
-import 'components/list-comments';
-
 import { loadLocale } from 'utils/loadLocale';
 import { getLocale } from 'utils/getLocale';
 import { ConnectedRoot } from 'components/root';
