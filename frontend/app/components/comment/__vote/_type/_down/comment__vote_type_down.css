@@ -4,6 +4,6 @@
 
   &.comment__vote_selected,
   &:hover {
-    background-image: url('comment__vote_type_down.svg');
+    background-image: url('./comment__vote_type_down.svg');
   }
 }

@@ -5,7 +5,7 @@
   vertical-align: top;
   font-size: 0;
   line-height: 0;
-  background: url('comment__vote.svg') center no-repeat;
+  background: url('./comment__vote.svg') center no-repeat;
   background-size: contain;
   cursor: pointer;
 }

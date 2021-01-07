@@ -4,7 +4,7 @@
   height: 12px;
   margin-left: 4px;
   vertical-align: middle;
-  background: url('comment__verification.svg') center no-repeat;
+  background: url('./comment__verification.svg') center no-repeat;
   background-size: cover;
 
   &:hover {

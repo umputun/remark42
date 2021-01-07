@@ -3,7 +3,7 @@
   &.comment__vote_type_down {
     &,
     &:hover {
-      background-image: url('comment__vote_disabled.svg');
+      background-image: url('./comment__vote_disabled.svg');
       cursor: not-allowed;
     }
   }
