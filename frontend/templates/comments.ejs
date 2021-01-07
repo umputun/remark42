@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Remark42 demo</title>
+    <style>
+      /* stylelint-disable mavrin/stylelint-declaration-use-css-custom-properties */
+      body {
+        margin: 0;
+        padding: 20px;
+        text-align: center;
+        font: 18px/24px Helvetica, Arial, sans-serif;
+        color: #333;
+      }
+
+      article {
+        display: block;
+        text-align: left;
+        max-width: 640px;
+        margin: 0 auto;
+      }
+
+      h1 {
+        font-size: 50px;
+        margin-left: -0.05em;
+      }
+
+      ul {
+        color: rgb(23, 67, 78);
+      }
+
+      a {
+        color: rgb(79, 187, 214);
+        text-decoration: none;
+      }
+
+      a:hover {
+        color: rgb(94, 167, 177);
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <article>
+      <h1><a href="https://remark42.com/">Remark42</a></h1>
+      <p id="title"></p>
+      <div id="remark42"></div>
+    </article>
+
+    <script>
+      var query = (function() {
+        if (window.location.search.length === 0) return {};
+        return window.location.search
+          .substr(1)
+          .split('&')
+          .map(function(item) {
+            return item.split('=');
+          })
+          .reduce(function(carry, item) {
+            carry[item[0]] = decodeURIComponent(item[1]);
+            return carry;
+          }, {});
+      })();
+      if (query.site_id && query.url) {
+        var titleElement = document.getElementById('title');
+        titleElement.innerHTML = 'Comments for <a href="' + query.url + '">' + query.url + '</a>';
+        var remark_config = {
+          site_id: query.site_id,
+          host: '<%= htmlWebpackPlugin.options.REMARK_URL %>',
+          url: query.url
+        };
+        (function(c) {
+          for(var i = 0; i < c.length; i++){
+            var d = document, s = d.createElement('script');
+            s.src = remark_config.host + '/web/' +c[i] +'.js';
+            (d.head || d.body).appendChild(s);
+          }
+        })(remark_config.components || ['embed']);
+      }
+    </script>
+    <noscript> Please enable JavaScript to view the comments powered by Remark. </noscript>
+  </body>
+</html>

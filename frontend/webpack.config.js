@@ -11,11 +11,20 @@ const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
 const babelConfig = require('./.babelrc.js');
 
 const NODE_ID = 'remark42';
-const REMARK_URL = '{% REMARK_URL %}';
 const PUBLIC_PATH = '/web';
+const PORT = process.env.PORT || 9000;
+const REMARK_API_BASE_URL = process.env.REMARK_API_BASE_URL || 'http://127.0.0.1:8080';
+const DEVSERVER_BASE_PATH = process.env.DEVSERVER_BASE_PATH || 'http://127.0.0.1:9000';
 const PUBLIC_FOLDER_PATH = path.resolve(__dirname, 'public');
 const CUSTOM_PROPERTIES_PATH = path.resolve(__dirname, './app/custom-properties.css');
 
+/**
+ * Generates excludes for babel-loader
+ *
+ * Exclude is a module that has >=es6 code and resides in node_modules.
+ * By defaut babel-loader ignores everything from node_modules,
+ * so we have to exclude from ignore these modules
+ */
 const exclude = [
   '@github/markdown-toolbar-element',
   '@github/text-expander-element',
@@ -24,10 +33,28 @@ const exclude = [
   'intl-messageformat-parser',
 ].map(m => path.resolve(__dirname, 'node_modules', m));
 
-module.exports = (_, { mode, analyze, env }) => {
-  const isDev = mode === 'development';
+const htmlMinifyOptions = {
+  minifyCSS: true,
+  minifyJS: true,
+  removeComments: true,
+  removeRedundantAttributes: true,
+  removeScriptTypeAttributes: true,
+  removeStyleLinkTypeAttributes: true,
+  sortAttributes: true,
+  sortClassName: true,
+  useShortDoctype: true,
+};
 
+module.exports = (_, { mode, analyze }) => {
+  const isDev = mode === 'development';
+  // Use REMARK_URL or predefined host in dev environment
+  // In development: We use `http://127.0.0.1:9000` for access to backend and backend is accessable via dev server proxy
+  // In production: {% REMARK_URL %} will be replaced by `sed` on start of prod
+  const REMARK_URL = isDev ? DEVSERVER_BASE_PATH : '{% REMARK_URL %}';
+
+  // Add debug lib only for developmet throw webpack chuncks and keep code clear
   const preactDebug = isDev ? ['preact/debug'] : [];
+
   const entry = {
     embed: './app/embed.ts',
     counter: './app/counter.ts',
@@ -61,10 +88,12 @@ module.exports = (_, { mode, analyze, env }) => {
   const getTsRule = (babelEnvConfig = {}) => {
     return {
       test: /\.tsx?$/,
+      exclude: /node_modules/,
       use: [
         {
           loader: 'babel-loader',
           options: {
+            exclude,
             cacheDirectory: true,
             ...babelEnvConfig,
           },
@@ -76,20 +105,12 @@ module.exports = (_, { mode, analyze, env }) => {
           },
         },
       ],
-      /**
-       * Generates excludes for babel-loader
-       *
-       * Exclude is a module that has >=es6 code and resides in node_modules.
-       * By defaut babel-loader ignores everything from node_modules,
-       * so we have to exclude from ignore these modules
-       */
-      exclude,
     };
   };
 
   const cssRule = {
     test: /\.css$/,
-    exclude: /\.module\.css$/,
+    exclude: [/\.module\.css$/, /node_modules/],
     use: [
       isDev ? 'style-loader' : MiniCssExtractPlugin.loader,
       'css-loader',
@@ -110,6 +131,7 @@ module.exports = (_, { mode, analyze, env }) => {
 
   const cssModulesRule = {
     test: /\.module\.css$/,
+    exclude: /node_modules/,
     use: [
       isDev ? 'style-loader' : MiniCssExtractPlugin.loader,
       {
@@ -138,81 +160,21 @@ module.exports = (_, { mode, analyze, env }) => {
 
   const fileRule = {
     test: /\.(png|jpg|jpeg|gif|svg)$/,
+    exclude: /node_modules/,
     use: {
       loader: 'file-loader',
       options: {
-        name: isDev ? 'files/[name].[contenthash].[ext]' : 'files/[contenthash:6].[ext]',
+        name: '[name].[ext]',
+        publicPath: PUBLIC_PATH,
       },
     },
   };
 
   const rules = [cssRule, cssModulesRule, fileRule];
 
-  const plugins = [
-    ...(isDev
-      ? [
-          new CleanWebpackPlugin(),
-          new RefreshPlugin(),
-          new webpack.ProgressPlugin(),
-          new webpack.HotModuleReplacementPlugin(),
-        ]
-      : []),
-    new webpack.DefinePlugin({
-      'process.env.NODE_ENV': JSON.stringify(mode),
-      'process.env.REMARK_NODE': JSON.stringify(NODE_ID),
-      'process.env.REMARK_URL': isDev ? 'window.location.origin' : JSON.stringify(REMARK_URL),
-    }),
-    new MiniCssExtractPlugin({
-      filename: '[name].css',
-    }),
-    new ForkTsCheckerWebpackPlugin(),
-    new HtmlWebpackPlugin({
-      template: path.resolve(__dirname, 'templates/iframe.ejs'),
-      filename: 'iframe.html',
-      inject: false,
-      env: mode,
-    }),
-    new HtmlWebpackPlugin({
-      template: path.resolve(__dirname, 'templates/demo.ejs'),
-      filename: 'index.html',
-      inject: false,
-      REMARK_URL,
-    }),
-    new HtmlWebpackPlugin({
-      template: path.resolve(__dirname, 'templates/counter.ejs'),
-      filename: 'counter.html',
-      inject: false,
-      REMARK_URL,
-    }),
-    new HtmlWebpackPlugin({
-      template: path.resolve(__dirname, 'templates/last-comments.ejs'),
-      filename: 'last-comments.html',
-      inject: false,
-      REMARK_URL,
-    }),
-    new HtmlWebpackPlugin({
-      template: path.resolve(__dirname, 'templates/deleteme.ejs'),
-      filename: 'deleteme.html',
-      inject: false,
-      REMARK_URL,
-    }),
-    new HtmlWebpackPlugin({
-      template: path.resolve(__dirname, 'templates/markdown-help.html'),
-      filename: 'markdown-help.html',
-      inject: false,
-    }),
-    new HtmlWebpackPlugin({
-      template: path.resolve(__dirname, 'templates/privacy.html'),
-      filename: 'privacy.html',
-      inject: false,
-    }),
-  ];
-
   const devServer = {
-    host: '0.0.0.0',
-    port: process.env.PORT || 9000,
+    port: PORT,
     contentBase: PUBLIC_FOLDER_PATH,
-    publicPath: PUBLIC_PATH,
     disableHostCheck: true,
     historyApiFallback: true,
     quiet: true,
@@ -223,20 +185,31 @@ module.exports = (_, { mode, analyze, env }) => {
     overlay: false,
     stats: 'minimal',
     watchOptions: {
-      ignored: [path.resolve(__dirname, 'build'), path.resolve(__dirname, 'node_modules')],
+      ignored: [PUBLIC_FOLDER_PATH, path.resolve(__dirname, 'node_modules')],
     },
     proxy: [
-      { path: '/api', target: REMARK_URL, changeOrigin: true },
-      { path: '/auth', target: REMARK_URL, changeOrigin: true },
+      { path: '/api', target: REMARK_API_BASE_URL, changeOrigin: true },
+      { path: '/auth', target: REMARK_API_BASE_URL, changeOrigin: true },
     ],
   };
 
+  const plugins = [
+    ...(isDev ? [new CleanWebpackPlugin(), new RefreshPlugin(), new webpack.HotModuleReplacementPlugin()] : []),
+    new webpack.DefinePlugin({
+      'process.env.NODE_ENV': JSON.stringify(mode),
+      'process.env.REMARK_NODE': JSON.stringify(NODE_ID),
+      'process.env.REMARK_URL': isDev ? 'window.location.origin' : JSON.stringify(REMARK_URL),
+    }),
+    new MiniCssExtractPlugin({
+      filename: '[name].css',
+    }),
+  ];
+
   const config = {
     entry,
+    devtool: 'source-map',
     resolve,
     optimization,
-    stats: 'minimal',
-    devServer: env.WEBPACK_SERVE && devServer,
   };
 
   const legacyConfig = {
@@ -275,6 +248,63 @@ module.exports = (_, { mode, analyze, env }) => {
     },
     plugins: [
       ...plugins,
+      new ForkTsCheckerWebpackPlugin(),
+      new HtmlWebpackPlugin({
+        template: path.resolve(__dirname, 'templates/iframe.ejs'),
+        filename: 'iframe.html',
+        inject: false,
+        env: mode,
+        minify: htmlMinifyOptions,
+      }),
+      new HtmlWebpackPlugin({
+        template: path.resolve(__dirname, 'templates/demo.ejs'),
+        filename: 'index.html',
+        inject: false,
+        REMARK_URL,
+        minify: htmlMinifyOptions,
+      }),
+      new HtmlWebpackPlugin({
+        template: path.resolve(__dirname, 'templates/counter.ejs'),
+        filename: 'counter.html',
+        inject: false,
+        REMARK_URL,
+        minify: htmlMinifyOptions,
+      }),
+      // new HtmlWebpackPlugin({
+      //   template: path.resolve(__dirname, 'templates/comments.ejs'),
+      //   filename: 'comments.html',
+      //   inject: false,
+      //   env: mode,
+      //   REMARK_URL,
+      //   minify: htmlMinifyOptions,
+      // }),
+      new HtmlWebpackPlugin({
+        template: path.resolve(__dirname, 'templates/last-comments.ejs'),
+        filename: 'last-comments.html',
+        inject: false,
+        env: mode,
+        REMARK_URL,
+        minify: htmlMinifyOptions,
+      }),
+      new HtmlWebpackPlugin({
+        template: path.resolve(__dirname, 'templates/deleteme.ejs'),
+        filename: 'deleteme.html',
+        inject: false,
+        REMARK_URL,
+        minify: htmlMinifyOptions,
+      }),
+      new HtmlWebpackPlugin({
+        template: path.resolve(__dirname, 'templates/markdown-help.html'),
+        filename: 'markdown-help.html',
+        inject: false,
+        minify: htmlMinifyOptions,
+      }),
+      new HtmlWebpackPlugin({
+        template: path.resolve(__dirname, 'templates/privacy.html'),
+        filename: 'privacy.html',
+        inject: false,
+        minify: htmlMinifyOptions,
+      }),
       ...(analyze
         ? [
             new BundleAnalyzerPlugin({
@@ -285,11 +315,8 @@ module.exports = (_, { mode, analyze, env }) => {
           ]
         : []),
     ],
+    devServer,
   };
-
-  if (isDev) {
-    return modernConfig;
-  }
 
   return [legacyConfig, modernConfig];
 };

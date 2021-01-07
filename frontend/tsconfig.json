@@ -15,6 +15,7 @@
     "baseUrl": "app" ,
     "esModuleInterop": true,
     "skipLibCheck": true,
+    "sourceMap": true
   },
   "include": ["app/typings", "app/**/*.tsx", "app/**/*.ts"],
   "exclude": ["node_modules"]

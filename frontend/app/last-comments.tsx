@@ -22,27 +22,23 @@ async function init(): Promise<void> {
   const nodes = document.getElementsByClassName(LAST_COMMENTS_NODE_CLASSNAME);
 
   if (!nodes) {
-    console.error("Remark42: Can't find last comments nodes.");
-    return;
+    throw new Error("Remark42: Can't find last comments nodes.");
   }
 
-  try {
-    window.remark_config = window.remark_config || {};
-  } catch (e) {
-    console.error('Remark42: Config object is undefined.');
-    return;
+  if (!window.remark_config) {
+    throw new Error('Remark42: Config object is undefined');
   }
 
   const { site_id, max_last_comments } = window.remark_config;
 
   if (!site_id) {
-    console.error('Remark42: Site ID is undefined.');
-    return;
+    throw new Error('Remark42: Site ID is undefined.');
   }
 
   (Array.from(nodes) as HTMLElement[]).forEach(node => {
     const max = (node.dataset.max && parseInt(node.dataset.max, 10)) || max_last_comments || DEFAULT_LAST_COMMENTS_MAX;
     const locale = getLocale(window.remark_config);
+
     Promise.all([getLastComments(site_id, max), loadLocale(locale)]).then(([comments, messages]) => {
       try {
         render(
