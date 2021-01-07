@@ -43,7 +43,7 @@ const fetcher = methods.reduce<Partial<FetcherObject>>((acc, method) => {
       contentType = 'application/json',
       logError = true,
     } = typeof data === 'string' ? { url: data } : data;
-    const basename = `${BASE_URL}${overriddenApiBase}`;
+    const baseUrl = `${BASE_URL}${overriddenApiBase}`;
 
     const headers = new Headers({
       Accept: 'application/json',
@@ -54,11 +54,12 @@ const fetcher = methods.reduce<Partial<FetcherObject>>((acc, method) => {
       headers.append('Content-Type', contentType);
     }
 
+    // Save token in memory and pass it into headers in case if storing cookies is disabled
     if (activeJwtToken) {
       headers.append(HEADER_X_JWT, activeJwtToken);
     }
 
-    let rurl = `${basename}${url}`;
+    let rurl = `${baseUrl}${url}`;
 
     const parameters: RequestInit = {
       method,
@@ -118,7 +119,7 @@ const fetcher = methods.reduce<Partial<FetcherObject>>((acc, method) => {
           });
         }
 
-        if (res.headers.has('Content-Type') && res.headers.get('Content-Type')!.indexOf('application/json') === 0) {
+        if (res.headers.get('Content-Type')?.startsWith('application/json')) {
           return res.json();
         }
 

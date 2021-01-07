@@ -1,6 +1,6 @@
 #!/bin/sh
 echo "prepare environment"
-# replace BASE_URL constant by REMARK_URL
+# replace {% REMARK_URL %} by content of REMARK_URL variable
 sed -i "s|{% REMARK_URL %}|${REMARK_URL}|g" /srv/web/*.html
 sed -i "s|{% REMARK_URL %}|${REMARK_URL}|g" /srv/web/*.js
 

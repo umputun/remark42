@@ -19,6 +19,7 @@ module.exports = {
   setupFilesAfterEnv: [
     'jest-localstorage-mock',
     '<rootDir>/app/__mocks__/headers.ts',
+    '<rootDir>/app/__stubs__/remark-config.ts',
     '<rootDir>/app/__stubs__/static-config.ts',
   ],
   collectCoverageFrom: ['!**/__mocks__/**', '!**/__stubs__/**', '!app/locales/**'],
