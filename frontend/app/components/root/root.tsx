@@ -29,13 +29,13 @@ import { fetchComments, updateSorting, addComment, updateComment } from 'store/c
 import { setCommentsReadOnlyState } from 'store/post-info/actions';
 import { setTheme } from 'store/theme/actions';
 
-import AuthPanel from 'components/auth-panel';
-import Settings from 'components/settings';
-import { ConnectedComment as Comment } from 'components/comment/connected-comment';
-import { CommentForm } from 'components/comment-form';
-import Preloader from 'components/preloader';
-import { Thread } from 'components/thread';
 import { Button } from 'components/button';
+import Preloader from 'components/preloader';
+import Settings from 'components/settings';
+import AuthPanel from 'components/auth-panel';
+import { CommentForm } from 'components/comment-form';
+import { Thread } from 'components/thread';
+import { ConnectedComment as Comment } from 'components/comment/connected-comment';
 import { uploadImage, getPreview } from 'common/api';
 import { isUserAnonymous } from 'utils/isUserAnonymous';
 import { bindActions } from 'utils/actionBinder';

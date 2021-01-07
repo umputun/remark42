@@ -1,5 +1,3 @@
-import './styles';
-
 import { h, JSX, Component, createRef, ComponentType } from 'preact';
 import b from 'bem-react-helper';
 
@@ -23,6 +21,8 @@ import { FormattedMessage, useIntl, IntlShape, defineMessages } from 'react-intl
 import { getVoteMessage, VoteMessagesTypes } from './getVoteMessage';
 import { getBlockingDurations } from './getBlockingDurations';
 import { boundActions } from './connected-comment';
+
+import './styles';
 
 const messages = defineMessages({
   deleteMessage: {

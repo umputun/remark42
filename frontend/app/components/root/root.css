@@ -5,8 +5,8 @@
   &::selection {
     background: var(--color42);
   }
+}
 
-  &_user-info {
-    position: static;
-  }
+.root_user-info {
+  position: static;
 }
