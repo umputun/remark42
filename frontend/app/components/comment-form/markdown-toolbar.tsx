@@ -33,7 +33,7 @@ interface FileInputEvent extends Event {
 const messages = defineMessages({
   bold: {
     id: 'toolbar.bold',
-    defaultMessage: 'Add bold text <cmd-b>',
+    defaultMessage: 'Add bold text {shortcut}',
   },
   header: {
     id: 'toolbar.header',
@@ -41,7 +41,7 @@ const messages = defineMessages({
   },
   italic: {
     id: 'toolbar.italic',
-    defaultMessage: 'Add italic text <cmd-i>',
+    defaultMessage: 'Add italic text {shortcut}',
   },
   quote: {
     id: 'toolbar.quote',
@@ -53,7 +53,7 @@ const messages = defineMessages({
   },
   link: {
     id: 'toolbar.link',
-    defaultMessage: 'Add a link <cmd-k>',
+    defaultMessage: 'Add a link {shortcut}',
   },
   unorderedList: {
     id: 'toolbar.unordered-list',
@@ -84,12 +84,12 @@ export default class MarkdownToolbar extends Component<Props> {
   render(props: Props) {
     const intl = props.intl;
 
-    const boldLabel = intl.formatMessage(messages.bold);
+    const boldLabel = intl.formatMessage(messages.bold, { shortcut: '<cmd-b>' });
     const headerLabel = intl.formatMessage(messages.header);
-    const italicLabel = intl.formatMessage(messages.italic);
+    const italicLabel = intl.formatMessage(messages.italic, { shortcut: '<cmd-i>' });
     const quoteLabel = intl.formatMessage(messages.quote);
     const codeLabel = intl.formatMessage(messages.code);
-    const linkLabel = intl.formatMessage(messages.link);
+    const linkLabel = intl.formatMessage(messages.link, { shortcut: '<cmd-k>' });
     const unorderedListLabel = intl.formatMessage(messages.unorderedList);
     const orderedListLabel = intl.formatMessage(messages.orderedList);
     const attachImageLabel = intl.formatMessage(messages.attachImage);
