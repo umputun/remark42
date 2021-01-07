@@ -91,7 +91,7 @@ export class AuthPanel extends Component<Props, State> {
     const isUserAnonymous = user && user.id.substr(0, 10) === 'anonymous_';
 
     return (
-      <Fragment>
+      <>
         <FormattedMessage id="authPanel.logged-as" defaultMessage="You logged in as" />{' '}
         <Dropdown title={user.name} titleClass="auth-panel__user-dropdown-title" theme={theme}>
           <DropdownItem separator={!isUserAnonymous}>
@@ -115,7 +115,7 @@ export class AuthPanel extends Component<Props, State> {
         <Button kind="link" theme={theme} onClick={onSignOut}>
           <FormattedMessage id="authPanel.logout" defaultMessage="Logout?" />
         </Button>
-      </Fragment>
+      </>
     );
   };
 

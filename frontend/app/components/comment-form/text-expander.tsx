@@ -95,5 +95,5 @@ export const TextExpander: FunctionalComponent = ({ children }) => {
     return <text-expander ref={expanderRef}>{children}</text-expander>;
   }
 
-  return <Fragment>{children}</Fragment>;
+  return <>{children}</>;
 };

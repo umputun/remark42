@@ -78,7 +78,7 @@ const renderEmailPart = (
   handleChangeEmail: (e: Event) => void,
   emailAddressRef: PropRef<HTMLInputElement>
 ) => (
-  <Fragment>
+  <>
     <div className="comment-form__subscribe-by-email__title">
       <FormattedMessage id="subscribeByEmail.subscribe-to-replies" defaultMessage="Subscribe to replies" />
     </div>
@@ -90,7 +90,7 @@ const renderEmailPart = (
       onInput={handleChangeEmail}
       disabled={loading}
     />
-  </Fragment>
+  </>
 );
 
 const renderTokenPart = (
