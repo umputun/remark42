@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <link rel="modulepreload" src="remark.mjs" />
+    <link rel="modulepreload" href="remark.mjs" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Comments</title>
     <base target="_blank" />
@@ -168,12 +168,10 @@
       (function (d) {
         const r = d.head || d.body;
         const s = document.createElement('script');
-        if ('noModule' in s) {
-          s.src = 'remark.mjs';
-        } else {
-          s.src = 'remark.js';
-          s.async = true;
-        }
+
+        s.src = 'noModule' in s ? 'remark.mjs' : 'remark.js';
+        s.async = true;
+        s.defer = true;
         r.appendChild(s);
       })(document);
     </script>
