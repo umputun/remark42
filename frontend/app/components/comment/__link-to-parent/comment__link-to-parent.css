@@ -3,7 +3,7 @@
   height: 10px;
   width: 16px;
   vertical-align: -1px;
-  background: url('comment__link-to-parent.svg') center no-repeat;
+  background: url('./comment__link-to-parent.svg') center no-repeat;
   cursor: pointer;
 
   &:hover {
