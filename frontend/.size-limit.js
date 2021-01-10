@@ -8,20 +8,28 @@ module.exports = [
     limit: '2.5 KB',
   },
   {
-    limit: '70 KB',
     path: 'public/remark.mjs',
+    limit: '70 KB',
   },
   {
-    limit: '73.5 KB',
     path: 'public/remark.js',
+    limit: '73.5 KB',
   },
   {
-    limit: '31 KB',
+    path: 'public/remark.css',
+    limit: '9 KB',
+  },
+  {
     path: 'public/last-comments.mjs',
+    limit: '31 KB',
   },
   {
-    limit: '38 KB',
     path: 'public/last-comments.js',
+    limit: '38 KB',
+  },
+  {
+    path: 'public/last-comments.css',
+    limit: '6 KB',
   },
   {
     path: 'public/deleteme.mjs',
