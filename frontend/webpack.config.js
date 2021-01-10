@@ -159,19 +159,20 @@ module.exports = (_, { mode, analyze }) => {
     ],
   };
 
-  const fileRule = {
+  const urlRule = {
     test: /\.(png|jpg|jpeg|gif|svg)$/,
     exclude: /node_modules/,
     use: {
-      loader: 'file-loader',
+      loader: 'url-loader',
       options: {
         name: '[name].[ext]',
         publicPath: PUBLIC_PATH,
+        limit: 1200,
       },
     },
   };
 
-  const rules = [cssRule, cssModulesRule, fileRule];
+  const rules = [cssRule, cssModulesRule, urlRule];
 
   const devServer = {
     port: PORT,
