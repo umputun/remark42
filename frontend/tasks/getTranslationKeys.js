@@ -2,7 +2,8 @@ const defaultMessages = require('../extracted-messages/messages');
 
 const keyMessagePairs = [];
 const keys = [];
-defaultMessages.forEach(({ id, defaultMessage }) => {
+
+Object.entries(defaultMessages).forEach(([id, { defaultMessage }]) => {
   keyMessagePairs.push([id, defaultMessage]);
   keys.push(id);
 });
