@@ -19,8 +19,8 @@
     "size": "cross-env NODE_ENV=production run-s build check:size",
     "prettier": "prettier --write './**/*.{js,ts,tsx,css,html}'",
     "translation:extract": "formatjs extract --out-file=./extracted-messages/messages.json '**/!(*.d).ts?(x)'",
-    "translation:generate": "node ./tasks/generateTranslations.js",
-    "translation:check": "node ./tasks/checkTranslations.js"
+    "translation:generate": "node ./tasks/generateDictionary.js",
+    "translation:check": "node ./tasks/checkTranslation.js"
   },
   "engines": {
     "node": ">=12.11",

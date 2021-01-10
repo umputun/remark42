@@ -6,10 +6,9 @@ const enMessages = {};
 export async function loadLocale(locale: string): Promise<Record<string, string>> {
 ${locales
   .map(
-    locale =>
-      `  if (locale === '${locale}') {
-    return import(/* webpackChunkName: "${locale}.locale" */ '../locales/${locale}.json')
-      .then(m => m.default)
+    locale => `  if (locale === '${locale}') {
+    return import(/* webpackChunkName: "${locale}" */ '../locales/${locale}.json')
+      .then(res => res.default)
       .catch(() => enMessages);
   }
 `
@@ -19,4 +18,4 @@ ${locales
 }\n`;
 }
 
-module.exports = renderLoadLocale;
+module.exports = { renderLoadLocale };
