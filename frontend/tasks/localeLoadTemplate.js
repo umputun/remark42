@@ -7,9 +7,7 @@ export async function loadLocale(locale: string): Promise<Record<string, string>
 ${locales
   .map(
     locale => `  if (locale === '${locale}') {
-    return import(/* webpackChunkName: "${locale}" */ '../locales/${locale}.json')
-      .then(res => res.default)
-      .catch(() => enMessages);
+    return import(/* webpackChunkName: "${locale}" */ '../locales/${locale}.json').then((res) => res.default).catch(() => enMessages);
   }
 `
   )
