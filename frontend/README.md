@@ -1,5 +1,4 @@
 # Frontend guide
-
 ### Code Style
 
 - project uses typescript to statically analyze code
