@@ -1,8 +1,7 @@
 #!/bin/sh
 echo "prepare environment"
 # replace {% REMARK_URL %} by content of REMARK_URL variable
-sed -i "s|{% REMARK_URL %}|${REMARK_URL}|g" /srv/web/*.html
-sed -i "s|{% REMARK_URL %}|${REMARK_URL}|g" /srv/web/*.js
+find . -regex '.*\.\(html\|js\|mjs\)$' -print -exec sed -i "s|{% REMARK_URL %}|${REMARK_URL}|g" {} \;
 
 if [ -n "${SITE_ID}" ]; then
   #replace "site_id: 'remark'" by SITE_ID
