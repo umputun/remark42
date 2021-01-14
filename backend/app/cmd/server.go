@@ -79,10 +79,13 @@ type ServerCommand struct {
 
 	Auth struct {
 		TTL struct {
-			JWT           time.Duration `long:"jwt" env:"JWT" default:"5m" description:"jwt TTL"`
-			SendJWTHeader bool          `long:"send-jwt-header" env:"SEND_JWT_HEADER" description:"send JWT as a header instead of cookie"`
-			Cookie        time.Duration `long:"cookie" env:"COOKIE" default:"200h" description:"auth cookie TTL"`
+			JWT    time.Duration `long:"jwt" env:"JWT" default:"5m" description:"jwt TTL"`
+			Cookie time.Duration `long:"cookie" env:"COOKIE" default:"200h" description:"auth cookie TTL"`
 		} `group:"ttl" namespace:"ttl" env-namespace:"TTL"`
+
+		SendJWTHeader bool   `long:"send-jwt-header" env:"SEND_JWT_HEADER" description:"send JWT as a header instead of cookie"`
+		SameSite      string `long:"same-site" env:"SAME_SITE" description:"set same site policy for cookies" choice:"default" choice:"none" choice:"lax" choice:"strict" default:"default"` // nolint
+
 		Google    AuthGroup `group:"google" namespace:"google" env-namespace:"GOOGLE" description:"Google OAuth"`
 		Github    AuthGroup `group:"github" namespace:"github" env-namespace:"GITHUB" description:"Github OAuth"`
 		Facebook  AuthGroup `group:"facebook" namespace:"facebook" env-namespace:"FACEBOOK" description:"Facebook OAuth"`
@@ -445,7 +448,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		SimpleView:         s.SimpleView,
 		ProxyCORS:          s.ProxyCORS,
 		AllowedAncestors:   s.AllowedHosts,
-		SendJWTHeader:      s.Auth.TTL.SendJWTHeader,
+		SendJWTHeader:      s.Auth.SendJWTHeader,
 	}
 
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = s.LowScore, s.CriticalScore
@@ -899,8 +902,9 @@ func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Sto
 		URL:            strings.TrimSuffix(s.RemarkURL, "/"),
 		Issuer:         "remark42",
 		TokenDuration:  s.Auth.TTL.JWT,
-		SendJWTHeader:  s.Auth.TTL.SendJWTHeader,
 		CookieDuration: s.Auth.TTL.Cookie,
+		SendJWTHeader:  s.Auth.SendJWTHeader,
+		SameSiteCookie: s.parseSameSite(s.Auth.SameSite),
 		SecureCookies:  strings.HasPrefix(s.RemarkURL, "https://"),
 		SecretReader: token.SecretFunc(func(aud string) (string, error) { // get secret per site
 			return admns.Key()
@@ -958,6 +962,21 @@ func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Sto
 	}
 
 	return authenticator, nil
+}
+
+func (s *ServerCommand) parseSameSite(ss string) http.SameSite {
+	switch strings.ToLower(ss) {
+	case "default":
+		return http.SameSiteDefaultMode
+	case "none":
+		return http.SameSiteNoneMode
+	case "lax":
+		return http.SameSiteLaxMode
+	case "strict":
+		return http.SameSiteStrictMode
+	default:
+		return http.SameSiteDefaultMode
+	}
 }
 
 // authRefreshCache used by authenticator to minimize repeatable token refreshes

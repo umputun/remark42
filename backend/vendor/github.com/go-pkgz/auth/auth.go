@@ -53,7 +53,8 @@ type Opts struct {
 	XSRFHeaderKey  string // default "X-XSRF-TOKEN"
 	JWTQuery       string // default "token"
 
-	SendJWTHeader bool // if enabled send JWT as a header instead of cookie
+	SendJWTHeader  bool          // if enabled send JWT as a header instead of cookie
+	SameSiteCookie http.SameSite // limit cross-origin requests with SameSite cookie attribute
 
 	Issuer string // optional value for iss claim, usually the application name, default "go-pkgz/auth"
 
