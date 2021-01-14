@@ -586,6 +586,29 @@ func TestServer_loadEmailTemplate(t *testing.T) {
 	assert.Equal(t, r, "")
 }
 
+func TestServerCommand_parseSameSite(t *testing.T) {
+
+	tbl := []struct {
+		inp string
+		res http.SameSite
+	}{
+		{"", http.SameSiteDefaultMode},
+		{"default", http.SameSiteDefaultMode},
+		{"blah", http.SameSiteDefaultMode},
+		{"none", http.SameSiteNoneMode},
+		{"lax", http.SameSiteLaxMode},
+		{"strict", http.SameSiteStrictMode},
+	}
+
+	cmd := ServerCommand{}
+	for i, tt := range tbl {
+		tt := tt
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			assert.Equal(t, tt.res, cmd.parseSameSite(tt.inp))
+		})
+	}
+}
+
 func chooseRandomUnusedPort() (port int) {
 	for i := 0; i < 10; i++ {
 		port = 40000 + int(rand.Int31n(10000))
