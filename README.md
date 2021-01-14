@@ -134,6 +134,8 @@ _this is the recommended way to run remark42_
 | image.resize-height     | IMAGE_RESIZE_HEIGHT     | `900`                    | height of resized image                         |
 | auth.ttl.jwt            | AUTH_TTL_JWT            | `5m`                     | jwt TTL                                         |
 | auth.ttl.cookie         | AUTH_TTL_COOKIE         | `200h`                   | cookie TTL                                      |
+| auth.send-jwt-header    | AUTH_SEND_JWT_HEADER    | `false`                  | send JWT as a header instead of cookie          |
+| auth.same-site          | AUTH_SAME_SITE          | `default`                | set same site policy for cookies (`default`, `none`, `lax` or `strict`)|
 | auth.google.cid         | AUTH_GOOGLE_CID         |                          | Google OAuth client ID                          |
 | auth.google.csec        | AUTH_GOOGLE_CSEC        |                          | Google OAuth client secret                      |
 | auth.facebook.cid       | AUTH_FACEBOOK_CID       |                          | Facebook OAuth client ID                        |
