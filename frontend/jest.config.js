@@ -22,7 +22,7 @@ module.exports = {
     '<rootDir>/app/__stubs__/remark-config.ts',
     '<rootDir>/app/__stubs__/static-config.ts',
   ],
-  collectCoverageFrom: ['!**/__mocks__/**', '!**/__stubs__/**', '!app/locales/**'],
+  collectCoverageFrom: ['app/**/*.{ts,tsx}', '!**/__mocks__/**', '!**/__stubs__/**', '!app/locales/**'],
   globals: {
     'ts-jest': {
       babelConfig: true,
