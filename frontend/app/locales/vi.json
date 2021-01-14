@@ -1,8 +1,8 @@
 {
     "anonymousLoginForm.length-limit": "Tên người dùng phải có ít nhất 3 ký tự",
-    "anonymousLoginForm.log-in": "Đăng nhập",
+    "anonymousLoginForm.log-in": "Log in",
     "anonymousLoginForm.symbol-limit": "Tên người dùng chỉ được chứa các chữ cái, số, dấu gạch dưới hoặc dấu cách",
-    "anonymousLoginForm.user-name": "Tên bạn",
+    "anonymousLoginForm.user-name": "Tên người dùng",
     "authPanel.anonymous-provider": "Ẩn danh",
     "authPanel.disable-comments": "Tắt bình luận",
     "authPanel.disabled-cookies": "Tắt tính năng chặn cookies của bên thứ ba để đăng nhập hoặc mở nhận xét trong",
