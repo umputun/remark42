@@ -63,10 +63,11 @@ type Opts struct {
 	XSRFCookieName string
 	XSRFHeaderKey  string
 	JWTQuery       string
-	AudienceReader Audience // allowed aud values
-	Issuer         string   // optional value for iss claim, usually application name
-	AudSecrets     bool     // uses different secret for differed auds. important: adds pre-parsing of unverified token
-	SendJWTHeader  bool     // if enabled send JWT as a header instead of cookie
+	AudienceReader Audience      // allowed aud values
+	Issuer         string        // optional value for iss claim, usually application name
+	AudSecrets     bool          // uses different secret for differed auds. important: adds pre-parsing of unverified token
+	SendJWTHeader  bool          // if enabled send JWT as a header instead of cookie
+	SameSite       http.SameSite // define a cookie attribute making it impossible for the browser to send this cookie cross-site
 }
 
 // NewService makes JWT service
@@ -238,11 +239,11 @@ func (j *Service) Set(w http.ResponseWriter, claims Claims) (Claims, error) {
 	}
 
 	jwtCookie := http.Cookie{Name: j.JWTCookieName, Value: tokenString, HttpOnly: true, Path: "/",
-		MaxAge: cookieExpiration, Secure: j.SecureCookies}
+		MaxAge: cookieExpiration, Secure: j.SecureCookies, SameSite: j.SameSite}
 	http.SetCookie(w, &jwtCookie)
 
 	xsrfCookie := http.Cookie{Name: j.XSRFCookieName, Value: claims.Id, HttpOnly: false, Path: "/",
-		MaxAge: cookieExpiration, Secure: j.SecureCookies}
+		MaxAge: cookieExpiration, Secure: j.SecureCookies, SameSite: j.SameSite}
 	http.SetCookie(w, &xsrfCookie)
 
 	return claims, nil
@@ -311,11 +312,11 @@ func (j *Service) IsExpired(claims Claims) bool {
 // Reset token's cookies
 func (j *Service) Reset(w http.ResponseWriter) {
 	jwtCookie := http.Cookie{Name: j.JWTCookieName, Value: "", HttpOnly: false, Path: "/",
-		MaxAge: -1, Expires: time.Unix(0, 0), Secure: j.SecureCookies}
+		MaxAge: -1, Expires: time.Unix(0, 0), Secure: j.SecureCookies, SameSite: j.SameSite}
 	http.SetCookie(w, &jwtCookie)
 
 	xsrfCookie := http.Cookie{Name: j.XSRFCookieName, Value: "", HttpOnly: false, Path: "/",
-		MaxAge: -1, Expires: time.Unix(0, 0), Secure: j.SecureCookies}
+		MaxAge: -1, Expires: time.Unix(0, 0), Secure: j.SecureCookies, SameSite: j.SameSite}
 	http.SetCookie(w, &xsrfCookie)
 }
 

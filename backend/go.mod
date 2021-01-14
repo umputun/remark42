@@ -12,7 +12,7 @@ require (
 	github.com/go-chi/chi v4.1.1+incompatible
 	github.com/go-chi/cors v1.1.1
 	github.com/go-chi/render v1.0.1
-	github.com/go-pkgz/auth v1.13.1
+	github.com/go-pkgz/auth v1.13.2-0.20210114092942-d2b22c3f3881
 	github.com/go-pkgz/jrpc v0.2.0
 	github.com/go-pkgz/lcw v0.8.1
 	github.com/go-pkgz/lgr v0.10.4
