@@ -66,7 +66,7 @@ class UserInfo extends Component<Props, State> {
     }
 
     return (
-      <div className={b('user-info', {})}>
+      <div className={b('root user-info', {})}>
         <AvatarIcon mix="user-info__avatar" picture={user.picture} />
         <p className="user-info__title">
           <FormattedMessage
@@ -99,5 +99,6 @@ export const ConnectedUserInfo: FunctionComponent = () => {
   const comments = useSelector(commentsSelector);
   const actions = useActions(boundActions);
   const intl = useIntl();
+
   return <UserInfo comments={comments} {...actions} intl={intl} />;
 };
