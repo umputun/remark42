@@ -113,6 +113,7 @@ func NewService(opts Opts) (res *Service) {
 		Issuer:         res.issuer,
 		AudienceReader: opts.AudienceReader,
 		AudSecrets:     opts.AudSecrets,
+		SameSite:       opts.SameSiteCookie,
 	})
 
 	if opts.SecretReader == nil {
