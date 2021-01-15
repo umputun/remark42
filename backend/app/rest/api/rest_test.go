@@ -326,7 +326,7 @@ func TestRest_cacheControl(t *testing.T) {
 			assert.Equal(t, http.StatusOK, resp.StatusCode)
 			t.Logf("%+v", resp.Header)
 			assert.Equal(t, `"`+tt.etag+`"`, resp.Header.Get("Etag"))
-			assert.Equal(t, `max-age=`+strconv.Itoa(int(tt.exp.Seconds())), resp.Header.Get("Cache-Control"))
+			assert.Equal(t, `max-age=`+strconv.Itoa(int(tt.exp.Seconds()))+", no-cache", resp.Header.Get("Cache-Control"))
 
 		})
 	}

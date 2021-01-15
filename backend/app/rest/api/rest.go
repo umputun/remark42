@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -587,7 +586,7 @@ func cacheControl(expiration time.Duration, version string) func(http.Handler) h
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			e := `"` + etag(r, version) + `"`
 			w.Header().Set("Etag", e)
-			w.Header().Set("Cache-Control", "max-age="+strconv.Itoa(int(expiration.Seconds())))
+			w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%d, no-cache", int(expiration.Seconds())))
 
 			if match := r.Header.Get("If-None-Match"); match != "" {
 				if strings.Contains(match, e) {
