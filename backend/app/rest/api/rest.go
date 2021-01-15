@@ -231,7 +231,6 @@ func (s *Rest) routes() chi.Router {
 		rapi.Group(func(rava chi.Router) {
 			rava.Use(middleware.Timeout(5 * time.Second))
 			rava.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(100, nil)))
-			rava.Use(middleware.NoCache)
 			rava.Mount("/avatar", avatarHandler)
 		})
 
