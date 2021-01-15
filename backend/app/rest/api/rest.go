@@ -219,7 +219,7 @@ func (s *Rest) routes() chi.Router {
 
 	router.Group(func(r chi.Router) {
 		r.Use(middleware.Timeout(5 * time.Second))
-		r.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(100, nil)), middleware.NoCache)
+		r.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(100, nil)))
 		r.Mount("/avatar", avatarHandler)
 	})
 
