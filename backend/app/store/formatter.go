@@ -59,6 +59,7 @@ func (f *CommentFormatter) FormatText(txt string) (res string) {
 		res = conv.Convert(res)
 	}
 	res = f.shortenAutoLinks(res, shortURLLen)
+	res = f.lazyImage(res)
 	return res
 }
 
@@ -107,4 +108,20 @@ func (f *CommentFormatter) unEscape(txt string) (res string) {
 		res = strings.Replace(res, e.from, e.to, -1)
 	}
 	return res
+}
+
+// lazyImage adds loading=“lazy” attribute to all images
+func (f *CommentFormatter) lazyImage(commentHTML string) (resHTML string) {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(commentHTML))
+	if err != nil {
+		return commentHTML
+	}
+	doc.Find("img").Each(func(i int, s *goquery.Selection) {
+		s.SetAttr("loading", "lazy")
+	})
+	resHTML, err = doc.Find("body").Html()
+	if err != nil {
+		return commentHTML
+	}
+	return resHTML
 }
