@@ -1,6 +1,7 @@
 package store
 
 import (
+	"strconv"
 	"testing"
 	"time"
 
@@ -23,6 +24,11 @@ func TestFormatter_FormatText(t *testing.T) {
 			"http://127.0.0.1/some-long-link/12345/678901234567890",
 			"<p><a href=\"http://127.0.0.1/some-long-link/12345/678901234567890\">http://127.0.0." +
 				"1/some-long-link/12345/6789012...</a></p>\n!converted", "links",
+		},
+		{
+			"something <img src=\"some.png\"/>  _aaa_",
+			"<p>something <img src=\"some.png\" loading=\"lazy\"/>  <em>aaa</em></p>\n!converted",
+			"lazy image",
 		},
 		{"&mdash; not translated #354", "<p>— not translated #354</p>\n!converted", "mdash"},
 		{"smth\n```go\nfunc main(aa string) int {return 0}\n```", `<p>smth</p>
@@ -113,4 +119,25 @@ func TestFormatter_ShortenAutoLinks(t *testing.T) {
 		got := f.shortenAutoLinks(tt.in, tt.max)
 		assert.Equalf(t, tt.out, got, "check #%d", n)
 	}
+}
+
+func TestCommentFormatter_lazyImage(t *testing.T) {
+
+	tbl := []struct {
+		inp, out string
+	}{
+		{"", ""},
+		{`blah <img src="some.png" />`, `blah <img src="some.png" loading="lazy"/>`},
+		{`blah <img src="some.png" loading="lazy"/>`, `blah <img src="some.png" loading="lazy"/>`},
+		{`blah <img src="some.png"/> ххх <img src=http://example.com/pp2.jpg>`, `blah <img src="some.png" loading="lazy"/> ххх <img src="http://example.com/pp2.jpg" loading="lazy"/>`},
+	}
+
+	f := NewCommentFormatter(nil)
+	for i, tt := range tbl {
+		tt := tt
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			assert.Equal(t, tt.out, f.lazyImage(tt.inp))
+		})
+	}
+
 }
