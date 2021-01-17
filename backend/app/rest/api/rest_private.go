@@ -263,7 +263,8 @@ func (s *private) sendEmailConfirmationCtrl(w http.ResponseWriter, r *http.Reque
 	address := r.URL.Query().Get("address")
 	siteID := r.URL.Query().Get("site")
 	if address == "" {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, errors.New("missing parameter"), "address parameter is required", rest.ErrInternal)
+		rest.SendErrorJSON(w, r, http.StatusBadRequest,
+			errors.New("missing parameter"), "address parameter is required", rest.ErrInternal)
 		return
 	}
 	existingAddress, err := s.dataService.GetUserEmail(siteID, user.ID)
@@ -271,7 +272,8 @@ func (s *private) sendEmailConfirmationCtrl(w http.ResponseWriter, r *http.Reque
 		log.Printf("[WARN] can't read email for %s, %v", user.ID, err)
 	}
 	if address == existingAddress {
-		rest.SendErrorJSON(w, r, http.StatusConflict, errors.New("already verified"), "email address is already verified for this user", rest.ErrInternal)
+		rest.SendErrorJSON(w, r, http.StatusConflict,
+			errors.New("already verified"), "email address is already verified for this user", rest.ErrInternal)
 		return
 	}
 	claims := token.Claims{
@@ -358,7 +360,8 @@ func (s *private) setConfirmedEmailCtrl(w http.ResponseWriter, r *http.Request) 
 func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 	tkn := r.URL.Query().Get("tkn")
 	if tkn == "" {
-		rest.SendErrorHTML(w, r, http.StatusBadRequest, errors.New("missing parameter"), "token parameter is required", rest.ErrInternal, s.templates)
+		rest.SendErrorHTML(w, r, http.StatusBadRequest,
+			errors.New("missing parameter"), "token parameter is required", rest.ErrInternal, s.templates)
 		return
 	}
 	siteID := r.URL.Query().Get("site")
@@ -370,13 +373,15 @@ func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if s.authenticator.TokenService().IsExpired(confClaims) {
-		rest.SendErrorHTML(w, r, http.StatusForbidden, errors.New("expired"), "failed to verify confirmation token", rest.ErrInternal, s.templates)
+		rest.SendErrorHTML(w, r, http.StatusForbidden,
+			errors.New("expired"), "failed to verify confirmation token", rest.ErrInternal, s.templates)
 		return
 	}
 
 	elems := strings.Split(confClaims.Handshake.ID, "::")
 	if len(elems) != 2 {
-		rest.SendErrorHTML(w, r, http.StatusBadRequest, errors.New(confClaims.Handshake.ID), "invalid handshake token", rest.ErrInternal, s.templates)
+		rest.SendErrorHTML(w, r, http.StatusBadRequest,
+			errors.New(confClaims.Handshake.ID), "invalid handshake token", rest.ErrInternal, s.templates)
 		return
 	}
 	userID := elems[0]
@@ -387,11 +392,14 @@ func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[WARN] can't read email for %s, %v", userID, err)
 	}
 	if existingAddress == "" {
-		rest.SendErrorHTML(w, r, http.StatusConflict, errors.New("user is not subscribed"), "user does not have active email subscription", rest.ErrInternal, s.templates)
+		rest.SendErrorHTML(w, r, http.StatusConflict,
+			errors.New("user is not subscribed"), "user does not have active email subscription", rest.ErrInternal, s.templates)
 		return
 	}
 	if address != existingAddress {
-		rest.SendErrorHTML(w, r, http.StatusBadRequest, errors.New("wrong email unsubscription"), "email address in request does not match known for this user", rest.ErrInternal, s.templates)
+		rest.SendErrorHTML(w, r, http.StatusBadRequest,
+			errors.New("wrong email unsubscription"), "email address in request does not match known for this user",
+			rest.ErrInternal, s.templates)
 		return
 	}
 
