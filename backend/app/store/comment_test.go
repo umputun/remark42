@@ -78,6 +78,7 @@ func TestComment_PrepareUntrusted(t *testing.T) {
 	assert.Equal(t, time.Time{}, comment.Timestamp)
 	assert.Equal(t, false, comment.Deleted)
 	assert.Equal(t, make(map[string]bool), comment.Votes)
+	assert.Equal(t, make(map[string]VotedIPInfo), comment.VotedIPs)
 	assert.Equal(t, User{ID: "username"}, comment.User)
 
 }
@@ -101,6 +102,7 @@ func TestComment_SetDeleted(t *testing.T) {
 	assert.Equal(t, "", comment.Text)
 	assert.Equal(t, "", comment.Orig)
 	assert.Equal(t, map[string]bool{}, comment.Votes)
+	assert.Equal(t, map[string]VotedIPInfo{}, comment.VotedIPs)
 	assert.Equal(t, 0, comment.Score)
 	assert.True(t, comment.Deleted)
 	assert.Nil(t, comment.Edit)
@@ -127,6 +129,7 @@ func TestComment_SetDeletedHard(t *testing.T) {
 	assert.Equal(t, "", comment.Text)
 	assert.Equal(t, "", comment.Orig)
 	assert.Equal(t, map[string]bool{}, comment.Votes)
+	assert.Equal(t, map[string]VotedIPInfo{}, comment.VotedIPs)
 	assert.Equal(t, 0, comment.Score)
 	assert.True(t, comment.Deleted)
 	assert.Nil(t, comment.Edit)
