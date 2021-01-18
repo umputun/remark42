@@ -83,6 +83,7 @@ func (c *Comment) PrepareUntrusted() {
 	c.ID = ""                 // don't allow user to define ID, force auto-gen
 	c.Timestamp = time.Time{} // reset time, force auto-gen
 	c.Votes = make(map[string]bool)
+	c.VotedIPs = make(map[string]VotedIPInfo)
 	c.Score = 0
 	c.Edit = nil
 	c.Pin = false
@@ -95,6 +96,7 @@ func (c *Comment) SetDeleted(mode DeleteMode) {
 	c.Orig = ""
 	c.Score = 0
 	c.Votes = map[string]bool{}
+	c.VotedIPs = make(map[string]VotedIPInfo)
 	c.Edit = nil
 	c.Deleted = true
 	c.Pin = false

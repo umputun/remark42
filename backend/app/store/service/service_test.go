@@ -387,7 +387,7 @@ func TestService_VoteAggressive(t *testing.T) {
 
 	// random +1/-1 result should be [0..2]
 	rand.Seed(time.Now().UnixNano())
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < 100; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

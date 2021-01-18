@@ -940,7 +940,8 @@ func (s *DataStore) prepVotes(c store.Comment, user store.User) store.Comment {
 		}
 	}
 
-	c.Votes = nil // hide voters list
+	c.Votes = nil    // hide voters list
+	c.VotedIPs = nil // hide voted ips (hashes)
 	return c
 }
 
