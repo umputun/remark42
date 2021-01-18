@@ -52,6 +52,7 @@ func TestService_CreateFromEmpty(t *testing.T) {
 	assert.Equal(t, "name", res.User.Name)
 	assert.Equal(t, "23f97cf4d5c29ef788ca2bdd1c9e75656c0e4149", res.User.IP)
 	assert.Equal(t, map[string]bool(nil), res.Votes)
+	assert.Equal(t, map[string]store.VotedIPInfo(nil), res.VotedIPs)
 }
 
 func TestService_CreateSiteDisabled(t *testing.T) {
@@ -79,8 +80,10 @@ func TestService_CreateFromPartial(t *testing.T) {
 		Text:      "text",
 		Timestamp: time.Date(2018, 3, 25, 16, 34, 33, 0, time.UTC),
 		Votes:     map[string]bool{"u1": true, "u2": false},
-		User:      store.User{IP: "192.168.1.1", ID: "user", Name: "name"},
-		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+		VotedIPs: map[string]store.VotedIPInfo{"xxx": {Value: true, Timestamp: time.Now()},
+			"yyy": {Value: false, Timestamp: time.Now()}},
+		User:    store.User{IP: "192.168.1.1", ID: "user", Name: "name"},
+		Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
 	}
 	id, err := b.Create(comment)
 	assert.NoError(t, err)
@@ -241,12 +244,14 @@ func TestService_Vote(t *testing.T) {
 	assert.Equal(t, 1, c.Score)
 	assert.Equal(t, 1, c.Vote, "can see own vote result")
 	assert.Nil(t, c.Votes)
+	assert.Nil(t, c.VotedIPs)
 	// check result as user2
 	c, err = b.Get(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, store.User{ID: "user2"})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, c.Score)
 	assert.Equal(t, 0, c.Vote, "can't see other user vote result")
 	assert.Nil(t, c.Votes)
+	assert.Nil(t, c.VotedIPs)
 
 	req = VoteReq{
 		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
@@ -302,6 +307,7 @@ func TestService_Vote(t *testing.T) {
 	assert.Equal(t, 0, res[0].Score)
 	assert.Equal(t, 0, res[0].Vote)
 	assert.Equal(t, map[string]bool(nil), res[0].Votes, "vote reset ok")
+	assert.Equal(t, map[string]store.VotedIPInfo(nil), res[0].VotedIPs, "vote reset ok")
 }
 
 func TestService_VoteLimit(t *testing.T) {
@@ -384,6 +390,7 @@ func TestService_VoteAggressive(t *testing.T) {
 	assert.Equal(t, 2, res[0].Score, "add single +1")
 	assert.Equal(t, 1, res[0].Vote, "user1 voted +1")
 	assert.Equal(t, 0, len(res[0].Votes), "votes hidden")
+	assert.Equal(t, 0, len(res[0].VotedIPs), "vote ips hidden")
 
 	// random +1/-1 result should be [0..2]
 	rand.Seed(time.Now().UnixNano())
@@ -436,6 +443,7 @@ func TestService_VoteConcurrent(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 100, res[0].Score, "should have 100 score")
 	assert.Equal(t, 0, len(res[0].Votes), "should hide votes")
+	assert.Equal(t, 0, len(res[0].VotedIPs), "should hide vote ips")
 	assert.Equal(t, 0.0, res[0].Controversy, "should have 0 controversy")
 }
 

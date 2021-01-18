@@ -530,6 +530,7 @@ func TestRest_AnonVote(t *testing.T) {
 	assert.Equal(t, 1, cr.Score)
 	assert.Equal(t, 1, cr.Vote)
 	assert.Equal(t, map[string]bool(nil), cr.Votes)
+	assert.Equal(t, map[string]store.VotedIPInfo(nil), cr.VotedIPs)
 }
 
 type MockFS struct{}
