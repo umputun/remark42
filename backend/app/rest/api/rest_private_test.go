@@ -161,6 +161,22 @@ func TestRest_CreateRejected(t *testing.T) {
 	require.Equal(t, http.StatusForbidden, resp.StatusCode, "reject wrong aud")
 }
 
+func TestRest_CreateWithLazyImage(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+	body := `{"text": "test 123 ![](http://example.com/image.png)", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`
+	// create comment
+	resp, err := post(t, ts.URL+"/api/v1/comment", body)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
+	b, err := ioutil.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	c := store.Comment{}
+	err = json.Unmarshal(b, &c)
+	assert.NoError(t, err)
+	assert.Equal(t, c.Text, "<p>test 123 <img src=\"http://example.com/image.png\" alt=\"\" loading=\"lazy\"/></p>\n")
+}
+
 func TestRest_CreateAndGet(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()

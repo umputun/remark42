@@ -118,6 +118,7 @@ func (c *Comment) Sanitize() {
 		"|vi|vm|l|ld|s|sa|sb|sc|dl|sd|s2|se|sh|si|sx|sr|s1|ss|m|mb|mf|mh|mi|il" +
 		"|mo|o|ow|p|c|ch|cm|cp|cpf|c1|cs|g|gd|ge|gr|gh|gi|go|gp|gs|gu|gt|gl)$"
 	p.AllowAttrs("class").Matching(regexp.MustCompile(codeSpanClassRegex)).OnElements("span")
+	p.AllowAttrs("loading").Matching(regexp.MustCompile("^(lazy|eager)$")).OnElements("img")
 	c.Text = p.Sanitize(c.Text)
 	c.Orig = p.Sanitize(c.Orig)
 	c.User.ID = template.HTMLEscapeString(c.User.ID)
