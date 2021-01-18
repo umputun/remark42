@@ -409,7 +409,8 @@ func TestRest_Vote(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, cr.Score)
 	assert.Equal(t, 1, cr.Vote)
-	assert.Equal(t, map[string]bool(nil), cr.Votes)
+	assert.Equal(t, map[string]bool(nil), cr.Votes, "hidden")
+	assert.Equal(t, map[string]store.VotedIPInfo(nil), cr.VotedIPs, "hidden")
 
 	assert.Equal(t, 200, vote(-1), "opposite vote allowed")
 	body, code = getWithDevAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1))
@@ -445,7 +446,8 @@ func TestRest_Vote(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, -1, cr.Score)
 	assert.Equal(t, 0, cr.Vote, "no vote info for not authed user")
-	assert.Equal(t, map[string]bool(nil), cr.Votes)
+	assert.Equal(t, map[string]bool(nil), cr.Votes, "hidden")
+	assert.Equal(t, map[string]store.VotedIPInfo(nil), cr.VotedIPs, "hidden")
 
 	req, err := http.NewRequest("GET",
 		fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1), nil)
@@ -458,7 +460,8 @@ func TestRest_Vote(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, -1, cr.Score)
 	assert.Equal(t, 0, cr.Vote, "no vote info for different user")
-	assert.Equal(t, map[string]bool(nil), cr.Votes)
+	assert.Equal(t, map[string]bool(nil), cr.Votes, "hidden")
+	assert.Equal(t, map[string]store.VotedIPInfo(nil), cr.VotedIPs, "hidden")
 }
 
 func TestRest_AnonVote(t *testing.T) {
