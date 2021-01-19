@@ -110,7 +110,8 @@ _this is the recommended way to run remark42_
 | store.type              | STORE_TYPE              | `bolt`                   | type of storage, `bolt` or `rpc`                |
 | store.bolt.path         | STORE_BOLT_PATH         | `./var`                  | path to data directory                          |
 | store.bolt.timeout      | STORE_BOLT_TIMEOUT      | `30s`                    | boltdb access timeout                           |
-| admin.shared.id         | ADMIN_SHARED_ID         |                          | admin names (list of user ids), _multi_         |
+| admin.shared.id         | ADMIN_SHARED_ID         |                          | admin ids (list of user ids), _multi_           |
+| admin.shared.name       | ADMIN_SHARED_NAME       |                          | admin names, _multi_                            |
 | admin.shared.email      | ADMIN_SHARED_EMAIL      | `admin@${REMARK_URL}`    | admin emails, _multi_                           |
 | backup                  | BACKUP_PATH             | `./var/backup`           | backups location                                |
 | max-back                | MAX_BACKUP_FILES        | `10`                     | max backup files to keep                        |
