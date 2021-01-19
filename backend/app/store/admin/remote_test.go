@@ -48,6 +48,21 @@ func TestRemote_Admins(t *testing.T) {
 	t.Logf("%v %T", res, res)
 }
 
+func TestRemote_Names(t *testing.T) {
+	ts := testServer(t, `{"method":"admin.names","params":"site-1","id":1}`,
+		`{"result":["n1","n2"],"id":1}`)
+	defer ts.Close()
+	c := RPC{Client: jrpc.Client{API: ts.URL, Client: http.Client{}}}
+
+	var a Store = &c
+	_ = a
+
+	res, err := c.Names("site-1")
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"n1", "n2"}, res)
+	t.Logf("%v %T", res, res)
+}
+
 func TestRemote_Email(t *testing.T) {
 	ts := testServer(t, `{"method":"admin.email","params":"site-1","id":1}`,
 		`{"result":"bbb@example.com","id":1}`)

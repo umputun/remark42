@@ -43,6 +43,20 @@ func TestRPC_admAdminsHndl(t *testing.T) {
 	assert.Equal(t, []string{"id1", "id2"}, admins)
 }
 
+func TestRPC_admNamesHndl(t *testing.T) {
+	port, teardown := prepTestStore(t)
+	defer teardown()
+	api := fmt.Sprintf("http://localhost:%d/test", port)
+
+	ra := admin.RPC{Client: jrpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
+	_, err := ra.Names("bad site")
+	assert.EqualError(t, err, "site bad site not found")
+
+	names, err := ra.Names("test-site")
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"n1", "n2"}, names)
+}
+
 func TestRPC_admEmailHndl(t *testing.T) {
 	port, teardown := prepTestStore(t)
 	defer teardown()

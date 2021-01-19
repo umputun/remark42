@@ -20,14 +20,17 @@ func TestMemAdmin_Get(t *testing.T) {
 	var ms admin.Store = adm
 
 	adm.data = map[string]AdminRec{
-		"site1": {"site1", []string{"i11", "i12"}, "e1", true, 0},
+		"site1": {"site1", []string{"i11", "i12"}, []string{"n11", "n12"}, "e1", true, 0},
 	}
-	adm.Set("site2", AdminRec{"site2", []string{"i21", "i22"}, "e2", true, 0})
-	adm.Set("site3", AdminRec{"site3", []string{"i21", "i22"}, "e3", false, 0})
+	adm.Set("site2", AdminRec{"site2", []string{"i21", "i22"}, []string{"n21", "n22"}, "e2", true, 0})
+	adm.Set("site3", AdminRec{"site3", []string{"i21", "i22"}, []string{"n21", "n22"}, "e3", false, 0})
 
 	admins, err := ms.Admins("site1")
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"i11", "i12"}, admins)
+	names, err := ms.Names("site1")
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"n11", "n12"}, names)
 	email, err := ms.Email("site1")
 	assert.NoError(t, err)
 	assert.Equal(t, "e1", email)
@@ -38,6 +41,9 @@ func TestMemAdmin_Get(t *testing.T) {
 	admins, err = ms.Admins("site2")
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"i21", "i22"}, admins)
+	names, err = ms.Names("site2")
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"n21", "n22"}, names)
 	email, err = ms.Email("site2")
 	assert.NoError(t, err)
 	assert.Equal(t, "e2", email)

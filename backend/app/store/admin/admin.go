@@ -12,6 +12,7 @@ import (
 type Store interface {
 	Key() (key string, err error)
 	Admins(siteID string) (ids []string, err error)
+	Names(siteID string) (names []string, err error)
 	Email(siteID string) (email string, err error)
 	Enabled(siteID string) (ok bool, err error)
 	OnEvent(siteID string, et EventType) error
@@ -31,15 +32,16 @@ const (
 // StaticStore implements keys.Store with a single set of admins and email for all sites
 type StaticStore struct {
 	admins []string
+	names  []string
 	email  string
 	key    string
 	sites  []string
 }
 
 // NewStaticStore makes StaticStore instance with given key
-func NewStaticStore(key string, sites, admins []string, email string) *StaticStore {
-	log.Printf("[DEBUG] admin users %+v, email %s", admins, email)
-	return &StaticStore{key: key, sites: sites, admins: admins, email: email}
+func NewStaticStore(key string, sites, adminIDs []string, adminNames []string, email string) *StaticStore {
+	log.Printf("[DEBUG] admin users %+v, email %s, names %+v", adminIDs, email, adminNames)
+	return &StaticStore{key: key, sites: sites, admins: adminIDs, names: adminNames, email: email}
 }
 
 // NewStaticKeyStore is a shortcut for making StaticStore for key consumers only
@@ -58,6 +60,11 @@ func (s *StaticStore) Key() (key string, err error) {
 // Admins returns static list of admin's ids, the same for all sites
 func (s *StaticStore) Admins(string) (ids []string, err error) {
 	return s.admins, nil
+}
+
+// Names returns static list of admin's names, the same for all sites
+func (s *StaticStore) Names(string) (ids []string, err error) {
+	return s.names, nil
 }
 
 // Email gets static email address

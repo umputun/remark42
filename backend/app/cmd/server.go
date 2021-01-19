@@ -180,6 +180,7 @@ type AdminGroup struct {
 	Type   string `long:"type" env:"TYPE" description:"type of admin store" choice:"shared" choice:"rpc" default:"shared"` //nolint
 	Shared struct {
 		Admins []string `long:"id" env:"ID" description:"admin(s) ids" env-delim:","`
+		Names  []string `long:"name" env:"NAME" description:"admin(s) names" env-delim:","`
 		Email  []string `long:"email" env:"EMAIL" description:"admin emails" env-delim:","`
 	} `group:"shared" namespace:"shared" env-namespace:"SHARED"`
 	RPC RPCGroup `group:"rpc" namespace:"rpc" env-namespace:"RPC"`
@@ -649,7 +650,7 @@ func (s *ServerCommand) makeAdminStore() (admin.Store, error) {
 		} else {
 			sharedAdminEmail = s.Admin.Shared.Email[0]
 		}
-		return admin.NewStaticStore(s.SharedSecret, s.Sites, s.Admin.Shared.Admins, sharedAdminEmail), nil
+		return admin.NewStaticStore(s.SharedSecret, s.Sites, s.Admin.Shared.Admins, s.Admin.Shared.Names, sharedAdminEmail), nil
 	case "rpc":
 		r := &admin.RPC{Client: jrpc.Client{
 			API:        s.Admin.RPC.API,
@@ -923,9 +924,9 @@ func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Sto
 
 			// don't allow anonymous with admin's name
 			if strings.HasPrefix(c.User.ID, "anonymous_") {
-				admins, err := admns.Admins(c.Audience)
+				admins, err := admns.Names(c.Audience)
 				if err != nil {
-					log.Printf("[WARN] can't get admins for %s, %v", c.Audience, err)
+					log.Printf("[WARN] can't get admin names for %s, %v", c.Audience, err)
 				}
 				for _, a := range admins {
 					if strings.EqualFold(strings.TrimSpace(c.User.Name), a) {

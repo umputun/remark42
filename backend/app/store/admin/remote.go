@@ -41,6 +41,19 @@ func (r *RPC) Admins(siteID string) (ids []string, err error) {
 	return ids, nil
 }
 
+// Names returns list of admin's names for given site
+func (r *RPC) Names(siteID string) (names []string, err error) {
+	resp, err := r.Call("admin.names", siteID)
+	if err != nil {
+		return []string{}, err
+	}
+
+	if err := json.Unmarshal(*resp.Result, &names); err != nil {
+		return []string{}, err
+	}
+	return names, nil
+}
+
 // Email gets email address for given site
 func (r *RPC) Email(siteID string) (email string, err error) {
 	resp, err := r.Call("admin.email", siteID)

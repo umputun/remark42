@@ -37,6 +37,20 @@ func (s *RPC) admAdminsHndl(id uint64, params json.RawMessage) (rr jrpc.Response
 	return jrpc.EncodeResponse(id, admins, err)
 }
 
+// get admin names
+func (s *RPC) admNAmesHndl(id uint64, params json.RawMessage) (rr jrpc.Response) {
+	var siteID string
+	if err := json.Unmarshal(params, &siteID); err != nil {
+		return jrpc.Response{Error: err.Error()}
+	}
+
+	names, err := s.adm.Names(siteID)
+	if err != nil {
+		return jrpc.Response{Error: err.Error()}
+	}
+	return jrpc.EncodeResponse(id, names, err)
+}
+
 // get admin email
 func (s *RPC) admEmailHndl(id uint64, params json.RawMessage) (rr jrpc.Response) {
 	var siteID string
