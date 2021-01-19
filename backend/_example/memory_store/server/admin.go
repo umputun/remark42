@@ -38,7 +38,7 @@ func (s *RPC) admAdminsHndl(id uint64, params json.RawMessage) (rr jrpc.Response
 }
 
 // get admin names
-func (s *RPC) admNAmesHndl(id uint64, params json.RawMessage) (rr jrpc.Response) {
+func (s *RPC) admNamesHndl(id uint64, params json.RawMessage) (rr jrpc.Response) {
 	var siteID string
 	if err := json.Unmarshal(params, &siteID); err != nil {
 		return jrpc.Response{Error: err.Error()}

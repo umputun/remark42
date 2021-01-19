@@ -50,7 +50,7 @@ func (s *RPC) addHandlers() {
 	s.Group("admin", jrpc.HandlersGroup{
 		"key":     s.admKeyHndl,
 		"admins":  s.admAdminsHndl,
-		"names":   s.admNAmesHndl,
+		"names":   s.admNamesHndl,
 		"email":   s.admEmailHndl,
 		"enabled": s.admEnabledHndl,
 		"event":   s.admEventHndl,
