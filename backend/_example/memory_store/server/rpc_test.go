@@ -52,7 +52,6 @@ func prepTestStore(t *testing.T) (port int, teardown func()) {
 	admRec := accessor.AdminRec{
 		SiteID:  "test-site",
 		IDs:     []string{"id1", "id2"},
-		Names:   []string{"n1", "n2"},
 		Email:   "admin@example.com",
 		Enabled: true,
 	}
