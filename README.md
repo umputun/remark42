@@ -110,7 +110,7 @@ _this is the recommended way to run remark42_
 | store.type              | STORE_TYPE              | `bolt`                   | type of storage, `bolt` or `rpc`                |
 | store.bolt.path         | STORE_BOLT_PATH         | `./var`                  | path to data directory                          |
 | store.bolt.timeout      | STORE_BOLT_TIMEOUT      | `30s`                    | boltdb access timeout                           |
-| admin.shared.id         | ADMIN_SHARED_ID         |                          | admin names (list of user ids), _multi_         |
+| admin.shared.id         | ADMIN_SHARED_ID         |                          | admin ids (list of user ids), _multi_           |
 | admin.shared.email      | ADMIN_SHARED_EMAIL      | `admin@${REMARK_URL}`    | admin emails, _multi_                           |
 | backup                  | BACKUP_PATH             | `./var/backup`           | backups location                                |
 | max-back                | MAX_BACKUP_FILES        | `10`                     | max backup files to keep                        |
@@ -184,6 +184,7 @@ _this is the recommended way to run remark42_
 | critical-score          | CRITICAL_SCORE          | `-10`                    | critical score threshold                        |
 | positive-score          | POSITIVE_SCORE          | `false`                  | restricts comment's score to be only positive   |
 | restricted-words        | RESTRICTED_WORDS        |                          | words banned in comments (can use `*`), _multi_ |
+| restricted-names        | RESTRICTED_NAMES        |                          | names prohibited to use by the user, _multi_    |
 | edit-time               | EDIT_TIME               | `5m`                     | edit window                                     |
 | read-age                | READONLY_AGE            |                          | read-only age of comments, days                 |
 | image-proxy.http2https  |  IMAGE_PROXY_HTTP2HTTPS | `false`                  | enable http->https proxy for images             |

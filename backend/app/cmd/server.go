@@ -72,6 +72,7 @@ type ServerCommand struct {
 	WebRoot          string        `long:"web-root" env:"REMARK_WEB_ROOT" default:"./web" description:"web root directory"`
 	UpdateLimit      float64       `long:"update-limit" env:"UPDATE_LIMIT" default:"0.5" description:"updates/sec limit"`
 	RestrictedWords  []string      `long:"restricted-words" env:"RESTRICTED_WORDS" description:"words prohibited to use in comments" env-delim:","`
+	RestrictedNames  []string      `long:"restricted-names" env:"RESTRICTED_NAMES" description:"names prohibited to use by user" env-delim:","`
 	EnableEmoji      bool          `long:"emoji" env:"EMOJI" description:"enable emoji"`
 	SimpleView       bool          `long:"simpler-view" env:"SIMPLE_VIEW" description:"minimal comment editor mode"`
 	ProxyCORS        bool          `long:"proxy-cors" env:"PROXY_CORS" description:"disable internal CORS and delegate it to proxy"`
@@ -921,16 +922,12 @@ func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Sto
 				log.Printf("[WARN] can't read email for %s, %v", c.User.ID, err)
 			}
 
-			// don't allow anonymous with admin's name
-			if strings.HasPrefix(c.User.ID, "anonymous_") {
-				admins, err := admns.Admins(c.Audience)
-				if err != nil {
-					log.Printf("[WARN] can't get admins for %s, %v", c.Audience, err)
-				}
-				for _, a := range admins {
+			// don't allow anonymous and email with admin's name
+			if strings.HasPrefix(c.User.ID, "anonymous_") || strings.HasPrefix(c.User.ID, "email_") {
+				for _, a := range s.RestrictedNames {
 					if strings.EqualFold(strings.TrimSpace(c.User.Name), a) {
 						c.User.SetBoolAttr("blocked", true)
-						log.Printf("[INFO] blocked %+v, attempt to impersonate admin", c.User)
+						log.Printf("[INFO] blocked %+v, attempt to impersonate (restricted names)", c.User)
 						break
 					}
 				}

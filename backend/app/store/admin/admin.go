@@ -37,9 +37,9 @@ type StaticStore struct {
 }
 
 // NewStaticStore makes StaticStore instance with given key
-func NewStaticStore(key string, sites, admins []string, email string) *StaticStore {
-	log.Printf("[DEBUG] admin users %+v, email %s", admins, email)
-	return &StaticStore{key: key, sites: sites, admins: admins, email: email}
+func NewStaticStore(key string, sites, adminIDs []string, email string) *StaticStore {
+	log.Printf("[DEBUG] admin users %+v, email %s", adminIDs, email)
+	return &StaticStore{key: key, sites: sites, admins: adminIDs, email: email}
 }
 
 // NewStaticKeyStore is a shortcut for making StaticStore for key consumers only
@@ -55,7 +55,7 @@ func (s *StaticStore) Key() (key string, err error) {
 	return s.key, nil
 }
 
-// Admins returns static list of admin's ids, the same for all sites
+// Admins returns static list of admin ids, the same for all sites
 func (s *StaticStore) Admins(string) (ids []string, err error) {
 	return s.admins, nil
 }

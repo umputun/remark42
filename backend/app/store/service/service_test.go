@@ -922,7 +922,6 @@ func TestService_IsAdmin(t *testing.T) {
 	assert.False(t, b.IsAdmin("radio-t", "user1"))
 	assert.True(t, b.IsAdmin("radio-t", "user2"))
 	assert.False(t, b.IsAdmin("radio-t-bad", "user1"))
-
 }
 
 func TestService_HasReplies(t *testing.T) {
