@@ -23,7 +23,6 @@ type MemAdmin struct {
 type AdminRec struct {
 	SiteID       string
 	IDs          []string // admin ids
-	Names        []string // admin names
 	Email        string   // admin email
 	Enabled      bool     // site enabled
 	CountCreated int64    // number of created posts
