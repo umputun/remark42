@@ -31,7 +31,6 @@ const (
 // StaticStore implements keys.Store with a single set of admins and email for all sites
 type StaticStore struct {
 	admins []string
-	names  []string
 	email  string
 	key    string
 	sites  []string
