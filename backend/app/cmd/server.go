@@ -922,8 +922,8 @@ func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Sto
 				log.Printf("[WARN] can't read email for %s, %v", c.User.ID, err)
 			}
 
-			// don't allow anonymous with admin's name
-			if strings.HasPrefix(c.User.ID, "anonymous_") {
+			// don't allow anonymous and email with admin's name
+			if strings.HasPrefix(c.User.ID, "anonymous_") || strings.HasPrefix(c.User.ID, "email_") {
 				admins, err := admns.Names(c.Audience)
 				if err != nil {
 					log.Printf("[WARN] can't get admin names for %s, %v", c.Audience, err)
