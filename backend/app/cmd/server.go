@@ -72,6 +72,7 @@ type ServerCommand struct {
 	WebRoot          string        `long:"web-root" env:"REMARK_WEB_ROOT" default:"./web" description:"web root directory"`
 	UpdateLimit      float64       `long:"update-limit" env:"UPDATE_LIMIT" default:"0.5" description:"updates/sec limit"`
 	RestrictedWords  []string      `long:"restricted-words" env:"RESTRICTED_WORDS" description:"words prohibited to use in comments" env-delim:","`
+	RestrictedNames  []string      `long:"restricted-names" env:"RESTRICTED_NAMES" description:"names prohibited to use by user" env-delim:","`
 	EnableEmoji      bool          `long:"emoji" env:"EMOJI" description:"enable emoji"`
 	SimpleView       bool          `long:"simpler-view" env:"SIMPLE_VIEW" description:"minimal comment editor mode"`
 	ProxyCORS        bool          `long:"proxy-cors" env:"PROXY_CORS" description:"disable internal CORS and delegate it to proxy"`
@@ -180,7 +181,6 @@ type AdminGroup struct {
 	Type   string `long:"type" env:"TYPE" description:"type of admin store" choice:"shared" choice:"rpc" default:"shared"` //nolint
 	Shared struct {
 		Admins []string `long:"id" env:"ID" description:"admin(s) ids" env-delim:","`
-		Names  []string `long:"name" env:"NAME" description:"admin(s) names" env-delim:","`
 		Email  []string `long:"email" env:"EMAIL" description:"admin emails" env-delim:","`
 	} `group:"shared" namespace:"shared" env-namespace:"SHARED"`
 	RPC RPCGroup `group:"rpc" namespace:"rpc" env-namespace:"RPC"`
@@ -650,7 +650,7 @@ func (s *ServerCommand) makeAdminStore() (admin.Store, error) {
 		} else {
 			sharedAdminEmail = s.Admin.Shared.Email[0]
 		}
-		return admin.NewStaticStore(s.SharedSecret, s.Sites, s.Admin.Shared.Admins, s.Admin.Shared.Names, sharedAdminEmail), nil
+		return admin.NewStaticStore(s.SharedSecret, s.Sites, s.Admin.Shared.Admins, sharedAdminEmail), nil
 	case "rpc":
 		r := &admin.RPC{Client: jrpc.Client{
 			API:        s.Admin.RPC.API,
@@ -924,14 +924,10 @@ func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Sto
 
 			// don't allow anonymous and email with admin's name
 			if strings.HasPrefix(c.User.ID, "anonymous_") || strings.HasPrefix(c.User.ID, "email_") {
-				admins, err := admns.Names(c.Audience)
-				if err != nil {
-					log.Printf("[WARN] can't get admin names for %s, %v", c.Audience, err)
-				}
-				for _, a := range admins {
+				for _, a := range s.RestrictedNames {
 					if strings.EqualFold(strings.TrimSpace(c.User.Name), a) {
 						c.User.SetBoolAttr("blocked", true)
-						log.Printf("[INFO] blocked %+v, attempt to impersonate admin", c.User)
+						log.Printf("[INFO] blocked %+v, attempt to impersonate (restricted names)", c.User)
 						break
 					}
 				}

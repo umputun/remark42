@@ -673,7 +673,7 @@ func prepServerApp(t *testing.T, fn func(o ServerCommand) ServerCommand) (*serve
 	cmd.UpdateLimit = 10
 	cmd.Admin.Type = "shared"
 	cmd.Admin.Shared.Admins = []string{"id1", "id2"}
-	cmd.Admin.Shared.Names = []string{"umputun", "bobuk"}
+	cmd.RestrictedNames = []string{"umputun", "bobuk"}
 	cmd = fn(cmd)
 
 	os.Remove(cmd.Store.Bolt.Path + "/remark.db")

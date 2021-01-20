@@ -8,7 +8,7 @@ import (
 
 func TestStaticStore_Get(t *testing.T) {
 	var ks Store = NewStaticStore("key123", []string{"s1", "s2", "s3"},
-		[]string{"123", "xyz"}, []string{"name1", "name2"}, "aa@example.com")
+		[]string{"123", "xyz"}, "aa@example.com")
 
 	k, err := ks.Key()
 	assert.NoError(t, err, "valid store")
@@ -17,10 +17,6 @@ func TestStaticStore_Get(t *testing.T) {
 	a, err := ks.Admins("s1")
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"123", "xyz"}, a)
-
-	a, err = ks.Names("s1")
-	assert.NoError(t, err)
-	assert.Equal(t, []string{"name1", "name2"}, a)
 
 	email, err := ks.Email("s2")
 	assert.NoError(t, err)

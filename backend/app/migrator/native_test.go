@@ -75,7 +75,7 @@ func TestNative_Import(t *testing.T) {
 	{"id":"efbc17f177ee1a1c0ee6e1e025749966ec071adc","pid":"","text":"some text, <a href=\"http://radio-t.com\" rel=\"nofollow\">link</a>","user":{"name":"user name","id":"user1","picture":"","ip":"293ec5b0cf154855258824ec7fac5dc63d176915","admin":false},"locator":{"site":"radio-t","url":"https://radio-t.com"},"score":0,"votes":{},"time":"2017-12-20T15:18:22-06:00"}
 	{"id":"f863bd79-fec6-4a75-b308-61fe5dd02aa1","pid":"1234","text":"some text2","user":{"name":"user name","id":"user2","picture":"","ip":"293ec5b0cf154855258824ec7fac5dc63d176915","admin":false},"locator":{"site":"radio-t","url":"https://radio-t.com/2"},"score":0,"votes":{},"time":"2017-12-20T15:18:23-06:00","imported":false}`
 
-	b.AdminStore = admin.NewStaticStore("12345", nil, []string{}, []string{}, "")
+	b.AdminStore = admin.NewStaticStore("12345", nil, []string{}, "")
 	r := Native{DataStore: b}
 	size, err := r.Import(strings.NewReader(inp), "radio-t")
 	assert.NoError(t, err)
@@ -115,7 +115,7 @@ func TestNative_ImportWithMapper(t *testing.T) {
 	{"id":"f863bd79-fec6-4a75-b308-61fe5dd02aa1","pid":"1234","text":"some text2","user":{"name":"user name","id":"user2","picture":"","ip":"293ec5b0cf154855258824ec7fac5dc63d176915","admin":false},"locator":{"site":"radio-t","url":"https://radio-t.com/2"},"score":0,"votes":{},"time":"2017-12-20T15:18:23-06:00"}`
 	mappedReader := WithMapper(strings.NewReader(inp), mapper)
 
-	b.AdminStore = admin.NewStaticStore("12345", nil, []string{}, []string{}, "")
+	b.AdminStore = admin.NewStaticStore("12345", nil, []string{}, "")
 	r := Native{DataStore: b}
 	size, err := r.Import(mappedReader, "radio-t")
 	assert.NoError(t, err)
@@ -148,7 +148,7 @@ func TestNative_ImportWrongVersion(t *testing.T) {
 	{"id":"efbc17f177ee1a1c0ee6e1e025749966ec071adc","pid":"","text":"some text, <a href=\"http://radio-t.com\" rel=\"nofollow\">link</a>","user":{"name":"user name","id":"user1","picture":"","ip":"293ec5b0cf154855258824ec7fac5dc63d176915","admin":false},"locator":{"site":"radio-t","url":"https://radio-t.com"},"score":0,"votes":{},"time":"2017-12-20T15:18:22-06:00"}
 	{"id":"f863bd79-fec6-4a75-b308-61fe5dd02aa1","pid":"1234","text":"some text2","user":{"name":"user name","id":"user2","picture":"","ip":"293ec5b0cf154855258824ec7fac5dc63d176915","admin":false},"locator":{"site":"radio-t","url":"https://radio-t.com/2"},"score":0,"votes":{},"time":"2017-12-20T15:18:23-06:00"}`
 
-	b.AdminStore = admin.NewStaticStore("12345", nil, []string{}, []string{}, "")
+	b.AdminStore = admin.NewStaticStore("12345", nil, []string{}, "")
 	r := Native{DataStore: b}
 	size, err := r.Import(strings.NewReader(inp), "radio-t")
 	assert.EqualError(t, err, "unexpected import file version 2")
@@ -169,7 +169,7 @@ func TestNative_ImportManyWithError(t *testing.T) {
 	buf.WriteString("{}\n")
 	buf.WriteString("{}\n")
 
-	b.AdminStore = admin.NewStaticStore("12345", nil, []string{}, []string{}, "")
+	b.AdminStore = admin.NewStaticStore("12345", nil, []string{}, "")
 	r := Native{DataStore: b}
 	n, err := r.Import(buf, "radio-t")
 	assert.EqualError(t, err, "failed to save 2 comments")
@@ -187,7 +187,7 @@ func prep(t *testing.T) (ds *service.DataStore, teardown func()) {
 	boltStore, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{SiteID: "radio-t", FileName: testDB})
 	assert.NoError(t, err)
 
-	b := &service.DataStore{Engine: boltStore, AdminStore: admin.NewStaticStore("12345", nil, []string{}, []string{}, "")}
+	b := &service.DataStore{Engine: boltStore, AdminStore: admin.NewStaticStore("12345", nil, []string{}, "")}
 
 	comment := store.Comment{
 		ID:        "efbc17f177ee1a1c0ee6e1e025749966ec071adc",

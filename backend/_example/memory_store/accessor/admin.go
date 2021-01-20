@@ -50,16 +50,6 @@ func (m *MemAdmin) Admins(siteID string) (ids []string, err error) {
 	return resp.IDs, nil
 }
 
-// Names executes find by siteID and returns admins names
-func (m *MemAdmin) Names(siteID string) (ids []string, err error) {
-	resp, ok := m.data[siteID]
-	if !ok {
-		return nil, errors.Errorf("site %s not found", siteID)
-	}
-	log.Printf("[DEBUG] admin names for %s, %+v", siteID, resp.IDs)
-	return resp.Names, nil
-}
-
 // Email executes find by siteID and returns admin's email
 func (m *MemAdmin) Email(siteID string) (email string, err error) {
 	resp, ok := m.data[siteID]
