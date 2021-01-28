@@ -53,7 +53,7 @@ export const logIn = (provider: AuthProvider): Promise<User | null> => {
         clearInterval(checkInterval);
 
         getUser()
-          .then(user => {
+          .then((user) => {
             resolve(user);
           })
           .catch(() => {
@@ -263,7 +263,7 @@ export const uploadImage = (image: File): Promise<Image> => {
       contentType: 'multipart/form-data',
       body: data,
     })
-    .then(resp => ({
+    .then((resp) => ({
       name: image.name,
       size: image.size,
       type: image.type,

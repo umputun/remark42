@@ -193,7 +193,7 @@ export class AuthPanel extends Component<Props, State> {
         <FormattedMessage id="commentSort.sort-by" defaultMessage="Sort by" />{' '}
         <span className="auth-panel__select-label">
           <span className={b('auth-panel__select-label-value', {}, { focused: sortSelectFocused })}>
-            {sortArray.find(x => 'selected' in x && x.selected!)!.label}
+            {sortArray.find((x) => 'selected' in x && x.selected!)!.label}
           </span>
           <select
             className="auth-panel__select"
@@ -201,7 +201,7 @@ export class AuthPanel extends Component<Props, State> {
             onFocus={this.onSortFocus}
             onBlur={this.onSortBlur}
           >
-            {sortArray.map(sort => (
+            {sortArray.map((sort) => (
               <option value={sort.value} selected={sort.selected}>
                 {sort.label}
               </option>
@@ -315,7 +315,7 @@ function getSortArray(currentSort: Sorting, intl: IntlShape) {
     },
   ];
 
-  return sortArray.map(sort => {
+  return sortArray.map((sort) => {
     if (sort.value === currentSort) {
       sort.selected = true;
     }
@@ -327,8 +327,8 @@ function getSortArray(currentSort: Sorting, intl: IntlShape) {
 export default function AuthPanelConnected(props: OwnProps) {
   const intl = useIntl();
   const theme = useTheme();
-  const provider = useSelector<StoreState, ProviderState>(state => state.provider);
-  const sort = useSelector<StoreState, Sorting>(state => state.comments.sort);
+  const provider = useSelector<StoreState, ProviderState>((state) => state.provider);
+  const sort = useSelector<StoreState, Sorting>((state) => state.comments.sort);
 
   return (
     <AuthPanel

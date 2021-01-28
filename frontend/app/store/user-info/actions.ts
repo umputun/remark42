@@ -5,7 +5,7 @@ import { userInfo } from 'common/user-info-settings';
 import { StoreAction } from '../index';
 import { USER_INFO_SET } from './types';
 
-export const fetchInfo = (): StoreAction<Promise<Comment[] | null>> => async dispatch => {
+export const fetchInfo = (): StoreAction<Promise<Comment[] | null>> => async (dispatch) => {
   if (!userInfo.id) {
     return null;
   }

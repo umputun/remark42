@@ -33,7 +33,7 @@ function init(): void {
     if (this.readyState === XMLHttpRequest.DONE && this.status === 200) {
       try {
         const res = JSON.parse(this.responseText) as { url: string; count: number }[];
-        res.forEach(item => map[item.url].map(n => (n.innerHTML = item.count.toString(10))));
+        res.forEach((item) => map[item.url].map((n) => (n.innerHTML = item.count.toString(10))));
       } catch (e) {}
     }
   };

@@ -5,10 +5,10 @@ const { keys } = require('./getTranslationKeys');
 
 const errors = [];
 
-locales.forEach(locale => {
+locales.forEach((locale) => {
   const dict = require(getLocalePath({ locale }));
   const keysFromDict = Object.keys(dict);
-  keysFromDict.forEach(key => {
+  keysFromDict.forEach((key) => {
     if (!keys.includes(key)) {
       errors.push(
         `"${key}" key not found in "${locale}" locale dict. Please run "npm run translation:generate" and commit changes.`

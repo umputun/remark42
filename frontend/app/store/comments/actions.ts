@@ -18,7 +18,7 @@ import { setItem } from 'common/local-storage';
 import { LS_SORT_KEY } from 'common/constants';
 
 /** sets comments, and put pinned comments in cache */
-export const setComments = (comments: Node[]): StoreAction<void> => dispatch => {
+export const setComments = (comments: Node[]): StoreAction<void> => (dispatch) => {
   dispatch({
     type: COMMENTS_SET,
     comments,
@@ -26,23 +26,21 @@ export const setComments = (comments: Node[]): StoreAction<void> => dispatch => 
 };
 
 /** appends comment to tree */
-export const addComment = (
-  text: string,
-  title: string,
-  pid?: Comment['id']
-): StoreAction<Promise<void>> => async dispatch => {
+export const addComment = (text: string, title: string, pid?: Comment['id']): StoreAction<Promise<void>> => async (
+  dispatch
+) => {
   const comment = await api.addComment({ text, title, pid });
   dispatch({ type: COMMENTS_APPEND, pid: pid || null, comment });
 };
 
 /** edits comment in tree */
-export const updateComment = (id: Comment['id'], text: string): StoreAction<Promise<void>> => async dispatch => {
+export const updateComment = (id: Comment['id'], text: string): StoreAction<Promise<void>> => async (dispatch) => {
   const comment = await api.updateComment({ id, text });
   dispatch({ type: COMMENTS_EDIT, comment });
 };
 
 /** edits comment in tree */
-export const putVote = (id: Comment['id'], value: number): StoreAction<Promise<void>> => async dispatch => {
+export const putVote = (id: Comment['id'], value: number): StoreAction<Promise<void>> => async (dispatch) => {
   await api.putCommentVote({ id, value });
   const comment = await api.getComment(id);
   dispatch({ type: COMMENTS_EDIT, comment });
@@ -85,7 +83,7 @@ export const fetchComments = (sort?: Sorting): StoreAction<Promise<Tree>> => asy
   const data = await api.getPostComments(sort || comments.sort);
   dispatch({ type: COMMENTS_REQUEST_SUCCESS });
   if (hiddenUsersIds.length > 0) {
-    data.comments = filterTree(data.comments, node => hiddenUsersIds.indexOf(node.comment.user.id) === -1);
+    data.comments = filterTree(data.comments, (node) => hiddenUsersIds.indexOf(node.comment.user.id) === -1);
   }
 
   dispatch(setComments(data.comments));
@@ -95,7 +93,7 @@ export const fetchComments = (sort?: Sorting): StoreAction<Promise<Tree>> => asy
 };
 
 /** sets mode for comment, either reply or edit */
-export const setCommentMode = (mode: StoreState['comments']['activeComment']): StoreAction<void> => dispatch => {
+export const setCommentMode = (mode: StoreState['comments']['activeComment']): StoreAction<void> => (dispatch) => {
   if (mode !== null && mode.state === CommentMode.None) {
     mode = null;
   }

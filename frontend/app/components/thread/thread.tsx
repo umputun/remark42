@@ -52,7 +52,7 @@ export const Thread: FunctionComponent<Props> = ({ id, level, mix, getPreview })
       aria-expanded={!collapsed}
     >
       <InView>
-        {inviewProps => (
+        {(inviewProps) => (
           <Comment
             CommentForm={CommentForm}
             ref={inviewProps.ref}
@@ -70,7 +70,7 @@ export const Thread: FunctionComponent<Props> = ({ id, level, mix, getPreview })
       {!collapsed &&
         childs &&
         !!childs.length &&
-        childs.map(currentId => (
+        childs.map((currentId) => (
           <Thread key={`thread-${currentId}`} id={currentId} level={Math.min(level + 1, 6)} getPreview={getPreview} />
         ))}
       {level < 6 && (

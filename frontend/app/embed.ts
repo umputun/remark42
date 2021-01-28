@@ -76,9 +76,9 @@ function createInstance(config: typeof window.remark_config) {
   config.url = (config.url || `${window.location.origin}${window.location.pathname}`).split('#')[0];
 
   const query = Object.keys(config)
-    .filter(key => key !== '__colors__')
+    .filter((key) => key !== '__colors__')
     .map(
-      key =>
+      (key) =>
         `${encodeURIComponent(key)}=${encodeURIComponent(
           config[key as keyof Omit<typeof window.remark_config, '__colors__'>] as string | number | boolean
         )}`
@@ -97,7 +97,7 @@ function createInstance(config: typeof window.remark_config) {
 
   const titleElement = document.querySelector('title');
   if (titleElement) {
-    titleObserver = new MutationObserver(mutations => postTitleToIframe(mutations[0].target.textContent!));
+    titleObserver = new MutationObserver((mutations) => postTitleToIframe(mutations[0].target.textContent!));
     titleObserver.observe(titleElement, {
       subtree: true,
       characterData: true,
@@ -228,14 +228,14 @@ function createInstance(config: typeof window.remark_config) {
       document.removeEventListener('keydown', this.onKeyDown);
     },
     delay: null,
-    events: ['', 'webkit', 'moz', 'MS', 'o'].map(prefix => (prefix ? `${prefix}TransitionEnd` : 'transitionend')),
+    events: ['', 'webkit', 'moz', 'MS', 'o'].map((prefix) => (prefix ? `${prefix}TransitionEnd` : 'transitionend')),
     onAnimationClose() {
       const el = this.node!;
       if (!this.node) {
         return;
       }
       this.delay = window.setTimeout(this.animationStop, 1000);
-      this.events.forEach(event => el.addEventListener(event, this.animationStop, false));
+      this.events.forEach((event) => el.addEventListener(event, this.animationStop, false));
     },
     onKeyDown(e) {
       // ESCAPE key pressed
@@ -252,7 +252,7 @@ function createInstance(config: typeof window.remark_config) {
         clearTimeout(t.delay);
         t.delay = null;
       }
-      t.events.forEach(event => t.node!.removeEventListener(event, t.animationStop, false));
+      t.events.forEach((event) => t.node!.removeEventListener(event, t.animationStop, false));
       return t.remove();
     },
     remove() {

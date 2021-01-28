@@ -58,7 +58,7 @@ describe('<Comment />', () => {
 
       expect(voteButtons.length).toEqual(2);
 
-      voteButtons.forEach(button => {
+      voteButtons.forEach((button) => {
         expect(button.prop('aria-disabled')).toEqual('true');
         expect(button.prop('title')).toEqual("Anonymous users can't vote");
       });
@@ -73,7 +73,7 @@ describe('<Comment />', () => {
 
       expect(voteButtons.length).toEqual(2);
 
-      voteButtons.forEach(button => {
+      voteButtons.forEach((button) => {
         expect(button.prop('aria-disabled')).toEqual('false');
       });
     });
@@ -84,7 +84,7 @@ describe('<Comment />', () => {
       const voteButtons = element.find('.comment__vote');
       expect(voteButtons.length).toStrictEqual(2);
 
-      voteButtons.forEach(b => {
+      voteButtons.forEach((b) => {
         expect(b.getDOMNode().getAttribute('aria-disabled')).toStrictEqual('true');
         expect(b.getDOMNode().getAttribute('title')).toStrictEqual("Voting allowed only on post's page");
       });
@@ -100,7 +100,7 @@ describe('<Comment />', () => {
       const voteButtons = element.find('.comment__vote');
       expect(voteButtons.length).toStrictEqual(2);
 
-      voteButtons.forEach(b => {
+      voteButtons.forEach((b) => {
         expect(b.getDOMNode().getAttribute('aria-disabled')).toStrictEqual('true');
         expect(b.getDOMNode().getAttribute('title')).toStrictEqual("Can't vote on read-only topics");
       });
@@ -115,7 +115,7 @@ describe('<Comment />', () => {
       const voteButtons = element.find('.comment__vote');
       expect(voteButtons.length).toStrictEqual(2);
 
-      voteButtons.forEach(b => {
+      voteButtons.forEach((b) => {
         expect(b.getDOMNode().getAttribute('aria-disabled')).toStrictEqual('true');
         expect(b.getDOMNode().getAttribute('title')).toStrictEqual("Can't vote for deleted comment");
       });
@@ -137,7 +137,7 @@ describe('<Comment />', () => {
       const voteButtons = element.find('.comment__vote');
       expect(voteButtons.length).toStrictEqual(2);
 
-      voteButtons.forEach(b => {
+      voteButtons.forEach((b) => {
         expect(b.getDOMNode().getAttribute('aria-disabled')).toStrictEqual('true');
         expect(b.getDOMNode().getAttribute('title')).toStrictEqual("Can't vote for your own comment");
       });
@@ -149,7 +149,7 @@ describe('<Comment />', () => {
       const voteButtons = element.find('.comment__vote');
       expect(voteButtons.length).toStrictEqual(2);
 
-      voteButtons.forEach(b => {
+      voteButtons.forEach((b) => {
         expect(b.getDOMNode().getAttribute('aria-disabled')).toStrictEqual('true');
         expect(b.getDOMNode().getAttribute('title')).toStrictEqual('Sign in to vote');
       });

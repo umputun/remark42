@@ -30,7 +30,7 @@ export const topComments = (
     case COMMENTS_SET: {
       return cmpRef(
         state,
-        action.comments.map(x => x.comment.id)
+        action.comments.map((x) => x.comment.id)
       );
     }
     case COMMENTS_APPEND: {
@@ -146,7 +146,7 @@ export const pinnedComments = (
 ): Comment['id'][] => {
   switch (action.type) {
     case COMMENTS_SET: {
-      return getPinnedComments(action.comments).map(x => x.id);
+      return getPinnedComments(action.comments).map((x) => x.id);
     }
     case COMMENTS_EDIT: {
       const index = state.indexOf(action.comment.id);
@@ -162,7 +162,7 @@ export const pinnedComments = (
     case COMMENTS_PATCH: {
       if (!Object.prototype.hasOwnProperty.call(action.patch, 'pin')) return state;
       if (!action.patch.pin) {
-        return state.filter(x => action.ids.indexOf(x) === -1);
+        return state.filter((x) => action.ids.indexOf(x) === -1);
       }
       return [...state, ...action.ids].reduce<Comment['id'][]>((c, x) => {
         if (c.indexOf(x) === -1) {

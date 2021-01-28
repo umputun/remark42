@@ -4,7 +4,7 @@ import { shallow } from 'enzyme';
 import { SubscribeByRSS, createSubscribeUrl } from '.';
 
 jest.mock('react-redux', () => ({
-  useSelector: jest.fn(fn => fn({ theme: 'light' })),
+  useSelector: jest.fn((fn) => fn({ theme: 'light' })),
 }));
 
 jest.mock('react-intl', () => {

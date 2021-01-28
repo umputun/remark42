@@ -10,8 +10,8 @@ function getObserver(): { observer: IntersectionObserver; instanceMap: WeakMap<E
   }
   instanceMap = new WeakMap<Element, (inView: boolean) => void>();
   observer = new window.IntersectionObserver(
-    entries => {
-      entries.forEach(e => {
+    (entries) => {
+      entries.forEach((e) => {
         const setInView = instanceMap.get(e.target);
         if (!setInView) return;
         setInView(e.isIntersecting);

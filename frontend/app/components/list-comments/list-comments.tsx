@@ -16,7 +16,7 @@ const ListComments: FunctionComponent<ListCommentsProps> = ({ comments = [] }) =
 
   return (
     <div className={classnames('comments-list', styles.root)}>
-      {comments.map(comment => (
+      {comments.map((comment) => (
         <Comment
           intl={intl}
           key={comment.id}

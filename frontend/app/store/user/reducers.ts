@@ -38,13 +38,13 @@ export const bannedUsers = (state: BlockedUser[] = [], action: USER_ACTIONS): Bl
       return action.list;
     }
     case USER_BAN: {
-      if (state.find(u => u.id === action.user.id) !== undefined) {
+      if (state.find((u) => u.id === action.user.id) !== undefined) {
         return state;
       }
       return [action.user, ...state];
     }
     case USER_UNBAN: {
-      const index = state.findIndex(u => u.id === action.id);
+      const index = state.findIndex((u) => u.id === action.id);
       if (index === -1) {
         return state;
       }

@@ -15,7 +15,7 @@ const LastCommentsList = ({ comments, isLoading }: { comments: CommentType[]; is
 
   return (
     <>
-      {comments.map(comment => (
+      {comments.map((comment) => (
         <Comment
           CommentForm={null}
           intl={intl}
