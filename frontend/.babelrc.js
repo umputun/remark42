@@ -1,4 +1,4 @@
-const getPresetEnv = options => ['@babel/preset-env', options];
+const getPresetEnv = (options) => ['@babel/preset-env', options];
 const preactPreset = [
   '@babel/preset-react',
   {

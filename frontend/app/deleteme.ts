@@ -20,14 +20,14 @@ async function init(): Promise<void> {
     return;
   }
 
-  getUser().then(user => {
+  getUser().then((user) => {
     if (!user || !user.admin) {
       handleNotAuthorizedError(node);
       return;
     }
 
     approveDeleteMe(token).then(
-      data => {
+      (data) => {
         node.innerHTML = `
             <h3>User deleted successfully</h3>
             <pre>${JSON.stringify(data, null, 4)}</pre>

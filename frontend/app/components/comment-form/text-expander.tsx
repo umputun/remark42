@@ -34,7 +34,7 @@ function SuggestionList({ items, theme }: { items: Array<Emoji>; theme: Theme })
 
 function searchEmoji(key: string, text: string, theme: Theme) {
   return import(/* webpackChunkName: "node-emoji" */ `node-emoji`)
-    .then(nodeEmoji => {
+    .then((nodeEmoji) => {
       if (key === ':') {
         const emojiList = nodeEmoji.search(text);
         if (emojiList.length === 0) {

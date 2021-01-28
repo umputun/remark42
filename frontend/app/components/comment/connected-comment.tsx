@@ -40,7 +40,7 @@ const mapStateToProps = (state: StoreState, cprops: { data: CommentType }) => {
   const props: ProvidedProps = {
     editMode: getCommentMode(cprops.data.id)(state),
     user: state.user,
-    isUserBanned: cprops.data.user.block || state.bannedUsers.find(u => u.id === cprops.data.user.id) !== undefined,
+    isUserBanned: cprops.data.user.block || state.bannedUsers.find((u) => u.id === cprops.data.user.id) !== undefined,
     post_info: state.info,
     isCommentsDisabled: state.info.read_only || false,
     theme: state.theme,
@@ -64,9 +64,9 @@ export const boundActions = bindActions({
   setVerifiedStatus,
 });
 
-export const ConnectedComment: FunctionComponent<
-  Omit<CommentProps, keyof (ProvidedProps & typeof bindActions)>
-> = props => {
+export const ConnectedComment: FunctionComponent<Omit<CommentProps, keyof (ProvidedProps & typeof bindActions)>> = (
+  props
+) => {
   const providedProps = mapStateToProps(useStore().getState(), props);
   const actions = useActions(boundActions);
   const intl = useIntl();

@@ -35,7 +35,7 @@ async function init(): Promise<void> {
     throw new Error('Remark42: Site ID is undefined.');
   }
 
-  (Array.from(nodes) as HTMLElement[]).forEach(node => {
+  (Array.from(nodes) as HTMLElement[]).forEach((node) => {
     const max = (node.dataset.max && parseInt(node.dataset.max, 10)) || max_last_comments || DEFAULT_LAST_COMMENTS_MAX;
     const locale = getLocale(window.remark_config);
 

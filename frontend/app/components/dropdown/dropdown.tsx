@@ -91,7 +91,7 @@ export class Dropdown extends Component<Props, State> {
       const windowHeight = window.innerHeight;
       const dcBottom = (() => {
         // TODO: use ref
-        const dc = Array.from(this.rootNode.current.children).find(c => c.classList.contains('dropdown__content'));
+        const dc = Array.from(this.rootNode.current.children).find((c) => c.classList.contains('dropdown__content'));
         if (!dc) return 0;
         const rect = dc.getBoundingClientRect();
         return window.scrollY + Math.abs(rect.top) + dc.scrollHeight + 10;

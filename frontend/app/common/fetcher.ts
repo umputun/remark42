@@ -83,7 +83,7 @@ const fetcher = methods.reduce<Partial<FetcherObject>>((acc, method) => {
     }
 
     return fetch(rurl, parameters)
-      .then(res => {
+      .then((res) => {
         const date = (res.headers.has('date') && res.headers.get('date')) || '';
         const timestamp = isNaN(Date.parse(date)) ? 0 : Date.parse(date);
         const timeDiff = (new Date().getTime() - timestamp) / 1000;
@@ -104,7 +104,7 @@ const fetcher = methods.reduce<Partial<FetcherObject>>((acc, method) => {
 
             throw new RequestError(descriptor.defaultMessage, res.status);
           }
-          return res.text().then(text => {
+          return res.text().then((text) => {
             let err;
             try {
               err = JSON.parse(text);
@@ -125,7 +125,7 @@ const fetcher = methods.reduce<Partial<FetcherObject>>((acc, method) => {
 
         return res.text();
       })
-      .catch(e => {
+      .catch((e) => {
         if (isFailedFetch(e)) {
           throw new RequestError(e.message, -2);
         }

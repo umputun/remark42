@@ -78,7 +78,7 @@ class Auth extends Component<Props, State> {
 
     return (
       <Dropdown title={other} theme={this.props.theme} onTitleClick={this.onEmailTitleClick}>
-        {providers.map(provider => (
+        {providers.map((provider) => (
           <DropdownItem>{this.renderProvider(provider)}</DropdownItem>
         ))}
       </Dropdown>
@@ -187,8 +187,8 @@ const authPanelMessages = defineMessages({
 
 export default function AuthWrapper() {
   const dispatch = useDispatch();
-  const provider = useSelector<StoreState, ProviderState>(store => store.provider);
-  const user = useSelector<StoreState, User | null>(store => store.user);
+  const provider = useSelector<StoreState, ProviderState>((store) => store.provider);
+  const user = useSelector<StoreState, User | null>((store) => store.user);
   const theme = useTheme();
   const intl = useIntl();
   const handleSignin = useCallback((provider: AuthProvider) => dispatch(logIn(provider)), [dispatch]);

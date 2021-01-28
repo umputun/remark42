@@ -49,14 +49,14 @@ const mapStateToProps = (state: StoreState) => ({
   user: state.user,
   childToParentComments: Object.entries(state.comments.childComments).reduce(
     (accumulator: Record<string, string>, [key, children]) => {
-      children.forEach(child => (accumulator[child] = key));
+      children.forEach((child) => (accumulator[child] = key));
       return accumulator;
     },
     {}
   ),
   collapsedThreads: state.collapsedThreads,
   topComments: state.comments.topComments,
-  pinnedComments: state.comments.pinnedComments.map(id => state.comments.allComments[id]).filter(c => !c.hidden),
+  pinnedComments: state.comments.pinnedComments.map((id) => state.comments.allComments[id]).filter((c) => !c.hidden),
   theme: state.theme,
   info: state.info,
   hiddenUsers: state.hiddenUsers,
@@ -166,7 +166,7 @@ export class Root extends Component<Props, State> {
 
       if (!document.querySelector(hash)) {
         const ids = getCollapsedParents(hash, this.props.childToParentComments, this.props.collapsedThreads);
-        ids.forEach(id => this.props.setCollapse(id, false));
+        ids.forEach((id) => this.props.setCollapse(id, false));
       }
 
       setTimeout(() => {
@@ -284,7 +284,7 @@ export class Root extends Component<Props, State> {
                   role="region"
                   aria-label={this.props.intl.formatMessage(messages.pinnedComments)}
                 >
-                  {this.props.pinnedComments.map(comment => (
+                  {this.props.pinnedComments.map((comment) => (
                     <Comment
                       CommentForm={CommentForm}
                       intl={this.props.intl}
@@ -304,7 +304,7 @@ export class Root extends Component<Props, State> {
                   {(IS_MOBILE && commentsShown < this.props.topComments.length
                     ? this.props.topComments.slice(0, commentsShown)
                     : this.props.topComments
-                  ).map(id => (
+                  ).map((id) => (
                     <Thread
                       key={`thread-${id}`}
                       id={id}

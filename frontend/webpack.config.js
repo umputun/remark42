@@ -32,7 +32,7 @@ const exclude = [
   'react-intl',
   'intl-messageformat',
   'intl-messageformat-parser',
-].map(m => path.resolve(__dirname, 'node_modules', m));
+].map((m) => path.resolve(__dirname, 'node_modules', m));
 
 const htmlMinifyOptions = {
   minifyCSS: true,

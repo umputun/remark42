@@ -257,7 +257,7 @@ class Comment extends Component<CommentProps, State> {
   blockUser = debounce((ttl: BlockTTL): void => {
     const { user } = this.props.data;
     const blockingDurations = getBlockingDurations(this.props.intl);
-    const blockDuration = blockingDurations.find(el => el.value === ttl);
+    const blockDuration = blockingDurations.find((el) => el.value === ttl);
     // blocking duration may be undefined if user hasn't selected anything
     // and ttl equals "Blocking period"
     if (!blockDuration) return;
@@ -310,7 +310,7 @@ class Comment extends Component<CommentProps, State> {
   sendVotingRequest = (votingValue: number, originalScore: number, originalDelta: number) => {
     this.votingPromise = this.votingPromise
       .then(() => this.props.putCommentVote!(this.props.data.id, votingValue))
-      .catch(e => this.handleVoteError(e, originalScore, originalDelta));
+      .catch((e) => this.handleVoteError(e, originalScore, originalDelta));
   };
 
   increaseScore = () => {
@@ -506,7 +506,7 @@ class Comment extends Component<CommentProps, State> {
               <option disabled selected value={undefined}>
                 <FormattedMessage id="comment.blocking-period" defaultMessage="Blocking period" />
               </option>
-              {blockingDurations.map(block => (
+              {blockingDurations.map((block) => (
                 <option value={block.value}>{block.label}</option>
               ))}
             </select>
@@ -562,7 +562,7 @@ class Comment extends Component<CommentProps, State> {
       time: new Date(props.data.time),
       orig: isEditing
         ? props.data.orig &&
-          props.data.orig.replace(/&[#A-Za-z0-9]+;/gi, entity => {
+          props.data.orig.replace(/&[#A-Za-z0-9]+;/gi, (entity) => {
             const span = document.createElement('span');
             span.innerHTML = entity;
             return span.innerText;
@@ -702,7 +702,7 @@ class Comment extends Component<CommentProps, State> {
               href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.pid}`}
               aria-label={goToParentMessage}
               title={goToParentMessage}
-              onClick={e => this.scrollToParent(e)}
+              onClick={(e) => this.scrollToParent(e)}
             >
               {' '}
             </a>

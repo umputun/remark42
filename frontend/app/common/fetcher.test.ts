@@ -17,10 +17,10 @@ describe('fetcher', () => {
 
       return fetcher
         .get('/api/some')
-        .then(data => {
+        .then((data) => {
           throw new Error('Request should be failed');
         })
-        .catch(e => {
+        .catch((e) => {
           expect(e.code).toBe(2);
           expect(e.error).toBe('you just cant');
           expect(e.details).toBe('you just cant at all');
@@ -39,10 +39,10 @@ describe('fetcher', () => {
 
       return fetcher
         .get('/api/some')
-        .then(data => {
+        .then((data) => {
           throw new Error('Request should be failed');
         })
-        .catch(e => {
+        .catch((e) => {
           expect(e.code).toBe(401);
           expect(e.error).toBe('Not authorized.');
         });
@@ -61,10 +61,10 @@ describe('fetcher', () => {
 
       return fetcher
         .get({ url: '/api/some', logError: false })
-        .then(data => {
+        .then((data) => {
           throw new Error('Request should be failed');
         })
-        .catch(e => {
+        .catch((e) => {
           expect(e.code).toBe(0);
           expect(e.error).toBe('Something went wrong.');
         });

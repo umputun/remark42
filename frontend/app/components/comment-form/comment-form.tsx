@@ -214,7 +214,7 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
     this.setState({ isDisabled: true, isErrorShown: false, text });
     try {
       await this.props.onSubmit(text, pageTitle || document.title);
-      updateJsonItem<Record<string, string>>(LS_SAVED_COMMENT_VALUE, data => {
+      updateJsonItem<Record<string, string>>(LS_SAVED_COMMENT_VALUE, (data) => {
         delete data[this.props.id];
 
         return data;
@@ -239,7 +239,7 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
 
     this.props
       .getPreview(text)
-      .then(preview => this.setState({ preview }))
+      .then((preview) => this.setState({ preview }))
       .catch(() => {
         this.setState({ isErrorShown: true, errorMessage: null });
       });
@@ -267,7 +267,7 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
     if (!this.textAreaRef) return;
     if (!e.dataTransfer) return;
     const items = Array.from(e.dataTransfer.items);
-    if (Array.from(items).filter(i => i.kind === 'file' && ImageMimeRegex.test(i.type)).length === 0) return;
+    if (Array.from(items).filter((i) => i.kind === 'file' && ImageMimeRegex.test(i.type)).length === 0) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'copy';
   }
@@ -287,7 +287,7 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
     if (StaticStore.config.max_image_size === 0) return;
     if (!e.dataTransfer) return;
 
-    const data = Array.from(e.dataTransfer.files).filter(f => ImageMimeRegex.test(f.type));
+    const data = Array.from(e.dataTransfer.files).filter((f) => ImageMimeRegex.test(f.type));
     if (data.length === 0) return;
 
     e.preventDefault();
@@ -497,7 +497,7 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
         </div>
 
         {(isErrorShown || !!errorMessage) &&
-          (errorMessage || intl.formatMessage(messages.unexpectedError)).split('\n').map(e => (
+          (errorMessage || intl.formatMessage(messages.unexpectedError)).split('\n').map((e) => (
             <p className="comment-form__error" role="alert" key={e}>
               {e}
             </p>
