@@ -181,10 +181,6 @@ export const httpErrorMap = new Map([
   [429, httpMessages.toManyRequest],
 ]);
 
-export function isFailedFetch(e?: Error): boolean {
-  return Boolean(e && e.message && e.message === `Failed to fetch`);
-}
-
 export type FetcherError =
   | string
   | {

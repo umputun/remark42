@@ -1,139 +1,98 @@
-import { httpErrorMap, isFailedFetch, httpMessages, RequestError } from 'utils/errorUtils';
+import { httpErrorMap, httpMessages, RequestError } from 'utils/errorUtils';
 
-import { BASE_URL, API_BASE, HEADER_X_JWT } from './constants';
-import { siteId } from './settings';
+import { BASE_URL, API_BASE } from './constants';
 import { StaticStore } from './static-store';
 import { getCookie } from './cookies';
 
-export type FetcherMethod = 'get' | 'post' | 'put' | 'patch' | 'delete' | 'head';
-const methods: FetcherMethod[] = ['get', 'post', 'put', 'patch', 'delete', 'head'];
+/** List of fetcher’s supported methods */
+const METHODS = ['get', 'post', 'put', 'delete'] as const;
+/** Header name for JWT token */
+export const JWT_HEADER = 'X-JWT';
+/** Header name for XSRF token */
+export const XSRF_HEADER = 'X-XSRF-TOKEN';
+/** Cookie field with XSRF token */
+export const XSRF_COOKIE = 'XSRF-TOKEN';
 
-interface FetcherInitBase {
-  url: string;
-  overriddenApiBase?: string;
-  withCredentials?: boolean;
-  /** whether log error message to console */
-  logError?: boolean;
-}
-
-interface FetcherInitJSON extends FetcherInitBase {
-  contentType?: 'application/json';
-  body?: string | object | Blob | ArrayBuffer;
-}
-
-interface FetcherInitMultipart extends FetcherInitBase {
-  contentType: 'multipart/form-data';
-  body: FormData;
-}
-
-type FetcherInit = string | FetcherInitJSON | FetcherInitMultipart;
-
-type FetcherObject = { [K in FetcherMethod]: <T = unknown>(data: FetcherInit) => Promise<T> };
+type Methods = typeof METHODS;
+type FetchInit = Omit<RequestInit, 'headers'> & {
+  headers?: Record<string, string>;
+  json?: unknown;
+  query?: Record<string, string | number | undefined>;
+};
+type FetcherObject = Record<Methods[number], <T>(url: string, params?: FetchInit) => Promise<T>>;
 
 /** JWT token received from server and will be send by each request, if it present */
 let activeJwtToken: string | undefined;
 
-const fetcher = methods.reduce<Partial<FetcherObject>>((acc, method) => {
-  acc[method] = async <T = unknown>(data: FetcherInit): Promise<T> => {
-    const {
-      url,
-      body = undefined,
-      withCredentials = false,
-      overriddenApiBase = API_BASE,
-      contentType = 'application/json',
-      logError = true,
-    } = typeof data === 'string' ? { url: data } : data;
-    const baseUrl = `${BASE_URL}${overriddenApiBase}`;
-
-    const headers = new Headers({
-      Accept: 'application/json',
-      'X-XSRF-TOKEN': getCookie('XSRF-TOKEN') || '',
-    });
-
-    if (contentType !== 'multipart/form-data') {
-      headers.append('Content-Type', contentType);
-    }
+const fetcher = METHODS.reduce((acc, method) => {
+  acc[method] = async (uri: string, params: FetchInit = {}) => {
+    const { headers = {}, json, ...fetchParams } = params;
+    // add api base if it's not auth request
+    // we use `indexOf` instead of `startsWidth` because we don't want to have another one polyfill for no reason
+    const baseUrl = uri.indexOf('/auth') === 0 ? BASE_URL : `${BASE_URL}${API_BASE}`;
+    const url = `${baseUrl}${uri}`;
 
     // Save token in memory and pass it into headers in case if storing cookies is disabled
     if (activeJwtToken) {
-      headers.append(HEADER_X_JWT, activeJwtToken);
+      headers[JWT_HEADER] = activeJwtToken;
+    }
+    headers[XSRF_HEADER] = getCookie(XSRF_COOKIE) || '';
+
+    if (json) {
+      headers['Content-Type'] = 'application/json';
+      fetchParams.body = JSON.stringify(json);
     }
 
-    let rurl = `${baseUrl}${url}`;
+    try {
+      const res = await fetch(url, { ...fetchParams, method, headers });
+      // TODO: it should be clarified when frontend gets this header and what could be in it to simplify this logic and cover by tests
+      const date = (res.headers.has('date') && res.headers.get('date')) || '';
+      const timestamp = isNaN(Date.parse(date)) ? 0 : Date.parse(date);
+      const timeDiff = (new Date().getTime() - timestamp) / 1000;
 
-    const parameters: RequestInit = {
-      method,
-      headers,
-      mode: 'cors',
-      credentials: withCredentials ? 'include' : 'omit',
-    };
+      StaticStore.serverClientTimeDiff = timeDiff;
 
-    if (body) {
-      if (contentType === 'multipart/form-data') {
-        parameters.body = body as FormData;
-      } else if (typeof body === 'object' && !(body instanceof Blob) && !(body instanceof ArrayBuffer)) {
-        parameters.body = JSON.stringify(body);
-      } else {
-        parameters.body = body;
+      // backend could update jwt in any time. so, we should handle it
+      if (res.headers.has(JWT_HEADER)) {
+        activeJwtToken = res.headers.get(JWT_HEADER) as string;
       }
-    }
 
-    if (siteId && method !== 'post' && !rurl.includes('?site=') && !rurl.includes('&site=')) {
-      rurl += `${rurl.includes('?') ? '&' : '?'}site=${siteId}`;
-    }
+      if ([401, 403].includes(res.status)) {
+        activeJwtToken = undefined;
+      }
 
-    return fetch(rurl, parameters)
-      .then((res) => {
-        const date = (res.headers.has('date') && res.headers.get('date')) || '';
-        const timestamp = isNaN(Date.parse(date)) ? 0 : Date.parse(date);
-        const timeDiff = (new Date().getTime() - timestamp) / 1000;
-        StaticStore.serverClientTimeDiff = timeDiff;
+      if (res.status >= 400) {
+        if (httpErrorMap.has(res.status)) {
+          const descriptor = httpErrorMap.get(res.status) || httpMessages.unexpectedError;
 
-        // backend could update jwt in any time. so, we should handle it
-        if (res.headers.has(HEADER_X_JWT)) {
-          activeJwtToken = res.headers.get(HEADER_X_JWT) as string;
+          throw new RequestError(descriptor.defaultMessage, res.status);
         }
 
-        if (res.status === 403 && activeJwtToken) {
-          activeJwtToken = undefined;
-        }
-
-        if (res.status >= 400) {
-          if (httpErrorMap.has(res.status)) {
-            const descriptor = httpErrorMap.get(res.status) || httpMessages.unexpectedError;
-
-            throw new RequestError(descriptor.defaultMessage, res.status);
+        return res.text().then((text) => {
+          let err;
+          try {
+            err = JSON.parse(text);
+          } catch (e) {
+            throw new RequestError(httpMessages.unexpectedError.defaultMessage, 0);
           }
-          return res.text().then((text) => {
-            let err;
-            try {
-              err = JSON.parse(text);
-            } catch (e) {
-              if (logError) {
-                console.error(err);
-              }
+          throw err;
+        });
+      }
 
-              throw new RequestError(httpMessages.unexpectedError.defaultMessage, 0);
-            }
-            throw err;
-          });
-        }
+      if (res.headers.get('Content-Type')?.indexOf('application/json') === 0) {
+        return res.json();
+      }
 
-        if (res.headers.get('Content-Type')?.startsWith('application/json')) {
-          return res.json();
-        }
+      return res.text();
+    } catch (e) {
+      if (e?.message === 'Failed to fetch') {
+        throw new RequestError(e.message, -2);
+      }
 
-        return res.text();
-      })
-      .catch((e) => {
-        if (isFailedFetch(e)) {
-          throw new RequestError(e.message, -2);
-        }
-
-        throw e;
-      });
+      throw e;
+    }
   };
   return acc;
-}, {}) as FetcherObject;
+}, {} as FetcherObject);
 
 export default fetcher;
