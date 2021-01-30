@@ -1,6 +1,20 @@
 global.Headers = class HeadersMock extends Headers implements Headers {
   private headers = new Map();
 
+  constructor(headers?: HeadersInit) {
+    super(headers);
+
+    if (typeof headers === 'object' && headers !== null) {
+      const entries = Object.entries(headers) as [string, string][];
+
+      if (entries.length > 0) {
+        entries.forEach(([k, v]) => {
+          this.append(k, v);
+        });
+      }
+    }
+  }
+
   append(key: string, value: string) {
     this.headers.set(key, value);
   }
