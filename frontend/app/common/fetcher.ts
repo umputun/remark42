@@ -32,7 +32,7 @@ const createFetcher = (baseUrl: string = '') =>
      * @body - data for sending to the server. If you pass object it will be stringified. If you pass form data it will be sent as is. Content type headers will be added automatically.
      */
     acc[method] = async (uri: string, query: QueryParams = {}, body?: Payload) => {
-      const queryString = new URLSearchParams({ ...query, site: siteId });
+      const queryString = new URLSearchParams({ site: siteId, ...query });
       const url = `${baseUrl}${uri}?${queryString}`;
       const headers: Record<string, string> = {};
       const params: RequestInit = { method };
