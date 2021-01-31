@@ -22,6 +22,7 @@ type FetcherMethods = Record<'get' | 'delete', <T>(url: string, query?: QueryPar
 export function stringifyUrl(uri: string, query: QueryParams) {
   const queryEntries = Object.entries(query);
   const siteIdParam = `site=${encodeURIComponent(siteId)}`;
+  // we use `indexOf` instead of `startsWidth` because we don't want to have another one polyfill for no reason
   const baseUrl = uri.indexOf('/auth') === 0 ? BASE_URL : `${BASE_URL}${API_BASE}`;
   const url = `${baseUrl}${uri}`;
 
@@ -43,9 +44,15 @@ export function stringifyUrl(uri: string, query: QueryParams) {
 let activeJwtToken: string | undefined;
 
 const fetcher = METHODS.reduce<FetcherMethods>((acc, method) => {
+  /**
+   * Fetcher is abstraction on top of fetch
+   *
+   * @uri – uri to API endpoint. BASE_URL and API_BASE will be added automatically. For auth requests API_BASE will be dropped.
+   * @query - collection of query params. They will be concatenated to URL. `siteId` will be added automatically.
+   * @body - data for sending to the server. If you pass object it will be stringified. If you pass form data it will be sent as is. Content type headers will be added automatically.
+   */
   acc[method] = async (uri: string, query: QueryParams = {}, body?: Payload) => {
     // add api base if it's not auth request
-    // we use `indexOf` instead of `startsWidth` because we don't want to have another one polyfill for no reason
     const url = stringifyUrl(uri, query);
     const headers: Record<string, string> = {};
     const params: RequestInit = { method };
