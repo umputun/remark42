@@ -1,3 +1,7 @@
+jest.mock('./settings', () => ({
+  siteId: 'remark',
+}));
+
 import { RequestError } from 'utils/errorUtils';
 import { API_BASE, BASE_URL } from './constants.config';
 import fetcher, { JWT_HEADER, XSRF_HEADER } from './fetcher';
@@ -28,6 +32,8 @@ function mockFetch({ headers = {}, data = {}, ...props }: FetchImplementaitonPro
 
 describe('fetcher', () => {
   const headers = { [XSRF_HEADER]: '' };
+  const authUrl = `${BASE_URL}/auth?site=remark`;
+  const commentsUrl = `${BASE_URL}${API_BASE}/comments?site=remark`;
 
   describe('methods', () => {
     it('should send GET request', async () => {
@@ -36,7 +42,7 @@ describe('fetcher', () => {
       mockFetch();
       await fetcher.get('/auth');
 
-      expect(window.fetch).toHaveBeenCalledWith(`${BASE_URL}/auth`, { method: 'get', headers });
+      expect(window.fetch).toHaveBeenCalledWith(authUrl, { method: 'get', headers });
     });
     it('should send POST request', async () => {
       expect.assertions(1);
@@ -44,7 +50,7 @@ describe('fetcher', () => {
       mockFetch();
       await fetcher.post('/auth');
 
-      expect(window.fetch).toHaveBeenCalledWith(`${BASE_URL}/auth`, { method: 'post', headers });
+      expect(window.fetch).toHaveBeenCalledWith(authUrl, { method: 'post', headers });
     });
     it('should send PUT request', async () => {
       expect.assertions(1);
@@ -52,7 +58,7 @@ describe('fetcher', () => {
       mockFetch();
       await fetcher.put('/auth');
 
-      expect(window.fetch).toHaveBeenCalledWith(`${BASE_URL}/auth`, { method: 'put', headers });
+      expect(window.fetch).toHaveBeenCalledWith(authUrl, { method: 'put', headers });
     });
     it('should send DELETE request', async () => {
       expect.assertions(1);
@@ -60,7 +66,7 @@ describe('fetcher', () => {
       mockFetch();
       await fetcher.delete('/auth');
 
-      expect(window.fetch).toHaveBeenCalledWith(`${BASE_URL}/auth`, { method: 'delete', headers });
+      expect(window.fetch).toHaveBeenCalledWith(authUrl, { method: 'delete', headers });
     });
   });
 
@@ -69,9 +75,9 @@ describe('fetcher', () => {
       expect.assertions(1);
 
       mockFetch();
-      await fetcher.post('/auth/google/login');
+      await fetcher.post('/auth');
 
-      expect(window.fetch).toHaveBeenCalledWith(`${BASE_URL}/auth/google/login`, { method: 'post', headers });
+      expect(window.fetch).toHaveBeenCalledWith(authUrl, { method: 'post', headers });
     });
 
     it('should add API_BASE for requests to auth endpoints', async () => {
@@ -80,7 +86,7 @@ describe('fetcher', () => {
       mockFetch();
       await fetcher.post('/comments');
 
-      expect(window.fetch).toHaveBeenCalledWith(`${BASE_URL}${API_BASE}/comments`, { method: 'post', headers });
+      expect(window.fetch).toHaveBeenCalledWith(commentsUrl, { method: 'post', headers });
     });
   });
 
@@ -106,16 +112,16 @@ describe('fetcher', () => {
           expect(e.message).toBe('Not authorized.');
         });
 
-      expect(window.fetch).toHaveBeenCalledWith(`${BASE_URL}${API_BASE}/comments`, {
+      expect(window.fetch).toHaveBeenCalledWith(commentsUrl, {
         method: 'get',
         headers: headersWithJwt,
       });
 
       // Check if `activeJwtToken` was cleaned
       mockFetch({ headers });
-      await fetcher.get('/comments', { headers });
+      await fetcher.get('/comments');
 
-      expect(window.fetch).toHaveBeenCalledWith(`${BASE_URL}${API_BASE}/comments`, { method: 'get', headers });
+      expect(window.fetch).toHaveBeenCalledWith(commentsUrl, { method: 'get', headers });
     });
   });
 
@@ -123,16 +129,16 @@ describe('fetcher', () => {
     it('should send JSON', async () => {
       expect.assertions(1);
 
-      const json = { text: 'text' };
+      const data = { text: 'text' };
       const headersWithContentType = { ...headers, 'Content-Type': 'application/json' };
 
       mockFetch();
-      await fetcher.post('/comment', { json });
+      await fetcher.post('/comments', {}, data);
 
-      expect(window.fetch).toBeCalledWith(`${BASE_URL}${API_BASE}/comment`, {
+      expect(window.fetch).toBeCalledWith(commentsUrl, {
         method: 'post',
         headers: headersWithContentType,
-        body: JSON.stringify(json),
+        body: JSON.stringify(data),
       });
     });
     it('should send form data', async () => {
@@ -142,9 +148,9 @@ describe('fetcher', () => {
       const body = new FormData();
 
       mockFetch();
-      await fetcher.post('/comment', { body, headers: headersWithMultipartData });
+      await fetcher.post('/comments', {}, body);
 
-      expect(window.fetch).toHaveBeenCalledWith(`${BASE_URL}${API_BASE}/comment`, {
+      expect(window.fetch).toHaveBeenCalledWith(commentsUrl, {
         method: 'post',
         body,
         headers: headersWithMultipartData,
