@@ -14,13 +14,19 @@ export const XSRF_COOKIE = 'XSRF-TOKEN';
 
 type QueryParams = Record<string, string | number | undefined>;
 type Payload = BodyInit | Record<string, unknown> | null;
-type FetcherMethods = Record<'get' | 'delete', <T>(url: string, query?: QueryParams) => Promise<T>> &
-  Record<'put' | 'post', <T>(url: string, query?: QueryParams, body?: Payload) => Promise<T>>;
+type BodylessMethod = <T>(url: string, query?: QueryParams) => Promise<T>;
+type BodyMethod = <T>(url: string, query?: QueryParams, body?: Payload) => Promise<T>;
+type Methods = {
+  get: BodylessMethod;
+  put: BodyMethod;
+  post: BodyMethod;
+  delete: BodylessMethod;
+};
 
 /** JWT token received from server and will be send by each request, if it present */
 let activeJwtToken: string | undefined;
 
-const createFetcher = (baseUrl: string = ''): FetcherMethods => {
+const createFetcher = (baseUrl: string = ''): Methods => {
   /**
    * Fetcher is abstraction on top of fetch
    *
@@ -106,7 +112,7 @@ const createFetcher = (baseUrl: string = ''): FetcherMethods => {
     put: (uri: string, query: QueryParams, body: Payload) => request('put', uri, query, body),
     post: (uri: string, query: QueryParams, body: Payload) => request('post', uri, query, body),
     delete: (uri: string, query: QueryParams, body: Payload) => request('delete', uri, query, body),
-  } as FetcherMethods;
+  } as Methods;
 };
 
 export const apiFetcher = createFetcher(`${BASE_URL}${API_BASE}`);
