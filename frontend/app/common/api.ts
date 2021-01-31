@@ -1,10 +1,7 @@
 import { siteId, url } from './settings';
 import { BASE_URL, API_BASE } from './constants';
 import { Config, Comment, Tree, User, BlockedUser, Sorting, AuthProvider, BlockTTL, Image } from './types';
-import createFetcher, { apiFetcher } from './fetcher';
-
-const authFetcher = createFetcher(`${BASE_URL}/auth`);
-const adminFetcher = createFetcher(`${BASE_URL}${API_BASE}/admin`);
+import { authFetcher, apiFetcher, adminFetcher } from './fetcher';
 
 /* Auth methods */
 const FROM_URL = `${window.location.origin}${window.location.pathname}?selfClose`;
