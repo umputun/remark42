@@ -3,8 +3,7 @@ jest.mock('./settings', () => ({
 }));
 
 import { RequestError } from 'utils/errorUtils';
-import { API_BASE, BASE_URL } from './constants.config';
-import fetcher, { JWT_HEADER, XSRF_HEADER } from './fetcher';
+import createFetcher, { JWT_HEADER, XSRF_HEADER } from './fetcher';
 
 type FetchImplementaitonProps = {
   status?: number;
@@ -31,62 +30,56 @@ function mockFetch({ headers = {}, data = {}, ...props }: FetchImplementaitonPro
 }
 
 describe('fetcher', () => {
+  const apiFetcher = createFetcher('/api');
   const headers = { [XSRF_HEADER]: '' };
-  const authUrl = `${BASE_URL}/auth?site=remark`;
-  const commentsUrl = `${BASE_URL}${API_BASE}/comments?site=remark`;
+  const apiUri = '/anything';
+  const apiUrl = `/api/anything?site=remark`;
 
   describe('methods', () => {
     it('should send GET request', async () => {
       expect.assertions(1);
 
       mockFetch();
-      await fetcher.get('/auth');
+      await apiFetcher.get(apiUri);
 
-      expect(window.fetch).toHaveBeenCalledWith(authUrl, { method: 'get', headers });
+      expect(window.fetch).toHaveBeenCalledWith(apiUrl, { method: 'get', headers });
     });
     it('should send POST request', async () => {
       expect.assertions(1);
 
       mockFetch();
-      await fetcher.post('/auth');
+      await apiFetcher.post(apiUri);
 
-      expect(window.fetch).toHaveBeenCalledWith(authUrl, { method: 'post', headers });
+      expect(window.fetch).toHaveBeenCalledWith(apiUrl, { method: 'post', headers });
     });
     it('should send PUT request', async () => {
       expect.assertions(1);
 
       mockFetch();
-      await fetcher.put('/auth');
+      await apiFetcher.put(apiUri);
 
-      expect(window.fetch).toHaveBeenCalledWith(authUrl, { method: 'put', headers });
+      expect(window.fetch).toHaveBeenCalledWith(apiUrl, { method: 'put', headers });
     });
     it('should send DELETE request', async () => {
       expect.assertions(1);
 
       mockFetch();
-      await fetcher.delete('/auth');
+      await apiFetcher.delete(apiUri);
 
-      expect(window.fetch).toHaveBeenCalledWith(authUrl, { method: 'delete', headers });
+      expect(window.fetch).toHaveBeenCalledWith(apiUrl, { method: 'delete', headers });
     });
   });
 
-  describe('endpoint formation', () => {
-    it("shouldn't add API_BASE for requests to auth endpoints", async () => {
+  describe('base url', () => {
+    const authFetcher = createFetcher('/auth');
+
+    it('should use other base url for auth fetcher', async () => {
       expect.assertions(1);
 
       mockFetch();
-      await fetcher.post('/auth');
+      await authFetcher.post(apiUri);
 
-      expect(window.fetch).toHaveBeenCalledWith(authUrl, { method: 'post', headers });
-    });
-
-    it('should add API_BASE for requests to auth endpoints', async () => {
-      expect.assertions(1);
-
-      mockFetch();
-      await fetcher.post('/comments');
-
-      expect(window.fetch).toHaveBeenCalledWith(commentsUrl, { method: 'post', headers });
+      expect(window.fetch).toHaveBeenCalledWith('/auth/anything?site=remark', { method: 'post', headers });
     });
   });
 
@@ -97,31 +90,31 @@ describe('fetcher', () => {
       const headersWithJwt = { [JWT_HEADER]: 'token', ...headers };
       // Set token to `activeJwtToken`
       mockFetch({ headers: headersWithJwt });
-      await fetcher.get('/comments');
+      await apiFetcher.get(apiUri);
 
       expect(window.fetch).toHaveBeenCalled();
 
       // Check if `activeJwtToken` saved and clean
       mockFetch({ headers, status: 401 });
-      await fetcher
-        .get('/comments')
+      await apiFetcher
+        .get(apiUri)
         .then(() => {
-          throw Error('Fetcher shoud throw error on 401 responce');
+          throw Error('apiFether shoud throw error on 401 responce');
         })
         .catch((e) => {
           expect(e.message).toBe('Not authorized.');
         });
 
-      expect(window.fetch).toHaveBeenCalledWith(commentsUrl, {
+      expect(window.fetch).toHaveBeenCalledWith(apiUrl, {
         method: 'get',
         headers: headersWithJwt,
       });
 
       // Check if `activeJwtToken` was cleaned
       mockFetch({ headers });
-      await fetcher.get('/comments');
+      await apiFetcher.get(apiUri);
 
-      expect(window.fetch).toHaveBeenCalledWith(commentsUrl, { method: 'get', headers });
+      expect(window.fetch).toHaveBeenCalledWith(apiUrl, { method: 'get', headers });
     });
   });
 
@@ -133,9 +126,9 @@ describe('fetcher', () => {
       const headersWithContentType = { ...headers, 'Content-Type': 'application/json' };
 
       mockFetch();
-      await fetcher.post('/comments', {}, data);
+      await apiFetcher.post(apiUri, {}, data);
 
-      expect(window.fetch).toBeCalledWith(commentsUrl, {
+      expect(window.fetch).toBeCalledWith(apiUrl, {
         method: 'post',
         headers: headersWithContentType,
         body: JSON.stringify(data),
@@ -148,9 +141,9 @@ describe('fetcher', () => {
       const body = new FormData();
 
       mockFetch();
-      await fetcher.post('/comments', {}, body);
+      await apiFetcher.post(apiUri, {}, body);
 
-      expect(window.fetch).toHaveBeenCalledWith(commentsUrl, {
+      expect(window.fetch).toHaveBeenCalledWith(apiUrl, {
         method: 'post',
         body,
         headers: headersWithMultipartData,
@@ -170,7 +163,7 @@ describe('fetcher', () => {
 
       mockFetch({ status: 400, data });
 
-      await expect(fetcher.get('/anything')).rejects.toEqual(data);
+      await expect(apiFetcher.get(apiUri)).rejects.toEqual(data);
     });
 
     it('should throw error on api json response with >= 400 status code and bad json from server', async () => {
@@ -180,7 +173,7 @@ describe('fetcher', () => {
 
       mockFetch({ status: 400, data });
 
-      await expect(fetcher.get('/anything')).rejects.toEqual(data);
+      await expect(apiFetcher.get(apiUri)).rejects.toEqual(data);
     });
 
     it('should throw special error object on 401 status', async () => {
@@ -198,7 +191,7 @@ describe('fetcher', () => {
         },
       });
 
-      await expect(fetcher.get('/anything')).rejects.toEqual(new RequestError('Not authorized.', 401));
+      await expect(apiFetcher.get(apiUri)).rejects.toEqual(new RequestError('Not authorized.', 401));
     });
     it('should throw "Something went wrong." object on unknown status', async () => {
       expect.assertions(1);
@@ -213,7 +206,7 @@ describe('fetcher', () => {
         },
       });
 
-      await expect(fetcher.get('/anything')).rejects.toEqual(new RequestError('Something went wrong.', 0));
+      await expect(apiFetcher.get(apiUri)).rejects.toEqual(new RequestError('Something went wrong.', 0));
     });
   });
 });
