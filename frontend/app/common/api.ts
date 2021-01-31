@@ -33,8 +33,7 @@ export const logIn = (provider: AuthProvider): Promise<User | null> => {
 
   return new Promise<User | null>((resolve, reject) => {
     const queryString = new URLSearchParams({ from: FROM_URL });
-    const url = `/${provider.name}/login?${queryString}`;
-    const newWindow = window.open(url);
+    const newWindow = window.open(`/auth/${provider.name}/login?${queryString}`);
     let secondsPass = 0;
     const checkMsDelay = 300;
     const checkInterval = setInterval(() => {
