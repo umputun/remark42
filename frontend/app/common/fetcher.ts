@@ -3,6 +3,7 @@ import { httpErrorMap, httpMessages, RequestError } from 'utils/errorUtils';
 import { BASE_URL, API_BASE } from './constants';
 import { StaticStore } from './static-store';
 import { getCookie } from './cookies';
+import { siteId } from 'common/settings';
 
 /** List of fetcher’s supported methods */
 const METHODS = ['get', 'post', 'put', 'delete'] as const;
@@ -13,24 +14,41 @@ export const XSRF_HEADER = 'X-XSRF-TOKEN';
 /** Cookie field with XSRF token */
 export const XSRF_COOKIE = 'XSRF-TOKEN';
 
-type Methods = typeof METHODS;
-type FetchInit = Omit<RequestInit, 'headers'> & {
-  headers?: Record<string, string>;
-  json?: unknown;
-  query?: Record<string, string | number | undefined>;
-};
-type FetcherObject = Record<Methods[number], <T>(url: string, params?: FetchInit) => Promise<T>>;
+type QueryParams = Record<string, string | number | undefined>;
+type Payload = BodyInit | Record<string, unknown> | null;
+type FetcherMethods = Record<'get' | 'delete', <T>(url: string, query?: QueryParams) => Promise<T>> &
+  Record<'put' | 'post', <T>(url: string, query?: QueryParams, body?: Payload) => Promise<T>>;
+
+export function stringifyUrl(uri: string, query: QueryParams) {
+  const queryEntries = Object.entries(query);
+  const siteIdParam = `site=${encodeURIComponent(siteId)}`;
+  const baseUrl = uri.indexOf('/auth') === 0 ? BASE_URL : `${BASE_URL}${API_BASE}`;
+  const url = `${baseUrl}${uri}`;
+
+  if (queryEntries.length === 0) {
+    return `${url}?${siteIdParam}`;
+  }
+
+  const queryString = Object.entries(query)
+    .reduce(
+      (accum, [k, v]) => (v === undefined ? accum : [...accum, `${encodeURIComponent(k)}=${encodeURIComponent(v)}`]),
+      [siteIdParam] as string[]
+    )
+    .join('&');
+
+  return `${url}?${queryString}`;
+}
 
 /** JWT token received from server and will be send by each request, if it present */
 let activeJwtToken: string | undefined;
 
-const fetcher = METHODS.reduce((acc, method) => {
-  acc[method] = async (uri: string, params: FetchInit = {}) => {
-    const { headers = {}, json, ...fetchParams } = params;
+const fetcher = METHODS.reduce<FetcherMethods>((acc, method) => {
+  acc[method] = async (uri: string, query: QueryParams = {}, body?: Payload) => {
     // add api base if it's not auth request
     // we use `indexOf` instead of `startsWidth` because we don't want to have another one polyfill for no reason
-    const baseUrl = uri.indexOf('/auth') === 0 ? BASE_URL : `${BASE_URL}${API_BASE}`;
-    const url = `${baseUrl}${uri}`;
+    const url = stringifyUrl(uri, query);
+    const headers: Record<string, string> = {};
+    const params: RequestInit = { method };
 
     // Save token in memory and pass it into headers in case if storing cookies is disabled
     if (activeJwtToken) {
@@ -38,13 +56,18 @@ const fetcher = METHODS.reduce((acc, method) => {
     }
     headers[XSRF_HEADER] = getCookie(XSRF_COOKIE) || '';
 
-    if (json) {
+    if (body instanceof FormData) {
+      headers['Content-Type'] = 'multipart/form-data';
+      params.body = body;
+    } else if (typeof body === 'object' && body !== null) {
       headers['Content-Type'] = 'application/json';
-      fetchParams.body = JSON.stringify(json);
+      params.body = JSON.stringify(body);
+    } else {
+      params.body = body;
     }
 
     try {
-      const res = await fetch(url, { ...fetchParams, method, headers });
+      const res = await fetch(url, { ...params, headers });
       // TODO: it should be clarified when frontend gets this header and what could be in it to simplify this logic and cover by tests
       const date = (res.headers.has('date') && res.headers.get('date')) || '';
       const timestamp = isNaN(Date.parse(date)) ? 0 : Date.parse(date);
@@ -93,6 +116,6 @@ const fetcher = METHODS.reduce((acc, method) => {
     }
   };
   return acc;
-}, {} as FetcherObject);
+}, {} as FetcherMethods);
 
 export default fetcher;
