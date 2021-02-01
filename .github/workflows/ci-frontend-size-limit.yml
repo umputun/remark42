@@ -1,11 +1,11 @@
-name: "check js/css bundles file limit"
+name: frontend
+
 on:
   pull_request:
-    branches:
-      - master
     paths:
-      - '.github/workflows/ci-test-frontend.yml'
-      - 'frontend/**/*.{ts,tsx,css}'
+      - '.github/workflows/ci-frontend-size-limit.yml'
+      - 'frontend/**'
+
 jobs:
   size:
     runs-on: ubuntu-latest
@@ -16,4 +16,4 @@ jobs:
       - uses: andresz1/size-limit-action@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          directory: frontend/
+          directory: frontend
