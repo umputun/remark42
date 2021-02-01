@@ -1,23 +1,23 @@
-name: test_frontend
+name: frontend
 
 on:
   push:
     branches:
     tags:
     paths:
-      - '.github/workflows/ci-test-frontend.yml'
+      - '.github/workflows/ci-frontend.yml'
       - 'frontend/**'
   pull_request:
     paths:
-      - '.github/workflows/ci-test-frontend.yml'
+      - '.github/workflows/ci-frontend.yml'
       - 'frontend/**'
 
 jobs:
-  frontend-check:
+  check-transtations:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [12.16]
+        node: [14.15]
 
     steps:
       - uses: actions/checkout@v2
@@ -35,14 +35,39 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-
 
-      - run: npx run-p check
+      - run: npm run check:translation
         working-directory: ./frontend
 
-  frontend-lint:
+  check-typescript:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [12.16]
+        node: [14.15]
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node }}
+
+      - run: npm ci --loglevel warn
+        working-directory: ./frontend
+
+      - uses: actions/cache@v2
+        with:
+          path: ${{ github.workspace }}/frontend/node_modules/.cache
+          key: ${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - run: npm run check:types
+        working-directory: ./frontend
+
+  lint:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [14.15]
 
     steps:
       - uses: actions/checkout@v2
@@ -56,11 +81,11 @@ jobs:
       - run: npx run-p lint
         working-directory: ./frontend
 
-  frontend-test:
+  test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [12.16]
+        node: [14.15]
 
     steps:
       - uses: actions/checkout@v2
