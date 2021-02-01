@@ -118,3 +118,4 @@ const createFetcher = (baseUrl: string = ''): Methods => {
 export const apiFetcher = createFetcher(`${BASE_URL}${API_BASE}`);
 export const authFetcher = createFetcher(`${BASE_URL}/auth`);
 export const adminFetcher = createFetcher(`${BASE_URL}${API_BASE}/admin`);
+export default createFetcher;
