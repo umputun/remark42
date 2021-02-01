@@ -3,7 +3,8 @@ jest.mock('./settings', () => ({
 }));
 
 import { RequestError } from 'utils/errorUtils';
-import createFetcher, { JWT_HEADER, XSRF_HEADER } from './fetcher';
+import { API_BASE, BASE_URL } from './constants.config';
+import { apiFetcher, authFetcher, adminFetcher, JWT_HEADER, XSRF_HEADER } from './fetcher';
 
 type FetchImplementaitonProps = {
   status?: number;
@@ -30,10 +31,9 @@ function mockFetch({ headers = {}, data = {}, ...props }: FetchImplementaitonPro
 }
 
 describe('fetcher', () => {
-  const apiFetcher = createFetcher('/api');
   const headers = { [XSRF_HEADER]: '' };
-  const apiUri = '/anything';
-  const apiUrl = `/api/anything?site=remark`;
+  const apiUri = `/anything`;
+  const apiUrl = `${BASE_URL}${API_BASE}/anything?site=remark`;
 
   describe('methods', () => {
     it('should send GET request', async () => {
@@ -70,16 +70,28 @@ describe('fetcher', () => {
     });
   });
 
-  describe('base url', () => {
-    const authFetcher = createFetcher('/auth');
-
+  describe('auth fetcher', () => {
     it('should use other base url for auth fetcher', async () => {
       expect.assertions(1);
 
       mockFetch();
       await authFetcher.post(apiUri);
 
-      expect(window.fetch).toHaveBeenCalledWith('/auth/anything?site=remark', { method: 'post', headers });
+      expect(window.fetch).toHaveBeenCalledWith(`${BASE_URL}/auth/anything?site=remark`, { method: 'post', headers });
+    });
+  });
+
+  describe('admin fetcher', () => {
+    it('should use other base url for auth fetcher', async () => {
+      expect.assertions(1);
+
+      mockFetch();
+      await adminFetcher.post(apiUri);
+
+      expect(window.fetch).toHaveBeenCalledWith(`${BASE_URL}${API_BASE}/admin/anything?site=remark`, {
+        method: 'post',
+        headers,
+      });
     });
   });
 
