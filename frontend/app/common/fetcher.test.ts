@@ -34,7 +34,6 @@ describe('fetcher', () => {
   const headers = { [XSRF_HEADER]: '' };
   const apiUri = `/anything`;
   const apiUrl = `${BASE_URL}${API_BASE}/anything?site=remark`;
-  const opts = { credentials: 'same-origin', mode: 'same-origin', headers };
 
   describe('methods', () => {
     it('should send GET request', async () => {
@@ -43,7 +42,7 @@ describe('fetcher', () => {
       mockFetch();
       await apiFetcher.get(apiUri);
 
-      expect(window.fetch).toHaveBeenCalledWith(apiUrl, { ...opts, method: 'get' });
+      expect(window.fetch).toHaveBeenCalledWith(apiUrl, { method: 'get', headers });
     });
     it('should send POST request', async () => {
       expect.assertions(1);
@@ -51,7 +50,7 @@ describe('fetcher', () => {
       mockFetch();
       await apiFetcher.post(apiUri);
 
-      expect(window.fetch).toHaveBeenCalledWith(apiUrl, { ...opts, method: 'post' });
+      expect(window.fetch).toHaveBeenCalledWith(apiUrl, { method: 'post', headers });
     });
     it('should send PUT request', async () => {
       expect.assertions(1);
@@ -59,7 +58,7 @@ describe('fetcher', () => {
       mockFetch();
       await apiFetcher.put(apiUri);
 
-      expect(window.fetch).toHaveBeenCalledWith(apiUrl, { ...opts, method: 'put' });
+      expect(window.fetch).toHaveBeenCalledWith(apiUrl, { method: 'put', headers });
     });
     it('should send DELETE request', async () => {
       expect.assertions(1);
@@ -67,7 +66,7 @@ describe('fetcher', () => {
       mockFetch();
       await apiFetcher.delete(apiUri);
 
-      expect(window.fetch).toHaveBeenCalledWith(apiUrl, { ...opts, method: 'delete' });
+      expect(window.fetch).toHaveBeenCalledWith(apiUrl, { method: 'delete', headers });
     });
   });
 
@@ -78,7 +77,7 @@ describe('fetcher', () => {
       mockFetch();
       await authFetcher.post(apiUri);
 
-      expect(window.fetch).toHaveBeenCalledWith(`${BASE_URL}/auth/anything?site=remark`, { ...opts, method: 'post' });
+      expect(window.fetch).toHaveBeenCalledWith(`${BASE_URL}/auth/anything?site=remark`, { method: 'post', headers });
     });
   });
 
@@ -90,8 +89,8 @@ describe('fetcher', () => {
       await adminFetcher.post(apiUri);
 
       expect(window.fetch).toHaveBeenCalledWith(`${BASE_URL}${API_BASE}/admin/anything?site=remark`, {
-        ...opts,
         method: 'post',
+        headers,
       });
     });
   });
@@ -119,7 +118,6 @@ describe('fetcher', () => {
         });
 
       expect(window.fetch).toHaveBeenCalledWith(apiUrl, {
-        ...opts,
         method: 'get',
         headers: headersWithJwt,
       });
@@ -128,7 +126,7 @@ describe('fetcher', () => {
       mockFetch({ headers });
       await apiFetcher.get(apiUri);
 
-      expect(window.fetch).toHaveBeenCalledWith(apiUrl, { ...opts, method: 'get' });
+      expect(window.fetch).toHaveBeenCalledWith(apiUrl, { method: 'get', headers });
     });
   });
 
@@ -143,7 +141,6 @@ describe('fetcher', () => {
       await apiFetcher.post(apiUri, {}, data);
 
       expect(window.fetch).toBeCalledWith(apiUrl, {
-        ...opts,
         method: 'post',
         headers: headersWithContentType,
         body: JSON.stringify(data),
@@ -159,7 +156,6 @@ describe('fetcher', () => {
       await apiFetcher.post(apiUri, {}, body);
 
       expect(window.fetch).toHaveBeenCalledWith(apiUrl, {
-        ...opts,
         method: 'post',
         body,
         headers: headersWithMultipartData,
