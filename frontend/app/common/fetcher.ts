@@ -58,7 +58,7 @@ const createFetcher = (baseUrl: string = ''): Methods => {
     }
 
     try {
-      const res = await fetch(url, { ...params, headers });
+      const res = await fetch(url, { ...params, headers, credentials: 'same-origin', mode: 'same-origin' });
       // TODO: it should be clarified when frontend gets this header and what could be in it to simplify this logic and cover by tests
       const date = (res.headers.has('date') && res.headers.get('date')) || '';
       const timestamp = isNaN(Date.parse(date)) ? 0 : Date.parse(date);
