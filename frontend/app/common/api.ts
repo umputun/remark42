@@ -29,7 +29,7 @@ export const logIn = (provider: AuthProvider): Promise<User | null> => {
   if (provider.name === 'email') return __loginViaEmail(provider.token);
 
   return new Promise<User | null>((resolve, reject) => {
-    const queryString = new URLSearchParams({ from: FROM_URL });
+    const queryString = new URLSearchParams({ from: FROM_URL, site: siteId });
     const newWindow = window.open(`/auth/${provider.name}/login?${queryString}`);
     let secondsPass = 0;
     const checkMsDelay = 300;

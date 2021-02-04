@@ -32,7 +32,7 @@ function mockFetch({ headers = {}, data = {}, ...props }: FetchImplementaitonPro
 
 describe('fetcher', () => {
   const headers = { [XSRF_HEADER]: '' };
-  const apiUri = `/anything`;
+  const apiUri = '/anything';
   const apiUrl = `${BASE_URL}${API_BASE}/anything?site=remark`;
 
   describe('methods', () => {
