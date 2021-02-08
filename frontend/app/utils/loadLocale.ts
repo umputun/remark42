@@ -33,6 +33,9 @@ export async function loadLocale(locale: string): Promise<Record<string, string>
   if (locale === 'vi') {
     return import(/* webpackChunkName: "vi" */ '../locales/vi.json').then((res) => res.default).catch(() => enMessages);
   }
+  if (locale === 'be') {
+    return import(/* webpackChunkName: "be" */ '../locales/be.json').then((res) => res.default).catch(() => enMessages);
+  }
 
   return enMessages;
 }
