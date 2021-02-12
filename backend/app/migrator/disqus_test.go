@@ -43,7 +43,7 @@ func TestDisqus_Import(t *testing.T) {
 
 	c = last[1] // get comment with empty username
 	assert.Equal(t, "No Username", c.User.Name)
-	assert.Equal(t, "disqus_No Username", c.User.ID)
+	assert.Equal(t, "disqus_62e24ea213756cda0339e1074819f15e25214361", c.User.ID)
 
 	posts, err := dataStore.List("test", 0, 0)
 	assert.NoError(t, err)
