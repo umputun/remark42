@@ -50,7 +50,7 @@ func EncodeID(id string) string {
 func hashWithFallback(h hash.Hash, val string) string {
 
 	if reValidSha.MatchString(val) {
-		return val // already hashed or empty
+		return val // already hashed
 	}
 
 	if _, err := io.WriteString(h, val); err != nil {
