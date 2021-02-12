@@ -41,6 +41,10 @@ func TestDisqus_Import(t *testing.T) {
 	assert.Equal(t, "2ba6b71dbf9750ae3356cce14cac6c1b1962747c", c.User.IP)
 	assert.True(t, c.Imported)
 
+	c = last[1] // get comment with empty username
+	assert.Equal(t, "No Username", c.User.Name)
+	assert.Equal(t, "disqus_No Username", c.User.ID)
+
 	posts, err := dataStore.List("test", 0, 0)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(posts), "2 posts")
@@ -171,10 +175,9 @@ var xmlTestDisqus = `<?xml version="1.0" encoding="utf-8"?>
 		<isDeleted>false</isDeleted>
 		<isSpam>false</isSpam>
 		<author>
-			<email>dmitri.noname@gmail.com</email>
-			<name>Dmitry Noname</name>
+			<email>john.nousername@gmail.com</email>
+			<name>No Username</name>
 			<isAnonymous>false</isAnonymous>
-			<username>google-74b9e7568ef6860e93862c5d77590123</username>
 		</author>
 		<ipAddress>89.89.89.139</ipAddress>
 		<thread dsq:id="247918464"/>

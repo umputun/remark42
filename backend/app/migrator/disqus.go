@@ -137,7 +137,7 @@ func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 						ParentID:  comment.Pid.Val,
 						Imported:  true,
 					}
-					if c.User.ID == "disqus_" { // empty comment.AuthorUserName from disqus
+					if len(comment.AuthorUserName) == 0 { // empty comment.AuthorUserName from disqus
 						c.User.ID = "disqus_" + c.User.Name
 					}
 					if c.ID == "" { // no comment.UID
