@@ -48,8 +48,9 @@ func EncodeID(id string) string {
 
 // hashWithFallback tries to has val with hash.Hash and fallback to crc if needed
 func hashWithFallback(h hash.Hash, val string) string {
-	if len(val) == 0 || reValidSha.MatchString(val) {
-		return val // empty or already hashed
+
+	if reValidSha.MatchString(val) {
+		return val // already hashed or empty
 	}
 
 	if _, err := io.WriteString(h, val); err != nil {
