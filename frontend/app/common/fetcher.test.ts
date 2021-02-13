@@ -146,10 +146,10 @@ describe('fetcher', () => {
         body: JSON.stringify(data),
       });
     });
-    it('should send form data', async () => {
+
+    it("shouldn't send content-type with form data", async () => {
       expect.assertions(1);
 
-      const headersWithMultipartData = { ...headers, 'Content-Type': 'multipart/form-data' };
       const body = new FormData();
 
       mockFetch();
@@ -158,7 +158,7 @@ describe('fetcher', () => {
       expect(window.fetch).toHaveBeenCalledWith(apiUrl, {
         method: 'post',
         body,
-        headers: headersWithMultipartData,
+        headers,
       });
     });
   });
