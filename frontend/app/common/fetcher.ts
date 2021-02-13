@@ -48,7 +48,8 @@ const createFetcher = (baseUrl: string = ''): Methods => {
     headers[XSRF_HEADER] = getCookie(XSRF_COOKIE) || '';
 
     if (body instanceof FormData) {
-      headers['Content-Type'] = 'multipart/form-data';
+      // Shouldn't add any kind of `Content-Type` if we send `FormData`
+      // Now FormData is sent only in case of uploading file
       params.body = body;
     } else if (typeof body === 'object' && body !== null) {
       headers['Content-Type'] = 'application/json';
