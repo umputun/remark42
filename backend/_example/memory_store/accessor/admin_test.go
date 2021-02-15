@@ -31,7 +31,7 @@ func TestMemAdmin_Get(t *testing.T) {
 	email, err := ms.Email("site1")
 	assert.NoError(t, err)
 	assert.Equal(t, "e1", email)
-	key, err := ms.Key()
+	key, err := ms.Key("any")
 	assert.NoError(t, err)
 	assert.Equal(t, "secret", key)
 
@@ -41,7 +41,7 @@ func TestMemAdmin_Get(t *testing.T) {
 	email, err = ms.Email("site2")
 	assert.NoError(t, err)
 	assert.Equal(t, "e2", email)
-	key, err = ms.Key()
+	key, err = ms.Key("any")
 	assert.NoError(t, err)
 	assert.Equal(t, "secret", key)
 

@@ -35,7 +35,7 @@ func NewMemAdminStore(key string) *MemAdmin {
 }
 
 // Key executes find by siteID and returns substructure with secret key
-func (m *MemAdmin) Key() (key string, err error) {
+func (m *MemAdmin) Key(_ string) (key string, err error) {
 	return m.key, nil
 }
 

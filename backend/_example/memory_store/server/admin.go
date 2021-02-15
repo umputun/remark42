@@ -15,8 +15,13 @@ import (
 )
 
 // get admin key
-func (s *RPC) admKeyHndl(id uint64, _ json.RawMessage) (rr jrpc.Response) {
-	key, err := s.adm.Key()
+func (s *RPC) admKeyHndl(id uint64, params json.RawMessage) (rr jrpc.Response) {
+	var siteID string
+	if err := json.Unmarshal(params, &siteID); err != nil {
+		return jrpc.Response{Error: err.Error()}
+	}
+
+	key, err := s.adm.Key(siteID)
 	if err != nil {
 		return jrpc.Response{Error: err.Error()}
 	}

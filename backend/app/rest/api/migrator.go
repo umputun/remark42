@@ -37,7 +37,7 @@ type Migrator struct {
 
 // KeyStore defines sub-interface for consumers needed just a key
 type KeyStore interface {
-	Key() (key string, err error)
+	Key(siteID string) (key string, err error)
 }
 
 // POST /import?secret=key&site=site-id&provider=disqus|remark|wordpress

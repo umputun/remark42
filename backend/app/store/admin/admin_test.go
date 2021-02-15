@@ -10,7 +10,7 @@ func TestStaticStore_Get(t *testing.T) {
 	var ks Store = NewStaticStore("key123", []string{"s1", "s2", "s3"},
 		[]string{"123", "xyz"}, "aa@example.com")
 
-	k, err := ks.Key()
+	k, err := ks.Key("any")
 	assert.NoError(t, err, "valid store")
 	assert.Equal(t, "key123", k, "valid site")
 

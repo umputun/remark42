@@ -10,7 +10,7 @@ import (
 
 // Store defines interface returning admins info for given site
 type Store interface {
-	Key() (key string, err error)
+	Key(siteID string) (key string, err error)
 	Admins(siteID string) (ids []string, err error)
 	Email(siteID string) (email string, err error)
 	Enabled(siteID string) (ok bool, err error)
@@ -48,7 +48,7 @@ func NewStaticKeyStore(key string) *StaticStore {
 }
 
 // Key returns static key, same for all sites
-func (s *StaticStore) Key() (key string, err error) {
+func (s *StaticStore) Key(_ string) (key string, err error) {
 	if s.key == "" {
 		return "", errors.New("empty key for static key store")
 	}

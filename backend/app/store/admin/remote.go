@@ -18,8 +18,8 @@ type RPC struct {
 }
 
 // Key returns the key, same for all sites
-func (r *RPC) Key() (key string, err error) {
-	resp, err := r.Call("admin.key")
+func (r *RPC) Key(siteID string) (key string, err error) {
+	resp, err := r.Call("admin.key", siteID)
 	if err != nil {
 		return "", err
 	}

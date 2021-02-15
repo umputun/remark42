@@ -19,15 +19,15 @@ import (
 )
 
 func TestRemote_Key(t *testing.T) {
-	ts := testServer(t, `{"method":"admin.key","id":1}`,
-		`{"result":"12345","id":1}`)
+	ts := testServer(t, `{"method":"admin.key","params":"any","id":1}`,
+		`{"result":"12345","params":"any","id":1}`)
 	defer ts.Close()
 	c := RPC{Client: jrpc.Client{API: ts.URL, Client: http.Client{}}}
 
 	var a Store = &c
 	_ = a
 
-	res, err := c.Key()
+	res, err := c.Key("any")
 	assert.NoError(t, err)
 	assert.Equal(t, "12345", res)
 	t.Logf("%v %T", res, res)

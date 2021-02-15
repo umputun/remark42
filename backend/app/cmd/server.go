@@ -908,7 +908,7 @@ func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Sto
 		SameSiteCookie: s.parseSameSite(s.Auth.SameSite),
 		SecureCookies:  strings.HasPrefix(s.RemarkURL, "https://"),
 		SecretReader: token.SecretFunc(func(aud string) (string, error) { // get secret per site
-			return admns.Key()
+			return admns.Key("")
 		}),
 		ClaimsUpd: token.ClaimsUpdFunc(func(c token.Claims) token.Claims { // set attributes, on new token or refresh
 			if c.User == nil {

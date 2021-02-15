@@ -949,7 +949,7 @@ func (s *DataStore) prepVotes(c store.Comment, user store.User) store.Comment {
 // Note: secret shared across sites, but some sites can be disabled.
 func (s *DataStore) getSecret(siteID string) (secret string, err error) {
 
-	if secret, err = s.AdminStore.Key(); err != nil {
+	if secret, err = s.AdminStore.Key("any"); err != nil {
 		return "", errors.Wrapf(err, "can't get secret for site %s", siteID)
 	}
 

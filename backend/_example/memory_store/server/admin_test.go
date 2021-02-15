@@ -24,7 +24,7 @@ func TestRPC_admKeyHndl(t *testing.T) {
 	api := fmt.Sprintf("http://localhost:%d/test", port)
 
 	ra := admin.RPC{Client: jrpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
-	key, err := ra.Key()
+	key, err := ra.Key("any")
 	assert.NoError(t, err)
 	assert.Equal(t, "secret", key)
 }
