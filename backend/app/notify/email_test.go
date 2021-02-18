@@ -287,7 +287,7 @@ Date: `)
 	// send email to both user and admin, without parent set
 	email.AdminEmails = []string{"admin@example.org"}
 	req = Request{
-		Comment: store.Comment{ID: "999", User: store.User{ID: "1", Name: "test_user"}, PostTitle: "test_title"},
+		Comment: store.Comment{ID: "999", User: store.User{ID: "1", Name: "test_user"}, PostTitle: "Привет"},
 		Emails:  []string{"test@example.org"},
 	}
 	assert.NoError(t, email.Send(context.TODO(), req))
