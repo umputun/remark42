@@ -249,6 +249,63 @@ Content-Type: text/html; charset="UTF-8"
 Date: `)
 }
 
+func TestEmail_SendWithUnicodeInSubject(t *testing.T) {
+	email, err := NewEmail(EmailParams{
+		From:                     "from@example.org",
+		VerificationTemplatePath: "testdata/verification.html.tmpl",
+		MsgTemplatePath:          "testdata/msg.html.tmpl",
+	}, SMTPParams{})
+	assert.NoError(t, err)
+	assert.NotNil(t, email)
+	fakeSMTP := fakeTestSMTP{}
+	email.smtp = &fakeSMTP
+	email.TokenGenFn = TokenGenFn
+	email.UnsubscribeURL = "https://remark42.com/api/v1/email/unsubscribe"
+	req := Request{
+		Comment: store.Comment{ID: "999", User: store.User{ID: "1", Name: "test_user"}, ParentID: "1", PostTitle: "Привет"},
+		parent:  store.Comment{ID: "1", User: store.User{ID: "999", Name: "parent_user"}},
+		Emails:  []string{"test@example.org"},
+	}
+	assert.NoError(t, email.Send(context.TODO(), req))
+	assert.Equal(t, "from@example.org", fakeSMTP.readMail())
+	assert.Equal(t, 1, fakeSMTP.readQuitCount())
+	assert.Equal(t, "test@example.org", fakeSMTP.readRcpt())
+	// test buildMessageFromRequest separately for message text
+	res, err := email.buildMessageFromRequest(req, req.Emails[0], false)
+	assert.NoError(t, err)
+	// `=?utf-8?b?TmV3IHJlcGx5IHRvIHlvdXIgY29tbWVudCBmb3IgItCf0YDQuNCy0LXRgiI=?=` -> `New reply to your comment for "Привет"` in base64 + required prefix and suffix
+	assert.Contains(t, res, `From: from@example.org
+To: test@example.org
+Subject: =?utf-8?b?TmV3IHJlcGx5IHRvIHlvdXIgY29tbWVudCBmb3IgItCf0YDQuNCy0LXRgiI=?=
+Content-Transfer-Encoding: quoted-printable
+MIME-version: 1.0
+Content-Type: text/html; charset="UTF-8"
+List-Unsubscribe-Post: List-Unsubscribe=One-Click
+List-Unsubscribe: <https://remark42.com/api/v1/email/unsubscribe?site=&tkn=token>
+Date: `)
+
+	// send email to both user and admin, without parent set
+	email.AdminEmails = []string{"admin@example.org"}
+	req = Request{
+		Comment: store.Comment{ID: "999", User: store.User{ID: "1", Name: "test_user"}, PostTitle: "test_title"},
+		Emails:  []string{"test@example.org"},
+	}
+	assert.NoError(t, email.Send(context.TODO(), req))
+	assert.Equal(t, "from@example.org", fakeSMTP.readMail())
+	assert.Equal(t, 3, fakeSMTP.readQuitCount(), "plus two emails: one for user and one for admin")
+	assert.Equal(t, "admin@example.org", fakeSMTP.readRcpt())
+	res, err = email.buildMessageFromRequest(req, email.AdminEmails[0], true)
+	assert.NoError(t, err)
+	// `=?utf-8?b?TmV3IGNvbW1lbnQgdG8geW91ciBzaXRlIGZvciAi0J/RgNC40LLQtdGCIg==?=` -> `New comment to your site for "Привет"` in base64 + required prefix and suffix
+	assert.Contains(t, res, `From: from@example.org
+To: admin@example.org
+Subject: =?utf-8?b?TmV3IGNvbW1lbnQgdG8geW91ciBzaXRlIGZvciAi0J/RgNC40LLQtdGCIg==?=
+Content-Transfer-Encoding: quoted-printable
+MIME-version: 1.0
+Content-Type: text/html; charset="UTF-8"
+Date: `)
+}
+
 func TestEmail_SendVerification(t *testing.T) {
 	email, err := NewEmail(EmailParams{
 		From:                     "from@example.org",
