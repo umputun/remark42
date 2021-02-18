@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
+	"mime"
 	"mime/quotedprintable"
 	"net"
 	"net/smtp"
@@ -303,7 +304,7 @@ func (e *Email) buildMessage(subject, body, to, contentType, unsubscribeLink str
 	}
 	message = addHeader(message, "From", e.From)
 	message = addHeader(message, "To", to)
-	message = addHeader(message, "Subject", subject)
+	message = addHeader(message, "Subject", mime.BEncoding.Encode("utf-8", subject))
 	message = addHeader(message, "Content-Transfer-Encoding", "quoted-printable")
 
 	if contentType != "" {
