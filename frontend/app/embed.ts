@@ -300,17 +300,21 @@ function createInstance(config: typeof window.remark_config) {
   }
 
   function postTitleToIframe(title: string) {
-    iframe.contentWindow!.postMessage(JSON.stringify({ title }), '*');
+    if (iframe.contentWindow) {
+      iframe.contentWindow.postMessage(JSON.stringify({ title }), '*');
+    }
   }
 
   function postClickOutsideToIframe(e: MouseEvent) {
-    if (!iframe.contains(e.target as Node)) {
-      iframe.contentWindow!.postMessage(JSON.stringify({ clickOutside: true }), '*');
+    if (iframe.contentWindow && !iframe.contains(e.target as Node)) {
+      iframe.contentWindow.postMessage(JSON.stringify({ clickOutside: true }), '*');
     }
   }
 
   function changeTheme(theme: Theme) {
-    iframe.contentWindow!.postMessage(JSON.stringify({ theme }), '*');
+    if (iframe.contentWindow) {
+      iframe.contentWindow.postMessage(JSON.stringify({ theme }), '*');
+    }
   }
 
   function destroy() {
@@ -324,6 +328,9 @@ function createInstance(config: typeof window.remark_config) {
 
     if (titleObserver) {
       titleObserver.disconnect();
+      // Allow browser to drop observer and iframe captured in callback
+      // to prevent attempts to send messages to detached frame
+      titleObserver = null;
     }
 
     iframe.remove();
