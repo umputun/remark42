@@ -61,6 +61,9 @@ type Limiter struct {
 	// A function to call when a request is rejected.
 	onLimitReached func(w http.ResponseWriter, r *http.Request)
 
+	// An option to write back what you want upon reaching a limit.
+	overrideDefaultResponseWriter bool
+
 	// List of places to look up IP address.
 	// Default is "RemoteAddr", "X-Forwarded-For", "X-Real-IP".
 	// You can rearrange the order as you like.
@@ -259,6 +262,20 @@ func (l *Limiter) ExecOnLimitReached(w http.ResponseWriter, r *http.Request) {
 	if fn != nil {
 		fn(w, r)
 	}
+}
+
+// SetOverrideDefaultResponseWriter is a thread-safe way of setting the response writer override variable.
+func (l *Limiter) SetOverrideDefaultResponseWriter(override bool) {
+	l.Lock()
+	l.overrideDefaultResponseWriter = override
+	l.Unlock()
+}
+
+// GetOverrideDefaultResponseWriter is a thread-safe way of getting the response writer override variable.
+func (l *Limiter) GetOverrideDefaultResponseWriter() bool {
+	l.RLock()
+	defer l.RUnlock()
+	return l.overrideDefaultResponseWriter
 }
 
 // SetIPLookups is thread-safe way of setting list of places to look up IP address.

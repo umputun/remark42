@@ -68,13 +68,13 @@ github.com/dghubble/oauth1/twitter
 # github.com/dgrijalva/jwt-go v3.2.0+incompatible
 ## explicit
 github.com/dgrijalva/jwt-go
-# github.com/didip/tollbooth/v6 v6.0.1
+# github.com/didip/tollbooth/v6 v6.1.0
 ## explicit
 github.com/didip/tollbooth/v6
 github.com/didip/tollbooth/v6/errors
 github.com/didip/tollbooth/v6/libstring
 github.com/didip/tollbooth/v6/limiter
-# github.com/didip/tollbooth_chi v0.0.0-20200524181329-8b84cd7183d9
+# github.com/didip/tollbooth_chi v0.0.0-20200828173446-a7173453ea21
 ## explicit
 github.com/didip/tollbooth_chi
 # github.com/dlclark/regexp2 v1.1.6

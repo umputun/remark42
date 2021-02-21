@@ -16,7 +16,12 @@ import (
 func setResponseHeaders(lmt *limiter.Limiter, w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("X-Rate-Limit-Limit", fmt.Sprintf("%.2f", lmt.GetMax()))
 	w.Header().Add("X-Rate-Limit-Duration", "1")
-	w.Header().Add("X-Rate-Limit-Request-Forwarded-For", r.Header.Get("X-Forwarded-For"))
+
+	xForwardedFor := r.Header.Get("X-Forwarded-For")
+	if strings.TrimSpace(xForwardedFor) != "" {
+		w.Header().Add("X-Rate-Limit-Request-Forwarded-For", xForwardedFor)
+	}
+
 	w.Header().Add("X-Rate-Limit-Request-Remote-Addr", r.RemoteAddr)
 }
 
@@ -38,16 +43,141 @@ func LimitByKeys(lmt *limiter.Limiter, keys []string) *errors.HTTPError {
 	return nil
 }
 
+// ShouldSkipLimiter is a series of filter that decides if request should be limited or not.
+func ShouldSkipLimiter(lmt *limiter.Limiter, r *http.Request) bool {
+	// ---------------------------------
+	// Filter by remote ip
+	// If we are unable to find remoteIP, skip limiter
+	remoteIP := libstring.RemoteIP(lmt.GetIPLookups(), lmt.GetForwardedForIndexFromBehind(), r)
+	if remoteIP == "" {
+		return true
+	}
+
+	// ---------------------------------
+	// Filter by request method
+	lmtMethods := lmt.GetMethods()
+	lmtMethodsIsSet := len(lmtMethods) > 0
+
+	if lmtMethodsIsSet {
+		// If request does not contain all of the methods in limiter,
+		// skip limiter
+		requestMethodDefinedInLimiter := libstring.StringInSlice(lmtMethods, r.Method)
+
+		if !requestMethodDefinedInLimiter {
+			return true
+		}
+	}
+
+	// ---------------------------------
+	// Filter by request headers
+	lmtHeaders := lmt.GetHeaders()
+	lmtHeadersIsSet := len(lmtHeaders) > 0
+
+	if lmtHeadersIsSet {
+		// If request does not contain all of the headers in limiter,
+		// skip limiter
+		requestHeadersDefinedInLimiter := false
+
+		for headerKey := range lmtHeaders {
+			reqHeaderValue := r.Header.Get(headerKey)
+			if reqHeaderValue != "" {
+				requestHeadersDefinedInLimiter = true
+				break
+			}
+		}
+
+		if !requestHeadersDefinedInLimiter {
+			return true
+		}
+
+		// ------------------------------
+		// If request contains the header key but not the values,
+		// skip limiter
+		requestHeadersDefinedInLimiter = false
+
+		for headerKey, headerValues := range lmtHeaders {
+			for _, headerValue := range headerValues {
+				if r.Header.Get(headerKey) == headerValue {
+					requestHeadersDefinedInLimiter = true
+					break
+				}
+			}
+		}
+
+		if !requestHeadersDefinedInLimiter {
+			return true
+		}
+	}
+
+	// ---------------------------------
+	// Filter by context values
+	lmtContextValues := lmt.GetContextValues()
+	lmtContextValuesIsSet := len(lmtContextValues) > 0
+
+	if lmtContextValuesIsSet {
+		// If request does not contain all of the contexts in limiter,
+		// skip limiter
+		requestContextValuesDefinedInLimiter := false
+
+		for contextKey := range lmtContextValues {
+			reqContextValue := fmt.Sprintf("%v", r.Context().Value(contextKey))
+			if reqContextValue != "" {
+				requestContextValuesDefinedInLimiter = true
+				break
+			}
+		}
+
+		if !requestContextValuesDefinedInLimiter {
+			return true
+		}
+
+		// ------------------------------
+		// If request contains the context key but not the values,
+		// skip limiter
+		requestContextValuesDefinedInLimiter = false
+
+		for contextKey, contextValues := range lmtContextValues {
+			for _, contextValue := range contextValues {
+				if r.Header.Get(contextKey) == contextValue {
+					requestContextValuesDefinedInLimiter = true
+					break
+				}
+			}
+		}
+
+		if !requestContextValuesDefinedInLimiter {
+			return true
+		}
+	}
+
+	// ---------------------------------
+	// Filter by basic auth usernames
+	lmtBasicAuthUsers := lmt.GetBasicAuthUsers()
+	lmtBasicAuthUsersIsSet := len(lmtBasicAuthUsers) > 0
+
+	if lmtBasicAuthUsersIsSet {
+		// If request does not contain all of the basic auth users in limiter,
+		// skip limiter
+		requestAuthUsernameDefinedInLimiter := false
+
+		username, _, ok := r.BasicAuth()
+		if ok && libstring.StringInSlice(lmtBasicAuthUsers, username) {
+			requestAuthUsernameDefinedInLimiter = true
+		}
+
+		if !requestAuthUsernameDefinedInLimiter {
+			return true
+		}
+	}
+
+	return false
+}
+
 // BuildKeys generates a slice of keys to rate-limit by given limiter and request structs.
 func BuildKeys(lmt *limiter.Limiter, r *http.Request) [][]string {
 	remoteIP := libstring.RemoteIP(lmt.GetIPLookups(), lmt.GetForwardedForIndexFromBehind(), r)
 	path := r.URL.Path
 	sliceKeys := make([][]string, 0)
-
-	// Don't BuildKeys if remoteIP is blank.
-	if remoteIP == "" {
-		return sliceKeys
-	}
 
 	lmtMethods := lmt.GetMethods()
 	lmtHeaders := lmt.GetHeaders()
@@ -57,11 +187,6 @@ func BuildKeys(lmt *limiter.Limiter, r *http.Request) [][]string {
 	lmtHeadersIsSet := len(lmtHeaders) > 0
 	lmtContextValuesIsSet := len(lmtContextValues) > 0
 	lmtBasicAuthUsersIsSet := len(lmtBasicAuthUsers) > 0
-
-	method := ""
-	if lmtMethods != nil && libstring.StringInSlice(lmtMethods, r.Method) {
-		method = r.Method
-	}
 
 	usernameToLimit := ""
 	if lmtBasicAuthUsersIsSet {
@@ -93,8 +218,6 @@ func BuildKeys(lmt *limiter.Limiter, r *http.Request) [][]string {
 				}
 			}
 		}
-	} else {
-		headerValuesToLimit = append(headerValuesToLimit, []string{"", ""})
 	}
 
 	contextValuesToLimit := [][]string{}
@@ -106,11 +229,11 @@ func BuildKeys(lmt *limiter.Limiter, r *http.Request) [][]string {
 			}
 
 			if len(contextValues) == 0 {
-				// If header values are empty, rate-limit all request containing headerKey.
+				// If context values are empty, rate-limit all request containing contextKey.
 				contextValuesToLimit = append(contextValuesToLimit, []string{contextKey, reqContextValue})
 
 			} else {
-				// If header values are not empty, rate-limit all request with headerKey and headerValues.
+				// If context values are not empty, rate-limit all request with contextKey and contextValues.
 				for _, contextValue := range contextValues {
 					if reqContextValue == contextValue {
 						contextValuesToLimit = append(contextValuesToLimit, []string{contextKey, contextValue})
@@ -119,15 +242,23 @@ func BuildKeys(lmt *limiter.Limiter, r *http.Request) [][]string {
 				}
 			}
 		}
-	} else {
-		contextValuesToLimit = append(contextValuesToLimit, []string{"", ""})
 	}
 
+	sliceKey := []string{remoteIP, path}
+
+	sliceKey = append(sliceKey, lmtMethods...)
+
 	for _, header := range headerValuesToLimit {
-		for _, contextValue := range contextValuesToLimit {
-			sliceKeys = append(sliceKeys, []string{remoteIP, path, method, header[0], header[1], contextValue[0], contextValue[1], usernameToLimit})
-		}
+		sliceKey = append(sliceKey, header[0], header[1])
 	}
+
+	for _, contextValue := range contextValuesToLimit {
+		sliceKey = append(sliceKey, contextValue[0], contextValue[1])
+	}
+
+	sliceKey = append(sliceKey, usernameToLimit)
+
+	sliceKeys = append(sliceKeys, sliceKey)
 
 	return sliceKeys
 }
@@ -136,6 +267,11 @@ func BuildKeys(lmt *limiter.Limiter, r *http.Request) [][]string {
 // loops through all the keys, and check if any one of them returns HTTPError.
 func LimitByRequest(lmt *limiter.Limiter, w http.ResponseWriter, r *http.Request) *errors.HTTPError {
 	setResponseHeaders(lmt, w, r)
+
+	shouldSkip := ShouldSkipLimiter(lmt, r)
+	if shouldSkip {
+		return nil
+	}
 
 	sliceKeys := BuildKeys(lmt, r)
 
@@ -156,6 +292,9 @@ func LimitHandler(lmt *limiter.Limiter, next http.Handler) http.Handler {
 		httpError := LimitByRequest(lmt, w, r)
 		if httpError != nil {
 			lmt.ExecOnLimitReached(w, r)
+			if lmt.GetOverrideDefaultResponseWriter() {
+				return
+			}
 			w.Header().Add("Content-Type", lmt.GetMessageContentType())
 			w.WriteHeader(httpError.StatusCode)
 			w.Write([]byte(httpError.Message))
