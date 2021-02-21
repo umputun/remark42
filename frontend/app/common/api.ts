@@ -99,6 +99,9 @@ export const addComment = ({
 export const updateComment = ({ text, id }: { text: string; id: Comment['id'] }): Promise<Comment> =>
   apiFetcher.put(`/comment/${id}`, { url }, { text });
 
+export const removeMyComment = (id: Comment['id']): Promise<void> =>
+  apiFetcher.put(`/comment/${id}`, { url }, { delete: true });
+
 export const getPreview = (text: string): Promise<string> => apiFetcher.post('/preview', {}, { text });
 
 export const getUser = (): Promise<User | null> => apiFetcher.get<User | null>('/user').catch(() => null);
@@ -153,9 +156,6 @@ export const removeVerifiedStatus = (id: User['id']): Promise<void> =>
   adminFetcher.put(`/verify/${id}`, { verified: 0 });
 
 export const removeComment = (id: Comment['id']): Promise<void> => adminFetcher.delete(`/comment/${id}`, { url });
-
-export const removeMyComment = (id: Comment['id']): Promise<void> =>
-  adminFetcher.put(`/comment/${id}`, { url }, { delete: true });
 
 export const blockUser = (
   id: User['id'],
