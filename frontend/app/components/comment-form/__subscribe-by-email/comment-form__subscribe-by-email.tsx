@@ -17,7 +17,7 @@ import { Input } from 'components/input';
 import { Button } from 'components/button';
 import { Dropdown } from 'components/dropdown';
 import Preloader from 'components/preloader';
-import TextareaAutosize from 'components/comment-form/textarea-autosize';
+import TextareaAutosize from 'components/textarea-autosize';
 import { isUserAnonymous } from 'utils/isUserAnonymous';
 import { isJwtExpired } from 'utils/jwt';
 

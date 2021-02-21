@@ -10,6 +10,7 @@ import { isUserAnonymous } from 'utils/isUserAnonymous';
 import { sleep } from 'utils/sleep';
 import { replaceSelection } from 'utils/replaceSelection';
 import { Button } from 'components/button';
+import TextareaAutosize from 'components/textarea-autosize';
 import Auth from 'components/auth';
 import { getJsonItem, updateJsonItem } from 'common/local-storage';
 import { LS_SAVED_COMMENT_VALUE } from 'common/constants';
@@ -18,7 +19,6 @@ import { SubscribeByEmail } from './__subscribe-by-email';
 import { SubscribeByRSS } from './__subscribe-by-rss';
 
 import MarkdownToolbar from './markdown-toolbar';
-import TextareaAutosize from './textarea-autosize';
 import { TextExpander } from './text-expander';
 
 let textareaId = 0;
@@ -100,7 +100,7 @@ export const messages = defineMessages({
 
 export class CommentForm extends Component<CommentFormProps, CommentFormState> {
   /** reference to textarea element */
-  textAreaRef = createRef<TextareaAutosize>();
+  textareaRef = createRef<HTMLTextAreaElement>();
   textareaId: string;
 
   constructor(props: CommentFormProps) {
@@ -138,7 +138,6 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
   componentWillReceiveProps(nextProps: CommentFormProps) {
     if (nextProps.value !== this.props.value) {
       this.setState({ text: nextProps.value || '' });
-      this.props.autofocus && this.textAreaRef.current && this.textAreaRef.current.focus();
     }
     if (nextProps.user && !this.props.value) {
       this.setState({
@@ -231,7 +230,7 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
   };
 
   getPreview() {
-    const text = this.textAreaRef.current ? this.textAreaRef.current.getValue() : this.state.text;
+    const text = this.textareaRef.current?.value ?? this.state.text;
 
     if (!text || !text.trim()) return;
 
@@ -264,7 +263,7 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
     if (!this.props.user) e.preventDefault();
     if (!this.props.uploadImage) return;
     if (StaticStore.config.max_image_size === 0) return;
-    if (!this.textAreaRef) return;
+    if (!this.textareaRef.current) return;
     if (!e.dataTransfer) return;
     const items = Array.from(e.dataTransfer.items);
     if (Array.from(items).filter((i) => i.kind === 'file' && ImageMimeRegex.test(i.type)).length === 0) return;
@@ -295,6 +294,30 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
     this.uploadImages(data);
   }
 
+  /** returns selection range of a textarea */
+  getSelection(): [number, number] {
+    const textarea = this.textareaRef.current;
+
+    if (textarea) {
+      return [textarea.selectionStart, textarea.selectionEnd];
+    }
+
+    throw new Error('No textarea element reference exists');
+  }
+
+  /** sets selection range of a textarea */
+  setSelection(selection: [number, number]) {
+    const textarea = this.textareaRef.current;
+
+    if (textarea) {
+      textarea.selectionStart = selection[0];
+      textarea.selectionEnd = selection[1];
+      return;
+    }
+
+    throw new Error('No textarea element reference exists');
+  }
+
   /** wrapper with error handling for props.uploadImage */
   uploadImage(file: File): Promise<Image | Error> {
     const intl = this.props.intl;
@@ -312,14 +335,12 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
   async uploadImages(files: File[]) {
     const intl = this.props.intl;
     if (!this.props.uploadImage) return;
-    if (!this.textAreaRef.current) return;
+    if (!this.textareaRef.current) return;
 
     /** Human readable image size limit, i.e 5MB */
     const maxImageSizeString = `${(StaticStore.config.max_image_size / 1024 / 1024).toFixed(2)}MB`;
     /** upload delay to avoid server rate limiter */
     const uploadDelay = 5000;
-
-    const isSelectionSupported = this.textAreaRef.current.isSelectionSupported();
 
     this.setState({
       errorLock: true,
@@ -328,43 +349,6 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
       isDisabled: true,
       buttonText: intl.formatMessage(messages.uploading),
     });
-
-    // TODO: remove legacy code, now we don't support IE
-    // fallback for ie < 9
-    if (!isSelectionSupported) {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const isFirst = i === 0;
-        const placeholderStart = this.state.text.length === 0 ? '' : '\n';
-
-        if (file.size > StaticStore.config.max_image_size) {
-          this.appendError(
-            intl.formatMessage(messages.exceededSize, {
-              fileName: file.name,
-              maxImageSize: maxImageSizeString,
-            })
-          );
-          continue;
-        }
-
-        !isFirst && (await sleep(uploadDelay));
-
-        const result = await this.uploadImage(file);
-
-        if (result instanceof Error) {
-          this.appendError(result.message);
-          continue;
-        }
-
-        const markdownString = `${placeholderStart}![${result.name}](${result.url})`;
-        this.setState({
-          text: this.state.text + markdownString,
-        });
-      }
-
-      this.setState({ errorLock: false, isDisabled: false, buttonText: null });
-      return;
-    }
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
@@ -375,7 +359,7 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
         fileName: file.name,
       })}]()`;
       const uploadPlaceholderLength = uploadPlaceholder.length;
-      const selection = this.textAreaRef.current.getSelection();
+      const selection = this.getSelection();
       /** saved selection in case of error */
       const originalText = this.state.text;
       const restoreSelection = async () => {
@@ -384,7 +368,7 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
         });
         /** sleeping awhile so textarea catch state change and its selection */
         await sleep(100);
-        this.textAreaRef.current!.setSelection(selection);
+        this.setSelection(selection);
       };
 
       if (file.size > StaticStore.config.max_image_size) {
@@ -418,7 +402,7 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
       /** sleeping awhile so textarea catch state change and its selection */
       await sleep(100);
       const selectionPointer = selection[0] + markdownString.length;
-      this.textAreaRef.current.setSelection([selectionPointer, selectionPointer]);
+      this.setSelection([selectionPointer, selectionPointer]);
     }
 
     this.setState({ errorLock: false, isDisabled: false, buttonText: null });
@@ -481,8 +465,8 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
           <TextExpander>
             <TextareaAutosize
               id={this.textareaId}
+              ref={this.textareaRef}
               onPaste={this.onPaste}
-              ref={this.textAreaRef}
               className="comment-form__field"
               placeholder={placeholderMessage}
               value={text}
