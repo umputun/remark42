@@ -46,6 +46,7 @@
     "@babel/preset-react": "^7.12.10",
     "@formatjs/cli": "^3.0.1",
     "@mavrin/stylelint-declaration-use-css-custom-properties": "1.0.0-alpha.2",
+    "@prefresh/babel-plugin": "^0.4.0",
     "@prefresh/webpack": "^3.0.0",
     "@size-limit/file": "^4.9.1",
     "@types/classnames": "^2.2.11",
