@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useCallback, useMemo } from 'preact/compat';
+import { useMemo } from 'preact/compat';
 import { useDispatch } from 'react-redux';
 import { BoundActionCreator, BoundActionCreators } from 'utils/actionBinder';
 
@@ -18,11 +18,4 @@ export const useActions = <Actions extends { [key: string]: Function }>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [dispatch, ...Object.values(actions)]
   ) as any;
-};
-
-export const useAction = <Action extends Function>(action: Action): BoundActionCreator<Action> => {
-  const dispatch = useDispatch();
-
-  // @ts-ignore
-  return useCallback((...args) => dispatch(action(...args)), [dispatch, action]);
 };
