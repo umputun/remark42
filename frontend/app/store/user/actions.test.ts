@@ -8,13 +8,6 @@ import { setVerifiedStatus, hideUser, unhideUser, unblockUser, fetchBlockedUsers
 import { USER_UNHIDE, USER_HIDE, USER_UNBAN, USER_BANLIST_SET, USER_HIDELIST_SET } from './types';
 
 describe('store user actions', () => {
-  beforeAll(() => {
-    require('jest-fetch-mock').enableMocks();
-  });
-  afterAll(() => {
-    require('jest-fetch-mock').resetMocks();
-  });
-
   test('fetchBlockedUsers', async () => {
     const store = stubStore(INITIAL_STORE);
 
