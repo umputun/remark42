@@ -1,14 +1,5 @@
 module.exports = {
-  extends: [
-    'react-app',
-    'preact',
-    'plugin:jsx-a11y/recommended',
-    'prettier',
-    'prettier/@typescript-eslint',
-    'prettier/babel',
-    'prettier/prettier',
-    'prettier/react',
-  ],
+  extends: ['react-app', 'preact', 'plugin:jsx-a11y/recommended', 'prettier'],
   plugins: ['jsx-a11y', 'prettier'],
   rules: {
     'prettier/prettier': 'error',
