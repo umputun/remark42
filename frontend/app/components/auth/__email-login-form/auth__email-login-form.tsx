@@ -7,7 +7,7 @@ import { sendEmailVerificationRequest } from 'common/api';
 import { extractErrorMessageFromResponse } from 'utils/errorUtils';
 import { getHandleClickProps } from 'common/accessibility';
 import { sleep } from 'utils/sleep';
-import TextareaAutosize from 'components/comment-form/textarea-autosize';
+import TextareaAutosize from 'components/textarea-autosize';
 import { Input } from 'components/input';
 import { Button } from 'components/button';
 import { isJwtExpired } from 'utils/jwt';
@@ -69,7 +69,7 @@ export class EmailLoginForm extends Component<Props, State> {
   static emailRegex = /[^@]+@[^.]+\..+/;
 
   usernameInputRef = createRef<HTMLInputElement>();
-  tokenRef = createRef<TextareaAutosize>();
+  tokenRef = createRef<HTMLTextAreaElement>();
 
   state = {
     usernameValue: '',
@@ -82,13 +82,13 @@ export class EmailLoginForm extends Component<Props, State> {
 
   focus = async () => {
     await sleep(100);
+
     if (this.usernameInputRef.current) {
       this.usernameInputRef.current.focus();
       return;
     }
-    if (this.tokenRef.current?.textareaRef?.current) {
-      this.tokenRef.current.textareaRef.current.select();
-    }
+
+    this.tokenRef.current?.select();
   };
 
   onVerificationSubmit = async (e: Event) => {
@@ -97,9 +97,8 @@ export class EmailLoginForm extends Component<Props, State> {
     try {
       await this.props.sendEmailVerification(this.state.usernameValue, this.state.addressValue);
       this.setState({ verificationSent: true });
-      setTimeout(() => {
-        this.tokenRef.current && this.tokenRef.current.focus();
-      }, 100);
+      await sleep(100);
+      this.tokenRef.current?.focus();
     } catch (e) {
       this.setState({ error: extractErrorMessageFromResponse(e, this.props.intl) });
     } finally {
