@@ -1,5 +1,5 @@
 /** converts widnow.location.search into object */
-export default function parseQuery<T extends {}>(search: string = window.location.search): T {
+export default function URLSearchParams<T extends {}>(search: string = window.location.search): T {
   if (search.length < 2) {
     return {} as T;
   }
