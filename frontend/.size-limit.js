@@ -9,7 +9,7 @@ module.exports = [
   },
   {
     path: 'public/remark.css',
-    limit: '10 KB',
+    limit: '11 KB',
   },
   {
     path: 'public/last-comments.mjs',
