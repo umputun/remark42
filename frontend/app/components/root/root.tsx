@@ -2,8 +2,10 @@ import { h, Component, FunctionComponent, Fragment } from 'preact';
 import { useSelector } from 'react-redux';
 import b from 'bem-react-helper';
 import { IntlShape, useIntl, FormattedMessage, defineMessages } from 'react-intl';
+import classnames from 'classnames';
 
-import type { AuthProvider, Sorting } from 'common/types';
+import type { Sorting } from 'common/types';
+import type { StoreState } from 'store';
 import {
   COMMENT_NODE_CLASSNAME_PREFIX,
   MAX_SHOWN_ROOT_COMMENTS,
@@ -14,18 +16,16 @@ import {
 import { maxShownComments, url } from 'common/settings';
 
 import { StaticStore } from 'common/static-store';
-import { StoreState } from 'store';
 import {
+  setUser,
   fetchUser,
-  logout,
-  logIn,
   blockUser,
   unblockUser,
   fetchBlockedUsers,
   hideUser,
   unhideUser,
 } from 'store/user/actions';
-import { fetchComments, updateSorting, addComment, updateComment } from 'store/comments/actions';
+import { fetchComments, updateSorting, addComment, updateComment, unsetCommentMode } from 'store/comments/actions';
 import { setCommentsReadOnlyState } from 'store/post-info/actions';
 import { setTheme } from 'store/theme/actions';
 
@@ -42,6 +42,7 @@ import { bindActions } from 'utils/actionBinder';
 import postMessage from 'utils/postMessage';
 import { useActions } from 'hooks/useAction';
 import { setCollapse } from 'store/thread/actions';
+import { logout } from 'components/auth/auth.api';
 
 const mapStateToProps = (state: StoreState) => ({
   sort: state.comments.sort,
@@ -68,10 +69,9 @@ const mapStateToProps = (state: StoreState) => ({
 const boundActions = bindActions({
   updateSorting,
   fetchComments,
+  setUser,
   fetchUser,
   fetchBlockedUsers,
-  logIn,
-  logOut: logout,
   setTheme,
   setCommentsReadOnlyState,
   blockUser,
@@ -81,6 +81,7 @@ const boundActions = bindActions({
   addComment,
   updateComment,
   setCollapse,
+  unsetCommentMode,
 });
 
 type Props = ReturnType<typeof mapStateToProps> & typeof boundActions & { intl: IntlShape };
@@ -144,16 +145,10 @@ export class Root extends Component<Props, State> {
     await this.props.updateSorting(sort);
   };
 
-  logIn = async (provider: AuthProvider) => {
-    const user = await this.props.logIn(provider);
-
-    await this.props.fetchComments();
-
-    return user;
-  };
-
-  logOut = async () => {
-    await this.props.logOut();
+  logout = async () => {
+    await logout();
+    this.props.setUser();
+    this.props.unsetCommentMode();
     localStorage.removeItem(LS_EMAIL_KEY);
     await this.props.fetchComments();
   };
@@ -183,14 +178,16 @@ export class Root extends Component<Props, State> {
   };
 
   onMessage(event: { data: string | object }) {
+    if (!event.data) {
+      return;
+    }
+
     try {
       const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
       if (data.theme && THEMES.includes(data.theme)) {
         this.props.setTheme(data.theme);
       }
-    } catch (e) {
-      console.error(e); // eslint-disable-line no-console
-    }
+    } catch (e) {}
   }
 
   onBlockedUsersShow = async () => {
@@ -221,18 +218,13 @@ export class Root extends Component<Props, State> {
     });
   };
 
-  /**
-   * Defines whether current client is logged in via `Anonymous provider`
-   */
-  isAnonymous = () => isUserAnonymous(this.props.user);
-
   render(props: Props, { isUserLoading, commentsShown, isSettingsVisible }: State) {
     if (isUserLoading) {
       return <Preloader mix="root__preloader" />;
     }
 
     const isCommentsDisabled = props.info.read_only!;
-    const imageUploadHandler = this.isAnonymous() ? undefined : this.props.uploadImage;
+    const imageUploadHandler = isUserAnonymous(this.props.user) ? undefined : this.props.uploadImage;
 
     return (
       <Fragment>
@@ -242,8 +234,7 @@ export class Root extends Component<Props, State> {
           onSortChange={this.changeSort}
           isCommentsDisabled={isCommentsDisabled}
           postInfo={this.props.info}
-          onSignIn={this.logIn}
-          onSignOut={this.logOut}
+          onSignOut={this.logout}
           onBlockedUsersShow={this.onBlockedUsersShow}
           onBlockedUsersHide={this.onBlockedUsersHide}
           onCommentsChangeReadOnlyMode={this.props.setCommentsReadOnlyState}
@@ -348,7 +339,7 @@ export const ConnectedRoot: FunctionComponent = () => {
   const intl = useIntl();
 
   return (
-    <div className={b('root', {}, { theme: props.theme })}>
+    <div className={classnames(b('root', {}, { theme: props.theme }), props.theme)}>
       <Root {...props} {...actions} intl={intl} />
       <p className="root__copyright" role="contentinfo">
         <FormattedMessage

@@ -1,21 +1,18 @@
 import { h, JSX } from 'preact';
-import { forwardRef } from 'preact/compat';
-import b, { Mods, Mix } from 'bem-react-helper';
+import classnames from 'classnames/bind';
 
-import type { Theme } from 'common/types';
+import styles from './input.module.css';
+
+const cx = classnames.bind(styles);
 
 export type InputProps = {
-  kind?: 'primary' | 'secondary';
-  theme?: Theme;
-  mods?: Mods;
-  mix?: Mix;
+  invalid?: boolean;
   type?: string;
-} & Omit<JSX.HTMLAttributes, 'className'>;
+  className?: string;
+} & JSX.HTMLAttributes<HTMLInputElement>;
 
-export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ children, theme, mods, mix, type = 'text', ...props }, ref) => (
-    <input className={b('input', { mix }, { theme, ...mods })} type={type} {...props} ref={ref}>
-      {children}
-    </input>
-  )
+export const Input = ({ children, className, type = 'text', invalid, ...props }: InputProps) => (
+  <input className={cx(className, 'input', { invalid })} type={type} {...props}>
+    {children}
+  </input>
 );

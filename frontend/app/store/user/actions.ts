@@ -1,5 +1,5 @@
 import * as api from 'common/api';
-import { User, BlockedUser, AuthProvider, BlockTTL } from 'common/types';
+import { User, BlockedUser, BlockTTL } from 'common/types';
 import { ttlToTime } from 'utils/ttl-to-time';
 import getHiddenUsers from 'utils/get-hidden-users';
 import { LS_HIDDEN_USERS_KEY } from 'common/constants';
@@ -17,11 +17,10 @@ import {
   USER_SUBSCRIPTION_SET,
   USER_SET_ACTION,
 } from './types';
-import { unsetCommentMode, fetchComments } from '../comments/actions';
-import { updateProvider } from '../provider/actions';
+import { fetchComments } from '../comments/actions';
 import { COMMENTS_PATCH } from '../comments/types';
 
-function setUser(user: User | null = null): USER_SET_ACTION {
+export function setUser(user: User | null = null): USER_SET_ACTION {
   return {
     type: USER_SET,
     user,
@@ -34,20 +33,9 @@ export const fetchUser = (): StoreAction<Promise<User | null>> => async (dispatc
   return user;
 };
 
-export const logIn = (provider: AuthProvider): StoreAction<Promise<User | null>> => async (dispatch) => {
-  const user = await api.logIn(provider);
-
-  dispatch(updateProvider({ name: provider.name }));
+export const signin = (user: User): StoreAction<Promise<void>> => async (dispatch) => {
   dispatch(setUser(user));
   dispatch(fetchComments());
-
-  return user;
-};
-
-export const logout = (): StoreAction<Promise<void>> => async (dispatch) => {
-  await api.logOut();
-  dispatch(unsetCommentMode());
-  dispatch(setUser());
 };
 
 export const fetchBlockedUsers = (): StoreAction<Promise<BlockedUser[]>> => async (dispatch) => {

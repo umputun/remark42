@@ -49,6 +49,7 @@
     "@prefresh/babel-plugin": "^0.4.0",
     "@prefresh/webpack": "^3.0.1",
     "@size-limit/file": "^4.9.2",
+    "@testing-library/preact": "^2.0.1",
     "@types/classnames": "^2.2.11",
     "@types/enzyme": "^3.10.8",
     "@types/jest": "^26.0.20",

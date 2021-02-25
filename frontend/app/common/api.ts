@@ -1,61 +1,7 @@
 import { siteId, url } from './settings';
 import { BASE_URL, API_BASE } from './constants';
-import { Config, Comment, Tree, User, BlockedUser, Sorting, AuthProvider, BlockTTL, Image } from './types';
-import { authFetcher, apiFetcher, adminFetcher } from './fetcher';
-
-/* Auth methods */
-const FROM_URL = `${window.location.origin}${window.location.pathname}?selfClose`;
-
-const __loginAnonymously = (username: string): Promise<User | null> =>
-  authFetcher.get<User>('/anonymous/login', {
-    user: username,
-    aud: siteId,
-    from: FROM_URL,
-  });
-
-const __loginViaEmail = (token: string): Promise<User | null> => authFetcher.get<User>('/email/login', { token });
-
-/**
- * First step of two of `email` authorization
- *
- * @param username userrname
- * @param address email address
- */
-export const sendEmailVerificationRequest = (username: string, address: string): Promise<void> =>
-  authFetcher.get('/email/login', { id: siteId, user: username, address });
-
-export const logIn = (provider: AuthProvider): Promise<User | null> => {
-  if (provider.name === 'anonymous') return __loginAnonymously(provider.username);
-  if (provider.name === 'email') return __loginViaEmail(provider.token);
-
-  return new Promise<User | null>((resolve, reject) => {
-    const queryString = new URLSearchParams({ from: FROM_URL, site: siteId });
-    const newWindow = window.open(`/auth/${provider.name}/login?${queryString}`);
-    let secondsPass = 0;
-    const checkMsDelay = 300;
-    const checkInterval = setInterval(() => {
-      let shouldProceed;
-      secondsPass += checkMsDelay;
-      try {
-        shouldProceed = (newWindow && newWindow.closed) || secondsPass > 30000;
-      } catch (e) {}
-
-      if (shouldProceed) {
-        clearInterval(checkInterval);
-
-        getUser()
-          .then((user) => {
-            resolve(user);
-          })
-          .catch(() => {
-            reject(new Error('User logIn Error'));
-          });
-      }
-    }, checkMsDelay);
-  });
-};
-
-export const logOut = (): Promise<void> => authFetcher.get('/logout');
+import { Config, Comment, Tree, User, BlockedUser, Sorting, BlockTTL, Image } from './types';
+import { apiFetcher, adminFetcher } from './fetcher';
 
 /* API methods */
 

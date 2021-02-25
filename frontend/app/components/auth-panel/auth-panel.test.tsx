@@ -9,12 +9,8 @@ import type { User } from 'common/types';
 import enMessages from 'locales/en.json';
 
 import AuthPanel, { Props } from './auth-panel';
-import { Button } from '../button';
-import { StaticStore } from 'common/static-store';
 
 const DefaultProps = {
-  providers: ['google', 'github'],
-  provider: { name: null },
   postInfo: {
     read_only: false,
     url: 'https://example.com',
@@ -68,24 +64,6 @@ describe('<AuthPanel />', () => {
       const adminAction = element.find('.auth-panel__admin-action');
 
       expect(adminAction.text()).toEqual('Show settings');
-    });
-
-    it('should render auth for read only post', () => {
-      StaticStore.config.auth_providers = ['google', 'github'];
-
-      const element = createWrapper({
-        ...DefaultProps,
-        user: null,
-        postInfo: { ...DefaultProps.postInfo, read_only: true },
-        hiddenUsers: { hidden_joe: {} as User },
-      } as Props);
-
-      const firstCol = element.find('.auth-panel__column').first();
-      const providerButtons = firstCol.find(Button);
-
-      expect(firstCol.text().startsWith('Login:')).toBe(true);
-      expect(providerButtons.at(0).text()).toBe('Google');
-      expect(providerButtons.at(1).text()).toBe('GitHub');
     });
   });
 
