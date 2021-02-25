@@ -12,7 +12,6 @@ import { NODE_ID, BASE_URL } from 'common/constants';
 import { StaticStore } from 'common/static-store';
 import { getConfig } from 'common/api';
 import { fetchHiddenUsers } from 'store/user/actions';
-import { restoreProvider } from 'store/provider/actions';
 import { restoreCollapsedThreads } from 'store/thread/actions';
 import parseQuery from 'utils/parseQuery';
 
@@ -34,13 +33,9 @@ async function init(): Promise<void> {
   const params = parseQuery<{ page?: string; locale?: string }>();
   const locale = getLocale(params);
   const messages = await loadLocale(locale).catch(() => ({}));
+  const boundActions = bindActionCreators({ fetchHiddenUsers, restoreCollapsedThreads }, reduxStore.dispatch);
 
-  const boundActions = bindActionCreators(
-    { fetchHiddenUsers, restoreProvider, restoreCollapsedThreads },
-    reduxStore.dispatch
-  );
   boundActions.fetchHiddenUsers();
-  boundActions.restoreProvider();
   boundActions.restoreCollapsedThreads();
 
   StaticStore.config = await getConfig();

@@ -1,52 +1,50 @@
 :root {
-  --color0: #000;
-  --color1: #aaa;
-  --color3: #e2efef;
-  --color4: #edf6f7;
-  --color5: #eee;
-  --color6: #fff;
+  --color0: #0f172a;
+  --color8: #262626;
+  --color22: #2d2d2c;
+  --color24: #313133;
   --color7: #333;
-  --color8: #22201c;
-  --color9: #0aa;
-  --color10: #777;
-  --color11: #999;
-  --color12: #259e06;
-  --color13: #888;
-  --color14: #6a6a6a;
-  --color15: #259c9a;
-  --color16: #dfe2e5;
-  --color17: #099;
+  --color23: #393734;
   --color18: #383838;
   --color19: #404040;
-  --color20: #ddd;
-  --color21: #f6f8fa;
-  --color22: #2d2d2c;
-  --color23: #393734;
-  --color24: #313133;
-  --color25: #9a0000;
-  --color26: #ffd7d7;
-  --color27: #f98989;
-  --color28: #672323;
-  --color29: #0e7e9d;
-  --color30: #cc0606;
-  --color31: #c4c4c4;
-  --color32: #a6a6a6;
-  --color33: #06c5c5;
+  --color36: #575757;
   --color34: #555;
-  --color35: #d9d9d9;
-  --color36: #505050;
   --color37: #586069;
-  --color38: #ef0000;
-  --color39: #8cd4d4;
-  --color40: #9cdddb;
-  --color41: #efefef;
-  --color42: #c6efef;
-  --color43: #b7dddd;
-  --color44: rgba(255, 255, 255, 0.3);
-  --color45: rgba(0, 0, 0, 0.1);
+  --color14: #6a6a6a;
+  --color10: #777;
+  --color13: #888;
+  --color11: #969696;
+  --color32: #a6a6a6;
+  --color1: #aaa;
+  --color35: #d1d5db;
+  --color20: #ddd;
   --color46: rgba(27, 31, 35, 0.15);
-  --color47: rgba(37, 156, 154, 0.4);
+  --color45: rgba(0, 0, 0, 0.1);
+  --color41: #efefef;
+  --color5: #eee;
+  --color44: rgba(255, 255, 255, 0.3);
+  --color6: #fff;
+  --color3: #e2efef;
+  --color4: #edf6f7;
+  --color16: #e2e8f0;
+  --color31: #cbd5e1;
+  --color21: #f1f5f9;
+  --color29: #0e7e9d;
+  --color9: #0aa;
+  --color15: #099;
+  --color33: #06c5c5;
+  --color40: #9cdddb;
+  --color43: #b7dddd;
+  --color42: #c6efef;
   --color48: rgba(37, 156, 154, 0.6);
+  --color47: rgba(37, 156, 154, 0.4);
+  --color12: #259e06;
+  --color28: #672323;
+  --color25: #9a0000;
+  --color30: #cc0606;
+  --color38: #ef0000;
+  --color27: #f98989;
+  --color26: #ffd7d7;
 
   /* code-highlight */
   --chroma-bg: rgba(0, 0, 0, 0.05);
@@ -59,4 +57,24 @@
   --chroma-05: #859900;
   --chroma-06: #d33682;
   --chroma-07: #00aee2;
+
+  /* Named variables */
+  --primary-color: 0, 170, 170;
+  --primary-brighter-color: 0, 153, 153;
+  --secondary-text-color: 100, 116, 139;
+  --black-color: 0, 0, 0;
+  --white-color: 255, 255, 255;
+  --error-color: #b91c1c;
+  --error-background: #ff466f2b;
+  --line-color: var(--color16);
+  --line-brighter-color: var(--color31);
+}
+
+:root .dark {
+  --line-color: var(--color36);
+  --primary-color: 0, 153, 153;
+  --primary-brighter-color: 0, 170, 170;
+  --secondary-text-color: 209, 213, 219;
+  --error-color: #ffa0a0;
+  --line-brighter-color: var(--color11);
 }

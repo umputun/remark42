@@ -1,5 +1,5 @@
 import { h, FunctionComponent, Fragment } from 'preact';
-import { useState, useCallback, useEffect, useRef, PropRef } from 'preact/hooks';
+import { useState, useCallback, useRef } from 'preact/hooks';
 import { useSelector, useDispatch } from 'react-redux';
 import b from 'bem-react-helper';
 import { useIntl, defineMessages, IntlShape, FormattedMessage } from 'react-intl';
@@ -21,7 +21,7 @@ import TextareaAutosize from 'components/textarea-autosize';
 import { isUserAnonymous } from 'utils/isUserAnonymous';
 import { isJwtExpired } from 'utils/jwt';
 
-const emailRegex = /[^@]+@[^.]+\..+/;
+const emailRegexp = /[^@]+@[^.]+\..+/;
 
 enum Step {
   Email,
@@ -33,6 +33,14 @@ enum Step {
 }
 
 const messages = defineMessages({
+  token: {
+    id: 'token',
+    defaultMessage: 'Token',
+  },
+  expiredToken: {
+    id: 'token.expired',
+    defaultMessage: 'Token is expired',
+  },
   haveSubscribed: {
     id: 'subscribeByEmail.have-been-subscribed',
     defaultMessage: 'You have been subscribed on updates by email',
@@ -57,14 +65,6 @@ const messages = defineMessages({
     id: 'subscribeByEmail.only-registered-users',
     defaultMessage: 'Available only for registered users',
   },
-  expiredToken: {
-    id: 'subscribeByEmail.expired-token',
-    defaultMessage: 'Expired token',
-  },
-  token: {
-    id: 'subscribeByEmail.token',
-    defaultMessage: 'Token',
-  },
   email: {
     id: 'subscribeByEmail.email',
     defaultMessage: 'Email',
@@ -75,16 +75,15 @@ const renderEmailPart = (
   loading: boolean,
   intl: IntlShape,
   emailAddress: string,
-  handleChangeEmail: (e: Event) => void,
-  emailAddressRef: PropRef<HTMLInputElement>
+  handleChangeEmail: (e: Event) => void
 ) => (
   <>
     <div className="comment-form__subscribe-by-email__title">
       <FormattedMessage id="subscribeByEmail.subscribe-to-replies" defaultMessage="Subscribe to replies" />
     </div>
     <Input
-      ref={emailAddressRef}
-      mix="comment-form__subscribe-by-email__input"
+      autofocus
+      className="comment-form__subscribe-by-email__input"
       placeholder={intl.formatMessage(messages.email)}
       value={emailAddress}
       onInput={handleChangeEmail}
@@ -122,7 +121,6 @@ export const SubscribeByEmailForm: FunctionComponent = () => {
   const subscribed = useSelector<StoreState, boolean>(({ user }) =>
     user === null ? false : Boolean(user.email_subscription)
   );
-  const emailAddressRef = useRef<HTMLInputElement>();
   const previousStep = useRef<Step | null>(null);
 
   const [step, setStep] = useState(subscribed ? Step.Subscribed : Step.Email);
@@ -199,7 +197,7 @@ export const SubscribeByEmailForm: FunctionComponent = () => {
     [sendForm]
   );
 
-  const isValidEmailAddress = emailRegex.test(emailAddress);
+  const isValidEmailAddress = emailRegexp.test(emailAddress);
 
   const setEmailStep = useCallback(async () => {
     await sleep(0);
@@ -220,12 +218,6 @@ export const SubscribeByEmailForm: FunctionComponent = () => {
       setLoading(false);
     }
   }, [setLoading, setStep, setError, dispatch, intl]);
-
-  useEffect(() => {
-    if (emailAddressRef.current) {
-      emailAddressRef.current.focus();
-    }
-  }, []);
 
   /**
    * It needs for dropdown closing by click on button
@@ -288,7 +280,7 @@ export const SubscribeByEmailForm: FunctionComponent = () => {
 
   return (
     <form className={b('comment-form__subscribe-by-email', {}, { theme })} onSubmit={handleSubmit}>
-      {step === Step.Email && renderEmailPart(loading, intl, emailAddress, handleChangeEmail, emailAddressRef)}
+      {step === Step.Email && renderEmailPart(loading, intl, emailAddress, handleChangeEmail)}
       {step === Step.Token && renderTokenPart(loading, intl, token, handleChangeToken, setEmailStep)}
       {error !== null && (
         <div className="comment-form__subscribe-by-email__error" role="alert">

@@ -1,4 +1,226 @@
-.auth {
-  font-size: 14px;
-  font-weight: 700;
+.root {
+  position: relative;
+  z-index: 1;
+  color: var(--color34);
+}
+
+:global(.dark) .root {
+  color: var(--color16);
+}
+
+.buttonArrow {
+  position: relative;
+  padding-left: 8px;
+  margin-left: 12px;
+  height: 100%;
+
+  &::before {
+    position: absolute;
+    content: '';
+    height: 100%;
+    border-left: 1px solid rgba(var(--white-color), 0.5);
+  }
+}
+
+.dropdown {
+  position: absolute;
+  z-index: 1;
+  top: calc(100% + 8px);
+  left: 0;
+  min-width: 240px;
+  padding: 16px;
+  background-color: rgb(var(--white-color));
+  box-shadow: 0 10px 15px rgba(var(--black-color), 0.1), 0 -1px 6px rgba(var(--black-color), 0.05);
+  border-radius: 6px;
+}
+
+:global(.dark) .dropdown {
+  background-color: var(--color8);
+}
+
+.title {
+  margin: 0 0 12px;
+  font-size: 12px;
+  text-transform: uppercase;
+  font-weight: bold;
+  color: rgb(rgb(var(--secondary-text-color)));
+  text-align: center;
+}
+
+.divider {
+  position: relative;
+  display: flex;
+  width: calc(100% + 32px);
+  margin: 16px -16px;
+  height: 16px;
+  text-transform: uppercase;
+
+  &::before {
+    position: absolute;
+    top: 50%;
+    display: block;
+    width: 100%;
+    height: 0;
+    content: '';
+    border-top: 1px solid var(--line-color);
+  }
+
+  &::after {
+    position: relative;
+    display: block;
+    margin: auto;
+    padding: 0 12px;
+    content: attr(title);
+    font-size: 12px;
+    color: rgb(var(--secondary-text-color));
+    text-transform: uppercase;
+    background-color: rgb(var(--white-color));
+  }
+}
+
+:global(.dark) .divider {
+  &::after {
+    background-color: var(--color8);
+  }
+}
+
+.tabs {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.provider {
+  position: relative;
+  display: inline-block;
+  text-transform: uppercase;
+  color: rgb(var(--secondary-text-color));
+  font-weight: bold;
+  font-size: 12px;
+  height: 24px;
+  line-height: 24px;
+  padding: 0 12px;
+  cursor: pointer;
+}
+
+.provider + .provider {
+  margin-left: 16px;
+}
+
+.radio {
+  position: absolute;
+  width: 0;
+  height: 0;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  appearance: none;
+  opacity: 0;
+}
+
+:global(.dark) .provider {
+  color: var(--color32);
+}
+
+.radio:checked + .provider {
+  /* stylelint-disable-next-line mavrin/stylelint-declaration-use-css-custom-properties */
+  color: rgb(var(--primary-color));
+  background-color: rgba(var(--primary-color), 0.1);
+  border-radius: 2px;
+}
+
+:global(.dark) .radio:checked + .provider {
+  color: rgb(var(--white-color));
+  background-color: rgba(var(--primary-color), 0.4);
+}
+
+.row {
+  width: 100%;
+  display: flex;
+  margin-bottom: 12px;
+}
+
+.backButton {
+  flex: 0;
+}
+
+.backButtonArrow {
+  display: inline-block;
+  margin-left: -4px;
+  margin-right: 2px;
+}
+
+.closeButton {
+  position: relative;
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  padding: 0;
+  margin-left: auto;
+  background: unset;
+  cursor: pointer;
+  border-radius: 2px;
+  color: inherit;
+
+  &:hover {
+    background-color: rgba(var(--primary-color), 0.1);
+  }
+}
+
+.textarea {
+  composes: input from 'components/input/input.module.css';
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 60px;
+  max-height: 200px;
+  margin: 0;
+  padding: 4px 8px;
+  resize: vertical;
+  font-size: 16px;
+  font-family: inherit;
+}
+
+.honeypot {
+  position: absolute;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  height: 0;
+  width: 0;
+  opacity: 0;
+}
+
+.submit {
+  width: 100%;
+  height: 36px;
+  padding: 0 20px;
+  font-size: 16px;
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid rgba(var(--white-color), 0.2);
+  border-right-color: rgb(var(--white-color));
+  animation: spin 1s linear infinite;
+}
+
+.error {
+  margin-bottom: 12px;
+  padding: 6px 8px;
+  background-color: var(--error-background);
+  color: var(--error-color);
+  line-height: 1.2;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }

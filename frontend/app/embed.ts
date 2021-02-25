@@ -38,7 +38,7 @@ function createFrame({
   iframe.setAttribute('verticalscrolling', 'no');
   iframe.setAttribute(
     'style',
-    'width: 1px !important; min-width: 100% !important; border: none !important; overflow: hidden !important;'
+    'width: 1px !important; min-width: 100% !important; border: none !important; overflow: hidden !important; margin: -6px;'
   );
 
   if (height) {
