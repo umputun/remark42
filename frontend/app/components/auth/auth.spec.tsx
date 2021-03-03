@@ -1,7 +1,7 @@
+import '@testing-library/jest-dom';
 import { h } from 'preact';
 import { fireEvent, render, waitFor } from '@testing-library/preact';
 
-import { sleep } from 'utils/sleep';
 import { Provider, User } from 'common/types';
 import { StaticStore } from 'common/static-store';
 
@@ -27,46 +27,43 @@ describe('<Auth/>', () => {
     it('should render auth with hidden dropdown', () => {
       const { container } = render(<Auth />);
 
-      expect(container.querySelector('.auth-dropdown')).toBeFalsy();
+      expect(container.querySelector('.auth-dropdown')).not.toBeInTheDocument();
     });
 
     it('should close dropdown by click on button', () => {
       const { container } = render(<Auth />);
 
-      expect(container.querySelector('.auth-dropdown')).toBeFalsy();
+      expect(container.querySelector('.auth-dropdown')).not.toBeInTheDocument();
 
       fireEvent.click(container.querySelector('.auth-button')!);
-      expect(container.querySelector('.auth-dropdown')).toBeTruthy();
+      expect(container.querySelector('.auth-dropdown')).toBeInTheDocument();
 
       fireEvent.click(container.querySelector('.auth-button')!);
-      expect(container.querySelector('.auth-dropdown')).toBeFalsy();
+      expect(container.querySelector('.auth-dropdown')).not.toBeInTheDocument();
     });
 
     it('should close dropdown by click outside of it', () => {
       const { container } = render(<Auth />);
 
-      expect(container.querySelector('.auth-dropdown')).toBeFalsy();
+      expect(container.querySelector('.auth-dropdown')).not.toBeInTheDocument();
 
       fireEvent.click(container.querySelector('.auth-button')!);
-      expect(container.querySelector('.auth-dropdown')).toBeTruthy();
+      expect(container.querySelector('.auth-dropdown')).toBeInTheDocument();
 
       fireEvent.click(document);
-      expect(container.querySelector('.auth-dropdown')).toBeFalsy();
+      expect(container.querySelector('.auth-dropdown')).not.toBeInTheDocument();
     });
 
     it('should close dropdown by message from parent', async () => {
       const { container } = render(<Auth />);
 
-      expect(container.querySelector('.auth-dropdown')).toBeFalsy();
+      expect(container.querySelector('.auth-dropdown')).not.toBeInTheDocument();
 
       fireEvent.click(container.querySelector('.auth-button')!);
-      expect(container.querySelector('.auth-dropdown')).toBeTruthy();
+      expect(container.querySelector('.auth-dropdown')).toBeInTheDocument();
 
       window.postMessage('{"clickOutside": true}', '*');
-      // TODO: Find out how to wait for postMessage recive without `sleep`
-      await sleep(10);
-
-      expect(container.querySelector('.auth-dropdown')).toBeFalsy();
+      await waitFor(() => expect(container.querySelector('.auth-dropdown')).not.toBeInTheDocument());
     });
   });
 
@@ -85,10 +82,10 @@ describe('<Auth/>', () => {
     expect(container.querySelector('.auth-dropdown')).toBeNull();
 
     fireEvent.click(container.querySelector('.auth-button')!);
-    expect(container.querySelector('.auth-dropdown')).toBeTruthy();
+    expect(container.querySelector('.auth-dropdown')).toBeInTheDocument();
     expect(container.querySelectorAll('.oauth-button')).toHaveLength(providers.length);
-    expect(container.querySelector('[name="username"]')).toBeFalsy();
-    expect(container.querySelector('.auth-submit')).toBeFalsy();
+    expect(container.querySelector('[name="username"]')).not.toBeInTheDocument();
+    expect(container.querySelector('.auth-submit')).not.toBeInTheDocument();
   });
 
   it('should render email provider', () => {
@@ -97,11 +94,11 @@ describe('<Auth/>', () => {
     const { container } = render(<Auth />);
 
     fireEvent.click(container.querySelector('.auth-button')!);
-    expect(container.querySelector('.auth-dropdown')).toBeTruthy();
+    expect(container.querySelector('.auth-dropdown')).toBeInTheDocument();
     expect(container.querySelector('.auth-form-title')?.innerHTML).toContain('email');
-    expect(container.querySelector('[name="username"]')).toBeTruthy();
-    expect(container.querySelector('[name="email"]')).toBeTruthy();
-    expect(container.querySelector('.auth-submit')).toBeTruthy();
+    expect(container.querySelector('[name="username"]')).toBeInTheDocument();
+    expect(container.querySelector('[name="email"]')).toBeInTheDocument();
+    expect(container.querySelector('.auth-submit')).toBeInTheDocument();
   });
 
   it('should render anonymous provider', () => {
@@ -110,10 +107,10 @@ describe('<Auth/>', () => {
     const { container } = render(<Auth />);
 
     fireEvent.click(container.querySelector('.auth-button')!);
-    expect(container.querySelector('.auth-dropdown')).toBeTruthy();
+    expect(container.querySelector('.auth-dropdown')).toBeInTheDocument();
     expect(container.querySelector('.auth-form-title')?.innerHTML).toContain('anonymous');
-    expect(container.querySelector('[name="username"]')).toBeTruthy();
-    expect(container.querySelector('.auth-submit')).toBeTruthy();
+    expect(container.querySelector('[name="username"]')).toBeInTheDocument();
+    expect(container.querySelector('.auth-submit')).toBeInTheDocument();
   });
 
   it('should render tabs with two form providers', () => {
@@ -122,16 +119,16 @@ describe('<Auth/>', () => {
     const { container } = render(<Auth />);
 
     fireEvent.click(container.querySelector('.auth-button')!);
-    expect(container.querySelector('.auth-dropdown')).toBeTruthy();
-    expect(container.querySelector('[for="form-provider-anonymous"]')).toBeTruthy();
-    expect(container.querySelector('[for="form-provider-email"]')).toBeTruthy();
-    expect(container.querySelector('[name="username"]')).toBeTruthy();
-    expect(container.querySelector('.auth-submit')).toBeTruthy();
+    expect(container.querySelector('.auth-dropdown')).toBeInTheDocument();
+    expect(container.querySelector('[for="form-provider-anonymous"]')).toBeInTheDocument();
+    expect(container.querySelector('[for="form-provider-email"]')).toBeInTheDocument();
+    expect(container.querySelector('[name="username"]')).toBeInTheDocument();
+    expect(container.querySelector('.auth-submit')).toBeInTheDocument();
 
     fireEvent.click(container.querySelector('[for="form-provider-email"]')!);
-    expect(container.querySelector('[name="username"]')).toBeTruthy();
-    expect(container.querySelector('[name="email"]')).toBeTruthy();
-    expect(container.querySelector('.auth-submit')).toBeTruthy();
+    expect(container.querySelector('[name="username"]')).toBeInTheDocument();
+    expect(container.querySelector('[name="email"]')).toBeInTheDocument();
+    expect(container.querySelector('.auth-submit')).toBeInTheDocument();
   });
 
   it('should send email and then verify forms', async () => {
@@ -149,12 +146,12 @@ describe('<Auth/>', () => {
     });
     fireEvent.click(container.querySelector('.auth-submit')!);
 
-    expect(container.querySelector('.spinner')).toBeTruthy();
+    expect(container.querySelector('.spinner')).toBeInTheDocument();
     await waitFor(() => expect(api.emailSignin).toBeCalled());
 
-    expect(container.querySelector('.auth-back-button')).toBeTruthy();
-    expect(container.querySelector('.auth-close-button')).toBeTruthy();
-    expect(container.querySelector('[name="token"]')).toBeTruthy();
+    expect(container.querySelector('.auth-back-button')).toBeInTheDocument();
+    expect(container.querySelector('.auth-close-button')).toBeInTheDocument();
+    expect(container.querySelector('[name="token"]')).toBeInTheDocument();
 
     fireEvent.change(container.querySelector('[name="token"]')!, {
       target: { value: 'token' },
@@ -180,9 +177,9 @@ describe('<Auth/>', () => {
     fireEvent.click(container.querySelector('.auth-submit')!);
     await waitFor(() => expect(api.emailSignin).toBeCalled());
 
-    expect(container.querySelector('.auth-back-button')).toBeTruthy();
-    expect(container.querySelector('.auth-close-button')).toBeTruthy();
-    expect(container.querySelector('[name="token"]')).toBeTruthy();
+    expect(container.querySelector('.auth-back-button')).toBeInTheDocument();
+    expect(container.querySelector('.auth-close-button')).toBeInTheDocument();
+    expect(container.querySelector('[name="token"]')).toBeInTheDocument();
 
     fireEvent.change(container.querySelector('[name="token"]')!, {
       target: { value: 'token' },
@@ -202,7 +199,7 @@ describe('<Auth/>', () => {
     fireEvent.click(container.querySelector('.auth-button')!);
     fireEvent.change(container.querySelector('[name="username"]')!, { target: { value: 'username' } });
     fireEvent.click(container.querySelector('.auth-submit')!);
-    expect(container.querySelector('.spinner')).toBeTruthy();
+    expect(container.querySelector('.spinner')).toBeInTheDocument();
     await waitFor(() => expect(api.anonymousSignin).toBeCalled());
   });
 });
