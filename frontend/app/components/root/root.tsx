@@ -4,7 +4,7 @@ import b from 'bem-react-helper';
 import { IntlShape, useIntl, FormattedMessage, defineMessages } from 'react-intl';
 import clsx from 'clsx';
 
-import type { Sorting } from 'common/types';
+import type { Sorting, Theme } from 'common/types';
 import type { StoreState } from 'store';
 import {
   COMMENT_NODE_CLASSNAME_PREFIX,
@@ -39,7 +39,7 @@ import { ConnectedComment as Comment } from 'components/comment/connected-commen
 import { uploadImage, getPreview } from 'common/api';
 import { isUserAnonymous } from 'utils/isUserAnonymous';
 import { bindActions } from 'utils/actionBinder';
-import { postMessage } from 'utils/postMessage';
+import { postMessage, parseMessage } from 'utils/postMessage';
 import { useActions } from 'hooks/useAction';
 import { setCollapse } from 'store/thread/actions';
 import { logout } from 'components/auth/auth.api';
@@ -177,13 +177,10 @@ export class Root extends Component<Props, State> {
     }
   };
 
-  onMessage(event: { data: string | object }) {
-    if (!event.data) {
-      return;
-    }
-
+  onMessage(event: MessageEvent<{ theme?: Theme }>) {
     try {
-      const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+      const data = parseMessage(event);
+
       if (data.theme && THEMES.includes(data.theme)) {
         this.props.setTheme(data.theme);
       }

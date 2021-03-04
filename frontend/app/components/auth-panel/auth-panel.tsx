@@ -75,9 +75,11 @@ class AuthPanelComponent extends Component<Props, State> {
   toggleUserInfoVisibility = () => {
     const { user } = this.props;
 
-    if (window.parent && user) {
-      postMessage({ isUserInfoShown: true, user });
+    if (user === null) {
+      return;
     }
+
+    postMessage({ isUserInfoShown: true, user });
   };
 
   renderAuthorized = (user: User) => {

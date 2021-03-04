@@ -4,6 +4,7 @@ import b from 'bem-react-helper';
 import { Theme } from 'common/types';
 import { sleep } from 'utils/sleep';
 import { Button } from 'components/button';
+import { parseMessage } from 'utils/postMessage';
 
 type Props = RenderableProps<{
   title: string;
@@ -133,12 +134,14 @@ export class Dropdown extends Component<Props, State> {
     });
   }
 
-  receiveMessage(e: { data: string | object }) {
+  receiveMessage(event: MessageEvent<{ clickOutside?: boolean }>) {
     try {
-      const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+      const data = parseMessage(event);
 
-      if (!data.clickOutside) return;
-      if (!this.state.isActive) return;
+      if (!data || !data.clickOutside || !this.state.isActive) {
+        return;
+      }
+
       this.setState(
         {
           contentTranslateX: 0,

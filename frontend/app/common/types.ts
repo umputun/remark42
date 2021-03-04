@@ -1,4 +1,4 @@
-export interface User {
+export type User = {
   name: string;
   id: string;
   picture: string;
@@ -7,15 +7,10 @@ export interface User {
   block: boolean;
   verified: boolean;
   email_subscription?: boolean;
-}
+};
 
 /** data which is used on user-info page */
-export interface UserInfo {
-  id: User['id'];
-  name: string | '';
-  isDefaultPicture: boolean;
-  picture: string;
-}
+export type UserInfo = Pick<User, 'id' | 'name' | 'picture'>;
 
 export interface BlockedUser {
   id: string;

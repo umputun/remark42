@@ -134,7 +134,7 @@
       setInterval(function () {
         if (document.body.offsetHeight !== lastHeight && document.body.offsetHeight > 22) {
           lastHeight = document.body.offsetHeight;
-          window.parent.postMessage(JSON.stringify({ remarkIframeHeight: lastHeight }), '*');
+          window.parent.postMessage({ remarkIframeHeight: lastHeight }, '*');
         }
       }, 200);
 
@@ -142,7 +142,9 @@
 
       function receiveMessages(event) {
         try {
-          const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+          const data = event.data;
+          const isObj = typeof data === 'object' && data !== null && !Array.isArray(data);
+          if (!isObj) return;
           const isItHash = data.hash && data.hash.indexOf('#') === 0;
 
           if (isItHash) {
@@ -170,7 +172,7 @@
                 return c;
               }, {});
 
-      window.parent.postMessage(JSON.stringify({ inited: true }), '*');
+      window.parent.postMessage({ inited: true }, '*');
     </script>
     <script>
       (function (d) {
