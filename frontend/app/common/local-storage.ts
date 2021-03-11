@@ -46,9 +46,9 @@ export function setJsonItem<T = unknown>(key: string, data: T) {
   }
 }
 
-export function updateJsonItem<T extends {}>(key: string, value: (data: T) => T): void;
-export function updateJsonItem<T extends {}>(key: string, value: T): void;
-export function updateJsonItem<T extends unknown[]>(key: string, value: T): void;
+export function updateJsonItem<T = Record<string, unknown>>(key: string, value: (data: T) => T): void;
+export function updateJsonItem<T = Record<string, unknown>>(key: string, value: T): void;
+export function updateJsonItem<T = unknown[]>(key: string, value: T): void;
 export function updateJsonItem<T>(key: string, value: T) {
   const savedData = getJsonItem<T>(key);
 
