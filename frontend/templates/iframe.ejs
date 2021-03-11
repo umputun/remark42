@@ -36,6 +36,7 @@
     <style>
       html,
       body {
+        height: 100%;
         margin: 0;
         padding: 0;
         -webkit-font-smoothing: antialiased;
@@ -43,6 +44,7 @@
       }
 
       body {
+        height: 100%;
         padding: 6px;
       }
 
@@ -109,7 +111,7 @@
       }
     </style>
     <% if (htmlWebpackPlugin.options.env === 'production') { %>
-    	<link rel="stylesheet" href="remark.css" />
+    <link rel="stylesheet" href="remark.css" />
     <% } %>
   </head>
   <body>
