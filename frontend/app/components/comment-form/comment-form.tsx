@@ -213,20 +213,22 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
     this.setState({ isDisabled: true, isErrorShown: false, text });
     try {
       await this.props.onSubmit(text, pageTitle || document.title);
-      updateJsonItem<Record<string, string>>(LS_SAVED_COMMENT_VALUE, (data) => {
-        delete data[this.props.id];
-
-        return data;
-      });
-      this.setState({ preview: null, text: '' });
     } catch (e) {
       this.setState({
         isErrorShown: true,
         errorMessage: extractErrorMessageFromResponse(e, this.props.intl),
       });
+      return;
     }
 
-    this.setState({ isDisabled: false });
+    updateJsonItem<Record<string, string> | null>(LS_SAVED_COMMENT_VALUE, (data) => {
+      if (data === null) {
+        return null;
+      }
+      delete data[this.props.id];
+      return data;
+    });
+    this.setState({ isDisabled: false, preview: null, text: '' });
   };
 
   getPreview() {
@@ -381,8 +383,8 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
         continue;
       }
 
-      this.setState({
-        text: replaceSelection(this.state.text, selection, uploadPlaceholder),
+      this.setState({ text: replaceSelection(this.state.text, selection, uploadPlaceholder) }, () => {
+        updateJsonItem(LS_SAVED_COMMENT_VALUE, { [this.props.id]: this.state.text });
       });
 
       !isFirst && (await sleep(uploadDelay));
@@ -396,9 +398,18 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
       }
 
       const markdownString = `${placeholderStart}![${result.name}](${result.url})`;
-      this.setState({
-        text: replaceSelection(this.state.text, [selection[0], selection[0] + uploadPlaceholderLength], markdownString),
-      });
+      this.setState(
+        {
+          text: replaceSelection(
+            this.state.text,
+            [selection[0], selection[0] + uploadPlaceholderLength],
+            markdownString
+          ),
+        },
+        () => {
+          updateJsonItem(LS_SAVED_COMMENT_VALUE, { [this.props.id]: this.state.text });
+        }
+      );
       /** sleeping awhile so textarea catch state change and its selection */
       await sleep(100);
       const selectionPointer = selection[0] + markdownString.length;
