@@ -17,11 +17,13 @@ function createFrame({
   host,
   query,
   height,
+  margin = '-6px',
   __colors__ = {},
 }: {
   host: string;
   query: string;
   height?: string;
+  margin?: string;
   __colors__?: Record<string, string>;
 }) {
   const iframe = document.createElement('iframe');
@@ -38,7 +40,7 @@ function createFrame({
   iframe.setAttribute('verticalscrolling', 'no');
   iframe.setAttribute(
     'style',
-    'width: 1px !important; min-width: 100% !important; border: none !important; overflow: hidden !important; margin: -6px;'
+    `width: 1px !important; min-width: 100% !important; border: none !important; overflow: hidden !important; margin: ${margin};`
   );
 
   if (height) {
@@ -200,7 +202,7 @@ function createInstance(config: typeof window.remark_config) {
       const queryUserInfo = `${query}&page=user-info&&id=${user.id}&name=${user.name}&picture=${
         user.picture || ''
       }&isDefaultPicture=${user.isDefaultPicture || 0}`;
-      const iframe = createFrame({ host: BASE_URL, query: queryUserInfo, height: '100%' });
+      const iframe = createFrame({ host: BASE_URL, query: queryUserInfo, height: '100%', margin: '0' });
       this.node.appendChild(iframe);
       this.iframe = iframe;
       this.node.appendChild(this.closeEl);
