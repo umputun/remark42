@@ -33,10 +33,10 @@
         }
       })();
     </script>
+    <!-- TODO: we have to move styles in css file -->
     <style>
       html,
       body {
-        height: 100%;
         margin: 0;
         padding: 0;
         -webkit-font-smoothing: antialiased;
@@ -44,7 +44,6 @@
       }
 
       body {
-        height: 100%;
         padding: 6px;
       }
 
@@ -128,9 +127,12 @@
     </script>
     <% } %>
     <script>
+      // TODO: we must stop using `setInterval` for resize iframe
+      // TODO: we must use more efficient way to change iframe height
+      // TODO: we must open comments widget and user-info widget on different pages (now iframe.html opens both of widgets)
       var lastHeight = 0;
       setInterval(function () {
-        if (document.body.offsetHeight !== lastHeight && document.body.offsetHeight > 10) {
+        if (document.body.offsetHeight !== lastHeight && document.body.offsetHeight > 22) {
           lastHeight = document.body.offsetHeight;
           window.parent.postMessage(JSON.stringify({ remarkIframeHeight: lastHeight }), '*');
         }
