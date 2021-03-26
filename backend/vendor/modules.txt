@@ -58,6 +58,10 @@ github.com/aws/aws-sdk-go/internal/strings
 github.com/aws/aws-sdk-go/internal/sync/singleflight
 github.com/aws/aws-sdk-go/private/protocol
 github.com/aws/aws-sdk-go/private/protocol/rest
+# github.com/aymerick/douceur v0.2.0
+github.com/aymerick/douceur/css
+# github.com/chris-ramon/douceur v0.2.0
+github.com/chris-ramon/douceur/parser
 # github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964
 github.com/danwakefield/fnmatch
 # github.com/davecgh/go-spew v1.1.1
@@ -140,6 +144,8 @@ github.com/golang/snappy
 # github.com/google/uuid v1.1.2
 ## explicit
 github.com/google/uuid
+# github.com/gorilla/css v1.0.0
+github.com/gorilla/css/scanner
 # github.com/gorilla/feeds v1.1.1
 ## explicit
 github.com/gorilla/feeds
@@ -162,7 +168,7 @@ github.com/klauspost/compress/zstd/internal/xxhash
 # github.com/kyokomi/emoji v2.2.1+incompatible
 ## explicit
 github.com/kyokomi/emoji
-# github.com/microcosm-cc/bluemonday v1.0.2
+# github.com/microcosm-cc/bluemonday v1.0.4
 ## explicit
 github.com/microcosm-cc/bluemonday
 # github.com/nullrocks/identicon v0.0.0-20180626043057-7875f45b0022
