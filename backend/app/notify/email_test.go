@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/umputun/remark42/backend/app/store"
 )
@@ -50,7 +51,7 @@ func TestEmailNew(t *testing.T) {
 	assert.Equal(t, smtpParams.TLS, email.TLS, "emailParams.TLS unchanged after creation")
 }
 
-func Test_initTemplates(t *testing.T) {
+func Test_initTemplatesErr(t *testing.T) {
 	testSet := []struct {
 		name        string
 		errText     string
@@ -74,7 +75,7 @@ func Test_initTemplates(t *testing.T) {
 		},
 		{
 			name:    "with error on read verification template",
-			errText: "can't parse verification template: template: verifyTmpl:1: unexpected unclosed action in command",
+			errText: "can't parse verification template: template: verifyTmpl",
 			emailParams: EmailParams{
 				VerificationTemplatePath: "testdata/bad.html.tmpl",
 				MsgTemplatePath:          "testdata/msg.html.tmpl",
@@ -82,7 +83,7 @@ func Test_initTemplates(t *testing.T) {
 		},
 		{
 			name:    "with error on read message template",
-			errText: "can't parse message template: template: msgTmpl:1: unexpected unclosed action in command",
+			errText: "can't parse message template: template: msgTmpl",
 			emailParams: EmailParams{
 				VerificationTemplatePath: "testdata/verification.html.tmpl",
 				MsgTemplatePath:          "testdata/bad.html.tmpl",
@@ -95,8 +96,8 @@ func Test_initTemplates(t *testing.T) {
 		t.Run(d.name, func(t *testing.T) {
 			e := Email{EmailParams: d.emailParams}
 			err := e.setTemplates()
-
-			assert.EqualError(t, err, d.errText)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), d.errText)
 		})
 	}
 }
