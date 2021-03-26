@@ -153,8 +153,8 @@ func (c *Comment) Snippet(limit int) string {
 
 var reHref = regexp.MustCompile(`<a\s+(?:[^>]*?\s+)?href="([^"]*)"`)
 
-// wrap with href to trigger bluemonday sanitizer
-// clean href after sanitizing done
+// SanitizeAsURL drops dangerous code from a url.
+// It wraps input with href to trigger bluemonday sanitizer and cleans href after sanitizing done
 func (c *Comment) SanitizeAsURL(inp string) string {
 	h := fmt.Sprintf(`<a href="%s">`, inp)
 	clean := bluemonday.UGCPolicy().Sanitize(h)
