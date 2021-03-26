@@ -77,27 +77,6 @@ func TestFormatter_FormatComment(t *testing.T) {
 	assert.Equal(t, exp, f.Format(comment))
 }
 
-func TestFormatter_FormatCommentXSSLocator(t *testing.T) {
-	comment := Comment{
-		Text:      "blah\n\nxyz",
-		User:      User{ID: "username"},
-		ParentID:  "p123",
-		ID:        "123",
-		Locator:   Locator{SiteID: "site", URL: "javascript:alert('XSS1')"},
-		Score:     10,
-		Pin:       true,
-		Deleted:   true,
-		Timestamp: time.Date(2018, 1, 1, 9, 30, 0, 0, time.Local),
-		Votes:     map[string]bool{"uu": true},
-	}
-
-	f := NewCommentFormatter(mockConverter{})
-	exp := comment
-	exp.Text = "<p>blah</p>\n\n<p>xyz</p>\n!converted"
-	exp.Locator.URL = ""
-	assert.Equal(t, exp, f.Format(comment))
-}
-
 func TestFormatter_ShortenAutoLinks(t *testing.T) {
 	f := NewCommentFormatter(nil)
 	tbl := []struct {
