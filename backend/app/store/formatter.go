@@ -37,6 +37,7 @@ func NewCommentFormatter(converters ...CommentConverter) *CommentFormatter {
 // Format comment fields
 func (f *CommentFormatter) Format(c Comment) Comment {
 	c.Text = f.FormatText(c.Text)
+	c.Locator.URL = c.sanitizeAsURL(c.Locator.URL) // for urls prior to #927s
 	return c
 }
 
