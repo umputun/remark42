@@ -158,8 +158,7 @@ var reHref = regexp.MustCompile(`<a\s+(?:[^>]*?\s+)?href="([^"]*)"`)
 func (c *Comment) sanitizeAsURL(inp string) string {
 	h := fmt.Sprintf(`<a href="%s">`, inp)
 	clean := bluemonday.UGCPolicy().Sanitize(h)
-	match := reHref.FindStringSubmatch(clean)
-	if len(match) > 1 {
+	if match := reHref.FindStringSubmatch(clean); len(match) > 1 {
 		return match[1]
 	}
 	return "" // this shouldn't happen as we build the href
