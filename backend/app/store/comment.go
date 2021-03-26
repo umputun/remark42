@@ -1,6 +1,7 @@
 package store
 
 import (
+	"fmt"
 	"html/template"
 	"regexp"
 	"strings"
@@ -121,7 +122,8 @@ func (c *Comment) Sanitize() {
 	c.Orig = p.Sanitize(c.Orig)
 	c.User.ID = template.HTMLEscapeString(c.User.ID)
 	c.User.Name = c.escapeHTMLWithSome(c.User.Name)
-	c.User.Picture = p.Sanitize(c.User.Picture)
+	c.User.Picture = c.SanitizeAsURL(c.User.Picture)
+	c.Locator.URL = c.SanitizeAsURL(c.Locator.URL)
 }
 
 // Snippet from comment's text
@@ -143,6 +145,19 @@ func (c *Comment) Snippet(limit int) string {
 		}
 	}
 	return string(snippet) + " ..."
+}
+
+var reHref = regexp.MustCompile(`<a\s+(?:[^>]*?\s+)?href="([^"]*)"`)
+
+// SanitizeAsURL drops dangerous code from a url.
+// It wraps input with href to trigger bluemonday sanitizer and cleans href after sanitizing done
+func (c *Comment) SanitizeAsURL(inp string) string {
+	h := fmt.Sprintf(`<a href="%s">`, inp)
+	clean := bluemonday.UGCPolicy().Sanitize(h)
+	if match := reHref.FindStringSubmatch(clean); len(match) > 1 {
+		return match[1]
+	}
+	return "" // this shouldn't happen as we build the href
 }
 
 func (c *Comment) escapeHTMLWithSome(inp string) string {
