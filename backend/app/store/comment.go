@@ -126,8 +126,8 @@ func (c *Comment) Sanitize() {
 	c.Orig = p.Sanitize(c.Orig)
 	c.User.ID = template.HTMLEscapeString(c.User.ID)
 	c.User.Name = c.escapeHTMLWithSome(c.User.Name)
-	c.User.Picture = c.sanitizeAsURL(c.User.Picture)
-	c.Locator.URL = c.sanitizeAsURL(c.Locator.URL)
+	c.User.Picture = c.SanitizeAsURL(c.User.Picture)
+	c.Locator.URL = c.SanitizeAsURL(c.Locator.URL)
 }
 
 // Snippet from comment's text
@@ -155,7 +155,7 @@ var reHref = regexp.MustCompile(`<a\s+(?:[^>]*?\s+)?href="([^"]*)"`)
 
 // wrap with href to trigger bluemonday sanitizer
 // clean href after sanitizing done
-func (c *Comment) sanitizeAsURL(inp string) string {
+func (c *Comment) SanitizeAsURL(inp string) string {
 	h := fmt.Sprintf(`<a href="%s">`, inp)
 	clean := bluemonday.UGCPolicy().Sanitize(h)
 	if match := reHref.FindStringSubmatch(clean); len(match) > 1 {

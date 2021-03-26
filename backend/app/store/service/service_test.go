@@ -1457,9 +1457,11 @@ func TestService_alterComment(t *testing.T) {
 	engineMock.On("Flag", engine.FlagRequest{Flag: engine.Verified, UserID: "devid"}).Return(false, nil)
 	svc := DataStore{Engine: &engineMock}
 
-	r := svc.alterComment(store.Comment{ID: "123", User: store.User{IP: "127.0.0.1", ID: "devid"}},
+	r := svc.alterComment(store.Comment{ID: "123", User: store.User{IP: "127.0.0.1", ID: "devid"},
+		Locator: store.Locator{URL: "http://example.com?foo=bar"}},
 		store.User{Name: "dev", ID: "devid", Admin: false})
-	assert.Equal(t, store.Comment{ID: "123", User: store.User{IP: "", ID: "devid"}}, r, "ip cleaned")
+	assert.Equal(t, store.Comment{ID: "123", User: store.User{IP: "", ID: "devid"},
+		Locator: store.Locator{URL: "http://example.com?foo=bar"}}, r, "ip cleaned")
 	r = svc.alterComment(store.Comment{ID: "123", User: store.User{IP: "127.0.0.1", ID: "devid"}},
 		store.User{Name: "dev", ID: "devid", Admin: true})
 	assert.Equal(t, store.Comment{ID: "123", User: store.User{IP: "127.0.0.1", ID: "devid"}}, r, "ip not cleaned")
@@ -1476,7 +1478,8 @@ func TestService_alterComment(t *testing.T) {
 	engineMock.On("Flag", engine.FlagRequest{Flag: engine.Blocked, UserID: "devid"}).Return(true, nil)
 	engineMock.On("Flag", engine.FlagRequest{Flag: engine.Verified, UserID: "devid"}).Return(false, nil)
 	svc = DataStore{Engine: &engineMock}
-	r = svc.alterComment(store.Comment{ID: "123", User: store.User{IP: "127.0.0.1", ID: "devid", Verified: true}},
+	r = svc.alterComment(store.Comment{ID: "123", User: store.User{IP: "127.0.0.1", ID: "devid", Verified: true},
+		Locator: store.Locator{URL: "javascript:alert('XSS1')"}},
 		store.User{Name: "dev", ID: "devid", Admin: false})
 	assert.Equal(t, store.Comment{ID: "123", User: store.User{IP: "", Verified: true, Blocked: true, ID: "devid"},
 		Deleted: false}, r, "blocked")

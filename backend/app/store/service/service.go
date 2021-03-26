@@ -125,7 +125,8 @@ func (s *DataStore) FindSince(locator store.Locator, sortMethod string, user sto
 	}
 
 	changedSort := false
-	// set votes controversy for comments added prior to #274
+	// sets votes controversy for comments added prior to #274
+	// also sanitizes locator.URL for comments added prior to #927
 	for i, c := range comments {
 		if c.Controversy == 0 && len(c.Votes) > 0 {
 			c.Controversy = s.controversy(s.upsAndDowns(c))
@@ -924,6 +925,7 @@ func (s *DataStore) alterComment(c store.Comment, user store.User) (res store.Co
 	}
 
 	c = s.prepVotes(c, user)
+	c.Locator.URL = c.SanitizeAsURL(c.Locator.URL) // urls prior to #927
 	return c
 }
 

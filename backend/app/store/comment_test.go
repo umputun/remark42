@@ -211,7 +211,7 @@ func TestComment_sanitizeAsURL(t *testing.T) {
 		tt := tt
 		c := Comment{}
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			assert.Equal(t, tt.out, c.sanitizeAsURL(tt.inp))
+			assert.Equal(t, tt.out, c.SanitizeAsURL(tt.inp))
 		})
 	}
 
