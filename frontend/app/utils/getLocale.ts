@@ -1,3 +1,3 @@
 export function getLocale(params: { locale?: string; [key: string]: unknown }): string {
-  return params.locale || 'fr';
+  return params.locale || 'en';
 }
