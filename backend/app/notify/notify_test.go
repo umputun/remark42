@@ -54,7 +54,7 @@ func TestService_WithDrops(t *testing.T) {
 	s.Submit(Request{Comment: store.Comment{ID: "101"}})
 	time.Sleep(time.Millisecond * 11)
 	s.Submit(Request{Comment: store.Comment{ID: "102"}})
-	time.Sleep(time.Millisecond * 11)
+	time.Sleep(time.Millisecond * 21)
 	s.Close()
 
 	s.Submit(Request{Comment: store.Comment{ID: "111"}}) // safe to send after close
@@ -77,7 +77,7 @@ func TestService_SubmitVerificationWithDrops(t *testing.T) {
 	s.SubmitVerification(VerificationRequest{})
 	time.Sleep(time.Millisecond * 11)
 	s.SubmitVerification(VerificationRequest{})
-	time.Sleep(time.Millisecond * 11)
+	time.Sleep(time.Millisecond * 21)
 	s.Close()
 
 	s.SubmitVerification(VerificationRequest{}) // safe to send after close
