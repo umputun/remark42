@@ -40,9 +40,9 @@ func (m *MockDest) SendVerification(ctx context.Context, v VerificationRequest) 
 	select {
 	case <-time.After(10 * time.Millisecond):
 		m.verificationData = append(m.verificationData, v)
-		log.Printf("sent %s -> %d", v.User, m.id)
+		log.Printf("sent verification %s -> %d", v.User, m.id)
 	case <-ctx.Done():
-		log.Printf("ctx closed %d", m.id)
+		log.Printf("verification ctx closed %d", m.id)
 		m.closed = true
 	}
 	return nil
