@@ -16,7 +16,7 @@ import (
 	"github.com/go-pkgz/auth/token"
 )
 
-const devAuthPort = 8084
+const defDevAuthPort = 8084
 
 // DevAuthServer is a fake oauth server for development
 // it provides stand-alone server running on its own port and pretending to be the real oauth2. It also provides
@@ -35,8 +35,11 @@ type DevAuthServer struct {
 
 // Run oauth2 dev server on port devAuthPort
 func (d *DevAuthServer) Run(ctx context.Context) { //nolint (gocyclo)
+	if d.Provider.Port == 0 {
+		d.Provider.Port = defDevAuthPort
+	}
 	d.username = "dev_user"
-	d.Logf("[INFO] run local oauth2 dev server on %d, redirect url=%s", devAuthPort, d.Provider.conf.RedirectURL)
+	d.Logf("[INFO] run local oauth2 dev server on %d, redirect url=%s", d.Provider.Port, d.Provider.conf.RedirectURL)
 	d.lock.Lock()
 	var err error
 
@@ -47,7 +50,7 @@ func (d *DevAuthServer) Run(ctx context.Context) { //nolint (gocyclo)
 	}
 
 	d.httpServer = &http.Server{
-		Addr: fmt.Sprintf(":%d", devAuthPort),
+		Addr: fmt.Sprintf(":%d", d.Provider.Port),
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			d.Logf("[DEBUG] dev oauth request %s %s %+v", r.Method, r.URL, r.Header)
 			switch {
@@ -91,7 +94,7 @@ func (d *DevAuthServer) Run(ctx context.Context) { //nolint (gocyclo)
 				}
 
 			case strings.HasPrefix(r.URL.Path, "/user"):
-				ava := fmt.Sprintf("http://127.0.0.1:%d/avatar?user=%s", devAuthPort, d.username)
+				ava := fmt.Sprintf("http://127.0.0.1:%d/avatar?user=%s", d.Provider.Port, d.username)
 				res := fmt.Sprintf(`{
 					"id": "%s",
 					"name":"%s",
@@ -150,14 +153,17 @@ func (d *DevAuthServer) Shutdown() {
 
 // NewDev makes dev oauth2 provider for admin user
 func NewDev(p Params) Oauth2Handler {
+	if p.Port == 0 {
+		p.Port = defDevAuthPort
+	}
 	oh := initOauth2Handler(p, Oauth2Handler{
 		name: "dev",
 		endpoint: oauth2.Endpoint{
-			AuthURL:  fmt.Sprintf("http://127.0.0.1:%d/login/oauth/authorize", devAuthPort),
-			TokenURL: fmt.Sprintf("http://127.0.0.1:%d/login/oauth/access_token", devAuthPort),
+			AuthURL:  fmt.Sprintf("http://127.0.0.1:%d/login/oauth/authorize", p.Port),
+			TokenURL: fmt.Sprintf("http://127.0.0.1:%d/login/oauth/access_token", p.Port),
 		},
 		scopes:  []string{"user:email"},
-		infoURL: fmt.Sprintf("http://127.0.0.1:%d/user", devAuthPort),
+		infoURL: fmt.Sprintf("http://127.0.0.1:%d/user", p.Port),
 		mapUser: func(data UserData, _ []byte) token.User {
 			userInfo := token.User{
 				ID:      data.Value("id"),

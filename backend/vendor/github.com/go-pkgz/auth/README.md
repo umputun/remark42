@@ -366,10 +366,10 @@ In order to allow `aud` support the list of allowed audiences should be passed i
 
 ### Dev provider
 
-Working with oauth2 providers can be a pain, especially during development phase. A special, development-only provider `dev` can make it less painful. This one can be registered directly, i.e. `service.AddProvider("dev", "", "")` and should be activated like this:
+Working with oauth2 providers can be a pain, especially during development phase. A special, development-only provider `dev` can make it less painful. This one can be registered directly, i.e. `service.AddProvider("dev", "", "")` or `service.AddDevProvider(port)` and should be activated like this:
 
 ```go
-	// runs dev oauth2 server on :8084
+	// runs dev oauth2 server on :8084 by default
 	go func() {
 		devAuthServer, err := service.DevAuth()
 		if err != nil {

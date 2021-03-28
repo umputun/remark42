@@ -17,9 +17,9 @@ Adds info to every response header:
 
 ### Ping-Pong middleware
 
-Responds with `pong` on `GET /ping`. Also responds to anything with `/ping` suffix, like `/v2/ping` 
+Responds with `pong` on `GET /ping`. Also, responds to anything with `/ping` suffix, like `/v2/ping`.
 
-example for both:
+Example for both:
 
 ```
 > http GET https://remark42.radio-t.com/ping
@@ -58,7 +58,7 @@ example: `019/03/05 17:26:12.976 [INFO] GET - /api/v1/find?site=remark - 8e228e9
 ### Recoverer middleware
 
 Recoverer is a middleware that recovers from panics, logs the panic (and a backtrace), 
-and returns a HTTP 500 (Internal Server Error) status if possible.
+and returns an HTTP 500 (Internal Server Error) status if possible.
 
 ### OnlyFrom middleware
 
@@ -67,7 +67,7 @@ Such IPs can be defined as complete ip (like 192.168.1.12), prefix (129.168.) or
 
 ### Metrics middleware
 
-Metrics middleware responds to GET /metrics with list of [expvar](https://golang.org/pkg/expvar/). Optionally allows to restrict list of source ips.
+Metrics middleware responds to GET /metrics with list of [expvar](https://golang.org/pkg/expvar/). Optionally allows restricting list of source ips.
 
 ### BlackWords middleware
 
@@ -82,6 +82,11 @@ SizeLimit middleware checks if body size is above the limit and returns `StatusR
 It looks for `X-Request-ID` header and makes it as a random id
  (if not found), then populates it to the result's header
     and to the request's context.
+
+### Deprecation 
+
+Adds rhe HTTP Deprecation response header, see [draft-dalal-deprecation-header-00](https://tools.ietf.org/id/draft-dalal-deprecation-header-00.html
+) 
     
 ## Helpers
 
@@ -89,5 +94,5 @@ It looks for `X-Request-ID` header and makes it as a random id
 - `rest.RenderJSON` -  renders json response from `interface{}`
 - `rest.RenderJSONFromBytes` - renders json response from `[]byte`
 - `rest.RenderJSONWithHTML` -  renders json response with html tags and forced `charset=utf-8`
-- `rest.SendErrorJSON` - makes `{error: blah, details: blah}` json body and responds with given error code. Also adds context to logged message
+- `rest.SendErrorJSON` - makes `{error: blah, details: blah}` json body and responds with given error code. Also, adds context to the logged message
 - `rest.NewErrorLogger(l logger.Backend)` creates a struct providing shorter form of logger call

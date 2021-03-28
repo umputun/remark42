@@ -39,6 +39,8 @@ type Params struct {
 	Csecret     string
 	Issuer      string
 	AvatarSaver AvatarSaver
+
+	Port int // relevant for providers supporting port customization, for example dev oauth2
 }
 
 // UserData is type for user information returned from oauth2 providers /info API method
@@ -211,7 +213,7 @@ func (p Oauth2Handler) AuthHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, oauthClaims.Handshake.From, http.StatusTemporaryRedirect)
 		return
 	}
-	rest.RenderJSON(w, r, &u)
+	rest.RenderJSON(w, &u)
 }
 
 // LogoutHandler - GET /logout

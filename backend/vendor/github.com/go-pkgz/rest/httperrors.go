@@ -31,7 +31,7 @@ func (e *ErrorLogger) Log(w http.ResponseWriter, r *http.Request, httpCode int, 
 		e.l.Logf("%s", errDetailsMsg(r, httpCode, err, m))
 	}
 	w.WriteHeader(httpCode)
-	RenderJSON(w, r, JSON{"error": m})
+	RenderJSON(w, JSON{"error": m})
 }
 
 // SendErrorJSON sends {error: msg} with error code and logging error and caller
@@ -40,7 +40,7 @@ func SendErrorJSON(w http.ResponseWriter, r *http.Request, l logger.Backend, cod
 		l.Logf("%s", errDetailsMsg(r, code, err, msg))
 	}
 	w.WriteHeader(code)
-	RenderJSON(w, r, JSON{"error": msg})
+	RenderJSON(w, JSON{"error": msg})
 }
 
 func errDetailsMsg(r *http.Request, code int, err error, msg string) string {

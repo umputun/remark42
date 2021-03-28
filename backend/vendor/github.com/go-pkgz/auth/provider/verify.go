@@ -127,7 +127,7 @@ func (e VerifyHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, confClaims.Handshake.From, http.StatusTemporaryRedirect)
 		return
 	}
-	rest.RenderJSON(w, r, claims.User)
+	rest.RenderJSON(w, claims.User)
 }
 
 // GET /login?site=site&user=name&address=someone@example.com
@@ -189,7 +189,7 @@ func (e VerifyHandler) sendConfirmation(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	rest.RenderJSON(w, r, rest.JSON{"user": user, "address": address})
+	rest.RenderJSON(w, rest.JSON{"user": user, "address": address})
 }
 
 // AuthHandler doesn't do anything for direct login as it has no callbacks

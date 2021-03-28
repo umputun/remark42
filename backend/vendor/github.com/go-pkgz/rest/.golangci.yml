@@ -2,7 +2,7 @@ linters-settings:
   govet:
     check-shadowing: true
   golint:
-    min-confidence: 0.8
+    min-confidence: 0
   gocyclo:
     min-complexity: 15
   maligned:
@@ -23,11 +23,8 @@ linters-settings:
       - experimental
     disabled-checks:
       - wrapperFunc
-      - hugeParam
-      - rangeValCopy
 
 linters:
-  disable-all: true
   enable:
     - megacheck
     - golint
@@ -37,6 +34,7 @@ linters:
     - structcheck
     - gas
     - gocyclo
+    - dupl
     - misspell
     - unparam
     - varcheck
@@ -46,26 +44,26 @@ linters:
     - varcheck
     - stylecheck
     - gochecknoinits
-    - golint
+    - scopelint
+    - gocritic
     - nakedret
     - gosimple
     - prealloc
-
   fast: false
-
+  disable-all: true
 
 run:
-  # modules-download-mode: vendor
+  output:
+    format: tab
   skip-dirs:
     - vendor
-  concurrency: 4
 
 issues:
   exclude-rules:
-    - text: "weak cryptographic primitive"
+    - text: "should have a package comment, unless it's in another file for this package"
       linters:
-        - gosec
+        - golint
+    - path: _test\.go
+      linters:
+        - dupl
   exclude-use-default: false
-
-service:
-  golangci-lint-version: 1.24.x

@@ -59,7 +59,6 @@ func New(options ...Option) *Middleware {
 }
 
 // Handler middleware prints http log
-//nolint gosec
 func (l *Middleware) Handler(next http.Handler) http.Handler {
 
 	fn := func(w http.ResponseWriter, r *http.Request) {
@@ -91,32 +90,32 @@ func (l *Middleware) Handler(next http.Handler) http.Handler {
 
 			var bld strings.Builder
 			if l.prefix != "" {
-				bld.WriteString(l.prefix)
-				bld.WriteString(" ")
+				_, _ = bld.WriteString(l.prefix)
+				_, _ = bld.WriteString(" ")
 			}
 
-			bld.WriteString(fmt.Sprintf("%s - %s - %s - %d (%d) - %v", r.Method, rawurl, remoteIP, ww.status, ww.size, t2.Sub(t1)))
+			_, _ = bld.WriteString(fmt.Sprintf("%s - %s - %s - %d (%d) - %v", r.Method, rawurl, remoteIP, ww.status, ww.size, t2.Sub(t1)))
 
 			if user != "" {
-				bld.WriteString(" - ")
-				bld.WriteString(user)
+				_, _ = bld.WriteString(" - ")
+				_, _ = bld.WriteString(user)
 			}
 
 			if l.subjFn != nil {
 				if subj, err := l.subjFn(r); err == nil {
-					bld.WriteString(" - ")
-					bld.WriteString(subj)
+					_, _ = bld.WriteString(" - ")
+					_, _ = bld.WriteString(subj)
 				}
 			}
 
 			if traceID := r.Header.Get("X-Request-ID"); traceID != "" {
-				bld.WriteString(" - ")
-				bld.WriteString(traceID)
+				_, _ = bld.WriteString(" - ")
+				_, _ = bld.WriteString(traceID)
 			}
 
 			if body != "" {
-				bld.WriteString(" - ")
-				bld.WriteString(body)
+				_, _ = bld.WriteString(" - ")
+				_, _ = bld.WriteString(body)
 			}
 
 			l.log.Logf("%s", bld.String())
@@ -168,7 +167,8 @@ func peek(r io.Reader, n int64) (reader io.Reader, s string, hasMore bool, err e
 	buf := new(bytes.Buffer)
 	_, err = io.CopyN(buf, r, n+1)
 	if err == io.EOF {
-		return buf, buf.String(), false, nil
+		str := buf.String()
+		return buf, str, false, nil
 	}
 	if err != nil {
 		return r, "", false, err
@@ -273,5 +273,5 @@ func (c *customResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	if hj, ok := c.ResponseWriter.(http.Hijacker); ok {
 		return hj.Hijack()
 	}
-	return nil, nil, fmt.Errorf("ResponseWriter does not implement the Hijacker interface")
+	return nil, nil, fmt.Errorf("ResponseWriter does not implement the Hijacker interface") //nolint:golint //capital letter is OK here
 }

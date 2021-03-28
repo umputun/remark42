@@ -12,3 +12,4 @@
 *.out
 .vscode
 *.cov
+Dockerfile

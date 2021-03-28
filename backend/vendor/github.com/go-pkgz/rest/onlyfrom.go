@@ -22,14 +22,14 @@ func OnlyFrom(onlyIps ...string) func(http.Handler) http.Handler {
 			}
 
 			w.WriteHeader(http.StatusForbidden)
-			RenderJSON(w, r, JSON{"error": fmt.Sprintf("ip %s rejected", ip)})
+			RenderJSON(w, JSON{"error": fmt.Sprintf("ip %s rejected", ip)})
 		}
 		return http.HandlerFunc(fn)
 	}
 }
 
 // matchSourceIP returns true if request's ip matches any of ips
-func matchSourceIP(r *http.Request, ips []string) (bool, string) {
+func matchSourceIP(r *http.Request, ips []string) (result bool, match string) {
 
 	// try X-Real-IP first then fail back to X-Forwarded-For and finally to RemoteAddr
 	ip := r.Header.Get("X-Real-IP")
