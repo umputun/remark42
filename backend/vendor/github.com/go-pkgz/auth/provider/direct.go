@@ -121,7 +121,7 @@ func (p DirectHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, p.L, http.StatusInternalServerError, err, "failed to set token")
 		return
 	}
-	rest.RenderJSON(w, r, claims.User)
+	rest.RenderJSON(w, claims.User)
 }
 
 // getCredentials extracts user and password from request

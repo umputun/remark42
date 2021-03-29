@@ -1,6 +1,6 @@
 module github.com/umputun/remark42/backend
 
-go 1.14
+go 1.15
 
 require (
 	github.com/Depado/bfchroma v1.2.0
@@ -12,12 +12,12 @@ require (
 	github.com/go-chi/chi v4.1.1+incompatible
 	github.com/go-chi/cors v1.1.1
 	github.com/go-chi/render v1.0.1
-	github.com/go-pkgz/auth v1.14.0
+	github.com/go-pkgz/auth v1.15.0
 	github.com/go-pkgz/jrpc v0.2.0
 	github.com/go-pkgz/lcw v0.8.1
 	github.com/go-pkgz/lgr v0.10.4
 	github.com/go-pkgz/repeater v1.1.3
-	github.com/go-pkgz/rest v1.5.0
+	github.com/go-pkgz/rest v1.7.0
 	github.com/go-pkgz/syncs v1.1.1
 	github.com/google/uuid v1.1.2
 	github.com/gorilla/feeds v1.1.1

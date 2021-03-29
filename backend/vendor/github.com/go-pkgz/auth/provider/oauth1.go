@@ -160,7 +160,7 @@ func (h Oauth1Handler) AuthHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, oauthClaims.Handshake.From, http.StatusTemporaryRedirect)
 		return
 	}
-	rest.RenderJSON(w, r, &u)
+	rest.RenderJSON(w, &u)
 }
 
 // LogoutHandler - GET /logout

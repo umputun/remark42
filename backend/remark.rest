@@ -147,3 +147,17 @@ X-JWT: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcmsiLCJleHAiOjE2NTc3
 
 ### ping
 GET {{host}}/ping
+
+
+### create comment with bad locator.url, dev token for secret=12345, not admin
+POST {{host}}/api/v1/comment
+Content-Type: application/json
+X-JWT: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcmsiLCJleHAiOjE2MTY3OTQ2NTMsImp0aSI6ImNjOGVlNzNlNjM4MzQ1Mjc1MmZjN2M3ZmQ0MmE4MDIzZDY3ZWFiMDIiLCJpYXQiOjE2MTY3OTQzNTMsImlzcyI6InJlbWFyazQyIiwidXNlciI6eyJuYW1lIjoic29tZW9uZSIsImlkIjoiYW5vbnltb3VzX2NhMjlmMjkwOTU3NGE3Zjk3YjRkNGU4YmIwOTU1N2IxMDM1ODE4YjAiLCJwaWN0dXJlIjoiaHR0cHM6Ly9kZW1vLnJlbWFyazQyLmNvbS9hcGkvdjEvYXZhdGFyLzZlMTU5OGE5MWM4MWZlZjhmOGU5MzMwODg4ZWJiZjVlMzkzODVkYTkuaW1hZ2UiLCJhdHRycyI6eyJhZG1pbiI6ZmFsc2UsImJsb2NrZWQiOmZhbHNlfX19.TUEr1qN0j9WGx1jlOL-rc14qjuenH56yI-5_xF9FSGY
+
+{
+	"text": "comment *blah* http://radio-t.com",
+	"locator": {
+		"url": "javascript:alert('XSS1')",
+		"site": "{{site}}"
+	}
+}

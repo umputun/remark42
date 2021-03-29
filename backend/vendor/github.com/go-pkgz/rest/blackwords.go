@@ -21,7 +21,7 @@ func BlackWords(words ...string) func(http.Handler) http.Handler {
 					for _, word := range words {
 						if strings.Contains(body, strings.ToLower(word)) {
 							w.WriteHeader(http.StatusForbidden)
-							RenderJSON(w, r, JSON{"error": "one of blacklisted words detected"})
+							RenderJSON(w, JSON{"error": "one of blacklisted words detected"})
 							return
 						}
 					}

@@ -16,7 +16,7 @@ func Metrics(onlyIps ...string) func(http.Handler) http.Handler {
 			if r.Method == "GET" && strings.HasSuffix(strings.ToLower(r.URL.Path), "/metrics") {
 				if matched, ip := matchSourceIP(r, onlyIps); !matched {
 					w.WriteHeader(http.StatusForbidden)
-					RenderJSON(w, r, JSON{"error": fmt.Sprintf("ip %s rejected", ip)})
+					RenderJSON(w, JSON{"error": fmt.Sprintf("ip %s rejected", ip)})
 					return
 				}
 				expvar.Handler().ServeHTTP(w, r)

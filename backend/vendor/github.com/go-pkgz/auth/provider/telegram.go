@@ -199,7 +199,7 @@ func (th *TelegramHandler) LoginHandler(w http.ResponseWriter, r *http.Request) 
 		}
 		th.requests.Unlock()
 
-		rest.RenderJSON(w, r, struct {
+		rest.RenderJSON(w, struct {
 			Token string `json:"token"`
 			Bot   string `json:"bot"`
 		}{token, th.username})
@@ -246,7 +246,7 @@ func (th *TelegramHandler) LoginHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	rest.RenderJSON(w, r, claims.User)
+	rest.RenderJSON(w, claims.User)
 
 	// Delete request
 	th.requests.Lock()

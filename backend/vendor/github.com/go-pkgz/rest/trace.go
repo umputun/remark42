@@ -3,7 +3,7 @@ package rest
 import (
 	"context"
 	"crypto/rand"
-	"crypto/sha1"
+	"crypto/sha1" //nolint:gosec //not used for cryptography
 	"encoding/hex"
 	"fmt"
 	"net/http"
@@ -43,6 +43,6 @@ func randToken() string {
 	if _, err := rand.Read(b); err != nil {
 		return fmt.Sprintf("%x", time.Now().Nanosecond())
 	}
-	sum := sha1.Sum(b)
+	sum := sha1.Sum(b) //nolint:gosec //not used for cryptography
 	return hex.EncodeToString(sum[:])
 }

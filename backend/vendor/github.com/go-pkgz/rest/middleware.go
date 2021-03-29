@@ -10,7 +10,7 @@ import (
 )
 
 // AppInfo adds custom app-info to the response header
-func AppInfo(app string, author string, version string) func(http.Handler) http.Handler {
+func AppInfo(app, author, version string) func(http.Handler) http.Handler {
 	f := func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Author", author)
@@ -33,7 +33,7 @@ func Ping(next http.Handler) http.Handler {
 		if r.Method == "GET" && strings.HasSuffix(strings.ToLower(r.URL.Path), "/ping") {
 			w.Header().Set("Content-Type", "text/plain")
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("pong")) //nolint
+			_, _ = w.Write([]byte("pong"))
 			return
 		}
 		next.ServeHTTP(w, r)
