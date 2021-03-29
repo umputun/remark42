@@ -17,7 +17,8 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 * Images upload with drag-and-drop
 * Extractor for recent comments, cross-post
 * RSS for all comments and each post
-* Telegram and email notifications
+* Telegram, Slack and email notifications for Admins (get notified for each new comment)
+* Email notifications for users (get notified when someone responds to your comment)
 * Export data to json with automatic backups
 * No external databases, everything embedded in a single data file
 * Fully dockerized and can be deployed in a single command
@@ -155,11 +156,13 @@ _this is the recommended way to run remark42_
 | auth.email.subj         | AUTH_EMAIL_SUBJ         | `remark42 confirmation`  | email subject                                   |
 | auth.email.content-type | AUTH_EMAIL_CONTENT_TYPE | `text/html`              | email content type                              |
 | auth.email.template     | AUTH_EMAIL_TEMPLATE     | none (predefined)        | custom email message template file              |
-| notify.type             | NOTIFY_TYPE             | none                     | type of notification (telegram and/or email)    |
+| notify.type             | NOTIFY_TYPE             | none                     | type of notification (telegram, slack and/or email) |
 | notify.queue            | NOTIFY_QUEUE            | `100`                    | size of notification queue                      |
 | notify.telegram.token   | NOTIFY_TELEGRAM_TOKEN   |                          | telegram token                                  |
 | notify.telegram.chan    | NOTIFY_TELEGRAM_CHAN    |                          | telegram channel                                |
 | notify.telegram.timeout | NOTIFY_TELEGRAM_TIMEOUT | `5s`                     | telegram timeout                                |
+| notify.slack.token      | NOTIFY_SLACK_TOKEN      |                          | slack token                                     |
+| notify.slack.chan       | NOTIFY_SLACK_CHAN       | `general`                | slack channel                                   |
 | notify.email.fromAddress | NOTIFY_EMAIL_FROM      |                          | from email address                              |
 | notify.email.verification_subj | NOTIFY_EMAIL_VERIFICATION_SUBJ | `Email verification` | verification message subject          |
 | notify.email.notify_admin | NOTIFY_EMAIL_ADMIN    | `false`                  | notify admin on new comments via ADMIN_SHARED_EMAIL |

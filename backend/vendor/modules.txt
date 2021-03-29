@@ -149,6 +149,8 @@ github.com/gorilla/css/scanner
 # github.com/gorilla/feeds v1.1.1
 ## explicit
 github.com/gorilla/feeds
+# github.com/gorilla/websocket v1.4.2
+github.com/gorilla/websocket
 # github.com/hashicorp/errwrap v1.0.0
 github.com/hashicorp/errwrap
 # github.com/hashicorp/go-multierror v1.1.0
@@ -187,6 +189,14 @@ github.com/rs/xid
 # github.com/russross/blackfriday/v2 v2.1.0
 ## explicit
 github.com/russross/blackfriday/v2
+# github.com/slack-go/slack v0.8.2
+## explicit
+github.com/slack-go/slack
+github.com/slack-go/slack/internal/backoff
+github.com/slack-go/slack/internal/errorsx
+github.com/slack-go/slack/internal/misc
+github.com/slack-go/slack/internal/timex
+github.com/slack-go/slack/slackutilsx
 # github.com/stretchr/objx v0.1.1
 github.com/stretchr/objx
 # github.com/stretchr/testify v1.6.1

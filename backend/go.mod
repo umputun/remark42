@@ -28,6 +28,7 @@ require (
 	github.com/rakyll/statik v0.1.7
 	github.com/rs/xid v1.2.1
 	github.com/russross/blackfriday/v2 v2.1.0
+	github.com/slack-go/slack v0.8.2
 	github.com/stretchr/testify v1.6.1
 	github.com/umputun/go-flags v1.5.1
 	go.etcd.io/bbolt v1.3.5
