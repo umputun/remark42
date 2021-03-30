@@ -204,7 +204,7 @@ const Auth: FunctionComponent = () => {
               <>
                 {hasOAuthProviders && (
                   <>
-                    <h5 className={cn('auth-form-title', styles.title)}>Use Social Network</h5>
+                    <h5 className={cn('auth-form-title', styles.title)}>{intl.formatMessage(messages.oauthSource)}</h5>
                     <OAuthProviders providers={oauthProviders} />
                   </>
                 )}

@@ -37,6 +37,10 @@ const messages = defineMessages({
     id: 'token.invalid',
     defaultMessage: 'Token is invalid',
   },
+  oauthSource: {
+    id: 'auth.oauth-source',
+    defaultMessage: 'Use Social Network',
+  },
   oauthTitle: {
     id: 'auth.oauth-button',
     defaultMessage: 'Sign In with {provider}',

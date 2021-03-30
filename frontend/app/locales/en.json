@@ -2,6 +2,7 @@
   "auth.back": "Back",
   "auth.email-address": "Email Address",
   "auth.loading": "Loading...",
+  "auth.oauth-source": "Use Social Network",
   "auth.oauth-button": "Sign In with {provider}",
   "auth.or": "or",
   "auth.signin": "Sign In",
