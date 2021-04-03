@@ -23,7 +23,7 @@ require (
 	github.com/gorilla/feeds v1.1.1
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/kyokomi/emoji v2.2.1+incompatible
-	github.com/microcosm-cc/bluemonday v1.0.4
+	github.com/microcosm-cc/bluemonday v1.0.5
 	github.com/pkg/errors v0.9.1
 	github.com/rakyll/statik v0.1.7
 	github.com/rs/xid v1.2.1

@@ -168,7 +168,7 @@ github.com/klauspost/compress/zstd/internal/xxhash
 # github.com/kyokomi/emoji v2.2.1+incompatible
 ## explicit
 github.com/kyokomi/emoji
-# github.com/microcosm-cc/bluemonday v1.0.4
+# github.com/microcosm-cc/bluemonday v1.0.5
 ## explicit
 github.com/microcosm-cc/bluemonday
 # github.com/nullrocks/identicon v0.0.0-20180626043057-7875f45b0022
