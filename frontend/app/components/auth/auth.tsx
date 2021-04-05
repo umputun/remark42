@@ -103,20 +103,22 @@ const Auth: FunctionComponent = () => {
   const errorMessage =
     invalidReason !== null && invalidReason in messages ? intl.formatMessage(messages[invalidReason]) : invalidReason;
   const isTokenView = view === 'token';
-  const submitButton = (
-    <Button className="auth-submit" type="submit" disabled={isLoading}>
-      {isLoading ? (
-        <div
-          className={cn('spinner', styles.spinner)}
-          role="presentation"
-          aria-label={intl.formatMessage(messages.loading)}
-        />
-      ) : (
-        intl.formatMessage(isTokenView ? messages.signin : messages.submit)
-      )}
-    </Button>
+  const formFooterJSX = (
+    <>
+      errorMessage && <div className={cn('auth-error', styles.error)}>{errorMessage}</div>
+      <Button className="auth-submit" type="submit" disabled={isLoading}>
+        {isLoading ? (
+          <div
+            className={cn('spinner', styles.spinner)}
+            role="presentation"
+            aria-label={intl.formatMessage(messages.loading)}
+          />
+        ) : (
+          intl.formatMessage(isTokenView ? messages.signin : messages.submit)
+        )}
+      </Button>
+    </>
   );
-
   return (
     <div className={cn('auth', styles.root)}>
       <Button
@@ -188,17 +190,7 @@ const Auth: FunctionComponent = () => {
                     disabled={isLoading}
                   />
                 </div>
-                <Button className="auth-submit" type="submit" disabled={isLoading}>
-                  {isLoading ? (
-                    <div
-                      className={cn('spinner', styles.spinner)}
-                      role="presentation"
-                      aria-label={intl.formatMessage(messages.loading)}
-                    />
-                  ) : (
-                    intl.formatMessage(messages.submit)
-                  )}
-                </Button>
+                {formFooterJSX}
               </>
             ) : (
               <>
@@ -235,7 +227,6 @@ const Auth: FunctionComponent = () => {
                         ))}
                       </div>
                     )}
-
                     <div className={cn('auth-row', styles.row)}>
                       <Input
                         className="auth-input-username"
@@ -261,8 +252,7 @@ const Auth: FunctionComponent = () => {
                       </div>
                     )}
                     <input className={styles.honeypot} type="checkbox" tabIndex={-1} autoComplete="off" />
-                    {errorMessage && <div className={cn('auth-error', styles.error)}>{errorMessage}</div>}
-                    {submitButton}
+                    {formFooterJSX}
                   </>
                 )}
               </>
