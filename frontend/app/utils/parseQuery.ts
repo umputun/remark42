@@ -1,18 +1,9 @@
 /** converts widnow.location.search into object */
+
 export default function parseQuery<T extends {}>(search: string = window.location.search): T {
-  if (search.length < 2) {
-    return {} as T;
-  }
-
-  return search
-    .substr(1)
-    .split('&')
-    .reduce((accum, param) => {
-      const [key, value] = param.split('=');
-
-      return {
-        ...accum,
-        [key]: value ? decodeURIComponent(value) : '',
-      };
-    }, {} as T);
+  const params: { [key: string]: string } = {};
+  new URLSearchParams(search).forEach((value: string, key: string) => {
+    params[key] = value;
+  });
+  return params as T;
 }
