@@ -148,6 +148,7 @@ describe('<Auth/>', () => {
 
     expect(container.querySelector('.spinner')).toBeInTheDocument();
     await waitFor(() => expect(api.emailSignin).toBeCalled());
+    expect(api.emailSignin).toBeCalledWith('email@email.com', 'username');
 
     expect(container.querySelector('.auth-back-button')).toBeInTheDocument();
     expect(container.querySelector('.auth-close-button')).toBeInTheDocument();
@@ -166,7 +167,7 @@ describe('<Auth/>', () => {
     StaticStore.config.auth_providers = ['email'];
     jest.spyOn(api, 'emailSignin').mockImplementationOnce(async () => null);
 
-    const { container } = render(<Auth />);
+    const { container, getByText } = render(<Auth />);
 
     fireEvent.click(container.querySelector('.auth-button')!);
 
@@ -188,6 +189,9 @@ describe('<Auth/>', () => {
     await waitFor(() => expect(utils.getTokenInvalidReason).toBeCalled());
 
     expect(utils.getTokenInvalidReason).toBeCalledWith('token');
+
+    await waitFor(() => expect(getByText('Token is invalid')).toBeInTheDocument());
+    expect(getByText('Token is invalid').getAttribute('class')).toContain('auth-error');
   });
 
   it('should send anonym form', async () => {
