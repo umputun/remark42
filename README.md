@@ -622,7 +622,7 @@ It stars backend service with embedded bolt store on port `8080` with basic auth
 
 #### Developer guide
 
-Frontend guide can be found here: [./frontend/Readme.md](./frontend/Readme.md)
+Frontend guide can be found here: [./frontend/README.md](./frontend/README.md)
 
 #### Build
 You should have at least 2GB RAM or swap enabled for building
