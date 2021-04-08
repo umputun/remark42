@@ -1,4 +1,4 @@
-import { h, Fragment, FunctionComponent } from 'preact';
+import { h, Fragment } from 'preact';
 import { useState } from 'preact/hooks';
 import { useIntl } from 'react-intl';
 import cn from 'classnames';
@@ -17,7 +17,7 @@ import { emailSignin, verifyEmailSignin, anonymousSignin } from './auth.api';
 
 import styles from './auth.module.css';
 
-const Auth: FunctionComponent = () => {
+export default function Auth() {
   const intl = useIntl();
   const dispath = useDispatch();
   const [oauthProviders, formProviders] = getProviders();
@@ -30,25 +30,25 @@ const Auth: FunctionComponent = () => {
   // Errors
   const [invalidReason, setInvalidReason] = useState<keyof typeof messages | null>(null);
 
-  const handleClickSingIn = (evt: Event) => {
+  function handleClickSingIn(evt: Event) {
     evt.preventDefault();
     toggleDropdownState();
-  };
+  }
 
-  const handleDropdownClose = (evt: Event) => {
+  function handleDropdownClose(evt: Event) {
     evt.preventDefault();
     setView(formProviders[0]);
     toggleDropdownState();
-  };
+  }
 
-  const handleProviderChange = (evt: Event) => {
+  function handleProviderChange(evt: Event) {
     const { value } = evt.currentTarget as HTMLInputElement;
 
     setInvalidReason(null);
     setView(value as typeof formProviders[number]);
-  };
+  }
 
-  const handleSubmit = async (evt: Event) => {
+  async function handleSubmit(evt: Event) {
     const data = new FormData(evt.target as HTMLFormElement);
 
     evt.preventDefault();
@@ -91,12 +91,12 @@ const Auth: FunctionComponent = () => {
     }
 
     setLoading(false);
-  };
+  }
 
-  const handleShowEmailStep = (evt: Event) => {
+  function handleShowEmailStep(evt: Event) {
     evt.preventDefault();
     setView('email');
-  };
+  }
 
   const hasOAuthProviders = oauthProviders.length > 0;
   const hasFormProviders = formProviders.length > 0;
@@ -262,6 +262,4 @@ const Auth: FunctionComponent = () => {
       )}
     </div>
   );
-};
-
-export default Auth;
+}
