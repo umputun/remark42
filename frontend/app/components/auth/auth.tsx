@@ -101,11 +101,11 @@ const Auth: FunctionComponent = () => {
   const hasOAuthProviders = oauthProviders.length > 0;
   const hasFormProviders = formProviders.length > 0;
   const errorMessage =
-    invalidReason !== null && invalidReason in messages ? intl.formatMessage(messages[invalidReason]) : invalidReason;
+    invalidReason !== null && messages[invalidReason] ? intl.formatMessage(messages[invalidReason]) : invalidReason;
   const isTokenView = view === 'token';
   const formFooterJSX = (
     <>
-      errorMessage && <div className={cn('auth-error', styles.error)}>{errorMessage}</div>
+      {errorMessage && <div className={cn('auth-error', styles.error)}>{errorMessage}</div>}
       <Button className="auth-submit" type="submit" disabled={isLoading}>
         {isLoading ? (
           <div
@@ -114,7 +114,7 @@ const Auth: FunctionComponent = () => {
             aria-label={intl.formatMessage(messages.loading)}
           />
         ) : (
-          intl.formatMessage(isTokenView ? messages.signin : messages.submit)
+          intl.formatMessage(messages.submit)
         )}
       </Button>
     </>
