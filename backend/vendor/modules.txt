@@ -60,8 +60,7 @@ github.com/aws/aws-sdk-go/private/protocol
 github.com/aws/aws-sdk-go/private/protocol/rest
 # github.com/aymerick/douceur v0.2.0
 github.com/aymerick/douceur/css
-# github.com/chris-ramon/douceur v0.2.0
-github.com/chris-ramon/douceur/parser
+github.com/aymerick/douceur/parser
 # github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964
 github.com/danwakefield/fnmatch
 # github.com/davecgh/go-spew v1.1.1
@@ -170,7 +169,7 @@ github.com/klauspost/compress/zstd/internal/xxhash
 # github.com/kyokomi/emoji v2.2.1+incompatible
 ## explicit
 github.com/kyokomi/emoji
-# github.com/microcosm-cc/bluemonday v1.0.5
+# github.com/microcosm-cc/bluemonday v1.0.9
 ## explicit
 github.com/microcosm-cc/bluemonday
 # github.com/nullrocks/identicon v0.0.0-20180626043057-7875f45b0022
@@ -265,7 +264,7 @@ golang.org/x/image/math/f64
 # golang.org/x/lint v0.0.0-20190930215403-16217165b5de
 golang.org/x/lint
 golang.org/x/lint/golint
-# golang.org/x/net v0.0.0-20200520182314-0ba52f642ac2
+# golang.org/x/net v0.0.0-20210421230115-4e50805a0758
 ## explicit
 golang.org/x/net/context
 golang.org/x/net/context/ctxhttp
@@ -285,9 +284,10 @@ golang.org/x/oauth2/yandex
 # golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
-# golang.org/x/sys v0.0.0-20200323222414-85ca7c5b95cd
+# golang.org/x/sys v0.0.0-20210420072515-93ed5bcd2bfe
+golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
-# golang.org/x/text v0.3.3
+# golang.org/x/text v0.3.6
 golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
 golang.org/x/text/unicode/bidi
