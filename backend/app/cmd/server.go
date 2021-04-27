@@ -18,7 +18,7 @@ import (
 	"github.com/go-pkgz/jrpc"
 	"github.com/go-pkgz/lcw/eventbus"
 	log "github.com/go-pkgz/lgr"
-	"github.com/kyokomi/emoji"
+	"github.com/kyokomi/emoji/v2"
 	"github.com/pkg/errors"
 	bolt "go.etcd.io/bbolt"
 
@@ -211,9 +211,9 @@ type NotifyGroup struct {
 		VerificationSubject string `long:"verification_subj" env:"VERIFICATION_SUBJ" description:"verification message subject"`
 		AdminNotifications  bool   `long:"notify_admin" env:"ADMIN" description:"notify admin on new comments via ADMIN_SHARED_EMAIL"`
 	} `group:"email" namespace:"email" env-namespace:"EMAIL"`
-	Slack  struct {
-		Token   string        `long:"token" env:"TOKEN" description:"slack token"`
-		Channel string        `long:"chan" env:"CHAN" description:"slack channel"`
+	Slack struct {
+		Token   string `long:"token" env:"TOKEN" description:"slack token"`
+		Channel string `long:"chan" env:"CHAN" description:"slack channel"`
 	} `group:"slack" namespace:"slack" env-namespace:"SLACK"`
 }
 

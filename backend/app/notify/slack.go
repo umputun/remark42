@@ -2,7 +2,6 @@ package notify
 
 import (
 	"context"
-	"fmt"
 
 	log "github.com/go-pkgz/lgr"
 	"github.com/pkg/errors"
@@ -47,7 +46,7 @@ func (t *Slack) Send(ctx context.Context, req Request) error {
 		user += " → " + req.parent.User.Name
 	}
 
-	title := fmt.Sprintf("↦ original comment")
+	title := "↦ original comment"
 	if req.Comment.PostTitle != "" {
 		title = "↦ " + req.Comment.PostTitle
 	}

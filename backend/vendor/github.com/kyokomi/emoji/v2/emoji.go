@@ -10,25 +10,25 @@ import (
 	"unicode"
 )
 
-//go:generate generateEmojiCodeMap -pkg emoji
+//go:generate generateEmojiCodeMap -pkg emoji -o emoji_codemap.go
 
 // Replace Padding character for emoji.
-const (
+var (
 	ReplacePadding = " "
 )
 
 // CodeMap gets the underlying map of emoji.
 func CodeMap() map[string]string {
-	return emojiCodeMap
+	return emojiCode()
 }
 
 // RevCodeMap gets the underlying map of emoji.
 func RevCodeMap() map[string][]string {
-	return emojiRevCodeMap
+	return emojiRevCode()
 }
 
 func AliasList(shortCode string) []string {
-	return emojiRevCodeMap[emojiCodeMap[shortCode]]
+	return emojiRevCode()[emojiCode()[shortCode]]
 }
 
 // HasAlias flags if the given `shortCode` has multiple aliases with other
@@ -50,7 +50,7 @@ func NormalizeShortCode(shortCode string) string {
 var flagRegexp = regexp.MustCompile(":flag-([a-z]{2}):")
 
 func emojize(x string) string {
-	str, ok := emojiCodeMap[x]
+	str, ok := emojiCode()[x]
 	if ok {
 		return str + ReplacePadding
 	}
