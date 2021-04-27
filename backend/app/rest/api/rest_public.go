@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 	cache "github.com/go-pkgz/lcw"
 	log "github.com/go-pkgz/lgr"

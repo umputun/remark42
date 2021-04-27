@@ -12,24 +12,40 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
 
 // Middleware is a logger for rest requests.
 type Middleware struct {
-	prefix      string
-	logBody     bool
-	maxBodySize int
-	ipFn        func(ip string) string
-	userFn      func(r *http.Request) (string, error)
-	subjFn      func(r *http.Request) (string, error)
-	log         Backend
+	prefix         string
+	logBody        bool
+	maxBodySize    int
+	ipFn           func(ip string) string
+	userFn         func(r *http.Request) (string, error)
+	subjFn         func(r *http.Request) (string, error)
+	log            Backend
+	apacheCombined bool
 }
 
 // Backend is logging backend
 type Backend interface {
 	Logf(format string, args ...interface{})
+}
+
+type logParts struct {
+	duration   time.Duration
+	rawURL     string
+	method     string
+	remoteIP   string
+	statusCode int
+	respSize   int
+	host       string
+
+	prefix string
+	user   string
+	body   string
 }
 
 type stdBackend struct{}
@@ -61,6 +77,11 @@ func New(options ...Option) *Middleware {
 // Handler middleware prints http log
 func (l *Middleware) Handler(next http.Handler) http.Handler {
 
+	formater := l.formatDefault
+	if l.apacheCombined {
+		formater = l.formatApacheCombined
+	}
+
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		ww := newCustomResponseWriter(w)
 
@@ -88,42 +109,97 @@ func (l *Middleware) Handler(next http.Handler) http.Handler {
 				remoteIP = l.ipFn(remoteIP)
 			}
 
-			var bld strings.Builder
-			if l.prefix != "" {
-				_, _ = bld.WriteString(l.prefix)
-				_, _ = bld.WriteString(" ")
+			server := r.URL.Hostname()
+			if server == "" {
+				server = strings.Split(r.Host, ":")[0]
 			}
 
-			_, _ = bld.WriteString(fmt.Sprintf("%s - %s - %s - %d (%d) - %v", r.Method, rawurl, remoteIP, ww.status, ww.size, t2.Sub(t1)))
-
-			if user != "" {
-				_, _ = bld.WriteString(" - ")
-				_, _ = bld.WriteString(user)
+			p := &logParts{
+				duration:   t2.Sub(t1),
+				rawURL:     rawurl,
+				method:     r.Method,
+				host:       server,
+				remoteIP:   remoteIP,
+				statusCode: ww.status,
+				respSize:   ww.size,
+				prefix:     l.prefix,
+				user:       user,
+				body:       body,
 			}
 
-			if l.subjFn != nil {
-				if subj, err := l.subjFn(r); err == nil {
-					_, _ = bld.WriteString(" - ")
-					_, _ = bld.WriteString(subj)
-				}
-			}
-
-			if traceID := r.Header.Get("X-Request-ID"); traceID != "" {
-				_, _ = bld.WriteString(" - ")
-				_, _ = bld.WriteString(traceID)
-			}
-
-			if body != "" {
-				_, _ = bld.WriteString(" - ")
-				_, _ = bld.WriteString(body)
-			}
-
-			l.log.Logf("%s", bld.String())
+			l.log.Logf(formater(r, p))
 		}()
 
 		next.ServeHTTP(ww, r)
 	}
 	return http.HandlerFunc(fn)
+}
+
+func (l *Middleware) formatDefault(r *http.Request, p *logParts) string {
+	var bld strings.Builder
+	if l.prefix != "" {
+		_, _ = bld.WriteString(l.prefix)
+		_, _ = bld.WriteString(" ")
+	}
+
+	_, _ = bld.WriteString(fmt.Sprintf("%s - %s - %s - %s - %d (%d) - %v",
+		p.method, p.rawURL, p.host, p.remoteIP, p.statusCode, p.respSize, p.duration))
+
+	if p.user != "" {
+		_, _ = bld.WriteString(" - ")
+		_, _ = bld.WriteString(p.user)
+	}
+
+	if l.subjFn != nil {
+		if subj, err := l.subjFn(r); err == nil {
+			_, _ = bld.WriteString(" - ")
+			_, _ = bld.WriteString(subj)
+		}
+	}
+
+	if traceID := r.Header.Get("X-Request-ID"); traceID != "" {
+		_, _ = bld.WriteString(" - ")
+		_, _ = bld.WriteString(traceID)
+	}
+
+	if p.body != "" {
+		_, _ = bld.WriteString(" - ")
+		_, _ = bld.WriteString(p.body)
+	}
+	return bld.String()
+}
+
+// 127.0.0.1 - frank [10/Oct/2000:13:55:36 -0700] "GET /apache_pb.gif HTTP/1.0" 200 2326 "http://www.example.com/start.html" "Mozilla/4.08 [en] (Win98; I ;Nav)"
+//nolint gosec
+func (l *Middleware) formatApacheCombined(r *http.Request, p *logParts) string {
+	username := "-"
+	if p.user != "" {
+		username = p.user
+	}
+
+	var bld strings.Builder
+	bld.WriteString(p.remoteIP)
+	bld.WriteString(" - ")
+	bld.WriteString(username)
+	bld.WriteString(" [")
+	bld.WriteString(time.Now().Format("02/Jan/2006:15:04:05 -0700"))
+	bld.WriteString(`] "`)
+	bld.WriteString(p.method)
+	bld.WriteString(" ")
+	bld.WriteString(p.rawURL)
+	bld.WriteString(`" `)
+	bld.WriteString(r.Proto)
+	bld.WriteString(`" `)
+	bld.WriteString(strconv.Itoa(p.statusCode))
+	bld.WriteString(" ")
+	bld.WriteString(strconv.Itoa(p.respSize))
+
+	bld.WriteString(` "`)
+	bld.WriteString(r.Header.Get("Referer"))
+	bld.WriteString(`" "`)
+	bld.WriteString(r.Header.Get("User-Agent"))
+	bld.WriteString(`"`)
+	return bld.String()
 }
 
 var reMultWhtsp = regexp.MustCompile(`[\s\p{Zs}]{2,}`)
