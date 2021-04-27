@@ -9,7 +9,7 @@ build:
         name: install tools
         code: |
           go get github.com/mattn/goveralls
-          go get github.com/golangci/golangci-lint/cmd/golangci-lint
+          GO111MODULE=on go get github.com/golangci/golangci-lint/cmd/golangci-lint
     - script:
         name: go get
         code: |

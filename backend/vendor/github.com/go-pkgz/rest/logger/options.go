@@ -49,7 +49,13 @@ func SubjFn(subjFn func(r *http.Request) (string, error)) Option {
 	}
 }
 
-// Log sets logging backend. 
+// ApacheCombined sets format to Apache Combined Log.
+// See http://httpd.apache.org/docs/2.2/logs.html#combined
+func ApacheCombined(l *Middleware) {
+	l.apacheCombined = true
+}
+
+// Log sets logging backend.
 func Log(log Backend) Option {
 	return func(l *Middleware) {
 		l.log = log
