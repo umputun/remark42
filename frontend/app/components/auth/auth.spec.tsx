@@ -211,4 +211,42 @@ describe('<Auth/>', () => {
     expect(getByRole('presentation')).toHaveAttribute('aria-label', 'Loading...');
     await waitFor(() => expect(api.anonymousSignin).toBeCalled());
   });
+
+  it.each`
+    value           | expected
+    ${'username '}  | ${'username'}
+    ${' username'}  | ${'username'}
+    ${' username '} | ${'username'}
+  `('should remove spaces in the first/last postion in username', async ({ value, expected }) => {
+    StaticStore.config.auth_providers = ['email'];
+
+    const { getByText, getByPlaceholderText } = render(<Auth />);
+    fireEvent.click(getByText('Sign In'));
+
+    const input = getByPlaceholderText('Username');
+
+    fireEvent.change(input, { target: { value } });
+    fireEvent.blur(input);
+
+    expect(input).toHaveValue(expected);
+  });
+
+  it.each`
+    value            | expected
+    ${'user name '}  | ${'user name'}
+    ${' user name'}  | ${'user name'}
+    ${' user name '} | ${'user name'}
+  `('should leave spaces in the middle of username', ({ value, expected }) => {
+    StaticStore.config.auth_providers = ['email'];
+
+    const { getByText, getByPlaceholderText } = render(<Auth />);
+    fireEvent.click(getByText('Sign In'));
+
+    const input = getByPlaceholderText('Username');
+
+    fireEvent.change(input, { target: { value } });
+    fireEvent.blur(input);
+
+    expect(input).toHaveValue(expected);
+  });
 });
