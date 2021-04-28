@@ -233,10 +233,14 @@ export default function Auth() {
                         required
                         name="username"
                         minLength={3}
-                        pattern="^[\p{L}\d_]+$"
+                        pattern="[\p{L}\d\s_]+"
                         title={intl.formatMessage(messages.usernameRestriction)}
                         placeholder={intl.formatMessage(messages.username)}
                         disabled={isLoading}
+                        onBlur={(evt) => {
+                          const element = evt.target as HTMLInputElement;
+                          element.value = element.value.trim();
+                        }}
                       />
                     </div>
                     {view === 'email' && (
