@@ -1,4 +1,4 @@
-/** converts widnow.location.search into object */
+/** converts window.location.search into object */
 
 export default function parseQuery<T extends {}>(search: string = window.location.search): T {
   const params: { [key: string]: string } = {};
