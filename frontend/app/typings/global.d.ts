@@ -12,6 +12,7 @@ type RemarkConfig = {
   show_email_subscription?: boolean;
   max_last_comments?: number;
   __colors__?: Record<string, string>;
+  simple_view?: boolean;
 };
 
 declare global {
