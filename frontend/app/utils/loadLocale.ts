@@ -39,6 +39,15 @@ export async function loadLocale(locale: string): Promise<Record<string, string>
   if (locale === 'fr') {
     return import(/* webpackChunkName: "fr" */ '../locales/fr.json').then((res) => res.default).catch(() => enMessages);
   }
+  if (locale === 'ja') {
+    return import(/* webpackChunkName: "ja" */ '../locales/ja.json').then((res) => res.default).catch(() => enMessages);
+  }
+  if (locale === 'ko') {
+    return import(/* webpackChunkName: "ko" */ '../locales/ko.json').then((res) => res.default).catch(() => enMessages);
+  }
+  if (locale === 'bp') {
+    return import(/* webpackChunkName: "bp" */ '../locales/bp.json').then((res) => res.default).catch(() => enMessages);
+  }
 
   return enMessages;
 }

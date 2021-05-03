@@ -3,6 +3,7 @@
   "auth.email-address": "Địa chỉ Email",
   "auth.loading": "Đang tải...",
   "auth.oauth-button": "Sign In with {provider}",
+  "auth.oauth-source": "Use Social Network",
   "auth.or": "hoặc",
   "auth.signin": "Sign In",
   "auth.submit": "Gửi đi",

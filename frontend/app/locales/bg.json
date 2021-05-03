@@ -3,6 +3,7 @@
   "auth.email-address": "Адрес на електронна поща",
   "auth.loading": "Зареждане...",
   "auth.oauth-button": "Sign In with {provider}",
+  "auth.oauth-source": "Use Social Network",
   "auth.or": "или",
   "auth.signin": "Вход",
   "auth.submit": "Изпрати",

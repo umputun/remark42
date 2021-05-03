@@ -3,6 +3,7 @@
   "auth.email-address": "Adres email",
   "auth.loading": "Ładuję...",
   "auth.oauth-button": "Sign In with {provider}",
+  "auth.oauth-source": "Use Social Network",
   "auth.or": "lub",
   "auth.signin": "Zaloguj się",
   "auth.submit": "Potwierdź",
