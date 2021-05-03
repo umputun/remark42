@@ -60,8 +60,7 @@ github.com/aws/aws-sdk-go/private/protocol
 github.com/aws/aws-sdk-go/private/protocol/rest
 # github.com/aymerick/douceur v0.2.0
 github.com/aymerick/douceur/css
-# github.com/chris-ramon/douceur v0.2.0
-github.com/chris-ramon/douceur/parser
+github.com/aymerick/douceur/parser
 # github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964
 github.com/danwakefield/fnmatch
 # github.com/davecgh/go-spew v1.1.1
@@ -85,10 +84,13 @@ github.com/didip/tollbooth_chi
 github.com/dlclark/regexp2
 github.com/dlclark/regexp2/syntax
 # github.com/go-chi/chi v4.1.1+incompatible
-## explicit
 github.com/go-chi/chi
 github.com/go-chi/chi/middleware
-# github.com/go-chi/cors v1.1.1
+# github.com/go-chi/chi/v5 v5.0.2
+## explicit
+github.com/go-chi/chi/v5
+github.com/go-chi/chi/v5/middleware
+# github.com/go-chi/cors v1.2.0
 ## explicit
 github.com/go-chi/cors
 # github.com/go-chi/render v1.0.1
@@ -120,7 +122,7 @@ github.com/go-pkgz/lgr
 ## explicit
 github.com/go-pkgz/repeater
 github.com/go-pkgz/repeater/strategy
-# github.com/go-pkgz/rest v1.7.0
+# github.com/go-pkgz/rest v1.9.2
 ## explicit
 github.com/go-pkgz/rest
 github.com/go-pkgz/rest/logger
@@ -149,6 +151,8 @@ github.com/gorilla/css/scanner
 # github.com/gorilla/feeds v1.1.1
 ## explicit
 github.com/gorilla/feeds
+# github.com/gorilla/websocket v1.4.2
+github.com/gorilla/websocket
 # github.com/hashicorp/errwrap v1.0.0
 github.com/hashicorp/errwrap
 # github.com/hashicorp/go-multierror v1.1.0
@@ -165,10 +169,10 @@ github.com/klauspost/compress/huff0
 github.com/klauspost/compress/snappy
 github.com/klauspost/compress/zstd
 github.com/klauspost/compress/zstd/internal/xxhash
-# github.com/kyokomi/emoji v2.2.1+incompatible
+# github.com/kyokomi/emoji/v2 v2.2.8
 ## explicit
-github.com/kyokomi/emoji
-# github.com/microcosm-cc/bluemonday v1.0.5
+github.com/kyokomi/emoji/v2
+# github.com/microcosm-cc/bluemonday v1.0.9
 ## explicit
 github.com/microcosm-cc/bluemonday
 # github.com/nullrocks/identicon v0.0.0-20180626043057-7875f45b0022
@@ -187,9 +191,17 @@ github.com/rs/xid
 # github.com/russross/blackfriday/v2 v2.1.0
 ## explicit
 github.com/russross/blackfriday/v2
+# github.com/slack-go/slack v0.8.2
+## explicit
+github.com/slack-go/slack
+github.com/slack-go/slack/internal/backoff
+github.com/slack-go/slack/internal/errorsx
+github.com/slack-go/slack/internal/misc
+github.com/slack-go/slack/internal/timex
+github.com/slack-go/slack/slackutilsx
 # github.com/stretchr/objx v0.1.1
 github.com/stretchr/objx
-# github.com/stretchr/testify v1.6.1
+# github.com/stretchr/testify v1.7.0
 ## explicit
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/mock
@@ -242,20 +254,20 @@ go.mongodb.org/mongo-driver/x/mongo/driver/wiremessage
 ## explicit
 go.uber.org/goleak
 go.uber.org/goleak/internal/stack
-# golang.org/x/crypto v0.0.0-20200406173513-056763e48d71
+# golang.org/x/crypto v0.0.0-20210421170649-83a5a9bb288b
 ## explicit
 golang.org/x/crypto/acme
 golang.org/x/crypto/acme/autocert
 golang.org/x/crypto/ocsp
 golang.org/x/crypto/pbkdf2
-# golang.org/x/image v0.0.0-20200119044424-58c23975cae1
+# golang.org/x/image v0.0.0-20210220032944-ac19c3e999fb
 ## explicit
 golang.org/x/image/draw
 golang.org/x/image/math/f64
 # golang.org/x/lint v0.0.0-20190930215403-16217165b5de
 golang.org/x/lint
 golang.org/x/lint/golint
-# golang.org/x/net v0.0.0-20200520182314-0ba52f642ac2
+# golang.org/x/net v0.0.0-20210423184538-5f58ad60dda6
 ## explicit
 golang.org/x/net/context
 golang.org/x/net/context/ctxhttp
@@ -275,9 +287,10 @@ golang.org/x/oauth2/yandex
 # golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
-# golang.org/x/sys v0.0.0-20200323222414-85ca7c5b95cd
+# golang.org/x/sys v0.0.0-20210423082822-04245dca01da
+golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
-# golang.org/x/text v0.3.3
+# golang.org/x/text v0.3.6
 golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
 golang.org/x/text/unicode/bidi

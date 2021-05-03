@@ -6,7 +6,7 @@ import (
 	"path"
 	"time"
 
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 	"github.com/go-pkgz/auth"
 	cache "github.com/go-pkgz/lcw"

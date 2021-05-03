@@ -18,7 +18,7 @@ import (
 	"github.com/go-pkgz/jrpc"
 	"github.com/go-pkgz/lcw/eventbus"
 	log "github.com/go-pkgz/lgr"
-	"github.com/kyokomi/emoji"
+	"github.com/kyokomi/emoji/v2"
 	"github.com/pkg/errors"
 	bolt "go.etcd.io/bbolt"
 
@@ -198,7 +198,7 @@ type SMTPGroup struct {
 
 // NotifyGroup defines options for notification
 type NotifyGroup struct {
-	Type      []string `long:"type" env:"TYPE" description:"type of notification" choice:"none" choice:"telegram" choice:"email" default:"none" env-delim:","` //nolint
+	Type      []string `long:"type" env:"TYPE" description:"type of notification" choice:"none" choice:"telegram" choice:"email" choice:"slack" default:"none" env-delim:","` //nolint
 	QueueSize int      `long:"queue" env:"QUEUE" description:"size of notification queue" default:"100"`
 	Telegram  struct {
 		Token   string        `long:"token" env:"TOKEN" description:"telegram token"`
@@ -211,6 +211,10 @@ type NotifyGroup struct {
 		VerificationSubject string `long:"verification_subj" env:"VERIFICATION_SUBJ" description:"verification message subject"`
 		AdminNotifications  bool   `long:"notify_admin" env:"ADMIN" description:"notify admin on new comments via ADMIN_SHARED_EMAIL"`
 	} `group:"email" namespace:"email" env-namespace:"EMAIL"`
+	Slack struct {
+		Token   string `long:"token" env:"TOKEN" description:"slack token"`
+		Channel string `long:"chan" env:"CHAN" description:"slack channel"`
+	} `group:"slack" namespace:"slack" env-namespace:"SLACK"`
 }
 
 // SSLGroup defines options group for server ssl params
@@ -807,6 +811,12 @@ func (s *ServerCommand) makeNotify(dataStore *service.DataStore, authenticator *
 	var destinations []notify.Destination
 	for _, t := range s.Notify.Type {
 		switch t {
+		case "slack":
+			slack, err := notify.NewSlack(s.Notify.Slack.Token, s.Notify.Slack.Channel)
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to create slack notification destination")
+			}
+			destinations = append(destinations, slack)
 		case "telegram":
 			tg, err := notify.NewTelegram(s.Notify.Telegram.Token, s.Notify.Telegram.Channel,
 				s.Notify.Telegram.Timeout, s.Notify.Telegram.API)
@@ -922,8 +932,9 @@ func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Sto
 				log.Printf("[WARN] can't read email for %s, %v", c.User.ID, err)
 			}
 
-			// don't allow anonymous and email with admin's name
-			if strings.HasPrefix(c.User.ID, "anonymous_") || strings.HasPrefix(c.User.ID, "email_") {
+			// don't allow anonymous and email with admins names
+			// exclude admin from impersonation detection over email, it prevents a valid admin to login with RestrictedNames
+			if strings.HasPrefix(c.User.ID, "anonymous_") || (strings.HasPrefix(c.User.ID, "email_") && !c.User.IsAdmin()) {
 				for _, a := range s.RestrictedNames {
 					if strings.EqualFold(strings.TrimSpace(c.User.Name), a) {
 						c.User.SetBoolAttr("blocked", true)

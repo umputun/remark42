@@ -1,4 +1,4 @@
-import { h, Fragment, FunctionComponent } from 'preact';
+import { h, Fragment } from 'preact';
 import { useState } from 'preact/hooks';
 import { useIntl } from 'react-intl';
 import cn from 'classnames';
@@ -17,7 +17,7 @@ import { emailSignin, verifyEmailSignin, anonymousSignin } from './auth.api';
 
 import styles from './auth.module.css';
 
-const Auth: FunctionComponent = () => {
+export default function Auth() {
   const intl = useIntl();
   const dispath = useDispatch();
   const [oauthProviders, formProviders] = getProviders();
@@ -30,25 +30,25 @@ const Auth: FunctionComponent = () => {
   // Errors
   const [invalidReason, setInvalidReason] = useState<keyof typeof messages | null>(null);
 
-  const handleClickSingIn = (evt: Event) => {
+  function handleClickSingIn(evt: Event) {
     evt.preventDefault();
     toggleDropdownState();
-  };
+  }
 
-  const handleDropdownClose = (evt: Event) => {
+  function handleDropdownClose(evt: Event) {
     evt.preventDefault();
     setView(formProviders[0]);
     toggleDropdownState();
-  };
+  }
 
-  const handleProviderChange = (evt: Event) => {
+  function handleProviderChange(evt: Event) {
     const { value } = evt.currentTarget as HTMLInputElement;
 
     setInvalidReason(null);
     setView(value as typeof formProviders[number]);
-  };
+  }
 
-  const handleSubmit = async (evt: Event) => {
+  async function handleSubmit(evt: Event) {
     const data = new FormData(evt.target as HTMLFormElement);
 
     evt.preventDefault();
@@ -91,32 +91,34 @@ const Auth: FunctionComponent = () => {
     }
 
     setLoading(false);
-  };
+  }
 
-  const handleShowEmailStep = (evt: Event) => {
+  function handleShowEmailStep(evt: Event) {
     evt.preventDefault();
     setView('email');
-  };
+  }
 
   const hasOAuthProviders = oauthProviders.length > 0;
   const hasFormProviders = formProviders.length > 0;
   const errorMessage =
-    invalidReason !== null && invalidReason in messages ? intl.formatMessage(messages[invalidReason]) : invalidReason;
+    invalidReason !== null && messages[invalidReason] ? intl.formatMessage(messages[invalidReason]) : invalidReason;
   const isTokenView = view === 'token';
-  const submitButton = (
-    <Button className="auth-submit" type="submit" disabled={isLoading}>
-      {isLoading ? (
-        <div
-          className={cn('spinner', styles.spinner)}
-          role="presentation"
-          aria-label={intl.formatMessage(messages.loading)}
-        />
-      ) : (
-        intl.formatMessage(isTokenView ? messages.signin : messages.submit)
-      )}
-    </Button>
+  const formFooterJSX = (
+    <>
+      {errorMessage && <div className={cn('auth-error', styles.error)}>{errorMessage}</div>}
+      <Button className="auth-submit" type="submit" disabled={isLoading}>
+        {isLoading ? (
+          <div
+            className={cn('spinner', styles.spinner)}
+            role="presentation"
+            aria-label={intl.formatMessage(messages.loading)}
+          />
+        ) : (
+          intl.formatMessage(messages.submit)
+        )}
+      </Button>
+    </>
   );
-
   return (
     <div className={cn('auth', styles.root)}>
       <Button
@@ -188,17 +190,7 @@ const Auth: FunctionComponent = () => {
                     disabled={isLoading}
                   />
                 </div>
-                <Button className="auth-submit" type="submit" disabled={isLoading}>
-                  {isLoading ? (
-                    <div
-                      className={cn('spinner', styles.spinner)}
-                      role="presentation"
-                      aria-label={intl.formatMessage(messages.loading)}
-                    />
-                  ) : (
-                    intl.formatMessage(messages.submit)
-                  )}
-                </Button>
+                {formFooterJSX}
               </>
             ) : (
               <>
@@ -235,17 +227,20 @@ const Auth: FunctionComponent = () => {
                         ))}
                       </div>
                     )}
-
                     <div className={cn('auth-row', styles.row)}>
                       <Input
                         className="auth-input-username"
                         required
                         name="username"
                         minLength={3}
-                        pattern="^[\p{L}\d_]+$"
+                        pattern="[\p{L}\d\s_]+"
                         title={intl.formatMessage(messages.usernameRestriction)}
                         placeholder={intl.formatMessage(messages.username)}
                         disabled={isLoading}
+                        onBlur={(evt) => {
+                          const element = evt.target as HTMLInputElement;
+                          element.value = element.value.trim();
+                        }}
                       />
                     </div>
                     {view === 'email' && (
@@ -261,8 +256,7 @@ const Auth: FunctionComponent = () => {
                       </div>
                     )}
                     <input className={styles.honeypot} type="checkbox" tabIndex={-1} autoComplete="off" />
-                    {errorMessage && <div className={cn('auth-error', styles.error)}>{errorMessage}</div>}
-                    {submitButton}
+                    {formFooterJSX}
                   </>
                 )}
               </>
@@ -272,6 +266,4 @@ const Auth: FunctionComponent = () => {
       )}
     </div>
   );
-};
-
-export default Auth;
+}
