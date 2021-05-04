@@ -1,4 +1,4 @@
-import { h, FunctionComponent, JSX } from 'preact';
+import { h, JSX } from 'preact';
 import { useDispatch } from 'react-redux';
 import cn from 'classnames';
 import { useIntl } from 'react-intl';
@@ -13,14 +13,15 @@ import messages from 'components/auth/auth.messsages';
 import { getButtonVariant, getProviderData } from './oauth.utils';
 import { oauthSignin } from './oauth.api';
 import styles from './oauth.module.css';
-
-export type OAuthProvidersProps = {
-  providers: OAuthProvider[];
-};
+import { BASE_URL } from 'common/constants.config';
 
 const location = encodeURIComponent(`${window.location.origin}${window.location.pathname}?selfClose`);
 
-const OAuthProviders: FunctionComponent<OAuthProvidersProps> = ({ providers }) => {
+type Props = {
+  providers: OAuthProvider[];
+};
+
+export default function OAuthProviders({ providers }: Props) {
   const intl = useIntl();
   const dispath = useDispatch();
   const theme = useTheme();
@@ -48,7 +49,7 @@ const OAuthProviders: FunctionComponent<OAuthProvidersProps> = ({ providers }) =
             <a
               target="_blank"
               rel="noopener noreferrer"
-              href={`/auth/${p}/login?from=${location}&site=${siteId}`}
+              href={`${BASE_URL}/auth/${p}/login?from=${location}&site=${siteId}`}
               onClick={handleOathClick}
               className={cn('oauth-button', styles.button, styles[buttonVariant], styles[p])}
               data-provider-name={name}
@@ -61,6 +62,4 @@ const OAuthProviders: FunctionComponent<OAuthProvidersProps> = ({ providers }) =
       })}
     </ul>
   );
-};
-
-export default OAuthProviders;
+}
