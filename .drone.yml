@@ -48,25 +48,6 @@ steps:
     when:
       event: tag
 
-  - name: docker branch
-    image: plugins/docker
-    settings:
-      repo: umputun/remark42
-      username:
-        from_secret: docker_username
-      password:
-        from_secret: docker_password
-      build_args:
-        - DRONE=${DRONE}
-        - DRONE_COMMIT=${DRONE_COMMIT}
-        - DRONE_BRANCH=${DRONE_BRANCH}
-      tags:
-        - ${DRONE_COMMIT_BRANCH/\//-}
-      dry_run: true
-    when:
-      branch:
-        exclude: [master, release/*]
-        event: push
 
   - name: artifacts tag
     image: plugins/docker
