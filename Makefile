@@ -11,7 +11,7 @@ bin:
 docker:
 	docker build -t umputun/remark42 --build-arg SKIP_FRONTEND_TEST=true --build-arg SKIP_BACKEND_TEST=true .
 
-deploy:
+release:
 	docker build -f Dockerfile.artifacts -t remark42.bin .
 	- @docker rm -f remark42.bin 2>/dev/null || exit 0
 	- @mkdir -p bin
