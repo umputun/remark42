@@ -49,15 +49,15 @@
     </article>
 
     <script>
-      var query = (function() {
+      var query = (function () {
         if (window.location.search.length === 0) return {};
         return window.location.search
           .substr(1)
           .split('&')
-          .map(function(item) {
+          .map(function (item) {
             return item.split('=');
           })
-          .reduce(function(carry, item) {
+          .reduce(function (carry, item) {
             carry[item[0]] = decodeURIComponent(item[1]);
             return carry;
           }, {});
@@ -68,15 +68,21 @@
         var remark_config = {
           site_id: query.site_id,
           host: '<%= htmlWebpackPlugin.options.REMARK_URL %>',
-          url: query.url
+          url: query.url,
         };
-        (function(c) {
-          for(var i = 0; i < c.length; i++){
-            var d = document, s = d.createElement('script');
-            s.src = remark_config.host + '/web/' +c[i] +'.js';
-            (d.head || d.body).appendChild(s);
+        (function (c, d) {
+          var r = d.head || d.body;
+          for (var i = 0; i < c.length; i++) {
+            var s = d.createElement('script');
+            var m = 'noModule' in s;
+            var e = m ? '.mjs' : '.js';
+            m && (s.type = 'module');
+            s.async = true;
+            s.defer = true;
+            s.src = remark_config.host + '/web/' + c[i] + e;
+            r.appendChild(s);
           }
-        })(remark_config.components || ['embed']);
+        })(remark_config.components || ['embed'], document);
       }
     </script>
     <noscript> Please enable JavaScript to view the comments powered by Remark. </noscript>

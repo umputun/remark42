@@ -174,10 +174,11 @@
     </script>
     <script>
       (function (d) {
-        const r = d.head || d.body;
-        const s = document.createElement('script');
-
-        s.src = 'noModule' in s ? 'remark.mjs' : 'remark.js';
+        var r = d.head || d.body;
+        var s = d.createElement('script');
+        var m = 'noModule' in s;
+        s.src = 'remark' + (m ? '.mjs' : '.js');
+        m && (s.type = 'module');
         s.async = true;
         s.defer = true;
         r.appendChild(s);
