@@ -19,18 +19,17 @@ function SuggestionList({ items, theme }: { items: Array<Emoji>; theme: Theme })
 
   return (
     <ul className={clsx(styles.suggester, { [styles.suggesterDark]: isDarkTheme })}>
-      {items.map(({ key, emoji }: Emoji) => {
-        return (
-          <li
-            // eslint-disable-next-line jsx-a11y/role-has-required-aria-props
-            role="option"
-            className={clsx(styles.suggesterItem, { [styles.suggesterItemDark]: isDarkTheme })}
-            data-value={key}
-          >
-            <span className={styles.emojiResult}>{emoji}</span> {key}
-          </li>
-        );
-      })}
+      {items.map(({ key, emoji }: Emoji) => (
+        // eslint-disable-next-line jsx-a11y/role-has-required-aria-props
+        <li
+          key={key}
+          role="option"
+          className={clsx(styles.suggesterItem, { [styles.suggesterItemDark]: isDarkTheme })}
+          data-value={key}
+        >
+          <span className={styles.emojiResult}>{emoji}</span> {key}
+        </li>
+      ))}
     </ul>
   );
 }

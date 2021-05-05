@@ -108,14 +108,11 @@ describe('fetcher', () => {
 
       // Check if `activeJwtToken` saved and clean
       mockFetch({ headers, status: 401 });
-      await apiFetcher
-        .get(apiUri)
-        .then(() => {
+      await expect(
+        apiFetcher.get(apiUri).then(() => {
           throw Error('apiFether shoud throw error on 401 responce');
         })
-        .catch((e) => {
-          expect(e.message).toBe('Not authorized.');
-        });
+      ).rejects.toEqual(new Error('Not authorized.'));
 
       expect(window.fetch).toHaveBeenCalledWith(apiUrl, {
         method: 'get',

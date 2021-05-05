@@ -45,7 +45,7 @@ export default function OAuthProviders({ providers }: Props) {
         const { name, icon } = getProviderData(p, theme);
 
         return (
-          <li className={clsx('oauth-item', styles.item)}>
+          <li key={name} className={clsx('oauth-item', styles.item)}>
             <a
               target="_blank"
               rel="noopener noreferrer"
