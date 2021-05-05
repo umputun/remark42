@@ -1,10 +1,10 @@
-import { h, FunctionComponent } from 'preact';
+import { h } from 'preact';
 import b, { Mix } from 'bem-react-helper';
 
-interface Props {
+type Props = {
   mix?: Mix;
+};
+
+export function Preloader({ mix }: Props) {
+  return <div className={b('preloader', { mix })} />;
 }
-
-const Preloader: FunctionComponent<Props> = ({ mix }) => <div className={b('preloader', { mix })} />;
-
-export default Preloader;

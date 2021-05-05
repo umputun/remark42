@@ -1,6 +1,6 @@
 import { defineMessages } from 'react-intl';
 
-const messages = defineMessages({
+export const messages = defineMessages({
   signin: {
     id: 'auth.signin',
     defaultMessage: 'Sign In',
@@ -58,5 +58,3 @@ const messages = defineMessages({
     defaultMessage: 'Submit',
   },
 });
-
-export default messages;

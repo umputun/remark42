@@ -5,7 +5,7 @@ import clsx from 'clsx';
 
 import { StaticStore } from 'common/static-store';
 import { Theme } from 'common/types';
-import useTheme from 'hooks/useTheme';
+import { useTheme } from 'hooks/useTheme';
 
 import styles from './text-expander.module.css';
 

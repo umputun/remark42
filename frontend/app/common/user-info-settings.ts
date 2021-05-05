@@ -1,4 +1,4 @@
-import parseQuery from 'utils/parseQuery';
+import { parseQuery } from 'utils/parseQuery';
 
 import type { UserInfo } from './types';
 

@@ -7,7 +7,7 @@ import type { User, Comment as CommentType, PostInfo } from 'common/types';
 import { StaticStore } from 'common/static-store';
 import { sleep } from 'utils/sleep';
 
-import Comment, { CommentProps } from './comment';
+import { Comment, CommentProps } from './comment';
 
 const mount = <T extends JSX.Element>(component: T) =>
   enzymeMount(

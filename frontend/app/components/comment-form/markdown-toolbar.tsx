@@ -4,15 +4,15 @@ import { h, Component } from 'preact';
 import { defineMessages, IntlShape } from 'react-intl';
 
 // TODO: Use SVGR
-import BoldIcon from './markdown-toolbar-icons/bold-icon';
-import HeaderIcon from './markdown-toolbar-icons/header-icon';
-import ItalicIcon from './markdown-toolbar-icons/italic-icon';
-import QuoteIcon from './markdown-toolbar-icons/quote-icon';
-import CodeIcon from './markdown-toolbar-icons/code-icon';
-import LinkIcon from './markdown-toolbar-icons/link-icon';
-import ImageIcon from './markdown-toolbar-icons/image-icon';
-import UnorderedListIcon from './markdown-toolbar-icons/unordered-list-icon';
-import OrderedListIcon from './markdown-toolbar-icons/ordered-list-icon';
+import { BoldIcon } from './markdown-toolbar-icons/bold-icon';
+import { HeaderIcon } from './markdown-toolbar-icons/header-icon';
+import { ItalicIcon } from './markdown-toolbar-icons/italic-icon';
+import { QuoteIcon } from './markdown-toolbar-icons/quote-icon';
+import { CodeIcon } from './markdown-toolbar-icons/code-icon';
+import { LinkIcon } from './markdown-toolbar-icons/link-icon';
+import { ImageIcon } from './markdown-toolbar-icons/image-icon';
+import { UnorderedListIcon } from './markdown-toolbar-icons/unordered-list-icon';
+import { OrderedListIcon } from './markdown-toolbar-icons/ordered-list-icon';
 
 interface Props {
   intl: IntlShape;
@@ -69,7 +69,7 @@ const messages = defineMessages({
   },
 });
 
-export default class MarkdownToolbar extends Component<Props> {
+export class MarkdownToolbar extends Component<Props> {
   constructor(props: Props) {
     super(props);
     this.uploadImages = this.uploadImages.bind(this);

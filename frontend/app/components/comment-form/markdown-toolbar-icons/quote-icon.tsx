@@ -1,6 +1,6 @@
 import { h } from 'preact';
 
-export default function QuoteIcon() {
+export function QuoteIcon() {
   return (
     <svg
       className="comment-form__toolbar-icon"

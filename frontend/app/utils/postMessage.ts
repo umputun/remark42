@@ -15,7 +15,7 @@ export type Message =
  *
  * @returns request success of fail
  */
-export default function postMessage(data: Message): boolean {
+export function postMessage(data: Message): boolean {
   if (!window.parent || window.parent === window) return false;
   window.parent.postMessage(JSON.stringify(data), '*');
   return true;

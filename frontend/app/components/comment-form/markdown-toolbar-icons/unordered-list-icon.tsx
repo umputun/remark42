@@ -1,6 +1,6 @@
 import { h } from 'preact';
 
-export default function UnorderedListIcon() {
+export function UnorderedListIcon() {
   return (
     <svg
       className="comment-form__toolbar-icon"

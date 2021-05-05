@@ -10,15 +10,15 @@ import { isUserAnonymous } from 'utils/isUserAnonymous';
 import { sleep } from 'utils/sleep';
 import { replaceSelection } from 'utils/replaceSelection';
 import { Button } from 'components/button';
-import TextareaAutosize from 'components/textarea-autosize';
-import Auth from 'components/auth';
+import { TextareaAutosize } from 'components/textarea-autosize';
+import { Auth } from 'components/auth';
 import { getJsonItem, updateJsonItem } from 'common/local-storage';
 import { LS_SAVED_COMMENT_VALUE } from 'common/constants';
 
 import { SubscribeByEmail } from './__subscribe-by-email';
 import { SubscribeByRSS } from './__subscribe-by-rss';
 
-import MarkdownToolbar from './markdown-toolbar';
+import { MarkdownToolbar } from './markdown-toolbar';
 import { TextExpander } from './text-expander';
 
 let textareaId = 0;

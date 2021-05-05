@@ -1,5 +1,5 @@
 import { OAuthProvider, Theme } from 'common/types';
-import capitalizeFirstLetter from 'utils/capitalize-first-letter';
+import { capitalizeFirstLetter } from 'utils/capitalize-first-letter';
 
 import { OAUTH_DATA } from './oauth.consts';
 

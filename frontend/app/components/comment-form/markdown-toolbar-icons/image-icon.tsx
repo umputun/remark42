@@ -1,6 +1,6 @@
 import { h } from 'preact';
 
-export default function ImageIcon() {
+export function ImageIcon() {
   return (
     <svg className="comment-form__toolbar-icon" width="11.25" height="15" viewBox="0 0 384 512" aria-hidden="true">
       <path

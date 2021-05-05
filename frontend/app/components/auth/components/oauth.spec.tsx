@@ -5,14 +5,16 @@ import type { User } from 'common/types';
 import * as userActions from 'store/user/actions';
 import { BASE_URL } from 'common/constants.config';
 
-import OAuth from './oauth';
+import { OAuth } from './oauth';
 import * as api from './oauth.api';
 
 jest.mock('react-redux', () => ({
   useDispatch: () => jest.fn(),
 }));
 
-jest.mock('hooks/useTheme', () => () => 'light');
+jest.mock('hooks/useTheme', () => ({
+  useTheme: () => 'light',
+}));
 
 describe('<OAuth />', () => {
   it('should have permanent class name', () => {

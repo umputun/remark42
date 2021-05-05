@@ -1,4 +1,4 @@
-import stubStore from '__stubs__/store';
+import { mockStore } from '__stubs__/store';
 import { LS_SORT_KEY } from 'common/constants';
 
 import { updateSorting } from './actions';
@@ -7,7 +7,7 @@ import { COMMENTS_SET_SORT } from './types';
 describe('Store comments actions', () => {
   it('should save last sort to localstorage', async () => {
     const newSort = '+controversy';
-    const store = stubStore({
+    const store = mockStore({
       comments: {
         sort: '+active',
       },

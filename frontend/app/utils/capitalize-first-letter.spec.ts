@@ -1,4 +1,4 @@
-import capitalizeFirstLetter from './capitalize-first-letter';
+import { capitalizeFirstLetter } from './capitalize-first-letter';
 
 it('should capitalize first letter', () => {
   expect(capitalizeFirstLetter('one')).toBe('One');

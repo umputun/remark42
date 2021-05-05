@@ -1,5 +1,5 @@
 // based on https://github.com/sindresorhus/copy-text-to-clipboard, but improved to copy text styles too
-export default function copy(input: string): boolean {
+export function copy(input: string): boolean {
   const element = document.createElement('textarea') as HTMLTextAreaElement;
   const previouslyFocusedElement = document.activeElement as HTMLElement;
 

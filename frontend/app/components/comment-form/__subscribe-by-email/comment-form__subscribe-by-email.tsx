@@ -10,14 +10,14 @@ import { StoreState } from 'store';
 import { setUserSubscribed } from 'store/user/actions';
 import { sleep } from 'utils/sleep';
 import { extractErrorMessageFromResponse } from 'utils/errorUtils';
-import useTheme from 'hooks/useTheme';
+import { useTheme } from 'hooks/useTheme';
 import { getHandleClickProps } from 'common/accessibility';
 import { emailVerificationForSubscribe, emailConfirmationForSubscribe, unsubscribeFromEmailUpdates } from 'common/api';
 import { Input } from 'components/input';
 import { Button } from 'components/button';
 import { Dropdown } from 'components/dropdown';
-import Preloader from 'components/preloader';
-import TextareaAutosize from 'components/textarea-autosize';
+import { Preloader } from 'components/preloader';
+import { TextareaAutosize } from 'components/textarea-autosize';
 import { isUserAnonymous } from 'utils/isUserAnonymous';
 import { isJwtExpired } from 'utils/jwt';
 

@@ -15,4 +15,4 @@ import './_theme/_light/auth-panel_theme_light.css';
 
 import './_logged-in/auth-panel_logged-in.css';
 
-export { default } from './auth-panel';
+export * from './auth-panel';
