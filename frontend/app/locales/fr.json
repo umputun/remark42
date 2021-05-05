@@ -92,6 +92,7 @@
   "errors.16": "Ce commentaire a déjà le score minimum.",
   "errors.17": "Action rejetée. Veuillez réessayer un peu plus tard.",
   "errors.18": "Le fichier demandé est introuvable.",
+  "errors.19": "Comment contains restricted words.",
   "errors.2": "Échec du traitement de la requête entrante.",
   "errors.3": "Vous n'avez pas l'autorisation d'effectuer cette opération.",
   "errors.4": "Données de commentaire non valides.",

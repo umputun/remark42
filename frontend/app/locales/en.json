@@ -92,6 +92,7 @@
   "errors.16": "Min score reached for the comment.",
   "errors.17": "Action rejected. Please try again a bit later.",
   "errors.18": "Requested file cannot be found.",
+  "errors.19": "Comment contains restricted words.",
   "errors.2": "Failed to unmarshal incoming request.",
   "errors.3": "You don't have permission for this operation.",
   "errors.4": "Invalid comment data.",

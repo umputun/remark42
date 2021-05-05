@@ -92,6 +92,7 @@
   "errors.16": "Min score reached for the comment.",
   "errors.17": "Toiminta hylättiin. Yritä uudelleen myöhemmin.",
   "errors.18": "Pyydettyä tiedostoa ei löydy.",
+  "errors.19": "Comment contains restricted words.",
   "errors.2": "Failed to unmarshal incoming request.",
   "errors.3": "Sinulla ei ole lupaa tähän operaatioon.",
   "errors.4": "Virheellinen kommentti.",

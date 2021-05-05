@@ -92,6 +92,7 @@
   "errors.16": "Bình luận đã đạt số điểm thấp nhất.",
   "errors.17": "Thao tác bị từ chối. Một chút nữa rồi thử lại nhé.",
   "errors.18": "Không tìm thấy file được yêu cầu.",
+  "errors.19": "Comment contains restricted words.",
   "errors.2": "Yêu cầu đến không quản lý được.",
   "errors.3": "Bạn không có quyền thực hiện thao tác này.",
   "errors.4": "Dữ liệu bình luận không hợp lệ.",

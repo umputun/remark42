@@ -92,6 +92,7 @@
   "errors.16": "Minimalny wynik osiągnięty dla komentarza.",
   "errors.17": "Akcja odrzucona. Spróbuj ponownie później.",
   "errors.18": "Żądany plik nie został znaleziony.",
+  "errors.19": "Comment contains restricted words.",
   "errors.2": "Nie udało sie sparsować przychodzącego zapytania do struktury danych.",
   "errors.3": "Nie masz wystarczających uprawnień by wykonać te operację.",
   "errors.4": "Niepoprawne dane komentarza.",

@@ -92,6 +92,7 @@
   "errors.16": "Yorum için en alt skora ulaşıldı.",
   "errors.17": "Eylem reddedildi. Lütfen daha sonra tekrar deneyin.",
   "errors.18": "İstenilen dosya bulunamadı.",
+  "errors.19": "Comment contains restricted words.",
   "errors.2": "Gelen talep işlenemedi.",
   "errors.3": "Bu işlemi yapmak için yetkiniz yok.",
   "errors.4": "Yorum verisi geçersiz.",
