@@ -1,4 +1,4 @@
-import { httpErrorMap, httpMessages, RequestError } from 'utils/errorUtils';
+import { errorMessages, RequestError } from 'utils/errorUtils';
 
 import { siteId } from './settings';
 import { getCookie } from './cookies';
@@ -77,10 +77,10 @@ const createFetcher = (baseUrl: string = ''): Methods => {
       }
 
       if (res.status >= 400) {
-        if (httpErrorMap.has(res.status)) {
-          const descriptor = httpErrorMap.get(res.status) || httpMessages.unexpectedError;
+        const descriptor = errorMessages[res.status];
 
-          throw new RequestError(descriptor.defaultMessage, res.status);
+        if (descriptor) {
+          throw new RequestError(descriptor.defaultMessage as string, res.status);
         }
 
         return res.text().then((text) => {
@@ -88,7 +88,7 @@ const createFetcher = (baseUrl: string = ''): Methods => {
           try {
             err = JSON.parse(text);
           } catch (e) {
-            throw new RequestError(httpMessages.unexpectedError.defaultMessage, 0);
+            throw new RequestError(errorMessages[500].defaultMessage as string, 0);
           }
           throw err;
         });
@@ -101,7 +101,7 @@ const createFetcher = (baseUrl: string = ''): Methods => {
       return res.text();
     } catch (e) {
       if (e?.message === 'Failed to fetch') {
-        throw new RequestError(e.message, -2);
+        throw new RequestError(e.message, 'fetch-error');
       }
 
       throw e;

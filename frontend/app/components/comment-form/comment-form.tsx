@@ -215,6 +215,7 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
       await this.props.onSubmit(text, pageTitle || document.title);
     } catch (e) {
       this.setState({
+        isDisabled: false,
         isErrorShown: true,
         errorMessage: extractErrorMessageFromResponse(e, this.props.intl),
       });
