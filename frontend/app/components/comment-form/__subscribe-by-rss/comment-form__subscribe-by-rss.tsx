@@ -54,7 +54,7 @@ export const SubscribeByRSS: FunctionComponent<{ userId: string | null }> = ({ u
       theme={theme}
     >
       {items.map(([href, label]) => (
-        <DropdownItem>
+        <DropdownItem key={label}>
           <a href={href} className="comment-form__rss-dropdown__link" target="_blank" rel="noreferrer">
             {label}
           </a>

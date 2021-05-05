@@ -118,7 +118,7 @@ export default class Settings extends Component<Props, State> {
                 const isUserUnhidden = unhiddenUsers.includes(user.id);
 
                 return (
-                  <li className="settings__list-item">
+                  <li key={user.id} className="settings__list-item">
                     <span
                       className={['settings__username', isUserUnhidden ? 'settings__invisible' : null].join(' ')}
                       title={user.id}
@@ -167,7 +167,7 @@ export default class Settings extends Component<Props, State> {
                   const isUserUnblocked = unblockedUsers.includes(user.id);
 
                   return (
-                    <li className="settings__list-item">
+                    <li key={user.id} className="settings__list-item">
                       <span
                         className={['settings__username', isUserUnblocked ? 'settings__invisible' : null].join(' ')}
                         title={user.id}

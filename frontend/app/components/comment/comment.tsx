@@ -507,7 +507,9 @@ class Comment extends Component<CommentProps, State> {
                 <FormattedMessage id="comment.blocking-period" defaultMessage="Blocking period" />
               </option>
               {blockingDurations.map((block) => (
-                <option value={block.value}>{block.label}</option>
+                <option key={block.value} value={block.value}>
+                  {block.label}
+                </option>
               ))}
             </select>
           </span>
@@ -791,6 +793,7 @@ class Comment extends Component<CommentProps, State> {
                 (editable || isEditing) &&
                 props.view === 'main' && [
                   <Button
+                    key="edit-button"
                     kind="link"
                     {...getHandleClickProps(this.toggleEditing)}
                     mix={['comment__action', 'comment__action_type_edit']}
@@ -803,6 +806,7 @@ class Comment extends Component<CommentProps, State> {
                   </Button>,
                   !isAdmin && (
                     <Button
+                      key="delete-button"
                       kind="link"
                       {...getHandleClickProps(this.deleteComment)}
                       mix={['comment__action', 'comment__action_type_delete']}
@@ -812,6 +816,7 @@ class Comment extends Component<CommentProps, State> {
                   ),
                   state.editDeadline && (
                     <Countdown
+                      key="countdown"
                       className="comment__edit-timer"
                       time={state.editDeadline}
                       onTimePassed={() =>

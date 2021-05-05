@@ -17,6 +17,7 @@ const LastCommentsList = ({ comments, isLoading }: { comments: CommentType[]; is
     <>
       {comments.map((comment) => (
         <Comment
+          key={comment.id}
           CommentForm={null}
           intl={intl}
           data={comment}

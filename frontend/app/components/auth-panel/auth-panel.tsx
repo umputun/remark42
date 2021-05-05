@@ -197,7 +197,7 @@ export class AuthPanel extends Component<Props, State> {
             onBlur={this.onSortBlur}
           >
             {sortArray.map((sort) => (
-              <option value={sort.value} selected={sort.selected}>
+              <option key={sort.value} value={sort.value} selected={sort.selected}>
                 {sort.label}
               </option>
             ))}
