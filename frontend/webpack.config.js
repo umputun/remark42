@@ -9,6 +9,7 @@ const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
 const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
 const RefreshPlugin = require('@prefresh/webpack');
 const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
+const incstr = require('incstr');
 const babelConfig = require('./.babelrc.js');
 
 const NODE_ID = 'remark42';
@@ -18,6 +19,29 @@ const REMARK_API_BASE_URL = process.env.REMARK_API_BASE_URL || 'http://127.0.0.1
 const DEVSERVER_BASE_PATH = process.env.DEVSERVER_BASE_PATH || 'http://127.0.0.1:9000';
 const PUBLIC_FOLDER_PATH = path.resolve(__dirname, 'public');
 const CUSTOM_PROPERTIES_PATH = path.resolve(__dirname, './app/custom-properties.css');
+
+const genId = incstr.idGenerator();
+const modulesMap = {};
+
+function getLocalIdent(loaderContext, _, localName, options) {
+  if (!options.context) {
+    options.context = loaderContext.rootContext;
+  }
+
+  const filepath = path.relative(options.context, loaderContext.resourcePath).replace(/\\/g, '/');
+
+  if (!modulesMap[filepath]) {
+    modulesMap[filepath] = { id: genId(), genId: incstr.idGenerator(), classNames: {} };
+  }
+
+  const m = modulesMap[filepath];
+
+  if (!m.classNames[localName]) {
+    m.classNames[localName] = m.genId();
+  }
+
+  return `${m.id}_${m.classNames[localName]}`;
+}
 
 /**
  * Generates excludes for babel-loader
@@ -130,9 +154,10 @@ module.exports = (_, { mode, analyze }) => {
       {
         loader: 'css-loader',
         options: {
+          importLoaders: 1,
           modules: {
-            mode: 'local',
             localIdentName: '[name]__[local]_[hash:5]',
+            getLocalIdent: isDev ? undefined : getLocalIdent,
           },
         },
       },
@@ -195,7 +220,7 @@ module.exports = (_, { mode, analyze }) => {
 
   const config = {
     entry,
-    devtool: 'source-map',
+    devtool: isDev ? 'source-map' : false,
     resolve,
   };
 
