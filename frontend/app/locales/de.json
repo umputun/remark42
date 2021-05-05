@@ -92,6 +92,7 @@
   "errors.16": "Die Mindestpunktzahl für diesen Kommentar wurde erreicht.",
   "errors.17": "Vorgang abgelehnt. Bitte versuchen Sie es später noch einmal.",
   "errors.18": "Die angeforderte Datei wurde nicht gefunden.",
+  "errors.19": "Comment contains restricted words.",
   "errors.2": "Die eingehende Anfrage konnte nicht verarbeitet werden.",
   "errors.3": "Für diesen Vorgang haben Sie keine ausreichende Berechtigung.",
   "errors.4": "Ungültige Kommentardaten.",

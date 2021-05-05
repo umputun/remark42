@@ -92,6 +92,7 @@
   "errors.16": "Pontuação mínima alcançada para o comentário.",
   "errors.17": "Ação rejeitada. Tente novamente um pouco mais tarde.",
   "errors.18": "O arquivo solicitado não foi encontrado.",
+  "errors.19": "Comment contains restricted words.",
   "errors.2": "Falha ao fazer unmarshalling da solicitação de entrada.",
   "errors.3": "Você não tem permissão para esta operação.",
   "errors.4": "Dados de comentário inválidos.",

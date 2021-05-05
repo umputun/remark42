@@ -92,6 +92,7 @@
   "errors.16": "该评论已达到最低分数。",
   "errors.17": "操作被拒绝，请稍后再试。",
   "errors.18": "找不到请求的文件。",
+  "errors.19": "Comment contains restricted words.",
   "errors.2": "处理传入请求失败。",
   "errors.3": "您无权执行此操作。",
   "errors.4": "评论数据无效。",

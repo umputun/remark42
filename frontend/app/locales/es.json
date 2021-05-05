@@ -92,6 +92,7 @@
   "errors.16": "Ya se ha alcanzado el puntaje mínimo para el comentario.",
   "errors.17": "Acción rechazada. Por favor vuelve a intentar más tarde.",
   "errors.18": "No se ha encontrado el archivo solicitado.",
+  "errors.19": "Comment contains restricted words.",
   "errors.2": "No se ha podido deserializar la petición entrante.",
   "errors.3": "No tienes permisos para esta operación.",
   "errors.4": "Datos de comentario inválidos.",
