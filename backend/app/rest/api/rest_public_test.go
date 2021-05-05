@@ -232,7 +232,7 @@ func TestRest_FindReadOnly(t *testing.T) {
 }
 
 func TestRest_FindUserView(t *testing.T) {
-	ts, _, teardown := startupT(t)
+	ts, srv, teardown := startupT(t)
 	defer teardown()
 
 	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1&view=user")
@@ -265,6 +265,18 @@ func TestRest_FindUserView(t *testing.T) {
 	assert.Equal(t, "dev", comments.Comments[1].User.ID)
 	assert.Equal(t, "", comments.Comments[0].Text)
 	assert.Equal(t, "", comments.Comments[1].Text)
+
+	err = srv.DataService.Delete(store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}, id1, store.SoftDelete)
+	assert.NoError(t, err)
+	srv.Cache.Flush(cache.FlusherRequest{})
+
+	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1&sort=+time&view=user")
+	assert.Equal(t, 200, code)
+	comments = commentsWithInfo{}
+	err = json.Unmarshal([]byte(res), &comments)
+	assert.NoError(t, err)
+	require.Equal(t, 1, len(comments.Comments), "1 comment left")
+	assert.Equal(t, id2, comments.Comments[0].ID)
 }
 
 func TestRest_Last(t *testing.T) {

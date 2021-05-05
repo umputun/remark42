@@ -386,16 +386,20 @@ func (s *public) robotsCtrl(w http.ResponseWriter, r *http.Request) {
 
 func (s *public) applyView(comments []store.Comment, view string) []store.Comment {
 	if strings.EqualFold(view, "user") {
-		projection := make([]store.Comment, len(comments))
-		for i, c := range comments {
+		projection := make([]store.Comment, 0, len(comments))
+		for _, c := range comments {
+			if c.Deleted {
+				continue
+			}
 			p := store.Comment{
 				ID:   c.ID,
 				User: c.User,
 			}
-			projection[i] = p
+			projection = append(projection, p)
 		}
 		return projection
 	}
+
 	return comments
 }
 
