@@ -106,7 +106,7 @@ _this is the recommended way to run remark42_
 | Command line            | Environment             | Default                  | Description                                     |
 | ----------------------- | ----------------------- | ------------------------ | ----------------------------------------------- |
 | url                     | REMARK_URL              |                          | url to remark42 server, _required_              |
-| secret                  | SECRET                  |                          | secret key, _required_                          |
+| secret                  | SECRET                  |                          | shared secret key used to sign JWT, should be a random, long, hard-to-guess string, _required_ |
 | site                    | SITE                    | `remark`                 | site name(s), _multi_                           |
 | store.type              | STORE_TYPE              | `bolt`                   | type of storage, `bolt` or `rpc`                |
 | store.bolt.path         | STORE_BOLT_PATH         | `./var`                  | path to data directory                          |

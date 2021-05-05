@@ -24,7 +24,7 @@ type Opts struct {
 	RemapCmd   cmd.RemapCommand   `command:"remap"`
 
 	RemarkURL    string `long:"url" env:"REMARK_URL" required:"true" description:"url to remark"`
-	SharedSecret string `long:"secret" env:"SECRET" required:"true" description:"shared secret key"`
+	SharedSecret string `long:"secret" env:"SECRET" required:"true" description:"shared secret key used to sign JWT, should be a random, long, hard-to-guess string"`
 
 	Dbg bool `long:"dbg" env:"DEBUG" description:"debug mode"`
 }
