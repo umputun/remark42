@@ -1,18 +1,18 @@
 import { h, JSX } from 'preact';
-import classnames from 'classnames/bind';
+import clsx from 'clsx';
 
 import styles from './input.module.css';
 
-const cx = classnames.bind(styles);
-
-export type InputProps = {
+type Props = {
   invalid?: boolean;
   type?: string;
   className?: string;
 } & JSX.HTMLAttributes<HTMLInputElement>;
 
-export const Input = ({ children, className, type = 'text', invalid, ...props }: InputProps) => (
-  <input className={cx(className, 'input', { invalid })} type={type} {...props}>
-    {children}
-  </input>
-);
+export function Input({ children, className, type = 'text', invalid, ...props }: Props) {
+  return (
+    <input className={clsx(className, styles.input, { [styles.input]: invalid })} type={type} {...props}>
+      {children}
+    </input>
+  );
+}

@@ -1,11 +1,9 @@
-import { h, FunctionComponent, JSX, VNode } from 'preact';
-import classnames from 'classnames/bind';
+import { h, JSX, VNode } from 'preact';
+import clsx from 'clsx';
 
 import styles from './button.module.css';
 
-const cx = classnames.bind(styles);
-
-export type ButtonProps = Omit<JSX.HTMLAttributes<HTMLButtonElement>, 'size'> & {
+type Props = Omit<JSX.HTMLAttributes<HTMLButtonElement>, 'size'> & {
   size?: 'small';
   kind?: 'transparent';
   suffix?: VNode;
@@ -13,13 +11,16 @@ export type ButtonProps = Omit<JSX.HTMLAttributes<HTMLButtonElement>, 'size'> & 
   selected?: boolean;
 };
 
-const Button: FunctionComponent<ButtonProps> = ({ children, size, kind, suffix, selected, className, ...props }) => {
+export default function Button({ children, size, kind, suffix, selected, className, ...props }: Props) {
   return (
-    <button className={cx(className, styles.button, kind, size, { selected })} {...props}>
+    <button
+      className={clsx(className, styles.button, kind && styles[kind], size && styles[size], {
+        [styles.selected]: selected,
+      })}
+      {...props}
+    >
       {children}
       {suffix && <div className={styles.suffix}>{suffix}</div>}
     </button>
   );
-};
-
-export default Button;
+}

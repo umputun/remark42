@@ -2,7 +2,7 @@ import { h, Component, FunctionComponent, Fragment } from 'preact';
 import { useSelector } from 'react-redux';
 import b from 'bem-react-helper';
 import { IntlShape, useIntl, FormattedMessage, defineMessages } from 'react-intl';
-import classnames from 'classnames';
+import clsx from 'clsx';
 
 import type { Sorting } from 'common/types';
 import type { StoreState } from 'store';
@@ -339,7 +339,7 @@ export const ConnectedRoot: FunctionComponent = () => {
   const intl = useIntl();
 
   return (
-    <div className={classnames(b('root', {}, { theme: props.theme }), props.theme)}>
+    <div className={clsx(b('root', {}, { theme: props.theme }), props.theme)}>
       <Root {...props} {...actions} intl={intl} />
       <p className="root__copyright" role="contentinfo">
         <FormattedMessage

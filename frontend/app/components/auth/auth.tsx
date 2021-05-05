@@ -1,7 +1,7 @@
 import { h, Fragment } from 'preact';
 import { useState } from 'preact/hooks';
 import { useIntl } from 'react-intl';
-import cn from 'classnames';
+import clsx from 'clsx';
 import { useDispatch } from 'react-redux';
 
 import { setUser } from 'store/user/actions';
@@ -105,11 +105,11 @@ export default function Auth() {
   const isTokenView = view === 'token';
   const formFooterJSX = (
     <>
-      {errorMessage && <div className={cn('auth-error', styles.error)}>{errorMessage}</div>}
+      {errorMessage && <div className={clsx('auth-error', styles.error)}>{errorMessage}</div>}
       <Button className="auth-submit" type="submit" disabled={isLoading}>
         {isLoading ? (
           <div
-            className={cn('spinner', styles.spinner)}
+            className={clsx('spinner', styles.spinner)}
             role="presentation"
             aria-label={intl.formatMessage(messages.loading)}
           />
@@ -120,7 +120,7 @@ export default function Auth() {
     </>
   );
   return (
-    <div className={cn('auth', styles.root)}>
+    <div className={clsx('auth', styles.root)}>
       <Button
         className="auth-button"
         selected={isDropdownShowed}
@@ -140,11 +140,11 @@ export default function Auth() {
         {intl.formatMessage(messages.signin)}
       </Button>
       {isDropdownShowed && (
-        <div className={cn('auth-dropdown', styles.dropdown)} ref={ref}>
-          <form className={cn('auth-form', styles.form)} onSubmit={handleSubmit}>
+        <div className={clsx('auth-dropdown', styles.dropdown)} ref={ref}>
+          <form className={clsx('auth-form', styles.form)} onSubmit={handleSubmit}>
             {isTokenView ? (
               <>
-                <div className={cn('auth-row', styles.row)}>
+                <div className={clsx('auth-row', styles.row)}>
                   <div className={styles.backButton}>
                     <Button className="auth-back-button" size="small" kind="transparent" onClick={handleShowEmailStep}>
                       <svg
@@ -167,7 +167,7 @@ export default function Auth() {
                     </Button>
                   </div>
                   <button
-                    className={cn('auth-close-button', styles.closeButton)}
+                    className={clsx('auth-close-button', styles.closeButton)}
                     title="Close sign-in dropdown"
                     onClick={handleDropdownClose}
                   >
@@ -182,10 +182,10 @@ export default function Auth() {
                     </svg>
                   </button>
                 </div>
-                <div className={cn('auth-row', styles.row)}>
+                <div className={clsx('auth-row', styles.row)}>
                   <TextareaAutosize
                     name="token"
-                    className={cn('auth-token-textatea', styles.textarea)}
+                    className={clsx('auth-token-textatea', styles.textarea)}
                     placeholder={intl.formatMessage(messages.token)}
                     disabled={isLoading}
                   />
@@ -196,19 +196,21 @@ export default function Auth() {
               <>
                 {hasOAuthProviders && (
                   <>
-                    <h5 className={cn('auth-form-title', styles.title)}>{intl.formatMessage(messages.oauthSource)}</h5>
+                    <h5 className={clsx('auth-form-title', styles.title)}>
+                      {intl.formatMessage(messages.oauthSource)}
+                    </h5>
                     <OAuthProviders providers={oauthProviders} />
                   </>
                 )}
                 {hasOAuthProviders && hasFormProviders && (
-                  <div className={cn('auth-divider', styles.divider)} title={intl.formatMessage(messages.or)} />
+                  <div className={clsx('auth-divider', styles.divider)} title={intl.formatMessage(messages.or)} />
                 )}
                 {hasFormProviders && (
                   <>
                     {formProviders.length === 1 ? (
-                      <h5 className={cn('auth-form-title', styles.title)}>{formProviders[0]}</h5>
+                      <h5 className={clsx('auth-form-title', styles.title)}>{formProviders[0]}</h5>
                     ) : (
-                      <div className={cn('auth-tabs', styles.tabs)}>
+                      <div className={clsx('auth-tabs', styles.tabs)}>
                         {formProviders.map((p) => (
                           <Fragment key={p}>
                             <input
@@ -220,14 +222,14 @@ export default function Auth() {
                               onChange={handleProviderChange}
                               checked={p === view}
                             />
-                            <label className={cn('auth-tabs-item', styles.provider)} htmlFor={`form-provider-${p}`}>
+                            <label className={clsx('auth-tabs-item', styles.provider)} htmlFor={`form-provider-${p}`}>
                               {p.slice(0, 6)}
                             </label>
                           </Fragment>
                         ))}
                       </div>
                     )}
-                    <div className={cn('auth-row', styles.row)}>
+                    <div className={clsx('auth-row', styles.row)}>
                       <Input
                         className="auth-input-username"
                         required
@@ -244,7 +246,7 @@ export default function Auth() {
                       />
                     </div>
                     {view === 'email' && (
-                      <div className={cn('auth-row', styles.row)}>
+                      <div className={clsx('auth-row', styles.row)}>
                         <Input
                           className="auth-input-email"
                           required

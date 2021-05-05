@@ -1,6 +1,6 @@
 import { h, JSX } from 'preact';
 import { useDispatch } from 'react-redux';
-import cn from 'classnames';
+import clsx from 'clsx';
 import { useIntl } from 'react-intl';
 
 import { siteId } from 'common/settings';
@@ -40,18 +40,18 @@ export default function OAuthProviders({ providers }: Props) {
   };
 
   return (
-    <ul className={cn('oauth', styles.root)}>
+    <ul className={clsx('oauth', styles.root)}>
       {providers.map((p) => {
         const { name, icon } = getProviderData(p, theme);
 
         return (
-          <li className={cn('oauth-item', styles.item)}>
+          <li className={clsx('oauth-item', styles.item)}>
             <a
               target="_blank"
               rel="noopener noreferrer"
               href={`${BASE_URL}/auth/${p}/login?from=${location}&site=${siteId}`}
               onClick={handleOathClick}
-              className={cn('oauth-button', styles.button, styles[buttonVariant], styles[p])}
+              className={clsx('oauth-button', styles.button, styles[buttonVariant], styles[p])}
               data-provider-name={name}
               title={intl.formatMessage(messages.oauthTitle, { provider: name })}
             >
