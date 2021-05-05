@@ -1,6 +1,6 @@
 import { h, FunctionComponent } from 'preact';
 import { useIntl } from 'react-intl';
-import classnames from 'classnames';
+import clsx from 'clsx';
 
 import type { Comment as CommentType } from 'common/types';
 import Comment from 'components/comment';
@@ -15,7 +15,7 @@ const ListComments: FunctionComponent<ListCommentsProps> = ({ comments = [] }) =
   const intl = useIntl();
 
   return (
-    <div className={classnames('comments-list', styles.root)}>
+    <div className={clsx('comments-list', styles.root)}>
       {comments.map((comment) => (
         <Comment
           intl={intl}

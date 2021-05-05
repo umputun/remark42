@@ -1,7 +1,7 @@
 import '@github/text-expander-element';
 import { h, Fragment, render, FunctionalComponent } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';
-import cx from 'classnames';
+import clsx from 'clsx';
 
 import { StaticStore } from 'common/static-store';
 import { Theme } from 'common/types';
@@ -16,14 +16,17 @@ type Emoji = {
 
 function SuggestionList({ items, theme }: { items: Array<Emoji>; theme: Theme }) {
   const isDarkTheme = theme === `dark`;
-  const suggesterClass = cx(styles.suggester, { [styles.suggesterDark]: isDarkTheme });
-  const suggesterItemClass = cx(styles.suggesterItem, { [styles.suggesterItemDark]: isDarkTheme });
+
   return (
-    <ul className={suggesterClass}>
+    <ul className={clsx(styles.suggester, { [styles.suggesterDark]: isDarkTheme })}>
       {items.map(({ key, emoji }: Emoji) => {
         return (
-          // eslint-disable-next-line jsx-a11y/role-has-required-aria-props
-          <li role="option" className={suggesterItemClass} data-value={key}>
+          <li
+            // eslint-disable-next-line jsx-a11y/role-has-required-aria-props
+            role="option"
+            className={clsx(styles.suggesterItem, { [styles.suggesterItemDark]: isDarkTheme })}
+            data-value={key}
+          >
             <span className={styles.emojiResult}>{emoji}</span> {key}
           </li>
         );
