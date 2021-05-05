@@ -3,17 +3,17 @@ import { useDispatch } from 'react-redux';
 import clsx from 'clsx';
 import { useIntl } from 'react-intl';
 
-import { siteId } from 'common/settings';
 import type { OAuthProvider } from 'common/types';
-import useTheme from 'hooks/useTheme';
+import { siteId } from 'common/settings';
+import { useTheme } from 'hooks/useTheme';
 import { setUser } from 'store/user/actions';
 
-import messages from 'components/auth/auth.messsages';
+import { messages } from 'components/auth/auth.messsages';
 
-import { getButtonVariant, getProviderData } from './oauth.utils';
 import { oauthSignin } from './oauth.api';
-import styles from './oauth.module.css';
 import { BASE_URL } from 'common/constants.config';
+import { getButtonVariant, getProviderData } from './oauth.utils';
+import styles from './oauth.module.css';
 
 const location = encodeURIComponent(`${window.location.origin}${window.location.pathname}?selfClose`);
 
@@ -21,7 +21,7 @@ type Props = {
   providers: OAuthProvider[];
 };
 
-export default function OAuthProviders({ providers }: Props) {
+export function OAuth({ providers }: Props) {
   const intl = useIntl();
   const dispath = useDispatch();
   const theme = useTheme();

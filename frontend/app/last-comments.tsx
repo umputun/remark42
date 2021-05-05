@@ -1,11 +1,11 @@
 import { h, render } from 'preact';
 import { IntlProvider } from 'react-intl';
 
-import getLastComments from 'common/api.getLastComments';
+import { getLastComments } from 'common/api.getLastComments';
 import { BASE_URL } from 'common/constants.config';
 import { loadLocale } from 'utils/loadLocale';
 import { getLocale } from 'utils/getLocale';
-import ListComments from 'components/list-comments';
+import { ListComments } from 'components/list-comments';
 
 const LAST_COMMENTS_NODE_CLASSNAME = 'remark42__last-comments';
 const DEFAULT_LAST_COMMENTS_MAX = 15;

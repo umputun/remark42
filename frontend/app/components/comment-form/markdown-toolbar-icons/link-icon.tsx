@@ -1,6 +1,6 @@
 import { h } from 'preact';
 
-export default function LinkIcon() {
+export function LinkIcon() {
   return (
     <svg
       className="comment-form__toolbar-icon"

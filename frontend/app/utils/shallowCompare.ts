@@ -1,4 +1,4 @@
-export default function shallowCompare<T extends Record<string, unknown>>(a: T, b: T): boolean {
+export function shallowCompare<T extends Record<string, unknown>>(a: T, b: T): boolean {
   const entriesA = Object.entries(a);
   const keysB = Object.keys(b);
   if (entriesA.length !== keysB.length) return false;

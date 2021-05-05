@@ -5,6 +5,7 @@ import { User, BlockedUser, Theme, BlockTTL } from 'common/types';
 import { getHandleClickProps } from 'common/accessibility';
 import { StoreState } from 'store';
 import { defineMessages, IntlShape, FormattedMessage, useIntl } from 'react-intl';
+import { useTheme } from 'hooks/useTheme';
 
 interface Props {
   theme: Theme;
@@ -49,7 +50,7 @@ const messages = defineMessages({
   },
 });
 
-export default class Settings extends Component<Props, State> {
+class SettingsComponent extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
 
@@ -205,10 +206,15 @@ export default class Settings extends Component<Props, State> {
   }
 }
 
-const currentYear = new Date().getFullYear();
+export function Settings(props: Omit<Props, 'theme'>) {
+  const theme = useTheme();
+
+  return <SettingsComponent theme={theme} {...props} />;
+}
 
 function FormatTime({ time }: { time: Date }) {
   const intl = useIntl();
+  const currentYear = new Date().getFullYear();
   // let's assume that if block ttl is more than 50 years then user blocked permanently
   if (time.getFullYear() - currentYear >= 50)
     return <FormattedMessage id="settings.permanently" defaultMessage="permanently" />;

@@ -1,9 +1,6 @@
 type FnType<T extends unknown[]> = (...args: T) => unknown;
 
-export default function debounce<T extends unknown[]>(
-  fn: FnType<T>,
-  wait = 1000
-): (...args: Parameters<FnType<T>>) => void {
+export function debounce<T extends unknown[]>(fn: FnType<T>, wait = 1000): (...args: Parameters<FnType<T>>) => void {
   let timeout: number | undefined;
 
   return function (this: unknown, ...args): void {

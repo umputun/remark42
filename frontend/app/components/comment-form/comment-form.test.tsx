@@ -5,7 +5,7 @@ import { user, anonymousUser } from '__stubs__/user';
 import { StaticStore } from 'common/static-store';
 import { LS_SAVED_COMMENT_VALUE } from 'common/constants';
 import * as localStorageModule from 'common/local-storage';
-import TextareaAutosize from 'components/textarea-autosize';
+import { TextareaAutosize } from 'components/textarea-autosize';
 
 import { CommentForm, CommentFormProps, messages } from './comment-form';
 import { SubscribeByEmail } from './__subscribe-by-email';

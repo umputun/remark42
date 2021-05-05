@@ -6,16 +6,15 @@ import b from 'bem-react-helper';
 import { User, Sorting, Theme, PostInfo } from 'common/types';
 import { IS_STORAGE_AVAILABLE, IS_THIRD_PARTY } from 'common/constants';
 import { requestDeletion } from 'utils/email';
-import postMessage from 'utils/postMessage';
+import { postMessage } from 'utils/postMessage';
 import { getHandleClickProps } from 'common/accessibility';
 import { StoreState } from 'store';
 import { Dropdown, DropdownItem } from 'components/dropdown';
 import { Button } from 'components/button';
-import Auth from 'components/auth';
+import { Auth } from 'components/auth';
+import { useTheme } from 'hooks/useTheme';
 
-import useTheme from 'hooks/useTheme';
-
-export interface OwnProps {
+interface OwnProps {
   user: User | null;
   hiddenUsers: StoreState['hiddenUsers'];
   isCommentsDisabled: boolean;
@@ -40,7 +39,7 @@ interface State {
   sortSelectFocused: boolean;
 }
 
-export class AuthPanel extends Component<Props, State> {
+class AuthPanelComponent extends Component<Props, State> {
   state = {
     isBlockedVisible: false,
     anonymousUsernameInputValue: 'anon',
@@ -319,10 +318,10 @@ function getSortArray(currentSort: Sorting, intl: IntlShape) {
   });
 }
 
-export default function AuthPanelConnected(props: OwnProps) {
+export function AuthPanel(props: OwnProps) {
   const intl = useIntl();
   const theme = useTheme();
   const sort = useSelector<StoreState, Sorting>((state) => state.comments.sort);
 
-  return <AuthPanel intl={intl} theme={theme} sort={sort} {...props} />;
+  return <AuthPanelComponent intl={intl} theme={theme} sort={sort} {...props} />;
 }

@@ -8,12 +8,12 @@ import { Comment } from 'common/types';
 import { fetchInfo } from 'store/user-info/actions';
 import { userInfo } from 'common/user-info-settings';
 
-import postMessage from 'utils/postMessage';
+import { postMessage } from 'utils/postMessage';
 import { bindActions } from 'utils/actionBinder';
 import { useActions } from 'hooks/useAction';
 
 import { AvatarIcon } from '../avatar-icon';
-import LastCommentsList from './last-comments-list';
+import { LastCommentsList } from './last-comments-list';
 
 const boundActions = bindActions({ fetchInfo });
 

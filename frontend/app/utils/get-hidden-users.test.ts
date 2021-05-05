@@ -1,6 +1,6 @@
 import { LS_HIDDEN_USERS_KEY } from 'common/constants';
 
-import getHiddenUsers from './get-hidden-users';
+import { getHiddenUsers } from './get-hidden-users';
 
 describe('getHiddenUsers', () => {
   it('should get hidden users from local storage', async () => {

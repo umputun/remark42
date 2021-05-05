@@ -9,7 +9,7 @@ import { getHandleClickProps } from 'common/accessibility';
 import { StoreState } from 'store';
 import { setCollapse } from 'store/thread/actions';
 import { getThreadIsCollapsed } from 'store/thread/getters';
-import InView from 'components/root/in-view/in-view';
+import { InView } from 'components/root/in-view/in-view';
 import { ConnectedComment as Comment } from 'components/comment/connected-comment';
 import { CommentForm } from 'components/comment-form';
 

@@ -7,13 +7,13 @@ import { loadLocale } from 'utils/loadLocale';
 import { getLocale } from 'utils/getLocale';
 import { ConnectedRoot } from 'components/root';
 import { UserInfo } from 'components/user-info';
-import reduxStore from 'store';
+import { store } from 'store';
 import { NODE_ID, BASE_URL } from 'common/constants';
 import { StaticStore } from 'common/static-store';
 import { getConfig } from 'common/api';
 import { fetchHiddenUsers } from 'store/user/actions';
 import { restoreCollapsedThreads } from 'store/thread/actions';
-import parseQuery from 'utils/parseQuery';
+import { parseQuery } from 'utils/parseQuery';
 import { parseBooleansFromDictionary } from 'utils/parse-booleans-from-dictionary';
 
 if (document.readyState === 'loading') {
@@ -34,7 +34,7 @@ async function init(): Promise<void> {
   const params = parseQuery<{ page?: string; locale?: string; simple_view?: boolean }>();
   const locale = getLocale(params);
   const messages = await loadLocale(locale).catch(() => ({}));
-  const boundActions = bindActionCreators({ fetchHiddenUsers, restoreCollapsedThreads }, reduxStore.dispatch);
+  const boundActions = bindActionCreators({ fetchHiddenUsers, restoreCollapsedThreads }, store.dispatch);
 
   boundActions.fetchHiddenUsers();
   boundActions.restoreCollapsedThreads();
@@ -45,7 +45,7 @@ async function init(): Promise<void> {
 
   render(
     <IntlProvider locale={locale} messages={messages}>
-      <Provider store={reduxStore}>{params.page === 'user-info' ? <UserInfo /> : <ConnectedRoot />}</Provider>
+      <Provider store={store}>{params.page === 'user-info' ? <UserInfo /> : <ConnectedRoot />}</Provider>
     </IntlProvider>,
     node
   );

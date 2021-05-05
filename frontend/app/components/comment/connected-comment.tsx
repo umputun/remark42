@@ -15,7 +15,7 @@ import { StoreState } from 'store';
 import { addComment, removeComment, updateComment, setPinState, putVote, setCommentMode } from 'store/comments/actions';
 import { blockUser, unblockUser, hideUser, setVerifiedStatus } from 'store/user/actions';
 
-import Comment, { CommentProps } from './comment';
+import { Comment, CommentProps } from './comment';
 import { getCommentMode } from 'store/comments/getters';
 import { uploadImage, getPreview } from 'common/api';
 import { getThreadIsCollapsed } from 'store/thread/getters';

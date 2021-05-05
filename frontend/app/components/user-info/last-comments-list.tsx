@@ -1,12 +1,17 @@
 import { h, Fragment } from 'preact';
+import { useIntl } from 'react-intl';
 
 import { Comment as CommentType } from 'common/types';
 
-import Comment from 'components/comment';
-import Preloader from 'components/preloader';
-import { useIntl } from 'react-intl';
+import { Comment } from 'components/comment';
+import { Preloader } from 'components/preloader';
 
-const LastCommentsList = ({ comments, isLoading }: { comments: CommentType[]; isLoading: boolean }) => {
+type Props = {
+  comments: CommentType[];
+  isLoading: boolean;
+};
+
+export function LastCommentsList({ comments, isLoading }: Props) {
   const intl = useIntl();
 
   if (isLoading) {
@@ -31,6 +36,4 @@ const LastCommentsList = ({ comments, isLoading }: { comments: CommentType[]; is
       ))}
     </>
   );
-};
-
-export default LastCommentsList;
+}

@@ -1,6 +1,6 @@
 import { h } from 'preact';
 
-export default function ItalicIcon() {
+export function ItalicIcon() {
   return (
     <svg
       className="comment-form__toolbar-icon"

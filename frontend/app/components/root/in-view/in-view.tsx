@@ -24,11 +24,11 @@ function getObserver(): { observer: IntersectionObserver; instanceMap: WeakMap<E
   return { observer, instanceMap };
 }
 
-type InViewProps = {
+type Props = {
   children: <T>(props: { inView: boolean; ref: PropRef<T> }) => VNode;
 };
 
-const InView = ({ children }: InViewProps) => {
+export function InView({ children }: Props) {
   const [inView, setInView] = useState(false);
   const ref = useRef<Component<unknown, unknown>>(null);
 
@@ -53,6 +53,4 @@ const InView = ({ children }: InViewProps) => {
   }, []);
 
   return children({ inView, ref });
-};
-
-export default InView;
+}

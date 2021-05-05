@@ -198,7 +198,7 @@ function sort(state: Sorting = getInitialSort(), action: COMMENTS_SET_SORT_ACTIO
   }
 }
 
-export default combineReducers({
+export const comments = combineReducers({
   sort,
   isFetching,
   topComments,

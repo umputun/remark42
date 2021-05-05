@@ -1,4 +1,4 @@
-import parseQuery from './parseQuery';
+import { parseQuery } from './parseQuery';
 
 describe('parseQuery', () => {
   it('should return empty object', () => {

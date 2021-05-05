@@ -12,7 +12,7 @@ interface State {
 }
 
 /** Component which uses plain DOM mutation instead of rerendering react reactive reactivity */
-export default class Countdown extends Component<Props, State> {
+export class Countdown extends Component<Props, State> {
   elemRef = createRef<HTMLSpanElement>();
   intervalID?: number;
   constructor(props: Props) {

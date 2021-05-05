@@ -1,4 +1,4 @@
-import stubStore from '__stubs__/store';
+import { mockStore } from '__stubs__/store';
 import { User } from 'common/types';
 import { LS_HIDDEN_USERS_KEY } from 'common/constants';
 import { COMMENTS_PATCH } from 'store/comments/types';
@@ -9,7 +9,7 @@ import { USER_UNHIDE, USER_HIDE, USER_UNBAN, USER_BANLIST_SET, USER_HIDELIST_SET
 
 describe('store user actions', () => {
   test('fetchBlockedUsers', async () => {
-    const store = stubStore(INITIAL_STORE);
+    const store = mockStore(INITIAL_STORE);
 
     await store.dispatch(fetchBlockedUsers());
 
@@ -19,7 +19,7 @@ describe('store user actions', () => {
   });
 
   test('fetchHiddenUsers', async () => {
-    const store = stubStore(INITIAL_STORE);
+    const store = mockStore(INITIAL_STORE);
 
     await store.dispatch(fetchHiddenUsers());
 
@@ -30,7 +30,7 @@ describe('store user actions', () => {
 
   test('fetchHiddenUsers with data', async () => {
     const data = { '1': { id: '1' }, '2': { id: '2' } };
-    const store = stubStore(INITIAL_STORE);
+    const store = mockStore(INITIAL_STORE);
 
     localStorage.setItem(LS_HIDDEN_USERS_KEY, JSON.stringify(data));
     await store.dispatch(fetchHiddenUsers());
@@ -41,7 +41,7 @@ describe('store user actions', () => {
   });
 
   test('setVerifiedStatus', async () => {
-    const store = stubStore(INITIAL_STORE);
+    const store = mockStore(INITIAL_STORE);
 
     await store.dispatch(setVerifiedStatus('1', true));
 
@@ -55,7 +55,7 @@ describe('store user actions', () => {
   });
 
   test('unblockUser', async () => {
-    const store = stubStore(INITIAL_STORE);
+    const store = mockStore(INITIAL_STORE);
 
     await store.dispatch(unblockUser('1'));
 
@@ -71,7 +71,7 @@ describe('store user actions', () => {
     });
 
     test('hideUser', async () => {
-      const store = stubStore(INITIAL_STORE);
+      const store = mockStore(INITIAL_STORE);
 
       await store.dispatch(hideUser({ id: '1' } as User));
 
@@ -84,7 +84,7 @@ describe('store user actions', () => {
     });
 
     test('unhideUser', async () => {
-      const store = stubStore(INITIAL_STORE);
+      const store = mockStore(INITIAL_STORE);
 
       localStorage.setItem(LS_HIDDEN_USERS_KEY, JSON.stringify({ '1': { id: '1' } }));
       await store.dispatch(unhideUser('1'));

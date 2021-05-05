@@ -8,7 +8,7 @@ import { IntlProvider } from 'react-intl';
 import type { User } from 'common/types';
 import enMessages from 'locales/en.json';
 
-import AuthPanel, { Props } from './auth-panel';
+import { AuthPanel, Props } from './auth-panel';
 
 const DefaultProps = {
   postInfo: {

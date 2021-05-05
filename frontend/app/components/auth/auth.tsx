@@ -6,18 +6,18 @@ import { useDispatch } from 'react-redux';
 
 import { setUser } from 'store/user/actions';
 import { Input } from 'components/input';
-import TextareaAutosize from 'components/textarea-autosize';
+import { TextareaAutosize } from 'components/textarea-autosize';
 
-import Button from './components/button';
-import OAuthProviders from './components/oauth';
-import messages from './auth.messsages';
+import { Button } from './components/button';
+import { OAuth } from './components/oauth';
+import { messages } from './auth.messsages';
 import { useDropdown } from './auth.hooks';
 import { getProviders, getTokenInvalidReason } from './auth.utils';
 import { emailSignin, verifyEmailSignin, anonymousSignin } from './auth.api';
 
 import styles from './auth.module.css';
 
-export default function Auth() {
+export function Auth() {
   const intl = useIntl();
   const dispath = useDispatch();
   const [oauthProviders, formProviders] = getProviders();
@@ -199,7 +199,7 @@ export default function Auth() {
                     <h5 className={clsx('auth-form-title', styles.title)}>
                       {intl.formatMessage(messages.oauthSource)}
                     </h5>
-                    <OAuthProviders providers={oauthProviders} />
+                    <OAuth providers={oauthProviders} />
                   </>
                 )}
                 {hasOAuthProviders && hasFormProviders && (

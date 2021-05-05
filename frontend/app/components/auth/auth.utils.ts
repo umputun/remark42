@@ -3,7 +3,7 @@ import { StaticStore } from 'common/static-store';
 import type { FormProvider, OAuthProvider } from 'common/types';
 
 import { OAUTH_PROVIDERS } from './components/oauth.consts';
-import messages from './auth.messsages';
+import { messages } from './auth.messsages';
 
 export function getProviders(): [OAuthProvider[], FormProvider[]] {
   const oauthProviders: OAuthProvider[] = [];

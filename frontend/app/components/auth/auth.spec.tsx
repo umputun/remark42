@@ -5,7 +5,7 @@ import { fireEvent, render, waitFor } from '@testing-library/preact';
 import { OAuthProvider, User } from 'common/types';
 import { StaticStore } from 'common/static-store';
 
-import Auth from './auth';
+import { Auth } from './auth';
 import * as utils from './auth.utils';
 import * as api from './auth.api';
 import { getProviderData } from './components/oauth.utils';
@@ -14,7 +14,9 @@ jest.mock('react-redux', () => ({
   useDispatch: () => jest.fn(),
 }));
 
-jest.mock('hooks/useTheme', () => () => 'light');
+jest.mock('hooks/useTheme', () => ({
+  useTheme: () => 'light',
+}));
 
 describe('<Auth/>', () => {
   let defaultProviders = StaticStore.config.auth_providers;
