@@ -51,7 +51,6 @@
     "@size-limit/file": "^4.9.2",
     "@testing-library/jest-dom": "^5.11.9",
     "@testing-library/preact": "^2.0.1",
-    "@types/classnames": "^2.2.11",
     "@types/enzyme": "^3.10.8",
     "@types/jest": "^26.0.20",
     "@types/lodash-es": "^4.17.4",
