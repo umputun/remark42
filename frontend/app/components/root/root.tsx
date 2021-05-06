@@ -100,22 +100,13 @@ const messages = defineMessages({
   },
 });
 
-const getCollapsedParents = (
-  hash: string,
-  childToParentComments: Record<string, string>,
-  collapsedThreads: Record<string, boolean>
-) => {
-  const collapsedParents = [];
+const getCollapsedParent = (hash: string, childToParentComments: Record<string, string>) => {
   let id = hash.replace(`#${COMMENT_NODE_CLASSNAME_PREFIX}`, '');
-
   while (childToParentComments[id]) {
     id = childToParentComments[id];
-    if (collapsedThreads[id]) {
-      collapsedParents.push(id);
-    }
   }
 
-  return collapsedParents;
+  return id;
 };
 
 /** main component fr main comments widget */
@@ -160,20 +151,29 @@ export class Root extends Component<Props, State> {
       if (e) e.preventDefault();
 
       if (!document.querySelector(hash)) {
-        const ids = getCollapsedParents(hash, this.props.childToParentComments, this.props.collapsedThreads);
-        ids.forEach((id) => this.props.setCollapse(id, false));
+        const id = getCollapsedParent(hash, this.props.childToParentComments);
+        const indexHash = this.props.topComments.findIndex((item) => item === id);
+        const multiplierCollapsed = Math.ceil(indexHash / MAX_SHOWN_ROOT_COMMENTS);
+        this.setState(
+          {
+            commentsShown: this.state.commentsShown + MAX_SHOWN_ROOT_COMMENTS * multiplierCollapsed,
+          },
+          () => setTimeout(() => this.toMessage(hash), 500)
+        );
+      } else {
+        this.toMessage(hash);
       }
+    }
+  };
 
+  toMessage = (hash: string) => {
+    const comment = document.querySelector(hash);
+    if (comment) {
+      postMessage({ scrollTo: comment.getBoundingClientRect().top });
+      comment.classList.add('comment_highlighting');
       setTimeout(() => {
-        const comment = document.querySelector(hash);
-        if (comment) {
-          postMessage({ scrollTo: comment.getBoundingClientRect().top });
-          comment.classList.add('comment_highlighting');
-          setTimeout(() => {
-            comment.classList.remove('comment_highlighting');
-          }, 5e3);
-        }
-      }, 500);
+        comment.classList.remove('comment_highlighting');
+      }, 5e3);
     }
   };
 
