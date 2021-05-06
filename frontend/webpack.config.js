@@ -169,6 +169,7 @@ module.exports = (_, { mode, analyze }) => {
             plugins: [
               ['postcss-preset-env', { stage: 0 }],
               ['postcss-custom-properties', { importFrom: CUSTOM_PROPERTIES_PATH }],
+              'postcss-csso',
             ],
           },
         },
