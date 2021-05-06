@@ -23,7 +23,7 @@ func TestDisqus_Import(t *testing.T) {
 	dataStore := service.DataStore{Engine: b, AdminStore: admin.NewStaticStore("12345", nil, []string{}, "")}
 	defer dataStore.Close()
 	d := Disqus{DataStore: &dataStore}
-	fh, err := os.Open("testdata/disqus1.xml")
+	fh, err := os.Open("testdata/disqus.xml")
 	require.NoError(t, err)
 	size, err := d.Import(fh, "test")
 	assert.NoError(t, err)
@@ -56,9 +56,69 @@ func TestDisqus_Import(t *testing.T) {
 	assert.Equal(t, 2, count)
 }
 
+func TestDisqus_ImportDeletedThread(t *testing.T) {
+	defer os.Remove("/tmp/remark-test.db")
+	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "test"})
+	require.NoError(t, err, "create store")
+	dataStore := service.DataStore{Engine: b, AdminStore: admin.NewStaticStore("12345", nil, []string{}, "")}
+	defer dataStore.Close()
+	d := Disqus{DataStore: &dataStore}
+	fh, err := os.Open("testdata/disqus-deleted-thread.xml")
+	require.NoError(t, err)
+	size, err := d.Import(fh, "test")
+	assert.NoError(t, err)
+	assert.Equal(t, 2, size)
+
+	last, err := dataStore.Last("test", 10, time.Time{}, adminUser)
+	assert.NoError(t, err)
+	require.Equal(t, 2, len(last), "2 comments imported")
+
+	c := last[len(last)-1] // last reverses, get first one
+	assert.True(t, strings.HasPrefix(c.Text, "<p>Google App Engine "), c.Text)
+	assert.Equal(t, "299986072", c.ID)
+	assert.Equal(t, "", c.ParentID)
+	assert.Equal(t, store.Locator{SiteID: "test", URL: "http://radio-t.umputun.com/2011/03/229_8880.html"}, c.Locator)
+	assert.Equal(t, "No Username", c.User.Name)
+	assert.Equal(t, "disqus_62e24ea213756cda0339e1074819f15e25214361", c.User.ID)
+	assert.Equal(t, "7001968ea3f6c9013a9f0a3650f200c10c927638", c.User.IP)
+	assert.True(t, c.Imported)
+
+	c = last[1] // get comment with empty username
+	assert.Equal(t, "No Username", c.User.Name)
+	assert.Equal(t, "disqus_62e24ea213756cda0339e1074819f15e25214361", c.User.ID)
+}
+
+func TestDisqus_ImportDeletedPost(t *testing.T) {
+	defer os.Remove("/tmp/remark-test.db")
+	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "test"})
+	require.NoError(t, err, "create store")
+	dataStore := service.DataStore{Engine: b, AdminStore: admin.NewStaticStore("12345", nil, []string{}, "")}
+	defer dataStore.Close()
+	d := Disqus{DataStore: &dataStore}
+	fh, err := os.Open("testdata/disqus-deleted-post.xml")
+	require.NoError(t, err)
+	size, err := d.Import(fh, "test")
+	assert.NoError(t, err)
+	assert.Equal(t, 3, size, "1 post deleted")
+
+	last, err := dataStore.Last("test", 10, time.Time{}, adminUser)
+	assert.NoError(t, err)
+	require.Equal(t, 3, len(last), "3 comments imported")
+
+	c := last[len(last)-1] // last reverses, get first one
+	assert.True(t, strings.HasPrefix(c.Text, "<p>Microsoft "), c.Text)
+	assert.Equal(t, "299744309", c.ID)
+	assert.Equal(t, "", c.ParentID)
+	assert.Equal(t, store.Locator{SiteID: "test", URL: "https://radio-t.com/p/2011/03/05/podcast-229/"}, c.Locator)
+	assert.Equal(t, "mikhail", c.User.Name)
+	assert.Equal(t, "disqus_1b6709749c0cab163db9070cc4edf3322b398d8c", c.User.ID)
+	assert.Equal(t, "9d3657a95a4e341510404bd8bf1a363faefd4ba4", c.User.IP)
+	assert.True(t, c.Imported)
+}
+
 func TestDisqus_Convert(t *testing.T) {
 	d := Disqus{}
-	fh, err := os.Open("testdata/disqus1.xml")
+	fh, err := os.Open("testdata/disqus.xml")
 	require.NoError(t, err)
 	ch := d.convert(fh, "test")
 

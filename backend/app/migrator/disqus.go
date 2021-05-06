@@ -103,6 +103,7 @@ func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 
 			switch se := t.(type) {
 			case xml.StartElement:
+
 				if se.Name.Local == "thread" {
 					stats.inpThreads++
 					thread := disqusThread{}
@@ -117,6 +118,7 @@ func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 					postsMap[thread.UID] = thread.Link
 					continue
 				}
+
 				if se.Name.Local == "post" {
 					stats.inpComments++
 					comment := disqusComment{}
@@ -142,7 +144,7 @@ func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 
 					c := store.Comment{
 						ID:      comment.UID,
-						Locator: store.Locator{URL: postsMap[url], SiteID: siteID},
+						Locator: store.Locator{URL: url, SiteID: siteID},
 						User: store.User{
 							ID:   "disqus_" + store.EncodeID(comment.AuthorUserName),
 							Name: comment.AuthorName,
@@ -175,6 +177,7 @@ func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 }
 
 func (*Disqus) cleanText(text string) string {
+	text = strings.TrimSpace(text)
 	text = strings.Replace(text, "\n", "", -1)
 	text = strings.Replace(text, "\t", "", -1)
 	return text

@@ -33,7 +33,7 @@ func TestMigrator_ImportDisqus(t *testing.T) {
 	defer dataStore.Close()
 	size, err := ImportComments(ImportParams{
 		DataStore: dataStore,
-		InputFile: "testdata/disqus1.xml",
+		InputFile: "testdata/disqus.xml",
 		SiteID:    "test",
 		Provider:  "disqus",
 	})
