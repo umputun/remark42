@@ -19,11 +19,7 @@ import (
 func TestMigrator_ImportDisqus(t *testing.T) {
 	defer func() {
 		os.Remove("/tmp/remark-test.db")
-		os.Remove("/tmp/disqus-test.xml")
 	}()
-
-	err := ioutil.WriteFile("/tmp/disqus-test.xml", []byte(xmlTestDisqus), 0600)
-	require.NoError(t, err)
 
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "test"})
 	require.NoError(t, err, "create store")
@@ -31,7 +27,7 @@ func TestMigrator_ImportDisqus(t *testing.T) {
 	defer dataStore.Close()
 	size, err := ImportComments(ImportParams{
 		DataStore: dataStore,
-		InputFile: "/tmp/disqus-test.xml",
+		InputFile: "testdata/disqus.xml",
 		SiteID:    "test",
 		Provider:  "disqus",
 	})
