@@ -20,9 +20,9 @@ function SuggestionList({ items, theme }: { items: Array<Emoji>; theme: Theme })
   return (
     <ul className={clsx(styles.suggester, { [styles.suggesterDark]: isDarkTheme })}>
       {items.map(({ key, emoji }: Emoji) => (
-        // eslint-disable-next-line jsx-a11y/role-has-required-aria-props
         <li
           key={key}
+          // eslint-disable-next-line jsx-a11y/role-has-required-aria-props
           role="option"
           className={clsx(styles.suggesterItem, { [styles.suggesterItemDark]: isDarkTheme })}
           data-value={key}
