@@ -44,6 +44,7 @@ type disqusComment struct {
 	Tid            uid       `xml:"thread"`
 	Pid            uid       `xml:"parent"`
 	IsSpam         bool      `xml:"isSpam"`
+	Deleted        bool      `xml:"isDeleted"`
 }
 
 type uid struct {
@@ -87,9 +88,10 @@ func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 	commentsCh := make(chan store.Comment)
 
 	stats := struct {
-		inpThreads, inpComments     int
-		commentsCount, spamComments int
-		failedThreads, failedPosts  int
+		inpThreads, inpComments          int
+		commentsCount, spamComments      int
+		failedThreads, failedPosts       int
+		deletedComments, skippedComments int
 	}{}
 
 	go func() {
@@ -109,6 +111,9 @@ func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 						stats.failedThreads++
 						continue
 					}
+					if thread.Deleted {
+						continue
+					}
 					postsMap[thread.UID] = thread.Link
 					continue
 				}
@@ -120,13 +125,24 @@ func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 						stats.failedPosts++
 						continue
 					}
+					if comment.Deleted {
+						stats.deletedComments++
+						continue
+					}
 					if comment.IsSpam {
 						stats.spamComments++
 						continue
 					}
+
+					url, ok := postsMap[comment.Tid.Val]
+					if !ok {
+						stats.skippedComments++
+						continue
+					}
+
 					c := store.Comment{
 						ID:      comment.UID,
-						Locator: store.Locator{URL: postsMap[comment.Tid.Val], SiteID: siteID},
+						Locator: store.Locator{URL: postsMap[url], SiteID: siteID},
 						User: store.User{
 							ID:   "disqus_" + store.EncodeID(comment.AuthorUserName),
 							Name: comment.AuthorName,
