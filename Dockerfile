@@ -1,4 +1,4 @@
-FROM umputun/baseimage:buildgo-v1.6.1 as build-backend
+FROM umputun/baseimage:buildgo-v1.7.0 as build-backend
 
 ARG CI
 ARG DRONE

@@ -1,8 +1,5 @@
 FROM umputun/baseimage:buildgo-latest as build-backend
 
-#ADD . /build/memory_store
-#WORKDIR /build/memory_store
-
 ADD backend /build/backend
 WORKDIR /build/backend/_example/memory_store
 
