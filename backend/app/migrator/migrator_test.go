@@ -17,9 +17,7 @@ import (
 )
 
 func TestMigrator_ImportDisqus(t *testing.T) {
-	defer func() {
-		os.Remove("/tmp/remark-test.db")
-	}()
+	defer os.Remove("/tmp/remark-test.db")
 
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "test"})
 	require.NoError(t, err, "create store")
