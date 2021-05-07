@@ -45,6 +45,7 @@ func TestServerApp(t *testing.T) {
 
 	// add comment
 	client := http.Client{Timeout: 10 * time.Second}
+	defer client.CloseIdleConnections()
 	req, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
 		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "remark"}}`))
 	require.NoError(t, err)
@@ -122,12 +123,14 @@ func TestServerApp_AnonMode(t *testing.T) {
 
 	// try to add a comment as good anonymous
 	client := http.Client{Timeout: 10 * time.Second}
+	defer client.CloseIdleConnections()
 	req, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
 		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "remark"}}`))
 	require.NoError(t, err)
 
 	tkn, claims := getAuthFromCookie(t, app, resp)
 	require.NotEmpty(t, tkn)
+	assert.False(t, claims.User.BoolAttr("blocked"), "should not be blocked")
 	req.Header.Add("X-JWT", tkn)
 	resp, err = client.Do(req)
 	require.NoError(t, err)
