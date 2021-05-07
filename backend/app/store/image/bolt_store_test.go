@@ -95,10 +95,13 @@ func TestBoltStore_Cleanup(t *testing.T) {
 	err = svc.Commit(img3)
 	require.NoError(t, err)
 
+	// reset the time to cleanup
+	err = svc.ResetCleanupTimer(img2)
+	require.NoError(t, err)
 	err = svc.Cleanup(context.Background(), time.Millisecond*100)
 	assert.NoError(t, err)
 
-	assertBoltImgNil(t, svc.db, imagesStagedBktName, img2)
+	assertBoltImgNotNil(t, svc.db, imagesStagedBktName, img2)
 	assertBoltImgNil(t, svc.db, imagesBktName, img2)
 	assertBoltImgNotNil(t, svc.db, imagesBktName, img3)
 	assert.NoError(t, err)

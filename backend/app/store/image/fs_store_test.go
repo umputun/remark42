@@ -221,14 +221,19 @@ func TestFsStore_Cleanup(t *testing.T) {
 	_, err = os.Stat(img3)
 	assert.NoError(t, err, "file on staging")
 
-	time.Sleep(200 * time.Millisecond) // make all images expired
+	time.Sleep(200 * time.Millisecond)                // make all images expired
+	err = svc.ResetCleanupTimer("user2/blah_ff3.png") // reset the time to cleanup for third image
+	assert.NoError(t, err)
 	err = svc.Cleanup(context.Background(), time.Millisecond*300)
 	assert.NoError(t, err)
 
 	_, err = os.Stat(img2)
 	assert.Error(t, err, "no file on staging anymore")
 	_, err = os.Stat(img3)
-	assert.Error(t, err, "no file on staging anymore")
+	assert.NoError(t, err, "third image is still on staging because it's cleanup timer was reset")
+
+	err = svc.ResetCleanupTimer("unknown_image.png")
+	assert.Error(t, err)
 }
 
 func TestFsStore_Info(t *testing.T) {

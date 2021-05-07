@@ -22,6 +22,12 @@ func (r *RPC) Save(id string, img []byte) error {
 	return err
 }
 
+// ResetCleanupTimer resets cleanup timer for the image
+func (r *RPC) ResetCleanupTimer(id string) error {
+	_, err := r.Call("image.reset_cleanup_timer", id)
+	return err
+}
+
 // Load image with given id
 func (r *RPC) Load(id string) ([]byte, error) {
 	resp, err := r.Call("image.load", id)

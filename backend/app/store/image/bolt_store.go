@@ -81,6 +81,20 @@ func (b *Bolt) Commit(id string) error {
 	})
 }
 
+// ResetCleanupTimer resets cleanup timer for the image
+func (b *Bolt) ResetCleanupTimer(id string) error {
+	return b.db.Update(func(tx *bolt.Tx) error {
+		tsBuf := &bytes.Buffer{}
+		if err := binary.Write(tsBuf, binary.LittleEndian, time.Now().UnixNano()); err != nil {
+			return errors.Wrapf(err, "can't serialize timestamp for %s", id)
+		}
+		if err := tx.Bucket([]byte(insertTimeBktName)).Put([]byte(id), tsBuf.Bytes()); err != nil {
+			return errors.Wrapf(err, "can't put to bucket with %s", id)
+		}
+		return nil
+	})
+}
+
 // Load image from DB
 func (b *Bolt) Load(id string) ([]byte, error) {
 	var data []byte
