@@ -53,6 +53,18 @@ func TestRemote_Commit(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestRemote_ResetCleanupTimer(t *testing.T) {
+	ts := testServer(t, `{"method":"image.reset_cleanup_timer","params":"gopher_id","id":1}`, `{"id":1}`)
+	defer ts.Close()
+	c := RPC{Client: jrpc.Client{API: ts.URL, Client: http.Client{}}}
+
+	var a Store = &c
+	_ = a
+
+	err := c.ResetCleanupTimer("gopher_id")
+	assert.NoError(t, err)
+}
+
 func TestRemote_Cleanup(t *testing.T) {
 	ts := testServer(t, `{"method":"image.cleanup","params":60000000000,"id":1}`, `{"id":1}`)
 	defer ts.Close()

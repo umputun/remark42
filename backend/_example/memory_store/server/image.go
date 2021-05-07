@@ -28,6 +28,16 @@ func (s *RPC) imgSaveWithIDHndl(id uint64, params json.RawMessage) (rr jrpc.Resp
 	return jrpc.EncodeResponse(id, nil, err)
 }
 
+func (s *RPC) imgResetClnTimerHndl(id uint64, params json.RawMessage) (rr jrpc.Response) {
+	var fileID string
+	if err := json.Unmarshal(params, &fileID); err != nil {
+		return jrpc.Response{Error: err.Error()}
+	}
+	err := s.img.ResetCleanupTimer(fileID)
+	return jrpc.EncodeResponse(id, nil, err)
+
+}
+
 func (s *RPC) imgLoadHndl(id uint64, params json.RawMessage) (rr jrpc.Response) {
 	var fileID string
 	if err := json.Unmarshal(params, &fileID); err != nil {

@@ -75,6 +75,7 @@ type Store interface {
 	Save(id string, img []byte) error // store image with passed id to staging
 	Load(id string) ([]byte, error)   // load image by ID
 
+	ResetCleanupTimer(id string) error                    // resets cleanup timer for the image, called on comment preview
 	Commit(id string) error                               // move image from staging to permanent
 	Cleanup(ctx context.Context, ttl time.Duration) error // run removal loop for old images on staging
 }

@@ -62,6 +62,20 @@ func (f *FileSystem) Commit(id string) error {
 	return errors.Wrapf(err, "failed to commit image %s", id)
 }
 
+// ResetCleanupTimer resets cleanup timer for the image
+func (f *FileSystem) ResetCleanupTimer(id string) error {
+	file := f.location(f.Staging, id)
+	_, err := os.Stat(file)
+	if err != nil {
+		return errors.Wrapf(err, "can't get image stats for %s", id)
+	}
+	// we don't need to update access time (second arg),
+	// but reading it is platform-dependent and looks different on darwin and linux,
+	// so it's easier to update it as well
+	err = os.Chtimes(file, time.Now(), time.Now())
+	return errors.Wrapf(err, "problem updating %s modification time", file)
+}
+
 // Load image from FS. Uses id to get partition subdirectory.
 func (f *FileSystem) Load(id string) ([]byte, error) {
 

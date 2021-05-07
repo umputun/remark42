@@ -45,6 +45,17 @@ func (m *MemImage) Save(id string, img []byte) error {
 	return nil
 }
 
+// ResetCleanupTimer resets cleanup timer for the image
+func (m *MemImage) ResetCleanupTimer(id string) error {
+	m.Lock()
+	defer m.Unlock()
+	if _, ok := m.insertTime[id]; ok {
+		m.insertTime[id] = time.Now()
+		return nil
+	}
+	return errors.Errorf("image %s not found", id)
+}
+
 // Load image by ID
 func (m *MemImage) Load(id string) ([]byte, error) {
 	m.RLock()
