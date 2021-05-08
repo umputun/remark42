@@ -28,7 +28,7 @@ func TestRest_Ping(t *testing.T) {
 }
 
 func TestRest_Preview(t *testing.T) {
-	ts, _, teardown := startupT(t)
+	ts, srv, teardown := startupT(t)
 	defer teardown()
 
 	resp, err := post(t, ts.URL+"/api/v1/preview", `{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
@@ -43,6 +43,23 @@ func TestRest_Preview(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, resp.Body.Close())
 	assert.Equal(t, 400, resp.StatusCode)
+
+	resp, err = post(t, ts.URL+"/api/v1/preview", fmt.Sprintf(`{"text": "![non-existent.jpg](%s/api/v1/picture/dev_user/bad_picture)", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, srv.RemarkURL))
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	b, err = ioutil.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
+	assert.Contains(t,
+		string(b),
+		"{\"code\":20,\"details\":\"can't renew staged picture cleanup timer\","+
+			"\"error\":\"can't get image stats for dev_user/bad_picture: stat",
+	)
+	assert.Contains(t,
+		string(b),
+		"/pics-remark42/staging/dev_user/62/bad_picture: no such file or directory\"}\n",
+	)
+
 }
 
 func TestRest_PreviewWithWrongImage(t *testing.T) {
@@ -57,8 +74,8 @@ func TestRest_PreviewWithWrongImage(t *testing.T) {
 	assert.NoError(t, resp.Body.Close())
 	assert.Contains(t,
 		string(b),
-		"{\"code\":20,\"details\":\"can't load picture from the comment\","+
-			"\"error\":\"can't get image file for dev_user/bad_picture: can't get image stats for dev_user/bad_picture: stat ",
+		"{\"code\":20,\"details\":\"can't renew staged picture cleanup timer\","+
+			"\"error\":\"can't get image stats for dev_user/bad_picture: stat ",
 	)
 	assert.Contains(t,
 		string(b),
