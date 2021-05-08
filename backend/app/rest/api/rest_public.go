@@ -135,9 +135,9 @@ func (s *public) previewCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 	// check if images are valid
 	for _, id := range s.imageService.ExtractPictures(comment.Text) {
-		_, err = s.imageService.Load(id)
+		err = s.imageService.ResetCleanupTimer(id)
 		if err != nil {
-			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't load picture from the comment", rest.ErrImgNotFound)
+			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't renew staged picture cleanup timer", rest.ErrImgNotFound)
 			return
 		}
 	}

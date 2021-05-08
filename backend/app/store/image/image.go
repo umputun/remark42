@@ -193,6 +193,11 @@ func (s *Service) Cleanup(ctx context.Context) {
 	}
 }
 
+// ResetCleanupTimer resets cleanup timer for the image
+func (s *Service) ResetCleanupTimer(id string) error {
+	return s.store.ResetCleanupTimer(id)
+}
+
 // Info returns meta information about storage
 func (s *Service) Info() (StoreInfo, error) {
 	return s.store.Info()
