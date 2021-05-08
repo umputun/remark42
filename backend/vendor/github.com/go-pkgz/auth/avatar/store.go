@@ -4,7 +4,7 @@ package avatar
 
 import (
 	"context"
-	"crypto/sha1"
+	"crypto/sha1" //nolint gosec
 	"encoding/hex"
 	"fmt"
 	_ "image/gif"  // initializing packages for supporting GIF

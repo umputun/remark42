@@ -4,6 +4,13 @@ Notable changes between releases.
 
 ## Latest
 
+## v0.7.0
+
+* Add an `HMAC256Signer` ([#40](https://github.com/dghubble/oauth1/pull/40))
+* Add discogs `Endpoint` ([#39](https://github.com/dghubble/oauth1/pull/39))
+* Allow custom `Noncer` for unusual OAuth1 providers ([#45](https://github.com/dghubble/oauth1/pull/45)
+* Change tumblr `Endpoint` URLs to https ([#37](https://github.com/dghubble/oauth1/pull/37))
+
 ## v0.6.0
 
 * Add Go module support ([#32](https://github.com/dghubble/oauth1/pull/32))

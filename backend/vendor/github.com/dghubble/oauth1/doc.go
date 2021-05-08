@@ -52,7 +52,7 @@ provider's authorization URL to grant the application access.
 
 	authorizationURL, err := config.AuthorizationURL(requestToken)
 	// handle err
-	http.Redirect(w, req, authorizationURL.String(), htt.StatusFound)
+	http.Redirect(w, req, authorizationURL.String(), http.StatusFound)
 
 Receive the callback from the OAuth1 provider in a handler.
 

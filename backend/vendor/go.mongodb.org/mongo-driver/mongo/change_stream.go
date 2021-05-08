@@ -17,12 +17,12 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/bsoncodec"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
 	"go.mongodb.org/mongo-driver/x/mongo/driver"
-	"go.mongodb.org/mongo-driver/x/mongo/driver/description"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/operation"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/session"
 )
@@ -103,11 +103,12 @@ func newChangeStream(ctx context.Context, config changeStreamConfig, pipeline in
 	}
 
 	cs := &ChangeStream{
-		client:     config.client,
-		registry:   config.registry,
-		streamType: config.streamType,
-		options:    options.MergeChangeStreamOptions(opts...),
-		selector:   description.ReadPrefSelector(config.readPreference),
+		client:        config.client,
+		registry:      config.registry,
+		streamType:    config.streamType,
+		options:       options.MergeChangeStreamOptions(opts...),
+		selector:      description.ReadPrefSelector(config.readPreference),
+		cursorOptions: config.client.createBaseCursorOptions(),
 	}
 
 	cs.sess = sessionFromContext(ctx)
@@ -128,9 +129,6 @@ func newChangeStream(ctx context.Context, config changeStreamConfig, pipeline in
 		CommandMonitor(cs.client.monitor).Session(cs.sess).ServerSelector(cs.selector).Retry(driver.RetryNone).
 		Crypt(config.crypt)
 
-	if config.crypt != nil {
-		cs.cursorOptions.Crypt = config.crypt
-	}
 	if cs.options.Collation != nil {
 		cs.aggregate.Collation(bsoncore.Document(cs.options.Collation.ToDocument()))
 	}
@@ -141,7 +139,6 @@ func newChangeStream(ctx context.Context, config changeStreamConfig, pipeline in
 	if cs.options.MaxAwaitTime != nil {
 		cs.cursorOptions.MaxTimeMS = int64(time.Duration(*cs.options.MaxAwaitTime) / time.Millisecond)
 	}
-	cs.cursorOptions.CommandMonitor = cs.client.monitor
 
 	switch cs.streamType {
 	case ClientStream:
@@ -343,7 +340,7 @@ func (cs *ChangeStream) buildPipelineSlice(pipeline interface{}) error {
 
 	for i := 0; i < val.Len(); i++ {
 		var elem []byte
-		elem, cs.err = transformBsoncoreDocument(cs.registry, val.Index(i).Interface())
+		elem, cs.err = transformBsoncoreDocument(cs.registry, val.Index(i).Interface(), true, fmt.Sprintf("pipeline stage :%v", i))
 		if cs.err != nil {
 			return cs.err
 		}
@@ -367,7 +364,7 @@ func (cs *ChangeStream) createPipelineOptionsDoc() bsoncore.Document {
 
 	if cs.options.ResumeAfter != nil {
 		var raDoc bsoncore.Document
-		raDoc, cs.err = transformBsoncoreDocument(cs.registry, cs.options.ResumeAfter)
+		raDoc, cs.err = transformBsoncoreDocument(cs.registry, cs.options.ResumeAfter, true, "resumeAfter")
 		if cs.err != nil {
 			return nil
 		}
@@ -377,7 +374,7 @@ func (cs *ChangeStream) createPipelineOptionsDoc() bsoncore.Document {
 
 	if cs.options.StartAfter != nil {
 		var saDoc bsoncore.Document
-		saDoc, cs.err = transformBsoncoreDocument(cs.registry, cs.options.StartAfter)
+		saDoc, cs.err = transformBsoncoreDocument(cs.registry, cs.options.StartAfter, true, "startAfter")
 		if cs.err != nil {
 			return nil
 		}

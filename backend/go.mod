@@ -12,7 +12,7 @@ require (
 	github.com/go-chi/chi/v5 v5.0.2
 	github.com/go-chi/cors v1.2.0
 	github.com/go-chi/render v1.0.1
-	github.com/go-pkgz/auth v1.15.0
+	github.com/go-pkgz/auth v1.15.1-0.20210507173239-c99a35bd9b94
 	github.com/go-pkgz/jrpc v0.2.0
 	github.com/go-pkgz/lcw v0.8.1
 	github.com/go-pkgz/lgr v0.10.4
@@ -34,6 +34,6 @@ require (
 	go.etcd.io/bbolt v1.3.5
 	go.uber.org/goleak v1.0.0
 	golang.org/x/crypto v0.0.0-20210421170649-83a5a9bb288b
-	golang.org/x/image v0.0.0-20210220032944-ac19c3e999fb
+	golang.org/x/image v0.0.0-20210504121937-7319ad40d33e
 	golang.org/x/net v0.0.0-20210423184538-5f58ad60dda6
 )

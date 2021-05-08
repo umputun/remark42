@@ -13,11 +13,11 @@ import (
 	"go.mongodb.org/mongo-driver/bson/bsontype"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/event"
+	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
-	"go.mongodb.org/mongo-driver/x/mongo/driver/description"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/session"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/wiremessage"
 )
@@ -367,7 +367,7 @@ func (op Operation) Execute(ctx context.Context, scratch []byte) error {
 		}
 		res, err = roundTrip(ctx, conn, wm)
 		if ep, ok := srvr.(ErrorProcessor); ok {
-			ep.ProcessError(err, conn)
+			_ = ep.ProcessError(err, conn)
 		}
 
 		finishedInfo.response = res
@@ -384,7 +384,8 @@ func (op Operation) Execute(ctx context.Context, scratch []byte) error {
 			connDesc := conn.Description()
 			retryableErr := tt.Retryable(connDesc.WireVersion)
 			preRetryWriteLabelVersion := connDesc.WireVersion != nil && connDesc.WireVersion.Max < 9
-			inTransaction := !(op.Client.Committing || op.Client.Aborting) && op.Client.TransactionRunning()
+			inTransaction := op.Client != nil &&
+				!(op.Client.Committing || op.Client.Aborting) && op.Client.TransactionRunning()
 			// If retry is enabled and the operation isn't in a transaction, add a RetryableWriteError label for
 			// retryable errors from pre-4.4 servers
 			if retryableErr && preRetryWriteLabelVersion && retryEnabled && !inTransaction {
@@ -465,7 +466,8 @@ func (op Operation) Execute(ctx context.Context, scratch []byte) error {
 			if op.Type == Write {
 				retryableErr = tt.RetryableWrite(connDesc.WireVersion)
 				preRetryWriteLabelVersion := connDesc.WireVersion != nil && connDesc.WireVersion.Max < 9
-				inTransaction := !(op.Client.Committing || op.Client.Aborting) && op.Client.TransactionRunning()
+				inTransaction := op.Client != nil &&
+					!(op.Client.Committing || op.Client.Aborting) && op.Client.TransactionRunning()
 				// If retryWrites is enabled and the operation isn't in a transaction, add a RetryableWriteError label
 				// for network errors and retryable errors from pre-4.4 servers
 				if retryEnabled && !inTransaction &&
@@ -556,7 +558,7 @@ func (op Operation) retryable(desc description.Server) bool {
 		if op.Client != nil && (op.Client.Committing || op.Client.Aborting) {
 			return true
 		}
-		if desc.SupportsRetryWrites() &&
+		if retryWritesSupported(desc) &&
 			desc.WireVersion != nil && desc.WireVersion.Max >= 6 &&
 			op.Client != nil && !(op.Client.TransactionInProgress() || op.Client.TransactionStarting()) &&
 			writeconcern.AckWrite(op.WriteConcern) {
@@ -924,7 +926,7 @@ func (op Operation) addReadConcern(dst []byte, desc description.SelectedServer) 
 		return dst, err
 	}
 
-	if description.SessionsSupported(desc.WireVersion) && client != nil && client.Consistent && client.OperationTime != nil {
+	if sessionsSupported(desc.WireVersion) && client != nil && client.Consistent && client.OperationTime != nil {
 		data = data[:len(data)-1] // remove the null byte
 		data = bsoncore.AppendTimestampElement(data, "afterClusterTime", client.OperationTime.T, client.OperationTime.I)
 		data, _ = bsoncore.AppendDocumentEnd(data, 0)
@@ -958,7 +960,7 @@ func (op Operation) addWriteConcern(dst []byte, desc description.SelectedServer)
 
 func (op Operation) addSession(dst []byte, desc description.SelectedServer) ([]byte, error) {
 	client := op.Client
-	if client == nil || !description.SessionsSupported(desc.WireVersion) || desc.SessionTimeoutMinutes == 0 {
+	if client == nil || !sessionsSupported(desc.WireVersion) || desc.SessionTimeoutMinutes == 0 {
 		return dst, nil
 	}
 	if err := client.UpdateUseTime(); err != nil {
@@ -988,7 +990,7 @@ func (op Operation) addSession(dst []byte, desc description.SelectedServer) ([]b
 
 func (op Operation) addClusterTime(dst []byte, desc description.SelectedServer) []byte {
 	client, clock := op.Client, op.Clock
-	if (clock == nil && client == nil) || !description.SessionsSupported(desc.WireVersion) {
+	if (clock == nil && client == nil) || !sessionsSupported(desc.WireVersion) {
 		return dst
 	}
 	clusterTime := clock.GetClusterTime()
@@ -1403,4 +1405,14 @@ func (op Operation) publishFinishedEvent(ctx context.Context, info finishedInfor
 		CommandFinishedEvent: finished,
 	}
 	op.CommandMonitor.Failed(ctx, failedEvent)
+}
+
+// sessionsSupported returns true of the given server version indicates that it supports sessions.
+func sessionsSupported(wireVersion *description.VersionRange) bool {
+	return wireVersion != nil && wireVersion.Max >= 6
+}
+
+// retryWritesSupported returns true if this description represents a server that supports retryable writes.
+func retryWritesSupported(s description.Server) bool {
+	return s.SessionTimeoutMinutes != 0 && s.Kind != description.Standalone
 }

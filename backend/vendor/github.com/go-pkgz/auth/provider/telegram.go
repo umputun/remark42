@@ -15,11 +15,12 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/go-pkgz/auth/logger"
-	authtoken "github.com/go-pkgz/auth/token"
 	"github.com/go-pkgz/repeater"
 	"github.com/go-pkgz/rest"
 	"github.com/pkg/errors"
+
+	"github.com/go-pkgz/auth/logger"
+	authtoken "github.com/go-pkgz/auth/token"
 )
 
 // TelegramHandler implements login via telegram

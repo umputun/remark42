@@ -19,11 +19,12 @@ import (
 // Authenticator is top level auth object providing middlewares
 type Authenticator struct {
 	logger.L
-	JWTService   TokenService
-	Providers    []provider.Service
-	Validator    token.Validator
-	AdminPasswd  string
-	RefreshCache RefreshCache
+	JWTService       TokenService
+	Providers        []provider.Service
+	Validator        token.Validator
+	AdminPasswd      string
+	BasicAuthChecker BasicAuthFunc
+	RefreshCache     RefreshCache
 }
 
 // RefreshCache defines interface storing and retrieving refreshed tokens
@@ -40,6 +41,10 @@ type TokenService interface {
 	IsExpired(claims token.Claims) bool
 	Reset(w http.ResponseWriter)
 }
+
+// BasicAuthFunc type is an adapter to allow the use of ordinary functions as BasicAuth.
+// The second return parameter `User` need for add user claims into context of request.
+type BasicAuthFunc func(user, passwd string) (ok bool, userInfo token.User, err error)
 
 // adminUser sets claims for an optional basic auth
 var adminUser = token.User{
@@ -75,11 +80,29 @@ func (a *Authenticator) auth(reqAuth bool) func(http.Handler) http.Handler {
 	f := func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 
-			// use admin user basic auth if enabled
-			if a.basicAdminUser(r) {
+			// use admin user basic auth if enabled but ignore when BasicAuthChecker defined
+			if a.BasicAuthChecker == nil && a.basicAdminUser(r) {
 				r = token.SetUserInfo(r, adminUser)
 				h.ServeHTTP(w, r)
 				return
+			}
+
+			// use custom basic auth if BasicAuthChecker defined
+			if a.BasicAuthChecker != nil {
+				if user, passwd, isBasicAuth := r.BasicAuth(); isBasicAuth {
+					ok, userInfo, err := a.BasicAuthChecker(user, passwd)
+					if err != nil {
+						onError(h, w, r, errors.Wrap(err, "basic auth check failed"))
+						return
+					}
+					if !ok {
+						onError(h, w, r, errors.Wrap(err, "credentials are wrong for basic auth"))
+						return
+					}
+					r = token.SetUserInfo(r, userInfo) // pass user claims into context of incoming request
+					h.ServeHTTP(w, r)
+					return
+				}
 			}
 
 			claims, tkn, err := a.JWTService.Get(r)

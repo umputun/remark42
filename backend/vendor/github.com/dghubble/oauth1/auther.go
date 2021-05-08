@@ -2,8 +2,6 @@ package oauth1
 
 import (
 	"bytes"
-	"crypto/rand"
-	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -38,19 +36,19 @@ type clock interface {
 	Now() time.Time
 }
 
-// A noncer provides random nonce strings.
-type noncer interface {
-	Nonce() string
-}
-
 // auther adds an "OAuth" Authorization header field to requests.
 type auther struct {
 	config *Config
 	clock  clock
-	noncer noncer
 }
 
 func newAuther(config *Config) *auther {
+	if config == nil {
+		config = &Config{}
+	}
+	if config.Noncer == nil {
+		config.Noncer = Base64Noncer{}
+	}
 	return &auther{
 		config: config,
 	}
@@ -135,14 +133,9 @@ func (a *auther) commonOAuthParams() map[string]string {
 	return params
 }
 
-// Returns a base64 encoded random 32 byte string.
+// Returns a nonce using the configured Noncer.
 func (a *auther) nonce() string {
-	if a.noncer != nil {
-		return a.noncer.Nonce()
-	}
-	b := make([]byte, 32)
-	rand.Read(b)
-	return base64.StdEncoding.EncodeToString(b)
+	return a.config.Noncer.Nonce()
 }
 
 // Returns the Unix epoch seconds.

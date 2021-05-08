@@ -13,10 +13,11 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/internal"
+	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
 	"go.mongodb.org/mongo-driver/x/mongo/driver"
-	"go.mongodb.org/mongo-driver/x/mongo/driver/description"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/operation"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/session"
 )
@@ -94,8 +95,10 @@ func SessionFromContext(ctx context.Context) Session {
 // callback, sessCtx must be used as the Context parameter for any operations that should be part of the transaction. If
 // the ctx parameter already has a Session attached to it, it will be replaced by this session. The fn callback may be
 // run multiple times during WithTransaction due to retry attempts, so it must be idempotent. Non-retryable operation
-// errors or any operation errors that occur after the timeout expires will be returned without retrying. For a usage
-// example, see the Client.StartSession method documentation.
+// errors or any operation errors that occur after the timeout expires will be returned without retrying. If the
+// callback fails, the driver will call AbortTransaction. Because this method must succeed to ensure that server-side
+// resources are properly cleaned up, context deadlines and cancellations will not be respected during this call. For a
+// usage example, see the Client.StartSession method documentation.
 //
 // ClusterTime, OperationTime, Client, and ID return the session's current operation time, the session's current cluster
 // time, the Client associated with the session, and the ID document associated with the session, respectively. The ID
@@ -179,7 +182,9 @@ func (s *sessionImpl) WithTransaction(ctx context.Context, fn func(sessCtx Sessi
 		res, err := fn(NewSessionContext(ctx, s))
 		if err != nil {
 			if s.clientSession.TransactionRunning() {
-				_ = s.AbortTransaction(ctx)
+				// Wrap the user-provided Context in a new one that behaves like context.Background() for deadlines and
+				// cancellations, but forwards Value requests to the original one.
+				_ = s.AbortTransaction(internal.NewBackgroundContext(ctx))
 			}
 
 			select {
@@ -188,10 +193,8 @@ func (s *sessionImpl) WithTransaction(ctx context.Context, fn func(sessCtx Sessi
 			default:
 			}
 
-			if cerr, ok := err.(CommandError); ok {
-				if cerr.HasErrorLabel(driver.TransientTransactionError) {
-					continue
-				}
+			if errorHasLabel(err, driver.TransientTransactionError) {
+				continue
 			}
 			return res, err
 		}
@@ -204,8 +207,10 @@ func (s *sessionImpl) WithTransaction(ctx context.Context, fn func(sessCtx Sessi
 	CommitLoop:
 		for {
 			err = s.CommitTransaction(ctx)
-			if err == nil {
-				return res, nil
+			// End when error is nil (transaction has been committed), or when context has timed out or been
+			// canceled, as retrying has no chance of success.
+			if err == nil || ctx.Err() != nil {
+				return res, err
 			}
 
 			select {
@@ -302,6 +307,11 @@ func (s *sessionImpl) CommitTransaction(ctx context.Context) error {
 	}
 
 	err = op.Execute(ctx)
+	// Return error without updating transaction state if it is a timeout, as the transaction has not
+	// actually been committed.
+	if IsTimeout(err) {
+		return replaceErrors(err)
+	}
 	s.clientSession.Committing = false
 	commitErr := s.clientSession.CommitTransaction()
 

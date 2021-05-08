@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/event"
-	"go.mongodb.org/mongo-driver/x/mongo/driver/address"
+	"go.mongodb.org/mongo-driver/mongo/address"
 	"golang.org/x/sync/semaphore"
 )
 
@@ -30,9 +30,6 @@ var ErrConnectionClosed = ConnectionError{ConnectionID: "<closed>", message: "co
 
 // ErrWrongPool is return when a connection is returned to a pool it doesn't belong to.
 var ErrWrongPool = PoolError("connection does not belong to this pool")
-
-// ErrWaitQueueTimeout is returned when the request to get a connection from the pool timesout when on the wait queue
-var ErrWaitQueueTimeout = PoolError("timed out while checking out a connection from connection pool")
 
 // PoolError is an error returned from a Pool method.
 type PoolError string
@@ -140,6 +137,9 @@ func newPool(config poolConfig, connOpts ...ConnectionOption) (*pool, error) {
 	opts := connOpts
 	if config.MaxIdleTime != time.Duration(0) {
 		opts = append(opts, WithIdleTimeout(func(_ time.Duration) time.Duration { return config.MaxIdleTime }))
+	}
+	if config.PoolMonitor != nil {
+		opts = append(opts, withPoolMonitor(func(_ *event.PoolMonitor) *event.PoolMonitor { return config.PoolMonitor }))
 	}
 
 	var maxConns = config.MaxPoolSize
@@ -340,7 +340,10 @@ func (p *pool) get(ctx context.Context) (*connection, error) {
 				Reason:  event.ReasonTimedOut,
 			})
 		}
-		return nil, ErrWaitQueueTimeout
+		errWaitQueueTimeout := WaitQueueTimeoutError{
+			Wrapped: ctx.Err(),
+		}
+		return nil, errWaitQueueTimeout
 	}
 
 	// This loop is so that we don't end up with more than maxPoolSize connections if p.conns.Maintain runs between
@@ -440,7 +443,7 @@ func (p *pool) get(ctx context.Context) (*connection, error) {
 					p.monitor.Event(&event.PoolEvent{
 						Type:    event.GetFailed,
 						Address: p.address.String(),
-						Reason:  reason,
+						Reason:  event.ReasonConnectionErrored,
 					})
 				}
 				return nil, err

@@ -1,4 +1,5 @@
-# OAuth1 [![Build Status](https://travis-ci.org/dghubble/oauth1.svg?branch=master)](https://travis-ci.org/dghubble/oauth1) [![GoDoc](http://godoc.org/github.com/dghubble/oauth1?status.svg)](http://godoc.org/github.com/dghubble/oauth1)
+# OAuth1 [![Build Status](https://github.com/dghubble/oauth1/workflows/test/badge.svg)](https://github.com/dghubble/oauth1/actions?query=workflow%3Atest+branch%3Amaster) [![Coverage](https://gocover.io/_badge/github.com/dghubble/oauth1)](https://gocover.io/github.com/dghubble/oauth1) [![GoDoc](http://godoc.org/github.com/dghubble/oauth1?status.svg)](http://godoc.org/github.com/dghubble/oauth1)
+
 <img align="right" src="https://storage.googleapis.com/dghubble/oauth1.png">
 
 Package `oauth1` provides a Go implementation of the [OAuth 1 spec](https://tools.ietf.org/html/rfc5849) to allow end-users to authorize a client (i.e. consumer) to access protected resources on his/her behalf.
@@ -34,7 +35,7 @@ Perform the OAuth 1 authorization flow to ask a user to grant an application acc
 ```go
 import (
     "github.com/dghubble/oauth1"
-    "github.com/dghubble/oauth1/twitter""
+    "github.com/dghubble/oauth1/twitter"
 )
 ...
 

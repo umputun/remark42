@@ -66,11 +66,12 @@ type Opts struct {
 	AvatarRoutePath   string       // avatar routing prefix, i.e. "/api/v1/avatar", default `/avatar`
 	UseGravatar       bool         // for email based auth (verified provider) use gravatar service
 
-	AdminPasswd    string                  // if presented, allows basic auth with user admin and given password
-	AudienceReader token.Audience          // list of allowed aud values, default (empty) allows any
-	AudSecrets     bool                    // allow multiple secrets (secret per aud)
-	Logger         logger.L                // logger interface, default is no logging at all
-	RefreshCache   middleware.RefreshCache // optional cache to keep refreshed tokens
+	AdminPasswd      string                   // if presented, allows basic auth with user admin and given password
+	BasicAuthChecker middleware.BasicAuthFunc // user custom checker for basic auth, if one defined then "AdminPasswd" will ignored
+	AudienceReader   token.Audience           // list of allowed aud values, default (empty) allows any
+	AudSecrets       bool                     // allow multiple secrets (secret per aud)
+	Logger           logger.L                 // logger interface, default is no logging at all
+	RefreshCache     middleware.RefreshCache  // optional cache to keep refreshed tokens
 }
 
 // NewService initializes everything
@@ -80,9 +81,10 @@ func NewService(opts Opts) (res *Service) {
 		opts:   opts,
 		logger: opts.Logger,
 		authMiddleware: middleware.Authenticator{
-			Validator:    opts.Validator,
-			AdminPasswd:  opts.AdminPasswd,
-			RefreshCache: opts.RefreshCache,
+			Validator:        opts.Validator,
+			AdminPasswd:      opts.AdminPasswd,
+			BasicAuthChecker: opts.BasicAuthChecker,
+			RefreshCache:     opts.RefreshCache,
 		},
 		issuer:      opts.Issuer,
 		useGravatar: opts.UseGravatar,

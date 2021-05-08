@@ -29,6 +29,8 @@ type Config struct {
 	Realm string
 	// OAuth1 Signer (defaults to HMAC-SHA1)
 	Signer Signer
+	// Noncer creates request nonces (defaults to DefaultNoncer)
+	Noncer Noncer
 }
 
 // NewConfig returns a new Config with the given consumer key and secret.

@@ -19,6 +19,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/youmark/pkcs8"
 	"go.mongodb.org/mongo-driver/bson/bsoncodec"
 	"go.mongodb.org/mongo-driver/event"
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
@@ -108,6 +109,7 @@ type ClientOptions struct {
 	MinPoolSize              *uint64
 	PoolMonitor              *event.PoolMonitor
 	Monitor                  *event.CommandMonitor
+	ServerMonitor            *event.ServerMonitor
 	ReadConcern              *readconcern.ReadConcern
 	ReadPreference           *readpref.ReadPref
 	Registry                 *bsoncodec.Registry
@@ -525,6 +527,12 @@ func (c *ClientOptions) SetMonitor(m *event.CommandMonitor) *ClientOptions {
 	return c
 }
 
+// SetServerMonitor specifies an SDAM monitor used to monitor SDAM events.
+func (c *ClientOptions) SetServerMonitor(m *event.ServerMonitor) *ClientOptions {
+	c.ServerMonitor = m
+	return c
+}
+
 // SetReadConcern specifies the read concern to use for read operations. A read concern level can also be set through
 // the "readConcernLevel" URI option (e.g. "readConcernLevel=majority"). The default is nil, meaning the server will use
 // its configured default.
@@ -705,7 +713,7 @@ func (c *ClientOptions) SetDisableOCSPEndpointCheck(disableCheck bool) *ClientOp
 }
 
 // MergeClientOptions combines the given *ClientOptions into a single *ClientOptions in a last one wins fashion.
-// The specified options are merged with the existing options on the collection, with the specified options taking
+// The specified options are merged with the existing options on the client, with the specified options taking
 // precedence.
 func MergeClientOptions(opts ...*ClientOptions) *ClientOptions {
 	c := Client()
@@ -756,6 +764,9 @@ func MergeClientOptions(opts ...*ClientOptions) *ClientOptions {
 		}
 		if opt.Monitor != nil {
 			c.Monitor = opt.Monitor
+		}
+		if opt.ServerMonitor != nil {
+			c.ServerMonitor = opt.ServerMonitor
 		}
 		if opt.ReadConcern != nil {
 			c.ReadConcern = opt.ReadConcern
@@ -875,14 +886,34 @@ func addClientCertFromBytes(cfg *tls.Config, data []byte, keyPasswd string) (str
 			certDecodedBlock = currentBlock.Bytes
 			start += len(certBlock)
 		} else if strings.HasSuffix(currentBlock.Type, "PRIVATE KEY") {
-			if keyPasswd != "" && x509.IsEncryptedPEMBlock(currentBlock) {
-				var encoded bytes.Buffer
-				buf, err := x509.DecryptPEMBlock(currentBlock, []byte(keyPasswd))
-				if err != nil {
-					return "", err
+			isEncrypted := x509.IsEncryptedPEMBlock(currentBlock) || strings.Contains(currentBlock.Type, "ENCRYPTED PRIVATE KEY")
+			if isEncrypted {
+				if keyPasswd == "" {
+					return "", fmt.Errorf("no password provided to decrypt private key")
 				}
 
-				pem.Encode(&encoded, &pem.Block{Type: currentBlock.Type, Bytes: buf})
+				var keyBytes []byte
+				var err error
+				// Process the X.509-encrypted or PKCS-encrypted PEM block.
+				if x509.IsEncryptedPEMBlock(currentBlock) {
+					// Only covers encrypted PEM data with a DEK-Info header.
+					keyBytes, err = x509.DecryptPEMBlock(currentBlock, []byte(keyPasswd))
+					if err != nil {
+						return "", err
+					}
+				} else if strings.Contains(currentBlock.Type, "ENCRYPTED") {
+					// The pkcs8 package only handles the PKCS #5 v2.0 scheme.
+					decrypted, err := pkcs8.ParsePKCS8PrivateKey(currentBlock.Bytes, []byte(keyPasswd))
+					if err != nil {
+						return "", err
+					}
+					keyBytes, err = x509MarshalPKCS8PrivateKey(decrypted)
+					if err != nil {
+						return "", err
+					}
+				}
+				var encoded bytes.Buffer
+				pem.Encode(&encoded, &pem.Block{Type: currentBlock.Type, Bytes: keyBytes})
 				keyBlock = encoded.Bytes()
 				start = len(data) - len(remaining)
 			} else {
