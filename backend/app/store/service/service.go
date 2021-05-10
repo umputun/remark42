@@ -36,6 +36,7 @@ type DataStore struct {
 	TitleExtractor         *TitleExtractor
 	RestrictedWordsMatcher *RestrictedWordsMatcher
 	ImageService           *image.Service
+	AdminEdits             bool // allow admin unlimited edits
 
 	// granular locks
 	scopedLocks struct {
@@ -433,22 +434,36 @@ type EditRequest struct {
 	Orig    string
 	Summary string
 	Delete  bool
+	Admin   bool
 }
 
 // EditComment to edit text and update Edit info
 func (s *DataStore) EditComment(locator store.Locator, commentID string, req EditRequest) (comment store.Comment, err error) {
+
+	editAllowed := func(comment store.Comment) error {
+		if req.Admin && s.AdminEdits {
+			return nil
+		}
+
+		// edit allowed in editDuration window only
+		if s.EditDuration > 0 && time.Now().After(comment.Timestamp.Add(s.EditDuration)) {
+			return errors.Errorf("too late to edit %s", commentID)
+		}
+
+		// edit rejected on replayed threads
+		if s.HasReplies(comment) {
+			return errors.Errorf("parent comment with reply can't be edited, %s", commentID)
+		}
+		return nil
+	}
+
 	comment, err = s.Engine.Get(engine.GetRequest{Locator: locator, CommentID: commentID})
 	if err != nil {
 		return comment, err
 	}
 
-	// edit allowed in editDuration window only
-	if s.EditDuration > 0 && time.Now().After(comment.Timestamp.Add(s.EditDuration)) {
-		return comment, errors.Errorf("too late to edit %s", commentID)
-	}
-
-	if s.HasReplies(comment) {
-		return comment, errors.Errorf("parent comment with reply can't be edited, %s", commentID)
+	if err = editAllowed(comment); err != nil {
+		return comment, err
 	}
 
 	if req.Delete { // delete request
@@ -466,10 +481,7 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 
 	comment.Text = req.Text
 	comment.Orig = req.Orig
-	comment.Edit = &store.Edit{
-		Timestamp: time.Now(),
-		Summary:   req.Summary,
-	}
+	comment.Edit = &store.Edit{Timestamp: time.Now(), Summary: req.Summary}
 	comment.Locator = locator
 	comment.Sanitize()
 

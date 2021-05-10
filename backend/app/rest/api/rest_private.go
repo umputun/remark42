@@ -166,6 +166,7 @@ func (s *private) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		Orig:    edit.Text,
 		Summary: edit.Summary,
 		Delete:  edit.Delete,
+		Admin:   user.Admin,
 	}
 
 	res, err := s.dataService.EditComment(locator, id, editReq)

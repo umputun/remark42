@@ -742,6 +742,29 @@ func TestService_EditCommentReplyFailed(t *testing.T) {
 	assert.EqualError(t, err, "parent comment with reply can't be edited, id-1")
 }
 
+func TestService_EditCommentAdmin(t *testing.T) {
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, EditDuration: 100 * time.Millisecond,
+		AdminStore: admin.NewStaticKeyStore("secret 123"), AdminEdits: true}
+
+	res, err := b.Last("radio-t", 0, time.Time{}, store.User{})
+	t.Logf("%+v", res[0])
+	assert.NoError(t, err)
+	require.Equal(t, 2, len(res))
+	assert.Nil(t, res[0].Edit)
+
+	time.Sleep(time.Second)
+
+	_, err = b.EditComment(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID,
+		EditRequest{Orig: "yyy", Text: "xxx", Summary: "my edit", Admin: true})
+	assert.NoError(t, err)
+
+	_, err = b.EditComment(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID,
+		EditRequest{Orig: "yyy", Text: "xxx", Summary: "my edit", Admin: false})
+	assert.Error(t, err)
+}
+
 func TestService_ValidateComment(t *testing.T) {
 
 	b := DataStore{MaxCommentSize: 2000, AdminStore: admin.NewStaticKeyStore("secret 123")}
