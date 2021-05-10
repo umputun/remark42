@@ -462,7 +462,7 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 		return comment, err
 	}
 
-	if err = editAllowed(comment); err != nil {
+	if err := editAllowed(comment); err != nil {
 		return comment, err
 	}
 
