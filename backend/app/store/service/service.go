@@ -457,12 +457,11 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 		return nil
 	}
 
-	comment, err = s.Engine.Get(engine.GetRequest{Locator: locator, CommentID: commentID})
-	if err != nil {
+	if comment, err = s.Engine.Get(engine.GetRequest{Locator: locator, CommentID: commentID}); err != nil {
 		return comment, err
 	}
 
-	if err := editAllowed(comment); err != nil {
+	if err = editAllowed(comment); err != nil { //nolint gocritic
 		return comment, err
 	}
 
