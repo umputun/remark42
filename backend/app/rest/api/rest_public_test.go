@@ -550,6 +550,7 @@ func TestRest_Config(t *testing.T) {
 	assert.Equal(t, 10.0, j["readonly_age"])
 	assert.Equal(t, 10000.0, j["max_image_size"])
 	assert.Equal(t, true, j["emoji_enabled"].(bool))
+	assert.Equal(t, false, j["admin_edit"].(bool))
 }
 
 func TestRest_Info(t *testing.T) {

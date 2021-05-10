@@ -68,6 +68,7 @@ type ServerCommand struct {
 	PositiveScore    bool          `long:"positive-score" env:"POSITIVE_SCORE" description:"enable positive score only"`
 	ReadOnlyAge      int           `long:"read-age" env:"READONLY_AGE" default:"0" description:"read-only age of comments, days"`
 	EditDuration     time.Duration `long:"edit-time" env:"EDIT_TIME" default:"5m" description:"edit window"`
+	AdminEdit        bool          `long:"admin-edit" env:"ADMIN_EDIT" description:"unlimited edit for admins"`
 	Port             int           `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
 	WebRoot          string        `long:"web-root" env:"REMARK_WEB_ROOT" default:"./web" description:"web root directory"`
 	UpdateLimit      float64       `long:"update-limit" env:"UPDATE_LIMIT" default:"0.5" description:"updates/sec limit"`
@@ -355,6 +356,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 	dataService := &service.DataStore{
 		Engine:                 storeEngine,
 		EditDuration:           s.EditDuration,
+		AdminEdits:             s.AdminEdit,
 		AdminStore:             adminStore,
 		MaxCommentSize:         s.MaxCommentSize,
 		MaxVotes:               s.MaxVotes,
