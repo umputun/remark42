@@ -39,6 +39,7 @@ const (
 	ErrActionRejected       = 17 // general error for rejected actions
 	ErrAssetNotFound        = 18 // requested file not found
 	ErrCommentRestrictWords = 19 // restricted words in a comment
+	ErrImgNotFound          = 20 // posted image not found in the storage
 )
 
 // errTmplData store data for error message

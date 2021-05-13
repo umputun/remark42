@@ -148,6 +148,8 @@ func (s *Service) Submit(idsFn func() []string) {
 }
 
 // ExtractPictures gets list of images from the doc html and convert from urls to ids, i.e. user/pic.png
+// It doesn't return possible errors parsing the cached images, and will try to return as many parsed ids
+// as possible instead.
 func (s *Service) ExtractPictures(commentHTML string) (ids []string, err error) {
 
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(commentHTML))
