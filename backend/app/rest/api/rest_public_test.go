@@ -76,6 +76,7 @@ srv, ts := prep(t)
 }
 </pre>`,
 		string(b))
+	assert.NoError(t, resp.Body.Close())
 }
 
 func TestRest_PreviewCode(t *testing.T) {
@@ -97,6 +98,7 @@ BKT
 	assert.NoError(t, err)
 	assert.Equal(t, `<pre class="chroma"><span class="kd">func</span> <span class="nf">main</span><span class="p">(</span><span class="nx">aa</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span><span class="k">return</span> <span class="mi">0</span><span class="p">}</span>
 </pre>`, string(b))
+	assert.NoError(t, resp.Body.Close())
 }
 
 func TestRest_Find(t *testing.T) {

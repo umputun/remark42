@@ -34,6 +34,7 @@ linters-settings:
 
 linters:
   enable:
+    - bodyclose
     - megacheck
     - golint
     - govet

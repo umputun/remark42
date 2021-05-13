@@ -44,6 +44,7 @@ func TestRest_Create(t *testing.T) {
 	b, err := ioutil.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	require.Equal(t, http.StatusCreated, resp.StatusCode, string(b))
+	assert.NoError(t, resp.Body.Close())
 
 	c := R.JSON{}
 	err = json.Unmarshal(b, &c)
@@ -100,6 +101,7 @@ func TestRest_CreateTooBig(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	b, err := ioutil.ReadAll(resp.Body)
 	assert.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
 	c := R.JSON{}
 	err = json.Unmarshal(b, &c)
 	assert.NoError(t, err)
@@ -112,6 +114,7 @@ func TestRest_CreateTooBig(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	b, err = ioutil.ReadAll(resp.Body)
 	assert.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
 	c = R.JSON{}
 	err = json.Unmarshal(b, &c)
 	assert.NoError(t, err)
@@ -131,6 +134,7 @@ func TestRest_CreateWithRestrictedWord(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	b, err := ioutil.ReadAll(resp.Body)
 	assert.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
 	c := R.JSON{}
 	err = json.Unmarshal(b, &c)
 	assert.NoError(t, err)
@@ -171,6 +175,7 @@ func TestRest_CreateWithLazyImage(t *testing.T) {
 	require.Equal(t, http.StatusCreated, resp.StatusCode)
 	b, err := ioutil.ReadAll(resp.Body)
 	assert.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
 	c := store.Comment{}
 	err = json.Unmarshal(b, &c)
 	assert.NoError(t, err)
@@ -188,6 +193,7 @@ func TestRest_CreateAndGet(t *testing.T) {
 	require.Equal(t, http.StatusCreated, resp.StatusCode)
 	b, err := ioutil.ReadAll(resp.Body)
 	assert.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
 	c := R.JSON{}
 	err = json.Unmarshal(b, &c)
 	assert.NoError(t, err)
@@ -233,6 +239,7 @@ func TestRest_Update(t *testing.T) {
 	body, err := ioutil.ReadAll(b.Body)
 	assert.NoError(t, err)
 	assert.Equal(t, 200, b.StatusCode, string(body))
+	assert.NoError(t, b.Body.Close())
 
 	// comments returned by update
 	c2 := store.Comment{}
@@ -267,6 +274,7 @@ func TestRest_UpdateDelete(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	bb, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
 	j := []store.PostInfo{}
 	err = json.Unmarshal(bb, &j)
 	assert.NoError(t, err)
@@ -284,6 +292,7 @@ func TestRest_UpdateDelete(t *testing.T) {
 	body, err := ioutil.ReadAll(b.Body)
 	require.NoError(t, err)
 	assert.Equal(t, 200, b.StatusCode, string(body))
+	assert.NoError(t, b.Body.Close())
 
 	// comments returned by update
 	c2 := store.Comment{}
@@ -308,6 +317,7 @@ func TestRest_UpdateDelete(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	bb, err = ioutil.ReadAll(resp.Body)
 	assert.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
 	j = []store.PostInfo{}
 	err = json.Unmarshal(bb, &j)
 	require.NoError(t, err)
@@ -384,6 +394,7 @@ func TestRest_UpdateWithRestrictedWords(t *testing.T) {
 	assert.NoError(t, err)
 	body, err := ioutil.ReadAll(b.Body)
 	assert.NoError(t, err)
+	assert.NoError(t, b.Body.Close())
 	c := R.JSON{}
 	err = json.Unmarshal(body, &c)
 	assert.NoError(t, err)
@@ -474,6 +485,7 @@ func TestRest_Vote(t *testing.T) {
 	cr = store.Comment{}
 	err = json.NewDecoder(resp.Body).Decode(&cr)
 	assert.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
 	assert.Equal(t, -1, cr.Score)
 	assert.Equal(t, 0, cr.Vote, "no vote info for different user")
 	assert.Equal(t, map[string]bool(nil), cr.Votes, "hidden")
@@ -597,6 +609,7 @@ func TestRest_Email(t *testing.T) {
 			require.NoError(t, err)
 			body, err := ioutil.ReadAll(resp.Body)
 			require.NoError(t, err)
+			assert.NoError(t, resp.Body.Close())
 			// read User.Email from the token in the cookie
 			for _, c := range resp.Cookies() {
 				if c.Name == "JWT" {
@@ -837,6 +850,7 @@ func TestRest_UserAllDataManyComments(t *testing.T) {
 
 	ungzReader, err := gzip.NewReader(resp.Body)
 	assert.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
 	ungzBody, err := ioutil.ReadAll(ungzReader)
 	assert.NoError(t, err)
 	strUngzBody := string(ungzBody)
@@ -995,6 +1009,7 @@ func TestRest_CreateWithPictures(t *testing.T) {
 
 		body, err := ioutil.ReadAll(resp.Body)
 		require.NoError(t, err)
+		assert.NoError(t, resp.Body.Close())
 		m := map[string]string{}
 		err = json.Unmarshal(body, &m)
 		assert.NoError(t, err)
@@ -1014,6 +1029,7 @@ func TestRest_CreateWithPictures(t *testing.T) {
 	assert.NoError(t, err)
 	b, err := ioutil.ReadAll(resp.Body)
 	assert.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
 	require.Equal(t, http.StatusCreated, resp.StatusCode, string(b))
 
 	for i := range ids {

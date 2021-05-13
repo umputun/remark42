@@ -46,6 +46,7 @@ func TestMigrator_Import(t *testing.T) {
 	b, err := ioutil.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	assert.Equal(t, "{\"status\":\"import request accepted\"}\n", string(b))
+	assert.NoError(t, resp.Body.Close())
 
 	waitForMigrationCompletion(t, ts)
 }
@@ -80,6 +81,7 @@ func TestMigrator_ImportForm(t *testing.T) {
 	b, err := ioutil.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	assert.Equal(t, "{\"status\":\"import request accepted\"}\n", string(b))
+	assert.NoError(t, resp.Body.Close())
 
 	waitForMigrationCompletion(t, ts)
 }
@@ -102,6 +104,7 @@ func TestMigrator_ImportFromWP(t *testing.T) {
 	b, err := ioutil.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	assert.Equal(t, "{\"status\":\"import request accepted\"}\n", string(b))
+	assert.NoError(t, resp.Body.Close())
 
 	waitForMigrationCompletion(t, ts)
 }

@@ -153,7 +153,7 @@ func (p Image) downloadImage(ctx context.Context, imgURL string) ([]byte, error)
 		if e != nil {
 			return errors.Wrapf(e, "failed to make request for %s", imgURL)
 		}
-		resp, e = client.Do(req.WithContext(ctx))
+		resp, e = client.Do(req.WithContext(ctx)) //nolint:bodyclose // need a refactor to fix that
 		return e
 	})
 	if err != nil {
@@ -168,5 +168,6 @@ func (p Image) downloadImage(ctx context.Context, imgURL string) ([]byte, error)
 	if err != nil {
 		return nil, errors.Errorf("unable to read image body")
 	}
+	_ = resp.Body.Close()
 	return imgData, nil
 }
