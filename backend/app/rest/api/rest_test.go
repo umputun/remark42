@@ -92,7 +92,7 @@ func TestRest_Shutdown(t *testing.T) {
 	}()
 
 	st := time.Now()
-	srv.Run(0)
+	srv.Run("127.0.0.1", 0)
 	assert.True(t, time.Since(st).Seconds() < 1, "should take about 100ms")
 	<-done
 }
@@ -132,7 +132,7 @@ func TestRest_RunStaticSSLMode(t *testing.T) {
 
 	port := chooseRandomUnusedPort()
 	go func() {
-		srv.Run(port)
+		srv.Run("", port)
 	}()
 
 	waitForHTTPSServerStart(sslPort)
@@ -181,7 +181,7 @@ func TestRest_RunAutocertModeHTTPOnly(t *testing.T) {
 	port := chooseRandomUnusedPort()
 	go func() {
 		// can't check https server locally, just only http server
-		srv.Run(port)
+		srv.Run("", port)
 	}()
 
 	waitForHTTPSServerStart(sslPort)

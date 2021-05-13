@@ -70,6 +70,7 @@ type ServerCommand struct {
 	EditDuration     time.Duration `long:"edit-time" env:"EDIT_TIME" default:"5m" description:"edit window"`
 	AdminEdit        bool          `long:"admin-edit" env:"ADMIN_EDIT" description:"unlimited edit for admins"`
 	Port             int           `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
+	Address          string        `long:"address" env:"REMARK_ADDRESS" default:"" description:"listening address"`
 	WebRoot          string        `long:"web-root" env:"REMARK_WEB_ROOT" default:"./web" description:"web root directory"`
 	UpdateLimit      float64       `long:"update-limit" env:"UPDATE_LIMIT" default:"0.5" description:"updates/sec limit"`
 	RestrictedWords  []string      `long:"restricted-words" env:"RESTRICTED_WORDS" description:"words prohibited to use in comments" env-delim:","`
@@ -262,7 +263,7 @@ type serverApp struct {
 
 // Execute is the entry point for "server" command, called by flag parser
 func (s *ServerCommand) Execute(_ []string) error {
-	log.Printf("[INFO] start server on port %d", s.Port)
+	log.Printf("[INFO] start server on port %s:%d", s.Address, s.Port)
 	resetEnv("SECRET", "AUTH_GOOGLE_CSEC", "AUTH_GITHUB_CSEC", "AUTH_FACEBOOK_CSEC", "AUTH_YANDEX_CSEC", "ADMIN_PASSWD")
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -511,7 +512,7 @@ func (a *serverApp) run(ctx context.Context) error {
 
 	go a.imageService.Cleanup(ctx) // pictures cleanup for staging images
 
-	a.restSrv.Run(a.Port)
+	a.restSrv.Run(a.Address, a.Port)
 
 	// shutdown procedures after HTTP server is stopped
 	if a.devAuth != nil {
