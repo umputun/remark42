@@ -88,6 +88,20 @@ func (s *private) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	comment = s.commentFormatter.Format(comment)
 
+	// check if images are valid
+	imgIds, err := s.imageService.ExtractPictures(comment.Text)
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't extract pictures from comment text", rest.ErrCommentValidation)
+		return
+	}
+	for _, id := range imgIds {
+		_, err = s.imageService.Load(id)
+		if err != nil {
+			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't load picture from the comment", rest.ErrImgNotFound)
+			return
+		}
+	}
+
 	// check if user blocked
 	if s.dataService.IsBlocked(comment.Locator.SiteID, comment.User.ID) {
 		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"), "user blocked", rest.ErrUserBlocked)

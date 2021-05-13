@@ -402,6 +402,8 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 		RestrictedWordsMatcher: restrictedWordsMatcher,
 	}
 
+	remarkURL := "https://demo.remark42.com"
+
 	srv = &Rest{
 		DataService: dataStore,
 		Authenticator: auth.NewService(auth.Opts{
@@ -411,13 +413,15 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 		}),
 		Cache:     memCache,
 		WebRoot:   tmp,
-		RemarkURL: "https://demo.remark42.com",
+		RemarkURL: remarkURL,
 		ImageService: image.NewService(&image.FileSystem{
 			Location:   tmp + "/pics-remark42",
 			Partitions: 100,
 			Staging:    tmp + "/pics-remark42/staging",
 		}, image.ServiceParams{
 			EditDuration: 100 * time.Millisecond,
+			ImageAPI:     remarkURL + "/api/v1/picture/",
+			ProxyAPI:     remarkURL + "/api/v1/img",
 			MaxSize:      10000,
 		}),
 		ImageProxy:       &proxy.Image{},

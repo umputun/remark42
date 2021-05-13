@@ -45,6 +45,27 @@ func TestRest_Preview(t *testing.T) {
 	assert.Equal(t, 400, resp.StatusCode)
 }
 
+func TestRest_PreviewWithWrongImage(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	resp, err := post(t, ts.URL+"/api/v1/preview", fmt.Sprintf(`{"text": "![non-existent.jpg](%s/api/v1/picture/dev_user/bad_picture)", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, srv.RemarkURL))
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	b, err := ioutil.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
+	assert.Contains(t,
+		string(b),
+		"{\"code\":20,\"details\":\"can't load picture from the comment\","+
+			"\"error\":\"can't get image file for dev_user/bad_picture: can't get image stats for dev_user/bad_picture: stat ",
+	)
+	assert.Contains(t,
+		string(b),
+		"/pics-remark42/staging/dev_user/62/bad_picture: no such file or directory\"}\n",
+	)
+}
+
 func TestRest_PreviewWithMD(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()

@@ -165,6 +165,28 @@ func TestRest_CreateRejected(t *testing.T) {
 	require.Equal(t, http.StatusForbidden, resp.StatusCode, "reject wrong aud")
 }
 
+func TestRest_CreateWithWrongImage(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	// create comment
+	resp, err := post(t, ts.URL+"/api/v1/comment", fmt.Sprintf(`{"text": "![non-existent.jpg](%s/api/v1/picture/dev_user/bad_picture)", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, srv.RemarkURL))
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	b, err := ioutil.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
+	assert.Contains(t,
+		string(b),
+		"{\"code\":20,\"details\":\"can't load picture from the comment\","+
+			"\"error\":\"can't get image file for dev_user/bad_picture: can't get image stats for dev_user/bad_picture: stat ",
+	)
+	assert.Contains(t,
+		string(b),
+		"/pics-remark42/staging/dev_user/62/bad_picture: no such file or directory\"}\n",
+	)
+}
+
 func TestRest_CreateWithLazyImage(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
@@ -979,6 +1001,8 @@ func TestRest_CreateWithPictures(t *testing.T) {
 	}, image.ServiceParams{
 		EditDuration: 100 * time.Millisecond,
 		MaxSize:      2000,
+		ImageAPI:     svc.RemarkURL + "/api/v1/picture/",
+		ProxyAPI:     svc.RemarkURL + "/api/v1/img",
 	})
 	defer imageService.Close(context.Background())
 
@@ -1022,7 +1046,7 @@ func TestRest_CreateWithPictures(t *testing.T) {
 		ids[i] = uploadPicture(fmt.Sprintf("pic%d.png", i))
 	}
 
-	text := fmt.Sprintf(`text 123  ![](/api/v1/picture/%s) *xxx* ![](/api/v1/picture/%s) ![](/api/v1/picture/%s)`, ids[0], ids[1], ids[2])
+	text := fmt.Sprintf(`text 123  ![](%s/api/v1/picture/%s) *xxx* ![](%s/api/v1/picture/%s) ![](%s/api/v1/picture/%s)`, svc.RemarkURL, ids[0], svc.RemarkURL, ids[1], svc.RemarkURL, ids[2])
 	body := fmt.Sprintf(`{"text": "%s", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`, text)
 
 	resp, err := post(t, ts.URL+"/api/v1/comment", body)
