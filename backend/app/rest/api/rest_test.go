@@ -324,6 +324,7 @@ func TestRest_cacheControl(t *testing.T) {
 			h.ServeHTTP(w, req)
 			resp := w.Result()
 			assert.Equal(t, http.StatusOK, resp.StatusCode)
+			assert.NoError(t, resp.Body.Close())
 			t.Logf("%+v", resp.Header)
 			assert.Equal(t, `"`+tt.etag+`"`, resp.Header.Get("Etag"))
 			assert.Equal(t, `max-age=`+strconv.Itoa(int(tt.exp.Seconds()))+", no-cache", resp.Header.Get("Cache-Control"))
@@ -354,6 +355,7 @@ func TestRest_frameAncestors(t *testing.T) {
 			h.ServeHTTP(w, req)
 			resp := w.Result()
 			assert.Equal(t, http.StatusOK, resp.StatusCode)
+			assert.NoError(t, resp.Body.Close())
 			t.Logf("%+v", resp.Header)
 			assert.Equal(t, tt.header, resp.Header.Get("Content-Security-Policy"))
 

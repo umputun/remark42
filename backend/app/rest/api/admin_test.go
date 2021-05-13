@@ -310,6 +310,7 @@ func TestAdmin_Block(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	body, err = ioutil.ReadAll(resp.Body)
 	assert.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
 	pi = []store.PostInfo{}
 	err = json.Unmarshal(body, &pi)
 	assert.NoError(t, err)
@@ -660,6 +661,7 @@ func TestAdmin_ExportFile(t *testing.T) {
 
 	ungzReader, err := gzip.NewReader(resp.Body)
 	assert.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
 	ungzBody, err := ioutil.ReadAll(ungzReader)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, strings.Count(string(ungzBody), "\n"))
