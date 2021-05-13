@@ -159,6 +159,7 @@ func (p Image) downloadImage(ctx context.Context, imgURL string) ([]byte, error)
 	if err != nil {
 		return nil, errors.Wrapf(err, "can't download image %s", imgURL)
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, errors.Errorf("got unsuccessful response status %d while fetching %s", resp.StatusCode, imgURL)
@@ -168,6 +169,5 @@ func (p Image) downloadImage(ctx context.Context, imgURL string) ([]byte, error)
 	if err != nil {
 		return nil, errors.Errorf("unable to read image body")
 	}
-	_ = resp.Body.Close()
 	return imgData, nil
 }
