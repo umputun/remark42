@@ -134,6 +134,12 @@ func (s *Service) Submit(idsFn func() []string) {
 
 	atomic.AddInt32(&s.submitCount, 1)
 
+	// reset cleanup timer before submitting the images
+	// to prevent them from being cleaned up while waiting for EditDuration to expire
+	for _, imgID := range idsFn() {
+		_ = s.store.ResetCleanupTimer(imgID)
+	}
+
 	s.submitCh <- submitReq{idsFn: idsFn, TS: time.Now()}
 }
 
@@ -175,9 +181,9 @@ func (s *Service) ExtractPictures(commentHTML string) (ids []string) {
 	return ids
 }
 
-// Cleanup runs periodic cleanup with 2.5*ServiceParams.EditDuration. Blocking loop, should be called inside of goroutine by consumer
+// Cleanup runs periodic cleanup with 1.5*ServiceParams.EditDuration. Blocking loop, should be called inside of goroutine by consumer
 func (s *Service) Cleanup(ctx context.Context) {
-	cleanupTTL := s.EditDuration * 25 / 10 // cleanup images older than 2.5 * EditDuration
+	cleanupTTL := s.EditDuration * 15 / 10 // cleanup images older than 1.5 * EditDuration
 	log.Printf("[INFO] start pictures cleanup, staging ttl=%v", cleanupTTL)
 
 	for {

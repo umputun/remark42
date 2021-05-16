@@ -1342,6 +1342,8 @@ func TestService_submitImages(t *testing.T) {
 	mockStore := image.MockStore{}
 	mockStore.On("Commit", "dev/pic1.png").Once().Return(nil)
 	mockStore.On("Commit", "dev/pic2.png").Once().Return(nil)
+	mockStore.On("ResetCleanupTimer", "dev/pic1.png").Once().Return(nil)
+	mockStore.On("ResetCleanupTimer", "dev/pic2.png").Once().Return(nil)
 	imgSvc := image.NewService(&mockStore,
 		image.ServiceParams{
 			EditDuration: 50 * time.Millisecond,
@@ -1367,6 +1369,7 @@ func TestService_submitImages(t *testing.T) {
 	assert.NoError(t, err)
 
 	b.submitImages(c)
+	mockStore.AssertNumberOfCalls(t, "ResetCleanupTimer", 2)
 	time.Sleep(b.EditDuration + 100 * time.Millisecond)
 	mockStore.AssertNumberOfCalls(t, "Commit", 2)
 }
@@ -1384,6 +1387,10 @@ func TestService_ResubmitStagingImages(t *testing.T) {
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
 	b := DataStore{Engine: eng, EditDuration: 10 * time.Millisecond, ImageService: imgSvc}
+
+	mockStore.On("ResetCleanupTimer", "dev_user/bqf122eq9r8ad657n3ng").Once().Return(nil)
+	mockStore.On("ResetCleanupTimer", "dev_user/bqf321eq9r8ad657n3ng").Once().Return(nil)
+	mockStore.On("ResetCleanupTimer", "cached_images/12318fbd4c55e9d177b8b5ae197bc89c5afd8e07-a41fcb00643f28d700504256ec81cbf2e1aac53e").Once().Return(nil)
 
 	// create comment with three images without preparing it properly
 	comment := store.Comment{
