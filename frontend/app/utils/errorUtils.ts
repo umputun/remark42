@@ -87,7 +87,7 @@ export const errorMessages = defineMessages<string | number>({
   },
   20: {
     id: 'errors.20',
-    defaultMessage: 'Posted image not found. Try to upload it again.',
+    defaultMessage: 'Posted image not found. Please try to upload it again.',
   },
   401: {
     id: 'errors.not-authorized',
