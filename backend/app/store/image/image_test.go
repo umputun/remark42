@@ -122,7 +122,7 @@ func TestService_Cleanup(t *testing.T) {
 
 	svc := NewService(&store, ServiceParams{EditDuration: 20 * time.Millisecond})
 	// cancel context after 2.1 cleanup TTLs
-	ctx, cancel := context.WithTimeout(context.Background(), svc.EditDuration / 100 * 25 * 21)
+	ctx, cancel := context.WithTimeout(context.Background(), svc.EditDuration / 100 * 15 * 21)
 	defer cancel()
 	svc.Cleanup(ctx)
 	store.AssertNumberOfCalls(t, "Cleanup", 2)
@@ -131,11 +131,14 @@ func TestService_Cleanup(t *testing.T) {
 func TestService_Submit(t *testing.T) {
 	store := MockStore{}
 	store.On("Commit", mock.Anything, mock.Anything).Times(7).Return(nil)
+	store.On("ResetCleanupTimer", mock.Anything, mock.Anything).Times(7).Return(nil)
 	svc := NewService(&store, ServiceParams{ImageAPI: "/blah/", EditDuration: time.Millisecond * 100})
 	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
+	store.AssertNumberOfCalls(t, "ResetCleanupTimer", 3)
 	err := svc.SubmitAndCommit(func() []string { return []string{"id4", "id5"} })
 	assert.NoError(t, err)
 	svc.Submit(func() []string { return []string{"id6", "id7"} })
+	store.AssertNumberOfCalls(t, "ResetCleanupTimer", 5)
 	svc.Submit(nil)
 	store.AssertNumberOfCalls(t, "Commit", 2)
 	time.Sleep(time.Millisecond * 175)
@@ -146,10 +149,12 @@ func TestService_Submit(t *testing.T) {
 func TestService_Close(t *testing.T) {
 	store := MockStore{}
 	store.On("Commit", mock.Anything, mock.Anything).Times(5).Return(nil)
+	store.On("ResetCleanupTimer", mock.Anything, mock.Anything).Times(5).Return(nil)
 	svc := Service{store: &store, ServiceParams: ServiceParams{ImageAPI: "/blah/", EditDuration: time.Hour * 24}}
 	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
 	svc.Submit(func() []string { return []string{"id4", "id5"} })
 	svc.Submit(nil)
+	store.AssertNumberOfCalls(t, "ResetCleanupTimer", 5)
 	svc.Close(context.TODO())
 	store.AssertNumberOfCalls(t, "Commit", 5)
 }
@@ -157,11 +162,13 @@ func TestService_Close(t *testing.T) {
 func TestService_SubmitDelay(t *testing.T) {
 	store := MockStore{}
 	store.On("Commit", mock.Anything, mock.Anything).Times(5).Return(nil)
+	store.On("ResetCleanupTimer", mock.Anything, mock.Anything).Times(5).Return(nil)
 	svc := NewService(&store, ServiceParams{EditDuration: 20 * time.Millisecond})
 	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
 	time.Sleep(150 * time.Millisecond) // let first batch to pass TTL
 	svc.Submit(func() []string { return []string{"id4", "id5"} })
 	svc.Submit(nil)
+	store.AssertNumberOfCalls(t, "ResetCleanupTimer", 5)
 	store.AssertNumberOfCalls(t, "Commit", 3)
 	svc.Close(context.TODO())
 	store.AssertNumberOfCalls(t, "Commit", 5)
