@@ -660,9 +660,7 @@ export class Comment extends Component<CommentProps, State> {
           </div>
         )}
         <div className="comment__info">
-          {props.view !== 'user' && !props.collapsed && (
-            <Avatar className="comment__avatar" url={o.user.picture} alt={o.user.name} />
-          )}
+          {props.view !== 'user' && !props.collapsed && <Avatar className="comment__avatar" url={o.user.picture} />}
           {props.view !== 'user' && (
             <span
               {...getHandleClickProps(this.toggleUserInfoVisibility)}
