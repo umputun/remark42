@@ -1345,7 +1345,7 @@ func TestService_submitImages(t *testing.T) {
 	imgSvc := image.NewService(&mockStore,
 		image.ServiceParams{
 			EditDuration: 50 * time.Millisecond,
-			ImageAPI:     "/",
+			ImageAPI:     "/images/dev/",
 			ProxyAPI:     "/non_existent",
 		})
 	defer imgSvc.Close(context.TODO())
@@ -1367,7 +1367,7 @@ func TestService_submitImages(t *testing.T) {
 	assert.NoError(t, err)
 
 	b.submitImages(c)
-	time.Sleep(250 * time.Millisecond)
+	time.Sleep(b.EditDuration + 100 * time.Millisecond)
 	mockStore.AssertNumberOfCalls(t, "Commit", 2)
 }
 
@@ -1408,7 +1408,7 @@ func TestService_ResubmitStagingImages(t *testing.T) {
 	mockStore.On("Commit", "dev_user/bqf122eq9r8ad657n3ng").Once().Return(nil)
 	mockStore.On("Commit", "dev_user/bqf321eq9r8ad657n3ng").Once().Return(nil)
 	mockStore.On("Commit", "cached_images/12318fbd4c55e9d177b8b5ae197bc89c5afd8e07-a41fcb00643f28d700504256ec81cbf2e1aac53e").Once().Return(nil)
-	time.Sleep(time.Millisecond * 100)
+	time.Sleep(b.EditDuration + time.Millisecond * 100)
 
 	mockStore.AssertNumberOfCalls(t, "Info", 1)
 	mockStore.AssertNumberOfCalls(t, "Commit", 3)

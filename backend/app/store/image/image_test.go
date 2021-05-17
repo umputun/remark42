@@ -127,10 +127,11 @@ func TestService_Cleanup(t *testing.T) {
 	store.On("Cleanup", mock.Anything, mock.Anything).Times(10).Return(nil)
 
 	svc := NewService(&store, ServiceParams{EditDuration: 20 * time.Millisecond})
-	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*549)
+	// cancel context after 2.1 cleanup TTLs
+	ctx, cancel := context.WithTimeout(context.Background(), svc.EditDuration / 100 * 25 * 21)
 	defer cancel()
 	svc.Cleanup(ctx)
-	store.AssertNumberOfCalls(t, "Cleanup", 10)
+	store.AssertNumberOfCalls(t, "Cleanup", 2)
 }
 
 func TestService_Submit(t *testing.T) {
