@@ -137,13 +137,12 @@ func (s *Service) Submit(idsFn func() []string) {
 }
 
 // ExtractPictures gets list of images from the doc html and convert from urls to ids, i.e. user/pic.png
-// It doesn't return possible errors parsing the cached images, and will try to return as many parsed ids
-// as possible instead.
-func (s *Service) ExtractPictures(commentHTML string) (ids []string, err error) {
+func (s *Service) ExtractPictures(commentHTML string) (ids []string) {
 
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(commentHTML))
 	if err != nil {
-		return nil, errors.Wrap(err, "can't create document")
+		log.Printf("[ERROR] can't parse commentHTML to parse images: %q, error: %v", commentHTML, err)
+		return nil
 	}
 	doc.Find("img").Each(func(i int, sl *goquery.Selection) {
 		if im, ok := sl.Attr("src"); ok {
@@ -172,7 +171,7 @@ func (s *Service) ExtractPictures(commentHTML string) (ids []string, err error) 
 		}
 	})
 
-	return ids, nil
+	return ids
 }
 
 // Cleanup runs periodic cleanup with 2.5*ServiceParams.EditDuration. Blocking loop, should be called inside of goroutine by consumer

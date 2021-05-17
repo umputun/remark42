@@ -134,12 +134,7 @@ func (s *public) previewCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	comment.Sanitize()
 
 	// check if images are valid
-	imgIDs, err := s.imageService.ExtractPictures(comment.Text)
-	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't extract pictures from comment text", rest.ErrCommentValidation)
-		return
-	}
-	for _, id := range imgIDs {
+	for _, id := range s.imageService.ExtractPictures(comment.Text) {
 		_, err = s.imageService.Load(id)
 		if err != nil {
 			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't load picture from the comment", rest.ErrImgNotFound)
