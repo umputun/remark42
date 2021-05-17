@@ -66,7 +66,7 @@ class UserInfo extends Component<Props, State> {
 
     return (
       <div className={b('root user-info', {})}>
-        <Avatar className="user-info__avatar" url={user.picture} alt={user.name} />
+        <Avatar className="user-info__avatar" url={user.picture} />
         <p className="user-info__title">
           <FormattedMessage
             id="user-info.last-comments"
