@@ -53,7 +53,7 @@ func NewBoltStorage(fileName string, options bolt.Options) (*Bolt, error) {
 
 // Save saves image for given id to staging bucket in DB
 func (b *Bolt) Save(id string, img []byte) error {
-	err := b.db.Update(func(tx *bolt.Tx) error {
+	return b.db.Update(func(tx *bolt.Tx) error {
 		if err := tx.Bucket([]byte(imagesStagedBktName)).Put([]byte(id), img); err != nil {
 			return errors.Wrapf(err, "can't put to bucket with %s", id)
 		}
@@ -66,14 +66,12 @@ func (b *Bolt) Save(id string, img []byte) error {
 		}
 		return nil
 	})
-
-	return err
 }
 
 // Commit file stored in staging bucket by copying it to permanent bucket
 // Data from staging bucket not removed immediately, but would be removed on Cleanup
 func (b *Bolt) Commit(id string) error {
-	err := b.db.Update(func(tx *bolt.Tx) error {
+	return b.db.Update(func(tx *bolt.Tx) error {
 		data := tx.Bucket([]byte(imagesStagedBktName)).Get([]byte(id))
 		if data == nil {
 			return errors.Errorf("failed to commit %s, not found in staging", id)
@@ -81,7 +79,6 @@ func (b *Bolt) Commit(id string) error {
 		err := tx.Bucket([]byte(imagesBktName)).Put([]byte(id), data)
 		return errors.Wrapf(err, "can't put to bucket with %s", id)
 	})
-	return err
 }
 
 // Load image from DB
@@ -106,7 +103,7 @@ func (b *Bolt) Load(id string) ([]byte, error) {
 
 // Cleanup runs scan of staging and removes old data based on ttl
 func (b *Bolt) Cleanup(_ context.Context, ttl time.Duration) error {
-	err := b.db.Update(func(tx *bolt.Tx) error {
+	return b.db.Update(func(tx *bolt.Tx) error {
 		c := tx.Bucket([]byte(insertTimeBktName)).Cursor()
 
 		var idsToRemove [][]byte
@@ -138,7 +135,6 @@ func (b *Bolt) Cleanup(_ context.Context, ttl time.Duration) error {
 		}
 		return nil
 	})
-	return err
 }
 
 // Info returns meta information about storage
