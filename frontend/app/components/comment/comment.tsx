@@ -12,7 +12,7 @@ import { extractErrorMessageFromResponse, FetcherError } from 'utils/errorUtils'
 import { isUserAnonymous } from 'utils/isUserAnonymous';
 
 import { CommentFormProps } from 'components/comment-form';
-import { AvatarIcon } from 'components/avatar-icon';
+import { Avatar } from 'components/avatar';
 import { Button } from 'components/button';
 import { Countdown } from 'components/countdown';
 import { getPreview, uploadImage } from 'common/api';
@@ -661,9 +661,8 @@ export class Comment extends Component<CommentProps, State> {
         )}
         <div className="comment__info">
           {props.view !== 'user' && !props.collapsed && (
-            <AvatarIcon mix="comment__avatar" theme={this.props.theme} picture={o.user.picture} />
+            <Avatar className="comment__avatar" url={o.user.picture} alt={o.user.name} />
           )}
-
           {props.view !== 'user' && (
             <span
               {...getHandleClickProps(this.toggleUserInfoVisibility)}

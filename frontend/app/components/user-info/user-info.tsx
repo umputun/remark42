@@ -7,12 +7,11 @@ import { StoreState } from 'store';
 import { Comment } from 'common/types';
 import { fetchInfo } from 'store/user-info/actions';
 import { userInfo } from 'common/user-info-settings';
-
 import { postMessage } from 'utils/postMessage';
 import { bindActions } from 'utils/actionBinder';
 import { useActions } from 'hooks/useAction';
+import { Avatar } from 'components/avatar';
 
-import { AvatarIcon } from '../avatar-icon';
 import { LastCommentsList } from './last-comments-list';
 
 const boundActions = bindActions({ fetchInfo });
@@ -67,7 +66,7 @@ class UserInfo extends Component<Props, State> {
 
     return (
       <div className={b('root user-info', {})}>
-        <AvatarIcon mix="user-info__avatar" picture={user.picture} />
+        <Avatar className="user-info__avatar" url={user.picture} alt={user.name} />
         <p className="user-info__title">
           <FormattedMessage
             id="user-info.last-comments"
