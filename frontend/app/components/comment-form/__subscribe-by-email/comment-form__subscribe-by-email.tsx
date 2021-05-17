@@ -82,6 +82,8 @@ const renderEmailPart = (
       <FormattedMessage id="subscribeByEmail.subscribe-to-replies" defaultMessage="Subscribe to replies" />
     </div>
     <Input
+      aria-label="Email"
+      name="email"
       autofocus
       className="comment-form__subscribe-by-email__input"
       placeholder={intl.formatMessage(messages.email)}

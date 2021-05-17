@@ -1,16 +1,12 @@
 import { h } from 'preact';
-import { mount } from 'enzyme';
-import createMockStore from 'redux-mock-store';
-import { Middleware } from 'redux';
-import { Provider } from 'react-redux';
-import { IntlProvider } from 'react-intl';
 
 import type { User } from 'common/types';
-import enMessages from 'locales/en.json';
+import { render } from 'tests/utils';
 
 import { AuthPanel, Props } from './auth-panel';
+import type { StoreState } from 'store';
 
-const DefaultProps = {
+const defaultProps = {
   postInfo: {
     read_only: false,
     url: 'https://example.com',
@@ -19,80 +15,69 @@ const DefaultProps = {
   hiddenUsers: {},
 } as Props;
 
-const initialStore = {
-  user: null,
-  theme: 'light',
-  comments: {
-    sort: '-score',
-  },
-  provider: { name: 'google' },
-} as const;
+function getProps(props: Partial<Props>): Props {
+  return {
+    ...defaultProps,
+    ...props,
+  } as Props;
+}
 
-const mockStore = createMockStore([] as Middleware[]);
+function renderAuthPanel(props: Props) {
+  const initialStore = ({
+    user: null,
+    theme: 'light',
+    comments: {
+      sort: '-score',
+    },
+    provider: { name: 'google' },
+  } as unknown) as StoreState;
+
+  return render(<AuthPanel {...props} />, initialStore);
+}
 
 describe('<AuthPanel />', () => {
-  const createWrapper = (props: Props = DefaultProps, store: ReturnType<typeof mockStore> = mockStore(initialStore)) =>
-    mount(
-      <IntlProvider locale="en" messages={enMessages}>
-        <Provider store={store}>
-          <AuthPanel {...props} />
-        </Provider>
-      </IntlProvider>
-    );
-
   describe('For not authorized : null', () => {
     it('should not render settings if there is no hidden users', () => {
-      const element = createWrapper({
-        ...DefaultProps,
+      const props = getProps({
         user: null,
-        postInfo: { ...DefaultProps.postInfo, read_only: true },
-      } as Props);
+        postInfo: { ...defaultProps.postInfo, read_only: true },
+      });
+      const { container } = renderAuthPanel(props);
 
-      const adminAction = element.find('.auth-panel__admin-action');
-
-      expect(adminAction.exists()).toBe(false);
+      expect(container.querySelector('.auth-panel__admin-action')).not.toBeInTheDocument();
     });
 
     it('should render settings if there is some hidden users', () => {
-      const element = createWrapper({
-        ...DefaultProps,
+      const props = getProps({
         user: null,
-        postInfo: { ...DefaultProps.postInfo, read_only: true },
+        postInfo: { ...defaultProps.postInfo, read_only: true },
         hiddenUsers: { hidden_joe: {} as User },
-      } as Props);
+      });
+      const { container } = renderAuthPanel(props);
 
-      const adminAction = element.find('.auth-panel__admin-action');
-
-      expect(adminAction.text()).toEqual('Show settings');
+      expect(container.querySelector('.auth-panel__admin-action')).toHaveTextContent('Show settings');
     });
   });
 
   describe('For authorized user', () => {
     it('should render info about current user', () => {
-      const element = createWrapper({
-        ...DefaultProps,
-        user: { id: 'john', name: 'John' },
-      } as Props);
+      const props = getProps({
+        user: { id: 'john', name: 'John', picture: '', ip: '', admin: false, block: false, verified: true },
+      });
+      const { container } = renderAuthPanel(props);
 
-      const authPanelColumn = element.find('.auth-panel__column');
-
-      expect(authPanelColumn.length).toEqual(2);
-
-      const userInfo = authPanelColumn.first();
-
-      expect(userInfo.text()).toEqual(expect.stringContaining('John'));
+      expect(container.querySelectorAll('.auth-panel__column')).toHaveLength(2);
+      expect(container.querySelector('.auth-panel__column')?.textContent).toContain('You logged in as John');
     });
   });
   describe('For admin user', () => {
     it('should render admin action', () => {
-      const element = createWrapper({
-        ...DefaultProps,
-        user: { id: 'test', admin: true, name: 'John' },
-      } as Props);
+      const props = getProps({
+        user: { id: 'test', admin: true, name: 'John', block: false, verified: true, ip: '', picture: '' },
+      });
+      const { container } = renderAuthPanel(props);
 
-      const adminAction = element.find('.auth-panel__admin-action').first();
-
-      expect(adminAction.text()).toEqual('Show settings');
+      expect(container.querySelector('.auth-panel__admin-action')).toHaveTextContent('Show settings');
     });
   });
 });

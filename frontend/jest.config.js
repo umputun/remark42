@@ -1,4 +1,5 @@
 module.exports = {
+  testEnvironment: 'jsdom',
   transform: {
     '^.+\\.tsx?$': 'ts-jest',
     '^.+\\.jsx?$': 'babel-jest',
@@ -16,10 +17,10 @@ module.exports = {
     '^@github/markdown-toolbar-element$': 'identity-obj-proxy',
     '^@github/text-expander-element$': 'identity-obj-proxy',
   },
-  setupFiles: ['<rootDir>/jest.setup.ts'],
   setupFilesAfterEnv: [
+    '<rootDir>/jest.setup.ts',
     '<rootDir>/app/__mocks__/fetch.ts',
-    '<rootDir>/app/__mocks__/localstorage.ts',
+    '<rootDir>/app/__mocks__/local-storage.ts',
     '<rootDir>/app/__stubs__/remark-config.ts',
     '<rootDir>/app/__stubs__/static-config.ts',
     '<rootDir>/app/__stubs__/settings.ts',
