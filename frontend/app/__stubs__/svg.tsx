@@ -1,3 +1,3 @@
-const SvgrUrl = 'https://url-to-svg-image';
+const SvgrUrl = '/image.svg';
 
 export default SvgrUrl;

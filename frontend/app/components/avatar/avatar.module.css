@@ -1,8 +1,13 @@
-.avatar-icon {
+.avatar {
   display: inline-block;
   width: 24px;
   height: 24px;
   margin-right: 8px;
   vertical-align: middle;
   border-radius: 4px;
+}
+
+.avatarGhost {
+  box-sizing: border-box;
+  border: 1px solid var(--color40);
 }
