@@ -127,20 +127,7 @@
     </script>
     <% } %>
     <script>
-      // TODO: we must stop using `setInterval` for resize iframe
-      // TODO: we must use more efficient way to change iframe height
-      // TODO: we must open comments widget and user-info widget on different pages (now iframe.html opens both of widgets)
-      var lastHeight = 0;
-      setInterval(function () {
-        if (document.body.offsetHeight !== lastHeight && document.body.offsetHeight > 22) {
-          lastHeight = document.body.offsetHeight;
-          window.parent.postMessage({ remarkIframeHeight: lastHeight }, '*');
-        }
-      }, 200);
-
-      window.addEventListener('message', receiveMessages);
-
-      function receiveMessages(event) {
+      window.addEventListener('message', function receiveMessages(event) {
         try {
           const data = event.data;
           const isObj = typeof data === 'object' && data !== null && !Array.isArray(data);
@@ -155,7 +142,7 @@
             document.title = data.title;
           }
         } catch (e) {}
-      }
+      });
 
       var remark_config =
         window.location.search.length < 2

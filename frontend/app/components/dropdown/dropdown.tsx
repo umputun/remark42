@@ -134,25 +134,23 @@ export class Dropdown extends Component<Props, State> {
     });
   }
 
-  receiveMessage(event: MessageEvent<{ clickOutside?: boolean }>) {
-    try {
-      const data = parseMessage(event);
+  receiveMessage(evt: MessageEvent) {
+    const data = parseMessage(evt);
 
-      if (!data || !data.clickOutside || !this.state.isActive) {
-        return;
+    if (!data.clickOutside || !this.state.isActive) {
+      return;
+    }
+
+    this.setState(
+      {
+        contentTranslateX: 0,
+        isActive: false,
+      },
+      () => {
+        this.__onClose();
+        this.props.onClose?.(this.rootNode.current!);
       }
-
-      this.setState(
-        {
-          contentTranslateX: 0,
-          isActive: false,
-        },
-        () => {
-          this.__onClose();
-          this.props.onClose && this.props.onClose(this.rootNode.current!);
-        }
-      );
-    } catch (e) {}
+    );
   }
 
   onOutsideClick(e: MouseEvent) {
@@ -171,13 +169,11 @@ export class Dropdown extends Component<Props, State> {
 
   componentDidMount() {
     document.addEventListener('click', this.onOutsideClick);
-
     window.addEventListener('message', this.receiveMessage);
   }
 
   componentWillUnmount() {
     document.removeEventListener('click', this.onOutsideClick);
-
     window.removeEventListener('message', this.receiveMessage);
   }
 

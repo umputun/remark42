@@ -6,7 +6,7 @@ import b from 'bem-react-helper';
 import { User, Sorting, Theme, PostInfo } from 'common/types';
 import { IS_STORAGE_AVAILABLE, IS_THIRD_PARTY } from 'common/constants';
 import { requestDeletion } from 'utils/email';
-import { postMessage } from 'utils/postMessage';
+import { postMessageToParent } from 'utils/postMessage';
 import { getHandleClickProps } from 'common/accessibility';
 import { StoreState } from 'store';
 import { Dropdown, DropdownItem } from 'components/dropdown';
@@ -75,11 +75,11 @@ class AuthPanelComponent extends Component<Props, State> {
   toggleUserInfoVisibility = () => {
     const { user } = this.props;
 
-    if (user === null) {
+    if (!user) {
       return;
     }
 
-    postMessage({ isUserInfoShown: true, user });
+    postMessageToParent({ profile: user });
   };
 
   renderAuthorized = (user: User) => {

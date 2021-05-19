@@ -6,9 +6,9 @@ import { useIntl, defineMessages, FormattedMessage, IntlShape } from 'react-intl
 import { StoreState } from 'store';
 import { Comment } from 'common/types';
 import { fetchInfo } from 'store/user-info/actions';
-import { userInfo } from 'common/user-info-settings';
-import { postMessage } from 'utils/postMessage';
+import { parseQuery } from 'utils/parseQuery';
 import { bindActions } from 'utils/actionBinder';
+import { postMessageToParent } from 'utils/postMessage';
 import { useActions } from 'hooks/useAction';
 import { Avatar } from 'components/avatar';
 
@@ -22,6 +22,8 @@ const messages = defineMessages({
     defaultMessage: 'Something went wrong',
   },
 });
+
+const user = parseQuery();
 
 type Props = {
   comments: Comment[] | null;
@@ -38,7 +40,7 @@ class UserInfo extends Component<Props, State> {
   componentWillMount(): void {
     if (!this.props.comments && this.state.isLoading) {
       this.props
-        .fetchInfo()
+        .fetchInfo(user.id)
         .then(() => {
           this.setState({ isLoading: false });
         })
@@ -55,7 +57,6 @@ class UserInfo extends Component<Props, State> {
   }
 
   render(): JSX.Element | null {
-    const user = userInfo;
     const { comments = [] } = this.props;
     const { isLoading } = this.state;
 
@@ -87,12 +88,12 @@ class UserInfo extends Component<Props, State> {
   static onKeyDown(e: KeyboardEvent): void {
     // ESCAPE key pressed
     if (e.keyCode === 27) {
-      postMessage({ isUserInfoShown: false });
+      postMessageToParent({ profile: null });
     }
   }
 }
 
-const commentsSelector = (state: StoreState) => state.userComments[userInfo.id];
+const commentsSelector = (state: StoreState) => state.userComments[user.id];
 
 export const ConnectedUserInfo: FunctionComponent = () => {
   const comments = useSelector(commentsSelector);
