@@ -16,7 +16,7 @@ import { Avatar } from 'components/avatar';
 import { Button } from 'components/button';
 import { Countdown } from 'components/countdown';
 import { getPreview, uploadImage } from 'common/api';
-import { postMessage } from 'utils/postMessage';
+import { postMessageToParent } from 'utils/postMessage';
 import { FormattedMessage, IntlShape, defineMessages } from 'react-intl';
 import { getVoteMessage, VoteMessagesTypes } from './getVoteMessage';
 import { getBlockingDurations } from './getBlockingDurations';
@@ -211,14 +211,7 @@ export class Comment extends Component<CommentProps, State> {
   };
 
   toggleUserInfoVisibility = () => {
-    if (!window.parent) {
-      return;
-    }
-
-    const { user } = this.props.data;
-    const data = JSON.stringify({ isUserInfoShown: true, user });
-
-    window.parent.postMessage(data, '*');
+    postMessageToParent({ profile: this.props.data.user });
   };
 
   togglePin = () => {
@@ -357,21 +350,23 @@ export class Comment extends Component<CommentProps, State> {
     this.props.setReplyEditState!({ id: this.props.data.id, state: CommentMode.None });
   };
 
-  scrollToParent = (e: Event) => {
-    const {
-      data: { pid },
-    } = this.props;
-
-    e.preventDefault();
-
+  scrollToParent = (evt: Event) => {
+    const { pid } = this.props.data;
     const parentCommentNode = document.getElementById(`${COMMENT_NODE_CLASSNAME_PREFIX}${pid}`);
 
-    if (parentCommentNode) {
-      const top = parentCommentNode.getBoundingClientRect().top;
-      if (!postMessage({ scrollTo: top })) {
-        parentCommentNode.scrollIntoView();
-      }
+    evt.preventDefault();
+
+    if (!parentCommentNode) {
+      return;
     }
+
+    const top = parentCommentNode.getBoundingClientRect().top;
+
+    if (postMessageToParent({ scrollTo: top })) {
+      return;
+    }
+
+    parentCommentNode.scrollIntoView();
   };
 
   copyComment = () => {

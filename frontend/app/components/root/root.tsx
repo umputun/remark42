@@ -4,7 +4,7 @@ import b from 'bem-react-helper';
 import { IntlShape, useIntl, FormattedMessage, defineMessages } from 'react-intl';
 import clsx from 'clsx';
 
-import type { Sorting, Theme } from 'common/types';
+import type { Sorting } from 'common/types';
 import type { StoreState } from 'store';
 import {
   COMMENT_NODE_CLASSNAME_PREFIX,
@@ -39,7 +39,7 @@ import { ConnectedComment as Comment } from 'components/comment/connected-commen
 import { uploadImage, getPreview } from 'common/api';
 import { isUserAnonymous } from 'utils/isUserAnonymous';
 import { bindActions } from 'utils/actionBinder';
-import { postMessage, parseMessage } from 'utils/postMessage';
+import { postMessageToParent, parseMessage } from 'utils/postMessage';
 import { useActions } from 'hooks/useAction';
 import { setCollapse } from 'store/thread/actions';
 import { logout } from 'components/auth/auth.api';
@@ -122,7 +122,7 @@ export class Root extends Component<Props, State> {
     const userloading = this.props.fetchUser().finally(() => this.setState({ isUserLoading: false }));
 
     Promise.all([userloading, this.props.fetchComments()]).finally(() => {
-      postMessage({ remarkIframeHeight: document.body.offsetHeight });
+      postMessageToParent({ height: document.body.offsetHeight });
       setTimeout(this.checkUrlHash);
       window.addEventListener('hashchange', this.checkUrlHash);
     });
@@ -169,7 +169,7 @@ export class Root extends Component<Props, State> {
   toMessage = (hash: string) => {
     const comment = document.querySelector(hash);
     if (comment) {
-      postMessage({ scrollTo: comment.getBoundingClientRect().top });
+      postMessageToParent({ scrollTo: comment.getBoundingClientRect().top });
       comment.classList.add('comment_highlighting');
       setTimeout(() => {
         comment.classList.remove('comment_highlighting');
@@ -177,14 +177,14 @@ export class Root extends Component<Props, State> {
     }
   };
 
-  onMessage(event: MessageEvent<{ theme?: Theme }>) {
-    try {
-      const data = parseMessage(event);
+  onMessage(event: MessageEvent) {
+    const data = parseMessage(event);
 
-      if (data.theme && THEMES.includes(data.theme)) {
-        this.props.setTheme(data.theme);
-      }
-    } catch (e) {}
+    if (!data.theme || !THEMES.includes(data.theme)) {
+      return;
+    }
+
+    this.props.setTheme(data.theme);
   }
 
   onBlockedUsersShow = async () => {

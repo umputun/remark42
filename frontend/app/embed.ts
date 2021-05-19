@@ -1,6 +1,6 @@
 import type { UserInfo, Theme } from 'common/types';
 import { BASE_URL, NODE_ID, COMMENT_NODE_CLASSNAME_PREFIX } from 'common/constants.config';
-import { parseMessage, ParentMessage } from 'utils/postMessage';
+import { parseMessage, postMessageToIframe } from 'utils/postMessage';
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
@@ -264,59 +264,55 @@ function createInstance(config: typeof window.remark_config) {
     },
   };
 
-  function receiveMessages(event: MessageEvent<ParentMessage>): void {
-    try {
-      const data = parseMessage(event);
+  function receiveMessages(event: MessageEvent): void {
+    const data = parseMessage(event);
 
-      if (data.remarkIframeHeight) {
-        iframe.style.height = `${data.remarkIframeHeight}px`;
-      }
+    if (data.height) {
+      iframe.style.height = `${data.height}px`;
+    }
 
-      if (data.scrollTo) {
-        window.scrollTo(window.pageXOffset, data.scrollTo + iframe.getBoundingClientRect().top + window.pageYOffset);
-      }
+    if (data.scrollTo) {
+      window.scrollTo(window.pageXOffset, data.scrollTo + iframe.getBoundingClientRect().top + window.pageYOffset);
+    }
 
-      if (Object.prototype.hasOwnProperty.call(data, 'isUserInfoShown')) {
-        if (data.isUserInfoShown) {
-          userInfo.init(data.user);
-        } else {
-          userInfo.close();
-        }
+    if (typeof data.profile === 'object') {
+      if (data.profile === null) {
+        userInfo.close();
+      } else {
+        userInfo.init(data.profile);
       }
+    }
 
-      if (data.inited) {
-        postHashToIframe();
-        postTitleToIframe(document.title);
-      }
-    } catch (e) {}
+    if (data.inited) {
+      postHashToIframe();
+      postTitleToIframe(document.title);
+    }
   }
 
-  function postHashToIframe(e?: Event & { newURL: string }) {
-    const hash = e ? `#${e.newURL.split('#')[1]}` : window.location.hash;
+  function postHashToIframe(evt?: Event & { newURL: string }) {
+    const hash = evt ? `#${evt.newURL.split('#')[1]}` : window.location.hash;
 
-    if (hash.indexOf(`#${COMMENT_NODE_CLASSNAME_PREFIX}`) === 0) {
-      if (e) e.preventDefault();
-
-      iframe.contentWindow!.postMessage({ hash }, '*');
+    if (!hash.startsWith(`#${COMMENT_NODE_CLASSNAME_PREFIX}`)) {
+      return;
     }
+
+    evt?.preventDefault();
+    postMessageToIframe(iframe, { hash });
   }
 
   function postTitleToIframe(title: string) {
-    if (iframe.contentWindow) {
-      iframe.contentWindow.postMessage({ title }, '*');
-    }
+    postMessageToIframe(iframe, { title });
   }
 
-  function postClickOutsideToIframe(e: MouseEvent) {
-    if (iframe.contentWindow && !iframe.contains(e.target as Node)) {
-      iframe.contentWindow.postMessage({ clickOutside: true }, '*');
+  function postClickOutsideToIframe(evt: MouseEvent) {
+    if (iframe.contains(evt.target as Node)) {
+      return;
     }
+    postMessageToIframe(iframe, { clickOutside: true });
   }
 
   function changeTheme(theme: Theme) {
-    if (iframe.contentWindow) {
-      iframe.contentWindow.postMessage({ theme }, '*');
-    }
+    postMessageToIframe(iframe, { theme });
   }
 
   function destroy() {

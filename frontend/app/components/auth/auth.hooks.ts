@@ -1,14 +1,11 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
+import { parseMessage, postMessageToParent } from 'utils/postMessage';
 
 function handleChangeIframeSize(element: HTMLElement) {
   const { top } = element.getBoundingClientRect();
-  const height = window.scrollY + Math.abs(top) + element.scrollHeight + 20;
+  const height = Math.max(window.scrollY + Math.abs(top) + element.scrollHeight + 20, document.body.offsetHeight);
 
-  if (window.innerHeight > height) {
-    return;
-  }
-
-  document.body.style.setProperty('min-height', `${height}px`);
+  postMessageToParent({ height });
 }
 
 export function useDropdown(disableClosing?: boolean) {
@@ -19,28 +16,20 @@ export function useDropdown(disableClosing?: boolean) {
   };
 
   useEffect(() => {
-    if (!showDropdown) {
+    const dropdownElement = rootRef.current;
+
+    if (!showDropdown || !dropdownElement) {
       return;
     }
 
-    const dropdownElement = rootRef.current;
-
-    handleChangeIframeSize(dropdownElement);
-
     function handleMessageFromParent(evt: MessageEvent) {
-      if (typeof evt.data !== 'string' || disableClosing) {
+      const data = parseMessage(evt);
+
+      if (disableClosing && data.clickOutside) {
         return;
       }
 
-      try {
-        const data = JSON.parse(evt.data);
-
-        if (!data.clickOutside) {
-          return;
-        }
-
-        setShowDropdown(false);
-      } catch (e) {}
+      setShowDropdown(false);
     }
 
     function handleClickOutside(evt: MouseEvent) {
@@ -64,8 +53,12 @@ export function useDropdown(disableClosing?: boolean) {
     const dropdownElement = rootRef.current;
 
     if (!dropdownElement || !showDropdown) {
+      handleChangeIframeSize(document.body);
+
       return;
     }
+
+    handleChangeIframeSize(dropdownElement);
 
     const observer = new MutationObserver(() => {
       handleChangeIframeSize(dropdownElement);

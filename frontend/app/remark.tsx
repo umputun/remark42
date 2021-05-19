@@ -31,7 +31,7 @@ async function init(): Promise<void> {
     throw new Error("Remark42: Can't find root node.");
   }
 
-  const params = parseQuery<{ page?: string; locale?: string; simple_view?: boolean }>();
+  const params = parseQuery();
   const locale = getLocale(params);
   const messages = await loadLocale(locale).catch(() => ({}));
   const boundActions = bindActionCreators({ fetchHiddenUsers, restoreCollapsedThreads }, store.dispatch);
