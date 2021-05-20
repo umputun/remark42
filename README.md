@@ -338,17 +338,17 @@ Optionally, anonymous access can be turned on. In this case an extra `anonymous`
 ### Importing comments
 
 Remark supports importing comments from Disqus, WordPress or native backup format.
-All imported comments has `Imported` field set to `true`.
+All imported comments have an `Imported` field set to `true`.
 
-#### Initial import from Disqus
+## Initial import from Disqus
 
-1.  Disqus provides an export of all comments on your site in a g-zipped file. This is found in your Moderation panel at Disqus Admin > Setup > Export. The export will be sent into a queue and then emailed to the address associated with your account once it's ready. Direct link to export will be something like `https://<siteud>.disqus.com/admin/discussions/export/`. See [importing-exporting](https://help.disqus.com/customer/portal/articles/1104797-importing-exporting) for more details.
+1.  Disqus provides export of all comments on your site in a gzipped file. This option is available in your Moderation panel at Disqus Admin > Setup > Export. The export will be sent into a queue and then emailed to the address associated with your account once it's ready. Direct link to export will be something like `https://<siteud>.disqus.com/admin/discussions/export/`. See [importing-exporting](https://help.disqus.com/customer/portal/articles/1104797-importing-exporting) for more details.
 2.  Move this file to your remark42 host within `./var` and unzip, i.e. `gunzip <disqus-export-name>.xml.gz`.
 3.  Run import command - `docker exec -it remark42 import -p disqus -f /srv/var/{disqus-export-name}.xml -s {your site id}`
 
-#### Initial import from WordPress
+## Initial import from WordPress
 
-1. Install WordPress [plugin](https://wordpress.org/plugins/wp-exporter/) to export comments and follow it instructions. The plugin should produce a xml-based file with site content including comments.
+1. Use [that instruction](https://wordpress.com/support/export/) to export comments to file using standard WordPress functionality.
 2. Move this file to your remark42 host within `./var`
 3. Run import command - `docker exec -it remark42 import -p wordpress -f {wordpress-export-name}.xml -s {your site id}`
 
@@ -484,7 +484,7 @@ And then add this node in the place where you want to see Remark42 widget:
 
 After that widget will be rendered inside this node.
 
-If you want to set this up on a Single Page App, see [appropriate doc page](https://remark42.com/docs/latest/spa/).
+If you want to set this up on a Single Page App, see [appropriate doc page](https://github.com/umputun/remark42/blob/master/docs/latest/spa.md).
 
 ##### Themes
 
@@ -504,7 +504,7 @@ window.REMARK42.changeTheme('light');
 Right now Remark is translated to en, ru (partially), de, and fi languages.
 You can pick one using [configuration object](#setup-on-your-website).
 
-Do you want translate remark42 to other locale? Please see [this documentation](https://github.com/umputun/remark42/blob/master/docs/translation.md) for details.
+Do you want translate remark42 to other locale? Please see [this documentation](https://github.com/umputun/remark42/blob/master/docs/latest/translation.md) for details.
 
 #### Last comments
 
