@@ -2,7 +2,7 @@ import { h, JSX, Component, createRef, ComponentType } from 'preact';
 import b from 'bem-react-helper';
 
 import { getHandleClickProps } from 'common/accessibility';
-import { API_BASE, BASE_URL, COMMENT_NODE_CLASSNAME_PREFIX } from 'common/constants';
+import { COMMENT_NODE_CLASSNAME_PREFIX } from 'common/constants';
 
 import { StaticStore } from 'common/static-store';
 import { debounce } from 'utils/debounce';
@@ -16,7 +16,7 @@ import { Avatar } from 'components/avatar';
 import { Button } from 'components/button';
 import { Countdown } from 'components/countdown';
 import { getPreview, uploadImage } from 'common/api';
-import { postMessageToParent } from 'utils/postMessage';
+import { postMessageToParent } from 'utils/post-message';
 import { FormattedMessage, IntlShape, defineMessages } from 'react-intl';
 import { getVoteMessage, VoteMessagesTypes } from './getVoteMessage';
 import { getBlockingDurations } from './getBlockingDurations';
@@ -24,79 +24,12 @@ import { boundActions } from './connected-comment';
 
 import './styles';
 
-const messages = defineMessages({
-  deleteMessage: {
-    id: 'comment.delete-message',
-    defaultMessage: 'Do you want to delete this comment?',
-  },
-  hideUserComments: {
-    id: 'comment.hide-user-comment',
-    defaultMessage: 'Do you want to hide comments of {userName}?',
-  },
-  pinComment: {
-    id: 'comment.pin-comment',
-    defaultMessage: 'Do you want to pin this comment?',
-  },
-  unpinComment: {
-    id: 'comment.unpin-comment',
-    defaultMessage: 'Do you want to unpin this comment?',
-  },
-  verifyUser: {
-    id: 'comment.verify-user',
-    defaultMessage: 'Do you want to verify {userName}?',
-  },
-  unverifyUser: {
-    id: 'comment.unverify-user',
-    defaultMessage: 'Do you want to unverify {userName}?',
-  },
-  blockUser: {
-    id: 'comment.block-user',
-    defaultMessage: 'Do you want to block {userName} {duration}?',
-  },
-  unblockUser: {
-    id: 'comment.unblock-user',
-    defaultMessage: 'Do you want to unblock this user?',
-  },
-  deletedComment: {
-    id: 'comment.deleted-comment',
-    defaultMessage: 'This comment was deleted',
-  },
-  controversy: {
-    id: 'comment.controversy',
-    defaultMessage: 'Controversy: {value}',
-  },
-  toggleVerification: {
-    id: 'comment.toggle-verification',
-    defaultMessage: 'Toggle verification',
-  },
-  verifiedUser: {
-    id: 'comment.verified-user',
-    defaultMessage: 'Verified user',
-  },
-  unverifiedUser: {
-    id: 'comment.unverified-user',
-    defaultMessage: 'Unverified user',
-  },
-  goToParent: {
-    id: 'comment.go-to-parent',
-    defaultMessage: 'Go to parent comment',
-  },
-  expiredTime: {
-    id: 'comment.expired-time',
-    defaultMessage: 'Editing time has expired.',
-  },
-  commentTime: {
-    id: 'comment.time',
-    defaultMessage: '{day} at {time}',
-  },
-});
-
 export type CommentProps = {
   user: User | null;
-  CommentForm: ComponentType<CommentFormProps> | null;
+  CommentForm?: ComponentType<CommentFormProps>;
   data: CommentType;
   repliesCount?: number;
-  post_info: PostInfo | null;
+  post_info?: PostInfo;
   /** whether comment's user is banned */
   isUserBanned?: boolean;
   isCommentsDisabled: boolean;
@@ -418,7 +351,7 @@ export class Comment extends Component<CommentProps, State> {
     const intl = this.props.intl;
     if (!(this.props.view === 'main' || this.props.view === 'pinned'))
       return getVoteMessage(VoteMessagesTypes.ONLY_POST_PAGE, intl);
-    if (this.props.post_info!.read_only) return getVoteMessage(VoteMessagesTypes.READONLY, intl);
+    if (this.props.post_info?.read_only) return getVoteMessage(VoteMessagesTypes.READONLY, intl);
     if (this.props.data.delete) return getVoteMessage(VoteMessagesTypes.DELETED, intl);
     if (this.isCurrentUser()) return getVoteMessage(VoteMessagesTypes.OWN_COMMENT, intl);
     if (StaticStore.config.positive_score && this.props.data.score < 1)
@@ -435,7 +368,7 @@ export class Comment extends Component<CommentProps, State> {
     const intl = this.props.intl;
     if (!(this.props.view === 'main' || this.props.view === 'pinned'))
       return getVoteMessage(VoteMessagesTypes.ONLY_POST_PAGE, intl);
-    if (this.props.post_info!.read_only) return getVoteMessage(VoteMessagesTypes.READONLY, intl);
+    if (this.props.post_info?.read_only) return getVoteMessage(VoteMessagesTypes.READONLY, intl);
     if (this.props.data.delete) return getVoteMessage(VoteMessagesTypes.DELETED, intl);
     if (this.isCurrentUser()) return getVoteMessage(VoteMessagesTypes.OWN_COMMENT, intl);
     if (this.isGuest()) return getVoteMessage(VoteMessagesTypes.GUEST, intl);
@@ -463,14 +396,14 @@ export class Comment extends Component<CommentProps, State> {
             <FormattedMessage id="comment.copied" defaultMessage="Copied!" />
           </span>
         ) : (
-          <Button kind="link" {...getHandleClickProps(this.copyComment)} mix="comment__control">
+          <Button kind="link" onClick={this.copyComment} mix="comment__control">
             <FormattedMessage id="comment.copy" defaultMessage="Copy" />
           </Button>
         )
       );
 
       controls.push(
-        <Button kind="link" {...getHandleClickProps(this.togglePin)} mix="comment__control">
+        <Button kind="link" onClick={this.togglePin} mix="comment__control">
           {this.props.data.pin ? (
             <FormattedMessage id="comment.unpin" defaultMessage="Unpin" />
           ) : (
@@ -482,7 +415,7 @@ export class Comment extends Component<CommentProps, State> {
 
     if (!isCurrentUser) {
       controls.push(
-        <Button kind="link" {...getHandleClickProps(this.hideUser)} mix="comment__control">
+        <Button kind="link" onClick={this.hideUser} mix="comment__control">
           <FormattedMessage id="comment.hide" defaultMessage="Hide" />
         </Button>
       );
@@ -491,7 +424,7 @@ export class Comment extends Component<CommentProps, State> {
     if (isAdmin) {
       if (this.props.isUserBanned) {
         controls.push(
-          <Button kind="link" {...getHandleClickProps(this.onUnblockUserClick)} mix="comment__control">
+          <Button kind="link" onClick={this.onUnblockUserClick} mix="comment__control">
             <FormattedMessage id="comment.unblock" defaultMessage="Unblock" />
           </Button>
         );
@@ -517,7 +450,7 @@ export class Comment extends Component<CommentProps, State> {
 
       if (!this.props.data.delete) {
         controls.push(
-          <Button kind="link" {...getHandleClickProps(this.deleteComment)} mix="comment__control">
+          <Button kind="link" onClick={this.deleteComment} mix="comment__control">
             <FormattedMessage id="comment.delete" defaultMessage="Delete" />
           </Button>
         );
@@ -543,7 +476,7 @@ export class Comment extends Component<CommentProps, State> {
     const uploadImageHandler = this.isAnonymous() ? undefined : this.props.uploadImage;
     const commentControls = this.getCommentControls();
     const intl = props.intl;
-    const CommentForm = this.props.CommentForm;
+    const CommentForm = this.props.CommentForm || null;
 
     /**
      * CommentType adapted for rendering
@@ -574,13 +507,7 @@ export class Comment extends Component<CommentProps, State> {
         sign: !scoreSignEnabled ? '' : state.cachedScore > 0 ? '+' : state.cachedScore < 0 ? '−' : null,
         view: state.cachedScore > 0 ? 'positive' : state.cachedScore < 0 ? 'negative' : undefined,
       },
-      user: {
-        ...props.data.user,
-        picture:
-          props.data.user.picture.indexOf(API_BASE) === 0
-            ? `${BASE_URL}${props.data.user.picture}`
-            : props.data.user.picture,
-      },
+      user: props.data.user,
     };
 
     const defaultMods = {
@@ -646,6 +573,7 @@ export class Comment extends Component<CommentProps, State> {
       );
     }
     const goToParentMessage = intl.formatMessage(messages.goToParent);
+
     return (
       <article
         className={b('comment', { mix: this.props.mix }, defaultMods)}
@@ -659,30 +587,25 @@ export class Comment extends Component<CommentProps, State> {
           </div>
         )}
         <div className="comment__info">
-          {props.view !== 'user' && !props.collapsed && <Avatar className="comment__avatar" url={o.user.picture} />}
+          {props.view !== 'user' && !props.collapsed && (
+            <div className="comment__avatar">
+              <Avatar url={o.user.picture} />
+            </div>
+          )}
           {props.view !== 'user' && (
-            <span
-              {...getHandleClickProps(this.toggleUserInfoVisibility)}
-              className="comment__username"
-              title={o.user.id}
-            >
+            <button onClick={() => this.toggleUserInfoVisibility()} className="comment__username">
               {o.user.name}
-            </span>
+            </button>
           )}
 
           {isAdmin && props.view !== 'user' && (
             <span
               {...getHandleClickProps(this.toggleVerify)}
               aria-label={intl.formatMessage(messages.toggleVerification)}
-              title={
-                o.user.verified
-                  ? intl.formatMessage(messages.verifiedUser)
-                  : intl.formatMessage(messages.unverifiedUser)
-              }
+              title={intl.formatMessage(o.user.verified ? messages.verifiedUser : messages.unverifiedUser)}
               className={b('comment__verification', {}, { active: o.user.verified, clickable: true })}
             />
           )}
-
           {!isAdmin && !!o.user.verified && props.view !== 'user' && (
             <span
               title={intl.formatMessage(messages.verifiedUser)}
@@ -774,7 +697,7 @@ export class Comment extends Component<CommentProps, State> {
           {(!props.collapsed || props.view === 'pinned') && (
             <div className="comment__actions">
               {!props.data.delete && !props.isCommentsDisabled && !props.disabled && props.view === 'main' && (
-                <Button kind="link" {...getHandleClickProps(this.toggleReplying)} mix="comment__action">
+                <Button kind="link" onClick={this.toggleReplying} mix="comment__action">
                   {isReplying ? (
                     <FormattedMessage id="comment.cancel" defaultMessage="Cancel" />
                   ) : (
@@ -886,3 +809,70 @@ function getLocalDatetime(intl: IntlShape, date: Date) {
     time: intl.formatTime(date),
   });
 }
+
+const messages = defineMessages({
+  deleteMessage: {
+    id: 'comment.delete-message',
+    defaultMessage: 'Do you want to delete this comment?',
+  },
+  hideUserComments: {
+    id: 'comment.hide-user-comment',
+    defaultMessage: 'Do you want to hide comments of {userName}?',
+  },
+  pinComment: {
+    id: 'comment.pin-comment',
+    defaultMessage: 'Do you want to pin this comment?',
+  },
+  unpinComment: {
+    id: 'comment.unpin-comment',
+    defaultMessage: 'Do you want to unpin this comment?',
+  },
+  verifyUser: {
+    id: 'comment.verify-user',
+    defaultMessage: 'Do you want to verify {userName}?',
+  },
+  unverifyUser: {
+    id: 'comment.unverify-user',
+    defaultMessage: 'Do you want to unverify {userName}?',
+  },
+  blockUser: {
+    id: 'comment.block-user',
+    defaultMessage: 'Do you want to block {userName} {duration}?',
+  },
+  unblockUser: {
+    id: 'comment.unblock-user',
+    defaultMessage: 'Do you want to unblock this user?',
+  },
+  deletedComment: {
+    id: 'comment.deleted-comment',
+    defaultMessage: 'This comment was deleted',
+  },
+  controversy: {
+    id: 'comment.controversy',
+    defaultMessage: 'Controversy: {value}',
+  },
+  toggleVerification: {
+    id: 'comment.toggle-verification',
+    defaultMessage: 'Toggle verification',
+  },
+  verifiedUser: {
+    id: 'comment.verified-user',
+    defaultMessage: 'Verified user',
+  },
+  unverifiedUser: {
+    id: 'comment.unverified-user',
+    defaultMessage: 'Unverified user',
+  },
+  goToParent: {
+    id: 'comment.go-to-parent',
+    defaultMessage: 'Go to parent comment',
+  },
+  expiredTime: {
+    id: 'comment.expired-time',
+    defaultMessage: 'Editing time has expired.',
+  },
+  commentTime: {
+    id: 'comment.time',
+    defaultMessage: '{day} at {time}',
+  },
+});

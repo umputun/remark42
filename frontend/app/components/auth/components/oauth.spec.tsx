@@ -1,5 +1,6 @@
 import { h } from 'preact';
-import { fireEvent, render, waitFor } from '@testing-library/preact';
+import { fireEvent, waitFor } from '@testing-library/preact';
+import { render } from 'tests/utils';
 
 import type { User } from 'common/types';
 import * as userActions from 'store/user/actions';

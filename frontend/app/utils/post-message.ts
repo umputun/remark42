@@ -1,10 +1,11 @@
-import type { Theme, UserInfo } from 'common/types';
+import type { Theme, Profile } from 'common/types';
 
 type ParentMessage = {
   inited?: true;
   scrollTo?: number;
   height?: number;
-  profile?: UserInfo | null;
+  signout?: true;
+  profile?: Profile | null;
 };
 
 type ChildMessage = {
@@ -12,6 +13,7 @@ type ChildMessage = {
   hash?: string;
   title?: string;
   theme?: Theme;
+  signout?: true;
 };
 
 type AllMessages = ChildMessage & ParentMessage;

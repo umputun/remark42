@@ -1,18 +1,23 @@
-import { h, Component, Fragment } from 'preact';
+import { h, Component } from 'preact';
 import { useSelector } from 'react-redux';
 import { FormattedMessage, defineMessages, IntlShape, useIntl } from 'react-intl';
 import b from 'bem-react-helper';
+import clsx from 'clsx';
 
 import { User, Sorting, Theme, PostInfo } from 'common/types';
 import { IS_STORAGE_AVAILABLE, IS_THIRD_PARTY } from 'common/constants';
-import { requestDeletion } from 'utils/email';
-import { postMessageToParent } from 'utils/postMessage';
+import { postMessageToParent } from 'utils/post-message';
 import { getHandleClickProps } from 'common/accessibility';
 import { StoreState } from 'store';
-import { Dropdown, DropdownItem } from 'components/dropdown';
+import { useTheme } from 'hooks/useTheme';
 import { Button } from 'components/button';
 import { Auth } from 'components/auth';
-import { useTheme } from 'hooks/useTheme';
+import { Avatar } from 'components/avatar';
+import { SignOutIcon } from 'components/icons/signout';
+import { IconButton } from 'components/icon-button/icon-button';
+import { messages } from 'components/auth/auth.messsages';
+
+import styles from './auth-panel.module.css';
 
 interface OwnProps {
   user: User | null;
@@ -20,8 +25,8 @@ interface OwnProps {
   isCommentsDisabled: boolean;
   postInfo: PostInfo;
 
+  signout(): Promise<void>;
   onSortChange(s: Sorting): Promise<void>;
-  onSignOut(): Promise<void>;
   onCommentsChangeReadOnlyMode(readOnly: boolean): Promise<void>;
   onBlockedUsersShow(): void;
   onBlockedUsersHide(): void;
@@ -72,46 +77,25 @@ class AuthPanelComponent extends Component<Props, State> {
     this.props.onCommentsChangeReadOnlyMode(!this.props.isCommentsDisabled);
   };
 
-  toggleUserInfoVisibility = () => {
-    const { user } = this.props;
-
-    if (!user) {
-      return;
-    }
-
-    postMessageToParent({ profile: user });
-  };
-
   renderAuthorized = (user: User) => {
-    const { onSignOut, theme } = this.props;
-    const isUserAnonymous = user && user.id.substr(0, 10) === 'anonymous_';
-
     return (
-      <>
-        <FormattedMessage id="authPanel.logged-as" defaultMessage="You logged in as" />{' '}
-        <Dropdown title={user.name} titleClass="auth-panel__user-dropdown-title" theme={theme}>
-          <DropdownItem separator={!isUserAnonymous}>
-            <div
-              id={user.id}
-              className={b('auth-panel__user-id', {}, { theme })}
-              {...getHandleClickProps(this.toggleUserInfoVisibility)}
-            >
-              {user.id}
-            </div>
-          </DropdownItem>
-
-          {!isUserAnonymous && (
-            <DropdownItem>
-              <Button theme={theme} onClick={() => requestDeletion().then(onSignOut)}>
-                <FormattedMessage id="authPanel.request-to-delete-data" defaultMessage="Request my data removal" />
-              </Button>
-            </DropdownItem>
-          )}
-        </Dropdown>{' '}
-        <Button kind="link" theme={theme} onClick={onSignOut}>
-          <FormattedMessage id="authPanel.logout" defaultMessage="Logout?" />
-        </Button>
-      </>
+      <div className={clsx('user', styles.user)}>
+        <button
+          className={clsx('user-profile-button', styles.userButton)}
+          onClick={() => postMessageToParent({ profile: { ...user, current: '1' } })}
+          title={this.props.intl.formatMessage(messages.openProfile)}
+        >
+          <div className={clsx('user-avatar', styles.userAvatar)}>
+            <Avatar url={user.picture} />
+          </div>
+          {user.name}
+        </button>{' '}
+        <div className={clsx('user-logout-button', styles.userLogoutButton)}>
+          <IconButton title={this.props.intl.formatMessage(messages.signout)} onClick={this.props.signout}>
+            <SignOutIcon size="14" />
+          </IconButton>
+        </div>
+      </div>
     );
   };
 
@@ -136,7 +120,9 @@ class AuthPanelComponent extends Component<Props, State> {
   };
 
   renderCookiesWarning = () => {
-    if (IS_STORAGE_AVAILABLE || IS_THIRD_PARTY) return null;
+    if (IS_STORAGE_AVAILABLE || IS_THIRD_PARTY) {
+      return null;
+    }
     return (
       <div className="auth-panel__column">
         <FormattedMessage id="authPanel.enable-cookies" defaultMessage="Allow cookies to login and comment" />

@@ -25,13 +25,9 @@
   left: 0;
   min-width: 240px;
   padding: 16px;
-  background-color: rgb(var(--white-color));
+  background-color: rgb(var(--primary-background-color));
   box-shadow: 0 10px 15px rgba(var(--black-color), 0.1), 0 -1px 6px rgba(var(--black-color), 0.05);
   border-radius: 6px;
-}
-
-:global(.dark) .dropdown {
-  background-color: var(--color8);
 }
 
 .title {
@@ -148,16 +144,14 @@
 
 .closeButton {
   position: relative;
-  display: inline-block;
+  display: inline-flex;
   width: 28px;
   height: 28px;
-  border: 0;
-  padding: 0;
   margin-left: auto;
-  background: unset;
-  cursor: pointer;
   border-radius: 2px;
   color: inherit;
+  justify-content: center;
+  align-items: center;
 
   &:hover {
     background-color: rgba(var(--primary-color), 0.1);
@@ -192,15 +186,6 @@
   height: 36px;
   padding: 0 20px;
   font-size: 16px;
-}
-
-.spinner {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  border: 2px solid rgba(var(--white-color), 0.2);
-  border-right-color: rgb(var(--white-color));
-  animation: spin 1s linear infinite;
 }
 
 .error {

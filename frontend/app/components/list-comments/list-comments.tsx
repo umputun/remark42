@@ -20,7 +20,6 @@ export function ListComments({ comments = [] }: Props) {
         <Comment
           intl={intl}
           key={comment.id}
-          CommentForm={null}
           data={comment}
           level={0}
           view="preview"
@@ -28,7 +27,6 @@ export function ListComments({ comments = [] }: Props) {
           user={null}
           theme="light"
           isCommentsDisabled={false}
-          post_info={null}
         />
       ))}
     </div>

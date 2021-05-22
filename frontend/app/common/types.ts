@@ -10,7 +10,7 @@ export type User = {
 };
 
 /** data which is used on user-info page */
-export type UserInfo = Pick<User, 'id' | 'name' | 'picture'>;
+export type Profile = Pick<User, 'id' | 'name' | 'picture'> & { current?: '1' };
 
 export interface BlockedUser {
   id: string;
@@ -46,7 +46,7 @@ export interface Comment {
    * if user hasn't voted delta will be 0,
    * -1/+1 for downvote/upvote
    */
-  vote: number;
+  vote: 0 | 1 | -1;
   /** comment controversy, read only */
   controversy?: number;
   /** pointer to have empty default in json response */

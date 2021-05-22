@@ -1,4 +1,4 @@
-import { parseQuery } from 'utils/parseQuery';
+import { parseQuery } from 'utils/parse-query';
 
 import type { Theme } from './types';
 import { THEMES, MAX_SHOWN_ROOT_COMMENTS } from './constants';

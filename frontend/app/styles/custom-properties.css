@@ -61,7 +61,9 @@
   /* Named variables */
   --primary-color: 0, 170, 170;
   --primary-brighter-color: 0, 153, 153;
+  --primary-text-color: 38, 38, 38;
   --secondary-text-color: 100, 116, 139;
+  --primary-background-color: 255, 255, 255;
   --black-color: 0, 0, 0;
   --white-color: 255, 255, 255;
   --error-color: #b91c1c;
@@ -74,7 +76,11 @@
   --line-color: var(--color36);
   --primary-color: 0, 153, 153;
   --primary-brighter-color: 0, 170, 170;
+  --primary-text-color: 241, 245, 249;
+  --primary-background-color: 38, 38, 38;
   --secondary-text-color: 209, 213, 219;
   --error-color: #ffa0a0;
   --line-brighter-color: var(--color11);
+
+  color-scheme: dark;
 }

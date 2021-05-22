@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom';
 import { h } from 'preact';
-import { fireEvent, render, waitFor } from '@testing-library/preact';
+import { fireEvent, waitFor } from '@testing-library/preact';
+import { render } from 'tests/utils';
 
 import { OAuthProvider, User } from 'common/types';
 import { StaticStore } from 'common/static-store';

@@ -294,7 +294,7 @@ export const SubscribeByEmailForm: FunctionComponent = () => {
         type="submit"
         disabled={!isValidEmailAddress || loading}
       >
-        {loading ? <Preloader mix="comment-form__subscribe-by-email__preloader" /> : buttonLabel}
+        {loading ? <Preloader className="comment-form__subscribe-by-email__preloader" /> : buttonLabel}
       </Button>
     </form>
   );

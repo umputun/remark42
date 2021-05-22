@@ -1,11 +1,12 @@
+import clsx from 'clsx';
 import { h, Fragment } from 'preact';
 import { useState } from 'preact/hooks';
 import { useIntl } from 'react-intl';
-import clsx from 'clsx';
 import { useDispatch } from 'react-redux';
 
 import { setUser } from 'store/user/actions';
 import { Input } from 'components/input';
+import { CrossIcon } from 'components/icons/cross';
 import { TextareaAutosize } from 'components/textarea-autosize';
 
 import { Button } from './components/button';
@@ -16,6 +17,7 @@ import { getProviders, getTokenInvalidReason } from './auth.utils';
 import { emailSignin, verifyEmailSignin, anonymousSignin } from './auth.api';
 
 import styles from './auth.module.css';
+import { Spinner } from 'components/spinner/spinner';
 
 export function Auth() {
   const intl = useIntl();
@@ -107,15 +109,7 @@ export function Auth() {
     <>
       {errorMessage && <div className={clsx('auth-error', styles.error)}>{errorMessage}</div>}
       <Button className="auth-submit" type="submit" disabled={isLoading}>
-        {isLoading ? (
-          <div
-            className={clsx('spinner', styles.spinner)}
-            role="presentation"
-            aria-label={intl.formatMessage(messages.loading)}
-          />
-        ) : (
-          intl.formatMessage(messages.submit)
-        )}
+        {isLoading ? <Spinner /> : intl.formatMessage(messages.submit)}
       </Button>
     </>
   );
@@ -146,7 +140,7 @@ export function Auth() {
               <>
                 <div className={clsx('auth-row', styles.row)}>
                   <div className={styles.backButton}>
-                    <Button className="auth-back-button" size="small" kind="transparent" onClick={handleShowEmailStep}>
+                    <Button className="auth-back-button" size="xs" kind="transparent" onClick={handleShowEmailStep}>
                       <svg
                         className={styles.backButtonArrow}
                         width="14"
@@ -171,15 +165,7 @@ export function Auth() {
                     title="Close sign-in dropdown"
                     onClick={handleDropdownClose}
                   >
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path
-                        d="M2 2L12 12M12 2L2 12"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                    </svg>
+                    <CrossIcon />
                   </button>
                 </div>
                 <div className={clsx('auth-row', styles.row)}>

@@ -56,10 +56,14 @@
   background-color: rgb(var(--primary-color));
 }
 
-.small {
+.xs {
   height: 28px;
   font-size: 12px;
   text-transform: uppercase;
+}
+
+.sm {
+  font-size: 14px;
 }
 
 .transparent {
@@ -69,6 +73,17 @@
   &:hover {
     background-color: rgba(var(--primary-color), 0.2);
     color: rgb(var(--primary-color));
+  }
+}
+
+.link {
+  color: rgb(var(--primary-color));
+  background-color: unset;
+  text-transform: initial;
+  width: auto;
+
+  &:hover {
+    background-color: rgba(var(--primary-color), 0.1);
   }
 }
 

@@ -1,5 +1,17 @@
 import { h } from 'preact';
 import { mount } from 'enzyme';
+
+jest.mock('react-intl', () => {
+  const messages = require('locales/en.json');
+  const reactIntl = jest.requireActual('react-intl');
+  const intlProvider = new reactIntl.IntlProvider({ locale: 'en', messages }, {});
+
+  return {
+    ...reactIntl,
+    useIntl: () => intlProvider.state.intl,
+  };
+});
+
 import { useIntl, IntlProvider } from 'react-intl';
 
 import enMessages from 'locales/en.json';
@@ -24,7 +36,6 @@ function mountComment(props: CommentProps) {
 }
 
 const DefaultProps: Partial<CommentProps> = {
-  CommentForm: null,
   post_info: {
     read_only: false,
   } as PostInfo,

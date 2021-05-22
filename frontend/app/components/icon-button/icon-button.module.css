@@ -1,0 +1,23 @@
+.root {
+  display: inline-flex;
+  box-sizing: border-box;
+  border: 0;
+  margin: 0;
+  padding: 4px;
+  transition: transfrom 0.15s ease-out;
+  border-radius: 2px;
+  appearance: none;
+
+  &:hover {
+    transform: scale(1.06);
+    transition: transfrom 0.15s ease-in;
+  }
+
+  &:active {
+    transform: scale(1);
+  }
+
+  &:focus {
+    box-shadow: inset 0 0 0 2px rgba(var(--primary-color), 0.5);
+  }
+}
