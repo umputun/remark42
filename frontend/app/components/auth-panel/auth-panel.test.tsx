@@ -80,7 +80,7 @@ describe('<AuthPanel />', () => {
 
       const userInfo = authPanelColumn.first();
 
-      expect(userInfo.text()).toEqual(expect.stringContaining('You logged in as John'));
+      expect(userInfo.text()).toEqual(expect.stringContaining('John'));
     });
   });
   describe('For admin user', () => {

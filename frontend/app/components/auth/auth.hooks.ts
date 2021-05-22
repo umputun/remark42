@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { parseMessage, postMessageToParent } from 'utils/postMessage';
+import { parseMessage, postMessageToParent } from 'utils/post-message';
 
 function handleChangeIframeSize(element: HTMLElement) {
   const { top } = element.getBoundingClientRect();

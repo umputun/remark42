@@ -5,16 +5,17 @@ import { IntlProvider } from 'react-intl';
 
 import { loadLocale } from 'utils/loadLocale';
 import { getLocale } from 'utils/getLocale';
+import { parseQuery } from 'utils/parse-query';
+import { parseMessage } from 'utils/post-message';
+import { parseBooleansFromDictionary } from 'utils/parse-booleans-from-dictionary';
 import { ConnectedRoot } from 'components/root';
-import { UserInfo } from 'components/user-info';
+import { Profile } from 'components/profile';
 import { store } from 'store';
 import { NODE_ID, BASE_URL } from 'common/constants';
 import { StaticStore } from 'common/static-store';
 import { getConfig } from 'common/api';
 import { fetchHiddenUsers } from 'store/user/actions';
 import { restoreCollapsedThreads } from 'store/thread/actions';
-import { parseQuery } from 'utils/parseQuery';
-import { parseBooleansFromDictionary } from 'utils/parse-booleans-from-dictionary';
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
@@ -36,6 +37,24 @@ async function init(): Promise<void> {
   const messages = await loadLocale(locale).catch(() => ({}));
   const boundActions = bindActionCreators({ fetchHiddenUsers, restoreCollapsedThreads }, store.dispatch);
 
+  node.innerHTML = '';
+
+  window.addEventListener('message', (evt) => {
+    const data = parseMessage(evt);
+
+    if (data.theme === 'light') {
+      document.body.classList.remove('dark');
+    }
+
+    if (data.theme === 'dark') {
+      document.body.classList.add('dark');
+    }
+  });
+
+  if (params.theme === 'dark') {
+    document.body.classList.add('dark');
+  }
+
   boundActions.fetchHiddenUsers();
   boundActions.restoreCollapsedThreads();
 
@@ -45,7 +64,7 @@ async function init(): Promise<void> {
 
   render(
     <IntlProvider locale={locale} messages={messages}>
-      <Provider store={store}>{params.page === 'user-info' ? <UserInfo /> : <ConnectedRoot />}</Provider>
+      <Provider store={store}>{params.page === 'profile' ? <Profile /> : <ConnectedRoot />}</Provider>
     </IntlProvider>,
     node
   );

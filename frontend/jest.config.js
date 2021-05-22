@@ -20,7 +20,6 @@ module.exports = {
   setupFilesAfterEnv: [
     '<rootDir>/app/__mocks__/fetch.ts',
     '<rootDir>/app/__mocks__/localstorage.ts',
-    '<rootDir>/app/__stubs__/react-intl.ts',
     '<rootDir>/app/__stubs__/remark-config.ts',
     '<rootDir>/app/__stubs__/static-config.ts',
     '<rootDir>/app/__stubs__/settings.ts',
@@ -31,6 +30,7 @@ module.exports = {
     '!**/__stubs__/**',
     '!app/locales/**',
     '!app/utils/loadLocale.ts',
+    '!app/tests',
   ],
   globals: {
     'ts-jest': {

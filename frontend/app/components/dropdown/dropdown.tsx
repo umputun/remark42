@@ -4,7 +4,7 @@ import b from 'bem-react-helper';
 import { Theme } from 'common/types';
 import { sleep } from 'utils/sleep';
 import { Button } from 'components/button';
-import { parseMessage } from 'utils/postMessage';
+import { parseMessage } from 'utils/post-message';
 
 type Props = RenderableProps<{
   title: string;

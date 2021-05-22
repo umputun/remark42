@@ -1,0 +1,28 @@
+.user {
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+}
+
+.userButton {
+  display: flex;
+  align-items: center;
+  font-weight: bold;
+  color: rgb(var(--secondary-text-color));
+  transition: color 0.15s;
+
+  &:hover {
+    color: inherit;
+  }
+}
+
+.userLogoutButton {
+  composes: userButton;
+  margin-left: 12px;
+}
+
+.userAvatar {
+  width: 20px;
+  height: 20px;
+  margin-right: 8px;
+}

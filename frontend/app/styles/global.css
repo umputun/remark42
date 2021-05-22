@@ -4,10 +4,33 @@ body {
   margin: 0;
   padding: 6px;
   font-family: PT Sans, Helvetica, Arial, sans-serif;
+  color: rgb(var(--primary-text-color));
+  box-sizing: border-box;
+}
+
+input,
+button {
+  font-family: inherit;
+  color: inherit;
+}
+
+button {
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: unset;
+  font-size: inherit;
+  transition-property: color, background, border-color;
+  transition-timing-function: linear;
+  transition-duration: 150ms;
+  appearance: none;
+}
+
+#remark42 {
+  height: 100%;
 }
 
 /* Preloader */
-
 .preloader,
 .preloader::before,
 .preloader::after {

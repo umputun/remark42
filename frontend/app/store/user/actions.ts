@@ -1,8 +1,9 @@
 import * as api from 'common/api';
+import { logout } from 'components/auth/auth.api';
 import { User, BlockedUser, BlockTTL } from 'common/types';
 import { ttlToTime } from 'utils/ttl-to-time';
 import { getHiddenUsers } from 'utils/get-hidden-users';
-import { LS_HIDDEN_USERS_KEY } from 'common/constants';
+import { LS_EMAIL_KEY, LS_HIDDEN_USERS_KEY } from 'common/constants';
 import { setItem } from 'common/local-storage';
 
 import { StoreAction } from '../index';
@@ -17,13 +18,25 @@ import {
   USER_SUBSCRIPTION_SET,
   USER_SET_ACTION,
 } from './types';
-import { fetchComments } from '../comments/actions';
+import { fetchComments, unsetCommentMode } from '../comments/actions';
 import { COMMENTS_PATCH } from '../comments/types';
 
 export function setUser(user: User | null = null): USER_SET_ACTION {
   return {
     type: USER_SET,
     user,
+  };
+}
+
+export function signout(cleanSession = true): StoreAction<Promise<void>> {
+  return async (dispatch) => {
+    if (cleanSession) {
+      await logout();
+    }
+    localStorage.removeItem(LS_EMAIL_KEY);
+    dispatch(setUser());
+    dispatch(unsetCommentMode());
+    dispatch(fetchComments());
   };
 }
 

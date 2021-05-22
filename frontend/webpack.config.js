@@ -19,7 +19,7 @@ const PORT = process.env.PORT || 9000;
 const REMARK_API_BASE_URL = process.env.REMARK_API_BASE_URL || 'http://127.0.0.1:8080';
 const DEVSERVER_BASE_PATH = process.env.DEVSERVER_BASE_PATH || 'http://127.0.0.1:9000';
 const PUBLIC_FOLDER_PATH = path.resolve(__dirname, 'public');
-const CUSTOM_PROPERTIES_PATH = path.resolve(__dirname, './app/custom-properties.css');
+const CUSTOM_PROPERTIES_PATH = path.resolve(__dirname, './app/styles/custom-properties.css');
 
 const genId = incstr.idGenerator();
 const modulesMap = {};
@@ -138,8 +138,16 @@ module.exports = (_, { mode, analyze }) => {
           sourceMap: isDev,
           postcssOptions: {
             plugins: [
-              ['postcss-preset-env', { stage: 0 }],
-              ['postcss-custom-properties', { importFrom: CUSTOM_PROPERTIES_PATH }],
+              [
+                'postcss-preset-env',
+                {
+                  browsers: 'defaults, not IE 11, not samsung 12',
+                  stage: 0,
+                  features: {
+                    'custom-properties': CUSTOM_PROPERTIES_PATH,
+                  },
+                },
+              ],
               'cssnano',
             ],
           },

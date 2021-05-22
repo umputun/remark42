@@ -4,8 +4,8 @@ import clsx from 'clsx';
 import styles from './button.module.css';
 
 type Props = Omit<JSX.HTMLAttributes<HTMLButtonElement>, 'size'> & {
-  size?: 'small';
-  kind?: 'transparent';
+  size?: 'xs' | 'sm';
+  kind?: 'transparent' | 'link';
   suffix?: VNode;
   loading?: boolean;
   selected?: boolean;

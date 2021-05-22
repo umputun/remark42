@@ -3,7 +3,7 @@
     "incremental": true,
     "target": "es6",
     "module": "esnext",
-    "lib": ["es2018", "dom"],
+    "lib": ["es2019", "dom"],
     "jsx": "preserve",
     "jsxFactory": "h",
     "jsxFragmentFactory": "Fragment",
@@ -12,7 +12,7 @@
     "allowJs": true,
     "moduleResolution": "node",
     "resolveJsonModule": true,
-    "baseUrl": "app" ,
+    "baseUrl": "app",
     "esModuleInterop": true,
     "skipLibCheck": true,
     "sourceMap": true

@@ -12,6 +12,11 @@ module.exports = {
         ignore: ['after-comment'],
       },
     ],
+    'comment-empty-line-before': [
+      'always',
+      { except: ['first-nested'], ignore: ['after-comment', 'stylelint-commands'] },
+    ],
+    'value-keyword-case': ['lower', { ignoreProperties: ['composes'] }],
     'selector-pseudo-class-no-unknown': [true, { ignorePseudoClasses: ['global'] }],
     'property-no-unknown': [true, { ignoreProperties: ['composes'] }],
     'mavrin/stylelint-declaration-use-css-custom-properties': {

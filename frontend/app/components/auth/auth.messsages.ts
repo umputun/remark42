@@ -57,4 +57,12 @@ export const messages = defineMessages({
     id: 'auth.submit',
     defaultMessage: 'Submit',
   },
+  openProfile: {
+    id: 'auth.open-profile',
+    defaultMessage: 'Open My Profile',
+  },
+  signout: {
+    id: 'auth.signout',
+    defaultMessage: 'Sign Out',
+  },
 });

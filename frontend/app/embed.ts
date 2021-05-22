@@ -1,54 +1,13 @@
-import type { UserInfo, Theme } from 'common/types';
-import { BASE_URL, NODE_ID, COMMENT_NODE_CLASSNAME_PREFIX } from 'common/constants.config';
-import { parseMessage, postMessageToIframe } from 'utils/postMessage';
+import { NODE_ID, COMMENT_NODE_CLASSNAME_PREFIX } from 'common/constants.config';
+import { parseMessage, postMessageToIframe } from 'utils/post-message';
+import { createIframe } from 'utils/create-iframe';
+import type { Theme } from 'common/types';
+import { closeProfile, openProfile } from 'profile';
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
 } else {
   init();
-}
-
-function removeDomNode(node: HTMLElement | null) {
-  if (node && node.parentNode) {
-    node.parentNode.removeChild(node);
-  }
-}
-
-function createFrame({
-  host,
-  query,
-  height,
-  margin = '-6px',
-  __colors__ = {},
-}: {
-  host: string;
-  query: string;
-  height?: string;
-  margin?: string;
-  __colors__?: Record<string, string>;
-}) {
-  const iframe = document.createElement('iframe');
-
-  iframe.src = `${host}/web/iframe.html?${query}`;
-  iframe.name = JSON.stringify({ __colors__ });
-  iframe.setAttribute('width', '100%');
-  iframe.setAttribute('frameborder', '0');
-  iframe.setAttribute('allowtransparency', 'true');
-  iframe.setAttribute('scrolling', 'no');
-  iframe.setAttribute('tabindex', '0');
-  iframe.setAttribute('title', 'Comments | Remark42');
-  iframe.setAttribute('horizontalscrolling', 'no');
-  iframe.setAttribute('verticalscrolling', 'no');
-  iframe.setAttribute(
-    'style',
-    `width: 1px !important; min-width: 100% !important; border: none !important; overflow: hidden !important; margin: ${margin};`
-  );
-
-  if (height) {
-    iframe.setAttribute('height', height);
-  }
-
-  return iframe;
 }
 
 function init() {
@@ -73,32 +32,20 @@ function createInstance(config: typeof window.remark_config) {
     throw new Error('Remark42: Site ID is undefined.');
   }
 
-  let initDataAnimationTimeout: number | null = null;
   let titleObserver: MutationObserver | null = null;
 
   config.url = (config.url || `${window.location.origin}${window.location.pathname}`).split('#')[0];
 
-  const query = Object.keys(config)
-    .filter((key) => key !== '__colors__')
-    .map(
-      (key) =>
-        `${encodeURIComponent(key)}=${encodeURIComponent(
-          config[key as keyof Omit<typeof window.remark_config, '__colors__'>] as string | number | boolean
-        )}`
-    )
-    .join('&');
-
-  const iframe =
-    (root.firstElementChild as HTMLIFrameElement) ||
-    createFrame({ host: BASE_URL, query, __colors__: config.__colors__ });
+  const iframe = (root.firstElementChild as HTMLIFrameElement) || createIframe(config);
 
   root.appendChild(iframe);
 
-  window.addEventListener('message', receiveMessages);
-  window.addEventListener('hashchange', postHashToIframe);
+  window.addEventListener('message', handleReceiveMessage);
+  window.addEventListener('hashchange', handleHashChange);
   document.addEventListener('click', postClickOutsideToIframe);
 
   const titleElement = document.querySelector('title');
+
   if (titleElement) {
     titleObserver = new MutationObserver((mutations) => postTitleToIframe(mutations[0].target.textContent!));
     titleObserver.observe(titleElement, {
@@ -108,196 +55,47 @@ function createInstance(config: typeof window.remark_config) {
     });
   }
 
-  const remarkRootId = 'remark-km423lmfdslkm34';
-  const userInfo: {
-    node: HTMLElement | null;
-    back: HTMLElement | null;
-    closeEl: HTMLElement | null;
-    iframe: HTMLIFrameElement | null;
-    style: HTMLStyleElement | null;
-    init: (user: UserInfo) => void;
-    close: () => void;
-    delay: number | null;
-    events: string[];
-    onAnimationClose: () => void;
-    onKeyDown: (e: KeyboardEvent) => void;
-    animationStop: () => void;
-    remove: () => void;
-  } = {
-    node: null,
-    back: null,
-    closeEl: null,
-    iframe: null,
-    style: null,
-    init(user) {
-      this.animationStop();
-      if (!this.style) {
-        this.style = document.createElement('style');
-        this.style.setAttribute('rel', 'stylesheet');
-        this.style.setAttribute('type', 'text/css');
-        this.style.innerHTML = `
-        #${remarkRootId}-node {
-          position: fixed;
-          top: 0;
-          right: 0;
-          bottom: 0;
-          width: 400px;
-          transition: transform 0.4s ease-out;
-          max-width: 100%;
-          transform: translate(400px, 0);
-        }
-        #${remarkRootId}-node[data-animation] {
-          transform: translate(0, 0);
-        }
-        #${remarkRootId}-back {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: rgba(0,0,0,0.7);
-          opacity: 0;
-          transition: opacity 0.4s ease-out;
-        }
-        #${remarkRootId}-back[data-animation] {
-          opacity: 1;
-        }
-        #${remarkRootId}-close {
-          top: 0px;
-          right: 400px;
-          position: absolute;
-          text-align: center;
-          font-size: 25px;
-          cursor: pointer;
-          color: white;
-          border-color: transparent;
-          border-width: 0;
-          padding: 0;
-          margin-right: 4px;
-          background-color: transparent;
-        }
-        @media all and (max-width: 430px) {
-          #${remarkRootId}-close {
-            right: 0px;
-            font-size: 20px;
-            color: black;
-          }
-        }
-      `;
-      }
-      if (!this.node) {
-        this.node = document.createElement('div');
-        this.node.id = `${remarkRootId}-node`;
-      }
-      if (!this.back) {
-        this.back = document.createElement('div');
-        this.back.id = `${remarkRootId}-back`;
-        this.back.onclick = () => this.close();
-      }
-      if (!this.closeEl) {
-        this.closeEl = document.createElement('button');
-        this.closeEl.id = `${remarkRootId}-close`;
-        this.closeEl.innerHTML = '&#10006;';
-        this.closeEl.onclick = () => this.close();
-      }
-      const queryUserInfo = `${query}&page=user-info&&id=${user.id}&name=${user.name}&picture=${user.picture || ''}`;
-      const iframe = createFrame({ host: BASE_URL, query: queryUserInfo, height: '100%', margin: '0' });
-      this.node.appendChild(iframe);
-      this.iframe = iframe;
-      this.node.appendChild(this.closeEl);
-      document.body.appendChild(this.style);
-      document.body.appendChild(this.back);
-      document.body.appendChild(this.node);
-      document.addEventListener('keydown', this.onKeyDown);
-      initDataAnimationTimeout = window.setTimeout(() => {
-        this.back!.setAttribute('data-animation', '');
-        this.node!.setAttribute('data-animation', '');
-        iframe.focus();
-      }, 400);
-    },
-    close() {
-      if (this.node) {
-        if (this.iframe) {
-          this.node.removeChild(this.iframe);
-        }
-        this.onAnimationClose();
-        this.node.removeAttribute('data-animation');
-      }
-      if (this.back) {
-        this.back.removeAttribute('data-animation');
-      }
-      document.removeEventListener('keydown', this.onKeyDown);
-    },
-    delay: null,
-    events: ['', 'webkit', 'moz', 'MS', 'o'].map((prefix) => (prefix ? `${prefix}TransitionEnd` : 'transitionend')),
-    onAnimationClose() {
-      const el = this.node!;
-      if (!this.node) {
-        return;
-      }
-      this.delay = window.setTimeout(this.animationStop, 1000);
-      this.events.forEach((event) => el.addEventListener(event, this.animationStop, false));
-    },
-    onKeyDown(e) {
-      // ESCAPE key pressed
-      if (e.keyCode === 27) {
-        userInfo.close();
-      }
-    },
-    animationStop() {
-      const t = userInfo;
-      if (!t.node) {
-        return;
-      }
-      if (t.delay) {
-        clearTimeout(t.delay);
-        t.delay = null;
-      }
-      t.events.forEach((event) => t.node!.removeEventListener(event, t.animationStop, false));
-      return t.remove();
-    },
-    remove() {
-      const t = userInfo;
-      removeDomNode(t.node);
-      removeDomNode(t.back);
-      removeDomNode(t.style);
-    },
-  };
-
-  function receiveMessages(event: MessageEvent): void {
+  function handleReceiveMessage(event: MessageEvent): void {
     const data = parseMessage(event);
 
-    if (data.height) {
+    if (typeof data.height === 'number') {
       iframe.style.height = `${data.height}px`;
     }
 
-    if (data.scrollTo) {
+    if (typeof data.scrollTo === 'number') {
       window.scrollTo(window.pageXOffset, data.scrollTo + iframe.getBoundingClientRect().top + window.pageYOffset);
     }
 
     if (typeof data.profile === 'object') {
       if (data.profile === null) {
-        userInfo.close();
+        closeProfile();
       } else {
-        userInfo.init(data.profile);
+        openProfile({ ...config, ...data.profile });
       }
     }
 
-    if (data.inited) {
+    if (data.signout === true) {
+      postMessageToIframe(iframe, { signout: true });
+    }
+
+    if (data.inited === true) {
       postHashToIframe();
       postTitleToIframe(document.title);
     }
   }
 
-  function postHashToIframe(evt?: Event & { newURL: string }) {
-    const hash = evt ? `#${evt.newURL.split('#')[1]}` : window.location.hash;
-
+  function postHashToIframe(hash = window.location.hash) {
     if (!hash.startsWith(`#${COMMENT_NODE_CLASSNAME_PREFIX}`)) {
       return;
     }
 
-    evt?.preventDefault();
     postMessageToIframe(iframe, { hash });
+  }
+
+  function handleHashChange(evt: HashChangeEvent) {
+    const url = new URL(evt.newURL);
+
+    postHashToIframe(url.hash);
   }
 
   function postTitleToIframe(title: string) {
@@ -312,16 +110,13 @@ function createInstance(config: typeof window.remark_config) {
   }
 
   function changeTheme(theme: Theme) {
+    window.remark_config.theme = theme;
     postMessageToIframe(iframe, { theme });
   }
 
   function destroy() {
-    if (initDataAnimationTimeout) {
-      clearTimeout(initDataAnimationTimeout);
-    }
-
-    window.removeEventListener('message', receiveMessages);
-    window.removeEventListener('hashchange', postHashToIframe);
+    window.removeEventListener('message', handleReceiveMessage);
+    window.removeEventListener('hashchange', handleHashChange);
     document.removeEventListener('click', postClickOutsideToIframe);
 
     if (titleObserver) {
