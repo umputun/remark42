@@ -49,6 +49,7 @@ type ServerCommand struct {
 	Admin      AdminGroup      `group:"admin" namespace:"admin" env-namespace:"ADMIN"`
 	Notify     NotifyGroup     `group:"notify" namespace:"notify" env-namespace:"NOTIFY"`
 	SMTP       SMTPGroup       `group:"smtp" namespace:"smtp" env-namespace:"SMTP"`
+	Telegram   TelegramGroup   `group:"telegram" namespace:"telegram" env-namespace:"TELEGRAM"`
 	Image      ImageGroup      `group:"image" namespace:"image" env-namespace:"IMAGE"`
 	SSL        SSLGroup        `group:"ssl" namespace:"ssl" env-namespace:"SSL"`
 	ImageProxy ImageProxyGroup `group:"image-proxy" namespace:"image-proxy" env-namespace:"IMAGE_PROXY"`
@@ -188,6 +189,12 @@ type AdminGroup struct {
 	RPC RPCGroup `group:"rpc" namespace:"rpc" env-namespace:"RPC"`
 }
 
+// TelegramGroup defines token for Telegram used in notify and auth modules
+type TelegramGroup struct {
+	Token   string        `long:"host" env:"HOST" description:"SMTP host"`
+	Timeout time.Duration `long:"timeout" env:"TIMEOUT" default:"5s" description:"telegram timeout"`
+}
+
 // SMTPGroup defines options for SMTP server connection, used in auth and notify modules
 type SMTPGroup struct {
 	Host     string        `long:"host" env:"HOST" description:"SMTP host"`
@@ -203,10 +210,10 @@ type NotifyGroup struct {
 	Type      []string `long:"type" env:"TYPE" description:"type of notification" choice:"none" choice:"telegram" choice:"email" choice:"slack" default:"none" env-delim:","` //nolint
 	QueueSize int      `long:"queue" env:"QUEUE" description:"size of notification queue" default:"100"`
 	Telegram  struct {
-		Token   string        `long:"token" env:"TOKEN" description:"telegram token"`
 		Channel string        `long:"chan" env:"CHAN" description:"telegram channel"`
-		Timeout time.Duration `long:"timeout" env:"TIMEOUT" default:"5s" description:"telegram timeout"`
 		API     string        `long:"api" env:"API" default:"https://api.telegram.org/bot" description:"telegram api prefix"`
+		Token   string        `long:"token" env:"TOKEN" description:"[deprecated, use --telegram.token] telegram token"`
+		Timeout time.Duration `long:"timeout" env:"TIMEOUT" default:"5s" description:"[deprecated, use --telegram.timeout] telegram timeout"`
 	} `group:"telegram" namespace:"telegram" env-namespace:"TELEGRAM"`
 	Email struct {
 		From                string `long:"from_address" env:"FROM" description:"from email address"`
@@ -290,7 +297,6 @@ func (s *ServerCommand) Execute(_ []string) error {
 
 // HandleDeprecatedFlags sets new flags from deprecated returns their list
 func (s *ServerCommand) HandleDeprecatedFlags() (result []DeprecatedFlag) {
-	// 1.5.0
 	if s.Auth.Email.Host != "" && s.SMTP.Host == "" {
 		s.SMTP.Host = s.Auth.Email.Host
 		result = append(result, DeprecatedFlag{Old: "auth.email.host", New: "smtp.host", RemoveVersion: "1.7.0"})
@@ -321,6 +327,15 @@ func (s *ServerCommand) HandleDeprecatedFlags() (result []DeprecatedFlag) {
 	if s.LegacyImageProxy && !s.ImageProxy.HTTP2HTTPS {
 		s.ImageProxy.HTTP2HTTPS = s.LegacyImageProxy
 		result = append(result, DeprecatedFlag{Old: "img-proxy", New: "image-proxy.http2https", RemoveVersion: "1.7.0"})
+	}
+	if s.Notify.Telegram.Token != "" && s.Telegram.Token == "" {
+		s.Telegram.Token = s.Notify.Telegram.Token
+		result = append(result, DeprecatedFlag{Old: "notify.telegram.token", New: "telegram.token", RemoveVersion: "1.10.0"})
+	}
+	const telegramDefaultDuration = time.Second * 5
+	if s.Notify.Telegram.Timeout != telegramDefaultDuration && s.Telegram.Timeout == telegramDefaultDuration {
+		s.Telegram.Token = s.Notify.Telegram.Token
+		result = append(result, DeprecatedFlag{Old: "notify.telegram.timeout", New: "telegram.timeout", RemoveVersion: "1.10.0"})
 	}
 	return result
 }
@@ -821,8 +836,8 @@ func (s *ServerCommand) makeNotify(dataStore *service.DataStore, authenticator *
 			}
 			destinations = append(destinations, slack)
 		case "telegram":
-			tg, err := notify.NewTelegram(s.Notify.Telegram.Token, s.Notify.Telegram.Channel,
-				s.Notify.Telegram.Timeout, s.Notify.Telegram.API)
+			tg, err := notify.NewTelegram(s.Telegram.Token, s.Notify.Telegram.Channel,
+				s.Telegram.Timeout, s.Notify.Telegram.API)
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to create telegram notification destination")
 			}
