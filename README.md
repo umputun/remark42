@@ -3,7 +3,7 @@
 
 Remark42 is a self-hosted, lightweight and simple (yet functional) comment engine, which doesn't spy on users. It can be embedded into blogs, articles, or any other place where readers add comments.
 
-* Social login via Google, Twitter, Facebook, Microsoft, GitHub and Yandex
+* Social login via Google, Twitter, Facebook, Microsoft, GitHub, Yandex and Telegram
 * Login via email
 * Optional anonymous access
 * Multi-level nested comments with both tree and plain presentations
@@ -52,6 +52,7 @@ For admin screenshots see [Admin UI wiki](https://github.com/umputun/remark42/wi
         - [GitHub Auth provider](#github-auth-provider)
         - [Google Auth provider](#google-auth-provider)
         - [Microsoft Auth provider](#microsoft-auth-provider)
+        - [Telegram Auth Provider](#telegram-auth-provider)
         - [Twitter Auth provider](#twitter-auth-provider)
         - [Yandex Auth provider](#yandex-auth-provider)
         - [Anonymous Auth provider](#anonymous-auth-provider)
@@ -152,6 +153,7 @@ _this is the recommended way to run Remark42_
 | auth.github.csec        | AUTH_GITHUB_CSEC        |                          | GitHub OAuth client secret                      |
 | auth.twitter.cid        | AUTH_TWITTER_CID        |                          | Twitter Consumer API Key                        |
 | auth.twitter.csec       | AUTH_TWITTER_CSEC       |                          | Twitter Consumer API Secret key                 |
+| auth.telegram           | AUTH_TELEGRAM           |                          | Enable Telegram auth (telegram.token must be present |
 | auth.yandex.cid         | AUTH_YANDEX_CID         |                          | Yandex OAuth client ID                          |
 | auth.yandex.csec        | AUTH_YANDEX_CSEC        |                          | Yandex OAuth client secret                      |
 | auth.dev                | AUTH_DEV                | `false`                  | local OAuth2 server, development mode only      |
@@ -315,6 +317,11 @@ _instructions for Google OAuth2 setup borrowed from [oauth2_proxy](https://githu
 3. In **"Overview"** take note of the **Application (client) ID**
 4. Choose the new project from the top right project dropdown (only if another project is selected)
 5. Select **"Certificates & secrets"** and click on **"+ New Client Secret"**
+
+##### Telegram Auth Provider
+
+1.  Contact [@BotFather](https://t.me/botfather) and follow his instructions to create your own bot (call it, for example, "My site auth bot")
+1.	Write down resulting token as `TELEGRAM_TOKEN` into remark42 config, and also set `AUTH_TELEGRAM` to `true` to enable telegram auth for your users.
 
 ##### Twitter Auth provider
 

@@ -78,7 +78,7 @@ func TestServerApp_DevMode(t *testing.T) {
 	waitForHTTPServerStart(port)
 
 	providers := app.restSrv.Authenticator.Providers()
-	require.Equal(t, 7+1, len(providers), "extra auth provider")
+	require.Equal(t, 8+1, len(providers), "extra auth provider")
 	assert.Equal(t, "dev", providers[len(providers)-2].Name(), "dev auth provider")
 	// send ping
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/ping", port))
@@ -105,7 +105,7 @@ func TestServerApp_AnonMode(t *testing.T) {
 	waitForHTTPServerStart(port)
 
 	providers := app.restSrv.Authenticator.Providers()
-	require.Equal(t, 7+1, len(providers), "extra auth provider for anon")
+	require.Equal(t, 8+1, len(providers), "extra auth provider for anon")
 	assert.Equal(t, "anonymous", providers[len(providers)-1].Name(), "anon auth provider")
 
 	// send ping
@@ -667,6 +667,7 @@ func prepServerApp(t *testing.T, fn func(o ServerCommand) ServerCommand) (*serve
 	cmd.Auth.Yandex.CSEC, cmd.Auth.Yandex.CID = "csec", "cid"
 	cmd.Auth.Microsoft.CSEC, cmd.Auth.Microsoft.CID = "csec", "cid"
 	cmd.Auth.Twitter.CSEC, cmd.Auth.Twitter.CID = "csec", "cid"
+	cmd.Auth.Telegram = true
 	cmd.Telegram.Token = "token"
 	cmd.Auth.Email.Enable = true
 	cmd.Auth.Email.MsgTemplate = "testdata/email.tmpl"
