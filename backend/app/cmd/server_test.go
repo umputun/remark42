@@ -77,8 +77,9 @@ func TestServerApp_DevMode(t *testing.T) {
 	go func() { _ = app.run(ctx) }()
 	waitForHTTPServerStart(port)
 
-	require.Equal(t, 5+1, len(app.restSrv.Authenticator.Providers()), "extra auth provider")
-	assert.Equal(t, "dev", app.restSrv.Authenticator.Providers()[4].Name(), "dev auth provider")
+	providers := app.restSrv.Authenticator.Providers()
+	require.Equal(t, 7+1, len(providers), "extra auth provider")
+	assert.Equal(t, "dev", providers[len(providers)-2].Name(), "dev auth provider")
 	// send ping
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/ping", port))
 	require.NoError(t, err)
@@ -103,8 +104,9 @@ func TestServerApp_AnonMode(t *testing.T) {
 	go func() { _ = app.run(ctx) }()
 	waitForHTTPServerStart(port)
 
-	require.Equal(t, 5+1, len(app.restSrv.Authenticator.Providers()), "extra auth provider for anon")
-	assert.Equal(t, "anonymous", app.restSrv.Authenticator.Providers()[5].Name(), "anon auth provider")
+	providers := app.restSrv.Authenticator.Providers()
+	require.Equal(t, 7+1, len(providers), "extra auth provider for anon")
+	assert.Equal(t, "anonymous", providers[len(providers)-1].Name(), "anon auth provider")
 
 	// send ping
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/ping", port))
@@ -662,6 +664,9 @@ func prepServerApp(t *testing.T, fn func(o ServerCommand) ServerCommand) (*serve
 	cmd.Auth.Google.CSEC, cmd.Auth.Google.CID = "csec", "cid"
 	cmd.Auth.Facebook.CSEC, cmd.Auth.Facebook.CID = "csec", "cid"
 	cmd.Auth.Yandex.CSEC, cmd.Auth.Yandex.CID = "csec", "cid"
+	cmd.Auth.Microsoft.CSEC, cmd.Auth.Microsoft.CID = "csec", "cid"
+	cmd.Auth.Twitter.CSEC, cmd.Auth.Twitter.CID = "csec", "cid"
+	cmd.Telegram.Token = "token"
 	cmd.Auth.Email.Enable = true
 	cmd.Auth.Email.MsgTemplate = "testdata/email.tmpl"
 	cmd.BackupLocation = "/tmp"
