@@ -57,6 +57,7 @@ services:
             - ANON_VOTE=true
             - VOTES_IP=true
             - AUTH_EMAIL_ENABLE=true
+            - AUTH_TELEGRAM=true
             - AUTH_ANON=true
             - AUTH_GOOGLE_CID=1111
             - AUTH_GOOGLE_CSEC=1111

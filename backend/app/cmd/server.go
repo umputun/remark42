@@ -96,6 +96,7 @@ type ServerCommand struct {
 		Microsoft AuthGroup `group:"microsoft" namespace:"microsoft" env-namespace:"MICROSOFT" description:"Microsoft OAuth"`
 		Yandex    AuthGroup `group:"yandex" namespace:"yandex" env-namespace:"YANDEX" description:"Yandex OAuth"`
 		Twitter   AuthGroup `group:"twitter" namespace:"twitter" env-namespace:"TWITTER" description:"Twitter OAuth"`
+		Telegram  bool      `long:"telegram" env:"TELEGRAM" description:"Enable Telegram auth (using token from telegram.token)"`
 		Dev       bool      `long:"dev" env:"DEV" description:"enable dev (local) oauth2"`
 		Anonymous bool      `long:"anon" env:"ANON" description:"enable anonymous login"`
 		Email     struct {
@@ -789,6 +790,19 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 	}
 	if s.Auth.Twitter.CID != "" && s.Auth.Twitter.CSEC != "" {
 		authenticator.AddProvider("twitter", s.Auth.Twitter.CID, s.Auth.Twitter.CSEC)
+		providers++
+	}
+	if s.Auth.Telegram {
+		authenticator.AddCustomHandler(
+			&provider.TelegramHandler{
+				ProviderName: "telegram",
+				ErrorMsg:     "❌ Invalid auth request. Please try clicking link again.",
+				SuccessMsg:   "✅ You have successfully authenticated!",
+				Telegram:     provider.NewTelegramAPI(s.Telegram.Token, &http.Client{Timeout: s.Telegram.Timeout}),
+				L:            log.Default(),
+				TokenService: authenticator.TokenService(),
+				AvatarSaver:  authenticator.AvatarProxy(),
+			})
 		providers++
 	}
 
