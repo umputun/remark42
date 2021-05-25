@@ -156,14 +156,14 @@ _this is the recommended way to run remark42_
 | auth.email.subj         | AUTH_EMAIL_SUBJ         | `remark42 confirmation`  | email subject                                   |
 | auth.email.content-type | AUTH_EMAIL_CONTENT_TYPE | `text/html`              | email content type                              |
 | auth.email.template     | AUTH_EMAIL_TEMPLATE     | none (predefined)        | custom email message template file              |
-| notify.type             | NOTIFY_TYPE             | none                     | type of notification (telegram, slack and/or email) |
+| notify.users            | NOTIFY_USERS            | none                     | type of user notifications (email)              |
+| notify.admins           | NOTIFY_ADMINS           | none                     | type of admin notifications (telegram, slack and/or email) |
 | notify.queue            | NOTIFY_QUEUE            | `100`                    | size of notification queue                      |
 | notify.telegram.chan    | NOTIFY_TELEGRAM_CHAN    |                          | telegram channel                                |
 | notify.slack.token      | NOTIFY_SLACK_TOKEN      |                          | slack token                                     |
 | notify.slack.chan       | NOTIFY_SLACK_CHAN       | `general`                | slack channel                                   |
 | notify.email.fromAddress | NOTIFY_EMAIL_FROM      |                          | from email address                              |
 | notify.email.verification_subj | NOTIFY_EMAIL_VERIFICATION_SUBJ | `Email verification` | verification message subject          |
-| notify.email.notify_admin | NOTIFY_EMAIL_ADMIN    | `false`                  | notify admin on new comments via ADMIN_SHARED_EMAIL |
 | telegram.token          | TELEGRAM_TOKEN          |                          | telegram token (used for auth and telegram notifications) |
 | telegram.timeout        | TELEGRAM_TIMEOUT        | `5s`                     | telegram connection timeout                     |
 | smtp.host               | SMTP_HOST               |                          | SMTP host                                       |
@@ -226,6 +226,8 @@ trouble with unrecognized command-line options in the future.
 | auth.email.tls     | smtp.tls      | AUTH_EMAIL_TLS     | SMTP_TLS      | `false` | enable TLS     | 1.5.0               |
 | auth.email.timeout | smtp.timeout  | AUTH_EMAIL_TIMEOUT | SMTP_TIMEOUT  | `10s`   | smtp timeout   | 1.5.0               |
 | img-proxy          | image-proxy.http2https | IMG_PROXY | IMAGE_PROXY_HTTP2HTTPS | `false` | enable http->https proxy for images | 1.5.0 |
+| notify.type        | notify.users, notify.admins | NOTIFY_TYPE       | NOTIFY_ADMINS, NOTIFY_USERS | 1.9.0               |
+| notify.email.notify_admin| notify.admins=email | NOTIFY_EMAIL_ADMIN          | NOTIFY_ADMINS=email | 1.9.0               |
 | notify.telegram.token | telegram.token | NOTIFY_TELEGRAM_TOKEN | TELEGRAM_TOKEN   | telegram token | 1.9.0               |
 | notify.telegram.timeout | telegram.timeout | NOTIFY_TELEGRAM_TIMEOUT | TELEGRAM_TIMEOUT | telegram timeout | 1.9.0       |
 </details>

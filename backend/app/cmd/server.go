@@ -210,7 +210,9 @@ type SMTPGroup struct {
 
 // NotifyGroup defines options for notification
 type NotifyGroup struct {
-	Type      []string `long:"type" env:"TYPE" description:"type of notification" choice:"none" choice:"telegram" choice:"email" choice:"slack" default:"none" env-delim:","` //nolint
+	Type      []string `long:"type" env:"TYPE" description:"[deprecated, use user and admin types instead] types of notifications" choice:"none" choice:"telegram" choice:"email" choice:"slack" default:"none" env-delim:","` //nolint
+	Users     []string `long:"users" env:"USERS" description:"types of user notifications" choice:"none" choice:"email" default:"none" env-delim:","`                                                                          //nolint
+	Admins    []string `long:"admins" env:"ADMINS" description:"types of admin notifications" choice:"none" choice:"telegram" choice:"email" choice:"slack" default:"none" env-delim:","`                                      //nolint
 	QueueSize int      `long:"queue" env:"QUEUE" description:"size of notification queue" default:"100"`
 	Telegram  struct {
 		Channel string        `long:"chan" env:"CHAN" description:"telegram channel"`
@@ -221,7 +223,7 @@ type NotifyGroup struct {
 	Email struct {
 		From                string `long:"from_address" env:"FROM" description:"from email address"`
 		VerificationSubject string `long:"verification_subj" env:"VERIFICATION_SUBJ" description:"verification message subject"`
-		AdminNotifications  bool   `long:"notify_admin" env:"ADMIN" description:"notify admin on new comments via ADMIN_SHARED_EMAIL"`
+		AdminNotifications  bool   `long:"notify_admin" env:"ADMIN" description:"[deprecated, use --notify.admins=email] notify admin on new comments via ADMIN_SHARED_EMAIL"`
 	} `group:"email" namespace:"email" env-namespace:"EMAIL"`
 	Slack struct {
 		Token   string `long:"token" env:"TOKEN" description:"slack token"`
@@ -342,6 +344,14 @@ func (s *ServerCommand) HandleDeprecatedFlags() (result []DeprecatedFlag) {
 		s.ImageProxy.HTTP2HTTPS = s.LegacyImageProxy
 		result = append(result, DeprecatedFlag{Old: "img-proxy", New: "image-proxy.http2https", Version: "1.5"})
 	}
+	if len(s.Notify.Type) != 0 && (len(s.Notify.Users) != 0 || len(s.Notify.Admins) != 0) {
+		s.handleDeprecatedNotifications()
+		result = append(result, DeprecatedFlag{Old: "notify.type", New: "notify.(users|admins)", Version: "1.9"})
+	}
+	if s.Notify.Email.AdminNotifications && !contains("email", s.Notify.Admins) {
+		s.Notify.Admins = append(s.Notify.Admins, "email")
+		result = append(result, DeprecatedFlag{Old: "notify.email.notify_admin", New: "notify.admins=email", Version: "1.9"})
+	}
 	if s.Notify.Telegram.Token != "" && s.Telegram.Token == "" {
 		s.Telegram.Token = s.Notify.Telegram.Token
 		result = append(result, DeprecatedFlag{Old: "notify.telegram.token", New: "telegram.token", Version: "1.9"})
@@ -352,6 +362,26 @@ func (s *ServerCommand) HandleDeprecatedFlags() (result []DeprecatedFlag) {
 		result = append(result, DeprecatedFlag{Old: "notify.telegram.timeout", New: "telegram.timeout", Version: "1.9"})
 	}
 	return result
+}
+
+func (s *ServerCommand) handleDeprecatedNotifications() {
+	for _, t := range s.Notify.Type {
+		if t == "email" && !contains(t, s.Notify.Users) {
+			s.Notify.Users = append(s.Notify.Users, t)
+		}
+		if (t == "telegram" || t == "slack") && !contains(t, s.Notify.Admins) {
+			s.Notify.Admins = append(s.Notify.Admins, t)
+		}
+	}
+}
+
+func contains(s string, a []string) bool {
+	for _, t := range a {
+		if t == s {
+			return true
+		}
+	}
+	return false
 }
 
 // newServerApp prepares application and return it with all active parts
@@ -431,11 +461,8 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 	var emailNotifications bool
 	notifyService, err := s.makeNotify(dataService, authenticator)
 
-	for _, t := range s.Notify.Type {
-		switch t {
-		case "email":
-			emailNotifications = true
-		}
+	if contains("email", s.Notify.Users) {
+		emailNotifications = true
 	}
 
 	if err != nil {
@@ -841,7 +868,7 @@ func (s *ServerCommand) loadEmailTemplate() (string, error) {
 func (s *ServerCommand) makeNotify(dataStore *service.DataStore, authenticator *auth.Service) (*notify.Service, error) {
 	var notifyService *notify.Service
 	var destinations []notify.Destination
-	for _, t := range s.Notify.Type {
+	for _, t := range s.Notify.Admins {
 		switch t {
 		case "slack":
 			slack, err := notify.NewSlack(s.Notify.Slack.Token, s.Notify.Slack.Channel)
@@ -857,47 +884,6 @@ func (s *ServerCommand) makeNotify(dataStore *service.DataStore, authenticator *
 			}
 			destinations = append(destinations, tg)
 		case "email":
-			emailParams := notify.EmailParams{
-				MsgTemplatePath:          s.emailMsgTemplatePath,
-				VerificationTemplatePath: s.emailVerificationTemplatePath,
-				From:                     s.Notify.Email.From,
-				VerificationSubject:      s.Notify.Email.VerificationSubject,
-				UnsubscribeURL:           s.RemarkURL + "/email/unsubscribe.html",
-				// TODO: uncomment after #560 frontend part is ready and URL is known
-				// SubscribeURL:        s.RemarkURL + "/subscribe.html?token=",
-				TokenGenFn: func(userID, email, site string) (string, error) {
-					claims := token.Claims{
-						Handshake: &token.Handshake{ID: userID + "::" + email},
-						StandardClaims: jwt.StandardClaims{
-							Audience:  site,
-							ExpiresAt: time.Now().Add(100 * 365 * 24 * time.Hour).Unix(),
-							NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
-							Issuer:    "remark42",
-						},
-					}
-					tkn, err := authenticator.TokenService().Token(claims)
-					if err != nil {
-						return "", errors.Wrapf(err, "failed to make unsubscription token")
-					}
-					return tkn, nil
-				},
-			}
-			if s.Notify.Email.AdminNotifications {
-				emailParams.AdminEmails = s.Admin.Shared.Email
-			}
-			smtpParams := notify.SMTPParams{
-				Host:     s.SMTP.Host,
-				Port:     s.SMTP.Port,
-				TLS:      s.SMTP.TLS,
-				Username: s.SMTP.Username,
-				Password: s.SMTP.Password,
-				TimeOut:  s.SMTP.TimeOut,
-			}
-			emailService, err := notify.NewEmail(emailParams, smtpParams)
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to create email notification destination")
-			}
-			destinations = append(destinations, emailService)
 		case "none":
 			notifyService = notify.NopService
 		default:
@@ -905,8 +891,64 @@ func (s *ServerCommand) makeNotify(dataStore *service.DataStore, authenticator *
 		}
 	}
 
+	for _, t := range s.Notify.Users {
+		switch t {
+		case "email":
+		case "none":
+			notifyService = notify.NopService
+		default:
+			return nil, errors.Errorf("unsupported notification type %q", s.Notify.Type)
+		}
+	}
+
+	// with logic below admin notifications enable notifications for users on the backend even if they
+	// are not enabled explicitly, however they won't be visible to the users in the frontend
+	// because api.Rest.EmailNotifications would be set to false.
+	if contains("email", s.Notify.Users) || contains("email", s.Notify.Admins) {
+		emailParams := notify.EmailParams{
+			MsgTemplatePath:          s.emailMsgTemplatePath,
+			VerificationTemplatePath: s.emailVerificationTemplatePath, From: s.Notify.Email.From,
+			VerificationSubject: s.Notify.Email.VerificationSubject,
+			UnsubscribeURL:      s.RemarkURL + "/email/unsubscribe.html",
+			// TODO: uncomment after #560 frontend part is ready and URL is known
+			// SubscribeURL:        s.RemarkURL + "/subscribe.html?token=",
+			TokenGenFn: func(userID, email, site string) (string, error) {
+				claims := token.Claims{
+					Handshake: &token.Handshake{ID: userID + "::" + email},
+					StandardClaims: jwt.StandardClaims{
+						Audience:  site,
+						ExpiresAt: time.Now().Add(100 * 365 * 24 * time.Hour).Unix(),
+						NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
+						Issuer:    "remark42",
+					},
+				}
+				tkn, err := authenticator.TokenService().Token(claims)
+				if err != nil {
+					return "", errors.Wrapf(err, "failed to make unsubscription token")
+				}
+				return tkn, nil
+			},
+		}
+		if contains("email", s.Notify.Admins) {
+			emailParams.AdminEmails = s.Admin.Shared.Email
+		}
+		smtpParams := notify.SMTPParams{
+			Host:     s.SMTP.Host,
+			Port:     s.SMTP.Port,
+			TLS:      s.SMTP.TLS,
+			Username: s.SMTP.Username,
+			Password: s.SMTP.Password,
+			TimeOut:  s.SMTP.TimeOut,
+		}
+		emailService, err := notify.NewEmail(emailParams, smtpParams)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create email notification destination")
+		}
+		destinations = append(destinations, emailService)
+	}
+
 	if len(destinations) > 0 {
-		log.Printf("[INFO] make notify, types=%s", s.Notify.Type)
+		log.Printf("[INFO] make notify, for users: %s, for admins: %s", s.Notify.Users, s.Notify.Admins)
 		notifyService = notify.NewService(dataStore, s.Notify.QueueSize, destinations...)
 	}
 	return notifyService, nil

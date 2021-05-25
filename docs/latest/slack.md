@@ -20,12 +20,12 @@ In order to integrate notifications from remark42 with the [slack](https://slack
 
 The slack token which you obtained before should be used as `NOTIFY_SLACK_TOKEN`. 
 
-You also need to set `NOTIFY_TYPE=slack` for the slack notification to be active.
+You also need to set `NOTIFY_ADMINS=slack` for the slack notification to be active.
 
 By default, the notification are sent to the `general` channel on slack. If you need another channel, you can specify it, for instance with `NOTIFY_SLACK_CHAN=random`.
 
 ```
-    - NOTIFY_TYPE=slack
+    - NOTIFY_ADMINS=slack
     - NOTIFY_SLACK_CHAN=general
     - NOTIFY_SLACK_TOKEN=xoxb-....
 ```
