@@ -682,6 +682,8 @@ func prepServerApp(t *testing.T, fn func(o ServerCommand) ServerCommand) (*serve
 	cmd.Admin.Type = "shared"
 	cmd.Admin.Shared.Admins = []string{"id1", "id2"}
 	cmd.RestrictedNames = []string{"umputun", "bobuk"}
+	cmd.emailMsgTemplatePath = "../../templates/email_reply.html.tmpl"
+	cmd.emailVerificationTemplatePath = "../../templates/email_confirmation_subscription.html.tmpl"
 	cmd = fn(cmd)
 
 	os.Remove(cmd.Store.Bolt.Path + "/remark.db")
