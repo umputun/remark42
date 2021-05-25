@@ -429,13 +429,13 @@ func TestServerApp_DeprecatedArgs(t *testing.T) {
 	deprecatedFlags := s.HandleDeprecatedFlags()
 	assert.ElementsMatch(t,
 		[]DeprecatedFlag{
-			{Old: "auth.email.host", New: "smtp.host", RemoveVersion: "1.7.0"},
-			{Old: "auth.email.port", New: "smtp.port", RemoveVersion: "1.7.0"},
-			{Old: "auth.email.tls", New: "smtp.tls", RemoveVersion: "1.7.0"},
-			{Old: "auth.email.user", New: "smtp.username", RemoveVersion: "1.7.0"},
-			{Old: "auth.email.passwd", New: "smtp.password", RemoveVersion: "1.7.0"},
-			{Old: "auth.email.timeout", New: "smtp.timeout", RemoveVersion: "1.7.0"},
-			{Old: "auth.email.template", RemoveVersion: "1.9.0"},
+			{Old: "auth.email.host", New: "smtp.host", Version: "1.5"},
+			{Old: "auth.email.port", New: "smtp.port", Version: "1.5"},
+			{Old: "auth.email.tls", New: "smtp.tls", Version: "1.5"},
+			{Old: "auth.email.user", New: "smtp.username", Version: "1.5"},
+			{Old: "auth.email.passwd", New: "smtp.password", Version: "1.5"},
+			{Old: "auth.email.timeout", New: "smtp.timeout", Version: "1.5"},
+			{Old: "auth.email.template", Version: "1.5"},
 		},
 		deprecatedFlags)
 	assert.Equal(t, "smtp.example.org", s.SMTP.Host)
