@@ -46,8 +46,8 @@ func main() {
 			Revision:     revision,
 		})
 		for _, entry := range c.HandleDeprecatedFlags() {
-			log.Printf("[WARN] --%s is deprecated and will be removed in v%s, please use --%s instead",
-				entry.Old, entry.RemoveVersion, entry.New)
+			log.Printf("[WARN] --%s is deprecated since v%s and will be removed in the future, please use --%s instead",
+				entry.Old, entry.Version, entry.New)
 		}
 		err := c.Execute(args)
 		if err != nil {

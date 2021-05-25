@@ -109,7 +109,7 @@ type ServerCommand struct {
 			SMTPUserName string        `long:"user" env:"USER" description:"[deprecated, use --smtp.username] enable TLS"`
 			TLS          bool          `long:"tls" env:"TLS" description:"[deprecated, use --smtp.tls] SMTP TCP connection timeout"`
 			TimeOut      time.Duration `long:"timeout" env:"TIMEOUT" default:"10s" description:"[deprecated, use --smtp.timeout] SMTP TCP connection timeout"`
-			MsgTemplate  string        `long:"template" env:"TEMPLATE" description:"[deprecated, message template file]" default:"email_confirmation_login.html.tmpl"`
+			MsgTemplate  string        `long:"template" env:"TEMPLATE" description:"[deprecated] message template file" default:"email_confirmation_login.html.tmpl"`
 		} `group:"email" namespace:"email" env-namespace:"EMAIL"`
 	} `group:"auth" namespace:"auth" env-namespace:"AUTH"`
 
@@ -310,43 +310,43 @@ func (s *ServerCommand) Execute(_ []string) error {
 func (s *ServerCommand) HandleDeprecatedFlags() (result []DeprecatedFlag) {
 	if s.Auth.Email.Host != "" && s.SMTP.Host == "" {
 		s.SMTP.Host = s.Auth.Email.Host
-		result = append(result, DeprecatedFlag{Old: "auth.email.host", New: "smtp.host", RemoveVersion: "1.7.0"})
+		result = append(result, DeprecatedFlag{Old: "auth.email.host", New: "smtp.host", Version: "1.5"})
 	}
 	if s.Auth.Email.Port != 0 && s.SMTP.Port == 0 {
 		s.SMTP.Port = s.Auth.Email.Port
-		result = append(result, DeprecatedFlag{Old: "auth.email.port", New: "smtp.port", RemoveVersion: "1.7.0"})
+		result = append(result, DeprecatedFlag{Old: "auth.email.port", New: "smtp.port", Version: "1.5"})
 	}
 	if s.Auth.Email.TLS && !s.SMTP.TLS {
 		s.SMTP.TLS = s.Auth.Email.TLS
-		result = append(result, DeprecatedFlag{Old: "auth.email.tls", New: "smtp.tls", RemoveVersion: "1.7.0"})
+		result = append(result, DeprecatedFlag{Old: "auth.email.tls", New: "smtp.tls", Version: "1.5"})
 	}
 	if s.Auth.Email.SMTPUserName != "" && s.SMTP.Username == "" {
 		s.SMTP.Username = s.Auth.Email.SMTPUserName
-		result = append(result, DeprecatedFlag{Old: "auth.email.user", New: "smtp.username", RemoveVersion: "1.7.0"})
+		result = append(result, DeprecatedFlag{Old: "auth.email.user", New: "smtp.username", Version: "1.5"})
 	}
 	if s.Auth.Email.SMTPPassword != "" && s.SMTP.Password == "" {
 		s.SMTP.Password = s.Auth.Email.SMTPPassword
-		result = append(result, DeprecatedFlag{Old: "auth.email.passwd", New: "smtp.password", RemoveVersion: "1.7.0"})
+		result = append(result, DeprecatedFlag{Old: "auth.email.passwd", New: "smtp.password", Version: "1.5"})
 	}
 	if s.Auth.Email.TimeOut != 10*time.Second && s.SMTP.TimeOut == 10*time.Second {
 		s.SMTP.TimeOut = s.Auth.Email.TimeOut
-		result = append(result, DeprecatedFlag{Old: "auth.email.timeout", New: "smtp.timeout", RemoveVersion: "1.7.0"})
+		result = append(result, DeprecatedFlag{Old: "auth.email.timeout", New: "smtp.timeout", Version: "1.5"})
 	}
 	if s.Auth.Email.MsgTemplate != "email_confirmation_login.html.tmpl" {
-		result = append(result, DeprecatedFlag{Old: "auth.email.template", RemoveVersion: "1.9.0"})
+		result = append(result, DeprecatedFlag{Old: "auth.email.template", Version: "1.5"})
 	}
 	if s.LegacyImageProxy && !s.ImageProxy.HTTP2HTTPS {
 		s.ImageProxy.HTTP2HTTPS = s.LegacyImageProxy
-		result = append(result, DeprecatedFlag{Old: "img-proxy", New: "image-proxy.http2https", RemoveVersion: "1.7.0"})
+		result = append(result, DeprecatedFlag{Old: "img-proxy", New: "image-proxy.http2https", Version: "1.5"})
 	}
 	if s.Notify.Telegram.Token != "" && s.Telegram.Token == "" {
 		s.Telegram.Token = s.Notify.Telegram.Token
-		result = append(result, DeprecatedFlag{Old: "notify.telegram.token", New: "telegram.token", RemoveVersion: "1.10.0"})
+		result = append(result, DeprecatedFlag{Old: "notify.telegram.token", New: "telegram.token", Version: "1.9"})
 	}
 	const telegramDefaultDuration = time.Second * 5
 	if s.Notify.Telegram.Timeout != telegramDefaultDuration && s.Telegram.Timeout == telegramDefaultDuration {
 		s.Telegram.Token = s.Notify.Telegram.Token
-		result = append(result, DeprecatedFlag{Old: "notify.telegram.timeout", New: "telegram.timeout", RemoveVersion: "1.10.0"})
+		result = append(result, DeprecatedFlag{Old: "notify.telegram.timeout", New: "telegram.timeout", Version: "1.9"})
 	}
 	return result
 }

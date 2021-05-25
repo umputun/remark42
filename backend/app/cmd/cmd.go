@@ -33,9 +33,9 @@ type CommonOpts struct {
 
 // DeprecatedFlag contains information about deprecated option
 type DeprecatedFlag struct {
-	Old           string
-	New           string
-	RemoveVersion string
+	Old     string
+	New     string
+	Version string
 }
 
 // SetCommon satisfies CommonOptionsCommander interface and sets common option fields
