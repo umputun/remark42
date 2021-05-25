@@ -46,7 +46,7 @@ func NewTelegram(token, channelID string, timeout time.Duration, api string) (*T
 	defer cancel()
 
 	err := repeater.NewDefault(5, time.Millisecond*250).Do(ctx, func() error {
-		client := http.Client{Timeout: telegramTimeOut}
+		client := http.Client{Timeout: res.timeout}
 		resp, err := client.Get(fmt.Sprintf("%s%s/getMe", res.apiPrefix, token))
 		if err != nil {
 			return errors.Wrap(err, "can't initialize telegram notifications")
@@ -86,7 +86,7 @@ func NewTelegram(token, channelID string, timeout time.Duration, api string) (*T
 
 // Send to telegram channel
 func (t *Telegram) Send(ctx context.Context, req Request) error {
-	client := http.Client{Timeout: telegramTimeOut}
+	client := http.Client{Timeout: t.timeout}
 	log.Printf("[DEBUG] send telegram notification to %s, comment id %s", t.channelID, req.Comment.ID)
 
 	from := req.Comment.User.Name
