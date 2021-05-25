@@ -222,7 +222,7 @@ func TestServerApp_WithSSL(t *testing.T) {
 	p := flags.NewParser(&opts, flags.Default)
 	port := chooseRandomUnusedPort()
 	_, err := p.ParseArgs([]string{"--admin-passwd=password", "--port=" + strconv.Itoa(port), "--store.bolt.path=/tmp/xyz", "--backup=/tmp",
-		"--avatar.type=bolt", "--avatar.bolt.file=/tmp/ava-test.db", "--notify.type=none",
+		"--avatar.type=bolt", "--avatar.bolt.file=/tmp/ava-test.db",
 		"--ssl.type=static", "--ssl.cert=testdata/cert.pem", "--ssl.key=testdata/key.pem",
 		"--ssl.port=" + strconv.Itoa(sslPort), "--image.fs.path=/tmp"})
 	require.NoError(t, err)
@@ -392,7 +392,7 @@ func TestServerApp_MainSignal(t *testing.T) {
 	p := flags.NewParser(&s, flags.Default)
 	port := chooseRandomUnusedPort()
 	args := []string{"test", "--store.bolt.path=/tmp/xyz", "--backup=/tmp", "--avatar.type=bolt",
-		"--avatar.bolt.file=/tmp/ava-test.db", "--port=" + strconv.Itoa(port), "--notify.type=none", "--image.fs.path=/tmp"}
+		"--avatar.bolt.file=/tmp/ava-test.db", "--port=" + strconv.Itoa(port), "--image.fs.path=/tmp"}
 	defer os.Remove("/tmp/ava-test.db")
 	_, err := p.ParseArgs(args)
 	require.NoError(t, err)
@@ -436,6 +436,7 @@ func TestServerApp_DeprecatedArgs(t *testing.T) {
 			{Old: "auth.email.passwd", New: "smtp.password", Version: "1.5"},
 			{Old: "auth.email.timeout", New: "smtp.timeout", Version: "1.5"},
 			{Old: "auth.email.template", Version: "1.5"},
+			{Old: "notify.type", New: "notify.(users|admins)", Version: "1.9"},
 		},
 		deprecatedFlags)
 	assert.Equal(t, "smtp.example.org", s.SMTP.Host)
@@ -670,7 +671,8 @@ func prepServerApp(t *testing.T, fn func(o ServerCommand) ServerCommand) (*serve
 	cmd.Auth.Email.Enable = true
 	cmd.Auth.Email.MsgTemplate = "testdata/email.tmpl"
 	cmd.BackupLocation = "/tmp"
-	cmd.Notify.Type = []string{"email"}
+	cmd.Notify.Users = []string{"email"}
+	cmd.Notify.Admins = []string{"email"}
 	cmd.Notify.Email.From = "from@example.org"
 	cmd.Notify.Email.VerificationSubject = "test verification email subject"
 	cmd.SMTP.Host = "127.0.0.1"
