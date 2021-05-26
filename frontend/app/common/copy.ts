@@ -1,43 +1,46 @@
-// based on https://github.com/sindresorhus/copy-text-to-clipboard, but improved to copy text styles too
-export function copy(input: string): boolean {
-  const element = document.createElement('textarea') as HTMLTextAreaElement;
+export function copy(content: string): boolean {
+  // We use `div` instead of `input` or `textarea` because we want to copy styles
+  const container = document.createElement('div');
   const previouslyFocusedElement = document.activeElement as HTMLElement;
 
-  element.value = input;
+  container.innerHTML = content;
 
-  // Prevent keyboard from showing on mobile
-  element.setAttribute('readonly', '');
-
-  Object.assign(element.style, {
+  Object.assign(container.style, {
     contain: 'strict',
     position: 'absolute',
     left: '-9999px',
     fontSize: '12pt', // Prevent zooming on iOS
   });
 
-  const selection = document.getSelection();
-  let originalRange: boolean | Range = false;
+  document.body.appendChild(container);
 
-  if (selection && selection.rangeCount > 0) {
-    originalRange = selection.getRangeAt(0);
+  let selection = window.getSelection();
+  // save original selection
+  const originalRange = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+  const range = document.createRange();
+
+  range.selectNodeContents(container);
+
+  if (selection) {
+    selection.removeAllRanges();
+    selection.addRange(range);
   }
 
-  document.body.append(element);
-  element.select();
+  document.execCommand('copy');
 
-  // Explicit selection workaround for iOS
-  element.selectionStart = 0;
-  element.selectionEnd = input.length;
-
-  let isSuccess = false;
+  let success = false;
   try {
-    isSuccess = document.execCommand('copy');
-  } catch (_) {}
+    success = document.execCommand('copy');
+  } catch (err) {}
 
-  element.remove();
-
-  if (selection && originalRange) {
+  if (selection) {
     selection.removeAllRanges();
+  }
+
+  document.body.removeChild(container);
+
+  // Put the selection back in case had it before
+  if (originalRange && selection) {
     selection.addRange(originalRange);
   }
 
@@ -46,5 +49,5 @@ export function copy(input: string): boolean {
     previouslyFocusedElement.focus();
   }
 
-  return isSuccess;
+  return success;
 }
