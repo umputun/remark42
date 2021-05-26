@@ -1,6 +1,6 @@
 import { h } from 'preact';
-import { mount as enzymeMount } from 'enzyme';
-import { IntlProvider, IntlShape } from 'react-intl';
+import { mount } from 'enzyme';
+import { useIntl, IntlProvider } from 'react-intl';
 
 import enMessages from 'locales/en.json';
 import type { User, Comment as CommentType, PostInfo } from 'common/types';
@@ -9,18 +9,19 @@ import { sleep } from 'utils/sleep';
 
 import { Comment, CommentProps } from './comment';
 
-const mount = <T extends JSX.Element>(component: T) =>
-  enzymeMount(
-    <IntlProvider locale="en" messages={enMessages}>
-      {component}
-    </IntlProvider>
-  );
+function mountComment(props: CommentProps) {
+  function Wrapper(updateProps: Partial<CommentProps> = {}) {
+    const intl = useIntl();
 
-const intl = {
-  formatMessage(message: { defaultMessage: string }) {
-    return message.defaultMessage || '';
-  },
-} as IntlShape;
+    return (
+      <IntlProvider locale="en" messages={enMessages}>
+        <Comment {...props} {...updateProps} intl={intl} />
+      </IntlProvider>
+    );
+  }
+
+  return mount(<Wrapper />);
+}
 
 const DefaultProps: Partial<CommentProps> = {
   CommentForm: null,
@@ -46,14 +47,12 @@ const DefaultProps: Partial<CommentProps> = {
     id: 'testuser',
     picture: 'somepicture-url',
   } as User,
-  intl,
-};
+} as CommentProps;
 
 describe('<Comment />', () => {
   describe('voting', () => {
     it('should be disabled for an anonymous user', () => {
-      const props = { ...DefaultProps, user: { id: 'anonymous_1' } } as CommentProps;
-      const wrapper = mount(<Comment {...props} />);
+      const wrapper = mountComment({ ...DefaultProps, user: { id: 'anonymous_1' } } as CommentProps);
       const voteButtons = wrapper.find('.comment__vote');
 
       expect(voteButtons.length).toEqual(2);
@@ -67,8 +66,7 @@ describe('<Comment />', () => {
     it('should be enabled for an anonymous user when it was allowed from server', () => {
       StaticStore.config.anon_vote = true;
 
-      const props = { ...DefaultProps, user: { id: 'anonymous_1' } } as CommentProps;
-      const wrapper = mount(<Comment {...props} />);
+      const wrapper = mountComment({ ...DefaultProps, user: { id: 'anonymous_1' } } as CommentProps);
       const voteButtons = wrapper.find('.comment__vote');
 
       expect(voteButtons.length).toEqual(2);
@@ -79,7 +77,7 @@ describe('<Comment />', () => {
     });
 
     it('disabled on user info widget', () => {
-      const element = mount(<Comment {...({ ...DefaultProps, view: 'user' } as CommentProps)} />);
+      const element = mountComment({ ...DefaultProps, view: 'user' } as CommentProps);
 
       const voteButtons = element.find('.comment__vote');
       expect(voteButtons.length).toStrictEqual(2);
@@ -91,11 +89,10 @@ describe('<Comment />', () => {
     });
 
     it('disabled on read only post', () => {
-      const element = mount(
-        <Comment
-          {...({ ...DefaultProps, post_info: { ...DefaultProps.post_info, read_only: true } } as CommentProps)}
-        />
-      );
+      const element = mountComment({
+        ...DefaultProps,
+        post_info: { ...DefaultProps.post_info, read_only: true },
+      } as CommentProps);
 
       const voteButtons = element.find('.comment__vote');
       expect(voteButtons.length).toStrictEqual(2);
@@ -107,10 +104,7 @@ describe('<Comment />', () => {
     });
 
     it('disabled for deleted comment', () => {
-      const element = mount(
-        // ahem
-        <Comment {...({ ...DefaultProps, data: { ...DefaultProps.data, delete: true } } as CommentProps)} />
-      );
+      const element = mountComment({ ...DefaultProps, data: { ...DefaultProps.data, delete: true } } as CommentProps);
 
       const voteButtons = element.find('.comment__vote');
       expect(voteButtons.length).toStrictEqual(2);
@@ -122,17 +116,13 @@ describe('<Comment />', () => {
     });
 
     it('disabled for guest', () => {
-      const element = mount(
-        <Comment
-          {...({
-            ...DefaultProps,
-            user: {
-              id: 'someone',
-              picture: 'somepicture-url',
-            },
-          } as CommentProps)}
-        />
-      );
+      const element = mountComment({
+        ...DefaultProps,
+        user: {
+          id: 'someone',
+          picture: 'somepicture-url',
+        },
+      } as CommentProps);
 
       const voteButtons = element.find('.comment__vote');
       expect(voteButtons.length).toStrictEqual(2);
@@ -144,7 +134,7 @@ describe('<Comment />', () => {
     });
 
     it('disabled for own comment', () => {
-      const element = mount(<Comment {...({ ...DefaultProps, user: null } as CommentProps)} />);
+      const element = mountComment({ ...DefaultProps, user: null } as CommentProps);
 
       const voteButtons = element.find('.comment__vote');
       expect(voteButtons.length).toStrictEqual(2);
@@ -157,13 +147,11 @@ describe('<Comment />', () => {
 
     it('disabled for already upvoted comment', async () => {
       const voteSpy = jest.fn(async () => undefined);
-      const element = mount(
-        <Comment
-          {...(DefaultProps as CommentProps)}
-          data={{ ...DefaultProps.data, vote: +1 } as CommentProps['data']}
-          putCommentVote={voteSpy}
-        />
-      );
+      const element = mountComment({
+        ...DefaultProps,
+        data: { ...DefaultProps.data, vote: +1 } as CommentProps['data'],
+        putCommentVote: voteSpy,
+      } as CommentProps);
 
       const voteButtons = element.find('.comment__vote');
       expect(voteButtons.length).toStrictEqual(2);
@@ -181,13 +169,14 @@ describe('<Comment />', () => {
 
     it('disabled for already downvoted comment', async () => {
       const voteSpy = jest.fn(async () => undefined);
-      const element = mount(
-        <Comment
-          {...(DefaultProps as CommentProps)}
-          data={{ ...DefaultProps.data, vote: -1 } as CommentProps['data']}
-          putCommentVote={voteSpy}
-        />
-      );
+      const element = mountComment({
+        ...DefaultProps,
+        data: {
+          ...DefaultProps.data,
+          vote: -1,
+        },
+        putCommentVote: voteSpy,
+      } as CommentProps);
 
       const voteButtons = element.find('.comment__vote');
       expect(voteButtons.length).toStrictEqual(2);
@@ -206,9 +195,7 @@ describe('<Comment />', () => {
 
   describe('admin controls', () => {
     it('for admin if shows admin controls', () => {
-      const element = mount(
-        <Comment {...({ ...DefaultProps, user: { ...DefaultProps.user, admin: true } } as CommentProps)} />
-      );
+      const element = mountComment({ ...DefaultProps, user: { ...DefaultProps.user, admin: true } } as CommentProps);
 
       const controls = element.find('.comment__controls').children();
 
@@ -221,9 +208,7 @@ describe('<Comment />', () => {
     });
 
     it('for regular user it shows only "hide"', () => {
-      const element = mount(
-        <Comment {...({ ...DefaultProps, user: { ...DefaultProps.user, admin: false } } as CommentProps)} />
-      );
+      const element = mountComment({ ...DefaultProps, user: { ...DefaultProps.user, admin: false } } as CommentProps);
 
       const controls = element.find('.comment__controls').children();
       expect(controls.length).toBe(1);
@@ -231,32 +216,28 @@ describe('<Comment />', () => {
     });
 
     it('verification badge clickable for admin', () => {
-      const element = mount(
-        <Comment {...({ ...DefaultProps, user: { ...DefaultProps.user, admin: true } } as CommentProps)} />
-      );
+      const element = mountComment({ ...DefaultProps, user: { ...DefaultProps.user, admin: true } } as CommentProps);
 
       const controls = element.find('.comment__verification').first();
       expect(controls.hasClass('comment__verification_clickable')).toEqual(true);
     });
 
     it('verification badge not clickable for regular user', () => {
-      const element = mount(
-        <Comment
-          {...({
-            ...DefaultProps,
-            data: { ...DefaultProps.data, user: { ...DefaultProps.data!.user, verified: true } },
-          } as CommentProps)}
-        />
-      );
+      const element = mountComment({
+        ...DefaultProps,
+        data: { ...DefaultProps.data, user: { ...DefaultProps.data!.user, verified: true } },
+      } as CommentProps);
 
       const controls = element.find('.comment__verification').first();
       expect(controls.hasClass('comment__verification_clickable')).toEqual(false);
     });
 
     it('should be editable', () => {
+      StaticStore.config.edit_duration = 300;
+
       const initTime = new Date().toString();
       const changedTime = new Date(Date.now() + 10 * 1000).toString();
-      const props: Partial<CommentProps> = {
+      const props = {
         ...DefaultProps,
         user: DefaultProps.user as User,
         data: {
@@ -269,30 +250,25 @@ describe('<Comment />', () => {
           orig: 'test',
         } as CommentType,
         repliesCount: 0,
-      };
-      StaticStore.config.edit_duration = 300;
-      const WrappedComponent = (props: CommentProps) => (
-        <IntlProvider locale="en" messages={enMessages}>
-          <Comment {...props} />
-        </IntlProvider>
-      );
-      const component = enzymeMount(<WrappedComponent {...(props as CommentProps)} />);
+      } as CommentProps;
+      const component = mountComment(props);
+      const comment = component.find(Comment);
 
-      expect((component.find(`Comment`).state('editDeadline') as Date).getTime()).toBe(
+      expect((comment.state('editDeadline') as Date).getTime()).toBe(
         new Date(new Date(initTime).getTime() + 300 * 1000).getTime()
       );
 
-      component.setProps({
-        data: { ...props.data, time: changedTime },
-      });
+      component.setProps({ data: { ...props.data, time: changedTime } });
 
-      expect((component.find(`Comment`).state('editDeadline') as Date).getTime()).toBe(
+      expect((comment.state('editDeadline') as Date).getTime()).toBe(
         new Date(new Date(changedTime).getTime() + 300 * 1000).getTime()
       );
     });
 
     it('shoud not be editable', () => {
-      const props: Partial<CommentProps> = {
+      StaticStore.config.edit_duration = 300;
+
+      const component = mountComment({
         ...DefaultProps,
         user: DefaultProps.user as User,
         data: {
@@ -303,10 +279,7 @@ describe('<Comment />', () => {
           time: new Date(new Date().getDate() - 300).toString(),
           orig: 'test',
         } as CommentType,
-      };
-      StaticStore.config.edit_duration = 300;
-
-      const component = mount(<Comment {...(props as CommentProps)} />);
+      } as CommentProps);
 
       expect(component.find('Comment').state('editDeadline')).toBe(null);
     });
