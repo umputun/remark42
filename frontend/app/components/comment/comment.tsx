@@ -17,7 +17,7 @@ import { Button } from 'components/button';
 import { Countdown } from 'components/countdown';
 import { getPreview, uploadImage } from 'common/api';
 import { postMessage } from 'utils/postMessage';
-import { FormattedMessage, useIntl, IntlShape, defineMessages } from 'react-intl';
+import { FormattedMessage, IntlShape, defineMessages } from 'react-intl';
 import { getVoteMessage, VoteMessagesTypes } from './getVoteMessage';
 import { getBlockingDurations } from './getBlockingDurations';
 import { boundActions } from './connected-comment';
@@ -84,6 +84,10 @@ const messages = defineMessages({
   expiredTime: {
     id: 'comment.expired-time',
     defaultMessage: 'Editing time has expired.',
+  },
+  commentTime: {
+    id: 'comment.time',
+    defaultMessage: '{day} at {time}',
   },
 });
 
@@ -372,8 +376,8 @@ export class Comment extends Component<CommentProps, State> {
 
   copyComment = () => {
     const username = this.props.data.user.name;
-    const time = this.props.data.time;
-    const text = this.textNode.current!.textContent || '';
+    const time = getLocalDatetime(this.props.intl, new Date(this.props.data.time));
+    const text = this.textNode.current?.textContent || '';
 
     copy(`<b>${username}</b>&nbsp;${time}<br>${text.replace(/\n+/g, '<br>')}`);
 
@@ -692,7 +696,7 @@ export class Comment extends Component<CommentProps, State> {
           )}
 
           <a href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`} className="comment__time">
-            <FormatTime time={o.time} />
+            {getLocalDatetime(this.props.intl, o.time)}
           </a>
 
           {!!props.level && props.level > 0 && props.view === 'main' && (
@@ -881,17 +885,9 @@ function getTextSnippet(html: string) {
   return snippet.length === LENGTH && result.length !== LENGTH ? `${snippet}...` : snippet;
 }
 
-function FormatTime({ time }: { time: Date }) {
-  const intl = useIntl();
-
-  return (
-    <FormattedMessage
-      id="comment.time"
-      defaultMessage="{day} at {time}"
-      values={{
-        day: intl.formatDate(time),
-        time: intl.formatTime(time),
-      }}
-    />
-  );
+function getLocalDatetime(intl: IntlShape, date: Date) {
+  return intl.formatMessage(messages.commentTime, {
+    day: intl.formatDate(date),
+    time: intl.formatTime(date),
+  });
 }
