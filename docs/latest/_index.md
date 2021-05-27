@@ -7,3 +7,4 @@
 - [Slack notifications](slack)
 - [Setup email authentication and\or email notifications](email)
 - [How to add new translation to remark42](translation)
+- [How to run remark42 on Kubernetes](kubernetes)
