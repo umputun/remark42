@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html {% if section %} data-current="{{ section }}"{% endif %} lang="en">
+  {% include "components/head.njk" %}
+  <body class="h-screen bg-white dark:bg-gray-900">
+		{% include "components/header.njk" %}
+		<main id="main" class="pt-20 px-4 container">
+			{{ layoutContent | safe }}
+		</main>
+		{% include "components/footer.njk" %}
+  </body>
+</html>

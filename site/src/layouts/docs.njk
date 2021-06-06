@@ -1,0 +1,59 @@
+---
+layout: base.njk
+---
+
+{% macro renderList(entry, level) %}
+	<li class="my-2">
+		<a class="text-gray-700 hover:text-gray-900{% if entry.url === page.url %} text-gray-900 font-bold{% endif %}" href="{{ entry.url | url }}">{{ entry.title }}</a>
+		{% if entry.children and level < 2 %}
+			<ul class="ml-4">
+				{% for child in entry.children %}
+					{{renderList(child, level + 1)}}
+				{% endfor %}
+			</ul>
+		{% endif %}
+		{% if entry.children and level >= 2 and page.url.startsWith(entry.url) %}
+			<ul class="ml-4">
+				{% for child in entry.children %}
+					{{renderList(child, level + 1)}}
+				{% endfor %}
+			</ul>
+		{% endif %}
+	</li>
+{% endmacro %}
+
+<div class="flex">
+	<aside class="flex-shrink-0 mr-12">
+		<nav>
+			<ul>
+				{% for entry in collections.docs | eleventyNavigation %}
+					{{renderList(entry, 1)}}
+				{% endfor %}
+			</ul>
+		</nav>
+	</aside>
+	<section class="w-full">
+		<article class="flex flex-row flex-wrap">
+			<aside class="order-2 mt-4">
+				<nav aria-labelledby="table-of-content">
+					<h3 class="uppercase font-semibold text-gray-600 text-sm" id="table-of-content">On this page</h3>
+					<ol></ol>
+				</nav>
+			</aside>
+			<div class="order-1 max-w-full flex-grow">
+				<h1 class="text-2xl md:text-4xl font-bold mb-12">{{ title }}</h1>
+				<div class="prose">{{ layoutContent | safe }}</div>
+			</div>
+			<footer class="order-3 min-w-full flex mt-4 justify-end mr-1 text-sm text-gray-500 space-x-3 leading-5">
+				<span>
+					Updated <time datetime="{{ page.date | robotizeDate }}">{{ page.date | humanizeDate }}</time>
+				</span>
+				<a class="border-b border-transparent transition-colors hover:border-current" target="_blank" rel="noopener noreferrer" href="{{ site.githubUrl }}/edit/{{ site.githubBranch }}/{{ page.inputPath }}">Edit</a>
+			</footer>
+		</article>
+		<nav class="flex justify-between mt-10 mb-8 p-2 border-t text-gray-800">
+			<a>Prev page</a>
+			<a>Next page</a>
+		</nav>
+	</section>
+</div>
