@@ -285,7 +285,7 @@ func (m *MemData) ListFlags(req engine.FlagRequest) (res []interface{}, err erro
 // and all site's details listing under the same function (and not to extend engine interface by two separate functions).
 func (m *MemData) UserDetail(req engine.UserDetailRequest) ([]engine.UserDetailEntry, error) {
 	switch req.Detail {
-	case engine.UserEmail:
+	case engine.UserEmail, engine.UserTelegram:
 		if req.UserID == "" {
 			return nil, errors.New("userid cannot be empty in request for single detail")
 		}
@@ -443,6 +443,8 @@ func (m *MemData) getUserDetail(req engine.UserDetailRequest) ([]engine.UserDeta
 		switch req.Detail {
 		case engine.UserEmail:
 			return []engine.UserDetailEntry{{UserID: req.UserID, Email: meta.Details.Email}}, nil
+		case engine.UserTelegram:
+			return []engine.UserDetailEntry{{UserID: req.UserID, Telegram: meta.Details.Telegram}}, nil
 		}
 	}
 
@@ -473,6 +475,10 @@ func (m *MemData) setUserDetail(req engine.UserDetailRequest) ([]engine.UserDeta
 		entry.Details.Email = req.Update
 		m.metaUsers[req.UserID] = entry
 		return []engine.UserDetailEntry{{UserID: req.UserID, Email: req.Update}}, nil
+	case engine.UserTelegram:
+		entry.Details.Telegram = req.Update
+		m.metaUsers[req.UserID] = entry
+		return []engine.UserDetailEntry{{UserID: req.UserID, Telegram: req.Update}}, nil
 	}
 
 	return []engine.UserDetailEntry{}, nil
@@ -509,6 +515,8 @@ func (m *MemData) deleteUserDetail(locator store.Locator, userID string, userDet
 	switch userDetail {
 	case engine.UserEmail:
 		entry.Details.Email = ""
+	case engine.UserTelegram:
+		entry.Details.Telegram = ""
 	case engine.AllUserDetails:
 		entry.Details = engine.UserDetailEntry{UserID: userID}
 	}

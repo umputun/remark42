@@ -211,7 +211,7 @@ func (b *BoltDB) Flag(req FlagRequest) (val bool, err error) {
 // and all site's details listing under the same function (and not to extend interface by two separate functions).
 func (b *BoltDB) UserDetail(req UserDetailRequest) ([]UserDetailEntry, error) {
 	switch req.Detail {
-	case UserEmail:
+	case UserEmail, UserTelegram:
 		if req.UserID == "" {
 			return nil, errors.New("userid cannot be empty in request for single detail")
 		}
@@ -668,6 +668,8 @@ func (b *BoltDB) getUserDetail(req UserDetailRequest) (result []UserDetailEntry,
 			switch req.Detail {
 			case UserEmail:
 				result = []UserDetailEntry{{UserID: req.UserID, Email: entry.Email}}
+			case UserTelegram:
+				result = []UserDetailEntry{{UserID: req.UserID, Telegram: entry.Telegram}}
 			}
 		}
 		return nil
@@ -708,6 +710,8 @@ func (b *BoltDB) setUserDetail(req UserDetailRequest) (result []UserDetailEntry,
 	switch req.Detail {
 	case UserEmail:
 		entry.Email = req.Update
+	case UserTelegram:
+		entry.Telegram = req.Update
 	}
 
 	err = bdb.Update(func(tx *bolt.Tx) error {
@@ -765,6 +769,8 @@ func (b *BoltDB) deleteUserDetail(bdb *bolt.DB, userID string, userDetail UserDe
 	switch userDetail {
 	case UserEmail:
 		entry.Email = ""
+	case UserTelegram:
+		entry.Telegram = ""
 	case AllUserDetails:
 		entry = UserDetailEntry{UserID: userID}
 	}

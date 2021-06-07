@@ -91,6 +91,8 @@ const (
 const (
 	// UserEmail is a user email
 	UserEmail = UserDetail("email")
+	// UserTelegram is a user telegram
+	UserTelegram = UserDetail("telegram")
 	// AllUserDetails used for listing and deletion requests
 	AllUserDetails = UserDetail("all")
 )
@@ -109,8 +111,9 @@ type UserDetail string
 
 // UserDetailEntry contains single user details entry
 type UserDetailEntry struct {
-	UserID string `json:"user_id"`         // duplicate user's id to use this structure not only embedded but separately
-	Email  string `json:"email,omitempty"` // UserEmail
+	UserID   string `json:"user_id"`            // duplicate user's id to use this structure not only embedded but separately
+	Email    string `json:"email,omitempty"`    // UserEmail
+	Telegram string `json:"telegram,omitempty"` // UserTelegram
 }
 
 // UserDetailRequest is the input for both get/set for details, like email
