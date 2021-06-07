@@ -79,12 +79,17 @@ func TestTelegram_Send(t *testing.T) {
 	assert.NoError(t, err)
 
 	tb, err = NewTelegram("non-json-resp", "remark_test", 2*time.Second, ts.URL+"/")
-	assert.Error(t, err, "should failed")
+	assert.Error(t, err, "should fail")
 	err = tb.Send(context.TODO(), Request{Comment: c, parent: cp})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unexpected telegram status code 404", "send on broken tg")
 
 	assert.Equal(t, "telegram: @remark_test", tb.String())
+
+	// bad API URL
+	tb.apiPrefix = "http://non-existent"
+	err = tb.Send(context.TODO(), Request{Comment: c, parent: cp})
+	assert.Error(t, err)
 }
 
 func TestTelegram_SendVerification(t *testing.T) {
@@ -142,8 +147,7 @@ func mockTelegramServer() *httptest.Server {
 	return httptest.NewServer(router)
 }
 
-func TestTelegram_escapeTitle(t *testing.T) {
-
+func Test_escapeTitle(t *testing.T) {
 	tbl := []struct {
 		inp string
 		out string
@@ -155,11 +159,10 @@ func TestTelegram_escapeTitle(t *testing.T) {
 		{"something (123) [aaa]", "something \\(123\\) \\[aaa\\]"},
 	}
 
-	tb := Telegram{}
 	for i, tt := range tbl {
 		tt := tt
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			assert.Equal(t, tt.out, tb.escapeTitle(tt.inp))
+			assert.Equal(t, tt.out, escapeTitle(tt.inp))
 		})
 	}
 

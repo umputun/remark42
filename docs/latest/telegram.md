@@ -2,11 +2,16 @@
 title: Telegram
 ---
 
-## Telegram notifications
+## Telegram notifications for administrators
 
-In order to integrate notifications from remark42 with the [telegram](https://telegram.org), you should make [a channel](https://telegram.org/faq_channels) and obtain a token. This token should be used as `TELEGRAM_TOKEN`. You also need to set `NOTIFY_ADMINS=telegram` and set `NOTIFY_TELEGRAM_CHAN` to your channel.
+In order to integrate notifications about any comment on your sites with remark42 with [telegram](https://telegram.org)
+1. Set `NOTIFY_ADMINS=telegram`
+1. Make [a channel](https://telegram.org/faq_channels) and add it to remark42 configuration as `NOTIFY_TELEGRAM_CHAN`
+1. Get a token according to the instruction below and add it to the configuration as well
 
-In order to get token "just talk to [BotFather](https://core.telegram.org/bots#6-botfather)". All you need is to send `/newbot` command, and choose the name for your bot (it must end in `bot`). This is it, you got a token.
+## Getting token for Telegram
+
+In order to get token "just talk to [BotFather](https://core.telegram.org/bots#6-botfather)". All you need is to send `/newbot` command, and choose the name for your bot (it must end in `bot`). This is it, you got a token which you'll need to write down into remark42 configuration as `TELEGRAM_TOKEN`.
 
 _Example of such a "talk":_
 
