@@ -641,6 +641,10 @@ func TestBoltDB_UserDetail(t *testing.T) {
 	}{
 		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "u1", Detail: UserEmail},
 			expected: []UserDetailEntry{{UserID: "u1", Email: "test@example.com"}}},
+		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, Detail: UserEmail},
+			error: "userid cannot be empty in request for single detail"},
+		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, Detail: AllUserDetails, UserID: "u1"},
+			error: "unsupported request with userdetail all"},
 		{req: UserDetailRequest{Locator: store.Locator{SiteID: "bad"}, UserID: "u1", Detail: UserEmail},
 			error: `site "bad" not found`},
 		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "u1xyz", Detail: UserEmail}},

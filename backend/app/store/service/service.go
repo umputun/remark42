@@ -194,6 +194,39 @@ func (s *DataStore) SetUserEmail(siteID, userID, value string) (string, error) {
 	return "", nil
 }
 
+// GetUserTelegram gets user telegram
+func (s *DataStore) GetUserTelegram(siteID, userID string) (string, error) {
+	res, err := s.Engine.UserDetail(engine.UserDetailRequest{
+		Detail:  engine.UserTelegram,
+		Locator: store.Locator{SiteID: siteID},
+		UserID:  userID,
+	})
+	if err != nil {
+		return "", err
+	}
+	if len(res) == 1 {
+		return res[0].Telegram, nil
+	}
+	return "", nil
+}
+
+// SetUserTelegram sets user telegram
+func (s *DataStore) SetUserTelegram(siteID, userID, value string) (string, error) {
+	res, err := s.Engine.UserDetail(engine.UserDetailRequest{
+		Detail:  engine.UserTelegram,
+		Locator: store.Locator{SiteID: siteID},
+		UserID:  userID,
+		Update:  value,
+	})
+	if err != nil {
+		return "", err
+	}
+	if len(res) == 1 {
+		return res[0].Telegram, nil
+	}
+	return "", nil
+}
+
 // DeleteUserDetail deletes user detail
 func (s *DataStore) DeleteUserDetail(siteID, userID string, detail engine.UserDetail) error {
 	return s.Engine.Delete(engine.DeleteRequest{

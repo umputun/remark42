@@ -139,13 +139,13 @@ func TestService_WithParent(t *testing.T) {
 
 func TestService_EmailRetrieval(t *testing.T) {
 	dest := &MockDest{id: 1}
-	dataStore := &mockStore{data: map[string]store.Comment{}, emailData: map[string]string{}}
+	dataStore := &mockStore{data: map[string]store.Comment{}, userDetails: map[string]string{}}
 
 	dataStore.data["p1"] = store.Comment{ID: "p1", User: store.User{ID: "u1"}}
 	dataStore.data["p2"] = store.Comment{ID: "p2", ParentID: "p1", User: store.User{ID: "u1"}}
 	dataStore.data["p3"] = store.Comment{ID: "p3", ParentID: "p1", User: store.User{ID: "u2"}}
 	dataStore.data["p4"] = store.Comment{ID: "p4", ParentID: "p3", User: store.User{ID: "u1"}}
-	dataStore.emailData["u1"] = "u1@example.com"
+	dataStore.userDetails["u1"] = "u1@example.com"
 
 	s := NewService(dataStore, 1, dest)
 	assert.NotNil(t, s)
@@ -198,16 +198,16 @@ func TestService_EmailRetrieval(t *testing.T) {
 
 func TestService_Recursive(t *testing.T) {
 	dest := &MockDest{id: 1}
-	dataStore := &mockStore{data: map[string]store.Comment{}, emailData: map[string]string{}}
+	dataStore := &mockStore{data: map[string]store.Comment{}, userDetails: map[string]string{}}
 
 	dataStore.data["p1"] = store.Comment{ID: "p1", User: store.User{ID: "u1"}}
 	dataStore.data["p2"] = store.Comment{ID: "p2", ParentID: "p1", User: store.User{ID: "u2"}}
 	dataStore.data["p3"] = store.Comment{ID: "p3", ParentID: "p2", User: store.User{ID: "u3"}}
 	dataStore.data["p4"] = store.Comment{ID: "p4", ParentID: "p3", User: store.User{ID: "u1"}}
 	dataStore.data["p5"] = store.Comment{ID: "p5", ParentID: "p4", User: store.User{ID: "u4"}}
-	dataStore.emailData["u1"] = "u1@example.com"
+	dataStore.userDetails["u1"] = "u1@example.com"
 	// second comment goes without email address for notification
-	dataStore.emailData["u3"] = "u3@example.com"
+	dataStore.userDetails["u3"] = "u3@example.com"
 
 	s := NewService(dataStore, 1, dest)
 	assert.NotNil(t, s)
@@ -277,8 +277,16 @@ func TestService_Nop(t *testing.T) {
 }
 
 type mockStore struct {
-	data      map[string]store.Comment
-	emailData map[string]string
+	data        map[string]store.Comment
+	userDetails map[string]string
+}
+
+func (m mockStore) getUserDetail(userID string) (string, error) {
+	detail, ok := m.userDetails[userID]
+	if !ok {
+		return "", errors.New("no such user")
+	}
+	return detail, nil
 }
 
 func (m mockStore) Get(_ store.Locator, id string, _ store.User) (store.Comment, error) {
@@ -290,9 +298,9 @@ func (m mockStore) Get(_ store.Locator, id string, _ store.User) (store.Comment,
 }
 
 func (m mockStore) GetUserEmail(_, userID string) (string, error) {
-	email, ok := m.emailData[userID]
-	if !ok {
-		return "", errors.New("no such user")
-	}
-	return email, nil
+	return m.getUserDetail(userID)
+}
+
+func (m mockStore) GetUserTelegram(_, userID string) (string, error) {
+	return m.getUserDetail(userID)
 }

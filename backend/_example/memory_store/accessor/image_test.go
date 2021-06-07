@@ -58,6 +58,8 @@ func TestMemImage_LoadAfterSave(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, gopher, img)
 
+	svc.ResetCleanupTimer(id)
+
 	err = svc.Commit(id)
 	assert.NoError(t, err)
 
