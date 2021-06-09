@@ -1,4 +1,5 @@
 import { h, Component, FunctionComponent, Fragment } from 'preact';
+import { useEffect, useRef } from 'preact/hooks';
 import { useSelector } from 'react-redux';
 import b from 'bem-react-helper';
 import { IntlShape, useIntl, FormattedMessage, defineMessages } from 'react-intl';
@@ -118,7 +119,7 @@ export class Root extends Component<Props, State> {
     isSettingsVisible: false,
   };
 
-  componentWillMount() {
+  componentDidMount() {
     const userloading = this.props.fetchUser().finally(() => this.setState({ isUserLoading: false }));
 
     Promise.all([userloading, this.props.fetchComments()]).finally(() => {
@@ -334,9 +335,21 @@ export const ConnectedRoot: FunctionComponent = () => {
   const props = useSelector(mapStateToProps);
   const actions = useActions(boundActions);
   const intl = useIntl();
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // TODO: throttle updates
+    const observer = new MutationObserver(() => {
+      postMessageToParent({ height: document.body.offsetHeight });
+    });
+
+    observer.observe(rootRef.current, { attributes: true, childList: true, subtree: true });
+
+    return () => observer.disconnect();
+  }, []);
 
   return (
-    <div className={clsx(b('root', {}, { theme: props.theme }), props.theme)}>
+    <div className={clsx(b('root', {}, { theme: props.theme }), props.theme)} ref={rootRef}>
       <Root {...props} {...actions} intl={intl} />
       <p className="root__copyright" role="contentinfo">
         <FormattedMessage
