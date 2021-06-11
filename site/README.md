@@ -3,13 +3,24 @@
 ## Build site with Docker
 
 ```
-$ docker build -t remark42-site .
-$ docker cp remark42-site:/site ./path/to/folder
+$ docker-compose build
+$ docker-compose run build
 ```
 
-Than serve files with your favorite server
+Then serve files from `./build` with your favorite server
 
 ## Development
+
+### With docker
+
+```
+$ docker-compose build
+$ docker-compose up server
+```
+
+Then head to http://127.0.0.1:8080
+
+### Without docker
 
 Requirements:
 

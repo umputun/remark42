@@ -1,0 +1,27 @@
+version: '2'
+services:
+
+  build:
+    image: remark42-site
+    build: .
+
+    volumes:
+      - ./build:/site/build
+
+  server:
+    image: remark42-site
+    build: .
+    command: yarn dev
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+    ports:
+      - "3001:3001"
+      - "8080:8080"
+
+    volumes:
+      - ./build:/site/build

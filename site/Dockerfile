@@ -4,9 +4,7 @@ WORKDIR site
 
 COPY ./ /site
 
-RUN yarn --frozen-lockfile && \
-	yarn build && \
-	ls -la /site/build
+RUN yarn --frozen-lockfile
 
-CMD ["sleep", "100"]
+CMD yarn build
 
