@@ -45,7 +45,13 @@ const createFetcher = (baseUrl: string = ''): Methods => {
     if (activeJwtToken) {
       headers[JWT_HEADER] = activeJwtToken;
     }
-    headers[XSRF_HEADER] = getCookie(XSRF_COOKIE) || '';
+
+    // An HTTP header cannot be empty.
+    // Although some webservers allow this (nginx, Apache), others answer 400 Bad Request (lighttpd).
+    const xsrfToken = getCookie(XSRF_COOKIE);
+    if (xsrfToken !== undefined) {
+      headers[XSRF_HEADER] = xsrfToken;
+    }
 
     if (body instanceof FormData) {
       // Shouldn't add any kind of `Content-Type` if we send `FormData`

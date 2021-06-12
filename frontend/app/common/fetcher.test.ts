@@ -4,7 +4,7 @@ jest.mock('./settings', () => ({
 
 import { RequestError } from 'utils/errorUtils';
 import { API_BASE, BASE_URL } from './constants.config';
-import { apiFetcher, authFetcher, adminFetcher, JWT_HEADER, XSRF_HEADER } from './fetcher';
+import { apiFetcher, authFetcher, adminFetcher, JWT_HEADER } from './fetcher';
 
 type FetchImplementaitonProps = {
   status?: number;
@@ -31,7 +31,7 @@ function mockFetch({ headers = {}, data = {}, ...props }: FetchImplementaitonPro
 }
 
 describe('fetcher', () => {
-  const headers = { [XSRF_HEADER]: '' };
+  const headers = {};
   const apiUri = '/anything';
   const apiUrl = `${BASE_URL}${API_BASE}/anything?site=remark`;
 
