@@ -1,9 +1,7 @@
-FROM node:14-alpine
+FROM node:16-alpine
 
-WORKDIR site
-
+WORKDIR /site
 COPY ./ /site
-
 RUN yarn --frozen-lockfile
 
 CMD yarn build
