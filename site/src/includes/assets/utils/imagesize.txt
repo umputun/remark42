@@ -1,1 +1,0 @@
-{% image "sagan.jpg" "Carl Sagan, 1987" "200px" %}

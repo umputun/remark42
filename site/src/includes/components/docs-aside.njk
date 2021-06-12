@@ -3,7 +3,7 @@
 		<h5 class="uppercase font-semibold text-sm text-gray-400 mb-2">{{ entry.title }}</h5>
 	{% else %}
 	<li class="my-1">
-			<a class="py-1 px-2 -mx-2 block rounded text-gray-600 {% if entry.url === page.url %} bg-brand-100 text-brand-600 hover:text-brand-600{% else %} hover:text-gray-900{% endif %}" href="{{ entry.url | url }}">{{ entry.title }}</a>
+			<a class="py-1 px-2 -mx-2 block rounded text-gray-600 dark:text-gray-300 {% if entry.url === page.url %} bg-brand-100 dark:bg-brand-900 text-brand-600 dark:text-brand-400 hover:text-brand-600{% else %} hover:text-gray-900 dark:hover:text-gray-400{% endif %}" href="{{ entry.url | url }}">{{ entry.title }}</a>
 		{% endif %}
 		{% if entry.children and level < 2 %}
 			<ul class="mb-8 font-medium">
