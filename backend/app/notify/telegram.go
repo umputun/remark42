@@ -16,38 +16,44 @@ import (
 	"github.com/pkg/errors"
 )
 
+// TelegramParams contain settings for telegram notifications
+type TelegramParams struct {
+	AdminChannelID string        // unique identifier for the target chat or username of the target channel (in the format @channelusername)
+	Token          string        // token for telegram bot API interactions
+	Timeout        time.Duration // http client timeout
+
+	apiPrefix string // changed only in tests
+}
+
 // Telegram implements notify.Destination for telegram
 type Telegram struct {
-	channelID string // unique identifier for the target chat or username of the target channel (in the format @channelusername)
-	token     string
-	apiPrefix string
-	timeout   time.Duration
+	TelegramParams
 }
 
 const telegramTimeOut = 5000 * time.Millisecond
 const telegramAPIPrefix = "https://api.telegram.org/bot"
 
 // NewTelegram makes telegram bot for notifications
-func NewTelegram(token, channelID string, timeout time.Duration, api string) (*Telegram, error) {
-	if _, err := strconv.ParseInt(channelID, 10, 64); err != nil {
-		channelID = "@" + channelID // if channelID not a number enforce @ prefix
+func NewTelegram(params TelegramParams) (*Telegram, error) {
+	res := Telegram{TelegramParams: params}
+	if _, err := strconv.ParseInt(res.AdminChannelID, 10, 64); err != nil {
+		res.AdminChannelID = "@" + res.AdminChannelID // if channelID not a number enforce @ prefix
 	}
 
-	res := Telegram{channelID: channelID, token: token, apiPrefix: api, timeout: timeout}
 	if res.apiPrefix == "" {
 		res.apiPrefix = telegramAPIPrefix
 	}
-	if res.timeout == 0 {
-		res.timeout = telegramTimeOut
+	if res.Timeout == 0 {
+		res.Timeout = telegramTimeOut
 	}
-	log.Printf("[DEBUG] create new telegram notifier for chan %s, timeout=%s, api=%s", channelID, res.timeout, res.timeout)
+	log.Printf("[DEBUG] create new telegram notifier for api=%s, timeout=%s", res.apiPrefix, res.Timeout)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	err := repeater.NewDefault(5, time.Millisecond*250).Do(ctx, func() error {
-		client := http.Client{Timeout: res.timeout}
-		resp, err := client.Get(fmt.Sprintf("%s%s/getMe", res.apiPrefix, token))
+		client := http.Client{Timeout: res.Timeout}
+		resp, err := client.Get(fmt.Sprintf("%s%s/getMe", res.apiPrefix, res.Token))
 		if err != nil {
 			return errors.Wrap(err, "can't initialize telegram notifications")
 		}
@@ -88,9 +94,9 @@ func NewTelegram(token, channelID string, timeout time.Duration, api string) (*T
 func (t *Telegram) Send(ctx context.Context, req Request) error {
 	var err error
 
-	if t.channelID != "" {
+	if t.AdminChannelID != "" {
 		err = t.sendAdminNotification(ctx, req)
-		if err != nil{
+		if err != nil {
 			return errors.Wrapf(err, "problem sending admin telegram notification")
 		}
 	}
@@ -99,14 +105,14 @@ func (t *Telegram) Send(ctx context.Context, req Request) error {
 }
 
 func (t *Telegram) sendAdminNotification(ctx context.Context, req Request) error {
-	log.Printf("[DEBUG] send admin telegram notification to %s, comment id %s", t.channelID, req.Comment.ID)
+	log.Printf("[DEBUG] send admin telegram notification to %s, comment id %s", t.AdminChannelID, req.Comment.ID)
 
 	msg, err := buildTelegramMessage(req)
 	if err != nil {
 		return errors.Wrap(err, "failed to make telegram message body")
 	}
 
-	err = t.sendMessage(ctx, msg, t.channelID)
+	err = t.sendMessage(ctx, msg, t.AdminChannelID)
 	if err != nil {
 		return errors.Wrapf(err, "failed to send admin notification about %s", req.Comment.ID)
 	}
@@ -115,14 +121,14 @@ func (t *Telegram) sendAdminNotification(ctx context.Context, req Request) error
 
 func (t *Telegram) sendMessage(ctx context.Context, b []byte, chatID string) error {
 	u := fmt.Sprintf("%s%s/sendMessage?chat_id=%s&parse_mode=Markdown&disable_web_page_preview=true",
-		t.apiPrefix, t.token, chatID)
+		t.apiPrefix, t.Token, chatID)
 	r, err := http.NewRequest("POST", u, bytes.NewReader(b))
 	if err != nil {
 		return errors.Wrap(err, "failed to make telegram request")
 	}
 	r.Header.Set("Content-Type", "application/json; charset=utf-8")
 
-	client := http.Client{Timeout: t.timeout}
+	client := http.Client{Timeout: t.Timeout}
 	r = r.WithContext(ctx)
 	resp, err := client.Do(r)
 	if err != nil {
@@ -186,5 +192,5 @@ func (t *Telegram) SendVerification(_ context.Context, _ VerificationRequest) er
 }
 
 func (t *Telegram) String() string {
-	return "telegram: " + t.channelID
+	return "telegram: " + t.AdminChannelID
 }

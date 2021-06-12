@@ -216,7 +216,7 @@ type NotifyGroup struct {
 	QueueSize int      `long:"queue" env:"QUEUE" description:"size of notification queue" default:"100"`
 	Telegram  struct {
 		Channel string        `long:"chan" env:"CHAN" description:"telegram channel for admin notifications"`
-		API     string        `long:"api" env:"API" default:"https://api.telegram.org/bot" description:"telegram api prefix"`
+		API     string        `long:"api" env:"API" default:"https://api.telegram.org/bot" description:"[deprecated, not used] telegram api prefix"`
 		Token   string        `long:"token" env:"TOKEN" description:"[deprecated, use --telegram.token] telegram token"`
 		Timeout time.Duration `long:"timeout" env:"TIMEOUT" default:"5s" description:"[deprecated, use --telegram.timeout] telegram timeout"`
 	} `group:"telegram" namespace:"telegram" env-namespace:"TELEGRAM"`
@@ -360,6 +360,9 @@ func (s *ServerCommand) HandleDeprecatedFlags() (result []DeprecatedFlag) {
 	if s.Notify.Telegram.Timeout != telegramDefaultDuration && s.Telegram.Timeout == telegramDefaultDuration {
 		s.Telegram.Token = s.Notify.Telegram.Token
 		result = append(result, DeprecatedFlag{Old: "notify.telegram.timeout", New: "telegram.timeout", Version: "1.9"})
+	}
+	if s.Notify.Telegram.API != "https://api.telegram.org/bot" {
+		result = append(result, DeprecatedFlag{Old: "notify.telegram.api", Version: "1.9"})
 	}
 	return result
 }
@@ -877,8 +880,12 @@ func (s *ServerCommand) makeNotify(dataStore *service.DataStore, authenticator *
 			}
 			destinations = append(destinations, slack)
 		case "telegram":
-			tg, err := notify.NewTelegram(s.Telegram.Token, s.Notify.Telegram.Channel,
-				s.Telegram.Timeout, s.Notify.Telegram.API)
+			telegramParams := notify.TelegramParams{
+				AdminChannelID: s.Notify.Telegram.Channel,
+				Token:          s.Telegram.Token,
+				Timeout:        s.Telegram.Timeout,
+			}
+			tg, err := notify.NewTelegram(telegramParams)
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to create telegram notification destination")
 			}
