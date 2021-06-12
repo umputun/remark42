@@ -3,9 +3,6 @@ const typographyPlugin = require('@tailwindcss/typography')
 module.exports = {
 	purge: ['src/**/*.{njk,md,html,js}'],
 	mode: 'jit',
-	future: {
-		purgeLayersByDefault: true,
-	},
 	darkMode: 'class',
 	theme: {
 		extend: {
