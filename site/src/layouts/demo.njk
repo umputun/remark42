@@ -8,10 +8,10 @@ layout: page.njk
 <noscript>You use your browser with disabled JavaScript. Please enable JavaScript for comments.</noscript>
 <script>
 	window.remark_config = {
-		host: '{{ remark42Host }}',
+		host: '{{ site.remark42Host }}',
 		site_id: 'remark',
 		components: ['embed'],
-		url: '{{ url }}/{{ permalink }}',
+		url: '{{ site.url }}/{{ permalink }}',
 		max_shown_comments: 20,
 	}
 </script>
