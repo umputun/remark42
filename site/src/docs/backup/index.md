@@ -1,6 +1,6 @@
 ---
 layout: redirect.njk
-destination: /docs/backup/automatic/index.html
+destination: /docs/backup/automatic/
 title: Backup
 order: 300
 ---
