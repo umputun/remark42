@@ -1,6 +1,6 @@
 ---
 title: Configure Instance on Subdomain
 menuTitle: Subdomain
-parent: Backend
-order: 500
+parent: Configuration
+order: 600
 ---

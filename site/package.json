@@ -13,7 +13,7 @@
 	"scripts": {
 		"dev": "run-s clean && run-p dev:*",
 		"dev:css": "postcss ./src/styles.css -o .tmp/style.css -w",
-		"dev:eleventy": "eleventy --serve --watch",
+		"dev:eleventy": "eleventy --serve --watch --quiet",
 		"build": "cross-env NODE_ENV=production run-s clean build:* --print-label",
 		"build:css": "postcss ./src/styles.css -o .tmp/style.css",
 		"build:eleventy": "eleventy",

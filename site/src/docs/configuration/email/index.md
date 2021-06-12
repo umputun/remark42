@@ -1,6 +1,6 @@
 ---
 title: Email Settings
 menuTitle: Email
-parent: Backend
-order: 200
+parent: Configuration
+order: 300
 ---

@@ -1,5 +1,6 @@
 ---
-title: Technical details
+title: Technical Details
+order: 600
 parent: Contributing
 ---
 

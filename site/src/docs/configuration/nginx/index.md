@@ -1,6 +1,6 @@
 ---
 title: Configure with Nginx
 menuTitle: Nginx
-parent: Backend
-order: 400
+parent: Configuration
+order: 500
 ---
