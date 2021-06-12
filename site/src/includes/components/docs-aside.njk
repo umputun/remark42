@@ -1,9 +1,9 @@
 {% macro renderList(entry, level) %}
 	{% if level === 1 %}
-		<h5 class="uppercase font-semibold text-sm text-gray-400">{{ entry.title }}</h5>
+		<h5 class="uppercase font-semibold text-sm text-gray-400 mb-2">{{ entry.title }}</h5>
 	{% else %}
-	<li class="my-2">
-			<a class="py-1 px-2 -mx-2 rounded text-gray-600 {% if entry.url === page.url %} bg-brand-100 text-brand-600 hover:text-brand-600{% else %} hover:text-gray-900{% endif %}" href="{{ entry.url | url }}">{{ entry.title }}</a>
+	<li class="my-1">
+			<a class="py-1 px-2 -mx-2 block rounded text-gray-600 {% if entry.url === page.url %} bg-brand-100 text-brand-600 hover:text-brand-600{% else %} hover:text-gray-900{% endif %}" href="{{ entry.url | url }}">{{ entry.title }}</a>
 		{% endif %}
 		{% if entry.children and level < 2 %}
 			<ul class="mb-8 font-medium">
