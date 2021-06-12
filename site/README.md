@@ -1,40 +1,44 @@
 # Reamark42 Website
 
-## Build site with Docker
+## Work on Your Local Environment
+
+Requirements:
+
+- [Node.js v14](https://nodejs.org/en/) or higher - Install from package or with Homebrew
+- Yarn 1.22 or higher - once you have Node.js run `npm i -g yarn`
+
+### Development
+
+Install dependencies and start development server:
 
 ```
-$ docker-compose build
-$ docker-compose run build
+$ yarn
+$ yarn dev
 ```
 
-Then serve files from `./build` with your favorite server
+### Build
 
-## Development
+```
+$ yarn build
+```
 
-### With docker
+## Work with Docker Compose
+
+### Build
+
+Install dependencies and run development server inside Docker:
 
 ```
 $ docker-compose build
 $ docker-compose up server
 ```
 
-Then head to http://127.0.0.1:8080
+Then serve files from `./build` with your favorite server
 
-### Without docker
-
-Requirements:
-
-- Node.js v14 or higher
-- Yarn 1.22 or higher
-
-Install dependencies:
+### Development
 
 ```
-$ yarn
+$ docker-compose up --build server
 ```
 
-Run dev server with hot reload:
-
-```
-$ yarn dev
-```
+Then head to http://localhost:8080
