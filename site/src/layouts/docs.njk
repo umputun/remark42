@@ -5,12 +5,14 @@ layout: base.njk
 {% include "components/docs-aside.njk" %}
 <section class="w-full">
 	<article class="flex flex-row flex-wrap">
+	{# TODO: implement table of content
 		<aside class="order-2 mt-4">
 			<nav aria-labelledby="table-of-content">
 				<h3 class="uppercase font-semibold text-gray-600 text-sm" id="table-of-content">On this page</h3>
 				<ol></ol>
 			</nav>
 		</aside>
+	#}
 		<div class="order-1 max-w-full flex-grow">
 			<h1 class="text-2xl md:text-4xl font-bold mb-12 text-brand-900 dark:text-brand-100">{{ title }}</h1>
 			<div class="prose dark:prose-dark">{{ layoutContent | safe }}</div>
