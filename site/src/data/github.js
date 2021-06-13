@@ -7,20 +7,22 @@ module.exports = async function getLatestReleaseVersion() {
 	if (currentData) {
 		return currentData
 	}
+	try {
+		const res = await fetch(
+			'https://api.github.com/repos/umputun/remark42/releases'
+		)
 
-	const res = await fetch(
-		'https://api.github.com/repos/umputun/remark42/releases'
-	)
+		if (!res.ok) {
+			throw new Error(`[ERROR] Status: ${res.status}: ${res.statusText}`)
+		}
 
-	if (!res.ok) {
-		console.error(`[ERROR] Status: ${res.status}: ${res.statusText}`)
+		const data = await res.json()
 
+		currentData = { latestVersion: data[0].tag_name || '' }
+
+		return currentData
+	} catch (e) {
+		console.error(e.message)
 		return DEFAULT_DATA
 	}
-
-	const data = await res.json()
-
-	currentData = { latestVersion: data[0].tag_name || '' }
-
-	return currentData
 }
