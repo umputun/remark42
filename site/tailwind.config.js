@@ -1,3 +1,5 @@
+const colors = require('tailwindcss/colors')
+
 module.exports = {
 	purge: ['src/**/*.{njk,md,html,js}'],
 	mode: 'jit',
@@ -5,6 +7,7 @@ module.exports = {
 	theme: {
 		extend: {
 			colors: {
+				trueGray: colors.trueGray,
 				brand: {
 					50: '#edfdfb',
 					100: '#e0fbf8',
