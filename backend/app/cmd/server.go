@@ -194,7 +194,7 @@ type AdminGroup struct {
 
 // TelegramGroup defines token for Telegram used in notify and auth modules
 type TelegramGroup struct {
-	Token   string        `long:"host" env:"HOST" description:"SMTP host"`
+	Token   string        `long:"token" env:"TOKEN" description:"telegram token (used for auth and telegram notifications)"`
 	Timeout time.Duration `long:"timeout" env:"TIMEOUT" default:"5s" description:"telegram timeout"`
 }
 
