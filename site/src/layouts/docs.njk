@@ -21,7 +21,7 @@ layout: base.njk
 			<span>
 				Updated <time datetime="{{ page.date | robotizeDate }}">{{ page.date | humanizeDate }}</time>
 			</span>
-			<a class="border-b border-transparent transition-colors hover:border-current" target="_blank" rel="noopener noreferrer" href="{{ site.githubUrl }}/edit/{{ site.githubBranch }}/{{ page.inputPath }}">Edit</a>
+			<a class="border-b border-transparent transition-colors hover:border-current" target="_blank" rel="noopener noreferrer" href="{{ site.githubUrl }}/edit/{{ site.githubBranch }}/site/{{ page.inputPath }}">Edit</a>
 		</footer>
 	</article>
 	{# TODO: implement navigation to next page of the docs 
