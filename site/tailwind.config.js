@@ -1,7 +1,7 @@
 const colors = require('tailwindcss/colors')
 
 module.exports = {
-	purge: ['src/**/*.{njk,md,html,js}'],
+	purge: ['.eleventy.js', 'src/**/*.{njk,md,html,js}'],
 	mode: 'jit',
 	darkMode: 'class',
 	theme: {

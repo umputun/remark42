@@ -3,19 +3,46 @@ const htmlmin = require('html-minifier')
 const syntaxHighlightPlugin = require('@11ty/eleventy-plugin-syntaxhighlight')
 const navigationPlugin = require('@11ty/eleventy-navigation')
 
+function noteContainer() {
+	const { utils } = require('markdown-it')()
+	const elementRegexp = /^note\s+(.*)$/
+
+	return {
+		validate(params) {
+			return params.trim().match(elementRegexp)
+		},
+
+		render(tokens, idx) {
+			const { info, nesting } = tokens[idx]
+			const matches = info.trim().match(elementRegexp)
+
+			if (nesting === 1) {
+				const icon = utils.escapeHtml(matches[1])
+
+				return `<aside class="relative pr-4 pl-12 py-1 bg-gray-50"><span class="absolute left-4 top-6 text-xl">${icon}</span>`
+			}
+
+			return `</aside>`
+		},
+	}
+}
+
 function getMarkdownLib() {
 	const markdownIt = require('markdown-it')
 	const markdownItAnchor = require('markdown-it-anchor')
+	const markdownItContainer = require('markdown-it-container')
 
 	return markdownIt({
 		html: true,
 		breaks: true,
 		linkify: true,
-	}).use(markdownItAnchor, {
-		permalink: true,
-		permalinkClass: '',
-		permalinkSymbol: '',
 	})
+		.use(markdownItAnchor, {
+			permalink: true,
+			permalinkClass: '',
+			permalinkSymbol: '',
+		})
+		.use(markdownItContainer, 'note', noteContainer())
 }
 
 module.exports = function (eleventyConfig) {
