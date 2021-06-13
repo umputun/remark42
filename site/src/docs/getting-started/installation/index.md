@@ -28,7 +28,7 @@ Add config for Remark on a page of your site:
 
 ```html
 <script>
-	var remark_config = {
+	const remark_config = {
 		host: 'REMARK_URL',
 		site_id: 'YOUR_SITE_ID',
 	}
@@ -42,7 +42,7 @@ For example:
 
 ```html
 <script>
-	var remark_config = {
+	const remark_config = {
 		host: 'https://demo.remark42.com',
 		site_id: 'remark',
 	}
@@ -51,21 +51,11 @@ For example:
 
 After that place the code snippet right after config.
 
+<!-- prettier-ignore-start -->
 ```html
-<script>
-	!(function (e, n) {
-		for (var o = 0; o < e.length; o++) {
-			var r = n.createElement('script'),
-				c = '.js',
-				d = n.head || n.body
-			'noModule' in r ? ((r.type = 'module'), (c = '.mjs')) : (r.async = !0),
-				(r.defer = !0),
-				(r.src = remark_config.host + '/web/' + e[o] + c),
-				d.appendChild(r)
-		}
-	})(remark_config.components || ['embed'], document)
-</script>
+<script>!function(e,n){for(var o=0;o<e.length;o++){var r=n.createElement("script"),c=".js",d=n.head||n.body;"noModule"in r?(r.type="module",c=".mjs"):r.async=!0,r.defer=!0,r.src=remark_config.host+"/web/"+e[o]+c,d.appendChild(r)}}(remark_config.components||["embed"],document);</script>
 ```
+<!-- prettier-ignore-end -->
 
 ::: note 💡
 **Note that:** You can place the config with the snippet in any place of the HTML code of your site. If it closer to start of the HTML (for example in `<head>`) it will start loading sooner and show comments faster.

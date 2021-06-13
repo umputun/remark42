@@ -35,6 +35,10 @@ module.exports = {
 					css: {
 						'h1, h2': { color: theme('colors.brand.900') },
 						'h3,h4,h5,h6': { color: theme('colors.gray.700') },
+						pre: {
+							color: theme('colors.gray.500'),
+							backgroundColor: theme('colors.gray.100'),
+						},
 					},
 				},
 				dark: {
@@ -82,7 +86,6 @@ module.exports = {
 								color: theme('colors.gray.200'),
 							},
 							pre: {
-								color: theme('colors.gray.300'),
 								backgroundColor: theme('colors.gray.800'),
 							},
 							thead: {
