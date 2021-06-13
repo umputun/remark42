@@ -1,0 +1,188 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.burger-icon {
+	@apply relative inline-block w-4 h-4 mr-3;
+}
+
+.burger-icon div {
+	@apply absolute bg-gray-400 rounded transition-all transform w-full h-[2px];
+}
+
+.burger-icon div:nth-child(1) {
+	@apply left-0 top-0;
+}
+
+.burger-icon div:nth-child(2) {
+	@apply left-0 top-[7px];
+}
+
+.burger-icon div:nth-child(3) {
+	@apply left-0 bottom-0;
+}
+
+.menu-state:checked ~ nav {
+	@apply block;
+}
+
+.menu-state:checked ~ label .burger-icon div:nth-child(1) {
+	@apply -rotate-45 scale-x-[0.7] top-[7px] left-[-3px];
+}
+.menu-state:checked ~ label .burger-icon div:nth-child(2) {
+	@apply scale-0 duration-75;
+}
+.menu-state:checked ~ label .burger-icon div:nth-child(3) {
+	@apply rotate-45 scale-x-[0.7] top-[7px] left-[4px];
+}
+
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata,
+.token.punctuation {
+	@apply text-gray-700 dark:text-gray-300;
+}
+
+.token.punctuation {
+	@apply text-brand-800 dark:text-brand-200;
+}
+
+.token.delimiter.important,
+.token.selector .parent,
+.token.tag,
+.token.tag .token.punctuation {
+	@apply text-brand-600 dark:text-brand-300 font-semibold;
+}
+
+.token.attr-name,
+.token.boolean,
+.token.boolean.important,
+.token.number,
+.token.constant,
+.token.selector .token.attribute {
+	@apply font-normal text-yellow-600 dark:text-yellow-500;
+}
+
+.token.class-name,
+.token.key,
+.token.parameter,
+.token.property,
+.token.property-access,
+.token.variable {
+	@apply text-yellow-600 dark:text-yellow-400;
+}
+
+.token.attr-value,
+.token.inserted,
+.token.color,
+.token.selector .token.value,
+.token.string,
+.token.string .token.url-link {
+	@apply text-brand-800 dark:text-brand-300 font-normal;
+}
+
+.token.builtin,
+.token.keyword-array,
+.token.package,
+.token.regex {
+	color: #af00af;
+}
+
+.token.function,
+.token.selector .token.class,
+.token.selector .token.id {
+	color: #7c00aa;
+}
+
+.token.atrule .token.rule,
+.token.combinator,
+.token.keyword,
+.token.operator,
+.token.pseudo-class,
+.token.pseudo-element,
+.token.selector,
+.token.unit {
+	@apply text-pink-700 dark:text-pink-300;
+}
+
+.token.deleted,
+.token.important {
+	color: #c22f2e;
+}
+
+.token.keyword-this,
+.token.this {
+	color: #005a8e;
+}
+
+.token.important,
+.token.keyword-this,
+.token.this,
+.token.bold {
+	font-weight: bold;
+}
+
+.token.delimiter.important {
+	font-weight: inherit;
+}
+
+.token.italic {
+	font-style: italic;
+}
+
+.token.entity {
+	cursor: help;
+}
+
+.language-markdown .token.title,
+.language-markdown .token.title .token.punctuation {
+	color: #005a8e;
+	font-weight: bold;
+}
+
+.language-markdown .token.blockquote.punctuation {
+	color: #af00af;
+}
+
+.language-markdown .token.code {
+	color: #006d6d;
+}
+
+.language-markdown .token.hr.punctuation {
+	color: #005a8e;
+}
+
+.language-markdown .token.url > .token.content {
+	color: #116b00;
+}
+
+.language-markdown .token.url-link {
+	color: #755f00;
+}
+
+.language-markdown .token.list.punctuation {
+	color: #af00af;
+}
+
+.language-markdown .token.table-header {
+	color: #111b27;
+}
+
+.language-json .token.operator {
+	color: #111b27;
+}
+
+.language-scss .token.variable {
+	color: #006d6d;
+}
+
+/* overrides color-values for the Show Invisibles plugin
+ * https://prismjs.com/plugins/show-invisibles/
+ */
+.token.tab:not(:empty):before,
+.token.cr:before,
+.token.lf:before,
+.token.space:before {
+	color: #3c526d;
+}

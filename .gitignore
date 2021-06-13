@@ -8,9 +8,6 @@ debug
 debug.test
 .vscode
 .idea/
-/frontend/node_modules/
-/frontend/public/
-/frontend/coverage
 *.prof
 *.test
 /rest-client.env.json
