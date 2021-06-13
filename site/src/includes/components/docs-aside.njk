@@ -22,8 +22,17 @@
 	</li>
 {% endmacro %}
 
-<aside class="flex-shrink-0 mr-12 w-48">
-	<nav>
+<aside class="flex-shrink-0 top-24 md:top-0 md:relative w-full md:w-1/4">
+	<input id="menu-toggle" type="checkbox" class="menu-state absolute invisible h-0 w-0 md:hidden"/>
+	<label for="menu-toggle" aria-title="Open Menu" class="flex items-center md:hidden py-2 border-t border-b border-gray-100 dark:border-gray-800 text-gray-500 dark:text-gray-300 mb-8 font-medium">
+		<div class="burger-icon" role="icon">
+			<div></div>
+			<div></div>
+			<div></div>
+		</div>
+		Open Menu
+	</label>
+	<nav class="hidden md:block mr-10">
 		{% for entry in collections.docs | eleventyNavigation %}
 			{{renderList(entry, 1)}}
 		{% endfor %}

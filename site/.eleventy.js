@@ -1,7 +1,7 @@
 const { format } = require('date-fns')
 const htmlmin = require('html-minifier')
-const syntaxHighlightPlugin = require('@11ty/eleventy-plugin-syntaxhighlight')
 const navigationPlugin = require('@11ty/eleventy-navigation')
+const syntaxHighlightPlugin = require('@11ty/eleventy-plugin-syntaxhighlight')
 
 function noteContainer() {
 	const { utils } = require('markdown-it')()
@@ -19,7 +19,7 @@ function noteContainer() {
 			if (nesting === 1) {
 				const icon = utils.escapeHtml(matches[1])
 
-				return `<aside class="relative pr-4 pl-12 py-1 bg-gray-50"><span class="absolute left-4 top-6 text-xl">${icon}</span>`
+				return `<aside class="relative pr-4 pl-12 py-1 bg-gray-50 dark:bg-gray-800"><span class="absolute left-4 top-6 text-xl">${icon}</span>`
 			}
 
 			return `</aside>`

@@ -2,6 +2,40 @@
 @tailwind components;
 @tailwind utilities;
 
+.burger-icon {
+	@apply relative inline-block w-4 h-4 mr-3;
+}
+
+.burger-icon div {
+	@apply absolute bg-gray-400 rounded transition-all transform w-full h-[2px];
+}
+
+.burger-icon div:nth-child(1) {
+	@apply left-0 top-0;
+}
+
+.burger-icon div:nth-child(2) {
+	@apply left-0 top-[7px];
+}
+
+.burger-icon div:nth-child(3) {
+	@apply left-0 bottom-0;
+}
+
+.menu-state:checked ~ nav {
+	@apply block;
+}
+
+.menu-state:checked ~ label .burger-icon div:nth-child(1) {
+	@apply -rotate-45 scale-x-[0.7] top-[7px] left-[-3px];
+}
+.menu-state:checked ~ label .burger-icon div:nth-child(2) {
+	@apply scale-0 duration-75;
+}
+.menu-state:checked ~ label .burger-icon div:nth-child(3) {
+	@apply rotate-45 scale-x-[0.7] top-[7px] left-[4px];
+}
+
 .token.comment,
 .token.prolog,
 .token.doctype,
@@ -11,14 +45,14 @@
 }
 
 .token.punctuation {
-	color: #111b27;
+	@apply text-brand-800 dark:text-brand-200;
 }
 
 .token.delimiter.important,
 .token.selector .parent,
 .token.tag,
 .token.tag .token.punctuation {
-	@apply text-brand-600 font-semibold;
+	@apply text-brand-600 dark:text-brand-300 font-semibold;
 }
 
 .token.attr-name,
@@ -27,7 +61,7 @@
 .token.number,
 .token.constant,
 .token.selector .token.attribute {
-	@apply font-normal text-yellow-600;
+	@apply font-normal text-yellow-600 dark:text-yellow-500;
 }
 
 .token.class-name,
@@ -45,7 +79,7 @@
 .token.selector .token.value,
 .token.string,
 .token.string .token.url-link {
-	@apply text-brand-600 dark:text-blue-300 font-normal;
+	@apply text-brand-800 dark:text-brand-300 font-normal;
 }
 
 .token.builtin,
@@ -69,7 +103,7 @@
 .token.pseudo-element,
 .token.selector,
 .token.unit {
-	color: #a04900;
+	@apply text-pink-700 dark:text-pink-300;
 }
 
 .token.deleted,

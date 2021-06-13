@@ -1,4 +1,5 @@
 const colors = require('tailwindcss/colors')
+const { spacing } = require('tailwindcss/defaultTheme')
 
 module.exports = {
 	purge: ['.eleventy.js', 'src/**/*.{njk,md,html,js}'],
@@ -23,6 +24,7 @@ module.exports = {
 			},
 			container: {
 				center: true,
+				padding: spacing[4],
 				screens: {
 					sm: '100%',
 					md: '860px',

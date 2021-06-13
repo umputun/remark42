@@ -3,7 +3,7 @@
   {% include "components/head.njk" %}
   <body class="h-screen bg-white dark:bg-trueGray-900 dark:text-gray-100">
 		{% include "components/header.njk" %}
-		<main id="main" class="pt-20 px-4 container flex-grow min-h-full flex">
+		<main id="main" class="relative mt-24 md:mt-20 container flex-grow min-h-full flex flex-wrap">
 			{{ layoutContent | safe }}
 		</main>
 		{% include "components/footer.njk" %}
