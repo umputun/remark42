@@ -1,7 +1,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ renderData.title or title or site.name }}</title>
+	{% if title %}
+		<title>{{ title }} | {{ site.name }}</title>
+	{% else %}
+  	<title>{{ renderData.title or site.name }}</title>
+	{% endif %}
   <meta name="description" content="{{ metaDescription or renderData.metaDescription or site.description }}">
   <link rel="stylesheet" href="/style.css?v={% version %}"/>
 	<script>{% include "inline.js" %}</script>
