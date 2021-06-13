@@ -4,5 +4,6 @@
 	"description": "Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engine, which doesn't spy on users. It can be embedded into blogs, articles or any other place where readers add comments.",
 	"url": "https://remark42.com",
 	"githubUrl": "https://github.com/umputun/remark42",
+	"githubBranch": "master",
 	"remark42Host": "https://demo.remark42.com"
 }
