@@ -11,13 +11,13 @@
 		"yarn": ">=1.22"
 	},
 	"scripts": {
-		"dev": "run-s clean && run-p dev:*",
+		"dev": "npm-run-all clean -p dev:*",
+		"dev:11ty": "eleventy --serve --watch --quiet",
 		"dev:css": "postcss ./src/styles.css -o .tmp/style.css -w",
-		"dev:eleventy": "eleventy --serve --watch --quiet",
 		"build": "cross-env NODE_ENV=production run-s clean build:* --print-label",
 		"build:css": "postcss ./src/styles.css -o .tmp/style.css",
-		"build:eleventy": "eleventy",
-		"clean": "rm -rf build/*"
+		"build:11ty": "eleventy",
+		"clean": "rm -rf .tmp/* build/*"
 	},
 	"devDependencies": {
 		"@11ty/eleventy": "^0.12.1",
